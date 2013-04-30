@@ -38,6 +38,22 @@ fi
 
 [ -z $cer ] && cer=0
 
+function make_plp {
+  t=$1
+  if ! "$use_pitch"; then
+    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/${t} exp/make_plp/${t} plp
+  else
+    cp -rT data/${t} data/${t}_plp; cp -rT data/${t} data/${t}_pitch
+    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/${t}_plp exp/make_plp/${t} plp_tmp_${t}
+    local/make_pitch.sh --cmd "$train_cmd" --nj $decode_nj data/${t}_pitch exp/make_pitch/${t} plp_tmp_${t}
+    steps/append_feats.sh data/${t}{_plp,_pitch,} exp/make_pitch/append_${t} plp
+    rm -rf plp_tmp_${t} data/${t}_{plp,pitch}
+  fi
+  steps/compute_cmvn_stats.sh data/${t} exp/make_plp/${t} plp
+  utils/fix_data_dir.sh data/${t}
+}
+
+
 #####################################################################
 #
 # test.uem and shadow.uem directory preparation
@@ -46,10 +62,7 @@ fi
 if [[ $type == shadow || $type == eval ]]; then
   if [ ! -f data/eval.uem/.done ]; then
     local/cmu_uem2kaldi_dir.sh --filelist $eval_data_list $eval_data_cmudb  $eval_data_dir data/eval.uem 
-    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/eval.uem exp/make_plp/eval.uem plp
-
-    steps/compute_cmvn_stats.sh data/eval.uem exp/make_plp/eval.uem plp
-    utils/fix_data_dir.sh data/eval.uem
+    make_plp eval.uem
     touch data/eval.uem/.done
   fi
 
@@ -88,9 +101,7 @@ if [ $type == dev10h ]; then
       [ ! -f data/dev10h/char.stm ] && echo "CER=1 and file dev10h/char.stm not present" && exit 1
       cp data/dev10h/char.stm data/dev10h.uem
     fi
-    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/dev10h.uem exp/make_plp/dev10h.uem plp
-    steps/compute_cmvn_stats.sh data/dev10h.uem exp/make_plp/dev10h.uem plp
-    utils/fix_data_dir.sh data/dev10h.uem
+    make_plp dev10h.uem
     touch data/dev10h.uem/.done
   fi
   if [ ! -f data/dev10h.uem/kws/.done ]; then
@@ -114,10 +125,8 @@ if [ $type == dev2h ]; then
       [ ! -f data/dev2h/char.stm ] && echo "CER=1 and file eval.pem/char.stm not present" && exit 1
       cp data/dev2h/char.stm data/dev2h.uem
     fi
-    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/dev2h.uem exp/make_plp/dev2h.uem plp
-    steps/compute_cmvn_stats.sh data/dev2h.uem exp/make_plp/dev2h.uem plp
-    utils/fix_data_dir.sh data/dev2h.uem
-    touch data/dev2hh.uem/.done
+    make_plp dev2h.uem
+    touch data/dev2h.uem/.done
   fi
 
   if [ ! -f data/dev2h.uem/kws/.done ]; then

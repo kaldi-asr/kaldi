@@ -118,12 +118,18 @@ echo ---------------------------------------------------------------------
 echo "Starting plp feature extraction for data/train in plp on" `date`
 echo ---------------------------------------------------------------------
 if [ ! -f data/train/.plp.done ]; then
-  steps/make_plp.sh \
-    --cmd "$train_cmd" --nj $decode_nj \
-    data/train exp/make_plp/train plp
+  if ! "$use_pitch"; then
+    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/train exp/make_plp/train plp
+  else
+    cp -rT data/train data/train_plp; cp -rT data/train data/train_pitch
+    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/train_plp exp/make_plp/train plp_tmp_train
+    local/make_pitch.sh --cmd "$train_cmd" --nj $decode_nj data/train_pitch exp/make_pitch/train plp_tmp_train
+    steps/append_feats.sh data/train{_plp,_pitch,} exp/make_pitch/append_train plp
+    rm -rf plp_tmp_train data/train_{plp,pitch}
+  fi
   steps/compute_cmvn_stats.sh \
     data/train exp/make_plp/train plp
-   # In case plp extraction failed on some utterance, delist them
+  # In case plp or pitch extraction failed on some utterances, delist them
   utils/fix_data_dir.sh data/train
   touch data/train/.plp.done
 fi

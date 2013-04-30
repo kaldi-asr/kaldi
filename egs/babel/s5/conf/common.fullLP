@@ -11,6 +11,8 @@ dnn_extra_opts=
 bnf_every_nth_frame=2 # take every 2nd frame.
 babel_type=full
 
+use_pitch=false
+
 if [[ `hostname` == *.tacc.utexas.edu ]] ; then
   dnn_train_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6" --num-jobs-nnet 16 --stage 0)
   decode_extra_opts=( --num-threads 4 --parallel-opts "-pe smp 4" )

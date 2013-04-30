@@ -12,6 +12,7 @@ first_stage="tri5"
 
 if [ $# -ne 0 ]; then
   echo "Usage: $(basename $0) --type (dev10h|dev2h|eval)"
+  exit 1
 fi
 
 if [[ "$type" != "dev10h" && "$type" != "dev2h" && "$type" != "eval" && "$type" != "shadow" ]] ; then
@@ -97,11 +98,16 @@ if [ ! -f data/${type}/.kws.done ]; then
 fi
 
 if [ ! -f data/${type}/.plp.done ]; then
-  steps/make_plp.sh \
-    --cmd "$train_cmd" --nj $my_nj \
-    data/${type} exp/make_plp/${type} plp || exit 1
-  steps/compute_cmvn_stats.sh \
-    data/${type} exp/make_plp/${type} plp || exit 1
+  if ! "$use_pitch"; then
+    steps/make_plp.sh --cmd "$train_cmd" --nj $my_nj data/${type} exp/make_plp/${type} plp 
+  else
+    cp -rT data/${type} data/${type}_plp; cp -rT data/${type} data/${type}_pitch
+    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/${type}_plp exp/make_plp/${type} plp_tmp_${type}
+    local/make_pitch.sh --cmd "$train_cmd" --nj $decode_nj data/${type}_pitch exp/make_pitch/${type} plp_tmp_${type}
+    steps/append_feats.sh data/${type}{_plp,_pitch,} exp/make_pitch/append_${type} plp
+    rm -rf plp_tmp_${type} data/${type}_{plp,pitch}
+  fi
+  steps/compute_cmvn_stats.sh data/${type} exp/make_plp/${type} plp || exit 1
   # In case plp extraction failed on some utterance, delist them
   utils/fix_data_dir.sh data/${type}
   touch data/${type}/.plp.done

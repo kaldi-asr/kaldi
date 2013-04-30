@@ -22,6 +22,11 @@ if [ ! -d ptdnn ]; then
   svn co svn://svn.code.sf.net/p/ptdnn/code-0/trunk/ptdnn ptdnn
 fi
 
+if ! which nvcc; then
+  echo "The command nvcc could not be found on the path: please make sure it is on"
+  echo "your path (and that you have NVidia tools installed in the first place)"
+fi
+
 if ! nvidia-smi; then
   echo "The command nvidia-smi was not found: this probably means you don't have a GPU.  Not continuing"
   echo "(Note: this script might still work, it would just be slower.)"
@@ -56,8 +61,10 @@ echo ---------------------------------------------------------------------
 # Note: align_fmllr.sh will have been run in run-1-main.sh
 # make exp_BNF a link to local storage before running this.  It produces a lot of temp files.
 
-steps_BNF/build_nnet_pfile.sh --cmd "run.pl" --every-nth-frame "$bnf_every_nth_frame" \
+if [ ! -s exp_BNF/bnf_dnn_run/concat.pfile ]; then
+  steps_BNF/build_nnet_pfile.sh --cmd "run.pl" --every-nth-frame "$bnf_every_nth_frame" \
     data/train data/lang exp/tri5_ali exp_BNF/bnf_dnn_run || exit 1
+fi
 
 #export LD_LIBRARY_PATH=/opt/nvidia_cuda/cuda-5.0/lib64
 #export PATH=$PATH:/opt/nvidia_cuda/cuda-5.0/lib64/libcublas
