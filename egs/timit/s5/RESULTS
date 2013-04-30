@@ -17,28 +17,12 @@ Language Model : Bigram phoneme language model which is extracted from training 
 #tri3 : Speaker Adaptive Training (SAT) system
 %PER 18.27 [ 11489 / 62901, 1681 ins, 2810 del, 6998 sub ] exp/tri3/decode_bg_test/wer_6
 
-# Discriminative Training (fMMI, MMI) 
-%PER 18.27 [ 11492 / 62901, 2180 ins, 2330 del, 6982 sub ] exp/tri3_mmi_b0.1/decode_bg_test/wer_7
-
-%PER 17.82 [ 11211 / 62901, 1782 ins, 2577 del, 6852 sub ] exp/tri3_fmmi_a/decode_bg_test_it1/wer_7
-%PER 17.76 [ 11174 / 62901, 1951 ins, 2378 del, 6845 sub ] exp/tri3_fmmi_a/decode_bg_test_it2/wer_7
-%PER 18.66 [ 11737 / 62901, 2047 ins, 2513 del, 7177 sub ] exp/tri3_fmmi_a/decode_bg_test_it3/wer_8
-%PER 18.52 [ 11647 / 62901, 2046 ins, 2471 del, 7130 sub ] exp/tri3_fmmi_a/decode_bg_test_it4/wer_8
-
-%PER 17.65 [ 11103 / 62901, 1790 ins, 2502 del, 6811 sub ] exp/tri3_fmmi_indirect/decode_bg_test_it1/wer_6
-%PER 17.66 [ 11110 / 62901, 1844 ins, 2456 del, 6810 sub ] exp/tri3_fmmi_indirect/decode_bg_test_it2/wer_7
-%PER 17.48 [ 10995 / 62901, 1940 ins, 2315 del, 6740 sub ] exp/tri3_fmmi_indirect/decode_bg_test_it3/wer_7
-%PER 17.67 [ 11115 / 62901, 1975 ins, 2351 del, 6789 sub ] exp/tri3_fmmi_indirect/decode_bg_test_it4/wer_8
-
 #SGMM2 Training
 %PER 16.17 [ 10171 / 62901, 1309 ins, 2708 del, 6154 sub ] exp/sgmm2_4/decode_bg_test/wer_6
 
 # SGMM2 + MMI Training
 %PER 16.14 [ 10154 / 62901, 1845 ins, 2074 del, 6235 sub ] exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it1/wer_6
-%PER 16.09 [ 10120 / 62901, 1832 ins, 2079 del, 6209 sub ] exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it1.mbr/wer_6
 %PER 16.58 [ 10430 / 62901, 2032 ins, 2031 del, 6367 sub ] exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it2/wer_7
 %PER 16.80 [ 10570 / 62901, 2071 ins, 2096 del, 6403 sub ] exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it3/wer_8
 %PER 17.02 [ 10706 / 62901, 2154 ins, 2048 del, 6504 sub ] exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it4/wer_8
 
-# Combining the best decoding results
-%PER 16.11 [ 10135 / 62901, 1683 ins, 2256 del, 6196 sub ] exp/combine_tri3b_fmmi_a_sgmm2_4_mmi_b0.1_z/decode_bg_test_it1_1/wer_6
