@@ -86,9 +86,22 @@ void Randomize(const CuMatrixBase<Real> &src,
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     
+    /*
+    Note: default 16x16 block-size limits the --cachesize to matrix size 16*65535 x 16*65535 
     dim3 dimBlock(CUBLOCK, CUBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CUBLOCK), n_blocks(copy_from_idx.Dim(), CUBLOCK));
-    
+    */
+
+    /*
+     * Let's use blocksize 4 x 128 (512 threads/block)
+     * and extend the randomizable matrices to: col 4*65535, row 128*65535 
+     * (ie. max-cols:262140 (dim), max-rows:8388480 (datapoints))
+     */
+    dim3 dimBlock(4, 128);
+    dim3 dimGrid(n_blocks(tgt->NumCols(), 4), n_blocks(copy_from_idx.Dim(), 128));
+    /*
+     */
+
     MatrixDim dimsrc = src.Dim(); dimsrc.rows=copy_from_idx.Dim();
     MatrixDim dimtgt = tgt->Dim(); dimtgt.rows=copy_from_idx.Dim();
 

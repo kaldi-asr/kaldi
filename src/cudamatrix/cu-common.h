@@ -37,7 +37,7 @@
 { \
   int32 ret; \
   if ((ret = (fun)) != 0) { \
-    KALDI_ERR << "CUDA ERROR #" << ret << " " << cudaGetErrorString((cudaError_t)ret) << " '" << #fun << "'"; \
+    KALDI_ERR << "cudaError_t " << ret << " : \"" << cudaGetErrorString((cudaError_t)ret) << "\" returned from '" << #fun << "'"; \
   } \
   cudaThreadSynchronize(); \
 } 
