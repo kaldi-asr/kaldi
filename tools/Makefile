@@ -25,12 +25,15 @@ distclean:
 		rm -rf openfst-1.3.2.tar.gz
 		rm -f openfst
 
-openfst_tgt: openfst_compiled
+openfst_tgt: openfst_compiled openfst/lib
 
 .PHONY: openfst_compiled
 openfst_compiled: openfst-1.3.2/Makefile
-		cd openfst-1.3.2/; \
-		$(MAKE) install
+	cd openfst-1.3.2/ && \
+	$(MAKE) install
+
+openfst/lib:
+	-cd openfst && [ -d lib64 -a ! -d lib ] && ln -s lib64 lib
 
 openfst-1.3.2/Makefile: openfst-1.3.2/.patched
 		cd openfst-1.3.2/; \
