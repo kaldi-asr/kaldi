@@ -98,6 +98,7 @@ if ($kws ne "") {
 # Compute ATWV
 my $subset_atwv = ($subset_count == 0) ? 0 : $twv_sum/$subset_count;
 my $atwv = ($count == 0) ? 0 : $twv_sum/$count;
+my $bp_atwv = ($count == 0) ? 0 : $subset_count/$count;
 
 # Format the numbers
 my $format = "%-${width}d";
@@ -108,11 +109,12 @@ $fa_sum = sprintf($format, $fa_sum);
 $miss_sum = sprintf($format, $miss_sum);
 $subset_atwv = sprintf("% .4f", $subset_atwv);
 $atwv = sprintf("% .4f", $atwv);
+$bp_atwv = sprintf("% .4f", $bp_atwv);
 
 # Print
 if ($subset_name ne "") {print "$subset_name: ";}
 print "#Keywords=$subset_count, #Targ=$targ_sum, #Corr=$corr_sum, #FA=$fa_sum, #Miss=$miss_sum, ";
-print "Contributed ATWV=$atwv, ATWV=$subset_atwv\n";
+print "Contributed ATWV=$atwv, Best Possible Contributed ATWV=$bp_atwv, ATWV=$subset_atwv\n";
 
 if ($kws_filename ne "-") {close(KWS);}
 close(BSUM);
