@@ -8,6 +8,9 @@ use warnings;
 use Getopt::Long;
 
 my $Usage = <<EOU;
+This script reads the raw keyword search results [result.*] and writes them as the kwslist.xml file.
+It can also do things like score normalization, decision making, duplicates removal, etc.
+
 Usage: utils/write_kwslist.pl [options] <raw_result_in|-> <kwslist_out|->
  e.g.: utils/write_kwslist.pl --flen=0.01 --duration=1000 --segments=data/eval/segments
                               --normalize=true --map-utter=data/kws/utter_map raw_results kwslist.xml
@@ -25,11 +28,13 @@ Allowed options:
   --map-utter                 : Map utterance for evaluation                (string,  default = "")
   --normalize                 : Normalize scores or not                     (boolean, default = false)
   --Ntrue-scale               : Keyword independent scale factor for Ntrue  (float,   default = 1.0)
-  --remove-dup                : Remove duplicates                           (boolean, default = false) 
+  --remove-dup                : Remove duplicates                           (boolean, default = false)
+  --remove-NO                 : Remove the "NO" decision instances          (boolean, default = false)
   --segments                  : Segments file from Kaldi                    (string,  default = "")
   --system-id                 : System ID                                   (string,  default = "")
-  --YES-cutoff                : Only keep "\$YES-cutoff" yeses for each kw   (int,     default = -1)
   --verbose                   : Verbose level (higher --> more kws section) (integer, default 0)
+  --YES-cutoff                : Only keep "\$YES-cutoff" yeses for each kw   (int,     default = -1)
+
 EOU
 
 my $segment = "";
@@ -48,6 +53,7 @@ my $kwlist_filename = "";
 my $verbose = 0;
 my $duptime = 0.5;
 my $remove_dup = "false";
+my $remove_NO = "false";
 my $YES_cutoff = -1;
 GetOptions('segments=s'     => \$segment,
   'flen=f'         => \$flen,
@@ -65,25 +71,22 @@ GetOptions('segments=s'     => \$segment,
   'verbose=i'         => \$verbose,
   'duptime=f'         => \$duptime,
   'remove-dup=s'      => \$remove_dup,
-  'YES-cutoff=i'      => \$YES_cutoff);
+  'YES-cutoff=i'      => \$YES_cutoff,
+  'remove-NO=s'       => \$remove_NO);
 
-if ($normalize ne "true" && $normalize ne "false") {
-  die "Bad value for option --normalize. \n";
-}
-
-if ($remove_dup ne "true" && $remove_dup ne "false") {
-  die "Bad value for option --remove-dup. \n";
-}
+($normalize eq "true" || $normalize eq "false") || die "$0: Bad value for option --normalize\n";
+($remove_dup eq "true" || $remove_dup eq "false") || die "$0: Bad value for option --remove-dup\n";
+($remove_NO eq "true" || $remove_NO eq "false") || die "$0: Bad value for option --remove-NO\n";
 
 if ($segment) {
-  if (!open(SEG, "<$segment")) {print "Fail to open segment file: $segment\n"; exit 1;}
+  open(SEG, "<$segment") || die "$0: Fail to open segment file $segment\n";
 }
 
 if ($map_utter) {
-  if (!open(UTT, "<$map_utter")) {print "Fail to open utterance table: $map_utter\n"; exit 1;}
+  open(UTT, "<$map_utter") || die "$0: Fail to open utterance table $map_utter\n";
 }
 
-if(@ARGV != 2) {
+if (@ARGV != 2) {
   die $Usage;
 }
 
@@ -96,28 +99,28 @@ my $source = "";
 if ($filein eq "-") {
   $source = "STDIN";
 } else {
-  if (!open(I, "<$filein")) {print "Fail to open input file: $filein\n"; exit 1;}
+  open(I, "<$filein") || die "$0: Fail to open input file $filein\n";
   $source = "I";
 }
 
 # Get symbol table and start time
-my %tbeg = ();
+my %tbeg;
 if ($segment) {
-  while(<SEG>) {
+  while (<SEG>) {
     chomp;
     my @col = split(" ", $_);
-    @col == 4 || die "Bad number of columns in $segment\n";
+    @col == 4 || die "$0: Bad number of columns in $segment \"$_\"\n";
     $tbeg{$col[0]} = $col[2];
   }
 }
 
 # Get utterance mapper
-my %utter_mapper = ();
+my %utter_mapper;
 if ($map_utter) {
-  while(<UTT>) {
+  while (<UTT>) {
     chomp;
     my @col = split(" ", $_);
-    @col == 2 || die "Bad number of columns in $map_utter\n";
+    @col == 2 || die "$0: Bad number of columns in $map_utter \"$_\"\n";
     $utter_mapper{$col[0]} = $col[1];
   }
 }
@@ -163,14 +166,19 @@ sub KwslistOutputSort {
   }
 }
 sub KwslistDupSort {
+  my ($a, $b, $duptime) = @_;
   if ($a->[0] ne $b->[0]) {
     $a->[0] cmp $b->[0];
   } elsif ($a->[1] ne $b->[1]) {
     $a->[1] cmp $b->[1];
   } elsif ($a->[2] ne $b->[2]) {
     $a->[2] cmp $b->[2];
-  } else {
+  } elsif (abs($a->[3]-$b->[3]) >= $duptime){
     $a->[3] <=> $b->[3];
+  } elsif ($a->[5] ne $b->[5]) {
+    $b->[5] <=> $a->[5];
+  } else {
+    $b->[4] <=> $a->[4];
   }
 }
 
@@ -179,7 +187,7 @@ my @KWS;
 while (<$source>) {
   chomp;
   my @col = split(" ", $_);
-  @col == 5 || die "Bad number of columns in raw results\n";
+  @col == 5 || die "$0: Bad number of columns in raw results \"$_\"\n";
   my $kwid = shift @col;
   my $utter = $col[0];
   my $start = sprintf("%.2f", $col[1]*$flen);
@@ -187,7 +195,7 @@ while (<$source>) {
   my $score = exp(-$col[3]);
 
   if ($segment) {
-    $start += $tbeg{$utter};
+    $start = sprintf("%.2f", $start+$tbeg{$utter});
   }
   if ($map_utter) {
     $utter = $utter_mapper{$utter};
@@ -211,18 +219,46 @@ foreach my $key (keys %Ntrue) {
   $threshold{$key} = $Ntrue{$key}/($duration/$beta+($beta-1)/$beta*$Ntrue{$key});
 }
 
+# Removing duplicates
+if ($remove_dup eq "true") {
+  my @tmp = sort {KwslistDupSort($a, $b, $duptime)} @KWS;
+  @KWS = ();
+  push(@KWS, $tmp[0]);
+  for (my $i = 1; $i < scalar(@tmp); $i ++) {
+    my $prev = $KWS[-1];
+    my $curr = $tmp[$i];
+    if ((abs($prev->[3]-$curr->[3]) < $duptime ) &&
+        ($prev->[2] eq $curr->[2]) &&
+        ($prev->[1] eq $curr->[1]) &&
+        ($prev->[0] eq $curr->[0])) {
+      next;
+    } else {
+      push(@KWS, $curr);
+    }
+  }
+}
+
 my $format_string = "%g";
 if ($digits gt 0 ) {
   $format_string = "%." . $digits ."f";
 }
 
 my @info = ($kwlist_filename, $language, $system_id);
+my %YES_count;
 foreach my $kwentry (@KWS) {
   my $threshold = $threshold{$kwentry->[0]};
   if ($kwentry->[5] > $threshold) {
     $kwentry->[6] = "YES";
+    if (defined($YES_count{$kwentry->[0]})) {
+      $YES_count{$kwentry->[0]} ++;
+    } else {
+      $YES_count{$kwentry->[0]} = 1;
+    }
   } else {
     $kwentry->[6] = "NO";
+    if (!defined($YES_count{$kwentry->[0]})) {
+      $YES_count{$kwentry->[0]} = 0;
+    }
   }
   if ($verbose > 0) {
     push(@{$kwentry}, sprintf("%g", $threshold));
@@ -235,30 +271,11 @@ foreach my $kwentry (@KWS) {
     my $denominator = (1-$threshold)*$kwentry->[5]+(1-$kwentry->[5])*$threshold;
     if ($denominator != 0) {
       $kwentry->[5] = sprintf($format_string, $numerator/$denominator);
+    } else {
+      $kwentry->[5] = sprintf($format_string, $kwentry->[5]);
     }
   } else {
     $kwentry->[5] = sprintf($format_string, $kwentry->[5]);
-  }
-}
-
-# Removing duplicates
-if ($remove_dup eq "true") {
-  my @tmp = sort KwslistDupSort @KWS;
-  @KWS = ();
-  push(@KWS, $tmp[0]);
-  for (my $i = 1; $i < scalar(@tmp); $i ++) {
-    my $prev = $KWS[-1];
-    my $curr = $tmp[$i];
-    if ((abs($prev->[3]-$curr->[3]) < $duptime ) &&
-        ($prev->[2] eq $curr->[2]) &&
-        ($prev->[1] eq $curr->[1]) &&
-        ($prev->[0] eq $curr->[0])) {
-      if (($prev->[6] eq "NO") && ($curr->[6] eq "YES")) {
-        $KWS[-1] = $curr;
-      }
-    } else {
-      push(@KWS, $curr);
-    }
   }
 }
 
@@ -274,13 +291,29 @@ if ($YES_cutoff != -1) {
       $count = 1;
       next;
     }
+    if ($YES_count{$tmp[$i]->[0]} > $YES_cutoff*2) {
+      $tmp[$i]->[6] = "NO";
+      $tmp[$i]->[5] = 0;
+      next;
+    }
     if (($count == $YES_cutoff) && ($tmp[$i]->[6] eq "YES")) {
       $tmp[$i]->[6] = "NO";
-      $tmp[$i]->[5] = 0.5;
+      $tmp[$i]->[5] = 0;
       next;
     }
     if ($tmp[$i]->[6] eq "YES") {
       $count ++;
+    }
+  }
+}
+
+# Process the remove-NO decision
+if ($remove_NO eq "true") {
+  my @KWS = @tmp;
+  @tmp = ();
+  for (my $i = 0; $i < scalar(@KWS); $i ++) {
+    if ($KWS[$i]->[6] eq "YES") {
+      push(@tmp, $KWS[$i]);
     }
   }
 }
@@ -294,7 +327,7 @@ if ($filein  ne "-") {close(I);}
 if ($fileout eq "-") {
     print $kwslist;
 } else {
-  open(O, ">$fileout") || die "Fail to open output file: $fileout\n";
+  open(O, ">$fileout") || die "$0: Fail to open output file $fileout\n";
   print O $kwslist;
   close(O);
 }
