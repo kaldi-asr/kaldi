@@ -30,6 +30,7 @@ dir=data/local/dict_larger
 cp data/local/dict/* data/local/dict_larger # Various files describing phones etc.
   # are there; we just want to copy them as the phoneset is the same.
 rm data/local/dict_larger/lexicon.txt # we don't want this.
+rm data/local/dict_larger/lexiconp.txt # we don't want this either.
 mincount=2 # Minimum count of an OOV we will try to generate a pron for.
 
 [ ! -f data/local/dict/cmudict/cmudict.0.7a ] && echo "CMU dict not in expected place" && exit 1;
