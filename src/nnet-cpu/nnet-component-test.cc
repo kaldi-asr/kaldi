@@ -463,6 +463,8 @@ int BasicDebugTestForSplice (bool output=false) {
   if (output)
     KALDI_WARN << in ;
 
+  delete c;
+
   return 0;
 }
 
