@@ -63,8 +63,7 @@ OnlineUdpInput::OnlineUdpInput(int32 port, int32 feature_dim):
   sock_desc_ = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (sock_desc_ == -1)
     KALDI_ERR << "socket() call failed!";
-//  int32 rcvbuf_size = 400000; // was 100000
-  int32 rcvbuf_size = 100000; 
+  int32 rcvbuf_size = 30000;
   if (setsockopt(sock_desc_, SOL_SOCKET, SO_RCVBUF,
                  &rcvbuf_size, sizeof(rcvbuf_size)) == -1)
       KALDI_ERR << "setsockopt() failed to set receive buffer size!";
@@ -78,8 +77,7 @@ OnlineUdpInput::OnlineUdpInput(int32 port, int32 feature_dim):
 bool OnlineUdpInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
   KALDI_ASSERT(timeout == 0 &&
                "Timeout parameter currently not supported by OnlineUdpInput!");
-//  char buf[800000]; // was 200000
-  char buf[200000]; 
+  char buf[65535]; 
   socklen_t caddr_len = sizeof(client_addr_);
   ssize_t nrecv = recvfrom(sock_desc_, buf, sizeof(buf), 0,
                            reinterpret_cast<sockaddr*>(&client_addr_),

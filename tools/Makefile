@@ -10,6 +10,7 @@ check_required_programs:
 	which libtoolize || which glibtoolize
 	which svn
 	which gcc
+	which g++
 
 clean: openfst_cleaned sclite_cleaned  irstlm_cleaned
 
