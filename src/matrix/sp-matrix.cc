@@ -937,6 +937,11 @@ template<class Real>
 void SpMatrix<Real>::AddMat2Sp(
     const Real alpha, const MatrixBase<Real> &M,
     MatrixTransposeType transM, const SpMatrix<Real> &A, const Real beta) {
+  if (transM == kNoTrans) {
+    KALDI_ASSERT(M.NumCols() == A.NumRows() && M.NumRows() == this->num_rows_);
+  } else {
+    KALDI_ASSERT(M.NumRows() == A.NumRows() && M.NumCols() == this->num_rows_);
+  }  
   Vector<Real> tmp_vec(A.NumRows());
   Real *tmp_vec_data = tmp_vec.Data();
   SpMatrix<Real> tmp_A;
@@ -972,6 +977,60 @@ void SpMatrix<Real>::AddMat2Sp(
   }
 }
 
+template<class Real>
+void SpMatrix<Real>::AddSmat2Sp(
+    const Real alpha, const MatrixBase<Real> &M,
+    MatrixTransposeType transM, const SpMatrix<Real> &A,
+    const Real beta) {
+  KALDI_ASSERT((transM == kNoTrans && M.NumCols() == A.NumRows()) ||
+               (transM == kTrans && M.NumRows() == A.NumRows()));
+  if (transM == kNoTrans) {
+    KALDI_ASSERT(M.NumCols() == A.NumRows() && M.NumRows() == this->num_rows_);
+  } else {
+    KALDI_ASSERT(M.NumRows() == A.NumRows() && M.NumCols() == this->num_rows_);
+  }
+  MatrixIndexT Adim = A.NumRows(), dim = this->num_rows_;
+                                           
+  Matrix<Real> temp_A(A); // represent A as full matrix.
+  Matrix<Real> temp_MA(dim, Adim);
+  temp_MA.AddSmatMat(1.0, M, transM, temp_A, kNoTrans, 0.0);
+
+  // Next-- we want to do *this = alpha * temp_MA * M^T + beta * *this.
+  // To make it sparse vector multiplies, since M is sparse, we'd like
+  // to do: for each column c, (*this column c) += temp_MA * (M^T's column c.)
+  // [ignoring the alpha and beta here.]
+  // It's not convenient to process columns in the symmetric
+  // packed format because they don't have a constant stride.  However,
+  // we can use the fact that temp_MA * M is symmetric, to just assign
+  // each row of *this instead of each column.
+  // So the final iteration is:
+  // for i = 0... dim-1,
+  //   [the i'th row of *this] = beta * [the i'th row of *this] + alpha *
+  //                               temp_MA * [the i'th column of M].
+  // Of course, we only process the first 0 ... i elements of this row, 
+  // as that's all that are kept in the symmetric packed format.
+  
+  Matrix<Real> temp_this(*this);
+  Real *data = this->data_;
+  const Real *Mdata = M.Data(), *MAdata = temp_MA.Data();
+  MatrixIndexT temp_MA_stride = temp_MA.Stride(), Mstride = M.Stride();
+
+  if (transM == kNoTrans) {
+    // The column of M^T corresponds to the rows of the supplied matrix.
+    for (MatrixIndexT i = 0; i < dim; i++, data += i) {
+      MatrixIndexT num_rows = i + 1, num_cols = Adim;
+      Xgemv_sparsevec(kNoTrans, num_rows, num_cols, alpha, MAdata,
+                      temp_MA_stride, Mdata + (i * Mstride), 1, beta, data, 1);
+    }
+  } else {
+    // The column of M^T corresponds to the columns of the supplied matrix.
+    for (MatrixIndexT i = 0; i < dim; i++, data += i) {
+      MatrixIndexT num_rows = i + 1, num_cols = Adim;
+      Xgemv_sparsevec(kNoTrans, num_rows, num_cols, alpha, MAdata,
+                      temp_MA_stride, Mdata + i, Mstride, beta, data, 1);
+    }
+  }
+}
 
 template<class Real>
 void SpMatrix<Real>::AddMat2Vec(const Real alpha,

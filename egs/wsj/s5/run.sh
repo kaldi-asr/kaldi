@@ -191,7 +191,7 @@ local/score_mbr.sh --cmd "$decode_cmd" \
 
 steps/decode_fromlats.sh --cmd "$decode_cmd" \
   data/test_dev93 data/lang_test_tgpr exp/tri2b/decode_tgpr_dev93 \
-  exp/tri2a/decode_tgpr_dev93_fromlats || exit 1;
+  exp/tri2a/decode_tgpr_dev93_fromlats || exit 1
 
 
 # Align tri2b system with si84 data.

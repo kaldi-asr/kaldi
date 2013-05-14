@@ -29,9 +29,9 @@ FmllrDiagGmmAccs::
 AccumulateFromPosteriors(const DiagGmm &pdf,
                          const VectorBase<BaseFloat> &data,
                          const VectorBase<BaseFloat> &posterior) {
-  size_t num_comp = static_cast<int32>(pdf.NumGauss());
-  size_t dim = static_cast<size_t>(dim_);
-
+  int32 num_comp = pdf.NumGauss();
+  int32 dim = dim_;
+  
   Vector<double> extended_data(dim+1);
   extended_data.Range(0, dim).CopyFromVec(data);
   extended_data(dim) = 1.0;
@@ -39,7 +39,7 @@ AccumulateFromPosteriors(const DiagGmm &pdf,
   scatter.AddVec2(1.0, extended_data);
   Vector<double> inv_var_mean(dim);
   Vector<double> g_scale(dim);  // scale on "scatter" for each dim.
-  for (size_t m = 0; m < num_comp; m++) {
+  for (int32 m = 0; m < num_comp; m++) {
     BaseFloat this_post = posterior(m);
     if (this_post != 0.0) {
       inv_var_mean.CopyRowFromMat(pdf.means_invvars(), m);
@@ -48,7 +48,7 @@ AccumulateFromPosteriors(const DiagGmm &pdf,
       g_scale.AddVec(this_post, pdf.inv_vars().Row(m));
     }
   }
-  for (size_t d = 0; d < dim; d++)
+  for (int32 d = 0; d < dim; d++)
     this->G_[d].AddSp(g_scale(d), scatter);
 }
 
@@ -85,11 +85,10 @@ FmllrDiagGmmAccs(const DiagGmm &gmm, const AccumFullGmm &fgmm_accs) {
 }
 
 
-BaseFloat
-FmllrDiagGmmAccs::AccumulateForGmm(const DiagGmm &pdf,
-                                         const VectorBase<BaseFloat> &data,
-                                         BaseFloat weight) {
-  size_t num_comp = static_cast<int32>(pdf.NumGauss());
+BaseFloat FmllrDiagGmmAccs::AccumulateForGmm(const DiagGmm &pdf,
+                                             const VectorBase<BaseFloat> &data,
+                                             BaseFloat weight) {
+  int32 num_comp = pdf.NumGauss();
   Vector<BaseFloat> posterior(num_comp);
   BaseFloat loglike;
   
@@ -158,80 +157,86 @@ BaseFloat ComputeFmllrMatrixDiagGmm(const MatrixBase<BaseFloat> &in_xform,
 }
 
 
+void FmllrInnerUpdate(SpMatrix<double> &inv_G,
+                      VectorBase<double> &k,
+                      double beta,
+                      int32 row,
+                      MatrixBase<double> *transform) {
+  int32 dim = transform->NumRows();
+  KALDI_ASSERT(transform->NumCols() == dim + 1);
+  KALDI_ASSERT(row >= 0 && row < dim);
+
+  double logdet;
+  // Calculating the matrix of cofactors (transpose of adjugate)
+  Matrix<double> cofact_mat(dim, dim);
+  cofact_mat.CopyFromMat(transform->Range(0, dim, 0, dim), kTrans);
+  cofact_mat.Invert(&logdet);
+  // Removed this step because it's not necessary and could lead to
+  // under/overflow [Dan]
+  // cofact_mat.Scale(std::exp(logdet));
+  
+  // The extended cofactor vector for the current row
+  Vector<double> cofact_row(dim + 1);
+  cofact_row.Range(0, dim).CopyRowFromMat(cofact_mat, row);
+  cofact_row(dim) = 0;
+  Vector<double> cofact_row_invg(dim + 1);
+  cofact_row_invg.AddSpVec(1.0, inv_G, cofact_row, 0.0);
+
+  // Solve the quadratic equation for step size
+  double e1 = VecVec(cofact_row_invg, cofact_row);
+  double e2 = VecVec(cofact_row_invg, k);
+  double discr = std::sqrt(e2 * e2 + 4 * e1 * beta);
+  double alpha1 = (-e2 + discr) / (2 * e1);
+  double alpha2 = (-e2 - discr) / (2 * e1);
+  double auxf1 = beta * std::log(std::abs(alpha1 * e1 + e2)) -
+      0.5 * alpha1 * alpha1 * e1;
+  double auxf2 = beta * std::log(std::abs(alpha2 * e1 + e2)) -
+      0.5 * alpha2 * alpha2 * e1;
+  double alpha = (auxf1 > auxf2) ? alpha1 : alpha2;
+
+  // Update transform row: w_d = (\alpha cofact_d + k_d) G_d^{-1}
+  cofact_row.Scale(alpha);
+  cofact_row.AddVec(1.0, k);
+  transform->Row(row).AddSpVec(1.0, inv_G, cofact_row, 0.0);
+}
+
 BaseFloat ComputeFmllrMatrixDiagGmmFull(const MatrixBase<BaseFloat> &in_xform,
                                         const AffineXformStats &stats,
                                         int32 num_iters,
                                         MatrixBase<BaseFloat> *out_xform) {
-  size_t dim = stats.G_.size();
+  int32 dim = static_cast<int32>(stats.G_.size());
 
   // Compute the inverse matrices of second-order statistics
   vector< SpMatrix<double> > inv_g(dim);
-  for (size_t d = 0; d < dim; d++) {
+  for (int32 d = 0; d < dim; d++) {
     inv_g[d].Resize(dim + 1);
     inv_g[d].CopyFromSp(stats.G_[d]);
     inv_g[d].Invert();
   }
 
-  Matrix<double> old_xform(in_xform);
-  Matrix<double> new_xform(old_xform);
-  BaseFloat obj_improvement = FmllrAuxFuncDiagGmm(old_xform, stats);
-  double obj_old = obj_improvement, obj_new = 0;
-
+  Matrix<double> old_xform(in_xform), new_xform(in_xform);
+  BaseFloat old_objf = FmllrAuxFuncDiagGmm(old_xform, stats);
+  
   for (int32 iter = 0; iter < num_iters; ++iter) {
-    for (size_t d = 0; d < dim; d++) {
-      double logdet;
-      // Calculating the matrix of cofactors (transpose of adjugate)
-      Matrix<double> cofact_mat(dim, dim);
-      cofact_mat.CopyFromMat(old_xform.Range(0, dim, 0, dim), kTrans);
-      cofact_mat.Invert(&logdet);
-      // Removed this step because it's not necessary and could lead to
-      // under/overflow [Dan]
-      // cofact_mat.Scale(std::exp(logdet));
-
-      // The extended cofactor vector for the current row
-      Vector<double> cofact_row(dim + 1);
-      cofact_row.Range(0, dim).CopyRowFromMat(cofact_mat, d);
-      cofact_row(dim) = 0;
-
-      Vector<double> cofact_row_invg(dim + 1);
-      cofact_row_invg.AddSpVec(1.0, inv_g[d], cofact_row, 0.0);
-
-      // Solve the quadratic equation for step size
-      double e1 = VecVec(cofact_row_invg, cofact_row);
-      double e2 = VecVec(cofact_row_invg, stats.K_.Row(d));
-      double discr = std::sqrt(e2 * e2 + 4 * e1 * stats.beta_);
-      double alpha1 = (-e2 + discr) / (2 * e1);
-      double alpha2 = (-e2 - discr) / (2 * e1);
-      double auxf1 = stats.beta_ * std::log(std::abs(alpha1 * e1 + e2)) -
-          0.5 * alpha1 * alpha1 * e1;
-      double auxf2 = stats.beta_ * std::log(std::abs(alpha2 * e1 + e2)) -
-          0.5 * alpha2 * alpha2 * e1;
-      double alpha = (auxf1 > auxf2) ? alpha1 : alpha2;
-
-      // Update transform row: w_d = (\alpha cofact_d + k_d) G_d^{-1}
-      cofact_row.Scale(alpha);
-      cofact_row.AddVec(1.0, stats.K_.Row(d));
-      new_xform.Row(d).AddSpVec(1.0, inv_g[d], cofact_row, 0.0);
-
-      // Use the current update only if it does not decrease the likelihood
-      obj_new = FmllrAuxFuncDiagGmm(new_xform, stats);
-      if (obj_new < obj_old && !ApproxEqual(obj_new, obj_old, 1.0e-05)) {
-        // Likelihood may decrease for certain rows!!!
-        KALDI_WARN << "After update: Iter = " << (iter) << "; Dim ="
-                   << (d) << "; Obj fn decreased (" << (obj_old)
-                   << " --> " << (obj_new) << ")";
-      } else {
-        old_xform.Row(d).CopyRowFromMat(new_xform, d);
-        obj_old = obj_new;
-      }
+    for (int32 d = 0; d < dim; d++) {
+      SubVector<double> k_d(stats.K_, d);
+      FmllrInnerUpdate(inv_g[d], k_d, stats.beta_, d, &new_xform);
     }  // end of looping over rows
   }  // end of iterations
 
-  out_xform->CopyFromMat(new_xform, kNoTrans);
-  obj_improvement = FmllrAuxFuncDiagGmm(*out_xform, stats) - obj_improvement;
-  KALDI_LOG << "fMLLR objf improvement is " << (obj_improvement/(stats.beta_+1.0e-10))
+  BaseFloat new_objf = FmllrAuxFuncDiagGmm(new_xform, stats),
+      objf_improvement = new_objf - old_objf;
+  KALDI_LOG << "fMLLR objf improvement is "
+            << (objf_improvement / (stats.beta_ + 1.0e-10))
             << " per frame over " << stats.beta_ << " frames.";
-  return obj_improvement;
+  if (objf_improvement < 0.0 && !ApproxEqual(new_objf, old_objf)) {
+    KALDI_WARN << "No applying fMLLR transform change because objective "
+               << "function did not increase.";
+    return 0.0;
+  } else {
+    out_xform->CopyFromMat(new_xform, kNoTrans);
+    return objf_improvement;
+  }
 }
 
 BaseFloat ComputeFmllrMatrixDiagGmmDiagonal(const MatrixBase<BaseFloat> &in_xform,
@@ -280,7 +285,7 @@ BaseFloat ComputeFmllrMatrixDiagGmmDiagonal(const MatrixBase<BaseFloat> &in_xfor
      o = (k_{i,d} - s g_{i,d,i}) / g_{i,d,d})
   */
 
-  size_t dim = stats.G_.size();
+  int32 dim = stats.G_.size();
   double beta = stats.beta_;
   out_xform->CopyFromMat(in_xform);
   if (beta == 0.0) {
@@ -442,13 +447,13 @@ void ApplyModelTransformToStats(const MatrixBase<BaseFloat> &xform,
 
 float FmllrAuxFuncDiagGmm(const MatrixBase<float> &xform,
                               const AffineXformStats &stats) {
-  size_t dim = stats.G_.size();
+  int32 dim = static_cast<int32>(stats.G_.size());
   Matrix<double> xform_d(xform);
   Vector<double> xform_row_g(dim + 1);
   SubMatrix<double> A(xform_d, 0, dim, 0, dim);
   double obj = stats.beta_ * A.LogDet() +
       TraceMatMat(xform_d, stats.K_, kTrans);
-  for (size_t d = 0; d < dim; d++) {
+  for (int32 d = 0; d < dim; d++) {
     xform_row_g.AddSpVec(1.0, stats.G_[d], xform_d.Row(d), 0.0);
     obj -= 0.5 * VecVec(xform_row_g, xform_d.Row(d));
   }
@@ -457,12 +462,12 @@ float FmllrAuxFuncDiagGmm(const MatrixBase<float> &xform,
 
 double FmllrAuxFuncDiagGmm(const MatrixBase<double> &xform,
                            const AffineXformStats &stats) {
-  size_t dim = stats.G_.size();
+  int32 dim = static_cast<int32>(stats.G_.size());
   Vector<double> xform_row_g(dim + 1);
   SubMatrix<double> A(xform, 0, dim, 0, dim);
   double obj = stats.beta_ * A.LogDet() +
       TraceMatMat(xform, stats.K_, kTrans);
-  for (size_t d = 0; d < dim; d++) {
+  for (int32 d = 0; d < dim; d++) {
     xform_row_g.AddSpVec(1.0, stats.G_[d], xform.Row(d), 0.0);
     obj -= 0.5 * VecVec(xform_row_g, xform.Row(d));
   }
@@ -474,14 +479,14 @@ BaseFloat FmllrAuxfGradient(const MatrixBase<BaseFloat> &xform,
                            // un-comment the Resize() below.
                             const AffineXformStats &stats,
                             MatrixBase<BaseFloat> *grad_out) {
-  size_t dim = stats.G_.size();
+  int32 dim = static_cast<int32>(stats.G_.size());
   Matrix<double> xform_d(xform);
   Vector<double> xform_row_g(dim + 1);
   SubMatrix<double> A(xform_d, 0, dim, 0, dim);
   double obj = stats.beta_ * A.LogDet() +
       TraceMatMat(xform_d, stats.K_, kTrans);
   Matrix<double> S(dim, dim + 1);
-  for (size_t d = 0; d < dim; d++) {
+  for (int32 d = 0; d < dim; d++) {
     xform_row_g.AddSpVec(1.0, stats.G_[d], xform_d.Row(d), 0.0);
     obj -= 0.5 * VecVec(xform_row_g, xform_d.Row(d));
     S.CopyRowFromVec(xform_row_g, d);

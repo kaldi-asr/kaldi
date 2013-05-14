@@ -60,7 +60,7 @@ class FmllrDiagGmmAccs: public AffineXformStats {
   FmllrDiagGmmAccs() { }
   FmllrDiagGmmAccs(const FmllrDiagGmmAccs &other):
       AffineXformStats(other) { }
-  explicit FmllrDiagGmmAccs(size_t dim) { Init(dim); }
+  explicit FmllrDiagGmmAccs(int32 dim) { Init(dim); }
 
   // The following initializer gives us an efficient way to
   // compute these stats from full-cov Gaussian statistics
@@ -92,7 +92,7 @@ class FmllrDiagGmmAccs: public AffineXformStats {
 
 // Initializes the FMLLR matrix to its default values.
 inline void InitFmllr(int32 dim,
-                            Matrix<BaseFloat> *out_fmllr) {
+                      Matrix<BaseFloat> *out_fmllr) {
   out_fmllr->Resize(dim, dim+1);
   out_fmllr->SetUnit();  // sets diagonal elements to one.
 }
@@ -152,7 +152,7 @@ BaseFloat ComputeFmllrMatrixDiagGmm(const MatrixBase<BaseFloat> &in_xform,
 /// Returns the (diagonal-GMM) FMLLR auxiliary function value given the transform
 /// and the stats.
 float FmllrAuxFuncDiagGmm(const MatrixBase<float> &xform,
-                              const AffineXformStats &stats);
+                          const AffineXformStats &stats);
 double FmllrAuxFuncDiagGmm(const MatrixBase<double> &xform,
                            const AffineXformStats &stats);
 
@@ -185,6 +185,20 @@ void ApplyFeatureTransformToStats(const MatrixBase<BaseFloat> &xform,
 /// be of dimension d x d+1
 void ApplyModelTransformToStats(const MatrixBase<BaseFloat> &xform,
                                 AffineXformStats *stats);
+
+
+/// This function does one row of the inner-loop fMLLR transform update.
+/// We export it because it's needed in the RawFmllr code.
+/// Here, if inv_G is the inverse of the G matrix indexed by this row,
+/// and k is the corresponding row of the K matrix.
+void FmllrInnerUpdate(SpMatrix<double> &inv_G,
+                      VectorBase<double> &k,
+                      double beta,
+                      int32 row,
+                      MatrixBase<double> *transform);
+
+                      
+                      
 
 
 } // namespace kaldi

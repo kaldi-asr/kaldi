@@ -351,8 +351,10 @@ class MatrixBase {
 
   /// Returns log(sum(exp())) without exp overflow
   /// If prune > 0.0, it uses a pruning beam, discarding
-  /// terms less than (max - prune).
-  Real LogSumExp(Real prune = 0.0) const;
+  /// terms less than (max - prune).  Note: in future
+  /// we may change this so that if prune = 0.0, it takes
+  /// the max, so use -1 if you don't want to prune.
+  Real LogSumExp(Real prune = -1.0) const;
 
   /// Apply soft-max to the collection of all elements of the
   /// matrix and return normalizer (log sum of exponentials).
@@ -414,11 +416,24 @@ class MatrixBase {
   template<class OtherReal>
   void AddSp(const Real alpha, const SpMatrix<OtherReal> &S);
 
-  /// this <-- beta*this + alpha*A*B.
   void AddMatMat(const Real alpha,
                  const MatrixBase<Real>& A, MatrixTransposeType transA,
                  const MatrixBase<Real>& B, MatrixTransposeType transB,
                  const Real beta);
+
+  /// A version of AddMatMat specialized for when the second argument
+  /// contains a lot of zeroes.
+  void AddMatSmat(const Real alpha,
+                  const MatrixBase<Real>& A, MatrixTransposeType transA,
+                  const MatrixBase<Real>& B, MatrixTransposeType transB,
+                  const Real beta);
+
+  /// A version of AddMatMat specialized for when the first argument
+  /// contains a lot of zeroes.  
+  void AddSmatMat(const Real alpha,
+                  const MatrixBase<Real>& A, MatrixTransposeType transA,
+                  const MatrixBase<Real>& B, MatrixTransposeType transB,
+                  const Real beta);
 
   /// this <-- beta*this + alpha*A*B*C.
   void AddMatMatMat(const Real alpha,

@@ -1,4 +1,4 @@
-#!/bin/bash
+!/bin/bash
 
 . cmd.sh
 
@@ -170,6 +170,9 @@ for iter in 3 4 5 6 7 8; do
  steps/decode_fmmi.sh --nj 20 --config conf/decode.config --cmd "$decode_cmd" --iter $iter \
    --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_fmmi_d/decode_it$iter &
 done
+
+# Demo of "raw fMLLR"
+# local/run_raw_fmllr.sh
 
 # You don't have to run all 3 of the below, e.g. you can just run the run_sgmm2x.sh
 local/run_sgmm.sh

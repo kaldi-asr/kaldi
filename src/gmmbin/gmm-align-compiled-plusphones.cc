@@ -240,8 +240,9 @@ int main(int argc, char *argv[]) {
         // makes it a bit faster: 37 sec -> 26 sec on 1000 RM utterances @ beam 200.
 
         DecodableAmDiagGmm gmm_decodable(am_gmm, trans_model, features);
-        
-        DecodableAmDiagGmmUnmapped phone_decodable(phone_am, features);
+
+        BaseFloat log_sum_exp_prune = 0.0;
+        DecodableAmDiagGmmUnmapped phone_decodable(phone_am, features, log_sum_exp_prune);
 
         DecodableMapped phone_decodable_mapped(tid_to_phone_map,
                                                &phone_decodable);

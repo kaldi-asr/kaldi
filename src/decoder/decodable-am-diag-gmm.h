@@ -41,10 +41,16 @@ namespace kaldi {
 
 class DecodableAmDiagGmmUnmapped : public DecodableInterface {
  public:
+  /// If you set log_sum_exp_prune to a value greater than 0 it will prune
+  /// in the LogSumExp operation (larger = more exact); I suggest 5.
+  /// This is advisable if it's spending a long time doing exp 
+  /// operations. 
   DecodableAmDiagGmmUnmapped(const AmDiagGmm &am,
-                             const Matrix<BaseFloat> &feats)
-      : acoustic_model_(am), feature_matrix_(feats),
-        previous_frame_(-1), data_squared_(feats.NumCols()) {
+                             const Matrix<BaseFloat> &feats,
+                             BaseFloat log_sum_exp_prune = -1.0):
+    acoustic_model_(am), feature_matrix_(feats),
+    previous_frame_(-1), log_sum_exp_prune_(log_sum_exp_prune), 
+    data_squared_(feats.NumCols()) {
     ResetLogLikeCache();
   }
 
@@ -70,6 +76,7 @@ class DecodableAmDiagGmmUnmapped : public DecodableInterface {
   const AmDiagGmm &acoustic_model_;
   const Matrix<BaseFloat> &feature_matrix_;
   int32 previous_frame_;
+  BaseFloat log_sum_exp_prune_;
 
   /// Defines a cache record for a state
   struct LikelihoodCacheRecord {
@@ -77,9 +84,9 @@ class DecodableAmDiagGmmUnmapped : public DecodableInterface {
     int32 hit_time;     ///< Frame for which this value is relevant
   };
   std::vector<LikelihoodCacheRecord> log_like_cache_;
-
  private:
   Vector<BaseFloat> data_squared_;  ///< Cache for fast likelihood calculation
+
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmDiagGmmUnmapped);
 };
@@ -89,8 +96,10 @@ class DecodableAmDiagGmm: public DecodableAmDiagGmmUnmapped {
  public:
   DecodableAmDiagGmm(const AmDiagGmm &am,
                      const TransitionModel &tm,
-                     const Matrix<BaseFloat> &feats)
-      : DecodableAmDiagGmmUnmapped(am, feats), trans_model_(tm) {}
+                     const Matrix<BaseFloat> &feats,
+                     BaseFloat log_sum_exp_prune = -1.0)
+    : DecodableAmDiagGmmUnmapped(am, feats, log_sum_exp_prune),
+      trans_model_(tm) {}
 
   // Note, frames are numbered from zero.
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
@@ -111,18 +120,20 @@ class DecodableAmDiagGmmScaled: public DecodableAmDiagGmmUnmapped {
   DecodableAmDiagGmmScaled(const AmDiagGmm &am,
                            const TransitionModel &tm,
                            const Matrix<BaseFloat> &feats,
-                           BaseFloat scale)
-      : DecodableAmDiagGmmUnmapped(am, feats), trans_model_(tm),
-        scale_(scale), delete_feats_(NULL) {}
+                           BaseFloat scale,
+                           BaseFloat log_sum_exp_prune = -1.0):
+      DecodableAmDiagGmmUnmapped(am, feats, log_sum_exp_prune), trans_model_(tm),
+      scale_(scale), delete_feats_(NULL) {}
 
   // This version of the initializer takes ownership of the pointer
   // "feats" and will delete it when this class is destroyed.
   DecodableAmDiagGmmScaled(const AmDiagGmm &am,
                            const TransitionModel &tm,
                            BaseFloat scale,
-                           Matrix<BaseFloat> *feats)
-      : DecodableAmDiagGmmUnmapped(am, *feats), trans_model_(tm),
-        scale_(scale), delete_feats_(feats) {}
+                           BaseFloat log_sum_exp_prune,
+                           Matrix<BaseFloat> *feats):
+      DecodableAmDiagGmmUnmapped(am, *feats, log_sum_exp_prune),
+      trans_model_(tm),  scale_(scale), delete_feats_(feats) {}
 
   
   // Note, frames are numbered from zero but transition-ids from one.
@@ -153,9 +164,11 @@ class DecodableAmDiagGmmRegtreeFmllr: public DecodableAmDiagGmmUnmapped {
                                  const Matrix<BaseFloat> &feats,
                                  const RegtreeFmllrDiagGmm &fmllr_xform,
                                  const RegressionTree &regtree,
-                                 BaseFloat scale)
-      : DecodableAmDiagGmmUnmapped(am, feats), trans_model_(tm), scale_(scale),
-        fmllr_xform_(fmllr_xform), regtree_(regtree), valid_logdets_(false) {}
+                                 BaseFloat scale,
+                                 BaseFloat log_sum_exp_prune = -1.0)
+    : DecodableAmDiagGmmUnmapped(am, feats, log_sum_exp_prune), trans_model_(tm),
+      scale_(scale), fmllr_xform_(fmllr_xform), regtree_(regtree),
+      valid_logdets_(false) {}
 
   // Note, frames are numbered from zero but transition-ids (tid) from one.
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
@@ -193,10 +206,11 @@ class DecodableAmDiagGmmRegtreeMllr: public DecodableAmDiagGmmUnmapped {
                                 const Matrix<BaseFloat> &feats,
                                 const RegtreeMllrDiagGmm &mllr_xform,
                                 const RegressionTree &regtree,
-                                BaseFloat scale)
-      : DecodableAmDiagGmmUnmapped(am, feats), trans_model_(tm), scale_(scale),
-        mllr_xform_(mllr_xform), regtree_(regtree),
-        data_squared_(feats.NumCols()) { InitCache(); }
+                                BaseFloat scale,
+                                BaseFloat log_sum_exp_prune = -1.0):
+      DecodableAmDiagGmmUnmapped(am, feats, log_sum_exp_prune),
+      trans_model_(tm), scale_(scale), mllr_xform_(mllr_xform),
+      regtree_(regtree), data_squared_(feats.NumCols()) { InitCache(); }
   ~DecodableAmDiagGmmRegtreeMllr();
 
   // Note, frames are numbered from zero but transition-ids (tid) from one.
@@ -236,7 +250,7 @@ class DecodableAmDiagGmmRegtreeMllr: public DecodableAmDiagGmmUnmapped {
   /// Cache of transformed gconsts for each state.
   std::vector< Vector<BaseFloat>* > xformed_gconsts_;
   /// Boolean variable per state to indicate whether the transformed means for
-  /// that state are cahced.
+  /// that state are cached.
   std::vector<bool> is_cached_;
 
   Vector<BaseFloat> data_squared_;  ///< Cached for fast likelihood calculation

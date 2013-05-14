@@ -9,6 +9,7 @@ cmd=run.pl
 stage=0
 decode_mbr=true
 reverse=false
+word_ins_penalty=0.0
 min_lmwt=9
 max_lmwt=20
 #end configuration section.
@@ -43,8 +44,10 @@ mkdir -p $dir/scoring/log
 cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' > $dir/scoring/test_filt.txt
 
 $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
+  lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+  lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
   lattice-best-path --lm-scale=LMWT --word-symbol-table=$symtab \
-    "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/scoring/LMWT.tra || exit 1;
+    ark:- ark,t:$dir/scoring/LMWT.tra || exit 1;
 
 if $reverse; then
   for lmwt in `seq $min_lmwt $max_lmwt`; do

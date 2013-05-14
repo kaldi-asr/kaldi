@@ -1,6 +1,6 @@
 // featbin/get-full-lda-mat.cc
 
-// Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2012-2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
         "out a \"full\" LDA+MLLT matrix formed by the LDA+MLLT matrix plus the\n"
         "remaining rows of the \"full\" LDA matrix; and also writes out its inverse\n"
         "Usage: get-full-lda-mat [options] <lda-mllt-rxfilename> <full-lda-rxfilename> "
-        "<full-lda-mllt-wxfilename> <inv-full-lda-mllt-wxfilename>\n"
+        "<full-lda-mllt-wxfilename> [<inv-full-lda-mllt-wxfilename>]\n"
         "E.g.: get-full-lda-mat final.mat full.mat full_lda_mllt.mat full_lda_mllt_inv.mat\n";
     
     bool binary = true;
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
     
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
     }
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     std::string lda_mllt_rxfilename = po.GetArg(1),
         full_lda_rxfilename = po.GetArg(2),
         full_lda_mllt_wxfilename = po.GetArg(3),
-        inv_full_lda_mllt_wxfilename = po.GetArg(4);
+        inv_full_lda_mllt_wxfilename = po.GetOptArg(4);
 
     Matrix<BaseFloat> lda_mllt;
     ReadKaldiObject(lda_mllt_rxfilename, &lda_mllt);
@@ -92,11 +92,12 @@ int main(int argc, char *argv[]) {
     full_lda_mllt.Range(0, lda_mllt.NumRows(),
                         0, lda_mllt.NumCols()).CopyFromMat(lda_mllt);
 
-    Matrix<BaseFloat> inv_full_lda_mllt(full_lda_mllt);
-    inv_full_lda_mllt.Invert();
-
     WriteKaldiObject(full_lda_mllt, full_lda_mllt_wxfilename, binary);
-    WriteKaldiObject(inv_full_lda_mllt, inv_full_lda_mllt_wxfilename, binary);
+
+    if (po.NumArgs() != 3) {
+      full_lda_mllt.Invert();
+      WriteKaldiObject(full_lda_mllt, inv_full_lda_mllt_wxfilename, binary);
+    }
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();

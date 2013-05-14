@@ -38,7 +38,7 @@ steps/make_fmllr_feats.sh --nj 20 --cmd "$train_cmd" \
 # train_nodup
 # we need fMLLR transforms, so we run alignment...
 #
-# ALREADY IN run_edit.sh:
+# ALREADY IN run_edin.sh:
 #steps/align_fmllr.sh --nj 60 --cmd "$train_cmd" \
 #  data/train_nodup data/lang exp/tri4b exp/tri4b_ali_all || exit 1
 #

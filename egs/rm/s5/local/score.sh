@@ -8,6 +8,7 @@
 cmd=run.pl
 min_lmwt=2
 max_lmwt=13
+word_ins_penalty=0.0
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -33,8 +34,9 @@ done
 mkdir -p $dir/scoring/log
 
 $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
-  lattice-best-path --lm-scale=LMWT --word-symbol-table=$symtab \
-    "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/scoring/LMWT.tra || exit 1;
+  lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+  lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
+  lattice-best-path --word-symbol-table=$symtab ark:- ark,t:$dir/scoring/LMWT.tra || exit 1;
 
 # Note: the double level of quoting for the sed command
 $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \

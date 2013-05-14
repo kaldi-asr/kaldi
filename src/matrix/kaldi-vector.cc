@@ -97,6 +97,42 @@ void VectorBase<Real>::AddMatVec(const Real alpha,
 }
 
 template<typename Real>
+void VectorBase<Real>::AddMatSvec(const Real alpha,
+                                  const MatrixBase<Real> &M,
+                                  MatrixTransposeType trans,
+                                  const VectorBase<Real> &v,
+                                  const Real beta) {
+  KALDI_ASSERT((trans == kNoTrans && M.NumCols() == v.dim_ && M.NumRows() == dim_)
+               || (trans == kTrans && M.NumRows() == v.dim_ && M.NumCols() == dim_));
+  KALDI_ASSERT(&v != this);
+  Xgemv_sparsevec(trans, M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(), 
+                  v.Data(), 1, beta, data_, 1);
+  return;
+  /*
+  MatrixIndexT this_dim = this->dim_, v_dim = v.dim_,
+      M_stride = M.Stride();
+  Real *this_data = this->data_;
+  const Real *M_data = M.Data(), *v_data = v.data_;
+  if (beta != 1.0) this->Scale(beta);
+  if (trans == kNoTrans) {
+    for (MatrixIndexT i = 0; i < v_dim; i++) {
+      Real v_i = v_data[i];
+      if (v_i == 0.0) continue;
+      // Add to *this, the i'th column of the Matrix, times v_i.
+      cblas_Xaxpy(this_dim, v_i * alpha, M_data + i, M_stride, this_data, 1);
+    }
+  } else { // The transposed case is slightly more efficient, I guess.
+    for (MatrixIndexT i = 0; i < v_dim; i++) {
+      Real v_i = v.data_[i];
+      if (v_i == 0.0) continue;
+      // Add to *this, the i'th row of the Matrix, times v_i.
+      cblas_Xaxpy(this_dim, v_i * alpha,
+                  M_data + (i * M_stride), 1, this_data, 1);
+    }
+    }*/
+}
+
+template<typename Real>
 void VectorBase<Real>::AddSpVec(const Real alpha,
                                  const SpMatrix<Real> &M,
                                  const VectorBase<Real> &v,
@@ -105,6 +141,7 @@ void VectorBase<Real>::AddSpVec(const Real alpha,
   KALDI_ASSERT(&v != this);
   cblas_Xspmv(alpha, M.NumRows(), M.Data(), v.Data(), 1, beta, data_, 1);
 }
+
 
 template<typename Real>
 void VectorBase<Real>::MulTp(const TpMatrix<Real> &M,

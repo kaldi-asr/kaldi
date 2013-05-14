@@ -56,7 +56,7 @@ BaseFloat DecodableAmDiagGmmUnmapped::LogLikelihoodZeroBased(
   // loglikes += -0.5 * inv(vars) * data_sq.
   loglikes.AddMatVec(-0.5, pdf.inv_vars(), kNoTrans, data_squared_, 1.0);
 
-  BaseFloat log_sum = loglikes.LogSumExp();
+  BaseFloat log_sum = loglikes.LogSumExp(log_sum_exp_prune_);
   if (KALDI_ISNAN(log_sum) || KALDI_ISINF(log_sum))
     KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
 
@@ -127,7 +127,7 @@ BaseFloat DecodableAmDiagGmmRegtreeFmllr::LogLikelihoodZeroBased(int32 frame,
     loglikes(comp_id) += logdets_(regclass);
   }
 
-  BaseFloat log_sum = loglikes.LogSumExp();
+  BaseFloat log_sum = loglikes.LogSumExp(log_sum_exp_prune_);
   if (KALDI_ISNAN(log_sum) || KALDI_ISINF(log_sum))
     KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
 
@@ -270,7 +270,7 @@ BaseFloat DecodableAmDiagGmmRegtreeMllr::LogLikelihoodZeroBased(int32 frame,
   // loglikes += -0.5 * inv(vars) * data_sq.
   loglikes.AddMatVec(-0.5, pdf.inv_vars(), kNoTrans, data_squared_, 1.0);
 
-  BaseFloat log_sum = loglikes.LogSumExp();
+  BaseFloat log_sum = loglikes.LogSumExp(log_sum_exp_prune_);
   if (KALDI_ISNAN(log_sum) || KALDI_ISINF(log_sum))
     KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
 

@@ -256,6 +256,12 @@ class SpMatrix : public PackedMatrix<Real> {
                  MatrixTransposeType transM, const SpMatrix<Real> &A,
                  const Real beta = 0.0);
 
+  /// This is a version of AddMat2Sp specialized for when M is fairly sparse.
+  /// This was required for making the raw-fMLLR code efficient.
+  void AddSmat2Sp(const Real alpha, const MatrixBase<Real> &M,
+                  MatrixTransposeType transM, const SpMatrix<Real> &A,
+                  const Real beta = 0.0);
+
   /// The following function does:
   /// this <-- beta*this  +  alpha * T * A * T^T.
   /// (*this) and A are allowed to be the same.

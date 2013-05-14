@@ -96,7 +96,7 @@ class VectorBase {
 
   /// Copy data from a SpMatrix or TpMatrix (must match own size).
   template<typename OtherReal>
-  void CopyFromPacked(const PackedMatrix<OtherReal>& M);
+  void CopyFromPacked(const PackedMatrix<OtherReal> &M);
   
   /// Copy data from another vector of different type (double vs. float)
   template<typename OtherReal>
@@ -160,18 +160,25 @@ class VectorBase {
 
   /// Add matrix times vector : this <-- beta*this + alpha*M*v.
   /// Calls BLAS GEMV.
-  void AddMatVec(const Real alpha, const MatrixBase<Real>&M,
+  void AddMatVec(const Real alpha, const MatrixBase<Real> &M,
                  const MatrixTransposeType trans,  const VectorBase<Real> &v,
                  const Real beta); // **beta previously defaulted to 0.0**
 
+  /// This is as AddMatVec, except optimized for where v contains a lot
+  /// of zeros.
+  void AddMatSvec(const Real alpha, const MatrixBase<Real> &M,
+                  const MatrixTransposeType trans,  const VectorBase<Real> &v,
+                  const Real beta); // **beta previously defaulted to 0.0**
+
+  
   /// Add symmetric positive definite matrix times vector:
   ///  this <-- beta*this + alpha*M*v.   Calls BLAS SPMV.
-  void AddSpVec(const Real alpha, const SpMatrix<Real>&M,
+  void AddSpVec(const Real alpha, const SpMatrix<Real> &M,
                 const VectorBase<Real> &v, const Real beta);  // **beta previously defaulted to 0.0**
 
   /// Add triangular matrix times vector: this <-- beta*this + alpha*M*v.
   /// Works even if rv == *this.
-  void AddTpVec(const Real alpha, const TpMatrix<Real>&M,
+  void AddTpVec(const Real alpha, const TpMatrix<Real> &M,
                 const MatrixTransposeType trans, const VectorBase<Real> &v,
                 const Real beta);  // **beta previously defaulted to 0.0**
 
@@ -207,20 +214,20 @@ class VectorBase {
   void MulTp(const TpMatrix<Real> &M, const MatrixTransposeType trans);
 
   /// Performs a row stack of the matrix M
-  void CopyRowsFromMat(const MatrixBase<Real>& M);
+  void CopyRowsFromMat(const MatrixBase<Real> &M);
   template<typename OtherReal>
-  void CopyRowsFromMat(const MatrixBase<OtherReal>& M);
+  void CopyRowsFromMat(const MatrixBase<OtherReal> &M);
 
 
   /// Performs a column stack of the matrix M
-  void CopyColsFromMat(const MatrixBase<Real>& M);
+  void CopyColsFromMat(const MatrixBase<Real> &M);
 
   /// Extracts a row of the matrix M.  Could also do this with
   /// this->Copy(M[row]).
-  void CopyRowFromMat(const MatrixBase<Real>& M, MatrixIndexT row);
+  void CopyRowFromMat(const MatrixBase<Real> &M, MatrixIndexT row);
   /// Extracts a row of the matrix M with type conversion.
   template<typename OtherReal>
-  void CopyRowFromMat(const MatrixBase<OtherReal>& M, MatrixIndexT row);
+  void CopyRowFromMat(const MatrixBase<OtherReal> &M, MatrixIndexT row);
 
   /// Extracts a row of the symmetric matrix S.
   template<typename OtherReal>
@@ -228,20 +235,20 @@ class VectorBase {
   
   /// Extracts a column of the matrix M.
   template<typename OtherReal>
-  void CopyColFromMat(const MatrixBase<OtherReal>& M , MatrixIndexT col);
+  void CopyColFromMat(const MatrixBase<OtherReal> &M , MatrixIndexT col);
 
   /// Extracts the diagonal of the matrix M.
-  void CopyDiagFromMat(const MatrixBase<Real>& M);
+  void CopyDiagFromMat(const MatrixBase<Real> &M);
 
   /// Extracts the diagonal of a packed matrix M; works for Sp or Tp.
-  void CopyDiagFromPacked(const PackedMatrix<Real>& M);
+  void CopyDiagFromPacked(const PackedMatrix<Real> &M);
 
 
   /// Extracts the diagonal of a symmetric matrix.
-  inline void CopyDiagFromSp(const SpMatrix<Real>& M) { CopyDiagFromPacked(M); }
+  inline void CopyDiagFromSp(const SpMatrix<Real> &M) { CopyDiagFromPacked(M); }
 
   /// Extracts the diagonal of a triangular matrix.
-  inline void CopyDiagFromTp(const TpMatrix<Real>& M) { CopyDiagFromPacked(M); }
+  inline void CopyDiagFromTp(const TpMatrix<Real> &M) { CopyDiagFromPacked(M); }
 
   /// Returns the maximum value of any element.
   Real Max() const;
@@ -258,10 +265,10 @@ class VectorBase {
   Real SumLog() const;
 
   /// Adds sum of the rows of M to existing contents, times alpha.
-  void AddRowSumMat(Real alpha, const MatrixBase<Real>& M, Real beta = 1.0);
+  void AddRowSumMat(Real alpha, const MatrixBase<Real> &M, Real beta = 1.0);
   
   /// Adds sum of the columns of M to existing contents.
-  void AddColSumMat(Real alpha, const MatrixBase<Real>& M, Real beta = 1.0);
+  void AddColSumMat(Real alpha, const MatrixBase<Real> &M, Real beta = 1.0);
 
   /// Add the diagonal of a matrix times itself:
   /// *this = diag(M M^T) +  beta * *this (if trans == kNoTrans), or
@@ -271,7 +278,9 @@ class VectorBase {
 
   /// Returns log(sum(exp())) without exp overflow
   /// If prune > 0.0, ignores terms less than the max - prune.
-  Real LogSumExp(Real prune = 0.0) const;
+  /// [Note: in future, if prune = 0.0, it will take the max.
+  /// For now, use -1 if you don't want it to prune.]
+  Real LogSumExp(Real prune = -1.0) const;
 
   /// Reads from C++ stream (option to add to existing contents).
   /// Throws exception on failure

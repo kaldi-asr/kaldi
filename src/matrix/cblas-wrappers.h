@@ -151,10 +151,37 @@ inline void cblas_Xgemv(MatrixTransposeType trans, MatrixIndexT num_rows,
 inline void cblas_Xgemv(MatrixTransposeType trans, MatrixIndexT num_rows,
                         MatrixIndexT num_cols, double alpha, const double *Mdata,
                         MatrixIndexT stride, const double *xdata,
-                        MatrixIndexT incX, float beta, double *ydata, MatrixIndexT incY) {
+                        MatrixIndexT incX, double beta, double *ydata, MatrixIndexT incY) {
   cblas_dgemv(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(trans), num_rows,
               num_cols, alpha, Mdata, stride, xdata, incX, beta, ydata, incY);
 }
+
+template<typename Real>
+inline void Xgemv_sparsevec(MatrixTransposeType trans, MatrixIndexT num_rows,
+                            MatrixIndexT num_cols, Real alpha, const Real *Mdata,
+                            MatrixIndexT stride, const Real *xdata,
+                            MatrixIndexT incX, Real beta, Real *ydata,
+                            MatrixIndexT incY) {
+  if (trans == kNoTrans) {
+    if (beta != 1.0) cblas_Xscal(num_rows, beta, ydata, incY);
+    for (MatrixIndexT i = 0; i < num_cols; i++) {
+      Real x_i = xdata[i * incX];
+      if (x_i == 0.0) continue;
+      // Add to ydata, the i'th column of M, times alpha * x_i
+      cblas_Xaxpy(num_rows, x_i * alpha, Mdata + i, stride, ydata, incY);
+    }    
+  } else {
+    if (beta != 1.0) cblas_Xscal(num_cols, beta, ydata, incY);
+    for (MatrixIndexT i = 0; i < num_rows; i++) {
+      Real x_i = xdata[i * incX];
+      if (x_i == 0.0) continue;
+      // Add to ydata, the i'th row of M, times alpha * x_i
+      cblas_Xaxpy(num_cols, x_i * alpha,
+                  Mdata + (i * stride), 1, ydata, incY);
+    }
+  }
+}
+
 inline void cblas_Xgemm(const float alpha,
                         MatrixTransposeType transA,
                         const float *Adata,

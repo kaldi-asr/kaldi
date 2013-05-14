@@ -31,8 +31,10 @@ class AffineXformStats {
   double beta_;         ///< Occupancy count
   Matrix<double> K_;    ///< Mean times data scaled with inverse variance
   /// Outer product of means, scaled by inverse variance, for each dimension
-  std::vector< SpMatrix<double> > G_;
-  int32 dim_;       ///< Number of rows of K = number of rows of G - 1
+  std::vector< SpMatrix<double> > G_; // These are the quadratic stats in fMLLR; in the
+  // diagonal-fMLLR case G will be indexed 0 to dim_ - 1, but in the full-fMLLR case
+  // it will be indexed 0 to ((dim)(dim+1))/2.
+  int32 dim_;       ///< Number of rows of K = number of rows of G[i] - 1 for any i.
   AffineXformStats() {}
   void Init(int32 dim, int32 num_gs);  // num_gs will equal dim for diagonal FMLLR.
   int32 Dim() const { return dim_; }

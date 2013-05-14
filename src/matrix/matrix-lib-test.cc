@@ -1435,23 +1435,34 @@ template<class Real> static void UnitTestAddVecVec() {
 
 template<class Real> static void UnitTestVecmul() {
   for (MatrixIndexT iter = 0;iter < 5;iter++) {
+    MatrixTransposeType trans = (iter % 2 == 0 ? kTrans : kNoTrans);
 	MatrixIndexT dimM = 20 + rand()%10, dimN = 20 + rand()%10;  // dims between 10 and 20.
-
+    Real alpha = 0.333, beta = 0.5;
 	Matrix<Real> A(dimM, dimN);
+    if (trans == kTrans) A.Transpose();
 	InitRand(&A);
 	Vector<Real> x(dimM), y(dimN);
-	InitRand(&y);
+    //x.SetRandn();
+	y.SetRandn();
+    Vector<Real> orig_x(x), x2(x);
 
-
-	x.AddMatVec(1.0, A, kNoTrans, y, 0.0);  // x = A * y.
-	for (MatrixIndexT i = 0;i < dimM;i++) {
-	  double sum = 0.0;
-	  for (MatrixIndexT j = 0;j < dimN;j++) {
-		sum += A(i, j) * y(j);
+	x.AddMatVec(alpha, A, trans, y, beta);  // x = A * y + beta*x.
+    x2.AddMatSvec(alpha, A, trans, y, beta);  // x = A * y + beta*x
+    
+	for (MatrixIndexT i = 0; i < dimM; i++) {
+	  double sum = beta * orig_x(i);
+	  for (MatrixIndexT j = 0; j < dimN; j++) {
+        if (trans == kNoTrans) {
+          sum += alpha * A(i, j) * y(j);
+        } else {
+          sum += alpha * A(j, i) * y(j);
+        }
 	  }
 	  KALDI_ASSERT(std::abs(sum - x(i)) < 0.0001);
 	}
+    AssertEqual(x, x2);
   }
+
 }
 
 template<class Real> static void UnitTestInverse() {
@@ -2388,6 +2399,30 @@ template<class Real> static void UnitTestTraceSpSpLower() {
   AssertEqual(TraceSpSp(S, T), TraceSpSpLower(Sfast, T));
 }
 
+// also tests AddSmatMat
+template<class Real> static void UnitTestAddMatSmat() {
+  for (MatrixIndexT i = 0; i < 6; i++) {
+    MatrixIndexT dimM = (rand()%10) + 1,
+        dimN = (rand()%10 + 1),
+        dimO = (rand()%10 + 1);
+    MatrixTransposeType transB = (i % 2 == 0 ? kTrans : kNoTrans),
+        transC = (i % 3 == 0 ? kTrans : kNoTrans);
+    Matrix<Real> A(dimM, dimN),
+        B(dimM, dimO), C(dimO, dimN);
+    A.SetRandn(); B.SetRandn(); C.SetRandn();
+    if (transB == kTrans) B.Transpose();
+    if (transC == kTrans) C.Transpose();
+    Matrix<Real> A2(A), A3(A);
+    BaseFloat beta = 0.333, alpha = 0.5;
+    A.AddMatMat(alpha, B, transB, C, transC, beta);
+    A2.AddMatSmat(alpha, B, transB, C, transC, beta);
+    A3.AddSmatMat(alpha, B, transB, C, transC, beta);
+    AssertEqual(A, A2);
+    AssertEqual(A, A3);
+  }
+}
+
+// Also tests AddSmat2Sp
 template<class Real> static void UnitTestAddMat2Sp() {
   for (MatrixIndexT i = 0; i < 5; i++) {
     MatrixIndexT dimM = (rand()%10) + 1,
@@ -2400,9 +2435,10 @@ template<class Real> static void UnitTestAddMat2Sp() {
     M.SetRandn();
     MatrixTransposeType trans = (i % 2 == 1 ? kTrans: kNoTrans);
     if (trans == kTrans) M.Transpose();
-    SpMatrix<Real> S2(S);
+    SpMatrix<Real> S2(S), S3(S);
     S.AddMat2Sp(alpha, M, trans, T, beta);
-
+    S3.AddSmat2Sp(alpha, M, trans, T, beta);
+    
     // M[trans?] * T.
     Matrix<Real> A(dimM, dimN);
     A.AddMatSp(1.0, M, trans, T, 0.0);
@@ -2412,6 +2448,7 @@ template<class Real> static void UnitTestAddMat2Sp() {
     S2.Scale(beta);
     S2.AddSp(alpha, tmp);
     AssertEqual(S, S2);
+    AssertEqual(S, S3);
   }
 }
 
@@ -3596,6 +3633,7 @@ static void UnitTestTopEigs() {
 
 
 template<class Real> static void MatrixUnitTest(bool full_test) {
+  UnitTestAddMatSmat<Real>();
   UnitTestFloorChol<Real>();
   UnitTestFloorUnit<Real>();
   UnitTestAddMat2Sp<Real>();
