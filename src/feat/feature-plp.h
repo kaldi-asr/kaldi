@@ -83,6 +83,8 @@ class Plp {
  public:
   Plp(const PlpOptions &opts);
 
+  int32 Dim() { return opts_.num_ceps; }
+  
   ~Plp();
 
   void Compute(const VectorBase<BaseFloat> &wave,

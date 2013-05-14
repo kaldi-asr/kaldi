@@ -79,7 +79,7 @@ OnlinePaSource::~OnlinePaSource() {
 }
 
 
-int32 OnlinePaSource::Read(VectorBase<BaseFloat> *data, uint32 *timeout) {
+bool OnlinePaSource::Read(Vector<BaseFloat> *data, int32 timeout) {
   if (!pa_started_) { // start stream the first time Read() is called
     PaError paerr = Pa_StartStream(pa_stream_);
     if (paerr != paNoError)
@@ -101,8 +101,7 @@ int32 OnlinePaSource::Read(VectorBase<BaseFloat> *data, uint32 *timeout) {
       break;
     if (timeout != 0) {
       int32 elapsed = static_cast<int32>(timer.Elapsed() * 1000);
-      if (elapsed > *timeout) {
-        *timeout = 0;
+      if (elapsed > timeout) {
         nsamples_req = nsamples;
         KALDI_VLOG(2) << "OnlinePaSource::Read() timeout";
         break;
@@ -112,13 +111,19 @@ int32 OnlinePaSource::Read(VectorBase<BaseFloat> *data, uint32 *timeout) {
   }
   int16 buf[nsamples_req];
   rbs_t nsamples_rcv = PaUtil_ReadRingBuffer(&pa_ringbuf_, buf, nsamples_req);
-  if (nsamples_rcv != nsamples_req)
+  if (nsamples_rcv != nsamples_req) {
     KALDI_WARN << "Requested: " << nsamples_req
                << "; Received: " << nsamples_rcv << " samples";
+    // This would be a PortAudio error.
+  }
+  data->Resize(nsamples_rcv);
   for (int i = 0; i < nsamples_rcv; ++i)
     (*data)(i) = static_cast<BaseFloat>(buf[i]);
 
-  return nsamples_rcv;
+  return (nsamples_rcv != 0);
+  // NOTE (Dan): I'm pretty sure this return value is not right, it could be
+  // this way because we're waiting.  Vassil or someone will have to figure this
+  // out.
 }
 
 
@@ -137,8 +142,8 @@ int OnlinePaSource::Callback(const void *input, void *output,
 }
 
 
-int32
-OnlineVectorSource::Read(VectorBase<BaseFloat> *data, uint32 *timeout) {
+bool OnlineVectorSource::Read(Vector<BaseFloat> *data, int32 timeout) {
+  KALDI_ASSERT(data->Dim() > 0);
   int32 n_elem = std::min(src_.Dim() - pos_,
                           static_cast<uint32>(data->Dim()));
   if (n_elem > 0) {
@@ -150,7 +155,7 @@ OnlineVectorSource::Read(VectorBase<BaseFloat> *data, uint32 *timeout) {
         (*data)(i) = subsrc(i);
     pos_ += n_elem;
   }
-  return n_elem;
+  return (pos_ < src_.Dim());
 }
 
 } // namespace kaldi

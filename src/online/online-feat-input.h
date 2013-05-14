@@ -4,6 +4,7 @@
 
 //   Modifications to the original contribution by Cisco Systems made by:
 //   Vassil Panayotov
+//   Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +28,6 @@
 #include <arpa/inet.h>
 
 #include "feat/feature-functions.h"
-#include "online/online-cmn.h"
 
 namespace kaldi {
 
@@ -39,63 +39,105 @@ class OnlineFeatInputItf {
   // transformed from another OnlineFeatInput class etc.
   //
   // "output" - a matrix to store the extracted feature vectors in its rows.
-  //            The function will block until all rows of the output matrix are
-  //            overwritten by new feature vectors, unless there is no more
-  //            data in the underlying audio source or the timeout(if used)
-  //            expires. The actual count of the computed vectors can be
-  //            obtained by calling output->NumRows()
+  //            The number of rows (NumRows()) of "output" when the function is
+  //            called, is treated as a hint of how many frames the user wants,
+  //            but this function does not promise to produce exactly that many:
+  //            it may be slightly more, less, or even zero, on a given call.
+  //            Zero frames may be returned because we timed out or because
+  //            we're at the beginning of the file and some buffering is going on.
+  //            In that case you should try again.  The function will return "false"
+  //            when it knows the stream is finished, but if it returns nothing
+  //            several times in a row you may want to terminate processing the
+  //            stream.
   //
-  // "timeout" - points to a variable which contains a timeout(in ms).
-  //             If the timeout expires, the referenced variable will
-  //             contain 0 and the function can return fewer than the requested
-  //             vectors. If the pointer is NULL, then no timeout is used and
-  //             the function can block for indefinite time. This parameter
-  //             should be considered only a hint and the user shouldn't assume
-  //             the timeout will be fired with millisecond precision.
+  // "timeout" - a variable which contains a timeout (in ms).  If greater than zero,
+  //             it tells the audio-reading code that we don't want to wait longer
+  //             than that, and after that time it should return whatever it has,
+  //             or nothing at all.  This parameter should be considered only a
+  //             hint and the user shouldn't assume the timeout will be fired
+  //             with millisecond precision.
   //
-  // Returns "false" if the underlying data source has no more data, and true
-  // otherwise.
-  virtual bool Compute(Matrix<BaseFloat> *output, uint32 *timeout) = 0;
+  // Returns "false" if we know the underlying data source has no more data, and
+  // true if there may be more data.
+  
+  virtual bool Compute(Matrix<BaseFloat> *output, int32 timeout) = 0;
 
+  virtual int32 Dim() const = 0; // Return the output dimension of these features.
+  
   virtual ~OnlineFeatInputItf() {}
 };
 
 
 // Acts as a proxy to an underlying OnlineFeatInput.
-// Applies cepstral mean and variance normalization
-class OnlineCmvnInput : public OnlineFeatInputItf {
+// Applies cepstral mean normalization
+class OnlineCmnInput: public OnlineFeatInputItf {
  public:
   // "input" - the underlying(unnormalized) feature source
-  // "feat_dim" - dimensionality of the vectors
   // "cmn_window" - the count of the last vectors over which the average is
   //                calculated
-  OnlineCmvnInput(OnlineFeatInputItf *input, int32 feat_dim, int32 cmn_window)
-      : input_(input), cmvn_(feat_dim, cmn_window), in_matrix_() {}
+  OnlineCmnInput(OnlineFeatInputItf *input, int32 cmn_window)
+      : input_(input), cmn_window_(cmn_window),
+        history_(cmn_window, input->Dim()), t_(0),
+        sum_(input->Dim()) { }
+  
+  virtual bool Compute(Matrix<BaseFloat> *output, int32 timeout);
 
-  virtual bool Compute(Matrix<BaseFloat> *output, uint32 *timeout);
+  virtual int32 Dim() const { return input_->Dim(); }
 
  private:
   OnlineFeatInputItf *input_;
-  OnlineCMN cmvn_;
-  Matrix<BaseFloat> in_matrix_; // the data received from the wrapped object
-
-  KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineCmvnInput);
+  int32 cmn_window_;
+  Matrix<BaseFloat> history_; // circular-buffer history.
+  int64 t_; // number of frames that have been written to
+            // the circular buffer.
+  Vector<double> sum_; // Sum of the last std::min(t_, cmn_window_)
+                       // frames.
+  KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineCmnInput);
 };
+
+
+class OnlineCacheInput : public OnlineFeatInputItf {
+ public:
+  OnlineCacheInput(OnlineFeatInputItf *input): input_(input) { }
+  
+  // The Compute function just forwards to the previous member of the
+  // chain, except that we locally accumulate the result, and
+  // GetCachedData() will return the entire input up to the current time.
+  virtual bool Compute(Matrix<BaseFloat> *output, int32 timeout);
+
+  void GetCachedData(Matrix<BaseFloat> *output);
+  
+  int32 Dim() const { return input_->Dim(); }
+  
+  void Deallocate();
+    
+  virtual ~OnlineCacheInput() { Deallocate(); }
+  
+ private:
+  OnlineFeatInputItf *input_;
+  // data_ is a list of all the outputs we produced in successive
+  // calls to Compute().  The memory is owned here.
+  std::vector<Matrix<BaseFloat>* > data_;
+};
+
 
 
 // Accepts features over an UDP socket
 class OnlineUdpInput : public OnlineFeatInputItf {
  public:
-  OnlineUdpInput(int32 port);
+  OnlineUdpInput(int32 port, int32 feature_dim);
 
-  // The current implementation doesn't support "timeout" parameter
-  virtual bool Compute(Matrix<BaseFloat> *output, uint32 *timeout);
+  // The current implementation doesn't support the "timeout" parameter
+  virtual bool Compute(Matrix<BaseFloat> *output, int32 timeout);
+
+  virtual int32 Dim() const { return feature_dim_; }
 
   const sockaddr_in& client_addr() const { return client_addr_; }
 
   const int32 descriptor() const { return sock_desc_; }
-
+  
  private:
+  int32 feature_dim_;
   // various BSD sockets-related data structures
   int32 sock_desc_; // socket descriptor
   sockaddr_in server_addr_;
@@ -103,38 +145,61 @@ class OnlineUdpInput : public OnlineFeatInputItf {
 };
 
 
-// Splices the input features and applies a transformation matrix
-class OnlineLdaInput : public OnlineFeatInputItf {
+// Splices the input features and applies a transformation matrix.
+// Note: the transformation matrix will usually be a linear transformation
+// [output-dim x input-dim] but we accept an affine transformation too.
+class OnlineLdaInput: public OnlineFeatInputItf {
  public:
-  OnlineLdaInput(OnlineFeatInputItf *input, const uint32 feat_dim,
+  OnlineLdaInput(OnlineFeatInputItf *input,
                  const Matrix<BaseFloat> &transform,
-                 const uint32 left_context, const uint32 right_context);
+                 int32 left_context,
+                 int32 right_context);
 
-  virtual bool Compute(Matrix<BaseFloat> *output, uint32 *timeout);
+  virtual bool Compute(Matrix<BaseFloat> *output, int32 timeout);
+
+  virtual int32 Dim() const { return linear_transform_.NumRows(); }
 
  private:
-  void InitFeatWindow();
+  // The static function SpliceFeats splices together the features and
+  // puts them together in a matrix, so that each row of "output" contains
+  // a contiguous window of size "context_window" of input frames.  The dimension
+  // of "output" will be feats.NumRows() - context_window + 1 by
+  // feats.NumCols() * context_window.  The input features are
+  // treated as if the frames of input1, input2 and input3 have been appended
+  // together before applying the main operation.
+  static void SpliceFrames(const MatrixBase<BaseFloat> &input1,
+                           const MatrixBase<BaseFloat> &input2,
+                           const MatrixBase<BaseFloat> &input3,
+                           int32 context_window,
+                           Matrix<BaseFloat> *output);
 
+  void TransformToOutput(const MatrixBase<BaseFloat> &spliced_feats,
+                         Matrix<BaseFloat> *output);
+  void ComputeNextRemainder(const MatrixBase<BaseFloat> &input);
+  
   OnlineFeatInputItf *input_; // underlying/inferior input object
-  const uint32 feat_dim_; // dimensionality of the feature vectors before xform
-  const Matrix<BaseFloat> transform_; // transform matrix
-  const uint32 window_size_; // the count of the feature vectors to be xformed
-  const uint32 window_center_; // central feature vector offset
-  uint32 window_pos_; // the position of the first vector in the current window
-  const uint32 trans_rows_; // xform matrix rows == output vectors dimension
-  Matrix<BaseFloat> feat_in_; // made a member in hope it will save us some memalloc time
-  Matrix<BaseFloat> feat_window_; // matrix to hold features to be transformed
-  Matrix<BaseFloat> spliced_feats_; // spliced features
+  const int32 input_dim_; // dimension of the feature vectors before xform
+  const int32 left_context_;
+  const int32 right_context_;
+  Matrix<BaseFloat> linear_transform_; // transform matrix (linear part only)
+  Vector<BaseFloat> offset_; // Offset, if present; else empty.
+  Matrix<BaseFloat> remainder_; // The last few frames of the input, that may
+  // be needed for context purposes.
+  Matrix<BaseFloat> temp_; // Temporary matrix used as input to the transform.
+  
   KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineLdaInput);
 }; // OnlineLdaInput
 
 
+
 class OnlineDeltaInput : public OnlineFeatInputItf {
  public:
-  OnlineDeltaInput(OnlineFeatInputItf *input, uint32 feat_dim,
+  OnlineDeltaInput(OnlineFeatInputItf *input,
                    uint32 order, uint32 window);
 
-  bool Compute(Matrix<BaseFloat> *output, uint32 *timeout);
+  int32 Dim() const { return feat_dim_; }
+  
+  bool Compute(Matrix<BaseFloat> *output, int32 timeout);
 
  private:
   void InitFeatWindow();
@@ -163,7 +228,9 @@ class OnlineFeInput : public OnlineFeatInputItf {
   OnlineFeInput(S *au_src, E *fe,
                 const int32 frame_size, const int32 frame_shift);
 
-  virtual bool Compute(Matrix<BaseFloat> *output, uint32 *timeout);
+  virtual int32 Dim() const { return extractor_->Dim(); }
+  
+  virtual bool Compute(Matrix<BaseFloat> *output, int32 timeout);
 
  private:
   S *source_; // audio source
@@ -184,46 +251,80 @@ OnlineFeInput<S, E>::OnlineFeInput(S *au_src, E *fe,
       frame_size_(frame_size), frame_shift_(frame_shift) {}
 
 template<class S, class E> bool
-OnlineFeInput<S, E>::Compute(Matrix<BaseFloat> *output, uint32 *timeout) {
+OnlineFeInput<S, E>::Compute(Matrix<BaseFloat> *output, int32 timeout) {
   MatrixIndexT nvec = output->NumRows(); // the number of output vectors
-  MatrixIndexT out_dim = output->NumCols(); // output vectors dimensionality
   if (nvec <= 0) {
     KALDI_WARN << "No feature vectors requested?!";
     return true;
   }
 
-  // a better way would have been to check the configuration of the feature
-  // extraction classes, but currently their interfaces doesn't provide such option
-  KALDI_ASSERT(out_dim == 13 && "13-dimensional feature vectors are assumed!");
-
   // Prepare the input audio samples
   int32 samples_req = frame_size_ + (nvec - 1) * frame_shift_;
-  if (samples_req != wave_.Dim())
-    wave_.Resize(samples_req, kUndefined);
-  int32 rem_dim = wave_remainder_.Dim();
-  samples_req -= rem_dim;
-  SubVector<BaseFloat> in_samples(wave_, rem_dim, samples_req);
-  int32 samples_rcv = source_->Read(&in_samples, timeout);
-  if (timeout != 0 && *timeout == 0)
-    KALDI_WARN << "InputAudioSource::Read() timeout expired!";
-  else if (samples_rcv != samples_req)
-    KALDI_VLOG(3) << samples_req << " samples were requested, but only "
-                  << samples_rcv << " were received!";
-  // Prepend the remainder from the previous feat. extraction batch
-  SubVector<BaseFloat> rem_samples(wave_, 0, rem_dim);
-  rem_samples.CopyFromVec(wave_remainder_);
+  Vector<BaseFloat> read_samples(samples_req);
 
+  bool ans = source_->Read(&read_samples, timeout);  
+  
+  Vector<BaseFloat> all_samples(wave_remainder_.Dim() + read_samples.Dim());
+  all_samples.Range(0, wave_remainder_.Dim()).CopyFromVec(wave_remainder_);
+  all_samples.Range(wave_remainder_.Dim(), read_samples.Dim()).
+      CopyFromVec(read_samples);
+  
   // Extract the features
-  extractor_->Compute(SubVector<BaseFloat>(wave_, 0, samples_rcv + rem_dim),
-                      1.0, output, &wave_remainder_);
-  if (output->NumRows() != nvec)
-    KALDI_VLOG(3) << nvec << " feature vectors were requested, but only "
-                  << output->NumRows() << " were received!";
-
-  // if all requested samples are obtained or a timeout was triggered,
-  // then we assume there is more data in the audio source
-  return ((samples_rcv == samples_req) || (timeout != 0 && *timeout == 0));
+  extractor_->Compute(all_samples, 1.0, output, &wave_remainder_);
+  
+  return ans;
 }
+
+struct OnlineFeatureMatrixOptions {
+  int32 batch_size; // number of frames to request each time.
+  int32 timeout; // timeout in milliseconds for the audio stream
+  int32 num_tries; // number of tries of getting no output and timing out,
+                   // before we give up.
+  OnlineFeatureMatrixOptions(): batch_size(25),
+                                timeout(250),
+                                num_tries(5) { }
+  void Register(ParseOptions *po) {
+    po->Register("batch-size", &batch_size,
+                 "Number of feature vectors processed w/o interruption");
+    po->Register("timeout", &timeout,
+                 "Timeout in milliseconds used in audio stream");
+    po->Register("num-tries", &num_tries,
+                 "Number of successive repetitions of timeout before we "
+                 "terminate streaml");
+  }
+};
+
+// The class OnlineFeatureMatrix wraps something of type
+// OnlineFeatInputItf in a manner that is convenient for
+// a Decodable type to consume.
+class OnlineFeatureMatrix {
+ public:
+  OnlineFeatureMatrix(const OnlineFeatureMatrixOptions &opts,
+                      OnlineFeatInputItf *input):
+      opts_(opts), input_(input), feat_dim_(input->Dim()),
+      feat_offset_(0), finished_(false) { }
+  
+  bool IsValidFrame (int32 frame); 
+
+  int32 Dim() const { return feat_dim_; }
+
+  // GetFrame() will die if it's not a valid frame; you have to
+  // call IsValidFrame() for this frame, to see whether it
+  // is valid.
+  SubVector<BaseFloat> GetFrame(int32 frame);
+
+  bool Good(); // returns true if we have at least one frame.
+ private:
+  void GetNextFeatures(); // called when we need more features.  Guarantees
+  // to get at least one more frame, or set finished_ = true.
+  
+  const OnlineFeatureMatrixOptions opts_;
+  OnlineFeatInputItf *input_;
+  int32 feat_dim_;
+  Matrix<BaseFloat> feat_matrix_;
+  int32 feat_offset_; // the offset of the first frame in the current batch
+  bool finished_; // True if there are no more frames to be got from the input.
+};
 
 
 } // namespace kaldi

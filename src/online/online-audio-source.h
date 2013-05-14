@@ -34,22 +34,15 @@ namespace kaldi {
 class OnlineAudioSource {
  public:
   // Reads from the audio source, and writes the samples converted to BaseFloat
-  // into the vector pointed by "data". The function assumes, that "data" already
-  // has the right size - i.e. its length is equal to the count of samples
-  // requested. The original contents will be overwritten.
-  // The function blocks until data->Dim() samples are read, unless
-  // no more data is available for some reason(EOF?), or "*timeout" (in ms)
-  // expires. In each case the function returns the number of samples actually
-  // read. If the returned number is less than data->Dim(), the contents of the
-  // remainder of the vector are undefined. If timer expires "data" contains
-  // the samples read until timeout occured and *timeout contains zero.
-  // In case timeout is not reached the contents of "*timeout" are left unchanged.
-  // The timeout is considered to be a hint only and one should not rely on it
-  // to be completely accurate. The "timeout" is not considered if this pointer
-  // is zero and the function can block for indefinitely long period.
+  // into the vector pointed by "data".  The user sets data->Dim() as a way of
+  // requesting that many samples.  If timeout > 0, this function is to wait no
+  // longer than "timeout" milliseconds before returning data-- by that time, it
+  // will return as much data as it has.
+  // The function returns true if there may be more data, and false if it
+  // knows we are at the end of the stream.
   // In case an unexpected and unrecoverable error occurs the function throws
   // an exception of type std::runtime_error (e.g. by using KALDI_ERR macro).
-  int32 Read(VectorBase<BaseFloat> *data, int32 *timeout = 0) { return 0; }
+  bool Read(Vector<BaseFloat> *data, int32 timeout = 0) { return 0; }
 };
 
 
@@ -67,11 +60,12 @@ class OnlinePaSource {
   // "report_interval": if not 0, PA ring buffer overflow will be reported
   //                    at every ovfw_msg_interval-th call to Read().
   //                    Putting 0 into this argument disables the reporting.
-  OnlinePaSource(const uint32 sample_rate, const uint32 rb_size,
+  OnlinePaSource(const uint32 sample_rate,
+                 const uint32 rb_size,
                  const uint32 report_interval);
 
   // Implementation of the OnlineAudioSource "interface" - see above
-  int32 Read(VectorBase<BaseFloat> *data, uint32 *timeout = 0);
+  bool Read(Vector<BaseFloat> *data, int32 timeout = 0);
 
   // Making friends with the callback so it will be able to access a private
   // member function to delegate the processing
@@ -120,7 +114,7 @@ class OnlineVectorSource {
       : src_(input), pos_(0) {}
 
   // Implementation of the OnlineAudioSource "interface" - see above
-  int32 Read(VectorBase<BaseFloat> *data, uint32 *timeout = 0);
+  bool Read(Vector<BaseFloat> *data, int32 timeout);
 
  private:
   Vector<BaseFloat> src_;

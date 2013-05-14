@@ -62,7 +62,10 @@ int main(int argc, char *argv[]) {
     kaldi::DeltaFeaturesOptions delta_opts;
     delta_opts.Register(&po);
     OnlineFasterDecoderOpts decoder_opts;
+    OnlineFeatureMatrixOptions feature_reading_opts;
     decoder_opts.Register(&po, true);
+    feature_reading_opts.Register(&po);
+    
     po.Register("left-context", &left_context, "Number of frames of left context");
     po.Register("right-context", &right_context, "Number of frames of right context");
     po.Register("acoustic-scale", &acoustic_scale,
@@ -132,21 +135,26 @@ int main(int argc, char *argv[]) {
     FeInput fe_input(&au_src, &mfcc,
                      frame_length * (kSampleFreq / 1000),
                      frame_shift * (kSampleFreq / 1000));
-    OnlineCmvnInput cmvn_input(&fe_input, mfcc_opts.num_ceps, cmn_window);
+    OnlineCmnInput cmn_input(&fe_input, cmn_window);
     OnlineFeatInputItf *feat_transform = 0;
     if (lda_mat_rspecifier != "") {
       feat_transform = new OnlineLdaInput(
-                               &cmvn_input, mfcc_opts.num_ceps, lda_transform,
+                               &cmn_input, lda_transform,
                                left_context, right_context);
       feat_dim = lda_transform.NumRows();
     } else {
-      feat_transform = new OnlineDeltaInput(&cmvn_input, mfcc_opts.num_ceps,
-                                            kDeltaOrder, left_context / 2);
+      feat_transform = new OnlineDeltaInput(&cmn_input, 
+                                            kDeltaOrder,
+                                            left_context / 2);
       feat_dim = (kDeltaOrder + 1) * mfcc_opts.num_ceps;
     }
-    OnlineDecodableDiagGmmScaled decodable(feat_transform, am_gmm, trans_model,
-                                           acoustic_scale, decoder_opts.batch_size,
-                                           feat_dim, -1);
+
+    // feature_reading_opts contains timeout, batch size.
+    OnlineFeatureMatrix feature_matrix(feature_reading_opts,
+                                       feat_transform);
+
+    OnlineDecodableDiagGmmScaled decodable(am_gmm, trans_model, acoustic_scale,
+                                           &feature_matrix);
     bool partial_res = false;
     while (1) {
       OnlineFasterDecoder::DecodeState dstate = decoder.Decode(&decodable);

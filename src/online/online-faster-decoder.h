@@ -67,9 +67,6 @@ struct OnlineFasterDecoderOpts : public FasterDecoderOptions {
     po->Register("max-utt-length", &max_utt_len_,
                  "If the utterance becomes longer than this number of frames, "
                  "shorter silence is acceptable as an utterance separator");
-    if (full)
-      po->Register("batch-size", &batch_size,
-                   "Number of feature vectors processed w/o interruption");
   }
 };
 

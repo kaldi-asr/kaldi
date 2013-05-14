@@ -10,12 +10,16 @@ OBJFILES = online-audio-source.o online-feat-input.o online-decodable.o online-f
 
 LIBFILE = kaldi-online.a
 
+TESTFILES = online-feat-test
+
 all:  $(LIBFILE) $(BINFILES)
 
 $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBFILE) $(OBJFILES)
 	$(RANLIB) $(LIBFILE)
 
+
+$(TESTFILES): $(LIBFILE) ../feat/kaldi-feature.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
 $(BINFILES): $(LIBFILE) ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a  ../feat/kaldi-feature.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a 
 
@@ -29,10 +33,10 @@ $(BINFILES): $(LIBFILE) ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a  ../feat/k
 clean:
 	-rm -f *.o *.a $(BINFILES) tmp* *.tmp
 
-#test_compile: $(TESTFILES)
-#  
-#test: test_compile
-#	@result=0; for x in $(TESTFILES); do echo -n "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
+test_compile: $(TESTFILES)
+  
+test: test_compile
+	@result=0; for x in $(TESTFILES); do echo -n "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
 
 .valgrind: $(BINFILES)
 

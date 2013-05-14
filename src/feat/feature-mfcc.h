@@ -75,6 +75,8 @@ class Mfcc {
   Mfcc(const MfccOptions &opts);
   ~Mfcc();
 
+  int32 Dim() { return opts_.num_ceps; }
+  
   /// Will throw exception on failure (e.g. if file too short for
   /// even one frame).
   void Compute(const VectorBase<BaseFloat> &wave,
