@@ -1,6 +1,15 @@
 # SHELL += -x
 
-all: sph2pipe atlas irstlm_tgt sclite_tgt openfst_tgt
+all: check_required_programs sph2pipe atlas irstlm_tgt sclite_tgt openfst_tgt
+
+
+check_required_programs:
+	which aclocal
+	which automake
+	which autoconf
+	which libtoolize || which glibtoolize
+	which svn
+	which gcc
 
 clean: openfst_cleaned sclite_cleaned  irstlm_cleaned
 
