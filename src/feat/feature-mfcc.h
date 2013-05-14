@@ -77,8 +77,13 @@ class Mfcc {
 
   int32 Dim() { return opts_.num_ceps; }
   
-  /// Will throw exception on failure (e.g. if file too short for
-  /// even one frame).
+  /// Will throw exception on failure (e.g. if file too short for even one
+  /// frame).  The output "wave_remainder" is the last frame or two of the
+  /// waveform that it would be necessary to include in the next call to Compute
+  /// for the same utterance.  It is not exactly the un-processed part (it may
+  /// have been partly processed), it's the start of the next window that we
+  /// have not already processed.  Will throw exception on failure (e.g. if file
+  /// too short for even one frame).
   void Compute(const VectorBase<BaseFloat> &wave,
                BaseFloat vtln_warp,
                Matrix<BaseFloat> *output,

@@ -95,7 +95,6 @@ class BiglmFasterDecoder {
   }
 
   bool ReachedFinal() {
-    Weight best_weight = Weight::Zero();
     for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
       PairId state_pair = e->key;
       StateId state = PairToState(state_pair),

@@ -196,9 +196,7 @@ int main(int argc, char *argv[]) {
     CompactLatticeWriter compact_lattice_writer;
     LatticeWriter lattice_writer;
 
-    bool write_lattices = false;
     if (lattice_wspecifier != "") {
-      write_lattices = true;
       if (! (determinize ? compact_lattice_writer.Open(lattice_wspecifier)
              : lattice_writer.Open(lattice_wspecifier)))
         KALDI_ERR << "Could not open table for writing lattices: "
