@@ -92,24 +92,25 @@ void LatticeAcousticRescore(const AmDiagGmm &am,
         int32 trans_id = curr_clat_weight.String()[offset];
 
         // Calculate likelihood
-        if (trans_id != 0) {  // Non-epsilon input label on arc
-          int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
-          BaseFloat ll;
-          if (pdf_id_to_like.count(pdf_id) == 0) {
-            ll = am.LogLikelihood(pdf_id, data.Row(t));
-            pdf_id_to_like[pdf_id] = ll;
-          } else {
-            ll = pdf_id_to_like[pdf_id];
-          }
+        KALDI_ASSERT(trans_id != 0);
+        // zero transition-ids not allowed in CompactLattice format.
 
-          // update weight
-          CompactLatticeWeight new_clat_weight = curr_clat_weight;
-          LatticeWeight new_lat_weight = new_clat_weight.Weight();
-          new_lat_weight.SetValue2(-ll + curr_clat_weight.Weight().Value2());
-          new_clat_weight.SetWeight(new_lat_weight);
-
-          clat->SetFinal(state, new_clat_weight);
+        int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
+        BaseFloat ll;
+        if (pdf_id_to_like.count(pdf_id) == 0) {
+          ll = am.LogLikelihood(pdf_id, data.Row(t));
+          pdf_id_to_like[pdf_id] = ll;
+        } else {
+          ll = pdf_id_to_like[pdf_id];
         }
+
+        // update weight
+        CompactLatticeWeight new_clat_weight = curr_clat_weight;
+        LatticeWeight new_lat_weight = new_clat_weight.Weight();
+        new_lat_weight.SetValue2(-ll + curr_clat_weight.Weight().Value2());
+        new_clat_weight.SetWeight(new_lat_weight);
+
+        clat->SetFinal(state, new_clat_weight);
 
       } else {
         fst::MutableArcIterator<CompactLattice> aiter(clat, state);
@@ -119,23 +120,22 @@ void LatticeAcousticRescore(const AmDiagGmm &am,
         CompactLatticeArc arc = aiter.Value();
         int32 trans_id = arc.weight.String()[offset];
 
+        KALDI_ASSERT(trans_id != 0); // Zero transition-id not allowed in
+                                     // CompactLattice
         // Calculate likelihood
-        if (trans_id != 0) {  // Non-epsilon input label on arc
-          int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
-          BaseFloat ll;
-          if (pdf_id_to_like.count(pdf_id) == 0) {
-            ll = am.LogLikelihood(pdf_id, data.Row(t));
-            pdf_id_to_like[pdf_id] = ll;
-          } else {
-            ll = pdf_id_to_like[pdf_id];
-          }
-
-          // Update weight
-          LatticeWeight new_weight = arc.weight.Weight();
-          new_weight.SetValue2(-ll + arc.weight.Weight().Value2());
-          arc.weight.SetWeight(new_weight);
-          aiter.SetValue(arc);
+        int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
+        BaseFloat ll;
+        if (pdf_id_to_like.count(pdf_id) == 0) {
+          ll = am.LogLikelihood(pdf_id, data.Row(t));
+          pdf_id_to_like[pdf_id] = ll;
+        } else {
+          ll = pdf_id_to_like[pdf_id];
         }
+        // Update weight
+        LatticeWeight new_weight = arc.weight.Weight();
+        new_weight.SetValue2(-ll + arc.weight.Weight().Value2());
+        arc.weight.SetWeight(new_weight);
+        aiter.SetValue(arc);
       }
     }
   }

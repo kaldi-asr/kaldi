@@ -40,9 +40,9 @@ class OnlineDecodableDiagGmmScaled : public DecodableInterface {
   
   /// Returns the log likelihood, which will be negated in the decoder.
   virtual BaseFloat LogLikelihood(int32 frame, int32 index);
-
+  
   virtual bool IsLastFrame(int32 frame);
-
+  
   /// Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
 

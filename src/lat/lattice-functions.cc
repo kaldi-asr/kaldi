@@ -3,6 +3,8 @@
 // Copyright 2009-2011  Saarland University (Author: Arnab Ghoshal)
 //           2012-2013  Johns Hopkins University (Author: Daniel Povey);  Chao Weng;
 //                      Bagher BabaAli
+//                2013  Cisco Systems (author: Neha Agrawal) [code modified
+//                      from original code in ../gmmbin/gmm-rescore-lattice.cc]
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -854,6 +856,117 @@ void AddWordInsPenToCompactLattice(BaseFloat word_ins_penalty,
     } // end looping over arcs
   }  // end looping over states  
 } 
+
+struct Tuple {
+  Tuple(int32 state, int32 arc, int32 offset):
+    state_id(state), arc_id(arc), trans_offset(offset) {}
+  int32 state_id;
+  int32 arc_id;
+  int32 trans_offset;
+};
+
+bool RescoreCompactLattice(DecodableInterface *decodable,
+                           CompactLattice *clat) {
+  if (clat->NumStates() == 0) {
+    KALDI_WARN << "Rescoring empty lattice";
+    return false;
+  }
+  uint64 props = clat->Properties(fst::kFstProperties, false);
+  if (!(props & fst::kTopSorted)) {
+    if (fst::TopSort(clat) == false) {
+      KALDI_WARN << "Cycles detected in lattice.";
+      return false;
+    }
+  }
+  std::vector<int32> state_times;
+  int32 utt_len = kaldi::CompactLatticeStateTimes(*clat, &state_times);
+  
+  std::vector<std::vector<Tuple> > time_to_state(utt_len);
+
+  int32 num_states = clat->NumStates();
+  KALDI_ASSERT(num_states == state_times.size());
+  for (size_t state = 0; state < num_states; state++) {
+    KALDI_ASSERT(state_times[state] >= 0);
+    int32 t = state_times[state];
+    int32 arc_id = 0;
+    for (fst::MutableArcIterator<CompactLattice> aiter(clat, state);
+         !aiter.Done(); aiter.Next()) {
+      CompactLatticeArc arc = aiter.Value();
+      std::vector<int32> arc_string = arc.weight.String();
+      
+      for (size_t offset = 0; offset < arc_string.size(); offset++) {
+        if (t < utt_len) { // end state may be past this..
+          time_to_state[t+offset].push_back(Tuple(state, arc_id, offset));
+        } else {
+          if (t != utt_len) {
+            KALDI_WARN << "There appears to be lattice/feature mismatch, "
+                       << "aborting.";
+            return false;
+          }
+        }
+      }
+      arc_id++;
+    }
+    if (clat->Final(state) != CompactLatticeWeight::Zero()) {
+      std::vector<int32> arc_string = clat->Final(state).String();
+      for (size_t offset = 0; offset < arc_string.size(); offset++) {
+        if (t < utt_len) { // end state may be past this..
+          time_to_state[t+offset].push_back(Tuple(state, -1, offset));
+        } else {
+          if (t != utt_len) {
+            KALDI_WARN << "There appears to be lattice/feature mismatch, "
+                       << "aborting.";
+            return false;
+          }
+        }
+      }
+    }
+  }
+
+  for (int32 t = 0; t < utt_len; t++) {
+    if ((t < utt_len - 1) == decodable->IsLastFrame(t)) {
+      // this if-statement compares two boolean values.
+      KALDI_WARN << "Mismatch in lattice and feature length";
+      return false;
+    }
+    for (size_t i = 0; i < time_to_state[t].size(); i++) {
+      int32 state = time_to_state[t][i].state_id;
+      int32 arc_id = time_to_state[t][i].arc_id;
+      int32 offset = time_to_state[t][i].trans_offset;
+
+      if (arc_id == -1) { // Final state
+        // Access the trans_id
+        CompactLatticeWeight curr_clat_weight = clat->Final(state);
+        int32 trans_id = curr_clat_weight.String()[offset];
+        
+        // Calculate likelihood
+        BaseFloat log_like = decodable->LogLikelihood(t, trans_id);
+        // update weight
+        CompactLatticeWeight new_clat_weight = curr_clat_weight;
+        LatticeWeight new_lat_weight = new_clat_weight.Weight();
+        new_lat_weight.SetValue2(-log_like + curr_clat_weight.Weight().Value2());
+        new_clat_weight.SetWeight(new_lat_weight);
+        clat->SetFinal(state, new_clat_weight);
+      } else {
+        fst::MutableArcIterator<CompactLattice> aiter(clat, state);
+
+        // Access the trans_id
+        aiter.Seek(arc_id);
+        CompactLatticeArc arc = aiter.Value();
+        int32 trans_id = arc.weight.String()[offset];
+
+        // Calculate likelihood
+        BaseFloat log_like = decodable->LogLikelihood(t, trans_id);
+        // update weight
+        LatticeWeight new_weight = arc.weight.Weight();
+        new_weight.SetValue2(-log_like + arc.weight.Weight().Value2());
+        arc.weight.SetWeight(new_weight);
+        aiter.SetValue(arc);
+      }
+    }
+  }
+  return true;
+}
 
 
 }  // namespace kaldi

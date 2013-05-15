@@ -43,7 +43,7 @@ void OnlineDecodableDiagGmmScaled::CacheFrame(int32 frame) {
   cur_feats_.Resize(feat_dim_);
   if (!features_->IsValidFrame(frame))
     KALDI_ERR << "Request for invalid frame (you need to check IsLastFrame, or, "
-              << "for frame zero, that the input is valid.";
+              << "for frame zero, check that the input is valid.";
   cur_feats_.CopyFromVec(features_->GetFrame(frame));
   cur_frame_ = frame;
 }

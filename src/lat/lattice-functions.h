@@ -3,6 +3,7 @@
 // Copyright 2009-2012   Saarland University (author: Arnab Ghoshal)
 //           2012-2013   Johns Hopkins University (Author: Daniel Povey);
 //                       Bagher BabaAli
+
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -28,6 +29,7 @@
 #include "fstext/fstext-lib.h"
 #include "hmm/transition-model.h"
 #include "lat/kaldi-lattice.h"
+#include "itf/decodable-itf.h"
 
 namespace kaldi {
 
@@ -152,6 +154,13 @@ void CompactLatticeShortestPath(const CompactLattice &clat,
 /// in the compact lattice
 void AddWordInsPenToCompactLattice(BaseFloat word_ins_penalty,
                                    CompactLattice *clat);
+
+/// This function *adds* the negated scores obtained from the Decodable object,
+/// to the acoustic scores on the arcs.  If you want to replace them, you should
+/// use ScaleCompactLattice to first set the acoustic scores to zero.  Returns
+/// true on success, false on error (typically some kind of mismatched inputs).
+bool RescoreCompactLattice(DecodableInterface *decodable,
+                           CompactLattice *clat);
 
 }  // namespace kaldi
 
