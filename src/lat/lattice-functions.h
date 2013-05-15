@@ -162,6 +162,17 @@ void AddWordInsPenToCompactLattice(BaseFloat word_ins_penalty,
 bool RescoreCompactLattice(DecodableInterface *decodable,
                            CompactLattice *clat);
 
+
+/// This function *adds* the negated scores obtained from the Decodable object,
+/// to the acoustic scores on the arcs.  If you want to replace them, you should
+/// use ScaleCompactLattice to first set the acoustic scores to zero.  Returns
+/// true on success, false on error (typically some kind of mismatched inputs).
+/// The input labels, if nonzero, are interpreted as transition-ids or whatever
+/// other index the Decodable object expects.
+bool RescoreLattice(DecodableInterface *decodable,
+                    Lattice *lat);
+
+
 }  // namespace kaldi
 
 #endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_

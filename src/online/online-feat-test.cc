@@ -166,13 +166,18 @@ void TestOnlineLdaInput() {
 void TestOnlineCmnInput() { // We're also testing OnlineCacheInput here.
   int32 dim = 2 + rand() % 5; // dimension of features.
   int32 num_frames = 100 + rand() % 100;
-
+  
   Matrix<BaseFloat> input_feats(num_frames, dim);
   input_feats.SetRandn();
 
   OnlineMatrixInput matrix_input(input_feats);
   int32 cmn_window = 20;
-  OnlineCmnInput cmn_input(&matrix_input, cmn_window);
+  int32 min_window = rand() % cmn_window;
+  if (rand() % 2 == 0) min_window = 0;
+  if (rand() % 3 == 0) min_window = cmn_window;
+  
+  OnlineCmnInput cmn_input(&matrix_input, cmn_window,
+                           min_window);
   OnlineCacheInput cache_input(&cmn_input);
   
   Matrix<BaseFloat> output_feats1;
@@ -181,20 +186,27 @@ void TestOnlineCmnInput() { // We're also testing OnlineCacheInput here.
   Matrix<BaseFloat> output_feats2(input_feats);
   for (int32 i = 0; i < output_feats2.NumRows(); i++) {
     SubVector<BaseFloat> this_row(output_feats2, i);
-    if (i == 0) this_row.SetZero();
-    else {
-      int32 num_frames = std::min(i, cmn_window);
+    if (i == 0 && min_window == 0) this_row.SetZero();
+    else if (i < min_window) {
+      int32 window_nframes = std::min(min_window, input_feats.NumRows());
       Vector<BaseFloat> this_sum(dim);
-      SubMatrix<BaseFloat> this_block(input_feats, i - num_frames, num_frames,
+      SubMatrix<BaseFloat> this_block(input_feats, 0, window_nframes,
                                       0, dim);
       this_sum.AddRowSumMat(1.0, this_block, 0.0);
-      this_row.AddVec(-1.0 / num_frames, this_sum);
+      this_row.AddVec(-1.0 / window_nframes, this_sum);
+    } else {
+      int32 window_nframes = std::min(i, cmn_window);
+      Vector<BaseFloat> this_sum(dim);
+      SubMatrix<BaseFloat> this_block(input_feats, i - window_nframes, window_nframes,
+                                      0, dim);
+      this_sum.AddRowSumMat(1.0, this_block, 0.0);
+      this_row.AddVec(-1.0 / window_nframes, this_sum);
     }
   }
   KALDI_ASSERT(output_feats1.NumRows() == output_feats2.NumRows());
   for (int32 i = 0; i < output_feats2.NumRows(); i++) {
     if (!output_feats1.Row(i).ApproxEqual(output_feats2.Row(i))) {
-      KALDI_ERR << "Rows differ " << output_feats1.Row(i)
+      KALDI_ERR << "Rows differ " << i << ", " << input_feats.Row(i) << output_feats1.Row(i)
                 << output_feats2.Row(i);
     }
   }

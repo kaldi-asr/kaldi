@@ -55,7 +55,8 @@ int main(int argc, char *argv[]) {
         "scp:wav.scp model HCLG.fst words.txt '1:2:3:4:5' ark,t:trans.txt ark,t:ali.txt";
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 0.1;
-    int32 cmn_window = 600;
+    int32 cmn_window = 600,
+      min_cmn_window = 100; // adds 1 second latency, only at utterance start.
     int32 channel = -1;
     int32 right_context = 4, left_context = 4;
 
@@ -70,6 +71,9 @@ int main(int argc, char *argv[]) {
                 "Scaling factor for acoustic likelihoods");
     po.Register("cmn-window", &cmn_window,
         "Number of feat. vectors used in the running average CMN calculation");
+    po.Register("min-cmn-window", &min_cmn_window,
+                "Minumum CMN window used at start of decoding (adds "
+                "latency only at start)");
     po.Register("channel", &channel,
         "Channel to extract (-1 -> expect mono, 0 -> left, 1 -> right)");
     po.Read(argc, argv);
@@ -167,7 +171,7 @@ int main(int argc, char *argv[]) {
       FeInput fe_input(&au_src, &mfcc,
                        frame_length*(wav_data.SampFreq()/1000),
                        frame_shift*(wav_data.SampFreq()/1000));
-      OnlineCmnInput cmn_input(&fe_input, cmn_window);
+      OnlineCmnInput cmn_input(&fe_input, cmn_window, min_cmn_window);
       OnlineFeatInputItf *feat_transform = 0;
       if (lda_mat_rspecifier != "") {
         feat_transform = new OnlineLdaInput(

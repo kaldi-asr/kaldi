@@ -73,21 +73,30 @@ class OnlineFeatInputItf {
 class OnlineCmnInput: public OnlineFeatInputItf {
  public:
   // "input" - the underlying(unnormalized) feature source
-  // "cmn_window" - the count of the last vectors over which the average is
+  // "cmn_window" - the count of the preceding vectors over which the average is
   //                calculated
-  OnlineCmnInput(OnlineFeatInputItf *input, int32 cmn_window)
-      : input_(input), cmn_window_(cmn_window),
+  // "min_window" - the minimum count of frames for which it will compute the
+  //                mean, at the start of the file.  Adds latency but only at the
+  //                start
+  OnlineCmnInput(OnlineFeatInputItf *input, int32 cmn_window, int32 min_window)
+      : input_(input), cmn_window_(cmn_window), min_window_(min_window),
         history_(cmn_window, input->Dim()), t_(0),
-        sum_(input->Dim()) { }
+        sum_(input->Dim()) { KALDI_ASSERT(cmn_window >= min_window); }
   
   virtual bool Compute(Matrix<BaseFloat> *output, int32 timeout);
 
   virtual int32 Dim() const { return input_->Dim(); }
 
  private:
+  // Appends rows of A to B.
+  static void AppendToMatrix(const Matrix<BaseFloat> &A,
+                             Matrix<BaseFloat> *B);
   OnlineFeatInputItf *input_;
   int32 cmn_window_;
+  int32 min_window_;
   Matrix<BaseFloat> history_; // circular-buffer history.
+  Matrix<BaseFloat> initial_buffer_; // used at start of file.
+  
   int64 t_; // number of frames that have been written to
             // the circular buffer.
   Vector<double> sum_; // Sum of the last std::min(t_, cmn_window_)

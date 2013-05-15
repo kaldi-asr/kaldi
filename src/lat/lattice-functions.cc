@@ -890,7 +890,7 @@ bool RescoreCompactLattice(DecodableInterface *decodable,
     int32 t = state_times[state];
     int32 arc_id = 0;
     for (fst::MutableArcIterator<CompactLattice> aiter(clat, state);
-         !aiter.Done(); aiter.Next()) {
+         !aiter.Done(); aiter.Next(), arc_id++) {
       CompactLatticeArc arc = aiter.Value();
       std::vector<int32> arc_string = arc.weight.String();
       
@@ -905,20 +905,14 @@ bool RescoreCompactLattice(DecodableInterface *decodable,
           }
         }
       }
-      arc_id++;
     }
     if (clat->Final(state) != CompactLatticeWeight::Zero()) {
+      arc_id = -1;
       std::vector<int32> arc_string = clat->Final(state).String();
       for (size_t offset = 0; offset < arc_string.size(); offset++) {
-        if (t < utt_len) { // end state may be past this..
-          time_to_state[t+offset].push_back(Tuple(state, -1, offset));
-        } else {
-          if (t != utt_len) {
-            KALDI_WARN << "There appears to be lattice/feature mismatch, "
-                       << "aborting.";
-            return false;
-          }
-        }
+        KALDI_ASSERT(t + offset < utt_len); // already checked in
+        // CompactLatticeStateTimes, so would be code error.
+        time_to_state[t+offset].push_back(Tuple(state, arc_id, offset));
       }
     }
   }
@@ -967,6 +961,61 @@ bool RescoreCompactLattice(DecodableInterface *decodable,
   }
   return true;
 }
+
+bool RescoreLattice(DecodableInterface *decodable,
+                    Lattice *lat) {
+  if (lat->NumStates() == 0) {
+    KALDI_WARN << "Rescoring empty lattice";
+    return false;
+  }
+  uint64 props = lat->Properties(fst::kFstProperties, false);
+  if (!(props & fst::kTopSorted)) {
+    if (fst::TopSort(lat) == false) {
+      KALDI_WARN << "Cycles detected in lattice.";
+      return false;
+    }
+  }
+  std::vector<int32> state_times;
+  int32 utt_len = kaldi::LatticeStateTimes(*lat, &state_times);
+  
+  std::vector<std::vector<int32> > time_to_state(utt_len );
+  
+  int32 num_states = lat->NumStates();
+  KALDI_ASSERT(num_states == state_times.size());
+  for (size_t state = 0; state < num_states; state++) {
+    int32 t = state_times[state];
+    KALDI_ASSERT(t >= 0 && t <= utt_len);
+    if (t < utt_len)
+      time_to_state[t].push_back(state);
+  }
+
+
+  for (int32 t = 0; t < utt_len; t++) {
+    if ((t < utt_len - 1) == decodable->IsLastFrame(t)) {
+      // this if-statement compares two boolean values.
+      KALDI_WARN << "Mismatch in lattice and feature length";
+      return false;
+    }
+    for (size_t i = 0; i < time_to_state[t].size(); i++) {
+      int32 state = time_to_state[t][i];
+      for (fst::MutableArcIterator<Lattice> aiter(lat, state);
+           !aiter.Done(); aiter.Next()) {
+        LatticeArc arc = aiter.Value();
+        if (arc.ilabel != 0) {
+          int32 trans_id = arc.ilabel; // Note: it doesn't necessarily
+          // have to be a transition-id, just whatever the Decodable
+          // object is expecting, but it's normally a transition-id.
+
+          BaseFloat log_like = decodable->LogLikelihood(t, trans_id);
+          arc.weight.SetValue2(-log_like + arc.weight.Value2());
+          aiter.SetValue(arc);
+        }
+      }
+    }
+  }
+  return true;
+}
+
 
 
 }  // namespace kaldi

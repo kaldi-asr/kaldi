@@ -75,7 +75,8 @@ int main(int argc, char *argv[]) {
         "model HCLG.fst words.txt '1:2:3:4:5' 1234 lda-matrix";
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 0.1;
-    int32 cmn_window = 600;
+    int32 cmn_window = 600,
+      min_cmn_window = 100; // adds 1 second latency, only at utterance start.
     int32 right_context = 4, left_context = 4;
 
     kaldi::DeltaFeaturesOptions delta_opts;
@@ -91,6 +92,10 @@ int main(int argc, char *argv[]) {
                 "Scaling factor for acoustic likelihoods");
     po.Register("cmn-window", &cmn_window,
         "Number of feat. vectors used in the running average CMN calculation");
+    po.Register("min-cmn-window", &min_cmn_window,
+                "Minumum CMN window used at start of decoding (adds "
+                "latency only at start)");
+
     po.Read(argc, argv);
     if (po.NumArgs() != 5 && po.NumArgs() != 6) {
       po.PrintUsage();
@@ -142,26 +147,22 @@ int main(int argc, char *argv[]) {
     MfccOptions mfcc_opts;
     mfcc_opts.use_energy = false;
 
-    int32 feat_dim;
-
     OnlineFasterDecoder decoder(*decode_fst, decoder_opts,
                                 silence_phones, trans_model);
     VectorFst<LatticeArc> out_fst;
     int32 feature_dim = mfcc_opts.num_ceps; // default to 13 right now.
     OnlineUdpInput udp_input(udp_port, feature_dim);
-    OnlineCmnInput cmn_input(&udp_input, cmn_window);
+    OnlineCmnInput cmn_input(&udp_input, cmn_window, min_cmn_window);
     OnlineFeatInputItf *feat_transform = 0;
 
     if (lda_mat_rspecifier != "") {
       feat_transform = new OnlineLdaInput(
                                &cmn_input, lda_transform,
                                left_context, right_context);
-      feat_dim = lda_transform.NumRows();
     } else {
       feat_transform = new OnlineDeltaInput(&cmn_input, 
                                             kDeltaOrder,
                                             left_context / 2);
-      feat_dim = (kDeltaOrder + 1) * mfcc_opts.num_ceps;
     }
 
     // feature_reading_opts contains timeout, batch size.

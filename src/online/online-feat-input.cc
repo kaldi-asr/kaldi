@@ -23,6 +23,20 @@
 
 namespace kaldi {
 
+// Append rows of A to B.
+// static
+void OnlineCmnInput::AppendToMatrix(const Matrix<BaseFloat> &A,
+                                    Matrix<BaseFloat> *B) {
+  int32 Arows = A.NumRows(), Brows = B->NumRows(), Acols = A.NumCols();
+  if (Brows == 0) *B = A;
+  else if (Arows != 0) {
+    KALDI_ASSERT(B->NumCols() == Acols);
+    B->Resize(Brows + Arows, Acols, kCopyData);
+    B->Range(Brows, Arows, 0, Acols).CopyFromMat(A);
+  }
+}
+
+
 // What happens at the start of the utterance is not really ideal, it would be
 // better to have some "fake stats" extracted from typical data from this domain,
 // to start with.  We'll have to do this later.
@@ -30,8 +44,63 @@ bool OnlineCmnInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
   KALDI_ASSERT(output->NumRows() > 0 && output->NumCols() == Dim());
 
   bool more_data = input_->Compute(output, timeout);
-  Vector<BaseFloat> input_frame(output->NumCols());
+
+  if (initial_buffer_.NumRows() != 0) {
+    AppendToMatrix(*output, &initial_buffer_);
+    *output = initial_buffer_;
+    initial_buffer_.Resize(0, 0);
+  }
   
+  if (t_ < min_window_) { // special case at start, to avoid very small window.
+    // this causes latency only at the start.
+    if (t_ + output->NumRows() < min_window_) {
+      if (!more_data) { // Compute mean with what we have,
+        // as no more data is coming.
+        if (output->NumRows() != 0) {
+          Vector<BaseFloat> mean(Dim());
+          mean.AddRowSumMat(1.0 / output->NumRows(), *output);
+          output->AddVecToRows(-1.0, mean);
+        }
+        // Make this object's state reflect what happened,
+        // even though it should never be accessed.
+        int32 nr = output->NumRows();
+        history_.Range(0, nr,
+                       0, Dim()).CopyFromMat(*output);
+        for (int32 i = 0; i < min_window_; i++)
+          sum_.AddVec(1.0, history_.Row(i));
+        t_ = nr;
+        return more_data;
+      } else {
+        // more data will come; cache what we have but produce no output.
+        initial_buffer_ = *output;
+        output->Resize(0, 0);
+        return more_data;
+      }
+    } else { // output just the min_window_ (normalized), and initialize the
+             // history, cache the rest (we could output it now, but
+             // it's easier to do it on the next call).
+             // initial_buffer_ is considered pending input, not
+             // processed into "history".
+      int32 extra_frames = output->NumRows() - min_window_;
+      if (extra_frames > 0) {
+        initial_buffer_.Resize(extra_frames, Dim());
+        initial_buffer_.CopyFromMat(output->Range(min_window_, extra_frames,
+                                                  0, Dim()));
+      }
+      output->Resize(min_window_, Dim(), kCopyData);
+      history_.Range(0, min_window_, 0, Dim()).CopyFromMat(*output);
+      for (int32 i = 0; i < min_window_; i++)
+        sum_.AddVec(1.0, history_.Row(i));
+      t_ = min_window_;
+      for (int32 i = 0; i < min_window_; i++) {
+        output->Row(i).AddVec(-1.0 / min_window_, sum_);
+      }
+      return more_data || extra_frames > 0;
+    }
+  }
+
+  Vector<BaseFloat> input_frame(output->NumCols());
+    
   int64 offset = t_, num_input_frames = output->NumRows();
   for (; t_ < offset + num_input_frames; t_++) {
     SubVector<BaseFloat> output_frame(*output, t_ - offset);
@@ -77,7 +146,7 @@ OnlineUdpInput::OnlineUdpInput(int32 port, int32 feature_dim):
 bool OnlineUdpInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
   KALDI_ASSERT(timeout == 0 &&
                "Timeout parameter currently not supported by OnlineUdpInput!");
-  char buf[65535]; 
+  char buf[65535];
   socklen_t caddr_len = sizeof(client_addr_);
   ssize_t nrecv = recvfrom(sock_desc_, buf, sizeof(buf), 0,
                            reinterpret_cast<sockaddr*>(&client_addr_),
