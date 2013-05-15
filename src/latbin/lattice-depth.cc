@@ -32,7 +32,10 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
     typedef StdArc::StateId StateId;
     
-    const char *usage = 
+    const char *usage =
+      "Compute the lattice depths in terms of the average number of arcs that\n"
+      "cross a particular state/frame by counting the number of transitions that\n"
+      "lead to the state (CompactLatticeWeight)\n"
       "Usage: lattice-depth <lattice-rspecifier> [<depth-wspecifier>]";
 
     ParseOptions po(usage);
