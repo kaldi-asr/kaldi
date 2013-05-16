@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Copyright 2012  Johns Hopkins University
 # Apache 2.0.
@@ -30,4 +30,4 @@ foreach my $kwentry (@{$data->{kw}}) {
 $data->{kw} = \@filtered_kws;
 my $xml = XMLout($data, RootName=> "kwlist", KeyAttr=>'');
 print $xml; 
-
+exit 0
