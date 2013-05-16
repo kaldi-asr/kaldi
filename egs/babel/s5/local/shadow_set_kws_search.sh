@@ -136,9 +136,8 @@ if [ $stage -le 2 ] ; then
     set -e';' set -o pipefail';' \
     cat $rootdirA/kws_LMWT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
-      --segments=$datadir/segments --normalize=true \
-      --map-utter=$kwsdatadir/utter_map \
-      - - \| local/filter_kwslist.pl $duptime \> $rootdirA/kws_LMWT/kwslist.xml || exit 1
+      --segments=$datadir/segments --normalize=true --remove-dup=true\
+      --map-utter=$kwsdatadir/utter_map  --digits=3 - $rootdirA/kws_LMWT/kwslist.xml || exit 1
 fi
 
 if [ $stage -le 3 ] ; then
@@ -146,9 +145,8 @@ if [ $stage -le 3 ] ; then
     set -e';' set -o pipefail';' \
     cat $rootdirA/kws_LMWT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
-      --segments=$datadir/segments --normalize=false \
-      --map-utter=$kwsdatadir/utter_map \
-      - - \| local/filter_kwslist.pl $duptime \> $rootdirA/kws_LMWT/kwslist.unnormalized.xml || exit 1
+      --segments=$datadir/segments --normalize=false --remove-dup=true\
+      --map-utter=$kwsdatadir/utter_map - $rootdirA/kws_LMWT/kwslist.unnormalized.xml || exit 1
 fi
 
 echo "Scoring $datasetA"
@@ -159,7 +157,7 @@ if [ $stage -le 4 ] ; then
   elif [ ! -f $datasetA/kws/rttm ] ; then
       echo "Not scoring, because the file $datasetA/kws/rttm is not present"
   else
-    $decode_cmd LMWT=$min_lmwt:$max_lmwt $rootdirA/kws/kws_scoring.LMWT.log \
+    $cmd LMWT=$min_lmwt:$max_lmwt $rootdirA/kws/kws_scoring.LMWT.log \
       local/kws_score.sh $datasetA $rootdirA/kws_LMWT 
   fi
 fi
@@ -170,9 +168,8 @@ if [ $stage -le 5 ] ; then
     set -e';' set -o pipefail';' \
     cat $rootdirB/kws_LMWT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
-      --segments=$datadir/segments --normalize=true \
-      --map-utter=$kwsdatadir/utter_map \
-      - - \| local/filter_kwslist.pl $duptime \> $rootdirB/kws_LMWT/kwslist.xml || exit 1
+      --segments=$datadir/segments --normalize=true --digits=3  --remove-dup=true\
+      --map-utter=$kwsdatadir/utter_map - $rootdirB/kws_LMWT/kwslist.xml || exit 1
 fi
 
 if [ $stage -le 6 ] ; then
@@ -180,9 +177,8 @@ if [ $stage -le 6 ] ; then
     set -e';' set -o pipefail';' \
     cat $rootdirB/kws_LMWT/results \| \
     utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
-      --segments=$datadir/segments --normalize=false \
-      --map-utter=$kwsdatadir/utter_map \
-      - - \| local/filter_kwslist.pl $duptime \> $rootdirB/kws_LMWT/kwslist.unnormalized.xml || exit 1
+      --segments=$datadir/segments --normalize=false --remove-dup=true\
+      --map-utter=$kwsdatadir/utter_map - $rootdirB/kws_LMWT/kwslist.unnormalized.xml || exit 1
 fi
 
 echo "Scoring $datasetB"
@@ -192,7 +188,7 @@ if [ $stage -le 7 ] ; then
   elif [ ! -f $datasetB/kws/rttm ] ; then
       echo "Not scoring, because the file $datasetB/kws/rttm is not present"
   else
-    $decode_cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_scoring.LMWT.log \
+    $cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_scoring.LMWT.log \
       local/kws_score.sh $datasetB $rootdirB/kws_LMWT || exit 1
   fi
 fi
