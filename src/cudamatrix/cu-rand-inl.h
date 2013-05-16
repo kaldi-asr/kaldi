@@ -43,6 +43,7 @@ void CuRand<Real>::SeedGpu(MatrixIndexT state_size) {
   state_size_ = state_size;
 
   delete[] host_;
+  host_ = NULL;
   host_size_ = 0;
 }
 
