@@ -95,15 +95,15 @@ else
     sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
 fi
 
-cat $kwsdatadir/keywords_all.int | \
-  grep -v " 0 " | grep -v " 0$" > $kwsdatadir/keywords.int
+(cat $kwsdatadir/keywords_all.int | \
+  grep -v " 0 " | grep -v " 0$" > $kwsdatadir/keywords.int ) || true
 
-cut -f 1 -d ' ' $kwsdatadir/keywords.int | \
-  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_invocab.xml
+(cut -f 1 -d ' ' $kwsdatadir/keywords.int | \
+  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_invocab.xml) || true
 
-cat $kwsdatadir/keywords_all.int | \
+(cat $kwsdatadir/keywords_all.int | \
   egrep " 0 | 0$" | cut -f 1 -d ' ' | \
-  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_outvocab.xml || true
+  local/subset_kwslist.pl $keywords > $kwsdatadir/kwlist_outvocab.xml) || true
 
 
 # Compile keywords into FSTs
