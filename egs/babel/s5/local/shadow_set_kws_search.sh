@@ -26,6 +26,8 @@ strict=true
 skip_optimization=false
 max_states=150000
 word_ins_penalty=0
+index_only=false
+ntrue_scale=0.1
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -72,33 +74,46 @@ kwsdatadir=$datadir/kws
 
 ! durationA=`head -1 $datasetA/kws/ecf.xml |\
     grep -o -E "duration=\"[0-9]*[    \.]*[0-9]*\"" |\
-    grep -o -E "[0-9]*[\.]*[0-9]*" |\
-    perl -e 'while(<>) {print $_/2;}'` && \
+    perl -e 'while($m=<>) {$m=~s/.*\"([0-9.]+)\".*/\1/; print $m/2;}'` &&
    echo "Error getting duration from $datasetA/kws/ecf.xml" && exit 1;
 
 
 ! durationB=`head -1 $datasetB/kws/ecf.xml |\
     grep -o -E "duration=\"[0-9]*[    \.]*[0-9]*\"" |\
-    grep -o -E "[0-9]*[\.]*[0-9]*" |\
-    perl -e 'while(<>) {print $_/2;}'` && \
-   echo "Error getting duration from $datasetA/kws/ecf.xml" && exit 1;
+    perl -e 'while($m=<>) {$m=~s/.*\"([0-9.]+)\".*/\1/; print $m/2;}'` &&
+   echo "Error getting duration from $datasetB/kws/ecf.xml" && exit 1;
+
+[ -z $durationA ] &&  echo "Error getting duration from $datasetA/kws/ecf.xml" && exit 1;
+[ -z $durationB ] &&  echo "Error getting duration from $datasetB/kws/ecf.xml" && exit 1;
 
 if [ ! -z "$model" ]; then
     model_flags="--model $model"
 fi
 
+mkdir -p $decodedir/kws/
 if [ $stage -le 0 ] ; then
   echo "Making KWS indices..."
-  for lmwt in `seq $min_lmwt $max_lmwt` ; do
-      kwsoutdir=$decodedir/kws_$lmwt
-      mkdir -p $kwsoutdir
+  if [ ! -f $decodedir/kws/.done.index ] ; then
+    for lmwt in `seq $min_lmwt $max_lmwt` ; do
+        kwsoutdir=$decodedir/kws_$lmwt
+        mkdir -p $kwsoutdir
+  
+        acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
+        steps/make_index.sh --strict $strict --cmd "$cmd" --max-states $max_states\
+          --acwt $acwt $model_flags --skip-optimization $skip_optimization \
+          --word_ins_penalty $word_ins_penalty \
+          $kwsdatadir $langdir $decodedir $kwsoutdir  || exit 1
+    done
+    touch $decodedir/kws/.done.index
+  else
+    echo "Assuming indexing has been aready done. If you really need to re-run "
+    echo "the indexing again, delete the file $decodedir/kws/.done.index"
+  fi
+fi
 
-      acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
-      steps/make_index.sh --strict $strict --cmd "$cmd" --max-states $max_states\
-        --acwt $acwt $model_flags --skip-optimization $skip_optimization \
-        --word_ins_penalty $word_ins_penalty \
-        $kwsdatadir $langdir $decodedir $kwsoutdir  || exit 1
-  done
+if $index_only ; then
+  echo "Indexing only was requested, existing now..."
+  exit 0
 fi
 
 if [ $stage -le 1 ] ; then
@@ -144,7 +159,7 @@ if [ $stage -le 3 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirA/kws/kws_write_unnormalized.LMWT.log \
     set -e';' set -o pipefail';' \
     cat $rootdirA/kws_LMWT/results \| \
-    utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
+    utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$durationA \
       --segments=$datadir/segments --normalize=false --remove-dup=true\
       --map-utter=$kwsdatadir/utter_map - $rootdirA/kws_LMWT/kwslist.unnormalized.xml || exit 1
 fi
@@ -176,7 +191,7 @@ if [ $stage -le 6 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_write_unnormalized.LMWT.log \
     set -e';' set -o pipefail';' \
     cat $rootdirB/kws_LMWT/results \| \
-    utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
+    utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$durationB \
       --segments=$datadir/segments --normalize=false --remove-dup=true\
       --map-utter=$kwsdatadir/utter_map - $rootdirB/kws_LMWT/kwslist.unnormalized.xml || exit 1
 fi
