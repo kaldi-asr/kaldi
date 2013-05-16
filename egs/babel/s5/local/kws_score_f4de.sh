@@ -6,6 +6,7 @@
 # Begin configuration section.
 # case_insensitive=true
 extraid=
+kwlist=
 # End configuration section.
 
 help_message="$0: create subset of the input directory (specified as the first directory).
@@ -32,22 +33,27 @@ else
 fi
 kwsoutputdir="$2/"
 
+if [ -z $kwlist ] ; then
+  kwlist=$kwsdatadir/kwlist.xml
+fi
+
+
 if [[ ! -d "$kwsdatadir" ]] ; then
     echo "FATAL: the KWS input data directory does not exist!"
     exit 1;
 fi
 
-for file in ecf.xml rttm kwlist.xml ; do
-    if [[ ! -f "$kwsdatadir/$file" ]] ; then
-        echo "FATAL: file $kwsdatadir/$file does not exist!"
+for file in $kwsdatadir/ecf.xml $kwsdatadir/rttm $kwlist ; do
+    if [[ ! -f "$file" ]] ; then
+        echo "FATAL: file $file does not exist!"
         exit 1;
     fi
 done
 
-echo KWSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwsdatadir/kwlist.xml \
+echo KWSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwlist \
     -s $kwsoutputdir/kwslist.xml -c -o -b -d -f $kwsoutputdir
 
-KWSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwsdatadir/kwlist.xml \
+KWSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwlist \
     -s $kwsoutputdir/kwslist.xml -c -o -b -d -f $kwsoutputdir || exit 1;
 
 exit 0;
