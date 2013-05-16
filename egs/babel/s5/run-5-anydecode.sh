@@ -61,14 +61,14 @@ if [[ "$nj_max" -lt "$my_nj" ]] ; then
   my_nj=$nj_max
 fi
 
-if [[ ! -f data/${type}/wav.scp || data/${type}/wav.scp -ot "$dev2h_data_dir" ]]; then
+if [[ ! -f data/${type}/wav.scp || data/${type}/wav.scp -ot "$my_data_dir" ]]; then
   echo ---------------------------------------------------------------------
   echo "Preparing ${type} data lists in data/${type} on" `date`
   echo ---------------------------------------------------------------------
   mkdir -p data/${type}
   local/prepare_acoustic_training_data.pl \
     --fragmentMarkers \-\*\~ \
-    $dev2h_data_dir data/${type} > data/${type}/skipped_utts.log || exit 1
+    $my_data_dir data/${type} > data/${type}/skipped_utts.log || exit 1
 fi
 
 
