@@ -35,6 +35,7 @@ min_lmwt=7
 max_lmwt=17
 parallel_opts="-pe smp 3"
 skip_scoring=false
+ctm_name=
 #end configuration section.
 
 help_message="Usage: "$(basename $0)" [options] <data-dir> <graph-dir|lang-dir> <decode-dir1>[:lmwt-bias] <decode-dir2>[:lmwt-bias] [<decode-dir3>[:lmwt-bias] ... ] <out-dir>
@@ -69,6 +70,11 @@ decode_dirs=( $@ )  # read the remaining arguments into an array
 unset decode_dirs[${#decode_dirs[@]}-1]  # 'pop' the last argument which is odir
 num_sys=${#decode_dirs[@]}  # number of systems to combine
 
+#Let the user to set the CTM file name 
+#use the data-dir name in case the user doesn't care
+if [ -z ${ctm_name} ] ; then
+  ctm_name=`basename $data`
+fi
 
 
 for f in $lang/words.txt $lang/phones/word_boundary.int ; do
@@ -79,12 +85,6 @@ if ! $skip_scoring ; then
     [ ! -f $f ] && echo "$0: file $f does not exist" && exit 1;
   done
 fi
-
-ScoringProgram=$KALDI_ROOT/tools/sctk-2.4.0/bin/sclite
-[ ! -f $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
-SortingProgram=`which hubscr.pl` || ScoringProgram=$KALDI_ROOT/tools/sctk-2.4.0/bin/hubscr.pl
-[ ! -x $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
-
 
 
 mkdir -p $dir/log
@@ -123,9 +123,6 @@ done
 
 mkdir -p $dir/scoring/log
 
-cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' \
-  > $dir/scoring/test_filt.txt
-
 if [ -z "$lat_weights" ]; then
   lat_weights=1.0
   for i in `seq $[$num_sys-1]`; do lat_weights="$lat_weights:1.0"; done
@@ -138,13 +135,15 @@ if [ $stage -le 0 ]; then
     lattice-to-ctm-conf --decode-mbr=true ark:- - \| \
     utils/int2sym.pl -f 5 $lang/words.txt  \| \
     utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-    '>' $dir/score_LMWT/$name.ctm || exit 1;
+    '>' $dir/score_LMWT/${ctm_name}.ctm || exit 1;
 fi
 
 
 if [ $stage -le 1 ]; then
-# Remove some stuff we don't want to score, from the ctm.
-  for x in $dir/score_*/$name.ctm; do
+  # Remove some stuff we don't want to score, from the ctm.
+  for lmwt in `$min_lmwt $max_lmwt`; do
+    x=$dir/score_${lmwt}/${ctm_name}.ctm
+    [ ! -f $x ] && echo "File $x does not exist! Exiting... " && exit 1
     cp $x $x.bkup1;
     cat $x.bkup1 | grep -v -E '\[NOISE|LAUGHTER|VOCALIZED-NOISE\]' | \
       grep -v -E '<UNK>|%HESITATION|\(\(\)\)' | \
@@ -168,57 +167,13 @@ if [ $stage -le 1 ]; then
         }
       }' > $x;
     cp $x $x.bkup2;
-    y=${x%.ctm};
-    cat $x.bkup2 | \
-      perl -e '
-      use Encode;
-      while(<>) {
-        chomp;
-        @col = split(" ", $_);
-        @col == 6 || die "Bad number of columns!";
-        if ($col[4] =~ m/[\x80-\xff]{2}/) {
-          $word = decode("UTF8", $col[4]);
-          @char = split(//, $word);
-          $start = $col[2];
-          $dur = $col[3]/@char;
-          $start -= $dur;
-          foreach (@char) {
-            $char = encode("UTF8", $_);
-            $start += $dur;
-            # printf "$col[0] $col[1] $start $dur $char\n"; 
-            printf "%s %s %.2f %.2f %s %s\n", $col[0], $col[1], $start, $dur, $char, $col[5]; 
-          }
-        }
-      }' > $y.char.ctm
-    cp $y.char.ctm $y.char.ctm.bkup1
   done
 fi
 
 if ! $skip_scoring ; then
   if [ $stage -le 2 ]; then
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
-      cp $data/stm $dir/score_LMWT/ '&&' cp $data/glm $dir/score_LMWT/ '&&'\
-      cp $dir/score_LMWT/${name}.ctm $dir/score_LMWT/${name}.ctm.unsorted '&&'\
-      utils/fix_ctm.sh $dir/score_LMWT/stm $dir/score_LMWT/${name}.ctm.unsorted '&&' \
-      $SortingProgram sortCTM \<$dir/score_LMWT/${name}.ctm.unsorted \>$dir/score_LMWT/${name}.ctm '&&' \
-      $ScoringProgram -s -r $dir/score_LMWT/stm stm -h $dir/score_LMWT/${name}.ctm ctm -o all -o dtl;
-
-    if [ $cer -eq 1 ]; then
-      $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.char.log \
-        cp $data/char.stm $dir/score_LMWT/'&&'\
-        $ScoringProgram -s -r $dir/score_LMWT/char.stm stm -h $dir/score_LMWT/${name}.char.ctm ctm -o all -o dtl;
-    fi
-fi
-
-#  for x in $dir/score_*/*.ctm; do
-#    mv $x.filt $x;
-#    rm -f $x.filt*;
-#  done
-
-#  for x in $dir/score_*/*stm; do
-#    mv $x.filt $x;
-#    rm -f $x.filt*;
-#  done
+    local/score_stm.sh --min-lmwt $min_lmwt --max-lmwt  $man_lmwt $data $lang $dir || exit 1
+  fi
 fi
 
 
