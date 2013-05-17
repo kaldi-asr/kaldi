@@ -513,7 +513,7 @@ inline void ComposeContext(vector<int32> &disambig_syms_in,
     subseq_sym = std::max(subseq_sym, all_syms.back() + 1);
   if (!disambig_syms.empty())
     subseq_sym = std::max(subseq_sym, disambig_syms.back() + 1);
-
+  
   // if P == N-1, it's left-context, and no subsequential symbol needed.
   if (P != N-1)
     AddSubsequentialLoop(subseq_sym, ifst);

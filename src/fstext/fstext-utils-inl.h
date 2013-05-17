@@ -91,7 +91,7 @@ void GetInputSymbols(const Fst<Arc> &fst,
                      bool include_eps,
                      vector<I> *symbols) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
-  std::set<I> all_syms;
+  unordered_set<I> all_syms;
   for (StateIterator<Fst<Arc> > siter(fst); !siter.Done(); siter.Next()) {
     typename Arc::StateId s = siter.Value();
     for (ArcIterator<Fst<Arc> > aiter(fst, s); !aiter.Done();  aiter.Next()) {
@@ -100,7 +100,7 @@ void GetInputSymbols(const Fst<Arc> &fst,
     }
   }
   // Remove epsilon, if instructed.
-  if (!include_eps && !all_syms.empty() && *(all_syms.begin()) == 0)
+  if (!include_eps && all_syms.count(0) != 0)
     all_syms.erase(0);
   assert(symbols != NULL);
   kaldi::CopySetToVector(all_syms, symbols);
