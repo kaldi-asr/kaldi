@@ -91,11 +91,16 @@ class OnlineCmnInput: public OnlineFeatInputItf {
   // Appends rows of A to B.
   static void AppendToMatrix(const Matrix<BaseFloat> &A,
                              Matrix<BaseFloat> *B);
+  virtual bool ComputeInternal(Matrix<BaseFloat> *output,
+                               int32 timeout);
   OnlineFeatInputItf *input_;
   int32 cmn_window_;
   int32 min_window_;
   Matrix<BaseFloat> history_; // circular-buffer history.
-  Matrix<BaseFloat> initial_buffer_; // used at start of file.
+  Matrix<BaseFloat> initial_buffer_; // used at start of file; we view
+  // this as pending data that we have not processed yet [it's needed
+  // if min_window_ > 0, because we need a minimum number of frames for
+  // the initial CMN estimates.]
   
   int64 t_; // number of frames that have been written to
             // the circular buffer.

@@ -36,11 +36,37 @@ void OnlineCmnInput::AppendToMatrix(const Matrix<BaseFloat> &A,
   }
 }
 
+// This is a wrapper for ComputeInternal.  It behaves exactly the
+// same as ComputeInternal, except that at the start of the file,
+// ComputeInternal may return empty output multiple times in a row.
+// This function prevents those initial non-productive calls, which
+// may otherwise confuse decoder code into thinking there is
+// a problem with the stream (too many timeouts), and cause it to fail.
+bool OnlineCmnInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
+  
+  int32 orig_nr = output->NumRows(), orig_nc = output->NumCols();
+  int32 initial_buffer_nr = initial_buffer_.NumRows();
+  bool ans;
+  while ((ans = ComputeInternal(output, timeout))) {
+    if (output->NumRows() == 0 &&
+        initial_buffer_.NumRows() != initial_buffer_nr) {
+      // we produced no output but added to our internal buffer.
+      // Call ComputeInternal again.
+      initial_buffer_nr = initial_buffer_.NumRows();
+      output->Resize(orig_nr, orig_nc); // make the same request.
+    } else {
+      return ans;
+    }
+  }
+  return ans; // ans = false.  If ComputeInternal returned false,
+  // it means we are done, so no point calling it again.
+}
+
 
 // What happens at the start of the utterance is not really ideal, it would be
 // better to have some "fake stats" extracted from typical data from this domain,
 // to start with.  We'll have to do this later.
-bool OnlineCmnInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
+bool OnlineCmnInput::ComputeInternal(Matrix<BaseFloat> *output, int32 timeout) {
   KALDI_ASSERT(output->NumRows() > 0 && output->NumCols() == Dim());
 
   bool more_data = input_->Compute(output, timeout);
