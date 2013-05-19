@@ -19,31 +19,15 @@ b) If you plan to work on one or more languages, the following approach is advis
 
 Running the training scripts
 ===================================================
-The training scripts expect one parameter: the language config
-You can see default scripts in the directory conf/languages/*.conf
-The scripts *official.conf are the configurations for NIST defined data 
-splits and dictionaries. 
-Running training using these configs you will obtain the systems
-functionally equivalent to the JHU systems (they can perform a little differently
-depending on the CPU, matrix library and compiler switches).
 
+You run the scripts in order, i.e.
+ run-1-main.sh
+ run-2a-nnet.sh and run-2-bnf.sh may be run in parallel, but run-2-bnf.sh should be
+    run on a machine that has a GPU.
+ run-3-bnf-system.sh trains an SGMM system on top of bottleneck features from run-2-bnf.sh
+ run-4-test.sh is decoding with provided segmentation (we get this from CMU)
+ run-5-anydecode.sh seems to be decoding with the segmentation provided 
 
-What all the files in the s5/ directory are good for?
-==================================================
-* run-limited.sh -- training the LimitedLP systems
-* run.sh -- training the FullLP condition systems
-
-* run-test-limited.sh
-* run-test.sh -- decoding of the eval part of the BABEL corpora using 
-    the CMU UEM database (which you probably do not have). Still, you
-    can use these scripts if you create the segmentation differently,
-    prepare the kaldi directory and comment out the command local/cmu_uem2kaldi_dir.sh
-
-* run-eval.sh -- evaluation of the 10h devel set (the training uses only 
-    2h subset for tunning purposes)
-
-* make_release.sh -- script for export of the best results to be prepared
-    for official NIST submission
 
 
 Official NIST submission preparation
