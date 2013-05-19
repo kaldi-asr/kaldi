@@ -1,6 +1,7 @@
 // transform/fmllr-diag-gmm.h
 
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,11 +58,17 @@ struct FmllrOptions {
 
 class FmllrDiagGmmAccs: public AffineXformStats {
  public:
-  FmllrDiagGmmAccs() { }
-  FmllrDiagGmmAccs(const FmllrDiagGmmAccs &other):
-      AffineXformStats(other) { }
-  explicit FmllrDiagGmmAccs(int32 dim) { Init(dim); }
-
+  // If supplied, the "opts" will only be used to limit the
+  // stats that are accumulated, to the parts we'll need in the
+  // update.
+  FmllrDiagGmmAccs(const FmllrOptions &opts = FmllrOptions()):
+      opts_(opts) { }
+  explicit FmllrDiagGmmAccs(const FmllrDiagGmmAccs &other):
+      AffineXformStats(other), single_frame_stats_(other.single_frame_stats_),
+      opts_(other.opts_) {}
+  explicit FmllrDiagGmmAccs(int32 dim, const FmllrOptions &opts = FmllrOptions()):
+      opts_(opts) { Init(dim); }
+  
   // The following initializer gives us an efficient way to
   // compute these stats from full-cov Gaussian statistics
   // (accumulated from a *diagonal* model (e.g. use
@@ -69,7 +76,9 @@ class FmllrDiagGmmAccs: public AffineXformStats {
   // AccumulateFromDiag).
   FmllrDiagGmmAccs(const DiagGmm &gmm, const AccumFullGmm &fgmm_accs);
   
-  void Init(size_t dim) { AffineXformStats::Init(dim, dim); }
+  void Init(size_t dim) {
+    AffineXformStats::Init(dim, dim); single_frame_stats_.Init(dim);
+  }
 
   /// Accumulate stats for a single GMM in the model; returns log likelihood.
   BaseFloat AccumulateForGmm(const DiagGmm &gmm,
@@ -81,12 +90,44 @@ class FmllrDiagGmmAccs: public AffineXformStats {
                                 const VectorBase<BaseFloat> &data,
                                 const VectorBase<BaseFloat> &posteriors);
 
+  /// Update
   void Update(const FmllrOptions &opts,
               MatrixBase<BaseFloat> *fmllr_mat,
               BaseFloat *objf_impr,
-              BaseFloat *count) const;
+              BaseFloat *count);
 
   // Note: we allow copy and assignment for this class.
+
+ private:
+  // The things below, added in 2013, relate to an optimization that lets us
+  // speed up accumulation if there are multiple active pdfs per frame
+  // (e.g. when accumulating from lattices), or if we don't anticipate
+  // doing a "full" update.
+  
+  struct SingleFrameStats {
+    Vector<BaseFloat> x; // dim-dimensional features.
+    Vector<BaseFloat> a; // linear term in per-frame auxf; dim is model-dim.
+    Vector<BaseFloat> b; // quadratic term in per-frame auxf; dim is model-dim.
+    double count;
+    SingleFrameStats(int32 dim = 0) { Init(dim); }
+    SingleFrameStats(const SingleFrameStats &s): x(s.x), a(s.a), b(s.b),
+                                                 count(s.count) {}
+    void Init(int32 dim);
+  };  
+
+  void CommitSingleFrameStats();
+
+  void InitSingleFrameStats(const VectorBase<BaseFloat> &data);
+  
+  bool DataHasChanged(const VectorBase<BaseFloat> &data) const; // compares it to the
+  // data in single_frame_stats_, returns true if it's different.
+
+  SingleFrameStats single_frame_stats_;
+  
+  // We only use the opts_ variable for its "update_type" data member,
+  // which limits what parts of the G matrix we accumulate.
+  FmllrOptions opts_;
+  
 };
 
 

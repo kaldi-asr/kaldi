@@ -63,7 +63,7 @@ void UnitTestFmllrDiagGmm() {
   BaseFloat objf_change_tot = 0.0, objf_change, count;
   for (int32 j = 0; j < niters; j++) {
     FmllrOptions opts;
-    FmllrDiagGmmAccs stats(dim);
+    FmllrDiagGmmAccs stats(dim, j % 2 == 0 ? opts : FmllrOptions());
     for (int32 i = 0; i < npoints; i++) {
       SubVector<BaseFloat> row(rand_points, i);
       if (j == 0) {  // split this case off to exercise more of the code.
@@ -122,7 +122,7 @@ void UnitTestFmllrDiagGmmDiagonal() {
   opts.update_type = "diag";
 
   for (int32 j = 0; j < niters; j++) {
-    FmllrDiagGmmAccs stats(dim);
+    FmllrDiagGmmAccs stats(dim, j % 2 == 0 ? opts : FmllrOptions());
     for (int32 i = 0; i < npoints; i++) {
       SubVector<BaseFloat> row(rand_points, i);
       if (j == 0) {  // split this case off to exercise more of the code.
@@ -182,7 +182,7 @@ void UnitTestFmllrDiagGmmOffset() {
   opts.update_type = "offset";
 
   for (int32 j = 0; j < niters; j++) {
-    FmllrDiagGmmAccs stats(dim);
+    FmllrDiagGmmAccs stats(dim, j % 2 == 0 ? opts : FmllrOptions());
     for (int32 i = 0; i < npoints; i++) {
       SubVector<BaseFloat> row(rand_points, i);
       if (j == 0) {  // split this case off to exercise more of the code.
@@ -223,7 +223,7 @@ void UnitTestFmllrDiagGmmOffset() {
 }  // namespace kaldi ends here
 
 int main() {
-  for (int i = 0; i < 1; i++) {  // did more iterations when first testing...
+  for (int i = 0; i < 2; i++) {  // did more iterations when first testing...
     kaldi::UnitTestFmllrDiagGmmOffset();
     kaldi::UnitTestFmllrDiagGmmDiagonal();
     kaldi::UnitTestFmllrDiagGmm();

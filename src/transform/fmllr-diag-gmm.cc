@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University;
 //                      Georg Stemmer
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,36 +25,24 @@ using std::vector;
 
 namespace kaldi {
 
-void
-FmllrDiagGmmAccs::
-AccumulateFromPosteriors(const DiagGmm &pdf,
-                         const VectorBase<BaseFloat> &data,
-                         const VectorBase<BaseFloat> &posterior) {
-  int32 num_comp = pdf.NumGauss();
-  int32 dim = dim_;
+void FmllrDiagGmmAccs:: AccumulateFromPosteriors(
+    const DiagGmm &pdf,
+    const VectorBase<BaseFloat> &data,
+    const VectorBase<BaseFloat> &posterior) {
   
-  Vector<double> extended_data(dim+1);
-  extended_data.Range(0, dim).CopyFromVec(data);
-  extended_data(dim) = 1.0;
-  SpMatrix<double> scatter(dim+1);
-  scatter.AddVec2(1.0, extended_data);
-  Vector<double> inv_var_mean(dim);
-  Vector<double> g_scale(dim);  // scale on "scatter" for each dim.
-  for (int32 m = 0; m < num_comp; m++) {
-    BaseFloat this_post = posterior(m);
-    if (this_post != 0.0) {
-      inv_var_mean.CopyRowFromMat(pdf.means_invvars(), m);
-      this->beta_ += this_post;
-      this->K_.AddVecVec(this_post, inv_var_mean, extended_data);
-      g_scale.AddVec(this_post, pdf.inv_vars().Row(m));
-    }
+  if (this->DataHasChanged(data)) {
+    CommitSingleFrameStats();
+    InitSingleFrameStats(data);
   }
-  for (int32 d = 0; d < dim; d++)
-    this->G_[d].AddSp(g_scale(d), scatter);
+  SingleFrameStats &stats = this->single_frame_stats_;
+  stats.count += posterior.Sum();
+  stats.a.AddMatVec(1.0, pdf.means_invvars(), kTrans, posterior, 1.0);
+  stats.b.AddMatVec(1.0, pdf.inv_vars(), kTrans, posterior, 1.0);
 }
 
-FmllrDiagGmmAccs::
-FmllrDiagGmmAccs(const DiagGmm &gmm, const AccumFullGmm &fgmm_accs) {
+FmllrDiagGmmAccs::FmllrDiagGmmAccs(const DiagGmm &gmm,
+                                   const AccumFullGmm &fgmm_accs):
+    single_frame_stats_(gmm.Dim()), opts_(FmllrOptions()) {
   KALDI_ASSERT(gmm.NumGauss() == fgmm_accs.NumGauss()
                && gmm.Dim() == fgmm_accs.Dim());
   Init(gmm.Dim());
@@ -102,12 +91,16 @@ BaseFloat FmllrDiagGmmAccs::AccumulateForGmm(const DiagGmm &pdf,
 void FmllrDiagGmmAccs::Update(const FmllrOptions &opts,
                               MatrixBase<BaseFloat> *fmllr_mat,
                               BaseFloat *objf_impr,
-                              BaseFloat *count) const {
+                              BaseFloat *count) {
   KALDI_ASSERT(fmllr_mat != NULL);
+  CommitSingleFrameStats();
   if (fmllr_mat->IsZero())
-    KALDI_ERR << "FmllrDiagGmmAccs::Update(), you must initialize the fMLLR "
-        "matrix to a non-singular value (so we can report objective function "
-        "changes); e.g. call SetUnit()";
+    KALDI_ERR << "You must initialize the fMLLR matrix to a non-singular value "
+        "(so we can report objective function changes); e.g. call SetUnit()";
+  if (opts.update_type == "full" && this->opts_.update_type != "full") {
+    KALDI_ERR << "You are requesting a full-fMLLR update but you accumulated "
+              << "stats for more limited update type.";
+  }
   if (beta_ > opts.min_count) {
     Matrix<BaseFloat> tmp_old(*fmllr_mat), tmp_new(*fmllr_mat);
     BaseFloat objf_change;
@@ -138,13 +131,13 @@ BaseFloat ComputeFmllrMatrixDiagGmm(const MatrixBase<BaseFloat> &in_xform,
                                     std::string fmllr_type,  // "none", "offset", "diag", "full"
                                     int32 num_iters,
                                     MatrixBase<BaseFloat> *out_xform) {
-  if (fmllr_type == "full")
+  if (fmllr_type == "full") {
     return ComputeFmllrMatrixDiagGmmFull(in_xform, stats, num_iters, out_xform);
-  else if (fmllr_type == "diag")
+  } else if (fmllr_type == "diag") {
     return ComputeFmllrMatrixDiagGmmDiagonal(in_xform, stats, out_xform);
-  else if (fmllr_type == "offset")
+  } else if (fmllr_type == "offset") {
     return ComputeFmllrMatrixDiagGmmOffset(in_xform, stats, out_xform);
-  else if (fmllr_type == "none") {
+  } else if (fmllr_type == "none") {
     if (!in_xform.IsUnit())
       KALDI_WARN << "You set fMLLR type to \"none\" but your starting transform "
           "is not unit [this is strange, and diagnostics will be wrong].";
@@ -505,6 +498,64 @@ BaseFloat FmllrAuxfGradient(const MatrixBase<BaseFloat> &xform,
 
   return obj;
 }
+
+bool FmllrDiagGmmAccs::DataHasChanged(const VectorBase<BaseFloat> &data) const {
+  KALDI_ASSERT(data.Dim() == this->Dim());
+  return !data.ApproxEqual(single_frame_stats_.x, 0.0);
+}
+
+void FmllrDiagGmmAccs::SingleFrameStats::Init(int32 dim) {
+  x.Resize(dim);
+  a.Resize(dim);
+  b.Resize(dim);
+  count = 0.0;
+}  
+
+void FmllrDiagGmmAccs::InitSingleFrameStats(const VectorBase<BaseFloat> &data) {
+  SingleFrameStats &stats = single_frame_stats_;
+  stats.x.CopyFromVec(data);
+  stats.count = 0.0;
+  stats.a.SetZero();
+  stats.b.SetZero();
+}
+
+void FmllrDiagGmmAccs::CommitSingleFrameStats() {
+  // Commit the stats for this from (in SingleFrameStats).
+  int32 dim = Dim();
+  SingleFrameStats &stats = single_frame_stats_;
+  if (stats.count == 0.0) return;
+
+  Vector<double> xplus(dim+1);
+  xplus.Range(0, dim).CopyFromVec(stats.x);
+  xplus(dim) = 1.0;
+  
+  this->beta_ += stats.count;
+  this->K_.AddVecVec(1.0, Vector<double>(stats.a), xplus);
+
+
+  if (opts_.update_type == "full") {
+    SpMatrix<double> scatter(dim+1);
+    scatter.AddVec2(1.0, xplus);
+    
+    KALDI_ASSERT(static_cast<size_t>(dim) == this->G_.size());
+    for (int32 i = 0; i < dim; i++)
+      this->G_[i].AddSp(stats.b(i), scatter);
+  } else {
+    // We only need some elements of these stats, so just update those elements.
+    for (int32 i = 0; i < dim; i++) {
+      BaseFloat scale = stats.b(i), x_i = xplus(i);
+      this->G_[i](i, i) += scale * x_i * x_i;
+      this->G_[i](dim, i) += scale * 1.0 * x_i;
+      this->G_[i](dim, dim) += scale * 1.0 * 1.0;
+    }
+  }
+
+  stats.count = 0.0;
+  stats.a.SetZero();
+  stats.b.SetZero();
+}
+    
+
 
 
 } // namespace kaldi

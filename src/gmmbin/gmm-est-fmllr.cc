@@ -1,6 +1,7 @@
 // gmmbin/gmm-est-fmllr.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -97,7 +98,7 @@ int main(int argc, char *argv[]) {
       RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
       for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
-        FmllrDiagGmmAccs spk_stats(am_gmm.Dim());
+        FmllrDiagGmmAccs spk_stats(am_gmm.Dim(), fmllr_opts);
         string spk = spk2utt_reader.Key();
         const vector<string> &uttlist = spk2utt_reader.Value();
         for (size_t i = 0; i < uttlist.size(); i++) {
@@ -159,7 +160,7 @@ int main(int argc, char *argv[]) {
         }
         num_done++;
 
-        FmllrDiagGmmAccs spk_stats(am_gmm.Dim());
+        FmllrDiagGmmAccs spk_stats(am_gmm.Dim(), fmllr_opts);
 
         AccumulateForUtterance(feats, post, trans_model, am_gmm,
                                &spk_stats);

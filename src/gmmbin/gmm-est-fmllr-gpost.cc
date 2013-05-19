@@ -1,6 +1,7 @@
 // gmmbin/gmm-est-fmllr-gpost.cc
 
 // Copyright 2009-2011  Microsoft Corporation; Saarland University
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

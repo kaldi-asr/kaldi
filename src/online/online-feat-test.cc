@@ -165,7 +165,7 @@ void TestOnlineLdaInput() {
 
 void TestOnlineCmnInput() { // We're also testing OnlineCacheInput here.
   int32 dim = 2 + rand() % 5; // dimension of features.
-  int32 num_frames = 100 + rand() % 100;
+  int32 num_frames = 10 + rand() % 10;
   
   Matrix<BaseFloat> input_feats(num_frames, dim);
   input_feats.SetRandn();
