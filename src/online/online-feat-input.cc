@@ -90,11 +90,13 @@ bool OnlineCmnInput::ComputeInternal(Matrix<BaseFloat> *output, int32 timeout) {
         // Make this object's state reflect what happened,
         // even though it should never be accessed.
         int32 nr = output->NumRows();
-        history_.Range(0, nr,
-                       0, Dim()).CopyFromMat(*output);
-        for (int32 i = 0; i < min_window_; i++)
-          sum_.AddVec(1.0, history_.Row(i));
-        t_ = nr;
+        if (nr != 0) {
+          history_.Range(0, nr,
+                         0, Dim()).CopyFromMat(*output);
+          for (int32 i = 0; i < min_window_; i++)
+            sum_.AddVec(1.0, history_.Row(i));
+          t_ = nr;
+        }
         return more_data;
       } else {
         // more data will come; cache what we have but produce no output.
