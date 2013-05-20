@@ -73,6 +73,7 @@ int main(int argc, char *argv[]) {
       std::string key = clat_reader.Key();
       CompactLattice clat = clat_reader.Value();
       clat_reader.FreeCurrent();
+      KALDI_VLOG(1) << "Processing lattice " << key;
 
       //Check if we have the corresponding utterance id
       if (!usymtab_reader.HasKey(key)) {
@@ -101,6 +102,7 @@ int main(int argc, char *argv[]) {
       // Dogan and Murat's paper -- clustering. Note that we do the first part
       // of preprocessing (the weight pushing step) later when generating the
       // factor transducer.
+      KALDI_VLOG(1) << "Arc clustering...";
       bool success = false;
       success = ClusterLattice(&clat, state_times);
       if (!success) {
@@ -113,6 +115,7 @@ int main(int argc, char *argv[]) {
       // CreateFactorTransducer() corresponds to the "Factor Generation" part of
       // Dogan and Murat's paper. But we also move the weight pushing step to
       // this function as we have to compute the alphas and betas anyway.
+      KALDI_VLOG(1) << "Generating factor transducer...";
       KwsProductFst factor_transducer;
       int32 utterance_id = usymtab_reader.Value(key);
       success = CreateFactorTransducer(clat, state_times, utterance_id, &factor_transducer);
@@ -124,19 +127,23 @@ int main(int argc, char *argv[]) {
       // Remove long silence arc
       // We add the filtering step in our implementation. This is because gap
       // between two successive words in a query term should be less than 0.5s
+      KALDI_VLOG(1) << "Removing long silence...";
       RemoveLongSilences(max_silence_frames, state_times, &factor_transducer);
 
       // Do factor merging, and return a transducer in T*T*T semiring. This step
       // corresponds to the "Factor Merging" part in Dogan and Murat's paper.
+      KALDI_VLOG(1) << "Merging factors...";
       KwsLexicographicFst index_transducer;
       DoFactorMerging(factor_transducer, &index_transducer);
 
       // Do factor disambiguation. It corresponds to the "Factor Disambiguation"
       // step in Dogan and Murat's paper.
+      KALDI_VLOG(1) << "Doing factor disambiguation...";
       DoFactorDisambiguation(&index_transducer);
 
       // Optimize the above factor transducer. It corresponds to the
       // "Optimization" step in the paper.
+      KALDI_VLOG(1) << "Optimizing factor transducer...";
       OptimizeFactorTransducer(&index_transducer);
 
       // Write result

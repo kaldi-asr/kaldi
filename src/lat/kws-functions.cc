@@ -375,9 +375,11 @@ void DoFactorMerging(KwsProductFst factor_transducer,
   Encode(&factor_transducer, &encoder);
 
   // Use DeterminizeStar
+  KALDI_VLOG(2) << "DoFactorMerging: determinization...";
   KwsProductFst dest_transducer;
   DeterminizeStar(factor_transducer, &dest_transducer);
 
+  KALDI_VLOG(2) << "DoFactorMerging: minimization...";
   Minimize(&dest_transducer);
 
   Decode(&dest_transducer, encoder);
@@ -408,7 +410,9 @@ void OptimizeFactorTransducer(KwsLexicographicFst *index_transducer) {
   KwsLexicographicFst ifst = *index_transducer;
   EncodeMapper<KwsLexicographicArc> encoder(kEncodeLabels, ENCODE);
   Encode(&ifst, &encoder);
+  KALDI_VLOG(2) << "OptimizeFactorTransducer: determinization...";
   Determinize(ifst, index_transducer);
+  KALDI_VLOG(2) << "OptimizeFactorTransducer: minimization...";
   Minimize(index_transducer);
   Decode(index_transducer, encoder);
 }
