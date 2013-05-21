@@ -31,7 +31,7 @@ check_portaudio:
 	@[ -d ../tools/portaudio ] || ( cd ../tools;  ./install_portaudio.sh )
 
 clean: 
-	-for x in $(SUBDIRS); do $(MAKE) -C $$x clean; done
+	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x clean; done
 
 # the part after the expands to "base/test matrix/test util/test ...."
 test: $(addsuffix /test, $(SUBDIRS))
@@ -46,7 +46,7 @@ valgrind:
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x valgrind || { echo "valgrind on $$x failed"; exit 1; }; done
 
 depend: 
-	-for x in $(SUBDIRS); do $(MAKE) -C $$x depend; done
+	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x depend; done
 
 
 .PHONY: $(SUBDIRS)
