@@ -364,65 +364,114 @@ void OnlineCacheInput::Deallocate() {
   data_.clear();
 }
 
-OnlineDeltaInput::OnlineDeltaInput(OnlineFeatInputItf *input,
-                                   uint32 order, uint32 window)
-    : input_(input), feat_dim_(input->Dim()), order_(order),
-      window_size_(2*window*order + 1), window_center_(window*order),
-      delta_(DeltaFeaturesOptions(order, window)) { }
+
+OnlineDeltaInput::OnlineDeltaInput(const DeltaFeaturesOptions &delta_opts,
+                                   OnlineFeatInputItf *input):
+    input_(input), opts_(delta_opts), input_dim_(input_->Dim()) { }
 
 
-void
-OnlineDeltaInput::InitFeatWindow() {
-  feat_window_.Resize(window_size_, feat_dim_, kUndefined);
-  int32 i;
-  for (i = 0; i <= window_center_; ++i)
-    feat_window_.CopyRowFromVec(feat_in_.Row(0), i);
-  for (; i < window_size_; ++i)
-    feat_window_.CopyRowFromVec(feat_in_.Row(i - window_center_ - 1), i);
+// static
+void OnlineDeltaInput::AppendFrames(const MatrixBase<BaseFloat> &input1,
+                                    const MatrixBase<BaseFloat> &input2,
+                                    const MatrixBase<BaseFloat> &input3,
+                                    Matrix<BaseFloat> *output) {
+  const int32 size1 = input1.NumRows(), size2 = input2.NumRows(),
+      size3 = input3.NumRows(), size_out = size1 + size2 + size3;
+  if (size_out == 0) {
+    output->Resize(0, 0);
+    return;
+  }
+  // do std::max in case one or more of the input matrices is empty.  
+  int32 dim = std::max(input1.NumCols(),
+                       std::max(input2.NumCols(), input3.NumCols()));
+
+  output->Resize(size_out, dim);
+  if (size1 != 0)
+    output->Range(0, size1, 0, dim).CopyFromMat(input1);
+  if (size2 != 0)
+    output->Range(size1, size2, 0, dim).CopyFromMat(input2);
+  if (size3 != 0)
+    output->Range(size1 + size2, size3, 0, dim).CopyFromMat(input3);
 }
 
+void OnlineDeltaInput::DeltaComputation(const MatrixBase<BaseFloat> &input,
+                                        Matrix<BaseFloat> *output,
+                                        Matrix<BaseFloat> *remainder) const {
+  int32 input_rows = input.NumRows(),
+      output_rows = std::max(0, input_rows - Context() * 2),
+      remainder_rows = std::min(input_rows, Context() * 2),
+      input_dim = input_dim_,
+      output_dim = Dim();
+  if (remainder_rows > 0) {
+    remainder->Resize(remainder_rows, input_dim);
+    remainder->CopyFromMat(input.Range(input_rows - remainder_rows,
+                                       remainder_rows, 0, input_dim));
+  } else {
+    remainder->Resize(0, 0);
+  }
+  if (output_rows > 0) {
+    output->Resize(output_rows, output_dim);
+    DeltaFeatures delta(opts_);
+    for (int32 output_frame = 0; output_frame < output_rows; output_frame++) {
+      int32 input_frame = output_frame + Context();
+      SubVector<BaseFloat> output_row(*output, output_frame);
+      delta.Process(input, input_frame, &output_row);
+    }
+  } else {
+    output->Resize(0, 0);
+  }
+}                                     
 
 bool OnlineDeltaInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
-  // Receive raw features from the inferior
-  MatrixIndexT nrows = output->NumRows();
-  MatrixIndexT ncols = output->NumCols();
-  uint32 out_dim = feat_dim_ * (order_ + 1);
-  KALDI_ASSERT(ncols == out_dim && "Invalid feature dimensionality!");
-  feat_in_.Resize(nrows, feat_dim_, kUndefined);
-  bool more_data = input_->Compute(&feat_in_, timeout);
-  if (feat_in_.NumRows() != nrows) {
-    KALDI_VLOG(3) << "Fewer than requested features received!";
-    if (feat_in_.NumRows() == 0 ||
-        (feat_in_.NumRows() < window_size_ && feat_window_.NumRows() == 0)) {
+  KALDI_ASSERT(output->NumRows() > 0 &&
+               output->NumCols() == Dim());
+  // If output->NumRows() == 0, it corresponds to a request for zero frames,
+  // which makes no sense.
+
+  // We request the same number of frames of data that we were requested.
+  Matrix<BaseFloat> input(output->NumRows(), input_dim_);
+  bool ans = input_->Compute(&input, timeout);
+
+  // If we got no input (timed out) and we're not at the end, we return
+  // empty output.
+  if (input.NumRows() == 0 && ans) {
+    output->Resize(0, 0);
+    return ans;
+  } else if (input.NumRows() == 0 && !ans) {
+    // The end of the input stream, but no input this time.
+    if (remainder_.NumRows() == 0) {
       output->Resize(0, 0);
-      return more_data;
+      return ans;
     }
   }
 
-  // Prepare the delta window
-  int32 cur_feat = 0;
-  if (feat_window_.NumRows() == 0) {
-    InitFeatWindow();
-    cur_feat = window_size_ - window_center_ - 1;
+  // If this is the first segment of the utterance, we put in the
+  // initial duplicates of the first frame, numbered "Context()"
+  if (remainder_.NumRows() == 0 && input.NumRows() != 0 && Context() != 0) {
+    remainder_.Resize(Context(), input_dim_);
+    for (int32 i = 0; i < Context(); i++)
+      remainder_.Row(i).CopyFromVec(input.Row(0));
   }
 
-  // Calculate and output features with deltas added
-  output->Resize(feat_in_.NumRows() - cur_feat, out_dim);
-  int32 ofi = 0; // the index of the output feature
-  for (; cur_feat < feat_in_.NumRows(); ++cur_feat, ++ofi) {
-    // Update(shift up) the feature window
-    // ToDo(vdp): this looks quite inefficient - maybe use a matrix, say 10
-    // times larger than the feature window and perform a copy once per
-    // every 9*window_size_ feature vectors
-    for (int32 i = 0; i < feat_window_.NumRows() - 1; ++i)
-      feat_window_.CopyRowFromVec(feat_window_.Row(i+1), i);
-    feat_window_.CopyRowFromVec(feat_in_.Row(cur_feat), window_size_ - 1);
-    
-    SubVector<BaseFloat> out_vec(*output, ofi);
-    delta_.Process(feat_window_, window_center_, &out_vec);
+  // If this is the last segment, we put in the final duplicates of the
+  // last frame, numbered "Context()".
+  Matrix<BaseFloat> tail;
+  if (!ans && Context() > 0) {
+    tail.Resize(Context(), input_dim_);
+    for (int32 i = 0; i < Context(); i++) {
+      if (input.NumRows() > 0)
+        tail.Row(i).CopyFromVec(input.Row(input.NumRows() - 1));
+      else
+        tail.Row(i).CopyFromVec(remainder_.Row(remainder_.NumRows() - 1));
+    }
   }
-  return more_data;
-} // OnlineDeltaInput::Compute()
+  
+  Matrix<BaseFloat> appended_feats;
+  AppendFrames(remainder_, input, tail, &appended_feats);
+  DeltaComputation(appended_feats, output, &remainder_);
+  return ans; 
+}
+
 
 
 void OnlineFeatureMatrix::GetNextFeatures() {

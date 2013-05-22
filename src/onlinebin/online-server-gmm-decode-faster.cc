@@ -1,9 +1,8 @@
 // onlinebin/online-server-gmm-decode-faster.cc
 
 // Copyright 2012 Cisco Systems (author: Matthias Paulik)
-
-//   Modifications to the original contribution by Cisco Systems made by:
-//   Vassil Panayotov
+//           2012 Vassil Panayotov
+//           2013 Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -160,9 +159,13 @@ int main(int argc, char *argv[]) {
                                &cmn_input, lda_transform,
                                left_context, right_context);
     } else {
-      feat_transform = new OnlineDeltaInput(&cmn_input, 
-                                            kDeltaOrder,
-                                            left_context / 2);
+      DeltaFeaturesOptions opts;
+      opts.order = kDeltaOrder;
+      // Note from Dan: keeping the next statement for back-compatibility,
+      // but I don't think this is really the right way to set the window-size
+      // in the delta computation: it should be a separate config.
+      opts.window = left_context / 2;
+      feat_transform = new OnlineDeltaInput(opts, &cmn_input);
     }
 
     // feature_reading_opts contains timeout, batch size.

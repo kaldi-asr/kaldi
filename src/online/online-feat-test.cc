@@ -163,6 +163,31 @@ void TestOnlineLdaInput() {
 }
 
 
+void TestOnlineDeltaInput() {
+  int32 dim = 2 + rand() % 5; // dimension of features.
+  int32 num_frames = 100 + rand() % 100;
+  DeltaFeaturesOptions opts;
+  opts.order = rand() % 3;
+  opts.window = 1 + rand() % 3;
+
+  int32 output_dim = dim * (1 + opts.order);
+  
+  Matrix<BaseFloat> input_feats(num_frames, dim);
+  input_feats.SetRandn();
+  
+  OnlineMatrixInput matrix_input(input_feats);
+  OnlineDeltaInput delta_input(opts, &matrix_input);
+
+  Matrix<BaseFloat> output_feats1;
+  GetOutput(&delta_input, &output_feats1);
+
+  Matrix<BaseFloat> output_feats2(num_frames, output_dim);
+  ComputeDeltas(opts, input_feats, &output_feats2);
+
+  KALDI_ASSERT(output_feats1.ApproxEqual(output_feats2));
+}
+
+
 void TestOnlineCmnInput() { // We're also testing OnlineCacheInput here.
   int32 dim = 2 + rand() % 5; // dimension of features.
   int32 num_frames = 10 + rand() % 10;
@@ -226,6 +251,7 @@ int main() {
     TestOnlineMatrixInput();
     TestOnlineFeatureMatrix();
     TestOnlineLdaInput();
+    TestOnlineDeltaInput();
     TestOnlineCmnInput(); // also tests cache input.
     // I have not tested the delta input yet.
   }

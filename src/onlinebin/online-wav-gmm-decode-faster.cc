@@ -134,7 +134,6 @@ int main(int argc, char *argv[]) {
     int32 frame_length = mfcc_opts.frame_opts.frame_length_ms = 25;
     int32 frame_shift = mfcc_opts.frame_opts.frame_shift_ms = 10;
 
-    int32 feat_dim;
     int32 window_size = right_context + left_context + 1;
     decoder_opts.batch_size = std::max(decoder_opts.batch_size, window_size);
 
@@ -177,11 +176,14 @@ int main(int argc, char *argv[]) {
         feat_transform = new OnlineLdaInput(
             &cmn_input, lda_transform,
             left_context, right_context);
-        feat_dim = lda_transform.NumRows();
       } else {
-        feat_transform = new OnlineDeltaInput(&cmn_input, 
-                                              kDeltaOrder, left_context / 2);
-        feat_dim = (kDeltaOrder + 1) * mfcc_opts.num_ceps;
+        DeltaFeaturesOptions opts;
+        opts.order = kDeltaOrder;
+        // Note from Dan: keeping the next statement for back-compatibility,
+        // but I don't think this is really the right way to set the window-size
+        // in the delta computation: it should be a separate config.
+        opts.window = left_context / 2;
+        feat_transform = new OnlineDeltaInput(opts, &cmn_input);
       }
 
       // feature_reading_opts contains timeout, batch size.

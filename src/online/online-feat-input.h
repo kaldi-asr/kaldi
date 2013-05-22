@@ -1,10 +1,8 @@
 // online/online-feat-input.h
 
 // Copyright 2012 Cisco Systems (author: Matthias Paulik)
-
-//   Modifications to the original contribution by Cisco Systems made by:
-//   Vassil Panayotov
-//   Johns Hopkins University (author: Daniel Povey)
+//           2012-2013  Vassil Panayotov
+//           2013 Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -199,36 +197,52 @@ class OnlineLdaInput: public OnlineFeatInputItf {
   Vector<BaseFloat> offset_; // Offset, if present; else empty.
   Matrix<BaseFloat> remainder_; // The last few frames of the input, that may
   // be needed for context purposes.
-  Matrix<BaseFloat> temp_; // Temporary matrix used as input to the transform.
   
   KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineLdaInput);
-}; // OnlineLdaInput
-
-
-
-class OnlineDeltaInput : public OnlineFeatInputItf {
- public:
-  OnlineDeltaInput(OnlineFeatInputItf *input,
-                   uint32 order, uint32 window);
-
-  int32 Dim() const { return feat_dim_ * (order_ + 1); }
-  
-  bool Compute(Matrix<BaseFloat> *output, int32 timeout);
-
- private:
-  void InitFeatWindow();
-
-  OnlineFeatInputItf *input_; // underlying/inferior input object
-  const uint32 feat_dim_; // feature vector dimensionality before transform
-  const uint32 order_; // delta order
-  const uint32 window_size_; // the number of features needed to compute deltas
-  const uint32 window_center_; // index of the central feature (for convenience)
-  Matrix<BaseFloat> feat_window_; // features needed to compute deltas
-  Matrix<BaseFloat> feat_in_; // feature received from inferior object
-  DeltaFeatures delta_; // computes deltas
-  KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineDeltaInput);
 };
 
+
+// Does the time-derivative computation (e.g., adding deltas and delta-deltas).
+// This is standard in more "old-fashioned" feature extraction.  Like an online
+// version of the function ComputeDeltas in feat/feature-functions.h, where the
+// class DeltaFeaturesOptions is also defined.
+class OnlineDeltaInput: public OnlineFeatInputItf {
+ public:
+  OnlineDeltaInput(const DeltaFeaturesOptions &delta_opts,
+                   OnlineFeatInputItf *input);
+  
+  virtual bool Compute(Matrix<BaseFloat> *output,
+                       int32 timeout);
+
+  virtual int32 Dim() const { return input_dim_ * (opts_.order + 1); }
+  
+ private:
+  // The static function AppendFrames appends together the three input matrices,
+  // some of which may be empty.
+  static void AppendFrames(const MatrixBase<BaseFloat> &input1,
+                           const MatrixBase<BaseFloat> &input2,
+                           const MatrixBase<BaseFloat> &input3,
+                           Matrix<BaseFloat> *output);
+
+  // Context() is the number of frames on each side of a given frame,
+  // that we need for context.
+  int32 Context() const { return opts_.order * opts_.window; }
+  
+  // Does the delta computation.  Here, "output" will be resized to dimension
+  // (input.NumRows() - Context() * 2) by (input.NumCols() * opts_.order)
+  // "remainder" will be the last Context() rows of "input".
+  void DeltaComputation(const MatrixBase<BaseFloat> &input,
+                        Matrix<BaseFloat> *output,
+                        Matrix<BaseFloat> *remainder) const;
+  
+  OnlineFeatInputItf *input_; // underlying/inferior input object
+  DeltaFeaturesOptions opts_;
+  const int32 input_dim_;
+  Matrix<BaseFloat> remainder_; // The last few frames of the input, that may
+  // be needed for context purposes.
+  
+  KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineDeltaInput);
+};
 
 // Implementation, that is meant to be used to read samples from an
 // OnlineAudioSource and to extract MFCC/PLP features in the usual way
