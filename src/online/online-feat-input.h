@@ -211,7 +211,7 @@ class OnlineDeltaInput : public OnlineFeatInputItf {
   OnlineDeltaInput(OnlineFeatInputItf *input,
                    uint32 order, uint32 window);
 
-  int32 Dim() const { return feat_dim_; }
+  int32 Dim() const { return feat_dim_ * (order_ + 1); }
   
   bool Compute(Matrix<BaseFloat> *output, int32 timeout);
 
