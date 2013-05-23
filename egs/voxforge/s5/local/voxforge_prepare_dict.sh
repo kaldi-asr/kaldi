@@ -11,7 +11,7 @@ echo "=== Preparing the dictionary ..."
 if [ ! -f $locdict/cmudict/cmudict.0.7a ]; then
   echo "--- Downloading CMU dictionary ..."
   mkdir -p $locdict 
-  svn co https://cmusphinx.svn.sourceforge.net/svnroot/cmusphinx/trunk/cmudict  \
+  svn co http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict \
     $locdict/cmudict || exit 1;
 fi
 
