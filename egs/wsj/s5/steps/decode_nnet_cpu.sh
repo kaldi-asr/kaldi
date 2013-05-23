@@ -21,6 +21,7 @@ num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # If you supply num-threads, you should supply this too.
 scoring_opts=
 skip_scoring=false
+feat_type=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -67,10 +68,13 @@ echo $nj > $dir/num_jobs
 
 
 ## Set up features.
-if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "$0: feature type is $feat_type"
+if [ -z "$feat_type" ]; then
+  if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+  echo "$0: feature type is $feat_type"
+fi
 
 case $feat_type in
+  raw) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |";;
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
     ;;

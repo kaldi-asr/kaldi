@@ -1,6 +1,6 @@
 // nnet-cpu/am-nnet.h
 
-// Copyright 2012  Johns Hopkins Universith (author: Daniel Povey)
+// Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,9 +27,8 @@ namespace kaldi {
 /*
   The class AmNnet (AM stands for "acoustic model") has the job of taking the
   "Nnet1" class, which is a quite general neural network, and giving it an
-  interface that's suitable for acoustic modeling; it deals with initializing it
-  with 2-level trees, and with storing, and dividing by, the prior of each
-  context-dependent state.
+  interface that's suitable for acoustic modeling; it deals with storing, and
+  dividing by, the prior of each context-dependent state.
 */
 
 

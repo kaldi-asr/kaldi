@@ -60,10 +60,8 @@ while(<G>) {
     $key =~ tr/A-Z/a-z/; # Make it all lower case.
     # to make the numerical and string-sorted orders the same.
     print O "$key $T{$uttname}\n";
-    print P "$key $_";
+    print P "$key $_" || die "Error writing to sph file list";
     $n++;
-} 
+}
 close(O) || die "Closing output.";
 close(P) || die "Closing output.";
-
-

@@ -2608,6 +2608,21 @@ template<class Real> static void UnitTestSolve() {
   }
 }
 
+template<class Real> static void UnitTestMax2() {
+  for (MatrixIndexT i = 0; i < 2; i++) {
+    MatrixIndexT M = 1 + rand() % 10, N = 1 + rand() % 10;
+    Matrix<Real> A(M, N), B(M, N), C(M, N), D(M, N);
+    A.SetRandn();
+    B.SetRandn();
+    for (MatrixIndexT r = 0; r < M; r++)
+      for (MatrixIndexT c = 0; c < N; c++)
+        C(r, c) = std::max(A(r, c), B(r, c));
+    D.CopyFromMat(A);
+    D.Max(B);
+    AssertEqual(C, D);
+  }
+}
+
 template<class Real> static void UnitTestMaxAbsEig() {
   for (MatrixIndexT i = 0; i < 1; i++) {
     SpMatrix<Real> M(10);
@@ -3743,6 +3758,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestTridiag<Real>();
   //  SlowMatMul<Real>();
   UnitTestMaxAbsEig<Real>();
+  UnitTestMax2<Real>();
   UnitTestPca<Real>(full_test);
   UnitTestPca2<Real>(full_test);
   UnitTestAddVecVec<Real>();

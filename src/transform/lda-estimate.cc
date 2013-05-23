@@ -115,7 +115,7 @@ void LdaEstimate::Estimate(const LdaEstimateOptions &opts,
   KALDI_LOG << "Sum of all singular values is " << svd_d.Sum();
   KALDI_LOG << "Sum of selected singular values is " <<
       SubVector<double>(svd_d, 0, target_dim).Sum();
-
+  
   Matrix<double> lda_mat(dim, dim);
   lda_mat.AddMatMat(1.0, svd_u, kTrans, wc_covar_sqrt_mat, kNoTrans, 0.0);
 
@@ -124,12 +124,25 @@ void LdaEstimate::Estimate(const LdaEstimateOptions &opts,
   m->CopyFromMat(lda_mat.Range(0, target_dim, 0, dim));
   if (opts.remove_offset)
     AddMeanOffset(total_mean, m);
-
-  if (mfull) {
+  
+  if (mfull != NULL) {
     mfull->Resize(dim, dim);
     mfull->CopyFromMat(lda_mat);
     if (opts.remove_offset)
       AddMeanOffset(total_mean, mfull);
+  }
+
+  if (opts.within_class_factor != 1.0) { // This is not the normal code path;
+    // it's intended for use in neural net inputs.
+    for (int32 i = 0; i < svd_d.Dim(); i++) {
+      BaseFloat old_var = 1.0 + svd_d(i), // the total variance of that dim..
+          new_var = opts.within_class_factor + svd_d(i), // the variance we want..
+          scale = sqrt(new_var / old_var);
+      if (i < m->NumRows())
+        m->Row(i).Scale(scale);
+      if (mfull != NULL)
+        mfull->Row(i).Scale(scale);
+    }
   }
 }
 

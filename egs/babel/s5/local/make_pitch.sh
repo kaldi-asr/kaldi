@@ -214,7 +214,7 @@ pitchD = pitch(1:len-1) - pitch(2:len);
 pitchD = max(pitchD, -0.05);
 pitchD = min(pitchD, 0.05);
 subplot(2, 2, 4);
-hist(pitchD, 30);
+hist(pitchD, 50);
 legend('delta-pitch');
 
 print -deps 'C.eps'

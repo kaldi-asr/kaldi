@@ -43,11 +43,14 @@ int main(int argc, char *argv[]) {
     bool binary_write = true;
     bool zero_stats = true;
     int32 minibatch_size = 1024;
+    int32 srand_seed = 0;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("zero-stats", &zero_stats, "If true, zero stats "
                 "stored with the neural net (only affects mixing up).");
+    po.Register("srand", &srand_seed,
+                "Seed for random number generator (e.g., for dropout)");
     po.Register("num-threads", &g_num_threads, "Number of training threads to use "
                 "in the parallel update. [Note: if you use a parallel "
                 "implementation of BLAS, the actual number of threads may be larger.]");
@@ -55,6 +58,7 @@ int main(int argc, char *argv[]) {
                 "each minibatch during training.");
     
     po.Read(argc, argv);
+    srand(srand_seed);
     
     if (po.NumArgs() != 3) {
       po.PrintUsage();

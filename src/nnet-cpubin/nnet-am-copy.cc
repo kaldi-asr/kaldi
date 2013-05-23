@@ -41,6 +41,7 @@ int main(int argc, char *argv[]) {
     int32 truncate = -1;
     bool binary_write = true;
     bool remove_dropout = false;
+    BaseFloat dropout_scale = -1.0;
     bool remove_preconditioning = false;
     BaseFloat learning_rate_factor = 1.0, learning_rate = -1;
     std::string learning_rates = "";
@@ -65,6 +66,9 @@ int main(int argc, char *argv[]) {
                 "to this many components by removing the last components.");
     po.Register("remove-dropout", &remove_dropout, "Set this to true to remove "
                 "any dropout components.");
+    po.Register("dropout-scale", &dropout_scale, "If set, set the dropout scale in any "
+                "dropout components to this value.  Note: in traditional dropout, this "
+                "is always zero; you can set it to any value between zero and one.");
     po.Register("remove-preconditioning", &remove_preconditioning, "Set this to true to replace "
                 "components of type AffineComponentPreconditioned with AffineComponent.");
     po.Register("stats-from", &stats_from, "Before copying neural net, copy the "
@@ -135,6 +139,8 @@ int main(int argc, char *argv[]) {
     }
 
     if (remove_dropout) am_nnet.GetNnet().RemoveDropout();
+
+    if (dropout_scale != -1.0) am_nnet.GetNnet().SetDropoutScale(dropout_scale);
 
     if (remove_preconditioning) am_nnet.GetNnet().RemovePreconditioning();
 

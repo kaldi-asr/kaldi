@@ -5,7 +5,7 @@
 cmd=run.pl
 stage=0
 decode_mbr=true
-beam=7
+beam=5
 word_ins_penalty=0.5
 min_lmwt=7
 max_lmwt=17

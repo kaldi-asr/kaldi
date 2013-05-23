@@ -49,13 +49,13 @@ mkdir -p $dir
 
 # make_trans.pl also creates the utterance id's and the kaldi-format scp file.
 local/make_trans.pl trn $tmpdir/train_sph.flist $RMROOT/rm1_audio1/rm1/doc/al_sents.snr >(sort -k1 >$dir/text) \
- >(sort -k1 > $dir/sph.scp)
+  >(sort -k1 >$dir/sph.scp)
 
 
 sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 [ ! -f $sph2pipe ] && echo "Could not find the sph2pipe program at $sph2pipe" && exit 1;
 
-awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' < $dir/sph.scp > $dir/wav.scp
+awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' <$dir/sph.scp > $dir/wav.scp
 rm $dir/sph.scp
 
 cat $dir/wav.scp | perl -ane 'm/^((\w+)\w_\w+_\w+) / || die; print "$1 $2\n"' > $dir/utt2spk
@@ -66,7 +66,7 @@ for ntest in 1_mar87 2_oct87 4_feb89 5_oct89 6_feb91 7_sep92; do
   n=`echo $ntest | cut -d_ -f 1` # e.g. n = 1, 2, 4, 5..
   test=`echo $ntest | cut -d_ -f 2` # e.g. test=mar87, oct87...
   dir=data/test_${test}
-  mkdir $dir
+  mkdir -p $dir
   root=$RMROOT/rm1_audio2/2_4_2
   for x in `grep -v ';' $root/rm1/doc/tests/$ntest/${n}_indtst.ndx`; do
     echo "$root/$x ";
@@ -74,8 +74,9 @@ for ntest in 1_mar87 2_oct87 4_feb89 5_oct89 6_feb91 7_sep92; do
 
   local/make_trans.pl ${test} $dir/sph.flist $RMROOT/rm1_audio1/rm1/doc/al_sents.snr \
      >(sort -k1 >$dir/text) >(sort -k1 >$dir/sph.scp)
-
-  awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' < $dir/sph.scp >$dir/wav.scp
+  sleep 0.25 # At one point I had the next line failing because $dir/sph.scp appeared not
+             # to exist.  Adding this sleep statement appeared to fix the problem.
+  awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' <$dir/sph.scp >$dir/wav.scp
   rm $dir/sph.flist $dir/sph.scp
 
   cat $dir/wav.scp | perl -ane 'm/^((\w+)\w_\w+_\w+) / || die; print "$1 $2\n"' > $dir/utt2spk

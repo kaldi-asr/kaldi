@@ -29,6 +29,7 @@ $single_layer_config = ""; # a file to which we'll output a config corresponding
        # network.
 $bias_stddev = 2.0;  # Standard deviation for random initialization of the
                      # bias terms (mean is zero).
+$splice_max_context = 0; # Relates to SpliceMaxComponent (experimental feature)
 $learning_rate = 0.001;
 $nonlinear_component_type = "Tanh";
 
@@ -38,9 +39,12 @@ $tree_map = ""; # If supplied, a text file that maps from l2 to l1 tree nodes (o
    # by build-tree-two-level).  Used for initializing mixture-prob component.
 
 $splice_context = 0;
-$dropout_proportion = 0.0; # I didn't find this helpful.
+$dropout_scale = -1.0; # if not -1.0, scale for "lower" part of 
+                       # dropout scale, typically 0 <= dropout_scale < 1.
 $additive_noise_stddev = 0.0; # I didn't find this helpful either.
 $lda_dim = 0;
+$expand_power = 1;
+$expand_scale = 1.0;
 $lda_mat = "";
 
 for ($x = 1; $x < 10; $x++) {
@@ -53,8 +57,16 @@ for ($x = 1; $x < 10; $x++) {
     $l2_penalty_opt = "l2-penalty=$l2_penalty";
     shift; shift;
   }
-  if ($ARGV[0] eq "--dropout-proportion") {
-    $dropout_proportion = $ARGV[1];
+  if ($ARGV[0] eq "--dropout-scale") {
+    $dropout_scale = $ARGV[1];
+    shift; shift;
+  }
+  if ($ARGV[0] eq "--expand-power") {
+    $expand_power = $ARGV[1];
+    shift; shift;
+  }
+  if ($ARGV[0] eq "--expand-scale") {
+    $expand_scale = $ARGV[1];
     shift; shift;
   }
   if ($ARGV[0] eq "--additive-noise-stddev") {
@@ -85,6 +97,10 @@ for ($x = 1; $x < 10; $x++) {
   }
   if ($ARGV[0] eq "--alpha") {
     $alpha = $ARGV[1];
+    shift; shift;
+  }
+  if ($ARGV[0] eq "--splice-max-context") {
+    $splice_max_context = $ARGV[1];
     shift; shift;
   }
   if ($ARGV[0] eq "--learning-rate") {
@@ -147,7 +163,7 @@ $context_size = 1 + $input_left_context + $input_right_context;
   && die "Invalid number of params $num_params";
 
 ## num_params = hidden_layer_size^2 * (num_hidden_layers-1)
-##            + hidden_layer_size * (num_leaves + feat_dim * context_size)
+##            + hidden_layer_size * (num_leaves + feat_dim * context_size * expand_power)
 ## solve for hidden_layer_size = x.
 ## a x^2 + b  + c, with
 ## a = num_hidden_layers - 1
@@ -155,7 +171,7 @@ $context_size = 1 + $input_left_context + $input_right_context;
 ## c = -num_params
 
 $a = $num_hidden_layers - 1;
-$b = $num_leaves + $feat_dim * $context_size;
+$b = $num_leaves + $feat_dim * $context_size * $expand_power;
 $c = -$num_params;
 
 if ($a > 0) {
@@ -166,7 +182,7 @@ if ($a > 0) {
 
 
 $actual_num_params = $hidden_layer_size * $hidden_layer_size * ($num_hidden_layers - 1)
-                   + $hidden_layer_size * ($num_leaves + $feat_dim * $context_size);
+                   + $hidden_layer_size * ($num_leaves + $feat_dim * $context_size * $expand_power);
 
 if (abs($actual_num_params - $num_params) > 0.1 * $num_params) {
   print STDERR "Warning: make_nnet_config.pl: possible failure $actual_num_params != $num_params";
@@ -176,6 +192,10 @@ if ($splice_context > 0) { # --lda-mat <splice-context> <lda-matrix> was specifi
   print "SpliceComponent input-dim=$feat_dim left-context=$splice_context right-context=$splice_context\n";
   print "FixedLinearComponent matrix=$lda_mat\n"; # specify the filename.
   $feat_dim = $lda_dim; # This is now the input dimension.
+}
+
+if ($splice_max_context > 0) {
+  print "SpliceMaxComponent dim=$feat_dim left-context=$splice_max_context right-context=$splice_max_context\n";
 }
 
 
@@ -188,14 +208,19 @@ if ($input_left_context + $input_right_context != 0) {
 }
 $cur_input_dim = $feat_dim * (1 + $input_left_context + $input_right_context);
 
+if ($expand_power > 1) {
+  print "PowerExpandComponent input-dim=$cur_input_dim max-power=$expand_power higher-power-scale=$expand_scale\n";
+  $cur_input_dim *= $expand_power;
+}
+
 for ($hidden_layer = 0; $hidden_layer < $initial_num_hidden_layers; $hidden_layer++) {
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($cur_input_dim);
   print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$hidden_layer_size alpha=$alpha $l2_penalty_opt " .
     "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   $cur_input_dim = $hidden_layer_size;
   print "${nonlinear_component_type}Component dim=$cur_input_dim\n";
-  if ($dropout_proportion != 0.0) {
-    print "DropoutComponent dim=$cur_input_dim dropout-proportion=$dropout_proportion\n";
+  if ($dropout_scale != -1.0) {
+    print "DropoutComponent dim=$cur_input_dim dropout-scale=$dropout_scale\n";
   }
   if ($additive_noise_stddev != 0.0) {
     print "AdditiveNoiseComponent dim=$cur_input_dim stddev=$additive_noise_stddev\n";
@@ -209,8 +234,8 @@ if ($single_layer_config ne "") {
   print F "AffineComponentPreconditioned input-dim=$hidden_layer_size output-dim=$hidden_layer_size alpha=$alpha $l2_penalty_opt " .
     "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   print F "${nonlinear_component_type}Component dim=$hidden_layer_size\n";
-  if ($dropout_proportion != 0.0) {
-    print F "DropoutComponent dim=$cur_input_dim dropout-proportion=$dropout_proportion\n";
+  if ($dropout_scale != -1.0) {
+    print F "DropoutComponent dim=$cur_input_dim dropout-scale=$dropout_scale\n";
   }
   if ($additive_noise_stddev != 0.0) {
     print F "AdditiveNoiseComponent dim=$cur_input_dim stddev=$additive_noise_stddev\n";

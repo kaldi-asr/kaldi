@@ -29,7 +29,7 @@ struct PitchInterpolatorOptions {
   BaseFloat max_voicing_prob; // p(voicing) we use at the end of the range when it was observed
   // at one. (probably 0.9 is suitable; allows to not follow observed pitch even if p(voicing)=1.
   BaseFloat max_pitch_change_per_frame;
-  PitchInterpolatorOptions(): pitch_interval(0.5),
+  PitchInterpolatorOptions(): pitch_interval(4.0),
                               interpolator_factor(1.0e-05),
                               max_voicing_prob(0.9),
                               max_pitch_change_per_frame(10.0) { }
@@ -88,8 +88,7 @@ class PitchInterpolator {
     BaseFloat pitch_interval = opts_.pitch_interval;
     num_frames_ = mat.NumRows();
     KALDI_ASSERT(mat.NumCols() == 2);
-    min_pitch_ = 1.0e+10;
-    max_pitch_ = 0.0;
+    BaseFloat min_pitch = 1.0e+10, max_pitch = 0.0;
     pitch_.resize(num_frames_);
     p_voicing_.resize(num_frames_);
     for (int32 f = 0; f < num_frames_; f++) {
@@ -98,28 +97,34 @@ class PitchInterpolator {
       if (pitch == 0.0) {
         p_voicing = 0.0; // complete uncertainty about real pitch.
       } else {
-        if (pitch < min_pitch_) min_pitch_ = pitch;
-        if (pitch > max_pitch_) max_pitch_ = pitch;
+        if (pitch < min_pitch) min_pitch = pitch;
+        if (pitch > max_pitch) max_pitch = pitch;
       }
       p_voicing_[f] = p_voicing;
     }
-    if (max_pitch_ == 0.0) { // No voiced frames at all.
-      min_pitch_ = 100.0;
-      max_pitch_ = 100.0;
+    if (max_pitch == 0.0) { // No voiced frames at all.
+      min_pitch = 100.0;
+      max_pitch = 100.0;
     }
-    if (max_pitch_ <= min_pitch_ + pitch_interval) {
-      max_pitch_ = min_pitch_ + pitch_interval;
+    if (max_pitch <= min_pitch + (2.0 * pitch_interval)) {
+      max_pitch = min_pitch + 2.0 * pitch_interval;
     } // avoid crashes.
-    num_pitches_ = floor((max_pitch_ - min_pitch_) / pitch_interval + 0.5) + 1;
-    KALDI_ASSERT(num_pitches_ >= 2);
+
+    // Note: the + 2 here is for edge effects.
+    num_pitches_ = floor((max_pitch - min_pitch) / pitch_interval + 0.5) + 2;
+    KALDI_ASSERT(num_pitches_ >= 3);
+    min_pitch_.resize(num_frames_);
     for (int32 f = 0; f < num_frames_; f++) {
+      min_pitch_[f] = min_pitch - pitch_interval * RandUniform(); // bottom of
+      // discretization range for each frame is randomly different.
+      
       BaseFloat pitch = mat(f, 1);
       if (pitch == 0.0) {
         pitch_[f] = 0; // This will actually be a don't-care value; we just put in
         // some value that won't crash the algorithm.
       } else {
-        int32 int_pitch = floor((pitch - min_pitch_) / pitch_interval + 0.5);
-        KALDI_ASSERT(int_pitch >= 0.0 && int_pitch < num_pitches_);
+        int32 int_pitch = floor((pitch - min_pitch_[f]) / pitch_interval + 0.5);
+        KALDI_ASSERT(int_pitch >= 0 && int_pitch < num_pitches_);
         pitch_[f] = int_pitch;
       }
     }
@@ -151,6 +156,7 @@ class PitchInterpolator {
   // This function updates log_alpha_, as a function of prev_log_alpha_; it also
   // updates back_pointers_[t];
   void ComputeTransitionProb(int32 t) {
+    KALDI_ASSERT(t > 0);
     BaseFloat pitch_interval = opts_.pitch_interval;
     back_pointers_[t].resize(num_pitches_);
     
@@ -167,7 +173,8 @@ class PitchInterpolator {
       BaseFloat best_logprob = -1.0e+10;
       int32 best_prev_p = -1;
       for (int32 prev_p = min_prev_p; prev_p <= max_prev_p; prev_p++) {
-        BaseFloat delta_pitch = pitch_interval * (prev_p - p);
+        BaseFloat delta_pitch = (min_pitch_[t-1] + prev_p * pitch_interval) -
+            (min_pitch_[t] + p * pitch_interval);
         BaseFloat this_logprob = prev_log_alpha_(prev_p) 
             - 0.5 * delta_pitch * delta_pitch;
         if (this_logprob > best_logprob) {
@@ -213,13 +220,7 @@ class PitchInterpolator {
         if (pitch_[t] == 0) stats->num_frames_zero++;
         else if (best_p != pitch_[t]) stats->num_frames_changed++;
       }
-      // Add some random noise so we don't get runs of constant values.
-      // Smooth over two pitch intervals (probably makes sense if the pitch
-      // intervals are quite small, we want to inject a little noise to
-      // keep all the distributions Gaussian despite the arbitrary
-      // discretization.
-      BaseFloat pitch = min_pitch_ +
-          pitch_interval * (best_p + 2.0*(RandUniform() - 0.5));
+      BaseFloat pitch = min_pitch_[t] + pitch_interval * best_p;
       (*mat)(t, 1) = pitch;
       KALDI_ASSERT(best_p >= 0 && best_p < num_pitches_);
       if (t > 0)
@@ -227,8 +228,9 @@ class PitchInterpolator {
     }
   }
   const PitchInterpolatorOptions &opts_;
-  BaseFloat min_pitch_; // Bottom of discretization range.
-  BaseFloat max_pitch_; // Top of discretization range.
+  std::vector<BaseFloat> min_pitch_; // Bottom of discretization range...
+  // previously this was a BaseFloat, but for better pseudo-randomization we
+  // have a slightly perturbed value for each frame now, so it's a vector.
   int32 num_frames_; // number of frames;
   int32 num_pitches_; // Number of discrete pitch intervals.
   std::vector<int32> pitch_; // observed pitch, discretized; [it's don't-care if algorithm had no

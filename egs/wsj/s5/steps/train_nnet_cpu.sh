@@ -23,6 +23,7 @@ num_train_frames_shrink=2000  # number of training frames in the subset used
                               # frames for this.)
 shrink_interval=3 # shrink every $shrink_interval iters,
                 # except at the start of training when we do it every iter.
+within_class_factor=1.0 # affects LDA via scaling of the output (e.g. try setting to 0.01).
 num_valid_frames_combine=0 # #valid frames for combination weights at the very end.
 num_train_frames_combine=10000 # # train frames for the above.
 num_frames_diagnostic=4000 # number of frames for "compute_prob" jobs
@@ -39,7 +40,9 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
                 # not a huge deal though, as samples are anyway randomized right at the start.
 num_jobs_nnet=16 # Number of neural net jobs to run in parallel; you need to
                  # keep this in sync with parallel_opts.
-
+feat_type=
+initial_dropout_scale=
+final_dropout_scale=
 add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=2
 initial_num_hidden_layers=1  # we'll add the rest one by one.
@@ -143,13 +146,13 @@ done
 
 # Set some variables.
 oov=`cat $lang/oov.int`
-feat_dim=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/feature dimension/{print $NF}'` || exit 1;
 num_leaves=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/number of pdfs/{print $NF}'` || exit 1;
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 # in this dir we'll have just one job.
 sdata=$data/split$nj
+utils/split_data.sh $data $nj
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
@@ -170,13 +173,19 @@ awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlis
 ## Set up features.  Note: these are different from the normal features
 ## because we have one rspecifier that has the features for the entire
 ## training set, not separate ones for each batch.
-if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+if [ -z $feat_type ]; then
+  if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+fi
 echo "$0: feature type is $feat_type"
 
 case $feat_type in
   delta) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- | add-deltas ark:- ark:- |"
     valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | add-deltas ark:- ark:- |"
     train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | add-deltas ark:- ark:- |"
+   ;;
+  raw) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
+    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
    ;;
   lda) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
       valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
@@ -185,7 +194,7 @@ case $feat_type in
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
-if [ -f $alidir/trans.1 ]; then
+if [ -f $alidir/trans.1 ] && [ $feat_type != "raw" ]; then
   echo "$0: using transforms from $alidir"
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$alidir/trans.JOB ark:- ark:- |"
   valid_feats="$valid_feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $alidir/trans.*|' ark:- ark:- |"
@@ -218,7 +227,7 @@ if [ $stage -le -8 ]; then
       weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- \| \
       acc-lda --rand-prune=$randprune $alidir/final.mdl "$feats splice-feats --left-context=$splice_width --right-context=$splice_width ark:- ark:- |" ark,s,cs:- \
        $dir/lda.JOB.acc || exit 1;
-  est-lda --dim=$lda_dim $dir/lda.mat $dir/lda.*.acc \
+  est-lda --within-class-factor=$within_class_factor --dim=$lda_dim $dir/lda.mat $dir/lda.*.acc \
       2>$dir/log/lda_est.log || exit 1;
   rm $dir/lda.*.acc
 fi
@@ -230,19 +239,25 @@ if [ $initial_num_hidden_layers -gt $num_hidden_layers ]; then
   exit 1;
 fi
 
+feat_dim=`feat-to-dim "$train_subset_feats" -` || exit 1;
 
 if [ $stage -le -7 ]; then
   echo "$0: initializing neural net";
   # to hidden.config it will write the part of the config corresponding to a
   # single hidden layer; we need this to add new layers. 
+
   if [ ! -z "$alpha" ]; then
+    dropout_opt=
+    [ ! -z $initial_dropout_scale ] && dropout_opt="--dropout-scale $initial_dropout_scale"
     utils/nnet-cpu/make_nnet_config_preconditioned.pl --alpha $alpha $nnet_config_opts \
+       $dropout_opt \
       --learning-rate $initial_learning_rate \
       --lda-mat $splice_width $lda_dim $dir/lda.mat \
       --initial-num-hidden-layers $initial_num_hidden_layers $dir/hidden_layer.config \
       $feat_dim $num_leaves $num_hidden_layers $num_parameters \
       > $dir/nnet.config || exit 1;
   else
+    [ ! -z $initial_dropout_scale ] && echo "Dropout without preconditioning unsupported" && exit 1;
     utils/nnet-cpu/make_nnet_config.pl $nnet_config_opts \
       --learning-rate $initial_learning_rate \
       --lda-mat $splice_width $lda_dim $dir/lda.mat \
@@ -391,17 +406,18 @@ mix_up_iter=$last_normal_shrink_iter  # this is pretty arbitrary.
 x=0
 while [ $x -lt $num_iters ]; do
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
-
+    mdl=$dir/$x.mdl
+    [ ! -z $initial_dropout_scale ] && mdl="nnet-am-copy --remove-dropout=true $mdl -|"
     # Set off jobs doing some diagnostics, in the background.
     $cmd $dir/log/compute_prob_valid.$x.log \
-      nnet-compute-prob $dir/$x.mdl ark:$dir/valid_diagnostic.egs &
+      nnet-compute-prob "$mdl" ark:$dir/valid_diagnostic.egs &
     $cmd $dir/log/compute_prob_train.$x.log \
-      nnet-compute-prob $dir/$x.mdl ark:$dir/train_diagnostic.egs &
+      nnet-compute-prob "$mdl" ark:$dir/train_diagnostic.egs &
 
     if echo $realign_iters | grep -w $x >/dev/null; then
       echo "Realigning data (pass $x)"
       $cmd JOB=1:$nj $dir/log/align.$x.JOB.log \
-        nnet-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$dir/$x.mdl" \
+        nnet-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$mdl" \
          "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" \
         "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
     fi
@@ -419,7 +435,7 @@ while [ $x -lt $num_iters ]; do
        nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
          ark:$dir/egs/egs.JOB.$[$x%$iters_per_epoch].ark ark:- \| \
        nnet-train-parallel --num-threads=$num_threads --minibatch-size=$minibatch_size \
-        "$mdl" ark:- $dir/$[$x+1].JOB.mdl \
+        --srand=$x "$mdl" ark:- $dir/$[$x+1].JOB.mdl \
        || exit 1;
 
     nnets_list=
@@ -429,9 +445,16 @@ while [ $x -lt $num_iters ]; do
 
     learning_rate=`perl -e '($x,$n,$i,$f)=@ARGV; print ($x >= $n ? $f : $i*exp($x*log($f/$i)/$n));' $[$x+1] $num_iters_reduce $initial_learning_rate $final_learning_rate`;
 
+    if [ ! -z "$final_dropout_scale" ]; then
+      dropout_scale=`perl -e "print ($initial_dropout_scale + ($final_dropout_scale-$initial_dropout_scale)*(1+$x)/$num_iters);"`
+      dropout_opt="--dropout-scale=$dropout_scale"
+    else
+      dropout_opt=
+    fi
+
     $cmd $dir/log/average.$x.log \
        nnet-am-average $nnets_list - \| \
-       nnet-am-copy --learning-rate=$learning_rate - $dir/$[$x+1].mdl || exit 1;
+       nnet-am-copy $dropout_opt --learning-rate=$learning_rate - $dir/$[$x+1].mdl || exit 1;
 
     if $shrink; then
       if [ $x -le $last_normal_shrink_iter ] || [ $[$x % $shrink_interval] -eq 0 ]; then
@@ -458,15 +481,24 @@ done
 rm $dir/final.mdl 2>/dev/null
 
 # At the end, final.mdl will be a combination of the last e.g. 10 models.
-nnets_list=
-for x in `seq $[$num_iters-$num_iters_final+1] $num_iters`; do
-  [ $x -gt $mix_up_iter ] && nnets_list="$nnets_list $dir/$x.mdl"
+nnets_list=()
+start=$[$num_iters-$num_iters_final+1]
+for x in `seq $start $num_iters`; do
+  idx=$[$x-$start]
+  if [ $x -gt $mix_up_iter ]; then
+    if [ ! -z $initial_dropout_scale ]; then
+      nnets_list[$idx]="nnet-am-copy --remove-dropout=true $dir/$x.mdl - |"
+    else
+      nnets_list[$idx]=$dir/$x.mdl
+    fi
+  fi
 done
+
 if [ $stage -le $num_iters ]; then
   mb=$[($num_valid_frames_combine+$num_train_frames_combine+$num_threads-1)/$num_threads]
   $cmd $parallel_opts $dir/log/combine.log \
     nnet-combine-fast --num-threads=$num_threads --verbose=3 --minibatch-size=$mb \
-    $nnets_list ark:$dir/combine.egs $dir/final.mdl || exit 1;
+    "${nnets_list[@]}" ark:$dir/combine.egs $dir/final.mdl || exit 1;
 fi
 
 # Compute the probability of the final, combined model with

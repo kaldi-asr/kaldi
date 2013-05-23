@@ -51,6 +51,10 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new RectifiedLinearComponent();
   } else if (component_type == "SoftHingeComponent") {
     ans = new SoftHingeComponent();
+  } else if (component_type == "SqrtSoftHingeComponent") {
+    ans = new SqrtSoftHingeComponent();
+  } else if (component_type == "PowerExpandComponent") {
+    ans = new PowerExpandComponent();
   } else if (component_type == "ReduceComponent") {
     ans = new ReduceComponent();
   } else if (component_type == "AffineComponent") {
@@ -73,6 +77,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new FixedLinearComponent();
   } else if (component_type == "SpliceComponent") {
     ans = new SpliceComponent();
+  } else if (component_type == "SpliceMaxComponent") {
+    ans = new SpliceMaxComponent();
   } else if (component_type == "DropoutComponent") {
     ans = new DropoutComponent();
   } else if (component_type == "AdditiveNoiseComponent") {
@@ -269,6 +275,100 @@ std::string Component::Info() const {
   return stream.str();
 }
 
+
+void PowerExpandComponent::Init(int32 dim,
+                                int32 max_power,
+                                BaseFloat higher_power_scale) {
+  input_dim_ = dim;
+  max_power_ = max_power;
+  higher_power_scale_ = higher_power_scale;
+  KALDI_ASSERT(input_dim_ > 0 && max_power >= 1 && higher_power_scale > 0.0);
+}
+
+void PowerExpandComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  int32 dim, max_power = 2;
+  BaseFloat higher_power_scale = 1.0;
+  ParseFromString("max-power", &args, &max_power); // Optional.
+  ParseFromString("higher-power-scale", &args, &higher_power_scale); // Optional.
+  // Accept either "dim" or "input-dim" to specify the input dim.
+  // "input-dim" is the canonical one; "dim" simplifies the testing code.
+  bool ok = (ParseFromString("dim", &args, &dim) ||
+             ParseFromString("input-dim", &args, &dim));
+  if (!ok || !args.empty() || dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+  Init(dim, max_power, higher_power_scale);
+}
+
+
+void PowerExpandComponent::Propagate(const MatrixBase<BaseFloat> &in,
+                                     int32 num_chunks,
+                                     Matrix<BaseFloat> *out) const {
+  out->Resize(in.NumRows(), in.NumCols() * max_power_, kUndefined);
+  for (int32 p = 1; p <= max_power_; p++) {
+    SubMatrix<BaseFloat> out_part(*out, 0, in.NumRows(),
+                                  in.NumCols() * (p - 1), in.NumCols());
+    out_part.CopyFromMat(in);
+    if (p != 1) {
+      out_part.ApplyPow(p);
+      if (higher_power_scale_ != 1.0)
+        out_part.Scale(higher_power_scale_);
+    }
+  }
+}
+
+void PowerExpandComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
+                                    const MatrixBase<BaseFloat> &,// out_value,
+                                    const MatrixBase<BaseFloat> &out_deriv,
+                                    int32, // num_chunks
+                                    Component *, // to_update
+                                    Matrix<BaseFloat> *in_deriv) const {
+  in_deriv->Resize(in_value.NumRows(), in_value.NumCols(), kUndefined);
+  Matrix<BaseFloat> temp(in_value.NumRows(), in_value.NumCols(), kUndefined);
+  for (int32 p = 1; p <= max_power_; p++) {
+    const SubMatrix<BaseFloat> out_deriv_part(out_deriv, 0, in_value.NumRows(),
+                                              in_value.NumCols() * (p - 1),
+                                              in_value.NumCols());
+    if (p == 1) {
+      in_deriv->CopyFromMat(out_deriv_part);
+    } else {
+      // in scalar terms: in_deriv += p * in_value^(p-1) * [out_deriv w.r.t. this power]
+      temp.CopyFromMat(in_value);
+      if (p > 2) temp.ApplyPow(p - 1);
+      temp.MulElements(out_deriv_part);
+      in_deriv->AddMat(p * higher_power_scale_, temp);
+    }
+  }
+}
+
+void PowerExpandComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<PowerExpandComponent>", "<InputDim>");
+  ReadBasicType(is, binary, &input_dim_);
+  ExpectToken(is, binary, "<MaxPower>");
+  ReadBasicType(is, binary, &max_power_);
+  ExpectToken(is, binary, "<HigherPowerScale>");
+  ReadBasicType(is, binary, &higher_power_scale_);
+  ExpectToken(is, binary, "</PowerExpandComponent>");
+}
+
+void PowerExpandComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<PowerExpandComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, input_dim_);
+  WriteToken(os, binary, "<MaxPower>");
+  WriteBasicType(os, binary, max_power_);
+  WriteToken(os, binary, "<HigherPowerScale>");
+  WriteBasicType(os, binary, higher_power_scale_);
+  WriteToken(os, binary, "</PowerExpandComponent>");
+}
+
+std::string PowerExpandComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", input-dim = " << input_dim_
+         << ", max-power = " << max_power_;
+  return stream.str();
+}
 
 void NonlinearComponent::UpdateStats(const MatrixBase<BaseFloat> &out_value,
                                      const MatrixBase<BaseFloat> *deriv) {
@@ -509,6 +609,56 @@ void SoftHingeComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
       else {
         BaseFloat expy = exp(data[j]);
         data[j] = (expy - 1) / expy;
+      }
+    }
+  }
+  // now in_deriv is the derivative of the nonlinearity (well, except at zero
+  // where it's undefined).
+  if (to_update != NULL)
+    dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
+                                                              in_deriv);
+  in_deriv->MulElements(out_deriv);
+}  
+
+
+void SqrtSoftHingeComponent::Propagate(const MatrixBase<BaseFloat> &in,
+                                       int32, // num_chunks
+                                       Matrix<BaseFloat> *out) const {
+  // Apply function x = log(1 + exp(x))
+  *out = in;
+  for (int32 i = 0; i < out->NumRows(); i++) {
+    BaseFloat *data = out->RowData(i);
+    int32 cols = out->NumCols();
+    for (int32 j = 0; j < cols; j++)
+      if (data[j] < 10.0) data[j] = std::sqrt(log1p(exp(data[j])));
+      else data[j] = std::sqrt(data[j]);
+  }
+}
+
+void SqrtSoftHingeComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
+                                      const MatrixBase<BaseFloat> &out_value,
+                                      const MatrixBase<BaseFloat> &out_deriv,
+                                      int32, // num_chunks
+                                      Component *to_update,
+                                      Matrix<BaseFloat> *in_deriv) const {
+
+  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols(),
+                   kUndefined);
+  in_deriv->CopyFromMat(out_value);
+  // note: d/dx: sqrt(log(1 + exp(x))) = 0.5 (exp(x) / (1 + exp(x))) / sqrt(log(1 + exp(x)))
+  // if the output is y, then dy/dx = 0.5 (exp(x) / (1 + exp(x)) / y
+  // and using y^2 = log(1 + exp(x)) -> exp(x) = exp(y^2) - 1, we have
+  // dy/dx = 0.5 * (exp(y^2) - 1) / (exp(y^2) * y)
+  
+  for (int32 i = 0; i < in_deriv->NumRows(); i++) {
+    BaseFloat *data = in_deriv->RowData(i);
+    int32 cols = in_deriv->NumCols();
+    for (int32 j = 0; j < cols; j++) {
+      if (data[j] > 3.5) data[j] = 0.5 / std::sqrt(data[j]); 
+      else { // 3.5 chosen so exp(3.5*3.5) will not give NaN.
+        BaseFloat y = data[j], expy2 = exp(y * y);
+        if (y > 0.0) data[j] = 0.5 * (expy2 - 1.0) / (expy2 * y);
+        else data[j] = 0.0;
       }
     }
   }
@@ -1993,6 +2143,149 @@ void SpliceComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</SpliceComponent>");  
 }
 
+
+std::string SpliceMaxComponent::Info() const {
+  std::stringstream stream;
+  stream << Component::Info() << ", context=" << left_context_
+         << "/" << right_context_;
+  return stream.str();
+}
+
+void SpliceMaxComponent::Init(int32 dim, int32 left_context,
+                              int32 right_context) {
+  dim_ = dim;
+  left_context_ = left_context;
+  right_context_ = right_context;
+  KALDI_ASSERT(dim_ > 0 && left_context >= 0 && right_context >= 0);
+}
+
+
+// e.g. args == "dim=10 left-context=2 right-context=2
+void SpliceMaxComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  int32 dim, left_context, right_context;
+  bool ok = ParseFromString("dim", &args, &dim) &&
+            ParseFromString("left-context", &args, &left_context) &&
+            ParseFromString("right-context", &args, &right_context);
+  
+  if (!ok || !args.empty() || dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+  Init(dim, left_context, right_context);
+}
+
+void SpliceMaxComponent::Propagate(const MatrixBase<BaseFloat> &in,
+                                   int32 num_chunks,
+                                   Matrix<BaseFloat> *out) const {
+  KALDI_ASSERT(in.NumRows() > 0 && in.NumCols() == InputDim());
+  if (in.NumRows() % num_chunks != 0)
+    KALDI_ERR << "Number of chunks " << num_chunks << "does not divide "
+              << "number of frames " << in.NumRows();
+  int32 input_chunk_size = in.NumRows() / num_chunks,
+       output_chunk_size = input_chunk_size - left_context_ - right_context_,
+                     dim = in.NumCols();
+  if (output_chunk_size <= 0)
+    KALDI_ERR << "Splicing features: output will have zero dimension. "
+              << "Probably a code error.";
+  out->Resize(num_chunks * output_chunk_size, dim);
+  for (int32 chunk = 0; chunk < num_chunks; chunk++) {
+    SubMatrix<BaseFloat> input_chunk(in,
+                                     chunk * input_chunk_size, input_chunk_size,
+                                     0, dim),
+                        output_chunk(*out,
+                                     chunk * output_chunk_size, output_chunk_size,
+                                     0, dim);
+    for (int32 offset = 0;
+         offset < 1 + left_context_ + right_context_;
+         offset++) {
+      SubMatrix<BaseFloat> input_chunk_part(input_chunk,
+                                            offset, output_chunk_size, 0, dim);
+      if (offset == 0) output_chunk.CopyFromMat(input_chunk_part);
+      else {
+        output_chunk.Max(input_chunk_part);
+      }
+    }
+  }  
+}
+
+void SpliceMaxComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
+                                  const MatrixBase<BaseFloat> &, // out_value,
+                                  const MatrixBase<BaseFloat> &out_deriv,
+                                  int32 num_chunks,
+                                  Component *to_update, // may == "this".
+                                  Matrix<BaseFloat> *in_deriv) const {
+ KALDI_ASSERT(out_deriv.NumRows() > 0 && num_chunks > 0);
+
+  if (out_deriv.NumRows() % num_chunks != 0)
+    KALDI_ERR << "Number of chunks " << num_chunks << "does not divide "
+              << "number of frames " << out_deriv.NumRows();
+  
+  int32 output_chunk_size = out_deriv.NumRows() / num_chunks,
+         input_chunk_size = output_chunk_size + left_context_ + right_context_,
+                      dim = out_deriv.NumCols();
+
+  KALDI_ASSERT(dim == InputDim());
+
+  in_deriv->Resize(num_chunks * input_chunk_size, dim); // Will zero it.
+  for (int32 chunk = 0; chunk < num_chunks; chunk++) {
+    SubMatrix<BaseFloat> in_deriv_chunk(*in_deriv, 
+                                        chunk * input_chunk_size,
+                                        input_chunk_size, 
+                                        0, dim),
+                         in_value_chunk(in_value,
+                                        chunk * input_chunk_size,
+                                        input_chunk_size, 
+                                        0, dim),
+                        out_deriv_chunk(out_deriv,
+                                        chunk * output_chunk_size,
+                                        output_chunk_size,
+                                        0, dim);
+    for (int32 r = 0; r < out_deriv_chunk.NumRows(); r++) {
+      for (int32 c = 0; c < dim; c++) {
+        int32 in_r_begin = r, in_r_end = r + left_context_ + right_context_ + 1;
+        int32 in_r_max = -1;
+        BaseFloat max_input = -std::numeric_limits<BaseFloat>::infinity();
+        for (int32 in_r = in_r_begin; in_r < in_r_end; in_r++) {
+          BaseFloat input = in_value_chunk(in_r, c);
+          if (input > max_input) {
+            max_input = input;
+            in_r_max = in_r;
+          }
+        }
+        KALDI_ASSERT(in_r_max != -1);
+        (*in_deriv)(in_r_max, c) += out_deriv_chunk(r, c);
+      }
+    }
+  }
+}
+
+Component *SpliceMaxComponent::Copy() const {
+  SpliceMaxComponent *ans = new SpliceMaxComponent();
+  ans->Init(dim_, left_context_, right_context_);
+  return ans;
+}
+
+void SpliceMaxComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<SpliceMaxComponent>", "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<LeftContext>");
+  ReadBasicType(is, binary, &left_context_);
+  ExpectToken(is, binary, "<RightContext>");
+  ReadBasicType(is, binary, &right_context_);
+  ExpectToken(is, binary, "</SpliceMaxComponent>");
+}
+
+void SpliceMaxComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<SpliceMaxComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<LeftContext>");
+  WriteBasicType(os, binary, left_context_);
+  WriteToken(os, binary, "<RightContext>");
+  WriteBasicType(os, binary, right_context_);
+  WriteToken(os, binary, "</SpliceMaxComponent>");  
+}
+
 std::string DctComponent::Info() const {
   std::stringstream stream;
   stream << Component::Info() << ", dct_dim=" << dct_mat_.NumCols();
@@ -2239,22 +2532,35 @@ void FixedLinearComponent::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "</FixedLinearComponent>");
 }
 
+
+
+std::string DropoutComponent::Info() const {
+  std::stringstream stream;
+  stream << Component::Info() << ", dropout_proportion = "
+         << dropout_proportion_ << ", dropout_scale = "
+         << dropout_scale_;
+  return stream.str();
+}
+
 void DropoutComponent::InitFromString(std::string args) {
   std::string orig_args(args);
   int32 dim;
-  BaseFloat dropout_proportion = 0.5;
+  BaseFloat dropout_proportion = 0.5, dropout_scale = 0.0;
   bool ok = ParseFromString("dim", &args, &dim);
-  ParseFromString("dropout-proportion", &args, &dropout_proportion);  
+  ParseFromString("dropout-proportion", &args, &dropout_proportion);
+  ParseFromString("dropout-scale", &args, &dropout_scale);
   
   if (!ok || !args.empty() || dim <= 0)
     KALDI_ERR << "Invalid initializer for layer of type DropoutComponent: \""
               << orig_args << "\"";
-  Init(dim, dropout_proportion);
+  Init(dim, dropout_proportion, dropout_scale);
 }
 
 void DropoutComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<DropoutComponent>", "<Dim>");
   ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<DropoutScale>");
+  ReadBasicType(is, binary, &dropout_scale_);
   ExpectToken(is, binary, "<DropoutProportion>");
   ReadBasicType(is, binary, &dropout_proportion_);
   ExpectToken(is, binary, "</DropoutComponent>");
@@ -2264,15 +2570,20 @@ void DropoutComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<DropoutComponent>");
   WriteToken(os, binary, "<Dim>");
   WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<DropoutScale>");
+  WriteBasicType(os, binary, dropout_scale_);
   WriteToken(os, binary, "<DropoutProportion>");
   WriteBasicType(os, binary, dropout_proportion_);
   WriteToken(os, binary, "</DropoutComponent>");  
 }
 
 
-void DropoutComponent::Init(int32 dim, BaseFloat dropout_proportion){
+void DropoutComponent::Init(int32 dim,
+                            BaseFloat dropout_proportion,
+                            BaseFloat dropout_scale){
   dim_ = dim;
   dropout_proportion_ = dropout_proportion;
+  dropout_scale_ = dropout_scale;
 }
   
 void DropoutComponent::Propagate(
@@ -2283,19 +2594,27 @@ void DropoutComponent::Propagate(
   out->Resize(in.NumRows(), in.NumCols());
 
   KALDI_ASSERT(dropout_proportion_ < 1.0 && dropout_proportion_ >= 0.0);
-  int32 dim = InputDim(), num_keep = static_cast<int32>(dim * dropout_proportion_);
-  KALDI_ASSERT(num_keep > 0);
-  BaseFloat scale = dim / static_cast<BaseFloat>(num_keep); // scale on the
-  // dimensions that we keep.
-  Vector<BaseFloat> scales(dim);
-  BaseFloat *begin = scales.Data(), *end = begin + dim;
-  std::fill(begin, begin + num_keep, scale);
-  std::fill(begin + num_keep, end, 0.0);
+  int32 dim = InputDim(), num_high = static_cast<int32>(dim * dropout_proportion_);
+  KALDI_ASSERT(num_high > 0);
 
+  int32 num_low = dim - num_high;
+  BaseFloat low_scale = dropout_scale_,
+      high_scale = (dim - low_scale * num_low) / num_high,
+      average = (num_low * low_scale + num_high * high_scale) / dim;
+  KALDI_ASSERT(fabs(average - 1.0) < 0.01);
+  
+
+  Vector<BaseFloat> scales(dim);
+  BaseFloat *begin = scales.Data(), *mid = begin + num_low,
+      *end = begin + dim;
+  std::fill(begin, mid, low_scale);
+  std::fill(mid, end, high_scale);
+  
   out->CopyFromMat(in);
   for (int32 r = 0; r < out->NumRows(); r++) {
     SubVector<BaseFloat> out_row(*out, r);
     std::random_shuffle(begin, end); // get new random ordering of kept components.
+    // depends on rand().
     out_row.MulElements(scales);
   }
 }
@@ -2322,6 +2641,12 @@ void DropoutComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
       (*in_deriv)(r, c) = id;
     }
   }
+}
+
+Component* DropoutComponent::Copy() const {
+  return new DropoutComponent(dim_,
+                              dropout_proportion_,
+                              dropout_scale_);
 }
 
 

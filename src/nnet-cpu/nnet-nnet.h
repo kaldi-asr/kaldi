@@ -105,6 +105,9 @@ class Nnet {
   /// Excise any components of type DropoutComponent.
   void RemoveDropout();
 
+  /// Calls SetDropoutScale for all the dropout nodes.
+  void SetDropoutScale(BaseFloat scale);
+
   /// Replace any components of type AffineComponentPreconditioned with
   /// components of type AffineComponent.
   void RemovePreconditioning();

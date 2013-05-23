@@ -23,7 +23,7 @@ namespace kaldi {
 
 void UnitTestGenericComponentInternal(const Component &component) {
   int32 input_dim = component.InputDim(),
-       output_dim = component.OutputDim();
+      output_dim = component.OutputDim();
 
 
   KALDI_LOG << component.Info();
@@ -202,7 +202,8 @@ void UnitTestReduceComponent() {
 
 
 template<class T>
-void UnitTestGenericComponent() { // works if it has an initializer from int,
+void UnitTestGenericComponent(std::string extra_str = "") {
+  // works if it has an initializer from int,
   // e.g. tanh, sigmoid.
   
   // We're testing that the gradients are computed correctly:
@@ -215,7 +216,7 @@ void UnitTestGenericComponent() { // works if it has an initializer from int,
   }
   {
     T component;
-    component.InitFromString("dim=15");
+    component.InitFromString(static_cast<std::string>("dim=15 ") + extra_str);
     UnitTestGenericComponentInternal(component);
   }
 }
@@ -428,24 +429,24 @@ void UnitTestParsing() {
 
 }
 
-int BasicDebugTestForSplice (bool output=false) {
+void BasicDebugTestForSplice(bool output=false) {
   int32 C=5;
   int32 K=4, contextLen=1;
   int32 R=3+2 * contextLen;
  
   SpliceComponent *c = new SpliceComponent();
   c->Init(C, contextLen, contextLen, K);
-  Matrix<BaseFloat> in(R, C);
+  Matrix<BaseFloat> in(R, C), in_deriv(R, C);
   Matrix<BaseFloat> out(R, c->OutputDim());
 
   in.SetRandn();
   if (output)
-    KALDI_WARN << in;
+    KALDI_LOG << in;
 
   c->Propagate(in, 1, &out);
   
   if (output) 
-    KALDI_WARN << out;
+    KALDI_LOG << out;
 
   out.Set(1);
   
@@ -455,18 +456,49 @@ int BasicDebugTestForSplice (bool output=false) {
   }
 
   if (output)
-    KALDI_WARN << out;
+    KALDI_LOG << out;
   
   int32 num_chunks = 1;
-  c->Backprop(in, in, out, num_chunks, c, &in);
+  c->Backprop(in, in, out, num_chunks, c, &in_deriv);
   
   if (output)
-    KALDI_WARN << in ;
+    KALDI_LOG << in_deriv;
+  delete c;
+}
+
+void BasicDebugTestForSpliceMax(bool output=false) {
+  int32 C=5;
+  int32 contextLen=2;
+  int32 R= 3 + 2*contextLen;
+ 
+  SpliceMaxComponent *c = new SpliceMaxComponent();
+  c->Init(C, contextLen, contextLen);
+  Matrix<BaseFloat> in(R, C), in_deriv(R, C);
+  Matrix<BaseFloat> out(R, c->OutputDim());
+  
+  in.SetRandn();
+  if (output)
+    KALDI_LOG << in;
+
+  c->Propagate(in, 1, &out);
+  
+  if (output) 
+    KALDI_LOG << out;
+
+  out.Set(5.0);
+  
+  if (output)
+    KALDI_LOG << out;
+  
+  int32 num_chunks = 1;
+  c->Backprop(in, in, out, num_chunks, c, &in_deriv);
+  
+  if (output)
+    KALDI_LOG << in_deriv;
 
   delete c;
-
-  return 0;
 }
+
 
 } // namespace kaldi
 
@@ -477,6 +509,7 @@ int main() {
   using namespace kaldi;
 
   BasicDebugTestForSplice(true);
+  BasicDebugTestForSpliceMax(true);
 
   for (int32 i = 0; i < 5; i++) {
     UnitTestGenericComponent<SigmoidComponent>();
@@ -485,6 +518,8 @@ int main() {
     UnitTestGenericComponent<SoftmaxComponent>();
     UnitTestGenericComponent<RectifiedLinearComponent>();
     UnitTestGenericComponent<SoftHingeComponent>();
+    UnitTestGenericComponent<SqrtSoftHingeComponent>();
+    UnitTestGenericComponent<PowerExpandComponent>("higher-power-scale=0.1");
     UnitTestSigmoidComponent();
     UnitTestReduceComponent();
     UnitTestAffineComponent();

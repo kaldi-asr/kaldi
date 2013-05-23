@@ -201,13 +201,16 @@ class MatrixBase {
   Real Min() const;
 
   /// Element by element multiplication with a given matrix.
-  void MulElements(const MatrixBase<Real> &a);
+  void MulElements(const MatrixBase<Real> &A);
 
   /// Divide each element by the corresponding element of a given matrix.
-  void DivElements(const MatrixBase<Real> &a);
+  void DivElements(const MatrixBase<Real> &A);
 
   /// Multiply each element with a scalar value.
   void Scale(Real alpha);
+
+  /// Set, element-by-element, *this = max(*this, A)
+  void Max(const MatrixBase<Real> &A);
 
   /// Equivalent to (*this) = (*this) * diag(scale).  Scaling
   /// each column by a scalar taken from that dimension of the vector.

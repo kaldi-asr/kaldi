@@ -361,6 +361,21 @@ void Nnet::RemoveDropout() {
     KALDI_LOG << "Removed " << removed << " dropout components.";
 }
 
+void Nnet::SetDropoutScale(BaseFloat scale) {
+  size_t n_set = 0;
+  for (size_t i = 0; i < components_.size(); i++) {
+    DropoutComponent *dc =
+        dynamic_cast<DropoutComponent*>(components_[i]);
+    if (dc != NULL) {
+      dc->SetDropoutScale(scale);
+      n_set++;
+    }
+  }
+  KALDI_LOG << "Set dropout scale to " << scale
+            << " for " << n_set << " components.";
+}      
+
+
 void Nnet::RemovePreconditioning() {
   for (size_t i = 0; i < components_.size(); i++) {
     if (dynamic_cast<AffineComponentPreconditioned*>(components_[i]) != NULL) {

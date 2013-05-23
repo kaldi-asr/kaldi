@@ -10,7 +10,7 @@ set -u
 
 # Wait till the main run.sh gets to the stage where's it's 
 # finished aligning the tri5 model.
-echo "Watiting till exp/tri5_ali/.done exists...."
+echo "Waiting till exp/tri5_ali/.done exists...."
 while [ ! -f exp/tri5_ali/.done ]; do sleep 30; done
 echo "...done waiting for exp/tri5_ali/.done"
 
