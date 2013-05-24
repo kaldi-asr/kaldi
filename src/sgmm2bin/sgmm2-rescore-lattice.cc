@@ -25,121 +25,7 @@
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
-
-namespace kaldi {
-
-struct Tuple {
-  Tuple(int32 state, int32 arc, int32 offset):
-    state_id(state), arc_id(arc), trans_offset(offset) {}
-  int32 state_id;
-  int32 arc_id;
-  int32 trans_offset;
-};
-
-void LatticeAcousticRescore(const AmSgmm2 &am,
-                            const TransitionModel &trans_model,
-                            const MatrixBase<BaseFloat> &data,
-                            const std::vector<std::vector<int32> > &gselect,
-                            double log_prune,
-                            const std::vector<int32> state_times,
-                            Sgmm2PerSpkDerivedVars *spk_vars,
-                            CompactLattice *clat) {
-  kaldi::uint64 props = clat->Properties(fst::kFstProperties, false);
-  if (!(props & fst::kTopSorted))
-    KALDI_ERR << "Input lattice must be topologically sorted.";
-
-  KALDI_ASSERT(!state_times.empty());
-
-  std::vector<std::vector< Tuple > > time_to_state(data.NumRows());
-
-  for (size_t state = 0; state < state_times.size(); state++) {
-    KALDI_ASSERT(state_times[state] >= 0);
-
-    int32 t = state_times[state];
-    int32 arc_id = 0;
-    for (fst::MutableArcIterator<CompactLattice> aiter(clat, state);
-        !aiter.Done(); aiter.Next()) {
-      CompactLatticeArc arc = aiter.Value();
-      std::vector<int32> arc_string = (arc.weight.String());
-
-      for (size_t offset = 0; offset < arc_string.size(); offset++) {
-        if (t < data.NumRows()) // end state may be past this..
-          time_to_state[t+offset].push_back(Tuple(state, arc_id, offset));
-        else
-          KALDI_ASSERT(t == data.NumRows()
-                && "There appears to be lattice/feature mismatch.");
-      }
-      arc_id++;
-    }
-    if (clat->Final(state) != CompactLatticeWeight::Zero()) {
-      std::vector<int32> arc_string = clat->Final(state).String();
-      for (size_t offset = 0; offset < arc_string.size(); offset++) {
-        if (t < data.NumRows()) // end state may be past this..
-          time_to_state[t+offset].push_back(Tuple(state, -1, offset));
-        else
-          KALDI_ASSERT(t == data.NumRows()
-                && "There appears to be lattice/feature mismatch.");
-      }
-    }
-  }
-
-  Sgmm2LikelihoodCache like_cache(am.NumGroups(), am.NumPdfs());
-
-  for (int32 t = 0; t < data.NumRows(); t++, like_cache.NextFrame()) {
-      Sgmm2PerFrameDerivedVars per_frame_vars;
-      am.ComputePerFrameVars(data.Row(t), gselect[t], *spk_vars,
-                             &per_frame_vars);
-
-      for (size_t i = 0; i < time_to_state[t].size(); i++) {
-        int32 state = time_to_state[t][i].state_id;
-        int32 arc_id = time_to_state[t][i].arc_id;
-        int32 offset = time_to_state[t][i].trans_offset;
-
-        if (arc_id == -1) { // Final state
-          // Access the trans_id
-          CompactLatticeWeight curr_clat_weight = clat->Final(state);
-          int32 trans_id = curr_clat_weight.String()[offset];
-
-          // Calculate likelihood
-          if (trans_id != 0) {  // Non-epsilon input label on arc
-            int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
-            BaseFloat ll = am.LogLikelihood(per_frame_vars, pdf_id,
-                                            &like_cache, spk_vars, log_prune);
-
-            // update weight
-            CompactLatticeWeight new_clat_weight = curr_clat_weight;
-            LatticeWeight new_lat_weight = new_clat_weight.Weight();
-            new_lat_weight.SetValue2(-ll + curr_clat_weight.Weight().Value2());
-            new_clat_weight.SetWeight(new_lat_weight);
-
-            clat->SetFinal(state, new_clat_weight);
-          }
-
-        } else {
-          fst::MutableArcIterator<CompactLattice> aiter(clat, state);
-
-          // Access the trans_id
-          aiter.Seek(arc_id);
-          CompactLatticeArc arc = aiter.Value();
-          int32 trans_id = arc.weight.String()[offset];
-
-          // Calculate likelihood
-          if (trans_id != 0) {  // Non-epsilon input label on arc
-            int32 pdf_id = trans_model.TransitionIdToPdf(trans_id);
-            BaseFloat ll = am.LogLikelihood(per_frame_vars, pdf_id,
-                                            &like_cache, spk_vars, log_prune);
-            // update weight
-            LatticeWeight new_weight = arc.weight.Weight();
-            new_weight.SetValue2(-ll + arc.weight.Weight().Value2());
-            arc.weight.SetWeight(new_weight);
-            aiter.SetValue(arc);
-          }
-        }
-      }
-  }
-}
-
-}  // namespace kaldi
+#include "decoder/decodable-am-sgmm2.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -217,22 +103,7 @@ int main(int argc, char *argv[]) {
       if (old_acoustic_scale != 1.0)
         fst::ScaleLattice(fst::AcousticLatticeScale(old_acoustic_scale), &clat);
 
-      kaldi::uint64 props = clat.Properties(fst::kFstProperties, false);
-      if (!(props & fst::kTopSorted)) {
-        if (fst::TopSort(&clat) == false)
-          KALDI_ERR << "Cycles detected in lattice.";
-      }
-
-      vector<int32> state_times;
-      int32 max_time = kaldi::CompactLatticeStateTimes(clat, &state_times);
       const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
-      if (feats.NumRows() != max_time) {
-        KALDI_WARN << "Skipping utterance " << utt << " since number of time "
-                   << "frames in lattice ("<< max_time << ") differ from "
-                   << "number of feature frames (" << feats.NumRows() << ").";
-        num_err++;
-        continue;
-      }
 
       // Get speaker vectors
       Sgmm2PerSpkDerivedVars spk_vars;
@@ -257,12 +128,13 @@ int main(int argc, char *argv[]) {
       const std::vector<std::vector<int32> > &gselect =
           gselect_reader.Value(utt);
 
-      kaldi::LatticeAcousticRescore(am_sgmm, trans_model, feats,
-                                    gselect, log_prune,
-                                    state_times, &spk_vars, &clat);
+      DecodableAmSgmm2 sgmm2_decodable(am_sgmm, trans_model, feats,
+                                       gselect, log_prune, &spk_vars);
 
-      compact_lattice_writer.Write(utt, clat);
-      num_done++;
+      if (kaldi::RescoreCompactLattice(&sgmm2_decodable, &clat)) {
+          compact_lattice_writer.Write(utt, clat);
+          num_done++;
+      } else num_err++;
     }
 
     KALDI_LOG << "Done " << num_done << " lattices, errors on "
