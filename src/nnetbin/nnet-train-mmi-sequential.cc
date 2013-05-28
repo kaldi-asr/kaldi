@@ -327,7 +327,7 @@ int main(int argc, char *argv[]) {
              << mmi_obj_notdrop/(nnet_diff_h.NumRows()-frm_drop)
              << ")";
         }
-        KALDI_LOG << ss.str();
+        KALDI_VLOG(1) << ss.str();
         // accumulate
         total_like += lat_like;
         total_lat_ac_like += lat_ac_like;
@@ -412,8 +412,6 @@ int main(int argc, char *argv[]) {
       nnet.Write(target_model_filename, binary);
     }
     
-    std::cout << "\n" << std::flush;
-
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " FINISHED " 
               << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed()
               << ", feature wait " << time_next << "s"; 

@@ -348,7 +348,7 @@ int main(int argc, char *argv[]) {
 
       if (num_done % 100 == 0) {
         time_now = time.Elapsed();
-        KALDI_VLOG(1) << "After " << num_done << "utterances: time elapsed = "
+        KALDI_VLOG(1) << "After " << num_done << " utterances: time elapsed = "
                       << time_now/60 << " min; processed " << total_frames/time_now
                       << " frames per second.";
       }

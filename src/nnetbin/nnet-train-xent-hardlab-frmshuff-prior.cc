@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 
     int32 bunchsize=512, cachesize=32768;
     po.Register("bunchsize", &bunchsize, "Size of weight update block");
-    po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling");
+    po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling (max 8388479)");
 
     std::string prior_rxfile;
     po.Register("prior", &prior_rxfile, "Priors of the training data to scale down gradients of represented PDFs [REQUIRED]");
@@ -158,10 +158,10 @@ int main(int argc, char *argv[]) {
         cache.Randomize();
       }
       // report
-      std::cerr << "Cache #" << ++num_cache << " "
+      KALDI_VLOG(1) << "Cache #" << ++num_cache << " "
                 << (cache.Randomized()?"[RND]":"[NO-RND]")
                 << " segments: " << num_done
-                << " frames: " << tot_t << "\n";
+                << " frames: " << static_cast<double>(tot_t)/360000 << "h";
       // train with the cache
       while (!cache.Empty()) {
         // get block of feature/target pairs
@@ -183,8 +183,6 @@ int main(int argc, char *argv[]) {
       nnet.Write(target_model_filename, binary);
     }
     
-    std::cout << "\n" << std::flush;
-
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " FINISHED " 
               << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed()
               << ", feature wait " << time_next << "s"; 

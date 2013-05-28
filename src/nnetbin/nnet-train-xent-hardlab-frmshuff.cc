@@ -1,6 +1,6 @@
 // nnetbin/nnet-train-xent-hardlab-perutt.cc
 
-// Copyright 2011  Karel Vesely
+// Copyright 2011-2013  Karel Vesely, Brno University of Technology
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
     const char *usage =
-        "Perform iteration of Neural Network training by stochastic gradient descent.\n"
+        "Perform one iteration of Neural Network training by stochastic gradient descent.\n"
         "Usage:  nnet-train-xent-hardlab-frmshuff [options] <model-in> <feature-rspecifier> <alignments-rspecifier> [<model-out>]\n"
         "e.g.: \n"
         " nnet-train-xent-hardlab-perutt nnet.init scp:train.scp ark:train.ali nnet.iter1\n";
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 
     int32 bunchsize=512, cachesize=32768, seed=777;
     po.Register("bunchsize", &bunchsize, "Size of weight update block");
-    po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling");
+    po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling (max 8388479)");
     po.Register("seed", &seed, "Seed value for srand, sets fixed order of frame-shuffling");
 
 #if HAVE_CUDA==1
@@ -134,11 +134,11 @@ int main(int argc, char *argv[]) {
           // get feature alignment pair
           const Matrix<BaseFloat> &mat = feature_reader.Value();
           const std::vector<int32> &alignment = alignments_reader.Value(key);
-          // chech for dimension
+          // check the length of the data
           if ((int32)alignment.size() != mat.NumRows()) {
-            KALDI_WARN << "Alignment has wrong size, ali "<< (alignment.size()) << " vs. feats "<< (mat.NumRows()) << ", " << key;
+            KALDI_WARN << "Alignment has wrong length, ali "<< (alignment.size()) << " vs. feats "<< (mat.NumRows()) << ", " << key;
             num_other_error++;
-          } else { //dimension OK
+          } else { //length OK
             // push features to GPU
             feats.Resize(mat.NumRows(), mat.NumCols(), kUndefined);
             feats.CopyFromMat(mat);
@@ -158,10 +158,10 @@ int main(int argc, char *argv[]) {
         cache.Randomize();
       }
       // report
-      std::cerr << "Cache #" << ++num_cache << " "
+      KALDI_VLOG(1) << "Cache #" << ++num_cache << " "
                 << (cache.Randomized()?"[RND]":"[NO-RND]")
                 << " segments: " << num_done
-                << " frames: " << tot_t << "\n";
+                << " frames: " << static_cast<double>(tot_t)/360000 << "h";
       // train with the cache
       while (!cache.Empty()) {
         // get block of feature/target pairs
@@ -183,10 +183,8 @@ int main(int argc, char *argv[]) {
       nnet.Write(target_model_filename, binary);
     }
     
-    std::cout << "\n" << std::flush;
-
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " FINISHED " 
-              << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed()
+              << tim.Elapsed()/60 << "min, fps" << tot_t/tim.Elapsed()
               << ", feature wait " << time_next << "s"; 
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_alignment

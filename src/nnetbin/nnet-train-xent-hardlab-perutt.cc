@@ -110,16 +110,14 @@ int main(int argc, char *argv[]) {
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         const std::vector<int32> &alignment = alignments_reader.Value(key);
          
-        // std::cout << mat;
-
         if ((int32)alignment.size() != mat.NumRows()) {
           KALDI_WARN << "Alignment has wrong size "<< (alignment.size()) << " vs. "<< (mat.NumRows());
           num_other_error++;
           continue;
         }
 
-        if(num_done % 10000 == 0) std::cout << num_done << ", " << std::flush;
-        num_done++;
+        // log
+        KALDI_VLOG(1) << "utt " << key << ", frames " << alignment.size();
 
         // push features to GPU
         feats.CopyFromMat(mat);
@@ -136,6 +134,7 @@ int main(int argc, char *argv[]) {
         tot_t += mat.NumRows();
       }
     
+      num_done++;
       Timer t_features;
       feature_reader.Next();
       time_next += t_features.Elapsed();
@@ -145,8 +144,6 @@ int main(int argc, char *argv[]) {
       nnet.Write(target_model_filename, binary);
     }
     
-    std::cout << "\n" << std::flush;
-
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " FINISHED " 
               << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed()
               << ", feature wait " << time_next << "s"; 

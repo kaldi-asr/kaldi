@@ -28,6 +28,9 @@ namespace kaldi {
 void Cache::Init(int32 cachesize, int32 bunchsize) {
 
   KALDI_ASSERT(cachesize>0);
+  if(cachesize > 8388479) {
+    KALDI_ERR << "Cachesize " << cachesize << " too large, use cachesize smaller than 8388480.";
+  }
   KALDI_ASSERT(bunchsize>0);
   KALDI_ASSERT(cachesize>=bunchsize);
 

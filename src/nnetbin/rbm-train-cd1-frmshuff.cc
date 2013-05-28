@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
 
     int32 bunchsize=100, cachesize=32768;
     po.Register("bunchsize", &bunchsize, "Size of weight update block");
-    po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling");
+    po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling (max 8388479)");
     
     BaseFloat drop_data = 0.0; 
     po.Register("drop-data", &drop_data, "Threshold for random dropping of the data (0 no-drop, 1 drop-all)");
