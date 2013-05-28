@@ -1,23 +1,26 @@
 #!/bin/bash
 
-# Copyright 2012  Karel Vesely, Daniel Povey
+# Copyright 2012-2013 Karel Vesely, Daniel Povey
 # Apache 2.0
 
 # Begin configuration section.  
-nnet= # You can specify the nnet to use (e.g. if you want to use the .alinnet)
-feature_transform= # You can specify the feature transform to use for the feedforward
-model= # You can specify the transition model to use (e.g. if you want to use the .alimdl)
-class_frame_counts= # You can specify frame count to compute PDF priors 
+nnet= # Optionally pre-select network to use for getting state-likelihoods
+feature_transform= # Optionally pre-select feature transform (in front of nnet)
+model= # Optionally pre-select transition model
+class_frame_counts= # Optionally pre-select class-counts used to compute PDF priors 
 
+stage=0 # stage=1 skips lattice generation
 nj=4
 cmd=run.pl
-max_active=7000
+max_active=7000 # maximum of active tokens
+max_mem=50000000 # limit the fst-size to 50MB (larger fsts are minimized)
 beam=13.0 # GMM:13.0
 latbeam=8.0 # GMM:6.0
 acwt=0.10 # GMM:0.0833, note: only really affects pruning (scoring is on lattices).
 scoring_opts="--min-lmwt 4 --max-lmwt 15"
-score_args=
-use_gpu_id=-1 #disable gpu
+skip_scoring=false
+use_gpu_id=-1 # disable gpu
+parallel_opts="-pe smp 2" # use 2 CPUs (1 DNN-forward, 1 decoder)
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -28,21 +31,25 @@ echo "$0 $@"  # Print the command line for logging
 if [ $# != 3 ]; then
    echo "Usage: $0 [options] <graph-dir> <data-dir> <decode-dir>"
    echo "... where <decode-dir> is assumed to be a sub-directory of the directory"
-   echo " where the model is."
-   echo "e.g.: $0 exp/mono/graph_tgpr data/test_dev93 exp/mono/decode_dev93_tgpr"
+   echo " where the DNN + transition model is."
+   echo "e.g.: $0 exp/dnn1/graph_tgpr data/test exp/dnn1/decode_tgpr"
    echo ""
-   echo "This script works on CMN + (delta+delta-delta | LDA+MLLT) features; it works out"
-   echo "what type of features you used (assuming it's one of these two)"
+   echo "This script works on plain or modified features (CMN,delta+delta-delta),"
+   echo "which are then sent through feature-transform. It works out what type"
+   echo "of features you used from content of srcdir."
    echo ""
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
    echo "  --nj <nj>                                        # number of parallel jobs"
-   echo "  --nnet <nnet>                                    # which nnet to use (e.g. to"
-   echo "  --model <model>                                  # which model to use (e.g. to"
-   echo "                                                   # specify the final.nnet)"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-   echo "  --transform-dir <trans-dir>                      # dir to find fMLLR transforms "
-   echo "                                                   # speaker-adapted decoding"
+   echo ""
+   echo "  --nnet <nnet>                                    # which nnet to use (opt.)"
+   echo "  --feature-transform <nnet>                       # select transform in front of nnet (opt.)"
+   echo "  --class-frame-counts <file>                      # file with frame counts (used to compute priors) (opt.)"
+   echo "  --model <model>                                  # which transition model to use (opt.)"
+   echo ""
+   echo "  --acwt <float>                                   # select acoustic scale for decoding"
+   echo "  --scoring-opts <opts>                            # options forwarded to local/score.sh"
    exit 1;
 fi
 
@@ -103,15 +110,19 @@ fi
 
 
 # Run the decoding in the queue
-$cmd JOB=1:$nj $dir/log/decode.JOB.log \
-  nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu-id=$use_gpu_id $nnet "$feats" ark:- \| \
-  latgen-faster-mapped --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
-  --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
-  $model $graphdir/HCLG.fst ark:- "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+if [ $stage -le 0 ]; then
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+    nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu-id=$use_gpu_id $nnet "$feats" ark:- \| \
+    latgen-faster-mapped --max-active=$max_active --max-mem=$max_mem --beam=$beam --lattice-beam=$latbeam \
+    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+    $model $graphdir/HCLG.fst ark:- "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+fi
 
 # Run the scoring
-[ ! -x local/score.sh ] && \
-  echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh $score_args $scoring_opts --cmd "$cmd" $data $graphdir $dir 2>$dir/scoring.log || exit 1;
+if ! $skip_scoring ; then
+  [ ! -x local/score.sh ] && \
+    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir || exit 1;
+fi
 
 exit 0;

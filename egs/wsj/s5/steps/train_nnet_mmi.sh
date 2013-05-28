@@ -1,12 +1,15 @@
 #!/bin/bash
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+# Copyright 2013  Brno University of Technology (Author: Karel Vesely)  
+# Apache 2.0.
 
-# MMI training (or optionally boosted MMI, if you give the --boost option).
-# 4 iterations (by default) of Extended Baum-Welch update.
-#
+# Sequence-discriminative MMI/BMMI training of DNN.
+# 4 iterations (by default) of Stochastic Gradient Descent with per-utterance updates.
+# Boosting of paths with more errors (BMMI) gets activated by '--boost <float>' option.
+
 # For the numerator we have a fixed alignment rather than a lattice--
 # this actually follows from the way lattices are defined in Kaldi, which
 # is to have a single path for each word (output-symbol) sequence.
+
 
 # Begin configuration section.
 cmd=run.pl
@@ -17,10 +20,10 @@ lmwt=1.0
 learn_rate=0.00001
 halving_factor=1.0 #ie. disable halving
 drop_frames=true
+verbose=1
 use_gpu_id=
 
 seed=777    # seed value used for training data shuffling
-#stage=0
 # End configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -29,13 +32,17 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# -ne 6 ]; then
-  echo "Usage: steps/train_mmi.sh <data> <lang> <srcdir> <ali> <denlats> <exp>"
-  echo " e.g.: steps/train_mmi.sh data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b_mmi"
+  echo "Usage: steps/$0 <data> <lang> <srcdir> <ali> <denlats> <exp>"
+  echo " e.g.: steps/$0 data/train_all data/lang exp/tri3b_dnn exp/tri3b_dnn_ali exp/tri3b_dnn_denlats exp/tri3b_dnn_mmi"
   echo "Main options (for others, see top of script file)"
-  echo "  --boost <boost-weight>                           # (e.g. 0.1), for boosted MMI.  (default 0)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --config <config-file>                           # config containing options"
-#  echo "  --stage <stage>                                  # stage to do partial re-run from."
+  echo "  --num-iters <N>                                  # number of iterations to run"
+  echo "  --acwt <float>                                   # acoustic score scaling"
+  echo "  --lmwt <float>                                   # linguistic score scaling"
+  echo "  --learn-rate <float>                             # learning rate for NN training"
+  echo "  --drop-frames <bool>                             # drop frames num/den completely disagree"
+  echo "  --boost <boost-weight>                           # (e.g. 0.1), for boosted MMI.  (default 0)"
   
   exit 1;
 fi
@@ -57,8 +64,6 @@ mkdir -p $dir/log
 cp $alidir/{final.mdl,tree} $dir
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
-oov=`cat $lang/oov.int` || exit 1;
-oovphone=$(fstprint $lang/L.fst  | awk '{ print $4" "$3 }' | grep "^$oov " | sort | uniq | awk '{ print $2; exit; }')
 
 
 
@@ -84,9 +89,7 @@ model=$dir/final.mdl
 
 
 # Shuffle the feature list to make the GD stochastic!
-# In doing so, we have to make sure the lattices are either indexed by .scp file
-# or are stored in the same order as features, which is harder to do...
-# The alignments can fit-in the memory, so no special treatment is necessary for them.
+# By shuffling features, we have to use lattices with random access (indexed by .scp file).
 cat $data/feats.scp | utils/shuffle_list.pl --srand $seed > $dir/train.scp
 
 
@@ -115,14 +118,15 @@ fi
 
 ###
 ### Prepare the alignments
-###
+### 
+# Assuming all alignments will fit into memory
 ali="ark:gunzip -c $alidir/ali.*.gz |"
 
 
 ###
 ### Prepare the lattices
 ###
-# The lattices are indexed by SCP (they are no gziped because of the random access in SGD)
+# The lattices are indexed by SCP (they are not gziped because of the random access in SGD)
 lats="scp:$denlatdir/lat.scp"
 
 # Optionally apply boosting
@@ -147,10 +151,7 @@ fi
 ###
 ###
 
-# Get the MLP output dimension (we will need it later when adding softmax)
-num_tgt=$(hmm-info --print-args=false $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
-
-# Run several iterations of the MMI training
+# Run several iterations of the MMI/BMMI training
 cur_mdl=$nnet
 x=1
 while [ $x -le $num_iters ]; do
@@ -166,7 +167,7 @@ while [ $x -le $num_iters ]; do
        --lm-scale=$lmwt \
        --learn-rate=$learn_rate \
        --drop-frames=$drop_frames \
-       --oov-phone=$oovphone \
+       --verbose=$verbose \
        ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
        $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet || exit 1
   fi
@@ -177,16 +178,13 @@ while [ $x -le $num_iters ]; do
 
   x=$((x+1))
   learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
+  
 done
 
 (cd $dir; [ -e final.nnet ] && unlink final.nnet; ln -s $((x-1)).nnet final.nnet)
 
-echo "MMI training finished"
+echo "MMI/BMMI training finished"
 
 
 
 exit 0
-
-
-
-

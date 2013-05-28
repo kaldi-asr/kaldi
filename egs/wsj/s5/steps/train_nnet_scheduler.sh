@@ -23,6 +23,8 @@ min_iters=
 start_halving_inc=0.5
 end_halving_inc=0.1
 halving_factor=0.5
+# misc.
+verbose=1
 # gpu
 use_gpu_id=
 # tool
@@ -69,7 +71,7 @@ mlp_base=${mlp_init##*/}; mlp_base=${mlp_base%.*}
 
 #prerun cross-validation
 $train_tool --cross-validate=true \
- --bunchsize=$bunch_size --cachesize=$cache_size \
+ --bunchsize=$bunch_size --cachesize=$cache_size --verbose=$verbose \
  ${feature_transform:+ --feature-transform=$feature_transform} \
  ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
  $mlp_best "$feats_cv" "$labels" \
@@ -92,7 +94,7 @@ for iter in $(seq -w $max_iters); do
   #training
   $train_tool \
    --learn-rate=$learn_rate --momentum=$momentum --l1-penalty=$l1_penalty --l2-penalty=$l2_penalty \
-   --bunchsize=$bunch_size --cachesize=$cache_size --randomize=true \
+   --bunchsize=$bunch_size --cachesize=$cache_size --randomize=true --verbose=$verbose \
    ${feature_transform:+ --feature-transform=$feature_transform} \
    ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
    ${seed:+ --seed=$seed} \
@@ -104,7 +106,7 @@ for iter in $(seq -w $max_iters); do
   
   #cross-validation
   $train_tool --cross-validate=true \
-   --bunchsize=$bunch_size --cachesize=$cache_size \
+   --bunchsize=$bunch_size --cachesize=$cache_size --verbose=$verbose \
    ${feature_transform:+ --feature-transform=$feature_transform} \
    ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
    $mlp_next "$feats_cv" "$labels" \

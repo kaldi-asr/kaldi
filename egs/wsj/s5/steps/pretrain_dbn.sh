@@ -231,3 +231,5 @@ echo
 
 echo "Pre-training finished."
 
+sleep 3
+exit 0

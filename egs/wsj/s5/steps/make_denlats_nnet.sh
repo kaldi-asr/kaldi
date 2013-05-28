@@ -1,8 +1,10 @@
 #!/bin/bash
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+# Copyright 2012-2013 Karel Vesely, Daniel Povey
+# Apache 2.0.
 
-# Create denominator lattices for MMI/MPE training.
-# Creates its output in $dir/lat.*.gz
+# Create denominator lattices for MMI/MPE/sMBR training.
+# Creates its output in $dir/lat.*.ark,$dir/lat.scp
+# The lattices are uncompressed, we need random access for DNN training.
 
 # Begin configuration section.
 nj=4
@@ -17,6 +19,7 @@ max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
 # End configuration section.
+parallel_opts="-pe smp 2"
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -24,10 +27,9 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
-   echo "Usage: steps/make_denlats_nnet.sh [options] <data-dir> <lang-dir> <src-dir> <exp-dir>"
-   echo "  e.g.: steps/make_denlats.sh data/train data/lang exp/tri1 exp/tri1_denlats"
-   echo "Works for (delta|lda) features, and (with --transform-dir option) such features"
-   echo " plus transforms."
+   echo "Usage: steps/$0 [options] <data-dir> <lang-dir> <src-dir> <exp-dir>"
+   echo "  e.g.: steps/$0 data/train data/lang exp/tri1 exp/tri1_denlats"
+   echo "Works for plain features (or CMN, delta), forwarded through feature-transform."
    echo ""
    echo "Main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
@@ -36,7 +38,6 @@ if [ $# != 4 ]; then
    echo "  --sub-split <n-split>                            # e.g. 40; use this for "
    echo "                           # large databases so your jobs will be smaller and"
    echo "                           # will (individually) finish reasonably soon."
-   echo "  --transform-dir <transform-dir>   # directory to find fMLLR transforms."
    exit 1;
 fi
 
@@ -135,7 +136,7 @@ feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=t
 echo "Generating the denlats"
 #2) Generate the denominator lattices
 if [ $sub_split -eq 1 ]; then 
-  $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode_den.JOB.log \
     latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
       --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
       $dir/dengraph/HCLG.fst "$feats" "ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp" || exit 1;
@@ -151,7 +152,7 @@ else
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
       feats_subset=$(echo $feats | sed s:JOB/:$n/split$sub_split/JOB/:g)
-      $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
+      $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
           --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
           $dir/dengraph/HCLG.fst "$feats_subset" "ark,scp:$dir/lat.$n.JOB.ark,$dir/lat.$n.JOB.scp" || exit 1;

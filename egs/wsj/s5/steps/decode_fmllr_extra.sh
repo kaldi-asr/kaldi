@@ -56,6 +56,7 @@ fmllr_update_type=full
 skip_scoring=false
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # If you supply num-threads, you should supply this too.
+scoring_opts=
 
 # End configuration section
 
@@ -80,7 +81,7 @@ if [ $# != 3 ]; then
    echo "  --acwt <acoustic-weight>                 # default 0.08333 ... used to get posteriors"
    echo "  --num-threads <n>                        # number of threads to use, default 1."
    echo "  --parallel-opts <opts>                   # e.g. '-pe smp 4' if you supply --num-threads 4"
-
+   echo "  --scoring-opts <opts>                    # options to local/score.sh"
    exit 1;
 fi
 
@@ -243,7 +244,7 @@ fi
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "$0: not scoring because local/score.sh does not exist or not executable." && exit 1;
-  local/score.sh --cmd "$cmd" $data $graphdir $dir
+  local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
 fi
 
 exit 0;

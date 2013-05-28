@@ -1,17 +1,19 @@
 #!/bin/bash
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+# Copyright 2013  Brno University of Technology (Author: Karel Vesely)  
+# Apache 2.0.
 
-# MMI training (or optionally boosted MMI, if you give the --boost option).
-# 4 iterations (by default) of Extended Baum-Welch update.
-#
+# Sequence-discriminative MPE/sMBR training of DNN.
+# 4 iterations (by default) of Stochastic Gradient Descent with per-utterance updates.
+# We select between MPE/sMBR optimization by '--do-smbr <bool>' option.
+
 # For the numerator we have a fixed alignment rather than a lattice--
 # this actually follows from the way lattices are defined in Kaldi, which
 # is to have a single path for each word (output-symbol) sequence.
 
+
 # Begin configuration section.
 cmd=run.pl
 num_iters=4
-boost=0.0 #ie. disable boosting 
 acwt=0.1
 lmwt=1.0
 learn_rate=0.00001
@@ -22,7 +24,6 @@ verbose=1
 use_gpu_id=
 
 seed=777    # seed value used for training data shuffling
-#stage=0
 # End configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -32,12 +33,15 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# -ne 6 ]; then
   echo "Usage: steps/$0 <data> <lang> <srcdir> <ali> <denlats> <exp>"
-  echo " e.g.: steps/$0 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri2b_denlats_si84 exp/tri2b_mmi"
+  echo " e.g.: steps/$0 data/train_all data/lang exp/tri3b_dnn exp/tri3b_dnn_ali exp/tri3b_dnn_denlats exp/tri3b_dnn_smbr"
   echo "Main options (for others, see top of script file)"
-  echo "  --boost <boost-weight>                           # (e.g. 0.1), for boosted MMI.  (default 0)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --config <config-file>                           # config containing options"
-#  echo "  --stage <stage>                                  # stage to do partial re-run from."
+  echo "  --num-iters <N>                                  # number of iterations to run"
+  echo "  --acwt <float>                                   # acoustic score scaling"
+  echo "  --lmwt <float>                                   # linguistic score scaling"
+  echo "  --learn-rate <float>                             # learning rate for NN training"
+  echo "  --do-smbr <bool>                                 # do sMBR training, otherwise MPE"
   
   exit 1;
 fi
@@ -87,9 +91,7 @@ mpe_silphones_arg= #empty
 
 
 # Shuffle the feature list to make the GD stochastic!
-# In doing so, we have to make sure the lattices are either indexed by .scp file
-# or are stored in the same order as features, which is harder to do...
-# The alignments can fit-in the memory, so no special treatment is necessary for them.
+# By shuffling features, we have to use lattices with random access (indexed by .scp file).
 cat $data/feats.scp | utils/shuffle_list.pl --srand $seed > $dir/train.scp
 
 
@@ -118,39 +120,19 @@ fi
 
 ###
 ### Prepare the alignments
-###
+### 
+# Assuming all alignments will fit into memory
 ali="ark:gunzip -c $alidir/ali.*.gz |"
 
 
 ###
 ### Prepare the lattices
 ###
-# The lattices are indexed by SCP (they are no gziped because of the random access in SGD)
+# The lattices are indexed by SCP (they are not gziped because of the random access in SGD)
 lats="scp:$denlatdir/lat.scp"
 
-# Optionally apply boosting
-if [[ "$boost" != "0.0" && "$boost" != 0 ]]; then
-  #make lattice scp with same order as the shuffled feature scp
-  awk '{ if(r==0) { latH[$1]=$2; }
-         if(r==1) { if(latH[$1] != "") { print $1" "latH[$1] } }
-  }' $denlatdir/lat.scp r=1 $dir/train.scp > $dir/lat.scp
-  #get the list of alignments
-  ali-to-phones $alidir/final.mdl "$ali" ark,t:- | awk '{print $1;}' > $dir/ali.lst
-  #remove feature files which have no lattice or no alignment,
-  #(so that the mmi training tool does not blow-up due to lattice caching)
-  mv $dir/train.scp $dir/train.scp_unfilt
-  awk '{ if(r==0) { latH[$1]="1"; }
-         if(r==1) { aliH[$1]="1"; }
-         if(r==2) { if((latH[$1] != "") && (aliH[$1] != "")) { print $0; } }
-  }' $dir/lat.scp r=1 $dir/ali.lst r=2 $dir/train.scp_unfilt > $dir/train.scp
-  #create the lat pipeline
-  lats="ark,o:lattice-boost-ali --b=$boost --silence-phones=$silphonelist $alidir/final.mdl scp:$dir/lat.scp '$ali' ark:- |"
-fi
-###
-###
-###
 
-# Run several iterations of the MMI training
+# Run several iterations of the MPE/sMBR training
 cur_mdl=$nnet
 x=1
 while [ $x -le $num_iters ]; do
@@ -184,12 +166,8 @@ done
 
 (cd $dir; [ -e final.nnet ] && unlink final.nnet; ln -s $((x-1)).nnet final.nnet)
 
-echo "MPE training finished"
+echo "MPE/sMBR training finished"
 
 
 
 exit 0
-
-
-
-

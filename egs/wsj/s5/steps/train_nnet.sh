@@ -1,48 +1,50 @@
 #!/bin/bash
 
-# Copyright 2012  Karel Vesely, Shakti Rath (Brno University of Technology)
+# Copyright 2012/2013  Karel Vesely (Brno University of Technology)
 # Apache 2.0
 
 # Begin configuration.
+config=            # config, which is also sent to all other scripts
 
-# nnet config
+# NETWORK INITIALIZATION
+mlp_init=          # select initialized MLP (override initialization)
+feature_transform= # select feature transform (=splice,rescaling,...) (don't build new one)
+#
 model_size=8000000 # nr. of parameteres in MLP
-hid_layers=4      # nr. of hidden layers (prior to sotfmax or bottleneck)
-bn_dim=           # set value to get a bottleneck network
-hid_dim=          # set this to override the $model_size
-mlp_init=         # set this to override MLP initialization
-dbn=              # set the DBN to use for hidden layers
-feature_transform= # set the feature transform in front of the trained MLP
-# training config
-learn_rate=0.008  # initial learning rate
-momentum=0.0      # momentum
-l1_penalty=0.0     # L1 regualrization constant (lassoo)
-l2_penalty=0.0     # L2 regualrization constant (weight decay)
-# data processing config
-bunch_size=256     # size of the training block
-cache_size=16384   # size of the randomization cache
-randomize=true    # do the frame level randomization
-copy_feats=true   # resave the features in the re-shuffled order to tmpdir (faster reading)
-# feature config
-delta_order=
-apply_cmvn=false
-norm_vars=false # normalize the FBANKs (CVN)
-apply_glob_cmvn=true
-splice_lr=5    # temporal splicing
-splice_step=1   # stepsize of the splicing (1 is no gap between frames, just like splice_feats does)
-feat_type=plain
-traps_dct_basis=11 # nr. od DCT basis (applies to `traps` feat_type, splice10 )
-lda_rand_prune=4.0 # LDA estimation random pruning (applies to `lda` feat_type)
-lda_dim=350        # LDA dimension (applies to `lda` feat_type)
+hid_layers=4       # nr. of hidden layers (prior to sotfmax or bottleneck)
+bn_dim=            # set a value to get a bottleneck network
+hid_dim=           # select hidden dimension directly (override $model_size)
+dbn=               # select DBN to prepend to the MLP initialization
+#
+init_opts=         # options, passed to the initialization script
 
-# scheduling config
-min_iters=    # set to enforce minimum number of iterations
-max_iters=20  # maximum number of iterations
-start_halving_inc=0.5 # frm-accuracy improvement to begin learn_rate reduction
-end_halving_inc=0.1   # frm-accuracy improvement to terminate the training
-halving_factor=0.5    # factor to multiply learn_rate
-# tool config
-TRAIN_TOOL="nnet-train-xent-hardlab-frmshuff" # training tool used for training / cross validation
+# FEATURE PROCESSING
+copy_feats=true  # resave the train features in the re-shuffled order to tmpdir
+# feature config (applies always)
+apply_cmvn=false # apply normalization to input features?
+ norm_vars=false # use variance normalization?
+delta_order=
+# feature_transform:
+splice=5         # temporal splicing
+splice_step=1    # stepsize of the splicing (1 == no gap between frames)
+feat_type=plain
+# feature config (applies to feat_type traps)
+traps_dct_basis=11 # nr. od DCT basis (applies to `traps` feat_type, splice10 )
+# feature config (applies to feat_type transf) (ie. LDA+MLLT, no fMLLR)
+transf=
+splice_after_transf=5
+# feature config (applies to feat_type lda)
+lda_dim=300        # LDA dimension (applies to `lda` feat_type)
+
+# LABELS
+labels=            # use these labels to train (override deafault pdf alignments) 
+num_tgt=           # force to use number of outputs in the MLP (default is autodetect)
+
+# TRAINING SCHEDULER
+learn_rate=0.008   # initial learning rate
+train_opts=        # options, passed to the training script
+
+# OTHER
 use_gpu_id= # manually select GPU id to run on, (-1 disables GPU)
 analyze_alignments=true # run the alignment analysis script
 seed=777    # seed value used for training data shuffling and initialization
@@ -78,7 +80,9 @@ for f in $alidir/final.mdl $alidir/ali.1.gz $alidir_cv/ali.1.gz $data/feats.scp 
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-echo "$0 [info]: Training Neural Network"
+echo
+echo "# INFO"
+echo "$0 : Training Neural Network"
 printf "\t dir       : $dir \n"
 printf "\t Train-set : $data $alidir \n"
 printf "\t CV-set    : $data_cv $alidir_cv \n"
@@ -89,37 +93,39 @@ mkdir -p $dir/{log,nnet}
 [ -e $dir/final.nnet ] && printf "\nSKIPPING TRAINING... ($0)\nnnet already trained : $dir/final.nnet ($(readlink $dir/final.nnet))\n\n" && exit 0
 
 ###### PREPARE ALIGNMENTS ######
-echo "Preparing alignments"
-#convert ali to pdf
-labels_tr="scp:$dir/ali_train_pdf.scp"
-ali-to-pdf $alidir/final.mdl "ark:gunzip -c $alidir/ali.*.gz |" ark,scp:$dir/ali_train_pdf.ark,$dir/ali_train_pdf.scp 2> $dir/ali_train_pdf.scp_log || exit 1
-if [[ "$alidir" == "$alidir_cv" ]]; then
-  labels=$labels_tr
+echo
+echo "# PREPARING ALIGNMENTS"
+if [ ! -z $labels ]; then
+  echo "Using targets '$labels' (by force)"
 else
-  #convert ali to pdf (cv set)
-  labels_cv="scp:$dir/ali_cv_pdf.scp"
-  ali-to-pdf $alidir/final.mdl "ark:gunzip -c $alidir_cv/ali.*.gz |" ark,scp:$dir/ali_cv_pdf.ark,$dir/ali_cv_pdf.scp 2> $dir/ali_cv_pdf.scp_log || exit 1
-  #merge the two parts (learn-rate scheduler expects one file in $labels)
-  labels="scp:$dir/ali_train_and_cv_pdf.scp"
-  cat $dir/ali_train_pdf.scp $dir/ali_cv_pdf.scp > $dir/ali_train_and_cv_pdf.scp
+  echo "Using PDF targets from dirs '$alidir' '$alidir_cv'"
+  #define pdf-alignment rspecifiers
+  labels_tr="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz |\" ark:- |"
+  if [[ "$alidir" == "$alidir_cv" ]]; then
+    labels="$labels_tr"
+  else
+    labels="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz $alidir_cv/ali.*.gz |\" ark:- |"
+  fi
+
+  #get the priors, get pdf-counts from alignments
+  analyze-counts --binary=false "$labels_tr" $dir/ali_train_pdf.counts || exit 1
+  #copy the old transition model, will be needed by decoder
+  copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl || exit 1
+  #copy the tree
+  cp $alidir/tree $dir/tree || exit 1
+
+  #analyze the train/cv alignments
+  if [ "$analyze_alignments" == "true" ]; then
+    utils/nnet/analyze_alignments.sh "TRAINING SET" "ark:gunzip -c $alidir/ali.*.gz |" $dir/final.mdl $lang > $dir/__ali_stats_train
+    utils/nnet/analyze_alignments.sh "VALIDATION SET" "ark:gunzip -c $alidir_cv/ali.*.gz |" $dir/final.mdl $lang > $dir/__ali_stats_cv
+  fi
 fi
-
-#get the priors, count the class examples from alignments
-analyze-counts --binary=false $labels_tr $dir/ali_train_pdf.counts 2>$dir/ali_train_pdf.counts_log || exit 1
-#copy the old transition model, will be needed by decoder
-copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl 2>$dir/final.mdl_log || exit 1
-cp $alidir/tree $dir/tree || exit 1
-
-#analyze the train/cv alignments
-if [ "$analyze_alignments" == "true" ]; then
-  utils/nnet/analyze_alignments.sh "TRAINING SET" "ark:gunzip -c $alidir/ali.*.gz |" $dir/final.mdl $lang > $dir/__ali_stats_train
-  utils/nnet/analyze_alignments.sh "VALIDATION SET" "ark:gunzip -c $alidir_cv/ali.*.gz |" $dir/final.mdl $lang > $dir/__ali_stats_cv
-fi
-
 
 ###### PREPARE FEATURES ######
 # shuffle the list
-echo "Preparing train/cv lists"
+echo
+echo "# PREPARING FEATURES"
+echo "Preparing train/cv lists :"
 cat $data/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/train.scp
 cp $data_cv/feats.scp $dir/cv.scp
 # print the list sizes
@@ -149,14 +155,12 @@ if [ $apply_cmvn == "true" ]; then
   echo "Will use CMVN statistics : $data/cmvn.scp, $data_cv/cmvn.scp"
   [ ! -r $data/cmvn.scp ] && echo "Cannot find cmvn stats $data/cmvn.scp" && exit 1;
   [ ! -r $data_cv/cmvn.scp ] && echo "Cannot find cmvn stats $data_cv/cmvn.scp" && exit 1;
-  cmvn="scp:$data/cmvn.scp"
-  cmvn_cv="scp:$data_cv/cmvn.scp"
-  feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk $cmvn ark:- ark:- |"
-  feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2spk $cmvn_cv ark:- ark:- |"
+  feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp ark:- ark:- |"
+  feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp ark:- ark:- |"
   # keep track of norm_vars option
   echo "$norm_vars" >$dir/norm_vars 
 else
-  echo "apply_cmvn disabled (per speaker norm. on input features)"
+  echo "apply_cmvn is disabled (per speaker norm. on input features)"
 fi
 
 #optionally add deltas
@@ -168,9 +172,9 @@ if [ "$delta_order" != "" ]; then
 fi
 
 #get feature dim
-echo -n "Getting feature dim : "
+echo "Getting feature dim : "
 feat_dim=$(feat-to-dim --print-args=false "$feats_tr" -)
-echo $feat_dim
+echo "Feature dim is : $feat_dim"
 
 # Now we will start building complex feature_transform which will 
 # be forwarded in CUDA to gain more speed.
@@ -181,15 +185,15 @@ echo $feat_dim
 # and we would like to use single GPU per training instance,
 # so that the grid resources can be used efficiently...
 
-if [ "$feature_transform" != "" ]; then
-  echo "Using pre-computed feature-transform $feature_transform"
-  cp $feature_transform $dir/$(basename $feature_transform)
-  feature_transform=$dir/$(basename $feature_transform)
+if [ ! -z "$feature_transform" ]; then
+  echo "Using pre-computed feature-transform : '$feature_transform'"
+  tmp=$dir/$(basename $feature_transform) 
+  cp $feature_transform $tmp; feature_transform=$tmp
 else
   # Generate the splice transform
-  echo "Using splice +/- $splice_lr , step $splice_step"
-  feature_transform=$dir/tr_splice$splice_lr-$splice_step.nnet
-  utils/nnet/gen_splice.py --fea-dim=$feat_dim --splice=$splice_lr --splice-step=$splice_step > $feature_transform
+  echo "Using splice +/- $splice , step $splice_step"
+  feature_transform=$dir/tr_splice$splice-$splice_step.nnet
+  utils/nnet/gen_splice.py --fea-dim=$feat_dim --splice=$splice --splice-step=$splice_step > $feature_transform
 
   # Choose further processing of spliced features
   echo "Feature type : $feat_type"
@@ -198,36 +202,27 @@ else
     ;;
     traps)
       #generate hamming+dct transform
-      transf=$dir/hamm_dct${traps_dct_basis}.mat
-      echo "Preparing Hamming DCT transform : $transf"
-      utils/nnet/gen_hamm_mat.py --fea-dim=$feat_dim --splice=$splice_lr > $dir/hamm.mat
-      utils/nnet/gen_dct_mat.py --fea-dim=$feat_dim --splice=$splice_lr --dct-basis=$traps_dct_basis > $dir/dct.mat
-      compose-transforms --binary=false $dir/dct.mat $dir/hamm.mat $transf 2>${transf}_log || exit 1
-      #convert transform to nnet format
-      transf-to-nnet --binary=false $transf $transf.nnet 2>$transf.nnet_log || exit 1
-      #append it to the feature_transform
-      {
-        tag=$(basename $transf .mat)
-        feature_transform_old=$feature_transform
-        feature_transform=${feature_transform%.nnet}_${tag}.nnet
-        cp $feature_transform_old $feature_transform
-        cat $transf.nnet >> $feature_transform
-      }
+      feature_transform_old=$feature_transform
+      feature_transform=${feature_transform%.nnet}_hamm_dct${traps_dct_basis}.nnet
+      echo "Preparing Hamming DCT transform into : $feature_transform"
+      #prepare matrices with time-transposed hamming and dct
+      utils/nnet/gen_hamm_mat.py --fea-dim=$feat_dim --splice=$splice > $dir/hamm.mat
+      utils/nnet/gen_dct_mat.py --fea-dim=$feat_dim --splice=$splice --dct-basis=$traps_dct_basis > $dir/dct.mat
+      #put everything together
+      compose-transforms --binary=false $dir/dct.mat $dir/hamm.mat - | \
+        transf-to-nnet - - | \
+        nnet-concat --binary=false $feature_transform_old - $feature_transform || exit 1
     ;;
     transf)
-      transf=$dir/final.mat
-      [ ! -f $alidir/final.mat ] && echo "Missing transform $alidir/final.mat" && exit 1;
-      cp $alidir/final.mat $transf
-      echo "Copied transform $transf from $alidir/final.mat"
-      #convert transform to nnet format
-      transf-to-nnet --binary=false $transf $transf.nnet 2>$transf.nnet_log || exit 1
-      #append it to the feature_transform
-      {
-        feature_transform_old=$feature_transform
-        feature_transform=${feature_transform%.nnet}_alidir-transf.nnet
-        cp $feature_transform_old $feature_transform
-        cat $transf.nnet >> $feature_transform
-      }
+      feature_transform_old=$feature_transform
+      feature_transform=${feature_transform%.nnet}_transf_splice${splice_after_transf}.nnet
+      [ -z $transf ] && $alidir/final.mat
+      [ ! -f $transf ] && echo "Missing transf $transf" && exit 1
+      feat_dim=$(feat-to-dim "$feats_tr nnet-forward 'nnet-concat $feature_transform_old \"transf-to-nnet $transf - |\" - |' ark:- ark:- |" -)
+      nnet-concat --binary=false $feature_transform_old \
+        "transf-to-nnet $transf - |" \
+        "utils/nnet/gen_splice.py --fea-dim=$feat_dim --splice=$splice_after_transf |" \
+        $feature_transform || exit 1
     ;;
     lda)
       transf=$dir/lda$lda_dim.mat
@@ -235,27 +230,21 @@ else
       if [ ! -r "$dir/lda.acc" ]; then
         echo "LDA: Converting alignments to posteriors $dir/lda_post.scp"
         ali-to-post "ark:gunzip -c $alidir/ali.*.gz|" ark:- | \
-          weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark,scp:$dir/lda_post.ark,$dir/lda_post.scp 2> $dir/lda_post.scp_log || exit 1;
+          weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark,scp:$dir/lda_post.ark,$dir/lda_post.scp 2>$dir/log/ali-to-post-lda.log || exit 1;
         echo "Accumulating LDA statistics $dir/lda.acc on top of spliced feats"
-        acc-lda --rand-prune=$lda_rand_prune $alidir/final.mdl "$feats_tr nnet-forward $feature_transform ark:- ark:- |" scp:$dir/lda_post.scp $dir/lda.acc 2> $dir/lda.acc_log || exit 1;
+        acc-lda --rand-prune=4.0 $alidir/final.mdl "$feats_tr nnet-forward $feature_transform ark:- ark:- |" scp:$dir/lda_post.scp $dir/lda.acc 2>$dir/log/acc-lda.log || exit 1;
       else
         echo "LDA: Using pre-computed stats $dir/lda.acc"
       fi
       #estimate the transform  
       echo "Estimating LDA transform $dir/lda.mat from the statistics $dir/lda.acc"
-      est-lda --write-full-matrix=$dir/lda.full.mat --dim=$lda_dim $transf $dir/lda.acc 2>${transf}_log || exit 1;
-      #convert the LDA matrix to nnet format
-      transf-to-nnet --binary=false $transf $transf.nnet 2>$transf.nnet_log || exit 1;
-      #append LDA matrix to feature_transform
-      {
-        tag=$(basename $transf .mat)
-        feature_transform_old=$feature_transform
-        feature_transform=${feature_transform%.nnet}_${tag}.nnet
-        cp $feature_transform_old $feature_transform
-        cat $transf.nnet >> $feature_transform
-      }
-      #remove the accu
-      #rm $dir/lda.acc 
+      est-lda --write-full-matrix=$dir/lda.full.mat --dim=$lda_dim $transf $dir/lda.acc 2>$dir/log/lda.log || exit 1;
+      #append the LDA matrix to feature_transform
+      feature_transform_old=$feature_transform
+      feature_transform=${feature_transform%.nnet}_lda${lda_dim}.nnet
+      transf-to-nnet $transf - | \
+        nnet-concat --binary=false $feature_transform_old - $feature_transform || exit 1
+      #remove the temporary file
       rm $dir/lda_post.{ark,scp}
     ;;
     *)
@@ -266,144 +255,71 @@ else
   # keep track of feat_type
   echo $feat_type > $dir/feat_type
 
-  #renormalize the MLP input to zero mean and unit variance
-  if [ "$apply_glob_cmvn" == "true" ]; then
-    feature_transform_old=$feature_transform
-    feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
-    echo "Renormalizing MLP input features into $feature_transform"
-    nnet-forward ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
-      $feature_transform_old "$(echo $feats_tr | sed 's|train.scp|train.scp.10k|')" \
-      ark:- 2>$dir/log/cmvn_glob_fwd.log |\
-    compute-cmvn-stats ark:- - | cmvn-to-nnet - - |\
-    nnet-concat --binary=false $feature_transform_old - $feature_transform
-  else
-    echo "No global CMVN used on MLP front-end"
-  fi
+  # Renormalize the MLP input to zero mean and unit variance
+  feature_transform_old=$feature_transform
+  feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
+  echo "Renormalizing MLP input features into $feature_transform"
+  nnet-forward ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
+    $feature_transform_old "$(echo $feats_tr | sed 's|train.scp|train.scp.10k|')" \
+    ark:- 2>$dir/log/nnet-forward-cmvn.log |\
+  compute-cmvn-stats ark:- - | cmvn-to-nnet - - |\
+  nnet-concat --binary=false $feature_transform_old - $feature_transform
 fi
 
 
 ###### MAKE LINK TO THE FINAL feature_transform, so the other scripts will find it ######
-(cd $dir; ln -s $(basename $feature_transform) final.feature_transform )
+(cd $dir; [ ! -f final.feature_transform ] && ln -s $(basename $feature_transform) final.feature_transform )
 
 
 ###### INITIALIZE THE NNET ######
-
-if [ "" != "$mlp_init" ]; then
+echo 
+echo "# NN-INITIALIZATION"
+if [ ! -z "$mlp_init" ]; then
   echo "Using pre-initalized network $mlp_init";
 else
-  echo -n "Initializng MLP : "
-
+  echo "Getting input/output dims :"
+  #initializing the MLP, get the i/o dims...
+  #input-dim
   num_fea=$(feat-to-dim "$feats_tr nnet-forward $feature_transform ark:- ark:- |" - )
-  #optioanlly add DBN
-  [ ! -z $dbn ] && num_fea=$(nnet-forward "nnet-concat $feature_transform $dbn -|" "$feats_tr" ark:- | feat-to-dim ark:- -)
-  [ "$num_fea" == "" ] && echo "Getting nnet input dimension failed!!" && exit 1
+  { #optioanlly take output dim of DBN
+    [ ! -z $dbn ] && num_fea=$(nnet-forward "nnet-concat $feature_transform $dbn -|" "$feats_tr" ark:- | feat-to-dim ark:- -)
+    [ -z "$num_fea" ] && echo "Getting nnet input dimension failed!!" && exit 1
+  }
 
-  num_tgt=$(hmm-info --print-args=false $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
-  # What is the topology?
-  if [ "" == "$bn_dim" ]; then #MLP w/o bottleneck
-    case "$hid_layers" in
-      0) #just logistic regresion
-        mlp_init=$dir/nnet_${num_fea}_${num_tgt}.init
-        echo " $mlp_init"
-        utils/nnet/gen_mlp_init.py --dim=${num_fea}:${num_tgt} \
-          --gauss --negbias --seed=$seed > $mlp_init
-        ;;
-      1) #3-layer MLP
-        if [ "" != "$hid_dim" ]; then
-          num_hid=$hid_dim
-        else
-          num_hid=$((model_size/(num_fea+num_tgt)))
-        fi
-        mlp_init=$dir/nnet_${num_fea}_${num_hid}_${num_tgt}.init
-        echo " $mlp_init"
-        utils/nnet/gen_mlp_init.py --dim=${num_fea}:${num_hid}:${num_tgt} \
-          --gauss --negbias --seed=$seed > $mlp_init
-        ;;
-      2|3|4|5|6|7|8|9|10) #(>3)-layer MLP
-        if [ "" != "$hid_dim" ]; then
-          num_hid=$hid_dim
-        else
-          a=$((hid_layers-1))
-          b=$((num_fea+num_tgt))
-          c=$((-model_size))
-          num_hid=$(awk "BEGIN{ num_hid= -$b/(2*$a) + sqrt($b^2 -4*$a*$c)/(2*$a); print int(num_hid) }") 
-        fi
-        mlp_init=$dir/nnet_${num_fea}
-        dim_arg=${num_fea}
-        for i in $(seq $hid_layers); do
-          mlp_init=${mlp_init}_$num_hid
-          dim_arg=${dim_arg}:${num_hid}
-        done
-        mlp_init=${mlp_init}_${num_tgt}.init
-        dim_arg=${dim_arg}:${num_tgt}
-        echo " $mlp_init"
-        utils/nnet/gen_mlp_init.py --dim=${dim_arg} --gauss --negbias --seed=$seed > $mlp_init
-        ;;
-      *)
-        echo "Unsupported number of hidden layers $hid_layers"
-        exit 1;
-    esac
-  else #bn-system
-    num_bn=$bn_dim
-    case "$hid_layers" in # ie. number of layers in front of bottleneck
-      1) #5-layer MLP
-        if [ "" != "$hid_dim" ]; then
-          num_hid=$hid_dim
-        else
-          num_hid=$((model_size/(num_fea+num_tgt+(2*num_bn))))
-        fi
-        mlp_init=$dir/nnet_${num_fea}_${num_hid}_${num_bn}_${num_hid}_${num_tgt}.init
-        echo " $mlp_init"
-        utils/nnet/gen_mlp_init.py --dim=${num_fea}:${num_hid}:${num_bn}:${num_hid}:${num_tgt} --gauss --negbias --seed=$seed --linBNdim=$num_bn > $mlp_init
-        ;;
-      2|3|4|5|6|7|8|9|10) #(>5)-layer MLP
-        if [ "" != "$hid_dim" ]; then
-          num_hid=$hid_dim
-        else
-          a=$((hid_layers-1))
-          b=$((num_fea+2*num_bn+num_tgt))
-          c=$((-model_size))
-          num_hid=$(awk "BEGIN{ num_hid= -$b/(2*$a) + sqrt($b^2 -4*$a*$c)/(2*$a); print int(num_hid) }") 
-        fi
-        mlp_init=$dir/nnet_${num_fea}
-        dim_arg=${num_fea}
-        for i in $(seq $hid_layers); do
-          mlp_init=${mlp_init}_$num_hid
-          dim_arg=${dim_arg}:${num_hid}
-        done
-        mlp_init=${mlp_init}_${num_bn}lin_${num_hid}_${num_tgt}.init
-        dim_arg=${dim_arg}:${num_bn}:${num_hid}:${num_tgt}
-        echo " $mlp_init"
-        utils/nnet/gen_mlp_init.py --dim=${dim_arg} --gauss --negbias --seed=$seed --linBNdim=$num_bn > $mlp_init
-        ;;
-      *)
-        echo "Unsupported number of hidden layers $hid_layers"
-        exit 1;
-    esac
-  fi
+  #output-dim
+  [ -z $num_tgt ] && num_tgt=$(hmm-info --print-args=false $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
 
-  #optionally add dbn to the initialization
+  #run the MLP initializing script
+  mlp_init=$dir/nnet.init
+  utils/nnet/init_nnet.sh --model_size $model_size --hid_layers $hid_layers \
+    ${bn_dim:+ --bn-dim $bn_dim} \
+    ${hid_dim:+ --hid-dim $hid_dim} \
+    --seed $seed ${init_opts} \
+    ${config:+ --config $config} \
+    $num_fea $num_tgt $mlp_init || exit 1
+
+  #optionally prepend dbn to the initialization
   if [ ! -z $dbn ]; then
-    mlp_init_old=$mlp_init; mlp_init=$dir/nnet_$(basename $dbn)_$(basename $mlp_init_old)
+    mlp_init_old=$mlp_init; mlp_init=$dir/nnet_$(basename $dbn)_dnn.init
     nnet-concat $dbn $mlp_init_old $mlp_init 
   fi
-
 fi
-
 
 
 ###### TRAIN ######
-echo "Starting training : "
-source utils/nnet/train_nnet_scheduler.sh
-echo "Training finished."
 echo
-if [ "" == "$mlp_final" ]; then
-  echo "No final network returned!";
-  exit 1;
-else
-  ( cd $dir; ln -s nnet/${mlp_final##*/} final.nnet; )
-  echo "Final network $mlp_final linked to $dir/final.nnet";
-fi
+echo "# RUNNING THE NN-TRAINING SCHEDULER"
+steps/train_nnet_scheduler.sh \
+  --feature-transform $feature_transform \
+  --learn-rate $learn_rate \
+  --seed $seed \
+  ${train_opts} \
+  ${config:+ --config $config} \
+  ${use_gpu_id:+ --use-gpu-id $use_gpu_id} \
+  $mlp_init "$feats_tr" "$feats_cv" "$labels" $dir || exit 1
 
-echo "Succeeded training the Neural Network : $dir/final.nnet"
 
+echo "$0 successfuly finished.. $dir"
+
+sleep 3
+exit 0

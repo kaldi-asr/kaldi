@@ -96,7 +96,7 @@ fi
 
 # concatenate the .scp files together.
 for ((n=1; n<=nj; n++)); do
-  cat $fbankdir/raw_fbank_$name.$n.scp >> $data/feats.scp || exit 1;
+  cat $fbankdir/raw_fbank_$name.$n.scp || exit 1;
 done > $data/feats.scp
 
 rm $logdir/wav.*.scp  $logdir/segments.* 2>/dev/null

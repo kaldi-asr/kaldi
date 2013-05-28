@@ -113,7 +113,7 @@ steps/make_denlats_nnet.sh --nj 250 --cmd "$decode_cmd" --config conf/decode_dnn
 # Now we re-train the hybrid by single iteration of sMBR 
 #false && \
 {
-steps/train_nnet_mpe.sh --cmd "$cuda_cmd" --num-iters 1 --acwt $acwt --do-smbr=true \
+steps/train_nnet_mpe.sh --cmd "$cuda_cmd" --num-iters 1 --acwt $acwt --do-smbr true \
   data-fmllr-tri4b/train_nodup data/lang $srcdir \
   ${srcdir}_ali_all \
   ${srcdir}_denlats_all \
@@ -153,7 +153,7 @@ steps/make_denlats_nnet.sh --nj 250 --cmd "$decode_cmd" --config conf/decode_dnn
 # Now we re-train the hybrid by several iterations of sMBR 
 #false && \
 {
-steps/train_nnet_mpe.sh --cmd "$cuda_cmd" --num-iters 2 --acwt $acwt --do-smbr=true \
+steps/train_nnet_mpe.sh --cmd "$cuda_cmd" --num-iters 2 --acwt $acwt --do-smbr true \
   data-fmllr-tri4b/train_nodup data/lang $srcdir \
   ${srcdir}_ali_all \
   ${srcdir}_denlats_all \
