@@ -5,7 +5,7 @@ EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
 BINFILES = lattice-to-kws-index kws-index-union transcripts-to-fsts \
-		   kws-search
+		   kws-search generate-proxy-keywords
 
 OBJFILES =
 
