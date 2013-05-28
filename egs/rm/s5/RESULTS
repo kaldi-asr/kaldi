@@ -1,5 +1,7 @@
 for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
 
+exit 0
+
 # Monophone, MFCC+delta+accel
 %WER 8.82 [ 1106 / 12533, 132 ins, 249 del, 725 sub ] exp/mono/decode/wer_3
 
@@ -112,6 +114,18 @@ for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; d
 %WER 4.84 [ 1679 / 34722, 506 ins, 192 del, 981 sub ] exp/tri4a1_mmi_f/decode_train/wer_9
 %WER 2.07 [ 260 / 12533, 51 ins, 29 del, 180 sub ]    exp/tri4a1_mmi_g/decode/wer_3
 %WER 0.61 [ 211 / 34722, 33 ins, 34 del, 144 sub ]    exp/tri4a1_mmi_g/decode_train/wer_4
+
+# DNN systems (Karel)
+# Per-frame cross-entropy training
+%WER 1.58 [ 198 / 12533, 28 ins, 44 del, 126 sub ] exp/tri3b_pretrain-dbn_dnn/decode/wer_3
+# Sequence-based sMBR training
+%WER 1.54 [ 193 / 12533, 29 ins, 40 del, 124 sub ] exp/tri3b_pretrain-dbn_dnn_smbr/decode_it1/wer_3
+%WER 1.52 [ 190 / 12533, 23 ins, 45 del, 122 sub ] exp/tri3b_pretrain-dbn_dnn_smbr/decode_it2/wer_4
+%WER 1.48 [ 185 / 12533, 22 ins, 42 del, 121 sub ] exp/tri3b_pretrain-dbn_dnn_smbr/decode_it3/wer_4
+%WER 1.50 [ 188 / 12533, 25 ins, 40 del, 123 sub ] exp/tri3b_pretrain-dbn_dnn_smbr/decode_it4/wer_4
+%WER 1.50 [ 188 / 12533, 21 ins, 46 del, 121 sub ] exp/tri3b_pretrain-dbn_dnn_smbr/decode_it5/wer_5
+%WER 1.49 [ 187 / 12533, 22 ins, 44 del, 121 sub ] exp/tri3b_pretrain-dbn_dnn_smbr/decode_it6/wer_5
+
 
 # Some system combination experiments.
 %WER 3.02 [ 378 / 12533, 58 ins, 68 del, 252 sub ] exp/combine_1_2a/decode/wer_4
