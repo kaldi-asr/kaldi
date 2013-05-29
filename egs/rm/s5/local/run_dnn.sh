@@ -25,7 +25,7 @@ steps/make_fmllr_feats.sh --nj 10 --cmd "$train_cmd" \
 # train
 dir=data-fmllr-tri3b/train
 steps/make_fmllr_feats.sh --nj 10 --cmd "$train_cmd" \
-   --transform-dir exp/tri4b_ali \
+   --transform-dir exp/tri3b_ali \
    $dir data/train $gmmdir $dir/_log $dir/_data || exit 1
 
 # split the data : 90% train 10% cross-validation (held-out)
