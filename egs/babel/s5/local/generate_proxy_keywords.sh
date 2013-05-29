@@ -16,7 +16,13 @@ confusion_matrix=
 . parse_options.sh || exit 1;
 
 if [ $# -ne 4 ]; then
-  echo "Generate proxy keywords for OOV keywords. You may apply the confusion matrix."
+  echo "Generate proxy keywords for OOV keywords. You may apply the confusion matrix. If you"
+  echo "are going to use the confusion matrix, please use the following format for the file"
+  echo "\$confusion_matrix:"
+  echo "          p1 p2 count1        // For substitution"
+  echo "          p3 <eps> count2     // For deletion"
+  echo "          <eps> p4 count3     // For insertion"
+  echo ""
   echo "Usage: local/generate_example_kws.sh <kws-data-dir> <oov-lexicon>"
   echo "                                     <lexicon> <symbol-table>"
   echo " e.g.: local/generate_example_kws.sh data/kws oov_lexicon.txt"
