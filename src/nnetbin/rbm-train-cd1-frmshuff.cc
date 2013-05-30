@@ -1,6 +1,6 @@
-// rbmbin/rbm-train-cd1-frmshuff.cc
+// nnetbin/rbm-train-cd1-frmshuff.cc
 
-// Copyright 2012  Karel Vesely
+// Copyright 2012  Brno University of Technology (Author: Karel Vesely)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -172,10 +172,10 @@ int main(int argc, char *argv[]) {
       // randomize
       cache.Randomize();
       // report
-      std::cerr << "Cache #" << ++num_cache << " "
+      KALDI_VLOG(1) << "Cache #" << ++num_cache << " "
                 << (cache.Randomized()?"[RND]":"[NO-RND]")
                 << " segments: " << num_done
-                << " frames: " << tot_t << "\n";
+                << " frames: " << static_cast<double>(tot_t)/360000 << "h";
       // train with the cache
       while (!cache.Empty()) {
         // get block of feature/target pairs
@@ -243,8 +243,6 @@ int main(int argc, char *argv[]) {
 
     nnet.Write(target_model_filename, binary);
     
-    std::cout << "\n" << std::flush;
-
     KALDI_LOG << "RBM TRAINING FINISHED " 
               << tim.Elapsed()/60 << " min, fps" << tot_t/tim.Elapsed()
               << ", feature wait " << time_next << "s"; 

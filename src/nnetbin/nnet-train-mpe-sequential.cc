@@ -1,4 +1,4 @@
-// nnetbin/nnet-mpe.cc
+// nnetbin/nnet-train-mpe-sequential.cc
 
 // Copyright 2011-2013  Karel Vesely;  Arnab Ghoshal
 
@@ -29,6 +29,7 @@
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-activation.h"
 #include "nnet/nnet-nnet.h"
+#include "nnet/nnet-pdf-prior.h"
 #include "util/timer.h"
 #include "cudamatrix/cu-device.h"
 
@@ -81,6 +82,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Perform iteration of Neural Network MPE/sMBR training by stochastic "
         "gradient descent.\n"
+        "The network weights are updated on each utterance.\n"
         "Usage:  nnet-train-mpe-sequential [options] <model-in> <transition-model-in> "
         "<feature-rspecifier> <den-lat-rspecifier> <ali-rspecifier> [<model-out>]\n"
         "e.g.: \n"
@@ -88,11 +90,8 @@ int main(int argc, char *argv[]) {
         "nnet.iter1\n";
 
     ParseOptions po(usage);
-    bool binary = false,
-        crossvalidate = false;
+    bool binary = false;
     po.Register("binary", &binary, "Write output in binary mode");
-    po.Register("cross-validate", &crossvalidate,
-                "Perform cross-validation (don't backpropagate)");
 
     BaseFloat learn_rate = 0.00001,
         momentum = 0.0,
@@ -104,14 +103,15 @@ int main(int argc, char *argv[]) {
     po.Register("l2-penalty", &l2_penalty, "L2 penalty (weight decay)");
     po.Register("l1-penalty", &l1_penalty, "L1 penalty (promote sparsity)");
 
-    std::string feature_transform, class_frame_counts, silence_phones_str;
+    std::string feature_transform, silence_phones_str;
 
     po.Register("feature-transform", &feature_transform, 
                 "Feature transform in Nnet format");
-        po.Register("class-frame-counts", &class_frame_counts,
-                "Class frame counts to compute the class priors");
     po.Register("silence-phones", &silence_phones_str, "Colon-separated list "
                 "of integer id's of silence phones, e.g. 46:47");
+
+    PdfPriorOptions prior_opts;
+    prior_opts.Register(&po);
 
     BaseFloat acoustic_scale = 1.0,
         lm_scale = 1.0,
@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 6-(crossvalidate?1:0)) {
+    if (po.NumArgs() != 6) {
       po.PrintUsage();
       exit(1);
     }
@@ -148,9 +148,7 @@ int main(int argc, char *argv[]) {
         ref_ali_rspecifier = po.GetArg(5);
 
     std::string target_model_filename;
-    if (!crossvalidate) {
-      target_model_filename = po.GetArg(6);
-    }
+    target_model_filename = po.GetArg(6);
 
     std::vector<int32> silence_phones;
     if (!kaldi::SplitStringToIntegers(silence_phones_str, ":", false,
@@ -180,6 +178,9 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "The nnet was without softmax " << model_filename;
     }
 
+    // Read the class-frame-counts, compute priors
+    PdfPrior log_prior(prior_opts);
+
     nnet.SetLearnRate(learn_rate, NULL);
     nnet.SetMomentum(momentum);
     nnet.SetL2Penalty(l2_penalty);
@@ -195,29 +196,9 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> feats, feats_transf, nnet_out, nnet_diff;
     Matrix<BaseFloat> nnet_out_h, nnet_diff_h;
 
-    // Read the class-counts, compute priors
-    CuVector<BaseFloat> log_priors;
-    if (class_frame_counts != "") {
-      Vector<BaseFloat> tmp_priors;
-      Input in;
-      in.OpenTextMode(class_frame_counts);
-      tmp_priors.Read(in.Stream(), false);
-      in.Close();
-
-      // create inv. priors, or log inv priors
-      BaseFloat sum = tmp_priors.Sum();
-      tmp_priors.Scale(1.0 / sum);
-      tmp_priors.ApplyLog();
-
-      // push priors to GPU
-      log_priors.Resize(tmp_priors.Dim());
-      log_priors.CopyFromVec(tmp_priors);
-    }
-
-
     Timer time;
     double time_now = 0;
-    KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " STARTED";
+    KALDI_LOG << "TRAINING STARTED";
 
     int32 num_done = 0, num_no_ref_ali = 0, num_no_den_lat = 0,
         num_other_error = 0;
@@ -256,7 +237,7 @@ int main(int argc, char *argv[]) {
         fst::ScaleLattice(fst::AcousticLatticeScale(old_acoustic_scale),
                           &den_lat);
       }
-      // sort it topologically if not already so
+      // optionaly sort it topologically
       kaldi::uint64 props = den_lat.Properties(fst::kFstProperties, false);
       if (!(props & fst::kTopSorted)) {
         if (fst::TopSort(&den_lat) == false)
@@ -267,8 +248,8 @@ int main(int argc, char *argv[]) {
       int32 max_time = kaldi::LatticeStateTimes(den_lat, &state_times);
       // check for temporal length of denominator lattices
       if (max_time != mat.NumRows()) {
-        KALDI_WARN << "Denominator lattice has wrong length " << max_time
-                   << " vs. " << mat.NumRows();
+        KALDI_WARN << "Denominator lattice has wrong length "
+                   << max_time << " vs. " << mat.NumRows();
         num_other_error++;
         continue;
       }
@@ -280,9 +261,9 @@ int main(int argc, char *argv[]) {
       nnet_transf.Feedforward(feats, &feats_transf);
       // propagate through the nnet (assuming w/o softmax)
       nnet.Propagate(feats_transf, &nnet_out);
-      // subtract the log_priors
-      if (log_priors.Dim() > 0) {
-        nnet_out.AddVecToRows(-1.0, log_priors);
+      // subtract the log_prior
+      if (prior_opts.class_frame_counts != "") {
+        log_prior.SubtractOnLogpost(&nnet_out);
       }
       // transfer it back to the host
       int32 num_frames = nnet_out.NumRows(),
@@ -335,11 +316,9 @@ int main(int argc, char *argv[]) {
                     << (utt_frame_acc/num_frames) << " over " << num_frames
                     << " frames.";
 
-      // 9) backpropagate through the nnet
-      if (!crossvalidate) {
-        nnet_diff = nnet_diff_h;
-        nnet.Backpropagate(nnet_diff, NULL);
-      }
+      // 7) backpropagate through the nnet
+      nnet_diff = nnet_diff_h;
+      nnet.Backpropagate(nnet_diff, NULL);
 
       // increase time counter
       total_frame_acc += utt_frame_acc;
@@ -354,16 +333,14 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    if (!crossvalidate) {
-      // add the softmax layer back before writing
-      KALDI_LOG << "Appending the softmax " << target_model_filename;
-      nnet.AppendLayer(new Softmax(nnet.OutputDim(),nnet.OutputDim(),&nnet));
-      //store the nnet
-      nnet.Write(target_model_filename, binary);
-    }
+    // add the softmax layer back before writing
+    KALDI_LOG << "Appending the softmax " << target_model_filename;
+    nnet.AppendLayer(new Softmax(nnet.OutputDim(),nnet.OutputDim(),&nnet));
+    //store the nnet
+    nnet.Write(target_model_filename, binary);
 
     time_now = time.Elapsed();
-    KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " FINISHED; "
+    KALDI_LOG << "TRAINING FINISHED; "
               << "Time taken = " << time_now/60 << " min; processed "
               << (total_frames/time_now) << " frames per second.";
 

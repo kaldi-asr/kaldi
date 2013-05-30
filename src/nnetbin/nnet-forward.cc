@@ -1,6 +1,6 @@
 // nnetbin/nnet-forward.cc
 
-// Copyright 2011  Karel Vesely
+// Copyright 2011-2013  Brno University of Technology (Author: Karel Vesely)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <limits> 
+#include <limits>
 
 #include "nnet/nnet-nnet.h"
 #include "nnet/nnet-loss.h"
+#include "nnet/nnet-pdf-prior.h"
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "util/timer.h"
@@ -29,28 +30,23 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Perform forward pass through Neural Network.\n"
+        "\n"
         "Usage:  nnet-forward [options] <model-in> <feature-rspecifier> <feature-wspecifier>\n"
         "e.g.: \n"
         " nnet-forward nnet ark:features.ark ark:mlpoutput.ark\n";
 
     ParseOptions po(usage);
 
+    PdfPriorOptions prior_opts;
+    prior_opts.Register(&po);
+
     std::string feature_transform;
-    po.Register("feature-transform", &feature_transform, "Feature transform in Nnet format");
-
-    std::string class_frame_counts;
-    po.Register("class-frame-counts", &class_frame_counts, "Counts of frames for posterior division by class-priors");
-
-    BaseFloat prior_scale = 1.0;
-    po.Register("prior-scale", &prior_scale, "scaling factor of prior log-probabilites given by --class-frame-counts");
-
-    bool apply_log = false, silent = false;
-    po.Register("apply-log", &apply_log, "Transform MLP output to logscale");
+    po.Register("feature-transform", &feature_transform, "Feature transform in front of main network (in nnet format)");
 
     bool no_softmax = false;
-    po.Register("no-softmax", &no_softmax, "No softmax on MLP output. The MLP outputs directly log-likelihoods, log-priors will be subtracted");
-
-    po.Register("silent", &silent, "Don't print any messages");
+    po.Register("no-softmax", &no_softmax, "No softmax on MLP output (or remove it if found), the pre-softmax activations will be used as log-likelihoods, log-priors will be subtracted");
+    bool apply_log = false;
+    po.Register("apply-log", &apply_log, "Transform MLP output to logscale");
 
 #if HAVE_CUDA==1
     int32 use_gpu_id=-2;
@@ -88,6 +84,21 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Removing softmax from the nnet " << model_filename;
       nnet.RemoveLayer(nnet.LayerCount()-1);
     }
+    //check for some non-sense option combinations
+    if(apply_log && no_softmax) {
+      KALDI_ERR << "Nonsense option combination : --apply-log=true and --no-softmax=true";
+    }
+    if(apply_log && nnet.Layer(nnet.LayerCount()-1)->GetType() != Component::kSoftmax) {
+      KALDI_ERR << "Used --apply-log=true, but nnet " << model_filename 
+                << " does not have <softmax> as last component!";
+    }
+    
+    PdfPrior pdf_prior(prior_opts);
+    if (prior_opts.class_frame_counts != "" && (!no_softmax && !apply_log)) {
+      KALDI_ERR << "Option --class-frame-counts has to be used together with "
+                << "--no-softmax or --apply-log";
+    }
+
 
     kaldi::int64 tot_t = 0;
 
@@ -97,54 +108,18 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> feats, feats_transf, nnet_out;
     Matrix<BaseFloat> nnet_out_host;
 
-    // Read the class-counts, compute priors
-    Vector<BaseFloat> tmp_priors;
-    CuVector<BaseFloat> priors;
-    if(class_frame_counts != "") {
-      Input in;
-      in.OpenTextMode(class_frame_counts);
-      tmp_priors.Read(in.Stream(), false);
-      in.Close();
-     
-      //create inv. priors, or log inv priors 
-      BaseFloat sum = tmp_priors.Sum();
-      tmp_priors.Scale(1.0/sum);
-      if (apply_log || no_softmax) {
-        tmp_priors.ApplyLog();
-        tmp_priors.Scale(-prior_scale);
-      } else {
-        tmp_priors.ApplyPow(-prior_scale);
-      }
 
-      //detect the inf, replace by something reasonable (maximal non-inf value)
-      //a) replace inf by -inf
-      for(int32 i=0; i<tmp_priors.Dim(); i++) {
-        if(tmp_priors(i) == std::numeric_limits<BaseFloat>::infinity()) {
-          tmp_priors(i) *= -1.0;
-        }
-      }
-      //b) find max
-      BaseFloat max = tmp_priors.Max();
-      //c) replace -inf by max prior
-      for(int32 i=0; i<tmp_priors.Dim(); i++) {
-        if(tmp_priors(i) == -std::numeric_limits<BaseFloat>::infinity()) {
-          tmp_priors(i) = max;
-        }
-      }
-
-      // push priors to GPU
-      priors.Resize(tmp_priors.Dim());
-      priors.CopyFromVec(tmp_priors);
-    }
-
-    Timer tim;
-    if(!silent) KALDI_LOG << "MLP FEEDFORWARD STARTED";
-
+    Timer time;
+    double time_now = 0;
     int32 num_done = 0;
-    // iterate over all the feature files
+    // iterate over all feature files
     for (; !feature_reader.Done(); feature_reader.Next()) {
       // read
       const Matrix<BaseFloat> &mat = feature_reader.Value();
+      KALDI_VLOG(2) << "Processing utterance " << num_done+1 
+                    << ", " << feature_reader.Key() 
+                    << ", " << mat.NumRows() << "frm";
+
       //check for NaN/inf
       for(int32 r=0; r<mat.NumRows(); r++) {
         for(int32 c=0; c<mat.NumCols(); c++) {
@@ -154,6 +129,7 @@ int main(int argc, char *argv[]) {
             KALDI_ERR << "inf in features of : " << feature_reader.Key();
         }
       }
+
       // push it to gpu
       feats = mat;
       // fwd-pass
@@ -165,18 +141,15 @@ int main(int argc, char *argv[]) {
         nnet_out.ApplyLog();
       }
      
-      // divide posteriors by priors to get quasi-likelihoods
-      if(class_frame_counts != "") {
-        if (apply_log || no_softmax) {
-          nnet_out.AddVecToRows(1.0, priors, 1.0);
-        } else {
-          nnet_out.MulColsVec(priors);
-        }
+      // subtract log-priors from log-posteriors to get quasi-likelihoods
+      if(prior_opts.class_frame_counts != "" && (no_softmax || apply_log)) {
+        pdf_prior.SubtractOnLogpost(&nnet_out);
       }
      
       //download from GPU
       nnet_out_host.Resize(nnet_out.NumRows(), nnet_out.NumCols());
       nnet_out.CopyToMat(&nnet_out_host);
+
       //check for NaN/inf
       for(int32 r=0; r<nnet_out_host.NumRows(); r++) {
         for(int32 c=0; c<nnet_out_host.NumCols(); c++) {
@@ -186,27 +159,34 @@ int main(int argc, char *argv[]) {
             KALDI_ERR << "inf in NNet coutput of : " << feature_reader.Key();
         }
       }
+
       // write
       feature_writer.Write(feature_reader.Key(), nnet_out_host);
 
       // progress log
-      if (num_done % 1000 == 0) {
-        if(!silent) KALDI_LOG << num_done << ", " << std::flush;
+      if (num_done % 100 == 0) {
+        time_now = time.Elapsed();
+        KALDI_VLOG(1) << "After " << num_done << " utterances: time elapsed = "
+                      << time_now/60 << " min; processed " << tot_t/time_now
+                      << " frames per second.";
       }
       num_done++;
       tot_t += mat.NumRows();
     }
     
     // final message
-    if(!silent) KALDI_LOG << "MLP FEEDFORWARD FINISHED " 
-                          << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed(); 
-    if(!silent) KALDI_LOG << "Done " << num_done << " files";
+    KALDI_LOG << "Done " << num_done << " files" 
+              << " in " << time.Elapsed()/60 << "min," 
+              << " (fps " << tot_t/time.Elapsed() << ")"; 
 
 #if HAVE_CUDA==1
-    if (!silent) CuDevice::Instantiate().PrintProfile();
+    if (kaldi::g_kaldi_verbose_level >= 1) {
+      CuDevice::Instantiate().PrintProfile();
+    }
 #endif
 
-    return ((num_done>0)?0:1);
+    if (num_done == 0) return -1;
+    return 0;
   } catch(const std::exception &e) {
     KALDI_ERR << e.what();
     return -1;
