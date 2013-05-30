@@ -16,11 +16,14 @@
 
 # To be run from ..
 #
-# Deep neural network pre-training,
-# with some optional feature transformations (cmvn/delta/splicing)
+# Deep Belief Network pre-training by Contrastive Divergence (CD-1) algorithm.
+# The script can pre-train on plain features (ie. saved fMLLR features), 
+# or modified features (CMN, delta).
+# The script creates feature-transform in nnet format, which contains splice 
+# and shift+scale (zero mean and unit variance on DBN input).
 #
-# This is with single dataset
-
+# For special cases it is possible to use external feature-transform.
+# 
 
 # Begin configuration.
 #
@@ -44,6 +47,8 @@ norm_vars=false    # When apply_cmvn=true, this enables CVN
 splice=5           # Temporal splicing
 splice_step=1      # Stepsize of the splicing (1 is consecutive splice, 
                    # value 2 would do [ -10 -8 -6 -4 -2 0 2 4 6 8 10 ] splicing)
+# misc.
+verbose=1 # enable per-cache reports
 # gpu config
 use_gpu_id= # manually select GPU id to run on, (-1 disables GPU) 
 # End configuration.
@@ -58,7 +63,20 @@ if [ $# != 2 ]; then
    echo "Usage: $0 <data> <exp-dir>"
    echo " e.g.: $0 data/train exp/rbm_pretrain"
    echo "main options (for others, see top of script file)"
-   echo "  --config <config-file>                           # config containing options"
+   echo "  --config <config-file>           # config containing options"
+   echo ""
+   echo "  --nn-depth <N>                   # number of RBM layers"
+   echo "  --hid-dim <N>                    # number of hidden units per layer"
+   echo "  --rbm-iter <N>                   # number of CD-1 iterations per layer"
+   echo "  --dbm-drop-data <float>          # probability of frame-dropping,"
+   echo "                                   # can be used to subsample large datasets"
+   echo "  --rbm-lrate <float>              # learning-rate for Bernoulli-Bernoulli RBMs"
+   echo "  --rbm-lrate-low <float>          # learning-rate for Gaussian-Bernoulli RBM"
+   echo ""
+   echo "  --copy-feats <bool>              # copy features to /tmp, to accelerate training"
+   echo "  --apply-cmvn <bool>              # normalize input features (opt.)"
+   echo "    --norm-vars <bool>               # use variance normalization (opt.)"
+   echo "  --splice <N>                     # splice +/-N frames of input features"
    exit 1;
 fi
 
@@ -70,7 +88,8 @@ for f in $data/feats.scp; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-echo "$0 [info]: Pre-training Deep Belief Network as a stack of RBMs"
+echo "# INFO"
+echo "$0 : Pre-training Deep Belief Network as a stack of RBMs"
 printf "\t dir       : $dir \n"
 printf "\t Train-set : $data \n"
 
@@ -79,6 +98,8 @@ printf "\t Train-set : $data \n"
 mkdir -p $dir/log
 
 ###### PREPARE FEATURES ######
+echo
+echo "# PREPARING FEATURES"
 # shuffle the list
 echo "Preparing train/cv lists"
 cat $data/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/train.scp
@@ -170,7 +191,8 @@ num_hid=$hid_dim
 
 ###### PERFORM THE PRE-TRAINING ######
 for depth in $(seq 1 $nn_depth); do
-  echo "%%%%%%% PRE-TRAINING RBM LAYER $depth"
+  echo
+  echo "# PRE-TRAINING RBM LAYER $depth"
   RBM=$dir/$depth.rbm
   [ -f $RBM ] && echo "RBM '$RBM' already trained, skipping." && continue
 
@@ -183,7 +205,7 @@ for depth in $(seq 1 $nn_depth); do
     #pre-train
     echo "Pretraining '$RBM' (reduced lrate and 2x more iters)"
     rbm-train-cd1-frmshuff --learn-rate=$rbm_lrate_low --l2-penalty=$rbm_l2penalty \
-      --num-iters=$((2*$rbm_iter)) --drop-data=$rbm_drop_data \
+      --num-iters=$((2*$rbm_iter)) --drop-data=$rbm_drop_data --verbose=$verbose \
       --feature-transform=$feature_transform \
       ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
       $RBM.init "$feats" $RBM 2>$dir/log/rbm.$depth.log || exit 1
@@ -207,7 +229,7 @@ for depth in $(seq 1 $nn_depth); do
     #pre-train
     echo "Pretraining '$RBM'"
     rbm-train-cd1-frmshuff --learn-rate=$rbm_lrate --l2-penalty=$rbm_l2penalty \
-      --num-iters=$rbm_iter --drop-data=$rbm_drop_data \
+      --num-iters=$rbm_iter --drop-data=$rbm_drop_data --verbose=$verbose \
       --feature-transform="nnet-concat $feature_transform $dir/$((depth-1)).dbn - |" \
       ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
       $RBM.init "$feats" $RBM 2>$dir/log/rbm.$depth.log || exit 1
@@ -224,8 +246,8 @@ for depth in $(seq 1 $nn_depth); do
 done
 
 echo
-echo "%%%% REPORT %%%%"
-echo "% RBM pre-training progress"
+echo "# REPORT"
+echo "# RBM pre-training progress (line per-layer)"
 grep progress $dir/log/rbm.*.log
 echo 
 

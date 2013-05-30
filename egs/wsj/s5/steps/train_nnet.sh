@@ -122,9 +122,9 @@ else
 fi
 
 ###### PREPARE FEATURES ######
-# shuffle the list
 echo
 echo "# PREPARING FEATURES"
+# shuffle the list
 echo "Preparing train/cv lists :"
 cat $data/feats.scp | utils/shuffle_list.pl --srand ${seed:-777} > $dir/train.scp
 cp $data_cv/feats.scp $dir/cv.scp

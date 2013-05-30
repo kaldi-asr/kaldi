@@ -174,7 +174,7 @@ while [ $x -le $num_iters ]; do
   cur_mdl=$dir/$x.nnet
 
   #report the progress
-  grep -B 2 MMI-objective $dir/log/mmi.$x.log | sed -e 's|.*)||'
+  grep -B 2 MMI-objective $dir/log/mmi.$x.log | sed -e 's|^[^)]*)[^)]*)||'
 
   x=$((x+1))
   learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
