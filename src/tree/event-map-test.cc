@@ -1,6 +1,7 @@
 // tree/event-map-test.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Haihua Xu;  Yanmin Qian
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -135,10 +136,12 @@ void TestEventTypeIo(bool binary) {
   }
 }
 
+const int32 kMaxVal = 20;
+
 EventMap *RandomEventMap(const std::vector<EventKeyType> &keys) {
   // Do not mess with the probabilities inside this routine or there
   // is a danger this function will blow up.
-  int32 max_val = 20;
+  int32 max_val = kMaxVal;
   assert(keys.size() != 0);
   float f = RandUniform();
   if (f < 0.333) {  // w.p. 0.333, return ConstantEventMap.
@@ -200,6 +203,107 @@ void TestEventMapIo(bool binary) {
   }
 }
 
+void TestEventMapPrune() {
+  const EventAnswerType no_ans = -10;
+  std::vector<EventKeyType> keys;
+  keys.push_back(1); // these keys are 
+  keys.push_back(2); // hardwired into the code below, do not change
+  EventMap *em = RandomEventMap(keys);
+  EventType empty_event;
+  std::vector<EventAnswerType> all_answers;
+  em->MultiMap(empty_event, &all_answers);
+  SortAndUniq(&all_answers);
+  std::vector<EventMap*> new_leaves;
+  std::vector<EventAnswerType> mapping;
+  for (size_t i = 0; i < all_answers.size(); i++) {
+    EventAnswerType ans = all_answers[i];
+    KALDI_ASSERT(ans >= 0);
+    new_leaves.resize(ans + 1, NULL);
+    mapping.resize(ans + 1, no_ans);
+    EventAnswerType map_to;
+    if (rand() % 2 == 0) map_to = -1;
+    else map_to = rand() % 20;
+    new_leaves[ans] = new ConstantEventMap(map_to);
+    mapping[ans] = map_to;
+  }
+  EventMap *mapped_em = em->Copy(new_leaves),
+      *pruned_em = mapped_em->Prune();
+  for (size_t i = 0; i < new_leaves.size(); i++)
+    if (new_leaves[i]) delete new_leaves[i];
+  for (int32 i = 0; i < 10; i++) {
+    EventType event;
+    for (int32 key = 1; key <= 2; key++) {
+      if (rand() % 2 == 0) {
+        EventValueType value = rand() % 20;
+        event.push_back(std::make_pair(key, value));
+      }
+    }
+    EventAnswerType answer, answer2;
+    if (em->Map(event, &answer)) {
+      bool ret;
+      if (pruned_em == NULL) ret = false;
+      else ret = pruned_em->Map(event, &answer2);
+      KALDI_ASSERT(answer >= 0);
+      EventAnswerType mapped_ans = mapping[answer];
+      KALDI_ASSERT(mapped_ans != no_ans);
+      if (mapped_ans == -1) {
+        if (ret == false)
+          KALDI_LOG << "Answer was correctly pruned away.";
+        else
+          KALDI_LOG << "Answer was not pruned away [but this is not required]";
+      } else {
+        KALDI_ASSERT(ret == true);
+        KALDI_ASSERT(answer2 == mapped_ans);
+        KALDI_LOG << "Answers match " << answer << " -> " << answer2;
+      }
+    }
+  }
+  delete em;
+  delete mapped_em;
+  delete pruned_em;
+}
+
+void TestEventMapMapValues() {
+  std::vector<EventKeyType> keys;
+  keys.push_back(1); // these keys are 
+  keys.push_back(2); // hardwired into the code below, do not change
+  EventMap *em = RandomEventMap(keys);
+  EventType empty_event;
+
+  unordered_set<EventKeyType> mapped_keys;
+  unordered_map<EventKeyType,EventKeyType> value_map;
+  if (rand() % 2 == 0) mapped_keys.insert(1);
+  if (rand() % 2 == 0) mapped_keys.insert(2);
+
+  EventValueType v_offset = rand() % kMaxVal;
+  for (EventValueType v = 0; v < kMaxVal; v++)
+    value_map[v] = (v + v_offset) % kMaxVal;
+    
+  EventMap *mapped_em = em->MapValues(mapped_keys, value_map);
+  
+  for (int32 i = 0; i < 10; i++) {
+    EventType event, mapped_event;
+    for (int32 key = 1; key <= 2; key++) {
+      if (rand() % 2 == 0) {
+        EventValueType value = rand() % kMaxVal;
+        event.push_back(std::make_pair(key, value));
+        EventValueType mapped_value;
+        if (mapped_keys.count(key) == 0) mapped_value = value;
+        else mapped_value = value_map[value];
+        mapped_event.push_back(std::make_pair(key, mapped_value));
+      }
+    }
+    EventAnswerType answer, answer2;
+    if (em->Map(event, &answer)) {
+      bool ret = mapped_em->Map(mapped_event, &answer2);
+      KALDI_ASSERT(ret);
+      KALDI_ASSERT(answer == answer2);
+    }
+  }
+  delete em;
+  delete mapped_em;
+}
+
 
 
 } // end namespace kaldi
@@ -208,9 +312,14 @@ void TestEventMapIo(bool binary) {
 
 
 int main() {
-  kaldi::TestEventMap();
-  kaldi::TestEventTypeIo(false);
-  kaldi::TestEventTypeIo(true);
-  kaldi::TestEventMapIo(false);
-  kaldi::TestEventMapIo(true);
+  using namespace kaldi;
+  TestEventTypeIo(false);
+  TestEventTypeIo(true);
+  TestEventMapIo(false);
+  TestEventMapIo(true);
+  for (int32 i = 0; i <  10; i++) {
+    TestEventMap();
+    TestEventMapPrune();
+    TestEventMapMapValues();
+  }
 }

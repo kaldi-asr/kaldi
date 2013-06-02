@@ -32,11 +32,11 @@ namespace kaldi {
 /// See \ref tree_internals for overview, and specifically \ref treei_event_map.
 
 
-// Note RE negative values: some of this code will not work if
-// things of type EventValueType and EventAnswerType are negative (kNoAnswer is a
-// special case).  In particular, TableEventMap can't be used if things of EventValueType
-// are negative, and additionally TableEventMap won't be efficient if things of EventValueType take
-// on extremely large values.  The EventKeyType can be negative though.
+// Note RE negative values: some of this code will not work if things of type
+// EventValueType are negative.  In particular, TableEventMap can't be used if
+// things of EventValueType are negative, and additionally TableEventMap won't
+// be efficient if things of EventValueType take on extremely large values.  The
+// EventKeyType can be negative though.
 
 /// Things of type EventKeyType can take any value.  The code does not assume they are contiguous.
 /// So values like -1, 1000000 and the like are acceptable.
@@ -54,7 +54,7 @@ typedef int32 EventValueType;
 typedef int32 EventAnswerType;
 
 typedef std::vector<std::pair<EventKeyType, EventValueType> > EventType;
-// It is required to be sorted and have unique names-- i.e. functions assume this when called
+// It is required to be sorted and have unique keys-- i.e. functions assume this when called
 // with this type.
 
 inline std::pair<EventKeyType, EventValueType> MakeEventPair (EventKeyType k, EventValueType v) {  
@@ -111,9 +111,32 @@ class EventMap {
   // Copy() does not take ownership of the pointers in new_leaves (it uses the Copy() function of those
   // EventMaps).
   virtual EventMap *Copy(const std::vector<EventMap*> &new_leaves) const = 0;
+  
+  EventMap *Copy() const { std::vector<EventMap*> new_leaves; return Copy(new_leaves); }
 
-  EventMap *Copy() const {  std::vector<EventMap*> new_leaves; return Copy(new_leaves); }
+  // The function MapValues() is intended to be used to map phone-sets between
+  // different integer representations.  For all the keys in the set
+  // "keys_to_map", it will map the corresponding values using the map
+  // "value_map".  Note: these values are the values in the key->value pairs of
+  // the EventMap, which really correspond to phones in the usual case; they are
+  // not the "answers" of the EventMap which correspond to clustered states.  In
+  // case multiple values are mapped to the same value, it will try to deal with
+  // it gracefully where it can, but will crash if, for example, this would
+  // cause problems with the TableEventMap.  It will also crash if any values
+  // used for keys in "keys_to_map" are not mapped by "value_map".  This
+  // function is not currently used.
+  virtual EventMap *MapValues(
+      const unordered_set<EventKeyType> &keys_to_map,
+      const unordered_map<EventValueType,EventValueType> &value_map) const = 0;
 
+  // The function Prune() is like Copy(), except it removes parts of the tree
+  // that return only -1 (it will return NULL if this EventMap returns only -1).
+  // This is a mechanism to remove parts of the tree-- you would first use the
+  // Copy() function with a vector of EventMap*, and for the parts you don't
+  // want, you'd put a ConstantEventMap with -1; you'd then call
+  // Prune() on the result.  This function is not currently used.
+  virtual EventMap *Prune() const = 0;
+  
   virtual EventAnswerType MaxResult() const {  // child classes may override this for efficiency; here is basic version.
     // returns -1 if nothing found.
     std::vector<EventAnswerType> tmp; EventType empty_event;
@@ -153,10 +176,20 @@ class ConstantEventMap: public EventMap {
   virtual void GetChildren(std::vector<EventMap*> *out) const { out->clear(); }
 
   virtual EventMap *Copy(const std::vector<EventMap*> &new_leaves) const {
-    if (answer_<0 || answer_>=(EventAnswerType)new_leaves.size() ||
+    if (answer_ < 0 || answer_ >= (EventAnswerType)new_leaves.size() ||
         new_leaves[answer_] == NULL)
       return new ConstantEventMap(answer_);
     else return new_leaves[answer_]->Copy();
+  }
+
+  virtual EventMap *MapValues(
+      const unordered_set<EventKeyType> &keys_to_map,
+      const unordered_map<EventValueType,EventValueType> &value_map) const {
+    return new ConstantEventMap(answer_);
+  }
+
+  virtual EventMap *Prune() const {
+    return (answer_ == -1 ? NULL : new ConstantEventMap(answer_));
   }
   
   explicit ConstantEventMap(EventAnswerType answer): answer_(answer) { }
@@ -198,6 +231,12 @@ class TableEventMap: public EventMap {
     }
   }
 
+  virtual EventMap *Prune() const;
+  
+  virtual EventMap *MapValues(
+      const unordered_set<EventKeyType> &keys_to_map,
+      const unordered_map<EventValueType,EventValueType> &value_map) const;
+  
   /// Takes ownership of pointers.
   explicit TableEventMap(EventKeyType key, const std::vector<EventMap*> &table): key_(key), table_(table) {}
   /// Takes ownership of pointers.
@@ -266,6 +305,12 @@ class SplitEventMap: public EventMap {  // A decision tree [non-leaf] node.
   virtual void Write(std::ostream &os, bool binary);
   static SplitEventMap *Read(std::istream &is, bool binary);
 
+  virtual EventMap *Prune() const;
+  
+  virtual EventMap *MapValues(
+      const unordered_set<EventKeyType> &keys_to_map,
+      const unordered_map<EventValueType,EventValueType> &value_map) const;
+  
   virtual ~SplitEventMap() { Destroy(); }
 
   /// This constructor takes ownership of the "yes" and "no" arguments.

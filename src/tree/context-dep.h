@@ -60,7 +60,8 @@ class ContextDependency: public ContextDependencyInterface {
 
 
   /// returns success or failure; outputs pdf to pdf_id
-  virtual bool Compute(const std::vector<int32> &phoneseq, int32 pdf_class, int32 *pdf_id) const;
+  virtual bool Compute(const std::vector<int32> &phoneseq,
+                       int32 pdf_class, int32 *pdf_id) const;
 
   virtual int32 NumPdfs() const {
     // this routine could be simplified to return to_pdf_->MaxResult()+1.  we're a
