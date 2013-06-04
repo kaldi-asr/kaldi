@@ -46,7 +46,10 @@ valgrind:
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x valgrind || { echo "valgrind on $$x failed"; exit 1; }; done
 
 depend: 
-	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x depend; done
+	-for x in $(SUBDIRS); do $(MAKE) -C $$x depend; done
+
+ext_depend: 
+	-for x in $(EXT_SUBDIRS); do $(MAKE) -C $$x depend; done
 
 
 .PHONY: $(SUBDIRS)
