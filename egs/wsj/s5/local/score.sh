@@ -46,7 +46,7 @@ cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' > $dir/scoring/t
 $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
   lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
   lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
-  lattice-best-path --lm-scale=LMWT --word-symbol-table=$symtab \
+  lattice-best-path --word-symbol-table=$symtab \
     ark:- ark,t:$dir/scoring/LMWT.tra || exit 1;
 
 if $reverse; then
