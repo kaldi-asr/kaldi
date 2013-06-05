@@ -19,16 +19,15 @@
 #ifndef KALDI_FEAT_FEATURE_FUNCTIONS_H_
 #define KALDI_FEAT_FEATURE_FUNCTIONS_H_
 
+#include <cassert>
+#include <cstdlib>
+#include <string>
+#include <vector>
+
 #include "matrix/matrix-lib.h"
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
 #include "feat/mel-computations.h"
-
-#include <cassert>
-#include <cstdlib>
-
-
-
 
 namespace kaldi {
 /// @addtogroup  feat FeatureExtraction
@@ -44,16 +43,24 @@ struct MelBanksOptions {
   BaseFloat vtln_high;  // vtln upper cutoff of warping function: if negative, added
   // to the Nyquist frequency to get the cutoff.
   bool debug_mel;
-  MelBanksOptions(int num_bins = 25): num_bins(num_bins), low_freq(20), high_freq(0),
-                                    vtln_low(400), vtln_high(-400), debug_mel(false) { }
+  explicit MelBanksOptions(int num_bins = 25)
+      : num_bins(num_bins), low_freq(20), high_freq(0), vtln_low(400),
+        vtln_high(-400), debug_mel(false) {}
 
   void Register(ParseOptions *po) {
-    po->Register("num-mel-bins", &num_bins, "Number of triangular mel-frequency bins");
-    po->Register("low-freq", &low_freq, "Low cutoff frequency for mel bins");
-    po->Register("high-freq", &high_freq, "High cutoff frequency for mel bins (if <= 0, offset from Nyquist)");
-    po->Register("vtln-low", &vtln_low, "Low inflection point in piecewise linear VTLN warping function");
-    po->Register("vtln-high", &vtln_high, "High inflection point in piecewise linear VTLN warping function (if negative, offset from high-mel-freq");
-    po->Register("debug-mel", &debug_mel, "Print out debugging information for mel bin computation");
+    po->Register("num-mel-bins", &num_bins,
+                 "Number of triangular mel-frequency bins");
+    po->Register("low-freq", &low_freq,
+                 "Low cutoff frequency for mel bins");
+    po->Register("high-freq", &high_freq,
+                 "High cutoff frequency for mel bins (if < 0, offset from Nyquist)");
+    po->Register("vtln-low", &vtln_low,
+                 "Low inflection point in piecewise linear VTLN warping function");
+    po->Register("vtln-high", &vtln_high,
+                 "High inflection point in piecewise linear VTLN warping function"
+                 " (if negative, offset from high-mel-freq");
+    po->Register("debug-mel", &debug_mel,
+                 "Print out debugging information for mel bin computation");
   }
 };
 
@@ -83,30 +90,40 @@ struct FrameExtractionOptions {
 
   void Register(ParseOptions *po) {
     po->Register("sample-frequency", &samp_freq,
-                 "Waveform data sample frequency (must match the waveform file, if specified there)");
+                 "Waveform data sample frequency (must match the waveform file, "
+                 "if specified there)");
     po->Register("frame-length", &frame_length_ms, "Frame length in milliseconds");
     po->Register("frame-shift", &frame_shift_ms, "Frame shift in milliseconds");
-    po->Register("preemphasis-coefficient", &preemph_coeff, "Coefficient for use in signal preemphasis");
-    po->Register("remove-dc-offset", &remove_dc_offset, "Subtract mean from waveform on each frame");
+    po->Register("preemphasis-coefficient", &preemph_coeff,
+                 "Coefficient for use in signal preemphasis");
+    po->Register("remove-dc-offset", &remove_dc_offset,
+                 "Subtract mean from waveform on each frame");
     po->Register("dither", &dither, "Dithering constant (0.0 means no dither)");
-    po->Register("window-type", &window_type, "Type of window (\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\")");
-    po->Register("round-to-power-of-two", &round_to_power_of_two, "If true, round window size to power of two.");
+    po->Register("window-type", &window_type, "Type of window "
+                 "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\")");
+    po->Register("round-to-power-of-two", &round_to_power_of_two,
+                 "If true, round window size to power of two.");
   }
-  int32 WindowShift() const {  return static_cast<int32>(samp_freq * 0.001 * frame_shift_ms); }
-  int32 WindowSize() const {  return static_cast<int32>(samp_freq * 0.001 * frame_length_ms); }
-  int32 PaddedWindowSize() const { return (round_to_power_of_two ?
-                                           RoundUpToNearestPowerOfTwo(WindowSize()) :
-                                           WindowSize()); }
+  int32 WindowShift() const {
+    return static_cast<int32>(samp_freq * 0.001 * frame_shift_ms);
+  }
+  int32 WindowSize() const {
+    return static_cast<int32>(samp_freq * 0.001 * frame_length_ms);
+  }
+  int32 PaddedWindowSize() const {
+    return (round_to_power_of_two ? RoundUpToNearestPowerOfTwo(WindowSize()) :
+                                    WindowSize());
+  }
 };
 
 
 struct FeatureWindowFunction {
-  FeatureWindowFunction() { }
-  FeatureWindowFunction(const FrameExtractionOptions &opts);  // initializer sets up window function.
+  FeatureWindowFunction() {}
+  explicit FeatureWindowFunction(const FrameExtractionOptions &opts);
   Vector<BaseFloat> window;
 };
 
-int32 NumFrames(size_t wave_length,
+int32 NumFrames(int32 wave_length,
                 const FrameExtractionOptions &opts);
 
 void Dither(VectorBase<BaseFloat> *waveform, BaseFloat dither_value);
@@ -115,15 +132,14 @@ void Preemphasize(VectorBase<BaseFloat> *waveform, BaseFloat preemph_coeff);
 
 
 // ExtractWindow extracts a windowed frame of waveform with a power-of-two,
-// padded size.
+// padded size. If log_energy_pre_window != NULL, outputs the log of the
+// sum-of-squared samples before preemphasis and windowing
 void ExtractWindow(const VectorBase<BaseFloat> &wave,
                    int32 f,  // with 0 <= f < NumFrames(wave.Dim(), opts)
                    const FrameExtractionOptions &opts,
                    const FeatureWindowFunction &window_function,
                    Vector<BaseFloat> *window,
-                   BaseFloat *log_energy_pre_window = NULL);  // if log_energy_pre_window != NULL, puts the log
-     // of the sum-of-squared samples before preemphasis and windowing
-
+                   BaseFloat *log_energy_pre_window = NULL);
 
 // ExtractWaveformRemainder is useful if the waveform is coming in segments.
 // It extracts the bit of the waveform at the end of this block that you
@@ -171,7 +187,9 @@ struct DeltaFeaturesOptions {
       order(order), window(window) { }
   void Register(ParseOptions *po) {
     po->Register("delta-order", &order, "Order of delta computation");
-    po->Register("delta-window", &window, "Parameter controlling window for delta computation (actual window size for each delta order is 1 + 2*delta-window-size)");
+    po->Register("delta-window", &window,
+                 "Parameter controlling window for delta computation (actual window"
+                 " size for each delta order is 1 + 2*delta-window-size)");
   }
 };
 
@@ -184,7 +202,7 @@ class DeltaFeatures {
   // This is not the most efficient way to do the computation, but it's
   // state-free and thus easier to understand
 
-  DeltaFeatures(const DeltaFeaturesOptions &opts);
+  explicit DeltaFeatures(const DeltaFeaturesOptions &opts);
 
   void Process(const MatrixBase<BaseFloat> &input_feats,
                int32 frame,
@@ -194,7 +212,6 @@ class DeltaFeatures {
   std::vector<Vector<BaseFloat> > scales_;  // a scaling window for each
   // of the orders, including zero: multiply the features for each
   // dimension by this window.
-
 };
 
 // ComputeDeltas is a convenience function that computes deltas on a feature
@@ -230,7 +247,7 @@ void GetEqualLoudnessVector(const MelBanks &mel_banks,
                             Vector<BaseFloat> *ans);
 
 
-void InitIdftBases(size_t n_bases, size_t dimension, Matrix<BaseFloat> *mat_out);
+void InitIdftBases(int32 n_bases, int32 dimension, Matrix<BaseFloat> *mat_out);
 
 
 // Compute LP coefficients from autocorrelation coefficients.
@@ -238,8 +255,8 @@ BaseFloat ComputeLpc(const VectorBase<BaseFloat> &autocorr_in,
                      Vector<BaseFloat> *lpc_out);
 
 /// @} End of "addtogroup feat"
-}// namespace
+}  // namespace kaldi
 
 
 
-#endif
+#endif  // KALDI_FEAT_FEATURE_FUNCTIONS_H_

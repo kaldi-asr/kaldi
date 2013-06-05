@@ -22,19 +22,8 @@
 
 namespace kaldi {
 
-
-template<typename Real>
-SubMatrix<Real> GetCols(MatrixBase<Real> &matrix, size_t co, size_t c = 1) {
-  assert(co+c <= matrix.NumCols());
-  return SubMatrix<Real>(matrix, 0, matrix.NumRows(), co, c);
-}
-
-
-Plp::Plp(const PlpOptions &opts):
-    opts_(opts),
-    feature_window_function_(opts.frame_opts),
-    srfft_(NULL) {
-
+Plp::Plp(const PlpOptions &opts)
+    : opts_(opts), feature_window_function_(opts.frame_opts), srfft_(NULL) {
   if (opts.cepstral_lifter != 0.0) {
     lifter_coeffs_.Resize(opts.num_ceps);
     ComputeLifterCoeffs(opts.cepstral_lifter, &lifter_coeffs_);
@@ -42,7 +31,7 @@ Plp::Plp(const PlpOptions &opts):
   InitIdftBases(opts_.lpc_order + 1, opts_.mel_opts.num_bins + 2,
                 &idft_bases_);
 
-  if (opts.energy_floor != 0.0)
+  if (opts.energy_floor > 0.0)
     log_energy_floor_ = log(opts.energy_floor);
 
   int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
@@ -56,12 +45,13 @@ Plp::~Plp() {
       ++iter)
     delete iter->second;
 
-  for (std::map<BaseFloat, Vector<BaseFloat>* >::iterator iter = equal_loudness_.begin();
+  for (std::map<BaseFloat,
+                Vector<BaseFloat>* >::iterator iter = equal_loudness_.begin();
       iter != equal_loudness_.end();
       ++iter)
     delete iter->second;
 
-  if (srfft_)
+  if (srfft_ != NULL)
     delete srfft_;
 }
 
@@ -102,7 +92,7 @@ void Plp::Compute(const VectorBase<BaseFloat> &wave,
   int32 rows_out = NumFrames(wave.Dim(), opts_.frame_opts),
       cols_out = opts_.num_ceps;
   if (rows_out == 0)
-    KALDI_ERR << "Mfcc::Compute, no frames fit in file (#samples is " << wave.Dim() << ")";
+    KALDI_ERR << "No frames fit in file (#samples is " << wave.Dim() << ")";
   output->Resize(rows_out, cols_out);
   if (wave_remainder != NULL)
     ExtractWaveformRemainder(wave, opts_.frame_opts, wave_remainder);
@@ -123,15 +113,15 @@ void Plp::Compute(const VectorBase<BaseFloat> &wave,
                   (opts_.use_energy && opts_.raw_energy ? &log_energy : NULL));
 
     if (opts_.use_energy && !opts_.raw_energy)
-      log_energy = VecVec(window, window);
+      log_energy = log(VecVec(window, window));
 
-    if (srfft_) srfft_->Compute(window.Data(), true);  // Compute FFT using
-    // split-radix algorithm.
-    else RealFft(&window, true);  // An alternative algorithm that
-    // works for non-powers-of-two.
+    if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
+      srfft_->Compute(window.Data(), true);
+    else  // An alternative algorithm that works for non-powers-of-two.
+      RealFft(&window, true);
 
     // Convert the FFT into a power spectrum.
-    ComputePowerSpectrum(&window);  // power spectrum in elements 0 ... window.Dim()/2
+    ComputePowerSpectrum(&window);  // elements 0 ... window.Dim()/2
 
     SubVector<BaseFloat> power_spectrum(window, 0, window.Dim()/2 + 1);
 
@@ -174,14 +164,14 @@ void Plp::Compute(const VectorBase<BaseFloat> &wave,
       final_cepstrum.Scale(opts_.cepstral_scale);
 
     if (opts_.use_energy) {
-      if (opts_.energy_floor != 0.0 && log_energy < log_energy_floor_)
+      if (opts_.energy_floor > 0.0 && log_energy < log_energy_floor_)
         log_energy = log_energy_floor_;
       final_cepstrum(0) = log_energy;
     }
 
     if (opts_.htk_compat) {
       BaseFloat energy = final_cepstrum(0);
-      for (size_t i = 0; i+1 < static_cast<size_t>(opts_.num_ceps); i++)
+      for (int32 i = 0; i < opts_.num_ceps-1; i++)
         final_cepstrum(i) = final_cepstrum(i+1);
       // if (!opts_.use_energy)
         // energy *= M_SQRT2;  // scale on C0 (actually removing scale
@@ -196,7 +186,4 @@ void Plp::Compute(const VectorBase<BaseFloat> &wave,
 }
 
 
-
-} // namespace kaldi
-
-
+}  // namespace kaldi

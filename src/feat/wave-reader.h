@@ -39,12 +39,12 @@
 #ifndef KALDI_FEAT_WAVE_READER_H_
 #define KALDI_FEAT_WAVE_READER_H_
 
+#include <cstring>
 
 #include "base/kaldi-types.h"
 #include "matrix/kaldi-vector.h"
 #include "matrix/kaldi-matrix.h"
 
-#include <cstring>
 
 namespace kaldi {
 
@@ -52,10 +52,10 @@ namespace kaldi {
 class WaveData {
  public:
 
-  WaveData(BaseFloat samp_freq, MatrixBase<BaseFloat> &data):
-      data_(data), samp_freq_(samp_freq) {}
-  
-  WaveData(): samp_freq_(0.0) { }
+  WaveData(BaseFloat samp_freq, const MatrixBase<BaseFloat> &data)
+      : data_(data), samp_freq_(samp_freq) {}
+
+  WaveData() : samp_freq_(0.0) {}
 
   /// Read() will throw on error.  It's valid to call Read() more than once--
   /// in this case it will destroy what was there before.
@@ -63,8 +63,8 @@ class WaveData {
   void Read(std::istream &is);
 
   /// Write() will throw on error.   os should be opened in binary mode.
-  void Write(std::ostream &os) const; 
-  
+  void Write(std::ostream &os) const;
+
   // Write function not written yet but should be doable.
 
   // This function returns the wave data-- it's in a matrix
@@ -81,7 +81,12 @@ class WaveData {
     samp_freq_ = other.samp_freq_;
     data_.CopyFromMat(other.data_);
   }
-  void Clear() { data_.Resize(0, 0); samp_freq_ = 0.0; }
+
+  void Clear() {
+    data_.Resize(0, 0);
+    samp_freq_ = 0.0;
+  }
+
  private:
   Matrix<BaseFloat> data_;
   BaseFloat samp_freq_;
@@ -92,7 +97,6 @@ class WaveData {
 
   static void WriteUint32(std::ostream &os, int32 i);
   static void WriteUint16(std::ostream &os, int16 i);
-  
 };
 
 
@@ -106,13 +110,14 @@ class WaveHolder {
 
   static bool Write(std::ostream &os, bool binary, const T &t) {
     // We don't write the binary-mode header here [always binary].
-    KALDI_ASSERT(binary==true && "Wave data can only be written in binary mode.");
+    KALDI_ASSERT(binary == true
+                 && "Wave data can only be written in binary mode.");
     try {
       t.Write(os);  // throws exception on failure.
       return true;
-    } catch (const std::exception &e) {
+    } catch(const std::exception &e) {
       KALDI_WARN << "Exception caught in WaveHolder object (writing).";
-	  if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       return false;  // write failure.
     }
   }
@@ -128,17 +133,18 @@ class WaveHolder {
     t_.CopyFrom(other.t_);
     return *this;
   }
-  WaveHolder(const WaveHolder &other): t_(other.t_) { }
+  WaveHolder(const WaveHolder &other): t_(other.t_) {}
 
-  WaveHolder() { }
+  WaveHolder() {}
 
-  bool Read(std::istream &is) { // We don't look for the binary-mode header here [always binary]
+  bool Read(std::istream &is) {
+    // We don't look for the binary-mode header here [always binary]
     try {
       t_.Read(is);  // throws exception on failure.
       return true;
-    } catch (const std::exception &e) {
+    } catch(const std::exception &e) {
       KALDI_WARN << "Exception caught in WaveHolder object (reading).";
-	  if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       return false;  // write failure.
     }
   }
@@ -147,9 +153,6 @@ class WaveHolder {
 };
 
 
+}  // namespace kaldi
 
-
-
-} // namespace
-
-#endif
+#endif  // KALDI_FEAT_WAVE_READER_H_

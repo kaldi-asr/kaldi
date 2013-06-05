@@ -151,20 +151,23 @@ static void UnitTestHTKCompare1() {
 
 
 static void UnitTestFeat() {
-  try {
-    UnitTestSimple();
-    UnitTestHTKCompare1();
-    std::cout << "Tests succeeded.\n";
-  } catch (const std::exception &e) {
-    std::cerr << e.what();
-  }
+  UnitTestSimple();
+  UnitTestHTKCompare1();
 }
 
 
 
 
 int main() {
-  UnitTestFeat();
+  try {
+    for (int i = 0; i < 5; i++)
+      UnitTestFeat();
+    std::cout << "Tests succeeded.\n";
+    return 0;
+  } catch (const std::exception &e) {
+    std::cerr << e.what();
+    return 1;
+  }
 }
 
 

@@ -16,32 +16,31 @@
 // limitations under the License.
 
 
-
-#include "feat/feature-functions.h"
 #include "feat/feature-functions.h"
 #include "matrix/matrix-functions.h"
 
-// #define DEBUG
 
 namespace kaldi {
 
-
-int32 NumFrames(size_t nsamp,
+int32 NumFrames(int32 nsamp,
                 const FrameExtractionOptions &opts) {
   int32 frame_shift = opts.WindowShift();
   int32 frame_length = opts.WindowSize();
   assert(frame_shift != 0 && frame_length != 0);
-  if (static_cast<int32>(nsamp) < frame_length) return 0;
-  else return (1 + ((nsamp - frame_length) / frame_shift));
-  // view the expression above as: nsamp-frame_length is how much room we have to shift the
-  // frame within the waveform; frame_shift is how much we shift it each time and the ratio
-  // is how many times we can shift it (integer arithmetic rounds down).
+  if (static_cast<int32>(nsamp) < frame_length)
+    return 0;
+  else
+    return (1 + ((nsamp - frame_length) / frame_shift));
+  // view the expression above as: nsamp-frame_length is how much room we have
+  // to shift the frame within the waveform; frame_shift is how much we shift
+  // it each time and the ratio is how many times we can shift it (integer
+  // arithmetic rounds down).
 }
 
 
 void Dither(VectorBase<BaseFloat> *waveform, BaseFloat dither_value) {
-  for (int32 i = 0; i<waveform->Dim(); i++)
-    (*waveform)(i) += RandGauss()*dither_value;
+  for (int32 i = 0; i < waveform->Dim(); i++)
+    (*waveform)(i) += RandGauss() * dither_value;
 }
 
 
@@ -56,16 +55,17 @@ void Preemphasize(VectorBase<BaseFloat> *waveform, BaseFloat preemph_coeff) {
 
 
 FeatureWindowFunction::FeatureWindowFunction(const FrameExtractionOptions &opts) {
-  size_t frame_length = opts.WindowSize();
+  int32 frame_length = opts.WindowSize();
   assert(frame_length > 0);
   window.Resize(frame_length);
-  for (size_t i = 0; i < frame_length; i++) {
+  for (int32 i = 0; i < frame_length; i++) {
+    BaseFloat i_fl = static_cast<BaseFloat>(i);
     if (opts.window_type == "hanning") {
-      window(i) = 0.5  - 0.5*cos(M_2PI * static_cast<BaseFloat>(i) / (frame_length-1));
+      window(i) = 0.5  - 0.5*cos(M_2PI * i_fl / (frame_length-1));
     } else if (opts.window_type == "hamming") {
-      window(i) = 0.54 - 0.46*cos(M_2PI * static_cast<BaseFloat>(i) / (frame_length-1));
+      window(i) = 0.54 - 0.46*cos(M_2PI * i_fl / (frame_length-1));
     } else if (opts.window_type == "povey") {  // like hamming but goes to zero at edges.
-      window(i) = pow(0.5  - 0.5*cos(M_2PI * static_cast<BaseFloat>(i) / (frame_length-1)), 0.85);
+      window(i) = pow(0.5 - 0.5*cos(M_2PI * i_fl / (frame_length-1)), 0.85);
     } else if (opts.window_type == "rectangular") {
       window(i) = 1.0;
     } else {
@@ -113,10 +113,11 @@ void ExtractWindow(const VectorBase<BaseFloat> &wave,
   if (opts.preemph_coeff != 0.0)
     Preemphasize(&window_part, opts.preemph_coeff);
 
-  window_part.MulElements(window_function.window);  // Multiply by windowing function.
+  window_part.MulElements(window_function.window);
 
   if (frame_length != frame_length_padded)
-    SubVector<BaseFloat>(*window, frame_length, frame_length_padded-frame_length).SetZero();
+    SubVector<BaseFloat>(*window, frame_length,
+                         frame_length_padded-frame_length).SetZero();
 }
 
 void ExtractWaveformRemainder(const VectorBase<BaseFloat> &wave,
@@ -124,8 +125,8 @@ void ExtractWaveformRemainder(const VectorBase<BaseFloat> &wave,
                               Vector<BaseFloat> *wave_remainder) {
   int32 frame_shift = opts.WindowShift();
   int32 num_frames = NumFrames(wave.Dim(), opts);
-  int32 offset = num_frames * frame_shift;  // this is the amount at the start that has
-  // been consumed.
+  // offset is the amount at the start that has been extracted.
+  int32 offset = num_frames * frame_shift;
   assert(wave_remainder != NULL);
   int32 remaining_len = wave.Dim() - offset;
   wave_remainder->Resize(remaining_len);
@@ -240,30 +241,31 @@ void ComputeDeltas(const DeltaFeaturesOptions &delta_opts,
 
 void GetEqualLoudnessVector(const MelBanks &mel_banks,
                             Vector<BaseFloat> *ans) {
-  size_t n = mel_banks.NumBins();
+  int32 n = mel_banks.NumBins();
   // central freq of each mel bin
   const Vector<BaseFloat> &f0 = mel_banks.GetCenterFreqs();
   ans->Resize(n);
-  for (size_t i = 0; i < n; i++) {
+  for (int32 i = 0; i < n; i++) {
     BaseFloat fsq = f0(i) * f0(i);
     BaseFloat fsub = fsq / (fsq + 1.6e5);
     (*ans)(i) = fsub * fsub * ((fsq + 1.44e6) / (fsq + 9.61e6));
   }
 }
 
-void InitIdftBases(size_t n_bases, size_t dimension, Matrix<BaseFloat> *mat_out) {
-
-  float angle = M_PI / (float)(dimension - 1);
-  float scale = 1.0f / (2.0f * (dimension - 1));
-  size_t i, j;
+void InitIdftBases(int32 n_bases, int32 dimension, Matrix<BaseFloat> *mat_out) {
+  BaseFloat angle = M_PI / static_cast<BaseFloat>(dimension - 1);
+  BaseFloat scale = 1.0f / (2.0 * static_cast<BaseFloat>(dimension - 1));
   mat_out->Resize(n_bases, dimension);
-  for (i = 0; i < n_bases; i++)
-  {
-    (*mat_out)(i, 0) = 1.0f * scale;
-    for (j = 1; j < dimension - 1; j++)
-       (*mat_out)(i, j) = 2.0 * scale * cos(angle * (float)i * (float)j);
+  for (int32 i = 0; i < n_bases; i++) {
+    (*mat_out)(i, 0) = 1.0 * scale;
+    BaseFloat i_fl = static_cast<BaseFloat>(i);
+    for (int32 j = 1; j < dimension - 1; j++) {
+      BaseFloat j_fl = static_cast<BaseFloat>(j);
+      (*mat_out)(i, j) = 2.0 * scale * cos(angle * i_fl * j_fl);
+    }
 
-    (*mat_out)(i, dimension -1) = scale * cos(angle * (float)i * (float)(dimension-1));
+    (*mat_out)(i, dimension -1)
+        = scale * cos(angle * i_fl * static_cast<BaseFloat>(dimension-1));
   }
 }
 
@@ -317,4 +319,4 @@ void ReverseFrames(const MatrixBase<BaseFloat> &input_features,
   }
 }
 
-} // namespace kaldi
+}  // namespace kaldi

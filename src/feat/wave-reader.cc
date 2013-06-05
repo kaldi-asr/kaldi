@@ -15,23 +15,23 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdio>
+#include <sstream>
+#include <vector>
 
 #include "feat/wave-reader.h"
 #include "base/kaldi-error.h"
 #include "base/kaldi-utils.h"
 
-#include <cstdio>
-#include <sstream>
-
 namespace kaldi {
-
 
 // static
 void WaveData::Expect4ByteTag(std::istream &is, const char *expected) {
   char tmp[5];
   tmp[4] = '\0';
   is.read(tmp, 4);
-  if (is.fail()) KALDI_ERR << "WaveData: expected " << expected << ", failed to read anything";
+  if (is.fail())
+    KALDI_ERR << "WaveData: expected " << expected << ", failed to read anything";
   if (strcmp(tmp, expected))
     KALDI_ERR << "WaveData: expected " << expected << ", got " << tmp;
 }
@@ -241,7 +241,7 @@ void WaveData::Write(std::ostream &os) const {
   os << "RIFF";
   if (data_.NumRows() == 0)
     KALDI_ERR << "Error: attempting to write empty WAVE file";
-  
+
   int32 num_chan = data_.NumRows(),
       num_samp = data_.NumCols(),
       bytes_per_samp = 2;
@@ -264,9 +264,9 @@ void WaveData::Write(std::ostream &os) const {
 
   const BaseFloat *data_ptr = data_.Data();
   int32 stride = data_.Stride();
-      
-  for(int32 i = 0; i < num_samp; i++) {
-    for(int32 j = 0; j < num_chan; j++) {
+
+  for (int32 i = 0; i < num_samp; i++) {
+    for (int32 j = 0; j < num_chan; j++) {
       int32 elem = static_cast<int32>(data_ptr[j*stride + i]);
       int16 elem_16(elem);
       if (static_cast<int32>(elem_16) != elem)
@@ -282,4 +282,4 @@ void WaveData::Write(std::ostream &os) const {
 }
 
 
-} // end namespace
+}  // end namespace kaldi

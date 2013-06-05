@@ -21,10 +21,8 @@
 
 namespace kaldi {
 
-Mfcc::Mfcc(const MfccOptions &opts):
-    opts_(opts),
-    feature_window_function_(opts.frame_opts),
-    srfft_(NULL) {
+Mfcc::Mfcc(const MfccOptions &opts)
+    : opts_(opts), feature_window_function_(opts.frame_opts), srfft_(NULL) {
   int32 num_bins = opts.mel_opts.num_bins;
   Matrix<BaseFloat> dct_matrix(num_bins, num_bins);
   ComputeDctMatrix(&dct_matrix);
@@ -38,7 +36,7 @@ Mfcc::Mfcc(const MfccOptions &opts):
     lifter_coeffs_.Resize(opts.num_ceps);
     ComputeLifterCoeffs(opts.cepstral_lifter, &lifter_coeffs_);
   }
-  if (opts.energy_floor != 0.0)
+  if (opts.energy_floor > 0.0)
     log_energy_floor_ = log(opts.energy_floor);
 
   int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
@@ -51,7 +49,7 @@ Mfcc::~Mfcc() {
       iter != mel_banks_.end();
       ++iter)
     delete iter->second;
-  if (srfft_)
+  if (srfft_ != NULL)
     delete srfft_;
 }
 
@@ -77,7 +75,7 @@ void Mfcc::Compute(const VectorBase<BaseFloat> &wave,
   int32 rows_out = NumFrames(wave.Dim(), opts_.frame_opts),
       cols_out = opts_.num_ceps;
   if (rows_out == 0)
-    KALDI_ERR << "Mfcc::Compute, no frames fit in file (#samples is " << wave.Dim() << ")";
+    KALDI_ERR << "No frames fit in file (#samples is " << wave.Dim() << ")";
   output->Resize(rows_out, cols_out);
   if (wave_remainder != NULL)
     ExtractWaveformRemainder(wave, opts_.frame_opts, wave_remainder);
@@ -89,20 +87,18 @@ void Mfcc::Compute(const VectorBase<BaseFloat> &wave,
                   (opts_.use_energy && opts_.raw_energy ? &log_energy : NULL));
 
     if (opts_.use_energy && !opts_.raw_energy)
-      log_energy = VecVec(window, window);
+      log_energy = log(VecVec(window, window));
 
-    if (srfft_) srfft_->Compute(window.Data(), true);  // Compute FFT using
-    // split-radix algorithm.
-    else RealFft(&window, true);  // An alternative algorithm that
-    // works for non-powers-of-two.
+    if (srfft_ != NULL)  // Compute FFT using the split-radix algorithm.
+      srfft_->Compute(window.Data(), true);
+    else  // An alternative algorithm that works for non-powers-of-two.
+      RealFft(&window, true);
 
     // Convert the FFT into a power spectrum.
     ComputePowerSpectrum(&window);
-
     SubVector<BaseFloat> power_spectrum(window, 0, window.Dim()/2 + 1);
 
     const MelBanks *this_mel_banks = GetMelBanks(vtln_warp);
-
     this_mel_banks->Compute(power_spectrum, &mel_energies);
 
     mel_energies.ApplyLog();  // take the log.
@@ -116,14 +112,14 @@ void Mfcc::Compute(const VectorBase<BaseFloat> &wave,
       this_mfcc.MulElements(lifter_coeffs_);
 
     if (opts_.use_energy) {
-      if (opts_.energy_floor != 0.0 && log_energy < log_energy_floor_)
+      if (opts_.energy_floor > 0.0 && log_energy < log_energy_floor_)
         log_energy = log_energy_floor_;
       this_mfcc(0) = log_energy;
     }
 
     if (opts_.htk_compat) {
       BaseFloat energy = this_mfcc(0);
-      for (size_t i = 0; i+1 < static_cast<size_t>(opts_.num_ceps); i++)
+      for (int32 i = 0; i < opts_.num_ceps-1; i++)
         this_mfcc(i) = this_mfcc(i+1);
       if (!opts_.use_energy)
         energy *= M_SQRT2;  // scale on C0 (actually removing scale
@@ -139,4 +135,4 @@ void Mfcc::Compute(const VectorBase<BaseFloat> &wave,
 
 
 
-} // namespace
+}  // namespace kaldi

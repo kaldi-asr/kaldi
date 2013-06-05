@@ -630,30 +630,33 @@ void UnitTestVtln() {
 }
 
 static void UnitTestFeat() {
-  try {
-    UnitTestVtln();
-    UnitTestReadWave();
-    UnitTestSimple();
-    UnitTestHTKCompare1();
-    UnitTestHTKCompare2();
-    // commenting out this one as it doesn't compare right now I normalized
-    // the way the FFT bins are treated (removed offset of 0.5)... this seems
-    // to relate to the way frequency zero behaves.
-    UnitTestHTKCompare3();
-    UnitTestHTKCompare4();
-    UnitTestHTKCompare5();
-    UnitTestHTKCompare6();
-    std::cout << "Tests succeeded.\n";
-  } catch (const std::exception &e) {
-    std::cerr << e.what();
-  }
+  UnitTestVtln();
+  UnitTestReadWave();
+  UnitTestSimple();
+  UnitTestHTKCompare1();
+  UnitTestHTKCompare2();
+  // commenting out this one as it doesn't compare right now I normalized
+  // the way the FFT bins are treated (removed offset of 0.5)... this seems
+  // to relate to the way frequency zero behaves.
+  UnitTestHTKCompare3();
+  UnitTestHTKCompare4();
+  UnitTestHTKCompare5();
+  UnitTestHTKCompare6();
+  std::cout << "Tests succeeded.\n";
 }
 
 
 
-
 int main() {
-  UnitTestFeat();
+  try {
+    for (int i = 0; i < 5; i++)
+      UnitTestFeat();
+    std::cout << "Tests succeeded.\n";
+    return 0;
+  } catch (const std::exception &e) {
+    std::cerr << e.what();
+    return 1;
+  }
 }
 
 

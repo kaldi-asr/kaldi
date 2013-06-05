@@ -21,11 +21,9 @@
 
 namespace kaldi {
 
-Fbank::Fbank(const FbankOptions &opts):
-    opts_(opts),
-    feature_window_function_(opts.frame_opts),
-    srfft_(NULL) {
-  if (opts.energy_floor != 0.0)
+Fbank::Fbank(const FbankOptions &opts)
+    : opts_(opts), feature_window_function_(opts.frame_opts), srfft_(NULL) {
+  if (opts.energy_floor > 0.0)
     log_energy_floor_ = log(opts.energy_floor);
 
   int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
@@ -38,7 +36,7 @@ Fbank::~Fbank() {
       iter != mel_banks_.end();
       ++iter)
     delete iter->second;
-  if (srfft_)
+  if (srfft_ != NULL)
     delete srfft_;
 }
 
@@ -66,10 +64,10 @@ void Fbank::Compute(const VectorBase<BaseFloat> &wave,
   int32 rows_out = NumFrames(wave.Dim(), opts_.frame_opts);
   int32 cols_out = opts_.mel_opts.num_bins + opts_.use_energy;
   if (rows_out == 0)
-    KALDI_ERR << "Fbank::Compute, no frames fit in file (#samples is " << wave.Dim() << ")";
+    KALDI_ERR << "No frames fit in file (#samples is " << wave.Dim() << ")";
   // Prepare the output buffer
   output->Resize(rows_out, cols_out);
-  
+
   // Optionally extract the remainder for further processing
   if (wave_remainder != NULL)
     ExtractWaveformRemainder(wave, opts_.frame_opts, wave_remainder);
@@ -78,23 +76,21 @@ void Fbank::Compute(const VectorBase<BaseFloat> &wave,
   Vector<BaseFloat> window;  // windowed waveform.
   Vector<BaseFloat> mel_energies;
   BaseFloat log_energy;
-  
+
   // Compute all the freames, r is frame index..
-  for (int32 r = 0; r < rows_out; r++) {  
+  for (int32 r = 0; r < rows_out; r++) {
     // Cut the window, apply window function
-    ExtractWindow(wave, r, opts_.frame_opts, 
-                  feature_window_function_, &window, 
-                  (opts_.use_energy && opts_.raw_energy ? 
-                    &log_energy : NULL));
-    
+    ExtractWindow(wave, r, opts_.frame_opts, feature_window_function_, &window,
+                  (opts_.use_energy && opts_.raw_energy ? &log_energy : NULL));
+
     // Compute energy after window function (not the raw one)
     if (opts_.use_energy && !opts_.raw_energy)
-      log_energy = VecVec(window, window);
-    
-    // Compute FFT using split-radix algorithm.
-    if (srfft_) srfft_->Compute(window.Data(), true); 
-    // An alternative algorithm that works for non-powers-of-two. 
-    else RealFft(&window, true);  
+      log_energy = log(VecVec(window, window));
+
+    if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
+      srfft_->Compute(window.Data(), true);
+    else  // An alternative algorithm that works for non-powers-of-two.
+      RealFft(&window, true);
 
     // Convert the FFT into a power spectrum.
     ComputePowerSpectrum(&window);
@@ -103,29 +99,28 @@ void Fbank::Compute(const VectorBase<BaseFloat> &wave,
     // Integrate with MelFiterbank over power spectrum
     const MelBanks *this_mel_banks = GetMelBanks(vtln_warp);
     this_mel_banks->Compute(power_spectrum, &mel_energies);
-    mel_energies.ApplyLog();  // take the log.
+    if (opts_.use_log_fbank)
+      mel_energies.ApplyLog();  // take the log.
 
     // Output buffers
     SubVector<BaseFloat> this_output(output->Row(r));
-    SubVector<BaseFloat> this_fbank(
-      this_output.Range((opts_.use_energy?1:0), opts_.mel_opts.num_bins)
-    );
+    SubVector<BaseFloat> this_fbank(this_output.Range((opts_.use_energy? 1 : 0),
+                                                      opts_.mel_opts.num_bins));
 
     // Copy to output
     this_fbank.CopyFromVec(mel_energies);
     // Copy energy as first value
     if (opts_.use_energy) {
-      if (opts_.energy_floor != 0.0 && log_energy < log_energy_floor_) {
+      if (opts_.energy_floor > 0.0 && log_energy < log_energy_floor_) {
         log_energy = log_energy_floor_;
       }
       this_output(0) = log_energy;
     }
-    
+
     // HTK compat: Shift features, so energy is last value
     if (opts_.htk_compat && opts_.use_energy) {
       BaseFloat energy = this_output(0);
-      int32 N = static_cast<size_t>(opts_.mel_opts.num_bins);
-      for (size_t i = 0; i < N; i++) {
+      for (int32 i = 0; i < opts_.mel_opts.num_bins; i++) {
         this_output(i) = this_output(i+1);
       }
       this_output(opts_.mel_opts.num_bins) = energy;
@@ -133,9 +128,4 @@ void Fbank::Compute(const VectorBase<BaseFloat> &wave,
   }
 }
 
-
-
-
-
-
-} // namespace
+}  // namespace kaldi

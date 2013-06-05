@@ -18,9 +18,9 @@
 #ifndef KALDI_FEAT_FEATURE_PLP_H_
 #define KALDI_FEAT_FEATURE_PLP_H_
 
-
-
+#include <map>
 #include <string>
+
 #include "feat/feature-functions.h"
 #include "util/parse-options.h"
 #include "matrix/kaldi-matrix-inl.h"
@@ -42,37 +42,51 @@ struct PlpOptions {
   int32 num_ceps;  // num cepstra including zero
   bool use_energy;  // use energy; else C0
   BaseFloat energy_floor;
-  bool raw_energy;  // compute energy before preemphasis and hamming window (else after)
+  bool raw_energy;  // If true, compute energy before preemphasis and windowing
   BaseFloat compress_factor;
   int32 cepstral_lifter;
   BaseFloat cepstral_scale;
 
-  bool htk_compat;  // if true, put energy/C0 last and introduce a factor of sqrt(2)
+  bool htk_compat;  // if true, put energy/C0 last and introduce a factor of
+                    // sqrt(2) on C0 to be the same as HTK.
 
-  PlpOptions(): mel_opts(23),  // default number of mel-banks for the PLP computation;
-                // maybe should use 15 for 8khz.
-                lpc_order(12),
-                num_ceps(13),
-                use_energy(true),
-                energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
-                raw_energy(true),
-                compress_factor(0.33333),
-                cepstral_lifter(22),
-                cepstral_scale(1.0),
-                htk_compat(false) { }
+  PlpOptions() : mel_opts(23),
+                 // default number of mel-banks for the PLP computation; this
+                 // seems to be common for 16kHz-sampled data. For 8kHz-sampled
+                 // data, 15 may be better.
+                 lpc_order(12),
+                 num_ceps(13),
+                 use_energy(true),
+                 energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
+                 raw_energy(true),
+                 compress_factor(0.33333),
+                 cepstral_lifter(22),
+                 cepstral_scale(1.0),
+                 htk_compat(false) {}
 
   void Register(ParseOptions *po) {
     frame_opts.Register(po);
     mel_opts.Register(po);
-    po->Register("lpc-order", &lpc_order, "Order of LPC analysis in PLP computation");
-    po->Register("num-ceps", &num_ceps, "Number of cepstra in PLP computation (including C0)");
-    po->Register("use-energy", &use_energy, "Use energy (not C0) in MFCC computation");
-    po->Register("energy-floor", &energy_floor, "Floor on energy (absolute, not relative) in PLP computation");
-    po->Register("raw-energy", &raw_energy, "If true, compute energy (if using energy) before Hamming window and preemphasis");
-    po->Register("compress-factor", &compress_factor, "Compression factor in PLP computation");
-    po->Register("cepstral-lifter", &cepstral_lifter, "Constant that controls scaling of PLPs");
-    po->Register("cepstral-scale", &cepstral_scale, "Scaling constant in PLP computation");
-    po->Register("htk-compat", &htk_compat, "If true, put energy or C0 last and put factor of sqrt(2) on C0.  Warning: not sufficient to get HTK compatible features (need to change other parameters).");
+    po->Register("lpc-order", &lpc_order,
+                 "Order of LPC analysis in PLP computation");
+    po->Register("num-ceps", &num_ceps,
+                 "Number of cepstra in PLP computation (including C0)");
+    po->Register("use-energy", &use_energy,
+                 "Use energy (not C0) in MFCC computation");
+    po->Register("energy-floor", &energy_floor,
+                 "Floor on energy (absolute, not relative) in PLP computation");
+    po->Register("raw-energy", &raw_energy,
+                 "If true, compute energy before preemphasis and windowing");
+    po->Register("compress-factor", &compress_factor,
+                 "Compression factor in PLP computation");
+    po->Register("cepstral-lifter", &cepstral_lifter,
+                 "Constant that controls scaling of PLPs");
+    po->Register("cepstral-scale", &cepstral_scale,
+                 "Scaling constant in PLP computation");
+    po->Register("htk-compat", &htk_compat,
+                 "If true, put energy or C0 last and put factor of sqrt(2) on "
+                 "C0.  Warning: not sufficient to get HTK compatible features "
+                 "(need to change other parameters).");
   }
 };
 
@@ -81,11 +95,10 @@ struct PlpOptions {
 /// documentation will eventually be added.
 class Plp {
  public:
-  Plp(const PlpOptions &opts);
+  explicit Plp(const PlpOptions &opts);
+  ~Plp();
 
   int32 Dim() { return opts_.num_ceps; }
-  
-  ~Plp();
 
   void Compute(const VectorBase<BaseFloat> &wave,
                BaseFloat vtln_warp,
@@ -108,7 +121,7 @@ class Plp {
 
 /// @} End of "addtogroup feat"
 
-}// namespace kaldi
+}  // namespace kaldi
 
 
-#endif
+#endif  // KALDI_FEAT_FEATURE_PLP_H_

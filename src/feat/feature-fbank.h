@@ -18,7 +18,7 @@
 #ifndef KALDI_FEAT_FEATURE_FBANK_H_
 #define KALDI_FEAT_FEATURE_FBANK_H_
 
-
+#include<map>
 #include <string>
 
 #include "feat/feature-functions.h"
@@ -35,28 +35,37 @@ namespace kaldi {
 struct FbankOptions {
   FrameExtractionOptions frame_opts;
   MelBanksOptions mel_opts;
-  bool use_energy;  // use energy; else C0
+  bool use_energy;  // append an extra dimension with energy to the filter banks
   BaseFloat energy_floor;
-  bool raw_energy;  // compute energy before preemphasis and hamming window (else after)
-  bool htk_compat;  // if true, put energy/C0 last and introduce a factor of sqrt(2)
-  // on C0 to be the same as HTK.
+  bool raw_energy;  // If true, compute energy before preemphasis and windowing
+  bool htk_compat;  // If true, put energy last (if using energy)
+  bool use_log_fbank;  // if true (default), produce log-filterbank, else linear
 
-  FbankOptions(): mel_opts(23),  // defaults the #mel-banks to 23 for the FBANK computations.
-                 // this seems to be common for 16khz-sampled data, but for 8khz-sampled
-                 // data, 15 may be better.
+  FbankOptions(): mel_opts(23),
+                 // defaults the #mel-banks to 23 for the FBANK computations.
+                 // this seems to be common for 16khz-sampled data,
+                 // but for 8khz-sampled data, 15 may be better.
                  use_energy(false),
                  energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
                  raw_energy(true),
-                 htk_compat(false) { }
+                 htk_compat(false),
+                 use_log_fbank(true) {}
+
   void Register(ParseOptions *po) {
     frame_opts.Register(po);
     mel_opts.Register(po);
-    po->Register("use-energy", &use_energy, "Use energy (not C0) in FBANK computation");
-    po->Register("energy-floor", &energy_floor, "Floor on energy (absolute, not relative) in FBANK computation");
-    po->Register("raw-energy", &raw_energy, "If true, compute energy (if using energy) before Hamming window and preemphasis");
-    po->Register("htk-compat", &htk_compat, "If true, put energy or C0 last and put factor of sqrt(2) on C0.  Warning: not sufficient to get HTK compatible features (need to change other parameters).");
+    po->Register("use-energy", &use_energy,
+                 "Add an extra dimension with energy to the FBANK output.");
+    po->Register("energy-floor", &energy_floor,
+                 "Floor on energy (absolute, not relative) in FBANK computation");
+    po->Register("raw-energy", &raw_energy,
+                 "If true, compute energy before preemphasis and windowing");
+    po->Register("htk-compat", &htk_compat, "If true, put energy last.  "
+                 "Warning: not sufficient to get HTK compatible features (need "
+                 "to change other parameters).");
+    po->Register("use-log-fbank", &use_log_fbank,
+                 "If true, produce log-filterbank, else produce linear.");
   }
-
 };
 
 class MelBanks;
@@ -65,7 +74,7 @@ class MelBanks;
 /// Class for computing FBANK features; see \ref feat_mfcc for more information.
 class Fbank {
  public:
-  Fbank(const FbankOptions &opts);
+  explicit Fbank(const FbankOptions &opts);
   ~Fbank();
 
   /// Will throw exception on failure (e.g. if file too short for
@@ -87,7 +96,7 @@ class Fbank {
 
 
 /// @} End of "addtogroup feat"
-}// namespace kaldi
+}  // namespace kaldi
 
 
-#endif
+#endif  // KALDI_FEAT_FEATURE_FBANK_H_

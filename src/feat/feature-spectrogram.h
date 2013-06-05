@@ -36,22 +36,25 @@ namespace kaldi {
 struct SpectrogramOptions {
   FrameExtractionOptions frame_opts;
   BaseFloat energy_floor;
-  bool raw_energy;  // compute energy before preemphasis and hamming window (else after)
+  bool raw_energy;  // If true, compute energy before preemphasis and windowing
 
-  SpectrogramOptions(): 
-                 energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
-                 raw_energy(true) {}
+  SpectrogramOptions() :
+    energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
+    raw_energy(true) {}
+
   void Register(ParseOptions *po) {
     frame_opts.Register(po);
-    po->Register("energy-floor", &energy_floor, "Floor on energy (absolute, not relative) in Spectrogram computation");
-    po->Register("raw-energy", &raw_energy, "If true, compute energy before Hamming window and preemphasis");
+    po->Register("energy-floor", &energy_floor,
+                 "Floor on energy (absolute, not relative) in Spectrogram computation");
+    po->Register("raw-energy", &raw_energy,
+                 "If true, compute energy before preemphasis and windowing");
   }
 };
 
 /// Class for computing SPECTROGRAM features; see \ref feat_mfcc for more information.
 class Spectrogram {
  public:
-  Spectrogram(const SpectrogramOptions &opts);
+  explicit Spectrogram(const SpectrogramOptions &opts);
   ~Spectrogram();
 
   /// Will throw exception on failure (e.g. if file too short for
@@ -70,7 +73,7 @@ class Spectrogram {
 
 
 /// @} End of "addtogroup feat"
-}// namespace kaldi
+}  // namespace kaldi
 
 
-#endif
+#endif  // KALDI_FEAT_FEATURE_SPECTROGRAM_H_

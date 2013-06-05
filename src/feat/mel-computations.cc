@@ -18,7 +18,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <float.h>
+#include <algorithm>
 #include <iostream>
+
 #include "feat/mel-computations.h"
 #include "feat/feature-functions.h"
 
@@ -28,7 +30,6 @@ namespace kaldi {
 MelBanks::MelBanks(const MelBanksOptions &opts,
                    const FrameExtractionOptions &frame_opts,
                    BaseFloat vtln_warp_factor) {
-
   int32 num_bins = opts.num_bins;
   if (num_bins < 3) KALDI_ERR << "Must have at least 3 mel bins";
   BaseFloat sample_freq = frame_opts.samp_freq;
@@ -129,12 +130,12 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
   }
 }
 
-BaseFloat MelBanks::VtlnWarpFreq (BaseFloat vtln_low_cutoff,  // upper+lower frequency cutoffs for VTLN.
-                                  BaseFloat vtln_high_cutoff,
-                                  BaseFloat low_freq,  // upper+lower frequency cutoffs in mel computation
-                                  BaseFloat high_freq,
-                                  BaseFloat vtln_warp_factor,
-                                  BaseFloat freq) {
+BaseFloat MelBanks::VtlnWarpFreq(BaseFloat vtln_low_cutoff,  // upper+lower frequency cutoffs for VTLN.
+                                 BaseFloat vtln_high_cutoff,
+                                 BaseFloat low_freq,  // upper+lower frequency cutoffs in mel computation
+                                 BaseFloat high_freq,
+                                 BaseFloat vtln_warp_factor,
+                                 BaseFloat freq) {
   /// This computes a VTLN warping function that is not the same as HTK's one,
   /// but has similar inputs (this function has the advantage of never producing
   /// empty bins).
@@ -173,7 +174,7 @@ BaseFloat MelBanks::VtlnWarpFreq (BaseFloat vtln_low_cutoff,  // upper+lower fre
   BaseFloat scale = 1.0 / vtln_warp_factor;
   BaseFloat Fl = scale * l;  // F(l);
   BaseFloat Fh = scale * h;  // F(h);
-  KALDI_ASSERT (l > low_freq && h < high_freq);
+  KALDI_ASSERT(l > low_freq && h < high_freq);
   // slope of left part of the 3-piece linear function
   BaseFloat scale_left = (Fl - low_freq) / (l - low_freq);
   // [slope of center part is just "scale"]
@@ -190,12 +191,12 @@ BaseFloat MelBanks::VtlnWarpFreq (BaseFloat vtln_low_cutoff,  // upper+lower fre
   }
 }
 
-BaseFloat MelBanks::VtlnWarpMelFreq (BaseFloat vtln_low_cutoff,  // upper+lower frequency cutoffs for VTLN.
-                                     BaseFloat vtln_high_cutoff,
-                                     BaseFloat low_freq,  // upper+lower frequency cutoffs in mel computation
-                                     BaseFloat high_freq,
-                                     BaseFloat vtln_warp_factor,
-                                     BaseFloat mel_freq) {
+BaseFloat MelBanks::VtlnWarpMelFreq(BaseFloat vtln_low_cutoff,  // upper+lower frequency cutoffs for VTLN.
+                                    BaseFloat vtln_high_cutoff,
+                                    BaseFloat low_freq,  // upper+lower frequency cutoffs in mel computation
+                                    BaseFloat high_freq,
+                                    BaseFloat vtln_warp_factor,
+                                    BaseFloat mel_freq) {
   return MelScale(VtlnWarpFreq(vtln_low_cutoff, vtln_high_cutoff,
                                low_freq, high_freq,
                                vtln_warp_factor, InverseMelScale(mel_freq)));
@@ -211,7 +212,7 @@ void MelBanks::Compute(const VectorBase<BaseFloat> &power_spectrum,
 
   for (int32 i = 0; i < num_bins; i++) {
     int32 offset = bins_[i].first;
-    const Vector<BaseFloat> &v (bins_[i].second);
+    const Vector<BaseFloat> &v(bins_[i].second);
     (*mel_energies_out)(i) = VecVec(v, power_spectrum.Range(offset, v.Dim()));
     // The following assert was added due to a problem with OpenBlas that
     // we had at one point (it was a bug in that library).  Just to detect
@@ -241,7 +242,7 @@ void ComputeLifterCoeffs(BaseFloat Q, VectorBase<BaseFloat> *coeffs) {
 // pAC - autocorrelation coefficients [n + 1]
 // pLP - linear prediction coefficients [n] (predicted_sn = sum_1^P{a[i] * s[n-i]}})
 //       F(z) = 1 / (1 - A(z)), 1 is not stored in the demoninator
-BaseFloat Durbin (int n, const BaseFloat *pAC, BaseFloat *pLP, BaseFloat *pTmp) {
+BaseFloat Durbin(int n, const BaseFloat *pAC, BaseFloat *pLP, BaseFloat *pTmp) {
   BaseFloat ki;                // reflection coefficient
   int i;
   int j;
@@ -274,10 +275,8 @@ BaseFloat Durbin (int n, const BaseFloat *pAC, BaseFloat *pLP, BaseFloat *pTmp) 
 }
 
 
-void Lpc2Cepstrum (int n, const BaseFloat *pLPC, BaseFloat *pCepst) {
-  int i;
-  for (i = 0; i < n; i++)
-  {
+void Lpc2Cepstrum(int n, const BaseFloat *pLPC, BaseFloat *pCepst) {
+  for (int32 i = 0; i < n; i++) {
     double sum = 0.0;
     int j;
     for (j = 0; j < i; j++) {
@@ -288,4 +287,4 @@ void Lpc2Cepstrum (int n, const BaseFloat *pLPC, BaseFloat *pCepst) {
 }
 
 
-} // namespace kaldi
+}  // namespace kaldi

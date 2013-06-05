@@ -93,6 +93,7 @@ static void UnitTestSimple() {
   op.frame_opts.round_to_power_of_two = true;
   op.mel_opts.low_freq = 0.0;
   op.htk_compat = true;
+  op.use_energy = true;
 
   Fbank fbank(op);
   // use default parameters
@@ -175,7 +176,7 @@ static void UnitTestHTKCompare1() {
     000007  // FBANK
   };
   {
-    std::ofstream os("test_data/test.wav.fbank_kaldi.1",
+    std::ofstream os("tmp.test.wav.fbank_kaldi.1",
                      std::ios::out|std::ios::binary);
     WriteHtk(os, kaldi_features, header);
   }
@@ -185,21 +186,24 @@ static void UnitTestHTKCompare1() {
 
 
 static void UnitTestFeat() {
-  try {
-    UnitTestReadWave();
-    UnitTestSimple();
-    UnitTestHTKCompare1();
-    std::cout << "Tests succeeded.\n";
-  } catch (const std::exception &e) {
-    std::cerr << e.what();
-  }
+  UnitTestReadWave();
+  UnitTestSimple();
+  UnitTestHTKCompare1();
 }
 
 
 
 
 int main() {
-  UnitTestFeat();
+  try {
+    for (int i = 0; i < 5; i++)
+      UnitTestFeat();
+    std::cout << "Tests succeeded.\n";
+    return 0;
+  } catch (const std::exception &e) {
+    std::cerr << e.what();
+    return 1;
+  }
 }
 
 
