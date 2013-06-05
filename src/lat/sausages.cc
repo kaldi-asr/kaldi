@@ -263,7 +263,8 @@ void MinimumBayesRisk::AccStats() {
   }  
 }
 
-MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in, bool do_mbr) {
+MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in, bool do_mbr):
+    do_mbr_(do_mbr) {
   CompactLattice clat(clat_in); // copy.
 
   CreateSuperFinal(&clat); // Add super-final state to clat... this is
