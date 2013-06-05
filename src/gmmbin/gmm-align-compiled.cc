@@ -38,7 +38,8 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Align features given [GMM-based] models.\n"
-        "Usage:   gmm-align-compiled [options] model-in graphs-rspecifier feature-rspecifier alignments-wspecifier\n"
+        "Usage:   gmm-align-compiled [options] model-in graphs-rspecifier "
+        "feature-rspecifier alignments-wspecifier [scores-wspecifier]\n"
         "e.g.: \n"
         " gmm-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n"
         "or:\n"

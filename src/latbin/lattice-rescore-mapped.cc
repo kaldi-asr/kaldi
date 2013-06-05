@@ -28,7 +28,7 @@ namespace kaldi {
 
 void LatticeAcousticRescore(const TransitionModel &trans_model,
                             const Matrix<BaseFloat> &log_likes,
-                            const std::vector<int32> state_times,
+                            const std::vector<int32> &state_times,
                             Lattice *lat) {
   kaldi::uint64 props = lat->Properties(fst::kFstProperties, false);
   if (!(props & fst::kTopSorted))
