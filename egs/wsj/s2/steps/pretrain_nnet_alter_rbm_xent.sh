@@ -242,7 +242,7 @@ for depth in $(seq -f '%02g' 1 $nn_depth); do
   #to get the feature transform
   echo "Cutting the last layer"
   TRANSF=$dir/nnet/hid${depth}c_transf
-  nnet-trim-n-last-transforms --n=2 --binary=false $NNET.xent $TRANSF
+  nnet-copy --remove-last-layers=2 --binary=false $NNET.xent $TRANSF
 done
 
 

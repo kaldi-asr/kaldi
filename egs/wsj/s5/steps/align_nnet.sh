@@ -16,6 +16,7 @@ cmd=run.pl
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 beam=10
 retry_beam=40
+use_gpu_id=-1 # disable gpu
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -62,10 +63,6 @@ fi
 model=$dir/final.mdl
 [ -z "$model" ] && echo "Error transition model '$model' does not exist!" && exit 1;
 
-# remove the softmax from the nnet
-nnet_i=$nnet; nnet=$dir/$(basename $nnet)_nosoftmax;
-nnet-trim-n-last-transforms --n=1 --binary=false $nnet_i $nnet 2>$dir/$(basename $nnet)_log || exit 1;
-
 ###
 ### Prepare feature pipeline (same as for decoding)
 ###
@@ -84,7 +81,7 @@ if [ -f $srcdir/delta_order ]; then
 fi
 
 # Finally add feature_transform and the MLP
-feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts $nnet ark:- ark:- |"
+feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu-id=$use_gpu_id $nnet ark:- ark:- |"
 ###
 ###
 ###

@@ -58,6 +58,7 @@ steps/make_fmllr_feats.sh --nj 60 --cmd "$train_cmd" \
 #false && \
 { # Pre-train the DBN
 dir=exp/tri4b_pretrain-dbn
+(tail --pid=$$ -F $dir/_pretrain_dbn.log)&
 $cuda_cmd $dir/_pretrain_dbn.log \
   steps/pretrain_dbn.sh data-fmllr-tri4b/train_nodup $dir
 }
@@ -75,6 +76,7 @@ dir=exp/tri4b_pretrain-dbn_dnn
 ali=exp/tri4b_ali
 feature_transform=exp/tri4b_pretrain-dbn/final.feature_transform
 dbn=exp/tri4b_pretrain-dbn/6.dbn
+(tail --pid=$$ -F $dir/_train_nnet.log)& 
 $cuda_cmd $dir/_train_nnet.log \
   steps/train_nnet.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
   data-fmllr-tri4b/train_nodup data-fmllr-tri4b/train_dev data/lang ${ali}_all ${ali}_dev $dir || exit 1;

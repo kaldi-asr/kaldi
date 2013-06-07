@@ -97,11 +97,6 @@ fi
 model=$dir/final.mdl
 [ -z "$model" ] && echo "Error transition model '$model' does not exist!" && exit 1;
 
-# remove the softmax from the nnet
-nnet_i=$nnet; nnet=$dir/$(basename $nnet)_nosoftmax;
-nnet-trim-n-last-transforms --n=1 --binary=false $nnet_i $nnet 2>$dir/$(basename $nnet)_log || exit 1;
-
-
 ###
 ### Prepare feature pipeline (same as for decoding)
 ###

@@ -84,7 +84,7 @@ fi
 
 #cut the MLP
 nnet=$data/feature_extractor.nnet
-nnet-trim-n-last-transforms --n=$trim_transforms --binary=false $nndir/final.nnet $nnet 2>${nnet}_log
+nnet-copy --remove-last-layers=$trim_transforms --binary=false $nndir/final.nnet $nnet 2>${nnet}_log
 
 #copy source data to new data dir....
 cp $olddata/* $data 2>/dev/null; rm $data/feats.scp;

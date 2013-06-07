@@ -8,7 +8,7 @@
 # Begin configuration section.
 nj=4
 cmd=run.pl
-trim_transforms=4
+remove_last_layers=4 # remove N last components from the nnet
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -69,10 +69,10 @@ fi
 
 #cut the MLP
 nnet=$bnfeadir/feature_extractor.nnet
-nnet-trim-n-last-transforms --n=$trim_transforms --binary=false $nndir/final.nnet $nnet 2>$logdir/feature_extractor.log
+copy-nnet --remove-last-layers=$remove_last_layers --binary=false $nndir/final.nnet $nnet 2>$logdir/feature_extractor.log
 
 #get the feature transform
-feature_transform=$nndir/$(readlink $nndir/final.feature_transform)
+feature_transform=$nndir/final.feature_transform
 
 echo "Creating bn-feats into $data"
 

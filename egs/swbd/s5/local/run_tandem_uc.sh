@@ -105,9 +105,10 @@ data=data-fbank
   dir=exp/tri5a_uc-mlp-part1
   feature_transform=$dir/final.feature_transform.part1
   {
-    cat $dir/final.feature_transform > $feature_transform
-    nnet-trim-n-last-transforms --n=4 $dir/final.nnet - >> $feature_transform
-    utils/nnet/gen_splice.py --fea-dim=80 --splice=2 --splice-step=5 >> $feature_transform
+    nnet-concat $dir/final.feature_transform \
+      "nnet-copy --remove-last-layers=4 --binary=false $dir/final.nnet - |" \
+      "utils/nnet/gen_splice.py --fea-dim=80 --splice=2 --splice-step=5 |" \
+      $feature_transform
   }
 
   # Let's train the second network:
