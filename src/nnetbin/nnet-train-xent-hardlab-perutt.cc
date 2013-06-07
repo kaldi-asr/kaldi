@@ -1,6 +1,6 @@
 // nnetbin/nnet-train-xent-hardlab-perutt.cc
 
-// Copyright 2011  Karel Vesely
+// Copyright 2011-2013  Brno University of Technology (Author: Karel Vesely)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include "nnet/nnet-trnopts.h"
 #include "nnet/nnet-nnet.h"
 #include "nnet/nnet-loss.h"
 #include "base/kaldi-common.h"
@@ -27,30 +28,29 @@ int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
     const char *usage =
-        "Perform iteration of Neural Network training by stochastic gradient descent.\n"
+        "Perform one iteration of Neural Network training by stochastic gradient descent.\n"
         "Usage:  nnet-train-xent-hardlab-perutt [options] <model-in> <feature-rspecifier> <alignments-rspecifier> [<model-out>]\n"
         "e.g.: \n"
         " nnet-train-xent-hardlab-perutt nnet.init scp:train.scp ark:train.ali nnet.iter1\n";
 
     ParseOptions po(usage);
+
+    NnetTrainOptions trn_opts;
+    trn_opts.Register(&po);
+
     bool binary = false, 
          crossvalidate = false;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (don't backpropagate)");
 
-    BaseFloat learn_rate = 0.008,
-        momentum = 0.0,
-        l2_penalty = 0.0,
-        l1_penalty = 0.0;
-
-    po.Register("learn-rate", &learn_rate, "Learning rate");
-    po.Register("momentum", &momentum, "Momentum");
-    po.Register("l2-penalty", &l2_penalty, "L2 penalty (weight decay)");
-    po.Register("l1-penalty", &l1_penalty, "L1 penalty (promote sparsity)");
-
     std::string feature_transform;
     po.Register("feature-transform", &feature_transform, "Feature transform in Nnet format");
 
+#if HAVE_CUDA==1
+    int32 use_gpu_id=-2;
+    po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic selection, -1 disable GPU, 0..N select GPU)");
+#endif
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4-(crossvalidate?1:0)) {
@@ -71,6 +71,10 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
 
+    //Select the GPU
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+#endif
 
     Nnet nnet_transf;
     if(feature_transform != "") {
@@ -79,13 +83,9 @@ int main(int argc, char *argv[]) {
 
     Nnet nnet;
     nnet.Read(model_filename);
+    nnet.SetTrainOptions(trn_opts);
 
-    nnet.SetLearnRate(learn_rate, NULL);
-    nnet.SetMomentum(momentum);
-    nnet.SetL2Penalty(l2_penalty);
-    nnet.SetL1Penalty(l1_penalty);
-
-    kaldi::int64 tot_t = 0;
+    kaldi::int64 total_frames = 0;
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessInt32VectorReader alignments_reader(alignments_rspecifier);
@@ -95,20 +95,21 @@ int main(int argc, char *argv[]) {
     
     CuMatrix<BaseFloat> feats, feats_transf, nnet_out, obj_diff;
 
-    Timer tim;
-    double time_next=0;
+    Timer time;
+    double time_now = 0;
+    double time_next = 0;
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " STARTED";
 
     int32 num_done = 0, num_no_alignment = 0, num_other_error = 0;
-    for (; !feature_reader.Done(); /*feature_reader.Next()*/) {
-      std::string key = feature_reader.Key();
+    while(!feature_reader.Done()) {
+      std::string utt = feature_reader.Key();
 
-      if (!alignments_reader.HasKey(key)) {
+      if (!alignments_reader.HasKey(utt)) {
         num_no_alignment++;
       } else {
         
         const Matrix<BaseFloat> &mat = feature_reader.Value();
-        const std::vector<int32> &alignment = alignments_reader.Value(key);
+        const std::vector<int32> &alignment = alignments_reader.Value(utt);
          
         if ((int32)alignment.size() != mat.NumRows()) {
           KALDI_WARN << "Alignment has wrong size "<< (alignment.size()) << " vs. "<< (mat.NumRows());
@@ -117,7 +118,7 @@ int main(int argc, char *argv[]) {
         }
 
         // log
-        KALDI_VLOG(1) << "utt " << key << ", frames " << alignment.size();
+        KALDI_VLOG(2) << "utt " << utt << ", frames " << alignment.size();
 
         // push features to GPU
         feats.CopyFromMat(mat);
@@ -131,13 +132,21 @@ int main(int argc, char *argv[]) {
           nnet.Backpropagate(obj_diff, NULL);
         }
 
-        tot_t += mat.NumRows();
+        total_frames += mat.NumRows();
       }
     
       num_done++;
       Timer t_features;
       feature_reader.Next();
       time_next += t_features.Elapsed();
+
+      //report the speed
+      if (num_done % 1000 == 0) {
+        time_now = time.Elapsed();
+        KALDI_VLOG(1) << "After " << num_done << " utterances: time elapsed = "
+                      << time_now/60 << " min; processed " << total_frames/time_now
+                      << " frames per second.";
+      }
     }
 
     if (!crossvalidate) {
@@ -145,7 +154,7 @@ int main(int argc, char *argv[]) {
     }
     
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " FINISHED " 
-              << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed()
+              << time.Elapsed()/60 << "min, fps" << total_frames/time.Elapsed()
               << ", feature wait " << time_next << "s"; 
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_alignment

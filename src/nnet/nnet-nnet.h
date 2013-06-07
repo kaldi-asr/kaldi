@@ -1,6 +1,6 @@
 // nnet/nnet-nnet.h
 
-// Copyright 2011  Karel Vesely
+// Copyright 2011-2013 Brno University of Technology (Author: Karel Vesely)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 #include "base/kaldi-common.h"
 #include "util/kaldi-io.h"
 #include "matrix/matrix-lib.h"
+#include "nnet/nnet-trnopts.h"
 #include "nnet/nnet-component.h"
 
 namespace kaldi {
@@ -43,57 +44,40 @@ class Nnet {
   /// Perform forward pass through the network, don't keep buffers (use it when not training)
   void Feedforward(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out); 
 
-  int32 InputDim() const; ///< Dimensionality of the input features
-  int32 OutputDim() const; ///< Dimensionality of the desired vectors
-
-  int32 LayerCount() const { ///< Get number of layers
+  /// Dimensionality on network input (input feature dim.)
+  int32 InputDim() const; 
+  /// Dimensionality of network outputs (posteriors | bn-features | etc.)
+  int32 OutputDim() const; 
+  
+  /// Returns number of layers in the network
+  int32 LayerCount() const { 
     return nnet_.size(); 
   }
-  Component* Layer(int32 index) { ///< Access to individual layer
+  /// Access to an individual layer (unprotected)
+  Component* Layer(int32 index) { 
     return nnet_[index]; 
   }
-  int IndexOfLayer(const Component& comp) const; ///< Get the position of layer in network
-
+  /// Get the position of a layer in the network
+  int32 IndexOfLayer(const Component& comp) const;
+ 
   /// Add another layer
-  /// Warning : the MLP takes responsibility for freeing the memory
+  /// Warning : the Nnet over-takes responsibility for freeing the memory
   ///           so use dynamically allocated Component only!
-  void AppendLayer(Component* dynamically_allocated_comp) {
-    if(LayerCount() > 0) {
-      KALDI_ASSERT(OutputDim() == dynamically_allocated_comp->InputDim());
-    }
-    nnet_.push_back(dynamically_allocated_comp);
-  }
-
+  void AppendLayer(Component* dynamically_allocated_comp);
   /// Concatenate the network
   /// Warning : this is destructive, the arg src_nnet_will_be_empty
   ///           will be empty network after calling this method
-  void Concatenate(Nnet* src_nnet_will_be_empty) {
-    if(LayerCount() > 0) {
-      KALDI_ASSERT(OutputDim() == src_nnet_will_be_empty->InputDim());
-    }
-    nnet_.insert(nnet_.end(),
-                 src_nnet_will_be_empty->nnet_.begin(),
-                 src_nnet_will_be_empty->nnet_.end());
-    src_nnet_will_be_empty->nnet_.clear();
-  }
-
-
-  /// Remove layer
-  void RemoveLayer(int32 index) {
-    //make sure we don't break the dimensionalities in the nnet
-    KALDI_ASSERT(index < LayerCount());
-    KALDI_ASSERT(index == LayerCount()-1 || Layer(index)->InputDim() ==  Layer(index)->OutputDim());
-    //remove element from the vector
-    Component* ptr = nnet_[index];
-    nnet_.erase(nnet_.begin()+index);
-    delete ptr;
+  void Concatenate(Nnet* src_nnet_will_be_empty);
+  /// Remove layer (checks for meaningful dimensions after removal)
+  void RemoveLayer(int32 index);
+  void RemoveLastLayer() {
+    RemoveLayer(LayerCount()-1);
   }
 
   /// Access to forward pass buffers
   const std::vector<CuMatrix<BaseFloat> >& PropagateBuffer() const { 
     return propagate_buf_; 
   }
-
   /// Access to backward pass buffers
   const std::vector<CuMatrix<BaseFloat> >& BackpropagateBuffer() const { 
     return backpropagate_buf_; 
@@ -117,33 +101,25 @@ class Nnet {
   /// Write MLP to stream 
   void Write(std::ostream &out, bool binary);    
 
-  /// Write only a front part of the MLP to stream (ie. trim the MLP)
-  void WriteFrontLayers(std::ostream& out, bool binary, int32 num_layers);    
-  
-  /// Set the learning rate values to trainable layers, 
-  /// factors can disable training of individual layers
-  void SetLearnRate(BaseFloat lrate, const char *lrate_factors); 
-  /// Get the global learning rate value
-  BaseFloat GetLearnRate() { 
-    return learn_rate_;
+  /// Set training hyper-parameters to the network and its UpdatableComponent(s)
+  void SetTrainOptions(const NnetTrainOptions& opts);
+  /// Get training hyper-parameters from the network
+  const NnetTrainOptions& GetTrainOptions() const {
+    return opts_;
   }
-  /// Get the string with real learning rate values
-  std::string GetLearnRateString();  
-
-  void SetMomentum(BaseFloat mmt);
-  void SetL2Penalty(BaseFloat l2);
-  void SetL1Penalty(BaseFloat l1);
 
  private:
-  /// Nnet is a vector of components
+  /// NnetType is alias to vector of components
   typedef std::vector<Component*> NnetType;
-  
-  NnetType nnet_;     ///< vector of all Component*, represents layers
+  /// Vector which contains all the layers composing the network network,
+  /// also non-linearities (sigmoid|softmax|tanh|...) are considered as layers.
+  NnetType nnet_; 
 
   std::vector<CuMatrix<BaseFloat> > propagate_buf_; ///< buffers for forward pass
   std::vector<CuMatrix<BaseFloat> > backpropagate_buf_; ///< buffers for backward pass
 
-  BaseFloat learn_rate_; ///< global learning rate
+  /// Option class with hyper-parameters passed to UpdatableComponent(s)
+  NnetTrainOptions opts_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(Nnet);
 };
@@ -160,9 +136,9 @@ inline Nnet::~Nnet() {
    
 inline int32 Nnet::InputDim() const { 
   if (LayerCount() > 0) {
-   return nnet_.front()->InputDim(); 
+    return nnet_.front()->InputDim(); 
   } else {
-   KALDI_ERR << "No layers in MLP"; 
+    KALDI_ERR << "No layers in MLP"; 
   }
 }
 
@@ -183,6 +159,36 @@ inline int32 Nnet::IndexOfLayer(const Component &comp) const {
             << " not found in the MLP";
   return -1;
 }
+
+
+inline void Nnet::AppendLayer(Component* dynamically_allocated_comp) {
+  if(LayerCount() > 0) {
+    KALDI_ASSERT(OutputDim() == dynamically_allocated_comp->InputDim());
+  }
+  nnet_.push_back(dynamically_allocated_comp);
+}
+
+
+inline void Nnet::Concatenate(Nnet* src_nnet_will_be_empty) {
+  if(LayerCount() > 0) {
+    KALDI_ASSERT(OutputDim() == src_nnet_will_be_empty->InputDim());
+  }
+  nnet_.insert(nnet_.end(),
+               src_nnet_will_be_empty->nnet_.begin(),
+               src_nnet_will_be_empty->nnet_.end());
+  src_nnet_will_be_empty->nnet_.clear();
+}
+
+
+inline void Nnet::RemoveLayer(int32 index) {
+  //make sure we don't break the dimensionalities in the nnet
+  KALDI_ASSERT(index < LayerCount());
+  KALDI_ASSERT(index == LayerCount()-1 || Layer(index)->InputDim() ==  Layer(index)->OutputDim());
+  //remove element from the vector
+  Component* ptr = nnet_[index];
+  nnet_.erase(nnet_.begin()+index);
+  delete ptr;
+}
  
   
 inline void Nnet::Read(const std::string &file) {
@@ -190,6 +196,10 @@ inline void Nnet::Read(const std::string &file) {
   Input in(file, &binary);
   Read(in.Stream(), binary);
   in.Close();
+  // Warn if the NN is empty
+  if(LayerCount() == 0) {
+    KALDI_WARN << "The network '" << file << "' is empty.";
+  }
 }
 
 
@@ -207,41 +217,15 @@ inline void Nnet::Write(std::ostream &out, bool binary) {
 }
 
 
-inline void Nnet::WriteFrontLayers(std::ostream& out, bool binary, int32 num_layers) {
-  KALDI_ASSERT(num_layers <= LayerCount());
-  for(int32 i=0; i<num_layers; i++) {
-    nnet_[i]->Write(out,binary);
-  }
-}
-
-    
-inline void Nnet::SetMomentum(BaseFloat mmt) {
-  for(int32 i=0; i<LayerCount(); i++) {
-    if (nnet_[i]->IsUpdatable()) {
-      dynamic_cast<UpdatableComponent*>(nnet_[i])->SetMomentum(mmt);
+inline void Nnet::SetTrainOptions(const NnetTrainOptions& opts) {
+  opts_ = opts;
+  //set values to individual components
+  for (int32 l=0; l<LayerCount(); l++) {
+    if(Layer(l)->IsUpdatable()) {
+      dynamic_cast<UpdatableComponent*>(Layer(l))->SetTrainOptions(opts_);
     }
   }
 }
-
-
-inline void Nnet::SetL2Penalty(BaseFloat l2) {
-  for(int32 i=0; i<LayerCount(); i++) {
-    if (nnet_[i]->IsUpdatable()) {
-      dynamic_cast<UpdatableComponent*>(nnet_[i])->SetL2Penalty(l2);
-    }
-  }
-}
-
-
-inline void Nnet::SetL1Penalty(BaseFloat l1) {
-  for(int32 i=0; i<LayerCount(); i++) {
-    if (nnet_[i]->IsUpdatable()) {
-      dynamic_cast<UpdatableComponent*>(nnet_[i])->SetL1Penalty(l1);
-    }
-  }
-}
-
-
 
 
 } // namespace kaldi

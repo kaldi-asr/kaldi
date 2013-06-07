@@ -1,6 +1,6 @@
 // nnet/nnet-rbm.h
 
-// Copyright 2012  Karel Vesely
+// Copyright 2012-2013 Brno University of Technology (Author: Karel Vesely)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,6 +58,36 @@ class RbmBase : public UpdatableComponent {
   virtual RbmNodeType HidType() const = 0;
 
   virtual void WriteAsNnet(std::ostream& os, bool binary) const = 0;
+
+  /// Set training hyper-parameters to the network and its UpdatableComponent(s)
+  void SetRbmTrainOptions(const RbmTrainOptions& opts) {
+    rbm_opts_ = opts;
+  }
+  /// Get training hyper-parameters from the network
+  const RbmTrainOptions& GetRbmTrainOptions() const {
+    return rbm_opts_;
+  }
+  
+ protected:
+  RbmTrainOptions rbm_opts_;
+
+ //// Make these methods inaccessible for descendants.
+ //
+ private:
+  // For RBMs we use Reconstruct(.)
+  void Backpropagate(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
+                     const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) { }
+  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
+                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) { }
+  // RBMs use RbmUpdate(.)
+  void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) { }
+  // RBMs use option class RbmTrainOptions
+  void SetTrainOptions(const NnetTrainOptions&);
+  const NnetTrainOptions& GetTrainOptions() const;
+  NnetTrainOptions opts_;
+ //
+ ////
+
 };
 
 
@@ -183,15 +213,24 @@ class Rbm : public RbmBase {
       hid_bias_corr_.Resize(hid_bias_.Dim());
     }
 
-    //TODO: detect divergence condition of Gaussian-Bernoulli unit! (scale down vis_hid_corr_?)
-    // limit the reconstruction variace by limiting the weight size???!!!
     //
-    // Or detect the divergence by getting standard deviation of a)input minibatch b)reconstruction
-    // When ratio b)/a) larger than N (2 or 10...):
-    // 1. scale down the weights and biases by b)/a) ratio of stddev 
+    // ANTI-WEIGHT-EXPLOSION PROTECTION
+    // in the following section we detect that the weights in Gaussian-Bernoulli RBM
+    // are about to explode. The weight explosion is caused by large variance of the
+    // reconstructed data, which causes increase of weight variance towards the explosion.
+    //
+    // To avoid explosion, the variance of the visible-data and reconstructed-data
+    // should be about the same. The model is particularly sensitive at the very
+    // beginning of the CD-1 training.
+    //
+    // We compute varinace of a)input minibatch b)reconstruction. 
+    // When the ratio b)/a) is larger than 2, we:
+    // 1. scale down the weights and biases by b)/a) (for next minibatch b)/a) gets 1.0)
     // 2. shrink learning rate by 0.9x
     // 3. reset the momentum buffer  
-    // display warning! in later stage the training can return back to higher learning rate
+    //
+    // Wa also display a warning. Note that in later stage 
+    // the training returns back to higher learning rate.
     // 
     if (vis_type_ == RbmBase::GAUSSIAN) {
       //get the standard deviations of pos_vis and neg_vis data
@@ -235,7 +274,8 @@ class Rbm : public RbmBase {
       /* set negtive values to zero before the square root */
       for (int32 i=0; i<neg_vis_stddev.Dim(); i++) {
         if(neg_vis_stddev(i) < 0.0) { 
-          KALDI_WARN << "Forcing the variance to be non-negative! (set to zero)" << neg_vis_stddev(i);
+          KALDI_WARN << "Forcing the variance to be non-negative! (set to zero)" 
+                     << neg_vis_stddev(i);
           neg_vis_stddev(i) = 0.0;
         }
       }
@@ -243,28 +283,36 @@ class Rbm : public RbmBase {
 
       //monitor the standard deviation discrepancy between pos_vis and neg_vis
       if (pos_vis_stddev.Sum() * 2 < neg_vis_stddev.Sum()) {
-        //scale-down the weights and biases
+        //1) scale-down the weights and biases
         BaseFloat scale = pos_vis_stddev.Sum() / neg_vis_stddev.Sum();
         vis_hid_.Scale(scale);
         vis_bias_.Scale(scale);
         hid_bias_.Scale(scale);
-        //reduce the learning rate           
-        learn_rate_ *= 0.9;
-        //reset the momentum buffers
+        //2) reduce the learning rate           
+        rbm_opts_.learn_rate *= 0.9;
+        //3) reset the momentum buffers
         vis_hid_corr_.SetZero();
         vis_bias_corr_.SetZero();
         hid_bias_corr_.SetZero();
 
         KALDI_WARN << "Discrepancy between pos_hid and neg_hid varainces, "
                    << "danger of weight explosion. a) Reducing weights with scale " << scale
-                   << " b) Lowering learning rate to " << learn_rate_
+                   << " b) Lowering learning rate to " << rbm_opts_.learn_rate
                    << " [pos_vis_stddev(~1.0):" << pos_vis_stddev.Sum()/pos_vis.NumCols()
                    << ",neg_vis_stddev:" << neg_vis_stddev.Sum()/neg_vis.NumCols() << "]";
-        return;           
+        return; /* ie. don't update weights with current stats */
       }
     }
-    
+    //
+    // End of Gaussian-Bernoulli weight-explosion check
 
+
+    //  We use these training hyper-parameters
+    //
+    const BaseFloat lr = rbm_opts_.learn_rate;
+    const BaseFloat mmt = rbm_opts_.momentum;
+    const BaseFloat l2 = rbm_opts_.l2_penalty;
+    
     //  UPDATE vishid matrix
     //  
     //  vishidinc = momentum*vishidinc + ...
@@ -275,25 +323,25 @@ class Rbm : public RbmBase {
     //                 -(epsilonw*weightcost)*vishid[t-1]
     //
     BaseFloat N = static_cast<BaseFloat>(pos_vis.NumRows());
-    vis_hid_corr_.AddMatMat(-learn_rate_/N, neg_hid, kTrans, neg_vis, kNoTrans, momentum_);
-    vis_hid_corr_.AddMatMat(+learn_rate_/N, pos_hid, kTrans, pos_vis, kNoTrans, 1.0);
-    vis_hid_corr_.AddMat(-learn_rate_*l2_penalty_, vis_hid_, 1.0);
+    vis_hid_corr_.AddMatMat(-lr/N, neg_hid, kTrans, neg_vis, kNoTrans, mmt);
+    vis_hid_corr_.AddMatMat(+lr/N, pos_hid, kTrans, pos_vis, kNoTrans, 1.0);
+    vis_hid_corr_.AddMat(-lr*l2, vis_hid_, 1.0);
     vis_hid_.AddMat(1.0, vis_hid_corr_, 1.0);
 
     //  UPDATE visbias vector
     //
     //  visbiasinc = momentum*visbiasinc + (epsilonvb/numcases)*(posvisact-negvisact);
     //
-    vis_bias_corr_.AddRowSumMat(-learn_rate_/N, neg_vis, momentum_);
-    vis_bias_corr_.AddRowSumMat(+learn_rate_/N, pos_vis, 1.0);
+    vis_bias_corr_.AddRowSumMat(-lr/N, neg_vis, mmt);
+    vis_bias_corr_.AddRowSumMat(+lr/N, pos_vis, 1.0);
     vis_bias_.AddVec(1.0, vis_bias_corr_, 1.0);
     
     //  UPDATE hidbias vector
     //
     // hidbiasinc = momentum*hidbiasinc + (epsilonhb/numcases)*(poshidact-neghidact);
     //
-    hid_bias_corr_.AddRowSumMat(-learn_rate_/N, neg_hid, momentum_);
-    hid_bias_corr_.AddRowSumMat(+learn_rate_/N, pos_hid, 1.0);
+    hid_bias_corr_.AddRowSumMat(-lr/N, neg_hid, mmt);
+    hid_bias_corr_.AddRowSumMat(+lr/N, pos_hid, 1.0);
     hid_bias_.AddVec(1.0, hid_bias_corr_, 1.0);
   }
 

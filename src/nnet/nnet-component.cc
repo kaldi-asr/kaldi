@@ -1,6 +1,6 @@
 // nnet/nnet-component.cc
 
-// Copyright 2011  Karel Vesely
+// Copyright 2011-2013 Brno University of Technology (Author: Karel Vesely)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

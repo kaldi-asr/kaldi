@@ -1,6 +1,6 @@
 // nnetbin/nnet-train-mse-hardlab-perutt.cc
 
-// Copyright 2012  Karel Vesely
+// Copyright 2012-2013  Brno University of Technology (Author: Karel Vesely)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+/*
+ * Karel : This tool has never been used, so there may be bugs.
+ */
+
+#include "nnet/nnet-trnopts.h"
 #include "nnet/nnet-nnet.h"
 #include "nnet/nnet-loss.h"
 #include "nnet/nnet-cache-tgtmat.h"
@@ -28,34 +33,36 @@ int main(int argc, char *argv[]) {
   using namespace kaldi;
   try {
     const char *usage =
-        "Perform iteration of Neural Network training by stochastic gradient descent.\n"
+        "Perform one iteration of Neural Network training by stochastic gradient descent.\n"
         "Usage:  nnet-train-mse-tgtmat-frmshuff [options] <model-in> <feature-rspecifier> <targets-rspecifier> [<model-out>]\n"
         "e.g.: \n"
         " nnet-train-mse-tgtmat-frmshuff nnet.init scp:train.scp ark:targets.scp nnet.iter1\n";
 
     ParseOptions po(usage);
+
+    NnetTrainOptions trn_opts;
+    trn_opts.Register(&po);
+
     bool binary = false, 
-         crossvalidate = false;
+         crossvalidate = false,
+         randomize = true;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (don't backpropagate)");
-
-    BaseFloat learn_rate = 0.008,
-        momentum = 0.0,
-        l2_penalty = 0.0,
-        l1_penalty = 0.0;
-
-    po.Register("learn-rate", &learn_rate, "Learning rate");
-    po.Register("momentum", &momentum, "Momentum");
-    po.Register("l2-penalty", &l2_penalty, "L2 penalty (weight decay)");
-    po.Register("l1-penalty", &l1_penalty, "L1 penalty (promote sparsity)");
+    po.Register("randomize", &randomize, "Perform the frame-level shuffling within the Cache::");
 
     std::string feature_transform;
     po.Register("feature-transform", &feature_transform, "Feature transform in Nnet format");
 
-    int32 bunchsize=512, cachesize=32768;
+    int32 bunchsize=512, cachesize=32768, seed=777;
     po.Register("bunchsize", &bunchsize, "Size of weight update block");
     po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling (max 8388479)");
+    po.Register("seed", &seed, "Seed value for srand, sets fixed order of frame-shuffling");
 
+#if HAVE_CUDA==1
+    int32 use_gpu_id=-2;
+    po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic selection, -1 disable GPU, 0..N select GPU)");
+#endif
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4-(crossvalidate?1:0)) {
@@ -72,10 +79,16 @@ int main(int argc, char *argv[]) {
       target_model_filename = po.GetArg(4);
     }
 
+    //set the seed to the pre-defined value
+    srand(seed);
      
     using namespace kaldi;
     typedef kaldi::int32 int32;
 
+    //Select the GPU
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+#endif
 
     Nnet nnet_transf;
     if(feature_transform != "") {
@@ -84,13 +97,9 @@ int main(int argc, char *argv[]) {
 
     Nnet nnet;
     nnet.Read(model_filename);
+    nnet.SetTrainOptions(trn_opts);
 
-    nnet.SetLearnRate(learn_rate, NULL);
-    nnet.SetMomentum(momentum);
-    nnet.SetL2Penalty(l2_penalty);
-    nnet.SetL1Penalty(l1_penalty);
-
-    kaldi::int64 tot_t = 0;
+    kaldi::int64 total_frames = 0;
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     SequentialBaseFloatMatrixReader targets_reader(targets_rspecifier);
@@ -104,8 +113,9 @@ int main(int argc, char *argv[]) {
     
     CuMatrix<BaseFloat> feats, feats_transf, targets, nnet_in, nnet_out, nnet_tgt, obj_diff;
 
-    Timer tim;
-    double time_next=0;
+    Timer time;
+    double time_now = 0;
+    double time_next = 0;
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " STARTED";
 
     int32 num_done = 0, num_no_tgt_mat = 0, num_other_error = 0, num_cache = 0;
@@ -114,21 +124,21 @@ int main(int argc, char *argv[]) {
       // both reader are sequential, not to be too memory hungry,
       // the scp lists must be in the same order 
       // we run the loop over targets, skipping features with no targets
-      while (!cache.Full() && !feature_reader.Done() && !targets_reader.Done()) {
-        // get the keys
-        std::string tgt_key = targets_reader.Key();
-        std::string fea_key = feature_reader.Key();
+      while (!cache.Full() && !targets_reader.Done()) {
+        // get the utts
+        std::string tgt_utt = targets_reader.Key();
+        std::string fea_utt = feature_reader.Key();
         // skip feature matrix with no targets
-        while (fea_key != tgt_key) {
-          KALDI_WARN << "No targets for: " << fea_key;
+        while (fea_utt != tgt_utt) {
+          KALDI_WARN << "No targets for: " << fea_utt;
           num_no_tgt_mat++;
           if (!feature_reader.Done()) {
             feature_reader.Next(); 
-            fea_key = feature_reader.Key();
+            fea_utt = feature_reader.Key();
           }
         }
         // now we should have a pair
-        if (fea_key == tgt_key) {
+        if (fea_utt == tgt_utt) {
           // get feature tgt_mat pair
           const Matrix<BaseFloat> &fea_mat = feature_reader.Value();
           const Matrix<BaseFloat> &tgt_mat = targets_reader.Value();
@@ -151,16 +161,25 @@ int main(int argc, char *argv[]) {
         feature_reader.Next(); 
         targets_reader.Next(); 
         time_next += t_features.Elapsed();
+
+        //report the speed
+        if (num_done % 1000 == 0) {
+          time_now = time.Elapsed();
+          KALDI_VLOG(1) << "After " << num_done << " utterances: time elapsed = "
+                        << time_now/60 << " min; processed " << total_frames/time_now
+                        << " frames per second.";
+        }
+
       }
       // randomize
-      if (!crossvalidate) {
+      if (!crossvalidate && randomize) {
         cache.Randomize();
       }
       // report
       KALDI_VLOG(1) << "Cache #" << ++num_cache << " "
                 << (cache.Randomized()?"[RND]":"[NO-RND]")
                 << " segments: " << num_done
-                << " frames: " << static_cast<double>(tot_t)/360000 << "h";
+                << " frames: " << static_cast<double>(total_frames)/360000 << "h";
       // train with the cache
       while (!cache.Empty()) {
         // get block of feature/target pairs
@@ -171,7 +190,7 @@ int main(int argc, char *argv[]) {
         if (!crossvalidate) {
           nnet.Backpropagate(obj_diff, NULL);
         }
-        tot_t += nnet_in.NumRows();
+        total_frames += nnet_in.NumRows();
       }
 
       // stop training when no more data
@@ -183,7 +202,7 @@ int main(int argc, char *argv[]) {
     }
     
     KALDI_LOG << (crossvalidate?"CROSSVALIDATE":"TRAINING") << " FINISHED " 
-              << tim.Elapsed() << "s, fps" << tot_t/tim.Elapsed()
+              << time.Elapsed()/60 << "min, fps" << total_frames/time.Elapsed()
               << ", feature wait " << time_next << "s"; 
 
     KALDI_LOG << "Done " << num_done << " files, " << num_no_tgt_mat

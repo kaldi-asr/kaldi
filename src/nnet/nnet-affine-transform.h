@@ -68,22 +68,27 @@ class AffineTransform : public UpdatableComponent {
 
 
   void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) {
-    // compute gradient
-    linearity_corr_.AddMatMat(1.0, diff, kTrans, input, kNoTrans, momentum_);
-    bias_corr_.AddRowSumMat(1.0, diff, momentum_);
+    // we use following hyperparameters from the option class
+    const BaseFloat lr = opts_.learn_rate;
+    const BaseFloat mmt = opts_.momentum;
+    const BaseFloat l2 = opts_.l2_penalty;
+    const BaseFloat l1 = opts_.l1_penalty;
+    // we will also need the number of frames in the mini-batch
+    const int32 num_frames = input.NumRows();
+    // compute gradient (incl. momentum)
+    linearity_corr_.AddMatMat(1.0, diff, kTrans, input, kNoTrans, mmt);
+    bias_corr_.AddRowSumMat(1.0, diff, mmt);
     // l2 regularization
-    if (l2_penalty_ != 0.0) {
-      BaseFloat l2 = learn_rate_*l2_penalty_*input.NumRows();
-      linearity_.AddMat(-l2, linearity_);
+    if (l2 != 0.0) {
+      linearity_.AddMat(-lr*l2*num_frames, linearity_);
     }
     // l1 regularization
-    if (l1_penalty_ != 0.0) {
-      BaseFloat l1 = learn_rate_*input.NumRows()*l1_penalty_;
-      cu::RegularizeL1(&linearity_, &linearity_corr_, l1, learn_rate_);
+    if (l1 != 0.0) {
+      cu::RegularizeL1(&linearity_, &linearity_corr_, lr*l1*num_frames, lr);
     }
     // update
-    linearity_.AddMat(-learn_rate_, linearity_corr_);
-    bias_.AddVec(-learn_rate_, bias_corr_);
+    linearity_.AddMat(-lr, linearity_corr_);
+    bias_.AddVec(-lr, bias_corr_);
   }
 
   /// Accessors to the component parameters

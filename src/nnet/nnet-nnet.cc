@@ -1,6 +1,6 @@
 // nnet/nnet-nnet.cc
 
-// Copyright 2011  Karel Vesely
+// Copyright 2011-2013 Brno University of Technology (Author: Karel Vesely)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -134,7 +134,8 @@ void Nnet::GetWeights(Vector<BaseFloat>* wei_copy) {
   for(int32 n=0; n<nnet_.size(); n++) {
     if(nnet_[n]->GetType() == Component::kAffineTransform) {
       //get the weights from CuMatrix to Matrix
-      const CuMatrix<BaseFloat>& cu_mat = dynamic_cast<AffineTransform*>(nnet_[n])->GetLinearity();
+      const CuMatrix<BaseFloat>& cu_mat = 
+        dynamic_cast<AffineTransform*>(nnet_[n])->GetLinearity();
       Matrix<BaseFloat> mat(cu_mat.NumRows(),cu_mat.NumCols());
       cu_mat.CopyToMat(&mat);
       //copy the the matrix row-by-row to the vector
@@ -143,7 +144,8 @@ void Nnet::GetWeights(Vector<BaseFloat>* wei_copy) {
         ptr += mat.NumCols();
       }
       //get the biases from CuVector to Vector
-      const CuVector<BaseFloat>& cu_vec = dynamic_cast<AffineTransform*>(nnet_[n])->GetBias();
+      const CuVector<BaseFloat>& cu_vec = 
+        dynamic_cast<AffineTransform*>(nnet_[n])->GetBias();
       Vector<BaseFloat> vec(cu_vec.Dim());
       cu_vec.CopyToVec(&vec);
       //append biases to the supervector
@@ -190,6 +192,7 @@ void Nnet::SetWeights(const Vector<BaseFloat>& wei_src) {
   }
 }
 
+
 int32 Nnet::NumParams() {
   int32 n_params = 0;
   for(int32 n=0; n<nnet_.size(); n++) {
@@ -200,6 +203,7 @@ int32 Nnet::NumParams() {
   return n_params;
 }
 
+
 void Nnet::GetGradient(Vector<BaseFloat>* grad_copy) {
   //first we need to know how many parameters the network has
   grad_copy->Resize(NumParams());
@@ -208,7 +212,8 @@ void Nnet::GetGradient(Vector<BaseFloat>* grad_copy) {
   for(int32 n=0; n<nnet_.size(); n++) {
     if(nnet_[n]->GetType() == Component::kAffineTransform) {
       //get the weights from CuMatrix to Matrix
-      const CuMatrix<BaseFloat>& cu_mat = dynamic_cast<AffineTransform*>(nnet_[n])->GetLinearityCorr();
+      const CuMatrix<BaseFloat>& cu_mat = 
+        dynamic_cast<AffineTransform*>(nnet_[n])->GetLinearityCorr();
       Matrix<BaseFloat> mat(cu_mat.NumRows(),cu_mat.NumCols());
       cu_mat.CopyToMat(&mat);
       //copy the the matrix row-by-row to the vector
@@ -217,7 +222,8 @@ void Nnet::GetGradient(Vector<BaseFloat>* grad_copy) {
         ptr += mat.NumCols();
       }
       //get the biases from CuVector to Vector
-      const CuVector<BaseFloat>& cu_vec = dynamic_cast<AffineTransform*>(nnet_[n])->GetBiasCorr();
+      const CuVector<BaseFloat>& cu_vec = 
+        dynamic_cast<AffineTransform*>(nnet_[n])->GetBiasCorr();
       Vector<BaseFloat> vec(cu_vec.Dim());
       cu_vec.CopyToVec(&vec);
       //append biases to the supervector
@@ -227,8 +233,6 @@ void Nnet::GetGradient(Vector<BaseFloat>* grad_copy) {
   }
   KALDI_ASSERT(ptr - grad_copy->Data() == NumParams()); 
 }
-
-
 
 
 void Nnet::Read(std::istream &in, bool binary) {
@@ -246,61 +250,8 @@ void Nnet::Read(std::istream &in, bool binary) {
   propagate_buf_.resize(LayerCount()+1);
   backpropagate_buf_.resize(LayerCount()-1);
   // reset learn rate
-  learn_rate_ = 0.0;
+  opts_.learn_rate = 0.0;
 }
-
-
-void Nnet::SetLearnRate(BaseFloat lrate, const char *lrate_factors) {
-  // split lrate_factors to a vector
-  std::vector<BaseFloat> lrate_factor_vec;
-  if (NULL != lrate_factors) {
-    char *copy = new char[strlen(lrate_factors)+1];
-    strcpy(copy, lrate_factors);
-    char *tok = NULL;
-    while(NULL != (tok = strtok((tok==NULL?copy:NULL),",:; "))) {
-      lrate_factor_vec.push_back(atof(tok));
-    }
-    delete copy;
-  }
-
-  // count trainable layers
-  int32 updatable = 0;
-  for(int i=0; i<LayerCount(); i++) {
-    if (nnet_[i]->IsUpdatable()) updatable++;
-  }
-  // check number of factors
-  if (lrate_factor_vec.size() > 0 && updatable != (int32)lrate_factor_vec.size()) {
-    KALDI_ERR << "Mismatch between number of trainable layers " << updatable
-              << " and learn rate factors " << lrate_factor_vec.size();
-  }
-
-  // set learn rates
-  updatable=0;
-  for(int32 i=0; i<LayerCount(); i++) {
-    if (nnet_[i]->IsUpdatable()) {
-      BaseFloat lrate_scaled = lrate;
-      if (lrate_factor_vec.size() > 0) lrate_scaled *= lrate_factor_vec[updatable++];
-      dynamic_cast<UpdatableComponent*>(nnet_[i])->SetLearnRate(lrate_scaled);
-    }
-  }
-  // set global learn rate
-  learn_rate_ = lrate;
-}
-
-
-std::string Nnet::GetLearnRateString() {
-  std::ostringstream oss;
-  oss << "LEARN_RATE global: " << learn_rate_ << " individual: ";
-  for(int32 i=0; i<LayerCount(); i++) {
-    if (nnet_[i]->IsUpdatable()) {
-      oss << dynamic_cast<UpdatableComponent*>(nnet_[i])->GetLearnRate() << " ";
-    }
-  }
-  return oss.str();
-}
-
-
-
 
   
 } // namespace

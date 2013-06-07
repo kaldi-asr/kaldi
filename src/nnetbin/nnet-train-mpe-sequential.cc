@@ -26,6 +26,7 @@
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 
+#include "nnet/nnet-trnopts.h"
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-activation.h"
 #include "nnet/nnet-nnet.h"
@@ -90,23 +91,17 @@ int main(int argc, char *argv[]) {
         "nnet.iter1\n";
 
     ParseOptions po(usage);
-    bool binary = false;
+
+    NnetTrainOptions trn_opts; trn_opts.learn_rate=0.00001;
+    trn_opts.Register(&po);
+
+    bool binary = false; 
     po.Register("binary", &binary, "Write output in binary mode");
 
-    BaseFloat learn_rate = 0.00001,
-        momentum = 0.0,
-        l2_penalty = 0.0,
-        l1_penalty = 0.0;
-
-    po.Register("learn-rate", &learn_rate, "Learning rate");
-    po.Register("momentum", &momentum, "Momentum");
-    po.Register("l2-penalty", &l2_penalty, "L2 penalty (weight decay)");
-    po.Register("l1-penalty", &l1_penalty, "L1 penalty (promote sparsity)");
-
-    std::string feature_transform, silence_phones_str;
-
+    std::string feature_transform;
     po.Register("feature-transform", &feature_transform, 
                 "Feature transform in Nnet format");
+    std::string silence_phones_str;
     po.Register("silence-phones", &silence_phones_str, "Colon-separated list "
                 "of integer id's of silence phones, e.g. 46:47");
 
@@ -177,15 +172,12 @@ int main(int argc, char *argv[]) {
     } else {
       KALDI_LOG << "The nnet was without softmax " << model_filename;
     }
+    nnet.SetTrainOptions(trn_opts);
 
     // Read the class-frame-counts, compute priors
     PdfPrior log_prior(prior_opts);
 
-    nnet.SetLearnRate(learn_rate, NULL);
-    nnet.SetMomentum(momentum);
-    nnet.SetL2Penalty(l2_penalty);
-    nnet.SetL1Penalty(l1_penalty);
-
+    // Read transition model
     TransitionModel trans_model;
     ReadKaldiObject(transition_model_filename, &trans_model);
 

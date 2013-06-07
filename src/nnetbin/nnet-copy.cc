@@ -32,9 +32,13 @@ int main(int argc, char *argv[]) {
 
 
     bool binary_write = true;
+    int32 remove_first_layers = 0;
+    int32 remove_last_layers = 0;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
+    po.Register("remove-first-layers", &remove_first_layers, "Remove N first layers (Components) from the MLP");
+    po.Register("remove-last-layers", &remove_last_layers, "Remove N last layers (Components) from the MLP");
 
     po.Read(argc, argv);
 
@@ -46,6 +50,7 @@ int main(int argc, char *argv[]) {
     std::string model_in_filename = po.GetArg(1),
         model_out_filename = po.GetArg(2);
 
+    // load the network
     Nnet nnet; 
     {
       bool binary_read;
@@ -53,6 +58,21 @@ int main(int argc, char *argv[]) {
       nnet.Read(ki.Stream(), binary_read);
     }
 
+    // optionally remove N first layers
+    if(remove_first_layers > 0) {
+      for(int32 i=0; i<remove_first_layers; i++) {
+        nnet.RemoveLayer(0);
+      }
+    }
+   
+    // optionally remove N last layers
+    if(remove_last_layers > 0) {
+      for(int32 i=0; i<remove_last_layers; i++) {
+        nnet.RemoveLastLayer();
+      }
+    }
+
+    // store the network
     {
       Output ko(model_out_filename, binary_write);
       nnet.Write(ko.Stream(), binary_write);

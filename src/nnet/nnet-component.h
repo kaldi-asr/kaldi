@@ -1,6 +1,6 @@
 // nnet/nnet-component.h
 
-// Copyright 2011  Karel Vesely
+// Copyright 2011-2013 Brno University of Technology (Author: Karel Vesely)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,15 +25,16 @@
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
-// #include "nnet/nnet-nnet.h"
+#include "nnet/nnet-trnopts.h"
 
 #include <iostream>
 
 namespace kaldi {
 
 // declare the nnet class so we can declare pointer
+struct NnetTrainOptions;
 class Nnet;
-    
+   
 
 /**
  * Abstract class, basic element of the network,
@@ -152,15 +153,13 @@ class Component {
 
 /**
  * Class UpdatableComponent is a Component which has
- * trainable parameters and contains some global 
- * parameters for stochastic gradient descent
- * (learnrate, momenutm, L2, L1)
+ * trainable parameters and contains SGD training 
+ * hyper-parameters (learnrate, momenutm, L2, L1)
  */
 class UpdatableComponent : public Component {
  public: 
   UpdatableComponent(int32 input_dim, int32 output_dim, Nnet *nnet)
-    : Component(input_dim, output_dim, nnet),
-      learn_rate_(0.0), momentum_(0.0), l2_penalty_(0.0), l1_penalty_(0.0) { }
+    : Component(input_dim, output_dim, nnet) { }
   virtual ~UpdatableComponent() { }
 
   /// Check if contains trainable parameters 
@@ -172,47 +171,18 @@ class UpdatableComponent : public Component {
   virtual void Update(const CuMatrix<BaseFloat> &input,
                       const CuMatrix<BaseFloat> &diff) = 0;
 
-  /// Sets the learning rate of gradient descent
-  void SetLearnRate(BaseFloat lrate) { 
-    learn_rate_ = lrate; 
+  /// Sets the training options to the component
+  void SetTrainOptions(const NnetTrainOptions &opts) {
+    opts_ = opts;
   }
-  /// Gets the learning rate of gradient descent
-  BaseFloat GetLearnRate() { 
-    return learn_rate_; 
-  }
-  
-  /// Sets momentum
-  void SetMomentum(BaseFloat mmt) { 
-    momentum_ = mmt; 
-  }
-  /// Gets momentum
-  BaseFloat GetMomentum() { 
-    return momentum_; 
-  }
-
-  /// Sets L2 penalty (weight decay)
-  void SetL2Penalty(BaseFloat l2) { 
-    l2_penalty_ = l2; 
-  }
-  /// Gets L2 penalty (weight decay)
-  BaseFloat GetL2Penalty() { 
-    return l2_penalty_; 
-  }
-
-  /// Sets L1 penalty (sparisity promotion)
-  void SetL1Penalty(BaseFloat l1) { 
-    l1_penalty_ = l1; 
-  }
-  /// Gets L1 penalty (sparisity promotion)
-  BaseFloat GetL1Penalty() { 
-    return l1_penalty_; 
+  /// Gets the training options from the component
+  const NnetTrainOptions& GetTrainOptions() const { 
+    return opts_; 
   }
 
  protected:
-  BaseFloat learn_rate_; ///< learning rate (0.0..0.01)
-  BaseFloat momentum_;   ///< momentum value (0.0..1.0)
-  BaseFloat l2_penalty_; ///< L2 regularization constant (0.0..1e-4)
-  BaseFloat l1_penalty_; ///< L1 regularization constant (0.0..1e-4)
+  /// Option-class with training hyper-parameters
+  NnetTrainOptions opts_; 
 };
 
 

@@ -26,6 +26,7 @@
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 
+#include "nnet/nnet-trnopts.h"
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-activation.h"
 #include "nnet/nnet-nnet.h"
@@ -92,18 +93,12 @@ int main(int argc, char *argv[]) {
         "nnet.iter1\n";
 
     ParseOptions po(usage);
+
+    NnetTrainOptions trn_opts; trn_opts.learn_rate=0.00001;
+    trn_opts.Register(&po);
+
     bool binary = false; 
     po.Register("binary", &binary, "Write output in binary mode");
-
-    BaseFloat learn_rate = 0.00001,
-        momentum = 0.0,
-        l2_penalty = 0.0,
-        l1_penalty = 0.0;
-
-    po.Register("learn-rate", &learn_rate, "Learning rate");
-    po.Register("momentum", &momentum, "Momentum");
-    po.Register("l2-penalty", &l2_penalty, "L2 penalty (weight decay)");
-    po.Register("l1-penalty", &l1_penalty, "L1 penalty (promote sparsity)");
 
     std::string feature_transform;
     po.Register("feature-transform", &feature_transform, "Feature transform in Nnet format");
@@ -173,15 +168,12 @@ int main(int argc, char *argv[]) {
     } else {
       KALDI_LOG << "The nnet was without softmax " << model_filename;
     }
+    nnet.SetTrainOptions(trn_opts);
 
     // Read the class-frame-counts, compute priors
     PdfPrior log_prior(prior_opts);
 
-    nnet.SetLearnRate(learn_rate, NULL);
-    nnet.SetMomentum(momentum);
-    nnet.SetL2Penalty(l2_penalty);
-    nnet.SetL1Penalty(l1_penalty);
-
+    // Read transition model
     TransitionModel trans_model;
     ReadKaldiObject(transition_model_filename, &trans_model);
 
@@ -402,9 +394,11 @@ int main(int argc, char *argv[]) {
     nnet.AppendLayer(new Softmax(nnet.OutputDim(),nnet.OutputDim(),&nnet));
     //store the nnet
     nnet.Write(target_model_filename, binary);
-  
-    KALDI_LOG << "TRAINING FINISHED " 
-              << time.Elapsed()/60 << "min, fps" << total_frames/time.Elapsed() << ".";
+
+    time_now = time.Elapsed();
+    KALDI_LOG << "TRAINING FINISHED; "
+              << "Time taken = " << time_now/60 << " min; processed "
+              << (total_frames/time_now) << " frames per second.";
 
     KALDI_LOG << "Done " << num_done << " files, " 
               << num_no_num_ali << " with no numerator alignments, " 
@@ -417,7 +411,7 @@ int main(int argc, char *argv[]) {
               << " (average den-posterior on ali " << (total_post_on_ali/total_frames) << ","
               << " dropped " << num_frm_drop << " frames with num/den mismatch)";
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().PrintProfile();
 #endif
 
