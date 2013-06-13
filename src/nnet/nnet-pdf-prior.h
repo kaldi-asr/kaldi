@@ -32,9 +32,11 @@ namespace kaldi {
 struct PdfPriorOptions {
   std::string class_frame_counts;
   BaseFloat prior_scale;
+  double prior_floor;
   
   PdfPriorOptions() : class_frame_counts(""), 
-                      prior_scale(1.0) {};
+                      prior_scale(1.0),
+                      prior_floor(1e-10) {};
 
   void Register(ParseOptions *po) {
     po->Register("class-frame-counts", &class_frame_counts, 
@@ -43,6 +45,8 @@ struct PdfPriorOptions {
                  " or pre-softmax activations)");
     po->Register("prior-scale", &prior_scale, 
                  "Scaling factor to be applied on pdf-log-priors");
+    po->Register("prior-floor", &prior_floor, 
+                 "Floor applied to the priors (prevents amplification of noise coming from NN-outputs with no data)");
   }
 };
 
@@ -67,28 +71,49 @@ class PdfPrior {
         in.OpenTextMode(opts_.class_frame_counts);
         tmp_priors.Read(in.Stream(), false);
         in.Close();
+        { //warn for hard zeros and avoid negative values
+          int32 num_hard_zero = 0, num_neg_val = 0;
+          for(int32 i=0; i<tmp_priors.Dim(); i++) {
+            if(tmp_priors(i) == 0.0) num_hard_zero++;
+            if(tmp_priors(i) < 0.0) num_neg_val++;
+          }
+          if(num_hard_zero) {
+            KALDI_WARN << "--class-frame-counts contains " << num_hard_zero << " hard zeros" 
+                       << " (" << opts_.class_frame_counts << ")";
+          }
+          if(num_neg_val) {
+            KALDI_ERR << "--class-frame-counts contains " << num_neg_val << " negative values"
+                      << " (" << opts_.class_frame_counts << ")";
+          }
+        }
       }
       //normalize
+      BaseFloat sum = tmp_priors.Sum();
+      tmp_priors.Scale(1.0/sum);
+      //apply flooring to the priors, so that noise coming from NN-outputs which had 
+      //no training data is not amplified to the extent that decoding breaks.
+      int32 prior_dim = tmp_priors.Dim();
       { 
-        BaseFloat sum = tmp_priors.Sum();
-        tmp_priors.Scale(1.0/sum);
-        { //make sure we don't get hard zeros as input to log
-          tmp_priors.Add(DBL_MIN); 
-          sum = tmp_priors.Sum();
-          tmp_priors.Scale(1.0/sum);
-          for(int32 i=0; i<tmp_priors.Dim(); i++) {
-            KALDI_ASSERT(tmp_priors(i) > 0.0);
+        int32 num_floored = 0;
+        for(int32 i=0; i<prior_dim; i++) {
+          if(tmp_priors(i) < opts_.prior_floor) {
+            tmp_priors(i) = opts_.prior_floor; num_floored++;
           }
+        }
+        if(num_floored) {
+          KALDI_LOG << "floored " << num_floored << "/" << prior_dim 
+                    << " priors based on --class-frame-counts " 
+                    << opts_.class_frame_counts;
         }
       }
       //apply log
       tmp_priors.ApplyLog();
-      for(int32 i=0; i<tmp_priors.Dim(); i++) {
+      for(int32 i=0; i<prior_dim; i++) {
         KALDI_ASSERT(tmp_priors(i) != kLogZeroDouble);
       }
       //push priors to GPU
       Vector<BaseFloat> tmp_priors_f(tmp_priors);
-      log_priors_.Resize(tmp_priors.Dim());
+      log_priors_.Resize(prior_dim);
       log_priors_.CopyFromVec(tmp_priors_f);
     }
   }
