@@ -64,6 +64,11 @@ shrink=true
 mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
         # specified.)
 num_threads=16
+momentum_minibatches=0 # Note: if you set this to e.g. 100 it uses momentum (we
+    # formulate it slightly differently, as a time constant, e.g.  mu = 1 - 1/momentum_minibatches.
+    # This does not seem to be that useful in stabilizing the update-- possibly an interaction
+    # with the asychronous SGD.  Use an option like --nnet-config-opts "--max-change 50"
+    # which is more helpful.
 
 valid_is_heldout=false # For some reason, holding out the validation set from the training set
                        # seems to hurt, so by default we don't do it (i.e. it's included in training)
@@ -435,7 +440,7 @@ while [ $x -lt $num_iters ]; do
        nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
          ark:$dir/egs/egs.JOB.$[$x%$iters_per_epoch].ark ark:- \| \
        nnet-train-parallel --num-threads=$num_threads --minibatch-size=$minibatch_size \
-        --srand=$x "$mdl" ark:- $dir/$[$x+1].JOB.mdl \
+        --momentum-minibatches=$momentum_minibatches --srand=$x "$mdl" ark:- $dir/$[$x+1].JOB.mdl \
        || exit 1;
 
     nnets_list=

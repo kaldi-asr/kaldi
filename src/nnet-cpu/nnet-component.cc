@@ -1014,28 +1014,20 @@ void AffineComponentPreconditioned::Read(std::istream &is, bool binary) {
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
-  // todo: remove back-compat code.
+  ExpectToken(is, binary, "<Alpha>");
+  ReadBasicType(is, binary, &alpha_);
+  // todo: remove back-compat code.  Will just be:
+  // ExpectToken(is, binary, "<MaxChange>");
+  // ReadBasicType(is, binary, &max_change_);
+  // ExpectToken(is, binary, ostr_end);
+  // [end of function]
   std::string tok;
   ReadToken(is, binary, &tok);
-  if (tok == "<AvgInput>") {
-    Vector<BaseFloat> avg_input;
-    avg_input.Read(is, binary);
-    ExpectToken(is, binary, "<AvgInputCount>");
-    BaseFloat avg_input_count;
-    ReadBasicType(is, binary, &avg_input_count);
-    ExpectToken(is, binary, "<Alpha>");
-  } else {
-    KALDI_ASSERT(tok == "<Alpha>");
-  }
-  ReadBasicType(is, binary, &alpha_);
-
-  // TODO: remove backward-compatibility code.
-  ReadToken(is, binary, &tok);
-  if (tok == "<L2Penalty>") {
-    BaseFloat l2_penalty;
-    ReadBasicType(is, binary, &l2_penalty);
+  if (tok == "<MaxChange>") {
+    ReadBasicType(is, binary, &max_change_);
     ExpectToken(is, binary, ostr_end.str());
   } else {
+    max_change_ = 0.0;
     KALDI_ASSERT(tok == ostr_end.str());
   }
 }
@@ -1050,9 +1042,10 @@ void AffineComponentPreconditioned::InitFromString(std::string args) {
   ok = ok && ParseFromString("input-dim", &args, &input_dim);
   ok = ok && ParseFromString("output-dim", &args, &output_dim);
   BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
-      bias_stddev = 1.0, alpha = 0.1;
+      bias_stddev = 1.0, alpha = 0.1, max_change = 0.0;
   ParseFromString("param-stddev", &args, &param_stddev);
   ParseFromString("bias-stddev", &args, &bias_stddev);
+  ParseFromString("max-change", &args, &max_change);
   ParseFromString("precondition", &args, &precondition);
   ParseFromString("alpha", &args, &alpha);
   if (!args.empty())
@@ -1060,15 +1053,16 @@ void AffineComponentPreconditioned::InitFromString(std::string args) {
               << args;
   if (!ok)
     KALDI_ERR << "Bad initializer " << orig_args;
-  Init(learning_rate, input_dim, output_dim,
-       param_stddev, bias_stddev, precondition, alpha);
+  Init(learning_rate, input_dim, output_dim, param_stddev,
+       bias_stddev, precondition, alpha, max_change);
 }
 
 void AffineComponentPreconditioned::Init(
     BaseFloat learning_rate, 
     int32 input_dim, int32 output_dim,
     BaseFloat param_stddev, BaseFloat bias_stddev,
-    bool precondition, BaseFloat alpha) {
+    bool precondition, BaseFloat alpha,
+    BaseFloat max_change) {
   UpdatableComponent::Init(learning_rate);
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
@@ -1078,7 +1072,9 @@ void AffineComponentPreconditioned::Init(
   bias_params_.SetRandn();
   bias_params_.Scale(bias_stddev);
   alpha_ = alpha;
-  KALDI_ASSERT(alpha > 0.0);
+  KALDI_ASSERT(alpha_ > 0.0);
+  max_change_ = max_change; // Note: any value of max_change_is valid, but
+  // only values > 0.0 will actually activate the code.
 }
 
 
@@ -1095,6 +1091,8 @@ void AffineComponentPreconditioned::Write(std::ostream &os, bool binary) const {
   bias_params_.Write(os, binary);
   WriteToken(os, binary, "<Alpha>");
   WriteBasicType(os, binary, alpha_);
+  WriteToken(os, binary, "<MaxChange>");
+  WriteBasicType(os, binary, max_change_);
   WriteToken(os, binary, ostr_end.str());
 }
 
@@ -1112,7 +1110,8 @@ std::string AffineComponentPreconditioned::Info() const {
          << ", linear-params stddev = " << linear_stddev
          << ", bias-params stddev = " << bias_stddev
          << ", learning rate = " << LearningRate()
-         << ", alpha = " << alpha_;
+         << ", alpha = " << alpha_
+         << ", max-change = " << max_change_;
   return stream.str();
 }
 
@@ -1122,8 +1121,41 @@ Component* AffineComponentPreconditioned::Copy() const {
   ans->linear_params_ = linear_params_;
   ans->bias_params_ = bias_params_;
   ans->alpha_ = alpha_;
+  ans->max_change_ = max_change_;
   ans->is_gradient_ = is_gradient_;
   return ans;
+}
+
+
+BaseFloat AffineComponentPreconditioned::GetScalingFactor(
+    const Matrix<BaseFloat> &in_value_precon,
+    const Matrix<BaseFloat> &out_deriv_precon) {
+  static int scaling_factor_printed = 0;
+
+  KALDI_ASSERT(in_value_precon.NumRows() == out_deriv_precon.NumRows());
+  Vector<BaseFloat> in_norm(in_value_precon.NumRows()),
+      out_deriv_norm(in_value_precon.NumRows());
+  in_norm.AddDiagMat2(1.0, in_value_precon, kNoTrans, 0.0);
+  out_deriv_norm.AddDiagMat2(1.0, out_deriv_precon, kNoTrans, 0.0);
+  // Get the actual l2 norms, not the squared l2 norm.
+  in_norm.ApplyPow(0.5);
+  out_deriv_norm.ApplyPow(0.5);
+  BaseFloat sum = learning_rate_ * VecVec(in_norm, out_deriv_norm);
+  // sum is the product of norms that we are trying to limit
+  // to max_value_.
+  KALDI_ASSERT(sum == sum && sum - sum == 0.0 &&
+               "NaN in backprop");
+  KALDI_ASSERT(sum >= 0.0);
+  if (sum <= max_change_) return 1.0;
+  else {
+    BaseFloat ans = max_change_ / sum;
+    if (scaling_factor_printed < 10) {
+      KALDI_LOG << "Limiting step size to " << max_change_
+                << " using scaling factor " << ans;
+      scaling_factor_printed++;
+    }
+    return ans;
+  }
 }
 
 void AffineComponentPreconditioned::Update(
@@ -1152,6 +1184,12 @@ void AffineComponentPreconditioned::Update(
   PreconditionDirectionsAlphaRescaled(in_value_temp, alpha_, &in_value_precon);
   PreconditionDirectionsAlphaRescaled(out_deriv, alpha_, &out_deriv_precon);
 
+  BaseFloat minibatch_scale = 1.0;
+
+  if (max_change_ > 0.0)
+    minibatch_scale = GetScalingFactor(in_value_precon, out_deriv_precon);
+  
+  
   SubMatrix<BaseFloat> in_value_precon_part(in_value_precon,
                                             0, in_value_precon.NumRows(),
                                             0, in_value_precon.NumCols() - 1);
@@ -1160,10 +1198,11 @@ void AffineComponentPreconditioned::Update(
   Vector<BaseFloat> precon_ones(in_value_precon.NumRows());
   
   precon_ones.CopyColFromMat(in_value_precon, in_value_precon.NumCols() - 1);
-  
-  bias_params_.AddMatVec(learning_rate_, out_deriv_precon, kTrans,
+
+  BaseFloat local_lrate = minibatch_scale * learning_rate_;
+  bias_params_.AddMatVec(local_lrate, out_deriv_precon, kTrans,
                          precon_ones, 1.0);
-  linear_params_.AddMatMat(learning_rate_, out_deriv_precon, kTrans,
+  linear_params_.AddMatMat(local_lrate, out_deriv_precon, kTrans,
                            in_value_precon_part, kNoTrans, 1.0);
 }
 
@@ -1592,85 +1631,63 @@ void PermuteComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
 }
 
 
-void MixtureProbComponent::PerturbParams(BaseFloat stddev) {
-  // We need to preserve the sum-to-one constraint when
-  // perturbing these parameters.
+void MixtureProbComponent::Refresh() {
+  KALDI_ASSERT(params_.size() == log_params_.size());
   for (size_t i = 0; i < params_.size(); i++) {
-    Matrix<BaseFloat> params(params_[i]);
-    params.ApplyFloor(1.0e-20);
-    params.ApplyLog();
-    Matrix<BaseFloat> rand(params.NumRows(), params.NumCols());
-    rand.SetRandn();
-    params.AddMat(stddev, rand);
-    params.ApplyExp();
-    NormalizeMatrix(&params);
-    params_[i].CopyFromMat(params);
+    // Make it so each column of params_ sums to one
+    Vector<BaseFloat> col(params_[i].NumRows());
+    for (int32 c = 0; c < params_[i].NumCols(); c++) {
+      col.CopyColFromMat(log_params_[i], c);
+      col.ApplyExp();
+      KALDI_ASSERT(col.Sum() > 0.0);
+      col.Scale(1.0 / col.Sum()); // make it sum to one.
+      params_[i].CopyColFromVec(col, c);
+    }
   }
+}
+
+void MixtureProbComponent::PerturbParams(BaseFloat stddev) {
+  for (size_t i = 0; i < log_params_.size(); i++) {
+    Matrix<BaseFloat> &log_params(log_params_[i]);
+    Matrix<BaseFloat> rand(log_params.NumRows(), log_params.NumCols());
+    rand.SetRandn();
+    log_params.AddMat(stddev, rand);
+  }
+  Refresh();
 }
 
 
 Component* MixtureProbComponent::Copy() const {
   MixtureProbComponent *ans = new MixtureProbComponent();
   ans->learning_rate_ = learning_rate_;
+  ans->log_params_ = log_params_;
   ans->params_ = params_;
   ans->input_dim_ = input_dim_;
   ans->output_dim_ = output_dim_;
-  ans->is_gradient_ = is_gradient_;
   return ans;
 }
 
-/// we interpret any parameters in log space before doing
-/// dot product.
 BaseFloat MixtureProbComponent::DotProduct(
     const UpdatableComponent &other_in) const {
   const MixtureProbComponent *other =
       dynamic_cast<const MixtureProbComponent*>(&other_in);
   BaseFloat ans = 0.0;
-  KALDI_ASSERT(params_.size() == other->params_.size());
+  KALDI_ASSERT(log_params_.size() == other->log_params_.size());
 
   for (size_t i = 0; i < params_.size(); i++) {
-    Matrix<BaseFloat> log_params(params_[i]),
-        other_log_params(other->params_[i]);
-    if (!this->is_gradient_) {
-      log_params.ApplyFloor(1.0e-20);
-      log_params.ApplyLog();
-    }
-    if (!other->is_gradient_) {
-      other_log_params.ApplyFloor(1.0e-20);
-      other_log_params.ApplyLog();
-    }
+    const Matrix<BaseFloat> &log_params(log_params_[i]),
+        &other_log_params(other->log_params_[i]);
     ans += TraceMatMat(log_params, other_log_params, kTrans);
   }
   return ans;
 }
 
-//static
-void MixtureProbComponent::NormalizeMatrix(MatrixBase<BaseFloat> *mat) {
-  // Make it so each column sums to one.
-  Vector<BaseFloat> col(mat->NumRows());
-  for (int32 c = 0; c < mat->NumCols(); c++) {
-    col.CopyColFromMat(*mat, c);
-    KALDI_ASSERT(col.Sum() > 0.0);
-    col.Scale(1.0 / col.Sum()); // make it sum to one.
-    mat->CopyColFromVec(col, c);
-  }
-}
-
 void MixtureProbComponent::Scale(BaseFloat scale) {
   for (size_t i = 0; i < params_.size(); i++) {
-    Matrix<BaseFloat> log_params(params_[i]);
-    if (!this->is_gradient_) {
-      log_params.ApplyFloor(1.0e-20);
-      log_params.ApplyLog();
-    }
-    log_params.Scale(scale); // This is the key line.
-    if (!this->is_gradient_) {
-      log_params.ApplyExp();
-      // Now re-normalize each column to sum to one.
-      NormalizeMatrix(&log_params);
-    }
-    params_[i].CopyFromMat(log_params);
+    Matrix<BaseFloat> &log_params(log_params_[i]);
+    log_params.Scale(scale);
   }
+  Refresh();
 }
 
 void MixtureProbComponent::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
@@ -1679,23 +1696,11 @@ void MixtureProbComponent::Add(BaseFloat alpha, const UpdatableComponent &other_
   KALDI_ASSERT(other != NULL && other->params_.size() == params_.size());
   
   for (size_t i = 0; i < params_.size(); i++) {
-    Matrix<BaseFloat> log_params(params_[i]),
-        other_log_params(other->params_[i]);
-    if (!this->is_gradient_) {
-      log_params.ApplyFloor(1.0e-20);
-      log_params.ApplyLog();
-    }
-    if (!other->is_gradient_) {
-      other_log_params.ApplyFloor(1.0e-20);
-      other_log_params.ApplyLog();
-    }
+    Matrix<BaseFloat> log_params(log_params_[i]),
+        other_log_params(other->log_params_[i]);
     log_params.AddMat(alpha, other_log_params); // <- This is the key line.
-    if (!this->is_gradient_) {
-      log_params.ApplyExp();
-      NormalizeMatrix(&log_params);
-    }
-    params_[i].CopyFromMat(log_params);
   }
+  Refresh();
 }
 
 
@@ -1703,11 +1708,11 @@ void MixtureProbComponent::Init(BaseFloat learning_rate,
                                 BaseFloat diag_element,
                                 const std::vector<int32> &sizes) {
   UpdatableComponent::Init(learning_rate);
-  is_gradient_ = false;
   input_dim_ = 0;
   output_dim_ = 0;
   params_.resize(sizes.size());
-  KALDI_ASSERT(diag_element > 0.0 && diag_element <= 1.0);
+  log_params_.resize(sizes.size());
+  KALDI_ASSERT(diag_element > 0.0 && diag_element < 1.0);
   // Initialize to a block-diagonal matrix consisting of a series of square
   // blocks, with sizes specified in "sizes".  Note: each block will typically
   // correspond to a number of clustered states, so this whole thing implements
@@ -1726,6 +1731,9 @@ void MixtureProbComponent::Init(BaseFloat learning_rate,
       for (int32 j = 0; j < size; j++)
         params_[i](j, j) = diag_element;
     }
+    log_params_[i] = params_[i];
+    log_params_[i].ApplyLog(); // From now, log_params_ will be the
+    // "primary" parameters, with params_ treated as derived quantities.
   }
 }  
 
@@ -1747,7 +1755,7 @@ void MixtureProbComponent::InitFromString(std::string args) {
   Init(learning_rate, diag_element, dims);
 }
 
-
+// For back-compatibility, we read and write the "params".
 void MixtureProbComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<MixtureProbComponent>", "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
@@ -1758,14 +1766,28 @@ void MixtureProbComponent::Read(std::istream &is, bool binary) {
   output_dim_ = 0;
   KALDI_ASSERT(size >= 0);
   params_.resize(size);
+  log_params_.resize(size);
   for (int32 i = 0; i < size; i++) {
     params_[i].Read(is, binary);
     input_dim_ += params_[i].NumCols();
     output_dim_ += params_[i].NumRows();
-  }        
-  ExpectToken(is, binary, "<IsGradient>");
-  ReadBasicType(is, binary, &is_gradient_);
-  ExpectToken(is, binary, "</MixtureProbComponent>");  
+    log_params_[i] = params_[i];
+    log_params_[i].ApplyLog();
+  }
+
+  // TODO: after a decent interval we can replace all the code below
+  // with:  ExpectToken(is, binary, "</MixtureProbComponent>");  
+  
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<IsGradient>") { // Back-compatibility code,
+    // remove this later.
+    bool tmp;
+    ReadBasicType(is, binary, &tmp);
+    ExpectToken(is, binary, "</MixtureProbComponent>");  
+  } else {
+    KALDI_ASSERT(token == "</MixtureProbComponent>");
+  }
 }
 
 void MixtureProbComponent::Write(std::ostream &os, bool binary) const {
@@ -1777,18 +1799,16 @@ void MixtureProbComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, size);
   for (int32 i = 0; i < size; i++)
     params_[i].Write(os, binary);
-  WriteToken(os, binary, "<IsGradient>");
-  WriteBasicType(os, binary, is_gradient_);
   WriteToken(os, binary, "</MixtureProbComponent>");  
 }
 
 void MixtureProbComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     SetLearningRate(1.0);
-    is_gradient_ = true;
   }
   for (size_t i = 0; i < params_.size(); i++)
-    params_[i].SetZero();
+    log_params_[i].SetZero();
+  Refresh();
 }
 
 void MixtureProbComponent::Propagate(const MatrixBase<BaseFloat> &in,
@@ -1834,7 +1854,7 @@ void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
   
   for (size_t i = 0; i < params_.size(); i++) {
     int32 this_input_dim = params_[i].NumCols(), // input dim of this block.
-         this_output_dim = params_[i].NumRows();   
+        this_output_dim = params_[i].NumRows();   
     KALDI_ASSERT(this_input_dim > 0 && this_output_dim > 0);
     SubMatrix<BaseFloat> in_value_block(in_value, 0, num_frames,
                                         input_offset, this_input_dim),
@@ -1849,91 +1869,44 @@ void MixtureProbComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
                              kNoTrans, 0.0);
     
     if (to_update != NULL) {
-      Matrix<BaseFloat> &param_block_to_update(to_update->params_[i]);
-      if (to_update->is_gradient_) { // We're just storing
-        // the gradient there-- w.r.t. the unnormalized log params.
-        KALDI_ASSERT(to_update->learning_rate_ == 1.0);
-        // tmp_mat will be d/d(probs).  We want to store d/d(unnormalized
-        // log-probs).
-        Matrix<BaseFloat> tmp_mat(param_block_to_update.NumRows(),
-                                  param_block_to_update.NumCols());
-        tmp_mat.AddMatMat(1.0, out_deriv_block, kTrans, in_value_block,
-                          kNoTrans, 0.0);
-        // we want param_block_to_update to be d/d(unnormalized log-probs).
-        // First multiply each element by the corresponding parameter
-        // (which is a probability).  This comes from differentiating the exp.
-        tmp_mat.MulElements(this->params_[i]);
-        // Now, the sum-to-one constraint is per column of the params.
-        // We normalize from the unnormalized log-probs, e.g.
-        // p_i = exp(l_i) / \sum_j exp(l_j)
-        // and this translates into invariance w.r.t. a constant aded
-        // factor on the log-probs, which means there should be no
-        // gradient w.r.t. adding to a given column of the matrix,
-        // or the sum of the gradients over the column should be zero.
-        // So we subtract the average from each column.
-        Vector<BaseFloat> tmp_col(param_block_to_update.NumRows()),
-            param_col(param_block_to_update.NumRows());
-        for (int32 j = 0; j < param_block_to_update.NumCols(); j++) {
-          tmp_col.CopyColFromMat(tmp_mat, j);
-          param_col.CopyColFromMat(this->params_[i], j);
-          // The next line relates to the sum-to-one constraint.
-          tmp_col.AddVec(-1.0 * tmp_col.Sum(), param_col);
-          tmp_mat.CopyColFromVec(tmp_col, j);
-        }
-        param_block_to_update.AddMat(1.0, tmp_mat);
-      } else {
-        /*
-          We do gradient descent in the space of log probabilities.  We enforce the
-          sum-to-one constraint; this affects the gradient (I think you can derive
-          this using lagrangian multipliers).
-          
-          For a column c of the matrix, we have a gradient g.
-          Let l be the vector of unnormalized log-probs of that row; it has an arbitrary
-          offset, but we just choose the point where it coincides with correctly normalized
-          log-probs, so for each element:
-          l_i = log(c_i).
-          The functional relationship between l_i and c_i is:
-          c_i = exp(l_i) / sum_j exp(l_j) . [softmax function from l to c.]
-          Let h_i be the gradient w.r.t l_i.  We can compute this as follows.  The softmax function
-          has a Jacobian equal to diag(c) - c c^T.  We have:
-          h = (diag(c) - c c^T)  g
-          We do the gradient-descent step on h, and when we convert back to c, we renormalize.
-          [note: the renormalization would not even be necessary if the step size were infinitesimal;
-          it's only needed due to second-order effects which slightly unnormalize each column.]
-        */        
-        int32 num_rows = this_output_dim, num_cols = this_input_dim;
-        Matrix<BaseFloat> gradient(num_rows, num_cols);
-        gradient.AddMatMat(1.0, out_deriv_block, kTrans, in_value_block, kNoTrans,
-                           0.0);
-        for (int32 col = 0; col < num_cols; col++) {
-          Vector<BaseFloat> param_col(num_rows);
-          param_col.CopyColFromMat(param_block_to_update, col);
-          Vector<BaseFloat> log_param_col(param_col);
-          log_param_col.ApplyLog(); // note: works even for zero, but may have -inf
-          log_param_col.Scale(1.0); // relates to l2 regularization-- applied at log
-          // parameter level.
-          for (int32 i = 0; i < num_rows; i++)
-            if (log_param_col(i) < -1.0e+20)
-              log_param_col(i) = -1.0e+20; // get rid of -inf's,as
-          // as we're not sure exactly how BLAS will deal with them.
-          Vector<BaseFloat> gradient_col(num_rows);
-          gradient_col.CopyColFromMat(gradient, col);
-          Vector<BaseFloat> log_gradient(num_rows);
-          log_gradient.AddVecVec(1.0, param_col, gradient_col, 0.0); // h <-- diag(c) g.
-          BaseFloat cT_g = VecVec(param_col, gradient_col);
-          log_gradient.AddVec(-cT_g, param_col); // h -= (c^T g) c .
-          log_param_col.AddVec(learning_rate_, log_gradient); // Gradient step,
-          // in unnormalized log-prob space.      
-          log_param_col.ApplySoftMax(); // Go back to probabilities, renormalizing.
-          param_block_to_update.CopyColFromVec(log_param_col, col); // Write back.
-        }
+      Matrix<BaseFloat> &log_param_block_to_update(to_update->log_params_[i]);
+      const Matrix<BaseFloat> &param_block(this->params_[i]);
+
+      int32 num_rows = this_output_dim, num_cols = this_input_dim;
+
+      Matrix<BaseFloat> gradient(num_rows, num_cols); // gradient 
+      // in space of derived params "params_".
+      gradient.AddMatMat(1.0, out_deriv_block,
+                         kTrans, in_value_block, kNoTrans,
+                         0.0);
+      
+      Vector<BaseFloat> param_col(num_rows),
+          gradient_col(num_rows),
+          log_gradient_col(num_rows),
+          log_param_col(num_rows);
+      for (int32 col = 0; col < num_cols; col++) {
+        param_col.CopyColFromMat(param_block, col);
+        gradient_col.CopyColFromMat(gradient, col);
+        BaseFloat cT_g = VecVec(param_col, gradient_col);
+
+        log_gradient_col.AddVecVec(1.0, param_col, gradient_col, 0.0); // h <-- diag(c) g.
+        log_gradient_col.AddVec(-cT_g, param_col); // h -= (c^T g) c .  This is the
+        // effect on the derivative of the sum-to-one constraint.
+        log_param_col.CopyColFromMat(log_param_block_to_update, col);
+        log_param_col.AddVec(to_update->learning_rate_,
+                             log_gradient_col);
+        // Gradient step in unnormalized log-prob space.
+        log_param_block_to_update.CopyColFromVec(log_param_col, col); // Write back.
       }
     }
     input_offset += this_input_dim;
     output_offset += this_output_dim;   
   }
+  if (to_update != NULL)
+    to_update->Refresh();
   KALDI_ASSERT(input_offset == InputDim() && output_offset == OutputDim());
 }
+        
 
 int32 MixtureProbComponent::GetParameterDim() const {
   int32 ans = 0;

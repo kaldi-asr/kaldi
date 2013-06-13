@@ -428,6 +428,32 @@ void Nnet::AddNnet(BaseFloat alpha,
   }
 }
 
+void Nnet::AddNnet(BaseFloat alpha,
+                   Nnet *other,
+                   BaseFloat beta) {
+  for (int32 i = 0; i < NumComponents(); i++) {
+    UpdatableComponent *uc =
+        dynamic_cast<UpdatableComponent*>(&(GetComponent(i)));
+    UpdatableComponent *uc_other =
+        dynamic_cast<UpdatableComponent*>(&(other->GetComponent(i)));
+    if (uc != NULL) {
+      KALDI_ASSERT(uc_other != NULL);
+      uc->Add(alpha, *uc_other);
+      uc_other->Scale(beta);
+    }
+    NonlinearComponent *nc =
+        dynamic_cast<NonlinearComponent*>(&(GetComponent(i)));
+    NonlinearComponent *nc_other =
+        dynamic_cast<NonlinearComponent*>(&(other->GetComponent(i)));
+    if (nc != NULL) {
+      KALDI_ASSERT(nc_other != NULL);
+      nc->Add(alpha, *nc_other);
+      nc_other->Scale(beta);
+    }
+  }
+}
+
+
 void Nnet::Append(Component *new_component) {
   components_.push_back(new_component);
   Check();

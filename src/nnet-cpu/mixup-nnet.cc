@@ -55,7 +55,7 @@ static void GiveNnetCorrectTopology(Nnet *nnet,
     int32 dim = component->OutputDim();
     // Give it the same learning rate as the first updatable layer we have.
     BaseFloat learning_rate = GetFirstLearningRate(*nnet),
-        diag_element = 1.0; // actually it's a don't care.
+        diag_element = 0.999; // actually it's a don't care.
     std::vector<int32> sizes(dim, 1); // a vector of all ones, of dimension "dim".
   
     *mixture_prob_component = new MixtureProbComponent();

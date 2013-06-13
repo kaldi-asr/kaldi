@@ -107,7 +107,7 @@ class Nnet {
 
   /// Calls SetDropoutScale for all the dropout nodes.
   void SetDropoutScale(BaseFloat scale);
-
+  
   /// Replace any components of type AffineComponentPreconditioned with
   /// components of type AffineComponent.
   void RemovePreconditioning();
@@ -131,6 +131,14 @@ class Nnet {
   /// SoftmaxComponents.
   void AddNnet(BaseFloat alpha,
                const Nnet &other);
+
+  /// This version of AddNnet adds to *this, alpha times *other, and then scales
+  /// *other by beta.  The reason why we make this a separate function is for
+  /// multithreading reasons (otherwise you could do AddNnet(alpha, *iter) and then
+  /// other->Scale(beta).
+  void AddNnet(BaseFloat alpha,
+               Nnet *other,
+               BaseFloat beta);
 
   /// Removes final components from the neural network (used for
   /// debugging).

@@ -31,6 +31,7 @@ $bias_stddev = 2.0;  # Standard deviation for random initialization of the
                      # bias terms (mean is zero).
 $splice_max_context = 0; # Relates to SpliceMaxComponent (experimental feature)
 $learning_rate = 0.001;
+$max_change = 0.0;
 $nonlinear_component_type = "Tanh";
 
 $alpha = 4.0;
@@ -67,6 +68,10 @@ for ($x = 1; $x < 10; $x++) {
   }
   if ($ARGV[0] eq "--expand-scale") {
     $expand_scale = $ARGV[1];
+    shift; shift;
+  }
+  if ($ARGV[0] eq "--max-change") {
+    $max_change = $ARGV[1];
     shift; shift;
   }
   if ($ARGV[0] eq "--additive-noise-stddev") {
@@ -215,8 +220,8 @@ if ($expand_power > 1) {
 
 for ($hidden_layer = 0; $hidden_layer < $initial_num_hidden_layers; $hidden_layer++) {
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($cur_input_dim);
-  print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$hidden_layer_size alpha=$alpha $l2_penalty_opt " .
-    "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
+  print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$hidden_layer_size alpha=$alpha max-change=$max_change " .
+    "$l2_penalty_opt learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   $cur_input_dim = $hidden_layer_size;
   print "${nonlinear_component_type}Component dim=$cur_input_dim\n";
   if ($dropout_scale != -1.0) {
@@ -231,8 +236,8 @@ if ($single_layer_config ne "") {
   # Create a config file we'll use to add new hidden layers.
   open(F, ">$single_layer_config") || die "Error opening $single_layer_config for output";
   $param_stddev = $param_stddev_factor * 1.0 / sqrt($hidden_layer_size);
-  print F "AffineComponentPreconditioned input-dim=$hidden_layer_size output-dim=$hidden_layer_size alpha=$alpha $l2_penalty_opt " .
-    "learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
+  print F "AffineComponentPreconditioned input-dim=$hidden_layer_size output-dim=$hidden_layer_size alpha=$alpha max-change=$max_change " .
+    "$l2_penalty_opt learning-rate=$learning_rate param-stddev=$param_stddev bias-stddev=$bias_stddev\n";
   print F "${nonlinear_component_type}Component dim=$hidden_layer_size\n";
   if ($dropout_scale != -1.0) {
     print F "DropoutComponent dim=$cur_input_dim dropout-scale=$dropout_scale\n";
@@ -244,8 +249,8 @@ if ($single_layer_config ne "") {
 }
 
 ## Now the output layer.
-print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$num_leaves alpha=$alpha $l2_penalty_opt " .
-  "learning-rate=$learning_rate param-stddev=0 bias-stddev=0\n"; # we just set the parameters to zero for this layer.
+print "AffineComponentPreconditioned input-dim=$cur_input_dim output-dim=$num_leaves alpha=$alpha max-change=$max_change " .
+  "$l2_penalty_opt learning-rate=$learning_rate param-stddev=0 bias-stddev=0\n"; # we just set the parameters to zero for this layer.
 ## the softmax nonlinearity.
 print "SoftmaxComponent dim=$num_leaves\n";
 

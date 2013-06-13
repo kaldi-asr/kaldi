@@ -554,7 +554,8 @@ class AffineComponentPreconditioned: public AffineComponent {
   void Init(BaseFloat learning_rate,
             int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev,
-            bool precondition, BaseFloat alpha);
+            bool precondition, BaseFloat alpha,
+            BaseFloat max_change);
   virtual void InitFromString(std::string args);
   virtual std::string Info() const;
   virtual Component* Copy() const;
@@ -563,6 +564,22 @@ class AffineComponentPreconditioned: public AffineComponent {
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponentPreconditioned);
   BaseFloat alpha_;
+  BaseFloat max_change_; // If > 0, this is the maximum amount of parameter change (in L2 norm)
+                         // that we allow per minibatch.  This was introduced in order to
+                         // control instability.  Instead of the exact L2 parameter change,
+                         // for efficiency purposes we limit a bound on the exact change.
+                         // The limit is applied via a constant <= 1.0 for each minibatch,
+                         // A suitable value might be, for example, 100 or so; larger if there are
+                         // more parameters.
+
+  /// The following function is only called if max_change_ > 0.  It returns the
+  /// greatest value alpha <= 1.0 such that (alpha times the sum over the
+  /// rows-index the two matrices of the product the l2 norms of the two rows
+  /// times learning_rate_)
+  /// is <= max_change.
+  BaseFloat GetScalingFactor(const Matrix<BaseFloat> &in_value_precon,
+                             const Matrix<BaseFloat> &out_deriv_precon);
+
   virtual void Update(
       const MatrixBase<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv);
@@ -880,11 +897,11 @@ class BlockAffineComponent: public UpdatableComponent {
 //
 // From its external interface, i.e. DotProduct(), Scale(), and Backprop(), if
 // you use this class in the expected way (e.g. only calling DotProduct()
-// between a gradient and the parameters), it behaves as if the parameters
-// were stored as unnormalized log-prob and the gradients were taken
-// w.r.t. that representation.  This is the only way for the Scale() function
-// to make sense.  In reality, the parameters are stored as actual
-// probabilities (normalized to sum to one for each row).
+// between a gradient and the parameters), it behaves as if the parameters were
+// stored as unnormalized log-prob and the gradients were taken w.r.t. that
+// representation.  This is the only way for the Scale() function to make sense.
+// In reality, the parameters are stored as probabilities (normalized to sum to
+// one for each row).
 
 class MixtureProbComponent: public UpdatableComponent {
   friend class SoftmaxComponent; // Mixing-up done by a function
@@ -924,12 +941,15 @@ class MixtureProbComponent: public UpdatableComponent {
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
  private:
+  void Refresh(); // Refreshes params_ from log_params_.
   KALDI_DISALLOW_COPY_AND_ASSIGN(MixtureProbComponent);
-  static void NormalizeMatrix(MatrixBase<BaseFloat> *mat);
-  std::vector<Matrix<BaseFloat> > params_;
+
+  std::vector<Matrix<BaseFloat> > log_params_; // these are the
+  // underlying parameters that are subject to gradient descent.
+  std::vector<Matrix<BaseFloat> > params_; // these are derived from
+  // log_params_.
   int32 input_dim_;
   int32 output_dim_;
-  bool is_gradient_; // true if we're treating this as just a store for the gradient.
 };
 
 /// PermuteComponent does a random permutation of the dimensions.  Useful in

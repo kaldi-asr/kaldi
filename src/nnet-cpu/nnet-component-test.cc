@@ -242,14 +242,15 @@ void UnitTestAffineComponent() {
 
 void UnitTestAffineComponentPreconditioned() {
   BaseFloat learning_rate = 0.01,
-             param_stddev = 0.1, bias_stddev = 1.0, alpha = 0.01;
+      param_stddev = 0.1, bias_stddev = 1.0, alpha = 0.01,
+      max_change = 100.0;
   int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10;
   bool precondition = (rand() % 2 == 1);
   {
     AffineComponentPreconditioned component;
     component.Init(learning_rate, input_dim, output_dim,
                    param_stddev, bias_stddev, precondition,
-                   alpha);
+                   alpha, max_change);
     UnitTestGenericComponentInternal(component);
   }
   {

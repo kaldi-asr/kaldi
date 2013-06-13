@@ -72,7 +72,24 @@ BaseFloat DoBackpropParallel(const Nnet &nnet,
                              int64 *num_frames,
                              Nnet *nnet_to_update);
 
-// This version of DoBackpropParallel takes a vector of examples.
+
+/// This function is like DoBackpropParallel() but incorporates momentum.  We
+/// formulate momentum in such a way that it doesn't change the effective
+/// learning rate.  momentum_minibatches is the number of minibatches that is
+/// the time-constant for the momentum, so we update the model gradually over
+/// "momentum_minibatches" minibatches.  This number of minibatches is the
+/// global number over all threads, not per thread.  Caution: we effectively
+/// lose a little data at the end of the run, corresponding to approximately
+/// "momentum_minibatches" batches of data.
+BaseFloat DoBackpropParallelMomentum(
+    int32 minibatch_size,
+    BaseFloat momentum_minibatches,
+    SequentialNnetTrainingExampleReader *example_reader,
+    int64 *num_frames,
+    Nnet *nnet);
+
+// This version of DoBackpropParallel takes a vector of examples, and will
+// typically be used to compute the exact gradient. 
 BaseFloat DoBackpropParallel(const Nnet &nnet,
                              int32 minibatch_size,
                              int32 num_threads,
