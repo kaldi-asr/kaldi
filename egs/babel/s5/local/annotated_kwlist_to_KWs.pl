@@ -9,8 +9,8 @@ use warnings;
 use Getopt::Long;
 
 my $Usage = <<EOU;
-Usage: annotatedKwlist2KWs.pl [options] <kwlist.annot.xml|-> <keywords|-> [category]
- e.g.: annotatedKwlist2KWs.pl kwlist.annot.list keywords.list "NGram Order:2,3,4"
+Usage: annotated_kwlist_to_KWs.pl [options] <kwlist.annot.xml|-> <keywords|-> [category]
+ e.g.: annotated_kwlist_to_KWs.pl kwlist.annot.list keywords.list "NGram Order:2,3,4"
 
 This script reads an annotated kwlist xml file and writes a list of keywords, according
 to the given categories. The "category" is a "key:value" pair in the annotated kwlist xml

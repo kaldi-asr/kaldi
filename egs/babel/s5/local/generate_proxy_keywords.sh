@@ -106,14 +106,14 @@ cat $kwsdatadir/tmp/original.lex | utils/make_lexicon_fst.pl - |\
 if [ -z $confusion_matrix ]; then
   cat $kwsdatadir/tmp/phones.txt |\
     grep -v -E "<.*>" | grep -v "SIL" | awk '{print $1;}' |\
-    local/buildEditDistanceFst.pl --boundary-off=false - - |\
+    local/build_edit_distance_fst.pl --boundary-off=false - - |\
     fstcompile --isymbols=$kwsdatadir/tmp/phones.txt --osymbols=$kwsdatadir/tmp/phones.txt - $kwsdatadir/tmp/Edit.fst
 else
   echo "$0: Using confusion matrix."
-  local/count2logprob.pl --cutoff $count_cutoff $confusion_matrix $kwsdatadir/tmp/confusion.txt
+  local/count_to_logprob.pl --cutoff $count_cutoff $confusion_matrix $kwsdatadir/tmp/confusion.txt
   cat $kwsdatadir/tmp/phones.txt |\
     grep -v -E "<.*>" | grep -v "SIL" | awk '{print $1;}' |\
-    local/buildEditDistanceFst.pl --boundary-off=false \
+    local/build_edit_distance_fst.pl --boundary-off=false \
     --confusion-matrix=$kwsdatadir/tmp/confusion.txt - - |\
     fstcompile --isymbols=$kwsdatadir/tmp/phones.txt --osymbols=$kwsdatadir/tmp/phones.txt - $kwsdatadir/tmp/Edit.fst
 fi

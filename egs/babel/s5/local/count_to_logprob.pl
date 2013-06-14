@@ -9,7 +9,7 @@ use warnings;
 use Getopt::Long;
 
 my $Usage = <<EOU;
-Usage:    count2logprob.pl <confusing_in|-> <counfusing_out|->
+Usage:    count_to_logprob.pl <confusing_in|-> <counfusing_out|->
           This script takes in the confusion phone pair counts and converts
           the counts into negated log probabilities. The counts should be in
           the following format:

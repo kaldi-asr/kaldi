@@ -9,7 +9,7 @@ use warnings;
 use Getopt::Long;
 
 my $Usage = <<EOU;
-Usage:    buildEditDistanceFst.pl <phones.txt|-> <fst_out|->
+Usage:    build_edit_distance_fst.pl <phones.txt|-> <fst_out|->
           Buld a edit distance FST at the phone level.
 
 Allowed options:
