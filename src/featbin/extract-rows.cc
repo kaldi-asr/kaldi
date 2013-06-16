@@ -25,22 +25,24 @@ int main(int argc, char *argv[]) {
     using namespace std;
 
     const char *usage =
-      "Extract certain row ranges of matrices.  This is most useful to extract segments\n"
-      "segments from feature files, for example to tighten segmentations or to extract features\n"
-      "corresponding to certain alignments.  The program expects a segments file in the\n"
-      "form of\n"
-      "  segment-name utterance-id start end\n"
-      "where the segment-name is chosen by the user, utterance-id indexes to input file,\n"
-      "and start/end denote the row range.  The range can be row numbers or, if invoked\n"
-      "with --frame-shift, a time in seconds.\n"
-      "  e.g. extract-rows --frame-shift=0.01 segments ark:feats-in.ark ark:feats-out.ark\n";
+        "Extract certain row ranges of matrices.  This is most useful to extract segments\n"
+        "segments from feature files, for example to modify segmentations or to extract features\n"
+        "corresponding to certain alignments.  The program expects a segments file in the\n"
+        "form of\n"
+        "  segment-name utterance-id start end\n"
+        "where the segment-name is chosen by the user and utterance-id indexes the input matrices.\n"
+        "By default, 'start' and 'end' are row numbers (zero-based), but if you specify the --frame-shift\n"
+        "option (e.g. --frame-shift=0.01), then they represent a time in seconds, which are converted\n"
+        "to integers by dividing by frame-shift.\n"
+        "  e.g. extract-rows --frame-shift=0.01 segments ark:feats-in.ark ark:feats-out.ark\n";
 
     ParseOptions po(usage);
 
     float frame_shift = 0;
 
     po.Register("frame-shift", &frame_shift,
-    			"Frame shift in sec (typ. 0.01), if segment files contains times instead of frames");
+    			"Frame shift in sec (typ. 0.01), if segment files contains times "
+                "instead of frames");
 
     po.Read(argc, argv);
 
@@ -127,9 +129,9 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_LOG << "processed " << num_lines << " segments, " << (num_lines - num_missing)
-        << " successful, " << num_missing << " had invalid utterances";
+              << " successful, " << num_missing << " had invalid utterances";
 
-    return 0;
+    return ((num_lines - num_missing) > 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
