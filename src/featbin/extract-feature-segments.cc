@@ -173,6 +173,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Successfully processed " << num_success << " lines out of "
               << num_lines << " in the segments file. ";
     /* prints number of segments processed */
+    if (num_success == 0) return -1;
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
