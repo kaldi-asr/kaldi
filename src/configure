@@ -27,6 +27,7 @@ function rel2abs {
 function read_dirname {
   local dir_name=`expr "X$1" : '[^=]*=\(.*\)'`;
   local retval=`rel2abs $dir_name`
+  [ -z $retval ] && echo "Bad option '$1': no such directory" && exit 1;
   echo $retval
 }
 
