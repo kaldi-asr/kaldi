@@ -10,7 +10,11 @@ SUBDIRS = base matrix util feat tree thread gmm tied transform sgmm \
           nnetbin latbin sgmm2 sgmm2bin nnet-cpu nnet-cpubin kwsbin
 
 # Optional subdirectories
+<<<<<<< HEAD
 EXT_SUBDIRS = online onlinebin
+=======
+EXT_SUBDIRS = online onlinebin python-kaldi-decoding
+>>>>>>> master
 
 all: test_install kaldi.mk $(SUBDIRS) 
 	echo Done
@@ -89,5 +93,6 @@ nnet: base util matrix cudamatrix
 nnet-cpu: base util matrix thread
 #3)Dependencies for optional parts of Kaldi
 onlinebin: base matrix util feat tree optimization gmm tied transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet-cpu online
+python-kaldi-decoding: base matrix util feat tree optimization thread gmm tied transform sgmm sgmm2 fstext hmm decoder lat online
 online: decoder
 kwsbin: fstext lat base util

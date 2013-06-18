@@ -1,0 +1,9 @@
+.gitignore
+online-data
+online-data.tar.bz2
+online-data_original/
+online-data_voxforge.zip
+online-data_voxforge/
+online-data_vystadial.zip
+online-data_vystadial/
+work/

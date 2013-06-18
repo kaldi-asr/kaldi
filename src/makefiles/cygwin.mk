@@ -5,6 +5,7 @@ $(error FSTROOT not defined.)
 endif
 
 CXXFLAGS = -msse -msse2 -Wall -I.. -DKALDI_DOUBLEPRECISION=0  \
+	-fPIC \
     -DHAVE_POSIX_MEMALIGN -DHAVE_CLAPACK -I ../../tools/CLAPACK/ \
     -Wno-sign-compare -Winit-self \
     -I ../../tools/CLAPACK/ \

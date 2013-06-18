@@ -5,6 +5,7 @@ $(error FSTROOT not defined.)
 endif
 
 CXXFLAGS = -msse -msse2 -Wall -I.. \
+	  -fPIC \
       -DKALDI_DOUBLEPRECISION=0  \
       -Wno-sign-compare -Winit-self \
       -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H \

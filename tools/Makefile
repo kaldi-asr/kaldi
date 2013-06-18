@@ -47,7 +47,7 @@ openfst/lib:
 
 openfst-1.3.2/Makefile: openfst-1.3.2/.patched
 		cd openfst-1.3.2/; \
-		./configure --prefix=`pwd` --enable-static --disable-shared --enable-far --enable-ngram-fsts
+		./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts
 
 
 .PHONY: openfst-1.3.2/.patched
