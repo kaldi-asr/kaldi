@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# Copyright 2012-2013  Brno University of Technology (Author: Karel Vesely)
+# Apache 2.0
+
+# In this recipe we build DNN in four stages:
+# 1) Data preparations : the fMLLR features are stored to disk
+# 2) RBM pre-training : in this unsupervised stage we train stack of RBMs, a good starting point for Cross-entropy trainig
+# 3) Frame-level cross-entropy training : in this stage the objective is to classify frames correctly.
+# 4) Sequence-criterion training : in this stage the objective is to classify the whole sequence correctly,
+#     the idea is similar to the 'Discriminative training' in context of GMM-HMMs.
+
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
