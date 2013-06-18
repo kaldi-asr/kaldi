@@ -1,5 +1,6 @@
-
- for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+#!/bin/bash
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+exit 0
 
 # Use caution when comparing these results with other published results.
 # We use the "20k open" test condition, also known as the "60k vocabulary"
@@ -177,14 +178,25 @@ exp/sgmm5a/decode_tgpr_dev93/wer_12:%WER 11.99 [ 987 / 8234, 189 ins, 94 del, 70
 exp/sgmm5c/decode_tgpr_dev93/wer_11:%WER 10.47 [ 862 / 8234, 194 ins, 75 del, 593 sub ]
 
 
-# DNN on fMLLR features (Karel's setup).  Note: the dev93 results are not really valid 
-# because they used the transcripts in getting the fMLLR.
-exp/tri4a_dnn/decode_tgpr_dev93/wer_12:%WER 9.61 [ 791 / 8234, 150 ins, 84 del, 557 sub ]
-exp/tri4a_dnn/decode_tgpr_eval92/wer_11:%WER 6.50 [ 367 / 5643, 89 ins, 14 del, 264 sub ]
-
-# The same with big dictionary.
-exp/tri4a_dnn/decode_bd_tgpr_dev93/wer_13:%WER 7.17 [ 590 / 8234, 58 ins, 106 del, 426 sub ]
-exp/tri4a_dnn/decode_bd_tgpr_eval92/wer_10:%WER 4.00 [ 226 / 5643, 34 ins, 12 del, 180 sub ]
+# DNN on fMLLR features (Karel's setup).  Note: the dev93 results ARE VALID, 
+#   the fMLLR transforms are computed by decoding with GMM.
+# Cross-entropy training:
+%WER 6.74 [ 555 / 8234, 63 ins, 85 del, 407 sub ] exp/tri4b_pretrain-dbn_dnn/decode_bd_tgpr_dev93/wer_11
+%WER 4.18 [ 236 / 5643, 35 ins, 19 del, 182 sub ] exp/tri4b_pretrain-dbn_dnn/decode_bd_tgpr_eval92/wer_10
+# sMBR training:
+# - 1 + 4 itations : den-lats + num-alis regenerated after 1st iteration
+# dev93
+%WER 6.32 [ 520 / 8234, 48 ins, 84 del, 388 sub ] exp/tri4b_pretrain-dbn_dnn_smbr/decode_dev93_bd_tgpr_it1/wer_12
+%WER 6.15 [ 506 / 8234, 51 ins, 74 del, 381 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_dev93_bd_tgpr_it1/wer_11
+%WER 6.07 [ 500 / 8234, 52 ins, 68 del, 380 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_dev93_bd_tgpr_it2/wer_11
+%WER 6.07 [ 500 / 8234, 56 ins, 64 del, 380 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_dev93_bd_tgpr_it3/wer_10
+%WER 6.04 [ 497 / 8234, 52 ins, 71 del, 374 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_dev93_bd_tgpr_it4/wer_11
+# eval92
+%WER 3.77 [ 213 / 5643, 28 ins, 10 del, 175 sub ] exp/tri4b_pretrain-dbn_dnn_smbr/decode_eval92_bd_tgpr_it1/wer_11
+%WER 3.76 [ 212 / 5643, 33 ins, 8 del, 171 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval92_bd_tgpr_it1/wer_10
+%WER 3.65 [ 206 / 5643, 27 ins, 8 del, 171 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval92_bd_tgpr_it2/wer_11
+%WER 3.60 [ 203 / 5643, 27 ins, 11 del, 165 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval92_bd_tgpr_it3/wer_11
+%WER 3.56 [ 201 / 5643, 27 ins, 12 del, 162 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval92_bd_tgpr_it4/wer_11
 
 
 # Dan's cpu-based neural net recipe.  Note: the best number for dev93 is 7.10, an SGMM+MMI system,
@@ -194,4 +206,4 @@ exp/tri4a_dnn/decode_bd_tgpr_eval92/wer_10:%WER 4.00 [ 226 / 5643, 34 ins, 12 de
 
 exp/nnet5c1/decode_bd_tgpr_dev93/wer_14:%WER 7.32 [ 603 / 8234, 61 ins, 101 del, 441 sub ]
 exp/nnet5c1/decode_bd_tgpr_eval92/wer_14:%WER 4.39 [ 248 / 5643, 32 ins, 17 del, 199 sub ]
-# Note: my 4.39% result is worse than Karel's 4.00%.
+# Note: my 4.39% result is worse than Karel's 3.56%.
