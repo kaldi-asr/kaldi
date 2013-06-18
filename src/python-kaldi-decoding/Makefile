@@ -1,11 +1,25 @@
 # We suppose that this Makefile sits in kaldi-trunk/src/ThisDirectory
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare -I ../../tools/portaudio/install/include
+PA_ROOT = ../../tools/portaudio/install
 EXTRA_LDLIBS =
+UNAME=$(shell uname)
+ifeq ($(UNAME), Linux)
+	# Why we are under linux does not use dynamic linking and why does it not work?
+    EXTRA_LDLIBS += $(PA_ROOT)/lib/libportaudio.a
+ifneq ($(wildcard $(PA_ROOT)/include/pa_linux_alsa.h),)
+	EXTRA_LDLIBS += -lasound
+else
+	EXTRA_LDLIBS += -lrt
+endif
+else
+    EXTRA_LDLIBS += -L$(PA_ROOT)/lib  -lportaudio
+endif
+
+EXTRA_CXXFLAGS = -Wno-sign-compare -I $(PA_ROOT)/include
 
 include ../kaldi.mk
-CC = gcc
+# CC = gcc
 
 TESTFILES = compute-wer-test gmm-latgen-faster-test compute-mfcc-feats-test \
 			lattice-best-path-test online-wav-gmm-decode-faster-test
@@ -15,18 +29,6 @@ OBJFILES = compute-wer.o gmm-latgen-faster.o compute-mfcc-feats.o \
 LDLIBFILE = libkaldi-cffi.so
 LIBFILE = kaldi-cffi.a
 
-
-UNAME=$(shell uname)
-ifeq ($(UNAME), Linux)
-    EXTRA_LDLIBS += ../../tools/portaudio/install/lib/libportaudio.a
-ifneq ($(wildcard ../../tools/portaudio/install/include/pa_linux_alsa.h),)
-    EXTRA_LDLIBS += -lasound
-else
-    EXTRA_LDLIBS += -lrt
-endif
-else
-    EXTRA_LDLIBS += -L $(PA_LDD) -lportaudio
-endif
 
 all:  $(LIBFILE) $(LDLIBFILE)
 
@@ -70,8 +72,8 @@ test_dyn: $(LDLIBFILE) $(TESTFILES)
 	# Before running the binaries set the LD_LIBRARY_PATH variable as we do!
 	@result=0; for x in $(TESTFILES); do \
 		echo -n "Running $$x :  "; \
-		LD_LIBRARY_PATH=$(OBLAS_LDD):$(FST_LDD):$:`pwd` ./$$x --help  > /dev/null 2>&1; \
-		if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  \
+		LD_LIBRARY_PATH=$(OPENBLASROOT)/lib:$(FSTROOT)/lib:$(PA_ROOT)/lib:`pwd` ./$$x --help /dev/null 2>&1 ; \
+		if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS> ";  fi;  \
 		done; exit $$result
 
 python_test: run.py $(LDLIBFILE) 
