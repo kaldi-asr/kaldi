@@ -37,34 +37,28 @@ StateId LmFstConverter::AddStateFromSymb(
                                       fst::StdVectorFst *pfst,
                                       fst::SymbolTable *psst,
                                       bool &newlyAdded) {
-  int64 snum, lastAvailable;
   fst::StdArc::StateId sid;
-  std::ostringstream oss("");
-  // cerr << "AddStateFromSymb kstart = " << kstart;
-  // cerr << " kend = " << kend << endl;
-  if (kstart == 0) {
-    oss.str(sep);
-  } else {
-    for (int k = kstart; k >= kend; k--) {
-      oss << ngramString[k] << sep;
-    }
-  }
-  newlyAdded = false;
 
-  // create a new state in the FST only if it didn't already exist
-  lastAvailable = psst->AvailableKey();
-  snum = psst->AddSymbol(oss.str());
-  if (snum >= lastAvailable) {
-    sid = pfst->AddState();
-    newlyAdded = true;
+  std::string hist;
+  if (kstart == 0) {
+    hist.append(sep);
   } else {
-    // because this is the only place we add states, snum follows sid,
-    sid = snum+1;  // assuming start state has already been added but no other!
-    // cerr << "State symbol " << oss.str() << " already exists" << endl;
+     for (int k = kstart; k >= kend; k--) {
+       hist.append(ngramString[k]);
+       hist.append(sep);
+     }
   }
-  // cerr << "  State symbol " << oss.str();
-  // cerr << " last avail " << lastAvailable << " snum " << snum;
-  // cerr << " sid " << sid << endl; cerr.flush();
+
+  newlyAdded = false;
+  sid = FindState(hist);
+  if (sid < 0) {
+    sid = pfst->AddState();
+    histState_[hist] = sid; 
+    newlyAdded = true;
+    //cerr << "Created state " << sid << " for " << hist << endl;
+  } else {
+    //cerr << "State symbol " << hist << " already exists" << endl;
+  }
 
   return sid;
 }
@@ -77,13 +71,13 @@ void LmFstConverter::ConnectUnusedStates(fst::StdVectorFst *pfst) {
   // cerr << "ConnectUnusedStates has recorded "<<bkState_.size()<<" states.\n";
 
   for (BkStateMap::iterator bkit = bkState_.begin(); bkit != bkState_.end(); ++bkit) {
-	// add an output arc to its backoff destination recorded in backoff_
-	fst::StdArc::StateId src = bkit->first, dst = bkit->second;
-	if (pfst->NumArcs(src)==0 && !IsFinal(pfst, src)) {
-	  // cerr << "ConnectUnusedStates: adding arc from "<<src<<" to "<<dst<<endl;
-	  pfst->AddArc(src, fst::StdArc(0, 0, fst::StdArc::Weight::One(), dst)); // epsilon arc with no cost
-	  connected++;
-	}
+    // add an output arc to its backoff destination recorded in backoff_
+    fst::StdArc::StateId src = bkit->first, dst = bkit->second;
+    if (pfst->NumArcs(src)==0 && !IsFinal(pfst, src)) {
+      // cerr << "ConnectUnusedStates: adding arc from "<<src<<" to "<<dst<<endl;
+      pfst->AddArc(src, fst::StdArc(0, 0, fst::StdArc::Weight::One(), dst)); // epsilon arc with no cost
+      connected++;
+    }
   }
   cerr << "Connected "<<connected<<" states without outgoing arcs."<<endl;
 }
@@ -136,7 +130,7 @@ void LmFstConverter::AddArcsForNgramProb(
     }
     dst = AddStateFromSymb(ngs, 1, 1, "_", pfst, psst, newDst);
     dbo = AddStateFromSymb(ngs, 0, 1, "_", pfst, psst, newDbo);
-	bkState_[dst] = dbo;
+    bkState_[dst] = dbo;
   }
 
   // state is final if last word is end of sentence
@@ -176,8 +170,8 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
 
   conv_->UseNaturalLog(useNaturalOpt);
 
-  // use state symbol table for word histories
-  fst::SymbolTable *pStateSymbs = new fst::SymbolTable("kaldi-lm-state");
+  // do not use state symbol table for word histories anymore
+  fst::SymbolTable *pStateSymbs = NULL; //new fst::SymbolTable("kaldi-lm-state");
   string inpline;
   size_t pos1, pos2;
   int ilev, maxlev = 0;
@@ -305,7 +299,8 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
 
   conv_->ConnectUnusedStates(pfst);
 
-  delete pStateSymbs;
+  // not used anymore: delete pStateSymbs;
+
   // input and output symbol tables will be deleted by ~fst()
   return true;
 }
@@ -329,7 +324,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
   return true;
 }
 
-  // run through all nodes in table (as in dumplm)
+ // run through all nodes in table (as in dumplm)
 void LmTable::DumpStart(ngram ng,
                         fst::StdVectorFst *pfst,
                         const string startSent,

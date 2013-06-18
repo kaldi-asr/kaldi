@@ -118,8 +118,9 @@ class LangModelFst : public fst::VectorFst<fst::StdArc> {
   fst::VectorFst<fst::StdArc>* GetFst() {return pfst_;}
 
   /// Writes language model FST to named output file, return false on error.
+  // TODO : make verify optional rather than mandatory
   bool Write(const string &filename) {
-    return (fst::Verify(*pfst_) && pfst_->Write(filename));
+    return (/*fst::Verify(*pfst_) && */ pfst_->Write(filename));
   }
 
  private:
