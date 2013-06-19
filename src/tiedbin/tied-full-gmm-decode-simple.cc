@@ -26,7 +26,7 @@
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/simple-decoder.h"
-#include "decoder/decodable-am-tied-full-gmm.h"
+#include "tied/decodable-am-tied-full-gmm.h"
 #include "util/timer.h"
 
 

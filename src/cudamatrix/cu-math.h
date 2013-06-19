@@ -17,8 +17,8 @@
 
 
 
-#ifndef KALDI_CUDAMATRIX_CUMATH_H_
-#define KALDI_CUDAMATRIX_CUMATH_H_
+#ifndef KALDI_CUDAMATRIX_CU_MATH_H_
+#define KALDI_CUDAMATRIX_CU_MATH_H_
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-stlvector.h"
 #include "cudamatrix/cu-device.h"

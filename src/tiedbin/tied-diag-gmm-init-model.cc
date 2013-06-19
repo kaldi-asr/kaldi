@@ -1,4 +1,4 @@
-// gmmbin/gmm-init-model.cc
+// tiedbin/tied-diag-gmm-init-model.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 

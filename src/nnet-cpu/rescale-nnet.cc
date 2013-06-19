@@ -1,4 +1,4 @@
-// nnet/rescale-nnet.cc
+// nnet-cpu/rescale-nnet.cc
 
 // Copyright 2012   Johns Hopkins University (author: Daniel Povey)
 

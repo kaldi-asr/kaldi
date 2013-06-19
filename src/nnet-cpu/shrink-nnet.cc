@@ -1,4 +1,4 @@
-// nnet/shrink-nnet.cc
+// nnet-cpu/shrink-nnet.cc
 
 // Copyright 2012   Johns Hopkins University (author: Daniel Povey)
 

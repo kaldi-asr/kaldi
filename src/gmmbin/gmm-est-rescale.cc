@@ -1,4 +1,4 @@
-// gmmbin/gmm-est.cc
+// gmmbin/gmm-est-rescale.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 

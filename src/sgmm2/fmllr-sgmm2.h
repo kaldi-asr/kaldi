@@ -1,4 +1,4 @@
-// sgmm2/fmllr-sgmm.h
+// sgmm2/fmllr-sgmm2.h
 
 // Copyright 2009-2012     Saarland University (author: Arnab Ghoshal)
 //                         Johns Hopkins University (author: Daniel Povey)
@@ -17,14 +17,14 @@
 // limitations under the License.
 
 
-#ifndef KALDI_SGMM_FMLLR_SGMM_H_
-#define KALDI_SGMM_FMLLR_SGMM_H_
+#ifndef KALDI_SGMM2_FMLLR_SGMM2_H_
+#define KALDI_SGMM2_FMLLR_SGMM2_H_
 
 #include <string>
 #include <vector>
 
 #include "base/kaldi-common.h"
-#include "sgmm2/am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
 #include "transform/transform-common.h"
 #include "util/kaldi-table.h"
 #include "util/kaldi-holder.h"
@@ -188,4 +188,4 @@ void EstimateSgmm2FmllrSubspace(const SpMatrix<double> &fmllr_grad_scatter,
 
 }  // namespace kaldi
 
-#endif  // KALDI_SGMM_FMLLR_SGMM_H_
+#endif  // KALDI_SGMM2_FMLLR_SGMM2_H_

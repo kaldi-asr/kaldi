@@ -18,13 +18,13 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "sgmm2/am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
 #include "hmm/transition-model.h"
 #include "hmm/hmm-utils.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/faster-decoder.h"
 #include "decoder/training-graph-compiler.h"
-#include "decoder/decodable-am-sgmm2.h"
+#include "sgmm2/decodable-am-sgmm2.h"
 #include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 
 

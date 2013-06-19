@@ -1,4 +1,4 @@
-// feat/feature-fbank.cc
+// feat/feature-spectrogram.cc
 
 // Copyright 2009-2012  Karel Vesely
 // Copyright 2012  Navdeep Jaitly

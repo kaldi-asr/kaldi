@@ -37,8 +37,8 @@ int main(int argc, char *argv[]) {
         "Estimate multiple SGMM models from corresponding stats, such that the"
         " global parameters\n(phone-, speaker-, and weight-projections and "
         "covariances) are tied across models.\n"
-        "Usage: sgmm-est [options] model1 stats1 model1_out occs1_out [model2 "
-        "stats2 model2_out occs2_out ...]\n";
+        "Usage: sgmm-est-multi [options] <model1> <stats1> <model1_out> <occs1_out> [<model2> "
+        "<stats2> <model2_out> <occs2_out> ...]\n";
 
     bool binary_write = true;
     std::string update_flags_str = "vMNwcSt";

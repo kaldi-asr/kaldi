@@ -1,7 +1,7 @@
-// -*- coding: utf-8 -*-
+// python-kaldi-decoding/gmm-latgen-faster.h
 
-#ifndef GMM_LATGEN_FASTER_H
-#define GMM_LATGEN_FASTER_H
+#ifndef KALDI_PYTHON_KALDI_DECODING_GMM_LATGEN_FASTER_H_
+#define KALDI_PYTHON_KALDI_DECODING_GMM_LATGEN_FASTER_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,4 +13,4 @@ int gmm_latgen_faster_like_main(int argc, char **argv);
 }
 #endif
 
-#endif  // #ifndef GMM_LATGEN_FASTER_H
+#endif  // #ifndef KALDI_PYTHON_KALDI_DECODING_GMM_LATGEN_FASTER_H_

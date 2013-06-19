@@ -1,4 +1,4 @@
-// cudamatrix/cu-devide.h
+// cudamatrix/cu-device.h
 
 // Copyright 2009-2012  Karel Vesely
 
@@ -17,8 +17,8 @@
 
 
 
-#ifndef KALDI_CUDAMATRIX_CUDEVICE_H_
-#define KALDI_CUDAMATRIX_CUDEVICE_H_
+#ifndef KALDI_CUDAMATRIX_CU_DEVICE_H_
+#define KALDI_CUDAMATRIX_CU_DEVICE_H_
 
 #if HAVE_CUDA==1
 

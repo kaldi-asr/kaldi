@@ -33,11 +33,13 @@ LIBFILE = kaldi-cffi.a
 all:  $(LIBFILE) $(LDLIBFILE)
 
 # I can not use ../decoder/kaldi-decoder.a because there are two types of decoders for two types sgmm vs sgmm2
-$(LDLIBFILE): $(OBJFILES) \
-	../decoder/decodable-am-diag-gmm.o ../decoder/lattice-faster-decoder.o ../decoder/faster-decoder.o \
+#	../decoder/decodable-am-diag-gmm.o ../decoder/lattice-faster-decoder.o ../decoder/faster-decoder.o \
+
+$(LDLIBFILE): $(OBJFILES) ../decoder/kaldi-decoder.a \
 	../online/kaldi-online.a ../thread/kaldi-thread.a ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a \
 	../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../fstext/kaldi-fstext.a ../tree/kaldi-tree.a \
-	../matrix/kaldi-matrix.a ../feat/kaldi-feature.a ../util/kaldi-util.a ../base/kaldi-base.a
+	../matrix/kaldi-matrix.a ../feat/kaldi-feature.a ../util/kaldi-util.a ../base/kaldi-base.a \
+    ../sgmm/kaldi-sgmm.a ../sgmm2/kaldi-sgmm.a
 	$(CC) -fPIC -shared -o $@ -Wl,-export-dynamic,--whole-archive $^ -Wl,--no-whole-archive $(LDLIBS)
 
 

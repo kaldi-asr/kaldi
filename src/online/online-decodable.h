@@ -1,4 +1,4 @@
-// online/online-feat-extract.h
+// online/online-decodable.h
 
 // Copyright 2012 Cisco Systems (author: Matthias Paulik)
 
@@ -19,11 +19,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_ONLINE_DECODABLE_H_
-#define KALDI_ONLINE_DECODABLE_H_
+#ifndef KALDI_ONLINE_ONLINE_DECODABLE_H_
+#define KALDI_ONLINE_ONLINE_DECODABLE_H_
 
 #include "online-feat-input.h"
-#include "decoder/decodable-am-diag-gmm.h"
+#include "gmm/decodable-am-diag-gmm.h"
 
 namespace kaldi {
 
@@ -63,4 +63,4 @@ class OnlineDecodableDiagGmmScaled : public DecodableInterface {
 
 } // namespace kaldi
 
-#endif // KALDI_ONLINE_DECODABLE_H_
+#endif // KALDI_ONLINE_ONLINE_DECODABLE_H_

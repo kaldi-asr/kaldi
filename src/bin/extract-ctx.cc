@@ -1,4 +1,4 @@
-// tiedbin/smooth-stats-full.cc
+// bin/extract-ctx.cc
 
 // Copyright 2011 Univ. Erlangen-Nuremberg, Korbinian Riedhammer
 

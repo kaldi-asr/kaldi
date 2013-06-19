@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_ONLINE_FEAT_EXTRACT_H_
-#define KALDI_ONLINE_FEAT_EXTRACT_H_
+#ifndef KALDI_ONLINE_ONLINE_FEAT_INPUT_H_
+#define KALDI_ONLINE_ONLINE_FEAT_INPUT_H_
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -357,4 +357,4 @@ class OnlineFeatureMatrix {
 
 } // namespace kaldi
 
-#endif // KALDI_ONLINE_FEAT_EXTRACT_H_
+#endif // KALDI_ONLINE_ONLINE_FEAT_INPUT_H_

@@ -1,4 +1,4 @@
-// fstbin/fstpushspecial
+// fstbin/fstpushspecial.cc
 
 // Copyright 2012  Daniel Povey
 

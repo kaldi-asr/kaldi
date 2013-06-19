@@ -1,4 +1,4 @@
-// util/kaldi-thread.h
+// thread/kaldi-thread.h
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 //                 Frantisek Skala

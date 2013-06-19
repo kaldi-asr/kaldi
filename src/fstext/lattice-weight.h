@@ -1,4 +1,4 @@
-//
+// fstext/lattice-weight.h
 // Copyright 2009-2012  Microsoft Corporation
 //                      Johns Hopkins University (author: Daniel Povey)
 

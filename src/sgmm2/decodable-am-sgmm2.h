@@ -1,4 +1,4 @@
-// decoder/decodable-am-sgmm2.h
+// sgmm2/decodable-am-sgmm2.h
 
 // Copyright 2009-2012  Saarland University  Microsoft Corporation
 //                      Lukas Burget  Johns Hopkins University (author: Daniel Povey)
@@ -16,13 +16,13 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_DECODER_DECODABLE_AM_SGMM2_H_
-#define KALDI_DECODER_DECODABLE_AM_SGMM2_H_
+#ifndef KALDI_SGMM2_DECODABLE_AM_SGMM2_H_
+#define KALDI_SGMM2_DECODABLE_AM_SGMM2_H_
 
 #include <vector>
 
 #include "base/kaldi-common.h"
-#include "sgmm2/am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
 #include "hmm/transition-model.h"
 #include "itf/decodable-itf.h"
 

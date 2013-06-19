@@ -93,8 +93,8 @@ int main(int argc, char *argv[]) {
         "determinization algorithm, which is more efficient and prevents blowup.\n"
         "See http://kaldi.sourceforge.net/lattices.html for more information on lattices.\n"
         "\n"
-        "Usage: lattice-determinize-pruned [options] lattice-rspecifier lattice-wspecifier\n"
-        " e.g.: lattice-determinize-pruned --acoustic-scale=0.1 --beam=6.0 ark:in.lats ark:det.lats\n";
+        "Usage: lattice-determinize-pruned-parallel [options] lattice-rspecifier lattice-wspecifier\n"
+        " e.g.: lattice-determinize-pruned-parallel --acoustic-scale=0.1 --beam=6.0 ark:in.lats ark:det.lats\n";
     
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;

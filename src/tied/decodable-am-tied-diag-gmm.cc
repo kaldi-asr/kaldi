@@ -1,4 +1,4 @@
-// decoder/decodable-am-tied-diag-gmm.cc
+// tied/decodable-am-tied-diag-gmm.cc
 
 // Copyright 2011 Univ. Erlangen-Nuremberg, Korbinian Riedhammer
 
@@ -18,7 +18,7 @@
 #include <vector>
 using std::vector;
 
-#include "decoder/decodable-am-tied-diag-gmm.h"
+#include "tied/decodable-am-tied-diag-gmm.h"
 
 namespace kaldi {
 

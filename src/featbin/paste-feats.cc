@@ -1,4 +1,4 @@
-// featbin/copy-feats.cc
+// featbin/paste-feats.cc
 
 // Copyright 2012 Korbinian Riedhammer
 
@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
       "Paste feature files (assuming they have the same lengths);  think of the\n"
       "unix command paste a b. You might be interested in select-feats, too.\n"
-      "Usage: merge-feats in-rspecifier1 in-rspecifier2 [in-rspecifier3 ...] out-wspecifier\n"
+      "Usage: paste-feats in-rspecifier1 in-rspecifier2 [in-rspecifier3 ...] out-wspecifier\n"
       "  e.g. paste-feats ark:feats1.ark \"ark:select-feats 0-3 ark:feats2.ark ark:- |\" ark:feats-out.ark\n";
     
     ParseOptions po(usage);

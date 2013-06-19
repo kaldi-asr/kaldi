@@ -1,4 +1,4 @@
-// gmmbin/gmm-align-compiled.cc
+// bin/align-compiled-mapped.cc
 
 // Copyright 2009-2012  Microsoft Corporation, Karel Vesely
 //

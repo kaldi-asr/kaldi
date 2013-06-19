@@ -17,8 +17,8 @@
 
 
 
-#ifndef KALDI_CUDAMATRIX_CUSTLVECTOR_H_
-#define KALDI_CUDAMATRIX_CUSTLVECTOR_H_
+#ifndef KALDI_CUDAMATRIX_CU_STLVECTOR_H_
+#define KALDI_CUDAMATRIX_CU_STLVECTOR_H_
 
 #include "matrix/kaldi-vector.h"
 

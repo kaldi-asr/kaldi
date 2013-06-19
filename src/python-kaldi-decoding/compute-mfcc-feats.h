@@ -1,7 +1,7 @@
-// -*- coding: utf-8 -*-
+// python-kaldi-decoding/compute-mfcc-feats.h
 
-#ifndef COMPUTE_MFCC_FEATS_H
-#define COMPUTE_MFCC_FEATS_H
+#ifndef KALDI_PYTHON_KALDI_DECODING_COMPUTE_MFCC_FEATS_H_
+#define KALDI_PYTHON_KALDI_DECODING_COMPUTE_MFCC_FEATS_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,4 +13,4 @@ int compute_mfcc_feats_like_main(int argc, char **argv);
 }
 #endif
 
-#endif  // #ifndef COMPUTE_MFCC_FEATS_H
+#endif  // #ifndef KALDI_PYTHON_KALDI_DECODING_COMPUTE_MFCC_FEATS_H_

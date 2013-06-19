@@ -1,4 +1,4 @@
-// lat/kaldi-lattice.cc
+// lat/kaldi-lattice-test.cc
 
 // Copyright 2009-2011     Microsoft Corporation
 

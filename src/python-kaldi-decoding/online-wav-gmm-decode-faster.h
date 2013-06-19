@@ -1,8 +1,8 @@
-
+// python-kaldi-decoding/online-wav-gmm-decode-faster.h
 // -*- coding: utf-8 -*-
 
-#ifndef ONLINE_WAV_GMM_DECODE_FASTER_H
-#define ONLINE_WAV_GMM_DECODE_FASTER_H
+#ifndef KALDI_PYTHON_KALDI_DECODING_ONLINE_WAV_GMM_DECODE_FASTER_H_
+#define KALDI_PYTHON_KALDI_DECODING_ONLINE_WAV_GMM_DECODE_FASTER_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,4 +14,4 @@ int online_wav_gmm_decode_faster_like_main(int argc, char *argv[]) ;
 }
 #endif
 
-#endif  // #ifndef ONLINE_WAV_GMM_DECODE_FASTER_H
+#endif  // #ifndef KALDI_PYTHON_KALDI_DECODING_ONLINE_WAV_GMM_DECODE_FASTER_H_

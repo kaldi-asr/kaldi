@@ -17,8 +17,8 @@
 
 
 
-#ifndef KALDI_NNET_COMPONENT_H
-#define KALDI_NNET_COMPONENT_H
+#ifndef KALDI_NNET_NNET_COMPONENT_H_
+#define KALDI_NNET_NNET_COMPONENT_H_
 
 
 #include "base/kaldi-common.h"

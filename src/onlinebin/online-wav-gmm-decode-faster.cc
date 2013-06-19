@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
         "Caution: the last few frames of the wav file may not be decoded properly.\n"
         "Hence, don't use one wav file per utterance, but "
         "rather use one wav file per show.\n\n"
-        "Usage: ./online-wav-gmm-decode-faster [options] wav-rspecifier model-in"
+        "Usage: online-wav-gmm-decode-faster [options] wav-rspecifier model-in"
         "fst-in word-symbol-table silence-phones transcript-wspecifier "
         "alignments-wspecifier [lda-matrix-in]\n\n"
         "Example: ./online-wav-gmm-decode-faster --rt-min=0.3 --rt-max=0.5 "

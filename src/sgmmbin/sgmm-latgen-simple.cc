@@ -25,7 +25,7 @@ using std::string;
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-simple-decoder.h"
-#include "decoder/decodable-am-sgmm.h"
+#include "sgmm/decodable-am-sgmm.h"
 #include "util/timer.h"
 
 namespace kaldi {

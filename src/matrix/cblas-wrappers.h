@@ -341,7 +341,7 @@ inline void mul_elements(
 
 
 // add clapack here
-#ifndef HAVE_ATLAS
+#ifndef KALDI_MATRIX_CBLAS_WRAPPERS_H_
 inline void clapack_Xtptri(KaldiBlasInt *num_rows, float *Mdata, KaldiBlasInt *result) {
   stptri_(const_cast<char *>("U"), const_cast<char *>("N"), num_rows, Mdata, result);
 }

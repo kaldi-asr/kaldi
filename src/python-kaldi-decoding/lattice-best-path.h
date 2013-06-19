@@ -1,7 +1,7 @@
-// -*- coding: utf-8 -*-
+// python-kaldi-decoding/lattice-best-path.h
 
-#ifndef LATTICE_BEST_PATH_H
-#define LATTICE_BEST_PATH_H
+#ifndef KALDI_PYTHON_KALDI_DECODING_LATTICE_BEST_PATH_H_
+#define KALDI_PYTHON_KALDI_DECODING_LATTICE_BEST_PATH_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,4 +13,4 @@ int lattice_best_path_like_main(int argc, char **argv);
 }
 #endif
 
-#endif  // #ifndef LATTICE_BEST_PATH_H
+#endif  // #ifndef KALDI_PYTHON_KALDI_DECODING_LATTICE_BEST_PATH_H_

@@ -1,4 +1,4 @@
-// tiedbin/full-to-tied.cc
+// tiedbin/full-to-diag.cc
 
 // Copyright 2011 Univ. Erlangen-Nuremberg, Korbinian Riedhammer
 
@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Convert a full covariance GMM into a diagonal one.\n"
-        "Usage: full-to-tied <full-gmm-in> <diag-gmm-out>\n";
+        "Usage: full-to-diag <full-gmm-in> <diag-gmm-out>\n";
 
     bool binary = true;
     ParseOptions po(usage);

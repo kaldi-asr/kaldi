@@ -1,4 +1,4 @@
-// gmmbin/cmvn-to-nnet.cc
+// nnetbin/cmvn-to-nnet.cc
 
 // Copyright 2012  Brno University of Technology
 
@@ -27,9 +27,9 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Convert transformation matrix to <biasedlinearity>\n"
-        "Usage:  transf-to-nnet [options] <transf-in> <nnet-out>\n"
+        "Usage:  cmvn-to-nnet [options] <transf-in> <nnet-out>\n"
         "e.g.:\n"
-        " transf-to-nnet --binary=false transf.mat nnet.mdl\n";
+        " cmvn-to-nnet --binary=false transf.mat nnet.mdl\n";
 
 
     bool binary_write = false;

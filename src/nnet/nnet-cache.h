@@ -16,8 +16,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_NNET_CACHE_H
-#define KALDI_NNET_CACHE_H
+#ifndef KALDI_NNET_NNET_CACHE_H_
+#define KALDI_NNET_NNET_CACHE_H_
 
 #include "base/kaldi-math.h"
 #include "cudamatrix/cu-matrix.h"

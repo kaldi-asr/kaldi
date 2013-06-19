@@ -1,6 +1,7 @@
-// latbin/lattice-best-path.cc
+// python-kaldi-decoding/lattice-best-path.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2013  Ondrej Platek
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

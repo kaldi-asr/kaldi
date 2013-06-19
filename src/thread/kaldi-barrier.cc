@@ -1,4 +1,4 @@
-// util/kaldi-barrier.cc
+// thread/kaldi-barrier.cc
 
 // Copyright 2012  Karel Vesely (Brno University of Technology)
 

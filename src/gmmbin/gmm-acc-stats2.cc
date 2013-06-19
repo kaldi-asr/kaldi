@@ -1,4 +1,4 @@
-// gmmbin/gmm-acc-stats.cc
+// gmmbin/gmm-acc-stats2.cc
 
 // Copyright 2009-2012  Johns Hopkins University (Author: Daniel Povey)
 

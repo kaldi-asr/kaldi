@@ -1,4 +1,4 @@
-// onlinebin/onlinebin-util.cc
+// online/onlinebin-util.cc
 
 // Copyright 2012 Cisco Systems (author: Matthias Paulik)
 

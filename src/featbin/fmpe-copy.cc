@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Copy fMPE transform\n"
-        "Usage: fmpe-init [options...] <fmpe-in> <fmpe-out>\n"
+        "Usage: fmpe-copy [options...] <fmpe-in> <fmpe-out>\n"
         "E.g. fmpe-copy --binary=false 1.fmpe text.fmpe\n";
 
     ParseOptions po(usage);

@@ -18,7 +18,7 @@
 
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
-#include "sgmm2/am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
 #include "hmm/transition-model.h"
 #include "tree/context-dep.h"
 

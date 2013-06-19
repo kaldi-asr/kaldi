@@ -16,8 +16,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_NNET_VARIOUS_H
-#define KALDI_NNET_VARIOUS_H
+#ifndef KALDI_NNET_NNET_VARIOUS_H_
+#define KALDI_NNET_NNET_VARIOUS_H_
 
 #include "nnet/nnet-component.h"
 #include "cudamatrix/cu-math.h"
@@ -250,4 +250,4 @@ class Rescale : public Component {
 
 } // namespace kaldi
 
-#endif // KALDI_NNET_VARIOUS_H
+#endif // KALDI_NNET_NNET_VARIOUS_H_

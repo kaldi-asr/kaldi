@@ -1,4 +1,4 @@
-// gmmbin/gmm-info.cc
+// bin/hmm-info.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey), Karel Vesely
 

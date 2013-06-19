@@ -24,7 +24,7 @@
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
-#include "decoder/decodable-am-sgmm.h"
+#include "sgmm/decodable-am-sgmm.h"
 
 int main(int argc, char *argv[]) {
   try {

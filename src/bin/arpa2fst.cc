@@ -1,4 +1,4 @@
-// lm/arpa2fst.cc
+// bin/arpa2fst.cc
 //
 // Copyright 2009-2011  Gilles Boulianne.
 //

@@ -1,5 +1,5 @@
-#ifndef TEST_CFFI_PYTHON_H
-#define TEST_CFFI_PYTHON_H
+#ifndef KALDI_PYTHON_KALDI_DECODING_TEST_CFFI_PYTHON_DYN_H_
+#define KALDI_PYTHON_KALDI_DECODING_TEST_CFFI_PYTHON_DYN_H_
 #include <dlfcn.h>
 #include <stdio.h>
 
@@ -14,7 +14,7 @@
 
 typedef int (*f_t)(int c, char **ar);
 
-int testSharedLib(char *nameLib, char *nameFce, int argc, char ** argv) {
+int testSharedLib(const char *nameLib, const char *nameFce, int argc, char ** argv) {
     void *lib = dlopen(nameLib, RTLD_NOW);
     if (!lib) {
         printf("Cannot open library: %s\n", dlerror());
@@ -36,4 +36,4 @@ int testSharedLib(char *nameLib, char *nameFce, int argc, char ** argv) {
     dlclose(lib);
     return retval;
 }
-#endif // #ifndef TEST_CFFI_PYTHON_H
+#endif // #ifndef KALDI_PYTHON_KALDI_DECODING_TEST_CFFI_PYTHON_DYN_H_

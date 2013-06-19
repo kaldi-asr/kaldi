@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Generate lattices using neural net model.\n"
-        "Usage: nnet-latgen-faster [options] <nnet-in> <fst-in|fsts-rspecifier> <features-rspecifier>"
+        "Usage: nnet-latgen-faster-parallel [options] <nnet-in> <fst-in|fsts-rspecifier> <features-rspecifier>"
         " <lattice-wspecifier> [ <words-wspecifier> [<alignments-wspecifier>] ]\n";
     ParseOptions po(usage);
     Timer timer;

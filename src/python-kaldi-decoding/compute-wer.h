@@ -1,7 +1,7 @@
-// -*- coding: utf-8 -*-
+// python-kaldi-decoding/compute-wer.h
 
-#ifndef COMPUTE_WER_H
-#define COMPUTE_WER_H
+#ifndef KALDI_PYTHON_KALDI_DECODING_COMPUTE_WER_H_
+#define KALDI_PYTHON_KALDI_DECODING_COMPUTE_WER_H_
 
 #ifdef __cplusplus
 extern "C" {

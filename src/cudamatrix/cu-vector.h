@@ -18,8 +18,8 @@
 
 
 
-#ifndef KALDI_CUDAMATRIX_CUVECTOR_H_
-#define KALDI_CUDAMATRIX_CUVECTOR_H_
+#ifndef KALDI_CUDAMATRIX_CU_VECTOR_H_
+#define KALDI_CUDAMATRIX_CU_VECTOR_H_
 
 #include "matrix/kaldi-vector.h"
 #include "cudamatrix/cu-common.h"

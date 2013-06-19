@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Takes input using a microphone(PortAudio), extracts features and sends them\n"
         "to a speech recognition server over a network connection\n\n"
-        "Usage: ./online-net-client server-address server-port\n\n";
+        "Usage: online-net-client server-address server-port\n\n";
     ParseOptions po(usage);
     int32 batch_size = 27;
     po.Register("batch-size", &batch_size,

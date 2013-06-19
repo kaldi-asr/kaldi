@@ -49,9 +49,9 @@ int main(int argc, char *argv[]) {
         "Feature splicing/LDA transform is used, if the optional(last) argument "
         "is given.\n"
         "Otherwise delta/delta-delta(2-nd order) features are produced.\n\n"
-        "Usage: ./online-wav-gmm-decode-faster [options] model-in"
-        "fst-in word-symbol-table silence-phones [lda-matrix-in]\n\n"
-        "Example: ./online-wav-gmm-decode-faster --rt-min=0.3 --rt-max=0.5 "
+        "Usage: online-gmm-decode-faster [options] <model-in>"
+        "<fst-in> <word-symbol-table> <silence-phones> [<lda-matrix-in>]\n\n"
+        "Example: online-gmm-decode-faster --rt-min=0.3 --rt-max=0.5 "
         "--max-active=4000 --beam=12.0 --acoustic-scale=0.0769 "
         "model HCLG.fst words.txt '1:2:3:4:5' lda-matrix";
     ParseOptions po(usage);

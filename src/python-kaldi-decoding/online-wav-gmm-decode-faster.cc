@@ -1,9 +1,8 @@
-// onlinebin/online-wav-gmm-decode-faster.cc
+// python-kaldi-decoding/online-wav-gmm-decode-faster.cc
 
-// Copyright 2012 Cisco Systems (author: Matthias Paulik)
-
-//   Modifications to the original contribution by Cisco Systems made by:
-//   Vassil Panayotov
+// Copyright      2012 Cisco Systems (author: Matthias Paulik)
+//                2012 Vassil Panayotov
+//                2013 Ondrej Platek
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

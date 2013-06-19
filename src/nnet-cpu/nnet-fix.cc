@@ -1,4 +1,4 @@
-// nnet/nnet-fix.cc
+// nnet-cpu/nnet-fix.cc
 
 // Copyright 2012   Johns Hopkins University (author: Daniel Povey)
 

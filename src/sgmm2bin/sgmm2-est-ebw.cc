@@ -20,7 +20,7 @@
 #include "util/common-utils.h"
 #include "thread/kaldi-thread.h"
 #include "hmm/transition-model.h"
-#include "sgmm2/estimate-am-sgmm-ebw.h"
+#include "sgmm2/estimate-am-sgmm2-ebw.h"
 
 
 int main(int argc, char *argv[]) {

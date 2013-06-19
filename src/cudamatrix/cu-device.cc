@@ -1,4 +1,4 @@
-// cudamatrix/cu-devide.cc
+// cudamatrix/cu-device.cc
 
 // Copyright 2009-2012  Karel Vesely
 

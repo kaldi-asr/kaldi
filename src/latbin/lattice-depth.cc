@@ -1,4 +1,4 @@
-// latbin/lattice-1best.cc
+// latbin/lattice-depth.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Ehsan Variani)
 

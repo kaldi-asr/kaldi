@@ -1,4 +1,4 @@
-// util/kaldi-thread.cc
+// thread/kaldi-thread.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 //                 Frantisek Skala

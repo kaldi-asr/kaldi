@@ -1,4 +1,4 @@
-// nnetbin/nnet-train-xent-hardlab-perutt.cc
+// nnetbin/nnet-train-xent-hardlab-frmshuff-prior.cc
 
 // Copyright 2011-2013  Karel Vesely, Brno University of Technology
 
@@ -30,9 +30,9 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Perform one iteration of Neural Network training by stochastic gradient descent.\n"
-        "Usage:  nnet-train-xent-hardlab-frmshuff [options] <model-in> <feature-rspecifier> <alignments-rspecifier> [<model-out>]\n"
+        "Usage:  nnet-train-xent-hardlab-frmshuff-prior [options] <model-in> <feature-rspecifier> <alignments-rspecifier> [<model-out>]\n"
         "e.g.: \n"
-        " nnet-train-xent-hardlab-perutt nnet.init scp:train.scp ark:train.ali nnet.iter1\n";
+        " nnet-train-xent-hardlab-frmshuff-prior nnet.init scp:train.scp ark:train.ali nnet.iter1\n";
 
     ParseOptions po(usage);
 

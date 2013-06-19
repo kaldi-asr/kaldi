@@ -1,4 +1,4 @@
-// nnet/nnet-lbfgs.cc
+// nnet-cpu/nnet-lbfgs.cc
 
 // Copyright 2012   Johns Hopkins University (author: Daniel Povey)
 

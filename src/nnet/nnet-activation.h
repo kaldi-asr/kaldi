@@ -16,8 +16,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_NNET_ACTIVATION_H
-#define KALDI_NNET_ACTIVATION_H
+#ifndef KALDI_NNET_NNET_ACTIVATION_H_
+#define KALDI_NNET_NNET_ACTIVATION_H_
 
 #include "nnet/nnet-component.h"
 #include "cudamatrix/cu-math.h"

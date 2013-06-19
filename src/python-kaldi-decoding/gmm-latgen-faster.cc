@@ -1,7 +1,8 @@
-// gmmbin/gmm-latgen-faster.cc
+// python-kaldi-decoding/gmm-latgen-faster.cc
 
 // Copyright 2009-2012  Microsoft Corporation
 //                      Johns Hopkins University (author: Daniel Povey)
+//                2013  Ondrej Platek
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +25,7 @@
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-faster-decoder.h"
-#include "decoder/decodable-am-diag-gmm.h"
+#include "gmm/decodable-am-diag-gmm.h"
 #include "util/timer.h"
 #include "feat/feature-functions.h"  // feature reversal
 

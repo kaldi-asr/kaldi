@@ -1,4 +1,4 @@
-// nnet/combine-nnet-fast.cc
+// nnet-cpu/combine-nnet-fast.cc
 
 // Copyright 2012   Johns Hopkins University (author: Daniel Povey)
 

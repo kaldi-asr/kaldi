@@ -17,8 +17,8 @@
 
 // Do not include this file directly.  It is included by cu-matrix.h.
 
-#ifndef KALDI_CUDAMATRIX_CUMATRIX_INL_H_
-#define KALDI_CUDAMATRIX_CUMATRIX_INL_H_
+#ifndef KALDI_CUDAMATRIX_CU_MATRIX_INL_H_
+#define KALDI_CUDAMATRIX_CU_MATRIX_INL_H_
 
 namespace kaldi {
 
