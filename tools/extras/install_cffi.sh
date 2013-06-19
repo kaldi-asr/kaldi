@@ -65,7 +65,7 @@ function downloader {
             echo "You can also just download $file from $url"
             exit 1; }
 
-       wget -T 10 -t 3 $url
+       wget --no-check-certificate -T 10 -t 3 $url
 
        if [ ! -e $file ]; then
             echo "Download of $file - failed!"
