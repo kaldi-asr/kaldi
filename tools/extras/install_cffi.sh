@@ -50,7 +50,7 @@ echo "Mac OS: brew install libffi"
 
 # names of the extracted directories
 cffiname=cffi-0.6
-pycparsername=pycparser-master # currently it is 2.09.1
+pycparsername=pycparser-release_v2.09.1
 pytestname=pytest-2.3.5
 
 # helper function  
@@ -82,10 +82,10 @@ downloader $cffitar $cffiurl
 tar -xovzf $cffitar || exit 1
 
 echo Downloading and extracting pycparser
-pycparserzip=master.zip
-pycparserurl=https://github.com/eliben/pycparser/archive/master.zip
-downloader $pycparserzip $pycparserurl
-unzip -ou $pycparserzip || exit 1
+pycparsertar=release_v2.09.1.tar.gz
+pycparserurl=https://github.com/eliben/pycparser/archive/release_v2.09.1.tar.gz
+downloader $pycparsertar $pycparserurl
+tar -xovzf $pycparsertar || exit 1
 
 echo Downloading and extracting pytest
 pytesttar=pytest-2.3.5.tar.gz
@@ -133,4 +133,5 @@ if [ ! -e $(python -c 'import cffi') ]; then
     echo "Installation failed. Please download and install $file manually!"
 fi
 
-echo; echo "ADD the $new_ppath to PYTHONPATH for using cffi regularly!"; echo
+echo; echo SUCCESS ; echo
+echo "ADD the"; echo "$new_ppath"; echo "to PYTHONPATH for using cffi regularly!"; echo
