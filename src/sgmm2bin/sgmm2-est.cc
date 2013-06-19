@@ -20,9 +20,9 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "thread/kaldi-thread.h"
-#include "sgmm2/am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
 #include "hmm/transition-model.h"
-#include "sgmm2/estimate-am-sgmm.h"
+#include "sgmm2/estimate-am-sgmm2.h"
 
 
 int main(int argc, char *argv[]) {
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
       // Feature normalizing transform matrix used to initialize the new columns
       // of the phonetic- or speaker-space projection matrices.
       kaldi::Matrix<BaseFloat> norm_xform;
-      ComputeFeatureNormalizer(am_sgmm.full_ubm(), &norm_xform);
+      ComputeFeatureNormalizingTransform(am_sgmm.full_ubm(), &norm_xform);
       if (increase_phn_dim != 0)
         am_sgmm.IncreasePhoneSpaceDim(increase_phn_dim, norm_xform);
       if (increase_spk_dim != 0)

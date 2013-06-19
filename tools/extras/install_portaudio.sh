@@ -89,7 +89,7 @@ if [ -z "$MACOS" ]; then
     echo "${pa_patch}" | patch -p0 Makefile.in
 fi
 
-./configure --prefix=`pwd`/install
+./configure --prefix=`pwd`/install --with-pic
 
 
 if [ "$MACOS" != "" ]; then

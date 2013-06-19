@@ -16,8 +16,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_NNET_RBM_H
-#define KALDI_NNET_RBM_H
+#ifndef KALDI_NNET_NNET_RBM_H_
+#define KALDI_NNET_NNET_RBM_H_
 
 
 #include "nnet/nnet-component.h"

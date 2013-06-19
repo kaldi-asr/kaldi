@@ -1,4 +1,4 @@
-// bin/build-tree.cc
+// bin/build-tree-two-level.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 

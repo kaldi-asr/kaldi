@@ -32,10 +32,10 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "This program average (or sums, if --sum=true) the parameters over a number of neural nets.\n"
         "\n"
-        "Usage:  nnet-average [options] <model1> <model2> ... <modelN> <model-out>\n"
+        "Usage:  nnet-am-average [options] <model1> <model2> ... <modelN> <model-out>\n"
         "\n"
         "e.g.:\n"
-        " nnet-average 1.1.nnet 1.2.nnet 1.3.nnet 2.nnet\n";
+        " nnet-am-average 1.1.nnet 1.2.nnet 1.3.nnet 2.nnet\n";
     
     bool binary_write = true;
     bool sum = false;

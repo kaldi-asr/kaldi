@@ -27,6 +27,7 @@ function rel2abs {
 function read_dirname {
   local dir_name=`expr "X$1" : '[^=]*=\(.*\)'`;
   local retval=`rel2abs $dir_name`
+  [ -z $retval ] && echo "Bad option '$1': no such directory" && exit 1;
   echo $retval
 }
 
@@ -62,13 +63,14 @@ unset MKLLIBDIR
 function usage {
   echo 'Usage: ./configure [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
   [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
-  [--omp-libdir=OMPDIR]  [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS] 
+  [--omp-libdir=OMPDIR] [--static-fst={yes|no}] [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS] 
   [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR]';
 }
 
 threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
 threaded_math=${threaded_atlas}
 static_math=false
+static_fst=false
 use_cuda=true
 
 while [ $# -gt 0 ];
@@ -93,6 +95,10 @@ do
   static_math=true; shift ;;
   --static-math=no)
   static_math=false; shift ;;
+  --static-fst=yes)
+  static_fst=true; shift ;;
+  --static-fst=no)
+  static_fst=false; shift ;;
   --fst-root=*)
   FSTROOT=`read_dirname $1`; shift ;;
   --clapack-root=*)
@@ -531,9 +537,17 @@ if [ "`uname -o`" == "Cygwin"  ]; then
 fi
 
 if [ "`uname`" == "Linux" ]; then
-  if [ ! -f $FSTROOT/lib/libfst.a ]; then
-    failure "Static OpenFST library not found:  See ../tools/INSTALL"
+  if  $static_fst ; then
+      OPENFSTLIBS="$FSTROOT/lib/libfst.a"
+      fst_type='a'
+  else
+      OPENFSTLIBS="-L${FSTROOT}/lib -lfst -Wl,-rpath=${FSTROOT}/lib"
+      fst_type='so'
   fi
+  if [ ! -f "$FSTROOT/lib/libfst.${fst_type}" ]; then
+    failure "Static=[$static_fst] OpenFST library not found:  See ../tools/INSTALL"
+  fi
+  echo OPENFSTLIBS = $OPENFSTLIBS >> kaldi.mk
   echo FSTROOT = $FSTROOT >> kaldi.mk
 
   echo "On Linux: Checking for linear algebra header files ..."

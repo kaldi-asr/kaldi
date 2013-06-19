@@ -8,7 +8,7 @@ TESTFILES = am-sgmm-test estimate-am-sgmm-test fmllr-sgmm-test \
 	    estimate-am-sgmm-multi-test
 
 OBJFILES = am-sgmm.o estimate-am-sgmm.o fmllr-sgmm.o sgmm-clusterable.o \
-           estimate-am-sgmm-ebw.o estimate-am-sgmm-multi.o
+           estimate-am-sgmm-ebw.o estimate-am-sgmm-multi.o decodable-am-sgmm.o
 
 LIBFILE = kaldi-sgmm.a
 

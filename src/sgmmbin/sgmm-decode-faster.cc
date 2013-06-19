@@ -24,7 +24,7 @@ using std::string;
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/faster-decoder.h"
-#include "decoder/decodable-am-sgmm.h"
+#include "sgmm/decodable-am-sgmm.h"
 #include "util/timer.h"
 #include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 

@@ -1,4 +1,4 @@
-// util/kaldi-mutex.cc
+// thread/kaldi-mutex.cc
 
 // Copyright 2012  Karel Vesely (Brno University of Technology)
 

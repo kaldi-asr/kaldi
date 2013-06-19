@@ -17,8 +17,8 @@
 
 
 
-#ifndef KALDI_CUDAMATRIX_CUVECTOR_INL_H_
-#define KALDI_CUDAMATRIX_CUVECTOR_INL_H_
+#ifndef KALDI_CUDAMATRIX_CU_VECTOR_INL_H_
+#define KALDI_CUDAMATRIX_CU_VECTOR_INL_H_
 
 #if HAVE_CUDA==1
   #include <cuda_runtime_api.h>

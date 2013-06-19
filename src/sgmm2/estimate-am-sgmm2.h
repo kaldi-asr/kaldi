@@ -1,4 +1,4 @@
-// sgmm/estimate-am-sgmm.h
+// sgmm2/estimate-am-sgmm2.h
 
 // Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University (Author: Arnab Ghoshal);
@@ -19,13 +19,13 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_SGMM2_ESTIMATE_AM_SGMM_H_
-#define KALDI_SGMM2_ESTIMATE_AM_SGMM_H_ 1
+#ifndef KALDI_SGMM2_ESTIMATE_AM_SGMM2_H_
+#define KALDI_SGMM2_ESTIMATE_AM_SGMM2_H_ 1
 
 #include <string>
 #include <vector>
 
-#include "sgmm2/am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
 #include "gmm/model-common.h"
 #include "util/parse-options.h"
 #include "thread/kaldi-thread.h"

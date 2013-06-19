@@ -1,4 +1,4 @@
-// latbin/lattice-mbr-decode.cc
+// latbin/lattice-to-ctm-conf.cc
 
 // Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
 

@@ -15,6 +15,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef KALDI_UTIL_EDIT_DISTANCE_INL_H_
+#define KALDI_UTIL_EDIT_DISTANCE_INL_H_
 #include "util/stl-utils.h"
 
 
@@ -181,3 +183,5 @@ int32 LevenshteinAlignment(const std::vector<T> &a,
 
 
 }  // end namespace kaldi
+
+#endif // KALDI_UTIL_EDIT_DISTANCE_INL_H_

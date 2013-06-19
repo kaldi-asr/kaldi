@@ -1,4 +1,4 @@
-// bin/analyze-to-counts.cc
+// bin/analyze-counts.cc
 
 // Copyright 2012 Karel Vesely (Brno University of Technology)
 
@@ -28,9 +28,9 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Creates the counts from the int32 vectors (alignments).\n"
-        "Usage:  pdf-to-counts  [options] <alignments-rspecifier> <counts-wxfilname>\n"
+        "Usage:  analyze-counts  [options] <alignments-rspecifier> <counts-wxfilname>\n"
         "e.g.: \n"
-        " pdf-to-counts ark:1.ali prior.counts\n";
+        " analyze-counts ark:1.ali prior.counts\n";
     ParseOptions po(usage);
     
     bool binary = false;

@@ -1,4 +1,4 @@
-// sgmm2/am-sgmm-project.cc
+// sgmm2/am-sgmm2-project.cc
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 
@@ -23,7 +23,7 @@
 #include <vector>
 using std::vector;
 
-#include "sgmm2/am-sgmm-project.h"
+#include "sgmm2/am-sgmm2-project.h"
 #include "thread/kaldi-thread.h"
 #include "gmm/full-gmm-normal.h"
 #include "gmm/diag-gmm-normal.h"

@@ -1,4 +1,4 @@
-// sgmm/estimate-am-sgmm.cc
+// sgmm2/estimate-am-sgmm2.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University (Author: Arnab Ghoshal);
@@ -25,8 +25,8 @@ using std::string;
 #include <vector>
 using std::vector;
 
-#include "sgmm2/am-sgmm.h"
-#include "sgmm2/estimate-am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
+#include "sgmm2/estimate-am-sgmm2.h"
 #include "thread/kaldi-thread.h"
 
 namespace kaldi {

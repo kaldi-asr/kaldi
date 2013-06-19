@@ -1,4 +1,4 @@
-// sgmm2/am-sgmm.h
+// sgmm2/am-sgmm2.h
 
 // Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University (Author: Arnab Ghoshal);
@@ -19,8 +19,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_SGMM2_AM_SGMM_H_
-#define KALDI_SGMM2_AM_SGMM_H_
+#ifndef KALDI_SGMM2_AM_SGMM2_H_
+#define KALDI_SGMM2_AM_SGMM2_H_
 
 #include <vector>
 #include <queue>
@@ -309,7 +309,7 @@ class AmSgmm2 {
 
   /// Functions for increasing the phonetic and speaker space dimensions.
   /// The argument norm_xform is a LDA-like feature normalizing transform,
-  /// computed by the ComputeFeatureNormalizer function.
+  /// computed by the ComputeFeatureNormalizingTransform function.
   void IncreasePhoneSpaceDim(int32 target_dim,
                              const Matrix<BaseFloat> &norm_xform);
 
@@ -547,7 +547,7 @@ void AmSgmm2::GetVarScaledSubstateSpeakerMean(int32 j1, int32 m, int32 i,
 /// Computes the inverse of an LDA transform (without dimensionality reduction)
 /// The computed transform is used in initializing the phonetic and speaker
 /// subspaces, as well as while increasing the dimensions of those spaces.
-void ComputeFeatureNormalizer(const FullGmm &gmm, Matrix<BaseFloat> *xform);
+void ComputeFeatureNormalizingTransform(const FullGmm &gmm, Matrix<BaseFloat> *xform);
 
 
 /// This is the entry for a single time.

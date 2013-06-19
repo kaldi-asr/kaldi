@@ -19,8 +19,8 @@
 #include <vector>
 
 #include "gmm/model-test-common.h"
-#include "sgmm2/am-sgmm.h"
-#include "sgmm2/fmllr-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
+#include "sgmm2/fmllr-sgmm2.h"
 #include "util/kaldi-io.h"
 
 using kaldi::AmSgmm2;

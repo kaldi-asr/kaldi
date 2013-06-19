@@ -1,4 +1,4 @@
-// nnetbin/nnet-train-xent-hardlab-perutt.cc
+// nnetbin/nnet-train-xent-hardlab-frmshuff.cc
 
 // Copyright 2011-2013  Brno University of Technology (Author: Karel Vesely)
 

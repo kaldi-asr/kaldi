@@ -1,4 +1,4 @@
-// util/kaldi-task-sequence.h
+// thread/kaldi-task-sequence.h
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 

@@ -1,4 +1,4 @@
-// gmmbin/gmm-latgen-tracking.cc
+// bin/latgen-tracking-mapped.cc
 
 // Copyright 2012  BUT (author: Mirko Hannemann)
 //      2012-2013  Johns Hopkins University (author: Daniel Povey)

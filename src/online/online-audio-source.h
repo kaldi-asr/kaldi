@@ -18,8 +18,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_ONLINE_AUDIO_SOURCE_H_
-#define KALDI_ONLINE_AUDIO_SOURCE_H_
+#ifndef KALDI_ONLINE_ONLINE_AUDIO_SOURCE_H_
+#define KALDI_ONLINE_ONLINE_AUDIO_SOURCE_H_
 
 #include <portaudio.h>
 #include <pa_ringbuffer.h>
@@ -124,4 +124,4 @@ class OnlineVectorSource {
 
 } // namespace kaldi
 
-#endif // KALDI_ONLINE_AUDIO_SOURCE_H_
+#endif // KALDI_ONLINE_ONLINE_AUDIO_SOURCE_H_

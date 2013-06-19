@@ -1,4 +1,4 @@
-// nnet/nnet-limit-rank.cc
+// nnet-cpu/nnet-limit-rank.cc
 
 // Copyright 2012   Johns Hopkins University (author: Daniel Povey)
 

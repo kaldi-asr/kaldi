@@ -1,4 +1,4 @@
-// gmmbin/gmm-est-map.cc
+// gmmbin/gmm-adapt-map.cc
 
 // Copyright 2012  Cisco Systems (author: Neha Agrawal)
 //                 Johns Hopkins University (author: Daniel Povey)
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
         "the supplied set of speakers (spk2utt option).  This will typically\n"
         "be piped into gmm-latgen-map\n"
         "\n"
-        "Usage: gmm-est-map  [options] <model-in> <feature-rspecifier> "
+        "Usage: gmm-adapt-map  [options] <model-in> <feature-rspecifier> "
         "<posteriors-rspecifier> <map-am-wspecifier>\n";
     
     ParseOptions po(usage);

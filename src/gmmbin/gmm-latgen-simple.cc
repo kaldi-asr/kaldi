@@ -24,7 +24,7 @@
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-simple-decoder.h"
-#include "decoder/decodable-am-diag-gmm.h"
+#include "gmm/decodable-am-diag-gmm.h"
 #include "util/timer.h"
 
 

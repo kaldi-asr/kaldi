@@ -1,4 +1,4 @@
-// decoder/decodable-am-sgmm2.cc
+// sgmm2/decodable-am-sgmm2.cc
 
 // Copyright 2009-2012  Saarland University;  Lukas Burget;
 //                      Johns Hopkins University (author: Daniel Povey)
@@ -19,7 +19,7 @@
 #include <vector>
 using std::vector;
 
-#include "decoder/decodable-am-sgmm2.h"
+#include "sgmm2/decodable-am-sgmm2.h"
 
 namespace kaldi {
 

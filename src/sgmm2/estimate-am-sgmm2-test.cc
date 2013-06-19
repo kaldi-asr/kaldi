@@ -1,4 +1,4 @@
-// sgmm/estimate-am-sgmm-test.cc
+// sgmm2/estimate-am-sgmm2-test.cc
 
 // Copyright 2009-2011  Saarland University (author:  Arnab Ghoshal)
 //           2012-2013  Johns Hopkins University (author: Daniel Povey)
@@ -18,8 +18,8 @@
 // limitations under the License.
 
 #include "gmm/model-test-common.h"
-#include "sgmm2/am-sgmm.h"
-#include "sgmm2/estimate-am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
+#include "sgmm2/estimate-am-sgmm2.h"
 #include "util/kaldi-io.h"
 
 using kaldi::AmSgmm2;

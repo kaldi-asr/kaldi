@@ -20,7 +20,7 @@
 #include "util/common-utils.h"
 #include "thread/kaldi-thread.h"
 #include "hmm/transition-model.h"
-#include "sgmm2/am-sgmm-project.h"
+#include "sgmm2/am-sgmm2-project.h"
 
 int main(int argc, char *argv[]) {
   try {

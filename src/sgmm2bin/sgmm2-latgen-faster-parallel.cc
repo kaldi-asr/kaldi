@@ -21,11 +21,11 @@ using std::string;
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "sgmm2/am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-faster-decoder.h"
-#include "decoder/decodable-am-sgmm2.h"
+#include "sgmm2/decodable-am-sgmm2.h"
 #include "thread/kaldi-task-sequence.h"
 #include "util/timer.h"
 
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Decode features using SGMM-based model.  This version accepts the --num-threads\n"
         "option but otherwise behaves identically to sgmm2-latgen-faster\n"
-        "Usage:  sgmm2-latgen-faster [options] <model-in> (<fst-in>|<fsts-rspecifier>) "
+        "Usage:  sgmm2-latgen-faster-parallel [options] <model-in> (<fst-in>|<fsts-rspecifier>) "
         "<features-rspecifier> <lattices-wspecifier> [<words-wspecifier> [<alignments-wspecifier>] ]\n";
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 0.1;

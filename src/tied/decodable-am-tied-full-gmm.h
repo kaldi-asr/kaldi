@@ -1,4 +1,4 @@
-// decoder/decodable-am-tied-full-gmm.h
+// tied/decodable-am-tied-full-gmm.h
 
 // Copyright 2011 Univ. Erlangen-Nuremberg, Korbinian Riedhammer
 
@@ -15,8 +15,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_DECODER_DECODABLE_AM_TIED_DIAG_GMM_H_
-#define KALDI_DECODER_DECODABLE_AM_TIED_DIAG_GMM_H_
+#ifndef KALDI_TIED_DECODABLE_AM_TIED_FULL_GMM_H_
+#define KALDI_TIED_DECODABLE_AM_TIED_FULL_GMM_H_
 
 #include <vector>
 
@@ -105,4 +105,4 @@ class DecodableAmTiedFullGmmScaled : public DecodableAmTiedFullGmm {
 
 }  // namespace kaldi
 
-#endif  // KALDI_DECODER_DECODABLE_AM_TIED_DIAG_GMM_H_
+#endif  // KALDI_TIED_DECODABLE_AM_TIED_FULL_GMM_H_

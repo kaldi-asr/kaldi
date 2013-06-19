@@ -16,8 +16,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_BASIS_FMLLR_DIAG_GMM_H_
-#define KALDI_BASIS_FMLLR_DIAG_GMM_H_
+#ifndef KALDI_TRANSFORM_BASIS_FMLLR_DIAG_GMM_H_
+#define KALDI_TRANSFORM_BASIS_FMLLR_DIAG_GMM_H_
 
 #include <vector>
 #include <string>
@@ -164,4 +164,4 @@ double CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
 
 } // namespace kaldi
 
-#endif  // KALDI_BASIS_FMLLR_DIAG_GMM_H_
+#endif  // KALDI_TRANSFORM_BASIS_FMLLR_DIAG_GMM_H_

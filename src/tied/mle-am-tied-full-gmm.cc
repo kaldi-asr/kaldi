@@ -1,4 +1,4 @@
-// tied/mle-am-tied-diag-gmm.cc
+// tied/mle-am-tied-full-gmm.cc
 
 // Copyright 2011 Univ. Erlangen-Nuremberg, Korbinian Riedhammer
 

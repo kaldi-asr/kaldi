@@ -1,4 +1,4 @@
-// sgmm2/am-sgmm-project.h
+// sgmm2/am-sgmm2-project.h
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 
@@ -15,13 +15,13 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_SGMM2_AM_SGMM_PROJECT_H_
-#define KALDI_SGMM2_AM_SGMM_PROJECT_H_
+#ifndef KALDI_SGMM2_AM_SGMM2_PROJECT_H_
+#define KALDI_SGMM2_AM_SGMM2_PROJECT_H_
 
 #include <vector>
 #include <queue>
 
-#include "sgmm2/am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
 
 namespace kaldi {
 

@@ -1,4 +1,4 @@
-// decoder/decodable-am-sgmm.h
+// sgmm/decodable-am-sgmm.h
 
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation;
 //                      Lukas Burget
@@ -16,8 +16,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_DECODER_DECODABLE_AM_SGMM_H_
-#define KALDI_DECODER_DECODABLE_AM_SGMM_H_
+#ifndef KALDI_SGMM_DECODABLE_AM_SGMM_H_
+#define KALDI_SGMM_DECODABLE_AM_SGMM_H_
 
 #include <vector>
 
@@ -114,4 +114,4 @@ class DecodableAmSgmmScaled : public DecodableAmSgmm {
 
 }  // namespace kaldi
 
-#endif  // KALDI_DECODER_DECODABLE_AM_SGMM_H_
+#endif  // KALDI_SGMM_DECODABLE_AM_SGMM_H_

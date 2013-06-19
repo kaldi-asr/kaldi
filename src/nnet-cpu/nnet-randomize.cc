@@ -1,4 +1,4 @@
-// nnet/nnet-randomize.cc
+// nnet-cpu/nnet-randomize.cc
 
 // Copyright 2012   Johns Hopkins University (author: Daniel Povey)
 

@@ -1,4 +1,4 @@
-// nnetbin/nnet-copy.cc
+// nnetbin/nnet-concat.cc
 
 // Copyright 2012  Karel Vesely
 

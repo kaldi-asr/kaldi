@@ -1,4 +1,4 @@
-// nnet/nnet-component.cc
+// nnet-cpu/nnet-component.cc
 
 // Copyright 2011-2012  Karel Vesely
 //                      Johns Hopkins University (author: Daniel Povey)

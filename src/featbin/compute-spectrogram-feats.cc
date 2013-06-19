@@ -1,4 +1,4 @@
-// featbin/compute-fbank-feats.cc
+// featbin/compute-spectrogram-feats.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 

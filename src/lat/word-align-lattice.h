@@ -15,8 +15,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_FSTEXT_WORD_ALIGN_LATTICE_H_
-#define KALDI_FSTEXT_WORD_ALIGN_LATTICE_H_
+#ifndef KALDI_LAT_WORD_ALIGN_LATTICE_H_
+#define KALDI_LAT_WORD_ALIGN_LATTICE_H_
 #include <fst/fstlib.h>
 #include <fst/fst-decl.h>
 

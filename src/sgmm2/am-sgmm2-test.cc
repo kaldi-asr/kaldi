@@ -1,4 +1,4 @@
-// sgmm/am-sgmm-test.cc
+// sgmm2/am-sgmm2-test.cc
 
 // Copyright 2012   Arnab Ghoshal
 //           2009-2011  Saarland University
@@ -18,7 +18,7 @@
 // limitations under the License.
 
 #include "gmm/model-test-common.h"
-#include "sgmm2/am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
 #include "util/kaldi-io.h"
 
 using kaldi::AmSgmm2;
@@ -208,7 +208,7 @@ void TestSgmm2IncreaseDim(const AmSgmm2 &sgmm) {
   BaseFloat loglike = sgmm.LogLikelihood(per_frame, 0, &sgmm_cache, &empty);
 
   kaldi::Matrix<BaseFloat> norm_xform;
-  kaldi::ComputeFeatureNormalizer(sgmm.full_ubm(), &norm_xform);
+  kaldi::ComputeFeatureNormalizingTransform(sgmm.full_ubm(), &norm_xform);
   AmSgmm2 *sgmm1 = new AmSgmm2();
   sgmm1->CopyFromSgmm2(sgmm, false, false);
   sgmm1->Check(true);

@@ -1,4 +1,4 @@
-// nnet-cpu/decodable-am-nnet1.h
+// nnet-cpu/decodable-am-nnet.h
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 
@@ -15,8 +15,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET_CPU_DECODABLE_AM_NNET1_H_
-#define KALDI_NNET_CPU_DECODABLE_AM_NNET1_H_
+#ifndef KALDI_NNET_CPU_DECODABLE_AM_NNET_H_
+#define KALDI_NNET_CPU_DECODABLE_AM_NNET_H_
 
 #include <vector>
 
@@ -168,4 +168,4 @@ class DecodableAmNnetParallel: public DecodableInterface {
 
 }  // namespace kaldi
 
-#endif  // KALDI_NNET_CPU_DECODABLE_AM_NNET1_H_
+#endif  // KALDI_NNET_CPU_DECODABLE_AM_NNET_H_

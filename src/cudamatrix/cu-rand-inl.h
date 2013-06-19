@@ -17,8 +17,8 @@
 
 
 
-#ifndef KALDI_CUDAMATRIX_CURAND_INL_H_
-#define KALDI_CUDAMATRIX_CURAND_INL_H_
+#ifndef KALDI_CUDAMATRIX_CU_RAND_INL_H_
+#define KALDI_CUDAMATRIX_CU_RAND_INL_H_
 
 #include "base/kaldi-math.h"
 

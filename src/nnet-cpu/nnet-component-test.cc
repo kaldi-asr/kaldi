@@ -1,4 +1,4 @@
-// nnet-cpu/net-component-test.cc
+// nnet-cpu/nnet-component-test.cc
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
 

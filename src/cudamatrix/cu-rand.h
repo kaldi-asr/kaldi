@@ -17,8 +17,8 @@
 
 
 
-#ifndef KALDI_CUDAMATRIX_CURAND_H_
-#define KALDI_CUDAMATRIX_CURAND_H_
+#ifndef KALDI_CUDAMATRIX_CU_RAND_H_
+#define KALDI_CUDAMATRIX_CU_RAND_H_
 
 
 #include "cudamatrix/cu-matrix.h"

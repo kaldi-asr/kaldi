@@ -1,4 +1,4 @@
-// sgmm/fmllr-sgmm.cc
+// sgmm2/fmllr-sgmm2.cc
 
 // Copyright 2009-2012   Saarland University (author: Arnab Ghoshal)
 //                       Johns Hopkins University (author: Daniel Povey)    
@@ -21,7 +21,7 @@
 #include <vector>
 using std::vector;
 
-#include "sgmm2/fmllr-sgmm.h"
+#include "sgmm2/fmllr-sgmm2.h"
 #include "util/parse-options.h"
 
 namespace kaldi {

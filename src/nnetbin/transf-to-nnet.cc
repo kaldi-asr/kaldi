@@ -1,4 +1,4 @@
-// gmmbin/transf-to-nnet.cc
+// nnetbin/transf-to-nnet.cc
 
 // Copyright 2012  Brno University of Technology
 

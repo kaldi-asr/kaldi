@@ -1,4 +1,4 @@
-// sgmm2/estimate-am-sgmm-ebw.cc
+// sgmm2/estimate-am-sgmm2-ebw.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 
@@ -16,7 +16,7 @@
 // limitations under the License.
 
 #include "base/kaldi-common.h"
-#include "sgmm2/estimate-am-sgmm-ebw.h"
+#include "sgmm2/estimate-am-sgmm2-ebw.h"
 #include "thread/kaldi-thread.h"
 using std::vector;
 

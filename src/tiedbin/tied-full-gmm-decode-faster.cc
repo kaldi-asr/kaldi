@@ -24,7 +24,7 @@
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/faster-decoder.h"
-#include "decoder/decodable-am-tied-full-gmm.h"
+#include "tied/decodable-am-tied-full-gmm.h"
 #include "util/timer.h"
 
 using namespace kaldi;
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Decode features using GMM-based model.\n"
-        "Usage:  gmm-decode-faster [options] model-in fst-in features-rspecifier words-wspecifier [alignments-wspecifier]\n";
+        "Usage:  tied-full-gmm-decode-faster [options] <model-in> <fst-in> <features-rspecifier> <words-wspecifier> [alignments-wspecifier]\n";
     ParseOptions po(usage);
     bool allow_partial = true;
     BaseFloat acoustic_scale = 0.1;

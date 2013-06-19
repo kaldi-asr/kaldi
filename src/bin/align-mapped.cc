@@ -1,4 +1,4 @@
-// gmmbin/gmm-align.cc
+// bin/align-mapped.cc
 
 // Copyright 2009-2012  Microsoft Corporation, Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)

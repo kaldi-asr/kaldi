@@ -1,4 +1,4 @@
-// lat/lattice-functions.h
+// lat/push-lattice.h
 
 // Copyright 2013        Johns Hopkins University (Author: Daniel Povey)
 

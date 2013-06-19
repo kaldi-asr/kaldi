@@ -1,4 +1,4 @@
-// nnet/nnet-cache.cc
+// nnet/nnet-cache-tgtmat.cc
 
 // Copyright 2011  Karel Vesely
 

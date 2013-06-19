@@ -25,7 +25,7 @@
 #include "fstext/fstext-lib.h"
 #include "decoder/faster-decoder.h"
 #include "decoder/training-graph-compiler.h"
-#include "decoder/decodable-am-diag-gmm.h"
+#include "gmm/decodable-am-diag-gmm.h"
 #include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 
 int main(int argc, char *argv[]) {

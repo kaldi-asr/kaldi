@@ -1,4 +1,4 @@
-// nnet/nnet-component.cc
+// nnet-cpu/nnet-precondition.cc
 
 // Copyright 2012   Johns Hopkins University (author: Daniel Povey)
 

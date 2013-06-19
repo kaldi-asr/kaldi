@@ -1,4 +1,4 @@
-// util/kaldi-semaphore.cc
+// thread/kaldi-semaphore.cc
 
 // Copyright 2012  Karel Vesely (Brno University of Technology)
 

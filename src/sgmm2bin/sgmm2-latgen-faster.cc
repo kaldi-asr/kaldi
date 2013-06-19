@@ -21,11 +21,11 @@ using std::string;
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "sgmm2/am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-faster-decoder.h"
-#include "decoder/decodable-am-sgmm2.h"
+#include "sgmm2/decodable-am-sgmm2.h"
 #include "util/timer.h"
 
 namespace kaldi {

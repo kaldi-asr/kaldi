@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
         "Copy tables of BaseFloat matrices, from one input to possibly multiple outputs,\n"
         "with each element of the input written too all outputs.\n"
         "\n"
-        "Usage: copy-matrix [options] <matrix-rspecifier> <matrix-wspecifier1> [<matrix-wspecifier2> ...]\n";
+        "Usage: duplicate-matrix [options] <matrix-rspecifier> <matrix-wspecifier1> [<matrix-wspecifier2> ...]\n";
     
     ParseOptions po(usage);
 

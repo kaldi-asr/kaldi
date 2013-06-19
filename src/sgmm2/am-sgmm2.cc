@@ -1,4 +1,4 @@
-// sgmm2/am-sgmm.cc
+// sgmm2/am-sgmm2.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University (Author: Arnab Ghoshal);
@@ -27,7 +27,7 @@
 #include <vector>
 using std::vector;
 
-#include "sgmm2/am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
 #include "thread/kaldi-thread.h"
 
 namespace kaldi {
@@ -404,7 +404,7 @@ void AmSgmm2::InitializeFromFullGmm(const FullGmm &full_gmm,
 
   KALDI_LOG << "Initializing model";
   Matrix<BaseFloat> norm_xform;
-  ComputeFeatureNormalizer(full_gmm, &norm_xform);
+  ComputeFeatureNormalizingTransform(full_gmm, &norm_xform);
   InitializeMw(phn_subspace_dim, norm_xform);
   if (spk_subspace_dim > 0)
     InitializeNu(spk_subspace_dim, norm_xform, speaker_dependent_weights);
@@ -1276,7 +1276,7 @@ void AmSgmm2::ComputeHsmFromModel(
   KALDI_LOG << "total count is " << tot_sum;
 }
 
-void ComputeFeatureNormalizer(const FullGmm &gmm, Matrix<BaseFloat> *xform) {
+void ComputeFeatureNormalizingTransform(const FullGmm &gmm, Matrix<BaseFloat> *xform) {
   int32 dim = gmm.Dim();
   int32 num_gauss = gmm.NumGauss();
   SpMatrix<BaseFloat> within_class_covar(dim);

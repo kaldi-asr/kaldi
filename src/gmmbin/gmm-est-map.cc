@@ -1,4 +1,4 @@
-// gmmbin/gmm-est.cc
+// gmmbin/gmm-est-map.cc
 
 // Copyright 2009-2012  Microsoft Corporation
 //                      Johns Hopkins University (author: Daniel Povey)

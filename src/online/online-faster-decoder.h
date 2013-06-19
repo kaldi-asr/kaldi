@@ -18,8 +18,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_ONLINE_FASTER_DECODER_H_
-#define KALDI_ONLINE_FASTER_DECODER_H_
+#ifndef KALDI_ONLINE_ONLINE_FASTER_DECODER_H_
+#define KALDI_ONLINE_ONLINE_FASTER_DECODER_H_
 
 #ifdef _MSC_VER
 #include <unordered_set>
@@ -134,4 +134,4 @@ class OnlineFasterDecoder : public FasterDecoder {
 };
 
 } // namespace kaldi
-#endif // KALDI_ONLINE_FASTER_DECODER_H_
+#endif // KALDI_ONLINE_ONLINE_FASTER_DECODER_H_

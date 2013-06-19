@@ -19,9 +19,9 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "sgmm2/am-sgmm.h"
+#include "sgmm2/am-sgmm2.h"
 #include "hmm/transition-model.h"
-#include "sgmm2/estimate-am-sgmm.h"
+#include "sgmm2/estimate-am-sgmm2.h"
 
 
 

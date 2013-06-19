@@ -1,4 +1,4 @@
-// gmmbin/rbm-convert-to-nnet.cc
+// nnetbin/rbm-convert-to-nnet.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 

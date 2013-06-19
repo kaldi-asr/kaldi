@@ -1,4 +1,4 @@
-// featbin/select-feats.cc
+// featbin/subsample-feats.cc
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 

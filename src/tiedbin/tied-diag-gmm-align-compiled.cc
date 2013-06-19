@@ -24,7 +24,7 @@
 #include "fstext/fstext-lib.h"
 #include "decoder/faster-decoder.h"
 #include "decoder/training-graph-compiler.h"
-#include "decoder/decodable-am-tied-diag-gmm.h"
+#include "tied/decodable-am-tied-diag-gmm.h"
 
 int main(int argc, char *argv[]) {
   try {
