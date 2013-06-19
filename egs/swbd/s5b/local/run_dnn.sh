@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# Copyright 2012-2013  Brno University of Technology (Author: Karel Vesely)
+# Apache 2.0
+
+# In this recipe we build DNN in four stages:
+# 1) Data preparations : the fMLLR features are stored to disk
+# 2) RBM pre-training : in this unsupervised stage we train stack of RBMs, a good starting point for Cross-entropy trainig
+# 3) Frame-level cross-entropy training : in this stage the objective is to classify frames correctly.
+# 4) Sequence-discriminative training : in this stage the objective is to classify the whole sequence correctly,
+#     the idea is similar to the 'Discriminative training' in context of GMM-HMMs.
+
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -7,44 +17,41 @@
 . ./path.sh ## Source the tools/utils (import the queue.pl)
 
 
+###
+### We save the fMLLR features, so we can train on them easily
+###
+
 #false && \
 {
 
-###
-### First we need to dump the fMLLR features, so we can train on them easily
-###
 
 gmmdir=exp/tri4b
 
-# eval2000
+# * eval2000 * #
 dir=data-fmllr-tri4b/eval2000
 steps/make_fmllr_feats.sh --nj 30 --cmd "$train_cmd" \
    --transform-dir exp/tri4b/decode_eval2000_sw1_fsh_tgpr \
    $dir data/eval2000 $gmmdir $dir/_log $dir/_data || exit 1
 
-# train_dev
+# * train_dev * #
 dir=data-fmllr-tri4b/train_dev
-# we need alignment
+# We need alignments. We will use train_dev as held-out set 
+# for frame-level cross-entropy training.
 steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
   data/train_dev data/lang exp/tri4b exp/tri4b_ali_dev || exit 1
-# we need fMLLR transforms, so we run decoding...
+# We need fMLLR transforms. If we compute fMLLRs by decoding, 
+# it is not cheating and the train_dev number can be compared to other systems.
 steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
    --config conf/decode.config  exp/tri4b/graph_sw1_fsh_tgpr \
    data/train_dev exp/tri4b/decode_train_dev_sw1_fsh_tgpr || exit 1
-#generate the feats
+# Save the fMLLR features
 steps/make_fmllr_feats.sh --nj 20 --cmd "$train_cmd" \
    --transform-dir exp/tri4b/decode_train_dev_sw1_fsh_tgpr \
    $dir data/train_dev $gmmdir $dir/_log $dir/_data || exit 1
 
-# train_nodup
-# we need fMLLR transforms, so we run alignment...
-#
-# ALREADY IN run_edit.sh:
-#steps/align_fmllr.sh --nj 60 --cmd "$train_cmd" \
-#  data/train_nodup data/lang exp/tri4b exp/tri4b_ali_all || exit 1
-#
-# generate the features
+# * train_nodup * #
 dir=data-fmllr-tri4b/train_nodup
+# Save the fMLLR features
 steps/make_fmllr_feats.sh --nj 60 --cmd "$train_cmd" \
    --transform-dir exp/tri4b_ali_all \
    $dir data/train_nodup $gmmdir $dir/_log $dir/_data || exit 1
@@ -53,21 +60,22 @@ steps/make_fmllr_feats.sh --nj 60 --cmd "$train_cmd" \
 
 
 ###
-### Now we can pre-train stack of RBMs
+### Let's pre-train the stack of RBMs
 ###
+
 #false && \
 { # Pre-train the DBN
 dir=exp/tri4b_pretrain-dbn
 (tail --pid=$$ -F $dir/_pretrain_dbn.log)&
 $cuda_cmd $dir/_pretrain_dbn.log \
-  steps/pretrain_dbn.sh data-fmllr-tri4b/train_nodup $dir
+  steps/pretrain_dbn.sh data-fmllr-tri4b/train_nodup $dir || exit 1
 }
 
 
 
 ###
-### Now we train the DNN optimizing cross-entropy.
-### This will take quite some time.
+### Train the DNN, while optimizing frame-level cross-entropy.
+### This will take some time.
 ###
 
 #false && \
@@ -93,7 +101,7 @@ steps/lmrescore.sh --mode 3 --cmd "$decodebig_cmd" data/lang_sw1_fsh_tgpr data/l
 
 
 ###
-### Finally we train using sMBR criterion.
+### Finally train the DNN using sMBR criterion.
 ### We do Stochastic-GD with per-utterance updates. 
 ###
 ### To get faster convergence, we will re-generate 
@@ -119,7 +127,7 @@ steps/train_nnet_mpe.sh --cmd "$cuda_cmd" --num-iters 1 --acwt $acwt --do-smbr t
   data-fmllr-tri4b/train_nodup data/lang $srcdir \
   ${srcdir}_ali_all \
   ${srcdir}_denlats_all \
-  $dir 
+  $dir || exit 1
 }
 # Decode
 #false && \
@@ -128,7 +136,7 @@ for ITER in 1; do
   # decode eval2000 with pruned trigram sw1_fsh_tgpr
   steps/decode_nnet.sh --nj 30 --cmd "$decode_cmd" --config conf/decode_dnn.config \
     --nnet $dir/${ITER}.nnet --acwt $acwt \
-    exp/tri4b/graph_sw1_fsh_tgpr data-fmllr-tri4b/eval2000 $dir/decode_eval2000_sw1_fsh_tgpr_it${ITER}
+    exp/tri4b/graph_sw1_fsh_tgpr data-fmllr-tri4b/eval2000 $dir/decode_eval2000_sw1_fsh_tgpr_it${ITER} || exit 1
   # rescore eval2000 with trigram sw1_fsh
   steps/lmrescore.sh --mode 3 --cmd "$decodebig_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
     $dir/decode_eval2000_sw1_fsh_tgpr_it${ITER} $dir/decode_eval2000_sw1_fsh_tg.3_it${ITER} || exit 1 
@@ -159,7 +167,7 @@ steps/train_nnet_mpe.sh --cmd "$cuda_cmd" --num-iters 2 --acwt $acwt --do-smbr t
   data-fmllr-tri4b/train_nodup data/lang $srcdir \
   ${srcdir}_ali_all \
   ${srcdir}_denlats_all \
-  $dir 
+  $dir || exit 1
 }
 # Decode
 #false && \
@@ -168,7 +176,7 @@ for ITER in 1 2; do
   # decode eval2000 with pruned trigram sw1_fsh_tgpr
   steps/decode_nnet.sh --nj 30 --cmd "$decode_cmd" --config conf/decode_dnn.config \
     --nnet $dir/${ITER}.nnet --acwt $acwt \
-    exp/tri4b/graph_sw1_fsh_tgpr data-fmllr-tri4b/eval2000 $dir/decode_eval2000_sw1_fsh_tgpr_it${ITER}
+    exp/tri4b/graph_sw1_fsh_tgpr data-fmllr-tri4b/eval2000 $dir/decode_eval2000_sw1_fsh_tgpr_it${ITER} || exit 1
   # rescore eval2000 with trigram sw1_fsh
   steps/lmrescore.sh --mode 3 --cmd "$decodebig_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
     $dir/decode_eval2000_sw1_fsh_tgpr_it${ITER} $dir/decode_eval2000_sw1_fsh_tg.3_it${ITER} || exit 1 

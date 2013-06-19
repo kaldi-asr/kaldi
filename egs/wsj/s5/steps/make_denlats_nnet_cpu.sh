@@ -75,7 +75,7 @@ cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
 # final.mdl from $srcdir; the output HCLG.fst goes in $dir/graph.
 
 echo "Compiling decoding graph in $dir/dengraph"
-if [ -s $dir/dengraph/HCLG.fst ]; then
+if [ -s $dir/dengraph/HCLG.fst ] && [ $dir/dengraph/HCLG.fst -nt $srcdir/final.mdl ]; then
    echo "Graph $dir/dengraph/HCLG.fst already exists: skipping graph creation."
 else
   utils/mkgraph.sh $new_lang $srcdir $dir/dengraph || exit 1;

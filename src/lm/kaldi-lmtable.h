@@ -67,8 +67,8 @@ typedef fst::StdArc::StateId StateId;
 
 /// @brief Helper methods to convert toolkit internal representations into FST.
 class LmFstConverter {
-  typedef fst::StdArc::StateId StateId;
-  typedef unordered_map<fst::StdArc::StateId, fst::StdArc::StateId> BkStateMap;
+  typedef unordered_map<StateId, StateId> BkStateMap;
+  typedef unordered_map<std::string, StateId> HistStateMap;
 
  public:
 
@@ -114,8 +114,17 @@ class LmFstConverter {
                             fst::SymbolTable *psst,
                             bool &newlyAdded);
 
+  StateId FindState(const std::string str) {
+    HistStateMap::const_iterator it = histState_.find(str);
+     if (it == histState_.end()) {
+       return -1;
+     }
+     return it->second;
+  }
+
   bool use_natural_log_;
   BkStateMap bkState_;
+  HistStateMap histState_;
 };
 
 #ifndef HAVE_IRSTLM

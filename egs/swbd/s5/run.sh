@@ -218,10 +218,20 @@ steps/train_mmi_fmmi_indirect.sh \
  done
 
 
-# Recipe with DNN system on top of fMLLR features
-local/run_hybrid.sh
 
-
+### At this point used to be "Karel's DNN recipe", which was removed.
+#
+# For the most recent DNN recipe, please have a look at:
+#  egs/swbd/s5b/local/run_dnn.sh
+#
+# It features:
+# - RBM pre-trainig
+# - Frame-based Cross-entropy training
+# - Sequence-discriminative training (sMBR)
+#
+# It is the setup that was used for the Interspeech 2013 paper:
+# "Sequence-discriminative training of deep neural networks"
+#
 
 
 # Note: we haven't yet run with all the data.

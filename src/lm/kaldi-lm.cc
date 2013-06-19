@@ -33,7 +33,7 @@ StateId LangModelFst::ReadTxtLine(const string &inpline) {
   KALDI_ASSERT(pfst_->InputSymbols());
   KALDI_ASSERT(pfst_->OutputSymbols());
 
-  StateId dst, src = pfst_->Start();
+  StateId dst = pfst_->Start(), src = pfst_->Start();
   // this will split on white spaces only
   string curwrd;  // Have a buffer string
   std::stringstream ss(inpline);  // Insert the string into a stream
