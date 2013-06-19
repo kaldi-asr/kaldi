@@ -12,9 +12,6 @@ OBJFILES = nnet-component.o nnet-nnet.o nnet-update.o train-nnet.o \
      mixup-nnet.o nnet-lbfgs.o nnet-update-parallel.o combine-nnet-fast.o \
      nnet-fix.o nnet-stats.o rescale-nnet.o nnet-limit-rank.o
 
-#nnet-compute.o nnet-train.o
-# nnet-nnet.o nnet-loss.o nnet-rnnlm.o
-
 LIBFILE = kaldi-nnet-cpu.a 
 
 all:  $(LIBFILE)
