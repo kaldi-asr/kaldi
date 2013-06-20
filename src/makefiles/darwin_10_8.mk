@@ -1,4 +1,4 @@
-# makefiles/darwin_10_6.mk contains Darwin-specific rules for OS X 10.6.*
+# makefiles/darwin_10_8.mk contains Darwin-specific rules for OS X 10.8.*
 
 ifndef FSTROOT
 $(error FSTROOT not defined.)
