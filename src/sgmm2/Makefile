@@ -5,7 +5,7 @@ OPENFST_LDLIBS =
 include ../kaldi.mk
 
 TESTFILES = am-sgmm2-test estimate-am-sgmm2-test  \
-   fmllr-sgmm-test
+   fmllr-sgmm2-test
 
 OBJFILES = am-sgmm2.o estimate-am-sgmm2.o estimate-am-sgmm2-ebw.o fmllr-sgmm2.o \
           am-sgmm2-project.o decodable-am-sgmm2.o

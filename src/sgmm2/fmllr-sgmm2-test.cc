@@ -1,4 +1,4 @@
-// sgmm2/fmllr-sgmm-test.cc
+// sgmm2/fmllr-sgmm2-test.cc
 
 // Copyright 2009-2011  Saarland University (author:  Arnab Ghoshal)
 //           2012  Johns Hopkins University (author: Daniel Povey)
