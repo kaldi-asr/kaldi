@@ -27,6 +27,7 @@
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
+  using namespace kaldi::nnet1;
   try {
     const char *usage =
         "Perform forward pass through Neural Network.\n"
@@ -68,6 +69,7 @@ int main(int argc, char *argv[]) {
         feature_wspecifier = po.GetArg(3);
         
     using namespace kaldi;
+    using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
 
     //Select the GPU

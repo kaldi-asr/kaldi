@@ -29,6 +29,7 @@
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
+  using namespace kaldi::nnet1;
   try {
     const char *usage =
         "Train RBM by Contrastive Divergence alg. with 1 step of "
@@ -82,6 +83,7 @@ int main(int argc, char *argv[]) {
 
      
     using namespace kaldi;
+    using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
 
     //Select the GPU

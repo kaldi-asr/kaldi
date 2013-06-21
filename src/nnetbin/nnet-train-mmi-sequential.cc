@@ -38,6 +38,7 @@
 
 
 namespace kaldi {
+namespace nnet1 {
 
 void LatticeAcousticRescore(const Matrix<BaseFloat> &log_like,
                             const TransitionModel &trans_model,
@@ -75,11 +76,13 @@ void LatticeAcousticRescore(const Matrix<BaseFloat> &log_like,
   }
 }
 
+}  // namespace nnet1
 }  // namespace kaldi
 
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
+  using namespace kaldi::nnet1;
   typedef kaldi::int32 int32;
   try {
     const char *usage =
@@ -147,6 +150,7 @@ int main(int argc, char *argv[]) {
 
      
     using namespace kaldi;
+    using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
 
     // Select the GPU

@@ -1,4 +1,4 @@
-// nnetbin/nnet-concat.cc
+// nnetbin/nnet-trim-last-n-layers.cc
 
 // Copyright 2012  Karel Vesely
 
@@ -26,29 +26,30 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Concatenate Neural Networks (and possibly change binary/text format)\n"
-        "Usage:  nnet-concat [options] <model-in1> <...> <model-inN> <model-out>\n"
+        "Trim ending part of the MLP\n"
+        "Usage:  nnet-trim-last-n-layers [options] <model-in> <model-out>\n"
         "e.g.:\n"
-        " nnet-copy --binary=false nnet.1 nnet.2 nnet.1.2\n";
+        " nnet-trim-last-n-layers --binary=false nnet.mdl nnet_txt.mdl\n";
+
+
+    bool binary_write = false;
     
     ParseOptions po(usage);
-    
-    bool binary_write = false;
     po.Register("binary", &binary_write, "Write output in binary mode");
+
+    int32 trim_num = 0;
+    po.Register("n", &trim_num, "Number of transforms to be trimmed (include simgoid/softmax)");
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 3) {
+    if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string model_in_filename = po.GetArg(1);
-    std::string model_in_filename_next;
-    std::string model_out_filename = po.GetArg(po.NumArgs());
+    std::string model_in_filename = po.GetArg(1),
+        model_out_filename = po.GetArg(2);
 
-    //read the first nnet
-    KALDI_LOG << "Reading " << model_in_filename;
     Nnet nnet; 
     {
       bool binary_read;
@@ -56,30 +57,15 @@ int main(int argc, char *argv[]) {
       nnet.Read(ki.Stream(), binary_read);
     }
 
-    //read all the other nnets
-    for(int32 i=2; i<po.NumArgs(); i++) {
-      //read the nnet
-      model_in_filename_next = po.GetArg(i);
-      KALDI_LOG << "Concatenating " << model_in_filename_next;
-      Nnet nnet_next;
-      {
-        bool binary_read;
-        Input ki(model_in_filename_next, &binary_read);
-        nnet_next.Read(ki.Stream(), binary_read);
-      }
-      //append nnet_next to the network nnet
-      nnet.Concatenate(&nnet_next);
-    }
-
-    //finally write the nnet to disk
     {
       Output ko(model_out_filename, binary_write);
-      nnet.Write(ko.Stream(), binary_write);
+      int32 write_num_layers = nnet.LayerCount() - trim_num;
+      nnet.WriteFrontLayers(ko.Stream(), binary_write, write_num_layers);
     }
 
     KALDI_LOG << "Written model to " << model_out_filename;
     return 0;
-  } catch(const std::exception &e) {
+  } catch(const std::exception& e) {
     std::cerr << e.what() << '\n';
     return -1;
   }
