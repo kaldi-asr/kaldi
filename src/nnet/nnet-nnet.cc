@@ -23,6 +23,7 @@
 
 
 namespace kaldi {
+namespace nnet1 {
 
 void Nnet::Propagate(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
   KALDI_ASSERT(NULL != out);
@@ -254,4 +255,5 @@ void Nnet::Read(std::istream &in, bool binary) {
 }
 
   
-} // namespace
+} // namespace nnet1
+} // namespace kaldi

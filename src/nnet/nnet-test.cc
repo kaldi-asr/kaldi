@@ -23,6 +23,7 @@
 #include "nnet/nnet-nnet.h"
 
 using namespace kaldi;
+using namespace kaldi::nnet1;
 
 // :TODO:
 static void UnitTestSomething() {

@@ -24,6 +24,7 @@
 #include "cudamatrix/cu-stlvector.h"
 
 namespace kaldi {
+namespace nnet1 {
 
 class XentPrior {
  public:
@@ -80,7 +81,8 @@ class XentPrior {
 
 
 
-} // namespace
+} // namespace nnet1
+} // namespace kaldi
 
 #endif
 

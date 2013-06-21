@@ -23,6 +23,7 @@
 #include "cudamatrix/cu-math.h"
 
 namespace kaldi {
+namespace nnet1 {
 
 
 
@@ -248,6 +249,7 @@ class Rescale : public Component {
 
 
 
+} // namespace nnet1
 } // namespace kaldi
 
 #endif // KALDI_NNET_NNET_VARIOUS_H_

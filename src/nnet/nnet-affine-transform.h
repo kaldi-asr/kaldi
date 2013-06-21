@@ -24,6 +24,7 @@
 #include "cudamatrix/cu-math.h"
 
 namespace kaldi {
+namespace nnet1 {
 
 class AffineTransform : public UpdatableComponent {
  public:
@@ -128,6 +129,7 @@ class AffineTransform : public UpdatableComponent {
   CuVector<BaseFloat> bias_corr_;
 };
 
-} // namespace
+} // namespace nnet1
+} // namespace kaldi
 
 #endif

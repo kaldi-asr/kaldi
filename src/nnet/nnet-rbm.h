@@ -24,6 +24,7 @@
 #include "cudamatrix/cu-math.h"
 
 namespace kaldi {
+namespace nnet1 {
 
 class RbmBase : public UpdatableComponent {
  public:
@@ -389,6 +390,7 @@ protected:
 
 
 
-} // namespace
+} // namespace nnet1
+} // namespace kaldi
 
 #endif
