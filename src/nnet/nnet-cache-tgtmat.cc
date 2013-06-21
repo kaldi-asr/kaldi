@@ -22,7 +22,6 @@
 #include <algorithm>
 
 namespace kaldi {
-namespace nnet1 {
 
 
 
@@ -201,5 +200,4 @@ void CacheTgtMat::GetBunch(CuMatrix<BaseFloat> *features, CuMatrix<BaseFloat> *t
 }
 
 
-} // namespace nnet1
-} // namespace kaldi
+} // namespace

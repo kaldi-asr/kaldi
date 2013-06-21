@@ -23,7 +23,6 @@
 #include <iterator>
 
 namespace kaldi {
-namespace nnet1 {
 
 
 void Xent::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &target, CuMatrix<BaseFloat> *diff) {
@@ -198,5 +197,4 @@ std::string MseProgress::Report() {
 }
 
 
-} // namespace nnet1
-} // namespace kaldi
+} // namespace

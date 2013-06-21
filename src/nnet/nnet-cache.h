@@ -24,7 +24,6 @@
 #include "cudamatrix/cu-math.h"
 
 namespace kaldi {
-namespace nnet1 {
 
 /**
  * The feature-target pair cache
@@ -97,7 +96,6 @@ class Cache {
 }; 
  
   
-} // namespace nnet1
-} // namespace kaldi
+} // namespace
 
 #endif

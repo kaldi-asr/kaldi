@@ -25,7 +25,6 @@
 #include <algorithm>
 
 namespace kaldi {
-namespace nnet1 {
 
 
 void XentPrior::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<int32> &target, CuMatrix<BaseFloat> *diff) {
@@ -226,5 +225,4 @@ std::string XentPrior::Report() {
 
 
 
-} // namespace nnet1
-} // namespace kaldi
+} // namespace

@@ -30,7 +30,6 @@
 #include <iostream>
 
 namespace kaldi {
-namespace nnet1 {
 
 // declare the nnet class so we can declare pointer
 struct NnetTrainOptions;
@@ -228,7 +227,6 @@ inline void Component::Backpropagate(const CuMatrix<BaseFloat> &in,
 
 
 
-} // namespace nnet1
 } // namespace kaldi
 
 

@@ -22,7 +22,6 @@
 #include "util/parse-options.h"
 
 namespace kaldi {
-namespace nnet1 {
 
 
 struct NnetTrainOptions {
@@ -101,7 +100,6 @@ struct RbmTrainOptions {
 };
 
 
-}//namespace nnet1
 }//namespace kaldi
 
 #endif

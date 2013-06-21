@@ -29,7 +29,6 @@
 #include "nnet/nnet-component.h"
 
 namespace kaldi {
-namespace nnet1 {
 
 class Nnet {
  public:
@@ -229,7 +228,6 @@ inline void Nnet::SetTrainOptions(const NnetTrainOptions& opts) {
 }
 
 
-} // namespace nnet1
 } // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_NNET_H_
