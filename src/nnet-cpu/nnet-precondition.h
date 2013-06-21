@@ -24,6 +24,7 @@
 #include <iostream>
 
 namespace kaldi {
+namespace nnet2 {
 
 
 /**
@@ -77,6 +78,7 @@ void PreconditionDirectionsAlphaRescaled(
   
                            
 
+} // namespace nnet2
 } // namespace kaldi
 
 

@@ -18,6 +18,7 @@
 #include "nnet-cpu/train-nnet.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 NnetAdaptiveTrainer::NnetAdaptiveTrainer(
     const NnetAdaptiveTrainerConfig &config,
@@ -215,4 +216,5 @@ NnetSimpleTrainer::~NnetSimpleTrainer() {
 }
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi

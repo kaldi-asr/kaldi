@@ -18,6 +18,7 @@
 #include "nnet-cpu/rescale-nnet.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 
 class NnetRescaler {
@@ -209,4 +210,5 @@ void RescaleNnet(const NnetRescaleConfig &rescale_config,
 }
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi

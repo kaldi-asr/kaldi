@@ -30,6 +30,7 @@
 
 
 namespace kaldi {
+namespace nnet2 {
 
 // Here we declare various functions for manipulating the neural net,
 // such as adding new hidden layers; we'll add things like "mixing up"
@@ -51,6 +52,7 @@ void InsertComponents(const Nnet &src_nnet,
                       Nnet *dest_nnet);
 
 
+} // namespace nnet2
 } // namespace kaldi
 
 #endif

@@ -18,6 +18,7 @@
 #include "nnet-cpu/am-nnet.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 
 void AmNnet::Init(std::istream &config_is) {
@@ -71,4 +72,5 @@ void AmNnet::Init(const Nnet &nnet) {
 }
 
 
+} // namespace nnet2
 } // namespace kaldi

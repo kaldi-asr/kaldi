@@ -23,6 +23,7 @@
 #include "util/parse-options.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 
 /// Configuration variables that will be given to the program that
@@ -102,7 +103,8 @@ class NnetDataRandomizer {
 
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif
 

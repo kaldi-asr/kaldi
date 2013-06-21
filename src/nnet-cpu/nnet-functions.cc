@@ -20,6 +20,7 @@
 #include "util/stl-utils.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 int32 IndexOfSoftmaxLayer(const Nnet &nnet) {
   int32 index = -1, nc = nnet.NumComponents();
@@ -52,4 +53,5 @@ void InsertComponents(const Nnet &src_nnet,
 }
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi

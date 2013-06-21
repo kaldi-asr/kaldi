@@ -19,6 +19,7 @@
 #include "util/common-utils.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 void UnitTestPreconditionDirections() {
   MatrixIndexT N = 2 + rand() % 30,
@@ -52,11 +53,13 @@ void UnitTestPreconditionDirections() {
 }
 
 
-}
+} // namespace nnet2
+} // namespace kaldi
 
 
 int main() {
   using namespace kaldi;
+  using namespace kaldi::nnet2;
   for (int32 i = 0; i < 10; i++)
     UnitTestPreconditionDirections();
 }

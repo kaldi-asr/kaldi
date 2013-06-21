@@ -38,6 +38,7 @@
 // kind of Fisher matrix for preconditioning.
 
 namespace kaldi {
+namespace nnet2 {
 
 /** Configuration class that controls neural net combination, where we combine a
     number of neural nets, trying to find for each layer the optimal weighted
@@ -93,6 +94,7 @@ void CombineNnetsFast(const NnetCombineFastConfig &combine_config,
   
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif

@@ -18,6 +18,7 @@
 #include "nnet-cpu/shrink-nnet.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 static BaseFloat ComputeObjfAndGradient(
     const std::vector<NnetTrainingExample> &validation_set,
@@ -105,4 +106,5 @@ void ShrinkNnet(const NnetShrinkConfig &shrink_config,
 }
  
   
-} // namespace
+} // namespace nnet2
+} // namespace kaldi

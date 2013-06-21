@@ -23,6 +23,7 @@
 #include "util/parse-options.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 /** Configuration class that controls neural net "mixupage" which is actually a
     scaling on the parameters of each of the updatable layers.
@@ -64,6 +65,7 @@ void MixupNnet(const NnetMixupConfig &mixup_config,
   
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif

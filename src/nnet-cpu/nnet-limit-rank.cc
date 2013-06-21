@@ -19,6 +19,7 @@
 #include "thread/kaldi-task-sequence.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 class LimitRankClass {
  public:
@@ -105,4 +106,5 @@ void LimitRankParallel(const NnetLimitRankOpts &opts,
 }
 
   
-} // namespace
+} // namespace nnet2
+} // namespace kaldi

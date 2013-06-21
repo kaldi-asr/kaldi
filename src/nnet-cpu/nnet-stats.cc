@@ -18,6 +18,7 @@
 #include "nnet-cpu/nnet-stats.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 void NnetStats::StatsElement::PrintStats(std::ostream &os) {
   BaseFloat c = (count == 0 ? 1 : count), // prevent division by zero.
@@ -115,4 +116,5 @@ void GetNnetStats(const NnetStatsConfig &config,
 
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi

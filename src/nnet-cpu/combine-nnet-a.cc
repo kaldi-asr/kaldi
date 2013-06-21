@@ -18,6 +18,7 @@
 #include "nnet-cpu/combine-nnet-a.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 /*
   This function gets the "update direction".  The vector "nnets" is
@@ -223,4 +224,5 @@ void CombineNnetsA(const NnetCombineAconfig &config,
 }
  
   
-} // namespace
+} // namespace nnet2
+} // namespace kaldi

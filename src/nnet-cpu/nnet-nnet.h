@@ -30,6 +30,7 @@
 
 
 namespace kaldi {
+namespace nnet2 {
 
 
 /*
@@ -257,6 +258,7 @@ class Nnet {
 
 
 
+} // namespace nnet2
 } // namespace kaldi
 
 #endif

@@ -25,6 +25,7 @@
 #include "nnet-cpu/nnet-update.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 /** This struct stores neural net training examples to be used in
     multi-threaded training.  */
@@ -99,6 +100,7 @@ BaseFloat DoBackpropParallel(const Nnet &nnet,
 
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif // KALDI_NNET_CPU_NNET_UPDATE_PARALLEL_H_

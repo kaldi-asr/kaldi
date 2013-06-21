@@ -20,6 +20,7 @@
 #include "thread/kaldi-thread.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 /*
   This class is responsible for computing a Fisher matrix which is a kind of
@@ -378,4 +379,5 @@ void CombineNnetsFast(const NnetCombineFastConfig &combine_config,
 }
 
   
-} // namespace
+} // namespace nnet2
+} // namespace kaldi

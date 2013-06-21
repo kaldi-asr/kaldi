@@ -23,6 +23,7 @@
 #include "util/kaldi-io.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 // static
 Component* Component::ReadNew(std::istream &is, bool binary) {
@@ -2971,5 +2972,6 @@ void AffineComponentA::Precondition(
                                          InputDim());  
 }
 
+} // namespace nnet2
 } // namespace kaldi
 

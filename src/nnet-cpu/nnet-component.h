@@ -26,6 +26,7 @@
 #include <iostream>
 
 namespace kaldi {
+namespace nnet2 {
 
 
 /**
@@ -1172,6 +1173,7 @@ bool ParseFromString(const std::string &name, std::string *string,
                      bool *param);
 
 
+} // namespace nnet2
 } // namespace kaldi
 
 

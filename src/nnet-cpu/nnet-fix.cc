@@ -18,6 +18,7 @@
 #include "nnet-cpu/nnet-fix.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 
 /* See the header for what we're doing.
@@ -85,4 +86,5 @@ void FixNnet(const NnetFixConfig &config, Nnet *nnet) {
 }
   
   
-} // namespace
+} // namespace nnet2
+} // namespace kaldi

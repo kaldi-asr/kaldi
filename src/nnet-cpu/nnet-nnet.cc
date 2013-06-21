@@ -20,6 +20,7 @@
 #include "util/stl-utils.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 
 int32 Nnet::OutputDim() const {
@@ -506,4 +507,5 @@ void Nnet::UnVectorize(const VectorBase<BaseFloat> &params) {
   KALDI_ASSERT(offset == GetParameterDim());
 }
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi

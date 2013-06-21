@@ -28,6 +28,7 @@
 // how "saturated" the sigmoid is.
 
 namespace kaldi {
+namespace nnet2 {
 
 
 struct NnetRescaleConfig {
@@ -71,6 +72,7 @@ void RescaleNnet(const NnetRescaleConfig &rescale_config,
   
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif

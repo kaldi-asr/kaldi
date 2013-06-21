@@ -21,6 +21,7 @@
 #include "nnet-cpu/nnet-nnet.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 /* This header provides a function FixNnet(), and associated config, which
    is responsible for fixing certain pathologies in a neural network during
@@ -57,6 +58,7 @@ struct NnetFixConfig {
 
 void FixNnet(const NnetFixConfig &config, Nnet *nnet);
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif // KALDI_NNET_CPU_NNET_FIX_H_

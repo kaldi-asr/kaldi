@@ -23,6 +23,7 @@
 #include "util/parse-options.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 /** Configuration class that controls neural net combination, where we combine a
     number of neural nets, trying to find for each layer the optimal weighted
@@ -64,6 +65,7 @@ void CombineNnets(const NnetCombineConfig &combine_config,
   
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif

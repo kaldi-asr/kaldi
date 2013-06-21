@@ -23,6 +23,7 @@
 #include "util/parse-options.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 /** Configuration class that controls neural net "shrinkage" which is actually a
     scaling on the parameters of each of the updatable layers.
@@ -50,6 +51,7 @@ void ShrinkNnet(const NnetShrinkConfig &shrink_config,
   
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif

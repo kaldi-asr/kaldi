@@ -21,6 +21,7 @@
 #include "nnet-cpu/nnet-nnet.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 /* This program computes various statistics from a neural net.  These are
    summaries of certain quantities already present in the network as
@@ -88,6 +89,7 @@ void GetNnetStats(const NnetStatsConfig &config,
                   std::vector<NnetStats> *stats);
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif // KALDI_NNET_CPU_NNET_STATS_H_

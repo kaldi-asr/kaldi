@@ -22,6 +22,7 @@
 #include "util/table-types.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 /* This header provides functionality for sample-by-sample stochastic
    gradient descent and gradient computation with a neural net.
@@ -97,6 +98,7 @@ double ComputeNnetGradient(
     Nnet *gradient);
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif // KALDI_NNET_CPU_NNET_UPDATE_H_

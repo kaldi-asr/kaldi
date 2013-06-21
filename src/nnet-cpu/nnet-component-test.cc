@@ -19,6 +19,7 @@
 #include "util/common-utils.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 
 void UnitTestGenericComponentInternal(const Component &component) {
@@ -501,6 +502,7 @@ void BasicDebugTestForSpliceMax(bool output=false) {
 }
 
 
+} // namespace nnet2
 } // namespace kaldi
 
 #include "matrix/matrix-functions.h"
@@ -508,6 +510,7 @@ void BasicDebugTestForSpliceMax(bool output=false) {
 
 int main() {
   using namespace kaldi;
+  using namespace kaldi::nnet2;
 
   BasicDebugTestForSplice(true);
   BasicDebugTestForSpliceMax(true);

@@ -23,6 +23,7 @@
 #include "util/parse-options.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 // Note:the num-samples is determined by what you pipe in.
 struct NnetLbfgsTrainerConfig {
@@ -99,6 +100,7 @@ void PreconditionNnet(const PreconditionConfig &config,
                       Nnet *nnet);
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif

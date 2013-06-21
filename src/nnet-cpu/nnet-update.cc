@@ -18,6 +18,7 @@
 #include "nnet-cpu/nnet-update.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 
 // This class NnetUpdater contains functions for updating the neural net or
@@ -302,4 +303,5 @@ void NnetTrainingExample::Read(std::istream &is, bool binary) {
 
   
   
-} // namespace
+} // namespace nnet2
+} // namespace kaldi

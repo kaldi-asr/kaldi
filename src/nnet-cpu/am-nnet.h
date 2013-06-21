@@ -23,6 +23,7 @@
 #include "nnet-cpu/nnet-nnet.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 /*
   The class AmNnet (AM stands for "acoustic model") has the job of taking the
@@ -73,6 +74,7 @@ class AmNnet {
 
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif // KALDI_NNET_CPU_AM_NNET_H_

@@ -21,6 +21,7 @@
 #include "nnet-cpu/nnet-nnet.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 /* This header provides functionality for doing forward computation and
    backpropagation for whole chunks of features, e.g. whole utterances.  The
@@ -64,6 +65,7 @@ BaseFloat NnetGradientComputation(const Nnet &nnet,
 
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif // KALDI_NNET_CPU_NNET_COMPUTE_H_

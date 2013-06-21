@@ -23,6 +23,7 @@
 #include "util/parse-options.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 
 struct NnetAdaptiveTrainerConfig {
@@ -171,6 +172,7 @@ class NnetSimpleTrainer {
 
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif

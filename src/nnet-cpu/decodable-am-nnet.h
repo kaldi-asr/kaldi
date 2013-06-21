@@ -28,6 +28,7 @@
 #include "nnet-cpu/nnet-compute.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 /// DecodableAmNnet is a decodable object that decodes
 /// with a neural net acoustic model of type AmNnet.
@@ -165,7 +166,7 @@ class DecodableAmNnetParallel: public DecodableInterface {
 
 
   
-
-}  // namespace kaldi
+} // namespace nnet2
+} // namespace kaldi
 
 #endif  // KALDI_NNET_CPU_DECODABLE_AM_NNET_H_

@@ -23,6 +23,7 @@
 #include "util/parse-options.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 struct NnetCombineAconfig {
   int32 num_bfgs_iters; // The dimension is small (the number of layers)
@@ -75,6 +76,7 @@ void CombineNnetsA(const NnetCombineAconfig &combine_config,
   
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif

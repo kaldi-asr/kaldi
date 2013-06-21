@@ -25,6 +25,7 @@
 #include "nnet-cpu/nnet-update.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 struct NnetLimitRankOpts {
   int32 num_threads;
@@ -51,6 +52,7 @@ void LimitRankParallel(const NnetLimitRankOpts &opts,
                             
 
 
-} // namespace
+} // namespace nnet2
+} // namespace kaldi
 
 #endif // KALDI_NNET_CPU_NNET_LIMIT_RANK_H_
