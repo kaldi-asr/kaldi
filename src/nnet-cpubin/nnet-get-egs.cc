@@ -21,6 +21,7 @@
 #include "nnet-cpu/nnet-randomize.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 // returns an integer randomly drawn with expected value "expected_count"
 // (will be either floor(expected_count) or ceil(expected_count)).
@@ -77,11 +78,14 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   }
 }
 
+
+} // namespace nnet2
 } // namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
+    using namespace kaldi::nnet2;
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
 

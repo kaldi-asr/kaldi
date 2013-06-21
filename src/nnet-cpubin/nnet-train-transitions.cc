@@ -23,6 +23,7 @@
 #include "tree/context-dep.h"
 
 namespace kaldi {
+namespace nnet2 {
 void SetPriors(const TransitionModel &tmodel,
                const Vector<double> &transition_accs,
                double prior_floor,
@@ -43,11 +44,15 @@ void SetPriors(const TransitionModel &tmodel,
   pdf_counts.Scale(1.0 / pdf_counts.Sum()); // normalize again.
   am_nnet->SetPriors(pdf_counts);
 }               
-}
+
+
+} // namespace nnet2
+} // namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
+    using namespace kaldi::nnet2;
     typedef kaldi::int32 int32;
 
     const char *usage =

@@ -24,6 +24,7 @@
 #include "thread/kaldi-task-sequence.h"
 
 namespace kaldi {
+namespace nnet2 {
 
 struct NnetLogprobTask {
   NnetLogprobTask(const AmNnet &am_nnet,
@@ -75,12 +76,14 @@ struct NnetLogprobTask {
 };
 
 
-}
+} // namespace nnet2
+} // namespace kaldi
 
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
+    using namespace kaldi::nnet2;
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
 

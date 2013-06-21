@@ -23,6 +23,7 @@
 #include "nnet-cpu/am-nnet.h"
 
 namespace kaldi {
+namespace nnet2 {
 void NormalizeNnet(Nnet *nnet) {
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
     AffineComponent *ac =
@@ -42,12 +43,14 @@ void NormalizeNnet(Nnet *nnet) {
   }
 }
 
-}
+} // namespace nnet2
+} // namespace kaldi
 
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
+    using namespace kaldi::nnet2;
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
 
