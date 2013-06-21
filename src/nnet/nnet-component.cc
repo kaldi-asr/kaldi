@@ -24,6 +24,7 @@
 #include "nnet/nnet-various.h"
 
 namespace kaldi {
+namespace nnet1 {
 
 
 const struct Component::key_value Component::kMarkerMap[] = {
@@ -125,4 +126,5 @@ void Component::Write(std::ostream &os, bool binary) const {
 }
 
 
-} // namespace
+} // namespace nnet1
+} // namespace kaldi

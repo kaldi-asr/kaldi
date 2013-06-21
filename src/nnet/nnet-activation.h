@@ -24,6 +24,7 @@
 #include "cudamatrix/cu-rand.h"
 
 namespace kaldi {
+namespace nnet1 {
 
 class Softmax : public Component {
  public:
@@ -143,7 +144,8 @@ class Dropout : public Component {
 
 
 
-} // namespace
+} // namespace nnet1
+} // namespace kaldi
 
 #endif
 
