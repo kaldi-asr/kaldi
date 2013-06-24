@@ -42,6 +42,13 @@ if (@ARGV > 0 && $ARGV[0] eq "-f") {
   }
 }
 
+# Mapping is obligatory
+$permissive = 0;
+if (@ARGV > 0 && $ARGV[0] eq '--permissive') {
+  shift @ARGV;
+  # Mapping is optional (missing key is printed to output)
+  $permissive = 1;
+}
 
 if(@ARGV != 1) {
   print STDERR "Usage: apply_map.pl [options] map <input >output\n" .
@@ -73,8 +80,15 @@ while(<STDIN>) {
     if ( (!defined $field_begin || $x >= $field_begin)
          && (!defined $field_end || $x <= $field_end)) {
       $a = $A[$x];
-      if (!defined $map{$a}) { die "compose_maps.pl: undefined key $a\n"; }
-      $A[$x] = $map{$a};
+      if (!defined $map{$a}) {
+        if (!$permissive) {
+          die "apply_map.pl: undefined key $a\n"; 
+        } else {
+          print STDERR "apply_map.pl: warning! missing key $a\n";
+        }
+      } else {
+        $A[$x] = $map{$a}; 
+      }
     }
   }
   print join(" ", @A) . "\n";

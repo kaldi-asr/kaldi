@@ -19,6 +19,7 @@ max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
 # End configuration section.
+use_gpu_id=-1 # disable gpu
 parallel_opts="-pe smp 2"
 
 echo "$0 $@"  # Print the command line for logging
@@ -115,7 +116,7 @@ if [ -f $srcdir/delta_order ]; then
 fi
 
 # Finally add feature_transform and the MLP
-feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts $nnet ark:- ark:- |"
+feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu-id=$use_gpu_id $nnet ark:- ark:- |"
 ###
 ###
 ###
