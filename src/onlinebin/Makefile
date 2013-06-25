@@ -16,7 +16,7 @@ endif
 
 include ../kaldi.mk
 
-BINFILES = online-net-client online-server-gmm-decode-faster online-gmm-decode-faster online-wav-gmm-decode-faster
+BINFILES = online-net-client online-server-gmm-decode-faster online-gmm-decode-faster online-wav-gmm-decode-faster online-audio-server-decode-faster online-audio-client
 
 OBJFILES =
 

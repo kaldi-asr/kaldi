@@ -6,7 +6,7 @@ include ../kaldi.mk
 
 BINFILES =
 
-OBJFILES = online-audio-source.o online-feat-input.o online-decodable.o online-faster-decoder.o onlinebin-util.o
+OBJFILES = online-audio-source.o online-feat-input.o online-decodable.o online-faster-decoder.o onlinebin-util.o online-tcp-source.o
 
 LIBFILE = kaldi-online.a
 

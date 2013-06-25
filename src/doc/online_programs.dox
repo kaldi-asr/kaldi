@@ -1,0 +1,122 @@
+// doc/decoders.dox
+
+
+// Copyright 2013 Polish-Japanese Institute of Information Technology (author: Danijel Korzinek)
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+
+\page online_programs Online Recognizers
+
+There are several programs in the Kaldi toolkit that can be used for online recognition. 
+They are all located in the src/onlinebin folder and require the files from
+the src/online folder to be compiled as well (you can currently compile these with
+"make ext"). Many of these programs will also require the
+Portaudio library present in the tools folder, which can be downloaded using the appropriate
+script found there. The programs are as follows:
+  - online-gmm-decode-faster - records audio from the microphone and outputs the result on stdout 
+  - online-wav-gmm-decode-faster - reads a list of WAV files and outputs the result into special output format
+  - online-server-gmm-decode-faster - reads vectors of MFCC features from a UDP socket and prints the result to stdout
+  - online-net-client - records audio from the microphone, converts it to vectors of features and sends them over UDP to online-server-gmm-decode-faster   
+  - online-audio-server-decode-faster - reads RAW audio data from a TCP socket and outputs aligned words to the same socket
+  - online-audio-client - reads a list of WAV files, sends their audio over TCP to online-audio-server-decode-faster, reads the output and saves the result to the chosen file format
+
+There is also a Java equivalent of the online-audio-client which contains slightly more features and has a GUI.
+
+\section audio_server Online Audio Server
+
+The main difference between the online-server-gmm-decode-faster and online-audio-server-decode-faster programs is the input: the former accepts feature vectors, while the latter accepts RAW audio.
+The advantage of the latter is that it can be deployed directly as a back-end for any client: whether it is another computer on the Internet or a mobile device. 
+Main thing here is that the client doesn't need to know anything about the feature set used to train the models and provided it can record standard audio at the predetermined sampling
+frequency and bit-depth, it will always be compatible with the server. An advantage of the server that accepts feature vectors, instead of audio, is a lower cost of data transfer between
+the client and the server, but this can be easily outperformed by simply using a state-of-the-art codec for audio (which is something that may be done in the future).
+
+The communication between the online-audio-client and online-audio-server-decode-faster consists of two phases: first the client sends packets of raw audio to the server, second the server
+replies with the output of the recognition. The two phases may happen asynchronously, meaning that the decoder can output results online, as fast as it is certain of their outcome and not
+wait for the end of the data to arrive. This opens up more possibilities for creating applications in the future.
+
+\subsection audio_data Audio Data
+
+The audio data format is currently hardcoded to be RAW 16 kHz, 16-bit, signed, little-endian (server native), linear PCM. The protocol works by splitting data into 
+chunks and prepending each chunk with a 4-byte code containing its exact size. The size is also (server native) little-endian and can contain any value as long as it is positive
+and even (because of 16-bit sampling). The last packet of size 0 is treated as the end of stream and forces the decoder to dump the rest of its results and finish the recognition process.
+
+\subsection results Recognition Results
+
+The results are sent by the server as soon as they are recognized. Each result packet is prepended by a header starting with the characters "RESULT:".  Following that is a comma separated
+list of key=value parameters containing some useful information:
+  - NUM - number of words to follow
+  - FORMAT - the format of the result to follow; currently only WSE (word-start-end), but it will allow modification in the future
+  - RECO-DUR - time it took to recognize the sequence (as a floating point value in seconds)
+  - INPUT-DUR - length of the input audio sequence (as a floating point value in seconds)
+  
+ The header "RESULT:DONE" is sent when there are no more results that can be returned by the server. In this case, the server simply waits for either more data by the client, or for a disconnect.
+  
+ The data underneath the header consists of exactly NUM lines of words formatted in the way determined by the FORMAT parameter. In the case of WSE format, this is simply a comma separated list
+ containing 3 tokens: the word (as present in the dictionary), start time and end time (as floating point values in seconds). Beware that the words are going to be encoded exactly as they are
+ in the dictionary provided to the server and therefore, the client must make sure to perform the appropriate character conversion if necessary. The online-audio-client, for example, doesn't
+ perform any character conversion while generating WebVTT files (which require UTF8), so you need to convert the resulting files to UTF8 using iconv (or a similar program).
+ 
+ An example of the results of the server is as follows:
+ \verbatim
+ RESULT:NUM=3,FORMAT=WSE,RECO_DUR=1.7,INPUT_DUR=3.22
+ one,0.4,1.2
+ two,1.4,1.9
+ three,2.2,3.4
+ RESULT:DONE 
+\endverbatim
+
+\subsection usage Example Usage
+
+Command line to start the server:
+\verbatim
+online-audio-server-decode-faster --verbose=1 --rt-min=0.5 --rt-max=3.0 --max-active=6000 --beam=72.0 --acoustic-scale=0.0769 
+final.mdl graph/HCLG.fst graph/words.txt '1:2:3:4:5' 5010 graph/word_boundary_phones.txt final.mat
+\endverbatim
+
+Arguments are as follow:
+  - final.mdl - the acoustic model
+  - HCLG.fst - the complete FST
+  - words.txt - word dictionary (mapping word ids to their textual representation)
+  - '1:2:3:4:5' - list of silence phoneme ids
+  - 5010 - port the server is listening on
+  - word_boundary_phones.txt - a list of phoneme boundary information mapping phoneme ids to words: nonword,begin,end,internal,singleton
+  - final.mat - feature LDA matrix
+  
+ Command line to start the client:
+ \verbatim
+ online-audio-client --htk --vtt localhost 5010 scp:test.scp
+ \endverbatim
+
+Arguments are as follow:
+  - --htk - save results as an HTK label file
+  - --vtt - save results as a WebVTT file
+  - localhost - server to connect to
+  - 5010 - port to connect to
+  - scp:test.scp - list of WAV files to send
+  
+Command line to start the Java client:
+\verbatim
+java -jar online-audio-client.jar
+\endverbatim
+
+Or simply double-click the JAR file in the graphical interface.
+
+*/
+
+
+}
