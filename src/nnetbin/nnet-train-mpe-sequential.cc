@@ -197,7 +197,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "TRAINING STARTED";
 
     int32 num_done = 0, num_no_ref_ali = 0, num_no_den_lat = 0,
-      num_other_error = 0, num_max_frames_exceeded = 0;
+      num_other_error = 0;
 
     kaldi::int64 total_frames = 0;
     double total_frame_acc = 0.0, utt_frame_acc;
@@ -229,11 +229,16 @@ int main(int argc, char *argv[]) {
       if (mat.NumRows() > max_frames) {
 	KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
 	  " frames, which is more than " << max_frames << ".";
-	num_max_frames_exceeded++;
+	num_other_error++;
 	continue;
       }
       // 2) get the denominator lattice, preprocess
       Lattice den_lat = den_lat_reader.Value(utt);
+      if (den_lat.Start() == -1) {
+        KALDI_WARN << "Empty lattice for utt " << utt;
+        num_other_error++;
+        continue;
+      }
       if (old_acoustic_scale != 1.0) {
         fst::ScaleLattice(fst::AcousticLatticeScale(old_acoustic_scale),
                           &den_lat);
@@ -359,7 +364,6 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << num_done << " files, "
               << num_no_ref_ali << " with no reference alignments, "
               << num_no_den_lat << " with no lattices, "
-	      << num_max_frames_exceeded << " with too many frames, "
               << num_other_error << " with other errors.";
 
     KALDI_LOG << "Overall average frame-accuracy is "
