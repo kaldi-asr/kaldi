@@ -4,24 +4,49 @@ EXTRA_CXXFLAGS = -Wno-sign-compare -I ../../tools/portaudio/install/include
 EXTRA_LDLIBS =
 include ../kaldi.mk
 
-BINFILES =
+TESTFILES = online-feat-test
 
 OBJFILES = online-audio-source.o online-feat-input.o online-decodable.o online-faster-decoder.o onlinebin-util.o online-tcp-source.o
 
-LIBFILE = kaldi-online.a
+LIBNAME = kaldi-online
 
-TESTFILES = online-feat-test
+ADDLIBS = ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a  ../feat/kaldi-feature.a \
+          ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a \
+					../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a \
+					../base/kaldi-base.a 
 
-all:  $(LIBFILE) $(BINFILES)
+
+ifeq ($(KALDI_FLAVOR), dynamic)
+ifdef LIBNAME
+LIBFILE = lib$(LIBNAME).so
+LDLIBS  += -l$(LIBNAME)
+endif
+LDFLAGS += $(foreach dep,$(ADDLIBS), -L$(dir $(dep)) )
+LDFLAGS += -L.
+LDFLAGS += -Wl,-rpath=$(shell readlink -f ../dynlib)
+LDLIBS  += $(foreach dep,$(ADDLIBS), -l$(notdir $(basename $(dep))) )
+XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))/lib$(notdir $(basename $(dep))).so )
+else
+ifdef LIBNAME
+LIBFILE = $(LIBNAME).a
+endif
+XDEPENDS = $(ADDLIBS)
+endif
+
+all: $(LIBFILE) $(BINFILES)
 
 $(LIBFILE): $(OBJFILES)
-	$(AR) -cru $(LIBFILE) $(OBJFILES)
-	$(RANLIB) $(LIBFILE)
+ifeq ($(KALDI_FLAVOR), dynamic)
+	gcc -shared -o $(LIBFILE) -Wl,-soname=$(LIBFILE) $(OBJFILES)
+	cp $@ ../dynlib
+else
+	$(AR) -cru $(LIBNAME).a $(OBJFILES)
+	$(RANLIB) $(LIBNAME).a
+endif
 
 
-$(TESTFILES): $(LIBFILE) ../feat/kaldi-feature.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+$(BINFILES): $(LIBFILE) $(XDEPENDS)
 
-$(BINFILES): $(LIBFILE) ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a  ../feat/kaldi-feature.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a 
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:
@@ -30,15 +55,20 @@ $(BINFILES): $(LIBFILE) ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a  ../feat/k
 %.a:
 	$(MAKE) -C ${@D} ${@F}
 
+%.so:
+	$(MAKE) -C ${@D} ${@F}
+
 clean:
-	-rm -f *.o *.a $(BINFILES) tmp* *.tmp
+	-rm -f *.o *.a *.so $(TESTFILES) $(BINFILES) tmp* *.tmp
+
+$(TESTFILES): $(LIBFILE) $(XDEPENDS)
 
 test_compile: $(TESTFILES)
   
 test: test_compile
 	@result=0; for x in $(TESTFILES); do echo -n "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
 
-.valgrind: $(BINFILES)
+.valgrind: $(BINFILES) $(TESTFILES)
 
 
 depend:

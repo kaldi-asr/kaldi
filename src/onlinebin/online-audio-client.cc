@@ -32,8 +32,6 @@
 #include "feat/wave-reader.h"
 #include "online/online-audio-source.h"
 
-using namespace kaldi;
-typedef kaldi::int32 int32;
 
 namespace kaldi {
 
@@ -41,8 +39,7 @@ bool WriteFull(int32 desc, char* data, int32 size);
 bool ReadLine(int32 desc, std::string* str);
 std::string TimeToTimecode(float time);
 
-class RecognizedWord {
- public:
+struct RecognizedWord {
   std::string word;
   float start, end;
 };
@@ -50,6 +47,9 @@ class RecognizedWord {
 }  //namespace kaldi
 
 int main(int argc, char** argv) {
+  using namespace kaldi;
+  typedef kaldi::int32 int32;
+  
   try {
 
     const char *usage =

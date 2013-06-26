@@ -22,7 +22,7 @@ namespace kaldi {
 
 typedef kaldi::int32 int32;
 
-OnlineTCPVectorSource::OnlineTCPVectorSource(int32 socket)
+OnlineTcpVectorSource::OnlineTcpVectorSource(int32 socket)
     : socket_desc(socket),
       connected(true),
       pack_size(512),
@@ -34,19 +34,19 @@ OnlineTCPVectorSource::OnlineTCPVectorSource(int32 socket)
   frame = new char[frame_size];
 }
 
-OnlineTCPVectorSource::~OnlineTCPVectorSource() {
+OnlineTcpVectorSource::~OnlineTcpVectorSource() {
   delete[] pack;
   delete[] frame;
 }
 
-size_t OnlineTCPVectorSource::SamplesProcessed() {
+size_t OnlineTcpVectorSource::SamplesProcessed() {
   return samples_processed;
 }
-void OnlineTCPVectorSource::ResetSamples() {
+void OnlineTcpVectorSource::ResetSamples() {
   samples_processed = 0;
 }
 
-bool OnlineTCPVectorSource::ReadFull(char* buf, int32 len) {
+bool OnlineTcpVectorSource::ReadFull(char* buf, int32 len) {
   int32 to_read = len;
   int32 has_read = 0;
   int32 ret;
@@ -64,7 +64,7 @@ bool OnlineTCPVectorSource::ReadFull(char* buf, int32 len) {
   return true;
 }
 
-int OnlineTCPVectorSource::GetNextPack() {
+int OnlineTcpVectorSource::GetNextPack() {
   int32 size = 0;
   if (!ReadFull((char*) &size, 4))
     return 0;
@@ -86,7 +86,7 @@ int OnlineTCPVectorSource::GetNextPack() {
   return size;
 }
 
-int OnlineTCPVectorSource::FillFrame(int32 get_size) {
+int OnlineTcpVectorSource::FillFrame(int32 get_size) {
   int32 frame_offset = 0;
   if (last_pack_rem > 0) {
     int pack_offset = last_pack_size - last_pack_rem;
@@ -118,7 +118,7 @@ int OnlineTCPVectorSource::FillFrame(int32 get_size) {
   return frame_offset;
 }
 
-bool OnlineTCPVectorSource::Read(Vector<BaseFloat> *data, int32 timeout) {
+bool OnlineTcpVectorSource::Read(Vector<BaseFloat> *data, int32 timeout) {
   if (!connected)
     return false;
 
@@ -144,7 +144,7 @@ bool OnlineTCPVectorSource::Read(Vector<BaseFloat> *data, int32 timeout) {
   return (n_read == n_elem);
 }
 
-bool OnlineTCPVectorSource::IsConnected() {
+bool OnlineTcpVectorSource::IsConnected() {
   return connected;
 }
 
