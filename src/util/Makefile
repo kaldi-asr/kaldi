@@ -1,5 +1,7 @@
 
+
 all:
+
 
 include ../kaldi.mk
 
@@ -10,17 +12,40 @@ TESTFILES = const-integer-set-test stl-utils-test text-utils-test \
 OBJFILES = text-utils.o kaldi-io.o \
          kaldi-table.o parse-options.o simple-io-funcs.o
 
-LIBFILE = kaldi-util.a
+LIBNAME = kaldi-util
 
-all:  $(LIBFILE)
+ADDLIBS = ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
+ifeq ($(KALDI_FLAVOR), dynamic)
+ifdef LIBNAME
+LIBFILE = lib$(LIBNAME).so
+LDLIBS  += -l$(LIBNAME)
+endif
+LDFLAGS += $(foreach dep,$(ADDLIBS), -L$(dir $(dep)) )
+LDFLAGS += -L.
+LDFLAGS += -Wl,-rpath=$(shell readlink -f ../dynlib)
+LDLIBS  += $(foreach dep,$(ADDLIBS), -l$(notdir $(basename $(dep))) )
+XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))/lib$(notdir $(basename $(dep))).so )
+else
+ifdef LIBNAME
+LIBFILE = $(LIBNAME).a
+endif
+XDEPENDS = $(ADDLIBS)
+endif
+
+all: $(LIBFILE) $(BINFILES)
 
 $(LIBFILE): $(OBJFILES)
-	$(AR) -cru $(LIBFILE) $(OBJFILES)
-	$(RANLIB) $(LIBFILE)
+ifeq ($(KALDI_FLAVOR), dynamic)
+	gcc -shared -o $(LIBFILE) -Wl,-soname=$(LIBFILE) $(OBJFILES)
+	cp $@ ../dynlib
+else
+	$(AR) -cru $(LIBNAME).a $(OBJFILES)
+	$(RANLIB) $(LIBNAME).a
+endif
 
 
-$(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+$(BINFILES): $(LIBFILE) $(XDEPENDS)
 
 
 # Rule below would expand to, e.g.:
@@ -30,15 +55,20 @@ $(TESTFILES): $(LIBFILE) ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 %.a:
 	$(MAKE) -C ${@D} ${@F}
 
+%.so:
+	$(MAKE) -C ${@D} ${@F}
+
 clean:
-	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
+	-rm -f *.o *.a *.so $(TESTFILES) $(BINFILES) tmp* *.tmp
+
+$(TESTFILES): $(LIBFILE) $(XDEPENDS)
 
 test_compile: $(TESTFILES)
   
 test: test_compile
 	@result=0; for x in $(TESTFILES); do echo -n "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
 
-.valgrind: $(TESTFILES)
+.valgrind: $(BINFILES) $(TESTFILES)
 
 
 depend:

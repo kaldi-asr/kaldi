@@ -10,6 +10,10 @@ CXXFLAGS = -msse -Wall -I.. \
       $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID 
 
+ifeq ($(KALDI_FLAVOR), dynamic)
+CXXFLAGS += -fPIC
+endif
+
 LDFLAGS = -rdynamic
 LDLIBS = $(EXTRA_LDLIBS) ../../tools/openfst/lib/libfst.a -ldl $(CLAPACKLIBS) -lm -lpthread
 CC = g++

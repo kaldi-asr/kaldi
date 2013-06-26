@@ -23,6 +23,10 @@ CXXFLAGS = -msse -msse2 -Wall -I.. \
       $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID 
 
+ifeq ($(KALDI_FLAVOR), dynamic)
+CXXFLAGS += -fPIC
+endif
+
 LDFLAGS = -rdynamic
 LDLIBS = $(EXTRA_LDLIBS) $(FSTROOT)/lib/libfst.a -ldl $(ATLASLIBS) -lm -lpthread
 CC = g++

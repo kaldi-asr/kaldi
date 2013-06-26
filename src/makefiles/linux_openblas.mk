@@ -11,6 +11,10 @@ CXXFLAGS = -msse -Wall -I.. \
       $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID 
 
+ifeq ($(KALDI_FLAVOR), dynamic)
+CXXFLAGS += -fPIC
+endif
+
 LDFLAGS = -rdynamic
 LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(OPENBLASLIBS) -lm -lpthread -ldl 
 CC = g++

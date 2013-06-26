@@ -8,20 +8,43 @@ TESTFILES =
 OBJFILES = training-graph-compiler.o lattice-simple-decoder.o lattice-faster-decoder.o \
    faster-decoder.o lattice-tracking-decoder.o
 
-LIBFILE = kaldi-decoder.a
+LIBNAME = kaldi-decoder
 
-
-all:  $(LIBFILE)
-
-
-$(LIBFILE): $(OBJFILES)
-	$(AR) -cru $(LIBFILE) $(OBJFILES)
-	$(RANLIB) $(LIBFILE)
-
-
-$(TESTFILES): $(LIBFILE) ../transform/kaldi-transform.a ../tree/kaldi-tree.a \
+ADDLIBS = ../transform/kaldi-transform.a ../tree/kaldi-tree.a \
      ../sgmm/kaldi-sgmm.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a ../util/kaldi-util.a \
      ../base/kaldi-base.a ../matrix/kaldi-matrix.a 
+
+ifeq ($(KALDI_FLAVOR), dynamic)
+ifdef LIBNAME
+LIBFILE = lib$(LIBNAME).so
+LDLIBS  += -l$(LIBNAME)
+endif
+LDFLAGS += $(foreach dep,$(ADDLIBS), -L$(dir $(dep)) )
+LDFLAGS += -L.
+LDFLAGS += -Wl,-rpath=$(shell readlink -f ../dynlib)
+LDLIBS  += $(foreach dep,$(ADDLIBS), -l$(notdir $(basename $(dep))) )
+XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))/lib$(notdir $(basename $(dep))).so )
+else
+ifdef LIBNAME
+LIBFILE = $(LIBNAME).a
+endif
+XDEPENDS = $(ADDLIBS)
+endif
+
+all: $(LIBFILE) $(BINFILES)
+
+$(LIBFILE): $(OBJFILES)
+ifeq ($(KALDI_FLAVOR), dynamic)
+	gcc -shared -o $(LIBFILE) -Wl,-soname=$(LIBFILE) $(OBJFILES)
+	cp $@ ../dynlib
+else
+	$(AR) -cru $(LIBNAME).a $(OBJFILES)
+	$(RANLIB) $(LIBNAME).a
+endif
+
+
+$(BINFILES): $(LIBFILE) $(XDEPENDS)
+
 
 # Rule below would expand to, e.g.:
 # ../base/kaldi-base.a:
@@ -30,15 +53,20 @@ $(TESTFILES): $(LIBFILE) ../transform/kaldi-transform.a ../tree/kaldi-tree.a \
 %.a:
 	$(MAKE) -C ${@D} ${@F}
 
+%.so:
+	$(MAKE) -C ${@D} ${@F}
+
 clean:
-	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
+	-rm -f *.o *.a *.so $(TESTFILES) $(BINFILES) tmp* *.tmp
+
+$(TESTFILES): $(LIBFILE) $(XDEPENDS)
 
 test_compile: $(TESTFILES)
   
 test: test_compile
 	@result=0; for x in $(TESTFILES); do echo -n "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
 
-.valgrind: $(TESTFILES)
+.valgrind: $(BINFILES) $(TESTFILES)
 
 
 depend:
