@@ -121,7 +121,8 @@ int main(int argc, char *argv[]) {
     po.Register("old-acoustic-scale", &old_acoustic_scale,
                 "Add in the scores in the input lattices with this scale, rather "
                 "than discarding them.");
-
+    kaldi::int32 max_frames = 6000; // Allow segments maximum of one minute by default
+    po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
     bool do_smbr = false;
     po.Register("do-smbr", &do_smbr, "Use state-level accuracies instead of "
                 "phone accuracies.");
@@ -196,7 +197,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "TRAINING STARTED";
 
     int32 num_done = 0, num_no_ref_ali = 0, num_no_den_lat = 0,
-        num_other_error = 0;
+      num_other_error = 0, num_max_frames_exceeded = 0;
 
     kaldi::int64 total_frames = 0;
     double total_frame_acc = 0.0, utt_frame_acc;
@@ -225,7 +226,12 @@ int main(int argc, char *argv[]) {
         num_other_error++;
         continue;
       }
-
+      if (mat.NumRows() > max_frames) {
+	KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
+	  " frames, which is more than " << max_frames << ".";
+	num_max_frames_exceeded++;
+	continue;
+      }
       // 2) get the denominator lattice, preprocess
       Lattice den_lat = den_lat_reader.Value(utt);
       if (old_acoustic_scale != 1.0) {
@@ -353,6 +359,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << num_done << " files, "
               << num_no_ref_ali << " with no reference alignments, "
               << num_no_den_lat << " with no lattices, "
+	      << num_max_frames_exceeded << " with too many frames, "
               << num_other_error << " with other errors.";
 
     KALDI_LOG << "Overall average frame-accuracy is "
