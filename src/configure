@@ -72,11 +72,16 @@ threaded_math=${threaded_atlas}
 static_math=false
 static_fst=false
 use_cuda=true
+dynamic_kaldi=false
 
 while [ $# -gt 0 ];
 do
   case "$1" in
   --help) usage; exit 0 ;;
+  --static)
+  dynamic_kaldi=false; shift ;;
+  --shared)
+  dynamic_kaldi=true; shift ;;
   --atlas-root=*) 
   ATLASROOT=`read_dirname $1`; shift ;;
   --threaded-atlas=yes)
@@ -484,6 +489,9 @@ if [ -f kaldi.mk ]; then
 fi
 
 cp makefiles/common.mk kaldi.mk
+if $dynamic_kaldi ; then
+echo "KALDI_FLAVOR = dynamic" >> kaldi.mk
+fi
 
 # Most of the OS-specific steps below will append to kaldi.mk
 echo "Doing OS specific configurations ..."
