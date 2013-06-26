@@ -34,6 +34,8 @@ int main(int argc, char *argv[]) {
         "By default, 'start' and 'end' are row numbers (zero-based), but if you specify the --frame-shift\n"
         "option (e.g. --frame-shift=0.01), then they represent a time in seconds, which are converted\n"
         "to integers by dividing by frame-shift.\n"
+        "\n"
+        "Usage: extract-rows [options] <segments-file> <features-rspecifier> <features-wspecifier>\n"
         "  e.g. extract-rows --frame-shift=0.01 segments ark:feats-in.ark ark:feats-out.ark\n";
 
     ParseOptions po(usage);
