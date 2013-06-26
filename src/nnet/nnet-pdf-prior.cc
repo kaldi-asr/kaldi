@@ -19,12 +19,18 @@
 #include "nnet/nnet-pdf-prior.h"
 
 namespace kaldi {
+namespace nnet1 {
 
 PdfPrior::PdfPrior(const PdfPriorOptions &opts)
     : prior_scale_(opts.prior_scale) {
   if (opts.class_frame_counts == "") {
-    KALDI_ERR << "--class-frame-counts is empty: Cannot initialize priors "
-              << "without the counts.";
+    //Empty file with counts is not an error, 
+    //there are cases when PdfPrior is not active 
+    //(example: nnet-forward over feature transform, bn-feature extractor)
+    return;
+
+    //KALDI_ERR << "--class-frame-counts is empty: Cannot initialize priors "
+    //          << "without the counts.";
   }
 
   Vector<double> tmp_priors;
@@ -70,4 +76,19 @@ PdfPrior::PdfPrior(const PdfPriorOptions &opts)
   log_priors_.CopyFromVec(tmp_priors_f);
 }
 
+
+void PdfPrior::SubtractOnLogpost(CuMatrix<BaseFloat> *llk) {
+  if(log_priors_.Dim() == 0) {
+    KALDI_ERR << "--class-frame-counts is empty: Cannot initialize priors "
+              << "without the counts.";
+  }
+  if(log_priors_.Dim() != llk->NumCols()) {
+    KALDI_ERR << "Dimensionality mismatch,"
+              << " class_frame_counts " << log_priors_.Dim()
+              << " pdf_output_llk " << llk->NumCols();
+  }
+  llk->AddVecToRows(-prior_scale_, log_priors_);
+}
+
+}  // namespace nnet1
 }  // namespace kaldi

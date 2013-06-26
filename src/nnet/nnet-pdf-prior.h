@@ -28,6 +28,7 @@
 #include "cudamatrix/cu-vector.h"
 
 namespace kaldi {
+namespace nnet1 {
 
 struct PdfPriorOptions {
   std::string class_frame_counts;
@@ -56,9 +57,7 @@ class PdfPrior {
   explicit PdfPrior(const PdfPriorOptions &opts);
 
   /// Subtract pdf priors from log-posteriors to get pseudo log-likelihoods
-  void SubtractOnLogpost(CuMatrix<BaseFloat> *llk) {
-    llk->AddVecToRows(-prior_scale_, log_priors_);
-  }
+  void SubtractOnLogpost(CuMatrix<BaseFloat> *llk);
 
  private:
   BaseFloat prior_scale_;
@@ -67,6 +66,7 @@ class PdfPrior {
   KALDI_DISALLOW_COPY_AND_ASSIGN(PdfPrior);
 };
 
+}  // namespace nnet1
 }  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_PDF_PRIOR_H_
