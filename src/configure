@@ -79,9 +79,15 @@ do
   case "$1" in
   --help) usage; exit 0 ;;
   --static)
-  dynamic_kaldi=false; shift ;;
+  dynamic_kaldi=false; 
+  static_math=true;
+  static_fst=true;
+  shift ;;  
   --shared)
-  dynamic_kaldi=true; shift ;;
+  dynamic_kaldi=true; 
+  static_math=false;
+  static_fst=false;
+  shift ;;  
   --atlas-root=*) 
   ATLASROOT=`read_dirname $1`; shift ;;
   --threaded-atlas=yes)
