@@ -26,10 +26,10 @@ namespace kaldi {
  *
  * The documentation and "interface" for this class is given in online-audio-source.h
  */
-class OnlineTCPVectorSource {
+class OnlineTcpVectorSource {
  public:
-  OnlineTCPVectorSource(int32 socket);
-  ~OnlineTCPVectorSource();
+  OnlineTcpVectorSource(int32 socket);
+  ~OnlineTcpVectorSource();
 
   // Implementation of the OnlineAudioSource "interface"
   bool Read(Vector<BaseFloat> *data, int32 timeout);
@@ -61,7 +61,7 @@ class OnlineTCPVectorSource {
   //runs "getNextPack" enough times to fill the frame with "size" bytes
   int32 FillFrame(int32 size);
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineTCPVectorSource);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineTcpVectorSource);
 };
 
 }  // namespace kaldi

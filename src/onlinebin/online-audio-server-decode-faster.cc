@@ -35,24 +35,22 @@
 #include <unistd.h>
 #include <ctime>
 
-using namespace kaldi;
-using namespace fst;
-
+namespace kaldi {
 /*
  * This class is for a very simple TCP server implementation
  * in UNIX sockets.
  */
-class TCPServer {
- private:
-  struct sockaddr_in h_addr;
-  int32 server_desc;
-
+class TcpServer {
  public:
-  TCPServer();
-  ~TCPServer();
+  TcpServer();
+  ~TcpServer(); 
 
-  bool Listen(int32 port);  //start listening on a given port
+  bool Listen(int32 port);  //start listening on a given port  
   int32 Accept();  //accept a client and return its descriptor
+
+ private:
+  struct sockaddr_in h_addr_;
+  int32 server_desc_;
 };
 
 //write a line of text to socket
@@ -60,12 +58,16 @@ bool WriteLine(int32 socket, std::string line);
 
 //constant allowing to convert frame count to time
 const float kFramesPerSecond = 100.0f;
+} // namespace kaldi
 
 int32 main(int argc, char *argv[]) {
+  using namespace kaldi;
+  using namespace fst;
+  
   try {
     typedef kaldi::int32 int32;
-    typedef OnlineFeInput<OnlineTCPVectorSource, Mfcc> FeInput;
-    TCPServer tcp_server;
+    typedef OnlineFeInput<OnlineTcpVectorSource, Mfcc> FeInput;
+    TcpServer tcp_server;
 
     // up to delta-delta derivative features are calculated (unless LDA is used)
     const int32 kDeltaOrder = 2;
@@ -178,7 +180,7 @@ int32 main(int argc, char *argv[]) {
 
     VectorFst<LatticeArc> out_fst;
     CompactLattice out_lat, aligned_lat;
-    OnlineTCPVectorSource* au_src = NULL;
+    OnlineTcpVectorSource* au_src = NULL;
     int32 client_socket = -1;
 
     while (true) {
@@ -188,7 +190,7 @@ int32 main(int argc, char *argv[]) {
           delete au_src;
         }
         client_socket = tcp_server.Accept();
-        au_src = new OnlineTCPVectorSource(client_socket);
+        au_src = new OnlineTcpVectorSource(client_socket);
       }
 
       //re-initalizing decoder for each utterance
@@ -309,50 +311,51 @@ int32 main(int argc, char *argv[]) {
   }
 }  // main()
 
+namespace kaldi {
 // IMPLEMENTATION OF THE CLASSES/METHODS ABOVE MAIN
-TCPServer::TCPServer() {
-  server_desc = -1;
+TcpServer::TcpServer() {
+  server_desc_ = -1;
 }
 
-bool TCPServer::Listen(int32 port) {
-  h_addr.sin_addr.s_addr = INADDR_ANY;
-  h_addr.sin_port = htons(port);
-  h_addr.sin_family = AF_INET;
+bool TcpServer::Listen(int32 port) {
+  h_addr_.sin_addr.s_addr = INADDR_ANY;
+  h_addr_.sin_port = htons(port);
+  h_addr_.sin_family = AF_INET;
 
-  server_desc = socket(AF_INET, SOCK_STREAM, 0);
+  server_desc_ = socket(AF_INET, SOCK_STREAM, 0);
 
-  if (server_desc == -1) {
+  if (server_desc_ == -1) {
     KALDI_ERR<< "Cannot create TCP socket!";
     return false;
   }
 
-  if (bind(server_desc, (struct sockaddr*) &h_addr, sizeof(h_addr)) == -1) {
+  if (bind(server_desc_, (struct sockaddr*) &h_addr_, sizeof(h_addr_)) == -1) {
     KALDI_ERR<< "Cannot bind to port: "<<port<<" (is it taken?)";
     return false;
   }
 
-  if (listen(server_desc, 1) == -1) {
+  if (listen(server_desc_, 1) == -1) {
     KALDI_ERR<< "Cannot listen on port!";
     return false;
   }
 
-  std::cout << "TCPServer: Listening on port: " << port << std::endl;
+  std::cout << "TcpServer: Listening on port: " << port << std::endl;
 
   return true;
 
 }
 
-TCPServer::~TCPServer() {
-  if (server_desc != -1)
-    close(server_desc);
+TcpServer::~TcpServer() {
+  if (server_desc_ != -1)
+    close(server_desc_);
 }
 
-int32 TCPServer::Accept() {
+int32 TcpServer::Accept() {
   std::cout << "Waiting for client..." << std::endl;
-
+  
   socklen_t len;
 
-  int32 client_desc = accept(server_desc, (struct sockaddr*) &h_addr, &len);
+  int32 client_desc = accept(server_desc_, (struct sockaddr*) &h_addr_, &len);
 
   struct sockaddr_storage addr;
   char ipstr[20];
@@ -363,7 +366,7 @@ int32 TCPServer::Accept() {
   struct sockaddr_in *s = (struct sockaddr_in *) &addr;
   inet_ntop(AF_INET, &s->sin_addr, ipstr, sizeof ipstr);
 
-  std::cout << "TCPServer: Accepted connection from: " << ipstr << std::endl;
+  std::cout << "TcpServer: Accepted connection from: " << ipstr << std::endl;
 
   return client_desc;
 }
@@ -385,3 +388,4 @@ bool WriteLine(int32 socket, std::string line) {
 
   return true;
 }
+} // namespace kaldi
