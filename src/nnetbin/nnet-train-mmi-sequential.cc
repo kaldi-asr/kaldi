@@ -255,10 +255,16 @@ int main(int argc, char *argv[]) {
         num_other_error++;
         continue;
       }
+     
+      // get actual dims for this utt and nnet
+      int32 num_frames = mat.NumRows(),
+          num_fea = mat.NumCols(),
+          num_pdfs = nnet.OutputDim();
       
       // 3) propagate the feature to get the log-posteriors (nnet w/o sofrmax)
       // push features to GPU
-      feats = mat;
+      feats.Resize(num_frames, num_fea, kUndefined);
+      feats.CopyFromMat(mat);
       // possibly apply transform
       nnet_transf.Feedforward(feats, &feats_transf);
       // propagate through the nnet (assuming w/o softmax)
@@ -268,10 +274,12 @@ int main(int argc, char *argv[]) {
         log_prior.SubtractOnLogpost(&nnet_out);
       }
       // transfer it back to the host
-      int32 num_frames = nnet_out.NumRows(),
-          num_pdfs = nnet_out.NumCols();
       nnet_out_h.Resize(num_frames,num_pdfs, kUndefined);
       nnet_out.CopyToMat(&nnet_out_h);
+      // release the buffers we don't need anymore
+      feats.Resize(0,0);
+      feats_transf.Resize(0,0);
+      nnet_out.Resize(0,0);
 
       // 4) rescore the latice
       LatticeAcousticRescore(nnet_out_h, trans_model, state_times, &den_lat);
@@ -376,8 +384,11 @@ int main(int argc, char *argv[]) {
       }
 
       // 10) backpropagate through the nnet
-      nnet_diff = nnet_diff_h;
+      nnet_diff.Resize(num_frames, num_pdfs, kUndefined);
+      nnet_diff.CopyFromMat(nnet_diff_h);
       nnet.Backpropagate(nnet_diff, NULL);
+      // relase the buffer, we don't need anymore
+      nnet_diff.Resize(0,0);
 
       // increase time counter
       total_mmi_obj += mmi_obj;

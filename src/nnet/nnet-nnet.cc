@@ -125,6 +125,9 @@ void Nnet::Feedforward(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) 
     nnet_[L]->Propagate(propagate_buf_[(L-1)%2], &propagate_buf_[L%2]);
   }
   nnet_[L]->Propagate(propagate_buf_[(L-1)%2], out);
+  // release the buffers we don't need anymore
+  propagate_buf_[0].Resize(0,0);
+  propagate_buf_[1].Resize(0,0);
 }
 
 void Nnet::GetWeights(Vector<BaseFloat>* wei_copy) {
