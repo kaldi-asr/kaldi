@@ -1,10 +1,20 @@
 all:
 
+include ../kaldi.mk
+
 EXTRA_CXXFLAGS = -Wno-sign-compare -I ../../tools/portaudio/install/include
 
 UNAME=$(shell uname)
 ifeq ($(UNAME), Linux)
+ifeq ($(KALDI_FLAVOR), dynamic)
+		#The PA_RingBuffer interface is internal and is not exported in the so libray
+		#so we have to compile in the static one
+		#.PA_ABS_PATH := $(shell readlink -f ../../tools/portaudio/install/lib )
+		#EXTRA_LDLIBS = -L ../../tools/portaudio/install/lib/ -Wl,-rpath=$(.PA_ABS_PATH) -lportaudio
     EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
+else
+    EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
+endif
 ifneq ($(wildcard ../../tools/portaudio/install/include/pa_linux_alsa.h),)
     EXTRA_LDLIBS += -lasound
 else
@@ -14,7 +24,6 @@ else
     EXTRA_LDLIBS = -L ../../tools/portaudio/install/lib/ -lportaudio
 endif
 
-include ../kaldi.mk
 
 BINFILES = online-net-client online-server-gmm-decode-faster online-gmm-decode-faster \
            online-wav-gmm-decode-faster online-audio-server-decode-faster \
