@@ -19,7 +19,7 @@ all:  $(BINFILES)
 
 TESTFILES =
 
-ADDLIBS = ../feat/kaldi-feature.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
+ADDLIBS = ../feat/kaldi-feat.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
          ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a \
          ../base/kaldi-base.a
 
@@ -30,7 +30,7 @@ LDLIBS  += -l$(LIBNAME)
 endif
 LDFLAGS += $(foreach dep,$(ADDLIBS), -L$(dir $(dep)) )
 LDFLAGS += -L.
-LDFLAGS += -Wl,-rpath=$(shell readlink -f ../dynlib)
+LDFLAGS += -Wl,-rpath=$(shell readlink -f $(KALDILIBDIR))
 LDLIBS  += $(foreach dep,$(ADDLIBS), -l$(notdir $(basename $(dep))) )
 XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))/lib$(notdir $(basename $(dep))).so )
 else
@@ -45,7 +45,7 @@ all: $(LIBFILE) $(BINFILES)
 $(LIBFILE): $(OBJFILES)
 ifeq ($(KALDI_FLAVOR), dynamic)
 	gcc -shared -o $(LIBFILE) -Wl,-soname=$(LIBFILE) $(OBJFILES)
-	cp $@ ../dynlib
+	cp $@ $(KALDILIBDIR)
 else
 	$(AR) -cru $(LIBNAME).a $(OBJFILES)
 	$(RANLIB) $(LIBNAME).a

@@ -4,22 +4,42 @@
 
 SHELL := /bin/bash
 
+
 SUBDIRS = base matrix util feat tree thread gmm tied transform sgmm \
           fstext hmm lm decoder lat cudamatrix nnet \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet-cpu nnet-cpubin kwsbin
 
+export KALDILIBDIR := $(shell pwd)/lib
+
 # Optional subdirectories
 EXT_SUBDIRS = online onlinebin #python-kaldi-decoding
 
-all: mkdynlib test_install kaldi.mk $(SUBDIRS) 
-	echo Done
+all: $(KALDILIBDIR)	test_install kaldi.mk $(SUBDIRS)
+	-echo Done
+
+
+$(KALDILIBDIR):
+	mkdir -p $(KALDILIBDIR)
+
+biglib: $(SUBDIRS) 
+#ifeq ($(KALDI_FLAVOR), dynamic)
+	-mkdir -p $(KALDILIBDIR)
+	find $(filter-out %bin,$^)  -name *.o | xargs gcc -shared -o $(KALDILIBDIR)/libkaldi.so -Wl,-soname=libkaldi.so
+#endif
+
+biglibext: $(EXT_SUBDIRS)
+#ifeq ($(KALDI_FLAVOR), dynamic)
+	mkdir -p $(KALDILIBDIR)
+	find $(filter-out %bin,$^)  -name *.o | xargs gcc -shared -o $(KALDILIBDIR)/libkaldiext.so -Wl,-soname=libkaldiext.so
+#endif
 
 kaldi.mk:
 	@[ -f kaldi.mk ] || { echo "kaldi.mk does not exist; you have to run ./configure"; exit 1; }
 
 # Compile optional stuff 
 ext: test_install ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
+	-echo Done
 
 # Note: if you have put the OpenFst installation somewhere else, you can just
 # delete or comment out the lines below.
@@ -30,11 +50,9 @@ test_install:
 check_portaudio:
 	@[ -d ../tools/portaudio ] || ( cd ../tools;  ./install_portaudio.sh )
 
-mkdynlib:
-	-mkdir -p ./dynlib
 
 clean: 
-	-rm -rf ./dynlib
+	-rm -rf $(KALDILIBDIR)
 	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x clean; done
 
 # the part after the expands to "base/test matrix/test util/test ...."

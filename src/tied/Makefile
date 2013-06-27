@@ -10,7 +10,7 @@ OBJFILES = tied-gmm.o mle-tied-gmm.o am-tied-diag-gmm.o mle-am-tied-diag-gmm.o \
     am-tied-full-gmm.o mle-am-tied-full-gmm.o decodable-am-tied-diag-gmm.o \
     decodable-am-tied-full-gmm.o
 
-LIBNAME = kaldi-tied-gmm
+LIBNAME = kaldi-tied
 
 ADDLIBS = ../base/kaldi-base.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
 	../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../transform/kaldi-transform.a
@@ -22,7 +22,7 @@ LDLIBS  += -l$(LIBNAME)
 endif
 LDFLAGS += $(foreach dep,$(ADDLIBS), -L$(dir $(dep)) )
 LDFLAGS += -L.
-LDFLAGS += -Wl,-rpath=$(shell readlink -f ../dynlib)
+LDFLAGS += -Wl,-rpath=$(shell readlink -f $(KALDILIBDIR))
 LDLIBS  += $(foreach dep,$(ADDLIBS), -l$(notdir $(basename $(dep))) )
 XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))/lib$(notdir $(basename $(dep))).so )
 else
@@ -37,7 +37,7 @@ all: $(LIBFILE) $(BINFILES)
 $(LIBFILE): $(OBJFILES)
 ifeq ($(KALDI_FLAVOR), dynamic)
 	gcc -shared -o $(LIBFILE) -Wl,-soname=$(LIBFILE) $(OBJFILES)
-	cp $@ ../dynlib
+	cp $@ $(KALDILIBDIR)
 else
 	$(AR) -cru $(LIBNAME).a $(OBJFILES)
 	$(RANLIB) $(LIBNAME).a
