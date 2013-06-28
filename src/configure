@@ -10,6 +10,7 @@
 
 #  Example command lines:
 # ./configure
+# ./configure --shared  ## shared libraries.
 # ./configure --mkl-root=/opt/intel/mkl 
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes
 # ./configure  --openblas-root=../tools/OpenBLAS/install  # before doing
@@ -61,7 +62,7 @@ unset OPENBLASROOT
 unset MKLLIBDIR
 
 function usage {
-  echo 'Usage: ./configure [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
+  echo 'Usage: ./configure [--static|--shared] [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
   [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
   [--omp-libdir=OMPDIR] [--static-fst={yes|no}] [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS] 
   [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR]';
@@ -361,7 +362,7 @@ function linux_configure_static {
      linux_check_static &&  ATLASLIBDIR=$dir
     done
     if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-      echo "Could not find libatlas.a in any of the obvious places... will try dynamic libraries."
+      echo "Could not find libatlas.a in any of the generic-Linux places, but we'll try other stuff..."
       return 1;
     fi
   elif [ ! -f $ATLASLIBDIR/libatlas.a ]; then
@@ -427,7 +428,7 @@ function linux_configure_dynamic {
        linux_check_dynamic && ATLASLIBDIR=$dir
     done
     if [ -z $ATLASLIBDIR ]; then
-      echo "Could not find libatlas.so in any of the obvious places."
+      echo "Could not find libatlas.so in any of the obvious places, will most likely try static:"
       return 1;
     fi
   elif [ ! -f $ATLASLIBDIR/libatlas.so ]; then
