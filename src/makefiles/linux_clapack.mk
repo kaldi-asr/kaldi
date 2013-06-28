@@ -14,8 +14,8 @@ ifeq ($(KALDI_FLAVOR), dynamic)
 CXXFLAGS += -fPIC
 endif
 
-LDFLAGS = -rdynamic
-LDLIBS = $(EXTRA_LDLIBS) ../../tools/openfst/lib/libfst.a -ldl $(CLAPACKLIBS) -lm -lpthread
+LDFLAGS = -rdynamic $(OPENFSTLDFLAGS)
+LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(ATLASLIBS) -lm -lpthread -ldl
 CC = g++
 CXX = g++
 AR = ar

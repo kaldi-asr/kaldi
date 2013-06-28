@@ -27,8 +27,8 @@ ifeq ($(KALDI_FLAVOR), dynamic)
 CXXFLAGS += -fPIC
 endif
 
-LDFLAGS = -rdynamic
-LDLIBS = $(EXTRA_LDLIBS) $(FSTROOT)/lib/libfst.a -ldl $(ATLASLIBS) -lm -lpthread
+LDFLAGS = -rdynamic $(OPENFSTLDFLAGS)
+LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(ATLASLIBS) -lm -lpthread -ldl
 CC = g++
 CXX = g++
 AR = ar

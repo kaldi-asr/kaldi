@@ -79,6 +79,7 @@ do
   case "$1" in
   --help) usage; exit 0 ;;
   --static)
+    # FIXME depends on order of options first--static/--shared then --static-math -> it will override it
   dynamic_kaldi=false; 
   static_math=true;
   static_fst=true;
@@ -555,13 +556,15 @@ if [ "`uname`" == "Linux" ]; then
       OPENFSTLIBS="$FSTROOT/lib/libfst.a"
       fst_type='a'
   else
-      OPENFSTLIBS="-L${FSTROOT}/lib -lfst -Wl,-rpath=${FSTROOT}/lib"
+      OPENFSTLIBS="-L${FSTROOT}/lib -lfst"
+      OPENFSTLDFLAGS="-Wl,-rpath=${FSTROOT}/lib"
       fst_type='so'
   fi
   if [ ! -f "$FSTROOT/lib/libfst.${fst_type}" ]; then
     failure "Static=[$static_fst] OpenFST library not found:  See ../tools/INSTALL"
   fi
   echo OPENFSTLIBS = $OPENFSTLIBS >> kaldi.mk
+  echo OPENFSTLDFLAGS = $OPENFSTLDFLAGS >> kaldi.mk
   echo FSTROOT = $FSTROOT >> kaldi.mk
 
   echo "On Linux: Checking for linear algebra header files ..."
