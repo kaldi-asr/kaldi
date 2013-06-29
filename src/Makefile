@@ -11,30 +11,37 @@ SUBDIRS = base matrix util feat tree thread gmm tied transform sgmm \
           nnetbin latbin sgmm2 sgmm2bin nnet-cpu nnet-cpubin kwsbin
 SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
-# FIXME not very good
-# I switched to other shell and compiled from there 
-# it introduced me quite headache
-# export KALDILIBDIR := $(shell pwd)/lib
-# FIXME Oplatek I set up KALDILIBDIR in configure 
-KALDILIBDIR = lib
-
 
 # Optional subdirectories
 EXT_SUBDIRS = online onlinebin #python-kaldi-decoding
 EXT_SUBDIRS_LIB = $(filter-out %bin, $(EXT_SUBDIRS))
 
+include kaldi.mk
+
+# Reset the default goal, so that the all target will become default
+.DEFAULT_GOAL :=
 all: test_install kaldi.mk $(SUBDIRS)
 	-echo Done
 
+mklibdir:
+	mkdir -p $(KALDILIBDIR)
+
+#I don't want to call rm -rf
+rmlibdir:
+	-rm $(KALDILIBDIR)/*{.so,.a,.o}
+	-rmdir $(KALDILIBDIR)
+
 biglib: $(SUBDIRS_LIB) 
-#ifeq ($(KALDI_FLAVOR), dynamic)
-	gcc -shared -o $(KALDILIBDIR)/libkaldi.so -Wl,-soname=libkaldi.so,--whole-archive  $(SUBDIRS_LIB:=/*dyn.a) -Wl,--no-whole-archive
-#endif
+ifneq ($(KALDI_FLAVOR), dynamic)
+	$(warning the following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all)
+endif
+	-gcc -shared -o $(KALDILIBDIR)/libkaldi.so -Wl,-soname=libkaldi.so,--whole-archive  $(SUBDIRS_LIB:=/*dyn.a) -Wl,--no-whole-archive
 
 biglibext: $(EXT_SUBDIRS_LIB)
-#ifeq ($(KALDI_FLAVOR), dynamic)
-	gcc -shared -o $(KALDILIBDIR)/libkaldi_ext.so -Wl,-soname=libkaldi.so,--whole-archive  $(EXT_SUBDIRS_LIB:=/*dyn.a) -Wl,--no-whole-archive
-#endif
+ifneq ($(KALDI_FLAVOR), dynamic)
+	$(warning the following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all)
+endif
+	-gcc -shared -o $(KALDILIBDIR)/libkaldi_ext.so -Wl,-soname=libkaldi_ext.so,--whole-archive  $(EXT_SUBDIRS_LIB:=/*dyn.a) -Wl,--no-whole-archive
 
 kaldi.mk:
 	@[ -f kaldi.mk ] || { echo "kaldi.mk does not exist; you have to run ./configure"; exit 1; }
@@ -53,8 +60,7 @@ check_portaudio:
 	@[ -d ../tools/portaudio ] || ( cd ../tools;  ./install_portaudio.sh )
 
 
-clean: 
-	-rm -rf $(KALDILIBDIR)
+clean: rmlibdir
 	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x clean; done
 
 # the part after the expands to "base/test matrix/test util/test ...."
@@ -63,7 +69,7 @@ test: $(addsuffix /test, $(SUBDIRS))
 # Define an implicit rule, expands to e.g.:
 #  base/test: base
 #     $(MAKE) -C base test 
-%/test: %
+%/test: % mklibdir
 	$(MAKE) -C $< test
 
 valgrind:
