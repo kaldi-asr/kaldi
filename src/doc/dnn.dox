@@ -1,0 +1,67 @@
+// doc/dnn.dox
+
+
+// Copyright 2013  Johns Hopkins University (author: Daniel Povey)
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+   \page dnn Deep Neural Networks in Kaldi
+
+  \section dnn_intro Introduction
+
+  Deep Neural Networks (DNNs) are the latest hot topic in speech recognition.
+  Since around 2010 many papers have been published in this area, and some of
+  the largest companies (e.g. Google, Microsoft) are starting to use DNNs in their
+  production systems.
+
+  An active area of research like this is difficult for a toolkit like Kaldi to
+  support well, because the state of the art changes constantly which means
+  code changes are required to keep up, and architectural decisions may need 
+  to be rethought.  
+
+  We currently have two separate codebases for deep neural nets in Kaldi.  One
+  is located in code subdirectories nnet/ and nnetbin/, and is primiarly maintained
+  by Karel Vesely.  The other is located in code subdirectories nnet-cpu/ and nnet-cpubin/,
+  and is primarily maintained by Daniel Povey (this code was originally based on an
+  earlier version of Karel's code, but has been extensively rewritten).  Neither codebase
+  is more ``official'' than the other.  Both are still being developed and we cannot
+  predict the long-term future, but in the immediate future our aim is to both have
+  the freedom to work on our respective codebases, and to borrow ideas from each other.
+
+  In the example directories such as egs/wsj/s5/, egs/rm/s5 and egs/swbd/s5, neural
+  net example scripts can be found.  Karel's example scripts can be found in local/run_dnn.sh
+  or local/run_nnet.sh, and Dan's example scripts can be found in local/run_nnet_cpu.sh.
+  Before running those scripts, the first stages of ``run.sh'' in those directories must
+  be run in order to build the systems used for alignment.
+
+  We will soon have detailed documentation pages on the two neural net setups.
+  For now, we summarize some of the most important differences:
+
+    - Karel's code was written for single-threaded SGD training accelerated with a GPU;
+      Dan's code uses multiple CPUs each with multiple threads.
+
+    - Karel's code already supports discriminative training; Dan's code does not yet.
+ 
+  Aside from this, there are many minor differences in architecture.
+
+  We hope to soon add more documentation for these libraries.
+  Karel's version of the code has some slightly out-of-date documentation available at \ref nnet1.
+
+*/
+
+
+}

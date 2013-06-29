@@ -67,6 +67,7 @@
    - \ref model
    - \ref transform
    - \ref feat
+   - \ref dnn
    - \ref online_programs
    - \ref tools
 

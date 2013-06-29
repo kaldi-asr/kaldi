@@ -1,4 +1,4 @@
-// doc/nnet.dox
+// doc/nnet1.dox
 
 
 // Copyright 2012 Karel Vesely
@@ -18,9 +18,10 @@
 
 namespace kaldi {
 /**
-  \page nnet the Neural Network library
+  \page nnet1 The Neural Network library
 
-  \section nnet
+  \section nnet1_nnet Overview
+
   Kaldi has a support for acoustic modelling by Multi-Layer Perceptron (MLP).
   The folder ^/trunk/src/nnet contains the neural networks classes
   and some additional classes, that are used during training.
@@ -40,7 +41,8 @@ namespace kaldi {
   the Bernoulli and Gaussian units.
 
 
-  \section design of nnet library
+  \section nnet1_design Design of the library
+
   The key aspect of the design is ``as simple extensibility as possible''. Exactly for this reason there has been created two interfaces: 
    - \ref Component : i-face for a general part that will be used to compose neural network, which does not contain trainable parameters
    - \ref UpdatableComponent : this i-face extends \ref Component by adding it methods needed for training parameters
@@ -81,7 +83,8 @@ namespace kaldi {
    - 3) add dynamic constructor call to factory-like function \ref Component::Read
    - 4) implement the the interface \ref Component:: or \ref UpdatableComponent::
 
-  \section nnetbin
+  \section nnet1_nnetbin Binary level tools
+
   The training tools are located in, the most important tools are: 
    - nnet-train-xent-hardlab-frmshuff : this tool is used during trainig, it optimizes the cross entropy of the posteriors and targets, while a Viterbi-path hard-labels are used as 1-of-M encoded targets, frame-level shuffling is done between the feature transform and the trained neural network.
    - nnet-forward : this tool is used during decoding, it propagated the features by the neural network and stores them on the output. This tool is often used in the feature extraction pipeline of the decoder. If the machine, where the decoder is run, is not equipped with a suitable GPU, the CPU is used instead.
