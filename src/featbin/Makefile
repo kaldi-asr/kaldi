@@ -44,7 +44,7 @@ all: $(LIBFILE) $(BINFILES)
 
 $(LIBFILE): $(OBJFILES)
 ifeq ($(KALDI_FLAVOR), dynamic)
-	gcc -shared -o $(LIBFILE) -Wl,-soname=$(LIBFILE) $(OBJFILES)
+	$(CXX) -shared -o $(LIBFILE) -Wl,-soname=$(LIBFILE) $(OBJFILES)
 	cp $@ $(KALDILIBDIR)
 else
 	$(AR) -cru $(LIBNAME).a $(OBJFILES)
