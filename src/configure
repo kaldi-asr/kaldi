@@ -499,6 +499,9 @@ fi
 cp makefiles/common.mk kaldi.mk
 if $dynamic_kaldi ; then
 echo "KALDI_FLAVOR = dynamic" >> kaldi.mk
+KALDILIBDIR=`pwd`/lib 
+mkdir -p "$KALDILIBDIR"
+echo "KALDILIBDIR = $KALDILIBDIR" >> kaldi.mk
 fi
 
 # Most of the OS-specific steps below will append to kaldi.mk

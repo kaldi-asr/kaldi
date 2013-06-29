@@ -31,7 +31,10 @@ all: $(LIBFILE) $(BINFILES)
 
 $(LIBFILE): $(OBJFILES)
 ifeq ($(KALDI_FLAVOR), dynamic)
-	$(CXX) -shared -o $(LIBFILE) -Wl,-soname=$(LIBFILE) $(OBJFILES)
+	# $(CXX) -shared -o $(LIBFILE) -Wl,-soname=$(LIBFILE) $(OBJFILES)
+	$(AR) -cru $(LIBNAME)-dyn.a $(OBJFILES)
+	$(RANLIB) $(LIBNAME)-dyn.a
+	$(CXX) -shared -o $@ -Wl,-soname=$@,--whole-archive $(LIBNAME)-dyn.a -Wl,--no-whole-archive
 	cp $@ $(KALDILIBDIR)
 else
 	$(AR) -cru $(LIBNAME).a $(OBJFILES)

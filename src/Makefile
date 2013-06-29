@@ -9,29 +9,31 @@ SUBDIRS = base matrix util feat tree thread gmm tied transform sgmm \
           fstext hmm lm decoder lat cudamatrix nnet \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet-cpu nnet-cpubin kwsbin
+SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
-export KALDILIBDIR := $(shell pwd)/lib
+# FIXME not very good
+# I switched to other shell and compiled from there 
+# it introduced me quite headache
+# export KALDILIBDIR := $(shell pwd)/lib
+# FIXME Oplatek I set up KALDILIBDIR in configure 
+KALDILIBDIR = lib
+
 
 # Optional subdirectories
 EXT_SUBDIRS = online onlinebin #python-kaldi-decoding
+EXT_SUBDIRS_LIB = $(filter-out %bin, $(EXT_SUBDIRS))
 
-all: $(KALDILIBDIR)	test_install kaldi.mk $(SUBDIRS)
+all: test_install kaldi.mk $(SUBDIRS)
 	-echo Done
 
-
-$(KALDILIBDIR):
-	mkdir -p $(KALDILIBDIR)
-
-biglib: $(SUBDIRS) 
+biglib: $(SUBDIRS_LIB) 
 #ifeq ($(KALDI_FLAVOR), dynamic)
-	-mkdir -p $(KALDILIBDIR)
-	find $(filter-out %bin,$^)  -name *.o | xargs gcc -shared -o $(KALDILIBDIR)/libkaldi.so -Wl,-soname=libkaldi.so
+	gcc -shared -o $(KALDILIBDIR)/libkaldi.so -Wl,-soname=libkaldi.so,--whole-archive  $(SUBDIRS_LIB:=/*dyn.a) -Wl,--no-whole-archive
 #endif
 
-biglibext: $(EXT_SUBDIRS)
+biglibext: $(EXT_SUBDIRS_LIB)
 #ifeq ($(KALDI_FLAVOR), dynamic)
-	mkdir -p $(KALDILIBDIR)
-	find $(filter-out %bin,$^)  -name *.o | xargs gcc -shared -o $(KALDILIBDIR)/libkaldiext.so -Wl,-soname=libkaldiext.so
+	gcc -shared -o $(KALDILIBDIR)/libkaldi_ext.so -Wl,-soname=libkaldi.so,--whole-archive  $(EXT_SUBDIRS_LIB:=/*dyn.a) -Wl,--no-whole-archive
 #endif
 
 kaldi.mk:
