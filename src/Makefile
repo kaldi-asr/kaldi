@@ -35,13 +35,13 @@ biglib: $(SUBDIRS_LIB)
 ifneq ($(KALDI_FLAVOR), dynamic)
 	$(warning the following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all)
 endif
-	-gcc -shared -o $(KALDILIBDIR)/libkaldi.so -Wl,-soname=libkaldi.so,--whole-archive  $(SUBDIRS_LIB:=/*dyn.a) -Wl,--no-whole-archive
+	-gcc -shared -o $(KALDILIBDIR)/libkaldi.so -Wl,-soname=libkaldi.so,--whole-archive  $(SUBDIRS_LIB:=/kaldi-*.a) -Wl,--no-whole-archive
 
 biglibext: $(EXT_SUBDIRS_LIB)
 ifneq ($(KALDI_FLAVOR), dynamic)
 	$(warning the following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all)
 endif
-	-gcc -shared -o $(KALDILIBDIR)/libkaldi_ext.so -Wl,-soname=libkaldi_ext.so,--whole-archive  $(EXT_SUBDIRS_LIB:=/*dyn.a) -Wl,--no-whole-archive
+	-gcc -shared -o $(KALDILIBDIR)/libkaldi_ext.so -Wl,-soname=libkaldi_ext.so,--whole-archive  $(EXT_SUBDIRS_LIB:=/kaldi-*.a) -Wl,--no-whole-archive
 
 kaldi.mk:
 	@[ -f kaldi.mk ] || { echo "kaldi.mk does not exist; you have to run ./configure"; exit 1; }

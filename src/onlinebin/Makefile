@@ -1,8 +1,7 @@
 all:
 
-include ../kaldi.mk
-
 EXTRA_CXXFLAGS = -Wno-sign-compare -I ../../tools/portaudio/install/include
+include ../kaldi.mk
 
 UNAME=$(shell uname)
 ifeq ($(UNAME), Linux)
@@ -62,15 +61,12 @@ endif
 all: $(LIBFILE) $(BINFILES)
 
 $(LIBFILE): $(OBJFILES)
-ifeq ($(KALDI_FLAVOR), dynamic)
-	# $(CXX) -shared -o $(LIBFILE) -Wl,-soname=$(LIBFILE) $(OBJFILES)
-	$(AR) -cru $(LIBNAME)-dyn.a $(OBJFILES)
-	$(RANLIB) $(LIBNAME)-dyn.a
-	$(CXX) -shared -o $@ -Wl,-soname=$@,--whole-archive $(LIBNAME)-dyn.a -Wl,--no-whole-archive
-	cp $@ $(KALDILIBDIR)
-else
 	$(AR) -cru $(LIBNAME).a $(OBJFILES)
 	$(RANLIB) $(LIBNAME).a
+ifeq ($(KALDI_FLAVOR), dynamic)
+	# Building shared library from static (static was compiled with -fPIC)
+	$(CXX) -shared -o $@ -Wl,-soname=$@,--whole-archive $(LIBNAME).a -Wl,--no-whole-archive
+	cp $@ $(KALDILIBDIR)
 endif
 
 
