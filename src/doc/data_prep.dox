@@ -617,10 +617,14 @@ a file called <DFN>lexicon.txt</DFN> which has the format
 \endverbatim
 Note: <DFN>lexicon.txt</DFN> will contain repeated entries for the same word,
 on separate lines,
-if we have multiple pronunciations for it.  The current scripts currently don't
-support pronunciation probabilities, but it wouldn't
-be that hard to add that support (it's just a question of modifying the
-scripts that produce <DFN>L.fst</DFN>).  
+if we have multiple pronunciations for it.  If you want to use pronunciation
+probabilities, instead of creating the file <DFN>lexicon.txt</DFN>, create a file
+called <DFN>lexiconp.txt</DFN> that has the probability as the second field.
+Note that it is a common practice to normalize the pronunciations probabilities so that 
+instead of summing to one, the most probable pronunciation for each word is one.  This
+tends to give better results.  For a top-level script that runs with
+pronunciation probabilities, search for <DFN>pp</DFN> in <DFN>egs/wsj/s5/run.sh</DFN>.
+
 Notice that in this input there is no notion of word-position dependency,
 i.e. no suffixes like <DFN>_B</DFN> and <DFN>_E</DFN>.  This is because it is the
 scripts <DFN>prepare_lang.sh</DFN> that adds those suffixes.

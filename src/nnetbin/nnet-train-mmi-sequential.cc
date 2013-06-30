@@ -119,7 +119,9 @@ int main(int argc, char *argv[]) {
     po.Register("old-acoustic-scale", &old_acoustic_scale,
                 "Add in the scores in the input lattices with this scale, rather "
                 "than discarding them.");
-
+    kaldi::int32 max_frames = 6000; // Allow segments maximum of one minute by default
+    po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
+    
     bool drop_frames = true;
     po.Register("drop-frames", &drop_frames, 
                 "Drop frames, where is zero den-posterior under numerator path "
@@ -233,9 +235,20 @@ int main(int argc, char *argv[]) {
         num_other_error++;
         continue;
       }
+      if (mat.NumRows() > max_frames) {
+	KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
+	  " frames, which is more than " << max_frames << ".";
+	num_other_error++;
+	continue;
+      }
       
       // 2) get the denominator lattice, preprocess
       Lattice den_lat = den_lat_reader.Value(utt);
+      if (den_lat.Start() == -1) {
+        KALDI_WARN << "Empty lattice for utt " << utt;
+        num_other_error++;
+        continue;
+      }
       if (old_acoustic_scale != 1.0) {
         fst::ScaleLattice(fst::AcousticLatticeScale(old_acoustic_scale), &den_lat);
       }
