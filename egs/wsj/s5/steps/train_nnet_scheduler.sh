@@ -78,7 +78,8 @@ $train_tool --cross-validate=true \
  2> $dir/log/prerun.log || exit 1;
 
 acc=$(cat $dir/log/prerun.log | awk '/FRAME_ACCURACY/{ acc=$3; sub(/%/,"",acc); } END{print acc}')
-echo "CROSSVAL PRERUN ACCURACY $acc"
+xent=$(cat $dir/log/prerun.log | awk 'BEGIN{FS=":"} /err\/frm:/{ xent = $NF; } END{print xent}')
+echo "CROSSVAL PRERUN ACCURACY $(printf "%.2f" $acc) (avg.xent$(printf "%.4f" $xent)), "
 
 #resume lr-halving
 halving=0
@@ -102,7 +103,8 @@ for iter in $(seq -w $max_iters); do
    2> $dir/log/iter$iter.log || exit 1; 
 
   tr_acc=$(cat $dir/log/iter$iter.log | awk '/FRAME_ACCURACY/{ acc=$3; sub(/%/,"",acc); } END{print acc}')
-  echo -n "TRAIN ACCURACY $(printf "%.2f" $tr_acc) LRATE $(printf "%.6g" $learn_rate), "
+  tr_xent=$(cat $dir/log/iter$iter.log | awk 'BEGIN{FS=":"} /err\/frm:/{ xent = $NF; } END{print xent}')
+  echo -n "TRAIN ACCURACY $(printf "%.2f" $tr_acc) (avg.xent$(printf "%.4f" $tr_xent),lrate$(printf "%.6g" $learn_rate)), "
   
   #cross-validation
   $train_tool --cross-validate=true \
@@ -113,9 +115,10 @@ for iter in $(seq -w $max_iters); do
    2>>$dir/log/iter$iter.log || exit 1;
   
   acc_new=$(cat $dir/log/iter$iter.log | awk '/FRAME_ACCURACY/{ acc=$3; sub(/%/,"",acc); } END{print acc}')
-  echo -n "CROSSVAL ACCURACY $(printf "%.2f" $acc_new), "
+  xent_new=$(cat $dir/log/iter$iter.log | awk 'BEGIN{FS=":"} /err\/frm:/{ xent = $NF; } END{print xent}')
+  echo -n "CROSSVAL ACCURACY $(printf "%.2f" $acc_new) (avg.xent$(printf "%.4f" $xent_new)), "
 
-  #accept or reject new parameters
+  #accept or reject new parameters (based no per-frame accuracy)
   acc_prev=$acc
   if [ "1" == "$(awk "BEGIN{print($acc_new>$acc);}")" ]; then
     acc=$acc_new

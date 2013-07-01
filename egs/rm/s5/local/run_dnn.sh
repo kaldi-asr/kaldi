@@ -42,7 +42,7 @@ utils/subset_data_dir_tr90_cv10.sh $dir ${dir}_tr90 ${dir}_cv10 || exit 1
 #false && \
 { # Pre-train the DBN
 dir=exp/tri3b_pretrain-dbn
-(tail --pid=$$ -F $dir/_pretrain_dbn.log)&
+(tail --pid=$$ -F $dir/_pretrain_dbn.log 2>/dev/null)&
 $cuda_cmd $dir/_pretrain_dbn.log \
   steps/pretrain_dbn.sh --hid-dim 1024 --rbm-iter 20 data-fmllr-tri3b/train $dir || exit 1;
 }
@@ -59,7 +59,7 @@ dir=exp/tri3b_pretrain-dbn_dnn
 ali=exp/tri3b_ali
 feature_transform=exp/tri3b_pretrain-dbn/final.feature_transform
 dbn=exp/tri3b_pretrain-dbn/6.dbn
-(tail --pid=$$ -F $dir/_train_nnet.log)& 
+(tail --pid=$$ -F $dir/_train_nnet.log 2>/dev/null)& 
 $cuda_cmd $dir/_train_nnet.log \
   steps/train_nnet.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
   data-fmllr-tri3b/train_tr90 data-fmllr-tri3b/train_cv10 data/lang $ali $ali $dir || exit 1;
