@@ -84,7 +84,7 @@ namespace nnet1 {
 
   We support MMI, BMMI, MPE and sMBR training. All the techniques perform very similar,
   only sMBR was a little better. In sMBR optimization we exclude silence frames from 
-  accumulating approximate accuracies.
+  accumulating approximate accuracies. More detailed description is at http://www.danielpovey.com/files/2013_interspeech_dnn.pdf
  
 
   \section nnet1_code The code
@@ -139,15 +139,15 @@ namespace nnet1 {
   \section nnet1_nnetbin Binary tools
 
   The training tools are located in src/nnetbin, the most important tools are : 
-   - nnet-train-xent-hardlab-frmshuff : this tool does frame-level training, it minimizes cross-entropy between posteriors and targets
+   - \ref nnet-train-xent-hardlab-frmshuff.cc : this tool does frame-level training, it minimizes cross-entropy between posteriors and targets
      (force-aligned hard-labels with one-hot encoding); to allow splicing over time the frame-level shuffling is done after the feature transform; 
      performs one epoch of the training. The learning rate scheduling (ie. halving) is done on the bash-script level.
-   - nnet-forward : this tool propagates the input features through the neural network, it can remove softmax on the fly and divide by priors based on triphone-state counts.
+   - \ref nnet-forward.cc : this tool propagates the input features through the neural network, it can remove softmax on the fly and divide by priors based on triphone-state counts.
      This tool is often used in the decoding pipeline of feature extraction pipeline.
      If it runs on a machine without GPU, a CPU is used instead.
-   - rbm-train-cd1-frmshuff : trains RBM, can perform several iterations with gradual linear increase of momentum 
-   - nnet-train-mmi-sequential : can be used for MMI/bMMI training
-   - nnet-train-mpe-sequential : is used for MPE / sMBR training
+   - \ref rbm-train-cd1-frmshuff.cc : trains RBM, can perform several iterations with gradual linear increase of momentum 
+   - \ref nnet-train-mmi-sequential.cc : can be used for MMI/bMMI training
+   - \ref nnet-train-mpe-sequential.cc : is used for MPE / sMBR training
 
 
 */
