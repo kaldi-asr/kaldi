@@ -41,12 +41,45 @@ if [ ! -e $(python -c 'from distutils.sysconfig import get_makefile_filename as 
     exit 1
 fi
 
-echo "Check that you have python-libffi-dev YOURSELF!"
-echo "I do not know how to check it effectively!"
-echo "Example commands how to intall ffi library"
-echo "Debian/Ubuntu: sudo apt-get install libffi-dev"
-echo "Fedora: sudo yum libffi-devel"
-echo "Mac OS: brew install libffi"
+echo "Checking for libffi-dev"
+exe_ffi=test_ffi
+src_ffi=$exe_ffi.c
+cat > $src_ffi <<CCODE
+#include <stdio.h>
+#include <ffi.h>
+int main() {
+ffi_cif cif; ffi_type *args[1]; void *values[1]; char *s; int rc;
+/* Initialize the argument info vectors */
+args[0] = &ffi_type_pointer;
+values[0] = &s;
+/* Initialize the cif */
+if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, 1, &ffi_type_uint, args) == FFI_OK) {
+   s = "Hello World!- YOU HAVE ffi INSTALLED";
+   ffi_call(&cif, puts, &rc, values);
+   /* rc now holds the result of the call to puts */
+   /* values holds a pointer to the function's arg, so to
+      call puts() again all we need to do is change the
+      value of s */
+   s = "FFI works!";
+   ffi_call(&cif, puts, &rc, values);
+ }
+return 0;
+}
+CCODE
+rm -f $exe_ffi  # clean previous attempts
+gcc -o $exe_ffi $src_ffi -lffi  # build 
+chmod u+x $exe_ffi  # make it executable (gcc usually does it too)
+
+# checking the exit status = ffi installed?
+./$exe_ffi  
+if [ $? -ne 0 ] ; then 
+    echo "You have not ffi installed!" 
+    echo "On Debian/Ubuntu: sudo apt-get install libffi-dev"
+    echo "Fedora: sudo yum libffi-devel"
+    echo "Mac OS: brew install libffi"
+    exit 1
+fi
+
 
 # names of the extracted directories
 cffiname=cffi-0.6
@@ -96,7 +129,8 @@ tar -xovzf $pytesttar || exit 1
 # Installing
 prefix="$PWD/python"
 
-new_ppath="$prefix/lib/python2.7/site-packages"
+python_version=`python -c 'import sys; p1, p2, _, _ , _= sys.version_info;  print "python%d.%d" % (p1, p2)'`
+new_ppath="$prefix/lib/$python_version/site-packages"
 mkdir -p "$new_ppath"
 export PYTHONPATH="$PYTHONPATH:$new_ppath"
 echo; echo "Adding the $new_ppath to PYTHONPATH"

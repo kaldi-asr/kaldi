@@ -13,7 +13,7 @@ SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
 
 # Optional subdirectories
-EXT_SUBDIRS = online onlinebin #python-kaldi-decoding
+EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
 EXT_SUBDIRS_LIB = $(filter-out %bin, $(EXT_SUBDIRS))
 
 include kaldi.mk
@@ -39,7 +39,7 @@ endif
 
 biglibext: $(EXT_SUBDIRS_LIB)
 ifneq ($(KALDI_FLAVOR), dynamic)
-	$(warning the following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all)
+	$(warning The following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all.)
 endif
 	-gcc -shared -o $(KALDILIBDIR)/libkaldi_ext.so -Wl,-soname=libkaldi_ext.so,--whole-archive  $(EXT_SUBDIRS_LIB:=/kaldi-*.a) -Wl,--no-whole-archive
 
@@ -65,6 +65,8 @@ clean: rmlibdir
 
 # the part after the expands to "base/test matrix/test util/test ...."
 test: $(addsuffix /test, $(SUBDIRS))
+
+ext_test: $(addsuffix /test, $(EXT_SUBDIRS))
 
 # Define an implicit rule, expands to e.g.:
 #  base/test: base
@@ -119,6 +121,6 @@ nnet: base util matrix cudamatrix
 nnet-cpu: base util matrix thread
 #3)Dependencies for optional parts of Kaldi
 onlinebin: base matrix util feat tree optimization gmm tied transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet-cpu online
-#python-kaldi-decoding: base matrix util feat tree optimization thread gmm tied transform sgmm sgmm2 fstext hmm decoder lat online
+# python-kaldi-decoding: base matrix util feat tree optimization thread gmm tied transform sgmm sgmm2 fstext hmm decoder lat online
 online: decoder
 kwsbin: fstext lat base util
