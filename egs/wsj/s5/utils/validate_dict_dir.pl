@@ -215,4 +215,4 @@ if(-s "$dict/extra_questions.txt") {
   $success == 0 || print "--> $dict/extra_questions.txt is OK\n";
 } else {print "--> $dict/extra_phones.txt is empty\n";}
 
-if($exit == 1) {exit 1;}
+if($exit == 1) { print " [Error detected ]\n"; exit 1;}

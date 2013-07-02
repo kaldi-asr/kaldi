@@ -18,63 +18,145 @@ mkdir -p $data/.backup
 
 [ ! -f $data/utt2spk ] && echo "$0: no such file $data/utt2spk" && exit 1;
 
-cat $data/utt2spk | awk '{print $1}' > $data/utts
+tmpdir=$(mktemp -d);
+trap 'rm -rf "$tmpdir"' EXIT HUP INT PIPE TERM
+
+export LC_ALL=C
+
+
+function check_sorted {
+  file=$1
+  sort -k1,1 -u <$file >$file.tmp
+  if ! cmp -s $file $file.tmp; then
+    echo "$0: file $1 is not in sorted order or not unique, sorting it"
+    mv $file.tmp $file
+  else
+    rm $file.tmp
+  fi
+}
+
+for x in utt2spk feats.scp text segments wav.scp cmvn.scp reco2file_and_channel; do
+  if [ -f $data/$x ]; then
+    cp $data/$x $data/.backup/$x
+    check_sorted $data/$x
+  fi
+done
+
+
+function filter_file {
+  filter=$1
+  file_to_filter=$2
+  cp $file_to_filter ${file_to_filter}.tmp
+  utils/filter_scp.pl $filter ${file_to_filter}.tmp > $file_to_filter
+  if ! cmp ${file_to_filter}.tmp  $file_to_filter >&/dev/null; then
+    length1=`cat ${file_to_filter}.tmp | wc -l`
+    length2=`cat ${file_to_filter} | wc -l`
+    if [ $length1 -ne $length2 ]; then
+      echo "$0: filtered $file_to_filter from $length1 to $length2 lines."
+    fi
+  fi
+}
+
+function filter_recordings {
+  # We call this once before the stage when we filter on utterance-id, and once
+  # after.
+  
+  if [ -f $data/segments ]; then
+  # We have a segments file -> we need to filter this and the file wav.scp, and
+  # reco2file_and_utt, if it exists, to make sure they have the same list of
+  # recording-ids.
+
+    if [ ! -f $data/wav.scp ]; then
+      echo "$0: $data/segments exists but not $data/wav.scp"
+      exit 1;
+    fi
+    awk '{print $2}' < $data/segments | sort | uniq > $tmpdir/recordings
+    n1=`cat $tmpdir/recordings | wc -l`
+    [ ! -s $tmpdir/recordings ] && \
+      echo "Empty list of recordings (bad file $data/segments)?" && exit 1;
+    utils/filter_scp.pl $data/wav.scp $tmpdir/recordings > $tmpdir/recordings.tmp
+    mv $tmpdir/recordings.tmp $tmpdir/recordings
+
+    
+    cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4}' <$data/segments.tmp >$data/segments
+    filter_file $tmpdir/recordings $data/segments
+    cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4}' <$data/segments.tmp >$data/segments
+
+    filter_file $tmpdir/recordings $data/wav.scp
+    [ -f $data/reco2file_and_channel ] && filter_file $tmpdir/recordings $data/reco2file_and_channel
+  fi
+}
+
+function filter_speakers {
+  # throughout this program, we regard utt2spk as primary and spk2utt as derived, so...
+  if [ -f $data/cmvn.scp ]; then
+    utils/utt2spk_to_spk2utt.pl $data/utt2spk > $data/spk2utt
+    cat $data/spk2utt | awk '{print $1}' >$tmpdir/speakers
+    cat $data/cmvn.scp | awk '{print $1}' >$tmpdir/speakers.cmvn
+    utils/filter_scp.pl $data/cmvn.scp $tmpdir/speakers > $tmpdir/speakers.tmp
+    mv $tmpdir/speakers.tmp $tmpdir/speakers
+
+    filter_file $tmpdir/speakers $data/cmvn.scp
+    filter_file $tmpdir/speakers $data/spk2utt
+    utils/spk2utt_to_utt2spk.pl $data/spk2utt > $data/utt2spk
+  fi
+}
+
+function filter_utts {
+  cat $data/utt2spk | awk '{print $1}' > $tmpdir/utts
 
 # Do a check.
-export LC_ALL=C
-! cat $data/utt2spk | sort | cmp - $data/utt2spk && \
-   echo "utt2spk is not in sorted order (fix this yourelf)" && exit 1;
 
-! cat $data/utt2spk | sort -k2 | cmp - $data/utt2spk && \
-   echo "utt2spk is not in sorted order when sorted first on speaker-id " && \
-   echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
+  ! cat $data/utt2spk | sort | cmp - $data/utt2spk && \
+    echo "utt2spk is not in sorted order (fix this yourself)" && exit 1;
 
-! cat $data/spk2utt | sort | cmp - $data/spk2utt && \
-   echo "spk2utt is not in sorted order (fix this yourelf)" && exit 1;
+  ! cat $data/utt2spk | sort -k2 | cmp - $data/utt2spk && \
+    echo "utt2spk is not in sorted order when sorted first on speaker-id " && \
+    echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
 
-maybe_wav=
-[ ! -f $data/segments ] && maybe_wav=wav  # wav indexed by utts only if segments does not exist.
-for x in feats.scp text segments $maybe_wav; do
-  if [ -f $data/$x ]; then
-     utils/filter_scp.pl $data/$x $data/utts > $data/utts.tmp
-     mv $data/utts.tmp $data/utts
+  ! cat $data/spk2utt | sort | cmp - $data/spk2utt && \
+    echo "spk2utt is not in sorted order (fix this yourself)" && exit 1;
+
+
+  maybe_wav=
+  [ ! -f $data/segments ] && maybe_wav=wav  # wav indexed by utts only if segments does not exist.
+  for x in feats.scp text segments $maybe_wav; do
+    if [ -f $data/$x ]; then
+      utils/filter_scp.pl $data/$x $tmpdir/utts > $tmpdir/utts.tmp
+      mv $tmpdir/utts.tmp $tmpdir/utts
+    fi
+  done
+  [ ! -s $tmpdir/utts ] && echo "fix_data_dir.sh: no utterances remained: not doing anything." && \
+    rm $tmpdir/utts && exit 1;
+
+  nutts=`cat $tmpdir/utts | wc -l`
+  if [ -f $data/feats.scp ]; then
+    nfeats=`cat $data/feats.scp | wc -l`
+  else
+    nfeats=0
   fi
-done
-[ ! -s $data/utts ] && echo "fix_data_dir.sh: no utterances remained: not doing anything." && \
-   rm $data/utts && exit 1;
-
-nutts=`cat $data/utts | wc -l`
-if [ -f $data/feats.scp ]; then
-  nfeats=`cat $data/feats.scp | wc -l`
-else
-  nfeats=0
-fi
-ntext=`cat $data/text | wc -l`
-if [ "$nutts" -ne "$nfeats" -o "$nutts" -ne "$ntext" ]; then
-  echo "fix_data_dir.sh: kept $nutts utterances, vs. $nfeats features and $ntext transcriptions."
-else
-  echo "fix_data_dir.sh: kept all $nutts utterances."
-fi
-
-for x in utt2spk feats.scp text segments $maybe_wav; do
-  if [ -f $data/$x ]; then
-     mv $data/$x $data/.backup/$x
-     utils/filter_scp.pl $data/utts $data/.backup/$x > $data/$x
+  ntext=`cat $data/text | wc -l`
+  if [ "$nutts" -ne "$nfeats" -o "$nutts" -ne "$ntext" ]; then
+    echo "fix_data_dir.sh: kept $nutts utterances, vs. $nfeats features and $ntext transcriptions."
+  else
+    echo "fix_data_dir.sh: kept all $nutts utterances."
   fi
-done
+
+  for x in utt2spk feats.scp text segments $maybe_wav; do
+    if [ -f $data/$x ]; then
+      mv $data/$x $data/.backup/$x
+      utils/filter_scp.pl $tmpdir/utts $data/.backup/$x > $data/$x
+    fi
+  done
+
+}
 
 
-if [ -f $data/segments ]; then
-  awk '{print $2}' $data/segments | sort | uniq > $data/reco # reco means the id's of the recordings.
-  [ -f $data/wav.scp ] && mv $data/wav.scp $data/.backup/ && \
-    utils/filter_scp.pl $data/reco $data/.backup/wav.scp >$data/wav.scp
-  [ -f $data/reco2file_and_channel ] && mv $data/reco2file_and_channel $data/.backup/ && \
-    utils/filter_scp.pl $data/reco $data/.backup/reco2file_and_channel >$data/reco2file_and_channel
-  rm $data/reco
-fi
+filter_recordings
+filter_speakers
+filter_utts
+filter_recordings
 
 utils/utt2spk_to_spk2utt.pl $data/utt2spk > $data/spk2utt
-
-rm $data/utts
 
 echo "fix_data_dir.sh: old files are kept in $data/.backup"

@@ -13,7 +13,7 @@
 . path.sh
 
 #check existing directories
-[ $# != 0 ] && echo "Usage: local/swbd_p1_data_prep.sh" && exit 1;
+[ $# != 0 ] && echo "Usage: local/swbd_p1_prepare_dict.sh" && exit 1;
 
 srcdir=data/local/train # This is where we downloaded some stuff..
 dir=data/local/dict

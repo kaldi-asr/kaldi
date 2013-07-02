@@ -14,12 +14,14 @@
 # number of utterances.  (The selected utterances are distributed
 # evenly throughout the file, by the program ./subset_scp.pl).
 
-
-# There are three options, none compatible with any other.
+# There are four options, none compatible with any other.
 
 # If you give the --per-spk option, it will attempt to select the supplied
 # number of utterances for each speaker (typically you would supply a much
 # smaller number in this case).
+
+# If you give the --speakers option, it selects a subset of n randomly
+# selected speakers.
 
 # If you give the --shortest option, it will give you the n shortest utterances.
 
@@ -28,6 +30,7 @@
 shortest=false
 perspk=false
 first_opt=""
+speakers=false
 
 if [ "$1" == "--per-spk" ]; then
   perspk=true;
@@ -38,6 +41,9 @@ elif [ "$1" == "--shortest" ]; then
 elif [ "$1" == "--first" ]; then
   first_opt="--first";
   shift;
+elif [ "$1" == "--speakers" ]; then
+  speakers=true
+  shift;
 elif [ "$1" == "--last" ]; then
   first_opt="--last";
   shift;
@@ -46,7 +52,11 @@ fi
 
 
 if [ $# != 3 ]; then
-  echo "Usage: subset_data_dir.sh [--per-spk] <srcdir> <num-utt> <destdir>"
+  echo "Usage: subset_data_dir.sh [--speakers|--shortest|--first|--per-spk] <srcdir> <num-utt> <destdir>"
+  echo "By default, randomly selects <num-utt> utterances from the data directory."
+  echo "With --speakers, randomly selects enough speakers that we have <num-utt> utterances"
+  echo "With --first, selects the first <num-utt> utterances"
+  echo "With --shortest, selects the shortest <num-utt> utterances."
   exit 1;
 fi
 
@@ -54,6 +64,8 @@ srcdir=$1
 numutt=$2
 destdir=$3
 
+
+export LC_ALL=C
 
 if [ ! -f $srcdir/utt2spk ]; then
   echo "subset_data_dir.sh: no such file $srcdir/utt2spk" 
@@ -83,13 +95,18 @@ function do_filtering {
   fi
   srcutts=`cat $srcdir/utt2spk | wc -l`
   destutts=`cat $destdir/utt2spk | wc -l`
-  echo "Retained $numutt utterances per speaker from data-dir $srcdir and put it in $destdir, reducing #utt from $srcutts to $destutts"
+  echo "$0: reducing #utt from $srcutts to $destutts"
 }
 
 
-## scripting note: $perspk evaluates to true or false
-## so this becomes the command true or false.
-if $perspk; then
+if $speakers; then
+  mkdir -p $destdir
+  sort -R $srcdir/spk2utt | awk -v numutt=$numutt '{ if (tot < numutt){ print; } tot += (NF-1); }' | \
+    sort > $destdir/spk2utt
+  utils/spk2utt_to_utt2spk.pl < $destdir/spk2utt > $destdir/utt2spk
+  do_filtering; # bash function.
+  exit 0;  
+elif $perspk; then
   mkdir -p $destdir
   awk '{ n='$numutt'; printf("%s ",$1); skip=1; while(n*(skip+1) <= NF-1) { skip++; }
          for(x=2; x<=NF && x <= n*skip; x += skip) { printf("%s ", $x); } 

@@ -282,8 +282,8 @@ utils/make_lexicon_fst.pl --pron-probs $tmpdir/lexiconp.txt $sil_prob $silphone 
 # The file oov.txt contains a word that we will map any OOVs to during
 # training.
 echo "$oov_word" > $dir/oov.txt || exit 1;
-cat $dir/oov.txt | utils/sym2int.pl $dir/words.txt >$dir/oov.int # integer version of oov
-# symbol, used in some scripts.
+cat $dir/oov.txt | utils/sym2int.pl $dir/words.txt >$dir/oov.int || exit 1;
+# integer version of oov symbol, used in some scripts.
 
 
 # Create these lists of phones in colon-separated integer list form too, 

@@ -112,7 +112,7 @@ steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd"
 
 
 ## Do LDA+MLLT+SAT, and decode.
-steps/train_sat.sh --cmd "$train_cmd" 1800 9000 data/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
+steps/train_sat.sh 1800 9000 data/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
 utils/mkgraph.sh data/lang exp/tri3b exp/tri3b/graph || exit 1;
 steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri3b/graph data/test exp/tri3b/decode || exit 1;
