@@ -20,11 +20,11 @@ include kaldi.mk
 
 # Reset the default goal, so that the all target will become default
 .DEFAULT_GOAL :=
-all: test_install kaldi.mk $(SUBDIRS)
+all: test_install kaldi.mk mklibdir $(SUBDIRS)
 	-echo Done
 
 mklibdir:
-	mkdir -p $(KALDILIBDIR)
+	test -d $(KALDILIBDIR) || mkdir $(KALDILIBDIR)
 
 #I don't want to call rm -rf
 rmlibdir:
@@ -85,11 +85,11 @@ ext_depend: check_portaudio
 
 
 .PHONY: $(SUBDIRS)
-$(SUBDIRS) :
+$(SUBDIRS) : mklibdir
 	$(MAKE) -C $@ 
 
 .PHONY: $(EXT_SUBDIRS)
-$(EXT_SUBDIRS) :
+$(EXT_SUBDIRS) : mklibdir
 	$(MAKE) -C $@
 
 
