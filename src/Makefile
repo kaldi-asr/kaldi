@@ -20,7 +20,7 @@ include kaldi.mk
 
 # Reset the default goal, so that the all target will become default
 .DEFAULT_GOAL :=
-all: test_install kaldi.mk mklibdir $(SUBDIRS)
+all: checkversion test_dependencies kaldi.mk mklibdir $(SUBDIRS)
 	-echo Done
 
 mklibdir:
@@ -62,13 +62,13 @@ kaldi.mk:
 	@[ -f kaldi.mk ] || { echo "kaldi.mk does not exist; you have to run ./configure"; exit 1; }
 
 # Compile optional stuff 
-ext: test_install ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
+ext: test_dependencies ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
 	-echo Done
 
 # Note: if you have put the OpenFst installation somewhere else, you can just
 # delete or comment out the lines below.
 OPENFST_VER = $(shell grep 'PACKAGE_VERSION' ../tools/openfst/Makefile | sed -e 's:.*= ::')
-test_install:
+test_dependencies:
 	@[ "$(OPENFST_VER)" == '1.2.10' ] || [ "$(OPENFST_VER)" == '1.3.2' ] || { echo "You now need openfst-1.2.10.  Do: cd ../tools; svn update; ./install.sh; cd ../src; make depend; make"; exit 1; };
 
 check_portaudio:

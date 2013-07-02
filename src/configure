@@ -506,8 +506,8 @@ if $dynamic_kaldi ; then
 KALDILIBDIR=`pwd`/lib
 echo "KALDI_FLAVOR := dynamic" >> kaldi.mk
 echo "KALDILIBDIR := $KALDILIBDIR" >> kaldi.mk
-echo "CONFIGURE_VERSION := $CONFIGURE_VERSION" >> kaldi.mk
 fi
+echo "CONFIGURE_VERSION := $CONFIGURE_VERSION" >> kaldi.mk
 
 # Most of the OS-specific steps below will append to kaldi.mk
 echo "Doing OS specific configurations ..."
