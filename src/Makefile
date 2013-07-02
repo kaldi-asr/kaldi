@@ -34,17 +34,10 @@ rmlibdir:
 .PHONY: checkversion
 checkversion:
 ifeq ($(shell ./configure --version),$(CONFIGURE_VERSION))
-	@echo Configure version: $(shell ./configure --version)
-	@echo kaldi.mk version: $(CONFIGURE_VERSION)
 	@echo "The version of configure script matches kaldi.mk version. Good."
 else
 	$(error The kaldi.mk file was generated using a different version of configure script. Run the configure script again.)
 endif
-
-# ifdef CONFIGURE_VERSION
-# else
-# 	$(error The kaldi.mk file was generated using a different version of configure script. Run the configure script again.)
-# endif
 
 biglib: $(SUBDIRS_LIB) 
 ifneq ($(KALDI_FLAVOR), dynamic)
