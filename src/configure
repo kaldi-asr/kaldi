@@ -18,6 +18,10 @@
 #        # this is not working correctly on all platforms, do "make test"
 #        # and look out for segmentation faults.
 
+#This should be incremented after every significant change of the configure script
+#I.e. after each change that affects the kaldi.mk or the build system as whole
+CONFIGURE_VERSION=2
+
 function rel2abs {
   if [ ! -z "$1" ]; then
     local retval=`cd $1 2>/dev/null && pwd || exit 1`
@@ -79,6 +83,7 @@ while [ $# -gt 0 ];
 do
   case "$1" in
   --help) usage; exit 0 ;;
+  --version) echo $CONFIGURE_VERSION; exit 0 ;;
   --static)
     # FIXME depends on order of options first--static/--shared then --static-math -> it will override it
   dynamic_kaldi=false; 
@@ -498,10 +503,10 @@ fi
 
 cp makefiles/common.mk kaldi.mk
 if $dynamic_kaldi ; then
-echo "KALDI_FLAVOR = dynamic" >> kaldi.mk
-KALDILIBDIR=`pwd`/lib 
-mkdir -p "$KALDILIBDIR"
-echo "KALDILIBDIR = $KALDILIBDIR" >> kaldi.mk
+KALDILIBDIR=`pwd`/lib
+echo "KALDI_FLAVOR := dynamic" >> kaldi.mk
+echo "KALDILIBDIR := $KALDILIBDIR" >> kaldi.mk
+echo "CONFIGURE_VERSION := $CONFIGURE_VERSION" >> kaldi.mk
 fi
 
 # Most of the OS-specific steps below will append to kaldi.mk
