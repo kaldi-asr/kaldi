@@ -24,7 +24,12 @@ the trunk.
 
 Also, make the online extensions  (make ext)
 
-Now, just run make.
+Now, run:
+
+make depend
+make
+
+This should result in libgstkaldi.so which contains the GStreamer plugin
 
 == Usage ==
 

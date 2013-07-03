@@ -1,6 +1,9 @@
 // gst-plugin/gst-online-decode-faster.cc
 
 // Copyright 2013  Tanel Alumae, Tallinn University of Technology
+// Copyright 2012 Cisco Systems (author: Matthias Paulik)
+// Modifications to the original contribution by Cisco Systems made by:
+// Vassil Panayotov
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,14 +18,19 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 /**
- * SECTION:element-onlinegmmdecodefaster
- *
- * FIXME:Describe onlinegmmdecodefaster here.
+ * GStreamer plugin for automatic speecg recognition.
+ * Based on Kaldi's OnlineGmmDecodeFaster decoder.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch -v -m fakesrc ! onlinegmmdecodefaster ! fakesink silent_=TRUE
+ * gst-launch-1.0  filesrc location=test.wav \
+ *     ! decodebin ! audioconvert ! audioresample \
+ *     ! onlinegmmdecodefaster rt-min=0.8 rt-max=0.85  max-active=4000 beam=12.0 acoustic-scale=0.0769 \
+ *                              model=$ac_model/model fst=$ac_model/HCLG.fst \
+ *                              word-syms=$ac_model/words.txt silence-phones="1:2:3:4:5" \
+ *                              lda-mat=$trans_matrix \
+ *     ! filesink location=$resultfile
  * ]|
  * </refsect2>
  */
@@ -56,7 +64,6 @@ namespace kaldi {
 GST_DEBUG_CATEGORY_STATIC (gst_online_gmm_decode_faster_debug);
 #define GST_CAT_DEFAULT gst_online_gmm_decode_faster_debug
 
-/* Filter signals and args */
 enum
 {
   HYP_WORD_SIGNAL,
@@ -375,6 +382,10 @@ gst_online_gmm_decode_faster_finalize (GObject * object)
     delete filter->au_src_;
     filter->au_src_ = NULL;
   }
+  if (filter->simple_options_) {
+    delete filter->simple_options_;
+    filter->simple_options_ = NULL;
+  }
   
   G_OBJECT_CLASS (parent_class)->finalize (object);
 }
@@ -631,7 +642,6 @@ gst_online_gmm_decode_faster_loop (GstOnlineGmmDecodeFaster * filter) {
                                *(filter->lda_transform_),
                                filter->left_context_, 
                                filter->right_context_);
-    //feat_dim = filter->lda_transform_->NumRows();
   } else {
     DeltaFeaturesOptions opts;
     opts.order = kDeltaOrder;
@@ -640,7 +650,6 @@ gst_online_gmm_decode_faster_loop (GstOnlineGmmDecodeFaster * filter) {
     // in the delta computation: it should be a separate config.
     opts.window = filter->left_context_ / 2;
     feat_transform = new OnlineDeltaInput(opts, &cmn_input);
-    //feat_dim = (kDeltaOrder + 1) * mfcc_opts.num_ceps;
   }
 
   
@@ -778,7 +787,7 @@ onlinegmmdecodefaster_init (GstPlugin * onlinegmmdecodefaster)
    * exchange the string 'Template onlinegmmdecodefaster' with your description
    */
   GST_DEBUG_CATEGORY_INIT (gst_online_gmm_decode_faster_debug, "onlinegmmdecodefaster",
-      0, "Template onlinegmmdecodefaster");
+      0, "Automatic Speech Recognition");
 
   return gst_element_register (onlinegmmdecodefaster, "onlinegmmdecodefaster", GST_RANK_NONE,
       GST_TYPE_ONLINEGMMDECODEFASTER);
@@ -805,7 +814,7 @@ GST_PLUGIN_DEFINE (
     onlinegmmdecodefaster_init,
     VERSION,
     "LGPL",  // Changing it into Apache prevents the plugin from loading, see gst/gstplugin.c in GStreamer source
-    "GStreamer",
-    "http://gstreamer.net/"
+    "Kaldi",
+    "http://kaldi.sourceforge.net/"
 )
 }
