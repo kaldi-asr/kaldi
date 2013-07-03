@@ -31,7 +31,7 @@ class SimpleOptions : public OptionsItf {
  public:
    SimpleOptions() {}
    
-   ~SimpleOptions() {}
+  virtual ~SimpleOptions() {}
    
   // Methods from the interface
   void Register(const std::string &name,
