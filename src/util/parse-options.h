@@ -25,12 +25,13 @@
 #include <vector>
 
 #include "base/kaldi-common.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 
 /// The class ParseOptions is for parsing command-line options; see
 /// \ref parse_options for more documentation.
-class ParseOptions {
+class ParseOptions : public OptionsItf {
  public:
   explicit ParseOptions(const char *usage) :
     print_args_(true), help_(false), usage_(usage), argc_(0), argv_(NULL),
@@ -61,10 +62,25 @@ class ParseOptions {
 
   ~ParseOptions() {}
 
+  // Methods from the interface
+  void Register(const std::string &name,
+                bool *ptr, const std::string &doc); 
+  void Register(const std::string &name,
+                int32 *ptr, const std::string &doc); 
+  void Register(const std::string &name,
+                uint32 *ptr, const std::string &doc); 
+  void Register(const std::string &name,
+                float *ptr, const std::string &doc); 
+  void Register(const std::string &name,
+                double *ptr, const std::string &doc); 
+  void Register(const std::string &name,
+                std::string *ptr, const std::string &doc); 
+  
+
   /// Template to register various variable types,
   /// used for program-specific parameters
   template<typename T>
-  void Register(const std::string &name,
+  void RegisterTmpl(const std::string &name,
                 T *ptr, const std::string &doc);
 
   /// This one is used for registering standard parameters of all the programs

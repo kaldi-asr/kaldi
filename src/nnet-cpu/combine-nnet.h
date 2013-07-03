@@ -21,6 +21,7 @@
 #include "nnet-cpu/nnet-update.h"
 #include "nnet-cpu/nnet-compute.h"
 #include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -44,7 +45,7 @@ struct NnetCombineConfig {
                        initial_impr(0.01),
                        test_gradient(false) { }
   
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("initial-model", &initial_model, "Specifies where to start the "
                  "optimization from.  If 0 ... #models-1, then specifies the model; "
                  "if #models, then the average of all inputs; otherwise, chosen "

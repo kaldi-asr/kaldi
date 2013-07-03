@@ -20,7 +20,7 @@
 #define KALDI_NNET_CPU_NNET_COMPONENT_H_
 
 #include "base/kaldi-common.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 #include "matrix/matrix-lib.h"
 
 #include <iostream>
@@ -594,7 +594,7 @@ struct PreconditionConfig { // relates to AffineComponentA
   
   PreconditionConfig(): alpha(0.1), do_precondition(true),
                         renormalize(true) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("alpha", &alpha, "Smoothing constant used in "
                  "preconditioning of updates.");
     po->Register("do-precondition", &do_precondition, "Controls whether "

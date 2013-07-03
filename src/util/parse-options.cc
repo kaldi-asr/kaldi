@@ -34,9 +34,39 @@
 namespace kaldi {
 
 
+void ParseOptions::Register(const std::string &name,
+              bool *ptr, const std::string &doc) {
+  RegisterTmpl(name, ptr, doc);
+}
+
+void ParseOptions::Register(const std::string &name,
+              int32 *ptr, const std::string &doc) {
+  RegisterTmpl(name, ptr, doc);
+}
+
+void ParseOptions::Register(const std::string &name,
+              uint32 *ptr, const std::string &doc) {
+  RegisterTmpl(name, ptr, doc);
+}
+
+void ParseOptions::Register(const std::string &name,
+              float *ptr, const std::string &doc) {
+  RegisterTmpl(name, ptr, doc);
+}
+
+void ParseOptions::Register(const std::string &name,
+              double *ptr, const std::string &doc) {
+  RegisterTmpl(name, ptr, doc);
+}
+
+void ParseOptions::Register(const std::string &name,
+              std::string *ptr, const std::string &doc) {
+  RegisterTmpl(name, ptr, doc);
+}
+
 // old-style, used for registering application-specific parameters
 template<typename T>
-void ParseOptions::Register(const std::string &name, T *ptr,
+void ParseOptions::RegisterTmpl(const std::string &name, T *ptr,
                             const std::string &doc) {
   if (other_parser_ == NULL) {
     this->RegisterCommon(name, ptr, doc, false);
@@ -539,17 +569,17 @@ double ParseOptions::ToDouble(std::string str) {
 }
 
 // instantiate templates
-template void ParseOptions::Register(const std::string &name, bool *ptr,
+template void ParseOptions::RegisterTmpl(const std::string &name, bool *ptr,
                             const std::string &doc);
-template void ParseOptions::Register(const std::string &name, int32 *ptr,
+template void ParseOptions::RegisterTmpl(const std::string &name, int32 *ptr,
                             const std::string &doc);
-template void ParseOptions::Register(const std::string &name, uint32 *ptr,
+template void ParseOptions::RegisterTmpl(const std::string &name, uint32 *ptr,
                             const std::string &doc);
-template void ParseOptions::Register(const std::string &name, float *ptr,
+template void ParseOptions::RegisterTmpl(const std::string &name, float *ptr,
                             const std::string &doc);
-template void ParseOptions::Register(const std::string &name, double *ptr,
+template void ParseOptions::RegisterTmpl(const std::string &name, double *ptr,
                             const std::string &doc);
-template void ParseOptions::Register(const std::string &name, std::string *ptr,
+template void ParseOptions::RegisterTmpl(const std::string &name, std::string *ptr,
                             const std::string &doc);
 
 template void ParseOptions::RegisterStandard(const std::string &name,

@@ -47,7 +47,7 @@ struct MelBanksOptions {
       : num_bins(num_bins), low_freq(20), high_freq(0), vtln_low(400),
         vtln_high(-400), debug_mel(false) {}
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("num-mel-bins", &num_bins,
                  "Number of triangular mel-frequency bins");
     po->Register("low-freq", &low_freq,
@@ -88,7 +88,7 @@ struct FrameExtractionOptions {
       window_type("povey"),
       round_to_power_of_two(true) { }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("sample-frequency", &samp_freq,
                  "Waveform data sample frequency (must match the waveform file, "
                  "if specified there)");
@@ -185,7 +185,7 @@ struct DeltaFeaturesOptions {
 
   DeltaFeaturesOptions(int32 order = 2, int32 window = 2):
       order(order), window(window) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("delta-order", &order, "Order of delta computation");
     po->Register("delta-window", &window,
                  "Parameter controlling window for delta computation (actual window"

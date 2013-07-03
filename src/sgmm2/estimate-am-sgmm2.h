@@ -27,7 +27,7 @@
 
 #include "sgmm2/am-sgmm2.h"
 #include "gmm/model-common.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 #include "thread/kaldi-thread.h"
 
 namespace kaldi {
@@ -86,7 +86,7 @@ struct MleAmSgmm2Options {
     full_col_cov = false;
   }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     std::string module = "MleAmSgmm2Options: ";
     po->Register("tau-c", &tau_c, module+
                  "Count for smoothing weight update.");

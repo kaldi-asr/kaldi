@@ -20,7 +20,7 @@
 
 #include "nnet-cpu/nnet-update.h"
 #include "nnet-cpu/nnet-compute.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -37,7 +37,7 @@ struct NnetDataRandomizerConfig {
 
   NnetDataRandomizerConfig(): num_samples(-1), num_epochs(-1) { }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("num-epochs", &num_epochs, "If >0, this will define how many "
                  "times to train on the whole data.  Note, you will see some "
                  "samples more than once if frequency-power < 1.0.  You must "

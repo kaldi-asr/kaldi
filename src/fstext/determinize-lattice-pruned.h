@@ -24,7 +24,7 @@
 #include <set>
 #include <vector>
 #include "fstext/lattice-weight.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 namespace fst {
 
@@ -116,7 +116,7 @@ struct DeterminizeLatticePrunedOptions {
                                      max_loop(-1),
                                      max_states(-1),
                                      max_arcs(-1) { }
-  void Register (kaldi::ParseOptions *po) {
+  void Register (kaldi::OptionsItf *po) {
     po->Register("delta", &delta, "Tolerance used in determinization");
     po->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
                 "determinization (real usage might be many times this)");

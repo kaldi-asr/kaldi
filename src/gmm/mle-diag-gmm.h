@@ -25,7 +25,7 @@
 #include "gmm/diag-gmm.h"
 #include "gmm/diag-gmm-normal.h"
 #include "gmm/model-common.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 
@@ -54,7 +54,7 @@ struct MleDiagGmmOptions {
     min_variance            = 0.001;
     remove_low_count_gaussians = true;
   }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     std::string module = "MleDiagGmmOptions: ";
     po->Register("min-gaussian-weight", &min_gaussian_weight,
                  module+"Min Gaussian weight before we remove it.");
@@ -88,7 +88,7 @@ struct MapDiagGmmOptions {
                              variance_tau(50.0),
                              weight_tau(10.0) { }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("mean-tau", &mean_tau,
                  "Tau value for updating means.");
     po->Register("variance-tau", &mean_tau,

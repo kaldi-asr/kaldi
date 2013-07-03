@@ -23,7 +23,7 @@
 
 #include "gmm/model-common.h"
 #include "tied/tied-gmm.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 
@@ -55,7 +55,7 @@ struct MleTiedGmmOptions {
     interpolate_variances = false;
   }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     std::string module = "MleTiedGmmOptions: ";
     po->Register("min-tied-gaussian-weight", &min_gaussian_weight,
                  module+"Minimum gaussian weight w.r.t. the number of "

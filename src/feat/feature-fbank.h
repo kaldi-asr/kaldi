@@ -51,7 +51,7 @@ struct FbankOptions {
                  htk_compat(false),
                  use_log_fbank(true) {}
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     frame_opts.Register(po);
     mel_opts.Register(po);
     po->Register("use-energy", &use_energy,

@@ -30,7 +30,7 @@
 #include "gmm/model-common.h"
 #include "gmm/diag-gmm.h"
 #include "gmm/full-gmm.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 #include "util/table-types.h"
 #include "thread/kaldi-thread.h"
 
@@ -98,7 +98,7 @@ struct Sgmm2GselectConfig {
     diag_gmm_nbest = 50;
   }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("full-gmm-nbest", &full_gmm_nbest, "Number of highest-scoring"
         " full-covariance Gaussians selected per frame.");
     po->Register("diag-gmm-nbest", &diag_gmm_nbest, "Number of highest-scoring"
@@ -117,7 +117,7 @@ struct Sgmm2SplitSubstatesConfig {
                                power(0.2),
                                max_cond(100.0),
                                min_count(40.0) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("split-substates", &split_substates, "Increase number of "
                  "substates to this overall target.");
     po->Register("max-cond-split", &max_cond, "Max condition number of smoothing "

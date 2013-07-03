@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "gmm/model-common.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 #include "sgmm2/estimate-am-sgmm2.h"
 
 namespace kaldi {
@@ -98,7 +98,7 @@ struct EbwAmSgmm2Options {
     epsilon = 1.0e-40;
   }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     std::string module = "EbwAmSgmm2Options: ";
     po->Register("tau-v", &tau_v, module+
                  "Smoothing constant for phone vector estimation.");
