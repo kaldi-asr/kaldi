@@ -41,38 +41,34 @@
 #  define VERSION "1.0"
 #endif
 
-//#include <gst/gst.h>
-#include "kaldimarshal.h"
+#include <utility>
+#include <string>
+#include <algorithm>
 
-#include "gst-online-gmm-decode-faster.h"
+#include "gst-plugin/kaldimarshal.h"
+#include "gst-plugin/gst-online-gmm-decode-faster.h"
 
-#include <feat/feature-mfcc.h>
-#include <online/online-audio-source.h>
-#include <online/online-feat-input.h>
-#include <online/online-decodable.h>
-#include <online/online-faster-decoder.h>
-#include <online/onlinebin-util.h>
-#include <util/simple-options.h>
-#include <util/parse-options.h>
+#include "feat/feature-mfcc.h"
+#include "online/online-audio-source.h"
+#include "online/online-feat-input.h"
+#include "online/online-decodable.h"
+#include "online/online-faster-decoder.h"
+#include "online/onlinebin-util.h"
+#include "util/simple-options.h"
+#include "util/parse-options.h"
 
+namespace kaldi {
 
-//using namespace kaldi;
-using namespace fst;
-    
-namespace kaldi {    
-
-GST_DEBUG_CATEGORY_STATIC (gst_online_gmm_decode_faster_debug);
+GST_DEBUG_CATEGORY_STATIC(gst_online_gmm_decode_faster_debug);
 #define GST_CAT_DEFAULT gst_online_gmm_decode_faster_debug
 
-enum
-{
+enum {
   HYP_WORD_SIGNAL,
   LAST_SIGNAL
 };
 
-enum
-{
-  PROP_0,  
+enum {
+  PROP_0,
   PROP_SILENT,
   PROP_MODEL,
   PROP_FST,
@@ -83,11 +79,11 @@ enum
 };
 
 #define DEFAULT_MODEL           "final.mdl"
-#define DEFAULT_FST             "HCLG.fst"  
+#define DEFAULT_FST             "HCLG.fst"
 #define DEFAULT_WORD_SYMS       "words.txt"
 #define DEFAULT_SILENCE_PHONES  "1:2:3:4:5"
 #define DEFAULT_ACOUSTIC_SCALE  1.0/13
-#define DEFAULT_LEFT_CONTEXT    4  
+#define DEFAULT_LEFT_CONTEXT    4
 #define DEFAULT_RIGHT_CONTEXT   4
 
 
@@ -103,42 +99,50 @@ static GstStaticPadTemplate sink_factory =
                                 "audio/x-raw, "
                                 "format = (string) S16LE, "
                                 "channels = (int) 1, "
-                                "rate = (int) 16000 "                            
-                                            )
-        );
+                                "rate = (int) 16000 "));
 
 
-static GstStaticPadTemplate src_factory = 
-  GST_STATIC_PAD_TEMPLATE ("src",
-    GST_PAD_SRC,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("text/x-raw, format= { utf8 }")
-    );
+static GstStaticPadTemplate src_factory =
+    GST_STATIC_PAD_TEMPLATE("src",
+                            GST_PAD_SRC,
+                            GST_PAD_ALWAYS,
+                            GST_STATIC_CAPS("text/x-raw, format= { utf8 }"));
 
 static guint gst_online_gmm_decode_faster_signals[LAST_SIGNAL];
 
 #define gst_online_gmm_decode_faster_parent_class parent_class
-G_DEFINE_TYPE (GstOnlineGmmDecodeFaster, gst_online_gmm_decode_faster, GST_TYPE_ELEMENT);
+G_DEFINE_TYPE(GstOnlineGmmDecodeFaster, gst_online_gmm_decode_faster, GST_TYPE_ELEMENT);
 
 
-static void gst_online_gmm_decode_faster_set_property (GObject * object, guint prop_id,
-    const GValue * value, GParamSpec * pspec);
-static void gst_online_gmm_decode_faster_get_property (GObject * object, guint prop_id,
-    GValue * value, GParamSpec * pspec);
-static GstStateChangeReturn gst_online_gmm_decode_faster_change_state (GstElement *element, 
-    GstStateChange transition);
-static void gst_online_gmm_decode_faster_finalize (GObject * object);    
-static gboolean gst_online_gmm_decode_faster_sink_event (GstPad * pad, GstObject * parent, GstEvent * event);
-static GstFlowReturn gst_online_gmm_decode_faster_chain (GstPad * pad, GstObject * parent, GstBuffer * buf);
-static void gst_online_gmm_decode_faster_loop (GstOnlineGmmDecodeFaster * filter);
+static void
+gst_online_gmm_decode_faster_set_property(GObject * object, guint prop_id,
+                                          const GValue * value,
+                                          GParamSpec * pspec);
+static void
+gst_online_gmm_decode_faster_get_property(GObject * object, guint prop_id,
+                                          GValue * value, GParamSpec * pspec);
+static GstStateChangeReturn
+gst_online_gmm_decode_faster_change_state(GstElement *element,
+                                          GstStateChange transition);
+static void
+gst_online_gmm_decode_faster_finalize(GObject * object);
+
+static gboolean
+gst_online_gmm_decode_faster_sink_event(GstPad * pad, GstObject * parent,
+                                        GstEvent * event);
+
+static GstFlowReturn gst_online_gmm_decode_faster_chain(GstPad * pad,
+                                                        GstObject * parent,
+                                                        GstBuffer * buf);
+
+static void
+gst_online_gmm_decode_faster_loop(GstOnlineGmmDecodeFaster * filter);
 
 
 /* GObject vmethod implementations */
 
 /* initialize the onlinegmmdecodefaster's class */
-static void
-gst_online_gmm_decode_faster_class_init (GstOnlineGmmDecodeFasterClass * klass)
-{
+static void gst_online_gmm_decode_faster_class_init(GstOnlineGmmDecodeFasterClass * klass) {
   GObjectClass *gobject_class;
   GstElementClass *gstelement_class;
 
@@ -148,43 +152,68 @@ gst_online_gmm_decode_faster_class_init (GstOnlineGmmDecodeFasterClass * klass)
   gobject_class->set_property = gst_online_gmm_decode_faster_set_property;
   gobject_class->get_property = gst_online_gmm_decode_faster_get_property;
   gobject_class->finalize = gst_online_gmm_decode_faster_finalize;
-  
-  gstelement_class->change_state = gst_online_gmm_decode_faster_change_state; 
 
-  g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_SILENT,
-      g_param_spec_boolean ("silent", "Silence the decoder", "Determines whether incoming audio is sent to the decoder or not",
-          false, (GParamFlags) G_PARAM_READWRITE));  
-  g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_MODEL,
-      g_param_spec_string ("model", "Acoustic model", "Filename of the acoustic model",
-          DEFAULT_MODEL, (GParamFlags) G_PARAM_READWRITE));
-  g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_FST,
-      g_param_spec_string ("fst", "Decoding FST", "Filename of the HCLG FST",
-          DEFAULT_FST, (GParamFlags) G_PARAM_READWRITE));
-  g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_WORD_SYMS,
-      g_param_spec_string ("word-syms", "Word symbols", "Name of word symbols file (typically words.txt)",
-          DEFAULT_WORD_SYMS, (GParamFlags) G_PARAM_READWRITE));
-  g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_SILENCE_PHONES,
-      g_param_spec_string ("silence-phones", "Silence phones", "Colon-separated IDs of silence phones, e.g. '1:2:3:4:5'",
-          DEFAULT_SILENCE_PHONES, (GParamFlags) G_PARAM_READWRITE));
-  g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_LDA_MAT,
-      g_param_spec_string ("lda-mat", "LDA matrix", "Filename of the LDA transform data",
-          "", (GParamFlags) G_PARAM_READWRITE));
-          
+  gstelement_class->change_state = gst_online_gmm_decode_faster_change_state;
+
+  g_object_class_install_property(G_OBJECT_CLASS(klass),
+                                  PROP_SILENT,
+                                  g_param_spec_boolean("silent",
+                                                       "Silence the decoder",
+                                                       "Determines whether incoming audio is sent to the decoder or not",
+                                                       false,
+                                                       (GParamFlags) G_PARAM_READWRITE));
+  g_object_class_install_property(G_OBJECT_CLASS(klass),
+                                  PROP_MODEL,
+                                  g_param_spec_string("model",
+                                                      "Acoustic model",
+                                                      "Filename of the acoustic model",
+                                                      DEFAULT_MODEL,
+                                                      (GParamFlags) G_PARAM_READWRITE));
+  g_object_class_install_property(G_OBJECT_CLASS(klass),
+                                  PROP_FST,
+                                  g_param_spec_string("fst",
+                                                      "Decoding FST",
+                                                      "Filename of the HCLG FST",
+                                                      DEFAULT_FST,
+                                                      (GParamFlags) G_PARAM_READWRITE));
+  g_object_class_install_property(G_OBJECT_CLASS(klass),
+                                  PROP_WORD_SYMS,
+                                  g_param_spec_string("word-syms",
+                                                      "Word symbols",
+                                                      "Name of word symbols file (typically words.txt)",
+                                                      DEFAULT_WORD_SYMS,
+                                                      (GParamFlags) G_PARAM_READWRITE));
+  g_object_class_install_property(G_OBJECT_CLASS(klass),
+                                  PROP_SILENCE_PHONES,
+                                  g_param_spec_string("silence-phones",
+                                                      "Silence phones",
+                                                      "Colon-separated IDs of silence phones, e.g. '1:2:3:4:5'",
+                                                      DEFAULT_SILENCE_PHONES,
+                                                      (GParamFlags) G_PARAM_READWRITE));
+  g_object_class_install_property(G_OBJECT_CLASS(klass),
+                                  PROP_LDA_MAT,
+                                  g_param_spec_string("lda-mat",
+                                                      "LDA matrix",
+                                                      "Filename of the LDA transform data",
+                                                      "",
+                                                      (GParamFlags) G_PARAM_READWRITE));
+
   gst_element_class_set_details_simple(gstelement_class,
-    "OnlineGmmFasterDecoder",
-    "Speech/Audio",
-    "Convert speech to text",
-    "Tanel Alumae <<tanel.alumae@phon.ioc.ee>>");
+                                       "OnlineGmmFasterDecoder",
+                                       "Speech/Audio",
+                                       "Convert speech to text",
+                                       "Tanel Alumae <<tanel.alumae@phon.ioc.ee>>");
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&src_factory));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&sink_factory));
-  
-  gst_online_gmm_decode_faster_signals[HYP_WORD_SIGNAL] =
-      g_signal_new ("hyp-word", G_TYPE_FROM_CLASS (klass),
-      G_SIGNAL_RUN_LAST, G_STRUCT_OFFSET (GstOnlineGmmDecodeFasterClass, hyp_word), NULL,
-      NULL, kaldi_marshal_VOID__STRING, G_TYPE_NONE, 1, G_TYPE_STRING);
+  gst_element_class_add_pad_template(gstelement_class,
+                                     gst_static_pad_template_get(&src_factory));
+  gst_element_class_add_pad_template(gstelement_class,
+                                     gst_static_pad_template_get(&sink_factory));
+
+  gst_online_gmm_decode_faster_signals[HYP_WORD_SIGNAL]
+      = g_signal_new("hyp-word", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST,
+                     G_STRUCT_OFFSET(GstOnlineGmmDecodeFasterClass, hyp_word),
+                     NULL, NULL, kaldi_marshal_VOID__STRING, G_TYPE_NONE, 1,
+                     G_TYPE_STRING);
 }
 
 
@@ -195,7 +224,7 @@ gst_online_gmm_decode_faster_class_init (GstOnlineGmmDecodeFasterClass * klass)
  * initialize instance structure
  */
 static void
-gst_online_gmm_decode_faster_init (GstOnlineGmmDecodeFaster * filter) { 
+gst_online_gmm_decode_faster_init(GstOnlineGmmDecodeFaster * filter) {
   bool tmp_bool;
   int32 tmp_int;
   uint32 tmp_uint;
@@ -209,107 +238,154 @@ gst_online_gmm_decode_faster_init (GstOnlineGmmDecodeFaster * filter) {
   filter->lda_mat_rspecifier_ = g_strdup("");
   filter->silence_phones_ = new std::vector<int32>;
   SplitStringToIntegers(DEFAULT_SILENCE_PHONES, ":", false, filter->silence_phones_);
-  
+
   filter->simple_options_ = new SimpleOptions();
-  
+
   filter->decoder_opts_ = new OnlineFasterDecoderOpts();
   filter->decoder_opts_->Register(filter->simple_options_, true);
   filter->feature_reading_opts_ = new OnlineFeatureMatrixOptions();
   filter->feature_reading_opts_->Register(filter->simple_options_);
-  
+
   filter->acoustic_scale_ = DEFAULT_ACOUSTIC_SCALE;
   filter->cmn_window_ = 600;
-  filter->min_cmn_window_ = 100; // adds 1 second latency, only at utterance start.
+  filter->min_cmn_window_ = 100;  // adds 1 second latency, only at utterance start.
   filter->right_context_ = DEFAULT_RIGHT_CONTEXT;
   filter->left_context_ = DEFAULT_LEFT_CONTEXT;
 
-  filter->simple_options_->Register("left-context", &filter->left_context_, "Number of frames of left context");
-  filter->simple_options_->Register("right-context", &filter->right_context_, "Number of frames of right context");
+  filter->simple_options_->Register("left-context", &filter->left_context_,
+                                    "Number of frames of left context");
+  filter->simple_options_->Register("right-context", &filter->right_context_,
+                                    "Number of frames of right context");
   filter->simple_options_->Register("acoustic-scale", &filter->acoustic_scale_,
-                "Scaling factor for acoustic likelihoods");
-                
+                                    "Scaling factor for acoustic likelihoods");
+
   filter->simple_options_->Register("cmn-window", &(filter->cmn_window_),
-        "Number of feat. vectors used in the running average CMN calculation");
+                                    "Number of feat. vectors used in the running average CMN calculation");
   filter->simple_options_->Register("min-cmn-window", &filter->min_cmn_window_,
-                "Minumum CMN window used at start of decoding (adds "
-                "latency only at start)");
+                                    "Minumum CMN window used at start of decoding (adds "
+                                      "latency only at start)");
 
 
-  filter->sinkpad_ = gst_pad_new_from_static_template (&sink_factory, "sink");
-  gst_pad_set_event_function (filter->sinkpad_,
+  filter->sinkpad_ = gst_pad_new_from_static_template(&sink_factory, "sink");
+  gst_pad_set_event_function(filter->sinkpad_,
                               GST_DEBUG_FUNCPTR(gst_online_gmm_decode_faster_sink_event));
-  gst_pad_set_chain_function (filter->sinkpad_,
+  gst_pad_set_chain_function(filter->sinkpad_,
                               GST_DEBUG_FUNCPTR(gst_online_gmm_decode_faster_chain));
 
-  gst_pad_use_fixed_caps (filter->sinkpad_);
-  gst_element_add_pad (GST_ELEMENT (filter), filter->sinkpad_);
+  gst_pad_use_fixed_caps(filter->sinkpad_);
+  gst_element_add_pad(GST_ELEMENT(filter), filter->sinkpad_);
 
-  filter->srcpad_ = gst_pad_new_from_static_template (&src_factory, "src");
+  filter->srcpad_ = gst_pad_new_from_static_template(&src_factory, "src");
   gst_pad_use_fixed_caps(filter->srcpad_);
-  gst_element_add_pad (GST_ELEMENT (filter), filter->srcpad_);
+  gst_element_add_pad(GST_ELEMENT(filter), filter->srcpad_);
 
   // init properties from various Kaldi Opts
-  GstElementClass * klass =  GST_ELEMENT_GET_CLASS(filter);
-  
-  std::vector<std::pair<std::string, SimpleOptions::OptionInfo> > option_infos;
-  option_infos = filter->simple_options_->GetOptionInfos();
+  GstElementClass * klass = GST_ELEMENT_GET_CLASS(filter);
+
+  std::vector<std::pair<std::string, SimpleOptions::OptionInfo> > option_info_list;
+  option_info_list = filter->simple_options_->GetOptionInfoList();
   int32 i = 0;
-  for( vector <std::pair<std::string, SimpleOptions::OptionInfo> >::iterator dx = option_infos.begin(); dx != option_infos.end(); dx++) {
+  for (vector<std::pair<std::string,
+      SimpleOptions::OptionInfo> >::iterator dx = option_info_list.begin();
+      dx != option_info_list.end(); dx++) {
     std::pair<std::string, SimpleOptions::OptionInfo> result = (*dx);
     SimpleOptions::OptionInfo option_info = result.second;
     std::string name = result.first;
     switch (option_info.type) {
-      case SimpleOptions::BOOL:
-        filter->simple_options_->GetOption(name, tmp_bool);
-        g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_LAST + i,
-            g_param_spec_boolean (name.c_str(), option_info.doc.c_str(), option_info.doc.c_str(),
-                tmp_bool, (GParamFlags) G_PARAM_READWRITE));
+      case SimpleOptions::kBool:
+        filter->simple_options_->GetOption(name, &tmp_bool);
+        g_object_class_install_property(
+                                        G_OBJECT_CLASS(klass),
+                                        PROP_LAST + i,
+                                        g_param_spec_boolean(
+                                                             name.c_str(),
+                                                             option_info.doc.c_str(),
+                                                             option_info.doc.c_str(),
+                                                             tmp_bool,
+                                                             (GParamFlags) G_PARAM_READWRITE));
         break;
-      case SimpleOptions::INT32:
-        filter->simple_options_->GetOption(name, tmp_int);
-        g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_LAST + i,
-            g_param_spec_int (name.c_str(), option_info.doc.c_str(), option_info.doc.c_str(),
-                G_MININT, G_MAXINT, tmp_int, (GParamFlags) G_PARAM_READWRITE));
+      case SimpleOptions::kInt32:
+        filter->simple_options_->GetOption(name, &tmp_int);
+        g_object_class_install_property(
+                                        G_OBJECT_CLASS(klass),
+                                        PROP_LAST + i,
+                                        g_param_spec_int(
+                                                         name.c_str(),
+                                                         option_info.doc.c_str(),
+                                                         option_info.doc.c_str(),
+                                                         G_MININT,
+                                                         G_MAXINT,
+                                                         tmp_int,
+                                                         (GParamFlags) G_PARAM_READWRITE));
         break;
-      case SimpleOptions::UINT32:
-        filter->simple_options_->GetOption(name, tmp_uint);
-        g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_LAST + i,
-            g_param_spec_uint (name.c_str(), option_info.doc.c_str(), option_info.doc.c_str(),
-                0, G_MAXUINT, tmp_uint, (GParamFlags) G_PARAM_READWRITE));
+      case SimpleOptions::kUint32:
+        filter->simple_options_->GetOption(name, &tmp_uint);
+        g_object_class_install_property(
+                                        G_OBJECT_CLASS(klass),
+                                        PROP_LAST + i,
+                                        g_param_spec_uint(
+                                                          name.c_str(),
+                                                          option_info.doc.c_str(),
+                                                          option_info.doc.c_str(),
+                                                          0,
+                                                          G_MAXUINT,
+                                                          tmp_uint,
+                                                          (GParamFlags) G_PARAM_READWRITE));
         break;
-      case SimpleOptions::FLOAT:
-        filter->simple_options_->GetOption(name, tmp_float);
-        g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_LAST + i,
-            g_param_spec_float (name.c_str(), option_info.doc.c_str(), option_info.doc.c_str(),
-                G_MINFLOAT, G_MAXFLOAT, tmp_float, (GParamFlags) G_PARAM_READWRITE));
+      case SimpleOptions::kFloat:
+        filter->simple_options_->GetOption(name, &tmp_float);
+        g_object_class_install_property(
+                                        G_OBJECT_CLASS(klass),
+                                        PROP_LAST + i,
+                                        g_param_spec_float(
+                                                           name.c_str(),
+                                                           option_info.doc.c_str(),
+                                                           option_info.doc.c_str(),
+                                                           G_MINFLOAT,
+                                                           G_MAXFLOAT,
+                                                           tmp_float,
+                                                           (GParamFlags) G_PARAM_READWRITE));
         break;
-      case SimpleOptions::DOUBLE:
-        filter->simple_options_->GetOption(name, tmp_double);
-        g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_LAST + i,
-            g_param_spec_double (name.c_str(), option_info.doc.c_str(), option_info.doc.c_str(),
-                G_MINDOUBLE, G_MAXDOUBLE, tmp_double, (GParamFlags) G_PARAM_READWRITE));
+      case SimpleOptions::kDouble:
+        filter->simple_options_->GetOption(name, &tmp_double);
+        g_object_class_install_property(
+                                        G_OBJECT_CLASS(klass),
+                                        PROP_LAST + i,
+                                        g_param_spec_double(
+                                                            name.c_str(),
+                                                            option_info.doc.c_str(),
+                                                            option_info.doc.c_str(),
+                                                            G_MINDOUBLE,
+                                                            G_MAXDOUBLE,
+                                                            tmp_double,
+                                                            (GParamFlags) G_PARAM_READWRITE));
         break;
-      case SimpleOptions::STRING:
-        filter->simple_options_->GetOption(name, tmp_string);
-        g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_LAST + i,
-            g_param_spec_string (name.c_str(), option_info.doc.c_str(), option_info.doc.c_str(),
-                tmp_string.c_str(), (GParamFlags) G_PARAM_READWRITE));
+      case SimpleOptions::kString:
+        filter->simple_options_->GetOption(name, &tmp_string);
+        g_object_class_install_property(
+                                        G_OBJECT_CLASS(klass),
+                                        PROP_LAST + i,
+                                        g_param_spec_string(
+                                                            name.c_str(),
+                                                            option_info.doc.c_str(),
+                                                            option_info.doc.c_str(),
+                                                            tmp_string.c_str(),
+                                                            (GParamFlags) G_PARAM_READWRITE));
         break;
-    } 
+    }
     i += 1;
   }
-  
 }
 
 static bool
 gst_online_gmm_decode_faster_allocate(GstOnlineGmmDecodeFaster * filter) {
-  if (!filter->decoder_) {      
+  if (!filter->decoder_) {
     GST_INFO_OBJECT(filter,  "Loading Kaldi decoder");
     filter->lda_transform_ = new Matrix<BaseFloat>;
     if (strlen(filter->lda_mat_rspecifier_) > 0) {
-        bool binary_in;
-        Input ki(filter->lda_mat_rspecifier_, &binary_in);
-        filter->lda_transform_->Read(ki.Stream(), binary_in);
+      bool binary_in;
+      Input ki(filter->lda_mat_rspecifier_, &binary_in);
+      filter->lda_transform_->Read(ki.Stream(), binary_in);
     }
     filter->trans_model_ = new TransitionModel();
     filter->am_gmm_ = new AmDiagGmm();
@@ -326,26 +402,27 @@ gst_online_gmm_decode_faster_allocate(GstOnlineGmmDecodeFaster * filter) {
     }
 
     filter->decode_fst_ = ReadDecodeGraph(filter->fst_rspecifier_);
-    
-    int32 window_size = filter->right_context_ + filter->left_context_ + 1;    
+
+    int32 window_size = filter->right_context_ + filter->left_context_ + 1;
     filter->decoder_opts_->batch_size = std::max(filter->decoder_opts_->batch_size, window_size);
-    
-    filter->out_fst_ = new VectorFst<LatticeArc> ();   
-    
+
+    filter->out_fst_ = new fst::VectorFst<LatticeArc> ();
+
     filter->au_src_ = new GstBufferSource();
-    
-    filter->decoder_ = new OnlineFasterDecoder(*(filter->decode_fst_), *(filter->decoder_opts_),
-                                  *(filter->silence_phones_), *(filter->trans_model_));
-                                  
+
+    filter->decoder_ = new OnlineFasterDecoder(*(filter->decode_fst_),
+                                               *(filter->decoder_opts_),
+                                               *(filter->silence_phones_),
+                                               *(filter->trans_model_));
+
     GST_INFO_OBJECT(filter,  "Finished loading Kaldi decoder");
   }
   return true;
 }
 
 static void
-gst_online_gmm_decode_faster_finalize (GObject * object)
-{
-  GstOnlineGmmDecodeFaster *filter = GST_ONLINEGMMDECODEFASTER (object);
+gst_online_gmm_decode_faster_finalize(GObject * object) {
+  GstOnlineGmmDecodeFaster *filter = GST_ONLINEGMMDECODEFASTER(object);
 
   g_free(filter->model_rspecifier_);
   g_free(filter->fst_rspecifier_);
@@ -386,22 +463,22 @@ gst_online_gmm_decode_faster_finalize (GObject * object)
     delete filter->simple_options_;
     filter->simple_options_ = NULL;
   }
-  
-  G_OBJECT_CLASS (parent_class)->finalize (object);
+
+  G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
 
 static bool
 gst_online_gmm_decode_faster_deallocate(GstOnlineGmmDecodeFaster * filter) {
   /* We won't deallocate the decoder once it's already allocated, since model loading could take a lot of time */
-  GST_INFO_OBJECT(filter,  "Refusing to unload decoder");
+  GST_INFO_OBJECT(filter, "Refusing to unload decoder");
   return true;
 }
 
 static void
-gst_online_gmm_decode_faster_set_property (GObject * object, guint prop_id,
-    const GValue * value, GParamSpec * pspec) {
-  GstOnlineGmmDecodeFaster *filter = GST_ONLINEGMMDECODEFASTER (object);
+gst_online_gmm_decode_faster_set_property(GObject * object, guint prop_id,
+                                          const GValue * value, GParamSpec * pspec) {
+  GstOnlineGmmDecodeFaster *filter = GST_ONLINEGMMDECODEFASTER(object);
 
   if (prop_id == PROP_SILENT) {
     filter->silent_ = g_value_get_boolean(value);
@@ -409,65 +486,65 @@ gst_online_gmm_decode_faster_set_property (GObject * object, guint prop_id,
   }
   // All other props cannot be changed after initialization
   if (filter->decoder_) {
-    GST_WARNING_OBJECT (filter,  "Decoder already initialized, cannot change it's properties");
+    GST_WARNING_OBJECT(filter,  "Decoder already initialized, cannot change it's properties");
     return;
   }
   switch (prop_id) {
     case PROP_MODEL:
       g_free(filter->model_rspecifier_);
-      filter->model_rspecifier_ = g_value_dup_string (value);
+      filter->model_rspecifier_ = g_value_dup_string(value);
       break;
     case PROP_FST:
       g_free(filter->fst_rspecifier_);
-      filter->fst_rspecifier_ = g_value_dup_string (value);
+      filter->fst_rspecifier_ = g_value_dup_string(value);
       break;
     case PROP_WORD_SYMS:
       g_free(filter->word_syms_filename_);
-      filter->word_syms_filename_ = g_value_dup_string (value);
+      filter->word_syms_filename_ = g_value_dup_string(value);
       break;
     case PROP_LDA_MAT:
       g_free(filter->lda_mat_rspecifier_);
-      filter->lda_mat_rspecifier_ = g_value_dup_string (value);
+      filter->lda_mat_rspecifier_ = g_value_dup_string(value);
       break;
     case PROP_SILENCE_PHONES:
-      SplitStringToIntegers(g_value_get_string (value), ":", false, filter->silence_phones_);
+      SplitStringToIntegers(g_value_get_string(value), ":", false, filter->silence_phones_);
       break;
     default:
       if (prop_id >= PROP_LAST) {
         const gchar* name = g_param_spec_get_name(pspec);
         SimpleOptions::OptionType option_type;
-        if (filter->simple_options_->GetOptionType(std::string(name), option_type)) {
+        if (filter->simple_options_->GetOptionType(std::string(name), &option_type)) {
           switch (option_type) {
-            case SimpleOptions::BOOL:
+            case SimpleOptions::kBool:
               filter->simple_options_->SetOption(name, g_value_get_boolean(value));
               break;
-            case SimpleOptions::INT32:
+            case SimpleOptions::kInt32:
               filter->simple_options_->SetOption(name, g_value_get_int(value));
               break;
-            case SimpleOptions::UINT32:
+            case SimpleOptions::kUint32:
               filter->simple_options_->SetOption(name, g_value_get_uint(value));
               break;
-            case SimpleOptions::FLOAT:
+            case SimpleOptions::kFloat:
               filter->simple_options_->SetOption(name, g_value_get_float(value));
               break;
-            case SimpleOptions::DOUBLE:
+            case SimpleOptions::kDouble:
               filter->simple_options_->SetOption(name, g_value_get_double(value));
               break;
-            case SimpleOptions::STRING:
-              filter->simple_options_->SetOption(name, g_value_dup_string (value));
+            case SimpleOptions::kString:
+              filter->simple_options_->SetOption(name, g_value_dup_string(value));
               break;
           }
           break;
         }
       }
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
       break;
   }
 }
 
 static void
-gst_online_gmm_decode_faster_get_property (GObject * object, guint prop_id,
-    GValue * value, GParamSpec * pspec) {
+gst_online_gmm_decode_faster_get_property(GObject * object, guint prop_id,
+                                           GValue * value, GParamSpec * pspec) {
   bool tmp_bool;
   int32 tmp_int;
   uint32 tmp_uint;
@@ -475,7 +552,7 @@ gst_online_gmm_decode_faster_get_property (GObject * object, guint prop_id,
   double tmp_double;
   std::string tmp_string;
 
-  GstOnlineGmmDecodeFaster *filter = GST_ONLINEGMMDECODEFASTER (object);
+  GstOnlineGmmDecodeFaster *filter = GST_ONLINEGMMDECODEFASTER(object);
   std::ostringstream ss;
 
   switch (prop_id) {
@@ -483,16 +560,16 @@ gst_online_gmm_decode_faster_get_property (GObject * object, guint prop_id,
       g_value_set_boolean(value, filter->silent_);
       break;
     case PROP_MODEL:
-      g_value_set_string (value, filter->model_rspecifier_);
+      g_value_set_string(value, filter->model_rspecifier_);
       break;
     case PROP_FST:
-      g_value_set_string (value, filter->fst_rspecifier_);
+      g_value_set_string(value, filter->fst_rspecifier_);
       break;
     case PROP_WORD_SYMS:
-      g_value_set_string (value, filter->word_syms_filename_);
+      g_value_set_string(value, filter->word_syms_filename_);
       break;
     case PROP_LDA_MAT:
-      g_value_set_string (value, filter->lda_mat_rspecifier_);
+      g_value_set_string(value, filter->lda_mat_rspecifier_);
       break;
     case PROP_SILENCE_PHONES:
       for (size_t j = 0; j < filter->silence_phones_->size(); j++) {
@@ -501,70 +578,69 @@ gst_online_gmm_decode_faster_get_property (GObject * object, guint prop_id,
         }
         ss <<  (*filter->silence_phones_)[j];
       }
-      g_value_set_string (value, ss.str().c_str());
+      g_value_set_string(value, ss.str().c_str());
       break;
     default:
       if (prop_id >= PROP_LAST) {
         const gchar* name = g_param_spec_get_name(pspec);
         SimpleOptions::OptionType option_type;
-        if (filter->simple_options_->GetOptionType(std::string(name), option_type)) {
+        if (filter->simple_options_->GetOptionType(std::string(name), &option_type)) {
           switch (option_type) {
-            case SimpleOptions::BOOL:
-              filter->simple_options_->GetOption(name, tmp_bool);
+            case SimpleOptions::kBool:
+              filter->simple_options_->GetOption(name, &tmp_bool);
               g_value_set_boolean(value, tmp_bool);
               break;
-            case SimpleOptions::INT32:
-              filter->simple_options_->GetOption(name, tmp_int);
+            case SimpleOptions::kInt32:
+              filter->simple_options_->GetOption(name, &tmp_int);
               g_value_set_int(value, tmp_int);
               break;
-            case SimpleOptions::UINT32:
-              filter->simple_options_->GetOption(name, tmp_uint);
+            case SimpleOptions::kUint32:
+              filter->simple_options_->GetOption(name, &tmp_uint);
               g_value_set_uint(value, tmp_uint);
               break;
-            case SimpleOptions::FLOAT:
-              filter->simple_options_->GetOption(name, tmp_float);
+            case SimpleOptions::kFloat:
+              filter->simple_options_->GetOption(name, &tmp_float);
               g_value_set_float(value, tmp_float);
               break;
-            case SimpleOptions::DOUBLE:
-              filter->simple_options_->GetOption(name, tmp_double);
+            case SimpleOptions::kDouble:
+              filter->simple_options_->GetOption(name, &tmp_double);
               g_value_set_double(value, tmp_double);
               break;
-            case SimpleOptions::STRING:
-              filter->simple_options_->GetOption(name, tmp_string);
+            case SimpleOptions::kString:
+              filter->simple_options_->GetOption(name, &tmp_string);
               g_value_set_string(value, tmp_string.c_str());
               break;
           }
           break;
         }
       }
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
       break;
   }
 }
 
 
 static GstStateChangeReturn
-gst_online_gmm_decode_faster_change_state (GstElement *element, GstStateChange transition)
-{
+gst_online_gmm_decode_faster_change_state(GstElement *element, GstStateChange transition) {
   GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
-  GstOnlineGmmDecodeFaster *filter = GST_ONLINEGMMDECODEFASTER (element);
+  GstOnlineGmmDecodeFaster *filter = GST_ONLINEGMMDECODEFASTER(element);
 
   switch (transition) {
     case GST_STATE_CHANGE_NULL_TO_READY:
-      if (!gst_online_gmm_decode_faster_allocate (filter))
+      if (!gst_online_gmm_decode_faster_allocate(filter))
         return GST_STATE_CHANGE_FAILURE;
       break;
     default:
       break;
   }
 
-  ret = GST_ELEMENT_CLASS (parent_class)->change_state (element, transition);
+  ret = GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
   if (ret == GST_STATE_CHANGE_FAILURE)
     return ret;
 
   switch (transition) {
     case GST_STATE_CHANGE_READY_TO_NULL:
-      gst_online_gmm_decode_faster_deallocate (filter);
+      gst_online_gmm_decode_faster_deallocate(filter);
       break;
     default:
       break;
@@ -582,43 +658,42 @@ static void
 gst_online_gmm_decode_faster_push_word(GstOnlineGmmDecodeFaster * filter, GstPad *pad, std::string word) {
   const gchar *hyp = word.c_str();
   guint hyp_len = strlen(hyp);
-  GST_DEBUG_OBJECT (filter,  "WORD: %s", hyp);
-  /* +1 for terminating NUL character */ 
+  GST_DEBUG_OBJECT(filter,  "WORD: %s", hyp);
+  /* +1 for terminating NUL character */
   GstBuffer *buffer = gst_buffer_new_and_alloc(hyp_len + 2);
-  gst_buffer_fill (buffer, 0, hyp, hyp_len); 
-  gst_buffer_memset (buffer, hyp_len, ' ', 1);
-  gst_buffer_memset (buffer, hyp_len + 1, '\0', 1);
-  gst_buffer_set_size (buffer, hyp_len + 1);
-  
-  gst_pad_push(pad, buffer);   
+  gst_buffer_fill(buffer, 0, hyp, hyp_len);
+  gst_buffer_memset(buffer, hyp_len, ' ', 1);
+  gst_buffer_memset(buffer, hyp_len + 1, '\0', 1);
+  gst_buffer_set_size(buffer, hyp_len + 1);
+
+  gst_pad_push(pad, buffer);
   /* Emit a signal for applications. */
   g_signal_emit(filter, gst_online_gmm_decode_faster_signals[HYP_WORD_SIGNAL], 0, hyp);
-  
 }
 
 
 static void
 gst_online_gmm_decode_faster_push_words(GstOnlineGmmDecodeFaster * filter, GstPad *pad,
-                        const std::vector<int32>& words,
-                        const fst::SymbolTable *word_syms,
-                        bool line_break) {
+                                        const std::vector<int32>& words,
+                                        const fst::SymbolTable *word_syms,
+                                        bool line_break) {
   KALDI_ASSERT(word_syms != NULL);
   std::stringstream ss;
   for (size_t i = 0; i < words.size(); i++) {
     std::string word = word_syms->Find(words[i]);
     if (word == "") {
-      GST_ERROR_OBJECT (filter, "Word-id %d  not in symbol table!",  words[i]);
+      GST_ERROR_OBJECT(filter, "Word-id %d  not in symbol table!",  words[i]);
     }
     gst_online_gmm_decode_faster_push_word(filter, pad, word);
   }
-  
+
   if (line_break) {
     gst_online_gmm_decode_faster_push_word(filter, pad, "<#s>");
-  }  
+  }
 }
 
 static void
-gst_online_gmm_decode_faster_loop (GstOnlineGmmDecodeFaster * filter) {
+gst_online_gmm_decode_faster_loop(GstOnlineGmmDecodeFaster * filter) {
   // We are not properly registering/exposing MFCC and frame extraction options,
   // because there are parts of the online decoding code, where some of these
   // options are hardwired(ToDo: we should fix this at some point)
@@ -631,17 +706,15 @@ gst_online_gmm_decode_faster_loop (GstOnlineGmmDecodeFaster * filter) {
   const int32 kDeltaOrder = 2;
   Mfcc mfcc(mfcc_opts);
   FeInput fe_input(filter->au_src_, &mfcc,
-                     frame_length * (kSampleFreq / 1000),
-                     frame_shift * (kSampleFreq / 1000));
+                   frame_length * (kSampleFreq / 1000),
+                   frame_shift * (kSampleFreq / 1000));
   OnlineCmnInput cmn_input(&fe_input, filter->cmn_window_, filter->min_cmn_window_);
 
   OnlineFeatInputItf *feat_transform = 0;
   if (strlen(filter->lda_mat_rspecifier_) > 0) {
-    feat_transform = new OnlineLdaInput(
-                               &cmn_input, 
-                               *(filter->lda_transform_),
-                               filter->left_context_, 
-                               filter->right_context_);
+    feat_transform = new OnlineLdaInput(&cmn_input, *(filter->lda_transform_),
+                                        filter->left_context_,
+                                        filter->right_context_);
   } else {
     DeltaFeaturesOptions opts;
     opts.order = kDeltaOrder;
@@ -652,21 +725,21 @@ gst_online_gmm_decode_faster_loop (GstOnlineGmmDecodeFaster * filter) {
     feat_transform = new OnlineDeltaInput(opts, &cmn_input);
   }
 
-  
+
   // feature_reading_opts contains timeout, batch size.
   OnlineFeatureMatrix feature_matrix(*(filter->feature_reading_opts_),
-                                       feat_transform);  
+                                     feat_transform);
 
 
   OnlineDecodableDiagGmmScaled decodable(*(filter->am_gmm_), *(filter->trans_model_),
-                                           filter->acoustic_scale_, &feature_matrix);  
-  
-  GST_DEBUG_OBJECT (filter,  "starting decoding loop\n");
-        
+                                         filter->acoustic_scale_, &feature_matrix);
+
+  GST_DEBUG_OBJECT(filter,  "starting decoding loop");
+
   bool partial_res = false;
   while (1) {
     OnlineFasterDecoder::DecodeState dstate = filter->decoder_->Decode(&decodable);
-    
+
     if (dstate & (filter->decoder_->kEndFeats | filter->decoder_->kEndUtt)) {
       std::vector<int32> word_ids;
       filter->decoder_->FinishTraceBack(filter->out_fst_);
@@ -677,7 +750,7 @@ gst_online_gmm_decode_faster_loop (GstOnlineGmmDecodeFaster * filter) {
       gst_online_gmm_decode_faster_push_words(filter, filter->srcpad_, word_ids, filter->word_syms_, partial_res || word_ids.size());
       partial_res = false;
       if (dstate == filter->decoder_->kEndFeats)
-          break;
+        break;
     } else {
       std::vector<int32> word_ids;
       if (filter->decoder_->PartialTraceback(filter->out_fst_)) {
@@ -691,12 +764,12 @@ gst_online_gmm_decode_faster_loop (GstOnlineGmmDecodeFaster * filter) {
       }
     }
   }
-  GST_DEBUG_OBJECT (filter, "Finished decoding loop");  
-  GST_DEBUG_OBJECT (filter, "Pushing EOS event");
-  gst_pad_push_event (filter->srcpad_, gst_event_new_eos ());
-  
-  GST_DEBUG_OBJECT (filter, "Pausing decoding task");
-  gst_pad_pause_task (filter->srcpad_);
+  GST_DEBUG_OBJECT(filter, "Finished decoding loop");
+  GST_DEBUG_OBJECT(filter, "Pushing EOS event");
+  gst_pad_push_event(filter->srcpad_, gst_event_new_eos());
+
+  GST_DEBUG_OBJECT(filter, "Pausing decoding task");
+  gst_pad_pause_task(filter->srcpad_);
   delete feat_transform;
   delete filter->au_src_;
   filter->au_src_ = new GstBufferSource();
@@ -705,25 +778,24 @@ gst_online_gmm_decode_faster_loop (GstOnlineGmmDecodeFaster * filter) {
 /* GstElement vmethod implementations */
 /* this function handles sink events */
 static gboolean
-gst_online_gmm_decode_faster_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
-{
+gst_online_gmm_decode_faster_sink_event(GstPad * pad, GstObject * parent, GstEvent * event) {
   gboolean ret;
   GstOnlineGmmDecodeFaster *filter;
 
-  filter = GST_ONLINEGMMDECODEFASTER (parent);
-  GST_DEBUG_OBJECT (filter, "Handling %s event", GST_EVENT_TYPE_NAME (event));
-  
-  switch (GST_EVENT_TYPE (event)) {
+  filter = GST_ONLINEGMMDECODEFASTER(parent);
+  GST_DEBUG_OBJECT(filter, "Handling %s event", GST_EVENT_TYPE_NAME(event));
+
+  switch (GST_EVENT_TYPE(event)) {
     case GST_EVENT_SEGMENT:
     {
-      GST_DEBUG_OBJECT (filter,  "Starting decoding task");
-      gst_pad_start_task (filter->srcpad_,
-                          (GstTaskFunction) gst_online_gmm_decode_faster_loop, filter, NULL);
-                    
-      GST_DEBUG_OBJECT (filter,  "Started decoding task");
+      GST_DEBUG_OBJECT(filter,  "Starting decoding task");
+      gst_pad_start_task(filter->srcpad_,
+                         (GstTaskFunction) gst_online_gmm_decode_faster_loop, filter, NULL);
+
+      GST_DEBUG_OBJECT(filter,  "Started decoding task");
       ret = TRUE;
       break;
-    }      
+    }
     case GST_EVENT_CAPS:
     {
       ret = TRUE;
@@ -732,13 +804,13 @@ gst_online_gmm_decode_faster_sink_event (GstPad * pad, GstObject * parent, GstEv
     case GST_EVENT_EOS:
     {
       /* end-of-stream, we should close down all stream leftovers here */
-      GST_DEBUG_OBJECT (filter, "EOS received");      
+      GST_DEBUG_OBJECT(filter, "EOS received");
       filter->au_src_->SetEnded(true);
-      ret = TRUE;      
-      break;    
+      ret = TRUE;
+      break;
     }
     default:
-      ret = gst_pad_event_default (pad, parent, event);
+      ret = gst_pad_event_default(pad, parent, event);
       break;
   }
   return ret;
@@ -747,31 +819,29 @@ gst_online_gmm_decode_faster_sink_event (GstPad * pad, GstObject * parent, GstEv
 /* chain function
  * this function does the actual processing
  */
-static GstFlowReturn
-gst_online_gmm_decode_faster_chain (GstPad * pad, GstObject * parent, GstBuffer * buf)
-{
+static GstFlowReturn gst_online_gmm_decode_faster_chain(GstPad * pad,
+                                                        GstObject * parent,
+                                                        GstBuffer * buf) {
   GstOnlineGmmDecodeFaster *filter;
 
-  filter = GST_ONLINEGMMDECODEFASTER (parent);
-  
-  if (G_UNLIKELY (!filter->decoder_))
+  filter = GST_ONLINEGMMDECODEFASTER(parent);
+
+  if (G_UNLIKELY(!filter->decoder_))
     goto not_negotiated;
   if (!filter->silent_) {
     filter->au_src_->PushBuffer(buf);
   }
   gst_buffer_unref(buf);
-  return GST_FLOW_OK;   
+  return GST_FLOW_OK;
 
   /* special cases */
-not_negotiated:
-  {
-    GST_ELEMENT_ERROR (filter, CORE, NEGOTIATION, (NULL),
-        ("decoder wasn't allocated before chain function"));
+  not_negotiated: {
+    GST_ELEMENT_ERROR(filter, CORE, NEGOTIATION, (NULL),
+                      ("decoder wasn't allocated before chain function"));
 
-    gst_buffer_unref (buf);
+    gst_buffer_unref(buf);
     return GST_FLOW_NOT_NEGOTIATED;
   }
-    
 }
 
 
@@ -780,17 +850,14 @@ not_negotiated:
  * register the element factories and other features
  */
 static gboolean
-onlinegmmdecodefaster_init (GstPlugin * onlinegmmdecodefaster)
-{
+onlinegmmdecodefaster_init(GstPlugin * onlinegmmdecodefaster) {
   /* debug category for fltering log messages
-   *
-   * exchange the string 'Template onlinegmmdecodefaster' with your description
    */
-  GST_DEBUG_CATEGORY_INIT (gst_online_gmm_decode_faster_debug, "onlinegmmdecodefaster",
-      0, "Automatic Speech Recognition");
+  GST_DEBUG_CATEGORY_INIT(gst_online_gmm_decode_faster_debug, "onlinegmmdecodefaster",
+                           0, "Automatic Speech Recognition");
 
-  return gst_element_register (onlinegmmdecodefaster, "onlinegmmdecodefaster", GST_RANK_NONE,
-      GST_TYPE_ONLINEGMMDECODEFASTER);
+  return gst_element_register(onlinegmmdecodefaster, "onlinegmmdecodefaster", GST_RANK_NONE,
+                               GST_TYPE_ONLINEGMMDECODEFASTER);
 }
 
 /* PACKAGE: this is usually set by autotools depending on some _INIT macro
@@ -806,7 +873,7 @@ onlinegmmdecodefaster_init (GstPlugin * onlinegmmdecodefaster)
  *
  * exchange the string 'Template onlinegmmdecodefaster' with your onlinegmmdecodefaster description
  */
-GST_PLUGIN_DEFINE (
+GST_PLUGIN_DEFINE(
     GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
     onlinegmmdecodefaster,

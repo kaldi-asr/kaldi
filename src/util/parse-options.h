@@ -75,13 +75,6 @@ class ParseOptions : public OptionsItf {
                 double *ptr, const std::string &doc); 
   void Register(const std::string &name,
                 std::string *ptr, const std::string &doc); 
-  
-
-  /// Template to register various variable types,
-  /// used for program-specific parameters
-  template<typename T>
-  void RegisterTmpl(const std::string &name,
-                T *ptr, const std::string &doc);
 
   /// This one is used for registering standard parameters of all the programs
   template<typename T>
@@ -122,6 +115,11 @@ class ParseOptions : public OptionsItf {
   static std::string Escape(const std::string &str);
 
  private:
+  /// Template to register various variable types,
+  /// used for program-specific parameters
+  template<typename T>
+  void RegisterTmpl(const std::string &name, T *ptr, const std::string &doc);
+
   // Following functions do just the datatype-specific part of the job
   /// Register boolean variable
   void RegisterSpecific(const std::string &name, const std::string &idx,

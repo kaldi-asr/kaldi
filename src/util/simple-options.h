@@ -27,26 +27,29 @@
 
 namespace kaldi {
 
+/*
+ * The class SimpleOptions is an implementation of OptionsItf that allows
+ * setting and getting option values programmatically, i.e., via getter
+ * and setter methods. It doesn't provide any command line parsing functionality.
+ * The class ParseOptions should be used for command-line options.
+ */
 class SimpleOptions : public OptionsItf {
  public:
-   SimpleOptions() {}
-   
-  virtual ~SimpleOptions() {}
-   
+  SimpleOptions() {
+  }
+
+  virtual ~SimpleOptions() {
+  }
+
   // Methods from the interface
-  void Register(const std::string &name,
-                bool *ptr, const std::string &doc); 
-  void Register(const std::string &name,
-                int32 *ptr, const std::string &doc); 
-  void Register(const std::string &name,
-                uint32 *ptr, const std::string &doc); 
-  void Register(const std::string &name,
-                float *ptr, const std::string &doc); 
-  void Register(const std::string &name,
-                double *ptr, const std::string &doc); 
-  void Register(const std::string &name,
-                std::string *ptr, const std::string &doc); 
-   
+  void Register(const std::string &name, bool *ptr, const std::string &doc);
+  void Register(const std::string &name, int32 *ptr, const std::string &doc);
+  void Register(const std::string &name, uint32 *ptr, const std::string &doc);
+  void Register(const std::string &name, float *ptr, const std::string &doc);
+  void Register(const std::string &name, double *ptr, const std::string &doc);
+  void Register(const std::string &name, std::string *ptr,
+                const std::string &doc);
+
   // set option with the specified key, return true if successful
   bool SetOption(const std::string &key, const bool &value);
   bool SetOption(const std::string &key, const int32 &value);
@@ -55,41 +58,45 @@ class SimpleOptions : public OptionsItf {
   bool SetOption(const std::string &key, const double &value);
   bool SetOption(const std::string &key, const std::string &value);
   bool SetOption(const std::string &key, const char* value);
-  
-  // get option with the specified key and put to 'value', return true if successful
-  bool GetOption(const std::string &key, bool &value);
-  bool GetOption(const std::string &key, int32 &value);
-  bool GetOption(const std::string &key, uint32 &value);
-  bool GetOption(const std::string &key, float &value);
-  bool GetOption(const std::string &key, double &value);
-  bool GetOption(const std::string &key, std::string &value);
-  
-  
+
+  // get option with the specified key and put to 'value',
+  // return true if successful
+  bool GetOption(const std::string &key, bool *value);
+  bool GetOption(const std::string &key, int32 *value);
+  bool GetOption(const std::string &key, uint32 *value);
+  bool GetOption(const std::string &key, float *value);
+  bool GetOption(const std::string &key, double *value);
+  bool GetOption(const std::string &key, std::string *value);
+
   enum OptionType {
-    BOOL,
-    INT32,
-    UINT32,
-    FLOAT,
-    DOUBLE,
-    STRING
+    kBool,
+    kInt32,
+    kUint32,
+    kFloat,
+    kDouble,
+    kString
   };
-    
+
   struct OptionInfo {
-    OptionInfo(const std::string &doc, OptionType type, void * pointer)
-      : doc(doc), type(type) {}
+    OptionInfo(const std::string &doc, OptionType type) :
+      doc(doc), type(type) {
+    }
     std::string doc;
     OptionType type;
-    void *pointer;
-  };  
-  
-  std::vector<std::pair<std::string, OptionInfo> > GetOptionInfos();
-  
-  bool GetOptionType(const std::string &key, OptionType &type);
-  
+  };
+
+  std::vector<std::pair<std::string, OptionInfo> > GetOptionInfoList();
+
+  /*
+   * Puts the type of the option with name 'key' in the argument 'type'.
+   * Return true if such option is found, false otherwise.
+   */
+  bool GetOptionType(const std::string &key, OptionType *type);
+
  private:
- 
-  std::vector<std::pair<std::string, OptionInfo> > option_infos_;
-   
+
+  std::vector<std::pair<std::string, OptionInfo> > option_info_list_;
+
   // maps for option variables
   std::map<std::string, bool*> bool_map_;
   std::map<std::string, int32*> int_map_;
@@ -99,6 +106,6 @@ class SimpleOptions : public OptionsItf {
   std::map<std::string, std::string*> string_map_;
 };
 
-}   // namespace kaldi
+}  // namespace kaldi
 
 #endif  // KALDI_UTIL_SIMPLE_OPTIONS_H_

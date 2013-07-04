@@ -35,7 +35,6 @@ endif
 $(LIBFILE): $(OBJFILES)
 	$(CXX) -shared -DPIC -o $(LIBFILE) -Wl,-soname=$(LIBFILE) $(GST_LIBS) $(GSTKALDI_SO_LDFLAGS)  \
 	-Wl,-whole-archive $(ADDLIBS) -Wl,-no-whole-archive $(OBJFILES)
-
  
 kaldimarshal.h: kaldimarshal.list
 	glib-genmarshal --header --prefix=kaldi_marshal kaldimarshal.list > kaldimarshal.h.tmp
@@ -48,7 +47,6 @@ kaldimarshal.cc: kaldimarshal.list
 	mv kaldimarshal.c.tmp kaldimarshal.cc
 
  
- 
 clean: 
 	-rm -f *.o *.a $(TESTFILES) $(BINFILES) kaldimarshal.h kaldimarshal.cc
  
@@ -56,6 +54,4 @@ depend: kaldimarshal.h kaldimarshal.cc
 	-$(CXX) -M $(CXXFLAGS) *.cc > .depend.mk  
 
 
-
- 
 -include .depend.mk

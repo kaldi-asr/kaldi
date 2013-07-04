@@ -15,8 +15,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef GST_ONLINE_AUDIO_SOURCE_H_
-#define GST_ONLINE_AUDIO_SOURCE_H_
+#ifndef KALDI_SRC_GST_PLUGIN_GST_AUDIO_SOURCE_H_
+#define KALDI_SRC_GST_PLUGIN_GST_AUDIO_SOURCE_H_
 
 #include <matrix/kaldi-vector.h>
 #include <gst/gst.h>
@@ -27,7 +27,7 @@ namespace kaldi {
 // OnlineAudioSource implementation using a queue of Gst Buffers
 class GstBufferSource {
  public:
-  typedef int16 SampleType; // hardcoded 16-bit audio
+  typedef int16 SampleType;  // hardcoded 16-bit audio
 
   GstBufferSource();
 
@@ -35,13 +35,13 @@ class GstBufferSource {
   bool Read(Vector<BaseFloat> *data, uint32 timeout = 0);
 
   void PushBuffer(GstBuffer *buf);
-  
+
   void SetEnded(bool ended);
-  
+
   ~GstBufferSource();
 
  private:
-  
+
   GAsyncQueue* buf_queue_;
   gint pos_in_current_buf_;
   GstBuffer *current_buffer_;
@@ -51,6 +51,6 @@ class GstBufferSource {
   KALDI_DISALLOW_COPY_AND_ASSIGN(GstBufferSource);
 };
 
-} // namespace kaldi
+}  // namespace kaldi
 
-#endif // GST_ONLINE_AUDIO_SOURCE_H_
+#endif  // KALDI_SRC_GST_PLUGIN_GST_AUDIO_SOURCE_H_

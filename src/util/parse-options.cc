@@ -30,49 +30,47 @@
 #include "util/text-utils.h"
 #include "base/kaldi-common.h"
 
-
 namespace kaldi {
 
-
 void ParseOptions::Register(const std::string &name,
-              bool *ptr, const std::string &doc) {
+                            bool *ptr, const std::string &doc) {
   RegisterTmpl(name, ptr, doc);
 }
 
 void ParseOptions::Register(const std::string &name,
-              int32 *ptr, const std::string &doc) {
+                            int32 *ptr, const std::string &doc) {
   RegisterTmpl(name, ptr, doc);
 }
 
 void ParseOptions::Register(const std::string &name,
-              uint32 *ptr, const std::string &doc) {
+                            uint32 *ptr, const std::string &doc) {
   RegisterTmpl(name, ptr, doc);
 }
 
 void ParseOptions::Register(const std::string &name,
-              float *ptr, const std::string &doc) {
+                            float *ptr, const std::string &doc) {
   RegisterTmpl(name, ptr, doc);
 }
 
 void ParseOptions::Register(const std::string &name,
-              double *ptr, const std::string &doc) {
+                            double *ptr, const std::string &doc) {
   RegisterTmpl(name, ptr, doc);
 }
 
 void ParseOptions::Register(const std::string &name,
-              std::string *ptr, const std::string &doc) {
+                            std::string *ptr, const std::string &doc) {
   RegisterTmpl(name, ptr, doc);
 }
 
 // old-style, used for registering application-specific parameters
 template<typename T>
 void ParseOptions::RegisterTmpl(const std::string &name, T *ptr,
-                            const std::string &doc) {
+                                const std::string &doc) {
   if (other_parser_ == NULL) {
     this->RegisterCommon(name, ptr, doc, false);
   } else {
     KALDI_ASSERT(prefix_ != "" &&
-        "Cannot use empty prefix when registering with prefix.");
+                 "Cannot use empty prefix when registering with prefix.");
     std::string new_name = prefix_ + '.' + name;  // --name becomes --prefix.name
     other_parser_->RegisterCommon(new_name, ptr, doc, false);
   }
