@@ -35,7 +35,7 @@ function check_sorted {
   fi
 }
 
-for x in utt2spk feats.scp text segments wav.scp cmvn.scp reco2file_and_channel; do
+for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp reco2file_and_channel spk2gender; do
   if [ -f $data/$x ]; then
     cp $data/$x $data/.backup/$x
     check_sorted $data/$x
@@ -52,7 +52,7 @@ function filter_file {
     length1=`cat ${file_to_filter}.tmp | wc -l`
     length2=`cat ${file_to_filter} | wc -l`
     if [ $length1 -ne $length2 ]; then
-      echo "$0: filtered $file_to_filter from $length1 to $length2 lines."
+      echo "$0: filtered $file_to_filter from $length1 to $length2 lines based on filter $filter."
     fi
   fi
 }
@@ -89,8 +89,9 @@ function filter_recordings {
 
 function filter_speakers {
   # throughout this program, we regard utt2spk as primary and spk2utt as derived, so...
+  utils/utt2spk_to_spk2utt.pl $data/utt2spk > $data/spk2utt
+
   if [ -f $data/cmvn.scp ]; then
-    utils/utt2spk_to_spk2utt.pl $data/utt2spk > $data/spk2utt
     cat $data/spk2utt | awk '{print $1}' >$tmpdir/speakers
     cat $data/cmvn.scp | awk '{print $1}' >$tmpdir/speakers.cmvn
     utils/filter_scp.pl $data/cmvn.scp $tmpdir/speakers > $tmpdir/speakers.tmp
@@ -99,6 +100,10 @@ function filter_speakers {
     filter_file $tmpdir/speakers $data/cmvn.scp
     filter_file $tmpdir/speakers $data/spk2utt
     utils/spk2utt_to_utt2spk.pl $data/spk2utt > $data/utt2spk
+  fi
+  if [ -f $data/spk2gender ]; then
+    # We don't handle the case when the spk2gender does not cover all speakers.
+    filter_file $data/spk2utt $data/spk2gender
   fi
 }
 
@@ -119,14 +124,14 @@ function filter_utts {
 
 
   maybe_wav=
-  [ ! -f $data/segments ] && maybe_wav=wav  # wav indexed by utts only if segments does not exist.
+  [ ! -f $data/segments ] && maybe_wav=wav.scp  # wav indexed by utts only if segments does not exist.
   for x in feats.scp text segments $maybe_wav; do
     if [ -f $data/$x ]; then
       utils/filter_scp.pl $data/$x $tmpdir/utts > $tmpdir/utts.tmp
       mv $tmpdir/utts.tmp $tmpdir/utts
     fi
   done
-  [ ! -s $tmpdir/utts ] && echo "fix_data_dir.sh: no utterances remained: not doing anything." && \
+  [ ! -s $tmpdir/utts ] && echo "fix_data_dir.sh: no utterances remained: not proceeding further." && \
     rm $tmpdir/utts && exit 1;
 
   nutts=`cat $tmpdir/utts | wc -l`
@@ -151,11 +156,12 @@ function filter_utts {
 
 }
 
-
 filter_recordings
 filter_speakers
 filter_utts
 filter_recordings
+
+
 
 utils/utt2spk_to_spk2utt.pl $data/utt2spk > $data/spk2utt
 

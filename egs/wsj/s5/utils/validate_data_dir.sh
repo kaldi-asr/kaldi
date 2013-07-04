@@ -201,4 +201,18 @@ if [ -f $data/cmvn.scp ]; then
   fi
 fi
 
+if [ -f $data/spk2gender ]; then
+  check_sorted $data/spk2gender
+  ! cat $data/spk2gender | awk '{if (!((NF == 2 && ($2 == "m" || $2 == "f")))) exit 1; }' && \
+     echo "Mal-formed spk2gender file" && exit 1;
+  cat $data/spk2gender | awk '{print $1}' > $tmpdir/speakers.cmvn
+  cat $data/spk2utt | awk '{print $1}' > $tmpdir/speakers
+  if ! cmp -s $tmpdir/speakers{,.cmvn}; then
+    echo "$0: Error: in $data, speaker lists extracted from spkutt and cmvn"
+    echo "$0: differ, partial diff is:"
+    partial_diff $tmpdir/speakers{,.cmvn}
+    exit 1;
+  fi
+fi
+
 echo "Successfully validated data-directory $data"
