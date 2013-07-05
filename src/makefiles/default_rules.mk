@@ -37,12 +37,13 @@ $(LIBFILE): $(OBJFILES)
 ifeq ($(KALDI_FLAVOR), dynamic)
 ifeq ($(shell uname), Darwin)
 	$(CXX) -dynamiclib -o $@ -install_name @rpath/$@ -framework Accelerate $(LDFLAGS) $(XLDLIBS) $(OBJFILES)
-	rm $(KALDILIBDIR)/$@; ln -s $(shell pwd)/$@ $(KALDILIBDIR)/$@
+	rm -f $(KALDILIBDIR)/$@; ln -s $(shell pwd)/$@ $(KALDILIBDIR)/$@
 else
 ifeq ($(shell uname), Linux)
 	# Building shared library from static (static was compiled with -fPIC)
 	$(CXX) -shared -o $@ -Wl,-soname=$@,--whole-archive $(LIBNAME).a -Wl,--no-whole-archive
-	cp $@ $(KALDILIBDIR)
+	rm -f $(KALDILIBDIR)/$@; ln -s $(shell pwd)/$@ $(KALDILIBDIR)/$@
+	#cp $@ $(KALDILIBDIR)
 else  # Platform not supported
 	$(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
 endif
