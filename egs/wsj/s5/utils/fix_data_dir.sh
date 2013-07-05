@@ -103,7 +103,8 @@ function filter_speakers {
   fi
   if [ -f $data/spk2gender ]; then
     # We don't handle the case when the spk2gender does not cover all speakers.
-    filter_file $data/spk2utt $data/spk2gender
+    cat $data/spk2utt | awk '{print $1}' >$tmpdir/speakers
+    filter_file $tmpdir/speakers $data/spk2gender 
   fi
 }
 

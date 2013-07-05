@@ -205,12 +205,12 @@ if [ -f $data/spk2gender ]; then
   check_sorted $data/spk2gender
   ! cat $data/spk2gender | awk '{if (!((NF == 2 && ($2 == "m" || $2 == "f")))) exit 1; }' && \
      echo "Mal-formed spk2gender file" && exit 1;
-  cat $data/spk2gender | awk '{print $1}' > $tmpdir/speakers.cmvn
+  cat $data/spk2gender | awk '{print $1}' > $tmpdir/speakers.spk2gender
   cat $data/spk2utt | awk '{print $1}' > $tmpdir/speakers
-  if ! cmp -s $tmpdir/speakers{,.cmvn}; then
-    echo "$0: Error: in $data, speaker lists extracted from spkutt and cmvn"
+  if ! cmp -s $tmpdir/speakers{,.spk2gender}; then
+    echo "$0: Error: in $data, speaker lists extracted from spk2utt and spk2gender"
     echo "$0: differ, partial diff is:"
-    partial_diff $tmpdir/speakers{,.cmvn}
+    partial_diff $tmpdir/speakers{,.spk2gender}
     exit 1;
   fi
 fi

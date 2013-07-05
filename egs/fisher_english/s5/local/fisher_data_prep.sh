@@ -137,7 +137,8 @@ if [ $stage -le 2 ]; then
     sed 's:\[lipsmack\]:[noise]:g' > $tmpdir/text.2
   cp $tmpdir/text.2 data/train_all/text
   # create segments file and utt2spk file...
-  cat data/train_all/text | perl -ane 'm:([^-]+)-(\S+): || die; print "$1-$2 $1\n"; ' > data/train_all/utt2spk
+  ! cat data/train_all/text | perl -ane 'm:([^-]+)-([AB])-(\S+): || die "Bad line $_;"; print "$1-$2-$3 $1-$2\n"; ' > data/train_all/utt2spk  \
+     && echo "Error producing utt2spk file" && exit 1;
 
   cat data/train_all/text | perl -ane 'm:((\S+-[AB])-(\d+)-(\d+))\s: || die; $utt = $1; $reco = $2; $s = sprintf("%.2f", 0.01*$3);
                  $e = sprintf("%.2f", 0.01*$4); print "$utt $reco $s $e\n"; ' > data/train_all/segments
@@ -153,4 +154,15 @@ if [ $stage -le 3 ]; then
     sort -k1,1 -u  > data/train_all/wav.scp || exit 1;
 fi
 
+if [ $stage -le 4 ]; then
+  # get the spk2gender information.  This is not a standard part of our
+  # file formats
+  # The files "filetable2fe_03_p2_sph1 fe_03_05852.sph ff
+  cat $links/fe_03_p1_sph{1,2,3,4,5,6,7}/filetable.txt \
+    $links/fe_03_p2_sph{1,2,3,4,5,6,7}/docs/filetable2.txt | \
+  perl -ane 'm:^\S+ (\S+)\.sph ([fm])([fm]): || die "bad line $_;"; print "$1-A $2\n", "$1-B $3\n"; ' | \
+   sort | uniq | utils/filter_scp.pl data/train_all/spk2utt > data/train_all/spk2gender
+fi
+
 echo "Data preparation succeeded"
+

@@ -34,7 +34,7 @@ if [ ! -d $RMROOT/rm1_audio1 -o ! -d $RMROOT/rm1_audio2 ]; then
 fi  
 
 if [ ! -d $RMROOT/rm2_audio ]; then
-   echo "**Warning: $RMROOT/rm2_audio does not exist; won't create spk2gender.map file correctly***"
+   echo "**Warning: $RMROOT/rm2_audio does not exist; won't create spk2gender file correctly***"
    sleep 1
 fi  
 
@@ -86,10 +86,10 @@ done
 cat $RMROOT/rm1_audio2/2_5_1/rm1/doc/al_spkrs.txt \
     $RMROOT/rm2_audio/3-1.2/rm2/doc/al_spkrs.txt | \
     perl -ane 'tr/A-Z/a-z/;print;' | grep -v ';' | \
-    awk '{print $1, $2}' | sort | uniq > $tmpdir/spk2gender.map || exit 1;
+    awk '{print $1, $2}' | sort | uniq > $tmpdir/spk2gender || exit 1;
 
 for t in train test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92; do
-  utils/filter_scp.pl data/$t/spk2utt $tmpdir/spk2gender.map >data/$t/spk2gender.map
+  utils/filter_scp.pl data/$t/spk2utt $tmpdir/spk2gender >data/$t/spk2gender
 done
 
 local/make_rm_lm.pl $RMROOT/rm1_audio1/rm1/doc/wp_gram.txt  > $tmpdir/G.txt || exit 1;
