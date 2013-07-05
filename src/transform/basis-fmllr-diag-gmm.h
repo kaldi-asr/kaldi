@@ -47,7 +47,7 @@ struct BasisFmllrOptions {
   BaseFloat min_count;
   int32 step_size_iters;
   BasisFmllrOptions(): num_iters(10), size_scale(0.2), min_count(50.0), step_size_iters(3) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("num-iters", &num_iters,
                  "Number of iterations in basis fMLLR update during testing");
     po->Register("size-scale", &size_scale,

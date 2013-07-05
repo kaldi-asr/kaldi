@@ -22,7 +22,7 @@
 #include <string>
 
 #include "feat/feature-functions.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 #include "matrix/kaldi-matrix-inl.h"
 
 namespace kaldi {
@@ -64,7 +64,7 @@ struct PlpOptions {
                  cepstral_scale(1.0),
                  htk_compat(false) {}
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     frame_opts.Register(po);
     mel_opts.Register(po);
     po->Register("lpc-order", &lpc_order,

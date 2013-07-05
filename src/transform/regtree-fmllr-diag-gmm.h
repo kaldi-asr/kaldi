@@ -43,7 +43,7 @@ struct RegtreeFmllrOptions {
   RegtreeFmllrOptions(): update_type("full"), min_count(1000.0),
                          num_iters(10), use_regtree(true) { }
   
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("fmllr-update-type", &update_type,
                  "Update type for fMLLR (\"full\"|\"diag\"|\"offset\"|\"none\")");
     po->Register("fmllr-min-count", &min_count,

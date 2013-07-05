@@ -68,7 +68,7 @@ struct FmllrRawOptions {
   BaseFloat min_count;
   int32 num_iters;
   FmllrRawOptions(): min_count(100.0), num_iters(20) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("fmllr-min-count", &min_count,
                  "Minimum count required to update fMLLR");
     po->Register("fmllr-num-iters", &num_iters,

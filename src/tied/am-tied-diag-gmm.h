@@ -23,7 +23,6 @@
 #include "base/kaldi-common.h"
 #include "gmm/diag-gmm.h"
 #include "tied/tied-gmm.h"
-#include "util/parse-options.h"
 
 namespace kaldi {
 /// @defgroup TiedGmm TiedGmm

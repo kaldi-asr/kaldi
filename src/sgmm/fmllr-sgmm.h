@@ -28,7 +28,7 @@
 #include "transform/transform-common.h"
 #include "util/kaldi-table.h"
 #include "util/kaldi-holder.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 
@@ -61,10 +61,10 @@ struct SgmmFmllrConfig {
     bases_occ_scale = 0.2;
   }
 
-  void Register(ParseOptions *po);
+  void Register(OptionsItf *po);
 };
 
-inline void SgmmFmllrConfig::Register(ParseOptions *po) {
+inline void SgmmFmllrConfig::Register(OptionsItf *po) {
   std::string module = "SgmmFmllrConfig: ";
   po->Register("fmllr-iters", &fmllr_iters, module+
                "Number of iterations in FMLLR estimation.");

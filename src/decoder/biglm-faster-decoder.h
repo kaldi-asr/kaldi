@@ -19,7 +19,6 @@
 #define KALDI_DECODER_BIGLM_FASTER_DECODER_H_
 
 #include "util/stl-utils.h"
-#include "util/parse-options.h"
 #include "util/hash-list.h"
 #include "fst/fstlib.h"
 #include "itf/decodable-itf.h"

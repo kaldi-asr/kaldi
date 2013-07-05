@@ -27,7 +27,6 @@
 #include "base/kaldi-common.h"
 #include "gmm/model-common.h"
 #include "matrix/matrix-lib.h"
-#include "util/parse-options.h"
 
 namespace kaldi {
 

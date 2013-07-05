@@ -24,7 +24,6 @@
 #include "gmm/mle-diag-gmm.h"
 #include "gmm/mle-am-diag-gmm.h"
 #include "gmm/model-common.h"
-#include "util/parse-options.h"
 
 namespace kaldi {
 

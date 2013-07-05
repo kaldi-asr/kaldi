@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "matrix/matrix-lib.h"
-#include "util/parse-options.h"
 
 namespace kaldi {
 

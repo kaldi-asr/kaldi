@@ -55,7 +55,7 @@ struct LatticeSimpleDecoderConfig {
                                 max_loop(500000),
                                 max_arcs(-1),
                                 beam_ratio(0.9) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("beam", &beam, "Decoding beam.");
     po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
     po->Register("prune-interval", &prune_interval, "Interval (in frames) at which to prune tokens");

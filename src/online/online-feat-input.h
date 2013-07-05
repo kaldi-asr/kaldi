@@ -311,7 +311,7 @@ struct OnlineFeatureMatrixOptions {
   OnlineFeatureMatrixOptions(): batch_size(25),
                                 timeout(250),
                                 num_tries(5) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("batch-size", &batch_size,
                  "Number of feature vectors processed w/o interruption");
     po->Register("timeout", &timeout,

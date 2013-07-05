@@ -33,7 +33,7 @@ struct PitchInterpolatorOptions {
                               interpolator_factor(1.0e-05),
                               max_voicing_prob(0.9),
                               max_pitch_change_per_frame(10.0) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("pitch-interval", &pitch_interval, "Frequency interval in Hz, used "
                  "for the pitch interpolation and smoothing algorithm.");
     po->Register("interpolator-factor", &interpolator_factor, "Factor affecting the "

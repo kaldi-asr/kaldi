@@ -57,7 +57,7 @@ struct LatticeTrackingDecoderConfig {
                                 hash_ratio(2.0),
                                 extra_beam(4.0),
                                 max_beam(40.0) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("beam", &beam, "Decoding beam.");
     po->Register("max-active", &max_active, "Decoder max active states.");
     po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");

@@ -17,6 +17,7 @@
 // limitations under the License.
 
 #include "base/kaldi-common.h"
+#include "util/common-utils.h"
 #include "util/kaldi-io.h"
 #include "gmm/diag-gmm.h"
 #include "gmm/full-gmm.h"

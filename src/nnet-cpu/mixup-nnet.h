@@ -20,7 +20,7 @@
 
 #include "nnet-cpu/nnet-update.h"
 #include "nnet-cpu/nnet-compute.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -38,7 +38,7 @@ struct NnetMixupConfig {
   NnetMixupConfig(): power(0.25), min_count(1000.0),
                      num_mixtures(-1), perturb_stddev(0.01) { }
   
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("power", &power, "Scaling factor used in determining the "
                  "number of mixture components to use for each HMM state "
                  "(or group of HMM states)");

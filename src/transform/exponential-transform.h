@@ -134,7 +134,7 @@ struct ExponentialTransformUpdateAOptions {
   BaseFloat learning_rate;
   bool renormalize;  // renormalize A and recenter the warp factors on each iteration...
   ExponentialTransformUpdateAOptions(): learning_rate(1.0), renormalize(true) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("learning-rate", &learning_rate, "Learning rate for updating A (make <1 if instability suspected)\n");
     po->Register("renormalize", &renormalize, "True if you want to renormalize the warp factors on each iteration of update (recommended).");
   }

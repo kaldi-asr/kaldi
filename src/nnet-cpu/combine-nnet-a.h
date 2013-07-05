@@ -21,6 +21,7 @@
 #include "nnet-cpu/nnet-update.h"
 #include "nnet-cpu/nnet-compute.h"
 #include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -46,7 +47,7 @@ struct NnetCombineAconfig {
                         max_learning_rate_factor(2.0),
                         min_learning_rate(0.0001) { }
   
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("num-bfgs-iters", &num_bfgs_iters, "Maximum number of function "
                  "evaluations for BFGS to use when optimizing combination weights");
     po->Register("initial-step", &initial_step, "Parameter in the optimization, "

@@ -36,7 +36,7 @@ struct PhoneAlignLatticeOptions {
   PhoneAlignLatticeOptions(): reorder(true),
                               remove_epsilon(true),
                               replace_output_symbols(false) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("reorder", &reorder, "True if lattice was created from HCLG with "
                  "--reorder=true option.");
     po->Register("remove-epsilon", &remove_epsilon, "If true, removes epsilons from "
