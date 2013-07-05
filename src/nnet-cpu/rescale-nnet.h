@@ -20,7 +20,7 @@
 
 #include "nnet-cpu/nnet-update.h"
 #include "nnet-cpu/nnet-compute.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 // Neural net rescaling is a rescaling of the parameters of the various layers
 // of a neural net, done so as to match certain specified statistics on the
@@ -52,7 +52,7 @@ struct NnetRescaleConfig {
                        delta(0.01),
                        max_change(0.2), min_change(1.0e-05) { }
   
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("target-avg-deriv", &target_avg_deriv, "Target average derivative "
                  "for hidden layers that are the not the first or last hidden layer "
                  "(as fraction of maximum derivative of the nonlinearity)");

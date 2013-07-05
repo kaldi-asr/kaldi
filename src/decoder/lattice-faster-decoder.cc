@@ -653,7 +653,7 @@ void LatticeFasterDecoder::ProcessNonemitting(int32 frame) {
   }
   if (queue_.empty()) {
     if (!warned_) {
-      KALDI_ERR << "Error in ProcessEmitting: no surviving tokens: frame is "
+      KALDI_ERR << "Error, no surviving tokens: frame is "
                 << frame;
       warned_ = true;
     }
@@ -842,11 +842,19 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
     // Ouptut the lattices.
     if (determinize_) { // CompactLattice output.
       KALDI_ASSERT(compact_lattice_writer_ != NULL && clat_ != NULL);
-      compact_lattice_writer_->Write(utt_, *clat_);
+      if (clat_->NumStates() == 0) {
+        KALDI_WARN << "Empty lattice for utterance " << utt_;
+      } else {
+        compact_lattice_writer_->Write(utt_, *clat_);
+      }
       delete clat_;
     } else {
       KALDI_ASSERT(lattice_writer_ != NULL && lat_ != NULL);
-      lattice_writer_->Write(utt_, *lat_);
+      if (lat_->NumStates() == 0) {
+        KALDI_WARN << "Empty lattice for utterance " << utt_;
+      } else {
+        lattice_writer_->Write(utt_, *lat_);
+      }
       delete lat_;
     }
 

@@ -19,7 +19,7 @@
 #define KALDI_NNET_NNET_TRNOPTS_H_
 
 #include "base/kaldi-common.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 namespace nnet1 {
@@ -38,7 +38,7 @@ struct NnetTrainOptions {
                        l1_penalty(0.0) 
                        { }
   // register options
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("learn-rate", &learn_rate, "Learning rate");
     po->Register("momentum", &momentum, "Momentum");
     po->Register("l2-penalty", &l2_penalty, "L2 penalty (weight decay)");
@@ -74,7 +74,7 @@ struct RbmTrainOptions {
                       l2_penalty(0.0002)
                       { }
   // register options
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("learn-rate", &learn_rate, "Learning rate");
 
     po->Register("momentum", &momentum, "Initial momentum for linear scheduling");

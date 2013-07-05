@@ -17,83 +17,142 @@
 // limitations under the License.
 
 namespace kaldi {
+namespace nnet1 {
 /**
-  \page nnet1 The Neural Network library
+  \page nnet1 Karel's DNN training implementation
 
   \section nnet1_nnet Overview
 
-  Kaldi has a support for acoustic modelling by Multi-Layer Perceptron (MLP).
-  The folder ^/trunk/src/nnet contains the neural networks classes
-  and some additional classes, that are used during training.
+  The implementation of DNNs from Karel Vesely uses following techniques:
+  - layer-wise pre-training based on RBMs (Restricted Boltzmann Machines)
+  - per-frame cross-entropy training
+  - sequence-discriminative training, using lattice framework, optimizing sMBR criterion (State Minimum Bayes Risk)
 
-  The implementated training algorithm is Stochastic Gradient Descent,
-  which does updates per a block of datapoints (ie. bunch).
-  The training is supposed to run on a GPU, so the nnet library 
-  depends on cudamatrix library.
+  The systems are built on top of LDA-MLLT-fMLLR features obtained from auxiliary GMM models.
+  Whole DNN training is running in a single GPU using CUDA, however cudamatrix library is designed
+  to also run on machines without a GPU, but this tends to be more than 10x slower.
 
-  In order to simulate the ``Stochastic'' sampling of the distribution of the input/target pairs from training set,
-  there is implemented 2-level shuffling: 1st the feature-list shuffling, which is done outside in the training scripts, 
-  and 2nd the frame level shuffling which is perfomed inside the trainig tools.
+  The recipes for standard databases (rm/wsj/swbd) are located at :
+  egs/{rm,wsj}/s5/local/run_dnn.sh egs/swbd/s5b/local/run_dnn.sh
 
-  Last but not least, the nnet library contains GPU implementation of training 
-  algorithm for currently very popular Restricted Boltzmann Machines (RBM).
-  There algorithm is Contrastive Divergence (CD-1), and allows training both 
-  the Bernoulli and Gaussian units.
+  \section nnet1_phases DNN training phases
+  \subsection nnet1_pretrain Pre-training
+  The implementation of layer-wise RBM pre-training is following http://www.cs.toronto.edu/~hinton/absps/guideTR.pdf.
+  The first RBM uses Gaussian-Bernoulli units due to Gaussian features on DNN input, it uses lower learning rate and more epochs,
+  following RBMs have Bernoulli-Bernoulli units. We use Contrastive-Divergence algorithm with one step of 
+  Markov-chain Monte Carlo sampling (CD-1). During the experiments it was crucial to tune the learning rates,
+  however to do this it is necessary to do many fine-tuning experiments. In the recipe we use L2 regularization
+  to increase mixing rate of the RBM training, also momentum is used with gradual linear increases from 0.5 to 0.9
+  on the first 50 hours of the data. To keep the effective learning rate constant, this is accompanied with decrease 
+  of learning rate by a factor (1-mmt).
+  
+  The number of iterations in the original experiments with TIMIT was 50, which approximately corresponds to 200h of data. 
+  Therefore with switchboard dataset we use single epoch per layer. Based on discussions with people from Toronto, 
+  the more training data we have, the less crucial RBM pre-training becomes. But still it allows us to initialize
+  well large and deep networks, so that backpropagation algorithm has better initial point.
 
+  In the RBM training we sentence-level and frame-level shuffling to simulate drawing samples from distribution of the training data,
+  the updates are done per mini-batches. When training the Gaussian-Bernoulli units, the RBM are sensitive to weight explosion,
+  especially with larger learning rates and a lot of hidden units. To avoid this we compare variances of training data and reconstructions
+  within minibatch. If they differ a lot, the weights are re-scaled and learning rate is temporarily reduced.
 
-  \section nnet1_design Design of the library
+  \subsection nnet1_frame Frame-level cross-entropy training
+  In this phase we train a DNN which classifies frames into triphone-states.
+  This is done by mini-batch Stochastic Gradient Descent, by default the learning rate is 0.008,
+  size of minibatch 256; we use no momentum or regularization. 
+  
+  The learning-rate is scheduled constant in the several initial epochs, 
+  when the network stops improving we use per-epoch learning rate halving
+  until it again stops improving.
 
-  The key aspect of the design is ``as simple extensibility as possible''. Exactly for this reason there has been created two interfaces: 
-   - \ref Component : i-face for a general part that will be used to compose neural network, which does not contain trainable parameters
-   - \ref UpdatableComponent : this i-face extends \ref Component by adding it methods needed for training parameters
-  The most important pure-virtual methods of \ref Component and \ref UpdatableComponent are:
-   - \ref Component::PropagateFnc : this method will compute a function used during propagation  
-   - \ref Component::BackpropagateFnc : this method will compute a function used during back-propagation  
-   - \ref UpdatableComponent::Update : this method will compute the gradient based on the input matrix and error matrix and will perform update
+  Just like in case of RBMs we use sentence-level and frame-level shuffling 
+  to simulate drawing samples from distribution of the training data,
+  frame level shuffling is done within the training tools in the GPU memory.
 
-  The abstract \ref Component interface is directly implemented by classes :
-   - \ref Sigmoid : module which computes the logistic sigmoid transform and its derivative
-   - \ref Softmax : module which computes the softmax transform and copies the input error to the output
-  The abstract \ref UpdatableComponent iterface is implemented by classes : 
-   - \ref BiasedLinearity : this module contains the linear part of a neural network layer
-   - \ref Rbm : this modulue holds the parameters of the Restricted Botlzmann Machine 
-     (when training deep network it gets converted to \ref BiasedLinearity and \ref Sigmoid)
+  In general all the training tools accept option --feature-transform, 
+  this can be a \ref Nnet which does on-the-fly feature transformation, 
+  this is done within a GPU. In the recipe it is used to splice and normalize data,
+  but it can be used to more complex transforms like bottleneck-feature extraction.
 
-  The neural network class \ref Nnet is then implemented as a vector of components and two vectors for intermediate data needed for the training.
-  Most imporant methods are:
-   - \ref Nnet::Propagate : this is for input-feature propagation during the training
-   - \ref Nnet::Backpropagate : this is for global-error back-propagation during the training
-   - \ref Nnet::Feedforward : this does the same as Nnet::Propagate, the difference is that it uses only two flipping buffers for hidden layers, so it is more memory efficient
-   - \ref Nnet::SetLearnRate : this method sets the learning rate. It can be different for individual layers, scaling factors can be provided as a string in the second argument
-  We should also mention, that both the Components and buffers are accessible via const references, this is handy for example when debugging.
+  \subsection nnet1_sequence Sequence-discriminative training (sMBR)
+  In this phase, the neural networks is trained to classify correctly the whole sentences,
+  which is closer to the general ASR objective than frame-level training.
+  The objective of sMBR is to maximize the expected accuracy of state labels derived from
+  reference transcriptions, we use lattice framework to represent competing hypothesis.
 
-  The training can optimize the Mean Square Error \ref Mse of Cross Entropy \ref Xent loss function.
-  The key methods are \ref Mse::Eval , \ref Xent::Eval and \ref Xent::EvalVec .
-  These methods are used to both produce the global error matrices for back-propagation, 
-  as well as accumulate the error statistics for print in the end of the epoch. 
+  The training is done by Stochastic Gradient Descent with per-utterance updates,
+  we use low learning rate 1e-5 which is kept constant and we run 3-5 epochs.
+  We have observed faster convergence when re-generating lattices after 1st epoch.
 
-  The frame level shuffling feature is in the classes \ref Cache and \ref CacheTgtMat. 
-  The first variant is for targets encoded as vectors of indexes, the second is for targets encoded as matrices.
+  We support MMI, BMMI, MPE and sMBR training. All the techniques perform very similar,
+  only sMBR was a little better. In sMBR optimization we exclude silence frames from 
+  accumulating approximate accuracies. More detailed description is at http://www.danielpovey.com/files/2013_interspeech_dnn.pdf
+ 
 
-  \section extending the neural network by new component
-  Extension of the existing neural network code by adding new component is very easy.
-  To do it you have to do 4 steps : 
+  \section nnet1_code The code
+  The DNN code is located at src/nnet, the tools are at src/nnetbin. 
+  Because all the computation is done in a GPU, the code is built upon library src/cudamatrix.
+
+  \subsection nnet1_design Neural network representation
+
+  The neural network \ref Nnet is implemented as a vector of \ref Component, it also contains vectors of buffers for propagation / back-propagation.
+  ( \ref Nnet::propagate_buf_ \ref Nnet::backpropagate_buf_ ). The most important methods of \ref Nnet are :
+   - \ref Nnet::Propagate : propagates input to output, while keeping data in buffers
+   - \ref Nnet::Backpropagate : back-propagates the objective function derivatives through the network
+   - \ref Nnet::Feedforward : propagates input to output, uses two flipping buffers to save memory
+   - \ref Nnet::SetTrainOptions : sets training hyper-parameters, learning rate, momentum, L1,L2-cost
+  The Components and buffers are accessible via const references.
+
+  Keeping in mind that the DNNs have to be extensible, we defined the two interfaces :
+   - \ref Component : i-face for a ``layer'' of neural network, which does not contain trainable parameters 
+     (the squash functions and weights have separate Components, ie. the ``layer'' does not refer to neural network layer)
+   - \ref UpdatableComponent : extends \ref Component by adding support of trainable parameters
+  The most important virtual methods of \ref Component and \ref UpdatableComponent are :
+   - \ref Component::PropagateFnc : this method computes data transform during forward-propagation  
+   - \ref Component::BackpropagateFnc : transforms the derivatives during back-propagation  
+   - \ref UpdatableComponent::Update : computes gradient from derivatives and inputs, performs update
+
+  The interface \ref Component is implemented by :
+   - \ref Sigmoid : computes the logistic sigmoid transform and its derivative
+   - \ref Softmax : computes the softmax transform, assumes the derivatives are already wrt. activations (BackpropagateFnc does a copy of the original derivative)
+  The interface \ref UpdatableComponent is implemented by : 
+   - \ref AffineTransform : contains linear transform and a bias
+   - \ref Rbm : corresponds to Restricted Boltzmann Machine, including its parameters and unit types 
+     (when added to DBN it is converted to \ref AffineTransform and \ref Sigmoid)
+
+  \subsection nnet1_loss Objective function representation
+
+  Per-frame objective functions are enclosed in classes \ref Mse (Mean Square Error), \ref Xent (Cross Entropy).
+  The derivatives are computed in methods \ref Mse::Eval, \ref Xent::Eval and \ref Xent::EvalVec,
+  also the statistics of objective values over epoch are accumulated.
+
+  \subsection nnet1_shuff Frame-level shuffling
+  The frame-level shuffling is done by \ref Cache and \ref CacheTgtMat. 
+  In \ref Cache we assume targets encoded as vectors of indexes, in \ref CacheTgtMat targets are matrices.
+
+  \section nnet1_extending Extending network by a new component
+  Extending the NN framework by a new component is easy,
+  all has to be done is : 
    - 1) define new entry to \ref Component::ComponentType
    - 2) define new line in table \ref Component::kMarkerMap
    - 3) add dynamic constructor call to factory-like function \ref Component::Read
    - 4) implement the the interface \ref Component:: or \ref UpdatableComponent::
 
-  \section nnet1_nnetbin Binary level tools
+  \section nnet1_nnetbin Binary tools
 
-  The training tools are located in, the most important tools are: 
-   - nnet-train-xent-hardlab-frmshuff : this tool is used during trainig, it optimizes the cross entropy of the posteriors and targets, while a Viterbi-path hard-labels are used as 1-of-M encoded targets, frame-level shuffling is done between the feature transform and the trained neural network.
-   - nnet-forward : this tool is used during decoding, it propagated the features by the neural network and stores them on the output. This tool is often used in the feature extraction pipeline of the decoder. If the machine, where the decoder is run, is not equipped with a suitable GPU, the CPU is used instead.
-
-  The tools training tools perform one iteration per run of the program, 
-  the learning rate scheduling (ie. halving) is done on the bash-script level.
-
+  The training tools are located in src/nnetbin, the most important tools are : 
+   - \ref nnet-train-xent-hardlab-frmshuff.cc : this tool does frame-level training, it minimizes cross-entropy between posteriors and targets
+     (force-aligned hard-labels with one-hot encoding); to allow splicing over time the frame-level shuffling is done after the feature transform; 
+     performs one epoch of the training. The learning rate scheduling (ie. halving) is done on the bash-script level.
+   - \ref nnet-forward.cc : this tool propagates the input features through the neural network, it can remove softmax on the fly and divide by priors based on triphone-state counts.
+     This tool is often used in the decoding pipeline of feature extraction pipeline.
+     If it runs on a machine without GPU, a CPU is used instead.
+   - \ref rbm-train-cd1-frmshuff.cc : trains RBM, can perform several iterations with gradual linear increase of momentum 
+   - \ref nnet-train-mmi-sequential.cc : can be used for MMI/bMMI training
+   - \ref nnet-train-mpe-sequential.cc : is used for MPE / sMBR training
 
 
 */
-}  
+}
+}
 

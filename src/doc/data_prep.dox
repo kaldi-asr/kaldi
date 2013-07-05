@@ -181,6 +181,17 @@ calls -- but it's good enough for our purposes.  If you have no information at a
 the speaker identities, you can just make the speaker-ids the same as the utterance-ids,
 so the format of the file would be just <DFN>\<utterance-id\> \<utterance-id\></DFN>.
 
+There is another file that exists in some setups; it is used only occasionally and
+not in the Kaldi system build.  We show what it looks like in the Resource Management
+(RM) setup:
+\verbatim
+s5# head -3 ../../rm/s5/data/train/spk2gender
+adg0 f
+ahh0 m
+ajp0 m
+\endverbatim
+This file maps from speaker-id to either "m" or "f" depending on the speaker gender.
+
 All of these files should be sorted.  If they are not sorted, you will get errors
 when you run the scripts.  In \ref io_sec_tables we explain why this is needed.
 It has to do with the I/O framework; the ultimate reason for the sorting is to
@@ -261,6 +272,8 @@ This file is created by a command such as this:
 steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir 
 \endverbatim
 (this example is from <DFN>egs/swbd/s5/run.sh</DFN>).
+
+
 
 \section data_prep_lang Data preparation-- the "lang" directory.
 

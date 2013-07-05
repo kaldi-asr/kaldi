@@ -24,7 +24,6 @@
 #include "sgmm/am-sgmm.h"
 #include "sgmm/estimate-am-sgmm.h"
 #include "gmm/model-common.h"
-#include "util/parse-options.h"
 
 namespace kaldi {
 

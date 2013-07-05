@@ -24,7 +24,7 @@
 
 #include "base/kaldi-common.h"
 #include "gmm/diag-gmm.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 /// @defgroup DiagGmm DiagGmm
@@ -171,7 +171,7 @@ struct UbmClusteringOptions {
         : ubm_num_gauss(ncomp), reduce_state_factor(red),
           intermediate_num_gauss(interm_gauss), cluster_varfloor(vfloor),
           max_am_gauss(max_am_gauss) {}
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     std::string module = "UbmClusteringOptions: ";
     po->Register("max-am-gauss", &max_am_gauss, module+
                  "We first reduce acoustic model to this max #Gauss before clustering.");

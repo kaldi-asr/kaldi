@@ -20,7 +20,7 @@
 
 #include "nnet-cpu/nnet-update.h"
 #include "nnet-cpu/nnet-compute.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -36,7 +36,7 @@ struct NnetLbfgsTrainerConfig {
   NnetLbfgsTrainerConfig(): minibatch_size(1024), lbfgs_dim(10),
                             lbfgs_num_iters(20), initial_impr(0.1) { }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     precondition_config.Register(po);
     po->Register("minibatch-size", &minibatch_size, "Size of minibatches used to "
                  "compute gradient information (only affects speed)");

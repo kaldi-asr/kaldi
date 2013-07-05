@@ -27,7 +27,7 @@
 
 #include "sgmm/am-sgmm.h"
 #include "gmm/model-common.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 #include "sgmm/sgmm-clusterable.h"
 #include "thread/kaldi-thread.h"  // for MultiThreadable
 
@@ -98,7 +98,7 @@ struct MleAmSgmmOptions {
     full_col_cov = false;
   }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     std::string module = "MleAmSgmmOptions: ";
     po->Register("tau-vec", &tau_vec, module+
                  "Smoothing for phone vector estimation.");

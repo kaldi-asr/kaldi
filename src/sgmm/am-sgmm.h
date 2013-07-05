@@ -30,7 +30,7 @@
 #include "gmm/model-common.h"
 #include "gmm/diag-gmm.h"
 #include "gmm/full-gmm.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 #include "util/table-types.h"
 
 namespace kaldi {
@@ -46,7 +46,7 @@ struct SgmmGselectConfig {
     diag_gmm_nbest = 50;
   }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("full-gmm-nbest", &full_gmm_nbest, "Number of highest-scoring"
         " full-covariance Gaussians selected per frame.");
     po->Register("diag-gmm-nbest", &diag_gmm_nbest, "Number of highest-scoring"

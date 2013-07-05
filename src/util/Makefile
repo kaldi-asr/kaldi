@@ -7,10 +7,10 @@ include ../kaldi.mk
 
 TESTFILES = const-integer-set-test stl-utils-test text-utils-test \
     edit-distance-test hash-list-test timer-test kaldi-io-test parse-options-test \
-    kaldi-table-test
+    kaldi-table-test simple-options-test
 
 OBJFILES = text-utils.o kaldi-io.o \
-         kaldi-table.o parse-options.o simple-io-funcs.o
+         kaldi-table.o parse-options.o simple-options.o simple-io-funcs.o 
 
 LIBNAME = kaldi-util
 

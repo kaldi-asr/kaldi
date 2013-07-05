@@ -23,7 +23,7 @@
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
-#include "util/parse-options.h"
+#include "itf/options-itf.h"
 
 namespace kaldi {
 
@@ -91,10 +91,10 @@ struct GpsrConfig {
     max_iters_debias = 50;
   }
 
-  void Register(ParseOptions *po);
+  void Register(OptionsItf *po);
 };
 
-inline void GpsrConfig::Register(ParseOptions *po) {
+inline void GpsrConfig::Register(OptionsItf *po) {
   std::string module = "GpsrConfig: ";
   po->Register("use-gpsr-bb", &use_gpsr_bb, module+
                "Use the Barzilai-Borwein gradient projection method.");

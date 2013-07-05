@@ -3,7 +3,7 @@ all:
 
 include ../kaldi.mk
 
-EXTRA_CXXFLAGS = -Wno-sign-compare
+EXTRA_CXXFLAGS += -Wno-sign-compare
 
 TESTFILES = kaldi-lattice-test
 
