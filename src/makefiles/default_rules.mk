@@ -37,7 +37,7 @@ $(LIBFILE): $(OBJFILES)
 ifeq ($(KALDI_FLAVOR), dynamic)
 ifeq ($(shell uname), Darwin)
 	$(CXX) -dynamiclib -o $@ -install_name @rpath/$@ -framework Accelerate $(LDFLAGS) $(XLDLIBS) $(OBJFILES)
-	cp $@ $(KALDILIBDIR)
+	rm $(KALDILIBDIR)/$@; ln -s $(shell pwd)/$@ $(KALDILIBDIR)/$@
 else
 ifeq ($(shell uname), Linux)
 	# Building shared library from static (static was compiled with -fPIC)
