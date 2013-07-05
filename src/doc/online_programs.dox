@@ -37,6 +37,9 @@ script found there. The programs are as follows:
 
 There is also a Java equivalent of the online-audio-client which contains slightly more features and has a GUI.
 
+In addition, there is a GStreamer 1.0 compatible plugin that acts as a filter, taking raw audio as input and producing 
+recognized word as output. The plugin is based on  \ref OnlineFasterDecoder, as other online recognition programs.   
+
 \section audio_server Online Audio Server
 
 The main difference between the online-server-gmm-decode-faster and online-audio-server-decode-faster programs is the input: the former accepts feature vectors, while the latter accepts RAW audio.
@@ -115,6 +118,126 @@ java -jar online-audio-client.jar
 \endverbatim
 
 Or simply double-click the JAR file in the graphical interface.
+
+\section gst_plugin GStreamer plugin
+
+Kaldi toolkit comes with a plugin for the <a href="http://gstreamer.freedesktop.org/">GStreamer</a> media streaming framework (version 1.0 or compatible).
+The plugin acts as a filter that accepts raw audio as input and produces recognized words as output.
+
+The main benefit of the plugin is the fact that it makes Kaldi's online speech recognition functionality available to all
+programming languages that support GStreamer 1.0 (that includes Python, Ruby, Java, Vala and many more). It also simplifies the integration
+of the Kaldi online decoder in applications since communicating with the decoder follows GStreamer standards. 
+
+\subsection gst_plugin_installation Installation
+
+The source of the GStreamer plugin is located in the `src/gst-plugin` directory. To compile the plugin, rest of the Kaldi
+toolkit has to be compiled with the '-fPIC' compilation option. To do this, just add `-fPIC` to the `CXXFLAGS` in 
+the `src/kaldi.mk` file. Then recompile Kaldi as usual. Also compile the online extensions (`make ext`). 
+ 
+Make sure the package that provides  GStreamer 1.0 development headers is installed on your system (on Debian, the needed package is called
+`libgstreamer1.0-dev`). 
+
+Finally, run `make depend` and `make` in the `src/gst-plugin` directory. This should result in a file `src/gst-plugin/libgstkaldi.so`
+which contains the GStreamer plugin.
+
+To make GStreamer able to find the Kaldi plugin, you have to add the `src/gst-plugin` directory to its plugin search path. To do this,
+add the directory to the GST_PLUGIN_PATH environment variable:
+\verbatim
+export GST_PLUGIN_PATH=$KALDI_ROOT/src/gst-plugin
+\endverbatim
+Of course, replace `$KALDI_ROOT` with the actual location of the Kaldi root folder on your file system. 
+
+Now, running `gst-inspect-1.0 onlinegmmdecodefaster` should provide info about the plugin:
+\verbatim
+# gst-inspect-1.0 onlinegmmdecodefaster
+Factory Details:
+  Rank:     none (0)
+  Long-name:        OnlineGmmDecodeFaster
+  Klass:            Speech/Audio
+  Description:      Convert speech to text
+  Author:           Tanel Alumae <tanel.alumae@phon.ioc.ee>
+[..]
+Element Properties:
+  name                : The name of the object
+                        flags: readable, writable
+                        String. Default: "onlinegmmdecodefaster0"
+  parent              : The parent of the object
+                        flags: readable, writable
+                        Object of type "GstObject"
+  silent              : Determines whether incoming audio is sent to the decoder or not
+                        flags: readable, writable
+                        Boolean. Default: false
+  model               : Filename of the acoustic model
+                        flags: readable, writable
+                        String. Default: "final.mdl"
+  fst                 : Filename of the HCLG FST
+                        flags: readable, writable
+                        String. Default: "HCLG.fst"
+[..]
+  min-cmn-window      : Minumum CMN window used at start of decoding (adds latency only at start)
+                        flags: readable, writable
+                        Integer. Range: -2147483648 - 2147483647 Default: 100 
+
+Element Signals:
+  "hyp-word" :  void user_function (GstElement* object,
+                                    gchararray arg0,
+                                    gpointer user_data);
+\endverbatim
+
+\subsection usage_cli Usage through the command-line
+
+The most simple way to use the GStreamer plugin is via the command line. You have to specify the model files used for decoding
+when lauching the plugin. To do this, set the `model`, `fst`, `word-syms`, `silence-phones` and optionally the `lda-mat`
+plugin properties (similarly to Kaldi's command-line online decoders). The decoder accepts only 16KHz 16-bit mono audio. Any audio stream can be automatically  converted to the
+required format using GStreamer's `audioresample` and `audioconvert` plugins.  
+
+For example, to decode the file `test1.wav` using a model files in `tri2b_mmi`, and have the recognized stream of words printed to stdout, execute:
+\verbatim
+gst-launch-1.0 -q filesrc location=test1.wav \
+    ! decodebin ! audioconvert ! audioresample \
+    ! onlinegmmdecodefaster model=tri2b_mmi/model fst=tri2b_mmi/HCLG.fst \
+                            word-syms=tri2b_mmi/words.txt silence-phones="1:2:3:4:5" lda-mat=tri2b_mmi/matrix \
+    ! filesink location=/dev/stdout buffer-mode=2
+\endverbatim
+Note that the audio stream is segmented on the fly, with "<#s>" denoting silence.
+
+You can easily try live decoding of microphone input by replacing `filesrc location=test1.wav` with `pulsesrc` (given that
+your OS uses the PulseAudio framework).
+
+An example stript that uses the plugin via the command-line to process a buch of audio files is located in `egs/voxforge/gst_demo/run-simulated.sh`.
+
+\subsection usage_gst Usage through GStreamer bindings
+
+An example of a Python GUI program that uses the plugin via the GStreamer bindings is located in `egs/voxforge/gst_demo/run-live.py`.
+
+The program constructs in the `init_gst(self)` method a similar pipeline of GStreamer elements as in the command-line example.
+The model files and some decoding parameters are communicated to the `onlinegmmdecodefaster` element through the standard `set_property()`
+method. More interesting is this part of the code:
+\verbatim
+        self.asr.connect('hyp-word', self._on_word)
+\endverbatim
+This expression orders our decoding plugin to call the GUI's `_on_word` method whenever it produces a new recognized word. 
+The `_on_word()` method looks like this:
+\verbatim
+    def _on_word(self, asr, word):
+        Gdk.threads_enter()
+        if word == "<#s>":
+          self.textbuf.insert_at_cursor("\n")
+        else:
+          self.textbuf.insert_at_cursor(word)
+        self.textbuf.insert_at_cursor(" ")
+        Gdk.threads_leave()
+\endverbatim
+What it does (apart from some GUI-related chemistry), is that it inserts the recognized word into the text buffer that is connected
+to the GUI's main text box. If a segmentation symbol is recognized, it inserts a line break instead.
+
+Recognition start and stop are controlled by setting the `silent` property of the decoder plugin to `False` or `True`. Setting the
+property to `False` orders the plugin not to process any incoming audio (although the audio that is already being processed might
+produce some new recognized words).
+ 
+
+
+
 
 */
 

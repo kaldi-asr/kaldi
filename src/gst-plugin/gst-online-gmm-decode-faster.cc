@@ -199,10 +199,10 @@ static void gst_online_gmm_decode_faster_class_init(GstOnlineGmmDecodeFasterClas
                                                       (GParamFlags) G_PARAM_READWRITE));
 
   gst_element_class_set_details_simple(gstelement_class,
-                                       "OnlineGmmFasterDecoder",
+                                       "OnlineGmmDecodeFaster",
                                        "Speech/Audio",
                                        "Convert speech to text",
-                                       "Tanel Alumae <<tanel.alumae@phon.ioc.ee>>");
+                                       "Tanel Alumae <tanel.alumae@phon.ioc.ee>");
 
   gst_element_class_add_pad_template(gstelement_class,
                                      gst_static_pad_template_get(&src_factory));
