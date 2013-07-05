@@ -1,18 +1,32 @@
 ifeq ($(KALDI_FLAVOR), dynamic)
-ifdef LIBNAME
-LIBFILE = lib$(LIBNAME).so
-LDLIBS  += -l$(LIBNAME)
-endif
-LDFLAGS += $(foreach dep,$(ADDLIBS), -L$(dir $(dep)) )
-LDFLAGS += -L.
-LDFLAGS += -Wl,-rpath=$(shell readlink -f $(KALDILIBDIR))
-LDLIBS  += $(foreach dep,$(ADDLIBS), -l$(notdir $(basename $(dep))) )
-XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))/lib$(notdir $(basename $(dep))).so )
+  ifeq ($(shell uname), Darwin)
+    XLDLIBS := $(LDLIBS)
+    ifdef LIBNAME
+      LIBFILE = lib$(LIBNAME).dylib
+      LDLIBS  += -l$(LIBNAME)
+    endif
+    LDFLAGS += -L$(KALDILIBDIR) -Wl,-rpath -Wl,$(KALDILIBDIR)
+    XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))/lib$(notdir $(basename $(dep))).dylib )
+    XLDLIBS += $(foreach dep,$(ADDLIBS), -l$(notdir $(basename $(dep))) )
+  else
+    ifeq ($(shell uname), Linux)
+      ifdef LIBNAME
+        LIBFILE = lib$(LIBNAME).so
+        LDLIBS  += -l$(LIBNAME)
+      endif
+      LDFLAGS += -Wl,-rpath=$(shell readlink -f $(KALDILIBDIR)) -L.
+      LDFLAGS += $(foreach dep,$(ADDLIBS), -L$(dir $(dep)) )
+      XDEPENDS = $(foreach dep,$(ADDLIBS), $(dir $(dep))/lib$(notdir $(basename $(dep))).so )
+    else  # Platform not supported
+      $(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
+    endif
+  endif
+  LDLIBS  += $(foreach dep,$(ADDLIBS), -l$(notdir $(basename $(dep))) )
 else
-ifdef LIBNAME
-LIBFILE = $(LIBNAME).a
-endif
-XDEPENDS = $(ADDLIBS)
+  ifdef LIBNAME
+    LIBFILE = $(LIBNAME).a
+  endif
+  XDEPENDS = $(ADDLIBS)
 endif
 
 all: $(LIBFILE) $(BINFILES)
@@ -21,9 +35,18 @@ $(LIBFILE): $(OBJFILES)
 	$(AR) -cru $(LIBNAME).a $(OBJFILES)
 	$(RANLIB) $(LIBNAME).a
 ifeq ($(KALDI_FLAVOR), dynamic)
+ifeq ($(shell uname), Darwin)
+	$(CXX) -dynamiclib -o $@ -install_name @rpath/$@ -framework Accelerate $(LDFLAGS) $(XLDLIBS) $(OBJFILES)
+	cp $@ $(KALDILIBDIR)
+else
+ifeq ($(shell uname), Linux)
 	# Building shared library from static (static was compiled with -fPIC)
 	$(CXX) -shared -o $@ -Wl,-soname=$@,--whole-archive $(LIBNAME).a -Wl,--no-whole-archive
 	cp $@ $(KALDILIBDIR)
+else  # Platform not supported
+	$(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
+endif
+endif
 endif
 
 
@@ -48,7 +71,7 @@ $(TESTFILES): $(LIBFILE) $(XDEPENDS)
 test_compile: $(TESTFILES)
   
 test: test_compile
-	@result=0; for x in $(TESTFILES); do echo -n "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
+	@result=0; for x in $(TESTFILES); do printf "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
 
 .valgrind: $(BINFILES) $(TESTFILES)
 

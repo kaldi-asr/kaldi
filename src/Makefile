@@ -40,16 +40,32 @@ else
 endif
 
 biglib: $(SUBDIRS_LIB) 
-ifneq ($(KALDI_FLAVOR), dynamic)
-	$(warning the following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all)
+ifeq ($(KALDI_FLAVOR), dynamic)
+ifeq ($(shell uname), Darwin)
+	$(CXX) -dynamiclib -o $(KALDILIBDIR)/libkaldi.dylib -install_name @rpath/libkaldi.dylib -framework Accelerate $(LDFLAGS) $(SUBDIRS_LIB:=/*.dylib)
+else
+ifeq ($(shell uname), Linux)
+	#$(warning the following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all)
+	$(CXX) -shared -o $(KALDILIBDIR)/libkaldi.so -Wl,-soname=libkaldi.so,--whole-archive  $(SUBDIRS_LIB:=/kaldi-*.a) -Wl,--no-whole-archive
+else
+	$(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
 endif
-	-gcc -shared -o $(KALDILIBDIR)/libkaldi.so -Wl,-soname=libkaldi.so,--whole-archive  $(SUBDIRS_LIB:=/kaldi-*.a) -Wl,--no-whole-archive
+endif
+endif
 
 biglibext: $(EXT_SUBDIRS_LIB)
-ifneq ($(KALDI_FLAVOR), dynamic)
-	$(warning The following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all.)
+ifeq ($(KALDI_FLAVOR), dynamic)
+ifeq ($(shell uname), Darwin)
+	$(CXX) -dynamiclib -o $(KALDILIBDIR)/libkaldi_ext.dylib -install_name @rpath/libkaldi_ext.dylib -framework Accelerate $(LDFLAGS) $(EXT_SUBDIRS_LIB:=/*.dylib)
+else
+ifeq ($(shell uname), Linux)
+	#$(warning The following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all.)
+	$(CXX) -shared -o $(KALDILIBDIR)/libkaldi_ext.so -Wl,-soname=libkaldi_ext.so,--whole-archive  $(EXT_SUBDIRS_LIB:=/kaldi-*.a) -Wl,--no-whole-archive
+else
+	$(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
 endif
-	-gcc -shared -o $(KALDILIBDIR)/libkaldi_ext.so -Wl,-soname=libkaldi_ext.so,--whole-archive  $(EXT_SUBDIRS_LIB:=/kaldi-*.a) -Wl,--no-whole-archive
+endif
+endif
 
 kaldi.mk:
 	@[ -f kaldi.mk ] || { echo "kaldi.mk does not exist; you have to run ./configure"; exit 1; }
@@ -117,13 +133,13 @@ optimization: base matrix
 gmm: base util matrix tree
 tied: base util matrix gmm tree transform
 transform: base util matrix gmm tree
-sgmm: base util matrix gmm tree transform thread
-sgmm2: base util matrix gmm tree transform thread
+sgmm: base util matrix gmm tree transform thread hmm
+sgmm2: base util matrix gmm tree transform thread hmm
 fstext: base util matrix tree
 hmm: base tree matrix 
 lm: base util
 decoder: base util matrix gmm sgmm hmm tree transform
-lat: base util
+lat: base util hmm
 cudamatrix: base util matrix	
 nnet: base util matrix cudamatrix
 nnet-cpu: base util matrix thread
