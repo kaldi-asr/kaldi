@@ -160,13 +160,23 @@ sub check_txt_int {
 }
 
 @list1 = ("context_indep", "disambig", "nonsilence", "silence", "optional_silence");
-@list2 = ("extra_questions", "roots", "sets");
+@list2 = ("roots", "sets");
 foreach(@list1) {
   check_txt_int_csl("$lang/phones/$_", \%psymtab); print "\n";
 }
 foreach(@list2) {
   check_txt_int("$lang/phones/$_", \%psymtab); print "\n";
 }
+if((-s "$lang/phones/extra_questions.txt") || (-s "$lang/phones/extra_questions.int")) {
+  check_txt_int("$lang/phones/extra_questions", \%psymtab); print "\n";
+} else {
+  print "Checking $lang/phones/extra_questions.\{txt, int\} ...\n";
+  if((-f "$lang/phones/extra_questions.txt") && (-f "$lang/phones/extra_questions.int")) {
+    print "--> WARNING: the optional $lang/phones/extra_questions.\{txt, int\} are empty!\n\n";
+  } else {
+    $exit = 1; print "--> ERROR: $lang/phones/extra_questions.\{txt, int\} do not exist (they may be empty, but should be present)\n\n";
+  }
+} 
 if(-e "$lang/phones/word_boundary.txt") {
   check_txt_int("$lang/phones/word_boundary", \%psymtab); print "\n";
 }
