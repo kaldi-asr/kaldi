@@ -45,8 +45,12 @@ CXXFLAGS = -msse -msse2 -Wall -I.. \
       $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID 
 
-LDFLAGS = -rdynamic
-LDLIBS = $(EXTRA_LDLIBS) $(FSTROOT)/lib/libfst.a -ldl $(ATLASLIBS) -lm -lpthread
+ifeq ($(KALDI_FLAVOR), dynamic)
+CXXFLAGS += -fPIC
+endif
+
+LDFLAGS = -rdynamic $(OPENFSTLDFLAGS)
+LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(ATLASLIBS) -lm -lpthread -ldl 
 CC = x86_64-linux-g++
 CXX = x86_64-linux-g++
 AR = x86_64-linux-ar

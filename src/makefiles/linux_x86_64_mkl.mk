@@ -28,6 +28,10 @@ CXXFLAGS = -m64 -msse -msse2 -Wall -I.. \
       $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID
 
+ifeq ($(KALDI_FLAVOR), dynamic)
+CXXFLAGS += -fPIC
+endif
+
 ## Use the following for STATIC LINKING of the SEQUENTIAL version of MKL
 MKL_STA_SEQ = $(MKLLIB)/libmkl_solver_lp64_sequential.a -Wl,--start-group \
 	$(MKLLIB)/libmkl_intel_lp64.a $(MKLLIB)/libmkl_sequential.a \

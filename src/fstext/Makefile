@@ -20,37 +20,11 @@ TESTFILES = determinize-star-test \
 OBJFILES = push-special.o
 
 
-LIBFILE = kaldi-fstext.a
-
-all: $(LIBFILE)
-
-$(LIBFILE): $(OBJFILES)
-	$(AR) -cru $(LIBFILE) $(OBJFILES)
-	$(RANLIB) $(LIBFILE)
+LIBNAME = kaldi-fstext
 
 # tree and matrix archives needed for test-context-fst
 # matrix archive needed for push-special.
-$(TESTFILES): $(LIBFILE)  ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a 
+ADDLIBS =  ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a \
+           ../util/kaldi-util.a ../base/kaldi-base.a 
 
-%.a:
-	$(MAKE) -C ${@D} ${@F}
-
-clean:
-	-rm -f *.o *.a $(TESTFILES) tmp* *.tmp
-
-test_compile: $(TESTFILES)
-
-test: test_compile
-	@result=0; for x in $(TESTFILES); do echo -n "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
-
-.valgrind: $(TESTFILES)
-
-
-depend:
-	-$(CXX) -M $(CXXFLAGS) *.cc > .depend.mk  
-
-# removing automatic making of "depend" as it's quite slow.
-#.depend.mk: depend
-
--include .depend.mk
-
+include ../makefiles/default_rules.mk

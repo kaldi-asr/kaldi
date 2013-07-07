@@ -2,6 +2,7 @@
 
 
 // Copyright 2009-2011 Microsoft Corporation
+//                2013 Johns Hopkins University
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,30 +29,28 @@
  \section build_setup_windows Build process on Windows
 
  The build process for Windows is separate from the build process for
- UNIX-like systems, and is described in windows/INSTALL (tested with
+ UNIX-like systems, and is described in windows/INSTALL (tested some time ago with
  Windows 7 and Microsoft Visual Studio 10.0).  We use scripts to
  create the Visual Studio 10.0 solution file.  There are two options for
  the math library on Windows: either you can use Cygwin to compile ATLAS, or you
- can use the Intel MKL library.  Detailed instructions are provided.
+ can use the Intel MKL library.  Detailed instructions are provided.  However, note
+ that the Windows setup is becoming out of date and is not regularly tested,
+ and not all the code currently compiles on it.
 
  \section build_setup_configure How our configure script works (for UNIX variants)
 
  The "configure" script, located in src/, should be run by
- typing ./configure.    This script is not very complex.  It first checks
- that it is being called from the right place and that you have performed
- the installation steps in tools/.  Then it detects the OS.  There are currently
- three explicitly supported UNIT-like OS's.  These are Cygwin, Darwin and Linux.  
- For Cygwin and Darwin the system libraries are in standardized places and, for example, in Cygwin
- all the configure does is to concatenate makefiles/kaldi.mk.common
- and makefiles/kaldi.mk.cygwin and put the output in the file kaldi.mk.  This file will be
- textually included by the Makefiles in the subdirectores (see below).  In the case of
- Linux, the configure script also has to work out where the ATLAS libraries
- are located.  Look at the configure script itself to see which options are
- allowed (e.g., specifying places to find libraries).
-
- The configure script does not perform all possible configuration tasks.  It just
- tries to get you a working steup.  The file that it creates, kaldi.mk, is intended
- to be human-editable.  
+ typing ./configure.   This script takes various options.  For instance, you can run
+\verbatim
+   ./configure --shared
+\endverbatim
+ if you want to build the setup with shared libraries instead of static libraries
+ (this can make the binaries smaller), and it also takes various options to enable
+ you to specify different mat libraries, for instance to use OpenBlas.  Look at the
+ top of the script to see some example command lines.
+ The configure script currently supports are Cygwin, Darwin (which is Apple's version of BSD UNIX),
+ and Linux.  The configure script produces a file called kaldi.mk.  This file will be
+ textually included by the Makefiles in the subdirectores (see below). 
 
  \section build_setup_editing Editing kaldi.mk
 
@@ -74,7 +73,8 @@
   use CLAPACK instead of ATLAS versions of LAPACK functions) and to link to math
   libraries dynamically instead of statically, but this is quite complicated and
   we can't give any generic instructions that will enable you to do this (see
-  \ref matrixwrap to understand the compilation process for our math code).
+  \ref matrixwrap to understand the compilation process for our math code).  It will probably
+  be easier to work with the options to configure script instead.
 
  \section build_setup_targets Targets defined by the Makefiles
 

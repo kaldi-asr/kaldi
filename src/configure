@@ -10,12 +10,17 @@
 
 #  Example command lines:
 # ./configure
+# ./configure --shared  ## shared libraries.
 # ./configure --mkl-root=/opt/intel/mkl 
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes
 # ./configure  --openblas-root=../tools/OpenBLAS/install  # before doing
 #        # this, cd to ../tools and type "make openblas".  Note:
 #        # this is not working correctly on all platforms, do "make test"
 #        # and look out for segmentation faults.
+
+#This should be incremented after every significant change of the configure script
+#I.e. after each change that affects the kaldi.mk or the build system as whole
+CONFIGURE_VERSION=2
 
 function rel2abs {
   if [ ! -z "$1" ]; then
@@ -61,7 +66,7 @@ unset OPENBLASROOT
 unset MKLLIBDIR
 
 function usage {
-  echo 'Usage: ./configure [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
+  echo 'Usage: ./configure [--static|--shared] [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
   [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
   [--omp-libdir=OMPDIR] [--static-fst={yes|no}] [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS] 
   [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR]';
@@ -72,11 +77,24 @@ threaded_math=${threaded_atlas}
 static_math=false
 static_fst=false
 use_cuda=true
+dynamic_kaldi=false
 
 while [ $# -gt 0 ];
 do
   case "$1" in
   --help) usage; exit 0 ;;
+  --version) echo $CONFIGURE_VERSION; exit 0 ;;
+  --static)
+    # FIXME depends on order of options first--static/--shared then --static-math -> it will override it
+  dynamic_kaldi=false; 
+  static_math=true;
+  static_fst=true;
+  shift ;;  
+  --shared)
+  dynamic_kaldi=true; 
+  static_math=false;
+  static_fst=false;
+  shift ;;  
   --atlas-root=*) 
   ATLASROOT=`read_dirname $1`; shift ;;
   --threaded-atlas=yes)
@@ -349,7 +367,7 @@ function linux_configure_static {
      linux_check_static &&  ATLASLIBDIR=$dir
     done
     if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-      echo "Could not find libatlas.a in any of the obvious places... will try dynamic libraries."
+      echo "Could not find libatlas.a in any of the generic-Linux places, but we'll try other stuff..."
       return 1;
     fi
   elif [ ! -f $ATLASLIBDIR/libatlas.a ]; then
@@ -415,7 +433,7 @@ function linux_configure_dynamic {
        linux_check_dynamic && ATLASLIBDIR=$dir
     done
     if [ -z $ATLASLIBDIR ]; then
-      echo "Could not find libatlas.so in any of the obvious places."
+      echo "Could not find libatlas.so in any of the obvious places, will most likely try static:"
       return 1;
     fi
   elif [ ! -f $ATLASLIBDIR/libatlas.so ]; then
@@ -484,6 +502,12 @@ if [ -f kaldi.mk ]; then
 fi
 
 cp makefiles/common.mk kaldi.mk
+if $dynamic_kaldi ; then
+KALDILIBDIR=`pwd`/lib
+echo "KALDI_FLAVOR := dynamic" >> kaldi.mk
+echo "KALDILIBDIR := $KALDILIBDIR" >> kaldi.mk
+fi
+echo "CONFIGURE_VERSION := $CONFIGURE_VERSION" >> kaldi.mk
 
 # Most of the OS-specific steps below will append to kaldi.mk
 echo "Doing OS specific configurations ..."
@@ -541,13 +565,15 @@ if [ "`uname`" == "Linux" ]; then
       OPENFSTLIBS="$FSTROOT/lib/libfst.a"
       fst_type='a'
   else
-      OPENFSTLIBS="-L${FSTROOT}/lib -lfst -Wl,-rpath=${FSTROOT}/lib"
+      OPENFSTLIBS="-L${FSTROOT}/lib -lfst"
+      OPENFSTLDFLAGS="-Wl,-rpath=${FSTROOT}/lib"
       fst_type='so'
   fi
   if [ ! -f "$FSTROOT/lib/libfst.${fst_type}" ]; then
     failure "Static=[$static_fst] OpenFST library not found:  See ../tools/INSTALL"
   fi
   echo OPENFSTLIBS = $OPENFSTLIBS >> kaldi.mk
+  echo OPENFSTLDFLAGS = $OPENFSTLDFLAGS >> kaldi.mk
   echo FSTROOT = $FSTROOT >> kaldi.mk
 
   echo "On Linux: Checking for linear algebra header files ..."

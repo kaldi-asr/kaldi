@@ -1,7 +1,7 @@
 
 = Kaldi Gstreamer plugin =
 
-Plugin for GSteramer 1.0 framework, using the OnlineGmmDecodeFaster 
+Plugin for GStreamer 1.0 framework, using the OnlineGmmDecodeFaster 
 decoder. Accepts 16000 kHz 16 bit audio and decodes it on the fly,
 decoder words are "pushed" out using a callback.
 
@@ -9,7 +9,6 @@ decoder words are "pushed" out using a callback.
 == Requirements ==
 
 Development packages for Gstreamer 1.0 (libgstreamer1.0-dev on Debian)
-
 
 == Install ==
 
