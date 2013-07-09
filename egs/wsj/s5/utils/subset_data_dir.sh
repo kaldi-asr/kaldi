@@ -31,6 +31,7 @@ shortest=false
 perspk=false
 first_opt=""
 speakers=false
+spk_list_specified=false
 
 if [ "$1" == "--per-spk" ]; then
   perspk=true;
@@ -47,12 +48,18 @@ elif [ "$1" == "--speakers" ]; then
 elif [ "$1" == "--last" ]; then
   first_opt="--last";
   shift;
+elif [ "$1" == "--spk-list" ]; then
+  spk_list_specified=true
+  shift;
 fi
 
 
 
+
 if [ $# != 3 ]; then
-  echo "Usage: subset_data_dir.sh [--speakers|--shortest|--first|--per-spk] <srcdir> <num-utt> <destdir>"
+  echo "Usage: "
+  echo "  subset_data_dir.sh [--speakers|--shortest|--first|--per-spk] <srcdir> <num-utt> <destdir>"
+  echo "  subset_data_dir.sh [--spk-list <speaker-list-file>] <srcdir> <destdir>"
   echo "By default, randomly selects <num-utt> utterances from the data directory."
   echo "With --speakers, randomly selects enough speakers that we have <num-utt> utterances"
   echo "With --first, selects the first <num-utt> utterances"
@@ -60,9 +67,15 @@ if [ $# != 3 ]; then
   exit 1;
 fi
 
-srcdir=$1
-numutt=$2
-destdir=$3
+if $spk_list_specified; then
+  spk_list=$1
+  srcdir=$2
+  destdir=$3
+else
+  srcdir=$1
+  numutt=$2
+  destdir=$3
+fi
 
 
 export LC_ALL=C
@@ -71,7 +84,6 @@ if [ ! -f $srcdir/utt2spk ]; then
   echo "subset_data_dir.sh: no such file $srcdir/utt2spk" 
   exit 1;
 fi
-
 
 function do_filtering {
   # assumes the utt2spk and spk2utt files already exist.
@@ -99,7 +111,13 @@ function do_filtering {
 }
 
 
-if $speakers; then
+if $spk_list_specified; then
+  mkdir -p $destdir
+  utils/filter_scp.pl "$spk_list" $srcdir/spk2utt > $destdir/spk2utt || exit 1;
+  utils/spk2utt_to_utt2spk.pl < $destdir/spk2utt > $destdir/utt2spk || exit 1;
+  do_filtering; # bash function.
+  exit 0;  
+elif $speakers; then
   mkdir -p $destdir
   sort -R $srcdir/spk2utt | awk -v numutt=$numutt '{ if (tot < numutt){ print; } tot += (NF-1); }' | \
     sort > $destdir/spk2utt
