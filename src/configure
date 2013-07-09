@@ -79,6 +79,8 @@ static_fst=false
 use_cuda=true
 dynamic_kaldi=false
 
+cmd_line="$0 $@"  # Save the command line to include in kaldi.mk
+
 while [ $# -gt 0 ];
 do
   case "$1" in
@@ -501,7 +503,10 @@ if [ -f kaldi.mk ]; then
   cp kaldi.mk kaldi.mk.bak
 fi
 
-cp makefiles/common.mk kaldi.mk
+printf "# This file was generated using the following command:\n# $cmd_line\n\n" > kaldi.mk
+#echo "# $cmd_line" >> kaldi.mk
+#echo >> kaldi.mk
+cat makefiles/common.mk >> kaldi.mk
 if $dynamic_kaldi ; then
 KALDILIBDIR=`pwd`/lib
 echo "KALDI_FLAVOR := dynamic" >> kaldi.mk

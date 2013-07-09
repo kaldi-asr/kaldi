@@ -37,6 +37,7 @@ class OptionsItf {
   virtual void Register(const std::string &name,
                 std::string *ptr, const std::string &doc) = 0; 
   
+  virtual ~OptionsItf() {}
 };
 
 }  // namespace Kaldi

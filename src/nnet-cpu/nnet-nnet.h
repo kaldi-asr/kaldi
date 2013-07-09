@@ -147,7 +147,7 @@ class Nnet {
   
   Nnet(const Nnet &other); // Copy constructor.
   
-  Nnet() { }
+  Nnet() {}
 
   Nnet &operator = (const Nnet &other); // assignment operator.
 
@@ -168,7 +168,7 @@ class Nnet {
   /// Takes ownership of the pointer.
   void Append(Component *new_component);
   
-  ~Nnet() { Destroy(); }
+  virtual ~Nnet() { Destroy(); }
 
   std::string Info() const; // some human-readable summary info.
 
