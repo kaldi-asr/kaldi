@@ -444,7 +444,7 @@ WARN_LOGFILE           =
 
 INPUT       = doc base matrix util feat tree gmm sgmm fstext hmm optimization \
 	    itf lat latbin nnet nnetbin rnn tied tiedbin transform lm decoder \
-            bin fstbin gmmbin fgmmbin sgmmbin featbin
+            bin fstbin gmmbin fgmmbin sgmmbin featbin online onlinebin gst-plugin
 
 # If the value of the INPUT tag contains directories, you can use the 
 # FILE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp 

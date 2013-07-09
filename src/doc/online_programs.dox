@@ -236,8 +236,76 @@ property to `False` orders the plugin not to process any incoming audio (althoug
 produce some new recognized words).
  
 
+\subsection code_structure Overview of the online decoders' code
 
+The main components used in the implemention of the online decoders are as follows:
+    - \ref OnlineAudioSource - represents a source of raw audio samples. There are different 
+      implementations of this "interface", that can for example acquire samples from microphone
+      (e.g. \ref OnlinePaSource, using PortAudio), or read them from existing \ref Vector
+      (\ref OnlineVectorSource). Technically OnlineAudioSource is currently not a C++ interface, using 
+      virtual methods - instead the classes "implementing" it are passed as template parameters
+      to their users.
+    - \ref OnlineFeatInputItf - used to read feature vectors that are computed in some manner.
+      The computation in this case can mean feature extraction(\ref OnlineFeInput), cepstral mean
+      normalization (\ref OnlineCmnInput), calculation of higher order features
+      (\ref OnlineDeltaInput) and so on.
+    - \ref OnlineDecodableDiagGmmScaled - an implementation of \ref DecodableInterface, reading
+      its input features from an implementation of OnlineFeatInputItf(through OnlineFeatureMatrix proxy).
+    - \ref OnlineFasterDecoder - extends \ref FasterDecoder (described in the \ref decoders section),
+      to make it work with real time input.
 
+The process of feature extraction and transformation is implemented by forming a pipeline of several
+objects, each of which pulling data from the previous object in the pipeline, performing a specific type 
+of computation and passing the result to the next one. Usually, at the start of the pipeline there is an
+OnlineAudioSource object, which is used to acquire the raw audio in some way. Then comes a component
+of type \ref OnlineFeInput, that reads the raw samples and extracts features. OnlineFeInput can be used to produce 
+either MFCC or PLP features, by passing reference to the object doing the actual job(\ref Mfcc or \ref Plp) as
+parameter to its constructor. After that the pipeline continues with other OnlineFeatInputItf objects. For
+example if we want the decoder to receive audio from a microphone using PortAudio and to use a vector of 
+MFCC, delta and delta-delta features the pipeline looks like:
+
+\verbatim
+OnlinePaSource -> OnlineFeInput<OnlinePaSource, Mfcc> -> OnlineCmnInput -> OnlineDeltaInput
+\endverbatim 
+
+<B>NOTE:</B> The pipeline shown above has nothing to do with GStreamer pipeline described in the previous
+sections - the both structures are completely orthogonal to each other. The GStreamer plug-in makes it 
+possible to grab audio samples from GStreamer's pipeline, by implementing a new OnlineAudioSource 
+(\ref GstBufferSource), and feed them into Kaldi online decoder's pipeline.
+
+\ref OnlineFasterDecoder itself is completely oblivious to the details of feature computation. Everything
+the decoder knows is an object of type OnlineDecodableDiagGmmScaled. OnlineDecodableDiagGmmScaled doesn't
+directly access the final OnlineFeatInputItf either. Instead, the responsibility for bookkeeping and requesting
+batches of features from the pipeline, as well as coping with potential timeouts is delegated to an object of type
+\ref OnlineFeatureMatrix.
+
+The chain of function calls, that results in pulling new features along the pipeline, looks like the following:
+
+-# in \ref OnlineFasterDecoder::ProcessEmitting(), the decoder invokes 
+   \ref OnlineDecodableDiagGmmScaled::LogLikelihood()
+-# this triggers a call to \ref OnlineFeatureMatrix::IsValidFrame(). If the requested feature frame is not
+   already available inside the cache maintained by OnlineFeatureMatrix, a new batch of features is requested,
+   by calling the \ref OnlineFeatInputItf::Compute() method of the last object in the pipeline.
+-# the Compute() method of the last object (e.g. OnlineDelta input in the example above) then calls the Compute()
+   method of the previous object in the pipeline and so on to the first OnlineFeatInputItf object, which invokes
+   OnlineAudioSource::Read().
+
+OnlineFasterDecoder inherits most of its implementation from FasterDecoder, but its Decode() method processes the 
+feature vectors in batches of configurable size and returns a code corresponding to the current decoder state.
+There are three different codes: 
+
+- <I>kEndFeats</I> means there are no more features left in the pipeline
+- <I>kEndUtt</I> signals end of the current utterance. The utterance is considered to be finished when a configurable
+  number of silence frames are detected in the traceback.
+- <I>kEndBatch</I> - nothing extraordinary has happened - the decoder just finished processing the current batch of
+  feature vectors. 
+
+OnlineFasterDecoder makes it possible to get recognition results as soon as possible, by implementing partial traceback.
+The back-pointers of all active \ref FasterDocoder::Token objects are followed until a point is reached, back in time,
+where there is only one active token. That means that this (immortal) token is a common ancestor of all currently 
+active tokens. Moreover by keeping track of the previous such token(for the previously processed batches), 
+the decoder can produce a partial result, by taking the output symbols along the traceback from the current immortal
+token to the previous one.
 
 */
 
