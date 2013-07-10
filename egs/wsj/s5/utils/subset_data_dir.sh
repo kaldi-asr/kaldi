@@ -119,7 +119,7 @@ if $spk_list_specified; then
   exit 0;  
 elif $speakers; then
   mkdir -p $destdir
-  sort -R $srcdir/spk2utt | awk -v numutt=$numutt '{ if (tot < numutt){ print; } tot += (NF-1); }' | \
+  utils/shuffle_list.pl < $srcdir/spk2utt | awk -v numutt=$numutt '{ if (tot < numutt){ print; } tot += (NF-1); }' | \
     sort > $destdir/spk2utt
   utils/spk2utt_to_utt2spk.pl < $destdir/spk2utt > $destdir/utt2spk
   do_filtering; # bash function.

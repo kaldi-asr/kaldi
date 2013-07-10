@@ -162,6 +162,15 @@ if [ $stage -le 4 ]; then
     $links/fe_03_p2_sph{1,2,3,4,5,6,7}/docs/filetable2.txt | \
   perl -ane 'm:^\S+ (\S+)\.sph ([fm])([fm]): || die "bad line $_;"; print "$1-A $2\n", "$1-B $3\n"; ' | \
    sort | uniq | utils/filter_scp.pl data/train_all/spk2utt > data/train_all/spk2gender
+
+  if [ ! -s data/train_all/spk2gender ]; then
+    echo "It looks like our first try at getting the spk2gender info did not work."
+    echo "(possibly older distribution?)  Trying something else."
+    cat $links/fe_03_p1_tran/doc/fe_03_p1_filelist.tbl  $links/fe_03_p2_tran/doc/fe_03_p2_filelist.tbl  | \
+       perl -ane 'm:fe_03_p[12]_sph\d\t(\d+)\t([mf])([mf]): || die "Bad line $_";
+                print "fe_03_$1-A $2\n", "fe_03_$1-B $3\n"; ' | \
+         sort | uniq | utils/filter_scp.pl data/train_all/spk2utt > data/train_all/spk2gender
+  fi
 fi
 
 echo "Data preparation succeeded"

@@ -599,11 +599,21 @@ if [ "`uname`" == "Linux" ]; then
     # containing {liblapack.a,libblas.a}, and linking against just these two 
     # libraries worked.  
 
-    linux_configure_static || \
+    if $static_math; then
+      # Prefer static to dynamic math.
+      linux_configure_static || \
+        linux_configure_dynamic || \
+        linux_configure_debian_ubuntu 64 || \
+        linux_configure_debian_ubuntu || \
+        linux_atlas_failure "Failed to configure ATLAS lbiraries";
+    else
+      # Prefer dynamic to static math.
       linux_configure_dynamic || \
-      linux_configure_debian_ubuntu 64 || \
-      linux_configure_debian_ubuntu || \
-      linux_atlas_failure "Failed to configure ATLAS lbiraries";
+        linux_configure_static || \
+        linux_configure_debian_ubuntu 64 || \
+        linux_configure_debian_ubuntu || \
+        linux_atlas_failure "Failed to configure ATLAS lbiraries";
+    fi
 
   elif [ "$MATHLIB" == "MKL" ]; then
     if [ "`uname -m`" != "x86_64" ]; then
