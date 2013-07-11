@@ -31,7 +31,7 @@ NnetAdaptiveTrainer::NnetAdaptiveTrainer(
 }
 
 void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
-  int32 num_components = nnet_->NumComponents();
+  int32 num_updatable_components = nnet_->NumUpdatableComponents();
   { // First take care of training objf.
     if (!first_time)
       KALDI_LOG << "Training objective function (this phase) is "
@@ -42,10 +42,10 @@ void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
   }
   if (!first_time) { // normal case-- end old phase + begin new one.
     // Declare dot products (each element is a layer's dot product)
-    Vector<BaseFloat> old_model_old_gradient(num_components),
-        new_model_old_gradient(num_components),
-        old_model_new_gradient(num_components),
-        new_model_new_gradient(num_components);
+    Vector<BaseFloat> old_model_old_gradient(num_updatable_components),
+        new_model_old_gradient(num_updatable_components),
+        old_model_new_gradient(num_updatable_components),
+        new_model_new_gradient(num_updatable_components);
     nnet_snapshot_.ComponentDotProducts(validation_gradient_,
                                         &old_model_old_gradient);
     nnet_->ComponentDotProducts(validation_gradient_,
@@ -71,7 +71,7 @@ void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
     // If we use a quadratic model for the objective function, we
     // can show that the progress (change in objective function) this
     // iter is the average of old_gradient_delta and new_gradient_delta.
-    Vector<BaseFloat> progress_this_iter(num_components);
+    Vector<BaseFloat> progress_this_iter(num_updatable_components);
     progress_this_iter.AddVec(0.5, old_gradient_delta);
     progress_this_iter.AddVec(0.5, new_gradient_delta);
 
@@ -118,7 +118,7 @@ void NnetAdaptiveTrainer::BeginNewPhase(bool first_time) {
                                            batch_size,
                                            &validation_gradient_);
     initial_validation_objf_ = validation_objf_;
-    progress_stats_.Resize(num_components);
+    progress_stats_.Resize(num_updatable_components);
   }
   
   nnet_snapshot_ = *nnet_;

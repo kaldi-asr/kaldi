@@ -207,10 +207,12 @@ class Nnet {
   // with things of type NonlinearComponent.
 
 
-  /// This is used to separately adjust learning rates of each layer,
+  /// [This function is only used in the binary nnet-train.cc which is currently not
+  /// being used]. This is used to separately adjust learning rates of each layer,
   /// after each "phase" of training.  We basically ask (using the validation
   /// gradient), do we wish we had gone further in this direction?  Yes->
-  /// increase learning rate, no -> decrease it. 
+  /// increase learning rate, no -> decrease it.   The inputs have dimension
+  /// NumUpdatableComponents().
   void AdjustLearningRates(
       const VectorBase<BaseFloat> &old_model_old_gradient,
       const VectorBase<BaseFloat> &new_model_old_gradient,
@@ -234,8 +236,8 @@ class Nnet {
 
   
   // This sets *dot_prod to the dot prod of *this . validation_gradient,
-  // separately for each component; zero for non-updatable components.
-  // (The vector must have size equal to this->NumComponents()).
+  // separately for each updatable component.
+  // (The vector must have size equal to this->NumUpdatableComponents()).
   // This is used in updating learning rates and shrinkage rates.
   void ComponentDotProducts(
       const Nnet &other,

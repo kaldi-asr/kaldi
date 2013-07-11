@@ -116,17 +116,17 @@ void Nnet::Destroy() {
 void Nnet::ComponentDotProducts(
     const Nnet &other,
     VectorBase<BaseFloat> *dot_prod) const {
-  KALDI_ASSERT(dot_prod->Dim() == NumComponents());
+  KALDI_ASSERT(dot_prod->Dim() == NumUpdatableComponents());
+  int32 index = 0;
   for (size_t i = 0; i < components_.size(); i++) {
     UpdatableComponent *uc1 = dynamic_cast<UpdatableComponent*>(components_[i]);
     const UpdatableComponent *uc2 = dynamic_cast<const UpdatableComponent*>(
         &(other.GetComponent(i)));
     KALDI_ASSERT((uc1 != NULL) == (uc2 != NULL));
     if (uc1 != NULL)
-      (*dot_prod)(i) = uc1->DotProduct(*uc2);
-    else
-      (*dot_prod)(i) = 0.0;
-  }    
+      (*dot_prod)(index++) = uc1->DotProduct(*uc2);
+  }
+  KALDI_ASSERT(index == NumUpdatableComponents());
 }
 
 
@@ -231,40 +231,44 @@ void Nnet::AdjustLearningRates(
     BaseFloat ratio, // e.g. 1.1; ratio by  which we change learning rate.
     BaseFloat max_learning_rate) {
   std::vector<BaseFloat> new_lrates;
-  KALDI_ASSERT(old_model_old_gradient.Dim() == NumComponents() &&
-               new_model_old_gradient.Dim() == NumComponents() &&
-               old_model_new_gradient.Dim() == NumComponents() &&
-               new_model_new_gradient.Dim() == NumComponents());
+  KALDI_ASSERT(old_model_old_gradient.Dim() == NumUpdatableComponents() &&
+               new_model_old_gradient.Dim() == NumUpdatableComponents() &&
+               old_model_new_gradient.Dim() == NumUpdatableComponents() &&
+               new_model_new_gradient.Dim() == NumUpdatableComponents());
   KALDI_ASSERT(ratio >= 1.0);
   KALDI_ASSERT(measure_at > 0.5 && measure_at <= 1.0);
   std::string changes_str;
   std::string dotprod_str;
   BaseFloat inv_ratio = 1.0 / ratio;
+  int32 index = 0;
   for (int32 c = 0; c < NumComponents(); c++) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[c]);
     if (uc == NULL) { // Non-updatable component.
       KALDI_ASSERT(old_model_old_gradient(c) == 0.0);
       continue; 
-    }
-    BaseFloat grad_dotprod_at_end =
-        new_model_new_gradient(c) - old_model_new_gradient(c),
-        grad_dotprod_at_start =
-        new_model_old_gradient(c) - old_model_old_gradient(c),
-        grad_dotprod_interp =
-        measure_at * grad_dotprod_at_end +
-        (1.0 - measure_at) * grad_dotprod_at_start;
-    // grad_dotprod_interp will be positive if we want more of the gradient term
-    // -> faster learning rate for this component
+    } else {
+      BaseFloat grad_dotprod_at_end =
+          new_model_new_gradient(index) - old_model_new_gradient(index),
+          grad_dotprod_at_start =
+          new_model_old_gradient(index) - old_model_old_gradient(index),
+          grad_dotprod_interp =
+          measure_at * grad_dotprod_at_end +
+          (1.0 - measure_at) * grad_dotprod_at_start;
+      // grad_dotprod_interp will be positive if we want more of the gradient term
+      // -> faster learning rate for this component
 
-    BaseFloat lrate = uc->LearningRate();
-    lrate *= (grad_dotprod_interp > 0 ? ratio : inv_ratio);
-    changes_str = changes_str + (grad_dotprod_interp > 0 ? " increase" : " decrease");
-    dotprod_str = dotprod_str + (new_model_new_gradient(c) > 0 ? " positive" : " negative");
-    if (lrate > max_learning_rate) lrate = max_learning_rate;
+      BaseFloat lrate = uc->LearningRate();
+      lrate *= (grad_dotprod_interp > 0 ? ratio : inv_ratio);
+      changes_str = changes_str + (grad_dotprod_interp > 0 ? " increase" : " decrease");
+      dotprod_str = dotprod_str + (new_model_new_gradient(index) > 0 ? " positive" : " negative");
+      if (lrate > max_learning_rate) lrate = max_learning_rate;
     
-    new_lrates.push_back(lrate);
-    uc->SetLearningRate(lrate);
+      new_lrates.push_back(lrate);
+      uc->SetLearningRate(lrate);
+      index++;
+    }
   }
+  KALDI_ASSERT(index == NumUpdatableComponents());
   KALDI_VLOG(1) << "Changes to learning rates: " << changes_str;
   KALDI_VLOG(1) << "Dot product of model with validation gradient is "
                 << dotprod_str;
