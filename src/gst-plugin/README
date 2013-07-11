@@ -8,18 +8,13 @@ decoder words are "pushed" out using a callback.
 
 == Requirements ==
 
-Development packages for Gstreamer 1.0 (libgstreamer1.0-dev on Debian)
+  * GStreamer 1.0, including the 'good' plugins and the GStreamer tools package
+  * Development packages for Gstreamer 1.0 (libgstreamer1.0-dev on Debian Jessie)
 
 == Install ==
 
-Compile rest of the Kaldi with -fPIC. To do this, edit the kaldi.mk
-file and modify:
-
-    CXXFLAGS = -fPIC -m64 -msse -msse2 -Wall -I.. \
-    [...]
-
-This will probably change when the sharedlibs functionality is merged to
-the trunk.
+Compile rest of the Kaldi using the 'shared' flavour. To do this,
+invoke 'configure' with the `--shared` switch.
 
 Also, make the online extensions  (make ext)
 

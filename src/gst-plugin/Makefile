@@ -18,10 +18,9 @@ BINFILES= $(LIBFILE)
 all: $(LIBFILE)
 
 GST_LIBS = -pthread -lgstbase-1.0 -lgstcontroller-1.0 -lgstreamer-1.0 -lgobject-2.0 -lgmodule-2.0 -lgthread-2.0 -lrt -lglib-2.0
-#GST_PLUGIN_LDFLAGS = -module -avoid-version -export-symbols-regex _*\(gst_\|Gst\|GST_\).*
 
 ADDLIBS=../online/kaldi-online.a ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a \
- ../feat/kaldi-feature.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a \
+ ../feat/kaldi-feat.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a \
  ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a \
  ../../tools/portaudio/install/lib/libportaudio.a
 
@@ -55,3 +54,4 @@ depend: kaldimarshal.h kaldimarshal.cc
 
 
 -include .depend.mk
+

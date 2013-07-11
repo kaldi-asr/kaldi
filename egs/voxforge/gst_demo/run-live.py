@@ -45,6 +45,9 @@ class DemoApp(object):
     def init_gst(self):
         """Initialize the speech components"""
         self.pulsesrc = Gst.ElementFactory.make("pulsesrc", "pulsesrc")
+        if self.pulsesrc == None:
+            print >> sys.stderr, "Error loading pulsesrc GST plugin. You probably need the gstreamer1.0-pulseaudio package"
+            sys.exit()	
         self.audioconvert = Gst.ElementFactory.make("audioconvert", "audioconvert")
         self.audioresample = Gst.ElementFactory.make("audioresample", "audioresample")    
         self.asr = Gst.ElementFactory.make("onlinegmmdecodefaster", "asr")

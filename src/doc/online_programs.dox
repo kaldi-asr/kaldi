@@ -131,11 +131,14 @@ of the Kaldi online decoder in applications since communicating with the decoder
 \subsection gst_plugin_installation Installation
 
 The source of the GStreamer plugin is located in the `src/gst-plugin` directory. To compile the plugin, rest of the Kaldi
-toolkit has to be compiled with the '-fPIC' compilation option. To do this, just add `-fPIC` to the `CXXFLAGS` in 
-the `src/kaldi.mk` file. Then recompile Kaldi as usual. Also compile the online extensions (`make ext`). 
+toolkit has to be compiled to use the shared libraries. To do this, invoke `configure` with the `--shared` flag.
+Also compile the online extensions (`make ext`). 
  
-Make sure the package that provides  GStreamer 1.0 development headers is installed on your system (on Debian, the needed package is called
-`libgstreamer1.0-dev`). 
+Make sure the package that provides  GStreamer 1.0 development headers is installed on your system. On Debian Jessie (current 'testing' 
+distribution), the needed package is called `libgstreamer1.0-dev`. On Debian Wheezy (current stable), GStreamer 1.0 is available from the backports
+repository (http://backports.debian.org). Install the 'good' GStreamer plugins (package gstreamer1.0-plugins-good)
+and GStreamer 1.0 tools (package `gstreamer1.0-tools`). A demo program also requires the PulseAudio Gstreamer plugins 
+(package gstreamer1.0-pulseaudio).
 
 Finally, run `make depend` and `make` in the `src/gst-plugin` directory. This should result in a file `src/gst-plugin/libgstkaldi.so`
 which contains the GStreamer plugin.
