@@ -273,11 +273,12 @@ sections - the both structures are completely orthogonal to each other. The GStr
 possible to grab audio samples from GStreamer's pipeline, by implementing a new OnlineAudioSource 
 (\ref GstBufferSource), and feed them into Kaldi online decoder's pipeline.
 
-\ref OnlineFasterDecoder itself is completely oblivious to the details of feature computation. Everything
-the decoder knows is an object of type OnlineDecodableDiagGmmScaled. OnlineDecodableDiagGmmScaled doesn't
-directly access the final OnlineFeatInputItf either. Instead, the responsibility for bookkeeping and requesting
-batches of features from the pipeline, as well as coping with potential timeouts is delegated to an object of type
-\ref OnlineFeatureMatrix.
+\ref OnlineFasterDecoder itself is completely oblivious to the details of feature computation. As is the case with
+the other Kaldi decoders, the decoder only "knows" that it can get scores for a given feature frame using a Decodable 
+object. The actual type of this object, for the currently implemented example programs, is OnlineDecodableDiagGmmScaled. 
+OnlineDecodableDiagGmmScaled doesn't directly access the final OnlineFeatInputItf either. 
+Instead, the responsibility for bookkeeping and requesting batches of features from the pipeline, as well as
+coping with potential timeouts is delegated to an object of type \ref OnlineFeatureMatrix.
 
 The chain of function calls, that results in pulling new features along the pipeline, looks like the following:
 
@@ -286,7 +287,7 @@ The chain of function calls, that results in pulling new features along the pipe
 -# this triggers a call to \ref OnlineFeatureMatrix::IsValidFrame(). If the requested feature frame is not
    already available inside the cache maintained by OnlineFeatureMatrix, a new batch of features is requested,
    by calling the \ref OnlineFeatInputItf::Compute() method of the last object in the pipeline.
--# the Compute() method of the last object (e.g. OnlineDelta input in the example above) then calls the Compute()
+-# the Compute() method of the last object (e.g. OnlineDeltaInput in the example above) then calls the Compute()
    method of the previous object in the pipeline and so on to the first OnlineFeatInputItf object, which invokes
    OnlineAudioSource::Read().
 
@@ -295,13 +296,15 @@ feature vectors in batches of configurable size and returns a code corresponding
 There are three different codes: 
 
 - <I>kEndFeats</I> means there are no more features left in the pipeline
-- <I>kEndUtt</I> signals end of the current utterance. The utterance is considered to be finished when a configurable
-  number of silence frames are detected in the traceback.
+- <I>kEndUtt</I> signals end of the current utterance, which can be used for example to separate the utterances by
+  new line characters, as in our demos, or other application-dependent feadback. An utterance is considered 
+  to be finished when sufficiently long silence is detected in the traceback. The number of the silence frames 
+  that are interpreted as utterance delimiter is controlled by \ref OnlineDecoderOpts::inter_utt_sil.
 - <I>kEndBatch</I> - nothing extraordinary has happened - the decoder just finished processing the current batch of
   feature vectors. 
 
 OnlineFasterDecoder makes it possible to get recognition results as soon as possible, by implementing partial traceback.
-The back-pointers of all active \ref FasterDocoder::Token objects are followed until a point is reached, back in time,
+The back-pointers of all active \ref FasterDecoder::Token objects are followed until a point is reached, back in time,
 where there is only one active token. That means that this (immortal) token is a common ancestor of all currently 
 active tokens. Moreover by keeping track of the previous such token(for the previously processed batches), 
 the decoder can produce a partial result, by taking the output symbols along the traceback from the current immortal
