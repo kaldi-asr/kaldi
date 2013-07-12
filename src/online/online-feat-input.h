@@ -78,32 +78,43 @@ class OnlineCmnInput: public OnlineFeatInputItf {
   //                start
   OnlineCmnInput(OnlineFeatInputItf *input, int32 cmn_window, int32 min_window)
       : input_(input), cmn_window_(cmn_window), min_window_(min_window),
-        history_(cmn_window, input->Dim()), t_(0),
-        sum_(input->Dim()) { KALDI_ASSERT(cmn_window >= min_window); }
+        history_(cmn_window + 1, input->Dim()), t_in_(0), t_out_(0),
+        sum_(input->Dim()) { KALDI_ASSERT(cmn_window >= min_window && min_window > 0); }
   
   virtual bool Compute(Matrix<BaseFloat> *output, int32 timeout);
 
   virtual int32 Dim() const { return input_->Dim(); }
 
  private:
-  // Appends rows of A to B.
-  static void AppendToMatrix(const Matrix<BaseFloat> &A,
-                             Matrix<BaseFloat> *B);
   virtual bool ComputeInternal(Matrix<BaseFloat> *output,
                                int32 timeout);
-  OnlineFeatInputItf *input_;
-  int32 cmn_window_;
-  int32 min_window_;
-  Matrix<BaseFloat> history_; // circular-buffer history.
-  Matrix<BaseFloat> initial_buffer_; // used at start of file; we view
-  // this as pending data that we have not processed yet [it's needed
-  // if min_window_ > 0, because we need a minimum number of frames for
-  // the initial CMN estimates.]
+
   
-  int64 t_; // number of frames that have been written to
-            // the circular buffer.
-  Vector<double> sum_; // Sum of the last std::min(t_, cmn_window_)
-                       // frames.
+  OnlineFeatInputItf *input_;
+  const int32 cmn_window_; // > 0
+  const int32 min_window_; // > 0, < cmn_window_.
+  Matrix<BaseFloat> history_; // circular-buffer history, of dim (cmn_window_ +
+                              // 1, feat-dim).  The + 1 is to serve as a place
+                              // for the frame we're about to normalize.
+
+  void AcceptFrame(const VectorBase<BaseFloat> &input); // Accept the next frame
+                                                        // of input (read into the
+                                                        // history buffer).
+  void OutputFrame(VectorBase<BaseFloat> *output); // Output the next frame.
+  
+  int32 NumOutputFrames(int32 num_new_frames,
+                        bool more_data) const; // Tells the caller, assuming
+  // we get given "num_new_frames" of input (and given knowledge of whether
+  // there is more data coming), how many frames would we be able to
+  // output?
+  
+  
+  int64 t_in_; // Time-counter for what we've obtained from the input.
+  int64 t_out_; // Time-counter for what we've written to the output.
+  
+  Vector<double> sum_; // Sum of the frames from t_out_ - HistoryLength(t_out_),
+                       // to t_out_ - 1.
+  
   KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineCmnInput);
 };
 
@@ -298,7 +309,11 @@ OnlineFeInput<S, E>::Compute(Matrix<BaseFloat> *output, int32 timeout) {
       CopyFromVec(read_samples);
   
   // Extract the features
-  extractor_->Compute(all_samples, 1.0, output, &wave_remainder_);
+  if (all_samples.Dim() >= frame_size_) {
+    extractor_->Compute(all_samples, 1.0, output, &wave_remainder_);
+  } else {
+    wave_remainder_ = all_samples;
+  }
   
   return ans;
 }

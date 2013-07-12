@@ -23,18 +23,6 @@
 
 namespace kaldi {
 
-// Append rows of A to B.
-// static
-void OnlineCmnInput::AppendToMatrix(const Matrix<BaseFloat> &A,
-                                    Matrix<BaseFloat> *B) {
-  int32 Arows = A.NumRows(), Brows = B->NumRows(), Acols = A.NumCols();
-  if (Brows == 0) *B = A;
-  else if (Arows != 0) {
-    KALDI_ASSERT(B->NumCols() == Acols);
-    B->Resize(Brows + Arows, Acols, kCopyData);
-    B->Range(Brows, Arows, 0, Acols).CopyFromMat(A);
-  }
-}
 
 // This is a wrapper for ComputeInternal.  It behaves exactly the
 // same as ComputeInternal, except that at the start of the file,
@@ -45,112 +33,119 @@ void OnlineCmnInput::AppendToMatrix(const Matrix<BaseFloat> &A,
 bool OnlineCmnInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
   
   int32 orig_nr = output->NumRows(), orig_nc = output->NumCols();
-  int32 initial_buffer_nr = initial_buffer_.NumRows();
+  int32 initial_t_in = t_in_;
   bool ans;
   while ((ans = ComputeInternal(output, timeout))) {
     if (output->NumRows() == 0 &&
-        initial_buffer_.NumRows() != initial_buffer_nr) {
+        t_in_ != initial_t_in) {
       // we produced no output but added to our internal buffer.
       // Call ComputeInternal again.
-      initial_buffer_nr = initial_buffer_.NumRows();
+      initial_t_in = t_in_;
       output->Resize(orig_nr, orig_nc); // make the same request.
     } else {
       return ans;
     }
   }
-  return ans; // ans = false.  If ComputeInternal returned false,
+  return ans;
+  // ans = false.  If ComputeInternal returned false,
   // it means we are done, so no point calling it again.
+}
+
+
+int32 OnlineCmnInput::NumOutputFrames(int32 num_new_frames,
+                                      bool more_data) const {
+  // Tells the caller, assuming we get given "num_new_frames" of input (and
+  // given knowledge of whether there is more data coming), how many frames
+  // would we be able to output?
+
+  int32 max_t = t_in_ + num_new_frames;
+  if (max_t >= min_window_ || !more_data) {
+    // If this takes us to "min_window_" frames, we'll output all we have.
+    return num_new_frames + t_in_ - t_out_;
+  } else {
+    return 0; // We'll wait till we have at least "min_window_" frames.
+  }
 }
 
 
 // What happens at the start of the utterance is not really ideal, it would be
 // better to have some "fake stats" extracted from typical data from this domain,
 // to start with.  We'll have to do this later.
-bool OnlineCmnInput::ComputeInternal(Matrix<BaseFloat> *output, int32 timeout) {
+bool OnlineCmnInput::ComputeInternal(Matrix<BaseFloat> *output,
+                                     int32 timeout) {
   KALDI_ASSERT(output->NumRows() > 0 && output->NumCols() == Dim());
 
-  bool more_data = input_->Compute(output, timeout);
-
-  if (initial_buffer_.NumRows() != 0) {
-    AppendToMatrix(*output, &initial_buffer_);
-    *output = initial_buffer_;
-    initial_buffer_.Resize(0, 0);
-  }
+  Matrix<BaseFloat> input;
+  input.Swap(output);
   
-  if (t_ < min_window_) { // special case at start, to avoid very small window.
-    // this causes latency only at the start.
-    if (t_ + output->NumRows() < min_window_) {
-      if (!more_data) { // Compute mean with what we have,
-        // as no more data is coming.
-        if (output->NumRows() != 0) {
-          Vector<BaseFloat> mean(Dim());
-          mean.AddRowSumMat(1.0 / output->NumRows(), *output);
-          output->AddVecToRows(-1.0, mean);
-        }
-        // Make this object's state reflect what happened,
-        // even though it should never be accessed.
-        int32 nr = output->NumRows();
-        if (nr != 0) {
-          history_.Range(0, nr,
-                         0, Dim()).CopyFromMat(*output);
-          for (int32 i = 0; i < min_window_; i++)
-            sum_.AddVec(1.0, history_.Row(i));
-          t_ = nr;
-        }
-        return more_data;
-      } else {
-        // more data will come; cache what we have but produce no output.
-        initial_buffer_ = *output;
-        output->Resize(0, 0);
-        return more_data;
-      }
-    } else { // output just the min_window_ (normalized), and initialize the
-             // history, cache the rest (we could output it now, but
-             // it's easier to do it on the next call).
-             // initial_buffer_ is considered pending input, not
-             // processed into "history".
-      int32 extra_frames = output->NumRows() - min_window_;
-      if (extra_frames > 0) {
-        initial_buffer_.Resize(extra_frames, Dim());
-        initial_buffer_.CopyFromMat(output->Range(min_window_, extra_frames,
-                                                  0, Dim()));
-      }
-      output->Resize(min_window_, Dim(), kCopyData);
-      history_.Range(0, min_window_, 0, Dim()).CopyFromMat(*output);
-      for (int32 i = 0; i < min_window_; i++)
-        sum_.AddVec(1.0, history_.Row(i));
-      t_ = min_window_;
-      for (int32 i = 0; i < min_window_; i++) {
-        output->Row(i).AddVec(-1.0 / min_window_, sum_);
-      }
-      return more_data || extra_frames > 0;
+  bool more_data = input_->Compute(&input, timeout);
+
+  int32 num_input_frames = input.NumRows();
+  
+  int32 output_frames = NumOutputFrames(num_input_frames,
+                                        more_data);
+  output->Resize(output_frames,
+                 output_frames == 0 ? 0 : Dim());
+  
+  int32 output_counter = 0;
+  for (int32 i = 0; i < num_input_frames; i++) {
+    AcceptFrame(input.Row(i));
+    while (t_in_ >= cmn_window_ && t_out_ < t_in_) {
+      // We must output a frame now or we'll overwrite
+      // frames we need in the buffer.
+      SubVector<BaseFloat> this_frame(*output, output_counter);
+      OutputFrame(&this_frame);
+      output_counter++;
     }
   }
-
-  Vector<BaseFloat> input_frame(output->NumCols());
-    
-  int64 offset = t_, num_input_frames = output->NumRows();
-  for (; t_ < offset + num_input_frames; t_++) {
-    SubVector<BaseFloat> output_frame(*output, t_ - offset);
-    input_frame.CopyFromVec(output_frame);
-    SubVector<BaseFloat> history_frame(history_, t_ % cmn_window_);
-    if (t_ == 0) { // first frame of utterance.
-      output_frame.SetZero();
-    } else { 
-      int64 num_frames_history = std::min(static_cast<int64>(cmn_window_),
-                                          t_);
-      // Subtract the rolling mean:
-      output_frame.AddVec(-1.0 / num_frames_history, sum_);
-      // update sum_
-      if (t_ >= cmn_window_)
-        sum_.AddVec(-1.0, history_frame); // it leaves the circular window.
-    }
-    history_frame.CopyFromVec(input_frame);
-    sum_.AddVec(1.0, input_frame);
+  for (; output_counter < output_frames; output_counter++) {
+    SubVector<BaseFloat> this_frame(*output, output_counter);
+    OutputFrame(&this_frame);
   }
   return more_data;
 }
 
+void OnlineCmnInput::AcceptFrame(const VectorBase<BaseFloat> &input) {
+  KALDI_ASSERT(t_in_ <= t_out_ + cmn_window_);
+  history_.Row(t_in_ % (cmn_window_ + 1)).CopyFromVec(input);
+  t_in_++;
+}
+
+// Output the frame indexed "t_out_".
+void OnlineCmnInput::OutputFrame(VectorBase<BaseFloat> *output) {
+  KALDI_ASSERT(t_out_ < t_in_); // or there is nothing to output.
+  // First set "sum_".
+  if (t_out_ == 0) { // This is the first request for an output frame,
+    // so in general we need to set sum_ to the sum of the first "min_window_"
+    // frames.  We will have less than min_window_ frames if the input finished
+    // before then (if the input were not finished, we'd not have reached this
+    // code).
+    int32 num_frames = t_in_ < min_window_ ? t_in_ : min_window_;
+    for (int32 i = 0; i < num_frames; i++)
+      sum_.AddVec(1.0, history_.Row(i));
+  }
+  int32 num_history_frames;
+  if (t_out_ >= cmn_window_) num_history_frames = cmn_window_;
+  else if (t_out_ < min_window_)
+    num_history_frames = (t_in_ < min_window_ ? t_in_ : min_window_);
+  else
+    num_history_frames = t_out_;
+  
+  SubVector<BaseFloat> input_frame(history_, t_out_ % (cmn_window_ + 1));
+  output->CopyFromVec(input_frame);
+  output->AddVec(-1.0 / num_history_frames, sum_); // Apply CMN to the output.
+  
+  // Update sum.
+  if (t_out_ >= min_window_)
+    sum_.AddVec(1.0, input_frame);
+  if (t_out_ >= cmn_window_) { // Remove the frame from "cmn_window_" frames ago.
+    sum_.AddVec(-1.0, history_.Row((t_out_ - cmn_window_) % (cmn_window_ + 1)));
+    KALDI_ASSERT(t_in_ == t_out_ + 1); // or else the frame indexed t_out_ -
+                                       // cmn_window_ would not be the right one.
+  }
+  t_out_++;
+}
+  
 
 OnlineUdpInput::OnlineUdpInput(int32 port, int32 feature_dim):
     feature_dim_(feature_dim) {

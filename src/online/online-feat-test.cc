@@ -196,9 +196,8 @@ void TestOnlineCmnInput() { // We're also testing OnlineCacheInput here.
   input_feats.SetRandn();
 
   OnlineMatrixInput matrix_input(input_feats);
-  int32 cmn_window = 20;
-  int32 min_window = rand() % cmn_window;
-  if (rand() % 2 == 0) min_window = 0;
+  int32 cmn_window = 10 + rand() % 20;
+  int32 min_window = 1 + rand() % (cmn_window - 1);
   if (rand() % 3 == 0) min_window = cmn_window;
   
   OnlineCmnInput cmn_input(&matrix_input, cmn_window,
