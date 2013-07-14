@@ -31,8 +31,11 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
 
     typedef kaldi::int32 int32;
-    typedef OnlineFeInput<OnlinePaSource, Mfcc> FeInput;
+    typedef OnlineFeInput<Mfcc> FeInput;
 
+    // Time out interval for the PortAudio source
+    const int32 kTimeout = 500; // half second
+    // PortAudio sampling rate
     const int32 kSampleFreq = 16000;
     // PortAudio's internal ring buffer size in bytes
     const int32 kPaRingSize = 32768;
@@ -81,7 +84,7 @@ int main(int argc, char *argv[]) {
     mfcc_opts.use_energy = false;
     int32 frame_length = mfcc_opts.frame_opts.frame_length_ms = 25;
     int32 frame_shift = mfcc_opts.frame_opts.frame_shift_ms = 10;
-    OnlinePaSource au_src(kSampleFreq, kPaRingSize, kPaReportInt);
+    OnlinePaSource au_src(kTimeout, kSampleFreq, kPaRingSize, kPaReportInt);
     Mfcc mfcc(mfcc_opts);
     FeInput fe_input(&au_src, &mfcc,
                      frame_length * (kSampleFreq / 1000),
@@ -92,7 +95,7 @@ int main(int argc, char *argv[]) {
     Matrix<BaseFloat> feats;
     while (1) {
       feats.Resize(batch_size, mfcc_opts.num_ceps, kUndefined);
-      bool more_feats = fe_input.Compute(&feats, 0);
+      bool more_feats = fe_input.Compute(&feats);
       if (feats.NumRows() > 0) {
         std::stringstream ss;
         feats.Write(ss, true); // serialize features as binary data

@@ -32,7 +32,7 @@ class OnlineMatrixInput : public OnlineFeatInputItf {
 
   virtual int32 Dim() const { return feats_.NumCols(); }
   
-  virtual bool Compute(Matrix<BaseFloat> *output, int32 timeout) {
+  virtual bool Compute(Matrix<BaseFloat> *output) {
     if (feats_.NumRows() == 0) { // empty input.
       output->Resize(0, 0);
       return false;
@@ -84,7 +84,7 @@ void GetOutput(OnlineFeatInputItf *a,
     Matrix<BaseFloat> garbage;
     int32 batch_size = 1 + rand() % 10;
     garbage.Resize(batch_size, dim); // some random requested amount.
-    if (!cache.Compute(&garbage, rand() % 3)) // returns false when done.
+    if (!cache.Compute(&garbage)) // returns false when done.
       break;
   }
   cache.GetCachedData(output);

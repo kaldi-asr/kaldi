@@ -18,6 +18,7 @@
 #ifndef KALDI_ONLINE_TCP_SOURCE_H_
 #define KALDI_ONLINE_TCP_SOURCE_H_
 
+#include "online-audio-source.h"
 #include "matrix/kaldi-vector.h"
 
 namespace kaldi {
@@ -26,13 +27,13 @@ namespace kaldi {
  *
  * The documentation and "interface" for this class is given in online-audio-source.h
  */
-class OnlineTcpVectorSource {
+class OnlineTcpVectorSource : public OnlineAudioSourceItf {
  public:
   OnlineTcpVectorSource(int32 socket);
   ~OnlineTcpVectorSource();
 
-  // Implementation of the OnlineAudioSource "interface"
-  bool Read(Vector<BaseFloat> *data, int32 timeout);
+  // Implementation of the OnlineAudioSourceItf
+  bool Read(Vector<BaseFloat> *data);
 
   //returns if the socket is still connected
   bool IsConnected();

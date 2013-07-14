@@ -18,21 +18,22 @@
 #ifndef KALDI_SRC_GST_PLUGIN_GST_AUDIO_SOURCE_H_
 #define KALDI_SRC_GST_PLUGIN_GST_AUDIO_SOURCE_H_
 
+#include <online/online-audio-source.h>
 #include <matrix/kaldi-vector.h>
 #include <gst/gst.h>
 
 namespace kaldi {
 
 
-// OnlineAudioSource implementation using a queue of Gst Buffers
-class GstBufferSource {
+// OnlineAudioSourceItf implementation using a queue of Gst Buffers
+class GstBufferSource : public OnlineAudioSourceItf {
  public:
   typedef int16 SampleType;  // hardcoded 16-bit audio
 
   GstBufferSource();
 
-  // Implementation of the OnlineAudioSource "interface"
-  bool Read(Vector<BaseFloat> *data, uint32 timeout = 0);
+  // Implementation of the OnlineAudioSourceItf
+  bool Read(Vector<BaseFloat> *data);
 
   void PushBuffer(GstBuffer *buf);
 

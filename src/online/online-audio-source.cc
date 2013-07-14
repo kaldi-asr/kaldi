@@ -36,10 +36,12 @@ int PaCallback(const void *input, void *output,
 }
 
 
-OnlinePaSource::OnlinePaSource(const uint32 sample_rate,
+OnlinePaSource::OnlinePaSource(const uint32 timeout,
+                               const uint32 sample_rate,
                                const uint32 rb_size,
                                const uint32 report_interval)
-    : sample_rate_(sample_rate), pa_started_(false),
+    : timeout_(timeout), timed_out_(false),
+      sample_rate_(sample_rate), pa_started_(false),
       report_interval_(report_interval), nread_calls_(0),
       noverflows_(0), samples_lost_(0) {
   using namespace std;
@@ -79,7 +81,7 @@ OnlinePaSource::~OnlinePaSource() {
 }
 
 
-bool OnlinePaSource::Read(Vector<BaseFloat> *data, int32 timeout) {
+bool OnlinePaSource::Read(Vector<BaseFloat> *data) {
   if (!pa_started_) { // start stream the first time Read() is called
     PaError paerr = Pa_StartStream(pa_stream_);
     if (paerr != paNoError)
@@ -95,14 +97,16 @@ bool OnlinePaSource::Read(Vector<BaseFloat> *data, int32 timeout) {
       samples_lost_ = noverflows_ = 0;
   }
   uint32 nsamples_req = data->Dim(); // samples to request
+  timed_out_ = false;
   while (true) {
     ring_buffer_size_t nsamples = PaUtil_GetRingBufferReadAvailable(&pa_ringbuf_);
     if (nsamples >= nsamples_req)
       break;
-    if (timeout != 0) {
+    if (timeout_ > 0) {
       int32 elapsed = static_cast<int32>(timer.Elapsed() * 1000);
-      if (elapsed > timeout) {
+      if (elapsed > timeout_) {
         nsamples_req = nsamples;
+        timed_out_ = true;
         KALDI_VLOG(2) << "OnlinePaSource::Read() timeout";
         break;
       }
@@ -142,7 +146,7 @@ int OnlinePaSource::Callback(const void *input, void *output,
 }
 
 
-bool OnlineVectorSource::Read(Vector<BaseFloat> *data, int32 timeout) {
+bool OnlineVectorSource::Read(Vector<BaseFloat> *data) {
   KALDI_ASSERT(data->Dim() > 0);
   int32 n_elem = std::min(src_.Dim() - pos_,
                           static_cast<uint32>(data->Dim()));

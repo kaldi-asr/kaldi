@@ -28,44 +28,57 @@
 
 namespace kaldi {
 
-// There is in fact no real hierarchy of classes w/ virtual methods etc.,
-// as C++ templates are used instead. The class below is given just
-// to document the interface.
-class OnlineAudioSource {
+class OnlineAudioSourceItf {
  public:
   // Reads from the audio source, and writes the samples converted to BaseFloat
-  // into the vector pointed by "data".  The user sets data->Dim() as a way of
-  // requesting that many samples.  If timeout > 0, this function is to wait no
-  // longer than "timeout" milliseconds before returning data-- by that time, it
-  // will return as much data as it has.
+  // into the vector pointed by "data".
+  // The user sets data->Dim() as a way of requesting that many samples.
   // The function returns true if there may be more data, and false if it
   // knows we are at the end of the stream.
   // In case an unexpected and unrecoverable error occurs the function throws
   // an exception of type std::runtime_error (e.g. by using KALDI_ERR macro).
-  bool Read(Vector<BaseFloat> *data, int32 timeout = 0) { return 0; }
+  //
+  // NOTE: The older version of this interface had a second paramater - "timeout".
+  //       We decided to remove it, because we don't envision usage scenarios,
+  //       where "timeout" will need to be changed dynamically from call to call.
+  //       If the particular audio source can experience timeouts for some reason
+  //       (e.g. the samples are received over a network connection)
+  //       we encourage the implementors to configure timeout using a
+  //       constructor parameter.
+  //       The suggested semantics are: if timeout is used and is greater than 0,
+  //       this method has to wait no longer than "timeout" milliseconds before
+  //       returning data-- by that time, it will return as much data as it has.
+  virtual bool Read(Vector<BaseFloat> *data) = 0;
+
+  virtual ~OnlineAudioSourceItf() { }
 };
 
 
-// OnlineAudioSource implementation using PortAudio to read samples in real-time
+// OnlineAudioSourceItf implementation using PortAudio to read samples in real-time
 // from a sound card/microphone.
-class OnlinePaSource {
+class OnlinePaSource : public OnlineAudioSourceItf {
  public:
   typedef int16 SampleType; // hardcoded 16-bit audio
   typedef ring_buffer_size_t rbs_t;
 
   // PortAudio is initialized here, so it may throw an exception on error
+  // "timeout": if > 0, and the acquisition takes more than this number of
+  //            milliseconds, Compute() will return the data it has so far
+  //            If no data was received until timeout expired, Compute() returns
+  //            false (assumes sensible timeout).
   // "sample_rate": the input rate to request from PortAudio
   // "rb_size": requested size of PA's ring buffer - will be round up to
   //           power of 2
   // "report_interval": if not 0, PA ring buffer overflow will be reported
   //                    at every ovfw_msg_interval-th call to Read().
   //                    Putting 0 into this argument disables the reporting.
-  OnlinePaSource(const uint32 sample_rate,
+  OnlinePaSource(const uint32 timeout,
+                 const uint32 sample_rate,
                  const uint32 rb_size,
                  const uint32 report_interval);
 
-  // Implementation of the OnlineAudioSource "interface" - see above
-  bool Read(Vector<BaseFloat> *data, int32 timeout = 0);
+  // Implementation of the OnlineAudioSourceItf
+  bool Read(Vector<BaseFloat> *data);
 
   // Making friends with the callback so it will be able to access a private
   // member function to delegate the processing
@@ -74,6 +87,10 @@ class OnlinePaSource {
                         const PaStreamCallbackTimeInfo *time_info,
                         PaStreamCallbackFlags status_flags,
                         void *user_data);
+
+  // Returns True if the last call to Read() failed to read the requested
+  // number of samples due to timeout.
+  bool TimedOut() { return timed_out_; }
 
   ~OnlinePaSource();
 
@@ -84,6 +101,10 @@ class OnlinePaSource {
                const PaStreamCallbackTimeInfo *time_info,
                PaStreamCallbackFlags status_flags);
 
+  uint32 timeout_; // timeout in milliseconds. if > 0, after this many ms. we
+                   // give up trying to read data from PortAudio
+  bool timed_out_; // True if the last call to Read() failed to obtain the requested
+                   // number of samples, because of timeout
   uint32 sample_rate_; // the sampling rate of the input audio
   int32 rb_size_;
   char *ring_buffer_; // points to the actual buffer used by PA to store samples
@@ -108,13 +129,13 @@ int PaCallback(const void *input, void *output,
 // Simulates audio input, by returning data from a Vector.
 // This class is mostly meant to be used for online decoder testing using
 // pre-recorded audio
-class OnlineVectorSource {
+class OnlineVectorSource: public OnlineAudioSourceItf {
  public:
   OnlineVectorSource(const VectorBase<BaseFloat> &input)
       : src_(input), pos_(0) {}
 
-  // Implementation of the OnlineAudioSource "interface" - see above
-  bool Read(Vector<BaseFloat> *data, int32 timeout);
+  // Implementation of the OnlineAudioSourceItf
+  bool Read(Vector<BaseFloat> *data);
 
  private:
   Vector<BaseFloat> src_;

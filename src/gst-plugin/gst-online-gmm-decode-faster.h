@@ -33,7 +33,7 @@
 namespace kaldi {
 
 
-typedef OnlineFeInput<GstBufferSource, Mfcc> FeInput;
+typedef OnlineFeInput<Mfcc> FeInput;
 
 G_BEGIN_DECLS
 

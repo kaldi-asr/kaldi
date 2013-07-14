@@ -118,7 +118,7 @@ int OnlineTcpVectorSource::FillFrame(int32 get_size) {
   return frame_offset;
 }
 
-bool OnlineTcpVectorSource::Read(Vector<BaseFloat> *data, int32 timeout) {
+bool OnlineTcpVectorSource::Read(Vector<BaseFloat> *data) {
   if (!connected)
     return false;
 

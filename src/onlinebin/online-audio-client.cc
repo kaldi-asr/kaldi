@@ -157,7 +157,7 @@ int main(int argc, char** argv) {
 
       OnlineVectorSource au_src(wav_data.Data().Row(this_chan));
       Vector<BaseFloat> data(packet_size / 2);
-      while (au_src.Read(&data, 0)) {
+      while (au_src.Read(&data)) {
         for (int32 i = 0; i < data.Dim(); i++) {
           short sample = (short) data(i);
           memcpy(&pack_buffer[i * 2], (char*) &sample, 2);

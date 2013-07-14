@@ -61,7 +61,7 @@ void GstBufferSource::SetEnded(bool ended) {
 }
 
 
-bool GstBufferSource::Read(Vector<BaseFloat> *data, uint32 timeout) {
+bool GstBufferSource::Read(Vector<BaseFloat> *data) {
   uint32 nsamples_req = data->Dim();  // (16bit) samples requested
   int16 buf[data->Dim()];
   uint32 nbytes_transferred = 0;

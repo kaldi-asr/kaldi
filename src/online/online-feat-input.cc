@@ -19,7 +19,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "online/online-feat-input.h"
+#include "online-feat-input.h"
 
 namespace kaldi {
 
@@ -30,12 +30,12 @@ namespace kaldi {
 // This function prevents those initial non-productive calls, which
 // may otherwise confuse decoder code into thinking there is
 // a problem with the stream (too many timeouts), and cause it to fail.
-bool OnlineCmnInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
+bool OnlineCmnInput::Compute(Matrix<BaseFloat> *output) {
   
   int32 orig_nr = output->NumRows(), orig_nc = output->NumCols();
   int32 initial_t_in = t_in_;
   bool ans;
-  while ((ans = ComputeInternal(output, timeout))) {
+  while ((ans = ComputeInternal(output))) {
     if (output->NumRows() == 0 &&
         t_in_ != initial_t_in) {
       // we produced no output but added to our internal buffer.
@@ -71,14 +71,13 @@ int32 OnlineCmnInput::NumOutputFrames(int32 num_new_frames,
 // What happens at the start of the utterance is not really ideal, it would be
 // better to have some "fake stats" extracted from typical data from this domain,
 // to start with.  We'll have to do this later.
-bool OnlineCmnInput::ComputeInternal(Matrix<BaseFloat> *output,
-                                     int32 timeout) {
+bool OnlineCmnInput::ComputeInternal(Matrix<BaseFloat> *output) {
   KALDI_ASSERT(output->NumRows() > 0 && output->NumCols() == Dim());
 
   Matrix<BaseFloat> input;
   input.Swap(output);
   
-  bool more_data = input_->Compute(&input, timeout);
+  bool more_data = input_->Compute(&input);
 
   int32 num_input_frames = input.NumRows();
   
@@ -166,9 +165,7 @@ OnlineUdpInput::OnlineUdpInput(int32 port, int32 feature_dim):
 }
 
 
-bool OnlineUdpInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
-  KALDI_ASSERT(timeout == 0 &&
-               "Timeout parameter currently not supported by OnlineUdpInput!");
+bool OnlineUdpInput::Compute(Matrix<BaseFloat> *output) {
   char buf[65535];
   socklen_t caddr_len = sizeof(client_addr_);
   ssize_t nrecv = recvfrom(sock_desc_, buf, sizeof(buf), 0,
@@ -254,7 +251,7 @@ void OnlineLdaInput::TransformToOutput(const MatrixBase<BaseFloat> &spliced_feat
   }
 }
 
-bool OnlineLdaInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
+bool OnlineLdaInput::Compute(Matrix<BaseFloat> *output) {
   KALDI_ASSERT(output->NumRows() > 0 &&
                output->NumCols() == linear_transform_.NumRows());
   // If output->NumRows() == 0, it corresponds to a request for zero frames,
@@ -262,7 +259,7 @@ bool OnlineLdaInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
 
   // We request the same number of frames of data that we were requested.
   Matrix<BaseFloat> input(output->NumRows(), input_dim_);
-  bool ans = input_->Compute(&input, timeout);
+  bool ans = input_->Compute(&input);
   // If we got no input (timed out) and we're not at the end, we return
   // empty output.
 
@@ -331,8 +328,8 @@ void OnlineLdaInput::ComputeNextRemainder(const MatrixBase<BaseFloat> &input) {
 }
 
 
-bool OnlineCacheInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
-  bool ans = input_->Compute(output, timeout);
+bool OnlineCacheInput::Compute(Matrix<BaseFloat> *output) {
+  bool ans = input_->Compute(output);
   if (output->NumRows() != 0)
     data_.push_back(new Matrix<BaseFloat>(*output));
   return ans;
@@ -417,7 +414,7 @@ void OnlineDeltaInput::DeltaComputation(const MatrixBase<BaseFloat> &input,
   }
 }                                     
 
-bool OnlineDeltaInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
+bool OnlineDeltaInput::Compute(Matrix<BaseFloat> *output) {
   KALDI_ASSERT(output->NumRows() > 0 &&
                output->NumCols() == Dim());
   // If output->NumRows() == 0, it corresponds to a request for zero frames,
@@ -425,7 +422,7 @@ bool OnlineDeltaInput::Compute(Matrix<BaseFloat> *output, int32 timeout) {
 
   // We request the same number of frames of data that we were requested.
   Matrix<BaseFloat> input(output->NumRows(), input_dim_);
-  bool ans = input_->Compute(&input, timeout);
+  bool ans = input_->Compute(&input);
 
   // If we got no input (timed out) and we're not at the end, we return
   // empty output.
@@ -484,7 +481,7 @@ void OnlineFeatureMatrix::GetNextFeatures() {
   int32 iter;
   for (iter = 0; iter < opts_.num_tries; iter++) {
     Matrix<BaseFloat> next_features(opts_.batch_size, feat_dim_);
-    finished_ = ! input_->Compute(&next_features, opts_.timeout);
+    finished_ = ! input_->Compute(&next_features);
     if (next_features.NumRows() == 0 && ! finished_) {
       // It timed out.  Try again.
       continue;

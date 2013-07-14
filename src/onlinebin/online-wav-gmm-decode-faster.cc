@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     using namespace fst;
 
     typedef kaldi::int32 int32;
-    typedef OnlineFeInput<OnlineVectorSource, Mfcc> FeInput;
+    typedef OnlineFeInput<Mfcc> FeInput;
 
     // up to delta-delta derivative features are calculated (unless LDA is used)
     const int32 kDeltaOrder = 2;
@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
         feat_transform = new OnlineDeltaInput(opts, &cmn_input);
       }
 
-      // feature_reading_opts contains timeout, batch size.
+      // feature_reading_opts contains number of retries, batch size.
       OnlineFeatureMatrix feature_matrix(feature_reading_opts,
                                          feat_transform);
 
