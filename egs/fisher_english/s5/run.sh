@@ -4,16 +4,22 @@
 
 . cmd.sh
 . path.sh
-
+mfccdir=`pwd`/mfcc
 set -e
 
 # the next command produces the data in local/train_all
 local/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
    /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
 
+# at BUT:
+# local/fisher_data_prep.sh /mnt/matylda6/jhu09/qpovey/FISHER/LDC2005T19 /mnt/matylda2/data/FISHER/
+
 local/fisher_prepare_dict.sh
 
 utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
+
+local/fisher_train_lms.sh 
+local/fisher_create_test_lang.sh
 
 # Use the first 4k sentences as dev set.  Note: when we trained the LM, we used
 # the 1st 10k sentences as dev set, so the 1st 4k won't have been used in the
@@ -21,9 +27,6 @@ utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 # may overlap, so it's still not quite equivalent to a test set.
 
 utils/fix_data_dir.sh data/train_all
-
-mfccdir=mfcc
-
 
 steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" data/train_all exp/make_mfcc/train_all $mfccdir || exit 1;
 
