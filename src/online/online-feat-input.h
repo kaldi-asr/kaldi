@@ -315,6 +315,7 @@ OnlineFeInput<E>::Compute(Matrix<BaseFloat> *output) {
   if (all_samples.Dim() >= frame_size_) {
     extractor_->Compute(all_samples, 1.0, output, &wave_remainder_);
   } else {
+    output->Resize(0, 0);
     wave_remainder_ = all_samples;
   }
   
