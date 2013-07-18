@@ -1620,6 +1620,16 @@ void MatrixBase<Real>::ApplyFloor(Real floor_val) {
 }
 
 template<class Real>
+void MatrixBase<Real>::ApplyCeiling(Real ceiling_val) {
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  for (MatrixIndexT i = 0; i < num_rows; i++) {
+    Real *data = this->RowData(i);
+    for (MatrixIndexT j = 0; j < num_cols; j++)
+      data[j] = (data[j] > ceiling_val ? ceiling_val : data[j]);
+  }
+}
+
+template<class Real>
 void MatrixBase<Real>::ApplyLog() {
   for (MatrixIndexT i = 0; i < num_rows_; i++) {
     Row(i).ApplyLog();
@@ -1742,6 +1752,7 @@ bool ReadHtk(std::istream &is, Matrix<Real> *M_ptr, HtkHeader *header_ptr)
   KALDI_SWAP2(htk_hdr.mSampleSize);
   KALDI_SWAP2(htk_hdr.mSampleKind);
 
+  bool has_checksum = false;
   {
     // See HParm.h in HTK code for sources of these things.  
     enum BaseParmKind{
@@ -1749,9 +1760,11 @@ bool ReadHtk(std::istream &is, Matrix<Real> *M_ptr, HtkHeader *header_ptr)
       Irefc, Mfcc, Fbank, Melspec, User, Discrete, Plp, Anon };
     
     const int32 IsCompressed = 02000, HasChecksum = 010000, HasVq = 040000,
-        Problem = IsCompressed | HasChecksum | HasVq;
+        Problem = IsCompressed | HasVq;
     int32 base_parm = htk_hdr.mSampleKind & (077);
-    
+    has_checksum = (base_parm & HasChecksum) != 0;
+    htk_hdr.mSampleKind |= ~HasChecksum; // We don't support writing with
+                                         // checksum so turn it off.
     if (htk_hdr.mSampleKind & Problem)
       KALDI_ERR << "Code to read HTK features does not support compressed or "
           "checksummed features, or features with VQ.";
@@ -1802,6 +1815,13 @@ bool ReadHtk(std::istream &is, Matrix<Real> *M_ptr, HtkHeader *header_ptr)
     delete [] pmem;
   }
   if (header_ptr) *header_ptr = htk_hdr;
+  if (has_checksum) {
+    int16 checksum;
+    is.read((char*)&checksum, sizeof(checksum));
+    if (is.fail())
+      KALDI_WARN << "Could not read checksum from HTK feature file ";
+    // We ignore the checksum.
+  }
   return true;
 }
 

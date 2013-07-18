@@ -491,16 +491,84 @@ bool VectorBase<Real>::ApproxEqual(const VectorBase<Real> &other, float tol) con
 template<typename Real>
 Real VectorBase<Real>::Max() const {
   if (dim_ == 0) KALDI_ERR << "Empty vector";
-  Real ans = data_[0];
-  for (MatrixIndexT i = 1; i < dim_; i++) { ans = std::max(ans, data_[i]); }
+
+  Real ans = - std::numeric_limits<Real>::infinity();
+  const Real *data = data_;
+  MatrixIndexT i, dim = dim_;
+  for (i = 0; i + 4 <= dim; i += 4) {
+    Real a1 = data[i], a2 = data[i+1], a3 = data[i+2], a4 = data[i+3];
+    if (a1 > ans || a2 > ans || a3 > ans || a4 > ans) {
+      Real b1 = (a1 > a2 ? a1 : a2), b2 = (a3 > a4 ? a3 : a4);
+      if (b1 > ans) ans = b1;
+      if (b2 > ans) ans = b2;
+    }
+  }
+  for (; i < dim; i++)
+    if (data[i] > ans) ans = data[i];
+  return ans;
+}
+
+template<typename Real>
+Real VectorBase<Real>::Max(MatrixIndexT *index_out) const {
+  if (dim_ == 0) KALDI_ERR << "Empty vector";
+  Real ans = - std::numeric_limits<Real>::infinity();
+  MatrixIndexT index = 0;
+  const Real *data = data_;
+  MatrixIndexT i, dim = dim_;
+  for (i = 0; i + 4 <= dim; i += 4) {
+    Real a1 = data[i], a2 = data[i+1], a3 = data[i+2], a4 = data[i+3];
+    if (a1 > ans || a2 > ans || a3 > ans || a4 > ans) {
+      if (a1 > ans) { ans = a1; index = i; }
+      if (a2 > ans) { ans = a2; index = i + 1; }
+      if (a3 > ans) { ans = a3; index = i + 2; }
+      if (a4 > ans) { ans = a4; index = i + 3; }
+    }
+  }
+  for (; i < dim; i++)
+    if (data[i] > ans) { ans = data[i]; index = i; }
+  *index_out = index;
   return ans;
 }
 
 template<typename Real>
 Real VectorBase<Real>::Min() const {
   if (dim_ == 0) KALDI_ERR << "Empty vector";
-  Real ans = data_[0];
-  for (MatrixIndexT i = 1; i < dim_; i++) { ans = std::min(ans, data_[i]); }
+
+  Real ans = std::numeric_limits<Real>::infinity();
+  const Real *data = data_;
+  MatrixIndexT i, dim = dim_;
+  for (i = 0; i + 4 <= dim; i += 4) {
+    Real a1 = data[i], a2 = data[i+1], a3 = data[i+2], a4 = data[i+3];
+    if (a1 < ans || a2 < ans || a3 < ans || a4 < ans) {
+      Real b1 = (a1 < a2 ? a1 : a2), b2 = (a3 < a4 ? a3 : a4);
+      if (b1 < ans) ans = b1;
+      if (b2 < ans) ans = b2;
+    }
+  }
+  for (; i < dim; i++)
+    if (data[i] < ans) ans = data[i];
+  return ans;
+}
+
+template<typename Real>
+Real VectorBase<Real>::Min(MatrixIndexT *index_out) const {
+  if (dim_ == 0) KALDI_ERR << "Empty vector";
+  Real ans = std::numeric_limits<Real>::infinity();
+  MatrixIndexT index = 0;
+  const Real *data = data_;
+  MatrixIndexT i, dim = dim_;
+  for (i = 0; i + 4 <= dim; i += 4) {
+    Real a1 = data[i], a2 = data[i+1], a3 = data[i+2], a4 = data[i+3];
+    if (a1 < ans || a2 < ans || a3 < ans || a4 < ans) {
+      if (a1 < ans) { ans = a1; index = i; }
+      if (a2 < ans) { ans = a2; index = i + 1; }
+      if (a3 < ans) { ans = a3; index = i + 2; }
+      if (a4 < ans) { ans = a4; index = i + 3; }
+    }
+  }
+  for (; i < dim; i++)
+    if (data[i] < ans) { ans = data[i]; index = i; }
+  *index_out = index;
   return ans;
 }
 
@@ -662,6 +730,19 @@ MatrixIndexT VectorBase<Real>::ApplyFloor(Real floor_val) {
 }
 
 template<typename Real>
+MatrixIndexT VectorBase<Real>::ApplyCeiling(Real ceil_val) {
+  MatrixIndexT num_changed = 0;
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    if (data_[i] > ceil_val) {
+      data_[i] = ceil_val;
+      num_changed++;
+    }
+  }
+  return num_changed;
+}
+
+
+template<typename Real>
 MatrixIndexT VectorBase<Real>::ApplyFloor(const VectorBase<Real> &floor_vec) {
   KALDI_ASSERT(floor_vec.Dim() == dim_);
   MatrixIndexT num_floored = 0;
@@ -770,6 +851,9 @@ void VectorBase<Real>::MulElements(const VectorBase<Real> &v) {
   }
 }
 
+
+
+
 template<typename Real>
 template<typename OtherReal>
 void VectorBase<Real>::MulElements(const VectorBase<OtherReal> &v) {
@@ -785,26 +869,17 @@ void VectorBase<float>::MulElements(const VectorBase<double> &v);
 template
 void VectorBase<double>::MulElements(const VectorBase<float> &v);
 
+
 template<typename Real>
 void VectorBase<Real>::AddVecVec(Real alpha, const VectorBase<Real> &v,
                                  const VectorBase<Real> &r, Real beta) {
-  KALDI_ASSERT((dim_ == v.dim_ && dim_ == r.dim_));
-  KALDI_ASSERT(this != &v && this != &r);
-  // remove __restrict__ if it causes compilation problems.
-  register __restrict__  Real *data = data_, *vdata = v.data_, *rdata = r.data_;
-
-  if (beta == 1.0) {
-    for (MatrixIndexT i = 0; i < dim_; i++)
-      data[i] += alpha * vdata[i] * rdata[i];
-  } else if (beta== 0.0) {
-    for (MatrixIndexT i = 0; i < dim_; i++)
-      data[i] = alpha * vdata[i] * rdata[i];
-  } else {
-    for (MatrixIndexT i = 0; i < dim_; i++)
-      data[i] = alpha * vdata[i] * rdata[i] + beta * data[i];
-  }
+  // We pretend that v is a band-diagonal matrix.
+  KALDI_ASSERT(dim_ == v.dim_ && dim_ == r.dim_);
+  cblas_Xgbmv(kNoTrans, dim_, dim_, 0, 0, alpha, v.data_, 1,
+              r.data_, 1, beta, this->data_, 1);
 }
 
+  
 template<typename Real>
 void VectorBase<Real>::DivElements(const VectorBase<Real> &v) {
   KALDI_ASSERT(dim_ == v.dim_);

@@ -462,6 +462,32 @@ static void UnitTestSimpleForVec() {  // testing some simple operaters on vector
 
 }
 
+template<class Real>
+static void UnitTestVectorMax() {
+  int32 dimM = 1 + rand() % 10;
+  Vector<Real> V(dimM);
+  V.SetRandn();
+  Real m = V(0);
+  for (int32 i = 1; i < dimM; i++) m = std::max(m, V(i));
+  KALDI_ASSERT(m == V.Max());
+  MatrixIndexT i;
+  KALDI_ASSERT(m == V.Max(&i));
+  KALDI_ASSERT(m == V(i));
+}
+
+template<class Real>
+static void UnitTestVectorMin() {
+  int32 dimM = 1 + rand() % 10;
+  Vector<Real> V(dimM);
+  V.SetRandn();
+  Real m = V(0);
+  for (int32 i = 1; i < dimM; i++) m = std::min(m, V(i));
+  KALDI_ASSERT(m == V.Min());
+  MatrixIndexT i;
+  KALDI_ASSERT(m == V.Min(&i));
+  KALDI_ASSERT(m == V(i));
+}
+
 
 template<class Real>
 static void UnitTestNorm() {  // test some simple norm properties: scaling.  also ApproxEqual test.
@@ -1894,6 +1920,28 @@ template<class Real> static void  UnitTestFloorUnit() {
   }
 }
 
+
+template<class Real> static void  UnitTestFloorCeiling() {
+  for (MatrixIndexT i = 0; i < 5; i++) {
+    MatrixIndexT dimM = 10 + rand() % 10;
+    Vector<Real> v(dimM);
+    v.SetRandn();
+    Real pivot = v(5);
+    Vector<Real> f(v), f2(v), c(v), c2(v);
+    MatrixIndexT floored2 = f.ApplyFloor(pivot),
+        ceiled2 = c.ApplyCeiling(pivot);
+    MatrixIndexT floored = 0, ceiled = 0;
+    for (MatrixIndexT d = 0; d < dimM; d++) {
+      if (f2(d) < pivot) { f2(d) = pivot; floored++; }
+      if (c2(d) > pivot) { c2(d) = pivot; ceiled++; }
+    }
+    AssertEqual(f, f2);
+    AssertEqual(c, c2);
+    KALDI_ASSERT(floored == floored2);
+    KALDI_ASSERT(ceiled == ceiled2);
+  }
+}
+    
 template<class Real> static void  UnitTestMat2Vec() {
   for (MatrixIndexT i = 0; i < 5; i++) {
     MatrixIndexT dimM = 10 + rand() % 10;
@@ -3721,6 +3769,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   KALDI_LOG << " Point G";
   UnitTestLimitCond<Real>();
   UnitTestMat2Vec<Real>();
+  UnitTestFloorCeiling<Real>();
   UnitTestSpLogExp<Real>();
   KALDI_LOG << " Point H";
   UnitTestCopyRowsAndCols<Real>();
@@ -3731,6 +3780,8 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestSubvector<Real>();
   UnitTestRange<Real>();
   UnitTestSimpleForVec<Real>();
+  UnitTestVectorMax<Real>();
+  UnitTestVectorMin<Real>();
   UnitTestSimpleForMat<Real>();
   UnitTestTanh<Real>();
   UnitTestSigmoid<Real>();

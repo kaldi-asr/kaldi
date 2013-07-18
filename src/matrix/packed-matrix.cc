@@ -51,8 +51,8 @@ void PackedMatrix<Real>::AddPacked(const Real alpha, const PackedMatrix<Real> &r
 template<class Real>
 void PackedMatrix<Real>::SetRandn() {
   Real *data = data_;
-  MatrixIndexT dim = num_rows_, size = ((dim*(dim+1))/2);
-  for (MatrixIndexT i = 0; i < size; i++)
+  size_t dim = num_rows_, size = ((dim*(dim+1))/2);
+  for (size_t i = 0; i < size; i++)
     data[i] = RandGauss();  
 }
 
@@ -63,12 +63,17 @@ inline void PackedMatrix<Real>::Init(MatrixIndexT r) {
     data_ = 0;
     return;
   }
-  MatrixIndexT size = r * (r + 1) / 2 * sizeof(Real);
+  size_t size = ((static_cast<size_t>(r) * static_cast<size_t>(r + 1)) / 2);
+
+  if (static_cast<size_t>(static_cast<MatrixIndexT>(size)) != size) {
+    KALDI_WARN << "Allocating packed matrix whose full dimension does not fit "
+               << "in MatrixIndexT: not all code is tested for this case.";
+  }
 
   void *data;  // aligned memory block
   void *temp;
 
-  if ((data = KALDI_MEMALIGN(16, size, &temp)) != NULL) {
+  if ((data = KALDI_MEMALIGN(16, size * sizeof(Real), &temp)) != NULL) {
     this->data_ = static_cast<Real *> (data);
     this->num_rows_ = r;
   } else {
@@ -93,7 +98,7 @@ void PackedMatrix<Real>::Resize(MatrixIndexT r, MatrixResizeType resize_type) {
     else {
       // set tmp to a packed matrix of the desired size.
       PackedMatrix<Real> tmp(r, kUndefined);
-      MatrixIndexT r_min = std::min(r, num_rows_);
+      size_t r_min = std::min(r, num_rows_);
       size_t mem_size_min = sizeof(Real) * (r_min*(r_min+1))/2,
           mem_size_full = sizeof(Real) * (r*(r+1))/2;
       // Copy the contents to tmp.

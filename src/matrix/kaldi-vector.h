@@ -119,6 +119,9 @@ class VectorBase {
   /// Applies floor to all elements. Returns number of elements floored.
   MatrixIndexT ApplyFloor(Real floor_val);
 
+  /// Applies ceiling to all elements. Returns number of elements changed.
+  MatrixIndexT ApplyCeiling(Real ceil_val);
+  
   /// Applies floor to all elements. Returns number of elements floored.
   MatrixIndexT ApplyFloor(const VectorBase<Real> &floor_vec);
 
@@ -253,9 +256,15 @@ class VectorBase {
   /// Returns the maximum value of any element.
   Real Max() const;
 
+  /// Returns the maximum value of any element, and the associated index.
+  Real Max(MatrixIndexT *index) const;
+  
   /// Returns the minimum value of any element.
   Real Min() const;
 
+  /// Returns the minimum value of any element, and the associated index.
+  Real Min(MatrixIndexT *index) const;
+  
   /// Returns sum of the elements
   Real Sum() const;
 

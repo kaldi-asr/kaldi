@@ -156,6 +156,27 @@ inline void cblas_Xgemv(MatrixTransposeType trans, MatrixIndexT num_rows,
               num_cols, alpha, Mdata, stride, xdata, incX, beta, ydata, incY);
 }
 
+// sgbmv, dgmmv: y = alpha M x +  + beta * y.
+inline void cblas_Xgbmv(MatrixTransposeType trans, MatrixIndexT num_rows,
+                        MatrixIndexT num_cols, MatrixIndexT num_below,
+                        MatrixIndexT num_above, float alpha, const float *Mdata,
+                        MatrixIndexT stride, const float *xdata,
+                        MatrixIndexT incX, float beta, float *ydata, MatrixIndexT incY) {
+  cblas_sgbmv(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(trans), num_rows,
+              num_cols, num_below, num_above, alpha, Mdata, stride, xdata,
+              incX, beta, ydata, incY);
+}
+inline void cblas_Xgbmv(MatrixTransposeType trans, MatrixIndexT num_rows,
+                        MatrixIndexT num_cols, MatrixIndexT num_below,
+                        MatrixIndexT num_above, double alpha, const double *Mdata,
+                        MatrixIndexT stride, const double *xdata,
+                        MatrixIndexT incX, double beta, double *ydata, MatrixIndexT incY) {
+  cblas_dgbmv(CblasRowMajor, static_cast<CBLAS_TRANSPOSE>(trans), num_rows,
+              num_cols, num_below, num_above, alpha, Mdata, stride, xdata,
+              incX, beta, ydata, incY);
+}
+
+
 template<typename Real>
 inline void Xgemv_sparsevec(MatrixTransposeType trans, MatrixIndexT num_rows,
                             MatrixIndexT num_cols, Real alpha, const Real *Mdata,

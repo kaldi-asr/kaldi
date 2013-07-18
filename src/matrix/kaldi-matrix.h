@@ -246,6 +246,9 @@ class MatrixBase {
   /// Applies floor to all matrix elements
   void ApplyFloor(Real floor_val);
 
+  /// Applies floor to all matrix elements
+  void ApplyCeiling(Real ceiling_val);
+
   /// Calculates log of all the matrix elemnts
   void ApplyLog();
 
