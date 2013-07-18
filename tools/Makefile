@@ -70,7 +70,7 @@ sclite_tgt: sclite_compiled
 .PHONY: sclite_compiled
 sclite_compiled: sctk_patched
 		cd sctk-2.4.0; \
-		$(MAKE) config && $(MAKE) all && $(MAKE) install && $(MAKE) doc
+		{ . ../extras/install_sctk_patched.sh; } && $(MAKE) config && $(MAKE) all && $(MAKE) install && $(MAKE) doc
 
 .PHONY: sctk_patched
 sctk_patched: | sctk-2.4.0
@@ -78,7 +78,7 @@ sctk_patched: | sctk-2.4.0
 		for x in src/asclite/core/recording.h src/asclite/core/recording.cpp; do \
 			sed 's/Filter::Filter/::Filter/' $$x > tmpf; mv tmpf $$x; \
 		done;
- 
+
 sctk-2.4.0: sctk-2.4.0-20091110-0958.tar.bz2
 		tar xojf sctk-2.4.0-20091110-0958.tar.bz2
 
