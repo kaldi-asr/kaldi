@@ -200,6 +200,9 @@ class TokenVectorHolder;
 /// T == std::pair<Matrix<BaseFloat>, HtkHeader>
 class HtkMatrixHolder;
 
+/// A class for reading/writing Sphinx format matrices.
+template<int kFeatDim=13> class SphinxMatrixHolder;
+
 /// Holder for Posteriors.
 class PosteriorHolder;
 

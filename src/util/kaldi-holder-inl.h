@@ -700,7 +700,8 @@ class HtkMatrixHolder {
 // streams, however(what happens if this is a Kaldi archive?). This should
 // be no problem, because the usage help of Sphinx' "wave2feat" for example
 // says that Sphinx features are always big endian.
-template<int kFeatDim=13> class SphinxMatrixHolder {
+// Note: the kFeatDim defaults to 13, see forward declaration in kaldi-holder.h
+template<int kFeatDim> class SphinxMatrixHolder {
  public:
   typedef Matrix<BaseFloat> T;
 

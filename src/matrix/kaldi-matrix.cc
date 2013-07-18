@@ -1763,11 +1763,11 @@ bool ReadHtk(std::istream &is, Matrix<Real> *M_ptr, HtkHeader *header_ptr)
         Problem = IsCompressed | HasVq;
     int32 base_parm = htk_hdr.mSampleKind & (077);
     has_checksum = (base_parm & HasChecksum) != 0;
-    htk_hdr.mSampleKind |= ~HasChecksum; // We don't support writing with
+    htk_hdr.mSampleKind &= ~HasChecksum; // We don't support writing with
                                          // checksum so turn it off.
     if (htk_hdr.mSampleKind & Problem)
-      KALDI_ERR << "Code to read HTK features does not support compressed or "
-          "checksummed features, or features with VQ.";
+      KALDI_ERR << "Code to read HTK features does not support compressed "
+          "features, or features with VQ.";
     if (base_parm == Waveform || base_parm == Irefc || base_parm == Discrete)
       KALDI_ERR << "Attempting to read HTK features from unsupported type "
           "(e.g. waveform or discrete features.";
