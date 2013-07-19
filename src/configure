@@ -355,10 +355,24 @@ function linux_configure_debian_ubuntu {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
-  echo "Successfully configured for Debian/Ubuntu Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
+  echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && linux_configure_cuda
   exit 0;
 }
+
+function linux_configure_debian7 {
+  ATLASLIBS="/usr/lib/atlas-base/libatlas.so.3.0 /usr/lib/atlas-base/libf77blas.so.3.0 /usr/lib/atlas-base/libcblas.so.3 /usr/lib/atlas-base/liblapack_atlas.so.3"
+  for f in $ATLASLIBS; do 
+    [ ! -f $f ] && return 1;
+  done
+  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
+  cat makefiles/linux_atlas.mk >> kaldi.mk
+  echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
+  $use_cuda && linux_configure_cuda
+  exit 0;
+}
+
 
 function linux_configure_static {
   if $threaded_atlas; then pt=pt; else pt=""; fi
@@ -605,6 +619,7 @@ if [ "`uname`" == "Linux" ]; then
         linux_configure_dynamic || \
         linux_configure_debian_ubuntu 64 || \
         linux_configure_debian_ubuntu || \
+        linux_configure_debian7 || \
         linux_atlas_failure "Failed to configure ATLAS lbiraries";
     else
       # Prefer dynamic to static math.
@@ -612,6 +627,7 @@ if [ "`uname`" == "Linux" ]; then
         linux_configure_static || \
         linux_configure_debian_ubuntu 64 || \
         linux_configure_debian_ubuntu || \
+        linux_configure_debian7 || \
         linux_atlas_failure "Failed to configure ATLAS lbiraries";
     fi
 
