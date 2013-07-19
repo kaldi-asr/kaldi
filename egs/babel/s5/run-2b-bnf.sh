@@ -13,6 +13,7 @@
 
 . conf/common_vars.sh
 . ./lang.conf
+. ./cmd.sh
 
 # At this point you may want to make sure the directory exp_BNF/bnf_dnn is
 # somewhere with a lot of space, preferably on the local GPU-containing machine.
@@ -62,7 +63,7 @@ echo ---------------------------------------------------------------------
 # make exp_BNF a link to local storage before running this.  It produces a lot of temp files.
 
 if [ ! -s exp_BNF/bnf_dnn_run/concat.pfile ]; then
-  steps_BNF/build_nnet_pfile.sh --cmd "run.pl" --every-nth-frame "$bnf_every_nth_frame" \
+  steps_BNF/build_nnet_pfile.sh --cmd "$train_cmd" --every-nth-frame "$bnf_every_nth_frame" \
     data/train data/lang exp/tri5_ali exp_BNF/bnf_dnn_run || exit 1
 fi
 
