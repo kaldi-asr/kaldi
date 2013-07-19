@@ -22,6 +22,7 @@ if [ $# != 2 ]; then
    echo "main options (for others, see top of script file)"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    echo "  --nbest <int>                                    # return n best results. (-1 means all)"
+   echo "  --indices-dir <path>                             # where the indices should be stored, by default it will be in <kws-dir>"
    exit 1;
 fi
 
@@ -30,7 +31,7 @@ kwsdatadir=$1;
 kwsdir=$2;
 
 if [ -z $indices_dir ] ; then
-  indices_dir=$kwsdatadir
+  indices_dir=$kwsdir
 fi
 
 mkdir -p $kwsdir/log;
