@@ -13,6 +13,10 @@ babel_type=full
 
 use_pitch=false
 
+lmwt_plp_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
+lmwt_bnf_extra_opts=( --min-lmwt 13 --max-lmwt 18 )
+lmwt_dnn_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
+
 if [[ `hostname` == *.tacc.utexas.edu ]] ; then
   dnn_train_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6" --num-jobs-nnet 16 --stage 0)
   decode_extra_opts=( --num-threads 4 --parallel-opts "-pe smp 4" )
@@ -25,7 +29,7 @@ else
   sgmm_train_extra_opts=()
   sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=6G,ram_free=2G" --cmd "queue.pl -l arch=*64 -l mem_free=2.0G,ram_free=2.0G") 
   sgmm_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
-  sgmm_mmi_extra_opts=(--cmd "queue.pl -l arch=*64 -l mem_free=3G,ram_free=3G")
+  sgmm_mmi_extra_opts=(--cmd "queue.pl -l arch=*64 -l mem_free=3.2G,ram_free=3.2G")
 fi
  
 icu_transform="Any-Lower"

@@ -13,6 +13,10 @@ babel_type=limited
 
 use_pitch=false
 
+lmwt_plp_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
+lmwt_bnf_extra_opts=( --min-lmwt 13 --max-lmwt 18 )
+lmwt_dnn_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
+
 if [[ `hostname` == *.tacc.utexas.edu ]] ; then
   dnn_train_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6" --num-jobs-nnet 16 --stage 0)
   decode_extra_opts=( --num-threads 4 --parallel-opts "-pe smp 4" )
