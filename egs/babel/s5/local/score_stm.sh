@@ -1,6 +1,4 @@
 #!/bin/bash
-
-#/bin/bash
 # Copyright 2013  Johns Hopkins University (authors: Yenda Trmal)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
