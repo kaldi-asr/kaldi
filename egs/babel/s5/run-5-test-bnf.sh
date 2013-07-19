@@ -6,7 +6,6 @@ set -v
 
 cer=0
 type=shadow # "type" may be "dev10h", "dev2h", or "eval", or "shadow" which means eval + dev2h. 
-dev2shadow=dev10h.uem
 sopt="--min-lmwt 25 --max-lmwt 40"
 sopt2="--min-lmwt 15 --max-lmwt 30"
 
@@ -57,10 +56,6 @@ decode_lda_mllt() {
   data=$1
   dir=$2
   decode=$3
-  if [ ! -f $dir/graph/.done ]; then
-    utils/mkgraph.sh data/lang $dir $dir/graph
-    touch $dir/graph/.done
-  fi
   if [ ! -f $decode/.done ]; then
     steps/decode.sh --nj $decode_nj --acwt 0.0333 
       --scoring-opts "$sopt" --skip-scoring true \
@@ -79,10 +74,6 @@ decode_sat() {
   dir=$2
   decode=$3
   mkdir -p $decode
-  if [ ! -f $dir/graph/.done ]; then
-    utils/mkgraph.sh data/lang $dir $dir/graph
-    touch $dir/graph/.done
-  fi
   if [ ! -f $decode/.done ]; then
     steps/decode_fmllr_extra.sh --nj $decode_nj --acwt 0.0333  --skip-scoring true\
       --cmd "$decode_cmd" "${decode_extra_opts[@]}"\
@@ -103,15 +94,11 @@ decode_sgmm2() {
   decode=$3
   transforms=$4
   mkdir -p $decode
-  if [ ! -f $dir/graph/.done ]; then
-    utils/mkgraph.sh data/lang $dir $dir/graph
-    touch $dir/graph/.done
-  fi
   if [ ! -f $decode/.done ]; then
     steps/decode_sgmm2.sh --use-fmllr true --nj $decode_nj \
       --beam 15 --lat-beam 8 \
       --transform-dir $transforms \
-      --acwt 0.05 --skip-scoring true \
+      --acwt 0.05 --scoring-opts "$sopt2" --skip-scoring true \
       --cmd "$decode_cmd" "${decode_extra_opts[@]}"\
       $dir/graph $data $decode | tee $decode/decode.log || exit 1;
     touch $decode/.done;
@@ -126,53 +113,60 @@ for iter in 1 2 3 4; do
 
   if [ ! -f $decode/.done ]; then
     
-    steps/decode_sgmm2_rescore.sh --skip-scoring true \
+    steps/decode_sgmm2_rescore.sh --scoring-opts "$sopt2 --cer $cer" --skip-scoring true\
         --cmd "$decode_cmd" --iter $iter --transform-dir exp_BNF/tri6/decode_${type}.uem \
         data/lang data/app_$type.uem/ exp_BNF/sgmm7/decode_fmllr_${type}.uem $decode || exit 1;
   
     touch $decode/.done 
   fi
-done
 
+  #decode=exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_shadow.uem_it$iter
+  #if [ ! -f $decode/.done ]; then
+  #  
+  #  steps/decode_sgmm2_rescore.sh --scoring-opts "$sopt2 --cer $cer" --skip-scoring true\
+  #      --cmd "$decode_cmd" --iter $iter --transform-dir exp_BNF/tri6/decode_shadow.uem \
+  #      data/lang data/shadow_app.uem/ exp_BNF/sgmm7/decode_fmllr_shadow.uem $decode || exit 1;
+  # 
+  #  touch $decode/.done 
+  #fi
+
+done
 
 # scoring and keyword search:
 for iter in 1 2 3 4; do
   decode=exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_${type}.uem_it$iter
 
-  if [ ! -f $decode/.score.done ]; then
+  if [ ! -f $decode/scoring/.done ]; then
     (   
-      local/lattice_to_ctm.sh --cmd "$decode_cmd" "${lmwt_bnf_extra_opts[@]}" \
-        --word-ins-penalty 0.5 \
-        data/app_${type}.uem data/lang $decode || exit 1
+      local/lattice_to_ctm.sh --cmd "$decode_cmd" \
+        $sopt2 --word-ins-penalty 0.5 \
+        data/eval_app.uem data/lang $decode || exit 1
 
-      if [[ $type == shadow ]]; then
-        local/split_ctms.sh --cer $cer --cmd "$decode_cmd"  "${lmwt_bnf_extra_opts[@]}" \
-          data/app_shadow.uem $decode data/$dev2shadow data/eval.uem || exit 1
-      else
-        local/score_stm.sh --cer $cer --cmd "$decode_cmd" "${lmwt_bnf_extra_opts[@]}" \
-          data/app_${type}.uem data/lang $decode || exit 1
+      if [[ $type == dev10h || $type == dev2h ]]; then
+        local/score_stm.sh --cer $cer --cmd "$decode_cmd" $sopt2 \
+          data/eval_app.uem data/lang $decode || exit 1
       fi
 
-      touch $decode/.score.done
+      touch $decode/scoring/.done
    ) &
   fi
   
   mkdir -p $decode/kws
-  (
-  if [ ! -f $decode/.kws.done ]; then
-    if [ $type == shadow ]; then # shadow data
-      local/shadow_set_kws_search.sh --cmd "$decode_cmd" \
-        "${lmwt_bnf_extra_opts[@]}" --max-states 150000 \
-        data/app_shadow.uem data/lang $decode data/$dev2shadow data/eval.uem || exit 1
-    else 
-      local/kws_search.sh "${lmwt_bnf_extra_opts[@]}"  --cmd "$decode_cmd" \
+  if [ ! -f $decode/kws/.done ]; then
+    if [ $type != "shadow" ]; then
+      local/kws_search.sh $sopt2 --cmd "$decode_cmd" \
         --duptime $duptime --max-states 150000 \
         data/lang data/app_$type.uem $decode || exit 1
+
+    else # shadow data.
+      local/split_ctms.sh $sopt2 data/shadow_app.uem $decode data/dev data/test.uem || exit 1
+
+      local/shadow_set_kws_search.sh --cmd "$decode_cmd" \
+        $sopt2 --max-states 150000 \
+        data/shadow_app.uem data/lang $decode data/dev data/test.uem || exit 1
     fi
-    touch $decode/.kws.done 
+    touch $decode/kws/.done 
   fi
-  ) &
-  wait
 done
 
 

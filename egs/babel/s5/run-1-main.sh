@@ -57,7 +57,7 @@ if [[ ! -f data/local/lexicon.txt || data/local/lexicon.txt -ot "$lexicon_file" 
   echo ---------------------------------------------------------------------
   echo "Preparing lexicon in data/local on" `date`
   echo ---------------------------------------------------------------------
-  local/prepare_lexicon.pl  --phonemap "$phoneme_mapping" \
+  local/prepare_lexicon.pl --icu-transform "$icu_transform" --phonemap "$phoneme_mapping" \
     $lexiconFlags $lexicon_file data/local
 fi
 
@@ -76,7 +76,7 @@ if [[ ! -f data/train/wav.scp || data/train/wav.scp -ot "$train_data_dir" ]]; th
   echo "Preparing acoustic training lists in data/train on" `date`
   echo ---------------------------------------------------------------------
   mkdir -p data/train
-  local/prepare_acoustic_training_data.pl \
+  local/prepare_acoustic_training_data.pl --icu-transform "$icu_transform"\
     --vocab data/local/lexicon.txt --fragmentMarkers \-\*\~ \
     $train_data_dir data/train > data/train/skipped_utts.log
 fi
@@ -86,7 +86,7 @@ if [[ ! -f data/dev2h/wav.scp || data/dev2h/wav.scp -ot ./data/raw_dev2h_data/au
   echo "Preparing dev2h data lists in data/dev2h on" `date`
   echo ---------------------------------------------------------------------
   mkdir -p data/dev2h
-  local/prepare_acoustic_training_data.pl \
+  local/prepare_acoustic_training_data.pl --icu-transform "Any-Lower" \
     --fragmentMarkers \-\*\~ \
     `pwd`/data/raw_dev2h_data data/dev2h > data/dev2h/skipped_utts.log || exit 1
 fi
@@ -95,15 +95,8 @@ if [[ ! -f data/dev2h/glm || data/dev2h/glm -ot "$glmFile" ]]; then
   echo ---------------------------------------------------------------------
   echo "Preparing dev2h stm files in data/dev2h on" `date`
   echo ---------------------------------------------------------------------
-  if [ -z $stm_file ]; then 
-    echo "WARNING: You should define the variable stm_file pointing to the IndusDB stm"
-    echo "WARNING: Doing that, it will give you scoring close to the NIST scoring.    "
-    local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev2h || exit 1
-  else
-    local/augment_original_stm.pl $stm_file data/dev2h || exit 1
-  fi
-  [ ! -z $glmFile ] && cp $glmFile data/dev2h/glm
-
+  local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev2h || exit 1
+  cp $glmFile data/dev2h/glm
 fi
 
 # We will simply override the default G.fst by the G.fst generated using SRILM
@@ -131,7 +124,7 @@ if [ ! -f data/train/.plp.done ]; then
     cp -rT data/train data/train_plp; cp -rT data/train data/train_pitch
     steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/train_plp exp/make_plp/train plp_tmp_train
     local/make_pitch.sh --cmd "$train_cmd" --nj $decode_nj data/train_pitch exp/make_pitch/train plp_tmp_train
-    steps/append_feats.sh --cmd "$train_cmd" --nj $decode_nj data/train{_plp,_pitch,} exp/make_pitch/append_train plp
+    steps/append_feats.sh data/train{_plp,_pitch,} exp/make_pitch/append_train plp
     rm -rf plp_tmp_train data/train_{plp,pitch}
   fi
   steps/compute_cmvn_stats.sh \
