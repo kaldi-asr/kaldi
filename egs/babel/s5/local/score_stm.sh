@@ -1,7 +1,23 @@
 #!/bin/bash
+
+#/bin/bash
+# Copyright 2013  Johns Hopkins University (authors: Yenda Trmal)
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This is for when you already have the CTMS in <decode-dir>/score_<LMWT>/${name}.ctm
-# and just want to do the scoring part.
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+# MERCHANTABLITY OR NON-INFRINGEMENT.
+# See the Apache 2 License for the specific language governing permissions and
+# limitations under the License.
+
+# This is a scoring script for the CTMS in <decode-dir>/score_<LMWT>/${name}.ctm
+# it tries to mimic the NIST scoring setup as much as possible (and usually does a good job)
 
 # begin configuration section.
 cmd=run.pl
@@ -43,15 +59,10 @@ SortingProgram=`which hubscr.pl` || ScoringProgram=$KALDI_ROOT/tools/sctk-2.4.0/
 [ ! -x $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
 
 
-for f in $data/stm $data/glm ; do
+for f in $data/stm  ; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
-if [ $cer -eq 1 ] ; then
-  for f in $data/char.stm  ; do
-    [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
-  done
-fi
 
 if [ -z $ctm_name ] ; then
   name=`basename $data`; # e.g. eval2000
@@ -63,7 +74,6 @@ mkdir -p $dir/scoring/log
 if [ $stage -le 0 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
     cp $data/stm $dir/score_LMWT/stm.unsorted '&&' \
-    cp $data/glm $dir/score_LMWT/glm '&&' \
     cp $dir/score_LMWT/${name}.ctm $dir/score_LMWT/${name}.ctm.unsorted '&&'\
     $SortingProgram sortSTM \<$dir/score_LMWT/stm.unsorted          \>$dir/score_LMWT/stm.sorted '&&' \
     utils/fix_ctm.sh $dir/score_LMWT/stm.sorted $dir/score_LMWT/${name}.ctm.unsorted '&&' \
