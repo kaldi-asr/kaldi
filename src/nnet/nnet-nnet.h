@@ -85,7 +85,7 @@ class Nnet {
   }
 
   /// get the number of parameters in the network
-  int32 NumParams();
+  int32 NumParams() const;
   /// Get the network weights in a supervector
   void GetWeights(Vector<BaseFloat>* wei_copy);
   /// Set the network weights from a supervector
@@ -100,7 +100,9 @@ class Nnet {
   /// Write MLP to file
   void Write(const std::string &file, bool binary);
   /// Write MLP to stream 
-  void Write(std::ostream &out, bool binary);    
+  void Write(std::ostream &out, bool binary);   
+  /// Create string with human readable description of the nnet instance
+  std::string Info() const;
 
   /// Set training hyper-parameters to the network and its UpdatableComponent(s)
   void SetTrainOptions(const NnetTrainOptions& opts);
@@ -136,17 +138,17 @@ inline Nnet::~Nnet() {
 
    
 inline int32 Nnet::InputDim() const { 
-  if (LayerCount() > 0) {
-    return nnet_.front()->InputDim(); 
-  } else {
+  if (LayerCount() == 0) {
     KALDI_ERR << "No layers in MLP"; 
   }
+  return nnet_.front()->InputDim(); 
 }
 
 
 inline int32 Nnet::OutputDim() const { 
-  if (LayerCount() <= 0)
+  if (LayerCount() <= 0) {
     KALDI_ERR << "No layers in MLP"; 
+  }
   return nnet_.back()->OutputDim(); 
 }
 

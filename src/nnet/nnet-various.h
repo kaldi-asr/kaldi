@@ -26,6 +26,65 @@ namespace kaldi {
 namespace nnet1 {
 
 
+/**
+ * Get a string with statistics of the data in a vector,
+ * so we can print them easily.
+ */
+template <typename Real>
+std::string MomentStatistics(const Vector<Real> &vec) {
+  // we use an auxiliary vector for the higher order powers
+  Vector<Real> vec_aux(vec);
+  // mean
+  Real mean = vec.Sum() / vec.Dim();
+  // variance
+  vec_aux.Add(-mean);
+  vec_aux.MulElements(vec); // (vec-mean)^2
+  Real variance = vec_aux.Sum() / vec.Dim();
+  // skewness 
+  // - negative : left tail is longer, 
+  // - positive : right tail is longer, 
+  // - zero : symmetric
+  vec_aux.MulElements(vec); // (vec-mean)^3
+  Real skewness = vec_aux.Sum() / pow(variance, 3.0/2.0) / vec.Dim();
+  // kurtosis (peakedness)
+  // - makes sence for symmetric distributions (skewness is zero)
+  // - positive : 'sharper peak' than Normal distribution
+  // - negtive : 'heavier tails' than Normal distribution
+  // - zero : same peakedness as the Normal distribution
+  vec_aux.MulElements(vec); // (vec-mean)^4
+  Real kurtosis = vec_aux.Sum() / (variance * variance) / vec.Dim() - 3.0;
+  // send the statistics to stream,
+  std::ostringstream ostr;
+  ostr << " ( min " << vec.Min() << ", max " << vec.Max()
+       << ", mean " << mean 
+       << ", variance " << variance 
+       << ", skewness " << skewness
+       << ", kurtosis " << kurtosis
+       << " ) ";
+  return ostr.str();
+}
+
+template <typename Real>
+std::string MomentStatistics(const Matrix<Real> &mat) {
+  Vector<Real> vec(mat.NumRows()*mat.NumCols());
+  vec.CopyRowsFromMat(mat);
+  return MomentStatistics(vec);
+}
+
+template <typename Real>
+std::string MomentStatistics(const CuVector<Real> &vec) {
+  Vector<Real> vec_host(vec.Dim());
+  vec.CopyToVec(&vec_host);
+  return MomentStatistics(vec_host);
+}
+
+template <typename Real>
+std::string MomentStatistics(const CuMatrix<Real> &mat) {
+  Matrix<Real> mat_host(mat.NumRows(),mat.NumCols());
+  mat.CopyToMat(&mat_host);
+  return MomentStatistics(mat_host);
+}
+
 
 
 /**
@@ -67,7 +126,15 @@ class Splice : public Component {
     }
     vec_d.Write(os, binary);
   }
-   
+  
+  std::string Info() const {
+    std::ostringstream ostr;
+    ostr << "\n  frame_offsets " << frame_offsets_;
+    std::string str = ostr.str();
+    str.erase(str.end()-1);
+    return str;
+  }
+
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     cu::Splice(in, frame_offsets_, out); 
   }
@@ -123,7 +190,15 @@ class Copy : public Component {
     vec_d.Add(1.0);
     vec_d.Write(os, binary);
   }
-   
+ 
+  std::string Info() const {
+    std::ostringstream ostr;
+    ostr << "\n  copy_from_indices " << copy_from_indices_;
+    std::string str = ostr.str();
+    str.erase(str.end()-1);
+    return str;
+  }
+  
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) { 
     cu::Copy(in,copy_from_indices_,out); 
   }
@@ -164,6 +239,10 @@ class AddShift : public Component {
     shift_data_.Write(os, binary);
   }
    
+  std::string Info() const {
+    return std::string("\n  shift_data") + MomentStatistics(shift_data_);
+  }
+
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) { 
     out->CopyFromMat(in);
     //add the shift
@@ -216,7 +295,11 @@ class Rescale : public Component {
   void WriteData(std::ostream &os, bool binary) const { 
     scale_data_.Write(os, binary);
   }
-   
+ 
+  std::string Info() const {
+    return std::string("\n  scale_data") + MomentStatistics(scale_data_);
+  }
+  
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) { 
     out->CopyFromMat(in);
     //rescale the data

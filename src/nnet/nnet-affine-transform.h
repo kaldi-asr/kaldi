@@ -21,6 +21,7 @@
 
 
 #include "nnet/nnet-component.h"
+#include "nnet/nnet-various.h"
 #include "cudamatrix/cu-math.h"
 
 namespace kaldi {
@@ -52,6 +53,11 @@ class AffineTransform : public UpdatableComponent {
   void WriteData(std::ostream &os, bool binary) const {
     linearity_.Write(os, binary);
     bias_.Write(os, binary);
+  }
+
+  std::string Info() const {
+    return std::string("\n  linearity") + MomentStatistics(linearity_) +
+           "\n  bias" + MomentStatistics(bias_);
   }
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {

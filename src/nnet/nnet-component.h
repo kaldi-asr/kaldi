@@ -122,7 +122,8 @@ class Component {
   /// Write component to stream
   void Write(std::ostream &os, bool binary) const;
 
-
+  /// Optionally print some additional info
+  virtual std::string Info() const { return ""; }
   // abstract interface for propagation/backpropagation 
  protected:
   /// Forward pass transformation (to be implemented by descendents...)

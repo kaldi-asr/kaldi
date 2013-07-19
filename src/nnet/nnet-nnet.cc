@@ -197,11 +197,18 @@ void Nnet::SetWeights(const Vector<BaseFloat>& wei_src) {
 }
 
 
-int32 Nnet::NumParams() {
+int32 Nnet::NumParams() const {
   int32 n_params = 0;
   for(int32 n=0; n<nnet_.size(); n++) {
-    if(nnet_[n]->GetType() == Component::kAffineTransform) {
-      n_params += (1 + nnet_[n]->InputDim()) * nnet_[n]->OutputDim();
+    if(nnet_[n]->IsUpdatable()) {
+      switch(nnet_[n]->GetType()) {
+        case Component::kAffineTransform :
+          n_params += (1 + nnet_[n]->InputDim()) * nnet_[n]->OutputDim();
+          break;
+        default :
+          KALDI_WARN << Component::TypeToMarker(nnet_[n]->GetType())
+                     << "is updatable, but its parameter count not implemented";
+      }
     }
   }
   return n_params;
@@ -257,6 +264,22 @@ void Nnet::Read(std::istream &in, bool binary) {
   opts_.learn_rate = 0.0;
 }
 
+
+std::string Nnet::Info() const {
+  std::ostringstream ostr;
+  ostr << "num-components " << LayerCount() << std::endl;
+  ostr << "input-dim " << InputDim() << std::endl;
+  ostr << "output-dim " << OutputDim() << std::endl;
+  ostr << "number-of-parameters " << static_cast<float>(NumParams())/1e6 
+       << " millions" << std::endl;
+  for (int32 i = 0; i < LayerCount(); i++)
+    ostr << "component " << i+1 << " : " 
+         << Component::TypeToMarker(nnet_[i]->GetType()) 
+         << ", input-dim " << nnet_[i]->InputDim()
+         << ", output-dim " << nnet_[i]->OutputDim()
+         << ", " << nnet_[i]->Info() << std::endl;
+  return ostr.str();
+}
   
 } // namespace nnet1
 } // namespace kaldi
