@@ -50,7 +50,7 @@ mkdir -p $expdir/log || exit 1;
 
 scp=$data/wav.scp
 
-[ -s $KALDI_ROOT ] && KALDI_ROOT=../../.. 
+[ ! -s $KALDI_ROOT ] && KALDI_ROOT=../../.. 
 
 sacc_dir=$KALDI_ROOT/tools/sacc/SAcC_GLNXA64/
 # make $sacc_dir an absolute pathname.
