@@ -141,7 +141,7 @@ fi
 
 if [ $stage -le 1 ]; then
   # Remove some stuff we don't want to score, from the ctm.
-  for lmwt in `$min_lmwt $max_lmwt`; do
+  for lmwt in `seq $min_lmwt $max_lmwt`; do
     x=$dir/score_${lmwt}/${ctm_name}.ctm
     [ ! -f $x ] && echo "File $x does not exist! Exiting... " && exit 1
     cp $x $x.bkup1;
@@ -172,7 +172,7 @@ fi
 
 if ! $skip_scoring ; then
   if [ $stage -le 2 ]; then
-    local/score_stm.sh --min-lmwt $min_lmwt --max-lmwt  $man_lmwt $data $lang $dir || exit 1
+    local/score_stm.sh --min-lmwt $min_lmwt --max-lmwt $max_lmwt $data $lang $dir || exit 1
   fi
 fi
 
