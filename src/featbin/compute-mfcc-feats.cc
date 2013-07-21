@@ -160,9 +160,9 @@ int main(int argc, char *argv[]) {
         HtkHeader header = {
           features.NumRows(),
           100000,  // 10ms shift
-          sizeof(float)*features.NumCols(),
-          006 | // MFCC
-          (mfcc_opts.use_energy ? 0100 : 020000) // energy; otherwise c0
+          static_cast<int16>(sizeof(float)*(features.NumCols())),
+          static_cast<uint16>( 006 | // MFCC
+          (mfcc_opts.use_energy ? 0100 : 020000)) // energy; otherwise c0
         };
         p.second = header;
         htk_writer.Write(utt, p);

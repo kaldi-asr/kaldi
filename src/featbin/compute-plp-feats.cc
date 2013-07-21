@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
         HtkHeader header = {
           features.NumRows(),
           100000,  // 10ms shift
-          sizeof(float)*features.NumCols(),
+          static_cast<int16>(sizeof(float)*features.NumCols()),
           013 | // PLP
           020000 // C0 [no option currently to use energy in PLP.
         };

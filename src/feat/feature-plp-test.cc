@@ -135,7 +135,7 @@ static void UnitTestHTKCompare1() {
   HtkHeader header = {
     kaldi_features.NumRows(),
     100000,  // 10ms
-    sizeof(float)*kaldi_features.NumCols(),
+    static_cast<int16>(sizeof(float)*kaldi_features.NumCols()),
     021413  // PLP_D_A_0
   };
   {

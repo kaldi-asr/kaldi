@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
         HtkHeader header = {
           features.NumRows(),
           frame_shift,
-          sizeof(float)*features.NumCols(),
+          static_cast<int16>(sizeof(float)*features.NumCols()),
           007 | 020000
         };
         p.second = header;

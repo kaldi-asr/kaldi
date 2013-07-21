@@ -187,7 +187,7 @@ void TestContainsNullPointers() {
     std::vector<char*> vec;
     int sz = rand() % 3;
     bool is_null = false;
-    for (int i = 0;i < sz;i++) { vec.push_back( (char*) (rand() % 2)); if (vec.back() == NULL) is_null = true; }
+    for (int i = 0;i < sz;i++) { vec.push_back( reinterpret_cast<char*>(static_cast<intptr_t>(rand() % 2))); if (vec.back() == NULL) is_null = true; }
     assert(is_null == ContainsNullPointers(vec));
   }
 }

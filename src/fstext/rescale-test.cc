@@ -68,7 +68,7 @@ void TestRescaleToStochastic() {
   }
   float diff = 0.01;
 
-  Weight w = RescaleToStochastic(fst, diff);
+  RescaleToStochastic(fst, diff);
   Weight tot = ShortestDistance(*fst),
       tot2 = ComputeTotalWeight(*fst, Weight(-log(2.0)));
   std::cerr <<  " tot is " << tot<<", tot2 = "<<tot2<<'\n';

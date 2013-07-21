@@ -174,7 +174,7 @@ static void UnitTestHTKCompare1() {
   HtkHeader header = {
     kaldi_features.NumRows(),
     100000,  // 10ms
-    sizeof(float)*kaldi_features.NumCols(),
+    static_cast<int16>(sizeof(float)*kaldi_features.NumCols()),
     021406  // MFCC_D_A_0
   };
   {
@@ -255,7 +255,7 @@ static void UnitTestHTKCompare2() {
   HtkHeader header = {
     kaldi_features.NumRows(),
     100000,  // 10ms
-    sizeof(float)*kaldi_features.NumCols(),
+    static_cast<int16>(sizeof(float)*kaldi_features.NumCols()),
     021406  // MFCC_D_A_0
   };
   {
@@ -336,7 +336,7 @@ static void UnitTestHTKCompare3() {
   HtkHeader header = {
     kaldi_features.NumRows(),
     100000,  // 10ms
-    sizeof(float)*kaldi_features.NumCols(),
+    static_cast<int16>(sizeof(float)*kaldi_features.NumCols()),
     021406  // MFCC_D_A_0
   };
   {
@@ -415,7 +415,7 @@ static void UnitTestHTKCompare4() {
   HtkHeader header = {
     kaldi_features.NumRows(),
     100000,  // 10ms
-    sizeof(float)*kaldi_features.NumCols(),
+    static_cast<int16>(sizeof(float)*kaldi_features.NumCols()),
     021406  // MFCC_D_A_0
   };
   {
@@ -498,7 +498,7 @@ static void UnitTestHTKCompare5() {
   HtkHeader header = {
     kaldi_features.NumRows(),
     100000,  // 10ms
-    sizeof(float)*kaldi_features.NumCols(),
+    static_cast<int16>(sizeof(float)*kaldi_features.NumCols()),
     021406  // MFCC_D_A_0
   };
   {
@@ -581,7 +581,7 @@ static void UnitTestHTKCompare6() {
   HtkHeader header = {
     kaldi_features.NumRows(),
     100000,  // 10ms
-    sizeof(float)*kaldi_features.NumCols(),
+    static_cast<int16>(sizeof(float)*kaldi_features.NumCols()),
     021406  // MFCC_D_A_0
   };
   {

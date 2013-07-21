@@ -67,21 +67,20 @@ template<class Int, class T> void TestHashList() {
     Elem *list = hash.GetList();
     size_t count = 0;
     for (; list != NULL; list = list->tail, count++) {
-      assert(m1[list->key] == list->val);
+      KALDI_ASSERT(m1[list->key] == list->val);
     }
 
     for (size_t j = 0; j < 10; j++) {
       Int key = rand() % 200;
       bool found_m1 = (m1.find(key) != m1.end());
-      T val_m1;
-      if (found_m1) val_m1 = m1[key];
+      if (found_m1) m1[key];
       Elem *e = hash.Find(key);
-      assert( (e != NULL) == found_m1 );
+      KALDI_ASSERT( (e != NULL) == found_m1 );
       if (found_m1)
-        assert(m1[key] == e->val);
+        KALDI_ASSERT(m1[key] == e->val);
     }
 
-    assert(m1.size() == count);
+    KALDI_ASSERT(m1.size() == count);
   }
 }
 
