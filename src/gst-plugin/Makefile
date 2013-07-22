@@ -1,12 +1,21 @@
-
 all:
 
-EXTRA_CXXFLAGS = -fPIC -Wno-sign-compare -I /usr/include/gstreamer-1.0 \
-	-I /usr/include/glib-2.0 -I /usr/lib/x86_64-linux-gnu/glib-2.0/include \
-	-I ../../tools/portaudio/install/include
-EXTRA_LDLIBS =
-
 include ../kaldi.mk
+ifneq ($(KALDI_FLAVOR), dynamic)
+$(error Kaldi must compiled with dynamic libraries support. Run configure with --shared flag. )
+endif
+
+EXTRA_CXXFLAGS = -Wno-sign-compare -I ../../tools/portaudio/install/include 
+EXTRA_CXXFLAGS += $(shell pkg-config --cflags gstreamer-1.0)
+EXTRA_CXXFLAGS += $(shell pkg-config --cflags glib-2.0)
+
+EXTRA_LDLIBS = -pthread -lgstbase-1.0 -lgstcontroller-1.0 -lgstreamer-1.0 -lgobject-2.0 -lgmodule-2.0 -lgthread-2.0 -lrt -lglib-2.0
+
+#Kaldi shared libraries required by the GStreamer plugin
+EXTRA_LDLIBS += -lkaldi-online -lkaldi-lat -lkaldi-decoder -lkaldi-feat -lkaldi-transform \
+ -lkaldi-gmm -lkaldi-hmm \
+ -lkaldi-tree -lkaldi-matrix  -lkaldi-util -lkaldi-base
+
 
 OBJFILES = gst-audio-source.o gst-online-gmm-decode-faster.o
 
@@ -17,23 +26,22 @@ BINFILES= $(LIBFILE)
 
 all: $(LIBFILE)
 
-GST_LIBS = -pthread -lgstbase-1.0 -lgstcontroller-1.0 -lgstreamer-1.0 -lgobject-2.0 -lgmodule-2.0 -lgthread-2.0 -lrt -lglib-2.0
+EXTRA_LDLIBS += ../../tools/portaudio/install/lib/libportaudio.a
+ifneq ($(wildcard ../../tools/portaudio/install/include/pa_linux_alsa.h),)
+    EXTRA_LDLIBS += -lasound
+else
+    EXTRA_LDLIBS += -lrt
+endif
 
-ADDLIBS=../online/kaldi-online.a ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a \
- ../feat/kaldi-feat.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../hmm/kaldi-hmm.a \
- ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a ../base/kaldi-base.a \
- ../../tools/portaudio/install/lib/libportaudio.a
-
-GSTKALDI_SO_LDFLAGS = -lasound $(LDFLAGS) $(LDLIBS) 
-
-# MKL libs required for shared library
+# MKL libs required when linked via shared library
 ifdef MKLROOT
-GSTKALDI_SO_LDFLAGS+=-lmkl_p4n -lmkl_def
+	EXTRA_LDLIBS+=-lmkl_p4n -lmkl_def
 endif
 
 $(LIBFILE): $(OBJFILES)
-	$(CXX) -shared -DPIC -o $(LIBFILE) -Wl,-soname=$(LIBFILE) $(GST_LIBS) $(GSTKALDI_SO_LDFLAGS)  \
-	-Wl,-whole-archive $(ADDLIBS) -Wl,-no-whole-archive $(OBJFILES)
+	$(CXX) -shared -DPIC -o $(LIBFILE) -Wl,-soname=$(LIBFILE) \
+	  -L$(KALDILIBDIR) -Wl,-rpath=$(KALDILIBDIR) $(EXTRA_LDLIBS) $(LDLIBS) $(LDFLAGS) \
+	  $(OBJFILES)
  
 kaldimarshal.h: kaldimarshal.list
 	glib-genmarshal --header --prefix=kaldi_marshal kaldimarshal.list > kaldimarshal.h.tmp
@@ -44,7 +52,6 @@ kaldimarshal.cc: kaldimarshal.list
 	echo "#include \"kaldimarshal.h\"" >> kaldimarshal.c.tmp
 	glib-genmarshal --body --prefix=kaldi_marshal kaldimarshal.list >> kaldimarshal.c.tmp
 	mv kaldimarshal.c.tmp kaldimarshal.cc
-
  
 clean: 
 	-rm -f *.o *.a $(TESTFILES) $(BINFILES) kaldimarshal.h kaldimarshal.cc
@@ -52,6 +59,6 @@ clean:
 depend: kaldimarshal.h kaldimarshal.cc
 	-$(CXX) -M $(CXXFLAGS) *.cc > .depend.mk  
 
-
 -include .depend.mk
+
 

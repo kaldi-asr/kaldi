@@ -8,9 +8,17 @@ decoder words are "pushed" out using a callback.
 
 == Requirements ==
 
-  * GStreamer 1.0, including the 'good' plugins and the GStreamer tools package
-  * Development packages for Gstreamer 1.0 (libgstreamer1.0-dev on Debian Jessie)
+Following packages are needed for the GStreamer plugin:
 
+  * libgstreamer1.0-dev
+  * gstreamer1.0-plugins-good
+  * gstreamer1.0-tools
+  * gstreamer1.0-pulseaudio (only required for the demos in egs/voxforge/gst_demo)
+  
+On Debian Wheezy, the GStreamer 1.0 packages are available from the backports repository (http://backports.debian.org/).
+
+On Ubuntu, you might need to use this PPA: https://launchpad.net/~gstreamer-developers/+archive/ppa
+ 
 == Install ==
 
 Compile rest of the Kaldi using the 'shared' flavour. To do this,
