@@ -39,7 +39,7 @@ ifdef MKLROOT
 endif
 
 $(LIBFILE): $(OBJFILES)
-	$(CXX) -shared -DPIC -o $(LIBFILE) -Wl,-soname=$(LIBFILE) \
+	$(CXX) -shared -DPIC -o $(LIBFILE) -Wl,-soname=$(LIBFILE) -Wl,--no-as-needed \
 	  -L$(KALDILIBDIR) -Wl,-rpath=$(KALDILIBDIR) $(EXTRA_LDLIBS) $(LDLIBS) $(LDFLAGS) \
 	  $(OBJFILES)
  
