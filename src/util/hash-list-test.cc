@@ -1,6 +1,7 @@
 // util/hash-list-test.cc
 
 // Copyright 2009-2011     Microsoft Corporation
+//                2013     Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +19,6 @@
 
 #include "hash-list.h"
 #include <map> // for baseline.
-#include <cassert>
 #include <cstdlib>
 #include <iostream>
 

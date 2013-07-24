@@ -55,15 +55,15 @@ int main(int argc, char *argv[]) {
       BaseFloatMatrixWriter kaldi_writer(wspecifier);
       if (htk_in) {
         SequentialTableReader<HtkMatrixHolder> htk_reader(rspecifier);
-        for (; !htk_reader.Done(); htk_reader.Next())
+        for (; !htk_reader.Done(); htk_reader.Next(), num_done++)
           kaldi_writer.Write(htk_reader.Key(), htk_reader.Value().first);
       } else if (sphinx_in) {
         SequentialTableReader<SphinxMatrixHolder<> > sphinx_reader(rspecifier);
-        for (; !sphinx_reader.Done(); sphinx_reader.Next())
+        for (; !sphinx_reader.Done(); sphinx_reader.Next(), num_done++)
           kaldi_writer.Write(sphinx_reader.Key(), sphinx_reader.Value());
       } else {
         SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
-        for (; !kaldi_reader.Done(); kaldi_reader.Next())
+        for (; !kaldi_reader.Done(); kaldi_reader.Next(), num_done++)
           kaldi_writer.Write(kaldi_reader.Key(), kaldi_reader.Value());
       }
       KALDI_LOG << "Copied " << num_done << " feature matrices.";
