@@ -518,8 +518,6 @@ if [ -f kaldi.mk ]; then
 fi
 
 printf "# This file was generated using the following command:\n# $cmd_line\n\n" > kaldi.mk
-#echo "# $cmd_line" >> kaldi.mk
-#echo >> kaldi.mk
 cat makefiles/common.mk >> kaldi.mk
 if $dynamic_kaldi ; then
 KALDILIBDIR=`pwd`/lib

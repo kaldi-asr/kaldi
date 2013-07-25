@@ -128,8 +128,7 @@ class CompactLatticePusher {
     shift_vec_.resize(num_states, 0);
     
     // The for loop will only work if StateId is signed, so assert this.
-    KALDI_COMPILE_TIME_ASSERT(static_cast<StateId>(-1) < static_cast<StateId>(0) &&
-                              "This code only works if StateId is signed; otherwise, fix.");
+    KALDI_COMPILE_TIME_ASSERT(static_cast<StateId>(-1) < static_cast<StateId>(0));
     // We rely on the topological sorting, so clat_->Start() should be zero or
     // at least any preceding states should be non-accessible.  We leave the
     // shift at zero for the start state because we can't shift to before that.
