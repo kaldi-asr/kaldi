@@ -142,7 +142,7 @@ done
 
 
 function failure {
-  echo "***configure failed: $* ***"
+  echo "***configure failed: $* ***" >&2
   if [ -f kaldi.mk ]; then rm kaldi.mk; fi
   exit 1;
 } 
@@ -645,17 +645,17 @@ if [ "`uname`" == "Linux" ]; then
       fi
     fi
 
-    MKL_LINK_LINE=`linux_configure_mkl_libraries "$MKLLIBDIR" $static_math $threaded_math`
+    MKL_LINK_LINE=`linux_configure_mkl_libraries "$MKLLIBDIR" $static_math $threaded_math` || exit 1
 
-    MKL_COMPILE_LINE=`linux_configure_mkl_includes "$MKLROOT" "$MKLLIBDIR"`
+    MKL_COMPILE_LINE=`linux_configure_mkl_includes "$MKLROOT" "$MKLLIBDIR"` || exit 1
     echo "MKL include directory configured as: $MKL_COMPILE_LINE"
     MKL_COMPILE_LINE=" -I${MKL_COMPILE_LINE} "
     
     if ! is_set $OMPLIBDIR ; then
       if  $static_math ; then
-        OMPLIBDIR=`linux_configure_omplibdir "$MKLROOT" "$MKLLIBDIR" "a"` 
+        OMPLIBDIR=`linux_configure_omplibdir "$MKLROOT" "$MKLLIBDIR" "a"`
       else
-        OMPLIBDIR=`linux_configure_omplibdir "$MKLROOT" "$MKLLIBDIR" "so"` 
+        OMPLIBDIR=`linux_configure_omplibdir "$MKLROOT" "$MKLLIBDIR" "so"`
       fi
     fi
     check_library $OMPLIBDIR "libiomp5" "a" || check_library $OMPLIBDIR "libiomp5" "so" \
