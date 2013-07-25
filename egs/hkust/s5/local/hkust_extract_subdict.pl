@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Copyright Hong Kong University of Science and Technology (Author: Ricky Chan) 2013.
 # 
-# A script for dictionary generation with a input dict and wordlist 
+# A script for dictionary generation with an input dict and a wordlist 
 #
 # example of dict format as follow:
 # WORD1 ph1 ph2
