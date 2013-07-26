@@ -28,6 +28,8 @@ silence_word=  # specify this if you did to in kws_setup.sh, it's more accurate.
 ntrue_scale=1.0
 # End configuration section.
 
+echo "$0 $@"  # Print the command line for logging
+
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
@@ -35,7 +37,6 @@ set -u
 set -e
 set -o pipefail
 
-echo "$0 $@"  # Print the command line for logging
 
 if [[ "$#" -ne "3" ]] ; then
     echo -e "FATAL: wrong number of script parameters!\n\n"
@@ -138,7 +139,7 @@ if [ $stage -le 2 ]; then
     set -e ';' set -o pipefail ';'\
     cat ${kwsoutdir}_LMWT/result.* \| \
       utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
-        --segments=$datadir/segments --normalize=true \
+        --segments=$datadir/segments --normalize=true --duptime $duptime --remove-dup=true\
         --map-utter=$kwsdatadir/utter_map --digits=3 \
         - - \| local/filter_kwslist.pl $duptime '>' ${kwsoutdir}_LMWT/kwslist.xml || exit 1
 fi

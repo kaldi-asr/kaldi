@@ -16,11 +16,11 @@ langid=107
 silence_word=  # Optional silence word to insert (once) between words of the transcript.
 # End configuration section.
 
+echo "$0 $@"  # Print the command line for logging
+
 set -e 
 set -u
 set -o pipefail
-
-echo "$0 $@"  # Print the command line for logging
 
 help_message="$0: Initialize and setup the KWS task directory
 Usage:

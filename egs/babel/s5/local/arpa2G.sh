@@ -36,7 +36,7 @@ lmfile=$1
 langdir=$2
 destdir=$3
 
-mkdir $destdir || true
+mkdir $destdir 2>/dev/null || true
 
 gunzip -c $lmfile | \
     grep -v '<s> <s>' | grep -v '</s> <s>' |  grep -v '</s> </s>' | \
