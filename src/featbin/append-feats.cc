@@ -27,7 +27,9 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Append 2 feature-streams [and possibly change format]\n"
-        "Usage: append-feats [options] in-rspecifier1 in-rspecifier2 out-wspecifier\n"
+        "Note, this is deprecated; please use paste-feats\n"
+        "Usage: append-feats [options] <in-rspecifier1> <in-rspecifier2> <out-wspecifier>\n"
+        "Also see paste-feats which does a similar thing\n"
         "Example: append-feats --feats-offset-in1 5 --num-feats-in1 5 scp:list1.scp "
         "scp:list2.scp ark:-\n";
 

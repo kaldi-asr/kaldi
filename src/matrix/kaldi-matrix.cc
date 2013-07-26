@@ -375,12 +375,14 @@ void MatrixBase<Real>::LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U_in,
   char *u_job = const_cast<char*>(U_in ? "s" : "N");  // "s" == skinny, "N" == "none."
   char *v_job = const_cast<char*>(V_in ? "s" : "N");  // "s" == skinny, "N" == "none."
   clapack_Xgesvd(v_job, u_job,
-          &M, &N, data_, &LDA,
-          s->Data(),
-          V->Data(), &V_stride,
-          U->Data(), &U_stride,
-          &work_query, &l_work,
-		  &result);
+                 &M, &N, data_, &LDA,
+                 s->Data(),
+                 V->Data(), &V_stride,
+                 U->Data(), &U_stride,
+                 &work_query, &l_work,
+                 &result);
+  
+  KALDI_ASSERT(result >= 0 && "Call to CLAPACK dgesvd_ called with wrong arguments");
 
   l_work = static_cast<KaldiBlasInt>(work_query);
   Real *p_work;
