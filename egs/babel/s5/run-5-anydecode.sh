@@ -7,6 +7,7 @@ set -o pipefail
 
 
 type=""
+skip_kws=false
 first_stage="tri5"
 . utils/parse_options.sh
 
@@ -80,7 +81,7 @@ if [[ ! -f data/${type}/glm || data/${type}/glm -ot "$glmFile" ]]; then
   cp $glmFile data/${type}/glm
 fi
 
-if [ ! -f data/${type}/.kws.done ]; then
+if [ ! $skip_kws ] && [ ! -f data/${type}/kws/.done ]; then
   icu_opt=()
   if [ ! -z $icu_transform ] ; then
     icu_opt=(--use-icu true --icu-transform $icu_transform)
@@ -94,7 +95,7 @@ if [ ! -f data/${type}/.kws.done ]; then
       --rttm-file $my_rttm_file "${icu_opt[@]}" \
       $my_ecf_file $my_kwlist_file data/lang data/${type} 
   fi
-  touch data/${type}/.kws.done
+  touch data/${type}/kws/.done
 fi
 
 if [ ! -f data/${type}/.plp.done ]; then
@@ -104,7 +105,7 @@ if [ ! -f data/${type}/.plp.done ]; then
     cp -rT data/${type} data/${type}_plp; cp -rT data/${type} data/${type}_pitch
     steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/${type}_plp exp/make_plp/${type} plp_tmp_${type}
     local/make_pitch.sh --cmd "$train_cmd" --nj $decode_nj data/${type}_pitch exp/make_pitch/${type} plp_tmp_${type}
-    steps/append_feats.sh data/${type}{_plp,_pitch,} exp/make_pitch/append_${type} plp
+    steps/append_feats.sh --cmd "$train_cmd" data/${type}{_plp,_pitch,} exp/make_pitch/append_${type} plp
     rm -rf plp_tmp_${type} data/${type}_{plp,pitch}
   fi
   steps/compute_cmvn_stats.sh data/${type} exp/make_plp/${type} plp || exit 1
@@ -122,7 +123,7 @@ decode_si() {
     mkdir -p $dir/graph
     utils/mkgraph.sh data/lang $dir $dir/graph |tee $dir/mkgraph.log || exit 1;
     mkdir -p $dir/decode_${type}
-    steps/decode.sh --nj $my_nj --cmd "$decode_cmd" "${decode_extra_opts[@]}" \
+    steps/decode.sh --nj $my_nj --cmd "$decode_cmd" --skip-scoring true  "${decode_extra_opts[@]}" \
        $dir/graph data/${type} $dir/decode_${type} |tee $dir/decode_${type}.log || exit 1;
 
     local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
@@ -141,23 +142,23 @@ if [ ! -f exp/tri5/decode_${type}/.done ]; then
       data/lang exp/tri5 exp/tri5/graph |tee exp/tri5/mkgraph.log
   mkdir -p exp/tri5/decode_${type}
   touch exp/tri5/decode_${type}.started # A signal to the SGMM2 decoding step
-  steps/decode_fmllr.sh --nj $my_nj \
-    --cmd "$decode_cmd" "${decode_extra_opts[@]}" \
+  steps/decode_fmllr.sh --nj $my_nj --cmd "$decode_cmd" \
+    --skip-scoring true "${decode_extra_opts[@]}" \
     exp/tri5/graph data/${type} exp/tri5/decode_${type} |tee exp/tri5/decode_${type}.log 
   touch exp/tri5/decode_${type}/.done
 fi
 
-if [ ! -f exp/tri5/decode_${type}/kws/.done ]; then
+if [ ! $skip_kws ] && [ ! -f exp/tri5/decode_${type}/.kws.done ]; then
   local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
       data/lang data/${type} exp/tri5/decode_${type}.si
   local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
       data/lang data/${type} exp/tri5/decode_${type}
-  touch exp/tri5/decode_${type}/kws/.done 
+  touch exp/tri5/decode_${type}/.kws.done 
 fi
 
-if [ ! -f exp/sgmm5/decode_${type}_fmllr/.done ]; then
+if [ ! -f exp/sgmm5/decode_fmllr_${type}/.done ]; then
   echo ---------------------------------------------------------------------
-  echo "Spawning exp/sgmm5/decode_${type}_fmllr on" `date`
+  echo "Spawning exp/sgmm5/decode_fmllr_${type} on" `date`
   echo ---------------------------------------------------------------------
   echo "exp/sgmm5/decode_${type} will wait on tri5 decode if necessary"
   mkdir -p exp/sgmm5/graph
@@ -165,51 +166,67 @@ if [ ! -f exp/sgmm5/decode_${type}_fmllr/.done ]; then
       data/lang exp/sgmm5 exp/sgmm5/graph |tee exp/sgmm5/mkgraph.log
 
   steps/decode_sgmm2.sh --use-fmllr true --nj $my_nj \
-      --cmd "$decode_cmd" "${decode_extra_opts[@]}" \
+      --cmd "$decode_cmd" --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${type} \
-      exp/sgmm5/graph data/${type}/ exp/sgmm5/decode_${type}_fmllr |tee exp/sgmm5/decode_${type}_fmllr.log
-  touch exp/sgmm5/decode_${type}_fmllr/.done
+      exp/sgmm5/graph data/${type}/ exp/sgmm5/decode_fmllr_${type} |tee exp/sgmm5/decode_fmllr_${type}.log
+  touch exp/sgmm5/decode_fmllr_${type}/.done
 fi
 
-if [ ! -f exp/sgmm5/decode_${type}_fmllr/kws/.done ]; then
+if [ ! $skip_kws ] && [ ! -f exp/sgmm5/decode_fmllr_${type}/.kws.done ]; then
   echo ---------------------------------------------------------------------
-  echo "Starting exp/sgmm5/decode_${type}_fmllr/kws on" `date`
+  echo "Starting exp/sgmm5/decode_fmllr_${type}/kws on" `date`
   echo ---------------------------------------------------------------------
   local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
-      data/lang data/${type} exp/sgmm5/decode_${type}_fmllr
-  touch exp/sgmm5/decode_${type}_fmllr/kws/.done
+      data/lang data/${type} exp/sgmm5/decode_fmllr_${type}
+  touch exp/sgmm5/decode_fmllr_${type}/.kws.done
 fi
 
 echo ---------------------------------------------------------------------
 echo "Starting exp/sgmm5_mmi_b0.1/decode_${type}[_fmllr] on" `date`
 echo ---------------------------------------------------------------------
 for iter in 1 2 3 4; do
-  if [ ! -f exp/sgmm5_mmi_b0.1/decode_${type}_fmllr_it$iter/.done ]; then
-    echo "Waiting for exp/sgmm5/decode_${type}_fmllr/.done if necessary"
-    steps/decode_sgmm2_rescore.sh \
-        --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_${type} \
-        data/lang data/${type} exp/sgmm5/decode_${type}_fmllr exp/sgmm5_mmi_b0.1/decode_${type}_fmllr_it$iter
-    touch exp/sgmm5_mmi_b0.1/decode_${type}_fmllr_it$iter/.done
+  if [ ! -f exp/sgmm5_mmi_b0.1/decode_fmllr_${type}_it$iter/.done ]; then
+    echo "Waiting for exp/sgmm5/decode_fmllr_${type}/.done if necessary"
+    steps/decode_sgmm2_rescore.sh  --cmd "$decode_cmd" --iter $iter \
+        --skip-scoring true --transform-dir exp/tri5/decode_${type} \
+        data/lang data/${type} exp/sgmm5/decode_fmllr_${type} exp/sgmm5_mmi_b0.1/decode_fmllr_${type}_it$iter
+    touch exp/sgmm5_mmi_b0.1/decode_fmllr_${type}_it$iter/.done
   fi
-  if [ ! -f exp/sgmm5_mmi_b0.1/decode_${type}_fmllr_it$iter/kws/.done ]; then
+
+  if [ ! -f exp/sgmm5_mmi_b0.1/decode_fmllr_${type}_it$iter/.score.done ]; then
+    local/lattice_to_ctm.sh --cmd "$decode_cmd" --word-ins-penalty 0.5 "${lmwt_plp_extra_opts[@]}"\
+      data/${type} data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_${type}_it$iter
+    local/score_stm.sh --cmd "$decode_cmd" --cer $cer "${lmwt_plp_extra_opts[@]}" \
+      data/$type data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_${type}_it$iter 
+    touch exp/sgmm5_mmi_b0.1/decode_fmllr_${type}_it$iter/.score.done
+  fi
+
+  if [ ! $skip_kws ] && [ ! -f exp/sgmm5_mmi_b0.1/decode_fmllr_${type}_it$iter/.kws.done ]; then
     local/kws_search.sh --cmd "$decode_cmd" --duptime $duptime \
-        data/lang data/${type} exp/sgmm5_mmi_b0.1/decode_${type}_fmllr_it$iter
-    touch exp/sgmm5_mmi_b0.1/decode_${type}_fmllr_it$iter/kws/.done
+        data/lang data/${type} exp/sgmm5_mmi_b0.1/decode_fmllr_${type}_it$iter
+    touch exp/sgmm5_mmi_b0.1/decode_fmllr_${type}_it$iter/.kws.done
   fi
 done
 
 if [ -f exp/tri6_nnet/.done ]; then
   if [ ! -f exp/tri6_nnet/decode_$type/.done ]; then
-    steps/decode_nnet_cpu.sh --cmd "$decode_cmd" \
-      --nj $my_nj "${decode_extra_opts[@]}" \
+    steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj $my_nj \
+      --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_$type \
       exp/tri5/graph data/$type exp/tri6_nnet/decode_$type 
     touch exp/tri6_nnet/decode_${type}/.done
   fi
-  if [ ! -f exp/tri6_nnet/decode_$type/kws/.done ]; then
+  if [ ! -f exp/tri6_nnet/decode_${type}/.score.done ]; then 
+    local/lattice_to_ctm.sh --cmd "$decode_cmd" --word-ins-penalty 0.5 "${lmwt_dnn_extra_opts[@]}"\
+      data/${type} data/lang exp/tri6_nnet/decode_${type} 
+    local/score_stm.sh --cmd "$decode_cmd"  --cer $cer "${lmwt_dnn_extra_opts[@]}" \
+      data/${type} data/lang exp/tri6_nnet/decode_${type}
+    touch exp/tri6_nnet/decode_${type}/.score.done
+  fi
+  if [ ! $skip_kws ] && [ ! -f exp/tri6_nnet/decode_$type/.kws.done ]; then
     local/kws_search.sh  --cmd "$decode_cmd" --duptime $duptime \
         data/lang data/$type exp/tri6_nnet/decode_$type
-    touch exp/tri6_nnet/decode_$type/kws/.done 
+    touch exp/tri6_nnet/decode_$type/.kws.done 
   fi  
 fi
 
