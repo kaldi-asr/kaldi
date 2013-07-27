@@ -2,6 +2,8 @@
 
 # This is not necessarily the top-level run.sh as it is in other directories.   see README.txt first.
 
+[ ! -f ./lang.conf ] && echo "Language configuration does not exist! Use the configurations in conf/lang/* as a startup" && exit 1
+[ ! -f ./conf/common_vars.sh ] && echo "the file conf/common_vars.sh does not exist!" && exit 1
 
 . conf/common_vars.sh || exit 1;
 . ./lang.conf || exit 1;
@@ -11,7 +13,7 @@
 set -e           #Exit on non-zero return code from any command
 set -o pipefail  #Exit if any of the commands in the pipeline will 
                  #return non-zero return code
-set -u           #Fail on an undefined variable
+#set -u           #Fail on an undefined variable
 
 #Preparing dev2h and train directories
 if [ ! -d data/raw_train_data ]; then
