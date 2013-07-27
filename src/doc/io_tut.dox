@@ -34,7 +34,7 @@ namespace kaldi {
      if you supply the flag --binary=false. 
    - Many objects have corresponding "copy" programs, e.g. copy-matrix or gmm-copy,
       which can be used with the --binary=false flag to convert to text form, e.g.
-     ``copy-matrix --binary=false foo.mat -''.
+     "copy-matrix --binary=false foo.mat -".
    - There is typically a one-to-one correspondence between an file on disk and a C++ object
      in memory, e.g. a matrix of floats, although some files contain more than one object
      (Case in point: for acoustic model files, typically a TransitionModel object and then
@@ -42,19 +42,19 @@ namespace kaldi {
    - Kaldi programs typically know which type of object they are expecting to read, rather
      than working it out from the stream.
    - Similarly to perl, a filename can be replaced with - (for standard input/output) or
-     a string such as ``|gzip -c >foo.gz'' or ``gunzip -c foo.gz|''
+     a string such as "|gzip -c >foo.gz" or "gunzip -c foo.gz|"
    - For reading files, we also support things like foo:1045, meaning character-offset
      1045 within file foo.
-   - In order to refer to the above concept, we generally use the special terms 'rxfilename' for
+   - In order to refer to our concept of an extended filename, we generally use the special terms 'rxfilename' for
      a string describing a stream to be read (i.e. a file, stream or the standard input),
-     and 'wxfilename' for an output stream.  See \ref io_sec_xfilename.
+     and 'wxfilename' for a string describing an output stream.  See \ref io_sec_xfilename for more details.
 
  To illustrate the concepts above, make sure $KALDI_ROOT/src/bin is on your path,
   where $KALDI_ROOT is the top of the repository, and type the following:
 \verbatim
   echo '[ 0 1 ]' | copy-matrix - -
 \endverbatim
-It will print out a log message and some binary data corresponding to that matrix.
+It will print out a log message and some binary data corresponding to that matrix.  Now try:
 \verbatim
   echo '[ 0 1 ]' | copy-matrix --binary=false - -
 \endverbatim
@@ -82,7 +82,7 @@ You could accomplish the same thing in a more convoluted way by doing this:
 \verbatim
   copy-matrix 'echo [ 0 1 ]|' '|copy-matrix --binary=false - -'
 \endverbatim
-There is no reas to do this here, but it can sometimes be useful when
+There is no reason to do this here, but it can sometimes be useful when
 programs have multiple inputs or outputs so the stdin or stdout is
 already being used.  It is particularly useful with tables (see next section).
 
@@ -105,9 +105,9 @@ already being used.  It is particularly useful with tables (see next section).
  a string we call a "wspecifier" to write it.  These are strings that specify
  whether to expect script file or an archive, and the file location, along
  with various options.  Common types of
- rspecifiers include ``ark:-'', meaning read the data as an archive
- from the standard input, or ``scp:foo.scp'', meaning the script file
- "scp" says where to read the data from.  Points to bear in
+ rspecifiers include "ark:-", meaning read the data as an archive
+ from the standard input, or "scp:foo.scp", meaning the script file
+ foo.scp says where to read the data from.  Points to bear in
  mind are:
 
    - The part after the colon is interpreted as a wxfilename or rxfilename (as
@@ -123,39 +123,39 @@ already being used.  It is particularly useful with tables (see next section).
       - For data that isn't too large and for which it's inconvenient to ensure sorted order
         (e.g. transforms for speaker adaptation), there is little harm in omitting the ,s,cs.
       - Typically programs that take multiple rspecifiers will iterate over the objects in the
-        first one (sequential access) and do random access on the later ones, so ,s,cs is
+        first one (sequential access) and do random access on the later ones, so ",s,cs" is
         generally not needed for the first rspecifier.
       - In scp,p:foo.scp, the ,p means we should not crash if some of the
-        referenced files do not exist (for archives, ,p| will prevent a crash if
+        referenced files do not exist (for archives, ,p will prevent a crash if
         the archive is corrupted or truncated.)
-      - For writing, the option ,t| means text mode, e.g. in ark,t:-|.  
-        The --binary| command-line option has no effect for archives.
-   - The script-file format is, on each line, ``<key> <rspecifier|wspecifier>'', e.g.
-      utt1 /foo/bar/utt1.mat|.  It is OK for the rspecifier or wspecifier to contain
-      spaces, e.g.: ``utt1 gunzip -c /foo/bar/utt1.mat.gz''.
+      - For writing, the option ,t means text mode, e.g. in ark,t:-.  
+        The --binary command-line option has no effect for archives.
+   - The script-file format is, on each line, "<key> <rspecifier|wspecifier>", e.g.
+      "utt1 /foo/bar/utt1.mat".  It is OK for the rspecifier or wspecifier to contain
+      spaces, e.g. "utt1 gunzip -c /foo/bar/utt1.mat.gz|".
    - The archive format is: <key1> <object1> <newline> <key2> <object2> <newline> ...
    - Archives may be concatenated and they will still be valid archives, but be careful about
-     the order of concatenation, e.g. avoid ``cat a/b/*.ark''
+     the order of concatenation, e.g. avoid "cat a/b/*.ark"
      if you need the sorted order.
    - Although not often used, script files may be used for output, e.g. if we write to
      the wspecifier scp:foo.scp, and the program tries to write to key utt1,
-     it looks for a line like utt1 some_file.mat in foo.scp.  It will crash
+     it looks for a line like "utt1 some_file" in foo.scp, and will write to "some_file".  It will crash
      if there is no such line.
    - It is possible to write to both an archive and script at the same time,
-     e.g. ark,scp:foo.ark,foo.scp.  The script file will be written with offsets
-     like utt1 foo.ark:1016. This is useful when data is to be accessed in random order
+     e.g. ark,scp:foo.ark,foo.scp.  The script file will be written to, with lines
+     like "utt1 foo.ark:1016" (i.e. it points to byte offsets in the archive). This is useful when data is to be accessed in random order
      or in parts, but you don't want to produce lots of small files.
    - It is possible to trick the archive mechanism into operating on single files.  For instance,
 \verbatim
      echo '[ 0 1 ]' | copy-matrix 'scp:echo foo -|' 'scp,t:echo foo -|'
 \endverbatim
-     This deserves a little explanation.  Firstly, the rspecifier ``scp:echo foo -|'' is equivalent
-     to scp:bar.scp if the file bar.scp contained just the line ``foo -''.  This
+     This deserves a little explanation.  Firstly, the rspecifier "scp:echo foo -|" is equivalent
+     to scp:bar.scp if the file bar.scp contained just the line "foo -".  This
      tells it to read the object indexed by "foo" from the standard input.  Similarly, for
-     the wspecifier ``scp,t:echo foo -|'', it writes the data for ``foo'' to the standard
+     the wspecifier "scp,t:echo foo -|", it writes the data for "foo" to the standard
      output.  This trick should not be overused.  In this particular case, it is unnecessary
-     because we have made the copy-matrix program support regular files (rxfilenames|wxfilenames),
-     as well as tables so you could have written just ``copy-matrix - -''.  If you have to use
+     because we have made the copy-matrix program support non-table I/O directly,
+     so you could have written just "copy-matrix - -".  If you have to use
      this trick too much, it's better to modify the program concerned.
    - In certain cases the archive-reading code allows for limited type conversion, e.g.
      between float and double for matrices, or Lattice and CompactLattice for lattices.
@@ -163,7 +163,7 @@ already being used.  It is particularly useful with tables (see next section).
   \subsection io_tut_maps Utterance-to-speaker and speaker-to-utterance maps.
 
   Many Kaldi programs take utterance-to-speaker and speaker-to-utterances maps-- files 
-  called ``utt2spk'' or ``spk2utt''.  These are generally specified by command-line options
+  called "utt2spk" or "spk2utt".  These are generally specified by command-line options
    --utt2spk and --spk2utt.  The utt2spk map has the format
 \verbatim
 utt1 spk_of_utt1
@@ -177,16 +177,17 @@ spk2 utt1_of_spk2 utt2_of_spk2
 ...
 \endverbatim
  These files are used for speaker adaptation, e.g. for finding which speaker corresponds
- to an utterances, or to iterate over speakers.
+ to an utterance, or to iterate over speakers.
  For reasons that relate mostly to the way the Kaldi example scripts are set up
  and the way we split data up into multiple pieces, it's important to ensure
  that the speakers in the utterance-to-speaker map are in sorted order (see \ref data_prep).
  Anyway, these files are actually treated as archives, and for this reason
  you will see command-line options like --utt2spk=ark:data/train/utt2spk.  
+ You will see that these files fit the generic archive format of: "<key1> <data> <newline> <key2> <data> <newline>",
+ where in this case the data is in text form.
  At the code level, the utt2spk file is treated as a table containing a string, and the spk2utt
  file is treated as a table containing a list of strings.
 
  
 */
-
 }
