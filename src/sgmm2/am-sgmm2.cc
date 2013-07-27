@@ -385,17 +385,12 @@ void AmSgmm2::InitializeFromFullGmm(const FullGmm &full_gmm,
   full_ubm_.CopyFromFullGmm(full_gmm);
   diag_ubm_.CopyFromFullGmm(full_gmm);
   if (phn_subspace_dim < 1 || phn_subspace_dim > full_gmm.Dim() + 1) {
-    KALDI_WARN << "Initial phone-subspace dimension must be in [1, "
-               << full_gmm.Dim() + 1 << "]. Changing from " << phn_subspace_dim
-               << " to " << full_gmm.Dim() + 1;
+    KALDI_WARN << "Initial phone-subspace dimension must be >= 1, value is "
+               << phn_subspace_dim << "; setting to " << full_gmm.Dim() + 1;
     phn_subspace_dim = full_gmm.Dim() + 1;
   }
-  if (spk_subspace_dim < 0 || spk_subspace_dim > full_gmm.Dim()) {
-    KALDI_WARN << "Initial spk-subspace dimension must be in [1, "
-               << full_gmm.Dim() << "]. Changing from " << spk_subspace_dim
-               << " to " << full_gmm.Dim();
-    spk_subspace_dim = full_gmm.Dim();
-  }
+  KALDI_ASSERT(spk_subspace_dim >= 0);
+  
   w_.Resize(0, 0);
   N_.clear();
   c_.clear();
@@ -1118,7 +1113,7 @@ void AmSgmm2::ComputeH(std::vector< SpMatrix<double> > *H_i) const;
 
 // Initializes the matrices M_{i} and w_i
 void AmSgmm2::InitializeMw(int32 phn_subspace_dim,
-                          const Matrix<BaseFloat> &norm_xform) {
+                           const Matrix<BaseFloat> &norm_xform) {
   int32 ddim = full_ubm_.Dim();
   KALDI_ASSERT(phn_subspace_dim <= ddim + 1);
   KALDI_ASSERT(phn_subspace_dim <= norm_xform.NumCols() + 1);
@@ -1134,8 +1129,14 @@ void AmSgmm2::InitializeMw(int32 phn_subspace_dim,
     thisM.Resize(ddim, phn_subspace_dim);
     // Eq. (27): M_{i} = [ \bar{\mu}_{i} (J)_{1:D, 1:(S-1)}]
     thisM.CopyColFromVec(mean, 0);
-    thisM.Range(0, ddim, 1, phn_subspace_dim-1).CopyFromMat(
-        norm_xform.Range(0, ddim, 0, phn_subspace_dim-1), kNoTrans);
+    int32 nonrandom_dim = std::min(phn_subspace_dim - 1, ddim),
+        random_dim = phn_subspace_dim - 1 - nonrandom_dim;
+    thisM.Range(0, ddim, 1, nonrandom_dim).CopyFromMat(
+        norm_xform.Range(0, ddim, 0, nonrandom_dim), kNoTrans);
+    // The following extension to the original paper allows us to
+    // initialize the model with a larger dimension of phone-subspace vector.
+    if (random_dim > 0)
+      thisM.Range(0, ddim, nonrandom_dim + 1, random_dim).SetRandn();
   }
 }
 
@@ -1144,16 +1145,22 @@ void AmSgmm2::InitializeNu(int32 spk_subspace_dim,
                           const Matrix<BaseFloat> &norm_xform,
                           bool speaker_dependent_weights) {
   int32 ddim = full_ubm_.Dim();
-  KALDI_ASSERT(spk_subspace_dim <= ddim);
-  KALDI_ASSERT(spk_subspace_dim <= norm_xform.NumCols());
-  KALDI_ASSERT(ddim <= norm_xform.NumRows());
-
+  
   int32 num_gauss = full_ubm_.NumGauss();
   N_.resize(num_gauss);
   for (int32 i = 0; i < num_gauss; i++) {
     N_[i].Resize(ddim, spk_subspace_dim);
     // Eq. (28): N_{i} = [ (J)_{1:D, 1:T)}]
-    N_[i].CopyFromMat(norm_xform.Range(0, ddim, 0, spk_subspace_dim), kNoTrans);
+    
+    int32 nonrandom_dim = std::min(spk_subspace_dim, ddim),
+        random_dim = spk_subspace_dim - nonrandom_dim;
+
+    N_[i].Range(0, ddim, 0, nonrandom_dim).
+        CopyFromMat(norm_xform.Range(0, ddim, 0, nonrandom_dim), kNoTrans);
+    // The following extension to the original paper allows us to
+    // initialize the model with a larger dimension of speaker-subspace vector.
+    if (random_dim > 0)
+      N_[i].Range(0, ddim, nonrandom_dim, random_dim).SetRandn();
   }
   if (speaker_dependent_weights) {
     u_.Resize(num_gauss, spk_subspace_dim); // will set to zero.

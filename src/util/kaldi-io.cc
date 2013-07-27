@@ -44,7 +44,7 @@ std::string PrintableRxfilename(std::string rxfilename) {
 
 
 std::string PrintableWxfilename(std::string wxfilename) {
-  if (wxfilename == "" || wxfilename == "-") return "standard input";
+  if (wxfilename == "" || wxfilename == "-") return "standard output";
   else {
     // If this call to Escape later causes compilation issues,
     // just replace it with "return rxfilename"; it's only a

@@ -584,7 +584,8 @@ void MleAmSgmm2Accs::CommitStatsForSpk(const AmSgmm2 &model,
     for (int32 i = 0; i < num_gaussians_; i++)
       // Accumulate Statistics R_{ki}
       if (gamma_s_(i) != 0.0)
-        R_[i].AddVec2(static_cast<BaseFloat>(gamma_s_(i)), v_s);
+        R_[i].AddVec2(gamma_s_(i),
+                      Vector<double>(v_s));
   }
   if (a_s_.Dim() != 0) {
     Vector<BaseFloat> tmp(gamma_s_);
@@ -592,7 +593,8 @@ void MleAmSgmm2Accs::CommitStatsForSpk(const AmSgmm2 &model,
     tmp.AddVecVec(-1.0, Vector<BaseFloat>(a_s_), spk_vars.b_is, 1.0);
     t_.AddVecVec(1.0, tmp, v_s); // eq. 53 of techreport.
     for (int32 i = 0; i < num_gaussians_; i++) {
-      U_[i].AddVec2(a_s_(i) * spk_vars.b_is(i), v_s); // eq. 54 of techreport.
+      U_[i].AddVec2(a_s_(i) * spk_vars.b_is(i),
+                    Vector<double>(v_s)); // eq. 54 of techreport.
     }
   }
   gamma_s_.SetZero();

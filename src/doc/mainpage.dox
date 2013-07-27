@@ -50,6 +50,7 @@
    - \ref matrix 
    - \ref matrixwrap 
    - \ref io 
+   - \ref io_tut 
    - \ref error 
    - \ref parse_options 
    - \ref util

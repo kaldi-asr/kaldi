@@ -68,7 +68,8 @@ int main(int argc, char *argv[]) {
     RandomAccessSgmm2GauPostReader gpost_reader(gpost_rspecifier);
     RandomAccessBaseFloatVectorReaderMapped spkvecs_reader(spkvecs_rspecifier,
                                                            utt2spk_rspecifier);
-
+    RandomAccessTokenReader utt2spk_map(utt2spk_rspecifier);
+    
     AmSgmm2 am_sgmm;
     TransitionModel trans_model;
     {
@@ -87,8 +88,37 @@ int main(int argc, char *argv[]) {
     kaldi::Sgmm2PerFrameDerivedVars per_frame_vars;
     
     int32 num_done = 0, num_err = 0;
+    std::string cur_spk;
+    Sgmm2PerSpkDerivedVars spk_vars;
+    
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
+      std::string spk = utt;
+
+      if (!utt2spk_rspecifier.empty()) {
+        if (!utt2spk_map.HasKey(utt)) {
+          KALDI_WARN << "utt2spk map does not have value for " << utt
+                     << ", ignoring this utterance.";
+          continue;
+        } else { spk = utt2spk_map.Value(utt); }
+      }
+      if (spk != cur_spk || spk_vars.Empty()) {
+        spk_vars.Clear();
+        if (spkvecs_reader.IsOpen()) {
+          if (spkvecs_reader.HasKey(utt)) {
+            spk_vars.SetSpeakerVector(spkvecs_reader.Value(utt));
+            am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
+          } else {
+            KALDI_WARN << "Cannot find speaker vector for " << utt;
+            num_err++;
+            continue;
+          }
+        } // else spk_vars is "empty"
+      }
+      if (spk != cur_spk)
+        sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars);
+      cur_spk = spk;      
+      
       const Matrix<BaseFloat> &mat = feature_reader.Value();
       if (!gpost_reader.HasKey(utt) ||
           gpost_reader.Value(utt).size() != mat.NumRows()) {
@@ -98,19 +128,7 @@ int main(int argc, char *argv[]) {
         continue;
       }
       const Sgmm2GauPost &gpost = gpost_reader.Value(utt);
-
-      Sgmm2PerSpkDerivedVars spk_vars;
-      if (spkvecs_reader.IsOpen()) {
-        if (spkvecs_reader.HasKey(utt)) {
-          spk_vars.SetSpeakerVector(spkvecs_reader.Value(utt));
-          am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
-        } else {
-          KALDI_WARN << "Cannot find speaker vector for " << utt;
-          num_err++;
-          continue;
-        }
-      } // else spk_vars is "empty"
-
+      
       num_done++;
       BaseFloat tot_weight = 0.0;
 
@@ -130,15 +148,14 @@ int main(int argc, char *argv[]) {
                                              pdf_id, &spk_vars);
           tot_weight += weight;
         }
-
-        sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars); // no harm doing it per
-        // utterance.
-
-        tot_t += tot_weight;
-        if (num_done % 50 == 0)
-          KALDI_LOG << "Processed " << num_done << " utterances";
       }
+
+      tot_t += tot_weight;
+      if (num_done % 50 == 0)
+        KALDI_LOG << "Processed " << num_done << " utterances";      
     }
+    sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars); // for last speaker
+    
     KALDI_LOG << "Overall number of frames is " << tot_t;
 
     KALDI_LOG << "Done " << num_done << " files, " << num_err;

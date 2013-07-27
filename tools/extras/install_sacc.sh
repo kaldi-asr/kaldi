@@ -8,8 +8,9 @@ fi
 ! [ `basename $PWD` == tools ] && \
    echo "You must call this script from the tools/ directory" && exit 1;
 
-mkdir -p sacc
-cd sacc
+mkdir -p pitch_trackers/sacc
+
+cd pitch_trackers/sacc
 if [ -s SAcC_GLNXA64.zip ]; then
   echo "*SAcC_GLNXA64.zip already exists, not getting it."
 else

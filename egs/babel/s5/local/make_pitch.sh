@@ -52,7 +52,17 @@ scp=$data/wav.scp
 
 [ ! -s $KALDI_ROOT ] && KALDI_ROOT=../../.. 
 
-sacc_dir=$KALDI_ROOT/tools/sacc/SAcC_GLNXA64/
+( # this is for back compatiblity:
+ cd $KALDI_ROOT/tools
+ if [ -d sacc ] && [ ! -d pitch_trackers/sacc ]; then
+   echo "Linking sacc directory to new location."
+   mkdir -p pitch_trackers
+   cd pitch_trackers
+   ln -s ../sacc ..
+ fi
+)
+
+sacc_dir=$KALDI_ROOT/tools/pitch_trackers/sacc/SAcC_GLNXA64/
 # make $sacc_dir an absolute pathname.
 sacc_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $sacc_dir ${PWD}`
 

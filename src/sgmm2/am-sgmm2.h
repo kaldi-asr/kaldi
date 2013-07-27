@@ -169,6 +169,7 @@ class Sgmm2PerSpkDerivedVars {
     log_b_is.Resize(0);
     log_d_jms.resize(0);
   }
+  bool Empty() { return v_s.Dim() == 0; }
   // caution: after SetSpeakerVector you typically want to
   // use the function AmSgmm::ComputePerSpkDerivedVars
   const Vector<BaseFloat> &GetSpeakerVector() { return v_s; }
