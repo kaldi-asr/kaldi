@@ -35,11 +35,10 @@ fi
 chmod +x ./MCRInstaller_glnxa64.bin
 
 if [ ! -d matlab_runtime ]; then
-  echo "Running the Matlab runtime installer from the console.  Keep entering 1 for next,"
-  echo "except when it prompts for Destination Directory; then, type:  matlab_runtime"
-  echo "Press enter to run the installer:"
-  read
-  ./MCRInstaller_glnxa64.bin -console
+  echo "*Running the Matlab runtime installer"
+  echo "*It can take some time to finish (~10 minutes), be patient"
+  echo "*Command: ./MCRInstaller_glnxa64.bin -silent -P installLocation=\"`pwd`/matlab_runtime\""
+  ./MCRInstaller_glnxa64.bin -silent -P installLocation="`pwd`/matlab_runtime"
 else
   echo "*It looks like the Matlab runtime has already been installed, not installing it."
 fi
