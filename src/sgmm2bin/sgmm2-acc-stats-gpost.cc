@@ -102,6 +102,10 @@ int main(int argc, char *argv[]) {
           continue;
         } else { spk = utt2spk_map.Value(utt); }
       }
+
+      if (spk != cur_spk && cur_spk != "")
+        sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars);
+      
       if (spk != cur_spk || spk_vars.Empty()) {
         spk_vars.Clear();
         if (spkvecs_reader.IsOpen()) {
@@ -115,8 +119,7 @@ int main(int argc, char *argv[]) {
           }
         } // else spk_vars is "empty"
       }
-      if (spk != cur_spk)
-        sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars);
+
       cur_spk = spk;      
       
       const Matrix<BaseFloat> &mat = feature_reader.Value();
