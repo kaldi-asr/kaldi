@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation
 // Copyright 2012-2013  Frantisek Skala;  Arnab Ghoshal
+// Copyright 2013       Tanel Alumae
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -96,6 +97,39 @@ void UnitTestParseOptions() {
   KALDI_ASSERT(str == "bar");
   KALDI_ASSERT(dummy_opts.my_bool == false);
   KALDI_ASSERT(dummy_opts.my_string == "baz");
+
+  // test "--" (no more options)
+  int argc4 = 5;
+  unum = 2;
+  const char *argv4[5] = { "program_name", "--unum=6", "--",  "a", "b" };
+  ParseOptions po4("my usage msg");
+  po4.Register("unum", &unum, "My uint32 variable");
+  po4.Read(argc4, argv4);
+  KALDI_ASSERT(po4.NumArgs() == 2);
+  KALDI_ASSERT(po4.GetArg(1) == "a");
+  KALDI_ASSERT(po4.GetArg(2) == "b");
+  KALDI_ASSERT(unum == 6);
+
+  // test obsolete "--" (no more options)
+  int argc5 = 3;
+  unum = 2;
+  const char *argv5[3] = { "program_name", "--unum=7", "--" };
+  ParseOptions po5("my usage msg");
+  po5.Register("unum", &unum, "My uint32 variable");
+  po5.Read(argc5, argv5);
+  KALDI_ASSERT(po5.NumArgs() == 0);
+  KALDI_ASSERT(unum == 7);
+
+  // test that "--foo=bar" after "--" is interpreted as argument
+  int argc6 = 4;
+  unum = 2;
+  const char *argv6[5] = { "program_name", "--unum=8", "--", "--foo=8" };
+  ParseOptions po6("my usage msg");
+  po6.Register("unum", &unum, "My uint32 variable");
+  po6.Read(argc6, argv6);
+  KALDI_ASSERT(po6.NumArgs() == 1);
+  KALDI_ASSERT(po6.GetArg(1) == "--foo=8");
+
 }
 
 

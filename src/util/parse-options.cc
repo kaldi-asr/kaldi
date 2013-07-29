@@ -4,7 +4,8 @@
 //                      Saarland University (Author: Arnab Ghoshal);
 // Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey);
 //                      Frantisek Skala;  Arnab Ghoshal
-
+// Copyright 2013       Tanel Alumae
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -308,6 +309,10 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
   // first pass: look for config parameter, look for priority
   for (i = 1; i < argc; i++) {
     if (std::strncmp(argv[i], "--", 2) == 0) {
+      if (std::strcmp(argv[i], "--") == 0) {
+        // a lone "--" marks the end of named options
+        break;
+      }
       SplitLongArg(argv[i], &key, &value);
       NormalizeArgName(&key);
       Trim(&value);
@@ -324,6 +329,12 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
   // second pass: add the command line options
   for (i = 1; i < argc; i++) {
     if (std::strncmp(argv[i], "--", 2) == 0) {
+      if (std::strcmp(argv[i], "--") == 0) {
+        // A lone "--" marks the end of named options.
+        // Skip that option and break the processing of named options
+        i += 1;
+        break;
+      }
       SplitLongArg(argv[i], &key, &value);
       NormalizeArgName(&key);
       Trim(&value);
@@ -332,13 +343,15 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
         KALDI_ERR << "Invalid option " << argv[i];
       }
     } else {
-      // first non-long option finishes the options // was: return i;
-      for (; i < argc; i++) {
-        positional_args_.push_back(std::string(argv[i]));
-      }
+      break;
     }
   }
   
+  // process remaining arguments as positional
+  for (; i < argc; i++) {
+    positional_args_.push_back(std::string(argv[i]));
+  }
+
   if (print_args_) {  // if the user did not suppress this with --print-args = false....
     std::ostringstream strm;
     for (int j = 0; j < argc; j++)
