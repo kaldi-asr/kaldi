@@ -72,7 +72,7 @@ class CuRand {
   uint32 *host_; ///< host bufer, used for initializing
   int32 host_size_; ///< size of the host buffer
 
-  CuMatrix<Real> tmp_;
+  CuMatrix<Real> tmp_; ///< auxiliary matrix
 };
 
 
