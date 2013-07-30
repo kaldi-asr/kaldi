@@ -147,7 +147,8 @@ template<typename Real> void CuRand<Real>::BinarizeProbs(const CuMatrix<Real> &p
     if (tgt_size != state_size_) SeedGpu(tgt_size);
 
     // prepare the output matrix
-    states->Resize(probs.num_rows_, probs.num_cols_, kUndefined);
+    if (states != &probs)
+      states->Resize(probs.num_rows_, probs.num_cols_, kUndefined);
     // prepare the temporary matrix of uniform random numbers (0,1)
     tmp_.Resize(probs.num_rows_, probs.num_cols_, kUndefined);
     RandUniform(&tmp_);
