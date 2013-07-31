@@ -325,7 +325,7 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
       }
     }
   }
-
+  bool double_dash_seen = false;
   // second pass: add the command line options
   for (i = 1; i < argc; i++) {
     if (std::strncmp(argv[i], "--", 2) == 0) {
@@ -333,6 +333,7 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
         // A lone "--" marks the end of named options.
         // Skip that option and break the processing of named options
         i += 1;
+        double_dash_seen = true;
         break;
       }
       SplitLongArg(argv[i], &key, &value);
@@ -349,7 +350,11 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
   
   // process remaining arguments as positional
   for (; i < argc; i++) {
-    positional_args_.push_back(std::string(argv[i]));
+    if ((std::strcmp(argv[i], "--") == 0) && !double_dash_seen) {
+      double_dash_seen = true;
+    } else {
+      positional_args_.push_back(std::string(argv[i]));
+    }
   }
 
   if (print_args_) {  // if the user did not suppress this with --print-args = false....
