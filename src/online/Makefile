@@ -1,6 +1,6 @@
 all:
 
-EXTRA_CXXFLAGS += -Wno-sign-compare -I ../../tools/portaudio/install/include
+EXTRA_CXXFLAGS += -Wno-sign-compare -I../../tools/portaudio/install/include
 EXTRA_LDLIBS =
 
 include ../kaldi.mk
@@ -8,10 +8,10 @@ include ../kaldi.mk
 UNAME=$(shell uname)
 ifeq ($(UNAME), Linux)
 ifeq ($(KALDI_FLAVOR), dynamic)
-		#The PA_RingBuffer interface is internal and is not exported in the so libray
-		#so we have to compile in the static one
-		#.PA_ABS_PATH := $(shell readlink -f ../../tools/portaudio/install/lib )
-		#EXTRA_LDLIBS = -L ../../tools/portaudio/install/lib/ -Wl,-rpath=$(.PA_ABS_PATH) -lportaudio
+    #The PA_RingBuffer interface is internal and is not exported in the so libray
+    #so we have to compile in the static one
+    #.PA_ABS_PATH := $(shell readlink -f ../../tools/portaudio/install/lib )
+    #EXTRA_LDLIBS = -L ../../tools/portaudio/install/lib/ -Wl,-rpath=$(.PA_ABS_PATH) -lportaudio
     EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
 else
     EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
@@ -22,7 +22,7 @@ else
     EXTRA_LDLIBS += -lrt
 endif
 else
-    EXTRA_LDLIBS = -L ../../tools/portaudio/install/lib/ -lportaudio
+    EXTRA_LDLIBS = -L../../tools/portaudio/install/lib -lportaudio
 endif
 
 

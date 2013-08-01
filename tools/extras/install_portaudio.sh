@@ -95,9 +95,13 @@ fi
 if [ "$MACOS" != "" ]; then
     echo "detected MacOS operating system ... trying to fix Makefile"
     mv Makefile Makefile.bck
-    cat Makefile.bck | sed 's/\-isysroot\ \/Developer\/SDKs\/MacOSX10\.4u\.sdk//g' | sed 's/-Werror//g' | sed 's/-arch i386//g' | sed 's/-arch ppc//g' > Makefile
+    cat Makefile.bck | sed -e 's/\-isysroot\ \/Developer\/SDKs\/MacOSX10\.4u\.sdk//g' \
+      -e 's/-Werror//g' -e 's/-arch i386//g' -e 's/-arch ppc64//g' -e 's/-arch ppc//g' \
+      > Makefile
     mv include/pa_mac_core.h include/pa_mac_core.h.bck
-    cat include/pa_mac_core.h.bck | sed 's/\/\/\#include \<AudioToolbox\/AudioToolbox.h\>/#include \<AudioToolbox\/AudioToolbox.h\>/g' > include/pa_mac_core.h 
+    cat include/pa_mac_core.h.bck \
+      | sed 's/\/\/\#include \<AudioToolbox\/AudioToolbox.h\>/#include \<AudioToolbox\/AudioToolbox.h\>/g' \
+      > include/pa_mac_core.h 
 fi
 
 make
