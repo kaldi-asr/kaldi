@@ -1,6 +1,8 @@
 #!/bin/bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012-2013. 
 #           Hong Kong University of Science and Technology (Ricky Chan). Apache 2.0.
+#
+# An alternative chinese character scoring script; If the wordlist (words in the lexicon) used by the decoder is a subset of the words in 195k_chinese_word2char_map (1st column of 195k_chinese_word2char_map contains chinese words, 2nd to end column fields are corresponding seperated chinese characters), scoring with score_basic_ext.sh will give pure chinese character error rate
 
 # begin configuration section.
 cmd=run.pl
