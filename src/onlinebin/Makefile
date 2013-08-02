@@ -20,7 +20,12 @@ else
     EXTRA_LDLIBS += -lrt
 endif
 else
-    EXTRA_LDLIBS = -L../../tools/portaudio/install/lib/ -lportaudio
+    EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
+    #EXTRA_LDLIBS = -L../../tools/portaudio/install/lib -lportaudio
+endif
+
+ifeq ($(UNAME), Darwin)
+    EXTRA_LDLIBS += -framework CoreAudio -framework AudioToolbox -framework AudioUnit -framework CoreServices
 endif
 
 
