@@ -30,23 +30,18 @@
  "s3" scripts mentioned in this tutorial.  But be aware that if you do that some
  aspects of the tutorial may be out of date.
 
-  Assuming Subversion (svn) is installed, in order to get the "version-1" code 
-  you can type:
+  Assuming Subversion (svn) is installed, to get the latest code you can type
   \verbatim
-    svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/branches/1 kaldi-1
+    svn co svn://svn.code.sf.net/p/kaldi/code/trunk kaldi-trunk
   \endverbatim
-  or for the trunk, type:
-  \verbatim
-    svn co https://kaldi.svn.sourceforge.net/svnroot/kaldi/trunk kaldi-trunk
-  \endverbatim
-  Then cd to kaldi-1 (or kaldi-trunk).  Look at the INSTALL file and follow the instructions 
+  Then cd to kaldi-trunk.  Look at the INSTALL file and follow the instructions 
   (it points you to two subdirectories).  Look carefully at the output of the
   installation scripts, as they try to guide you what to do.  Some installation
   errors are non-fatal, and the installation scripts will tell you so (i.e. there 
   are some things it installs which are nice to have but are not really needed).
   The "best-case" scenario is that you do:
  \verbatim
-   cd kaldi-1/tools/; ./install.sh; cd ../src; ./configure; make
+   cd kaldi-trunk/tools/; make; cd ../src; ./configure; make
  \endverbatim
  and everything will just work; however, if this does not happen there are
  fallback plans (e.g. you may have to install some package on your machine, or run 
