@@ -62,7 +62,7 @@ void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<Ba
   // lazy buffers allocation
   if (features_.NumRows() != cachesize_) {
     features_.Resize(cachesize_, features.NumCols());
-    targets_.Resize(cachesize_, targets_.NumCols());
+    targets_.Resize(cachesize_, targets.NumCols());
   }
 
   // warn if segment longer than half-cache 
@@ -186,7 +186,7 @@ void CacheTgtMat::GetBunch(CuMatrix<BaseFloat> *features, CuMatrix<BaseFloat> *t
   } else {
     features->RowRange(0, bunchsize_).CopyFromMat(
         features_.RowRange(emptying_pos_, bunchsize_));
-    features->RowRange(0, bunchsize_).CopyFromMat(
+    targets->RowRange(0, bunchsize_).CopyFromMat(
         targets_.RowRange(emptying_pos_, bunchsize_));
   }
 

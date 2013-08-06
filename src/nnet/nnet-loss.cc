@@ -36,24 +36,28 @@ void Xent::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &t
   *diff = net_out;
   diff->AddMat(-1.0, target);
 
-  // we'll not produce per-frame classification accuracy for soft labels
+  // we do not produce per-frame classification accuracy for soft labels,
+  // (-1 is an indicator to Report(.) to skip prining accuracy)
   correct_ = -1;
 
-  // :TODO: reimplement when needed
-  // compute xentropy (ON CPU)
-  Matrix<BaseFloat> target_host(target.NumRows(), target.NumCols(), kUndefined),
-      net_out_host(net_out.NumRows(), net_out.NumCols(), kUndefined);
+  // TODO reimplement when needed, we compute xentropy ON CPU
+  int32 num_frames = net_out.NumRows(), num_states = net_out.NumCols();
+  Matrix<BaseFloat> target_host(num_frames, num_states, kUndefined),
+      net_out_host(num_frames, num_states, kUndefined);
   target.CopyToMat(&target_host);
   net_out.CopyToMat(&net_out_host);
+
   BaseFloat val;
-  for(int32 r=0; r<net_out.NumRows(); r++) {
-    for(int32 c=0; c<net_out.NumCols(); c++) {
+  double loss = 0.0;
+  for(int32 r=0; r < num_frames; r++) {
+    for(int32 c=0; c < num_states; c++) {
       val = -target_host(r, c)*log(net_out_host(r, c));
       if (KALDI_ISINF(val)) val = 1e10;
-      loss_ += val;
+      loss += val;
     }
   }
-
+  
+  loss_ += loss;
   frames_ += net_out.NumRows();
 }
 

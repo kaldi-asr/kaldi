@@ -253,6 +253,14 @@ class Rbm : public RbmBase {
       pos_vis_stddev.MulElements(pos_vis_mean_h);
       pos_vis_stddev.Scale(-1.0);
       pos_vis_stddev.AddVec(1.0/pos_vis.NumRows(),pos_vis_second_h);
+      /* set negtive values to zero before the square root */
+      for (int32 i=0; i<pos_vis_stddev.Dim(); i++) {
+        if(pos_vis_stddev(i) < 0.0) { 
+          KALDI_WARN << "Forcing the variance to be non-negative! (set to zero)" 
+                     << pos_vis_stddev(i);
+          pos_vis_stddev(i) = 0.0;
+        }
+      }
       pos_vis_stddev.ApplyPow(0.5);
 
       //neg_vis
