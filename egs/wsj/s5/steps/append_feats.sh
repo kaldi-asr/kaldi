@@ -39,8 +39,8 @@ utils/split_data.sh $data_src2 $nj || exit 1;
 mkdir -p $mfccdir $logdir
 
 mkdir -p $data 
-cp $data_src1/* $data/ # so we get the other files, such as utt2spk.
-rm $data/cmvn.scp
+cp $data_src1/* $data/ 2>/dev/null # so we get the other files, such as utt2spk.
+rm $data/cmvn.scp 2>/dev/null 
 rm -r $data/split* 2>/dev/null
 
 # use "name" as part of name of the archive.
