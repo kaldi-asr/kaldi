@@ -70,7 +70,7 @@ sacc_script=$sacc_dir/run_SAcC.sh
 sacc_config=$sacc_dir/conf/Babelnet_sr8k_bpo6_sb24_k10.config
 
 if [ ! -f $sacc_script ]; then
-  echo "*Expecting the script $KALDI_ROOT/tools/sacc/SAcC_GLNXA64/run_SAcC.sh to exist"
+  echo "*Expecting the script $sacc_script to exist"
   echo "*cd to $KALDI_ROOT/tools/, and run extras/install_sacc.sh"
   echo "*Re-run this script when it is installed."
   exit 1;
