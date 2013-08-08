@@ -34,11 +34,16 @@ for subdir in fe_03_p1_sph1  fe_03_p1_sph3  fe_03_p1_sph5  fe_03_p1_sph7 \
   fe_03_p1_sph4  fe_03_p1_sph6  fe_03_p1_tran  fe_03_p2_sph2  fe_03_p2_sph4 \
   fe_03_p2_sph6  fe_03_p2_tran; do
   found_subdir=false
-
   for dir in $*; do
     if [ -d $dir/$subdir ]; then
       found_subdir=true
       ln -s $dir/$subdir data/local/data/links
+    else
+      new_style_subdir=$(echo $found_subdir | sed s/fe_03_p2_sph/fisher_eng_tr_sp_d/)
+      if [ -d $dir/$new_style_subdir ]; then
+        found_subdir=true
+        ln -s $dir/$new_style_subdir data/local/data/links/$subdir
+      fi
     fi
   done
   if ! $found_subdir; then
