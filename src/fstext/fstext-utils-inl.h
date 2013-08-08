@@ -82,7 +82,7 @@ void GetOutputSymbols(const Fst<Arc> &fst,
   // Remove epsilon, if instructed.
   if (!include_eps && !all_syms.empty() && *all_syms.begin() == 0)
     all_syms.erase(0);
-  assert(symbols != NULL);
+  KALDI_ASSERT(symbols != NULL);
   kaldi::CopySetToVector(all_syms, symbols);
 }
 
@@ -102,7 +102,7 @@ void GetInputSymbols(const Fst<Arc> &fst,
   // Remove epsilon, if instructed.
   if (!include_eps && all_syms.count(0) != 0)
     all_syms.erase(0);
-  assert(symbols != NULL);
+  KALDI_ASSERT(symbols != NULL);
   kaldi::CopySetToVector(all_syms, symbols);
 }
 
@@ -361,7 +361,7 @@ void MakeLinearAcceptorWithAlternatives(const vector<vector<I> > &labels,
   StateId cur_state = ofst->AddState();
   ofst->SetStart(cur_state);
   for (size_t i = 0; i < labels.size(); i++) {
-    assert(labels[i].size() != 0);
+    KALDI_ASSERT(labels[i].size() != 0);
     StateId next_state = ofst->AddState();
     for (size_t j = 0; j < labels[i].size(); j++) {
       Arc arc(labels[i][j], labels[i][j], Weight::One(), next_state);
@@ -395,14 +395,14 @@ template<class I>
 void GetSymbols(const SymbolTable &symtab,
                 bool include_eps,
                 vector<I> *syms_out) {
-  assert(syms_out != NULL);
+  KALDI_ASSERT(syms_out != NULL);
   syms_out->clear();
   for (SymbolTableIterator iter(symtab);
       !iter.Done();
       iter.Next()) {
     if (include_eps || iter.Value() != 0) {
       syms_out->push_back(iter.Value());
-      assert(syms_out->back() == iter.Value());  // an integer-range thing.
+      KALDI_ASSERT(syms_out->back() == iter.Value());  // an integer-range thing.
     }
   }
 }
@@ -647,7 +647,7 @@ void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *
         arcs_to_change.push_back(std::make_pair(s, aiter.Position()));
     }
   }
-  assert(!arcs_to_change.empty());  // since !bad_states.empty().
+  KALDI_ASSERT(!arcs_to_change.empty());  // since !bad_states.empty().
 
   std::map<pair<StateId, ClassType>, StateId> state_map;
   // state_map is a map from (bad-state, input-symbol-class) to dummy-state.
@@ -766,7 +766,7 @@ VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts) {
       }
     }
     
-    assert(fst->Properties(kAcceptor, true) == kAcceptor);  // expect acceptor.
+    KALDI_ASSERT(fst->Properties(kAcceptor, true) == kAcceptor);  // expect acceptor.
 
     StateId fst_num_states = fst->NumStates();
     StateId fst_start_state = fst->Start();
@@ -800,7 +800,7 @@ VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts) {
           cache[fst] = newarc;
       }
       if (fst->Final(s) != Weight::Zero()) {
-        assert(!(s == fst_start_state && share_start_state));
+        KALDI_ASSERT(!(s == fst_start_state && share_start_state));
         ans->AddArc(state_map[s], Arc(0, 0, fst->Final(s), loop_state));
       }
     }
@@ -876,10 +876,10 @@ bool EqualAlign(const Fst<Arc> &ifst,
                 int rand_seed,
                 MutableFst<Arc> *ofst) {
   srand(rand_seed);
-  assert(ofst->NumStates() == 0);  // make sure ofst empty.
+  KALDI_ASSERT(ofst->NumStates() == 0);  // make sure ofst empty.
   // make sure all states can reach final-state (or this algorithm may enter
   // infinite loop.
-  assert(ifst.Properties(kCoAccessible, true) == kCoAccessible);
+  KALDI_ASSERT(ifst.Properties(kCoAccessible, true) == kCoAccessible);
 
   typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
@@ -946,7 +946,7 @@ bool EqualAlign(const Fst<Arc> &ifst,
   StateId min_num_loops = 0;
   if (num_extra != 0) min_num_loops = num_extra / num_self_loops;  // prevent div by zero.
   StateId num_with_one_more_loop = num_extra - (min_num_loops*num_self_loops);
-  assert(num_with_one_more_loop < num_self_loops);
+  KALDI_ASSERT(num_with_one_more_loop < num_self_loops || num_self_loops == 0);
 
   ofst->AddState();
   ofst->SetStart(0);
@@ -963,7 +963,7 @@ bool EqualAlign(const Fst<Arc> &ifst,
       ArcIterator<Fst<Arc> > aiter(ifst, path[i]);
       aiter.Seek(self_loop_offsets[i]);
       Arc arc = aiter.Value();
-      assert(arc.nextstate == path[i]
+      KALDI_ASSERT(arc.nextstate == path[i]
              && arc.ilabel != 0);  // make sure self-loop with ilabel.
       StateId next_state = ofst->AddState();
       ofst->AddArc(cur_state, Arc(arc.ilabel, arc.olabel, arc.weight, next_state));
@@ -973,13 +973,13 @@ bool EqualAlign(const Fst<Arc> &ifst,
       ArcIterator<Fst<Arc> > aiter(ifst, path[i]);
       aiter.Seek(arc_offsets[i]);
       Arc arc = aiter.Value();
-      assert(arc.nextstate == path[i+1]);
+      KALDI_ASSERT(arc.nextstate == path[i+1]);
       StateId next_state = ofst->AddState();
       ofst->AddArc(cur_state, Arc(arc.ilabel, arc.olabel, arc.weight, next_state));
       cur_state = next_state;
     } else {  // add final-prob.
       Weight weight = ifst.Final(path[i]);
-      assert(weight != Weight::Zero());
+      KALDI_ASSERT(weight != Weight::Zero());
       ofst->SetFinal(cur_state, weight);
     }
   }
@@ -1039,7 +1039,7 @@ void RemoveUselessArcs(MutableFst<Arc> *fst) {
           if (poslist[j] != best_pos)
             arcs_to_delete.push_back(poslist[j]);
       } else {
-        assert(poslist.size() == 1);
+        KALDI_ASSERT(poslist.size() == 1);
         size_t pos = poslist[0];
         Arc &arc = arcs[pos];
         if (arc.ilabel == 0 && arc.nextstate == state)
