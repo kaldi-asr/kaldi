@@ -60,11 +60,15 @@ fi
 
 for splitdatadir in $@ ; do
     kwsdatadir=$splitdatadir/kws
-    if [ ! -d "$splitdatadir"  ] || [ ! -d "$kwsdatadir" ] ; then
-        echo "FATAL: the data directory does not exist"
+    if [ ! -d "$splitdatadir"  ]  ; then
+        echo "FATAL: the data directory $splitdatadir does not exist"
         exit 1;
     fi
-    if [[ ! -f "$kwsdatadir/ecf.xml"  ]] ; then
+    if [ ! -d "$kwsdatadir" ] ; then
+        echo "FATAL: the data directory $kwsdatadir does not exist"
+        exit 1;
+    fi
+    if [ ! -f "$kwsdatadir/ecf.xml"  ] ; then
         echo "FATAL: the $kwsdatadir does not contain the ecf.xml file"
         exit 1;
     fi
