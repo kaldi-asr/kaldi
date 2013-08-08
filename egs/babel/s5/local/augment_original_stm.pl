@@ -43,7 +43,8 @@ while(<F_s>) {
 close(F_s);
 
 open(STM, "<$stm_file") || die "Could not opent the STM file $stm_file";
-open(STMOUT, ">$data_dir/stm") || die "Could not opent the output STM file $$data_dir/stm";
+open(STMOUT, ">$data_dir/stm") || die "Could not open the output STM file $data_dir/stm";
+open(RECO, ">$data_dir/reco2file_and_channel") or die "Could not create the output file $data_dir/reco2file_and_channel";
 
 my $prev_filename = "";
 my @timestamps;
@@ -62,6 +63,7 @@ while(<STM>) {
     @timestamps = @{$segments{$_filename}};
     #print Dumper(\@timestamps);
     $i=0;
+    print RECO "$_filename $_filename 1\n";
   }
 
   my $max_i=@timestamps;
@@ -104,3 +106,4 @@ while(<STM>) {
 
 close(STMOUT);
 close(STM);
+close(RECO);
