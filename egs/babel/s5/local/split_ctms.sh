@@ -29,6 +29,9 @@ echo "$0 $@"
 [ -f ./cmd.sh ]  && . ./cmd.sh
 . parse_options.sh || exit 1;
 
+set -e
+set -o pipefail
+
 data=$1; 
 q=$2; 
 shift; shift;
