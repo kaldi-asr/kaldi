@@ -26,8 +26,8 @@ if [[ "$type" != "dev10h" && "$type" != "dev2h" && "$type" != "eval" && "$type" 
 fi
 
 
-datadir=data/app_${type}.uem
-dirid=${type}.uem
+datadir=data/app_${type}
+dirid=${type}
 
 [ ! -d data/${dirid} ] && echo "No such directory data/${dirid}" && exit 1;
 [ ! -d exp/tri5/decode_${dirid} ] && echo "No such directory exp/tri5/decode_${dirid}" && exit 1;

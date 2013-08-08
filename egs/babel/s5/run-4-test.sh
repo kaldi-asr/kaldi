@@ -1,9 +1,6 @@
 #!/bin/bash 
 set -e
 set -o pipefail
-set -u
-
-type=dev2h
 
 . conf/common_vars.sh || exit 1;
 . ./lang.conf || exit 1;
@@ -11,262 +8,321 @@ type=dev2h
 
 type=dev10h
 dev2shadow=dev10h.uem
-. utils/parse_options.sh     
-
+eval2shadow=eval.uem
+data_only=false
+fast_path=true
+skip_kws=false
+skip_stt=false
+max_states=150000
+wip=0.5
+. utils/parse_options.sh
 
 if [ $# -ne 0 ]; then
-  echo "Usage: $(basename $0) [--type (dev10h|dev2h|eval|shadow)]"
+  echo "Usage: $(basename $0) --type (dev10h|dev2h|eval|shadow)"
+  exit 1
 fi
 
-if [[ "$type" != "dev10h" && "$type" != "dev2h" && "$type" != "eval" && "$type" != "shadow" ]]; then
-  echo "Error: invalid variable type=$type, valid values are dev10h|dev2h|eval|shadow"
+if [[ "$type" != "dev10h" && "$type" != "dev2h" && "$type" != "eval" && "$type" != "shadow" ]] ; then
+  echo "Warning: invalid variable type=${type}, valid values are dev10h|dev2h|eval"
+  echo "Hope you know what your ar doing!"
 fi
 
-# Yenda: please check if this logic is right.  Not sure what to do about shadow, and about
-# kws scoring versus CTM scoring.
-# Also, I might not be passing this variable in everywhere I need to.
-if [[ "$type" == "dev2h" || "$type" == "dev10h" ]]; then
-  skip_scoring=false
+if [ $type == shadow ] ; then
+  shadow_set_extra_opts=(--dev2shadow data/${dev2shadow} --eval2shadow data/${eval2shadow} )
 else
-  skip_scoring=true
+  shadow_set_extra_opts=()
 fi
 
-
-[ ! -f $eval_data_cmudb ] && echo "The CMU db does not exist... " && exit 1
-#[ ! -f $eval_data_list ] && echo "The test data list does not exist... " && exit 1
-#[ ! -d $eval_data_dir ] && echo "The test data directory does not exist... " && exit 1
-
-[ -z $cer ] && cer=0
 
 function make_plp {
   t=$1
   if ! "$use_pitch"; then
-    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/${t} exp/make_plp/${t} plp
+    steps/make_plp.sh --cmd "$decode_cmd" --nj $my_nj data/${t} exp/make_plp/${t} plp
   else
     cp -rT data/${t} data/${t}_plp; cp -rT data/${t} data/${t}_pitch
-    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/${t}_plp exp/make_plp/${t} plp_tmp_${t}
-    local/make_pitch.sh --cmd "$train_cmd" --nj $decode_nj data/${t}_pitch exp/make_pitch/${t} plp_tmp_${t}
-    steps/append_feats.sh data/${t}{_plp,_pitch,} exp/make_pitch/append_${t} plp
+    steps/make_plp.sh --cmd "$decode_cmd" --nj $my_nj data/${t}_plp exp/make_plp/${t} plp_tmp_${t}
+    local/make_pitch.sh --cmd "$decode_cmd" --nj $my_nj data/${t}_pitch exp/make_pitch/${t} plp_tmp_${t}
+    steps/append_feats.sh --cmd "$decode_cmd" --nj $my_nj data/${t}{_plp,_pitch,} exp/make_pitch/append_${t} plp
     rm -rf plp_tmp_${t} data/${t}_{plp,pitch}
   fi
   steps/compute_cmvn_stats.sh data/${t} exp/make_plp/${t} plp
   utils/fix_data_dir.sh data/${t}
 }
 
+if [ ${type} == shadow ] ; then
+  mandatory_variables=""
+  optional_variables=""
+else
+  mandatory_variables="${type}_data_dir ${type}_data_list ${type}_stm_file \
+    ${type}_ecf_file ${type}_kwlist_file ${type}_rttm_file ${type}_nj \
+    ${type}_data_cmudb"
+  optional_variables="${type}_subset_ecf "
+fi
 
-#####################################################################
-#
-# test.uem and shadow.uem directory preparation
-#
-#####################################################################
-if [[ $type == shadow || $type == eval ]]; then
-  if [ ! -f data/eval.uem/.done ]; then
-    local/cmu_uem2kaldi_dir.sh --filelist $eval_data_list $eval_data_cmudb  $eval_data_dir data/eval.uem 
-    make_plp eval.uem
-    touch data/eval.uem/.done
+eval my_data_dir=\$${type}_data_dir
+eval my_data_list=\$${type}_data_list
+eval my_stm_file=\$${type}_stm_file
+eval my_data_cmudb=\$${type}_data_cmudb
+
+eval my_ecf_file=\$${type}_ecf_file 
+eval my_subset_ecf=\$${type}_subset_ecf 
+eval my_kwlist_file=\$${type}_kwlist_file 
+eval my_rttm_file=\$${type}_rttm_file
+eval my_nj=\$${type}_nj  #for shadow, this will be re-set when appropriate
+
+for variable in $mandatory_variables ; do
+  eval my_variable=\$${variable}
+  if [ -z $my_variable ] ; then
+    echo "Mandatory variable $variable is not set! " \
+         "You should probably set the variable in the config file "
+    exit 1
+  else
+    echo "$variable=$my_variable"
   fi
+done
 
-  # we expect that the ${dev2shadow} directory will already exist.
-  if [ ! -f data/shadow.uem/.done ]; then
+for variable in $option_variables ; do
+  eval my_variable=\$${variable}
+  echo "$variable=$my_variable"
+done
+
+datadir=data/${type}.uem
+dirid=${type}.uem
+
+if [[ $type == shadow ]] ; then
+  if [ ! -f ${datadir}/.done ]; then
+    # we expect that the ${dev2shadow} as well as ${eval2shadow} already exist
     if [ ! -f data/${dev2shadow}/.done ]; then
       echo "Error: data/${dev2shadow}/.done does not exist."
+      echo "Create the directory data/${dev2shadow} first, by calling $0 --type $dev2shadow --dataonly"
+      exit 1
+    fi
+    if [ ! -f data/${eval2shadow}/.done ]; then
+      echo "Error: data/${eval2shadow}/.done does not exist."
+      echo "Create the directory data/${eval2shadow} first, by calling $0 --type $eval2shadow --dataonly"
+      exit 1
     fi
 
-    local/kws_setup.sh --case-insensitive $case_insensitive $eval_data_ecf $eval_data_kwlist data/lang data/eval.uem/
-
-    local/create_shadow_dataset.sh data/shadow.uem data/${dev2shadow} data/eval.uem
-    local/kws_data_prep.sh --case-insensitive $case_insensitive data/lang data/shadow.uem data/shadow.uem/kws || exit 1
-    utils/fix_data_dir.sh data/shadow.uem
-    touch data/shadow.uem/.done 
+    local/create_shadow_dataset.sh ${datadir} data/${dev2shadow} data/${eval2shadow}
+    utils/fix_data_dir.sh ${datadir}
+    touch ${datadir}/.done
   fi
-  decode_nj=$eval_nj
+  my_nj=$eval_nj
+else
+  if [ ! -d data/raw_${type}_data ]; then
+    echo ---------------------------------------------------------------------
+    echo "Subsetting the ${type} set"
+    echo ---------------------------------------------------------------------
+    
+    local/make_corpus_subset.sh "$my_data_dir" "$my_data_list" ./data/raw_${type}_data
+  fi
+  my_data_dir=`readlink -f ./data/raw_${type}_data`
+
+  nj_max=`cat $my_data_list | wc -l`
+  if [[ "$nj_max" -lt "$my_nj" ]] ; then
+    echo "The maximum reasonable number of jobs is $nj_max -- you have $my_nj! (The training and decoding process has file-granularity)"
+    exit 1
+    my_nj=$nj_max
+  fi
+
+  if [ ! -f ${datadir}/.done ]; then
+    if [[ ! -f ${datadir}/wav.scp || ${datadir}/wav.scp -ot "$my_data_cmudb" ]]; then
+      echo ---------------------------------------------------------------------
+      echo "Preparing ${type} data lists in ${datadir} on" `date`
+      echo ---------------------------------------------------------------------
+      mkdir -p ${datadir}
+      local/cmu_uem2kaldi_dir.sh --filelist $my_data_list \
+        $my_data_cmudb  $my_data_dir ${datadir}
+    fi
+
+    echo ---------------------------------------------------------------------
+    echo "Preparing ${type} stm files in ${datadir} on" `date`
+    echo ---------------------------------------------------------------------
+    if [ ! -z $my_stm_file ] ; then
+      local/augment_original_stm.pl $my_stm_file ${datadir}
+    elif [[ $type == shadow || $type == eval ]]; then
+      echo "Not doing anything for the STM file!"
+    else
+      local/prepare_stm.pl --fragmentMarkers \-\*\~ ${datadir}
+    fi
+
+    if [ ! -f ${datadir}/.plp.done ]; then
+      echo ---------------------------------------------------------------------
+      echo "Preparing ${type} parametrization files in ${datadir} on" `date`
+      echo ---------------------------------------------------------------------
+      make_plp ${dirid}
+      touch ${datadir}/.plp.done
+    fi
+
+    touch ${datadir}/.done
+  fi
 fi
 
 #####################################################################
 #
-# dev10h.uem directory preparation
+# data directory preparation
 #
 #####################################################################
-if [ $type == dev10h ]; then
-  dev10h_data_cmudb=$eval_data_cmudb
-  dev10h_ecf_file=$ecf_file
-  dev10h_kwlist_file=$kwlist_file
-  dev10h_rttm_file=$rttm_file
-  decode_nj=$dev10h_nj
-  if [ ! -f data/dev10h.uem/.done ]; then
-    local/cmu_uem2kaldi_dir.sh --filelist $dev10h_data_list $dev10h_data_cmudb  $dev10h_data_dir data/dev10h.uem
-    cp data/dev10h/stm data/dev10h.uem
-    cp data/dev10h/glm data/dev10h.uem
-    if [ $cer == 1 ] ; then
-      [ ! -f data/dev10h/char.stm ] && echo "CER=1 and file dev10h/char.stm not present" && exit 1
-      cp data/dev10h/char.stm data/dev10h.uem
+echo ---------------------------------------------------------------------
+echo "Preparing ${type} kws data files in ${datadir} on" `date`
+echo ---------------------------------------------------------------------
+if ! $skip_kws  && [ ! -f ${datadir}/kws/.done ] ; then
+  if [[ $type == shadow ]]; then
+    
+    # we expect that the ${dev2shadow} as well as ${eval2shadow} already exist
+    if [ ! -f data/${dev2shadow}/kws/.done ]; then
+      echo "Error: data/${dev2shadow}/kws/.done does not exist."
+      echo "Create the directory data/${dev2shadow} first, by calling $0 --type $dev2shadow --dataonly"
+      exit 1
     fi
-    make_plp dev10h.uem
-    touch data/dev10h.uem/.done
-  fi
-  if [ ! -f data/dev10h.uem/kws/.done ]; then
-    local/kws_setup.sh --case-insensitive $case_insensitive \
-      --rttm-file $dev10h_rttm_file \
-      $dev10h_ecf_file $dev10h_kwlist_file data/lang data/dev10h.uem
-    touch data/dev10h.uem/kws/.done
+    if [ ! -f data/${eval2shadow}/kws/.done ]; then
+      echo "Error: data/${eval2shadow}/kws/.done does not exist."
+      echo "Create the directory data/${eval2shadow} first, by calling $0 --type $eval2shadow --dataonly"
+      exit 1
+    fi
+
+
+    local/kws_data_prep.sh --case_insensitive $case_insensitive \
+      "${icu_opt[@]}" \
+      data/lang ${datadir} ${datadir}/kws
+    utils/fix_data_dir.sh ${datadir}
+
+    touch ${datadir}/kws/.done
+  else
+    kws_flags=()
+    if [ ! -z $my_rttm_file ] ; then
+      kws_flags+=(--rttm-file $my_rttm_file )
+    fi
+    if [ $my_subset_ecf ] ; then
+      kws_flags+=(--subset-ecf $my_data_list)
+    fi
+    
+    local/kws_setup.sh --case_insensitive $case_insensitive \
+      "${kws_flags[@]}" "${icu_opt[@]}" \
+      $my_ecf_file $my_kwlist_file data/lang ${datadir}
+
+    touch ${datadir}/kws/.done
   fi
 fi
 
-if [ $type == dev2h ]; then
-  dev2h_data_cmudb=$eval_data_cmudb
-  dev2h_ecf_file=$ecf_file
-  dev2h_kwlist_file=$kwlist_file
-  dev2h_rttm_file=$rttm_file
-  if [ ! -f data/dev2h.uem/.done ]; then
-    local/cmu_uem2kaldi_dir.sh --filelist $dev2h_data_list $dev2h_data_cmudb  $dev2h_data_dir data/dev2h.uem
-    cp data/dev2h/stm data/dev2h.uem
-    cp data/dev2h/glm data/dev2h.uem
-    if [ $cer == 1 ] ; then
-      [ ! -f data/dev2h/char.stm ] && echo "CER=1 and file eval.pem/char.stm not present" && exit 1
-      cp data/dev2h/char.stm data/dev2h.uem
-    fi
-    make_plp dev2h.uem
-    touch data/dev2h.uem/.done
-  fi
-
-  if [ ! -f data/dev2h.uem/kws/.done ]; then
-    local/kws_setup.sh --case-insensitive $case_insensitive \
-      --subset-ecf $dev2h_data_list --rttm-file $dev2h_rttm_file \
-      $dev2h_ecf_file $dev2h_kwlist_file data/lang data/dev2h.uem
-    touch data/dev2h.uem/kws/.done
-  fi
-  decode_nj=$decode_nj
+if $data_only ; then
+  echo "Exiting, as data-only was requested..."
+  exit 0;
 fi
+
 
 ####################################################################
 ##
 ## FMLLR decoding 
 ##
 ####################################################################
+decode=exp/tri5/decode_${dirid}
+if [ ! -f ${decode}/.done ]; then
+  echo ---------------------------------------------------------------------
+  echo "Spawning decoding with SAT models  on" `date`
+  echo ---------------------------------------------------------------------
+  utils/mkgraph.sh \
+    data/lang exp/tri5 exp/tri5/graph |tee exp/tri5/mkgraph.log
 
-
-
-if [ ! -f exp/tri5/decode_${type}.uem/.done ]; then
-  [ ! -d exp/tri5/graph ] && utils/mkgraph.sh data/lang exp/tri5 exp/tri5/graph |tee exp/tri5/mkgraph.log
-
-  steps/decode_fmllr_extra.sh --skip-scoring "$skip_scoring" \
-    --nj $decode_nj --cmd "$decode_cmd"  "${decode_extra_opts[@]}"\
-    exp/tri5/graph data/${type}.uem exp/tri5/decode_${type}.uem  | tee  exp/tri5/decode_${type}.uem.log
-  touch exp/tri5/decode_${type}.uem/.done
+  mkdir -p $decode
+  #By default, we do not care about the lattices for this step -- we just want the transforms
+  #Therefore, we will reduce the beam sizes, to reduce the decoding times
+  steps/decode_fmllr_extra.sh --skip-scoring true --beam 10 --lattice-beam 4\
+    --nj $my_nj --cmd "$decode_cmd" "${decode_extra_opts[@]}"\
+    exp/tri5/graph ${datadir} ${decode} |tee ${decode}/decode.log
+  touch ${decode}/.done
 fi
 
+if ! $fast_path ; then
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
+    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    ${datadir} data/lang ${decode}
 
-if [ ! -f exp/tri5/decode_${type}.uem/.kws.done ]; then
-  if [ $type == shadow ]; then
-    local/lattice_to_ctm.sh --cmd "$decode_cmd" data/${type}.uem data/lang exp/tri5/decode_${type}.uem.si
-    local/lattice_to_ctm.sh --cmd "$decode_cmd" data/${type}.uem data/lang exp/tri5/decode_${type}.uem
-    local/split_ctms.sh exp/tri5/decode_shadow.uem.si data/${dev2shadow} data/eval.uem
-    local/split_ctms.sh exp/tri5/decode_shadow.uem data/${dev2shadow} data/eval.uem
-    
-    local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/${type}.uem data/lang \
-      exp/tri/decode_${type}.uem.si data/${dev2shadow} data/eval.uem
-    local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/${type}.uem data/lang \
-      exp/tri5/decode_${type}.uem data/${dev2shadow} data/eval.uem
-  else
-    local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
-      data/${type}.uem/ exp/tri5/decode_${type}.uem.si
-    local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
-      data/${type}.uem/ exp/tri5/decode_${type}.uem
-  fi
-  touch exp/tri5/decode_${type}.uem/.kws.done
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
+    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    ${datadir} data/lang ${decode}.si
 fi
 
 ####################################################################
 ## SGMM2 decoding 
 ####################################################################
-if [ ! -f exp/sgmm5/decode_fmllr_${type}.uem/.done ]; then
-  [ ! -d exp/sgmm5/graph ] && utils/mkgraph.sh data/lang exp/sgmm5 exp/sgmm5/graph |tee exp/sgmm5/mkgraph.log
-  steps/decode_sgmm2.sh --skip-scoring "$skip_scoring" --use-fmllr true --nj $decode_nj \
-    --cmd "$decode_cmd" --transform-dir exp/tri5/decode_${type}.uem "${decode_extra_opts[@]}"\
-    exp/sgmm5/graph data/${type}.uem exp/sgmm5/decode_fmllr_${type}.uem | tee exp/sgmm5/decode_fmllr_${type}.uem.log
-  touch exp/sgmm5/decode_fmllr_${type}.uem/.done
-fi  
+decode=exp/sgmm5/decode_fmllr_${dirid}
+if [ ! -f $decode/.done ]; then
+  echo ---------------------------------------------------------------------
+  echo "Spawning $decode on" `date`
+  echo ---------------------------------------------------------------------
+  utils/mkgraph.sh \
+    data/lang exp/sgmm5 exp/sgmm5/graph |tee exp/sgmm5/mkgraph.log
 
-if [ ! -f exp/sgmm5/decode_fmllr_${type}.uem/.kws.done ]; then
-  local/lattice_to_ctm.sh --cmd "$decode_cmd" data/$type.uem data/lang exp/sgmm5/decode_fmllr_$type.uem 
-  if [ $type == shadow ]; then
-    local/split_ctms.sh exp/sgmm5/decode_fmllr_shadow.uem data/${dev2shadow} data/eval.uem
-    local/shadow_set_kws_search.sh --cmd "$decode_cmd" data/shadow.uem data/lang \
-      exp/sgmm5/decode_fmllr_shadow.uem data/${dev2shadow} data/eval.uem
-  else
-    local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
-      data/${type}.uem/ exp/sgmm5/decode_fmllr_${type}.uem
-  fi
-  touch exp/sgmm5/decode_fmllr_${type}.uem/.kws.done
+  mkdir -p $decode
+  steps/decode_sgmm2.sh --skip-scoring true --use-fmllr true --nj $my_nj \
+    --cmd "$decode_cmd" --transform-dir exp/tri5/decode_${dirid} "${decode_extra_opts[@]}"\
+    exp/sgmm5/graph ${datadir} $decode |tee $decode/decode.log
+  touch $decode/.done
+fi
+
+if ! $fast_path ; then
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
+    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    ${datadir} data/lang  exp/sgmm5/decode_fmllr_${dirid}
 fi
 
 ####################################################################
 ##
-## SGMM_MMI rescoring and KWS
+## SGMM_MMI rescoring
 ##
 ####################################################################
 
 for iter in 1 2 3 4; do
   # Decode SGMM+MMI (via rescoring).
-  if [ ! -f exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter/.done ]; then
+  decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dirid}_it$iter
+  if [ ! -f $decode/.done ]; then
 
-    steps/decode_sgmm2_rescore.sh  --skip-scoring "$skip_scoring" \
-      --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_${type}.uem \
-      data/lang data/${type}.uem exp/sgmm5/decode_fmllr_${type}.uem exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter
-   
-    touch exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter/.done
-  fi
-  if [ ! -f exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter/.kws.done ]; then
-    #local/lattice_to_ctm.sh --cmd "$decode_cmd" --word-ins-penalty 0.5 \
-    #  data/${type}.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter
+    mkdir -p $decode
+    steps/decode_sgmm2_rescore.sh  --skip-scoring true \
+      --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_${dirid} \
+      data/lang ${datadir} exp/sgmm5/decode_fmllr_${dirid} $decode | tee ${decode}/decode.log
 
-    if [ $type == shadow ]; then
-      local/split_ctms.sh data/shadow.uem exp/sgmm5_mmi_b0.1/decode_fmllr_shadow.uem_it$iter \
-        data/${dev2shadow} data/eval.uem
-      local/shadow_set_kws_search.sh --cmd "$decode_cmd" --max-states 150000 \
-        data/shadow.uem data/lang exp/sgmm5_mmi_b0.1/decode_fmllr_shadow.uem_it$iter \
-        data/${dev2shadow} data/eval.uem
-    else
-      local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
-        data/${type}.uem/ exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter
-    fi
-    touch exp/sgmm5_mmi_b0.1/decode_fmllr_${type}.uem_it$iter/.kws.done
+    touch $decode/.done
   fi
 done
 
+#We are done -- all lattices has been generated. We have to
+#a)Run MBR decoding
+#b)Run KW search
+for iter in 1 2 3 4; do
+  # Decode SGMM+MMI (via rescoring).
+  decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dirid}_it$iter
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
+    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    ${datadir} data/lang $decode
+done
 
-if [[ ! -f exp/tri6_nnet/decode_${type}.uem/.done && -f exp/tri6_nnet/final.mdl ]]; then
+####################################################################
+##
+## DNN decoding
+##
+####################################################################
+if [ -f exp/tri6_nnet/.done ]; then
+  decode=exp/tri6_nnet/decode_${dirid}
+  if [ ! -f $decode/.done ]; then
+    steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj $my_nj \
+      --skip-scoring true "${decode_extra_opts[@]}" \
+      --transform-dir exp/tri5/decode_${dirid} \
+      exp/tri5/graph ${datadir} $decode |tee $decode/decode.log
 
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj $decode_nj \
-    --skip-scoring "$skip_scoring" "${decode_extra_opts[@]}" \
-    --transform-dir exp/tri5/decode_${type}.uem/ \
-    exp/tri5/graph data/${type}.uem exp/tri6_nnet/decode_${type}.uem
-    
-  touch exp/tri6_nnet/decode_${type}.uem/.done
-fi
-
-if [[ ! -f exp/tri6_nnet/decode_${type}.uem/.kws.done && -f exp/tri6_nnet/final.mdl ]]; then
-
-  #local/lattice_to_ctm.sh --cmd "$decode_cmd" --word-ins-penalty 0.5 \
-  #  data/${type}.uem data/lang exp/tri6_nnet/decode_${type}.uem 
-
-  if [ "$type" != eval ]; then
-    local/score_stm.sh --cmd "$decode_cmd" \
-      data/${type}.uem data/lang exp/tri6_nnet/decode_${type}.uem
+    touch $decode/.done
   fi
 
-  if [ $type == shadow ]; then
-    local/split_ctms.sh data/shadow.uem exp/tri6_nnet/decode_${type}.uem \
-      data/${dev2shadow} data/eval.uem
-    local/shadow_set_kws_search.sh --cmd "$decode_cmd" --max-states 150000 \
-      data/shadow.uem data/lang exp/tri6_nnet/decode_${type}.uem \
-      data/${dev2shadow} data/eval.uem
-  else
-    local/kws_search.sh --skip-scoring "$skip_scoring" --cmd "$decode_cmd" data/lang \
-      data/${type}.uem/ exp/tri6_nnet/decode_${type}.uem
-  fi
-  touch exp/tri6_nnet/decode_${type}.uem/.kws.done
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
+    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    ${datadir} data/lang $decode
 fi
 
-
-echo "Everything looks fine"
+echo "Everything looking good...." 
+exit 0
