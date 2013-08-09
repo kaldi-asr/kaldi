@@ -13,7 +13,9 @@ local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp || exit 1;
 
 utils/prepare_lang.sh data/local/dict '!SIL' data/local/lang data/lang || exit 1;
 
-local/rm_prepare_grammar.sh || exit 1;
+local/rm_prepare_grammar.sh || exit 1; # Traditional RM grammar (bigram word-pair)
+local/rm_prepare_grammar_ug.sh || exit 1; # Unigram grammar (gives worse results, but
+                                          # changes in WER will be more significant.)
 
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
@@ -117,6 +119,11 @@ utils/mkgraph.sh data/lang exp/tri3b exp/tri3b/graph || exit 1;
 steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri3b/graph data/test exp/tri3b/decode || exit 1;
 
+(
+ utils/mkgraph.sh data/lang_ug exp/tri3b exp/tri3b/graph_ug || exit 1;
+ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+   exp/tri3b/graph_ug data/test exp/tri3b/decode_ug || exit 1;
+)
 
 
 # Align all data with LDA+MLLT+SAT system (tri3b)
@@ -174,10 +181,10 @@ done
 # Demo of "raw fMLLR"
 # local/run_raw_fmllr.sh
 
-# You don't have to run all 3 of the below, e.g. you can just run the run_sgmm2x.sh
-local/run_sgmm.sh
+# You don't have to run all 3 of the below, e.g. you can just run the run_sgmm2.sh
+#local/run_sgmm.sh
 local/run_sgmm2.sh
-local/run_sgmm2x.sh
+#local/run_sgmm2x.sh
 
 # you can do:
 # local/run_nnet_cpu.sh

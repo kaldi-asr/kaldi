@@ -1,9 +1,9 @@
 #!/bin/bash
 
 
- no_feats=false
- no_wav=false
- no_text=false
+no_feats=false
+no_wav=false
+no_text=false
 
 for x in `seq 3`; do
   if [ $1 == "--no-feats" ]; then

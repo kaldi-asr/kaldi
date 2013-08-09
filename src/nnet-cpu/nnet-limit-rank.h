@@ -49,7 +49,9 @@ struct NnetLimitRankOpts {
 /// "parameter_proportion" to set the proportion of parameters to remove.
 void LimitRankParallel(const NnetLimitRankOpts &opts,
                        Nnet *nnet);
-                            
+
+
+/// Also see the function LimitRankOfLastLayer in class Nnet.                            
 
 
 } // namespace nnet2

@@ -3,7 +3,7 @@
 . cmd.sh
 
 ( 
- steps/train_nnet_cpu.sh \
+ steps/train_nnet_cpu.sh --stage 28 \
    --mix-up 8000 \
    --initial-learning-rate 0.01 --final-learning-rate 0.001 \
    --num-jobs-nnet 16 --num-hidden-layers 4 \

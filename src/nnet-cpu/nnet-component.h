@@ -41,10 +41,16 @@ namespace nnet2 {
 
 class Component {
  public:
-  Component() { }
+  Component(): index_(-1) { }
   
   virtual std::string Type() const = 0; // each type should return a string such as
   // "SigmoidComponent".
+
+  /// Returns the index in the sequence of layers in the neural net; intended only
+  /// to be used in debugging information.
+  virtual int32 Index() const { return index_; }
+
+  virtual void SetIndex(int32 index) { index_ = index; }
 
   /// Initialize, typically from a line of a config file.  The "args" will
   /// contain any parameters that need to be passed to the Component, e.g.
@@ -56,7 +62,7 @@ class Component {
   
   /// Get size of output vectors 
   virtual int32 OutputDim() const = 0;
-
+  
   /// Number of left-context frames the component sees for each output frame;
   /// nonzero only for splicing layers.
   virtual int32 LeftContext() { return 0; }
@@ -111,7 +117,7 @@ class Component {
   static Component *NewFromString(const std::string &initializer_line);
 
   /// Return a new Component of the given type e.g. "SoftmaxComponent",
-  /// or NULL if no such type exists.
+  /// or NULL if no such type exists. 
   static Component *NewComponentOfType(const std::string &type);
   
   virtual void Read(std::istream &is, bool binary) = 0; // This Read function
@@ -125,6 +131,7 @@ class Component {
   virtual ~Component() { }
 
  private:
+  int32 index_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(Component);
 };
 
@@ -153,7 +160,7 @@ class UpdatableComponent: public Component {
   /// other changes necessary (there's a variable we have to set for the
   /// MixtureProbComponent).
   virtual void SetZero(bool treat_as_gradient) = 0;
-
+  
   UpdatableComponent(): learning_rate_(0.001) { }
   
   virtual ~UpdatableComponent() { }
@@ -182,6 +189,8 @@ class UpdatableComponent: public Component {
   /// Gets the learning rate of gradient descent
   BaseFloat LearningRate() const { return learning_rate_; }
 
+  virtual std::string Info() const;
+  
   // The next few functions are not implemented everywhere; they are
   // intended for use by L-BFGS code, and we won't implement them
   // for all child classes.
@@ -277,6 +286,10 @@ class NonlinearComponent: public Component {
   const Vector<double> &ValueSum() const { return value_sum_; }
   const Vector<double> &DerivSum() const { return deriv_sum_; }
   double Count() const { return count_; }
+
+  // The following function is used when "widening" neural networks.
+  void SetDim(int32 dim);
+  
  protected:
   friend class SigmoidComponent;
   friend class TanhComponent;
@@ -387,6 +400,49 @@ class SoftHingeComponent: public NonlinearComponent {
   SoftHingeComponent &operator = (const SoftHingeComponent &other); // Disallow.
 };
 
+
+// This class scales the input by a specified constant.  This is, of course,
+// useless, but we use it when we want to change how fast the next layer learns.
+// (e.g. a smaller scale will make the next layer learn slower.)
+class ScaleComponent: public Component {
+ public:
+  explicit ScaleComponent(int32 dim, BaseFloat scale): dim_(dim), scale_(scale) { }
+  explicit ScaleComponent(const ScaleComponent &other):
+      dim_(other.dim_), scale_(other.scale_) { }
+  ScaleComponent(): dim_(0), scale_(0.0) { }
+  virtual std::string Type() const { return "ScaleComponent"; }
+  virtual Component* Copy() const { return new ScaleComponent(*this); }
+  virtual bool BackpropNeedsInput() { return false; }
+  virtual bool BackpropNeedsOutput() { return false; }
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         Matrix<BaseFloat> *out) const; 
+  virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value,
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update,
+                        Matrix<BaseFloat> *in_deriv) const;
+
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  virtual void Read(std::istream &is, bool binary);
+  
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  void Init(int32 dim, BaseFloat scale);
+  
+  virtual void InitFromString(std::string args); 
+
+  virtual std::string Info() const;
+  
+ private:
+  int32 dim_;
+  BaseFloat scale_;
+  ScaleComponent &operator = (const ScaleComponent &other); // Disallow.
+};
+
+
 class SqrtSoftHingeComponent: public NonlinearComponent {
  public:
   explicit SqrtSoftHingeComponent(int32 dim): NonlinearComponent(dim) { }
@@ -473,6 +529,7 @@ class ReduceComponent: public Component {
   int32 n_;
 };
 
+class FixedAffineComponent;
 
 // Affine means a linear function plus an offset.
 // Note: although this class can be instantiated, it also
@@ -486,8 +543,18 @@ class AffineComponent: public UpdatableComponent {
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
   void Init(BaseFloat learning_rate,
             int32 input_dim, int32 output_dim,
-            BaseFloat param_stddev, BaseFloat bias_stddev,
-            bool precondition);
+            BaseFloat param_stddev, BaseFloat bias_stddev);
+  void Init(BaseFloat learning_rate,
+            std::string matrix_filename);
+
+  // The following functions are used for collapsing multiple layers
+  // together.  They return a pointer to a new Component equivalent to
+  // the sequence of two components.  We haven't implemented this for
+  // FixedLinearComponent yet.
+  Component *CollapseWithNext(const AffineComponent &next) const ;
+  Component *CollapseWithNext(const FixedAffineComponent &next) const;
+  Component *CollapseWithPrevious(const FixedAffineComponent &prev) const;
+
   virtual std::string Info() const;
   virtual void InitFromString(std::string args);
   
@@ -521,6 +588,19 @@ class AffineComponent: public UpdatableComponent {
   virtual int32 GetParameterDim() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  /// This function is for getting a low-rank approximations of this
+  /// AffineComponent by two AffineComponents.
+  virtual void LimitRank(int32 dimension,
+                         AffineComponent **a, AffineComponent **b) const;
+
+  /// This function is implemented in widen-nnet.cc
+  void Widen(int32 new_dimension,
+             BaseFloat param_stddev,
+             BaseFloat bias_stddev,
+             std::vector<NonlinearComponent*> c2, // will usually have just one
+                                                  // element.
+             AffineComponent *c3);
  protected:
   friend class AffineComponentA;
   // This function Update() is for extensibility; child classes may override this.
@@ -542,6 +622,124 @@ class AffineComponent: public UpdatableComponent {
   bool is_gradient_; // If true, treat this as just a gradient.
 };
 
+// Class MaxAffineComponent is as AffineComponent except that
+// "max" replaces "+" in the summation for each row.
+class MaxAffineComponent: public UpdatableComponent {
+ public:
+  explicit MaxAffineComponent(const MaxAffineComponent &other);
+  virtual int32 InputDim() const { return linear_params_.NumCols(); }
+  virtual int32 OutputDim() const { return linear_params_.NumRows(); }
+  void Init(BaseFloat learning_rate, int32 input_dim, int32 output_dim,
+            BaseFloat linear_stddev, BaseFloat bias_stddev,
+            BaseFloat max_change);
+  
+  virtual std::string Info() const;
+  virtual void InitFromString(std::string args);
+  
+  MaxAffineComponent(): is_gradient_(false), max_change_(0.0) { } // use Init to really initialize.
+  
+  virtual std::string Type() const { return "MaxAffineComponent"; }
+  virtual bool BackpropNeedsInput() const { return true; }
+  virtual bool BackpropNeedsOutput() const { return false; }
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         Matrix<BaseFloat> *out) const;
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
+  virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value, // dummy
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        Matrix<BaseFloat> *in_deriv) const;
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual Component* Copy() const;
+  virtual void PerturbParams(BaseFloat stddev);
+
+  const Matrix<BaseFloat> &BiasParams() { return bias_params_; }
+  const Matrix<BaseFloat> &LinearParams() { return linear_params_; }
+
+  virtual int32 GetParameterDim() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+ protected:
+  const MaxAffineComponent &operator = (const MaxAffineComponent &other); // Disallow.
+  Matrix<BaseFloat> linear_params_;
+  Matrix<BaseFloat> bias_params_;
+  
+  bool is_gradient_; // If true, treat this as just a gradient.
+  BaseFloat max_change_; // If nonzero, maximum change allowed per individual
+                         // parameter per minibatch.
+};
+
+/// PiecewiseLinearComponent is a kind of trainable version of the
+/// RectifiedLinearComponent, in which each dimension of the nonlinearity has a
+/// number of parameters that can be trained.  it's of the form 
+/// alpha + beta x + gamma_1 |x - c_1| + gamma_2 |x - c_2| + ... + gamma_N |x - c_N|
+/// where c_1 ... c_N on are constants (by default, equally
+/// spaced between -1 and 1), and the alpha, beta and gamma quantities are trainable.
+/// (Each dimension has separate alpha, beta and gamma quantities).
+/// We require that N be odd so that the "middle" gamma quantity corresponds
+/// to zero; this is for convenience of initialization so that it corresponds
+/// to ReLus.
+class PiecewiseLinearComponent: public UpdatableComponent {
+ public:
+  explicit PiecewiseLinearComponent(const PiecewiseLinearComponent &other);
+  virtual int32 InputDim() const { return params_.NumRows(); }
+  virtual int32 OutputDim() const { return params_.NumRows(); }
+
+  void Init(int32 dim, int32 N,
+            BaseFloat learning_rate,
+            BaseFloat max_change);
+
+  virtual std::string Info() const;
+  
+  virtual void InitFromString(std::string args);
+  
+  PiecewiseLinearComponent(): is_gradient_(false), max_change_(0.0) { } // use Init to really initialize.
+  
+  virtual std::string Type() const { return "PiecewiseLinearComponent"; }
+  virtual bool BackpropNeedsInput() const { return true; }
+  virtual bool BackpropNeedsOutput() const { return false; }
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         Matrix<BaseFloat> *out) const;
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
+  virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value, // dummy
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        Matrix<BaseFloat> *in_deriv) const;
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual Component* Copy() const;
+  virtual void PerturbParams(BaseFloat stddev);
+
+  const Matrix<BaseFloat> &Params() { return params_; }
+  
+  virtual int32 GetParameterDim() const;
+
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+ protected:
+  const PiecewiseLinearComponent &operator = (const PiecewiseLinearComponent &other); // Disallow.
+  Matrix<BaseFloat> params_;
+  
+  bool is_gradient_; // If true, treat this as just a gradient.
+  BaseFloat max_change_; // If nonzero, maximum change allowed per individual
+                         // parameter per minibatch.
+};
+
+
 // This is an idea Dan is trying out, a little bit like
 // preconditioning the update with the Fisher matrix, but the
 // Fisher matrix has a special structure.
@@ -555,12 +753,14 @@ class AffineComponentPreconditioned: public AffineComponent {
   void Init(BaseFloat learning_rate,
             int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev,
-            bool precondition, BaseFloat alpha,
-            BaseFloat max_change);
+            BaseFloat alpha, BaseFloat max_change);
+  void Init(BaseFloat learning_rate, BaseFloat alpha,
+            BaseFloat max_change, std::string matrix_filename);
+  
   virtual void InitFromString(std::string args);
   virtual std::string Info() const;
   virtual Component* Copy() const;
-  AffineComponentPreconditioned(): alpha_(1.0) { }
+  AffineComponentPreconditioned(): alpha_(1.0), max_change_(0.0) { }
 
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponentPreconditioned);
@@ -584,6 +784,99 @@ class AffineComponentPreconditioned: public AffineComponent {
   virtual void Update(
       const MatrixBase<BaseFloat> &in_value,
       const MatrixBase<BaseFloat> &out_deriv);
+};
+
+
+/// AffineComponentModified as as AffineComponent but we are careful about
+/// the lengths of rows of the parameter matrix, when we do the update.
+/// That means, for a given row, we first do an update along the direction of
+/// the existing vector; we then take the update orthogonal to that direction,
+/// but keep the length of the vector fixed.
+class AffineComponentModified: public AffineComponent {
+ public:
+  virtual std::string Type() const { return "AffineComponentModified"; }
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  void Init(BaseFloat learning_rate,
+            int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev,
+            BaseFloat cutoff_length, BaseFloat max_change);
+  void Init(BaseFloat learning_rate, BaseFloat cutoff_length,
+            BaseFloat max_change, std::string matrix_filename);
+  
+  virtual void InitFromString(std::string args);
+  virtual std::string Info() const;
+  virtual Component* Copy() const;
+  AffineComponentModified(): cutoff_length_(10.0), max_change_(0.1) { }
+  
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponentModified);
+
+  BaseFloat cutoff_length_; /// If the length of the vector corresponding to
+  /// this row of the parameter matrix is less than this, we just do a regular
+  /// gradient descent update.  This would typically be less than
+  /// sqrt(InputDim())-- a value smaller than the expected length of the
+  /// parameter vector.
+  
+  BaseFloat max_change_; /// [if above the cutoff], this is the maximum
+                         /// change allowed in the vector per minibatch,
+                         /// as a proportion of the previous value.  We separately
+                         /// apply this constraint to both the length and direction.  Should
+                         /// be less than one, e.g. 0.1 or 0.01.
+
+  virtual void Update(
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv);
+};
+
+
+/// This type of component is to be used in training.  It adds Gaussian noise to
+/// what passes through it, to limit the capacity of the channel.  It differs
+/// from AdditiveNoiseComponent in that the variance of the noise is proportional
+/// to the length of the input vector.  This will have the effect of encouraging
+/// "non-informative" inputs to become close to zero, so that the noise on the
+/// informative inputs becomes larger, and will hence help us to identify these
+/// non-informative inputs.
+class InformationBottleneckComponent: public Component {
+ public:
+  void Init(int32 dim, BaseFloat noise_stddev);
+  InformationBottleneckComponent(int32 dim, BaseFloat noise_proportion) {
+    Init(dim, noise_proportion); }
+  InformationBottleneckComponent(): dim_(0), noise_proportion_(0.1),
+                                    count_(0.0) { }
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  virtual void InitFromString(std::string args);
+  virtual std::string Info() const;
+  
+  virtual void Read(std::istream &is, bool binary);
+  
+  virtual void Write(std::ostream &os, bool binary) const;
+      
+  virtual std::string Type() const { return "InformationBottleneckComponent"; }
+
+  virtual bool BackpropNeedsInput() const { return true; }
+  virtual bool BackpropNeedsOutput() const { return true; }  
+  virtual Component* Copy() const {
+    return new InformationBottleneckComponent(dim_, noise_proportion_);
+  }
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         Matrix<BaseFloat> *out) const; 
+  virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value,
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        Matrix<BaseFloat> *in_deriv) const;
+ private:
+  int32 dim_;  
+  BaseFloat noise_proportion_; // as a proportion of variance...
+  // The next two values are purely diagnostic, they are used to keep track of
+  // the variance of different input dimensions.
+  Vector<BaseFloat> sumsq_;
+  BaseFloat count_;
 };
 
 
@@ -844,6 +1137,10 @@ class BlockAffineComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return linear_params_.NumCols() * num_blocks_; }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
+  virtual int32 GetParameterDim() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
   // Note: num_blocks must divide input_dim.
   void Init(BaseFloat learning_rate,
                     int32 input_dim, int32 output_dim,
@@ -872,8 +1169,18 @@ class BlockAffineComponent: public UpdatableComponent {
   virtual void PerturbParams(BaseFloat stddev);
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
- private:
-  KALDI_DISALLOW_COPY_AND_ASSIGN(BlockAffineComponent);
+ protected:
+  virtual void Update(
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv) {
+    UpdateSimple(in_value, out_deriv);
+  }
+  // UpdateSimple is used when *this is a gradient.  Child classes may
+  // override this.
+  virtual void UpdateSimple(
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv);
+  
   // The matrix linear_parms_ has a block structure, with num_blocks_ blocks fo
   // equal size.  The blocks are stored in linear_params_ as
   // [ M
@@ -885,7 +1192,41 @@ class BlockAffineComponent: public UpdatableComponent {
   Matrix<BaseFloat> linear_params_;
   Vector<BaseFloat> bias_params_;
   int32 num_blocks_;
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(BlockAffineComponent);
+
 };
+
+
+// Affine means a linear function plus an offset.  "Block" means
+// here that we support a number of equal-sized blocks of parameters,
+// in the linear part, so e.g. 2 x 500 would mean 2 blocks of 500 each.
+class BlockAffineComponentPreconditioned: public BlockAffineComponent {
+ public:
+  // Note: num_blocks must divide input_dim.
+  void Init(BaseFloat learning_rate,
+            int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev,
+            int32 num_blocks, BaseFloat alpha);
+  
+  virtual void InitFromString(std::string args);
+  
+  BlockAffineComponentPreconditioned() { } // use Init to really initialize.
+  virtual std::string Type() const { return "BlockAffineComponentPreconditioned"; }
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual Component* Copy() const;
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(BlockAffineComponentPreconditioned);
+  virtual void Update(
+      const MatrixBase<BaseFloat> &in_value,
+      const MatrixBase<BaseFloat> &out_deriv);
+
+  bool is_gradient_;
+  BaseFloat alpha_;
+};
+
 
 
 // MixtureProbComponent is a linear transform, but it's kind of a special case.
@@ -916,7 +1257,7 @@ class MixtureProbComponent: public UpdatableComponent {
   virtual void InitFromString(std::string args);  
   MixtureProbComponent() { }
   virtual void SetZero(bool treat_as_gradient);
-  virtual std::string Type() const { return "MixtureComponent"; }
+  virtual std::string Type() const { return "MixtureProbComponent"; }
   virtual bool BackpropNeedsInput() const { return true; }
   virtual bool BackpropNeedsOutput() const { return false; }
   virtual void Propagate(const MatrixBase<BaseFloat> &in,
@@ -1067,11 +1408,53 @@ class FixedLinearComponent: public Component {
   virtual Component* Copy() const;
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
- private:
+ protected:
+  friend class AffineComponent;
   Matrix<BaseFloat> mat_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedLinearComponent);
 };
+
+
+/// FixedAffineComponent is an affine transform that is supplied
+/// at network initialization time and is not trainable.
+class FixedAffineComponent: public Component {
+ public:
+  FixedAffineComponent() { } 
+  virtual std::string Type() const { return "FixedAffineComponent"; }
+  virtual std::string Info() const;
+
+  /// matrix should be of size input-dim+1 to output-dim, last col is offset
+  void Init(const MatrixBase<BaseFloat> &matrix); 
+
+  // InitFromString takes only the option matrix=<string>,
+  // where the string is the filename of a Kaldi-format matrix to read.
+  virtual void InitFromString(std::string args);
+  
+  virtual int32 InputDim() const { return linear_params_.NumCols(); }
+  virtual int32 OutputDim() const { return linear_params_.NumRows(); }
+  virtual void Propagate(const MatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         Matrix<BaseFloat> *out) const;
+  virtual void Backprop(const MatrixBase<BaseFloat> &in_value,
+                        const MatrixBase<BaseFloat> &out_value,
+                        const MatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        Matrix<BaseFloat> *in_deriv) const;
+  virtual bool BackpropNeedsInput() const { return false; }
+  virtual bool BackpropNeedsOutput() const { return false; }
+  virtual Component* Copy() const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+ protected:
+  friend class AffineComponent;
+  Matrix<BaseFloat> linear_params_;
+  Vector<BaseFloat> bias_params_;
+  
+  KALDI_DISALLOW_COPY_AND_ASSIGN(FixedAffineComponent);
+};
+
 
 /// This Component, if present, randomly zeroes half of
 /// the inputs and multiplies the other half by two.

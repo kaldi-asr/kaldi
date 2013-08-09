@@ -90,6 +90,8 @@ double NnetUpdater::ComputeForMinibatch(
 }
 
 void NnetUpdater::Propagate() {
+  static int32 num_times_printed = 0;
+        
   int32 num_components = nnet_.NumComponents();
   for (int32 c = 0; c < num_components; c++) {
     const Component &component = nnet_.GetComponent(c);
@@ -103,6 +105,13 @@ void NnetUpdater::Propagate() {
     bool need_last_output =
         (c>0 && nnet_.GetComponent(c-1).BackpropNeedsOutput()) ||
         component.BackpropNeedsInput();
+    if (g_kaldi_verbose_level >= 3 && num_times_printed < 100) {
+      KALDI_LOG << "Stddev of data for component " << c
+                << " for this minibatch is "
+                << (TraceMatMat(forward_data_[c], forward_data_[c], kTrans) /
+                    (forward_data_[c].NumRows() * forward_data_[c].NumCols()));
+      num_times_printed++;
+    }
     if (!need_last_output)
       forward_data_[c].Resize(0, 0); // We won't need this data.
   }
@@ -111,7 +120,6 @@ void NnetUpdater::Propagate() {
 double NnetUpdater::ComputeObjfAndDeriv(
     const std::vector<NnetTrainingExample> &data,
     Matrix<BaseFloat> *deriv) const {
-  const BaseFloat floor = 1.0e-20; // Avoids division by zero.
   double tot_objf = 0.0, tot_weight = 0.0;
   int32 num_components = nnet_.NumComponents();  
   deriv->Resize(num_chunks_, nnet_.OutputDim()); // sets to zero.
@@ -123,11 +131,7 @@ double NnetUpdater::ComputeObjfAndDeriv(
       BaseFloat weight = data[m].labels[i].second;
       KALDI_ASSERT(label >= 0 && label < nnet_.OutputDim());
       BaseFloat this_prob = output(m, label);
-      if (this_prob < floor) {
-        KALDI_WARN << "Probability is " << this_prob << ", flooring to "
-                   << floor;
-        this_prob = floor;
-      }
+      KALDI_ASSERT(this_prob >= 0.99e-20); // we floored to 1.0e-20 in SoftmaxLayer.
       tot_objf += weight * log(this_prob);
       tot_weight += weight;
       (*deriv)(m, label) += weight / this_prob; // note: we could equally
@@ -164,15 +168,20 @@ void NnetUpdater::Backprop(const std::vector<NnetTrainingExample> &data,
 void NnetUpdater::FormatInput(const std::vector<NnetTrainingExample> &data) {
   KALDI_ASSERT(data.size() > 0);
   int32 num_splice = nnet_.LeftContext() + 1 + nnet_.RightContext();
-  KALDI_ASSERT(data[0].input_frames.NumRows() == num_splice);
-
+  KALDI_ASSERT(data[0].input_frames.NumRows() >= num_splice);
+  
   int32 feat_dim = data[0].input_frames.NumCols(),
          spk_dim = data[0].spk_info.Dim(),
          tot_dim = feat_dim + spk_dim; // we append these at the neural net
                                        // input... note, spk_dim might be 0.
   KALDI_ASSERT(tot_dim == nnet_.InputDim());
+  KALDI_ASSERT(data[0].left_context >= nnet_.LeftContext());
+  int32 ignore_frames = data[0].left_context - nnet_.LeftContext(); // If
+  // the NnetTrainingExample has more left-context than we need, ignore some.
+  // this may happen in settings where we increase the amount of context during
+  // training, e.g. by adding layers that require more context.
   num_chunks_ = data.size();
-
+  
   forward_data_.resize(nnet_.NumComponents() + 1);
   forward_data_[0].Resize(num_splice * num_chunks_,
                           tot_dim);
@@ -180,7 +189,10 @@ void NnetUpdater::FormatInput(const std::vector<NnetTrainingExample> &data) {
     SubMatrix<BaseFloat> dest(forward_data_[0],
                               chunk * num_splice, num_splice,
                               0, feat_dim);
-    const Matrix<BaseFloat> &src(data[chunk].input_frames);
+    
+    SubMatrix<BaseFloat> src(data[chunk].input_frames,
+                             ignore_frames, num_splice, 0, feat_dim);
+                             
     dest.CopyFromMat(src);
     if (spk_dim != 0) {
       SubMatrix<BaseFloat> spk_dest(forward_data_[0],
@@ -200,11 +212,16 @@ BaseFloat TotalNnetTrainingWeight(const std::vector<NnetTrainingExample> &egs) {
 }
 
 double DoBackprop(const Nnet &nnet,
-                     const std::vector<NnetTrainingExample> &examples,
-                     Nnet *nnet_to_update) {
-  KALDI_ASSERT(nnet_to_update != NULL && "Call ComputeNnetObjf() instead.");
-  NnetUpdater updater(nnet, nnet_to_update);
-  return updater.ComputeForMinibatch(examples);  
+                  const std::vector<NnetTrainingExample> &examples,
+                  Nnet *nnet_to_update) {
+  try {
+    KALDI_ASSERT(nnet_to_update != NULL && "Call ComputeNnetObjf() instead.");
+    NnetUpdater updater(nnet, nnet_to_update);
+    return updater.ComputeForMinibatch(examples);
+  } catch (...) {
+    KALDI_LOG << "Error doing backprop, nnet info is: " << nnet.Info();
+    throw;
+  }
 }
 
 double ComputeNnetObjf(const Nnet &nnet,
@@ -262,44 +279,6 @@ double ComputeNnetObjf(
   }
   return tot_objf;
 }
-
-
-void NnetTrainingExample::Write(std::ostream &os, bool binary) const {
-  // Note: weight, label, input_frames and spk_info are members.  This is a
-  // struct.
-  WriteToken(os, binary, "<NnetTrainingExample>");
-  WriteToken(os, binary, "<Labels>");
-  int32 size = labels.size();
-  WriteBasicType(os, binary, size);
-  for (int32 i = 0; i < size; i++) {
-    WriteBasicType(os, binary, labels[i].first);
-    WriteBasicType(os, binary, labels[i].second);
-  }
-  WriteToken(os, binary, "<InputFrames>");
-  input_frames.Write(os, binary);
-  WriteToken(os, binary, "<SpkInfo>");
-  spk_info.Write(os, binary);
-  WriteToken(os, binary, "</NnetTrainingExample>");
-}
-void NnetTrainingExample::Read(std::istream &is, bool binary) {
-  // Note: weight, label, input_frames and spk_info are members.  This is a
-  // struct.
-  ExpectToken(is, binary, "<NnetTrainingExample>");  
-  ExpectToken(is, binary, "<Labels>");
-  int32 size;
-  ReadBasicType(is, binary, &size);
-  labels.resize(size);
-  for (int32 i = 0; i < size; i++) {
-    ReadBasicType(is, binary, &(labels[i].first));
-    ReadBasicType(is, binary, &(labels[i].second));
-  }
-  ExpectToken(is, binary, "<InputFrames>");
-  input_frames.Read(is, binary);
-  ExpectToken(is, binary, "<SpkInfo>");
-  spk_info.Read(is, binary);
-  ExpectToken(is, binary, "</NnetTrainingExample>");
-}
-
 
   
   

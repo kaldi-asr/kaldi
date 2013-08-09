@@ -62,7 +62,10 @@ int main(int argc, char *argv[]) {
 
     std::vector<NnetStats> stats;
     GetNnetStats(config, am_nnet.GetNnet(), &stats);
-    KALDI_ASSERT(!stats.empty());
+    if (stats.empty()) {
+      KALDI_WARN << "No stats obtained (possibly nnet has wrong topology,"
+                 << "expect affine followed by (nonlinear but not softmax)";
+    }
     for (size_t i = 0; i < stats.size(); i++)
       stats[i].PrintStats(std::cout);
     return 0;

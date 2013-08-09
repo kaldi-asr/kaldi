@@ -18,18 +18,17 @@
      exp/tri4b/graph_bd_tgpr data/test_dev93 exp/nnet5c1/decode_bd_tgpr_dev93
 
   steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 8 \
-    --transform-dir exp/tri4b/decode_bd_tgpr_dev93 \
-     exp/tri4b/graph_bd_tgpr data/test_dev93 exp/nnet5c1/decode_bd_tgpr_dev93
+    --transform-dir exp/tri4b/decode_bd_tgpr_eval92 \
+     exp/tri4b/graph_bd_tgpr data/test_eval92 exp/nnet5c1/decode_bd_tgpr_eval92
 )
 
 
-(
- steps/train_nnet_cpu_mmi.sh --boost 0.1 --initial-learning-rate 0.001 \
-   --minibatch-size 128 --cmd "$decode_cmd" --transform-dir exp/tri4b_ali_si284 \
-   data/train data/lang exp/tri5c1_nnet exp/tri5c1_nnet exp/tri5c1_denlats exp/tri5c1_mmi_a
+# (
+#  steps/train_nnet_cpu_mmi.sh --boost 0.1 --initial-learning-rate 0.001 \
+#    --minibatch-size 128 --cmd "$decode_cmd" --transform-dir exp/tri4b_ali_si284 \
+#    data/train data/lang exp/tri5c1_nnet exp/tri5c1_nnet exp/tri5c1_denlats exp/tri5c1_mmi_a
  
- steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
-   --transform-dir exp/tri3b/decode \
-   exp/tri3b/graph data/test exp/tri5c1_mmi_a/decode
-)&
-
+#  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 20 \
+#    --transform-dir exp/tri3b/decode \
+#    exp/tri3b/graph data/test exp/tri5c1_mmi_a/decode
+# )&

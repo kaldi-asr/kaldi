@@ -3,16 +3,13 @@
 # Apache 2.0
 
 
-# This script operates on a directory, such as in data/train/,
-# that contains some subset of the following files:
-#  feats.scp
-#  wav.scp
-#  spk2utt
-#  utt2spk
-#  text
-# It creates a subset of that data, consisting of some specified
-# number of utterances.  (The selected utterances are distributed
-# evenly throughout the file, by the program ./subset_scp.pl).
+# This script operates on a data directory, such as in data/train/.
+# See http://kaldi.sourceforge.net/data_prep.html#data_prep_data
+# for what these directories contain.
+
+# The script It creates a subset of that data, consisting of some specified
+# number of utterances.  (The selected utterances are distributed evenly
+# throughout the file, by the program ./subset_scp.pl).
 
 # There are four options, none compatible with any other.
 

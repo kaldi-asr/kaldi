@@ -105,6 +105,6 @@ void LimitRankParallel(const NnetLimitRankOpts &opts,
   }
 }
 
-  
+
 } // namespace nnet2
 } // namespace kaldi

@@ -28,7 +28,8 @@ struct LdaEstimateOptions {
   bool remove_offset;
   int32 dim;
   bool allow_large_dim;
-  BaseFloat within_class_factor;
+  BaseFloat within_class_factor; // TODO: remove this eventually, it
+  // is deprecated (that code is now in ../nnet-cpu/get-feature-transform.{h,cc})
   LdaEstimateOptions(): remove_offset(false), dim(40), allow_large_dim(false),
                         within_class_factor(1.0) { }
   
@@ -38,7 +39,7 @@ struct LdaEstimateOptions {
     po->Register("dim", &dim, "Dimension to project to with LDA");
     po->Register("allow-large-dim", &allow_large_dim, "If true, allow an LDA "
                  "dimension larger than the number of classes.");
-    po->Register("within-class-factor", &within_class_factor, "If 1.0, do "
+    po->Register("within-class-factor", &within_class_factor, "(Deprecated) If 1.0, do "
                  "conventional LDA where the within-class variance will be "
                  "unit in the projected space.  May be set to less than 1.0, "
                  "which scales the features to have less variance, particularly "
@@ -84,15 +85,21 @@ class LdaEstimate {
   void Read(std::istream &in_stream, bool binary, bool add);
   void Write(std::ostream &out_stream, bool binary) const;
 
- private:
+ protected:
   Vector<double> zero_acc_;
   Matrix<double> first_acc_;
   SpMatrix<double> total_second_acc_;
 
   /// This function modifies the LDA matrix so that it
   /// also subtracts the mean feature value.
-  void AddMeanOffset(const VectorBase<double> &total_mean,
-                     Matrix<BaseFloat> *projection) const;
+  static void AddMeanOffset(const VectorBase<double> &total_mean,
+                            Matrix<BaseFloat> *projection);
+
+  /// Extract a more processed form of the stats.
+  void GetStats(SpMatrix<double> *total_covar,
+                SpMatrix<double> *between_covar,
+                Vector<double> *total_mean,
+                double *sum) const;
   
   // Disallow assignment operator.
   LdaEstimate &operator = (const LdaEstimate &other);

@@ -38,8 +38,7 @@ int main(int argc, char *argv[]) {
         "Also see nnet-logprob, which produces a matrix of log-probs for each utterance.\n"
         "\n"
         "Usage:  nnet-compute-prob [options] <model-in> <training-examples-in>\n"
-        "\n"
-        "nnet-randomize-frames [args] | nnet-compute-prob 1.nnet ark:-\n";
+        "e.g.: nnet-compute-prob 1.nnet ark:valid.egs\n";
     
     ParseOptions po(usage);
 
@@ -64,31 +63,30 @@ int main(int argc, char *argv[]) {
 
 
     std::vector<NnetTrainingExample> examples;
-    double tot_like = 0, tot_frames = 0;
+    double tot_like = 0;
     int64 num_examples = 0;
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
     for (; !example_reader.Done(); example_reader.Next(), num_examples++) {
       if (examples.size() == 1000) {
         tot_like += ComputeNnetObjf(am_nnet.GetNnet(), examples);
-        tot_frames += examples.size();
         examples.clear();
       }
       examples.push_back(example_reader.Value());
       if (num_examples % 5000 == 0 && num_examples > 0)
         KALDI_LOG << "Saw " << num_examples << " examples, average "
-                  << "probability is " << (tot_like / tot_frames) << " with "
-                  << "total weight " << tot_frames;
+                  << "probability is " << (tot_like / num_examples) << " with "
+                  << "total weight " << num_examples;
     }
     if (!examples.empty()) {
       tot_like += ComputeNnetObjf(am_nnet.GetNnet(), examples);
-      tot_frames += examples.size();
+      num_examples += examples.size();
     }
 
     KALDI_LOG << "Saw " << num_examples << " examples, average "
-              << "probability is " << (tot_like / tot_frames) << " with "
-              << "total weight " << tot_frames;
+              << "probability is " << (tot_like / num_examples) << " with "
+              << "total weight " << num_examples;
     
-    std::cout << (tot_like / tot_frames) << "\n";
+    std::cout << (tot_like / num_examples) << "\n";
     return (num_examples == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

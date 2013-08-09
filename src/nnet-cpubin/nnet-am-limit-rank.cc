@@ -72,8 +72,8 @@ int main(int argc, char *argv[]) {
       trans_model.Write(ko.Stream(), binary_write);
       am_nnet.Write(ko.Stream(), binary_write);
     }
-    KALDI_LOG << "Copied neural net from " << nnet_rxfilename
-              << " to " << nnet_wxfilename;
+    KALDI_LOG << "Limited rank of neural net " << nnet_rxfilename
+              << " and copied to " << nnet_wxfilename;
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

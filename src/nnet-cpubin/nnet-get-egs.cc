@@ -1,6 +1,6 @@
 // nnet-cpubin/nnet-get-egs.cc
 
-// Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
+// Copyright 2012-2013  Johns Hopkins University (author:  Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ namespace nnet2 {
 // (will be either floor(expected_count) or ceil(expected_count)).
 // this will go into an infinite loop if expected_count is very huge, but
 // it should never be that huge.
+// In the normal case, "expected_count" will be between zero and one.
 int32 GetCount(double expected_count) {
   KALDI_ASSERT(expected_count >= 0.0);
   int32 ans = 0;
@@ -51,6 +52,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   NnetTrainingExample eg;
   eg.input_frames.Resize(left_context + 1 + right_context,
                          feats.NumCols());
+  eg.left_context = left_context;
   eg.spk_info = spk_info;
   for (int32 i = 0; i < feats.NumRows(); i++) {
     int32 count = GetCount(keep_proportion); // number of times
@@ -113,10 +115,12 @@ int main(int argc, char *argv[]) {
     int32 srand_seed = 0;
     BaseFloat keep_proportion = 1.0;
     
-    std::string spk_vecs_rspecifier;
+    std::string spk_vecs_rspecifier, utt2spk_rspecifier;
     
     ParseOptions po(usage);
     po.Register("spk-vecs", &spk_vecs_rspecifier, "Rspecifier for speaker vectors");
+    po.Register("utt2spk", &utt2spk_rspecifier, "Rspecifier for "
+                "speaker-to-utterance map (relevant if --spk-vecs option used)");
     po.Register("left-context", &left_context, "Number of frames of left context "
                 "the neural net requires.");
     po.Register("right-context", &right_context, "Number of frames of right context "
@@ -144,7 +148,8 @@ int main(int argc, char *argv[]) {
     // Read in all the training files.
     SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
-    RandomAccessBaseFloatVectorReader vecs_reader(spk_vecs_rspecifier); // may be empty.
+    RandomAccessBaseFloatVectorReaderMapped vecs_reader(
+        spk_vecs_rspecifier, utt2spk_rspecifier);
     NnetTrainingExampleWriter example_writer(examples_wspecifier);
     
     int32 num_done = 0, num_err = 0;

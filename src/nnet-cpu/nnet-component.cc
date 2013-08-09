@@ -52,6 +52,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new RectifiedLinearComponent();
   } else if (component_type == "SoftHingeComponent") {
     ans = new SoftHingeComponent();
+  } else if (component_type == "ScaleComponent") {
+    ans = new ScaleComponent();
   } else if (component_type == "SqrtSoftHingeComponent") {
     ans = new SqrtSoftHingeComponent();
   } else if (component_type == "PowerExpandComponent") {
@@ -60,22 +62,32 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new ReduceComponent();
   } else if (component_type == "AffineComponent") {
     ans = new AffineComponent();
+  } else if (component_type == "MaxAffineComponent") {
+    ans = new MaxAffineComponent();
+  } else if (component_type == "PiecewiseLinearComponent") {
+    ans = new PiecewiseLinearComponent();
   } else if (component_type == "AffineComponentA") {
     ans = new AffineComponentA();
   } else if (component_type == "AffineComponentPreconditioned") {
     ans = new AffineComponentPreconditioned();
+  } else if (component_type == "AffineComponentModified") {
+    ans = new AffineComponentModified();
   } else if (component_type == "AffinePreconInputComponent") {
     ans = new AffinePreconInputComponent();
   } else if (component_type == "MixtureProbComponent") {
     ans = new MixtureProbComponent();
   } else if (component_type == "BlockAffineComponent") {
     ans = new BlockAffineComponent();
+  } else if (component_type == "BlockAffineComponentPreconditioned") {
+    ans = new BlockAffineComponentPreconditioned();
   } else if (component_type == "PermuteComponent") {
     ans = new PermuteComponent();
   } else if (component_type == "DctComponent") {
     ans = new DctComponent();
   } else if (component_type == "FixedLinearComponent") {
     ans = new FixedLinearComponent();
+  } else if (component_type == "FixedAffineComponent") {
+    ans = new FixedAffineComponent();
   } else if (component_type == "SpliceComponent") {
     ans = new SpliceComponent();
   } else if (component_type == "SpliceMaxComponent") {
@@ -84,6 +96,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new DropoutComponent();
   } else if (component_type == "AdditiveNoiseComponent") {
     ans = new AdditiveNoiseComponent();
+  } else if (component_type == "InformationBottleneckComponent") {
+    ans = new InformationBottleneckComponent();
   }
   return ans;
 }
@@ -271,8 +285,16 @@ Component *PermuteComponent::Copy() const {
 
 std::string Component::Info() const {
   std::stringstream stream;
-  stream << Type() << " component, inputDim=" << InputDim()
-         << ", outputDim=" << OutputDim();
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim();
+  return stream.str();
+}
+
+std::string UpdatableComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim() << ", learning-rate="
+         << LearningRate();
   return stream.str();
 }
 
@@ -366,9 +388,17 @@ void PowerExpandComponent::Write(std::ostream &os, bool binary) const {
 
 std::string PowerExpandComponent::Info() const {
   std::stringstream stream;
-  stream << Type() << ", input-dim = " << input_dim_
-         << ", max-power = " << max_power_;
+  stream << Type() << ", input-dim=" << input_dim_
+         << ", max-power=" << max_power_;
   return stream.str();
+}
+
+void NonlinearComponent::SetDim(int32 dim) {
+  KALDI_ASSERT(dim>0);
+  dim_ = dim;
+  value_sum_.Resize(dim);
+  deriv_sum_.Resize(dim);
+  count_ = 0.0;
 }
 
 void NonlinearComponent::UpdateStats(const MatrixBase<BaseFloat> &out_value,
@@ -400,8 +430,10 @@ void NonlinearComponent::Add(BaseFloat alpha, const NonlinearComponent &other) {
     value_sum_.Resize(other.value_sum_.Dim());
   if (deriv_sum_.Dim() == 0 && other.deriv_sum_.Dim() != 0)
     deriv_sum_.Resize(other.deriv_sum_.Dim());
-  value_sum_.AddVec(alpha, other.value_sum_);
-  deriv_sum_.AddVec(alpha, other.deriv_sum_);
+  if (other.value_sum_.Dim() != 0)
+    value_sum_.AddVec(alpha, other.value_sum_);
+  if (other.deriv_sum_.Dim() != 0)
+    deriv_sum_.AddVec(alpha, other.deriv_sum_);
   count_ += alpha * other.count_;
 }
 
@@ -622,6 +654,68 @@ void SoftHingeComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
 }  
 
 
+void ScaleComponent::Propagate(const MatrixBase<BaseFloat> &in,
+                                   int32, // num_chunks
+                                   Matrix<BaseFloat> *out) const {
+  *out = in;
+  out->Scale(scale_);
+}
+
+void ScaleComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
+                              const MatrixBase<BaseFloat> &, // out_value,
+                              const MatrixBase<BaseFloat> &out_deriv,
+                              int32, // num_chunks
+                              Component *, // to_update
+                              Matrix<BaseFloat> *in_deriv) const {
+
+  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols(),
+                   kUndefined);
+  in_deriv->CopyFromMat(out_deriv);
+  in_deriv->Scale(scale_);
+}  
+
+void ScaleComponent::Init(int32 dim, BaseFloat scale) {
+  dim_ = dim;
+  scale_ = scale;
+  KALDI_ASSERT(dim_ > 0);
+  KALDI_ASSERT(scale_ != 0.0);
+}
+
+void ScaleComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  int32 dim;
+  BaseFloat scale;
+  if (!ParseFromString("dim", &args, &dim))
+    KALDI_ERR << "Dimension not specified for ScaleComponent in config file";
+  if (!ParseFromString("scale", &args, &scale))
+    KALDI_ERR << "Scale not specified for ScaleComponent in config file";
+  Init(dim, scale);
+}
+
+void ScaleComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ScaleComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<Scale>");
+  WriteBasicType(os, binary, scale_);
+  WriteToken(os, binary, "</ScaleComponent>");
+}
+
+void ScaleComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<ScaleComponent>", "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<Scale>");
+  ReadBasicType(is, binary, &scale_);
+  ExpectToken(is, binary, "</ScaleComponent>");
+}
+
+std::string ScaleComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", dim=" << dim_ << ", scale=" << scale_;
+  return stream.str();
+}
+
+
 void SqrtSoftHingeComponent::Propagate(const MatrixBase<BaseFloat> &in,
                                        int32, // num_chunks
                                        Matrix<BaseFloat> *out) const {
@@ -684,6 +778,9 @@ void SoftmaxComponent::Propagate(const MatrixBase<BaseFloat> &in,
     SubVector<BaseFloat> row(*out, r);
     row.ApplySoftMax();
   }
+  // This floor on the output helps us deal with
+  // almost-zeros in a way that doesn't lead to overflow.
+  out->ApplyFloor(1.0e-20);
 }
 
 void SoftmaxComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
@@ -840,11 +937,11 @@ std::string AffineComponent::Info() const {
                 linear_params_size),
       bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
                               bias_params_.Dim());
-  stream << Type() << " component, inputDim=" << InputDim()
-         << ", outputDim=" << OutputDim()
-         << ", linear-params stddev = " << linear_stddev
-         << ", bias-params stddev = " << bias_stddev
-         << ", learning rate = " << LearningRate();
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", linear-params-stddev=" << linear_stddev
+         << ", bias-params-stddev=" << bias_stddev
+         << ", learning-rate=" << LearningRate();
   return stream.str();
 }
 
@@ -866,8 +963,7 @@ BaseFloat AffineComponent::DotProduct(const UpdatableComponent &other_in) const 
 
 void AffineComponent::Init(BaseFloat learning_rate, 
                            int32 input_dim, int32 output_dim,
-                           BaseFloat param_stddev, BaseFloat bias_stddev,
-                           bool precondition) {
+                           BaseFloat param_stddev, BaseFloat bias_stddev) {
   UpdatableComponent::Init(learning_rate);
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
@@ -878,27 +974,49 @@ void AffineComponent::Init(BaseFloat learning_rate,
   bias_params_.Scale(bias_stddev);
 }
 
+void AffineComponent::Init(BaseFloat learning_rate,
+                           std::string matrix_filename) {
+  UpdatableComponent::Init(learning_rate);  
+  Matrix<BaseFloat> mat;
+  ReadKaldiObject(matrix_filename, &mat); // will abort on failure.
+  KALDI_ASSERT(mat.NumCols() >= 2);
+  int32 input_dim = mat.NumCols() - 1, output_dim = mat.NumRows();
+  linear_params_.Resize(output_dim, input_dim);
+  bias_params_.Resize(output_dim);
+  linear_params_.CopyFromMat(mat.Range(0, output_dim, 0, input_dim));
+  bias_params_.CopyColFromMat(mat, input_dim);
+}
+
 void AffineComponent::InitFromString(std::string args) {
   std::string orig_args(args);
   bool ok = true;
   BaseFloat learning_rate = learning_rate_;
-  bool precondition = false;
+  std::string matrix_filename;
   int32 input_dim = -1, output_dim = -1;
   ParseFromString("learning-rate", &args, &learning_rate); // optional.
-  ok = ok && ParseFromString("input-dim", &args, &input_dim);
-  ok = ok && ParseFromString("output-dim", &args, &output_dim);
-  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
-      bias_stddev = 1.0;
-  ParseFromString("param-stddev", &args, &param_stddev);
-  ParseFromString("bias-stddev", &args, &bias_stddev);
-  ParseFromString("precondition", &args, &precondition);
+  if (ParseFromString("matrix", &args, &matrix_filename)) {    
+    Init(learning_rate, matrix_filename);
+    if (ParseFromString("input-dim", &args, &input_dim))
+      KALDI_ASSERT(input_dim == InputDim() &&
+                   "input-dim mismatch vs. matrix.");
+    if (ParseFromString("output-dim", &args, &output_dim))
+      KALDI_ASSERT(output_dim == OutputDim() &&
+                   "output-dim mismatch vs. matrix.");
+  } else {
+    ok = ok && ParseFromString("input-dim", &args, &input_dim);
+    ok = ok && ParseFromString("output-dim", &args, &output_dim);
+    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+        bias_stddev = 1.0;
+    ParseFromString("param-stddev", &args, &param_stddev);
+    ParseFromString("bias-stddev", &args, &bias_stddev);
+    Init(learning_rate, input_dim, output_dim,
+         param_stddev, bias_stddev);    
+  }
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: "
               << args;
   if (!ok)
     KALDI_ERR << "Bad initializer " << orig_args;
-  Init(learning_rate, input_dim, output_dim,
-       param_stddev, bias_stddev, precondition);
 }
 
 
@@ -1003,6 +1121,591 @@ void AffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
                                         OutputDim()));
 }
 
+void AffineComponent::LimitRank(int32 d,
+                                AffineComponent **a, AffineComponent **b) const {
+  KALDI_ASSERT(d <= InputDim());
+
+  // We'll limit the rank of just the linear part, keeping the bias vector full.
+  Matrix<BaseFloat> M (linear_params_);
+  int32 rows = M.NumRows(), cols = M.NumCols(), rc_min = std::min(rows, cols);
+  Vector<BaseFloat> s(rc_min);
+  Matrix<BaseFloat> U(rows, rc_min), Vt(rc_min, cols);
+  // Do the destructive svd M = U diag(s) V^T.  It actually outputs the transpose of V.
+  M.DestructiveSvd(&s, &U, &Vt);
+  SortSvd(&s, &U, &Vt); // Sort the singular values from largest to smallest.
+  BaseFloat old_svd_sum = s.Sum();
+  U.Resize(rows, d, kCopyData);
+  s.Resize(d, kCopyData);
+  Vt.Resize(d, cols, kCopyData);
+  BaseFloat new_svd_sum = s.Sum();
+  KALDI_LOG << "Reduced rank from "
+            << rc_min <<  " to " << d << ", SVD sum reduced from "
+            << old_svd_sum << " to " << new_svd_sum;
+
+  // U.MulColsVec(s); // U <-- U diag(s)
+  Vt.MulRowsVec(s); // Vt <-- diag(s) Vt.
+
+  *a = dynamic_cast<AffineComponent*>(this->Copy());
+  *b = dynamic_cast<AffineComponent*>(this->Copy());
+  
+  (*a)->bias_params_.Resize(d, kSetZero);
+  (*a)->linear_params_ = Vt;
+  
+  (*b)->bias_params_ = this->bias_params_;
+  (*b)->linear_params_ = U;
+}
+
+Component *AffineComponent::CollapseWithNext(
+    const AffineComponent &next_component) const {
+  AffineComponent *ans = dynamic_cast<AffineComponent*>(this->Copy());
+  KALDI_ASSERT(ans != NULL);
+  // Note: it's possible that "ans" is really of a derived type such
+  // as AffineComponentPreconditioned, but this will still work.
+  // the "copy" call will copy things like learning rates, "alpha" value
+  // for preconditioned component, etc.
+  ans->linear_params_.Resize(next_component.OutputDim(), InputDim());
+  ans->bias_params_ = next_component.bias_params_;
+
+  ans->linear_params_.AddMatMat(1.0, next_component.linear_params_, kNoTrans,
+                                this->linear_params_, kNoTrans, 0.0);
+  ans->bias_params_.AddMatVec(1.0, next_component.linear_params_, kNoTrans,
+                              this->bias_params_, 1.0);
+  return ans;
+}
+
+Component *AffineComponent::CollapseWithNext(
+    const FixedAffineComponent &next_component) const {
+  // If at least one was non-updatable, make the whole non-updatable.
+  FixedAffineComponent *ans =
+      dynamic_cast<FixedAffineComponent*>(next_component.Copy());
+  KALDI_ASSERT(ans != NULL);
+  ans->linear_params_.Resize(next_component.OutputDim(), InputDim());
+  ans->bias_params_ = next_component.bias_params_;
+
+  ans->linear_params_.AddMatMat(1.0, next_component.linear_params_, kNoTrans,
+                                this->linear_params_, kNoTrans, 0.0);
+  ans->bias_params_.AddMatVec(1.0, next_component.linear_params_, kNoTrans,
+                              this->bias_params_, 1.0);
+  return ans;
+}
+
+Component *AffineComponent::CollapseWithPrevious(
+    const FixedAffineComponent &prev_component) const {
+  // If at least one was non-updatable, make the whole non-updatable.
+  FixedAffineComponent *ans =
+      dynamic_cast<FixedAffineComponent*>(prev_component.Copy());
+  KALDI_ASSERT(ans != NULL);
+
+  ans->linear_params_.Resize(this->OutputDim(), prev_component.InputDim());
+  ans->bias_params_ = this->bias_params_;
+
+  ans->linear_params_.AddMatMat(1.0, this->linear_params_, kNoTrans,
+                                prev_component.linear_params_, kNoTrans, 0.0);
+  ans->bias_params_.AddMatVec(1.0, this->linear_params_, kNoTrans,
+                              prev_component.bias_params_, 1.0);
+  return ans;
+}
+
+void MaxAffineComponent::Scale(BaseFloat scale) {
+  linear_params_.Scale(scale);
+  bias_params_.Scale(scale);
+}
+
+void MaxAffineComponent::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
+  const MaxAffineComponent *other =
+      dynamic_cast<const MaxAffineComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  linear_params_.AddMat(alpha, other->linear_params_);
+  bias_params_.AddMat(alpha, other->bias_params_);
+}
+
+MaxAffineComponent::MaxAffineComponent(const MaxAffineComponent &component):
+    UpdatableComponent(component),
+    linear_params_(component.linear_params_),
+    bias_params_(component.bias_params_),
+    is_gradient_(component.is_gradient_),
+    max_change_(component.max_change_) { }
+
+void MaxAffineComponent::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient) {
+    SetLearningRate(1.0);
+    is_gradient_ = true;    
+  }
+  linear_params_.SetZero();
+  bias_params_.SetZero();
+}
+
+void MaxAffineComponent::PerturbParams(BaseFloat stddev) {
+  Matrix<BaseFloat> temp_linear_params(linear_params_);
+  temp_linear_params.SetRandn();
+  linear_params_.AddMat(stddev, temp_linear_params);
+  
+  Matrix<BaseFloat> temp_bias_params(bias_params_);
+  temp_bias_params.SetRandn();
+  bias_params_.AddMat(stddev, temp_bias_params);
+}
+
+
+std::string MaxAffineComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat params_size = static_cast<BaseFloat>(linear_params_.NumRows())
+      * static_cast<BaseFloat>(linear_params_.NumCols());
+  BaseFloat linear_stddev =
+      std::sqrt(TraceMatMat(linear_params_, linear_params_, kTrans) / 
+                params_size),
+      bias_stddev =
+      std::sqrt(TraceMatMat(bias_params_, bias_params_, kTrans) /
+                params_size);
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", linear-params-stddev=" << linear_stddev
+         << ", bias-params-stddev=" << bias_stddev
+         << ", learning-rate=" << LearningRate()
+         << ", max-change=" << max_change_;
+  return stream.str();
+}
+
+Component* MaxAffineComponent::Copy() const {
+  MaxAffineComponent *ans = new MaxAffineComponent();
+  ans->learning_rate_ = learning_rate_;
+  ans->linear_params_ = linear_params_;
+  ans->bias_params_ = bias_params_;
+  ans->is_gradient_ = is_gradient_;
+  ans->max_change_ = max_change_;
+  return ans;
+}
+
+BaseFloat MaxAffineComponent::DotProduct(const UpdatableComponent &other_in) const {
+  const MaxAffineComponent *other =
+      dynamic_cast<const MaxAffineComponent*>(&other_in);
+  return TraceMatMat(linear_params_, other->linear_params_, kTrans)
+      + TraceMatMat(bias_params_, other->bias_params_, kTrans);
+}
+
+void MaxAffineComponent::Init(BaseFloat learning_rate, 
+                              int32 input_dim, int32 output_dim,
+                              BaseFloat param_stddev,
+                              BaseFloat bias_stddev,
+                              BaseFloat max_change) {
+  UpdatableComponent::Init(learning_rate);
+  linear_params_.Resize(output_dim, input_dim);
+  bias_params_.Resize(output_dim, input_dim);
+  KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
+  linear_params_.SetRandn(); // sets to random normally distributed noise.
+  linear_params_.Scale(param_stddev);
+  bias_params_.SetRandn();
+  bias_params_.Scale(bias_stddev);
+  max_change_ = max_change;
+}
+
+void MaxAffineComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  bool ok = true;
+  BaseFloat learning_rate = learning_rate_, max_change = 0.0;
+
+  int32 input_dim = -1, output_dim = -1;
+  ParseFromString("learning-rate", &args, &learning_rate); // optional.
+  ParseFromString("max-change", &args, &max_change); // optional.
+  ok = ok && ParseFromString("input-dim", &args, &input_dim);
+  ok = ok && ParseFromString("output-dim", &args, &output_dim);
+  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+      bias_stddev = 1.0;
+  ParseFromString("param-stddev", &args, &param_stddev);
+  ParseFromString("bias-stddev", &args, &bias_stddev);
+  Init(learning_rate, input_dim, output_dim,
+       param_stddev, bias_stddev, max_change);
+  
+  if (!args.empty())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << args;
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << orig_args;
+}
+
+
+void MaxAffineComponent::Propagate(const MatrixBase<BaseFloat> &in,
+                                   int32, // num_chunks
+                                   Matrix<BaseFloat> *out) const {
+  out->Resize(in.NumRows(), OutputDim());
+
+  KALDI_ASSERT(in.NumCols() == InputDim());
+  
+
+  Vector<BaseFloat> temp(InputDim());
+  int32 out_dim = OutputDim(), num_frames = in.NumRows();
+  
+  for (int32 t = 0; t < num_frames; t++) {
+    SubVector<BaseFloat> in_row(in, t);
+    for (int32 o = 0; o < out_dim; o++) {
+      SubVector<BaseFloat> linear(linear_params_, o),
+          bias(bias_params_, o);
+      temp.CopyFromVec(bias);
+      temp.AddVecVec(1.0, in_row, linear, 1.0);
+      (*out)(t, o) = temp.Max();
+    }
+  }
+}
+
+
+void MaxAffineComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
+                                  const MatrixBase<BaseFloat> &,  // out_value
+                                  const MatrixBase<BaseFloat> &out_deriv,
+                                  int32, //  num_chunks
+                                  Component *to_update_in,
+                                  Matrix<BaseFloat> *in_deriv) const {
+  MaxAffineComponent *to_update = dynamic_cast<MaxAffineComponent*>(to_update_in);
+
+  in_deriv->Resize(out_deriv.NumRows(), InputDim());  
+  KALDI_ASSERT(in_value.NumRows() == out_deriv.NumRows() &&
+               in_value.NumCols() == InputDim());
+  
+  in_deriv->Resize(in_value.NumRows(), InputDim());
+  
+  Vector<BaseFloat> temp(InputDim());
+  int32 out_dim = OutputDim(), num_frames = in_value.NumRows();
+
+  BaseFloat learning_rate = (to_update != NULL ? to_update->learning_rate_ :
+                             0.0);
+  
+  Matrix<BaseFloat> delta_linear, delta_bias;
+  if (to_update != NULL && !to_update->is_gradient_ &&
+      to_update->max_change_ != 0.0) {
+    delta_linear.Resize(OutputDim(), InputDim());
+    delta_bias.Resize(OutputDim(), InputDim());
+  }
+
+  for (int32 t = 0; t < num_frames; t++) {
+    SubVector<BaseFloat> in_row(in_value, t);
+    for (int32 o = 0; o < out_dim; o++) {
+      BaseFloat oderiv = out_deriv(t, o);
+      SubVector<BaseFloat> linear(linear_params_, o),
+          bias(bias_params_, o);
+      temp.CopyFromVec(bias);
+      temp.AddVecVec(1.0, in_row, linear, 1.0);
+      int32 max_index;
+      temp.Max(&max_index);
+      
+      (*in_deriv)(t, max_index) += oderiv * linear(max_index);
+
+      if (to_update != NULL) {
+        if (delta_linear.NumRows() == 0) {
+          to_update->linear_params_(o, max_index) +=
+              learning_rate * oderiv * in_value(t, max_index);
+          to_update->bias_params_(o, max_index) +=
+              learning_rate * oderiv;
+        } else {
+          delta_linear(o, max_index) +=
+              learning_rate * oderiv * in_value(t, max_index);
+          delta_bias(o, max_index) +=
+              learning_rate * oderiv;
+        }
+      }
+    }
+  }
+  if (delta_linear.NumRows() != 0) {
+    delta_linear.ApplyCeiling(to_update->max_change_);
+    delta_linear.ApplyFloor(-to_update->max_change_);
+    delta_bias.ApplyCeiling(to_update->max_change_);
+    delta_bias.ApplyFloor(-to_update->max_change_);
+    to_update->linear_params_.AddMat(1.0, delta_linear);
+    to_update->bias_params_.AddMat(1.0, delta_bias);
+  }
+}
+
+void MaxAffineComponent::Read(std::istream &is, bool binary) {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<MaxAffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</MaxAffineComponent>"
+  // might not see the "<MaxAffineComponent>" part because
+  // of how ReadNew() works.
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);
+  ExpectToken(is, binary, "<IsGradient>");
+  ReadBasicType(is, binary, &is_gradient_);
+  ExpectToken(is, binary, "<MaxChange>");
+  ReadBasicType(is, binary, &max_change_);
+  ExpectToken(is, binary, ostr_end.str());
+}
+
+
+void MaxAffineComponent::Write(std::ostream &os, bool binary) const {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<MaxAffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</MaxAffineComponent>"
+  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "<MaxChange>");
+  WriteBasicType(os, binary, max_change_);
+  WriteToken(os, binary, ostr_end.str());
+}
+
+int32 MaxAffineComponent::GetParameterDim() const {
+  return InputDim() * OutputDim() * 2;
+}
+void MaxAffineComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  params->Range(0, InputDim() * OutputDim()).CopyRowsFromMat(linear_params_);
+  params->Range(InputDim() * OutputDim(),
+                InputDim() * OutputDim()).CopyRowsFromMat(bias_params_);
+}
+void MaxAffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  linear_params_.CopyRowsFromVec(params.Range(0, InputDim() * OutputDim()));
+  bias_params_.CopyRowsFromVec(params.Range(InputDim() * OutputDim(),
+                                            InputDim() * OutputDim()));
+}
+
+void PiecewiseLinearComponent::Scale(BaseFloat scale) {
+  params_.Scale(scale);
+}
+
+void PiecewiseLinearComponent::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
+  const PiecewiseLinearComponent *other =
+      dynamic_cast<const PiecewiseLinearComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  params_.AddMat(alpha, other->params_);
+}
+
+PiecewiseLinearComponent::PiecewiseLinearComponent(const PiecewiseLinearComponent &component):
+    UpdatableComponent(component),
+    params_(component.params_),
+    is_gradient_(component.is_gradient_),
+    max_change_(component.max_change_) { }
+
+void PiecewiseLinearComponent::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient) {
+    SetLearningRate(1.0);
+    is_gradient_ = true;    
+  }
+  params_.SetZero();
+}
+
+void PiecewiseLinearComponent::PerturbParams(BaseFloat stddev) {
+  Matrix<BaseFloat> temp_params(params_);
+  temp_params.SetRandn();
+  params_.AddMat(stddev, temp_params);
+}
+
+std::string PiecewiseLinearComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat params_size = static_cast<BaseFloat>(params_.NumRows())
+      * static_cast<BaseFloat>(params_.NumCols());
+  BaseFloat stddev =
+      std::sqrt(TraceMatMat(params_, params_, kTrans) / params_size);
+  Vector<BaseFloat> per_dim_mean(params_.NumCols());
+  Vector<BaseFloat> per_dim_stddev(params_.NumCols());
+  for (int32 dim = 0; dim < params_.NumCols(); dim++) {
+    Vector<BaseFloat> temp(params_.NumRows());
+    temp.CopyColFromMat(params_, dim);
+    BaseFloat mean = temp.Sum() / temp.Dim(),
+        scatter = VecVec(temp, temp) / temp.Dim(),
+        var = scatter - mean * mean,
+        stddev = std::sqrt(var);
+    per_dim_mean(dim) = mean;
+    per_dim_stddev(dim) = stddev;
+  }
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", N=" << (params_.NumCols() - 2)
+         << ", global-params-stddev=" << stddev
+         << ", params-mean=" << per_dim_mean
+         << ", params-stddev=" << per_dim_stddev
+         << ", learning-rate=" << LearningRate()
+         << ", max-change=" << max_change_;
+  return stream.str();
+}
+
+Component* PiecewiseLinearComponent::Copy() const {
+  PiecewiseLinearComponent *ans = new PiecewiseLinearComponent();
+  ans->learning_rate_ = learning_rate_;
+  ans->params_ = params_;
+  ans->is_gradient_ = is_gradient_;
+  ans->max_change_ = max_change_;
+  return ans;
+}
+
+BaseFloat PiecewiseLinearComponent::DotProduct(const UpdatableComponent &other_in) const {
+  const PiecewiseLinearComponent *other =
+      dynamic_cast<const PiecewiseLinearComponent*>(&other_in);
+  return TraceMatMat(params_, other->params_, kTrans);
+}
+
+void PiecewiseLinearComponent::Init(int32 dim, int32 N,
+                                    BaseFloat learning_rate,
+                                    BaseFloat max_change) {
+  UpdatableComponent::Init(learning_rate);
+  params_.Resize(dim, N + 2); // will set them to zero.
+  KALDI_ASSERT(N >= 3 && N % 2 == 1 &&
+               "PiecewiseLinearComponent: must have N >= 3 and odd.");
+  for (int32 i = 0; i < dim; i++) {
+    // The "middle" gamma index has c_i = 0.  If we
+    // initialize with all parameters zero except beta = 0.5 and the middle gamma
+    // = 0.5, then we have f(x) = 0.5 x + 0.5 |x| = max(x, 0), which is the
+    // same as the ReLU function.
+    BaseFloat beta = 0.5, middle_gamma = 0.5;
+    int32 middle_index = (N - 1) / 2;
+    params_(i, 1) = beta;
+    params_(i, middle_index + 2) = middle_gamma;
+  }
+  max_change_ = max_change;
+}
+
+void PiecewiseLinearComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  bool ok = true;
+  BaseFloat learning_rate = learning_rate_, max_change = 0.0;
+  int32 dim = -1, N = 1;
+  ParseFromString("learning-rate", &args, &learning_rate); // optional.
+  ParseFromString("max-change", &args, &max_change); // optional.
+  ok = ok && ParseFromString("dim", &args, &dim);
+  ok = ok && ParseFromString("N", &args, &N);
+
+  Init(dim, N, learning_rate, max_change);
+  
+  if (!args.empty())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << args;
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << orig_args;
+}
+
+
+void PiecewiseLinearComponent::Propagate(const MatrixBase<BaseFloat> &in,
+                                         int32, // num_chunks
+                                         Matrix<BaseFloat> *out) const {
+  out->Resize(in.NumRows(), OutputDim());
+
+  KALDI_ASSERT(in.NumCols() == InputDim());
+  
+
+  Vector<BaseFloat> temp(InputDim());
+  int32 dim = OutputDim(), num_frames = in.NumRows(), N = params_.NumCols() - 2;
+  BaseFloat tick = 2.0 / (N - 1);
+  // "tick" is the distance between the c_i.
+  
+  for (int32 t = 0; t < num_frames; t++) {
+    for (int32 d = 0; d < dim; d++) {
+      BaseFloat x = in(t, d);
+      BaseFloat alpha = params_(d, 0), beta = params_(d, 1);
+      BaseFloat y = alpha + x * beta;
+      for (int32 n = 0; n < N; n++) {
+        BaseFloat c_n = -1.0 + tick * n, gamma_n = params_(d, n + 2);
+        y += gamma_n * std::abs(x - c_n);
+      }
+      (*out)(t, d) = y;
+    }
+  }
+}
+
+
+void PiecewiseLinearComponent::Backprop(const MatrixBase<BaseFloat> &in_value,
+                                        const MatrixBase<BaseFloat> &,  // out_value
+                                        const MatrixBase<BaseFloat> &out_deriv,
+                                        int32, //  num_chunks
+                                        Component *to_update_in,
+                                        Matrix<BaseFloat> *in_deriv) const {
+
+  PiecewiseLinearComponent *to_update =
+      dynamic_cast<PiecewiseLinearComponent*>(to_update_in);
+
+  in_deriv->Resize(out_deriv.NumRows(), InputDim());  
+  KALDI_ASSERT(in_value.NumRows() == out_deriv.NumRows() &&
+               in_value.NumCols() == InputDim());
+  
+  in_deriv->Resize(in_value.NumRows(), InputDim());
+  
+  int32 dim = OutputDim(), num_frames = in_value.NumRows(),
+      N = params_.NumCols() - 2;
+  BaseFloat tick = 2.0 / (N - 1);
+  // "tick" is the distance between the c_i.
+  
+  Matrix<BaseFloat> param_deriv(params_.NumRows(), params_.NumCols());
+  
+  for (int32 t = 0; t < num_frames; t++) {
+    for (int32 d = 0; d < dim; d++) {
+      BaseFloat x = in_value(t, d), oderiv = out_deriv(t, d), ideriv = 0.0;
+      BaseFloat beta = params_(d, 1);
+      // in forward: y = alpha + x * beta.
+      ideriv += beta * oderiv; 
+      param_deriv(d, 0) += 1.0 * oderiv;
+      param_deriv(d, 1) += x * oderiv;
+      
+      for (int32 n = 0; n < N; n++) {
+        BaseFloat c_n = -1.0 + tick * n, gamma_n = params_(d, n + 2);
+        // in forward: y += gamma_n * std::abs(x - c_n);
+        ideriv += oderiv * gamma_n * (x >= c_n ? 1.0 : -1.0);
+        param_deriv(d, n + 2) += oderiv * std::abs(x - c_n);
+      }
+      (*in_deriv)(t, d) = ideriv;
+    }
+  }
+  if (to_update != NULL) {
+    if (to_update->is_gradient_ || to_update->max_change_ == 0.0) {
+      to_update->params_.AddMat(to_update->learning_rate_, param_deriv);
+    } else {
+      param_deriv.Scale(to_update->learning_rate_);
+      param_deriv.ApplyCeiling(to_update->max_change_);
+      param_deriv.ApplyFloor(-to_update->max_change_);
+      to_update->params_.AddMat(1.0, param_deriv);
+    }
+  }
+}
+
+void PiecewiseLinearComponent::Read(std::istream &is, bool binary) {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<PiecewiseLinearComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</PiecewiseLinearComponent>"
+  // might not see the "<PiecewiseLinearComponent>" part because
+  // of how ReadNew() works.
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<Params>");
+  params_.Read(is, binary);
+  ExpectToken(is, binary, "<IsGradient>");
+  ReadBasicType(is, binary, &is_gradient_);
+  ExpectToken(is, binary, "<MaxChange>");
+  ReadBasicType(is, binary, &max_change_);
+  ExpectToken(is, binary, ostr_end.str());
+}
+
+
+void PiecewiseLinearComponent::Write(std::ostream &os, bool binary) const {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<PiecewiseLinearComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</PiecewiseLinearComponent>"
+  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<Params>");
+  params_.Write(os, binary);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "<MaxChange>");
+  WriteBasicType(os, binary, max_change_);
+  WriteToken(os, binary, ostr_end.str());
+}
+
+int32 PiecewiseLinearComponent::GetParameterDim() const {
+  return params_.NumRows() * params_.NumCols();
+}
+
+void PiecewiseLinearComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  params->CopyRowsFromMat(params_);
+}
+void PiecewiseLinearComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  params_.CopyRowsFromVec(params);
+}
+
+
 void AffineComponentPreconditioned::Read(std::istream &is, bool binary) {
   std::ostringstream ostr_beg, ostr_end;
   ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponent>"
@@ -1036,34 +1739,60 @@ void AffineComponentPreconditioned::Read(std::istream &is, bool binary) {
 void AffineComponentPreconditioned::InitFromString(std::string args) {
   std::string orig_args(args);
   bool ok = true;
+  std::string matrix_filename;
   BaseFloat learning_rate = learning_rate_;
-  bool precondition = false;
+  BaseFloat alpha = 0.1, max_change = 0.0;
   int32 input_dim = -1, output_dim = -1;
   ParseFromString("learning-rate", &args, &learning_rate); // optional.
-  ok = ok && ParseFromString("input-dim", &args, &input_dim);
-  ok = ok && ParseFromString("output-dim", &args, &output_dim);
-  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
-      bias_stddev = 1.0, alpha = 0.1, max_change = 0.0;
-  ParseFromString("param-stddev", &args, &param_stddev);
-  ParseFromString("bias-stddev", &args, &bias_stddev);
-  ParseFromString("max-change", &args, &max_change);
-  ParseFromString("precondition", &args, &precondition);
   ParseFromString("alpha", &args, &alpha);
+  ParseFromString("max-change", &args, &max_change);
+
+  if (ParseFromString("matrix", &args, &matrix_filename)) {
+    Init(learning_rate, alpha, max_change, matrix_filename);
+    if (ParseFromString("input-dim", &args, &input_dim))
+      KALDI_ASSERT(input_dim == InputDim() &&
+                   "input-dim mismatch vs. matrix.");
+    if (ParseFromString("output-dim", &args, &output_dim))
+      KALDI_ASSERT(output_dim == OutputDim() &&
+                   "output-dim mismatch vs. matrix.");
+  } else {
+    ok = ok && ParseFromString("input-dim", &args, &input_dim);
+    ok = ok && ParseFromString("output-dim", &args, &output_dim);
+    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+        bias_stddev = 1.0;
+    ParseFromString("param-stddev", &args, &param_stddev);
+    ParseFromString("bias-stddev", &args, &bias_stddev);
+    Init(learning_rate, input_dim, output_dim, param_stddev,
+         bias_stddev, alpha, max_change);
+  }
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: "
               << args;
   if (!ok)
     KALDI_ERR << "Bad initializer " << orig_args;
-  Init(learning_rate, input_dim, output_dim, param_stddev,
-       bias_stddev, precondition, alpha, max_change);
+}
+
+void AffineComponentPreconditioned::Init(BaseFloat learning_rate,
+                                         BaseFloat alpha, BaseFloat max_change,
+                                         std::string matrix_filename) {
+  UpdatableComponent::Init(learning_rate);
+  alpha_ = alpha;
+  max_change_ = max_change;
+  Matrix<BaseFloat> mat;
+  ReadKaldiObject(matrix_filename, &mat); // will abort on failure.
+  KALDI_ASSERT(mat.NumCols() >= 2);
+  int32 input_dim = mat.NumCols() - 1, output_dim = mat.NumRows();
+  linear_params_.Resize(output_dim, input_dim);
+  bias_params_.Resize(output_dim);
+  linear_params_.CopyFromMat(mat.Range(0, output_dim, 0, input_dim));
+  bias_params_.CopyColFromMat(mat, input_dim);
 }
 
 void AffineComponentPreconditioned::Init(
     BaseFloat learning_rate, 
     int32 input_dim, int32 output_dim,
     BaseFloat param_stddev, BaseFloat bias_stddev,
-    bool precondition, BaseFloat alpha,
-    BaseFloat max_change) {
+    BaseFloat alpha, BaseFloat max_change) {
   UpdatableComponent::Init(learning_rate);
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
@@ -1106,13 +1835,13 @@ std::string AffineComponentPreconditioned::Info() const {
                 linear_params_size),
       bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
                               bias_params_.Dim());
-  stream << Type() << " component, inputDim=" << InputDim()
-         << ", outputDim=" << OutputDim()
-         << ", linear-params stddev = " << linear_stddev
-         << ", bias-params stddev = " << bias_stddev
-         << ", learning rate = " << LearningRate()
-         << ", alpha = " << alpha_
-         << ", max-change = " << max_change_;
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", linear-params-stddev=" << linear_stddev
+         << ", bias-params-stddev=" << bias_stddev
+         << ", learning-rate=" << LearningRate()
+         << ", alpha=" << alpha_
+         << ", max-change=" << max_change_;
   return stream.str();
 }
 
@@ -1152,7 +1881,8 @@ BaseFloat AffineComponentPreconditioned::GetScalingFactor(
     BaseFloat ans = max_change_ / sum;
     if (scaling_factor_printed < 10) {
       KALDI_LOG << "Limiting step size to " << max_change_
-                << " using scaling factor " << ans;
+                << " using scaling factor " << ans << ", for component index "
+                << Index();
       scaling_factor_printed++;
     }
     return ans;
@@ -1206,6 +1936,241 @@ void AffineComponentPreconditioned::Update(
   linear_params_.AddMatMat(local_lrate, out_deriv_precon, kTrans,
                            in_value_precon_part, kNoTrans, 1.0);
 }
+
+void AffineComponentModified::Read(std::istream &is, bool binary) {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</AffineComponent>"
+  // might not see the "<AffineComponent>" part because
+  // of how ReadNew() works.
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);
+  ExpectToken(is, binary, "<CutoffLength>");
+  ReadBasicType(is, binary, &cutoff_length_);
+  ExpectToken(is, binary, "<MaxChange>");
+  ReadBasicType(is, binary, &max_change_);
+  ExpectToken(is, binary, ostr_end.str());
+}
+
+
+void AffineComponentModified::InitFromString(std::string args) {
+  std::string orig_args(args);
+  bool ok = true;
+  std::string matrix_filename;
+  BaseFloat learning_rate = learning_rate_;
+  BaseFloat cutoff_length = 0.25, max_change = 0.1;
+  int32 input_dim = -1, output_dim = -1;
+  ParseFromString("learning-rate", &args, &learning_rate); // optional.
+  ParseFromString("cutoff-length", &args, &cutoff_length);
+  ParseFromString("max-change", &args, &max_change);
+
+  if (ParseFromString("matrix", &args, &matrix_filename)) {
+    Init(learning_rate, cutoff_length, max_change, matrix_filename);
+    if (ParseFromString("input-dim", &args, &input_dim))
+      KALDI_ASSERT(input_dim == InputDim() &&
+                   "input-dim mismatch vs. matrix.");
+    if (ParseFromString("output-dim", &args, &output_dim))
+      KALDI_ASSERT(output_dim == OutputDim() &&
+                   "output-dim mismatch vs. matrix.");
+  } else {
+    ok = ok && ParseFromString("input-dim", &args, &input_dim);
+    ok = ok && ParseFromString("output-dim", &args, &output_dim);
+    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+        bias_stddev = 0.0;
+    ParseFromString("param-stddev", &args, &param_stddev);
+    ParseFromString("bias-stddev", &args, &bias_stddev);
+    Init(learning_rate, input_dim, output_dim, param_stddev,
+         bias_stddev, cutoff_length, max_change);
+  }
+  if (!args.empty())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << args;
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << orig_args;
+}
+
+void AffineComponentModified::Init(BaseFloat learning_rate, BaseFloat length_cutoff,
+                                   BaseFloat max_change, std::string matrix_filename) {
+  UpdatableComponent::Init(learning_rate);
+  cutoff_length_ = cutoff_length_;
+  max_change_ = max_change;
+  Matrix<BaseFloat> mat;
+  ReadKaldiObject(matrix_filename, &mat); // will abort on failure.
+  KALDI_ASSERT(mat.NumCols() >= 2);
+  int32 input_dim = mat.NumCols() - 1, output_dim = mat.NumRows();
+  linear_params_.Resize(output_dim, input_dim);
+  bias_params_.Resize(output_dim);
+  linear_params_.CopyFromMat(mat.Range(0, output_dim, 0, input_dim));
+  bias_params_.CopyColFromMat(mat, input_dim);
+}
+
+void AffineComponentModified::Init(
+    BaseFloat learning_rate, 
+    int32 input_dim, int32 output_dim,
+    BaseFloat param_stddev, BaseFloat bias_stddev,
+    BaseFloat cutoff_length, BaseFloat max_change) {
+  UpdatableComponent::Init(learning_rate);
+  linear_params_.Resize(output_dim, input_dim);
+  bias_params_.Resize(output_dim);
+  KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
+  linear_params_.SetRandn(); // sets to random normally distributed noise.
+  linear_params_.Scale(param_stddev);
+  bias_params_.SetRandn();
+  bias_params_.Scale(bias_stddev);
+  cutoff_length_ = cutoff_length;
+  KALDI_ASSERT(max_change_ > 0.0);
+  max_change_ = max_change; // Note: any value of max_change_is valid, but
+  // only values > 0.0 will actually activate the code.
+}
+
+
+void AffineComponentModified::Write(std::ostream &os, bool binary) const {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</AffineComponent>"
+  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "<CutoffLength>");
+  WriteBasicType(os, binary, cutoff_length_);
+  WriteToken(os, binary, "<MaxChange>");
+  WriteBasicType(os, binary, max_change_);
+  WriteToken(os, binary, ostr_end.str());
+}
+
+std::string AffineComponentModified::Info() const {
+  std::stringstream stream;
+  BaseFloat linear_params_size = static_cast<BaseFloat>(linear_params_.NumRows())
+      * static_cast<BaseFloat>(linear_params_.NumCols());
+  BaseFloat linear_stddev =
+      std::sqrt(TraceMatMat(linear_params_, linear_params_, kTrans) /
+                linear_params_size),
+      bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
+                              bias_params_.Dim());
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", linear-params-stddev=" << linear_stddev
+         << ", bias-params-stddev=" << bias_stddev
+         << ", learning-rate=" << LearningRate()
+         << ", cutoff_length=" << cutoff_length_
+         << ", max-change=" << max_change_;
+  return stream.str();
+}
+
+Component* AffineComponentModified::Copy() const {
+  AffineComponentModified *ans = new AffineComponentModified();
+  ans->learning_rate_ = learning_rate_;
+  ans->linear_params_ = linear_params_;
+  ans->bias_params_ = bias_params_;
+  ans->cutoff_length_ = cutoff_length_;
+  ans->max_change_ = max_change_;
+  ans->is_gradient_ = is_gradient_;
+  return ans;
+}
+
+void AffineComponentModified::Update(
+    const MatrixBase<BaseFloat> &in_value,
+    const MatrixBase<BaseFloat> &out_deriv) {
+
+  int32 output_dim = OutputDim(), input_dim = InputDim();
+
+  Matrix<BaseFloat> delta_params(output_dim, input_dim + 1);
+  
+  { // set delta_params to the change in parameters under a
+    // straightforward gradient descent.
+    SubMatrix<BaseFloat> linear_delta_params(delta_params,
+                                             0, output_dim,
+                                             0, input_dim);
+    linear_delta_params.AddMatMat(learning_rate_, out_deriv, kTrans,
+                                  in_value, kNoTrans, 0.0);
+    
+    Vector<BaseFloat> bias_delta_params(output_dim);
+    bias_delta_params.AddRowSumMat(learning_rate_, out_deriv);
+
+    delta_params.CopyColFromVec(bias_delta_params, input_dim);
+  }
+
+  // diagnostics:
+  int32 num_below_cutoff = 0, num_below_cutoff_limited = 0,
+      num_limited = 0;
+  
+  Vector<BaseFloat> param_row(input_dim + 1);
+  for (int32 d = 0; d < output_dim; d++) {
+    SubVector<BaseFloat> delta_param_row(delta_params, d);
+    // Get the corresponding row of current parameters:
+    param_row.Range(0, input_dim).CopyFromVec(linear_params_.Row(d));
+    param_row(input_dim) = bias_params_(d);
+ 
+    BaseFloat length = sqrt(VecVec(param_row, param_row)),
+        delta_length = sqrt(VecVec(delta_param_row, delta_param_row)),
+        dot_product = VecVec(param_row, delta_param_row);
+    if (length < cutoff_length_) {
+      // length is below cutoff -> do normal gradient descent, except to prevent
+      // very large changes, limit delta to cutoff_length_ times max_change_.
+      num_below_cutoff++;
+      if (delta_length > cutoff_length_ * max_change_) {
+        delta_param_row.Scale((cutoff_length_ * max_change_) / delta_length);
+        num_below_cutoff_limited++;
+      }
+    } else {
+      BaseFloat scale = 1.0; // We'll later scale delta_param_row by this much.
+      // First enforce that the length of delta_param_row cannot exceed the current
+      // length of the row times max_change_.
+      if (delta_length > length * max_change_) {
+        scale = (length * max_change_) / delta_length;
+        delta_length *= scale;
+        dot_product *= scale;
+        num_limited++;
+      }
+      // OK, now rescale the (param_row + delta_param_row)
+      // such that its length equals the original length of param_row plus
+      // the component of delta_param_row in the direction of param_row.
+      BaseFloat delta_length_in_direction = dot_product / length,
+          delta_length_perpendicular_sq =
+          delta_length * delta_length -
+          delta_length_in_direction * delta_length_in_direction;
+      KALDI_ASSERT(delta_length_perpendicular_sq >= 0.0);
+      // delta_length_in_direction equals the (signed) length of the component
+      // of delta_param_row in the same direction as "param_row",
+      // delta_length_perpendicular_sq is the squared length of the component
+      // perpendicular to that.
+      BaseFloat new_length = length + delta_length_in_direction;
+      // "new_length" is the length that we want the sum (param_row +
+      // delta_param_row) to be, but we will need to rescale to ensure this.
+      BaseFloat actual_length = sqrt(new_length * new_length +
+                                     delta_length_perpendicular_sq);
+      BaseFloat scaling_factor = new_length / actual_length;
+      // We want to scale (param_row + delta_param_row) by "scaling_factor",
+      // and express the result as an offset from param_row so we can add to it:
+      // we want scaling_factor * (param_row + delta_param_row) - param_row
+      // which equals param_row * (scaling_factor-1) + scaling_factor * delta_param_row.
+
+      delta_param_row.Scale(scale * scaling_factor); // The "scale" comes from a previous
+      // length-limiting operation, we delayed its application until now for efficiency.
+      delta_param_row.AddVec(scaling_factor - 1.0, param_row);
+    }
+    // Now apply the change.
+    linear_params_.Row(d).AddVec(1.0, delta_param_row.Range(0, input_dim));
+    bias_params_(d) += delta_param_row(input_dim);
+  }
+  static int32 num_messages_printed = 0;
+  if (num_messages_printed < 100) {
+    KALDI_LOG << "Processed " << output_dim << " parameter rows, of which "
+              << num_below_cutoff << " were below length cutoff (of which "
+              << num_below_cutoff_limited << " were limited); of the rest, "
+              << num_limited << " had their length limited.";
+    num_messages_printed++;
+  }
+}
+
 
 
 void AffinePreconInputComponent::SetZero(bool treat_as_gradient) {
@@ -1449,6 +2414,29 @@ void BlockAffineComponent::Propagate(const MatrixBase<BaseFloat> &in,
   }
 }
 
+void BlockAffineComponent::UpdateSimple(
+    const MatrixBase<BaseFloat> &in_value,
+    const MatrixBase<BaseFloat> &out_deriv) {
+  int32 input_block_dim = linear_params_.NumCols(),
+      output_block_dim = linear_params_.NumRows() / num_blocks_,
+      num_frames = in_value.NumRows();
+
+  bias_params_.AddRowSumMat(learning_rate_, out_deriv, 1.0);
+  for (int32 b = 0; b < num_blocks_; b++) {
+    SubMatrix<BaseFloat> in_value_block(in_value, 0, num_frames,
+                                        b * input_block_dim,
+                                        input_block_dim),
+        out_deriv_block(out_deriv, 0, num_frames,
+                        b * output_block_dim, output_block_dim),
+        param_block(linear_params_,
+                    b * output_block_dim, output_block_dim,
+                    0, input_block_dim);
+    // Update the parameters.
+    param_block.AddMatMat(learning_rate_, out_deriv_block, kTrans,
+                          in_value_block, kNoTrans, 1.0);
+  }
+}
+
 void BlockAffineComponent::Backprop(
     const MatrixBase<BaseFloat> &in_value,
     const MatrixBase<BaseFloat> &, // out_value
@@ -1466,11 +2454,6 @@ void BlockAffineComponent::Backprop(
   KALDI_ASSERT(in_value.NumCols() == input_block_dim * num_blocks_);
   KALDI_ASSERT(out_deriv.NumCols() == output_block_dim * num_blocks_);
 
-  // add the sum of the rows of out_deriv, to the bias_params_.
-  if (to_update != NULL)
-    to_update->bias_params_.AddRowSumMat(to_update->learning_rate_, out_deriv,
-                                         1.0);
-  
   for (int32 b = 0; b < num_blocks_; b++) {
     SubMatrix<BaseFloat> in_value_block(in_value, 0, num_frames,
                                         b * input_block_dim,
@@ -1486,18 +2469,9 @@ void BlockAffineComponent::Backprop(
     // Propagate the derivative back to the input.
     in_deriv_block.AddMatMat(1.0, out_deriv_block, kNoTrans,
                              param_block, kNoTrans, 0.0);
-    
-    if (to_update != NULL) {
-      SubMatrix<BaseFloat> param_block_to_update(
-          to_update->linear_params_,
-          b * output_block_dim, output_block_dim,
-          0, input_block_dim);
-      // Update the parameters.
-      param_block_to_update.AddMatMat(
-          to_update->learning_rate_,
-          out_deriv_block, kTrans, in_value_block, kNoTrans, 1.0);
-    }
-  }  
+  }
+  if (to_update != NULL)
+    to_update->Update(in_value, out_deriv);
 }
 
 
@@ -1566,6 +2540,167 @@ void BlockAffineComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
   WriteToken(os, binary, "</BlockAffineComponent>");  
+}
+
+
+int32 BlockAffineComponent::GetParameterDim() const {
+  // Note: num_blocks_ should divide both InputDim() and OutputDim().
+  return InputDim() * OutputDim() / num_blocks_;
+}
+
+void BlockAffineComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  int32 l = linear_params_.NumRows() * linear_params_.NumCols(),
+      b = bias_params_.Dim();
+  params->Range(0, l).CopyRowsFromMat(linear_params_);
+  params->Range(l, b).CopyFromVec(bias_params_);
+}
+void BlockAffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  int32 l = linear_params_.NumRows() * linear_params_.NumCols(),
+      b = bias_params_.Dim();
+  linear_params_.CopyRowsFromVec(params.Range(0, l));
+  bias_params_.CopyFromVec(params.Range(l, b));
+}
+
+
+void BlockAffineComponentPreconditioned::Init(BaseFloat learning_rate,
+                                              int32 input_dim, int32 output_dim,
+                                              BaseFloat param_stddev,
+                                              BaseFloat bias_stddev,
+                                              int32 num_blocks,
+                                              BaseFloat alpha) {
+  BlockAffineComponent::Init(learning_rate, input_dim, output_dim,
+                             param_stddev, bias_stddev, num_blocks);
+  is_gradient_ = false;
+  KALDI_ASSERT(alpha > 0.0);
+  alpha_ = alpha;
+}
+
+void BlockAffineComponentPreconditioned::InitFromString(std::string args) {
+  std::string orig_args(args);
+  bool ok = true;
+  BaseFloat learning_rate = learning_rate_;
+  BaseFloat alpha = 4.0;
+  int32 input_dim = -1, output_dim = -1, num_blocks = 1;
+  ParseFromString("learning-rate", &args, &learning_rate); // optional.
+  ParseFromString("alpha", &args, &alpha);
+  ok = ok && ParseFromString("input-dim", &args, &input_dim);
+  ok = ok && ParseFromString("output-dim", &args, &output_dim);
+  ok = ok && ParseFromString("num-blocks", &args, &num_blocks);
+  
+  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+      bias_stddev = 1.0;
+  ParseFromString("param-stddev", &args, &param_stddev);
+  ParseFromString("bias-stddev", &args, &bias_stddev);
+  if (!args.empty())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << args;
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << orig_args;
+  Init(learning_rate, input_dim, output_dim,
+       param_stddev, bias_stddev, num_blocks,
+       alpha);
+}
+
+void BlockAffineComponentPreconditioned::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient)
+    is_gradient_ = true;
+  BlockAffineComponent::SetZero(treat_as_gradient);
+}  
+
+void BlockAffineComponentPreconditioned::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<BlockAffineComponentPreconditioned>",
+                       "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<NumBlocks>");
+  ReadBasicType(is, binary, &num_blocks_);
+  ExpectToken(is, binary, "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);
+  ExpectToken(is, binary, "<Alpha>");
+  ReadBasicType(is, binary, &alpha_);
+  ExpectToken(is, binary, "<IsGradient>");
+  ReadBasicType(is, binary, &is_gradient_);
+  ExpectToken(is, binary, "</BlockAffineComponentPreconditioned>");  
+}
+
+void BlockAffineComponentPreconditioned::Write(std::ostream &os,
+                                               bool binary) const {
+  WriteToken(os, binary, "<BlockAffineComponentPreconditioned>");
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<NumBlocks>");
+  WriteBasicType(os, binary, num_blocks_);
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "<Alpha>");
+  WriteBasicType(os, binary, alpha_);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "</BlockAffineComponentPreconditioned>");  
+}
+
+Component* BlockAffineComponentPreconditioned::Copy() const {
+  BlockAffineComponentPreconditioned *ans = new
+      BlockAffineComponentPreconditioned();
+  ans->learning_rate_ = learning_rate_;
+  ans->linear_params_ = linear_params_;
+  ans->bias_params_ = bias_params_;
+  ans->num_blocks_ = num_blocks_;
+  ans->alpha_ = alpha_;
+  ans->is_gradient_ = is_gradient_;
+  return ans;
+}
+
+void BlockAffineComponentPreconditioned::Update(
+    const MatrixBase<BaseFloat> &in_value,
+    const MatrixBase<BaseFloat> &out_deriv) {
+  if (is_gradient_) {
+    UpdateSimple(in_value, out_deriv);
+    // does the baseline update with no preconditioning.
+    return;
+  }
+  int32 input_block_dim = linear_params_.NumCols(),
+      output_block_dim = linear_params_.NumRows() / num_blocks_,
+      num_frames = in_value.NumRows();
+
+  Matrix<BaseFloat> in_value_temp(num_frames, input_block_dim + 1, kUndefined),
+      in_value_precon(num_frames, input_block_dim + 1, kUndefined);
+  in_value_temp.Set(1.0); // so last row will have value 1.0.
+  SubMatrix<BaseFloat> in_value_temp_part(in_value_temp, 0, num_frames,
+                                          0, input_block_dim); // all but last 1.0
+  SubMatrix<BaseFloat> in_value_precon_part(in_value_precon, 0, num_frames,
+                                            0, input_block_dim);
+  Vector<BaseFloat> precon_ones(num_frames);
+  Matrix<BaseFloat> out_deriv_precon(num_frames, output_block_dim, kUndefined);
+  
+  for (int32 b = 0; b < num_blocks_; b++) {
+    SubMatrix<BaseFloat> in_value_block(in_value, 0, num_frames,
+                                        b * input_block_dim,
+                                        input_block_dim),
+        out_deriv_block(out_deriv, 0, num_frames,
+                        b * output_block_dim, output_block_dim),
+        param_block(linear_params_,
+                    b * output_block_dim, output_block_dim,
+                    0, input_block_dim);
+    in_value_temp_part.CopyFromMat(in_value_block);
+
+    PreconditionDirectionsAlphaRescaled(in_value_temp, alpha_,
+                                        &in_value_precon);
+    PreconditionDirectionsAlphaRescaled(out_deriv_block, alpha_,
+                                        &out_deriv_precon);
+    
+    
+    // Update the parameters.
+    param_block.AddMatMat(learning_rate_, out_deriv_precon, kTrans,
+                          in_value_precon_part, kNoTrans, 1.0);
+    precon_ones.CopyColFromMat(in_value_precon, input_block_dim);
+    bias_params_.Range(b * output_block_dim, output_block_dim).
+        AddMatVec(learning_rate_, out_deriv_precon, kTrans,
+                  precon_ones, 1.0);
+  }
 }
 
 
@@ -2066,18 +3201,22 @@ void SpliceComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
                                          input_dim - const_component_dim_);
       in_deriv_part.AddMat(1.0, out_deriv_part);
     }
-    
+
     if (const_component_dim_ > 0) {
-      SubMatrix<BaseFloat> out_deriv_const_part(out_deriv_chunk, 
-                              chunk * output_chunk_size, 1,
-                              output_dim - const_component_dim_,
+      SubMatrix<BaseFloat> out_deriv_const_part(out_deriv_chunk,
+                                                0, output_chunk_size,
+                                                output_dim - const_component_dim_,
                                                 const_component_dim_);
-                      
+      // Because we assum the "constant part" of the input is the same for all
+      // input rows, it's not clear how to propagate the derivative back.  We
+      // propagate the same value to all copies of it, but you should only take
+      // one of them, not sum them up.  In practice this is only used at the
+      // start of the network and the derivative probably won't ever be used.
       for (int32 c = 0; c < in_deriv_chunk.NumRows(); c++) {
         SubMatrix<BaseFloat> in_deriv_part(in_deriv_chunk, c, 1,
                                            input_dim - const_component_dim_,
                                            const_component_dim_);
-        in_deriv_part.CopyFromMat(out_deriv_const_part);
+        in_deriv_part.Row(0).AddRowSumMat(1.0, out_deriv_const_part);
       } 
     }
   }  
@@ -2444,13 +3583,6 @@ void DctComponent::Read(std::istream &is, bool binary) {
   //ComputeDctMatrix(&dct_mat_);
 }
 
-std::string FixedLinearComponent::Info() const {
-  std::stringstream stream;
-  stream << Component::Info() << ", input_dim=" << mat_.NumCols()
-         << ", output_dim = " << mat_.NumRows();
-  return stream.str();
-}
-
 void FixedLinearComponent::InitFromString(std::string args) {
   std::string orig_args = args;
   std::string filename;
@@ -2468,6 +3600,16 @@ void FixedLinearComponent::InitFromString(std::string args) {
   Init(mat);
 }
 
+
+std::string FixedLinearComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat mat_size = static_cast<BaseFloat>(mat_.NumRows())
+      * static_cast<BaseFloat>(mat_.NumCols()),
+      mat_stddev = std::sqrt(TraceMatMat(mat_, mat_, kTrans) /
+                         mat_size); 
+  stream << Component::Info() << ", params-stddev=" << mat_stddev;
+  return stream.str();
+}
 
 void FixedLinearComponent::Propagate(const MatrixBase<BaseFloat> &in,
                                      int32 num_chunks,
@@ -2505,6 +3647,93 @@ void FixedLinearComponent::Read(std::istream &is, bool binary) {
   mat_.Read(is, binary);
   ExpectToken(is, binary, "</FixedLinearComponent>");
 }
+
+void FixedAffineComponent::Init(const MatrixBase<BaseFloat> &mat) {
+  KALDI_ASSERT(mat.NumCols() > 1);
+  linear_params_ = mat.Range(0, mat.NumRows(),
+                             0, mat.NumCols() - 1);
+  bias_params_.Resize(mat.NumRows());
+  bias_params_.CopyColFromMat(mat, mat.NumCols() - 1);
+}
+
+
+void FixedAffineComponent::InitFromString(std::string args) {
+  std::string orig_args = args;
+  std::string filename;
+  bool ok = ParseFromString("matrix", &args, &filename);
+
+  if (!ok || !args.empty()) 
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+
+  bool binary;
+  Input ki(filename, &binary);
+  Matrix<BaseFloat> mat;
+  mat.Read(ki.Stream(), binary);
+  KALDI_ASSERT(mat.NumRows() != 0);
+  Init(mat);
+}
+
+
+std::string FixedAffineComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat linear_params_size = static_cast<BaseFloat>(linear_params_.NumRows())
+      * static_cast<BaseFloat>(linear_params_.NumCols()),
+      linear_params_stddev =
+      std::sqrt(TraceMatMat(linear_params_,
+                            linear_params_, kTrans) /
+                linear_params_size),
+      bias_params_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
+                                     bias_params_.Dim());
+      
+  stream << Component::Info() << ", linear-params-stddev=" << linear_params_stddev
+         << ", bias-params-stddev=" << bias_params_stddev;
+  return stream.str();
+}
+
+void FixedAffineComponent::Propagate(const MatrixBase<BaseFloat> &in,
+                                     int32 num_chunks,
+                                     Matrix<BaseFloat> *out) const {
+  out->Resize(in.NumRows(), linear_params_.NumRows());
+  out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 0.0);
+  out->AddVecToRows(1.0, bias_params_);
+}
+
+void FixedAffineComponent::Backprop(const MatrixBase<BaseFloat> &, // in_value
+                                    const MatrixBase<BaseFloat> &, // out_value
+                                    const MatrixBase<BaseFloat> &out_deriv,
+                                    int32, // num_chunks
+                                    Component *, // to_update
+                                    Matrix<BaseFloat> *in_deriv) const {
+  in_deriv->Resize(out_deriv.NumRows(), linear_params_.NumCols());
+  in_deriv->AddMatMat(1.0, out_deriv, kNoTrans, linear_params_, kNoTrans, 0.0);
+}
+
+Component* FixedAffineComponent::Copy() const {
+  FixedAffineComponent *ans = new FixedAffineComponent();
+  ans->linear_params_ = linear_params_;
+  ans->bias_params_ = bias_params_;
+  return ans;
+}
+
+
+void FixedAffineComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<FixedAffineComponent>");
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "</FixedAffineComponent>");  
+}
+
+void FixedAffineComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<FixedAffineComponent>", "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);  
+  ExpectToken(is, binary, "</FixedAffineComponent>");
+}
+
 
 
 
@@ -2623,7 +3852,6 @@ Component* DropoutComponent::Copy() const {
                               dropout_scale_);
 }
 
-
 void AdditiveNoiseComponent::InitFromString(std::string args) {
   std::string orig_args(args);
   int32 dim;
@@ -2654,7 +3882,6 @@ void AdditiveNoiseComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</AdditiveNoiseComponent>");  
 }
 
-
 void AdditiveNoiseComponent::Init(int32 dim, BaseFloat stddev) {
   dim_ = dim;
   stddev_ = stddev;
@@ -2667,8 +3894,149 @@ void AdditiveNoiseComponent::Propagate(
   KALDI_ASSERT(in.NumCols() == this->InputDim());
   *out = in;
   Matrix<BaseFloat> rand(in.NumRows(), in.NumCols());
+  rand.SetRandn();
   out->AddMat(stddev_, rand);
 }
+
+
+std::string InformationBottleneckComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim() << ", noise-proportion="
+         << noise_proportion_;
+  return stream.str();
+}
+
+
+void InformationBottleneckComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  int32 dim;
+  BaseFloat noise_proportion = 0.1;
+  bool ok = ParseFromString("dim", &args, &dim);
+  ParseFromString("noise-proportion", &args, &noise_proportion);  
+  
+  if (!ok || !args.empty() || dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type InformationBottleneckComponent: \""
+              << orig_args << "\"";
+  Init(dim, noise_proportion);
+}
+
+void InformationBottleneckComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<InformationBottleneckComponent>", "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<NoiseProportion>");
+  ReadBasicType(is, binary, &noise_proportion_);
+  ExpectToken(is, binary, "<Sumsq>");
+  sumsq_.Read(is, binary);
+  ExpectToken(is, binary, "<Count>");
+  ReadBasicType(is, binary, &count_);
+  ExpectToken(is, binary, "</InformationBottleneckComponent>");
+}
+
+void InformationBottleneckComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<InformationBottleneckComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<NoiseProportion>");
+  WriteBasicType(os, binary, noise_proportion_);
+  WriteToken(os, binary, "<Sumsq>");
+  sumsq_.Write(os, binary);
+  WriteToken(os, binary, "<Count>");
+  WriteBasicType(os, binary, count_);
+  WriteToken(os, binary, "</InformationBottleneckComponent>");  
+}
+
+void InformationBottleneckComponent::Init(int32 dim,
+                                          BaseFloat noise_proportion) {
+  dim_ = dim;
+  noise_proportion_ = noise_proportion;
+  sumsq_.Resize(dim);
+  count_ = 0.0;
+}
+  
+void InformationBottleneckComponent::Propagate(
+    const MatrixBase<BaseFloat> &in,
+    int32 num_chunks,
+    Matrix<BaseFloat> *out) const {
+  KALDI_ASSERT(in.NumCols() == this->InputDim());
+
+  *out = in;
+  Matrix<BaseFloat> rand(in.NumRows(), in.NumCols());
+  rand.SetRandn();
+  int32 dim = InputDim();
+  
+  for (int32 t = 0; t < in.NumRows(); t++) {
+    SubVector<BaseFloat> out_vec(*out, t), rand_vec(rand, t);
+    // we already copied in to *out.
+    BaseFloat in_variance = VecVec(out_vec, out_vec) / dim,
+        random_weight = sqrt(noise_proportion_ * in_variance);
+    out_vec.AddVec(random_weight, rand_vec);
+  }
+}
+
+void InformationBottleneckComponent::Backprop(
+    const MatrixBase<BaseFloat> &in_value,
+    const MatrixBase<BaseFloat> &out_value,
+    const MatrixBase<BaseFloat> &out_deriv,
+    int32 num_chunks,
+    Component *to_update, // may be identical to "this".
+    Matrix<BaseFloat> *in_deriv) const {
+  KALDI_ASSERT(SameDim(in_value, out_value));
+  KALDI_ASSERT(SameDim(in_value, out_deriv));
+  in_deriv->Resize(in_value.NumRows(), in_value.NumCols());
+
+  int32 dim = InputDim();
+  Vector<BaseFloat> rand_row(dim);
+  for (int32 t = 0; t < in_value.NumRows(); t++) {
+    SubVector<BaseFloat> in_vec(in_value, t),
+        out_vec(out_value, t), out_deriv_vec(out_deriv, t),
+        in_deriv_vec(*in_deriv, t);
+    rand_row.CopyFromVec(out_vec);
+    rand_row.AddVec(-1.0, in_vec);
+    // At this point, rand_row equals random_weight * rand_vec
+    // in the Propagate code.
+    BaseFloat in_variance = VecVec(in_vec, in_vec) / dim,
+        random_weight = sqrt(noise_proportion_ * in_variance);
+    // Above, in_variance and random_weight have the same value as
+    // in the Propagatte code.
+    KALDI_ASSERT(random_weight != 0.0);
+    rand_row.Scale(1.0 / random_weight); // Now it's equivalent to
+    // the t'th row of "rand" in the Propagate function.
+    BaseFloat df_drandom_weight = VecVec(rand_row, out_deriv_vec);
+    // df_drandom_weight is the partial derivative of the objective function
+    // w.r.t. "random_weight".
+    BaseFloat df_din_variance = 0.5 * df_drandom_weight * noise_proportion_ / random_weight;
+    // df_din_variance is the partial derivative of the objective function
+    // w.r.t. "in_variance".  It comes from differentiating the expression
+    // for "random_weight".
+    
+    // First handle the straightforward part of the derivative w.r.t. in_deriv_vec.
+    in_deriv_vec.CopyFromVec(out_deriv_vec);
+    // The next term handles the part that comes from the effect of the length of
+    // "in_vec" on the noise variance.  It comes from propagating back through the
+    // expression for "in_variance".  Note: df_din_variance will on average be
+    // negative.
+    in_deriv_vec.AddVec((2.0 / dim) * df_din_variance, in_vec);
+  }
+
+  // Now accumulate the sumsq_ stats.  We code this in such a way that if
+  // multiple threads are working on the same object, the errors caused won't
+  // be too catastrophic
+  if (to_update != NULL) {
+    InformationBottleneckComponent *to_update_ib =
+        dynamic_cast<InformationBottleneckComponent*>(to_update);
+    to_update_ib->count_ += in_value.NumRows();
+    to_update_ib->sumsq_.AddDiagMat2(1.0, in_value, kTrans, 1.0);
+    const BaseFloat max_count = 1000.0;
+    if (to_update_ib->count_ > max_count) {
+      BaseFloat scale = max_count / to_update_ib->count_;
+      to_update_ib->count_ *= scale;
+      to_update_ib->sumsq_.Scale(scale);
+    }
+  }
+}
+
+
 
 void AffineComponentA::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<AffineComponentA>", "<LearningRate>");

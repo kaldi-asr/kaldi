@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Warning-- this recipe is deprecated.  See ../s5b/ for the latest recipe.
+
 . cmd.sh
 
 exit 1;
@@ -7,7 +9,6 @@ exit 1;
 # one by copying and pasting into the shell.
 # Caution: some of the graph creation steps use quite a bit of memory, so you
 # should run this on a machine that has sufficient memory.
-
 
 # Data prep
 
@@ -33,7 +34,7 @@ local/eval2000_data_prep.sh  /data/corpora0/LDC2002S09/hub5e_00 /data/corpora0/L
 . cmd.sh
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features. 
-mfccdir=mfcc
+mfccdir=`pwd`/mfcc
 
 steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" data/train exp/make_mfcc/train $mfccdir || exit 1;
 # Don't do "|| exit 1" because actually some speakers don't have data, 

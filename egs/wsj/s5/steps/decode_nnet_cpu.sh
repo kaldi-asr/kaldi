@@ -82,10 +82,17 @@ case $feat_type in
 esac
 if [ ! -z "$transform_dir" ]; then
   echo "$0: using transforms from $transform_dir"
-  [ ! -f $transform_dir/trans.1 ] && echo "$0: no such file $transform_dir/trans.1" && exit 1;
-  [ "$nj" -ne "`cat $transform_dir/num_jobs`" ] \
-    && echo "$0: #jobs mismatch with transform-dir." && exit 1;
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/trans.JOB ark:- ark:- |"
+  if [ "$feat_type" == "raw" ]; then
+    [ ! -f $transform_dir/raw_trans.1 ] && echo "$0: no such file $transform_dir/raw_trans.1" && exit 1;
+    [ "$nj" -ne "`cat $transform_dir/num_jobs`" ] \
+      && echo "$0: #jobs mismatch with transform-dir." && exit 1;
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/raw_trans.JOB ark:- ark:- |"
+  else
+    [ ! -f $transform_dir/trans.1 ] && echo "$0: no such file $transform_dir/trans.1" && exit 1;
+    [ "$nj" -ne "`cat $transform_dir/num_jobs`" ] \
+      && echo "$0: #jobs mismatch with transform-dir." && exit 1;
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/trans.JOB ark:- ark:- |"
+  fi
 elif grep 'transform-feats --utt2spk' $srcdir/log/train.1.log >&/dev/null; then
   echo "$0: **WARNING**: you seem to be using a neural net system trained with transforms,"
   echo "  but you are not providing the --transform-dir option in test time."

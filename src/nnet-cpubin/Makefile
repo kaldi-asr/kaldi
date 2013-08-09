@@ -14,7 +14,11 @@ BINFILES = nnet-randomize-frames nnet-am-info nnet-train nnet-init \
    nnet-get-preconditioner nnet-precondition nnet-select-egs nnet-combine-fast \
    nnet-subset-egs nnet-shuffle-egs nnet-am-fix nnet-logprob  nnet-logprob2 \
    nnet-logprob2-parallel nnet-logprob-parallel nnet-am-stats nnet-am-rescale \
-   nnet-am-limit-rank nnet-latgen-faster-parallel
+   nnet-am-limit-rank nnet-latgen-faster-parallel nnet-to-raw-nnet nnet-compute \
+   raw-nnet-concat nnet-am-limit-rank-final raw-nnet-info \
+   nnet-get-feature-transform nnet-compute-from-egs nnet-train-parallel-safe \
+   nnet-am-widen nnet-show-progress nnet-limit-degradation \
+   nnet-get-feature-transform-multi
 
 OBJFILES =
 
@@ -23,8 +27,8 @@ OBJFILES =
 TESTFILES =
 
 ADDLIBS = ../nnet-cpu/kaldi-nnet-cpu.a ../gmm/kaldi-gmm.a \
-          ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a \
-          ../tree/kaldi-tree.a ../thread/kaldi-thread.a ../matrix/kaldi-matrix.a \
-          ../util/kaldi-util.a ../base/kaldi-base.a 
+         ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a  ../transform/kaldi-transform.a \
+         ../tree/kaldi-tree.a ../thread/kaldi-thread.a ../matrix/kaldi-matrix.a \
+         ../util/kaldi-util.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

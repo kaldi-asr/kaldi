@@ -59,18 +59,18 @@ namespace nnet2 {
 
 class Nnet {
  public:
+  
   /// Returns number of components-- think of this as similar to # of layers, but
   /// e.g. the nonlinearity and the linear part count as separate components,
   /// so the number of components will be more than the number of layers.
   int32 NumComponents() const { return components_.size(); }
 
   const Component &GetComponent(int32 c) const;
-
+  
   Component &GetComponent(int32 c);
 
-  /// Sets the c'th component to "component", taking ownership
-  /// of the pointer and deleting the corresponding one that
-  /// we own.
+  /// Sets the c'th component to "component", taking ownership of the pointer
+  /// and deleting the corresponding one that we own.
   void SetComponent(int32 c, Component *component);
   
   /// Returns the LeftContext() summed over all the Components... this is the
@@ -133,6 +133,11 @@ class Nnet {
   void AddNnet(BaseFloat alpha,
                const Nnet &other);
 
+  /// Turns the last affine layer into two layers of the same type, with a
+  /// smaller dimension in between-- we're keeping the top singular values of
+  /// the matrix.
+  void LimitRankOfLastLayer(int32 dimension);
+
   /// This version of AddNnet adds to *this, alpha times *other, and then scales
   /// *other by beta.  The reason why we make this a separate function is for
   /// multithreading reasons (otherwise you could do AddNnet(alpha, *iter) and then
@@ -144,8 +149,25 @@ class Nnet {
   /// Removes final components from the neural network (used for
   /// debugging).
   void Resize(int32 num_components);
+
+
+  /// Where possible, collapse multiple affine or linear components in a
+  /// sequence into a single one by composing the transforms.  If
+  /// match_updatableness=true, this will not collapse, say, an
+  /// AffineComponent with a FixedAffineComponent or FixedLinearComponent.
+  /// If false, it will collapse them.  This function won't necessarily
+  /// work for all pairs of such layers.  It currently only works where
+  /// one of each pair is an AffineComponent.
+  void Collapse(bool match_updatableness);
+  
+
+  /// Sets the index_ values of the components.
+  void SetIndexes(); 
   
   Nnet(const Nnet &other); // Copy constructor.
+
+  Nnet(const Nnet &nnet1, const Nnet &nnet2); // Constructor that takes two
+  // nnets: it concatenates the layers.
   
   Nnet() {}
 
@@ -232,13 +254,18 @@ class Nnet {
   /// Set all the learning rates in the neural net to these values
   /// (one for each updatable layer).
   void SetLearningRates(const VectorBase<BaseFloat> &learning_rates);
+
+  /// Get all the learning rates in the neural net (the output
+  /// must have dim equal to NumUpdatableComponents()).
+  void GetLearningRates(VectorBase<BaseFloat> *learning_rates) const;
   
 
   
   // This sets *dot_prod to the dot prod of *this . validation_gradient,
-  // separately for each updatable component.
-  // (The vector must have size equal to this->NumUpdatableComponents()).
-  // This is used in updating learning rates and shrinkage rates.
+  // separately for each updatable component.  The vector must have size equal
+  // to this->NumUpdatableComponents().  Warning: previously it had to have size
+  // equal to this->NumComponents()).  This is used in updating learning rates
+  // and shrinkage rates.
   void ComponentDotProducts(
       const Nnet &other,
       VectorBase<BaseFloat> *dot_prod) const;

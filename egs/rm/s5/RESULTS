@@ -138,3 +138,4 @@ exit 0
 %WER 1.60 [ 200 / 12533, 26 ins, 34 del, 140 sub ] exp/combine_sgmm2x_4a_3b/decode/wer_2
 %WER 1.51 [ 189 / 12533, 23 ins, 34 del, 132 sub ] exp/combine_sgmm2x_4a_3b_fmmic5/decode/wer_4
 %WER 1.48 [ 186 / 12533, 24 ins, 29 del, 133 sub ] exp/combine_sgmm2x_4a_mmi_3b_fmmic5/decode/wer_4
+
