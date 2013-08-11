@@ -2,6 +2,7 @@
 
 . cmd.sh
 
+
 # call the next line with the directory where the RM data is
 # (the argument below is just an example).  This should contain
 # subdirectories named as follows:
@@ -36,6 +37,7 @@ steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test $featdir
 
 utils/subset_data_dir.sh data/train 1000 data/train.1k  || exit 1;
 
+
 steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono  || exit 1;
 
 #show-transitions data/lang/phones.txt exp/tri2a/final.mdl  exp/tri2a/final.occs | perl -e 'while(<>) { if (m/ sil /) { $l = <>; $l =~ m/pdf = (\d+)/|| die "bad line $l";  $tot += $1; }} print "Total silence count $tot\n";'
@@ -43,6 +45,9 @@ steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono  
 
 
 utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
+
+
+
 
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/mono/graph data/test exp/mono/decode
@@ -81,6 +86,7 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
   --splice-opts "--left-context=3 --right-context=3" \
  1800 9000 data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
 utils/mkgraph.sh data/lang exp/tri2b exp/tri2b/graph
+
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b/decode
 
@@ -186,5 +192,6 @@ done
 local/run_sgmm2.sh
 #local/run_sgmm2x.sh
 
-# you can do:
+# The following script depends on local/run_raw_fmllr.sh having been run.
+#
 # local/run_nnet_cpu.sh

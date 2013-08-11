@@ -9,7 +9,7 @@
 
 set -e
 
-if true; then 
+if false; then 
   featdir=`pwd`/mfcc/nnet4b; mkdir -p $featdir
   mkdir -p conf/nnet4b
   all_fbankdirs=""
@@ -43,10 +43,18 @@ if true; then
 
   steps/align_fmllr.sh --nj 8 --cmd "$train_cmd" \
     data/nnet4b/train_mfcc_all data/lang exp/tri3b exp/tri3b_ali_nnet4b
+
+  # In the combined filterbank directory, create a file utt2uniq which maps
+  # our extended utterance-ids to "unique utterances".  This enables the
+  # script steps/nnet2/get_egs.sh to hold out data in a more proper way.
+  cat data/nnet4b/train_fbank_all/utt2spk | awk '{print $1;}' | \
+    perl -ane ' chop; $utt = $_; s/[-0-9\.]+-[-0-9\.]+-//; print "$utt $_\n"; ' \
+     > data/nnet4b/train_fbank_all/utt2uniq
+
 fi
 
 
-(  steps/nnet2/train_block.sh \
+(  steps/nnet2/train_block.sh --stage -3 \
      --bias-stddev 0.5 --splice-width 7 --egs-opts "--feat-type raw" \
      --softmax-learning-rate-factor 0.5 --cleanup false \
      --initial-learning-rate 0.04 --final-learning-rate 0.004 \

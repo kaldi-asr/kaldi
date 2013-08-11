@@ -84,6 +84,18 @@ cp $alidir/tree $dir
 # Get list of validation utterances. 
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
     > $dir/valid_uttlist || exit 1;
+
+if [ -f $data/utt2uniq ]; then
+  echo "File $data/utt2uniq exists, so augmenting valid_uttlist to"
+  echo "include all perturbed versions of the same 'real' utterances."
+  mv $dir/valid_uttlist $dir/valid_uttlist.tmp
+  utils/utt2spk_to_spk2utt.pl $data/utt2uniq > $dir/uniq2utt
+  cat $dir/valid_uttlist.tmp | utils/apply_map.pl $data/utt2uniq | \
+    sort | uniq | utils/apply_map.pl $dir/uniq2utt | \
+    awk '{for(n=1;n<=NF;n++) print $n;}' | sort  > $dir/valid_uttlist
+  rm $dir/uniq2utt $dir/valid_uttlist.tmp
+fi
+
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
      head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
 

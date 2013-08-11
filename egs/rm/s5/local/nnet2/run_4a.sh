@@ -3,11 +3,10 @@
 . cmd.sh
 
 
-# This examples runs on top of "raw-fMLLR" features.
+# This example runs on top of "raw-fMLLR" features.
 
 (  steps/nnet2/train_tanh.sh --splice-width 7 \
-     --egs-dir exp/tri4a1xa32_nnet/egs \
-     --softmax-learning-rate-factor 0.5 --cleanup false \
+     --cleanup false \
      --initial-learning-rate 0.08 --final-learning-rate 0.008 \
      --num-hidden-layers 2 \
      --num-epochs-extra 10 --add-layers-period 1 \

@@ -44,23 +44,28 @@ steps/decode_sgmm2.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 steps/decode_sgmm2.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --transform-dir exp/tri3c/decode  exp/sgmm2_4c/graph data/test exp/sgmm2_4c/decode_fmllr || exit 1;
  
-(# get scaled-by-30 versions of the vecs to be used for nnet training.
-  mkdir -p exp/sgmm2_4c_x30
-  cat exp/sgmm2_4c/vecs.* | copy-vector ark:- ark,t:- | \
-   awk -v scale=30.0 '{printf("%s [ ", $1); for (n=3;n<NF;n++) { printf("%f ", scale*$n); } print "]"; }' > exp/sgmm2_4c_x30/vecs.1
-  mkdir -p exp/sgmm2_4c_x30/decode
-  cat exp/sgmm2_4c/decode/vecs.* | copy-vector ark:- ark,t:- | \
-   awk -v scale=30.0 '{printf("%s [ ", $1); for (n=3;n<NF;n++) { printf("%f ", scale*$n); } print "]"; }' > exp/sgmm2_4c_x30/decode/vecs.1
-  mkdir -p exp/sgmm2_4c_x30/decode_ug
-  cat exp/sgmm2_4c/decode_ug/vecs.* | copy-vector ark:- ark,t:- | \
-   awk -v scale=30.0 '{printf("%s [ ", $1); for (n=3;n<NF;n++) { printf("%f ", scale*$n); } print "]"; }' > exp/sgmm2_4c_x30/decode_ug/vecs.1
-)
-exit 0;
-## 
-steps/decode_sgmm2.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
-  exp/sgmm2_4c.no_transform/graph data/test exp/sgmm2_4c.no_transform/decode || exit 1;
 
-steps/decode_sgmm2.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
-  exp/sgmm2_4c.no_transform/graph data/test exp/sgmm2_4c.no_transform/decode_fmllr || exit 1;
+exit 0;
+
+
+# (# get scaled-by-30 versions of the vecs to be used for nnet training.
+#   . path.sh 
+#   mkdir -p exp/sgmm2_4c_x30
+#   cat exp/sgmm2_4c/vecs.* | copy-vector ark:- ark,t:- | \
+#    awk -v scale=30.0 '{printf("%s [ ", $1); for (n=3;n<NF;n++) { printf("%f ", scale*$n); } print "]"; }' > exp/sgmm2_4c_x30/vecs.1
+#   mkdir -p exp/sgmm2_4c_x30/decode
+#   cat exp/sgmm2_4c/decode/vecs.* | copy-vector ark:- ark,t:- | \
+#    awk -v scale=30.0 '{printf("%s [ ", $1); for (n=3;n<NF;n++) { printf("%f ", scale*$n); } print "]"; }' > exp/sgmm2_4c_x30/decode/vecs.1
+#   mkdir -p exp/sgmm2_4c_x30/decode_ug
+#   cat exp/sgmm2_4c/decode_ug/vecs.* | copy-vector ark:- ark,t:- | \
+#    awk -v scale=30.0 '{printf("%s [ ", $1); for (n=3;n<NF;n++) { printf("%f ", scale*$n); } print "]"; }' > exp/sgmm2_4c_x30/decode_ug/vecs.1
+# )
+# exit 0;
+# ## 
+# steps/decode_sgmm2.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+#   exp/sgmm2_4c.no_transform/graph data/test exp/sgmm2_4c.no_transform/decode || exit 1;
+
+# steps/decode_sgmm2.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+#   exp/sgmm2_4c.no_transform/graph data/test exp/sgmm2_4c.no_transform/decode_fmllr || exit 1;
 
 
