@@ -9,7 +9,7 @@
 # which will be later on used for neural network training
 # The default cross validation percentage portion is 10% (i.e. P=10)
 #
-# It is useful if you would like to have subset choosen from random speakers order, 
+# It is useful if you would like to have subset chosen from random speakers order, 
 # especially for the cases where a dataset contains multiple different corpora, where  
 # type of speakers or recording channels may be quite different 
 
