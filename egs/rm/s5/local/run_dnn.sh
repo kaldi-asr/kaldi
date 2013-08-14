@@ -29,7 +29,7 @@ steps/make_fmllr_feats.sh --nj 10 --cmd "$train_cmd" \
    $dir data/train $gmmdir $dir/_log $dir/_data || exit 1
 
 # split the data : 90% train 10% cross-validation (held-out)
-utils/subset_data_dir_tr90_cv10.sh $dir ${dir}_tr90 ${dir}_cv10 || exit 1
+utils/subset_data_dir_tr_cv.sh $dir ${dir}_tr90 ${dir}_cv10 || exit 1
 }
 
 
