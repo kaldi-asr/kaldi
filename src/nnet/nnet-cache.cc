@@ -59,39 +59,41 @@ void Cache::AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32
 
   KALDI_ASSERT(features.NumRows() == static_cast<int32>(targets.size()));
 
+  int32 dim_fea = features.NumCols();
+  
   // lazy buffers allocation
   if (features_.NumRows() != cachesize_) {
-    features_.Resize(cachesize_, features.NumCols());
+    features_.Resize(cachesize_, dim_fea);
     targets_.resize(cachesize_);
   }
 
   // warn if segment longer than half-cache 
-  // (the frame level shuffling will have poor effect)
-  if (features.NumRows() > cachesize_/2) {
-    KALDI_WARN << "Too long segment and small feature cache!"
-       << " cachesize: " << cachesize_
-       << " segmentsize: " << features.NumRows();
+  // (frame level shuffling accross sentences will be poor)
+  if (features.NumRows() > cachesize_/4) {
+    KALDI_WARN << "Too long segment or small cachesize!"
+       << " (cache-size " << cachesize_ << ") < (4 x"
+       << " segment-size " << features.NumRows() << ").";
   }
 
   // change state
   if (state_ == EMPTY) { 
     state_ = FILLING; filling_pos_ = 0;
    
-    // check for leftover from previous segment 
+    // check for leftover from previous segment
     int leftover = features_leftover_.NumRows();
-    // check if leftover is not bigger than cachesize
-    if (leftover > cachesize_) {
-      KALDI_WARN << "Too small feature cache: " << cachesize_
-         << ", truncating: "
-         << leftover - cachesize_ 
-         << " frames from previous segment leftover";
-      leftover = cachesize_;
+    // check if leftover is not bigger than half-cachesize
+    if (leftover > cachesize_/2) {
+      KALDI_WARN << "Truncating "
+         << leftover - cachesize_/2
+         << " frames from leftover of previous segment "
+         << "(max leftover " << cachesize_/2 << ").";
+      leftover = cachesize_/2;
     }
     // prefill cache with leftover
     if (leftover > 0) {
-      features_.Range(0, features_leftover_.NumRows(),
-                      0, features_leftover_.NumCols()).CopyFromMat(
-                          features_leftover_);
+      features_.RowRange(0, leftover).CopyFromMat(
+        features_leftover_.RowRange(0, leftover)
+      );
       
       std::copy(targets_leftover_.begin(),
                 targets_leftover_.begin() + leftover,
@@ -114,8 +116,9 @@ void Cache::AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32
   KALDI_ASSERT(cache_space > 0);
 
   // copy the data to cache
-  features_.Range(filling_pos_, fill_rows, 0, features_.NumCols()).
-      CopyFromMat(features.Range(0, fill_rows, 0, features.NumCols()));
+  features_.RowRange(filling_pos_, fill_rows).CopyFromMat(
+    features.RowRange(0, fill_rows)
+  );
 
   std::copy(targets.begin(),
             targets.begin()+fill_rows,
@@ -123,9 +126,10 @@ void Cache::AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32
 
   // copy leftovers
   if (leftover > 0) {
-    features_leftover_.Resize(leftover, features_.NumCols());
+    features_leftover_.Resize(leftover, dim_fea);
     features_leftover_.CopyFromMat(
-        features.Range(fill_rows, leftover, 0, features.NumCols()));
+      features.RowRange(fill_rows, leftover)
+    );
     
     KALDI_ASSERT(targets.end()-(targets.begin()+fill_rows)==leftover);
     targets_leftover_.resize(leftover);
@@ -199,8 +203,7 @@ void Cache::GetBunch(CuMatrix<BaseFloat> *features, std::vector<int32> *targets)
   targets->resize(bunchsize_);
 
   // copy the output
-  features->CopyFromMat(features_ref.Range(emptying_pos_, bunchsize_,
-                                           0, features_ref.NumCols()));
+  features->CopyFromMat(features_ref.RowRange(emptying_pos_, bunchsize_));
     
   std::copy(targets_ref.begin() + emptying_pos_,
             targets_ref.begin() + emptying_pos_ + bunchsize_,

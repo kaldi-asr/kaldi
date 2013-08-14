@@ -59,38 +59,45 @@ void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<Ba
 
   KALDI_ASSERT(features.NumRows() == targets.NumRows());
 
+  int32 dim_fea = features.NumCols();
+  int32 dim_tgt = targets.NumCols();
+  
   // lazy buffers allocation
   if (features_.NumRows() != cachesize_) {
-    features_.Resize(cachesize_, features.NumCols());
-    targets_.Resize(cachesize_, targets.NumCols());
+    features_.Resize(cachesize_, dim_fea);
+    targets_.Resize(cachesize_, dim_tgt);
   }
 
   // warn if segment longer than half-cache 
-  // (the frame level shuffling will have poor effect)
-  if (features.NumRows() > cachesize_/2) {
-    KALDI_WARN << "Too long segment and small feature cache!"
-       << " cachesize: " << cachesize_
-       << " segmentsize: " << features.NumRows();
+  // (frame level shuffling accross sentences will be poor)
+  if (features.NumRows() > cachesize_/4) {
+    KALDI_WARN << "Too long segment or small cachesize!"
+       << " (cache-size " << cachesize_ << ") < (4 x"
+       << " segment-size " << features.NumRows() << ").";
   }
 
   // change state
   if (state_ == EMPTY) { 
     state_ = FILLING; filling_pos_ = 0;
    
-    // check for leftover from previous segment 
+    // check for leftover from previous segment
     int leftover = features_leftover_.NumRows();
-    // check if leftover is not bigger than cachesize
-    if (leftover > cachesize_) {
-      KALDI_WARN << "Too small feature cache: " << cachesize_
-         << ", truncating: "
-         << leftover - cachesize_ 
-         << " frames from previous segment leftover";
-      leftover = cachesize_;
+    // check if leftover is not bigger than half-cachesize
+    if (leftover > cachesize_/2) {
+      KALDI_WARN << "Truncating "
+         << leftover - cachesize_/2
+         << " frames from leftover of previous segment "
+         << "(max leftover " << cachesize_/2 << ").";
+      leftover = cachesize_/2;
     }
     // prefill cache with leftover
     if (leftover > 0) {
-      features_.RowRange(0, leftover).CopyFromMat(features_leftover_);
-      targets_.RowRange(0, leftover).CopyFromMat(targets_leftover_);
+      features_.RowRange(0, leftover).CopyFromMat(
+        features_leftover_.RowRange(0, leftover)
+      );
+      targets_.RowRange(0, leftover).CopyFromMat(
+        targets_leftover_.RowRange(0, leftover)
+      );
       
       features_leftover_.Resize(0, 0);
       targets_leftover_.Resize(0, 0);
@@ -103,21 +110,29 @@ void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<Ba
 
   int cache_space = cachesize_ - filling_pos_;
   int feature_length = features.NumRows();
-  int fill_rows = (cache_space < feature_length) ? cache_space : feature_length;
+  int fill_rows = (cache_space<feature_length)? cache_space : feature_length;
   int leftover = feature_length - fill_rows;
 
   KALDI_ASSERT(cache_space > 0);
 
-  // copy the data to the cache
-  features_.RowRange(filling_pos_, fill_rows).CopyFromMat(features.RowRange(0, fill_rows));
-  targets_.RowRange(filling_pos_, fill_rows).CopyFromMat(targets.RowRange(0, fill_rows));
+  // copy the data to cache
+  features_.RowRange(filling_pos_, fill_rows).CopyFromMat(
+    features.RowRange(0, fill_rows)
+  );
+  targets_.RowRange(filling_pos_, fill_rows).CopyFromMat(
+    targets.RowRange(0, fill_rows)
+  );
       
   // copy leftovers
   if (leftover > 0) {
-    features_leftover_.Resize(leftover, features_.NumCols());
-    features_leftover_.CopyFromMat(features.RowRange(fill_rows, leftover));
-    targets_leftover_.Resize(leftover, targets_.NumCols());
-    targets_leftover_.CopyFromMat(targets.RowRange(fill_rows, leftover));
+    features_leftover_.Resize(leftover, dim_fea);
+    features_leftover_.CopyFromMat(
+      features.RowRange(fill_rows, leftover)
+    );
+    targets_leftover_.Resize(leftover, dim_tgt);
+    targets_leftover_.CopyFromMat(
+      targets.RowRange(fill_rows, leftover)
+    );
   }
 
   // update cursor
