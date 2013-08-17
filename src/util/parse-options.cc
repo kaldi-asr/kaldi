@@ -469,11 +469,17 @@ void ParseOptions::SplitLongArg(std::string in, std::string *key,
                                 std::string *value) {
   assert(in.substr(0, 2) == "--");  // precondition.
   size_t pos = in.find_first_of('=', 0);
-  if (pos == std::string::npos) {
+  if (pos == std::string::npos) {  // we allow --option for bools
     // defaults to empty.  We handle this differently in different cases.
     *key = in.substr(2, in.size()-2);  // 2 because starts with --.
     *value = "";
-  } else {
+  } else if (pos == in.size()-1) {  // we don't allow --option= without value
+    PrintUsage(true);
+    KALDI_ERR << "Invalid option (no value): " << in;
+  } else if (pos == 2) {  // we also don't allow empty keys: --=value
+    PrintUsage(true);
+    KALDI_ERR << "Invalid option (no key): " << in;
+  } else {  // normal case: --option=value
     *key = in.substr(2, pos-2);  // 2 because starts with --.
     *value = in.substr(pos + 1);
   }
