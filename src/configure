@@ -247,7 +247,7 @@ function linux_configure_omplibdir {
     echo "Testing $libext from [$libexts] " >&2
 
     check_library $mkllibdir "libiomp5" $libext \
-	&& echo `readlink -f $mkllibdir` && return
+    && echo `readlink -f $mkllibdir` && return
     
     local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)` 
     test -d $testdir && check_library $testdir "libiomp5" $libext && echo `readlink -f $testdir` && return;
@@ -602,14 +602,14 @@ if [ "`uname`" == "Linux" ]; then
     
     # Finding out where the libraries are located: 
     # First we look for the static libraries and then look for dynamic ones.
-    # We're looking for four libraries, all in the same directory, named 
-    # libcblas.a, libatlas.a, libf77blas.a, and a library that's variously 
-    # named liblapack.a, libclapack.a, or liblapack_atlas.a, but which exports 
-    # the symbol ATL_cgetrf. 
-    # Note: there is a different type of ATLAS installation that is not 
-    # covered.  We saw a case where there was a directory called /usr/lib/atlas 
-    # containing {liblapack.a,libblas.a}, and linking against just these two 
-    # libraries worked.  
+    # We're looking for four libraries, all in the same directory, named
+    # libcblas.a, libatlas.a, libf77blas.a, and a library that's variously
+    # named liblapack.a, libclapack.a, or liblapack_atlas.a, but which exports
+    # the symbol ATL_cgetrf.
+    # Note: there is a different type of ATLAS installation that is not
+    # covered.  We saw a case where there was a directory called /usr/lib/atlas
+    # containing {liblapack.a,libblas.a}, and linking against just these two
+    # libraries worked.
 
     if $static_math; then
       # Prefer static to dynamic math.
@@ -728,7 +728,9 @@ if [ "`uname`" == "Linux" ]; then
     fi
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
     echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
-    echo "Successfully configured."
+    echo "Warning (OPENBLAS): this part of the configure process is not properly tested and will not work."
+    $use_cuda && linux_configure_cuda
+    echo "Successfully configured OpenBLAS from $OPENBLASROOT."
     exit 0;
   else 
     failure "Unsupported linear algebra library '$MATHLIB'"
