@@ -10,9 +10,8 @@
 nj=4
 cmd=run.pl
 stage=0
-ffv_config=
-interpolate_ffv_opts=
-process_ffv_opts=
+frame_len=0.01
+sample_freq=8000
 cleanup=true
 # End configuration section.
 
@@ -27,7 +26,8 @@ if [ $# != 3 ]; then
    echo "variation extractor."
    echo "E.g.: make_ffv.sh data/train_ffv exp/make_ffv_train plp/"
    echo "Options: "
-   echo "  --ffv-config <config-file>                     # config passed to compute-ffv-feats "
+   echo "  --frame_len 0.01                                 # frame length "
+   echo "  --sample_freq 8000                               # sampling frequency "
    echo "  --nj <nj>                                        # number of parallel jobs"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    exit 1;
@@ -58,27 +58,12 @@ ffv_pkg_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:)\
  { $dir = "$pwd/$dir"; } print $dir; ' $ffv_pkg_dir ${PWD}`
 
 ffv_script=$ffv_pkg_dir/run_ffv.sh
-ffv_config=$ffv_pkg_dir/conf/1.config
 
 if [ ! -f $ffv_pkg_dir/ffv ]; then
   echo "*Expecting the file $KALDI_ROOT/tools/pitch_trackers/ffv-1.0.1/ffv to exist"
   echo "*cd to $KALDI_ROOT/tools/, and run extras/install_ffv.sh"
   exit 1;
 fi
-if false; then
-required="$scp $ffv_config"
-
-for f in $required; do
-  if [ ! -f $f ]; then
-    echo "make_ffv.sh: no such file $f"
-    exit 1;
-  fi
-done
-fi #100
-
-# note: in general, the double-parenthesis construct in bash "((" is "C-style
-# syntax" where we can get rid of the $ for variable names, and omit spaces.
-# The "for" loop in this style is a special construct.
 
 basename=`basename $data`
 wavdir=$ffvdir/temp_wav_$basename
@@ -140,8 +125,12 @@ done
 cat <<'EOF' > $ffv_script
 #!/bin/bash
 # script for execution of ffv
+flen=0.01
+sfreq=8000
+. parse_options.sh || exit 1;
 flist=$1
 ffv_pkg_dir=$2
+[ $# -ne 2 ] && echo "Usage: ffv.sh <ffv-flist-in> <ffv_pkg_dir>" && exit 1;
 echo $flist
 echo start running ffv
 for wavefile in `cat $flist`; do
@@ -153,7 +142,7 @@ for wavefile in `cat $flist`; do
     echo "no such file $output"  
   fi  
   if [ ! -f $3/$basename.out ]; then 
-    $ffv_pkg_dir/ffv --tfra 0.01 --fs 8000 $input $output
+    $ffv_pkg_dir/ffv --tfra $flen --fs $sfreq $input $output
   fi
 done
 EOF
@@ -163,7 +152,8 @@ if [ $stage -le 1 ]; then
   # Need to do this in director $ffv_pkg_dir as some of the things in its config
   # are relative pathnames.
   $cmd JOB=1:$nj $d/$expdir/log/ffv.JOB.log \
-    $ffv_script $expdir/ffv_flist.JOB $ffv_pkg_dir || exit 1;
+    $ffv_script --flen=$frame_len --sfreq=$sample_freq \
+    $expdir/ffv_flist.JOB $ffv_pkg_dir || exit 1;
 fi
 
 # I don't want to put a separate script in svn just for this, so creating a temporary
@@ -179,7 +169,6 @@ for f in `cat $ffv_flist | cut -d, -f2`; do
   g=`echo $f | sed s:.ffv$:.mat:`
   if [ -f $f ]; then
     cat $f | awk 'BEGIN{printf("[ "); } {print $1, $2, $3, $4, $5, $6, $7;} END{ print "]"; }' > $g
-    rm $f
   fi
 done
 cat $ffv_flist | cut -d, -f2 | \
