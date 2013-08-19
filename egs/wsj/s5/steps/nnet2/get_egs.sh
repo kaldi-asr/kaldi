@@ -24,6 +24,7 @@ stage=0
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time. 
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 spk_vecs_dir=
+random_copy=false
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -239,17 +240,19 @@ if [ $stage -le 4 ]; then
     echo "Since iters-per-epoch == 1, just concatenating the data."
     for n in `seq 1 $num_jobs_nnet`; do
       cat $dir/egs/egs_orig.$n.*.ark > $dir/egs/egs_tmp.$n.0.ark || exit 1;
-      rm $dir/egs/egs_orig.$n.*.ark || exit 1;
+      rm $dir/egs/egs_orig.$n.*.ark  # don't "|| exit 1", due to NFS bugs...
     done
   else # We'll have to split it up using nnet-copy-egs.
     egs_list=
     for n in `seq 0 $[$iters_per_epoch-1]`; do
       egs_list="$egs_list ark:$dir/egs/egs_tmp.JOB.$n.ark"
     done
+    # note, the "|| true" below is a workaround for NFS bugs
+    # we encountered running this script with Debian-7, NFS-v4.
     $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/split_egs.JOB.log \
       nnet-copy-egs --random=$random_copy --srand=JOB \
         "ark:cat $dir/egs/egs_orig.JOB.*.ark|" $egs_list '&&' \
-        rm $dir/egs/egs_orig.JOB.*.ark || exit 1;
+        '(' rm $dir/egs/egs_orig.JOB.*.ark '||' true ')' || exit 1;
   fi
 fi
 
@@ -259,11 +262,14 @@ if [ $stage -le 5 ]; then
   echo "Shuffling the order of training examples"
   echo "(in order to avoid stressing the disk, these won't all run at once)."
 
+
+  # note, the "|| true" below is a workaround for NFS bugs
+  # we encountered running this script with Debian-7, NFS-v4.
   for n in `seq 0 $[$iters_per_epoch-1]`; do
     $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/shuffle.$n.JOB.log \
       nnet-shuffle-egs "--srand=\$[JOB+($num_jobs_nnet*$n)]" \
       ark:$dir/egs/egs_tmp.JOB.$n.ark ark:$dir/egs/egs.JOB.$n.ark '&&' \
-      rm $dir/egs/egs_tmp.JOB.$n.ark || exit 1;
+      '(' rm $dir/egs/egs_tmp.JOB.$n.ark '||' true ')' || exit 1;
   done
 fi
 

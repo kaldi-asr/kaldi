@@ -1,15 +1,23 @@
 #!/bin/bash
 
 
+stage=0
+train_stage=-100
 # This trains only unadapted (just cepstral mean normalized) features,
 # and uses various combinations of VTLN warping factor and time-warping
 # factor to artificially expand the amount of data.
 
 . cmd.sh
 
+. utils/parse_options.sh  # to parse the --stage option, if given
+
+[ $# != 0 ] && echo "Usage: local/run_4b.sh [--stage <stage> --train-stage <train-stage>]" && exit 1;
+
+
 set -e
 
-if false; then 
+if [ $stage -le 0 ]; then 
+  # Create the training data.
   featdir=`pwd`/mfcc/nnet4b; mkdir -p $featdir
   mkdir -p conf/nnet4b
   all_fbankdirs=""
@@ -53,8 +61,8 @@ if false; then
 
 fi
 
-
-(  steps/nnet2/train_block.sh --stage -3 \
+if [ $stage -le 1 ]; then
+  steps/nnet2/train_block.sh --stage "$train_stage" \
      --bias-stddev 0.5 --splice-width 7 --egs-opts "--feat-type raw" \
      --softmax-learning-rate-factor 0.5 --cleanup false \
      --initial-learning-rate 0.04 --final-learning-rate 0.004 \
@@ -63,10 +71,30 @@ fi
      --cmd "$decode_cmd" \
      --hidden-layer-dim 450 \
       data/nnet4b/train_fbank_all data/lang exp/tri3b_ali_nnet4b exp/nnet4b  || exit 1
+fi
 
+
+if [ $stage -le 2 ]; then
+  # Create the testing data.
+  featdir=`pwd`/mfcc
+  mkdir -p $featdir
+  fbank_conf=conf/fbank_40.conf
+  echo "--num-mel-bins=40" > $fbank_conf
+  for x in test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92 train; do
+    cp -rT data/$x data/${x}_fbank
+    rm -r ${x}_fbank/split* || true
+    steps/make_fbank.sh --fbank-config "$fbank_conf" --nj 8 \
+      --cmd "run.pl" data/${x}_fbank exp/make_fbank/$x $featdir  || exit 1;
+    steps/compute_cmvn_stats.sh data/${x}_fbank exp/make_fbank/$x $featdir  || exit 1;
+  done
+  utils/combine_data.sh data/test_fbank data/test_{mar87,oct87,feb89,oct89,feb91,sep92}_fbank
+  steps/compute_cmvn_stats.sh data/test_fbank exp/make_fbank/test $featdir  
+fi
+
+if [ $stage -le 3 ]; then
    steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 --feat-type raw \
      exp/tri3b/graph data/test_fbank exp/nnet4b/decode
-
    steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 --feat-type raw \
      exp/tri3b/graph_ug data/test_fbank exp/nnet4b/decode_ug
- ) 
+fi
+
