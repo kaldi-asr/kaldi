@@ -15,7 +15,10 @@ acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
 cmd=run.pl
 beam=15.0
 max_active=7000
-lat_beam=8.0 # Beam we use in lattice generation.
+
+#WARNING: This option is renamed lat_beam (it was renamed to follow the naming 
+#         in the other scripts
+lattice_beam=8.0 # Beam we use in lattice generation.
 iter=final
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # If you supply num-threads, you should supply this too.
@@ -95,7 +98,7 @@ fi
 
 if [ $stage -le 1 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
-    nnet-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lat_beam \
+    nnet-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt "$model" \
     $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
