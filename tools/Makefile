@@ -105,7 +105,7 @@ irstlm/.patched: | irstlm
 		touch $@ 		
 
 irstlm:
-		svn -r 398 co https://irstlm.svn.sourceforge.net/svnroot/irstlm/trunk irstlm
+		svn -r 398 co https://svn.code.sf.net/p/irstlm/code/trunk irstlm
 
 atlas: ATLAS/include/cblas.h
 
