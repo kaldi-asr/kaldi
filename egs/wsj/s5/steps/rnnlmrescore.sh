@@ -95,7 +95,11 @@ else
     echo "$0: removing old LM scores."
     # this approach chooses the best path through the old LM FST, while
     # subtracting the old scores.  If the lattices came straight from decoding,
-    # this is what we want.
+    # this is what we want.  Note here: each FST in "nbest1.JOB.gz" is a linear FST,
+    # it has no alternatives (the N-best format works by having multiple keys
+    # for each utterance).  When we do "lattice-1best" we are selecting the best
+    # path through the LM, there are no alternatives to consider within the
+    # original lattice.
     $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 "ark:gunzip -c $dir/nbest1.JOB.gz|" ark:- \| \
       lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \

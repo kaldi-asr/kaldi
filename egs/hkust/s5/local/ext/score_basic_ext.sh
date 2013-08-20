@@ -14,7 +14,7 @@ max_lmwt=20
 . parse_options.sh || exit 1;
 
 if [ $# -ne 3 ]; then
-  echo "Usage: local/score_basic.sh [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <decode-dir>"
+  echo "Usage: local/score_basic_ext.sh [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <decode-dir>"
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
@@ -61,10 +61,14 @@ filter_text <$data/text >$dir/scoring/text.filt
 
 unset LC_ALL
 #for Chinese character error rate
-perl local/ext/hkust_word2ch_tran.pl local/ext/195k_chinese_word2char_map $dir/scoring/text.filt > $dir/scoring/cchar.filt
+perl local/ext/hkust_word2ch_tran.pl $dir/scoring/text.filt > $dir/scoring/cchar.filt
+# perl local/ext/hkust_word2ch_tran.pl --useword2charmap local/ext/195k_chinese_word2char_map $dir/scoring/text.filt > $dir/scoring/cchar.filt
+# perl local/ext/hkust_word2ch_tran.pl --encodeoutput $dir/scoring/text.filt > $dir/scoring/cchar.filt
 
 for lmwt in `seq $min_lmwt $max_lmwt`; do
-perl local/ext/hkust_word2ch_tran.pl local/ext/195k_chinese_word2char_map $dir/scoring/$lmwt.txt > $dir/scoring/${lmwt}.cchar
+perl local/ext/hkust_word2ch_tran.pl $dir/scoring/$lmwt.txt > $dir/scoring/${lmwt}.cchar
+# perl local/ext/hkust_word2ch_tran.pl --useword2charmap local/ext/195k_chinese_word2char_map $dir/scoring/$lmwt.txt > $dir/scoring/${lmwt}.cchar
+# perl local/ext/hkust_word2ch_tran.pl --encodeoutput $dir/scoring/$lmwt.txt > $dir/scoring/${lmwt}.cchar
 done
 
 export LC_ALL=C

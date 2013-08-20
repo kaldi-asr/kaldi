@@ -190,9 +190,15 @@ void Nnet::SetWeights(const Vector<BaseFloat>& wei_src) {
           
           //copy the data to CuMatrix/CuVector and assign to the component
           //weights
-          aff_t->SetLinearity(CuMatrix<BaseFloat>(mat));
+          {
+            CuMatrix<BaseFloat> tmp(mat);
+            aff_t->SetLinearity(tmp);
+          }
           //bias
-          aff_t->SetBias(CuVector<BaseFloat>(vec));
+          {
+            CuVector<BaseFloat> tmp(vec);
+            aff_t->SetBias(tmp);
+          }
         } break;
         default :
           KALDI_ERR << "Unimplemented access to parameters "

@@ -20,6 +20,9 @@
 # selecting too many from the same speaker.  It prints them on the standard
 # output.
 # With the option --first, it just selects the N first utterances.
+# With the option --last, it just selects the N last utterances.
+
+# Last modified by JHU & HKUST @2013
 
 
 $first = 0;
@@ -34,7 +37,7 @@ if ($ARGV[0] eq "--last") {
 }
 
 if(@ARGV < 2 ) {
-    die "Usage: subset_scp.pl N in.scp ";
+    die "Usage: subset_scp.pl [--first|--last] N in.scp ";
 }
 
 $N = shift @ARGV;

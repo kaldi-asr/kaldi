@@ -22,7 +22,10 @@
 
 # If you give the --shortest option, it will give you the n shortest utterances.
 
-# If you give the --first option it will just give you the n first utterances.
+# If you give the --first option, it will just give you the n first utterances.
+
+# If you give the --last option, it will just give you the n last utterances.
+
 
 shortest=false
 perspk=false
@@ -55,11 +58,12 @@ fi
 
 if [ $# != 3 ]; then
   echo "Usage: "
-  echo "  subset_data_dir.sh [--speakers|--shortest|--first|--per-spk] <srcdir> <num-utt> <destdir>"
+  echo "  subset_data_dir.sh [--speakers|--shortest|--first|--last|--per-spk] <srcdir> <num-utt> <destdir>"
   echo "  subset_data_dir.sh [--spk-list <speaker-list-file>] <srcdir> <destdir>"
   echo "By default, randomly selects <num-utt> utterances from the data directory."
   echo "With --speakers, randomly selects enough speakers that we have <num-utt> utterances"
   echo "With --first, selects the first <num-utt> utterances"
+  echo "With --last, selects the last <num-utt> utterances"
   echo "With --shortest, selects the shortest <num-utt> utterances."
   exit 1;
 fi

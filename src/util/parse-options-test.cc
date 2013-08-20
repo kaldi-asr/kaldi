@@ -98,6 +98,32 @@ void UnitTestParseOptions() {
   KALDI_ASSERT(dummy_opts.my_bool == false);
   KALDI_ASSERT(dummy_opts.my_string == "baz");
 
+  // test error with --option= 
+  try {
+    int argc4 = 2;
+    const char *argv4[2] = { "program_name", "--option="};
+    ParseOptions po4("my usage msg");
+    bool val = false;
+    po4.Register("option", &val, "My boolean");
+    po4.Read(argc4, argv4);
+    KALDI_ASSERT(val == false);
+  } catch (std::exception e) {
+    KALDI_LOG << "Failed to read option (this is expected).";
+  }
+
+  // test error with --= 
+  try {
+    int argc4 = 2;
+    const char *argv4[2] = { "program_name", "--=8"};
+    int32 num = 0;
+    ParseOptions po4("my usage msg");
+    po4.Register("num", &num, "My int32 variable");
+    po4.Read(argc4, argv4);
+    KALDI_ASSERT(num == 0);
+  } catch (std::exception e) {
+    KALDI_LOG << "Failed to read option (this is expected).";
+  }
+
   // test "--" (no more options)
   int argc4 = 5;
   unum = 2;

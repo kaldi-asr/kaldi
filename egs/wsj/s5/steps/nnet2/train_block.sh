@@ -55,7 +55,7 @@ block_shift=5
 stage=-5
 
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time. 
-splice_width=4 # meaning +- 4 frames on each side for second LDA
+splice_width=7 # meaning +- 7 frames on each side for second LDA
 randprune=4.0 # speeds up LDA.
 alpha=4.0
 max_change=10.0
