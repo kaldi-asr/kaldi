@@ -43,7 +43,7 @@ if [ $stage -le 2 ]; then
      --mix-up 4000 \
      --cmd "$decode_cmd" \
      --hidden-layer-dim 450 \
-      data/nnet4b/train_perturbed_fbank data/lang exp/tri3b_ali_perturbed_mfcc exp/nnet4b  || exit 1
+      data/train_perturbed_fbank data/lang exp/tri3b_ali_perturbed_mfcc exp/nnet4b  || exit 1
 fi
 
 

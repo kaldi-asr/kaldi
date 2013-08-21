@@ -77,7 +77,8 @@ utils/combine_data.sh $data $all_feature_dirs
 # our extended utterance-ids to "unique utterances".  This enables the
 # script steps/nnet2/get_egs.sh to hold out data in a more proper way.
 cat $data/utt2spk | \
-   perl -e ' while(<STDIN>){ $x=$_; chop $x; foreach $pair (@ARGS) { s/^$pair-// && last; } print "$x $_"; } ' \
+   perl -e ' while(<STDIN>){ @A=split; $x=shift @A; $y=$x; 
+     foreach $pair (@ARGV) { $y =~ s/^${pair}-// && last; } print "$x $y\n"; } ' $pairs \
   > $data/utt2uniq
 
 if $cleanup; then

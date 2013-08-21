@@ -79,6 +79,20 @@
       exp/sgmm2_5b/graph_bd_tgpr data/test_eval92 exp/sgmm2_5b/decode_bd_tgpr_eval92
   ) &
 
+ (
+  steps/train_sgmm2.sh --cmd "$train_cmd" \
+     --context-opts "--context-width=5 --central-position=2" \
+   11000 25000 data/train_si284 data/lang exp/tri4b_ali_si284 \
+    exp/ubm5b/final.ubm exp/sgmm2_5c || exit 1;
+
+  # Decode from lattices in exp/sgmm2_5b
+   steps/decode_sgmm2_fromlats.sh --cmd "$decode_cmd"  --transform-dir exp/tri4b/decode_tgpr_dev93 \
+      data/test_dev93 data/lang_test_tgpr exp/sgmm2_5b/decode_tgpr_dev93 exp/sgmm2_5c/decode_tgpr_dev93 
+   steps/decode_sgmm2_fromlats.sh --cmd "$decode_cmd"  --transform-dir exp/tri4b/decode_tgpr_eval92 \
+      data/test_eval92 data/lang_test_tgpr exp/sgmm2_5b/decode_tgpr_eval92 exp/sgmm2_5c/decode_tgpr_eval92 
+ ) &
+
+
   steps/align_sgmm2.sh --nj 30 --cmd "$train_cmd" --transform-dir exp/tri4b_ali_si284 \
     --use-graphs true --use-gselect true data/train_si284 data/lang exp/sgmm2_5b exp/sgmm2_5b_ali_si284 
 

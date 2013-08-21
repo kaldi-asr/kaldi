@@ -86,8 +86,8 @@ exit 0
 # Deep neural net -- various types of hybrid system.
 %WER 2.02 [ 253 / 12533, 27 ins, 64 del, 162 sub ] exp/nnet4a/decode/wer_4
 %WER 9.77 [ 1224 / 12533, 95 ins, 251 del, 878 sub ] exp/nnet4a/decode_ug/wer_9
-%WER 1.84 [ 231 / 12533, 23 ins, 55 del, 153 sub ] exp/nnet4b/decode/wer_5
-%WER 9.04 [ 1133 / 12533, 110 ins, 153 del, 870 sub ] exp/nnet4b/decode_ug/wer_7
+%WER 1.68 [ 211 / 12533, 20 ins, 53 del, 138 sub ] exp/nnet4b/decode/wer_5
+%WER 8.96 [ 1123 / 12533, 97 ins, 166 del, 860 sub ] exp/nnet4b/decode_ug/wer_8
 %WER 1.71 [ 214 / 12533, 23 ins, 46 del, 145 sub ] exp/nnet4c/decode/wer_4
 %WER 9.02 [ 1130 / 12533, 91 ins, 181 del, 858 sub ] exp/nnet4c/decode_ug/wer_8
 
