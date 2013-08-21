@@ -26,7 +26,7 @@ gselect=15  # Number of Gaussian-selection indices for SGMMs.  [Note:
 first_pass_gselect=3 # Use a smaller number of Gaussian-selection indices in 
             # the 1st pass of decoding (lattice generation).
 max_active=7000
-lat_beam=8.0 # Beam we use in lattice generation.
+lattice_beam=8.0 # Beam we use in lattice generation.
 vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for 
     # speaker-vector computation.  Can be quite tight (actually we could
     # probably just do best-path.
@@ -138,7 +138,7 @@ if [ $stage -le 2 ]; then
   compile-train-graphs-fsts --read-disambig-syms=$lang/phones/disambig.int \
     --batch-size=$batch_size $scale_opts \
     $srcdir/tree $srcdir/final.mdl $lang/L_disambig.fst ark:- ark:- \| \
-  sgmm2-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$lat_beam \
+  sgmm2-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --determinize-lattice=false --allow-partial=true \
     --word-symbol-table=$lang/words.txt "$gselect_opt_1stpass" $alignment_model \
     "ark:-" "$feats" "ark:|gzip -c > $dir/pre_lat.JOB.gz" || exit 1;
@@ -209,7 +209,7 @@ if [ $spkdim -gt 0 ]; then  ### For models with speaker vectors:
     $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
       sgmm2-rescore-lattice "$gselect_opt" --utt2spk=ark:$sdata/JOB/utt2spk --spk-vecs=ark:$dir/vecs.JOB \
       $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.JOB.gz|" "$feats" ark:- \| \
-      lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lat_beam ark:- \
+      lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lattice_beam ark:- \
       "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
   fi
   rm $dir/pre_lat.*.gz
@@ -243,7 +243,7 @@ else  ### For models without speaker vectors:
     $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
       sgmm2-rescore-lattice "$gselect_opt" --utt2spk=ark:$sdata/JOB/utt2spk \
       $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.JOB.gz|" "$feats" ark:- \| \
-      lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lat_beam ark:- \
+      lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lattice_beam ark:- \
       "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
     rm $dir/pre_lat.*.gz
   else  # Already done with decoding if no adaptation needed.
