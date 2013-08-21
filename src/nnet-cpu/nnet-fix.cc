@@ -36,11 +36,14 @@ void FixNnet(const NnetFixConfig &config, Nnet *nnet) {
     // We only want to process this if it's of type SigmoidComponent
     // or TanhComponent.
     BaseFloat max_deriv; // The maximum derivative of this nonlinearity.
+    bool is_relu = false;
     {
       SigmoidComponent *sc = dynamic_cast<SigmoidComponent*>(nc);
       TanhComponent *tc = dynamic_cast<TanhComponent*>(nc);
+      RectifiedLinearComponent *rc = dynamic_cast<RectifiedLinearComponent*>(nc);
       if (sc != NULL) max_deriv = 0.25;
       else if (tc != NULL) max_deriv = 1.0;
+      else if (rc != NULL) { max_deriv = 1.0; is_relu = true; }
       else continue; // E.g. SoftmaxComponent; we don't handle this.
     }
     double count = nc->Count();
@@ -58,17 +61,21 @@ void FixNnet(const NnetFixConfig &config, Nnet *nnet) {
       BaseFloat deriv_ratio = deriv_sum(d) / (count * max_deriv);
       KALDI_ASSERT(deriv_ratio >= 0.0 && deriv_ratio < 1.01); // Or there is an
                                                               // error in the
-                                                              // math.
+      // math.
       if (deriv_ratio < config.min_average_deriv) { // derivative is too small, meaning
         // we've gone off into the "flat part" of the sigmoid.
-        BaseFloat parameter_factor = std::min(config.min_average_deriv /
-                                              deriv_ratio,
-                                              config.parameter_factor);
-        // we need to reduce the parameters, so multiply by 1/parameter factor.
-        bias_params(d) *= 1.0 / parameter_factor;
-        linear_params.Row(d).Scale(1.0 / parameter_factor);
+        if (is_relu) {
+          bias_params(d) += config.relu_bias_change;
+        } else {
+          BaseFloat parameter_factor = std::min(config.min_average_deriv /
+                                                deriv_ratio,
+                                                config.parameter_factor);
+          // we need to reduce the parameters, so multiply by 1/parameter factor.
+          bias_params(d) *= 1.0 / parameter_factor;
+          linear_params.Row(d).Scale(1.0 / parameter_factor);
+        }
         num_reduced++;
-      } else if (deriv_ratio > config.max_average_deriv) { // derivative is too large,
+      } else if (deriv_ratio > config.max_average_deriv && !is_relu) { // derivative is too large,
         // meaning we're only in the linear part of the sigmoid, in the middle.
         BaseFloat parameter_factor = std::min(deriv_ratio / config.max_average_deriv,
                                               config.parameter_factor);
@@ -78,9 +85,14 @@ void FixNnet(const NnetFixConfig &config, Nnet *nnet) {
         num_increased++;
       }
     }
-    KALDI_LOG << "For layer " << c << ", decreased parameters for "
-              << num_reduced << " indexes, and increased them for "
-              << num_increased << " out of a total of " << dim;
+    if (is_relu) {
+      KALDI_LOG << "For layer " << c << " (ReLU units), changed bias for "
+                << num_reduced << " indexes, out of a total of " << dim;
+    } else {
+      KALDI_LOG << "For layer " << c << ", decreased parameters for "
+                << num_reduced << " indexes, and increased them for "
+                << num_increased << " out of a total of " << dim;
+    }
     ac->SetParams(bias_params, linear_params);
   }
 }

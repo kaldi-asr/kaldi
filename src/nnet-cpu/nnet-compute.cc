@@ -114,7 +114,6 @@ BaseFloat NnetComputer::ComputeLastLayerDeriv(const Posterior &pdf_post,
                                               Matrix<BaseFloat> *deriv) const {
   int32 num_components = nnet_.NumComponents();
   double tot_objf = 0.0, tot_weight = 0.0;
-  const BaseFloat floor = 1.0e-20; // Avoids division by zero.
   const Matrix<BaseFloat> &last_layer_output = forward_data_[num_components];
   int32 num_frames = last_layer_output.NumRows(),
           num_pdfs = last_layer_output.NumCols();
@@ -126,11 +125,7 @@ BaseFloat NnetComputer::ComputeLastLayerDeriv(const Posterior &pdf_post,
       BaseFloat weight = pdf_post[i][j].second;
       KALDI_ASSERT(label >= 0 && label < num_pdfs);
       BaseFloat this_prob = last_layer_output(i, label);
-      if (this_prob < floor) {
-        KALDI_WARN << "Probability is " << this_prob << ", flooring to "
-                   << floor;
-        this_prob = floor;
-      }
+      KALDI_ASSERT(this_prob > 0.99e-20); // We floored to 1.0e-20 in SoftmaxLayer.
       tot_objf += weight * log(this_prob);
       tot_weight += weight;
       (*deriv)(i, label) += weight / this_prob; // could be "=", assuming the

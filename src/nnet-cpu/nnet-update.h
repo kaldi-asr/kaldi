@@ -19,7 +19,9 @@
 #define KALDI_NNET_CPU_NNET_UPDATE_H_
 
 #include "nnet-cpu/nnet-nnet.h"
+#include "nnet-cpu/nnet-example.h"
 #include "util/table-types.h"
+
 
 namespace kaldi {
 namespace nnet2 {
@@ -34,34 +36,9 @@ namespace nnet2 {
    using a heuristic involving validation-set gradients.
 */
 
-// NnetTrainingExample is the input data and corresponding labels (or labels)
-// for one frame of input.  In the normal case there will be just one label,
-// with a weight of 1.0.  But, for example, in discriminative training there
-// might be a mixture of labels with different weights.
-struct NnetTrainingExample {
-  
-  std::vector<std::pair<int32, BaseFloat> > labels;  
-  
-  Matrix<BaseFloat> input_frames; // The input data-- typically a number of frames
-  // (nnet.LeftContext() + 1 + nnet.RightContext()) of raw features, not
-  // necessarily contiguous.
-
-  Vector<BaseFloat> spk_info; // The speaker-specific input, if any;
-  // a vector of possibly zero length.  We'll append this to each of the
-  // input frames.
-  
-  void Write(std::ostream &os, bool binary) const;
-  void Read(std::istream &is, bool binary);
-};
-
-
-typedef TableWriter<KaldiObjectHolder<NnetTrainingExample > > NnetTrainingExampleWriter;
-typedef SequentialTableReader<KaldiObjectHolder<NnetTrainingExample > > SequentialNnetTrainingExampleReader;
-typedef RandomAccessTableReader<KaldiObjectHolder<NnetTrainingExample > > RandomAccessNnetTrainingExampleReader;
-
 
 /// This function computes the objective function and either updates the model
-/// or computes parameter gradients.  Returns the cross-entropy objective
+/// or adds to parameter gradients.  Returns the cross-entropy objective
 /// function summed over all samples (normalize this by
 /// TotalNnetTrainingWeight(examples)).  It is mostly a wrapper for
 /// a class NnetUpdater that's defined in nnet-update.cc, but we

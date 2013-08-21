@@ -44,6 +44,19 @@ steps/decode_raw_fmllr.sh --cmd "$decode_cmd" --nj 8 exp/tri3c/graph_bd_tgpr \
    data/test_dev93 exp/tri3c/decode_bd_tgpr_dev93 
 )&
 
+steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
+  data/train_si284 data/lang exp/tri3c exp/tri3c_ali_si284 || exit 1;
+
+
+steps/train_raw_sat.sh  --cmd "$train_cmd" \
+  4200 40000 data/train_si284 data/lang exp/tri3c_ali_si284 exp/tri4d || exit 1;
+(
+ utils/mkgraph.sh data/lang_test_tgpr exp/tri4d exp/tri4d/graph_tgpr || exit 1;
+ steps/decode_raw_fmllr.sh --nj 10 --cmd "$decode_cmd" \
+   exp/tri4d/graph_tgpr data/test_dev93 exp/tri4d/decode_tgpr_dev93 || exit 1;
+ steps/decode_raw_fmllr.sh --nj 8 --cmd "$decode_cmd" \
+   exp/tri4d/graph_tgpr data/test_eval92 exp/tri4d/decode_tgpr_eval92 || exit 1;
+) & 
 
 
 wait

@@ -2,7 +2,12 @@
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 
-if [ $# -le 2 ]; then
+# This script operates on a data directory, such as in data/train/.
+# See http://kaldi.sourceforge.net/data_prep.html#data_prep_data
+# for what these directories contain.
+
+
+if [ $# -lt 2 ]; then
   echo "Usage: combine_data.sh <dest-data-dir> <src-data-dir1> <src-data-dir2> ..."
   exit 1
 fi

@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     for (;!feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
       if (!posterior_reader.HasKey(utt)) {
-        KALDI_WARN << "No features for utterance " << utt;
+        KALDI_WARN << "No posteriors for utterance " << utt;
         num_fail++;
         continue;
       }

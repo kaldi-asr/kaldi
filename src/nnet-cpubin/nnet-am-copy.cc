@@ -44,6 +44,8 @@ int main(int argc, char *argv[]) {
     bool remove_dropout = false;
     BaseFloat dropout_scale = -1.0;
     bool remove_preconditioning = false;
+    bool collapse = false;
+    bool match_updatableness = true;
     BaseFloat learning_rate_factor = 1.0, learning_rate = -1;
     std::string learning_rates = "";
     std::string scales = "";
@@ -75,7 +77,11 @@ int main(int argc, char *argv[]) {
     po.Register("stats-from", &stats_from, "Before copying neural net, copy the "
                 "statistics in any layer of type NonlinearComponent, from this "
                 "neural network: provide the extended filename.");
-    
+    po.Register("collapse", &collapse, "If true, collapse sequences of AffineComponents "
+                "and FixedAffineComponents to compactify model");
+    po.Register("match-updatableness", &match_updatableness, "Only relevant if "
+                "collapse=true; set this to false to collapse mixed types.");
+
     po.Read(argc, argv);
     
     if (po.NumArgs() != 2) {
@@ -145,6 +151,8 @@ int main(int argc, char *argv[]) {
 
     if (remove_preconditioning) am_nnet.GetNnet().RemovePreconditioning();
 
+    if (collapse) am_nnet.GetNnet().Collapse(match_updatableness);
+    
     if (stats_from != "") {
       // Copy the stats associated with the layers descending from
       // NonlinearComponent.

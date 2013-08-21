@@ -90,7 +90,7 @@ class OnlineFasterDecoder : public FasterDecoder {
         state_(kEndFeats), frame_(0), utt_frames_(0) {}
 
   DecodeState Decode(DecodableInterface *decodable);
-
+  
   // Makes a linear graph, by tracing back from the last "immortal" token
   // to the previous one
   bool PartialTraceback(fst::MutableFst<LatticeArc> *out_fst);

@@ -106,8 +106,8 @@ int main(int argc, char *argv[]) {
       return (num_done != 0 ? 0 : 1);
     } else {
       Matrix<BaseFloat> mat;
-      int32 old_dim = mat.NumRows();
       ReadKaldiObject(transform_in_fn, &mat);
+      int32 old_dim = mat.NumRows();
       IncreaseTransformDimension(new_dimension, &mat);
       WriteKaldiObject(mat, transform_out_fn, binary);
       KALDI_LOG << "Increased transform dim from " << old_dim << " to "

@@ -135,7 +135,7 @@ class FastNnetCombiner {
     
     ComputeCurrentNnet(nnet_out_, true); // create the output neural net,
     // and prints out the scaling factors.
-    KALDI_LOG << "Combining nnets, validation objf per frame changed from "
+    KALDI_LOG << "Combining nnets, objf per frame changed from "
               << initial_objf << " to " << objf;
   }    
   

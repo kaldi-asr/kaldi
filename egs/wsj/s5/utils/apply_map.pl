@@ -5,22 +5,7 @@
 # This program is a bit like ./sym2int.pl in that it applies a map
 # to things in a file, but it's a bit more general in that it doesn't
 # assume the things being mapped to are single tokens, they could
-# be sequences of tokens.
-
-# This program takes two arguments, which may be files or "-" for the
-# standard input.  Both files must have lines with one or more fields,
-# interpreted as a map from the first field (a string) to a list of strings.
-# if the first file has as one of its lines
-# A x y
-# and the second has the lines
-# x P
-# y Q R
-# then the output of this program will be
-# A P Q R
-#
-# Note that if x or y did not appear as the first field of file b, we would
-# print a warning and omit the whole line rather than map it to the empty
-# string.
+# be sequences of tokens.  See the usage message.
 
 
 if (@ARGV > 0 && $ARGV[0] eq "-f") {
@@ -53,7 +38,10 @@ if (@ARGV > 0 && $ARGV[0] eq '--permissive') {
 if(@ARGV != 1) {
   print STDERR "Usage: apply_map.pl [options] map <input >output\n" .
     "options: [-f <field-range> ]\n" .
-    "note: <field-range> can look like 4-5, or 4-, or 5-, or 1.\n" .
+    "Applies the map 'map' to all input text, where each line of the map\n" .
+    "is interpreted as a map from the first field to the list of the other fields\n" .
+    "Note: <field-range> can look like 4-5, or 4-, or 5-, or 1, it means the field\n" .
+    "range in the input to apply the map to.\n" .
     "e.g.: echo A B | apply_map.pl a.txt\n" .
     "where a.txt is:\n" .
     "A a1 a2\n" .

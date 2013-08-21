@@ -88,8 +88,10 @@ int main(int argc, char *argv[]) {
     for (size_t i = 0; i < egs.size(); i++) {
       std::ostringstream ostr;
       ostr << num_done;
-      example_writer.Write(ostr.str(), *(egs[i]));
-      delete egs[i];
+      if (egs[i] != NULL) {
+        example_writer.Write(ostr.str(), *(egs[i]));
+        delete egs[i];
+      }
       num_done++;
     }
 

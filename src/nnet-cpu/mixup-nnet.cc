@@ -93,10 +93,6 @@ static void GiveNnetCorrectTopology(Nnet *nnet,
  */
 
 
-void MixupNnetInternal(SoftmaxComponent *softmax,
-                       MixtureProbComponent *mixture_prob) {
-  
-}
 
 void MixupNnet(const NnetMixupConfig &mixup_config,
                Nnet *nnet) {

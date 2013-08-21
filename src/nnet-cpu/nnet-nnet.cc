@@ -70,6 +70,7 @@ void Nnet::SetZero(bool treat_as_gradient) {
 }
 
 void Nnet::Write(std::ostream &os, bool binary) const {
+  Check();
   WriteToken(os, binary, "<Nnet>");
   int32 num_components = components_.size();
   WriteToken(os, binary, "<NumComponents>");
@@ -94,7 +95,9 @@ void Nnet::Read(std::istream &is, bool binary) {
   for (int32 c = 0; c < num_components; c++) 
     components_[c] = Component::ReadNew(is, binary);
   ExpectToken(is, binary, "</Components>");
-  ExpectToken(is, binary, "</Nnet>");  
+  ExpectToken(is, binary, "</Nnet>");
+  SetIndexes();
+  Check();  
 }
 
 
@@ -123,9 +126,11 @@ void Nnet::ComponentDotProducts(
     const UpdatableComponent *uc2 = dynamic_cast<const UpdatableComponent*>(
         &(other.GetComponent(i)));
     KALDI_ASSERT((uc1 != NULL) == (uc2 != NULL));
-    if (uc1 != NULL)
-      (*dot_prod)(index++) = uc1->DotProduct(*uc2);
-  }
+    if (uc1 != NULL) {
+      (*dot_prod)(index) = uc1->DotProduct(*uc2);
+      index++;
+    }
+  }    
   KALDI_ASSERT(index == NumUpdatableComponents());
 }
 
@@ -133,6 +138,21 @@ void Nnet::ComponentDotProducts(
 Nnet::Nnet(const Nnet &other): components_(other.components_.size()) {
   for (size_t i = 0; i < other.components_.size(); i++)
     components_[i] = other.components_[i]->Copy();
+  SetIndexes();
+  Check();
+}
+
+Nnet::Nnet(const Nnet &other1, const Nnet &other2) {
+  int32 dim1 = other1.OutputDim(), dim2 = other2.InputDim();
+  if (dim1 != dim2)
+    KALDI_ERR << "Concatenating neural nets: dimension mismatch "
+              << dim1 << " vs. " << dim2;
+  for (size_t i = 0; i < other1.components_.size(); i++)
+    components_.push_back(other1.components_[i]->Copy());
+  for (size_t i = 0; i < other2.components_.size(); i++)
+    components_.push_back(other2.components_[i]->Copy());
+  SetIndexes();
+  Check();
 }
 
 
@@ -141,28 +161,32 @@ Nnet &Nnet::operator = (const Nnet &other) {
   components_.resize(other.components_.size());
   for (size_t i = 0; i < other.components_.size(); i++)
     components_[i] = other.components_[i]->Copy();
+  SetIndexes();
+  Check();
   return *this;
 }
 
 std::string Nnet::Info() const {
   std::ostringstream ostr;
   ostr << "num-components " << NumComponents() << std::endl;
+  ostr << "num-updatable-components " << NumUpdatableComponents() << std::endl;
   ostr << "left-context " << LeftContext() << std::endl;
   ostr << "right-context " << RightContext() << std::endl;
   ostr << "input-dim " << InputDim() << std::endl;
   ostr << "output-dim " << OutputDim() << std::endl;
-  for (int32 i = 0; i < NumComponents(); i++)
+  ostr << "parameter-dim " << GetParameterDim() << std::endl;
+  for (int32 i = 0; i < NumComponents(); i++) 
     ostr << "component " << i << " : " << components_[i]->Info() << std::endl;
   return ostr.str();
 }
 
 void Nnet::Check() const {
-  KALDI_ASSERT(!components_.empty());
   for (size_t i = 0; i + 1 < components_.size(); i++) {
     KALDI_ASSERT(components_[i] != NULL);
     int32 output_dim = components_[i]->OutputDim(),
       next_input_dim = components_[i+1]->InputDim();
     KALDI_ASSERT(output_dim == next_input_dim);
+    KALDI_ASSERT(components_[i]->Index() == static_cast<int32>(i));
   }
 }
 
@@ -186,12 +210,14 @@ void Nnet::Init(std::istream &is) {
     KALDI_ASSERT(c != NULL);
     components_.push_back(c);    
   }
+  SetIndexes();
   Check();
 }
 
 void Nnet::Init(std::vector<Component*> *components) {
   Destroy();
   components_.swap(*components);
+  SetIndexes();
   Check();
 }
 
@@ -342,6 +368,20 @@ void Nnet::SetLearningRates(const VectorBase<BaseFloat> &learning_rates) {
   KALDI_ASSERT(i == learning_rates.Dim());
 }
 
+void Nnet::GetLearningRates(VectorBase<BaseFloat> *learning_rates) const {
+  KALDI_ASSERT(learning_rates->Dim() == this->NumUpdatableComponents());
+  int32 i = 0;
+  for (int32 j = 0; j < NumComponents(); j++) {
+    const UpdatableComponent *uc =
+        dynamic_cast<const UpdatableComponent*>(&(GetComponent(j)));
+    if (uc!= NULL) {
+      (*learning_rates)(i) = uc->LearningRate();
+      i++;
+    }
+  }
+  KALDI_ASSERT(i == learning_rates->Dim());
+}
+
 void Nnet::Resize(int32 new_size) {
   KALDI_ASSERT(new_size <= static_cast<int32>(components_.size()));
   for (size_t i = new_size; i < components_.size(); i++)
@@ -354,7 +394,8 @@ void Nnet::RemoveDropout() {
   int32 removed = 0;
   for (size_t i = 0; i < components_.size(); i++) {
     if (dynamic_cast<DropoutComponent*>(components_[i]) != NULL ||
-        dynamic_cast<AdditiveNoiseComponent*>(components_[i]) != NULL) {
+        dynamic_cast<AdditiveNoiseComponent*>(components_[i]) != NULL ||
+        dynamic_cast<InformationBottleneckComponent*>(components_[i]) != NULL) {
       delete components_[i];
       removed++;
     } else {
@@ -364,6 +405,8 @@ void Nnet::RemoveDropout() {
   components_ = components;
   if (removed > 0)
     KALDI_LOG << "Removed " << removed << " dropout components.";
+  SetIndexes();
+  Check();
 }
 
 void Nnet::SetDropoutScale(BaseFloat scale) {
@@ -461,6 +504,7 @@ void Nnet::AddNnet(BaseFloat alpha,
 
 void Nnet::Append(Component *new_component) {
   components_.push_back(new_component);
+  SetIndexes();  
   Check();
 }
 
@@ -468,6 +512,7 @@ void Nnet::SetComponent(int32 c, Component *component) {
   KALDI_ASSERT(static_cast<size_t>(c) < components_.size());
   delete components_[c];
   components_[c] = component;
+  SetIndexes();
   Check(); // Check that all the dimensions still match up.
 }
 
@@ -511,5 +556,68 @@ void Nnet::UnVectorize(const VectorBase<BaseFloat> &params) {
   KALDI_ASSERT(offset == GetParameterDim());
 }
 
+void Nnet::LimitRankOfLastLayer(int32 dim) {
+  for (int32 i = components_.size() - 1; i >= 0; i--) {
+    AffineComponent *a = NULL, *b = NULL,
+        *c = dynamic_cast<AffineComponent*>(components_[i]);
+    if (c != NULL) {
+      c->LimitRank(dim, &a, &b);
+      delete c;
+      components_[i] = a;
+      components_.insert(components_.begin() + i + 1, b);
+      this->SetIndexes();
+      this->Check();
+      return;
+    }
+  }
+  KALDI_ERR << "No affine component found in neural net.";
+}
+
+void Nnet::SetIndexes() {
+  for (size_t i = 0; i < components_.size(); i++)
+    components_[i]->SetIndex(i);
+}
+
+void Nnet::Collapse(bool match_updatableness) {
+  int32 num_collapsed = 0;
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (size_t i = 0; i + 1 < components_.size(); i++) {
+      AffineComponent *a1 = dynamic_cast<AffineComponent*>(components_[i]),
+          *a2 = dynamic_cast<AffineComponent*>(components_[i + 1]);
+      FixedAffineComponent
+          *f1 = dynamic_cast<FixedAffineComponent*>(components_[i]),
+          *f2 = dynamic_cast<FixedAffineComponent*>(components_[i + 1]);
+      Component *c = NULL;
+      if (a1 != NULL && a2 != NULL) {
+        c = a1->CollapseWithNext(*a2);
+      } else if (a1 != NULL && f2 != NULL && !match_updatableness) {
+        c = a1->CollapseWithNext(*f2);
+      } else if (f1 != NULL && a2 != NULL && !match_updatableness) {
+        c = a2->CollapseWithPrevious(*f1);
+      }
+      if (c != NULL) {
+        delete components_[i];
+        delete components_[i + 1];
+        components_[i] = c;
+        // This was causing valgrind errors, so doing it differently.  Either
+        // a standard-library bug or I misunderstood something.
+        // components_.erase(components_.begin() + i + i,
+        //                   components_.begin() + i + 2);
+        for (size_t j = i + 1; j + 1 < components_.size(); j++)
+          components_[j] = components_[j + 1];
+        components_.pop_back();
+        changed = true;
+        num_collapsed++;
+      }
+    }
+  }
+  this->SetIndexes();
+  this->Check();
+  KALDI_LOG << "Collapsed " << num_collapsed << " components.";
+}
+
 } // namespace nnet2
 } // namespace kaldi
+

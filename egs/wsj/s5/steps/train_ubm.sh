@@ -83,6 +83,9 @@ if [ -f $alidir/trans.1 ]; then
     echo "$0: using transforms from $alidir"
     feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
   fi
+elif [ -f $alidir/raw_trans.1 ]; then
+  echo "$0: using raw-FMLLR transforms from $alidir"
+  feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"  
 fi
 ##
 
