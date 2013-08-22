@@ -48,6 +48,9 @@ class MatrixBase {
   friend class CuMatrixBase<Real>;
   friend class CuMatrix<Real>;
   friend class CuSubMatrix<Real>;
+  friend class CuPackedMatrix<Real>;
+  
+  friend class PackedMatrix<Real>;
 
   /// Returns number of rows (or zero for emtpy matrix).
   inline MatrixIndexT  NumRows() const { return num_rows_; }

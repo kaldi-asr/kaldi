@@ -10,11 +10,11 @@ include ../kaldi.mk
 
 LDFLAGS += $(CUDA_LDFLAGS)
 
-TESTFILES = cuda-matrix-test 
+TESTFILES = cu-matrix-test cu-test cu-sp-matrix-test cu-packed-matrix-test cu-tp-matrix-test
 
-OBJFILES = cu-device.o cu-math.o cu-matrix.o
+OBJFILES = cu-device.o cu-math.o cu-matrix.o cu-packed-matrix.o cu-sp-matrix.o cu-vector.o cu-common.o cu-tp-matrix.o
 ifeq ($(CUDA), true)
-  OBJFILES += cu-kernels.o cu-randkernels.o
+  OBJFILES += cu-kernels.o cu-randkernels.o cu-choleskykernels.o
 endif
 
 LIBNAME = kaldi-cudamatrix

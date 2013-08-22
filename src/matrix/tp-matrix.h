@@ -31,6 +31,7 @@ template<typename Real> class TpMatrix;
 /// @brief Packed symetric matrix class
 template<typename Real>
 class TpMatrix : public PackedMatrix<Real> {
+  friend class CuTpMatrix<Real>;
  public:
   TpMatrix() : PackedMatrix<Real>() {}
   explicit TpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)
@@ -38,8 +39,7 @@ class TpMatrix : public PackedMatrix<Real> {
   TpMatrix(const TpMatrix<Real>& Orig) : PackedMatrix<Real>(Orig) {}
   template<class OtherReal> explicit TpMatrix(const TpMatrix<OtherReal>& Orig)
       : PackedMatrix<Real>(Orig) {}
-  ~TpMatrix() {}
-
+  
   Real operator() (MatrixIndexT r, MatrixIndexT c) const {
     if (static_cast<UnsignedMatrixIndexT>(c) >
         static_cast<UnsignedMatrixIndexT>(r)) {

@@ -22,7 +22,7 @@
 #define KALDI_CUDAMATRIX_CU_COMMON_H_
 
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
 
 
 #include <iostream>
@@ -32,8 +32,10 @@
 
 #include "base/kaldi-error.h"
 
+#include <cublas.h>
+#include "matrix/matrix-common.h"
 
-#define cuSafeCall(fun) \
+#define CU_SAFE_CALL(fun) \
 { \
   int32 ret; \
   if ((ret = (fun)) != 0) { \
@@ -52,6 +54,9 @@ namespace kaldi {
   inline int32 n_blocks(int32 size, int32 block_size) { 
     return size / block_size + ((size % block_size == 0)? 0 : 1); 
   }
+
+  cublasOperation_t KaldiTransToCuTrans(MatrixTransposeType kaldi_trans);
+  
 }
 
 #endif // HAVE_CUDA
@@ -65,7 +70,9 @@ template<typename Real> class CuRand;
 template<typename Real> class CuMatrixBase;
 template<typename Real> class CuMatrix;
 template<typename Real> class CuSubMatrix;
-template<typename Real> class CuRand;
+template<typename Real> class CuPackedMatrix;
+template<typename Real> class CuSpMatrix;
+template<typename Real> class CuTpMatrix;
 }
 
 

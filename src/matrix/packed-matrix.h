@@ -1,7 +1,8 @@
 // matrix/packed-matrix.h
 
-// Copyright 2009-2012  Ondrej Glembek;  Lukas Burget;  Microsoft Corporation;
-//                      Saarland University;  Yanmin Qian;  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2013  Ondrej Glembek;  Lukas Burget;  Microsoft Corporation;
+//                      Saarland University;  Yanmin Qian;
+//                      Johns Hopkins University (Author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,28 +36,29 @@ std::ostream & operator <<(std::ostream & out, const PackedMatrix<Real>& M);
 
 /// @brief Packed matrix: base class for triangular and symmetric matrices.
 template<typename Real> class PackedMatrix {
+  friend class CuPackedMatrix<Real>;
  public:
+  //friend class CuPackedMatrix<Real>;
+
   PackedMatrix() : data_(NULL), num_rows_(0) {}
 
   explicit PackedMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero):
       data_(NULL) {  Resize(r, resize_type);  }
 
   explicit PackedMatrix(const PackedMatrix<Real> &orig) : data_(NULL) {
-    Resize(orig.num_rows_);
+    Resize(orig.num_rows_, kUndefined);
     CopyFromPacked(orig);
   }
 
   template<class OtherReal>
   explicit PackedMatrix(const PackedMatrix<OtherReal> &orig) : data_(NULL) {
-    Resize(orig.NumRows());
+    Resize(orig.NumRows(), kUndefined);
     CopyFromPacked(orig);
   }
   
-  void SetZero();
+  void SetZero();  /// < Set to zero
   void SetUnit();  /// < Set to unit matrix.
-
-  /// Sets to random values of a normal distribution
-  void SetRandn();
+  void SetRandn(); /// < Set to random values of a normal distribution
 
   Real Trace() const;
 
@@ -80,13 +82,15 @@ template<typename Real> class PackedMatrix {
   /// This function takes time proportional to the number of data elements.
   void Resize(MatrixIndexT nRows, MatrixResizeType resize_type = kSetZero);
 
+  void AddToDiag(const Real r); // Adds r to diaginal
+
   void ScaleDiag(const Real alpha);  // Scales diagonal by alpha.
 
   void SetDiag(const Real alpha);  // Sets diagonal to this value.
 
   template<class OtherReal>
   void CopyFromPacked(const PackedMatrix<OtherReal> &orig);
-
+  
   /// CopyFromVec just interprets the vector as having the same layout
   /// as the packed matrix.  Must have the same dimension, i.e.
   /// orig.Dim() == (NumRows()*(NumRows()+1)) / 2;
@@ -101,6 +105,8 @@ template<typename Real> class PackedMatrix {
     size_t nr = static_cast<size_t>(num_rows_);
     return ((nr * (nr+1)) / 2) * sizeof(Real);
   }
+
+  //MatrixIndexT Stride() const { return stride_; }
 
   // This code is duplicated in child classes to avoid extra levels of calls.
   Real operator() (MatrixIndexT r, MatrixIndexT c) const {
@@ -132,10 +138,6 @@ template<typename Real> class PackedMatrix {
     return * (std::min_element(data_, data_ + ((num_rows_*(num_rows_+1))/2) ));
   }
 
-
-  // *this <-- *this + alpha* rV * rV^T.
-  // The "2" in the name is because the argument is repeated.
-  void AddVec2(const Real alpha, const Vector<Real> &rv);
   void Scale(Real c);
 
   friend std::ostream & operator << <> (std::ostream & out,
@@ -145,18 +147,20 @@ template<typename Real> class PackedMatrix {
   void Read(std::istream &in, bool binary, bool add = false);
 
   void Write(std::ostream &out, bool binary) const;
-  // binary = true is not yet supported.
-
+  
   void Destroy();
 
   /// Swaps the contents of *this and *other.  Shallow swap.
   void Swap(PackedMatrix<Real> *other);
+  void Swap(Matrix<Real> *other);
+
 
  protected:
   // Will only be called from this class or derived classes.
   void AddPacked(const Real alpha, const PackedMatrix<Real>& M);
   Real *data_;
   MatrixIndexT num_rows_;
+  //MatrixIndexT stride_;
  private:
   /// Init assumes the current contents of the class are is invalid (i.e. junk or
   /// has already been freed), and it sets the matrixd to newly allocated memory
@@ -186,10 +190,6 @@ std::istream & operator >> (std::istream &is, PackedMatrix<Real> &M) {
 /// @}
 
 }  // namespace kaldi
-
-
-// Including the implementation
-#include "matrix/packed-matrix-inl.h"
 
 #endif
 

@@ -20,11 +20,14 @@
 #ifndef KALDI_CUDAMATRIX_CU_DEVICE_H_
 #define KALDI_CUDAMATRIX_CU_DEVICE_H_
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
 
 #include <map>
 #include <string>
 #include <iostream>
+#include <cuda.h>
+#include <cuda_runtime_api.h>
+
 
 namespace kaldi {
 
@@ -33,25 +36,13 @@ namespace kaldi {
  * responsible for CUBLAS initilalisation, collects profiling info
  */
 class CuDevice {
- // Singleton interface...
- private:
-  CuDevice();
-  CuDevice(CuDevice&);
-  CuDevice &operator=(CuDevice&);
-
+ // Singleton object (there should only be one instantiated per program)
  public:
   ~CuDevice();
-  static CuDevice& Instantiate() { 
-    return msDevice; 
-  }
+  static CuDevice& Instantiate() { return global_device_; }
 
- private:
-  static CuDevice msDevice;
-
-
- /**********************************/
- // Instance interface
- public:
+  /**********************************/
+  // Instance interface
  
   /// Check if the CUDA device is selected for use
   bool Enabled() { 
@@ -65,9 +56,11 @@ class CuDevice {
     return active_gpu_id_;
   }
 
-  void Verbose(bool verbose) { 
-    verbose_ = verbose; 
-  }
+  /// Returns true if either we have no GPU, or we have a GPU
+  /// and it supports double precision.
+  bool DoublePrecisionSupported();
+
+  void SetVerbose(bool verbose) {  verbose_ = verbose; }
 
   /// Sum the IO time
   void AccuProfile(const std::string &key, double time);
@@ -83,12 +76,23 @@ class CuDevice {
   void DeviceGetName(char* name, int32 len, int32 dev); 
   
  private:
+  CuDevice();
+  CuDevice(CuDevice&);
+  CuDevice &operator=(CuDevice&);
+
+  static CuDevice global_device_;
+  
   /// Check if the GPU run in compute exclusive mode
   bool IsComputeExclusive();
   /// Automatically select GPU
   void SelectGpuIdAuto();
+  
+  /// Should only be called if Enabled() == true. 
+  int32 MajorDeviceVersion();
 
- private:
+  /// Should only be called if Enabled() == true. 
+  int32 MinorDeviceVersion();
+
   std::map<std::string, double> profile_map_;
   
   /// active_gpu_id_ values:
@@ -97,10 +101,10 @@ class CuDevice {
   /// -1 SelectGpuId was called, but the GPU was manually disabled
   /// 0..N Normal GPU IDs
   int32 active_gpu_id_; 
-  ///
+  
+  cudaDeviceProp properties_;
 
   bool verbose_;
-
 }; // class CuDevice
 
 

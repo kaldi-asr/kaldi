@@ -45,6 +45,7 @@ template<typename Real> class SpMatrix;
 */
 template<typename Real>
 class SpMatrix : public PackedMatrix<Real> {
+  friend class CuSpMatrix<Real>;
  public:
   // so it can use our assignment operator.
   friend class std::vector<Matrix<Real> >;
@@ -74,8 +75,6 @@ class SpMatrix : public PackedMatrix<Real> {
     CopyFromMat(orig, copy_type);
   }
 #endif
-
-  ~SpMatrix() {}
 
   /// Shallow swap.
   void Swap(SpMatrix *other);

@@ -40,7 +40,7 @@ class Softmax : public Component {
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     // y = e^x_j/sum_j(e^x_j)
-    out->Softmax(in);
+    out->ApplySoftMax(in);
   }
 
   void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,

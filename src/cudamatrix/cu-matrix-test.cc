@@ -1,6 +1,7 @@
 // cudamatrix/cuda-matrix-test.cc
 
 // Copyright 2010  Karel Vesely
+//                 Lucas Ondel
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@
 #include <cstdlib>
 
 #include "base/kaldi-common.h"
+#include "util/common-utils.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-math.h"
@@ -35,7 +37,7 @@ namespace kaldi {
  */
 template<class Real> 
 static void InitRand(VectorBase<Real> *v) {
-  for (MatrixIndexT i = 0;i < v->Dim();i++)
+  for (MatrixIndexT i = 0; i < v->Dim(); i++)
 	(*v)(i) = RandGauss();
 }
 
@@ -583,7 +585,7 @@ static void UnitTestCuSoftmax() {
   Di.CopyFromMat(Hi);
 
   //gpu
-  Do.Softmax(Di);
+  Do.ApplySoftMax(Di);
   //cpu
   Ho.CopyFromMat(Hi);
   for(MatrixIndexT r=0; r<Ho.NumRows(); r++) {
@@ -666,7 +668,59 @@ static void UnitTestCuDiffXent() {
   AssertEqual(Hlogpost,Hlogpost2);
 }
 
+template<class Real> void UnitTestCheck() {
+  Matrix<Real> Hi(100,111);
+  RandGaussMatrix(&Hi);
 
+  CuMatrix<Real> Di(100,111);
+  Di.CopyFromMat(Hi);
+
+
+  CuMatrix<Real> Dj(Di);
+  KALDI_LOG << Dj.NumRows() << '\n';
+ 
+
+}
+
+template<class Real>
+void UnitTestSwapCu2Cu() {
+  Matrix<Real> Hi(100,111);
+  RandGaussMatrix(&Hi);
+  CuMatrix<Real> Di(100,111);
+  Di.CopyFromMat(Hi);
+
+  Matrix<Real> Hi2(110,121);
+  RandGaussMatrix(&Hi2);
+  CuMatrix<Real> Di2(110,121);
+  Di2.CopyFromMat(Hi2);
+
+  Di.Swap(&Di2);
+  Matrix<Real> Hf(Di.NumRows(), Di.NumCols());
+  Di.CopyToMat(&Hf);
+  Matrix<Real> Hf2(Di2.NumRows(), Di2.NumCols());
+  Di2.CopyToMat(&Hf2);
+  AssertEqual(Hi,Hf2);
+  AssertEqual(Hi2,Hf);
+}
+
+template<class Real>
+void UnitTestSwapCu2M() {
+  Matrix<Real> Hi(100,111);
+  RandGaussMatrix(&Hi);
+  CuMatrix<Real> Di(100,111);
+  Di.CopyFromMat(Hi);
+
+  Matrix<Real> Hi2(110,121);
+  RandGaussMatrix(&Hi2);
+  Matrix<Real> Di2(110,121);
+  Di2.CopyFromMat(Hi2);
+
+  Di.Swap(&Hi2);
+  Matrix<Real> Hf(Di.NumRows(), Di.NumCols());
+  Di.CopyToMat(&Hf);
+  AssertEqual(Di2,Hf);
+  AssertEqual(Hi2,Hi);
+}
 
 template<class Real> void CudaMatrixUnitTest() {
   //test CuMatrix<Real> methods by cross-check with Matrix
@@ -687,11 +741,17 @@ template<class Real> void CudaMatrixUnitTest() {
   UnitTestCuVectorAddColSumMatLarge<Real>();
   UnitTestCuVectorInvertElements<Real>();
 
+
   UnitTestCuSigmoid<Real>();
   UnitTestCuDiffSigmoid<Real>();
   UnitTestCuFindRowMaxId<Real>();
   UnitTestCuSoftmax<Real>();
   UnitTestCuDiffXent<Real>();
+
+  UnitTestCheck<Real>();
+
+  UnitTestSwapCu2Cu<Real>();
+  UnitTestSwapCu2M<Real>();
 }
 
 
@@ -700,12 +760,20 @@ template<class Real> void CudaMatrixUnitTest() {
 
 int main() {
     //Select the GPU
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().SelectGpuId(-2); //-2 .. automatic selection
 #endif
 
 
   kaldi::CudaMatrixUnitTest<float>();
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().DoublePrecisionSupported()) {
+    kaldi::CudaMatrixUnitTest<double>();
+  } else {
+    KALDI_WARN << "Double precision not supported";
+  }
+#else
   kaldi::CudaMatrixUnitTest<double>();
+#endif
   std::cout << "Tests succeeded.\n";
 }

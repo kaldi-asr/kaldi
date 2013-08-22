@@ -35,12 +35,6 @@ void PackedMatrix<Real>::Scale(Real alpha) {
 }
 
 template<typename Real>
-void PackedMatrix<Real>::AddVec2(const Real alpha, const Vector<Real> &rv) {
-  KALDI_ASSERT(rv.Dim() == num_rows_);
-  cblas_Xspr(rv.Dim(), alpha, rv.Data(), 1, data_);
-}
-
-template<typename Real>
 void PackedMatrix<Real>::AddPacked(const Real alpha, const PackedMatrix<Real> &rMa) {
   KALDI_ASSERT(num_rows_ == rMa.NumRows());
   size_t nr = num_rows_,
@@ -87,6 +81,12 @@ void PackedMatrix<Real>::Swap(PackedMatrix<Real> *other) {
   std::swap(num_rows_, other->num_rows_);
 }
 
+template<typename Real>
+void PackedMatrix<Real>::Swap(Matrix<Real> *other) {
+  std::swap(data_, other->data_);
+  std::swap(num_rows_, other->num_rows_);
+}
+
 
 template<typename Real>
 void PackedMatrix<Real>::Resize(MatrixIndexT r, MatrixResizeType resize_type) {
@@ -118,6 +118,15 @@ void PackedMatrix<Real>::Resize(MatrixIndexT r, MatrixResizeType resize_type) {
 
 
 template<typename Real>
+void PackedMatrix<Real>::AddToDiag(Real r) {
+  Real *ptr = data_;
+  for (MatrixIndexT i = 2; i <= num_rows_+1; i++) {
+    *ptr += r;
+    ptr += i;
+  }
+}
+
+template<typename Real>
 void PackedMatrix<Real>::ScaleDiag(Real alpha) {
   Real *ptr = data_;
   for (MatrixIndexT i = 2; i <= num_rows_+1; i++) {
@@ -134,6 +143,7 @@ void PackedMatrix<Real>::SetDiag(Real alpha) {
     ptr += i;
   }
 }
+
 
 
 template<typename Real>

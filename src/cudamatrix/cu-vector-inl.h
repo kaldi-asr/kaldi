@@ -20,7 +20,7 @@
 #ifndef KALDI_CUDAMATRIX_CU_VECTOR_INL_H_
 #define KALDI_CUDAMATRIX_CU_VECTOR_INL_H_
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
   #include <cuda_runtime_api.h>
 #endif
 
@@ -29,6 +29,8 @@
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-kernels.h"
+
+#include "base/kaldi-common.h"
 
 namespace kaldi {
 
@@ -56,9 +58,9 @@ void CuVector<Real>::Resize(MatrixIndexT dim, MatrixResizeType t) {
   if (this->dim_ != 0)
     this->Destroy();
   if (dim == 0) return;
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
-    cuSafeCall(cudaMalloc(reinterpret_cast<void**>(&this->data_), dim * sizeof(Real)));
+    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&this->data_), dim * sizeof(Real)));
     this->dim_ = dim;
     if (t == kSetZero) this->SetZero();
   } else
@@ -71,7 +73,7 @@ void CuVector<Real>::Resize(MatrixIndexT dim, MatrixResizeType t) {
 
 template<typename Real>
 void CuVector<Real>::Swap(Vector<Real> *vec) {
-#if HAVE_CUDA==1 
+#if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) {
     if (this->dim_ == 0) {
       if (vec->dim_ != 0) {
@@ -107,10 +109,10 @@ void CuVector<Real>::Swap(Vector<Real> *vec) {
 
 template<typename Real>
 void CuVector<Real>::Destroy() {
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     if (this->data_ != NULL) {
-      cuSafeCall(cudaFree(this->data_));
+      CU_SAFE_CALL(cudaFree(this->data_));
     }
   } else
 #endif
@@ -122,14 +124,13 @@ void CuVector<Real>::Destroy() {
 }
 
 
-
 template<typename Real>
 void CuVectorBase<Real>::CopyFromVec(const CuVectorBase<Real> &src) {
   KALDI_ASSERT(src.Dim() == dim_);
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
-    cuSafeCall(cudaMemcpy(data_, src.data_, src.dim_ * sizeof(Real), cudaMemcpyDeviceToDevice));
+    CU_SAFE_CALL(cudaMemcpy(data_, src.data_, src.dim_ * sizeof(Real), cudaMemcpyDeviceToDevice));
     CuDevice::Instantiate().AccuProfile("CuVector::CopyFromVecD2D",tim.Elapsed());
   } else
   #endif
@@ -139,16 +140,25 @@ void CuVectorBase<Real>::CopyFromVec(const CuVectorBase<Real> &src) {
   }
 }
 
+// declare template specializations.
+template <>
+template <>    
+void CuVectorBase<double>::CopyFromVec<float>(const CuVectorBase<float> &src);
+
+template<>
+template <>
+void CuVectorBase<float>::CopyFromVec<double>(const CuVectorBase<double> &src);
+
 
 
 template<typename Real>
 void CuVectorBase<Real>::CopyFromVec(const VectorBase<Real> &src) {
   KALDI_ASSERT(src.Dim() == dim_);
-  #if HAVE_CUDA==1
+  #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    cuSafeCall(cudaMemcpy(data_, src.Data(), src.Dim()*sizeof(Real), cudaMemcpyHostToDevice));
+    CU_SAFE_CALL(cudaMemcpy(data_, src.Data(), src.Dim()*sizeof(Real), cudaMemcpyHostToDevice));
 
     CuDevice::Instantiate().AccuProfile("CuVector::CopyFromVecH2D",tim.Elapsed());
   } else
@@ -164,10 +174,10 @@ void CuVectorBase<Real>::CopyFromVec(const VectorBase<Real> &src) {
 template<typename Real>
 void CuVectorBase<Real>::CopyToVec(VectorBase<Real> *dst) const {
   KALDI_ASSERT(dst->Dim() == dim_);
-  #if HAVE_CUDA==1
+  #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
-    cuSafeCall(cudaMemcpy(dst->Data(), this->data_,
+    CU_SAFE_CALL(cudaMemcpy(dst->Data(), this->data_,
                           dim_*sizeof(Real), cudaMemcpyDeviceToHost));
     CuDevice::Instantiate().AccuProfile("CuVector::CopyToVecD2H",tim.Elapsed());
   } else
@@ -200,12 +210,13 @@ void CuVector<Real>::Write(std::ostream &os, bool binary) const {
 
 template<typename Real>
 void CuVectorBase<Real>::SetZero() {
-#if HAVE_CUDA==1
+  if (dim_==0 || data_==NULL) return;
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
-    KALDI_ASSERT(dim_>0);
+    KALDI_ASSERT(dim_>=0);
     KALDI_ASSERT(data_!=NULL);
     Timer tim;
-    cuSafeCall(cudaMemset(data_, 0, dim_*sizeof(Real)));
+    CU_SAFE_CALL(cudaMemset(data_, 0, dim_*sizeof(Real)));
     CuDevice::Instantiate().AccuProfile("CuVector::SetZero",tim.Elapsed());
   } else
 #endif
@@ -235,7 +246,7 @@ std::ostream &operator << (std::ostream &out, const CuVectorBase<Real> &vec) {
  */
 template<typename Real>
 void CuVectorBase<Real>::Set(Real value) {
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     
@@ -244,7 +255,7 @@ void CuVectorBase<Real>::Set(Real value) {
     ::MatrixDim d = { 1, Dim(), Dim() };
     
     cuda_set_const(dimGrid, dimBlock, data_, value, d);
-    cuSafeCall(cudaGetLastError());
+    CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -258,7 +269,7 @@ void CuVectorBase<Real>::Set(Real value) {
 
 template<typename Real>
 void CuVectorBase<Real>::Add(Real value) {
-  #if HAVE_CUDA==1
+  #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
@@ -267,7 +278,7 @@ void CuVectorBase<Real>::Add(Real value) {
     ::MatrixDim d = { 1, Dim(), Dim() };
 
     cuda_add(dimGrid, dimBlock, data_, value, d);
-    cuSafeCall(cudaGetLastError());
+    CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -281,16 +292,21 @@ void CuVectorBase<Real>::Add(Real value) {
 
 template<typename Real>
 void CuVectorBase<Real>::Scale(Real value) {
-  #if HAVE_CUDA==1
+  #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
     dim3 dimBlock(CUBLOCK);
     dim3 dimGrid(n_blocks(Dim(), CUBLOCK));
     ::MatrixDim d = { 1, Dim(), Dim() };
-
+    if (Dim() == 0 ) return;
+    KALDI_LOG << "dimension is : " << Dim() << '\n';
+    KALDI_LOG << "value is : " << value << '\n';
+    KALDI_LOG << "dimBlock is : " << CUBLOCK << '\n';
+    KALDI_LOG << "dimGrid is : " << n_blocks(Dim(), CUBLOCK) << '\n';
+    
     cuda_scale(dimGrid, dimBlock, data_, value, d);
-    cuSafeCall(cudaGetLastError());
+    CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -305,7 +321,8 @@ template<class Real>
 void CuVectorBase<Real>::AddVec(Real alpha, const CuVectorBase<Real> &vec,
                                 Real beta) {
   KALDI_ASSERT(vec.Dim() == Dim());
-#if HAVE_CUDA==1
+
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
@@ -313,8 +330,9 @@ void CuVectorBase<Real>::AddVec(Real alpha, const CuVectorBase<Real> &vec,
     dim3 dimGrid(n_blocks(Dim(), CUBLOCK));
     ::MatrixDim d = { 1, Dim(), Dim() };
 
+
     cuda_add_mat(dimGrid, dimBlock, alpha, vec.data_, beta, data_, d);
-    cuSafeCall(cudaGetLastError());
+    CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -326,12 +344,11 @@ void CuVectorBase<Real>::AddVec(Real alpha, const CuVectorBase<Real> &vec,
 }
 
 
-
 template<typename Real>
 void CuVectorBase<Real>::AddRowSumMat(Real alpha, const CuMatrixBase<Real> &mat,
                                       Real beta) {
   KALDI_ASSERT(mat.NumCols() == Dim());
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
    
@@ -381,7 +398,7 @@ void CuVectorBase<Real>::AddColSumMat(Real alpha,
                                       const CuMatrixBase<Real> &mat,
                                       Real beta) {
   KALDI_ASSERT(mat.NumRows() == Dim());
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
@@ -427,7 +444,7 @@ void CuVectorBase<Real>::AddColSumMat(Real alpha,
  
 template<typename Real> 
 void CuVectorBase<Real>::InvertElements() {
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     
@@ -436,7 +453,7 @@ void CuVectorBase<Real>::InvertElements() {
     MatrixDim d = {1, dim_, dim_};
 
     cuda_invert_elements(dimGrid, dimBlock, data_, d);
-    cuSafeCall(cudaGetLastError());
+    CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else

@@ -2410,6 +2410,19 @@ template<class Real> static void UnitTestInnerProd() {
   AssertEqual(prod, f2);
 }
 
+
+template<class Real> static void UnitTestAddToDiag() {
+
+  MatrixIndexT N = 1 + rand() % 10;
+  SpMatrix<Real> S(N);
+  InitRand(&S);
+  SpMatrix<Real> S2(S);
+  Real x = 0.5;
+  S.AddToDiag(x);
+  for (MatrixIndexT i = 0; i  < N; i++) S2(i, i) += x;
+  AssertEqual(S, S2);
+}
+
 template<class Real> static void UnitTestScaleDiag() {
 
   MatrixIndexT N = 1 + rand() % 10;

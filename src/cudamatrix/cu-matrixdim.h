@@ -46,5 +46,3 @@ extern "C" {
 }
 
 #endif
-
-

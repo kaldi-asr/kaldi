@@ -34,7 +34,7 @@ namespace cu {
 template<typename Real>
 void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1, Real lr) {
   KALDI_ASSERT(SameDim(*weight, *grad));
-#if HAVE_CUDA==1 
+#if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
@@ -42,7 +42,7 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
     dim3 dimGrid(n_blocks(weight->NumCols(), CUBLOCK), n_blocks(weight->NumRows(), CUBLOCK));
 
     cuda_regularize_l1(dimGrid, dimBlock, weight->data_, grad->data_, l1, lr, weight->Dim());
-    cuSafeCall(cudaGetLastError());
+    CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -82,7 +82,7 @@ void Randomize(const CuMatrixBase<Real> &src,
   KALDI_ASSERT(src.NumRows() == tgt->NumRows());
   KALDI_ASSERT(copy_from_idx.Dim() <= tgt->NumRows());
 
-  #if HAVE_CUDA==1
+  #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     
@@ -106,7 +106,7 @@ void Randomize(const CuMatrixBase<Real> &src,
     MatrixDim dimtgt = tgt->Dim(); dimtgt.rows=copy_from_idx.Dim();
 
     cuda_randomize(dimGrid, dimBlock, tgt->data_, src.data_, copy_from_idx.Data(), dimtgt, dimsrc);
-    cuSafeCall(cudaGetLastError());
+    CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -130,7 +130,7 @@ void Splice(const CuMatrix<Real> &src, const CuStlVector<int32> &frame_offsets, 
   KALDI_ASSERT(src.NumCols()*frame_offsets.Dim() == tgt->NumCols());
   KALDI_ASSERT(src.NumRows() == tgt->NumRows());
 
-  #if HAVE_CUDA==1
+  #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     
@@ -138,7 +138,7 @@ void Splice(const CuMatrix<Real> &src, const CuStlVector<int32> &frame_offsets, 
     dim3 dimGrid(n_blocks(tgt->NumCols(), CUBLOCK), n_blocks(tgt->NumRows(), CUBLOCK));
     
     cuda_splice(dimGrid, dimBlock, tgt->data_, src.data_, frame_offsets.Data(), tgt->Dim(), src.Dim());
-    cuSafeCall(cudaGetLastError());
+    CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -168,7 +168,7 @@ void Copy(const CuMatrix<Real> &src, const CuStlVector<int32> &copy_from_indices
   KALDI_ASSERT(copy_from_indices.Dim() == tgt->NumCols());
   KALDI_ASSERT(src.NumRows() == tgt->NumRows());
 
-  #if HAVE_CUDA==1
+  #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     
@@ -176,7 +176,7 @@ void Copy(const CuMatrix<Real> &src, const CuStlVector<int32> &copy_from_indices
     dim3 dimGrid(n_blocks(tgt->NumCols(), CUBLOCK), n_blocks(tgt->NumRows(), CUBLOCK));
     
     cuda_copy(dimGrid, dimBlock, tgt->data_, src.data_, copy_from_indices.Data(), tgt->Dim(), src.Dim());
-    cuSafeCall(cudaGetLastError());
+    CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else

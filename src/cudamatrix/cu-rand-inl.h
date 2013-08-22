@@ -55,7 +55,7 @@ void CuRand<Real>::SeedBuffer(uint32* *tgt, MatrixIndexT state_size) {
   for(MatrixIndexT i=0; i<host_size_; i++) {
     host_[i] = RandInt(128, RAND_MAX);
   }
-  #if HAVE_CUDA==1
+  #if HAVE_CUDA == 1
   // push it to the GPU
   if (CuDevice::Instantiate().Enabled()) {
     int32 state_size_in_bytes = state_size*sizeof(uint32);
@@ -81,7 +81,7 @@ void CuRand<Real>::SeedBuffer(uint32* *tgt, MatrixIndexT state_size) {
 
 
 template<typename Real> void CuRand<Real>::RandUniform(CuMatrix<Real> *tgt) {
-  #if HAVE_CUDA==1 
+  #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
@@ -92,7 +92,7 @@ template<typename Real> void CuRand<Real>::RandUniform(CuMatrix<Real> *tgt) {
     dim3 dimGrid(n_blocks(tgt->num_cols_, CUBLOCK), n_blocks(tgt->num_rows_, CUBLOCK));
 
     cuda_rand(dimGrid, dimBlock, tgt->data_, z1_, z2_, z3_, z4_, tgt->Dim());
-    cuSafeCall(cudaGetLastError());
+    CU_SAFE_CALL(cudaGetLastError());
   
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -108,8 +108,8 @@ template<typename Real> void CuRand<Real>::RandUniform(CuMatrix<Real> *tgt) {
 
 
 
-template<typename Real> void CuRand<Real>::RandGaussian(CuMatrix<Real> *tgt) {
-  #if HAVE_CUDA==1 
+template<typename Real> void CuRand<Real>::RandGaussian(CuMatrixBase<Real> *tgt) {
+  #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
@@ -120,7 +120,7 @@ template<typename Real> void CuRand<Real>::RandGaussian(CuMatrix<Real> *tgt) {
     dim3 dimGrid(n_blocks(tgt->num_cols_, CUBLOCK), n_blocks(tgt->NumRows(), CUBLOCK));
 
     cuda_gauss_rand(dimGrid, dimBlock, tgt->data_, z1_, z2_, z3_, z4_, tgt->Dim());
-    cuSafeCall(cudaGetLastError());
+    CU_SAFE_CALL(cudaGetLastError());
   
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -135,9 +135,33 @@ template<typename Real> void CuRand<Real>::RandGaussian(CuMatrix<Real> *tgt) {
 }
 
 
+template<typename Real> void CuRand<Real>::RandGaussian(CuVectorBase<Real> *tgt) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    int32 tgt_size = tgt->Dim();
+    if (tgt_size != state_size_) SeedGpu(tgt_size);
+
+    int dimBlock(CUBLOCK);
+    int dimGrid(n_blocks(tgt->Dim(), CUBLOCK));
+
+    cuda_vec_gauss_rand(dimGrid, dimBlock, tgt->Data(), z1_, z2_, z3_, z4_, tgt->Dim());
+
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    
+  } else
+#endif
+  {
+    for (int32 i = 0; i < tgt->Dim(); i++)
+      tgt->Vec()(i) = RandGauss();
+  }
+}
+
 
 template<typename Real> void CuRand<Real>::BinarizeProbs(const CuMatrix<Real> &probs, CuMatrix<Real> *states) {
-  #if HAVE_CUDA==1 
+  #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
@@ -158,7 +182,7 @@ template<typename Real> void CuRand<Real>::BinarizeProbs(const CuMatrix<Real> &p
     dim3 dimGrid(n_blocks(states->num_cols_, CUBLOCK), n_blocks(states->num_rows_, CUBLOCK));
 
     cuda_binarize_probs(dimGrid, dimBlock, states->data_, probs.data_, tmp_.data_, states->Dim());
-    cuSafeCall(cudaGetLastError());
+    CU_SAFE_CALL(cudaGetLastError());
   
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
