@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# THIS SCRIPT IS DEPRECATED!  Use the scripts in steps/nnet2/
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 

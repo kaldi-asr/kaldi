@@ -8,7 +8,7 @@ SHELL := /bin/bash
 SUBDIRS = base matrix util feat tree thread gmm tied transform sgmm \
           fstext hmm lm decoder lat cudamatrix nnet \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
-          nnetbin latbin sgmm2 sgmm2bin nnet-cpu nnet-cpubin kwsbin
+          nnetbin latbin sgmm2 sgmm2bin nnet2 nnet2bin kwsbin
 SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
 
@@ -87,7 +87,6 @@ check_portaudio:
 clean: rmlibdir
 	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x clean; done
 
-# the part after the expands to "base/test matrix/test util/test ...."
 test: $(addsuffix /test, $(SUBDIRS))
 
 ext_test: $(addsuffix /test, $(EXT_SUBDIRS))
@@ -101,8 +100,12 @@ ext_test: $(addsuffix /test, $(EXT_SUBDIRS))
 valgrind:
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x valgrind || { echo "valgrind on $$x failed"; exit 1; }; done
 
-depend: 
-	-for x in $(SUBDIRS); do $(MAKE) -C $$x depend; done
+
+depend: $(addsuffix /depend, $(SUBDIRS))
+
+%/depend:
+	$(MAKE) -C $(dir $@) depend
+
 
 ext_depend: check_portaudio
 	-for x in $(EXT_SUBDIRS); do $(MAKE) -C $$x depend; done
@@ -120,7 +123,7 @@ $(EXT_SUBDIRS) : mklibdir
 ### Dependency list ###
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
-bin fstbin gmmbin fgmmbin tiedbin sgmmbin sgmm2bin featbin nnetbin nnet-cpubin latbin: base matrix util feat tree optimization thread gmm tied transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet-cpu
+bin fstbin gmmbin fgmmbin tiedbin sgmmbin sgmm2bin featbin nnetbin nnet2bin latbin: base matrix util feat tree optimization thread gmm tied transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2
 
 #2)The libraries have inter-dependencies
 base:
@@ -142,9 +145,9 @@ decoder: base util matrix gmm sgmm hmm tree transform
 lat: base util hmm
 cudamatrix: base util matrix	
 nnet: base util matrix cudamatrix
-nnet-cpu: base util matrix thread
+nnet2: base util matrix thread
 #3)Dependencies for optional parts of Kaldi
-onlinebin: base matrix util feat tree optimization gmm tied transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet-cpu online
+onlinebin: base matrix util feat tree optimization gmm tied transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online
 # python-kaldi-decoding: base matrix util feat tree optimization thread gmm tied transform sgmm sgmm2 fstext hmm decoder lat online
 online: decoder
 kwsbin: fstext lat base util
