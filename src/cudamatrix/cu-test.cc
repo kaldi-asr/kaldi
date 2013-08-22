@@ -431,7 +431,9 @@ template<class Real> static void UnitTestMulTp() {
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
     int32 dim = 1 + rand() % 30;
     Vector<Real> v(dim);
+    v.SetRandn();
     TpMatrix<Real> M(dim);
+    M.SetRandn();
     CuVector<Real> cv(v);
     CuTpMatrix<Real> cM(M);
     
@@ -441,6 +443,7 @@ template<class Real> static void UnitTestMulTp() {
     v.MulTp(M, iter % 2 == 0 ? kTrans:kNoTrans);
     cv.MulTp(cM, iter % 2 == 0 ? kTrans:kNoTrans);
     cv.CopyToVec(&v2);
+    // KALDI_LOG << "v is " << v << ", v2 is " << v2;
     AssertEqual(v, v2);
   }
 }
