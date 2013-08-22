@@ -67,6 +67,7 @@ dir=$7
 
 num_groups=$[$num_pdfs/$leaves_per_group]
 first_spkvec_iter=`echo $spkvec_iters | awk '{print $1}'` || exit 1;
+ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 
 # Check some files.
 for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $ubm; do
