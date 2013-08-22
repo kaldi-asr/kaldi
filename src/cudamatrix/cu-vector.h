@@ -29,22 +29,30 @@ namespace kaldi {
 
 template<typename Real> class CuMatrixBase;
 
+template<typename Real>
+Real VecVec(const CuVectorBase<Real> &v1, const CuVectorBase<Real> &v2);
+
+
 /**
  * Vector for CUDA computing
  */
 template<typename Real>
 class CuVectorBase {
  public:
-
   friend class CuVectorBase<float>;
   friend class CuVectorBase<double>;
-  
   friend class CuMatrixBase<Real>;
   friend class CuPackedMatrix<Real>;
+  friend class CuSpMatrix<Real>;
+  friend class CuTpMatrix<Real>;
+
+  template <class OtherReal>
+  friend OtherReal VecVec(const CuVectorBase<OtherReal> &v1,
+                          const CuVectorBase<OtherReal> &v2);
   friend void cu::Splice<Real>(const CuMatrix<Real> &src,
                                const CuStlVector<int32> &frame_offsets,
                                CuMatrix<Real> *tgt);
-  
+  friend class CuRand<Real>;
   
   /// Dimensions
   MatrixIndexT Dim() const { return dim_;  }   
@@ -90,15 +98,6 @@ class CuVectorBase {
   
   void InvertElements(); 
 
-  // The following two functions should only be called if we did not compile
-  // with CUDA or could not get a CUDA card; in that case the contents are
-  // interpreted the same as a regular vector.
-  inline const VectorBase<Real> &Vec() const {
-    return *(reinterpret_cast<const VectorBase<Real>* >(this));
-  }
-  inline VectorBase<Real> &Vec() {
-    return *(reinterpret_cast<VectorBase<Real>* >(this));
-  }
   void ApplySoftMax();
   void ApplyExp();
   void ApplyLog();
@@ -150,8 +149,18 @@ class CuVectorBase {
                      Real param);
   
  protected:
+
+  // The following two functions should only be called if we did not compile
+  // with CUDA or could not get a CUDA card; in that case the contents are
+  // interpreted the same as a regular vector.
+  inline const VectorBase<Real> &Vec() const {
+    return *(reinterpret_cast<const VectorBase<Real>* >(this));
+  }
+  inline VectorBase<Real> &Vec() {
+    return *(reinterpret_cast<VectorBase<Real>* >(this));
+  }
   
-  /// Default constructor: make it private so the user cannot
+  /// Default constructor: make it protected so the user cannot
   /// instantiate this class.
   CuVectorBase<Real>(): data_(NULL), dim_(0) { }
   
@@ -164,6 +173,13 @@ class CuVectorBase {
 
 template<class Real>
 class CuVector: public CuVectorBase<Real> {
+  friend class CuVectorBase<float>;
+  friend class CuVectorBase<double>;
+  friend class CuMatrixBase<Real>;
+  friend class CuPackedMatrix<Real>;
+  friend class CuSpMatrix<Real>;
+  friend class CuTpMatrix<Real>;
+  
  public:
   CuVector() { }
   CuVector(MatrixIndexT dim, MatrixResizeType t = kSetZero) { Resize(dim, t); }
@@ -252,9 +268,6 @@ class CuSubVector: public CuVectorBase<Real> {
   
 
 };
-
-template<typename Real>
-Real VecVec(const CuVectorBase<Real> &v1, const CuVectorBase<Real> &v2);
 
 /// I/O
 template<typename Real>

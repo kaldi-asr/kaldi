@@ -2346,9 +2346,7 @@ template<class Real> static void UnitTestScale() {
 }
 
 template<class Real> static void UnitTestMul() {
-
-
-  for (MatrixIndexT x = 0;x<=1;x++) {
+  for (MatrixIndexT x = 0; x<=1; x++) {
     MatrixTransposeType trans = (x == 1 ? kTrans: kNoTrans);
     for (MatrixIndexT i = 0;i < 5;i++) {
       float alpha = 1.0, beta =0;

@@ -165,7 +165,6 @@ template<> inline double cublas_dot<double>(int n, const double *x, int incx, co
 }
 #endif
 
-template <>
 double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<double> &B) {
   double result;
   KALDI_ASSERT(A.NumRows() == B.NumRows());
@@ -204,7 +203,6 @@ double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<double> &B) {
   return result;
 }
 
-template <>
 float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<float> &B) {
   float result;
   KALDI_ASSERT(A.NumRows() == B.NumRows());
@@ -243,7 +241,6 @@ float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<float> &B) {
   return result;
 }
 
-template <>
 double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<float> &B) {
   double result;
   KALDI_ASSERT(A.NumRows() == B.NumRows());
@@ -268,7 +265,6 @@ double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<float> &B) {
   return result;
 }
 
-template <>
 float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<double> &B) {
   float result;
   KALDI_ASSERT(A.NumRows() == B.NumRows());

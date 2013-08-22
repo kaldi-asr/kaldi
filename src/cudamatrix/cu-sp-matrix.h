@@ -13,8 +13,24 @@
 
 namespace kaldi {
 
+/// TraceSpSp returns tr(A B)
+double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<double> &B);
+float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<float> &B);
+double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<float> &B);
+float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<double> &B);
+
 template<typename Real>
 class CuSpMatrix : public CuPackedMatrix<Real> {
+  friend class CuMatrixBase<Real>;
+  friend class CuVectorBase<Real>;
+  friend class CuSubMatrix<Real>;
+  friend class CuRand<Real>;
+
+  
+  friend double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<double> &B);
+  friend float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<float> &B);
+  friend double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<float> &B);
+  friend float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<double> &B);
  public:
   
   CuSpMatrix(): CuPackedMatrix<Real>() {}
@@ -36,14 +52,6 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
 
   ~CuSpMatrix() {}  
 
-  inline const SpMatrix<Real> &Mat() const {
-    return *(reinterpret_cast<const SpMatrix<Real>* >(this));
-  }
-
-  inline SpMatrix<Real> &Mat() {
-    return *(reinterpret_cast<SpMatrix<Real>* >(this));
-  }
-  
   inline void Resize(MatrixIndexT nRows, MatrixResizeType resize_type = kSetZero) {
     CuPackedMatrix<Real>::Resize(nRows, resize_type);
   }
@@ -90,20 +98,18 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
     this->AddPacked(alpha, Ma);
   }
 
+ protected:
+  inline const SpMatrix<Real> &Mat() const {
+    return *(reinterpret_cast<const SpMatrix<Real>* >(this));
+  }
+  inline SpMatrix<Real> &Mat() {
+    return *(reinterpret_cast<SpMatrix<Real>* >(this));
+  }
+  
+  
+
 };
 
-/// Returns tr(A B)
-template<typename Real, typename OtherReal>
-Real TraceSpSp(const CuSpMatrix<Real> &A, const CuSpMatrix<OtherReal> &B);
-
-template <>
-double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<double> &B);
-template <>
-float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<float> &B);
-template <>
-double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<float> &B);
-template <>
-float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<double> &B);
 
 } // namespace
 

@@ -263,20 +263,6 @@ class CuMatrixBase {
   }
 
   
-  //Real* Data() { return data_; }
-  //const Real* Data() const { return data_; }
-  
-  // The following two functions should only be called if we did not compile with CUDA
-  // or could not get a CUDA card; in that case the contents are interpreted the
-  // same as a regular matrix.
-  inline const MatrixBase<Real> &Mat() const {
-    return *(reinterpret_cast<const MatrixBase<Real>* >(this));
-  }
-  inline MatrixBase<Real> &Mat() {
-    return *(reinterpret_cast<MatrixBase<Real>* >(this));
-  }
-
-  
   inline const Real operator() (MatrixIndexT r, MatrixIndexT c) const {
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
                           static_cast<UnsignedMatrixIndexT>(num_rows_) &&
@@ -302,6 +288,16 @@ class CuMatrixBase {
   //Real Sum() const;
         
  protected:
+  // The following two functions should only be called if we did not compile with CUDA
+  // or could not get a CUDA card; in that case the contents are interpreted the
+  // same as a regular matrix.
+  inline const MatrixBase<Real> &Mat() const {
+    return *(reinterpret_cast<const MatrixBase<Real>* >(this));
+  }
+  inline MatrixBase<Real> &Mat() {
+    return *(reinterpret_cast<MatrixBase<Real>* >(this));
+  }
+  
   /// Get raw row pointer
   inline const Real* RowData(MatrixIndexT r) const { return data_ + r * stride_; }
   inline Real* RowData(MatrixIndexT r) { return data_ + r * stride_; }

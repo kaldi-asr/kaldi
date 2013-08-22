@@ -385,10 +385,12 @@ void CuVectorBase<Real>::AddTpVec(const Real alpha, const CuTpMatrix<Real> &M,
 template<typename Real> inline void cublas_tpmv(char trans, int n, const Real* Ap, Real* x, int incx) {
   KALDI_ERR << __func__ << " Not implemented!";
 }
-template<> inline void cublas_tpmv<float>(char trans, int n, const float* Ap, float* x,int incx) {
+template<> inline void cublas_tpmv<float>(char trans, int n,
+                                          const float* Ap, float* x, int incx) {
   return cublasStpmv('l', trans, 'n', n, Ap, x, incx);
 }
-template<> inline void cublas_tpmv<double>(char trans, int n, const double* Ap, double* x,int incx) {
+template<> inline void cublas_tpmv<double>(char trans, int n, const double* Ap,
+                                           double* x,int incx) {
   return cublasDtpmv('l', trans, 'n', n, Ap, x, incx);
 }
 #endif

@@ -1537,7 +1537,6 @@ class AdditiveNoiseComponent: public Component {
 };
 
 
-
 /// Functions used in Init routines.  Suppose name=="foo", if "string" has a
 /// field like foo=12, this function will set "param" to 12 and remove that
 /// element from "string".  It returns true if the parameter was read.

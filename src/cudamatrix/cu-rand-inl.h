@@ -154,8 +154,7 @@ template<typename Real> void CuRand<Real>::RandGaussian(CuVectorBase<Real> *tgt)
   } else
 #endif
   {
-    for (int32 i = 0; i < tgt->Dim(); i++)
-      tgt->Vec()(i) = RandGauss();
+    tgt->Vec().SetRandn();
   }
 }
 

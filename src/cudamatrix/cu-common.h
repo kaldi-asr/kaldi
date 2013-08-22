@@ -62,7 +62,7 @@ namespace kaldi {
 #endif // HAVE_CUDA
 
 namespace kaldi {
-// Some forward declarations, frequently needed
+// Some forward declarations, needed for friend declarations.
 template<typename Real> class CuVectorBase;
 template<typename Real> class CuVector;
 template<typename Real> class CuSubVector;
@@ -73,6 +73,7 @@ template<typename Real> class CuSubMatrix;
 template<typename Real> class CuPackedMatrix;
 template<typename Real> class CuSpMatrix;
 template<typename Real> class CuTpMatrix;
+
 }
 
 
