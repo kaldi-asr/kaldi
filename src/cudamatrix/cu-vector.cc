@@ -382,16 +382,18 @@ void CuVectorBase<Real>::AddTpVec(const Real alpha, const CuTpMatrix<Real> &M,
 }
 
 #if HAVE_CUDA == 1
-template<typename Real> inline void cublas_tpmv(char trans, int n, const Real* Ap, Real* x, int incx) {
-  KALDI_ERR << __func__ << " Not implemented!";
+// Use caution with these, the 'transpose' argument is the opposite of what it
+// should really be, due to CUDA storing things in column major order.  We also
+// had to switch 'l' to 'u'; we view our packed matrices as lower-triangular,
+// row-by-row, but CUDA views the same layout as upper-triangular,
+// column-by-column.
+inline void cublas_tpmv(char trans, int n,
+                        const float* Ap, float* x, int incx) {
+  return cublasStpmv('u', trans, 'n', n, Ap, x, incx);
 }
-template<> inline void cublas_tpmv<float>(char trans, int n,
-                                          const float* Ap, float* x, int incx) {
-  return cublasStpmv('l', trans, 'n', n, Ap, x, incx);
-}
-template<> inline void cublas_tpmv<double>(char trans, int n, const double* Ap,
-                                           double* x,int incx) {
-  return cublasDtpmv('l', trans, 'n', n, Ap, x, incx);
+inline void cublas_tpmv(char trans, int n, const double* Ap,
+                        double* x,int incx) {
+  return cublasDtpmv('u', trans, 'n', n, Ap, x, incx);
 }
 #endif
 
@@ -402,7 +404,7 @@ void CuVectorBase<Real>::MulTp(const CuTpMatrix<Real> &M, const MatrixTransposeT
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    cublas_tpmv((trans==kTrans?'T':'N'), M.NumRows(), M.Data(), data_, 1);
+    cublas_tpmv((trans==kTrans?'N':'T'), M.NumRows(), M.Data(), data_, 1);
     CuDevice::Instantiate().AccuProfile("CuVectorBase::MulTp", tim.Elapsed());    
   } else
 #endif

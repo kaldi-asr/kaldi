@@ -242,17 +242,14 @@ template<class Real> static void UnitTestInvert() {
     // fail if it were not positive definite). 
 
     A.CopyFromMat(B);
-    KALDI_LOG << "B is " << '\n';
-    KALDI_LOG << B << '\n';
     
     A.InvertPSD();
     Matrix<Real> D(dim,dim);
     A.CopyToMat(&D);
-    KALDI_LOG << "D is " << '\n';
-    KALDI_LOG << D << '\n';
+    
     Matrix<Real> X(dim,dim);
     X.AddMatMat(1.0, B, kNoTrans, D, kNoTrans, 0.0);
-    KALDI_LOG << "X is (should be identity): " << X << '\n';
+    // KALDI_LOG << "X is (should be identity): " << X << '\n';
     AssertEqual(Identity, X, (sizeof(Real) == 4 ? 0.1 : 0.001));
   }
 }
@@ -430,6 +427,24 @@ template<class Real> static void UnitTestMatrix() {
   }
 }
 
+template<class Real> static void UnitTestMulTp() {
+  for (MatrixIndexT iter = 0; iter < 10; iter++) {
+    int32 dim = 1 + rand() % 30;
+    Vector<Real> v(dim);
+    TpMatrix<Real> M(dim);
+    CuVector<Real> cv(v);
+    CuTpMatrix<Real> cM(M);
+    
+    Vector<Real> v2(dim);
+    cv.CopyToVec(&v2);
+    AssertEqual(v, v2);
+    v.MulTp(M, iter % 2 == 0 ? kTrans:kNoTrans);
+    cv.MulTp(cM, iter % 2 == 0 ? kTrans:kNoTrans);
+    cv.CopyToVec(&v2);
+    AssertEqual(v, v2);
+  }
+}
+
 template<class Real> static void UnitTestVector() {
   // Scale
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
@@ -594,6 +609,7 @@ static void CuMatrixUnitTest() {
   UnitTestCopySp<Real>();
   UnitTestConstructor<Real>();
   UnitTestVector<Real>();
+  UnitTestMulTp<Real>();
   UnitTestMatrix<Real>();
   UnitTestSetZeroUpperDiag<Real>();
 }
