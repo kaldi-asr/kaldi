@@ -37,7 +37,7 @@ namespace kaldi {
 
 template<typename Real>
 CuVector<Real>::CuVector(const CuVectorBase<Real> &v) {
-  this->Resize(v.dim_);
+  this->Resize(v.Dim());
   this->CopyFromVec(v);
 }
 
