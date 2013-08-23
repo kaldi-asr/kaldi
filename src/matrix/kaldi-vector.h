@@ -102,6 +102,11 @@ class VectorBase {
   template<typename OtherReal>
   void CopyFromVec(const VectorBase<OtherReal> &v);
 
+  /// Copy from CuVector.  This is defined in ../cudamatrix/cu-vector.h
+  template<typename OtherReal>
+  void CopyFromVec(const CuVectorBase<OtherReal> &v);
+
+  
   /// Apply natural log to all elements.  Throw if any element of
   /// the vector is negative (but doesn't complain about zero; the
   /// log will be -infinity
@@ -349,8 +354,9 @@ class Vector: public VectorBase<Real> {
 
   /// Copy constructor from CUDA vector
   /// This is defined in ../cudamatrix/cu-vector.h
-  explicit Vector(const CuVectorBase<Real> &cu);
-  
+  template<typename OtherReal>
+  explicit Vector(const CuVectorBase<OtherReal> &cu);
+
   /// Copy constructor.  The need for this is controversial.
   Vector(const Vector<Real> &v) : VectorBase<Real>()  { //  (cannot be explicit)
     Resize(v.Dim(), kUndefined);

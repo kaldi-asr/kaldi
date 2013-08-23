@@ -48,8 +48,8 @@ void CuTpMatrix<Real>::Invert() {
 #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    int dimBlock(CUBLOCK);
-    int dimGrid(n_blocks(this->NumRows(), CUBLOCK));
+    int dimBlock(CU2DBLOCK);
+    int dimGrid(n_blocks(this->NumRows(), CU2DBLOCK));
     CuMatrix<Real> tmp(this->NumRows(), this->NumRows());
     int dim = this->NumRows();
     Real alpha = 1.0;
@@ -74,8 +74,8 @@ void CuTpMatrix<Real>::CopyFromMat(CuMatrixBase<Real> &M,
 #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    dim3 dimBlock(CUBLOCK, CUBLOCK);
-    dim3 dimGrid(n_blocks(M.NumCols(), CUBLOCK), n_blocks(M.NumRows(), CUBLOCK));
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(M.NumCols(), CU2DBLOCK), n_blocks(M.NumRows(), CU2DBLOCK));
     if (Trans == kNoTrans) {
       cuda_take_lower(dimGrid, dimBlock, M.Data(), this->data_, M.Dim(), this->NumRows());
       cudaThreadSynchronize();

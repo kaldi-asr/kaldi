@@ -266,8 +266,8 @@ Real CuPackedMatrix<Real>::Trace() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    //int dimBlock(CUBLOCK);
-    //int dimGrid(n_blocks(NumRows(), CUBLOCK));
+    //int dimBlock(CU2DBLOCK);
+    //int dimGrid(n_blocks(NumRows(), CU2DBLOCK));
     int dimBlock(NumRows());
     int dimGrid(1);
     //this is the cublas implementation
@@ -309,8 +309,8 @@ void CuPackedMatrix<Real>::SetDiag(Real alpha) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    int dimBlock(CUBLOCK);
-    int dimGrid(n_blocks(NumRows(),CUBLOCK));
+    int dimBlock(CU2DBLOCK);
+    int dimGrid(n_blocks(NumRows(),CU2DBLOCK));
     cuda_set_diag_packed(dimGrid,dimBlock,data_,alpha,num_rows_);
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::SetDiag", tim.Elapsed());
@@ -355,8 +355,8 @@ void CuPackedMatrix<Real>::ScaleDiag(Real alpha) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    int dimBlock(CUBLOCK);
-    int dimGrid(n_blocks(NumRows(),CUBLOCK));
+    int dimBlock(CU2DBLOCK);
+    int dimGrid(n_blocks(NumRows(),CU2DBLOCK));
     cuda_scale_diag(dimGrid,dimBlock,data_,alpha,num_rows_);
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::ScaleDiag", tim.Elapsed());

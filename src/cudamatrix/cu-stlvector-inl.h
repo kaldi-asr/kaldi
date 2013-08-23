@@ -188,8 +188,8 @@ inline void CuStlVector<int32>::Set(int32 value) {
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    dim3 dimBlock(CUBLOCK);
-    dim3 dimGrid(n_blocks(Dim(), CUBLOCK));
+    dim3 dimBlock(CU2DBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CU2DBLOCK));
     ::MatrixDim d = { 1, Dim(), Dim() };
 
     cudaI32_set_const(dimGrid, dimBlock, data_, value, d);

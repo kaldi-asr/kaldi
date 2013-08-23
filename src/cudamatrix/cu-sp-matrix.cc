@@ -22,8 +22,8 @@ void CuSpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     MatrixIndexT D = this->NumRows();
-    dim3 dimBlock(CUBLOCK, CUBLOCK);
-    dim3 dimGrid(n_blocks(M.NumCols(), CUBLOCK), n_blocks(M.NumRows(), CUBLOCK));
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(M.NumCols(), CU2DBLOCK), n_blocks(M.NumRows(), CU2DBLOCK));
     switch (copy_type) {
       case kTakeMeanAndCheck:
         KALDI_LOG << "kTakeMeanAndCheck!";
@@ -90,8 +90,8 @@ void CuSpMatrix<Real>::AddVec2(const Real alpha, const CuVectorBase<Real> &v) {
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     size_t nr = this->num_rows_;
-    dim3 dimBlock(CUBLOCK, CUBLOCK);
-    dim3 dimGrid(n_blocks(nr, CUBLOCK), n_blocks(nr, CUBLOCK));
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(nr, CU2DBLOCK), n_blocks(nr, CU2DBLOCK));
 
     CublasSpr('U', this->num_rows_, alpha, v.Data(),
               1, this->Data());

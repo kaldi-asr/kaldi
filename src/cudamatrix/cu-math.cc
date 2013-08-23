@@ -38,8 +38,8 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    dim3 dimBlock(CUBLOCK, CUBLOCK);
-    dim3 dimGrid(n_blocks(weight->NumCols(), CUBLOCK), n_blocks(weight->NumRows(), CUBLOCK));
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(weight->NumCols(), CU2DBLOCK), n_blocks(weight->NumRows(), CU2DBLOCK));
 
     cuda_regularize_l1(dimGrid, dimBlock, weight->data_, grad->data_, l1, lr, weight->Dim());
     CU_SAFE_CALL(cudaGetLastError());
@@ -88,8 +88,8 @@ void Randomize(const CuMatrixBase<Real> &src,
     
     /*
     Note: default 16x16 block-size limits the --cachesize to matrix size 16*65535 x 16*65535 
-    dim3 dimBlock(CUBLOCK, CUBLOCK);
-    dim3 dimGrid(n_blocks(tgt->NumCols(), CUBLOCK), n_blocks(copy_from_idx.Dim(), CUBLOCK));
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(copy_from_idx.Dim(), CU2DBLOCK));
     */
 
     /*
@@ -134,8 +134,8 @@ void Splice(const CuMatrix<Real> &src, const CuStlVector<int32> &frame_offsets, 
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     
-    dim3 dimBlock(CUBLOCK, CUBLOCK);
-    dim3 dimGrid(n_blocks(tgt->NumCols(), CUBLOCK), n_blocks(tgt->NumRows(), CUBLOCK));
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
     
     cuda_splice(dimGrid, dimBlock, tgt->data_, src.data_, frame_offsets.Data(), tgt->Dim(), src.Dim());
     CU_SAFE_CALL(cudaGetLastError());
@@ -172,8 +172,8 @@ void Copy(const CuMatrix<Real> &src, const CuStlVector<int32> &copy_from_indices
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     
-    dim3 dimBlock(CUBLOCK, CUBLOCK);
-    dim3 dimGrid(n_blocks(tgt->NumCols(), CUBLOCK), n_blocks(tgt->NumRows(), CUBLOCK));
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
     
     cuda_copy(dimGrid, dimBlock, tgt->data_, src.data_, copy_from_indices.Data(), tgt->Dim(), src.Dim());
     CU_SAFE_CALL(cudaGetLastError());

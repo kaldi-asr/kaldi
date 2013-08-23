@@ -212,8 +212,8 @@ void CuVectorBase<Real>::Set(Real value) {
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     
-    dim3 dimBlock(CUBLOCK);
-    dim3 dimGrid(n_blocks(Dim(), CUBLOCK));
+    dim3 dimBlock(CU2DBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CU2DBLOCK));
     ::MatrixDim d = { 1, Dim(), Dim() };
     
     cuda_set_const(dimGrid, dimBlock, data_, value, d);
@@ -235,8 +235,8 @@ void CuVectorBase<Real>::Add(Real value) {
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    dim3 dimBlock(CUBLOCK);
-    dim3 dimGrid(n_blocks(Dim(), CUBLOCK));
+    dim3 dimBlock(CU2DBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CU2DBLOCK));
     ::MatrixDim d = { 1, Dim(), Dim() };
 
     cuda_add(dimGrid, dimBlock, data_, value, d);
@@ -258,14 +258,14 @@ void CuVectorBase<Real>::Scale(Real value) {
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    dim3 dimBlock(CUBLOCK);
-    dim3 dimGrid(n_blocks(Dim(), CUBLOCK));
+    dim3 dimBlock(CU2DBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CU2DBLOCK));
     ::MatrixDim d = { 1, Dim(), Dim() };
     if (Dim() == 0 ) return;
     KALDI_LOG << "dimension is : " << Dim() << '\n';
     KALDI_LOG << "value is : " << value << '\n';
-    KALDI_LOG << "dimBlock is : " << CUBLOCK << '\n';
-    KALDI_LOG << "dimGrid is : " << n_blocks(Dim(), CUBLOCK) << '\n';
+    KALDI_LOG << "dimBlock is : " << CU2DBLOCK << '\n';
+    KALDI_LOG << "dimGrid is : " << n_blocks(Dim(), CU2DBLOCK) << '\n';
     
     cuda_scale(dimGrid, dimBlock, data_, value, d);
     CU_SAFE_CALL(cudaGetLastError());
@@ -288,8 +288,8 @@ void CuVectorBase<Real>::AddVec(Real alpha, const CuVectorBase<Real> &vec,
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    dim3 dimBlock(CUBLOCK);
-    dim3 dimGrid(n_blocks(Dim(), CUBLOCK));
+    dim3 dimBlock(CU2DBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CU2DBLOCK));
     ::MatrixDim d = { 1, Dim(), Dim() };
 
 
@@ -410,8 +410,8 @@ void CuVectorBase<Real>::InvertElements() {
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     
-    dim3 dimBlock(CUBLOCK*8, 1);
-    dim3 dimGrid(n_blocks(dim_, CUBLOCK*8));
+    dim3 dimBlock(CU1DBLOCK, 1);
+    dim3 dimGrid(n_blocks(dim_, CU1DBLOCK));
     MatrixDim d = {1, dim_, dim_};
 
     cuda_invert_elements(dimGrid, dimBlock, data_, d);

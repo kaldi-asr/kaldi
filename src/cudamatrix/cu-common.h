@@ -47,15 +47,18 @@
 
 namespace kaldi {
 
-  /** The size of edge of CUDA square block **/
-  static const int32 CUBLOCK = 16;
+// The size of edge of CUDA square block, e.g. for matrix operations.
+static const int32 CU2DBLOCK = 16;
 
-  /** Number of blocks in which the task of size 'size' is splitted **/
-  inline int32 n_blocks(int32 size, int32 block_size) { 
-    return size / block_size + ((size % block_size == 0)? 0 : 1); 
-  }
+// The size of a CUDA 1-d block, e.g. for vector operations..
+static const int32 CU1DBLOCK = 256;
 
-  cublasOperation_t KaldiTransToCuTrans(MatrixTransposeType kaldi_trans);
+/** Number of blocks in which the task of size 'size' is splitted **/
+inline int32 n_blocks(int32 size, int32 block_size) { 
+  return size / block_size + ((size % block_size == 0)? 0 : 1); 
+}
+
+cublasOperation_t KaldiTransToCuTrans(MatrixTransposeType kaldi_trans);
   
 }
 
