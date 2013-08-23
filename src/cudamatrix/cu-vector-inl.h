@@ -232,7 +232,7 @@ void CuVectorBase<Real>::SetZero() {
  */
 template<typename Real>
 std::ostream &operator << (std::ostream &out, const CuVectorBase<Real> &vec) {
-  Vector<Real> temp;
+  Vector<Real> temp(vec.Dim());
   vec.CopyToVec(&temp);
   out << temp;
   return out;

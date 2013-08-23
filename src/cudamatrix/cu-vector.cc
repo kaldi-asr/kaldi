@@ -372,7 +372,7 @@ void CuVectorBase<Real>::AddTpVec(const Real alpha, const CuTpMatrix<Real> &M,
       CuVector<Real> tmp(v);
       tmp.MulTp(M, trans);
       if (beta != 1.0) Scale(beta);  // *this <-- beta * *this
-      AddVec(alpha, tmp);          // *this += alpha * M * v
+      AddVec(alpha, tmp, 1.0);          // *this += alpha * M * v
     }      
   } else
 #endif

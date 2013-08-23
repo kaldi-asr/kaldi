@@ -229,7 +229,7 @@ static void UnitTestCuPackedMatrixSetUnit() {
     
     CuPackedMatrix<Real> A(dim);
     A.SetUnit();
-
+    
     for (MatrixIndexT i = 0; i < A.NumRows(); i++) {
       for (MatrixIndexT j = 0; j < A.NumRows(); j++) {
         if (i != j) { 

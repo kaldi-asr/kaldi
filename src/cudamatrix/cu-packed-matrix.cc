@@ -409,7 +409,7 @@ void CuPackedMatrix<Real>::AddToDiag(Real r) {
 #endif
   {
     // TODO
-    //Mat().AddToDiag(r);
+    Mat().AddToDiag(r);
   }
 }
 
@@ -423,8 +423,11 @@ void CuPackedMatrix<Real>::SetUnit() {
     Real alpha = 1;
     cuda_set_diag_packed(dimGrid,dimBlock,data_,alpha,num_rows_);
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::SetUnit", tim.Elapsed());
-  }
+  } else 
 #endif
+  { 
+    Mat().SetUnit(); 
+  }
 }
 
 /**

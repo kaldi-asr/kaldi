@@ -10,7 +10,7 @@ include ../kaldi.mk
 
 LDFLAGS += $(CUDA_LDFLAGS)
 
-TESTFILES = cu-matrix-test cu-test cu-sp-matrix-test cu-packed-matrix-test cu-tp-matrix-test
+TESTFILES = cu-matrix-test cu-test cu-sp-matrix-test cu-packed-matrix-test cu-tp-matrix-test cu-vector-test
 
 OBJFILES = cu-device.o cu-math.o cu-matrix.o cu-packed-matrix.o cu-sp-matrix.o cu-vector.o cu-common.o cu-tp-matrix.o
 ifeq ($(CUDA), true)

@@ -284,7 +284,7 @@ void CuMatrixBase<Real>::CopyFromSp(const CuSpMatrix<Real> &M) {
   } else
 #endif
   {
-    //Mat().CopyFromSp(M.Mat());
+    Mat().CopyFromSp(M.Mat());
   }
 }
 
