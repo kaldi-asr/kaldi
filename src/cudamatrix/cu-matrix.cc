@@ -330,7 +330,7 @@ void CuMatrixBase<Real>::CopyFromMat(const MatrixBase<Real> &src,
   } else
 #endif
   {
-    Mat().CopyFromMat(src);
+    Mat().CopyFromMat(src, trans);
   }
 }
 
