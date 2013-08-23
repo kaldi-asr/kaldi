@@ -427,18 +427,19 @@ template<class Real> static void UnitTestMatrix() {
     KALDI_LOG << tmp;
     D.CopyToMat(&tmp);
     KALDI_LOG << tmp;
-
-    Matrix<Real> Am(A), Bm(B), Cm(C), Dm(D);
     
+    Matrix<Real> Am(A), Bm(B), Cm(C), Dm(D);
     A.AddMatMatDivMatElements(1.0, B, kNoTrans, C, kNoTrans, D, kNoTrans, 1.0);
 
     Matrix<Real> tmpm(Bm);
     tmpm.MulElements(Cm);
     tmpm.DivElements(Dm);
     Am.AddMat(1.0, tmpm);
+
     
     A.CopyToMat(&tmp);
-    KALDI_LOG << tmp;
+
+    //KALDI_LOG << tmp;
     AssertEqual(Am, tmp);
   }
   //SetRandn

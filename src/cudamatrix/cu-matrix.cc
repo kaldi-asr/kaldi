@@ -848,6 +848,11 @@ void CuMatrixBase<Real>::AddMatMatDivMatElements(
   } else
 #endif
   {
+    Matrix<Real> Am(A), Bm(B), Cm(C);
+    Matrix<Real> tmp(Am);
+    tmp.MulElements(Bm);
+    tmp.DivElements(Cm);
+    Mat().AddMat(1.0, tmp);
   }
 }
 template<typename Real>
@@ -1373,8 +1378,11 @@ void CuMatrix<Real>::SetRandn() {
   if (CuDevice::Instantiate().Enabled()) {
     CuRand<Real> tmp;
     tmp.RandGaussian(this);
-  }
+  } else 
 #endif
+  {
+    Mat().SetRandn();
+  }
 }
 
 /// Copy constructor from another type.

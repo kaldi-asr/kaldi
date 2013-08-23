@@ -88,6 +88,18 @@ static void AssertEqual(const MatrixBase<Real> &A,
   }
 }
 
+template<class Real> 
+static void AssertEqual(const CuMatrixBase<Real> &A,
+                        const CuMatrixBase<Real> &B,
+                        float tol = 0.001) {
+  KALDI_ASSERT(A.NumRows() == B.NumRows()&&A.NumCols() == B.NumCols());
+  for (MatrixIndexT i = 0;i < A.NumRows();i++) {
+    for (MatrixIndexT j = 0;j < A.NumCols();j++) {
+      KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) < tol*std::max(1.0, (double) (std::abs(A(i, j))+std::abs(B(i, j)))));
+    }
+  }
+}
+
 
 
 template<class Real>
@@ -348,6 +360,84 @@ static void UnitTestCuMatrixAddMatMat() {
   AssertEqual(Hc2,Hc2a);
 }
 
+template<class Real>
+static void UnitTestCuMatrixCopyFromMat() {
+  for (MatrixIndexT i = 1; i < 10; i++) {
+    MatrixIndexT dim = 5 * i + rand() % 10;
+    
+    Matrix<Real> A(dim, dim);
+    A.SetRandn();
+    CuMatrix<Real> E(A);    
+    CuMatrix<Real> B(dim, dim);
+    B.CopyFromMat(E);
+
+    AssertEqual<Real>(B, E);
+  }
+}
+
+template<class Real>
+static void UnitTestCuMatrixCopyFromTp() {
+  for (MatrixIndexT i = 1; i < 10; i++) {
+    MatrixIndexT dim = 5 * i + rand() % 10;
+    
+    TpMatrix<Real> A(dim);
+    A.SetRandn();
+    CuTpMatrix<Real> E(A);
+    Matrix<Real> B(dim, dim);
+    CuMatrix<Real> C(dim, dim);
+    B.CopyFromTp(A, kNoTrans);
+    C.CopyFromTp(E, kNoTrans);
+
+    CuMatrix<Real> D(B);
+    AssertEqual<Real>(D, C);
+  }
+}
+
+template<class Real>
+static void UnitTestCuMatrixAddMatTp() {
+  for (MatrixIndexT i = 1; i < 10; i++) {
+    MatrixIndexT dim = 5 * i + rand() % 10;
+    
+    Matrix<Real> A(dim, dim);
+    Matrix<Real> B(dim, dim);
+    TpMatrix<Real> C(dim);
+    A.SetRandn();
+    B.SetRandn();
+    C.SetRandn();
+    CuMatrix<Real> D(A);
+    CuMatrix<Real> E(B);
+    CuTpMatrix<Real> F(C);
+    
+    A.AddMatTp(1.0, B, kNoTrans, C, kNoTrans, 1.0);
+    D.AddMatTp(1.0, E, kNoTrans, F, kNoTrans, 1.0);
+
+    CuMatrix<Real> G(A);
+    AssertEqual<Real>(G, D);
+  }
+}
+
+template<class Real>
+static void UnitTestCuMatrixAddTpMat() {
+  for (MatrixIndexT i = 1; i < 10; i++) {
+    MatrixIndexT dim = 5 * i + rand() % 10;
+    
+    Matrix<Real> A(dim, dim);
+    Matrix<Real> B(dim, dim);
+    TpMatrix<Real> C(dim);
+    A.SetRandn();
+    B.SetRandn();
+    C.SetRandn();
+    CuMatrix<Real> D(A);
+    CuMatrix<Real> E(B);
+    CuTpMatrix<Real> F(C);
+    
+    A.AddTpMat(1.0, C, kNoTrans, B, kNoTrans, 1.0);
+    D.AddTpMat(1.0, F, kNoTrans, E, kNoTrans, 1.0);
+
+    CuMatrix<Real> G(A);
+    AssertEqual<Real>(G, D);
+  }
+}
 
 /*
  * CuVector unit tests
@@ -774,6 +864,10 @@ template<class Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixAddVecToCols<Real>();
   UnitTestCuMatrixAddVecToRows<Real>();
   UnitTestCuMatrixAddMatMat<Real>();
+  UnitTestCuMatrixCopyFromMat<Real>();
+  UnitTestCuMatrixCopyFromTp<Real>();
+  UnitTestCuMatrixAddMatTp<Real>();
+  UnitTestCuMatrixAddTpMat<Real>();
   //test CuVector<Real> methods
   UnitTestCuVectorAddVec<Real>();
   UnitTestCuVectorAddRowSumMat<Real>();
