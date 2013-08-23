@@ -53,13 +53,13 @@ void CuTpMatrix<Real>::Invert() {
     CuMatrix<Real> tmp(this->NumRows(), this->NumRows());
     int dim = this->NumRows();
     Real alpha = 1.0;
-    cuda_set_diag(dimGrid, dimBlock, tmp.RowData(0), alpha, tmp.Dim());
+    cuda_set_diag(dimGrid, dimBlock, tmp.Data(), alpha, tmp.Dim());
     //Matrix<Real> A(dim,dim);
     //tmp.CopyToMat(&A);
     CuMatrix<Real> tmp2(dim, dim);
     tmp2.CopyFromTp(*this);
-    cublas_trsm(dim, dim, alpha, tmp2.RowData(0), tmp2.Dim().stride, 
-      tmp.RowData(0), tmp.Dim().stride);
+    cublas_trsm(dim, dim, alpha, tmp2.Data(), tmp2.Dim().stride, 
+      tmp.Data(), tmp.Dim().stride);
     this->CopyFromMat(tmp, kNoTrans);
   } else
 #endif
@@ -77,10 +77,10 @@ void CuTpMatrix<Real>::CopyFromMat(CuMatrixBase<Real> &M,
     dim3 dimBlock(CUBLOCK, CUBLOCK);
     dim3 dimGrid(n_blocks(M.NumCols(), CUBLOCK), n_blocks(M.NumRows(), CUBLOCK));
     if (Trans == kNoTrans) {
-      cuda_take_lower(dimGrid, dimBlock, M.RowData(0), this->data_, M.Dim(), this->NumRows());
+      cuda_take_lower(dimGrid, dimBlock, M.Data(), this->data_, M.Dim(), this->NumRows());
       cudaThreadSynchronize();
     } else {
-      cuda_take_upper(dimGrid, dimBlock, M.RowData(0), this->data_, M.Dim(), this->NumRows());
+      cuda_take_upper(dimGrid, dimBlock, M.Data(), this->data_, M.Dim(), this->NumRows());
       cudaThreadSynchronize();
     }      
   } else

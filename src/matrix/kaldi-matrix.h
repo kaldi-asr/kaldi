@@ -598,7 +598,8 @@ class Matrix : public MatrixBase<Real> {
   
   /// Copy constructor from CUDA matrix
   /// This is defined in ../cudamatrix/cu-matrix.h
-  explicit Matrix(const CuMatrixBase<Real> &cu,
+  template<typename OtherReal>
+  explicit Matrix(const CuMatrixBase<OtherReal> &cu,
                   MatrixTransposeType trans = kNoTrans);
 
   /// Swaps the contents of *this and *other.  Shallow swap.

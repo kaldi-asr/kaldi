@@ -90,6 +90,10 @@ class CuMatrixBase {
     return d; 
   }
 
+  Real FrobeniusNorm() const { return sqrt(TraceMatMat(*this, *this, kTrans)); }
+
+  bool ApproxEqual(const CuMatrixBase<Real> &other, float tol = 0.01) const;
+  
   /// Get size of matrix in bytes
   MatrixIndexT SizeInBytes() const { return num_rows_*stride_*sizeof(Real); }
   
@@ -100,6 +104,10 @@ class CuMatrixBase {
   void CopyFromMat(const MatrixBase<Real> &src,
                    MatrixTransposeType trans = kNoTrans);
 
+  template<class OtherReal>
+  void CopyFromMat(const MatrixBase<OtherReal> &src,
+                   MatrixTransposeType trans = kNoTrans);
+  
   void CopyFromSp(const CuSpMatrix<Real> &M);
 
   template<typename OtherReal>
@@ -109,8 +117,9 @@ class CuMatrixBase {
   template<typename OtherReal>
   void CopyFromMat(const CuMatrixBase<OtherReal> &M,
                    MatrixTransposeType trans = kNoTrans); 
-  
-  void CopyToMat(MatrixBase<Real> *dst,
+
+  template<typename OtherReal>
+  void CopyToMat(MatrixBase<OtherReal> *dst,
                  MatrixTransposeType trans = kNoTrans) const;
   
   void CopyRowsFromVec(const CuVectorBase<Real> &v);
@@ -301,6 +310,9 @@ class CuMatrixBase {
   /// Get raw row pointer
   inline const Real* RowData(MatrixIndexT r) const { return data_ + r * stride_; }
   inline Real* RowData(MatrixIndexT r) { return data_ + r * stride_; }
+  inline const Real *Data() const { return data_; }
+  inline Real *Data() { return data_; }
+
 
   
   // The constructors are protected to prevent the user creating an instance of
@@ -354,7 +366,8 @@ class CuMatrix: public CuMatrixBase<Real> {
   explicit CuMatrix(const CuMatrixBase<Real> &other,
                     MatrixTransposeType trans = kNoTrans);
 
-  explicit CuMatrix(const MatrixBase<Real> &other,
+  template<class OtherReal>
+  explicit CuMatrix(const MatrixBase<OtherReal> &other,
                     MatrixTransposeType trans = kNoTrans);
 
   /// Copy constructor taking SpMatrix... 
@@ -465,7 +478,8 @@ std::ostream &operator << (std::ostream &out, const CuMatrixBase<Real> &mat);
 
 
 template<typename Real>
-Matrix<Real>::Matrix(const CuMatrixBase<Real> &M,
+template<typename OtherReal>
+Matrix<Real>::Matrix(const CuMatrixBase<OtherReal> &M,
                      MatrixTransposeType trans) {
   if (trans == kNoTrans) Init(M.NumRows(), M.NumCols());
   else Init(M.NumCols(), M.NumRows());

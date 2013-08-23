@@ -1434,14 +1434,7 @@ bool MatrixBase<Real>::IsZero(Real cutoff)const {
 
 template<class Real>
 Real MatrixBase<Real>::FrobeniusNorm() const{
-  MatrixIndexT R = num_rows_, C = num_cols_;
-  Real sum = 0.0;
-  for (MatrixIndexT i = 0;i < R;i++)
-    for (MatrixIndexT j = 0;j < C;j++) {
-      Real tmp = (*this)(i, j);
-      sum +=  tmp*tmp;
-    }
-  return sqrt(sum);
+  return sqrt(TraceMatMat(*this, *this, kTrans));
 }
 
 template<typename Real>

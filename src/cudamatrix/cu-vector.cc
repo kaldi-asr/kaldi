@@ -74,7 +74,7 @@ void CuVectorBase<Real>::CopyColFromMat(const CuMatrixBase<Real> &mat, MatrixInd
     int dimBlock(CUBLOCK);
     int dimGrid(n_blocks(dim_,CUBLOCK));
 
-    cuda_copy_col_from_mat(dimGrid, dimBlock, data_, col, mat.RowData(0), mat.Dim(), dim_);
+    cuda_copy_col_from_mat(dimGrid, dimBlock, data_, col, mat.Data(), mat.Dim(), dim_);
     CuDevice::Instantiate().AccuProfile("CuVectorBase::CopyColFromMat", tim.Elapsed());
   } else
 #endif
@@ -94,7 +94,7 @@ void CuVectorBase<double>::CopyColFromMat(const CuMatrixBase<float> &mat, Matrix
     int dimBlock(CUBLOCK);
     int dimGrid(n_blocks(dim_,CUBLOCK));
 
-    cuda_copy_col_from_mat_df(dimGrid, dimBlock, data_, col, mat.RowData(0), mat.Dim(), dim_);
+    cuda_copy_col_from_mat_df(dimGrid, dimBlock, data_, col, mat.Data(), mat.Dim(), dim_);
     CuDevice::Instantiate().AccuProfile("CuVectorBase::CopyColFromMat", tim.Elapsed());
   } else
 #endif
@@ -115,7 +115,7 @@ void CuVectorBase<float>::CopyColFromMat(const CuMatrixBase<double> &mat, Matrix
     int dimBlock(CUBLOCK);
     int dimGrid(n_blocks(dim_,CUBLOCK));
 
-    cuda_copy_col_from_mat_fd(dimGrid, dimBlock, data_, col, mat.RowData(0), mat.Dim(), dim_);
+    cuda_copy_col_from_mat_fd(dimGrid, dimBlock, data_, col, mat.Data(), mat.Dim(), dim_);
     CuDevice::Instantiate().AccuProfile("CuVectorBase::CopyColFromMat", tim.Elapsed());   
   } else
 #endif
@@ -131,7 +131,7 @@ void CuVectorBase<Real>::CopyRowsFromMat(const CuMatrixBase<Real> &mat) {
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     if (mat.Stride() == mat.NumCols()) {
-      cudaMemcpy(data_, mat.RowData(0), sizeof(Real)*dim_, cudaMemcpyDeviceToDevice);
+      cudaMemcpy(data_, mat.Data(), sizeof(Real)*dim_, cudaMemcpyDeviceToDevice);
     } else {
       Real* vec_data = data_;
       for (MatrixIndexT r = 0; r < mat.NumRows(); r++) {
@@ -298,7 +298,7 @@ void CuVectorBase<Real>::AddMatVec(const Real alpha,
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     
-  cublas_gemv((trans==kTrans?'T':'N'), M.NumRows(), M.NumCols(), alpha, M.RowData(0), M.Stride(), v.Data(), 1, beta, data_, 1);
+  cublas_gemv((trans==kTrans?'T':'N'), M.NumRows(), M.NumCols(), alpha, M.Data(), M.Stride(), v.Data(), 1, beta, data_, 1);
 
   CU_SAFE_CALL(cublasGetError());
   CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -342,9 +342,9 @@ void CuVectorBase<Real>::AddDiagMat2(Real alpha, const CuMatrixBase<Real> &M,
     int dimGrid(n_blocks(dim_,CUBLOCK));
     
     if (trans == kNoTrans) {
-      cuda_add_diag_mat(dimGrid, dimBlock, alpha, data_, M.RowData(0), beta, M.Dim(), dim_);
+      cuda_add_diag_mat(dimGrid, dimBlock, alpha, data_, M.Data(), beta, M.Dim(), dim_);
     } else {
-      cuda_add_diag_mat_trans(dimGrid, dimBlock, alpha, data_, M.RowData(0), beta, M.Dim(), dim_);
+      cuda_add_diag_mat_trans(dimGrid, dimBlock, alpha, data_, M.Data(), beta, M.Dim(), dim_);
     }
     CuDevice::Instantiate().AccuProfile("CuVectorBase::AddDiagMat2", tim.Elapsed());
   } else

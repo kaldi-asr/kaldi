@@ -29,20 +29,20 @@ void CuSpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
         KALDI_LOG << "kTakeMeanAndCheck!";
       case kTakeMean:
         {
-          cuda_take_mean(dimGrid, dimBlock, M.RowData(0), this->data_, M.Dim(), D);
+          cuda_take_mean(dimGrid, dimBlock, M.Data(), this->data_, M.Dim(), D);
           CU_SAFE_CALL(cudaGetLastError());
         }
         break;
       case kTakeLower:
         {
-          cuda_take_lower(dimGrid, dimBlock, M.RowData(0), this->data_, M.Dim(), D);
+          cuda_take_lower(dimGrid, dimBlock, M.Data(), this->data_, M.Dim(), D);
           CU_SAFE_CALL(cudaGetLastError());
           cudaThreadSynchronize();
         }
         break;
       case kTakeUpper:
         {
-          cuda_take_upper(dimGrid, dimBlock, M.RowData(0), this->data_, M.Dim(), D);
+          cuda_take_upper(dimGrid, dimBlock, M.Data(), this->data_, M.Dim(), D);
           CU_SAFE_CALL(cudaGetLastError());
         }
         break;
@@ -138,8 +138,8 @@ void CuSpMatrix<Real>::AddMat2(const Real alpha, const CuMatrixBase<Real> &M,
     char trans = (transM == kTrans ? 'N' : 'T');
 
     CuMatrix<Real> tmp_mat(*this);
-    CublasSyrk('U', trans, this_dim, m_other_dim, alpha, M.RowData(0),
-               M.Stride(), beta, tmp_mat.RowData(0), tmp_mat.Stride());
+    CublasSyrk('U', trans, this_dim, m_other_dim, alpha, M.Data(),
+               M.Stride(), beta, tmp_mat.Data(), tmp_mat.Stride());
     this->CopyFromMat(tmp_mat, kTakeLower);
     
     CuDevice::Instantiate().AccuProfile("CuSpMatrix::AddMat2", tim.Elapsed());

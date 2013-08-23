@@ -511,11 +511,53 @@ static void UnitTestCuVectorInvertElements() {
   AssertEqual(Hv,Hv2);
 }
 
+template<class Real> 
+static void UnitTestCuApproxEqual() {
+  Real tol = 0.1;
+  for (int32 i = 0; i < 10; i++) {
+    int32 M = 1 + rand() % 10, N = 1 + rand() % 10;
+    CuMatrix<Real> A(M, N), B(M, N);
+    A.SetRandn();
+    B.SetRandn();
+    Matrix<Real> diff(A), Bm(B);
+    diff.AddMat(-1.0, Bm);
+    Real norm = diff.FrobeniusNorm();
+    KALDI_ASSERT( (norm <= tol) == (A.ApproxEqual(B, tol)));
+    KALDI_LOG << "Norm is " << norm << ", tol = " << tol;
+    tol *= 2.0;
+  }
+}
 
 
-/*
- * cu:: unit tests
- */
+template<class Real, class OtherReal> 
+static void UnitTestCuCopy() {
+  for (int32 i = 0; i < 10; i++) {
+    int32 M = 1 + rand() % 10, N = 1 + rand() % 10;
+    CuMatrix<Real> A(M, N);
+    CuMatrix<OtherReal> B(A, kTrans);
+    CuMatrix<Real> C(B, kTrans);
+    CuMatrix<Real> D(N, M);
+    D.CopyFromMat(C, kTrans);
+    CuMatrix<OtherReal> E(N, M);
+    E.CopyFromMat(D, kNoTrans);
+    CuMatrix<Real> F(M, N);
+    F.CopyFromMat(E, kTrans);
+
+    Matrix<OtherReal> G(M, N);
+    G.CopyFromMat(F, kNoTrans);
+    CuMatrix<Real> H(N, M);
+    H.CopyFromMat(G, kTrans);
+    Matrix<OtherReal> I(M, N);
+    I.CopyFromMat(H, kTrans);
+    CuMatrix<Real> J(I, kTrans);
+    Matrix<OtherReal> K(J, kTrans);
+    CuMatrix<Real> L(K, kNoTrans);
+    
+    KALDI_ASSERT(A.ApproxEqual(L));
+  }
+
+}
+
 template<class Real> 
 static void UnitTestCuSigmoid() {
   Matrix<Real> Hi(100,111);
@@ -742,6 +784,12 @@ template<class Real> void CudaMatrixUnitTest() {
 
 
   UnitTestCuSigmoid<Real>();
+  UnitTestCuApproxEqual<Real>();
+  UnitTestCuCopy<Real, float>();
+#if HAVE_CUDA == 1  
+  if (CuDevice::Instantiate().DoublePrecisionSupported())
+#endif
+    UnitTestCuCopy<Real, double>();
   UnitTestCuDiffSigmoid<Real>();
   UnitTestCuFindRowMaxId<Real>();
   UnitTestCuSoftmax<Real>();
