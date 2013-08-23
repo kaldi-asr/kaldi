@@ -68,13 +68,17 @@ class CuVectorBase {
   /// do not match.  The operator = in class CuVector will
   /// also change the sizes for you.
   void CopyFromVec(const CuVectorBase<Real> &src);
-
-  void CopyFromVec(const VectorBase<Real> &src);
-
+  
   template<typename OtherReal>
   void CopyFromVec(const CuVectorBase<OtherReal> &M);
+
+  template<typename OtherReal>
+  void CopyFromVec(const VectorBase<OtherReal> &src);
+
+
+  template<typename OtherReal>
+  void CopyToVec(VectorBase<OtherReal> *dst) const;
   
-  void CopyToVec(VectorBase<Real> *dst) const;
   void CopyRowsFromMat(const CuMatrixBase<Real> &M);
   /// Math operations
   void SetZero();
@@ -269,7 +273,27 @@ class CuSubVector: public CuVectorBase<Real> {
 template<typename Real>
 std::ostream &operator << (std::ostream &out, const CuVectorBase<Real> &vec);
  
-  
+
+template<typename Real>
+template<typename OtherReal>
+void CuVectorBase<Real>::CopyFromVec(const CuVectorBase<OtherReal> &v) {
+  v.CopyToVec(&this);
+}
+
+template<typename Real>
+template<typename OtherReal>
+void VectorBase<Real>::CopyFromVec(const CuVectorBase<OtherReal> &cu) {
+  cu.CopyToVec(this);
+}
+
+
+template<typename Real>
+template<typename OtherReal>
+Vector<Real>::Vector(const CuVectorBase<OtherReal> &cu) {
+  Init(cu.Dim());
+  cu.CopyToVec(this);
+}
+
 } // namespace
 
 

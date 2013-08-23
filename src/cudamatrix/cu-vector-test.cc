@@ -89,44 +89,32 @@ static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.
   return true;
 }
 
-
-
-static void AssertEqual(std::vector<int32> &A, std::vector<int32> &B) {
-  KALDI_ASSERT(A.size() == B.size());
-  for (size_t i=0; i < A.size(); i++)
-    KALDI_ASSERT(A[i] == B[i]);
-}
-
-
-
 /*
  * Unit tests
  */
 
-/*
- * CuMatrix
- */
-template<class Real> 
+template<class Real, class OtherReal> 
 static void UnitTestCuVectorCopyFromVec() {
   for (int32 i = 1; i < 10; i++) {
     MatrixIndexT dim = 10 * i;
     Vector<Real> A(dim);
     A.SetRandn();
-    CuVector<Real> B(A);
-
-
-    CuVector<Real> C(dim);
+    CuVector<OtherReal> B(A);
+    Vector<Real> C(B);
     CuVector<Real> D(dim);
-    C.CopyFromVec(A);
-    D.CopyFromVec(B);
-    
-    Vector<Real> E(dim);
-    Vector<Real> F(dim);
-    C.CopyToVec(&E);
-    D.CopyToVec(&F);
-
-    AssertEqual(C, D);
-    AssertEqual(E, F);
+    D.CopyFromVec(C);
+    Vector<OtherReal> E(dim);
+    E.CopyFromVec(D);
+    CuVector<Real> F(E);
+    CuVector<Real> A2(A);
+    KALDI_LOG << "F = " << F;
+    KALDI_LOG << "A2 = " << A2;
+    KALDI_LOG << "A = " << A;
+    KALDI_LOG << "B = " << B;
+    KALDI_LOG << "C = " << C;
+    KALDI_LOG << "D = " << D;
+    KALDI_LOG << "E = " << E;
+    AssertEqual(F, A2);
   }
 }
 
@@ -174,7 +162,11 @@ static void UnitTestCuVectorAddTp() {
 }
 
 template<class Real> void CuVectorUnitTest() {
-  UnitTestCuVectorCopyFromVec<Real>();
+  UnitTestCuVectorCopyFromVec<Real, float>();
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().DoublePrecisionSupported())
+#endif
+    UnitTestCuVectorCopyFromVec<Real, double>();
   UnitTestCuVectorAddTp<Real>();
   UnitTestCuVectorMulTp<Real>();
 }
@@ -201,4 +193,5 @@ int main() {
   kaldi::CuVectorUnitTest<double>();
 #endif
   std::cout << "Tests succeeded.\n";
+  return 0;
 }

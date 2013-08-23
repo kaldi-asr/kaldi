@@ -131,7 +131,7 @@ void CuVectorBase<Real>::CopyFromVec(const CuVectorBase<Real> &src) {
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     CU_SAFE_CALL(cudaMemcpy(data_, src.data_, src.dim_ * sizeof(Real), cudaMemcpyDeviceToDevice));
-    CuDevice::Instantiate().AccuProfile("CuVector::CopyFromVecD2D",tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
   {
@@ -148,44 +148,6 @@ void CuVectorBase<double>::CopyFromVec<float>(const CuVectorBase<float> &src);
 template<>
 template <>
 void CuVectorBase<float>::CopyFromVec<double>(const CuVectorBase<double> &src);
-
-
-
-template<typename Real>
-void CuVectorBase<Real>::CopyFromVec(const VectorBase<Real> &src) {
-  KALDI_ASSERT(src.Dim() == dim_);
-  #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
-
-    CU_SAFE_CALL(cudaMemcpy(data_, src.Data(), src.Dim()*sizeof(Real), cudaMemcpyHostToDevice));
-
-    CuDevice::Instantiate().AccuProfile("CuVector::CopyFromVecH2D",tim.Elapsed());
-  } else
-  #endif
-  {
-    memcpy(static_cast<void*>(data_), static_cast<const void*>(src.Data()),
-           dim_ * sizeof(Real));
-  }
-}
-
-
-
-template<typename Real>
-void CuVectorBase<Real>::CopyToVec(VectorBase<Real> *dst) const {
-  KALDI_ASSERT(dst->Dim() == dim_);
-  #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
-    CU_SAFE_CALL(cudaMemcpy(dst->Data(), this->data_,
-                          dim_*sizeof(Real), cudaMemcpyDeviceToHost));
-    CuDevice::Instantiate().AccuProfile("CuVector::CopyToVecD2H",tim.Elapsed());
-  } else
-  #endif
-  {
-    dst->CopyFromVec(Vec());
-  }
-}
 
 
 
