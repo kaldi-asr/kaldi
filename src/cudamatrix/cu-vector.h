@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Karel Vesely
 //                      Johns Hopkins University (author: Daniel Povey)
+//                      Lucas Ondel
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -144,10 +145,6 @@ class CuVectorBase {
 
   Real Min() const;
   void MulElements(const CuVectorBase<Real> &v);
-  void SetBiasParams(const CuVectorBase<Real> &deriv_sum,
-                     Real min_average_deriv, Real parameter_factor,
-                     Real param);
-  
  protected:
 
   // The following two functions should only be called if we did not compile

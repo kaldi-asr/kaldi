@@ -488,29 +488,6 @@ void CuVectorBase<float>::CopyFromVec(const CuVectorBase<double> &src) {
   }
 }
 
-template<typename Real>
-void CuVectorBase<Real>::SetBiasParams(const CuVectorBase<Real> &deriv_sum,
-                                   Real min_average_deriv, Real parameter_factor,
-                                   Real param) {
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    
-    Timer tim;
-    int dimGrid = 1;
-    int dimBlock = dim_;
-    int* device_flag;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_flag), sizeof(int)));
-    CU_SAFE_CALL(cudaMemset(device_flag, 0, sizeof(int)));
-    cuda_set_bias_params(dimGrid, dimBlock, data_, deriv_sum.Data(),
-                         min_average_deriv, parameter_factor, param, device_flag, dim_);
-    int flag = 0;
-    CU_SAFE_CALL(cudaMemcpy(&flag, device_flag, sizeof(int), cudaMemcpyDeviceToHost));
-    KALDI_ASSERT( flag == 0 );      
-    CU_SAFE_CALL(cudaGetLastError());
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  }
-#endif
-}
 template class CuVectorBase<float>;
 template class CuVectorBase<double>;
 
