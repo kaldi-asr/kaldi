@@ -24,6 +24,7 @@
 #include <sstream>
 
 #include "cudamatrix/cu-common.h"
+#include "cudamatrix/cu-value.h"
 #include "matrix/matrix-common.h"
 #include "matrix/kaldi-matrix.h"
 #include "matrix/packed-matrix.h"
@@ -159,7 +160,7 @@ class CuPackedMatrix {
   
  private:
   // Disallow assignment.
-  PackedMatrix<Real> & operator =(const PackedMatrix<Real> &other);
+  PackedMatrix<Real> & operator=(const PackedMatrix<Real> &other);
 }; // class CuPackedMatrix
 
 

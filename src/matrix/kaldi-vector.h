@@ -347,6 +347,10 @@ class Vector: public VectorBase<Real> {
                   MatrixResizeType resize_type = kSetZero)
       : VectorBase<Real>() {  Resize(s, resize_type);  }
 
+  /// Copy constructor from CUDA vector
+  /// This is defined in ../cudamatrix/cu-vector.h
+  explicit Vector(const CuVectorBase<Real> &cu);
+  
   /// Copy constructor.  The need for this is controversial.
   Vector(const Vector<Real> &v) : VectorBase<Real>()  { //  (cannot be explicit)
     Resize(v.Dim(), kUndefined);

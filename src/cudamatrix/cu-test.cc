@@ -384,8 +384,28 @@ template<class Real> static void UnitTestMatrix() {
     Matrix<Real> A(dim1,dim2);
     A.SetRandn();
     CuMatrix<Real> B(A);
-    KALDI_LOG << A(0,0) << '\n';
-    KALDI_LOG << B(0,0) << '\n';
+    KALDI_ASSERT(A(3, 4) == B(3, 4));
+    B(3, 4) = 2.0;
+    A(3, 4) = B(3, 4);
+    KALDI_ASSERT(A(3, 4) == B(3, 4));
+
+    SpMatrix<Real> As(dim1);
+    CuSpMatrix<Real> Bs(As);
+    KALDI_ASSERT(As(3, 4) == Bs(3, 4));
+    Bs(3, 4) = 2.0;
+    if (rand() % 2 == 0)
+      As(3, 4) = Bs(3, 4);
+    else
+      As(3, 4) = (const_cast<const CuSpMatrix<Real>&>(Bs))(3, 4);
+    
+    KALDI_ASSERT(As(3, 4) == Bs(3, 4));
+
+    Vector<Real> v(dim1);
+    CuVector<Real> w(v);
+    KALDI_ASSERT(w(2) == v(2));
+    w(2) = 3.0;
+    v(2) = w(2);
+    KALDI_ASSERT(w(2) == v(2));
   }
   //AddMatMatDivMatElements
   for (MatrixIndexT iter = 0; iter < 1; iter++) {
@@ -407,10 +427,19 @@ template<class Real> static void UnitTestMatrix() {
     KALDI_LOG << tmp;
     D.CopyToMat(&tmp);
     KALDI_LOG << tmp;
-    A.AddMatMatDivMatElements(1.0,B,kNoTrans,C,kNoTrans,D,kNoTrans,1.0);
 
+    Matrix<Real> Am(A), Bm(B), Cm(C), Dm(D);
+    
+    A.AddMatMatDivMatElements(1.0, B, kNoTrans, C, kNoTrans, D, kNoTrans, 1.0);
+
+    Matrix<Real> tmpm(Bm);
+    tmpm.MulElements(Cm);
+    tmpm.DivElements(Dm);
+    Am.AddMat(1.0, tmpm);
+    
     A.CopyToMat(&tmp);
     KALDI_LOG << tmp;
+    AssertEqual(Am, tmp);
   }
   //SetRandn
   for (MatrixIndexT iter = 0; iter < 10; iter++) {

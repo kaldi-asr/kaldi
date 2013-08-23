@@ -37,6 +37,12 @@ class TpMatrix : public PackedMatrix<Real> {
   explicit TpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)
       : PackedMatrix<Real>(r, resize_type) {}
   TpMatrix(const TpMatrix<Real>& Orig) : PackedMatrix<Real>(Orig) {}
+
+  /// Copy constructor from CUDA TpMatrix
+  /// This is defined in ../cudamatrix/cu-tp-matrix.h
+  explicit TpMatrix(const CuTpMatrix<Real> &cu);
+  
+  
   template<class OtherReal> explicit TpMatrix(const TpMatrix<OtherReal>& Orig)
       : PackedMatrix<Real>(Orig) {}
   

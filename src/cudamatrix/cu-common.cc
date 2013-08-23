@@ -29,5 +29,4 @@ cublasOperation_t KaldiTransToCuTrans(MatrixTransposeType kaldi_trans) {
 } // namespace
 
 
-
 #endif  // KALDI_CUDA_MATRIX_COMMON_H_

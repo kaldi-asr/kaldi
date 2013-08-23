@@ -1,6 +1,8 @@
 // cudamatrix/cu-kernels.cu
 
 // Copyright 2009-2012  Karel Vesely
+//                2013  Ehsan Variani
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -234,6 +236,31 @@ static void _trace_sp_sp_df(const double* A, const Real* B, double* value, int d
     
     *value = _sum_reduce(row_data);
   }   
+}
+
+
+template<typename Real, typename OtherReal>
+__global__
+static void _copy_from_mat(Real* mat_out, const OtherReal* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda index_in = i + j * d_in.stride;
+  int32_cuda index_out = i + j * d_out.stride;
+  if ( i < d_in.cols && j < d_in.rows) {
+    mat_out[index_out] = static_cast<double>(mat_in[index_in]);
+  }
+}
+
+template<typename Real, typename OtherReal>
+__global__
+static void _copy_from_mat_trans(Real* mat_out, const OtherReal* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda index_in = i + j * d_in.stride;
+  int32_cuda index_out = j + i * d_out.stride;
+  if ( i < d_in.cols && j < d_in.rows) {
+    mat_out[index_out] = static_cast<double>(mat_in[index_in]);
+  }
 }
 
 
@@ -1285,21 +1312,7 @@ void cudaF_trace_sp_sp_df(int Gr, int Bl, const double* A, const float* B, doubl
   _trace_sp_sp_df<<<Gr,Bl>>>(A,B,value,dim);
 }
 
-void cudaF_copy_from_mat_fd(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  _copy_from_mat_fd<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-}
 
-void cudaF_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  _copy_from_mat_fd_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-}
-
-void cudaF_copy_from_mat_df(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  _copy_from_mat_df<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-}
-
-void cudaF_copy_from_mat_df_trans(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  _copy_from_mat_df_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-}
 
 void cudaF_copy_col_from_vec(int Gr, int Bl, float* mat, const float* v, int col, MatrixDim d) {
   _copy_col_from_vec<<<Gr,Bl>>>(mat,v,col,d);
@@ -1866,8 +1879,39 @@ void cudaD_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, double* mat_ne
 }
 
 
+/* Some conversion kernels for which it's more convenient to not name them F or D. */
 
+void cuda_copy_from_mat_df(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  _copy_from_mat<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+}
 
+void cuda_copy_from_mat_ff(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  _copy_from_mat<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+}
+
+void cuda_copy_from_mat_fd(dim3 Gr, dim3 Bl, float *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  _copy_from_mat<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+}
+
+void cuda_copy_from_mat_dd(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  _copy_from_mat<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+}
+
+void cuda_copy_from_mat_df_trans(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  _copy_from_mat_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+}
+
+void cuda_copy_from_mat_ff_trans(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  _copy_from_mat_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+}
+
+void cuda_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  _copy_from_mat_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+}
+
+void cuda_copy_from_mat_dd_trans(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  _copy_from_mat_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+}
 
 
 

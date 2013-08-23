@@ -675,7 +675,6 @@ template<class Real> void UnitTestCheck() {
   CuMatrix<Real> Di(100,111);
   Di.CopyFromMat(Hi);
 
-
   CuMatrix<Real> Dj(Di);
   KALDI_LOG << Dj.NumRows() << '\n';
  

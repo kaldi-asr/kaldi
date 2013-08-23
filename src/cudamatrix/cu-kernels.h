@@ -133,10 +133,33 @@ template<> inline void cuda_copy_from_tp_trans<float>(int Gr, int Bl, float* A, 
 template<> inline void cuda_copy_from_tp<float>(int Gr, int Bl, float* A, const float* B, MatrixDim dmat) { cudaF_copy_from_tp(Gr,Bl,A,B,dmat); }
 template<> inline void cuda_trace_sp_sp_fd<float>(int Gr, int Bl, const float* A, const float* B, float* value, int dim) { cudaF_trace_sp_sp_fd(Gr,Bl,A,B,value,dim); }
 template<> inline void cuda_trace_sp_sp_df<float>(int Gr, int Bl, const double* A, const float* B, double* value, int dim) { cudaF_trace_sp_sp_df(Gr,Bl,A,B,value,dim); }
-template<> inline void cuda_copy_from_mat_fd<float>(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) { cudaF_copy_from_mat_fd(Gr,Bl,mat_out,mat_in,d_out,d_in); }
-template<> inline void cuda_copy_from_mat_df<float>(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) { cudaF_copy_from_mat_df(Gr,Bl,mat_out,mat_in,d_out,d_in); }
-template<> inline void cuda_copy_from_mat_fd_trans<float>(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) { cudaF_copy_from_mat_fd_trans(Gr,Bl,mat_out,mat_in,d_out,d_in); }
-template<> inline void cuda_copy_from_mat_df_trans<float>(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) { cudaF_copy_from_mat_df_trans(Gr,Bl,mat_out,mat_in,d_out,d_in); }
+
+inline void cuda_copy_from_mat(dim3 Gr, dim3 Bl, float* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  cuda_copy_from_mat_fd(Gr, Bl, mat_out, mat_in, d_out, d_in);
+}
+inline void cuda_copy_from_mat(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  cuda_copy_from_mat_ff(Gr, Bl, mat_out, mat_in, d_out, d_in);
+}
+inline void cuda_copy_from_mat(dim3 Gr, dim3 Bl, double* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  cuda_copy_from_mat_dd(Gr, Bl, mat_out, mat_in, d_out, d_in);
+}
+inline void cuda_copy_from_mat(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  cuda_copy_from_mat_df(Gr, Bl, mat_out, mat_in, d_out, d_in);
+}
+
+inline void cuda_copy_from_mat_trans(dim3 Gr, dim3 Bl, float* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  cuda_copy_from_mat_fd_trans(Gr, Bl, mat_out, mat_in, d_out, d_in);
+}
+inline void cuda_copy_from_mat_trans(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  cuda_copy_from_mat_ff_trans(Gr, Bl, mat_out, mat_in, d_out, d_in);
+}
+inline void cuda_copy_from_mat_trans(dim3 Gr, dim3 Bl, double* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  cuda_copy_from_mat_dd_trans(Gr, Bl, mat_out, mat_in, d_out, d_in);
+}
+inline void cuda_copy_from_mat_trans(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in) {
+  cuda_copy_from_mat_df_trans(Gr, Bl, mat_out, mat_in, d_out, d_in);
+}
+
 template<> inline void cuda_copy_col_from_vec<float>(int Gr, int Bl, float* mat, const float* v, int col, MatrixDim d) { cudaF_copy_col_from_vec(Gr,Bl,mat,v,col,d); }
 template<> inline void cuda_apply_exp<float>(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) { cudaF_apply_exp(Gr,Bl,mat,d); }
 template<> inline void cuda_sum<float>(dim3 Gr, dim3 Bl, float* mat, float* value, MatrixDim d) { cudaF_sum(Gr,Bl,mat,value,d); }
@@ -222,10 +245,6 @@ template<> inline void cuda_copy_from_tp_trans<double>(int Gr, int Bl, double* A
 template<> inline void cuda_copy_from_tp<double>(int Gr, int Bl, double* A, const double* B, MatrixDim dmat) { cudaD_copy_from_tp(Gr,Bl,A,B,dmat); }
 template<> inline void cuda_trace_sp_sp_fd<double>(int Gr, int Bl, const float* A, const double* B, float* value, int dim) { cudaD_trace_sp_sp_fd(Gr,Bl,A,B,value,dim); }
 template<> inline void cuda_trace_sp_sp_df<double>(int Gr, int Bl, const double* A, const double* B, double* value, int dim) { cudaD_trace_sp_sp_df(Gr,Bl,A,B,value,dim); }
-template<> inline void cuda_copy_from_mat_fd<double>(dim3 Gr, dim3 Bl, float* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) { cudaD_copy_from_mat_fd(Gr,Bl,mat_out,mat_in,d_out,d_in); }
-template<> inline void cuda_copy_from_mat_df<double>(dim3 Gr, dim3 Bl, double* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) { cudaD_copy_from_mat_df(Gr,Bl,mat_out,mat_in,d_out,d_in); }
-template<> inline void cuda_copy_from_mat_fd_trans<double>(dim3 Gr, dim3 Bl, float* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) { cudaD_copy_from_mat_fd_trans(Gr,Bl,mat_out,mat_in,d_out,d_in); }
-template<> inline void cuda_copy_from_mat_df_trans<double>(dim3 Gr, dim3 Bl, double* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) { cudaD_copy_from_mat_df_trans(Gr,Bl,mat_out,mat_in,d_out,d_in); }
 template<> inline void cuda_copy_col_from_vec<double>(int Gr, int Bl, double* mat, const double* v, int col, MatrixDim d) { cudaD_copy_col_from_vec(Gr,Bl,mat,v,col,d); }
 template<> inline void cuda_apply_exp<double>(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) { cudaD_apply_exp(Gr,Bl,mat,d); }
 template<> inline void cuda_sum<double>(dim3 Gr, dim3 Bl, double* mat, double* value, MatrixDim d) { cudaD_sum(Gr,Bl,mat,value,d); }

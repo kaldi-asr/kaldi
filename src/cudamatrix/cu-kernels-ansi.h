@@ -1,6 +1,7 @@
 // cudamatrix/cu-kernels-ansi.h
 
 // Copyright 2009-2012  Karel Vesely
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,10 +47,6 @@ void cudaF_copy_from_tp_trans(int Gr, int Bl, float* A, const float* B, MatrixDi
 void cudaF_copy_from_tp(int Gr, int Bl, float* A, const float* B, MatrixDim dmat);
 void cudaF_trace_sp_sp_fd(int Gr, int Bl, const float* A, const float* B, float* value, int dim);
 void cudaF_trace_sp_sp_df(int Gr, int Bl, const double* A, const float* B, double* value, int dim);
-void cudaF_copy_from_mat_fd(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in);
-void cudaF_copy_from_mat_df(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in);
-void cudaF_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in);
-void cudaF_copy_from_mat_df_trans(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in);
 void cudaF_copy_col_from_vec(int Gr, int Bl, float* mat, const float* v, int col, MatrixDim d);
 void cudaF_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
 void cudaF_sum(dim3 Gr, dim3 Bl, float* mat, float* value, MatrixDim d);
@@ -134,10 +131,6 @@ void cudaD_copy_from_tp_trans(int Gr, int Bl, double* A, const double* B, Matrix
 void cudaD_copy_from_tp(int Gr, int Bl, double* A, const double* B, MatrixDim dmat);
 void cudaD_trace_sp_sp_fd(int Gr, int Bl, const float* A, const double* B, float* value, int dim);
 void cudaD_trace_sp_sp_df(int Gr, int Bl, const double* A, const double* B, double* value, int dim);
-void cudaD_copy_from_mat_fd(dim3 Gr, dim3 Bl, float* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in);
-void cudaD_copy_from_mat_df(dim3 Gr, dim3 Bl, double* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in);
-void cudaD_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in);
-void cudaD_copy_from_mat_df_trans(dim3 Gr, dim3 Bl, double* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in);
 void cudaD_copy_col_from_vec(int Gr, int Bl, double* mat, const double* v, int col, MatrixDim d);
 void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
 void cudaD_sum(dim3 Gr, dim3 Bl, double* mat, double* value, MatrixDim d);
@@ -210,8 +203,21 @@ void cudaD_copy_from_sp(int Gr, int Bl, const double* x, double* y, int d_in, Ma
 void cudaD_take_lower(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in, int d_out);
 void cudaD_take_upper(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in, int d_out);
 void cudaD_take_mean(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in, int d_out);
+
+
+// some mostly mixed-type kernels.
+void cuda_copy_from_mat_df(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in);
+void cuda_copy_from_mat_ff(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in);
+void cuda_copy_from_mat_fd(dim3 Gr, dim3 Bl, float *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in);
+void cuda_copy_from_mat_dd(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in);
+void cuda_copy_from_mat_df_trans(dim3 Gr, dim3 Bl, double* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in);
+void cuda_copy_from_mat_ff_trans(dim3 Gr, dim3 Bl, float* mat_out, const float* mat_in, MatrixDim d_out, MatrixDim d_in);
+void cuda_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in);
+void cuda_copy_from_mat_dd_trans(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in);
+  
 } // extern "C" 
 
 #endif // HAVE_CUDA
+
 
 #endif

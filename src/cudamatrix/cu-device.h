@@ -108,7 +108,8 @@ class CuDevice {
 }; // class CuDevice
 
 
-}// namespace
+
+}  // namespace
 
 #endif // HAVE_CUDA
 

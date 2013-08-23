@@ -70,21 +70,23 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
     CuPackedMatrix<Real>::CopyToPacked(dst);
   }
 
+  inline CuValue<Real> operator() (MatrixIndexT r, MatrixIndexT c) {
+    if (static_cast<UnsignedMatrixIndexT>(c) >
+        static_cast<UnsignedMatrixIndexT>(r))
+      std::swap(c, r);
+    KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
+                 static_cast<UnsignedMatrixIndexT>(this->num_rows_));
+    return CuValue<Real>(this->data_ + (r * (r+1)) / 2 + c);
+  }
+  
   inline Real operator() (MatrixIndexT r, MatrixIndexT c) const {
     if (static_cast<UnsignedMatrixIndexT>(c) >
         static_cast<UnsignedMatrixIndexT>(r))
       std::swap(c, r);
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
                  static_cast<UnsignedMatrixIndexT>(this->num_rows_));
-#if HAVE_CUDA == 1
-    if (CuDevice::Instantiate().Enabled()) {    
-      Real value;
-      CU_SAFE_CALL(cudaMemcpy(&value, this->data_ + (r * (r+1)) / 2 + c,
-                              sizeof(Real), cudaMemcpyDeviceToHost));
-      return value;
-    } else
-#endif
-    return this->data_[(r * (r+1)) / 2 + c];
+    return CuValue<Real>(this->data_ + (r * (r+1)) / 2 + c); // will be
+    // casted to Real.
   }
 
   void Invert();

@@ -135,33 +135,38 @@ void CuMatrix<Real>::Swap(Matrix<Real> *mat) {
   }
 }
 
-
 template<typename Real>
-void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<Real> &src) {
-  KALDI_ASSERT(src.NumRows() == num_rows_ && src.NumCols() == num_cols_);
+void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<Real> &src,
+                                     MatrixTransposeType trans) {
 #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
+  if (CuDevice::Instantiate().Enabled()) {
+    if (trans == kNoTrans) {
+      KALDI_ASSERT(src.NumRows() == num_rows_ && src.NumCols() == num_cols_);
+      Timer tim;
 
-    MatrixIndexT dst_pitch = stride_ * sizeof(Real);
-    MatrixIndexT src_pitch = src.Stride() * sizeof(Real);
-    MatrixIndexT width = src.NumCols() * sizeof(Real);
-    CU_SAFE_CALL(cudaMemcpy2D(data_, dst_pitch, src.data_, src_pitch,
-                            width, src.num_rows_, cudaMemcpyDeviceToDevice));
-
-    CuDevice::Instantiate().AccuProfile("CuMatrix::CopyFromMatD2D",tim.Elapsed());
+      MatrixIndexT dst_pitch = stride_ * sizeof(Real);
+      MatrixIndexT src_pitch = src.Stride() * sizeof(Real);
+      MatrixIndexT width = src.NumCols() * sizeof(Real);
+      CU_SAFE_CALL(cudaMemcpy2D(data_, dst_pitch, src.data_, src_pitch,
+                                width, src.num_rows_, cudaMemcpyDeviceToDevice));
+      
+      CuDevice::Instantiate().AccuProfile("CuMatrix::CopyFromMatD2D",tim.Elapsed());
+    } else {
+      this->CopyFromMat<Real>(src, trans);
+      // call double-templated version which we'll make sure works for the
+      // transposed case.
+    }
   } else
 #endif
   {
-    Mat().CopyFromMat(src.Mat());
+    Mat().CopyFromMat(src.Mat(), trans);
   }
 }
 
 template<>
 template<>
 void CuMatrixBase<double>::CopyFromMat(const CuMatrixBase<float> &M,
-                                     MatrixTransposeType Trans) {
-  //KALDI_ASSERT(sizeof(Real) != sizeof(OtherReal));
+                                       MatrixTransposeType Trans) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -184,9 +189,33 @@ void CuMatrixBase<double>::CopyFromMat(const CuMatrixBase<float> &M,
 
 template<>
 template<>
+void CuMatrixBase<double>::CopyFromMat(const CuMatrixBase<double> &M,
+                                       MatrixTransposeType Trans) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(M.NumCols(), CUBLOCK), n_blocks(M.NumRows(), CUBLOCK));
+    if (Trans == kNoTrans) {
+      KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == M.NumCols());
+      cuda_copy_from_mat_dd(dimGrid, dimBlock, data_, M.data_,
+                            Dim(), M.Dim());
+    } else {
+      KALDI_ASSERT(num_rows_ == M.NumCols() && num_cols_ == M.NumRows ());
+      cuda_copy_from_mat_dd_trans(dimGrid, dimBlock, data_, M.data_, Dim(), M.Dim());
+    }
+  } else
+#endif
+  {
+    Mat().CopyFromMat(M.Mat(), Trans);
+  }
+}
+
+
+template<>
+template<>
 void CuMatrixBase<float>::CopyFromMat(const CuMatrixBase<double> &M,
                                       MatrixTransposeType Trans) {
-  //KALDI_ASSERT(sizeof(Real) != sizeof(OtherReal));
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -209,6 +238,35 @@ void CuMatrixBase<float>::CopyFromMat(const CuMatrixBase<double> &M,
     Mat().CopyFromMat(M.Mat(), Trans);
   }
 }
+
+template<>
+template<>
+void CuMatrixBase<float>::CopyFromMat(const CuMatrixBase<float> &M,
+                                      MatrixTransposeType Trans) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CUBLOCK, CUBLOCK);
+    dim3 dimGrid(n_blocks(M.NumCols(), CUBLOCK), n_blocks(M.NumRows(), CUBLOCK));
+    if (Trans == kNoTrans) {
+      KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == M.NumCols());
+
+      cuda_copy_from_mat_ff(dimGrid, dimBlock, data_, M.data_,
+                            Dim(), M.Dim());
+    } else {
+
+      KALDI_ASSERT(num_rows_ == M.NumCols() && num_cols_ == M.NumRows ());
+      cuda_copy_from_mat_ff_trans(dimGrid, dimBlock, data_, M.RowData(0),
+                                    Dim(), M.Dim());
+    }
+  } else
+#endif
+  {
+    Mat().CopyFromMat(M.Mat(), Trans);
+  }
+}
+
+
 
 template<typename Real>
 template<typename OtherReal>
@@ -246,23 +304,29 @@ void CuMatrixBase<float>::CopyFromMat(const CuMatrixBase<float> & M,
                                       MatrixTransposeType Trans);
 template
 void CuMatrixBase<double>::CopyFromMat(const CuMatrixBase<double> & M,
-                                       MatrixTransposeType Trans);
+MatrixTransposeType Trans);
 */
 
 template<typename Real>
-void CuMatrixBase<Real>::CopyFromMat(const MatrixBase<Real> &src) {
+void CuMatrixBase<Real>::CopyFromMat(const MatrixBase<Real> &src,
+                                     MatrixTransposeType trans) {
   KALDI_ASSERT(src.NumRows() == num_rows_ && src.NumCols() == num_cols_);
 #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
+  if (CuDevice::Instantiate().Enabled()) {
+    if (trans == kNoTrans) {
+      Timer tim;
 
-    MatrixIndexT dst_pitch = stride_*sizeof(Real);
-    MatrixIndexT src_pitch = src.Stride()*sizeof(Real);
-    MatrixIndexT width = src.NumCols()*sizeof(Real);
-    CU_SAFE_CALL(cudaMemcpy2D(data_, dst_pitch, src.Data(), src_pitch,
-                            width, src.NumRows(), cudaMemcpyHostToDevice));
+      MatrixIndexT dst_pitch = stride_*sizeof(Real);
+      MatrixIndexT src_pitch = src.Stride()*sizeof(Real);
+      MatrixIndexT width = src.NumCols()*sizeof(Real);
+      CU_SAFE_CALL(cudaMemcpy2D(data_, dst_pitch, src.Data(), src_pitch,
+                                width, src.NumRows(), cudaMemcpyHostToDevice));
 
-    CuDevice::Instantiate().AccuProfile("CuMatrix::CopyFromMatH2D",tim.Elapsed());
+      CuDevice::Instantiate().AccuProfile("CuMatrix::CopyFromMatH2D",tim.Elapsed());
+    } else {
+      CuMatrix<Real> trans_mat(src);
+      this->CopyFromMat(trans_mat, kTrans); // Do the transpose in CUDA.
+    }
   } else
 #endif
   {
@@ -288,27 +352,58 @@ void CuMatrixBase<Real>::CopyFromSp(const CuSpMatrix<Real> &M) {
   }
 }
 
+template<typename Real>
+CuMatrix<Real>::CuMatrix(const CuMatrix<Real> &other, MatrixTransposeType trans) {
+  if (trans == kNoTrans)
+    this->Resize(other.NumRows(), other.NumCols(), kUndefined);
+  else
+    this->Resize(other.NumCols(), other.NumRows(), kUndefined);
+  this->CopyFromMat(other, trans);
+}
 
 template<typename Real>
-void CuMatrixBase<Real>::CopyToMat(MatrixBase<Real> *dst) const {
-  KALDI_ASSERT(dst->NumRows() == NumRows() && dst->NumCols() == NumCols());
-  
+CuMatrix<Real>::CuMatrix(const CuMatrixBase<Real> &other, MatrixTransposeType trans) {
+  if (trans == kNoTrans)
+    this->Resize(other.NumRows(), other.NumCols(), kUndefined);
+  else
+    this->Resize(other.NumCols(), other.NumRows(), kUndefined);
+  this->CopyFromMat(other, trans);
+}
+
+
+template<typename Real>
+CuMatrix<Real>::CuMatrix(const MatrixBase<Real> &other, MatrixTransposeType trans) {
+  if (trans == kNoTrans)
+    this->Resize(other.NumRows(), other.NumCols(), kUndefined);
+  else
+    this->Resize(other.NumCols(), other.NumRows(), kUndefined);
+  this->CopyFromMat(other, trans);
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::CopyToMat(MatrixBase<Real> *dst,
+                                   MatrixTransposeType trans) const {
 #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
-
-    Timer tim;
+  if (CuDevice::Instantiate().Enabled()) {
+    if (trans == kTrans) {
+      CuMatrix<Real> this_trans(*this, trans);
+      this->CopyToMat(dst, kNoTrans);
+    } else {
+      KALDI_ASSERT(dst->NumRows() == NumRows() && dst->NumCols() == NumCols());
+      Timer tim;
    
-    MatrixIndexT src_pitch = stride_*sizeof(Real);
-    MatrixIndexT dst_pitch = dst->Stride()*sizeof(Real);
-    MatrixIndexT width = NumCols()*sizeof(Real);
-    CU_SAFE_CALL(cudaMemcpy2D(dst->data_, dst_pitch, this->data_, src_pitch,
-                            width, this->num_rows_, cudaMemcpyDeviceToHost));
+      MatrixIndexT src_pitch = stride_*sizeof(Real);
+      MatrixIndexT dst_pitch = dst->Stride()*sizeof(Real);
+      MatrixIndexT width = NumCols()*sizeof(Real);
+      CU_SAFE_CALL(cudaMemcpy2D(dst->data_, dst_pitch, this->data_, src_pitch,
+                                width, this->num_rows_, cudaMemcpyDeviceToHost));
 
-    CuDevice::Instantiate().AccuProfile("CuMatrix::CopyToMatD2H",tim.Elapsed());
+      CuDevice::Instantiate().AccuProfile("CuMatrix::CopyToMatD2H",tim.Elapsed());
+    }
   } else
   #endif
   {
-    dst->CopyFromMat(Mat());
+    dst->CopyFromMat(Mat(), trans);
   }
 }
 
@@ -1067,7 +1162,7 @@ void CuMatrixBase<Real>::InvertPSD() {
     //L1.SetZeroUpperDiag();
     Matrix<Real> L_test(dim,dim);
     temp.CopyToMat(&L_test);
-    this->AddMatMat(1,temp,kTrans,temp,kNoTrans,0);
+    this->AddMatMat(1, temp, kTrans, temp, kNoTrans, 0);
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else

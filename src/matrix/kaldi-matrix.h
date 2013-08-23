@@ -125,10 +125,11 @@ class MatrixBase {
 
   /*  Copying functions.  These do not resize the matrix! */
 
+
   /// Copy given matrix. (no resize is done).
   template<typename OtherReal>
   void CopyFromMat(const MatrixBase<OtherReal> & M,
-                   MatrixTransposeType Trans = kNoTrans);
+                   MatrixTransposeType trans = kNoTrans);
 
   /// Copy given spmatrix. (no resize is done).
   template<typename OtherReal>
@@ -137,8 +138,13 @@ class MatrixBase {
   /// Copy given tpmatrix. (no resize is done).
   template<typename OtherReal>
   void CopyFromTp(const TpMatrix<OtherReal> &M,
-                  MatrixTransposeType Trans = kNoTrans);
+                  MatrixTransposeType trans = kNoTrans);
   
+  /// Copy from CUDA matrix.  Implemented in ../cudamatrix/cu-matrix.h
+  template<typename OtherReal>  
+  void CopyFromMat(const CuMatrixBase<OtherReal> &M,
+                   MatrixTransposeType trans = kNoTrans);
+
   /// Inverse of vec() operator. Copies vector into matrix, row-by-row.
   /// Note that rv.Dim() must either equal NumRows()*NumCols() or
   /// NumCols()-- this has two modes of operation.
@@ -588,7 +594,12 @@ class Matrix : public MatrixBase<Real> {
   /// Basic constructor.  Sets to zero by default.
   /// if set_zero == false, memory contents are undefined.
   Matrix(const MatrixIndexT r, const MatrixIndexT c, MatrixResizeType resize_type = kSetZero):
-    MatrixBase<Real>() { Resize(r, c, resize_type); }
+      MatrixBase<Real>() { Resize(r, c, resize_type); }
+  
+  /// Copy constructor from CUDA matrix
+  /// This is defined in ../cudamatrix/cu-matrix.h
+  explicit Matrix(const CuMatrixBase<Real> &cu,
+                  MatrixTransposeType trans = kNoTrans);
 
   /// Swaps the contents of *this and *other.  Shallow swap.
   void Swap(Matrix<Real> *other);

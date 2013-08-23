@@ -24,6 +24,7 @@
 
 #include "matrix/kaldi-vector.h"
 #include "cudamatrix/cu-common.h"
+#include "cudamatrix/cu-value.h"
 #include "cudamatrix/cu-math.h"
 
 namespace kaldi {
@@ -129,19 +130,17 @@ class CuVectorBase {
   void AddDiagMat2(Real alpha, const CuMatrixBase<Real> &M,
                    MatrixTransposeType trans, Real beta);
 
+  inline CuValue<Real> operator() (MatrixIndexT i) {
+    KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
+                          static_cast<UnsignedMatrixIndexT>(dim_));
+    return CuValue<Real>(data_ + i);
+  }
+
   inline Real operator() (MatrixIndexT i) const {
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                           static_cast<UnsignedMatrixIndexT>(dim_));
-#if HAVE_CUDA == 1
-    if (CuDevice::Instantiate().Enabled()) {
-      Real value;
-      CU_SAFE_CALL(cudaMemcpy(&value, (data_+i),
-                              sizeof(Real), cudaMemcpyDeviceToHost));
-      return value;
-    } else
-#endif
-    return this->data_[i];
-  }
+    return CuValue<Real>(data_ + i); // will be casted to Real.
+  }    
 
   Real Min() const;
   void MulElements(const CuVectorBase<Real> &v);

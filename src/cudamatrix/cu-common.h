@@ -74,6 +74,7 @@ template<typename Real> class CuPackedMatrix;
 template<typename Real> class CuSpMatrix;
 template<typename Real> class CuTpMatrix;
 
+
 }
 
 
