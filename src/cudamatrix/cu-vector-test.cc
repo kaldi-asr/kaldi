@@ -131,25 +131,22 @@ static void UnitTestCuVectorCopyFromVec() {
 }
 
 template<class Real> 
-static void UnitTestCuVectorAddTp() {
+static void UnitTestCuVectorMulTp() {
   for (int32 i = 1; i < 10; i++) {
-    MatrixIndexT dim = 4 * i;
+    MatrixIndexT dim = 10 * i;
     Vector<Real> A(dim);
     A.SetRandn();
     TpMatrix<Real> B(dim);
     B.SetRandn();
-    Vector<Real> C(dim);
-    C.SetRandn();
     
-    CuVector<Real> D(A);
-    CuTpMatrix<Real> E(B);
-    CuVector<Real> F(C); 
+    CuVector<Real> C(A);
+    CuTpMatrix<Real> D(B);
 
-    A.AddTpVec(1.0, B, kNoTrans, C, 1.0);
-    D.AddTpVec(1.0, E, kNoTrans, F, 1.0);
+    A.MulTp(B, kNoTrans);
+    C.MulTp(D, kNoTrans);
 
-    CuVector<Real> G(A);
-    AssertEqual(D, G);
+    CuVector<Real> E(A);
+    AssertEqual(C, E);
   }
 }
 
@@ -179,6 +176,7 @@ static void UnitTestCuVectorAddTp() {
 template<class Real> void CuVectorUnitTest() {
   UnitTestCuVectorCopyFromVec<Real>();
   UnitTestCuVectorAddTp<Real>();
+  UnitTestCuVectorMulTp<Real>();
 }
 
 

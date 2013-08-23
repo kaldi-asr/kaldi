@@ -115,6 +115,27 @@ static void UnitTestCuSpMatrixOperator() {
 }
 
 template<class Real>
+static void UnitTestCuSpMatrixAddToDiag() {
+  for (MatrixIndexT i = 1; i < 10; i++) {
+    MatrixIndexT dim = 10*i;
+    SpMatrix<Real> A(dim);
+    A.SetRandn();
+    CuSpMatrix<Real> B(A);
+    
+    Matrix<Real> D(A);
+    A.AddToDiag(i);
+
+    CuMatrix<Real> C(B);
+    B.AddToDiag(i);
+    
+    SpMatrix<Real> E(dim);
+    B.CopyToSp(&E);
+    
+    AssertEqual(A, E);    
+  }
+}
+
+template<class Real>
 static void UnitTestCuSpMatrixInvert() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 10*i;
@@ -261,6 +282,7 @@ template<class Real> void CudaSpMatrixUnitTest() {
   UnitTestCuSpMatrixAddVec2<Real>();
   UnitTestCuSpMatrixAddMat2<Real>();
   UnitTestCuSpMatrixAddSp<Real>();
+  UnitTestCuSpMatrixAddToDiag<Real>();
 }
 
 template<class Real, class OtherReal> void CudaSpMatrixUnitTest() {
