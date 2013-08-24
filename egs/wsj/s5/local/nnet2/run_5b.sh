@@ -56,10 +56,10 @@ if [ $stage -le 3 ]; then # create testing fbank data.
 fi
 
 if [ $stage -le 4 ]; then
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 10 \
+  steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 10 \
      exp/tri4b/graph_bd_tgpr data/test_dev93_fbank exp/nnet5b/decode_bd_tgpr_dev93
 
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 8 \
+  steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 8 \
      exp/tri4b/graph_bd_tgpr data/test_eval92_fbank exp/nnet5b/decode_bd_tgpr_eval92
 fi
 
