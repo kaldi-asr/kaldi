@@ -1449,5 +1449,4 @@ template class CuMatrix<double>;
 template class CuMatrixBase<float>;
 template class CuMatrixBase<double>;
 
-
 } // namespace kaldi

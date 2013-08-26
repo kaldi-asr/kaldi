@@ -18,17 +18,19 @@ namespace kaldi {
 
 
 #if HAVE_CUDA == 1
-template<typename Real> inline Real cublas_dot(int n, const Real* x, int incx,
-                                               const Real* y, int incy) {
-  KALDI_ERR << __func__ << " Not implemented!";
-}
-template<> inline float cublas_dot<float>(int n, const float* x, int incx,
-                                         const float* y, int incy) {
+inline float cublas_dot(int n, const float* x, int incx,
+                        const float* y, int incy) {
   return cublasSdot(n,x,incx,y,incy);
 }
-template<> inline double cublas_dot<double>(int n, const double* x, int incx,
-                                          const double* y, int incy) {
+inline double cublas_dot(int n, const double* x, int incx,
+                         const double* y, int incy) {
   return cublasDdot(n,x,incx,y,incy);
+}
+inline float cublas_sum(int n, const float* x, int incx) {
+  return cublasSasum(n, x, incx);
+}
+inline float cublas_sum(int n, const double* x, int incx) {
+  return cublasDasum(n, x, incx);
 }
 #endif
 
@@ -161,14 +163,15 @@ Real CuVectorBase<Real>::Sum() const {
   if (CuDevice::Instantiate().Enabled()) {
 
     Timer tim;
-    int dimBlock(CU2DBLOCK);
-    int dimGrid(n_blocks(dim_,CU2DBLOCK));
-
-    Real* device_sum_value;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_sum_value), sizeof(Real)))
-    CU_SAFE_CALL(cudaMemset(device_sum_value,0, sizeof(Real)));
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(dim_, CU1DBLOCK));
+    
+    Real *device_sum_value;
+    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_sum_value), sizeof(Real)));
+    CU_SAFE_CALL(cudaMemset(device_sum_value, 0, sizeof(Real)));
     cuda_vec_sum(dimGrid, dimBlock, data_, device_sum_value, dim_);
     CU_SAFE_CALL(cudaMemcpy(&sum_value, device_sum_value, sizeof(Real), cudaMemcpyDeviceToHost));
+    CU_SAFE_CALL(cudaFree(device_sum_value));
     CuDevice::Instantiate().AccuProfile("CuVectorBase::Sum", tim.Elapsed());
   } else
 #endif
@@ -184,8 +187,8 @@ void CuVectorBase<Real>::ApplySoftMax() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    int dimBlock(CU2DBLOCK);
-    int dimGrid(n_blocks(dim_, CU2DBLOCK));
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(dim_, CU1DBLOCK));
 
     cuda_vec_soft_max(dimGrid, dimBlock, data_, dim_);
     CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplySoftMax", tim.Elapsed());
@@ -269,17 +272,12 @@ void CuVectorBase<Real>::ApplyLog() {
 }
 
 #if HAVE_CUDA == 1
-template<typename Real> inline void cublas_gemv(char trans, int m, int n, Real alpha,
-                                                const Real* A, int lda, const Real* x,
-                                                int incx, Real beta, Real* y, int incy) {
-  KALDI_ERR << __func__ << " Not implemented! ";
-}
-template<> inline void cublas_gemv(char trans, int m, int n, float alpha,
+inline void cublas_gemv(char trans, int m, int n, float alpha,
                                    const float* A, int lda, const float* x,
                                    int incx, float beta, float* y, int incy) {
   cublasSgemv(trans,m,n,alpha,A,lda,x,incx,beta,y,incy);
 }
-template<> inline void cublas_gemv(char trans, int m, int n, double alpha,
+inline void cublas_gemv(char trans, int m, int n, double alpha,
                                    const double* A, int lda, const double* x,
                                    int incx, double beta, double* y, int incy) {
   cublasDgemv(trans,m,n,alpha,A,lda,x,incx,beta,y,incy);
@@ -329,6 +327,19 @@ void CuVectorBase<Real>::AddVecVec(Real alpha, const CuVectorBase<Real> &v,
 //    KALDI_LOG << "Salam!" << '\n';
     Vec().AddVecVec(alpha, v.Vec(), r.Vec(), beta);
   }
+}
+
+
+template<typename Real>
+bool CuVectorBase<Real>::ApproxEqual(const CuVectorBase<Real> &other, float tol) const {
+  if (dim_ != other.dim_) KALDI_ERR << "ApproxEqual: size mismatch "
+                                    << dim_ << " vs. " << other.dim_;
+  KALDI_ASSERT(tol >= 0.0);
+  CuVector<Real> tmp(*this);
+  tmp.AddVec(-1.0, other);
+  BaseFloat tmp_norm = sqrt(VecVec(tmp, tmp)), this_norm = sqrt(VecVec(*this, *this));
+  KALDI_LOG  << "tmp norm is " << tmp_norm << ", this_norm =" << this_norm;
+  return tmp_norm <= static_cast<Real>(tol) * this_norm;
 }
 
 

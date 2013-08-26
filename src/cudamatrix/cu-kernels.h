@@ -226,7 +226,24 @@ inline void cuda_copy_from_sp(int Gr, int Bl, const double* x, double* y, int d_
 inline void cuda_take_lower(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in, int d_out) { cudaD_take_lower(Gr,Bl,x,y,d_in,d_out); }
 inline void cuda_take_upper(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in, int d_out) { cudaD_take_upper(Gr,Bl,x,y,d_in,d_out); }
 inline void cuda_take_mean(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in, int d_out) { cudaD_take_mean(Gr,Bl,x,y,d_in,d_out); }
-} // namespace
+
+
+// Also include some template-friendly wrappers of cublas functions:
+inline void cuda_axpy(int n, float alpha, const float *x, int incx, float *y, int incy) {
+  cublasSaxpy(n, alpha, x, incx, y, incy);
+}
+inline void cuda_axpy(int n, double alpha, const double *x, int incx, double *y, int incy) {
+  cublasDaxpy(n, alpha, x, incx, y, incy);
+}
+inline void cuda_scal(int n, float alpha, float *x, int incx) {
+  cublasSscal(n, alpha, x, incx);
+}
+inline void cuda_scal(int n, double alpha, double *x, int incx) {
+  cublasDscal(n, alpha, x, incx);
+}
+
+
+} // namespace kaldi
 
 
 

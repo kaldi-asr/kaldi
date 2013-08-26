@@ -86,7 +86,7 @@ class CuVectorBase {
   void Add(Real value);
   void Scale(Real value);
   
-  void AddVec(Real alpha, const CuVectorBase<Real> &vec, Real beta = 0.0);
+  void AddVec(Real alpha, const CuVectorBase<Real> &vec, Real beta = 1.0);
 
   /// Sum the rows of the matrix, add to vector
   void AddRowSumMat(Real alpha, const CuMatrixBase<Real> &mat, Real beta = 1.0);
@@ -101,6 +101,8 @@ class CuVectorBase {
   
   /// Multiplies this vector by lower-triangular marix:  *this <-- *this *M
   void MulTp(const CuTpMatrix<Real> &M, const MatrixTransposeType trans);
+
+  bool ApproxEqual(const CuVectorBase<Real> &other, float tol = 0.01) const;
   
   void InvertElements(); 
 

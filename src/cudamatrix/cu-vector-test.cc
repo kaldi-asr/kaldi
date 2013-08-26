@@ -1,6 +1,7 @@
-// cudamatrix/cuda-matrix-test.cc
+// cudamatrix/cuda-vector-test.cc
 
 // Copyright 2013 Lucas Ondel
+//           2013 Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -119,6 +120,23 @@ static void UnitTestCuVectorCopyFromVec() {
 }
 
 template<class Real> 
+static void UnitTestCuSubVector() {
+  for (int32 iter = 0 ; iter < 10; iter++) {
+    int32 M1 = 1 + rand () % 10, M2 = 1 + rand() % 1, M3 = 1 + rand() % 10, M = M1 + M2 + M3,
+        m = rand() % M2;
+    CuVector<Real> vec(M);
+    vec.SetRandn();
+    CuSubVector<Real> subvec1(vec, M1, M2),
+        subvec2 = vec.Range(M1, M2);
+    Real f1 = vec(M1 + m), f2 = subvec1(m), f3 = subvec2(m);
+    KALDI_ASSERT(f1 == f2);
+    KALDI_ASSERT(f2 == f3);
+  }
+}
+
+
+
+template<class Real> 
 static void UnitTestCuVectorMulTp() {
   for (int32 i = 1; i < 10; i++) {
     MatrixIndexT dim = 10 * i;
@@ -161,14 +179,149 @@ static void UnitTestCuVectorAddTp() {
   }
 }
 
+template<class Real> void CuVectorUnitTestVecVec() {
+  int32 M = 10 % rand() % 100;
+  CuVector<Real> vec1(M), vec2(M);
+  vec1.SetRandn();
+  vec2.SetRandn();
+  Real prod = 0.0;
+  for (int32 i = 0; i < M; i++)
+    prod += vec1(i) * vec2(i);
+  AssertEqual(prod, VecVec(vec1, vec2));
+}
+
+template<class Real> void CuVectorUnitTestAddVec() {
+  int32 M = 10 % rand() % 100;
+  CuVector<Real> vec1(M), vec2(M);
+  vec1.SetRandn();
+  vec2.SetRandn();
+  CuVector<Real> vec1_orig(vec1);
+  BaseFloat alpha = 0.43243;
+  vec1.AddVec(alpha, vec2);
+  
+  for (int32 i = 0; i < M; i++)
+    AssertEqual(vec1_orig(i) + alpha * vec2(i), vec1(i));
+}
+
+template<class Real> void CuVectorUnitTestAddVecExtra() {
+  int32 M = 10 % rand() % 100;
+  CuVector<Real> vec1(M), vec2(M);
+  vec1.SetRandn();
+  vec2.SetRandn();
+  CuVector<Real> vec1_orig(vec1);
+  BaseFloat alpha = 0.43243, beta = 1.4321;
+  vec1.AddVec(alpha, vec2, beta);
+  
+  for (int32 i = 0; i < M; i++)
+    AssertEqual(beta * vec1_orig(i) + alpha * vec2(i), vec1(i));
+}
+
+
+template<class Real> void CuVectorUnitTestAddRowSumMat() {
+  int32 M = 10 + rand() % 280, N = 10 + rand() % 20;
+  BaseFloat alpha = 10.0143432, beta = 43.4321;
+  CuMatrix<Real> mat(N, M);
+  mat.SetRandn();
+  CuVector<Real> vec(M);
+  mat.SetRandn();
+  Matrix<Real> mat2(mat);
+  Vector<Real> vec2(M);
+  vec.AddRowSumMat(alpha, mat, beta);
+  vec2.AddRowSumMat(alpha, mat2, beta);
+  Vector<Real> vec3(vec);
+  AssertEqual(vec2, vec3);
+}
+
+template<class Real> void CuVectorUnitTestAddColSumMat() {
+  int32 M = 10 + rand() % 280, N = 10 + rand() % 20;
+  BaseFloat alpha = 10.0143432, beta = 43.4321;
+  CuMatrix<Real> mat(M, N);
+  mat.SetRandn();
+  CuVector<Real> vec(M);
+  mat.SetRandn();
+  Matrix<Real> mat2(mat);
+  Vector<Real> vec2(M);
+  vec.AddColSumMat(alpha, mat, beta);
+  vec2.AddColSumMat(alpha, mat2, beta);
+  Vector<Real> vec3(vec);
+  AssertEqual(vec2, vec3);
+}
+
+
+template<class Real> void CuVectorUnitTestApproxEqual() {
+  int32 M = 10 + rand() % 100;
+  CuVector<Real> vec1(M), vec2(M);
+  vec1.SetRandn();
+  vec2.SetRandn();
+  Real tol = 0.5;
+  for (int32 i = 0; i < 10; i++) {
+    Real sumsq = 0.0, sumsq_orig = 0.0;
+    for (int32 j = 0; j < M; j++) {
+      sumsq += (vec1(j) - vec2(j)) * (vec1(j) - vec2(j));
+      sumsq_orig += vec1(j) * vec1(j);
+    }
+    Real rms = sqrt(sumsq), rms_orig = sqrt(sumsq_orig);
+    KALDI_ASSERT(vec1.ApproxEqual(vec2, tol) == (rms <= tol * rms_orig));
+    tol *= 2.0;
+  }
+}
+
+
+template<class Real> void CuVectorUnitTestInvertElements() {
+  // Also tests MulElements();
+  int32 M = 256 + rand() % 100;
+  CuVector<Real> vec1(M);
+  vec1.SetRandn();
+  CuVector<Real> vec2(vec1);
+  vec2.InvertElements();
+  CuVector<Real> vec3(vec1);
+  vec3.MulElements(vec2);
+  // vec3 should be all ones.
+  Real prod = VecVec(vec3, vec3);
+  AssertEqual(prod, static_cast<Real>(M));
+}
+
+template<class Real> void CuVectorUnitTestSum() {
+  int32 dim = 256 + 100 % rand();
+  CuVector<Real> vec(dim), ones(dim);
+  vec.SetRandn();
+  ones.Set(1.0);
+  KALDI_LOG << "vec is " << vec;
+  KALDI_LOG << "ones is " << ones;
+  KALDI_LOG << "First 256 is " << VecVec(vec.Range(0, 256), ones.Range(0, 256));
+  AssertEqual(VecVec(vec, ones), vec.Sum());
+}
+
+
+template<class Real> void CuVectorUnitTestScale() {
+  int32 dim = 10 + 10 % rand();
+  CuVector<Real> vec(dim);
+  vec.SetRandn();
+  CuVector<Real> vec2(vec);
+  BaseFloat scale = 0.333;
+  vec.Scale(scale);
+  KALDI_ASSERT(ApproxEqual(vec(0), vec2(0) * scale));
+}
+
 template<class Real> void CuVectorUnitTest() {
   UnitTestCuVectorCopyFromVec<Real, float>();
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().DoublePrecisionSupported())
 #endif
     UnitTestCuVectorCopyFromVec<Real, double>();
+
+  CuVectorUnitTestVecVec<Real>();
+  CuVectorUnitTestAddVec<Real>();
+  CuVectorUnitTestAddVecExtra<Real>();
+  CuVectorUnitTestApproxEqual<Real>();
+  CuVectorUnitTestScale<Real>();
+  CuVectorUnitTestSum<Real>();
+  CuVectorUnitTestInvertElements<Real>();
+  CuVectorUnitTestAddRowSumMat<Real>();
+  CuVectorUnitTestAddColSumMat<Real>();
   UnitTestCuVectorAddTp<Real>();
   UnitTestCuVectorMulTp<Real>();
+  UnitTestCuSubVector<Real>();
 }
 
 

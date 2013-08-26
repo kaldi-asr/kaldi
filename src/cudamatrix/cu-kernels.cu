@@ -805,17 +805,18 @@ static void _sum(Real* mat, Real* value, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _vec_sum(Real* v, Real* value, int dim) {
+static void _vec_sum(Real *v, Real *sum, int dim) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (blockIdx.y > 0) return;
-  
-  if (i < dim) {
-    __shared__ Real row_data[256];
-    row_data[i] = v[i];
-    __syncthreads();
-    
-    *value = _sum_reduce(row_data);
-  }
+
+  __shared__ Real row_data[256];  
+  if (i < dim)
+    row_data[threadIdx.x] = v[i];
+  else
+    row_data[threadIdx.x] = 0.0;
+  __syncthreads();
+  Real ans = _sum_reduce(row_data);
+      if (threadIdx.x == 0)
+    *sum += ans;
 }
 
 
@@ -840,7 +841,7 @@ static void _trace(const Real* mat, Real* value, int dim) {
 
 template<typename Real>
 __global__
-static void _vec_apply_floor(Real* v, Real floor_val, int* num, int dim) {
+static void _vec_apply_floor(Real *v, Real floor_val, int *num, int dim) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   if(blockIdx.y > 0) return;
 
@@ -906,8 +907,8 @@ static void _add_row_sum_mat(const Real* mat, Real* vec_sum, MatrixDim d) {
   int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y; //col
   int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x; //row
 
-  if(blockIdx.x > 0) return; // ?? [dan]
-  if(blockDim.y > 1) return;
+  if(blockIdx.x > 0) return;
+  if(blockDim.y != 1) return;
 
   __shared__ Real row_data[256];
 
@@ -932,7 +933,7 @@ static void _add_col_sum_mat(const Real* mat, Real* vec_sum, MatrixDim d) {
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; //col
 
   if(blockIdx.x > 0) return;
-  if(blockDim.y > 1) return;
+  if(blockDim.y != 1) return;
 
   __shared__ Real row_data[256];
 
@@ -1465,7 +1466,7 @@ void cudaF_copy_col_from_mat_fd(int Gr, int Bl, float* v, int col, const float* 
 }
 
 void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim) {
-  _vec_sum<<<Gr,Bl>>>(v,value,dim);
+  _vec_sum<<<Gr,Bl>>>(v, value, dim);
 }
 
 void cudaF_vec_apply_floor(int Gr, int Bl, float* v, float floor_val, int* num, int dim) {

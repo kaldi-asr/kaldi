@@ -1,6 +1,7 @@
 // cudamatrix/cu-randkernels.cu
 
 // Copyright 2012  Karel Vesely
+//           2013 Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -112,8 +113,8 @@ template<typename Real>
 __global__
 static void _vec_gauss_rand(Real* v, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, int dim) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (blockIdx.x > 0)
-    return;
+  if (blockIdx.y > 0)
+     return;
 
   if ( i < dim ) {
     v[i] = BoxMuller<Real>(z1[i],z2[i],z3[i],z4[i]);

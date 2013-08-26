@@ -115,10 +115,10 @@ template<typename Real> void CuRand<Real>::RandGaussian(CuMatrixBase<Real> *tgt)
 
     int32 tgt_size = tgt->NumRows()*tgt->Stride();
     if (tgt_size != state_size_) SeedGpu(tgt_size);
-
+    
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(tgt->num_cols_, CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
-
+    dim3 dimGrid(n_blocks(tgt->num_cols_, CU2DBLOCK), n_blocks(tgt->num_rows_, CU2DBLOCK));
+    
     cuda_gauss_rand(dimGrid, dimBlock, tgt->data_, z1_, z2_, z3_, z4_, tgt->Dim());
     CU_SAFE_CALL(cudaGetLastError());
   
@@ -143,9 +143,9 @@ template<typename Real> void CuRand<Real>::RandGaussian(CuVectorBase<Real> *tgt)
     int32 tgt_size = tgt->Dim();
     if (tgt_size != state_size_) SeedGpu(tgt_size);
 
-    int dimBlock(CU2DBLOCK);
-    int dimGrid(n_blocks(tgt->Dim(), CU2DBLOCK));
-
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(tgt->Dim(), CU1DBLOCK));
+    
     cuda_vec_gauss_rand(dimGrid, dimBlock, tgt->Data(), z1_, z2_, z3_, z4_, tgt->Dim());
 
     CU_SAFE_CALL(cudaGetLastError());

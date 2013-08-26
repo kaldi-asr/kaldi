@@ -1,7 +1,8 @@
 // cudamatrix/cuda-matrix-test.cc
 
 // Copyright 2010  Karel Vesely
-//                 Lucas Ondel
+//           2013  Lucas Ondel
+//           2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -554,6 +555,23 @@ static void UnitTestCuVectorAddColSumMat() {
   AssertEqual(Hv,Hv2);
 }
 
+template<class Real> 
+static void UnitTestCuSubMatrix() {
+  for (int32 iter = 0 ; iter < 10; iter++) {
+    int32 M1 = 1 + rand () % 10, M2 = 1 + rand() % 1, M3 = 1 + rand() % 10, M = M1 + M2 + M3,
+        N1 = 1 + rand () % 10, N2 = 1 + rand() % 1, N3 = 1 + rand() % 10, N = N1 + N2 + N3,
+        m = rand() % M2, n = rand() % N2;
+    CuMatrix<Real> mat(M, N);
+    mat.SetRandn();
+    CuSubMatrix<Real> submat1(mat, M1, M2,
+                              N1, N2),
+        submat2 = mat.Range(M1, M2, N1, N2);
+    Real f1 = mat(M1 + m, N1 + n), f2 = submat1(m, n), f3 = submat2(m, n);
+    KALDI_ASSERT(f1 == f2);
+    KALDI_ASSERT(f2 == f3);
+  }
+}
+
 
 
 template<class Real> 
@@ -874,6 +892,7 @@ template<class Real> void CudaMatrixUnitTest() {
   UnitTestCuVectorAddRowSumMatLarge<Real>();
   UnitTestCuVectorAddColSumMat<Real>();
   UnitTestCuVectorAddColSumMatLarge<Real>();
+  UnitTestCuSubMatrix<Real>();
   UnitTestCuVectorInvertElements<Real>();
 
 

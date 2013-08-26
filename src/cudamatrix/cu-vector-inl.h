@@ -1,6 +1,7 @@
 // cudamatrix/cu-vector-inl.h
 
 // Copyright 2009-2012  Karel Vesely
+//                2013  Daniel Povey
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -278,7 +279,6 @@ void CuVectorBase<Real>::Scale(Real value) {
   }
 }
 
-
 template<class Real>
 void CuVectorBase<Real>::AddVec(Real alpha, const CuVectorBase<Real> &vec,
                                 Real beta) {
@@ -287,15 +287,11 @@ void CuVectorBase<Real>::AddVec(Real alpha, const CuVectorBase<Real> &vec,
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
-
-    dim3 dimBlock(CU2DBLOCK);
-    dim3 dimGrid(n_blocks(Dim(), CU2DBLOCK));
-    ::MatrixDim d = { 1, Dim(), Dim() };
-
-
-    cuda_add_mat(dimGrid, dimBlock, alpha, vec.data_, beta, data_, d);
-    CU_SAFE_CALL(cudaGetLastError());
-    
+    int32 dim = this->dim_;
+    Real *data = this->data_;
+    const Real *vec_data = vec.data_;
+    if (beta != 1.0) cuda_scal(dim, beta, data, 1);
+    if (alpha != 0.0) cuda_axpy(dim, alpha, vec_data, 1, data, 1);
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
@@ -319,24 +315,24 @@ void CuVectorBase<Real>::AddRowSumMat(Real alpha, const CuMatrixBase<Real> &mat,
     
     MatrixDim d = mat.Dim(); // only stride will be used!
   
-    // process per 256 row blocks 
-    for(int32 block=0; (block+1)*256 <= mat.NumRows(); block++) {
+    // process per CU1DBLOCK row blocks 
+    for(int32 block=0; (block+1)*CU1DBLOCK <= mat.NumRows(); block++) {
       // 1st dim ... rows, 2nd dim ... cols
-      dim3 dimBlock(256, 1); 
+      dim3 dimBlock(CU1DBLOCK, 1); 
       dim3 dimGrid(1, mat.NumCols());
-      int32 offset = block*256*d.stride;
+      int32 offset = block*CU1DBLOCK*d.stride;
 
       cuda_add_row_sum_mat(dimGrid, dimBlock, mat.data_ + offset, temp.data_, d);
     }
     
     // process the remainder
-    int32 div = mat.NumRows() / 256;
-    int32 mod = mat.NumRows() % 256;
+    int32 div = mat.NumRows() / CU1DBLOCK;
+    int32 mod = mat.NumRows() % CU1DBLOCK;
     if (mod != 0) {
       // 1st dim ... rows, 2nd dim ... cols
       dim3 dimBlock(mod, 1);
       dim3 dimGrid(1, mat.NumCols());
-      int32 offset = div*256*d.stride;
+      int32 offset = div*CU1DBLOCK*d.stride;
       
       cuda_add_row_sum_mat(dimGrid, dimBlock, mat.data_ + offset, temp.data_, d);
     }
@@ -354,7 +350,6 @@ void CuVectorBase<Real>::AddRowSumMat(Real alpha, const CuMatrixBase<Real> &mat,
 }
 
 
-
 template<typename Real>
 void CuVectorBase<Real>::AddColSumMat(Real alpha,
                                       const CuMatrixBase<Real> &mat,
@@ -368,24 +363,24 @@ void CuVectorBase<Real>::AddColSumMat(Real alpha,
     
     MatrixDim d = mat.Dim(); // only stride will be used!
   
-    // process per 256 column blocks 
-    for(int32 block=0; (block+1)*256 <= mat.NumCols(); block++) {
+    // process per CU1DBLOCK column blocks 
+    for(int32 block=0; (block+1)*CU1DBLOCK <= mat.NumCols(); block++) {
       // 1st dim ... cols, 2nd dim ... rows
-      dim3 dimBlock(256, 1);
+      dim3 dimBlock(CU1DBLOCK, 1);
       dim3 dimGrid(1, mat.NumRows());
-      int32 offset = block*256;
+      int32 offset = block*CU1DBLOCK;
 
       cuda_add_col_sum_mat(dimGrid, dimBlock, mat.data_ + offset, temp.data_, d);
     }
     
     // process the remainder
-    int32 div = mat.NumCols() / 256;
-    int32 mod = mat.NumCols() % 256;
+    int32 div = mat.NumCols() / CU1DBLOCK;
+    int32 mod = mat.NumCols() % CU1DBLOCK;
     if (mod != 0) {
       // 1st dim ... cols, 2nd dim ... rows
       dim3 dimBlock(mod, 1);
       dim3 dimGrid(1, mat.NumRows());
-      int32 offset=div*256;
+      int32 offset=div*CU1DBLOCK;
       
       cuda_add_col_sum_mat(dimGrid, dimBlock, mat.data_ +offset, temp.data_, d);
     }
