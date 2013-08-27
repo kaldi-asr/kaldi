@@ -54,8 +54,11 @@ class SpMatrix : public PackedMatrix<Real> {
 
   /// Copy constructor from CUDA version of SpMatrix
   /// This is defined in ../cudamatrix/cu-sp-matrix.h
+  
   explicit SpMatrix(const CuSpMatrix<Real> &cu);
 
+  // void CopyFromCuSp(const CuSpMatrix<Real> &cu); //added by hxu
+ 
   explicit SpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)
       : PackedMatrix<Real>(r, resize_type) {}
 

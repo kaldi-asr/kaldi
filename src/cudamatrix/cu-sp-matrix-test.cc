@@ -62,11 +62,15 @@ static void AssertEqual(const SpMatrix<Real> &A,
                         float tol = 0.001) {
   KALDI_ASSERT(A.NumRows() == B.NumRows());
   for (MatrixIndexT i = 0; i < A.NumRows(); i++)
-    for (MatrixIndexT j = 0; j <= i; j++)
+    for (MatrixIndexT j = 0; j <= i ; j++)
+{
+// std::cout<<A(i, j) <<' '<< B(i, j)<<' '<<tol * std::max(1.0, (double) (std::abs(A(i, j)) + std::abs(B(i, j))))<<std::endl;
+
+
       KALDI_ASSERT(std::abs(A(i, j) - B(i, j))
                    < tol * std::max(1.0, (double) (std::abs(A(i, j)) + std::abs(B(i, j)))));
 }
-
+}
 template<class Real>
 static bool ApproxEqual(const SpMatrix<Real> &A,
                         const SpMatrix<Real> &B, Real tol = 0.001) {
@@ -96,9 +100,17 @@ static void UnitTestCuSpMatrixConstructor() {
     SpMatrix<Real> E(dim);
     D.CopyToSp(&E);
 
+    SpMatrix<Real> F(D);
+    
+    AssertEqual(F, B);
+     //added by hxu, to test copy from SpMatrix to CuSpMatrix
+
     AssertEqual(B, E);
   }
 }
+
+
+
 
 template<class Real>
 static void UnitTestCuSpMatrixOperator() {
@@ -287,6 +299,7 @@ template<class Real> void CudaSpMatrixUnitTest() {
 
 template<class Real, class OtherReal> void CudaSpMatrixUnitTest() {
   UnitTestCuSpMatrixTraceSpSp<Real, OtherReal>();
+
 }
 
 } // namespace kaldi
@@ -299,6 +312,8 @@ int main() {
   kaldi::int32 use_gpu_id = -2;
   CuDevice::Instantiate().SelectGpuId(use_gpu_id);
 #endif
+  //  std::cout<<"here\n";
+
   kaldi::CudaSpMatrixUnitTest<float>();
   kaldi::CudaSpMatrixUnitTest<float, float>();
 #if HAVE_CUDA == 1

@@ -66,7 +66,7 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
   void CopyFromMat(const CuMatrixBase<Real> &orig,
                    SpCopyType copy_type = kTakeLower);
   
-  void CopyToSp(SpMatrix<Real> *dst) {
+  void CopyToSp(SpMatrix<Real> *dst) const { //added const by hxu
     CuPackedMatrix<Real>::CopyToPacked(dst);
   }
 
@@ -111,6 +111,25 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
   
 
 };
+
+
+
+/*
+template<typename Real>
+template<typename OtherReal>
+void SpMatrix<Real>::CopyFromCuSp(const CuSpMatrix<Real> &cu) {
+   cu.CopyToSp(this);
+
+}
+*/ 
+
+//added by hxu
+template<typename Real>
+SpMatrix<Real>::SpMatrix(const CuSpMatrix<Real> &cu) {
+   Resize(cu.NumRows());
+   cu.CopyToSp(this);
+}
+
 
 
 } // namespace

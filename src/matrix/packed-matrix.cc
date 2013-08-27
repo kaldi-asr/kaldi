@@ -229,34 +229,44 @@ void PackedMatrix<Real>::Destroy() {
   num_rows_ = 0;
 }
 
+
 template<typename Real>
 void PackedMatrix<Real>::Write(std::ostream &os, bool binary) const {
   if (!os.good()) {
     KALDI_ERR << "Failed to write vector to stream: stream not good";
   }
-  std::string my_token = (sizeof(Real) == 4 ? "FP" : "DP");
-
-  WriteToken(os, binary, my_token);
 
   int32 size = this->NumRows();  // make the size 32-bit on disk.
   KALDI_ASSERT(this->NumRows() == (MatrixIndexT) size);
-  WriteBasicType(os, binary, size);
+  MatrixIndexT num_elems = ((size+1)*(MatrixIndexT)size)/2;
 
+  if(binary) {  
+    std::string my_token = (sizeof(Real) == 4 ? "FP" : "DP");
+    WriteToken(os, binary, my_token);
+    WriteBasicType(os, binary, size);
   // We don't use the built-in Kaldi write routines for the floats, as they are
   // not efficient enough.
-  MatrixIndexT num_elems = ((size+1)*(MatrixIndexT)size)/2;
-  if (!binary) {
-    for (MatrixIndexT i = 0; i < num_elems; i++)
-      WriteBasicType(os, binary, data_[i]);
-    os << '\n';
-  } else {
     os.write((const char*) data_, sizeof(Real) * num_elems);
+  }
+  else {
+    if(size == 0)
+      os<<"[ ]\n";
+    else {
+      os<<"[\n";
+      MatrixIndexT i = 0;
+      for (int32 j = 0; j < size; j++) {  
+        for (int32 k = 0; k < j + 1; k++) {
+          WriteBasicType(os, binary, data_[i++]);
+        }
+        os << ( (j==size-1)? "]\n" : "\n");
+      }
+      KALDI_ASSERT(i == num_elems);
+    }
   }
   if (os.fail()) {
     KALDI_ERR << "Failed to write packed matrix to stream";
   }
 }
-
 
 // template<typename Real>
 //   void Save (std::ostream & os, const PackedMatrix<Real>& rM)
@@ -303,6 +313,8 @@ void PackedMatrix<Real>::Read(std::istream & is, bool binary, bool add) {
   MatrixIndexT pos_at_start = is.tellg();
   int peekval = Peek(is, binary);
   const char *my_token =  (sizeof(Real) == 4 ? "FP" : "DP");
+  const char *new_format_token = "[";
+  bool is_new_format = false;//added by hxu
   char other_token_start = (sizeof(Real) == 4 ? 'D' : 'F');
   int32 size;
   MatrixIndexT num_elems;
@@ -318,25 +330,93 @@ void PackedMatrix<Real>::Read(std::istream & is, bool binary, bool add) {
   std::string token;
   ReadToken(is, binary, &token);
   if (token != my_token) {
-    specific_error << ": Expected token " << my_token << ", got " << token;
-    goto bad;
-  }
-  ReadBasicType(is, binary, &size);  // throws on error.
-  if ((MatrixIndexT)size != this->NumRows()) {
-    KALDI_ASSERT(size>=0);
-    this->Resize(size);
-  }
-  num_elems = ((size+1)*(MatrixIndexT)size)/2;
-  if (!binary) {
-    for (MatrixIndexT i = 0; i < num_elems; i++) {
-      ReadBasicType(is, false, data_+i);  // will throw on error.
+    if(token != new_format_token) {
+      specific_error << ": Expected token " << my_token << ", got " << token;
+      goto bad;
     }
-  } else {
-    if (num_elems)
-      is.read(reinterpret_cast<char*>(data_), sizeof(Real)*num_elems);
+    //new format it is
+    is_new_format = true; 
   }
-  if (is.fail()) goto bad;
-  return;
+  if(!is_new_format) {
+    ReadBasicType(is, binary, &size);  // throws on error.
+    if ((MatrixIndexT)size != this->NumRows()) {
+      KALDI_ASSERT(size>=0);
+      this->Resize(size);
+    }
+    num_elems = ((size+1)*(MatrixIndexT)size)/2;
+    if (!binary) {
+      for (MatrixIndexT i = 0; i < num_elems; i++) {
+        ReadBasicType(is, false, data_+i);  // will throw on error.
+      }
+    } else {
+      if (num_elems)
+        is.read(reinterpret_cast<char*>(data_), sizeof(Real)*num_elems);
+    }
+    if (is.fail()) goto bad;
+    return;
+  }
+  else {
+    std::vector<Real> data;
+    while(1) {
+      int32 num_lines = 0;
+      int i = is.peek();
+      if (i == -1) { specific_error << "Got EOF while reading matrix data"; goto bad; }
+      else if (static_cast<char>(i) == ']') {  // Finished reading matrix.
+        is.get();  // eat the "]".
+        i = is.peek();
+        if (static_cast<char>(i) == '\r') {
+          is.get();
+          is.get();  // get \r\n (must eat what we wrote)
+        }// I don't actually understand what it's doing here
+        else if (static_cast<char>(i) == '\n') { is.get(); } // get \n (must eat what we wrote)
+
+        if (is.fail()) {
+          KALDI_WARN << "After end of matrix data, read error.";
+          // we got the data we needed, so just warn for this error.
+        }
+        //now process the data:
+        num_lines = int32(sqrt(data.size()*2));
+        
+        KALDI_ASSERT(data.size() == num_lines*(num_lines+1)/2);
+
+        this->Resize(num_lines);
+
+std::cout<<data.size()<<' '<<num_lines<<'\n';
+
+        for(int32 i = 0; i < data.size(); i++) {
+          data_[i] = data[i];
+        }
+        return;
+        //std::cout<<"here!!!!!hxu!!!!!"<<std::endl;
+      }
+      else if ( (i >= '0' && i <= '9') || i == '-' ) {  // A number...
+        Real r; 
+        is >> r;
+        if (is.fail()) {
+          specific_error << "Stream failure/EOF while reading matrix data.";
+          goto bad;
+        } 
+        data.push_back(r);
+      }
+      else if (isspace(i)) {
+        is.get();  // eat the space and do nothing.
+      } else {  // NaN or inf or error.
+        std::string str;
+        is >> str;
+        if (!KALDI_STRCASECMP(str.c_str(), "inf") ||
+            !KALDI_STRCASECMP(str.c_str(), "infinity")) {
+          data.push_back(std::numeric_limits<Real>::infinity());
+          KALDI_WARN << "Reading infinite value into matrix.";
+        } else if (!KALDI_STRCASECMP(str.c_str(), "nan")) {
+          data.push_back(std::numeric_limits<Real>::quiet_NaN());
+          KALDI_WARN << "Reading NaN value into matrix.";
+        } else {
+          specific_error << "Expecting numeric matrix data, got " << str;
+          goto bad;
+        } 
+      }       
+    } 
+  }
 bad:
   KALDI_ERR << "Failed to read packed matrix from stream. " << specific_error
             << " File position at start is "
