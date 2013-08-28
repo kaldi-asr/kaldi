@@ -619,6 +619,32 @@ static void UnitTestCuVectorInvertElements() {
   AssertEqual(Hv,Hv2);
 }
 
+template<class Real>
+static void UnitTestCuVectorAddTpVec() {
+  Vector<Real> Hv(777);
+  InitRand(&Hv);
+  CuVector<Real> Dv(777);
+  Dv.CopyFromVec(Hv);
+  Vector<Real> Hv1(777);
+  InitRand(&Hv1);
+  CuVector<Real> Dv1(777);
+  Dv1.CopyFromVec(Hv1);
+
+  TpMatrix<Real> Hm(777);
+  Hm.SetRandn();
+  CuTpMatrix<Real> Dm(Hm);
+
+  //gpu
+  Dv.AddTpVec(1.0,Dm,kNoTrans,Dv1,1.0);
+  //cpu
+  Hv.AddTpVec(1.0,Hm,kNoTrans,Hv1,1.0);
+
+  Vector<Real> Hv2(777);
+  Dv.CopyToVec(&Hv2);
+
+  AssertEqual(Hv,Hv2);
+}
+
 template<class Real> 
 static void UnitTestCuApproxEqual() {
   Real tol = 0.1;
@@ -636,6 +662,27 @@ static void UnitTestCuApproxEqual() {
   }
 }
 
+template<class Real> 
+static void UnitTestCuVectorMulTp() {
+  Vector<Real> Hv(777);
+  InitRand(&Hv);
+  CuVector<Real> Dv(777);
+  Dv.CopyFromVec(Hv);
+
+  TpMatrix<Real> Hm(777);
+  Hm.SetRandn();
+  CuTpMatrix<Real> Dm(Hm);
+
+  //gpu
+  Dv.MulTp(Dm,kNoTrans);
+  //cpu
+  Hv.MulTp(Hm,kNoTrans);
+
+  Vector<Real> Hv2(777);
+  Dv.CopyToVec(&Hv2);
+
+  AssertEqual(Hv,Hv2);
+}
 
 template<class Real, class OtherReal> 
 static void UnitTestCuCopy() {
@@ -871,6 +918,94 @@ void UnitTestSwapCu2M() {
   AssertEqual(Hi2,Hi);
 }
 
+template<class Real>
+void UnitTestAddMatMatDivMatElements() {
+  Matrix<Real> Hi(100,100);
+  Hi.SetZero();
+  CuMatrix<Real> Di(100,100);
+  Di.CopyFromMat(Hi);
+
+  Matrix<Real> A(100,100);
+  RandGaussMatrix(&A);
+  CuMatrix<Real> ACu(100,100);
+  ACu.CopyFromMat(A);
+
+  Matrix<Real> B(100,100);
+  RandGaussMatrix(&B);
+  CuMatrix<Real> BCu(100,100);
+  BCu.CopyFromMat(B);
+
+  Matrix<Real> C(100,100);
+  RandGaussMatrix(&C);
+  CuMatrix<Real> CCu(100,100);
+  CCu.CopyFromMat(C);
+
+  // gpu
+  Di.AddMatMatDivMatElements(1.0,ACu,kNoTrans,BCu,kNoTrans,CCu,kNoTrans,1.0);
+
+  // cpu
+  for (MatrixIndexT i = 0;i < Hi.NumRows();i++) {
+    for (MatrixIndexT j = 0;j < Hi.NumCols();j++) {
+      if ( C(i,j) != 0) { 
+	Hi(i,j) = 1.0 * A(i,j) * B(i,j) / C(i,j) + 1.0 * Hi(i,j);
+      } else {
+	Hi(i,j) = 1.0 * A(i,j) * B(i,j) + 1.0 * Hi(i,j);
+      }
+    }
+  }
+  Matrix<Real> Df(Di.NumRows(), Di.NumCols());
+  Di.CopyToMat(&Df);
+  AssertEqual(Hi,Df);
+
+}
+
+template<class Real>
+void UnitTestCuTanh() {
+  Matrix<Real> H(100,110);
+  RandGaussMatrix(&H);
+  CuMatrix<Real> D(100,110);
+  D.CopyFromMat(H);
+  
+  //gpu
+  CuMatrix<Real> Di(100,110);
+  Di.Tanh(D);
+  Matrix<Real> Df(Di.NumRows(), Di.NumCols());
+  Di.CopyToMat(&Df);
+
+  //cpu
+  Matrix<Real> Hf(H.NumRows(), H.NumCols());
+  Hf.Tanh(H);
+  AssertEqual(Df,Hf);
+}
+
+template<class Real> 
+static void UnitTestCuDiffTanh() {
+  Matrix<Real> Hi(100,111);
+  Matrix<Real> Ho(100,111);
+  Matrix<Real> Hy(100,111);
+  RandGaussMatrix(&Hi);
+  RandZeroToOneMatrix(&Hy);
+
+  CuMatrix<Real> Di(100,111);
+  CuMatrix<Real> Do(100,111);
+  CuMatrix<Real> Dy(100,111);
+  Di.CopyFromMat(Hi);
+  Dy.CopyFromMat(Hy);
+
+  //gpu
+  Do.DiffTanh(Dy, Di);
+  //cpu
+  for(MatrixIndexT r=0; r<Ho.NumRows(); r++) {
+    for(MatrixIndexT c=0; c<Ho.NumCols(); c++) {
+      Ho(r, c) = (1.0 - Hy(r, c)*Hy(r, c)) * Hi(r, c);
+    }
+  }
+
+  Matrix<Real> Ho2(100,111);
+  Do.CopyToMat(&Ho2);
+
+  AssertEqual(Ho,Ho2);
+}
 template<class Real> void CudaMatrixUnitTest() {
   //test CuMatrix<Real> methods by cross-check with Matrix
   UnitTestCuMatrixApplyLog<Real>();
@@ -912,6 +1047,12 @@ template<class Real> void CudaMatrixUnitTest() {
 
   UnitTestSwapCu2Cu<Real>();
   UnitTestSwapCu2M<Real>();
+  UnitTestAddMatMatDivMatElements<Real>();
+  UnitTestCuTanh<Real>();
+  UnitTestCuDiffTanh<Real>();
+
+  UnitTestCuVectorAddTpVec<Real>();
+  UnitTestCuVectorMulTp<Real>();
 }
 
 
