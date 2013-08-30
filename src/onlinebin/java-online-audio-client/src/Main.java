@@ -37,7 +37,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.UIManager;
 
-@SuppressWarnings("serial")
+@SuppressWarnings(value={"serial","unchecked"})
 public class Main extends JFrame {
 
 	public static Main main_frame = null;
@@ -45,7 +45,7 @@ public class Main extends JFrame {
 	private KaldiASR asr = null;
 	private MLF mlf = null;
 
-	private JComboBox<String> tfInputFile;
+	private JComboBox tfInputFile;
 	private JRadioButton rbFile, rbScp;
 	private JCheckBox cbMLF, cbHTK, cbTextGrid, cbWebVTT;
 	private JTextArea taLog;
@@ -64,7 +64,7 @@ public class Main extends JFrame {
 		pInput.setMaximumSize(new Dimension(Short.MAX_VALUE, 25));
 		pInput.setLayout(new BoxLayout(pInput, BoxLayout.LINE_AXIS));
 		pInput.add(new JLabel("Input:"));
-		tfInputFile = new JComboBox<String>();
+		tfInputFile = new JComboBox();
 		tfInputFile.setEditable(true);
 		pInput.add(tfInputFile);
 		rbFile = new JRadioButton("RAW");
