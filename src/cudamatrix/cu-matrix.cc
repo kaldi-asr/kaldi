@@ -878,7 +878,7 @@ void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {
 
 
 template<typename Real> // Y->this, X->src
-void CuMatrixBase<Real>::ApplySoftMax(const CuMatrixBase<Real> &src) {
+void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
   KALDI_ASSERT(SameDimAndStride(*this, src));
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) {

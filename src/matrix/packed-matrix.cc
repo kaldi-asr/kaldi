@@ -293,7 +293,7 @@ void PackedMatrix<Real>::Write(std::ostream &os, bool binary) const {
 
 
 template<typename Real>
-void PackedMatrix<Real>::Read(std::istream & is, bool binary, bool add) {
+void PackedMatrix<Real>::Read(std::istream& is, bool binary, bool add) {
   if (add) {
     PackedMatrix<Real> tmp;
     tmp.Read(is, binary, false);  // read without adding.

@@ -2106,6 +2106,7 @@ template<class Real> static void UnitTestIo() {
 
     SpMatrix<Real> S(dimM);
     InitRand(&S);
+    KALDI_LOG << "SpMatrix IO: " << S;
     SpMatrix<Real> T(dimM);
 
     {

@@ -163,9 +163,9 @@ class CuMatrixBase {
   void ApplyFloor(Real floor_val);
   void ApplyExp();
   /// Softmax nonlinearity
-  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik)
+  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik), done to each row
   /// for each row, the max value is first subtracted for good numerical stability
-  void ApplySoftMax(const CuMatrixBase<Real> &src);
+  void ApplySoftMaxPerRow(const CuMatrixBase<Real> &src);
 
   /// Find the id of the maximal element for each row
   void FindRowMaxId(CuStlVector<int32> *id) const;

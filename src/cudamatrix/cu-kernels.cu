@@ -815,7 +815,7 @@ static void _vec_sum(Real *v, Real *sum, int dim) {
     row_data[threadIdx.x] = 0.0;
   __syncthreads();
   Real ans = _sum_reduce(row_data);
-      if (threadIdx.x == 0)
+  if (threadIdx.x == 0)
     *sum += ans;
 }
 

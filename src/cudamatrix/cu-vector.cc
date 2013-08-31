@@ -25,6 +25,8 @@ inline float cublas_dot(int n, const float* x, int incx,
 inline double cublas_dot(int n, const double* x, int incx,
                          const double* y, int incy) {
   return cublasDdot(n,x,incx,y,incy);
+
+
 }
 inline float cublas_sum(int n, const float* x, int incx) {
   return cublasSasum(n, x, incx);
