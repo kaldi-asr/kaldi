@@ -381,7 +381,7 @@ void PackedMatrix<Real>::Read(std::istream & is, bool binary, bool add) {
 
         this->Resize(num_lines);
 
-std::cout<<data.size()<<' '<<num_lines<<'\n';
+        //std::cout<<data.size()<<' '<<num_lines<<'\n';
 
         for(int32 i = 0; i < data.size(); i++) {
           data_[i] = data[i];

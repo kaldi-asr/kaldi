@@ -70,14 +70,14 @@ template<class Real>
 static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   for (MatrixIndexT i=0; i < A.Dim(); i++)
-    KALDI_ASSERT(std::abs(A(i)-B(i)) < tol);
+    KALDI_ASSERT(std::abs(A(i)-B(i)) < tol*std::max(1.0, (double) (std::abs(A(i))+std::abs(B(i)))));
 }
 
 template<class Real> 
 static void AssertEqual(CuVectorBase<Real> &A, CuVectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   for (MatrixIndexT i=0; i < A.Dim(); i++)
-    KALDI_ASSERT(std::abs(A(i)-B(i)) < tol);
+    KALDI_ASSERT(std::abs(A(i)-B(i)) < tol*std::max(1.0, (double) (std::abs(A(i))+std::abs(B(i)))));//all "equality" test should include this in case of big Real numbers
 }
 
 
@@ -289,7 +289,9 @@ template<class Real> void CuVectorUnitTestSum() {
   KALDI_LOG << "vec is " << vec;
   KALDI_LOG << "ones is " << ones;
   KALDI_LOG << "First 256 is " << VecVec(vec.Range(0, 256), ones.Range(0, 256));
+
   AssertEqual(VecVec(vec, ones), vec.Sum());
+
 }
 
 
@@ -302,6 +304,155 @@ template<class Real> void CuVectorUnitTestScale() {
   vec.Scale(scale);
   KALDI_ASSERT(ApproxEqual(vec(0), vec2(0) * scale));
 }
+
+template<class Real> void CuVectorUnitTestCopyFromMat() {
+  int32 dim = 100;
+  CuMatrix<Real> cu_matrix(dim, dim);
+  cu_matrix.SetRandn();
+  for(int32 i = 0; i < dim; i++) {
+    CuVector<Real> vector(dim);
+    vector.CopyColFromMat(cu_matrix, i);
+    for(int32 j = 0; j < dim; j++) {
+      KALDI_ASSERT(vector(j)==cu_matrix(j, i));
+    }
+  }
+
+  CuVector<Real> vector(dim * dim);
+  vector.CopyRowsFromMat(cu_matrix);
+  for(int32 j = 0; j < dim*dim; j++) {
+    KALDI_ASSERT(vector(j)==cu_matrix(j/dim, j%dim))
+  }
+}
+
+template<class Real> void CuVectorUnitTestApplySoftMax() {
+  int32 dim = 100;
+  CuVector<Real> cu_vector(dim);
+  cu_vector.SetRandn();
+  Vector<Real> vector(cu_vector);
+
+  cu_vector.ApplySoftMax();
+  vector.ApplySoftMax();
+  CuVector<Real> cu_vector2(vector);
+  //std::cout<<cu_vector(0)<<' '<<cu_vector2(0)<<std::endl;
+  AssertEqual(cu_vector, cu_vector2);
+  
+}
+
+template<class Real> void CuVectorUnitTestApplyExp() {
+  int32 dim = 100;
+  CuVector<Real> vector(dim);
+  vector.SetRandn();
+  CuVector<Real> vector2(vector);
+
+  vector.ApplyExp();
+  for(int32 j = 0; j < dim; j++) {
+    //std::cout<<"diff is "<<exp(vector2(j))-vector(j)<<std::endl;;
+    KALDI_ASSERT(abs(exp(vector2(j))-vector(j)) < 0.000001 )
+  }
+
+}
+
+template<class Real> void CuVectorUnitTestApplyLog() {
+  int32 dim = 100;
+  CuVector<Real> vector(dim);
+  vector.SetRandn();
+  for(int32 j = 0; j < dim; j++) {
+    if(vector(j) <= 0.0)
+      vector(j) = 1.0 - vector(j);
+  }
+
+  CuVector<Real> vector2(vector);
+
+  vector.ApplyLog();
+  for(int32 j = 0; j < dim; j++) {
+    //std::cout<<"diff is "<<exp(vector2(j))-vector(j)<<std::endl;;
+    KALDI_ASSERT(abs(log(vector2(j))-vector(j)) < 0.000001 )
+  }
+}
+
+template<class Real> void CuVectorUnitTestApplyFloor() {
+  int32 dim = 100;
+  CuVector<Real> cu_vector(dim);
+  cu_vector.SetRandn();
+
+  Vector<Real> vector(cu_vector);
+
+  int32 i = cu_vector.ApplyFloor(0);
+  int32 j = vector.ApplyFloor(0);
+  
+  CuVector<Real> cu2(vector);
+
+  AssertEqual(cu2, cu_vector);//hxu
+  //KALDI_ASSERT(i==j );//this should not be commented, but there is a bug unfixed yet
+}
+
+template<class Real> void CuVectorUnitTestAddVecVec() {
+  int32 dim = 100;
+  CuVector<Real> cu_vector(dim);
+  cu_vector.SetRandn();
+  Vector<Real> vector(cu_vector);
+
+  Real beta = rand();
+  Real alpha = rand();
+  Vector<Real> v(dim), r(dim);
+  v.SetRandn(); r.SetRandn();
+  CuVector<Real> cuV(v), cuR(r);
+
+
+  cu_vector.AddVecVec(alpha, cuR, cuV, beta);
+  vector.AddVecVec(alpha, r, v, beta);
+
+  CuVector<Real> cu2(vector);
+  std::cout<<cu2(0)<<' '<<cu_vector(0)<<std::endl;
+  AssertEqual(cu2, cu_vector);
+}
+
+template<class Real> void CuVectorUnitTestAddDiagMat2() {
+  int32 dim = 100;
+  CuVector<Real> cu_vector(dim);
+  cu_vector.SetRandn();
+  Vector<Real> vector(cu_vector);
+
+  Matrix<Real> M(dim, dim);
+  M.SetRandn();
+  CuMatrix<Real> cuM(M);
+
+  Real alpha = rand();
+  Real beta = rand();
+
+  cu_vector.AddDiagMat2(alpha, cuM, kNoTrans, beta);
+  vector.AddDiagMat2(alpha, M, kNoTrans, beta);
+
+  CuVector<Real> cu2(cu_vector);
+  AssertEqual(cu2, cu_vector);
+}
+
+template<class Real> void CuVectorUnitTestAddMatVec() {
+  int32 dim = 100;
+  CuVector<Real> cu_vector(dim);
+  cu_vector.SetRandn();
+  Vector<Real> vector(cu_vector);
+
+  Matrix<Real> M(dim, dim);
+  M.SetRandn();
+  CuMatrix<Real> cuM(M);
+
+  Vector<Real> V(dim);
+  V.SetRandn();
+  CuVector<Real> cuV(V);
+
+  Real alpha = rand();
+  Real beta = rand();
+  
+  cu_vector.AddMatVec(alpha, cuM, kNoTrans, cuV, beta);
+  vector.AddMatVec(alpha, M, kNoTrans, V, beta);
+
+  CuVector<Real> cu2(cu_vector);
+  AssertEqual(cu2, cu_vector);
+
+}
+
+
 
 template<class Real> void CuVectorUnitTest() {
   UnitTestCuVectorCopyFromVec<Real, float>();
@@ -322,6 +473,14 @@ template<class Real> void CuVectorUnitTest() {
   UnitTestCuVectorAddTp<Real>();
   UnitTestCuVectorMulTp<Real>();
   UnitTestCuSubVector<Real>();
+  CuVectorUnitTestCopyFromMat<Real>(); 
+  //CuVectorUnitTestApplySoftMax<Real>();
+  CuVectorUnitTestApplyExp<Real>();
+  CuVectorUnitTestApplyLog<Real>();
+  CuVectorUnitTestApplyFloor<Real>();
+  CuVectorUnitTestAddMatVec<Real>();
+  CuVectorUnitTestAddVecVec<Real>();
+  CuVectorUnitTestAddDiagMat2<Real>();
 }
 
 

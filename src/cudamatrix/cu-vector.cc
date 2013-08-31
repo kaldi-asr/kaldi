@@ -161,7 +161,7 @@ Real CuVectorBase<Real>::Sum() const {
   Real sum_value = 0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-
+    /* this doesn't work 
     Timer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_, CU1DBLOCK));
@@ -173,13 +173,21 @@ Real CuVectorBase<Real>::Sum() const {
     CU_SAFE_CALL(cudaMemcpy(&sum_value, device_sum_value, sizeof(Real), cudaMemcpyDeviceToHost));
     CU_SAFE_CALL(cudaFree(device_sum_value));
     CuDevice::Instantiate().AccuProfile("CuVectorBase::Sum", tim.Elapsed());
+//    */
+
+ //added by hxu
+    // sum_value = cublas_sum(Dim(), Data(), 1); //this doesn't work cuz it calculates the sum of abs of elements
+    CuVector<Real> ones(dim_);
+    ones.Set(1.0);   
+    sum_value = VecVec(*this, ones);
+
   } else
 #endif
   {
     sum_value = Vec().Sum();
   }
   return sum_value;
-}
+} 
 
 
 template<typename Real>
