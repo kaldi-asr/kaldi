@@ -508,6 +508,10 @@ int main() {
 #else
   kaldi::CuVectorUnitTest<double>();
 #endif
+
+#if HAVE_CUDA == 1
+  CuDevice::Instantiate().PrintProfile();
+#endif
   std::cout << "Tests succeeded.\n";
   return 0;
 }

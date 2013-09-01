@@ -907,6 +907,27 @@ void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::SoftHinge(const CuMatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDimAndStride(*this, src));
+#if HAVE_CUDA == 1 
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
+
+    cuda_soft_hinge(dimGrid, dimBlock, this->data_, src.data_, src.Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    Mat().SoftHinge(src.Mat());
+  }
+}
+
 
 template<typename Real> // Y->this, X->src
 void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
@@ -1329,8 +1350,9 @@ void CuMatrixBase<Real>::ApplyPow(Real power) {
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
-
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+    
     cuda_apply_pow(dimGrid, dimBlock, data_, power, Dim());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -1340,6 +1362,26 @@ void CuMatrixBase<Real>::ApplyPow(Real power) {
     Mat().ApplyPow(power);
   }
 }
+
+template<typename Real>
+void CuMatrixBase<Real>::ApplyHeaviside() {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+    
+    cuda_apply_heaviside(dimGrid, dimBlock, data_, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().ApplyHeaviside();
+  }
+}
+
 
 template<typename Real>
 void CuMatrixBase<Real>::ApplyExp() {

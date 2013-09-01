@@ -124,9 +124,15 @@ class CuMatrixBase {
   void CopyRowsFromVec(const CuVectorBase<Real> &v);
   /// Copy vector into specific column of matrix.
   void CopyColFromVec(const CuVectorBase<Real> &v, const MatrixIndexT col);
+
   /// Set each element to the sigmoid of the corresponding element of "src":
-  /// element by element, *this = 1 / (1 + exp(-src)).
+  /// element by element, x = 1 / (1 + exp(-x))
   void Sigmoid(const CuMatrixBase<Real> &src);
+
+  /// Apply the function y = log(1 + exp(x)), to each element.
+  /// Note: the derivative of this function is the sigmoid function.
+  /// This is like a soft ReLU.
+  void SoftHinge(const CuMatrixBase<Real> &src);
 
   /// Compute the hyperbolic tangent (tanh) function; element by element,
   /// *this = tanh(src).
@@ -157,8 +163,9 @@ class CuMatrixBase {
   
   void Cholesky();
   
-  void InvertPSD(); // Inversion for positive semi-definite symmetric matrices.
+  void InvertPSD(); ///< Inversion for positive semi-definite symmetric matrices.
   void ApplyPow(Real power);
+  void ApplyHeaviside(); ///< For each element, sets x = (x > 0 ? 1.0 : 0.0)
   void ApplyFloor(Real floor_val);
   void ApplyExp();
   /// Softmax nonlinearity

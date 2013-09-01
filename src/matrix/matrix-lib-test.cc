@@ -2030,6 +2030,27 @@ template<class Real> static void  UnitTestSigmoid() {
   }
 }
 
+template<class Real> static void  UnitTestSoftHinge() {
+  for (MatrixIndexT i = 0; i < 10; i++) {
+    MatrixIndexT dimM = 5 + rand() % 10, dimN = 5 + rand() % 10;
+    Matrix<Real> M(dimM, dimN), N(dimM, dimN), O(dimM, dimN);
+    M.SetRandn();
+    M.Scale(20.0);
+
+    for(int32 r = 0; r < dimM; r++) {
+      for (int32 c = 0; c < dimN; c++) {
+        Real x = M(r, c);
+        Real &y = N(r, c);
+        if (x > 10.0) y = x;
+        else y = log(1.0 + exp(x));
+      }
+    }
+    O.SoftHinge(M);
+    AssertEqual(N, O);
+  }
+}
+
+
 template<class Real> static void  UnitTestSimple() {
   for (MatrixIndexT i = 0;i < 5;i++) {
 	MatrixIndexT dimM = 20 + rand()%10, dimN = 20 + rand()%20;
@@ -3797,6 +3818,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestSimpleForMat<Real>();
   UnitTestTanh<Real>();
   UnitTestSigmoid<Real>();
+  UnitTestSoftHinge<Real>();
   UnitTestNorm<Real>();
   UnitTestMul<Real>();
   KALDI_LOG << " Point I";

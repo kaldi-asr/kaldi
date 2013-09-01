@@ -378,6 +378,9 @@ class MatrixBase {
   /// Set each element to the sigmoid of the corresponding element of "src".
   void Sigmoid(const MatrixBase<Real> &src);
 
+  /// Set each element to y = log(1 + exp(x))
+  void SoftHinge(const MatrixBase<Real> &src);
+  
   /// Set each element to the tanh of the corresponding element of "src".
   void Tanh(const MatrixBase<Real> &src);
 

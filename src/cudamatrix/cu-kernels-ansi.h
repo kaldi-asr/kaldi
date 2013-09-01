@@ -52,7 +52,8 @@ void cudaF_trace_sp_sp_df(int Gr, int Bl, const double* A, const float* B, doubl
 void cudaF_copy_col_from_vec(int Gr, int Bl, float* mat, const float* v, int col, MatrixDim d);
 void cudaF_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
 void cudaF_sum(dim3 Gr, dim3 Bl, float* mat, float* value, MatrixDim d);
-void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d);  
+void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d);
+void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);  
 void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim d);
 void cudaF_set_diag(int Gr, int Bl, float* mat, float value, MatrixDim d);
 void cudaF_set_diag_packed(int Gr, int Bl, float* mat, float value, int dim);
@@ -103,6 +104,7 @@ void cudaF_invert_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim d);
  */
 void cudaF_softmax(size_t Gr, size_t Bl, float *y, const float *x, MatrixDim d);
 void cudaF_softmax_part(dim3 Gr, dim3 Bl, const float *X, const int32_cuda *vec_ids, float* Y, MatrixDim d);
+void cudaF_soft_hinge(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d);
 void cudaF_sigmoid(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d);
 void cudaF_diff_sigmoid(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d);
 void cudaF_tanh(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d);
@@ -139,6 +141,7 @@ void cudaD_copy_col_from_vec(int Gr, int Bl, double* mat, const double* v, int c
 void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
 void cudaD_sum(dim3 Gr, dim3 Bl, double* mat, double* value, MatrixDim d);
 void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d);
+void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);  
 void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim d);
 void cudaD_set_diag(int Gr, int Bl, double* mat, double value, MatrixDim d);
 void cudaD_set_diag_packed(int Gr, int Bl, double* mat, double value, int dim);
@@ -189,6 +192,7 @@ void cudaD_invert_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim d);
  */
 void cudaD_softmax(size_t Gr, size_t Bl, double *y, const double *x, MatrixDim d);
 void cudaD_softmax_part(dim3 Gr, dim3 Bl, const double *X, const int32_cuda *vec_ids, double* Y, MatrixDim d);
+void cudaD_soft_hinge(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d);
 void cudaD_sigmoid(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d);
 void cudaD_diff_sigmoid(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d);
 void cudaD_tanh(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d);

@@ -150,21 +150,101 @@ static void AssertEqual(std::vector<int32> &A, std::vector<int32> &B) {
  */
 template<class Real> 
 static void UnitTestCuMatrixApplyLog() {
-  Matrix<Real> H(100,100);
-  RandGaussMatrix(&H);
-  H.MulElements(H); //make numbers positive
+  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+  Matrix<Real> H(M, N);
+  H.SetRandn();
+  H.MulElements(H); // make numbers positive
 
-  CuMatrix<Real> D(100,100);
-  D.CopyFromMat(H);
+  CuMatrix<Real> D(H);
 
   D.ApplyLog();
   H.ApplyLog();
 
-  Matrix<Real> H2(100,100);
-  D.CopyToMat(&H2);
+  Matrix<Real> H2(D);
 
   AssertEqual(H,H2);
 }
+
+
+template<class Real> 
+static void UnitTestCuMatrixSigmoid() {
+  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+  Matrix<Real> H(M, N);
+  H.SetRandn();
+  H.MulElements(H); // make numbers positive
+
+  CuMatrix<Real> D(H);
+  CuMatrix<Real> E(M, N);
+
+  E.Sigmoid(D);
+  H.Sigmoid(H);
+
+  Matrix<Real> H2(E);
+
+  AssertEqual(H, H2);
+}
+
+template<class Real> 
+static void UnitTestCuMatrixSoftHinge() {
+  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+  Matrix<Real> H(M, N);
+  H.SetRandn();
+  H.MulElements(H); // make numbers positive
+
+  CuMatrix<Real> D(H);
+  CuMatrix<Real> E(M, N);
+
+  E.SoftHinge(D);
+  H.SoftHinge(H);
+  
+  Matrix<Real> H2(E);
+
+  AssertEqual(H,H2);
+}
+
+
+template<class Real> 
+static void UnitTestCuMatrixApplyPow() {
+
+  for (int32 i = 0; i < 3; i++) {
+    BaseFloat pow = 0.33 * (rand() % 6);
+    
+    Matrix<Real> H(10 + rand() % 600, 10 + rand() % 20);
+    H.SetRandn();
+    H.Row(0).Set(0.0);
+    if (i == 2) { Matrix<Real> tmp(H, kTrans); H = tmp; }
+    
+    H.MulElements(H); //make numbers positive
+    
+    CuMatrix<Real> cH(H);
+
+    cH.ApplyPow(pow);
+
+    H.ApplyPow(pow);
+    Matrix<Real> H2(cH);
+    AssertEqual(H, H2);
+  }
+}
+
+template<class Real> 
+static void UnitTestCuMatrixApplyHeaviside() {
+
+  for (int32 i = 0; i < 3; i++) {
+    Matrix<Real> H(10 + rand() % 600, 10 + rand() % 20);
+    H.SetRandn();
+    H.Row(0).Set(0.0);
+    if (i == 2) { Matrix<Real> tmp(H, kTrans); H = tmp; }
+
+
+    CuMatrix<Real> cH(H);
+
+    cH.ApplyHeaviside();
+    H.ApplyHeaviside();
+    Matrix<Real> H2(cH);
+    AssertEqual(H, H2);
+  }
+}
+
 
 
 template<class Real> 
@@ -655,7 +735,6 @@ static void UnitTestCuApproxEqual() {
     diff.AddMat(-1.0, Bm);
     Real norm = diff.FrobeniusNorm();
     KALDI_ASSERT( (norm <= tol) == (A.ApproxEqual(B, tol)));
-    KALDI_LOG << "Norm is " << norm << ", tol = " << tol;
     tol *= 2.0;
   }
 }
@@ -724,8 +803,8 @@ static void UnitTestCuSigmoid() {
   //gpu
   Do.Sigmoid(Di);
   //cpu
-  for(MatrixIndexT r=0; r<Hi.NumRows(); r++) {
-    for(MatrixIndexT c=0; c<Hi.NumCols(); c++) {
+  for(MatrixIndexT r=0; r < Hi.NumRows(); r++) {
+    for(MatrixIndexT c=0; c < Hi.NumCols(); c++) {
       Ho(r, c) = 1.0/(1.0+exp(-Hi(r, c)));
     }
   }
@@ -1007,6 +1086,10 @@ static void UnitTestCuDiffTanh() {
 template<class Real> void CudaMatrixUnitTest() {
   //test CuMatrix<Real> methods by cross-check with Matrix
   UnitTestCuMatrixApplyLog<Real>();
+  UnitTestCuMatrixSigmoid<Real>();
+  UnitTestCuMatrixSoftHinge<Real>();
+  UnitTestCuMatrixApplyPow<Real>();
+  UnitTestCuMatrixApplyHeaviside<Real>();
   UnitTestCuMatrixMulElements<Real>();
   UnitTestCuMatrixMulColsVec<Real>();
   UnitTestCuMatrixMulRowsVec<Real>();
@@ -1073,6 +1156,10 @@ int main() {
   }
 #else
   kaldi::CudaMatrixUnitTest<double>();
+#endif
+
+#if HAVE_CUDA == 1
+  CuDevice::Instantiate().PrintProfile();
 #endif
   std::cout << "Tests succeeded.\n";
 }

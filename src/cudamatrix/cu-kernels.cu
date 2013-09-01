@@ -871,11 +871,11 @@ static void _vec_apply_floor(Real *v, Real floor_val, int *num, int dim) {
 template<typename Real>
 __global__
 static void _apply_pow(Real* mat, Real power, MatrixDim d) {
-  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda index = i + j * d.stride;
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i * d.stride + j;
 
-  if (i < d.cols && j < d.rows) {
+  if (i < d.rows && j < d.cols) {
     if (power == 1.0)
       return;
     if (power == 2.0) {
@@ -887,6 +887,18 @@ static void _apply_pow(Real* mat, Real power, MatrixDim d) {
     } else {
       mat[index] = pow(mat[index], power);
     }
+  }
+}
+
+template<typename Real>
+__global__
+static void _apply_heaviside(Real* mat, MatrixDim d) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i * d.stride + j;
+
+  if (i < d.rows && j < d.cols) {
+    mat[index] = (mat[index] > 0.0 ? 1.0 : 0.0);
   }
 }
 
@@ -967,6 +979,22 @@ static void _invert_elements(Real* data, MatrixDim d) {
 
 
 
+template<typename Real>
+__global__
+static void _soft_hinge(Real*y, const Real*x, MatrixDim d) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j*d.stride;
+  // compute the function y[index] = log(1 + exp(x[index]))
+  if( i < d.cols  &&  j < d.rows ) {
+    Real val = x[index], result;
+    if (val >= 10.0) result = val; // function approaches y=x as x gets large
+    else result = log1p(exp(val));
+    y[index] = result;
+  }
+}
+
+
 /*
  * cu::
  */
@@ -981,7 +1009,6 @@ static void _sigmoid(Real*y, const Real*x, MatrixDim d) {
     y[index] = res;
   }
 }
-
 
 template<typename Real>
 __global__
@@ -1341,6 +1368,10 @@ void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d) {
   _apply_pow<<<Gr,Bl>>>(mat, power, d);
 }
 
+void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
+  _apply_heaviside<<<Gr,Bl>>>(mat, d);
+
+}
 void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim d) {
   _apply_floor<<<Gr,Bl>>>(mat, floor_val, d);
 }
@@ -1511,6 +1542,10 @@ void cudaF_invert_elements(dim3 Gr, dim3 Bl, float* data, MatrixDim d) {
 /*
  * cu::
  */
+void cudaF_soft_hinge (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d) {
+  _soft_hinge<<<Gr,Bl>>>(y, x, d); 
+}
+
 void cudaF_sigmoid (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d) {
   _sigmoid<<<Gr,Bl>>>(y, x, d); 
 }
@@ -1651,6 +1686,10 @@ void cudaD_sum(dim3 Gr, dim3 Bl, double* mat, double* value, MatrixDim d) {
 
 void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d) {
   _apply_pow<<<Gr,Bl>>>(mat, power, d);
+}
+
+void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
+  _apply_heaviside<<<Gr,Bl>>>(mat, d);
 }
 
 void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim d) {
@@ -1822,6 +1861,10 @@ void cudaD_invert_elements(dim3 Gr, dim3 Bl, double* data, MatrixDim d) {
 /*
  * cu::
  */
+void cudaD_soft_hinge (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d) {
+  _soft_hinge<<<Gr,Bl>>>(y, x, d); 
+}
+
 void cudaD_sigmoid (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d) {
   _sigmoid<<<Gr,Bl>>>(y, x, d); 
 }

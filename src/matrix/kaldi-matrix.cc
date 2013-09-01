@@ -2158,6 +2158,24 @@ void MatrixBase<Real>::Tanh(const MatrixBase<Real> &src) {
 }
 
 template<typename Real>
+void MatrixBase<Real>::SoftHinge(const MatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+  int32 num_rows = num_rows_, num_cols = num_cols_;
+  for (MatrixIndexT r = 0; r < num_rows; r++) {
+    Real *row_data = this->RowData(r);
+    const Real *src_row_data = src.RowData(r);
+    for (MatrixIndexT c = 0; c < num_cols; c++) {
+      Real x = src_row_data[c], y;
+      if (x > 10.0) y = x; // avoid exponentiating large numbers; function
+      // approaches y=x.
+      else y = log1p(exp(x));
+      row_data[c] = y;
+    }
+  }
+}
+
+
+template<typename Real>
 void MatrixBase<Real>::Sigmoid(const MatrixBase<Real> &src) {
   KALDI_ASSERT(SameDim(*this, src));
 
