@@ -101,7 +101,7 @@ std::ostream &operator << (std::ostream &out, const CuStlVector<IntType> &vec);
 } // namespace
 
 
-#include "cu-stlvector-inl.h"
+#include "cudamatrix/cu-stlvector-inl.h"
 
 #endif
 

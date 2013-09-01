@@ -33,10 +33,13 @@ template<typename Real> class CuTpMatrix;
 
 template<typename Real>
 class CuTpMatrix : public CuPackedMatrix<Real> {
-  friend class CuMatrixBase<Real>;
+  friend class CuMatrixBase<float>;
+  friend class CuMatrixBase<double>;
   friend class CuVectorBase<Real>;
   friend class CuSubMatrix<Real>;
   friend class CuRand<Real>;
+  friend class CuTpMatrix<float>;
+  friend class CuTpMatrix<double>;
  public:
   CuTpMatrix() : CuPackedMatrix<Real>() {}
   explicit CuTpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)

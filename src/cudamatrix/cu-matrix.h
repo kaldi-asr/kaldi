@@ -30,8 +30,6 @@
 #include "matrix/kaldi-matrix.h"
 #include "cudamatrix/cu-stlvector.h"
 #include "cudamatrix/cu-math.h"
-#include "cudamatrix/cu-sp-matrix.h"
-#include "cudamatrix/cu-tp-matrix.h"
 #include "cudamatrix/cu-rand.h"
 
 namespace kaldi {
@@ -58,7 +56,8 @@ class CuMatrixBase {
   friend class CuVectorBase<double>;
   
   friend class CuSpMatrix<Real>;
-  friend class CuTpMatrix<Real>;
+  friend class CuTpMatrix<float>;
+  friend class CuTpMatrix<double>;
   friend class CuVectorBase<Real>;
   friend class CuSubMatrix<Real>;
   friend class CuRand<Real>;
@@ -379,15 +378,7 @@ class CuMatrix: public CuMatrixBase<Real> {
   /// Copy constructor taking TpMatrix...
   template <typename OtherReal>
   explicit CuMatrix(const CuTpMatrix<OtherReal> & M,
-                    MatrixTransposeType trans = kNoTrans) : CuMatrixBase<Real>() {
-    if (trans == kNoTrans) {
-      Resize(M.NumRows(), M.NumCols(), kUndefined);
-      this->CopyFromTp(M);
-    } else {
-      Resize(M.NumCols(), M.NumRows(), kUndefined);
-      this->CopyFromTp(M, kTrans);
-    }
-  }
+                    MatrixTransposeType trans = kNoTrans);
   
   /// Copy constructor: as above, but from another type.
   template<typename OtherReal>
@@ -497,6 +488,6 @@ void MatrixBase<Real>::CopyFromMat(const CuMatrixBase<OtherReal> &cu,
 }  // namespace
 
 
-#include "cu-matrix-inl.h"
+#include "cudamatrix/cu-matrix-inl.h"
 
 #endif

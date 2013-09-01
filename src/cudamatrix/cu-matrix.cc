@@ -24,15 +24,17 @@
 #endif
 
 #include "util/timer.h"
-#include "cu-common.h"
-#include "cu-vector.h"
-#include "cu-device.h"
-#include "cu-kernels.h"
-#include "cu-randkernels.h"
-#include "cu-rand-inl.h"
-#include "cu-choleskykernels.h"
-#include "cu-stlvector.h"
-#include "cu-math.h"
+#include "cudamatrix/cu-common.h"
+#include "cudamatrix/cu-vector.h"
+#include "cudamatrix/cu-device.h"
+#include "cudamatrix/cu-kernels.h"
+#include "cudamatrix/cu-randkernels.h"
+#include "cudamatrix/cu-rand-inl.h"
+#include "cudamatrix/cu-choleskykernels.h"
+#include "cudamatrix/cu-stlvector.h"
+#include "cudamatrix/cu-math.h"
+#include "cudamatrix/cu-sp-matrix.h"
+#include "cudamatrix/cu-tp-matrix.h"
 
 namespace kaldi {
 
@@ -134,6 +136,20 @@ void CuMatrix<Real>::Swap(Matrix<Real> *mat) {
     std::swap(mat->stride_, this->stride_);
   }
 }
+
+template <typename Real>
+template <typename OtherReal>
+ CuMatrix<Real>::CuMatrix(const CuTpMatrix<OtherReal> & M,
+                          MatrixTransposeType trans): CuMatrixBase<Real>() {
+  if (trans == kNoTrans) {
+    Resize(M.NumRows(), M.NumCols(), kUndefined);
+    this->CopyFromTp(M);
+  } else {
+    Resize(M.NumCols(), M.NumRows(), kUndefined);
+    this->CopyFromTp(M, kTrans);
+  }
+}
+
 
 template<typename Real>
 void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<Real> &src,
@@ -295,6 +311,16 @@ void CuMatrixBase<Real>::CopyFromTp(const CuTpMatrix<OtherReal> &M,
     Mat().CopyFromTp(M.Mat(), Trans);
   }
 }
+// instantiate the template above.
+template void CuMatrixBase<float>::CopyFromTp(const CuTpMatrix<float> &M,
+                                              MatrixTransposeType Trans);
+template void CuMatrixBase<float>::CopyFromTp(const CuTpMatrix<double> &M,
+                                              MatrixTransposeType Trans);
+template void CuMatrixBase<double>::CopyFromTp(const CuTpMatrix<float> &M,
+                                              MatrixTransposeType Trans);
+template void CuMatrixBase<double>::CopyFromTp(const CuTpMatrix<double> &M,
+                                              MatrixTransposeType Trans);
+
 /*
 // template instantiations.
 template

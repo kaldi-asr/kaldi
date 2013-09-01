@@ -44,7 +44,9 @@ void cudaI32_set_const(dim3 Gr, dim3 Bl, int32_cuda *mat, int32_cuda value, Matr
  */
 void cudaF_ammdm_elements(dim3 Gr, dim3 Bl, float alpha, float* mat, const float* A, const float* B, const float* C, float beta, MatrixDim d);
 void cudaF_copy_from_tp_trans(int Gr, int Bl, float* A, const float* B, MatrixDim dmat);
+void cudaFD_copy_from_tp_trans(int Gr, int Bl, float* A, const double* B, MatrixDim dmat);
 void cudaF_copy_from_tp(int Gr, int Bl, float* A, const float* B, MatrixDim dmat);
+void cudaFD_copy_from_tp(int Gr, int Bl, float* A, const double* B, MatrixDim dmat);
 void cudaF_trace_sp_sp_fd(int Gr, int Bl, const float* A, const float* B, float* value, int dim);
 void cudaF_trace_sp_sp_df(int Gr, int Bl, const double* A, const float* B, double* value, int dim);
 void cudaF_copy_col_from_vec(int Gr, int Bl, float* mat, const float* v, int col, MatrixDim d);
@@ -128,7 +130,9 @@ void cudaF_take_mean(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in,
  */
 void cudaD_ammdm_elements(dim3 Gr, dim3 Bl, double alpha, double* mat, const double* A, const double* B, const double* C, double beta, MatrixDim d);
 void cudaD_copy_from_tp_trans(int Gr, int Bl, double* A, const double* B, MatrixDim dmat);
+void cudaDF_copy_from_tp_trans(int Gr, int Bl, double* A, const float* B, MatrixDim dmat);
 void cudaD_copy_from_tp(int Gr, int Bl, double* A, const double* B, MatrixDim dmat);
+void cudaDF_copy_from_tp(int Gr, int Bl, double* A, const float* B, MatrixDim dmat);
 void cudaD_trace_sp_sp_fd(int Gr, int Bl, const float* A, const double* B, float* value, int dim);
 void cudaD_trace_sp_sp_df(int Gr, int Bl, const double* A, const double* B, double* value, int dim);
 void cudaD_copy_col_from_vec(int Gr, int Bl, double* mat, const double* v, int col, MatrixDim d);

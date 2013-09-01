@@ -26,14 +26,6 @@
 
 namespace kaldi {
 
-/// \weakgroup matrix_funcs_misc
-typedef enum {
-  kTakeLower,
-  kTakeUpper,
-  kTakeMean,
-  kTakeMeanAndCheck
-} SpCopyType;
-
 
 /// \addtogroup matrix_group
 /// @{

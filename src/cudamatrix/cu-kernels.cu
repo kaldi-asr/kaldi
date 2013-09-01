@@ -162,9 +162,9 @@ static void _ammdm_elements(Real alpha, Real* mat, const Real* A, const Real* B,
 }
 
 
-template<typename Real>
+template<typename Real, typename OtherReal>
 __global__
-static void _copy_from_tp_trans(Real* A, const Real* B, MatrixDim dmat) {
+static void _copy_from_tp_trans(Real* A, const OtherReal* B, MatrixDim dmat) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda index = i * (i+1) / 2;
   if ( i < dmat.rows ) {
@@ -176,9 +176,9 @@ static void _copy_from_tp_trans(Real* A, const Real* B, MatrixDim dmat) {
 }
 
 
-template<typename Real>
+template<typename Real, typename OtherReal>
 __global__
-static void _copy_from_tp(Real* A, const Real* B, MatrixDim dmat) {
+static void _copy_from_tp(Real* A, const OtherReal* B, MatrixDim dmat) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda index = i * (i+1) / 2;
   
@@ -1300,8 +1300,14 @@ void cudaF_ammdm_elements(dim3 Gr, dim3 Bl, float alpha, float* mat, const float
 void cudaF_copy_from_tp_trans(int Gr, int Bl, float* A, const float* B, MatrixDim dmat) {
   _copy_from_tp_trans<<<Gr,Bl>>>(A,B,dmat);
 }
+void cudaFD_copy_from_tp_trans(int Gr, int Bl, float* A, const double* B, MatrixDim dmat) {
+  _copy_from_tp_trans<<<Gr,Bl>>>(A,B,dmat);
+}
 
 void cudaF_copy_from_tp(int Gr, int Bl, float* A, const float* B, MatrixDim dmat) {
+  _copy_from_tp<<<Gr,Bl>>>(A,B,dmat);
+}
+void cudaFD_copy_from_tp(int Gr, int Bl, float* A, const double* B, MatrixDim dmat) {
   _copy_from_tp<<<Gr,Bl>>>(A,B,dmat);
 }
 
@@ -1591,8 +1597,14 @@ void cudaD_ammdm_elements(dim3 Gr, dim3 Bl, double alpha, double* mat, const dou
 void cudaD_copy_from_tp_trans(int Gr, int Bl, double* A, const double* B, MatrixDim dmat) {
   _copy_from_tp_trans<<<Gr,Bl>>>(A,B,dmat);
 }
+void cudaDF_copy_from_tp_trans(int Gr, int Bl, double* A, const float* B, MatrixDim dmat) {
+  _copy_from_tp_trans<<<Gr,Bl>>>(A,B,dmat);
+}
 
 void cudaD_copy_from_tp(int Gr, int Bl, double* A, const double* B, MatrixDim dmat) {
+  _copy_from_tp<<<Gr,Bl>>>(A,B,dmat);
+}
+void cudaDF_copy_from_tp(int Gr, int Bl, double* A, const float* B, MatrixDim dmat) {
   _copy_from_tp<<<Gr,Bl>>>(A,B,dmat);
 }
 

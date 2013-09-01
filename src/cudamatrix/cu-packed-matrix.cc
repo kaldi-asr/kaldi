@@ -24,12 +24,12 @@
 #endif
 
 #include "util/timer.h"
-#include "cu-common.h"
-#include "cu-vector.h"
-#include "cu-device.h"
-#include "cu-kernels.h"
-#include "cu-math.h"
-#include "cu-packed-matrix.h"
+#include "cudamatrix/cu-common.h"
+#include "cudamatrix/cu-vector.h"
+#include "cudamatrix/cu-device.h"
+#include "cudamatrix/cu-kernels.h"
+#include "cudamatrix/cu-math.h"
+#include "cudamatrix/cu-packed-matrix.h"
 
 namespace kaldi {
 

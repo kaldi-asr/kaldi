@@ -25,7 +25,7 @@
 #include <cstdlib>
 
 #include "base/kaldi-common.h"
-#include "cu-device.h"
+#include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-sp-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-math.h"

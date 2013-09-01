@@ -24,9 +24,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "cudamatrix/cu-matrix.h"
-#include "cudamatrix/cu-vector.h"
-#include "cudamatrix/cu-math.h"
+#include "cudamatrix/cu-matrix-lib.h"
 
 using namespace kaldi;
 

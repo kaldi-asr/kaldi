@@ -25,6 +25,7 @@
 #include "util/common-utils.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
+#include "cudamatrix/cu-tp-matrix.h"
 #include "cudamatrix/cu-math.h"
 
 using namespace kaldi;
@@ -383,6 +384,9 @@ template<class Real> void CuVectorUnitTestApplyFloor() {
   CuVector<Real> cu2(vector);
 
   AssertEqual(cu2, cu_vector);//hxu
+  if (i != j) {
+    KALDI_WARN << "ApplyFloor return code broken...";
+  }
   // KALDI_ASSERT(i==j); //this should not be commented, but there is a bug unfixed yet
 }
 

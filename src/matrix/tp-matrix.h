@@ -31,7 +31,8 @@ template<typename Real> class TpMatrix;
 /// @brief Packed symetric matrix class
 template<typename Real>
 class TpMatrix : public PackedMatrix<Real> {
-  friend class CuTpMatrix<Real>;
+  friend class CuTpMatrix<float>;
+  friend class CuTpMatrix<double>;
  public:
   TpMatrix() : PackedMatrix<Real>() {}
   explicit TpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)

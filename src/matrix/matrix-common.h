@@ -36,6 +36,12 @@ typedef enum {
   kCopyData
 } MatrixResizeType;
 
+typedef enum {
+  kTakeLower,
+  kTakeUpper,
+  kTakeMean,
+  kTakeMeanAndCheck
+} SpCopyType;
 
 template<typename Real> class VectorBase;
 template<typename Real> class Vector;

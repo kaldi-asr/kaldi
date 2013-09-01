@@ -299,6 +299,6 @@ Vector<Real>::Vector(const CuVectorBase<OtherReal> &cu) {
 } // namespace
 
 
-#include "cu-vector-inl.h"
+#include "cudamatrix/cu-vector-inl.h"
 
 #endif
