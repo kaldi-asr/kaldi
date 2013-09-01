@@ -806,17 +806,21 @@ static void _sum(Real* mat, Real* value, MatrixDim d) {
 template<typename Real>
 __global__
 static void _vec_sum(Real *v, Real *sum, int dim) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-
+  int32_cuda i = threadIdx.x;
+  
   __shared__ Real row_data[256];  
-  if (i < dim)
-    row_data[threadIdx.x] = v[i];
-  else
-    row_data[threadIdx.x] = 0.0;
+
+  Real tmp_sum = 0;
+  while (i < dim) {
+    tmp_sum += v[i];
+    i += 256;//blockDim.x * gridDim.x;
+  } 
+  row_data[threadIdx.x] = tmp_sum;
+  //now i >= dim
+  //row_data[threadIdx.x] = 0.0;
+  // if dim < 256 might be bugs
   __syncthreads();
-  Real ans = _sum_reduce(row_data);
-  if (threadIdx.x == 0)
-    *sum += ans;
+  *sum = _sum_reduce(row_data);
 }
 
 

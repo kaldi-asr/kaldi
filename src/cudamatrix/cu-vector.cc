@@ -165,11 +165,10 @@ Real CuVectorBase<Real>::Sum() const {
   Real sum_value = 0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    /* this doesn't work 
+    //* this is working now 
     Timer tim;
     int dimBlock(CU1DBLOCK);
-    int dimGrid(n_blocks(dim_, CU1DBLOCK));
-    
+    int dimGrid = 1;// only 1 block here. we have loops in each thread  //(n_blocks(dim_, CU1DBLOCK));
     Real *device_sum_value;
     CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_sum_value), sizeof(Real)));
     CU_SAFE_CALL(cudaMemset(device_sum_value, 0, sizeof(Real)));
@@ -179,11 +178,12 @@ Real CuVectorBase<Real>::Sum() const {
     CuDevice::Instantiate().AccuProfile("CuVectorBase::Sum", tim.Elapsed());
 //    */
 
- //added by hxu
+ /*/added by hxu, alternative implementation
     // sum_value = cublas_sum(Dim(), Data(), 1); //this doesn't work cuz it calculates the sum of abs of elements
     CuVector<Real> ones(dim_);
     ones.Set(1.0);   
     sum_value = VecVec(*this, ones);
+*/
 
   } else
 #endif
