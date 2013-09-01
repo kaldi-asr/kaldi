@@ -786,7 +786,7 @@ static void UnitTestCuSoftmax() {
   //cpu
   Ho.CopyFromMat(Hi);
   for(MatrixIndexT r=0; r<Ho.NumRows(); r++) {
-    Ho.Row(r).ApplySoftMaxPerRow();
+    Ho.Row(r).ApplySoftMax();
   }
 
   Matrix<Real> Ho2(100,111);

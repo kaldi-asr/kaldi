@@ -56,6 +56,7 @@ class Timer
 
   void Reset() { gettimeofday(&this->time_start_, &time_zone_); }
 
+  /// Returns time in seconds.
   double Elapsed() {
     struct timeval time_end;
     gettimeofday(&time_end, &time_zone_);

@@ -143,7 +143,7 @@ void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<Real> &src,
     if (trans == kNoTrans) {
       KALDI_ASSERT(src.NumRows() == num_rows_ && src.NumCols() == num_cols_);
       Timer tim;
-
+      
       MatrixIndexT dst_pitch = stride_ * sizeof(Real);
       MatrixIndexT src_pitch = src.Stride() * sizeof(Real);
       MatrixIndexT width = src.NumCols() * sizeof(Real);
@@ -180,6 +180,7 @@ void CuMatrixBase<double>::CopyFromMat(const CuMatrixBase<float> &M,
       KALDI_ASSERT(num_rows_ == M.NumCols() && num_cols_ == M.NumRows ());
       cuda_copy_from_mat_df_trans(dimGrid, dimBlock, data_, M.data_, Dim(), M.Dim());
     }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
@@ -204,6 +205,7 @@ void CuMatrixBase<double>::CopyFromMat(const CuMatrixBase<double> &M,
       KALDI_ASSERT(num_rows_ == M.NumCols() && num_cols_ == M.NumRows ());
       cuda_copy_from_mat_dd_trans(dimGrid, dimBlock, data_, M.data_, Dim(), M.Dim());
     }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
@@ -232,6 +234,7 @@ void CuMatrixBase<float>::CopyFromMat(const CuMatrixBase<double> &M,
       cuda_copy_from_mat_fd_trans(dimGrid, dimBlock, data_, M.Data(),
                                     Dim(), M.Dim());
     }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
@@ -259,6 +262,7 @@ void CuMatrixBase<float>::CopyFromMat(const CuMatrixBase<float> &M,
       cuda_copy_from_mat_ff_trans(dimGrid, dimBlock, data_, M.Data(),
                                     Dim(), M.Dim());
     }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
   } else
 #endif
   {
@@ -284,6 +288,7 @@ void CuMatrixBase<Real>::CopyFromTp(const CuTpMatrix<OtherReal> &M,
     } else {
       cuda_copy_from_tp_trans(dimGrid, dimBlock, data_, M.Data(), Dim());      
     }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
   } else
 #endif
   {
