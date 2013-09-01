@@ -383,7 +383,7 @@ template<class Real> void CuVectorUnitTestApplyFloor() {
   CuVector<Real> cu2(vector);
 
   AssertEqual(cu2, cu_vector);//hxu
-  //KALDI_ASSERT(i==j );//this should not be commented, but there is a bug unfixed yet
+  // KALDI_ASSERT(i==j); //this should not be commented, but there is a bug unfixed yet
 }
 
 template<class Real> void CuVectorUnitTestAddVecVec() {

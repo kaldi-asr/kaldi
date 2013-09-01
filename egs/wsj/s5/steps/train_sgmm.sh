@@ -75,6 +75,7 @@ feat_dim=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/feature dimension/{prin
 [ -z $phn_dim ] && phn_dim=$[$feat_dim+1]
 [ -z $spk_dim ] && spk_dim=$feat_dim
 nj=`cat $alidir/num_jobs` || exit 1;
+ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
