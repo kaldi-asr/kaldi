@@ -77,10 +77,10 @@ static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.
 template<class Real> 
 static void AssertEqual(CuVectorBase<Real> &A, CuVectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i=0; i < A.Dim(); i++)
-    KALDI_ASSERT(std::abs(A(i)-B(i)) < tol*std::max(1.0, (double) (std::abs(A(i))+std::abs(B(i)))));//all "equality" test should include this in case of big Real numbers
+  CuVector<Real> diff(A);
+  diff.AddVec(-1.0, B);
+  KALDI_ASSERT(diff.Norm(2.0) <= tol * 0.5 * (A.Norm(2.0) + B.Norm(2.0))); 
 }
-
 
 
 template<class Real> 
@@ -307,23 +307,49 @@ template<class Real> void CuVectorUnitTestScale() {
 }
 
 template<class Real> void CuVectorUnitTestCopyFromMat() {
-  int32 dim = 100;
-  CuMatrix<Real> cu_matrix(dim, dim);
+  int32 M = 100 + rand() % 255, N = 100 + rand() % 255;
+  CuMatrix<Real> cu_matrix(M, N);
   cu_matrix.SetRandn();
-  for(int32 i = 0; i < dim; i++) {
-    CuVector<Real> vector(dim);
+  for(int32 i = 0; i < N; i++) {
+    CuVector<Real> vector(M);
     vector.CopyColFromMat(cu_matrix, i);
-    for(int32 j = 0; j < dim; j++) {
+    for(int32 j = 0; j < M; j++) {
       KALDI_ASSERT(vector(j)==cu_matrix(j, i));
     }
   }
-
-  CuVector<Real> vector(dim * dim);
+  Matrix<Real> matrix(cu_matrix), matrix2(M, N);
+  CuMatrix<Real> matrix3(M, N);
+  
+  CuVector<Real> vector(M * N), vector2(M * N);
   vector.CopyRowsFromMat(cu_matrix);
-  for(int32 j = 0; j < dim*dim; j++) {
-    KALDI_ASSERT(vector(j)==cu_matrix(j/dim, j%dim))
+  vector2.CopyRowsFromMat(matrix);
+  matrix2.CopyRowsFromVec(vector2);
+  matrix3.CopyRowsFromVec(Vector<Real>(vector2));
+  Vector<Real> vector3(M * N);
+  vector3.CopyRowsFromMat(cu_matrix);
+                                         
+  
+  for(int32 j = 0; j < M*N; j++) {
+    if (rand() % 500 == 0) { // random small subset (it was slow)
+      KALDI_ASSERT(vector(j) == cu_matrix(j/N, j%N));
+      KALDI_ASSERT(vector2(j) == cu_matrix(j/N, j%N));
+      KALDI_ASSERT(vector2(j) == matrix2(j/N, j%N));
+      KALDI_ASSERT(vector3(j) == matrix2(j/N, j%N));
+      KALDI_ASSERT(vector3(j) == matrix3(j/N, j%N));
+    }
   }
 }
+
+template<class Real> void CuVectorUnitTestNorm() {
+  int32 dim = 2;
+  CuVector<Real> cu_vector(dim);
+  cu_vector(0) = 1.0;
+  cu_vector(1) = -2.0;
+  KALDI_ASSERT(ApproxEqual(cu_vector.Norm(1.0), 3.0));
+  KALDI_ASSERT(ApproxEqual(cu_vector.Norm(2.0), sqrt(5.0)));
+}
+               
+
 
 template<class Real> void CuVectorUnitTestApplySoftMax() {
   int32 dim = 100;
@@ -501,6 +527,7 @@ template<class Real> void CuVectorUnitTest() {
   UnitTestCuSubVector<Real>();
   CuVectorUnitTestCopyFromMat<Real>(); 
   //CuVectorUnitTestApplySoftMax<Real>();
+  CuVectorUnitTestNorm<Real>();
   CuVectorUnitTestApplyExp<Real>();
   CuVectorUnitTestApplyLog<Real>();
   CuVectorUnitTestApplyFloor<Real>();

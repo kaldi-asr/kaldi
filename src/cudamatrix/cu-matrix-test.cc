@@ -316,6 +316,27 @@ static void UnitTestCuMatrixMulElements() {
   AssertEqual(Ha,Ha2);
 }
 
+template<class Real> 
+static void UnitTestCuMatrixMax() {
+  Matrix<Real> Ha(100,100);
+  Matrix<Real> Hb(100,100);
+  RandGaussMatrix(&Ha);
+  RandGaussMatrix(&Hb);
+
+  CuMatrix<Real> Da(100,100);
+  CuMatrix<Real> Db(100,100);
+  Da.CopyFromMat(Ha);
+  Db.CopyFromMat(Hb);
+
+  Da.Max(Db);
+  Ha.Max(Hb);
+
+  Matrix<Real> Ha2(100,100);
+  Da.CopyToMat(&Ha2);
+
+  AssertEqual(Ha,Ha2);
+}
+
 
 
 template<class Real> 
@@ -1140,6 +1161,7 @@ template<class Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixApplyFloor<Real>();
   UnitTestCuMatrixApplyHeaviside<Real>();
   UnitTestCuMatrixMulElements<Real>();
+  UnitTestCuMatrixMax<Real>();
   UnitTestCuMatrixMulColsVec<Real>();
   UnitTestCuMatrixMulRowsVec<Real>();
   UnitTestCuMatrixDivRowsVec<Real>();

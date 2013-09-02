@@ -30,11 +30,17 @@ inline double cublas_dot(int n, const double* x, int incx,
 
 
 }
-inline float cublas_sum(int n, const float* x, int incx) {
+inline float cublas_asum(int n, const float* x, int incx) {
   return cublasSasum(n, x, incx);
 }
-inline float cublas_sum(int n, const double* x, int incx) {
+inline double cublas_asum(int n, const double* x, int incx) {
   return cublasDasum(n, x, incx);
+}
+inline float cublas_nrm2(int n, const float* x, int incx) {
+  return cublasSnrm2(n, x, incx);
+}
+inline double cublas_nrm2(int n, const double* x, int incx) {
+  return cublasDnrm2(n, x, incx);
 }
 #endif
 
@@ -152,6 +158,68 @@ void CuVectorBase<Real>::CopyRowsFromMat(const CuMatrixBase<Real> &mat) {
     Vec().CopyRowsFromMat(mat.Mat());
   }
 }
+
+template<typename Real>
+Real CuVectorBase<Real>::Norm(BaseFloat p) {
+  KALDI_ASSERT(p == 1.0 || p == 2.0);
+  if (dim_ == 0.0) return 0.0;
+  if (p == 1.0) {
+    return cublas_asum(dim_, data_, 1);
+  } else {
+    return cublas_nrm2(dim_, data_, 1);
+  }
+}
+
+
+template<typename Real>
+void CuVectorBase<Real>::CopyRowsFromMat(const MatrixBase<Real> &mat) {
+  KALDI_ASSERT(dim_ == mat.NumCols() * mat.NumRows());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    if (mat.Stride() == mat.NumCols()) {
+      cudaMemcpy(data_, mat.Data(), sizeof(Real)*dim_, cudaMemcpyHostToDevice);
+    } else {
+      Real* vec_data = data_;
+      for (MatrixIndexT r = 0; r < mat.NumRows(); r++) {
+        cudaMemcpy(vec_data, mat.RowData(r), sizeof(Real) * mat.NumCols(), cudaMemcpyHostToDevice);
+        vec_data += mat.NumCols();
+      }
+    }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Vec().CopyRowsFromMat(mat);
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &v) {
+  KALDI_ASSERT(v.Dim() == NumCols() * NumRows());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    if (Stride() == NumCols()) {
+      cudaMemcpy(data_, v.Data(), sizeof(Real)*v.Dim(), cudaMemcpyDeviceToHost);
+    } else {
+      const Real* vec_data = v.Data();
+      for (MatrixIndexT r = 0; r < NumRows(); r++) {
+        cudaMemcpy(RowData(r), vec_data, sizeof(Real) * NumCols(), cudaMemcpyDeviceToHost);
+        vec_data += NumCols();
+      }
+    }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    CopyRowsFromVec(v.Vec());
+  }
+}
+  
+// instantiate the template above.
+template void MatrixBase<float>::CopyRowsFromVec(const CuVectorBase<float> &v);
+template void MatrixBase<double>::CopyRowsFromVec(const CuVectorBase<double> &v);
 
 template<typename Real>
 void CuVectorBase<Real>::SetRandn() {

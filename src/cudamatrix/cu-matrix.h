@@ -47,14 +47,11 @@ Real TraceMatMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B,
 template<typename Real>
 class CuMatrixBase {
  public:
-
-  //template<typename OtherReal>
   friend class CuMatrixBase<float>;
   friend class CuMatrixBase<double>;
-
   friend class CuVectorBase<float>;
   friend class CuVectorBase<double>;
-  
+  friend class VectorBase<Real>;
   friend class CuSpMatrix<Real>;
   friend class CuTpMatrix<float>;
   friend class CuTpMatrix<double>;
@@ -129,6 +126,9 @@ class CuMatrixBase {
                  MatrixTransposeType trans = kNoTrans) const;
   
   void CopyRowsFromVec(const CuVectorBase<Real> &v);
+
+  void CopyRowsFromVec(const VectorBase<Real> &v);
+  
   /// Copy vector into specific column of matrix.
   void CopyColFromVec(const CuVectorBase<Real> &v, const MatrixIndexT col);
 
@@ -200,8 +200,10 @@ class CuMatrixBase {
   void SetZeroUpperDiag();
   void Scale(Real value);
   void ApplyLog();
-  /// Multiply two matrices elementhwise: C = A .* C
+  /// Multiply two matrices elementwise: C = A .* C
   void MulElements(const CuMatrixBase<Real>& A);
+  /// Do, elementwise, *this = max(*this, A).
+  void Max(const CuMatrixBase<Real>& A);
   /// scale i'th column by scale[i]
   void MulColsVec(const CuVectorBase<Real> &scale); 
   /// scale i'th row by scale[i]

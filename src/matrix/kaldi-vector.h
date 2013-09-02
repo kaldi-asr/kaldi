@@ -226,6 +226,8 @@ class VectorBase {
   template<typename OtherReal>
   void CopyRowsFromMat(const MatrixBase<OtherReal> &M);
 
+  /// The following is implemented in ../cudamatrix/cu-matrix.cc
+  void CopyRowsFromMat(const CuMatrixBase<Real> &M);
 
   /// Performs a column stack of the matrix M
   void CopyColsFromMat(const MatrixBase<Real> &M);

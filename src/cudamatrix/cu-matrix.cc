@@ -628,7 +628,7 @@ void CuMatrixBase<Real>::MulElements(const CuMatrixBase<Real>& A) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
 
-    cuda_mul_elements(dimGrid, dimBlock, data_, A.data_, Dim());
+    cuda_mul_elements(dimGrid, dimBlock, data_, A.data_, Dim(), A.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -639,6 +639,29 @@ void CuMatrixBase<Real>::MulElements(const CuMatrixBase<Real>& A) {
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::Max(const CuMatrixBase<Real>& A) {
+  #if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    KALDI_ASSERT(num_cols_ == A.NumCols());
+    KALDI_ASSERT(num_rows_ == A.NumRows());
+    KALDI_ASSERT(stride_ == A.Stride());
+    
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+
+    cuda_max(dimGrid, dimBlock, data_, A.data_, Dim(), A.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+    
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    Mat().Max(A.Mat());
+  }
+}
 
 
 template<typename Real>
@@ -1292,26 +1315,26 @@ double TraceMatMat(const CuMatrixBase<double> &A,
 
 
 template<typename Real>
-void CuMatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &rv) {
+void CuMatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &v) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    if (rv.Dim() == num_rows_*num_cols_) {
+    if (v.Dim() == num_rows_*num_cols_) {
       if (stride_ == num_cols_) {
-        const Real* rv_data = rv.Data();
-        cudaMemcpy(data_, rv_data, sizeof(Real)*num_rows_*num_cols_, cudaMemcpyDeviceToDevice);
+        const Real* v_data = v.Data();
+        cudaMemcpy(data_, v_data, sizeof(Real)*num_rows_*num_cols_, cudaMemcpyDeviceToDevice);
       } else {
-        const Real *rv_data = rv.Data();
+        const Real *v_data = v.Data();
         for (MatrixIndexT r = 0; r < num_rows_; r++) {
           Real *row_data = RowData(r);
-          cudaMemcpy(row_data, rv_data, sizeof(Real)*num_cols_, cudaMemcpyDeviceToDevice);
-          rv_data += num_cols_;
+          cudaMemcpy(row_data, v_data, sizeof(Real)*num_cols_, cudaMemcpyDeviceToDevice);
+          v_data += num_cols_;
         }
       }
-    } else if (rv.Dim() == num_cols_) {
-      const Real *rv_data = rv.Data();
+    } else if (v.Dim() == num_cols_) {
+      const Real *v_data = v.Data();
       for (MatrixIndexT r = 0; r < num_rows_; r++)
-        cudaMemcpy(RowData(r), rv_data, sizeof(Real)*num_cols_, cudaMemcpyDeviceToDevice);
+        cudaMemcpy(RowData(r), v_data, sizeof(Real)*num_cols_, cudaMemcpyDeviceToDevice);
     } else {
       KALDI_ERR << "Wrong sized arguments";
     }
@@ -1319,15 +1342,47 @@ void CuMatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &rv) {
   } else
 #endif
   {
-    Mat().CopyRowsFromVec(rv.Vec());
+    Mat().CopyRowsFromVec(v.Vec());
   }
-
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::CopyColFromVec(const CuVectorBase<Real> &rv,
+void CuMatrixBase<Real>::CopyRowsFromVec(const VectorBase<Real> &v) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    if (v.Dim() == num_rows_*num_cols_) {
+      if (stride_ == num_cols_) {
+        const Real* v_data = v.Data();
+        cudaMemcpy(data_, v_data, sizeof(Real)*num_rows_*num_cols_, cudaMemcpyHostToDevice);
+      } else {
+        const Real *v_data = v.Data();
+        for (MatrixIndexT r = 0; r < num_rows_; r++) {
+          Real *row_data = RowData(r);
+          cudaMemcpy(row_data, v_data, sizeof(Real)*num_cols_, cudaMemcpyHostToDevice);
+          v_data += num_cols_;
+        }
+      }
+    } else if (v.Dim() == num_cols_) {
+      const Real *v_data = v.Data();
+      for (MatrixIndexT r = 0; r < num_rows_; r++)
+        cudaMemcpy(RowData(r), v_data, sizeof(Real)*num_cols_, cudaMemcpyHostToDevice);
+    } else {
+      KALDI_ERR << "Wrong sized arguments";
+    }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().CopyRowsFromVec(v);
+  }
+}
+
+
+template<typename Real>
+void CuMatrixBase<Real>::CopyColFromVec(const CuVectorBase<Real> &v,
                                         const MatrixIndexT col) {
-  KALDI_ASSERT(rv.Dim() == num_rows_ &&
+  KALDI_ASSERT(v.Dim() == num_rows_ &&
                static_cast<UnsignedMatrixIndexT>(col) <
                static_cast<UnsignedMatrixIndexT>(num_cols_));
 #if HAVE_CUDA == 1
@@ -1335,13 +1390,13 @@ void CuMatrixBase<Real>::CopyColFromVec(const CuVectorBase<Real> &rv,
     Timer tim;
     int dimBlock(CU2DBLOCK);
     int dimGrid(n_blocks(NumRows(), CU2DBLOCK));
-    cuda_copy_col_from_vec(dimGrid, dimBlock, data_, rv.Data(), col, Dim());
+    cuda_copy_col_from_vec(dimGrid, dimBlock, data_, v.Data(), col, Dim());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
-    Mat().CopyColFromVec(rv.Vec(), col);
+    Mat().CopyColFromVec(v.Vec(), col);
   }
 }
 
@@ -1439,6 +1494,36 @@ void CuMatrixBase<Real>::ApplyCeiling(Real ceiling_val) {
   }
 }
 
+
+template<typename Real>
+void VectorBase<Real>::CopyRowsFromMat(const CuMatrixBase<Real> &mat) {
+  KALDI_ASSERT(dim_ == mat.NumCols() * mat.NumRows());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    if (mat.Stride() == mat.NumCols()) {
+      cudaMemcpy(data_, mat.Data(), sizeof(Real)*dim_, cudaMemcpyDeviceToHost);
+    } else {
+      Real* vec_data = data_;
+      for (MatrixIndexT r = 0; r < mat.NumRows(); r++) {
+        cudaMemcpy(vec_data, mat.RowData(r), sizeof(Real) * mat.NumCols(),
+                   cudaMemcpyDeviceToHost);
+        vec_data += mat.NumCols();
+      }
+    }
+    CuDevice::Instantiate().AccuProfile("CuVectorBase::CopyRowsFromMat", tim.Elapsed());
+  } else
+#endif
+  {
+    CopyRowsFromMat(mat.Mat());
+  }
+}
+
+// Instantiate the template above.
+template
+void VectorBase<float>::CopyRowsFromMat(const CuMatrixBase<float> &mat);
+template
+void VectorBase<double>::CopyRowsFromMat(const CuMatrixBase<double> &mat);
 
 template<typename Real>
 void CuMatrixBase<Real>::PermuteColumns(const CuMatrixBase<Real> &src,

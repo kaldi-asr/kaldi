@@ -44,6 +44,7 @@ class CuVectorBase {
   friend class CuVectorBase<float>;
   friend class CuVectorBase<double>;
   friend class CuMatrixBase<Real>;
+  friend class MatrixBase<Real>;
   friend class CuPackedMatrix<Real>;
   friend class CuSpMatrix<Real>;
   friend class CuTpMatrix<Real>;
@@ -80,6 +81,9 @@ class CuVectorBase {
   void CopyToVec(VectorBase<OtherReal> *dst) const;
   
   void CopyRowsFromMat(const CuMatrixBase<Real> &M);
+
+  void CopyRowsFromMat(const MatrixBase<Real> &M);
+  
   /// Math operations
   void SetZero();
   void Set(Real value);
@@ -143,6 +147,8 @@ class CuVectorBase {
     return CuValue<Real>(data_ + i);
   }
 
+  Real Norm(BaseFloat p); // Only works for p = 1 and p = 2.
+            
   inline Real operator() (MatrixIndexT i) const {
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                           static_cast<UnsignedMatrixIndexT>(dim_));

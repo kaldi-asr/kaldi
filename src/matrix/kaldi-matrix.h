@@ -149,6 +149,10 @@ class MatrixBase {
   /// Note that rv.Dim() must either equal NumRows()*NumCols() or
   /// NumCols()-- this has two modes of operation.
   void CopyRowsFromVec(const VectorBase<Real> &v);
+
+  /// This version of CopyRowsFromVec is implemented in ../cudamatrix/cu-vector.cc
+  void CopyRowsFromVec(const CuVectorBase<Real> &v);
+  
   template<typename OtherReal>
   void CopyRowsFromVec(const VectorBase<OtherReal> &v);
 
