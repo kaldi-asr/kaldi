@@ -623,7 +623,6 @@ void CuMatrixBase<Real>::MulElements(const CuMatrixBase<Real>& A) {
 
     KALDI_ASSERT(num_cols_ == A.NumCols());
     KALDI_ASSERT(num_rows_ == A.NumRows());
-    KALDI_ASSERT(stride_ == A.Stride());
     
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
@@ -647,7 +646,6 @@ void CuMatrixBase<Real>::Max(const CuMatrixBase<Real>& A) {
 
     KALDI_ASSERT(num_cols_ == A.NumCols());
     KALDI_ASSERT(num_rows_ == A.NumRows());
-    KALDI_ASSERT(stride_ == A.Stride());
     
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
@@ -1560,34 +1558,17 @@ void CuMatrixBase<Real>::PermuteColumns(const CuMatrixBase<Real> &src,
   }
 }
 
-/*
-template<typename Real>
-Real CuMatrixBase<Real>::Sum() const {
-  Real result = 0.0;
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
-    Real* device_result;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_result), sizeof(Real)));
-    CU_SAFE_CALL(cudaMemset(device_result,0, sizeof(Real)));
-    cuda_sum(dimGrid, dimBlock, data_, device_result, Dim());
-    CU_SAFE_CALL(cudaGetLastError());
-    CU_SAFE_CALL(cudaMemcpy(&result, device_result, sizeof(Real), cudaMemcpyDeviceToHost));
-    CU_SAFE_CALL(cudaFree(device_result));
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-#endif
-  {
-    result = Mat().Sum();
-  }
-  return result;
-}
-*/
 
 template<typename Real>
-void CuMatrix<Real>::SetRandn() {
+Real CuMatrixBase<Real>::Sum() const {
+  CuVector<Real> row_sum(NumCols());
+  row_sum.AddRowSumMat(1.0, *this, 0.0);
+  return row_sum.Sum();
+}
+
+
+template<typename Real>
+void CuMatrixBase<Real>::SetRandn() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuRand<Real> tmp;

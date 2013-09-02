@@ -26,6 +26,7 @@
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-tp-matrix.h"
+#include "cudamatrix/cu-sp-matrix.h"
 #include "cudamatrix/cu-math.h"
 
 using namespace kaldi;
@@ -475,33 +476,61 @@ template<class Real> void CuVectorUnitTestAddDiagMat2() {
   cu_vector.AddDiagMat2(alpha, cuM, kNoTrans, beta);
   vector.AddDiagMat2(alpha, M, kNoTrans, beta);
 
-  CuVector<Real> cu2(cu_vector);
+  CuVector<Real> cu2(vector);
   AssertEqual(cu2, cu_vector);
 }
 
 template<class Real> void CuVectorUnitTestAddMatVec() {
-  int32 dim = 100;
-  CuVector<Real> cu_vector(dim);
-  cu_vector.SetRandn();
-  Vector<Real> vector(cu_vector);
+  for (int32 i = 0; i < 5; i++) {
+    int32 M = 100 + rand() % 256, N = 100 + rand() % 256;
 
-  Matrix<Real> M(dim, dim);
-  M.SetRandn();
-  CuMatrix<Real> cuM(M);
+    bool transpose = (i % 2 == 0);
 
-  Vector<Real> V(dim);
-  V.SetRandn();
-  CuVector<Real> cuV(V);
+    CuVector<Real> src_cu(M);
+    src_cu.SetRandn();
+    Vector<Real> src(src_cu);
 
-  Real alpha = rand();
-  Real beta = rand();
-  
-  cu_vector.AddMatVec(alpha, cuM, kNoTrans, cuV, beta);
-  vector.AddMatVec(alpha, M, kNoTrans, V, beta);
+    CuVector<Real> dst_cu(N);
+    dst_cu.SetRandn();
+    Vector<Real> dst(dst_cu);
 
-  CuVector<Real> cu2(cu_vector);
-  AssertEqual(cu2, cu_vector);
+    CuMatrix<Real> mat_cu(transpose ? M : N, transpose ? N : M);
+    mat_cu.SetRandn();
+    Matrix<Real> mat(mat_cu);
 
+    BaseFloat alpha = 0.5 * (rand() % 10), beta = 0.5 * (rand() % 10);
+    dst_cu.AddMatVec(alpha, mat_cu, transpose ? kTrans : kNoTrans,
+                     src_cu, beta);
+    dst.AddMatVec(alpha, mat, transpose ? kTrans : kNoTrans,
+                  src, beta);
+    Vector<Real> dst2(dst_cu);
+    AssertEqual(dst, dst2);
+  }
+}
+
+
+template<class Real> void CuVectorUnitTestAddSpVec() {
+  for (int32 i = 0; i < 5; i++) {
+    int32 M = 100 + rand() % 256;
+
+    CuVector<Real> src_cu(M);
+    src_cu.SetRandn();
+    Vector<Real> src(src_cu);
+
+    CuVector<Real> dst_cu(M);
+    dst_cu.SetRandn();
+    Vector<Real> dst(dst_cu);
+
+    CuSpMatrix<Real> mat_cu(M);
+    mat_cu.SetRandn();
+    SpMatrix<Real> mat(mat_cu);
+    
+    BaseFloat alpha = 0.5 * (rand() % 5), beta = 0.5 * (rand() % 5);
+    dst_cu.AddSpVec(alpha, mat_cu, src_cu, beta);
+    dst.AddSpVec(alpha, mat, src, beta);
+    Vector<Real> dst2(dst_cu);
+    AssertEqual(dst, dst2);
+  }
 }
 
 
@@ -533,6 +562,7 @@ template<class Real> void CuVectorUnitTest() {
   CuVectorUnitTestApplyFloor<Real>();
   CuVectorUnitTestApplyPow<Real>();
   CuVectorUnitTestAddMatVec<Real>();
+  CuVectorUnitTestAddSpVec<Real>();
   CuVectorUnitTestAddVecVec<Real>();
   CuVectorUnitTestAddDiagMat2<Real>();
 }

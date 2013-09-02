@@ -430,6 +430,14 @@ static void UnitTestCuMatrixAddMat() {
   AssertEqual(Ha,Ha2);
 }
 
+template<class Real> 
+static void UnitTestCuMatrixSum() {
+  int32 M = 100 + rand() % 300, N = 100 + rand() % 300;
+  CuMatrix<Real> A(M, N);
+  A.SetRandn();
+  Matrix<Real> mA(A);
+  KALDI_ASSERT(ApproxEqual(mA.Sum(), A.Sum()));
+}
 
 
 template<class Real> 
@@ -1166,6 +1174,7 @@ template<class Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixMulRowsVec<Real>();
   UnitTestCuMatrixDivRowsVec<Real>();
   UnitTestCuMatrixAddMat<Real>();
+  UnitTestCuMatrixSum<Real>();
   UnitTestCuMatrixAddVecToCols<Real>();
   UnitTestCuMatrixAddVecToRows<Real>();
   UnitTestCuMatrixAddMatMat<Real>();

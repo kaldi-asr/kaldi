@@ -51,7 +51,6 @@ void cudaF_trace_sp_sp_fd(int Gr, int Bl, const float* A, const float* B, float*
 void cudaF_trace_sp_sp_df(int Gr, int Bl, const double* A, const float* B, double* value, int dim);
 void cudaF_copy_col_from_vec(int Gr, int Bl, float* mat, const float* v, int col, MatrixDim d);
 void cudaF_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
-void cudaF_sum(dim3 Gr, dim3 Bl, float* mat, float* value, MatrixDim d);
 void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d);
 void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);  
 void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim d);
@@ -142,7 +141,6 @@ void cudaD_trace_sp_sp_fd(int Gr, int Bl, const float* A, const double* B, float
 void cudaD_trace_sp_sp_df(int Gr, int Bl, const double* A, const double* B, double* value, int dim);
 void cudaD_copy_col_from_vec(int Gr, int Bl, double* mat, const double* v, int col, MatrixDim d);
 void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
-void cudaD_sum(dim3 Gr, dim3 Bl, double* mat, double* value, MatrixDim d);
 void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d);
 void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);  
 void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim d);

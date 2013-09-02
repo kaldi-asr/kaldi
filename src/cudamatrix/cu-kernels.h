@@ -75,7 +75,6 @@ inline void cuda_copy_from_mat_trans(dim3 Gr, dim3 Bl, double* mat_out, const fl
 
 inline void cuda_copy_col_from_vec(int Gr, int Bl, float* mat, const float* v, int col, MatrixDim d) { cudaF_copy_col_from_vec(Gr,Bl,mat,v,col,d); }
 inline void cuda_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) { cudaF_apply_exp(Gr,Bl,mat,d); }
-inline void cuda_sum(dim3 Gr, dim3 Bl, float* mat, float* value, MatrixDim d) { cudaF_sum(Gr,Bl,mat,value,d); }
 inline void cuda_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim dim) { cudaF_apply_pow(Gr,Bl,mat,power,dim); }
 inline void cuda_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim dim) { cudaF_apply_heaviside(Gr,Bl,mat,dim); }
 inline void cuda_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim dim) { cudaF_apply_floor(Gr,Bl,mat,floor_val,dim); }
@@ -172,7 +171,6 @@ inline void cuda_trace_sp_sp_fd(int Gr, int Bl, const float* A, const double* B,
 inline void cuda_trace_sp_sp_df(int Gr, int Bl, const double* A, const double* B, double* value, int dim) { cudaD_trace_sp_sp_df(Gr,Bl,A,B,value,dim); }
 inline void cuda_copy_col_from_vec(int Gr, int Bl, double* mat, const double* v, int col, MatrixDim d) { cudaD_copy_col_from_vec(Gr,Bl,mat,v,col,d); }
 inline void cuda_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) { cudaD_apply_exp(Gr,Bl,mat,d); }
-inline void cuda_sum(dim3 Gr, dim3 Bl, double* mat, double* value, MatrixDim d) { cudaD_sum(Gr,Bl,mat,value,d); }
 inline void cuda_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim dim) { cudaD_apply_pow(Gr,Bl,mat,power,dim); }
 inline void cuda_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim dim) { cudaD_apply_heaviside(Gr,Bl,mat,dim); }
 inline void cuda_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim dim) { cudaD_apply_floor(Gr,Bl,mat,floor_val,dim); }

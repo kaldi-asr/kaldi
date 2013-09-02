@@ -65,6 +65,15 @@ void CuPackedMatrix<Real>::Resize(MatrixIndexT rows,
   }
 }
 
+template<typename Real>
+void CuPackedMatrix<Real>::SetRandn() {
+  if (num_rows_ != 0) {
+    MatrixIndexT size = num_rows_ * (num_rows_ + 1) / 2;
+    CuSubVector<Real> tmp(data_, size);
+    CuRand<Real> rand;
+    rand.RandGaussian(&tmp);
+  }
+}
 
 template<typename Real>
 void CuPackedMatrix<Real>::Destroy() {

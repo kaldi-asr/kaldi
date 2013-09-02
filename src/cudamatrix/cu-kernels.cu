@@ -798,22 +798,6 @@ static void _vec_apply_log(Real* v, Real* flag, int dim) {
   }
 }
 
-template<typename Real>
-__global__
-static void _sum(Real* mat, Real* value, MatrixDim d) {
-  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda index = i + j * d.stride;
-
-  if (i < d.cols && j < d.rows) {
-    __shared__ Real row_data[256];
-    row_data[index] = mat[index];
-    __syncthreads();
-    
-    *value = _sum_reduce(row_data);
-  }
-}
-
 
 template<typename Real>
 __global__
@@ -1398,10 +1382,6 @@ void cudaF_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _apply_exp<<<Gr,Bl>>>(mat,d);
 }
 
-void cudaF_sum(dim3 Gr, dim3 Bl, float* mat, float* value, MatrixDim d) {
-  _sum<<<Gr,Bl>>>(mat, value, d);
-}
-
 void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d) {
   _apply_pow<<<Gr,Bl>>>(mat, power, d);
 }
@@ -1729,10 +1709,6 @@ void cudaD_copy_col_from_vec(int Gr, int Bl, double* mat, const double* v, int c
 
 void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
   _apply_exp<<<Gr,Bl>>>(mat,d);
-}
-
-void cudaD_sum(dim3 Gr, dim3 Bl, double* mat, double* value, MatrixDim d) {
-  _sum<<<Gr,Bl>>>(mat, value, d);
 }
 
 void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d) {

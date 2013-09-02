@@ -138,6 +138,9 @@ class CuVectorBase {
   void AddVecVec(Real alpha, const CuVectorBase<Real> &v,
                  const CuVectorBase<Real> &r, Real beta);
 
+  void AddSpVec(const Real alpha, const CuSpMatrix<Real> &S,
+                const CuVectorBase<Real> &v, const Real beta);
+
   void AddDiagMat2(Real alpha, const CuMatrixBase<Real> &M,
                    MatrixTransposeType trans, Real beta);
 
@@ -295,6 +298,14 @@ void VectorBase<Real>::CopyFromVec(const CuVectorBase<OtherReal> &cu) {
   cu.CopyToVec(this);
 }
 
+// declare template specializations.
+template <>
+template <>    
+void CuVectorBase<double>::CopyFromVec<float>(const CuVectorBase<float> &src);
+
+template<>
+template <>
+void CuVectorBase<float>::CopyFromVec<double>(const CuVectorBase<double> &src);
 
 template<typename Real>
 template<typename OtherReal>
@@ -304,8 +315,5 @@ Vector<Real>::Vector(const CuVectorBase<OtherReal> &cu) {
 }
 
 } // namespace
-
-
-#include "cudamatrix/cu-vector-inl.h"
 
 #endif

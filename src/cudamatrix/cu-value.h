@@ -60,7 +60,8 @@ class CuValue {
     }
   }
 
-  inline Real operator += (Real r) { *this = r + static_cast<Real>(*this); }
+  inline Real operator += (Real r) { return (*this = r + Real(*this)); }
+    
 
   inline operator Real () const { // assignment to Real
 #if HAVE_CUDA == 1

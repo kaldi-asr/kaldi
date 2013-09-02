@@ -310,8 +310,10 @@ class CuMatrixBase {
     return CuValue<Real>(data_ + r * stride_ + c);  // will be casted to Real.
   }
 
-  //Real Sum() const;
-        
+  Real Sum() const;
+
+  void SetRandn();
+  
  protected:
   // The following two functions should only be called if we did not compile with CUDA
   // or could not get a CUDA card; in that case the contents are interpreted the
@@ -423,11 +425,12 @@ class CuMatrix: public CuMatrixBase<Real> {
   /// Allocate the memory
   void Resize(MatrixIndexT rows, MatrixIndexT cols,
               MatrixResizeType resize_type = kSetZero);
-  
-  void SetRandn();
-  
+    
   void Swap(Matrix<Real> *mat);
   void Swap(CuMatrix<Real> *mat);
+
+  template<class OtherReal>
+  void Swap(CuMatrix<OtherReal> *mat);
   
   /// I/O functions
   void Read(std::istream &is, bool binary);
