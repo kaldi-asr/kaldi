@@ -227,6 +227,31 @@ static void UnitTestCuMatrixApplyPow() {
 }
 
 template<class Real> 
+static void UnitTestCuMatrixApplyFloor() {
+
+  for (int32 i = 0; i < 3; i++) {
+    BaseFloat floor = 0.33 * (rand() % 6);
+    
+    Matrix<Real> H(10 + rand() % 600, 10 + rand() % 20);
+    H.SetRandn();
+    if (i == 2) { Matrix<Real> tmp(H, kTrans); H = tmp; }
+    
+    CuMatrix<Real> cH(H);
+
+    cH.ApplyFloor(floor);
+
+    H.ApplyFloor(floor);
+    Matrix<Real> H2(cH);
+
+    KALDI_LOG << "Floor is " << floor;
+    KALDI_LOG << "H is " << H;
+    KALDI_LOG << "H2 is " << H2;
+    AssertEqual(H, H2);
+  }
+}
+
+
+template<class Real> 
 static void UnitTestCuMatrixApplyHeaviside() {
 
   for (int32 i = 0; i < 3; i++) {
@@ -1089,6 +1114,7 @@ template<class Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixSigmoid<Real>();
   UnitTestCuMatrixSoftHinge<Real>();
   UnitTestCuMatrixApplyPow<Real>();
+  UnitTestCuMatrixApplyFloor<Real>();
   UnitTestCuMatrixApplyHeaviside<Real>();
   UnitTestCuMatrixMulElements<Real>();
   UnitTestCuMatrixMulColsVec<Real>();

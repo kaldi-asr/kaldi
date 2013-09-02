@@ -845,29 +845,23 @@ static void _trace(const Real* mat, Real* value, int dim) {
 
 template<typename Real>
 __global__
-static void _vec_apply_floor(Real *v, Real floor_val, int *num, int dim) {
+static void _vec_apply_floor(Real *v, Real floor_val, float *count, int dim) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  if(blockIdx.y > 0) return;
-
+  
   if ( i < dim) {
-    __shared__ int row_data[256];
-
-    //copy the input to row_data
     if ( v[i] < floor_val) {
-      row_data[i] = 1;
       v[i] = floor_val;
+      count[i] = 1;
     } else {
-      row_data[i] = 0;
+      count[i] = 0;
     }
-
-    __syncthreads();
-
-    //get the sum
-    *num = _sum_reduce(row_data);
-}
+  }
 }
 
 
+// Caution, here i/block{idx,dim}.x is the row index and j/block{idx,dim}.y is the col index.
+// this is for no reason, really, I just happened to prefer this
+// at the time. [dan]
 template<typename Real>
 __global__
 static void _apply_pow(Real* mat, Real power, MatrixDim d) {
@@ -890,6 +884,9 @@ static void _apply_pow(Real* mat, Real power, MatrixDim d) {
   }
 }
 
+// Caution, here i/block{idx,dim}.x is the row index and j/block{idx,dim}.y is the col index.
+// this is for no reason, really, I just happened to prefer this
+// at the time. [dan]
 template<typename Real>
 __global__
 static void _apply_heaviside(Real* mat, MatrixDim d) {
@@ -906,13 +903,26 @@ static void _apply_heaviside(Real* mat, MatrixDim d) {
 template<typename Real>
 __global__
 static void _apply_floor(Real* mat, Real floor_val, MatrixDim d) {
-  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j * d.stride;
+
+  if (i < d.cols && j < d.rows) {
+    if (mat[index] < floor_val)
+      mat[index] = floor_val;
+  }
+}
+
+template<typename Real>
+__global__
+static void _apply_ceiling(Real* mat, Real ceiling_val, MatrixDim d) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j * d.stride;
 
   if (i < d.cols && j < d.rows ) {
-    if (mat[index] < floor_val)
-      mat[index] = floor_val;
+    if (mat[index] > ceiling_val)
+      mat[index] = ceiling_val;
   }
 }
 
@@ -1376,6 +1386,10 @@ void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim 
   _apply_floor<<<Gr,Bl>>>(mat, floor_val, d);
 }
 
+void cudaF_apply_ceiling(dim3 Gr, dim3 Bl, float* mat, float ceiling_val, MatrixDim d) {
+  _apply_ceiling<<<Gr,Bl>>>(mat, ceiling_val, d);
+}
+
 void cudaF_set_diag(int Gr, int Bl, float* mat, float value, MatrixDim d) {
   _set_diag<<<Gr,Bl>>>(mat,value,d);
 }
@@ -1510,8 +1524,8 @@ void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim) {
   _vec_sum<<<Gr,Bl>>>(v, value, dim);
 }
 
-void cudaF_vec_apply_floor(int Gr, int Bl, float* v, float floor_val, int* num, int dim) {
-  _vec_apply_floor<<<Gr,Bl>>>(v,floor_val,num,dim);
+void cudaF_vec_apply_floor(int Gr, int Bl, float* v, float floor_val, float *count, int dim) {
+  _vec_apply_floor<<<Gr,Bl>>>(v,floor_val,count,dim);
 }
 
 void cudaF_vec_apply_exp(int Gr, int Bl, float* v, int dim) {
@@ -1696,6 +1710,10 @@ void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDi
   _apply_floor<<<Gr,Bl>>>(mat, floor_val, d);
 }
 
+void cudaD_apply_ceiling(dim3 Gr, dim3 Bl, double* mat, double ceiling_val, MatrixDim d) {
+  _apply_ceiling<<<Gr,Bl>>>(mat, ceiling_val, d);
+}
+
 void cudaD_set_diag(int Gr, int Bl, double* mat, double value, MatrixDim d) {
   _set_diag<<<Gr,Bl>>>(mat,value,d);
 }
@@ -1830,8 +1848,8 @@ void cudaD_vec_sum(int Gr, int Bl, double* v, double* value, int dim) {
   _vec_sum<<<Gr,Bl>>>(v,value,dim);
 }
 
-void cudaD_vec_apply_floor(int Gr, int Bl, double* v, double floor_val, int* num, int dim) {
-  _vec_apply_floor<<<Gr,Bl>>>(v,floor_val,num,dim);
+void cudaD_vec_apply_floor(int Gr, int Bl, double* v, double floor_val, float *count, int dim) {
+  _vec_apply_floor<<<Gr,Bl>>>(v,floor_val,count,dim);
 }
 
 void cudaD_vec_apply_exp(int Gr, int Bl, double* v, int dim) {

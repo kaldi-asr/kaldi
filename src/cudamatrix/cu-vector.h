@@ -110,6 +110,7 @@ class CuVectorBase {
   void ApplyExp();
   void ApplyLog();
   MatrixIndexT ApplyFloor(Real floor_val);
+  void ApplyPow(Real power);
   Real Sum() const;
   void SetRandn();
   

@@ -167,6 +167,7 @@ class CuMatrixBase {
   void ApplyPow(Real power);
   void ApplyHeaviside(); ///< For each element, sets x = (x > 0 ? 1.0 : 0.0)
   void ApplyFloor(Real floor_val);
+  void ApplyCeiling(Real ceiling_val);
   void ApplyExp();
   /// Softmax nonlinearity
   /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik), done to each row

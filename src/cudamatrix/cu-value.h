@@ -45,6 +45,9 @@ class CuValue {
       return r;
     }
   }
+
+  inline Real operator += (Real r) { *this = r + static_cast<Real>(*this); }
+
   inline operator Real () const { // assignment to Real
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {

@@ -1271,6 +1271,7 @@ Real TraceMatMat(const CuMatrixBase<Real> &A,
     }
     CU_SAFE_CALL(cudaGetLastError());
     CU_SAFE_CALL(cudaMemcpy(&result, device_result, sizeof(Real), cudaMemcpyDeviceToHost));
+    CU_SAFE_CALL(cudaFree(device_result));
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -1420,6 +1421,25 @@ void CuMatrixBase<Real>::ApplyFloor(Real floor_val) {
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::ApplyCeiling(Real ceiling_val) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+
+    cuda_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().ApplyCeiling(ceiling_val);
+  }
+}
+
+
 /*
 template<typename Real>
 Real CuMatrixBase<Real>::Sum() const {
@@ -1435,6 +1455,7 @@ Real CuMatrixBase<Real>::Sum() const {
     cuda_sum(dimGrid, dimBlock, data_, device_result, Dim());
     CU_SAFE_CALL(cudaGetLastError());
     CU_SAFE_CALL(cudaMemcpy(&result, device_result, sizeof(Real), cudaMemcpyDeviceToHost));
+    CU_SAFE_CALL(cudaFree(device_result));
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif

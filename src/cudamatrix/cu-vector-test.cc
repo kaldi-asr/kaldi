@@ -372,22 +372,44 @@ template<class Real> void CuVectorUnitTestApplyLog() {
 }
 
 template<class Real> void CuVectorUnitTestApplyFloor() {
-  int32 dim = 100;
-  CuVector<Real> cu_vector(dim);
-  cu_vector.SetRandn();
+  for (int32 l = 0; l < 10; l++) {
+    int32 dim = 100 + rand() % 700;
+    CuVector<Real> cu_vector(dim);
+    cu_vector.SetRandn();
 
-  Vector<Real> vector(cu_vector);
-
-  int32 i = cu_vector.ApplyFloor(0);
-  int32 j = vector.ApplyFloor(0);
+    Vector<Real> vector(cu_vector);
+    BaseFloat floor = 0.33 * (-5 + rand() % 10);
+    int32 i = cu_vector.ApplyFloor(floor);
+    int32 j = vector.ApplyFloor(floor);
   
-  CuVector<Real> cu2(vector);
+    CuVector<Real> cu2(vector);
 
-  AssertEqual(cu2, cu_vector);//hxu
-  if (i != j) {
-    KALDI_WARN << "ApplyFloor return code broken...";
+    AssertEqual(cu2, cu_vector);
+    if (i != j) {
+      KALDI_WARN << "ApplyFloor return code broken...";
+    }
+    KALDI_ASSERT(i==j);
   }
-  // KALDI_ASSERT(i==j); //this should not be commented, but there is a bug unfixed yet
+}
+
+template<class Real> void CuVectorUnitTestApplyPow() {
+  for (int32 l = 0; l < 10; l++) {
+    int32 dim = 100 + rand() % 700;
+
+    CuVector<Real> cu_vector(dim);
+    cu_vector.SetRandn();
+
+    Vector<Real> vector(cu_vector);
+
+    BaseFloat pow = -2 + (rand() % 5);
+    cu_vector.ApplyPow(pow);
+    vector.ApplyPow(pow);
+  
+    CuVector<Real> cu2(vector);
+    KALDI_LOG << "cu2 = " << cu2;
+    KALDI_LOG << "cu_vector = " << cu_vector;
+    AssertEqual(cu2, cu_vector);
+  }
 }
 
 template<class Real> void CuVectorUnitTestAddVecVec() {
@@ -482,6 +504,7 @@ template<class Real> void CuVectorUnitTest() {
   CuVectorUnitTestApplyExp<Real>();
   CuVectorUnitTestApplyLog<Real>();
   CuVectorUnitTestApplyFloor<Real>();
+  CuVectorUnitTestApplyPow<Real>();
   CuVectorUnitTestAddMatVec<Real>();
   CuVectorUnitTestAddVecVec<Real>();
   CuVectorUnitTestAddDiagMat2<Real>();

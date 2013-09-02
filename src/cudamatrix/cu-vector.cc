@@ -221,11 +221,10 @@ MatrixIndexT CuVectorBase<Real>::ApplyFloor(Real floor_val) {
     int dimBlock(CU2DBLOCK);
     int dimGrid(n_blocks(dim_,CU2DBLOCK));
 
-    int* device_num_floored;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_num_floored), sizeof(int)))
-    CU_SAFE_CALL(cudaMemset(device_num_floored,0, sizeof(int)));
-    cuda_vec_apply_floor(dimGrid, dimBlock, data_, floor_val, device_num_floored, dim_);
-    CU_SAFE_CALL(cudaMemcpy(&num_floored, device_num_floored, sizeof(int), cudaMemcpyDeviceToHost));
+    CuVector<float> count_vec(dim_, kUndefined);
+    
+    cuda_vec_apply_floor(dimGrid, dimBlock, data_, floor_val, count_vec.Data(), dim_);
+    num_floored = count_vec.Sum();
     CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim.Elapsed());
   } else
 #endif
@@ -234,6 +233,27 @@ MatrixIndexT CuVectorBase<Real>::ApplyFloor(Real floor_val) {
   }
   return num_floored;
 
+}
+
+template<typename Real>
+void CuVectorBase<Real>::ApplyPow(Real power) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+
+    Timer tim;
+    // for this particular kernel, x is #rows, y is #cols.  so
+    // fake matrix with 1 row, Dim() cols.
+    dim3 dimBlock(1, CU1DBLOCK);
+    dim3 dimGrid(1, n_blocks(Dim(), CU1DBLOCK));
+    ::MatrixDim fake_matrix_dim = { 1, Dim(), 1 };
+    // num_cols is Dim(), num_rows is 1, stride is 1 (it's a don't-care).
+    cuda_apply_pow(dimGrid, dimBlock, data_, power, fake_matrix_dim);
+    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim.Elapsed());
+  } else
+#endif
+  {
+    Vec().ApplyPow(power);
+  }
 }
 
 
@@ -273,7 +293,7 @@ void CuVectorBase<Real>::ApplyLog() {
     CU_SAFE_CALL(cudaMemcpy(&host_flag, device_flag, sizeof(Real), cudaMemcpyDeviceToHost));
     if (host_flag > 0)
       KALDI_ERR << "Trying to take log of a negative number.";
-    
+    CU_SAFE_CALL(cudaFree(device_flag));
     CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyLog", tim.Elapsed());
 
   } else
@@ -451,6 +471,7 @@ Real CuVectorBase<Real>::Min() const {
     cuda_min(dimGrid, dimBlock, data_, device_value, dim_);
     CU_SAFE_CALL(cudaGetLastError());
     CU_SAFE_CALL(cudaMemcpy(&result, device_value, sizeof(Real), cudaMemcpyDeviceToHost));
+    CU_SAFE_CALL(cudaFree(device_value));
     CuDevice::Instantiate().AccuProfile("CuVectorBase::Min", tim.Elapsed());
 
   } else
