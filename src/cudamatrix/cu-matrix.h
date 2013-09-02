@@ -74,6 +74,13 @@ class CuMatrixBase {
                                   const CuStlVector<int32> &copy_from_idx,
                                   CuMatrixBase<Real> *tgt);
 
+  /// If forward == true, does (*this)(reorder[r], c) = src(r, c),
+  /// else does (*this)(r, c) = src(reorder[r], c).  Results undefined
+  /// if "reorder" is not a permutation of [ 0, ... , NumCols()-1 ]
+  void PermuteColumns(const CuMatrixBase<Real> &src,
+                      const std::vector<int32> &reorder,                      
+                      bool forward);
+
   friend Real TraceMatMat<Real>(const CuMatrixBase<Real> &A,
                                 const CuMatrixBase<Real> &B,
                                 MatrixTransposeType trans);

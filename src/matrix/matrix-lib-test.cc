@@ -529,6 +529,29 @@ static void UnitTestNorm() {  // test some simple norm properties: scaling.  als
 
 
 template<class Real>
+static void UnitTestPermuteColumns() {
+  for (MatrixIndexT p = 0; p < 10; p++) {
+    bool forward = (p % 2 == 0);
+    MatrixIndexT dimM = 10 + rand() % 10, dimN = 10 + rand() % 10;
+    Matrix<Real> M(dimM, dimN);
+    InitRand(&M);
+    Matrix<Real> N(dimM, dimN), O(dimM, dimN);
+    std::vector<int32> reorder(dimN);
+    for (int32 i = 0; i < dimN; i++) reorder[i] = i;
+    std::random_shuffle(reorder.begin(), reorder.end());
+    
+    N.PermuteColumns(M, reorder, forward);
+
+    for (int32 i = 0; i < dimM; i++)
+      for (int32 j = 0; j < dimN; j++)
+        if (forward) O(i, reorder[j]) = M(i, j);
+        else O(i, j) = M(i, reorder[j]);
+
+    AssertEqual(N, O);
+  }
+}
+
+template<class Real>
 static void UnitTestSimpleForMat() {  // test some simple operates on all kinds of matrix
 
   for (MatrixIndexT p = 0; p < 10; p++) {
@@ -3820,6 +3843,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestSigmoid<Real>();
   UnitTestSoftHinge<Real>();
   UnitTestNorm<Real>();
+  UnitTestPermuteColumns<Real>();
   UnitTestMul<Real>();
   KALDI_LOG << " Point I";
   UnitTestSolve<Real>();

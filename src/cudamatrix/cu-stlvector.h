@@ -39,10 +39,15 @@ class CuStlVector {
    : dim_(0), data_(NULL) { 
   }
   /// Constructor with memory initialisation
-  CuStlVector<IntType>(MatrixIndexT dim)
-   : dim_(0), data_(NULL) { 
+  explicit CuStlVector<IntType>(MatrixIndexT dim):
+  dim_(0), data_(NULL) { 
     Resize(dim); 
   }
+
+  /// Constructor from CPU-based int vector
+  explicit CuStlVector<IntType>(const std::vector<IntType> &src):
+    dim_(0), data_(NULL) { CopyFromVec(src); }
+  
 
   /// Destructor
   ~CuStlVector() {

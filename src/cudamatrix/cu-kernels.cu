@@ -915,6 +915,22 @@ static void _apply_floor(Real* mat, Real floor_val, MatrixDim d) {
 
 template<typename Real>
 __global__
+static void _permute_columns(Real* dst, const Real *src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  // Note: in this routine we don't do the traditional check for 
+  // if (i < d.cols && j < d.rows); it's not really necessary as we invoke
+  // the kernel for the correct dims.
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i < dst_dim.cols && j < dst_dim.rows) {
+    int32_cuda src_index = i + j * src_stride;
+    Real val = src[src_index]; 
+    int32_cuda dst_index = reorder[i] + j * dst_dim.stride;
+    dst[dst_index] = val;
+  } 
+}
+
+template<typename Real>
+__global__
 static void _apply_ceiling(Real* mat, Real ceiling_val, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -1382,6 +1398,11 @@ void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _apply_heaviside<<<Gr,Bl>>>(mat, d);
 
 }
+
+void cudaF_permute_columns(dim3 Gr, dim3 Bl, float* dst, const float* src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _permute_columns<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
+}
+
 void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim d) {
   _apply_floor<<<Gr,Bl>>>(mat, floor_val, d);
 }
@@ -1704,6 +1725,10 @@ void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d) {
 
 void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
   _apply_heaviside<<<Gr,Bl>>>(mat, d);
+}
+
+void cudaD_permute_columns(dim3 Gr, dim3 Bl, double* dst, const double* src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _permute_columns<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
 void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim d) {

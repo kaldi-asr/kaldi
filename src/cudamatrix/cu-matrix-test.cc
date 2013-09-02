@@ -227,6 +227,32 @@ static void UnitTestCuMatrixApplyPow() {
 }
 
 template<class Real> 
+static void UnitTestCuMatrixPermuteColumns() {
+  for (MatrixIndexT p = 0; p < 4; p++) {
+    bool forward = (p % 2 == 0);
+    MatrixIndexT dimM = 10 + rand() % 10, dimN = 10 + rand() % 10;
+    CuMatrix<Real> M(dimM, dimN);
+    M.SetRandn();
+    CuMatrix<Real> N(dimM, dimN), O(dimM, dimN);
+    std::vector<int32> reorder(dimN);
+    for (int32 i = 0; i < dimN; i++) reorder[i] = i;
+    std::random_shuffle(reorder.begin(), reorder.end());
+    
+    N.PermuteColumns(M, reorder, forward);
+
+    for (int32 i = 0; i < dimM; i++) {
+      for (int32 j = 0; j < dimN; j++) {
+        if (forward) O(i, reorder[j]) = M(i, j);
+        else O(i, j) = M(i, reorder[j]);
+      }
+    }
+    AssertEqual(N, O);
+  }
+}
+
+
+
+template<class Real> 
 static void UnitTestCuMatrixApplyFloor() {
 
   for (int32 i = 0; i < 3; i++) {
@@ -243,9 +269,6 @@ static void UnitTestCuMatrixApplyFloor() {
     H.ApplyFloor(floor);
     Matrix<Real> H2(cH);
 
-    KALDI_LOG << "Floor is " << floor;
-    KALDI_LOG << "H is " << H;
-    KALDI_LOG << "H2 is " << H2;
     AssertEqual(H, H2);
   }
 }
@@ -1127,6 +1150,7 @@ template<class Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixCopyFromMat<Real>();
   UnitTestCuMatrixCopyFromTp<Real>();
   UnitTestCuMatrixAddMatTp<Real>();
+  UnitTestCuMatrixPermuteColumns<Real>();
   UnitTestCuMatrixAddTpMat<Real>();
   //test CuVector<Real> methods
   UnitTestCuVectorAddVec<Real>();

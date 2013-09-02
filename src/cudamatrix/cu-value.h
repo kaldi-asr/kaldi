@@ -26,13 +26,27 @@ namespace kaldi {
 
 /// The following class is used to simulate non-const
 /// references to Real, e.g. as returned by the non-const operator ().
-/// Note: this class uses the default assignment and constructor
-/// operators.  This class is also used as a convenient way of
+/// This class is also used as a convenient way of
 /// reading a single Real value from the device.
 template<class Real>
 class CuValue {
  public:
   CuValue(Real *data): data_(data) { }
+  CuValue(const CuValue &other): data_(other.data_) { }
+
+  inline CuValue operator = (const CuValue<Real> &other) {
+#if HAVE_CUDA == 1
+    if (CuDevice::Instantiate().Enabled()) {
+      CU_SAFE_CALL(cudaMemcpy(data_, other.data_, sizeof(Real), cudaMemcpyDeviceToDevice));
+      return *this;
+    } else
+#endif
+    {
+      *data_ = *other.data_;
+      return *this;
+    }
+  }
+  
   inline Real operator = (Real r) { // assignment from Real
 #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().Enabled()) {

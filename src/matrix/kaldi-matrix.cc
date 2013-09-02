@@ -2174,6 +2174,32 @@ void MatrixBase<Real>::SoftHinge(const MatrixBase<Real> &src) {
   }
 }
 
+template<typename Real>
+void MatrixBase<Real>::PermuteColumns(const MatrixBase<Real> &src,
+                                      const std::vector<int32> &reorder,                      
+                                      bool forward) {
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
+      this_stride = stride_, src_stride = src.stride_;
+  Real *this_data = this->data_;
+  const Real *src_data = src.data_;
+  KALDI_ASSERT(SameDim(*this, src) && static_cast<int32>(reorder.size()) == num_cols);
+    
+  if (forward) {
+    for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride, src_data += src_stride) {
+      const int32 *reorder_ptr = &(reorder[0]);
+      for (MatrixIndexT c = 0; c < num_cols; c++)
+        this_data[reorder_ptr[c]] = src_data[c];
+    }
+  } else {
+    for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride, src_data += src_stride) {
+      const int32 *reorder_ptr = &(reorder[0]);
+      for (MatrixIndexT c = 0; c < num_cols; c++)
+        this_data[c] = src_data[reorder_ptr[c]];
+    }
+  }    
+}
+  
+
 
 template<typename Real>
 void MatrixBase<Real>::Sigmoid(const MatrixBase<Real> &src) {

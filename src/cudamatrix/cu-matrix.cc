@@ -1440,6 +1440,41 @@ void CuMatrixBase<Real>::ApplyCeiling(Real ceiling_val) {
 }
 
 
+template<typename Real>
+void CuMatrixBase<Real>::PermuteColumns(const CuMatrixBase<Real> &src,
+                                        const std::vector<int32> &reorder,
+                                        bool forward) {
+  KALDI_ASSERT(SameDimAndStride(*this, src));  
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(static_cast<int32>(reorder.size()) == NumCols());
+    KALDI_ASSERT(SameDim(*this, src));
+    CuStlVector<int32> cuda_reorder;
+    if (forward) {
+      cuda_reorder.CopyFromVec(reorder);
+    } else {
+      int32 num_cols = NumCols();
+      std::vector<int32> reorder_backward(num_cols);
+      for (int32 i = 0; i < num_cols; i++) {
+        KALDI_ASSERT(reorder[i] >= 0 && reorder[i] < num_cols);
+        reorder_backward[reorder[i]] = i;
+      }
+      cuda_reorder.CopyFromVec(reorder_backward);
+    }
+    
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+    cuda_permute_columns(dimGrid, dimBlock, data_, src.Data(), cuda_reorder.Data(), Dim(), src.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().PermuteColumns(src.Mat(), reorder, forward);
+  }
+}
+
 /*
 template<typename Real>
 Real CuMatrixBase<Real>::Sum() const {
