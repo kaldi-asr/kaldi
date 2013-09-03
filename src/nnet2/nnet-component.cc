@@ -406,11 +406,10 @@ void NonlinearComponent::UpdateStats(const CuMatrixBase<BaseFloat> &out_value,
   count_ += out_value.NumRows();
   CuVector<BaseFloat> temp(InputDim());
   temp.AddRowSumMat(1.0, out_value, 0.0);
-  CuVector<double> temp_dbl(temp);
-  value_sum_.AddVec(1.0, temp_dbl);
+  value_sum_.AddVec(1.0, temp);
   if (deriv != NULL) {
     temp.AddRowSumMat(1.0, *deriv, 0.0);
-    deriv_sum_.AddVec(1.0, temp_dbl);
+    deriv_sum_.AddVec(1.0, temp);
   }
 }
 

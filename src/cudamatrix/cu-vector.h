@@ -92,6 +92,9 @@ class CuVectorBase {
   
   void AddVec(Real alpha, const CuVectorBase<Real> &vec, Real beta = 1.0);
 
+  template<class OtherReal>
+  void AddVec(Real alpha, const CuVectorBase<OtherReal> &vec, Real beta = 1.0);
+
   /// Sum the rows of the matrix, add to vector
   void AddRowSumMat(Real alpha, const CuMatrixBase<Real> &mat, Real beta = 1.0);
   /// Sum the columns of the matrix, add to vector

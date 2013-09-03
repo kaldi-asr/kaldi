@@ -194,7 +194,8 @@ template<class Real> void CuVectorUnitTestVecVec() {
 
 template<class Real> void CuVectorUnitTestAddVec() {
   int32 M = 10 % rand() % 100;
-  CuVector<Real> vec1(M), vec2(M);
+  CuVector<Real> vec1(M);
+  CuVector<Real> vec2(M);
   vec1.SetRandn();
   vec2.SetRandn();
   CuVector<Real> vec1_orig(vec1);
@@ -203,6 +204,31 @@ template<class Real> void CuVectorUnitTestAddVec() {
   
   for (int32 i = 0; i < M; i++)
     AssertEqual(vec1_orig(i) + alpha * vec2(i), vec1(i));
+}
+
+template<class Real> void CuVectorUnitTestAddVecCross() {
+  for (int32 i = 0; i < 4; i++) {
+    int32 M = 10 % rand() % 100;
+    CuVector<float> vec1(M);
+    CuVector<Real> vec2(M);
+    vec1.SetRandn();
+    vec2.SetRandn();
+
+    if (i == 0) {
+      CuVector<Real> vec1_orig(vec1);
+      Real alpha = 0.43243;
+      vec1.AddVec(alpha, vec2);
+  
+      for (int32 i = 0; i < M; i++)
+        AssertEqual(vec1_orig(i) + alpha * vec2(i), vec1(i));
+    } else {
+      CuVector<Real> vec2_orig(vec2);
+      Real alpha = 0.43243;
+      vec2.AddVec(alpha, vec1);
+      for (int32 i = 0; i < M; i++)
+        AssertEqual(vec2_orig(i) + alpha * vec1(i), vec2(i));
+    }
+  }
 }
 
 template<class Real> void CuVectorUnitTestAddVecExtra() {
@@ -544,6 +570,7 @@ template<class Real> void CuVectorUnitTest() {
 
   CuVectorUnitTestVecVec<Real>();
   CuVectorUnitTestAddVec<Real>();
+  CuVectorUnitTestAddVecCross<Real>();
   CuVectorUnitTestAddVecExtra<Real>();
   CuVectorUnitTestApproxEqual<Real>();
   CuVectorUnitTestScale<Real>();

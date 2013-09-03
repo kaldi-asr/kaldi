@@ -956,6 +956,23 @@ void CuVectorBase<Real>::AddVec(Real alpha, const CuVectorBase<Real> &vec,
 }
 
 
+template<class Real>
+template<class OtherReal>
+void CuVectorBase<Real>::AddVec(Real alpha, const CuVectorBase<OtherReal> &vec,
+                                Real beta) {
+  // We could implement this directly, without using a temporary-- this can
+  // be done later, when we have time.
+  CuVector<Real> temp(vec);
+  this->AddVec(alpha, temp, beta);
+}
+// instantiate the template above.
+template
+void CuVectorBase<float>::AddVec(float alpha, const CuVectorBase<double> &vec,
+                                 float beta);
+template
+void CuVectorBase<double>::AddVec(double alpha, const CuVectorBase<float> &vec,
+                                  double beta);
+
 template<typename Real>
 void CuVectorBase<Real>::AddRowSumMat(Real alpha, const CuMatrixBase<Real> &mat,
                                       Real beta) {
