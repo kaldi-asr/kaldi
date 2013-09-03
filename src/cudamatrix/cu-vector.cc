@@ -172,12 +172,11 @@ Real CuVectorBase<Real>::Norm(BaseFloat p) {
       return cublas_nrm2(dim_, data_, 1);
     }
   } else
-#else
+#endif
   {
     return Vec().Norm(p);
   }
 }
-#endif
 
 template<typename Real>
 void CuVectorBase<Real>::CopyRowsFromMat(const MatrixBase<Real> &mat) {
