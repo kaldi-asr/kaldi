@@ -803,18 +803,27 @@ template<typename Real>
 __global__
 static void _vec_sum(Real *v, Real *sum, int dim) {
   int32_cuda i = threadIdx.x;
-  
   __shared__ Real row_data[256];  
 
   Real tmp_sum = 0;
-  while (i < dim) {
-    tmp_sum += v[i];
-    i += 256;//blockDim.x * gridDim.x;
-  } 
+  int32_cuda size = dim / 256; //the least size in a loop (later part)
+  int32_cuda threshold = dim - size * 256; //any loop below this number would + 1
+
+  int32_cuda loop_start;
+  int32_cuda loop_end;
+  if(i < threshold) {
+    loop_start = i * (size + 1);
+    loop_end = (i+1) * (size + 1);
+  }
+  else {
+    loop_start = threshold+i*size;
+    loop_end = threshold+(i+1)*size;
+  }
+  for(int32_cuda j = loop_start; j< loop_end; j++) {
+    tmp_sum += v[j];
+  }
+ 
   row_data[threadIdx.x] = tmp_sum;
-  //now i >= dim
-  //row_data[threadIdx.x] = 0.0;
-  // if dim < 256 might be bugs
   __syncthreads();
   *sum = _sum_reduce(row_data);
 }
