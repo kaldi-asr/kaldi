@@ -1083,23 +1083,78 @@ static void _diff_tanh(Real*eout, const Real*e, const Real*y, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _vec_soft_max(Real* x, int dim) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  double max = -1e20;
-  double sum = 0.0;
-  if ( i < dim ) {
-    for (int32_cuda j = 0; j < dim; j++) {
-      if ( max < x[i] )
-        max = x[i];
-    }
-    for (int32_cuda j = 0; j < dim; j++) {
-      x[i] = exp(x[i] - max);
-      sum += x[i];
-    }
-    for (int32_cuda j = 0; j < dim; j++) {
-      x[i] /= sum;
-    }  
+static void _vec_soft_max(Real* v, int dim) {
+  /*
+  int32_cuda i = threadIdx.x;
+  __shared__ Real row_data[256];
+
+  Real tmp_sum = 0;
+  int32_cuda size = dim / 256; //the least size in a loop (later part)
+  int32_cuda threshold = dim - size * 256; //any loop below this number would + 1
+
+  int32_cuda loop_start;
+  int32_cuda loop_end;
+  if(i < threshold) {
+    loop_start = i * (size + 1);
+    loop_end = (i+1) * (size + 1);
   }
+  else {
+    loop_start = threshold+i*size;
+    loop_end = threshold+(i+1)*size;
+  }
+  for(int32_cuda j = loop_start; j< loop_end; j++) {
+    tmp_sum += v[j];
+  }
+
+  row_data[threadIdx.x] = tmp_sum;
+  __syncthreads();
+  *sum = _sum_reduce(row_data);
+*/
+  __shared__ Real tmp_array[256];
+
+  Real tmp_sum = 0;
+  Real tmp_max = -1e20;
+  int32_cuda size = dim / 256; //the least size in a loop (later part)
+  int32_cuda threshold = dim - size * 256; //any loop below this number would + 1
+    
+  int32_cuda loop_start;
+  int32_cuda loop_end;
+
+  int32_cuda i = threadIdx.x;
+  Real max = -1e20;
+  
+  if(i < threshold) {
+    loop_start = i * (size + 1);
+    loop_end = (i+1) * (size + 1);
+  }   
+  else {
+    loop_start = threshold+i*size;
+    loop_end = threshold+(i+1)*size;
+  } 
+  for(int32_cuda j = loop_start; j< loop_end; j++) {
+    if(tmp_max<v[j]) 
+      tmp_max = v[j]; 
+  }
+  tmp_array[i] = tmp_max;
+  __syncthreads();
+  max = _max_reduce(tmp_array);
+  //now we get the max
+
+  for(int32_cuda j = loop_start; j< loop_end; j++) {
+    v[j] = exp(v[j] - max);
+  }
+
+  __syncthreads(); 
+  //next we calculate the sum, must wait till exp is done
+  for(int32_cuda j = loop_start; j< loop_end; j++) {
+    tmp_sum += v[j];
+  }
+  tmp_array[i] = tmp_sum;
+  tmp_sum = _sum_reduce(tmp_array);
+  
+  for(int32_cuda j = loop_start; j< loop_end; j++) {
+    v[j] = v[j] / tmp_sum;
+  } 
 }
 
 

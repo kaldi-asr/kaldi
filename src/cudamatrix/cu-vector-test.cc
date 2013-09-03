@@ -361,7 +361,7 @@ template<class Real> void CuVectorUnitTestApplySoftMax() {
   cu_vector.ApplySoftMax();
   vector.ApplySoftMax();
   CuVector<Real> cu_vector2(vector);
-  //std::cout<<cu_vector(0)<<' '<<cu_vector2(0)<<std::endl;
+  //std::cout<<cu_vector(0)<<"ANDhxu "<<cu_vector2(0)<<std::endl;
   AssertEqual(cu_vector, cu_vector2);
   
 }
@@ -555,7 +555,7 @@ template<class Real> void CuVectorUnitTest() {
   UnitTestCuVectorMulTp<Real>();
   UnitTestCuSubVector<Real>();
   CuVectorUnitTestCopyFromMat<Real>(); 
-  //CuVectorUnitTestApplySoftMax<Real>();
+  CuVectorUnitTestApplySoftMax<Real>();
   CuVectorUnitTestNorm<Real>();
   CuVectorUnitTestApplyExp<Real>();
   CuVectorUnitTestApplyLog<Real>();
