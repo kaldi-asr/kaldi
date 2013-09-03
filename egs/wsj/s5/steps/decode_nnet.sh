@@ -21,6 +21,7 @@ scoring_opts="--min-lmwt 4 --max-lmwt 15"
 skip_scoring=false
 use_gpu_id=-1 # disable gpu
 parallel_opts="-pe smp 2" # use 2 CPUs (1 DNN-forward, 1 decoder)
+srcdir= # optionaly select dir with DNN model
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -57,7 +58,7 @@ fi
 graphdir=$1
 data=$2
 dir=$3
-srcdir=`dirname $dir`; # The model directory is one level up from decoding directory.
+[ -z $srcdir ] && srcdir=`dirname $dir`; # Or back-off to: model directory one level up from decoding directory.
 sdata=$data/split$nj;
 
 mkdir -p $dir/log
