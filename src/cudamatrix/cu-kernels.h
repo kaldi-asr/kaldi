@@ -114,7 +114,8 @@ inline void cuda_copy_from_vec_df(int Gr, int Bl, double* v_out, const float* v_
 inline void cuda_copy_from_vec_fd(int Gr, int Bl, float* v_out, const float* v_in, int dim) { cudaF_copy_from_vec_fd(Gr,Bl,v_out,v_in,dim); }
 inline void cuda_vec_mul_elements(int Gr, int Bl, float* v, const float* a, int dim) { cudaF_vec_mul_elements(Gr,Bl,v,a,dim); }
 inline void cuda_vec_soft_max(int Gr, int Bl, float* v, int dim) { cudaF_vec_soft_max(Gr,Bl,v,dim); }
-inline void cuda_min(int Gr, int Bl, const float* v, float* value, int dim) { cudaF_min(Gr,Bl,v,value,dim); }
+inline void cuda_vec_min(const float* v, float* value, int dim) { cudaF_vec_min(v,value,dim); }
+inline void cuda_vec_max(const float* v, float* value, int dim) { cudaF_vec_max(v,value,dim); }
 inline void cuda_trace_mat_mat_trans(int Gr, int Bl, const float* A, const float* B, MatrixDim dA, MatrixDim dB, float* value) { cudaF_trace_mat_mat_trans(Gr,Bl,A,B,dA,dB,value); }
 inline void cuda_trace_mat_mat(int Gr, int Bl, const float* A, const float* B, MatrixDim dA, MatrixDim dB, float* value) { cudaF_trace_mat_mat(Gr,Bl,A,B,dA,dB,value); }
 inline void cuda_add_diag_mat_trans(int Gr, int Bl, float alpha, float* v, const float* mat, float beta, MatrixDim dmat, int dim) { cudaF_add_diag_mat_trans(Gr,Bl,alpha,v,mat,beta,dmat,dim); }
@@ -210,7 +211,8 @@ inline void cuda_copy_from_vec_df(int Gr, int Bl, double* v_out, const double* v
 inline void cuda_copy_from_vec_fd(int Gr, int Bl, float* v_out, const double* v_in, int dim) { cudaD_copy_from_vec_fd(Gr,Bl,v_out,v_in,dim); }
 inline void cuda_vec_mul_elements(int Gr, int Bl, double* v, const double* a, int dim) { cudaD_vec_mul_elements(Gr,Bl,v,a,dim); }
 inline void cuda_vec_soft_max(int Gr, int Bl, double* v, int dim) { cudaD_vec_soft_max(Gr,Bl,v,dim); }
-inline void cuda_min(int Gr, int Bl, const double* v, double* value, int dim) { cudaD_min(Gr,Bl,v,value,dim); }
+inline void cuda_vec_min(const double* v, double* value, int dim) { cudaD_vec_min(v,value,dim); }
+inline void cuda_vec_max(const double* v, double* value, int dim) { cudaD_vec_max(v,value,dim); }
 inline void cuda_trace_mat_mat_trans(int Gr, int Bl, const double* A, const double* B, MatrixDim dA, MatrixDim dB, double* value) { cudaD_trace_mat_mat_trans(Gr,Bl,A,B,dA,dB,value); }
 inline void cuda_trace_mat_mat(int Gr, int Bl, const double* A, const double* B, MatrixDim dA, MatrixDim dB, double* value) { cudaD_trace_mat_mat(Gr,Bl,A,B,dA,dB,value); }
 inline void cuda_add_diag_mat_trans(int Gr, int Bl, double alpha, double* v, const double* mat, double beta, MatrixDim dmat, int dim) { cudaD_add_diag_mat_trans(Gr,Bl,alpha,v,mat,beta,dmat,dim); }

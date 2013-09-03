@@ -185,6 +185,37 @@ static void UnitTestCuMatrixSigmoid() {
 }
 
 template<class Real> 
+static void UnitTestCuMatrixScale() {
+  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+  Matrix<Real> H(M, N);
+  H.SetRandn();
+
+  BaseFloat scale = -1 + (0.33 * (rand() % 5));
+  CuMatrix<Real> D(H);
+  D.Scale(scale);
+  H.Scale(scale);
+  Matrix<Real> E(D);
+
+  AssertEqual(H, E);
+}
+
+template<class Real> 
+static void UnitTestCuMatrixAdd() {
+  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+  Matrix<Real> H(M, N);
+  H.SetRandn();
+
+  BaseFloat offset = -1 + (0.33 * (rand() % 5));
+  CuMatrix<Real> D(H);
+  D.Add(offset);
+  H.Add(offset);
+  Matrix<Real> E(D);
+
+  AssertEqual(H, E);
+}
+
+
+template<class Real> 
 static void UnitTestCuMatrixSoftHinge() {
   int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
   Matrix<Real> H(M, N);
@@ -207,14 +238,15 @@ template<class Real>
 static void UnitTestCuMatrixApplyPow() {
 
   for (int32 i = 0; i < 3; i++) {
-    BaseFloat pow = 0.33 * (rand() % 6);
+    BaseFloat pow = 0.5 * (rand() % 6);
     
     Matrix<Real> H(10 + rand() % 600, 10 + rand() % 20);
     H.SetRandn();
     H.Row(0).Set(0.0);
     if (i == 2) { Matrix<Real> tmp(H, kTrans); H = tmp; }
     
-    H.MulElements(H); //make numbers positive
+    if (pow != 1.0 && pow != 2.0 && pow != 3.0)
+      H.MulElements(H); //make numbers positive
     
     CuMatrix<Real> cH(H);
 
@@ -624,7 +656,7 @@ static void UnitTestCuVectorAddVec() {
 
 template<class Real> 
 static void UnitTestCuVectorAddRowSumMat() {
-  const int32 X=4321, Y=19;
+ const int32 X=4321, Y=19;
   Real alpha=0.1, beta=0.7;
 
   Matrix<Real> Hm(X,Y);
@@ -1163,9 +1195,11 @@ static void UnitTestCuDiffTanh() {
 template<class Real> void CudaMatrixUnitTest() {
   //test CuMatrix<Real> methods by cross-check with Matrix
   UnitTestCuMatrixApplyLog<Real>();
+  UnitTestCuMatrixScale<Real>();
   UnitTestCuMatrixSigmoid<Real>();
   UnitTestCuMatrixSoftHinge<Real>();
   UnitTestCuMatrixApplyPow<Real>();
+  UnitTestCuMatrixAdd<Real>();
   UnitTestCuMatrixApplyFloor<Real>();
   UnitTestCuMatrixApplyHeaviside<Real>();
   UnitTestCuMatrixMulElements<Real>();

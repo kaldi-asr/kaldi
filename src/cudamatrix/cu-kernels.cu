@@ -66,14 +66,12 @@ static Real _min_reduce(Real buffer[]) {
     int32_cuda halfPoint = ((1+nTotalThreads) >> 1); // divide by two
     // only the first half of the threads will be active
     if (threadIdx.x < halfPoint) {
-      // Get the shared value stored by another thread
-      Real temp = -1e20;
       if (threadIdx.x + halfPoint < nTotalThreads) {
-        temp = buffer[threadIdx.x + halfPoint];
+        Real temp = buffer[threadIdx.x + halfPoint];
+        if (temp < buffer[threadIdx.x]) 
+           buffer[threadIdx.x] = temp;
       }
-      if (temp < buffer[threadIdx.x]) buffer[threadIdx.x] = temp;
     }
-
     __syncthreads();
     nTotalThreads = ((1+nTotalThreads) >> 1); // divide by two
   }
@@ -94,11 +92,11 @@ static Real _max_reduce(Real buffer[]) {
     // only the first half of the threads will be active.
     if (threadIdx.x < halfPoint)  {
       // Get the shared value stored by another thread
-      Real temp = -1e20;
       if(threadIdx.x+halfPoint < nTotalThreads) {
-        temp = buffer[threadIdx.x + halfPoint];
+        Real temp = buffer[threadIdx.x + halfPoint];
+        if (temp > buffer[threadIdx.x]) 
+          buffer[threadIdx.x] = temp;
       }
-      if (temp > buffer[threadIdx.x]) buffer[threadIdx.x] = temp;
     }
     __syncthreads();
     nTotalThreads = ((1+nTotalThreads) >> 1);	// divide by two.
@@ -587,9 +585,9 @@ template<typename Real>
 __global__
 static void _copy_from_vec_df(double* v_out, const Real* v_in, int dim) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (blockIdx.y > 0) return; // DAN
+  if (blockIdx.y > 0) return;
   
-  if ( i < dim) {
+  if (i < dim) {
     v_out[i] = (double) v_in[i];
   }
 }
@@ -609,20 +607,53 @@ static void _copy_from_vec_fd(float* v_out, const Real* v_in, int dim) {
 
 template<typename Real>
 __global__
-static void _min(const Real* v, Real* value, int dim) {
+static void _vec_min(const Real* v, Real* value, int dim) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   if(blockIdx.y > 0) return;
 
-  if ( i < dim) {
-    __shared__ Real row_data[256];
+  __shared__ Real row_data[CU1DBLOCK];
 
-   //copy the input to row_data
-   row_data[i] = v[i];
-   __syncthreads();
+  int block_size = (dim + CU1DBLOCK - 1) / CU1DBLOCK;
 
-   //get the sum
-   *value = _min_reduce(row_data);
-  }  
+  Real min = 1.0 / 0.0; // infinity.
+
+  for (int j = i * block_size; j < (i+1) * block_size && j < dim; j++) {
+     Real v_j = v[j];
+     if (v_j < min) min = v_j;
+  }
+
+  row_data[i] = min;
+
+  __syncthreads();
+
+  //get the sum
+  *value = _min_reduce(row_data);
+}
+
+
+template<typename Real>
+__global__
+static void _vec_max(const Real* v, Real* value, int dim) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  if(blockIdx.y > 0) return;
+
+  __shared__ Real row_data[CU1DBLOCK];
+
+  int block_size = (dim + CU1DBLOCK - 1) / CU1DBLOCK;
+
+  Real max = -1.0 / 0.0; // -infinity.
+
+  for (int j = i * block_size; j < (i+1) * block_size && j < dim; j++) {
+     Real v_j = v[j];
+     if (v_j > max) max = v_j;
+  }
+
+  row_data[i] = max;
+
+  __syncthreads();
+
+  //get the sum
+  *value = _max_reduce(row_data);
 }
 
 
@@ -1565,8 +1596,12 @@ void cudaF_vec_soft_max(int Gr, int Bl, float* v, int dim) {
   _vec_soft_max<<<Gr,Bl>>>(v, dim);
 }
 
-void cudaF_min(int Gr, int Bl, const float* v, float* value, int dim) {
-  _min<<<Gr,Bl>>>(v, value, dim);
+void cudaF_vec_min(const float* v, float* value, int dim) {
+  _vec_min<<<1,CU1DBLOCK>>>(v, value, dim);
+}
+
+void cudaF_vec_max(const float* v, float* value, int dim) {
+  _vec_max<<<1,CU1DBLOCK>>>(v, value, dim);
 }
 
 void cudaF_trace_mat_mat_trans(int Gr, int Bl, const float* A, const float* B, MatrixDim dA, MatrixDim dB, float* value) {
@@ -1893,8 +1928,12 @@ void cudaD_vec_soft_max(int Gr, int Bl, double* v, int dim) {
   _vec_soft_max<<<Gr,Bl>>>(v, dim);
 }
 
-void cudaD_min(int Gr, int Bl, const double* v, double* value, int dim) {
-  _min<<<Gr,Bl>>>(v, value, dim);
+void cudaD_vec_min(const double* v, double* value, int dim) {
+  _vec_min<<<1,CU1DBLOCK>>>(v, value, dim);
+}
+
+void cudaD_vec_max(const double* v, double* value, int dim) {
+  _vec_max<<<1,CU1DBLOCK>>>(v, value, dim);
 }
 
 void cudaD_trace_mat_mat_trans(int Gr, int Bl, const double* A, const double* B, MatrixDim dA, MatrixDim dB, double* value) {

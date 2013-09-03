@@ -574,21 +574,41 @@ Real CuVectorBase<Real>::Min() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    int dimBlock(CU2DBLOCK);
-    int dimGrid(n_blocks(dim_,CU2DBLOCK));
     Real* device_value;
     CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_value), sizeof(Real)));
     CU_SAFE_CALL(cudaMemset(device_value, 0, sizeof(Real)));
-    cuda_min(dimGrid, dimBlock, data_, device_value, dim_);
+    cuda_vec_min(data_, device_value, dim_);
     CU_SAFE_CALL(cudaGetLastError());
     CU_SAFE_CALL(cudaMemcpy(&result, device_value, sizeof(Real), cudaMemcpyDeviceToHost));
     CU_SAFE_CALL(cudaFree(device_value));
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::Min", tim.Elapsed());
-
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
     result = (this->Vec()).Min();
+  }
+  return result;
+}
+
+template<typename Real>
+Real CuVectorBase<Real>::Max() const {
+  Real result = 0.0;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    Real* device_value;
+    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_value), sizeof(Real)));
+    CU_SAFE_CALL(cudaMemset(device_value, 0, sizeof(Real)));
+    cuda_vec_max(data_, device_value, dim_);
+    CU_SAFE_CALL(cudaGetLastError());
+    CU_SAFE_CALL(cudaMemcpy(&result, device_value, sizeof(Real), cudaMemcpyDeviceToHost));
+    CU_SAFE_CALL(cudaFree(device_value));
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+
+  } else
+#endif
+  {
+    result = (this->Vec()).Max();
   }
   return result;
 }
@@ -1009,7 +1029,7 @@ void CuVectorBase<Real>::AddRowSumMat(Real alpha, const CuMatrixBase<Real> &mat,
     }
     // now we have the sum!
     
-    // add buffer rmp to this vector using alpha and beta
+    // add buffer temp to this vector using alpha and beta
     this->AddVec(alpha, temp, beta);
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());

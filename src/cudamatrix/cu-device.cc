@@ -261,7 +261,7 @@ void CuDevice::SelectGpuIdAuto() {
   std::vector<float> free_mem_ratio(n_gpu+1, 0.0);
   //get ratios of memory use, if possible
   KALDI_LOG << "Selecting from " << n_gpu << " GPUs";
-  for(int32 n=0; n<n_gpu; n++) {
+  for(int32 n = 0; n < n_gpu; n++) {
     int32 ret = cudaSetDevice(n);
     switch(ret) {
       case cudaSuccess : {

@@ -20,7 +20,7 @@
 
 #ifndef KALDI_CUDAMATRIX_CU_COMMON_H_
 #define KALDI_CUDAMATRIX_CU_COMMON_H_
-
+#include "cudamatrix/cu-matrixdim.h" // for CU1DBLOCK and CU2DBLOCK
 
 #if HAVE_CUDA == 1
 
@@ -46,12 +46,6 @@
 
 
 namespace kaldi {
-
-// The size of edge of CUDA square block, e.g. for matrix operations.
-static const int32 CU2DBLOCK = 16;
-
-// The size of a CUDA 1-d block, e.g. for vector operations..
-static const int32 CU1DBLOCK = 256;
 
 /** Number of blocks in which the task of size 'size' is splitted **/
 inline int32 n_blocks(int32 size, int32 block_size) { 

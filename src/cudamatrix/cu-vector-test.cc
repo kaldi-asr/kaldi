@@ -377,6 +377,30 @@ template<class Real> void CuVectorUnitTestNorm() {
 }
                
 
+template<class Real> void CuVectorUnitTestMin() {
+  for (int32 p = 0; p < 5; p++) {
+    int32 dim = 100 + rand() % 500;
+    CuVector<Real> cu_vector(dim);
+    cu_vector.SetRandn();
+    Vector<Real> vector(cu_vector);
+    Real min1 = cu_vector.Min(), min2 = vector.Min();
+    KALDI_LOG << "v = " << cu_vector;
+    KALDI_ASSERT(min1 == min2);
+  }
+}
+
+
+template<class Real> void CuVectorUnitTestMax() {
+  for (int32 p = 0; p < 5; p++) {
+    int32 dim = 100 + rand() % 500;
+    CuVector<Real> cu_vector(dim);
+    cu_vector.SetRandn();
+    Vector<Real> vector(cu_vector);
+    Real max1 = cu_vector.Max(), max2 = vector.Max();
+    KALDI_ASSERT(max1 == max2);
+  }
+}
+
 
 template<class Real> void CuVectorUnitTestApplySoftMax() {
   int32 dim = 100;
@@ -581,7 +605,9 @@ template<class Real> void CuVectorUnitTest() {
   UnitTestCuVectorAddTp<Real>();
   UnitTestCuVectorMulTp<Real>();
   UnitTestCuSubVector<Real>();
-  CuVectorUnitTestCopyFromMat<Real>(); 
+  CuVectorUnitTestCopyFromMat<Real>();
+  CuVectorUnitTestMin<Real>();
+  CuVectorUnitTestMax<Real>();
   CuVectorUnitTestApplySoftMax<Real>();
   CuVectorUnitTestNorm<Real>();
   CuVectorUnitTestApplyExp<Real>();

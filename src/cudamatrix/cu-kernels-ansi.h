@@ -83,7 +83,8 @@ void cudaF_copy_from_vec_df(int Gr, int Bl, double* v_out, const float* v_in, in
 void cudaF_copy_from_vec_fd(int Gr, int Bl, float* v_out, const float* v_in, int dim);
 void cudaF_vec_mul_elements(int Gr, int Bl, float* v, const float* a, int dim);
 void cudaF_vec_soft_max(int Gr, int Bl, float* v, int dim);
-void cudaF_min(int Gr, int Bl, const float* v, float* value, int dim);
+void cudaF_vec_min(const float* v, float* value, int dim);
+void cudaF_vec_max(const float* v, float* value, int dim);
 void cudaF_trace_mat_mat_trans(int Gr, int Bl, const float* A, const float* B, MatrixDim dA, MatrixDim dB, float* value);
 void cudaF_trace_mat_mat(int Gr, int Bl, const float* A, const float* B, MatrixDim dA, MatrixDim dB, float* value);
 void cudaF_add_diag_mat_trans(int Gr, int Bl, float alpha, float* v, const float* mat, float beta, MatrixDim dmat, int dim);
@@ -173,7 +174,8 @@ void cudaD_copy_from_vec_df(int Gr, int Bl, double* v_out, const double* v_in, i
 void cudaD_copy_from_vec_fd(int Gr, int Bl, float* v_out, const double* v_in, int dim);
 void cudaD_vec_mul_elements(int Gr, int Bl, double* v, const double* a, int dim);
 void cudaD_vec_soft_max(int Gr, int Bl, double* v, int dim);
-void cudaD_min(int Gr, int Bl, const double* v, double* value, int dim);
+void cudaD_vec_min(const double* v, double* value, int dim);
+void cudaD_vec_max(const double* v, double* value, int dim);
 void cudaD_trace_mat_mat_trans(int Gr, int Bl, const double* A, const double* B, MatrixDim dA, MatrixDim dB, double* value);
 void cudaD_trace_mat_mat(int Gr, int Bl, const double* A, const double* B, MatrixDim dA, MatrixDim dB, double* value);
 void cudaD_add_diag_mat_trans(int Gr, int Bl, double alpha, double* v, const double* mat, double beta, MatrixDim dmat, int dim);

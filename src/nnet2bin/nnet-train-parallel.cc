@@ -46,6 +46,7 @@ int main(int argc, char *argv[]) {
     int32 minibatch_size = 1024;
     int32 srand_seed = 0;
     BaseFloat momentum_minibatches = 0.0;
+    int32 use_gpu_id = -2;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -61,9 +62,17 @@ int main(int argc, char *argv[]) {
     po.Register("momentum-minibatches", &momentum_minibatches, "Number of minibatches, "
                 "representing a time constant for momentum-type update.  Should be more "
                 "than num-threads, if set.");
+    po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic "
+                "selection, -1 disable GPU, 0..N select GPU).  Only has effect if compiled "
+                "with CUDA");
+    
     
     po.Read(argc, argv);
     srand(srand_seed);
+
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+#endif
     
     if (po.NumArgs() != 3) {
       po.PrintUsage();

@@ -161,6 +161,7 @@ class CuVectorBase {
     return CuValue<Real>(data_ + i); // will be casted to Real.
   }    
 
+  Real Max() const;  
   Real Min() const;
   void MulElements(const CuVectorBase<Real> &v);
  protected:
