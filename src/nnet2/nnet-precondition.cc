@@ -21,9 +21,9 @@ namespace kaldi {
 namespace nnet2 {
 
 /// See below for comment.
-void PreconditionDirections(const MatrixBase<BaseFloat> &R,
+void PreconditionDirections(const CuMatrixBase<BaseFloat> &R,
                             double lambda,
-                            MatrixBase<BaseFloat> *P) {
+                            CuMatrixBase<BaseFloat> *P) {
 
   int32 N = R.NumRows(), D = R.NumCols();
   KALDI_ASSERT(SameDim(R, *P) && N > 0);
@@ -33,12 +33,12 @@ void PreconditionDirections(const MatrixBase<BaseFloat> &R,
     P->CopyFromMat(R);
     return;
   }
-  MatrixBase<BaseFloat> &Q = *P;
+  CuMatrixBase<BaseFloat> &Q = *P;
   
   if (N >= D) {
     // Compute G = (\lambda I + 1/(N-1) R^T R)^{-1} by direct inversion.
     // G <-- lambda I.
-    SpMatrix<BaseFloat> G(D);
+    CuSpMatrix<BaseFloat> G(D);
     G.SetUnit();
     G.ScaleDiag(lambda); 
     // G += 1.0/(N-1) * R^T R.
@@ -53,7 +53,7 @@ void PreconditionDirections(const MatrixBase<BaseFloat> &R,
     // Q <-- R S.
     // It is curious and (to me) unexpected that the actual code is basically
     // the same when transposed.
-    SpMatrix<BaseFloat> S(N);
+    CuSpMatrix<BaseFloat> S(N);
     // S <-- lambda I.
     S.SetDiag(lambda);
     // S += (N-1) R R^T.
@@ -64,7 +64,7 @@ void PreconditionDirections(const MatrixBase<BaseFloat> &R,
   }
 
   for (int32 n = 0; n < N; n++) {
-    SubVector<BaseFloat> r(R, n), q(Q, n);
+    CuSubVector<BaseFloat> r(R, n), q(Q, n);
     BaseFloat gamma = VecVec(r, q), // gamma_n = r_n^T q_n.
                beta = 1 + gamma / (N - 1 - gamma);
     if (!(gamma >= 0.0 && beta > 0.0)) {
@@ -79,9 +79,9 @@ void PreconditionDirections(const MatrixBase<BaseFloat> &R,
 
 
 void PreconditionDirectionsAlpha(
-    const MatrixBase<BaseFloat> &R,
+    const CuMatrixBase<BaseFloat> &R,
     double alpha,
-    MatrixBase<BaseFloat> *P) {
+    CuMatrixBase<BaseFloat> *P) {
   KALDI_ASSERT(alpha > 0.0);
   // probably does not really make sense.
   double t = TraceMatMat(R, R, kTrans), floor = 1.0e-20;
@@ -103,9 +103,9 @@ void PreconditionDirectionsAlpha(
 
 
 void PreconditionDirectionsAlphaRescaled(
-    const MatrixBase<BaseFloat> &R,
+    const CuMatrixBase<BaseFloat> &R,
     double alpha,
-    MatrixBase<BaseFloat> *P) {
+    CuMatrixBase<BaseFloat> *P) {
   KALDI_ASSERT(alpha > 0.0); // alpha > 1.0
   // probably does not really make sense.
   double t = TraceMatMat(R, R, kTrans), floor = 1.0e-20;

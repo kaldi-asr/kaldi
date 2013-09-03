@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
     }
 
     SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_rspecifier);
-    RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
+    RandomAccessBaseFloatCuMatrixReader feature_reader(feature_rspecifier);
     Int32VectorWriter alignment_writer(alignment_wspecifier);
     BaseFloatWriter scores_writer(scores_wspecifier);
 
@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
         num_no_feat++;
         KALDI_WARN << "No features for utterance " << key;
       } else {
-        const Matrix<BaseFloat> &features = feature_reader.Value(key);
+        const CuMatrix<BaseFloat> &features = feature_reader.Value(key);
         VectorFst<StdArc> decode_fst(fst_reader.Value());
         fst_reader.FreeCurrent();  // this stops copy-on-write of the fst
         // by deleting the fst inside the reader, since we're about to mutate
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
         FasterDecoder decoder(decode_fst, decode_opts);
         // makes it a bit faster: 37 sec -> 26 sec on 1000 RM utterances @ beam 200.
 
-        Vector<BaseFloat> empty_spk_info; // TODO: add support for speaker vectors.
+        CuVector<BaseFloat> empty_spk_info; // TODO: add support for speaker vectors.
         bool pad_input = true;
         DecodableAmNnet nnet_decodable(trans_model, am_nnet, features, empty_spk_info,
                                        pad_input, acoustic_scale);

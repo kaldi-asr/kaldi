@@ -36,11 +36,11 @@ void UnitTestGenericComponentInternal(const Component &component) {
 
   KALDI_LOG << component.Info();
 
-  Vector<BaseFloat> objf_vec(output_dim); // objective function is linear function of output.
+  CuVector<BaseFloat> objf_vec(output_dim); // objective function is linear function of output.
   objf_vec.SetRandn(); // set to Gaussian noise.
   
   int32 num_egs = 10 + rand() % 5;
-  Matrix<BaseFloat> input(num_egs, input_dim),
+  CuMatrix<BaseFloat> input(num_egs, input_dim),
       output(num_egs, output_dim);
   input.SetRandn();
 
@@ -62,18 +62,18 @@ void UnitTestGenericComponentInternal(const Component &component) {
   }
   
   { // Test backward derivative is correct.
-    Vector<BaseFloat> output_objfs(num_egs);
+    CuVector<BaseFloat> output_objfs(num_egs);
     output_objfs.AddMatVec(1.0, output, kNoTrans, objf_vec, 0.0);
     BaseFloat objf = output_objfs.Sum();
 
-    Matrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
+    CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
     for (int32 i = 0; i < output_deriv.NumRows(); i++)
       output_deriv.Row(i).CopyFromVec(objf_vec);
 
-    Matrix<BaseFloat> input_deriv(input.NumRows(), input.NumCols());
+    CuMatrix<BaseFloat> input_deriv(input.NumRows(), input.NumCols());
 
-    Matrix<BaseFloat> empty_mat;
-    Matrix<BaseFloat> &input_ref =
+    CuMatrix<BaseFloat> empty_mat;
+    CuMatrix<BaseFloat> &input_ref =
         (component_copy->BackpropNeedsInput() ? input : empty_mat),
         &output_ref =
         (component_copy->BackpropNeedsOutput() ? output : empty_mat);
@@ -84,7 +84,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
     int32 num_ok = 0, num_bad = 0, num_tries = 10;
     KALDI_LOG << "Comparing feature gradients " << num_tries << " times.";
     for (int32 i = 0; i < num_tries; i++) {
-      Matrix<BaseFloat> perturbed_input(input.NumRows(), input.NumCols());
+      CuMatrix<BaseFloat> perturbed_input(input.NumRows(), input.NumCols());
       if (IsRandom(component))
         srand(i);
       perturbed_input.SetRandn();
@@ -94,11 +94,11 @@ void UnitTestGenericComponentInternal(const Component &component) {
       perturbed_input.AddMat(1.0, input); // now it's the input + a delta.
       { // Compute objf with perturbed input and make sure it matches
         // prediction.
-        Matrix<BaseFloat> perturbed_output(output.NumRows(), output.NumCols());
+        CuMatrix<BaseFloat> perturbed_output(output.NumRows(), output.NumCols());
         if (IsRandom(component))
           srand(rand_seed);
         component.Propagate(perturbed_input, 1, &perturbed_output);
-        Vector<BaseFloat> perturbed_output_objfs(num_egs);
+        CuVector<BaseFloat> perturbed_output_objfs(num_egs);
         perturbed_output_objfs.AddMatVec(1.0, perturbed_output, kNoTrans,
                                          objf_vec, 0.0);
         BaseFloat perturbed_objf = perturbed_output_objfs.Sum(),
@@ -137,14 +137,14 @@ void UnitTestGenericComponentInternal(const Component &component) {
       BaseFloat perturb_stddev = 5.0e-04;
       perturbed_ucomponent->PerturbParams(perturb_stddev);
       
-      Vector<BaseFloat> output_objfs(num_egs);
+      CuVector<BaseFloat> output_objfs(num_egs);
       output_objfs.AddMatVec(1.0, output, kNoTrans, objf_vec, 0.0);
       BaseFloat objf = output_objfs.Sum();
 
-      Matrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
+      CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
       for (int32 i = 0; i < output_deriv.NumRows(); i++)
         output_deriv.Row(i).CopyFromVec(objf_vec);
-      Matrix<BaseFloat> input_deriv; // (input.NumRows(), input.NumCols());
+      CuMatrix<BaseFloat> input_deriv; // (input.NumRows(), input.NumCols());
 
       int32 num_chunks = 1;
 
@@ -155,11 +155,11 @@ void UnitTestGenericComponentInternal(const Component &component) {
       // Now compute the perturbed objf.
       BaseFloat objf_perturbed;
       {
-        Matrix<BaseFloat> output_perturbed; // (num_egs, output_dim);
+        CuMatrix<BaseFloat> output_perturbed; // (num_egs, output_dim);
         if (IsRandom(component))
           srand(rand_seed);
         perturbed_ucomponent->Propagate(input, 1, &output_perturbed);
-        Vector<BaseFloat> output_objfs_perturbed(num_egs);
+        CuVector<BaseFloat> output_objfs_perturbed(num_egs);
         output_objfs_perturbed.AddMatVec(1.0, output_perturbed,
                                          kNoTrans, objf_vec, 0.0);
         objf_perturbed = output_objfs_perturbed.Sum();
@@ -201,22 +201,6 @@ void UnitTestSigmoidComponent() {
     SigmoidComponent sigmoid_component;
     sigmoid_component.InitFromString("dim=15");
     UnitTestGenericComponentInternal(sigmoid_component);
-  }
-}
-
-void UnitTestReduceComponent() {
-  // We're testing that the gradients are computed correctly:
-  // the input gradients and the model gradients.
-  
-  int32 input_dim = 10 + rand() % 50, n = 1 + rand() % 3;
-  {
-    ReduceComponent reduce_component(input_dim, n);
-    UnitTestGenericComponentInternal(reduce_component);
-  }
-  {
-    ReduceComponent reduce_component;
-    reduce_component.InitFromString("dim=15 n=3");
-    UnitTestGenericComponentInternal(reduce_component);
   }
 }
 
@@ -313,26 +297,6 @@ void UnitTestInformationBottleneckComponent() {
     InformationBottleneckComponent ib_component;
     ib_component.InitFromString("dim=15 noise-proportion=0.2");
     UnitTestGenericComponentInternal(ib_component);
-  }
-}
-
-
-void UnitTestMaxAffineComponent() {
-  BaseFloat learning_rate = 0.01,
-      param_stddev = 0.1, bias_stddev = 1.0, max_change = 0.1;
-  int32 input_dim = 5 + rand() % 5, output_dim = 5 + rand() % 5;
-  {
-
-    MaxAffineComponent component;
-    component.Init(learning_rate, input_dim, output_dim,
-                   param_stddev, bias_stddev, max_change);
-    UnitTestGenericComponentInternal(component);
-  }
-  {
-    const char *str = "learning-rate=0.01 input-dim=10 output-dim=15 param-stddev=0.1";
-    MaxAffineComponent component;
-    component.InitFromString(str);
-    UnitTestGenericComponentInternal(component);
   }
 }
 
@@ -561,7 +525,8 @@ void UnitTestDctComponent() {
 void UnitTestFixedLinearComponent() {
   int32 m = 1 + rand() % 4, n = 1 + rand() % 4;
   {
-    Matrix<BaseFloat> mat(m, n);
+    CuMatrix<BaseFloat> mat(m, n);
+    mat.SetRandn();
     FixedLinearComponent component;
     component.Init(mat);
     UnitTestGenericComponentInternal(component);
@@ -572,7 +537,8 @@ void UnitTestFixedLinearComponent() {
 void UnitTestFixedAffineComponent() {
   int32 m = 1 + rand() % 4, n = 2 + rand() % 4;
   {
-    Matrix<BaseFloat> mat(m, n);
+    CuMatrix<BaseFloat> mat(m, n);
+    mat.SetRandn();
     FixedAffineComponent component;
     component.Init(mat);
     UnitTestGenericComponentInternal(component);
@@ -639,8 +605,8 @@ void BasicDebugTestForSplice(bool output=false) {
  
   SpliceComponent *c = new SpliceComponent();
   c->Init(C, contextLen, contextLen, K);
-  Matrix<BaseFloat> in(R, C), in_deriv(R, C);
-  Matrix<BaseFloat> out(R, c->OutputDim());
+  CuMatrix<BaseFloat> in(R, C), in_deriv(R, C);
+  CuMatrix<BaseFloat> out(R, c->OutputDim());
 
   in.SetRandn();
   if (output)
@@ -654,7 +620,7 @@ void BasicDebugTestForSplice(bool output=false) {
   out.Set(1);
   
   if (K > 0) {
-    SubMatrix<BaseFloat> k(out, 0, out.NumRows(), c->OutputDim() - K, K);
+    CuSubMatrix<BaseFloat> k(out, 0, out.NumRows(), c->OutputDim() - K, K);
     k.Set(-2);
   }
 
@@ -676,8 +642,8 @@ void BasicDebugTestForSpliceMax(bool output=false) {
  
   SpliceMaxComponent *c = new SpliceMaxComponent();
   c->Init(C, contextLen, contextLen);
-  Matrix<BaseFloat> in(R, C), in_deriv(R, C);
-  Matrix<BaseFloat> out(R, c->OutputDim());
+  CuMatrix<BaseFloat> in(R, C), in_deriv(R, C);
+  CuMatrix<BaseFloat> out(R, c->OutputDim());
   
   in.SetRandn();
   if (output)
@@ -723,12 +689,9 @@ int main() {
     UnitTestGenericComponent<SoftmaxComponent>();
     UnitTestGenericComponent<RectifiedLinearComponent>();
     UnitTestGenericComponent<SoftHingeComponent>();
-    UnitTestGenericComponent<SqrtSoftHingeComponent>();
     UnitTestGenericComponent<PowerExpandComponent>("higher-power-scale=0.1");
     UnitTestSigmoidComponent();
-    UnitTestReduceComponent();
     UnitTestAffineComponent();
-    // UnitTestMaxAffineComponent();
     UnitTestPiecewiseLinearComponent();
     UnitTestScaleComponent();
     UnitTestAffinePreconInputComponent();

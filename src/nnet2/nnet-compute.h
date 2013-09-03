@@ -40,10 +40,10 @@ namespace nnet2 {
   output.
 */
 void NnetComputation(const Nnet &nnet,
-                     const MatrixBase<BaseFloat> &input,  // features
-                     const VectorBase<BaseFloat> &spk_info,
+                     const CuMatrixBase<BaseFloat> &input,  // features
+                     const CuVectorBase<BaseFloat> &spk_info,
                      bool pad_input,
-                     MatrixBase<BaseFloat> *output); // posteriors.
+                     CuMatrixBase<BaseFloat> *output); // posteriors.
 
 /** Does the neural net computation and backprop, given input and labels.
     Note: if pad_input==true the number of rows of input should be the

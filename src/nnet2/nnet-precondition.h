@@ -20,6 +20,7 @@
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
+#include "cudamatrix/cu-matrix-lib.h"
 
 #include <iostream>
 
@@ -53,18 +54,18 @@ namespace nnet2 {
   in such a way that it's suitable to be used as an update direction.
 
  */
-void PreconditionDirections(const MatrixBase<BaseFloat> &R,
+void PreconditionDirections(const CuMatrixBase<BaseFloat> &R,
                             double lambda,
-                            MatrixBase<BaseFloat> *P);
+                            CuMatrixBase<BaseFloat> *P);
 
 /**
    This wrapper for PreconditionDirections computes lambda
    using \lambda = \alpha/(N D) trace(R^T, R), and calls
    PreconditionDirections. */
 void PreconditionDirectionsAlpha(
-    const MatrixBase<BaseFloat> &R,
+    const CuMatrixBase<BaseFloat> &R,
     double alpha,
-    MatrixBase<BaseFloat> *P);
+    CuMatrixBase<BaseFloat> *P);
 
 /**
    This wrapper for PreconditionDirections computes lambda
@@ -72,9 +73,9 @@ void PreconditionDirectionsAlpha(
    PreconditionDirections.  It then rescales *P so that
    its 2-norm is the same as that of R. */
 void PreconditionDirectionsAlphaRescaled(
-    const MatrixBase<BaseFloat> &R,
+    const CuMatrixBase<BaseFloat> &R,
     double alpha,
-    MatrixBase<BaseFloat> *P);
+    CuMatrixBase<BaseFloat> *P);
   
                            
 

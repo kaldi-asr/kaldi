@@ -151,11 +151,12 @@ template<class Real>
 static void UnitTestCuSpMatrixInvert() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 10*i;
-    SpMatrix<Real> A(dim);
+    CuSpMatrix<Real> A(dim);
     A.SetRandn();
+    KALDI_ASSERT(A.Trace() != 0.0); // true with probability 1...
     CuSpMatrix<Real> B(A);
     
-    Matrix<Real> D(A);
+    CuMatrix<Real> D(A);
     A.AddMat2(1.0, D, kTrans, 1.0);
     A.AddToDiag(i);
 
@@ -168,8 +169,9 @@ static void UnitTestCuSpMatrixInvert() {
     
     SpMatrix<Real> E(dim);
     B.CopyToSp(&E);
-    
-    AssertEqual(A, E);    
+
+    SpMatrix<Real> A2(A);
+    AssertEqual(A2, E);    
   }
 }
 

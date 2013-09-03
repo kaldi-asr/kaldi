@@ -64,14 +64,14 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
     
     int64 num_done = 0, num_frames = 0;
-    SequentialBaseFloatMatrixReader feature_reader(features_rspecifier);
-    BaseFloatMatrixWriter writer(features_or_loglikes_wspecifier);
+    SequentialBaseFloatCuMatrixReader feature_reader(features_rspecifier);
+    BaseFloatCuMatrixWriter writer(features_or_loglikes_wspecifier);
     
     for (; !feature_reader.Done();  feature_reader.Next()) {
       std::string utt = feature_reader.Key();
-      const Matrix<BaseFloat> &feats = feature_reader.Value();
+      const CuMatrix<BaseFloat> &feats = feature_reader.Value();
 
-      Vector<BaseFloat> spk_info; // Empty vector for now, may later
+      CuVector<BaseFloat> spk_info; // Empty vector for now, may later
       // make it possible to set it.
 
       int32 output_frames = feats.NumRows(), output_dim = nnet.OutputDim();
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
                    << "would be empty.";
         continue;
       }
-      Matrix<BaseFloat> output(output_frames, output_dim);
+      CuMatrix<BaseFloat> output(output_frames, output_dim);
       NnetComputation(nnet, feats, spk_info, pad_input, &output);
 
       if (apply_log) {

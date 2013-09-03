@@ -1580,6 +1580,12 @@ void CuMatrixBase<Real>::SetRandn() {
   }
 }
 
+template<class Real>
+void Matrix<Real>::Swap(CuMatrix<Real> *mat) { mat->Swap(this); }
+// instantiate the template above.
+template void Matrix<float>::Swap(CuMatrix<float> *mat);
+template void Matrix<double>::Swap(CuMatrix<double> *mat);
+
 /// Copy constructor from another type.
 template<typename Real>
 template<typename OtherReal>

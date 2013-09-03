@@ -151,8 +151,8 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
   KALDI_ASSERT(new_dim >= old_dim);
   
   // bias and linear terms from affine component:
-  const Vector<BaseFloat> &old_bias_term(ac->bias_params_);
-  const Matrix<BaseFloat> &old_linear_term(ac->linear_params_);
+  Vector<BaseFloat> old_bias_term(ac->bias_params_);
+  Matrix<BaseFloat> old_linear_term(ac->linear_params_);
   
   Vector<BaseFloat> new_bias_term(new_dim);
   Matrix<BaseFloat> new_linear_term(new_dim, affine_input_dim);
@@ -164,7 +164,7 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
   int32 old_offset = 0, new_offset = 0;
   Vector<BaseFloat> old_counts(this->value_sum_);
   for (size_t i = 0; i < mc->params_.size(); i++) {
-    const Matrix<BaseFloat> &this_old_params(mc->params_[i]);
+    const CuMatrix<BaseFloat> &this_old_params(mc->params_[i]);
     int32 this_old_dim = this_old_params.NumCols(),
         this_new_dim = targets[i],
         this_cur_dim = this_old_dim; // this_cur_dim is loop variable.

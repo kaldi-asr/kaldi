@@ -71,8 +71,8 @@ void NnetStats::AddStatsFromNnet(const Nnet &nnet) {
     KALDI_WARN << "No stats stored with nonlinear component";
     return;
   }
-  const Vector<double> &value_sum = nc->ValueSum();
-  const Vector<double> &deriv_sum = nc->DerivSum();
+  const CuVector<double> &value_sum = nc->ValueSum();
+  const CuVector<double> &deriv_sum = nc->DerivSum();
   if (value_sum.Dim() != deriv_sum.Dim())
     KALDI_ERR << "Error computing nnet stats: probably you are "
               << "trying to compute stats for a sigmoid layer.";

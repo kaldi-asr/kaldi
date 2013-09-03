@@ -33,10 +33,10 @@ class NnetRescaler {
  private:
   /// takes the input and formats as a single matrix, in forward_data_[0].
   void FormatInput(const std::vector<NnetTrainingExample> &data,
-                   Matrix<BaseFloat> *input);
+                   CuMatrix<BaseFloat> *input);
   void RescaleComponent(int32 c, int32 num_chunks,
-                        MatrixBase<BaseFloat> *cur_data_in,
-                        Matrix<BaseFloat> *next_data);
+                        CuMatrixBase<BaseFloat> *cur_data_in,
+                        CuMatrix<BaseFloat> *next_data);
 
   void ComputeRelevantIndexes();
   
@@ -51,7 +51,7 @@ class NnetRescaler {
 
 
 void NnetRescaler::FormatInput(const std::vector<NnetTrainingExample> &data,
-                               Matrix<BaseFloat> *input) {
+                               CuMatrix<BaseFloat> *input) {
   KALDI_ASSERT(data.size() > 0);
   int32 num_splice = nnet_->LeftContext() + 1 + nnet_->RightContext();
   KALDI_ASSERT(data[0].input_frames.NumRows() == num_splice);
@@ -66,15 +66,15 @@ void NnetRescaler::FormatInput(const std::vector<NnetTrainingExample> &data,
   input->Resize(num_splice * num_chunks,
                 tot_dim);
   for (int32 chunk = 0; chunk < num_chunks; chunk++) {
-    SubMatrix<BaseFloat> dest(*input,
-                              chunk * num_splice, num_splice,
-                              0, feat_dim);
+    CuSubMatrix<BaseFloat> dest(*input,
+                                chunk * num_splice, num_splice,
+                                0, feat_dim);
     const Matrix<BaseFloat> &src(data[chunk].input_frames);
     dest.CopyFromMat(src);
     if (spk_dim != 0) {
-      SubMatrix<BaseFloat> spk_dest(*input,
-                                    chunk * num_splice, num_splice,
-                                    feat_dim, spk_dim);
+      CuSubMatrix<BaseFloat> spk_dest(*input,
+                                      chunk * num_splice, num_splice,
+                                      feat_dim, spk_dim);
       spk_dest.CopyRowsFromVec(data[chunk].spk_info);
     }
   }
@@ -115,8 +115,8 @@ BaseFloat NnetRescaler::GetTargetAvgDeriv(int32 c) {
 void NnetRescaler::RescaleComponent(
     int32 c,
     int32 num_chunks,
-    MatrixBase<BaseFloat> *cur_data_in,
-    Matrix<BaseFloat> *next_data) {
+    CuMatrixBase<BaseFloat> *cur_data_in,
+    CuMatrix<BaseFloat> *next_data) {
   int32 rows = cur_data_in->NumRows(), cols = cur_data_in->NumCols();
   // Only handle sigmoid or tanh here.
   if (dynamic_cast<SigmoidComponent*>(&(nnet_->GetComponent(c + 1))) == NULL &&
@@ -130,7 +130,7 @@ void NnetRescaler::RescaleComponent(
   BaseFloat cur_scaling = 1.0; // current rescaling factor (on input).
   int32 num_iters = 10;
   
-  Matrix<BaseFloat> cur_data(*cur_data_in),
+  CuMatrix<BaseFloat> cur_data(*cur_data_in),
       ones(rows, cols), in_deriv(rows, cols);
       
   ones.Set(1.0);
@@ -186,7 +186,7 @@ void NnetRescaler::RescaleComponent(
 
 void NnetRescaler::Rescale() {
   ComputeRelevantIndexes(); // set up relevant_indexes_.
-  Matrix<BaseFloat> cur_data, next_data;
+  CuMatrix<BaseFloat> cur_data, next_data;
   FormatInput(examples_, &cur_data);
   int32 num_chunks = examples_.size();
   for (int32 c = 0; c < nnet_->NumComponents(); c++) {

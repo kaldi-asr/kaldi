@@ -46,12 +46,12 @@ struct NnetLogprobTask {
 
   ~NnetLogprobTask() { // Produces output.  Run sequentially.
     // at this point they are probabilities, not log-probs, without prior division.
-    prob_writer_nodiv_->Write(key_, log_probs_);
+    prob_writer_nodiv_->Write(key_, Matrix<BaseFloat>(log_probs_));
     
     log_probs_.MulColsVec(inv_priors_); // scales each column by the corresponding element
     // of inv_priors.
     for (int32 i = 0; i < log_probs_.NumRows(); i++) {
-      SubVector<BaseFloat> frame(log_probs_, i);
+      CuSubVector<BaseFloat> frame(log_probs_, i);
       BaseFloat p = frame.Sum();
       if (!(p > 0.0)) {
         KALDI_WARN << "Bad sum of probabilities " << p;
@@ -61,16 +61,16 @@ struct NnetLogprobTask {
     }
     log_probs_.ApplyFloor(1.0e-20); // To avoid log of zero which leads to NaN.
     log_probs_.ApplyLog();
-    logprob_writer_divided_->Write(key_, log_probs_);
+    logprob_writer_divided_->Write(key_, Matrix<BaseFloat>(log_probs_));
   }
 
  private:
   const AmNnet &am_nnet_;
-  const Vector<BaseFloat> &inv_priors_;
+  const CuVector<BaseFloat> &inv_priors_;
   std::string key_;
-  Matrix<BaseFloat> feats_;
-  Vector<BaseFloat> spk_vec_;
-  Matrix<BaseFloat> log_probs_;
+  CuMatrix<BaseFloat> feats_;
+  CuVector<BaseFloat> spk_vec_;
+  CuMatrix<BaseFloat> log_probs_;
   BaseFloatMatrixWriter *prob_writer_nodiv_;
   BaseFloatMatrixWriter *logprob_writer_divided_;
 };

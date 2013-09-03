@@ -49,26 +49,26 @@ class NnetUpdater {
 
   /// Computes objective function and derivative at output layer.
   double ComputeObjfAndDeriv(const std::vector<NnetTrainingExample> &data,
-                             Matrix<BaseFloat> *deriv) const;
+                             CuMatrix<BaseFloat> *deriv) const;
   
   /// Returns objf summed (and weighted) over samples.
   /// Note: "deriv" will contain, at input, the derivative w.r.t. the
   /// output layer but will be used as a temporary variable by
   /// this function.
   void Backprop(const std::vector<NnetTrainingExample> &data,
-                Matrix<BaseFloat> *deriv);
+                CuMatrix<BaseFloat> *deriv);
 
   const Nnet &nnet_;
   Nnet *nnet_to_update_;
   int32 num_chunks_; // same as the minibatch size.
   
-  std::vector<Matrix<BaseFloat> > forward_data_; // The forward data
+  std::vector<CuMatrix<BaseFloat> > forward_data_; // The forward data
   // for the outputs of each of the components.
 
   // These weights are one per parameter; they equal to the "weight"
   // member variables in the NnetTrainingExample structures.  These
   // will typically be about one on average.
-  Vector<BaseFloat> chunk_weights_;
+  CuVector<BaseFloat> chunk_weights_;
 };
 
 NnetUpdater::NnetUpdater(const Nnet &nnet,
@@ -81,7 +81,7 @@ double NnetUpdater::ComputeForMinibatch(
     const std::vector<NnetTrainingExample> &data) {
   FormatInput(data);
   Propagate();
-  Matrix<BaseFloat> tmp_deriv;
+  CuMatrix<BaseFloat> tmp_deriv;
   double ans = ComputeObjfAndDeriv(data, &tmp_deriv);
   if (nnet_to_update_ != NULL)
     Backprop(data, &tmp_deriv); // this is summed (after weighting), not
@@ -95,8 +95,8 @@ void NnetUpdater::Propagate() {
   int32 num_components = nnet_.NumComponents();
   for (int32 c = 0; c < num_components; c++) {
     const Component &component = nnet_.GetComponent(c);
-    const Matrix<BaseFloat> &input = forward_data_[c];
-    Matrix<BaseFloat> &output = forward_data_[c+1];
+    const CuMatrix<BaseFloat> &input = forward_data_[c];
+    CuMatrix<BaseFloat> &output = forward_data_[c+1];
     // Note: the Propagate function will automatically resize the
     // output.
     component.Propagate(input, num_chunks_, &output);
@@ -119,11 +119,11 @@ void NnetUpdater::Propagate() {
 
 double NnetUpdater::ComputeObjfAndDeriv(
     const std::vector<NnetTrainingExample> &data,
-    Matrix<BaseFloat> *deriv) const {
+    CuMatrix<BaseFloat> *deriv) const {
   double tot_objf = 0.0, tot_weight = 0.0;
   int32 num_components = nnet_.NumComponents();  
   deriv->Resize(num_chunks_, nnet_.OutputDim()); // sets to zero.
-  const Matrix<BaseFloat> &output(forward_data_[num_components]);
+  const CuMatrix<BaseFloat> &output(forward_data_[num_components]);
   KALDI_ASSERT(SameDim(output, *deriv));
   for (int32 m = 0; m < num_chunks_; m++) {
     for (size_t i = 0; i < data[m].labels.size(); i++) {
@@ -146,17 +146,17 @@ double NnetUpdater::ComputeObjfAndDeriv(
 
 
 void NnetUpdater::Backprop(const std::vector<NnetTrainingExample> &data,
-                           Matrix<BaseFloat> *deriv) {
+                           CuMatrix<BaseFloat> *deriv) {
   int32 num_chunks = data.size();
   // We assume ComputeObjfAndDeriv has already been called.
   for (int32 c = nnet_.NumComponents() - 1; c >= 0; c--) {
     const Component &component = nnet_.GetComponent(c);
     Component *component_to_update = (nnet_to_update_ == NULL ? NULL :
                                       &(nnet_to_update_->GetComponent(c)));
-    Matrix<BaseFloat> &input = forward_data_[c],
+    CuMatrix<BaseFloat> &input = forward_data_[c],
                      &output = forward_data_[c+1];
-    Matrix<BaseFloat> input_deriv(input.NumRows(), input.NumCols());
-    const Matrix<BaseFloat> &output_deriv(*deriv);
+    CuMatrix<BaseFloat> input_deriv(input.NumRows(), input.NumCols());
+    const CuMatrix<BaseFloat> &output_deriv(*deriv);
 
     component.Backprop(input, output, output_deriv, num_chunks,
                        component_to_update, &input_deriv);
@@ -186,18 +186,18 @@ void NnetUpdater::FormatInput(const std::vector<NnetTrainingExample> &data) {
   forward_data_[0].Resize(num_splice * num_chunks_,
                           tot_dim);
   for (int32 chunk = 0; chunk < num_chunks_; chunk++) {
-    SubMatrix<BaseFloat> dest(forward_data_[0],
-                              chunk * num_splice, num_splice,
-                              0, feat_dim);
+    CuSubMatrix<BaseFloat> dest(forward_data_[0],
+                                chunk * num_splice, num_splice,
+                                0, feat_dim);
     
     SubMatrix<BaseFloat> src(data[chunk].input_frames,
                              ignore_frames, num_splice, 0, feat_dim);
                              
     dest.CopyFromMat(src);
     if (spk_dim != 0) {
-      SubMatrix<BaseFloat> spk_dest(forward_data_[0],
-                                    chunk * num_splice, num_splice,
-                                    feat_dim, spk_dim);
+      CuSubMatrix<BaseFloat> spk_dest(forward_data_[0],
+                                      chunk * num_splice, num_splice,
+                                      feat_dim, spk_dim);
       spk_dest.CopyRowsFromVec(data[chunk].spk_info);
     }
   }

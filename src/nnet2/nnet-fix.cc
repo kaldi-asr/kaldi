@@ -47,7 +47,7 @@ void FixNnet(const NnetFixConfig &config, Nnet *nnet) {
       else continue; // E.g. SoftmaxComponent; we don't handle this.
     }
     double count = nc->Count();
-    const Vector<double> &deriv_sum = nc->DerivSum();
+    Vector<double> deriv_sum (nc->DerivSum());
     if (count == 0.0 || deriv_sum.Dim() == 0) {
       KALDI_WARN << "Cannot fix neural net because no statistics are stored.";
       continue;

@@ -65,13 +65,15 @@ int main(int argc, char *argv[]) {
     for (; !example_reader.Done(); example_reader.Next()) {
       const NnetTrainingExample &eg = example_reader.Value();
       int32 start_dim = eg.left_context - left_context;
-      SubMatrix<BaseFloat> input_block(eg.input_frames,
-                                       start_dim, context,
-                                       0, eg.input_frames.NumCols());
-      Matrix<BaseFloat> output_block(1, nnet.OutputDim());
+      SubMatrix<BaseFloat> cpu_input_block(eg.input_frames,
+                                           start_dim, context,
+                                           0, eg.input_frames.NumCols());
+      CuMatrix<BaseFloat> input_block(cpu_input_block);
+      CuMatrix<BaseFloat> output_block(1, nnet.OutputDim());
+      CuVector<BaseFloat> spk_info(eg.spk_info);
       bool pad_input = false;
-      NnetComputation(nnet, input_block, eg.spk_info, pad_input, &output_block);
-      writer.Write("global", output_block);
+      NnetComputation(nnet, input_block, spk_info, pad_input, &output_block);
+      writer.Write("global", Matrix<BaseFloat>(output_block));
       num_egs++;
     }
     

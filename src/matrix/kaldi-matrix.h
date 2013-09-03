@@ -619,6 +619,9 @@ class Matrix : public MatrixBase<Real> {
   /// Swaps the contents of *this and *other.  Shallow swap.
   void Swap(Matrix<Real> *other);
 
+  /// Defined in ../cudamatrix/cu-matrix.cc
+  void Swap(CuMatrix<Real> *mat);
+
   /// Constructor from any MatrixBase. Can also copy with transpose.
   /// Allocates new memory.
   explicit Matrix(const MatrixBase<Real> & M,

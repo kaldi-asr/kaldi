@@ -139,8 +139,8 @@ int main(int argc, char *argv[]) {
           bool pad_input = true;
           DecodableAmNnetParallel *nnet_decodable = new DecodableAmNnetParallel(
               trans_model, am_nnet,
-              new Matrix<BaseFloat>(features),
-              new Vector<BaseFloat>(spk_info),
+              new CuMatrix<BaseFloat>(features),
+              new CuVector<BaseFloat>(spk_info),
               pad_input, acoustic_scale);
 
           LatticeFasterDecoder *decoder = new LatticeFasterDecoder(*decode_fst,
@@ -193,8 +193,8 @@ int main(int argc, char *argv[]) {
         bool pad_input = true;
         DecodableAmNnetParallel *nnet_decodable = new DecodableAmNnetParallel(
             trans_model, am_nnet,
-            new Matrix<BaseFloat>(features),
-            new Vector<BaseFloat>(spk_info),
+            new CuMatrix<BaseFloat>(features),
+            new CuVector<BaseFloat>(spk_info),
             pad_input, acoustic_scale);
 
         DecodeUtteranceLatticeFasterClass *task =

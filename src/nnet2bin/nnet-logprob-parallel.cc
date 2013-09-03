@@ -28,11 +28,11 @@ namespace nnet2 {
 
 struct NnetLogprobTask {
   NnetLogprobTask(const AmNnet &am_nnet,
-                  const Vector<BaseFloat> &inv_priors,
+                  const CuVector<BaseFloat> &inv_priors,
                   const std::string &key,
-                  const Matrix<BaseFloat> &feats,
-                  const Vector<BaseFloat> &spk_vec,
-                  BaseFloatMatrixWriter *logprob_writer):
+                  const CuMatrix<BaseFloat> &feats,
+                  const CuVector<BaseFloat> &spk_vec,
+                  BaseFloatCuMatrixWriter *logprob_writer):
       am_nnet_(am_nnet), inv_priors_(inv_priors), key_(key), feats_(feats),
       spk_vec_(spk_vec), logprob_writer_(logprob_writer) { }
   void operator () () {
@@ -48,7 +48,7 @@ struct NnetLogprobTask {
     log_probs_.MulColsVec(inv_priors_); // scales each column by the corresponding element
     // of inv_priors.
     for (int32 i = 0; i < log_probs_.NumRows(); i++) {
-      SubVector<BaseFloat> frame(log_probs_, i);
+      CuSubVector<BaseFloat> frame(log_probs_, i);
       BaseFloat p = frame.Sum();
       if (!(p > 0.0)) {
         KALDI_WARN << "Bad sum of probabilities " << p;
@@ -63,12 +63,12 @@ struct NnetLogprobTask {
 
  private:
   const AmNnet &am_nnet_;
-  const Vector<BaseFloat> &inv_priors_;
+  const CuVector<BaseFloat> &inv_priors_;
   std::string key_;
-  Matrix<BaseFloat> feats_;
-  Vector<BaseFloat> spk_vec_;
-  Matrix<BaseFloat> log_probs_;
-  BaseFloatMatrixWriter *logprob_writer_;
+  CuMatrix<BaseFloat> feats_;
+  CuVector<BaseFloat> spk_vec_;
+  CuMatrix<BaseFloat> log_probs_;
+  BaseFloatCuMatrixWriter *logprob_writer_;
 };
 
 } // namespace nnet2
@@ -131,19 +131,19 @@ int main(int argc, char *argv[]) {
                  "Priors in neural network not set up.");
     inv_priors.ApplyPow(-1.0);
     
-    SequentialBaseFloatMatrixReader feature_reader(feats_rspecifier);
+    SequentialBaseFloatCuMatrixReader feature_reader(feats_rspecifier);
     // note: spk_vecs_rspecifier and utt2spk_rspecifier may be empty.
     RandomAccessBaseFloatVectorReaderMapped vecs_reader(spk_vecs_rspecifier,
                                                         utt2spk_rspecifier);
-    BaseFloatMatrixWriter logprob_writer(logprob_wspecifier);
+    BaseFloatCuMatrixWriter logprob_writer(logprob_wspecifier);
 
     {
       TaskSequencer<NnetLogprobTask> sequencer(thread_config);
     
       for (; !feature_reader.Done(); feature_reader.Next()) {
         std::string key = feature_reader.Key();
-        const Matrix<BaseFloat> &feats = feature_reader.Value();
-        Vector<BaseFloat> spk_vec;
+        const CuMatrix<BaseFloat> &feats = feature_reader.Value();
+        CuVector<BaseFloat> spk_vec;
         if (!spk_vecs_rspecifier.empty()) {
           if (!vecs_reader.HasKey(key)) {
             KALDI_ERR << "No speaker vector available for key " << key;

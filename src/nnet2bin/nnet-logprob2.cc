@@ -77,24 +77,24 @@ int main(int argc, char *argv[]) {
     }
 
     int64 num_done = 0, num_err = 0;
-
-    Vector<BaseFloat> inv_priors(am_nnet.Priors());
+    
+    CuVector<BaseFloat> inv_priors(am_nnet.Priors());
     KALDI_ASSERT(inv_priors.Dim() == am_nnet.NumPdfs() &&
                  "Priors in neural network not set up.");
     inv_priors.ApplyPow(-1.0);
     
-    SequentialBaseFloatMatrixReader feature_reader(feats_rspecifier);
+    SequentialBaseFloatCuMatrixReader feature_reader(feats_rspecifier);
     // note: spk_vecs_rspecifier and utt2spk_rspecifier may be empty.
     RandomAccessBaseFloatVectorReaderMapped vecs_reader(spk_vecs_rspecifier,
                                                         utt2spk_rspecifier);
-    BaseFloatMatrixWriter prob_writer_nodiv(prob_wspecifier_nodiv);
-    BaseFloatMatrixWriter logprob_writer_divided(logprob_wspecifier_divided);
+    BaseFloatCuMatrixWriter prob_writer_nodiv(prob_wspecifier_nodiv);
+    BaseFloatCuMatrixWriter logprob_writer_divided(logprob_wspecifier_divided);
 
     
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string key = feature_reader.Key();
-      const Matrix<BaseFloat> &feats = feature_reader.Value();
-      Vector<BaseFloat> spk_vec;
+      const CuMatrix<BaseFloat> &feats = feature_reader.Value();
+      CuVector<BaseFloat> spk_vec;
       if (!spk_vecs_rspecifier.empty()) {
         if (!vecs_reader.HasKey(key)) {
           KALDI_ERR << "No speaker vector available for key " << key;
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
         spk_vec = vecs_reader.Value(key);
       }
       
-      Matrix<BaseFloat> log_probs(feats.NumRows(), am_nnet.NumPdfs());
+      CuMatrix<BaseFloat> log_probs(feats.NumRows(), am_nnet.NumPdfs());
       NnetComputation(am_nnet.GetNnet(), feats, spk_vec, pad_input, &log_probs);
       // at this point "log_probs" contains actual probabilities, not logs.
 
@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
         log_probs.MulColsVec(inv_priors); // scales each column by the corresponding element
         // of inv_priors.
         for (int32 i = 0; i < log_probs.NumRows(); i++) {
-          SubVector<BaseFloat> frame(log_probs, i);
+          CuSubVector<BaseFloat> frame(log_probs, i);
           BaseFloat p = frame.Sum();
           if (!(p > 0.0)) {
             KALDI_WARN << "Bad sum of probabilities " << p;

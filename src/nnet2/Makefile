@@ -16,7 +16,7 @@ OBJFILES = nnet-component.o nnet-nnet.o nnet-update.o train-nnet.o \
 LIBNAME = kaldi-nnet2
 
 ADDLIBS = ../thread/kaldi-thread.a ../gmm/kaldi-gmm.a ../tree/kaldi-tree.a \
-     ../transform/kaldi-transform.a ../matrix/kaldi-matrix.a \
+     ../transform/kaldi-transform.a ../cudamatrix/kaldi-cudamatrix.a ../matrix/kaldi-matrix.a \
      ../base/kaldi-base.a  ../util/kaldi-util.a 
 
 include ../makefiles/default_rules.mk
