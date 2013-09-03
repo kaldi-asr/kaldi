@@ -34,6 +34,8 @@ template<typename Real> class CuMatrixBase;
 template<typename Real>
 Real VecVec(const CuVectorBase<Real> &v1, const CuVectorBase<Real> &v2);
 
+template<typename Real, typename OtherReal>
+Real VecVec(const CuVectorBase<Real> &v1, const CuVectorBase<OtherReal> &v2);
 
 /**
  * Vector for CUDA computing
@@ -159,7 +161,10 @@ class CuVectorBase {
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                           static_cast<UnsignedMatrixIndexT>(dim_));
     return CuValue<Real>(data_ + i); // will be casted to Real.
-  }    
+  }
+
+  /// Extracts the diagonal of a packed matrix M; works for Sp or Tp.
+  void CopyDiagFromPacked(const CuPackedMatrix<Real> &M);
 
   Real Max() const;  
   Real Min() const;
@@ -271,8 +276,10 @@ class CuSubVector: public CuVectorBase<Real> {
     CuVectorBase<Real>::dim_ = other.dim_;
   }
 
-  CuSubVector(Real* data, MatrixIndexT length) : CuVectorBase<Real> () {
-    CuVectorBase<Real>::data_ = data;
+  CuSubVector(const Real* data, MatrixIndexT length) : CuVectorBase<Real> () {
+    // Yes, we're evading C's restrictions on const here, and yes, it can be used
+    // to do wrong stuff; unfortunately the workaround would be very difficult.
+    CuVectorBase<Real>::data_ = const_cast<Real*>(data);
     CuVectorBase<Real>::dim_ = length;
   }
     

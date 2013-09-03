@@ -145,6 +145,40 @@ static void AssertEqual(std::vector<int32> &A, std::vector<int32> &B) {
  * Unit tests
  */
 
+template<class Real> 
+static void UnitTestCuMatrixTraceMatMat() {
+  for (int32 i = 0; i < 5; i++) {
+    int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+    CuMatrix<Real> A(M, N);
+    A.SetRandn();
+    if (i % 2 == 0) {
+      CuMatrix<Real> B(M, N);
+      B.SetRandn();
+      Real r1 = TraceMatMat(A, B, kTrans),
+          r2 = TraceMatMat(Matrix<Real>(A), Matrix<Real>(B), kTrans),
+          r3 = TraceMatMat(Matrix<Real>(A), Matrix<Real>(B, kTrans), kNoTrans);
+      Matrix<Real> X(B, kTrans);
+      KALDI_LOG << "Xsum = " << X.Sum();
+      Matrix<Real> Y(B, kTrans);
+      KALDI_LOG << "Ysum = " << Y.Sum();
+      KALDI_LOG << "Bsum = " << B.Sum();
+      KALDI_ASSERT(ApproxEqual(r1, r2));
+      KALDI_ASSERT(ApproxEqual(r2, r3));
+    } else {
+      CuMatrix<Real> B(N, M);
+      B.SetRandn();
+      Real r1 = TraceMatMat(A, B, kNoTrans),
+          r2 = TraceMatMat(Matrix<Real>(A), Matrix<Real>(B), kNoTrans),
+          r3 = TraceMatMat(Matrix<Real>(A), Matrix<Real>(B, kTrans), kTrans);
+      KALDI_ASSERT(ApproxEqual(r1, r2));
+      KALDI_ASSERT(ApproxEqual(r2, r3));
+    }
+  }
+}
+      
+
+
+
 /*
  * CuMatrix
  */
@@ -1197,6 +1231,7 @@ template<class Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixApplyLog<Real>();
   UnitTestCuMatrixScale<Real>();
   UnitTestCuMatrixSigmoid<Real>();
+  UnitTestCuMatrixTraceMatMat<Real>();
   UnitTestCuMatrixSoftHinge<Real>();
   UnitTestCuMatrixApplyPow<Real>();
   UnitTestCuMatrixAdd<Real>();

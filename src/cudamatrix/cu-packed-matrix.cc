@@ -274,37 +274,10 @@ Real CuPackedMatrix<Real>::Trace() const {
   Real result = 0.0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    //int dimBlock(CU2DBLOCK);
-    //int dimGrid(n_blocks(NumRows(), CU2DBLOCK));
-    int dimBlock(NumRows());
-    int dimGrid(1);
-    //this is the cublas implementation
-    
-    size_t nr = static_cast<size_t>(num_rows_),
-        num_bytes = nr * sizeof(Real);
-
-    Real *device_ones = 0;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_ones), num_bytes));
-    cuda_one(dimGrid,dimBlock,device_ones,num_rows_);
-    
-    Real* device_array;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_array),num_bytes));
-    cuda_copy_diag(dimGrid,dimBlock,device_array,data_,num_rows_);
-    result = cublas_dot(num_rows_, device_array, 1, device_ones, 1); 
-    
-    
-    // implementaion using sum_reduce
-    /*
-    Real* device_result;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_result), sizeof(Real)));
-    CU_SAFE_CALL(cudaMemset(device_result,0, sizeof(Real)));
-    cuda_trace(dimGrid, dimBlock, data_, device_result, num_rows_);
-    CU_SAFE_CALL(cudaGetLastError());
-    CU_SAFE_CALL(cudaMemcpy(&result, device_result, sizeof(Real), cudaMemcpyDeviceToHost));
-    */ 
-   
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    if (NumRows() == 0) return 0.0;
+    CuVector<Real> tmp(NumRows(), kUndefined);
+    tmp.CopyDiagFromPacked(*this);
+    return tmp.Sum();
   } else
 #endif
   {

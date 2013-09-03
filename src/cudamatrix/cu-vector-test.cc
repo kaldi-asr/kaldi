@@ -324,13 +324,17 @@ template<class Real> void CuVectorUnitTestSum() {
 
 
 template<class Real> void CuVectorUnitTestScale() {
-  int32 dim = 10 + 10 % rand();
-  CuVector<Real> vec(dim);
-  vec.SetRandn();
-  CuVector<Real> vec2(vec);
-  BaseFloat scale = 0.333;
-  vec.Scale(scale);
-  KALDI_ASSERT(ApproxEqual(vec(0), vec2(0) * scale));
+  for (int32 i = 0; i < 4; i++) {
+    int32 dim = 100 + 400 % rand();
+    CuVector<Real> cu_vec(dim);
+    cu_vec.SetRandn();
+    Vector<Real> vec(cu_vec);
+    BaseFloat scale = 0.333;
+    cu_vec.Scale(scale);
+    vec.Scale(scale);
+    Vector<Real> vec2(cu_vec);
+    KALDI_ASSERT(ApproxEqual(vec, vec2));
+  }
 }
 
 template<class Real> void CuVectorUnitTestCopyFromMat() {
@@ -366,6 +370,22 @@ template<class Real> void CuVectorUnitTestCopyFromMat() {
     }
   }
 }
+
+template<class Real> void CuVectorUnitTestCopyDiagFromPacked() {
+  for (int32 i = 0; i < 5; i++) {
+    int32 N = 100 + rand() % 255;
+    CuSpMatrix<Real> S(N);
+    S.SetRandn();
+    CuVector<Real> V(N, kUndefined);
+    V.CopyDiagFromPacked(S);
+    SpMatrix<Real> cpu_S(S);
+    Vector<Real> cpu_V(N);
+    cpu_V.CopyDiagFromPacked(cpu_S);
+    Vector<Real> cpu_V2(V);
+    KALDI_ASSERT(cpu_V.ApproxEqual(cpu_V2));
+  }
+}
+
 
 template<class Real> void CuVectorUnitTestNorm() {
   int32 dim = 2;
@@ -609,7 +629,8 @@ template<class Real> void CuVectorUnitTest() {
   CuVectorUnitTestMin<Real>();
   CuVectorUnitTestMax<Real>();
   CuVectorUnitTestApplySoftMax<Real>();
-  CuVectorUnitTestNorm<Real>();
+  CuVectorUnitTestCopyDiagFromPacked<Real>();
+  CuVectorUnitTestNorm<Real>();  
   CuVectorUnitTestApplyExp<Real>();
   CuVectorUnitTestApplyLog<Real>();
   CuVectorUnitTestApplyFloor<Real>();

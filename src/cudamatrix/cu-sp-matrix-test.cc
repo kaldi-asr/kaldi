@@ -252,8 +252,8 @@ static void UnitTestCuSpMatrixAddSp() {
 
 template<class Real, class OtherReal>
 static void UnitTestCuSpMatrixTraceSpSp() {
-  for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+  for (MatrixIndexT i = 1; i < 2; i++) {
+    MatrixIndexT dim = 100 + rand() % 255;
     
     SpMatrix<Real> A(dim);
     A.SetRandn();
@@ -262,10 +262,8 @@ static void UnitTestCuSpMatrixTraceSpSp() {
     C.SetRandn();
     const CuSpMatrix<OtherReal> D(C);
 
-
-#ifdef KALDI_PARANOID
-    KALDI_ASSERT(TraceSpSp(A, C), TraceSpSp(B, D));
-#endif
+    Real t1 = TraceSpSp(A, C), t2 = TraceSpSp(B, D);
+    KALDI_ASSERT(ApproxEqual(t1, t2));
   }
 }
 

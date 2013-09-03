@@ -165,129 +165,37 @@ template<> inline double cublas_dot<double>(int n, const double *x, int incx, co
 }
 #endif
 
-double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<double> &B) {
-  double result;
+
+template<class Real, class OtherReal>
+Real TraceSpSp(const CuSpMatrix<Real> &A, const CuSpMatrix<OtherReal> &B) {
   KALDI_ASSERT(A.NumRows() == B.NumRows());
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    int dimGrid = 1;
-    int dimBlock= A.NumRows();
-
-    // copy the diagonal componenets
-
-    size_t nr = static_cast<size_t>(A.NumRows()),
-        num_elems = (nr * (nr+1)) / 2,
-        num_bytes = nr * sizeof(double);
-                     
-    double* diag_A;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&diag_A), num_bytes));
-    cuda_copy_diag(dimGrid, dimBlock, diag_A, A.Data(), A.NumRows());
-
-    double* diag_B;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&diag_B), num_bytes));    
-    cuda_copy_diag(dimGrid, dimBlock, diag_B, B.Data(), B.NumRows());
-
-    double dot_diag = 0.0;
-    dot_diag = cublas_dot(A.NumRows(), diag_A, 1, diag_B, 1);
-    double dot_all = 0.0;
-    dot_all = cublas_dot(num_elems, A.Data(), 1, B.Data(), 1);
-    
-    result = 2 * dot_all - dot_diag;
-    CuDevice::Instantiate().AccuProfile("CuSpMatrix::TraceSpSp", tim.Elapsed());
+    MatrixIndexT nr = A.NumRows(), size = nr * (nr+1) / 2;
+    CuVector<Real> Adiag(nr, kUndefined);
+    CuVector<OtherReal> Bdiag(nr, kUndefined);
+    Adiag.CopyDiagFromPacked(A);
+    Bdiag.CopyDiagFromPacked(B);
+    CuSubVector<Real> Aall(A.Data(), size);
+    CuSubVector<OtherReal> Ball(B.Data(), size);
+    // Below, we subtrace VecVec(Adiag, Bdiag) to remove double-counting
+    // on the diagonal.
+    return 2.0 * VecVec(Aall, Ball) - VecVec(Adiag, Bdiag);
   } else
 #endif
   {
-    result = TraceSpSp(A.Mat(), B.Mat());
+    return TraceSpSp(A.Mat(), B.Mat());
   }
-  return result;
 }
+template
+float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<float> &B);
+template
+float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<double> &B);
+template
+double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<float> &B);
+template
+double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<double> &B);
 
-float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<float> &B) {
-  float result;
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    int dimGrid = 1;
-    int dimBlock= A.NumRows();
-
-    // copy the diagonal componenets
-
-    size_t nr = static_cast<size_t>(A.NumRows()),
-        num_elems = (nr * (nr+1)) / 2,
-        num_bytes = nr * sizeof(float);
-                     
-    float* diag_A;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&diag_A), num_bytes));
-    cuda_copy_diag(dimGrid, dimBlock, diag_A, A.Data(), A.NumRows());
-
-    float* diag_B;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&diag_B), num_bytes));    
-    cuda_copy_diag(dimGrid, dimBlock, diag_B, B.Data(), B.NumRows());
-
-    float dot_diag = 0.0;
-    dot_diag = cublas_dot(A.NumRows(), diag_A, 1, diag_B, 1);
-    float dot_all = 0.0;
-    dot_all = cublas_dot(num_elems, A.Data(), 1, B.Data(), 1);
-    
-    result = 2 * dot_all - dot_diag;
-    CuDevice::Instantiate().AccuProfile("CuSpMatrix::TraceSpSp", tim.Elapsed());
-  } else
-#endif
-  {
-    result = TraceSpSp(A.Mat(), B.Mat());
-  }
-  return result;
-}
-
-double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<float> &B) {
-  double result;
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    int dimGrid = 1;
-    int dimBlock = A.NumRows();
-
-    double* device_result;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_result), sizeof(double)));
-    CU_SAFE_CALL(cudaMemset(device_result,0, sizeof(double)));
-    cuda_trace_sp_sp_df(dimGrid, dimBlock, A.Data(), B.Data(), device_result, A.NumRows());
-    CU_SAFE_CALL(cudaGetLastError());
-    CU_SAFE_CALL(cudaMemcpy(&result, device_result, sizeof(double), cudaMemcpyDeviceToHost));
-    CuDevice::Instantiate().AccuProfile("CuSpMatrix::TraceSpSp", tim.Elapsed());
-  } else
-#endif
-  {
-    result = TraceSpSp(A.Mat(), B.Mat());
-  }
-  return result;
-}
-
-float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<double> &B) {
-  float result;
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    int dimGrid = 1;
-    int dimBlock = A.NumRows();
-
-    float* device_result;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_result), sizeof(float)));
-    CU_SAFE_CALL(cudaMemset(device_result,0, sizeof(float)));
-    cuda_trace_sp_sp_fd(dimGrid, dimBlock, A.Data(), B.Data(), device_result, A.NumRows());
-    CU_SAFE_CALL(cudaGetLastError());
-    CU_SAFE_CALL(cudaMemcpy(&result, device_result, sizeof(float), cudaMemcpyDeviceToHost));
-    CuDevice::Instantiate().AccuProfile("CuSpMatrix::TraceSpSp", tim.Elapsed());
-  } else
-#endif
-  {
-    result = TraceSpSp(A.Mat(), B.Mat());
-  }
-  return result;
-}
 
 template class CuSpMatrix<float>;
 template class CuSpMatrix<double>;

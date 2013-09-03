@@ -14,10 +14,8 @@
 namespace kaldi {
 
 /// TraceSpSp returns tr(A B)
-double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<double> &B);
-float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<float> &B);
-double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<float> &B);
-float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<double> &B);
+template<class Real, class OtherReal>
+Real TraceSpSp(const CuSpMatrix<Real> &A, const CuSpMatrix<OtherReal> &B);
 
 template<typename Real>
 class CuSpMatrix : public CuPackedMatrix<Real> {
@@ -26,11 +24,8 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
   friend class CuSubMatrix<Real>;
   friend class CuRand<Real>;
 
-  
-  friend double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<double> &B);
-  friend float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<float> &B);
-  friend double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<float> &B);
-  friend float TraceSpSp(const CuSpMatrix<float> &A, const CuSpMatrix<double> &B);
+  template<class R, class S>
+  friend R TraceSpSp(const CuSpMatrix<R> &A, const CuSpMatrix<S> &B);
  public:
   
   CuSpMatrix(): CuPackedMatrix<Real>() {}

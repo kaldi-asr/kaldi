@@ -66,14 +66,21 @@ Real VecVec(const CuVectorBase<Real> &a,
   }
   return result;
 }
+// instantiate the template above
+template float VecVec(const CuVectorBase<float> &a, const CuVectorBase<float> &b);
+template double VecVec(const CuVectorBase<double> &a, const CuVectorBase<double> &b);
 
-template
-float VecVec<>(const CuVectorBase<float> &a,
-               const CuVectorBase<float> &b);
-
-template
-double VecVec<>(const CuVectorBase<double> &a,
-                const CuVectorBase<double> &b);
+// The version of VecVec that can do type conversion.  For now we give this a
+// stupid implementation that converts one of the vectors.  If it ever becomes
+// an efficiency bottleneck, we can revisit this.
+template<typename Real, typename OtherReal>
+Real VecVec(const CuVectorBase<Real> &A, const CuVectorBase<OtherReal> &B) {
+  CuVector<Real> B2(B);
+  return VecVec(A, B2); // This will call the single-parameter template.
+}
+// instantiate the template above
+template float VecVec(const CuVectorBase<float> &A, const CuVectorBase<double> &B);
+template double VecVec(const CuVectorBase<double> &A, const CuVectorBase<float> &B);
 
 template<typename Real>
 void CuVectorBase<Real>::CopyColFromMat(const CuMatrixBase<Real> &mat, MatrixIndexT col) {
@@ -906,7 +913,7 @@ void CuVectorBase<Real>::Set(Real value) {
 
 template<typename Real>
 void CuVectorBase<Real>::Add(Real value) {
-  #if HAVE_CUDA == 1
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
@@ -919,29 +926,44 @@ void CuVectorBase<Real>::Add(Real value) {
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
-  #endif
+#endif
   {
     Vec().Add(value);
   }
 }
 
+template<typename Real>
+void CuVectorBase<Real>::CopyDiagFromPacked(const CuPackedMatrix<Real> &M) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(Dim(), CU1DBLOCK));
+
+    cuda_vec_copy_diag_from_packed(dimGrid, dimBlock, data_, M.Data(), dim_);
+
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Vec().CopyDiagFromPacked(M.Mat());
+  }
+}
 
 
 template<typename Real>
 void CuVectorBase<Real>::Scale(Real value) {
   #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
-
-    dim3 dimBlock(CU2DBLOCK);
-    dim3 dimGrid(n_blocks(Dim(), CU2DBLOCK));
-    ::MatrixDim d = { 1, Dim(), Dim() };
+  if (CuDevice::Instantiate().Enabled()) {
     if (Dim() == 0 ) return;
-    KALDI_LOG << "dimension is : " << Dim() << '\n';
-    KALDI_LOG << "value is : " << value << '\n';
-    KALDI_LOG << "dimBlock is : " << CU2DBLOCK << '\n';
-    KALDI_LOG << "dimGrid is : " << n_blocks(Dim(), CU2DBLOCK) << '\n';
-    
+
+    Timer tim;
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CU1DBLOCK));
+    ::MatrixDim d = { 1, Dim(), Dim() };
     cuda_scale(dimGrid, dimBlock, data_, value, d);
     CU_SAFE_CALL(cudaGetLastError());
 

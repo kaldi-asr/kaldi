@@ -276,7 +276,7 @@ void CuMatrixBase<float>::CopyFromMat(const CuMatrixBase<float> &M,
 
       KALDI_ASSERT(num_rows_ == M.NumCols() && num_cols_ == M.NumRows ());
       cuda_copy_from_mat_ff_trans(dimGrid, dimBlock, data_, M.Data(),
-                                    Dim(), M.Dim());
+                                  Dim(), M.Dim());
     }
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
   } else
@@ -1278,17 +1278,15 @@ Real TraceMatMat(const CuMatrixBase<Real> &A,
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    int dimBlock(CU2DBLOCK);
-    int dimGrid(n_blocks(A.NumRows(), CU2DBLOCK));
     Real* device_result;
     CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_result), sizeof(Real)));
     CU_SAFE_CALL(cudaMemset(device_result, 0, sizeof(Real)));
     if (trans == kNoTrans) {
       KALDI_ASSERT(A.NumRows() == B.NumCols() && A.NumCols() == B.NumRows());
-      cuda_trace_mat_mat(dimGrid, dimBlock, A.Data(), B.RowData(0), A.Dim(), B.Dim(), device_result);
+      cuda_trace_mat_mat(A.Data(), B.RowData(0), A.Dim(), B.Stride(), device_result);
     } else {
       KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
-      cuda_trace_mat_mat_trans(dimGrid, dimBlock, A.Data(), B.RowData(0), A.Dim(), B.Dim(), device_result);
+      cuda_trace_mat_mat_trans(A.Data(), B.RowData(0), A.Dim(), B.Stride(), device_result);
     }
     CU_SAFE_CALL(cudaGetLastError());
     CU_SAFE_CALL(cudaMemcpy(&result, device_result, sizeof(Real), cudaMemcpyDeviceToHost));
