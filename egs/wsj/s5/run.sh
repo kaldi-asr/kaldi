@@ -313,7 +313,7 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
 
 local/run_mmi_tri4b.sh
 
-#local/run_nnet_cpu.sh
+#local/run_nnet2.sh
 
 ## Segregated some SGMM builds into a separate file.
 #local/run_sgmm.sh
