@@ -15,7 +15,7 @@ num_iters_final=20 # Maximum number of final iterations to give to the
                    # optimization over the validation set.
 initial_learning_rate=0.04
 final_learning_rate=0.004
-bias_stddev=0.0
+bias_stddev=0.5
 shrink_interval=5 # shrink every $shrink_interval iters except while we are 
                   # still adding layers, when we do it every iter.
 shrink=true

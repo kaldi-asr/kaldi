@@ -161,15 +161,23 @@ void CuVectorBase<Real>::CopyRowsFromMat(const CuMatrixBase<Real> &mat) {
 
 template<typename Real>
 Real CuVectorBase<Real>::Norm(BaseFloat p) {
-  KALDI_ASSERT(p == 1.0 || p == 2.0);
-  if (dim_ == 0.0) return 0.0;
-  if (p == 1.0) {
-    return cublas_asum(dim_, data_, 1);
-  } else {
-    return cublas_nrm2(dim_, data_, 1);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    KALDI_ASSERT(p == 1.0 || p == 2.0);
+    if (dim_ == 0.0) return 0.0;
+    if (p == 1.0) {
+      return cublas_asum(dim_, data_, 1);
+    } else {
+      return cublas_nrm2(dim_, data_, 1);
+    }
+  } else
+#else
+  {
+    return Vec().Norm(p);
   }
 }
-
+#endif
 
 template<typename Real>
 void CuVectorBase<Real>::CopyRowsFromMat(const MatrixBase<Real> &mat) {

@@ -37,6 +37,7 @@ rbm_drop_data=0.0     #sample the training set, 1.0 drops all the data, 0.0 keep
 rbm_lrate=0.4         #RBM learning rate
 rbm_lrate_low=0.01    #lower RBM learning rate (for Gaussian units)
 rbm_l2penalty=0.0002  #L2 penalty (increases RBM-mixing rate)
+rbm_extra_opts=
 # data processing config
 copy_feats=true    # resave the features randomized consecutively to tmpdir
 # feature config
@@ -207,7 +208,7 @@ for depth in $(seq 1 $nn_depth); do
     rbm-train-cd1-frmshuff --learn-rate=$rbm_lrate_low --l2-penalty=$rbm_l2penalty \
       --num-iters=$((2*$rbm_iter)) --drop-data=$rbm_drop_data --verbose=$verbose \
       --feature-transform=$feature_transform \
-      ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
+      ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} $rbm_extra_opts \
       $RBM.init "$feats" $RBM 2>$dir/log/rbm.$depth.log || exit 1
   else
     #This is Bernoulli-Bernoulli RBM
@@ -231,7 +232,7 @@ for depth in $(seq 1 $nn_depth); do
     rbm-train-cd1-frmshuff --learn-rate=$rbm_lrate --l2-penalty=$rbm_l2penalty \
       --num-iters=$rbm_iter --drop-data=$rbm_drop_data --verbose=$verbose \
       --feature-transform="nnet-concat $feature_transform $dir/$((depth-1)).dbn - |" \
-      ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
+      ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} $rbm_extra_opts \
       $RBM.init "$feats" $RBM 2>$dir/log/rbm.$depth.log || exit 1
   fi
 
