@@ -58,10 +58,27 @@
   \section install_install Installing Kaldi
    
   The top-level installation instructions are in the file INSTALL. 
-  For Windows, there are separate instructions in windows/INSTALL.
+  For Windows, there are separate instructions (unfortunately, not actively maintained and woefully out of date)
+   in windows/INSTALL.
   See also \ref build_setup which explains how the build process
   works internally.
 
   The example scripts are in egs/
+
+  \section install_switch For contributors: switching repositories
+
+ Just for reference: if you have downloaded a copy of Kaldi in the normal "read-only" way without
+ using your Sourceforge account and you want to contribute to the project, then you need
+ to create a username on Sourceforge and give it to one of the administrators (typically Dan Povey, dpovey@gmail.com).
+ After discussing what it is you want to contribute and the best way to proceed, we may add your username to the project, and
+ you should switch your repository over to an SSH-based link which
+ will allow you to commit changes:
+\verbatim
+svn switch --relocate svn://svn.code.sf.net/p/kaldi/code svn+ssh://USERNAME@svn.code.sf.net/p/kaldi/code
+\endverbatim
+ where USERNAME is replaced by your Sourceforge username.  Do this while
+ you are in the top level of your copy of the repository (e.g. in trunk/).  To avoid entering passwords
+ every time you update, use ssh keys: see https://sourceforge.net/account/ssh.
+  
   
 */
