@@ -956,7 +956,7 @@ void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-
+/*
 #if 1
     // enable 'tree-reduce' functions, 
     //find maximum in each row (tree reduction)
@@ -980,6 +980,12 @@ void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
     cuda_softmax(dimGrid, dimBlock, data_, src.data_, src.Dim());
     CU_SAFE_CALL(cudaGetLastError());
 #endif
+*/
+
+    size_t dimBlock = src.num_cols_ > CU1DBLOCK ? CU1DBLOCK : src.num_cols_;
+    size_t dimGrid = src.num_rows_;
+    cuda_softmax_reduce(dimGrid, dimBlock, data_, src.data_, src.Dim());
+    CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else

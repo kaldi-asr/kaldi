@@ -993,12 +993,16 @@ static void UnitTestCuDiffSigmoid() {
 
 template<class Real> 
 static void UnitTestCuSoftmax() {
-  Matrix<Real> Hi(100,111);
-  Matrix<Real> Ho(100,111);
+
+  int row = 256; 
+  int col = 10240;
+
+  Matrix<Real> Hi(row,col);
+  Matrix<Real> Ho(row,col);
   RandGaussMatrix(&Hi);
   
-  CuMatrix<Real> Di(100,111);
-  CuMatrix<Real> Do(100,111);
+  CuMatrix<Real> Di(row, col);
+  CuMatrix<Real> Do(row, col);
   Di.CopyFromMat(Hi);
 
   //gpu
@@ -1009,7 +1013,7 @@ static void UnitTestCuSoftmax() {
     Ho.Row(r).ApplySoftMax();
   }
 
-  Matrix<Real> Ho2(100,111);
+  Matrix<Real> Ho2(row, col);
   Do.CopyToMat(&Ho2);
 
   AssertEqual(Ho,Ho2);

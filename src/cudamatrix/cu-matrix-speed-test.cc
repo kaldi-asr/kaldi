@@ -71,6 +71,22 @@ template<class Real> void TestCuMatrixSigmoid(int32 dim) {
 }
 
 
+template<class Real> void TestCuMatrixSoftmax(int32 dim) {
+  BaseFloat time_in_secs = 0.05;
+  CuMatrix<Real> M(256, dim), N(256, dim);
+  M.SetRandn();
+  N.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    N.ApplySoftMaxPerRow(M);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::Softmax" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
 
 
 template<class Real> void CudaMatrixSpeedTest() {
@@ -84,6 +100,9 @@ template<class Real> void CudaMatrixSpeedTest() {
     TestCuMatrixMatMat<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSigmoid<Real>(sizes[s]);
+
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixSoftmax<Real>(sizes[s]);
 }
 
 

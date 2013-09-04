@@ -25,7 +25,6 @@
 #include "cu-kernels-ansi.h"
 
 
-
 /***********************************************************************
  * Generic __device__ functions
  */
@@ -1214,6 +1213,74 @@ static void _softmax(Real*y, const Real*x, MatrixDim d) {
 }
 
 
+template<typename Real>
+__global__
+static void _softmax_reduce(Real*y, const Real*x, MatrixDim d) {
+  int j = blockIdx.x;
+  int THREADS = blockDim.x;
+  if(j >= d.rows) return;
+
+  __shared__ Real aux[256];
+  int steps = (d.cols - 1) / THREADS + 1;
+
+  //copy input to aux
+  aux[threadIdx.x] = x[threadIdx.x+j*d.stride];
+  for(int i=1; i<steps; ++i) {
+    if(threadIdx.x+i*THREADS < d.cols && aux[threadIdx.x] < x[threadIdx.x+i*THREADS+j*d.stride])
+	aux[threadIdx.x] = x[threadIdx.x+i*THREADS+j*d.stride];
+  }
+
+  //get the maximum value
+  int nTotalThreads = THREADS;
+  __syncthreads();
+  while(nTotalThreads > 1) {
+    int halfPoint = ((1+nTotalThreads) >> 1);   // divide by two
+    // only the first half of the threads will be active.
+    if (threadIdx.x < halfPoint)  {
+      // Get the shared value stored by another thread
+      if(threadIdx.x+halfPoint < nTotalThreads && aux[threadIdx.x] < aux[threadIdx.x+halfPoint])
+        aux[threadIdx.x] = aux[threadIdx.x + halfPoint];
+    }
+    __syncthreads();
+    nTotalThreads = ((1+nTotalThreads) >> 1);   // divide by two.
+  }
+  Real max = aux[0];
+  __syncthreads();
+
+  //subtract max, apply exp, sum up...
+  y[threadIdx.x+j*d.stride] = exp(x[threadIdx.x+j*d.stride] - max);
+  aux[threadIdx.x] = y[threadIdx.x+j*d.stride];
+  for(int i=1; i<steps; i++) {
+    if(threadIdx.x+i*THREADS < d.cols) {
+      y[threadIdx.x+i*THREADS+j*d.stride] = exp(x[threadIdx.x+i*THREADS+j*d.stride] - max);
+      aux[threadIdx.x] += y[threadIdx.x+i*THREADS+j*d.stride];
+    }
+  }
+  nTotalThreads = THREADS;
+  __syncthreads();
+  while(nTotalThreads > 1) {
+    int halfPoint = ((1+nTotalThreads) >> 1);   // divide by two
+    // only the first half of the threads will be active.
+    if (threadIdx.x < halfPoint)  {
+      // Get the shared value stored by another thread
+      if(threadIdx.x+halfPoint < nTotalThreads)
+        aux[threadIdx.x] += aux[threadIdx.x + halfPoint];
+    }
+    __syncthreads();
+    nTotalThreads = ((1+nTotalThreads) >> 1);   // divide by two.
+  }
+  Real sum = aux[0];
+  __syncthreads();
+
+  //normalize by sum...
+  for(int i=0; i<steps; i++) {
+    if(threadIdx.x+i*THREADS < d.cols) {
+      y[threadIdx.x+i*THREADS+j*d.stride] = y[threadIdx.x+i*THREADS+j*d.stride] / sum;
+    }
+  }
+
+}
+
 
 template<typename Real>
 __global__
@@ -1700,6 +1767,11 @@ void cudaF_softmax (size_t Gr, size_t Bl, float* y, const float* x, MatrixDim d)
   _softmax<<<Gr,Bl>>>(y, x, d); 
 }
 
+void cudaF_softmax_reduce (size_t Gr, size_t Bl, float* y, const float* x, MatrixDim d) {
+  _softmax_reduce<<<Gr,Bl>>>(y, x, d);
+}
+
+
 void cudaF_softmax_part(dim3 Gr, dim3 Bl, const float* X, const int32_cuda* vec_ids, float* Y, MatrixDim d) {
   _softmax_part<<<Gr,Bl>>>(X,vec_ids,Y,d);
 }
@@ -2030,6 +2102,10 @@ void cudaD_diff_tanh (dim3 Gr, dim3 Bl, double* eout, const double* e, const dou
 
 void cudaD_softmax (size_t Gr, size_t Bl, double* y, const double* x, MatrixDim d) { 
   _softmax<<<Gr,Bl>>>(y, x, d); 
+}
+
+void cudaD_softmax_reduce (size_t Gr, size_t Bl, double* y, const double* x, MatrixDim d) {
+  _softmax_reduce<<<Gr,Bl>>>(y, x, d);
 }
 
 void cudaD_softmax_part(dim3 Gr, dim3 Bl, const double* X, const int32_cuda* vec_ids, double* Y, MatrixDim d) {
