@@ -874,39 +874,41 @@ void CuMatrixBase<Real>::AddMatMat(
   }
 }
 
-/// Element-wise, does (*this) += alpha + A * B / C.
-/// In the special case that C == 0, adds nothing.
-/// we have implemented the first version which all trans* = kNoTrans
 template<typename Real>
-void CuMatrixBase<Real>::AddMatMatDivMatElements(
-    Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
-    const CuMatrixBase<Real> &B, MatrixTransposeType transB,
-    const CuMatrixBase<Real> &C, MatrixTransposeType transC,
+void CuMatrixBase<Real>::AddDiagVecMat(
+    const Real alpha, CuVectorBase<Real> &v,
+    const CuMatrixBase<Real> &M, MatrixTransposeType transM,
     Real beta) {
-  KALDI_ASSERT(num_rows_ == num_cols_ &&
-               A.NumRows() == num_rows_ && A.NumCols() == num_cols_ &&
-               B.NumRows() == num_rows_ && B.NumCols() == num_cols_ &&
-               C.NumRows() == num_rows_ && C.NumCols() == num_cols_);
-
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (transM == kNoTrans) {
+      KALDI_ASSERT(SameDim(*this, M));
+    } else {
+      KALDI_ASSERT(M.NumRows() == NumCols() && M.NumCols() == NumRows());
+    }
+    KALDI_ASSERT(v.Dim() == this->NumRows());
+
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(num_cols_, CU2DBLOCK), n_blocks(num_rows_, CU2DBLOCK));
-    cuda_ammdm_elements(dimGrid, dimBlock, alpha, data_, A.Data(),
-                        B.Data(), C.RowData(0), beta, Dim());
+    // Caution, this dimGrid is not the same way around as much of the other
+    // code: going forward, I want to use the (rows, cols) order.
+    dim3 dimGrid(n_blocks(num_rows_, CU2DBLOCK), n_blocks(num_cols_, CU2DBLOCK));
+
+    MatrixIndexT M_row_stride = M.Stride(), M_col_stride = 1;
+    if (transM == kTrans) std::swap(M_row_stride, M_col_stride);
+
+    cuda_add_diag_vec_mat(dimGrid, dimBlock, alpha, data_, Dim(),
+                          v.Data(), M.Data(), M_row_stride, M_col_stride, beta);
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
-    Matrix<Real> Am(A), Bm(B), Cm(C);
-    Matrix<Real> tmp(Am);
-    tmp.MulElements(Bm);
-    tmp.DivElements(Cm);
-    Mat().AddMat(1.0, tmp);
+    Mat().AddDiagVecMat(alpha, v.Vec(), M.Mat(), transM, beta);
   }
-}
+}  
+
+
 template<typename Real>
 void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {
   KALDI_ASSERT(SameDimAndStride(*this, src));
@@ -1661,6 +1663,12 @@ std::ostream &operator << (std::ostream &out, const CuMatrixBase<Real> &mat) {
   mat.CopyToMat(&temp);
   out << temp;
   return out;
+}
+
+template<typename Real>
+void CuMatrix<Real>::Transpose() {
+  CuMatrix<Real> tmp(*this, kTrans);
+  *this = tmp;
 }
 
 // instantiate the template

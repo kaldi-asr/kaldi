@@ -142,19 +142,24 @@ static int32_cuda _max_id_reduce(Real val[], int32_cuda idx[]) {
 /*
  * CuMatrix
  */
+
+// mat += diag(vec) * mat2.
 template<typename Real>
 __global__
-static void _ammdm_elements(Real alpha, Real* mat, const Real* A, const Real* B,
-       	    	            const Real* C, Real beta, MatrixDim d) {
-  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda index = i + j * d.stride;
-  if ( i < d.cols && j < d.rows) {
-    if ( C[index] != 0) {
-      mat[index] = alpha * A[index] * B[index] / C[index] + beta * mat[index];
-    } else {
-      mat[index] = alpha * A[index] * B[index] + beta * mat[index];
-    }
+static void _add_diag_vec_mat(Real alpha, Real *mat, MatrixDim mat_dim,
+                              const Real *vec, const Real *mat2, int mat2_row_stride,
+                              int mat2_col_stride, Real beta) {
+  // Note from Dan: in this kernel, we make the x dimension correspond to the
+  // row index and y to the column index.  That was not always the case for
+  // earlier kernels written by others.
+  int i = blockIdx.x * blockDim.x + threadIdx.x; // row index
+  int j = blockIdx.y * blockDim.y + threadIdx.y; // column index
+  
+  int index = i * mat_dim.stride + j,
+      index2 = i * mat2_row_stride + j * mat2_col_stride;
+  
+  if (i < mat_dim.rows && j < mat_dim.cols) {
+    mat[index] = alpha * vec[i] * mat2[index2] + beta * mat[index];
   }
 }
 
@@ -1470,8 +1475,11 @@ void cudaI32_set_const(dim3 Gr, dim3 Bl, int32_cuda* mat, int32_cuda value, Matr
 /*
  * CuMatrix
  */
-void cudaF_ammdm_elements(dim3 Gr, dim3 Bl, float alpha, float* mat, const float* A, const float* B, const float* C, float beta, MatrixDim d) {
-  _ammdm_elements<<<Gr,Bl>>>(alpha,mat,A,B,C,beta,d);
+void cudaF_add_diag_vec_mat(dim3 Gr, dim3 Bl, float alpha, float *mat, MatrixDim mat_dim,
+                            const float *vec, const float *mat2, int mat2_row_stride,
+                            int mat2_col_stride, float beta) {
+  _add_diag_vec_mat<<<Gr,Bl>>>(alpha, mat, mat_dim, vec, mat2, mat2_row_stride,
+                               mat2_col_stride, beta);
 }
 
 void cudaF_copy_from_tp_trans(int Gr, int Bl, float* A, const float* B, MatrixDim dmat) {
@@ -1791,8 +1799,11 @@ void cudaF_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, float* mat_net
 /*
  * CuMatrix
  */
-void cudaD_ammdm_elements(dim3 Gr, dim3 Bl, double alpha, double* mat, const double* A, const double* B, const double* C, double beta, MatrixDim d) {
-  _ammdm_elements<<<Gr,Bl>>>(alpha,mat,A,B,C,beta,d);
+void cudaD_add_diag_vec_mat(dim3 Gr, dim3 Bl, double alpha, double *mat, MatrixDim mat_dim,
+                            const double *vec, const double *mat2, int mat2_row_stride,
+                            int mat2_col_stride, double beta) {
+  _add_diag_vec_mat<<<Gr,Bl>>>(alpha, mat, mat_dim, vec, mat2, mat2_row_stride,
+                               mat2_col_stride, beta);
 }
 
 void cudaD_copy_from_tp_trans(int Gr, int Bl, double* A, const double* B, MatrixDim dmat) {

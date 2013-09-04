@@ -38,7 +38,13 @@ namespace kaldi {
 /*
  * CuMatrix 
  */
-inline void cuda_ammdm_elements(dim3 Gr, dim3 Bl, float alpha, float* mat, const float* A, const float* B, const float* C, float beta, MatrixDim d) { cudaF_ammdm_elements(Gr,Bl,alpha,mat,A,B,C,beta,d); } 
+
+inline void cuda_add_diag_vec_mat(dim3 Gr, dim3 Bl, float alpha, float *mat, MatrixDim mat_dim,
+                                  const float *vec, const float *mat2, int mat2_row_stride,
+                                  int mat2_col_stride, float beta) {
+  cudaF_add_diag_vec_mat(Gr, Bl, alpha, mat, mat_dim, vec, mat2,
+                         mat2_row_stride, mat2_col_stride, beta);
+}
 inline void cuda_copy_from_tp_trans(int Gr, int Bl, float* A, const float* B, MatrixDim dmat) { cudaF_copy_from_tp_trans(Gr,Bl,A,B,dmat); }
 inline void cuda_copy_from_tp_trans(int Gr, int Bl, float* A, const double* B, MatrixDim dmat) { cudaFD_copy_from_tp_trans(Gr,Bl,A,B,dmat); }
 inline void cuda_copy_from_tp(int Gr, int Bl, float* A, const float* B, MatrixDim dmat) { cudaF_copy_from_tp(Gr,Bl,A,B,dmat); }
@@ -167,7 +173,12 @@ inline void cuda_take_mean(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim
 /*
  * CuMatrix 
  */
-inline void cuda_ammdm_elements(dim3 Gr, dim3 Bl, double alpha, double* mat, const double* A, const double* B, const double* C, double beta, MatrixDim d) { cudaD_ammdm_elements(Gr,Bl,alpha,mat,A,B,C,beta,d); }
+inline void cuda_add_diag_vec_mat(dim3 Gr, dim3 Bl, double alpha, double *mat, MatrixDim mat_dim,
+                                  const double *vec, const double *mat2, int mat2_row_stride,
+                                  int mat2_col_stride, double beta) {
+  cudaD_add_diag_vec_mat(Gr, Bl, alpha, mat, mat_dim, vec, mat2,
+                         mat2_row_stride, mat2_col_stride, beta);
+}
 inline void cuda_copy_from_tp_trans(int Gr, int Bl, double* A, const double* B, MatrixDim dmat) { cudaD_copy_from_tp_trans(Gr,Bl,A,B,dmat); }
 inline void cuda_copy_from_tp_trans(int Gr, int Bl, double* A, const float* B, MatrixDim dmat) { cudaDF_copy_from_tp_trans(Gr,Bl,A,B,dmat); }
 inline void cuda_copy_from_tp(int Gr, int Bl, double* A, const double* B, MatrixDim dmat) { cudaD_copy_from_tp(Gr,Bl,A,B,dmat); }

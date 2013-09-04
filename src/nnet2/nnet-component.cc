@@ -718,13 +718,25 @@ void SoftmaxComponent::Backprop(const CuMatrixBase<BaseFloat> &, // in_value
   KALDI_ASSERT(SameDim(out_value, out_deriv) && SameDim(out_value, *in_deriv));
   const CuMatrixBase<BaseFloat> &P(out_value), &E(out_deriv);
   CuMatrixBase<BaseFloat> &D (*in_deriv);
+
+  D.CopyFromMat(P);
+  D.MulElements(E);
+  // At this point, D = P .* E (in matlab notation)
+  CuVector<BaseFloat> pe_vec(D.NumRows()); // For each row i, the dot product (p_t . e_t).
+  pe_vec.AddDiagMatMat(1.0, P, kNoTrans, E, kTrans, 0.0);
+
+  D.AddDiagVecMat(-1.0, pe_vec, P, kNoTrans, 1.0); // does D -= P * diag(pe_vec).
   
+  /* The old code, where we did stuff row-by-row, is as follows;
+     we had to rework it to use whole-matrix operations in order
+     to use CUDA more effectively. 
   for (int32 r = 0; r < P.NumRows(); r++) {
     CuSubVector<BaseFloat> p(P, r), e(E, r), d(D, r);
     d.AddVecVec(1.0, p, e, 0.0); // d_i = p_i e_i.
     BaseFloat pT_e = VecVec(p, e); // p^T e.
     d.AddVec(-pT_e, p); // d_i -= (p^T e) p_i
-  }
+    } */
+  
   
   // The SoftmaxComponent does not have any real trainable parameters, but
   // during the backprop we store some statistics on the average counts;

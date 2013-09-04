@@ -200,6 +200,7 @@ class CuMatrixBase {
   void SetZeroUpperDiag();
   void Scale(Real value);
   void ApplyLog();
+  
   /// Multiply two matrices elementwise: C = A .* C
   void MulElements(const CuMatrixBase<Real>& A);
   /// Do, elementwise, *this = max(*this, A).
@@ -220,13 +221,11 @@ class CuMatrixBase {
   void AddMatMat(Real alpha, const CuMatrixBase<Real>& A, MatrixTransposeType transA,
                  const CuMatrixBase<Real>& B, MatrixTransposeType transB, Real beta);
 
-  /// Element-wise, does (*this) += alpha + A * B / C.
-  /// In the special case that C == 0, adds nothing.
-  void AddMatMatDivMatElements(Real alpha,
-                               const CuMatrixBase<Real> &A, MatrixTransposeType transA,
-                               const CuMatrixBase<Real> &B, MatrixTransposeType transB,
-                               const CuMatrixBase<Real> &C, MatrixTransposeType transC,
-                               Real beta);
+  /// *this = beta * *this + alpha * diag(v) * M [or M^T].
+  /// The same as adding M but scaling each row M_i by v(i).
+  void AddDiagVecMat(const Real alpha, CuVectorBase<Real> &v,
+                     const CuMatrixBase<Real> &M, MatrixTransposeType transM, 
+                     Real beta = 1.0);  
   
   /// this <-- beta*this + alpha*A*B
   void AddMatSp(const Real alpha,
@@ -423,6 +422,8 @@ class CuMatrix: public CuMatrixBase<Real> {
     this->CopyFromMat(other);
     return *this;
   }
+
+  void Transpose();
 
   /// Allocate the memory
   void Resize(MatrixIndexT rows, MatrixIndexT cols,

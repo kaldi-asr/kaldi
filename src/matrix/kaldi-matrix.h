@@ -441,6 +441,12 @@ class MatrixBase {
   void AddMat(const Real alpha, const MatrixBase<Real> &M,
               MatrixTransposeType transA = kNoTrans);
 
+  /// *this = beta * *this + alpha * diag(v) * M [or M^T].
+  /// The same as adding M but scaling each row M_i by v(i).
+  void AddDiagVecMat(const Real alpha, VectorBase<Real> &v,
+                     const MatrixBase<Real> &M, MatrixTransposeType transM, 
+                     Real beta = 1.0);
+  
   /// *this += alpha * S
   template<class OtherReal>
   void AddSp(const Real alpha, const SpMatrix<OtherReal> &S);

@@ -407,41 +407,7 @@ template<class Real> static void UnitTestMatrix() {
     v(2) = w(2);
     KALDI_ASSERT(w(2) == v(2));
   }
-  //AddMatMatDivMatElements
-  for (MatrixIndexT iter = 0; iter < 1; iter++) {
-    int32 dim = 6;//15 + rand() % 10;
-    CuMatrix<Real> A(dim,dim);
-    CuMatrix<Real> B(dim,dim);
-    CuMatrix<Real> C(dim,dim);
-    CuMatrix<Real> D(dim,dim);
-    A.SetRandn();
-    B.SetRandn();
-    C.SetRandn();
-    D.SetRandn();
-    Matrix<Real> tmp(dim,dim);
-    A.CopyToMat(&tmp);
-    KALDI_LOG << tmp;
-    B.CopyToMat(&tmp);
-    KALDI_LOG << tmp;
-    C.CopyToMat(&tmp);
-    KALDI_LOG << tmp;
-    D.CopyToMat(&tmp);
-    KALDI_LOG << tmp;
-    
-    Matrix<Real> Am(A), Bm(B), Cm(C), Dm(D);
-    A.AddMatMatDivMatElements(1.0, B, kNoTrans, C, kNoTrans, D, kNoTrans, 1.0);
 
-    Matrix<Real> tmpm(Bm);
-    tmpm.MulElements(Cm);
-    tmpm.DivElements(Dm);
-    Am.AddMat(1.0, tmpm);
-
-    
-    A.CopyToMat(&tmp);
-
-    //KALDI_LOG << tmp;
-    AssertEqual(Am, tmp);
-  }
   //SetRandn
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
     int32 dim1 = 15 + rand() % 10;

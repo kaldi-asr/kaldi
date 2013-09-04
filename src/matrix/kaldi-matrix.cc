@@ -328,6 +328,30 @@ template
 void MatrixBase<double>::AddSp(const double alpha, const SpMatrix<float> &S);
 
 
+template<class Real>
+void MatrixBase<Real>::AddDiagVecMat(
+    const Real alpha, VectorBase<Real> &v,
+    const MatrixBase<Real> &M,
+    MatrixTransposeType transM, 
+    Real beta) {
+  if (beta != 1.0) this->Scale(beta);
+  
+  if (transM == kNoTrans) {
+    KALDI_ASSERT(SameDim(*this, M));
+  } else {
+    KALDI_ASSERT(M.NumRows() == NumCols() && M.NumCols() == NumRows());
+  }
+  KALDI_ASSERT(v.Dim() == this->NumRows());
+
+  MatrixIndexT M_row_stride = M.Stride(), M_col_stride = 1, stride = stride_,
+      num_rows = num_rows_, num_cols = num_cols_;
+  if (transM == kTrans) std::swap(M_row_stride, M_col_stride);
+  Real *data = data_;
+  const Real *Mdata = M.Data(), *vdata = v.Data();
+  for (MatrixIndexT i = 0; i < num_rows; i++, data += stride, Mdata += M_row_stride, vdata++)
+    cblas_Xaxpy(num_cols, alpha * *vdata, Mdata, M_col_stride, data, 1);
+}
+
 #if !defined(HAVE_ATLAS) && !defined(USE_KALDI_SVD)
 // ****************************************************************************
 // ****************************************************************************

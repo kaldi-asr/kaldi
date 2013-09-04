@@ -184,6 +184,37 @@ template<class Real> static void SlowMatMul() {
   }
 }  
 
+template<class Real> static void UnitTestAddDiagVecMat() {
+  for (int p = 0; p < 2; p++) {
+    MatrixIndexT dimM = 100 + rand() % 255, dimN = 100 + rand() % 255;
+    Real alpha = 0.43243, beta = 1.423;
+    Matrix<Real> M(dimM, dimN), N(dimM, dimN);
+    M.SetRandn();
+    N.SetRandn();
+    MatrixTransposeType trans = (p % 2 == 0 ? kNoTrans : kTrans);
+    if (trans == kTrans)
+      N.Transpose();
+    
+    Vector<Real> V(dimM);
+    V.SetRandn();
+
+    Matrix<Real> Mcheck(M);
+    for (int32 r = 0; r < dimM; r++) {
+      SubVector<Real> Mcheckrow(Mcheck, r);
+      Vector<Real> Nrow(dimN);
+      if (trans == kTrans) Nrow.CopyColFromMat(N, r);
+      else Nrow.CopyFromVec(N.Row(r));
+      Mcheckrow.Scale(beta);
+      Mcheckrow.AddVec(alpha * V(r), Nrow);
+    }
+
+    M.AddDiagVecMat(alpha, V, N, trans, beta);
+    AssertEqual(M, Mcheck);
+    KALDI_ASSERT(M.Sum() != 0.0);
+  }
+}
+
+
 template<class Real> static void UnitTestAddSp() {
   for (MatrixIndexT i = 0;i< 10;i++) {
     MatrixIndexT dimM = 10+rand()%10;
@@ -3898,7 +3929,9 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestOrthogonalizeRows<Real>();
   UnitTestTopEigs<Real>();
   UnitTestTridiag<Real>();
+  UnitTestTridiag<Real>();
   //  SlowMatMul<Real>();
+  UnitTestAddDiagVecMat<Real>();
   UnitTestMaxAbsEig<Real>();
   UnitTestMax2<Real>();
   UnitTestPca<Real>(full_test);

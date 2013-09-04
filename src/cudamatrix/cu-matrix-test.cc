@@ -450,6 +450,42 @@ static void UnitTestCuMatrixMulRowsVec() {
 }
 
 
+template<class Real> static void UnitTestCuMatrixAddDiagVecMat() {
+  for (int p = 0; p < 2; p++) {
+    MatrixIndexT dimM = 100 + rand() % 255, dimN = 100 + rand() % 255;
+    //MatrixIndexT dimM = 10 + rand() % 2, dimN = 10 + rand() % 2;
+    Real alpha = 0.43243, beta = 1.423;
+    CuMatrix<Real> M(dimM, dimN), N(dimM, dimN);
+    M.SetRandn();
+    N.SetRandn();
+    MatrixTransposeType trans = (p % 2 == 0 ? kNoTrans : kTrans);
+    if (trans == kTrans)
+      N.Transpose();
+
+    KALDI_ASSERT(M.Sum() != 0.0);
+    KALDI_ASSERT(N.Sum() != 0.0);
+    
+    CuVector<Real> V(dimM);
+    V.SetRandn();
+
+    KALDI_ASSERT(V.Sum() != 0.0);
+
+    CuMatrix<Real> Mcheck(M);
+
+    for (int32 r = 0; r < dimM; r++) {
+      CuSubVector<Real> Mcheckrow(Mcheck, r);
+      CuVector<Real> Nrow(dimN);
+      if (trans == kTrans) Nrow.CopyColFromMat(N, r);
+      else Nrow.CopyFromVec(N.Row(r));
+      Mcheckrow.Scale(beta);
+      Mcheckrow.AddVec(alpha * V(r), Nrow);
+    }
+    
+    M.AddDiagVecMat(alpha, V, N, trans, beta);
+    AssertEqual(M, Mcheck);
+  }
+}
+
 
 template<class Real> 
 static void UnitTestCuMatrixDivRowsVec() {
@@ -1142,46 +1178,6 @@ void UnitTestSwapCu2M() {
   AssertEqual(Hi2,Hi);
 }
 
-template<class Real>
-void UnitTestAddMatMatDivMatElements() {
-  Matrix<Real> Hi(100,100);
-  Hi.SetZero();
-  CuMatrix<Real> Di(100,100);
-  Di.CopyFromMat(Hi);
-
-  Matrix<Real> A(100,100);
-  RandGaussMatrix(&A);
-  CuMatrix<Real> ACu(100,100);
-  ACu.CopyFromMat(A);
-
-  Matrix<Real> B(100,100);
-  RandGaussMatrix(&B);
-  CuMatrix<Real> BCu(100,100);
-  BCu.CopyFromMat(B);
-
-  Matrix<Real> C(100,100);
-  RandGaussMatrix(&C);
-  CuMatrix<Real> CCu(100,100);
-  CCu.CopyFromMat(C);
-
-  // gpu
-  Di.AddMatMatDivMatElements(1.0,ACu,kNoTrans,BCu,kNoTrans,CCu,kNoTrans,1.0);
-
-  // cpu
-  for (MatrixIndexT i = 0;i < Hi.NumRows();i++) {
-    for (MatrixIndexT j = 0;j < Hi.NumCols();j++) {
-      if ( C(i,j) != 0) { 
-	Hi(i,j) = 1.0 * A(i,j) * B(i,j) / C(i,j) + 1.0 * Hi(i,j);
-      } else {
-	Hi(i,j) = 1.0 * A(i,j) * B(i,j) + 1.0 * Hi(i,j);
-      }
-    }
-  }
-  Matrix<Real> Df(Di.NumRows(), Di.NumCols());
-  Di.CopyToMat(&Df);
-  AssertEqual(Hi,Df);
-
-}
 
 template<class Real>
 void UnitTestCuTanh() {
@@ -1282,7 +1278,7 @@ template<class Real> void CudaMatrixUnitTest() {
 
   UnitTestSwapCu2Cu<Real>();
   UnitTestSwapCu2M<Real>();
-  UnitTestAddMatMatDivMatElements<Real>();
+  UnitTestCuMatrixAddDiagVecMat<Real>();
   UnitTestCuTanh<Real>();
   UnitTestCuDiffTanh<Real>();
 
