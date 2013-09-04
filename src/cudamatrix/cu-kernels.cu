@@ -392,20 +392,20 @@ static void _apply_log(Real* mat, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _mul_elements(Real* mat, const Real* A, MatrixDim dst_d, int src_stride, int dst_stride) {
+static void _mul_elements(Real* mat, const Real* A, MatrixDim dst_d, int src_stride) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda dst_index = i + j*dst_stride, src_index = i + j*src_stride;
+  int32_cuda dst_index = i + j*dst_d.stride, src_index = i + j*src_stride;
   if ( i < dst_d.cols  &&  j < dst_d.rows )
     mat[dst_index] = mat[dst_index] * A[src_index];
 }
 
 template<typename Real>
 __global__
-static void _max(Real* mat, const Real* A, MatrixDim dst_d, int src_stride, int dst_stride) {
+static void _max(Real* mat, const Real* A, MatrixDim dst_d, int src_stride) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda dst_index = i + j*dst_stride, src_index = i + j*src_stride;
+  int32_cuda dst_index = i + j*dst_d.stride, src_index = i + j*src_stride;
   if ( i < dst_d.cols  &&  j < dst_d.rows ) {
     Real a = mat[dst_index], b = A[src_index];
     mat[dst_index] = (a > b ? a : b);
@@ -929,7 +929,7 @@ static void _apply_floor(Real* mat, Real floor_val, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _permute_columns(Real* dst, const Real *src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride, int dst_stride) {
+static void _permute_columns(Real* dst, const Real *src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride) {
   // Note: in this routine we don't do the traditional check for 
   // if (i < d.cols && j < d.rows); it's not really necessary as we invoke
   // the kernel for the correct dims.
@@ -938,7 +938,7 @@ static void _permute_columns(Real* dst, const Real *src, const int32_cuda* reord
   if (i < dst_dim.cols && j < dst_dim.rows) {
     int src_index = i + j * src_stride;
     Real val = src[src_index]; 
-    int dst_index = reorder[i] + j * dst_stride;
+    int dst_index = reorder[i] + j * dst_dim.stride;
     dst[dst_index] = val;
   } 
 }
@@ -1449,8 +1449,8 @@ void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
 
 }
 
-void cudaF_permute_columns(dim3 Gr, dim3 Bl, float* dst, const float* src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride, int dst_stride) {
-  _permute_columns<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride, dst_stride);
+void cudaF_permute_columns(dim3 Gr, dim3 Bl, float* dst, const float* src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _permute_columns<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
 void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim d) {
@@ -1497,12 +1497,12 @@ void cudaF_apply_log(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _apply_log<<<Gr,Bl>>>(mat,d); 
 }
 
-void cudaF_mul_elements(dim3 Gr, dim3 Bl, float* mat, const float* A, MatrixDim dst_d, int src_stride, int dst_stride) {
-  _mul_elements<<<Gr,Bl>>>(mat,A,dst_d,src_stride, dst_stride); 
+void cudaF_mul_elements(dim3 Gr, dim3 Bl, float* mat, const float* A, MatrixDim dst_d, int src_stride) {
+  _mul_elements<<<Gr,Bl>>>(mat,A,dst_d,src_stride); 
 }
 
-void cudaF_max(dim3 Gr, dim3 Bl, float* mat, const float* A, MatrixDim dst_d, int src_stride, int dst_stride) {
-  _max<<<Gr,Bl>>>(mat,A,dst_d,src_stride,dst_stride); 
+void cudaF_max(dim3 Gr, dim3 Bl, float* mat, const float* A, MatrixDim dst_d, int src_stride) {
+  _max<<<Gr,Bl>>>(mat,A,dst_d,src_stride); 
 }
 
 void cudaF_mul_cols_vec(dim3 Gr, dim3 Bl, float* mat, const float* scale, MatrixDim d) {
@@ -1785,8 +1785,8 @@ void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
   _apply_heaviside<<<Gr,Bl>>>(mat, d);
 }
 
-void cudaD_permute_columns(dim3 Gr, dim3 Bl, double* dst, const double* src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride, int dst_stride) {
-  _permute_columns<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride, dst_stride);
+void cudaD_permute_columns(dim3 Gr, dim3 Bl, double* dst, const double* src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _permute_columns<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
 void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim d) {
@@ -1833,12 +1833,12 @@ void cudaD_apply_log(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
   _apply_log<<<Gr,Bl>>>(mat,d); 
 }
 
-void cudaD_mul_elements(dim3 Gr, dim3 Bl, double* mat, const double* A, MatrixDim dst_d, int src_stride, int dst_stride) {
-  _mul_elements<<<Gr,Bl>>>(mat,A,dst_d,src_stride,dst_stride); 
+void cudaD_mul_elements(dim3 Gr, dim3 Bl, double* mat, const double* A, MatrixDim dst_d, int src_stride) {
+  _mul_elements<<<Gr,Bl>>>(mat,A,dst_d,src_stride); 
 }
 
-void cudaD_max(dim3 Gr, dim3 Bl, double* mat, const double* A, MatrixDim dst_d, int src_stride, int dst_stride) {
-  _max<<<Gr,Bl>>>(mat,A,dst_d,src_stride,dst_stride); 
+void cudaD_max(dim3 Gr, dim3 Bl, double* mat, const double* A, MatrixDim dst_d, int src_stride) {
+  _max<<<Gr,Bl>>>(mat,A,dst_d,src_stride); 
 }
 
 void cudaD_mul_cols_vec(dim3 Gr, dim3 Bl, double* mat, const double* scale, MatrixDim d) {

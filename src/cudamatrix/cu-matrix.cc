@@ -627,7 +627,7 @@ void CuMatrixBase<Real>::MulElements(const CuMatrixBase<Real>& A) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
 
-    cuda_mul_elements(dimGrid, dimBlock, data_, A.data_, Dim(), A.Stride(), this->Stride());
+    cuda_mul_elements(dimGrid, dimBlock, data_, A.data_, Dim(), A.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -650,7 +650,7 @@ void CuMatrixBase<Real>::Max(const CuMatrixBase<Real>& A) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
 
-    cuda_max(dimGrid, dimBlock, data_, A.data_, Dim(), A.Stride(), this->Stride());
+    cuda_max(dimGrid, dimBlock, data_, A.data_, Dim(), A.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -1554,7 +1554,7 @@ void CuMatrixBase<Real>::PermuteColumns(const CuMatrixBase<Real> &src,
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
-    cuda_permute_columns(dimGrid, dimBlock, data_, src.Data(), cuda_reorder.Data(), Dim(), src.Stride(), this->Stride());
+    cuda_permute_columns(dimGrid, dimBlock, data_, src.Data(), cuda_reorder.Data(), Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else

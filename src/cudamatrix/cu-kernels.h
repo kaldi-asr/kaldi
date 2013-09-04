@@ -82,8 +82,8 @@ inline void cuda_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim 
 inline void cuda_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim dim) { cudaF_apply_heaviside(Gr,Bl,mat,dim); }
 inline void cuda_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim dim) { cudaF_apply_floor(Gr,Bl,mat,floor_val,dim); }
 inline void cuda_apply_ceiling(dim3 Gr, dim3 Bl, float* mat, float ceiling_val, MatrixDim dim) { cudaF_apply_ceiling(Gr,Bl,mat,ceiling_val,dim); }
-inline void cuda_permute_columns(dim3 Gr, dim3 Bl, float* dst, const float* src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride, int dst_stride) {
-  cudaF_permute_columns(Gr, Bl, dst, src, reorder, dst_dim, src_stride, dst_stride);
+inline void cuda_permute_columns(dim3 Gr, dim3 Bl, float* dst, const float* src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  cudaF_permute_columns(Gr, Bl, dst, src, reorder, dst_dim, src_stride);
 }
 inline void cuda_trace(int Gr, int Bl, float* mat, float* value, int dim) { cudaF_trace(Gr,Bl,mat,value,dim); }
 inline void cuda_set_diag(int Gr, int Bl, float* mat, float value, MatrixDim d) { cudaF_set_diag(Gr,Bl,mat,value,d); }
@@ -96,11 +96,11 @@ inline void cuda_add_vec2(dim3 Gr, dim3 Bl, float *mat, const float *vec, const 
 inline void cuda_scale_diag(int Gr, int Bl, float* mat, float value, int dim) { cudaF_scale_diag(Gr,Bl,mat,value,dim); }
 inline void cuda_scale(dim3 Gr, dim3 Bl, float *mat, float value, MatrixDim d) { cudaF_scale(Gr,Bl,mat,value,d); }
 inline void cuda_apply_log(dim3 Gr, dim3 Bl, float *mat, MatrixDim d) { cudaF_apply_log(Gr,Bl,mat,d); }
-inline void cuda_mul_elements(dim3 Gr, dim3 Bl, float *mat, const float *A, MatrixDim dst_d, int src_stride, int dst_stride) {
-  cudaF_mul_elements(Gr,Bl,mat,A,dst_d,src_stride,dst_stride);
+inline void cuda_mul_elements(dim3 Gr, dim3 Bl, float *mat, const float *A, MatrixDim dst_d, int src_stride) {
+  cudaF_mul_elements(Gr,Bl,mat,A,dst_d,src_stride);
 }
-inline void cuda_max(dim3 Gr, dim3 Bl, float *mat, const float *A, MatrixDim dst_d, int src_stride, int dst_stride) {
-  cudaF_max(Gr,Bl,mat,A,dst_d,src_stride,dst_stride);
+inline void cuda_max(dim3 Gr, dim3 Bl, float *mat, const float *A, MatrixDim dst_d, int src_stride) {
+  cudaF_max(Gr,Bl,mat,A,dst_d,src_stride);
 }
 inline void cuda_mul_cols_vec(dim3 Gr, dim3 Bl, float *mat, const float *scale, MatrixDim d) { cudaF_mul_cols_vec(Gr,Bl,mat,scale,d); }
 inline void cuda_mul_rows_vec(dim3 Gr, dim3 Bl, float *mat, const float *scale, MatrixDim d) { cudaF_mul_rows_vec(Gr,Bl,mat,scale,d); }
@@ -189,8 +189,8 @@ inline void cuda_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDi
 inline void cuda_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim dim) { cudaD_apply_heaviside(Gr,Bl,mat,dim); }
 inline void cuda_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim dim) { cudaD_apply_floor(Gr,Bl,mat,floor_val,dim); }
 inline void cuda_apply_ceiling(dim3 Gr, dim3 Bl, double* mat, double ceiling_val, MatrixDim dim) { cudaD_apply_ceiling(Gr,Bl,mat,ceiling_val,dim); }
-inline void cuda_permute_columns(dim3 Gr, dim3 Bl, double* dst, const double* src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride, int dst_stride) {
-  cudaD_permute_columns(Gr, Bl, dst, src, reorder, dst_dim, src_stride, dst_stride);
+inline void cuda_permute_columns(dim3 Gr, dim3 Bl, double* dst, const double* src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  cudaD_permute_columns(Gr, Bl, dst, src, reorder, dst_dim, src_stride);
 }
 inline void cuda_trace(int Gr, int Bl, double* mat, double* value, int dim) { cudaD_trace(Gr,Bl,mat,value,dim); }
 inline void cuda_set_diag(int Gr, int Bl, double* mat, double value, MatrixDim d) { cudaD_set_diag(Gr,Bl,mat,value,d); }
@@ -203,11 +203,11 @@ inline void cuda_add_vec2(dim3 Gr, dim3 Bl, double *mat, const double *vec, cons
 inline void cuda_scale_diag(int Gr, int Bl, double* mat, double value, int dim) { cudaD_scale_diag(Gr,Bl,mat,value,dim); }
 inline void cuda_scale(dim3 Gr, dim3 Bl, double *mat, double value, MatrixDim d) { cudaD_scale(Gr,Bl,mat,value,d); }
 inline void cuda_apply_log(dim3 Gr, dim3 Bl, double *mat, MatrixDim d) { cudaD_apply_log(Gr,Bl,mat,d); }
-inline void cuda_mul_elements(dim3 Gr, dim3 Bl, double *mat, const double *A, MatrixDim dst_d, int src_stride, int dst_stride) {
-  cudaD_mul_elements(Gr,Bl,mat,A,dst_d,src_stride,dst_stride);
+inline void cuda_mul_elements(dim3 Gr, dim3 Bl, double *mat, const double *A, MatrixDim dst_d, int src_stride) {
+  cudaD_mul_elements(Gr,Bl,mat,A,dst_d,src_stride);
 }
-inline void cuda_max(dim3 Gr, dim3 Bl, double *mat, const double *A, MatrixDim dst_d, int src_stride, int dst_stride) {
-  cudaD_max(Gr,Bl,mat,A,dst_d,src_stride,dst_stride);
+inline void cuda_max(dim3 Gr, dim3 Bl, double *mat, const double *A, MatrixDim dst_d, int src_stride) {
+  cudaD_max(Gr,Bl,mat,A,dst_d,src_stride);
 }
 inline void cuda_mul_cols_vec(dim3 Gr, dim3 Bl, double *mat, const double *scale, MatrixDim d) { cudaD_mul_cols_vec(Gr,Bl,mat,scale,d); }
 inline void cuda_mul_rows_vec(dim3 Gr, dim3 Bl, double *mat, const double *scale, MatrixDim d) { cudaD_mul_rows_vec(Gr,Bl,mat,scale,d); }
