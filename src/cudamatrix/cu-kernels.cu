@@ -1127,34 +1127,8 @@ static void _diff_tanh(Real*eout, const Real*e, const Real*y, MatrixDim d) {
 template<typename Real>
 __global__
 static void _vec_soft_max(Real* v, int dim) {
-  /*
-  int32_cuda i = threadIdx.x;
-  __shared__ Real row_data[256];
-
-  Real tmp_sum = 0;
-  int32_cuda size = dim / 256; //the least size in a loop (later part)
-  int32_cuda threshold = dim - size * 256; //any loop below this number would + 1
-
-  int32_cuda loop_start;
-  int32_cuda loop_end;
-  if(i < threshold) {
-    loop_start = i * (size + 1);
-    loop_end = (i+1) * (size + 1);
-  }
-  else {
-    loop_start = threshold+i*size;
-    loop_end = threshold+(i+1)*size;
-  }
-  for(int32_cuda j = loop_start; j< loop_end; j++) {
-    tmp_sum += v[j];
-  }
-
-  row_data[threadIdx.x] = tmp_sum;
-  __syncthreads();
-  *sum = _sum_reduce(row_data);
-*/
   __shared__ Real tmp_array[256];
-
+  __shared__ Real dst_array[256];
   Real tmp_sum = 0;
   Real tmp_max = -1e20;
   int32_cuda size = dim / 256; //the least size in a loop (later part)
@@ -1165,7 +1139,8 @@ static void _vec_soft_max(Real* v, int dim) {
 
   int32_cuda i = threadIdx.x;
   Real max = -1e20;
-  
+  const Real EPSLON = 0.00001;
+ 
   if(i < threshold) {
     loop_start = i * (size + 1);
     loop_end = (i+1) * (size + 1);
@@ -1173,31 +1148,44 @@ static void _vec_soft_max(Real* v, int dim) {
   else {
     loop_start = threshold+i*size;
     loop_end = threshold+(i+1)*size;
-  } 
-  for(int32_cuda j = loop_start; j< loop_end; j++) {
-    if(tmp_max<v[j]) 
-      tmp_max = v[j]; 
-  }
-  tmp_array[i] = tmp_max;
-  __syncthreads();
-  max = _max_reduce(tmp_array);
-  //now we get the max
-
-  for(int32_cuda j = loop_start; j< loop_end; j++) {
-    v[j] = exp(v[j] - max);
   }
 
-  __syncthreads(); 
-  //next we calculate the sum, must wait till exp is done
-  for(int32_cuda j = loop_start; j< loop_end; j++) {
-    tmp_sum += v[j];
-  }
+  while(1) {//forgive this indent....
+    for(int32_cuda j = loop_start; j< loop_end; j++) {
+      dst_array[j] = exp(v[j] );
+    }
+
+    __syncthreads(); 
+    //next we calculate the sum, must wait till exp is done
+    for(int32_cuda j = loop_start; j< loop_end; j++) {
+      tmp_sum += dst_array[j];
+    }
   tmp_array[i] = tmp_sum;
-  tmp_sum = _sum_reduce(tmp_array);
+  Real sum = _sum_reduce(tmp_array);
   
-  for(int32_cuda j = loop_start; j< loop_end; j++) {
-    v[j] = v[j] / tmp_sum;
-  } 
+  Real f = 1.0 / sum;
+  
+  if((abs(f)>EPSLON && (f-f)<EPSLON)) {
+    for(int32_cuda j = loop_start; j< loop_end; j++) {
+      v[j] = dst_array[j] * f;
+    }
+    break;
+  }
+  else {
+    for(int32_cuda j = loop_start; j< loop_end; j++) {
+      if(tmp_max<v[j]) 
+        tmp_max = v[j];
+    } 
+  
+    tmp_array[i] = tmp_max;
+    __syncthreads();
+    max = _max_reduce(tmp_array);
+    for(int32_cuda j = loop_start; j< loop_end; j++) {
+      v[j] = v[j] - max;
+    }
+    __syncthreads();
+  }
+  }// { for the while
 }
 
 
