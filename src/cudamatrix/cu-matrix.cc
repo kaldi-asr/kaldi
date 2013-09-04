@@ -57,7 +57,7 @@ void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
     MatrixIndexT row_bytes = cols * sizeof(Real);
     size_t pitch;
     CU_SAFE_CALL(cudaMallocPitch(reinterpret_cast<void**>(&this->data_), &pitch,
-                               row_bytes, rows));
+                                 row_bytes, rows));
     this->num_rows_ = rows;
     this->num_cols_ = cols; 
     this->stride_ = pitch / sizeof(Real);
@@ -74,13 +74,13 @@ void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
 
 template<typename Real>
 void CuMatrix<Real>::Destroy() {
-  #if HAVE_CUDA == 1
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     if (this->data_ != NULL) {
       CU_SAFE_CALL(cudaFree(this->data_));
     }
   } else
-  #endif
+#endif
   {
     if (this->data_ != NULL) KALDI_MEMALIGN_FREE(this->data_);
   }
@@ -986,7 +986,7 @@ void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
 
     size_t dimBlock = src.num_cols_ > CU1DBLOCK ? CU1DBLOCK : src.num_cols_;
     size_t dimGrid = src.num_rows_;
-    cuda_softmax_reduce(dimGrid, dimBlock, data_, src.data_, src.Dim());
+    cuda_softmax_reduce(dimGrid, dimBlock, data_, src.data_, Dim());
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());

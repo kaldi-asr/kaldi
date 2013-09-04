@@ -282,11 +282,12 @@ void CuVectorBase<Real>::ApplySoftMax() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    int dimBlock(CU1DBLOCK);
-    int dimGrid(n_blocks(dim_, CU1DBLOCK));
-
-    cuda_vec_soft_max(dimGrid, dimBlock, data_, dim_);
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplySoftMax", tim.Elapsed());
+    size_t dimBlock = 1;
+    size_t dimGrid = dim_;
+    ::MatrixDim dim = { 1, this->dim_, 1 };
+    cuda_softmax_reduce(dimGrid, dimBlock, data_, data_, dim);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {

@@ -1092,71 +1092,6 @@ static void _diff_tanh(Real*eout, const Real*e, const Real*y, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _vec_soft_max(Real* v, int dim) {
-  __shared__ Real tmp_array[CU1DBLOCK];
-  __shared__ Real dst_array[CU1DBLOCK];
-  Real tmp_sum = 0;
-  Real tmp_max = -1e20;
-  int32_cuda size = dim / CU1DBLOCK; //the least size in a loop (later part)
-  int32_cuda threshold = dim - size * CU1DBLOCK; //any loop below this number would + 1
-    
-  int32_cuda loop_start;
-  int32_cuda loop_end;
-
-  int32_cuda i = threadIdx.x;
-  Real max = -1e20;
-  const Real EPSLON = 0.00001;
- 
-  if(i < threshold) {
-    loop_start = i * (size + 1);
-    loop_end = (i+1) * (size + 1);
-  }   
-  else {
-    loop_start = threshold+i*size;
-    loop_end = threshold+(i+1)*size;
-  }
-
-  while(1) {//forgive this indent....
-    for(int32_cuda j = loop_start; j< loop_end; j++) {
-      dst_array[j] = exp(v[j] );
-    }
-
-    __syncthreads(); 
-    //next we calculate the sum, must wait till exp is done
-    for(int32_cuda j = loop_start; j< loop_end; j++) {
-      tmp_sum += dst_array[j];
-    }
-  tmp_array[i] = tmp_sum;
-  Real sum = _sum_reduce(tmp_array);
-  
-  Real f = 1.0 / sum;
-  
-  if((abs(f)>EPSLON && (f-f)<EPSLON)) {
-    for(int32_cuda j = loop_start; j< loop_end; j++) {
-      v[j] = dst_array[j] * f;
-    }
-    break;
-  }
-  else {
-    for(int32_cuda j = loop_start; j< loop_end; j++) {
-      if(tmp_max<v[j]) 
-        tmp_max = v[j];
-    } 
-  
-    tmp_array[i] = tmp_max;
-    __syncthreads();
-    max = _max_reduce(tmp_array);
-    for(int32_cuda j = loop_start; j< loop_end; j++) {
-      v[j] = v[j] - max;
-    }
-    __syncthreads();
-  }
-  }// { for the while
-}
-
-
-template<typename Real>
-__global__
 static void _softmax(Real*y, const Real*x, MatrixDim d) {
   int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
   if(j >= d.rows) return;
@@ -1214,7 +1149,7 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d) {
   Real max = aux[0];
   __syncthreads();
 
-  //subtract max, apply exp, sum up...
+  // subtract max, apply exp, sum up...
   y[threadIdx.x+j*d.stride] = exp(x[threadIdx.x+j*d.stride] - max);
   aux[threadIdx.x] = y[threadIdx.x+j*d.stride];
   for(int i=1; i<steps; i++) {
@@ -1620,10 +1555,6 @@ void cudaF_vec_mul_elements(int Gr, int Bl, float* v, const float* a, int dim) {
   _vec_mul_elements<<<Gr,Bl>>>(v, a, dim);
 }
 
-void cudaF_vec_soft_max(int Gr, int Bl, float* v, int dim) {
-  _vec_soft_max<<<Gr,Bl>>>(v, dim);
-}
-
 void cudaF_vec_min(const float* v, float* value, int dim) {
   _vec_min<<<1,CU1DBLOCK>>>(v, value, dim);
 }
@@ -1958,10 +1889,6 @@ void cudaD_copy_from_vec_fd(int Gr, int Bl, float* v_out, const double* v_in, in
 
 void cudaD_vec_mul_elements(int Gr, int Bl, double* v, const double* a, int dim) {
   _vec_mul_elements<<<Gr,Bl>>>(v, a, dim);
-}
-
-void cudaD_vec_soft_max(int Gr, int Bl, double* v, int dim) {
-  _vec_soft_max<<<Gr,Bl>>>(v, dim);
 }
 
 void cudaD_vec_min(const double* v, double* value, int dim) {

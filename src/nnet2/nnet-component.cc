@@ -687,12 +687,10 @@ void SoftmaxComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
   // Apply softmax function to each row of the output...
   // for that row, we do
   // x_i = exp(x_i) / sum_j exp(x_j).
-  *out = in; // Resizes also.
-  int32 num_rows = out->NumRows();
-  for(int32 r = 0; r < num_rows; r++) {
-    CuSubVector<BaseFloat> row(*out, r);
-    row.ApplySoftMax();
-  }
+
+  out->Resize(in.NumRows(), in.NumCols(), kUndefined);
+  out->ApplySoftMaxPerRow(in);
+  
   // This floor on the output helps us deal with
   // almost-zeros in a way that doesn't lead to overflow.
   out->ApplyFloor(1.0e-20);
