@@ -47,8 +47,6 @@ void cudaF_copy_from_tp_trans(int Gr, int Bl, float* A, const float* B, MatrixDi
 void cudaFD_copy_from_tp_trans(int Gr, int Bl, float* A, const double* B, MatrixDim dmat);
 void cudaF_copy_from_tp(int Gr, int Bl, float* A, const float* B, MatrixDim dmat);
 void cudaFD_copy_from_tp(int Gr, int Bl, float* A, const double* B, MatrixDim dmat);
-void cudaF_trace_sp_sp_fd(int Gr, int Bl, const float* A, const float* B, float* value, int dim);
-void cudaF_trace_sp_sp_df(int Gr, int Bl, const double* A, const float* B, double* value, int dim);
 void cudaF_copy_col_from_vec(int Gr, int Bl, float* mat, const float* v, int col, MatrixDim d);
 void cudaF_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
 void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d);
@@ -89,11 +87,14 @@ void cudaF_trace_mat_mat_trans(const float* A, const float* B, MatrixDim dA, int
 void cudaF_trace_mat_mat(const float* A, const float* B, MatrixDim dA, int B_stride, float* value);
 void cudaF_add_diag_mat_trans(int Gr, int Bl, float alpha, float* v, const float* mat, float beta, MatrixDim dmat, int dim);
 void cudaF_add_diag_mat(int Gr, int Bl, float alpha, float* v, const float* mat, float beta, MatrixDim dmat, int dim);
+void cudaF_add_diag_mat_mat(int Gr, int Bl, float alpha, float* v, int v_dim, const float* M, 
+                            int M_cols, int M_row_stride, int M_col_stride, const float *N, int N_row_stride, 
+                            int N_col_stride, float beta);  
 void cudaF_add_vec_vec(int Gr, int Bl, float alpha, float* v, const float* x, const float* y, float beta, int dim);
 void cudaF_copy_col_from_mat(int Gr, int Bl, float* v, int col, const float* mat, MatrixDim dmat, int dim);
 void cudaF_copy_col_from_mat_df(int Gr, int Bl, double* v, int col, const float* mat, MatrixDim dmat, int dim);
 void cudaF_copy_col_from_mat_fd(int Gr, int Bl, float* v, int col, const float* mat, MatrixDim dmat, int dim);
-void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim);
+void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim, int inc);
 void cudaF_vec_copy_diag_from_packed(int Gr, int Bl, float *dst, const float *src, int dim);
 void cudaF_vec_apply_floor(int Gr, int Bl, float* v, float floor_val, float* num, int dim);
 void cudaF_vec_apply_exp(int Gr, int Bl, float* v, int dim);
@@ -139,8 +140,6 @@ void cudaD_copy_from_tp_trans(int Gr, int Bl, double* A, const double* B, Matrix
 void cudaDF_copy_from_tp_trans(int Gr, int Bl, double* A, const float* B, MatrixDim dmat);
 void cudaD_copy_from_tp(int Gr, int Bl, double* A, const double* B, MatrixDim dmat);
 void cudaDF_copy_from_tp(int Gr, int Bl, double* A, const float* B, MatrixDim dmat);
-void cudaD_trace_sp_sp_fd(int Gr, int Bl, const float* A, const double* B, float* value, int dim);
-void cudaD_trace_sp_sp_df(int Gr, int Bl, const double* A, const double* B, double* value, int dim);
 void cudaD_copy_col_from_vec(int Gr, int Bl, double* mat, const double* v, int col, MatrixDim d);
 void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
 void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d);
@@ -181,11 +180,14 @@ void cudaD_trace_mat_mat_trans(const double* A, const double* B, MatrixDim dA, i
 void cudaD_trace_mat_mat(const double* A, const double* B, MatrixDim dA, int B_stride, double* value);
 void cudaD_add_diag_mat_trans(int Gr, int Bl, double alpha, double* v, const double* mat, double beta, MatrixDim dmat, int dim);
 void cudaD_add_diag_mat(int Gr, int Bl, double alpha, double* v, const double* mat, double beta, MatrixDim dmat, int dim);
+void cudaD_add_diag_mat_mat(int Gr, int Bl, double alpha, double* v, int v_dim, const double* M, 
+                            int M_cols, int M_row_stride, int M_col_stride, const double *N, int N_row_stride, 
+                            int N_col_stride, double beta);  
 void cudaD_add_vec_vec(int Gr, int Bl, double alpha, double* v, const double* x, const double* y, double beta, int dim);
 void cudaD_copy_col_from_mat(int Gr, int Bl, double* v, int col, const double* mat, MatrixDim dmat, int dim);
 void cudaD_copy_col_from_mat_df(int Gr, int Bl, double* v, int col, const double* mat, MatrixDim dmat, int dim);
 void cudaD_copy_col_from_mat_fd(int Gr, int Bl, float* v, int col, const double* mat, MatrixDim dmat, int dim);
-void cudaD_vec_sum(int Gr, int Bl, double* v, double* value, int dim);
+void cudaD_vec_sum(int Gr, int Bl, double* v, double* value, int dim, int inc);
 void cudaD_vec_copy_diag_from_packed(int Gr, int Bl, double *dst, const double *src, int dim);
 void cudaD_vec_apply_floor(int Gr, int Bl, double* v, double floor_val, float* num, int dim);
 void cudaD_vec_apply_exp(int Gr, int Bl, double* v, int dim);

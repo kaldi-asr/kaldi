@@ -293,7 +293,6 @@ class CuMatrixBase {
     return CuSubVector<Real>(data_ + (i * stride_), NumCols());
   }
 
-
   inline CuValue<Real> operator() (MatrixIndexT r, MatrixIndexT c) {
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
                           static_cast<UnsignedMatrixIndexT>(num_rows_) &&
@@ -311,6 +310,9 @@ class CuMatrixBase {
   }
 
   Real Sum() const;
+
+  /// Return the trace. If check_square = true, will crash if matrix is not square.
+  Real Trace(bool check_square = true) const;
 
   void SetRandn();
   

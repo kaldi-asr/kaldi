@@ -292,6 +292,13 @@ class VectorBase {
   void AddDiagMat2(Real alpha, const MatrixBase<Real> &M,
                    MatrixTransposeType trans = kNoTrans, Real beta = 1.0);
 
+  /// Add the diagonal of a matrix product: *this = diag(M N), assuming the
+  /// "trans" arguments are both kNoTrans; for transpose arguments, it behaves
+  /// as you would expect.
+  void AddDiagMatMat(Real alpha, const MatrixBase<Real> &M, MatrixTransposeType transM,
+                     const MatrixBase<Real> &N, MatrixTransposeType transN,
+                     Real beta = 1.0);  
+
   /// Returns log(sum(exp())) without exp overflow
   /// If prune > 0.0, ignores terms less than the max - prune.
   /// [Note: in future, if prune = 0.0, it will take the max.

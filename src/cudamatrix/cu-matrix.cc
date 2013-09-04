@@ -1570,6 +1570,28 @@ Real CuMatrixBase<Real>::Sum() const {
   return row_sum.Sum();
 }
 
+template<typename Real>
+Real CuMatrixBase<Real>::Trace(bool check_square) const {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    if (check_square) KALDI_ASSERT(this->num_rows_ == this->num_cols_);
+    MatrixIndexT dim = std::min(this->num_rows_, this->num_cols_);
+    CuVector<Real> tmp(1, kUndefined); // for result.
+    int dimBlock(CU1DBLOCK);
+    int dimGrid = 1;// only 1 block here. we have loops in each thread  //(n_blocks(dim_, CU1DBLOCK));
+    cuda_vec_sum(dimGrid, dimBlock, data_, tmp.Data(), dim, Stride() + 1);
+    CuDevice::Instantiate().AccuProfile("CuVectorBase::Sum", tim.Elapsed());    
+    return tmp(0);
+  } else 
+#endif
+  {
+    return Mat().Trace(check_square);
+  }
+}
+
+
+
 
 template<typename Real>
 void CuMatrixBase<Real>::SetRandn() {

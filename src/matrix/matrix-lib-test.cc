@@ -1714,6 +1714,38 @@ static void UnitTestAddDiagMat2() {
   }
 }
 
+template<class Real>
+static void UnitTestAddDiagMatMat() {
+  for (MatrixIndexT iter = 0; iter < 4; iter++) {
+    BaseFloat alpha = 0.432 + rand() % 5, beta = 0.043 + rand() % 2;
+	MatrixIndexT dimM = 10 + rand() % 3,
+                 dimN = 5 + rand() % 4;
+    Vector<Real> v(dimM);
+    Matrix<Real> M_orig(dimM, dimN), N_orig(dimN, dimM);
+    M_orig.SetRandn();
+    N_orig.SetRandn();
+    MatrixTransposeType transM = (iter % 2 == 0 ? kNoTrans : kTrans);
+    MatrixTransposeType transN = ((iter/2) % 2 == 0 ? kNoTrans : kTrans);
+    Matrix<Real> M(M_orig, transM), N(N_orig, transN);
+    
+    InitRand(&v);
+    Vector<Real> w(v);
+
+    w.AddDiagMatMat(alpha, M, transM, N, transN, beta);
+    
+    {
+      Vector<Real> w2(v);
+      Matrix<Real> MN(dimM, dimM);
+      MN.AddMatMat(1.0, M, transM, N, transN, 0.0);
+      Vector<Real> d(dimM);
+      d.CopyDiagFromMat(MN);
+      w2.Scale(beta);
+      w2.AddVec(alpha, d);
+      AssertEqual(w, w2);
+    }
+  }
+}
+
 
 template<class Real>
 static void UnitTestOrthogonalizeRows() {
@@ -3862,6 +3894,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestTp2Sp<Real>();
   UnitTestTp2<Real>();
   UnitTestAddDiagMat2<Real>();
+  UnitTestAddDiagMatMat<Real>();
   UnitTestOrthogonalizeRows<Real>();
   UnitTestTopEigs<Real>();
   UnitTestTridiag<Real>();

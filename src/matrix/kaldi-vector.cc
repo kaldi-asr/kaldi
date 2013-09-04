@@ -595,9 +595,7 @@ void VectorBase<double>::CopyColFromMat(const MatrixBase<double> &mat, MatrixInd
 template<typename Real>
 void VectorBase<Real>::CopyDiagFromMat(const MatrixBase<Real> &M) {
   KALDI_ASSERT(dim_ == std::min(M.NumRows(), M.NumCols()));
-  for (MatrixIndexT i = 0; i < dim_; i++)
-    data_[i] = M(i, i);
-  // could make this more efficient.
+  cblas_Xcopy(dim_, M.Data(), M.Stride() + 1, data_, 1);
 }
 
 template<typename Real>
@@ -1192,12 +1190,33 @@ void VectorBase<Real>::AddDiagMat2(
   }
 }
 
+template<typename Real>
+void VectorBase<Real>::AddDiagMatMat(
+    Real alpha,
+    const MatrixBase<Real> &M, MatrixTransposeType transM,
+    const MatrixBase<Real> &N, MatrixTransposeType transN,
+    Real beta) {
+  MatrixIndexT dim = this->dim_,
+      M_col_dim = (transM == kTrans ? M.NumRows() : M.NumCols()),
+      N_row_dim = (transN == kTrans ? N.NumCols() : N.NumRows());
+  KALDI_ASSERT(M_col_dim == N_row_dim); // this is the dimension we sum over
+  MatrixIndexT M_row_stride = M.Stride(), M_col_stride = 1;
+  if (transM == kTrans) std::swap(M_row_stride, M_col_stride);
+  MatrixIndexT N_row_stride = N.Stride(), N_col_stride = 1;
+  if (transN == kTrans) std::swap(N_row_stride, N_col_stride);
+
+  Real *data = this->data_;
+  const Real *Mdata = M.Data(), *Ndata = N.Data();
+  for (MatrixIndexT i = 0; i < dim; i++, Mdata += M_row_stride, Ndata += N_col_stride, data++) {
+    *data = beta * *data + alpha * cblas_Xdot(M_col_dim, Mdata, M_col_stride, Ndata, N_row_stride);
+  }
+}
+
+
 template class Vector<float>;
 template class Vector<double>;
 template class VectorBase<float>;
 template class VectorBase<double>;
 
 }  // namespace kaldi
-
-
 

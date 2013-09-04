@@ -386,6 +386,25 @@ template<class Real> void CuVectorUnitTestCopyDiagFromPacked() {
   }
 }
 
+template<class Real> void CuVectorUnitTestCopyDiagFromMat() {
+  for (int32 i = 0; i < 5; i++) {
+    int32 M = 100 + rand() % 255, N = M + rand() % 2;
+    Matrix<Real> matrix(M, N);
+    if (i % 2 == 0) matrix.Transpose();
+    matrix.SetRandn();
+    Vector<Real> vector(M, kUndefined);
+    vector.CopyDiagFromMat(matrix);
+
+    CuMatrix<Real> cuda_matrix(matrix);
+    CuVector<Real> cuda_vector(M, kUndefined);
+    cuda_vector.CopyDiagFromMat(cuda_matrix);
+    Vector<Real> vector2(cuda_vector);
+    AssertEqual(vector, vector2);
+    AssertEqual(vector.Sum(), cuda_matrix.Trace(false));
+    AssertEqual(cuda_vector.Sum(), matrix.Trace(false));
+  }
+}
+
 
 template<class Real> void CuVectorUnitTestNorm() {
   int32 dim = 2;
@@ -531,23 +550,26 @@ template<class Real> void CuVectorUnitTestAddVecVec() {
 }
 
 template<class Real> void CuVectorUnitTestAddDiagMat2() {
-  int32 dim = 100;
-  CuVector<Real> cu_vector(dim);
-  cu_vector.SetRandn();
-  Vector<Real> vector(cu_vector);
+  for (int p = 0; p < 4; p++) {
+    int32 M = 230 + rand() % 100, N = 230 + rand() % 100;
+    BaseFloat alpha = 0.2 + rand() % 3, beta = 0.3 + rand() % 2;
+    CuVector<Real> cu_vector(M);
+    cu_vector.SetRandn();
 
-  Matrix<Real> M(dim, dim);
-  M.SetRandn();
-  CuMatrix<Real> cuM(M);
+    CuMatrix<Real> cu_mat_orig(M, N);
+    cu_mat_orig.SetRandn();
+    MatrixTransposeType trans = (p % 2 == 0 ? kNoTrans : kTrans);
+    CuMatrix<Real> cu_mat(cu_mat_orig, trans);
+    
+    Vector<Real> vector(cu_vector);
+    Matrix<Real> mat(cu_mat);
 
-  Real alpha = rand();
-  Real beta = rand();
+    vector.AddDiagMat2(alpha, mat, trans, beta);
+    cu_vector.AddDiagMat2(alpha, cu_mat, trans, beta);
 
-  cu_vector.AddDiagMat2(alpha, cuM, kNoTrans, beta);
-  vector.AddDiagMat2(alpha, M, kNoTrans, beta);
-
-  CuVector<Real> cu2(vector);
-  AssertEqual(cu2, cu_vector);
+    Vector<Real> vector2(cu_vector);
+    AssertEqual(vector, vector2);
+  }
 }
 
 template<class Real> void CuVectorUnitTestAddMatVec() {
@@ -630,6 +652,7 @@ template<class Real> void CuVectorUnitTest() {
   CuVectorUnitTestMax<Real>();
   CuVectorUnitTestApplySoftMax<Real>();
   CuVectorUnitTestCopyDiagFromPacked<Real>();
+  CuVectorUnitTestCopyDiagFromMat<Real>();  
   CuVectorUnitTestNorm<Real>();  
   CuVectorUnitTestApplyExp<Real>();
   CuVectorUnitTestApplyLog<Real>();

@@ -146,8 +146,18 @@ class CuVectorBase {
   void AddSpVec(const Real alpha, const CuSpMatrix<Real> &S,
                 const CuVectorBase<Real> &v, const Real beta);
 
+  /// Add the diagonal of a matrix times itself:
+  /// *this = diag(M M^T) +  beta * *this (if trans == kNoTrans), or
+  /// *this = diag(M^T M) +  beta * *this (if trans == kTrans).
   void AddDiagMat2(Real alpha, const CuMatrixBase<Real> &M,
                    MatrixTransposeType trans, Real beta);
+
+  /// Add the diagonal of a matrix product: *this = diag(M N), assuming the
+  /// "trans" arguments are both kNoTrans; for transpose arguments, it behaves
+  /// as you would expect.
+  void AddDiagMatMat(Real alpha, const CuMatrixBase<Real> &M, MatrixTransposeType transM,
+                     const CuMatrixBase<Real> &N, MatrixTransposeType transN,
+                     Real beta = 1.0);  
 
   inline CuValue<Real> operator() (MatrixIndexT i) {
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
@@ -166,6 +176,9 @@ class CuVectorBase {
   /// Extracts the diagonal of a packed matrix M; works for Sp or Tp.
   void CopyDiagFromPacked(const CuPackedMatrix<Real> &M);
 
+  /// Extracts the diagonal of a matrix.
+  void CopyDiagFromMat(const CuMatrix<Real> &M);
+  
   Real Max() const;  
   Real Min() const;
   void MulElements(const CuVectorBase<Real> &v);
