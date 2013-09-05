@@ -2345,8 +2345,10 @@ void PermuteComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                                  int32, // num_chunks
                                  CuMatrix<BaseFloat> *out) const {
   out->Resize(in.NumRows(), in.NumCols());
-  bool forward = true;
-  out->PermuteColumns(in, reorder_, forward);
+  std::vector<int32> reverse_reorder(reorder_.size());
+  for (size_t i = 0; i < reorder_.size(); i++)
+    reverse_reorder[reorder_[i]] = i;
+  out->CopyCols(in, reverse_reorder);
 }
 
 void PermuteComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
@@ -2357,8 +2359,7 @@ void PermuteComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
                                 CuMatrix<BaseFloat> *in_deriv) const {
   in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
   KALDI_ASSERT(out_deriv.NumCols() == OutputDim());
-  bool forward = false;
-  in_deriv->PermuteColumns(out_deriv, reorder_, forward);
+  in_deriv->CopyCols(out_deriv, reorder_);
 }
 
 void MixtureProbComponent::Refresh() {

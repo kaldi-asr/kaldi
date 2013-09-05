@@ -904,7 +904,7 @@ void CuMatrixBase<Real>::AddDiagVecMat(
   } else
 #endif
   {
-    //Mat().AddDiagVecMat(alpha, v.Vec(), M.Mat(), transM, beta);
+    Mat().AddDiagVecMat(alpha, v.Vec(), M.Mat(), transM, beta);
   }
 }  
 
@@ -1530,37 +1530,58 @@ template
 void VectorBase<double>::CopyRowsFromMat(const CuMatrixBase<double> &mat);
 
 template<typename Real>
-void CuMatrixBase<Real>::PermuteColumns(const CuMatrixBase<Real> &src,
-                                        const std::vector<int32> &reorder,
-                                        bool forward) {
-  //KALDI_ASSERT(SameDimAndStride(*this, src));  
+void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
+                                  const std::vector<MatrixIndexT> &reorder) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    KALDI_ASSERT(static_cast<int32>(reorder.size()) == NumCols());
-    KALDI_ASSERT(SameDim(*this, src));
-    CuStlVector<int32> cuda_reorder;
-    if (forward) {
-      cuda_reorder.CopyFromVec(reorder);
-    } else {
-      int32 num_cols = NumCols();
-      std::vector<int32> reorder_backward(num_cols);
-      for (int32 i = 0; i < num_cols; i++) {
-        KALDI_ASSERT(reorder[i] >= 0 && reorder[i] < num_cols);
-        reorder_backward[reorder[i]] = i;
-      }
-      cuda_reorder.CopyFromVec(reorder_backward);
-    }
+    KALDI_ASSERT(static_cast<MatrixIndexT>(reorder.size()) == NumCols());
+    KALDI_ASSERT(NumRows() == src.NumRows());
+#ifdef KALDI_PARANOID
+    MatrixIndexT src_cols = src.NumCols();
+    for (size_t i = 0; i < reorder.size(); i++)
+      KALDI_ASSERT(reorder[i] >= 0 && reorder[i] < src_cols);
+#endif
+    CuStlVector<MatrixIndexT> cuda_reorder(reorder);
     
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
-    cuda_permute_columns(dimGrid, dimBlock, data_, src.Data(), cuda_reorder.Data(), Dim(), src.Stride());
+    // This kernel, as it is newer has the (x,y) dims as (rows,cols).
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK), n_blocks(NumCols(), CU2DBLOCK));
+    cuda_copy_cols(dimGrid, dimBlock, data_, src.Data(), cuda_reorder.Data(), Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
-    Mat().PermuteColumns(src.Mat(), reorder, forward);
+    Mat().CopyCols(src.Mat(), reorder);
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
+                                  const std::vector<MatrixIndexT> &reorder) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(static_cast<MatrixIndexT>(reorder.size()) == NumRows());
+    KALDI_ASSERT(NumCols() == src.NumCols());
+#ifdef KALDI_PARANOID
+    MatrixIndexT src_rows = src.NumRows();
+    for (size_t i = 0; i < reorder.size(); i++)
+      KALDI_ASSERT(reorder[i] >= 0 && reorder[i] < src_rows);
+#endif
+    CuStlVector<MatrixIndexT> cuda_reorder(reorder);
+    
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    // This kernel, as it is newer has the (x,y) dims as (rows,cols).
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK), n_blocks(NumCols(), CU2DBLOCK));
+    cuda_copy_rows(dimGrid, dimBlock, data_, src.Data(), cuda_reorder.Data(), Dim(), src.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().CopyRows(src.Mat(), reorder);
   }
 }
 

@@ -292,30 +292,60 @@ static void UnitTestCuMatrixApplyPow() {
   }
 }
 
-template<class Real> 
-static void UnitTestCuMatrixPermuteColumns() {
-  for (MatrixIndexT p = 0; p < 4; p++) {
-    bool forward = (p % 2 == 0);
-    MatrixIndexT dimM = 10 + rand() % 10, dimN = 10 + rand() % 10;
-    CuMatrix<Real> M(dimM, dimN);
-    M.SetRandn();
-    CuMatrix<Real> N(dimM, dimN), O(dimM, dimN);
-    std::vector<int32> reorder(dimN);
-    for (int32 i = 0; i < dimN; i++) reorder[i] = i;
-    std::random_shuffle(reorder.begin(), reorder.end());
-    
-    N.PermuteColumns(M, reorder, forward);
 
-    for (int32 i = 0; i < dimM; i++) {
-      for (int32 j = 0; j < dimN; j++) {
-        if (forward) O(i, reorder[j]) = M(i, j);
-        else O(i, j) = M(i, reorder[j]);
-      }
-    }
+
+template<class Real>
+static void UnitTestCuMatrixCopyRows() {
+  for (MatrixIndexT p = 0; p < 10; p++) {
+    MatrixIndexT num_rows1 = 10 + rand() % 10,
+        num_rows2 = 10 + rand() % 10,
+        num_cols = 10 + rand() % 10;
+    CuMatrix<Real> M(num_rows1, num_cols);
+    M.SetRandn();
+    
+    CuMatrix<Real> N(num_rows2, num_cols), O(num_rows2, num_cols);
+    std::vector<int32> reorder(num_rows2);
+    for (int32 i = 0; i < num_rows2; i++)
+      reorder[i] = rand() % num_rows1;
+    
+    N.CopyRows(M, reorder);
+
+    for (int32 i = 0; i < num_rows2; i++)
+      for (int32 j = 0; j < num_cols; j++)
+        O(i, j) = M(reorder[i], j);
+    
+    KALDI_LOG << "M is " << M;
+    KALDI_LOG << "N is " << N;
+    KALDI_LOG << "O is " << O;
     AssertEqual(N, O);
   }
 }
 
+template<class Real>
+static void UnitTestCuMatrixCopyCols() {
+  for (MatrixIndexT p = 0; p < 10; p++) {
+    MatrixIndexT num_cols1 = 10 + rand() % 10,
+        num_cols2 = 10 + rand() % 10,
+        num_rows = 10 + rand() % 10;
+    CuMatrix<Real> M(num_rows, num_cols1);
+    M.SetRandn();
+    
+    CuMatrix<Real> N(num_rows, num_cols2), O(num_rows, num_cols2);
+    std::vector<int32> reorder(num_cols2);
+    for (int32 i = 0; i < num_cols2; i++)
+      reorder[i] = rand() % num_cols1;
+    
+    N.CopyCols(M, reorder);
+    
+    for (int32 i = 0; i < num_rows; i++)
+      for (int32 j = 0; j < num_cols2; j++)
+        O(i, j) = M(i, reorder[j]);
+    KALDI_LOG << "M is " << M;
+    KALDI_LOG << "N is " << N;
+    KALDI_LOG << "O is " << O;
+    AssertEqual(N, O);
+  }
+}
 
 
 template<class Real> 
@@ -1030,60 +1060,66 @@ static void UnitTestCuDiffSigmoid() {
 template<class Real> 
 static void UnitTestCuSoftmax() {
 
-  int row = 100; 
-  int col = 111;
+  for (int32 i = 0; i < 5; i++) {
+    int row = 100 + rand() % 400;
+    int col = 100 + rand() % 500;
 
-  Matrix<Real> Hi(row,col);
-  Matrix<Real> Ho(row,col);
-  RandGaussMatrix(&Hi);
+    Matrix<Real> Hi(row,col);
+    Matrix<Real> Ho(row,col);
+    RandGaussMatrix(&Hi);
+    Hi.Scale(5.0);
   
-  CuMatrix<Real> Di(row, col);
-  CuMatrix<Real> Do(row, col);
-  Di.CopyFromMat(Hi);
+    CuMatrix<Real> Di(row, col);
+    CuMatrix<Real> Do(row, col);
+    Di.CopyFromMat(Hi);
 
-  //gpu
-  Do.ApplySoftMaxPerRow(Di);
-  //cpu
-  Ho.CopyFromMat(Hi);
-  for(MatrixIndexT r=0; r<Ho.NumRows(); r++) {
-    Ho.Row(r).ApplySoftMax();
+    //gpu
+    Do.ApplySoftMaxPerRow(Di);
+    //cpu
+    Ho.CopyFromMat(Hi);
+    for(MatrixIndexT r=0; r<Ho.NumRows(); r++) {
+      Ho.Row(r).ApplySoftMax();
+    }
+
+    Matrix<Real> Ho2(row, col);
+    Do.CopyToMat(&Ho2);
+
+    AssertEqual(Ho,Ho2);
   }
-
-  Matrix<Real> Ho2(row, col);
-  Do.CopyToMat(&Ho2);
-
-  AssertEqual(Ho,Ho2);
 }
 
 
 
 template<class Real> 
 static void UnitTestCuFindRowMaxId() {
-  Matrix<Real> Hi(100,111);
-  RandGaussMatrix(&Hi);
+  for (int32 i = 0; i < 5; i++) {
+    int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+    Matrix<Real> Hi(dimM, dimN);
+    RandGaussMatrix(&Hi);
 
-  CuMatrix<Real> Di(100,111);
-  Di.CopyFromMat(Hi);
+    CuMatrix<Real> Di(dimM, dimN);
+    Di.CopyFromMat(Hi);
 
-  std::vector<int32> Hmax(100);
-  CuStlVector<int32> Dmax(100);
+    std::vector<int32> Hmax(dimM);
+    CuStlVector<int32> Dmax(dimN);
 
-  //gpu
-  Di.FindRowMaxId(&Dmax);
+    //gpu
+    Di.FindRowMaxId(&Dmax);
 
-  //cpu
-  for(MatrixIndexT r=0; r<Hi.NumRows(); r++) {
-    Real max=-1e20; int32 idx=-1;
-    for(MatrixIndexT c=0; c<Hi.NumCols(); c++) {
-      if(Hi(r,c) > max) { idx=c; max=Hi(r,c); }
+    //cpu
+    for(MatrixIndexT r=0; r<Hi.NumRows(); r++) {
+      Real max=-1e20; int32 idx=-1;
+      for(MatrixIndexT c=0; c<Hi.NumCols(); c++) {
+        if(Hi(r,c) > max) { idx=c; max=Hi(r,c); }
+      }
+      Hmax[r] = idx;
     }
-    Hmax[r] = idx;
+
+    std::vector<int32> Hmax2(dimM);
+    Dmax.CopyToVec(&Hmax2);
+
+    AssertEqual(Hmax,Hmax2);
   }
-
-  std::vector<int32> Hmax2(100);
-  Dmax.CopyToVec(&Hmax2);
-
-  AssertEqual(Hmax,Hmax2);
 }
 
 
@@ -1250,7 +1286,8 @@ template<class Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixCopyFromMat<Real>();
   UnitTestCuMatrixCopyFromTp<Real>();
   UnitTestCuMatrixAddMatTp<Real>();
-  UnitTestCuMatrixPermuteColumns<Real>();
+  UnitTestCuMatrixCopyCols<Real>();
+  UnitTestCuMatrixCopyRows<Real>();
   UnitTestCuMatrixAddTpMat<Real>();
   //test CuVector<Real> methods
   UnitTestCuVectorAddVec<Real>();

@@ -256,12 +256,19 @@ class MatrixBase {
   /// Matrix child class works also for non-square.
   void Transpose();
 
-  /// If forward == true, does (*this)(reorder[r], c) = src(r, c),
-  /// else does (*this)(r, c) = src(reorder[r], c).  Results undefined
-  /// if "reorder" is not a permutation of [ 0, ... , NumCols()-1 ]
-  void PermuteColumns(const MatrixBase<Real> &src,
-                      const std::vector<int32> &reorder,
-                      bool forward);
+  /// Copies column r from column indices[r] of src.
+  /// indices.size() must equal this->NumCols(), 
+  /// all elements of "reorder" must be in [0, src.NumCols()-1],
+  /// and src.NumRows() must equal this.NumRows()
+  void CopyCols(const MatrixBase<Real> &src,
+                const std::vector<MatrixIndexT> &indices);
+
+  /// Copies row r from row indices[r] of src.
+  /// "reorder".size() must equal this->NumRows(), 
+  /// all elements of "reorder" must be in [0, src.NumRows()-1],
+  /// and src.NumCols() must equal this.NumCols()
+  void CopyRows(const MatrixBase<Real> &src,
+                const std::vector<MatrixIndexT> &indices);
   
   /// Applies floor to all matrix elements
   void ApplyFloor(Real floor_val);

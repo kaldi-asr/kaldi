@@ -275,7 +275,7 @@ template<class Real>
 class CuSubVector: public CuVectorBase<Real> {
  public:  
   CuSubVector(const CuVectorBase<Real> &t, const MatrixIndexT origin,
-            const MatrixIndexT length) : CuVectorBase<Real>() {
+              const MatrixIndexT length) : CuVectorBase<Real>() {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(origin)+
                  static_cast<UnsignedMatrixIndexT>(length) <=
                  static_cast<UnsignedMatrixIndexT>(t.Dim()));

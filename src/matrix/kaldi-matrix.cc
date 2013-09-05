@@ -2199,30 +2199,42 @@ void MatrixBase<Real>::SoftHinge(const MatrixBase<Real> &src) {
 }
 
 template<typename Real>
-void MatrixBase<Real>::PermuteColumns(const MatrixBase<Real> &src,
-                                      const std::vector<int32> &reorder,                      
-                                      bool forward) {
+void MatrixBase<Real>::CopyCols(const MatrixBase<Real> &src,
+                                const std::vector<MatrixIndexT> &indices) {
+  KALDI_ASSERT(NumRows() == src.NumRows());
+  KALDI_ASSERT(NumCols() == static_cast<MatrixIndexT>(indices.size()));
   MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
       this_stride = stride_, src_stride = src.stride_;
   Real *this_data = this->data_;
   const Real *src_data = src.data_;
-  KALDI_ASSERT(SameDim(*this, src) && static_cast<int32>(reorder.size()) == num_cols);
-    
-  if (forward) {
-    for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride, src_data += src_stride) {
-      const int32 *reorder_ptr = &(reorder[0]);
-      for (MatrixIndexT c = 0; c < num_cols; c++)
-        this_data[reorder_ptr[c]] = src_data[c];
-    }
-  } else {
-    for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride, src_data += src_stride) {
-      const int32 *reorder_ptr = &(reorder[0]);
-      for (MatrixIndexT c = 0; c < num_cols; c++)
-        this_data[c] = src_data[reorder_ptr[c]];
-    }
-  }    
-}
+#ifdef KALDI_PARANOID
+  MatrixIndexT src_cols = src.NumCols();
+  for (std::vector<MatrixIndexT>::iterator iter = indices.begin();
+       iter != indices.end(); ++iter)
+    KALDI_ASSERT(*iter >= 0 && *iter < src_cols);
+#endif                
   
+  // For the sake of memory locality we do this row by row, rather
+  // than doing it column-wise using cublas_Xcopy
+  for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride, src_data += src_stride) {
+    const MatrixIndexT *index_ptr = &(indices[0]);
+    for (MatrixIndexT c = 0; c < num_cols; c++, index_ptr++)
+      this_data[c] = src_data[*index_ptr];
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::CopyRows(const MatrixBase<Real> &src,
+                                const std::vector<MatrixIndexT> &indices) {
+  KALDI_ASSERT(NumCols() == src.NumCols());
+  KALDI_ASSERT(NumRows() == static_cast<MatrixIndexT>(indices.size()));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
+      this_stride = stride_;
+  Real *this_data = this->data_;
+  
+  for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride)
+    cblas_Xcopy(num_cols, src.RowData(indices[r]), 1, this_data, 1);
+}
 
 
 template<typename Real>

@@ -574,6 +574,40 @@ template<class Real> void CuVectorUnitTestAddDiagMat2() {
   }
 }
 
+template<class Real>
+static void CuVectorUnitTestAddDiagMatMat() {
+  for (MatrixIndexT iter = 0; iter < 4; iter++) {
+    BaseFloat alpha = 0.432 + rand() % 5, beta = 0.043 + rand() % 2;
+	MatrixIndexT dimM = 10 + rand() % 300,
+                 dimN = 5 + rand() % 300;
+    CuVector<Real> v(dimM);
+    CuMatrix<Real> M_orig(dimM, dimN), N_orig(dimN, dimM);
+    M_orig.SetRandn();
+    N_orig.SetRandn();
+    MatrixTransposeType transM = (iter % 2 == 0 ? kNoTrans : kTrans);
+    MatrixTransposeType transN = ((iter/2) % 2 == 0 ? kNoTrans : kTrans);
+    CuMatrix<Real> M(M_orig, transM), N(N_orig, transN);
+    
+    v.SetRandn();
+    CuVector<Real> w(v);
+
+    w.AddDiagMatMat(alpha, M, transM, N, transN, beta);
+    
+    {
+      CuVector<Real> w2(v);
+      CuMatrix<Real> MN(dimM, dimM);
+      MN.AddMatMat(1.0, M, transM, N, transN, 0.0);
+      CuVector<Real> d(dimM);
+      d.CopyDiagFromMat(MN);
+      w2.Scale(beta);
+      w2.AddVec(alpha, d);
+      AssertEqual(w, w2);
+    }
+  }
+}
+
+
+
 template<class Real> void CuVectorUnitTestAddMatVec() {
   for (int32 i = 0; i < 5; i++) {
     int32 M = 100 + rand() % 256, N = 100 + rand() % 256;
@@ -664,8 +698,7 @@ template<class Real> void CuVectorUnitTest() {
   CuVectorUnitTestAddSpVec<Real>();
   CuVectorUnitTestAddVecVec<Real>();
   CuVectorUnitTestAddDiagMat2<Real>();
-  
-  
+  CuVectorUnitTestAddDiagMatMat<Real>();
 }
 
 

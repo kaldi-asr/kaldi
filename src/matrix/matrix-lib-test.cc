@@ -560,27 +560,58 @@ static void UnitTestNorm() {  // test some simple norm properties: scaling.  als
 
 
 template<class Real>
-static void UnitTestPermuteColumns() {
+static void UnitTestCopyRows() {
   for (MatrixIndexT p = 0; p < 10; p++) {
-    bool forward = (p % 2 == 0);
-    MatrixIndexT dimM = 10 + rand() % 10, dimN = 10 + rand() % 10;
-    Matrix<Real> M(dimM, dimN);
+    MatrixIndexT num_rows1 = 10 + rand() % 10,
+        num_rows2 = 10 + rand() % 10,
+        num_cols = 10 + rand() % 10;
+    Matrix<Real> M(num_rows1, num_cols);
     InitRand(&M);
-    Matrix<Real> N(dimM, dimN), O(dimM, dimN);
-    std::vector<int32> reorder(dimN);
-    for (int32 i = 0; i < dimN; i++) reorder[i] = i;
-    std::random_shuffle(reorder.begin(), reorder.end());
     
-    N.PermuteColumns(M, reorder, forward);
+    Matrix<Real> N(num_rows2, num_cols), O(num_rows2, num_cols);
+    std::vector<int32> reorder(num_rows2);
+    for (int32 i = 0; i < num_rows2; i++)
+      reorder[i] = rand() % num_rows1;
+    
+    N.CopyRows(M, reorder);
 
-    for (int32 i = 0; i < dimM; i++)
-      for (int32 j = 0; j < dimN; j++)
-        if (forward) O(i, reorder[j]) = M(i, j);
-        else O(i, j) = M(i, reorder[j]);
-
+    for (int32 i = 0; i < num_rows2; i++)
+      for (int32 j = 0; j < num_cols; j++)
+        O(i, j) = M(reorder[i], j);
+    
+    KALDI_LOG << "M is " << M;
+    KALDI_LOG << "N is " << N;
+    KALDI_LOG << "O is " << O;
     AssertEqual(N, O);
   }
 }
+
+template<class Real>
+static void UnitTestCopyCols() {
+  for (MatrixIndexT p = 0; p < 10; p++) {
+    MatrixIndexT num_cols1 = 10 + rand() % 10,
+        num_cols2 = 10 + rand() % 10,
+        num_rows = 10 + rand() % 10;
+    Matrix<Real> M(num_rows, num_cols1);
+    InitRand(&M);
+    
+    Matrix<Real> N(num_rows, num_cols2), O(num_rows, num_cols2);
+    std::vector<int32> reorder(num_cols2);
+    for (int32 i = 0; i < num_cols2; i++)
+      reorder[i] = rand() % num_cols1;
+    
+    N.CopyCols(M, reorder);
+    
+    for (int32 i = 0; i < num_rows; i++)
+      for (int32 j = 0; j < num_cols2; j++)
+        O(i, j) = M(i, reorder[j]);
+    KALDI_LOG << "M is " << M;
+    KALDI_LOG << "N is " << N;
+    KALDI_LOG << "O is " << O;
+    AssertEqual(N, O);
+  }
+}
+
 
 template<class Real>
 static void UnitTestSimpleForMat() {  // test some simple operates on all kinds of matrix
@@ -1776,7 +1807,6 @@ static void UnitTestAddDiagMatMat() {
     }
   }
 }
-
 
 template<class Real>
 static void UnitTestOrthogonalizeRows() {
@@ -3906,7 +3936,8 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestSigmoid<Real>();
   UnitTestSoftHinge<Real>();
   UnitTestNorm<Real>();
-  UnitTestPermuteColumns<Real>();
+  UnitTestCopyCols<Real>();
+  UnitTestCopyRows<Real>();
   UnitTestMul<Real>();
   KALDI_LOG << " Point I";
   UnitTestSolve<Real>();

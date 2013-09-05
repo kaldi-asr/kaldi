@@ -725,7 +725,7 @@ static void _add_diag_mat_mat(
     Real sum = 0.0;
     for (int32_cuda j = 0; j < M_cols; j++) {
       int32_cuda M_index = i * M_row_stride + j * M_col_stride,
-             N_index = j * N_row_stride + j * N_col_stride;
+             N_index = j * N_row_stride + i * N_col_stride;
       sum += M[M_index] * N[N_index];
     }
     v[i] = beta * v[i] + alpha * sum;
@@ -927,21 +927,40 @@ static void _apply_floor(Real* mat, Real floor_val, MatrixDim d) {
   }
 }
 
+
 template<typename Real>
 __global__
-static void _permute_columns(Real* dst, const Real *src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride) {
-  // Note: in this routine we don't do the traditional check for 
-  // if (i < d.cols && j < d.rows); it's not really necessary as we invoke
-  // the kernel for the correct dims.
+static void _copy_cols(Real* dst, const Real *src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  // Note: in this kernel, the x dimension corresponds to rows and the y to columns,
+  // as it will be going forward.
+
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i < dst_dim.cols && j < dst_dim.rows) {
-    int src_index = i + j * src_stride;
+  if (i < dst_dim.rows && j < dst_dim.cols) {
+    int src_index = i * src_stride + reorder[j];
     Real val = src[src_index]; 
-    int dst_index = reorder[i] + j * dst_dim.stride;
+    int dst_index = i * dst_dim.stride + j;
     dst[dst_index] = val;
   } 
 }
+
+template<typename Real>
+__global__
+static void _copy_rows(Real* dst, const Real *src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  // Note: in this kernel, the x dimension corresponds to rows and the y to columns,
+  // as it will be going forward.
+
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i < dst_dim.rows && j < dst_dim.cols) {
+    int src_index = reorder[i] * src_stride + j;
+    Real val = src[src_index]; 
+    int dst_index = i * dst_dim.stride + j;
+    dst[dst_index] = val;
+  } 
+}
+
+
 
 template<typename Real>
 __global__
@@ -1449,8 +1468,12 @@ void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
 
 }
 
-void cudaF_permute_columns(dim3 Gr, dim3 Bl, float* dst, const float* src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride) {
-  _permute_columns<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
+void cudaF_copy_cols(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _copy_cols<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
+}
+
+void cudaF_copy_rows(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _copy_rows<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
 void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim d) {
@@ -1785,8 +1808,12 @@ void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
   _apply_heaviside<<<Gr,Bl>>>(mat, d);
 }
 
-void cudaD_permute_columns(dim3 Gr, dim3 Bl, double* dst, const double* src, const int32_cuda* reorder, MatrixDim dst_dim, int src_stride) {
-  _permute_columns<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
+void cudaD_copy_cols(dim3 Gr, dim3 Bl, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _copy_cols<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
+}
+
+void cudaD_copy_rows(dim3 Gr, dim3 Bl, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _copy_rows<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
 void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim d) {

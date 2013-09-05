@@ -509,7 +509,7 @@ void CuVectorBase<Real>::AddDiagMat2(Real alpha, const CuMatrixBase<Real> &M,
     } else {
       cuda_add_diag_mat_trans(dimGrid, dimBlock, alpha, data_, M.Data(), beta, M.Dim(), dim_);
     }
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::AddDiagMat2", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
@@ -525,6 +525,7 @@ void CuVectorBase<Real>::AddDiagMatMat(
     Real beta) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
     MatrixIndexT dim = this->dim_,
         M_col_dim = (transM == kTrans ? M.NumRows() : M.NumCols()),
         N_row_dim = (transN == kTrans ? N.NumCols() : N.NumRows());
@@ -535,11 +536,13 @@ void CuVectorBase<Real>::AddDiagMatMat(
     if (transN == kTrans) std::swap(N_row_stride, N_col_stride);
 
     int dimBlock(CU1DBLOCK);
-    int dimGrid(n_blocks(dim,CU2DBLOCK));
+    int dimGrid(n_blocks(dim,CU1DBLOCK));
     
     cuda_add_diag_mat_mat(dimGrid, dimBlock, alpha, data_, dim,
                           M.Data(), M_col_dim, M_row_stride, M_col_stride,
                           N.Data(), N_row_stride, N_col_stride, beta);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
   } else
 #endif
   {
