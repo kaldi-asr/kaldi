@@ -679,33 +679,52 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet2;
 
-  BasicDebugTestForSplice(true);
-  BasicDebugTestForSpliceMax(true);
 
-  for (int32 i = 0; i < 5; i++) {
-    UnitTestGenericComponent<SigmoidComponent>();
-    UnitTestGenericComponent<TanhComponent>();
-    UnitTestGenericComponent<PermuteComponent>();
-    UnitTestGenericComponent<SoftmaxComponent>();
-    UnitTestGenericComponent<RectifiedLinearComponent>();
-    UnitTestGenericComponent<SoftHingeComponent>();
-    UnitTestGenericComponent<PowerExpandComponent>("higher-power-scale=0.1");
-    UnitTestSigmoidComponent();
-    UnitTestAffineComponent();
-    UnitTestPiecewiseLinearComponent();
-    UnitTestScaleComponent();
-    UnitTestAffinePreconInputComponent();
-    UnitTestBlockAffineComponent();
-    UnitTestBlockAffineComponentPreconditioned();
-    UnitTestMixtureProbComponent();
-    UnitTestDctComponent();
-    UnitTestFixedLinearComponent();
-    UnitTestFixedAffineComponent();
-    UnitTestAffineComponentPreconditioned();
-    UnitTestAffineComponentModified();
-    UnitTestDropoutComponent();
-    UnitTestAdditiveNoiseComponent();
-    UnitTestInformationBottleneckComponent();
-    UnitTestParsing();
+  for (int32 loop = 0; loop < 2; loop++) {
+#if HAVE_CUDA == 1
+    if (loop == 0)
+      CuDevice::Instantiate().SelectGpuId(-1); // -1 means no GPU
+    else
+      CuDevice::Instantiate().SelectGpuId(-2); // -2 .. automatic selection
+#endif
+
+    
+    BasicDebugTestForSplice(true);
+    BasicDebugTestForSpliceMax(true);
+
+    for (int32 i = 0; i < 3; i++) {
+      UnitTestGenericComponent<SigmoidComponent>();
+      UnitTestGenericComponent<TanhComponent>();
+      UnitTestGenericComponent<PermuteComponent>();
+      UnitTestGenericComponent<SoftmaxComponent>();
+      UnitTestGenericComponent<RectifiedLinearComponent>();
+      UnitTestGenericComponent<SoftHingeComponent>();
+      UnitTestGenericComponent<PowerExpandComponent>("higher-power-scale=0.1");
+      UnitTestSigmoidComponent();
+      UnitTestAffineComponent();
+      UnitTestPiecewiseLinearComponent();
+      UnitTestScaleComponent();
+      UnitTestAffinePreconInputComponent();
+      UnitTestBlockAffineComponent();
+      UnitTestBlockAffineComponentPreconditioned();
+      UnitTestMixtureProbComponent();
+      UnitTestDctComponent();
+      UnitTestFixedLinearComponent();
+      UnitTestFixedAffineComponent();
+      UnitTestAffineComponentPreconditioned();
+      UnitTestAffineComponentModified();
+      UnitTestDropoutComponent();
+      UnitTestAdditiveNoiseComponent();
+      UnitTestInformationBottleneckComponent();
+      UnitTestParsing();
+      if (loop == 0)
+        KALDI_LOG << "Tests without GPU use succeeded.\n";
+      else
+        KALDI_LOG << "Tests with GPU use (if available) succeeded.\n";
+    }
   }
+#if HAVE_CUDA == 1
+  CuDevice::Instantiate().PrintProfile();
+#endif
+  return 0;
 }

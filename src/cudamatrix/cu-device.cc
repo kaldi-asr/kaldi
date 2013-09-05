@@ -76,7 +76,7 @@ CuDevice::~CuDevice() {
  */
 void CuDevice::SelectGpuId(int32 gpu_id) {
   // Make sure this function is not called twice!
-  if(Enabled()) {
+  if (Enabled()) {
     KALDI_ERR << "There is already an active GPU " << active_gpu_id_ 
               << ", cannot change it on the fly!";
   }

@@ -307,30 +307,37 @@ template<class Real, class OtherReal> void CudaSpMatrixUnitTest() {
 
 int main() {
   using namespace kaldi;
-  // Select the GPU
-#if HAVE_CUDA == 1
-  kaldi::int32 use_gpu_id = -2;
-  CuDevice::Instantiate().SelectGpuId(use_gpu_id);
-#endif
-  //  std::cout<<"here\n";
 
-  kaldi::CudaSpMatrixUnitTest<float>();
-  kaldi::CudaSpMatrixUnitTest<float, float>();
+  for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().DoublePrecisionSupported()) {
-    kaldi::CudaSpMatrixUnitTest<double>();
+    if (loop == 0)
+      CuDevice::Instantiate().SelectGpuId(-1); // -1 means no GPU
+    else
+      CuDevice::Instantiate().SelectGpuId(-2); // -2 .. automatic selection
+#endif
+
+    kaldi::CudaSpMatrixUnitTest<float>();
+    kaldi::CudaSpMatrixUnitTest<float, float>();
+#if HAVE_CUDA == 1
+    if (CuDevice::Instantiate().DoublePrecisionSupported()) {
+      kaldi::CudaSpMatrixUnitTest<double>();
+      kaldi::CudaSpMatrixUnitTest<float, double>();
+      kaldi::CudaSpMatrixUnitTest<double, float>();
+      kaldi::CudaSpMatrixUnitTest<double, double>();
+    } else {
+      KALDI_WARN << "Double precision not supported";
+    }
+#else
     kaldi::CudaSpMatrixUnitTest<float, double>();
     kaldi::CudaSpMatrixUnitTest<double, float>();
     kaldi::CudaSpMatrixUnitTest<double, double>();
-  } else {
-    KALDI_WARN << "Double precision not supported";
-  }
-#else
-  kaldi::CudaSpMatrixUnitTest<float, double>();
-  kaldi::CudaSpMatrixUnitTest<double, float>();
-  kaldi::CudaSpMatrixUnitTest<double, double>();
 #endif
-  KALDI_LOG << "Tests succeeded";
+
+    if (loop == 0)
+      KALDI_LOG << "Tests without GPU use succeeded.\n";
+    else
+      KALDI_LOG << "Tests with GPU use (if available) succeeded.\n";
+  }
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().PrintProfile();
 #endif

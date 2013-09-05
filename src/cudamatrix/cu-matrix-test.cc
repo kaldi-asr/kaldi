@@ -314,9 +314,6 @@ static void UnitTestCuMatrixCopyRows() {
       for (int32 j = 0; j < num_cols; j++)
         O(i, j) = M(reorder[i], j);
     
-    KALDI_LOG << "M is " << M;
-    KALDI_LOG << "N is " << N;
-    KALDI_LOG << "O is " << O;
     AssertEqual(N, O);
   }
 }
@@ -340,9 +337,6 @@ static void UnitTestCuMatrixCopyCols() {
     for (int32 i = 0; i < num_rows; i++)
       for (int32 j = 0; j < num_cols2; j++)
         O(i, j) = M(i, reorder[j]);
-    KALDI_LOG << "M is " << M;
-    KALDI_LOG << "N is " << N;
-    KALDI_LOG << "O is " << O;
     AssertEqual(N, O);
   }
 }
@@ -393,23 +387,27 @@ static void UnitTestCuMatrixApplyHeaviside() {
 
 template<class Real> 
 static void UnitTestCuMatrixMulElements() {
-  Matrix<Real> Ha(100,100);
-  Matrix<Real> Hb(100,100);
-  RandGaussMatrix(&Ha);
-  RandGaussMatrix(&Hb);
+  for (int32 i = 0; i < 4; i++) {
+    MatrixIndexT dimM = 100 + rand() % 256, dimN = 100 + rand() % 256;
+  
+    Matrix<Real> Ha(dimM, dimN);
+    Matrix<Real> Hb(dimM, dimN);
+    RandGaussMatrix(&Ha);
+    RandGaussMatrix(&Hb);
 
-  CuMatrix<Real> Da(100,100);
-  CuMatrix<Real> Db(100,100);
-  Da.CopyFromMat(Ha);
-  Db.CopyFromMat(Hb);
+    CuMatrix<Real> Da(dimM, dimN);
+    CuMatrix<Real> Db(dimM, dimN);
+    Da.CopyFromMat(Ha);
+    Db.CopyFromMat(Hb);
 
-  Da.MulElements(Db);
-  Ha.MulElements(Hb);
+    Da.MulElements(Db);
+    Ha.MulElements(Hb);
 
-  Matrix<Real> Ha2(100,100);
-  Da.CopyToMat(&Ha2);
+    Matrix<Real> Ha2(dimM, dimN);
+    Da.CopyToMat(&Ha2);
 
-  AssertEqual(Ha,Ha2);
+    AssertEqual(Ha,Ha2);
+  }
 }
 
 template<class Real> 
@@ -481,7 +479,7 @@ static void UnitTestCuMatrixMulRowsVec() {
 
 
 template<class Real> static void UnitTestCuMatrixAddDiagVecMat() {
-  for (int p = 0; p < 2; p++) {
+  for (int p = 0; p < 4; p++) {
     MatrixIndexT dimM = 100 + rand() % 255, dimN = 100 + rand() % 255;
     //MatrixIndexT dimM = 10 + rand() % 2, dimN = 10 + rand() % 2;
     Real alpha = 0.43243, beta = 1.423;
@@ -513,6 +511,7 @@ template<class Real> static void UnitTestCuMatrixAddDiagVecMat() {
     
     M.AddDiagVecMat(alpha, V, N, trans, beta);
     AssertEqual(M, Mcheck);
+    KALDI_ASSERT(M.Sum() != 0.0);
   }
 }
 
@@ -1081,10 +1080,9 @@ static void UnitTestCuSoftmax() {
       Ho.Row(r).ApplySoftMax();
     }
 
-    Matrix<Real> Ho2(row, col);
-    Do.CopyToMat(&Ho2);
+    Matrix<Real> Ho2(Do);
 
-    AssertEqual(Ho,Ho2);
+    AssertEqual(Ho,Ho2,0.00001);
   }
 }
 
@@ -1328,25 +1326,33 @@ template<class Real> void CudaMatrixUnitTest() {
 
 
 int main() {
-    //Select the GPU
+  for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
-    CuDevice::Instantiate().SelectGpuId(-2); //-2 .. automatic selection
+    if (loop == 0)
+      CuDevice::Instantiate().SelectGpuId(-1); // -1 means no GPU
+    else
+      CuDevice::Instantiate().SelectGpuId(-2); // -2 .. automatic selection
 #endif
 
-
-  kaldi::CudaMatrixUnitTest<float>();
+    kaldi::CudaMatrixUnitTest<float>();
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().DoublePrecisionSupported()) {
-    kaldi::CudaMatrixUnitTest<double>();
-  } else {
-    KALDI_WARN << "Double precision not supported";
-  }
+    if (CuDevice::Instantiate().DoublePrecisionSupported()) {
+      kaldi::CudaMatrixUnitTest<double>();
+    } else {
+      KALDI_WARN << "Double precision not supported";
+    }
 #else
-  kaldi::CudaMatrixUnitTest<double>();
+    kaldi::CudaMatrixUnitTest<double>();
 #endif
 
+    if (loop == 0)
+      KALDI_LOG << "Tests without GPU use succeeded.\n";
+    else
+      KALDI_LOG << "Tests with GPU use (if available) succeeded.\n";
+  }
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().PrintProfile();
 #endif
-  std::cout << "Tests succeeded.\n";
+  return 0;
 }
+

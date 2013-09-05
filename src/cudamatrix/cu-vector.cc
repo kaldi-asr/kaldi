@@ -546,7 +546,7 @@ void CuVectorBase<Real>::AddDiagMatMat(
   } else
 #endif
   {
-    //Vec().AddDiagMatMat(alpha, M.Mat(), transM, N.Mat(), transN, beta);
+    Vec().AddDiagMatMat(alpha, M.Mat(), transM, N.Mat(), transN, beta);
   }
 }
 

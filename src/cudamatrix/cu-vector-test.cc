@@ -599,8 +599,12 @@ static void CuVectorUnitTestAddDiagMatMat() {
       MN.AddMatMat(1.0, M, transM, N, transN, 0.0);
       CuVector<Real> d(dimM);
       d.CopyDiagFromMat(MN);
+      KALDI_LOG << "w2_0 = " << w2;
       w2.Scale(beta);
+      KALDI_LOG << "w2_1 = " << w2;
       w2.AddVec(alpha, d);
+      KALDI_LOG << "w = " << w;
+      KALDI_LOG << "w2 = " << w2;
       AssertEqual(w, w2);
     }
   }
@@ -707,25 +711,34 @@ template<class Real> void CuVectorUnitTest() {
 
 int main() {
     //Select the GPU
+
+  for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
-    CuDevice::Instantiate().SelectGpuId(-2); //-2 .. automatic selection
+    if (loop == 0)
+      CuDevice::Instantiate().SelectGpuId(-1); // -1 means no GPU
+    else
+      CuDevice::Instantiate().SelectGpuId(-2); // -2 .. automatic selection
 #endif
 
 
-  kaldi::CuVectorUnitTest<float>();
+    kaldi::CuVectorUnitTest<float>();
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().DoublePrecisionSupported()) {
-    kaldi::CuVectorUnitTest<double>();
-  } else {
-    KALDI_WARN << "Double precision not supported";
-  }
+    if (CuDevice::Instantiate().DoublePrecisionSupported()) {
+      kaldi::CuVectorUnitTest<double>();
+    } else {
+      KALDI_WARN << "Double precision not supported";
+    }
 #else
-  kaldi::CuVectorUnitTest<double>();
+    kaldi::CuVectorUnitTest<double>();
 #endif
 
+    if (loop == 0)
+      KALDI_LOG << "Tests without GPU use succeeded.\n";
+    else
+      KALDI_LOG << "Tests with GPU use (if available) succeeded.\n";
+  }
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().PrintProfile();
 #endif
-  std::cout << "Tests succeeded.\n";
   return 0;
 }

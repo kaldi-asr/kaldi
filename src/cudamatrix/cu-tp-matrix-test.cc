@@ -154,23 +154,31 @@ template<class Real> void CudaTpMatrixUnitTest() {
 
 int main() {
   using namespace kaldi;
-  // Select the GPU
-  kaldi::int32 use_gpu_id = -2;
+
+
+  for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
-  CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+    if (loop == 0)
+      CuDevice::Instantiate().SelectGpuId(-1); // -1 means no GPU
+    else
+      CuDevice::Instantiate().SelectGpuId(-2); // -2 .. automatic selection
 #endif
-  kaldi::CudaTpMatrixUnitTest<float>();
+    kaldi::CudaTpMatrixUnitTest<float>();
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().DoublePrecisionSupported()) {
-    kaldi::CudaTpMatrixUnitTest<double>();
-  } else {
-    KALDI_WARN << "Double precision not supported";
-  }
+    if (CuDevice::Instantiate().DoublePrecisionSupported()) {
+      kaldi::CudaTpMatrixUnitTest<double>();
+    } else {
+      KALDI_WARN << "Double precision not supported";
+    }
 #else
-  kaldi::CudaTpMatrixUnitTest<double>();
+    kaldi::CudaTpMatrixUnitTest<double>();
 #endif
   
-  KALDI_LOG << "Tests succeeded";
+    if (loop == 0)
+      KALDI_LOG << "Tests without GPU use succeeded.\n";
+    else
+      KALDI_LOG << "Tests with GPU use (if available) succeeded.\n";
+  }
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().PrintProfile();
 #endif
