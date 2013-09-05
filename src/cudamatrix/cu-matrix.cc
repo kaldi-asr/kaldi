@@ -919,7 +919,7 @@ void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
 
-    cuda_sigmoid(dimGrid, dimBlock, this->data_, src.data_, src.Dim(), src.Stride());
+    cuda_sigmoid(dimGrid, dimBlock, this->data_, src.data_, this->Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -940,7 +940,7 @@ void CuMatrixBase<Real>::SoftHinge(const CuMatrixBase<Real> &src) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
 
-    cuda_soft_hinge(dimGrid, dimBlock, this->data_, src.data_, src.Dim(), src.Stride());
+    cuda_soft_hinge(dimGrid, dimBlock, this->data_, src.data_, this->Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -1035,7 +1035,7 @@ void CuMatrixBase<Real>::Tanh(const CuMatrixBase<Real> &src) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
 
-    cuda_tanh(dimGrid, dimBlock, this->data_, src.data_, src.Dim(), src.Stride());
+    cuda_tanh(dimGrid, dimBlock, this->data_, src.data_, this->Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
