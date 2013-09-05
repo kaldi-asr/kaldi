@@ -2219,7 +2219,7 @@ void MatrixBase<Real>::CopyCols(const MatrixBase<Real> &src,
   for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride, src_data += src_stride) {
     const MatrixIndexT *index_ptr = &(indices[0]);
     for (MatrixIndexT c = 0; c < num_cols; c++, index_ptr++) {
-      if (index_ptr < 0) this_data[c] = 0;
+      if (*index_ptr < 0) this_data[c] = 0;
       else this_data[c] = src_data[*index_ptr];
     }
   }
@@ -2235,9 +2235,9 @@ void MatrixBase<Real>::CopyRows(const MatrixBase<Real> &src,
   Real *this_data = this->data_;
   
   for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride) {
-    MatrixIndexT i = indices[r];
-    if (i < 0) memset(this_data, 0, sizeof(Real) * num_cols_);
-    else cblas_Xcopy(num_cols, src.RowData(indices[r]), 1, this_data, 1);
+    MatrixIndexT index = indices[r];
+    if (index < 0) memset(this_data, 0, sizeof(Real) * num_cols_);
+    else cblas_Xcopy(num_cols, src.RowData(index), 1, this_data, 1);
   }
 }
 

@@ -308,13 +308,14 @@ static void UnitTestCuMatrixCopyRows() {
     CuMatrix<Real> N(num_rows2, num_cols), O(num_rows2, num_cols);
     std::vector<int32> reorder(num_rows2);
     for (int32 i = 0; i < num_rows2; i++)
-      reorder[i] = rand() % num_rows1;
+      reorder[i] = -1 + (rand() % (num_rows1 + 1));
     
     N.CopyRows(M, reorder);
 
     for (int32 i = 0; i < num_rows2; i++)
       for (int32 j = 0; j < num_cols; j++)
-        O(i, j) = M(reorder[i], j);
+        if (reorder[i] < 0) O(i, j) = 0;
+        else O(i, j) = M(reorder[i], j);
     
     AssertEqual(N, O);
   }
@@ -332,13 +333,14 @@ static void UnitTestCuMatrixCopyCols() {
     CuMatrix<Real> N(num_rows, num_cols2), O(num_rows, num_cols2);
     std::vector<int32> reorder(num_cols2);
     for (int32 i = 0; i < num_cols2; i++)
-      reorder[i] = rand() % num_cols1;
+      reorder[i] = -1 + (rand() % (num_cols1 + 1));
     
     N.CopyCols(M, reorder);
     
     for (int32 i = 0; i < num_rows; i++)
       for (int32 j = 0; j < num_cols2; j++)
-        O(i, j) = M(i, reorder[j]);
+        if (reorder[j] < 0) O(i, j) = 0;
+        else O(i, j) = M(i, reorder[j]);
     AssertEqual(N, O);
   }
 }

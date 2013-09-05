@@ -576,7 +576,7 @@ static void UnitTestCopyRows() {
     N.CopyRows(M, reorder);
 
     for (int32 i = 0; i < num_rows2; i++)
-      for (int32 j = 0; j < num_cols; j++) {
+      for (int32 j = 0; j < num_cols; j++)
         if (reorder[i] < 0) O(i, j) = 0;
         else O(i, j) = M(reorder[i], j);
     

@@ -257,16 +257,16 @@ class MatrixBase {
   void Transpose();
 
   /// Copies column r from column indices[r] of src.
-  /// indices.size() must equal this->NumCols(),
   /// As a special case, if indexes[i] == -1, sets column i to zero
+  /// indices.size() must equal this->NumCols(),
   /// all elements of "reorder" must be in [-1, src.NumCols()-1],
   /// and src.NumRows() must equal this.NumRows()
   void CopyCols(const MatrixBase<Real> &src,
                 const std::vector<MatrixIndexT> &indices);
 
   /// Copies row r from row indices[r] of src.
+  /// As a special case, if indexes[i] == -1, sets row i to zero
   /// "reorder".size() must equal this->NumRows(),
-    /// As a special case, if indexes[i] == -1, sets row i to zero
   /// all elements of "reorder" must be in [-1, src.NumRows()-1],
   /// and src.NumCols() must equal this.NumCols()
   void CopyRows(const MatrixBase<Real> &src,

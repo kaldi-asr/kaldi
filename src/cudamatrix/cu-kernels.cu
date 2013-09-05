@@ -937,10 +937,15 @@ static void _copy_cols(Real* dst, const Real *src, const MatrixIndexT_cuda* reor
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   if (i < dst_dim.rows && j < dst_dim.cols) {
-    int src_index = i * src_stride + reorder[j];
-    Real val = src[src_index]; 
-    int dst_index = i * dst_dim.stride + j;
-    dst[dst_index] = val;
+    int index = reorder[j],
+        dst_index = i * dst_dim.stride + j;
+    if (index >= 0) {
+      int src_index = i * src_stride + reorder[j];
+      Real val = src[src_index]; 
+      dst[dst_index] = val;
+    } else {
+      dst[dst_index] = 0.0;
+    }
   } 
 }
 
@@ -953,10 +958,15 @@ static void _copy_rows(Real* dst, const Real *src, const MatrixIndexT_cuda* reor
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   if (i < dst_dim.rows && j < dst_dim.cols) {
-    int src_index = reorder[i] * src_stride + j;
-    Real val = src[src_index]; 
-    int dst_index = i * dst_dim.stride + j;
-    dst[dst_index] = val;
+    int index = reorder[i],
+        dst_index = i * dst_dim.stride + j;
+    if (index >= 0) {
+      int src_index = reorder[i] * src_stride + j;
+      Real val = src[src_index]; 
+      dst[dst_index] = val;
+    } else {
+      dst[dst_index] = 0;
+    }
   } 
 }
 

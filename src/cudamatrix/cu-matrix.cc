@@ -1539,7 +1539,7 @@ void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
 #ifdef KALDI_PARANOID
     MatrixIndexT src_cols = src.NumCols();
     for (size_t i = 0; i < reorder.size(); i++)
-      KALDI_ASSERT(reorder[i] >= 0 && reorder[i] < src_cols);
+      KALDI_ASSERT(reorder[i] >= -1 && reorder[i] < src_cols);
 #endif
     CuStlVector<MatrixIndexT> cuda_reorder(reorder);
     
@@ -1567,7 +1567,7 @@ void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
 #ifdef KALDI_PARANOID
     MatrixIndexT src_rows = src.NumRows();
     for (size_t i = 0; i < reorder.size(); i++)
-      KALDI_ASSERT(reorder[i] >= 0 && reorder[i] < src_rows);
+      KALDI_ASSERT(reorder[i] >= -1 && reorder[i] < src_rows);
 #endif
     CuStlVector<MatrixIndexT> cuda_reorder(reorder);
     
