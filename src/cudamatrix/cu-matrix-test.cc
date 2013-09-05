@@ -1030,8 +1030,8 @@ static void UnitTestCuDiffSigmoid() {
 template<class Real> 
 static void UnitTestCuSoftmax() {
 
-  int row = 256; 
-  int col = 10240;
+  int row = 100; 
+  int col = 111;
 
   Matrix<Real> Hi(row,col);
   Matrix<Real> Ho(row,col);

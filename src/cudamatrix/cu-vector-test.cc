@@ -444,6 +444,7 @@ template<class Real> void CuVectorUnitTestMax() {
 template<class Real> void CuVectorUnitTestApplySoftMax() {
   for (int32 i = 0; i < 10; i++) {
     int32 dim = 100 + rand() % 300;
+    //int32 dim = 1024;
     CuVector<Real> cu_vector(dim);
     cu_vector.SetRandn();
     Vector<Real> vector(cu_vector);
@@ -451,7 +452,7 @@ template<class Real> void CuVectorUnitTestApplySoftMax() {
     cu_vector.ApplySoftMax();
     vector.ApplySoftMax();
     CuVector<Real> cu_vector2(vector);
-    //std::cout<<cu_vector(0)<<"ANDhxu "<<cu_vector2(0)<<std::endl;
+    //std::cout<<cu_vector <<"\n"<<cu_vector2<<std::endl;
     AssertEqual(cu_vector, cu_vector2);
   }
 }
@@ -663,6 +664,8 @@ template<class Real> void CuVectorUnitTest() {
   CuVectorUnitTestAddSpVec<Real>();
   CuVectorUnitTestAddVecVec<Real>();
   CuVectorUnitTestAddDiagMat2<Real>();
+  
+  
 }
 
 

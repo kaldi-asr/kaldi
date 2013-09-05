@@ -1148,8 +1148,8 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
   }
   Real max = aux[0];
   __syncthreads();
-
-  // subtract max, apply exp, sum up...
+  
+   // subtract max, apply exp, sum up...
   y[threadIdx.x+j*d.stride] = exp(x[threadIdx.x+j*d.stride] - max);
   aux[threadIdx.x] = y[threadIdx.x+j*d.stride];
   for(int i=1; i<steps; i++) {

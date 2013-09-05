@@ -151,6 +151,10 @@ inline void cuda_diff_sigmoid(dim3 Gr, dim3 Bl, float *eout, const float *e, con
 inline void cuda_tanh(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride) { cudaF_tanh(Gr,Bl,y,x,d,src_stride); }
 inline void cuda_diff_tanh(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d) { cudaF_diff_tanh(Gr,Bl,eout,e,y,d); }
 inline void cuda_softmax(size_t Gr, size_t Bl, float *y, const float *x, MatrixDim d) { cudaF_softmax(Gr,Bl,y,x,d); }
+/*
+Bl: dimBlock value is fixed min(d.col, CU1DBLOCK), represent CU1DBLOCK threads reduce a row at the same time.
+Gr: the number of rows
+*/
 inline void cuda_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x, MatrixDim d, int src_stride) { cudaF_softmax_reduce(Gr,Bl,y,x,d,src_stride); }
 inline void cuda_softmax_part(dim3 Gr, dim3 Bl, const float *X, const int32_cuda *vec_ids, float* Y, MatrixDim d) { cudaF_softmax_part(Gr,Bl,X,vec_ids,Y,d); }
 

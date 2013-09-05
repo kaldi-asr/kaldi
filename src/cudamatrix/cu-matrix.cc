@@ -904,7 +904,7 @@ void CuMatrixBase<Real>::AddDiagVecMat(
   } else
 #endif
   {
-    Mat().AddDiagVecMat(alpha, v.Vec(), M.Mat(), transM, beta);
+    //Mat().AddDiagVecMat(alpha, v.Vec(), M.Mat(), transM, beta);
   }
 }  
 
