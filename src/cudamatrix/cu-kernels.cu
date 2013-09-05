@@ -1021,16 +1021,16 @@ static void _invert_elements(Real* data, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _soft_hinge(Real*y, const Real*x, MatrixDim d) {
+static void _soft_hinge(Real*y, const Real*x, MatrixDim d, int src_stride) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
-  int index = i + j*d.stride;
+  int des_index = i + j*d.stride, src_index = i + j*src_stride;
   // compute the function y[index] = log(1 + exp(x[index]))
   if( i < d.cols  &&  j < d.rows ) {
-    Real val = x[index], result;
+    Real val = x[src_index], result;
     if (val >= 10.0) result = val; // function approaches y=x as x gets large
     else result = log1p(exp(val));
-    y[index] = result;
+    y[des_index] = result;
   }
 }
 
@@ -1040,42 +1040,42 @@ static void _soft_hinge(Real*y, const Real*x, MatrixDim d) {
  */
 template<typename Real>
 __global__
-static void _sigmoid(Real*y, const Real*x, MatrixDim d) {
+static void _sigmoid(Real*y, const Real*x, MatrixDim d, int src_stride) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
-  int index = i + j*d.stride;
+  int des_index = i + j*d.stride, src_index = i + j*src_stride;
   if( i < d.cols  &&  j < d.rows ) {
-    Real res = 1.0 / (1.0 + exp(-x[index]));
-    y[index] = res;
+    Real res = 1.0 / (1.0 + exp(-x[src_index]));
+    y[des_index] = res;
   }
 }
 
 template<typename Real>
 __global__
-static void _diff_sigmoid(Real*eout, const Real*e, const Real*y, MatrixDim d) {
+static void _diff_sigmoid(Real*eout, const Real*e, const Real*y, MatrixDim d, int src_stride) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
-  int index = i + j*d.stride;
+  int des_index = i + j*d.stride, src_index = i + j*src_stride;
   if( i < d.cols  && j < d.rows ) 
-    eout[index] = y[index]*(1.0-y[index]) * e[index];
+    eout[des_index] = y[src_index]*(1.0-y[src_index]) * e[src_index];
 }
 
 
 template<typename Real>
 __global__
-static void _tanh(Real*y, const Real*x, MatrixDim d) {
+static void _tanh(Real*y, const Real*x, MatrixDim d, int src_stride) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
-  int index = i + j*d.stride;
+  int des_index = i + j*d.stride, src_index = i + j * src_stride;
   if( i < d.cols  &&  j < d.rows ) {
-    Real exp_2x = exp(2.0*x[index]);
+    Real exp_2x = exp(2.0*x[src_index]);
     Real res;
     if(isinf(exp_2x)) {
       res = 1.0;
     } else {
       res = (exp_2x - 1.0) / (exp_2x + 1.0);
     }
-    y[index] = res;
+    y[des_index] = res;
   }
 }
 
@@ -1117,7 +1117,7 @@ static void _softmax(Real*y, const Real*x, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _softmax_reduce(Real*y, const Real*x, MatrixDim d) {
+static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
   int j = blockIdx.x;
   int THREADS = blockDim.x;
   if (j >= d.rows) return;
@@ -1642,20 +1642,20 @@ void cudaF_invert_elements(dim3 Gr, dim3 Bl, float* data, MatrixDim d) {
 /*
  * cu::
  */
-void cudaF_soft_hinge (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d) {
-  _soft_hinge<<<Gr,Bl>>>(y, x, d); 
+void cudaF_soft_hinge (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d, int src_stride) {
+  _soft_hinge<<<Gr,Bl>>>(y, x, d, src_stride); 
 }
 
-void cudaF_sigmoid (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d) {
-  _sigmoid<<<Gr,Bl>>>(y, x, d); 
+void cudaF_sigmoid (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d, int src_stride) {
+  _sigmoid<<<Gr,Bl>>>(y, x, d, src_stride); 
 }
 
-void cudaF_diff_sigmoid (dim3 Gr, dim3 Bl, float* eout, const float* e, const float* y, MatrixDim d) {
-  _diff_sigmoid<<<Gr,Bl>>>(eout, e, y, d);
+void cudaF_diff_sigmoid (dim3 Gr, dim3 Bl, float* eout, const float* e, const float* y, MatrixDim d, int src_stride) {
+  _diff_sigmoid<<<Gr,Bl>>>(eout, e, y, d, src_stride);
 }
 
-void cudaF_tanh (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d) {
-  _tanh<<<Gr,Bl>>>(y, x, d); 
+void cudaF_tanh (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d, int src_stride) {
+  _tanh<<<Gr,Bl>>>(y, x, d, src_stride); 
 }
 
 void cudaF_diff_tanh (dim3 Gr, dim3 Bl, float* eout, const float* e, const float* y, MatrixDim d) {
@@ -1666,8 +1666,8 @@ void cudaF_softmax (size_t Gr, size_t Bl, float* y, const float* x, MatrixDim d)
   _softmax<<<Gr,Bl>>>(y, x, d); 
 }
 
-void cudaF_softmax_reduce (size_t Gr, size_t Bl, float* y, const float* x, MatrixDim d) {
-  _softmax_reduce<<<Gr,Bl>>>(y, x, d);
+void cudaF_softmax_reduce (size_t Gr, size_t Bl, float* y, const float* x, MatrixDim d, int src_stride) {
+  _softmax_reduce<<<Gr,Bl>>>(y, x, d, src_stride);
 }
 
 
@@ -1977,20 +1977,20 @@ void cudaD_invert_elements(dim3 Gr, dim3 Bl, double* data, MatrixDim d) {
 /*
  * cu::
  */
-void cudaD_soft_hinge (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d) {
-  _soft_hinge<<<Gr,Bl>>>(y, x, d); 
+void cudaD_soft_hinge (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, int src_stride) {
+  _soft_hinge<<<Gr,Bl>>>(y, x, d, src_stride); 
 }
 
-void cudaD_sigmoid (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d) {
-  _sigmoid<<<Gr,Bl>>>(y, x, d); 
+void cudaD_sigmoid (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, int src_stride) {
+  _sigmoid<<<Gr,Bl>>>(y, x, d, src_stride); 
 }
 
-void cudaD_diff_sigmoid (dim3 Gr, dim3 Bl, double* eout, const double* e, const double* y, MatrixDim d) {
-  _diff_sigmoid<<<Gr,Bl>>>(eout, e, y, d);
+void cudaD_diff_sigmoid (dim3 Gr, dim3 Bl, double* eout, const double* e, const double* y, MatrixDim d, int src_stride) {
+  _diff_sigmoid<<<Gr,Bl>>>(eout, e, y, d, src_stride);
 }
 
-void cudaD_tanh (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d) {
-  _tanh<<<Gr,Bl>>>(y, x, d); 
+void cudaD_tanh (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, int src_stride) {
+  _tanh<<<Gr,Bl>>>(y, x, d, src_stride); 
 }
 
 void cudaD_diff_tanh (dim3 Gr, dim3 Bl, double* eout, const double* e, const double* y, MatrixDim d) {
@@ -2002,8 +2002,8 @@ void cudaD_softmax (size_t Gr, size_t Bl, double* y, const double* x, MatrixDim 
   _softmax<<<Gr,Bl>>>(y, x, d); 
 }
 
-void cudaD_softmax_reduce (size_t Gr, size_t Bl, double* y, const double* x, MatrixDim d) {
-  _softmax_reduce<<<Gr,Bl>>>(y, x, d);
+void cudaD_softmax_reduce (size_t Gr, size_t Bl, double* y, const double* x, MatrixDim d, int src_stride) {
+  _softmax_reduce<<<Gr,Bl>>>(y, x, d, src_stride);
 }
 
 void cudaD_softmax_part(dim3 Gr, dim3 Bl, const double* X, const int32_cuda* vec_ids, double* Y, MatrixDim d) {

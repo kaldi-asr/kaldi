@@ -110,12 +110,12 @@ void cudaF_invert_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim d);
  * cu::
  */
 void cudaF_softmax(size_t Gr, size_t Bl, float *y, const float *x, MatrixDim d);
-void cudaF_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x, MatrixDim d);
+void cudaF_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x, MatrixDim d, int src_stride);
 void cudaF_softmax_part(dim3 Gr, dim3 Bl, const float *X, const int32_cuda *vec_ids, float* Y, MatrixDim d);
-void cudaF_soft_hinge(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d);
-void cudaF_sigmoid(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d);
-void cudaF_diff_sigmoid(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d);
-void cudaF_tanh(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d);
+void cudaF_soft_hinge(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
+void cudaF_sigmoid(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
+void cudaF_diff_sigmoid(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d, int src_stride);
+void cudaF_tanh(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
 void cudaF_diff_tanh(dim3 Gr, dim3 Bl, float *eout, const float *e, const float *y, MatrixDim d);
 
 void cudaF_regularize_l1(dim3 Gr, dim3 Bl, float *wei, float *grad, float l1, float lr, MatrixDim d);
@@ -205,12 +205,12 @@ void cudaD_invert_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim d);
  * cu::
  */
 void cudaD_softmax(size_t Gr, size_t Bl, double *y, const double *x, MatrixDim d);
-void cudaD_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x, MatrixDim d);
+void cudaD_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x, MatrixDim d, int src_stride);
 void cudaD_softmax_part(dim3 Gr, dim3 Bl, const double *X, const int32_cuda *vec_ids, double* Y, MatrixDim d);
-void cudaD_soft_hinge(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d);
-void cudaD_sigmoid(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d);
-void cudaD_diff_sigmoid(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d);
-void cudaD_tanh(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d);
+void cudaD_soft_hinge(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
+void cudaD_sigmoid(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
+void cudaD_diff_sigmoid(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d, int src_stride);
+void cudaD_tanh(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
 void cudaD_diff_tanh(dim3 Gr, dim3 Bl, double *eout, const double *e, const double *y, MatrixDim d);
 
 void cudaD_regularize_l1(dim3 Gr, dim3 Bl, double *wei, double *grad, double l1, double lr, MatrixDim d);

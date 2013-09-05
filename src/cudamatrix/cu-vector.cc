@@ -285,7 +285,7 @@ void CuVectorBase<Real>::ApplySoftMax() {
     size_t dimBlock = 1;
     size_t dimGrid = dim_;
     ::MatrixDim dim = { 1, this->dim_, 1 };
-    cuda_softmax_reduce(dimGrid, dimBlock, data_, data_, dim);
+    cuda_softmax_reduce(dimGrid, dimBlock, data_, data_, dim, dim_);//actually dim is not stride...
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else

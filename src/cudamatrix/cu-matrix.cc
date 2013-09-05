@@ -911,7 +911,7 @@ void CuMatrixBase<Real>::AddDiagVecMat(
 
 template<typename Real>
 void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {
-  KALDI_ASSERT(SameDimAndStride(*this, src));
+  //KALDI_ASSERT(SameDimAndStride(*this, src));
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -919,7 +919,7 @@ void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
 
-    cuda_sigmoid(dimGrid, dimBlock, this->data_, src.data_, src.Dim());
+    cuda_sigmoid(dimGrid, dimBlock, this->data_, src.data_, src.Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -932,7 +932,7 @@ void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {
 
 template<typename Real>
 void CuMatrixBase<Real>::SoftHinge(const CuMatrixBase<Real> &src) {
-  KALDI_ASSERT(SameDimAndStride(*this, src));
+  //KALDI_ASSERT(SameDimAndStride(*this, src));
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -940,7 +940,7 @@ void CuMatrixBase<Real>::SoftHinge(const CuMatrixBase<Real> &src) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
 
-    cuda_soft_hinge(dimGrid, dimBlock, this->data_, src.data_, src.Dim());
+    cuda_soft_hinge(dimGrid, dimBlock, this->data_, src.data_, src.Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -954,7 +954,7 @@ void CuMatrixBase<Real>::SoftHinge(const CuMatrixBase<Real> &src) {
 
 template<typename Real> // Y->this, X->src
 void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
-  KALDI_ASSERT(SameDimAndStride(*this, src));
+  //KALDI_ASSERT(SameDimAndStride(*this, src));
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -986,7 +986,7 @@ void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
 
     size_t dimBlock = src.num_cols_ > CU1DBLOCK ? CU1DBLOCK : src.num_cols_;
     size_t dimGrid = src.num_rows_;
-    cuda_softmax_reduce(dimGrid, dimBlock, data_, src.data_, Dim());
+    cuda_softmax_reduce(dimGrid, dimBlock, data_, src.data_, Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -1005,7 +1005,7 @@ void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
 template<typename Real> // Eout -> *this, Ein -> diff, Y -> value
 void CuMatrixBase<Real>::DiffSigmoid(const CuMatrixBase<Real> &value,
                                      const CuMatrixBase<Real> &diff) {
-  KALDI_ASSERT(SameDimAndStride(*this, value) && SameDimAndStride(*this, diff));
+  //KALDI_ASSERT(SameDimAndStride(*this, value) && SameDimAndStride(*this, diff));
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -1013,7 +1013,7 @@ void CuMatrixBase<Real>::DiffSigmoid(const CuMatrixBase<Real> &value,
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(num_cols_, CU2DBLOCK), n_blocks(num_rows_, CU2DBLOCK));
 
-    cuda_diff_sigmoid(dimGrid, dimBlock, data_, diff.data_, value.data_, Dim());
+    cuda_diff_sigmoid(dimGrid, dimBlock, data_, diff.data_, value.data_, Dim(), diff.Stride());
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -1027,7 +1027,7 @@ void CuMatrixBase<Real>::DiffSigmoid(const CuMatrixBase<Real> &value,
   
 template<typename Real>
 void CuMatrixBase<Real>::Tanh(const CuMatrixBase<Real> &src) {
-  KALDI_ASSERT(SameDimAndStride(*this, src));
+  //KALDI_ASSERT(SameDimAndStride(*this, src));
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -1035,7 +1035,7 @@ void CuMatrixBase<Real>::Tanh(const CuMatrixBase<Real> &src) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
 
-    cuda_tanh(dimGrid, dimBlock, this->data_, src.data_, src.Dim());
+    cuda_tanh(dimGrid, dimBlock, this->data_, src.data_, src.Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -1533,7 +1533,7 @@ template<typename Real>
 void CuMatrixBase<Real>::PermuteColumns(const CuMatrixBase<Real> &src,
                                         const std::vector<int32> &reorder,
                                         bool forward) {
-  KALDI_ASSERT(SameDimAndStride(*this, src));  
+  //KALDI_ASSERT(SameDimAndStride(*this, src));  
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     KALDI_ASSERT(static_cast<int32>(reorder.size()) == NumCols());
