@@ -2727,37 +2727,70 @@ void SpliceComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
     KALDI_ERR << "Splicing features: output will have zero dimension. "
               << "Probably a code error.";
   out->Resize(num_chunks * output_chunk_size, output_dim);
-  for (int32 chunk = 0; chunk < num_chunks; chunk++) {
-    CuSubMatrix<BaseFloat> input_chunk(in,
-                                     chunk * input_chunk_size, input_chunk_size,
-                                     0, input_dim),
-                        output_chunk(*out,
-                                     chunk * output_chunk_size, output_chunk_size,
-                                     0, output_dim);
 
-    for (int32 c = 0; c < left_context_ + right_context_ + 1; c++) {
-      CuSubMatrix<BaseFloat> input_part(input_chunk, 
-                                      c, output_chunk_size,
-                                      0, input_dim - const_component_dim_),
-                           output_part(output_chunk, 
-                                       0, output_chunk_size,
-                                       (input_dim - const_component_dim_) * c,
-                                       input_dim - const_component_dim_);
-      output_part.CopyFromMat(input_part);
+  if (1) { // rand() % 2 == 0) { // Occasionally do the older code,
+    // this will flag any inconsistency in the tests.
+  
+    for (int32 chunk = 0; chunk < num_chunks; chunk++) {
+      CuSubMatrix<BaseFloat> input_chunk(in,
+                                         chunk * input_chunk_size, input_chunk_size,
+                                         0, input_dim),
+          output_chunk(*out,
+                       chunk * output_chunk_size, output_chunk_size,
+                       0, output_dim);
+
+      for (int32 c = 0; c < left_context_ + right_context_ + 1; c++) {
+        CuSubMatrix<BaseFloat> input_part(input_chunk, 
+                                          c, output_chunk_size,
+                                          0, input_dim - const_component_dim_),
+            output_part(output_chunk, 
+                        0, output_chunk_size,
+                        (input_dim - const_component_dim_) * c,
+                        input_dim - const_component_dim_);
+        output_part.CopyFromMat(input_part);
+      }
+      //Append the constant component at the end of the output vector
+      if (const_component_dim_ != 0) {
+        CuSubMatrix<BaseFloat> input_part(input_chunk, 
+                                          0, output_chunk_size,
+                                          InputDim() - const_component_dim_,
+                                          const_component_dim_),
+            output_part(output_chunk, 
+                        0, output_chunk_size,
+                        OutputDim() - const_component_dim_,
+                        const_component_dim_);
+        output_part.CopyFromMat(input_part);
+      }
     }
-    //Append the constant component at the end of the output vector
-    if (const_component_dim_ != 0) {
-      CuSubMatrix<BaseFloat> input_part(input_chunk, 
-                                      0, output_chunk_size,
-                                      InputDim() - const_component_dim_,
-                                      const_component_dim_),
-                           output_part(output_chunk, 
-                                       0, output_chunk_size,
-                                       OutputDim() - const_component_dim_,
-                                       const_component_dim_);
-      output_part.CopyFromMat(input_part);
+  } else {
+    // 'indexes' is, for each index from 0 to (left_context_+right_context_+1)-1,
+    // then for each row of "out", the corresponding row of "in" that we copy from.
+    std::vector<std::vector<int32> > indexes(left_context_ + right_context_ + 1);
+    // const_component_dim_ != 0, "const_indexes" will be used to determine which
+    // row of "in" we copy the last part of each row of "out" from (this part is
+    // not subject to splicing, it's assumed constant for each frame of "input".
+    std::vector<int32> const_indexes(const_component_dim_ == 0 ? 0 : out->NumRows());
+
+    for (int32 i = 0; i < indexes.size(); i++) 
+      indexes[i].resize(out->NumRows());
+
+    for (int32 chunk = 0; chunk < num_chunks; chunk++) {
+      for (int32 c = 0; c < left_context_ + right_context_ + 1; c++) {
+        for (int32 offset = 0; offset < output_chunk_size; offset++) {
+          indexes[c][chunk * output_chunk_size + offset] =
+              chunk * input_chunk_size + c + offset;
+        }
+      }
+      if (const_component_dim_ != 0) {
+        for (int32 offset = 0; offset < output_chunk_size; offset++)
+          const_indexes[chunk * output_chunk_size + offset] =
+              chunk * input_chunk_size + offset; // there is
+          // an arbitrariness here; since we assume the const_component
+          // is constant within a chunk, it doesn't matter from where we copy.
+      }
     }
-  }  
+  }
+  
 }
 
 void SpliceComponent::Backprop(const CuMatrixBase<BaseFloat> &, // in_value

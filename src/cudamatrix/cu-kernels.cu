@@ -341,7 +341,7 @@ static void _set_const(Real* mat, Real value, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows )
+  if (i < d.cols && j < d.rows)
     mat[index] = value;
 }
 
@@ -363,7 +363,7 @@ static void _add(Real* mat, Real value, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows )
+  if (i < d.cols && j < d.rows)
     mat[index] = mat[index] + value;
 }
 
@@ -374,7 +374,7 @@ static void _scale(Real* mat, Real value, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows )
+  if (i < d.cols && j < d.rows)
     mat[index] = mat[index] * value;
 }
 
@@ -385,7 +385,7 @@ static void _apply_log(Real* mat, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows )
+  if (i < d.cols && j < d.rows)
     mat[index] = log(mat[index]);
 }
 
@@ -396,7 +396,7 @@ static void _mul_elements(Real* mat, const Real* A, MatrixDim dst_d, int src_str
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda dst_index = i + j*dst_d.stride, src_index = i + j*src_stride;
-  if ( i < dst_d.cols  &&  j < dst_d.rows )
+  if (i < dst_d.cols  &&  j < dst_d.rows)
     mat[dst_index] = mat[dst_index] * A[src_index];
 }
 
@@ -427,7 +427,7 @@ static void _mul_cols_vec(Real* mat, const Real* scale, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows )
+  if (i < d.cols && j < d.rows)
     mat[index] *= scale[i];
 }
 
@@ -438,7 +438,7 @@ static void _mul_rows_vec(Real* mat, const Real* scale, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows )
+  if (i < d.cols && j < d.rows)
     mat[index] *= scale[j];
 }
 
@@ -460,7 +460,7 @@ static void _div_rows_vec(Real* mat, const Real* vec_div, MatrixDim d) {
   __syncthreads();
  
   //multiply elements
-  if ( i < d.cols  &&  j < d.rows )
+  if (i < d.cols && j < d.rows)
     mat[index] *= inv[threadIdx.y];
 }
 
@@ -471,7 +471,7 @@ static void _add_mat(Real alpha, const Real* A, Real beta, Real* dst, MatrixDim 
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows )
+  if (i < d.cols && j < d.rows)
     dst[index] = alpha*A[index] + beta*dst[index];
 }
 
@@ -483,7 +483,7 @@ static void _add_vec_to_cols(Real alpha, const Real* col, Real beta, Real* dst, 
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows )
+  if (i < d.cols && j < d.rows)
     dst[index] = alpha*col[j] + beta*dst[index];
 }
 
@@ -495,7 +495,7 @@ static void _add_vec_to_rows(Real alpha, const Real* row, Real beta, Real* dst, 
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows )
+  if (i < d.cols && j < d.rows)
     dst[index] = alpha*row[i] + beta*dst[index];
 }
 
@@ -1032,7 +1032,7 @@ static void _invert_elements(Real* data, MatrixDim d) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   int index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows )
+  if (i < d.cols && j < d.rows)
     data[index] = 1.0/data[index];
 }
 
@@ -1045,7 +1045,7 @@ static void _soft_hinge(Real*y, const Real*x, MatrixDim d, int src_stride) {
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   int des_index = i + j*d.stride, src_index = i + j*src_stride;
   // compute the function y[index] = log(1 + exp(x[index]))
-  if( i < d.cols  &&  j < d.rows ) {
+  if(i < d.cols && j < d.rows) {
     Real val = x[src_index], result;
     if (val >= 10.0) result = val; // function approaches y=x as x gets large
     else result = log1p(exp(val));
@@ -1063,7 +1063,7 @@ static void _sigmoid(Real*y, const Real*x, MatrixDim d, int src_stride) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   int des_index = i + j*d.stride, src_index = i + j*src_stride;
-  if( i < d.cols  &&  j < d.rows ) {
+  if(i < d.cols && j < d.rows) {
     Real res = 1.0 / (1.0 + exp(-x[src_index]));
     y[des_index] = res;
   }
@@ -1086,7 +1086,7 @@ static void _tanh(Real*y, const Real*x, MatrixDim d, int src_stride) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   int des_index = i + j*d.stride, src_index = i + j * src_stride;
-  if( i < d.cols  &&  j < d.rows ) {
+  if(i < d.cols && j < d.rows) {
     Real exp_2x = exp(2.0*x[src_index]);
     Real res;
     if(isinf(exp_2x)) {
@@ -1324,7 +1324,7 @@ static void _regularize_l1(Real* wei, Real* grad, Real l1, Real lr, MatrixDim d)
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows ) {
+  if (i < d.cols && j < d.rows) {
 
     if(wei[index]==0.0) return; //skip L1 if zero weight!
     
@@ -1401,7 +1401,7 @@ static void _softmax_part(const Real* X, const int32_cuda* vec_ids, Real* Y, Mat
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
-  if ( i < d.cols  &&  j < d.rows ) {
+  if (i < d.cols && j < d.rows) {
     Real tmp = X[index] - X[vec_ids[j] + j*d.stride];
     Y[index] = exp(tmp);
   }

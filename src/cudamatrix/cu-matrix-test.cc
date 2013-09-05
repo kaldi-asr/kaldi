@@ -202,20 +202,22 @@ static void UnitTestCuMatrixApplyLog() {
 
 template<class Real> 
 static void UnitTestCuMatrixSigmoid() {
-  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
-  Matrix<Real> H(M, N);
-  H.SetRandn();
-  H.MulElements(H); // make numbers positive
+  for (int32 i = 0; i < 3; i++) {
+    int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+    Matrix<Real> H(M, N);
+    H.SetRandn();
+    H.MulElements(H); // make numbers positive
 
-  CuMatrix<Real> D(H);
-  CuMatrix<Real> E(M, N);
+    CuMatrix<Real> D(H);
+    CuMatrix<Real> E(M, N);
 
-  E.Sigmoid(D);
-  H.Sigmoid(H);
+    E.Sigmoid(D);
+    H.Sigmoid(H);
 
-  Matrix<Real> H2(E);
+    Matrix<Real> H2(E);
 
-  AssertEqual(H, H2);
+    AssertEqual(H, H2);
+  }
 }
 
 template<class Real> 

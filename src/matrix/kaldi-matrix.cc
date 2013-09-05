@@ -2211,15 +2211,17 @@ void MatrixBase<Real>::CopyCols(const MatrixBase<Real> &src,
   MatrixIndexT src_cols = src.NumCols();
   for (std::vector<MatrixIndexT>::iterator iter = indices.begin();
        iter != indices.end(); ++iter)
-    KALDI_ASSERT(*iter >= 0 && *iter < src_cols);
+    KALDI_ASSERT(*iter >= -1 && *iter < src_cols);
 #endif                
   
   // For the sake of memory locality we do this row by row, rather
   // than doing it column-wise using cublas_Xcopy
   for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride, src_data += src_stride) {
     const MatrixIndexT *index_ptr = &(indices[0]);
-    for (MatrixIndexT c = 0; c < num_cols; c++, index_ptr++)
-      this_data[c] = src_data[*index_ptr];
+    for (MatrixIndexT c = 0; c < num_cols; c++, index_ptr++) {
+      if (index_ptr < 0) this_data[c] = 0;
+      else this_data[c] = src_data[*index_ptr];
+    }
   }
 }
 
@@ -2232,8 +2234,11 @@ void MatrixBase<Real>::CopyRows(const MatrixBase<Real> &src,
       this_stride = stride_;
   Real *this_data = this->data_;
   
-  for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride)
-    cblas_Xcopy(num_cols, src.RowData(indices[r]), 1, this_data, 1);
+  for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride) {
+    MatrixIndexT i = indices[r];
+    if (i < 0) memset(this_data, 0, sizeof(Real) * num_cols_);
+    else cblas_Xcopy(num_cols, src.RowData(indices[r]), 1, this_data, 1);
+  }
 }
 
 

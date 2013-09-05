@@ -688,6 +688,8 @@ int main() {
       CuDevice::Instantiate().SelectGpuId(-2); // -2 .. automatic selection
 #endif
 
+    CU_SAFE_CALL(cudaGetLastError());
+
     
     BasicDebugTestForSplice(true);
     BasicDebugTestForSpliceMax(true);
