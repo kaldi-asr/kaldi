@@ -679,7 +679,7 @@ class TableWriterArchiveImpl: public TableWriterImplBase<Holder> {
       KALDI_ERR << "TableWriter: using invalid key " << key;
     output_.Stream() << key << ' ';
     if (!Holder::Write(output_.Stream(), opts_.binary, value)) {
-      KALDI_WARN << "TableWriter: write failure to"
+      KALDI_WARN << "TableWriter: write failure to "
                  << PrintableWxfilename(archive_wxfilename_);
       state_ = kWriteError;
       return false;

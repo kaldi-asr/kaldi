@@ -1,6 +1,7 @@
 // decoder/decodable-matrix.h
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,17 +30,32 @@ namespace kaldi {
 
 class DecodableMatrixScaledMapped: public DecodableInterface {
  public:
+  // This constructor creates an object that will not delete "likes"
+  // when done.
   DecodableMatrixScaledMapped(const TransitionModel &tm,
                               const Matrix<BaseFloat> &likes,
-                              BaseFloat scale): trans_model_(tm), likes_(likes),
-                                                scale_(scale) {
+                              BaseFloat scale): trans_model_(tm), likes_(&likes),
+                                                scale_(scale), delete_likes_(false) {
     if (likes.NumCols() != tm.NumPdfs())
       KALDI_ERR << "DecodableMatrixScaledMapped: mismatch, matrix has "
                 << likes.NumCols() << " rows but transition-model has "
                 << tm.NumPdfs() << " pdf-ids.";
   }
 
-  virtual int32 NumFrames() { return likes_.NumRows(); }
+  // This constructor creates an object that will delete "likes"
+  // when done.
+  DecodableMatrixScaledMapped(const TransitionModel &tm,
+                              BaseFloat scale,
+                              const Matrix<BaseFloat> *likes):
+      trans_model_(tm), likes_(likes),
+      scale_(scale), delete_likes_(true) {
+    if (likes->NumCols() != tm.NumPdfs())
+      KALDI_ERR << "DecodableMatrixScaledMapped: mismatch, matrix has "
+                << likes->NumCols() << " rows but transition-model has "
+                << tm.NumPdfs() << " pdf-ids.";
+  }  
+
+  virtual int32 NumFrames() { return likes_->NumRows(); }
 
   virtual bool IsLastFrame(int32 frame) {
     KALDI_ASSERT(frame < NumFrames());
@@ -48,16 +64,20 @@ class DecodableMatrixScaledMapped: public DecodableInterface {
 
   // Note, frames are numbered from zero.
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
-    return scale_ * likes_(frame, trans_model_.TransitionIdToPdf(tid));
+    return scale_ * (*likes_)(frame, trans_model_.TransitionIdToPdf(tid));
   }
 
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
 
+  virtual ~DecodableMatrixScaledMapped() {
+    if (delete_likes_) delete likes_;
+  }
  private:
   const TransitionModel &trans_model_;  // for tid to pdf mapping
-  const Matrix<BaseFloat> &likes_;
+  const Matrix<BaseFloat> *likes_;
   BaseFloat scale_;
+  bool delete_likes_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableMatrixScaledMapped);
 };
 
