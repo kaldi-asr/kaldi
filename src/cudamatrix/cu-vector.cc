@@ -155,12 +155,15 @@ void CuVectorBase<Real>::CopyRowsFromMat(const CuMatrixBase<Real> &mat) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    if (mat.Stride() == mat.NumCols()) {
-      cudaMemcpy(data_, mat.Data(), sizeof(Real)*dim_, cudaMemcpyDeviceToDevice);
+    if (mat.Stride() == mat.NumCols() && mat.NumRows() != 0) {
+      CU_SAFE_CALL(cudaMemcpy(data_, mat.Data(), sizeof(Real)*dim_,
+                              cudaMemcpyDeviceToDevice));
     } else {
       Real* vec_data = data_;
       for (MatrixIndexT r = 0; r < mat.NumRows(); r++) {
-        cudaMemcpy(vec_data, mat.RowData(r), sizeof(Real) * mat.NumCols(), cudaMemcpyDeviceToDevice);
+        CU_SAFE_CALL(cudaMemcpy(vec_data, mat.RowData(r),
+                                sizeof(Real) * mat.NumCols(),
+                                cudaMemcpyDeviceToDevice));
         vec_data += mat.NumCols();
       }
     }
@@ -198,14 +201,18 @@ void CuVectorBase<Real>::CopyRowsFromMat(const MatrixBase<Real> &mat) {
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     if (mat.Stride() == mat.NumCols()) {
-      cudaMemcpy(data_, mat.Data(), sizeof(Real)*dim_, cudaMemcpyHostToDevice);
+      CU_SAFE_CALL(cudaMemcpy(data_, mat.Data(), sizeof(Real)*dim_,
+                              cudaMemcpyHostToDevice));
     } else {
       Real* vec_data = data_;
       for (MatrixIndexT r = 0; r < mat.NumRows(); r++) {
-        cudaMemcpy(vec_data, mat.RowData(r), sizeof(Real) * mat.NumCols(), cudaMemcpyHostToDevice);
+        CU_SAFE_CALL(cudaMemcpy(vec_data, mat.RowData(r),
+                                sizeof(Real) * mat.NumCols(),
+                                cudaMemcpyHostToDevice));
         vec_data += mat.NumCols();
       }
     }
+    CU_SAFE_CALL(cudaGetLastError());    
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -221,11 +228,15 @@ void MatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &v) {
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     if (Stride() == NumCols()) {
-      cudaMemcpy(data_, v.Data(), sizeof(Real)*v.Dim(), cudaMemcpyDeviceToHost);
+      CU_SAFE_CALL(cudaMemcpy(data_, v.Data(),
+                              sizeof(Real)*v.Dim(),
+                              cudaMemcpyDeviceToHost));
     } else {
       const Real* vec_data = v.Data();
       for (MatrixIndexT r = 0; r < NumRows(); r++) {
-        cudaMemcpy(RowData(r), vec_data, sizeof(Real) * NumCols(), cudaMemcpyDeviceToHost);
+        CU_SAFE_CALL(cudaMemcpy(RowData(r), vec_data,
+                                sizeof(Real) * NumCols(),
+                                cudaMemcpyDeviceToHost));
         vec_data += NumCols();
       }
     }
@@ -243,6 +254,7 @@ template void MatrixBase<double>::CopyRowsFromVec(const CuVectorBase<double> &v)
 
 template<typename Real>
 void CuVectorBase<Real>::SetRandn() {
+  if (dim_ == 0) return;
   CuRand<Real> tmp;
   tmp.RandGaussian(this);
 }
@@ -252,7 +264,6 @@ template<typename Real>
 Real CuVectorBase<Real>::Sum() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    //* this is working now 
     Timer tim;
     CuVector<Real> tmp(1, kUndefined);
     int dimBlock(CU1DBLOCK);
@@ -260,15 +271,6 @@ Real CuVectorBase<Real>::Sum() const {
     cuda_vec_sum(dimGrid, dimBlock, data_, tmp.Data(), dim_, 1);
     CuDevice::Instantiate().AccuProfile("CuVectorBase::Sum", tim.Elapsed());
     return tmp(0);
-//    */
-
- /*/added by hxu, alternative implementation
-    // sum_value = cublas_sum(Dim(), Data(), 1); //this doesn't work cuz it calculates the sum of abs of elements
-    CuVector<Real> ones(dim_);
-    ones.Set(1.0);   
-    sum_value = VecVec(*this, ones);
-*/
-
   } else
 #endif
   {
@@ -389,13 +391,13 @@ void CuVectorBase<Real>::ApplyLog() {
 
 #if HAVE_CUDA == 1
 inline void cublas_gemv(char trans, int m, int n, float alpha,
-                                   const float* A, int lda, const float* x,
-                                   int incx, float beta, float* y, int incy) {
+                        const float* A, int lda, const float* x,
+                        int incx, float beta, float* y, int incy) {
   cublasSgemv(trans,m,n,alpha,A,lda,x,incx,beta,y,incy);
 }
 inline void cublas_gemv(char trans, int m, int n, double alpha,
-                                   const double* A, int lda, const double* x,
-                                   int incx, double beta, double* y, int incy) {
+                        const double* A, int lda, const double* x,
+                        int incx, double beta, double* y, int incy) {
   cublasDgemv(trans,m,n,alpha,A,lda,x,incx,beta,y,incy);
 }
 
@@ -421,10 +423,16 @@ void CuVectorBase<Real>::AddMatVec(const Real alpha,
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
+    CU_SAFE_CALL(cublasGetError()); // temp
+    
     // Everything is backwards in CuBlas.  We need to reverse rows, columns,
     // transpose-ness.
-    cublas_gemv((trans==kTrans?'N':'T'), M.NumCols(), M.NumRows(), alpha,
-                M.Data(), M.Stride(), v.Data(), 1, beta, data_, 1);
+    //cublas_gemv((trans==kTrans?'N':'T'), M.NumCols(), M.NumRows(), alpha,
+    //M.Data(), M.Stride(), v.Data(), 1, beta, data_, 1);
+
+    Vector<Real> temp(*this); // TEMP!!!!!!!!!!!
+    temp.AddMatVec(alpha, Matrix<Real>(M), trans, Vector<Real>(v), beta);
+    this->CopyFromVec(temp);
 
     CU_SAFE_CALL(cublasGetError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -676,11 +684,13 @@ template<>
 void CuVectorBase<double>::CopyFromVec(const CuVectorBase<float> &src) {
   KALDI_ASSERT(src.Dim() == dim_);
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
     Timer tim;
     int dimBlock(CU2DBLOCK);
     int dimGrid(n_blocks(dim_, CU2DBLOCK));
     cuda_copy_from_vec_df(dimGrid, dimBlock, data_, src.data_, dim_);
+    CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
   } else
 #endif
@@ -694,11 +704,13 @@ template<>
 void CuVectorBase<float>::CopyFromVec(const CuVectorBase<double> &src) {
   KALDI_ASSERT(src.Dim() == dim_);
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
     Timer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_, CU1DBLOCK));
     cuda_copy_from_vec_fd(dimGrid, dimBlock, data_, src.data_, dim_);
+    CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -719,6 +731,7 @@ void CuVectorBase<Real>::CopyFromVec(const VectorBase<OtherReal> &src) {
       this->CopyFromVec(temp);
     } else {
       KALDI_ASSERT(src.Dim() == dim_);
+      if (dim_ == 0) return;      
       Timer tim;
       CU_SAFE_CALL(cudaMemcpy(data_, src.Data(), src.Dim()*sizeof(Real), cudaMemcpyHostToDevice));
       CuDevice::Instantiate().AccuProfile("CuVector::CopyFromVecH2D",tim.Elapsed());
@@ -749,6 +762,7 @@ void CuVectorBase<Real>::CopyToVec(VectorBase<OtherReal> *dst) const {
       CuVector<OtherReal> temp(*this);
       temp.CopyToVec(dst);
     } else {
+      if (dim_ == 0) return;
       Timer tim;
       CU_SAFE_CALL(cudaMemcpy(dst->Data(), this->data_,
                               sizeof(Real) * dim_, cudaMemcpyDeviceToHost));
@@ -774,9 +788,9 @@ void CuVector<Real>::Read(std::istream &is, bool binary) {
 
 template<typename Real>
 void CuVector<Real>::Write(std::ostream &os, bool binary) const {
-  Vector<BaseFloat> temp(this->dim_);
+  Vector<BaseFloat> temp(this->dim_, kUndefined);
   this->CopyToVec(&temp);
-  temp.Write(os, binary); 
+  temp.Write(os, binary);
 }
 
 
@@ -873,7 +887,8 @@ template<typename Real>
 void CuVectorBase<Real>::CopyFromVec(const CuVectorBase<Real> &src) {
   KALDI_ASSERT(src.Dim() == dim_);
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
     Timer tim;
     CU_SAFE_CALL(cudaMemcpy(data_, src.data_, src.dim_ * sizeof(Real), cudaMemcpyDeviceToDevice));
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -934,7 +949,6 @@ void CuVectorBase<Real>::Set(Real value) {
     
     cuda_set_const(dimGrid, dimBlock, data_, value, d);
     CU_SAFE_CALL(cudaGetLastError());
-    
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -957,7 +971,6 @@ void CuVectorBase<Real>::Add(Real value) {
 
     cuda_add(dimGrid, dimBlock, data_, value, d);
     CU_SAFE_CALL(cudaGetLastError());
-
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -976,7 +989,6 @@ void CuVectorBase<Real>::CopyDiagFromPacked(const CuPackedMatrix<Real> &M) {
     int dimGrid(n_blocks(Dim(), CU1DBLOCK));
 
     cuda_vec_copy_diag_from_packed(dimGrid, dimBlock, data_, M.Data(), dim_);
-
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());

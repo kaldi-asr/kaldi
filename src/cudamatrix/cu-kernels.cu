@@ -340,7 +340,7 @@ __global__
 static void _set_const(Real* mat, Real value, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda index = i + j*d.stride;
+  int32_cuda index = i + j * d.stride;
   if (i < d.cols && j < d.rows)
     mat[index] = value;
 }

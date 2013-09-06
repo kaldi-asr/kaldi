@@ -386,6 +386,34 @@ template<class Real> void CuVectorUnitTestCopyDiagFromPacked() {
   }
 }
 
+template<class Real> void CuVectorUnitTestCopyCross() {
+  for (int32 i = 0; i < 10; i++) {
+    int32 M = 100 + rand() % 255;
+    if (rand() % 3 == 0) M = 0;
+    CuVector<Real> v1(M);
+    v1.SetRandn();
+    CuVector<float> v2(M);
+    v2.CopyFromVec(v1);
+    CuVector<Real> v3(M);
+    v3.CopyFromVec(v2);
+    AssertEqual(v1, v3);
+  }
+}
+
+template<class Real> void CuVectorUnitTestCopyCross2() {
+  for (int32 i = 0; i < 10; i++) {
+    int32 M = 100 + rand() % 255;
+    if (rand() % 3 == 0) M = 0;
+    CuVector<Real> v1(M);
+    v1.SetRandn();
+    Vector<float> v2(M);
+    v2.CopyFromVec(v1);
+    CuVector<Real> v3(M);
+    v3.CopyFromVec(v2);
+    AssertEqual(v1, v3);
+  }
+}
+
 template<class Real> void CuVectorUnitTestCopyDiagFromMat() {
   for (int32 i = 0; i < 5; i++) {
     int32 M = 100 + rand() % 255, N = M + rand() % 2;
@@ -613,8 +641,8 @@ static void CuVectorUnitTestAddDiagMatMat() {
 
 
 template<class Real> void CuVectorUnitTestAddMatVec() {
-  for (int32 i = 0; i < 5; i++) {
-    int32 M = 100 + rand() % 256, N = 100 + rand() % 256;
+  for (int32 i = 0; i < 10; i++) {
+    int32 M = 10 + rand() % 500, N = 10 + rand() % 400;
 
     bool transpose = (i % 2 == 0);
 
@@ -692,7 +720,9 @@ template<class Real> void CuVectorUnitTest() {
   CuVectorUnitTestMax<Real>();
   CuVectorUnitTestApplySoftMax<Real>();
   CuVectorUnitTestCopyDiagFromPacked<Real>();
-  CuVectorUnitTestCopyDiagFromMat<Real>();  
+  CuVectorUnitTestCopyDiagFromMat<Real>();
+  CuVectorUnitTestCopyCross<Real>();
+  CuVectorUnitTestCopyCross2<Real>();  
   CuVectorUnitTestNorm<Real>();  
   CuVectorUnitTestApplyExp<Real>();
   CuVectorUnitTestApplyLog<Real>();

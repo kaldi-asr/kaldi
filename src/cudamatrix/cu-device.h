@@ -39,7 +39,7 @@ class CuDevice {
  // Singleton object (there should only be one instantiated per program)
  public:
   ~CuDevice();
-  static CuDevice& Instantiate() { return global_device_; }
+  static inline CuDevice& Instantiate() { return global_device_; }
 
   /**********************************/
   // Instance interface

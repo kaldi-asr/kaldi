@@ -274,8 +274,8 @@ Real CuPackedMatrix<Real>::Trace() const {
   Real result = 0.0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    if (NumRows() == 0) return 0.0;
-    CuVector<Real> tmp(NumRows(), kUndefined);
+    if (num_rows_ == 0) return 0.0;
+    CuVector<Real> tmp(num_rows_, kUndefined);
     tmp.CopyDiagFromPacked(*this);
     return tmp.Sum();
   } else

@@ -271,6 +271,21 @@ static void UnitTestCuMatrixSoftHinge() {
 
 
 template<class Real> 
+static void UnitTestCuMatrixSet() {
+  for (int32 i = 0; i < 3; i++) {
+    BaseFloat value= 0.333;
+    int32 dimM = 10 + rand() % 600, dimN = 10 + rand() % 400;
+    CuMatrix<Real> m1(dimM, dimN);
+    Matrix<Real> m2(dimM, dimN);
+    m1.Set(value);
+    m2.Set(value);
+    Matrix<Real> m3(m1);
+    AssertEqual(m2, m3);
+  }
+}
+
+
+template<class Real> 
 static void UnitTestCuMatrixApplyPow() {
 
   for (int32 i = 0; i < 3; i++) {
@@ -294,6 +309,32 @@ static void UnitTestCuMatrixApplyPow() {
   }
 }
 
+
+template<class Real>
+static void UnitTestCuMatrixCopyRowsFromVec() {
+  for (MatrixIndexT p = 0; p < 10; p++) {
+    int32 num_rows = 100 + rand() % 255, num_cols;
+    if (p <= 2) num_cols = 128;
+    else if (p <= 4) num_cols = 256;
+    else num_cols = 100 + rand() % 200;
+
+    int32 vec_dim;
+    if (p % 2 == 0) vec_dim = num_cols;
+    else vec_dim = num_cols * num_rows;
+
+    CuVector<Real> cu_vec(vec_dim);
+    cu_vec.SetRandn();
+    Vector<Real> vec(cu_vec);
+
+    CuMatrix<Real> cu_mat(num_rows, num_cols);
+    cu_mat.CopyRowsFromVec(cu_vec);
+    Matrix<Real> mat(num_rows, num_cols);
+    mat.CopyRowsFromVec(vec);
+
+    Matrix<Real> mat2(cu_mat);
+    AssertEqual(mat, mat2);
+  }
+}
 
 
 template<class Real>
@@ -1272,6 +1313,7 @@ template<class Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixTraceMatMat<Real>();
   UnitTestCuMatrixSoftHinge<Real>();
   UnitTestCuMatrixApplyPow<Real>();
+  UnitTestCuMatrixSet<Real>();
   UnitTestCuMatrixAdd<Real>();
   UnitTestCuMatrixApplyFloor<Real>();
   UnitTestCuMatrixApplyHeaviside<Real>();
@@ -1290,6 +1332,7 @@ template<class Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixAddMatTp<Real>();
   UnitTestCuMatrixCopyCols<Real>();
   UnitTestCuMatrixCopyRows<Real>();
+  UnitTestCuMatrixCopyRowsFromVec<Real>();
   UnitTestCuMatrixAddTpMat<Real>();
   //test CuVector<Real> methods
   UnitTestCuVectorAddVec<Real>();

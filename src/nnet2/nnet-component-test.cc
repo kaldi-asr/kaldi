@@ -33,9 +33,9 @@ void UnitTestGenericComponentInternal(const Component &component) {
   int32 input_dim = component.InputDim(),
       output_dim = component.OutputDim();
 
-
   KALDI_LOG << component.Info();
-
+  CU_SAFE_CALL(cudaGetLastError()); // TEMP  
+  
   CuVector<BaseFloat> objf_vec(output_dim); // objective function is linear function of output.
   objf_vec.SetRandn(); // set to Gaussian noise.
   
@@ -43,41 +43,55 @@ void UnitTestGenericComponentInternal(const Component &component) {
   CuMatrix<BaseFloat> input(num_egs, input_dim),
       output(num_egs, output_dim);
   input.SetRandn();
-
+  CU_SAFE_CALL(cudaGetLastError()); // TEMP  
+  
   int32 rand_seed = rand();
   
   if (IsRandom(component))
     srand(rand_seed); // in case e.g. dropout being used.
   component.Propagate(input, 1, &output);
+  CU_SAFE_CALL(cudaGetLastError()); // TEMP    
   {
     bool binary = (rand() % 2 == 0);
+    CU_SAFE_CALL(cudaGetLastError()); // TEMP  
     Output ko("tmpf", binary);
+    CU_SAFE_CALL(cudaGetLastError()); // TEMP  
     component.Write(ko.Stream(), binary);
+    CU_SAFE_CALL(cudaGetLastError()); // TEMP  
   }
+  CU_SAFE_CALL(cudaGetLastError()); // TEMP  
   Component *component_copy;
   {
     bool binary_in;
     Input ki("tmpf", &binary_in);
     component_copy = Component::ReadNew(ki.Stream(), binary_in);
   }
+    CU_SAFE_CALL(cudaGetLastError()); // TEMP  
   
   { // Test backward derivative is correct.
     CuVector<BaseFloat> output_objfs(num_egs);
     output_objfs.AddMatVec(1.0, output, kNoTrans, objf_vec, 0.0);
     BaseFloat objf = output_objfs.Sum();
 
+    CU_SAFE_CALL(cudaGetLastError()); // TEMP  
+    
     CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
     for (int32 i = 0; i < output_deriv.NumRows(); i++)
       output_deriv.Row(i).CopyFromVec(objf_vec);
 
     CuMatrix<BaseFloat> input_deriv(input.NumRows(), input.NumCols());
 
+    CU_SAFE_CALL(cudaGetLastError()); // TEMP  
+    
     CuMatrix<BaseFloat> empty_mat;
     CuMatrix<BaseFloat> &input_ref =
         (component_copy->BackpropNeedsInput() ? input : empty_mat),
         &output_ref =
         (component_copy->BackpropNeedsOutput() ? output : empty_mat);
     int32 num_chunks = 1;
+
+    CU_SAFE_CALL(cudaGetLastError()); // TEMP  
+    
     component_copy->Backprop(input_ref, output_ref,
                              output_deriv, num_chunks, NULL, &input_deriv);
 
@@ -683,17 +697,16 @@ int main() {
   for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
-      CuDevice::Instantiate().SelectGpuId(-1); // -1 means no GPU
+      CuDevice::Instantiate().SelectGpuId(-2); // -1 means no GPU
     else
       CuDevice::Instantiate().SelectGpuId(-2); // -2 .. automatic selection
 #endif
-
+    
     CU_SAFE_CALL(cudaGetLastError());
 
     
     BasicDebugTestForSplice(true);
     BasicDebugTestForSpliceMax(true);
-
     for (int32 i = 0; i < 3; i++) {
       UnitTestGenericComponent<SigmoidComponent>();
       UnitTestGenericComponent<TanhComponent>();

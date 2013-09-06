@@ -488,7 +488,8 @@ template<typename Real>
 void CuMatrix<Real>::Write(std::ostream &os, bool binary) const {
   Matrix<Real> temp(this->num_rows_, this->num_cols_, kUndefined);
   this->CopyToMat(&temp);
-  temp.Write(os, binary); 
+  temp.Write(os, binary);
+  CU_SAFE_CALL(cudaGetLastError()); // TEMP    
 }
 
 template<typename Real>
@@ -520,6 +521,7 @@ void CuMatrixBase<Real>::Set(Real value) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
 
+    CU_SAFE_CALL(cudaGetLastError()); // TEMP
     cuda_set_const(dimGrid, dimBlock, data_, value, Dim());
     CU_SAFE_CALL(cudaGetLastError());
 
@@ -1326,19 +1328,26 @@ void CuMatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &v) {
     if (v.Dim() == num_rows_*num_cols_) {
       if (stride_ == num_cols_) {
         const Real* v_data = v.Data();
-        cudaMemcpy(data_, v_data, sizeof(Real)*num_rows_*num_cols_, cudaMemcpyDeviceToDevice);
+        CU_SAFE_CALL(cudaMemcpy(data_, v_data,
+                                sizeof(Real)*num_rows_*num_cols_,
+                                cudaMemcpyDeviceToDevice));
       } else {
-        const Real *v_data = v.Data();
-        for (MatrixIndexT r = 0; r < num_rows_; r++) {
-          Real *row_data = RowData(r);
-          cudaMemcpy(row_data, v_data, sizeof(Real)*num_cols_, cudaMemcpyDeviceToDevice);
-          v_data += num_cols_;
-        }
+        CU_SAFE_CALL(cudaMemcpy2D(data_, stride_ * sizeof(Real), v.Data(),
+                                  num_cols_*sizeof(Real), num_cols_*sizeof(Real),
+                                  num_rows_,
+                                  cudaMemcpyDeviceToDevice));
       }
     } else if (v.Dim() == num_cols_) {
+
+      /*MatrixIndexT src_pitch = 0;
+      CU_SAFE_CALL(cudaMemcpy2D(data_, stride_ * sizeof(Real), v.Data(),
+                                src_pitch, num_cols_*sizeof(Real),
+                                num_rows_,
+                                cudaMemcpyDeviceToDevice)); */
       const Real *v_data = v.Data();
+      // We could definitely improve the following.
       for (MatrixIndexT r = 0; r < num_rows_; r++)
-        cudaMemcpy(RowData(r), v_data, sizeof(Real)*num_cols_, cudaMemcpyDeviceToDevice);
+      cudaMemcpy(RowData(r), v_data, sizeof(Real)*num_cols_, cudaMemcpyDeviceToDevice);
     } else {
       KALDI_ERR << "Wrong sized arguments";
     }
@@ -1618,6 +1627,7 @@ Real CuMatrixBase<Real>::Trace(bool check_square) const {
 
 template<typename Real>
 void CuMatrixBase<Real>::SetRandn() {
+  if (num_rows_ == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuRand<Real> tmp;
