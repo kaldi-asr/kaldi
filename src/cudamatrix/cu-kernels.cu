@@ -550,6 +550,24 @@ static void _copy_from_vec_df(double* v_out, const Real* v_in, int dim) {
 }
 
 
+// This kernel writes a copy of the vector "v_in" to each row of the matrix
+// "m_out".  the dimension of v_in should be equal to the #columns of m_out.  In
+// this kernel, following the new pattern, x corresponds to row-index and y to
+// column-index.
+template<typename Real>
+__global__
+static void _copy_rows_from_vec(Real* m_out, MatrixDim d, const Real* v_in) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x; // row index.
+  int j = blockIdx.y * blockDim.y + threadIdx.y; // column index.
+  
+  if (i < d.rows && j < d.cols) {
+    int index = i * d.stride + j;
+    m_out[index] = v_in[j];
+  }
+}
+
+
+
 template<typename Real>
 __global__
 static void _copy_from_vec_fd(float* v_out, const Real* v_in, int dim) {
@@ -1753,6 +1771,10 @@ void cudaF_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, float* mat_net
   _diff_xent<<<Gr,Bl>>>(vec_tgt,mat_net_out,vec_log_post,d);
 }
 
+void cudaF_copy_rows_from_vec(dim3 Gr, dim3 Bl, float *mat_out, MatrixDim d_out, const float *v_in) {
+  _copy_rows_from_vec<<<Gr,Bl>>>(mat_out, d_out, v_in);
+}
+
 
 
 
@@ -2090,6 +2112,11 @@ void cudaD_find_row_max_id(dim3 Gr, dim3 Bl, const double* mat, double* vec_val,
 void cudaD_diff_xent(dim3 Gr, dim3 Bl, const int32_cuda* vec_tgt, double* mat_net_out, double* vec_log_post, MatrixDim d) {
   _diff_xent<<<Gr,Bl>>>(vec_tgt,mat_net_out,vec_log_post,d);
 }
+
+void cudaD_copy_rows_from_vec(dim3 Gr, dim3 Bl, double *mat_out, MatrixDim d_out, const double *v_in) {
+  _copy_rows_from_vec<<<Gr,Bl>>>(mat_out, d_out, v_in);
+}
+
 
 
 /* Some conversion kernels for which it's more convenient to not name them F or D. */

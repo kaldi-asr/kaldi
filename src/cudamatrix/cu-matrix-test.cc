@@ -91,14 +91,13 @@ template<class Real>
 static void AssertEqual(const CuMatrixBase<Real> &A,
                         const CuMatrixBase<Real> &B,
                         float tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows()&&A.NumCols() == B.NumCols());
-  for (MatrixIndexT i = 0;i < A.NumRows();i++) {
-    for (MatrixIndexT j = 0;j < A.NumCols();j++) {
-      KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) < tol*std::max(1.0, (double) (std::abs(A(i, j))+std::abs(B(i, j)))));
-    }
-  }
+  Real Anorm = A.FrobeniusNorm(), Bnorm = B.FrobeniusNorm();
+  CuMatrix<Real> diff(A);
+  diff.AddMat(-1.0, B);
+  Real diff_norm = diff.FrobeniusNorm();
+  KALDI_ASSERT(diff_norm < tol * 0.5 * (Anorm + Bnorm));
 }
-
+  
 
 
 template<class Real>

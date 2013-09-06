@@ -50,7 +50,7 @@ void CuRand<Real>::SeedGpu(MatrixIndexT state_size) {
 
 
 template<typename Real> 
-void CuRand<Real>::SeedBuffer(uint32* *tgt, MatrixIndexT state_size) {
+void CuRand<Real>::SeedBuffer(uint32 **tgt, MatrixIndexT state_size) {
   // generate random state
   for(MatrixIndexT i = 0; i < host_size_; i++) {
     host_[i] = RandInt(128, RAND_MAX);

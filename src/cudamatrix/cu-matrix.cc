@@ -1236,8 +1236,8 @@ void CuMatrixBase<Real>::InvertPSD() {
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
  
-    int dimBlock(CU2DBLOCK);
-    int dimGrid(n_blocks(NumRows(),CU2DBLOCK));
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(NumRows(),CU1DBLOCK));
     CuMatrix<Real> temp(num_rows_,num_rows_);
     int dim = num_rows_;
     Real value = 1.0;
@@ -1375,9 +1375,17 @@ void CuMatrixBase<Real>::CopyRowsFromVec(const VectorBase<Real> &v) {
         }
       }
     } else if (v.Dim() == num_cols_) {
-      const Real *v_data = v.Data();
+      dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+      // This is a newer kernel where x corresponds to NumRows() and y to NumCols().
+      dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                   n_blocks(NumCols(), CU2DBLOCK));
+
+      cuda_copy_rows_from_vec(dimGrid, dimBlock, this->data_, this->Dim(), v.Data());
+      CU_SAFE_CALL(cudaGetLastError());
+      
+      /*      const Real *v_data = v.Data();
       for (MatrixIndexT r = 0; r < num_rows_; r++)
-        cudaMemcpy(RowData(r), v_data, sizeof(Real)*num_cols_, cudaMemcpyHostToDevice);
+      cudaMemcpy(RowData(r), v_data, sizeof(Real)*num_cols_, cudaMemcpyHostToDevice); */
     } else {
       KALDI_ERR << "Wrong sized arguments";
     }
@@ -1399,8 +1407,8 @@ void CuMatrixBase<Real>::CopyColFromVec(const CuVectorBase<Real> &v,
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    int dimBlock(CU2DBLOCK);
-    int dimGrid(n_blocks(NumRows(), CU2DBLOCK));
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(NumRows(), CU1DBLOCK));
     cuda_copy_col_from_vec(dimGrid, dimBlock, data_, v.Data(), col, Dim());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
