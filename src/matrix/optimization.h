@@ -81,7 +81,7 @@ struct LbfgsOptions {
       avg_step_length(4) { }
 };
 
-template<class Real>
+template<typename Real>
 class OptimizeLbfgs {
  public:
   /// Initializer takes the starting value of x.

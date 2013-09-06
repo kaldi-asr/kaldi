@@ -40,14 +40,14 @@ namespace kaldi {
 /*
  * ASSERTS
  */
-template<class Real>
+template<typename Real>
 static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   for (MatrixIndexT i = 0; i < A.Dim(); i++)
     KALDI_ASSERT(std::abs(A(i)-B(i)) < tol);
 }
 
-template<class Real>
+template<typename Real>
 static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   for (MatrixIndexT i = 0; i < A.Dim(); i++)
@@ -55,7 +55,7 @@ static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.
   return true;
 }
 
-template<class Real>
+template<typename Real>
 static void AssertEqual(const CuPackedMatrix<Real> &A,
                         const CuPackedMatrix<Real> &B,
                         float tol = 0.001) {
@@ -66,7 +66,7 @@ static void AssertEqual(const CuPackedMatrix<Real> &A,
                    < tol * std::max(1.0, (double) (std::abs(A(i, j)) + std::abs(B(i, j)))));
 }
 
-template<class Real>
+template<typename Real>
 static void AssertEqual(const PackedMatrix<Real> &A,
                         const PackedMatrix<Real> &B,
                         float tol = 0.001) {
@@ -77,7 +77,7 @@ static void AssertEqual(const PackedMatrix<Real> &A,
                    < tol * std::max(1.0, (double) (std::abs(A(i, j)) + std::abs(B(i, j)))));
 }
 
-template<class Real>
+template<typename Real>
 static void AssertEqual(const PackedMatrix<Real> &A,
                         const CuPackedMatrix<Real> &B,
                         float tol = 0.001) {
@@ -91,7 +91,7 @@ static void AssertEqual(const PackedMatrix<Real> &A,
 /*
  * Unit Tests
  */
-template<class Real>
+template<typename Real>
 static void UnitTestCuTpMatrixInvert() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 5 * i + rand() % 10;
@@ -107,7 +107,7 @@ static void UnitTestCuTpMatrixInvert() {
   }
 }
 
-template<class Real>
+template<typename Real>
 static void UnitTestCuTpMatrixCopyFromTp() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 5 * i + rand() % 10;
@@ -124,7 +124,7 @@ static void UnitTestCuTpMatrixCopyFromTp() {
   }
 }
 
-template<class Real>
+template<typename Real>
 static void UnitTestCuTpMatrixCholesky() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 5 * i + rand() % 10;
@@ -144,7 +144,7 @@ static void UnitTestCuTpMatrixCholesky() {
 }
 
 
-template<class Real> void CudaTpMatrixUnitTest() {
+template<typename Real> void CudaTpMatrixUnitTest() {
   UnitTestCuTpMatrixInvert<Real>();
   UnitTestCuTpMatrixCopyFromTp<Real>();
 }

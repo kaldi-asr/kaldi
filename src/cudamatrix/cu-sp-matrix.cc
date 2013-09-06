@@ -57,7 +57,7 @@ void CuSpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
   }
 }
 
-template<class Real>
+template<typename Real>
 void CuSpMatrix<Real>::Invert() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -83,7 +83,7 @@ inline void CublasSpr(char uplo, int n, double alpha, const double *x,
 }
 #endif
 
-template<class Real>
+template<typename Real>
 void CuSpMatrix<Real>::AddVec2(const Real alpha, const CuVectorBase<Real> &v) {
   KALDI_ASSERT(v.Dim() == this->NumRows());
 #if HAVE_CUDA == 1
@@ -117,7 +117,7 @@ inline void CublasSyrk(char uplo, char trans, int n, int k,
 }
 #endif
 
-template<class Real>
+template<typename Real>
 void CuSpMatrix<Real>::AddMat2(const Real alpha, const CuMatrixBase<Real> &M,
                                MatrixTransposeType transM, const Real beta) {
   KALDI_ASSERT((transM == kNoTrans && this->NumRows() == M.NumRows())
@@ -166,7 +166,7 @@ template<> inline double cublas_dot<double>(int n, const double *x, int incx, co
 #endif
 
 
-template<class Real, class OtherReal>
+template<typename Real, typename OtherReal>
 Real TraceSpSp(const CuSpMatrix<Real> &A, const CuSpMatrix<OtherReal> &B) {
   KALDI_ASSERT(A.NumRows() == B.NumRows());
 #if HAVE_CUDA == 1

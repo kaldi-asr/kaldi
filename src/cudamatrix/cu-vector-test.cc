@@ -41,7 +41,7 @@ namespace kaldi {
 /*
  * ASSERTS
  */
-template<class Real> 
+template<typename Real> 
 static void AssertEqual(const MatrixBase<Real> &A,
                         const MatrixBase<Real> &B,
                         float tol = 0.001) {
@@ -55,7 +55,7 @@ static void AssertEqual(const MatrixBase<Real> &A,
 
 
 
-template<class Real>
+template<typename Real>
 static bool ApproxEqual(const MatrixBase<Real> &A,
                         const MatrixBase<Real> &B, Real tol = 0.001) {
   KALDI_ASSERT(A.NumRows() == B.NumRows());
@@ -68,14 +68,14 @@ static bool ApproxEqual(const MatrixBase<Real> &A,
 
 
 
-template<class Real> 
+template<typename Real> 
 static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   for (MatrixIndexT i=0; i < A.Dim(); i++)
     KALDI_ASSERT(std::abs(A(i)-B(i)) < tol*std::max(1.0, (double) (std::abs(A(i))+std::abs(B(i)))));
 }
 
-template<class Real> 
+template<typename Real> 
 static void AssertEqual(CuVectorBase<Real> &A, CuVectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   CuVector<Real> diff(A);
@@ -84,7 +84,7 @@ static void AssertEqual(CuVectorBase<Real> &A, CuVectorBase<Real> &B, float tol 
 }
 
 
-template<class Real> 
+template<typename Real> 
 static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   for (MatrixIndexT i=0; i < A.Dim(); i++)
@@ -96,7 +96,7 @@ static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.
  * Unit tests
  */
 
-template<class Real, class OtherReal> 
+template<typename Real, typename OtherReal> 
 static void UnitTestCuVectorCopyFromVec() {
   for (int32 i = 1; i < 10; i++) {
     MatrixIndexT dim = 10 * i;
@@ -121,7 +121,7 @@ static void UnitTestCuVectorCopyFromVec() {
   }
 }
 
-template<class Real> 
+template<typename Real> 
 static void UnitTestCuSubVector() {
   for (int32 iter = 0 ; iter < 10; iter++) {
     int32 M1 = 1 + rand () % 10, M2 = 1 + rand() % 1, M3 = 1 + rand() % 10, M = M1 + M2 + M3,
@@ -138,7 +138,7 @@ static void UnitTestCuSubVector() {
 
 
 
-template<class Real> 
+template<typename Real> 
 static void UnitTestCuVectorMulTp() {
   for (int32 i = 1; i < 10; i++) {
     MatrixIndexT dim = 10 * i;
@@ -158,7 +158,7 @@ static void UnitTestCuVectorMulTp() {
   }
 }
 
-template<class Real> 
+template<typename Real> 
 static void UnitTestCuVectorAddTp() {
   for (int32 i = 1; i < 10; i++) {
     MatrixIndexT dim = 10 * i;
@@ -181,7 +181,7 @@ static void UnitTestCuVectorAddTp() {
   }
 }
 
-template<class Real> void CuVectorUnitTestVecVec() {
+template<typename Real> void CuVectorUnitTestVecVec() {
   int32 M = 10 % rand() % 100;
   CuVector<Real> vec1(M), vec2(M);
   vec1.SetRandn();
@@ -192,7 +192,7 @@ template<class Real> void CuVectorUnitTestVecVec() {
   AssertEqual(prod, VecVec(vec1, vec2));
 }
 
-template<class Real> void CuVectorUnitTestAddVec() {
+template<typename Real> void CuVectorUnitTestAddVec() {
   int32 M = 10 % rand() % 100;
   CuVector<Real> vec1(M);
   CuVector<Real> vec2(M);
@@ -206,7 +206,7 @@ template<class Real> void CuVectorUnitTestAddVec() {
     AssertEqual(vec1_orig(i) + alpha * vec2(i), vec1(i));
 }
 
-template<class Real> void CuVectorUnitTestAddVecCross() {
+template<typename Real> void CuVectorUnitTestAddVecCross() {
   for (int32 i = 0; i < 4; i++) {
     int32 M = 10 % rand() % 100;
     CuVector<float> vec1(M);
@@ -231,7 +231,7 @@ template<class Real> void CuVectorUnitTestAddVecCross() {
   }
 }
 
-template<class Real> void CuVectorUnitTestAddVecExtra() {
+template<typename Real> void CuVectorUnitTestAddVecExtra() {
   int32 M = 10 % rand() % 100;
   CuVector<Real> vec1(M), vec2(M);
   vec1.SetRandn();
@@ -245,7 +245,7 @@ template<class Real> void CuVectorUnitTestAddVecExtra() {
 }
 
 
-template<class Real> void CuVectorUnitTestAddRowSumMat() {
+template<typename Real> void CuVectorUnitTestAddRowSumMat() {
   int32 M = 10 + rand() % 280, N = 10 + rand() % 20;
   BaseFloat alpha = 10.0143432, beta = 43.4321;
   CuMatrix<Real> mat(N, M);
@@ -260,7 +260,7 @@ template<class Real> void CuVectorUnitTestAddRowSumMat() {
   AssertEqual(vec2, vec3);
 }
 
-template<class Real> void CuVectorUnitTestAddColSumMat() {
+template<typename Real> void CuVectorUnitTestAddColSumMat() {
   int32 M = 10 + rand() % 280, N = 10 + rand() % 20;
   BaseFloat alpha = 10.0143432, beta = 43.4321;
   CuMatrix<Real> mat(M, N);
@@ -276,7 +276,7 @@ template<class Real> void CuVectorUnitTestAddColSumMat() {
 }
 
 
-template<class Real> void CuVectorUnitTestApproxEqual() {
+template<typename Real> void CuVectorUnitTestApproxEqual() {
   int32 M = 10 + rand() % 100;
   CuVector<Real> vec1(M), vec2(M);
   vec1.SetRandn();
@@ -295,7 +295,7 @@ template<class Real> void CuVectorUnitTestApproxEqual() {
 }
 
 
-template<class Real> void CuVectorUnitTestInvertElements() {
+template<typename Real> void CuVectorUnitTestInvertElements() {
   // Also tests MulElements();
   int32 M = 256 + rand() % 100;
   CuVector<Real> vec1(M);
@@ -309,7 +309,7 @@ template<class Real> void CuVectorUnitTestInvertElements() {
   AssertEqual(prod, static_cast<Real>(M));
 }
 
-template<class Real> void CuVectorUnitTestSum() {
+template<typename Real> void CuVectorUnitTestSum() {
   int32 dim = 256 + 100 % rand();
   CuVector<Real> vec(dim), ones(dim);
   vec.SetRandn();
@@ -323,7 +323,7 @@ template<class Real> void CuVectorUnitTestSum() {
 }
 
 
-template<class Real> void CuVectorUnitTestScale() {
+template<typename Real> void CuVectorUnitTestScale() {
   for (int32 i = 0; i < 4; i++) {
     int32 dim = 100 + 400 % rand();
     CuVector<Real> cu_vec(dim);
@@ -337,7 +337,7 @@ template<class Real> void CuVectorUnitTestScale() {
   }
 }
 
-template<class Real> void CuVectorUnitTestCopyFromMat() {
+template<typename Real> void CuVectorUnitTestCopyFromMat() {
   int32 M = 100 + rand() % 255, N = 100 + rand() % 255;
   CuMatrix<Real> cu_matrix(M, N);
   cu_matrix.SetRandn();
@@ -371,7 +371,7 @@ template<class Real> void CuVectorUnitTestCopyFromMat() {
   }
 }
 
-template<class Real> void CuVectorUnitTestCopyDiagFromPacked() {
+template<typename Real> void CuVectorUnitTestCopyDiagFromPacked() {
   for (int32 i = 0; i < 5; i++) {
     int32 N = 100 + rand() % 255;
     CuSpMatrix<Real> S(N);
@@ -386,7 +386,7 @@ template<class Real> void CuVectorUnitTestCopyDiagFromPacked() {
   }
 }
 
-template<class Real> void CuVectorUnitTestCopyCross() {
+template<typename Real> void CuVectorUnitTestCopyCross() {
   for (int32 i = 0; i < 10; i++) {
     int32 M = 100 + rand() % 255;
     if (rand() % 3 == 0) M = 0;
@@ -400,7 +400,7 @@ template<class Real> void CuVectorUnitTestCopyCross() {
   }
 }
 
-template<class Real> void CuVectorUnitTestCopyCross2() {
+template<typename Real> void CuVectorUnitTestCopyCross2() {
   for (int32 i = 0; i < 10; i++) {
     int32 M = 100 + rand() % 255;
     if (rand() % 3 == 0) M = 0;
@@ -414,7 +414,7 @@ template<class Real> void CuVectorUnitTestCopyCross2() {
   }
 }
 
-template<class Real> void CuVectorUnitTestCopyDiagFromMat() {
+template<typename Real> void CuVectorUnitTestCopyDiagFromMat() {
   for (int32 i = 0; i < 5; i++) {
     int32 M = 100 + rand() % 255, N = M + rand() % 2;
     Matrix<Real> matrix(M, N);
@@ -434,7 +434,7 @@ template<class Real> void CuVectorUnitTestCopyDiagFromMat() {
 }
 
 
-template<class Real> void CuVectorUnitTestNorm() {
+template<typename Real> void CuVectorUnitTestNorm() {
   int32 dim = 2;
   CuVector<Real> cu_vector(dim);
   cu_vector(0) = 1.0;
@@ -444,7 +444,7 @@ template<class Real> void CuVectorUnitTestNorm() {
 }
                
 
-template<class Real> void CuVectorUnitTestMin() {
+template<typename Real> void CuVectorUnitTestMin() {
   for (int32 p = 0; p < 5; p++) {
     int32 dim = 100 + rand() % 500;
     CuVector<Real> cu_vector(dim);
@@ -457,7 +457,7 @@ template<class Real> void CuVectorUnitTestMin() {
 }
 
 
-template<class Real> void CuVectorUnitTestMax() {
+template<typename Real> void CuVectorUnitTestMax() {
   for (int32 p = 0; p < 5; p++) {
     int32 dim = 100 + rand() % 500;
     CuVector<Real> cu_vector(dim);
@@ -469,7 +469,7 @@ template<class Real> void CuVectorUnitTestMax() {
 }
 
 
-template<class Real> void CuVectorUnitTestApplySoftMax() {
+template<typename Real> void CuVectorUnitTestApplySoftMax() {
   for (int32 i = 0; i < 10; i++) {
     int32 dim = 100 + rand() % 300;
     //int32 dim = 1024;
@@ -485,7 +485,7 @@ template<class Real> void CuVectorUnitTestApplySoftMax() {
   }
 }
 
-template<class Real> void CuVectorUnitTestApplyExp() {
+template<typename Real> void CuVectorUnitTestApplyExp() {
   int32 dim = 100;
   CuVector<Real> vector(dim);
   vector.SetRandn();
@@ -499,7 +499,7 @@ template<class Real> void CuVectorUnitTestApplyExp() {
 
 }
 
-template<class Real> void CuVectorUnitTestApplyLog() {
+template<typename Real> void CuVectorUnitTestApplyLog() {
   int32 dim = 100;
   CuVector<Real> vector(dim);
   vector.SetRandn();
@@ -517,7 +517,7 @@ template<class Real> void CuVectorUnitTestApplyLog() {
   }
 }
 
-template<class Real> void CuVectorUnitTestApplyFloor() {
+template<typename Real> void CuVectorUnitTestApplyFloor() {
   for (int32 l = 0; l < 10; l++) {
     int32 dim = 100 + rand() % 700;
     CuVector<Real> cu_vector(dim);
@@ -538,7 +538,7 @@ template<class Real> void CuVectorUnitTestApplyFloor() {
   }
 }
 
-template<class Real> void CuVectorUnitTestApplyPow() {
+template<typename Real> void CuVectorUnitTestApplyPow() {
   for (int32 l = 0; l < 10; l++) {
     int32 dim = 100 + rand() % 700;
 
@@ -558,7 +558,7 @@ template<class Real> void CuVectorUnitTestApplyPow() {
   }
 }
 
-template<class Real> void CuVectorUnitTestAddVecVec() {
+template<typename Real> void CuVectorUnitTestAddVecVec() {
   int32 dim = 100;
   CuVector<Real> cu_vector(dim);
   cu_vector.SetRandn();
@@ -579,7 +579,7 @@ template<class Real> void CuVectorUnitTestAddVecVec() {
   AssertEqual(cu2, cu_vector);
 }
 
-template<class Real> void CuVectorUnitTestAddDiagMat2() {
+template<typename Real> void CuVectorUnitTestAddDiagMat2() {
   for (int p = 0; p < 4; p++) {
     int32 M = 230 + rand() % 100, N = 230 + rand() % 100;
     BaseFloat alpha = 0.2 + rand() % 3, beta = 0.3 + rand() % 2;
@@ -602,7 +602,7 @@ template<class Real> void CuVectorUnitTestAddDiagMat2() {
   }
 }
 
-template<class Real>
+template<typename Real>
 static void CuVectorUnitTestAddDiagMatMat() {
   for (MatrixIndexT iter = 0; iter < 4; iter++) {
     BaseFloat alpha = 0.432 + rand() % 5, beta = 0.043 + rand() % 2;
@@ -640,7 +640,7 @@ static void CuVectorUnitTestAddDiagMatMat() {
 
 
 
-template<class Real> void CuVectorUnitTestAddMatVec() {
+template<typename Real> void CuVectorUnitTestAddMatVec() {
   for (int32 i = 0; i < 10; i++) {
     int32 M = 10 + rand() % 500, N = 10 + rand() % 400;
 
@@ -669,7 +669,7 @@ template<class Real> void CuVectorUnitTestAddMatVec() {
 }
 
 
-template<class Real> void CuVectorUnitTestAddSpVec() {
+template<typename Real> void CuVectorUnitTestAddSpVec() {
   for (int32 i = 0; i < 5; i++) {
     int32 M = 100 + rand() % 256;
 
@@ -695,7 +695,7 @@ template<class Real> void CuVectorUnitTestAddSpVec() {
 
 
 
-template<class Real> void CuVectorUnitTest() {
+template<typename Real> void CuVectorUnitTest() {
   UnitTestCuVectorCopyFromVec<Real, float>();
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().DoublePrecisionSupported())

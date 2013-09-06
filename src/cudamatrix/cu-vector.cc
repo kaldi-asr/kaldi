@@ -1032,7 +1032,7 @@ void CuVectorBase<Real>::Scale(Real value) {
   }
 }
 
-template<class Real>
+template<typename Real>
 void CuVectorBase<Real>::AddVec(Real alpha, const CuVectorBase<Real> &vec,
                                 Real beta) {
   KALDI_ASSERT(vec.Dim() == Dim());
@@ -1055,8 +1055,8 @@ void CuVectorBase<Real>::AddVec(Real alpha, const CuVectorBase<Real> &vec,
 }
 
 
-template<class Real>
-template<class OtherReal>
+template<typename Real>
+template<typename OtherReal>
 void CuVectorBase<Real>::AddVec(Real alpha, const CuVectorBase<OtherReal> &vec,
                                 Real beta) {
   // We could implement this directly, without using a temporary-- this can

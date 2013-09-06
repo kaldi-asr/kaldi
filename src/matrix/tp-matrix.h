@@ -44,7 +44,7 @@ class TpMatrix : public PackedMatrix<Real> {
   explicit TpMatrix(const CuTpMatrix<Real> &cu);
   
   
-  template<class OtherReal> explicit TpMatrix(const TpMatrix<OtherReal>& Orig)
+  template<typename OtherReal> explicit TpMatrix(const TpMatrix<OtherReal>& Orig)
       : PackedMatrix<Real>(Orig) {}
   
   Real operator() (MatrixIndexT r, MatrixIndexT c) const {
@@ -98,7 +98,7 @@ class TpMatrix : public PackedMatrix<Real> {
     PackedMatrix<Real>::CopyFromPacked(other);
   }
 
-  template<class OtherReal> void CopyFromTp(const TpMatrix<OtherReal> &other) {
+  template<typename OtherReal> void CopyFromTp(const TpMatrix<OtherReal> &other) {
     PackedMatrix<Real>::CopyFromPacked(other);
   }
 

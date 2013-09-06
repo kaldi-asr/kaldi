@@ -14,7 +14,7 @@
 namespace kaldi {
 
 /// TraceSpSp returns tr(A B)
-template<class Real, class OtherReal>
+template<typename Real, typename OtherReal>
 Real TraceSpSp(const CuSpMatrix<Real> &A, const CuSpMatrix<OtherReal> &B);
 
 template<typename Real>

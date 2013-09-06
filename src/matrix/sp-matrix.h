@@ -57,7 +57,7 @@ class SpMatrix : public PackedMatrix<Real> {
   SpMatrix(const SpMatrix<Real> &orig)
       : PackedMatrix<Real>(orig) {}
 
-  template<class OtherReal>
+  template<typename OtherReal>
   explicit SpMatrix(const SpMatrix<OtherReal> &orig)
       : PackedMatrix<Real>(orig) {}
 
@@ -86,7 +86,7 @@ class SpMatrix : public PackedMatrix<Real> {
     PackedMatrix<Real>::CopyFromPacked(other);
   }
 
-  template<class OtherReal>
+  template<typename OtherReal>
   void CopyFromSp(const SpMatrix<OtherReal> &other) {
     PackedMatrix<Real>::CopyFromPacked(other);
   }
@@ -227,7 +227,7 @@ class SpMatrix : public PackedMatrix<Real> {
   Real LogDet(Real *det_sign = NULL) const;
 
   /// rank-one update, this <-- this + alpha v v'
-  template<class OtherReal>
+  template<typename OtherReal>
   void AddVec2(const Real alpha, const VectorBase<OtherReal> &v);
 
   /// rank-two update, this <-- this + alpha (v w' + w v').
@@ -235,7 +235,7 @@ class SpMatrix : public PackedMatrix<Real> {
                  const VectorBase<Real> &w);
   
   /// diagonal update, this <-- this + diag(v)
-  template<class OtherReal>
+  template<typename OtherReal>
   void AddVec(const Real alpha, const VectorBase<OtherReal> &v);
 
   /// rank-N update:
@@ -411,7 +411,7 @@ Real TraceMatSpMatSp(const MatrixBase<Real> &A, MatrixTransposeType transA,
 
 /// Returns \f$ v_1^T M v_2 \f$
 /// Not as efficient as it could be where v1 == v2.
-template<class Real>
+template<typename Real>
 Real VecSpVec(const VectorBase<Real> &v1, const SpMatrix<Real> &M,
                const VectorBase<Real> &v2);
 
@@ -427,7 +427,7 @@ Real VecSpVec(const VectorBase<Real> &v1, const SpMatrix<Real> &M,
 /// \f$  x := Q^{-1} g.    \f$
 /// Assumes H positive semidefinite.
 /// Returns the objective-function change.
-template<class Real>
+template<typename Real>
 Real SolveQuadraticProblem(const SpMatrix<Real> &H,
                            const VectorBase<Real> &g,
                            VectorBase<Real> *x, Real K = 1.0E4,
@@ -440,7 +440,7 @@ Real SolveQuadraticProblem(const SpMatrix<Real> &H,
 /// Like a numerically stable version of  \f$  M := Y Q^{-1}   \f$.
 /// Assumes Q and P positive semidefinite, and matrix dimensions match
 /// enough to make expressions meaningful.
-template<class Real>
+template<typename Real>
 Real SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
                                  const MatrixBase<Real> &Y,
                                  const SpMatrix<Real> &P,
@@ -453,7 +453,7 @@ Real SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
 /// \f[   Q(M) =  tr(M^T G) -0.5 tr(P_1 M Q_1 M^T) -0.5 tr(P_2 M Q_2 M^T).   \f]
 /// Encountered in matrix update with a prior. We also apply a limit on the
 /// condition but it should be less frequently necessary, and can be set larger.
-template<class Real>
+template<typename Real>
 Real SolveDoubleQuadraticMatrixProblem(const MatrixBase<Real> &G,
                                        const SpMatrix<Real> &P1,
                                        const SpMatrix<Real> &P2,

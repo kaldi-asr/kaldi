@@ -35,7 +35,7 @@ namespace kaldi {
    x is the input of dimensino dim, v is the output of dimension
    dim, and beta is a scalar. Note: we use zero-based
    not one-based indexing. */
-template<class Real>
+template<typename Real>
 void House(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
   KALDI_ASSERT(dim > 0);
   // To avoid overflow, we first compute the max of x_ (or
@@ -82,7 +82,7 @@ void House(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
 // the vector that is "special".  This is convenient in
 // the Tridiagonalize routine that uses reversed indexes for
 // compatibility with the packed lower triangular format.
-template<class Real>
+template<typename Real>
 void HouseBackward(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
   KALDI_ASSERT(dim > 0);
   // To avoid overflow, we first compute the max of x_ (or
@@ -136,7 +136,7 @@ void HouseBackward(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
    Caution: Q is transposed vs. Golub and Van Loan.
    If Q != NULL it outputs Q. 
 */
-template<class Real>
+template<typename Real>
 void SpMatrix<Real>::Tridiagonalize(MatrixBase<Real> *Q) {
   MatrixIndexT n = this->NumRows();
   KALDI_ASSERT(Q == NULL || (Q->NumRows() == n &&
@@ -192,7 +192,7 @@ template
 void SpMatrix<double>::Tridiagonalize(MatrixBase<double> *Q);
 
 /// Create Givens rotations, as in Golub and Van Loan 3rd ed., page 216.
-template<class Real>
+template<typename Real>
 inline void Givens(Real a, Real b, Real *c, Real *s) {
   if (b == 0) {
     *c = 1;
@@ -216,7 +216,7 @@ inline void Givens(Real a, Real b, Real *c, Real *s) {
 // with Wilkinson shift."  A couple of differences: this code is
 // in zero based arithmetic, and we represent Q transposed from
 // their Q for memory locality with row-major-indexed matrices.
-template <class Real>
+template <typename Real>
 void QrStep(MatrixIndexT n,
             Real *diag,
             Real *off_diag,
@@ -292,7 +292,7 @@ void QrStep(MatrixIndexT n,
 // Internal code for the QR algorithm, where the diagonal
 // and off-diagonal of the symmetric matrix are represented as
 // vectors of length n and n-1.
-template <class Real>
+template <typename Real>
 void QrInternal(MatrixIndexT n,
                 Real *diag,
                 Real *off_diag,
@@ -370,7 +370,7 @@ void QrInternal(MatrixIndexT n,
    This is the symmetric QR algorithm, from Golub and Van Loan 3rd ed., Algorithm
    8.3.3.  Q is transposed w.r.t. there, though.
 */
-template <class Real>
+template <typename Real>
 void SpMatrix<Real>::Qr(MatrixBase<Real> *Q) {
   KALDI_ASSERT(this->IsTridiagonal());
   // We envisage that Q would be square but we don't check for this,
@@ -394,7 +394,7 @@ void SpMatrix<Real>::Qr(MatrixBase<Real> *Q) {
   }
 }
 
-template<class Real>
+template<typename Real>
 void SpMatrix<Real>::Eig(VectorBase<Real> *s, MatrixBase<Real> *P) const {
   MatrixIndexT dim = this->NumRows();
   KALDI_ASSERT(s->Dim() == dim);
@@ -415,7 +415,7 @@ void SpMatrix<Real>::Eig(VectorBase<Real> *s, MatrixBase<Real> *P) const {
 }
 
 
-template<class Real>
+template<typename Real>
 void SpMatrix<Real>::TopEigs(VectorBase<Real> *s, MatrixBase<Real> *P,
                              MatrixIndexT lanczos_dim) const {
   const SpMatrix<Real> &S(*this); // call this "S" for easy notation.

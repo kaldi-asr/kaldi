@@ -39,7 +39,7 @@ Real TraceMatMat(const MatrixBase<Real> &A, const MatrixBase<Real> &B,
 /// Base class which provides matrix operations not involving resizing
 /// or allocation.   Classes Matrix and SubMatrix inherit from it and take care
 /// of allocation and resizing.
-template<class Real>
+template<typename Real>
 class MatrixBase {
  public:
   // so this child can access protected members of other instances.
@@ -122,6 +122,8 @@ class MatrixBase {
   void SetUnit();
   /// Sets to random values of a normal distribution
   void SetRandn();
+  /// Sets to numbers uniformly distributed on (0, 1)
+  void SetRandUniform();
 
   /*  Copying functions.  These do not resize the matrix! */
 
@@ -434,16 +436,16 @@ class MatrixBase {
   void Add(const Real alpha);
 
   /// *this += alpha * a * b^T
-  template<class OtherReal>
+  template<typename OtherReal>
   void AddVecVec(const Real alpha, const VectorBase<OtherReal> &a,
                  const VectorBase<OtherReal> &b);
 
   /// [each row of *this] += alpha * v
-  template<class OtherReal>
+  template<typename OtherReal>
   void AddVecToRows(const Real alpha, const VectorBase<OtherReal> &v);
   
   /// [each col of *this] += alpha * v
-  template<class OtherReal>
+  template<typename OtherReal>
   void AddVecToCols(const Real alpha, const VectorBase<OtherReal> &v);      
   
   /// *this += alpha * M [or M^T]
@@ -457,7 +459,7 @@ class MatrixBase {
                      Real beta = 1.0);
   
   /// *this += alpha * S
-  template<class OtherReal>
+  template<typename OtherReal>
   void AddSp(const Real alpha, const SpMatrix<OtherReal> &S);
 
   void AddMatMat(const Real alpha,
@@ -613,7 +615,7 @@ class MatrixBase {
 };
 
 /// A class for storing matrices.
-template<class Real>
+template<typename Real>
 class Matrix : public MatrixBase<Real> {
  public:
 
@@ -746,11 +748,11 @@ struct HtkHeader {
 };
 
 // Read HTK formatted features from file into matrix.
-template<class Real>
+template<typename Real>
 bool ReadHtk(std::istream &is, Matrix<Real> *M, HtkHeader *header_ptr);
 
 // Write (HTK format) features to file from matrix.
-template<class Real>
+template<typename Real>
 bool WriteHtk(std::ostream &os, const MatrixBase<Real> &M, HtkHeader htk_hdr);
 
 
@@ -804,18 +806,18 @@ class SubMatrix : public MatrixBase<Real> {
 // Some declarations.  These are traces of products.
 
 /// Returns trace of matrix.
-template <class Real>
+template <typename Real>
 double TraceMat(const MatrixBase<Real> &A) { return A.Trace(); }
 
 
 /// Returns tr(A B C)
-template <class Real>
+template <typename Real>
 Real TraceMatMatMat(const MatrixBase<Real> &A, MatrixTransposeType transA,
                       const MatrixBase<Real> &B, MatrixTransposeType transB,
                       const MatrixBase<Real> &C, MatrixTransposeType transC);
 
 /// Returns tr(A B C D)
-template <class Real>
+template <typename Real>
 Real TraceMatMatMatMat(const MatrixBase<Real> &A, MatrixTransposeType transA,
                          const MatrixBase<Real> &B, MatrixTransposeType transB,
                          const MatrixBase<Real> &C, MatrixTransposeType transC,
@@ -835,7 +837,7 @@ Real TraceMatMatMatMat(const MatrixBase<Real> &A, MatrixTransposeType transA,
 /// otherwise, moving the columns of U, if it exists, and the rows of Vt, if it
 /// exists around in the same way.  Note: the "absolute value" part won't matter
 /// if this is an actual SVD, since singular values are non-negative.
-template<class Real> void SortSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
+template<typename Real> void SortSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
                                   MatrixBase<Real>* Vt = NULL,
                                   bool sort_on_absolute_value = true);
 
@@ -845,7 +847,7 @@ template<class Real> void SortSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
 /// 2x2 block [lambda, mu; -mu, lambda].
 /// This function will throw if any complex eigenvalues are not in complex conjugate
 /// pairs (or the members of such pairs are not consecutively numbered).
-template<class Real>
+template<typename Real>
 void CreateEigenvalueMatrix(const VectorBase<Real> &real, const VectorBase<Real> &imag,
                             MatrixBase<Real> *D);
 
@@ -853,7 +855,7 @@ void CreateEigenvalueMatrix(const VectorBase<Real> &real, const VectorBase<Real>
 /// declare it here mainly for the testing code to see.  It takes a complex value to
 /// a power using a method that will work for noninteger powers (but will fail if the
 /// complex value is real and negative).
-template<class Real>
+template<typename Real>
 bool AttemptComplexPower(Real *x_re, Real *x_im, Real power);
 
 
@@ -873,7 +875,7 @@ template<typename Real>
 std::istream & operator >> (std::istream & In, Matrix<Real> & M);
 
 
-template<class Real>
+template<typename Real>
 bool SameDim(const MatrixBase<Real> &M, const MatrixBase<Real> &N) {
   return (M.NumRows() == N.NumRows() && M.NumCols() == N.NumCols());
 }

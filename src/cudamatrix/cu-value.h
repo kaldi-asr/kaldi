@@ -28,7 +28,7 @@ namespace kaldi {
 /// references to Real, e.g. as returned by the non-const operator ().
 /// This class is also used as a convenient way of
 /// reading a single Real value from the device.
-template<class Real>
+template<typename Real>
 class CuValue {
  public:
   CuValue(Real *data): data_(data) { }

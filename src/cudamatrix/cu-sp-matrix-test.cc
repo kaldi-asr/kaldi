@@ -41,14 +41,14 @@ namespace kaldi {
 /*
  * ASSERTS
  */
-template<class Real>
+template<typename Real>
 static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   for (MatrixIndexT i = 0; i < A.Dim(); i++)
     KALDI_ASSERT(std::abs(A(i)-B(i)) < tol);
 }
 
-template<class Real>
+template<typename Real>
 static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   for (MatrixIndexT i = 0; i < A.Dim(); i++)
@@ -56,7 +56,7 @@ static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.
   return true;
 }
 
-template<class Real>
+template<typename Real>
 static void AssertEqual(const SpMatrix<Real> &A,
                         const SpMatrix<Real> &B,
                         float tol = 0.001) {
@@ -71,7 +71,7 @@ static void AssertEqual(const SpMatrix<Real> &A,
                    < tol * std::max(1.0, (double) (std::abs(A(i, j)) + std::abs(B(i, j)))));
 }
 }
-template<class Real>
+template<typename Real>
 static bool ApproxEqual(const SpMatrix<Real> &A,
                         const SpMatrix<Real> &B, Real tol = 0.001) {
   KALDI_ASSERT(A.NumRows() == B.NumRows());
@@ -85,7 +85,7 @@ static bool ApproxEqual(const SpMatrix<Real> &A,
 /*
  * Unit Tests
  */
-template<class Real>
+template<typename Real>
 static void UnitTestCuSpMatrixConstructor() { 
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 10 * i;
@@ -112,7 +112,7 @@ static void UnitTestCuSpMatrixConstructor() {
 
 
 
-template<class Real>
+template<typename Real>
 static void UnitTestCuSpMatrixOperator() {
   SpMatrix<Real> A(100);
   A.SetRandn();
@@ -126,7 +126,7 @@ static void UnitTestCuSpMatrixOperator() {
   }
 }
 
-template<class Real>
+template<typename Real>
 static void UnitTestCuSpMatrixAddToDiag() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 10*i;
@@ -147,7 +147,7 @@ static void UnitTestCuSpMatrixAddToDiag() {
   }
 }
 
-template<class Real>
+template<typename Real>
 static void UnitTestCuSpMatrixInvert() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 10*i;
@@ -176,7 +176,7 @@ static void UnitTestCuSpMatrixInvert() {
 }
 
 // TODO (variani) : fails for dim = 0 
-template<class Real>
+template<typename Real>
 static void UnitTestCuSpMatrixAddVec2() {
   for (int32 i = 0; i < 50; i++) {
     MatrixIndexT dim = 1 + rand() % 200;
@@ -199,7 +199,7 @@ static void UnitTestCuSpMatrixAddVec2() {
   }
 }
 
-template<class Real>
+template<typename Real>
 static void UnitTestCuSpMatrixAddMat2() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim_row = 15 * i + rand() % 10;
@@ -225,7 +225,7 @@ static void UnitTestCuSpMatrixAddMat2() {
   }
 }
 
-template<class Real>
+template<typename Real>
 static void UnitTestCuSpMatrixAddSp() {
   for (MatrixIndexT i = 1; i < 50; i++) {
     MatrixIndexT dim = 7 * i + rand() % 10;
@@ -250,7 +250,7 @@ static void UnitTestCuSpMatrixAddSp() {
   }
 }
 
-template<class Real, class OtherReal>
+template<typename Real, typename OtherReal>
 static void UnitTestCuSpMatrixTraceSpSp() {
   for (MatrixIndexT i = 1; i < 2; i++) {
     MatrixIndexT dim = 100 + rand() % 255;
@@ -267,7 +267,7 @@ static void UnitTestCuSpMatrixTraceSpSp() {
   }
 }
 
-template<class Real, class OtherReal>
+template<typename Real, typename OtherReal>
 static void UnitTestCuSpMatrixAddSp() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 5 * i + rand() % 10;
@@ -287,7 +287,7 @@ static void UnitTestCuSpMatrixAddSp() {
   }
 }
 
-template<class Real> void CudaSpMatrixUnitTest() {
+template<typename Real> void CudaSpMatrixUnitTest() {
   UnitTestCuSpMatrixConstructor<Real>();
   UnitTestCuSpMatrixOperator<Real>();
   UnitTestCuSpMatrixInvert<Real>();
@@ -297,7 +297,7 @@ template<class Real> void CudaSpMatrixUnitTest() {
   UnitTestCuSpMatrixAddToDiag<Real>();
 }
 
-template<class Real, class OtherReal> void CudaSpMatrixUnitTest() {
+template<typename Real, typename OtherReal> void CudaSpMatrixUnitTest() {
   UnitTestCuSpMatrixTraceSpSp<Real, OtherReal>();
 
 }

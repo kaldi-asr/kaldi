@@ -67,7 +67,7 @@ void TpMatrix<Real>::Invert() {
 }
 
 /*
-template<class Real>
+template<typename Real>
 void TpMatrix<Real>::Invert() {
   Matrix<Real> tmp(*this);
   tmp.Invert();

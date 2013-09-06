@@ -51,7 +51,7 @@ class CuVectorBase {
   friend class CuSpMatrix<Real>;
   friend class CuTpMatrix<Real>;
 
-  template <class OtherReal>
+  template <typename OtherReal>
   friend OtherReal VecVec(const CuVectorBase<OtherReal> &v1,
                           const CuVectorBase<OtherReal> &v2);
   friend void cu::Splice<Real>(const CuMatrix<Real> &src,
@@ -94,7 +94,7 @@ class CuVectorBase {
   
   void AddVec(Real alpha, const CuVectorBase<Real> &vec, Real beta = 1.0);
 
-  template<class OtherReal>
+  template<typename OtherReal>
   void AddVec(Real alpha, const CuVectorBase<OtherReal> &vec, Real beta = 1.0);
 
   /// Sum the rows of the matrix, add to vector
@@ -205,7 +205,7 @@ class CuVectorBase {
   KALDI_DISALLOW_COPY_AND_ASSIGN(CuVectorBase);
 };
 
-template<class Real>
+template<typename Real>
 class CuVector: public CuVectorBase<Real> {
   friend class CuVectorBase<float>;
   friend class CuVectorBase<double>;
@@ -271,7 +271,7 @@ class CuVector: public CuVectorBase<Real> {
 };
 
 // We'll fill out the following class if it's needed.
-template<class Real>
+template<typename Real>
 class CuSubVector: public CuVectorBase<Real> {
  public:  
   CuSubVector(const CuVectorBase<Real> &t, const MatrixIndexT origin,

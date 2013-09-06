@@ -31,12 +31,12 @@ using namespace kaldi;
 
 namespace kaldi {
 
-template<class Real>
+template<typename Real>
 std::string NameOf() {
   return (sizeof(Real) == 8 ? "<double>" : "<float>");
 }
     
-template<class Real> void TestCuMatrixMatMat(int32 dim) {
+template<typename Real> void TestCuMatrixMatMat(int32 dim) {
   BaseFloat time_in_secs = 0.05;
   CuMatrix<Real> M(dim, dim), N(dim, dim), O(dim, dim);
   M.SetRandn();
@@ -53,7 +53,7 @@ template<class Real> void TestCuMatrixMatMat(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
-template<class Real> void TestCuMatrixSigmoid(int32 dim) {
+template<typename Real> void TestCuMatrixSigmoid(int32 dim) {
   BaseFloat time_in_secs = 0.05;
   CuMatrix<Real> M(dim, dim), N(dim, dim);
   M.SetRandn();
@@ -71,7 +71,7 @@ template<class Real> void TestCuMatrixSigmoid(int32 dim) {
 }
 
 
-template<class Real> void TestCuMatrixSoftmax(int32 dim) {
+template<typename Real> void TestCuMatrixSoftmax(int32 dim) {
   BaseFloat time_in_secs = 0.05;
   CuMatrix<Real> M(256, dim), N(256, dim);
   M.SetRandn();
@@ -89,7 +89,7 @@ template<class Real> void TestCuMatrixSoftmax(int32 dim) {
 }
 
 
-template<class Real> void CudaMatrixSpeedTest() {
+template<typename Real> void CudaMatrixSpeedTest() {
   std::vector<int32> sizes;
   sizes.push_back(16);
   sizes.push_back(128);

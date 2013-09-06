@@ -95,7 +95,7 @@ bool WithProb(BaseFloat prob); // Returns true with probability "prob",
 // Internally calls rand().  This function is carefully implemented so
 // that it should work even if prob is very small.
 
-inline float RandUniform() {  // random between 0 and 1.
+inline float RandUniform() {  // random intended to be strictly between 0 and 1.
   return static_cast<float>((rand() + 1.0) / (RAND_MAX+2.0));  
 }
 

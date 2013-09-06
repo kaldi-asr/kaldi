@@ -41,8 +41,8 @@ class CuRand {
   /// on demand seeding of all the buffers
   void SeedGpu(MatrixIndexT state_size);
 
-  /// fill with uniform random numbers (0.0-1.0)
-  void RandUniform(CuMatrix<Real> *tgt);
+  /// fill with numbers drawn from uniform distribution on [0, 1]
+  void RandUniform(CuMatrixBase<Real> *tgt);
   /// fill with normal random numbers
   void RandGaussian(CuMatrixBase<Real> *tgt);
   void RandGaussian(CuVectorBase<Real> *tgt);

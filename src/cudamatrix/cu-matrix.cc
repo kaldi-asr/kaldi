@@ -1270,7 +1270,7 @@ void CuMatrixBase<Real>::InvertPSD() {
 }
 
 
-template<class Real>
+template<typename Real>
 bool CuMatrixBase<Real>::ApproxEqual(const CuMatrixBase<Real> &other,
                                      float tol) const {
   CuMatrix<Real> diff(*this);
@@ -1278,7 +1278,7 @@ bool CuMatrixBase<Real>::ApproxEqual(const CuMatrixBase<Real> &other,
   return (diff.FrobeniusNorm() <= tol);
 }
 
-template<class Real>
+template<typename Real>
 Real TraceMatMat(const CuMatrixBase<Real> &A,
                  const CuMatrixBase<Real> &B,
                  MatrixTransposeType trans) {
@@ -1645,7 +1645,21 @@ void CuMatrixBase<Real>::SetRandn() {
   }
 }
 
-template<class Real>
+template<typename Real>
+void CuMatrixBase<Real>::SetRandUniform() {
+  if (num_rows_ == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuRand<Real> tmp;
+    tmp.RandUniform(this);
+  } else 
+#endif
+  {
+    Mat().SetRandUniform();
+  }
+}
+
+template<typename Real>
 void Matrix<Real>::Swap(CuMatrix<Real> *mat) { mat->Swap(this); }
 // instantiate the template above.
 template void Matrix<float>::Swap(CuMatrix<float> *mat);

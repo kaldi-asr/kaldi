@@ -269,7 +269,7 @@ template<> inline double cublas_dot<double>(int n, const double *x, int incx, co
 #endif
 
 
-template<class Real>
+template<typename Real>
 Real CuPackedMatrix<Real>::Trace() const {
   Real result = 0.0;
 #if HAVE_CUDA == 1

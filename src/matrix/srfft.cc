@@ -29,7 +29,7 @@
 namespace kaldi {
 
 
-template<class Real>
+template<typename Real>
 SplitRadixComplexFft<Real>::SplitRadixComplexFft(MatrixIndexT N) {
   if ( (N & (N-1)) != 0 || N <= 1)
     KALDI_ERR << "SplitRadixComplexFft called with invalid number of points "
@@ -44,7 +44,7 @@ SplitRadixComplexFft<Real>::SplitRadixComplexFft(MatrixIndexT N) {
   temp_buffer = NULL;
 }
 
-template<class Real>
+template<typename Real>
 void SplitRadixComplexFft<Real>::ComputeTables() {
   MatrixIndexT    imax, lg2, i, j;
   MatrixIndexT     m, m2, m4, m8, nel, n;
@@ -95,7 +95,7 @@ void SplitRadixComplexFft<Real>::ComputeTables() {
   }
 }
 
-template<class Real>
+template<typename Real>
 SplitRadixComplexFft<Real>::~SplitRadixComplexFft() {
   delete [] brseed;
   if (tab != NULL) {
@@ -107,7 +107,7 @@ SplitRadixComplexFft<Real>::~SplitRadixComplexFft() {
     delete [] temp_buffer;
 }
 
-template<class Real>
+template<typename Real>
 void SplitRadixComplexFft<Real>::Compute(Real *xr, Real *xi, bool forward) const {
   if (!forward) {  // reverse real and imaginary parts for complex FFT.
     Real *tmp = xr;
@@ -121,7 +121,7 @@ void SplitRadixComplexFft<Real>::Compute(Real *xr, Real *xi, bool forward) const
   }
 }
 
-template<class Real>
+template<typename Real>
 void SplitRadixComplexFft<Real>::Compute(Real *x, bool forward) {
   if (temp_buffer == NULL)
     temp_buffer = new Real[N_];
@@ -148,7 +148,7 @@ void SplitRadixComplexFft<Real>::Compute(Real *x, bool forward) {
   x[1] = temp_buffer[0];  // special case of i = 0.
 }
 
-template<class Real>
+template<typename Real>
 void SplitRadixComplexFft<Real>::BitReversePermute(Real *x, MatrixIndexT logm) const {
   MatrixIndexT      i, j, lg2, n;
   MatrixIndexT      off, fj, gno, *brp;
@@ -174,7 +174,7 @@ void SplitRadixComplexFft<Real>::BitReversePermute(Real *x, MatrixIndexT logm) c
 }
 
 
-template<class Real>
+template<typename Real>
 void SplitRadixComplexFft<Real>::ComputeRecursive(Real *xr, Real *xi, MatrixIndexT logm) const {
 
   MatrixIndexT    m, m2, m4, m8, nel, n;
@@ -319,7 +319,7 @@ void SplitRadixComplexFft<Real>::ComputeRecursive(Real *xr, Real *xi, MatrixInde
 
 // This code is mostly the same as the RealFft function.  It would be
 // possible to replace it with more efficient code from Rico's book.
-template<class Real>
+template<typename Real>
 void SplitRadixRealFft<Real>::Compute(Real *data, bool forward) {
   MatrixIndexT N = N_, N2 = N/2;
   KALDI_ASSERT(N%2 == 0);

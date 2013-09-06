@@ -21,7 +21,7 @@
 
 namespace kaldi {
 
-template<class Real>
+template<typename Real>
 void CompressedMatrix::CopyFromMat(
     const MatrixBase<Real> &mat) {
   if (data_ != NULL) {
@@ -111,7 +111,7 @@ inline float CompressedMatrix::Uint16ToFloat(
       + global_header.range * 1.52590218966964e-05 * value;
 }
 
-template<class Real>  // static
+template<typename Real>  // static
 void CompressedMatrix::ComputeColHeader(
     const GlobalHeader &global_header,
     const Real *data, MatrixIndexT stride,
@@ -218,7 +218,7 @@ inline float CompressedMatrix::CharToFloat(
 }
 
 
-template<class Real>  // static
+template<typename Real>  // static
 void CompressedMatrix::CompressColumn(
     const GlobalHeader &global_header,
     const Real *data, MatrixIndexT stride,
@@ -335,7 +335,7 @@ void CompressedMatrix::Read(std::istream &is, bool binary) {
     KALDI_ERR << "Failed to read data.";
 }
 
-template<class Real>
+template<typename Real>
 void CompressedMatrix::CopyToMat(MatrixBase<Real> *mat) const {
   if (data_ == NULL) {
     KALDI_ASSERT(mat->NumRows() == 0);

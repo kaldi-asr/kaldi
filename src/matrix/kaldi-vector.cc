@@ -43,7 +43,7 @@ template
 double VecVec<>(const VectorBase<double> &a,
                 const VectorBase<double> &b);
 
-template<class Real, class OtherReal>
+template<typename Real, typename OtherReal>
 Real VecVec(const VectorBase<Real> &ra,
             const VectorBase<OtherReal> &rb) {
   MatrixIndexT adim = ra.Dim();
@@ -1117,7 +1117,7 @@ void VectorBase<Real>::Write(std::ostream & os, bool binary) const {
 }
 
 
-template<class Real>
+template<typename Real>
 void VectorBase<Real>::AddVec2(const Real alpha, const VectorBase<Real> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
   for (MatrixIndexT i = 0; i < dim_; i++) {
@@ -1126,7 +1126,7 @@ void VectorBase<Real>::AddVec2(const Real alpha, const VectorBase<Real> &v) {
 }
 
 // this <-- beta*this + alpha*M*v.
-template<class Real>
+template<typename Real>
 void VectorBase<Real>::AddTpVec(const Real alpha, const TpMatrix<Real> &M,
                                 const MatrixTransposeType trans,
                                 const VectorBase<Real> &v,
@@ -1144,7 +1144,7 @@ void VectorBase<Real>::AddTpVec(const Real alpha, const TpMatrix<Real> &M,
   }
 }
 
-template<class Real>
+template<typename Real>
 Real VecMatVec(const VectorBase<Real> &v1, const MatrixBase<Real> &M,
                const VectorBase<Real> &v2) {
   KALDI_ASSERT(v1.Dim() == M.NumRows() && v2.Dim() == M.NumCols());
@@ -1160,7 +1160,7 @@ template
 double VecMatVec(const VectorBase<double> &v1, const MatrixBase<double> &M,
                  const VectorBase<double> &v2);
 
-template<class Real>
+template<typename Real>
 void Vector<Real>::Swap(Vector<Real> *other) {
   std::swap(this->data_, other->data_);
   std::swap(this->dim_, other->dim_);

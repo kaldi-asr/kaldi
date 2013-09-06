@@ -34,7 +34,7 @@ namespace kaldi {
 // This class is not to be used externally.  See the Eig function in the Matrix
 // class in kaldi-matrix.h.  This is the external interface.
 
-template<class Real> class EigenvalueDecomposition {
+template<typename Real> class EigenvalueDecomposition {
   // This class is based on the EigenvalueDecomposition class from the JAMA
   // library (version 1.0.2).
  public:
@@ -108,7 +108,7 @@ template<class Real> class EigenvalueDecomposition {
 template class EigenvalueDecomposition<float>;  // force instantiation.
 template class EigenvalueDecomposition<double>;  // force instantiation.
 
-template<class Real> void  EigenvalueDecomposition<Real>::Tred2() {
+template<typename Real> void  EigenvalueDecomposition<Real>::Tred2() {
   //  This is derived from the Algol procedures tred2 by
   //  Bowdler, Martin, Reinsch, and Wilkinson, Handbook for
   //  Auto. Comp., Vol.ii-Linear Algebra, and the corresponding
@@ -222,7 +222,7 @@ template<class Real> void  EigenvalueDecomposition<Real>::Tred2() {
    e_[0] = 0.0;
 }
 
-template<class Real> void EigenvalueDecomposition<Real>::Tql2() {
+template<typename Real> void EigenvalueDecomposition<Real>::Tql2() {
   //  This is derived from the Algol procedures tql2, by
   //  Bowdler, Martin, Reinsch, and Wilkinson, Handbook for
   //  Auto. Comp., Vol.ii-Linear Algebra, and the corresponding
@@ -339,7 +339,7 @@ template<class Real> void EigenvalueDecomposition<Real>::Tql2() {
   }
 }
 
-template<class Real>
+template<typename Real>
 void EigenvalueDecomposition<Real>::Orthes() {
 
   //  This is derived from the Algol procedures orthes and ortran,
@@ -431,7 +431,7 @@ void EigenvalueDecomposition<Real>::Orthes() {
   }
 }
 
-template<class Real> void  EigenvalueDecomposition<Real>::Hqr2() {
+template<typename Real> void  EigenvalueDecomposition<Real>::Hqr2() {
   //  This is derived from the Algol procedure hqr2,
   //  by Martin and Wilkinson, Handbook for Auto. Comp.,
   //  Vol.ii-Linear Algebra, and the corresponding
@@ -870,7 +870,7 @@ template<class Real> void  EigenvalueDecomposition<Real>::Hqr2() {
   }
 }
 
-template<class Real>
+template<typename Real>
 EigenvalueDecomposition<Real>::EigenvalueDecomposition(const MatrixBase<Real> &A) {
   KALDI_ASSERT(A.NumCols() == A.NumRows() && A.NumCols() >= 1);
   n_ = A.NumRows();
@@ -905,7 +905,7 @@ EigenvalueDecomposition<Real>::EigenvalueDecomposition(const MatrixBase<Real> &A
   }
 }
 
-template<class Real>
+template<typename Real>
 EigenvalueDecomposition<Real>::~EigenvalueDecomposition() {
   delete [] d_;
   delete [] e_;

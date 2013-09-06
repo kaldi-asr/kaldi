@@ -31,12 +31,12 @@ using namespace kaldi;
 
 namespace kaldi {
 
-template<class Real>
+template<typename Real>
 std::string NameOf() {
   return (sizeof(Real) == 8 ? "<double>" : "<float>");
 }
 
-template<class Real> void TestCuVectorSoftmax(int32 dim) {
+template<typename Real> void TestCuVectorSoftmax(int32 dim) {
   BaseFloat time_in_secs = 0.05;
   CuVector<Real> M(dim);
   M.SetRandn();
@@ -58,7 +58,7 @@ template<class Real> void TestCuVectorSoftmax(int32 dim) {
 
 
 
-template<class Real> void CudaVectorSpeedTest() {
+template<typename Real> void CudaVectorSpeedTest() {
   std::vector<int32> sizes;
   sizes.push_back(16);
   sizes.push_back(128);

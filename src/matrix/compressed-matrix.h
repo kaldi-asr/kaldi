@@ -44,10 +44,10 @@ class CompressedMatrix {
 
   ~CompressedMatrix() { Destroy(); }
   
-  template<class Real>
+  template<typename Real>
   CompressedMatrix(const MatrixBase<Real> &mat): data_(NULL) { CopyFromMat(mat); }
 
-  template<class Real>
+  template<typename Real>
   void CopyFromMat(const MatrixBase<Real> &mat);
   
   CompressedMatrix(const CompressedMatrix &mat);
@@ -56,7 +56,7 @@ class CompressedMatrix {
   
   // Note: mat must have the correct size, CopyToMat no longer attempts
   // to resize the matrix
-  template<class Real>
+  template<typename Real>
   void CopyToMat(MatrixBase<Real> *mat) const;
 
   void Write(std::ostream &os, bool binary) const;
@@ -120,12 +120,12 @@ class CompressedMatrix {
   };
 
   // The following function is called in CopyToMatrix.
-  template<class Real>
+  template<typename Real>
   static void CompressColumn(const GlobalHeader &global_header,
                              const Real *data, MatrixIndexT stride,
                              int32 num_rows, PerColHeader *header,
                              unsigned char *byte_data);
-  template<class Real>
+  template<typename Real>
   static void ComputeColHeader(const GlobalHeader &global_header,
                                const Real *data, MatrixIndexT stride,
                                int32 num_rows, PerColHeader *header);

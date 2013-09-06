@@ -42,7 +42,7 @@ void PackedMatrix<Real>::AddPacked(const Real alpha, const PackedMatrix<Real> &r
   cblas_Xaxpy(sz, alpha, rMa.Data(), 1, data_, 1);
 }
 
-template<class Real>
+template<typename Real>
 void PackedMatrix<Real>::SetRandn() {
   Real *data = data_;
   size_t dim = num_rows_, size = ((dim*(dim+1))/2);

@@ -155,7 +155,7 @@ class VectorBase {
 
   /// Add vector : *this = *this + alpha * rv (with casting between floats and
   /// doubles)
-  template<class OtherReal>
+  template<typename OtherReal>
   void AddVec(const Real alpha, const VectorBase<OtherReal> &v);
 
   /// Add vector : *this = *this + alpha * rv^2  [element-wise squaring].
@@ -163,7 +163,7 @@ class VectorBase {
 
   /// Add vector : *this = *this + alpha * rv^2  [element-wise squaring],
   /// with casting between floats and doubles.
-  template<class OtherReal>
+  template<typename OtherReal>
   void AddVec2(const Real alpha, const VectorBase<OtherReal> &v);
 
   /// Add matrix times vector : this <-- beta*this + alpha*M*v.
@@ -444,7 +444,7 @@ class Vector: public VectorBase<Real> {
 
 /// Represents a non-allocating general vector which can be defined
 /// as a sub-vector of higher-level vector [or as the row of a matrix].
-template<class Real>
+template<typename Real>
 class SubVector : public VectorBase<Real> {
  public:
   /// Constructor from a Vector or SubVector.
@@ -528,7 +528,7 @@ Real VecVec(const VectorBase<Real> &v1, const VectorBase<OtherReal> &v2);
 
 /// Returns \f$ v_1^T M v_2  \f$ .
 /// Not as efficient as it could be where v1 == v2.
-template<class Real>
+template<typename Real>
 Real VecMatVec(const VectorBase<Real> &v1, const MatrixBase<Real> &M,
                const VectorBase<Real> &v2);
 

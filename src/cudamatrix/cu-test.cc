@@ -20,7 +20,7 @@ namespace kaldi {
 /*
  * INITIALIZERS
  */ 
-template<class Real>
+template<typename Real>
 static void InitRand(SpMatrix<Real> *M) {
   do {
     for (MatrixIndexT i = 0; i < M->NumRows(); i++) {
@@ -31,7 +31,7 @@ static void InitRand(SpMatrix<Real> *M) {
   } while (M->NumRows() != 0 && M->Cond() > 100);
 }
 
-template<class Real>
+template<typename Real>
 static void InitRand(VectorBase<Real> *v) {
   for (MatrixIndexT i = 0; i < v->Dim(); i++) {
     (*v)(i) = RandGauss();
@@ -40,7 +40,7 @@ static void InitRand(VectorBase<Real> *v) {
 /*
  * ASSERTS
  */
-template<class Real>
+template<typename Real>
 static void AssertEqual(const VectorBase<Real> &A,
                         const VectorBase<Real> &B,
                         float tol = 0.001) {
@@ -50,7 +50,7 @@ static void AssertEqual(const VectorBase<Real> &A,
   }
 }
 
-template<class Real>
+template<typename Real>
 static void AssertEqual(const MatrixBase<Real> &A,
                         const MatrixBase<Real> &B,
                         float tol = 0.001) {
@@ -63,7 +63,7 @@ static void AssertEqual(const MatrixBase<Real> &A,
   }
 }
 
-template<class Real>
+template<typename Real>
 static void AssertEqual(const SpMatrix<Real> &A,
                         const SpMatrix<Real> &B,
                         float tol = 0.001) {
@@ -75,7 +75,7 @@ static void AssertEqual(const SpMatrix<Real> &A,
   }
 }
 
-template<class Real> 
+template<typename Real> 
 static void ApproxEqual(const SpMatrix<Real> &A,
 			const SpMatrix<Real> &B,
 			float tol = 0.001) {
@@ -86,7 +86,7 @@ static void ApproxEqual(const SpMatrix<Real> &A,
 }
 
 // ApproxEqual
-template<class Real>
+template<typename Real>
 static bool ApproxEqual(const SpMatrix<Real> &A,
                         const SpMatrix<Real> &B, Real tol = 0.001) {
   KALDI_ASSERT(A.NumRows() == B.NumRows());
@@ -97,7 +97,7 @@ static bool ApproxEqual(const SpMatrix<Real> &A,
   return (d <= tol * std::max(a, b));
 }
 
-template<class Real>
+template<typename Real>
 static void UnitTestSetZeroUpperDiag() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 10 * i;
@@ -125,7 +125,7 @@ static void UnitTestSetZeroUpperDiag() {
 }
 
 
-template<class Real> static void UnitTestCholesky() {
+template<typename Real> static void UnitTestCholesky() {
   for (MatrixIndexT iter = 0; iter < 3; iter++) {
     MatrixIndexT dim = 300 + rand() %  200;
     // set dimension
@@ -157,7 +157,7 @@ template<class Real> static void UnitTestCholesky() {
   }
 }
 
-template<class Real> static void UnitTestTrace() {
+template<typename Real> static void UnitTestTrace() {
   for (MatrixIndexT iter = 1; iter < 18; iter++) {
     MatrixIndexT dim = iter;
     KALDI_LOG << "dim is : " << iter;
@@ -189,7 +189,7 @@ template<class Real> static void UnitTestTrace() {
   */
 }
 
-template<class Real> static void UnitInvert() {
+template<typename Real> static void UnitInvert() {
   //MatrixIndexT dim = 15 + rand() %  40;;
   MatrixIndexT dim = 8;
   CuMatrix<Real> A(dim,dim);
@@ -223,7 +223,7 @@ template<class Real> static void UnitInvert() {
   //AssertEqual(B,E);
 }
 
-template<class Real> static void UnitTestInvert() {
+template<typename Real> static void UnitTestInvert() {
   for (MatrixIndexT iter = 0; iter < 3; iter++) {
     MatrixIndexT dim = 500 + rand() % 400;
     
@@ -254,7 +254,7 @@ template<class Real> static void UnitTestInvert() {
   }
 }
 
-template<class Real> static void UnitTestConstructor() {
+template<typename Real> static void UnitTestConstructor() {
   MatrixIndexT dim = 8;
   CuMatrix<Real> A(dim,dim);
   Matrix<Real> B(dim,dim);
@@ -280,7 +280,7 @@ template<class Real> static void UnitTestConstructor() {
   }  
 }
 
-template<class Real> static void UnitTestCopySp() {
+template<typename Real> static void UnitTestCopySp() {
   // Checking that the various versions of copying                                 
   // matrix to SpMatrix work the same in the symmetric case.                         
   for (MatrixIndexT iter = 0;iter < 5;iter++) {
@@ -332,7 +332,7 @@ template<class Real> static void UnitTestCopySp() {
   
 }
 
-template<class Real> static void UnitTestCopyFromMat() {
+template<typename Real> static void UnitTestCopyFromMat() {
   MatrixIndexT dim = 8;
   CuMatrix<Real> A(dim,dim);
   Matrix<Real> B(dim,dim);
@@ -376,7 +376,7 @@ template<class Real> static void UnitTestCopyFromMat() {
   //KALDI_LOG << D << '\n';
 }
 
-template<class Real> static void UnitTestMatrix() {
+template<typename Real> static void UnitTestMatrix() {
   //operator()
   for (MatrixIndexT iter = 0; iter < 2; iter++) {
     int32 dim1 = 6 + rand() % 10;
@@ -423,7 +423,7 @@ template<class Real> static void UnitTestMatrix() {
   }
 }
 
-template<class Real> static void UnitTestMulTp() {
+template<typename Real> static void UnitTestMulTp() {
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
     int32 dim = 1 + rand() % 30;
     Vector<Real> v(dim);
@@ -444,7 +444,7 @@ template<class Real> static void UnitTestMulTp() {
   }
 }
 
-template<class Real> static void UnitTestVector() {
+template<typename Real> static void UnitTestVector() {
   // Scale
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
     int32 dim = 24 + rand() % 10;
@@ -598,7 +598,7 @@ template<class Real> static void UnitTestVector() {
   */
 }
 
-template<class Real>
+template<typename Real>
 static void CuMatrixUnitTest() {
   UnitTestTrace<Real>();
   UnitTestCholesky<Real>();

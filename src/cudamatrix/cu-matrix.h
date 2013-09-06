@@ -117,7 +117,7 @@ class CuMatrixBase {
   void CopyFromMat(const MatrixBase<Real> &src,
                    MatrixTransposeType trans = kNoTrans);
 
-  template<class OtherReal>
+  template<typename OtherReal>
   void CopyFromMat(const MatrixBase<OtherReal> &src,
                    MatrixTransposeType trans = kNoTrans);
   
@@ -324,6 +324,8 @@ class CuMatrixBase {
   Real Trace(bool check_square = true) const;
 
   void SetRandn();
+
+  void SetRandUniform();
   
  protected:
   // The following two functions should only be called if we did not compile with CUDA
@@ -395,7 +397,7 @@ class CuMatrix: public CuMatrixBase<Real> {
   explicit CuMatrix(const CuMatrixBase<Real> &other,
                     MatrixTransposeType trans = kNoTrans);
 
-  template<class OtherReal>
+  template<typename OtherReal>
   explicit CuMatrix(const MatrixBase<OtherReal> &other,
                     MatrixTransposeType trans = kNoTrans);
 
@@ -442,7 +444,7 @@ class CuMatrix: public CuMatrixBase<Real> {
   void Swap(Matrix<Real> *mat);
   void Swap(CuMatrix<Real> *mat);
 
-  template<class OtherReal>
+  template<typename OtherReal>
   void Swap(CuMatrix<OtherReal> *mat);
   
   /// I/O functions
@@ -485,12 +487,12 @@ class CuSubMatrix: public CuMatrixBase<Real> {
   CuSubMatrix<Real> &operator = (const CuSubMatrix<Real> &other);
 };
 
-template<class Real>
+template<typename Real>
 bool SameDim(const CuMatrixBase<Real> &M, const CuMatrixBase<Real> &N) {
   return (M.NumRows() == N.NumRows() && M.NumCols() == N.NumCols());
 }
 
-template<class Real>
+template<typename Real>
 bool SameDimAndStride(const CuMatrixBase<Real> &M, const CuMatrixBase<Real> &N) {
   return (M.NumRows() == N.NumRows() && M.NumCols() == N.NumCols()
           && M.Stride() == N.Stride());
