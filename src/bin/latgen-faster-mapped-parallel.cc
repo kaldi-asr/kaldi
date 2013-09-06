@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
           LatticeFasterDecoder *decoder = new LatticeFasterDecoder(*decode_fst,
                                                                    config);
           DecodableMatrixScaledMapped *decodable = 
-            new DecodableMatrixScaledMapped(trans_model, *loglikes, acoustic_scale);
+              new DecodableMatrixScaledMapped(trans_model, acoustic_scale, loglikes);
           DecodeUtteranceLatticeFasterClass *task =
               new DecodeUtteranceLatticeFasterClass(
                   decoder, decodable, word_syms, utt, acoustic_scale,
