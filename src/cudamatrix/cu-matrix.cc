@@ -489,7 +489,6 @@ void CuMatrix<Real>::Write(std::ostream &os, bool binary) const {
   Matrix<Real> temp(this->num_rows_, this->num_cols_, kUndefined);
   this->CopyToMat(&temp);
   temp.Write(os, binary);
-  CU_SAFE_CALL(cudaGetLastError()); // TEMP    
 }
 
 template<typename Real>
@@ -521,7 +520,6 @@ void CuMatrixBase<Real>::Set(Real value) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
 
-    CU_SAFE_CALL(cudaGetLastError()); // TEMP
     cuda_set_const(dimGrid, dimBlock, data_, value, Dim());
     CU_SAFE_CALL(cudaGetLastError());
 

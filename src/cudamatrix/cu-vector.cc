@@ -423,16 +423,10 @@ void CuVectorBase<Real>::AddMatVec(const Real alpha,
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
-    CU_SAFE_CALL(cublasGetError()); // temp
-    
     // Everything is backwards in CuBlas.  We need to reverse rows, columns,
     // transpose-ness.
-    //cublas_gemv((trans==kTrans?'N':'T'), M.NumCols(), M.NumRows(), alpha,
-    //M.Data(), M.Stride(), v.Data(), 1, beta, data_, 1);
-
-    Vector<Real> temp(*this); // TEMP!!!!!!!!!!!
-    temp.AddMatVec(alpha, Matrix<Real>(M), trans, Vector<Real>(v), beta);
-    this->CopyFromVec(temp);
+    cublas_gemv((trans==kTrans?'N':'T'), M.NumCols(), M.NumRows(), alpha,
+                M.Data(), M.Stride(), v.Data(), 1, beta, data_, 1);
 
     CU_SAFE_CALL(cublasGetError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
