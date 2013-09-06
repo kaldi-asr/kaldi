@@ -432,19 +432,19 @@ static void UnitTestSetRandn() {
 template <typename Real>
 static void UnitTestSetRandUniform() {
   for (MatrixIndexT i = 0; i < 5; i++) {
-    MatrixIndexT rows = 100 + rand() % 50, cols = 100 + rand() % 50;
+    MatrixIndexT rows = 200 + rand() % 50, cols = 200 + rand() % 50;
     Matrix<Real> M(rows, cols);
     M.SetRandUniform();
 
     M.Add(-0.5); // we'll be testing the central moments, so
     // center it around zero first.
     // Got these moments from http://mathworld.wolfram.com/UniformDistribution.html
-    Vector<Real> central_moments(4);
+    Vector<Real> central_moments(5);
     central_moments(0) = 0.0;
     central_moments(1) = 0.0;
     central_moments(2) = 1.0 / 12; // times (b - a)^2, which equals 1.
     central_moments(3) = 0.0;
-    central_moments(2) = 1.0 / 80; // times (b - a)^4, which equals 1.
+    central_moments(4) = 1.0 / 80; // times (b - a)^4, which equals 1.
 
     for (MatrixIndexT pow = 1; pow < central_moments.Dim(); pow++) {
       Matrix<Real> Mpow(M);

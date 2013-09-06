@@ -84,8 +84,6 @@ template<> inline void CuRand<double>::SeedBuffer(uint32* *tgt, MatrixIndexT sta
 
 } // namsepace
 
-#include "cudamatrix/cu-rand-inl.h"
-
 #endif
 
 

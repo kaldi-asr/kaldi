@@ -1,6 +1,7 @@
-// cudamatrix/cu-rand-inl.h
+// cudamatrix/cu-rand.cc
 
 // Copyright 2012  Karel Vesely
+//           2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,14 +17,8 @@
 // limitations under the License.
 
 
-
-#ifndef KALDI_CUDAMATRIX_CU_RAND_INL_H_
-#define KALDI_CUDAMATRIX_CU_RAND_INL_H_
-
 #include "base/kaldi-math.h"
-
-#include "cudamatrix/cu-common.h"
-#include "cudamatrix/cu-rand.h"
+#include "cudamatrix/cu-matrix-lib.h"
 #include "cudamatrix/cu-randkernels.h"
 
 
@@ -85,7 +80,7 @@ template<typename Real> void CuRand<Real>::RandUniform(CuMatrixBase<Real> *tgt) 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    int32 tgt_size = tgt->NumRows()*tgt->Stride();
+    int32 tgt_size = tgt->NumRows() * tgt->Stride();
     if (tgt_size != state_size_) SeedGpu(tgt_size);
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -113,7 +108,7 @@ template<typename Real> void CuRand<Real>::RandGaussian(CuMatrixBase<Real> *tgt)
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
-    int32 tgt_size = tgt->NumRows()*tgt->Stride();
+    int32 tgt_size = tgt->NumRows() * tgt->Stride();
     if (tgt_size != state_size_) SeedGpu(tgt_size);
     
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -203,10 +198,12 @@ template<typename Real> void CuRand<Real>::AddGaussNoise(CuMatrix<Real> *tgt, Re
   tgt->AddMat(gscale, tmp_, 1.0);
 }
 
-
+// Instantiate the class for float and double.
+template class CuRand<float>;
+template class CuRand<double>;
 
 } // namespace
 
-#endif
+
 
 

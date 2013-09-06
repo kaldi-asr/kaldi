@@ -14,7 +14,7 @@ TESTFILES = cu-vector-test cu-matrix-test cu-test cu-sp-matrix-test cu-packed-ma
             cu-matrix-speed-test cu-vector-speed-test
 
 
-OBJFILES = cu-device.o cu-math.o cu-matrix.o cu-packed-matrix.o cu-sp-matrix.o cu-vector.o cu-common.o cu-tp-matrix.o
+OBJFILES = cu-device.o cu-math.o cu-matrix.o cu-packed-matrix.o cu-sp-matrix.o cu-vector.o cu-common.o cu-tp-matrix.o cu-rand.o
 ifeq ($(CUDA), true)
   OBJFILES += cu-kernels.o cu-randkernels.o cu-choleskykernels.o
 endif

@@ -29,7 +29,6 @@
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-kernels.h"
 #include "cudamatrix/cu-randkernels.h"
-#include "cudamatrix/cu-rand-inl.h"
 #include "cudamatrix/cu-choleskykernels.h"
 #include "cudamatrix/cu-stlvector.h"
 #include "cudamatrix/cu-math.h"

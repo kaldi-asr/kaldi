@@ -1327,7 +1327,7 @@ static void UnitTestCuMatrixSetRandn() {
       // note that mu = 0 and sigma = 1.
       Real expected_moment = (pow % 2 == 1 ? 0 : DoubleFactorial(pow - 1));
       Real k = 10.0; // This is just a constant we use to give us some wiggle
-                     // room before rejecting the distribution... e.g. 10 sigma,
+                     // room before rejecting the distribution... e.g. 20 sigma,
                      // quite approximately.
       Real allowed_deviation = k * pow / sqrt(static_cast<Real>(rows * cols));
       // give it a bit more wiggle room for higher powers.. this is quite
@@ -1352,12 +1352,12 @@ static void UnitTestCuMatrixSetRandUniform() {
     M.Add(-0.5); // we'll be testing the central moments, so
     // center it around zero first.
     // Got these moments from http://mathworld.wolfram.com/UniformDistribution.html
-    Vector<Real> central_moments(4);
+    Vector<Real> central_moments(5);
     central_moments(0) = 0.0;
     central_moments(1) = 0.0;
     central_moments(2) = 1.0 / 12; // times (b - a)^2, which equals 1.
     central_moments(3) = 0.0;
-    central_moments(2) = 1.0 / 80; // times (b - a)^4, which equals 1.
+    central_moments(4) = 1.0 / 80; // times (b - a)^4, which equals 1.
 
     for (MatrixIndexT pow = 1; pow < central_moments.Dim(); pow++) {
       CuMatrix<Real> Mpow(M);
@@ -1366,7 +1366,7 @@ static void UnitTestCuMatrixSetRandUniform() {
       // see http://en.wikipedia.org/wiki/Normal_distribution#Moments,
       // note that mu = 0 and sigma = 1.
       Real expected_moment = central_moments(pow);
-      Real k = 10.0; // This is just a constant we use to give us some wiggle
+      Real k = 20.0; // This is just a constant we use to give us some wiggle
                      // room before rejecting the distribution... e.g. 10 sigma,
                      // quite approximately.
       Real allowed_deviation = k / sqrt(static_cast<Real>(rows * cols));
