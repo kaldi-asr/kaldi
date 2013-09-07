@@ -54,7 +54,42 @@ template<typename Real> void TestCuVectorSoftmax(int32 dim) {
 }
 
 
+template<typename Real> void TestCuVectorSum(int32 dim) {
+  BaseFloat time_in_secs = 0.05;
+  CuVector<Real> M(dim);
+  M.SetRandn();
 
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    M.Sum();
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::Sum" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+template<typename Real> void TestCuVectorVecVecOne(int32 dim) {
+  BaseFloat time_in_secs = 0.05;
+  CuVector<Real> M(dim);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    CuVector<Real> ones(dim);
+    ones.Set(1.0);
+    VecVec(M, ones);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::VecVecOne" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
 
 
 
@@ -65,8 +100,18 @@ template<typename Real> void CudaVectorSpeedTest() {
   sizes.push_back(256);
   sizes.push_back(1024);
   int32 ns = sizes.size();
-  for (int32 s = 0; s < ns; s++)
+  for (int32 s = 0; s < ns; s++) {
 	  TestCuVectorSoftmax<Real>(sizes[s]);
+  }
+
+
+  for (int32 s = 0; s < ns; s++) {
+          TestCuVectorSum<Real>(sizes[s]);
+  }
+
+  for (int32 s = 0; s < ns; s++) {
+          TestCuVectorVecVecOne<Real>(sizes[s]);
+  }
 
 }
 
