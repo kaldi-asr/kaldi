@@ -291,9 +291,10 @@ template<typename Real>
 void CuPackedMatrix<Real>::SetDiag(Real alpha) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
     Timer tim;
-    int dimBlock(CU2DBLOCK);
-    int dimGrid(n_blocks(NumRows(),CU2DBLOCK));
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(NumRows(),CU1DBLOCK));
     cuda_set_diag_packed(dimGrid,dimBlock,data_,alpha,num_rows_);
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::SetDiag", tim.Elapsed());
@@ -338,8 +339,9 @@ void CuPackedMatrix<Real>::ScaleDiag(Real alpha) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    int dimBlock(CU2DBLOCK);
-    int dimGrid(n_blocks(NumRows(),CU2DBLOCK));
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(NumRows(),CU1DBLOCK));
+    CU_SAFE_CALL(cudaGetLastError()); // TEMP
     cuda_scale_diag(dimGrid,dimBlock,data_,alpha,num_rows_);
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::ScaleDiag", tim.Elapsed());
@@ -367,6 +369,7 @@ void CuPackedMatrix<Real>::AddPacked(const Real alpha, const CuPackedMatrix<Real
   KALDI_ASSERT(num_rows_ == M.NumRows());
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
     Timer tim;
     size_t nr = num_rows_,
         sz = (nr * (nr + 1)) / 2;
@@ -383,9 +386,10 @@ template<typename Real>
 void CuPackedMatrix<Real>::AddToDiag(Real r) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
     Timer tim;
-    int dimGrid(1);
-    int dimBlock(NumRows());
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(NumRows(),CU1DBLOCK));
     cuda_add_diag_packed(dimGrid,dimBlock,data_,r,num_rows_);
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::AddToDiag", tim.Elapsed());
   } else
@@ -400,12 +404,8 @@ template<typename Real>
 void CuPackedMatrix<Real>::SetUnit() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    int dimGrid(1);
-    int dimBlock(NumRows());
-    Real alpha = 1;
-    cuda_set_diag_packed(dimGrid,dimBlock,data_,alpha,num_rows_);
-    CuDevice::Instantiate().AccuProfile("CuPackedMatrix::SetUnit", tim.Elapsed());
+    this->SetZero();
+    this->SetDiag(1.0);
   } else 
 #endif
   { 

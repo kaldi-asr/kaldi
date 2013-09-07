@@ -181,7 +181,7 @@ fi
 iters_per_epoch=`cat $egs_dir/iters_per_epoch`  || exit 1;
 ! [ $num_jobs_nnet -eq `cat $egs_dir/num_jobs_nnet` ] && \
   echo "$0: Warning: using --num-jobs-nnet=`cat $egs_dir/num_jobs_nnet` from $egs_dir"
-num_jobs_nnet=`cat $egs_dir/num_jobs_nnet`
+num_jobs_nnet=`cat $egs_dir/num_jobs_nnet` || exit 1;
 
 
 if ! [ $num_hidden_layers -ge 1 ]; then
@@ -248,6 +248,15 @@ echo "$0: (while reducing learning rate) + (with constant learning rate)."
 finish_add_layers_iter=$[($num_hidden_layers-$initial_num_hidden_layers+1)*$add_layers_period]
 mix_up_iter=$[($num_iters + $finish_add_layers_iter)/2]
 
+if [ $num_threads -eq 1 ]; then
+  train_suffix="-simple" # this enables us to use GPU code if
+                         # we have just one thread.
+else
+  train_suffix="-parallel --num-threads=$num_threads"
+fi
+
+
+
 x=0
 while [ $x -lt $num_iters ]; do
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
@@ -274,7 +283,7 @@ while [ $x -lt $num_iters ]; do
     $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
       nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
       ark:$egs_dir/egs.JOB.$[$x%$iters_per_epoch].ark ark:- \| \
-      nnet-train-parallel --num-threads=$num_threads \
+      nnet-train$train_suffix \
          --minibatch-size=$minibatch_size --srand=$x "$mdl" \
         ark:- $dir/$[$x+1].JOB.mdl \
       || exit 1;

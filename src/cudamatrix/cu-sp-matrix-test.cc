@@ -2,6 +2,7 @@
 //
 // Copyright 2013  Ehsan Variani
 //                 Lucas Ondel
+//                 Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -76,11 +77,29 @@ static bool ApproxEqual(const SpMatrix<Real> &A,
                         const SpMatrix<Real> &B, Real tol = 0.001) {
   KALDI_ASSERT(A.NumRows() == B.NumRows());
   SpMatrix<Real> diff(A);
-  diff.AddSp(1.0, B);
+  diff.AddSp(-1.0, B);
   Real a = std::max(A.Max(), -A.Min()), b = std::max(B.Max(), -B.Min()),
       d = std::max(diff.Max(), -diff.Min());
   return (d <= tol * std::max(a, b));
 }
+
+template<typename Real>
+static bool ApproxEqual(const CuSpMatrix<Real> &A,
+                        const CuSpMatrix<Real> &B, Real tol = 0.001) {
+  KALDI_ASSERT(A.NumRows() == B.NumRows());
+  CuSpMatrix<Real> diff(A);
+  diff.AddSp(-1.0, B);
+  Real a = A.FrobeniusNorm(), b = B.FrobeniusNorm(),
+      d = diff.FrobeniusNorm();
+  return (d <= tol * std::max(a, b));
+}
+
+template<typename Real>
+static void AssertEqual(const CuSpMatrix<Real> &A,
+                        const CuSpMatrix<Real> &B, Real tol = 0.001) {
+  KALDI_ASSERT(ApproxEqual(A, B, tol));
+}
+
 
 /*
  * Unit Tests
@@ -267,10 +286,39 @@ static void UnitTestCuSpMatrixTraceSpSp() {
   }
 }
 
+
+template<typename Real>
+void UnitTestCuSpMatrixSetUnit() {
+  for (MatrixIndexT i = 1; i < 10; i++) {
+    MatrixIndexT dim = 100 * i + rand() % 255;
+    if (i % 5 == 0) dim = 0;
+    CuSpMatrix<Real> S1(dim), S2(dim), S4(dim);
+    S1.SetRandn();
+    S2.SetRandn();
+    S4.SetRandn();
+    SpMatrix<Real> S3(dim);
+    S3.SetUnit();
+    S1.SetUnit();
+    S2.SetZero();
+    S2.SetDiag(1.0);
+    S4.SetZero();
+    S4.AddToDiag(0.4);
+    S4.AddToDiag(0.6);
+    CuSpMatrix<Real> cu_S3(S3);
+    KALDI_LOG << "S1 norm is " << S1.FrobeniusNorm();
+    KALDI_LOG << "S2 norm is " << S2.FrobeniusNorm();
+    KALDI_LOG << "S3 norm is " << S3.FrobeniusNorm();
+    AssertEqual(S1, cu_S3);
+    AssertEqual(S2, cu_S3);
+    AssertEqual(S4, cu_S3);
+  }
+}
+  
+
 template<typename Real, typename OtherReal>
 static void UnitTestCuSpMatrixAddSp() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+    MatrixIndexT dim = 100 * i + rand() % 255;
     
     SpMatrix<Real> A(dim);
     A.SetRandn();
@@ -295,6 +343,7 @@ template<typename Real> void CudaSpMatrixUnitTest() {
   UnitTestCuSpMatrixAddMat2<Real>();
   UnitTestCuSpMatrixAddSp<Real>();
   UnitTestCuSpMatrixAddToDiag<Real>();
+  UnitTestCuSpMatrixSetUnit<Real>();
 }
 
 template<typename Real, typename OtherReal> void CudaSpMatrixUnitTest() {

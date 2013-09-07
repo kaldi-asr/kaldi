@@ -478,7 +478,6 @@ void CuVectorBase<Real>::AddVecVec(Real alpha, const CuVectorBase<Real> &v,
   } else
 #endif
   {
-//    KALDI_LOG << "Salam!" << '\n';
     Vec().AddVecVec(alpha, v.Vec(), r.Vec(), beta);
   }
 }
@@ -492,7 +491,6 @@ bool CuVectorBase<Real>::ApproxEqual(const CuVectorBase<Real> &other, float tol)
   CuVector<Real> tmp(*this);
   tmp.AddVec(-1.0, other);
   BaseFloat tmp_norm = sqrt(VecVec(tmp, tmp)), this_norm = sqrt(VecVec(*this, *this));
-  KALDI_LOG  << "tmp norm is " << tmp_norm << ", this_norm =" << this_norm;
   return tmp_norm <= static_cast<Real>(tol) * this_norm;
 }
 
@@ -976,12 +974,12 @@ void CuVectorBase<Real>::Add(Real value) {
 template<typename Real>
 void CuVectorBase<Real>::CopyDiagFromPacked(const CuPackedMatrix<Real> &M) {
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(dim_ == M.NumRows());
+    if (dim_ == 0) return;
     Timer tim;
-
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(Dim(), CU1DBLOCK));
-
     cuda_vec_copy_diag_from_packed(dimGrid, dimBlock, data_, M.Data(), dim_);
     CU_SAFE_CALL(cudaGetLastError());
 

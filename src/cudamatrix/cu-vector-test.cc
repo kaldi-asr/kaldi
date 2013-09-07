@@ -29,8 +29,6 @@
 #include "cudamatrix/cu-sp-matrix.h"
 #include "cudamatrix/cu-math.h"
 
-using namespace kaldi;
-
 
 namespace kaldi {
 
@@ -110,13 +108,6 @@ static void UnitTestCuVectorCopyFromVec() {
     E.CopyFromVec(D);
     CuVector<Real> F(E);
     CuVector<Real> A2(A);
-    KALDI_LOG << "F = " << F;
-    KALDI_LOG << "A2 = " << A2;
-    KALDI_LOG << "A = " << A;
-    KALDI_LOG << "B = " << B;
-    KALDI_LOG << "C = " << C;
-    KALDI_LOG << "D = " << D;
-    KALDI_LOG << "E = " << E;
     AssertEqual(F, A2);
   }
 }
@@ -314,9 +305,6 @@ template<typename Real> void CuVectorUnitTestSum() {
   CuVector<Real> vec(dim), ones(dim);
   vec.SetRandn();
   ones.Set(1.0);
-  KALDI_LOG << "vec is " << vec;
-  KALDI_LOG << "ones is " << ones;
-  KALDI_LOG << "First 256 is " << VecVec(vec.Range(0, 256), ones.Range(0, 256));
 
   AssertEqual(VecVec(vec, ones), vec.Sum());
 
@@ -451,7 +439,6 @@ template<typename Real> void CuVectorUnitTestMin() {
     cu_vector.SetRandn();
     Vector<Real> vector(cu_vector);
     Real min1 = cu_vector.Min(), min2 = vector.Min();
-    KALDI_LOG << "v = " << cu_vector;
     KALDI_ASSERT(min1 == min2);
   }
 }
@@ -552,8 +539,7 @@ template<typename Real> void CuVectorUnitTestApplyPow() {
     vector.ApplyPow(pow);
   
     CuVector<Real> cu2(vector);
-    KALDI_LOG << "cu2 = " << cu2;
-    KALDI_LOG << "cu_vector = " << cu_vector;
+
     AssertEqual(cu2, cu_vector);
   }
 }
@@ -627,12 +613,8 @@ static void CuVectorUnitTestAddDiagMatMat() {
       MN.AddMatMat(1.0, M, transM, N, transN, 0.0);
       CuVector<Real> d(dimM);
       d.CopyDiagFromMat(MN);
-      KALDI_LOG << "w2_0 = " << w2;
       w2.Scale(beta);
-      KALDI_LOG << "w2_1 = " << w2;
       w2.AddVec(alpha, d);
-      KALDI_LOG << "w = " << w;
-      KALDI_LOG << "w2 = " << w2;
       AssertEqual(w, w2);
     }
   }
@@ -739,15 +721,29 @@ template<typename Real> void CuVectorUnitTest() {
 } // namespace kaldi
 
 
-int main() {
-    //Select the GPU
+int main(int argc, char *argv[]) {
+  //Select the GPU
+  using namespace kaldi;
+  const char *usage = "Usage: cu-vector-test [options]";
+
+  ParseOptions po(usage);
+  int32 use_gpu_id = -2;    
+  po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic "
+              "selection, -1 disable GPU, 0..N select GPU).  Only has effect if compiled "
+              "with CUDA");
+  po.Read(argc, argv);
+
+  if (po.NumArgs() != 0) {
+    po.PrintUsage();
+    exit(1);
+  }
 
   for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId(-1); // -1 means no GPU
     else
-      CuDevice::Instantiate().SelectGpuId(-2); // -2 .. automatic selection
+      CuDevice::Instantiate().SelectGpuId(use_gpu_id);
 #endif
 
 

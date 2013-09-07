@@ -51,6 +51,8 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
     CuPackedMatrix<Real>::Resize(nRows, resize_type);
   }
 
+  Real FrobeniusNorm() const { return sqrt(TraceSpSp(*this, *this)); }
+  
   void CopyFromSp(const CuSpMatrix<Real> &other) {
     CuPackedMatrix<Real>::CopyFromPacked(other);
   }
