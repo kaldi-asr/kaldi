@@ -82,7 +82,7 @@ static void AssertEqual(const MatrixBase<Real> &A,
   KALDI_ASSERT(A.NumRows() == B.NumRows()&&A.NumCols() == B.NumCols());
   for (MatrixIndexT i = 0;i < A.NumRows();i++) {
     for (MatrixIndexT j = 0;j < A.NumCols();j++) {
-      KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) < tol*std::max(1.0, (double) (std::abs(A(i, j))+std::abs(B(i, j)))));
+      KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) <= tol*std::max(1.0, (double) (std::abs(A(i, j))+std::abs(B(i, j)))));
     }
   }
 }
@@ -95,7 +95,12 @@ static void AssertEqual(const CuMatrixBase<Real> &A,
   CuMatrix<Real> diff(A);
   diff.AddMat(-1.0, B);
   Real diff_norm = diff.FrobeniusNorm();
-  KALDI_ASSERT(diff_norm < tol * 0.5 * (Anorm + Bnorm));
+  if (diff_norm > tol * 0.5 * (Anorm + Bnorm)) {
+    KALDI_LOG << "A = " << A;
+    KALDI_LOG << "B = " << B;
+    KALDI_ERR << "Matrices differ, " << diff_norm << " > " << tol << " * 0.5 *  ( "
+              << Anorm << " + " << Bnorm << " ). ";
+  }
 }
   
 
@@ -117,7 +122,7 @@ template<typename Real>
 static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   for (MatrixIndexT i=0; i < A.Dim(); i++)
-    KALDI_ASSERT(std::abs(A(i)-B(i)) < tol);
+    KALDI_ASSERT(std::abs(A(i)-B(i)) <= tol);
 }
 
 
@@ -358,6 +363,44 @@ static void UnitTestCuMatrixCopyRows() {
         else O(i, j) = M(reorder[i], j);
     
     AssertEqual(N, O);
+  }
+}
+
+
+template<typename Real>
+void UnitTestCuMatrixCopyCross() {
+  for (int32 i = 0; i < 10; i++) {
+    int32 M = 100 + rand() % 255, N = 100 + rand() % 255;
+    if (rand() % 3 == 0) { M = 0; N = 0; }
+    CuMatrix<Real> mat1(M, N);
+    mat1.SetRandn();
+    if (i % 2 == 0) {
+      CuMatrix<float> mat2(M, N);
+      mat2.CopyFromMat(mat1);
+      CuMatrix<Real> mat3(M, N);
+      mat3.CopyFromMat(mat2);
+      AssertEqual(mat1, mat3);
+    } else {
+      CuMatrix<float> mat2(N, M);
+      mat2.CopyFromMat(mat1, kTrans);
+      CuMatrix<Real> mat3(M, N);
+      mat3.CopyFromMat(mat2, kTrans);
+      AssertEqual(mat1, mat3);
+    }
+  }
+}
+
+template<typename Real> void UnitTestCuMatrixCopyCross2() {
+  for (int32 i = 0; i < 10; i++) {
+    int32 M = 100 + rand() % 255, N = 100 + rand() % 255;
+    if (rand() % 3 == 0) { M = 0; N = 0; }
+    CuMatrix<Real> mat1(M, N);
+    mat1.SetRandn();
+    Matrix<float> mat2(M, N);
+    mat2.CopyFromMat(mat1);
+    CuMatrix<Real> mat3(M, N);
+    mat3.CopyFromMat(mat2);
+    AssertEqual(mat1, mat3);
   }
 }
 
@@ -1399,6 +1442,8 @@ static void UnitTestCuMatrixSetRandUniform() {
 
 template<typename Real> void CudaMatrixUnitTest() {
   //test CuMatrix<Real> methods by cross-check with Matrix
+  UnitTestCuMatrixCopyCross<Real>();
+  UnitTestCuMatrixCopyCross2<Real>();
   UnitTestCuMatrixApplyLog<Real>();
   UnitTestCuMatrixSetRandn<Real>();
   UnitTestCuMatrixSetRandUniform<Real>();

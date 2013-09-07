@@ -193,81 +193,32 @@ static void _copy_from_tp(Real* A, const OtherReal* B, MatrixDim dmat) {
 }
 
 
-
+// for this kernel, following the newer pattern, the x-dim is the row-index, the
+// y-dim is the col-index.
 template<typename Real, typename OtherReal>
 __global__
 static void _copy_from_mat(Real* mat_out, const OtherReal* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda index_in = i + j * d_in.stride;
-  int32_cuda index_out = i + j * d_out.stride;
-  if ( i < d_in.cols && j < d_in.rows) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // row-index
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; // col-index.
+  int32_cuda index_out = j + i * d_out.stride;
+  int32_cuda index_in = j + i * d_in.stride;
+  if (i < d_out.rows && j < d_out.cols)
     mat_out[index_out] = static_cast<Real>(mat_in[index_in]);
-  }
 }
 
+
+
+// for this kernel, the x-dim is the row-index at the output, the y-dim is the
+// col-index at the output
 template<typename Real, typename OtherReal>
 __global__
 static void _copy_from_mat_trans(Real* mat_out, const OtherReal* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y; // row-index of "mat_in", column-index of "mat_out"
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x; // column-index of "mat_in", row-index of "mat_out"
-  int32_cuda index_in = j + i * d_in.stride;
-  int32_cuda index_out = i + j * d_out.stride;
-  if (i < d_in.rows && j < d_in.cols) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // row-index out
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; // col-index out
+  int32_cuda index_out = j + i * d_out.stride;
+  int32_cuda index_in = i + j * d_in.stride;
+  if (i < d_out.rows && j < d_out.cols)
     mat_out[index_out] = static_cast<Real>(mat_in[index_in]);
-  }
-}
-
-
-template<typename Real>
-__global__
-static void _copy_from_mat_df(double* mat_out, const Real* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda index_in = i + j * d_in.stride;
-  int32_cuda index_out = i + j * d_out.stride;
-  if ( i < d_in.cols && j < d_in.rows) {
-    mat_out[index_out] = static_cast<double>(mat_in[index_in]);
-  }
-}
-
-
-template<typename Real>
-__global__
-static void _copy_from_mat_df_trans(double* mat_out, const Real* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda index_in = i + j * d_in.stride;
-  int32_cuda index_out = j + i * d_out.stride;
-  if ( i < d_in.cols && j < d_in.rows) {
-    mat_out[index_out] = static_cast<double>(mat_in[index_in]);
-  }
-}
-
-
-template<typename Real>
-__global__
-static void _copy_from_mat_fd(float* mat_out, const Real* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda index_in = i + j * d_in.stride;
-  int32_cuda index_out = i + j * d_out.stride;
-  if ( i < d_in.cols && j < d_in.rows) {
-    mat_out[index_out] = (float) mat_in[index_in];
-  }
-}
-
-
-template<typename Real>
-__global__
-static void _copy_from_mat_fd_trans(float* mat_out, const Real* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda index_in = i + j * d_in.stride;
-  int32_cuda index_out = j + i * d_out.stride;
-  if ( i < d_in.cols && j < d_in.rows) {
-    mat_out[index_out] = (float) mat_in[index_in];
-  }
 }
 
 
@@ -1641,18 +1592,6 @@ void cudaF_add_vec_vec(int Gr, int Bl, float alpha, float* v, const float* x, co
   _add_vec_vec<<<Gr,Bl>>>(alpha,v,x,y,beta,dim);
 }
 
-void cudaF_copy_col_from_mat(int Gr, int Bl, float* v, int col, const float* mat, MatrixDim dmat, int dim) {
-  _copy_col_from_mat<<<Gr,Bl>>>(v,col,mat,dmat,dim);
-}
-
-void cudaF_copy_col_from_mat_df(int Gr, int Bl, double* v, int col, const float* mat, MatrixDim dmat, int dim) {
-  _copy_col_from_mat_df<<<Gr,Bl>>>(v,col,mat,dmat,dim);
-}
-
-void cudaF_copy_col_from_mat_fd(int Gr, int Bl, float* v, int col, const float* mat, MatrixDim dmat, int dim) {
-  _copy_col_from_mat_fd<<<Gr,Bl>>>(v,col,mat,dmat,dim);
-}
-
 void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim, int inc) {
   _vec_sum<<<Gr,Bl>>>(v, value, dim, inc);
 }
@@ -1775,6 +1714,18 @@ void cudaF_copy_rows_from_vec(dim3 Gr, dim3 Bl, float *mat_out, MatrixDim d_out,
   _copy_rows_from_vec<<<Gr,Bl>>>(mat_out, d_out, v_in);
 }
 
+void cudaF_copy_col_from_mat(int Gr, int Bl, float* v, int col, const float* mat, MatrixDim dmat, int dim) {
+  _copy_col_from_mat<<<Gr,Bl>>>(v,col,mat,dmat,dim);
+}
+
+void cudaF_copy_col_from_mat_df(int Gr, int Bl, double* v, int col, const float* mat, MatrixDim dmat, int dim) {
+  _copy_col_from_mat_df<<<Gr,Bl>>>(v,col,mat,dmat,dim);
+}
+
+void cudaF_copy_col_from_mat_fd(int Gr, int Bl, float* v, int col, const float* mat, MatrixDim dmat, int dim) {
+  _copy_col_from_mat_fd<<<Gr,Bl>>>(v,col,mat,dmat,dim);
+}
+
 
 
 
@@ -1806,23 +1757,6 @@ void cudaDF_copy_from_tp(int Gr, int Bl, double* A, const float* B, MatrixDim dm
   _copy_from_tp<<<Gr,Bl>>>(A,B,dmat);
 }
 
-
-void cudaD_copy_from_mat_fd(dim3 Gr, dim3 Bl, float* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  _copy_from_mat_fd<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-}
-
-void cudaD_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  _copy_from_mat_fd_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-}
-
-void cudaD_copy_from_mat_df(dim3 Gr, dim3 Bl, double* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  _copy_from_mat_df<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-}
-
-
-void cudaD_copy_from_mat_df_trans(dim3 Gr, dim3 Bl, double* mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  _copy_from_mat_df_trans<<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
-}
 
 void cudaD_copy_col_from_vec(int Gr, int Bl, double* mat, const double* v, int col, MatrixDim d) {
   _copy_col_from_vec<<<Gr,Bl>>>(mat,v,col,d);

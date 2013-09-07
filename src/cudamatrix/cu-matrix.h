@@ -110,15 +110,12 @@ class CuMatrixBase {
   /// Get size of matrix in bytes
   MatrixIndexT SizeInBytes() const { return num_rows_*stride_*sizeof(Real); }
   
-  // Copy function.  These do not resize.
-  void CopyFromMat(const CuMatrixBase<Real> &src,
-                   MatrixTransposeType trans = kNoTrans);
-  
-  void CopyFromMat(const MatrixBase<Real> &src,
-                   MatrixTransposeType trans = kNoTrans);
-
+  // Copy functions.  These do not resize.
   template<typename OtherReal>
   void CopyFromMat(const MatrixBase<OtherReal> &src,
+                   MatrixTransposeType trans = kNoTrans);
+
+  void CopyFromMat(const MatrixBase<Real> &src,
                    MatrixTransposeType trans = kNoTrans);
   
   void CopyFromSp(const CuSpMatrix<Real> &M);
