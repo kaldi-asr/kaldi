@@ -27,56 +27,47 @@ namespace kaldi {
 
 template<typename Real> 
 void CuRand<Real>::SeedGpu(MatrixIndexT state_size) {
-  if(NULL != host_) delete[] host_; 
-  host_ = new uint32[state_size]; 
-  host_size_ = state_size;
-
-  SeedBuffer(&z1_, state_size);
-  SeedBuffer(&z2_, state_size);
-  SeedBuffer(&z3_, state_size);
-  SeedBuffer(&z4_, state_size);
+  KALDI_ASSERT(state_size >= 0);
   state_size_ = state_size;
-
-  delete[] host_;
-  host_ = NULL;
-  host_size_ = 0;
+  SeedBuffer(state_size, &z1_);
+  SeedBuffer(state_size, &z2_);
+  SeedBuffer(state_size, &z3_);
+  SeedBuffer(state_size, &z4_);
 }
 
 
-
 template<typename Real> 
-void CuRand<Real>::SeedBuffer(uint32 **tgt, MatrixIndexT state_size) {
-  // generate random state
-  for(MatrixIndexT i = 0; i < host_size_; i++) {
-    host_[i] = RandInt(128, RAND_MAX);
-  }
-  #if HAVE_CUDA == 1
-  // push it to the GPU
+void CuRand<Real>::SeedBuffer(MatrixIndexT state_size, uint32 **tgt) {
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    int32 state_size_in_bytes = state_size*sizeof(uint32);
-    // resize the GPU buffer
-    if (state_size_ != state_size) {
-      cudaFree(*tgt);
-      cudaMalloc((void**)tgt, state_size_in_bytes);
+    if (*tgt != NULL) {
+      CU_SAFE_CALL(cudaFree(*tgt));
+      *tgt = NULL;
     }
-    // copy the values
-    cudaMemcpy(*tgt, host_, state_size_in_bytes, cudaMemcpyHostToDevice);
-  } else
-  #endif
-  { // use back-off host buffer
-    if (state_size_ != state_size) {
-      delete[] (*tgt);
-      *tgt = new uint32[state_size];
-    }
-    int32 state_size_in_bytes = state_size*sizeof(uint32);
-    memcpy(*tgt, host_, state_size_in_bytes);
+    if (state_size == 0) return; // Nothing to do.
+    std::vector<uint32> temp_rand_data(state_size);
+    for(MatrixIndexT i = 0; i < state_size; i++)
+      temp_rand_data[i] = RandInt(128, RAND_MAX);
+    int32 state_size_in_bytes = state_size * sizeof(uint32);
+    CU_SAFE_CALL(cudaMalloc((void**)tgt, state_size_in_bytes));
+    CU_SAFE_CALL(cudaMemcpy(*tgt, &(temp_rand_data[0]),
+                            state_size_in_bytes, cudaMemcpyHostToDevice));
   }
+#endif
+}
+
+template<class Real>
+CuRand<Real>::~CuRand() {
+  SeedBuffer(0, &z1_);
+  SeedBuffer(0, &z2_);
+  SeedBuffer(0, &z3_);
+  SeedBuffer(0, &z4_);
 }
 
 
 
 template<typename Real> void CuRand<Real>::RandUniform(CuMatrixBase<Real> *tgt) {
-  #if HAVE_CUDA == 1 
+#if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
@@ -91,7 +82,7 @@ template<typename Real> void CuRand<Real>::RandUniform(CuMatrixBase<Real> *tgt) 
   
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
-  #endif
+#endif
   {
     for(int32 r=0; r<tgt->NumRows(); r++) {
       for(int32 c=0; c<tgt->num_cols_; c++) {
@@ -104,7 +95,7 @@ template<typename Real> void CuRand<Real>::RandUniform(CuMatrixBase<Real> *tgt) 
 
 
 template<typename Real> void CuRand<Real>::RandGaussian(CuMatrixBase<Real> *tgt) {
-  #if HAVE_CUDA == 1 
+#if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
@@ -119,7 +110,7 @@ template<typename Real> void CuRand<Real>::RandGaussian(CuMatrixBase<Real> *tgt)
   
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
-  #endif
+#endif
   {
     for(int32 r=0; r<tgt->NumRows(); r++) {
       for(int32 c=0; c<tgt->num_cols_; c++) {
@@ -155,7 +146,7 @@ template<typename Real> void CuRand<Real>::RandGaussian(CuVectorBase<Real> *tgt)
 
 
 template<typename Real> void CuRand<Real>::BinarizeProbs(const CuMatrix<Real> &probs, CuMatrix<Real> *states) {
-  #if HAVE_CUDA == 1 
+#if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
 
@@ -180,7 +171,7 @@ template<typename Real> void CuRand<Real>::BinarizeProbs(const CuMatrix<Real> &p
   
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
-  #endif
+#endif
   {
     for(int32 r=0; r<states->num_rows_; r++) {
       for(int32 c=0; c<states->num_cols_; c++) {

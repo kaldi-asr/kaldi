@@ -22,12 +22,6 @@
 namespace kaldi {
 namespace nnet2 {
 
-bool IsRandom(const Component &component) {
-  return (dynamic_cast<const DropoutComponent*>(&component) != NULL ||
-          dynamic_cast<const InformationBottleneckComponent*>(&component) != NULL ||
-          dynamic_cast<const AdditiveNoiseComponent*>(&component) != NULL);
-}
-
 
 void UnitTestGenericComponentInternal(const Component &component) {
   int32 input_dim = component.InputDim(),
@@ -44,9 +38,13 @@ void UnitTestGenericComponentInternal(const Component &component) {
   input.SetRandn();
   
   int32 rand_seed = rand();
-  
-  if (IsRandom(component))
-    srand(rand_seed); // in case e.g. dropout being used.
+
+  RandomComponent *rand_component =
+      const_cast<RandomComponent*>(dynamic_cast<const RandomComponent*>(&component));
+  if (rand_component != NULL) {
+    srand(rand_seed);
+    rand_component->ResetGenerator();
+  }
   component.Propagate(input, 1, &output);
   {
     bool binary = (rand() % 2 == 0);
@@ -88,18 +86,30 @@ void UnitTestGenericComponentInternal(const Component &component) {
     KALDI_LOG << "Comparing feature gradients " << num_tries << " times.";
     for (int32 i = 0; i < num_tries; i++) {
       CuMatrix<BaseFloat> perturbed_input(input.NumRows(), input.NumCols());
-      if (IsRandom(component))
-        srand(i);
+      {
+        RandomComponent *rand_component =
+            const_cast<RandomComponent*>(dynamic_cast<const RandomComponent*>(&component));
+        if (rand_component != NULL) {
+          srand(rand_seed);
+          rand_component->ResetGenerator();
+        }
+      }        
       perturbed_input.SetRandn();
-      perturbed_input.Scale(1.0e-04); // scale by a small amount so it's like a delta.
+      perturbed_input.Scale(2.0e-04); // scale by a small amount so it's like a delta.
       BaseFloat predicted_difference = TraceMatMat(perturbed_input,
                                                    input_deriv, kTrans);
       perturbed_input.AddMat(1.0, input); // now it's the input + a delta.
       { // Compute objf with perturbed input and make sure it matches
         // prediction.
         CuMatrix<BaseFloat> perturbed_output(output.NumRows(), output.NumCols());
-        if (IsRandom(component))
-          srand(rand_seed);
+        {
+          RandomComponent *rand_component =
+              const_cast<RandomComponent*>(dynamic_cast<const RandomComponent*>(&component));
+          if (rand_component != NULL) {
+            srand(rand_seed);
+            rand_component->ResetGenerator();
+          }
+        }        
         component.Propagate(perturbed_input, 1, &perturbed_output);
         CuVector<BaseFloat> perturbed_output_objfs(num_egs);
         perturbed_output_objfs.AddMatVec(1.0, perturbed_output, kNoTrans,
@@ -159,8 +169,14 @@ void UnitTestGenericComponentInternal(const Component &component) {
       BaseFloat objf_perturbed;
       {
         CuMatrix<BaseFloat> output_perturbed; // (num_egs, output_dim);
-        if (IsRandom(component))
-          srand(rand_seed);
+        {
+          RandomComponent *rand_component =
+              const_cast<RandomComponent*>(dynamic_cast<const RandomComponent*>(&component));
+          if (rand_component != NULL) {
+            srand(rand_seed);
+            rand_component->ResetGenerator();
+          }
+        }        
         perturbed_ucomponent->Propagate(input, 1, &output_perturbed);
         CuVector<BaseFloat> output_objfs_perturbed(num_egs);
         output_objfs_perturbed.AddMatVec(1.0, output_perturbed,
@@ -716,10 +732,9 @@ int main() {
       UnitTestFixedAffineComponent();
       UnitTestAffineComponentPreconditioned();
       UnitTestAffineComponentModified();
-      // TEMP [need to fix these, w.r.t. CUDA]
-      // UnitTestDropoutComponent();
-      // UnitTestAdditiveNoiseComponent();
-      // UnitTestInformationBottleneckComponent();
+      UnitTestDropoutComponent();
+      UnitTestAdditiveNoiseComponent();
+      UnitTestInformationBottleneckComponent();
       UnitTestParsing();
       if (loop == 0)
         KALDI_LOG << "Tests without GPU use succeeded.\n";

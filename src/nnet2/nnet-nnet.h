@@ -273,6 +273,10 @@ class Nnet {
   void Check() const; // Consistency check.
 
 
+  void ResetGenerators(); // resets random-number generators for all
+  // random components.  You must also set srand() for this to be
+  // effective.
+
   // The following three functions are used for vectorizing
   // the parameters-- used, for example, in L-BFGS.
   virtual int32 GetParameterDim() const;

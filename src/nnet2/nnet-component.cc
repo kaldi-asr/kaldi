@@ -736,7 +736,6 @@ void SoftmaxComponent::Backprop(const CuMatrixBase<BaseFloat> &, // in_value
     d.AddVec(-pT_e, p); // d_i -= (p^T e) p_i
   }
 #endif
-  KALDI_LOG << "D is " << D;
   
   // The SoftmaxComponent does not have any real trainable parameters, but
   // during the backprop we store some statistics on the average counts;
@@ -1509,8 +1508,9 @@ void AffineComponentPreconditioned::Update(
       in_value);
 
   // Add the 1.0 at the end of each row "in_value_temp"
-  for (int32 i = 0; i < in_value.NumRows(); i++)
-    in_value_temp(i, in_value.NumCols()) = 1.0;
+  CuVector<BaseFloat> ones(in_value.NumRows(), kUndefined);
+  ones.Set(1.0);
+  in_value_temp.CopyColFromVec(ones, in_value.NumCols());
   
   CuMatrix<BaseFloat> in_value_precon(in_value_temp.NumRows(),
                                     in_value_temp.NumCols(), kUndefined),
@@ -3512,18 +3512,36 @@ void DropoutComponent::Propagate(
   KALDI_ASSERT(in.NumCols() == this->InputDim());
   out->Resize(in.NumRows(), in.NumCols());
 
-  KALDI_ASSERT(dropout_proportion_ < 1.0 && dropout_proportion_ >= 0.0);
-  int32 dim = InputDim(), num_high = static_cast<int32>(dim * dropout_proportion_);
-  KALDI_ASSERT(num_high > 0);
+  BaseFloat dp = dropout_proportion_;
+  KALDI_ASSERT(dp < 1.0 && dp >= 0.0);
+  KALDI_ASSERT(dropout_scale_ <= 1.0 && dropout_scale_ >= 0.0);
 
-  int32 num_low = dim - num_high;
   BaseFloat low_scale = dropout_scale_,
-      high_scale = (dim - low_scale * num_low) / num_high,
-      average = (num_low * low_scale + num_high * high_scale) / dim;
+      high_scale = (1.0 - (dp * low_scale)) / (1.0 - dp),
+      average = (low_scale * dp) +
+                (high_scale * (1.0 - dp));
   KALDI_ASSERT(fabs(average - 1.0) < 0.01);
-  
 
-  CuVector<BaseFloat> scales(dim);
+  out->Resize(in.NumRows(), in.NumCols(), kUndefined);
+
+  // This const_cast is only safe assuming you don't attempt
+  // to use multi-threaded code with the GPU.
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
+
+  
+  out->Add(-dp); // now, a proportion "dp" will be <0.0
+  out->ApplyHeaviside(); // apply the function (x>0?1:0).  Now, a proportion "dp" will
+                         // be zero and (1-dp) will be 1.0.
+  if ((high_scale - low_scale) != 1.0)
+    out->Scale(high_scale - low_scale); // now, "dp" are 0 and (1-dp) are "high_scale-low_scale".
+  if (low_scale != 0.0)
+    out->Add(low_scale); // now "dp" equale "low_scale" and (1.0-dp) equal "high_scale".
+
+  out->MulElements(in);
+  
+  /*
+    old code, before it was CUDA-ified:
+  Vector<BaseFloat> scales(dim);
   BaseFloat *begin = scales.Data(), *mid = begin + num_low,
       *end = begin + dim;
   std::fill(begin, mid, low_scale);
@@ -3535,7 +3553,8 @@ void DropoutComponent::Propagate(
     std::random_shuffle(begin, end); // get new random ordering of kept components.
     // depends on rand().
     out_row.MulElements(scales);
-  }
+    }*/
+
 }
 
 void DropoutComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
@@ -3610,7 +3629,7 @@ void AdditiveNoiseComponent::Propagate(
   KALDI_ASSERT(in.NumCols() == this->InputDim());
   *out = in;
   CuMatrix<BaseFloat> rand(in.NumRows(), in.NumCols());
-  rand.SetRandn();
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&rand);
   out->AddMat(stddev_, rand);
 }
 
@@ -3678,7 +3697,7 @@ void InformationBottleneckComponent::Propagate(
 
   *out = in;
   CuMatrix<BaseFloat> rand(in.NumRows(), in.NumCols());
-  rand.SetRandn();
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&rand);
   int32 dim = InputDim();
   
   for (int32 t = 0; t < in.NumRows(); t++) {

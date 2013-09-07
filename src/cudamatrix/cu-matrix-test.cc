@@ -502,25 +502,27 @@ static void UnitTestCuMatrixMulColsVec() {
 
 template<typename Real> 
 static void UnitTestCuMatrixMulRowsVec() {
-  Matrix<Real> Hm(100,99);
-  Vector<Real> Hv(100);
-  RandGaussMatrix(&Hm);
-  InitRand(&Hv);
+  for (int32 i = 0; i < 5; i++) {
+    int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+    Matrix<Real> Hm(dimM, dimN);
+    Vector<Real> Hv(dimM);
+    RandGaussMatrix(&Hm);
+    InitRand(&Hv);
 
-  CuMatrix<Real> Dm(100,99);
-  CuVector<Real> Dv(100);
-  Dm.CopyFromMat(Hm);
-  Dv.CopyFromVec(Hv);
+    CuMatrix<Real> Dm(dimM, dimN);
+    CuVector<Real> Dv(dimM);
+    Dm.CopyFromMat(Hm);
+    Dv.CopyFromVec(Hv);
+    
+    Dm.MulRowsVec(Dv);
+    Hm.MulRowsVec(Hv);
+    
+    Matrix<Real> Hm2(dimM, dimN);
+    Dm.CopyToMat(&Hm2);
 
-  Dm.MulRowsVec(Dv);
-  Hm.MulRowsVec(Hv);
-
-  Matrix<Real> Hm2(100,99);
-  Dm.CopyToMat(&Hm2);
-
-  AssertEqual(Hm,Hm2);
+    AssertEqual(Hm,Hm2);
+  }
 }
-
 
 template<typename Real> static void UnitTestCuMatrixAddDiagVecMat() {
   for (int p = 0; p < 4; p++) {
@@ -1312,6 +1314,17 @@ static int32 DoubleFactorial(int32 i) {
 
 template <typename Real>
 static void UnitTestCuMatrixSetRandn() {
+
+  { // First test consistency when called twice.
+    int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+    Matrix<Real> M(dimM, dimN), N(dimM, dimN);
+    srand(104);
+    M.SetRandn();
+    srand(104);
+    N.SetRandn();
+    AssertEqual(M, N);
+  }
+    
   for (MatrixIndexT i = 0; i < 5; i++) {
     MatrixIndexT rows = 100 + rand() % 50, cols = 100 + rand() % 50;
     CuMatrix<Real> M(rows, cols);

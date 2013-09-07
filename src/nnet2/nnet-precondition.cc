@@ -63,6 +63,7 @@ void PreconditionDirections(const CuMatrixBase<BaseFloat> &R,
     Q.AddSpMat(1.0, S, R, kNoTrans, 0.0);
   }
 
+#if 0  // Old code before it was optimized for CUDA:
   for (int32 n = 0; n < N; n++) {
     CuSubVector<BaseFloat> r(R, n), q(Q, n);
     BaseFloat gamma = VecVec(r, q), // gamma_n = r_n^T q_n.
@@ -75,6 +76,23 @@ void PreconditionDirections(const CuMatrixBase<BaseFloat> &R,
     // scaling below will be output as P.
     q.Scale(beta);
   }
+#else
+  CuVector<BaseFloat> gamma(N);
+  gamma.AddDiagMatMat(1.0, R, kNoTrans, Q, kTrans, 0.0);
+  // at this point, gamma(i) equals the i'th row of R dotted with
+  // the i'th row of Q.
+  Vector<BaseFloat> cpu_gamma(gamma), cpu_beta(N, kUndefined);
+  for (int32 n = 0; n < N; n++) {
+    BaseFloat this_gamma = cpu_gamma(n),
+        this_beta = 1.0 + this_gamma / (N - 1 - this_gamma);
+    if (!(this_gamma >= 0.0 && this_beta > 0.0))
+      KALDI_ERR << "Bad values encountered in preconditioning: gamma = "
+                << this_gamma << ", beta = " << this_beta;
+    cpu_beta(n) = this_beta;
+  }
+  CuVector<BaseFloat> beta(cpu_beta);
+  P->MulRowsVec(beta);
+#endif
 }
 
 

@@ -125,6 +125,9 @@ double NnetUpdater::ComputeObjfAndDeriv(
   deriv->Resize(num_chunks_, nnet_.OutputDim()); // sets to zero.
   const CuMatrix<BaseFloat> &output(forward_data_[num_components]);
   KALDI_ASSERT(SameDim(output, *deriv));
+
+  // Note: we need to CUDA-ify this block of code somehow, it is
+  // becoming a limiting factor.
   for (int32 m = 0; m < num_chunks_; m++) {
     for (size_t i = 0; i < data[m].labels.size(); i++) {
       int32 label = data[m].labels[i].first;
@@ -183,24 +186,29 @@ void NnetUpdater::FormatInput(const std::vector<NnetTrainingExample> &data) {
   num_chunks_ = data.size();
   
   forward_data_.resize(nnet_.NumComponents() + 1);
-  forward_data_[0].Resize(num_splice * num_chunks_,
-                          tot_dim);
+
+  // First copy to a single matrix on the CPU, so we can copy to
+  // GPU with a single copy command.
+  Matrix<BaseFloat> temp_forward_data(num_splice * num_chunks_,
+                                      tot_dim);
+  
   for (int32 chunk = 0; chunk < num_chunks_; chunk++) {
-    CuSubMatrix<BaseFloat> dest(forward_data_[0],
-                                chunk * num_splice, num_splice,
-                                0, feat_dim);
+    SubMatrix<BaseFloat> dest(temp_forward_data,
+                              chunk * num_splice, num_splice,
+                              0, feat_dim);
     
     SubMatrix<BaseFloat> src(data[chunk].input_frames,
                              ignore_frames, num_splice, 0, feat_dim);
                              
     dest.CopyFromMat(src);
     if (spk_dim != 0) {
-      CuSubMatrix<BaseFloat> spk_dest(forward_data_[0],
-                                      chunk * num_splice, num_splice,
-                                      feat_dim, spk_dim);
+      SubMatrix<BaseFloat> spk_dest(temp_forward_data,
+                                    chunk * num_splice, num_splice,
+                                    feat_dim, spk_dim);
       spk_dest.CopyRowsFromVec(data[chunk].spk_info);
     }
   }
+  forward_data_[0].Swap(&temp_forward_data); // Copy to GPU, if being used.
 }
 
 BaseFloat TotalNnetTrainingWeight(const std::vector<NnetTrainingExample> &egs) {

@@ -730,6 +730,18 @@ class AffineComponentModified: public AffineComponent {
 };
 
 
+class RandomComponent: public Component {
+ public:
+  // This function is required in testing code and in other places we need
+  // consistency in the random number generation (e.g. when optimizing
+  // validation-set performance), but check where else we call srand().  You'll
+  // need to call srand as well as making this call.  
+  void ResetGenerator() { random_generator_.SeedGpu(0); }
+ protected:
+  CuRand<BaseFloat> random_generator_;
+};
+
+
 /// This type of component is to be used in training.  It adds Gaussian noise to
 /// what passes through it, to limit the capacity of the channel.  It differs
 /// from AdditiveNoiseComponent in that the variance of the noise is proportional
@@ -737,7 +749,7 @@ class AffineComponentModified: public AffineComponent {
 /// "non-informative" inputs to become close to zero, so that the noise on the
 /// informative inputs becomes larger, and will hence help us to identify these
 /// non-informative inputs.
-class InformationBottleneckComponent: public Component {
+class InformationBottleneckComponent: public RandomComponent {
  public:
   void Init(int32 dim, BaseFloat noise_stddev);
   InformationBottleneckComponent(int32 dim, BaseFloat noise_proportion) {
@@ -1359,8 +1371,14 @@ class FixedAffineComponent: public Component {
 /// the inputs and multiplies the other half by two.
 /// Typically you would use this in training but not in
 /// test or when computing validation-set objective functions.
-class DropoutComponent: public Component {
+class DropoutComponent: public RandomComponent {
  public:
+  /// dropout-proportion is the proportion that is dropped out,
+  /// e.g. if 0.1, we set 10% to a low value.  [note, in
+  /// some older code it was interpreted as the value not dropped
+  /// out, so be careful.]  The low scale-value
+  /// is equal to dropout_scale.  The high scale-value is chosen
+  /// such that the expected scale-value is one.
   void Init(int32 dim,
             BaseFloat dropout_proportion = 0.5,
             BaseFloat dropout_scale = 0.0);
@@ -1401,7 +1419,7 @@ class DropoutComponent: public Component {
 
 /// This is a bit similar to dropout but adding (not multiplying) Gaussian
 /// noise with a given standard deviation.
-class AdditiveNoiseComponent: public Component {
+class AdditiveNoiseComponent: public RandomComponent {
  public:
   void Init(int32 dim, BaseFloat noise_stddev);
   AdditiveNoiseComponent(int32 dim, BaseFloat stddev) { Init(dim, stddev); }

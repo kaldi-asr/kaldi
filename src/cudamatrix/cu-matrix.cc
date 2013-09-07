@@ -1252,8 +1252,8 @@ void CuMatrixBase<Real>::InvertPSD() {
     //CuMatrix<Real> L1(dim,dim);
     //L1.CopyFromSp(L);
     //L1.SetZeroUpperDiag();
-    Matrix<Real> L_test(dim,dim);
-    temp.CopyToMat(&L_test);
+    //Matrix<Real> L_test(dim,dim);
+    //temp.CopyToMat(&L_test);
     this->AddMatMat(1, temp, kTrans, temp, kNoTrans, 0);
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -1335,16 +1335,10 @@ void CuMatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &v) {
                                   cudaMemcpyDeviceToDevice));
       }
     } else if (v.Dim() == num_cols_) {
-
-      /*MatrixIndexT src_pitch = 0;
-      CU_SAFE_CALL(cudaMemcpy2D(data_, stride_ * sizeof(Real), v.Data(),
-                                src_pitch, num_cols_*sizeof(Real),
-                                num_rows_,
-                                cudaMemcpyDeviceToDevice)); */
-      const Real *v_data = v.Data();
-      // We could definitely improve the following.
-      for (MatrixIndexT r = 0; r < num_rows_; r++)
-      cudaMemcpy(RowData(r), v_data, sizeof(Real)*num_cols_, cudaMemcpyDeviceToDevice);
+      dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+      // this is a newer kernel where (x,y) dims represent (rows,cols).
+      dim3 dimGrid(n_blocks(NumRows(),CU2DBLOCK), n_blocks(NumCols(),CU2DBLOCK));
+      cuda_copy_rows_from_vec(dimGrid, dimBlock, data_, this->Dim(), v.Data());
     } else {
       KALDI_ERR << "Wrong sized arguments";
     }

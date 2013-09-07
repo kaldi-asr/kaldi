@@ -542,6 +542,16 @@ void Nnet::Vectorize(VectorBase<BaseFloat> *params) const {
   KALDI_ASSERT(offset == GetParameterDim());
 }
 
+void Nnet::ResetGenerators() { // resets random-number generators for all random
+                               // components.
+  for (int32 c = 0; c < NumComponents(); c++) {
+    RandomComponent *rc = dynamic_cast<RandomComponent*>(
+        &(GetComponent(c)));
+    if (rc != NULL)
+      rc->ResetGenerator();
+  }
+}
+
 void Nnet::UnVectorize(const VectorBase<BaseFloat> &params) {
   int32 offset = 0;
   for (int32 c = 0; c < NumComponents(); c++) {

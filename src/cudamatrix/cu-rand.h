@@ -31,13 +31,10 @@ template<typename Real>
 class CuRand {
  public:
 
-  CuRand()
-   : z1_(NULL), z2_(NULL), z3_(NULL), z4_(NULL), state_size_(0),
-     host_(NULL), host_size_(0)
-  { }
+  CuRand(): z1_(NULL), z2_(NULL), z3_(NULL), z4_(NULL), state_size_(0) { }
 
-  ~CuRand() { }
-
+  ~CuRand();
+  
   /// on demand seeding of all the buffers
   void SeedGpu(MatrixIndexT state_size);
 
@@ -53,8 +50,9 @@ class CuRand {
   void AddGaussNoise(CuMatrix<Real> *tgt, Real gscale = 1.0);
 
  private:
-  /// seed one buffer
-  void SeedBuffer(uint32* *tgt, MatrixIndexT state_size);
+  /// seed one buffer on the GPU.  If state_size == 0, just frees any
+  /// existing buffers.
+  void SeedBuffer(MatrixIndexT state_size, uint32 **tgt);
    
  private:
 
@@ -69,18 +67,10 @@ class CuRand {
   /// Inner state of the ``grid-like'' random number generator
   uint32 *z1_, *z2_, *z3_, *z4_; 
   int32 state_size_; ///< size of the buffers
-
-  uint32 *host_; ///< host bufer, used for initializing
-  int32 host_size_; ///< size of the host buffer
-
+  
   CuMatrix<Real> tmp_; ///< auxiliary matrix
 };
 
-/*
-template<typename Real> void CuRand<Real>::SeedBuffer(uint32* *tgt, MatrixIndexT state_size) {KALDI_ERR << __func__ << " Not implemented!"; }
-template<> inline void CuRand<float>::SeedBuffer(uint32* *tgt, MatrixIndexT state_size);
-template<> inline void CuRand<double>::SeedBuffer(uint32* *tgt, MatrixIndexT state_size);
-*/
 
 } // namsepace
 
