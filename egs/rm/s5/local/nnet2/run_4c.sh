@@ -14,11 +14,11 @@
      --hidden-layer-dim 375 \
      data/train data/lang exp/tri3b_ali exp/nnet4c
 
-   steps/decode_nnet_cpu.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+   steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
      --transform-dir exp/tri3b/decode \
      exp/tri3b/graph data/test exp/nnet4c/decode 
 
-   steps/decode_nnet_cpu.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+   steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
      --transform-dir exp/tri3b/decode_ug \
      exp/tri3b/graph_ug data/test exp/nnet4c/decode_ug
 
