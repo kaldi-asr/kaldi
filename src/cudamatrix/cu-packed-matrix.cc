@@ -131,7 +131,8 @@ template<typename Real>
 void CuPackedMatrix<Real>::CopyFromPacked(const CuPackedMatrix<Real> &src) {
   KALDI_ASSERT(src.NumRows() == num_rows_);
 #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return; // Nothing to do.
     Timer tim;
     size_t nr = static_cast<size_t>(num_rows_),
         num_bytes = ((nr * (nr+1)) / 2) * sizeof(Real);
@@ -144,7 +145,6 @@ void CuPackedMatrix<Real>::CopyFromPacked(const CuPackedMatrix<Real> &src) {
 #endif
   {
     Mat().CopyFromPacked(src.Mat());
-    //memcpy(data_, src.Data(), SizeInBytes());
   }
 }
 
@@ -152,7 +152,8 @@ template<typename Real>
 void CuPackedMatrix<Real>::CopyFromPacked(const PackedMatrix<Real> &src) {
   KALDI_ASSERT(src.NumRows() == num_rows_);
 #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return; // Nothing to do.
     Timer tim;
     size_t nr = static_cast<size_t>(num_rows_),
         num_bytes = ((nr * (nr+1)) / 2) * sizeof(Real);
@@ -170,11 +171,11 @@ void CuPackedMatrix<Real>::CopyFromPacked(const PackedMatrix<Real> &src) {
 
 template<typename Real>
 void CuPackedMatrix<Real>::CopyToPacked(PackedMatrix<Real> *dst) const {
-  KALDI_ASSERT(dst->NumRows() == NumRows() && dst->NumCols() == NumCols());
+  KALDI_ASSERT(dst->NumRows() == NumRows());
   
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
-
+    if (num_rows_ == 0) return; // Nothing to do.
     Timer tim;
     size_t nr = static_cast<size_t>(num_rows_),
       num_bytes = ((nr * (nr+1)) / 2) * sizeof(Real);

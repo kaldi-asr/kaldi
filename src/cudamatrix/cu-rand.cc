@@ -84,11 +84,7 @@ template<typename Real> void CuRand<Real>::RandUniform(CuMatrixBase<Real> *tgt) 
   } else
 #endif
   {
-    for(int32 r=0; r<tgt->NumRows(); r++) {
-      for(int32 c=0; c<tgt->num_cols_; c++) {
-        tgt->Mat()(r, c) = kaldi::RandUniform();
-      }
-    }
+    tgt->SetRandUniform();
   }
 }
 
@@ -112,11 +108,7 @@ template<typename Real> void CuRand<Real>::RandGaussian(CuMatrixBase<Real> *tgt)
   } else
 #endif
   {
-    for(int32 r=0; r<tgt->NumRows(); r++) {
-      for(int32 c=0; c<tgt->num_cols_; c++) {
-        tgt->Mat()(r, c) = RandGauss();
-      }
-    }
+    tgt->SetRandn();
   }
 }
 

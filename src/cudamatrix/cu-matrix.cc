@@ -156,6 +156,7 @@ void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<Real> &src,
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) {
     if (trans == kNoTrans) {
+      if (src.num_rows_ == 0) return; // Nothing to do.
       KALDI_ASSERT(src.NumRows() == num_rows_ && src.NumCols() == num_cols_);
       Timer tim;
       
@@ -184,6 +185,7 @@ void CuMatrixBase<double>::CopyFromMat(const CuMatrixBase<float> &M,
                                        MatrixTransposeType Trans) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (M.num_rows_ == 0) return; // Nothing to do.    
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(M.NumCols(), CU2DBLOCK), n_blocks(M.NumRows(), CU2DBLOCK));
@@ -209,6 +211,7 @@ void CuMatrixBase<double>::CopyFromMat(const CuMatrixBase<double> &M,
                                        MatrixTransposeType Trans) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (M.num_rows_ == 0) return; // Nothing to do.    
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(M.NumCols(), CU2DBLOCK), n_blocks(M.NumRows(), CU2DBLOCK));
@@ -235,6 +238,7 @@ void CuMatrixBase<float>::CopyFromMat(const CuMatrixBase<double> &M,
                                       MatrixTransposeType Trans) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (M.num_rows_ == 0) return; // Nothing to do. 
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(M.NumCols(), CU2DBLOCK), n_blocks(M.NumRows(), CU2DBLOCK));
