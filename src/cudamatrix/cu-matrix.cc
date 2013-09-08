@@ -30,7 +30,7 @@
 #include "cudamatrix/cu-kernels.h"
 #include "cudamatrix/cu-randkernels.h"
 #include "cudamatrix/cu-choleskykernels.h"
-#include "cudamatrix/cu-stlvector.h"
+#include "cudamatrix/cu-array.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-sp-matrix.h"
 #include "cudamatrix/cu-tp-matrix.h"
@@ -876,7 +876,7 @@ void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
 #if 1
     // enable 'tree-reduce' functions, 
     //find maximum in each row (tree reduction)
-    CuStlVector<int32> max_id;
+    CuArray<int32> max_id;
     src.FindRowMaxId(&max_id); 
     //in each row subtract maximum, apply exp (grid kernel)
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -984,7 +984,7 @@ void CuMatrixBase<Real>::DiffTanh(const CuMatrixBase<Real> &value,
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::FindRowMaxId(CuStlVector<int32> *id) const {
+void CuMatrixBase<Real>::FindRowMaxId(CuArray<int32> *id) const {
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -1038,13 +1038,13 @@ void CuMatrixBase<Real>::FindRowMaxId(CuStlVector<int32> *id) const {
           max_id = c;
         }
       }
-      id->Vec()[r] = max_id;
+      id->Data()[r] = max_id;
     }
   }
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::DiffXent(const CuStlVector<int32> &tgt,
+void CuMatrixBase<Real>::DiffXent(const CuArray<int32> &tgt,
                                   CuVector<Real> *log_post_tgt) {
   
   KALDI_ASSERT(tgt.Dim() == num_rows_);
@@ -1065,7 +1065,7 @@ void CuMatrixBase<Real>::DiffXent(const CuStlVector<int32> &tgt,
   {
     MatrixIndexT num_rows = num_rows_;
     for(int32 r = 0; r < num_rows; r++) {
-      int32 col_tgt = tgt.Vec()[r];
+      int32 col_tgt = tgt.Data()[r];
       Real &value = Mat()(r, col_tgt);
       log_post_tgt->Vec()(r) = log(value);
       value -= 1.0;
@@ -1464,7 +1464,7 @@ void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
     for (size_t i = 0; i < reorder.size(); i++)
       KALDI_ASSERT(reorder[i] >= -1 && reorder[i] < src_cols);
 #endif
-    CuStlVector<MatrixIndexT> cuda_reorder(reorder);
+    CuArray<MatrixIndexT> cuda_reorder(reorder);
     
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -1492,7 +1492,7 @@ void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
     for (size_t i = 0; i < reorder.size(); i++)
       KALDI_ASSERT(reorder[i] >= -1 && reorder[i] < src_rows);
 #endif
-    CuStlVector<MatrixIndexT> cuda_reorder(reorder);
+    CuArray<MatrixIndexT> cuda_reorder(reorder);
     
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);

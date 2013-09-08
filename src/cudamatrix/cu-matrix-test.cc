@@ -1188,7 +1188,7 @@ static void UnitTestCuFindRowMaxId() {
     Di.CopyFromMat(Hi);
 
     std::vector<int32> Hmax(dimM);
-    CuStlVector<int32> Dmax(dimN);
+    CuArray<int32> Dmax(dimN);
 
     //gpu
     Di.FindRowMaxId(&Dmax);
@@ -1224,7 +1224,7 @@ static void UnitTestCuDiffXent() {
   for(int32 i=0; i<X; i++) {
     Htgt[i] = rand()%Y;
   }
-  CuStlVector<int32> Dtgt(X);
+  CuArray<int32> Dtgt(X);
   Dtgt.CopyFromVec(Htgt);
   //logpost vector
   Vector<Real> Hlogpost(X);

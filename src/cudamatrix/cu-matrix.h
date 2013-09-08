@@ -28,7 +28,7 @@
 #include "cudamatrix/cu-value.h"
 #include "matrix/matrix-common.h"
 #include "matrix/kaldi-matrix.h"
-#include "cudamatrix/cu-stlvector.h"
+#include "cudamatrix/cu-array.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-rand.h"
 
@@ -62,13 +62,13 @@ class CuMatrixBase {
   friend void cu::RegularizeL1<Real>(CuMatrixBase<Real> *weight,
                                      CuMatrixBase<Real> *grad, Real l1, Real lr);
   friend void cu::Splice<Real>(const CuMatrix<Real> &src,
-                               const CuStlVector<int32> &frame_offsets,
+                               const CuArray<int32> &frame_offsets,
                                CuMatrix<Real> *tgt);
   friend void cu::Copy<Real>(const CuMatrix<Real> &src,
-                             const CuStlVector<int32> &copy_from_indices,
+                             const CuArray<int32> &copy_from_indices,
                              CuMatrix<Real> *tgt);
   friend void cu::Randomize<Real>(const CuMatrixBase<Real> &src,
-                                  const CuStlVector<int32> &copy_from_idx,
+                                  const CuArray<int32> &copy_from_idx,
                                   CuMatrixBase<Real> *tgt);
 
   /// Copies column r from column indices[r] of src.
@@ -171,7 +171,7 @@ class CuMatrixBase {
   /// net_out_or_diff ... before invocation net output, after diff dE/da
   /// log_post_tgt ... per-frame statistics for cross-entropy computations :
   ///                  log(sum_row(posterior_mat .* target_mat))
-  void DiffXent(const CuStlVector<int32> &tgt,
+  void DiffXent(const CuArray<int32> &tgt,
                 CuVector<Real> *log_post_tgt);  
 
   
@@ -189,7 +189,7 @@ class CuMatrixBase {
   void ApplySoftMaxPerRow(const CuMatrixBase<Real> &src);
 
   /// Find the id of the maximal element for each row
-  void FindRowMaxId(CuStlVector<int32> *id) const;
+  void FindRowMaxId(CuArray<int32> *id) const;
   
   /*
   // Copy row interval from matrix

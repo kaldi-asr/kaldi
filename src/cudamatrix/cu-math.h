@@ -20,7 +20,7 @@
 #ifndef KALDI_CUDAMATRIX_CU_MATH_H_
 #define KALDI_CUDAMATRIX_CU_MATH_H_
 #include "cudamatrix/cu-common.h"
-#include "cudamatrix/cu-stlvector.h"
+#include "cudamatrix/cu-array.h"
 #include "cudamatrix/cu-device.h"
 #include "util/timer.h"
 
@@ -37,20 +37,23 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *gradient,
                   Real l1_penalty, Real learning_rate);
 
 /// ie. switch rows according to copy_from_idx
+/// [Note from Dan: this needs documentation.]
 template<typename Real>
 void Randomize(const CuMatrixBase<Real> &src,
-               const CuStlVector<int32> &copy_from_idx,
+               const CuArray<int32> &copy_from_idx,
                CuMatrixBase<Real> *tgt);
 
 /// ie. concatenate the frames with offsets from frame_offsets
+/// [Note from Dan: this needs documentation.]
 template<typename Real>
 void Splice(const CuMatrix<Real> &src,
-            const CuStlVector<int32> &frame_offsets,
+            const CuArray<int32> &frame_offsets,
             CuMatrix<Real> *tgt);
 
+/// [Note from Dan: this needs documentation.]
 template<typename Real>
 void Copy(const CuMatrix<Real> &src,
-          const CuStlVector<int32> &copy_from_indices,
+          const CuArray<int32> &copy_from_indices,
           CuMatrix<Real> *tgt);
 
 

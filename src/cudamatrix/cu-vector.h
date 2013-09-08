@@ -55,7 +55,7 @@ class CuVectorBase {
   friend OtherReal VecVec(const CuVectorBase<OtherReal> &v1,
                           const CuVectorBase<OtherReal> &v2);
   friend void cu::Splice<Real>(const CuMatrix<Real> &src,
-                               const CuStlVector<int32> &frame_offsets,
+                               const CuArray<int32> &frame_offsets,
                                CuMatrix<Real> *tgt);
   friend class CuRand<Real>;
   

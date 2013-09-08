@@ -145,7 +145,7 @@ class Splice : public Component {
   }
 
  protected:
-  CuStlVector<int32> frame_offsets_;
+  CuArray<int32> frame_offsets_;
 };
 
 
@@ -209,7 +209,7 @@ class Copy : public Component {
   }
 
  protected:
-  CuStlVector<int32> copy_from_indices_;
+  CuArray<int32> copy_from_indices_;
 };
 
 
