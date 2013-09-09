@@ -168,7 +168,7 @@ scpfile=$2
 for f in `cat $ffv_flist | cut -d, -f2`; do
   g=`echo $f | sed s:.ffv$:.mat:`
   if [ -f $f ]; then
-    cat $f | awk 'BEGIN{printf("[ "); } {print $1, $2, $3, $4, $5, $6, $7;} END{ print "]"; }' > $g
+    cat $f | sed s:-nan:0:g | awk 'BEGIN{printf("[ "); } {print $1, $2, $3, $4, $5, $6, $7;} END{ print "]"; }' > $g
   fi
 done
 cat $ffv_flist | cut -d, -f2 | \
