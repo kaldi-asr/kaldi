@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
     
-    if (ClassifyRspecifier(po.GetArg(po.NumArgs()), NULL, NULL)
+    if (ClassifyRspecifier(po.GetArg(1), NULL, NULL)
         != kNoRspecifier) {
       // We're operating on tables, e.g. archives.
       
