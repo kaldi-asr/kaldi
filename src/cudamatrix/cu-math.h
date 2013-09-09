@@ -36,8 +36,10 @@ template<typename Real>
 void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *gradient,
                   Real l1_penalty, Real learning_rate);
 
-/// ie. switch rows according to copy_from_idx
-/// [Note from Dan: this needs documentation.]
+/// Copies a permutation of src into tgt. The row permutation is specified in
+/// copy_from_idx such that tgt.Row(copy_from_idx[r]) == src.Row(r). The 
+/// dimensions of copy_from_idx must be equivalent to the number of rows in
+/// tgt and src and all elements in the vector must be in [0, src.numRows()-1].  
 template<typename Real>
 void Randomize(const CuMatrixBase<Real> &src,
                const CuArray<int32> &copy_from_idx,
