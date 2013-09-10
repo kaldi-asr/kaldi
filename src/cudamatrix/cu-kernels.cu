@@ -776,6 +776,45 @@ static void _vec_apply_log(Real* v, Real* flag, int dim) {
   }
 }
 
+template<typename Real>
+__global__
+static void _cuda_comp_obj_deriv(void* x, int s, const Real* z, MatrixDim d, Real* z2, MatrixDim d2, Real* t) {
+  int i = threadIdx.x;
+  __shared__ Real tot_objf[CU1DBLOCK];
+  __shared__ Real tot_weight[CU1DBLOCK];
+
+
+  Real tmp_weight_sum = 0;
+  Real tmp_tot_objf = 0;
+  int size = s / CU1DBLOCK; //the least size in a loop (later part)
+  int threshold = s - size * CU1DBLOCK; //any loop below this number would + 1
+
+  int loop_start;
+  int loop_end;
+  if(i < threshold) {
+    loop_start = i * (size + 1);
+    loop_end = (i+1) * (size + 1);
+  }
+  else {
+    loop_start = threshold + i*size;
+    loop_end = threshold + (i+1)*size;
+  }
+  for(int j = loop_start; j< loop_end; j++) {
+    int m = * ((int*) ((size_t)x + j * (2 * sizeof(int) + sizeof(Real) )) );
+    int label = *(int*) ((size_t)x + j * (2 * sizeof(int) + sizeof(Real) )+ sizeof(int));
+    Real weight = *(Real*) ((size_t)x + j * (2 * sizeof(int) + sizeof(Real) ) + 2 * sizeof(int)); 
+    tmp_weight_sum += weight;
+    Real this_prob =  *(Real*) ((size_t)z + m * d.stride + label );
+    tmp_tot_objf += weight * log(this_prob); 
+
+    *(Real*) ((size_t)z2 + m * d2.stride + t ) += weight / this_prob;
+  }
+  __syncthreads();
+  *t = _sum_reduce(tot_objf);
+  __syncthreads();
+  *(t+1) = _sum_reduce(tot_weight); 
+  return;
+}
 
 template<typename Real>
 __global__
@@ -1709,6 +1748,14 @@ void cudaF_add_vec_vec(int Gr, int Bl, float alpha, float* v, const float* x, co
 
 void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim, int inc) {
   _vec_sum<<<Gr,Bl>>>(v, value, dim, inc);
+}
+
+void cudaF_comp_obj_deriv(dim3 Gr, dim3 Bl, void* x, int s, const float* z, MatrixDim d, float* z2, MatrixDim d2, float* t) {
+  _cuda_comp_obj_deriv<<<Gr,Bl>>>(x,s,z,d,z2,d2,t);
+}
+
+void cudaD_comp_obj_deriv(dim3 Gr,dim3 Bl, void* x, int s, const double* z, MatrixDim d, double* z2, MatrixDim d2, double* t) {
+  _cuda_comp_obj_deriv<<<Gr,Bl>>>(x,s,z,d,z2,d2,t);
 }
 
 void cudaF_vec_copy_diag_from_packed(int Gr, int Bl, float *dst, const float *src, int dim) {

@@ -913,6 +913,48 @@ void CuMatrixBase<Real>::SoftHinge(const CuMatrixBase<Real> &src) {
   }
 }
 
+template<typename Real>
+void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& sv_labels, const CuMatrix<Real> &output, Real *tot_objf, Real* tot_weight) {
+ # if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+/*
+    CuVector<SupervisionLabel> sv_labels(num_chunks_ * data[m].labels.size());
+    int32 cur_index = 0;
+    for (int32 m = 0; m < num_chunks_; m++) {
+      for (size_t i = 0; i < data[m].labels.size(); i++) {
+        sv_labels(cur_index).m = m;
+        sv_labels(cur_index).label = data[m].labels[i].first;
+        sv_labels(cur_index++).weight = data[m].labels[i].second;
+      }
+    }
+// */
+    void* addr;
+    CU_SAFE_CALL(cudaMalloc( (void**)&addr, sv_labels.size() * sizeof(MatrixElement<Real>)));
+    CU_SAFE_CALL(cudaMemcpy(addr, sv_labels.data(), sv_labels.size() * sizeof(MatrixElement<Real>), cudaMemcpyHostToDevice));
+    Timer tim;
+    CuVector<Real> tmp(2, kUndefined);
+    int dimBlock(CU1DBLOCK);
+    int dimGrid = 1;// only 1 block here. we have loops in each thread  //(n_blocks(dim_, CU1DBLOCK));
+    cuda_comp_obj_deriv(dimGrid, dimBlock, (void*)addr, sv_labels.size(), output.Data(), output.Dim(), this->Data(), this->Dim(), tmp.Data());
+    CuDevice::Instantiate().AccuProfile("Comp_Obj_Deriv", tim.Elapsed());
+    *tot_objf = tmp(0);
+    *tot_weight = tmp(1);
+    CU_SAFE_CALL(cudaFree(addr));
+  } else
+#endif
+  {
+    for(int32 i = 0; i<sv_labels.size(); i++) {
+      int32 m = sv_labels[i].m, label = sv_labels[i].label;
+      Real weight = sv_labels[i].weight;
+      //KALDI_ASSERT(label >= 0 && label < nnet_.OutputDim());
+      Real this_prob = output(m, label);
+      KALDI_ASSERT(this_prob >= 0.99e-20); // we floored to 1.0e-20 in SoftmaxLayer.
+      *tot_objf += weight * log(this_prob);
+      *tot_weight += weight;
+      (*this)(m, label) += weight / this_prob; 
+    }
+  }
+}
 
 template<typename Real> // Y->this, X->src
 void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
@@ -1763,5 +1805,9 @@ template class CuMatrix<float>;
 template class CuMatrix<double>;
 template class CuMatrixBase<float>;
 template class CuMatrixBase<double>;
+
+  
+
+
 
 } // namespace kaldi

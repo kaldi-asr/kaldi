@@ -128,20 +128,22 @@ double NnetUpdater::ComputeObjfAndDeriv(
 
   // Note: we need to CUDA-ify this block of code somehow, it is
   // becoming a limiting factor.
+
+  std::vector<MatrixElement<BaseFloat> > sv_labels;//(num_chunks_ * data[m].labels.size());
+  //int32 cur_index = 0;
   for (int32 m = 0; m < num_chunks_; m++) {
     for (size_t i = 0; i < data[m].labels.size(); i++) {
-      int32 label = data[m].labels[i].first;
-      BaseFloat weight = data[m].labels[i].second;
-      KALDI_ASSERT(label >= 0 && label < nnet_.OutputDim());
-      BaseFloat this_prob = output(m, label);
-      KALDI_ASSERT(this_prob >= 0.99e-20); // we floored to 1.0e-20 in SoftmaxLayer.
-      tot_objf += weight * log(this_prob);
-      tot_weight += weight;
-      (*deriv)(m, label) += weight / this_prob; // note: we could equally
-      // well have said = instead of += above, based on the assumption that
-      // the labels are unique for each data[m].
-    }    
+      MatrixElement<BaseFloat> 
+         tmp = {m, data[m].labels[i].first, data[m].labels[i].second};
+      sv_labels.push_back(tmp);
+      //(sv_labels.Data() +cur_index)->m = m;
+      //(sv_labels.Data() +cur_index)->label = data[m].labels[i].first;
+      //(sv_labels.Data() +cur_index)->weight = data[m].labels[i].second;
+    }
   }
+
+  deriv->CompObjfAndDeriv(sv_labels, output, &tot_objf, &tot_weight);
+
   KALDI_VLOG(4) << "Objective function is " << (tot_objf/tot_weight) << " over "
                 << tot_weight << " samples (weighted).";
   return tot_objf;

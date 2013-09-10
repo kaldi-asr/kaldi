@@ -44,6 +44,15 @@ Real TraceMatMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B,
  * otherwise, does it on the CPU.
  */
 
+//*
+template<typename Real>
+struct MatrixElement {
+  int m;
+  int label;
+  Real weight;
+};
+// */
+
 template<typename Real>
 class CuMatrixBase {
  public:
@@ -471,6 +480,7 @@ class CuMatrix: public CuMatrixBase<Real> {
     return *(reinterpret_cast<Matrix<Real>* >(this));
   }
 
+  void CompObjfAndDeriv(const std::vector<MatrixElement<Real> > &sv_labels, const CuMatrix<Real> &output, Real *tot_objef, Real* tot_weight);
 
  private:
   void Destroy();

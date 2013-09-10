@@ -36,7 +36,6 @@ namespace nnet2 {
    using a heuristic involving validation-set gradients.
 */
 
-
 /// This function computes the objective function and either updates the model
 /// or adds to parameter gradients.  Returns the cross-entropy objective
 /// function summed over all samples (normalize this by
