@@ -143,6 +143,7 @@ void MatrixBase<double>::AddVecVec(const double alpha,
                                    const VectorBase<double> &a,
                                    const VectorBase<double> &rb) {
   KALDI_ASSERT(a.Dim() == num_rows_ && rb.Dim() == num_cols_);
+  if (num_rows_ == 0) return;
   cblas_Xger(a.Dim(), rb.Dim(), alpha, a.Data(), 1, rb.Data(),
              1, data_, stride_);
 }
@@ -159,6 +160,7 @@ void MatrixBase<Real>::AddMatMat(const Real alpha,
                || (transA == kNoTrans && transB == kTrans && A.num_cols_ == B.num_cols_ && A.num_rows_ == num_rows_ && B.num_rows_ == num_cols_)
                || (transA == kTrans && transB == kTrans && A.num_rows_ == B.num_cols_ && A.num_cols_ == num_rows_ && B.num_rows_ == num_cols_));
   KALDI_ASSERT(&A !=  this && &B != this);
+  if (num_rows_ == 0) return;
   cblas_Xgemm(alpha, transA, A.data_, A.num_rows_, A.num_cols_, A.stride_,
               transB, B.data_, B.stride_, beta, data_, num_rows_, num_cols_, stride_);
 
@@ -250,13 +252,14 @@ void MatrixBase<Real>::AddSpSp(const Real alpha, const SpMatrix<Real> &A_in,
   // CblasLower or CblasUpper would work below as symmetric matrix is copied
   // fully (to save work, we used the matrix constructor from SpMatrix).
   // CblasLeft means A is on the left: C <-- alpha A B + beta C
+  if (sz == 0) return;
   cblas_Xsymm(alpha, sz, A.data_, A.stride_, B.data_, B.stride_, beta, data_, stride_);
 }
 
 template<typename Real>
 void MatrixBase<Real>::AddMat(const Real alpha, const MatrixBase<Real>& A,
                                MatrixTransposeType transA) {
-  if (&A == this) {  // Make it work in this case.
+  if (&A == this) {
     if (transA == kNoTrans) {
       Scale(alpha + 1.0);
     } else {
@@ -290,12 +293,14 @@ void MatrixBase<Real>::AddMat(const Real alpha, const MatrixBase<Real>& A,
     Real *adata = A.data_, *data = data_;
     if (transA == kNoTrans) {
       KALDI_ASSERT(A.num_rows_ == num_rows_ && A.num_cols_ == num_cols_);
+      if (num_rows_ == 0) return;
       for (MatrixIndexT row = 0; row < num_rows_; row++, adata += aStride,
                data += stride) {
         cblas_Xaxpy(num_cols_, alpha, adata, 1, data, 1);
       }
     } else {
       KALDI_ASSERT(A.num_cols_ == num_rows_ && A.num_rows_ == num_cols_);
+      if (num_rows_ == 0) return;      
       for (MatrixIndexT row = 0; row < num_rows_; row++, adata++, data += stride)
         cblas_Xaxpy(num_cols_, alpha, adata, aStride, data, 1);
     }
@@ -348,6 +353,7 @@ void MatrixBase<Real>::AddDiagVecMat(
   if (transM == kTrans) std::swap(M_row_stride, M_col_stride);
   Real *data = data_;
   const Real *Mdata = M.Data(), *vdata = v.Data();
+  if (num_rows_ == 0) return;
   for (MatrixIndexT i = 0; i < num_rows; i++, data += stride, Mdata += M_row_stride, vdata++)
     cblas_Xaxpy(num_cols, alpha * *vdata, Mdata, M_col_stride, data, 1);
 }
@@ -890,6 +896,7 @@ template<typename Real> void MatrixBase<Real>::Max(const MatrixBase<Real> &A) {
 
 template<typename Real> void MatrixBase<Real>::Scale(Real alpha) {
   if (alpha == 1.0) return;
+  if (num_rows_ == 0) return;
   if (num_cols_ == stride_) {
     cblas_Xscal(static_cast<size_t>(num_rows_) * static_cast<size_t>(num_cols_),
                 alpha, data_,1);

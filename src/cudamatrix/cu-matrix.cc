@@ -34,6 +34,7 @@
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-sp-matrix.h"
 #include "cudamatrix/cu-tp-matrix.h"
+#include "cudamatrix/cu-block-matrix.h"
 
 namespace kaldi {
 
@@ -149,6 +150,51 @@ template <typename OtherReal>
   }
 }
 
+template <typename Real>
+void CuMatrixBase<Real>::CopyFromBlock(const CuBlockMatrix<Real> &B,
+                                       MatrixTransposeType trans) {
+  this->SetZero();
+  if (trans == kNoTrans) {
+    KALDI_ASSERT(NumRows() == B.NumRows() && NumCols() == B.NumCols());
+    int32 row_offset = 0, col_offset = 0;
+    for (int32 b = 0; b < B.NumBlocks(); b++) {
+      const CuMatrixBase<Real> &block = B.Block(b);
+      int32 num_rows = block.NumRows(), num_cols = block.NumCols();
+      CuSubMatrix<Real> this_block(*this, row_offset, num_rows,
+                                   col_offset, num_cols);
+      this_block.CopyFromMat(block);
+      row_offset += num_rows;
+      col_offset += num_cols;
+    }
+    KALDI_ASSERT(row_offset == NumRows() && col_offset == NumCols());
+  } else {
+    KALDI_ASSERT(NumRows() == B.NumCols() && NumCols() == B.NumRows());
+    int32 row_offset = 0, col_offset = 0;
+    for (int32 b = 0; b < B.NumBlocks(); b++) {
+      const CuMatrixBase<Real> &block = B.Block(b);
+      int32 num_rows = block.NumCols(), num_cols = block.NumRows();
+      CuSubMatrix<Real> this_block(*this, row_offset, num_rows,
+                                   col_offset, num_cols);
+      this_block.CopyFromMat(block, kTrans);
+      row_offset += num_rows;
+      col_offset += num_cols;
+    }
+    KALDI_ASSERT(row_offset == NumRows() && col_offset == NumCols());
+  }
+}
+
+
+template <typename Real>
+ CuMatrix<Real>::CuMatrix(const CuBlockMatrix<Real> &B,
+                          MatrixTransposeType trans): CuMatrixBase<Real>() {
+  if (trans == kNoTrans) {
+    Resize(B.NumRows(), B.NumCols(), kUndefined);
+    this->CopyFromBlock(B);
+  } else {
+    Resize(B.NumCols(), B.NumRows(), kUndefined);
+    this->CopyFromBlock(B, kTrans);
+  }
+}
 
 template<class Real>
 template<class OtherReal>
@@ -772,6 +818,8 @@ void CuMatrixBase<Real>::AddMatMat(
     KALDI_ASSERT(n == NumRows());
     KALDI_ASSERT(k == k1);
 
+    if (m == 0) return;
+    
     Timer tim;
 
     cublas_gemm((transB==kTrans?'T':'N'), (transA==kTrans?'T':'N'), m, n, k, 
@@ -1613,6 +1661,86 @@ CuMatrix<Real>::DeriveLastLayerComponent(int32 i, int32 label,
 }
 */
 
+
+template<typename Real>
+void CuMatrix<Real>::Transpose() {
+  CuMatrix<Real> tmp(*this, kTrans);
+  *this = tmp;
+}
+
+
+// Version of AddMatMat where 2nd argument is of type CuBlockMatrix.
+template<typename Real>
+void CuMatrixBase<Real>::AddMatBlock(
+    Real alpha,
+    const CuMatrixBase<Real> &A, MatrixTransposeType transA,
+    const CuBlockMatrix<Real> &B, MatrixTransposeType transB,
+    Real beta) {
+  // Check dimensions
+  int32 A_num_rows = A.NumRows(), A_num_cols = A.NumCols(),
+      A_row_stride = A.Stride(), A_col_stride = 1,
+      B_num_rows = B.NumRows(), B_num_cols = B.NumCols();
+  if (transA == kTrans) {
+    std::swap(A_num_rows, A_num_cols);
+    std::swap(A_row_stride, A_col_stride);
+  }
+  if (transB == kTrans) {
+    std::swap(B_num_rows, B_num_cols);
+  }
+  // At this point the {A,B}_{rows,cols} variables are
+  // after any transposition.
+  KALDI_ASSERT(NumRows() == A_num_rows && NumCols() == B_num_cols);
+  KALDI_ASSERT(A_num_cols == B_num_rows);
+  int32 B_num_blocks = B.NumBlocks();
+
+  if (num_rows_ == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    MatrixDim this_dim = Dim();
+    
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    // (x,y) indices will be (row of *this, block of B)
+    dim3 dimGrid(n_blocks(num_rows_, CU2DBLOCK),
+                 n_blocks(B_num_blocks, CU2DBLOCK));
+
+    cuda_add_mat_blockmat(dimGrid, dimBlock, data_, this_dim, A.Data(),
+                          A_num_rows, A_num_cols, A_row_stride, A_col_stride,
+                          B.CuData(), B_num_blocks, alpha, beta,
+                          (transB == kTrans ? 1 : 0));
+      
+    CU_SAFE_CALL(cudaGetLastError());                          
+    
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    // "row_offset" and "col_offset" are offsets into B (or into B^T, if
+    // transB == kTrans).
+    int32 row_offset = 0, col_offset = 0;
+    for (int32 b = 0; b < B_num_blocks; b++) {
+      const CuMatrixBase<Real> &this_block = B.Block(b);
+      int32 this_num_rows = this_block.NumRows(),
+          this_num_cols = this_block.NumCols();
+      if (transB == kTrans) std::swap(this_num_rows, this_num_cols);
+      CuSubMatrix<Real> this_part(*this, 0, num_rows_,
+                                  col_offset, this_num_cols);
+      CuSubMatrix<Real> A_part = (transA == kNoTrans ?
+                                  CuSubMatrix<Real>(A, 0, num_rows_,
+                                                    row_offset, this_num_rows) :
+                                  CuSubMatrix<Real>(A, row_offset, this_num_rows,
+                                                    0, num_rows_));
+      this_part.AddMatMat(alpha, A_part, transA, this_block, transB, beta);
+      row_offset += this_num_rows;
+      col_offset += this_num_cols;
+    }
+    // Note: the values being compared below are all after applying any
+    // transposition to B.
+    KALDI_ASSERT(row_offset == B_num_rows && col_offset == B_num_cols);
+  }
+}
+
+
 /**
  * Print the matrix to stream
  */
@@ -1623,13 +1751,6 @@ std::ostream &operator << (std::ostream &out, const CuMatrixBase<Real> &mat) {
   out << temp;
   return out;
 }
-
-template<typename Real>
-void CuMatrix<Real>::Transpose() {
-  CuMatrix<Real> tmp(*this, kTrans);
-  *this = tmp;
-}
-
 // instantiate the template
 template
 std::ostream &operator << (std::ostream &out, const CuMatrixBase<float> &mat);

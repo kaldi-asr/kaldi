@@ -994,6 +994,26 @@ static void UnitTestCuVectorInvertElements() {
   AssertEqual(Hv,Hv2);
 }
 
+template<class Real>
+static void UnitTestCuMatrixIO() {
+  for (int32 i = 0; i < 10; i++) {
+    int32 dimM = 100 + rand() % 255, dimN = 10 + rand() % 20;
+    if (i % 2 == 0) std::swap(dimM, dimN);
+    if (i % 5 == 0) { dimM = 0; dimN = 0; }
+    CuMatrix<Real> mat(dimM, dimN);
+    mat.SetRandn();
+    std::ostringstream os;
+    bool binary = (i % 4 < 2);
+    mat.Write(os, binary);
+
+    CuMatrix<Real> mat2;
+    std::istringstream is(os.str());
+    mat2.Read(is, binary);
+    AssertEqual(mat, mat2);
+  }
+}
+
+
 template<typename Real>
 static void UnitTestCuVectorAddTpVec() {
   Vector<Real> Hv(777);
@@ -1482,7 +1502,8 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuSubMatrix<Real>();
   UnitTestCuVectorInvertElements<Real>();
 
-
+  UnitTestCuMatrixIO<Real>();
+  
   UnitTestCuSigmoid<Real>();
   UnitTestCuApproxEqual<Real>();
   UnitTestCuCopy<Real, float>();

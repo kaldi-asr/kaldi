@@ -144,6 +144,24 @@ inline void cuda_vec_apply_log(int Gr, int Bl, float* v, float* flag, int dim) {
 inline void cuda_add_row_sum_mat(dim3 Gr, dim3 Bl, const float *mat, float *vec_sum, MatrixDim d) { cudaF_add_row_sum_mat(Gr,Bl,mat,vec_sum,d); }
 inline void cuda_add_col_sum_mat(dim3 Gr, dim3 Bl, const float *mat, float *vec_sum, MatrixDim d) { cudaF_add_col_sum_mat(Gr,Bl,mat,vec_sum,d); }
 inline void cuda_invert_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim d) { cudaF_invert_elements(Gr,Bl,data,d); }
+// B_trans nonzero if B transposed.
+inline void cuda_add_mat_blockmat(dim3 Gr, dim3 Bl, float *data, MatrixDim d, const float *Adata,
+                                  int A_num_rows, int A_num_cols, int A_row_stride, int A_col_stride,
+                                  const CuBlockMatrixData *B_cu_data, int B_num_blocks,
+                                  float alpha, float beta, int B_trans) {
+  cudaF_add_mat_blockmat(Gr, Bl, data, d, Adata, A_num_rows, A_num_cols, A_row_stride, A_col_stride,
+                         B_cu_data, B_num_blocks, alpha, beta, B_trans);
+}
+inline void cuda_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data, int num_blocks,
+                                   const float *C_data, int C_num_cols, int C_row_stride, int C_col_stride,
+                                   const float *D_data, int D_row_stride, int D_col_stride,
+                                   float alpha, float beta) {
+  cudaF_block_add_mat_mat(Gr, Bl, B_cu_data, num_blocks, C_data, C_num_cols,
+                          C_row_stride, C_col_stride, D_data, D_row_stride,
+                          D_col_stride, alpha, beta);
+}
+
+
 
 /*
  * cu::
@@ -262,6 +280,22 @@ inline void cuda_vec_apply_log(int Gr, int Bl, double* v, double* flag, int dim)
 inline void cuda_add_row_sum_mat(dim3 Gr, dim3 Bl, const double *mat, double *vec_sum, MatrixDim d) { cudaD_add_row_sum_mat(Gr,Bl,mat,vec_sum,d); }
 inline void cuda_add_col_sum_mat(dim3 Gr, dim3 Bl, const double *mat, double *vec_sum, MatrixDim d) { cudaD_add_col_sum_mat(Gr,Bl,mat,vec_sum,d); }
 inline void cuda_invert_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim d) { cudaD_invert_elements(Gr,Bl,data,d); }
+// B_trans nonzero if B transposed.
+inline void cuda_add_mat_blockmat(dim3 Gr, dim3 Bl, double *data, MatrixDim d, const double *Adata,
+                                  int A_num_rows, int A_num_cols, int A_row_stride, int A_col_stride,
+                                  const CuBlockMatrixData *B_cu_data, int B_num_blocks,
+                                  double alpha, double beta, int B_trans) {
+  cudaD_add_mat_blockmat(Gr, Bl, data, d, Adata, A_num_rows, A_num_cols, A_row_stride, A_col_stride,
+                         B_cu_data, B_num_blocks, alpha, beta, B_trans);
+}
+inline void cuda_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data, int num_blocks,
+                                   const double *C_data, int C_num_cols, int C_row_stride, int C_col_stride,
+                                   const double *D_data, int D_row_stride, int D_col_stride,
+                                   double alpha, double beta) {
+  cudaD_block_add_mat_mat(Gr, Bl, B_cu_data, num_blocks, C_data, C_num_cols,
+                          C_row_stride, C_col_stride, D_data, D_row_stride,
+                          D_col_stride, alpha, beta);
+}
 
 /*
  * cu::

@@ -106,7 +106,15 @@ void cudaF_trace(int Gr, int Bl, float* mat, float* value, int dim);
 void cudaF_add_row_sum_mat(dim3 Gr, dim3 Bl, const float *mat, float *vec_sum, MatrixDim d);
 void cudaF_add_col_sum_mat(dim3 Gr, dim3 Bl, const float *mat, float *vec_sum, MatrixDim d);
 void cudaF_invert_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim d);
-
+// Note: B_trans is nonzero if B is transposed.
+void cudaF_add_mat_blockmat(dim3 Gr, dim3 Bl, float *data, MatrixDim d, const float *Adata,
+                            int A_num_rows, int A_num_cols, int A_row_stride, int A_col_stride,
+                            const CuBlockMatrixData *B_cu_data, int B_num_blocks,
+                            float alpha, float beta, int B_trans);
+void cudaF_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data, int num_blocks,
+                             const float *C_data, int C_num_cols, int C_row_stride, int C_col_stride,
+                             const float *D_data, int D_row_stride, int D_col_stride,
+                             float alpha, float beta);
 /*
  * cu::
  */
@@ -203,6 +211,16 @@ void cudaD_trace(int Gr, int Bl, double* mat, double* value, int dim);
 void cudaD_add_row_sum_mat(dim3 Gr, dim3 Bl, const double *mat, double *vec_sum, MatrixDim d);
 void cudaD_add_col_sum_mat(dim3 Gr, dim3 Bl, const double *mat, double *vec_sum, MatrixDim d);
 void cudaD_invert_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim d);
+// note: B_trans is nonzero if B is tranposed.
+void cudaD_add_mat_blockmat(dim3 Gr, dim3 Bl, double *data, MatrixDim d, const double *Adata,
+                            int A_num_rows, int A_num_cols, int A_row_stride, int A_col_stride,
+                            const CuBlockMatrixData *B_cu_data, int B_num_blocks,
+                            double alpha, double beta, int B_trans);
+void cudaD_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data, int num_blocks,
+                             const double *C_data, int C_num_cols, int C_row_stride, int C_col_stride,
+                             const double *D_data, int D_row_stride, int D_col_stride,
+                             double alpha, double beta);  
+
 
 /*
  * cu::

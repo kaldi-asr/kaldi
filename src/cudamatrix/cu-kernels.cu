@@ -1016,6 +1016,121 @@ static void _invert_elements(Real* data, MatrixDim d) {
 }
 
 
+// matrix-wise, do data = alpha * data + beta * A * B^T,
+// where B is a block matrix.
+template<typename Real>
+__global__
+static void _add_mat_blockmat_trans(Real *data, MatrixDim dim, const Real *A_data, int A_num_rows, int A_num_cols,
+                                    int A_row_stride, int A_col_stride, const CuBlockMatrixData *B_cu_data,
+                                    int B_num_blocks, Real alpha, Real beta) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x; // row-index into "data"
+  int j = blockIdx.y * blockDim.y + threadIdx.y; // block-index into B.
+  if (i >= A_num_rows || j >= B_num_blocks) return;
+
+  const CuBlockMatrixData &cu_data = B_cu_data[j];
+
+  // BT means B transposed.
+  int BT_row_start = cu_data.col_offset,
+      BT_col_start = cu_data.row_offset,
+      BT_num_rows = cu_data.matrix_dim.cols,
+      BT_num_cols = cu_data.matrix_dim.rows,
+      BT_col_stride = cu_data.matrix_dim.stride;
+  const Real *B_data = static_cast<Real*>(cu_data.matrix_data); // Cast from void;
+  // we avoided a bunch of hassle by doing this (relates to Ansi-C requirement).
+      
+  for (int k = 0; k < BT_num_cols; k++) {
+    const Real *this_BT_col = B_data + k * BT_col_stride;
+    const Real *this_A_row = A_data + i * A_row_stride + BT_row_start * A_col_stride;
+    // this_A_row points to the element A[i][BT_row_start], it's really just
+    // part of this row of A.
+    Real sum = 0.0;
+    for (int l = 0; l < BT_num_rows; l++) // l indexes rows of B.
+      sum += this_BT_col[l] * this_A_row[l * A_col_stride];
+
+    int index = i * dim.stride + (k + BT_col_start);
+    data[index] = alpha * sum + beta * data[index];
+  }
+}
+
+template<typename Real>
+__global__
+static void _add_mat_blockmat(Real *data, MatrixDim dim, const Real *A_data, int A_num_rows, int A_num_cols,
+                              int A_row_stride, int A_col_stride, const CuBlockMatrixData *B_cu_data,
+                              int B_num_blocks, Real alpha, Real beta) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x; // row-index into "data"
+  int j = blockIdx.y * blockDim.y + threadIdx.y; // block-index into B.
+  if (i >= A_num_rows || j >= B_num_blocks) return;
+
+  const CuBlockMatrixData &block_data = B_cu_data[j];
+  
+  int B_row_start = block_data.row_offset,
+      B_col_start = block_data.col_offset,
+      B_num_rows = block_data.matrix_dim.rows,
+      B_num_cols = block_data.matrix_dim.cols,
+      B_row_stride = block_data.matrix_dim.stride;
+  const Real *B_data = static_cast<Real*>(block_data.matrix_data); // Cast from void;
+  // we avoided a bunch of hassle by doing this (relates to Ansi-C requirement).
+      
+  for (int k = 0; k < B_num_cols; k++) {
+    const Real *this_B_col = B_data + k;
+    const Real *this_A_row = A_data + i * A_row_stride + B_row_start * A_col_stride;
+    // this_A_row points to the element A[i][B_row_start], it's really just
+    // part of this row of A.
+    Real sum = 0.0;
+    for (int l = 0; l < B_num_rows; l++) // l indexes rows of B.
+      sum += this_B_col[l * B_row_stride] * this_A_row[l * A_col_stride];
+
+    int index = i * dim.stride + (k + B_col_start);
+    data[index] = alpha * sum + beta * data[index];
+  }
+}
+
+
+
+// For a block matrix B, does B = alpha * C * D + beta * B.
+// the (x,y,z) indices are the block index, then the row
+// and column indices within the block.  Note: transposition of C and D
+// is handled by swapping the (num_rows,num_cols) and (row_stride,col_stride),
+// so it's invisible to this code.  The num-cols and num-rows of C and D
+// are only provided to the extent that they are not already determined
+// by other quantities.
+template<typename Real>
+__global__
+static void _block_add_mat_mat(CuBlockMatrixData *B_cu_data, int num_blocks,
+                               const Real *C_data, int C_num_cols,
+                               int C_row_stride, int C_col_stride,
+                               const Real *D_data,
+                               int D_row_stride, int D_col_stride,
+                               Real alpha, Real beta) {
+  int b = blockIdx.x * blockDim.x + threadIdx.x; // block-index into B.
+  int i = blockIdx.y * blockDim.y + threadIdx.y; // row-index into b'th block
+  int j = blockIdx.z * blockDim.z + threadIdx.z; // col-index into b'th block
+  if (b >= num_blocks) return;
+
+  const CuBlockMatrixData &block_data = B_cu_data[b];
+
+  if (i >= block_data.matrix_dim.rows || j >= block_data.matrix_dim.cols)
+    return; // we're outside the dimensions of the b'th block.
+
+  // B_elem is the element of B we're writing to.
+  Real *B_elem = reinterpret_cast<Real*>(block_data.matrix_data) +
+      i * block_data.matrix_dim.stride + j;
+
+  Real B_val = *B_elem;
+  
+  // B_row and B_col are the (row, col) index into the full matrix B.
+  int B_row = block_data.row_offset + i, B_col = block_data.col_offset + j;
+
+  const Real *C_row_data = C_data + C_row_stride * B_row,
+      *D_col_data = D_data + D_col_stride * B_col;
+
+  Real sum = 0.0;
+  for (int k = 0; k < C_num_cols; k++) {
+    sum += C_row_data[k * C_col_stride] * D_col_data[k * D_row_stride];
+  }
+  *B_elem = alpha * sum + beta * B_val;
+}
+
 
 template<typename Real>
 __global__
@@ -1629,6 +1744,32 @@ void cudaF_invert_elements(dim3 Gr, dim3 Bl, float* data, MatrixDim d) {
   _invert_elements<<<Gr,Bl>>>(data, d);
 }
 
+
+void cudaF_add_mat_blockmat(dim3 Gr, dim3 Bl, float *data, MatrixDim d, const float *Adata,
+                            int A_num_rows, int A_num_cols, int A_row_stride, int A_col_stride,
+                            const CuBlockMatrixData *B_cu_data, int B_num_blocks,
+                            float alpha, float beta, int B_trans) {
+  if (B_trans) {
+    _add_mat_blockmat_trans<<<Gr,Bl>>>(data, d, Adata, A_num_rows, A_num_cols,
+                                       A_row_stride, A_col_stride, B_cu_data,
+                                       B_num_blocks, alpha, beta);
+  } else {
+    _add_mat_blockmat<<<Gr,Bl>>>(data, d, Adata, A_num_rows, A_num_cols,
+                                 A_row_stride, A_col_stride, B_cu_data,
+                                 B_num_blocks, alpha, beta);
+    
+  }
+}
+
+void cudaF_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data, int num_blocks,
+                             const float *C_data, int C_num_cols, int C_row_stride, int C_col_stride,
+                             const float *D_data, int D_row_stride, int D_col_stride,
+                             float alpha, float beta) {
+  _block_add_mat_mat<<<Gr,Bl>>>(B_cu_data, num_blocks, C_data, C_num_cols,
+                                C_row_stride, C_col_stride, D_data, D_row_stride,
+                                D_col_stride, alpha, beta);
+}
+
 /*
  * cu::
  */
@@ -1965,6 +2106,30 @@ void cudaD_add_col_sum_mat(dim3 Gr, dim3 Bl, const double* mat, double* vec_sum,
 
 void cudaD_invert_elements(dim3 Gr, dim3 Bl, double* data, MatrixDim d) {
   _invert_elements<<<Gr,Bl>>>(data, d);
+}
+
+void cudaD_add_mat_blockmat(dim3 Gr, dim3 Bl, double *data, MatrixDim d, const double *Adata,
+                            int A_num_rows, int A_num_cols, int A_row_stride, int A_col_stride,
+                            const CuBlockMatrixData *B_cu_data, int B_num_blocks,
+                            double alpha, double beta, int B_trans) {
+  if (B_trans) {
+    _add_mat_blockmat_trans<<<Gr,Bl>>>(data, d, Adata, A_num_rows, A_num_cols,
+                                       A_row_stride, A_col_stride, B_cu_data,
+                                       B_num_blocks, alpha, beta);
+  } else {
+    _add_mat_blockmat<<<Gr,Bl>>>(data, d, Adata, A_num_rows, A_num_cols,
+                                 A_row_stride, A_col_stride, B_cu_data,
+                                 B_num_blocks, alpha, beta);
+  }
+}
+
+void cudaD_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data, int num_blocks,
+                             const double *C_data, int C_num_cols, int C_row_stride, int C_col_stride,
+                             const double *D_data, int D_row_stride, int D_col_stride,
+                             double alpha, double beta) {
+  _block_add_mat_mat<<<Gr,Bl>>>(B_cu_data, num_blocks, C_data, C_num_cols,
+                                C_row_stride, C_col_stride, D_data, D_row_stride,
+                                D_col_stride, alpha, beta);
 }
 
 /*

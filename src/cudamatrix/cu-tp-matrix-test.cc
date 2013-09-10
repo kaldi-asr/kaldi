@@ -88,6 +88,8 @@ static void AssertEqual(const PackedMatrix<Real> &A,
                    < tol * std::max(1.0, (double) (std::abs(A(i, j)) + std::abs(B(i, j)))));
 }
 
+
+
 /*
  * Unit Tests
  */
@@ -143,8 +145,26 @@ static void UnitTestCuTpMatrixCholesky() {
   }
 }
 
+template<class Real>
+static void UnitTestCuTpMatrixIO() {
+  for (int32 i = 0; i < 10; i++) {
+    int32 dimM = rand() % 255;
+    if (i % 5 == 0) { dimM = 0; }
+    CuTpMatrix<Real> mat(dimM);
+    mat.SetRandn();
+    std::ostringstream os;
+    bool binary = (i % 4 < 2);
+    mat.Write(os, binary);
+
+    CuTpMatrix<Real> mat2;
+    std::istringstream is(os.str());
+    mat2.Read(is, binary);
+    AssertEqual(mat, mat2);
+  }
+}
 
 template<typename Real> void CudaTpMatrixUnitTest() {
+  UnitTestCuTpMatrixIO<Real>();
   UnitTestCuTpMatrixInvert<Real>();
   UnitTestCuTpMatrixCopyFromTp<Real>();
 }

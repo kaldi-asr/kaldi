@@ -313,7 +313,27 @@ void UnitTestCuSpMatrixSetUnit() {
     AssertEqual(S4, cu_S3);
   }
 }
-  
+   
+template<class Real>
+static void UnitTestCuSpMatrixIO() {
+  for (int32 i = 0; i < 10; i++) {
+    int32 dimM = rand() % 255;
+    if (i % 5 == 0) { dimM = 0; }
+    CuSpMatrix<Real> mat(dimM);
+    mat.SetRandn();
+    std::ostringstream os;
+    bool binary = (i % 4 < 2);
+    mat.Write(os, binary);
+
+    CuSpMatrix<Real> mat2;
+    std::istringstream is(os.str());
+    mat2.Read(is, binary);
+    AssertEqual(mat, mat2);
+  }
+}
+
+
+
 
 template<typename Real, typename OtherReal>
 static void UnitTestCuSpMatrixAddSp() {
@@ -336,6 +356,7 @@ static void UnitTestCuSpMatrixAddSp() {
 }
 
 template<typename Real> void CudaSpMatrixUnitTest() {
+  UnitTestCuSpMatrixIO<Real>();
   UnitTestCuSpMatrixConstructor<Real>();
   UnitTestCuSpMatrixOperator<Real>();
   UnitTestCuSpMatrixInvert<Real>();

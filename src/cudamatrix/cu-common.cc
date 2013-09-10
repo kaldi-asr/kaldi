@@ -1,5 +1,5 @@
-#ifndef KALDI_CUDA_MATRIX_COMMON_H_
-#define KALDI_CUDA_MATRIX_COMMON_H_
+#ifndef KALDI_CUDAMATRIX_COMMON_H_
+#define KALDI_CUDAMATRIX_COMMON_H_
 
 // This file contains some #includes, forward declarations
 // and typedefs that are needed by all the main header
@@ -29,4 +29,4 @@ cublasOperation_t KaldiTransToCuTrans(MatrixTransposeType kaldi_trans) {
 } // namespace
 
 
-#endif  // KALDI_CUDA_MATRIX_COMMON_H_
+#endif  // KALDI_CUDAMATRIX_COMMON_H_

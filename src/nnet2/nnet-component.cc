@@ -2508,9 +2508,7 @@ void MixtureProbComponent::Read(std::istream &is, bool binary) {
     log_params_[i].ApplyLog();
   }
 
-  // TODO: after a decent interval we can replace all the code below
-  // with:  ExpectToken(is, binary, "</MixtureProbComponent>");  
-  
+#if 0 // this is back-compatibility code, now disabled.  Will remove eventually.
   std::string token;
   ReadToken(is, binary, &token);
   if (token == "<IsGradient>") { // Back-compatibility code,
@@ -2521,6 +2519,10 @@ void MixtureProbComponent::Read(std::istream &is, bool binary) {
   } else {
     KALDI_ASSERT(token == "</MixtureProbComponent>");
   }
+#else
+  ExpectToken(is, binary, "</MixtureProbComponent>");
+#endif
+  
 }
 
 void MixtureProbComponent::Write(std::ostream &os, bool binary) const {
@@ -2552,7 +2554,7 @@ void MixtureProbComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
   
   int32 num_frames = in.NumRows(),
       input_offset = 0,
-     output_offset = 0;
+      output_offset = 0;
 
   for (size_t i = 0; i < params_.size(); i++) {
     int32 this_input_dim = params_[i].NumCols(), // input dim of this block.

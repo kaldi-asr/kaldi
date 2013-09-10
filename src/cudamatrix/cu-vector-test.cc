@@ -94,6 +94,25 @@ static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.
  * Unit tests
  */
 
+template<class Real>
+static void UnitTestCuVectorIO() {
+  for (int32 i = 0; i < 10; i++) {
+    int32 dimM = rand() % 255;
+    if (i % 5 == 0) { dimM = 0; }
+    CuVector<Real> vec(dimM);
+    vec.SetRandn();
+    std::ostringstream os;
+    bool binary = (i % 4 < 2);
+    vec.Write(os, binary);
+
+    CuVector<Real> vec2;
+    std::istringstream is(os.str());
+    vec2.Read(is, binary);
+    AssertEqual(vec, vec2);
+  }
+}
+
+
 template<typename Real, typename OtherReal> 
 static void UnitTestCuVectorCopyFromVec() {
   for (int32 i = 1; i < 10; i++) {
@@ -684,6 +703,7 @@ template<typename Real> void CuVectorUnitTest() {
 #endif
     UnitTestCuVectorCopyFromVec<Real, double>();
 
+  UnitTestCuVectorIO<Real>();
   CuVectorUnitTestVecVec<Real>();
   CuVectorUnitTestAddVec<Real>();
   CuVectorUnitTestAddVecCross<Real>();

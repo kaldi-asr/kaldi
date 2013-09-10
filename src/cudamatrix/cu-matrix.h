@@ -1,7 +1,7 @@
 // cudamatrix/cu-matrix.h
 
 // Copyright 2009-2012  Karel Vesely
-//                      Johns Hopkins University (author: Daniel Povey)
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,6 +59,7 @@ class CuMatrixBase {
   friend class CuSubMatrix<Real>;
   friend class CuRand<Real>;
   friend class CuSubVector<Real>;
+  friend class CuBlockMatrix<Real>;
   friend void cu::RegularizeL1<Real>(CuMatrixBase<Real> *weight,
                                      CuMatrixBase<Real> *grad, Real l1, Real lr);
   friend void cu::Splice<Real>(const CuMatrix<Real> &src,
@@ -209,9 +210,9 @@ class CuMatrixBase {
   void ApplyLog();
   
   /// Multiply two matrices elementwise: C = A .* C
-  void MulElements(const CuMatrixBase<Real>& A);
+  void MulElements(const CuMatrixBase<Real> &A);
   /// Do, elementwise, *this = max(*this, A).
-  void Max(const CuMatrixBase<Real>& A);
+  void Max(const CuMatrixBase<Real> &A);
   /// scale i'th column by scale[i]
   void MulColsVec(const CuVectorBase<Real> &scale); 
   /// scale i'th row by scale[i]
@@ -219,15 +220,21 @@ class CuMatrixBase {
   /// divide i'th row by scale[i]
   void DivRowsVec(const CuVectorBase<Real> &div);
   /// B = aplha * A + beta * B
-  void AddMat(Real alpha, const CuMatrixBase<Real>& A, Real beta=1.0);
+  void AddMat(Real alpha, const CuMatrixBase<Real> &A, Real beta=1.0);
   /// B = aplha * row + beta * B
   void AddVecToCols(Real alpha, const CuVectorBase<Real> &col, Real beta = 1.0);
   /// B = aplha * row + beta * B
   void AddVecToRows(Real alpha, const CuVectorBase<Real> &row, Real beta = 1.0);
   /// C = alpha * A(^T)*B(^T) + beta * C
-  void AddMatMat(Real alpha, const CuMatrixBase<Real>& A, MatrixTransposeType transA,
-                 const CuMatrixBase<Real>& B, MatrixTransposeType transB, Real beta);
+  void AddMatMat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
+                 const CuMatrixBase<Real> &B, MatrixTransposeType transB, Real beta);
 
+  /// This function is like AddMatMat but for where the second argument is of
+  /// type CuBlockMatrix (a block-diagonal matrix of blocks).
+  void AddMatBlock(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
+                   const CuBlockMatrix<Real> &B, MatrixTransposeType transB, Real beta);
+
+  
   /// *this = beta * *this + alpha * diag(v) * M [or M^T].
   /// The same as adding M but scaling each row M_i by v(i).
   void AddDiagVecMat(const Real alpha, CuVectorBase<Real> &v,
@@ -236,8 +243,8 @@ class CuMatrixBase {
   
   /// this <-- beta*this + alpha*A*B
   void AddMatSp(const Real alpha,
-                const CuMatrixBase<Real>& A, MatrixTransposeType transA,
-                const CuSpMatrix<Real>& B,
+                const CuMatrixBase<Real> &A, MatrixTransposeType transA,
+                const CuSpMatrix<Real> &B,
                 const Real beta) {
     CuMatrix<Real> M(B);
     return AddMatMat(alpha, A, transA, M, kNoTrans, beta);
@@ -245,8 +252,8 @@ class CuMatrixBase {
 
   /// this <-- beta*this + alpha*SpA*B
   void AddSpMat(const Real alpha,
-                const CuSpMatrix<Real>& A,
-                const CuMatrixBase<Real>& B, MatrixTransposeType transB,
+                const CuSpMatrix<Real> &A,
+                const CuMatrixBase<Real> &B, MatrixTransposeType transB,
                 const Real beta) {
     CuMatrix<Real> M(A);
     return AddMatMat(alpha, M, kNoTrans, B, transB, beta);
@@ -254,8 +261,8 @@ class CuMatrixBase {
 
   /// this <-- beta*this + alpha*A*B.
   void AddTpMat(const Real alpha,
-                const CuTpMatrix<Real>& A, MatrixTransposeType transA,
-                const CuMatrixBase<Real>& B, MatrixTransposeType transB,
+                const CuTpMatrix<Real> &A, MatrixTransposeType transA,
+                const CuMatrixBase<Real> &B, MatrixTransposeType transB,
                 const Real beta) {
     CuMatrix<Real> M(A);
     return AddMatMat(alpha, M, transA, B, transB, beta);
@@ -263,12 +270,15 @@ class CuMatrixBase {
 
   /// this <-- beta*this + alpha*A*B.
   void AddMatTp(const Real alpha,
-                const CuMatrixBase<Real>& A, MatrixTransposeType transA,
-                const CuTpMatrix<Real>& B, MatrixTransposeType transB,
+                const CuMatrixBase<Real> &A, MatrixTransposeType transA,
+                const CuTpMatrix<Real> &B, MatrixTransposeType transB,
                 const Real beta) {
     CuMatrix<Real> M(B);
     return AddMatMat(alpha, A, transA, M, transB, beta);
   }
+
+  void CopyFromBlock(const CuBlockMatrix<Real> &B,
+                     MatrixTransposeType trans = kNoTrans);
   
   inline CuSubMatrix<Real> Range(const MatrixIndexT row_offset,
                                  const MatrixIndexT num_rows,
@@ -390,6 +400,9 @@ class CuMatrix: public CuMatrixBase<Real> {
   // to problems with STL vectors of CuMatrixBase.
   CuMatrix(const CuMatrix<Real> &other,
            MatrixTransposeType trans = kNoTrans);
+
+  explicit CuMatrix(const CuBlockMatrix<Real> &other,
+                    MatrixTransposeType trans = kNoTrans);
   
   explicit CuMatrix(const CuMatrixBase<Real> &other,
                     MatrixTransposeType trans = kNoTrans);
