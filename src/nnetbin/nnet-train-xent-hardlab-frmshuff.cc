@@ -54,6 +54,9 @@ int main(int argc, char *argv[]) {
     po.Register("bunchsize", &bunchsize, "Size of weight update block");
     po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling (max 8388479)");
     po.Register("seed", &seed, "Seed value for srand, sets fixed order of frame-shuffling");
+    
+    kaldi::int32 max_frames = 6000; // Allow segments maximum of one minute by default
+    po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
 
 #if HAVE_CUDA==1
     int32 use_gpu_id=-2;
@@ -122,31 +125,47 @@ int main(int argc, char *argv[]) {
       // fill the cache
       while (!cache.Full() && !feature_reader.Done()) {
         std::string utt = feature_reader.Key();
+        KALDI_VLOG(2) << "Reading utt " << utt;
+        // check that we have alignments
         if (!alignments_reader.HasKey(utt)) {
           num_no_alignment++;
-        } else {
-          // get feature alignment pair
-          const Matrix<BaseFloat> &mat = feature_reader.Value();
-          const std::vector<int32> &alignment = alignments_reader.Value(utt);
-          // check the length of the data
-          if ((int32)alignment.size() != mat.NumRows()) {
-            KALDI_WARN << "Alignment has wrong length, ali "<< (alignment.size()) << " vs. feats "<< (mat.NumRows()) << ", " << utt;
-            num_other_error++;
-          } else { //length OK
-            // push features to GPU
-            feats.Resize(mat.NumRows(), mat.NumCols(), kUndefined);
-            feats.CopyFromMat(mat);
-            // possibly apply transform
-            nnet_transf.Feedforward(feats, &feats_transf);
-            // add to cache
-            cache.AddData(feats_transf, alignment);
-            num_done++;
-          }
+          feature_reader.Next(); 
+          continue;
         }
+        // get feature alignment pair
+        const Matrix<BaseFloat> &mat = feature_reader.Value();
+        const std::vector<int32> &alignment = alignments_reader.Value(utt);
+        // check maximum length of utterance
+        if (mat.NumRows() > max_frames) {
+          KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
+            " frames, which is more than " << max_frames << ".";
+          num_other_error++;
+          feature_reader.Next(); 
+          continue;
+        }
+        // check length match of features/alignments
+        if ((int32)alignment.size() != mat.NumRows()) {
+          KALDI_WARN << "Alignment has wrong length, ali " << (alignment.size()) 
+                     << " vs. feats "<< (mat.NumRows()) << ", utt " << utt;
+          num_other_error++;
+          feature_reader.Next();
+          continue;
+        }
+        
+        // All the checks OK,
+        // push features to GPU
+        feats.Resize(mat.NumRows(), mat.NumCols(), kUndefined);
+        feats.CopyFromMat(mat);
+        // possibly apply transform
+        nnet_transf.Feedforward(feats, &feats_transf);
+        // add to cache
+        cache.AddData(feats_transf, alignment);
+        num_done++;
+        
+        // measure the time needed to get next feature file 
         Timer t_features;
         feature_reader.Next(); 
         time_next += t_features.Elapsed();
-
         // report the speed
         if (num_done % 1000 == 0) {
           time_now = time.Elapsed();
