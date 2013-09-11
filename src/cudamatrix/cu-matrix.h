@@ -480,8 +480,17 @@ class CuMatrix: public CuMatrixBase<Real> {
     return *(reinterpret_cast<Matrix<Real>* >(this));
   }
 
-  void CompObjfAndDeriv(const std::vector<MatrixElement<Real> > &sv_labels, const CuMatrix<Real> &output,
-                        Real *tot_objf, Real* tot_weight);
+  /// This function does: for each element { row, column, weight } indexed i in
+  /// the vector "elements", let x(i) = A(row(i), column(i)); then it does
+  /// (*this)(row(i), column(i)) += weight(i) / x(i), and
+  /// *tot_objf = \sum_i weight(i) * log(x(i)), and
+  /// *tot_weight = \sum_i weight(i)
+  /// Preconditions: A must be strictly positive, and no (row, column) pair
+  /// may be repeated within "elements"
+  void CompObjfAndDeriv(const std::vector<MatrixElement<Real> > &elements,
+                        const CuMatrix<Real> &A,
+                        Real *tot_objf,
+                        Real* tot_weight);
 
  private:
   void Destroy();
