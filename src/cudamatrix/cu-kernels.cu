@@ -810,11 +810,13 @@ static void _cuda_comp_obj_deriv(void* x, int s, const Real* z, MatrixDim d, Rea
     int label = *(int*) ((size_t)x + j * (2 * sizeof(int) + sizeof(Real) )+ sizeof(int));
     Real weight = *(Real*) ((size_t)x + j * (2 * sizeof(int) + sizeof(Real) ) + 2 * sizeof(int)); 
     tmp_weight_sum += weight;
-    Real this_prob =  *(Real*) ((size_t)z + m * d.stride + label );
+    Real this_prob =  *(Real*) ((Real*)z + m * d.stride + label );
     tmp_tot_objf += weight * log(this_prob); 
 
-    *(Real*) ((size_t)z2 + m * d2.stride + t ) += weight / this_prob;
+    *(Real*) ((Real*)z2 + m * d2.stride + label ) += weight / this_prob;// there might be problems here....
   }
+  tot_objf[i] = tmp_tot_objf;
+  tot_weight[i] = tmp_weight_sum;
   __syncthreads();
   *t = _sum_reduce(tot_objf);
   __syncthreads();

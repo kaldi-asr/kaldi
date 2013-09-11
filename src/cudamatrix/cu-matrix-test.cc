@@ -1456,9 +1456,61 @@ static void UnitTestCuMatrixSetRandUniform() {
   }
 }
 
+template<typename Real> 
+static void UnitTestCuMatrixObjfDeriv() {
+  int32 n_r = 512 + rand() % 256, n_c = 256 + rand() % 256;
+  CuMatrix<Real> A(n_r, n_c), B(n_r, n_c);
+  A.SetRandn();
+  B.SetRandn();
+  std::vector<MatrixElement<Real> > labels;
+  for(int i = 0; i < n_r; i++) {
+    for(int j = 0; j < n_c; j++) {
+      if(A(i,j) < 0) A(i,j) = -A(i,j);
+      if(B(i,j) < 0) B(i,j) = -B(i,j);
 
+      A(i,j) = A(i,j) * Real(rand() % 2);
+      if(std::abs(A(i,j)) > 0.0001) {
+        MatrixElement<Real> t = {i, j, A(i, j)};
+        labels.push_back(t);
+      }
+    }
+  }
+  CuMatrix<Real> C(n_r, n_c);
+  C.Set(0);
+  Real a = 0, b = 0;
+//std::cout<<"BEGIN DERI TEST!\n";
+
+  C.CompObjfAndDeriv(labels, B, &a, &b);//(sv_labels, output, &tot_objf, &tot_weight)
+//std::cout<<"END DERI TEST!\n";
+
+  ApproxEqual(b, A.Sum());
+
+  Real sum2 = 0;
+  for(int i = 0; i < n_r; i++) {
+    for(int j = 0; j < n_c; j++) {
+      if(A(i,j) > 0.0001) {
+        sum2 = sum2 + A(i,j) * log(B(i,j));
+      }
+    }
+  }
+  ApproxEqual(a, sum2);
+
+  CuMatrix<Real> S(n_r, n_c);
+
+  for(int i = 0; i < n_r; i++) {
+    for(int j = 0; j < n_c; j++) {
+      S(i,j) = 0;
+      if(B(i,j) > 0.00001) {
+        S(i,j) = A(i,j) / B(i,j);
+      }
+      ApproxEqual(S(i,j),C(i,j));
+    }
+  }
+
+}
 
 template<typename Real> void CudaMatrixUnitTest() {
+  UnitTestCuMatrixObjfDeriv<Real>();
   //test CuMatrix<Real> methods by cross-check with Matrix
   UnitTestCuMatrixCopyCross<Real>();
   UnitTestCuMatrixCopyCross2<Real>();

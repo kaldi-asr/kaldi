@@ -913,6 +913,16 @@ void CuMatrixBase<Real>::SoftHinge(const CuMatrixBase<Real> &src) {
   }
 }
 
+
+/*
+Think of sv_labels as a Matrix, denoting the "correct" label of each frame to each phone-state; it's very likely to contain a LOT of zeros
+
+tot_weight = the sum of ALL element in matrix sv_labels
+tot_objf = the sum of the product of (each element in matrix sv_labels) and (the log of its counterpart in matrix output)
+
+an element in "this" matrix = (the element in matrix sv_labels) divided by (the element in matrix output)
+
+*/
 template<typename Real>
 void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& sv_labels, const CuMatrix<Real> &output, Real *tot_objf, Real* tot_weight) {
  # if HAVE_CUDA == 1
@@ -933,6 +943,7 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
     CU_SAFE_CALL(cudaMemcpy(addr, sv_labels.data(), sv_labels.size() * sizeof(MatrixElement<Real>), cudaMemcpyHostToDevice));
     Timer tim;
     CuVector<Real> tmp(2, kUndefined);
+    //tmp(0) = 0; tmp(1) = 0;
     int dimBlock(CU1DBLOCK);
     int dimGrid = 1;// only 1 block here. we have loops in each thread  //(n_blocks(dim_, CU1DBLOCK));
     cuda_comp_obj_deriv(dimGrid, dimBlock, (void*)addr, sv_labels.size(), output.Data(), output.Dim(), this->Data(), this->Dim(), tmp.Data());
@@ -944,7 +955,7 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
 #endif
   {
     for(int32 i = 0; i<sv_labels.size(); i++) {
-      int32 m = sv_labels[i].m, label = sv_labels[i].label;
+      int32 m = sv_labels[i].row, label = sv_labels[i].column;
       Real weight = sv_labels[i].weight;
       //KALDI_ASSERT(label >= 0 && label < nnet_.OutputDim());
       Real this_prob = output(m, label);
@@ -952,6 +963,7 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
       *tot_objf += weight * log(this_prob);
       *tot_weight += weight;
       (*this)(m, label) += weight / this_prob; 
+
     }
   }
 }

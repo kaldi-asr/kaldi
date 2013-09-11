@@ -47,8 +47,8 @@ Real TraceMatMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B,
 //*
 template<typename Real>
 struct MatrixElement {
-  int m;
-  int label;
+  int row;
+  int column;
   Real weight;
 };
 // */
