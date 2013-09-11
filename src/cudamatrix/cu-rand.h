@@ -36,7 +36,7 @@ class CuRand {
      host_(NULL), host_size_(0)
   { }
 
-  ~CuRand() { }
+  ~CuRand() { cudaFree(z1_); cudaFree(z2_); cudaFree(z3_); cudaFree(z4_); delete[] host_; }
 
   /// on demand seeding of all the buffers
   void SeedGpu(MatrixIndexT state_size);
