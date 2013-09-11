@@ -805,8 +805,8 @@ template<typename Real>
 void CuMatrixBase<Real>::AddMatMat(
     Real alpha, const CuMatrixBase<Real>& A, MatrixTransposeType transA,
     const CuMatrixBase<Real>& B, MatrixTransposeType transB, Real beta) {
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
+
+
     // CUBLAS is col-major, cudamatrix is row-major, how to do the mapping?
     // keep trans..., just swap A&B matrices: A->B B->A
     MatrixIndexT m = ((transB==kTrans)? B.NumRows() : B.NumCols()); 
@@ -820,6 +820,9 @@ void CuMatrixBase<Real>::AddMatMat(
 
     if (m == 0) return;
     
+    
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
     cublas_gemm((transB==kTrans?'T':'N'), (transA==kTrans?'T':'N'), m, n, k, 
