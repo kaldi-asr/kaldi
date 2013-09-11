@@ -174,10 +174,11 @@ void CuDevice::SelectGpuId(int32 gpu_id) {
 
     CU_SAFE_CALL(cudaGetDeviceProperties(&properties_, act_gpu_id));
 
-    KALDI_LOG << "The active GPU is [" << act_gpu_id << "]: "
-              << name << "\t" << GetFreeMemory(NULL, NULL) << " version "
+    KALDI_LOG << "The active GPU is [" << act_gpu_id << "]: " << name << "\t"
+              << GetFreeMemory(&free_memory_at_startup_, NULL) << " version "
               << properties_.major << "." << properties_.minor;
-    
+
+    if (verbose_) PrintMemoryUsage();
   }
 
   return;
@@ -328,7 +329,13 @@ void CuDevice::AccuProfile(const std::string &key, double time) {
   profile_map_[key] += time;
 }
 
-
+void CuDevice::PrintMemoryUsage() const {
+  if (Enabled()) {
+    int64 free_memory_now;
+    GetFreeMemory(&free_memory_now, NULL);
+    KALDI_LOG << "Memory used: " << (free_memory_at_startup_ - free_memory_now) << " bytes.";
+  }
+}
 
 void CuDevice::PrintProfile() {
   if (verbose_ && Enabled()) { 
@@ -343,11 +350,12 @@ void CuDevice::PrintProfile() {
       os << pairs[i].second << "\t" << pairs[i].first << "s\n";
     os << "-----";
     KALDI_LOG << os.str();
+    PrintMemoryUsage();
   }
 }
 
 
-std::string CuDevice::GetFreeMemory(int64* free, int64* total) {
+std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
 // WARNING! the CUDA API is inconsistent accross versions!
 #if (CUDA_VERSION >= 3020)
   //define the function signature type

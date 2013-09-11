@@ -342,7 +342,8 @@ class CuMatrixBase {
   void SetRandn();
 
   void SetRandUniform();
-  
+
+  void Write(std::ostream &os, bool binary) const;
  protected:
   // The following two functions should only be called if we did not compile with CUDA
   // or could not get a CUDA card; in that case the contents are interpreted the
@@ -468,7 +469,6 @@ class CuMatrix: public CuMatrixBase<Real> {
   
   /// I/O functions
   void Read(std::istream &is, bool binary);
-  void Write(std::ostream &os, bool binary) const;
 
   /// Destructor
   ~CuMatrix() { Destroy(); }
@@ -480,7 +480,8 @@ class CuMatrix: public CuMatrixBase<Real> {
     return *(reinterpret_cast<Matrix<Real>* >(this));
   }
 
-  void CompObjfAndDeriv(const std::vector<MatrixElement<Real> > &sv_labels, const CuMatrix<Real> &output, Real *tot_objef, Real* tot_weight);
+  void CompObjfAndDeriv(const std::vector<MatrixElement<Real> > &sv_labels, const CuMatrix<Real> &output,
+                        Real *tot_objf, Real* tot_weight);
 
  private:
   void Destroy();

@@ -445,7 +445,7 @@ void CuMatrix<Real>::Read(std::istream &is, bool binary) {
 }
 
 template<typename Real>
-void CuMatrix<Real>::Write(std::ostream &os, bool binary) const {
+void CuMatrixBase<Real>::Write(std::ostream &os, bool binary) const {
   Matrix<Real> temp(this->num_rows_, this->num_cols_, kUndefined);
   this->CopyToMat(&temp);
   temp.Write(os, binary);
@@ -1761,7 +1761,7 @@ void CuMatrixBase<Real>::AddMatBlock(
     // transB == kTrans).
     int32 row_offset = 0, col_offset = 0;
     for (int32 b = 0; b < B_num_blocks; b++) {
-      const CuMatrixBase<Real> &this_block = B.Block(b);
+      const CuSubMatrix<Real> this_block = B.Block(b);
       int32 this_num_rows = this_block.NumRows(),
           this_num_cols = this_block.NumCols();
       if (transB == kTrans) std::swap(this_num_rows, this_num_cols);

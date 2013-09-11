@@ -120,7 +120,7 @@ void NnetUpdater::Propagate() {
 double NnetUpdater::ComputeObjfAndDeriv(
     const std::vector<NnetTrainingExample> &data,
     CuMatrix<BaseFloat> *deriv) const {
-  double tot_objf = 0.0, tot_weight = 0.0;
+  BaseFloat tot_objf = 0.0, tot_weight = 0.0;
   int32 num_components = nnet_.NumComponents();  
   deriv->Resize(num_chunks_, nnet_.OutputDim()); // sets to zero.
   const CuMatrix<BaseFloat> &output(forward_data_[num_components]);

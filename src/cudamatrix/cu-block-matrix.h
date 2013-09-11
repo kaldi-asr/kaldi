@@ -51,8 +51,6 @@ class CuBlockMatrix {
 
   CuBlockMatrix(const std::vector<CuMatrix<Real> > &data);
 
-  void Swap(std::vector<CuMatrix<Real> > *data);
-  
   ~CuBlockMatrix() { Destroy(); }
   
   /// Copy constructor
@@ -67,19 +65,19 @@ class CuBlockMatrix {
 
   MatrixIndexT NumRows() const { return num_rows_; }
 
-  MatrixIndexT NumCols() const { return num_cols_; }
+  MatrixIndexT NumCols() const { return data_.num_cols_; }
 
-  MatrixIndexT NumBlocks() const { return data_.size(); }
-
+  MatrixIndexT NumBlocks() const { return block_data_.size(); }
+  
   // Returns max num-columns of any block
   MatrixIndexT MaxBlockCols() const ;
 
   // Returns max num-rows of any block
   MatrixIndexT MaxBlockRows() const;
     
-  const CuMatrixBase<Real>& Block(MatrixIndexT b) const;
+  const CuSubMatrix<Real> Block(MatrixIndexT b) const;
 
-  CuMatrixBase<Real>& Block(MatrixIndexT b); // return CuMatrixBase to disallow resizes.
+  CuSubMatrix<Real> Block(MatrixIndexT b); // return CuMatrixBase to disallow resizes.
 
 
   /// Does *this = alpha A B + beta * *this, discarding elements of the product outside
@@ -95,28 +93,36 @@ class CuBlockMatrix {
   /// Note: this has not been impelemented in a very efficient way, it's used only
   /// for testing.
   void CopyFromMat(const CuMatrix<Real> &M);
+
+  void Swap(CuBlockMatrix *other);
   
  protected:
+  CuMatrix<Real> data_; // This is a single matrix into which
+  // we pack all the blocks (possibly with spaces left over)
+
+  struct BlockMatrixData{
+    MatrixIndexT num_rows;
+    MatrixIndexT num_cols;
+    MatrixIndexT row_offset;
+    MatrixIndexT col_offset;
+  };
+  
+  
   const CuBlockMatrixData* CuData() const { return cu_data_; }
-  const std::vector<CuMatrix<Real> > &Data() const { return data_; }
  private:
+  
   /// If using GPU and cu_data_ != NULL, free cu_data_ and set it to NULL
   void FreeCudaData();
   /// If using GPU, allocate and set cu_data_ on the GPU to reflect "data_".
   void SetCudaData();
-  /// Set the num_rows_ and num_cols_ variables to reflect "data_".
-  void SetNumRowsAndCols();
 
-  /// Sets the derived variables as a function of data_.
-  /// Calls FreeCudaData() then SetCudaData() then SetNumRowsAndCols().
-  void SetDerivedVars(); 
 
   /// Frees and deinitializes everything.
   void Destroy();
 
-  std::vector<CuMatrix<Real> > data_;
-  MatrixIndexT num_rows_; // sum of num_rows_ of elements of data_.
-  MatrixIndexT num_cols_; // sum of num_cols_ of elements of data_.
+  std::vector<BlockMatrixData> block_data_;
+  
+  MatrixIndexT num_rows_; // sum of num_rows of elements of block_data_.
 #if HAVE_CUDA == 1
   CuBlockMatrixData *cu_data_; // We store the pointers and some additional info
                                // on the GPU card in a form more suited to

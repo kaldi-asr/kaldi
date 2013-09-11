@@ -40,49 +40,62 @@ CuBlockMatrix<Real>::CuBlockMatrix(const std::vector<CuMatrix<Real> >&data) {
 #if HAVE_CUDA == 1
   cu_data_ = NULL;
 #endif
-  std::vector<CuMatrix<Real> > data_copy(data);
-  this->Swap(&data_copy);
+  block_data_.resize(data.size());
+  MatrixIndexT row_offset = 0, col_offset = 0, max_num_rows = 0;
+  for (size_t b = 0; b < data.size(); b++) {
+    MatrixIndexT num_rows = data[b].NumRows(), num_cols = data[b].NumCols();
+    KALDI_ASSERT(num_rows > 0 && num_cols > 0);
+    BlockMatrixData block_data;
+    block_data.num_rows = num_rows;
+    block_data.num_cols = num_cols;
+    block_data.row_offset = row_offset;
+    block_data.col_offset = col_offset;
+    row_offset += num_rows;
+    col_offset += num_cols;
+    max_num_rows = std::max(max_num_rows, num_rows);
+    block_data_[b] = block_data;
+  }
+  num_rows_ = row_offset;
+  data_.Resize(max_num_rows, col_offset);
+  for (int32 b = 0; b < NumBlocks(); b++)
+    Block(b).CopyFromMat(data[b]);
+  SetCudaData();
+}
+
+
+template<class Real>
+const CuSubMatrix<Real> CuBlockMatrix<Real>::Block(int32 b) const {
+  KALDI_ASSERT(static_cast<size_t>(b) < block_data_.size());
+  const BlockMatrixData &block_data = block_data_[b];
+  return CuSubMatrix<Real>(data_, 0, block_data.num_rows,
+                           block_data.col_offset, block_data.num_cols);
 }
 
 template<class Real>
-void CuBlockMatrix<Real>::Swap(std::vector<CuMatrix<Real> > *data) {
-  data_.swap(*data);
-  this->SetDerivedVars();
-}
-
-template<class Real>
-const CuMatrixBase<Real>& CuBlockMatrix<Real>::Block(int32 b) const {
-  KALDI_ASSERT(static_cast<size_t>(b) < data_.size());
-  return data_[b];
-}
-
-template<class Real>
-CuMatrixBase<Real>& CuBlockMatrix<Real>::Block(int32 b) {
-  KALDI_ASSERT(static_cast<size_t>(b) < data_.size());
-  return data_[b];
+CuSubMatrix<Real> CuBlockMatrix<Real>::Block(int32 b) {
+  KALDI_ASSERT(static_cast<size_t>(b) < block_data_.size());
+  BlockMatrixData &block_data = block_data_[b];
+  return CuSubMatrix<Real>(data_, 0, block_data.num_rows,
+                           block_data.col_offset, block_data.num_cols);
 }
 
 
 template<class Real>
-void CuBlockMatrix<Real>::SetDerivedVars() {
-  this->FreeCudaData();
-  this->SetCudaData();
-  this->SetNumRowsAndCols();
-}
-
-template<class Real>
-CuBlockMatrix<Real>::CuBlockMatrix(const CuBlockMatrix<Real> &other) {
+CuBlockMatrix<Real>::CuBlockMatrix(const CuBlockMatrix<Real> &other):
+    data_(other.data_), block_data_(other.block_data_), num_rows_(other.num_rows_) {
 #if HAVE_CUDA == 1
   cu_data_ = NULL;
 #endif
-  std::vector<CuMatrix<Real> > data_copy(other.data_);
-  this->Swap(&data_copy);
+  SetCudaData();
 }
 
 template<class Real>
 CuBlockMatrix<Real> &CuBlockMatrix<Real>::operator =(const CuBlockMatrix<Real> &other) {
-  std::vector<CuMatrix<Real> > data_copy(other.data_);
-  this->Swap(&data_copy);
+  FreeCudaData();
+  data_ = other.data_;
+  block_data_ = other.block_data_;
+  num_rows_ = other.num_rows_;
+  SetCudaData();
   return *this;
 }
 
@@ -106,22 +119,22 @@ template<class Real>
 void CuBlockMatrix<Real>::SetCudaData() {
 #if HAVE_CUDA == 1
   KALDI_ASSERT(cu_data_ == NULL);
-  if (data_.size() == 0) return; // Nothing to do.
+  if (block_data_.size() == 0) return; // Nothing to do.
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    std::vector<CuBlockMatrixData> tmp_cu_data(data_.size());
+    std::vector<CuBlockMatrixData> tmp_cu_data(NumBlocks());
     int32 row_offset = 0, col_offset = 0;
-    for (size_t i = 0; i < data_.size(); i++) {
-      CuMatrix<Real> &this_mat = data_[i];
-      CuBlockMatrixData &this_cu_data = tmp_cu_data[i];
+    for (size_t b = 0; b < NumBlocks(); b++) {
+      CuSubMatrix<Real> this_mat = Block(b);
+      CuBlockMatrixData &this_cu_data = tmp_cu_data[b];
       this_cu_data.row_offset = row_offset;
       this_cu_data.col_offset = col_offset;
-      this_cu_data.matrix_dim = data_[i].Dim();
+      this_cu_data.matrix_dim = this_mat.Dim();
       this_cu_data.matrix_data = static_cast<void*>(this_mat.Data());
       row_offset += this_mat.NumRows();
       col_offset += this_mat.NumCols();
     }
-    size_t size = data_.size() * sizeof(CuBlockMatrixData);
+    size_t size = NumBlocks() * sizeof(CuBlockMatrixData);
     CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&cu_data_), size));
     CU_SAFE_CALL(cudaMemcpy(cu_data_, &(tmp_cu_data[0]), size, cudaMemcpyHostToDevice));
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
@@ -130,26 +143,22 @@ void CuBlockMatrix<Real>::SetCudaData() {
 }
 
 template<class Real>
-void CuBlockMatrix<Real>::SetNumRowsAndCols() {
-  int32 num_rows = 0, num_cols = 0;
-  for (size_t i = 0; i < data_.size(); i++) {
-    if (data_[i].NumRows() == 0) {
-      KALDI_ERR << "CuBlockMatrix does not allow zero-dimension matrices.";
-    }
-    num_rows += data_[i].NumRows();
-    num_cols += data_[i].NumCols();
-  }
-  num_rows_ = num_rows;
-  num_cols_ = num_cols;
+void CuBlockMatrix<Real>::Swap(CuBlockMatrix<Real> *other) {
+  data_.Swap(&other->data_);
+  block_data_.swap(other->block_data_);
+  std::swap(num_rows_, other->num_rows_);
+#if HAVE_CUDA == 1
+  std::swap(cu_data_, other->cu_data_);
+#endif
 }
 
 template<class Real>
 void CuBlockMatrix<Real>::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<CuBlockMatrix>");
-  int32 size = data_.size();
-  WriteBasicType(os, binary, size);
-  for (int32 i = 0; i < size; i++)
-    data_[i].Write(os, binary);
+  int32 num_blocks = NumBlocks();
+  WriteBasicType(os, binary, num_blocks);
+  for (int32 b = 0; b < num_blocks; b++)
+    this->Block(b).Write(os, binary);
   WriteToken(os, binary, "</CuBlockMatrix>");  
 }
 
@@ -157,36 +166,38 @@ template<class Real>
 void CuBlockMatrix<Real>::Read(std::istream &is, bool binary) {
   Destroy();
   int i = Peek(is, binary);
+  std::vector<CuMatrix<Real> > data;
   if (i != static_cast<int>('<')) {
     // back-compatibility code so we can read the older format of
     // MixtureProbComponent.  This code should be deleted eventually.
     int32 size;
     ReadBasicType(is, binary, &size);
     KALDI_ASSERT(size >= 0);
-    data_.resize(size);
+    data.resize(size);
     for (int32 i = 0; i < size; i++)
-      data_[i].Read(is, binary);
+      data[i].Read(is, binary);
   } else {
     ExpectToken(is, binary, "<CuBlockMatrix>");
     int32 size;
     ReadBasicType(is, binary, &size);
     KALDI_ASSERT(size >= 0);
-    data_.resize(size);
+    data.resize(size);
     for (int32 i = 0; i < size; i++)
-      data_[i].Read(is, binary);
+      data[i].Read(is, binary);
     ExpectToken(is, binary, "</CuBlockMatrix>");    
   }
-  SetDerivedVars();
+
+  CuBlockMatrix<Real> block_mat(data); // initializer from std::vector<CuMatrix<Real> > does
+  // the main job of initialization.
+  this->Swap(&block_mat);
 }
 
 template<class Real>
 void CuBlockMatrix<Real>::Destroy() {
-  std::vector<CuMatrix<Real> > tmp;
-  tmp.swap(data_); // this will ensure all memory in data_ is released when tmp
-                   // goes out of scope.`
+  data_.Resize(0, 0);
+  block_data_.clear();
+  num_rows_ = 0;  
   FreeCudaData();
-  num_rows_ = 0;
-  num_cols_ = 0;
 }
 
 // Does *this = alpha A B + beta * *this, discarding elements outside
@@ -242,7 +253,7 @@ void CuBlockMatrix<Real>::AddMatMat(
   {
     int32 row_offset = 0, col_offset = 0;    
     for (MatrixIndexT b = 0; b < NumBlocks(); b++) {
-      CuMatrix<Real> &this_block = data_[b];
+      CuSubMatrix<Real> this_block = Block(b);
       MatrixIndexT this_num_rows = this_block.NumRows(),
           this_num_cols = this_block.NumCols();
       CuSubMatrix<Real> A_part = (transA == kNoTrans ?
@@ -266,17 +277,14 @@ void CuBlockMatrix<Real>::AddMatMat(
 template<class Real>
 MatrixIndexT CuBlockMatrix<Real>::MaxBlockCols() const {
   MatrixIndexT max_cols = 0;
-  for (size_t i = 0; i < data_.size(); i++)
-    max_cols = std::max(max_cols, data_[i].NumCols());
+  for (size_t i = 0; i < block_data_.size(); i++)
+    max_cols = std::max(max_cols, block_data_[i].num_cols);
   return max_cols;
 }
 
 template<class Real>
 MatrixIndexT CuBlockMatrix<Real>::MaxBlockRows() const {
-  MatrixIndexT max_rows = 0;
-  for (size_t i = 0; i < data_.size(); i++)
-    max_rows = std::max(max_rows, data_[i].NumRows());
-  return max_rows;
+  return data_.NumRows();
 }
 
 template<class Real>
@@ -284,7 +292,7 @@ void CuBlockMatrix<Real>::CopyFromMat(const CuMatrix<Real> &M) {
   KALDI_ASSERT(NumRows() == M.NumRows() && NumCols() == M.NumCols());
   MatrixIndexT row_offset = 0, col_offset = 0;
   for (MatrixIndexT b = 0; b < NumBlocks(); b++) {
-    CuMatrix<Real> &this_block = data_[b];
+    CuSubMatrix<Real> this_block = Block(b);
     MatrixIndexT this_num_rows = this_block.NumRows(),
         this_num_cols = this_block.NumCols();
     const CuSubMatrix<Real> src(M, row_offset, this_num_rows,

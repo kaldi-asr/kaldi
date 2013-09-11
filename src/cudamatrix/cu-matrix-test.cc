@@ -755,7 +755,6 @@ template<typename Real>
 static void UnitTestCuMatrixCopyFromTp() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 5 * i + rand() % 10;
-    
     TpMatrix<Real> A(dim);
     A.SetRandn();
     CuTpMatrix<Real> E(A);
@@ -763,7 +762,6 @@ static void UnitTestCuMatrixCopyFromTp() {
     CuMatrix<Real> C(dim, dim);
     B.CopyFromTp(A, kNoTrans);
     C.CopyFromTp(E, kNoTrans);
-
     CuMatrix<Real> D(B);
     AssertEqual<Real>(D, C);
   }
@@ -1501,9 +1499,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuVectorAddColSumMatLarge<Real>();
   UnitTestCuSubMatrix<Real>();
   UnitTestCuVectorInvertElements<Real>();
-
   UnitTestCuMatrixIO<Real>();
-  
   UnitTestCuSigmoid<Real>();
   UnitTestCuApproxEqual<Real>();
   UnitTestCuCopy<Real, float>();
@@ -1515,15 +1511,12 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuFindRowMaxId<Real>();
   UnitTestCuSoftmax<Real>();
   UnitTestCuDiffXent<Real>();
-
   UnitTestCheck<Real>();
-
   UnitTestSwapCu2Cu<Real>();
   UnitTestSwapCu2M<Real>();
   UnitTestCuMatrixAddDiagVecMat<Real>();
   UnitTestCuTanh<Real>();
   UnitTestCuDiffTanh<Real>();
-
   UnitTestCuVectorAddTpVec<Real>();
   UnitTestCuVectorMulTp<Real>();
 }
@@ -1542,6 +1535,9 @@ int main() {
 #endif
 
     kaldi::CudaMatrixUnitTest<float>();
+
+    CuDevice::Instantiate().PrintMemoryUsage();
+    
 #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().DoublePrecisionSupported()) {
       kaldi::CudaMatrixUnitTest<double>();

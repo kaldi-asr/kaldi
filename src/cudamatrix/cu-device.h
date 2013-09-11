@@ -45,7 +45,7 @@ class CuDevice {
   // Instance interface
  
   /// Check if the CUDA device is selected for use
-  bool Enabled() { 
+  bool Enabled() const {
     return (active_gpu_id_ > -1); 
   }
 
@@ -65,13 +65,15 @@ class CuDevice {
   /// Sum the IO time
   void AccuProfile(const std::string &key, double time);
   void PrintProfile(); 
+
+  void PrintMemoryUsage() const;
   
   void ResetProfile() { 
     profile_map_.clear(); 
   }
   
   /// Get the actual GPU memory use stats
-  std::string GetFreeMemory(int64* free = NULL, int64* total = NULL);
+  std::string GetFreeMemory(int64* free = NULL, int64* total = NULL) const;
   /// Get the name of the GPU
   void DeviceGetName(char* name, int32 len, int32 dev); 
   
@@ -101,6 +103,8 @@ class CuDevice {
   /// -1 SelectGpuId was called, but the GPU was manually disabled
   /// 0..N Normal GPU IDs
   int32 active_gpu_id_; 
+  
+  int64 free_memory_at_startup_;
   
   cudaDeviceProp properties_;
 

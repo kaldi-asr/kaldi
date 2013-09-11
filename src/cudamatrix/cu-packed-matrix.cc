@@ -77,13 +77,13 @@ void CuPackedMatrix<Real>::SetRandn() {
 
 template<typename Real>
 void CuPackedMatrix<Real>::Destroy() {
-  #if HAVE_CUDA == 1
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     if (this->data_ != NULL) {
       CU_SAFE_CALL(cudaFree(this->data_));
     }
   } else
-  #endif
+#endif
   {
     if (this->data_ != NULL) KALDI_MEMALIGN_FREE(this->data_);
   }
@@ -137,7 +137,6 @@ void CuPackedMatrix<Real>::CopyFromPacked(const CuPackedMatrix<Real> &src) {
     size_t nr = static_cast<size_t>(num_rows_),
         num_bytes = ((nr * (nr+1)) / 2) * sizeof(Real);
 
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&this->data_), num_bytes));    
     CU_SAFE_CALL(cudaMemcpy(data_, src.data_, num_bytes,
                             cudaMemcpyDeviceToDevice));
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::CopyFromPacked1",tim.Elapsed());
@@ -155,9 +154,6 @@ void CuPackedMatrix<Real>::CopyFromPacked(const PackedMatrix<Real> &src) {
   if (CuDevice::Instantiate().Enabled()) {
     if (num_rows_ == 0) return; // Nothing to do.
     Timer tim;
-    size_t nr = static_cast<size_t>(num_rows_),
-        num_bytes = ((nr * (nr+1)) / 2) * sizeof(Real);
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&this->data_), num_bytes));    
     CU_SAFE_CALL(cudaMemcpy(data_, src.data_, src.SizeInBytes(),
                             cudaMemcpyHostToDevice));
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::CopyFromPacked2",tim.Elapsed());
@@ -244,7 +240,6 @@ void CuPackedMatrix<Real>::SetZero() {
     size_t nr = static_cast<size_t>(num_rows_),
       num_bytes = ((nr * (nr+1)) / 2) * sizeof(Real);
 
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&this->data_), num_bytes));
     CU_SAFE_CALL(cudaMemset(reinterpret_cast<void*>(this->data_), 0, num_bytes));
     CuDevice::Instantiate().AccuProfile("CuPackedMatrix::SetZero", tim.Elapsed());
   } else

@@ -212,7 +212,7 @@ void CuVectorBase<Real>::CopyRowsFromMat(const MatrixBase<Real> &mat) {
         vec_data += mat.NumCols();
       }
     }
-    CU_SAFE_CALL(cudaGetLastError());    
+    CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -267,8 +267,9 @@ Real CuVectorBase<Real>::Sum() const {
     Timer tim;
     CuVector<Real> tmp(1, kUndefined);
     int dimBlock(CU1DBLOCK);
-    int dimGrid = 1;// only 1 block here. we have loops in each thread  //(n_blocks(dim_, CU1DBLOCK));
+    int dimGrid = 1; // only 1 block here. we have loops in each thread.
     cuda_vec_sum(dimGrid, dimBlock, data_, tmp.Data(), dim_, 1);
+    CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile("CuVectorBase::Sum", tim.Elapsed());
     return tmp(0);
   } else

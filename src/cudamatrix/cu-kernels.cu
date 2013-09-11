@@ -535,8 +535,9 @@ template<typename Real>
 __global__
 static void _vec_min(const Real* v, Real* value, int dim) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  if(blockIdx.y > 0) return;
 
+  if(i >= CU1DBLOCK) return;
+  
   __shared__ Real row_data[CU1DBLOCK];
 
   int block_size = (dim + CU1DBLOCK - 1) / CU1DBLOCK;
@@ -565,6 +566,8 @@ static void _vec_max(const Real* v, Real* value, int dim) {
 
   __shared__ Real row_data[CU1DBLOCK];
 
+  if(i >= CU1DBLOCK) return;
+
   int block_size = (dim + CU1DBLOCK - 1) / CU1DBLOCK;
 
   Real max = -1.0 / 0.0; // -infinity.
@@ -588,6 +591,8 @@ __global__
 static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA, int B_stride, Real* value) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
 
+  if(i >= CU1DBLOCK) return;
+  
   int num_elements = dA.rows * dA.cols;
   int block_size = (num_elements + CU1DBLOCK - 1) / CU1DBLOCK;
   int loop_start = i * block_size, loop_end = (i + 1) * block_size;
@@ -619,7 +624,8 @@ template<typename Real>
 __global__
 static void _trace_mat_mat_trans(const Real* A, const Real* B, MatrixDim dA, int B_stride, Real* value) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-
+  if(i >= CU1DBLOCK) return;
+  
   int num_elements = dA.rows * dA.cols;
   int block_size = (num_elements + CU1DBLOCK - 1) / CU1DBLOCK;
   int loop_start = i * block_size, loop_end = (i + 1) * block_size;
@@ -822,6 +828,8 @@ static void _vec_sum(Real *v, Real *sum, int dim, int inc) {
   int i = threadIdx.x;
   __shared__ Real row_data[CU1DBLOCK];  
 
+  if (i >= CU1DBLOCK) return;
+  
   Real tmp_sum = 0;
   int size = dim / CU1DBLOCK; //the least size in a loop (later part)
   int threshold = dim - size * CU1DBLOCK; //any loop below this number would + 1
@@ -833,8 +841,8 @@ static void _vec_sum(Real *v, Real *sum, int dim, int inc) {
     loop_end = (i+1) * (size + 1);
   }
   else {
-    loop_start = threshold + i*size;
-    loop_end = threshold + (i+1)*size;
+    loop_start = threshold + i * size;
+    loop_end = threshold + (i+1) * size;
   }
   for(int j = loop_start; j< loop_end; j++) {
     tmp_sum += v[j * inc];
