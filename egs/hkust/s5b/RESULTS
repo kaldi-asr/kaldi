@@ -43,6 +43,8 @@ nnet_8m_6l/decode_eval_iter280/cer_10:%CER 27.43 [ 2074 / 7562, 424 ins, 605 del
 nnet_8m_6l/decode_eval_iter290/cer_10:%CER 26.37 [ 1994 / 7562, 410 ins, 572 del, 1012 sub ]
 nnet_8m_6l/decode_eval/cer_10:%CER 25.55 [ 1932 / 7562, 405 ins, 549 del, 978 sub ]
 
+tri5a_pretrain-dbn_dnn/decode/cer_10:%CER 20.48 [ 1549 / 7562, 383 ins, 468 del, 698 sub ]
+
 
 ### 16K wordlist close LM, the perplexity of the LM was optimized with the sentences of evaluation data
 tri1/decode_eval_closelm/cer_10:%CER 46.69 [ 3531 / 7562, 1205 ins, 407 del, 1919 sub ]
@@ -86,4 +88,7 @@ nnet_8m_6l/decode_eval_closelm_iter270/cer_10:%CER 20.50 [ 1550 / 7562, 348 ins,
 nnet_8m_6l/decode_eval_closelm_iter280/cer_10:%CER 21.44 [ 1621 / 7562, 354 ins, 520 del, 747 sub ]
 nnet_8m_6l/decode_eval_closelm_iter290/cer_10:%CER 20.40 [ 1543 / 7562, 323 ins, 492 del, 728 sub ]
 nnet_8m_6l/decode_eval_closelm/cer_10:%CER 20.68 [ 1564 / 7562, 351 ins, 483 del, 730 sub ]
+
+tri5a_pretrain-dbn_dnn/decode_closelm/cer_10:%CER 16.54 [ 1251 / 7562, 346 ins, 413 del, 492 sub ]
+
 

@@ -21,7 +21,7 @@ mandarin telephone data + other telephone recordings) as described below:
 
   Other telephone speech 2 - ~81000 recording segments with a unique of 1800
   reading sentences recorded under telephone, which comprises ~105 hours of speech data.
-  987 recording segments from 2 speakers held out from training set were used for evaluation.
+  987 recording segments held out from training set were used for evaluation.
 
 
 

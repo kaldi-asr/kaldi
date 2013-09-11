@@ -139,6 +139,12 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --iter $n --config conf/deco
 steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --iter $n --config conf/decode.config --transform-dir exp/tri5a/decode_eval_closelm exp/tri5a/graph_closelm data/eval exp/nnet_8m_6l/decode_eval_closelm_iter${n} &
 done
 
+ # GPU based DNN traing, this was run on CentOS 6.4 with CUDA 5.0
+ # 6 layers DNN pretrained with restricted boltzmann machine, decoding was done by CPUs 
+local/run_dnn.sh
+steps/decode_nnet.sh --nj 2 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 exp/tri5a/graph data-fmllr-tri5a/test $dir/decode || exit 1;
+steps/decode_nnet.sh --nj 2 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 exp/tri5a/graph_closelm data-fmllr-tri5a/test $dir/decode_closelm || exit 1;
+
 ### Scoring ###
 local/ext/score.sh data/eval exp/tri1/graph exp/tri1/decode_eval
 local/ext/score.sh data/eval exp/tri1/graph_closelm exp/tri1/decode_eval_closelm
@@ -167,12 +173,12 @@ local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/tri5a_mmi_b0.1/decode_e
 for n in 1 2 3 4; do local/ext/score.sh data/eval exp/tri5a/graph exp/tri5a_mmi_b0.1/decode_eval$n; done
 for n in 1 2 3 4; do local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/tri5a_mmi_b0.1/decode_eval_closelm$n; done
 
-local/ext/score.sh data/eval data/lang_test exp/sgmm_5a/decode_eval;
-local/ext/score.sh data/eval data/lang_test_closelm exp/sgmm_5a/decode_eval_closelm;
+local/ext/score.sh data/eval exp/sgmm_5a/graph exp/sgmm_5a/decode_eval;
+local/ext/score.sh data/eval exp/sgmm_5a/graph_closelm exp/sgmm_5a/decode_eval_closelm;
 
 for n in 1 2 3 4; do 
- local/ext/score.sh data/eval data/lang_test exp/sgmm_5a_mmi_b0.1/decode_eval$n;
- local/ext/score.sh data/eval data/lang_test_closelm exp/sgmm_5a_mmi_b0.1/decode_eval_closelm$n;
+ local/ext/score.sh data/eval exp/sgmm_5a/graph exp/sgmm_5a_mmi_b0.1/decode_eval$n;
+ local/ext/score.sh data/eval exp/sgmm_5a/graph_closelm exp/sgmm_5a_mmi_b0.1/decode_eval_closelm$n;
 done
 
 local/ext/score.sh data/eval exp/tri5a/graph exp/nnet_8m_6l/decode_eval
@@ -182,4 +188,7 @@ for n in 290 280 270 260 250 240 230 220 210 200 150 100 50; do
   local/ext/score.sh data/eval exp/tri5a/graph exp/nnet_8m_6l/decode_eval_iter${n}; 
   local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_8m_6l/decode_eval_closelm_iter${n}; 
 done
+
+local/ext/score.sh data/eval exp/tri5a/graph exp/tri5a_pretrain-dbn_dnn/decode
+local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/tri5a_pretrain-dbn_dnn/decode_closelm
 
