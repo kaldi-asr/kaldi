@@ -45,14 +45,23 @@ void Randomize(const CuMatrixBase<Real> &src,
                const CuArray<int32> &copy_from_idx,
                CuMatrixBase<Real> *tgt);
 
-/// ie. concatenate the frames with offsets from frame_offsets
-/// [Note from Dan: this needs documentation.]
+/// Splice concatenates frames of src as specified in frame_offsets into tgt.
+/// The dimensions of tgt must be equivalent to the number of rows in src
+/// and it must be that tgt.NumColumns == src.NumColumns * frame_offsets.Dim().
+/// As a result, tgt[i][k*r + j] == src[i + frame_offsets[k]][j] for the
+/// general case where i in [0..src.NumRows()-1], k in [0..frame_offsets.Dim()-1],
+/// j in [0..src.NumRows()-1] and r = src.NumColumns(). 
+/// If i + frame_offsets[k] > src.NumRows() than the right side of the equality
+/// is replaced by src[src.NumRows()-1][j] to avoid an index out of bounds.
 template<typename Real>
 void Splice(const CuMatrix<Real> &src,
             const CuArray<int32> &frame_offsets,
             CuMatrix<Real> *tgt);
 
-/// [Note from Dan: this needs documentation.]
+/// Copies elements from src into tgt as given by copy_from_indices.
+/// The matrices src and tgt must have the same dimensions and
+/// the dimension of copy_from_indices must equal the number of columns
+/// in the src matrix. As a result, tgt[i][j] == src[i][copy_from_indices[j]].
 template<typename Real>
 void Copy(const CuMatrix<Real> &src,
           const CuArray<int32> &copy_from_indices,
