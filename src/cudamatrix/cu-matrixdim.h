@@ -35,6 +35,12 @@
   typedef int32_t          MatrixIndexT_cuda; // you'd have to change this if you changed MatrixIndexT from int32.
 #endif
 
+template<typename Real>
+struct MatrixElement {
+  int32_cuda row;
+  int32_cuda column;
+  Real weight;
+};
 
 extern "C" {
   /**

@@ -44,7 +44,7 @@ Real TraceMatMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B,
  * otherwise, does it on the CPU.
  */
 
-//*
+/*
 template<typename Real>
 struct MatrixElement {
   int row;

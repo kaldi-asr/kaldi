@@ -946,7 +946,7 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
     //tmp(0) = 0; tmp(1) = 0;
     int dimBlock(CU1DBLOCK);
     int dimGrid = 1;// only 1 block here. we have loops in each thread  //(n_blocks(dim_, CU1DBLOCK));
-    cuda_comp_obj_deriv(dimGrid, dimBlock, (void*)addr, sv_labels.size(), output.Data(), output.Dim(), this->Data(), this->Dim(), tmp.Data());
+    cuda_comp_obj_deriv(dimGrid, dimBlock, (MatrixElement<Real>*)addr, sv_labels.size(), output.Data(), output.Dim(), this->Data(), this->Dim(), tmp.Data());
     CuDevice::Instantiate().AccuProfile("Comp_Obj_Deriv", tim.Elapsed());
     *tot_objf = tmp(0);
     *tot_weight = tmp(1);

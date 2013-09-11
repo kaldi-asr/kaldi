@@ -258,9 +258,9 @@ void cuda_copy_from_mat_ff_trans(dim3 Gr, dim3 Bl, float* mat_out, const float* 
 void cuda_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in);
 void cuda_copy_from_mat_dd_trans(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in);
 
-void cudaF_comp_obj_deriv(dim3 Gr,dim3 Bl, void* x, int s, const float* z, MatrixDim d, float* z2, MatrixDim d2, float* t);
+void cudaF_comp_obj_deriv(dim3 Gr,dim3 Bl, MatrixElement<float>* x, int s, const float* z, MatrixDim d, float* z2, MatrixDim d2, float* t);
 
-void cudaD_comp_obj_deriv(dim3 Gr,dim3 Bl, void* x, int s, const double* z, MatrixDim d, double* z2, MatrixDim d2, double* t);
+void cudaD_comp_obj_deriv(dim3 Gr,dim3 Bl, MatrixElement<double>* x, int s, const double* z, MatrixDim d, double* z2, MatrixDim d2, double* t);
  
   
 } // extern "C" 

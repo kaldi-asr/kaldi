@@ -784,7 +784,7 @@ static void _vec_apply_log(Real* v, Real* flag, int dim) {
 
 template<typename Real>
 __global__
-static void _cuda_comp_obj_deriv(void* x, int s, const Real* z, MatrixDim d, Real* z2, MatrixDim d2, Real* t) {
+static void _cuda_comp_obj_deriv(MatrixElement<Real> *x, int s, const Real* z, MatrixDim d, Real* z2, MatrixDim d2, Real* t) {
   int i = threadIdx.x;
   __shared__ Real tot_objf[CU1DBLOCK];
   __shared__ Real tot_weight[CU1DBLOCK];
@@ -806,14 +806,14 @@ static void _cuda_comp_obj_deriv(void* x, int s, const Real* z, MatrixDim d, Rea
     loop_end = threshold + (i+1)*size;
   }
   for(int j = loop_start; j< loop_end; j++) {
-    int m = * ((int*) ((size_t)x + j * (2 * sizeof(int) + sizeof(Real) )) );
-    int label = *(int*) ((size_t)x + j * (2 * sizeof(int) + sizeof(Real) )+ sizeof(int));
-    Real weight = *(Real*) ((size_t)x + j * (2 * sizeof(int) + sizeof(Real) ) + 2 * sizeof(int)); 
+    int m = (x + j)->row;   //* ((int*) ((size_t)x + j * (2 * sizeof(int) + sizeof(Real) )) );
+    int label = (x + j)->column; //*(int*) ((size_t)x + j * (2 * sizeof(int) + sizeof(Real) )+ sizeof(int));
+    Real weight = (x + j)->weight; //*(Real*) ((size_t)x + j * (2 * sizeof(int) + sizeof(Real) ) + 2 * sizeof(int)); 
     tmp_weight_sum += weight;
-    Real this_prob =  *(Real*) ((Real*)z + m * d.stride + label );
+    Real this_prob =  *(z + m * d.stride + label);
     tmp_tot_objf += weight * log(this_prob); 
 
-    *(Real*) ((Real*)z2 + m * d2.stride + label ) += weight / this_prob;// there might be problems here....
+    *(z2 + m * d2.stride + label ) += weight / this_prob;// there might be problems here....
   }
   tot_objf[i] = tmp_tot_objf;
   tot_weight[i] = tmp_weight_sum;
@@ -1760,11 +1760,11 @@ void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim, int inc) {
   _vec_sum<<<Gr,Bl>>>(v, value, dim, inc);
 }
 
-void cudaF_comp_obj_deriv(dim3 Gr, dim3 Bl, void* x, int s, const float* z, MatrixDim d, float* z2, MatrixDim d2, float* t) {
+void cudaF_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<float>* x, int s, const float* z, MatrixDim d, float* z2, MatrixDim d2, float* t) {
   _cuda_comp_obj_deriv<<<Gr,Bl>>>(x,s,z,d,z2,d2,t);
 }
 
-void cudaD_comp_obj_deriv(dim3 Gr,dim3 Bl, void* x, int s, const double* z, MatrixDim d, double* z2, MatrixDim d2, double* t) {
+void cudaD_comp_obj_deriv(dim3 Gr,dim3 Bl, MatrixElement<double>* x, int s, const double* z, MatrixDim d, double* z2, MatrixDim d2, double* t) {
   _cuda_comp_obj_deriv<<<Gr,Bl>>>(x,s,z,d,z2,d2,t);
 }
 
