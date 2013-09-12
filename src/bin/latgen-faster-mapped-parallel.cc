@@ -1,4 +1,4 @@
-// gmmbin/gmm-latgen-faster.cc
+// bin/latgen-faster-mapped-parallel.cc
 
 // Copyright 2009-2012  Microsoft Corporation, Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
           LatticeFasterDecoder *decoder = new LatticeFasterDecoder(*decode_fst,
                                                                    config);
           DecodableMatrixScaledMapped *decodable = 
-            new DecodableMatrixScaledMapped(trans_model, *loglikes, acoustic_scale);
+              new DecodableMatrixScaledMapped(trans_model, acoustic_scale, loglikes);
           DecodeUtteranceLatticeFasterClass *task =
               new DecodeUtteranceLatticeFasterClass(
                   decoder, decodable, word_syms, utt, acoustic_scale,
@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
         LatticeFasterDecoder *decoder = 
           new LatticeFasterDecoder(fst_reader.Value(), config);
         DecodableMatrixScaledMapped *decodable = new
-          DecodableMatrixScaledMapped(trans_model, *loglikes, acoustic_scale);
+            DecodableMatrixScaledMapped(trans_model, acoustic_scale, loglikes);
         DecodeUtteranceLatticeFasterClass *task =
             new DecodeUtteranceLatticeFasterClass(
                 decoder, decodable, word_syms, utt, acoustic_scale,

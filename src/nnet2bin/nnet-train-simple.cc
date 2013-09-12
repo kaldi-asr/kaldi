@@ -108,6 +108,10 @@ int main(int argc, char *argv[]) {
       trans_model.Write(ko.Stream(), binary_write);
       am_nnet.Write(ko.Stream(), binary_write);
     }
+
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
     
     KALDI_LOG << "Finished training, processed " << num_examples
               << " training examples.  Wrote model to "
