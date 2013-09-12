@@ -74,16 +74,17 @@ if [ ! -f $decode_dir/.score.done ]; then
   touch $decode_dir/.score.done
 fi
 
-if [ ! -f $decode_dir/.kws.done ]; then 
-  if [[ "$type" == shadow* ]]; then
-    local/shadow_set_kws_search.sh --cmd "$cmd" --max-states ${max_states} \
-      --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
-      $data_dir $lang_dir $decode_dir ${dev2shadow} ${eval2shadow}
-  else
-    local/kws_search.sh --cmd "$cmd" --max-states ${max_states} \
-      --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
-      $lang_dir $data_dir $decode_dir
+if ! $skip_kws ; then
+  if [ ! -f $decode_dir/.kws.done ]; then 
+    if [[ "$type" == shadow* ]]; then
+      local/shadow_set_kws_search.sh --cmd "$cmd" --max-states ${max_states} \
+        --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
+        $data_dir $lang_dir $decode_dir ${dev2shadow} ${eval2shadow}
+    else
+      local/kws_search.sh --cmd "$cmd" --max-states ${max_states} \
+        --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
+        $lang_dir $data_dir $decode_dir
+    fi
+    touch $decode_dir/.kws.done
   fi
-  touch $decode_dir/.kws.done
 fi
-
