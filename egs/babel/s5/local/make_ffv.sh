@@ -50,7 +50,7 @@ mkdir -p $expdir/log || exit 1;
 
 scp=$data/wav.scp
 
-[ -s $KALDI_ROOT ] && KALDI_ROOT=../../.. 
+[ -s $KALDI_ROOT ] || KALDI_ROOT=../../.. 
 
 ffv_pkg_dir=$KALDI_ROOT/tools/pitch_trackers/ffv-1.0.1
 # make $ffv_pkg_dir an absolute pathname.
