@@ -1588,7 +1588,6 @@ int main() {
 
     kaldi::CudaMatrixUnitTest<float>();
 
-    CuDevice::Instantiate().PrintMemoryUsage();
     
 #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().DoublePrecisionSupported()) {

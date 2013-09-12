@@ -22,7 +22,9 @@
 
 #include <sstream>
 
+#include <vector>
 #include "cudamatrix/cu-common.h"
+
 
 namespace kaldi {
 
@@ -107,8 +109,10 @@ class CuBlockMatrix {
     MatrixIndexT col_offset;
   };
   
-  
+
+#if HAVE_CUDA == 1
   const CuBlockMatrixData* CuData() const { return cu_data_; }
+#endif
  private:
   
   /// If using GPU and cu_data_ != NULL, free cu_data_ and set it to NULL

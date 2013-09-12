@@ -133,7 +133,7 @@ int main() {
     KALDI_WARN << "Double precision not supported";
   }
 #else
-  kaldi::CudaMatrixSpeedTest<double>();
+  kaldi::CudaVectorSpeedTest<double>();
 #endif
   std::cout << "Tests succeeded.\n";
 }
