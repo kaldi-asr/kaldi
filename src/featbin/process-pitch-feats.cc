@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
     // construct all the global objects
     ParseOptions po(usage);
 
-    int32 normalization_window_size = 151; //should be odd number
+    int32 normalization_window_size = 151; // should be odd number
     int32 average_window_size = 5;
     
     // Register the options

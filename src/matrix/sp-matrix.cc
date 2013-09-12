@@ -534,7 +534,7 @@ Real SpMatrix<Real>::FrobeniusNorm() const {
   for (MatrixIndexT i = 0; i < R; i++) {
     for (MatrixIndexT j = 0; j < i; j++)
       sum += (*this)(i, j) * (*this)(i, j) * 2;
-    sum += (*this)(i, i) * (*this)(i, i) * 2;
+    sum += (*this)(i, i) * (*this)(i, i);
   }
   return sqrt(sum);
 }
