@@ -1,5 +1,6 @@
 #!/bin/bash
-# Copyright 2010-2012 Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2010-2012 Microsoft Corporation
+#           2012-2013 Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
 # This script creates a fully expanded decoding graph (HCLG) that represents

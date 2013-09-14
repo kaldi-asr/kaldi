@@ -24,7 +24,7 @@ max_active=7000
 
 #WARNING: This option is renamed lat_beam (it was renamed to follow the naming 
 #         in the other scripts
-lattice_beam=8.0 # Beam we use in lattice generation.
+lattice_beam=6.0 # Beam we use in lattice generation.
 vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for 
     # speaker-vector computation.  Can be quite tight (actually we could
     # probably just do best-path.
@@ -233,10 +233,11 @@ else  ### For models without speaker vectors:
       lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lattice_beam ark:- \
       "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
     rm $dir/pre_lat.*.gz
-  else  # Already done with decoding if no adaptation needed.
-    for n in `seq 1 $nj`; do
-      mv $dir/pre_lat.${n}.gz $dir/lat.${n}.gz
-    done
+  else  # If no adaptation needed, determinize the lattice.
+    $cmd JOB=1:$nj $dir/log/determinize.JOB.log \      
+      lattice-determinize-pruned --acoustic-scale=$acwt --beam=$lattice_beam \
+       "ark:gunzip -c $dir/pre_lat.JOB.gz|" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+    rm $dir/pre_lat.*.gz
   fi
 
 fi
