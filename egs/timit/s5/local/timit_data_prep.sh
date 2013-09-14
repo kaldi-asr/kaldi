@@ -11,14 +11,13 @@ fi
 
 
 dir=`pwd`/data/local/data
-lmdir=`pwd`/data/local/nist_lm
-mkdir -p $dir $lmdir
+mkdir -p $dir
 local=`pwd`/local
 utils=`pwd`/utils
 conf=`pwd`/conf
 
 . ./path.sh # Needed for KALDI_ROOT
-export PATH=$PATH:$KALDI_ROOT/tools/irstlm/bin
+
 sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 if [ ! -x $sph2pipe ]; then
    echo "Could not find (or execute) the sph2pipe program at $sph2pipe";

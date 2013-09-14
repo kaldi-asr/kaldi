@@ -13,7 +13,7 @@ echo "Preparing train and test data"
 srcdir=data/local/data
 lmdir=data/local/nist_lm
 tmpdir=data/local/lm_tmp
-lexicon=data/local/lang_tmp/lexicon.txt
+lexicon=data/local/dict/lexicon.txt
 mkdir -p $tmpdir
 
 for x in train test; do 

@@ -15,7 +15,6 @@ local/timit_data_prep.sh $timit  || exit 1;
 
 local/timit_prepare_dict.sh || exit 1;
 
-
 utils/prepare_lang.sh --position-dependent-phones false --num-sil-states 3 \
  data/local/dict "sil" data/local/lang_tmp data/lang || exit 1;
 
