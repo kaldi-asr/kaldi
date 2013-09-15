@@ -33,11 +33,15 @@ int main(int argc, char *argv[]) {
     bool binary = true;
     bool htk_in = false;
     bool sphinx_in = false;
+    bool compress = false;
     po.Register("htk-in", &htk_in, "Read input as HTK features");
     po.Register("sphinx-in", &sphinx_in, "Read input as Sphinx features");
     po.Register("binary", &binary, "Binary-mode output (not relevant if writing "
                 "to archive)");
-
+    po.Register("compress", &compress, "If true, write output in compressed form"
+                "(only currently supported for wxfilename, i.e. archive/script,"
+                "output)");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -52,23 +56,45 @@ int main(int argc, char *argv[]) {
       std::string rspecifier = po.GetArg(1);
       std::string wspecifier = po.GetArg(2);
 
-      BaseFloatMatrixWriter kaldi_writer(wspecifier);
-      if (htk_in) {
-        SequentialTableReader<HtkMatrixHolder> htk_reader(rspecifier);
-        for (; !htk_reader.Done(); htk_reader.Next(), num_done++)
-          kaldi_writer.Write(htk_reader.Key(), htk_reader.Value().first);
-      } else if (sphinx_in) {
-        SequentialTableReader<SphinxMatrixHolder<> > sphinx_reader(rspecifier);
-        for (; !sphinx_reader.Done(); sphinx_reader.Next(), num_done++)
-          kaldi_writer.Write(sphinx_reader.Key(), sphinx_reader.Value());
+      if (!compress) {
+        BaseFloatMatrixWriter kaldi_writer(wspecifier);
+        if (htk_in) {
+          SequentialTableReader<HtkMatrixHolder> htk_reader(rspecifier);
+          for (; !htk_reader.Done(); htk_reader.Next(), num_done++)
+            kaldi_writer.Write(htk_reader.Key(), htk_reader.Value().first);
+        } else if (sphinx_in) {
+          SequentialTableReader<SphinxMatrixHolder<> > sphinx_reader(rspecifier);
+          for (; !sphinx_reader.Done(); sphinx_reader.Next(), num_done++)
+            kaldi_writer.Write(sphinx_reader.Key(), sphinx_reader.Value());
+        } else {
+          SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
+          for (; !kaldi_reader.Done(); kaldi_reader.Next(), num_done++)
+            kaldi_writer.Write(kaldi_reader.Key(), kaldi_reader.Value());
+        }
       } else {
-        SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
-        for (; !kaldi_reader.Done(); kaldi_reader.Next(), num_done++)
-          kaldi_writer.Write(kaldi_reader.Key(), kaldi_reader.Value());
+        CompressedMatrixWriter kaldi_writer(wspecifier);
+        if (htk_in) {
+          SequentialTableReader<HtkMatrixHolder> htk_reader(rspecifier);
+          for (; !htk_reader.Done(); htk_reader.Next(), num_done++)
+            kaldi_writer.Write(htk_reader.Key(),
+                               CompressedMatrix(htk_reader.Value().first));
+        } else if (sphinx_in) {
+          SequentialTableReader<SphinxMatrixHolder<> > sphinx_reader(rspecifier);
+          for (; !sphinx_reader.Done(); sphinx_reader.Next(), num_done++)
+            kaldi_writer.Write(sphinx_reader.Key(),
+                               CompressedMatrix(sphinx_reader.Value()));
+        } else {
+          SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
+          for (; !kaldi_reader.Done(); kaldi_reader.Next(), num_done++)
+            kaldi_writer.Write(kaldi_reader.Key(),
+                               CompressedMatrix(kaldi_reader.Value()));
+        }
       }
       KALDI_LOG << "Copied " << num_done << " feature matrices.";
       return (num_done != 0 ? 0 : 1);
     } else {
+      KALDI_ASSERT(!compress && "Compression not yet supported for single files");
+      
       std::string feat_rxfilename = po.GetArg(1), feat_wxfilename = po.GetArg(2);
 
       Matrix<BaseFloat> feat_matrix;

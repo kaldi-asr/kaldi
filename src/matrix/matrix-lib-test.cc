@@ -3610,6 +3610,16 @@ template<class Real> static void UnitTestCompressedMatrix() {
         InitKaldiInputStream(ins, &binary_in);
         cmat2.Read(ins, binary_in);
       }
+      { // check that compressed-matrix can be read as matrix.
+        bool binary_in;
+        std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
+        InitKaldiInputStream(ins, &binary_in);
+        Matrix<Real> mat1;
+        mat1.Read(ins, binary_in);
+        Matrix<Real> mat2(cmat2);
+        AssertEqual(mat1, mat2);
+      }
+      
       Matrix<Real> M3(cmat2.NumRows(), cmat2.NumCols());
       cmat2.CopyToMat(&M3);
       AssertEqual(M2, M3); // tests I/O of CompressedMatrix.

@@ -23,6 +23,7 @@
 #include "matrix/sp-matrix.h"
 #include "matrix/jama-svd.h"
 #include "matrix/jama-eig.h"
+#include "matrix/compressed-matrix.h"
 
 namespace kaldi {
 
@@ -1030,6 +1031,14 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
 
   if (binary) {  // Read in binary mode.
     int peekval = Peek(is, binary);
+    if (peekval == 'C') {
+      // This code enable us to read CompressedMatrix as a regular matrix.
+      CompressedMatrix compressed_mat;
+      compressed_mat.Read(is, binary); // at this point, add == false.
+      this->Resize(compressed_mat.NumRows(), compressed_mat.NumCols());
+      compressed_mat.CopyToMat(this);
+      return;
+    }
     const char *my_token =  (sizeof(Real) == 4 ? "FM" : "DM");
     char other_token_start = (sizeof(Real) == 4 ? 'D' : 'F');
     if (peekval == other_token_start) {  // need to instantiate the other type to read it.
@@ -1577,6 +1586,17 @@ void MatrixBase<Real>::InvertDouble(Real *LogDet, Real *DetSign,
   if (inverse_needed) (*this).CopyFromMat(dmat);
   if (LogDet) *LogDet = LogDet_tmp;
   if (DetSign) *DetSign = DetSign_tmp;
+}
+
+template<class Real>
+void MatrixBase<Real>::CopyFromMat(const CompressedMatrix &mat) {
+  mat.CopyToMat(this);
+}
+
+template<class Real>
+Matrix<Real>::Matrix(const CompressedMatrix &M): MatrixBase<Real>() {
+  Resize(M.NumRows(), M.NumCols(), kUndefined);  
+  M.CopyToMat(this);
 }
 
 template<typename Real>

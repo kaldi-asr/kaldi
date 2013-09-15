@@ -267,7 +267,7 @@ struct SlidingWindowCmnOptions {
       normalize_variance(false),
       center(false) { }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("cmn-window", &cmn_window, "Window in frames for running "
                  "average CMN computation");
     po->Register("min-cmn-window", &min_window, "Minumum CMN window "

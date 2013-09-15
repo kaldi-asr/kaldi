@@ -127,6 +127,9 @@ class MatrixBase {
   void CopyFromMat(const MatrixBase<OtherReal> & M,
                    MatrixTransposeType Trans = kNoTrans);
 
+  /// Copy from compressed matrix.
+  void CopyFromMat(const CompressedMatrix &M);
+  
   /// Copy given spmatrix. (no resize is done).
   template<typename OtherReal>
   void CopyFromSp(const SpMatrix<OtherReal> &M);
@@ -585,7 +588,7 @@ class Matrix : public MatrixBase<Real> {
   /// Basic constructor.  Sets to zero by default.
   /// if set_zero == false, memory contents are undefined.
   Matrix(const MatrixIndexT r, const MatrixIndexT c, MatrixResizeType resize_type = kSetZero):
-    MatrixBase<Real>() { Resize(r, c, resize_type); }
+      MatrixBase<Real>() { Resize(r, c, resize_type); }
 
   /// Swaps the contents of *this and *other.  Shallow swap.
   void Swap(Matrix<Real> *other);
@@ -593,8 +596,8 @@ class Matrix : public MatrixBase<Real> {
   /// Constructor from any MatrixBase. Can also copy with transpose.
   /// Allocates new memory.
   explicit Matrix(const MatrixBase<Real> & M,
-                    MatrixTransposeType trans = kNoTrans);
-
+                  MatrixTransposeType trans = kNoTrans);
+  
   /// Same as above, but need to avoid default copy constructor.
   Matrix(const Matrix<Real> & M);  //  (cannot make explicit)
 
@@ -611,10 +614,13 @@ class Matrix : public MatrixBase<Real> {
     this->CopyFromSp(M);
   }
 
+  /// Constructor from CompressedMatrix
+  explicit Matrix(const CompressedMatrix &C);
+  
   /// Copy constructor taking TpMatrix...
   template <typename OtherReal>
   explicit Matrix(const TpMatrix<OtherReal> & M,
-                    MatrixTransposeType trans = kNoTrans) : MatrixBase<Real>() {
+                  MatrixTransposeType trans = kNoTrans) : MatrixBase<Real>() {
     if (trans == kNoTrans) {
       Resize(M.NumRows(), M.NumCols(), kUndefined);
       this->CopyFromTp(M);
@@ -729,7 +735,7 @@ class SubMatrix : public MatrixBase<Real> {
             const MatrixIndexT r,   // number of rows, r > 0
             const MatrixIndexT co,  // column offset, 0 < co < NumCols()
             const MatrixIndexT c);   // number of columns, c > 0
-
+  
   // This initializer is mostly intended for use in CuMatrix and related
   // classes.  Be careful!
   SubMatrix(Real *data,

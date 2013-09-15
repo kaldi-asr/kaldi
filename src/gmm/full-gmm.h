@@ -31,7 +31,7 @@
 namespace kaldi {
 
 class DiagGmm;
-class FullGmmNormal;
+class FullGmmNormal;  // a simplified representation, see full-gmm-normal.h
 
 /** \class Definition for Gaussian Mixture Model with full covariances
   */

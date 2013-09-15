@@ -19,18 +19,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <functional>
-#include <set>
-#include <string>
-#include <utility>
-#include <vector>
-using std::vector;
-
 #include "sgmm2/am-sgmm2.h"
 #include "thread/kaldi-thread.h"
 
 namespace kaldi {
+using std::vector;
 
 void Sgmm2LikelihoodCache::NextFrame() {
   t++;

@@ -19,17 +19,15 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <string>
-using std::string;
-#include <vector>
-using std::vector;
 
 #include "sgmm2/am-sgmm2.h"
 #include "sgmm2/estimate-am-sgmm2.h"
 #include "thread/kaldi-thread.h"
 
 namespace kaldi {
+
+using std::string;
+using std::vector;
 
 void MleAmSgmm2Accs::Write(std::ostream &out_stream, bool binary) const {
 
