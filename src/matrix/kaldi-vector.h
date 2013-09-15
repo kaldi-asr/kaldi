@@ -273,10 +273,10 @@ class VectorBase {
   /// negative.
   Real SumLog() const;
 
-  /// Adds sum of the rows of M to existing contents, times alpha.
+  /// Does *this = alpha * (sum of rows of M) + beta * *this.
   void AddRowSumMat(Real alpha, const MatrixBase<Real> &M, Real beta = 1.0);
   
-  /// Adds sum of the columns of M to existing contents.
+  /// Does *this = alpha * (sum of columns of M) + beta * *this.
   void AddColSumMat(Real alpha, const MatrixBase<Real> &M, Real beta = 1.0);
 
   /// Add the diagonal of a matrix times itself:
