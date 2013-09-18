@@ -53,3 +53,21 @@ $cuda_cmd $dir/_train_nnet.log \
 }
 
 
+# Sequence discriminative training of DNN with sMBR criterion
+dir=exp/tri5a_pretrain-dbn_dnn_smbr
+srcdir=exp/tri5a_pretrain-dbn_dnn
+acwt=0.1
+# Create alignment and denominator lattices
+{
+ steps/align_nnet.sh --nj 20 --cmd "$train_cmd" \
+   data-fmllr-tri5a/train data/lang $srcdir ${srcdir}_ali || exit 1;
+ steps/make_denlats_nnet.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
+   data-fmllr-tri5a/train data/lang $srcdir ${srcdir}_denlats  || exit 1;
+}
+
+# DNN training with several iterations of sMBR criterion
+{
+ steps/train_nnet_mpe.sh --cmd "$cuda_cmd" --num-iters 6 --acwt $acwt --do-smbr true \
+  data-fmllr-tri5a/train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1;
+}
+
