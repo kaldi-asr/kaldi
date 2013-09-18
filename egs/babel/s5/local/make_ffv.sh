@@ -33,6 +33,9 @@ if [ $# != 3 ]; then
    exit 1;
 fi
 
+set -e 
+set -o pipefail
+
 data=$1
 expdir=$2
 ffvdir=$3
@@ -57,7 +60,7 @@ ffv_pkg_dir=$KALDI_ROOT/tools/pitch_trackers/ffv-1.0.1
 ffv_pkg_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:)\
  { $dir = "$pwd/$dir"; } print $dir; ' $ffv_pkg_dir ${PWD}`
 
-ffv_script=$ffv_pkg_dir/run_ffv.sh
+ffv_script=$expdir/run_ffv.sh
 
 if [ ! -f $ffv_pkg_dir/ffv ]; then
   echo "*Expecting the file $KALDI_ROOT/tools/pitch_trackers/ffv-1.0.1/ffv to exist"
@@ -69,46 +72,56 @@ basename=`basename $data`
 wavdir=$ffvdir/temp_wav_$basename
 mkdir -p $wavdir
 
-if [ -f $data/segments ] || grep '|' $data/wav.scp >/dev/null; then
-  wav_scp=$expdir/wav.scp
-  cat $data/segments | awk -v dir=$wavdir \
-  '{key=$1; printf("%s %s/%s.wav\n", key, dir, key);}' \
-    > $wav_scp || exit 1;
+split_wavs=" "
+for ((n=1; n<=nj; n++)); do
+  split_wavs="$split_wavs $expdir/wav.$n.scp"
+done
 
-  if [ -f $data/segments ]; then
-    echo "$0 [info]: segments file exists: creating temporary wav files in $wavdir"
-    segments=$data/segments
-  else
-    # create a fake segments file that takes the whole file; this is an easy way
-    # to copy to static wav files.  Note: probably this has not been tested.
-    cat $data/wav.scp | awk '{print $1, $1, 0.0, -1.0}' > $expdir/fake_segments 
-    segments=$expdir/fake_segments
-  fi
-  if [ $stage -le 0 ]; then
-    echo "Extracting wav-file segments (or just converting to wav format)"
-    extract-segments scp:$data/wav.scp $segments scp:$wav_scp || exit 1;
-  fi
+utils/split_scp.pl  $data/wav.scp $split_wavs
+
+if [ -f $data/segments ] || grep '|' $data/wav.scp >/dev/null; then
+  for ((n=1; n<=nj; n++)); do
+    wav_scp=$expdir/split_wavs.$n.scp
+    
+    if [ -f $data/segments ]; then
+      grep -F -f <(cat $expdir/wav.$n.scp | awk '{print " "$1" ";}' ) \
+        $data/segments > $expdir/segments.$n
+    else
+      # create a fake segments file that takes the whole file; this is an easy way
+      # to copy to static wav files.  Note: probably this has not been tested.
+      cat $splitdir/wav.scp | awk '{print $1, $1, 0.0, -1.0}' > $expdir/segments.$n
+    fi
+
+    cat $expdir/segments.$n | awk -v dir=$wavdir \
+      '{key=$1; printf("%s %s/%s.wav\n", key, dir, key);}' \
+      > $wav_scp || exit 1;
+  done
 else
   echo "No segments file exists, and wav scp is plain: using wav files as input."
-  wav_scp=$data/wav.scp
+  wav_scp=$splitdir/wav.scp
 fi
 
-wav_checked_scp=$expdir/wav_checked.scp
-cat $wav_scp | \
-  perl -ane '@A=split; if (-f $A[1]) { print; }' >$wav_checked_scp
-nl_orig=`cat $wav_scp | wc -l`
-nl_new=`cat $wav_checked_scp | wc -l`
-echo "After removing non-existent files, number of utterances decreased from $nl_orig to $nl_new";
-[ $nl_new -eq 0 ] && exit 1;
 
-# now $wav_scp is an scp file for the per-utterance wav files.
+segments=$expdir/segments
+wav_scp=$expdir/wav.scp
 
-# Split up the wav files into multiple lists.
-split_wavs=""
-for ((n=1; n<=nj; n++)); do
-  split_wavs="$split_wavs $expdir/split_wavs.$n.scp"
-done
-utils/split_scp.pl $wav_checked_scp $split_wavs || exit 1;
+
+if [ $stage -le 0 ]; then
+  echo "Extracting wav-file segments (or just converting to wav format)"
+  cat $expdir/segments.* > $segments
+  cat $expdir/split_wavs.*.scp > $wav_scp
+  
+  extract-segments scp:$data/wav.scp $segments scp:$wav_scp || exit 1;
+
+  wav_checked_scp=$expdir/wav_checked.scp
+  cat $wav_scp | \
+    perl -ane '@A=split; if (-f $A[1]) { print; }' >$wav_checked_scp
+  nl_orig=`cat $wav_scp | wc -l`
+  nl_new=`cat $wav_checked_scp | wc -l`
+  [ $nl_new -eq 0 ] && exit 1;
+  echo "After removing non-existent files, number of utterances decreased from $nl_orig to $nl_new";
+  
+fi
 
 # For each wav file, create corresponding temporary ffv file, in the
 # format the ffv outputs: [ffv[0] ffv[1] ... ffv[6]]
@@ -128,6 +141,9 @@ cat <<'EOF' > $ffv_script
 flen=0.01
 sfreq=8000
 . parse_options.sh || exit 1;
+set -e
+set -o pipefail
+
 flist=$1
 ffv_pkg_dir=$2
 [ $# -ne 2 ] && echo "Usage: ffv.sh <ffv-flist-in> <ffv_pkg_dir>" && exit 1;
@@ -137,13 +153,11 @@ for wavefile in `cat $flist`; do
   echo wavefile : $wavefile 
   input=`echo $wavefile | cut -f1 -d ','`
   output=`echo $wavefile | cut -f2 -d ','`
-  echo input : $input and output : $output
-  if [ ! -f $output ]; then
-    echo "no such file $output"  
-  fi  
-  if [ ! -f $3/$basename.out ]; then 
-    $ffv_pkg_dir/ffv --tfra $flen --fs $sfreq $input $output
-  fi
+  echo "input : $input"
+  echo "output : $output"
+  echo "Running: $ffv_pkg_dir/ffv --tfra $flen --fs $sfreq $input $output"
+  [ -f $output ] && rm -r $output
+  $ffv_pkg_dir/ffv --tfra $flen --fs $sfreq $input $output
 done
 EOF
 chmod +x $ffv_script
@@ -195,6 +209,8 @@ if $cleanup; then
   echo "Removing temporary files"
   rm -r $wavdir $temp_ffvdir
 fi
+
+utils/summarize_logs.pl $expdir/log
 
 echo "Finished extracting ffv features for $basename"
 
