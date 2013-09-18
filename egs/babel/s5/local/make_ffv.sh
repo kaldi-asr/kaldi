@@ -115,12 +115,28 @@ if [ $stage -le 0 ]; then
 
   wav_checked_scp=$expdir/wav_checked.scp
   cat $wav_scp | \
-    perl -ane '@A=split; if (-f $A[1]) { print; }' >$wav_checked_scp
+    perl -ane '@A=split; if (-f $A[1]) { print; } else {print STDERR ;}' >$wav_checked_scp 2>$expdir/missing_wavs.scp
   nl_orig=`cat $wav_scp | wc -l`
   nl_new=`cat $wav_checked_scp | wc -l`
   [ $nl_new -eq 0 ] && exit 1;
   echo "After removing non-existent files, number of utterances decreased from $nl_orig to $nl_new";
-  
+  segment_files=" "
+  for ((n=1; n<=nj; n++)); do
+    wav_scp_n=$expdir/split_wavs.$n.scp
+    seg_scp=$expdir/segments.$n
+    seg_scp_orig=$expdir/segments_orig.$n
+
+    cp $seg_scp $seg_scp_orig
+    cat $seg_scp_orig | grep -v -F -f <(cut -f 1 -d ' ' $expdir/missing_wavs.scp) > $seg_scp
+    segment_files=" $segment_files $seg_scp"
+    
+    cat $expdir/segments.$n | awk -v dir=$wavdir \
+      '{key=$1; printf("%s %s/%s.wav\n", key, dir, key);}' \
+      > $wav_scp_n || exit 1;
+  done
+  cp $expdir/segments $expdir/segments_orig
+  cat $segment_files | sort > $expdir/segments
+  cat $expdir/split_wavs.*.scp > $wav_scp
 fi
 
 # For each wav file, create corresponding temporary ffv file, in the
