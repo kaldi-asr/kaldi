@@ -109,6 +109,8 @@ inline float RandGauss() {
 // to lambda.  Faster algorithms exist but are more complex.
 int32 RandPoisson(float lambda);
 
+// Also see Vector<float,double>::RandCategorical().
+
 // This is a randomized pruning mechanism that preserves expectations,
 // that we typically use to prune posteriors.
 template<class Float>

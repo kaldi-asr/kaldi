@@ -3659,6 +3659,27 @@ static void UnitTestTridiag() {
 }
 
 template<class Real>
+static void UnitTestRandCategorical() {
+  int32 N = 1 + rand()  % 10;
+  Vector<Real> vec(N);
+  for (int32 n = 0; n < N; n++)
+    vec(n) = rand() % 3;
+  if (vec.Sum() == 0)
+    vec(0) = 2.0;
+  Real sum = vec.Sum();
+  int32 num_samples = 100000;
+  std::vector<int32> counts(N, 0);
+  for (int32 i = 0; i < num_samples; i++)
+    counts[vec.RandCategorical()]++;
+  for (int32 n = 0; n < N; n++) {
+    Real a = counts[n] / (1.0 * num_samples),
+        b = vec(n) / sum;
+    KALDI_LOG << "a = " << a << ", b = " << b;
+    KALDI_ASSERT(fabs(a - b) <= 0.1); // pretty arbitrary.  Will increase #samp if fails.
+  }
+}
+
+template<class Real>
 static void UnitTestTopEigs() {
   for (MatrixIndexT i = 0; i < 2; i++) {
     // Previously tested with this but takes too long.
@@ -3816,6 +3837,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   UnitTestAddDiagMat2<Real>();
   UnitTestOrthogonalizeRows<Real>();
   UnitTestTopEigs<Real>();
+  UnitTestRandCategorical<Real>();
   UnitTestTridiag<Real>();
   //  SlowMatMul<Real>();
   UnitTestMaxAbsEig<Real>();

@@ -32,9 +32,12 @@ struct DummyOptions {
   }
 
   void Register(ParseOptions *po) {
-    po->Register("my-int", &my_int, "An int32 variable in DummyOptions.");
-    po->Register("my-bool", &my_bool, "A Boolean varaible in DummyOptions.");
-    po->Register("my-str", &my_string, "A string varaible in DummyOptions.");
+    po->Register("my-int", &my_int,
+                 "An int32 variable in DummyOptions.");
+    po->Register("my-bool", &my_bool,
+                 "A Boolean varaible in DummyOptions.");
+    po->Register("my-str", &my_string,
+                 "A string varaible in DummyOptions.");
   }
 };
 
@@ -98,19 +101,122 @@ void UnitTestParseOptions() {
   KALDI_ASSERT(dummy_opts.my_bool == false);
   KALDI_ASSERT(dummy_opts.my_string == "baz");
 
-  // test error with --option= 
-  try {
+
+  try {   // test error with --option=, which is not a valid way to set boolean options. 
     int argc4 = 2;
     const char *argv4[2] = { "program_name", "--option="};
     ParseOptions po4("my usage msg");
     bool val = false;
     po4.Register("option", &val, "My boolean");
     po4.Read(argc4, argv4);
-    KALDI_ASSERT(val == false);
+    KALDI_ASSERT(false); // Should not reach this part of code.
   } catch (std::exception e) {
     KALDI_LOG << "Failed to read option (this is expected).";
   }
 
+  { // test that --option sets "option" to true, if bool.
+    int argc4 = 2;
+    const char *argv4[2] = { "program_name", "--option"};
+    ParseOptions po4("my usage msg");
+    bool val = false;
+    po4.Register("option", &val, "My boolean");
+    po4.Read(argc4, argv4);
+    KALDI_ASSERT(val == true);
+  }
+  
+
+
+  try {   // test error with --option, which is not a valid way to set string-valued options. 
+    int argc4 = 2;
+    const char *argv4[2] = { "program_name", "--option"};
+    ParseOptions po4("my usage msg");
+    std::string val;
+    po4.Register("option", &val, "My string");
+    po4.Read(argc4, argv4);
+    KALDI_ASSERT(false); // Should not reach this part of code.
+  } catch (std::exception e) {
+    KALDI_LOG << "Failed to read option (this is expected).";
+  }
+
+  { // test that --option= sets "option" to empty, if string.
+    int argc4 = 2;
+    const char *argv4[2] = { "program_name", "--option="};
+    ParseOptions po4("my usage msg");
+    std::string val = "foo";
+    po4.Register("option", &val, "My boolean");
+    po4.Read(argc4, argv4);
+    KALDI_ASSERT(val.empty());
+  }
+
+  { // integer options test
+    int argc4 = 2;
+    const char *argv4[2] = { "program_name", "--option=8"};
+    ParseOptions po4("my usage msg");
+    int32 val = 32;
+    po4.Register("option", &val, "My int");
+    po4.Read(argc4, argv4);
+    KALDI_ASSERT(val == 8);
+  }
+
+  { // float
+    int argc4 = 2;
+    const char *argv4[2] = { "program_name", "--option=8.5"};
+    ParseOptions po4("my usage msg");
+    BaseFloat val = 32.0;
+    po4.Register("option", &val, "My float");
+    po4.Read(argc4, argv4);
+    KALDI_ASSERT(val == 8.5);
+  }
+  
+  { // string options test
+    int argc4 = 2;
+    const char *argv4[2] = { "program_name", "--option=bar"};
+    ParseOptions po4("my usage msg");
+    std::string val = "foo";
+    po4.Register("option", &val, "My string");
+    po4.Read(argc4, argv4);
+    KALDI_ASSERT(val == "bar");
+  }
+  
+
+  try {   // test error with --float=string
+    int argc4 = 2;
+    const char *argv4[2] = { "program_name", "--option=foo"};
+    ParseOptions po4("my usage msg");
+    BaseFloat val = 32.0;
+    po4.Register("option", &val, "My float");
+    po4.Read(argc4, argv4);
+    KALDI_ASSERT(false); // Should not reach this part of code.
+  } catch (std::exception e) {
+    KALDI_LOG << "Failed to read option (this is expected).";
+  }
+
+
+  try {   // test error with --int=string
+    int argc4 = 2;
+    const char *argv4[2] = { "program_name", "--option=foo"};
+    ParseOptions po4("my usage msg");
+    int32 val = 32;
+    po4.Register("option", &val, "My int");
+    po4.Read(argc4, argv4);
+    KALDI_ASSERT(false); // Should not reach this part of code.
+  } catch (std::exception e) {
+    KALDI_LOG << "Failed to read option (this is expected).";
+  }
+
+  try {   // test error with --bool=string
+    int argc4 = 2;
+    const char *argv4[2] = { "program_name", "--option=foo"};
+    ParseOptions po4("my usage msg");
+    bool val = false;
+    po4.Register("option", &val, "My bool");
+    po4.Read(argc4, argv4);
+    KALDI_ASSERT(false); // Should not reach this part of code.
+  } catch (std::exception e) {
+    KALDI_LOG << "Failed to read option (this is expected).";
+  }
+
+  
   // test error with --= 
   try {
     int argc4 = 2;

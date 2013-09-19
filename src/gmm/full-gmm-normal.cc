@@ -3,6 +3,7 @@
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University;
 //                      Yanmin Qian
 //                      Univ. Erlangen-Nuremberg, Korbinian Riedhammer
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -102,6 +103,25 @@ void FullGmmNormal::CopyToFullGmm(FullGmm *fullgmm, GmmFlagsType flags) {
   }
 
   fullgmm->valid_gconsts_ = false;
+}
+
+void FullGmmNormal::Rand(MatrixBase<BaseFloat> *feats) {
+  int32 dim = means_.NumCols(), num_frames = feats->NumRows(),
+      num_gauss = means_.NumRows();
+  KALDI_ASSERT(feats->NumCols() == dim);
+  std::vector<TpMatrix<BaseFloat> > sqrt_var(num_gauss);
+  for (int32 i = 0; i < num_gauss; i++) {
+    sqrt_var[i].Resize(dim);
+    sqrt_var[i].Cholesky(SpMatrix<BaseFloat>(vars_[i]));
+  }
+  Vector<BaseFloat> rand(dim);
+  for (int32 t = 0; t < num_frames; t++) {
+    int32 i = weights_.RandCategorical(); // index with prob propto weights_[i].
+    SubVector<BaseFloat> frame(*feats, t);
+    frame.CopyFromVec(means_.Row(i));
+    rand.SetRandn();
+    frame.AddTpVec(1.0, sqrt_var[i], kNoTrans, rand, 1.0);
+  }
 }
 
 }  // End namespace kaldi

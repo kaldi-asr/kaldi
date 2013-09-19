@@ -287,6 +287,21 @@ void VectorBase<Real>::SetRandn() {
   for (MatrixIndexT i = 0; i < Dim(); i++) data_[i] = kaldi::RandGauss();
 }
 
+template<typename Real>
+MatrixIndexT VectorBase<Real>::RandCategorical() const {
+  Real sum = this->Sum();
+  KALDI_ASSERT(this->Min() >= 0.0 && sum > 0.0);
+  Real r = RandUniform() * sum;
+  Real *data = this->data_;
+  MatrixIndexT dim = this->dim_;
+  Real running_sum = 0.0;
+  for (MatrixIndexT i = 0; i < dim; i++) {
+    running_sum += data[i];
+    if (r < running_sum) return i;
+  }
+  return dim_ - 1; // Should only happen if RandUniform()
+                   // returns exactly 1, or due to roundoff.
+}
 
 template<typename Real>
 void VectorBase<Real>::Set(Real f) {
