@@ -36,6 +36,16 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
+    std::string left_compose = "";
+    std::string right_compose = "";
+    bool project_input = false;
+    bool project_output = false;
+
+    po.Register("left-compose", &left_compose, "Compose the given FST to the left");
+    po.Register("right-compose", &right_compose, "Compose the given FST to the right");
+    po.Register("project-input", &project_input, "Project input labels if true");
+    po.Register("project-output", &project_output, "Project input labels if true");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 2 || po.NumArgs() > 3) {
@@ -50,6 +60,16 @@ int main(int argc, char *argv[]) {
     SequentialInt32VectorReader transcript_reader(transcript_rspecifier);
     TableWriter<VectorFstHolder> fst_writer(fst_wspecifier);
 
+    // Read the possible given FSTs
+    VectorFst<StdArc> *lfst = NULL;
+    VectorFst<StdArc> *rfst = NULL;
+    if (left_compose != "") {
+      lfst = ReadFstKaldi(left_compose);
+    }
+    if (right_compose != "") {
+      rfst = ReadFstKaldi(right_compose);
+    }
+
     int32 n_done = 0;
     for (; !transcript_reader.Done(); transcript_reader.Next()) {
       std::string key = transcript_reader.Key();
@@ -59,9 +79,36 @@ int main(int argc, char *argv[]) {
       VectorFst<StdArc> fst;
       MakeLinearAcceptor(transcript, &fst);
 
+      if (lfst != NULL) {
+        VectorFst<StdArc> composed_fst;
+        Compose(*lfst, fst, &composed_fst);
+        fst = composed_fst;
+      }
+      
+      if (rfst != NULL) {
+        VectorFst<StdArc> composed_fst;
+        Compose(fst, *rfst, &composed_fst);
+        fst = composed_fst;
+      }
+
+      if (project_input) {
+        Project(&fst, PROJECT_INPUT);
+      }
+
+      if (project_output) {
+        Project(&fst, PROJECT_OUTPUT);
+      }
+
       fst_writer.Write(key, fst);
 
       n_done++;
+    }
+
+    if (lfst != NULL) {
+      delete lfst;
+    }
+    if (rfst != NULL) {
+      delete rfst;
     }
 
     KALDI_LOG << "Done " << n_done << " transcriptions";
