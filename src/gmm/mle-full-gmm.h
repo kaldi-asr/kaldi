@@ -140,9 +140,8 @@ inline void AccumFullGmm::Resize(const FullGmm &gmm, GmmFlagsType flags) {
   Resize(gmm.NumGauss(), gmm.Dim(), flags);
 }
 
-/// for computing the maximum-likelihood estimates of the parameters of
-/// a Gaussian mixture model.
-/// Update using the DiagGmm: exponential form
+/// for computing the maximum-likelihood estimates of the parameters of a
+/// Gaussian mixture model.  Update using the FullGmm exponential form
 void MleFullGmmUpdate(const MleFullGmmOptions &config,
             const AccumFullGmm &fullgmm_acc,
             GmmFlagsType flags,

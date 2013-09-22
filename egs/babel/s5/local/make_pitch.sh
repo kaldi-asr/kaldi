@@ -109,7 +109,8 @@ if [ -f $data/segments ] || grep '|' $data/wav.scp >/dev/null; then
   fi
   if [ $stage -le 0 ]; then
     echo "Extracting wav-file segments (or just converting to wav format)"
-    extract-segments scp:$data/wav.scp $segments scp:$wav_scp || exit 1;
+    $cmd  $expdir/log/extract-segments.log \
+      extract-segments scp:$data/wav.scp $segments scp:$wav_scp || exit 1;
   fi
 else
   echo "No segments file exists, and wav scp is plain: using wav files as input."
@@ -160,7 +161,7 @@ cat <<'EOF' > $expdir/convert.sh
 #!/bin/bash
 sacc_flist=$1 
 scpfile=$2
-[ $# -ne $2 ] && echo "Usage: convert.sh <sacc-flist-in> <scpfile-out>" && exit 1;
+[ $# -ne 2 ] && echo "Usage: convert.sh <sacc-flist-in> <scpfile-out>" && exit 1;
 
 for f in `cat $sacc_flist | cut -d, -f2`; do
   g=`echo $f | sed s:.pitch$:.mat:`

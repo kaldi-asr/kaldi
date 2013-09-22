@@ -23,7 +23,6 @@
 #define KALDI_SGMM_AM_SGMM_H_
 
 #include <vector>
-#include <queue>
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"

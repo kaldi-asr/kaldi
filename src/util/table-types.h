@@ -41,6 +41,8 @@ typedef SequentialTableReader<KaldiObjectHolder<Matrix<double> > >  SequentialDo
 typedef RandomAccessTableReader<KaldiObjectHolder<Matrix<double> > >  RandomAccessDoubleMatrixReader;
 typedef RandomAccessTableReaderMapped<KaldiObjectHolder<Matrix<double> > >  RandomAccessDoubleMatrixReaderMapped;
 
+typedef TableWriter<KaldiObjectHolder<CompressedMatrix> >  CompressedMatrixWriter;
+
 typedef TableWriter<KaldiObjectHolder<Vector<BaseFloat> > >  BaseFloatVectorWriter;
 typedef SequentialTableReader<KaldiObjectHolder<Vector<BaseFloat> > >  SequentialBaseFloatVectorReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<Vector<BaseFloat> > >  RandomAccessBaseFloatVectorReader;

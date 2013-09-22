@@ -42,7 +42,7 @@ namespace kaldi {
   predict the long-term future, but in the immediate future our aim is to both have
   the freedom to work on our respective codebases, and to borrow ideas from each other.
 
-  In the example directories such as egs/wsj/s5/, egs/rm/s5 and egs/swbd/s5, neural
+  In the example directories such as egs/wsj/s5/, egs/rm/s5, egs/swbd/s5 and egs/hkust/s5b, neural
   net example scripts can be found.  Karel's example scripts can be found in local/run_dnn.sh
   or local/run_nnet.sh, and Dan's example scripts can be found in local/run_nnet_cpu.sh.
   Before running those scripts, the first stages of ``run.sh'' in those directories must

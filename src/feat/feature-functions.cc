@@ -1,6 +1,7 @@
 // feat/feature-functions.cc
 
 // Copyright 2009-2011  Karel Vesely;  Petr Motlicek;  Microsoft Corporation
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -318,5 +319,107 @@ void ReverseFrames(const MatrixBase<BaseFloat> &input_features,
     dst_row.CopyFromVec(src_row);
   }
 }
+
+
+void SlidingWindowCmnOptions::Check() const {
+  KALDI_ASSERT(cmn_window > 0);
+  if (center)
+    KALDI_ASSERT(min_window > 0 && min_window <= cmn_window);
+  // else ignored so value doesn't matter.
+}
+
+
+void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
+                      const MatrixBase<double> &input,
+                      MatrixBase<double> *output) {  
+  opts.Check();
+  int32 num_frames = input.NumRows(), dim = input.NumCols();
+
+  int32 last_window_start = -1, last_window_end = -1;
+  Vector<double> cur_sum(dim), cur_sumsq(dim);
+    
+  for (int32 t = 0; t < num_frames; t++) {
+    int32 window_start, window_end; // note: window_end will be one
+    // past the end of the window we use for normalization.
+    if (opts.center) {
+      window_start = t - (opts.cmn_window / 2);
+      window_end = window_start + opts.cmn_window;
+    } else {
+      window_start = t - opts.cmn_window;
+      window_end = t;
+    }
+    if (window_start < 0) { // shift window right if starts <0.
+      window_end -= window_start;
+      window_start = 0; // or: window_start -= window_start
+    }
+    if (!opts.center) {
+      if (window_end > t)
+        window_end = std::max(t, opts.min_window);
+    }
+    if (window_end > num_frames) {
+      window_start -= (window_end - num_frames);
+      window_end = num_frames;
+      if (window_start < 0) window_start = 0;
+    }
+    if (last_window_start == -1) {
+      SubMatrix<double> input_part(input, 
+                                      window_start, window_end - window_start,
+                                      0, dim);
+      cur_sum.AddRowSumMat(1.0, input_part , 0.0);
+      cur_sumsq.AddDiagMat2(1.0, input_part, kTrans, 0.0);
+    } else {
+      if (window_start > last_window_start) {
+        KALDI_ASSERT(window_start == last_window_start + 1);
+        SubVector<double> frame_to_remove(input, last_window_start);
+        cur_sum.AddVec(-1.0, frame_to_remove);
+        cur_sumsq.AddVec2(-1.0, frame_to_remove);
+      }
+      if (window_end > last_window_end) {
+        KALDI_ASSERT(window_end == last_window_end + 1);
+        SubVector<double> frame_to_add(input, last_window_end);
+        cur_sum.AddVec(1.0, frame_to_add);
+        cur_sumsq.AddVec2(1.0, frame_to_add);
+      }
+    }
+    int32 window_frames = window_end - window_start;
+    last_window_start = window_start;
+    last_window_end = window_end;
+
+    KALDI_ASSERT(window_frames > 0); 
+    SubVector<double> input_frame(input, t),
+        output_frame(*output, t);
+    output_frame.CopyFromVec(input_frame);
+    output_frame.AddVec(-1.0 / window_frames, cur_sum);
+
+    if (opts.normalize_variance) {
+      Vector<double> variance(cur_sumsq);
+      variance.Scale(1.0 / window_frames);
+      variance.AddVec2(-1.0 / (window_frames * window_frames), cur_sum);
+      // now "variance" is the variance of the features in the window,
+      // around their own mean.
+      int32 num_floored = variance.ApplyFloor(1.0e-10);
+      if (num_floored > 0 && num_frames > 1) {
+        KALDI_WARN << "Flooring variance When normalizing variance, floored " << num_floored
+                   << " elements; num-frames was " << window_frames;
+      }
+      variance.ApplyPow(-0.5); // get inverse standard deviation.
+      output_frame.MulElements(variance);
+    }
+  }
+}
+
+
+
+void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
+                      const MatrixBase<BaseFloat> &input,
+                      MatrixBase<BaseFloat> *output) {
+  KALDI_ASSERT(SameDim(input, *output) && input.NumRows() > 0);
+  Matrix<double> input_dbl(input), output_dbl(input.NumRows(), input.NumCols());
+  // calll double-precision version
+  SlidingWindowCmn(opts, input_dbl, &output_dbl);
+  output->CopyFromMat(output_dbl);
+}
+  
+
 
 }  // namespace kaldi

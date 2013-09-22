@@ -58,6 +58,9 @@ class FullGmmNormal {
   /// Copies to FullGmm
   void CopyToFullGmm(FullGmm *fullgmm, GmmFlagsType flags = kGmmAll);
 
+  /// Generates random features from the model.
+  void Rand(MatrixBase<BaseFloat> *feats);
+
   Vector<double> weights_;              ///< weights (not log).
   Matrix<double> means_;                ///< Means
   std::vector<SpMatrix<double> > vars_;  ///< covariances

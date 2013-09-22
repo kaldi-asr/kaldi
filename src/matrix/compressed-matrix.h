@@ -47,6 +47,8 @@ class CompressedMatrix {
   template<typename Real>
   CompressedMatrix(const MatrixBase<Real> &mat): data_(NULL) { CopyFromMat(mat); }
 
+
+  /// This will resize *this and copy the contents of mat to *this.
   template<typename Real>
   void CopyFromMat(const MatrixBase<Real> &mat);
   

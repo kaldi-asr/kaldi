@@ -93,14 +93,30 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     int32 n_best = -1;
-    double negative_tolerance = -0.1;
+    int32 keyword_nbest = -1;
     bool strict = true;
+    double negative_tolerance = -0.1;
+    double keyword_beam = -1;
+    
     po.Register("nbest", &n_best, "Return the best n hypotheses.");
+    po.Register("keyword-nbest", &keyword_nbest,
+                "Pick the best n keywords if the FST contains multiple keywords.");
+    po.Register("strict", &strict, "Will allow 0 lattice if it is set to false.");
     po.Register("negative-tolerance", &negative_tolerance, 
                 "The program will die if we get negative score smaller than the tolerance.");
-    po.Register("strict", &strict, "Will allow 0 lattice if it is set to false.");
+    po.Register("keyword-beam", &keyword_beam,
+                "Prune the FST with the given beam if the FST contains multiple keywords.");
+
     if (n_best < 0 && n_best != -1) {
       KALDI_ERR << "Bad number for nbest";
+      exit (1);
+    }
+    if (keyword_nbest < 0 && keyword_nbest != -1) {
+      KALDI_ERR << "Bad number for keyword-nbest";
+      exit (1);
+    }
+    if (keyword_beam < 0 && keyword_beam != -1) {
+      KALDI_ERR << "Bad number for keyword-beam";
       exit (1);
     }
 
@@ -164,6 +180,16 @@ int main(int argc, char *argv[]) {
       std::string key = keyword_reader.Key();
       VectorFst<StdArc> keyword = keyword_reader.Value();
       keyword_reader.FreeCurrent();
+
+      // Process the case where we have confusion for keywords
+      if (keyword_beam != -1) {
+        Prune(&keyword, keyword_beam);
+      }
+      if (keyword_nbest != -1) {
+        VectorFst<StdArc> tmp;
+        ShortestPath(keyword, &tmp, keyword_nbest, true, true);
+        keyword = tmp;
+      }
 
       KwsLexicographicFst kFst;
       KwsLexicographicFst rFst;

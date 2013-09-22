@@ -287,6 +287,21 @@ void VectorBase<Real>::SetRandn() {
   for (MatrixIndexT i = 0; i < Dim(); i++) data_[i] = kaldi::RandGauss();
 }
 
+template<typename Real>
+MatrixIndexT VectorBase<Real>::RandCategorical() const {
+  Real sum = this->Sum();
+  KALDI_ASSERT(this->Min() >= 0.0 && sum > 0.0);
+  Real r = RandUniform() * sum;
+  Real *data = this->data_;
+  MatrixIndexT dim = this->dim_;
+  Real running_sum = 0.0;
+  for (MatrixIndexT i = 0; i < dim; i++) {
+    running_sum += data[i];
+    if (r < running_sum) return i;
+  }
+  return dim_ - 1; // Should only happen if RandUniform()
+                   // returns exactly 1, or due to roundoff.
+}
 
 template<typename Real>
 void VectorBase<Real>::Set(Real f) {
@@ -942,10 +957,10 @@ void VectorBase<Real>::AddVec2(const Real alpha, const VectorBase<OtherReal> &v)
   MatrixIndexT dim = dim_;
   if (alpha != 1.0)
     for (MatrixIndexT i = 0; i < dim; i++)
-      data[i] += alpha*other_data[i]*other_data[i];
+      data[i] += alpha * other_data[i] * other_data[i];
   else
     for (MatrixIndexT i = 0; i < dim; i++)
-      data[i] += other_data[i]*other_data[i];
+      data[i] += other_data[i] * other_data[i];
 }
 
 template
@@ -1120,9 +1135,8 @@ void VectorBase<Real>::Write(std::ostream & os, bool binary) const {
 template<typename Real>
 void VectorBase<Real>::AddVec2(const Real alpha, const VectorBase<Real> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
-  for (MatrixIndexT i = 0; i < dim_; i++) {
-    data_[i] += v.data_[i]*v.data_[i]*alpha;
-  }
+  for (MatrixIndexT i = 0; i < dim_; i++)
+    data_[i] += alpha * v.data_[i] * v.data_[i];
 }
 
 // this <-- beta*this + alpha*M*v.

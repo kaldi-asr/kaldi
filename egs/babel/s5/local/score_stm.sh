@@ -49,7 +49,9 @@ data=$1
 lang=$2 # This parameter is not used -- kept only for backwards compatibility
 dir=$3
 
-
+set -e 
+set -o pipefail
+set -u
 
 ScoringProgram=`which sclite` || ScoringProgram=$KALDI_ROOT/tools/sctk-2.4.0/bin/sclite
 [ ! -x $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
@@ -71,6 +73,7 @@ fi
 mkdir -p $dir/scoring/log
 if [ $stage -le 0 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
+    set -e';' set -o pipefail';' \
     cp $data/stm $dir/score_LMWT/stm.unsorted '&&' \
     cp $dir/score_LMWT/${name}.ctm $dir/score_LMWT/${name}.ctm.unsorted '&&'\
     $SortingProgram sortSTM \<$dir/score_LMWT/stm.unsorted          \>$dir/score_LMWT/stm.sorted '&&' \

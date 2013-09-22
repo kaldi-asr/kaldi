@@ -23,7 +23,6 @@
 #define KALDI_SGMM2_AM_SGMM2_H_
 
 #include <vector>
-#include <queue>
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
@@ -87,25 +86,6 @@ namespace kaldi {
 */
 
 
-struct Sgmm2GselectConfig {
-  /// Number of highest-scoring full-covariance Gaussians per frame.
-  int32 full_gmm_nbest;
-  /// Number of highest-scoring diagonal-covariance Gaussians per frame.
-  int32 diag_gmm_nbest;
-
-  Sgmm2GselectConfig() {
-    full_gmm_nbest = 15;
-    diag_gmm_nbest = 50;
-  }
-
-  void Register(OptionsItf *po) {
-    po->Register("full-gmm-nbest", &full_gmm_nbest, "Number of highest-scoring"
-        " full-covariance Gaussians selected per frame.");
-    po->Register("diag-gmm-nbest", &diag_gmm_nbest, "Number of highest-scoring"
-        " diagonal-covariance Gaussians selected per frame.");
-  }
-};
-
 struct Sgmm2SplitSubstatesConfig {
   int32 split_substates;
   BaseFloat perturb_factor;
@@ -128,6 +108,27 @@ struct Sgmm2SplitSubstatesConfig {
                 "splitting substates.");
     po->Register("min-count", &min_count, "Minimum allowed count, used in allocating "
                  "sub-states to state in mixture splitting.");
+  }
+};
+
+// Caution: this config is probably not used in most of the setups, we generally do the Gaussian
+// selection using separate programs
+struct Sgmm2GselectConfig {
+  /// Number of highest-scoring full-covariance Gaussians per frame.
+  int32 full_gmm_nbest;
+  /// Number of highest-scoring diagonal-covariance Gaussians per frame.
+  int32 diag_gmm_nbest;
+
+  Sgmm2GselectConfig() {
+    full_gmm_nbest = 15;
+    diag_gmm_nbest = 50;
+  }
+
+  void Register(OptionsItf *po) {
+    po->Register("full-gmm-nbest", &full_gmm_nbest, "Number of highest-scoring"
+        " full-covariance Gaussians selected per frame.");
+    po->Register("diag-gmm-nbest", &diag_gmm_nbest, "Number of highest-scoring"
+        " diagonal-covariance Gaussians selected per frame.");
   }
 };
 

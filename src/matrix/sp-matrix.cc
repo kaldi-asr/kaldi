@@ -650,26 +650,53 @@ MatrixIndexT SpMatrix<Real>::LimitCond(Real maxCond, bool invert) {  // e.g. max
   return nfloored;
 }
 
+void SolverOptions::Check() const {
+  KALDI_ASSERT(K>10 && eps<1.0e-10);
+}
+
 template<> double SolveQuadraticProblem(const SpMatrix<double> &H,
                                         const VectorBase<double> &g,
-                                        VectorBase<double> *x, double K,
-                                        double eps, const char *debug_str,
-                                        bool optimizeDelta) {
+                                        const SolverOptions &opts,
+                                        VectorBase<double> *x) {
   KALDI_ASSERT(H.NumRows() == g.Dim() && g.Dim() == x->Dim() && x->Dim() != 0);
-  KALDI_ASSERT(K>10 && eps<1.0e-10);
+  opts.Check();
   MatrixIndexT dim = x->Dim();
   if (H.IsZero(0.0)) {
     KALDI_WARN << "Zero quadratic term in quadratic vector problem for "
-               << debug_str << ": leaving it unchanged.";
+               << opts.name << ": leaving it unchanged.";
     return 0.0;
   }
+  if (opts.diagonal_precondition) {
+    // We can re-cast the problem with a diagonal preconditioner to
+    // make H better-conditioned.
+    Vector<double> H_diag(dim);
+    H_diag.CopyDiagFromSp(H);
+    H_diag.ApplyFloor(std::numeric_limits<double>::min() * 1.0E+3);
+    Vector<double> H_diag_sqrt(H_diag);
+    H_diag_sqrt.ApplyPow(0.5);
+    Vector<double> H_diag_inv_sqrt(H_diag_sqrt);
+    H_diag_inv_sqrt.InvertElements();
+    Vector<double> x_scaled(*x);
+    x_scaled.MulElements(H_diag_sqrt);
+    Vector<double> g_scaled(g);
+    g_scaled.MulElements(H_diag_inv_sqrt);
+    SpMatrix<double> H_scaled(dim);
+    H_scaled.AddVec2Sp(1.0, H_diag_inv_sqrt, H, 0.0);
+    double ans;
+    SolverOptions new_opts(opts);
+    new_opts.diagonal_precondition = false;
+    ans = SolveQuadraticProblem(H_scaled, g_scaled, new_opts, &x_scaled);
+    x->CopyFromVec(x_scaled);
+    x->MulElements(H_diag_inv_sqrt);
+    return ans;
+  }
   Vector<double> gbar(g);
-  if (optimizeDelta) gbar.AddSpVec(-1.0, H, *x, 1.0);  // gbar = g - H x
+  if (opts.optimize_delta) gbar.AddSpVec(-1.0, H, *x, 1.0);  // gbar = g - H x
   Matrix<double> U(dim, dim);
   Vector<double> l(dim);
   H.SymPosSemiDefEig(&l, &U);  // does svd H = U L V^T and checks that H == U L U^T to within a tolerance.
   // floor l.
-  double f = std::max(eps, l.Max() / K);
+  double f = std::max(static_cast<double>(opts.eps), l.Max() / opts.K);
   MatrixIndexT nfloored = 0;
   for (MatrixIndexT i = 0; i < dim; i++) {  // floor l.
     if (l(i) < f) {
@@ -677,8 +704,9 @@ template<> double SolveQuadraticProblem(const SpMatrix<double> &H,
       l(i) = f;
     }
   }
-  if (nfloored != 0) {
-    KALDI_LOG << "Solving quadratic problem for " << debug_str << ": floored " << nfloored<< " eigenvalues. ";
+  if (nfloored != 0 && opts.print_debug_output) {
+    KALDI_LOG << "Solving quadratic problem for " << opts.name
+              << ": floored " << nfloored<< " eigenvalues. ";
   }
   Vector<double> tmp(dim);
   tmp.AddMatVec(1.0, U, kTrans, gbar, 0.0);  // tmp = U^T \bar{g}
@@ -687,13 +715,13 @@ template<> double SolveQuadraticProblem(const SpMatrix<double> &H,
   delta.AddMatVec(1.0, U, kNoTrans, tmp, 0.0);  // delta = U tmp = U \tilde{L}^{-1} U^T \bar{g}
   Vector<double> &xhat(tmp);
   xhat.CopyFromVec(delta);
-  if (optimizeDelta) xhat.AddVec(1.0, *x);  // xhat = x + delta.
+  if (opts.optimize_delta) xhat.AddVec(1.0, *x);  // xhat = x + delta.
   double auxf_before = VecVec(g, *x) - 0.5 * VecSpVec(*x, H, *x),
          auxf_after = VecVec(g, xhat) - 0.5 * VecSpVec(xhat, H, xhat);
   if (auxf_after < auxf_before) {  // Reject change.
-    if (auxf_after < auxf_before - 1.0e-10)
+    if (auxf_after < auxf_before - 1.0e-10 && opts.print_debug_output)
       KALDI_WARN << "Optimizing vector auxiliary function for "
-                 <<debug_str<< ": auxf decreased " << auxf_before
+                 << opts.name<< ": auxf decreased " << auxf_before
                  << " to "  << auxf_after <<  ", change is "
                  << (auxf_after-auxf_before);
     return 0.0;
@@ -705,16 +733,13 @@ template<> double SolveQuadraticProblem(const SpMatrix<double> &H,
 
 template<> float SolveQuadraticProblem(const SpMatrix<float> &H,
                                        const VectorBase<float> &g,
-                                       VectorBase<float> *x, float K,
-                                       float eps, const char *debug_str,
-                                       bool optimizeDelta) {
+                                       const SolverOptions &opts, 
+                                       VectorBase<float> *x) {
   KALDI_ASSERT(H.NumRows() == g.Dim() && g.Dim() == x->Dim() && x->Dim() != 0);
   SpMatrix<double> Hd(H);
   Vector<double> gd(g);
   Vector<double> xd(*x);
-  float ans = static_cast<float>(SolveQuadraticProblem(Hd, gd, &xd,
-      static_cast<double>(K), static_cast<double>(eps), debug_str,
-      optimizeDelta));
+  float ans = static_cast<float>(SolveQuadraticProblem(Hd, gd, opts, &xd));
   x->CopyFromVec(xd);
   return ans;
 }
@@ -726,19 +751,47 @@ Real
 SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
                             const MatrixBase<Real> &Y,
                             const SpMatrix<Real> &SigmaInv,
-                            MatrixBase<Real> *M, Real K, Real eps,
-                            const char *debug_str, bool optimizeDelta) {
-  KALDI_ASSERT(Q.NumRows() == M->NumCols() && SigmaInv.NumRows() == M->NumRows() && Y.NumRows() == M->NumRows()
-      && Y.NumCols() == M->NumCols() && M->NumCols() != 0);
-  KALDI_ASSERT(K>10 && eps<1.0e-10);
-  MatrixIndexT rows = M->NumRows(), cols = M->NumCols();
+                            const SolverOptions &opts, 
+                            MatrixBase<Real> *M) {
+  KALDI_ASSERT(Q.NumRows() == M->NumCols() &&
+               SigmaInv.NumRows() == M->NumRows() && Y.NumRows() == M->NumRows()
+               && Y.NumCols() == M->NumCols() && M->NumCols() != 0);
+  opts.Check();
+  MatrixIndexT rows = M->NumRows(), cols = M->NumCols();  
   if (Q.IsZero(0.0)) {
     KALDI_WARN << "Zero quadratic term in quadratic matrix problem for "
-               << debug_str << ": leaving it unchanged.";
+               << opts.name << ": leaving it unchanged.";
     return 0.0;
   }
+
+  if (opts.diagonal_precondition) {
+    // We can re-cast the problem with a diagonal preconditioner in the space
+    // of Q (columns of M).  Helps to improve the condition of Q.
+    Vector<Real> Q_diag(cols);
+    Q_diag.CopyDiagFromSp(Q);
+    Q_diag.ApplyFloor(std::numeric_limits<Real>::min() * 1.0E+3);
+    Vector<Real> Q_diag_sqrt(Q_diag);
+    Q_diag_sqrt.ApplyPow(0.5);
+    Vector<Real> Q_diag_inv_sqrt(Q_diag_sqrt);
+    Q_diag_inv_sqrt.InvertElements();
+    Matrix<Real> M_scaled(*M);
+    M_scaled.MulColsVec(Q_diag_sqrt);
+    Matrix<Real> Y_scaled(Y);
+    Y_scaled.MulColsVec(Q_diag_inv_sqrt);
+    SpMatrix<Real> Q_scaled(cols);
+    Q_scaled.AddVec2Sp(1.0, Q_diag_inv_sqrt, Q, 0.0);
+    Real ans;
+    SolverOptions new_opts(opts);
+    new_opts.diagonal_precondition = false;
+    ans = SolveQuadraticMatrixProblem(Q_scaled, Y_scaled, SigmaInv,
+                                      new_opts, &M_scaled);
+    M->CopyFromMat(M_scaled);
+    M->MulColsVec(Q_diag_inv_sqrt);
+    return ans;
+  }
+  
   Matrix<Real> Ybar(Y);
-  if (optimizeDelta) {
+  if (opts.optimize_delta) {
     Matrix<Real> Qfull(Q);
     Ybar.AddMatMat(-1.0, *M, kNoTrans, Qfull, kNoTrans, 1.0);
   } // Ybar = Y - M Q.
@@ -746,13 +799,13 @@ SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
   Vector<Real> l(cols);
   Q.SymPosSemiDefEig(&l, &U);  // does svd Q = U L V^T and checks that Q == U L U^T to within a tolerance.
   // floor l.
-  Real f = std::max(eps, l.Max() / K);
+  Real f = std::max(static_cast<Real>(opts.eps), l.Max() / opts.K);
   MatrixIndexT nfloored = 0;
-  for (MatrixIndexT i = 0;i < cols;i++) {  // floor l.
+  for (MatrixIndexT i = 0; i < cols; i++) {  // floor l.
     if (l(i) < f) { nfloored++; l(i) = f; }
   }
-  if (nfloored != 0)
-    KALDI_LOG << "Solving matrix problem for " << debug_str
+  if (nfloored != 0 && opts.print_debug_output)
+    KALDI_LOG << "Solving matrix problem for " << opts.name
               << ": floored " << nfloored << " eigenvalues. ";
   Matrix<Real> tmpDelta(rows, cols);
   tmpDelta.AddMatMat(1.0, Ybar, kNoTrans, U, kNoTrans, 0.0);  // tmpDelta = Ybar * U.
@@ -771,7 +824,8 @@ SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
     auxf_before = TraceMatMat(*M, SigmaInvY, kaldi::kTrans) - 0.5*TraceSpSp(SigmaInv, MQM);
   }
 
-  Matrix<Real> Mhat(Delta); if (optimizeDelta) Mhat.AddMat(1.0, *M);  // Mhat = Delta + M.
+  Matrix<Real> Mhat(Delta);
+  if (opts.optimize_delta) Mhat.AddMat(1.0, *M);  // Mhat = Delta + M.
 
   {  // get auxf_after.
     MQM.AddMat2Sp(1.0, Mhat, kNoTrans, Q, 0.0);
@@ -781,7 +835,7 @@ SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
   if (auxf_after < auxf_before) {
     if (auxf_after < auxf_before - 1.0e-10)
       KALDI_WARN << "Optimizing matrix auxiliary function for "
-                 << debug_str << ", auxf decreased "
+                 << opts.name << ", auxf decreased "
                  << auxf_before << " to " << auxf_after << ", change is "
                  << (auxf_after-auxf_before);
     return 0.0;
@@ -793,12 +847,12 @@ SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
 
 template<typename Real>
 Real SolveDoubleQuadraticMatrixProblem(const MatrixBase<Real> &G,
-                                         const SpMatrix<Real> &P1,
-                                         const SpMatrix<Real> &P2,
-                                         const SpMatrix<Real> &Q1,
-                                         const SpMatrix<Real> &Q2,
-                                         MatrixBase<Real> *M, Real K,
-                                         Real eps, const char *debug_str) {
+                                       const SpMatrix<Real> &P1,
+                                       const SpMatrix<Real> &P2,
+                                       const SpMatrix<Real> &Q1,
+                                       const SpMatrix<Real> &Q2,
+                                       const SolverOptions &opts,
+                                       MatrixBase<Real> *M) {
   KALDI_ASSERT(Q1.NumRows() == M->NumCols() && P1.NumRows() == M->NumRows() &&
                G.NumRows() == M->NumRows() && G.NumCols() == M->NumCols() &&
                M->NumCols() != 0 && Q2.NumRows() == M->NumCols() &&
@@ -856,7 +910,7 @@ Real SolveDoubleQuadraticMatrixProblem(const MatrixBase<Real> &G,
       if (new_objf < old_objf) {
         if (new_objf < old_objf - 1.0e-05) {
           KALDI_WARN << "In double quadratic matrix problem: objective "
-              "function decreasing during optimization of " << debug_str
+              "function decreasing during optimization of " << opts.name
               << ", " << old_objf << "->" << new_objf << ", change is "
               << (new_objf - old_objf);
           KALDI_ERR << "Auxiliary function decreasing."; // Will be caught.
@@ -868,10 +922,9 @@ Real SolveDoubleQuadraticMatrixProblem(const MatrixBase<Real> &G,
     }
     catch (...) {
       KALDI_WARN << "Matrix inversion or optimization failed during double "
-          "quadratic problem, solving for" << debug_str
+          "quadratic problem, solving for" << opts.name
           << ": trying more stable approach.";
-      objf_impr += SolveQuadraticProblem(Qsum, gdash_n, &mdash_n, K, eps,
-          debug_str);
+      objf_impr += SolveQuadraticProblem(Qsum, gdash_n, opts, &mdash_n);
     }
   }
   M->AddMatMat(1.0, T, kTrans, MdashNew, kNoTrans, 0.0); // M := T^T M'.
@@ -886,6 +939,20 @@ void SpMatrix<float>::AddVec2(const float alpha, const VectorBase<float> &v) {
   cblas_Xspr(v.Dim(), alpha, v.Data(), 1,
              this->data_);
 }
+
+template<class Real>
+void SpMatrix<Real>::AddVec2Sp(const Real alpha, const VectorBase<Real> &v,
+                               const SpMatrix<Real> &S, const Real beta) {
+  KALDI_ASSERT(v.Dim() == this->NumRows() && S.NumRows() == this->NumRows());
+  const Real *Sdata = S.Data();
+  const Real *vdata = v.Data();
+  Real *data = this->data_;
+  MatrixIndexT dim = this->num_rows_;
+  for (MatrixIndexT r = 0; r < dim; r++)
+    for (MatrixIndexT c = 0; c <= r; c++, Sdata++, data++)
+      *data = beta * *data + alpha * vdata[r] * vdata[c] * *Sdata;
+}
+
 
 // rank-one update, this <-- this + alpha V V'
 template<>
@@ -1137,31 +1204,35 @@ float TraceSpSpLower(const SpMatrix<float> &A, const SpMatrix<float> &B);
 
 // Instantiate the template above.
 template float SolveQuadraticMatrixProblem(const SpMatrix<float> &Q,
-                                  const MatrixBase<float> &Y,
-                                  const SpMatrix<float> &SigmaInv,
-                                  MatrixBase<float> *M,
-                                  float K, float eps, const char *debug_str,
-                                  bool optimizeDelta);
+                                           const MatrixBase<float> &Y,
+                                           const SpMatrix<float> &SigmaInv,
+                                           const SolverOptions &opts,
+                                           MatrixBase<float> *M);
 template double SolveQuadraticMatrixProblem(const SpMatrix<double> &Q,
-                                  const MatrixBase<double> &Y,
-                                  const SpMatrix<double> &SigmaInv,
-                                  MatrixBase<double> *M,
-                                  double K, double eps, const char *debug_str,
-                                  bool optimizeDelta);
+                                            const MatrixBase<double> &Y,
+                                            const SpMatrix<double> &SigmaInv,
+                                            const SolverOptions &opts,
+                                            MatrixBase<double> *M);
+                                            
 // Instantiate the template above.
-template float SolveDoubleQuadraticMatrixProblem(const MatrixBase<float> &G,
-                                        const SpMatrix<float> &P1,
-                                        const SpMatrix<float> &P2,
-                                        const SpMatrix<float> &Q1,
-                                        const SpMatrix<float> &Q2,
-                                        MatrixBase<float> *M, float K, float eps,
-                                        const char *debug_str); 
-template double SolveDoubleQuadraticMatrixProblem(const MatrixBase<double> &G,
-                                        const SpMatrix<double> &P1,
-                                        const SpMatrix<double> &P2,
-                                        const SpMatrix<double> &Q1,
-                                        const SpMatrix<double> &Q2,
-                                        MatrixBase<double> *M, double K, double eps,
-                                        const char *debug_str); 
+template float SolveDoubleQuadraticMatrixProblem(
+    const MatrixBase<float> &G,
+    const SpMatrix<float> &P1,
+    const SpMatrix<float> &P2,
+    const SpMatrix<float> &Q1,
+    const SpMatrix<float> &Q2,
+    const SolverOptions &opts,
+    MatrixBase<float> *M);
+    
+template double SolveDoubleQuadraticMatrixProblem(
+    const MatrixBase<double> &G,
+    const SpMatrix<double> &P1,
+    const SpMatrix<double> &P2,
+    const SpMatrix<double> &Q1,
+    const SpMatrix<double> &Q2,
+    const SolverOptions &opts,
+    MatrixBase<double> *M);
+    
+
 
 } // namespace kaldi

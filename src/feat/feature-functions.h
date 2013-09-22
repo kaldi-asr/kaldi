@@ -254,6 +254,44 @@ void InitIdftBases(int32 n_bases, int32 dimension, Matrix<BaseFloat> *mat_out);
 BaseFloat ComputeLpc(const VectorBase<BaseFloat> &autocorr_in,
                      Vector<BaseFloat> *lpc_out);
 
+
+struct SlidingWindowCmnOptions {
+  int cmn_window;
+  int min_window;
+  bool normalize_variance;
+  bool center;
+  
+  SlidingWindowCmnOptions():
+      cmn_window(600),
+      min_window(100),
+      normalize_variance(false),
+      center(false) { }
+
+  void Register(OptionsItf *po) {
+    po->Register("cmn-window", &cmn_window, "Window in frames for running "
+                 "average CMN computation");
+    po->Register("min-cmn-window", &min_window, "Minumum CMN window "
+                 "used at start of decoding (adds latency only at start). "
+                 "Only applicable if center == false, ignored if center==true");
+    po->Register("norm-vars", &normalize_variance, "If true, normalize "
+                 "variance to one."); // naming this as in apply-cmvn.cc
+    po->Register("center", &center, "If true, use a window centered on the "
+                 "current frame (to the extent possible, modulo end effects)."
+                 "If false, window is to the left.");
+  }
+  void Check() const;
+};
+
+
+/// Applies sliding-window cepstral mean and/or variance normalization.  See the
+/// strings registering the options in the options class for information on how
+/// this works and what the options are.  input and output must have the same
+/// dimension.
+void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
+                      const MatrixBase<BaseFloat> &input,
+                      MatrixBase<BaseFloat> *output);
+
+
 /// @} End of "addtogroup feat"
 }  // namespace kaldi
 

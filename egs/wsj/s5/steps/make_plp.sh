@@ -9,6 +9,7 @@
 nj=4
 cmd=run.pl
 plp_config=conf/plp.conf
+compress=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -67,8 +68,9 @@ if [ -f $data/segments ]; then
 
   $cmd JOB=1:$nj $logdir/make_plp.JOB.log \
     extract-segments scp:$scp $logdir/segments.JOB ark:- \| \
-    compute-plp-feats --verbose=2 --config=$plp_config ark:- \
-    ark,scp:$plpdir/raw_plp_$name.JOB.ark,$plpdir/raw_plp_$name.JOB.scp \
+    compute-plp-feats --verbose=2 --config=$plp_config ark:- ark:- \| \
+    copy-feats --compress=$compress ark:- \
+      ark,scp:$plpdir/raw_plp_$name.JOB.ark,$plpdir/raw_plp_$name.JOB.scp \
      || exit 1;
 
 else
@@ -81,7 +83,8 @@ else
   utils/split_scp.pl $scp $split_scps || exit 1;
  
   $cmd JOB=1:$nj $logdir/make_plp.JOB.log \
-    compute-plp-feats  --verbose=2 --config=$plp_config scp:$logdir/wav.JOB.scp \
+    compute-plp-feats  --verbose=2 --config=$plp_config scp:$logdir/wav.JOB.scp ark:- \| \
+    copy-feats --compress=$compress ark:- \
       ark,scp:$plpdir/raw_plp_$name.JOB.ark,$plpdir/raw_plp_$name.JOB.scp \
       || exit 1;
 

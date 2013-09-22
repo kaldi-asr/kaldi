@@ -1,13 +1,13 @@
 
 ### 16k wordlist partial close LM
-tri1/decode_eval/cer_10:%CER 50.28 [ 3802 / 7562, 1547 ins, 403 del, 1852 sub ]
-tri2/decode_eval/cer_10:%CER 47.09 [ 3561 / 7562, 1405 ins, 414 del, 1742 sub ]
-tri3a/decode_eval/cer_10:%CER 44.18 [ 3341 / 7562, 1113 ins, 441 del, 1787 sub ]
-tri4a/decode_eval/cer_10:%CER 30.23 [ 2286 / 7562, 530 ins, 492 del, 1264 sub ]
-tri4a_20k/decode_eval/cer_10:%CER 32.43 [ 2452 / 7562, 537 ins, 480 del, 1435 sub ]
-tri5a/decode_eval/cer_10:%CER 28.89 [ 2185 / 7562, 498 ins, 517 del, 1170 sub ]
+tri1/decode_eval/cer_10:%CER 50.28 [ 3802 / 7562, 1547 ins, 403 del, 1852 sub ]    # triphones
+tri2/decode_eval/cer_10:%CER 47.09 [ 3561 / 7562, 1405 ins, 414 del, 1742 sub ]    # triphones (better alignment)
+tri3a/decode_eval/cer_10:%CER 44.18 [ 3341 / 7562, 1113 ins, 441 del, 1787 sub ]   # LDA+MLLT
+tri4a/decode_eval/cer_10:%CER 30.23 [ 2286 / 7562, 530 ins, 492 del, 1264 sub ]    # LDA+MLLT+SAT
+tri4a_20k/decode_eval/cer_10:%CER 32.43 [ 2452 / 7562, 537 ins, 480 del, 1435 sub ] # LDA+MLLF+SAT (small system)
+tri5a/decode_eval/cer_10:%CER 28.89 [ 2185 / 7562, 498 ins, 517 del, 1170 sub ]     # LDA+MLLT+SAT (better alignment)
 
-tri5a_fmmi_b0.1/decode_eval_iter1/cer_10:%CER 28.00 [ 2117 / 7562, 460 ins, 524 del, 1133 sub ]
+tri5a_fmmi_b0.1/decode_eval_iter1/cer_10:%CER 28.00 [ 2117 / 7562, 460 ins, 524 del, 1133 sub ] # feature space MMI + boosted MMI
 tri5a_fmmi_b0.1/decode_eval_iter2/cer_10:%CER 27.47 [ 2077 / 7562, 438 ins, 548 del, 1091 sub ]
 tri5a_fmmi_b0.1/decode_eval_iter3/cer_10:%CER 26.59 [ 2011 / 7562, 447 ins, 539 del, 1025 sub ]
 tri5a_fmmi_b0.1/decode_eval_iter4/cer_10:%CER 29.91 [ 2262 / 7562, 619 ins, 516 del, 1127 sub ]
@@ -16,19 +16,18 @@ tri5a_fmmi_b0.1/decode_eval_iter6/cer_10:%CER 27.10 [ 2049 / 7562, 552 ins, 483 
 tri5a_fmmi_b0.1/decode_eval_iter7/cer_10:%CER 24.97 [ 1888 / 7562, 462 ins, 549 del, 877 sub ]
 tri5a_fmmi_b0.1/decode_eval_iter8/cer_10:%CER 25.23 [ 1908 / 7562, 445 ins, 613 del, 850 sub ]
 
-tri5a_mmi_b0.1/decode_eval1/cer_10:%CER 24.93 [ 1885 / 7562, 408 ins, 466 del, 1011 sub ]
+tri5a_mmi_b0.1/decode_eval1/cer_10:%CER 24.93 [ 1885 / 7562, 408 ins, 466 del, 1011 sub ] # boosted MMI
 tri5a_mmi_b0.1/decode_eval2/cer_10:%CER 23.25 [ 1758 / 7562, 370 ins, 486 del, 902 sub ]
 tri5a_mmi_b0.1/decode_eval3/cer_10:%CER 23.64 [ 1788 / 7562, 402 ins, 501 del, 885 sub ]
-tri5a_mmi_b0.1/decode_eval4/cer_10:%CER 23.58 [ 1783 / 7562, 392 ins, 561 del, 830 sub ]
+tri5a_mmi_b0.1/decode_eval4/cer_10:%CER 23.58 [ 1783 / 7562, 392 ins, 561 del, 830 sub ]  # <= best GMM model was obtained here
 
-
-sgmm_5a/decode_eval/cer_10:%CER 26.40 [ 1996 / 7562, 418 ins, 701 del, 877 sub ]
-sgmm_5a_mmi_b0.1/decode_eval1/cer_10:%CER 24.93 [ 1885 / 7562, 401 ins, 597 del, 887 sub ]
+sgmm_5a/decode_eval/cer_10:%CER 26.40 [ 1996 / 7562, 418 ins, 701 del, 877 sub ]           # SGMM
+sgmm_5a_mmi_b0.1/decode_eval1/cer_10:%CER 24.93 [ 1885 / 7562, 401 ins, 597 del, 887 sub ] # boosted MMI on SGMM
 sgmm_5a_mmi_b0.1/decode_eval2/cer_10:%CER 24.52 [ 1854 / 7562, 386 ins, 596 del, 872 sub ]
 sgmm_5a_mmi_b0.1/decode_eval3/cer_10:%CER 23.79 [ 1799 / 7562, 378 ins, 593 del, 828 sub ]
 sgmm_5a_mmi_b0.1/decode_eval4/cer_10:%CER 23.87 [ 1805 / 7562, 380 ins, 597 del, 828 sub ]
 
-nnet_8m_6l/decode_eval_iter50/cer_10:%CER 33.25 [ 2514 / 7562, 435 ins, 750 del, 1329 sub ]
+nnet_8m_6l/decode_eval_iter50/cer_10:%CER 33.25 [ 2514 / 7562, 435 ins, 750 del, 1329 sub ] # CPU based neural network
 nnet_8m_6l/decode_eval_iter100/cer_10:%CER 30.40 [ 2299 / 7562, 543 ins, 476 del, 1280 sub ]
 nnet_8m_6l/decode_eval_iter150/cer_10:%CER 26.74 [ 2022 / 7562, 423 ins, 578 del, 1021 sub ]
 nnet_8m_6l/decode_eval_iter200/cer_10:%CER 26.20 [ 1981 / 7562, 421 ins, 546 del, 1014 sub ]
@@ -41,9 +40,14 @@ nnet_8m_6l/decode_eval_iter260/cer_10:%CER 26.61 [ 2012 / 7562, 419 ins, 555 del
 nnet_8m_6l/decode_eval_iter270/cer_10:%CER 25.72 [ 1945 / 7562, 405 ins, 533 del, 1007 sub ]
 nnet_8m_6l/decode_eval_iter280/cer_10:%CER 27.43 [ 2074 / 7562, 424 ins, 605 del, 1045 sub ]
 nnet_8m_6l/decode_eval_iter290/cer_10:%CER 26.37 [ 1994 / 7562, 410 ins, 572 del, 1012 sub ]
-nnet_8m_6l/decode_eval/cer_10:%CER 25.55 [ 1932 / 7562, 405 ins, 549 del, 978 sub ]
+nnet_8m_6l/decode_eval/cer_10:%CER 25.55 [ 1932 / 7562, 405 ins, 549 del, 978 sub ]         # 6 layers neural network
 
-tri5a_pretrain-dbn_dnn/decode/cer_10:%CER 20.48 [ 1549 / 7562, 383 ins, 468 del, 698 sub ]
+tri5a_pretrain-dbn_dnn/decode/cer_10:%CER 20.48 [ 1549 / 7562, 383 ins, 468 del, 698 sub ]  # pretrained RBM, cross entropy trained DNN  
+tri5a_pretrain-dbn_dnn_smbr/decode_it1/cer_10:%CER 18.73 [ 1416 / 7562, 306 ins, 453 del, 657 sub ] # sMBR trained DNN  
+tri5a_pretrain-dbn_dnn_smbr/decode_it2/cer_10:%CER 18.73 [ 1416 / 7562, 310 ins, 446 del, 660 sub ]
+tri5a_pretrain-dbn_dnn_smbr/decode_it3/cer_10:%CER 18.62 [ 1408 / 7562, 313 ins, 446 del, 649 sub ]
+tri5a_pretrain-dbn_dnn_smbr/decode_it4/cer_10:%CER 18.66 [ 1411 / 7562, 307 ins, 458 del, 646 sub ]
+
 
 
 ### 16K wordlist close LM, the perplexity of the LM was optimized with the sentences of evaluation data
@@ -90,5 +94,9 @@ nnet_8m_6l/decode_eval_closelm_iter290/cer_10:%CER 20.40 [ 1543 / 7562, 323 ins,
 nnet_8m_6l/decode_eval_closelm/cer_10:%CER 20.68 [ 1564 / 7562, 351 ins, 483 del, 730 sub ]
 
 tri5a_pretrain-dbn_dnn/decode_closelm/cer_10:%CER 16.54 [ 1251 / 7562, 346 ins, 413 del, 492 sub ]
+tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it1/cer_10:%CER 15.31 [ 1158 / 7562, 280 ins, 410 del, 468 sub ]
+tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it2/cer_10:%CER 15.30 [ 1157 / 7562, 279 ins, 408 del, 470 sub ]
+tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it3/cer_10:%CER 15.52 [ 1174 / 7562, 280 ins, 408 del, 486 sub ]
+tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it4/cer_10:%CER 15.62 [ 1181 / 7562, 278 ins, 412 del, 491 sub ]
 
 

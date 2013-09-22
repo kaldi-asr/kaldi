@@ -18,8 +18,11 @@
 
 #include "gmm/full-gmm.h"
 #include "gmm/diag-gmm.h"
+#include "gmm/model-test-common.h"
 #include "util/stl-utils.h"
 #include "util/kaldi-io.h"
+#include "gmm/full-gmm-normal.h"
+#include "gmm/mle-full-gmm.h"
 
 using namespace kaldi;
 
@@ -72,6 +75,32 @@ void init_rand_diag_gmm(DiagGmm *gmm) {
   gmm->Perturb(0.5 * RandUniform());
   gmm->ComputeGconsts();  // this is unnecassary; computed in Perturb
 }
+
+void UnitTestFullGmmEst() {
+  FullGmm fgmm;
+  int32 dim = 10 + rand() % 10, num_comp = 1 + rand() % 10;
+  unittest::InitRandFullGmm(dim, num_comp, &fgmm);
+  int32 num_frames = 5000;
+  Matrix<BaseFloat> feats(num_frames, dim);
+  FullGmmNormal fgmm_normal(fgmm);
+  fgmm_normal.Rand(&feats);
+
+  AccumFullGmm acc(fgmm, kGmmAll);
+  for (int32 t = 0; t < num_frames; t++)
+    acc.AccumulateFromFull(fgmm, feats.Row(t), 1.0);
+  BaseFloat objf_change, count;
+
+  MleFullGmmOptions opts;
+
+  MleFullGmmUpdate(opts, acc, kGmmAll, &fgmm, &objf_change, &count);
+  BaseFloat change = objf_change / count,
+      num_params = (num_comp * (dim + 1 + (dim*(dim+1)/2))),
+      predicted_change = 0.5 * num_params / num_frames; // Was there
+  KALDI_LOG << "Objf change per frame was " << change << " vs. predicted "
+            << predicted_change;
+  KALDI_ASSERT(change < 2.0 * predicted_change && change > 0.0)
+}
+
 
 void
 UnitTestFullGmm() {
@@ -298,7 +327,9 @@ UnitTestFullGmm() {
 int
 main() {
   // repeat the test ten times
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < 2; i++) {
     UnitTestFullGmm();
+    UnitTestFullGmmEst();
+  }
   std::cout << "Test OK.\n";
 }

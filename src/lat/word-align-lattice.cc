@@ -255,6 +255,13 @@ class LatticeWordAligner {
       lat_(lat), tmodel_(tmodel), info_in_(info), info_(info),
       max_states_(max_states), lat_out_(lat_out),
       error_(false) {
+    bool test = true;
+    uint64 props = lat_.Properties(fst::kIDeterministic|fst::kIEpsilons, test);
+    if (props != fst::kIDeterministic) {
+      KALDI_WARN << "[Lattice has input epsilons and/or is not input-deterministic "
+                 << "(in Mohri sense)]-- i.e. lattice is not deterministic.  "
+                 << "Word-alignment may be slow and-or blow up in memory.";
+    }
     fst::CreateSuperFinal(&lat_); // Creates a super-final state, so the
     // only final-probs are One().
     

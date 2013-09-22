@@ -19,17 +19,14 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <string>
-using std::string;
-#include <vector>
-using std::vector;
 
 #include "sgmm/am-sgmm.h"
 #include "sgmm/estimate-am-sgmm.h"
 #include "thread/kaldi-thread.h"
 
 namespace kaldi {
+using std::string;
+using std::vector;
 
 void MleAmSgmmAccs::Write(std::ostream &out_stream, bool binary) const {
   uint32 tmp_uint32;
@@ -738,14 +735,16 @@ void MleAmSgmmUpdater::UpdatePhoneVectorsInternal(
         KALDI_ASSERT(H_jm_dash.IsPosDef());
 #endif
       Vector<double> vhat_jm(model->v_[j].Row(m));
+      SolverOptions opts;
+      opts.name = "v";
+      opts.K = update_options_.max_cond;
+      opts.eps = update_options_.epsilon;
       double objf_impr_with_prior =
           SolveQuadraticProblem(H_jm_dash,
                                 g_jm_dash,
-                                &vhat_jm,
-                                static_cast<double>(update_options_.max_cond),
-                                static_cast<double>(update_options_.epsilon),
-                                "v", true);
-
+                                opts,
+                                &vhat_jm);
+      
       SpMatrix<BaseFloat> H_jm_flt(H_jm);
 
       double objf_impr_noprior =
@@ -871,13 +870,11 @@ double MleAmSgmmUpdater::UpdatePhoneVectorsChecked(const MleAmSgmmAccs &accs,
               H_jm.AddVec2(static_cast<BaseFloat>(quadratic_term), model->w_.Row(i));
             }
           }
-          auxf_impr =
-              SolveQuadraticProblem(H_jm,
-                                    g_jm,
-                                    &v_jm,
-                                    static_cast<double>(update_options_.max_cond),
-                                    static_cast<double>(update_options_.epsilon),
-                                    "v", true);
+          SolverOptions opts;
+          opts.name = "v";
+          opts.K = update_options_.max_cond;
+          opts.eps = update_options_.epsilon;
+          auxf_impr = SolveQuadraticProblem(H_jm, g_jm, opts, &v_jm);
         }
       }
       double objf_impr = exact_objf - exact_objf_start;
@@ -1060,14 +1057,13 @@ void MleAmSgmmUpdater::UpdatePhoneVectorsCheckedFromClusterableInternal(
         
         SpMatrix<double> total_quadratic_term(weight_2nd_deriv);
         total_quadratic_term.AddSp(1.0, X_jm);
-        
-        auxf_impr =
-            SolveQuadraticProblem(total_quadratic_term,
-                                  total_linear_term,
-                                  &v_jm,
-                                  static_cast<double>(update_options_.max_cond),
-                                  static_cast<double>(update_options_.epsilon),
-                                  "v", true);
+
+        SolverOptions opts;
+        opts.name = "v";
+        opts.K = update_options_.max_cond;
+        opts.eps = update_options_.epsilon;
+        auxf_impr = SolveQuadraticProblem(total_quadratic_term,
+                                          total_linear_term, opts, &v_jm);
       }
     }
     double objf_impr = exact_objf - exact_objf_start;
@@ -1207,14 +1203,15 @@ double MleAmSgmmUpdater::UpdateM(const MleAmSgmmAccs &accs,
       continue;
     }
 
+    SolverOptions opts;
+    opts.name = "M";
+    opts.K = update_options_.max_cond;
+    opts.eps = update_options_.epsilon;
+    
     Matrix<double> Mi(model->M_[i]);
-    double impr =
-        SolveQuadraticMatrixProblem(Q_[i], accs.Y_[i],
-                                    SpMatrix<double>(model->SigmaInv_[i]),
-                                    &Mi,
-                                    static_cast<double>(update_options_.max_cond),
-                                    static_cast<double>(update_options_.epsilon),
-                                    "M", true);
+    double impr = SolveQuadraticMatrixProblem(Q_[i], accs.Y_[i],
+                                              SpMatrix<double>(model->SigmaInv_[i]),
+                                              opts, &Mi);
     model->M_[i].CopyFromMat(Mi);
 
     if (i < 10) {
@@ -1380,9 +1377,12 @@ double MleAmSgmmUpdater::MapUpdateM(const MleAmSgmmAccs &accs, AmSgmm *model) {
     SpMatrix<double> P1(model->SigmaInv_[i]);
     Matrix<double> Mi(model->M_[i]);
 
-    double impr = SolveDoubleQuadraticMatrixProblem(G, P1, P2, Q_[i], Q2, &Mi,
-        static_cast<double>(update_options_.max_cond),
-        static_cast<double>(update_options_.epsilon), "M");
+    SolverOptions opts;
+    opts.name = "M";
+    opts.K = update_options_.max_cond;
+    opts.eps = update_options_.epsilon;
+    
+    double impr = SolveDoubleQuadraticMatrixProblem(G, P1, P2, Q_[i], Q2, opts, &Mi);
     model->M_[i].CopyFromMat(Mi);
     if (i < 10) {
       KALDI_LOG << "Objf impr for projection M for i = " << i << ", is "
@@ -1500,6 +1500,11 @@ double MleAmSgmmUpdater::UpdateWParallel(const MleAmSgmmAccs &accs,
       k_predicted_like_impr = 0.0;
       k_like_after = 0.0;
 
+      SolverOptions opts;
+      opts.name = "w";
+      opts.K = update_options_.max_cond;
+      opts.eps = update_options_.epsilon;
+      
       for (int32 i = 0; i < accs.num_gaussians_; i++) {
         // auxf is formulated in terms of change in w.
         Vector<double> delta_w(accs.phn_space_dim_);
@@ -1507,11 +1512,7 @@ double MleAmSgmmUpdater::UpdateWParallel(const MleAmSgmmAccs &accs,
         // but it may not be 1 so we recalculate it.
         SpMatrix<double> this_F_i(accs.phn_space_dim_);
         this_F_i.CopyFromVec(F_i.Row(i));
-        SolveQuadraticProblem(this_F_i, g_i.Row(i), &delta_w,
-                              static_cast<double>(update_options_.max_cond),
-                              static_cast<double>(update_options_.epsilon),
-                              "w",
-                              true);
+        SolveQuadraticProblem(this_F_i, g_i.Row(i), opts, &delta_w);
 
         delta_w.Scale(step_size);
         double predicted_impr = VecVec(delta_w, g_i.Row(i)) -
@@ -1650,16 +1651,19 @@ double MleAmSgmmUpdater::UpdateWSequential(
         }
       }
 
+      SolverOptions opts;
+      opts.name = "w";
+      opts.K = update_options_.max_cond;
+      opts.eps = update_options_.epsilon;
+      
       // auxf is formulated in terms of change in w.
       Vector<double> delta_w(accs.phn_space_dim_);
       // returns objf impr with step_size = 1,
       // but it may not be 1 so we recalculate it.
       SolveQuadraticProblem(F_i,
                             g_i,
-                            &delta_w,
-                            static_cast<double>(update_options_.max_cond),
-                            static_cast<double>(update_options_.epsilon),
-                            "w", true);
+                            opts,
+                            &delta_w);
 
       try {  // In case we have a problem in LogSub.
         double step_size, min_step = 0.0001;
@@ -1769,6 +1773,11 @@ double MleAmSgmmUpdater::UpdateN(const MleAmSgmmAccs &accs,
     }
   }
 
+  SolverOptions opts;
+  opts.name = "N";
+  opts.K = update_options_.max_cond;
+  opts.eps = update_options_.epsilon;
+  
   for (int32 i = 0; i < accs.num_gaussians_; i++) {
     if (gamma_i(i) < 2 * accs.spk_space_dim_) {
       KALDI_WARN << "Not updating speaker basis for i = " << (i)
@@ -1779,10 +1788,7 @@ double MleAmSgmmUpdater::UpdateN(const MleAmSgmmAccs &accs,
     double impr =
         SolveQuadraticMatrixProblem(accs.R_[i], accs.Z_[i],
                                     SpMatrix<double>(model->SigmaInv_[i]),
-                                    &Ni,
-                                    static_cast<double>(update_options_.max_cond),
-                                    static_cast<double>(update_options_.epsilon),
-                                    "N", true);
+                                    opts, &Ni);
     model->N_[i].CopyFromMat(Ni);
     if (i < 10) {
       KALDI_LOG << "Objf impr for spk projection N for i = " << (i)
@@ -2100,13 +2106,13 @@ void MleSgmmSpeakerAccs::Update(BaseFloat min_count,
   for (int32 i = 0; i < num_gauss; i++)
     H_s.AddSp(gamma_s_(i), H_spk_[i]);
 
+
   // Don't make these options to SolveQuadraticProblem configurable...
   // they really don't make a difference at all unless the matrix in
   // question is singular, which wouldn't happen in this case.
   Vector<double> v_s_dbl(*v_s);
   double tot_objf_impr =
-      SolveQuadraticProblem(H_s, y_s_, &v_s_dbl,
-                            1.0e+05, 1.0e-40, "v_s", true);
+      SolveQuadraticProblem(H_s, y_s_, SolverOptions("v_s"), &v_s_dbl);
   v_s->CopyFromVec(v_s_dbl);
 
   KALDI_LOG << "*Objf impr for speaker vector is " << (tot_objf_impr / tot_gamma)

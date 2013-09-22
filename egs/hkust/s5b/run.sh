@@ -140,10 +140,20 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --iter $n --config conf/deco
 done
 
  # GPU based DNN traing, this was run on CentOS 6.4 with CUDA 5.0
- # 6 layers DNN pretrained with restricted boltzmann machine, decoding was done by CPUs 
+ # 6 layers DNN pretrained with restricted boltzmann machine, frame level cross entropy training, sequence discriminative training with sMBR criterion
 local/run_dnn.sh
+ # decoding was run by CPUs
+ # decoding using DNN with cross-entropy training 
+dir=exp/tri5a_pretrain-dbn_dnn
 steps/decode_nnet.sh --nj 2 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 exp/tri5a/graph data-fmllr-tri5a/test $dir/decode || exit 1;
 steps/decode_nnet.sh --nj 2 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 exp/tri5a/graph_closelm data-fmllr-tri5a/test $dir/decode_closelm || exit 1;
+ # decoding using DNN with sequence discriminative training (sMBR criterion)
+dir=exp/tri5a_pretrain-dbn_dnn_smbr
+for ITER in 1 2 3 4; do
+ steps/decode_nnet.sh --nj 2 --cmd "$decode_cmd" --config conf/decode_dnn.config --nnet $dir/${ITER}.nnet --acwt 0.1 exp/tri5a/graph data-fmllr-tri5a/test $dir/decode_it${ITER} &
+ steps/decode_nnet.sh --nj 2 --cmd "$decode_cmd" --config conf/decode_dnn.config --nnet $dir/${ITER}.nnet --acwt 0.1 exp/tri5a/graph_closelm data-fmllr-tri5a/test $dir/decode_closelm_it${ITER} &
+done
+
 
 ### Scoring ###
 local/ext/score.sh data/eval exp/tri1/graph exp/tri1/decode_eval
@@ -191,4 +201,10 @@ done
 
 local/ext/score.sh data/eval exp/tri5a/graph exp/tri5a_pretrain-dbn_dnn/decode
 local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/tri5a_pretrain-dbn_dnn/decode_closelm
+
+for ITER in 1 2 3 4; do
+ local/ext/score.sh data/eval exp/tri5a/graph exp/tri5a_pretrain-dbn_dnn_smbr/decode_it${ITER}
+ local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it${ITER}
+done
+
 

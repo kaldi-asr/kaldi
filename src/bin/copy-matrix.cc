@@ -27,6 +27,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Copy matrices, or archives of matrices (e.g. features or transforms)\n"
+        "Also see copy-feats which has other format options\n"
         "\n"
         "Usage: copy-matrix [options] (matrix-in-rspecifier|matrix-in-rxfilename) (matrix-out-wspecifier|matrix-out-wxfilename)\n"
         " e.g.: copy-matrix --binary=false 1.mat -\n"

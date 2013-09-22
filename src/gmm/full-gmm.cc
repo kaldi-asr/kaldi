@@ -3,8 +3,8 @@
 // Copyright 2009-2011  Jan Silovsky;
 //                      Saarland University (Author: Arnab Ghoshal);
 //                      Microsoft Corporation
-// Copyright 2012       Johns Hopkins University (author: Daniel Povey);
-//                      Arnab Ghoshal
+// Copyright      2012       Arnab Ghoshal
+// Copyright 2012-2013  Johns Hopkins University (author: Daniel Povey);
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -630,9 +630,91 @@ void FullGmm::LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
 }
 
 
+/// Get gaussian selection information for one frame.
+BaseFloat FullGmm::GaussianSelection(const VectorBase<BaseFloat> &data,
+                                     int32 num_gselect,
+                                     std::vector<int32> *output) const {
+  int32 num_gauss = NumGauss();
+  Vector<BaseFloat> loglikes(num_gauss, kUndefined);
+  output->clear();
+  this->LogLikelihoods(data, &loglikes);
+
+  BaseFloat thresh;
+  if (num_gselect < num_gauss) {
+    Vector<BaseFloat> loglikes_copy(loglikes);
+    BaseFloat *ptr = loglikes_copy.Data();
+    std::nth_element(ptr, ptr+num_gauss-num_gselect, ptr+num_gauss);
+    thresh = ptr[num_gauss-num_gselect];
+  } else {
+    thresh = -std::numeric_limits<BaseFloat>::infinity();
+  }
+  BaseFloat tot_loglike = -std::numeric_limits<BaseFloat>::infinity();
+  std::vector<std::pair<BaseFloat, int32> > pairs;
+  for (int32 p = 0; p < num_gauss; p++) {
+    if (loglikes(p) >= thresh) {
+      pairs.push_back(std::make_pair(loglikes(p), p));
+    }
+  }
+  std::sort(pairs.begin(), pairs.end(),
+            std::greater<std::pair<BaseFloat, int32> >());
+  for (int32 j = 0;
+       j < num_gselect && j < static_cast<int32>(pairs.size());
+       j++) {
+    output->push_back(pairs[j].second);
+    tot_loglike = LogAdd(tot_loglike, pairs[j].first);
+  }
+  KALDI_ASSERT(!output->empty());
+  return tot_loglike;
+}
+
+
+BaseFloat FullGmm::GaussianSelectionPreselect(
+    const VectorBase<BaseFloat> &data,
+    const std::vector<int32> &preselect,
+    int32 num_gselect,
+    std::vector<int32> *output) const {
+  static bool warned_size = false;
+  int32 preselect_sz = preselect.size();
+  int32 this_num_gselect = std::min(num_gselect, preselect_sz);
+  if (preselect_sz <= num_gselect && !warned_size) {
+    warned_size = true;
+    KALDI_WARN << "Preselect size is less or equal to than final size, "
+               << "doing nothing: " << preselect_sz << " < " <<  num_gselect
+               << " [won't warn again]";
+  }
+  Vector<BaseFloat> loglikes(preselect_sz);
+  LogLikelihoodsPreselect(data, preselect, &loglikes);
+  
+  Vector<BaseFloat> loglikes_copy(loglikes);
+  BaseFloat *ptr = loglikes_copy.Data();
+  std::nth_element(ptr, ptr+preselect_sz-this_num_gselect,
+                   ptr+preselect_sz);
+  BaseFloat thresh = ptr[preselect_sz-this_num_gselect];
+
+  BaseFloat tot_loglike = -std::numeric_limits<BaseFloat>::infinity();
+  // we want the output sorted from best likelihood to worse
+  // (so we can prune further without the model)...
+  std::vector<std::pair<BaseFloat, int32> > pairs;
+  for (int32 p = 0; p < preselect_sz; p++)
+    if (loglikes(p) >= thresh)
+      pairs.push_back(std::make_pair(loglikes(p), preselect[p]));
+  std::sort(pairs.begin(), pairs.end(),
+            std::greater<std::pair<BaseFloat, int32> >());
+  output->clear();
+  for (int32 j = 0;
+       j < this_num_gselect && j < static_cast<int32>(pairs.size());
+       j++) {
+    output->push_back(pairs[j].second);
+    tot_loglike = LogAdd(tot_loglike, pairs[j].first);
+  }
+  KALDI_ASSERT(!output->empty());
+  return tot_loglike;
+}
+
+
 // Gets likelihood of data given this. Also provides per-Gaussian posteriors.
 BaseFloat FullGmm::ComponentPosteriors(const VectorBase<BaseFloat> &data,
-                                       Vector<BaseFloat> *posterior) const {
+                                       VectorBase<BaseFloat> *posterior) const {
   if (posterior == NULL) KALDI_ERR << "NULL pointer passed as return argument.";
   Vector<BaseFloat> loglikes;
   LogLikelihoods(data, &loglikes);
@@ -739,7 +821,7 @@ void FullGmm::Read(std::istream &in_stream, bool binary) {
     ExpectToken(in_stream, binary, "<WEIGHTS>");
   } else {
     if (token != "<WEIGHTS>")
-      KALDI_ERR << "DiagGmm::Read, expected <WEIGHTS> or <GCONSTS>, got "
+      KALDI_ERR << "FullGmm::Read, expected <WEIGHTS> or <GCONSTS>, got "
                 << token;
   }
   weights_.Read(in_stream, binary);

@@ -1,6 +1,7 @@
 // gmmbin/gmm-gselect.cc
 
 // Copyright 2009-2011   Saarland University;  Microsoft Corporation
+//                2013   Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,7 +72,6 @@ int main(int argc, char *argv[]) {
     
     double tot_like = 0.0;
     kaldi::int64 tot_t = 0;
-    bool warned_size = false;
     
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     Int32VectorVectorWriter gselect_writer(gselect_wspecifier);
@@ -98,77 +98,14 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-        for (int32 i = 0; i < mat.NumRows(); i++) {
-          int32 preselect_sz = preselect[i].size();
-          int32 this_num_gselect = std::min(num_gselect, preselect_sz);
-          if (preselect_sz <= num_gselect && !warned_size) {
-            warned_size = true;
-            KALDI_WARN << "Preselect size is less or equal to than final size, doing nothing: "
-                       << preselect_sz << " < " <<  num_gselect
-                       << " [won't warn again]";
-          }
-          Vector<BaseFloat> loglikes(preselect_sz);
-          gmm.LogLikelihoodsPreselect(mat.Row(i), preselect[i], &loglikes);
-
-          Vector<BaseFloat> loglikes_copy(loglikes);
-          BaseFloat *ptr = loglikes_copy.Data();
-          std::nth_element(ptr, ptr+preselect_sz-this_num_gselect,
-                           ptr+preselect_sz);
-          BaseFloat thresh = ptr[preselect_sz-this_num_gselect];
-
-          BaseFloat loglike = -1.0e+10;
-          // we want the output sorted from best likelihood to worse
-          // (so we can prune further without the model)...
-          std::vector<std::pair<BaseFloat, int32> > pairs;
-          for (int32 p = 0; p < preselect_sz; p++) {
-            if (loglikes(p) >= thresh) {
-              pairs.push_back(std::make_pair(loglikes(p), preselect[i][p]));
-            }
-          }
-          std::sort(pairs.begin(), pairs.end(),
-                    std::greater<std::pair<BaseFloat, int32> >());
-          for (int32 j = 0;
-               j < this_num_gselect && j < static_cast<int32>(pairs.size());
-               j++) {
-            gselect[i].push_back(pairs[j].second);
-            loglike = LogAdd(loglike, pairs[j].first);
-          }
-          
-          tot_like_this_file += loglike;
-          if (gselect[i].empty())
-            KALDI_WARN << "Selected no Gaussians on frame " << i
-                       << " of utterance " << utt << " [NaNs?]";
-        }
+        for (int32 i = 0; i < mat.NumRows(); i++)
+          tot_like_this_file +=
+              gmm.GaussianSelectionPreselect(mat.Row(i), preselect[i],
+                                             num_gselect, &(gselect[i]));
       } else { // No "preselect" [i.e. no existing gselect]: simple case.
-        Vector<BaseFloat> loglikes(num_gauss);
-        for (int32 i = 0; i < mat.NumRows(); i++) {
-          gmm.LogLikelihoods(mat.Row(i), &loglikes);
-          Vector<BaseFloat> loglikes_copy(loglikes);
-          BaseFloat *ptr = loglikes_copy.Data();
-          std::nth_element(ptr, ptr+num_gauss-num_gselect,
-                           ptr+num_gauss);
-          BaseFloat thresh = ptr[num_gauss-num_gselect];
-          
-          BaseFloat loglike = -1.0e+10;
-          std::vector<std::pair<BaseFloat, int32> > pairs;
-          for (int32 p = 0; p < num_gauss; p++) {
-            if (loglikes(p) >= thresh) {
-              pairs.push_back(std::make_pair(loglikes(p), p));
-            }
-          }
-          std::sort(pairs.begin(), pairs.end(),
-                    std::greater<std::pair<BaseFloat, int32> >());
-          for (int32 j = 0;
-               j < num_gselect && j < static_cast<int32>(pairs.size());
-               j++) {
-            gselect[i].push_back(pairs[j].second);
-            loglike = LogAdd(loglike, pairs[j].first);
-          }
-          tot_like_this_file += loglike;
-          if (gselect[i].empty())
-            KALDI_WARN << "Selected no Gaussians on frame " << i
-                       << " of utterance " << utt << " [NaNs?]";
-        }
+        for (int32 i = 0; i < mat.NumRows(); i++)
+          tot_like_this_file += 
+              gmm.GaussianSelection(mat.Row(i), num_gselect, &(gselect[i]));
       }
       
       gselect_writer.Write(utt, gselect);

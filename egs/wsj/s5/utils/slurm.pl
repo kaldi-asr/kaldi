@@ -1,11 +1,11 @@
 #!/usr/bin/perl -w
 
-# In general, doing 
-#  slurm.pl some.log a b c 
-# is like running the command a b c as an interactive SLURM job, and putting the 
+# In general, doing
+#  slurm.pl some.log a b c
+# is like running the command a b c as an interactive SLURM job, and putting the
 # standard error and output into some.log.
 # It is a de-facto-mimicry of run.pl, with the difference, that it allocates the
-# jobs on a slurm cluster.  The calling script (e.g. decode.sh) should have the 
+# jobs on a slurm cluster.  The calling script (e.g. decode.sh) should have the
 # required allocation, e.g.
 #   $ sbatch -n 40 steps/decode.sh --nj 40 --cmd utils/slurm.pl ...
 # The benefit compared to qsub.pl is that there is no active wait involved, as

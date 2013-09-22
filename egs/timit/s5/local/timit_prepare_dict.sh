@@ -32,7 +32,7 @@ dir=data/local/dict
 lmdir=data/local/nist_lm
 tmpdir=data/local/lm_tmp
 
-mkdir -p $dir $tmpdir
+mkdir -p $dir $lmdir $tmpdir
 
 [ -f path.sh ] && . ./path.sh
 
@@ -64,7 +64,11 @@ cat $dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ", $_))
 # (2) Create the phone bigram LM
 #(
   [ -z "$IRSTLM" ] && \
-    echo "LM building wo'nt work without setting the IRSTLM env variable" && exit 1;
+    echo "LM building won't work without setting the IRSTLM env variable" && exit 1;
+  ! which build-lm.sh 2>/dev/null  && \
+    echo "IRSTLM does not seem to be installed (build-lm.sh not on your path): " && \
+    echo "go to <kaldi-root>/tools and try 'make irstlm_tgt'" && exit 1;
+
   cut -d' ' -f2- $srcdir/train.txt | sed -e 's:^:<s> :' -e 's:$: </s>:' \
     > $srcdir/lm_train.txt
   build-lm.sh -i $srcdir/lm_train.txt -n 2 -o $tmpdir/lm_phone_bg.ilm.gz

@@ -248,6 +248,7 @@ void* CompressedMatrix::AllocateData(int32 num_bytes) {
 
 void CompressedMatrix::Write(std::ostream &os, bool binary) const {
   if (binary) {  // Binary-mode write:
+    WriteToken(os, binary, "CM");
     if (data_ != NULL) {
       GlobalHeader &h = *reinterpret_cast<GlobalHeader*>(data_);
       MatrixIndexT size = DataSize(h);  // total size of data in data_
@@ -260,6 +261,13 @@ void CompressedMatrix::Write(std::ostream &os, bool binary) const {
       os.write(reinterpret_cast<const char*>(&h), sizeof(h));
     }
   } else {
+    // In text mode, just use the same format as a regular matrix.
+    Matrix<BaseFloat> temp_mat(this->NumRows(), this->NumCols(),
+                               kUndefined);
+    this->CopyToMat(&temp_mat);
+    temp_mat.Write(os, binary);
+
+    /*
     // Text-mode writing.  Only really useful for debug, but we'll implement it.
     if (data_ == NULL) {
       os << 0.0 << ' ' << 0.0 << ' ' << 0 << ' ' << 0 << '\n';
@@ -278,8 +286,7 @@ void CompressedMatrix::Write(std::ostream &os, bool binary) const {
         for (int32 j = 0; j < h.num_rows; j++, c++)
           os << static_cast<int>(*c) << ' ';
         os << '\n';
-      }
-    }
+    } */
   }
   if (os.fail())
     KALDI_ERR << "Error writing compressed matrix to stream.";
@@ -291,6 +298,9 @@ void CompressedMatrix::Read(std::istream &is, bool binary) {
     data_ = NULL;
   }
   if (binary) {  // Binary-mode read.
+    // Caution: the following is not back compatible, if you were using
+    // CompressedMatrix before, the old format will not be readable.
+    ExpectToken(is, binary, "CM"); 
     GlobalHeader h;
     is.read(reinterpret_cast<char*>(&h), sizeof(h));
     if (is.fail())
@@ -304,6 +314,11 @@ void CompressedMatrix::Read(std::istream &is, bool binary) {
     is.read(reinterpret_cast<char*>(data_) + sizeof(GlobalHeader),
             remaining_size);
   } else {  // Text-mode read.
+    Matrix<BaseFloat> temp;
+    temp.Read(is, binary);
+    this->CopyFromMat(temp);
+    /*
+      // The old reading code...
     GlobalHeader h;
     is >> h.min_value >> h.range >> h.num_rows >> h.num_cols;
     if (is.fail())
@@ -329,7 +344,7 @@ void CompressedMatrix::Read(std::istream &is, bool binary) {
         assert(i >= 0 && i <= 255);
         *c = static_cast<unsigned char>(i);
       }
-    }
+    } */
   }
   if (is.fail())
     KALDI_ERR << "Failed to read data.";

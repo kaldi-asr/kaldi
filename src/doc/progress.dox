@@ -72,8 +72,8 @@
    Current progress/activity:
     - Deep neural nets and other neural-net approaches.  Karel Vesely is the main one working on this.
       Petr Motlicek has obtained a good-performing TANDEM setup with Kaldi, but it still depends on
-      external tools (STK and TNet) to get the features.  We'll try to move this into the Kaldi neural-net
-      training setup.
+      external tools (STK and TNet) to get the features.  Ricky Chan has recently obtianed good performance 
+      using GPU based Kaldi neural-net training setup with CUDA 5.0.
     - Multilingual SGMMs.  Arnab Ghoshal has been doing some work on this, and will be helped by Petr Motlicek
       and Milos Janda.
       

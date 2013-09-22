@@ -32,9 +32,9 @@ void RandPosdefSpMatrix(int32 dim, SpMatrix<BaseFloat> *matrix,
   while (1) {
     tmp.SetRandn();
     if (tmp.Cond() < 100) break;
-    std::cout << "Condition number of random matrix large "
-      << static_cast<float>(tmp.Cond()) << ", trying again (this is normal)"
-      << '\n';
+    KALDI_LOG << "Condition number of random matrix large "
+              << static_cast<float>(tmp.Cond())
+              << ", trying again (this is normal)\n";
   }
   // tmp * tmp^T will give positive definite matrix
   matrix->AddMat2(1.0, tmp, kNoTrans, 0.0);

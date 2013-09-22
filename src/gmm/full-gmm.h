@@ -3,7 +3,8 @@
 // Copyright 2009-2011  Jan Silovsky;
 //                      Saarland University (Author: Arnab Ghoshal);
 //                      Microsoft Corporation
-// Copyright 2012       Arnab Ghoshal
+//           2012       Arnab Ghoshal
+//           2013       Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +32,7 @@
 namespace kaldi {
 
 class DiagGmm;
-class FullGmmNormal;
+class FullGmmNormal;  // a simplified representation, see full-gmm-normal.h
 
 /** \class Definition for Gaussian Mixture Model with full covariances
   */
@@ -78,10 +79,26 @@ class FullGmm {
                                const std::vector<int32> &indices,
                                Vector<BaseFloat> *loglikes) const;
 
+  /// Get gaussian selection information for one frame.  Returns log-like for
+  /// this frame.  Output is the best "num_gselect" indices, sorted from best to
+  /// worst likelihood.  If "num_gselect" > NumGauss(), sets it to NumGauss().
+  BaseFloat GaussianSelection(const VectorBase<BaseFloat> &data,
+                              int32 num_gselect,
+                              std::vector<int32> *output) const;
+
+  /// Get gaussian selection information for one frame.  Returns log-like for
+  /// this frame.  Output is the best "num_gselect" indices that were
+  /// preselected, sorted from best to worst likelihood.  If "num_gselect" >
+  /// NumGauss(), sets it to NumGauss().
+  BaseFloat GaussianSelectionPreselect(const VectorBase<BaseFloat> &data,
+                                       const std::vector<int32> &preselect,
+                                       int32 num_gselect,
+                                       std::vector<int32> *output) const;
+  
   /// Computes the posterior probabilities of all Gaussian components given
   /// a data point. Returns the log-likehood of the data given the GMM.
   BaseFloat ComponentPosteriors(const VectorBase<BaseFloat> &data,
-                                Vector<BaseFloat> *posterior) const;
+                                VectorBase<BaseFloat> *posterior) const;
 
   /// Computes the contribution log-likelihood of a data point from a single
   /// Gaussian component. NOTE: Currently we make no guarantees about what

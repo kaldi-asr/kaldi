@@ -312,14 +312,17 @@ double MleAmSgmmUpdaterMulti::UpdateM(const MleAmSgmmGlobalAccs &accs) {
       continue;
     }
 
+
+    SolverOptions opts;
+    opts.name = "M";
+    opts.K = update_options_.max_cond;
+    opts.eps = update_options_.epsilon;
+    
     Matrix<double> Mi(global_M_[i]);
     double impr =
         SolveQuadraticMatrixProblem(accs.Q_[i], accs.Y_[i],
                                     SpMatrix<double>(global_SigmaInv_[i]),
-                                    &Mi,
-                                    static_cast<double>(update_options_.max_cond),
-                                    static_cast<double>(update_options_.epsilon),
-                                    "M", true);
+                                    opts, &Mi);
     global_M_[i].CopyFromMat(Mi);
 
     if (i % 50 == 0) {
@@ -348,14 +351,17 @@ double MleAmSgmmUpdaterMulti::UpdateN(const MleAmSgmmGlobalAccs &accs) {
                  << " because count is too small " << (accs.gamma_i_(i));
       continue;
     }
+
+    SolverOptions opts;
+    opts.name = "N";
+    opts.K = update_options_.max_cond;
+    opts.eps = update_options_.epsilon;
+    
     Matrix<double> Ni(global_N_[i]);
     double impr =
         SolveQuadraticMatrixProblem(accs.R_[i], accs.Z_[i],
                                     SpMatrix<double>(global_SigmaInv_[i]),
-                                    &Ni,
-                                    static_cast<double>(update_options_.max_cond),
-                                    static_cast<double>(update_options_.epsilon),
-                                    "N", true);
+                                    opts, &Ni);
     global_N_[i].CopyFromMat(Ni);
     if (i < 10) {
       KALDI_LOG << "Objf impr for spk projection N for i = " << (i)
@@ -549,6 +555,12 @@ double MleAmSgmmUpdaterMulti::UpdateWParallel(
     Matrix<double> w_orig(w);
     double k_predicted_like_impr = 0.0, k_like_after = 0.0;
     double min_step = 0.001, step_size;
+
+    SolverOptions opts;
+    opts.name = "w";
+    opts.K = update_options_.max_cond;
+    opts.eps = update_options_.epsilon;
+    
     for (step_size = 1.0; step_size >= min_step; step_size /= 2) {
       k_predicted_like_impr = 0.0;
       k_like_after = 0.0;
@@ -558,11 +570,7 @@ double MleAmSgmmUpdaterMulti::UpdateWParallel(
         Vector<double> delta_w(phn_dim);
         // returns objf impr with step_size = 1,
         // but it may not be 1 so we recalculate it.
-        SolveQuadraticProblem(F_i[i], g_i.Row(i), &delta_w,
-                              static_cast<double>(update_options_.max_cond),
-                              static_cast<double>(update_options_.epsilon),
-                              "w",
-                              true);
+        SolveQuadraticProblem(F_i[i], g_i.Row(i), opts, &delta_w);
 
         delta_w.Scale(step_size);
         double predicted_impr = VecVec(delta_w, g_i.Row(i)) -

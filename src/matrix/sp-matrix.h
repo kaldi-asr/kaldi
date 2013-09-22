@@ -233,6 +233,10 @@ class SpMatrix : public PackedMatrix<Real> {
   /// rank-two update, this <-- this + alpha (v w' + w v').
   void AddVecVec(const Real alpha, const VectorBase<Real> &v,
                  const VectorBase<Real> &w);
+
+  /// Does *this = beta * *thi + alpha * diag(v) * S * diag(v)
+  void AddVec2Sp(const Real alpha, const VectorBase<Real> &v,
+                 const SpMatrix<Real> &S, const Real beta);
   
   /// diagonal update, this <-- this + diag(v)
   template<typename OtherReal>
@@ -326,9 +330,9 @@ class SpMatrix : public PackedMatrix<Real> {
   // of the largest one (or zero if there are no positive eigenvalues).
   // Takes the condition number we are willing to accept, and floors
   // eigenvalues to the largest eigenvalue divided by this.
-  //  Returns #eigs floored or already equal to the floor.  This will equal
-  // the dimension if the input is negative semidefinite.
-  // Throws exception if input is now positive definite.// returns #floored.
+  //  Returns #eigs floored or already equal to the floor. 
+  // Throws exception if input is not positive definite.
+  // returns #floored.
   MatrixIndexT LimitCond(Real maxCond = 1.0e+5, bool invert = false);
 
   // as LimitCond but all done in double precision. // returns #floored.
@@ -421,33 +425,62 @@ Real VecSpVec(const VectorBase<Real> &v1, const SpMatrix<Real> &M,
 /// \addtogroup matrix_funcs_misc
 /// @{
 
+
+/// This class describes the options for maximizing various quadratic objective
+/// functions.  It's mostly as described in the SGMM paper "the subspace
+/// Gaussian mixture model -- a structured model for speech recognition", but
+/// the diagonal_precondition option is newly added, to handle problems where
+/// different dimensions have very different scaling (we recommend to use the
+/// option but it's set false for back compatibility).
+struct SolverOptions {
+  BaseFloat K; // maximum condition number
+  BaseFloat eps; 
+  std::string name;
+  bool optimize_delta;
+  bool diagonal_precondition;
+  bool print_debug_output;
+  explicit SolverOptions(const std::string &name):
+      K(1.0e+4), eps(1.0e-40), name(name),
+      optimize_delta(true), diagonal_precondition(false),
+      print_debug_output(true) { }
+  SolverOptions(): K(1.0e+4), eps(1.0e-40), name("[unknown]"),
+                   optimize_delta(true), diagonal_precondition(false),
+                   print_debug_output(true) { }
+  void Check() const;
+};
+
+
 /// Maximizes the auxiliary function
 /// \f[    Q(x) = x.g - 0.5 x^T H x     \f]
 /// using a numerically stable method. Like a numerically stable version of
 /// \f$  x := Q^{-1} g.    \f$
 /// Assumes H positive semidefinite.
 /// Returns the objective-function change.
+
 template<typename Real>
 Real SolveQuadraticProblem(const SpMatrix<Real> &H,
                            const VectorBase<Real> &g,
-                           VectorBase<Real> *x, Real K = 1.0E4,
-                           Real eps = 1.0E-40,
-                           const char *debug_str = "[unknown]",
-                           bool optimizeDelta = true);
+                           const SolverOptions &opts,
+                           VectorBase<Real> *x);
+                           
+
 
 /// Maximizes the auxiliary function :
 /// \f[   Q(x) = tr(M^T P Y) - 0.5 tr(P M Q M^T)        \f]
 /// Like a numerically stable version of  \f$  M := Y Q^{-1}   \f$.
 /// Assumes Q and P positive semidefinite, and matrix dimensions match
 /// enough to make expressions meaningful.
+/// This is mostly as described in the SGMM paper "the subspace Gaussian mixture
+/// model -- a structured model for speech recognition", but the
+/// diagonal_precondition option is newly added, to handle problems
+/// where different dimensions have very different scaling (we recommend to use
+/// the option but it's set false for back compatibility).
 template<typename Real>
 Real SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
                                  const MatrixBase<Real> &Y,
                                  const SpMatrix<Real> &P,
-                                 MatrixBase<Real> *M, Real K = 1.0E4,
-                                 Real eps = 1.0E-40,
-                                 const char *debug_str = "[unknown]",
-                                 bool optimizeDelta = true);
+                                 const SolverOptions &opts,
+                                 MatrixBase<Real> *M);
 
 /// Maximizes the auxiliary function :
 /// \f[   Q(M) =  tr(M^T G) -0.5 tr(P_1 M Q_1 M^T) -0.5 tr(P_2 M Q_2 M^T).   \f]
@@ -459,9 +492,9 @@ Real SolveDoubleQuadraticMatrixProblem(const MatrixBase<Real> &G,
                                        const SpMatrix<Real> &P2,
                                        const SpMatrix<Real> &Q1,
                                        const SpMatrix<Real> &Q2,
-                                       MatrixBase<Real> *M, Real K = 1.0E4,
-                                       Real eps = 1.0E-40,
-                                       const char *debug_str = "[unknown]");
+                                       const SolverOptions &opts,
+                                       MatrixBase<Real> *M);
+
 
 /// @} End of "addtogroup matrix_funcs_misc"
 

@@ -112,7 +112,7 @@ BaseFloat SgmmClusterable::Objf() const {
     // deal with non-invertible matrices.
     KALDI_VLOG(3) << "Backing off to SVD-based objective computation.";
     Vector<double> v(y_.Dim()); // Initialized automatically to zero.
-    ans += SolveQuadraticProblem(my_H_, y_, &v); // The objective function
+    ans += SolveQuadraticProblem(my_H_, y_, SolverOptions(), &v); // The objective function
     // change from estimating this vector.
   }
   return ans;
