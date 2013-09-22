@@ -28,13 +28,11 @@ namespace kaldi {
 
 template<>
 double SolveQuadraticProblem(const SpMatrix<double> &H, const VectorBase<double> &g,
-                             VectorBase<double> *x, double K, double eps,
-                             const char *debug_str, bool optimizeDelta);
+                             const SolverOptions &opts, VectorBase<double> *x);
 
 template<>
 float SolveQuadraticProblem(const SpMatrix<float> &H, const VectorBase<float> &g,
-                            VectorBase<float> *x, float K, float eps,
-                            const char *debug_str, bool optimizeDelta);
+                            const SolverOptions &opts, VectorBase<float> *x);
 
 }  // namespace kaldi
 

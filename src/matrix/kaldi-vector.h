@@ -146,7 +146,7 @@ class VectorBase {
 
   /// Compute the p-th norm of the vector.
   Real Norm(Real p) const;
-
+  
   /// Returns true if ((*this)-other).Norm(2.0) <= tol * (*this).Norm(2.0).
   bool ApproxEqual(const VectorBase<Real> &other, float tol = 0.01) const;
 

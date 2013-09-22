@@ -2553,17 +2553,31 @@ template<class Real> static void UnitTestSolve() {
 
     Vector<Real> x(dimM);
     InitRand(&x);
+    Vector<Real> tmp(dimM);
+    tmp.SetRandn();
     Vector<Real> g(dimM);
-    InitRand(&g);
-    Vector<Real> x2(x);
-#if defined(_MSC_VER)
-    SolveQuadraticProblem(H, g, &x2, (Real)1.0E4, (Real)1.0E-40, "unknown", true);
-#else
-    SolveQuadraticProblem(H, g, &x2);
-#endif
-    KALDI_ASSERT(VecVec(x2, g) -0.5* VecSpVec(x2, H, x2) >=
-                 VecVec(x, g) -0.5* VecSpVec(x, H, x));
-    // Check objf not decreased.
+    g.AddSpVec(1.0, H, tmp, 0.0); // Limit to subspace that H is in.
+    Vector<Real> x2(x), x3(x);
+    SolverOptions opts2, opts3;
+    opts2.diagonal_precondition = rand() % 2;
+    opts2.optimize_delta = rand() % 2;
+    opts3.diagonal_precondition = rand() % 2;
+    opts3.optimize_delta = rand() % 2;
+    
+    double ans2 =  SolveQuadraticProblem(H, g, opts2, &x2),
+        ans3 = SolveQuadraticProblem(H, g, opts3, &x3);
+
+    double observed_impr2 = (VecVec(x2, g) -0.5* VecSpVec(x2, H, x2)) -
+        (VecVec(x, g) -0.5* VecSpVec(x, H, x)),
+        observed_impr3 =  (VecVec(x3, g) -0.5* VecSpVec(x3, H, x3)) -
+        (VecVec(x, g) -0.5* VecSpVec(x, H, x));
+    AssertEqual(observed_impr2, ans2);
+    AssertEqual(observed_impr3, ans3);
+    KALDI_ASSERT(ans2 >= 0);
+    KALDI_ASSERT(ans3 >= 0);
+    KALDI_ASSERT(abs(ans2 - ans3) / std::max(ans2, ans3) < 0.01);
+    //AssertEqual(x2, x3);
+    //AssertEqual(ans1, ans2);
   }
 
 
@@ -2590,13 +2604,11 @@ template<class Real> static void UnitTestSolve() {
     SpMatrix<Real> Qinv(Q);
     if (Q.Cond() < 1000.0) Qinv.Invert();
 
-#if defined(_MSC_VER) // compiler bug workaround.
-    SolveQuadraticMatrixProblem(Q, Y, SigmaInv, &M2, (Real)1.0E4, (Real)1.0E-40,
-                                "unknown", true);
-#else
-    SolveQuadraticMatrixProblem(Q, Y, SigmaInv, &M2);
-#endif
-
+    SolverOptions opts;
+    opts.optimize_delta = rand() % 2;
+    opts.diagonal_precondition = rand() % 2;
+    double ans = SolveQuadraticMatrixProblem(Q, Y, SigmaInv, opts, &M2);
+    
     Matrix<Real> M3(M);
     M3.AddMatSp(1.0, Y, kNoTrans, Qinv, 0.0);
     if (Q.Cond() < 1000.0) {
@@ -2612,6 +2624,7 @@ template<class Real> static void UnitTestSolve() {
           a3 = a1 - 0.5 * a2,
           b3 = b1 - 0.5 * b2;
       KALDI_ASSERT(a3 >= b3);
+      AssertEqual(a3 - b3, ans);
       // KALDI_LOG << "a3 = " << a3 << ", b3 = " << b3 << ", c3 = " << c3;
     }  // Check objf not decreased.
   }
@@ -2634,12 +2647,9 @@ template<class Real> static void UnitTestSolve() {
 
     Matrix<Real> M2(M);
 
-#if defined(_MSC_VER) // compiler bug workaround.
-    SolveDoubleQuadraticMatrixProblem(G, P1, P2, Q1, Q2, &M2, (Real)1.0E4,
-                                      (Real)1.0E-40, "unknown");
-#else
-    SolveDoubleQuadraticMatrixProblem(G, P1, P2, Q1, Q2, &M2);
-#endif
+    SolverOptions opts;
+    opts.optimize_delta = rand() % 2;    
+    SolveDoubleQuadraticMatrixProblem(G, P1, P2, Q1, Q2, opts, &M2);
 
     {
       Real a1 = TraceMatMat(M2, G, kTrans),
@@ -2959,7 +2969,6 @@ template<class Real> static void UnitTestTranspose() {
 }
 
 template<class Real> static void UnitTestAddVecToRows() {
-
   Matrix<Real> M(rand() % 5 + 1, rand() % 10 + 1);
   InitRand(&M);
   Vector<float> v(M.NumCols());
@@ -2971,6 +2980,27 @@ template<class Real> static void UnitTestAddVecToRows() {
   N.AddVecVec(0.5, ones, v);
   AssertEqual(M, N);
 }
+
+
+template<class Real> static void UnitTestAddVec2Sp() {
+  for (int32 i = 0; i < 10; i++) {
+    int32 dim = rand() % 5;
+    SpMatrix<Real> S(dim);
+    S.SetRandn();
+    Vector<Real> v(dim);
+    v.SetRandn();
+    Matrix<Real> M(dim, dim);
+    M.CopyDiagFromVec(v);
+    
+    SpMatrix<Real> T1(dim);
+    T1.SetRandn();
+    SpMatrix<Real> T2(T1);
+    Real alpha = 0.33, beta = 4.5;
+    T1.AddVec2Sp(alpha, v, S, beta);
+    T2.AddMat2Sp(alpha, M, kNoTrans, S, beta);
+    AssertEqual(T1, T2);
+  }
+}    
 
 template<class Real> static void UnitTestAddVecToCols() {
   Matrix<Real> M(rand() % 5 + 1, rand() % 10 + 1);
@@ -3829,6 +3859,7 @@ template<class Real> static void MatrixUnitTest(bool full_test) {
   KALDI_LOG << " Point J";
   UnitTestTraceSpSpLower<Real>();
   UnitTestTranspose<Real>();
+  UnitTestAddVec2Sp<Real>();
   UnitTestAddVecToRows<Real>();
   UnitTestAddVecToCols<Real>();
   UnitTestAddVecCross();

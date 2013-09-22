@@ -224,14 +224,16 @@ void EbwAmSgmm2Updater::UpdatePhoneVectorsInternal(
 
       Vector<double> delta_v_jm(S);
 
+      SolverOptions opts;
+      opts.name = "v";
+      opts.K = options_.max_cond;
+      opts.eps = options_.epsilon;
+      
       double auxf_impr =
           ((gamma_jm_num + gamma_jm_den == 0) ? 0.0 :
            SolveQuadraticProblem(quadratic_term,
                                  local_derivative,
-                                 &delta_v_jm,
-                                 static_cast<double>(options_.max_cond),
-                                 static_cast<double>(options_.epsilon),
-                                 "v", true));
+                                 opts, &delta_v_jm));
 
       v_jm.AddVec(1.0, delta_v_jm);
       model->v_[j1].Row(m).CopyFromVec(v_jm);
@@ -314,14 +316,17 @@ double EbwAmSgmm2Updater::UpdateM(const MleAmSgmm2Accs &num_accs,
     Q.Scale( (state_count + options_.tau_M) / state_count );
     Q.Scale( 1.0 / (options_.lrate_M + 1.0e-10) );
     
+
+    SolverOptions opts;
+    opts.name = "M";
+    opts.K = options_.max_cond;
+    opts.eps = options_.epsilon;
+
     Matrix<double> deltaM(D, S);
     double impr =
         SolveQuadraticMatrixProblem(Q, L,
                                     SpMatrix<double>(model->SigmaInv_[i]),
-                                    &deltaM,
-                                    static_cast<double>(options_.max_cond),
-                                    static_cast<double>(options_.epsilon),
-                                    "M", true);
+                                    opts, &deltaM);
 
     impr_vec(i) = impr;
     Mi.AddMat(1.0, deltaM);
@@ -415,13 +420,15 @@ double EbwAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &num_accs,
     quadratic_term.Scale(1.0 / (options_.lrate_w + 1.0e-10) );
     
     Vector<double> delta_w(S);
-    
+
+    SolverOptions opts;
+    opts.name = "w";
+    opts.K = options_.max_cond;
+    opts.eps = options_.epsilon;
+  
     double objf_impr =
-        SolveQuadraticProblem(quadratic_term, derivative, &delta_w,
-                              static_cast<double>(options_.max_cond),
-                              static_cast<double>(options_.epsilon),
-                              "w",
-                              true);
+        SolveQuadraticProblem(quadratic_term, derivative, opts, &delta_w);
+
     impr_vec(i) = objf_impr;
     if (i < 10 || objf_impr / (gamma_num(i) + 1.0e-10) > 2.0) {
       KALDI_LOG << "Predicted objf impr for w per frame is "
@@ -470,11 +477,12 @@ double EbwAmSgmm2Updater::UpdateU(const MleAmSgmm2Accs &num_accs,
     U.Scale((state_count + options_.tau_u) / (state_count + 1.0e-10));
     U.Scale(1.0 / (options_.lrate_u + 1.0e-10) );
     
-    double impr =
-        SolveQuadraticProblem(U, t, &delta_u,
-                              static_cast<double>(options_.max_cond),
-                              static_cast<double>(options_.epsilon),
-                              "u", true);
+    SolverOptions opts;
+    opts.name = "u";
+    opts.K = options_.max_cond;
+    opts.eps = options_.epsilon;
+  
+    double impr = SolveQuadraticProblem(U, t, opts, &delta_u);
     double impr_per_frame = impr / gamma_num(i);
     if (impr_per_frame > options_.max_impr_u) {
       KALDI_WARN << "Updating speaker weight projections u, for Gaussian index "
@@ -546,14 +554,16 @@ double EbwAmSgmm2Updater::UpdateN(const MleAmSgmm2Accs &num_accs,
     R.Scale( 1.0 / (options_.lrate_N + 1.0e-10) );
     
     Matrix<double> deltaN(D, T);
-    
+
+    SolverOptions opts;
+    opts.name = "N";
+    opts.K = options_.max_cond;
+    opts.eps = options_.epsilon;
+  
     double impr =
         SolveQuadraticMatrixProblem(R, L,
                                     SpMatrix<double>(model->SigmaInv_[i]),
-                                    &deltaN,
-                                    static_cast<double>(options_.max_cond),
-                                    static_cast<double>(options_.epsilon),
-                                    "N", true);
+                                    opts, &deltaN);
     impr_vec(i) = impr;
     Ni.AddMat(1.0, deltaN);
     model->N_[i].CopyFromMat(Ni);
