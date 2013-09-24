@@ -139,6 +139,10 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --iter $n --config conf/deco
 steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --iter $n --config conf/decode.config --transform-dir exp/tri5a/decode_eval_closelm exp/tri5a/graph_closelm data/eval exp/nnet_8m_6l/decode_eval_closelm_iter${n} &
 done
 
+ # wider beam width and lattice beam decoding
+steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --config conf/decode_wide.config --transform-dir exp/tri5a/decode_eval exp/tri5a/graph data/eval exp/nnet_8m_6l/decode_wide_eval 
+steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --config conf/decode_wide.config --transform-dir exp/tri5a/decode_eval_closelm exp/tri5a/graph_closelm data/eval exp/nnet_8m_6l/decode_wide_eval_closelm 
+
  # GPU based DNN traing, this was run on CentOS 6.4 with CUDA 5.0
  # 6 layers DNN pretrained with restricted boltzmann machine, frame level cross entropy training, sequence discriminative training with sMBR criterion
 local/run_dnn.sh
@@ -198,6 +202,9 @@ for n in 290 280 270 260 250 240 230 220 210 200 150 100 50; do
   local/ext/score.sh data/eval exp/tri5a/graph exp/nnet_8m_6l/decode_eval_iter${n}; 
   local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_8m_6l/decode_eval_closelm_iter${n}; 
 done
+
+local/ext/score.sh data/eval exp/tri5a/graph exp/nnet_8m_6l/decode_wide_eval
+local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_8m_6l/decode_wide_eval_closelm
 
 local/ext/score.sh data/eval exp/tri5a/graph exp/tri5a_pretrain-dbn_dnn/decode
 local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/tri5a_pretrain-dbn_dnn/decode_closelm
