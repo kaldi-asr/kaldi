@@ -2,6 +2,8 @@
 
 // Copyright 2011-2012 Gilles Boulianne  Johns Hopkins University (author: Daniel Povey)
 
+// See ../../COPYING for clarification regarding multiple authors
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,6 +19,8 @@
 //
 // This file includes material from the OpenFST Library v1.2.7 available at
 // http://www.openfst.org and released under the Apache License Version 2.0.
+//
+// See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
