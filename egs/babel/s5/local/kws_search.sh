@@ -138,10 +138,10 @@ if [ $stage -le 2 ]; then
   $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutdir/write_normalized.LMWT.log \
     set -e ';' set -o pipefail ';'\
     cat ${kwsoutdir}_LMWT/result.* \| \
-      utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
-        --segments=$datadir/segments --normalize=true --duptime $duptime --remove-dup=true\
+      utils/write_kwslist.pl  --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
+        --segments=$datadir/segments --normalize=true --duptime=$duptime --remove-dup=true\
         --map-utter=$kwsdatadir/utter_map --digits=3 \
-        - - \| local/filter_kwslist.pl $duptime '>' ${kwsoutdir}_LMWT/kwslist.xml || exit 1
+        - ${kwsoutdir}_LMWT/kwslist.xml || exit 1
 fi
 
 if [ $stage -le 3 ]; then
@@ -150,9 +150,9 @@ if [ $stage -le 3 ]; then
     set -e ';' set -o pipefail ';'\
     cat ${kwsoutdir}_LMWT/result.* \| \
         utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
-          --segments=$datadir/segments --normalize=false \
+          --segments=$datadir/segments --normalize=false --duptime=$duptime --remove-dup=true\
           --map-utter=$kwsdatadir/utter_map \
-          - - \| local/filter_kwslist.pl $duptime '>' ${kwsoutdir}_LMWT/kwslist.unnormalized.xml || exit 1;
+          - ${kwsoutdir}_LMWT/kwslist.unnormalized.xml || exit 1;
 fi
 
 if [ -z $extraid ] ; then
