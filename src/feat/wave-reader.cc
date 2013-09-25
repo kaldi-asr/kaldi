@@ -2,6 +2,8 @@
 
 // Copyright 2009-2011  Karel Vesely;  Petr Motlicek
 
+// See ../../COPYING for clarification regarding multiple authors
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -44,7 +46,7 @@ uint32 WaveData::ReadUint32(std::istream &is) {
   } u;
   is.read(u.result, 4);
 #ifdef __BIG_ENDIAN__
-  KALDI_SWAP4(result);
+  KALDI_SWAP4(u.result);
 #endif
   if (is.fail())
     KALDI_ERR << "WaveData: unexpected end of file.";
@@ -59,7 +61,7 @@ uint16 WaveData::ReadUint16(std::istream &is) {
   } u;
   is.read(u.result, 2);
 #ifdef __BIG_ENDIAN__
-  KALDI_SWAP2(result);
+  KALDI_SWAP2(u.result);
 #endif
   if (is.fail())
     KALDI_ERR << "WaveData: unexpected end of file.";
@@ -81,7 +83,7 @@ void WaveData::WriteUint32(std::ostream &os, int32 i) {
   } u;
   u.i = i;
 #ifdef __BIG_ENDIAN__
-  KALDI_SWAP4(result);
+  KALDI_SWAP4(u.buf);
 #endif
   os.write(u.buf, 4);
   if (os.fail())
@@ -90,12 +92,12 @@ void WaveData::WriteUint32(std::ostream &os, int32 i) {
 
 void WaveData::WriteUint16(std::ostream &os, int16 i) {
   union {
-    char buf[4];
-    int i;
+    char buf[2];
+    int16 i;
   } u;
   u.i = i;
 #ifdef __BIG_ENDIAN__
-  KALDI_SWAP2(result);
+  KALDI_SWAP2(u.buf);
 #endif
   os.write(u.buf, 2);
   if (os.fail())

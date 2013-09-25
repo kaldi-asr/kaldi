@@ -1,22 +1,47 @@
 
- Update to legal notice, made Feb. 2012.  We would like to clarify that we
- are using a convention where multiple names in the Apache copyright headers, 
- for example
+ Update to legal notice, made Feb 2012, modified Sep 2013.  We would like to
+ clarify that we are using a convention where multiple names in the Apache
+ copyright headers, for example
 
   // Copyright 2009-2012  Yanmin Qian  Arnab Ghoshal
+  //                2013  Vassil Panayotov
 
- does not necessarily signify joint ownership of copyright of that file, except
- in cases where all those names were present in the original release made in
- March 2011-- you can use the version history to work this out, if this matters
- to you.  Instead, we intend that those contributors who later modified the file, 
- agree to release their changes under the Apache license, but do not claim to 
- jointly own the copyright of the original material (which would require an agreement 
- with the original contributors).  The conventional way of signifying 
- this is to duplicate the Apache headers at the top of each file each time
- a change is made by a different author, but this would quickly become impractical.
+ does not signify joint ownership of copyright of that file, except in cases
+ where all those names were present in the original release made in March 2011--
+ you can use the version history to work this out, if this matters to you.
+ Instead, we intend that those contributors who later modified the file, agree
+ to release their changes under the Apache license.  The conventional way of
+ signifying this is to duplicate the Apache headers at the top of each file each
+ time a change is made by a different author, but this would quickly become
+ impractical.
+
+ Where the copyright header says something like:
+
+ // Copyright    2013   Johns Hopkins University (author: Daniel Povey)
+
+ it is because the individual who wrote the code was at that institution as an
+ employee, so the copyright is owned by the university (we have checked that the
+ contributions were in accordance with the open-source policies of the
+ institutions concerned, including getting them vetted individually where
+ necessary).  In some cases, however, particularly early on, we just wrote the
+ name of the university or company concerned, without the actual author's name
+ in parentheses.  If you see something like
+
+ //  Copyright  2009-2012   Arnab Ghoshal  Microsoft Corporation
+
+ it does not imply that Arnab was working for Microsoft, it is because someone
+ else contributed to the file while working at Microsoft (this would be Daniel
+ Povey, in fact, who was working at Microsoft Research at the outset of the
+ project).  If the actual author's name in parentheses, it is just to clarify
+ who wrote the code; it is not supposed to signify ownership of the copyright by
+ that individual.
+
+ The list of authors of each file is in an essentially arbitrary order, but is
+ often chronological if they contributed in different years.
 
  The original legal notice is below.  Note: we are continuing to modify it by
- adding the names of new contributors.
+ adding the names of new contributors, but at any given time, the list may
+ be out of date.
 
 ---
                           Legal Notices
