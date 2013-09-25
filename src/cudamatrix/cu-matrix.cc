@@ -1,7 +1,7 @@
 // cudamatrix/cu-matrix.cc
 
-// Copyright 2009-2012  Karel Vesely
-//                      Lucas Ondel
+// Copyright 2009-2012  Karel Vesely, Lucas Ondel
+//                2013  Ehsan Variani
 //                      Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -1195,37 +1195,29 @@ void CuMatrixBase<Real>::Cholesky() {
      
     for (int i = n_blocks; i > 2; i--) {
       cuda_factorize_diagonal_block(data_, n_blocks-i, Dim());
-      cudaThreadSynchronize();
 
       cuda_strip_update(data_, n_blocks-i, i, Dim());
-      cudaThreadSynchronize();
       
       cuda_diag_update(data_, n_blocks-i, i, Dim());
-      cudaThreadSynchronize();
       
       cuda_lo_update(data_, n_blocks-i, n_blocks, i, Dim());
-      cudaThreadSynchronize();      
     }
     
     if (n_blocks > 1) {
       cuda_factorize_diagonal_block(data_, n_blocks-2, Dim());
-      cudaThreadSynchronize();
       
       cuda_strip_update(data_, n_blocks-2, 2, Dim());
-      cudaThreadSynchronize();
       
       cuda_diag_update(data_, n_blocks-2, 2, Dim());
-      cudaThreadSynchronize();
-      
     }
-
     
     cuda_factorize_diagonal_block(data_, n_blocks-1, Dim());
-    cudaThreadSynchronize();
 
+    CU_SAFE_CALL(cudaGetLastError());
+    
     // set the upper diagonal equal to zero
     this->SetZeroUpperDiag();
-    
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
     
   } else

@@ -67,9 +67,6 @@ static void AssertEqual(const SpMatrix<Real> &A,
   for (MatrixIndexT i = 0; i < A.NumRows(); i++)
     for (MatrixIndexT j = 0; j <= i ; j++)
 {
-// std::cout<<A(i, j) <<' '<< B(i, j)<<' '<<tol * std::max(1.0, (double) (std::abs(A(i, j)) + std::abs(B(i, j))))<<std::endl;
-
-
       KALDI_ASSERT(std::abs(A(i, j) - B(i, j))
                    < tol * std::max(1.0, (double) (std::abs(A(i, j)) + std::abs(B(i, j)))));
 }

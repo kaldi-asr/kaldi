@@ -49,7 +49,7 @@ void CuSpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
       default:
         KALDI_ASSERT("Invalid argument to CuSpMatrix::CopyFromMat");
     }
-    CuDevice::Instantiate().AccuProfile("CuSpMatrix::Invert", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {

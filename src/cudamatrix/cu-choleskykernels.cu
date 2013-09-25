@@ -1,7 +1,7 @@
 // cudamatrix/cu-choleskykernel.cu
 
 // Copyright 2010-2013  Dr. Stephan Kramer
-//  Institut für Numerische und Angewandte Mathematik
+//  Institut fur Numerische und Angewandte Mathematik
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.    

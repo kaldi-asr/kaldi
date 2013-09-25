@@ -82,35 +82,37 @@ int main(int argc, char *argv[]) {
         examples_rspecifier = po.GetArg(2),
         nnet_wxfilename = po.GetArg(3);
 
-    TransitionModel trans_model;
-    AmNnet am_nnet;
-    {
-      bool binary_read;
-      Input ki(nnet_rxfilename, &binary_read);
-      trans_model.Read(ki.Stream(), binary_read);
-      am_nnet.Read(ki.Stream(), binary_read);
-    }
-
-    if (zero_stats) am_nnet.GetNnet().ZeroStats();
-    
     int64 num_examples = 0;
-    { // want to make sure this object deinitializes before
-      // we write the model, as it does something in the destructor.
-      NnetSimpleTrainer trainer(train_config,
-                                &(am_nnet.GetNnet()));
-      
-      SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
 
-      for (; !example_reader.Done(); example_reader.Next(), num_examples++)
-        trainer.TrainOnExample(example_reader.Value());  // It all happens here!
-    }
-    
     {
-      Output ko(nnet_wxfilename, binary_write);
-      trans_model.Write(ko.Stream(), binary_write);
-      am_nnet.Write(ko.Stream(), binary_write);
-    }
+      TransitionModel trans_model;
+      AmNnet am_nnet;
+      {
+        bool binary_read;
+        Input ki(nnet_rxfilename, &binary_read);
+        trans_model.Read(ki.Stream(), binary_read);
+        am_nnet.Read(ki.Stream(), binary_read);
+      }
 
+      if (zero_stats) am_nnet.GetNnet().ZeroStats();
+    
+      { // want to make sure this object deinitializes before
+        // we write the model, as it does something in the destructor.
+        NnetSimpleTrainer trainer(train_config,
+                                  &(am_nnet.GetNnet()));
+      
+        SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+
+        for (; !example_reader.Done(); example_reader.Next(), num_examples++)
+          trainer.TrainOnExample(example_reader.Value());  // It all happens here!
+      }
+    
+      {
+        Output ko(nnet_wxfilename, binary_write);
+        trans_model.Write(ko.Stream(), binary_write);
+        am_nnet.Write(ko.Stream(), binary_write);
+      }
+    }
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
 #endif

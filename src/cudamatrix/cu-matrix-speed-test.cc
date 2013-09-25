@@ -112,6 +112,7 @@ template<typename Real> void TestCuMatrixTraceMatMat(int32 dim) {
 }
 
 
+
 template<typename Real> void CudaMatrixSpeedTest() {
   std::vector<int32> sizes;
   sizes.push_back(16);
@@ -149,6 +150,9 @@ int main() {
   }
 #else
   kaldi::CudaMatrixSpeedTest<double>();
+#endif
+#if HAVE_CUDA == 1
+  CuDevice::Instantiate().PrintProfile();
 #endif
   std::cout << "Tests succeeded.\n";
 }
