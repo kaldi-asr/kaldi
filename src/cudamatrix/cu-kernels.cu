@@ -601,6 +601,7 @@ static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA, int B_str
 
   Real sum = 0.0;
   for (int j = loop_start; j < loop_end; j++) {
+  // for (int j = i; j < num_elements; j += CU1DBLOCK) {
     // j is an index into all the elements of the matrix, if we had vectorized
     // it by appending the rows.
     

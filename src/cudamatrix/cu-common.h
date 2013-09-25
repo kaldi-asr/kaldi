@@ -24,8 +24,6 @@
 #define KALDI_CUDAMATRIX_CU_COMMON_H_
 #include "cudamatrix/cu-matrixdim.h" // for CU1DBLOCK and CU2DBLOCK
 
-
-
 #include <iostream>
 #include <sstream>
 #include "base/kaldi-error.h"

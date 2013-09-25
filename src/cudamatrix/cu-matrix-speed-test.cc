@@ -90,6 +90,27 @@ template<typename Real> void TestCuMatrixSoftmax(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real> void TestCuMatrixTraceMatMat(int32 dim) {
+  for (int32 n = 0; n < 2; n++) {
+    MatrixTransposeType trans = (n == 0 ? kNoTrans : kTrans);
+    BaseFloat time_in_secs = 0.05;
+  
+    CuMatrix<Real> M(dim, dim), N(dim, dim);
+    M.SetRandn();
+    N.SetRandn();
+    Timer tim;
+    int32 iter = 0;
+    for (;tim.Elapsed() < time_in_secs; iter++) {
+      TraceMatMat(M, N, trans);
+    }
+    BaseFloat fdim = dim;
+    BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+    KALDI_LOG << "For CuMatrix::TraceMatMat" << NameOf<Real>() 
+              << (trans == kTrans ? " [transposed]" : "") << ", for dim = "
+              << dim << ", speed was " << gflops << " gigaflops.";
+  }
+}
+
 
 template<typename Real> void CudaMatrixSpeedTest() {
   std::vector<int32> sizes;
@@ -105,6 +126,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
 
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSoftmax<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixTraceMatMat<Real>(sizes[s]);
 }
 
 
