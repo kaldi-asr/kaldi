@@ -34,3 +34,27 @@ exp/tri4b/decode_eval2000_sw1_tg/score_14/eval2000.ctm.swbd.filt.sys:     | Sum/
 exp/tri4b/decode_eval2000_sw1_tg.si/score_12/eval2000.ctm.swbd.filt.sys:     | Sum/Avg   | 1831  21395 | 73.6   19.3    7.1    3.6   30.0   66.2 |
 
 
+# some more recent results (Sep 25 2013), from tri4b and tri4c_reseg, to
+# see the effect of resegmentation.  Note: we're only looking at the "swbd" results here,
+# the callhome results or total results are terrible because of huge insertions, because
+# it seems that only some segments of the audio files are in the stm.  I'm not sure
+# where to get the start and end points in the files, that they intended us to 
+# decode.
+%WER 22.2 | 1831 21395 | 80.3 13.8 5.9 2.5 22.2 60.1 | exp/tri4b/decode_eval2000_sw1_fsh_tgpr/score_15/eval2000.ctm.swbd.filt.sys
+%WER 29.3 | 1831 21395 | 73.5 18.7 7.8 2.9 29.3 65.0 | exp/tri4b/decode_eval2000_sw1_fsh_tgpr.si/score_17/eval2000.ctm.swbd.filt.sys
+%WER 22.5 | 1831 21395 | 79.8 13.8 6.4 2.3 22.5 60.3 | exp/tri4b/decode_eval2000_sw1_tg/score_17/eval2000.ctm.swbd.filt.sys
+%WER 30.5 | 1831 21395 | 73.1 19.8 7.1 3.6 30.5 65.8 | exp/tri4b/decode_eval2000_sw1_tg.si/score_14/eval2000.ctm.swbd.filt.sys
+
+%WER 22.9 | 1831 21395 | 79.7 13.4 6.9 2.6 22.9 62.8 | exp/tri4c_reseg/decode_eval2000_sw1_fsh_tgpr/score_14/eval2000.ctm.swbd.filt.sys
+%WER 29.6 | 1831 21395 | 73.8 18.2 8.1 3.4 29.6 66.8 | exp/tri4c_reseg/decode_eval2000_sw1_fsh_tgpr.si/score_13/eval2000.ctm.swbd.filt.sys
+%WER 23.5 | 1831 21395 | 79.1 13.8 7.1 2.6 23.5 63.6 | exp/tri4c_reseg/decode_eval2000_sw1_tg/score_15/eval2000.ctm.swbd.filt.sys
+%WER 30.9 | 1831 21395 | 73.1 19.0 7.9 4.0 30.9 67.6 | exp/tri4c_reseg/decode_eval2000_sw1_tg.si/score_12/eval2000.ctm.swbd.filt.sys
+# so the resegmented one is about 0.3 to 1.0 worse, but the #sub is actually down, it's due to more deletions
+# and insertions.  This is kind of what we'd expect, since the reference segmentation is a kind of "oracle".
+
+# below are some partial results (only the SI decode finished so far), of a version where I 
+# kept the segments that the segmentation regarded as noise (e.g. cough, etc.)  Strangely, it
+# has (slightly) more deletions and fewer insertions than the baseline, which is the opposite
+# of what we would expect.
+%WER 29.7 | 1831 21395 | 73.6 18.3 8.0 3.4 29.7 67.0 | exp/tri4c_reseg/decode_eval2000_with_noise_sw1_fsh_tgpr.si/score_13/eval2000_with_noise.ctm.swbd.filt.sys
+%WER 30.8 | 1831 21395 | 72.9 19.0 8.1 3.7 30.8 67.5 | exp/tri4c_reseg/decode_eval2000_with_noise_sw1_tg.si/score_13/eval2000_with_noise.ctm.swbd.filt.sys

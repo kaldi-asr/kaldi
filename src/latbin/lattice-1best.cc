@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "Compute best path through latties and write out as FSTs\n"
+        "Compute best path through lattices and write out as FSTs\n"
         "Note: differs from lattice-nbest with --n=1 because we won't\n"
         "append -1 to the utterance-ids.  Differs from lattice-best-path\n"
         "because output is FST.\n"

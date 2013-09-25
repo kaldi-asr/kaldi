@@ -10,7 +10,8 @@ BINFILES = compute-mfcc-feats compute-plp-feats compute-fbank-feats \
     fmpe-est fmpe-copy fmpe-sum-accs append-feats extend-transform-dim \
     get-full-lda-mat compute-spectrogram-feats extract-feature-segments \
     reverse-feats paste-feats select-feats subsample-feats process-pitch-feats \
-    interpolate-pitch copy-feats-to-htk extract-rows apply-cmvn-sliding
+    interpolate-pitch copy-feats-to-htk extract-rows apply-cmvn-sliding \
+    compute-cmvn-stats-two-channel
 
 OBJFILES = 
 

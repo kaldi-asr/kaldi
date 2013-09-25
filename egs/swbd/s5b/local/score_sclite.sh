@@ -83,7 +83,7 @@ if [ $stage -le 2 ]; then
 fi
 
 # For eval2000 score the subsets
-if [ "$name" == "eval2000" ]; then
+case "$name" in eval2000* )
   # Score only the, swbd part...
   if [ $stage -le 3 ]; then  
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.swbd.LMWT.log \
@@ -98,6 +98,7 @@ if [ "$name" == "eval2000" ]; then
       grep -v '^sw_' $dir/score_LMWT/${name}.ctm '>' $dir/score_LMWT/${name}.ctm.callhm '&&' \
       $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm.callhm $dir/score_LMWT/${name}.ctm.callhm || exit 1;
   fi
-fi
+ ;;
+esac
 
 exit 0

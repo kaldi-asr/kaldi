@@ -51,6 +51,8 @@ while true; do
   --help|-h) if [ -z "$help_message" ]; then echo "No help found." 1>&2;
 	  else printf "$help_message\n" 1>&2 ; fi; 
 	  exit 0 ;; 
+  --*=*) echo "$0: options to scripts must be of the form --name value, got '$1'"
+       exit 1 ;;
     # If the first command-line argument begins with "--" (e.g. --foo-bar), 
     # then work out the variable name as $name, which will equal "foo_bar".
   --*) name=`echo "$1" | sed s/^--// | sed s/-/_/g`; 

@@ -16,7 +16,7 @@ cmd=run.pl
 beam=15.0
 max_active=7000
 
-#WARNING: This option is renamed lat_beam (it was renamed to follow the naming 
+#WARNING: This option is renamed from lat_beam (it was renamed to follow the naming 
 #         in the other scripts
 lattice_beam=8.0 # Beam we use in lattice generation.
 iter=final

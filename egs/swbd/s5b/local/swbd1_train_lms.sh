@@ -122,4 +122,3 @@ fi
 ## The following takes about 11 minutes to download on Eddie: 
 # wget --no-check-certificate http://ssli.ee.washington.edu/data/191M_conversational_web-filt+periods.gz
 
-

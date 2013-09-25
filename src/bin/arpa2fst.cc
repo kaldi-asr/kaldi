@@ -47,9 +47,7 @@ int main(int argc, char *argv[]) {
     }
     std::string arpa_filename = po.GetArg(1),
         fst_filename = po.GetOptArg(2);
-    if (arpa_filename == "-")
-      arpa_filename = "";
-
+    
     kaldi::LangModelFst lm;
     // read from standard input and write to standard output
     lm.Read(arpa_filename, kaldi::kArpaLm, NULL, natural_base);

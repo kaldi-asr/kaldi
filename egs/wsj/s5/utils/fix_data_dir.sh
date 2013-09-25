@@ -55,6 +55,7 @@ function filter_file {
       echo "$0: filtered $file_to_filter from $length1 to $length2 lines based on filter $filter."
     fi
   fi
+  rm $file_to_filter.tmp
 }
 
 function filter_recordings {
@@ -81,9 +82,11 @@ function filter_recordings {
     cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4}' <$data/segments.tmp >$data/segments
     filter_file $tmpdir/recordings $data/segments
     cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4}' <$data/segments.tmp >$data/segments
+    rm $data/segments.tmp
 
     filter_file $tmpdir/recordings $data/wav.scp
     [ -f $data/reco2file_and_channel ] && filter_file $tmpdir/recordings $data/reco2file_and_channel
+    
   fi
 }
 

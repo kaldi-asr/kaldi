@@ -12,11 +12,13 @@ use_segments=true # if we have a segments file, use it to convert
                   # the segments to be relative to the original files.
 #end configuration section.
 
+echo "$0 $@"  # Print the command line for logging
+
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
 if [ $# -ne 3 ]; then
-  echo "Usage: local/get_train_ctm.sh [options] <data-dir> <lang-dir> <ali-dir|exp-dir>"
+  echo "Usage: $0 [options] <data-dir> <lang-dir> <ali-dir|model-dir>"
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --stage (0|1|2)                 # start scoring script from part-way through."
@@ -25,7 +27,7 @@ if [ $# -ne 3 ]; then
   echo "                                    # files, with channel information (typically needed"
   echo "                                    # for NIST scoring)."
   echo "e.g.:"
-  echo "local/get_train_ctm.sh data/train data/lang exp/tri3a_ali"
+  echo "$0 data/train data/lang exp/tri3a_ali"
   echo "Produces ctm in: exp/tri3a_ali/ctm"
   exit 1;
 fi
@@ -33,6 +35,7 @@ fi
 data=$1
 lang=$2 # Note: may be graph directory not lang directory, but has the necessary stuff copied.
 dir=$3
+
 
 model=$dir/final.mdl # assume model one level up from decoding dir.
 
@@ -43,24 +46,32 @@ for f in $lang/words.txt $lang/phones/word_boundary.int \
 done
 
 oov=`cat $lang/oov.int` || exit 1;
+nj=`cat $dir/num_jobs` || exit 1;
+split_data.sh $data $nj || exit 1;
+sdata=$data/split$nj
 
-mkdir -p $dir/scoring/log
+mkdir -p $dir/log
 
 if [ $stage -le 0 ]; then
-  if [ -f $data/segments ]; then
-    f=$data/reco2file_and_channel
-    [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
-    filter_cmd="utils/convert_ctm.pl $data/segments $data/reco2file_and_channel"
-  else
-    filter_cmd=cat    
-  fi
-
-  $cmd $dir/log/get_ctm.log \
-    linear-to-nbest "ark:gunzip -c $dir/ali.*.gz|" \
-     "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $data/text |" \
+  $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
+    linear-to-nbest "ark:gunzip -c $dir/ali.JOB.gz|" \
+     "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
      '' '' ark:- \| \
     lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
     nbest-to-ctm ark:- - \| \
     utils/int2sym.pl -f 5 $lang/words.txt \| \
-    $filter_cmd '>' $dir/ctm || exit 1;
+    gzip -c '>' $dir/ctm.JOB.gz
 fi
+
+if [ $stage -le 1 ]; then
+  if [ -f $data/segments ]; then
+    f=$data/reco2file_and_channel
+    [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
+    for n in `seq $nj`; do gunzip -c $dir/ctm.$n.gz; done | \
+      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel > $dir/ctm || exit 1;
+  else
+    for n in `seq $nj`; do gunzip -c $dir/ctm.$n.gz; done > $dir/ctm || exit 1;
+  fi
+  rm $dir/ctm.*.gz
+fi
+
