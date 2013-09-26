@@ -30,7 +30,7 @@
 namespace kaldi {
 // add the string contained in inpline to the current transducer
 // starting at initial state
-StateId LangModelFst::ReadTxtLine(const string &inpline) {
+LangModelFst::StateId LangModelFst::ReadTxtLine(const string &inpline) {
   KALDI_ASSERT(pfst_);
   KALDI_ASSERT(pfst_->InputSymbols());
   KALDI_ASSERT(pfst_->OutputSymbols());

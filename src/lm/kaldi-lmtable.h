@@ -44,6 +44,7 @@ using std::tr1::unordered_map;
 #include "fst/fst-decl.h"
 #include "fst/arc.h"
 #include "base/kaldi-common.h"
+#include "util/stl-utils.h"
 
 #ifdef _MSC_VER
 #  define STRTOF(cur_cstr, end_cstr) static_cast<float>(strtod(cur_cstr, end_cstr));
@@ -64,13 +65,14 @@ namespace kaldi {
   * does not require an external library.
 */
 
-typedef fst::StdArc::Weight LmWeight;
-typedef fst::StdArc::StateId StateId;
 
 /// @brief Helper methods to convert toolkit internal representations into FST.
 class LmFstConverter {
+  typedef fst::StdArc::Weight LmWeight;
+  typedef fst::StdArc::StateId StateId;
+  
   typedef unordered_map<StateId, StateId> BkStateMap;
-  typedef unordered_map<std::string, StateId> HistStateMap;
+  typedef unordered_map<std::string, StateId, StringHasher> HistStateMap;
 
  public:
 
@@ -111,9 +113,7 @@ class LmFstConverter {
   StateId AddStateFromSymb(const std::vector<string> &ngramString,
                             int kstart,
                             int kend,
-                            const char *sep,
                             fst::StdVectorFst *pfst,
-                            fst::SymbolTable *psst,
                             bool &newlyAdded);
 
   StateId FindState(const std::string str) {
@@ -181,7 +181,7 @@ class LmTable : public lmtable {
   void DumpContinue(ngram ng,
                     int ilev, int elev,
                     table_entry_pos_t ipos, table_entry_pos_t epos,
-                    fst::StdVectorFst *pfst, fst::SymbolTable *pStateSymbs,
+                    fst::StdVectorFst *pfst,
                     const string startSent, const string endSent);
 
   LmFstConverter *conv_;

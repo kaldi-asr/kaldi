@@ -40,10 +40,10 @@ namespace kaldi {
 #define MAX_SENTENCE_LENGTH 1000
 
 /// @brief Recursively prints all complete paths starting at s and their score.
-static LmWeight PrintCompletePath(fst::SymbolTable *pst,
-                                  fst::StdVectorFst *pfst,
-                                  fst::StdArc::StateId s,
-                                  LmWeight score) {
+static LangModelFst::LmWeight PrintCompletePath(fst::SymbolTable *pst,
+                                                fst::StdVectorFst *pfst,
+                                                fst::StdArc::StateId s,
+                                                LangModelFst::LmWeight score) {
   fst::ArcIterator<fst::StdVectorFst> ai(*pfst, s);
   for (ai.Reset(); !ai.Done(); ai.Next()) {
     std::cout << pst->Find(ai.Value().ilabel) << " ";
@@ -72,8 +72,8 @@ static LmWeight PrintCompletePath(fst::SymbolTable *pst,
 }
 
 /// @brief Recursively prints all complete paths starting from initial state.
-static LmWeight PrintCompletePaths(fst::SymbolTable *pst,
-                                   fst::StdVectorFst *pfst) {
+static LangModelFst::LmWeight PrintCompletePaths(fst::SymbolTable *pst,
+                                                 fst::StdVectorFst *pfst) {
   KALDI_ASSERT(pst);
   KALDI_ASSERT(pfst);
   KALDI_ASSERT(pfst->Start() >=0);
@@ -239,7 +239,7 @@ bool TestLmTableEvalScore(const string &inpfile,
 
   // read in reference score
   std::ifstream strm(refScoreFile.c_str(), std::ifstream::in);
-  LmWeight refScore;
+  LangModelFst::LmWeight refScore;
   strm >> refScore;
   std::cout << "Reference score is " << refScore << '\n';
 
@@ -278,9 +278,9 @@ bool TestLmTableEvalScore(const string &inpfile,
   fst::ShortestPath(composedFst, bestFst, 1);
 
   std::cout << "Best path has " << bestFst->NumStates() << " states" << '\n';
-  LmWeight testScore = PrintCompletePaths(
-                                          bestFst->MutableInputSymbols(),
-                                          bestFst);
+  LangModelFst::LmWeight testScore = PrintCompletePaths(
+      bestFst->MutableInputSymbols(),
+      bestFst);
   std::cout << "Complete path score is " << testScore << '\n';
 
   if (testScore.Value() <= refScore.Value()) {

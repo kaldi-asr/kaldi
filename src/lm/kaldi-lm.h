@@ -58,8 +58,11 @@ enum GrammarType {
 /// LangModelFst is a standard vector FST that also provides
 /// Read() and Write() functions for file-based language models
 /// or text files defining strings and grammars.
-class LangModelFst : public fst::VectorFst<fst::StdArc> {
+class LangModelFst: public fst::VectorFst<fst::StdArc> {
  public:
+  typedef fst::StdArc::Weight LmWeight;
+  typedef fst::StdArc::StateId StateId;
+  
 
   LangModelFst() {
     pfst_ = new fst::VectorFst<fst::StdArc>;
