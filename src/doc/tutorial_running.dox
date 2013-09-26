@@ -27,43 +27,69 @@
 
 \section tutorial_running_start Getting started, and prerequisites.
 
-The next stage of the tutorial is to start running the example scripts for Resource Management. Change directory to the top level (we called it kaldi-1), and then to egs/. Look at the README.txt file in that directory, and specifically look at the Resource Management section. It mentions the LDC catalog number corresponding to the corpus. This may help you in obtaining the data from the LDC. If you cannot get the data for some reason, just continue reading this tutorial and doing the steps that you can do without the data, and you may still obtain some value from it. The best case is that there is some directory on your system, say /export/corpora5/LDC/LDC93S3A/rm_comp, that contains three subdirectories; call them rm1_audio1, rm1_audio2 and rm2_audio. These would correspond to the three original disks in the data distribution from the LDC. These instructions assume that your shell is bash. If you have a different shell, these commands will not work or should be modified (just type "bash" to get into bash, and everything should work).
+The next stage of the tutorial is to start running the example scripts for
+Resource Management. Change directory to the top level (we called it kaldi-1),
+and then to egs/. Look at the README.txt file in that directory, and
+specifically look at the Resource Management section. It mentions the LDC
+catalog number corresponding to the corpus. This may help you in obtaining the
+data from the LDC. If you cannot get the data for some reason, just continue
+reading this tutorial and doing the steps that you can do without the data, and
+you may still obtain some value from it. The best case is that there is some
+directory on your system, say /export/corpora5/LDC/LDC93S3A/rm_comp, that
+contains three subdirectories; call them rm1_audio1, rm1_audio2 and
+rm2_audio. These would correspond to the three original disks in the data
+distribution from the LDC. These instructions assume that your shell is bash. If
+you have a different shell, these commands will not work or should be modified
+(just type "bash" to get into bash, and everything should work).
 
 Now change directory to rm/, glance at the file README.txt to see what the overall structure is, and cd to s5/. This is the basic sequence of experiments that corresponds to the main functionality in version 5 of the toolkit.
 
-In s5/, list the directory and glance at the RESULTS file so you have some idea what is in there (later on, you should verify that the results you get are similar to what is in there). The main file we will be looking at is run.sh. Note: run.sh is not intended to be run directly from the shell; the idea is that you run the commands in it one by one, by hand.
+In s5/, list the directory and glance at the RESULTS file so you have some idea
+what is in there (later on, you should verify that the results you get are
+similar to what is in there). The main file we will be looking at is
+run.sh. Note: run.sh is not intended to be run directly from the shell; the idea
+is that you run the commands in it one by one, by hand.
 
 \section tutorial_running_data_prep Data preparation
 
-We will first need to configure whether the jobs need to run locally or on the Oracle GridEngine. Instructions on how to do this are in cmd.sh. 
+We will first need to configure whether the jobs need to run locally or on the
+Oracle GridEngine. Instructions on how to do this are in cmd.sh.
 
-If you do not have GridEngine installed, or if you are running experiments on smaller datasets, execute the following command on your shell. 
+If you do not have GridEngine installed, or if you are running experiments on
+smaller datasets, execute the following command on your shell.
 
 \verbatim
 train_cmd="run.pl"
 \endverbatim
 
-If you do have GridEngine installed, you should use the queue.pl file with arguments specifying where the GridEngine resides. In this case, you would execute the following commands (The argument -q is an example and you would want to replace it with your GridEngine details)
+If you do have GridEngine installed, you should use the queue.pl file with
+arguments specifying where the GridEngine resides. In this case, you would
+execute the following commands (The argument -q is an example and you would want
+to replace it with your GridEngine details)
 
 \verbatim
 train_cmd="queue.pl -q all.q@a*.clsp.jhu.edu"
 decode_cmd="queue.pl -q all.q@[ah]*.clsp.jhu.edu"
 \endverbatim
 
-The next step is to create the test and training sets from the RM corpora. To do this, run the following command on your shell (Assuming your data is in /export/corpora5/LDC/LDC93S3A/rm_comp): 
+The next step is to create the test and training sets from the RM corpora. To do
+this, run the following command on your shell (Assuming your data is in
+/export/corpora5/LDC/LDC93S3A/rm_comp):
 
 \verbatim
 local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp 
 \endverbatim
 If this works, it should say : "RM_data_prep succeeded". If not, you will have to work out where the script failed and what the problem was.
 
-Now list the contents of the current directory and you should see that a new directory called "data" was created. Go into the newly created data directory and list the contents. You should see three main types of folders : 
+Now list the contents of the current directory and you should see that a new
+directory called "data" was created. Go into the newly created data directory
+and list the contents. You should see three main types of folders :
 
 - local : Contains the dictionary for the current data. 
 - train : The data segmented from the corpora for training purposes. 
 - test_* : The data segmented from the corpora for testing purposes.
 
-Let's spend a while actually looking at the data files that were created. This should give you a good insight of how KALDI expects input data to be. (Also for more details refer : \ref data_prep "Detailed data preparation guide")
+Let's spend a while actually looking at the data files that were created. This should give you a good insight of how Kaldi expects input data to be. (Also for more details refer : \ref data_prep "Detailed data preparation guide")
 
 The Local Directory : 
 Assuming that you are in the data directory, execute the following commands : 
@@ -75,7 +101,11 @@ head nonsilence_phones.txt
 head silence_phones.txt
 \endverbatim
 
-These will give you some idea of what the outputs of a generic data preparation process would look like. Something you should appreciate is that not all of these files are "native" Kaldi formats, i.e. not all of them could be read by Kaldi's C++ programs and need to be processed using OpenFST tools before KALDI can use them.
+These will give you some idea of what the outputs of a generic data preparation
+process would look like. Something you should appreciate is that not all of
+these files are "native" Kaldi formats, i.e. not all of them could be read by
+Kaldi's C++ programs and need to be processed using OpenFST tools before Kaldi
+can use them.
 
 - lexicon.txt : This is the lexicon.
 - *silence*.txt : These files contain information about which phones are silent and which are not. 
@@ -90,7 +120,7 @@ head utt2spk
 head wav.scp
 \endverbatim
 
-- text - This file contains mappings between utterances and utterance ids which will be used by KALDI. This file will be turned into an integer format-- still a text file, but with the words replaced with integers.
+- text - This file contains mappings between utterances and utterance ids which will be used by Kaldi. This file will be turned into an integer format-- still a text file, but with the words replaced with integers.
 - spk2gender.map - This file contains mappings between speakers and their gender. This also acts as a list of unique users involved in training. 
 - spk2utt - This is a mapping between the speaker identifiers and all the utterance identifiers associated with the speaker. 
 - utt2spk - This is a one-to-one mapping between utterance ids and the corresponding speaker identifiers. 
@@ -102,7 +132,7 @@ The structure of the train folder and the test_* folders is the same. However th
 wc train/text test_feb89/text
 \endverbatim
 
-The next step is to create the raw language files that KALDI uses. In most cases, these will be text files in integer formats. Make sure that you are back in the s5 directory and execute the following command:
+The next step is to create the raw language files that Kaldi uses. In most cases, these will be text files in integer formats. Make sure that you are back in the s5 directory and execute the following command:
 
 \verbatim
 utils/prepare_lang.sh data/local/dict '!SIL' data/local/lang data/lang 
@@ -298,13 +328,14 @@ Kaldi is not big, you might want to make exp/ a soft link to a directory somewhe
 on a big disk (if you run all the experiments and don't clean up, it can get up 
 to a few gigabytes).  Type
 \verbatim
-nohup steps/train_mono.sh &
+nohup steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono &
 \endverbatim
 You can view the most recent output of this by typing
 \verbatim
 tail nohup.out
 \endverbatim
-(we run longer jobs this way so they can finish running even if we get disconnected).
+You can run longer jobs this way so they can finish running even if we get disconnected,
+although a better idea is to run your shell from "screen" so it won't get killed.
 There is actually very little output that goes to the standard out and error of this
 script; most of it goes to log files in exp/mono/.
 
@@ -317,7 +348,8 @@ last state is final (with probability one).
 
 Type 
 \verbatim
-less exp/mono/0.mdl
+. path.sh
+gmm-copy --binary=false exp/mono/0.mdl - | less
 \endverbatim
 and look at the model file.  You will see that it contains the information in 
 topology file at the top of it, and then some other things, before the model parameters.
@@ -342,7 +374,7 @@ numeric id's, starting from zero (we call these pdf-ids).  They do not have
 between context-dependent phones and pdf-ids.  For that information, see the tree file:
 do
 \verbatim
-less exp/mono/tree
+copy-tree --binary=false exp/mono/tree - | less
 \endverbatim
 Note that this is a monophone "tree" so it is very trivial-- it
 does not have any "splits".  Although this tree format was not indended to be
@@ -369,11 +401,16 @@ assigned to this key can take the values 0, 1 or 2.
 Inside the parentheses are three objects of type ConstantEventMap, each representing 
 a leaf of the tree.
 
-Now look at the file exp/mono/cur.ali (it should exist if the training has progressed
-far enough).  This is the Viterbi alignment of the training data; it has one line
-for each training file.  Now do "tail exp/mono/tree" and look for the highest-numbered
+Now look at the file exp/mono/ali.1.gz (it should exist if the training has progressed
+far enough):
+\verbatim
+ copy-int-vector "ark:gunzip -c exp/mono/ali.1.gz|" ark,t:- | head -n 2
+\endverbatim
+This is the Viterbi alignment of the training data; it has one line
+for each training file.  Now look again at exp/mono/tree (as described above) and look for the highest-numbered
 p.d.f. id (which is the last number in the file).  Compare this with the numbers in
-exp/mono/cur.ali.  Does something seem wrong?  The reason is that the alignment file
+exp/mono/ali.1.gz.  Does something seem wrong?  The alignments have numbers in them
+that are too large.  The reason is that the alignment file
 does not contain p.d.f. id's.  It contains a slightly more fine-grained identifier
 that we call a "transition-id".  This also encodes the phone and the transition within
 the prototype topology of the phone.  This is useful for a number of reasons.

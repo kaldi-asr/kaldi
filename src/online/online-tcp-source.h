@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_ONLINE_TCP_SOURCE_H_
-#define KALDI_ONLINE_TCP_SOURCE_H_
+#ifndef KALDI_ONLINE_ONLINE_TCP_SOURCE_H_
+#define KALDI_ONLINE_ONLINE_TCP_SOURCE_H_
 
 #include "online-audio-source.h"
 #include "matrix/kaldi-vector.h"
@@ -69,4 +69,4 @@ class OnlineTcpVectorSource : public OnlineAudioSourceItf {
 
 }  // namespace kaldi
 
-#endif // KALDI_ONLINE_TCP_SOURCE_H_
+#endif // KALDI_ONLINE_ONLINE_TCP_SOURCE_H_

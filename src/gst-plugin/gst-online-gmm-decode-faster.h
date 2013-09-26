@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_SRC_GST_PLUGIN_GST_ONLINE_GMM_DECODE_FASTER_H_
-#define KALDI_SRC_GST_PLUGIN_GST_ONLINE_GMM_DECODE_FASTER_H_
+#ifndef KALDI_GST_PLUGIN_GST_ONLINE_GMM_DECODE_FASTER_H_
+#define KALDI_GST_PLUGIN_GST_ONLINE_GMM_DECODE_FASTER_H_
 
 #include <vector>
 #include <gst/gst.h>
@@ -99,4 +99,4 @@ GType gst_online_gmm_decode_faster_get_type(void);
 
 G_END_DECLS
 }
-#endif  // KALDI_SRC_GST_PLUGIN_GST_ONLINE_GMM_DECODE_FASTER_H_
+#endif  // KALDI_GST_PLUGIN_GST_ONLINE_GMM_DECODE_FASTER_H_

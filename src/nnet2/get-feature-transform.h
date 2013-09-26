@@ -18,8 +18,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET_CPU_GET_FEATURE_TRANSFORM_H_
-#define KALDI_NNET_CPU_GET_FEATURE_TRANSFORM_H_
+#ifndef KALDI_NNET2_GET_FEATURE_TRANSFORM_H_
+#define KALDI_NNET2_GET_FEATURE_TRANSFORM_H_
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
@@ -100,5 +100,5 @@ class FeatureTransformEstimateMulti: public FeatureTransformEstimate {
 
 }  // End namespace kaldi
 
-#endif  // KALDI_NNET_CPU_GET_FEATURE_TRANSFORM_H_
+#endif  // KALDI_NNET2_GET_FEATURE_TRANSFORM_H_
 

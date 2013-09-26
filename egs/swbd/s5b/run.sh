@@ -5,7 +5,7 @@
 # This is supposed to be the "new" version of the switchboard recipe,
 # after the s5/ one became a bit messy.  It is not 100% checked-through yet.
 
-exit 1;
+#exit 1;
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 # Caution: some of the graph creation steps use quite a bit of memory, so you
@@ -176,6 +176,7 @@ done
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri3b exp/tri3b_ali_100k_nodup || exit 1;
 
+
 steps/train_sat.sh  --cmd "$train_cmd" \
   5500 90000 data/train_100k_nodup data/lang exp/tri3b_ali_100k_nodup \
    exp/tri4a || exit 1;
@@ -190,14 +191,18 @@ for lm_suffix in tg fsh_tgpr; do
   ) &
 done
 
+
+#local/run_resegment.sh
+
 # Now train a LDA+MLLT+SAT model on the entire training data (train_nodup; 
 # 286 hours)
 # Train tri4b, which is LDA+MLLT+SAT, on train_nodup data.
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
-  data/train_nodup data/lang exp/tri3b exp/tri3b_ali_all || exit 1;
+  data/train_nodup data/lang exp/tri3b exp/tri3b_ali_nodup || exit 1;
+
 
 steps/train_sat.sh  --cmd "$train_cmd" \
-  11500 200000 data/train_nodup data/lang exp/tri3b_ali_all exp/tri4b || exit 1;
+  11500 200000 data/train_nodup data/lang exp/tri3b_ali_nodup exp/tri4b || exit 1;
 
 for lm_suffix in tg fsh_tgpr; do
   (
@@ -219,7 +224,7 @@ steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri4a exp/tri4a_ali_100k_nodup || exit 1
 
 steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-  data/train_nodup data/lang exp/tri4b exp/tri4b_ali_all || exit 1
+  data/train_nodup data/lang exp/tri4b exp/tri4b_ali_nodup || exit 1
 
 steps/make_denlats.sh --nj 50 --cmd "$decode_cmd" --config conf/decode.config \
   --transform-dir exp/tri4a_ali_100k_nodup \
@@ -227,7 +232,7 @@ steps/make_denlats.sh --nj 50 --cmd "$decode_cmd" --config conf/decode.config \
   || exit 1;
 
 steps/make_denlats.sh --nj 100 --cmd "$decode_cmd" --config conf/decode.config \
-  --transform-dir exp/tri4b_ali_all \
+  --transform-dir exp/tri4b_ali_nodup \
   data/train_nodup data/lang exp/tri4b exp/tri4b_denlats_all || exit 1;
 
 # 4 iterations of MMI seems to work well overall. The number of iterations is
@@ -274,14 +279,14 @@ steps/train_diag_ubm.sh --silence-weight 0.5 --nj 50 --cmd "$train_cmd" \
   700 data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup exp/tri4a_dubm
 
 steps/train_diag_ubm.sh --silence-weight 0.5 --nj 100 --cmd "$train_cmd" \
-  700 data/train_nodup data/lang exp/tri4b_ali_all exp/tri4b_dubm
+  700 data/train_nodup data/lang exp/tri4b_ali_nodup exp/tri4b_dubm
 
 steps/train_mmi_fmmi.sh --learning-rate 0.005 --boost 0.1 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup exp/tri4a_dubm \
   exp/tri4a_denlats_100k_nodup exp/tri4a_fmmi_b0.1 || exit 1;
 
 steps/train_mmi_fmmi.sh --learning-rate 0.005 --boost 0.1 --cmd "$train_cmd" \
-  data/train_nodup data/lang exp/tri4b_ali_all exp/tri4b_dubm \
+  data/train_nodup data/lang exp/tri4b_ali_nodup exp/tri4b_dubm \
   exp/tri4b_denlats_all exp/tri4b_fmmi_b0.1 || exit 1;
 
 for iter in 4 5 6 7 8; do

@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET_CPU_RESCALE_NNET_H_
-#define KALDI_NNET_CPU_RESCALE_NNET_H_
+#ifndef KALDI_NNET2_RESCALE_NNET_H_
+#define KALDI_NNET2_RESCALE_NNET_H_
 
 #include "nnet2/nnet-update.h"
 #include "nnet2/nnet-compute.h"

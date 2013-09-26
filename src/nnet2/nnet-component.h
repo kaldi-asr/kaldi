@@ -18,8 +18,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET_CPU_NNET_COMPONENT_H_
-#define KALDI_NNET_CPU_NNET_COMPONENT_H_
+#ifndef KALDI_NNET2_NNET_COMPONENT_H_
+#define KALDI_NNET2_NNET_COMPONENT_H_
 
 #include "base/kaldi-common.h"
 #include "itf/options-itf.h"

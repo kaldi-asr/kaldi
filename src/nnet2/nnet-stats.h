@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET_CPU_NNET_STATS_H_
-#define KALDI_NNET_CPU_NNET_STATS_H_
+#ifndef KALDI_NNET2_NNET_STATS_H_
+#define KALDI_NNET2_NNET_STATS_H_
 
 #include "nnet2/nnet-nnet.h"
 
@@ -94,4 +94,4 @@ void GetNnetStats(const NnetStatsConfig &config,
 } // namespace nnet2
 } // namespace kaldi
 
-#endif // KALDI_NNET_CPU_NNET_STATS_H_
+#endif // KALDI_NNET2_NNET_STATS_H_

@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET_CPU_NNET_LIMIT_RANK_H_
-#define KALDI_NNET_CPU_NNET_LIMIT_RANK_H_
+#ifndef KALDI_NNET2_NNET_LIMIT_RANK_H_
+#define KALDI_NNET2_NNET_LIMIT_RANK_H_
 
 #include "nnet2/nnet-nnet.h"
 #include "util/table-types.h"
@@ -59,4 +59,4 @@ void LimitRankParallel(const NnetLimitRankOpts &opts,
 } // namespace nnet2
 } // namespace kaldi
 
-#endif // KALDI_NNET_CPU_NNET_LIMIT_RANK_H_
+#endif // KALDI_NNET2_NNET_LIMIT_RANK_H_

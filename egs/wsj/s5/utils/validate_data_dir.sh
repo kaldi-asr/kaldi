@@ -120,9 +120,11 @@ if [ -f $data/wav.scp ]; then
       echo "$0: badly formatted segments file" && exit 1;
     
     segments_len=`cat $data/segments | wc -l`
-    ! cmp -s $tmpdir/utts <(awk '{print $1}' <$data/text) && \
-      echo "$0: Utterance list differs between $data/text and $data/segments " && \
-      echo "$0: Lengths are $segments_len vs $num_utts";
+    if [ -f $data/text ]; then
+      ! cmp -s $tmpdir/utts <(awk '{print $1}' <$data/text) && \
+        echo "$0: Utterance list differs between $data/text and $data/segments " && \
+        echo "$0: Lengths are $segments_len vs $num_utts";
+    fi
 
     cat $data/segments | awk '{print $2}' | sort | uniq > $tmpdir/recordings
     awk '{print $1}' $data/wav.scp > $tmpdir/recordings.wav
