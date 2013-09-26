@@ -52,9 +52,11 @@ exp/tri4b/decode_eval2000_sw1_tg.si/score_12/eval2000.ctm.swbd.filt.sys:     | S
 # so the resegmented one is about 0.3 to 1.0 worse, but the #sub is actually down, it's due to more deletions
 # and insertions.  This is kind of what we'd expect, since the reference segmentation is a kind of "oracle".
 
-# below are some partial results (only the SI decode finished so far), of a version where I 
-# kept the segments that the segmentation regarded as noise (e.g. cough, etc.)  Strangely, it
-# has (slightly) more deletions and fewer insertions than the baseline, which is the opposite
-# of what we would expect.
+# below are some results where I kept the segments that the segmentation
+# regarded as noise (e.g. cough, etc.).  Results after adaptation almost identical, but
+# 0.1% better with the switchboard-only LM.
+
+%WER 22.9 | 1831 21395 | 79.7 13.4 6.9 2.6 22.9 62.6 | exp/tri4c_reseg/decode_eval2000_with_noise_sw1_fsh_tgpr/score_14/eval2000_with_noise.ctm.swbd.filt.sys
 %WER 29.7 | 1831 21395 | 73.6 18.3 8.0 3.4 29.7 67.0 | exp/tri4c_reseg/decode_eval2000_with_noise_sw1_fsh_tgpr.si/score_13/eval2000_with_noise.ctm.swbd.filt.sys
+%WER 23.6 | 1831 21395 | 79.1 14.0 6.9 2.8 23.6 64.2 | exp/tri4c_reseg/decode_eval2000_with_noise_sw1_tg/score_14/eval2000_with_noise.ctm.swbd.filt.sys
 %WER 30.8 | 1831 21395 | 72.9 19.0 8.1 3.7 30.8 67.5 | exp/tri4c_reseg/decode_eval2000_with_noise_sw1_tg.si/score_13/eval2000_with_noise.ctm.swbd.filt.sys
