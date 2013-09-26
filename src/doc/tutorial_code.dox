@@ -107,7 +107,7 @@ MatrixUnitTest().  Then, inside MatrixUnitTest(), add the line:
   UnitTestAddVec<Real>();
 \endverbatim
 It doesn't matter where in the function you add this.
-Then type "make".  There should be an error (a semicolon that should be
+Then type "make test".  There should be an error (a semicolon that should be
 a comma); fix it and try again.
 Now type "./matrix-lib-test".  This should crash with an assertion failure, 
 because there was another mistake in the unit-test code.  Next we will debug it.
