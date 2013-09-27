@@ -87,12 +87,11 @@ class LmFstConverter {
                            float prob,
                            float bow,
                            std::vector<string> &ngs,
-                           fst::StdVectorFst *pfst,
-                           fst::SymbolTable *psst,
+                           fst::StdVectorFst *fst,
                            const string startSent,
                            const string endSent);
 
-  float convertArpaLogProbToWeight(float lp) {
+  float ConvertArpaLogProbToWeight(float lp) {
     if ( use_natural_log_ ) {
       // convert from arpa base 10 log to natural base, then to cost
       return -2.302585*lp;

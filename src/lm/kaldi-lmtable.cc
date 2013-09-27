@@ -46,10 +46,10 @@ LmFstConverter::StateId LmFstConverter::AddStateFromSymb(
   if (kstart == 0) {
     hist.append(separator);
   } else {
-     for (int k = kstart; k >= kend; k--) {
-       hist.append(ngramString[k]);
-       hist.append(separator);
-     }
+    for (int k = kstart; k >= kend; k--) {
+      hist.append(ngramString[k]);
+      hist.append(separator);
+    }
   }
 
   newlyAdded = false;
@@ -86,19 +86,18 @@ void LmFstConverter::ConnectUnusedStates(fst::StdVectorFst *pfst) {
 }
 
 void LmFstConverter::AddArcsForNgramProb(
-                         int ilev, int maxlev,
-                         float logProb,
-                         float logBow,
-                         std::vector<string> &ngs,
-                         fst::StdVectorFst *fst,
-                         fst::SymbolTable *symtab,
-                         const string startSent,
-                         const string endSent) {
+    int ilev, int maxlev,
+    float logProb,
+    float logBow,
+    std::vector<string> &ngs,
+    fst::StdVectorFst *fst,
+    const string startSent,
+    const string endSent) {
   fst::StdArc::StateId src, dst, dbo;
   std::string curwrd = ngs[1];
   int64 ilab, olab;
-  LmWeight prob = convertArpaLogProbToWeight(logProb);
-  LmWeight bow  = convertArpaLogProbToWeight(logBow);
+  LmWeight prob = ConvertArpaLogProbToWeight(logProb);
+  LmWeight bow  = ConvertArpaLogProbToWeight(logBow);
   bool newSrc, newDbo, newDst = false;
 
   if (ilev >= 2) {
@@ -174,7 +173,6 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
   conv_->UseNaturalLog(useNaturalOpt);
 
   // do not use state symbol table for word histories anymore
-  fst::SymbolTable *pStateSymbs = NULL; //new fst::SymbolTable("kaldi-lm-state");
   string inpline;
   size_t pos1, pos2;
   int ilev, maxlev = 0;
@@ -217,7 +215,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
   // process "\N-grams:" sections, we may have already read a "\N-grams:" line
   // if so, process it, otherwise get another line
   while (inpline.find("-grams:") != string::npos
-          || (getline(istrm, inpline) && !istrm.eof()) ) {
+         || (getline(istrm, inpline) && !istrm.eof()) ) {
     // look for a valid "\N-grams:" section
     pos1 = inpline.find("\\");
     pos2 = inpline.find("-grams:");
@@ -295,8 +293,8 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
         }
       }
       conv_->AddArcsForNgramProb(ilev, maxlev, prob, bow,
-                          ngramString, fst,
-                          pStateSymbs, startSent, endSent);
+                                 ngramString, fst,
+                                 startSent, endSent);
     }  // end of loop on individual n-gram lines
   }
 
@@ -327,7 +325,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
   return true;
 }
 
- // run through all nodes in table (as in dumplm)
+// run through all nodes in table (as in dumplm)
 void LmTable::DumpStart(ngram ng,
                         fst::StdVectorFst *fst,
                         const string startSent,
@@ -419,8 +417,8 @@ void LmTable::DumpContinue(ngram ng, int ilev, int elev,
         // else if (ibo != 0.0) cerr << "\t" << ibo;
       }
       conv_->AddArcsForNgramProb(ilev, maxlev, ipr, ibo,
-                          ngramString, fst, pStateSymbs,
-                          startSent, endSent);
+                                 ngramString, fst, pStateSymbs,
+                                 startSent, endSent);
     }
   }
 }
