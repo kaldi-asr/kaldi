@@ -47,9 +47,13 @@ echo "Making subset..."
 for file_basename in `cat $input_data_list`; do
     if [[ -e $abs_src_dir/audio/$file_basename.sph ]] ; then
         ln -sf $abs_src_dir/audio/$file_basename.sph $abs_tgt_dir/audio || exit 1
-    else
-        echo "File $abs_src_dir/audio/$file_basename.sph does not exist!"
+    else 
+      if [[ -e $abs_src_dir/audio/$file_basename.wav ]] ; then
+        ln -sf $abs_src_dir/audio/$file_basename.wav $abs_tgt_dir/audio || exit 1
+      else
+        echo "File $abs_src_dir/audio/$file_basename.sph|wav does not exist!"
         exit 1
+      fi
     fi
 
     if [[ -e $abs_src_dir/transcription/$file_basename.txt ]] ; then

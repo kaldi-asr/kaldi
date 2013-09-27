@@ -334,9 +334,49 @@ if (-d $AudioDir) {
         }
         print STDERR ("$0: Recorded durations from headers of $numFiles .sph files\n");
     } else {
-        print STDERR ("$0 ERROR: No .sph files in $AudioDir\n");
-        exit(1);
+        print STDERR ("$0 NOTICE: No .sph files in $AudioDir\n");
     } 
+
+    @AudioFiles = `ls ${AudioDir}/*.wav`;
+    if ($#AudioFiles >= 0) {
+        $soxi=`which soxi` or die "Could not find soxi binary -- do you have sox installed?\n";
+        chomp $soxi;
+        printf STDERR ("$0: Found %d .wav files in $AudioDir\n", ($#AudioFiles +1));
+        print STDERR "Soxi found: $soxi\n";
+        $numFiles = 0;
+        while ($filename = shift @AudioFiles) {
+            $fileID = $filename;
+            $fileID =~ s:.+/::;      # remove path prefix
+            $fileID =~ s:\.wav\s*::; # remove file extension
+            if (exists $numUtterancesInFile{$fileID}) {
+                # Some portion of this file has training transcriptions
+                $duration = `$soxi -D $filename`;
+                if ($duration <=0) {
+                    # Unable to extract a valid duration from the sphere header
+                    print STDERR ("Unable to extract duration: skipping file $filename");
+                } else {
+                    if (exists $waveformName{$fileID} ) {
+                      print STDERR ("$0 ERROR: duplicate fileID \"$fileID\" for files \"$filename\" and \"" . $waveformName{$fileID} ."\"\n");
+                      exit(1);
+                    }
+                    $waveformName{$fileID} = $filename; chomp $waveformName{$fileID};
+                    $duration{$fileID} = $duration;
+                    $numFiles++;
+                }
+            } else {
+                # Could be due to text filtering resulting in an empty transcription
+                # Output information to STDOUT to enable > /dev/null
+                print STDOUT ("$0: No transcriptions for audio file ${fileID}.sph\n");
+            }
+        }
+        print STDERR ("$0: Recorded durations from headers of $numFiles .sph files\n");
+    } else {
+        print STDERR ("$0 NOTICE: No .wav files in $AudioDir\n");
+    } 
+    
+    if ( $#waveformName == 0 ) {
+      print STDERR ("$0 ERROR: No audio files found!");
+    }
 } else {
     print STDERR ("$0 ERROR: No directory named $AudioDir\n");
     exit(1);
@@ -365,6 +405,8 @@ $scpFileName = "$outDir/wav.scp";
 open (SCP, "| sort -u >  $scpFileName") || die "$0 ERROR: Unable to write wav.scp file $scpFileName\n";
 my $binary=`which sph2pipe` or die "Could not find the sph2pipe command"; chomp $binary;
 $SPH2PIPE ="$binary -f wav -p -c 1";
+my $SOXBINARY =`which sox` or die "Could not find the sph2pipe command"; chomp $SOXBINARY;
+$SOXFLAGS ="-r 8000 -c 1 -b 16 -t wav - downsample";
 
 $spk2uttFileName = "$outDir/spk2utt";
 open (SPK2UTT, "> $spk2uttFileName") || die "$0 ERROR: Unable to write spk2utt file $spk2uttFileName\n";
@@ -392,8 +434,12 @@ foreach $utteranceID (sort keys %transcription) {
             $uttList{$speakerID{$utteranceID}} = "$utteranceID";
         }
         next if (exists $scpEntry{$fileID});
-	$numWaveforms++;
-        $scpEntry{$fileID} = "$SPH2PIPE $waveformName{$fileID} |";
+        $numWaveforms++;
+        if ($waveformName{$fileID} =~ /.*\.sph/ ) {
+          $scpEntry{$fileID} = "$SPH2PIPE $waveformName{$fileID} |";
+        } else {
+          $scpEntry{$fileID} = "$SOXBINARY $waveformName{$fileID} $SOXFLAGS |";
+        }
     } else {
         print STDERR ("$0 WARNING: No audio file for transcription $utteranceID\n");
     }
