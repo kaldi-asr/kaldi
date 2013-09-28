@@ -1,11 +1,37 @@
 
+- To Matrix and CuMatrix, add a function 
+
 (A)
-I have something else that would be useful for someone to do.  I don't anymore want the function "CopyToMat", that copies from CUDA to regular matrix, to exist.   I want the "CopyFromMat" function of Matrix to have this functionality.  (it already exists but just calls CopyToMat; the implementation should be put directly in CopyFromMat, and the implementation should be done in cu-matrix.cc even though it's a member-function of MatrixBase<Real>.).  The same change should be done in the other classes, e.g. vector, spmatrix, packedmatrix, tpmatrix, if applicable.  Make sure the whole Kaldi project compiles and tests.
-
-CopyToMat was originally introduced because I didn't want the Matrix classes to "know about" the cudamatrix/ directory, for dependency reasons, but I got around the problem by putting forward declarations of the Cu* classes in the matrix/ dir, and declaring the corresponding methods in the Matrix dir but implementing them in cudamatrix/.  So now there is no need for CopyToMat.
-
+  Need to improve the efficiency of
+  (i)     TraceMatMat (for CuMatrix)
+  (ii)    CuMatrix::AddDiagMatMat
+  (iii)   CuVector::Sum();
 
 (B)
+  
+  // Make a matrix symmetric by either copying the lower to upper triangle
+  // copying upper to lower, taking the mean, or taking the mean and checking
+  // it was already almost symmetric.  You can test it by making sure that
+  // it behaves the same as the SpMatrix CopyFromMat function, e.g. first
+  // calling Symmetrize with a particular argument "t" and then creating an SpMatrix
+  // from the matrix with kTakeMeanAndCheck, should give the same result as
+  // initializing the SpMatrix with the original matrix and "t".  kTakeMeanAndCheck
+  // means set to the mean, but check they were approximately equal; see the SpMatrix
+  // code for how to implement it (in fact, the code can be based on the same code
+  // in SpMatrix::CopyFrommat).
+  void Symmetrize(SpCopyType symmetrize_type);
+
+  // This function should call dsymm (it can, arbitrarily, add to the lower triangle),
+  // and then Symmetrize(kTakeLower).  Before calling dsymm we should check that
+  // the original matrix is approximately symmetric: we can do #ifdef KALDI_PARANOID,
+  // Symmetrize(kTakeMeanAndCheck). #endif.
+  void SymmetricAddMatMat(Real alpha, const Matrix<Real> &A, MatrixTransposeType transA,
+                          const Matrix<Real> &B, MatrixTransposeType transB, Real beta);
+                   
+
+
+
+(C)
 The functions in CuMath.h that say "this needs documentation" need documentation
 (i.e.  comments saying what the functions do).  Someone would need to look at
 the code and figure out what the functions do (it's not my code).  Please look
