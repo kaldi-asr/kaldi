@@ -52,7 +52,7 @@
       perl, awk, grep, and make.
 
    It can also be helpful if you have an ATLAS linear-algebra package installed on your system.  Most
-   systems already have this (You can also search the packages in linux for installation by simple command like 
+   systems already have this (You can also search the packages in linux for installation by simple commands like 
    "yum search atlas" or "apt-cache search libatlas"); 
    the best approach is to ignore this requirement for now and see if you have problems when you install Kaldi.
 
