@@ -144,7 +144,7 @@ function filter_utts {
   else
     nfeats=0
   fi
-  ntext=`cat $data/text | wc -l`
+  ntext=`cat $data/text 2>/dev/null | wc -l`
   if [ "$nutts" -ne "$nfeats" -o "$nutts" -ne "$ntext" ]; then
     echo "fix_data_dir.sh: kept $nutts utterances, vs. $nfeats features and $ntext transcriptions."
   else

@@ -30,11 +30,12 @@ for data in train eval2000; do
 done
 
 
-
-steps/decode_si_ali.sh --cmd "$decode_cmd" --nj 60 --beam 7.0 --max-active 1000 \
+steps/decode_nolats.sh --write-words false --write-alignments true \
+   --cmd "$decode_cmd" --nj 60 --beam 7.0 --max-active 1000 \
   exp/tri4b_seg/phone_graph data_reseg/train_orig exp/tri4b_seg/decode_train_orig
 
-steps/decode_si_ali.sh --cmd "$decode_cmd" --nj 10 --beam 7.0 --max-active 1000 \
+steps/decode_nolats.sh --write-words false --write-alignments true \
+   --cmd "$decode_cmd" --nj 10 --beam 7.0 --max-active 1000 \
   exp/tri4b_seg/phone_graph data_reseg/eval2000_orig exp/tri4b_seg/decode_eval2000_orig
 
 
