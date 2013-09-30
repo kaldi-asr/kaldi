@@ -525,6 +525,20 @@ std::istream & operator >> (std::istream & in, Vector<Real> & v);
 /// \addtogroup matrix_funcs_scalar
 /// @{
 
+
+template<typename Real>
+bool ApproxEqual(const VectorBase<Real> &a,
+                 const VectorBase<Real> &b, Real tol = 0.01) {
+  return a.ApproxEqual(b, tol);
+}
+
+template<typename Real>
+inline void AssertEqual(VectorBase<Real> &a, VectorBase<Real> &b,
+                        float tol = 0.01) {
+  KALDI_ASSERT(a.ApproxEqual(b, tol));
+}
+
+
 /// Returns dot product between v1 and v2.
 template<typename Real>
 Real VecVec(const VectorBase<Real> &v1, const VectorBase<Real> &v2);

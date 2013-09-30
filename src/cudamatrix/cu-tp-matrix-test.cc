@@ -30,32 +30,12 @@
 #include "cudamatrix/cu-tp-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-math.h"
+#include "cudamatrix/cu-sp-matrix.h"
 
 using namespace kaldi;
 
 namespace kaldi {
 
-/*
- * INITIALIZERS
- */
-
-/*
- * ASSERTS
- */
-template<typename Real>
-static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
-  KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i = 0; i < A.Dim(); i++)
-    KALDI_ASSERT(std::abs(A(i)-B(i)) < tol);
-}
-
-template<typename Real>
-static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
-  KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i = 0; i < A.Dim(); i++)
-    if (std::abs(A(i)-B(i)) > tol) return false;
-  return true;
-}
 
 template<typename Real>
 static void AssertEqual(const CuPackedMatrix<Real> &A,
@@ -131,10 +111,16 @@ static void UnitTestCuTpMatrixCopyFromTp() {
 template<typename Real>
 static void UnitTestCuTpMatrixCholesky() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
-    
+    MatrixIndexT dim = 1 + rand() % 10;
+    if (i > 4) {
+      dim += 32 * (rand() % 5);
+    }
+
+    Matrix<Real> M(dim, dim + 2);
+    M.SetRandn();
     SpMatrix<Real> A(dim);
-    A.SetRandn();
+    A.AddMat2(1.0, M, kNoTrans, 0.0); // sets A to random almost-surely +ve
+                                      // definite matrix.
     CuSpMatrix<Real> B(A);
 
     TpMatrix<Real> C(dim);
@@ -142,7 +128,7 @@ static void UnitTestCuTpMatrixCholesky() {
     CuTpMatrix<Real> D(C);
     C.Cholesky(A);
     D.Cholesky(B);
-    
+
     AssertEqual<Real>(C, D);
   }
 }
@@ -169,6 +155,7 @@ template<typename Real> void CudaTpMatrixUnitTest() {
   UnitTestCuTpMatrixIO<Real>();
   UnitTestCuTpMatrixInvert<Real>();
   UnitTestCuTpMatrixCopyFromTp<Real>();
+  UnitTestCuTpMatrixCholesky<Real>();
 }
 
 } // namespace kaldi

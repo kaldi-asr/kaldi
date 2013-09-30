@@ -4,14 +4,14 @@ all:
 
 include ../kaldi.mk
 
-TESTFILES = nnet-component-test nnet-precondition-test
+TESTFILES = nnet-component-test nnet-precondition-test nnet-precondition-online-test
 
 OBJFILES = nnet-component.o nnet-nnet.o nnet-update.o train-nnet.o \
      nnet-randomize.o nnet-compute.o am-nnet.o nnet-functions.o  \
      nnet-precondition.o shrink-nnet.o combine-nnet.o combine-nnet-a.o \
      mixup-nnet.o nnet-lbfgs.o nnet-update-parallel.o combine-nnet-fast.o \
      nnet-fix.o nnet-stats.o rescale-nnet.o nnet-limit-rank.o nnet-example.o \
-     get-feature-transform.o widen-nnet.o
+     get-feature-transform.o widen-nnet.o nnet-precondition-online.o
 
 LIBNAME = kaldi-nnet2
 

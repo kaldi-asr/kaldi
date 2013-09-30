@@ -1,6 +1,13 @@
 
 - To Matrix and CuMatrix, add a function 
 
+
+(Z)
+ Need to improve the efficiency of CudaMalloc.  I would suggest
+ to have some kind of CPU-hosted map from size (or x,y size for CudaMallocPitch),
+ to the address, that when we free stuff we just keep the pointer..
+
+
 (A)
   Need to improve the efficiency of
   (i)     TraceMatMat (for CuMatrix)

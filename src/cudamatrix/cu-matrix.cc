@@ -55,7 +55,8 @@ void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
     this->Destroy();
   if (rows == 0) return;  
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
     MatrixIndexT row_bytes = cols * sizeof(Real);
     size_t pitch;
     CU_SAFE_CALL(cudaMallocPitch(reinterpret_cast<void**>(&this->data_), &pitch,
@@ -64,6 +65,7 @@ void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
     this->num_cols_ = cols; 
     this->stride_ = pitch / sizeof(Real);
     if (resize_type == kSetZero) this->SetZero();
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
   } else
 #endif
   { // Let the initializer of Matrix<Real> handle the allocation,
@@ -77,9 +79,11 @@ void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
 template<typename Real>
 void CuMatrix<Real>::Destroy() {
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
     if (this->data_ != NULL) {
+      Timer tim;
       CU_SAFE_CALL(cudaFree(this->data_));
+      CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
     }
   } else
 #endif

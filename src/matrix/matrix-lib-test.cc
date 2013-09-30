@@ -90,6 +90,8 @@ start:
     goto start;
 }
 
+/*
+  HERE(2)
 template<typename Real> static void AssertEqual(const Matrix<Real> &A,
                                              const Matrix<Real> &B,
                                              float tol = 0.001) {
@@ -108,7 +110,9 @@ template<typename Real> static void AssertEqual(const SpMatrix<Real> &A,
 	for (MatrixIndexT j = 0;j<=i;j++)
 	  KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) < tol*std::max(1.0, (double) (std::abs(A(i, j))+std::abs(B(i, j)))));
 }
-
+*/
+/*
+  HERE:
 template<typename Real>
 static bool ApproxEqual(const SpMatrix<Real> &A,
                         const SpMatrix<Real> &B, Real tol = 0.001) {
@@ -119,6 +123,7 @@ static bool ApproxEqual(const SpMatrix<Real> &A,
       d = std::max(diff.Max(), -diff.Min());
   return (d <= tol * std::max(a, b));
 }
+*/
 
 /* was:
    template<typename Real>
@@ -131,6 +136,8 @@ static bool ApproxEqual(const SpMatrix<Real> &A,
    }
 */
 
+/*
+  HERE
 template<typename Real> static void AssertEqual(Vector<Real> &A, Vector<Real> &B, float tol = 0.001) {
   KALDI_ASSERT(A.Dim() == B.Dim());
   for (MatrixIndexT i = 0;i < A.Dim();i++)
@@ -143,11 +150,7 @@ template<typename Real> static bool ApproxEqual(Vector<Real> &A, Vector<Real> &B
     if (std::abs(A(i)-B(i)) > tol) return false;
   return true;
 }
-
-
-template<typename Real> static void AssertEqual(Real a, Real b, float tol = 0.001) {
-  KALDI_ASSERT( std::abs(a-b) <= tol*(std::abs(a)+std::abs(b)));
-}
+*/
 
 template<typename Real> static void CholeskyUnitTestTr() {
   for (MatrixIndexT i = 0; i < 5; i++) {
@@ -1478,7 +1481,7 @@ static void UnitTestTridiagonalize() {
     for (MatrixIndexT j = 0; j < dim; j++) ans += T(j, j);
     AssertEqual(ans, T.Trace());
     AssertEqual(T.LogDet(), S.LogDet());
-    R.AddMat2(1.0, Q, kNoTrans);
+    R.AddMat2(1.0, Q, kNoTrans, 0.0);
     KALDI_LOG << "Non-unit-ness of R is " << NonUnitness(R);
     KALDI_ASSERT(R.IsUnit(0.01)); // Check Q is orthogonal.
     S2.AddMat2Sp(1.0, Q, kTrans, T, 0.0);

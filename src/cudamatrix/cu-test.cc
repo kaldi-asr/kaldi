@@ -37,65 +37,6 @@ static void InitRand(VectorBase<Real> *v) {
     (*v)(i) = RandGauss();
   }
 }
-/*
- * ASSERTS
- */
-template<typename Real>
-static void AssertEqual(const VectorBase<Real> &A,
-                        const VectorBase<Real> &B,
-                        float tol = 0.001) {
-  KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i = 0; i < A.Dim(); i++) {
-    KALDI_ASSERT(std::abs(A(i)-B(i)) < tol * std::max(1.0, (double) (std::abs(A(i)) + std::abs(B(i)))));
-  }
-}
-
-template<typename Real>
-static void AssertEqual(const MatrixBase<Real> &A,
-                        const MatrixBase<Real> &B,
-                        float tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows()&&A.NumCols() == B.NumCols());
-  for (MatrixIndexT i = 0;i < A.NumRows();i++) {
-    for (MatrixIndexT j = 0;j < A.NumCols();j++) {
-      KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) < tol*std::max(1.0, (double) (std::abs(A(\
-          i, j))+std::abs(B(i, j)))));
-    }
-  }
-}
-
-template<typename Real>
-static void AssertEqual(const SpMatrix<Real> &A,
-                        const SpMatrix<Real> &B,
-                        float tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-  for (MatrixIndexT i = 0;i < A.NumRows();i++) {
-    for (MatrixIndexT j = 0;j <= i;j++) {
-      KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) < tol*std::max(1.0, (double) (std::abs(A(          i, j))+std::abs(B(i, j)))));
-    }
-  }
-}
-
-template<typename Real> 
-static void ApproxEqual(const SpMatrix<Real> &A,
-			const SpMatrix<Real> &B,
-			float tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
-  for (MatrixIndexT i = 0; i < A.NumRows(); i++)
-    for (MatrixIndexT j = 0; j <= i; j++)
-      KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) < tol*std::max(1.0, (double) (std::abs(A(i, j))+std::abs(B(i, j)))));
-}
-
-// ApproxEqual
-template<typename Real>
-static bool ApproxEqual(const SpMatrix<Real> &A,
-                        const SpMatrix<Real> &B, Real tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-  SpMatrix<Real> diff(A);
-  diff.AddSp(1.0, B);
-  Real a = std::max(A.Max(), -A.Min()), b = std::max(B.Max(), -B.Min),
-    d = std::max(diff.Max(), -diff.Min());
-  return (d <= tol * std::max(a, b));
-}
 
 template<typename Real>
 static void UnitTestSetZeroUpperDiag() {

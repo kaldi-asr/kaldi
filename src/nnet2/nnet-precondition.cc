@@ -26,7 +26,7 @@ namespace nnet2 {
 void PreconditionDirections(const CuMatrixBase<BaseFloat> &R,
                             double lambda,
                             CuMatrixBase<BaseFloat> *P) {
-
+  
   int32 N = R.NumRows(), D = R.NumCols();
   KALDI_ASSERT(SameDim(R, *P) && N > 0);
   if (N == 1) {
@@ -45,6 +45,10 @@ void PreconditionDirections(const CuMatrixBase<BaseFloat> &R,
     G.ScaleDiag(lambda); 
     // G += 1.0/(N-1) * R^T R.
     G.AddMat2(1.0 / (N-1), R, kTrans, 1.0);
+    if (GetVerboseLevel() >= 5 && rand() % 20 == 0) {
+      SpMatrix<BaseFloat> G_cpu(G);
+      G_cpu.PrintEigs("G");
+    }
     G.Invert();
     // Q <-- R G.
     Q.AddMatSp(1.0, R, kNoTrans, G, 0.0);
@@ -61,6 +65,10 @@ void PreconditionDirections(const CuMatrixBase<BaseFloat> &R,
     // S += (N-1) R R^T.
     S.AddMat2(1.0 / (N-1), R, kNoTrans, 1.0);
     // invert S, so now S = (\lambda I + (N-1) R R^T)^{-1}.
+    if (GetVerboseLevel() >= 5 && rand() % 20 == 0) {
+      SpMatrix<BaseFloat> S_cpu(S);
+      S_cpu.PrintEigs("S");
+    }
     S.Invert();
     Q.AddSpMat(1.0, S, R, kNoTrans, 0.0);
   }

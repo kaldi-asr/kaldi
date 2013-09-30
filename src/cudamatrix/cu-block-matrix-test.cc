@@ -73,25 +73,6 @@ static void AssertEqual(const CuBlockMatrix<Real> &A,
 }
 
 
-template<typename Real>
-static bool ApproxEqual(const MatrixBase<Real> &A,
-                        const MatrixBase<Real> &B, Real tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-  MatrixBase<Real> diff(A);
-  diff.AddSp(1.0, B);
-  Real a = std::max(A.Max(), -A.Min()), b = std::max(B.Max(), -B.Min),
-      d = std::max(diff.Max(), -diff.Min());
-  return (d <= tol * std::max(a, b));
-}
-
-
-
-template<typename Real> 
-static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
-  KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i=0; i < A.Dim(); i++)
-    KALDI_ASSERT(std::abs(A(i)-B(i)) <= tol);
-}
 
 
 

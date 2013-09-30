@@ -43,21 +43,6 @@ namespace kaldi {
  * ASSERTS
  */
 template<typename Real>
-static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
-  KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i = 0; i < A.Dim(); i++)
-    KALDI_ASSERT(std::abs(A(i)-B(i)) < tol);
-}
-
-template<typename Real>
-static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
-  KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i = 0; i < A.Dim(); i++)
-    if (std::abs(A(i)-B(i)) > tol) return false;
-  return true;
-}
-
-template<typename Real>
 static void AssertEqual(const CuPackedMatrix<Real> &A,
                         const CuPackedMatrix<Real> &B,
                         float tol = 0.001) {

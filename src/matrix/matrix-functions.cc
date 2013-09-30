@@ -861,7 +861,7 @@ void ComputePca(const MatrixBase<Real> &X,
       A->AddMatMat(1.0, X, kNoTrans, *U, kTrans, 0.0);
   } else {  // Do inner-product PCA.
     SpMatrix<Real> Nsp(N);  // Matrix of inner products.
-    Nsp.AddMat2(1.0, X, kNoTrans);  // M <-- X X^T
+    Nsp.AddMat2(1.0, X, kNoTrans, 0.0);  // M <-- X X^T
 
     Matrix<Real> Vtmp;
     Vector<Real> l;

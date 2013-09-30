@@ -38,59 +38,6 @@ namespace kaldi {
  * INITIALIZERS
  */
 
-/*
- * ASSERTS
- */
-template<typename Real> 
-static void AssertEqual(const MatrixBase<Real> &A,
-                        const MatrixBase<Real> &B,
-                        float tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows()&&A.NumCols() == B.NumCols());
-  for (MatrixIndexT i = 0;i < A.NumRows();i++) {
-    for (MatrixIndexT j = 0;j < A.NumCols();j++) {
-      KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) < tol*std::max(1.0, (double) (std::abs(A(i, j))+std::abs(B(i, j)))));
-    }
-  }
-}
-
-
-
-template<typename Real>
-static bool ApproxEqual(const MatrixBase<Real> &A,
-                        const MatrixBase<Real> &B, Real tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-  MatrixBase<Real> diff(A);
-  diff.AddSp(1.0, B);
-  Real a = std::max(A.Max(), -A.Min()), b = std::max(B.Max(), -B.Min),
-      d = std::max(diff.Max(), -diff.Min());
-  return (d <= tol * std::max(a, b));
-}
-
-
-
-template<typename Real> 
-static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
-  KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i=0; i < A.Dim(); i++)
-    KALDI_ASSERT(std::abs(A(i)-B(i)) < tol*std::max(1.0, (double) (std::abs(A(i))+std::abs(B(i)))));
-}
-
-template<typename Real> 
-static void AssertEqual(CuVectorBase<Real> &A, CuVectorBase<Real> &B, float tol = 0.001) {
-  KALDI_ASSERT(A.Dim() == B.Dim());
-  CuVector<Real> diff(A);
-  diff.AddVec(-1.0, B);
-  KALDI_ASSERT(diff.Norm(2.0) <= tol * 0.5 * (A.Norm(2.0) + B.Norm(2.0))); 
-}
-
-
-template<typename Real> 
-static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
-  KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i=0; i < A.Dim(); i++)
-    if (std::abs(A(i)-B(i)) > tol) return false;
-  return true;
-}
 
 /*
  * Unit tests

@@ -50,8 +50,6 @@ class SpMatrix : public PackedMatrix<Real> {
   /// This is defined in ../cudamatrix/cu-sp-matrix.h
   
   explicit SpMatrix(const CuSpMatrix<Real> &cu);
-
-  // void CopyFromCuSp(const CuSpMatrix<Real> &cu); //added by hxu
  
   explicit SpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)
       : PackedMatrix<Real>(r, resize_type) {}
@@ -249,8 +247,9 @@ class SpMatrix : public PackedMatrix<Real> {
   /// (*this) = beta*(*this) + alpha * M * M^T,
   /// or  (if transM == kTrans)
   ///  (*this) = beta*(*this) + alpha * M^T * M
+  /// Note: beta used to default to 0.0.
   void AddMat2(const Real alpha, const MatrixBase<Real> &M,
-               MatrixTransposeType transM, const Real beta = 0.0);
+               MatrixTransposeType transM, const Real beta);
 
   /// Extension of rank-N update:
   /// this <-- beta*this  +  alpha * M * A * M^T.
@@ -377,6 +376,20 @@ class SpMatrix : public PackedMatrix<Real> {
 /// Returns tr(A B).
 float TraceSpSp(const SpMatrix<float> &A, const SpMatrix<float> &B);
 double TraceSpSp(const SpMatrix<double> &A, const SpMatrix<double> &B);
+
+
+template<typename Real>
+inline bool ApproxEqual(const SpMatrix<Real> &A,
+                        const SpMatrix<Real> &B, Real tol = 0.01) {
+  return  A.ApproxEqual(B, tol);
+}
+
+template<typename Real>
+inline void AssertEqual(const SpMatrix<Real> &A,
+                        const SpMatrix<Real> &B, Real tol = 0.01) {
+  KALDI_ASSERT(ApproxEqual(A, B, tol));
+}
+
 
 
 /// Returns tr(A B).

@@ -38,69 +38,6 @@ using namespace kaldi;
 namespace kaldi {
 
 /*
- * INITIALIZERS
- */
-
-/*
- * ASSERTS
- */
-template<typename Real>
-static void AssertEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
-  KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i = 0; i < A.Dim(); i++)
-    KALDI_ASSERT(std::abs(A(i)-B(i)) < tol);
-}
-
-template<typename Real>
-static bool ApproxEqual(VectorBase<Real> &A, VectorBase<Real> &B, float tol = 0.001) {
-  KALDI_ASSERT(A.Dim() == B.Dim());
-  for (MatrixIndexT i = 0; i < A.Dim(); i++)
-    if (std::abs(A(i)-B(i)) > tol) return false;
-  return true;
-}
-
-template<typename Real>
-static void AssertEqual(const SpMatrix<Real> &A,
-                        const SpMatrix<Real> &B,
-                        float tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-  for (MatrixIndexT i = 0; i < A.NumRows(); i++)
-    for (MatrixIndexT j = 0; j <= i ; j++)
-{
-      KALDI_ASSERT(std::abs(A(i, j) - B(i, j))
-                   < tol * std::max(1.0, (double) (std::abs(A(i, j)) + std::abs(B(i, j)))));
-}
-}
-template<typename Real>
-static bool ApproxEqual(const SpMatrix<Real> &A,
-                        const SpMatrix<Real> &B, Real tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-  SpMatrix<Real> diff(A);
-  diff.AddSp(-1.0, B);
-  Real a = std::max(A.Max(), -A.Min()), b = std::max(B.Max(), -B.Min()),
-      d = std::max(diff.Max(), -diff.Min());
-  return (d <= tol * std::max(a, b));
-}
-
-template<typename Real>
-static bool ApproxEqual(const CuSpMatrix<Real> &A,
-                        const CuSpMatrix<Real> &B, Real tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-  CuSpMatrix<Real> diff(A);
-  diff.AddSp(-1.0, B);
-  Real a = A.FrobeniusNorm(), b = B.FrobeniusNorm(),
-      d = diff.FrobeniusNorm();
-  return (d <= tol * std::max(a, b));
-}
-
-template<typename Real>
-static void AssertEqual(const CuSpMatrix<Real> &A,
-                        const CuSpMatrix<Real> &B, Real tol = 0.001) {
-  KALDI_ASSERT(ApproxEqual(A, B, tol));
-}
-
-
-/*
  * Unit Tests
  */
 template<typename Real>
@@ -124,9 +61,34 @@ static void UnitTestCuSpMatrixConstructor() {
      //added by hxu, to test copy from SpMatrix to CuSpMatrix
 
     AssertEqual(B, E);
+
+    KALDI_ASSERT(!B.IsUnit());
+    B.SetZero();
+    B.SetDiag(1.0);
+    KALDI_ASSERT(B.IsUnit());
   }
 }
 
+template<typename Real>
+static void UnitTestCuSpMatrixApproxEqual() {
+
+  for (int32 i = 0; i < 10; i++) {
+    int32 dim = 1 + rand() % 10;
+    SpMatrix<Real> A(dim), B(dim);
+    A.SetRandn();
+    B.SetRandn();
+    BaseFloat threshold = 0.01;
+    for (int32 j = 0; j < 20; j++, threshold *= 1.3) {
+      bool b1 = A.ApproxEqual(B, threshold);
+      SpMatrix<Real> diff(A);
+      diff.AddSp(-1.0, B);
+      bool b2 = (diff.FrobeniusNorm() < threshold * std::max(A.FrobeniusNorm(),
+                                                             B.FrobeniusNorm()));
+      KALDI_ASSERT(b1 == b2);
+    }
+  }
+  
+}
 
 
 
@@ -358,6 +320,7 @@ template<typename Real> void CudaSpMatrixUnitTest() {
   UnitTestCuSpMatrixIO<Real>();
   UnitTestCuSpMatrixConstructor<Real>();
   UnitTestCuSpMatrixOperator<Real>();
+  UnitTestCuSpMatrixApproxEqual<Real>();
   UnitTestCuSpMatrixInvert<Real>();
   UnitTestCuSpMatrixAddVec2<Real>();
   UnitTestCuSpMatrixAddMat2<Real>();

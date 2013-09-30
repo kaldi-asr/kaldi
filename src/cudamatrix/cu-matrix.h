@@ -519,6 +519,19 @@ class CuSubMatrix: public CuMatrixBase<Real> {
   CuSubMatrix<Real> &operator = (const CuSubMatrix<Real> &other);
 };
 
+
+template<typename Real>
+bool ApproxEqual(const CuMatrixBase<Real> &A,
+                 const CuMatrixBase<Real> &B, Real tol = 0.01) {
+  return A.ApproxEqual(B, tol);
+}
+
+template<typename Real>
+inline void AssertEqual(CuMatrixBase<Real> &A, CuMatrixBase<Real> &B,
+                        float tol = 0.01) {
+  KALDI_ASSERT(A.ApproxEqual(B, tol));
+}
+
 template<typename Real>
 bool SameDim(const CuMatrixBase<Real> &M, const CuMatrixBase<Real> &N) {
   return (M.NumRows() == N.NumRows() && M.NumCols() == N.NumCols());

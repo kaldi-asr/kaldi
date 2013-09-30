@@ -21,6 +21,7 @@ template<typename Real>
 class CuSpMatrix : public CuPackedMatrix<Real> {
   friend class CuMatrixBase<Real>;
   friend class CuVectorBase<Real>;
+  friend class CuTpMatrix<Real>;
   friend class CuSubMatrix<Real>;
   friend class CuRand<Real>;
 
@@ -52,6 +53,10 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
   }
 
   Real FrobeniusNorm() const { return sqrt(TraceSpSp(*this, *this)); }
+
+  bool IsUnit(Real tol = 0.001) const;
+
+  bool ApproxEqual(const CuSpMatrix<Real> &other, Real tol = 0.001) const;
   
   void CopyFromSp(const CuSpMatrix<Real> &other) {
     CuPackedMatrix<Real>::CopyFromPacked(other);
@@ -86,6 +91,8 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
     // casted to Real.
   }
 
+  /// Note: the CuMatrix version of the Invert() function will only work for
+  /// positive definite matrices; it is based on Cholesky.
   void Invert();
 
   void AddVec2(const Real alpha, const CuVectorBase<Real> &v);
@@ -104,23 +111,22 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
   inline SpMatrix<Real> &Mat() {
     return *(reinterpret_cast<SpMatrix<Real>* >(this));
   }
-  
-  
 
 };
 
-
-
-/*
 template<typename Real>
-template<typename OtherReal>
-void SpMatrix<Real>::CopyFromCuSp(const CuSpMatrix<Real> &cu) {
-   cu.CopyToSp(this);
-
+inline bool ApproxEqual(const CuSpMatrix<Real> &A,
+                 const CuSpMatrix<Real> &B, Real tol = 0.001) {
+  return A.ApproxEqual(B, tol);
 }
-*/ 
 
-//added by hxu
+template<typename Real>
+inline void AssertEqual(const CuSpMatrix<Real> &A,
+                        const CuSpMatrix<Real> &B, Real tol = 0.001) {
+  KALDI_ASSERT(ApproxEqual(A, B, tol));
+}
+
+
 template<typename Real>
 SpMatrix<Real>::SpMatrix(const CuSpMatrix<Real> &cu) {
    Resize(cu.NumRows());

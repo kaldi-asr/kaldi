@@ -386,6 +386,37 @@ void UnitTestAffineComponentPreconditioned() {
 }
 
 
+void UnitTestAffineComponentPreconditionedOnline() {
+  BaseFloat learning_rate = 0.01,
+      param_stddev = 0.1, bias_stddev = 1.0, eta = 2.0,
+      max_change = 10.0;
+  int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10,
+      rank = 1 + rand() % 4;
+  {
+    AffineComponentPreconditionedOnline component;
+    if (rand() % 2 == 0) {
+      component.Init(learning_rate, input_dim, output_dim,
+                     param_stddev, bias_stddev,
+                     rank, eta, max_change);
+    } else {
+      Matrix<BaseFloat> mat(output_dim + 1, input_dim);
+      mat.SetRandn();
+      mat.Scale(param_stddev);
+      WriteKaldiObject(mat, "tmpf", true);
+      sleep(1);
+      component.Init(learning_rate, rank, eta, max_change, "tmpf");
+    }
+    UnitTestGenericComponentInternal(component);
+  }
+  {
+    const char *str = "learning-rate=0.01 input-dim=16 output-dim=15 param-stddev=0.1 eta=2.0 rank=5";
+    AffineComponentPreconditionedOnline component;
+    component.InitFromString(str);
+    UnitTestGenericComponentInternal(component);
+  }
+}
+
+
 void UnitTestAffineComponentModified() {
   BaseFloat learning_rate = 0.01,
       param_stddev = 0.1, bias_stddev = 1.0, length_cutoff = 10.0,
@@ -733,6 +764,7 @@ int main() {
       UnitTestFixedLinearComponent();
       UnitTestFixedAffineComponent();
       UnitTestAffineComponentPreconditioned();
+      UnitTestAffineComponentPreconditionedOnline();
       UnitTestAffineComponentModified();
       UnitTestDropoutComponent();
       UnitTestAdditiveNoiseComponent();

@@ -548,7 +548,7 @@ bool SpMatrix<Real>::ApproxEqual(const SpMatrix<Real> &other, float tol) const {
               << this->NumRows() << " vs. " << other.NumRows();
   SpMatrix<Real> tmp(*this);
   tmp.AddSp(-1.0, other);
-  return (tmp.FrobeniusNorm() <= tol * this->FrobeniusNorm());
+  return (tmp.FrobeniusNorm() <= tol * std::max(this->FrobeniusNorm(), other.FrobeniusNorm()));
 }
 
 // function Floor: A = Floor(B, alpha * C) ... see tutorial document.
@@ -648,7 +648,7 @@ MatrixIndexT SpMatrix<Real>::LimitCond(Real maxCond, bool invert) {  // e.g. max
       s(i) = sqrt(std::max(s(i), floor));
   }
   P.MulColsVec(s);
-  (*this).AddMat2(1.0, P, kNoTrans);  // (*this) = P*P^T.  ... (*this) = P * floor(s) * P^T  ... if P was original P.
+  (*this).AddMat2(1.0, P, kNoTrans, 0.0);  // (*this) = P*P^T.  ... (*this) = P * floor(s) * P^T  ... if P was original P.
   return nfloored;
 }
 

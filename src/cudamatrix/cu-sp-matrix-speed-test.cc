@@ -35,47 +35,6 @@ using namespace kaldi;
 namespace kaldi {
 
 template<typename Real>
-static void AssertEqual(const SpMatrix<Real> &A,
-                        const SpMatrix<Real> &B,
-                        float tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-  for (MatrixIndexT i = 0; i < A.NumRows(); i++)
-    for (MatrixIndexT j = 0; j <= i ; j++)
-{
-      KALDI_ASSERT(std::abs(A(i, j) - B(i, j))
-                   < tol * std::max(1.0, (double) (std::abs(A(i, j)) + std::abs(B(i, j)))));
-}
-}
-template<typename Real>
-static bool ApproxEqual(const SpMatrix<Real> &A,
-                        const SpMatrix<Real> &B, Real tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-  SpMatrix<Real> diff(A);
-  diff.AddSp(-1.0, B);
-  Real a = std::max(A.Max(), -A.Min()), b = std::max(B.Max(), -B.Min()),
-      d = std::max(diff.Max(), -diff.Min());
-  return (d <= tol * std::max(a, b));
-}
-
-
-template<typename Real>
-static bool ApproxEqual(const CuSpMatrix<Real> &A,
-                        const CuSpMatrix<Real> &B, Real tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows());
-  CuSpMatrix<Real> diff(A);
-  diff.AddSp(-1.0, B);
-  Real a = A.FrobeniusNorm(), b = B.FrobeniusNorm(),
-      d = diff.FrobeniusNorm();
-  return (d <= tol * std::max(a, b));
-}
-
-template<typename Real>
-static void AssertEqual(const CuSpMatrix<Real> &A,
-                        const CuSpMatrix<Real> &B, Real tol = 0.001) {
-  KALDI_ASSERT(ApproxEqual(A, B, tol));
-}
-
-template<typename Real>
 std::string NameOf() {
   return (sizeof(Real) == 8 ? "<double>" : "<float>");
 }

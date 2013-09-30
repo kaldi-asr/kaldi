@@ -25,6 +25,7 @@
 #include "itf/options-itf.h"
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix-lib.h"
+#include "thread/kaldi-mutex.h"
 
 #include <iostream>
 
@@ -671,14 +672,81 @@ class AffineComponentPreconditioned: public AffineComponent {
                          // control instability.  Instead of the exact L2 parameter change,
                          // for efficiency purposes we limit a bound on the exact change.
                          // The limit is applied via a constant <= 1.0 for each minibatch,
-                         // A suitable value might be, for example, 100 or so; larger if there are
+                         // A suitable value might be, for example, 10 or so; larger if there are
                          // more parameters.
 
   /// The following function is only called if max_change_ > 0.  It returns the
   /// greatest value alpha <= 1.0 such that (alpha times the sum over the
-  /// rows-index the two matrices of the product the l2 norms of the two rows
+  /// row-index of the two matrices of the product the l2 norms of the two rows
   /// times learning_rate_)
   /// is <= max_change.
+  BaseFloat GetScalingFactor(const CuMatrix<BaseFloat> &in_value_precon,
+                             const CuMatrix<BaseFloat> &out_deriv_precon);
+
+  virtual void Update(
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+};
+
+
+/// AffineComponentPreconditionedOnline is, like AffineComponentPreconditioned,
+/// a version of AffineComponent that has a non-(multiple of unit) learning-rate
+/// matrix.  See nnet-precondition-online.h for a description of the technique.
+/// This method maintains an orthogonal matrix N with a small number of rows,
+/// actually two (for input and output dims) which gets modified each time;
+/// we maintain a mutex for access to this (we just use it to copy it when
+/// we need it and write to it when we change it).  For multi-threaded use,
+/// the parallelization method is to lock a mutex whenever we want to
+/// read N or change it, but just quickly make a copy and release the mutex;
+/// this is to ensure operations on N are atomic.
+class AffineComponentPreconditionedOnline: public AffineComponent {
+ public:
+  virtual std::string Type() const {
+    return "AffineComponentPreconditionedOnline";
+  }
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  void Init(BaseFloat learning_rate,
+            int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev,
+            int32 rank, BaseFloat eta, BaseFloat max_change);
+  void Init(BaseFloat learning_rate, int32 rank, BaseFloat eta,
+            BaseFloat max_change, std::string matrix_filename);
+  
+  virtual void InitFromString(std::string args);
+  virtual std::string Info() const;
+  virtual Component* Copy() const;
+  AffineComponentPreconditionedOnline(): eta_(1.0), max_change_(0.0) { }
+
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponentPreconditionedOnline);
+  int32 rank_;           // Number of rows of N matrices.
+  BaseFloat eta_;
+  BaseFloat max_change_; // If > 0, this is the maximum amount of parameter
+                         // change (in L2 norm) that we allow per minibatch.
+                         // This was introduced in order to control instability.
+                         // Instead of the exact L2 parameter change, for
+                         // efficiency purposes we limit a bound on the exact
+                         // change.  The limit is applied via a constant <= 1.0
+                         // for each minibatch, A suitable value might be, for
+                         // example, 10 or so; larger if there are more
+                         // parameters.
+
+  // The things below are not read or written to disk.
+  CuMatrix<BaseFloat> N_input_; // N matrix for input, of dimension rank x
+                                // (InputDim() + 1)
+  CuMatrix<BaseFloat> N_output_; // N matrix, of dimension rank x OutputDim()
+  Mutex N_mutex_;    // Mutex that locks the N values.  We use this for both
+                     // reads and writes; we could have a non-exclusive lock for
+                     // reads but this is overkill because we access this very
+                     // quickly and immediately give up the lock.
+
+  /// The following function is only called if max_change_ > 0.  It returns the
+  /// greatest value alpha <= 1.0 such that (alpha times the sum over the
+  /// row-index of the two matrices of the product the l2 norms of the two rows
+  /// times learning_rate_) is <= max_change.  This is the same as in
+  /// AffinecComponentPreconditioned.
   BaseFloat GetScalingFactor(const CuMatrix<BaseFloat> &in_value_precon,
                              const CuMatrix<BaseFloat> &out_deriv_precon);
 

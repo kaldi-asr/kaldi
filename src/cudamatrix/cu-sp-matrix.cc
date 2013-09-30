@@ -197,7 +197,37 @@ template
 double TraceSpSp(const CuSpMatrix<double> &A, const CuSpMatrix<double> &B);
 
 
+template<typename Real>
+bool CuSpMatrix<Real>::ApproxEqual(const CuSpMatrix<Real> &B, Real tol) const {
+  KALDI_ASSERT(this->NumRows() == B.NumRows());
+  CuSpMatrix<Real> diff(*this);
+  diff.AddSp(-1.0, B);
+  Real a = this->FrobeniusNorm(), b = B.FrobeniusNorm(),
+      d = diff.FrobeniusNorm();
+  return (d <= tol * std::max(a, b));
+}
+
+template<typename Real>
+bool CuSpMatrix<Real>::IsUnit(Real tol) const {
+  // want to return:
+  //FrobeniusNorm(*this - I) <= tol * NumRows(), i.e.:
+  //sqrt (trace((*this - I)(*this-I)) <= tol * NumRows()
+  //    trace((*this - I)(*this - I)) <= tol * NumRows()
+  // trace(*this * *this) + trace(I) - 2 * trace(*this) <= tol * NumRows()
+  // trace(*this * *this) + dim - 2*this.Trace() <= tol * NumRows()
+
+  // Note: we could do this more efficiently still, by slightly changing the
+  // definition of IsUnit and getting rid of the extra stuff inside TraceSpSp
+  // that corrects for the diagonal being counted twice.
+  
+  return (TraceSpSp(*this, *this) + this->NumRows() - 2.0 * this->Trace() <=
+          tol * this->NumRows());
+}
+
+
 template class CuSpMatrix<float>;
 template class CuSpMatrix<double>;
+
+
 
 } // namespace

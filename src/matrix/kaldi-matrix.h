@@ -815,6 +815,19 @@ class SubMatrix : public MatrixBase<Real> {
 
 // Some declarations.  These are traces of products.
 
+
+template<typename Real>
+bool ApproxEqual(const MatrixBase<Real> &A,
+                 const MatrixBase<Real> &B, Real tol = 0.01) {
+  return A.ApproxEqual(B, tol);
+}
+
+template<typename Real>
+inline void AssertEqual(MatrixBase<Real> &A, MatrixBase<Real> &B,
+                        float tol = 0.01) {
+  KALDI_ASSERT(A.ApproxEqual(B, tol));
+}
+
 /// Returns trace of matrix.
 template <typename Real>
 double TraceMat(const MatrixBase<Real> &A) { return A.Trace(); }

@@ -21,6 +21,7 @@
 #include <sstream>
 #include "nnet2/nnet-component.h"
 #include "nnet2/nnet-precondition.h"
+#include "nnet2/nnet-precondition-online.h"
 #include "util/text-utils.h"
 #include "util/kaldi-io.h"
 
@@ -66,6 +67,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new AffineComponentA();
   } else if (component_type == "AffineComponentPreconditioned") {
     ans = new AffineComponentPreconditioned();
+  } else if (component_type == "AffineComponentPreconditionedOnline") {
+    ans = new AffineComponentPreconditionedOnline();
   } else if (component_type == "AffineComponentModified") {
     ans = new AffineComponentModified();
   } else if (component_type == "AffinePreconInputComponent") {
@@ -1318,9 +1321,9 @@ void PiecewiseLinearComponent::UnVectorize(const VectorBase<BaseFloat> &params) 
 
 void AffineComponentPreconditioned::Read(std::istream &is, bool binary) {
   std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</AffineComponent>"
-  // might not see the "<AffineComponent>" part because
+  ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponentPreconditioned>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</AffineComponentPreconditioned>"
+  // might not see the "<AffineComponentPreconditioned>" part because
   // of how ReadNew() works.
   ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
@@ -1547,6 +1550,254 @@ void AffineComponentPreconditioned::Update(
   linear_params_.AddMatMat(local_lrate, out_deriv_precon, kTrans,
                            in_value_precon_part, kNoTrans, 1.0);
 }
+
+void AffineComponentPreconditionedOnline::Read(std::istream &is, bool binary) {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">";
+  ostr_end << "</" << Type() << ">";
+  // might not see the "<AffineComponentPreconditionedOnline>" part because
+  // of how ReadNew() works.
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);
+  ExpectToken(is, binary, "<Rank>");
+  ReadBasicType(is, binary, &rank_);
+  ExpectToken(is, binary, "<Eta>");
+  ReadBasicType(is, binary, &eta_);
+  ExpectToken(is, binary, "<MaxChange>");
+  ReadBasicType(is, binary, &max_change_);
+  ExpectToken(is, binary, ostr_end.str());
+
+  N_input_.Resize(0, 0);
+  N_output_.Resize(0, 0);
+}
+
+void AffineComponentPreconditionedOnline::InitFromString(std::string args) {
+  std::string orig_args(args);
+  bool ok = true;
+  std::string matrix_filename;
+  BaseFloat learning_rate = learning_rate_;
+  BaseFloat eta = 1.0, max_change = 0.0;
+  int32 input_dim = -1, output_dim = -1, rank = 10;
+  ParseFromString("learning-rate", &args, &learning_rate); // optional.
+  ParseFromString("eta", &args, &eta);
+  ParseFromString("max-change", &args, &max_change);
+  ParseFromString("rank", &args, &rank);
+
+  if (ParseFromString("matrix", &args, &matrix_filename)) {
+    Init(learning_rate, rank, eta, max_change, matrix_filename);
+    if (ParseFromString("input-dim", &args, &input_dim))
+      KALDI_ASSERT(input_dim == InputDim() &&
+                   "input-dim mismatch vs. matrix.");
+    if (ParseFromString("output-dim", &args, &output_dim))
+      KALDI_ASSERT(output_dim == OutputDim() &&
+                   "output-dim mismatch vs. matrix.");
+  } else {
+    ok = ok && ParseFromString("input-dim", &args, &input_dim);
+    ok = ok && ParseFromString("output-dim", &args, &output_dim);
+    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+        bias_stddev = 1.0;
+    ParseFromString("param-stddev", &args, &param_stddev);
+    ParseFromString("bias-stddev", &args, &bias_stddev);
+    Init(learning_rate, input_dim, output_dim, param_stddev,
+         bias_stddev, rank, eta, max_change);
+  }
+  if (!args.empty())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << args;
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << orig_args;
+}
+
+void AffineComponentPreconditionedOnline::Init(
+    BaseFloat learning_rate, int32 rank,
+    BaseFloat eta, BaseFloat max_change,
+    std::string matrix_filename) {
+  UpdatableComponent::Init(learning_rate);
+  rank_ = rank;
+  eta_ = eta;
+  max_change_ = max_change;
+  CuMatrix<BaseFloat> mat;
+  ReadKaldiObject(matrix_filename, &mat); // will abort on failure.
+  KALDI_ASSERT(mat.NumCols() >= 2);
+  int32 input_dim = mat.NumCols() - 1, output_dim = mat.NumRows();
+  linear_params_.Resize(output_dim, input_dim);
+  bias_params_.Resize(output_dim);
+  linear_params_.CopyFromMat(mat.Range(0, output_dim, 0, input_dim));
+  bias_params_.CopyColFromMat(mat, input_dim);
+}
+
+void AffineComponentPreconditionedOnline::Init(
+    BaseFloat learning_rate, 
+    int32 input_dim, int32 output_dim,
+    BaseFloat param_stddev, BaseFloat bias_stddev,
+    int32 rank, BaseFloat eta, BaseFloat max_change) {
+  UpdatableComponent::Init(learning_rate);
+  linear_params_.Resize(output_dim, input_dim);
+  bias_params_.Resize(output_dim);
+  KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0 &&
+               bias_stddev >= 0.0);
+  linear_params_.SetRandn(); // sets to random normally distributed noise.
+  linear_params_.Scale(param_stddev);
+  bias_params_.SetRandn();
+  bias_params_.Scale(bias_stddev);
+  rank_ = rank;
+  eta_ = eta;
+  KALDI_ASSERT(eta_ > 0.0); // this helps ensure invertibility of certain quantities
+                            // that get inverted in the update.
+  KALDI_ASSERT(max_change >= 0.0);
+  max_change_ = max_change;
+}
+
+
+void AffineComponentPreconditionedOnline::Write(std::ostream &os, bool binary) const {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</AffineComponent>"
+  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "<Rank>");
+  WriteBasicType(os, binary, rank_);
+  WriteToken(os, binary, "<Eta>");
+  WriteBasicType(os, binary, eta_);
+  WriteToken(os, binary, "<MaxChange>");
+  WriteBasicType(os, binary, max_change_);
+  WriteToken(os, binary, ostr_end.str());
+}
+
+std::string AffineComponentPreconditionedOnline::Info() const {
+  std::stringstream stream;
+  BaseFloat linear_params_size = static_cast<BaseFloat>(linear_params_.NumRows())
+      * static_cast<BaseFloat>(linear_params_.NumCols());
+  BaseFloat linear_stddev =
+      std::sqrt(TraceMatMat(linear_params_, linear_params_, kTrans) /
+                linear_params_size),
+      bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
+                              bias_params_.Dim());
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", linear-params-stddev=" << linear_stddev
+         << ", bias-params-stddev=" << bias_stddev
+         << ", learning-rate=" << LearningRate()
+         << ", rank=" << rank_
+         << ", eta=" << eta_
+         << ", max-change=" << max_change_;
+  return stream.str();
+}
+
+Component* AffineComponentPreconditionedOnline::Copy() const {
+  AffineComponentPreconditionedOnline *ans = new AffineComponentPreconditionedOnline();
+  ans->learning_rate_ = learning_rate_;
+  ans->linear_params_ = linear_params_;
+  ans->bias_params_ = bias_params_;
+  ans->rank_ = rank_;
+  ans->eta_ = eta_;
+  ans->max_change_ = max_change_;
+  ans->is_gradient_ = is_gradient_;
+  ans->N_input_ = N_input_;
+  ans->N_output_ = N_output_;
+  return ans;
+}
+
+
+BaseFloat AffineComponentPreconditionedOnline::GetScalingFactor(
+    const CuMatrix<BaseFloat> &in_value_precon,
+    const CuMatrix<BaseFloat> &out_deriv_precon) {
+  static int scaling_factor_printed = 0;
+
+  KALDI_ASSERT(in_value_precon.NumRows() == out_deriv_precon.NumRows());
+  CuVector<BaseFloat> in_norm(in_value_precon.NumRows()),
+      out_deriv_norm(in_value_precon.NumRows());
+  in_norm.AddDiagMat2(1.0, in_value_precon, kNoTrans, 0.0);
+  out_deriv_norm.AddDiagMat2(1.0, out_deriv_precon, kNoTrans, 0.0);
+  // Get the actual l2 norms, not the squared l2 norm.
+  in_norm.ApplyPow(0.5);
+  out_deriv_norm.ApplyPow(0.5);
+  BaseFloat sum = learning_rate_ * VecVec(in_norm, out_deriv_norm);
+  // sum is the product of norms that we are trying to limit
+  // to max_value_.
+  KALDI_ASSERT(sum == sum && sum - sum == 0.0 &&
+               "NaN in backprop");
+  KALDI_ASSERT(sum >= 0.0);
+  if (sum <= max_change_) return 1.0;
+  else {
+    BaseFloat ans = max_change_ / sum;
+    if (scaling_factor_printed < 10) {
+      KALDI_LOG << "Limiting step size to " << max_change_
+                << " using scaling factor " << ans << ", for component index "
+                << Index();
+      scaling_factor_printed++;
+    }
+    return ans;
+  }
+}
+
+void AffineComponentPreconditionedOnline::Update(
+    const CuMatrixBase<BaseFloat> &in_value,
+    const CuMatrixBase<BaseFloat> &out_deriv) {
+  CuMatrix<BaseFloat> in_value_temp;
+  
+  in_value_temp.Resize(in_value.NumRows(),
+                       in_value.NumCols() + 1, kUndefined);
+  in_value_temp.Range(0, in_value.NumRows(), 0, in_value.NumCols()).CopyFromMat(
+      in_value);
+
+  // Add the 1.0 at the end of each row "in_value_temp"
+  CuVector<BaseFloat> ones(in_value.NumRows(), kUndefined);
+  ones.Set(1.0);
+  in_value_temp.CopyColFromVec(ones, in_value.NumCols());
+  
+  CuMatrix<BaseFloat> out_deriv_temp(out_deriv);
+  
+  N_mutex_.Lock();
+  CuMatrix<BaseFloat> N_input(N_input_); // temporary copy.
+  CuMatrix<BaseFloat> N_output(N_output_); // temporary copy.
+  N_mutex_.Unlock();
+
+  bool first_time = false;
+  if (N_input.NumRows() == 0) {
+    N_input.Resize(rank_, InputDim() + 1);
+    N_output.Resize(rank_, OutputDim());
+    first_time = true;
+  }
+  
+  PreconditionDirectionsOnline(eta_, first_time, &N_input, &in_value_temp);
+  PreconditionDirectionsOnline(eta_, first_time, &N_output, &out_deriv_temp);
+  
+  N_mutex_.Lock();
+  N_input_.Swap(&N_input);
+  N_output_.Swap(&N_output);
+  N_mutex_.Unlock();
+  
+  BaseFloat minibatch_scale = 1.0;
+  
+  if (max_change_ > 0.0)
+    minibatch_scale = GetScalingFactor(in_value_temp, out_deriv_temp);
+  
+  CuSubMatrix<BaseFloat> in_value_precon_part(in_value_temp,
+                                              0, in_value_temp.NumRows(),
+                                              0, in_value_temp.NumCols() - 1);
+  // this "precon_ones" is what happens to the vector of 1's representing
+  // offsets, after multiplication by the preconditioner.
+  CuVector<BaseFloat> precon_ones(in_value_temp.NumRows());
+  
+  precon_ones.CopyColFromMat(in_value_temp, in_value_temp.NumCols() - 1);
+  
+  BaseFloat local_lrate = minibatch_scale * learning_rate_;
+  bias_params_.AddMatVec(local_lrate, out_deriv_temp, kTrans,
+                         precon_ones, 1.0);
+  linear_params_.AddMatMat(local_lrate, out_deriv_temp, kTrans,
+                           in_value_precon_part, kNoTrans, 1.0);
+}
+
 
 void AffineComponentModified::Read(std::istream &is, bool binary) {
   std::ostringstream ostr_beg, ostr_end;
