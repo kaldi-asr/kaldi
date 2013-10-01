@@ -233,7 +233,7 @@ steps/make_denlats.sh --nj 50 --cmd "$decode_cmd" --config conf/decode.config \
 
 steps/make_denlats.sh --nj 100 --cmd "$decode_cmd" --config conf/decode.config \
   --transform-dir exp/tri4b_ali_nodup \
-  data/train_nodup data/lang exp/tri4b exp/tri4b_denlats_all || exit 1;
+  data/train_nodup data/lang exp/tri4b exp/tri4b_denlats_nodup || exit 1;
 
 # 4 iterations of MMI seems to work well overall. The number of iterations is
 # used as an explicit argument even though train_mmi.sh will use 4 iterations by
@@ -244,7 +244,7 @@ steps/train_mmi.sh --cmd "$decode_cmd" --boost 0.1 --num-iters $num_mmi_iters \
   exp/tri4a_mmi_b0.1 || exit 1;
 
 steps/train_mmi.sh --cmd "$decode_cmd" --boost 0.1 --num-iters $num_mmi_iters \
-  data/train_nodup data/lang exp/tri4b_{ali,denlats}_all \
+  data/train_nodup data/lang exp/tri4b_{ali,denlats}_nodup \
   exp/tri4b_mmi_b0.1 || exit 1;
 
 for iter in 1 2 3 4; do
@@ -287,7 +287,7 @@ steps/train_mmi_fmmi.sh --learning-rate 0.005 --boost 0.1 --cmd "$train_cmd" \
 
 steps/train_mmi_fmmi.sh --learning-rate 0.005 --boost 0.1 --cmd "$train_cmd" \
   data/train_nodup data/lang exp/tri4b_ali_nodup exp/tri4b_dubm \
-  exp/tri4b_denlats_all exp/tri4b_fmmi_b0.1 || exit 1;
+  exp/tri4b_denlats_nodup exp/tri4b_fmmi_b0.1 || exit 1;
 
 for iter in 4 5 6 7 8; do
   for lm_suffix in tg fsh_tgpr; do
