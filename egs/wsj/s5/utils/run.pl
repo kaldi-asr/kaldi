@@ -116,6 +116,7 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
     open(F, ">>$logfile") || die "Error opening log file $logfile (again)";
     $enddate = `date`;
     chop $enddate;
+    print F "# Accounting: time=" . ($endtime - $starttime) . " threads=1\n";
     print F "# Ended (code $ret) at " . $enddate . ", elapsed time " . ($endtime-$starttime) . " seconds\n";
     close(F);
     exit($ret == 0 ? 0 : 1);

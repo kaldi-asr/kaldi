@@ -153,8 +153,10 @@ function filter_utts {
 
   for x in utt2spk feats.scp text segments $maybe_wav; do
     if [ -f $data/$x ]; then
-      mv $data/$x $data/.backup/$x
-      utils/filter_scp.pl $tmpdir/utts $data/.backup/$x > $data/$x
+      cp $data/$x $data/.backup/$x
+      if ! cmp -s $data/$x <( utils/filter_scp.pl $tmpdir/utts $data/$x ) ; then
+        utils/filter_scp.pl $tmpdir/utts $data/.backup/$x > $data/$x
+      fi
     fi
   done
 
