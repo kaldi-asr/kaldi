@@ -394,18 +394,22 @@ void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
     output_frame.AddVec(-1.0 / window_frames, cur_sum);
 
     if (opts.normalize_variance) {
-      Vector<double> variance(cur_sumsq);
-      variance.Scale(1.0 / window_frames);
-      variance.AddVec2(-1.0 / (window_frames * window_frames), cur_sum);
-      // now "variance" is the variance of the features in the window,
-      // around their own mean.
-      int32 num_floored = variance.ApplyFloor(1.0e-10);
-      if (num_floored > 0 && num_frames > 1) {
-        KALDI_WARN << "Flooring variance When normalizing variance, floored " << num_floored
-                   << " elements; num-frames was " << window_frames;
+      if (window_frames == 1) {
+        output_frame.Set(0.0);
+      } else {
+        Vector<double> variance(cur_sumsq);
+        variance.Scale(1.0 / window_frames);
+        variance.AddVec2(-1.0 / (window_frames * window_frames), cur_sum);
+        // now "variance" is the variance of the features in the window,
+        // around their own mean.
+        int32 num_floored = variance.ApplyFloor(1.0e-10);
+        if (num_floored > 0 && num_frames > 1) {
+          KALDI_WARN << "Flooring variance When normalizing variance, floored " << num_floored
+                     << " elements; num-frames was " << window_frames;
+        }
+        variance.ApplyPow(-0.5); // get inverse standard deviation.
+        output_frame.MulElements(variance);
       }
-      variance.ApplyPow(-0.5); // get inverse standard deviation.
-      output_frame.MulElements(variance);
     }
   }
 }
