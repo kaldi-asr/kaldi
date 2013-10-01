@@ -26,6 +26,7 @@ word_ins_penalty=0
 extraid=
 silence_word=  # specify this if you did to in kws_setup.sh, it's more accurate.
 ntrue_scale=1.0
+max_silence_frames=50
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -113,7 +114,7 @@ if [ $stage -le 0 ] ; then
         [ ! -z $silence_word ] && silence_opt="--silence-word $silence_word"
         steps/make_index.sh $silence_opt --cmd "$cmd" --acwt $acwt $model_flags\
           --skip-optimization $skip_optimization --max-states $max_states \
-          --word-ins-penalty $word_ins_penalty \
+          --word-ins-penalty $word_ins_penalty --max-silence-frames $max_silence_frames\
           $kwsdatadir $langdir $decodedir $indices  || exit 1
     done
     touch $kwsoutdir/.done.index
