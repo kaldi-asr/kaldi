@@ -44,11 +44,8 @@ endif
 
 
 #implicit rule for kernel compilation
-#symlink in necessary for cross-compilation at BUT
 %.o : %.cu
-	-ln -s `which $(CC)` gcc
-	export PATH=$(CUDATKDIR)/bin:$(PWD):$(PWD)/cudamatrix:$(PATH); $(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../
-	-unlink gcc
+	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../
 
 
 ADDLIBS = ../matrix/kaldi-matrix.a ../base/kaldi-base.a  ../util/kaldi-util.a 

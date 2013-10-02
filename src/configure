@@ -297,12 +297,7 @@ function linux_configure_cuda {
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
 
     if [ "`uname -m`" == "x86_64" ]; then
-      if [ "`hostname -d`" == "fit.vutbr.cz" ]; then
-        #BUT machines by default compile 32bits
-        cat makefiles/linux_cuda.mk >> kaldi.mk 
-      else
-        cat makefiles/linux_x86_64_cuda.mk >> kaldi.mk
-      fi
+      cat makefiles/linux_x86_64_cuda.mk >> kaldi.mk
     else
       cat makefiles/linux_cuda.mk >> kaldi.mk
     fi
