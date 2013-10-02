@@ -189,6 +189,19 @@ template<typename Real> static void SlowMatMul() {
   }
 }  
 
+template<typename Real> static void UnitTestAddToDiagMatrix() {
+  for (int p = 0; p < 2; p++) {
+    MatrixIndexT dimM = 10 + rand() % 2, dimN = 1 + rand() % 5;
+    Matrix<Real> M(dimM, dimN), Mcopy(M);
+    BaseFloat alpha = 0.35;
+    M.AddToDiag(alpha);
+    for (MatrixIndexT i = 0; i < dimM && i < dimN; i++)
+      Mcopy(i, i) += alpha;
+    AssertEqual(M, Mcopy);
+  }
+}
+  
+
 template<typename Real> static void UnitTestAddDiagVecMat() {
   for (int p = 0; p < 2; p++) {
     MatrixIndexT dimM = 100 + rand() % 255, dimN = 100 + rand() % 255;
@@ -2628,7 +2641,6 @@ template<typename Real> static void UnitTestInnerProd() {
 
 
 template<typename Real> static void UnitTestAddToDiag() {
-
   MatrixIndexT N = 1 + rand() % 10;
   SpMatrix<Real> S(N);
   InitRand(&S);
@@ -4109,6 +4121,8 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestTridiag<Real>();
   //  SlowMatMul<Real>();
   UnitTestAddDiagVecMat<Real>();
+  UnitTestAddToDiagMatrix<Real>();
+  UnitTestAddToDiag<Real>();
   UnitTestMaxAbsEig<Real>();
   UnitTestMax2<Real>();
   UnitTestPca<Real>(full_test);

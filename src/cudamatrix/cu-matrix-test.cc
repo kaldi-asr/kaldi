@@ -91,7 +91,7 @@ static void UnitTestCuMatrixTraceMatMat() {
     int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
     CuMatrix<Real> A(M, N);
     A.SetRandn();
-    if (i % 2 == 0) {
+    if (i % 2 == 1) {
       CuMatrix<Real> B(M, N);
       B.SetRandn();
       Real r1 = TraceMatMat(A, B, kTrans),
@@ -672,6 +672,36 @@ static void UnitTestCuMatrixAddMatMat() {
   AssertEqual(Hc2,Hc2a);
 }
 
+
+template<typename Real> 
+static void UnitTestCuMatrixAddToDiag() {
+  for (int32 i = 0; i < 10; i++) {
+    int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+    Matrix<Real> M(dimM, dimN);
+    CuMatrix<Real> Mc(M);
+    Real alpha = 5.5;
+    M.AddToDiag(alpha);
+    Mc.AddToDiag(alpha);
+    Matrix<Real> M2(Mc);
+    AssertEqual(M, M2);
+  }
+}
+
+template<typename Real> 
+static void UnitTestCuMatrixAdd2() {
+  for (int32 i = 0; i < 10; i++) {
+    int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+    Matrix<Real> M(dimM, dimN);
+    CuMatrix<Real> Mc(M);
+    Real alpha = 5.5;
+    M.Add(alpha);
+    Mc.Add(alpha);
+    Matrix<Real> M2(Mc);
+    AssertEqual(M, M2);
+  }
+}
+
+
 template<typename Real>
 static void UnitTestCuMatrixCopyFromMat() {
   for (MatrixIndexT i = 1; i < 10; i++) {
@@ -723,6 +753,22 @@ static void UnitTestCuMatrixAddMatTp() {
 
     CuMatrix<Real> G(A);
     AssertEqual<Real>(G, D);
+  }
+}
+
+
+template<typename Real>
+static void UnitTestCuMatrixTranspose() {
+  for (MatrixIndexT i = 1; i < 10; i++) {
+    MatrixIndexT dimM = 5 * i + rand() % 10,
+        dimN = dimM;
+    if (i % 2 == 0) dimN += 5;
+    
+    CuMatrix<Real> A(dimM, dimN);
+    A.SetRandn();
+    CuMatrix<Real> B(A, kTrans);
+    A.Transpose();
+    AssertEqual(A, B);
   }
 }
 
@@ -1394,7 +1440,7 @@ static void UnitTestCuMatrixSetRandUniform() {
 
 template<typename Real> 
 static void UnitTestCuMatrixObjfDeriv() {
-  int32 n_r = 512 + rand() % 256, n_c = 256 + rand() % 256;
+  int32 n_r = 100 + rand() % 256, n_c = 100 + rand() % 256;
   CuMatrix<Real> A(n_r, n_c), B(n_r, n_c);
   A.SetRandn();
   B.SetRandn();
@@ -1446,6 +1492,7 @@ static void UnitTestCuMatrixObjfDeriv() {
 }
 
 template<typename Real> void CudaMatrixUnitTest() {
+  UnitTestCuMatrixTraceMatMat<Real>();
   UnitTestCuMatrixObjfDeriv<Real>();
   //test CuMatrix<Real> methods by cross-check with Matrix
   UnitTestCuMatrixCopyCross<Real>();
@@ -1455,7 +1502,6 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixSetRandUniform<Real>();
   UnitTestCuMatrixScale<Real>();
   UnitTestCuMatrixSigmoid<Real>();
-  UnitTestCuMatrixTraceMatMat<Real>();
   UnitTestCuMatrixSoftHinge<Real>();
   UnitTestCuMatrixApplyPow<Real>();
   UnitTestCuMatrixSet<Real>();
@@ -1479,6 +1525,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixCopyRows<Real>();
   UnitTestCuMatrixCopyRowsFromVec<Real>();
   UnitTestCuMatrixAddTpMat<Real>();
+  UnitTestCuMatrixTranspose<Real>();
   //test CuVector<Real> methods
   UnitTestCuVectorAddVec<Real>();
   UnitTestCuVectorAddRowSumMat<Real>();
@@ -1495,6 +1542,8 @@ template<typename Real> void CudaMatrixUnitTest() {
   if (CuDevice::Instantiate().DoublePrecisionSupported())
 #endif
     UnitTestCuCopy<Real, double>();
+  UnitTestCuMatrixAddToDiag<Real>();
+  UnitTestCuMatrixAdd2<Real>();
   UnitTestCuDiffSigmoid<Real>();
   UnitTestCuFindRowMaxId<Real>();
   UnitTestCuSoftmax<Real>();

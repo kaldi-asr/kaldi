@@ -440,6 +440,9 @@ class MatrixBase {
   /// Add a scalar to each element
   void Add(const Real alpha);
 
+  /// Add a scalar to each diagonal element.
+  void AddToDiag(const Real alpha);
+
   /// *this += alpha * a * b^T
   template<typename OtherReal>
   void AddVecVec(const Real alpha, const VectorBase<OtherReal> &a,

@@ -283,8 +283,7 @@ class SpMatrix : public PackedMatrix<Real> {
   /// can implement it more efficiently.
   void AddTp2(const Real alpha, const TpMatrix<Real> &T,
               MatrixTransposeType transM, const Real beta = 0.0);
-  
-  
+
   /// Extension of rank-N update:
   /// this <-- beta*this + alpha * M * diag(v) * M^T.
   /// if transM == kTrans, then

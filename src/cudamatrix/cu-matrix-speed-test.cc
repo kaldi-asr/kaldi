@@ -93,7 +93,7 @@ template<typename Real> void TestCuMatrixSoftmax(int32 dim) {
 template<typename Real> void TestCuMatrixTraceMatMat(int32 dim) {
   for (int32 n = 0; n < 2; n++) {
     MatrixTransposeType trans = (n == 0 ? kNoTrans : kTrans);
-    BaseFloat time_in_secs = 0.05;
+    BaseFloat time_in_secs = 0.08;
   
     CuMatrix<Real> M(dim, dim), N(dim, dim);
     M.SetRandn();

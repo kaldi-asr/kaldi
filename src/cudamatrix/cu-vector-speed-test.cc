@@ -50,7 +50,7 @@ template<typename Real> void TestCuVectorSoftmax(int32 dim) {
   }
 
   BaseFloat fdim = dim;
-  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuVector::Softmax" << NameOf<Real>() << ", for dim = "
             << dim << ", speed was " << gflops << " gigaflops.";
 }
@@ -68,7 +68,7 @@ template<typename Real> void TestCuVectorSum(int32 dim) {
   }
 
   BaseFloat fdim = dim;
-  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuVector::Sum" << NameOf<Real>() << ", for dim = "
             << dim << ", speed was " << gflops << " gigaflops.";
 }
@@ -88,7 +88,7 @@ template<typename Real> void TestCuVectorVecVecOne(int32 dim) {
   }
 
   BaseFloat fdim = dim;
-  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuVector::VecVecOne" << NameOf<Real>() << ", for dim = "
             << dim << ", speed was " << gflops << " gigaflops.";
 }

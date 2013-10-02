@@ -1269,6 +1269,15 @@ void MatrixBase<Real>::Add(const Real alpha) {
       data[c + stride*r] += alpha;
 }
 
+template<typename Real>
+void MatrixBase<Real>::AddToDiag(const Real alpha) {
+  Real *data = data_;
+  MatrixIndexT this_stride = stride_ + 1,
+      num_to_add = std::min(num_rows_, num_cols_);  
+  for (MatrixIndexT r = 0; r < num_to_add; r++)
+    data[r * this_stride] += alpha;
+}
+
 
 template<typename Real>
 Real MatrixBase<Real>::Cond() const {

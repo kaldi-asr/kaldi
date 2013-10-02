@@ -180,13 +180,19 @@ Real CuVectorBase<Real>::Norm(BaseFloat p) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
+    Real ans;
     KALDI_ASSERT(p == 1.0 || p == 2.0);
     if (dim_ == 0.0) return 0.0;
     if (p == 1.0) {
-      return cublas_asum(dim_, data_, 1);
+      ans = cublas_asum(dim_, data_, 1);
     } else {
-      return cublas_nrm2(dim_, data_, 1);
+      ans = cublas_nrm2(dim_, data_, 1);
     }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    if (ans != ans) {
+      KALDI_ERR << "NaN in norm " << *this;
+    }
+    return ans;
   } else
 #endif
   {

@@ -221,6 +221,20 @@ static void _copy_from_mat_trans(Real* mat_out, const OtherReal* mat_in, MatrixD
     mat_out[index_out] = static_cast<Real>(mat_in[index_in]);
 }
 
+template<typename Real>
+__global__
+static void _transpose_matrix(Real* mat, MatrixDim d) {
+  // Transposes a square matrix in-place.
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // row-index
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; // col-index
+  if (j >= i || i >= d.rows) { return; } // Only half the threads act.
+  int32_cuda index_a = j + i * d.stride,
+      index_b = i + j * d.stride;
+  Real a = mat[index_a], b = mat[index_b];
+  mat[index_a] = b;
+  mat[index_b] = a;
+}
+
 
 template<typename Real>
 __global__
@@ -427,6 +441,40 @@ static void _add_mat(Real alpha, const Real* A, Real beta, Real* dst, MatrixDim 
 }
 
 
+// Given a matrix input S (not packed!) and a lower-triangular matrix L,
+// this function does S = beta S + alpha * L^T L.  This is used in PSD matrix inversion.
+// The i index is the row of the destination S and the j the column (although of 
+// course the output is symmetric so it doesn't matter in a sense).  The main point
+// of this is to make use of various symmetries and zero-ness.
+template<typename Real>
+__global__
+static void _sy_add_tr2(Real alpha, Real beta, const Real *T, MatrixDim tdim, Real *S,
+                        MatrixDim sdim) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  
+  if (i >= sdim.rows || j > i) return;
+
+  // this thread computes the dot-product of the i'th column of
+  // L with the j'th column of L.  The values we're multiplying
+  // are only nonzero for row-index k greater or equal to
+  // max(i, j), which equals i.
+  
+  Real sum = 0.0;
+  for (int k = i; k < sdim.rows; k++) {
+    int i_index = i + tdim.stride * k,
+         j_index = j + tdim.stride * k;
+     sum += T[i_index] * T[j_index];
+  }
+  int output_index1 = i * sdim.stride + j,
+      output_index2 = j * sdim.stride + i;
+  S[output_index1] = alpha * sum + beta * S[output_index1];
+  S[output_index2] = alpha * sum + beta * S[output_index2];
+}
+
+
+
+
 
 template<typename Real>
 __global__
@@ -586,25 +634,27 @@ static void _vec_max(const Real* v, Real* value, int dim) {
 }
 
 
+// _trace_mat_mat expects to be called with 1 blocks, each of dimension
+// CU1DBLOCK.  Each block outputs a partial sum to value[blockIdx.x],
+// i.e. value[0 through 0].
 template<typename Real>
 __global__
 static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA, int B_stride, Real* value) {
+  const int num_blocks = 2;
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
 
-  if(i >= CU1DBLOCK) return;
+  if(blockIdx.x > num_blocks || threadIdx.x > CU1DBLOCK) return;
   
-  int num_elements = dA.rows * dA.cols;
-  int block_size = (num_elements + CU1DBLOCK - 1) / CU1DBLOCK;
+  int num_elements = dA.rows * dA.cols,
+      num_threads = CU1DBLOCK * num_blocks;
+  int block_size = (num_elements + num_threads - 1) / num_threads;
   int loop_start = i * block_size, loop_end = (i + 1) * block_size;
   if (loop_end > num_elements) 
     loop_end = num_elements;
 
   Real sum = 0.0;
   for (int j = loop_start; j < loop_end; j++) {
-  // for (int j = i; j < num_elements; j += CU1DBLOCK) {
-    // j is an index into all the elements of the matrix, if we had vectorized
-    // it by appending the rows.
-    
+    // for (int j = i; j < num_elements; j += num_threads) {
     int row = j / dA.cols, col = j % dA.cols; // "row" is row-index in A, "col" is
                                               // col-index in A; in B, it's reversed.
     int index_A = col + row * dA.stride,
@@ -613,31 +663,36 @@ static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA, int B_str
   }
   __shared__ Real row_data[CU1DBLOCK];
 
-  row_data[i] = sum;
+  row_data[threadIdx.x] = sum;
 
   __syncthreads();
 
-  *value = _sum_reduce(row_data);
+  Real ans = _sum_reduce(row_data);
+  if (threadIdx.x == 0)
+    value[blockIdx.x] = ans;
 }
 
-
+// _trace_mat_mat_trans expects to be called with 4 blocks, each of dimension
+// CU1DBLOCK.  Each block outputs a partial sum to value[blockIdx.x],
+// i.e. value[0 through 3].
 template<typename Real>
 __global__
 static void _trace_mat_mat_trans(const Real* A, const Real* B, MatrixDim dA, int B_stride, Real* value) {
+  const int num_blocks = 4;
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  if(i >= CU1DBLOCK) return;
+
+  if(blockIdx.x > num_blocks || threadIdx.x > CU1DBLOCK) return;  
   
-  int num_elements = dA.rows * dA.cols;
-  int block_size = (num_elements + CU1DBLOCK - 1) / CU1DBLOCK;
+  int num_elements = dA.rows * dA.cols,
+      num_threads = CU1DBLOCK * num_blocks;
+  int block_size = (num_elements + num_threads - 1) / num_threads;
   int loop_start = i * block_size, loop_end = (i + 1) * block_size;
   if (loop_end > num_elements) 
     loop_end = num_elements;
 
   Real sum = 0.0;
-  for (int j = loop_start; j < loop_end; j++) {
-    // j is an index into all the elements of the matrix, if we had vectorized
-    // it by appending the rows.
-    
+  // for (int j = loop_start; j < loop_end; j++) {
+  for (int j = i; j < num_elements; j += num_threads) {
     int row = j / dA.cols, col = j % dA.cols; // "row" is row-index in A, "col" is
                                               // col-index in A; in B, it's reversed.
     int index_A = col + row * dA.stride,
@@ -646,11 +701,13 @@ static void _trace_mat_mat_trans(const Real* A, const Real* B, MatrixDim dA, int
   }
   __shared__ Real row_data[CU1DBLOCK];
 
-  row_data[i] = sum;
+  row_data[threadIdx.x] = sum;
 
   __syncthreads();
 
-  *value = _sum_reduce(row_data);
+  Real ans = _sum_reduce(row_data);
+  if (threadIdx.x == 0)
+    value[blockIdx.x] = ans;
 }
 
 
@@ -1599,6 +1656,10 @@ void cudaF_copy_col_from_vec(int Gr, int Bl, float* mat, const float* v, int col
   _copy_col_from_vec<<<Gr,Bl>>>(mat,v,col,d);
 }
 
+void cudaF_transpose_matrix(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
+  _transpose_matrix<<<Gr,Bl>>>(mat, d);
+}
+
 void cudaF_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _apply_exp<<<Gr,Bl>>>(mat,d);
 }
@@ -1688,6 +1749,11 @@ void cudaF_add_mat(dim3 Gr, dim3 Bl, float alpha, const float* A, float beta, fl
   _add_mat<<<Gr,Bl>>>(alpha,A,beta,dst,d); 
 }
 
+void cudaF_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const float* T, MatrixDim tdim,
+                      float *S, MatrixDim sdim) {
+  _sy_add_tr2<<<Gr,Bl>>>(alpha, beta, T, tdim, S, sdim);
+}
+
 void cudaF_add_vec_to_cols(dim3 Gr, dim3 Bl, float alpha, const float* col, float beta, float* dst, MatrixDim d) {
   _add_vec_to_cols<<<Gr,Bl>>>(alpha,col,beta,dst,d); 
 }
@@ -1731,11 +1797,11 @@ void cudaF_vec_max(const float* v, float* value, int dim) {
 }
 
 void cudaF_trace_mat_mat_trans(const float* A, const float* B, MatrixDim dA, int B_stride, float* value) {
-  _trace_mat_mat_trans<<<1,CU1DBLOCK>>>(A,B,dA,B_stride,value);
+  _trace_mat_mat_trans<<<4,CU1DBLOCK>>>(A,B,dA,B_stride,value);
 }
 
 void cudaF_trace_mat_mat(const float* A, const float* B, MatrixDim dA, int B_stride, float* value) {
-  _trace_mat_mat<<<1,CU1DBLOCK>>>(A,B,dA,B_stride,value);
+  _trace_mat_mat<<<2,CU1DBLOCK>>>(A,B,dA,B_stride,value);
 }
 
 void cudaF_add_diag_mat_trans(int Gr, int Bl, float alpha, float* v, const float* mat, float beta,  MatrixDim dmat, int dim) {
@@ -1961,6 +2027,10 @@ void cudaD_copy_col_from_vec(int Gr, int Bl, double* mat, const double* v, int c
   _copy_col_from_vec<<<Gr,Bl>>>(mat,v,col,d);
 }
 
+void cudaD_transpose_matrix(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
+  _transpose_matrix<<<Gr,Bl>>>(mat, d);
+}
+
 void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
   _apply_exp<<<Gr,Bl>>>(mat,d);
 }
@@ -2049,6 +2119,11 @@ void cudaD_add_mat(dim3 Gr, dim3 Bl, double alpha, const double* A, double beta,
   _add_mat<<<Gr,Bl>>>(alpha,A,beta,dst,d); 
 }
 
+void cudaD_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta, const double* T, MatrixDim tdim,
+                      double *S, MatrixDim sdim) {
+  _sy_add_tr2<<<Gr,Bl>>>(alpha, beta, T, tdim, S, sdim);
+}
+
 void cudaD_add_vec_to_cols(dim3 Gr, dim3 Bl, double alpha, const double* col, double beta, double* dst, MatrixDim d) {
   _add_vec_to_cols<<<Gr,Bl>>>(alpha,col,beta,dst,d); 
 }
@@ -2092,11 +2167,11 @@ void cudaD_vec_max(const double* v, double* value, int dim) {
 }
 
 void cudaD_trace_mat_mat_trans(const double* A, const double* B, MatrixDim dA, int B_stride, double* value) {
-  _trace_mat_mat_trans<<<1,CU1DBLOCK>>>(A,B,dA,B_stride,value);
+  _trace_mat_mat_trans<<<4,CU1DBLOCK>>>(A,B,dA,B_stride,value);
 }
 
 void cudaD_trace_mat_mat(const double* A, const double* B, MatrixDim dA, int B_stride, double* value) {
-  _trace_mat_mat<<<1,CU1DBLOCK>>>(A,B,dA,B_stride,value);
+  _trace_mat_mat<<<2,CU1DBLOCK>>>(A,B,dA,B_stride,value);
 }
 
 void cudaD_add_diag_mat_trans(int Gr, int Bl, double alpha, double* v, const double* mat, double beta,  MatrixDim dmat, int dim) {

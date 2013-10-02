@@ -103,6 +103,9 @@ class CuMatrixBase {
   friend Real TraceMatMat<Real>(const CuMatrixBase<Real> &A,
                                 const CuMatrixBase<Real> &B,
                                 MatrixTransposeType trans);
+
+  void AddToDiag(Real value);
+  
   /// Dimensions
   MatrixIndexT NumRows() const { return num_rows_;  }
   MatrixIndexT NumCols() const { return num_cols_;  }
@@ -116,6 +119,8 @@ class CuMatrixBase {
   }
 
   Real FrobeniusNorm() const { return sqrt(TraceMatMat(*this, *this, kTrans)); }
+
+  bool IsUnit(Real tol = 0.001) const;  
 
   bool ApproxEqual(const CuMatrixBase<Real> &other, float tol = 0.01) const;
   
@@ -131,7 +136,7 @@ class CuMatrixBase {
                    MatrixTransposeType trans = kNoTrans);
   
   void CopyFromSp(const CuSpMatrix<Real> &M);
-
+  
   template<typename OtherReal>
   void CopyFromTp(const CuTpMatrix<OtherReal> &M,
                   MatrixTransposeType trans = kNoTrans);
