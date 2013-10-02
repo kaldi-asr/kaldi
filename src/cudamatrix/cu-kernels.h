@@ -40,6 +40,8 @@ namespace kaldi {
  * CuMatrix 
  */
 
+inline void cuda_copy_upp_low(dim3 Gr, dim3 Bl, float* A, MatrixDim dimA) { cudaF_copy_upp_low(Gr, Bl, A, dimA); }
+inline void cuda_copy_low_upp(dim3 Gr, dim3 Bl, float* A, MatrixDim dimA) { cudaF_copy_low_upp(Gr, Bl, A, dimA); }
 inline void cuda_add_diag_vec_mat(dim3 Gr, dim3 Bl, float alpha, float *mat, MatrixDim mat_dim,
                                   const float *vec, const float *mat2, int mat2_row_stride,
                                   int mat2_col_stride, float beta) {
@@ -212,6 +214,8 @@ inline void cuda_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<double>* x, int3
 /*
  * CuMatrix 
  */
+inline void cuda_copy_upp_low(dim3 Gr, dim3 Bl, double* A, MatrixDim dimA) { cudaD_copy_upp_low(Gr, Bl, A, dimA); }
+inline void cuda_copy_low_upp(dim3 Gr, dim3 Bl, double* A, MatrixDim dimA) { cudaD_copy_low_upp(Gr, Bl, A, dimA); }
 inline void cuda_add_diag_vec_mat(dim3 Gr, dim3 Bl, double alpha, double *mat, MatrixDim mat_dim,
                                   const double *vec, const double *mat2, int mat2_row_stride,
                                   int mat2_col_stride, double beta) {

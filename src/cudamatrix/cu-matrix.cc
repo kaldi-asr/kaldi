@@ -1674,6 +1674,42 @@ void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::CopyLowUpp() {
+  KALDI_ASSERT(num_rows_ != 0 || num_cols_ != 0);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(this->num_rows_, CU2DBLOCK),
+                 n_blocks(this->num_cols_, CU2DBLOCK));
+    cuda_copy_low_upp(dimGrid, dimBlock, data_, Dim());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().Transpose();
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::CopyUppLow() {
+  KALDI_ASSERT(num_rows_ != 0 || num_cols_ != 0);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(this->num_rows_, CU2DBLOCK),
+                 n_blocks(this->num_cols_, CU2DBLOCK));
+    cuda_copy_upp_low(dimGrid, dimBlock, data_, Dim());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().Transpose();
+  }
+}
+
 
 template<typename Real>
 Real CuMatrixBase<Real>::Sum() const {

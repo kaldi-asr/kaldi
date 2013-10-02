@@ -1535,6 +1535,35 @@ static void UnitTestCuMatrixSetRandUniform() {
   }
 }
 
+template<typename Real>
+static void UnitTestCuMatrixCopyLowUpp() {
+  for (int i = 1; i < 10; ++i) {
+    MatrixIndexT dim = 10 * i;
+    CuTpMatrix<Real> A(dim);
+    A.SetRandn();
+    CuMatrix<Real> B(A);
+    B.CopyLowUpp();
+    CuMatrix<Real> C(A);
+    C.Transpose();
+    AssertEqual(B, C);
+  }
+}
+
+template<typename Real>
+static void UnitTestCuMatrixCopyUppLow() {
+  for (int i = 1; i < 10; ++i) {
+    MatrixIndexT dim = 10 * i;
+    CuTpMatrix<Real> A(dim);
+    A.SetRandn();
+    CuMatrix<Real> B(A);
+    B.Transpose();
+    B.CopyUppLow();
+    CuMatrix<Real> C(A);
+    AssertEqual(B, C);
+  }
+}
+
+
 template<typename Real> 
 static void UnitTestCuMatrixObjfDeriv() {
   // Previously tested for larger dims, but test was slow.
@@ -1626,6 +1655,8 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixCopyRowsFromVec<Real>();
   UnitTestCuMatrixAddTpMat<Real>();
   UnitTestCuMatrixTranspose<Real>();
+  UnitTestCuMatrixCopyLowUpp<Real>();
+  UnitTestCuMatrixCopyUppLow<Real>();
   //test CuVector<Real> methods
   UnitTestCuVectorAddVec<Real>();
   UnitTestCuVectorAddRowSumMat<Real>();

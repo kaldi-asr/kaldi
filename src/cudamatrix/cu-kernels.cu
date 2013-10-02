@@ -143,6 +143,37 @@ static int32_cuda _max_id_reduce(Real val[], int32_cuda idx[]) {
  * CuMatrix
  */
 
+template<typename Real>
+__global__
+static void _copy_low_upp(Real* A, MatrixDim dimA) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i < j) return;
+  if (i > dimA.rows) return;
+  int index_1 = i * dimA.stride + j;
+  int index_2 = j * dimA.stride + i;
+  if ( index_1 != index_2 ) {
+    A[index_2] = A[index_1];
+    A[index_1] = 0;
+  }
+}
+
+
+template<typename Real>
+__global__
+static void _copy_upp_low(Real* A, MatrixDim dimA) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (j < i) return;
+  if (i > dimA.rows) return;
+  int index_1 = i * dimA.stride + j;
+  int index_2 = j * dimA.stride + i;
+  if ( index_1 != index_2 ) {
+    A[index_2] = A[index_1];
+    A[index_1] = 0;
+  }
+}
+
 // mat += diag(vec) * mat2.
 template<typename Real>
 __global__
@@ -1660,6 +1691,8 @@ void cudaI32_set_const(dim3 Gr, dim3 Bl, int32_cuda* mat, int32_cuda value, Matr
 /*
  * CuMatrix
  */
+void cudaF_copy_upp_low(dim3 Gr, dim3 Bl, float* A, MatrixDim dimA) { _copy_upp_low<<<Gr,Bl>>>(A,dimA); }
+void cudaF_copy_low_upp(dim3 Gr, dim3 Bl, float* A, MatrixDim dimA) { _copy_low_upp<<<Gr,Bl>>>(A,dimA); }
 void cudaF_add_diag_vec_mat(dim3 Gr, dim3 Bl, float alpha, float *mat, MatrixDim mat_dim,
                             const float *vec, const float *mat2, int mat2_row_stride,
                             int mat2_col_stride, float beta) {
@@ -2030,6 +2063,8 @@ void cudaF_copy_col_from_mat_fd(int Gr, int Bl, float* v, int col, const float* 
 /*
  * CuMatrix
  */
+void cudaD_copy_upp_low(dim3 Gr, dim3 Bl, double* A, MatrixDim dimA) { _copy_upp_low<<<Gr,Bl>>>(A,dimA); }
+void cudaD_copy_low_upp(dim3 Gr, dim3 Bl, double* A, MatrixDim dimA) { _copy_low_upp<<<Gr,Bl>>>(A,dimA); }
 void cudaD_add_diag_vec_mat(dim3 Gr, dim3 Bl, double alpha, double *mat, MatrixDim mat_dim,
                             const double *vec, const double *mat2, int mat2_row_stride,
                             int mat2_col_stride, double beta) {

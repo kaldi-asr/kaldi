@@ -302,7 +302,8 @@ class CuMatrixBase {
 
   void CopyFromBlock(const CuBlockMatrix<Real> &B,
                      MatrixTransposeType trans = kNoTrans);
-  
+  void CopyLowUpp();
+  void CopyUppLow();
   inline CuSubMatrix<Real> Range(const MatrixIndexT row_offset,
                                  const MatrixIndexT num_rows,
                                  const MatrixIndexT col_offset,

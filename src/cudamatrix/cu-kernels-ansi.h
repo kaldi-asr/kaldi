@@ -43,6 +43,8 @@ void cudaI32_set_const(dim3 Gr, dim3 Bl, int32_cuda *mat, int32_cuda value, Matr
 /*
  * CuMatrix 
  */
+void cudaF_copy_upp_low(dim3 Gr, dim3 Bl, float* A, MatrixDim dimA);
+void cudaF_copy_low_upp(dim3 Gr, dim3 Bl, float* A, MatrixDim dimA);
 void cudaF_add_diag_vec_mat(dim3 Gr, dim3 Bl, float alpha, float *mat, MatrixDim mat_dim,
                             const float *vec, const float *mat2, int mat2_row_stride,
                             int mat2_col_stride, float beta);
@@ -155,6 +157,8 @@ void cudaF_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const float* T,
 /*
  * CuMatrix 
  */
+void cudaD_copy_upp_low(dim3 Gr, dim3 Bl, double* A, MatrixDim dimB);
+void cudaD_copy_low_upp(dim3 Gr, dim3 Bl, double* A, MatrixDim dimA);
 void cudaD_add_diag_vec_mat(dim3 Gr, dim3 Bl, double alpha, double *mat, MatrixDim mat_dim,
                             const double *vec, const double *mat2, int mat2_row_stride,
                             int mat2_col_stride, double beta);  
