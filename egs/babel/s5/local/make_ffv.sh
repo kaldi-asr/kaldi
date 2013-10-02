@@ -68,8 +68,7 @@ if [ ! -f $ffv_pkg_dir/ffv ]; then
   exit 1;
 fi
 
-basename=`basename $data`
-wavdir=$ffvdir/temp_wav_$basename
+wavdir=$ffvdir/temp_wav_$name
 mkdir -p $wavdir
 
 split_wavs=" "
@@ -141,7 +140,7 @@ fi
 
 # For each wav file, create corresponding temporary ffv file, in the
 # format the ffv outputs: [ffv[0] ffv[1] ... ffv[6]]
-temp_ffvdir=$ffvdir/temp_ffv_$basename
+temp_ffvdir=$ffvdir/temp_ffv_$name
 mkdir -p $temp_ffvdir
 
 for ((n=1; n<=nj; n++)); do
@@ -182,7 +181,7 @@ if [ $stage -le 1 ]; then
   # Need to do this in director $ffv_pkg_dir as some of the things in its config
   # are relative pathnames.
   $cmd JOB=1:$nj $d/$expdir/log/ffv.JOB.log \
-    $ffv_script --flen=$frame_len --sfreq=$sample_freq \
+    $ffv_script --flen $frame_len --sfreq $sample_freq \
     $expdir/ffv_flist.JOB $ffv_pkg_dir || exit 1;
 fi
 
@@ -215,11 +214,13 @@ if [ $stage -le 3 ]; then
   echo "Doing final processing (interpolation, smoothing, etc.) on pitch features"
   $cmd JOB=1:$nj $expdir/log/process.JOB.log \
     copy-matrix scp,p:$expdir/mat.scp.JOB  \
-      ark,scp:$ffvdir/${basename}_ffv.JOB.ark,$ffvdir/${basename}_ffv.JOB.scp || exit 1;
+      ark,scp:$ffvdir/${name}_ffv.JOB.ark,$ffvdir/${name}_ffv.JOB.scp || exit 1;
 fi
 
+sleep 10s
+
 echo "Creating $data/feats.scp"
-for ((n=1; n<=nj; n++)); do cat $ffvdir/${basename}_ffv.$n.scp; done > $data/feats.scp
+for ((n=1; n<=nj; n++)); do cat $ffvdir/${name}_ffv.$n.scp; done > $data/feats.scp
 
 if $cleanup; then
   echo "Removing temporary files"
@@ -228,6 +229,6 @@ fi
 
 utils/summarize_logs.pl $expdir/log
 
-echo "Finished extracting ffv features for $basename"
+echo "Finished extracting ffv features for $name"
 
 exit 0;
