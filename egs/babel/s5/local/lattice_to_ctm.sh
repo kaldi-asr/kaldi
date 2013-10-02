@@ -50,6 +50,7 @@ mkdir -p $dir/scoring/log
 
 if [ $stage -le 0 ]; then
   $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
+    set -e -o pipefail \; \
     mkdir -p $dir/score_LMWT/ '&&' \
     lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
     lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
