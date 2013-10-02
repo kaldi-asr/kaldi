@@ -542,8 +542,18 @@ void CuVectorBase<Real>::AddDiagMatMat(
     MatrixIndexT N_row_stride = N.Stride(), N_col_stride = 1;
     if (transN == kTrans) std::swap(N_row_stride, N_col_stride);
 
+
+    // This kernel can take a variable grid dimension, it makes use
+    // of the extra threads by partitioning each vector-vector dot
+    // product into multiple pieces.
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim,CU1DBLOCK));
+
+    int power_of_two = 1;
+    while (M_col_dim > 10 * power_of_two && dimGrid < 32 && power_of_two < 256) {
+      power_of_two *= 2;
+      dimGrid = n_blocks(dim * power_of_two, CU1DBLOCK);
+    }
     
     cuda_add_diag_mat_mat(dimGrid, dimBlock, alpha, data_, dim,
                           M.Data(), M_col_dim, M_row_stride, M_col_stride,

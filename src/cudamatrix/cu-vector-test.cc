@@ -583,6 +583,8 @@ static void CuVectorUnitTestAddDiagMatMat() {
       d.CopyDiagFromMat(MN);
       w2.Scale(beta);
       w2.AddVec(alpha, d);
+      KALDI_LOG << "w = " << w;
+      KALDI_LOG << "w2 = " << w2;
       AssertEqual(w, w2);
     }
   }

@@ -47,7 +47,7 @@ static Real _sum_reduce(Real buffer[]) {
       buffer[threadIdx.x] += temp;
     }
     __syncthreads();
-    nTotalThreads = ((1+nTotalThreads) >> 1);	// divide by two.
+    nTotalThreads = halfPoint;	// divide by two.
   }
   // the result
   return buffer[0];
@@ -637,10 +637,9 @@ static void _vec_max(const Real* v, Real* value, int dim) {
 // _trace_mat_mat expects to be called with 1 blocks, each of dimension
 // CU1DBLOCK.  Each block outputs a partial sum to value[blockIdx.x],
 // i.e. value[0 through 0].
-template<typename Real>
+template<typename Real, int num_blocks>
 __global__
 static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA, int B_stride, Real* value) {
-  const int num_blocks = 2;
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
 
   if(blockIdx.x > num_blocks || threadIdx.x > CU1DBLOCK) return;
@@ -675,20 +674,19 @@ static void _trace_mat_mat(const Real* A, const Real* B, MatrixDim dA, int B_str
 // _trace_mat_mat_trans expects to be called with 4 blocks, each of dimension
 // CU1DBLOCK.  Each block outputs a partial sum to value[blockIdx.x],
 // i.e. value[0 through 3].
-template<typename Real>
+template<typename Real, int num_blocks>
 __global__
 static void _trace_mat_mat_trans(const Real* A, const Real* B, MatrixDim dA, int B_stride, Real* value) {
-  const int num_blocks = 4;
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
 
   if(blockIdx.x > num_blocks || threadIdx.x > CU1DBLOCK) return;  
   
   int num_elements = dA.rows * dA.cols,
       num_threads = CU1DBLOCK * num_blocks;
-  int block_size = (num_elements + num_threads - 1) / num_threads;
-  int loop_start = i * block_size, loop_end = (i + 1) * block_size;
-  if (loop_end > num_elements) 
-    loop_end = num_elements;
+  // int block_size = (num_elements + num_threads - 1) / num_threads;
+  // int loop_start = i * block_size, loop_end = (i + 1) * block_size;
+  // if (loop_end > num_elements) 
+  //  loop_end = num_elements;
 
   Real sum = 0.0;
   // for (int j = loop_start; j < loop_end; j++) {
@@ -747,21 +745,62 @@ static void _add_diag_mat_trans(Real alpha, Real* v, const Real* mat, Real beta,
 // col_stride arguments for M and N, and swapping them allows us to transpose
 // those matrices.  Note: we imagine row-major indexing here, just like Kaldi 
 // and CBLAS (but unlike CUBLAS).
+// This kernel expects the blockDim to be (CU1DBLOCK, 1) and the
+// gridDim times CU1DBLOCK to be at least num-rows-of-v, but if the gridDim
+// times CU1DBLOCK is larger than that, it will make good use of the
+// extra threads.  Note: for best efficiency, the gridDim should be approximately
+// (num-rows-of-v / CU1DBLOCK) times a power of 2.
 template<typename Real>
 __global__
 static void _add_diag_mat_mat(
        Real alpha, Real* v, int v_dim, const Real* M, int M_cols, int M_row_stride,
        int M_col_stride, const Real *N, int N_row_stride, int N_col_stride, Real beta) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int num_threads = gridDim.x * blockDim.x,
+      threads_per_element = num_threads / v_dim;
+  // The next loop makes sure threads_per_element
+  // divides CU1DBLOCK, so each group of threads is within a
+  // block.
+  while (CU1DBLOCK % threads_per_element != 0)
+    threads_per_element--;
+  
+  // we actually assume blockDim.x == CU1DBLOCK here.
+  // Each diagonal element of v is processed by "threads_per_element" threads.
+  __shared__ Real temp_data[CU1DBLOCK];
 
-  if (i < v_dim) {
-    Real sum = 0.0;
-    for (int32_cuda j = 0; j < M_cols; j++) {
-      int32_cuda M_index = i * M_row_stride + j * M_col_stride,
-             N_index = j * N_row_stride + i * N_col_stride;
-      sum += M[M_index] * N[N_index];
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int v_idx = i / threads_per_element,   // v_ids is the index into v that we are supposed to
+      sub_idx = i % threads_per_element; // add to; 0 <= sub_idx < threads_per_element tells 
+                                         // us which block of elements we sum up.
+  if (v_idx >= v_dim) return;
+      
+  Real sum = 0.0;
+  for (int j = sub_idx; j < M_cols; j += threads_per_element) {
+    int M_index = v_idx * M_row_stride + j * M_col_stride,
+        N_index = j * N_row_stride + v_idx * N_col_stride;
+    sum += M[M_index] * N[N_index];
+  }
+  temp_data[threadIdx.x] = sum;
+
+  // start_idx = threadIdx.x - sub_idx; // start of the position in temp_data
+                                     // that we want to sum up.
+  // The following is a tree-based reduction of the elements of temp_data from
+  // start_idx to start_idx + threads_per_element - 1; our own index is "sub_idx".
+  __syncthreads();
+  int num_total_threads = threads_per_element;
+  while (num_total_threads > 1) {
+    int half_point = ((1 + num_total_threads) >> 1);
+    if (sub_idx < half_point) {
+      Real temp = 0.0;
+      if (sub_idx + half_point < num_total_threads) {
+        temp = temp_data[threadIdx.x + half_point];
+      }
+      temp_data[threadIdx.x] += temp;
     }
-    v[i] = beta * v[i] + alpha * sum;
+    __syncthreads();
+    num_total_threads = half_point;
+  }
+  if (sub_idx == 0) {
+    v[v_idx] = beta * v[v_idx] + alpha * temp_data[threadIdx.x];
   }
 }
 
@@ -1797,11 +1836,11 @@ void cudaF_vec_max(const float* v, float* value, int dim) {
 }
 
 void cudaF_trace_mat_mat_trans(const float* A, const float* B, MatrixDim dA, int B_stride, float* value) {
-  _trace_mat_mat_trans<<<4,CU1DBLOCK>>>(A,B,dA,B_stride,value);
+  _trace_mat_mat_trans<float,4> <<<4,CU1DBLOCK>>>(A,B,dA,B_stride,value);
 }
 
 void cudaF_trace_mat_mat(const float* A, const float* B, MatrixDim dA, int B_stride, float* value) {
-  _trace_mat_mat<<<2,CU1DBLOCK>>>(A,B,dA,B_stride,value);
+  _trace_mat_mat<float,2> <<<2,CU1DBLOCK>>>(A,B,dA,B_stride,value);
 }
 
 void cudaF_add_diag_mat_trans(int Gr, int Bl, float alpha, float* v, const float* mat, float beta,  MatrixDim dmat, int dim) {
@@ -2167,11 +2206,11 @@ void cudaD_vec_max(const double* v, double* value, int dim) {
 }
 
 void cudaD_trace_mat_mat_trans(const double* A, const double* B, MatrixDim dA, int B_stride, double* value) {
-  _trace_mat_mat_trans<<<4,CU1DBLOCK>>>(A,B,dA,B_stride,value);
+  _trace_mat_mat_trans<double,4> <<<4,CU1DBLOCK>>>(A,B,dA,B_stride,value);
 }
 
 void cudaD_trace_mat_mat(const double* A, const double* B, MatrixDim dA, int B_stride, double* value) {
-  _trace_mat_mat<<<2,CU1DBLOCK>>>(A,B,dA,B_stride,value);
+  _trace_mat_mat<double,2> <<<2,CU1DBLOCK>>>(A,B,dA,B_stride,value);
 }
 
 void cudaD_add_diag_mat_trans(int Gr, int Bl, double alpha, double* v, const double* mat, double beta,  MatrixDim dmat, int dim) {

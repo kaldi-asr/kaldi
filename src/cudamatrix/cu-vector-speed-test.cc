@@ -95,6 +95,29 @@ template<typename Real> void TestCuVectorVecVecOne(int32 dim) {
 
 
 
+
+template<typename Real> void TestCuVectorAddDiagMatMat(int32 dim) {
+  BaseFloat time_in_secs = 0.05;
+  CuVector<Real> v(dim);
+  v.SetRandn();
+  CuMatrix<Real> N(dim, dim), O(dim, dim);
+  N.SetRandn(); O.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    v.AddDiagMatMat(1.0, N, kNoTrans, O, kNoTrans, 1.0);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::AddDiagMatMat" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+
 template<typename Real> void CudaVectorSpeedTest() {
   std::vector<int32> sizes;
   sizes.push_back(16);
@@ -115,6 +138,10 @@ template<typename Real> void CudaVectorSpeedTest() {
           TestCuVectorVecVecOne<Real>(sizes[s]);
   }
 
+  for (int32 s = 0; s < ns; s++) {
+    TestCuVectorAddDiagMatMat<Real>(sizes[s]);
+  }
+  
 }
 
 
