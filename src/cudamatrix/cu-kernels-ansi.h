@@ -93,7 +93,7 @@ void cudaF_add_diag_mat_trans(int Gr, int Bl, float alpha, float* v, const float
 void cudaF_add_diag_mat(int Gr, int Bl, float alpha, float* v, const float* mat, float beta, MatrixDim dmat, int dim);
 void cudaF_add_diag_mat_mat(int Gr, int Bl, float alpha, float* v, int v_dim, const float* M, 
                             int M_cols, int M_row_stride, int M_col_stride, const float *N, int N_row_stride, 
-                            int N_col_stride, float beta);  
+                            int N_col_stride, int threads_per_element, float beta);  
 void cudaF_add_vec_vec(int Gr, int Bl, float alpha, float* v, const float* x, const float* y, float beta, int dim);
 void cudaF_copy_col_from_mat(int Gr, int Bl, float* v, int col, const float* mat, MatrixDim dmat, int dim);
 void cudaF_copy_col_from_mat_df(int Gr, int Bl, double* v, int col, const float* mat, MatrixDim dmat, int dim);
@@ -205,7 +205,7 @@ void cudaD_add_diag_mat_trans(int Gr, int Bl, double alpha, double* v, const dou
 void cudaD_add_diag_mat(int Gr, int Bl, double alpha, double* v, const double* mat, double beta, MatrixDim dmat, int dim);
 void cudaD_add_diag_mat_mat(int Gr, int Bl, double alpha, double* v, int v_dim, const double* M, 
                             int M_cols, int M_row_stride, int M_col_stride, const double *N, int N_row_stride, 
-                            int N_col_stride, double beta);  
+                            int N_col_stride, int threads_per_element, double beta);  
 void cudaD_add_vec_vec(int Gr, int Bl, double alpha, double* v, const double* x, const double* y, double beta, int dim);
 void cudaD_copy_col_from_mat(int Gr, int Bl, double* v, int col, const double* mat, MatrixDim dmat, int dim);
 void cudaD_copy_col_from_mat_df(int Gr, int Bl, double* v, int col, const double* mat, MatrixDim dmat, int dim);

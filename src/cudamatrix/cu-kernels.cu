@@ -754,14 +754,8 @@ template<typename Real>
 __global__
 static void _add_diag_mat_mat(
        Real alpha, Real* v, int v_dim, const Real* M, int M_cols, int M_row_stride,
-       int M_col_stride, const Real *N, int N_row_stride, int N_col_stride, Real beta) {
-  int num_threads = gridDim.x * blockDim.x,
-      threads_per_element = num_threads / v_dim;
-  // The next loop makes sure threads_per_element
-  // divides CU1DBLOCK, so each group of threads is within a
-  // block.
-  while (CU1DBLOCK % threads_per_element != 0)
-    threads_per_element--;
+       int M_col_stride, const Real *N, int N_row_stride, int N_col_stride,
+       int threads_per_element, Real beta) {
   
   // we actually assume blockDim.x == CU1DBLOCK here.
   // Each diagonal element of v is processed by "threads_per_element" threads.
@@ -1871,9 +1865,9 @@ void cudaF_add_diag_mat(int Gr, int Bl, float alpha, float* v, const float* mat,
 
 void cudaF_add_diag_mat_mat(int Gr, int Bl, float alpha, float* v, int v_dim, const float* M, 
      int M_cols, int M_row_stride, int M_col_stride, const float *N, int N_row_stride, 
-     int N_col_stride, float beta) {
+                            int N_col_stride, int threads_per_element, float beta) {
    _add_diag_mat_mat<<<Gr,Bl>>>(alpha, v, v_dim, M, M_cols, M_row_stride, M_col_stride,
-                                N, N_row_stride, N_col_stride, beta);
+                                N, N_row_stride, N_col_stride, threads_per_element, beta);
 }
 
 void cudaF_add_vec_vec(int Gr, int Bl, float alpha, float* v, const float* x, const float* y, float beta, int dim) {
@@ -2245,9 +2239,9 @@ void cudaD_add_diag_mat(int Gr, int Bl, double alpha, double* v, const double* m
 
 void cudaD_add_diag_mat_mat(int Gr, int Bl, double alpha, double* v, int v_dim, const double* M, 
      int M_cols, int M_row_stride, int M_col_stride, const double *N, int N_row_stride, 
-     int N_col_stride, double beta) {
+     int N_col_stride, int threads_per_element, double beta) {
    _add_diag_mat_mat<<<Gr,Bl>>>(alpha, v, v_dim, M, M_cols, M_row_stride, M_col_stride,
-                                N, N_row_stride, N_col_stride, beta);
+                                N, N_row_stride, N_col_stride, threads_per_element, beta);
 }
 
 void cudaD_add_vec_vec(int Gr, int Bl, double alpha, double* v, const double* x, const double* y, double beta, int dim) {

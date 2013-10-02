@@ -1440,7 +1440,8 @@ static void UnitTestCuMatrixSetRandUniform() {
 
 template<typename Real> 
 static void UnitTestCuMatrixObjfDeriv() {
-  int32 n_r = 100 + rand() % 256, n_c = 100 + rand() % 256;
+  // Previously tested for larger dims, but test was slow.
+  int32 n_r = 10 + rand() % 20, n_c = 10 + rand() % 20;
   CuMatrix<Real> A(n_r, n_c), B(n_r, n_c);
   A.SetRandn();
   B.SetRandn();

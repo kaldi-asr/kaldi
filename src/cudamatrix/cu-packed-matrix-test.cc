@@ -153,9 +153,7 @@ static void UnitTestCuPackedMatrixTrace() {
     A.SetRandn();
     CuPackedMatrix<Real> B(A);
     
-#ifdef KALDI_PARANOID
-    KALDI_ASSERT(A.Trace(), B.Trace());
-#endif
+    AssertEqual(A.Trace(), B.Trace());
   }
 }
 

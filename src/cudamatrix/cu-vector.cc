@@ -564,15 +564,16 @@ void CuVectorBase<Real>::AddDiagMatMat(
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim,CU1DBLOCK));
 
-    int power_of_two = 1;
-    while (M_col_dim > 10 * power_of_two && dimGrid < 32 && power_of_two < 256) {
-      power_of_two *= 2;
-      dimGrid = n_blocks(dim * power_of_two, CU1DBLOCK);
+    int threads_per_element = 1;
+    while (M_col_dim > 10 * threads_per_element && dimGrid < 32 && threads_per_element < 256) {
+      threads_per_element *= 2;
+      dimGrid = n_blocks(dim * threads_per_element, CU1DBLOCK);
     }
     
     cuda_add_diag_mat_mat(dimGrid, dimBlock, alpha, data_, dim,
                           M.Data(), M_col_dim, M_row_stride, M_col_stride,
-                          N.Data(), N_row_stride, N_col_stride, beta);
+                          N.Data(), N_row_stride, N_col_stride,
+                          threads_per_element, beta);
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
   } else
@@ -841,8 +842,15 @@ void CuVector<Real>::Resize(MatrixIndexT dim, MatrixResizeType t) {
     this->Destroy();
   if (dim == 0) return;
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+#if 0
+    // put a NaN past the end, I did this to try to find extra bugs.   None seen.
+    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&this->data_), (dim + 1) * sizeof(Real)));
+    Real nan = std::numeric_limits<Real>::infinity() - std::numeric_limits<Real>::infinity();
+    CU_SAFE_CALL(cudaMemcpy(this->data_ + dim, &nan, sizeof(Real), cudaMemcpyHostToDevice));    
+#else
     CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&this->data_), dim * sizeof(Real)));
+#endif
     this->dim_ = dim;
     if (t == kSetZero) this->SetZero();
   } else
