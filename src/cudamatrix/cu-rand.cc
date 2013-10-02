@@ -96,9 +96,10 @@ template<typename Real> void CuRand<Real>::RandGaussian(CuMatrixBase<Real> *tgt)
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
-
     int32 tgt_size = tgt->NumRows() * tgt->Stride();
-    if (tgt_size != state_size_) SeedGpu(tgt_size);
+    if (tgt_size == 0)
+      return;
+    if (tgt_size > state_size_) SeedGpu(tgt_size);
     
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->num_cols_, CU2DBLOCK), n_blocks(tgt->num_rows_, CU2DBLOCK));

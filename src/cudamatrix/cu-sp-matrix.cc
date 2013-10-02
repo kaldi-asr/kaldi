@@ -11,49 +11,61 @@
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-sp-matrix.h"
 #include "cudamatrix/cu-matrix.h"
+#include "cudamatrix/cublas-wrappers.h"
 
 namespace kaldi {
 
 template<typename Real>
 void CuSpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
                                    SpCopyType copy_type) {
-  KALDI_ASSERT(this->NumRows() == M.NumRows() && M.NumRows() == M.NumCols());
+  KALDI_ASSERT(this->num_rows_ == M.NumRows() &&
+               this->num_rows_ == M.NumCols());
+  if (this->num_rows_ == 0)
+    return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     MatrixIndexT D = this->NumRows();
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(M.NumCols(), CU2DBLOCK), n_blocks(M.NumRows(), CU2DBLOCK));
+    if (D == 0)
+      return;
     switch (copy_type) {
       case kTakeMeanAndCheck:
         KALDI_ERR << "kTakeMeanAndCheck not supported!";
+      // The grid/block dimensions have been very roughly tuned for the
+      // individual cases.
       case kTakeMean:
         {
-          cuda_take_mean(dimGrid, dimBlock, M.Data(), this->data_, M.Dim(), D);
+          dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+          dim3 dimGrid(n_blocks(D, CU2DBLOCK), n_blocks(D, CU2DBLOCK));
+          cuda_take_mean(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
           CU_SAFE_CALL(cudaGetLastError());
         }
         break;
       case kTakeLower:
         {
-          cuda_take_lower(dimGrid, dimBlock, M.Data(), this->data_, M.Dim(), D);
+          dim3 dimBlock(1, CU1DBLOCK);
+          dim3 dimGrid(D, n_blocks(D, CU1DBLOCK));
+          cuda_take_lower(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
           CU_SAFE_CALL(cudaGetLastError());
           cudaThreadSynchronize();
         }
         break;
       case kTakeUpper:
         {
-          cuda_take_upper(dimGrid, dimBlock, M.Data(), this->data_, M.Dim(), D);
+          dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+          dim3 dimGrid(n_blocks(D, CU2DBLOCK), n_blocks(D, CU2DBLOCK));
+          cuda_take_upper(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
           CU_SAFE_CALL(cudaGetLastError());
         }
         break;
       default:
         KALDI_ASSERT("Invalid argument to CuSpMatrix::CopyFromMat");
     }
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuSpMatrix::CopyFromMat(from CuMatrixBase)", tim.Elapsed());
   } else
 #endif
   {
-    Mat().CopyFromMat(M.Mat(), kTakeLower);
+    Mat().CopyFromMat(M.Mat(), copy_type);
   }
 }
 
@@ -63,7 +75,7 @@ void CuSpMatrix<Real>::Invert() {
   if (CuDevice::Instantiate().Enabled()) {
     CuMatrix<Real> mat(this->num_rows_, this->num_rows_);
     mat.CopyFromSp(*this);
-    mat.InvertPSD();
+    mat.SyInvertPosDef();
     this->CopyFromMat(mat);
   } else
 #endif
@@ -224,18 +236,6 @@ void CuSpMatrix<Real>::InvertPosDefApprox(BaseFloat max_error) {
 }
 
 
-
-#if HAVE_CUDA == 1
-inline void CublasSpr(char uplo, int n, float alpha, const float *x,
-                      int incx, float *AP) {
-  cublasSspr(uplo, n, alpha, x, incx, AP);
-}
-inline void CublasSpr(char uplo, int n, double alpha, const double *x,
-                      int incx, double *AP) {
-  cublasDspr(uplo, n, alpha, x, incx, AP);
-}
-#endif
-
 template<typename Real>
 void CuSpMatrix<Real>::AddVec2(const Real alpha, const CuVectorBase<Real> &v) {
   KALDI_ASSERT(v.Dim() == this->NumRows());
@@ -246,8 +246,8 @@ void CuSpMatrix<Real>::AddVec2(const Real alpha, const CuVectorBase<Real> &v) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(nr, CU2DBLOCK), n_blocks(nr, CU2DBLOCK));
 
-    CublasSpr('U', this->num_rows_, alpha, v.Data(),
-              1, this->Data());
+    cublas_spr('U', this->num_rows_, alpha, v.Data(),
+               1, this->Data());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile("CuSpMatrix::AddVec2", tim.Elapsed());
   } else
@@ -256,19 +256,6 @@ void CuSpMatrix<Real>::AddVec2(const Real alpha, const CuVectorBase<Real> &v) {
     Mat().AddVec2(alpha, v.Vec());
   }
 }
-
-#if HAVE_CUDA == 1
-inline void CublasSyrk(char uplo, char trans, int n, int k,
-                       float alpha, const float *A, int lda,
-                       float beta, float *C, int ldc) {
-  cublasSsyrk(uplo,trans,n,k,alpha,A,lda,beta,C,ldc);
-}
-inline void CublasSyrk(char uplo, char trans, int n, int k,
-                       double alpha, const double *A, int lda,
-                       double beta, double *C, int ldc) {
-  cublasDsyrk(uplo,trans,n,k,alpha,A,lda,beta,C,ldc);
-}
-#endif
 
 template<typename Real>
 void CuSpMatrix<Real>::AddMat2(const Real alpha, const CuMatrixBase<Real> &M,
@@ -291,8 +278,8 @@ void CuSpMatrix<Real>::AddMat2(const Real alpha, const CuMatrixBase<Real> &M,
     char trans = (transM == kTrans ? 'N' : 'T');
 
     CuMatrix<Real> tmp_mat(*this);
-    CublasSyrk('U', trans, this_dim, m_other_dim, alpha, M.Data(),
-               M.Stride(), beta, tmp_mat.Data(), tmp_mat.Stride());
+    cublas_syrk('U', trans, this_dim, m_other_dim, alpha, M.Data(),
+                M.Stride(), beta, tmp_mat.Data(), tmp_mat.Stride());
     this->CopyFromMat(tmp_mat, kTakeLower);
     
     CuDevice::Instantiate().AccuProfile("CuSpMatrix::AddMat2", tim.Elapsed());
@@ -306,18 +293,6 @@ void CuSpMatrix<Real>::AddMat2(const Real alpha, const CuMatrixBase<Real> &M,
 /**
  * C++ templatd wrapper of ANSI-C CUBLAS function GEMM (matrix multiply)
  */
-#if HAVE_CUDA == 1
-template<typename Real> inline Real cublas_dot(int n, const Real *x, int incx, const Real* y, int incy) {
-  KALDI_ERR << __func__ << " Not implemented!";
-}
-template<> inline float cublas_dot<float>(int n, const float *x, int incx, const float *y, int incy) {
-  return cublasSdot(n, x, incx, y, incy);
-}
-template<> inline double cublas_dot<double>(int n, const double *x, int incx, const double *y, int incy) {
-  return cublasDdot(n, x, incx, y, incy);
-}
-#endif
-
 
 template<typename Real, typename OtherReal>
 Real TraceSpSp(const CuSpMatrix<Real> &A, const CuSpMatrix<OtherReal> &B) {

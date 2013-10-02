@@ -32,6 +32,7 @@
 #include "cudamatrix/cu-kernels.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-packed-matrix.h"
+#include "cudamatrix/cublas-wrappers.h"
 
 namespace kaldi {
 
@@ -51,12 +52,14 @@ void CuPackedMatrix<Real>::Resize(MatrixIndexT rows,
   if (rows == 0) return;  
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
     this->num_rows_ = rows;
     size_t nr = static_cast<size_t>(num_rows_),
         num_bytes = ((nr * (nr+1)) / 2) * sizeof(Real);
     CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&this->data_), num_bytes));
 
     if (resize_type == kSetZero) this->SetZero();
+    CuDevice::Instantiate().AccuProfile("CuPackedMatrix::Resize", tim.Elapsed());    
   } else
 #endif
   { // Let the initializer of SpMatrix<Real> handle the allocation,
@@ -251,22 +254,6 @@ void CuPackedMatrix<Real>::SetZero() {
   }
 }
 
-/**
- * C++ templatd wrapper of ANSI-C CUBLAS function GEMM (matrix multiply)
- */
-#if HAVE_CUDA == 1
-template<typename Real> inline Real cublas_dot(int n, const Real *x, int incx, const Real *y, int incy) {
-  KALDI_ERR << __func__ << " Not implemented!";
-}
-template<> inline float cublas_dot<float>(int n, const float *x, int incx, const float *y, int incy) {
-  return cublasSdot(n, x, incx, y, incy);
-}
-template<> inline double cublas_dot<double>(int n, const double *x, int incx, const double *y, int incy) {
-  return cublasDdot(n, x, incx, y, incy);
-}
-#endif
-
-
 template<typename Real>
 Real CuPackedMatrix<Real>::Trace() const {
   Real result = 0.0;
@@ -302,18 +289,6 @@ void CuPackedMatrix<Real>::SetDiag(Real alpha) {
   }
 }
 
-#if HAVE_CUDA == 1
-template<typename Real> inline void cublas_scal(int n, Real alpha, Real* mat, int incx) {
-  KALDI_ERR << __func__ << " Not implemented!";
-}
-template<> inline void cublas_scal<float>(int n, float alpha, float* mat, int incx) {
-  cublasSscal(n, alpha, mat, incx);
-}
-template<> inline void cublas_scal<double>(int n, double alpha, double* mat, int incx) {
-  cublasDscal(n, alpha, mat, incx);
-}
-#endif
-
 template<typename Real>
 void CuPackedMatrix<Real>::Scale(Real alpha) {
 #if HAVE_CUDA == 1
@@ -348,18 +323,6 @@ void CuPackedMatrix<Real>::ScaleDiag(Real alpha) {
     Mat().ScaleDiag(alpha);
   }
 }
-
-#if HAVE_CUDA == 1
-template<typename Real> inline void cublas_axpy(int n, Real alpha, const Real* x, int incx, Real* y, int incy) {
-  KALDI_ERR << __func__ << " Not implemented!";
-}
-template<> inline void cublas_axpy<float>(int n, float alpha, const float* x, int incx, float* y, int incy) {
-  cublasSaxpy(n, alpha, x, incx, y, incy);
-}
-template<> inline void cublas_axpy<double>(int n, double alpha, const double* x, int incx, double* y, int incy) {
-  cublasDaxpy(n, alpha, x, incx, y, incy);
-}
-#endif
 
 template<typename Real>
 void CuPackedMatrix<Real>::AddPacked(const Real alpha, const CuPackedMatrix<Real> &M) {

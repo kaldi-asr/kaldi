@@ -12,8 +12,17 @@
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-tp-matrix.h"
 #include "cudamatrix/cu-sp-matrix.h"
+#include "cudamatrix/cublas-wrappers.h"
 
 namespace kaldi {
+
+template<typename Real>
+CuTpMatrix<Real>::CuTpMatrix(const CuMatrixBase<Real> &orig, MatrixTransposeType trans):
+    CuPackedMatrix<Real>(orig.NumRows(), kUndefined) {
+  KALDI_ASSERT(orig.NumRows() == orig.NumCols());
+  this->CopyFromMat(orig, trans);
+}
+
 
 template<typename Real>
 void CuTpMatrix<Real>::Cholesky(const CuSpMatrix<Real> &orig) {
@@ -29,20 +38,6 @@ void CuTpMatrix<Real>::Cholesky(const CuSpMatrix<Real> &orig) {
   }
 }
 
-#if HAVE_CUDA
-template<typename Real> inline void cublas_trsm(int m, int n, Real alpha, const Real*\
-                                                A, int lda, Real* B, int ldb) {
-  KALDI_ERR << __func__ << " Not implemented!";
-}
-template<> inline void cublas_trsm<float>(int m, int n, float alpha, const float* A, \
-                                          int lda, float* B, int ldb) {
-  cublasStrsm('l','u','n','n',m,n,alpha,A,lda,B,ldb);
-}
-template<> inline void cublas_trsm<double>(int m, int n, double alpha, const double* \
-                                           A, int lda, double* B, int ldb) {
-  cublasDtrsm('l','u','n','n',m,n,alpha,A,lda,B,ldb);
-}
-#endif
 
 template<typename Real>
 void CuTpMatrix<Real>::Invert() {
@@ -70,18 +65,22 @@ void CuTpMatrix<Real>::Invert() {
 }
 
 template<typename Real>
-void CuTpMatrix<Real>::CopyFromMat(CuMatrixBase<Real> &M,
+void CuTpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
                                    MatrixTransposeType Trans) {
 #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) {
+    MatrixIndexT num_rows = this->num_rows_;
+    KALDI_ASSERT(num_rows == M.NumRows() && this->num_rows_ == M.NumCols());
+    if (num_rows == 0)
+      return;
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(M.NumCols(), CU2DBLOCK), n_blocks(M.NumRows(), CU2DBLOCK));
+    dim3 dimGrid(n_blocks(num_rows, CU2DBLOCK), n_blocks(num_rows, CU2DBLOCK));
     if (Trans == kNoTrans) {
-      cuda_take_lower(dimGrid, dimBlock, M.Data(), this->data_, M.Dim(), this->NumRows());
+      cuda_take_lower(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
       cudaThreadSynchronize();
     } else {
-      cuda_take_upper(dimGrid, dimBlock, M.Data(), this->data_, M.Dim(), this->NumRows());
+      cuda_take_upper(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
       cudaThreadSynchronize();
     }      
   } else
@@ -91,6 +90,21 @@ void CuTpMatrix<Real>::CopyFromMat(CuMatrixBase<Real> &M,
   }
 }
 
+template<class Real>
+TpMatrix<Real>::TpMatrix(const CuTpMatrix<Real> &cu) {
+  this->Resize(cu.NumRows());
+  this->CopyFromMat(cu);
+}
+template TpMatrix<float>::TpMatrix(const CuTpMatrix<float> &cu);
+template TpMatrix<double>::TpMatrix(const CuTpMatrix<double> &cu);
+
+template<class Real>
+void TpMatrix<Real>::CopyFromMat(const CuTpMatrix<Real> &other) {
+  other.CopyToPacked(this);
+}
+// instantiate the template above.
+template void TpMatrix<float>::CopyFromMat(const CuTpMatrix<float> &other);
+template void TpMatrix<double>::CopyFromMat(const CuTpMatrix<double> &other);
 
 template class CuTpMatrix<float>;
 template class CuTpMatrix<double>;

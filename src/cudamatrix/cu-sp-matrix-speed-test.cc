@@ -81,6 +81,29 @@ static void UnitTestCuSpMatrixInvert(int32 dim) {
 
 
 template<typename Real>
+static void UnitTestCuSpMatrixCopyFromMat(int32 dim, SpCopyType copy_type) {
+  BaseFloat time_in_secs = 0.1;
+  int32 iter = 0;
+  Timer tim;
+  CuMatrix<Real> A(dim, dim);
+  CuSpMatrix<Real> S(dim);
+
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    S.CopyFromMat(A, copy_type);
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuSpMatrix::CopyFromMat" << NameOf<Real>()
+            << ", with copy-type "
+            <<(copy_type == kTakeLower ? "kTakeLower" :
+               (copy_type == kTakeUpper ? "kTakeUpper" :
+                "kTakeMeanAndCheck")) << " and dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+
+template<typename Real>
 static void UnitTestCuMatrixApproxInvert(int32 dim) {
   BaseFloat time_in_secs = 0.5;
   int32 iter = 0;
@@ -131,6 +154,9 @@ template<typename Real> void CuSpMatrixSpeedTest() {
   for (int32 s = 0; s < ns; s++) {
     UnitTestCuSpMatrixInvert<Real>(sizes[s]);
     UnitTestCuMatrixApproxInvert<Real>(sizes[s]);
+    UnitTestCuSpMatrixCopyFromMat<Real>(sizes[s], kTakeLower);
+    UnitTestCuSpMatrixCopyFromMat<Real>(sizes[s], kTakeUpper);
+    UnitTestCuSpMatrixCopyFromMat<Real>(sizes[s], kTakeMean);
   }
 }
 

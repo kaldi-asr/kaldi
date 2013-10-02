@@ -191,10 +191,12 @@ class CuMatrixBase {
   void DiffXent(const CuArray<int32> &tgt,
                 CuVector<Real> *log_post_tgt);  
 
-  
+  /// This method may be only called for symmetric matrices.  
   void Cholesky();
   
-  void InvertPSD(); ///< Inversion for positive semi-definite symmetric matrices.
+  void SyInvertPosDef(); ///< Inversion for positive definite symmetric matrices.
+                         ///< This routine only deals with the lower-triangular part.
+  
   void ApplyPow(Real power);
   void ApplyHeaviside(); ///< For each element, sets x = (x > 0 ? 1.0 : 0.0)
   void ApplyFloor(Real floor_val);
@@ -245,11 +247,16 @@ class CuMatrixBase {
   void AddMatMat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
                  const CuMatrixBase<Real> &B, MatrixTransposeType transB, Real beta);
 
+  /// *this = beta * *this + alpha * M M^T, but only update the lower triangle
+  /// of *this.
+  void SyAddMat2(const Real alpha, const CuMatrixBase<Real> &M,
+                 MatrixTransposeType transA, Real beta);
+
+  
   /// This function is like AddMatMat but for where the second argument is of
   /// type CuBlockMatrix (a block-diagonal matrix of blocks).
   void AddMatBlock(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
                    const CuBlockMatrix<Real> &B, MatrixTransposeType transB, Real beta);
-
   
   /// *this = beta * *this + alpha * diag(v) * M [or M^T].
   /// The same as adding M but scaling each row M_i by v(i).

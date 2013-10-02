@@ -147,7 +147,7 @@ template<typename Real> static void UnitInvert() {
   A.CopyToMat(&B);
   KALDI_LOG << "B is : " << '\n';
   KALDI_LOG << B << '\n';
-  A.InvertPSD();
+  A.SyInvertPosDef();
   Matrix<Real> D(dim,dim);
   A.CopyToMat(&D);
   KALDI_LOG << "D is : " << '\n';
@@ -184,7 +184,7 @@ template<typename Real> static void UnitTestInvert() {
 
     A.CopyFromMat(B);
     
-    A.InvertPSD();
+    A.SyInvertPosDef();
     Matrix<Real> D(dim,dim);
     A.CopyToMat(&D);
     

@@ -238,6 +238,8 @@ inline void cblas_Xgemm(const double alpha,
               alpha, Adata, a_stride, Bdata, b_stride,
               beta, Mdata, stride); 
 }
+
+
 inline void cblas_Xsymm(const float alpha,
                         MatrixIndexT sz,
                         const float *Adata,MatrixIndexT a_stride,

@@ -15,40 +15,9 @@
 #include "cudamatrix/cu-rand.h"
 #include "cudamatrix/cu-tp-matrix.h"
 #include "cudamatrix/cu-sp-matrix.h"
+#include "cudamatrix/cublas-wrappers.h"
 
 namespace kaldi {
-
-
-#if HAVE_CUDA == 1
-inline float cublas_dot(int n, const float* x, int incx,
-                        const float* y, int incy) {
-  return cublasSdot(n,x,incx,y,incy);
-}
-inline double cublas_dot(int n, const double* x, int incx,
-                         const double* y, int incy) {
-  return cublasDdot(n,x,incx,y,incy);
-}
-inline float cublas_asum(int n, const float* x, int incx) {
-  return cublasSasum(n, x, incx);
-}
-inline double cublas_asum(int n, const double* x, int incx) {
-  return cublasDasum(n, x, incx);
-}
-inline float cublas_nrm2(int n, const float* x, int incx) {
-  return cublasSnrm2(n, x, incx);
-}
-inline double cublas_nrm2(int n, const double* x, int incx) {
-  return cublasDnrm2(n, x, incx);
-}
-inline void cublas_copy(int n, const float* x, int incx,
-                        float* y, int incy) {
-  cublasScopy(n,x,incx,y,incy);
-}
-inline void cublas_copy(int n, const double* x, int incx,
-                          double* y, int incy) {
-  cublasDcopy(n,x,incx,y,incy);
-}
-#endif
 
 
 template<typename Real>
@@ -411,27 +380,6 @@ void CuVectorBase<Real>::ApplyLog() {
   }
 }
 
-#if HAVE_CUDA == 1
-inline void cublas_gemv(char trans, int m, int n, float alpha,
-                        const float* A, int lda, const float* x,
-                        int incx, float beta, float* y, int incy) {
-  cublasSgemv(trans,m,n,alpha,A,lda,x,incx,beta,y,incy);
-}
-inline void cublas_gemv(char trans, int m, int n, double alpha,
-                        const double* A, int lda, const double* x,
-                        int incx, double beta, double* y, int incy) {
-  cublasDgemv(trans,m,n,alpha,A,lda,x,incx,beta,y,incy);
-}
-
-inline void cublas_spmv(char uplo, int n, float alpha, const float *AP, const float *x,
-                        int incx, float beta, float *y, int incy) {
-  cublasSspmv(uplo, n, alpha, AP, x, incx, beta, y, incy);
-}
-inline void cublas_spmv(char uplo, int n, double alpha, const double *AP, const double *x,
-                        int incx, double beta, double *y, int incy) {
-  cublasDspmv(uplo, n, alpha, AP, x, incx, beta, y, incy);
-}
-#endif
 
 template<typename Real>
 void CuVectorBase<Real>::AddMatVec(const Real alpha,
@@ -608,22 +556,6 @@ void CuVectorBase<Real>::AddTpVec(const Real alpha, const CuTpMatrix<Real> &M,
     Vec().AddTpVec(alpha, M.Mat(), trans, v.Vec(), beta);
   }
 }
-
-#if HAVE_CUDA == 1
-// Use caution with these, the 'transpose' argument is the opposite of what it
-// should really be, due to CUDA storing things in column major order.  We also
-// had to switch 'l' to 'u'; we view our packed matrices as lower-triangular,
-// row-by-row, but CUDA views the same layout as upper-triangular,
-// column-by-column.
-inline void cublas_tpmv(char trans, int n,
-                        const float* Ap, float* x, int incx) {
-  return cublasStpmv('u', trans, 'n', n, Ap, x, incx);
-}
-inline void cublas_tpmv(char trans, int n, const double* Ap,
-                        double* x,int incx) {
-  return cublasDtpmv('u', trans, 'n', n, Ap, x, incx);
-}
-#endif
 
 
 template<typename Real>
@@ -843,6 +775,7 @@ void CuVector<Real>::Resize(MatrixIndexT dim, MatrixResizeType t) {
   if (dim == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
 #if 0
     // put a NaN past the end, I did this to try to find extra bugs.   None seen.
     CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&this->data_), (dim + 1) * sizeof(Real)));
@@ -853,6 +786,7 @@ void CuVector<Real>::Resize(MatrixIndexT dim, MatrixResizeType t) {
 #endif
     this->dim_ = dim;
     if (t == kSetZero) this->SetZero();
+    CuDevice::Instantiate().AccuProfile("CuVector::Resize", tim.Elapsed());    
   } else
 #endif
   {

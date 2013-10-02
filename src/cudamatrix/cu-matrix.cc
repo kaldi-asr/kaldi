@@ -37,6 +37,7 @@
 #include "cudamatrix/cu-sp-matrix.h"
 #include "cudamatrix/cu-tp-matrix.h"
 #include "cudamatrix/cu-block-matrix.h"
+#include "cudamatrix/cublas-wrappers.h"
 
 namespace kaldi {
 
@@ -65,7 +66,7 @@ void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
     this->num_cols_ = cols; 
     this->stride_ = pitch / sizeof(Real);
     if (resize_type == kSetZero) this->SetZero();
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
+    CuDevice::Instantiate().AccuProfile("CuMatrix::Resize", tim.Elapsed());    
   } else
 #endif
   { // Let the initializer of Matrix<Real> handle the allocation,
@@ -232,7 +233,7 @@ void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<OtherReal> &M,
         cuda_copy_from_mat_trans(dimGrid, dimBlock, data_, M.data_, Dim(), M.Dim());
       }
     }
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuMatrixBase::CopyFromMat(from other CuMatrixBase)", tim.Elapsed());
   } else
 #endif
   {
@@ -259,6 +260,8 @@ template<typename OtherReal>
 void CuMatrixBase<Real>::CopyFromTp(const CuTpMatrix<OtherReal> &M,
                                     MatrixTransposeType Trans) {
   KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == num_rows_);
+  if (num_rows_ == 0)
+    return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -319,7 +322,7 @@ void CuMatrixBase<Real>::CopyFromMat(const MatrixBase<Real> &src,
       CU_SAFE_CALL(cudaMemcpy2D(data_, dst_pitch, src.Data(), src_pitch,
                                 width, src.NumRows(), cudaMemcpyHostToDevice));
       
-      CuDevice::Instantiate().AccuProfile("CuMatrix::CopyFromMatH2D",tim.Elapsed());
+      CuDevice::Instantiate().AccuProfile("CuMatrixBase::CopyFromMat(from CPU)",tim.Elapsed());
     } else {
       CuMatrix<Real> trans_mat(src); // Do the transpose on the GPU board.
       this->CopyFromMat(trans_mat, kTrans);
@@ -343,6 +346,8 @@ void CuMatrixBase<Real>::CopyFromMat(const MatrixBase<OtherReal> &src,
 template<typename Real>
 void CuMatrixBase<Real>::CopyFromSp(const CuSpMatrix<Real> &M) {
   KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == num_rows_);
+  if (num_rows_ == 0)
+    return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -825,30 +830,13 @@ void CuMatrixBase<Real>::AddVecToRows(Real alpha,
 
 
 
-/**
- * C++ templated wrapper of ANSI-C CUBLAS function GEMM (matrix multiply)
- */
-#if HAVE_CUDA == 1
-template<typename Real> inline void cublas_gemm(char transa, char transb, int m, int n,int k, Real alpha, const Real *A, int lda,const Real *B, int ldb, Real beta, Real *C, int ldc) {
-  KALDI_ERR << __func__ << " Not implemented!";
-}
-template<> inline void cublas_gemm<float>(char transa, char transb, int m, int n,int k, float alpha, const float *A, int lda,const float *B, int ldb, float beta, float *C, int ldc) {
-  cublasSgemm(transa,transb,m,n,k,alpha,A,lda,B,ldb,beta,C,ldc);
-}
-template<> inline void cublas_gemm<double>(char transa, char transb, int m, int n,int k, double alpha, const double *A, int lda,const double *B, int ldb, double beta, double *C, int ldc) {
-  cublasDgemm(transa,transb,m,n,k,alpha,A,lda,B,ldb,beta,C,ldc);
-}
-#endif
-
-
-
 /*
  * Method wrapping the CUBLAS function GEMM
  */
 template<typename Real>
 void CuMatrixBase<Real>::AddMatMat(
-    Real alpha, const CuMatrixBase<Real>& A, MatrixTransposeType transA,
-    const CuMatrixBase<Real>& B, MatrixTransposeType transB, Real beta) {
+    Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
+    const CuMatrixBase<Real> &B, MatrixTransposeType transB, Real beta) {
 
 
     // CUBLAS is col-major, cudamatrix is row-major, how to do the mapping?
@@ -882,6 +870,38 @@ void CuMatrixBase<Real>::AddMatMat(
     Mat().AddMatMat(alpha, A.Mat(), transA, B.Mat(), transB, beta);
   }
 }
+
+
+
+template<typename Real>
+void CuMatrixBase<Real>::SyAddMat2(
+    Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
+    Real beta) {
+  KALDI_ASSERT(num_rows_ == num_cols_ &&
+               ((transA == kNoTrans && A.num_rows_ == num_rows_) ||
+                (transA == kTrans && A.num_cols_ == num_cols_)));
+  if (num_rows_ == 0) return;
+  KALDI_ASSERT(A.data_ != data_);
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    char trans = (transA == kTrans ? 'N' : 'T');
+    MatrixIndexT A_other_dim = (transA == kNoTrans ? A.num_cols_ : A.num_rows_);
+    
+    cublas_syrk('U', trans, num_rows_, A_other_dim, alpha, A.Data(),
+                A.Stride(), beta, this->data_, this->stride_);
+
+    CU_SAFE_CALL(cublasGetError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().SyAddMat2(alpha, A.Mat(), transA, beta);
+  }
+}
+
 
 template<typename Real>
 void CuMatrixBase<Real>::AddDiagVecMat(
@@ -985,7 +1005,7 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
       }
     }
 // */
-    void* addr;
+    void *addr;
     CU_SAFE_CALL(cudaMalloc( (void**)&addr, sv_labels.size() * sizeof(MatrixElement<Real>)));
     CU_SAFE_CALL(cudaMemcpy(addr, sv_labels.data(), sv_labels.size() * sizeof(MatrixElement<Real>), cudaMemcpyHostToDevice));
     Timer tim;
@@ -994,10 +1014,11 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
     int dimBlock(CU1DBLOCK);
     int dimGrid = 1;// only 1 block here. we have loops in each thread  //(n_blocks(dim_, CU1DBLOCK));
     cuda_comp_obj_deriv(dimGrid, dimBlock, (MatrixElement<Real>*)addr, sv_labels.size(), output.Data(), output.Dim(), this->Data(), this->Dim(), tmp.Data());
-    CuDevice::Instantiate().AccuProfile("Comp_Obj_Deriv", tim.Elapsed());
-    *tot_objf = tmp(0);
-    *tot_weight = tmp(1);
+    Vector<Real> tmp_cpu(tmp);
+    *tot_objf = tmp_cpu(0);
+    *tot_weight = tmp_cpu(1);
     CU_SAFE_CALL(cudaFree(addr));
+    CuDevice::Instantiate().AccuProfile("Comp_Obj_Deriv", tim.Elapsed());
   } else
 #endif
   {
@@ -1222,7 +1243,7 @@ void CuMatrixBase<Real>::DiffXent(const CuArray<int32> &tgt,
   }
 }
 
-// Cholesky method may be only called for symmetric matrices.
+/// This method may be only called for symmetric matrices.
 template<typename Real>
 void CuMatrixBase<Real>::Cholesky() {
   KALDI_ASSERT(this->NumRows() == this->NumCols());
@@ -1273,20 +1294,8 @@ void CuMatrixBase<Real>::Cholesky() {
   }
 }
 
-#if HAVE_CUDA
-template<typename Real> inline void cublas_trsm(int m, int n, Real alpha, const Real* A, int lda, Real* B, int ldb) {
-  KALDI_ERR << __func__ << " Not implemented!";
-}
-template<> inline void cublas_trsm<float>(int m, int n, float alpha, const float* A, int lda, float* B, int ldb) {
-  cublasStrsm('l','u','n','n',m,n,alpha,A,lda,B,ldb);
-}
-template<> inline void cublas_trsm<double>(int m, int n, double alpha, const double* A, int lda, double* B, int ldb) {
-  cublasDtrsm('l','u','n','n',m,n,alpha,A,lda,B,ldb);
-}
-#endif
-
 template<typename Real>
-void CuMatrixBase<Real>::InvertPSD() {
+void CuMatrixBase<Real>::SyInvertPosDef() {
   KALDI_ASSERT(num_rows_ == num_cols_);
   if (num_rows_ == 0) return;
 #if HAVE_CUDA == 1
@@ -1311,15 +1320,6 @@ void CuMatrixBase<Real>::InvertPSD() {
       CuDevice::Instantiate().AccuProfile("CuMatrixBase::InvertPSD(trsm)", tim.Elapsed());
     }
     
-
-      
-    //CuSpMatrix<Real> L(temp, kTakeLower);
-    //CuMatrix<Real> L1(dim,dim);
-    //L1.CopyFromSp(L);
-    //L1.SetZeroUpperDiag();
-    //Matrix<Real> L_test(dim,dim);
-    //temp.CopyToMat(&L_test);
-
     this->AddMatMat(1, temp, kTrans, temp, kNoTrans, 0);
     if (0) {
       Timer tim;
@@ -1358,6 +1358,10 @@ template<typename Real>
 Real TraceMatMat(const CuMatrixBase<Real> &A,
                  const CuMatrixBase<Real> &B,
                  MatrixTransposeType trans) {
+  if (A.num_rows_ == 0) {
+    KALDI_ASSERT(B.num_rows_ == 0);
+    return 0.0;
+  }
   Real result = 0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -1778,6 +1782,8 @@ CuMatrix<Real>::DeriveLastLayerComponent(int32 i, int32 label,
 
 template<typename Real>
 void CuMatrix<Real>::Transpose() {
+  if (this->num_rows_ == 0)
+    return;
 #if HAVE_CUDA == 1
   if (this->num_rows_ == this->num_cols_ && CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -1892,6 +1898,8 @@ template class CuMatrixBase<float>;
 template class CuMatrixBase<double>;
 
   
+
+
 
 
 

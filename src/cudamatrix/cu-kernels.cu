@@ -965,24 +965,6 @@ static void _pvec_sum(Real* v, Real* g, int dim, int size) {
 }
 
 
-template<typename Real>
-__global__
-static void _trace(const Real* mat, Real* value, int dim) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-
-  if ( i < dim) {
-    int index = ((i+1) * (i+2) / 2) - 1;
-    __shared__ Real row_data[CU1DBLOCK];
-
-   //copy the input to row_data
-   row_data[i] = mat[index];
-   __syncthreads();
-
-   //get the sum
-   *value = _sum_reduce(row_data);
-}
-}
-
 
 template<typename Real>
 __global__
@@ -1472,7 +1454,7 @@ static void _splice(Real* y, const Real* x, const int32_cuda* off, MatrixDim d_o
 
 template<typename Real>
 __global__
-static void _take_mean(const Real* x, Real* y, MatrixDim d_in, int d_out) {
+static void _take_mean(const Real* x, Real* y, MatrixDim d_in) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index1 = i + j * d_in.stride;
@@ -1485,27 +1467,24 @@ static void _take_mean(const Real* x, Real* y, MatrixDim d_in, int d_out) {
 
 template<typename Real>
 __global__
-static void _take_lower(const Real* x, Real* y, MatrixDim d_in, int d_out) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda index = i + j * d_in.stride;
-  int32_cuda index_sp = (j * (j+1) / 2) + i;
-  int32_cuda nr = d_out * (d_out + 1) / 2;
-  if (i <= j  &&  j < d_in.rows && index_sp < nr) {
-    y[index_sp] = x[index];
-  }
+static void _take_lower(const Real* x, Real* y, MatrixDim d_in) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x; // row-index
+  int j = blockIdx.y * blockDim.y + threadIdx.y; // col-index
+  if (j > i || i >= d_in.rows) return;
+  int index = i * d_in.stride + j;
+  int index_sp = (i * (i+1) / 2) + j;
+  y[index_sp] = x[index];
 }
 
 template<typename Real>
 __global__
-static void _take_upper(const Real* x, Real* y, MatrixDim d_in, int d_out) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda index = i + j * d_in.stride;
-  if ( i >= j  &&  i < d_in.rows) {
-    int32_cuda index_sp = (i * (i+1) / 2) + j;
-    y[index_sp] = x[index];
-  }
+static void _take_upper(const Real* x, Real* y, MatrixDim d_in) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // row-index
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; // col-index
+  if (j < i  || j >= d_in.rows) return;
+  int32_cuda index = i * d_in.stride + j;
+  int32_cuda index_sp = (j * (j+1) / 2) + i;
+  y[index_sp] = x[index];
 }
 
 template<typename Real>
@@ -1906,11 +1885,6 @@ void cudaF_vec_apply_log(int Gr, int Bl, float* v, float* flag, int dim) {
   _vec_apply_log<<<Gr,Bl>>>(v,flag,dim);
 }
 
-void cudaF_trace(int Gr, int Bl, float* mat, float* value, int dim) {
-
-  _trace<<<Gr,Bl>>>(mat,value,dim);
-}
-
 void cudaF_add_row_sum_mat(dim3 Gr, dim3 Bl, const float* mat, float* vec_sum, MatrixDim d) {
   _add_row_sum_mat<<<Gr,Bl>>>(mat,vec_sum,d);
 }
@@ -1993,16 +1967,16 @@ void cudaF_one(int Gr, int Bl, float* x, int dim) {
   _one<<<Gr,Bl>>>(x,dim);
 }
 
-void cudaF_take_mean(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in, int d_out) {
-  _take_mean<<<Gr,Bl>>>(x,y,d_in,d_out);
+void cudaF_take_mean(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in) {
+  _take_mean<<<Gr,Bl>>>(x,y,d_in);
 }
 
-void cudaF_take_lower(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in, int d_out) {
-  _take_lower<<<Gr,Bl>>>(x,y,d_in,d_out);
+void cudaF_take_lower(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in) {
+  _take_lower<<<Gr,Bl>>>(x,y,d_in);
 }
 
-void cudaF_take_upper(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in, int d_out) {
-  _take_upper<<<Gr,Bl>>>(x,y,d_in,d_out);
+void cudaF_take_upper(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in) {
+  _take_upper<<<Gr,Bl>>>(x,y,d_in);
 }
 
 void cudaF_copy_from_sp(int Gr, int Bl, const float* x, float* y, int d_in, MatrixDim d_out) {
@@ -2284,10 +2258,6 @@ void cudaD_vec_apply_log(int Gr, int Bl, double* v, double* flag, int dim) {
   _vec_apply_log<<<Gr,Bl>>>(v,flag,dim);
 }
 
-void cudaD_trace(int Gr, int Bl, double* mat, double* value, int dim) {
-  _trace<<<Gr,Bl>>>(mat,value,dim);
-}
-
 void cudaD_add_row_sum_mat(dim3 Gr, dim3 Bl, const double* mat, double* vec_sum, MatrixDim d) {
   _add_row_sum_mat<<<Gr,Bl>>>(mat,vec_sum,d);
 }
@@ -2368,16 +2338,16 @@ void cudaD_one(int Gr, int Bl, double* x, int dim) {
   _one<<<Gr,Bl>>>(x,dim);
 }
 
-void cudaD_take_mean(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in, int d_out) {
-  _take_mean<<<Gr,Bl>>>(x,y,d_in,d_out);
+void cudaD_take_mean(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in) {
+  _take_mean<<<Gr,Bl>>>(x,y,d_in);
 }
 
-void cudaD_take_lower(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in, int d_out) {
-  _take_lower<<<Gr,Bl>>>(x,y,d_in,d_out);
+void cudaD_take_lower(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in) {
+  _take_lower<<<Gr,Bl>>>(x,y,d_in);
 }
 
-void cudaD_take_upper(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in, int d_out) {
-  _take_upper<<<Gr,Bl>>>(x,y,d_in,d_out);
+void cudaD_take_upper(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in) {
+  _take_upper<<<Gr,Bl>>>(x,y,d_in);
 }
 
 void cudaD_copy_from_sp(int Gr, int Bl, const double* x, double* y, int d_in, MatrixDim d_out) {

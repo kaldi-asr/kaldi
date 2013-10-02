@@ -129,6 +129,26 @@ static void UnitTestCuSpMatrixAddToDiag() {
 
 
 template<typename Real>
+static void UnitTestCuSpMatrixCopyFromMat() {
+  for (MatrixIndexT i = 1; i < 10; i++) {
+    SpCopyType copy_type = (i % 3 == 0 ? kTakeMean :
+                            (i % 3 == 1 ? kTakeLower : kTakeUpper));
+    MatrixIndexT dim = 10 * i + rand() % 5;
+    CuMatrix<Real> A(dim, dim);
+    A.SetRandn();
+    Matrix<Real> A2(A);
+    
+    CuSpMatrix<Real> B(A, copy_type);
+    SpMatrix<Real> B2(A2, copy_type);
+    SpMatrix<Real> B3(B);
+    if (!ApproxEqual(B2, B3) ) {
+      KALDI_ERR << "Matrices differ, A = " << A << ", B2 = " << B2 << ", B3(CUDA) = " << B3;
+    }
+    KALDI_ASSERT(B3.Trace() != 0);
+  }
+}
+
+template<typename Real>
 static void UnitTestCuSpMatrixApproxInvert(int32 dim) {
   // Get random orthogonal matrix.
   CuMatrix<Real> Q(dim, dim);
@@ -164,7 +184,7 @@ static void UnitTestCuSpMatrixApproxInvert(int32 dim) {
 template<typename Real>
 static void UnitTestCuSpMatrixInvert() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 10*i;
+    MatrixIndexT dim = 10*i + rand() % 5;
     CuSpMatrix<Real> A(dim);
     A.SetRandn();
     KALDI_ASSERT(A.Trace() != 0.0); // true with probability 1...
@@ -361,6 +381,7 @@ template<typename Real> void CudaSpMatrixUnitTest() {
   UnitTestCuSpMatrixApproxInvert<Real>(300);
   UnitTestCuSpMatrixApproxInvert<Real>(100);
   UnitTestCuSpMatrixApproxInvert<Real>(10);
+  UnitTestCuSpMatrixCopyFromMat<Real>();
   UnitTestCuSpMatrixAddVec2<Real>();
   UnitTestCuSpMatrixAddMat2<Real>();
   UnitTestCuSpMatrixAddSp<Real>();

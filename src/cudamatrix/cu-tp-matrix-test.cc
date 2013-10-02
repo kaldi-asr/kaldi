@@ -109,6 +109,28 @@ static void UnitTestCuTpMatrixCopyFromTp() {
 }
 
 template<typename Real>
+static void UnitTestCuTpMatrixCopyFromMat() {
+  for (MatrixIndexT i = 1; i < 10; i++) {
+    MatrixTransposeType trans = (i % 2 == 0 ? kNoTrans : kTrans);
+
+    MatrixIndexT dim = 10*i + rand() % 5;
+    CuMatrix<Real> A(dim, dim);
+    A.SetRandn();
+    Matrix<Real> A2(A);
+    
+    CuTpMatrix<Real> B(dim);
+    B.CopyFromMat(A, trans);
+    TpMatrix<Real> B2(dim);
+    B2.CopyFromMat(A2, trans);
+    TpMatrix<Real> B3(B);
+    AssertEqual(B2, B3);
+    KALDI_ASSERT(B3.Trace() != 0);
+  }
+}
+
+
+
+template<typename Real>
 static void UnitTestCuTpMatrixCholesky() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 1 + rand() % 10;
@@ -135,8 +157,8 @@ static void UnitTestCuTpMatrixCholesky() {
 
 template<class Real>
 static void UnitTestCuTpMatrixIO() {
-  for (int32 i = 0; i < 10; i++) {
-    int32 dimM = rand() % 255;
+  for (int32 i = 0; i < 3; i++) {
+    int32 dimM = rand() % 255 + 10;
     if (i % 5 == 0) { dimM = 0; }
     CuTpMatrix<Real> mat(dimM);
     mat.SetRandn();
@@ -156,6 +178,7 @@ template<typename Real> void CudaTpMatrixUnitTest() {
   UnitTestCuTpMatrixInvert<Real>();
   UnitTestCuTpMatrixCopyFromTp<Real>();
   UnitTestCuTpMatrixCholesky<Real>();
+  UnitTestCuTpMatrixCopyFromMat<Real>();
 }
 
 } // namespace kaldi

@@ -50,10 +50,13 @@ class CuTpMatrix : public CuPackedMatrix<Real> {
       : CuPackedMatrix<Real>(orig) {}
   explicit CuTpMatrix<Real>(const CuTpMatrix<Real> &orig)
       : CuPackedMatrix<Real>(orig) {}
+  explicit CuTpMatrix<Real>(const CuMatrixBase<Real> &orig,
+                            MatrixTransposeType trans = kNoTrans);
+
   
   ~CuTpMatrix() {}
 
-  void CopyFromMat(CuMatrixBase<Real> &M,
+  void CopyFromMat(const CuMatrixBase<Real> &M,
                    MatrixTransposeType Trans = kNoTrans);
 
   void CopyFromTp(const CuTpMatrix<Real> &other) {

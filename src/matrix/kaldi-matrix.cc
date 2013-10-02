@@ -30,9 +30,14 @@
 namespace kaldi {
 
 template<typename Real>
-void MatrixBase<Real>::Invert(Real *LogDet, Real *DetSign,
+void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
                               bool inverse_needed) {
   KALDI_ASSERT(num_rows_ == num_cols_);
+  if (num_rows_ == 0) {
+    if (det_sign) *det_sign = 1;
+    if (log_det) *log_det = 0.0;
+    return;
+  }
 #ifndef HAVE_ATLAS
   KaldiBlasInt *pivot = new KaldiBlasInt[num_rows_];
   KaldiBlasInt M = num_rows_;
@@ -60,26 +65,26 @@ void MatrixBase<Real>::Invert(Real *LogDet, Real *DetSign,
     if (inverse_needed) {
       KALDI_ERR << "Cannot invert: matrix is singular";
     } else {
-      if (LogDet) *LogDet = -std::numeric_limits<Real>::infinity();
-      if (DetSign) *DetSign = 0;
+      if (log_det) *log_det = -std::numeric_limits<Real>::infinity();
+      if (det_sign) *det_sign = 0;
       return;
     }
   }
-  if (DetSign != NULL) {
+  if (det_sign != NULL) {
     int sign = 1;
     for (MatrixIndexT i = 0; i < num_rows_; i++)
       if (pivot[i] != static_cast<int>(i) + pivot_offset) sign *= -1;
-    *DetSign = sign;
+    *det_sign = sign;
   }
-  if (LogDet != NULL || DetSign != NULL) {  // Compute log determinant.
-    if (LogDet != NULL) *LogDet = 0.0;
+  if (log_det != NULL || det_sign != NULL) {  // Compute log determinant.
+    if (log_det != NULL) *log_det = 0.0;
     Real prod = 1.0;
     for (MatrixIndexT i = 0; i < num_rows_; i++) {
       prod *= (*this)(i, i);
       if (i == num_rows_ - 1 || std::fabs(prod) < 1.0e-10 ||
           std::fabs(prod) > 1.0e+10) {
-        if (LogDet != NULL) *LogDet += log(fabs(prod));
-        if (DetSign != NULL) *DetSign *= (prod > 0 ? 1.0 : -1.0);
+        if (log_det != NULL) *log_det += log(fabs(prod));
+        if (det_sign != NULL) *det_sign *= (prod > 0 ? 1.0 : -1.0);
         prod = 1.0;
       }
     }
@@ -167,6 +172,24 @@ void MatrixBase<Real>::AddMatMat(const Real alpha,
   cblas_Xgemm(alpha, transA, A.data_, A.num_rows_, A.num_cols_, A.stride_,
               transB, B.data_, B.stride_, beta, data_, num_rows_, num_cols_, stride_);
 
+}
+
+
+template<typename Real>
+void MatrixBase<Real>::SyAddMat2(const Real alpha,
+                                 const MatrixBase<Real> &A,
+                                 MatrixTransposeType transA,
+                                 Real beta) {
+  KALDI_ASSERT(num_rows_ == num_cols_ &&
+               ((transA == kNoTrans && A.num_rows_ == num_rows_) ||
+                (transA == kTrans && A.num_cols_ == num_cols_)));
+  KALDI_ASSERT(A.data_ != data_);
+  if (num_rows_ == 0) return;
+  MatrixIndexT A_other_dim = (transA == kNoTrans ? A.num_cols_ : A.num_rows_);
+  
+  // This function call is hard-coded to update the lower triangle.
+  cblas_Xsyrk(transA, num_rows_, A_other_dim, alpha, A.Data(),
+              A.Stride(), beta, this->data_, this->stride_);
 }
 
 
@@ -1624,14 +1647,14 @@ Real MatrixBase<Real>::LogDet(Real *det_sign) const {
 }
 
 template<typename Real>
-void MatrixBase<Real>::InvertDouble(Real *LogDet, Real *DetSign,
+void MatrixBase<Real>::InvertDouble(Real *log_det, Real *det_sign,
                                     bool inverse_needed) {
-  double LogDet_tmp, DetSign_tmp;
+  double log_det_tmp, det_sign_tmp;
   Matrix<double> dmat(*this);
-  dmat.Invert(&LogDet_tmp, &DetSign_tmp, inverse_needed);
+  dmat.Invert(&log_det_tmp, &det_sign_tmp, inverse_needed);
   if (inverse_needed) (*this).CopyFromMat(dmat);
-  if (LogDet) *LogDet = LogDet_tmp;
-  if (DetSign) *DetSign = DetSign_tmp;
+  if (log_det) *log_det = log_det_tmp;
+  if (det_sign) *det_sign = det_sign_tmp;
 }
 
 template<class Real>
@@ -2258,7 +2281,7 @@ void MatrixBase<Real>::CopyCols(const MatrixBase<Real> &src,
   const Real *src_data = src.data_;
 #ifdef KALDI_PARANOID
   MatrixIndexT src_cols = src.NumCols();
-  for (std::vector<MatrixIndexT>::iterator iter = indices.begin();
+  for (std::vector<MatrixIndexT>::const_iterator iter = indices.begin();
        iter != indices.end(); ++iter)
     KALDI_ASSERT(*iter >= -1 && *iter < src_cols);
 #endif                

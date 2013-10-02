@@ -33,6 +33,8 @@
 
 namespace kaldi {
 
+class CuAllocator; // Forward declaration.
+
 /**
  * Singleton object which represents CUDA device
  * responsible for CUBLAS initilalisation, collects profiling info
@@ -43,6 +45,15 @@ class CuDevice {
   ~CuDevice();
   static inline CuDevice& Instantiate() { return global_device_; }
 
+  // We provide functions Malloc and MallocPitch which replace cudaMalloc and
+  // cudaMallocPitch.  Their function is to cache the results of previous
+  // allocations to avoid the very large overhead of CUDA allocation.
+  void *Malloc(size_t size);
+  
+  void *MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch);
+
+  void Free(void *ptr);
+  
   /**********************************/
   // Instance interface
  
@@ -111,6 +122,9 @@ class CuDevice {
   cudaDeviceProp properties_;
 
   bool verbose_;
+
+  //CuAllocator allocator_;
+  
 }; // class CuDevice
 
 

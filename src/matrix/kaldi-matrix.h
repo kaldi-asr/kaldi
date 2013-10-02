@@ -460,6 +460,11 @@ class MatrixBase {
   void AddMat(const Real alpha, const MatrixBase<Real> &M,
               MatrixTransposeType transA = kNoTrans);
 
+  /// *this = beta * *this + alpha * M M^T, but only update the lower triangle
+  /// of *this.
+  void SyAddMat2(const Real alpha, const MatrixBase<Real> &M,
+                 MatrixTransposeType transA, Real beta);
+
   /// *this = beta * *this + alpha * diag(v) * M [or M^T].
   /// The same as adding M but scaling each row M_i by v(i).
   void AddDiagVecMat(const Real alpha, VectorBase<Real> &v,

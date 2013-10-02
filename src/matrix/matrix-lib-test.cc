@@ -2770,16 +2770,26 @@ template<typename Real> static void UnitTestAddMat2() {
     else M.Resize(dimN, dimM);
     M.SetRandn();
 
-    Matrix<Real> Sfull(S);
-
+    Matrix<Real> Sfull(S), Sfull2(S);
+    
     S.AddMat2(alpha, M, trans, beta);
     
     Sfull.AddMatMat(alpha, M, trans, M, other_trans, beta);
 
-    Matrix<Real> Sfull2(S);
-    AssertEqual(Sfull, Sfull2);
+    Sfull2.SyAddMat2(alpha, M, trans, beta);
+
+    // now symmetrize.
+    SpMatrix<Real> Sfull2_copy(Sfull2, kTakeLower);
+    Sfull2.CopyFromSp(Sfull2_copy);
+
+    Matrix<Real> Sfull3(S);
+    AssertEqual(Sfull, Sfull3);
+    AssertEqual(Sfull2, Sfull3);
   }
 }
+
+
+
 
 
 template<typename Real> static void UnitTestSolve() {
