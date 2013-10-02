@@ -117,7 +117,7 @@ static void UnitTestCuVectorMulTp() {
   }
 }
 
-template<typename Real> 
+template<typename Real>
 static void UnitTestCuVectorAddTp() {
   for (int32 i = 1; i < 10; i++) {
     MatrixIndexT dim = 10 * i;
@@ -269,15 +269,15 @@ template<typename Real> void CuVectorUnitTestInvertElements() {
 }
 
 template<typename Real> void CuVectorUnitTestSum() {
-  int32 dim = 256 + 100 % rand();
-  CuVector<Real> vec(dim), ones(dim);
-  vec.SetRandn();
-  ones.Set(1.0);
-
-  AssertEqual(VecVec(vec, ones), vec.Sum());
-
+  for (int32 i =1; i < 10; i++) {
+    MatrixIndexT dim = 2048 * i + 100 % rand();
+    CuVector<Real> A(dim), ones(dim);
+    A.SetRandn();
+    ones.Set(1.0);
+    
+    AssertEqual(VecVec(A, ones), A.Sum());
+  }
 }
-
 
 template<typename Real> void CuVectorUnitTestScale() {
   for (int32 i = 0; i < 4; i++) {
@@ -583,8 +583,6 @@ static void CuVectorUnitTestAddDiagMatMat() {
       d.CopyDiagFromMat(MN);
       w2.Scale(beta);
       w2.AddVec(alpha, d);
-      KALDI_LOG << "w = " << w;
-      KALDI_LOG << "w2 = " << w2;
       AssertEqual(w, w2);
     }
   }
@@ -652,8 +650,7 @@ template<typename Real> void CuVectorUnitTest() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().DoublePrecisionSupported())
 #endif
-    UnitTestCuVectorCopyFromVec<Real, double>();
-
+  UnitTestCuVectorCopyFromVec<Real, double>();
   UnitTestCuVectorIO<Real>();
   CuVectorUnitTestVecVec<Real>();
   CuVectorUnitTestAddVec<Real>();

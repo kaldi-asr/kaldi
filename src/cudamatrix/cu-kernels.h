@@ -144,6 +144,7 @@ inline void cuda_copy_col_from_mat(int Gr, int Bl, float* v, int col, const floa
 inline void cuda_copy_col_from_mat_df(int Gr, int Bl, double* v, int col, const float* mat, MatrixDim dmat, int dim) { cudaF_copy_col_from_mat_df(Gr,Bl,v,col,mat,dmat,dim); }
 inline void cuda_copy_col_from_mat_fd(int Gr, int Bl, float* v, int col, const float* mat, MatrixDim dmat, int dim) { cudaF_copy_col_from_mat_fd(Gr,Bl,v,col,mat,dmat,dim); }
 inline void cuda_vec_sum(int Gr, int Bl, float* v, float* value, int dim, int inc) { cudaF_vec_sum(Gr,Bl,v,value,dim,inc); }
+inline void cuda_pvec_sum(int Gr, int Bl, float* vec, float* pvec_sum, int dim, int size) { cudaF_pvec_sum(Gr, Bl, vec, pvec_sum, dim, size); }
 inline void cuda_vec_copy_diag_from_packed(int Gr, int Bl, float *dst, const float *src, int dim) { cudaF_vec_copy_diag_from_packed(Gr,Bl,dst,src,dim); }
 inline void cuda_vec_apply_floor(int Gr, int Bl, float* v, float floor_val, float* num, int dim) { cudaF_vec_apply_floor(Gr,Bl,v,floor_val,num,dim); }
 inline void cuda_vec_apply_exp(int Gr, int Bl, float* v, int dim) { cudaF_vec_apply_exp(Gr,Bl,v,dim); }
@@ -288,6 +289,7 @@ inline void cuda_copy_col_from_mat(int Gr, int Bl, double* v, int col, const dou
 inline void cuda_copy_col_from_mat_df(int Gr, int Bl, double* v, int col, const double* mat, MatrixDim dmat, int dim) { cudaD_copy_col_from_mat_df(Gr,Bl,v,col,mat,dmat,dim); }
 inline void cuda_copy_col_from_mat_fd(int Gr, int Bl, float* v, int col, const double* mat, MatrixDim dmat, int dim) { cudaD_copy_col_from_mat_fd(Gr,Bl,v,col,mat,dmat,dim); }
 inline void cuda_vec_sum(int Gr, int Bl, double* v, double* value, int dim, int inc) { cudaD_vec_sum(Gr,Bl,v,value,dim,inc); }
+inline void cuda_pvec_sum(int Gr, int Bl, double* vec, double* pvec_sum, int dim, int size) { cudaD_pvec_sum(Gr,Bl,vec,pvec_sum,dim,size); }
 inline void cuda_vec_copy_diag_from_packed(int Gr, int Bl, double *dst, const double *src, int dim) { cudaD_vec_copy_diag_from_packed(Gr,Bl,dst,src,dim); }
 inline void cuda_vec_apply_floor(int Gr, int Bl, double* v, double floor_val, float* num, int dim) { cudaD_vec_apply_floor(Gr,Bl,v,floor_val,num,dim); }
 inline void cuda_vec_apply_exp(int Gr, int Bl, double* v, int dim) { cudaD_vec_apply_exp(Gr,Bl,v,dim); }

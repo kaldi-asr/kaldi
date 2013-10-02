@@ -38,16 +38,16 @@ static Real _sum_reduce(Real buffer[]) {
   while(nTotalThreads > 1) {
     int32_cuda halfPoint = ((1+nTotalThreads) >> 1);	// divide by two
     // only the first half of the threads will be active.
-    if (threadIdx.x < halfPoint)  {
+    if (threadIdx.x >= halfPoint)  { // was <
       // Get the shared value stored by another thread
       Real temp = 0.0;
-      if(threadIdx.x+halfPoint < nTotalThreads) {
-        temp = buffer[threadIdx.x + halfPoint];
+      if(threadIdx.x < nTotalThreads) { // was +halfPoint
+        temp = buffer[threadIdx.x]; // was +halfPoint
       }
-      buffer[threadIdx.x] += temp;
+      buffer[threadIdx.x - halfPoint] += temp;
     }
     __syncthreads();
-    nTotalThreads = halfPoint;	// divide by two.
+    nTotalThreads = ((1+nTotalThreads) >> 1);	// divide by two.
   }
   // the result
   return buffer[0];
@@ -950,6 +950,24 @@ static void _vec_sum(Real *v, Real *sum, int dim, int inc) {
   row_data[threadIdx.x] = tmp_sum;
   __syncthreads();
   *sum = _sum_reduce(row_data);
+}
+
+
+template<typename Real>
+__global__
+static void _pvec_sum(Real* v, Real* g, int dim, int size) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int start = size * i;
+  if (start >= dim) return;
+  int end = start + size;
+  if (end > dim) end = dim;
+  __shared__ Real row_data[CU1DBLOCK];
+  Real sum = 0;
+  for (int j = start; j < end; j++)
+    sum += v[j];
+  row_data[threadIdx.x] = sum;
+  __syncthreads();
+  g[blockIdx.x] = _sum_reduce(row_data);
 }
 
 
@@ -1866,6 +1884,10 @@ void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim, int inc) {
   _vec_sum<<<Gr,Bl>>>(v, value, dim, inc);
 }
 
+void cudaF_pvec_sum(int Gr, int Bl, float* v, float* pvec_sum, int dim, int size) {
+  _pvec_sum<<<Gr,Bl>>>(v, pvec_sum, dim, size);
+}
+
 void cudaF_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<float>* x, int s, const float* z, MatrixDim d, float* z2, MatrixDim d2, float* t) {
   _cuda_comp_obj_deriv<<<Gr,Bl>>>(x,s,z,d,z2,d2,t);
 }
@@ -2246,6 +2268,10 @@ void cudaD_copy_col_from_mat_fd(int Gr, int Bl, float* v, int col, const double*
 
 void cudaD_vec_sum(int Gr, int Bl, double* v, double* value, int dim, int inc) {
   _vec_sum<<<Gr,Bl>>>(v,value,dim,inc);
+}
+
+void cudaD_pvec_sum(int Gr, int Bl, double* v, double* pvec_sum, int dim, int size) {
+  _pvec_sum<<<Gr,Bl>>>(v,pvec_sum,dim,size);
 }
 
 void cudaD_vec_copy_diag_from_packed(int Gr, int Bl, double *dst, const double *src, int dim) {

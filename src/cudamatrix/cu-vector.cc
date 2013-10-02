@@ -271,20 +271,35 @@ Real CuVectorBase<Real>::Sum() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    CuVector<Real> tmp(1, kUndefined);
-    int dimBlock(CU1DBLOCK);
-    int dimGrid = 1; // only 1 block here. we have loops in each thread.
-    cuda_vec_sum(dimGrid, dimBlock, data_, tmp.Data(), dim_, 1);
-    CU_SAFE_CALL(cudaGetLastError());
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::Sum", tim.Elapsed());
-    return tmp(0);
+    int max_threads = 2048;
+    // This is the smallest block oc consecutive vector elements, which
+    // its sum will save at the partial vector.
+    int block_size = (dim_ + max_threads - 1) / max_threads;
+    if (block_size > 3) {
+      int dimBlock(CU1DBLOCK);
+      int dimGrid(n_blocks(max_threads, CU1DBLOCK));
+      CuVector<Real> g(dimGrid);
+      cuda_pvec_sum(dimGrid, dimBlock, data_, g.Data(), dim_, block_size);
+      CU_SAFE_CALL(cudaGetLastError());
+      Vector<Real> tmp(dimGrid);
+      g.CopyToVec(&tmp);
+      CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
+      return tmp.Sum();
+    } else {
+      CuVector<Real> tmp(1, kUndefined);
+      int dimBlock(CU1DBLOCK);
+      int dimGrid = 1; // only 1 block here. we have loops in each thread.
+      cuda_vec_sum(dimGrid, dimBlock, data_, tmp.Data(), dim_, 1);
+      CU_SAFE_CALL(cudaGetLastError());
+      CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+      return tmp(0);
+    }
   } else
 #endif
   {
     return Vec().Sum();
   }
-} 
-
+}
 
 template<typename Real>
 void CuVectorBase<Real>::ApplySoftMax() {
@@ -624,7 +639,6 @@ void CuVectorBase<Real>::MulTp(const CuTpMatrix<Real> &M, const MatrixTransposeT
     Vec().MulTp(M.Mat(), trans);
   }
 }
-
 
 template<typename Real>
 Real CuVectorBase<Real>::Min() const {
