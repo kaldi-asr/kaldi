@@ -111,6 +111,36 @@ template<typename Real> void TestCuMatrixTraceMatMat(int32 dim) {
   }
 }
 
+template<typename Real> void TestCuMatrixCopyLowerToUpper(int32 dim) {
+  BaseFloat time_in_secs = 0.05;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.CopyLowerToUpper();
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::CopyLowerToUpper" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+template<typename Real> void TestCuMatrixCopyUpperToLower(int32 dim) {
+  BaseFloat time_in_secs = 0.05;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.CopyUpperToLower();
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::CopyUpperToLower" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
 
 
 template<typename Real> void CudaMatrixSpeedTest() {
@@ -129,6 +159,10 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixSoftmax<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixTraceMatMat<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixCopyLowerToUpper<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixCopyUpperToLower<Real>(sizes[s]);
 }
 
 
