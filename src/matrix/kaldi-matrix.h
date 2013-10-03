@@ -560,6 +560,12 @@ class MatrixBase {
                const SpMatrix<Real>& A, const SpMatrix<Real>& B,
                const Real beta);
 
+  /// Copy lower triangle to upper triangle (symmetrize)
+  void CopyLowerToUpper();
+
+  /// Copy upper triangle to lower triangle (symmetrize)
+  void CopyUpperToLower();
+  
   /// This function orthogonalizes the rows of a matrix using the Gram-Schmidt
   /// process.  It is only applicable if NumRows() <= NumCols().  It will use
   /// random number generation to fill in rows with something nonzero, in cases

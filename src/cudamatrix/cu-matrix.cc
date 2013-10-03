@@ -1675,8 +1675,9 @@ void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::CopyLowUpp() {
-  KALDI_ASSERT(num_rows_ != 0 || num_cols_ != 0);
+void CuMatrixBase<Real>::CopyLowerToUpper() {
+  KALDI_ASSERT(num_cols_ == num_rows_);
+  if (num_rows_ == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -1688,13 +1689,14 @@ void CuMatrixBase<Real>::CopyLowUpp() {
   } else
 #endif
   {
-    Mat().Transpose();
+    Mat().CopyLowerToUpper();
   }
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::CopyUppLow() {
-  KALDI_ASSERT(num_rows_ != 0 || num_cols_ != 0);
+void CuMatrixBase<Real>::CopyUpperToLower() {
+  KALDI_ASSERT(num_cols_ == num_rows_);
+  if (num_rows_ == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -1706,7 +1708,7 @@ void CuMatrixBase<Real>::CopyUppLow() {
   } else
 #endif
   {
-    Mat().Transpose();
+    Mat().CopyUpperToLower();
   }
 }
 

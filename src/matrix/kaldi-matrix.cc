@@ -174,6 +174,26 @@ void MatrixBase<Real>::AddMatMat(const Real alpha,
 
 }
 
+template<typename Real>
+void MatrixBase<Real>::CopyLowerToUpper() {
+  KALDI_ASSERT(num_rows_ == num_cols_);
+  Real *data = data_;
+  MatrixIndexT num_rows = num_rows_, stride = stride_;
+  for (int32 i = 0; i < num_rows; i++)
+    for (int32 j = 0; j < i; j++)
+      data[j * stride + i ] = data[i * stride + j];
+}
+
+
+template<typename Real>
+void MatrixBase<Real>::CopyUpperToLower() {
+  KALDI_ASSERT(num_rows_ == num_cols_);
+  Real *data = data_;
+  MatrixIndexT num_rows = num_rows_, stride = stride_;
+  for (int32 i = 0; i < num_rows; i++)
+    for (int32 j = 0; j < i; j++)
+      data[i * stride + j] = data[j * stride + i];
+}
 
 template<typename Real>
 void MatrixBase<Real>::SyAddMat2(const Real alpha,

@@ -1535,31 +1535,45 @@ static void UnitTestCuMatrixSetRandUniform() {
   }
 }
 
+
 template<typename Real>
-static void UnitTestCuMatrixCopyLowUpp() {
+static void UnitTestCuMatrixCopyLowerToUpper() {
   for (int i = 1; i < 10; ++i) {
-    MatrixIndexT dim = 10 * i;
-    CuTpMatrix<Real> A(dim);
+    MatrixIndexT dim = 10 * i + rand() % 4 + (i == 9 ? 255 : 0);
+    if (i == 8) dim = 0;
+    CuMatrix<Real> A(dim, dim);
     A.SetRandn();
-    CuMatrix<Real> B(A);
-    B.CopyLowUpp();
-    CuMatrix<Real> C(A);
-    C.Transpose();
-    AssertEqual(B, C);
+    Matrix<Real> A2(A);
+    A.CopyLowerToUpper();
+    Matrix<Real> A3(A);
+    for (int32 i = 0; i < dim;  i++) {
+      for (int32 j = 0; j <= i; j++) {
+        KALDI_ASSERT(A3(i, j) == A3(j, i));
+        KALDI_ASSERT(A3(i, j) == A2(i, j));
+      }
+    }
+    KALDI_ASSERT(dim == 0 || A3.Trace() != 0);
   }
 }
 
 template<typename Real>
-static void UnitTestCuMatrixCopyUppLow() {
+static void UnitTestCuMatrixCopyUpperToLower() {
   for (int i = 1; i < 10; ++i) {
-    MatrixIndexT dim = 10 * i;
-    CuTpMatrix<Real> A(dim);
+    MatrixIndexT dim = 10 * i + rand() % 4 + (i == 9 ? 255 : 0);
+    if (i == 8) dim = 0;
+    CuMatrix<Real> A(dim, dim);
     A.SetRandn();
-    CuMatrix<Real> B(A);
-    B.Transpose();
-    B.CopyUppLow();
-    CuMatrix<Real> C(A);
-    AssertEqual(B, C);
+    Matrix<Real> A2(A);
+    A.CopyUpperToLower();
+    Matrix<Real> A3(A);
+    //KALDI_LOG << "A2 is " << A2 << " A3 is " << A3;
+    for (int32 i = 0; i < dim;  i++) {
+      for (int32 j = i; j < dim; j++) {
+        KALDI_ASSERT(A3(i, j) == A3(j, i));
+        KALDI_ASSERT(A3(i, j) == A2(i, j));
+      }
+    }
+    KALDI_ASSERT(dim == 0 || A3.Trace() != 0);
   }
 }
 
@@ -1655,8 +1669,8 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixCopyRowsFromVec<Real>();
   UnitTestCuMatrixAddTpMat<Real>();
   UnitTestCuMatrixTranspose<Real>();
-  UnitTestCuMatrixCopyLowUpp<Real>();
-  UnitTestCuMatrixCopyUppLow<Real>();
+  UnitTestCuMatrixCopyUpperToLower<Real>();
+  UnitTestCuMatrixCopyLowerToUpper<Real>();
   //test CuVector<Real> methods
   UnitTestCuVectorAddVec<Real>();
   UnitTestCuVectorAddRowSumMat<Real>();

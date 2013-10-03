@@ -148,14 +148,11 @@ __global__
 static void _copy_low_upp(Real* A, MatrixDim dimA) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i < j) return;
+  if (i <= j) return;
   if (i > dimA.rows) return;
   int index_1 = i * dimA.stride + j;
   int index_2 = j * dimA.stride + i;
-  if ( index_1 != index_2 ) {
-    A[index_2] = A[index_1];
-    A[index_1] = 0;
-  }
+  A[index_2] = A[index_1];
 }
 
 
@@ -164,14 +161,11 @@ __global__
 static void _copy_upp_low(Real* A, MatrixDim dimA) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (j < i) return;
-  if (i > dimA.rows) return;
+  if (j <= i) return;
+  if (j > dimA.rows) return;
   int index_1 = i * dimA.stride + j;
   int index_2 = j * dimA.stride + i;
-  if ( index_1 != index_2 ) {
-    A[index_2] = A[index_1];
-    A[index_1] = 0;
-  }
+  A[index_2] = A[index_1];
 }
 
 // mat += diag(vec) * mat2.
