@@ -40,18 +40,19 @@ void PreconditionDirections(const CuMatrixBase<BaseFloat> &R,
   if (N >= D) {
     // Compute G = (\lambda I + 1/(N-1) R^T R)^{-1} by direct inversion.
     // G <-- lambda I.
-    CuSpMatrix<BaseFloat> G(D);
-    G.SetUnit();
-    G.ScaleDiag(lambda); 
+    CuMatrix<BaseFloat> G(D, D);
+    G.AddToDiag(lambda);
     // G += 1.0/(N-1) * R^T R.
-    G.AddMat2(1.0 / (N-1), R, kTrans, 1.0);
+    G.SyAddMat2(1.0 / (N-1), R, kTrans, 1.0);
+    G.CopyLowerToUpper();
     if (GetVerboseLevel() >= 5 && rand() % 20 == 0) {
-      SpMatrix<BaseFloat> G_cpu(G);
+      SpMatrix<BaseFloat> G_cpu(CuSpMatrix<BaseFloat>(G, kTakeLower));
       G_cpu.PrintEigs("G");
     }
-    G.Invert();
-    // Q <-- R G.
-    Q.AddMatSp(1.0, R, kNoTrans, G, 0.0);
+    G.SyInvertPosDef();
+    // Q <-- R G^T (we just make it transposed as we think
+    // it will be slightly faster; it's symmetric).
+    Q.AddMatMat(1.0, R, kNoTrans, G, kTrans, 0.0);
   } else {
     // Through a lot of rearrangements, it turns out that
     // if we let  S = (\lambda I + 1/(N-1) R R^T)^{-1}
@@ -59,18 +60,20 @@ void PreconditionDirections(const CuMatrixBase<BaseFloat> &R,
     // Q <-- R S.
     // It is curious and (to me) unexpected that the actual code is basically
     // the same when transposed.
-    CuSpMatrix<BaseFloat> S(N);
+    CuMatrix<BaseFloat> S(N, N);
     // S <-- lambda I.
-    S.SetDiag(lambda);
+    S.AddToDiag(lambda);
     // S += (N-1) R R^T.
-    S.AddMat2(1.0 / (N-1), R, kNoTrans, 1.0);
+    // the following function only updates the lower triangle.
+    S.SyAddMat2(1.0 / (N-1), R, kNoTrans, 1.0);
+    S.CopyLowerToUpper();
     // invert S, so now S = (\lambda I + (N-1) R R^T)^{-1}.
     if (GetVerboseLevel() >= 5 && rand() % 20 == 0) {
-      SpMatrix<BaseFloat> S_cpu(S);
+      SpMatrix<BaseFloat> S_cpu(CuSpMatrix<BaseFloat>(S, kTakeLower));
       S_cpu.PrintEigs("S");
     }
-    S.Invert();
-    Q.AddSpMat(1.0, S, R, kNoTrans, 0.0);
+    S.SyInvertPosDef();
+    Q.AddMatMat(1.0, S, kNoTrans, R, kNoTrans, 0.0);
   }
 
 #if 0  // Old code before it was optimized for CUDA:

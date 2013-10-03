@@ -191,11 +191,14 @@ class CuMatrixBase {
   void DiffXent(const CuArray<int32> &tgt,
                 CuVector<Real> *log_post_tgt);  
 
-  /// This method may be only called for symmetric matrices.  
+  /// This method may be only called for symmetric matrices (it accesses the
+  /// upper as well as lower triangle).  The result is put in the lower
+  /// triangle, and the upper triangle zeroed.
   void Cholesky();
   
   void SyInvertPosDef(); ///< Inversion for positive definite symmetric matrices.
-                         ///< This routine only deals with the lower-triangular part.
+                         ///< Requires that the input is symmetric (we do not check this).
+                         ///< The output is symmetric.
   
   void ApplyPow(Real power);
   void ApplyHeaviside(); ///< For each element, sets x = (x > 0 ? 1.0 : 0.0)
@@ -247,8 +250,9 @@ class CuMatrixBase {
   void AddMatMat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
                  const CuMatrixBase<Real> &B, MatrixTransposeType transB, Real beta);
 
-  /// *this = beta * *this + alpha * M M^T, but only update the lower triangle
-  /// of *this.
+  /// *this = beta * *this + alpha * M M^T.  It only updates the lower triangle
+  /// of *this.  It will leave the matrix asymmetric; if you need it symmetric
+  /// as a regular matrix, do CopyLowerToUpper().
   void SyAddMat2(const Real alpha, const CuMatrixBase<Real> &M,
                  MatrixTransposeType transA, Real beta);
 

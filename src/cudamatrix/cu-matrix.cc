@@ -1321,7 +1321,9 @@ void CuMatrixBase<Real>::SyInvertPosDef() {
     }
     
     this->AddMatMat(1, temp, kTrans, temp, kNoTrans, 0);
-    if (0) {
+
+    this->CopyLowerToUpper();
+    /*    if (0) {
       Timer tim;
       Real alpha = 1.0, beta = 0.0;
       dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -1332,7 +1334,7 @@ void CuMatrixBase<Real>::SyInvertPosDef() {
       CU_SAFE_CALL(cudaGetLastError());
       CuDevice::Instantiate().AccuProfile("CuMatrixBase::InvertPSD(sy_add_tr2)",
                                           tim.Elapsed());
-    }
+                                          } */
     
   } else
 #endif

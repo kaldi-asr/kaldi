@@ -348,7 +348,9 @@ void CuDevice::PrintProfile() {
     for(it = profile_map_.begin(); it != profile_map_.end(); ++it)
       pairs.push_back(std::make_pair(it->second, it->first));
     std::sort(pairs.begin(), pairs.end());
-    for (size_t i = 0; i < pairs.size(); i++) 
+    size_t max_print = 15, start_pos = (pairs.size() > max_print ?
+                                        0 : pairs.size() - max_print);
+    for (size_t i = start_pos; i < pairs.size(); i++) 
       os << pairs[i].second << "\t" << pairs[i].first << "s\n";
     os << "-----";
     KALDI_LOG << os.str();
