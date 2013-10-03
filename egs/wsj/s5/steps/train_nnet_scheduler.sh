@@ -37,9 +37,9 @@ echo "$0 $@"  # Print the command line for logging
 
 . parse_options.sh || exit 1;
 
-if [ $# != 5 ]; then
-   echo "Usage: $0 <mlp-init> <feats-tr> <feats-cv> <labels> <exp-dir>"
-   echo " e.g.: $0 0.nnet scp:train.scp scp:cv.scp ark:labels.ark exp/dnn1"
+if [ $# != 6 ]; then
+   echo "Usage: $0 <mlp-init> <feats-tr> <feats-cv> <labels-tr> <labels-cv> <exp-dir>"
+   echo " e.g.: $0 0.nnet scp:train.scp scp:cv.scp ark:labels_tr.ark ark:labels_cv.ark exp/dnn1"
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>  # config containing options"
    exit 1;
@@ -48,9 +48,9 @@ fi
 mlp_init=$1
 feats_tr=$2
 feats_cv=$3
-labels=$4
-dir=$5
-
+labels_tr=$4
+labels_cv=$5
+dir=$6
 
 [ ! -d $dir ] && mkdir $dir
 [ ! -d $dir/log ] && mkdir $dir/log
@@ -74,7 +74,7 @@ $train_tool --cross-validate=true \
  --bunchsize=$bunch_size --cachesize=$cache_size --verbose=$verbose \
  ${feature_transform:+ --feature-transform=$feature_transform} \
  ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
- $mlp_best "$feats_cv" "$labels" \
+ $mlp_best "$feats_cv" "$labels_cv" \
  2> $dir/log/prerun.log || exit 1;
 
 acc=$(cat $dir/log/prerun.log | awk '/FRAME_ACCURACY/{ acc=$3; sub(/%/,"",acc); } END{print acc}')
@@ -99,7 +99,7 @@ for iter in $(seq -w $max_iters); do
    ${feature_transform:+ --feature-transform=$feature_transform} \
    ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
    ${seed:+ --seed=$seed} \
-   $mlp_best "$feats_tr" "$labels" $mlp_next \
+   $mlp_best "$feats_tr" "$labels_tr" $mlp_next \
    2> $dir/log/iter$iter.log || exit 1; 
 
   tr_acc=$(cat $dir/log/iter$iter.log | awk '/FRAME_ACCURACY/{ acc=$3; sub(/%/,"",acc); } END{print acc}')
@@ -111,7 +111,7 @@ for iter in $(seq -w $max_iters); do
    --bunchsize=$bunch_size --cachesize=$cache_size --verbose=$verbose \
    ${feature_transform:+ --feature-transform=$feature_transform} \
    ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
-   $mlp_next "$feats_cv" "$labels" \
+   $mlp_next "$feats_cv" "$labels_cv" \
    2>>$dir/log/iter$iter.log || exit 1;
   
   acc_new=$(cat $dir/log/iter$iter.log | awk '/FRAME_ACCURACY/{ acc=$3; sub(/%/,"",acc); } END{print acc}')
