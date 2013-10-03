@@ -43,8 +43,13 @@ nnet_8m_6l/decode_eval_iter290/cer_10:%CER 26.37 [ 1994 / 7562, 410 ins, 572 del
 
 nnet_8m_6l/decode_eval/cer_10:%CER 25.55 [ 1932 / 7562, 405 ins, 549 del, 978 sub ]         # 6 layers neural network
 nnet_8m_6l/decode_wide_eval/cer_10:%CER 24.13 [ 1825 / 7562, 384 ins, 535 del, 906 sub ]    # wider decoding beam width and lattice beam
+nnet_tanh_6l/decode_eval/cer_10:%CER 21.34 [ 1614 / 7562, 369 ins, 487 del, 758 sub ]	    # 6 layers neural network (nnet2 script, 1024 neurons)
+nnet_tanh_6l/decode_wide_eval/cer_10:%CER 21.22 [ 1605 / 7562, 365 ins, 485 del, 755 sub ]  # wider decoding beam width and lattice beam
 
-tri5a_pretrain-dbn_dnn/decode/cer_10:%CER 20.48 [ 1549 / 7562, 383 ins, 468 del, 698 sub ]  # pretrained RBM, cross entropy trained DNN  
+nnet_4m_3l/decode_eval/cer_10:%CER 22.38 [ 1692 / 7562, 372 ins, 510 del, 810 sub ]	    # 4 layers neural network
+nnet_4m_3l/decode_wide_eval/cer_10:%CER 22.16 [ 1676 / 7562, 365 ins, 505 del, 806 sub ]    # wider decoding beam width and lattice beam
+
+tri5a_pretrain-dbn_dnn/decode/cer_10:%CER 20.48 [ 1549 / 7562, 383 ins, 468 del, 698 sub ]  # 6 layers DNN - pretrained RBM, cross entropy trained DNN  
 tri5a_pretrain-dbn_dnn_smbr/decode_it1/cer_10:%CER 18.73 [ 1416 / 7562, 306 ins, 453 del, 657 sub ] # sMBR trained DNN  
 tri5a_pretrain-dbn_dnn_smbr/decode_it2/cer_10:%CER 18.73 [ 1416 / 7562, 310 ins, 446 del, 660 sub ]
 tri5a_pretrain-dbn_dnn_smbr/decode_it3/cer_10:%CER 18.62 [ 1408 / 7562, 313 ins, 446 del, 649 sub ]
@@ -96,6 +101,10 @@ nnet_8m_6l/decode_eval_closelm_iter290/cer_10:%CER 20.40 [ 1543 / 7562, 323 ins,
 
 nnet_8m_6l/decode_eval_closelm/cer_10:%CER 20.68 [ 1564 / 7562, 351 ins, 483 del, 730 sub ]
 nnet_8m_6l/decode_wide_eval_closelm/cer_10:%CER 17.87 [ 1351 / 7562, 343 ins, 453 del, 555 sub ]
+nnet_tanh_6l/decode_eval_closelm/cer_10:%CER 17.10 [ 1293 / 7562, 337 ins, 448 del, 508 sub ]
+nnet_tanh_6l/decode_wide_eval_closelm/cer_10:%CER 17.15 [ 1297 / 7562, 336 ins, 452 del, 509 sub ]
+nnet_4m_3l/decode_eval_closelm/cer_10:%CER 17.15 [ 1297 / 7562, 335 ins, 439 del, 523 sub ]
+nnet_4m_3l/decode_wide_eval_closelm/cer_10:%CER 17.02 [ 1287 / 7562, 330 ins, 436 del, 521 sub ]
 
 tri5a_pretrain-dbn_dnn/decode_closelm/cer_10:%CER 16.54 [ 1251 / 7562, 346 ins, 413 del, 492 sub ]
 tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it1/cer_10:%CER 15.31 [ 1158 / 7562, 280 ins, 410 del, 468 sub ]
