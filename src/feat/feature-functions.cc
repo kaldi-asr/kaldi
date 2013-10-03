@@ -348,7 +348,7 @@ void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
       window_end = window_start + opts.cmn_window;
     } else {
       window_start = t - opts.cmn_window;
-      window_end = t;
+      window_end = t + 1;
     }
     if (window_start < 0) { // shift window right if starts <0.
       window_end -= window_start;
@@ -356,7 +356,7 @@ void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
     }
     if (!opts.center) {
       if (window_end > t)
-        window_end = std::max(t, opts.min_window);
+        window_end = std::max(t + 1, opts.min_window);
     }
     if (window_end > num_frames) {
       window_start -= (window_end - num_frames);

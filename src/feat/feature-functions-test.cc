@@ -61,7 +61,7 @@ void UnitTestOnlineCmvn() {
         window_begin += shift;
       } else {
         window_begin = t - opts.cmn_window;
-        window_end = t;
+        window_end = t + 1;
         if (window_end < opts.min_window)
             window_end = opts.min_window;
       }
