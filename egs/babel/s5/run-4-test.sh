@@ -36,8 +36,6 @@ fi
 
 function make_plp {
   t=$1
-  use_pitch=false
-  use_ffv=false
 
   if [ "$use_pitch" = "false" ] && [ "$use_ffv" = "false" ]; then
    steps/make_plp.sh --cmd "$decode_cmd" --nj $my_nj data/${t} exp/make_plp/${t} plp
@@ -327,6 +325,7 @@ done
 if [ -f exp/tri6_nnet/.done ]; then
   decode=exp/tri6_nnet/decode_${dirid}
   if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
     steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj $my_nj \
       --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${dirid} \

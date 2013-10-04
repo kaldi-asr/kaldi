@@ -36,8 +36,6 @@ fi
 
 function make_plp {
   t=$1
-  use_pitch=false
-  use_ffv=false
 
   if [ "$use_pitch" = "false" ] && [ "$use_ffv" = "false" ]; then
    steps/make_plp.sh --cmd "$decode_cmd" --nj $my_nj data/${t} exp/make_plp/${t} plp
@@ -63,6 +61,7 @@ function make_plp {
     rm -rf {plp,ffv}_tmp_${t} data/${t}_{plp,ffv}
   fi
 
+  utils/fix_data_dir.sh data/${t}
   steps/compute_cmvn_stats.sh data/${t} exp/make_plp/${t} plp
   utils/fix_data_dir.sh data/${t}
 }
@@ -71,9 +70,13 @@ if [ ${type} == shadow ] ; then
   mandatory_variables=""
   optional_variables=""
 else
-  mandatory_variables="${type}_data_dir ${type}_data_list ${type}_stm_file \
-    ${type}_ecf_file ${type}_kwlist_file ${type}_rttm_file ${type}_nj"
-  optional_variables="${type}_subset_ecf "
+  mandatory_variables="${type}_data_dir ${type}_data_list \
+    ${type}_nj"
+  if ! $skip_kws ; then
+    mandatory_variables="$mandatory_variables \
+      ${type}_ecf_file ${type}_kwlist_file ${type}_rttm_file ${type}_nj"
+  fi
+  optional_variables="${type}_subset_ecf ${type}_stm_file "
 fi
 
 eval my_data_dir=\$${type}_data_dir
@@ -327,6 +330,7 @@ done
 if [ -f exp/tri6_nnet/.done ]; then
   decode=exp/tri6_nnet/decode_${dirid}
   if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
     steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj $my_nj \
       --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${dirid} \

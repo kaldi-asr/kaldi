@@ -97,12 +97,12 @@ if [[ ! -f data/dev2h/glm || data/dev2h/glm -ot "$glmFile" ]]; then
   echo ---------------------------------------------------------------------
   echo "Preparing dev2h stm files in data/dev2h on" `date`
   echo ---------------------------------------------------------------------
-  if [ -z $stm_file ]; then 
+  if [ -z $dev2h_stm_file ]; then 
     echo "WARNING: You should define the variable stm_file pointing to the IndusDB stm"
     echo "WARNING: Doing that, it will give you scoring close to the NIST scoring.    "
     local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev2h || exit 1
   else
-    local/augment_original_stm.pl $stm_file data/dev2h || exit 1
+    local/augment_original_stm.pl $dev2h_stm_file data/dev2h || exit 1
   fi
   [ ! -z $glmFile ] && cp $glmFile data/dev2h/glm
 
@@ -122,39 +122,36 @@ if [[ ! -f data/lang/G.fst || data/lang/G.fst -ot data/srilm/lm.gz ]]; then
   echo ---------------------------------------------------------------------
   local/arpa2G.sh data/srilm/lm.gz data/lang data/lang
 fi
-  
+decode_nj=$dev2h_nj
 echo ---------------------------------------------------------------------
 echo "Starting plp feature extraction for data/train in plp on" `date`
 echo ---------------------------------------------------------------------
 
-use_pitch=false
-use_ffv=false
-
 if [ ! -f data/train/.plp.done ]; then
   if [ "$use_pitch" = "false" ] && [ "$use_ffv" = "false" ]; then
-   steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/train exp/make_plp/train plp
+   steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/train exp/make_plp/train plp
   elif [ "$use_pitch" = "true" ] && [ "$use_ffv" = "true" ]; then
     cp -rT data/train data/train_plp; cp -rT data/train data/train_pitch; cp -rT data/train data/train_ffv
-    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/train_plp exp/make_plp/train plp_tmp_train
-    local/make_pitch.sh --cmd "$train_cmd" --nj $decode_nj data/train_pitch exp/make_pitch/train pitch_tmp_train
-    local/make_ffv.sh --cmd "$train_cmd"  --nj $decode_nj data/train_ffv exp/make_ffv/train ffv_tmp_train
-    steps/append_feats.sh --cmd "$train_cmd" --nj $decode_nj data/train{_plp,_pitch,_plp_pitch} exp/make_pitch/append_train_pitch plp_tmp_train
-    steps/append_feats.sh --cmd "$train_cmd" --nj $decode_nj data/train{_plp_pitch,_ffv,} exp/make_ffv/append_train_pitch_ffv plp
+    steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/train_plp exp/make_plp/train plp_tmp_train
+    local/make_pitch.sh --cmd "$train_cmd" --nj $train_nj data/train_pitch exp/make_pitch/train pitch_tmp_train
+    local/make_ffv.sh --cmd "$train_cmd"  --nj $train_nj data/train_ffv exp/make_ffv/train ffv_tmp_train
+    steps/append_feats.sh --cmd "$train_cmd" --nj $train_nj data/train{_plp,_pitch,_plp_pitch} exp/make_pitch/append_train_pitch plp_tmp_train
+    steps/append_feats.sh --cmd "$train_cmd" --nj $train_nj data/train{_plp_pitch,_ffv,} exp/make_ffv/append_train_pitch_ffv plp
     rm -rf {plp,pitch,ffv}_tmp_train data/train_{plp,pitch,plp_pitch}
   elif [ "$use_pitch" = "true" ]; then
     cp -rT data/train data/train_plp; cp -rT data/train data/train_pitch
-    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/train_plp exp/make_plp/train plp_tmp_train
-    local/make_pitch.sh --cmd "$train_cmd" --nj $decode_nj data/train_pitch exp/make_pitch/train pitch_tmp_train
-    steps/append_feats.sh --cmd "$train_cmd" --nj $decode_nj data/train{_plp,_pitch,} exp/make_pitch/append_train plp
+    steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/train_plp exp/make_plp/train plp_tmp_train
+    local/make_pitch.sh --cmd "$train_cmd" --nj $train_nj data/train_pitch exp/make_pitch/train pitch_tmp_train
+    steps/append_feats.sh --cmd "$train_cmd" --nj $train_nj data/train{_plp,_pitch,} exp/make_pitch/append_train plp
     rm -rf {plp,pitch}_tmp_train data/train_{plp,pitch}
   elif [ "$use_ffv" = "true" ]; then
     cp -rT data/train data/train_plp; cp -rT data/train data/train_ffv
-    steps/make_plp.sh --cmd "$train_cmd" --nj $decode_nj data/train_plp exp/make_plp/train plp_tmp_train
-    local/make_ffv.sh --cmd "$train_cmd" --nj $decode_nj data/train_ffv exp/make_ffv/train ffv_tmp_train
-    steps/append_feats.sh --cmd "$train_cmd" --nj $decode_nj data/train{_plp,_ffv,} exp/make_ffv/append_train plp
+    steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/train_plp exp/make_plp/train plp_tmp_train
+    local/make_ffv.sh --cleanup false --cmd "$train_cmd" --nj $train_nj data/train_ffv exp/make_ffv/train ffv_tmp_train
+    steps/append_feats.sh --cmd "$train_cmd" --nj $train_nj data/train{_plp,_ffv,} exp/make_ffv/append_train plp
     rm -rf {plp,ffv}_tmp_train data/train_{plp,ffv}
   fi
-
+  utils/fix_data_dir.sh data/train
   steps/compute_cmvn_stats.sh \
     data/train exp/make_plp/train plp
   # In case plp or pitch extraction failed on some utterances, delist them
