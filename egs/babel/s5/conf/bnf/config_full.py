@@ -14,7 +14,7 @@ class BnfExpConfig(object):
     def __init__(self):
 
         # working directory; by default, the pfiles should be here
-        self.wdir = "CWD/exp_BNF/bnf_dnn_run/"
+        self.wdir = "WORK/"
         self.pretrain_data = self.wdir + 'train.pfile.gz'  # pretraining data
         self.pretrain_output = self.wdir + "rbm.ptr"       # pretraining output
     
