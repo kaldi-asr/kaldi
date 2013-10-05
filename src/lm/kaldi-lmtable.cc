@@ -32,23 +32,24 @@ namespace kaldi {
 // typedef fst::StdArc::StateId StateId;
 
 // newlyAdded will be updated
-StateId LmFstConverter::AddStateFromSymb(
-                                      const std::vector<string> &ngramString,
-                                      int kstart, int kend,
-                                      const char *sep,
-                                      fst::StdVectorFst *pfst,
-                                      fst::SymbolTable *psst,
-                                      bool &newlyAdded) {
+LmFstConverter::StateId LmFstConverter::AddStateFromSymb(
+    const std::vector<string> &ngramString,
+    int kstart, int kend,
+    fst::StdVectorFst *pfst,
+    bool &newlyAdded) {
   fst::StdArc::StateId sid;
-
+  std::string separator;
+  separator.resize(1);
+  separator[0] = '\0';
+  
   std::string hist;
   if (kstart == 0) {
-    hist.append(sep);
+    hist.append(separator);
   } else {
-     for (int k = kstart; k >= kend; k--) {
-       hist.append(ngramString[k]);
-       hist.append(sep);
-     }
+    for (int k = kstart; k >= kend; k--) {
+      hist.append(ngramString[k]);
+      hist.append(separator);
+    }
   }
 
   newlyAdded = false;
@@ -81,99 +82,97 @@ void LmFstConverter::ConnectUnusedStates(fst::StdVectorFst *pfst) {
       connected++;
     }
   }
-  cerr << "Connected "<<connected<<" states without outgoing arcs."<<endl;
+  cerr << "Connected " << connected << " states without outgoing arcs." << endl;
 }
 
 void LmFstConverter::AddArcsForNgramProb(
-                         int ilev, int maxlev,
-                         float logProb,
-                         float logBow,
-                         std::vector<string> &ngs,
-                         fst::StdVectorFst *pfst,
-                         fst::SymbolTable *psst,
-                         const string startSent,
-                         const string endSent) {
+    int ilev, int maxlev,
+    float logProb,
+    float logBow,
+    std::vector<string> &ngs,
+    fst::StdVectorFst *fst,
+    const string startSent,
+    const string endSent) {
   fst::StdArc::StateId src, dst, dbo;
   std::string curwrd = ngs[1];
   int64 ilab, olab;
-  LmWeight prob = convertArpaLogProbToWeight(logProb);
-  LmWeight bow  = convertArpaLogProbToWeight(logBow);
+  LmWeight prob = ConvertArpaLogProbToWeight(logProb);
+  LmWeight bow  = ConvertArpaLogProbToWeight(logBow);
   bool newSrc, newDbo, newDst = false;
 
   if (ilev >= 2) {
     // General case works from N down to 2-grams
-    src = AddStateFromSymb(ngs,   ilev,   2, "_", pfst, psst, newSrc);
+    src = AddStateFromSymb(ngs,   ilev,   2, fst, newSrc);
     if (ilev != maxlev) {
 	  // add all intermediate levels from 2 to current
 	  // last ones will be current backoff source and destination
 	  for (int iilev=2; iilev <= ilev; iilev++) {
-		dst = AddStateFromSymb(ngs, iilev,   1, "_", pfst, psst, newDst);
-		dbo = AddStateFromSymb(ngs, iilev-1, 1, "_", pfst, psst, newDbo);
+		dst = AddStateFromSymb(ngs, iilev,   1, fst, newDst);
+		dbo = AddStateFromSymb(ngs, iilev-1, 1, fst, newDbo);
 		bkState_[dst] = dbo;
 	  }
     } else {
 	  // add all intermediate levels from 2 to current
 	  // last ones will be current backoff source and destination
 	  for (int iilev=2; iilev <= ilev; iilev++) {
-		dst = AddStateFromSymb(ngs, iilev-1, 1, "_", pfst, psst, newDst);
-		dbo = AddStateFromSymb(ngs, iilev-2, 1, "_", pfst, psst, newDbo);
+		dst = AddStateFromSymb(ngs, iilev-1, 1, fst, newDst);
+		dbo = AddStateFromSymb(ngs, iilev-2, 1, fst, newDbo);
 		bkState_[dst] = dbo;
 	  }
     }
   } else {
     // special case for 1-grams: start from 0-gram
     if (curwrd.compare(startSent) != 0) {
-      src = AddStateFromSymb(ngs, 0, 1, "_", pfst, psst, newSrc);
+      src = AddStateFromSymb(ngs, 0, 1, fst, newSrc);
     } else {
       // extra special case if in addition we are at beginning of sentence
       // starts from initial state and has no cost
-      src = pfst->Start();
+      src = fst->Start();
       prob = fst::StdArc::Weight::One();
     }
-    dst = AddStateFromSymb(ngs, 1, 1, "_", pfst, psst, newDst);
-    dbo = AddStateFromSymb(ngs, 0, 1, "_", pfst, psst, newDbo);
+    dst = AddStateFromSymb(ngs, 1, 1, fst, newDst);
+    dbo = AddStateFromSymb(ngs, 0, 1, fst, newDbo);
     bkState_[dst] = dbo;
   }
 
   // state is final if last word is end of sentence
   if (curwrd.compare(endSent) == 0) {
-    pfst->SetFinal(dst, fst::StdArc::Weight::One());
+    fst->SetFinal(dst, fst::StdArc::Weight::One());
   }
   // add labels to symbol tables
-  ilab = pfst->MutableInputSymbols()->AddSymbol(curwrd);
-  olab = pfst->MutableOutputSymbols()->AddSymbol(curwrd);
+  ilab = fst->MutableInputSymbols()->AddSymbol(curwrd);
+  olab = fst->MutableOutputSymbols()->AddSymbol(curwrd);
 
   // add arc with weight "prob" between source and destination states
   // cerr << "n-gram prob, fstAddArc: src "<< src << " dst " << dst;
   // cerr << " lab " << ilab << endl;
-  pfst->AddArc(src, fst::StdArc(ilab, olab, prob, dst));
+  fst->AddArc(src, fst::StdArc(ilab, olab, prob, dst));
 
   // add backoffs to any newly created destination state
   // but only if non-final
-  if (!IsFinal(pfst, dst) && newDst && dbo != dst) {
+  if (!IsFinal(fst, dst) && newDst && dbo != dst) {
     ilab = olab = 0;
     // cerr << "backoff, fstAddArc: src "<< src << " dst " << dst;
     // cerr << " lab " << ilab << endl;
-    pfst->AddArc(dst, fst::StdArc(ilab, olab, bow, dbo));
+    fst->AddArc(dst, fst::StdArc(ilab, olab, bow, dbo));
   }
 }
 
 #ifndef HAVE_IRSTLM
 
 bool LmTable::ReadFstFromLmFile(std::istream &istrm,
-                                fst::StdVectorFst *pfst,
+                                fst::StdVectorFst *fst,
                                 bool useNaturalOpt,
                                 const string startSent,
                                 const string endSent) {
 #ifdef KALDI_PARANOID
-  KALDI_ASSERT(pfst);
-  KALDI_ASSERT(pfst->InputSymbols() && pfst->OutputSymbols());
+  KALDI_ASSERT(fst);
+  KALDI_ASSERT(fst->InputSymbols() && fst->OutputSymbols());
 #endif
 
   conv_->UseNaturalLog(useNaturalOpt);
 
   // do not use state symbol table for word histories anymore
-  fst::SymbolTable *pStateSymbs = NULL; //new fst::SymbolTable("kaldi-lm-state");
   string inpline;
   size_t pos1, pos2;
   int ilev, maxlev = 0;
@@ -216,7 +215,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
   // process "\N-grams:" sections, we may have already read a "\N-grams:" line
   // if so, process it, otherwise get another line
   while (inpline.find("-grams:") != string::npos
-          || (getline(istrm, inpline) && !istrm.eof()) ) {
+         || (getline(istrm, inpline) && !istrm.eof()) ) {
     // look for a valid "\N-grams:" section
     pos1 = inpline.find("\\");
     pos2 = inpline.find("-grams:");
@@ -294,12 +293,12 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
         }
       }
       conv_->AddArcsForNgramProb(ilev, maxlev, prob, bow,
-                          ngramString, pfst,
-                          pStateSymbs, startSent, endSent);
+                                 ngramString, fst,
+                                 startSent, endSent);
     }  // end of loop on individual n-gram lines
   }
 
-  conv_->ConnectUnusedStates(pfst);
+  conv_->ConnectUnusedStates(fst);
 
   // not used anymore: delete pStateSymbs;
 
@@ -312,7 +311,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
 // #ifdef HAVE_IRSTLM implementation
 
 bool LmTable::ReadFstFromLmFile(std::istream &istrm,
-                                fst::StdVectorFst *pfst,
+                                fst::StdVectorFst *fst,
                                 bool useNaturalOpt,
                                 const string startSent,
                                 const string endSent) {
@@ -320,20 +319,20 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
   ngram ng(this->getDict(), 0);
 
   conv_->UseNaturalLog(useNaturalOpt);
-  DumpStart(ng, pfst, startSent, endSent);
+  DumpStart(ng, fst, startSent, endSent);
 
   // should do some check before returning true
   return true;
 }
 
- // run through all nodes in table (as in dumplm)
+// run through all nodes in table (as in dumplm)
 void LmTable::DumpStart(ngram ng,
-                        fst::StdVectorFst *pfst,
+                        fst::StdVectorFst *fst,
                         const string startSent,
                         const string endSent) {
 #ifdef KALDI_PARANOID
-  KALDI_ASSERT(pfst);
-  KALDI_ASSERT(pfst->InputSymbols() && pfst->OutputSymbols());
+  KALDI_ASSERT(fst);
+  KALDI_ASSERT(fst->InputSymbols() && fst->OutputSymbols());
 #endif
   // we need a state symbol table while traversing word contexts
   fst::SymbolTable *pStateSymbs = new fst::SymbolTable("kaldi-lm-state");
@@ -343,7 +342,7 @@ void LmTable::DumpStart(ngram ng,
     ng.size = 0;
     cerr << "Processing " << l << "-grams" << endl;
     DumpContinue(ng, 1, l, 0, cursize[1],
-                 pfst, pStateSymbs, startSent, endSent);
+                 fst, pStateSymbs, startSent, endSent);
   }
 
   delete pStateSymbs;
@@ -353,7 +352,7 @@ void LmTable::DumpStart(ngram ng,
 // run through given levels and positions in table
 void LmTable::DumpContinue(ngram ng, int ilev, int elev,
                            table_entry_pos_t ipos, table_entry_pos_t epos,
-                           fst::StdVectorFst *pfst,
+                           fst::StdVectorFst *fst,
                            fst::SymbolTable *pStateSymbs,
                            const string startSent, const string endSent) {
   LMT_TYPE ndt = tbltype[ilev];
@@ -384,7 +383,7 @@ void LmTable::DumpContinue(ngram ng, int ilev, int elev,
                                       (table_pos_t) i * ndsz, ndt);
       if (isucc < esucc)  // there are successors!
         DumpContinue(ng, ilev+1, elev, isucc, esucc,
-                     pfst, pStateSymbs, startSent, endSent);
+                     fst, pStateSymbs, startSent, endSent);
       // else
       // cerr << "no successors for " << ng << "\n";
     } else {
@@ -418,8 +417,8 @@ void LmTable::DumpContinue(ngram ng, int ilev, int elev,
         // else if (ibo != 0.0) cerr << "\t" << ibo;
       }
       conv_->AddArcsForNgramProb(ilev, maxlev, ipr, ibo,
-                          ngramString, pfst, pStateSymbs,
-                          startSent, endSent);
+                                 ngramString, fst, pStateSymbs,
+                                 startSent, endSent);
     }
   }
 }

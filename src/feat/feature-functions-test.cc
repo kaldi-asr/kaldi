@@ -30,7 +30,7 @@
 namespace kaldi {
 
 void UnitTestOnlineCmvn() {
-  for (int32 i = 0; i < 100; i++) {
+  for (int32 i = 0; i < 1000; i++) {
     int32 num_frames = 1 + (rand() % 10 * 10);
     int32 dim = 1 + rand() % 10;
     SlidingWindowCmnOptions opts;
@@ -61,7 +61,7 @@ void UnitTestOnlineCmvn() {
         window_begin += shift;
       } else {
         window_begin = t - opts.cmn_window;
-        window_end = t;
+        window_end = t + 1;
         if (window_end < opts.min_window)
             window_end = opts.min_window;
       }
@@ -79,12 +79,16 @@ void UnitTestOnlineCmvn() {
         covar = std::max(covar, 1.0e-20);
         double data = feats(t, d),
             norm_data = data - mean;
-        if (opts.normalize_variance)
-          norm_data /= sqrt(covar);
+        if (opts.normalize_variance) {
+          if (window_size == 1) norm_data = 0.0;
+          else norm_data /= sqrt(covar);
+        }
         output_feats2(t, d) = norm_data;
       }
     }
-    KALDI_ASSERT(output_feats.ApproxEqual(output_feats2, 0.0001));
+    if (! output_feats.ApproxEqual(output_feats2, 0.0001)) {
+      KALDI_ERR << "Features differ " << output_feats << " vs. " << output_feats2;
+    }
   }
 }
 

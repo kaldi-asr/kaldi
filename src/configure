@@ -297,12 +297,7 @@ function linux_configure_cuda {
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
 
     if [ "`uname -m`" == "x86_64" ]; then
-      if [ "`hostname -d`" == "fit.vutbr.cz" ]; then
-        #BUT machines by default compile 32bits
-        cat makefiles/linux_cuda.mk >> kaldi.mk 
-      else
-        cat makefiles/linux_x86_64_cuda.mk >> kaldi.mk
-      fi
+      cat makefiles/linux_x86_64_cuda.mk >> kaldi.mk
     else
       cat makefiles/linux_cuda.mk >> kaldi.mk
     fi
@@ -319,10 +314,14 @@ function linux_atlas_failure { # function we use when we couldn't find
    echo "** $* ***"
    echo "**  ERROR   **"
    echo "**Configure cannot proceed automatically, but by editing kaldi.mk"
-   echo "** you may be able to proceed (replace [somewhere] with a directory),"
-   echo "** or install the ATLAS package on your machine,"
+   echo "** you may be able to proceed (replace [somewhere] with a directory);"
+   echo "** or install the ATLAS package on your machine (if you are system "
+   echo "   administrator, you can do it easily by searching the atlas packages "
+   echo "   with commands like 'apt-cache search libatlas' or 'yum search atlas',"
+   echo "   and install the packages with commands 'apt-get install' or 'yum install') "
+   echo "   e.g. 'apt-get install libatlas-dev libatlas-base-dev';"
    echo "** or try going to ../tools and running install_atlas.sh, and running"
-   echo "** this script (configure) again."
+   echo "   this script (configure) again."
    exit 1;
 } 
 

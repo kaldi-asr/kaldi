@@ -127,22 +127,37 @@ while ($line=<SCP>) {
 	next;
     }
     if ($waveformFile =~ m:^\S+$:) {
-	# This is a single filename, no shp2pipe or gunzip for reading waveforms
-	$waveform{$recordingID} = $waveformFile;
+      # This is a single filename, no shp2pipe or gunzip for reading waveforms
+      $waveform{$recordingID} = $waveformFile;
     } elsif (($waveformFile =~ m:(sph2pipe|gunzip|gzip|cat|zcat)\s+:) &&
 	     ($waveformFile =~ m:\s+(\S+)\s*\|$:)) {
-	# HACK ALERT: the filename is *assumed* to be at the END of the command
-	$waveform{$recordingID} = $1;
-	$channel{$recordingID}  = $1
-	    if ($waveformFile =~ m:sph2pipe\s+.*\-c\s+(\S+)\s+.+:);
+      # HACK ALERT: the filename is *assumed* to be at the END of the command
+      $waveform{$recordingID} = $1;
+      $channel{$recordingID}  = $1 if ($waveformFile =~ m:sph2pipe\s+.*\-c\s+(\S+)\s+.+:);
+    } elsif (($waveformFile =~ m:(sox)\s+:) &&
+	     ($waveformFile =~ m:\s+(\S+)\s*\|$:)) {
+      # HACK ALERT: the first element that does ends with '.wav' is assumed to
+      # be the original filename
+      @elems=split(/\s+/, $waveformFile);
+      foreach $elem (@elems) {
+        if ($elem =~ m/.*\.wav/) {
+          $filename=$elem;
+          last;
+        }
+      }
+      die ("$0: Couldn't parse waveform filename on line $. in $scpFile\n\t$line\n") if not defined $filename;
+      die ("$0: Filename $filename does not exist: in $scpFile\n\t$line\n") unless (-e $filename);
+
+      $waveform{$recordingID} = $filename;
+      #$channel{$recordingID}  = $filename;
     } else {
-	print STDERR ("$0: Couldn't parse waveform filename on line $. in $scpFile\n\t$line\n");
-	next;
+      print STDERR ("$0: Couldn't parse waveform filename on line $. in $scpFile\n\t$line\n");
+      next;
     }
     $waveform{$recordingID} =~ s:.+/::;             # remove path prefix
     $waveform{$recordingID} =~ s:\.(sph|wav)\s*$::; # remove file extension
     $channel{$recordingID} = 1                      # Default
-	unless (exists $channel{$recordingID});     
+      unless (exists $channel{$recordingID});     
     ++$numRecordings;
 }
 close(SCP);

@@ -12,6 +12,7 @@ use Cwd;
 
 $qsub_opts = "";
 $sync = 0;
+$nof_threads=1;
 
 for ($x = 1; $x <= 3; $x++) { # This for-loop is to 
   # allow the JOB=1:n option to be interleaved with the
@@ -29,6 +30,7 @@ for ($x = 1; $x <= 3; $x++) { # This for-loop is to
       if ($switch eq "-pe") { # e.g. -pe smp 5
         $option2 = shift @ARGV;
         $qsub_opts .= "$option2 ";
+        $nof_threads = $option2;
       }
     }
   }
@@ -159,8 +161,11 @@ print Q "  echo -n '# '; cat <<EOF\n";
 print Q "$cmd\n"; # this is a way of echoing the command into a comment in the log file,
 print Q "EOF\n"; # without having to escape things like "|" and quote characters.
 print Q ") >$logfile\n";
+print Q "time1=\`date +\"%s\"\`\n";
 print Q " ( $cmd ) 2>>$logfile >>$logfile\n";
+print Q "time2=\`date +\"%s\"\`\n";
 print Q "ret=\$?\n";
+print Q "echo '#' Accounting: time=\$((\$time2-\$time1)) threads=$nof_threads >>$logfile\n";
 print Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
 print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137; 
   # let the script return with status 100 which will put it to E state; more easily rerunnable.

@@ -5,16 +5,18 @@
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_30k_nodup data/lang exp/tri3b exp/tri3b_ali_30k_nodup || exit 1;
 
-
 steps/train_lda_mllt.sh --cmd "$train_cmd" --realign-iters "" \
   1000 10000 data/train_30k_nodup data/lang exp/tri3b_ali_30k_nodup exp/tri4b_seg || exit 1;
+
+steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
+  data/train data/lang exp/tri3b exp/tri3b_ali_all || exit 1;
 
 # Make the phone decoding-graph.
 steps/make_phone_graph.sh data/lang exp/tri3b_ali_all exp/tri4b_seg || exit 1;
 
 mkdir -p data_reseg
 
-for data in train_orig eval2000; do
+for data in train eval2000; do
   cp -rT data/${data} data_reseg/${data}_orig; rm -r data_reseg/${data}_orig/split*
   for f in text utt2spk spk2utt feats.scp cmvn.scp segments; do rm data_reseg/${data}_orig/$f; done
   cat data_reseg/${data}_orig/wav.scp  | awk '{print $1, $1;}' | \
@@ -28,11 +30,12 @@ for data in train_orig eval2000; do
 done
 
 
+steps/decode_nolats.sh --write-words false --write-alignments true \
+   --cmd "$decode_cmd" --nj 60 --beam 7.0 --max-active 1000 \
+  exp/tri4b_seg/phone_graph data_reseg/train_orig exp/tri4b_seg/decode_train_orig
 
-steps/decode_si_ali.sh --cmd "$decode_cmd" --nj 60 --beam 7.0 --max-active 1000 \
-  exp/tri4b_seg/phone_graph data_reseg/train_orig exp/tri4b_seg/decode_train_orig2 
-
-steps/decode_si_ali.sh --cmd "$decode_cmd" --nj 10 --beam 7.0 --max-active 1000 \
+steps/decode_nolats.sh --write-words false --write-alignments true \
+   --cmd "$decode_cmd" --nj 10 --beam 7.0 --max-active 1000 \
   exp/tri4b_seg/phone_graph data_reseg/eval2000_orig exp/tri4b_seg/decode_eval2000_orig
 
 

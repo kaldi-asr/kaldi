@@ -66,7 +66,13 @@ int main(int argc, char *argv[]) {
     
     bool binary_write = true;
     bool set_priors = true; // Also set the per-pdf priors in the model.
-    BaseFloat prior_floor = 1.0e-08;
+    BaseFloat prior_floor = 5.0e-06; // The default was previously 1e-8, but
+                                     // once we had problems with a pdf-id that
+                                     // was not being seen in training, being
+                                     // recognized all the time.  This value
+                                     // seemed to be the smallest prior of the
+                                     // "seen" pdf-ids in one run.
+    MleTransitionUpdateConfig transition_update_config;
     MleTransitionUpdateConfig transition_update_config;
     
     ParseOptions po(usage);

@@ -11,6 +11,10 @@
 # while you are running this script.  It doesn't have to be accessible globally,
 # the script copies the things you will need.
 
+working_dir=exp_BNF/bnf_dnn_run
+cmd=run.pl
+. utils/parse_options.sh
+
 . conf/common_vars.sh
 . ./lang.conf
 . ./cmd.sh
@@ -40,6 +44,9 @@ if ! python -c 'import theano;'; then
   exit 1;
 fi
 
+mkdir -p exp_BNF/bnf_dnn
+mkdir -p $working_dir
+
 ! gmm-info exp/tri5_ali/final.mdl >&/dev/null && \
    echo "Error getting GMM info from exp/tri5_ali/final.mdl" && exit 1;
 
@@ -49,10 +56,10 @@ num_pdfs=`gmm-info exp/tri5_ali/final.mdl | grep pdfs | awk '{print $NF}'` || ex
 
 # Now we copy conf/bnf/config_limited.py or conf/bnf/config_full.py, as appropriate,
 # to ptdnn/exp_bnf/config.py, replacing a couple of things as we copy it.
-
+WORK=`readlink -f $working_dir`
 config_in=conf/bnf/config_${babel_type}.py
 [ ! -f $config_in ] && echo "No such config file $config_in" && exit 1;
-! cat $config_in | sed "s|CWD|$PWD|" | sed "s/N_OUTS/${num_pdfs}/" > ptdnn/exp_bnf/config.py && \
+! cat $config_in | sed "s|CWD|$PWD|" | sed "s|WORK|$WORK|" | sed "s/N_OUTS/${num_pdfs}/" > ptdnn/exp_bnf/config.py && \
   echo "Error setting ptdnn/exp_bnf/config.py" && exit 1;
   
 
@@ -63,19 +70,21 @@ echo ---------------------------------------------------------------------
 # make exp_BNF a link to local storage before running this.  It produces a lot of temp files.
 
 if [ ! -s exp_BNF/bnf_dnn_run/concat.pfile ]; then
-  steps_BNF/build_nnet_pfile.sh --cmd "$train_cmd" --every-nth-frame "$bnf_every_nth_frame" \
-    data/train data/lang exp/tri5_ali exp_BNF/bnf_dnn_run || exit 1
+  steps_BNF/build_nnet_pfile.sh --nj 1 --every-nth-frame "$bnf_every_nth_frame" \
+    data/train data/lang exp/tri5_ali $working_dir || exit 1
 fi
 
 #export LD_LIBRARY_PATH=/opt/nvidia_cuda/cuda-5.0/lib64
 #export PATH=$PATH:/opt/nvidia_cuda/cuda-5.0/lib64/libcublas
-export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32
 
-export PYTHONPATH=$PYTHONPATH:`pwd`/ptdnn/
-python ptdnn/main.py | tee exp_BNF/bnf_dnn_run/LOG
+$cmd $working_dir/theano.log \
+  export PYTHONPATH=$PYTHONPATH:`pwd`/ptdnn/ \; \
+  export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 \; \
+  python ptdnn/main.py 
 
 mkdir -p exp_BNF/bnf_dnn
-cp -r exp_BNF/bnf_dnn_run/{final.mat,final.nnet,log,LOG} exp_BNF/bnf_dnn/
+cp -r $working_dir/{final.mat,final.nnet,log,LOG,theano.log} exp_BNF/bnf_dnn/
+mv $working_dir exp_BNF/bnf_dnn_run
 
 
 echo ---------------------------------------------------------------------

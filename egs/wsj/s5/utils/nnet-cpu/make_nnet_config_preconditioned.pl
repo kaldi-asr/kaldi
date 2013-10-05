@@ -170,7 +170,7 @@ $context_size = 1 + $input_left_context + $input_right_context;
 ## num_params = hidden_layer_size^2 * (num_hidden_layers-1)
 ##            + hidden_layer_size * (num_leaves + feat_dim * context_size * expand_power)
 ## solve for hidden_layer_size = x.
-## a x^2 + b  + c, with
+## a x^2 + b x + c, with
 ## a = num_hidden_layers - 1
 ## b = num_leaves + feat_dim * context_size
 ## c = -num_params

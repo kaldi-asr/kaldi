@@ -6,6 +6,8 @@
 
 . cmd.sh
 
+##### Data Preparation Stage #####
+
 mkdir data data/train data/eval
 
 ### Data preparation - Training data, evaluation data. Please refer http://kaldi.sourceforge.net/data_prep.html as well
@@ -29,7 +31,9 @@ steps/compute_cmvn_stats.sh data/eval exp/make_mfcc/eval $mfccdir || exit 1;
 
 utils/fix_data_dir.sh data/eval 
 
-### We start acoustic model training here, build from HMM-GMM
+
+##### We start acoustic model training here, build from GMM-HMM #####
+
 ### Mono phone training
 steps/train_mono.sh --nj 20 --cmd "$train_cmd" data/train data/lang exp/mono0a || exit 1;
 steps/align_si.sh --nj 30 --cmd "$train_cmd" data/train data/lang exp/mono0a exp/mono0a_ali
@@ -126,7 +130,10 @@ steps/decode_sgmm_rescore.sh --cmd "$decode_cmd" --iter $n --transform-dir exp/t
 steps/decode_sgmm_rescore.sh --cmd "$decode_cmd" --iter $n --transform-dir exp/tri5a/decode_eval data/lang_test data/eval exp/sgmm_5a/decode_eval exp/sgmm_5a_mmi_b0.1/decode_eval$n
 done
 
-### Neural Network (on top of LDA+MLLT+SAT model)
+
+##### Neural Network (on top of LDA+MLLT+SAT model)#####
+
+### 6 hidden layers neural network, tanh non-linearity 
 steps/train_nnet_cpu.sh --mix-up 8000 --initial-learning-rate 0.01 --final-learning-rate 0.001 --num-jobs-nnet 16 --num-hidden-layers 6 --num-parameters 8000000 --cmd "$decode_cmd" data/train data/lang exp/tri5a exp/nnet_8m_6l
 
  # decoding on final model for NN
@@ -139,15 +146,22 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --iter $n --config conf/deco
 steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --iter $n --config conf/decode.config --transform-dir exp/tri5a/decode_eval_closelm exp/tri5a/graph_closelm data/eval exp/nnet_8m_6l/decode_eval_closelm_iter${n} &
 done
 
- # wider beam width and lattice beam decoding
-steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --config conf/decode_wide.config --transform-dir exp/tri5a/decode_eval exp/tri5a/graph data/eval exp/nnet_8m_6l/decode_wide_eval 
-steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --config conf/decode_wide.config --transform-dir exp/tri5a/decode_eval_closelm exp/tri5a/graph_closelm data/eval exp/nnet_8m_6l/decode_wide_eval_closelm 
 
- # GPU based DNN traing, this was run on CentOS 6.4 with CUDA 5.0
- # 6 layers DNN pretrained with restricted boltzmann machine, frame level cross entropy training, sequence discriminative training with sMBR criterion
+ # alternative neural network training script (6 hidden layers, 1024 neurons)
+ local/run_tanh.sh
+
+### Half parameters compare to previous  =>  3 hidden layers, 4 million parameters
+steps/train_nnet_cpu.sh --mix-up 8000 --initial-learning-rate 0.01 --final-learning-rate 0.001 --num-jobs-nnet 16 --num-hidden-layers 3 --num-parameters 4000000 --cmd "$decode_cmd" data/train data/lang exp/tri5a exp/nnet_4m_3l
+
+steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --transform-dir exp/tri5a/decode_eval exp/tri5a/graph data/eval exp/nnet_4m_3l/decode_eval 
+steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --transform-dir exp/tri5a/decode_eval_closelm exp/tri5a/graph_closelm data/eval exp/nnet_4m_3l/decode_eval_closelm 
+
+
+## GPU based DNN traing, this was run on CentOS 6.4 with CUDA 5.0
+## 6 layers DNN pretrained with restricted boltzmann machine, frame level cross entropy training, sequence discriminative training with sMBR criterion
 local/run_dnn.sh
- # decoding was run by CPUs
- # decoding using DNN with cross-entropy training 
+## decoding was run by CPUs
+## decoding using DNN with cross-entropy training 
 dir=exp/tri5a_pretrain-dbn_dnn
 steps/decode_nnet.sh --nj 2 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 exp/tri5a/graph data-fmllr-tri5a/test $dir/decode || exit 1;
 steps/decode_nnet.sh --nj 2 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 exp/tri5a/graph_closelm data-fmllr-tri5a/test $dir/decode_closelm || exit 1;
@@ -159,7 +173,13 @@ for ITER in 1 2 3 4; do
 done
 
 
+
+#### Wider decoding beam width and lattice beam for comparision ####
+local/decode_wide_beam.sh
+
+
 ### Scoring ###
+# GMM-HMM
 local/ext/score.sh data/eval exp/tri1/graph exp/tri1/decode_eval
 local/ext/score.sh data/eval exp/tri1/graph_closelm exp/tri1/decode_eval_closelm
 
@@ -195,6 +215,7 @@ for n in 1 2 3 4; do
  local/ext/score.sh data/eval exp/sgmm_5a/graph_closelm exp/sgmm_5a_mmi_b0.1/decode_eval_closelm$n;
 done
 
+# DNN-HMM
 local/ext/score.sh data/eval exp/tri5a/graph exp/nnet_8m_6l/decode_eval
 local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_8m_6l/decode_eval_closelm
 
@@ -205,6 +226,11 @@ done
 
 local/ext/score.sh data/eval exp/tri5a/graph exp/nnet_8m_6l/decode_wide_eval
 local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_8m_6l/decode_wide_eval_closelm
+
+local/ext/score.sh data/eval exp/tri5a/graph exp/nnet_4m_3l/decode_eval
+local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_4m_3l/decode_eval_closelm
+local/ext/score.sh data/eval exp/tri5a/graph exp/nnet_4m_3l/decode_wide_eval
+local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_4m_3l/decode_wide_eval_closelm
 
 local/ext/score.sh data/eval exp/tri5a/graph exp/tri5a_pretrain-dbn_dnn/decode
 local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/tri5a_pretrain-dbn_dnn/decode_closelm
