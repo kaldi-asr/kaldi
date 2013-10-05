@@ -146,9 +146,6 @@ steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --iter $n --config conf/deco
 steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --iter $n --config conf/decode.config --transform-dir exp/tri5a/decode_eval_closelm exp/tri5a/graph_closelm data/eval exp/nnet_8m_6l/decode_eval_closelm_iter${n} &
 done
 
- # wider beam width and lattice beam decoding
-steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --config conf/decode_wide.config --transform-dir exp/tri5a/decode_eval exp/tri5a/graph data/eval exp/nnet_8m_6l/decode_wide_eval 
-steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --config conf/decode_wide.config --transform-dir exp/tri5a/decode_eval_closelm exp/tri5a/graph_closelm data/eval exp/nnet_8m_6l/decode_wide_eval_closelm 
 
  # alternative neural network training script (6 hidden layers, 1024 neurons)
  local/run_tanh.sh
@@ -158,8 +155,6 @@ steps/train_nnet_cpu.sh --mix-up 8000 --initial-learning-rate 0.01 --final-learn
 
 steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --transform-dir exp/tri5a/decode_eval exp/tri5a/graph data/eval exp/nnet_4m_3l/decode_eval 
 steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --transform-dir exp/tri5a/decode_eval_closelm exp/tri5a/graph_closelm data/eval exp/nnet_4m_3l/decode_eval_closelm 
-steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --config conf/decode_wide.config --transform-dir exp/tri5a/decode_eval exp/tri5a/graph data/eval exp/nnet_4m_3l/decode_wide_eval 
-steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 2 --config conf/decode_wide.config --transform-dir exp/tri5a/decode_eval_closelm exp/tri5a/graph_closelm data/eval exp/nnet_4m_3l/decode_wide_eval_closelm 
 
 
 ## GPU based DNN traing, this was run on CentOS 6.4 with CUDA 5.0
@@ -176,6 +171,11 @@ for ITER in 1 2 3 4; do
  steps/decode_nnet.sh --nj 2 --cmd "$decode_cmd" --config conf/decode_dnn.config --nnet $dir/${ITER}.nnet --acwt 0.1 exp/tri5a/graph data-fmllr-tri5a/test $dir/decode_it${ITER} &
  steps/decode_nnet.sh --nj 2 --cmd "$decode_cmd" --config conf/decode_dnn.config --nnet $dir/${ITER}.nnet --acwt 0.1 exp/tri5a/graph_closelm data-fmllr-tri5a/test $dir/decode_closelm_it${ITER} &
 done
+
+
+
+#### Wider decoding beam width and lattice beam for comparision ####
+local/decode_wide_beam.sh
 
 
 ### Scoring ###
