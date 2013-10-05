@@ -196,10 +196,10 @@ void MatrixBase<Real>::CopyUpperToLower() {
 }
 
 template<typename Real>
-void MatrixBase<Real>::SyAddMat2(const Real alpha,
-                                 const MatrixBase<Real> &A,
-                                 MatrixTransposeType transA,
-                                 Real beta) {
+void MatrixBase<Real>::SymAddMat2(const Real alpha,
+                                  const MatrixBase<Real> &A,
+                                  MatrixTransposeType transA,
+                                  Real beta) {
   KALDI_ASSERT(num_rows_ == num_cols_ &&
                ((transA == kNoTrans && A.num_rows_ == num_rows_) ||
                 (transA == kTrans && A.num_cols_ == num_cols_)));

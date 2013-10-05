@@ -642,7 +642,7 @@ static void UnitTestCuMatrixAddVecToRows() {
 
 
 template<typename Real> 
-static void UnitTestCuMatrixSyAddMat2() {
+static void UnitTestCuMatrixSymAddMat2() {
   for (int32 i = 0; i < 10; i++) {
     int32 dimM = 10 + rand() % 200, dimN = 10 + rand() % 30;
     if (i == 8) {
@@ -664,7 +664,7 @@ static void UnitTestCuMatrixSyAddMat2() {
     CuMatrix<Real> M2(M);
     CU_SAFE_CALL(cudaGetLastError());
     Real alpha = 0.3, beta = 1.75432;
-    M.SyAddMat2(alpha, N, trans, beta);
+    M.SymAddMat2(alpha, N, trans, beta);
     CU_SAFE_CALL(cudaGetLastError());
     M2.AddMatMat(alpha, N, trans, N, other_trans, beta);
     CU_SAFE_CALL(cudaGetLastError());
@@ -681,7 +681,7 @@ static void UnitTestCuMatrixSyAddMat2() {
 
 
 template<typename Real> 
-static void UnitTestCuMatrixSyInvertPosDef() {
+static void UnitTestCuMatrixSymInvertPosDef() {
   for (int32 i = 0; i < 10; i++) {
     int32 dimM = 10 + rand() % 200, dimN = dimM + 20;
     // dimN > dimM, so will be PSD almost surely.
@@ -711,8 +711,8 @@ static void UnitTestCuMatrixSyInvertPosDef() {
     CU_SAFE_CALL(cudaGetLastError());    
     CuMatrix<Real> M2(M);
     Real alpha = 0.3, beta = 1.75432;
-    //M.SyAddMat2(alpha, N, trans, beta);
-    M.AddMatMat(alpha, N, trans, N, other_trans, beta);
+    M.SymAddMat2(alpha, N, trans, beta);
+    // M.AddMatMat(alpha, N, trans, N, other_trans, beta);
     CU_SAFE_CALL(cudaGetLastError());
     SpMatrix<Real> S(CuSpMatrix<Real>(M, kTakeLower));
     CU_SAFE_CALL(cudaGetLastError());
@@ -720,7 +720,7 @@ static void UnitTestCuMatrixSyInvertPosDef() {
     CU_SAFE_CALL(cudaGetLastError());
     CuMatrix<Real> M_orig(CuSpMatrix<Real>(M, kTakeLower));
     CU_SAFE_CALL(cudaGetLastError());    
-    M.SyInvertPosDef();
+    M.SymInvertPosDef();
     CU_SAFE_CALL(cudaGetLastError());    
     CuMatrix<Real> M_inverted(CuSpMatrix<Real>(M, kTakeLower));
     CU_SAFE_CALL(cudaGetLastError());    
@@ -1659,8 +1659,8 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixAddVecToCols<Real>();
   UnitTestCuMatrixAddVecToRows<Real>();
   UnitTestCuMatrixAddMatMat<Real>();
-  UnitTestCuMatrixSyAddMat2<Real>();
-  UnitTestCuMatrixSyInvertPosDef<Real>();
+  UnitTestCuMatrixSymAddMat2<Real>();
+  UnitTestCuMatrixSymInvertPosDef<Real>();
   UnitTestCuMatrixCopyFromMat<Real>();
   UnitTestCuMatrixCopyFromTp<Real>();
   UnitTestCuMatrixAddMatTp<Real>();

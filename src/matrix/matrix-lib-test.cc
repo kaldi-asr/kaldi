@@ -2776,7 +2776,7 @@ template<typename Real> static void UnitTestAddMat2() {
     
     Sfull.AddMatMat(alpha, M, trans, M, other_trans, beta);
 
-    Sfull2.SyAddMat2(alpha, M, trans, beta);
+    Sfull2.SymAddMat2(alpha, M, trans, beta);
 
     // now symmetrize.
     SpMatrix<Real> Sfull2_copy(Sfull2, kTakeLower);

@@ -460,10 +460,11 @@ class MatrixBase {
   void AddMat(const Real alpha, const MatrixBase<Real> &M,
               MatrixTransposeType transA = kNoTrans);
 
-  /// *this = beta * *this + alpha * M M^T, but only update the lower triangle
-  /// of *this.
-  void SyAddMat2(const Real alpha, const MatrixBase<Real> &M,
-                 MatrixTransposeType transA, Real beta);
+  /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only
+  /// updates the lower triangle of *this.  It will leave the matrix asymmetric;
+  /// if you need it symmetric as a regular matrix, do CopyLowerToUpper().
+  void SymAddMat2(const Real alpha, const MatrixBase<Real> &M,
+                  MatrixTransposeType transA, Real beta);
 
   /// *this = beta * *this + alpha * diag(v) * M [or M^T].
   /// The same as adding M but scaling each row M_i by v(i).

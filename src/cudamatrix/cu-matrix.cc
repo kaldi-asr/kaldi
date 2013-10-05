@@ -874,7 +874,7 @@ void CuMatrixBase<Real>::AddMatMat(
 
 
 template<typename Real>
-void CuMatrixBase<Real>::SyAddMat2(
+void CuMatrixBase<Real>::SymAddMat2(
     Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
     Real beta) {
   KALDI_ASSERT(num_rows_ == num_cols_ &&
@@ -898,7 +898,7 @@ void CuMatrixBase<Real>::SyAddMat2(
   } else
 #endif
   {
-    Mat().SyAddMat2(alpha, A.Mat(), transA, beta);
+    Mat().SymAddMat2(alpha, A.Mat(), transA, beta);
   }
 }
 
@@ -1295,7 +1295,7 @@ void CuMatrixBase<Real>::Cholesky() {
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::SyInvertPosDef() {
+void CuMatrixBase<Real>::SymInvertPosDef() {
   KALDI_ASSERT(num_rows_ == num_cols_);
   if (num_rows_ == 0) return;
 #if HAVE_CUDA == 1
@@ -1339,11 +1339,13 @@ void CuMatrixBase<Real>::SyInvertPosDef() {
   } else
 #endif
   {
-    this->Mat().Invert(); // This is inefficient as we don't make
-    // use of the fact that we're symmetric, but anyway if we're not
-    // using CUDA this function typically shouldn't be called, because its
-    // only envisaged usage is to be call from the CUDA version of
-    // CuSpMatrix::Invert().
+    SpMatrix<Real> temp_sp(this->Mat(), kTakeLower);
+    TpMatrix<Real> C(temp_sp.NumRows(), kUndefined);
+    C.Cholesky(temp_sp);
+    C.Invert();
+    temp_sp.AddTp2(1.0, C, kTrans, 0.0);
+    this->Mat().CopyFromSp(temp_sp);
+    // was previously just: CuSpMatrix::Invert().
   }
 }
 

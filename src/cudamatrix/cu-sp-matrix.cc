@@ -75,7 +75,7 @@ void CuSpMatrix<Real>::Invert() {
   if (CuDevice::Instantiate().Enabled()) {
     CuMatrix<Real> mat(this->num_rows_, this->num_rows_);
     mat.CopyFromSp(*this);
-    mat.SyInvertPosDef();
+    mat.SymInvertPosDef();
     this->CopyFromMat(mat);
   } else
 #endif

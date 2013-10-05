@@ -120,6 +120,8 @@ template<typename Real> void TestCuMatrixCopyLowerToUpper(int32 dim) {
   for (; tim.Elapsed() < time_in_secs; iter++) {
     M.CopyLowerToUpper();
   }
+  CuMatrix<Real> M2(M, kTrans);
+  AssertEqual(M, M2);
   BaseFloat fdim = dim;
   BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuMatrix::CopyLowerToUpper" << NameOf<Real>() << ", for dim = "
@@ -136,6 +138,8 @@ template<typename Real> void TestCuMatrixCopyUpperToLower(int32 dim) {
   for (; tim.Elapsed() < time_in_secs; iter++) {
     M.CopyUpperToLower();
   }
+  CuMatrix<Real> M2(M, kTrans);
+  AssertEqual(M, M2);
   BaseFloat fdim = dim;
   BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuMatrix::CopyUpperToLower" << NameOf<Real>() << ", for dim = "
