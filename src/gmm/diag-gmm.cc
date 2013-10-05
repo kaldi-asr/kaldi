@@ -821,6 +821,10 @@ BaseFloat DiagGmm::GaussianSelectionPreselect(
   return tot_loglike;
 }
 
+void DiagGmm::CopyFromNormal(const DiagGmmNormal &diag_gmm_normal) {
+  diag_gmm_normal.CopyToDiagGmm(this);
+}
+
 void DiagGmm::Generate(VectorBase<BaseFloat> *output) {
   KALDI_ASSERT(static_cast<int32>(output->Dim()) == Dim());
   BaseFloat tot = weights_.Sum();

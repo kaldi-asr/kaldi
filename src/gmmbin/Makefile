@@ -26,7 +26,7 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-diff-accs gmm-basis-fmllr-accs gmm-basis-fmllr-training gmm-est-basis-fmllr \
            gmm-est-map gmm-adapt-map gmm-latgen-map gmm-basis-fmllr-accs-gpost \
            gmm-est-basis-fmllr-gpost gmm-latgen-tracking gmm-latgen-faster-parallel \
-           gmm-est-fmllr-raw gmm-est-fmllr-raw-gpost
+           gmm-est-fmllr-raw gmm-est-fmllr-raw-gpost gmm-global-init-from-feats
 
 OBJFILES =
 
