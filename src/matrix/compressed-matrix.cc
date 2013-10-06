@@ -44,10 +44,11 @@ void CompressedMatrix::CopyFromMat(
   // we need to ensure that the percentile_0 through percentile_100
   // are in strictly increasing order.
   float min_value = mat.Min(), max_value = mat.Max();
-  float safety_margin = 0.001 * (fabs(min_value) + fabs(max_value));
-  if (safety_margin == 0.0) safety_margin = 1.0;
-  min_value -= safety_margin;
-  max_value += safety_margin;
+  if (max_value == min_value)
+    max_value = min_value + (1.0 + fabs(min_value)); // ensure it's strictly
+                                                     // greater than min_value,
+                                                     // even if matrix is
+                                                     // constant.
 
   global_header.min_value = min_value;
   global_header.range = max_value - min_value;
@@ -264,6 +265,7 @@ void CompressedMatrix::Write(std::ostream &os, bool binary) const {
     }
   } else {
     // In text mode, just use the same format as a regular matrix.
+    // This is not compressed.
     Matrix<BaseFloat> temp_mat(this->NumRows(), this->NumCols(),
                                kUndefined);
     this->CopyToMat(&temp_mat);
