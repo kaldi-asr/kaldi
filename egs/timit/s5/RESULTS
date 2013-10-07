@@ -1,28 +1,76 @@
  for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
 
 # Use caution when comparing these results with other published results.
-Training Set   : Timit training set (4620 sentences
-Test Set       : Timit test set (1680 sentences)
+Training Set   : 3696 sentences 4620 sentences
+Dev Set        : 400 sentences
+Test Set       : 192 sentences Timit test set (1680 sentences)
 Language Model : Bigram phoneme language model which is extracted from training set
 
 # monophone, deltas.
-%PER 28.94 [ 18201 / 62901, 1598 ins, 5644 del, 10959 sub ] exp/mono/decode_bg_test/wer_4
+---------------------------------Dev Set------------------------------------------
+%WER 33.53 [ 5048 / 15057, 397 ins, 1674 del, 2977 sub ] exp/mono/decode_dev/wer_3
+--------------------------------Test Set------------------------------------------
+%WER 34.77 [ 2509 / 7215, 193 ins, 826 del, 1490 sub ] exp/mono/decode_test/wer_3
+
 
 # tri1 : first triphone system  (delta+delta-delta features)
-%PER 22.60 [ 14215 / 62901, 1796 ins, 3466 del, 8953 sub ] exp/tri1/decode_bg_test/wer_8
+---------------------------------Dev Set------------------------------------------
+%WER 29.26 [ 4405 / 15057, 541 ins, 1281 del, 2583 sub ] exp/tri1/decode_dev/wer_6
+--------------------------------Test Set------------------------------------------
+%WER 30.53 [ 2203 / 7215, 259 ins, 654 del, 1290 sub ] exp/tri1/decode_test/wer_6
 
-#tri2 : an LDA+MLLT system. 
-%PER 20.36 [ 12807 / 62901, 1872 ins, 2914 del, 8021 sub ] exp/tri2/decode_bg_test/wer_7
+
+#tri2 : an LDA+MLLT system
+---------------------------------Dev Set------------------------------------------
+%WER 26.38 [ 3972 / 15057, 421 ins, 1269 del, 2282 sub ] exp/tri2/decode_dev/wer_7
+--------------------------------Test Set------------------------------------------
+%WER 28.41 [ 2050 / 7215, 220 ins, 664 del, 1166 sub ] exp/tri2/decode_test/wer_7
+
 
 #tri3 : Speaker Adaptive Training (SAT) system
-%PER 18.27 [ 11489 / 62901, 1681 ins, 2810 del, 6998 sub ] exp/tri3/decode_bg_test/wer_6
+---------------------------------Dev Set------------------------------------------
+%WER 23.36 [ 3517 / 15057, 464 ins, 1001 del, 2052 sub ] exp/tri3/decode_dev/wer_4
+%WER 26.53 [ 3995 / 15057, 394 ins, 1289 del, 2312 sub ] exp/tri3/decode_dev.si/wer_7
+--------------------------------Test Set------------------------------------------
+%WER 24.96 [ 1801 / 7215, 245 ins, 529 del, 1027 sub ] exp/tri3/decode_test/wer_4
+%WER 27.96 [ 2017 / 7215, 214 ins, 650 del, 1153 sub ] exp/tri3/decode_test.si/wer_7
 
-#SGMM2 Training
-%PER 16.17 [ 10171 / 62901, 1309 ins, 2708 del, 6154 sub ] exp/sgmm2_4/decode_bg_test/wer_6
 
-# SGMM2 + MMI Training
-%PER 16.14 [ 10154 / 62901, 1845 ins, 2074 del, 6235 sub ] exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it1/wer_6
-%PER 16.58 [ 10430 / 62901, 2032 ins, 2031 del, 6367 sub ] exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it2/wer_7
-%PER 16.80 [ 10570 / 62901, 2071 ins, 2096 del, 6403 sub ] exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it3/wer_8
-%PER 17.02 [ 10706 / 62901, 2154 ins, 2048 del, 6504 sub ] exp/sgmm2_4_mmi_b0.1_z/decode_bg_test_it4/wer_8
+#SGMM2 Training :
+---------------------------------Dev Set------------------------------------------
+%WER 20.66 [ 3111 / 15057, 347 ins, 1022 del, 1742 sub ] exp/sgmm2_4/decode_dev/wer_5
+--------------------------------Test Set------------------------------------------
+%WER 22.88 [ 1651 / 7215, 189 ins, 519 del, 943 sub ] exp/sgmm2_4/decode_test/wer_5
 
+
+# SGMM2 + MMI Training :
+---------------------------------Dev Set------------------------------------------
+%WER 20.48 [ 3084 / 15057, 450 ins, 849 del, 1785 sub ] exp/sgmm2_4_mmi_b0.1/decode_dev_it1/wer_5
+%WER 20.20 [ 3042 / 15057, 508 ins, 740 del, 1794 sub ] exp/sgmm2_4_mmi_b0.1/decode_dev_it2/wer_5
+%WER 20.36 [ 3065 / 15057, 548 ins, 711 del, 1806 sub ] exp/sgmm2_4_mmi_b0.1/decode_dev_it3/wer_5
+%WER 20.40 [ 3071 / 15057, 506 ins, 762 del, 1803 sub ] exp/sgmm2_4_mmi_b0.1/decode_dev_it4/wer_6
+--------------------------------Test Set------------------------------------------
+%WER 22.66 [ 1635 / 7215, 250 ins, 420 del, 965 sub ] exp/sgmm2_4_mmi_b0.1/decode_test_it1/wer_5
+%WER 22.44 [ 1619 / 7215, 282 ins, 384 del, 953 sub ] exp/sgmm2_4_mmi_b0.1/decode_test_it2/wer_5
+%WER 22.62 [ 1632 / 7215, 298 ins, 369 del, 965 sub ] exp/sgmm2_4_mmi_b0.1/decode_test_it3/wer_5
+%WER 22.48 [ 1622 / 7215, 277 ins, 386 del, 959 sub ] exp/sgmm2_4_mmi_b0.1/decode_test_it4/wer_6
+
+
+# Hybrid System :
+---------------------------------Dev Set------------------------------------------
+%WER 22.77 [ 3429 / 15057, 411 ins, 1057 del, 1961 sub ] exp/tri4_nnet/decode_dev/wer_3
+--------------------------------Test Set------------------------------------------
+%WER 24.84 [ 1792 / 7215, 197 ins, 579 del, 1016 sub ] exp/tri4_nnet/decode_test/wer_2
+
+
+# Combination :
+---------------------------------Dev Set------------------------------------------
+%WER 20.26 [ 3051 / 15057, 371 ins, 937 del, 1743 sub ] exp/combine_2/decode_dev_it1/wer_4
+%WER 19.91 [ 2998 / 15057, 397 ins, 870 del, 1731 sub ] exp/combine_2/decode_dev_it2/wer_4
+%WER 19.75 [ 2974 / 15057, 422 ins, 825 del, 1727 sub ] exp/combine_2/decode_dev_it3/wer_4
+%WER 19.79 [ 2980 / 15057, 373 ins, 886 del, 1721 sub ] exp/combine_2/decode_dev_it4/wer_5
+--------------------------------Test Set------------------------------------------
+%WER 21.90 [ 1580 / 7215, 191 ins, 474 del, 915 sub ] exp/combine_2/decode_test_it1/wer_4
+%WER 21.73 [ 1568 / 7215, 218 ins, 442 del, 908 sub ] exp/combine_2/decode_test_it2/wer_4
+%WER 21.62 [ 1560 / 7215, 223 ins, 423 del, 914 sub ] exp/combine_2/decode_test_it3/wer_4
+%WER 21.68 [ 1564 / 7215, 197 ins, 476 del, 891 sub ] exp/combine_2/decode_test_it4/wer_5
