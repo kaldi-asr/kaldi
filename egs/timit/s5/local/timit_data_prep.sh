@@ -26,11 +26,25 @@ fi
 [ -f $conf/test_spk.list ] || error_exit "$PROG: Eval-set speaker list not found.";
 [ -f $conf/dev_spk.list ] || error_exit "$PROG: dev-set speaker list not found.";
 
-if [ ! -d $*/TRAIN -o ! -d $*/TEST ]; then
+# First check if the train & test directories exist (these can either be upper-
+# or lower-cased
+if [ ! -d $*/TRAIN -o ! -d $*/TEST ] && [ ! -d $*/train -o ! -d $*/test ]; then
   echo "timit_data_prep.sh: Spot check of command line argument failed"
   echo "Command line argument must be absolute pathname to TIMIT directory"
   echo "with name like /export/corpora5/LDC/LDC93S1/timit/TIMIT"
   exit 1;
+fi
+
+# Now check what case the directory structure is
+uppercased=false
+train_dir=train
+test_dir=test
+if [ -d $*/TRAIN ]; then
+  [ -d $*/train -o -d $*/test ] \
+    && echo "Error: Found both upper- & lower-cased directories" && exit 1;
+  uppercased=true
+  train_dir=TRAIN
+  test_dir=TEST
 fi
 
 tmpdir=$(mktemp -d);
@@ -39,10 +53,15 @@ trap 'rm -rf "$tmpdir"' EXIT
 # Get the list of speakers. The list of speakers in the 24-speaker core test 
 # set and the 50-speaker development set must be supplied to the script. All
 # speakers in the 'train' directory are used for training.
-tr '[:lower:]' '[:upper:]' < $conf/dev_spk.list > $tmpdir/dev_spk    # Just in case!
-tr '[:lower:]' '[:upper:]' < $conf/test_spk.list > $tmpdir/test_spk  # Just in case!
-
-ls -d "$*"/TRAIN/DR*/* | sed -e "s:^.*/::" > $tmpdir/train_spk
+if $uppercased; then
+  tr '[:lower:]' '[:upper:]' < $conf/dev_spk.list > $tmpdir/dev_spk
+  tr '[:lower:]' '[:upper:]' < $conf/test_spk.list > $tmpdir/test_spk
+  ls -d "$*"/TRAIN/DR*/* | sed -e "s:^.*/::" > $tmpdir/train_spk
+else
+  tr '[:upper:]' '[:lower:]' < $conf/dev_spk.list > $tmpdir/dev_spk
+  tr '[:upper:]' '[:lower:]' < $conf/test_spk.list > $tmpdir/test_spk
+  ls -d "$*"/train/dr*/* | sed -e "s:^.*/::" > $tmpdir/train_spk
+fi
 
 cd $dir
 for x in train dev test; do
@@ -50,10 +69,10 @@ for x in train dev test; do
   # Note: train & test sets are under different directories, but doing find on 
   # both and grepping for the speakers will work correctly.
 
-  find $*/{TRAIN,TEST} -not \( -name 'SA*' \) -name '*.WAV' \
+  find $*/{$train_dir,$test_dir} -not \( -iname 'SA*' \) -iname '*.WAV' \
     | grep -f $tmpdir/${x}_spk > ${x}_sph.flist
 
-  sed -e 's:.*/\(.*\)/\(.*\).WAV$:\1_\2:' ${x}_sph.flist \
+  sed -e 's:.*/\(.*\)/\(.*\).WAV$:\1_\2:i' ${x}_sph.flist \
     > $tmpdir/${x}_sph.uttids
   paste $tmpdir/${x}_sph.uttids ${x}_sph.flist \
     | sort -k1,1 > ${x}_sph.scp
@@ -63,9 +82,9 @@ for x in train dev test; do
   # Now, Convert the transcripts into our format (no normalization yet)
   # Get the transcripts: each line of the output contains an utterance 
   # ID followed by the transcript.
-  find $*/{TRAIN,TEST} -not \( -name 'SA*' \) -name '*.PHN' \
+  find $*/{$train_dir,$test_dir} -not \( -iname 'SA*' \) -iname '*.PHN' \
     | grep -f $tmpdir/${x}_spk > $tmpdir/${x}_phn.flist
-  sed -e 's:.*/\(.*\)/\(.*\).PHN$:\1_\2:' $tmpdir/${x}_phn.flist \
+  sed -e 's:.*/\(.*\)/\(.*\).PHN$:\1_\2:i' $tmpdir/${x}_phn.flist \
     > $tmpdir/${x}_phn.uttids
   while read line; do
     [ -f $line ] || error_exit "Cannot find transcription file '$line'";
