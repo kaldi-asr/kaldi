@@ -195,7 +195,7 @@ if ( (-f "$dict/lexicon.txt") && (-f "$dict/lexiconp.txt")) {
 
 # Checking extra_questions.txt -------------------------------
 print "Checking $dict/extra_questions.txt ...\n";
-if(-s "$dict/extra_questions.txt") {
+if (-s "$dict/extra_questions.txt") {
   if(!open(EX, "<$dict/extra_questions.txt")) {$exit = 1; print "--> ERROR: fail to open $dict/extra_questions.txt\n";}
   $idx = 1;
   $success = 1;
@@ -213,6 +213,8 @@ if(-s "$dict/extra_questions.txt") {
   } 
   close(EX);
   $success == 0 || print "--> $dict/extra_questions.txt is OK\n";
-} else {print "--> $dict/extra_phones.txt is empty\n";}
+} else { print "--> $dict/extra_questions.txt is empty (this is OK)\n";}
 
 if($exit == 1) { print " [Error detected ]\n"; exit 1;}
+
+exit 0;
