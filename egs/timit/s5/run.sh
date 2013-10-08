@@ -24,7 +24,7 @@ echo "                Data & Lexicon & Language Preparation                     
 echo ============================================================================
 
 timit=/export/corpora5/LDC/LDC93S1/timit/TIMIT
-if false; then
+
 local/timit_data_prep.sh $timit || exit 1;
 
 local/timit_prepare_dict.sh || exit 1;
@@ -205,7 +205,7 @@ for iter in 1 2 3 4; do
    data/test data/lang_test_bg exp/tri4_nnet/decode_test \
    exp/sgmm2_4_mmi_b0.1/decode_test_it$iter exp/combine_2/decode_test_it$iter
 done
-fi
+
 
 echo ============================================================================
 echo "                    Getting Results [see RESULTS file]                    "
