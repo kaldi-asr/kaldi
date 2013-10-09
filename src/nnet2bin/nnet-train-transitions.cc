@@ -73,7 +73,6 @@ int main(int argc, char *argv[]) {
                                      // seemed to be the smallest prior of the
                                      // "seen" pdf-ids in one run.
     MleTransitionUpdateConfig transition_update_config;
-    MleTransitionUpdateConfig transition_update_config;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
