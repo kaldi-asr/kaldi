@@ -4,6 +4,10 @@ all:
 
 include ../kaldi.mk
 
+LDFLAGS += $(CUDA_LDFLAGS)
+LDLIBS += $(CUDA_LDLIBS)
+
+
 TESTFILES = nnet-component-test nnet-precondition-test nnet-precondition-online-test
 
 OBJFILES = nnet-component.o nnet-nnet.o nnet-update.o train-nnet.o \

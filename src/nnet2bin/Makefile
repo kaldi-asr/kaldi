@@ -4,6 +4,7 @@ EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
 LDFLAGS += $(CUDA_LDFLAGS)
+LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = nnet-randomize-frames nnet-am-info nnet-train nnet-init \
    nnet-train-simple nnet-train-transitions nnet-latgen-faster nnet-am-copy \

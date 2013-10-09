@@ -5,6 +5,7 @@ all:
 include ../kaldi.mk
 
 LDFLAGS += $(CUDA_LDFLAGS)
+LDLIBS += $(CUDA_LDLIBS)
 
 TESTFILES = nnet-test
 
