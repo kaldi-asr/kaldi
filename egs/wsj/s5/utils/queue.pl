@@ -163,8 +163,8 @@ print Q "EOF\n"; # without having to escape things like "|" and quote characters
 print Q ") >$logfile\n";
 print Q "time1=\`date +\"%s\"\`\n";
 print Q " ( $cmd ) 2>>$logfile >>$logfile\n";
-print Q "time2=\`date +\"%s\"\`\n";
 print Q "ret=\$?\n";
+print Q "time2=\`date +\"%s\"\`\n";
 print Q "echo '#' Accounting: time=\$((\$time2-\$time1)) threads=$nof_threads >>$logfile\n";
 print Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
 print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137; 
