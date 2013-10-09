@@ -134,6 +134,9 @@ int main(int argc, char *argv[]) {
     kaldi::int32 use_gpu_id=-2;
     po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID "
                 "(-2 automatic selection, -1 disable GPU, 0..N select GPU)");
+#else
+    int32 use_gpu_id=0;
+    po.Register("use-gpu-id", &use_gpu_id, "Unused, kaldi is compiled w/o CUDA");
 #endif
 
     po.Read(argc, argv);
