@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
     NnetTrainOptions trn_opts; trn_opts.learn_rate=0.00001;
     trn_opts.Register(&po);
 
-    bool binary = false; 
+    bool binary = true; 
     po.Register("binary", &binary, "Write output in binary mode");
 
     std::string feature_transform;

@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
     NnetTrainOptions trn_opts;
     trn_opts.Register(&po);
 
-    bool binary = false, 
+    bool binary = true, 
          crossvalidate = false;
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (don't backpropagate)");
