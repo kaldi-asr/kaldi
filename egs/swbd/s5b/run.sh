@@ -32,6 +32,8 @@ fisher_opt="--fisher /export/corpora3/LDC/LDC2004T19/fe_03_p1_tran/"
 #fisher_opt="--fisher /data/corpora0/LDC2004T19/fe_03_p1_tran/"
 # edinburgh:
 # fisher_opt="--fisher /exports/work/inf_hcrc_cstr_general/corpora/fisher/transcripts"
+# brno:
+# fisher_opt="--fisher /mnt/matylda2/data/FISHER/fe_03_p1_tran" # BUT
 local/swbd1_train_lms.sh $fisher_opt \
   data/local/train/text data/local/dict/lexicon.txt data/local/lm
 # We don't really need all these options for SRILM, since the LM training script
@@ -48,7 +50,7 @@ utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
 # For some funny reason we are still using IRSTLM for doing LM pruning :)
 export PATH=$PATH:../../../tools/irstlm/bin/
 prune-lm --threshold=1e-7 data/local/lm/sw1_fsh.o3g.kn.gz /dev/stdout \
-  | gzip -c > data/local/lm/sw1_fsh.o3g.pr1-7.kn.gz
+  | gzip -c > data/local/lm/sw1_fsh.o3g.pr1-7.kn.gz || exit 1
 LM=data/local/lm/sw1_fsh.o3g.pr1-7.kn.gz
 utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
   data/lang $LM data/local/dict/lexicon.txt data/lang_sw1_fsh_tgpr
@@ -215,7 +217,9 @@ for lm_suffix in tg fsh_tgpr; do
        $graph_dir data/train_dev exp/tri4b/decode_train_dev_sw1_${lm_suffix}
   ) &
 done
-
+wait
+steps/lmrescore.sh --mode 3 --cmd "$mkgraph_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
+  exp/tri4b/decode_eval2000_sw1_fsh_tgpr exp/tri4b/decode_eval2000_sw1_fsh_tg.3 || exit 1
 
 
 # MMI training starting from the LDA+MLLT+SAT systems on both the 

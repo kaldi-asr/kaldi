@@ -10,7 +10,7 @@
 
 for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
 for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
-
+exit 0
 
 # These results are still partial.
 
@@ -60,3 +60,14 @@ exp/tri4b/decode_eval2000_sw1_tg.si/score_12/eval2000.ctm.swbd.filt.sys:     | S
 %WER 29.7 | 1831 21395 | 73.6 18.3 8.0 3.4 29.7 67.0 | exp/tri4c_reseg/decode_eval2000_with_noise_sw1_fsh_tgpr.si/score_13/eval2000_with_noise.ctm.swbd.filt.sys
 %WER 23.6 | 1831 21395 | 79.1 14.0 6.9 2.8 23.6 64.2 | exp/tri4c_reseg/decode_eval2000_with_noise_sw1_tg/score_14/eval2000_with_noise.ctm.swbd.filt.sys
 %WER 30.8 | 1831 21395 | 72.9 19.0 8.1 3.7 30.8 67.5 | exp/tri4c_reseg/decode_eval2000_with_noise_sw1_tg.si/score_13/eval2000_with_noise.ctm.swbd.filt.sys
+
+
+# Below are the results from the Karel's DNN recipe (Oct 11 2013) from 'local/run_dnn.sh' 
+# DNN with RBM pre-training, 6hidden layers, 2048 neurons each, ~9k outputs
+%WER 15.4 | 1831 21395 | 86.2 9.0 4.8 1.6 15.4 52.2 | exp/tri4b_pretrain-dbn_dnn/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
+# sMBR sequence-discriminative training, 1+2 epochs (lattices re-generated after 1st epoch of sMBR training)
+%WER 14.5 | 1831 21395 | 87.4 8.9 3.7 2.0 14.5 51.4 | exp/tri4b_pretrain-dbn_dnn_smbr/decode_eval2000_sw1_fsh_tgpr_it1/score_14/eval2000.ctm.swbd.filt.sys
+%WER 14.2 | 1831 21395 | 87.7 8.7 3.6 1.9 14.2 50.4 | exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval2000_sw1_fsh_tgpr_it1/score_14/eval2000.ctm.swbd.filt.sys
+%WER 14.1 | 1831 21395 | 87.8 8.7 3.5 1.9 14.1 50.4 | exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval2000_sw1_fsh_tgpr_it2/score_14/eval2000.ctm.swbd.filt.sys
+# Final system rescored by sw1_fsh trigram (unpruned)
+%WER 13.4 | 1831 21395 | 88.4 8.2 3.4 1.8 13.4 49.2 | exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval2000_sw1_fsh_tg.3_it2/score_14/eval2000.ctm.swbd.filt.sys
