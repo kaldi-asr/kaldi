@@ -16,7 +16,7 @@ echo "...done waiting for exp/tri5_ali/.done"
 
 
 if [ ! -f exp/tri6_nnet/.done ]; then
-  steps/train_nnet_cpu.sh  \
+  bash -x steps/train_nnet_cpu.sh  \
     --mix-up "$dnn_mixup" \
     --initial-learning-rate "$dnn_initial_learning_rate" \
     --final-learning-rate "$dnn_final_learning_rate" \

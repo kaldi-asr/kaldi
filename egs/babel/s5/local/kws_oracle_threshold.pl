@@ -17,9 +17,10 @@ sub KeywordSort {
 }
 
 my $Usage = <<EOU;
-This script reads a alignment.csv file and computes the oracle ATWV based on the
-oracle threshold. The duration of the search collection is supposed to be provided.
-In the Babel case, the duration should be half of the total audio duration.
+This script reads a alignment.csv file and computes the ATWV, OTWV, MTWV by
+sweeping the threshold. The duration of the search collection is supposed to be
+provided. In the Babel case, the duration should be half of the total audio
+duration.
 
 The alignment.csv file is supposed to have the following fields for each line:
 language,file,channel,termid,term,ref_bt,ref_et,sys_bt,sys_et,sys_score,
@@ -42,7 +43,7 @@ GetOptions(
 
 @ARGV == 1 || die $Usage;
 
-# Workout the input/output source.
+# Works out the input/output source.
 my $alignment_in = shift @ARGV;
 
 # Hash alignment file. For each instance we store a 3-dimension vector:
@@ -98,40 +99,66 @@ while (<A>) {
 }
 close(A);
 
-# Work out the oracle ATWV by sweeping the threshold.
+# Works out the oracle ATWV by sweeping the threshold.
 my $atwv = 0.0;
-my $oracle_atwv = 0.0;
+my $otwv = 0.0;
+my %mtwv_sweep;
 foreach my $kwid (keys %keywords) {
   # Sort the instances by confidence score.
   my @instances = sort KeywordSort @{$alignment{$kwid}};
-  my $local_oracle_atwv = 0.0;
-  my $max_local_oracle_atwv = 0.0;
+  my $local_otwv = 0.0;
+  my $max_local_otwv = 0.0;
   my $local_atwv = 0.0;
   foreach my $instance (@instances) {
     my @ins = @{$instance};
-    # Oracle ATWV.
+    my $gain = 1.0 / $Ntrue{$kwid};
+    my $cost = $beta / ($duration - $Ntrue{$kwid});
+    # ATWV.
     if ($ins[1] == 1) {
-      $local_oracle_atwv += 1.0 / $Ntrue{$kwid};
+      $local_otwv += $gain;
     } else {
-      $local_oracle_atwv -= $beta / ($duration - $Ntrue{$kwid});
+      $local_otwv -= $cost;
     }
-    if ($local_oracle_atwv > $max_local_oracle_atwv) {
-      $max_local_oracle_atwv = $local_oracle_atwv;
+    if ($local_otwv > $max_local_otwv) {
+      $max_local_otwv = $local_otwv;
     }
 
-    # Original ATWV.
+    # OTWV.
     if ($ins[2] == 1) {
-      $local_atwv -= $beta / ($duration - $Ntrue{$kwid});
+      $local_atwv -= $cost;
     } elsif ($ins[2] == 2) {
-      $local_atwv += 1.0 / $Ntrue{$kwid};
+      $local_atwv += $gain;
+    }
+
+    # MTWV.
+    for (my $threshold = 0.000; $threshold <= $ins[0]; $threshold += 0.001) {
+      if ($ins[1] == 1) {
+        $mtwv_sweep{$threshold} += $gain;
+      } else {
+        $mtwv_sweep{$threshold} -= $cost;
+      }
     }
   }
   $atwv += $local_atwv;
-  $oracle_atwv += $max_local_oracle_atwv;
+  $otwv += $max_local_otwv;
 }
+
+# Works out the MTWV.
+my $mtwv = 0.0;
+my $mtwv_threshold = 0.0;
+for my $threshold (keys %mtwv_sweep) {
+  if ($mtwv_sweep{$threshold} > $mtwv) {
+    $mtwv = $mtwv_sweep{$threshold};
+    $mtwv_threshold = $threshold;
+  }
+}
+
 $atwv /= scalar(keys %keywords);
 $atwv = sprintf("%.4f", $atwv);
-$oracle_atwv /= scalar(keys %keywords);
-$oracle_atwv = sprintf("%.4f", $oracle_atwv);
-print "Original ATWV = $atwv\n";
-print "Oracle ATWV = $oracle_atwv\n";
+$otwv /= scalar(keys %keywords);
+$otwv = sprintf("%.4f", $otwv);
+$mtwv /= scalar(keys %keywords);
+$mtwv = sprintf("%.4f", $mtwv);
+print "ATWV = $atwv\n";
+print "OTWV = $otwv\n";
+print "MTWV = $mtwv, THRESHOLD = $mtwv_threshold\n";

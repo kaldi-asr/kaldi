@@ -79,28 +79,21 @@ else
 fi
 
 
-
-#Get the files we will need
 cp $srcdir/{tree,final.mdl} $dir
 
+# Select default locations to model files
 [ -z "$nnet" ] && nnet=$srcdir/final.nnet;
-[ ! -f "$nnet" ] && echo "Error nnet '$nnet' does not exist!" && exit 1;
-
 class_frame_counts=$srcdir/ali_train_pdf.counts
-[ -z "$class_frame_counts" ] && echo "Error class_frame_counts '$class_frame_counts' does not exist!" && exit 1;
-
 feature_transform=$srcdir/final.feature_transform
-if [ ! -f $feature_transform ]; then
-  echo "Missing feature_transform '$feature_transform'"
-  exit 1
-fi
-
 model=$dir/final.mdl
-[ -z "$model" ] && echo "Error transition model '$model' does not exist!" && exit 1;
 
-###
-### Prepare feature pipeline (same as for decoding)
-###
+# Check that files exist
+for f in $sdata/1/feats.scp $nnet $model $feature_transform $class_frame_counts; do
+  [ ! -f $f ] && echo "$0: missing file $f" && exit 1;
+done
+
+
+# PREPARE FEATURE EXTRACTION PIPELINE
 # Create the feature stream:
 feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 # Optionally add cmvn
@@ -114,28 +107,23 @@ if [ -f $srcdir/delta_order ]; then
   delta_order=$(cat $srcdir/delta_order)
   feats="$feats add-deltas --delta-order=$delta_order ark:- ark:- |"
 fi
-
 # Finally add feature_transform and the MLP
 feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu-id=$use_gpu_id $nnet ark:- ark:- |"
-###
-###
-###
 
 
-
-###
-### We will produce lattices, where the correct path is not necessarily present
-###
-
-#1) We don't use reference path here...
-
-echo "Generating the denlats"
-#2) Generate the denominator lattices
-if [ $sub_split -eq 1 ]; then 
+echo "$0: generating denlats from data '$data', putting lattices in '$dir'"
+#1) Generate the denominator lattices
+if [ $sub_split -eq 1 ]; then
+  # Prepare 'scp' for storing lattices separately and gzipped
+  for n in `seq $nj`; do
+    [ ! -d $dir/lat$n ] && mkdir $dir/lat$n;
+    cat $sdata/$n/feats.scp | awk '{ print $1" | gzip -c >'$dir'/lat'$n'/"$1".gz"; }' 
+  done >$dir/lat.store_separately_as_gz.scp
+  # Generate the lattices
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode_den.JOB.log \
     latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
       --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
-      $dir/dengraph/HCLG.fst "$feats" "ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp" || exit 1;
+      $dir/dengraph/HCLG.fst "$feats" "scp:$dir/lat.store_separately_as_gz.scp" || exit 1;
 else
   for n in `seq $nj`; do
     if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $alidir/final.mdl ]; then
@@ -146,32 +134,25 @@ else
         split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
       fi
       mkdir -p $dir/log/$n
-      mkdir -p $dir/part
       feats_subset=$(echo $feats | sed s:JOB/:$n/split$sub_split/JOB/:g)
+      # Prepare 'scp' for storing lattices separately and gzipped
+      for k in `seq $sub_split`; do
+        [ ! -d $dir/lat$n/$k ] && mkdir -p $dir/lat$n/$k;
+        cat $sdata2/$k/feats.scp | awk '{ print $1" | gzip -c >'$dir'/lat'$n'/'$k'/"$1".gz"; }' 
+      done >$dir/lat.$n.store_separately_as_gz.scp
+      # Generate lattices
       $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
           --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
-          $dir/dengraph/HCLG.fst "$feats_subset" "ark,scp:$dir/lat.$n.JOB.ark,$dir/lat.$n.JOB.scp" || exit 1;
-      echo Merging lists for data subset $n
-      for k in `seq $sub_split`; do
-        cat $dir/lat.$n.$k.scp
-      done > $dir/lat.$n.all.scp
-      echo Merge the ark $n
-      lattice-copy scp:$dir/lat.$n.all.scp ark,scp:$dir/lat.$n.ark,$dir/lat.$n.scp || exit 1;
-      #remove the data
-      rm $dir/lat.$n.*.ark $dir/lat.$n.*.scp $dir/lat.$n.all.scp
+          $dir/dengraph/HCLG.fst "$feats_subset" scp:$dir/lat.$n.store_separately_as_gz.scp || exit 1;
       touch $dir/.done.$n
     fi
   done
 fi
 
-      
-
-#3) Merge the SCPs to create full list of lattices (will use random access)
-echo Merging to single list $dir/lat.scp
-for ((n=1; n<=nj; n++)); do
-  cat $dir/lat.$n.scp
-done > $dir/lat.scp
-
+#2) Generate 'scp' for reading the lattices
+for n in `seq $nj`; do
+  find $dir/lat${n} -name *.gz | awk -v FS="/" '{ print gensub(".gz","","",$NF)" gunzip -c "$0" |"; }' 
+done >$dir/lat.scp
 
 echo "$0: done generating denominator lattices."

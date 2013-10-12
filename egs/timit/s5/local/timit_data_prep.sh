@@ -1,97 +1,109 @@
 #!/bin/bash
 
-# Copyright 2013   (Author: Bagher BabaAli)
+# Copyright 2013   (Authors: Bagher BabaAli, Daniel Povey, Arnab Ghoshal)
 # Apache 2.0.
-
 
 if [ $# -ne 1 ]; then
    echo "Argument should be the Timit directory, see ../run.sh for example."
    exit 1;
 fi
 
-
 dir=`pwd`/data/local/data
-mkdir -p $dir
+lmdir=`pwd`/data/local/nist_lm
+mkdir -p $dir $lmdir
 local=`pwd`/local
 utils=`pwd`/utils
 conf=`pwd`/conf
 
 . ./path.sh # Needed for KALDI_ROOT
-
+export PATH=$PATH:$KALDI_ROOT/tools/irstlm/bin
 sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 if [ ! -x $sph2pipe ]; then
    echo "Could not find (or execute) the sph2pipe program at $sph2pipe";
    exit 1;
 fi
 
-cd $dir
+[ -f $conf/test_spk.list ] || error_exit "$PROG: Eval-set speaker list not found.";
+[ -f $conf/dev_spk.list ] || error_exit "$PROG: dev-set speaker list not found.";
 
-# Make directory of links to the TIMIT disk.  This relies on the command
-# line arguments being absolute pathnames.
-rm -r links/ 2>/dev/null
-mkdir links/
-
-ln -s $* links
-
-# Do some basic checks that we have what we expected.
-if [ ! -d $*/TRAIN -o ! -d $*/TEST ]; then
+# First check if the train & test directories exist (these can either be upper-
+# or lower-cased
+if [ ! -d $*/TRAIN -o ! -d $*/TEST ] && [ ! -d $*/train -o ! -d $*/test ]; then
   echo "timit_data_prep.sh: Spot check of command line argument failed"
   echo "Command line argument must be absolute pathname to TIMIT directory"
   echo "with name like /export/corpora5/LDC/LDC93S1/timit/TIMIT"
   exit 1;
 fi
 
-# This version for TRAIN
+# Now check what case the directory structure is
+uppercased=false
+train_dir=train
+test_dir=test
+if [ -d $*/TRAIN ]; then
+  [ -d $*/train -o -d $*/test ] \
+    && echo "Error: Found both upper- & lower-cased directories" && exit 1;
+  uppercased=true
+  train_dir=TRAIN
+  test_dir=TEST
+fi
 
-TrainDir=$*/TRAIN
-find -L $TrainDir \( -iname '*.WAV' -o -iname '*.wav' \) > train.flist
-nl=`cat train.flist | wc -l`
-[ "$nl" -eq 4620 ] || echo "Warning: expected 4620 lines in train.flist, got $nl"
+tmpdir=$(mktemp -d);
+trap 'rm -rf "$tmpdir"' EXIT
 
-# Now for the TEST.
+# Get the list of speakers. The list of speakers in the 24-speaker core test 
+# set and the 50-speaker development set must be supplied to the script. All
+# speakers in the 'train' directory are used for training.
+if $uppercased; then
+  tr '[:lower:]' '[:upper:]' < $conf/dev_spk.list > $tmpdir/dev_spk
+  tr '[:lower:]' '[:upper:]' < $conf/test_spk.list > $tmpdir/test_spk
+  ls -d "$*"/TRAIN/DR*/* | sed -e "s:^.*/::" > $tmpdir/train_spk
+else
+  tr '[:upper:]' '[:lower:]' < $conf/dev_spk.list > $tmpdir/dev_spk
+  tr '[:upper:]' '[:lower:]' < $conf/test_spk.list > $tmpdir/test_spk
+  ls -d "$*"/train/dr*/* | sed -e "s:^.*/::" > $tmpdir/train_spk
+fi
 
-TestDir=$*/TEST
-find -L $TestDir \( -iname '*.WAV' -o -iname '*.wav' \) > test.flist
+cd $dir
+for x in train dev test; do
+  # First, find the list of audio files (use only si & sx utterances).
+  # Note: train & test sets are under different directories, but doing find on 
+  # both and grepping for the speakers will work correctly.
 
-nl=`cat test.flist | wc -l`
-[ "$nl" -eq 1680 ] || echo "Warning: expected 1680 lines in test.flist, got $nl"
+  find $*/{$train_dir,$test_dir} -not \( -iname 'SA*' \) -iname '*.WAV' \
+    | grep -f $tmpdir/${x}_spk > ${x}_sph.flist
 
+  sed -e 's:.*/\(.*\)/\(.*\).WAV$:\1_\2:i' ${x}_sph.flist \
+    > $tmpdir/${x}_sph.uttids
+  paste $tmpdir/${x}_sph.uttids ${x}_sph.flist \
+    | sort -k1,1 > ${x}_sph.scp
 
-# Finding the transcript files:
-find -L $TrainDir \( -iname '*.PHN' -o -iname '*.phn' \) > train_phn.flist
-find -L $TestDir \( -iname '*.PHN' -o -iname '*.phn' \)  > test_phn.flist
+  cat ${x}_sph.scp | awk '{print $1}' > ${x}.uttids
 
-# Convert the transcripts into our format (no normalization yet)
-for x in train test; do
-   $local/timit_flist2scp.pl $x.flist | sort > ${x}_sph.scp
-   cat ${x}_sph.scp | awk '{print $1}' > ${x}.uttids
-   cat ${x}.uttids | $local/timit_find_transcripts.pl  ${x}_phn.flist > ${x}_phn.trans
-done
+  # Now, Convert the transcripts into our format (no normalization yet)
+  # Get the transcripts: each line of the output contains an utterance 
+  # ID followed by the transcript.
+  find $*/{$train_dir,$test_dir} -not \( -iname 'SA*' \) -iname '*.PHN' \
+    | grep -f $tmpdir/${x}_spk > $tmpdir/${x}_phn.flist
+  sed -e 's:.*/\(.*\)/\(.*\).PHN$:\1_\2:i' $tmpdir/${x}_phn.flist \
+    > $tmpdir/${x}_phn.uttids
+  while read line; do
+    [ -f $line ] || error_exit "Cannot find transcription file '$line'";
+    cut -f3 -d' ' "$line" | tr '\n' ' ' | sed -e 's: *$:\n:'
+  done < $tmpdir/${x}_phn.flist > $tmpdir/${x}_phn.trans
+  paste $tmpdir/${x}_phn.uttids $tmpdir/${x}_phn.trans \
+    | sort -k1,1 > ${x}.trans
 
 # Do normalization steps. 
-cat train_phn.trans | $local/timit_norm_trans.pl -i - -m $conf/phones.60-48-39.map  -to 48 | sort > train.txt || exit 1;
+  cat ${x}.trans | $local/timit_norm_trans.pl -i - -m $conf/phones.60-48-39.map -to 39 | sort > $x.txt || exit 1;
 
-
-for x in test; do
-   cat ${x}_phn.trans | $local/timit_norm_trans.pl -i - -m $conf/phones.60-48-39.map -to 39 | sort > $x.txt || exit 1;
-done
-
-# Create scp's with wav's.
-for x in train test; do
   awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' < ${x}_sph.scp > ${x}_wav.scp
-done
 
 # Make the utt2spk and spk2utt files.
-for x in train test; do
-    cut -f1 -d'_'  $x.uttids | paste -d' ' $x.uttids - > $x.utt2spk 
-   cat $x.utt2spk | $utils/utt2spk_to_spk2utt.pl > $x.spk2utt || exit 1;
+
+  cut -f1 -d'_'  $x.uttids | paste -d' ' $x.uttids - > $x.utt2spk 
+  cat $x.utt2spk | $utils/utt2spk_to_spk2utt.pl > $x.spk2utt || exit 1;
+
+  cat $x.spk2utt | awk '{print $1}' | perl -ane 'chop; m:^.:; print "$_ $&\n";' > $x.spk2gender
 done
-
-# Make the spk2gender files.
-for x in train test; do
-   cat $x.spk2utt | awk '{print $1}' | perl -ane 'chop; m:^.:; print "$_ $&\n";' > $x.spk2gender
-done
-
-
 
 echo "Data preparation succeeded"

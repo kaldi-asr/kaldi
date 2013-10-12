@@ -86,7 +86,8 @@ mkdir -p $dir $tmpdir $dir/phones
 
 [ -f path.sh ] && . ./path.sh
 
-! utils/validate_dict_dir.pl $srcdir && echo "*Error validating directory $srcdir*" && exit 1;
+! utils/validate_dict_dir.pl $srcdir && \
+  echo "*Error validating directory $srcdir*" && exit 1;
 
 if [[ ! -f $srcdir/lexicon.txt ]]; then
   echo "**Creating $dir/lexicon.txt from $dir/lexiconp.txt"
@@ -97,8 +98,12 @@ if [[ ! -f $srcdir/lexiconp.txt ]]; then
   perl -ape 's/(\S+\s+)(.+)/${1}1.0\t$2/;' < $srcdir/lexicon.txt > $srcdir/lexiconp.txt || exit 1;
 fi
 
-! utils/validate_dict_dir.pl $srcdir >&/dev/null && \
-   echo "Validation failed (second time)" && exit 1;
+if ! utils/validate_dict_dir.pl $srcdir >&/dev/null; then
+  utils/validate_dict_dir.pl $srcdir  # show the output.
+  echo "Validation failed (second time)"
+  exit 1;
+fi
+
 
 if $position_dependent_phones; then
   # Create $tmpdir/lexicon.original from $srcdir/lexicon.txt by

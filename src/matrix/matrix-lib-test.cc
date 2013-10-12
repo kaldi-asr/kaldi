@@ -3589,6 +3589,18 @@ template<class Real> static void UnitTestCompressedMatrix() {
     Matrix<Real> diff(M2);
     diff.AddMat(-1.0, M);
 
+    { // Check that when compressing a matrix that has already been compressed,
+      // and uncompressing, we get the same answer.
+      CompressedMatrix cmat2(M2);
+      Matrix<Real> M3(cmat.NumRows(), cmat.NumCols());
+      cmat2.CopyToMat(&M3);
+      if (!M2.ApproxEqual(M3, 1.0e-06)) {
+        KALDI_ERR << "Matrices differ " << M2 << " vs. " << M3 << ", M2 range is "
+                  << M2.Min() << " to " << M2.Max() << ", M3 range is " 
+                  << M3.Min() << " to " << M3.Max();
+      }
+    }
+    
     // test CopyRowToVec
     for (MatrixIndexT i = 0; i < num_rows; i++) {
       Vector<Real> V(num_cols);

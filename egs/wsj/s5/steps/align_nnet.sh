@@ -13,6 +13,7 @@ stage=0
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 beam=10
 retry_beam=40
+
 align_to_lats=false # optionally produce alignment in lattice format
  lats_decode_opts="--acoustic-scale=0.1 --beam=20 --latbeam=10"
  lats_graph_scales="--transition-scale=1.0 --self-loop-scale=0.1"
@@ -48,22 +49,19 @@ sdata=$data/split$nj
 
 cp $srcdir/{tree,final.mdl} $dir || exit 1;
 
-#Get the files we will need
+# Select default locations to model files
 nnet=$srcdir/final.nnet;
-[ ! -s "$nnet" ] && echo "Missing nnet '$nnet'" && exit 1;
-
 class_frame_counts=$srcdir/ali_train_pdf.counts
-[ ! -s "$class_frame_counts" ] && echo "Missing class_frame_counts '$class_frame_counts'" && exit 1;
-
 feature_transform=$srcdir/final.feature_transform
-[ ! -s $feature_transform ] && echo "Missing feature_transform '$feature_transform'" && exit 1
-
 model=$dir/final.mdl
-[ ! -s "$model" ] && echo "Missing transtion-model '$model'" && exit 1;
 
-###
-### Prepare feature pipeline (same as for decoding)
-###
+# Check that files exist
+for f in $sdata/1/feats.scp $sdata/1/text $lang/L.fst $nnet $model $feature_transform $class_frame_counts; do
+  [ ! -f $f ] && echo "$0: missing file $f" && exit 1;
+done
+
+
+# PREPARE FEATURE EXTRACTION PIPELINE
 # Create the feature stream:
 feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 # Optionally add cmvn
@@ -77,15 +75,11 @@ if [ -f $srcdir/delta_order ]; then
   delta_order=$(cat $srcdir/delta_order)
   feats="$feats add-deltas --delta-order=$delta_order ark:- ark:- |"
 fi
-
 # Finally add feature_transform and the MLP
 feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu-id=$use_gpu_id $nnet ark:- ark:- |"
-###
-###
-###
- 
-echo "$0: aligning data '$data' using nnet/model '$srcdir', putting alignments in '$dir'"
 
+
+echo "$0: aligning data '$data' using nnet/model '$srcdir', putting alignments in '$dir'"
 # Map oovs in reference transcription 
 tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
 # We could just use align-mapped in the next line, but it's less efficient as it compiles the

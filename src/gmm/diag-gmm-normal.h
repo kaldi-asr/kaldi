@@ -58,7 +58,7 @@ class DiagGmmNormal {
   void CopyFromDiagGmm(const DiagGmm &diaggmm);
 
   /// Copies to DiagGmm the requested parameters
-  void CopyToDiagGmm(DiagGmm *diaggmm, GmmFlagsType flags = kGmmAll);
+  void CopyToDiagGmm(DiagGmm *diaggmm, GmmFlagsType flags = kGmmAll) const;
 
   int32 NumGauss() { return weights_.Dim(); }
   int32 Dim() { return means_.NumCols(); }

@@ -311,6 +311,7 @@ void ConvertLatticeToPhones(const TransitionModel &trans,
 void ConvertCompactLatticeToPhones(const TransitionModel &trans,
                                    CompactLattice *clat) {
   typedef CompactLatticeArc Arc;
+  typedef Arc::Weight Weight;
   int32 num_states = clat->NumStates();
   for (int32 state = 0; state < num_states; state++) {
     for (fst::MutableArcIterator<CompactLattice> aiter(clat, state);
@@ -327,6 +328,18 @@ void ConvertCompactLatticeToPhones(const TransitionModel &trans,
       arc.weight.SetString(phone_seq);
       aiter.SetValue(arc);
     } // end looping over arcs
+    Weight f = clat->Final(state);
+    if (f != Weight::Zero()) {
+      std::vector<int32> phone_seq;
+      const std::vector<int32> &tid_seq = f.String();
+      for (std::vector<int32>::const_iterator iter = tid_seq.begin();
+           iter != tid_seq.end(); ++iter) {
+        if (trans.IsFinal(*iter))// note: there is one of these per phone...
+          phone_seq.push_back(trans.TransitionIdToPhone(*iter));
+      }
+      f.SetString(phone_seq);
+      clat->SetFinal(state, f);
+    }
   }  // end looping over states
 }
 

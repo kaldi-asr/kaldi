@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
 
       SlidingWindowCmn(opts, feat, &cmvn_feat);
       
-      feat_writer.Write(utt, feat);
+      feat_writer.Write(utt, cmvn_feat);
       num_done++;
     }
 

@@ -1,6 +1,6 @@
 # SHELL += -x
 
-all: check_required_programs sph2pipe atlas irstlm_tgt sclite_tgt openfst_tgt
+all: check_required_programs sph2pipe atlas irstlm_tgt openfst_tgt
 
 
 check_required_programs:

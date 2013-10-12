@@ -42,19 +42,14 @@ nnet_8m_6l/decode_eval_iter280/cer_10:%CER 27.43 [ 2074 / 7562, 424 ins, 605 del
 nnet_8m_6l/decode_eval_iter290/cer_10:%CER 26.37 [ 1994 / 7562, 410 ins, 572 del, 1012 sub ]
 
 nnet_8m_6l/decode_eval/cer_10:%CER 25.55 [ 1932 / 7562, 405 ins, 549 del, 978 sub ]         # 6 layers neural network
-nnet_8m_6l/decode_wide_eval/cer_10:%CER 24.13 [ 1825 / 7562, 384 ins, 535 del, 906 sub ]    # wider decoding beam width and lattice beam
 nnet_tanh_6l/decode_eval/cer_10:%CER 21.34 [ 1614 / 7562, 369 ins, 487 del, 758 sub ]	    # 6 layers neural network (nnet2 script, 1024 neurons)
-nnet_tanh_6l/decode_wide_eval/cer_10:%CER 21.22 [ 1605 / 7562, 365 ins, 485 del, 755 sub ]  # wider decoding beam width and lattice beam
-
 nnet_4m_3l/decode_eval/cer_10:%CER 22.38 [ 1692 / 7562, 372 ins, 510 del, 810 sub ]	    # 4 layers neural network
-nnet_4m_3l/decode_wide_eval/cer_10:%CER 22.16 [ 1676 / 7562, 365 ins, 505 del, 806 sub ]    # wider decoding beam width and lattice beam
 
 tri5a_pretrain-dbn_dnn/decode/cer_10:%CER 20.48 [ 1549 / 7562, 383 ins, 468 del, 698 sub ]  # 6 layers DNN - pretrained RBM, cross entropy trained DNN  
 tri5a_pretrain-dbn_dnn_smbr/decode_it1/cer_10:%CER 18.73 [ 1416 / 7562, 306 ins, 453 del, 657 sub ] # sMBR trained DNN  
 tri5a_pretrain-dbn_dnn_smbr/decode_it2/cer_10:%CER 18.73 [ 1416 / 7562, 310 ins, 446 del, 660 sub ]
 tri5a_pretrain-dbn_dnn_smbr/decode_it3/cer_10:%CER 18.62 [ 1408 / 7562, 313 ins, 446 del, 649 sub ]
 tri5a_pretrain-dbn_dnn_smbr/decode_it4/cer_10:%CER 18.66 [ 1411 / 7562, 307 ins, 458 del, 646 sub ]
-
 
 
 ### 16K wordlist close LM, the perplexity of the LM was optimized with the sentences of evaluation data
@@ -100,11 +95,8 @@ nnet_8m_6l/decode_eval_closelm_iter280/cer_10:%CER 21.44 [ 1621 / 7562, 354 ins,
 nnet_8m_6l/decode_eval_closelm_iter290/cer_10:%CER 20.40 [ 1543 / 7562, 323 ins, 492 del, 728 sub ]
 
 nnet_8m_6l/decode_eval_closelm/cer_10:%CER 20.68 [ 1564 / 7562, 351 ins, 483 del, 730 sub ]
-nnet_8m_6l/decode_wide_eval_closelm/cer_10:%CER 17.87 [ 1351 / 7562, 343 ins, 453 del, 555 sub ]
 nnet_tanh_6l/decode_eval_closelm/cer_10:%CER 17.10 [ 1293 / 7562, 337 ins, 448 del, 508 sub ]
-nnet_tanh_6l/decode_wide_eval_closelm/cer_10:%CER 17.15 [ 1297 / 7562, 336 ins, 452 del, 509 sub ]
 nnet_4m_3l/decode_eval_closelm/cer_10:%CER 17.15 [ 1297 / 7562, 335 ins, 439 del, 523 sub ]
-nnet_4m_3l/decode_wide_eval_closelm/cer_10:%CER 17.02 [ 1287 / 7562, 330 ins, 436 del, 521 sub ]
 
 tri5a_pretrain-dbn_dnn/decode_closelm/cer_10:%CER 16.54 [ 1251 / 7562, 346 ins, 413 del, 492 sub ]
 tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it1/cer_10:%CER 15.31 [ 1158 / 7562, 280 ins, 410 del, 468 sub ]
@@ -113,3 +105,59 @@ tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it3/cer_10:%CER 15.52 [ 1174 / 7562, 
 tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it4/cer_10:%CER 15.62 [ 1181 / 7562, 278 ins, 412 del, 491 sub ]
 
 
+
+##### Below are the results of wide beam decoding #####
+### 16k wordlist partial close LM
+exp/tri5a/decode_wide_eval/cer_10:%CER 27.23 [ 2059 / 7562, 465 ins, 517 del, 1077 sub ]
+exp/tri5a_mmi_b0.1/decode_wide_eval/cer_10:%CER 21.93 [ 1658 / 7562, 351 ins, 565 del, 742 sub ]
+exp/tri5a_mmi_b0.1/decode_wide_eval_1/cer_10:%CER 24.04 [ 1818 / 7562, 391 ins, 472 del, 955 sub ]
+exp/tri5a_mmi_b0.1/decode_wide_eval_2/cer_10:%CER 22.43 [ 1696 / 7562, 358 ins, 480 del, 858 sub ]
+exp/tri5a_mmi_b0.1/decode_wide_eval_3/cer_10:%CER 21.73 [ 1643 / 7562, 353 ins, 507 del, 783 sub ]
+exp/tri5a_mmi_b0.1/decode_wide_eval_4/cer_10:%CER 21.93 [ 1658 / 7562, 351 ins, 565 del, 742 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_iter1/cer_10:%CER 26.30 [ 1989 / 7562, 435 ins, 519 del, 1035 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_iter2/cer_10:%CER 25.52 [ 1930 / 7562, 412 ins, 529 del, 989 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_iter3/cer_10:%CER 24.80 [ 1875 / 7562, 389 ins, 534 del, 952 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_iter4/cer_10:%CER 24.90 [ 1883 / 7562, 403 ins, 534 del, 946 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_iter5/cer_10:%CER 22.86 [ 1729 / 7562, 367 ins, 500 del, 862 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_iter6/cer_10:%CER 21.66 [ 1638 / 7562, 347 ins, 506 del, 785 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_iter7/cer_10:%CER 21.37 [ 1616 / 7562, 334 ins, 549 del, 733 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_iter8/cer_10:%CER 21.46 [ 1623 / 7562, 328 ins, 612 del, 683 sub ]
+exp/sgmm_5a/decode_wide_eval/cer_10:%CER 26.06 [ 1971 / 7562, 405 ins, 696 del, 870 sub ]
+exp/sgmm_5a_mmi_b0.1/decode_wide_eval_1/cer_10:%CER 24.11 [ 1823 / 7562, 379 ins, 563 del, 881 sub ]
+exp/sgmm_5a_mmi_b0.1/decode_wide_eval_2/cer_10:%CER 23.79 [ 1799 / 7562, 371 ins, 568 del, 860 sub ]
+exp/sgmm_5a_mmi_b0.1/decode_wide_eval_3/cer_10:%CER 23.30 [ 1762 / 7562, 364 ins, 566 del, 832 sub ]
+exp/sgmm_5a_mmi_b0.1/decode_wide_eval_4/cer_10:%CER 23.17 [ 1752 / 7562, 373 ins, 568 del, 811 sub ]
+exp/nnet_8m_6l/decode_wide_eval/cer_10:%CER 24.13 [ 1825 / 7562, 384 ins, 535 del, 906 sub ]
+exp/nnet_tanh_6l/decode_wide_eval/cer_10:%CER 21.22 [ 1605 / 7562, 365 ins, 485 del, 755 sub ]
+exp/nnet_4m_3l/decode_wide_eval/cer_10:%CER 22.16 [ 1676 / 7562, 365 ins, 505 del, 806 sub ]
+exp/tri5a_pretrain-dbn_dnn/decode_dnnwide/cer_10:%CER 20.47 [ 1548 / 7562, 383 ins, 467 del, 698 sub ]
+exp/tri5a_pretrain-dbn_dnn_smbr/decode_it1_dnnwide/cer_10:%CER 18.73 [ 1416 / 7562, 306 ins, 453 del, 657 sub ]
+exp/tri5a_pretrain-dbn_dnn_smbr/decode_it2_dnnwide/cer_10:%CER 18.73 [ 1416 / 7562, 310 ins, 446 del, 660 sub ]
+
+### 16K wordlist close LM, the perplexity of the LM was optimized with the sentences of evaluation data
+exp/tri5a/decode_wide_eval_closelm/cer_10:%CER 20.79 [ 1572 / 7562, 397 ins, 489 del, 686 sub ]
+exp/tri5a_mmi_b0.1/decode_wide_eval_closelm/cer_10:%CER 16.58 [ 1254 / 7562, 308 ins, 441 del, 505 sub ]
+exp/tri5a_mmi_b0.1/decode_wide_eval_closelm_1/cer_10:%CER 17.56 [ 1328 / 7562, 333 ins, 424 del, 571 sub ]
+exp/tri5a_mmi_b0.1/decode_wide_eval_closelm_2/cer_10:%CER 16.87 [ 1276 / 7562, 322 ins, 425 del, 529 sub ]
+exp/tri5a_mmi_b0.1/decode_wide_eval_closelm_3/cer_10:%CER 16.66 [ 1260 / 7562, 315 ins, 437 del, 508 sub ]
+exp/tri5a_mmi_b0.1/decode_wide_eval_closelm_4/cer_10:%CER 16.58 [ 1254 / 7562, 308 ins, 441 del, 505 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_closelm_iter1/cer_10:%CER 20.22 [ 1529 / 7562, 379 ins, 492 del, 658 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_closelm_iter2/cer_10:%CER 19.70 [ 1490 / 7562, 364 ins, 486 del, 640 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_closelm_iter3/cer_10:%CER 19.10 [ 1444 / 7562, 342 ins, 461 del, 641 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_closelm_iter4/cer_10:%CER 18.66 [ 1411 / 7562, 347 ins, 451 del, 613 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_closelm_iter5/cer_10:%CER 16.15 [ 1221 / 7562, 308 ins, 412 del, 501 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_closelm_iter6/cer_10:%CER 16.15 [ 1221 / 7562, 284 ins, 422 del, 515 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_closelm_iter7/cer_10:%CER 16.19 [ 1224 / 7562, 276 ins, 444 del, 504 sub ]
+exp/tri5a_fmmi_b0.1/decode_wide_eval_closelm_iter8/cer_10:%CER 16.38 [ 1239 / 7562, 277 ins, 463 del, 499 sub ]
+exp/sgmm_5a/decode_wide_eval_closelm/cer_10:%CER 21.95 [ 1660 / 7562, 413 ins, 612 del, 635 sub ]
+exp/sgmm_5a_mmi_b0.1/decode_wide_eval_closelm_1/cer_10:%CER 19.65 [ 1486 / 7562, 389 ins, 490 del, 607 sub ]
+exp/sgmm_5a_mmi_b0.1/decode_wide_eval_closelm_2/cer_10:%CER 19.51 [ 1475 / 7562, 388 ins, 494 del, 593 sub ]
+exp/sgmm_5a_mmi_b0.1/decode_wide_eval_closelm_3/cer_10:%CER 19.41 [ 1468 / 7562, 387 ins, 495 del, 586 sub ]
+exp/sgmm_5a_mmi_b0.1/decode_wide_eval_closelm_4/cer_10:%CER 19.27 [ 1457 / 7562, 377 ins, 492 del, 588 sub ]
+exp/nnet_8m_6l/decode_wide_eval_closelm/cer_10:%CER 17.87 [ 1351 / 7562, 343 ins, 453 del, 555 sub ]
+exp/nnet_tanh_6l/decode_wide_eval_closelm/cer_10:%CER 17.15 [ 1297 / 7562, 336 ins, 452 del, 509 sub ]
+exp/nnet_4m_3l/decode_wide_eval_closelm/cer_10:%CER 17.02 [ 1287 / 7562, 330 ins, 436 del, 521 sub ]
+exp/tri5a_pretrain-dbn_dnn/decode_closelm_dnnwide/cer_10:%CER 16.42 [ 1242 / 7562, 337 ins, 414 del, 491 sub ]
+exp/tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it1_dnnwide/cer_10:%CER 15.26 [ 1154 / 7562, 279 ins, 409 del, 466 sub ]
+exp/tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it2_dnnwide/cer_10:%CER 15.31 [ 1158 / 7562, 279 ins, 408 del, 471 sub ]
+##### end wide beam decoding results ##### 
