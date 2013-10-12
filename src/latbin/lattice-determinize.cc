@@ -1,6 +1,7 @@
 // latbin/lattice-determinize.cc
 
-// Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2012  Microsoft Corporation
+//           2012-2013  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,6 +24,8 @@
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
+#include "lat/push-lattice.h"
+#include "lat/minimize-lattice.h"
 
 namespace kaldi {
 
@@ -111,16 +114,27 @@ int main(int argc, char *argv[]) {
     int32 max_loop = 500000;
     BaseFloat delta = fst::kDelta;
     bool prune = false;
+    bool minimize = false;
     
-    po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
-    po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling]-- also used "
-                "to handle determinization failures, set --prune=false to disable routine pruning");
+    po.Register("acoustic-scale", &acoustic_scale,
+                "Scaling factor for acoustic likelihoods");
+    po.Register("beam", &beam,
+                "Pruning beam [applied after acoustic scaling]-- also used "
+                "to handle determinization failures, set --prune=false to "
+                "disable routine pruning");
     po.Register("delta", &delta, "Tolerance used in determinization");
-    po.Register("prune", &prune, "If true, prune determinized lattices with the --beam option.");
-    po.Register("max-mem", &max_mem, "Maximum approximate memory usage in determinization (real usage might be many times this)");
-    po.Register("max-loop", &max_loop, "Option to detect a certain type of failure in lattice determinization (not critical)");
-    po.Register("beam-ratio", &beam_ratio, "Ratio by which to decrease beam if we reach the max-arcs.");
-    po.Register("num-loops", &num_loops, "Number of times to decrease beam by beam-ratio if determinization fails.");
+    po.Register("prune", &prune, "If true, prune determinized lattices "
+                "with the --beam option.");
+    po.Register("max-mem", &max_mem, "Maximum approximate memory usage in "
+                "determinization (real usage might be many times this)");
+    po.Register("max-loop", &max_loop, "Option to detect a certain "
+                "type of failure in lattice determinization (not critical)");
+    po.Register("beam-ratio", &beam_ratio, "Ratio by which to "
+                "decrease beam if we reach the max-arcs.");
+    po.Register("num-loops", &num_loops, "Number of times to "
+                "decrease beam by beam-ratio if determinization fails.");
+    po.Register("minimize", &minimize,
+                "If true, push and minimize after determinization");
     
     po.Read(argc, argv);
 
@@ -158,6 +172,11 @@ int main(int argc, char *argv[]) {
       if (DeterminizeLatticeWrapper(lat, key, prune,
                                     beam, beam_ratio, max_mem, max_loop,
                                     delta, num_loops, &clat)) {
+        if (minimize) {
+          PushCompactLatticeStrings(&clat);
+          PushCompactLatticeWeights(&clat);
+          MinimizeCompactLattice(&clat);
+        }
         fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &clat);
         compact_lattice_writer.Write(key, clat);
         n_done++;
