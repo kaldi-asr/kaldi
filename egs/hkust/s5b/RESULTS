@@ -41,9 +41,10 @@ nnet_8m_6l/decode_eval_iter270/cer_10:%CER 25.72 [ 1945 / 7562, 405 ins, 533 del
 nnet_8m_6l/decode_eval_iter280/cer_10:%CER 27.43 [ 2074 / 7562, 424 ins, 605 del, 1045 sub ]
 nnet_8m_6l/decode_eval_iter290/cer_10:%CER 26.37 [ 1994 / 7562, 410 ins, 572 del, 1012 sub ]
 
-nnet_8m_6l/decode_eval/cer_10:%CER 25.55 [ 1932 / 7562, 405 ins, 549 del, 978 sub ]         # 6 layers neural network
-nnet_tanh_6l/decode_eval/cer_10:%CER 21.34 [ 1614 / 7562, 369 ins, 487 del, 758 sub ]	    # 6 layers neural network (nnet2 script, 1024 neurons)
-nnet_4m_3l/decode_eval/cer_10:%CER 22.38 [ 1692 / 7562, 372 ins, 510 del, 810 sub ]	    # 4 layers neural network
+nnet_8m_6l/decode_eval/cer_10:%CER 25.55 [ 1932 / 7562, 405 ins, 549 del, 978 sub ]         # 6 hidden layers neural network
+nnet_tanh_6l/decode_eval/cer_10:%CER 21.34 [ 1614 / 7562, 369 ins, 487 del, 758 sub ]	    # 6 hidden layers neural network (nnet2 script, 1024 neurons)
+nnet_4m_3l/decode_eval/cer_10:%CER 22.38 [ 1692 / 7562, 372 ins, 510 del, 810 sub ]	    # 3 hidden layers neural network
+nnet_tanh_3l/decode_eval/cer_10:%CER 22.11 [ 1672 / 7562, 391 ins, 489 del, 792 sub ]	    # 3 hidden layers neural network (nnet2 script, 1024 neurons)
 
 tri5a_pretrain-dbn_dnn/decode/cer_10:%CER 20.48 [ 1549 / 7562, 383 ins, 468 del, 698 sub ]  # 6 layers DNN - pretrained RBM, cross entropy trained DNN  
 tri5a_pretrain-dbn_dnn_smbr/decode_it1/cer_10:%CER 18.73 [ 1416 / 7562, 306 ins, 453 del, 657 sub ] # sMBR trained DNN  
@@ -97,6 +98,7 @@ nnet_8m_6l/decode_eval_closelm_iter290/cer_10:%CER 20.40 [ 1543 / 7562, 323 ins,
 nnet_8m_6l/decode_eval_closelm/cer_10:%CER 20.68 [ 1564 / 7562, 351 ins, 483 del, 730 sub ]
 nnet_tanh_6l/decode_eval_closelm/cer_10:%CER 17.10 [ 1293 / 7562, 337 ins, 448 del, 508 sub ]
 nnet_4m_3l/decode_eval_closelm/cer_10:%CER 17.15 [ 1297 / 7562, 335 ins, 439 del, 523 sub ]
+nnet_tanh_3l/decode_eval_closelm/cer_10:%CER 17.22 [ 1302 / 7562, 349 ins, 434 del, 519 sub ]
 
 tri5a_pretrain-dbn_dnn/decode_closelm/cer_10:%CER 16.54 [ 1251 / 7562, 346 ins, 413 del, 492 sub ]
 tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it1/cer_10:%CER 15.31 [ 1158 / 7562, 280 ins, 410 del, 468 sub ]
@@ -130,6 +132,7 @@ exp/sgmm_5a_mmi_b0.1/decode_wide_eval_4/cer_10:%CER 23.17 [ 1752 / 7562, 373 ins
 exp/nnet_8m_6l/decode_wide_eval/cer_10:%CER 24.13 [ 1825 / 7562, 384 ins, 535 del, 906 sub ]
 exp/nnet_tanh_6l/decode_wide_eval/cer_10:%CER 21.22 [ 1605 / 7562, 365 ins, 485 del, 755 sub ]
 exp/nnet_4m_3l/decode_wide_eval/cer_10:%CER 22.16 [ 1676 / 7562, 365 ins, 505 del, 806 sub ]
+exp/nnet_tanh_3l/decode_wide_eval/cer_10:%CER 21.95 [ 1660 / 7562, 382 ins, 488 del, 790 sub ]
 exp/tri5a_pretrain-dbn_dnn/decode_dnnwide/cer_10:%CER 20.47 [ 1548 / 7562, 383 ins, 467 del, 698 sub ]
 exp/tri5a_pretrain-dbn_dnn_smbr/decode_it1_dnnwide/cer_10:%CER 18.73 [ 1416 / 7562, 306 ins, 453 del, 657 sub ]
 exp/tri5a_pretrain-dbn_dnn_smbr/decode_it2_dnnwide/cer_10:%CER 18.73 [ 1416 / 7562, 310 ins, 446 del, 660 sub ]
@@ -157,6 +160,7 @@ exp/sgmm_5a_mmi_b0.1/decode_wide_eval_closelm_4/cer_10:%CER 19.27 [ 1457 / 7562,
 exp/nnet_8m_6l/decode_wide_eval_closelm/cer_10:%CER 17.87 [ 1351 / 7562, 343 ins, 453 del, 555 sub ]
 exp/nnet_tanh_6l/decode_wide_eval_closelm/cer_10:%CER 17.15 [ 1297 / 7562, 336 ins, 452 del, 509 sub ]
 exp/nnet_4m_3l/decode_wide_eval_closelm/cer_10:%CER 17.02 [ 1287 / 7562, 330 ins, 436 del, 521 sub ]
+exp/nnet_tanh_3l/decode_wide_eval_closelm/cer_10:%CER 17.31 [ 1309 / 7562, 348 ins, 441 del, 520 sub ]
 exp/tri5a_pretrain-dbn_dnn/decode_closelm_dnnwide/cer_10:%CER 16.42 [ 1242 / 7562, 337 ins, 414 del, 491 sub ]
 exp/tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it1_dnnwide/cer_10:%CER 15.26 [ 1154 / 7562, 279 ins, 409 del, 466 sub ]
 exp/tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it2_dnnwide/cer_10:%CER 15.31 [ 1158 / 7562, 279 ins, 408 del, 471 sub ]

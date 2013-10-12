@@ -202,12 +202,75 @@ class CompactLatticePusher {
   std::vector<int32> shift_vec_;
 };
 
-bool PushCompactLattice(CompactLattice *clat) {
+bool PushCompactLatticeStrings(CompactLattice *clat) {
   CompactLatticePusher pusher(clat);
   return pusher.Push();
 }
-      
 
+bool PushCompactLatticeWeights(CompactLattice *clat) {
+  if (clat->Properties(fst::kTopSorted, true) == 0) {
+    if (!TopSort(clat)) {
+      KALDI_WARN << "Topological sorting of state-level lattice failed "
+          "(probably your lexicon has empty words or your LM has epsilon cycles; this "
+          " is a bad idea.)";
+      return false;
+    }
+  }
+  typedef CompactLattice::StateId StateId; // Note: this is guaranteed to be
+                                           // signed.
+  typedef CompactLatticeArc Arc;
+  typedef CompactLatticeWeight Weight;
+
+  StateId num_states = clat->NumStates();
+  if (num_states == 0) {
+    KALDI_WARN << "Pushing weights of empty compact lattice";
+    return true; // this is technically success because an empty
+                 // lattice is already pushed.
+  }
+  std::vector<LatticeWeight> weight_to_end(num_states); // Note: LatticeWeight
+                                                      // contains two floats.
+  for (StateId s = num_states - 1; s >= 0; s--) {
+    LatticeWeight this_weight_to_end = clat->Final(s).Weight();
+    for (fst::ArcIterator<CompactLattice> aiter(*clat, s); !aiter.Done();
+         aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      KALDI_ASSERT(arc.nextstate > s && "Cyclic lattices not allowed.");
+      this_weight_to_end = Plus(this_weight_to_end,
+                                Times(aiter.Value().weight.Weight(),
+                                      weight_to_end[arc.nextstate]));
+    }
+    if (this_weight_to_end == LatticeWeight::Zero()) {
+      KALDI_WARN << "Lattice has non-coaccessible states.";
+    }
+    weight_to_end[s] = this_weight_to_end;
+  }
+  weight_to_end[0] = LatticeWeight::One(); // We leave the "leftover weight" on
+                                           // the start state, which won't
+                                           // necessarily end up summing to one.
+  for (StateId s = 0; s < num_states; s++) {
+    LatticeWeight this_weight_to_end = weight_to_end[s];
+    if (this_weight_to_end == LatticeWeight::Zero())
+      continue;
+    for (fst::MutableArcIterator<CompactLattice> aiter(clat, s); !aiter.Done();
+         aiter.Next()) {
+      Arc arc = aiter.Value();
+      LatticeWeight next_weight_to_end = weight_to_end[arc.nextstate];
+      if (next_weight_to_end != LatticeWeight::Zero()) {
+        arc.weight.SetWeight(Times(arc.weight.Weight(),
+                                   Divide(next_weight_to_end,
+                                          this_weight_to_end)));
+        aiter.SetValue(arc);
+      }
+    }
+    Weight final_weight = clat->Final(s);
+    if (final_weight != Weight::Zero()) {
+      final_weight.SetWeight(Divide(final_weight.Weight(), this_weight_to_end));
+      clat->SetFinal(s, final_weight);
+    }
+  }
+  
+  return true;
+}
 
   
 

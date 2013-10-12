@@ -37,13 +37,22 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Push lattices, in CompactLattice format, so that the strings are as\n"
-        "close to the start as possible.  Does not affect the weights.  This can\n"
-        "be helpful prior to word-alignment.\n"
+        "close to the start as possible, and the lowest cost weight for each\n"
+        "state except the start state is (0, 0).  This can be helpful prior to\n"
+        "word-alignment (in this case, only strings need to be pushed)\n"
         "\n"
         "Usage: lattice-push [options] lattice-rspecifier lattice-wspecifier\n"
         " e.g.: lattice-push ark:1.lats ark:2.lats\n";
-      
+
     ParseOptions po(usage);
+
+    bool push_strings = true;
+    bool push_weights = true;
+
+    po.Register("push-strings", &push_strings, "If true, push the strings in the "
+                "lattice to the start.");
+    po.Register("push-strings", &push_strings, "If true, push the weights in the "
+                "lattice to the start.");
     
     po.Read(argc, argv);
 
@@ -66,18 +75,25 @@ int main(int argc, char *argv[]) {
       std::string key = clat_reader.Key();
       CompactLattice clat = clat_reader.Value();
       KALDI_VLOG(1) << "Processing lattice for utterance " << key;
-      if (!PushCompactLattice(&clat)) {
-        KALDI_WARN << "Failure in pushing lattice (bad lattice?) for key " << key;
+      if (push_strings && !PushCompactLatticeStrings(&clat)) {
+        KALDI_WARN << "Failure in pushing lattice strings (bad lattice?), "
+                   << "for key " << key;
         n_err++;
-      } else {
-        if (clat.NumStates() == 0) {
-          KALDI_WARN << "Empty lattice for key " << key;
-          n_err++;
-        } else {
-          clat_writer.Write(key, clat);
-          n_done++;
-        }
+        continue;
       }
+      if (push_weights && !PushCompactLatticeWeights(&clat)) {
+        KALDI_WARN << "Failure in pushing lattice weights (bad lattice?),"
+                   << "for key " << key ;           
+        n_err++;
+        continue;
+      }
+      if (clat.NumStates() == 0) {
+        KALDI_WARN << "Empty lattice for key " << key;
+        n_err++;
+        continue;
+      }
+      clat_writer.Write(key, clat);
+      n_done++;
     }
     KALDI_LOG << "Pushed " << n_done << " lattices, errors on " << n_err;
     return (n_done != 0 ? 0 : 1);
