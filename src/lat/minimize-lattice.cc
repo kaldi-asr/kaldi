@@ -43,6 +43,7 @@ class CompactLatticeMinimizer {
  public:
   typedef CompactLattice::StateId StateId;
   typedef CompactLatticeArc Arc;
+  typedef Arc::Label Label;
   typedef CompactLatticeWeight Weight;
   typedef size_t HashType;
   
@@ -65,8 +66,13 @@ class CompactLatticeMinimizer {
   }
   
   static HashType ConvertStringToHashValue(const std::vector<int32> &vec) {
+    const HashType prime = 53281;
     VectorHasher<int32> h;
-    return static_cast<HashType>(h(vec));
+    HashType ans = static_cast<HashType>(h(vec));
+    if (ans == 0)  ans = prime;
+    // We don't allow a zero answer, as this can cause too many values to be the
+    // same.
+    return ans;
   }
   
   static void InitHashValue(const Weight &final_weight, HashType *h) {
@@ -79,10 +85,15 @@ class CompactLatticeMinimizer {
   // insensitive to the order in which it's called, as the order of the arcs
   // won't necessarily be the same for different equivalent states.
   static void UpdateHashValueForTransition(const Weight &weight,
+                                           Label label,
                                            HashType &next_state_hash,
                                            HashType *h) {
-    const HashType prime = 1447;
-    *h += prime * ConvertStringToHashValue(weight.String()) * next_state_hash;
+    const HashType prime1 = 1447, prime2 = 51907;
+    if (label == 0) label = prime2; // Zeros will cause problems.
+    *h += prime1 * label *
+        (1 + ConvertStringToHashValue(weight.String()) * next_state_hash);
+    // Above, the "1 +" is to ensure that if somehow we get zeros due to
+    // weird word sequences, they don't propagate.
   }
 
   void ComputeStateHashValues() {
@@ -106,7 +117,8 @@ class CompactLatticeMinimizer {
           KALDI_WARN << "Minimizing lattice with self-loops "
               "(lattices should not have self-loops)";
         }
-        UpdateHashValueForTransition(arc.weight, next_hash, &this_hash);
+        UpdateHashValueForTransition(arc.weight, arc.ilabel,
+                                     next_hash, &this_hash);
       }
       state_hashes_[s] = this_hash;
     }
@@ -200,7 +212,7 @@ class CompactLatticeMinimizer {
       for (HashIter iter = hash_groups_.begin(); iter != hash_groups_.end();
            ++iter)
         max_size = std::max(max_size, iter->second.size());
-      if (max_size > 100) {
+      if (max_size > 1000) {
         KALDI_WARN << "Largest equivalence group (using hash) is " << max_size
                    << ", minimization might be slow.";
       }
@@ -212,8 +224,13 @@ class CompactLatticeMinimizer {
       KALDI_ASSERT(!equivalence_class.empty());
       for (size_t i = 0; i < equivalence_class.size(); i++) {
         StateId t = equivalence_class[i];
-        if (t > s && Equivalent(s, t))
-          state_map_[s] = state_map_[t];
+        // Below, there is no point doing the test if state_map_[t] != t, because
+        // in that case we will, before after this, be comparing with another state
+        // that is equivalent to t.
+        if (t > s && state_map_[t] == t && Equivalent(s, t)) {
+          state_map_[s] = t;
+          break;
+        }
       }
     }
   }
