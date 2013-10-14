@@ -1,4 +1,4 @@
-// latbin/lattice-push.cc
+// latbin/lattice-minimize.cc
 
 // Copyright 2013  Johns Hopkins University (Author: Daniel Povey)
 
@@ -22,6 +22,7 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
+#include "lat/minimize-lattice.h"
 #include "lat/push-lattice.h"
 
 
@@ -36,13 +37,12 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "Push lattices, in CompactLattice format, so that the strings are as\n"
-        "close to the start as possible, and the lowest cost weight for each\n"
-        "state except the start state is (0, 0).  This can be helpful prior to\n"
-        "word-alignment (in this case, only strings need to be pushed)\n"
-        "\n"
-        "Usage: lattice-push [options] lattice-rspecifier lattice-wspecifier\n"
-        " e.g.: lattice-push ark:1.lats ark:2.lats\n";
+      "Minimize lattices, in CompactLattice format.  Should be applied to\n"
+      "determinized lattices (e.g. produced with --determinize-lattice=true)\n"
+      "Note: by default this program\n"
+      "pushes the strings and weights prior to minimization."
+      "Usage: lattice-minimize [options] lattice-rspecifier lattice-wspecifier\n"
+        " e.g.: lattice-minimize ark:1.lats ark:2.lats\n";
 
     ParseOptions po(usage);
 
@@ -87,6 +87,12 @@ int main(int argc, char *argv[]) {
         n_err++;
         continue;
       }
+      if (!MinimizeCompactLattice(&clat)) {
+        KALDI_WARN << "Failure in minimizing lattice (bad lattice?),"
+                   << "for key " << key ;           
+        n_err++;
+        continue;
+      }
       if (clat.NumStates() == 0) {
         KALDI_WARN << "Empty lattice for key " << key;
         n_err++;
@@ -95,7 +101,7 @@ int main(int argc, char *argv[]) {
       clat_writer.Write(key, clat);
       n_done++;
     }
-    KALDI_LOG << "Pushed " << n_done << " lattices, errors on " << n_err;
+    KALDI_LOG << "Minimized " << n_done << " lattices, errors on " << n_err;
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

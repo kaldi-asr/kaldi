@@ -1,6 +1,6 @@
 // nnet/nnet-example.cc
 
-// Copyright 2012   Johns Hopkins University (author: Daniel Povey)
+// Copyright 2012-2013  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -34,7 +34,8 @@ void NnetTrainingExample::Write(std::ostream &os, bool binary) const {
     WriteBasicType(os, binary, labels[i].second);
   }
   WriteToken(os, binary, "<InputFrames>");
-  input_frames.Write(os, binary);
+  CompressedMatrix compressed(input_frames);
+  compressed.Write(os, binary); // can be read as regular Matrix.
   WriteToken(os, binary, "<LeftContext>");
   WriteBasicType(os, binary, left_context);
   WriteToken(os, binary, "<SpkInfo>");

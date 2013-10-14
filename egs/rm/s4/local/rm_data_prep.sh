@@ -1,9 +1,8 @@
 #!/bin/bash
-#
-# Copyright 2012 Vassil Panayotov
-# modified from a file that was:
-# Copyright 2010-2011 Microsoft Corporation
 
+# Copyright 2010-2011 Microsoft Corporation
+# Copyright 2012 Vassil Panayotov
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -54,11 +53,10 @@ cat $RMROOT/rm1/etc/rm1_test.fileids | \
 # this is needed, because the original "al_sents.snr" file is not available
 # (and because CMU's train utterances have tags like '<sil>' added)
 cat $RMROOT/rm1/etc/rm1_train.transcription |\
- sed -e 's/\(.*\)\(([a-z][a-z][0-9]\+)\)/\1\U\2/' |\
- sed -e 's:</\?si\?l\?>::g' -e 's:([0-9])::g' |\
- sed -e 's:\([ ][ ]\+\): :g' -e 's:^[ ]\+::g' |\
- cat  $RMROOT/rm1/etc/rm1_test.transcription - \
- > al_sents.snr 
+ tr '[a-z]' '[A-Z]' |\
+ sed -E -e 's:</?S(IL)?>: :g' -e 's:\([0-9]\): :g' -e 's:  +: :g' -e 's:^ +::' |\
+ cat $RMROOT/rm1/etc/rm1_test.transcription - \
+ > al_sents.snr
 
 # training set
 ../../local/make_trans.pl trn train.flist al_sents.snr train_trans.txt train.scp

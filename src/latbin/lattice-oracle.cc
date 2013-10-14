@@ -1,6 +1,7 @@
 // latbin/lattice-oracle.cc
 
 // Copyright 2011 Gilles Boulianne
+//           2013 Johns Hopkins University (author: Daniel Povey)
 //
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -95,10 +96,10 @@ void CreateEditDistance(const fst::StdVectorFst &fst1,
   typedef StdArc StdArc;
   typedef StdArc::Weight Weight;
   typedef StdArc::Label Label;
-  Weight corrCost(0.0);
-  Weight subsCost(1.0);
-  Weight insCost(1.0);
-  Weight delCost(1.0);
+  Weight correct_cost(0.0);
+  Weight substitution_cost(1.0);
+  Weight insertion_cost(1.0);
+  Weight deletion_cost(1.0);
 
   // create set of output symbols in fst1
   std::vector<Label> fst1syms, fst2syms;
@@ -108,17 +109,17 @@ void CreateEditDistance(const fst::StdVectorFst &fst1,
   pfst->AddState();
   pfst->SetStart(0);
   for (size_t i = 0; i < fst1syms.size(); i++) 
-    pfst->AddArc(0, StdArc(fst1syms[i], 0, delCost, 0)); // deletions
+    pfst->AddArc(0, StdArc(fst1syms[i], 0, deletion_cost, 0)); // deletions
   
   for (size_t i = 0; i < fst2syms.size(); i++)
-    pfst->AddArc(0, StdArc(0, fst2syms[i], insCost, 0));  // insertions
+    pfst->AddArc(0, StdArc(0, fst2syms[i], insertion_cost, 0));  // insertions
  
   // stupid implementation O(N^2)
   for (size_t i = 0; i < fst1syms.size(); i++) {
     Label label1 = fst1syms[i];
     for (size_t j = 0; j < fst2syms.size(); j++) {
       Label label2 = fst2syms[j];
-      Weight cost( label1 == label2 ? corrCost : subsCost);
+      Weight cost( label1 == label2 ? correct_cost : substitution_cost);
       pfst->AddArc(0, StdArc(label1, label2, cost, 0)); // substitutions
     }
   }
@@ -127,30 +128,33 @@ void CreateEditDistance(const fst::StdVectorFst &fst1,
 }
 
 void CountErrors(fst::StdVectorFst &fst,
-                 unsigned int *corr,
-                 unsigned int *subs,
-                 unsigned int *ins,
-                 unsigned int *del,
-                 unsigned int *totwords) {
+                 int32 *correct,
+                 int32 *substitutions,
+                 int32 *insertions,
+                 int32 *deletions,
+                 int32 *num_words) {
   typedef fst::StdArc::StateId StateId;
   typedef fst::StdArc::Weight Weight;
-   *corr = *subs = *ins = *del = *totwords = 0;
+   *correct = *substitutions = *insertions = *deletions = *num_words = 0;
 
   // go through the first complete path in fst (there should be only one)
   StateId src = fst.Start(); 
   while (fst.Final(src)== Weight::Zero()) { // while not final
     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, src); !aiter.Done(); aiter.Next()) {
       fst::StdArc arc = aiter.Value();
-      if (arc.ilabel == 0 && arc.olabel == 0) {
-        // don't count these so we may compare number of arcs and number of errors
-      } else if (arc.ilabel == arc.olabel) {
-        (*corr)++; (*totwords)++;
-      } else if (arc.ilabel == 0) {
-        (*ins)++;
-      } else if (arc.olabel == 0) {
-        (*del)++; (*totwords)++;
+      if (arc.ilabel == arc.olabel && arc.ilabel != 0) {
+        (*correct)++;
+        (*num_words)++;
+      } else if (arc.ilabel == 0 && arc.olabel != 0) {
+        (*deletions)++;
+        (*num_words)++;
+      } else if (arc.ilabel != 0 && arc.olabel == 0) {
+        (*insertions)++; 
+      } else if (arc.ilabel != 0 && arc.olabel != 0) {
+        (*substitutions)++;
+        (*num_words)++;
       } else {
-        (*subs)++; (*totwords)++;
+        KALDI_ASSERT(arc.ilabel == 0 && arc.olabel == 0);
       }
       src = arc.nextstate;
       continue; // jump to next state
@@ -175,7 +179,7 @@ bool CheckFst(fst::StdVectorFst &fst, string name, string key) {
 
 // Guoguo Chen added the implementation for option "write-lattices". This
 // function does a depth first search on the lattice and remove the arcs that
-// don't correspond to the oracle path. By "remove" I actually point the next
+// don't correctespond to the oracle path. By "remove" I actually point the next
 // state of the arc to some state that is not in the lattice and then use the
 // openfst connect function. This makes things much easier. 
 bool GetOracleLattice(Lattice *oracle_lat, 
@@ -229,8 +233,9 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Finds the path having the smallest edit-distance between two lattices.\n"
         "For efficiency put the smallest lattices first (for example reference strings).\n"
-        "Usage: lattice-oracle [options] test-lattice-rspecifier reference-rspecifier transcriptions-wspecifier\n"
-        " e.g.: lattice-oracle ark:ref.lats ark:1.tra ark:2.tra\n";
+        "Usage: lattice-oracle [options] test-lattice-rspecifier reference-rspecifier "
+        "transcriptions-wspecifier [edit-distance-wspecifier]\n"
+        " e.g.: lattice-oracle ark:lat.1 'ark:sym2int.pl -f 2- data/lang/words.txt <data/test/text' ark,t:-\n";
         
     ParseOptions po(usage);
     
@@ -238,27 +243,28 @@ int main(int argc, char *argv[]) {
     std::string wild_syms_filename;
 
     std::string lats_wspecifier;
+    
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
     po.Register("wildcard-symbols-list", &wild_syms_filename, "List of symbols that don't count as errors");
     po.Register("write-lattices", &lats_wspecifier, "If supplied, write 1-best path as lattices to this wspecifier");
     
     po.Read(argc, argv);
  
-    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string lats_rspecifier = po.GetArg(1),
         reference_rspecifier = po.GetArg(2),
-        transcriptions_wspecifier = po.GetOptArg(3);
+        transcriptions_wspecifier = po.GetArg(3);
 
     // will read input as  lattices
     SequentialLatticeReader lattice_reader(lats_rspecifier);
     RandomAccessInt32VectorReader reference_reader(reference_rspecifier);
 
     Int32VectorWriter transcriptions_writer(transcriptions_wspecifier);
-
+    
     // Guoguo Chen added the implementation for option "write-lattices".
     CompactLatticeWriter lats_writer(lats_wspecifier);
 
@@ -276,7 +282,8 @@ int main(int argc, char *argv[]) {
     }
     
     int32 n_done = 0, n_fail = 0;
-    unsigned int tot_corr=0, tot_subs=0, tot_ins=0, tot_del=0, tot_words=0;
+    int32 tot_correct=0, tot_substitutions=0, tot_insertions=0, tot_deletions=0,
+        tot_words=0;
 
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
@@ -284,9 +291,9 @@ int main(int argc, char *argv[]) {
       cerr << "Lattice "<<key<<" read."<<endl;
 
       // remove all weights while creating a standard FST
-      VectorFst<StdArc> fst1;
-      ConvertLatticeToUnweightedAcceptor(lat, wild_syms, &fst1);
-      CheckFst(fst1, "fst1_", key);
+      VectorFst<StdArc> lattice_fst;
+      ConvertLatticeToUnweightedAcceptor(lat, wild_syms, &lattice_fst);
+      CheckFst(lattice_fst, "lattice_fst_", key);
       
       // TODO: map certain symbols (using an FST created with CreateMapFst())
       
@@ -296,44 +303,49 @@ int main(int argc, char *argv[]) {
         continue;
       }
       const std::vector<int32> &reference = reference_reader.Value(key);
-      VectorFst<StdArc> fst2;
-      MakeLinearAcceptor(reference, &fst2);
+      VectorFst<StdArc> reference_fst;
+      MakeLinearAcceptor(reference, &reference_fst);
       
-      CheckFst(fst2, "fst2_", key);
+      CheckFst(reference_fst, "reference_fst_", key);
             
       // recreate edit distance fst if necessary
-      fst::StdVectorFst editDistanceFst;
-      CreateEditDistance(fst1, fst2, &editDistanceFst);
+      fst::StdVectorFst edit_distance_fst;
+      CreateEditDistance(lattice_fst, reference_fst, &edit_distance_fst);
       
       // compose with edit distance transducer
-      VectorFst<StdArc> composedFst;
-      fst::Compose(editDistanceFst, fst2, &composedFst);
-      CheckFst(composedFst, "composed_", key);
+      VectorFst<StdArc> edit_ref_fst;
+      fst::Compose(edit_distance_fst, reference_fst, &edit_ref_fst);
+      CheckFst(edit_ref_fst, "composed_", key);
       
       // make sure composed FST is input sorted
-      fst::ArcSort(&composedFst, fst::StdILabelCompare());
+      fst::ArcSort(&edit_ref_fst, fst::StdILabelCompare());
       
       // compose with previous result
-      VectorFst<StdArc> resultFst;
-      fst::Compose(fst1, composedFst, &resultFst);
-      CheckFst(resultFst, "result_", key);
+      VectorFst<StdArc> result_fst;
+      fst::Compose(lattice_fst, edit_ref_fst, &result_fst);
+      CheckFst(result_fst, "result_", key);
       
       // find out best path
       VectorFst<StdArc> best_path;
-      fst::ShortestPath(resultFst, &best_path);
+      fst::ShortestPath(result_fst, &best_path);
       CheckFst(best_path, "best_path_", key);
 
       if (best_path.Start() == fst::kNoStateId) {
         KALDI_WARN << "Best-path failed for key " << key;
         n_fail++;
       } else {
-
         // count errors
-        unsigned int corr, subs, ins, del, totwords;
-        CountErrors(best_path, &corr, &subs, &ins, &del, &totwords);
-        unsigned int toterrs = subs+ins+del;
-        KALDI_LOG << "%WER "<<(100.*toterrs)/totwords<<" [ "<<toterrs<<" / "<<totwords<<", "<<ins<<" ins, "<<del<<" del, "<<subs<<" sub ]";
-        tot_corr += corr; tot_subs += subs; tot_ins += ins; tot_del += del; tot_words += totwords;     
+        int32 correct, substitutions, insertions, deletions, num_words;
+        CountErrors(best_path, &correct, &substitutions, &insertions, &deletions, &num_words);
+        int32 toterrs = substitutions + insertions + deletions;
+        KALDI_LOG << "%WER " << (100.*toterrs) / num_words << " [ " << toterrs
+                  << " / " << num_words << ", " << insertions << " insertions, " << deletions
+                  << " deletions, " << substitutions << " sub ]";
+        tot_correct += correct;
+        tot_substitutions += substitutions;
+        tot_insertions += insertions;
+        tot_deletions += deletions;
+        tot_words += num_words;     
         
         std::vector<int32> oracle_words;
         std::vector<int32> reference_words;
@@ -354,7 +366,8 @@ int main(int argc, char *argv[]) {
           for (size_t i = 0; i < reference_words.size(); i++) {
             std::string s = word_syms->Find(reference_words[i]);
             if (s == "")
-              KALDI_ERR << "Word-id " << reference_words[i] <<" not in symbol table.";
+              KALDI_ERR << "Word-id " << reference_words[i]
+                        << " not in symbol table.";
             std::cerr << s << ' ';
           }
           std::cerr << '\n';
@@ -367,8 +380,10 @@ int main(int argc, char *argv[]) {
         if (lats_wspecifier != "") {
           Lattice oracle_lat = lat;
           LatticeArc::StateId bad_state = oracle_lat.AddState();
-          if (!GetOracleLattice(&oracle_lat, oracle_words, bad_state, oracle_lat.Start(), 0)) 
-            KALDI_WARN << "Fail to find the oracle path in the original lattice: " << key;
+          if (!GetOracleLattice(&oracle_lat, oracle_words,
+                                bad_state, oracle_lat.Start(), 0)) 
+            KALDI_WARN << "Failed to find the oracle path in the original "
+                       << "lattice: " << key;
           CompactLattice oracle_clat;
           ConvertLattice(oracle_lat, &oracle_clat);
           lats_writer.Write(key, oracle_clat);
@@ -377,9 +392,13 @@ int main(int argc, char *argv[]) {
       n_done++;
     }
     if (word_syms) delete word_syms;
-    unsigned int tot_errs = tot_subs + tot_del + tot_ins;
-    KALDI_LOG << "Overall %WER "<<(100.*tot_errs)/tot_words<<" [ "<<tot_errs<<" / "<<tot_words<<", "<<tot_ins<<" ins, "<<tot_del<<" del, "<<tot_subs<<" sub ]";
-    KALDI_LOG << "Scored " << n_done << " lattices, "<<n_fail<<" not present in hyp.";
+    int32 tot_errs = tot_substitutions + tot_deletions + tot_insertions;
+    KALDI_LOG << "Overall %WER " << (100.*tot_errs)/tot_words << " [ "
+              << tot_errs << " / " << tot_words << ", " << tot_insertions
+              << " insertions, " << tot_deletions << " deletions, "
+              << tot_substitutions << " substitutions ]";
+    KALDI_LOG << "Scored " << n_done << " lattices, " << n_fail
+              << " not present in ref.";
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

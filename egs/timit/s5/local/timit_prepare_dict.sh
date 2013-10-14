@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2013  (Author: Bagher BabaAli)
+# Copyright 2013   (Authors: Daniel Povey, Bagher BabaAli)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -60,9 +60,7 @@ cat $dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ", $_))
   $p =~ m:^([^\d]+)(\d*)$: || die "Bad phone $_"; $q{$2} .= "$p "; } } foreach $l (values %q) {print "$l\n";}' \
  >> $dir/extra_questions.txt || exit 1;
 
-
 # (2) Create the phone bigram LM
-#(
   [ -z "$IRSTLM" ] && \
     echo "LM building won't work without setting the IRSTLM env variable" && exit 1;
   ! which build-lm.sh 2>/dev/null  && \
@@ -76,8 +74,4 @@ cat $dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ", $_))
   compile-lm $tmpdir/lm_phone_bg.ilm.gz --text yes /dev/stdout | \
   grep -v unk | gzip -c > $lmdir/lm_phone_bg.arpa.gz 
 
-#) >& data/prepare_lm.log
-
-
-echo "Dictionary preparation succeeded"
-
+echo "Dictionary & language model preparation succeeded"

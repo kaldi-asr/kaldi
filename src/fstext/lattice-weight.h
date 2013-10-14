@@ -310,7 +310,7 @@ inline int Compare (const LatticeWeightTpl<FloatType> &w1,
 
 template<class FloatType>
 inline LatticeWeightTpl<FloatType> Plus(const LatticeWeightTpl<FloatType> &w1,
-                             const LatticeWeightTpl<FloatType> &w2) {
+                                        const LatticeWeightTpl<FloatType> &w2) {
   return (Compare(w1, w2) >= 0 ? w1 : w2);
 }
 

@@ -47,7 +47,7 @@ template<class IntType> class LatticeStringRepository {
     inline bool operator == (const Entry &other) const {
       return (parent == other.parent && i == other.i);
     }
-    Entry(const Entry *parent, IntType i): parent(parent), i(i) {}
+    Entry() { }
     Entry(const Entry &e): parent(e.parent), i(e.i) {}
   };
   // Note: all Entry* pointers returned in function calls are
@@ -59,16 +59,22 @@ template<class IntType> class LatticeStringRepository {
   // Returns string of "parent" with i appended.  Pointer
   // owned by repository
   const Entry *Successor(const Entry *parent, IntType i) {
-    Entry entry(parent, i);
-    typename SetType::iterator iter = set_.find(&entry);
-    if(iter == set_.end()) { // no such entry already...
-      Entry *entry_ptr = new Entry(entry);
-      set_.insert(entry_ptr);
-      return entry_ptr;
-    } else {
-      return *iter;
+    new_entry_->parent = parent;
+    new_entry_->i = i;
+    
+    std::pair<typename SetType::iterator, bool> pr = set_.insert(new_entry_);
+    if (pr.second) { // Was successfully inserted (was not there).  We need to
+                     // replace the element we inserted, which resides on the
+                     // stack, with one from the heap.
+      const Entry *ans = new_entry_;
+      new_entry_ = new Entry();
+      return ans;
+    } else { // Was not inserted because an equivalent Entry already
+             // existed.
+      return *pr.first;
     }
   }
+
   const Entry *Concatenate (const Entry *a, const Entry *b) {
     if (a == NULL) return b;
     else if (b == NULL) return a;
@@ -94,15 +100,22 @@ template<class IntType> class LatticeStringRepository {
   // a common prefix with a.
   void ReduceToCommonPrefix(const Entry *a,
                             vector<IntType> *b) {
-    vector<IntType> a_vec;
-    ConvertToVector(a, &a_vec);
-    if (b->size() > a_vec.size())
-      b->resize(a_vec.size());
-    size_t b_sz = 0, max_sz = std::min(a_vec.size(), b->size());
-    while (b_sz < max_sz && (*b)[b_sz] == a_vec[b_sz])
-      b_sz++;
-    if (b_sz != b->size())
-      b->resize(b_sz);
+    size_t a_size = Size(a), b_size = b->size();
+    while (a_size> b_size) {
+      a = a->parent;
+      a_size--;
+    }
+    if (b_size > a_size)
+      b_size = a_size;
+    typename vector<IntType>::iterator b_begin = b->begin();
+    while (a_size != 0) {
+      if (a->i != *(b_begin + a_size - 1))
+        b_size = a_size - 1;
+      a = a->parent;
+      a_size--;
+    }
+    if (b_size != b->size())
+      b->resize(b_size);
   }
 
   // removes the first n elements of a.
@@ -156,8 +169,8 @@ template<class IntType> class LatticeStringRepository {
     return e;
   }
   
-  LatticeStringRepository() { }
-
+  LatticeStringRepository() { new_entry_ = new Entry; }
+  
   void Destroy() {
     for (typename SetType::iterator iter = set_.begin();
          iter != set_.end();
@@ -165,6 +178,10 @@ template<class IntType> class LatticeStringRepository {
       delete *iter;
     SetType tmp;
     tmp.swap(set_);
+    if (new_entry_) {
+      delete new_entry_;
+      new_entry_ = NULL;
+    }
   }
 
   // Rebuild will rebuild this object, guaranteeing only
@@ -220,6 +237,8 @@ template<class IntType> class LatticeStringRepository {
   }
   
   DISALLOW_COPY_AND_ASSIGN(LatticeStringRepository);
+  Entry *new_entry_; // We always have a pre-allocated Entry ready to use,
+                     // to avoid unnecessary news and deletes.
   SetType set_;
 
 };

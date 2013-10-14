@@ -141,6 +141,6 @@ preprocessor variables, setting compile options, linking with libraries, and so 
 \section build_setup_platforms Which platforms has Kaldi been compiled on?
 
 We have compiled Kaldi on Windows, Cygwin, various flavors of Linux (including
-Ubuntu and CentOS), and Darwin.
+Ubuntu, CentOS and SUSE), and Darwin.
 
 */

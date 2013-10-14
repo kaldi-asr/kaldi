@@ -178,7 +178,11 @@ void SplitStatsByMap(const BuildTreeStatsType &stats, const EventMap &e, std::ve
     const EventType &evec = iter->first;
     EventAnswerType ans;
     if (!e.Map(evec, &ans)) // this is an error--could not map it.
-      KALDI_ERR << "SplitStatsByMap: could not map event vector " << EventTypeToString(evec);
+      KALDI_ERR << "SplitStatsByMap: could not map event vector " << EventTypeToString(evec)
+                << "if error seen during tree-building, check that "
+                << "--context-width and --central-position match stats, "
+                << "and that phones that are context-independent (CI) during "
+                << "stats accumulation do not share roots with non-CI phones.";
     size = std::max(size, (size_t)(ans+1));
   }
   stats_out->resize(size);

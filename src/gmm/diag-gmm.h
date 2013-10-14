@@ -51,6 +51,9 @@ class DiagGmm {
     CopyFromDiagGmm(gmm);
   }
 
+  /// Copies from DiagGmmNormal; does not resize.
+  void CopyFromNormal(const DiagGmmNormal &diag_gmm_normal);
+  
   DiagGmm(int32 nMix, int32 dim): valid_gconsts_(false) { Resize(nMix, dim); }
 
   /// Constructor that allows us to merge GMMs with weights.  Weights must sum

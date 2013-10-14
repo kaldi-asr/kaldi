@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     NnetTrainOptions trn_opts;
     trn_opts.Register(&po);
 
-    bool binary = false, 
+    bool binary = true, 
          crossvalidate = false,
          randomize = true;
     po.Register("binary", &binary, "Write output in binary mode");
@@ -64,6 +64,9 @@ int main(int argc, char *argv[]) {
 #if HAVE_CUDA==1
     int32 use_gpu_id=-2;
     po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic selection, -1 disable GPU, 0..N select GPU)");
+#else
+    int32 use_gpu_id=0;
+    po.Register("use-gpu-id", &use_gpu_id, "Unused, kaldi is compiled w/o CUDA");
 #endif
     
     po.Read(argc, argv);

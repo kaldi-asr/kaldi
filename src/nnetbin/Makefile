@@ -8,7 +8,6 @@ LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = nnet-train-xent-hardlab-perutt \
         nnet-train-xent-hardlab-frmshuff \
-	nnet-train-xent-hardlab-frmshuff-prior \
 	nnet-train-mse-tgtmat-frmshuff \
 	nnet-train-mmi-sequential \
 	nnet-train-mpe-sequential \

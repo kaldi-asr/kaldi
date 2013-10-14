@@ -123,7 +123,6 @@ class CompressedMatrix {
     uint16 percentile_100;
   };
 
-  // The following function is called in CopyToMatrix.
   template<typename Real>
   static void CompressColumn(const GlobalHeader &global_header,
                              const Real *data, MatrixIndexT stride,

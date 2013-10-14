@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     
     ParseOptions po(usage);
     
-    bool binary_write = false;
+    bool binary_write = true;
     po.Register("binary", &binary_write, "Write output in binary mode");
 
     po.Read(argc, argv);

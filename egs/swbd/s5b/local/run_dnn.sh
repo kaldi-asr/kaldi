@@ -116,7 +116,7 @@ acwt=0.08333
 {
 steps/align_nnet.sh --nj 250 --cmd "$train_cmd" \
   data-fmllr-tri4b/train_nodup data/lang $srcdir ${srcdir}_ali_all || exit 1;
-steps/make_denlats_nnet.sh --nj 250 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
+steps/make_denlats_nnet.sh --nj 10 --sub-split 100 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
   data-fmllr-tri4b/train_nodup data/lang $srcdir ${srcdir}_denlats_all  || exit 1;
 }
 # Now we re-train the hybrid by single iteration of sMBR 
@@ -156,7 +156,7 @@ acwt=0.08333
 {
 steps/align_nnet.sh --nj 250 --cmd "$train_cmd" \
   data-fmllr-tri4b/train_nodup data/lang $srcdir ${srcdir}_ali_all || exit 1;
-steps/make_denlats_nnet.sh --nj 250 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
+steps/make_denlats_nnet.sh --nj 10 --sub-split 100 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
   data-fmllr-tri4b/train_nodup data/lang $srcdir ${srcdir}_denlats_all  || exit 1;
 }
 # Now we re-train the hybrid by several iterations of sMBR 

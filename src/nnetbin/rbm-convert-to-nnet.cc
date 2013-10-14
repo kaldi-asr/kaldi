@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         " rbm-convert-to-nnet --binary=false rbm.mdl nnet.mdl\n";
 
 
-    bool binary_write = false;
+    bool binary_write = true;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");

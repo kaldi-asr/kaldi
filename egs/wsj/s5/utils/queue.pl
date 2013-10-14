@@ -163,8 +163,8 @@ print Q "EOF\n"; # without having to escape things like "|" and quote characters
 print Q ") >$logfile\n";
 print Q "time1=\`date +\"%s\"\`\n";
 print Q " ( $cmd ) 2>>$logfile >>$logfile\n";
-print Q "time2=\`date +\"%s\"\`\n";
 print Q "ret=\$?\n";
+print Q "time2=\`date +\"%s\"\`\n";
 print Q "echo '#' Accounting: time=\$((\$time2-\$time1)) threads=$nof_threads >>$logfile\n";
 print Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
 print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137; 
@@ -232,7 +232,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
       # Check that the job exists in SGE. Job can be killed if duration 
       # exceeds some hard limit, or in case of a machine shutdown. 
       if(($check_sge_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on SGE.
-        if ( -f $f ) { next; }; #syncfile appeared, ok
+        if ( -f $f ) { next; }; #syncfile appeared: OK.
         $ret = system("qstat -j $sge_job_id >/dev/null 2>/dev/null");
         if($ret != 0) {
           # Don't consider immediately missing job as error, first wait some  
@@ -245,7 +245,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
           if ( -f $f ) { next; }; #syncfile appeared, ok
           #Otherwise it is an error
           if (defined $jobname) { $logfile =~ s/\$SGE_TASK_ID/*/g; }
-          print STDERR "queue.pl: Error, unfinished job no longer exists, log is in $logfile\n";
+          print STDERR "queue.pl: Error, unfinished job no longer exists, log is in $logfile, syncfile is $f, return status of qstat was $ret\n";
           print STDERR "          Possible reasons: a) Exceeded time limit? -> Use more jobs! b) Shutdown/Frozen machine? -> Run again!\n";
           exit(1);
         }
