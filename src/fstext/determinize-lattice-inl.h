@@ -117,6 +117,8 @@ template<class IntType> class LatticeStringRepository {
     return ans;
   }
   
+
+
   // Returns true if a is a prefix of b.  If a is prefix of b,
   // time taken is |b| - |a|.  Else, time taken is |b|.
   bool IsPrefixOf(const Entry *a, const Entry *b) const {
@@ -125,12 +127,25 @@ template<class IntType> class LatticeStringRepository {
     if (b == NULL) return false;
     return IsPrefixOf(a, b->parent);
   }
+
+
+  inline size_t Size(const Entry *entry) const {
+    size_t ans = 0;
+    while (entry != NULL) {
+      ans++;
+      entry = entry->parent;
+    }
+    return ans;
+  }
   
   void ConvertToVector(const Entry *entry, vector<IntType> *out) const {
-    if (entry == NULL) out->clear();
-    else {
-      ConvertToVector(entry->parent, out);
-      out->push_back(entry->i);
+    size_t length = Size(entry);
+    out->resize(length);
+    typename vector<IntType>::iterator iter = out->end() - 1;
+    while (entry != NULL) {
+      *iter = entry->i;
+      entry = entry->parent;
+      --iter;
     }
   }
 
@@ -180,8 +195,9 @@ template<class IntType> class LatticeStringRepository {
   class EntryKey { // Hash function object.
    public:
     inline size_t operator()(const Entry *entry) const {
+      size_t prime = 49109;
       return static_cast<size_t>(entry->i)
-          + reinterpret_cast<size_t>(entry->parent);
+          + prime * reinterpret_cast<size_t>(entry->parent);
     }
   };
   class EntryEqual {
