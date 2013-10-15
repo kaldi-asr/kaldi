@@ -1,0 +1,46 @@
+## 
+## wide beam decoding run time (source code version before 12th Oct 2013)
+## Intel(R) Xeon(R) CPU           X5690  @ 3.47GHz
+
+#  grep real exp/*/decode*wide*/log/*.log | awk '{print $1 "\t" $NF}' | grep closelm | grep xeon > RUNTIMES
+#  grep real exp/*/decode*wide*/log/*.log | awk '{print $1 "\t" $NF}' | grep -v closelm | grep xeon >> RUNTIMES
+
+# 1.8M size L.fst, 76M size HCLG.fst
+nnet_4m_3l/decode_wide_eval_closelm_xeon3.5/log/decode.1.log:LOG	0.559821
+nnet_4m_3l/decode_wide_eval_closelm_xeon3.5/log/decode.2.log:LOG	0.491236
+nnet_8m_6l/decode_wide_eval_closelm_xeon3.5/log/decode.1.log:LOG	0.592642
+nnet_8m_6l/decode_wide_eval_closelm_xeon3.5/log/decode.2.log:LOG	0.609593
+nnet_tanh_3l/decode_wide_eval_closelm_xeon3.5/log/decode.1.log:LOG	0.616046
+nnet_tanh_3l/decode_wide_eval_closelm_xeon3.5/log/decode.2.log:LOG	0.572899
+nnet_tanh_6l/decode_wide_eval_closelm_xeon3.5/log/decode.1.log:LOG	0.604186
+nnet_tanh_6l/decode_wide_eval_closelm_xeon3.5/log/decode.2.log:LOG	0.607741
+sgmm_5a/decode_wide_eval_closelm_xeon3.5/log/decode_pass1.1.log:LOG	0.869817
+sgmm_5a/decode_wide_eval_closelm_xeon3.5/log/decode_pass1.2.log:LOG	0.803909
+tri5a/decode_wide_eval_closelm_xeon3.5/log/decode.1.log:LOG	1.04819
+tri5a/decode_wide_eval_closelm_xeon3.5/log/decode.2.log:LOG	0.965748
+tri5a_fmmi_b0.1/decode_wide_eval_closelm_iter8_xeon3.5/log/decode.1.log:LOG	1.19066
+tri5a_fmmi_b0.1/decode_wide_eval_closelm_iter8_xeon3.5/log/decode.2.log:LOG	1.05439
+tri5a_mmi_b0.1/decode_wide_eval_closelm_xeon3.5/log/decode.1.log:LOG	1.11189
+tri5a_mmi_b0.1/decode_wide_eval_closelm_xeon3.5/log/decode.2.log:LOG	1.05755
+tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it2_dnnwide_xeon3.5/log/decode.1.log:LOG	0.71778
+tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it2_dnnwide_xeon3.5/log/decode.2.log:LOG	0.713862
+
+## 28M size L.fst, 76M size HCLG.fst
+nnet_4m_3l/decode_wide_eval_xeon3.5/log/decode.1.log:LOG	0.964501
+nnet_4m_3l/decode_wide_eval_xeon3.5/log/decode.2.log:LOG	0.909089
+nnet_8m_6l/decode_wide_eval_xeon3.5/log/decode.1.log:LOG	1.05101
+nnet_8m_6l/decode_wide_eval_xeon3.5/log/decode.2.log:LOG	0.993278
+nnet_tanh_3l/decode_wide_eval_xeon3.5/log/decode.1.log:LOG	0.97988
+nnet_tanh_3l/decode_wide_eval_xeon3.5/log/decode.2.log:LOG	1.02113
+nnet_tanh_6l/decode_wide_eval_xeon3.5/log/decode.1.log:LOG	0.983241
+nnet_tanh_6l/decode_wide_eval_xeon3.5/log/decode.2.log:LOG	0.924768
+sgmm_5a/decode_wide_eval_xeon3.5/log/decode_pass1.1.log:LOG	1.138
+sgmm_5a/decode_wide_eval_xeon3.5/log/decode_pass1.2.log:LOG	1.14137
+tri5a/decode_wide_eval_xeon3.5/log/decode.1.log:LOG	1.34334
+tri5a/decode_wide_eval_xeon3.5/log/decode.2.log:LOG	1.34979
+tri5a_fmmi_b0.1/decode_wide_eval_iter8_xeon3.5/log/decode.1.log:LOG	1.7576
+tri5a_fmmi_b0.1/decode_wide_eval_iter8_xeon3.5/log/decode.2.log:LOG	1.92319
+tri5a_mmi_b0.1/decode_wide_eval_xeon3.5/log/decode.1.log:LOG	1.67702
+tri5a_mmi_b0.1/decode_wide_eval_xeon3.5/log/decode.2.log:LOG	1.80603
+tri5a_pretrain-dbn_dnn_smbr/decode_it2_dnnwide_xeon3.5/log/decode.1.log:LOG	1.20916
+tri5a_pretrain-dbn_dnn_smbr/decode_it2_dnnwide_xeon3.5/log/decode.2.log:LOG	1.0359
