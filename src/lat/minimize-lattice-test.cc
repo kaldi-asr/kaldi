@@ -64,6 +64,7 @@ void TestMinimizeCompactLattice() {
 
 int main() {
   using namespace kaldi;
+  using kaldi::int32;
   SetVerboseLevel(4);
   for (int32 i = 0; i < 1000; i++) {
     TestMinimizeCompactLattice();
