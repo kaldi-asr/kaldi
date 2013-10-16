@@ -223,7 +223,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post,
     double this_alpha = alpha[s];
     for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
-      double arc_like = -(arc.weight.Value1() + arc.weight.Value2());
+      double arc_like = -ConvertToCost(arc.weight);
       alpha[arc.nextstate] = LogAdd(alpha[arc.nextstate], this_alpha + arc_like);
     }
     Weight f = lat.Final(s);
@@ -239,23 +239,32 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *arc_post,
     double this_beta = -(f.Value1() + f.Value2());
     for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
-      double arc_like = -(arc.weight.Value1() + arc.weight.Value2()),
+      double arc_like = -ConvertToCost(arc.weight),
           arc_beta = beta[arc.nextstate] + arc_like;
       this_beta = LogAdd(this_beta, arc_beta);
       int32 transition_id = arc.ilabel;
-      if (transition_id != 0) { // Arc has a transition-id on it [not epsilon]
+
+      // The following "if" is an optimization to avoid un-needed exp().
+      if (transition_id != 0 || acoustic_like_sum != NULL) {
         double posterior = exp(alpha[s] + arc_beta - tot_forward_prob);
-        (*arc_post)[state_times[s]].push_back(std::make_pair(transition_id,
-                                                             posterior));
-        if (acoustic_like_sum)
+
+        if (transition_id != 0) // Arc has a transition-id on it [not epsilon]
+          (*arc_post)[state_times[s]].push_back(std::make_pair(transition_id,
+                                                               posterior));
+        if (acoustic_like_sum != NULL)
           *acoustic_like_sum -= posterior * arc.weight.Value2();
       }
+    }
+    if (acoustic_like_sum != NULL && f != Weight::Zero()) {
+      double final_logprob = - ConvertToCost(f),
+          posterior = exp(alpha[s] + final_logprob - tot_forward_prob);
+      *acoustic_like_sum -= posterior * f.Value2();
     }
     beta[s] = this_beta;
   }
   double tot_backward_prob = beta[0];
   if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-8)) {
-    KALDI_ERR << "Total forward probability over lattice = " << tot_forward_prob
+    KALDI_WARN << "Total forward probability over lattice = " << tot_forward_prob
               << ", while total backward probability = " << tot_backward_prob;
   }
   // Now combine any posteriors with the same transition-id.
@@ -308,6 +317,211 @@ void ConvertLatticeToPhones(const TransitionModel &trans,
   }  // end looping over states
 }
 
+
+static inline double LogAddOrMax(bool viterbi, double a, double b) {
+  if (viterbi)
+    return std::max(a, b);
+  else
+    return LogAdd(a, b);
+}
+
+// Computes (normal or Viterbi) alphas and betas; returns (total-prob, or
+// best-path negated cost) Note: in either case, the alphas and betas are
+// negated costs.  Requires that lat be topologically sorted.  This code
+// will work for either CompactLattice or Latice.
+template<typename LatticeType>
+static double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
+                                           bool viterbi,
+                                           vector<double> *alpha,
+                                           vector<double> *beta) {
+  typedef typename LatticeType::Arc Arc;
+  typedef typename Arc::Weight Weight;
+  typedef typename Arc::StateId StateId;
+
+  StateId num_states = lat.NumStates();
+  KALDI_ASSERT(lat.Properties(fst::kTopSorted, true) == fst::kTopSorted);
+  KALDI_ASSERT(lat.Start() == 0);
+  alpha->resize(num_states, kLogZeroDouble);
+  beta->resize(num_states, kLogZeroDouble);
+
+  double tot_forward_prob = kLogZeroDouble;
+  (*alpha)[0] = 0.0;
+  // Propagate alphas forward.
+  for (StateId s = 0; s < num_states; s++) {
+    double this_alpha = (*alpha)[s];
+    for (fst::ArcIterator<LatticeType> aiter(lat, s); !aiter.Done();
+         aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_like = -ConvertToCost(arc.weight);
+      (*alpha)[arc.nextstate] = LogAddOrMax(viterbi, (*alpha)[arc.nextstate],
+                                                this_alpha + arc_like);
+    }
+    Weight f = lat.Final(s);
+    if (f != Weight::Zero()) {
+      double final_like = this_alpha - ConvertToCost(f);
+      tot_forward_prob = LogAddOrMax(viterbi, tot_forward_prob, final_like);
+    }
+  }
+  for (StateId s = num_states-1; s >= 0; s--) { // it's guaranteed signed.
+    double this_beta = -ConvertToCost(lat.Final(s));
+    for (fst::ArcIterator<LatticeType> aiter(lat, s); !aiter.Done();
+         aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      double arc_like = -ConvertToCost(arc.weight),
+          arc_beta = (*beta)[arc.nextstate] + arc_like;
+      this_beta = LogAddOrMax(viterbi, this_beta, arc_beta);
+    }
+    (*beta)[s] = this_beta;
+  }
+  double tot_backward_prob = (*beta)[lat.Start()];
+  if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-8)) {
+    KALDI_WARN << "Total forward probability over lattice = " << tot_forward_prob
+               << ", while total backward probability = " << tot_backward_prob;
+  }
+  // Split the difference when returning... they should be the same.
+  return 0.5 * (tot_backward_prob + tot_forward_prob);
+}
+
+
+
+/// This is used in CompactLatticeLimitDepth.
+struct LatticeArcRecord {
+  BaseFloat logprob; // logprob <= 0 is the best Viterbi logprob of this arc,
+                     // minus the overall best-cost of the lattice.
+  CompactLatticeArc::StateId state; // state in the lattice.
+  size_t arc; // arc index within the state.
+  bool operator < (const LatticeArcRecord &other) const {
+    return logprob < other.logprob;
+  }
+};
+
+void CompactLatticeLimitDepth(int32 max_depth_per_frame,
+                              CompactLattice *clat) {
+  typedef CompactLatticeArc Arc;
+  typedef Arc::Weight Weight;
+  typedef Arc::StateId StateId;
+
+  if (clat->Start() == fst::kNoStateId) {
+    KALDI_WARN << "Limiting depth of empty lattice.";
+    return;
+  }
+  if (clat->Properties(fst::kTopSorted, true) == 0) {
+    if (!TopSort(clat))
+      KALDI_ERR << "Topological sorting of lattice failed.";
+  }
+  
+  vector<int32> state_times;
+  int32 T = CompactLatticeStateTimes(*clat, &state_times);
+
+  // The alpha and beta quantities here are "viterbi" alphas and beta.
+  std::vector<double> alpha;
+  std::vector<double> beta;
+  bool viterbi = true;
+  double best_prob = ComputeLatticeAlphasAndBetas(*clat, viterbi,
+                                                  &alpha, &beta);
+
+  std::vector<std::vector<LatticeArcRecord> > arc_records(T);
+
+  StateId num_states = clat->NumStates();
+  for (StateId s = 0; s < num_states; s++) {
+    for (fst::ArcIterator<CompactLattice> aiter(*clat, s); !aiter.Done();
+         aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      LatticeArcRecord arc_record;
+      arc_record.state = s;
+      arc_record.arc = aiter.Position();
+      arc_record.logprob =
+          (alpha[s] + beta[arc.nextstate] - ConvertToCost(arc.weight))
+           - best_prob;
+      KALDI_ASSERT(arc_record.logprob < 0.1); // Should be zero or negative.
+      int32 num_frames = arc.weight.String().size(), start_t = state_times[s];
+      for (int32 t = start_t; t < start_t + num_frames; t++) {
+        KALDI_ASSERT(t < T);
+        arc_records[t].push_back(arc_record);
+      }
+    }
+  }
+  StateId dead_state = clat->AddState(); // A non-coaccesible state which we use
+                                         // to remove arcs (make them end
+                                         // there).
+  size_t max_depth = max_depth_per_frame;
+  for (int32 t = 0; t < T; t++) {
+    size_t size = arc_records[t].size();
+    if (size > max_depth) {
+      // we sort from worst to best, so we keep the later-numbered ones,
+      // and delete the lower-numbered ones.
+      size_t cutoff = size - max_depth;
+      std::nth_element(arc_records[t].begin(),
+                       arc_records[t].begin() + cutoff,
+                       arc_records[t].end());
+      for (size_t index = 0; index < cutoff; index++) {
+        LatticeArcRecord record(arc_records[t][index]);
+        fst::MutableArcIterator<CompactLattice> aiter(clat, record.state);
+        aiter.Seek(record.arc);
+        Arc arc = aiter.Value();
+        if (arc.nextstate != dead_state) { // not already killed.
+          arc.nextstate = dead_state;
+          aiter.SetValue(arc);
+        }
+      }
+    }
+  }
+  Connect(clat);
+  TopSortCompactLatticeIfNeeded(clat);
+}
+
+
+void TopSortCompactLatticeIfNeeded(CompactLattice *clat) {
+  if (clat->Properties(fst::kTopSorted, true) == 0) {
+    if (fst::TopSort(clat) == false) {
+      KALDI_ERR << "Topological sorting failed";
+    }
+  }
+}
+
+void TopSortLatticeIfNeeded(Lattice *lat) {
+  if (lat->Properties(fst::kTopSorted, true) == 0) {
+    if (fst::TopSort(lat) == false) {
+      KALDI_ERR << "Topological sorting failed";
+    }
+  }
+}
+
+
+/// Returns the depth of the lattice, defined as the average number of
+/// arcs crossing any given frame.  Returns 1 for empty lattices.
+/// Requires that input is topologically sorted.
+BaseFloat CompactLatticeDepth(const CompactLattice &clat,
+                              int32 *num_frames) {
+  typedef CompactLattice::Arc::StateId StateId;
+  if (clat.Properties(fst::kTopSorted, true) == 0) {
+    KALDI_ERR << "Lattice input to CompactLatticeDepth was not topologically "
+              << "sorted.";
+  }
+  if (clat.Start() == fst::kNoStateId) {
+    *num_frames = 0;
+    return 1.0;
+  }
+  size_t num_arc_frames = 0;
+  int32 t;
+  {
+    vector<int32> state_times;
+    t = CompactLatticeStateTimes(clat, &state_times);
+  }
+  if (num_frames != NULL)
+    *num_frames = t;
+  for (StateId s = 0; s < clat.NumStates(); s++) {
+    for (fst::ArcIterator<CompactLattice> aiter(clat, s); !aiter.Done();
+         aiter.Next()) {
+      const CompactLatticeArc &arc = aiter.Value();
+      num_arc_frames += arc.weight.String().size();
+    }
+    num_arc_frames += clat.Final(s).String().size();
+  }
+  return num_arc_frames / static_cast<BaseFloat>(t);
+}
+
+
 void ConvertCompactLatticeToPhones(const TransitionModel &trans,
                                    CompactLattice *clat) {
   typedef CompactLatticeArc Arc;
@@ -350,13 +564,7 @@ bool LatticeBoost(const TransitionModel &trans,
                   BaseFloat max_silence_error,
                   Lattice *lat) {
 
-  kaldi::uint64 props = lat->Properties(fst::kFstProperties, false);
-  if (!(props & fst::kTopSorted)) {
-    if (fst::TopSort(lat) == false) {
-      KALDI_WARN << "Cycles detected in lattice";
-      return false;
-    }
-  }
+  TopSortLatticeIfNeeded(lat);
   
   KALDI_ASSERT(IsSortedAndUniq(silence_phones));
   KALDI_ASSERT(max_silence_error >= 0.0 && max_silence_error <= 1.0);
@@ -467,7 +675,7 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
     double this_alpha = alpha[s];
     for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
-      double arc_like = -(arc.weight.Value1() + arc.weight.Value2());
+      double arc_like = -ConvertToCost(arc.weight);
       alpha[arc.nextstate] = LogAdd(alpha[arc.nextstate], this_alpha + arc_like);
     }
     Weight f = lat.Final(s);
@@ -484,7 +692,7 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
     double this_beta = -(f.Value1() + f.Value2());
     for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
-      double arc_like = -(arc.weight.Value1() + arc.weight.Value2()),
+      double arc_like = -ConvertToCost(arc.weight),
           arc_beta = beta[arc.nextstate] + arc_like;
       this_beta = LogAdd(this_beta, arc_beta);
     }
@@ -503,7 +711,7 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
     double this_alpha = alpha[s];
     for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
-      double arc_like = -(arc.weight.Value1() + arc.weight.Value2());
+      double arc_like = -ConvertToCost(arc.weight);
       double frame_acc = 0.0;
       if (arc.ilabel != 0) {
       int32 cur_time = state_times[s];
@@ -528,7 +736,7 @@ BaseFloat LatticeForwardBackwardMpe(const Lattice &lat,
   for (StateId s = num_states-1; s >= 0; s--) {
     for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
-      double arc_like = -(arc.weight.Value1() + arc.weight.Value2()),
+      double arc_like = -ConvertToCost(arc.weight),
           arc_beta = beta[arc.nextstate] + arc_like;
       double frame_acc = 0.0;
       int32 transition_id = arc.ilabel;
@@ -606,7 +814,7 @@ BaseFloat LatticeForwardBackwardSmbr(const Lattice &lat,
     double this_alpha = alpha[s];
     for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
-      double arc_like = -(arc.weight.Value1() + arc.weight.Value2());
+      double arc_like = -ConvertToCost(arc.weight);
       alpha[arc.nextstate] = LogAdd(alpha[arc.nextstate], this_alpha + arc_like);
     }
     Weight f = lat.Final(s);
@@ -623,7 +831,7 @@ BaseFloat LatticeForwardBackwardSmbr(const Lattice &lat,
     double this_beta = -(f.Value1() + f.Value2());
     for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
-      double arc_like = -(arc.weight.Value1() + arc.weight.Value2()),
+      double arc_like = -ConvertToCost(arc.weight),
           arc_beta = beta[arc.nextstate] + arc_like;
       this_beta = LogAdd(this_beta, arc_beta);
     }
@@ -642,7 +850,7 @@ BaseFloat LatticeForwardBackwardSmbr(const Lattice &lat,
     double this_alpha = alpha[s];
     for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
-      double arc_like = -(arc.weight.Value1() + arc.weight.Value2());
+      double arc_like = -ConvertToCost(arc.weight);
       double frame_acc = 0.0;
       if (arc.ilabel != 0) {
       int32 cur_time = state_times[s];
@@ -668,7 +876,7 @@ BaseFloat LatticeForwardBackwardSmbr(const Lattice &lat,
   for (StateId s = num_states-1; s >= 0; s--) {
     for (ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
       const Arc &arc = aiter.Value();
-      double arc_like = -(arc.weight.Value1() + arc.weight.Value2()),
+      double arc_like = -ConvertToCost(arc.weight),
           arc_beta = beta[arc.nextstate] + arc_like;
       double frame_acc = 0.0;
       int32 transition_id = arc.ilabel;
