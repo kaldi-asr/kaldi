@@ -171,7 +171,7 @@ for f in `cat $sacc_flist | cut -d, -f2`; do
   fi
 done
 cat $sacc_flist | cut -d, -f2 | \
-   perl -ane 'm:/([^/]+)\.pitch: || die "Bad line $_"; $key=$1; s/\.pitch$/\.mat/; print "$key $_";' > $scpfile
+   perl -ane 'm:/([^/]+)\.pitch$: || die "Bad line $_"; $key=$1; s/\.pitch$/\.mat/; print "$key $_";' > $scpfile
 EOF
 chmod +x $expdir/convert.sh
 
