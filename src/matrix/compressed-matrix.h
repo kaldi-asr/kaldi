@@ -57,6 +57,9 @@ class CompressedMatrix {
   CompressedMatrix(const CompressedMatrix &mat);
   
   CompressedMatrix &operator = (const CompressedMatrix &mat); // assignment operator.
+
+  template<typename Real>
+  CompressedMatrix &operator = (const MatrixBase<Real> &mat); // assignment operator.
   
   // Note: mat must have the correct size, CopyToMat no longer attempts
   // to resize the matrix

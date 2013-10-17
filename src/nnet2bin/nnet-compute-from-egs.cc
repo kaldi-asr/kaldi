@@ -66,8 +66,9 @@ int main(int argc, char *argv[]) {
 
     for (; !example_reader.Done(); example_reader.Next()) {
       const NnetTrainingExample &eg = example_reader.Value();
+      Matrix<BaseFloat> input_frames(eg.input_frames);
       int32 start_dim = eg.left_context - left_context;
-      SubMatrix<BaseFloat> cpu_input_block(eg.input_frames,
+      SubMatrix<BaseFloat> cpu_input_block(input_frames,
                                            start_dim, context,
                                            0, eg.input_frames.NumCols());
       CuMatrix<BaseFloat> input_block(cpu_input_block);

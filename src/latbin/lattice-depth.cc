@@ -1,6 +1,7 @@
 // latbin/lattice-depth.cc
 
-// Copyright 2012  Johns Hopkins University (Author: Ehsan Variani)
+// Copyright 2013  Ehsan Variani
+//           2013  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -35,10 +36,10 @@ int main(int argc, char *argv[]) {
     typedef StdArc::StateId StateId;
     
     const char *usage =
-      "Compute the lattice depths in terms of the average number of arcs that\n"
-      "cross a particular state/frame by counting the number of transitions that\n"
-      "lead to the state (CompactLatticeWeight)\n"
-      "Usage: lattice-depth <lattice-rspecifier> [<depth-wspecifier>]";
+        "Compute the lattice depths in terms of the average number of arcs that\n"
+        "cross a frame\n"
+        "Usage: lattice-depth <lattice-rspecifier> [<depth-wspecifier>]\n"
+        "E.g.: lattice-depth ark:- ark,t:-\n";
 
     ParseOptions po(usage);
     
@@ -55,35 +56,26 @@ int main(int argc, char *argv[]) {
     std::string depth_wspecifier = po.GetOptArg(2);
     BaseFloatWriter lats_depth_writer(depth_wspecifier);
 
-    int64 num_done = 0, sum_depth = 0, total_t = 0;
+    int64 num_done = 0;
+    double sum_depth = 0.0, total_t = 0.0;
     for (; !clat_reader.Done(); clat_reader.Next()) {
-      int64 depth = 0;
-      const CompactLattice clat = clat_reader.Value();
+      CompactLattice clat = clat_reader.Value();
       std::string key = clat_reader.Key();
-      CompactLattice copy_lat = clat;
-      Lattice lat;
-      ConvertLattice(copy_lat, &lat);
-      vector<int32> state_times;
-      fst::TopSort(&lat);
-      int32 t = kaldi::LatticeStateTimes(lat, &state_times);
+
+      TopSortCompactLatticeIfNeeded(&clat);
+      
+      int32 t;
+      BaseFloat depth = CompactLatticeDepth(clat, &t);
+
+      if (depth_wspecifier != "")
+        lats_depth_writer.Write(key, depth);
+
+      sum_depth += depth * t;
       total_t += t;
-      for (StateId s = 0; s < clat.NumStates(); s++) {
-        for (fst::ArcIterator<CompactLattice> aiter(clat, s); !aiter.Done();
-             aiter.Next()) {
-          const CompactLatticeArc &arc = aiter.Value();
-          depth += arc.weight.String().size();
-        }
-        depth += clat.Final(s).String().size();
-      }
-      if (depth_wspecifier != "") {
-        lats_depth_writer.Write(key, static_cast<float> ((float)depth / t));
-      }
-      sum_depth += depth;
       num_done++;
     }
     KALDI_LOG << "Done " << num_done << " lattices.";
-    KALDI_LOG << "Overall density is "
-              << (static_cast<BaseFloat>(sum_depth) / total_t);
+    KALDI_LOG << "Overall density is " << (sum_depth / total_t);
     if (num_done != 0) return 0;
     else return 1;
   } catch (const std::exception &e) {

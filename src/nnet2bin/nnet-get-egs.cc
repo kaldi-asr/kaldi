@@ -52,8 +52,8 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         NnetTrainingExampleWriter *example_writer) {
   KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
   NnetTrainingExample eg;
-  eg.input_frames.Resize(left_context + 1 + right_context,
-                         feats.NumCols());
+  Matrix<BaseFloat> input_frames(left_context + 1 + right_context,
+                                 feats.NumCols());
   eg.left_context = left_context;
   eg.spk_info = spk_info;
   for (int32 i = 0; i < feats.NumRows(); i++) {
@@ -65,12 +65,12 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
         int32 j2 = j + i;
         if (j2 < 0) j2 = 0;
         if (j2 >= feats.NumRows()) j2 = feats.NumRows() - 1;
-        SubVector<BaseFloat> src(feats, j2), dest(eg.input_frames,
+        SubVector<BaseFloat> src(feats, j2), dest(input_frames,
                                                   j + left_context);
         dest.CopyFromVec(src);
       }
       eg.labels = pdf_post[i];
-
+      eg.input_frames = input_frames;
       std::ostringstream os;
       os << ((*num_frames_written)++);
       std::string key = os.str(); // key in the archive is the number of the

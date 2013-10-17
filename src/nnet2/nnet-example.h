@@ -34,7 +34,7 @@ struct NnetTrainingExample {
   
   std::vector<std::pair<int32, BaseFloat> > labels;  
     
-  Matrix<BaseFloat> input_frames; // The input data-- typically a number of frames
+  CompressedMatrix input_frames; // The input data-- typically a number of frames
   // (nnet.LeftContext() + 1 + nnet.RightContext()) of raw features, not
   // necessarily contiguous.
 

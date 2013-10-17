@@ -842,11 +842,11 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   // ProcessTransition was called from "ProcessTransitions" in the non-pruned
   // code, but now we in effect put the calls to ProcessTransition on a priority
   // queue, and it now gets called directly from Determinize().  This function
-  // processes a transition from state "state".  The set "subset" of Elements
+  // processes a transition from state "ostate_id".  The set "subset" of Elements
   // represents a set of next-states with associated weights and strings, each
   // one arising from an arc from some state in a determinized-state; the
   // next-states are unique (there is only one Entry assocated with each)
-   void ProcessTransition(OutputStateId ostate_id, Label ilabel, vector<Element> *subset) {
+  void ProcessTransition(OutputStateId ostate_id, Label ilabel, vector<Element> *subset) {
 
      Weight forward_weight = output_states_[ostate_id]->forward_weight;
      StringId common_str;

@@ -200,9 +200,9 @@ void NnetUpdater::FormatInput(const std::vector<NnetTrainingExample> &data) {
     SubMatrix<BaseFloat> dest(temp_forward_data,
                               chunk * num_splice, num_splice,
                               0, feat_dim);
-    
-    SubMatrix<BaseFloat> src(data[chunk].input_frames,
-                             ignore_frames, num_splice, 0, feat_dim);
+
+    Matrix<BaseFloat> full_src(data[chunk].input_frames);
+    SubMatrix<BaseFloat> src(full_src, ignore_frames, num_splice, 0, feat_dim);
                              
     dest.CopyFromMat(src);
     if (spk_dim != 0) {

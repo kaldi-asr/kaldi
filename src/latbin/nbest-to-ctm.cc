@@ -47,7 +47,10 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     BaseFloat frame_shift = 0.01;
+    int32 precision = 2;
     po.Register("frame-shift", &frame_shift, "Time in seconds between frames.\n");
+    po.Register("precision", &precision,
+                "Number of decimal places for start duration times\n");
 
     po.Read(argc, argv);
 
@@ -66,7 +69,7 @@ int main(int argc, char *argv[]) {
     Output ko(ctm_wxfilename, false); // false == non-binary write mode.
     ko.Stream() << std::fixed;  // Set to "fixed" floating point model, where precision() specifies
     // the #digits after the decimal point.
-    ko.Stream().precision(2);
+    ko.Stream().precision(precision);
     
     for (; !clat_reader.Done(); clat_reader.Next()) {
       std::string key = clat_reader.Key();

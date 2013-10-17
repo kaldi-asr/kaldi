@@ -111,6 +111,7 @@ void TestPushCompactLatticeWeights() {
 
 int main() {
   using namespace kaldi;
+  using kaldi::int32;
   for (int32 i = 0; i < 15; i++) {
     TestPushCompactLatticeStrings();
     TestPushCompactLatticeWeights();

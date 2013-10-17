@@ -83,12 +83,12 @@ void NnetDataRandomizer::GetExample(const std::pair<int32, int32> &pair,
   KALDI_ASSERT(static_cast<size_t>(frame_index) < tf.pdf_post.size());
   example->labels = tf.pdf_post[frame_index];
   example->spk_info = tf.spk_info;
-  example->input_frames.Resize(left_context_ + 1 + right_context_,
-                               tf.feats.NumCols());
+  Matrix<BaseFloat> input_frames(left_context_ + 1 + right_context_,
+                                 tf.feats.NumCols());
   int32 start_frame = frame_index - left_context_,
       end_frame = frame_index + left_context_;
   for (int32 frame = start_frame; frame <= end_frame; frame++) {
-    SubVector<BaseFloat> dest(example->input_frames, frame - start_frame);
+    SubVector<BaseFloat> dest(input_frames, frame - start_frame);
     int32 frame_limited = frame; // we'll duplicate the start/end frame if we
     // cross the boundary of the utterance.
     if (frame_limited < 0)
@@ -97,6 +97,7 @@ void NnetDataRandomizer::GetExample(const std::pair<int32, int32> &pair,
       frame_limited = tf.feats.NumRows() - 1;
     tf.feats.CopyRowToVec(frame_limited, &dest);
   }
+  example->input_frames.CopyFromMat(input_frames); // this call resizes. 
 }
 
 bool NnetDataRandomizer::Done() {

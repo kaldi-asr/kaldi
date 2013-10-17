@@ -71,7 +71,7 @@ void NnetRescaler::FormatInput(const std::vector<NnetTrainingExample> &data,
     CuSubMatrix<BaseFloat> dest(*input,
                                 chunk * num_splice, num_splice,
                                 0, feat_dim);
-    const Matrix<BaseFloat> &src(data[chunk].input_frames);
+    Matrix<BaseFloat> src(data[chunk].input_frames);
     dest.CopyFromMat(src);
     if (spk_dim != 0) {
       CuSubMatrix<BaseFloat> spk_dest(*input,

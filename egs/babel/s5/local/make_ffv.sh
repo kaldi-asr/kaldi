@@ -201,7 +201,7 @@ for f in `cat $ffv_flist | cut -d, -f2`; do
   fi
 done
 cat $ffv_flist | cut -d, -f2 | \
-   perl -ane 'm:/([^/]+)\.ffv: || die "Bad line $_"; $key=$1; s/\.ffv$/\.mat/; print "$key $_";' > $scpfile
+   perl -ane 'm:/([^/]+)\.ffv$: || die "Bad line $_"; $key=$1; s/\.ffv$/\.mat/; print "$key $_";' > $scpfile
 EOF
 chmod +x $expdir/convert.sh
 

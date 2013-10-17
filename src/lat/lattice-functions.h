@@ -51,7 +51,8 @@ int32 CompactLatticeStateTimes(const CompactLattice &lat,
 
 /// This function does the forward-backward over lattices and computes the
 /// posterior probabilities of the arcs. It returns the total log-probability
-/// of the lattice.
+/// of the lattice.  The Posterior quantities contain pairs of (transition-id, weight)
+/// on each frame.
 /// If the pointer "acoustic_like_sum" is provided, this value is set to
 /// the sum over the arcs, of the posterior of the arc times the
 /// acoustic likelihood [i.e. negated acoustic score] on that link.
@@ -60,6 +61,29 @@ int32 CompactLatticeStateTimes(const CompactLattice &lat,
 BaseFloat LatticeForwardBackward(const Lattice &lat,
                                  Posterior *arc_post,
                                  double *acoustic_like_sum = NULL);
+
+/// Topologically sort the compact lattice if not already topologically sorted.
+/// Will crash if the lattice cannot be topologically sorted.
+void TopSortCompactLatticeIfNeeded(CompactLattice *clat);
+
+
+/// Topologically sort the lattice if not already topologically sorted.
+/// Will crash if lattice cannot be topologically sorted.
+void TopSortLatticeIfNeeded(Lattice *clat);
+
+/// Returns the depth of the lattice, defined as the average number of arcs (or
+/// final-prob strings) crossing any given frame.  Returns 1 for empty lattices.
+/// Requires that clat is topologically sorted!
+BaseFloat CompactLatticeDepth(const CompactLattice &clat,
+                              int32 *num_frames = NULL);
+
+/// This function limits the depth of the lattice, per frame: that means, it
+/// does not allow more than a specified number of arcs active on any given
+/// frame.  This can be used to reduce the size of the "very deep" portions of
+/// the lattice.
+void CompactLatticeLimitDepth(int32 max_arcs_per_frame,
+                              CompactLattice *clat);
+
 
 /// Given a lattice, and a transition model to map pdf-ids to phones,
 /// outputs for each frame the set of phones active on that frame.  If
