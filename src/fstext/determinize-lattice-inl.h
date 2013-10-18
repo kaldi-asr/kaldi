@@ -226,12 +226,14 @@ template<class IntType> class LatticeStringRepository {
   typedef unordered_set<const Entry*, EntryKey, EntryEqual> SetType;
 
   void RebuildHelper(const Entry *to_add, SetType *tmp_set) {
-    if (to_add == NULL) return;
-    else {
+    while(true) {
+      if (to_add == NULL) return;
       typename SetType::iterator iter = tmp_set->find(to_add);
       if (iter == tmp_set->end()) { // not in tmp_set.
         tmp_set->insert(to_add);
-        RebuildHelper(to_add->parent, tmp_set); // make sure parent there.
+        to_add = to_add->parent; // and loop.
+      } else {
+        return;
       }
     }
   }
