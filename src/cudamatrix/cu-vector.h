@@ -94,6 +94,7 @@ class CuVector: public CuVectorBase<Real> {
  public:
   CuVector() { }
   CuVector(MatrixIndexT dim, MatrixResizeType t = kSetZero) { Resize(dim, t); }
+  CuVector(const CuVector<Real> &v);
   CuVector(const CuVectorBase<Real> &v);
   CuVector(const VectorBase<Real> &v);  
 

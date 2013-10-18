@@ -1,6 +1,6 @@
 // nnetbin/nnet-concat.cc
 
-// Copyright 2012  Karel Vesely
+// Copyright 2012-2013  Brno University of Technology (Author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
         nnet_next.Read(ki.Stream(), binary_read);
       }
       //append nnet_next to the network nnet
-      nnet.Concatenate(&nnet_next);
+      nnet.AppendNnet(nnet_next);
     }
 
     //finally write the nnet to disk

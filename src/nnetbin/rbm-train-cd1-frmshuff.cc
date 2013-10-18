@@ -103,9 +103,9 @@ int main(int argc, char *argv[]) {
 
     Nnet nnet;
     nnet.Read(model_filename);
-    KALDI_ASSERT(nnet.LayerCount()==1);
-    KALDI_ASSERT(nnet.Layer(0)->GetType() == Component::kRbm);
-    RbmBase &rbm = dynamic_cast<RbmBase&>(*nnet.Layer(0));
+    KALDI_ASSERT(nnet.NumComponents()==1);
+    KALDI_ASSERT(nnet.GetComponent(0).GetType() == Component::kRbm);
+    RbmBase &rbm = dynamic_cast<RbmBase&>(nnet.GetComponent(0));
 
     // Configure the RBM
     // first get make some options easy to access:

@@ -1,6 +1,6 @@
 // nnet/nnet-rbm.h
 
-// Copyright 2012-2013 Brno University of Technology (Author: Karel Vesely)
+// Copyright 2012-2013  Brno University of Technology (Author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -35,8 +35,8 @@ class RbmBase : public UpdatableComponent {
     GAUSSIAN
   } RbmNodeType;
  
-  RbmBase(int32 dim_in, int32 dim_out, Nnet *nnet) 
-   : UpdatableComponent(dim_in, dim_out, nnet)
+  RbmBase(int32 dim_in, int32 dim_out) 
+   : UpdatableComponent(dim_in, dim_out)
   { }
   
   /*Is included in Component:: itf
@@ -85,8 +85,8 @@ class RbmBase : public UpdatableComponent {
   // RBMs use RbmUpdate(.)
   void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) { }
   // RBMs use option class RbmTrainOptions
-  void SetTrainOptions(const NnetTrainOptions&);
-  const NnetTrainOptions& GetTrainOptions() const;
+  void SetTrainOptions(const NnetTrainOptions&) { }
+  const NnetTrainOptions& GetTrainOptions() const { }
   NnetTrainOptions opts_;
  //
  ////
@@ -97,15 +97,14 @@ class RbmBase : public UpdatableComponent {
 
 class Rbm : public RbmBase {
  public:
-  Rbm(int32 dim_in, int32 dim_out, Nnet *nnet) 
-   : RbmBase(dim_in, dim_out, nnet)
+  Rbm(int32 dim_in, int32 dim_out) 
+   : RbmBase(dim_in, dim_out)
   { } 
   ~Rbm()
   { }  
   
-  ComponentType GetType() const {
-    return kRbm;
-  }
+  Component* Copy() const { return new Rbm(*this); }
+  ComponentType GetType() const { return kRbm; }
 
   void ReadData(std::istream &is, bool binary) {
     std::string vis_node_type, hid_node_type;
@@ -164,7 +163,7 @@ class Rbm : public RbmBase {
 
   void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
                         const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
-    KALDI_ERR << "Cannot backpropagate through RBM!"
+    KALDI_ERR << "Cannot back-propagate through RBM!"
               << "Better convert it to <affinetransform> and <sigmoid>";
   }
   virtual void Update(const CuMatrix<BaseFloat> &input,
@@ -226,9 +225,9 @@ class Rbm : public RbmBase {
     // should be about the same. The model is particularly sensitive at the very
     // beginning of the CD-1 training.
     //
-    // We compute varinace of a)input minibatch b)reconstruction. 
+    // We compute variance of a)input mini-batch b)reconstruction. 
     // When the ratio b)/a) is larger than 2, we:
-    // 1. scale down the weights and biases by b)/a) (for next minibatch b)/a) gets 1.0)
+    // 1. scale down the weights and biases by b)/a) (for next mini-batch b)/a) gets 1.0)
     // 2. shrink learning rate by 0.9x
     // 3. reset the momentum buffer  
     //
@@ -255,7 +254,7 @@ class Rbm : public RbmBase {
       pos_vis_stddev.MulElements(pos_vis_mean_h);
       pos_vis_stddev.Scale(-1.0);
       pos_vis_stddev.AddVec(1.0/pos_vis.NumRows(),pos_vis_second_h);
-      /* set negtive values to zero before the square root */
+      /* set negative values to zero before the square root */
       for (int32 i=0; i<pos_vis_stddev.Dim(); i++) {
         if(pos_vis_stddev(i) < 0.0) { 
           KALDI_WARN << "Forcing the variance to be non-negative! (set to zero)" 
@@ -282,7 +281,7 @@ class Rbm : public RbmBase {
       neg_vis_stddev.MulElements(neg_vis_mean_h);
       neg_vis_stddev.Scale(-1.0);
       neg_vis_stddev.AddVec(1.0/neg_vis.NumRows(),neg_vis_second_h);
-      /* set negtive values to zero before the square root */
+      /* set negative values to zero before the square root */
       for (int32 i=0; i<neg_vis_stddev.Dim(); i++) {
         if(neg_vis_stddev(i) < 0.0) { 
           KALDI_WARN << "Forcing the variance to be non-negative! (set to zero)" 
@@ -306,12 +305,12 @@ class Rbm : public RbmBase {
         vis_bias_corr_.SetZero();
         hid_bias_corr_.SetZero();
 
-        KALDI_WARN << "Discrepancy between pos_hid and neg_hid varainces, "
+        KALDI_WARN << "Discrepancy between pos_hid and neg_hid variances, "
                    << "danger of weight explosion. a) Reducing weights with scale " << scale
                    << " b) Lowering learning rate to " << rbm_opts_.learn_rate
                    << " [pos_vis_stddev(~1.0):" << pos_vis_stddev.Sum()/pos_vis.NumCols()
                    << ",neg_vis_stddev:" << neg_vis_stddev.Sum()/neg_vis.NumCols() << "]";
-        return; /* ie. don't update weights with current stats */
+        return; /* i.e. don't update weights with current stats */
       }
     }
     //

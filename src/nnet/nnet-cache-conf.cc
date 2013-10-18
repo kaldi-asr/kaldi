@@ -1,9 +1,7 @@
-// nnet/nnet-cache-tgtmat.cc
+// nnet/nnet-cache-conf.cc
 
-// Copyright 2011  Brno University of Technology (author: Karel Vesely)
+// Copyright 2013  Brno University of Technology (author: Karel Vesely)
 
-// See ../../COPYING for clarification regarding multiple authors
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -17,7 +15,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nnet/nnet-cache-tgtmat.h"
+#include "nnet/nnet-cache-conf.h"
 
 #include "cudamatrix/cu-math.h"
 
@@ -28,11 +26,11 @@ namespace nnet1 {
 
 
 
-void CacheTgtMat::Init(int32 cachesize, int32 bunchsize) {
+void CacheConf::Init(int32 cachesize, int32 bunchsize) {
 
   KALDI_ASSERT(cachesize>0);
   if(cachesize > 8388479) {
-    KALDI_ERR << "Cachesize " << cachesize << " too large, use cachesize smaller than 8388480.";
+    KALDI_ERR << "CacheConfsize " << cachesize << " too large, use cachesize smaller than 8388480.";
   }
   KALDI_ASSERT(bunchsize>0);
   KALDI_ASSERT(cachesize>=bunchsize);
@@ -54,20 +52,21 @@ void CacheTgtMat::Init(int32 cachesize, int32 bunchsize) {
 
 
 
-void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<BaseFloat> &targets) {
+void CacheConf::AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32> &targets, const Vector<BaseFloat> &confidence) {
   if (state_ == FULL) {
     KALDI_ERR << "Cannot add data, cache already full";
   }
 
-  KALDI_ASSERT(features.NumRows() == targets.NumRows());
+  KALDI_ASSERT(features.NumRows() == static_cast<int32>(targets.size()));
+  KALDI_ASSERT(features.NumRows() == static_cast<int32>(confidence.Dim()));
 
   int32 dim_fea = features.NumCols();
-  int32 dim_tgt = targets.NumCols();
   
   // lazy buffers allocation
   if (features_.NumRows() != cachesize_) {
     features_.Resize(cachesize_, dim_fea);
-    targets_.Resize(cachesize_, dim_tgt);
+    targets_.resize(cachesize_);
+    confidence_.Resize(cachesize_);
   }
 
   // warn if segment longer than half-cache 
@@ -97,18 +96,24 @@ void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<Ba
       features_.RowRange(0, leftover).CopyFromMat(
         features_leftover_.RowRange(0, leftover)
       );
-      targets_.RowRange(0, leftover).CopyFromMat(
-        targets_leftover_.RowRange(0, leftover)
-      );
       
+      std::copy(targets_leftover_.begin(),
+                targets_leftover_.begin() + leftover,
+                targets_.begin());
+     
+      confidence_.Range(0, leftover).CopyFromVec(
+        confidence_leftover_.Range(0, leftover)
+      );
+       
       features_leftover_.Resize(0, 0);
-      targets_leftover_.Resize(0, 0);
+      targets_leftover_.resize(0);
+      confidence_leftover_.Resize(0);
       filling_pos_ += leftover;
     } 
   }
 
   KALDI_ASSERT(state_ == FILLING);
-  KALDI_ASSERT(features.NumRows() == targets.NumRows());
+  KALDI_ASSERT(features.NumRows() == static_cast<MatrixIndexT>(targets.size()));
 
   int cache_space = cachesize_ - filling_pos_;
   int feature_length = features.NumRows();
@@ -121,20 +126,29 @@ void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<Ba
   features_.RowRange(filling_pos_, fill_rows).CopyFromMat(
     features.RowRange(0, fill_rows)
   );
-  targets_.RowRange(filling_pos_, fill_rows).CopyFromMat(
-    targets.RowRange(0, fill_rows)
-  );
-      
+
+  std::copy(targets.begin(),
+            targets.begin()+fill_rows,
+            targets_.begin()+filling_pos_);
+
+  confidence_.Range(filling_pos_,fill_rows).
+      CopyFromVec(confidence.Range(0,fill_rows));
+
   // copy leftovers
   if (leftover > 0) {
     features_leftover_.Resize(leftover, dim_fea);
     features_leftover_.CopyFromMat(
       features.RowRange(fill_rows, leftover)
     );
-    targets_leftover_.Resize(leftover, dim_tgt);
-    targets_leftover_.CopyFromMat(
-      targets.RowRange(fill_rows, leftover)
-    );
+    
+    KALDI_ASSERT(targets.end()-(targets.begin()+fill_rows)==leftover);
+    targets_leftover_.resize(leftover);
+    std::copy(targets.begin()+fill_rows,
+              targets.end(),
+              targets_leftover_.begin());
+
+    confidence_leftover_.Resize(leftover);
+    confidence_leftover_.CopyFromVec(confidence.Range(fill_rows,leftover));
   }
 
   // update cursor
@@ -148,12 +162,13 @@ void CacheTgtMat::AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<Ba
 
 
 
-void CacheTgtMat::Randomize() {
+void CacheConf::Randomize() {
   KALDI_ASSERT(state_ == FULL || state_ == FILLING);
 
   // lazy initialization of the output buffers
   features_random_.Resize(cachesize_, features_.NumCols());
-  targets_random_.Resize(cachesize_, targets_.NumCols());
+  targets_random_.resize(cachesize_);
+  confidence_random_.Resize(cachesize_);
 
   // generate random series of integers
   randmask_.resize(filling_pos_);
@@ -166,14 +181,20 @@ void CacheTgtMat::Randomize() {
   // randomize the features
   cu::Randomize(features_, randmask_device_, &features_random_);
   // randomize the targets
-  cu::Randomize(targets_, randmask_device_, &targets_random_);
-  
+  for(int32 i=0; i<filling_pos_; i++) {
+    targets_random_[i] = targets_[randmask_[i]];
+  }
+  // randomize the confidences
+  for(int32 i=0; i<filling_pos_; i++) {
+    confidence_random_(i) = confidence_(randmask_[i]);
+  }
+
   randomized_ = true;
 }
 
 
 
-void CacheTgtMat::GetBunch(CuMatrix<BaseFloat> *features, CuMatrix<BaseFloat> *targets) {
+void CacheConf::GetBunch(CuMatrix<BaseFloat> *features, std::vector<int32> *targets, Vector<BaseFloat> *confidence) {
   if (state_ == EMPTY) {
     KALDI_ERR << "GetBunch on empty cache!!!";
   }
@@ -190,28 +211,32 @@ void CacheTgtMat::GetBunch(CuMatrix<BaseFloat> *features, CuMatrix<BaseFloat> *t
 
   KALDI_ASSERT(state_ == EMPTYING);
 
+  const CuMatrixBase<BaseFloat> &features_ref = (randomized_ ?
+                                                 features_random_ : features_);
+  const std::vector<int32> &targets_ref = (randomized_ ?
+                                           targets_random_ : targets_);
+  const Vector<BaseFloat> &confidence_ref = (randomized_ ?
+                                           confidence_random_ : confidence_);
+
   // init the output
   features->Resize(bunchsize_, features_.NumCols());
-  targets->Resize(bunchsize_, targets_.NumCols());
+  targets->resize(bunchsize_);
+  confidence->Resize(bunchsize_);
 
   // copy the output
-  if (randomized_) {
-    features->RowRange(0, bunchsize_).CopyFromMat(
-        features_random_.RowRange(emptying_pos_, bunchsize_));
-    targets->RowRange(0, bunchsize_).CopyFromMat(
-        targets_random_.RowRange(emptying_pos_, bunchsize_));
-  } else {
-    features->RowRange(0, bunchsize_).CopyFromMat(
-        features_.RowRange(emptying_pos_, bunchsize_));
-    targets->RowRange(0, bunchsize_).CopyFromMat(
-        targets_.RowRange(emptying_pos_, bunchsize_));
-  }
+  features->CopyFromMat(features_ref.RowRange(emptying_pos_, bunchsize_));
+    
+  std::copy(targets_ref.begin() + emptying_pos_,
+            targets_ref.begin() + emptying_pos_ + bunchsize_,
+            targets->begin());
+  
+  confidence->CopyFromVec(confidence_ref.Range(emptying_pos_, bunchsize_));
 
-  // update cursor
+  // update position
   emptying_pos_ += bunchsize_;
 
-  // change state to EMPTY
-  if (emptying_pos_ > filling_pos_-bunchsize_) {
+  // If we're done, change state to EMPTY
+  if (emptying_pos_ > filling_pos_ - bunchsize_) {
     // we don't have more complete bunches...
     state_ = EMPTY;
   }

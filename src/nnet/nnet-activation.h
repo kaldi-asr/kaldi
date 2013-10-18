@@ -1,6 +1,6 @@
 // nnet/nnet-activation.h
 
-// Copyright 2011  Karel Vesely
+// Copyright 2011-2013  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -30,15 +30,14 @@ namespace nnet1 {
 
 class Softmax : public Component {
  public:
-  Softmax(int32 dim_in, int32 dim_out, Nnet *nnet) 
-    : Component(dim_in, dim_out, nnet)
+  Softmax(int32 dim_in, int32 dim_out) 
+    : Component(dim_in, dim_out)
   { }
   ~Softmax()
   { }
 
-  ComponentType GetType() const {
-    return kSoftmax;
-  }
+  Component* Copy() const { return new Softmax(*this); }
+  ComponentType GetType() const { return kSoftmax; }
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     // y = e^x_j/sum_j(e^x_j)
@@ -60,15 +59,14 @@ class Softmax : public Component {
 
 class Sigmoid : public Component {
  public:
-  Sigmoid(int32 dim_in, int32 dim_out, Nnet *nnet) 
-    : Component(dim_in, dim_out, nnet)
+  Sigmoid(int32 dim_in, int32 dim_out) 
+    : Component(dim_in, dim_out)
   { }
   ~Sigmoid()
   { }
 
-  ComponentType GetType() const {
-    return kSigmoid;
-  }
+  Component* Copy() const { return new Sigmoid(*this); }
+  ComponentType GetType() const { return kSigmoid; }
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     // y = 1/(1+e^-x)
@@ -86,15 +84,14 @@ class Sigmoid : public Component {
 
 class Tanh : public Component {
  public:
-  Tanh(int32 dim_in, int32 dim_out, Nnet *nnet) 
-    : Component(dim_in, dim_out, nnet)
+  Tanh(int32 dim_in, int32 dim_out) 
+    : Component(dim_in, dim_out)
   { }
   ~Tanh()
   { }
 
-  ComponentType GetType() const {
-    return kTanh;
-  }
+  Component* Copy() const { return new Tanh(*this); }
+  ComponentType GetType() const { return kTanh; }
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     // y = (e^x - e^(-x)) / (e^x + e^(-x))
@@ -112,15 +109,14 @@ class Tanh : public Component {
 
 class Dropout : public Component {
  public:
-  Dropout(int32 dim_in, int32 dim_out, Nnet *nnet):
-      Component(dim_in, dim_out, nnet)
+  Dropout(int32 dim_in, int32 dim_out):
+      Component(dim_in, dim_out)
   { }
   ~Dropout()
   { }
 
-  ComponentType GetType() const {
-    return kDropout;
-  }
+  Component* Copy() const { return new Dropout(*this); }
+  ComponentType GetType() const { return kDropout; }
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     out->CopyFromMat(in);
