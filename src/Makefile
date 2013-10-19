@@ -9,6 +9,14 @@ SUBDIRS = base matrix util feat tree thread gmm tied transform sgmm \
           fstext hmm lm decoder lat cudamatrix nnet \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet-cpu nnet-cpubin kwsbin
+
+MEMTESTDIRS = base matrix util feat tree thread gmm tied transform sgmm \
+          fstext hmm lm decoder lat nnet \
+          bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
+          nnetbin latbin sgmm2 sgmm2bin nnet-cpu nnet-cpubin kwsbin
+
+CUDAMEMTESTDIR = cudamatrix
+
 SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
 
@@ -98,8 +106,11 @@ ext_test: $(addsuffix /test, $(EXT_SUBDIRS))
 %/test: % mklibdir
 	$(MAKE) -C $< test
 
+cudavalgrind:
+	-for x in $(CUDAMEMTESTDIR); do $(MAKE) -C $$x valgrind || { echo "valgrind on $$x failed"; exit 1; }; done
+
 valgrind:
-	-for x in $(SUBDIRS); do $(MAKE) -C $$x valgrind || { echo "valgrind on $$x failed"; exit 1; }; done
+	-for x in $(MEMTESTDIRS); do $(MAKE) -C $$x valgrind || { echo "valgrind on $$x failed"; exit 1; }; done
 
 depend: 
 	-for x in $(SUBDIRS); do $(MAKE) -C $$x depend; done
