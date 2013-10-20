@@ -51,15 +51,16 @@ void CuPackedMatrix<Real>::Resize(MatrixIndexT rows,
     this->Destroy();
   if (rows == 0) return;  
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
+  CuDevice &device = CuDevice::Instantiate();
+  if (device.Enabled()) {
     Timer tim;
     this->num_rows_ = rows;
     size_t nr = static_cast<size_t>(num_rows_),
         num_bytes = ((nr * (nr+1)) / 2) * sizeof(Real);
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&this->data_), num_bytes));
+    this->data_ = static_cast<Real*>(device.Malloc(num_bytes));
 
     if (resize_type == kSetZero) this->SetZero();
-    CuDevice::Instantiate().AccuProfile("CuPackedMatrix::Resize", tim.Elapsed());    
+    device.AccuProfile("CuPackedMatrix::Resize", tim.Elapsed());    
   } else
 #endif
   { // Let the initializer of SpMatrix<Real> handle the allocation,
@@ -85,7 +86,7 @@ void CuPackedMatrix<Real>::Destroy() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     if (this->data_ != NULL) {
-      CU_SAFE_CALL(cudaFree(this->data_));
+      CuDevice::Instantiate().Free(this->data_);
     }
   } else
 #endif

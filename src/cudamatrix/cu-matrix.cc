@@ -60,8 +60,8 @@ void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
     Timer tim;
     MatrixIndexT row_bytes = cols * sizeof(Real);
     size_t pitch;
-    CU_SAFE_CALL(cudaMallocPitch(reinterpret_cast<void**>(&this->data_), &pitch,
-                                 row_bytes, rows));
+    this->data_ = static_cast<Real*>(CuDevice::Instantiate().MallocPitch(
+        row_bytes, rows, &pitch));
     this->num_rows_ = rows;
     this->num_cols_ = cols; 
     this->stride_ = pitch / sizeof(Real);
@@ -83,7 +83,7 @@ void CuMatrix<Real>::Destroy() {
   if (CuDevice::Instantiate().Enabled()) {
     if (this->data_ != NULL) {
       Timer tim;
-      CU_SAFE_CALL(cudaFree(this->data_));
+      CuDevice::Instantiate().Free(this->data_);
       CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
     }
   } else
@@ -1005,8 +1005,7 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
       }
     }
 // */
-    void *addr;
-    CU_SAFE_CALL(cudaMalloc( (void**)&addr, sv_labels.size() * sizeof(MatrixElement<Real>)));
+    void *addr = CuDevice::Instantiate().Malloc(sv_labels.size() * sizeof(MatrixElement<Real>));
     CU_SAFE_CALL(cudaMemcpy(addr, sv_labels.data(), sv_labels.size() * sizeof(MatrixElement<Real>), cudaMemcpyHostToDevice));
     Timer tim;
     CuVector<Real> tmp(2, kUndefined);
@@ -1017,7 +1016,7 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
     Vector<Real> tmp_cpu(tmp);
     *tot_objf = tmp_cpu(0);
     *tot_weight = tmp_cpu(1);
-    CU_SAFE_CALL(cudaFree(addr));
+    CuDevice::Instantiate().Free(addr);
     CuDevice::Instantiate().AccuProfile("Comp_Obj_Deriv", tim.Elapsed());
   } else
 #endif

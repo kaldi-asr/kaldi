@@ -41,9 +41,10 @@ void CuRand<Real>::SeedGpu(MatrixIndexT state_size) {
 template<typename Real> 
 void CuRand<Real>::SeedBuffer(MatrixIndexT state_size, uint32 **tgt) {
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
+  CuDevice &device = CuDevice::Instantiate();
+  if (device.Enabled()) {
     if (*tgt != NULL) {
-      CU_SAFE_CALL(cudaFree(*tgt));
+      device.Free(*tgt);
       *tgt = NULL;
     }
     if (state_size == 0) return; // Nothing to do.
@@ -51,7 +52,7 @@ void CuRand<Real>::SeedBuffer(MatrixIndexT state_size, uint32 **tgt) {
     for(MatrixIndexT i = 0; i < state_size; i++)
       temp_rand_data[i] = RandInt(128, RAND_MAX);
     int32 state_size_in_bytes = state_size * sizeof(uint32);
-    CU_SAFE_CALL(cudaMalloc((void**)tgt, state_size_in_bytes));
+    *tgt = static_cast<uint32*>(device.Malloc(state_size_in_bytes));
     CU_SAFE_CALL(cudaMemcpy(*tgt, &(temp_rand_data[0]),
                             state_size_in_bytes, cudaMemcpyHostToDevice));
   }

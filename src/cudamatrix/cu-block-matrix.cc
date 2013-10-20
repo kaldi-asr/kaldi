@@ -105,8 +105,8 @@ template<class Real>
 void CuBlockMatrix<Real>::FreeCudaData() {
 #if HAVE_CUDA == 1
   if (cu_data_ != NULL) {
-    if (CuDevice::Instantiate().Enabled()) { 
-      CU_SAFE_CALL(cudaFree(cu_data_));
+    if (CuDevice::Instantiate().Enabled()) {
+      CuDevice::Instantiate().Free(cu_data_);
       cu_data_ = NULL;
     } else {
       KALDI_ERR << "CuBlockMatrix: you have CUDA data pointer but "
@@ -137,7 +137,8 @@ void CuBlockMatrix<Real>::SetCudaData() {
       col_offset += this_mat.NumCols();
     }
     size_t size = NumBlocks() * sizeof(CuBlockMatrixData);
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&cu_data_), size));
+    cu_data_ = static_cast<CuBlockMatrixData*>(
+        CuDevice::Instantiate().Malloc(size));
     CU_SAFE_CALL(cudaMemcpy(cu_data_, &(tmp_cu_data[0]), size, cudaMemcpyHostToDevice));
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
   }

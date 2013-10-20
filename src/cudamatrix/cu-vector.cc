@@ -362,17 +362,11 @@ void CuVectorBase<Real>::ApplyLog() {
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
 
-    Real* device_flag;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_flag), sizeof(Real)));
-    CU_SAFE_CALL(cudaMemset(device_flag, 0, sizeof(Real)));
-    cuda_vec_apply_log(dimGrid, dimBlock, data_, device_flag, dim_);
-    Real host_flag = 0.0;
-    CU_SAFE_CALL(cudaMemcpy(&host_flag, device_flag, sizeof(Real), cudaMemcpyDeviceToHost));
-    if (host_flag > 0)
+    CuVector<Real> flag(1);
+    cuda_vec_apply_log(dimGrid, dimBlock, data_, flag.Data(), dim_);
+    if (flag(0) > 0)
       KALDI_ERR << "Trying to take log of a negative number.";
-    CU_SAFE_CALL(cudaFree(device_flag));
     CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyLog", tim.Elapsed());
-
   } else
 #endif
   {
@@ -579,13 +573,10 @@ Real CuVectorBase<Real>::Min() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    Real* device_value;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_value), sizeof(Real)));
-    CU_SAFE_CALL(cudaMemset(device_value, 0, sizeof(Real)));
-    cuda_vec_min(data_, device_value, dim_);
+    CuVector<Real> ans(1);
+    cuda_vec_min(data_, ans.Data(), dim_);
     CU_SAFE_CALL(cudaGetLastError());
-    CU_SAFE_CALL(cudaMemcpy(&result, device_value, sizeof(Real), cudaMemcpyDeviceToHost));
-    CU_SAFE_CALL(cudaFree(device_value));
+    result = ans(0);
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -601,15 +592,10 @@ Real CuVectorBase<Real>::Max() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    Real* device_value;
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&device_value), sizeof(Real)));
-    CU_SAFE_CALL(cudaMemset(device_value, 0, sizeof(Real)));
-    cuda_vec_max(data_, device_value, dim_);
-    CU_SAFE_CALL(cudaGetLastError());
-    CU_SAFE_CALL(cudaMemcpy(&result, device_value, sizeof(Real), cudaMemcpyDeviceToHost));
-    CU_SAFE_CALL(cudaFree(device_value));
+    CuVector<Real> ans(1);
+    cuda_vec_max(data_, ans.Data(), dim_);
+    result = ans(0);
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-
   } else
 #endif
   {
@@ -776,14 +762,7 @@ void CuVector<Real>::Resize(MatrixIndexT dim, MatrixResizeType t) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-#if 0
-    // put a NaN past the end, I did this to try to find extra bugs.   None seen.
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&this->data_), (dim + 1) * sizeof(Real)));
-    Real nan = std::numeric_limits<Real>::infinity() - std::numeric_limits<Real>::infinity();
-    CU_SAFE_CALL(cudaMemcpy(this->data_ + dim, &nan, sizeof(Real), cudaMemcpyHostToDevice));    
-#else
-    CU_SAFE_CALL(cudaMalloc(reinterpret_cast<void**>(&this->data_), dim * sizeof(Real)));
-#endif
+    this->data_ = static_cast<Real*>(CuDevice::Instantiate().Malloc(dim * sizeof(Real)));
     this->dim_ = dim;
     if (t == kSetZero) this->SetZero();
     CuDevice::Instantiate().AccuProfile("CuVector::Resize", tim.Elapsed());    
@@ -835,9 +814,8 @@ template<typename Real>
 void CuVector<Real>::Destroy() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
-    if (this->data_ != NULL) {
-      CU_SAFE_CALL(cudaFree(this->data_));
-    }
+    if (this->data_ != NULL)
+      CuDevice::Instantiate().Free(this->data_);
   } else
 #endif
   {

@@ -44,6 +44,16 @@ class CuDevice {
  public:
   ~CuDevice();
   static inline CuDevice& Instantiate() { return global_device_; }
+
+  // We provide functions Malloc, MallocPitch and Free which replace cudaMalloc,
+  // cudaMallocPitch and cudaFree.  Their function is to cache the results of
+  // previous allocations to avoid the very large overhead that CUDA's
+  // allocation seems to give for some setups.
+  void* Malloc(size_t size);
+  
+  void* MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch);
+  
+  void Free(void *ptr);
   
   /**********************************/
   // Instance interface
@@ -83,8 +93,8 @@ class CuDevice {
   
  private:
   CuDevice();
-  CuDevice(CuDevice&);
-  CuDevice &operator=(CuDevice&);
+  CuDevice(CuDevice&); // Disallow.
+  CuDevice &operator=(CuDevice&);  // Disallow.
 
   static CuDevice global_device_;
   
@@ -114,7 +124,7 @@ class CuDevice {
 
   bool verbose_;
 
-  //CuAllocator allocator_;
+  CuAllocator *allocator_;
   
 }; // class CuDevice
 
