@@ -30,7 +30,6 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     using namespace kaldi::nnet2;
     typedef kaldi::int32 int32;
-    typedef kaldi::int64 int64;
 
     const char *usage =
         "Train the neural network parameters with backprop and stochastic\n"
@@ -89,7 +88,7 @@ int main(int argc, char *argv[]) {
     
     if (zero_stats) am_nnet.GetNnet().ZeroStats();
 
-    int64 num_examples = 0;
+    double num_examples = 0;
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
     
 

@@ -212,8 +212,10 @@ NnetSimpleTrainer::~NnetSimpleTrainer() {
     KALDI_LOG << "Doing partial minibatch of size "
               << buffer_.size();
     TrainOneMinibatch();
-    bool first_time = false;
-    BeginNewPhase(first_time);
+    if (minibatches_seen_this_phase_ != 0) {
+      bool first_time = false;
+      BeginNewPhase(first_time);
+    }
   }
 }
 

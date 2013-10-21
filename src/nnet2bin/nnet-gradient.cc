@@ -74,8 +74,9 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_ASSERT(minibatch_size > 0);
-    
-    int64 num_examples = 0;
+
+
+    double num_examples = 0.0;
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
 
     AmNnet am_gradient(am_nnet);

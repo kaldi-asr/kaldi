@@ -61,8 +61,9 @@ class ExamplesRepository {
 /// This function is similar to "DoBackprop" in nnet-update.h
 /// This function computes the objective function and either updates the model
 /// or computes parameter gradients.  It returns the cross-entropy objective
-/// function summed over all samples (normalize this by
-/// TotalNnetTrainingWeight(examples)).  It is mostly a wrapper for
+/// function summed over all samples, weighted, and the total weight of
+/// the samples (typically the same as the #frames) into total_weight.
+/// It is mostly a wrapper for
 /// a class NnetUpdater that's defined in nnet-update.cc, but we
 /// don't want to expose that complexity at this level.
 /// Note: this function 
@@ -71,11 +72,11 @@ class ExamplesRepository {
 /// gradient and it sums up the gradients.
 /// The return value is the total log-prob summed over the #frames. It also
 /// outputs the #frames into "num_frames".
-BaseFloat DoBackpropParallel(const Nnet &nnet,
-                             int32 minibatch_size,
-                             SequentialNnetTrainingExampleReader *example_reader,
-                             int64 *num_frames,
-                             Nnet *nnet_to_update);
+double DoBackpropParallel(const Nnet &nnet,
+                          int32 minibatch_size,
+                          SequentialNnetTrainingExampleReader *example_reader,
+                          double *tot_weight,
+                          Nnet *nnet_to_update);
 
 struct SafeBackpropConfig {
   BaseFloat max_degradation; // Max degradation per test sample that is
@@ -137,7 +138,7 @@ BaseFloat DoBackpropParallelSafe(
     int32 minibatch_size,
     const SafeBackpropConfig &safe_config,
     SequentialNnetTrainingExampleReader *example_reader,
-    int64 *num_frames,
+    double *num_frames,
     Nnet *nnet);
 
 /// This function is like DoBackpropParallel() but incorporates momentum.  We
@@ -152,17 +153,17 @@ BaseFloat DoBackpropParallelMomentum(
     int32 minibatch_size,
     BaseFloat momentum_minibatches,
     SequentialNnetTrainingExampleReader *example_reader,
-    int64 *num_frames,
+    double *num_frames,
     Nnet *nnet);
 
 /// This version of DoBackpropParallel takes a vector of examples, and will
 /// typically be used to compute the exact gradient. 
-BaseFloat DoBackpropParallel(const Nnet &nnet,
-                             int32 minibatch_size,
-                             int32 num_threads,
-                             const std::vector<NnetTrainingExample> &examples,
-                             int64 *num_frames,
-                             Nnet *nnet_to_update);
+  double DoBackpropParallel(const Nnet &nnet,
+                            int32 minibatch_size,
+                            int32 num_threads,
+                            const std::vector<NnetTrainingExample> &examples,
+                            double *num_frames,
+                            Nnet *nnet_to_update);
 
 
 

@@ -464,13 +464,14 @@ void CuMatrixBase<Real>::Write(std::ostream &os, bool binary) const {
 
 template<typename Real>
 void CuMatrixBase<Real>::SetZero() {
-  #if HAVE_CUDA == 1 
+#if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
-    CU_SAFE_CALL(cudaMemset(data_, 0, num_rows_*stride_*sizeof(Real)));
+    CU_SAFE_CALL(cudaMemset2D(data_, stride_ * sizeof(Real), 0, 
+                              num_cols_ * sizeof(Real), num_rows_ ));
     CuDevice::Instantiate().AccuProfile("CuMatrix::SetZero", tim.Elapsed());
   } else
-  #endif
+#endif
   {
     Mat().SetZero();
   }

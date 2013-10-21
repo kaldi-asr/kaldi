@@ -52,9 +52,6 @@ int main(int argc, char *argv[]) {
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    // TODO: remove next statement (old name).
-    po.Register("zero-occupancy", &zero_stats, "If true, zero occupation "
-                "counts stored with the neural net (only affects mixing up).");
     po.Register("zero-stats", &zero_stats, "If true, zero occupation "
                 "counts stored with the neural net (only affects mixing up).");
     po.Register("srand", &srand_seed, "Seed for random number generator "

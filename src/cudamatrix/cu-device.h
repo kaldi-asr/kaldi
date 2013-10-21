@@ -64,7 +64,9 @@ class CuDevice {
   }
 
   /// Manually select GPU by id (more comments in cu-device.cc)
-  void SelectGpuId(int32 gpu_id);
+  void SelectGpuId(int32 gpu_id,
+                   bool abort_on_failure = true);
+
   /// Get the active GPU id
   int32 ActiveGpuId() {
     return active_gpu_id_;
@@ -98,10 +100,20 @@ class CuDevice {
 
   static CuDevice global_device_;
   
-  /// Check if the GPU run in compute exclusive mode
-  bool IsComputeExclusive();
-  /// Automatically select GPU
-  void SelectGpuIdAuto();
+  /// Check if the GPU run in compute exclusive mode Returns true if it is
+  /// running in compute exclusive mode and we have a GPU.  Returns false
+  /// otherwise.  Sets error to true if there was some error, such as that we
+  /// were running in compute exclusive modes but no GPUs available; otherwise
+  /// sets it to false.
+  bool IsComputeExclusive(bool *error);
+
+  /// Automatically select GPU and get CUDA context.  Returns true on success.
+  bool SelectGpuIdAuto();
+
+  /// Try to get CUDA context on manually selected GPU.  Return true on success.
+  bool SelectGpuIdManual(int32 gpu_id);
+
+  void FinalizeActiveGpu();
   
   /// Should only be called if Enabled() == true. 
   int32 MajorDeviceVersion();

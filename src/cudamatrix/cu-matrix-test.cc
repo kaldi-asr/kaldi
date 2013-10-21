@@ -649,32 +649,23 @@ static void UnitTestCuMatrixSymAddMat2() {
       dimM = 0;
       dimN = 0;
     }
-    CU_SAFE_CALL(cudaGetLastError());
     CuMatrix<Real> M(dimM, dimM); // square matrix..
     CuMatrix<Real> N(dimM, dimN);
-    CU_SAFE_CALL(cudaGetLastError());        
     M.SetRandn();
-    CU_SAFE_CALL(cudaGetLastError());    
     N.SetRandn();
-    CU_SAFE_CALL(cudaGetLastError());    
     MatrixTransposeType trans = (i % 2 == 0 ? kTrans : kNoTrans),
         other_trans = (trans == kTrans ? kNoTrans : kTrans);
     if (trans == kTrans) N.Transpose();
-    CU_SAFE_CALL(cudaGetLastError());
     CuMatrix<Real> M2(M);
-    CU_SAFE_CALL(cudaGetLastError());
     Real alpha = 0.3, beta = 1.75432;
     M.SymAddMat2(alpha, N, trans, beta);
-    CU_SAFE_CALL(cudaGetLastError());
+
     M2.AddMatMat(alpha, N, trans, N, other_trans, beta);
-    CU_SAFE_CALL(cudaGetLastError());
+
     CuTpMatrix<Real> T1(M), T2(M2);
-    CU_SAFE_CALL(cudaGetLastError());
     CuMatrix<Real> X1(T1), X2(T2); // so we can test equality.
     AssertEqual(X1, X2);
-    CU_SAFE_CALL(cudaGetLastError());
     KALDI_ASSERT(dimM == 0 || X1.Trace() != 0);
-    CU_SAFE_CALL(cudaGetLastError());
   }
 }
 
@@ -697,43 +688,27 @@ static void UnitTestCuMatrixSymInvertPosDef() {
       dimM = 9;
       dimN = 20;
     }
-    CU_SAFE_CALL(cudaGetLastError());
     CuMatrix<Real> M(dimM, dimM); // square matrix..
     CuMatrix<Real> N(dimM, dimN);
-    CU_SAFE_CALL(cudaGetLastError());
     N.SetRandn();
-    CU_SAFE_CALL(cudaGetLastError());
-    MatrixTransposeType trans = (i % 2 == 0 ? kTrans : kNoTrans),
-        other_trans = (trans == kTrans ? kNoTrans : kTrans);
+    MatrixTransposeType trans = (i % 2 == 0 ? kTrans : kNoTrans);
+    // MatrixTranposeType other_trans = (trans == kTrans ? kNoTrans : kTrans);
 
-    CU_SAFE_CALL(cudaGetLastError());
     if (trans == kTrans) N.Transpose();
-    CU_SAFE_CALL(cudaGetLastError());    
     CuMatrix<Real> M2(M);
     Real alpha = 0.3, beta = 1.75432;
     M.SymAddMat2(alpha, N, trans, beta);
     // M.AddMatMat(alpha, N, trans, N, other_trans, beta);
-    CU_SAFE_CALL(cudaGetLastError());
     SpMatrix<Real> S(CuSpMatrix<Real>(M, kTakeLower));
-    CU_SAFE_CALL(cudaGetLastError());
     S.Invert();
-    CU_SAFE_CALL(cudaGetLastError());
     CuMatrix<Real> M_orig(CuSpMatrix<Real>(M, kTakeLower));
-    CU_SAFE_CALL(cudaGetLastError());    
     M.SymInvertPosDef();
-    CU_SAFE_CALL(cudaGetLastError());    
     CuMatrix<Real> M_inverted(CuSpMatrix<Real>(M, kTakeLower));
-    CU_SAFE_CALL(cudaGetLastError());    
     CuMatrix<Real> M_prod(dimM, dimM);
-    CU_SAFE_CALL(cudaGetLastError());    
     M_prod.AddMatMat(Real(1.0), M_orig, kNoTrans, M_inverted, kNoTrans, Real(0.0));
-    CU_SAFE_CALL(cudaGetLastError());    
     KALDI_ASSERT(M_prod.IsUnit());
-    CU_SAFE_CALL(cudaGetLastError());    
     SpMatrix<Real> S2(CuSpMatrix<Real>(M, kTakeLower));
-    CU_SAFE_CALL(cudaGetLastError());    
     KALDI_ASSERT(ApproxEqual(S, S2, (Real)0.1));
-    CU_SAFE_CALL(cudaGetLastError());    
     KALDI_ASSERT(dimM == 0 || S.Trace() != 0);
   }
 }

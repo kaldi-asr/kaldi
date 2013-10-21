@@ -26,9 +26,8 @@ namespace nnet2 {
 
 /*
   This class is responsible for computing a Fisher matrix which is a kind of
-  scatter of gradients on subsets; it's used for preconditioning the
-  update in lass FastNnetCombiner.
-*/
+  scatter of gradients on subsets; it's used for preconditioning the update in
+  class FastNnetCombiner.  */
 class FisherComputationClass: public MultiThreadable {
  public:
   FisherComputationClass(const Nnet &nnet,
@@ -208,10 +207,14 @@ void FastNnetCombiner::ComputePreconditioner() {
     FisherComputationClass fc(nnet, nnets_, egs_,
                               config_.fisher_minibatch_size,
                               &F);
+
+    // Setting num_threads to zero if config_.num_threads == 1
+    // is a signal to the MultiThreader class to run without creating 
+    // any extra threads in this case; it helps support GPUs.
+    int32 num_threads = config_.num_threads == 1 ? 0 : config_.num_threads;
     // The work gets done in the initializer and destructor of
     // the class below.
-    MultiThreader<FisherComputationClass> m(config_.num_threads,
-                                            fc);
+    MultiThreader<FisherComputationClass> m(num_threads, fc);
   }
   
   // The scale of F is irrelevant but it might be quite
@@ -276,10 +279,10 @@ double FastNnetCombiner::ComputeObjfAndGradient(
   Nnet nnet_gradient(nnet);
   bool is_gradient = true;
   nnet_gradient.SetZero(is_gradient);
-  int64 num_frames = 0;
+  double tot_weight = 0.0;
   double objf = DoBackpropParallel(nnet, config_.minibatch_size, config_.num_threads,
-                                   egs_, &num_frames, &nnet_gradient) / egs_.size();
-  KALDI_ASSERT(num_frames == static_cast<int32>(egs_.size()));
+                                   egs_, &tot_weight, &nnet_gradient) / egs_.size();
+  KALDI_ASSERT(tot_weight == static_cast<int32>(egs_.size()));
   
   // raw_gradient is gradient in non-preconditioned space.
   Vector<double> raw_gradient(params_.Dim());
@@ -293,7 +296,7 @@ double FastNnetCombiner::ComputeObjfAndGradient(
           *uc_gradient =
           dynamic_cast<const UpdatableComponent*>(&(nnet_gradient.GetComponent(j)));
       if (uc != NULL) {
-        double dotprod = uc->DotProduct(*uc_gradient) / num_frames;
+        double dotprod = uc->DotProduct(*uc_gradient) / tot_weight;
         raw_gradient(i) = dotprod; 
         i++;
       }

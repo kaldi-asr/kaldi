@@ -47,9 +47,13 @@ int main(int argc, char *argv[]) {
     
     bool binary_write = true;
     NnetCombineFastConfig combine_config;
+    int32 use_gpu_id = -2;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
+    po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic "
+                "selection, -1 disable GPU, 0..N select GPU).  Only has effect if compiled "
+                "with CUDA and --num-threads=1");
     
     combine_config.Register(&po);
     
@@ -64,6 +68,12 @@ int main(int argc, char *argv[]) {
         nnet1_rxfilename = po.GetArg(1),
         valid_examples_rspecifier = po.GetArg(po.NumArgs() - 1),
         nnet_wxfilename = po.GetArg(po.NumArgs());
+
+#if HAVE_CUDA==1
+    if (combine_config.num_threads == 1)
+      CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+#endif
+
     
     TransitionModel trans_model;
     AmNnet am_nnet1;

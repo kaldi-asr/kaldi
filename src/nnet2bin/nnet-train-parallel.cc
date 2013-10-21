@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
     
     if (zero_stats) am_nnet.GetNnet().ZeroStats();
 
-    int64 num_examples = 0;
+    double num_examples = 0;
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
     
 
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
     }
     
     KALDI_LOG << "Finished training, processed " << num_examples
-              << " training examples.  Wrote model to "
+              << " training examples (weighted).  Wrote model to "
               << nnet_wxfilename;
     return (num_examples == 0 ? 1 : 0);
   } catch(const std::exception &e) {
