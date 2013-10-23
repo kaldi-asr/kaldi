@@ -1,6 +1,6 @@
 // nnet/nnet-various.h
 
-// Copyright 2012 Karel Vesely
+// Copyright 2012-2013  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -49,9 +49,9 @@ std::string MomentStatistics(const Vector<Real> &vec) {
   vec_aux.MulElements(vec); // (vec-mean)^3
   Real skewness = vec_aux.Sum() / pow(variance, 3.0/2.0) / vec.Dim();
   // kurtosis (peakedness)
-  // - makes sence for symmetric distributions (skewness is zero)
+  // - makes sense for symmetric distributions (skewness is zero)
   // - positive : 'sharper peak' than Normal distribution
-  // - negtive : 'heavier tails' than Normal distribution
+  // - negative : 'heavier tails' than Normal distribution
   // - zero : same peakedness as the Normal distribution
   vec_aux.MulElements(vec); // (vec-mean)^4
   Real kurtosis = vec_aux.Sum() / (variance * variance) / vec.Dim() - 3.0;
@@ -66,6 +66,9 @@ std::string MomentStatistics(const Vector<Real> &vec) {
   return ostr.str();
 }
 
+/**
+ * Overload MomentStatistics to Matrix<Real>
+ */
 template <typename Real>
 std::string MomentStatistics(const Matrix<Real> &mat) {
   Vector<Real> vec(mat.NumRows()*mat.NumCols());
@@ -73,6 +76,9 @@ std::string MomentStatistics(const Matrix<Real> &mat) {
   return MomentStatistics(vec);
 }
 
+/**
+ * Overload MomentStatistics to CuVector<Real>
+ */
 template <typename Real>
 std::string MomentStatistics(const CuVector<Real> &vec) {
   Vector<Real> vec_host(vec.Dim());
@@ -80,6 +86,9 @@ std::string MomentStatistics(const CuVector<Real> &vec) {
   return MomentStatistics(vec_host);
 }
 
+/**
+ * Overload MomentStatistics to CuMatrix<Real>
+ */
 template <typename Real>
 std::string MomentStatistics(const CuMatrix<Real> &mat) {
   Matrix<Real> mat_host(mat.NumRows(),mat.NumCols());
@@ -96,26 +105,25 @@ std::string MomentStatistics(const CuMatrix<Real> &mat) {
  */
 class Splice : public Component {
  public:
-  Splice(int32 dim_in, int32 dim_out, Nnet *nnet)
-    : Component(dim_in, dim_out, nnet)
+  Splice(int32 dim_in, int32 dim_out)
+    : Component(dim_in, dim_out)
   { }
   ~Splice()
   { }
 
-  ComponentType GetType() const { 
-    return kSplice; 
-  }
+  Component* Copy() const { return new Splice(*this); }
+  ComponentType GetType() const { return kSplice; }
 
   void ReadData(std::istream &is, bool binary) {
-    //read double vector
+    // read double vector
     Vector<double> vec_d;
     vec_d.Read(is, binary);
-    //convert to int vector
+    // convert to int vector
     std::vector<int32> vec_i(vec_d.Dim());
     for(int32 i=0; i<vec_d.Dim(); i++) {
       vec_i[i] = round(vec_d(i));
     }
-    //push to GPU
+    // push to GPU
     frame_offsets_.CopyFromVec(vec_i); 
   }
 
@@ -155,30 +163,29 @@ class Splice : public Component {
 /**
  * Rearrange the matrix columns according to the indices in copy_from_indices_
  */
-class Copy : public Component {
+class CopyComponent: public Component {
  public:
-  Copy(int32 dim_in, int32 dim_out, Nnet *nnet)
-    : Component(dim_in, dim_out, nnet)
+  CopyComponent(int32 dim_in, int32 dim_out)
+    : Component(dim_in, dim_out)
   { }
-  ~Copy()
+  ~CopyComponent()
   { }
 
-  ComponentType GetType() const { 
-    return kCopy; 
-  }
+  Component* Copy() const { return new CopyComponent(*this); }
+  ComponentType GetType() const { return kCopy; }
 
   void ReadData(std::istream &is, bool binary) { 
-    //read double vector
+    // read double vector
     Vector<double> vec_d;
     vec_d.Read(is, binary);
-    //subtract 1
+    // subtract 1
     vec_d.Add(-1.0);
-    //convert to int vector
+    // convert to int vector
     std::vector<int32> vec_i(vec_d.Dim());
     for(int32 i=0; i<vec_d.Dim(); i++) {
       vec_i[i] = round(vec_d(i));
     }
-    //push to GPU
+    // push to GPU
     copy_from_indices_.CopyFromVec(vec_i); 
   }
 
@@ -222,15 +229,14 @@ class Copy : public Component {
  */
 class AddShift : public Component {
  public:
-  AddShift(int32 dim_in, int32 dim_out, Nnet *nnet)
-    : Component(dim_in, dim_out, nnet), shift_data_(dim_in)
+  AddShift(int32 dim_in, int32 dim_out)
+    : Component(dim_in, dim_out), shift_data_(dim_in)
   { }
   ~AddShift()
   { }
 
-  ComponentType GetType() const { 
-    return kAddShift; 
-  }
+  Component* Copy() const { return new AddShift(*this); }
+  ComponentType GetType() const { return kAddShift; }
 
   void ReadData(std::istream &is, bool binary) { 
     //read the shift data
@@ -279,18 +285,17 @@ class AddShift : public Component {
  */
 class Rescale : public Component {
  public:
-  Rescale(int32 dim_in, int32 dim_out, Nnet *nnet)
-    : Component(dim_in, dim_out, nnet), scale_data_(dim_in)
+  Rescale(int32 dim_in, int32 dim_out)
+    : Component(dim_in, dim_out), scale_data_(dim_in)
   { }
   ~Rescale()
   { }
 
-  ComponentType GetType() const { 
-    return kRescale; 
-  }
+  Component* Copy() const { return new Rescale(*this); }
+  ComponentType GetType() const { return kRescale; }
 
   void ReadData(std::istream &is, bool binary) { 
-    //read the shift data
+    // read the shift data
     scale_data_.Read(is, binary);
   }
 
@@ -304,18 +309,18 @@ class Rescale : public Component {
   
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) { 
     out->CopyFromMat(in);
-    //rescale the data
+    // rescale the data
     out->MulColsVec(scale_data_);
   }
 
   void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
                         const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
     in_diff->CopyFromMat(out_diff);
-    //derivative gets also scaled by the scale_data_
+    // derivative gets also scaled by the scale_data_
     in_diff->MulColsVec(scale_data_);
   }
 
-  //Data accessors
+  // Data accessors
   const CuVector<BaseFloat>& GetScaleVec() {
     return scale_data_;
   }
@@ -328,9 +333,6 @@ class Rescale : public Component {
  protected:
   CuVector<BaseFloat> scale_data_;
 };
-
-
-
 
 
 

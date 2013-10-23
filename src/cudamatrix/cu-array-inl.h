@@ -1,6 +1,7 @@
 // cudamatrix/cu-array-inl.h
 
 // Copyright 2009-2012  Karel Vesely
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -113,7 +114,7 @@ void CuArray<T>::CopyToVec(std::vector<T> *dst) const {
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     CU_SAFE_CALL(cudaMemcpy(&dst->front(), Data(), dim_*sizeof(T), cudaMemcpyDeviceToHost));
-    CuDevice::Instantiate().AccuProfile("CuArray::CopyToVecD2H",tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuArray::CopyToVecD2H", tim.Elapsed());
   } else
 #endif
   {
@@ -129,7 +130,7 @@ void CuArray<T>::SetZero() {
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
     CU_SAFE_CALL(cudaMemset(data_, 0, dim_ * sizeof(T)));
-    CuDevice::Instantiate().AccuProfile("CuArray::SetZero",tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuArray::SetZero", tim.Elapsed());
   } else
 #endif
   {
@@ -183,6 +184,24 @@ inline void CuArray<int32>::Set(const int32 &value) {
       data_[i] = value;
   }
 }
+
+template<typename T>
+void CuArray<T>::CopyFromArray(const CuArray<T> &src) {
+  this->Resize(src.Dim(), kUndefined);
+  if (dim_ == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    CU_SAFE_CALL(cudaMemcpy(this->data_, src.data_, dim_ * sizeof(T),
+                            cudaMemcpyDeviceToDevice));
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    memcpy(this->data_, src.data_, dim_ * sizeof(T));
+  }
+}
+
 
 } // namespace kaldi
 

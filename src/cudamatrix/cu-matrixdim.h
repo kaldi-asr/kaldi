@@ -81,6 +81,10 @@ extern "C" {
                        // decided to make this a void* pointer.
   } CuBlockMatrixData;
 
+  typedef struct Int32Pair {
+    int32_cuda first;
+    int32_cuda second;
+  } Int32Pair;
 }
 
 #endif

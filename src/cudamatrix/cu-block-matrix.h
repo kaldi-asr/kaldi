@@ -44,6 +44,7 @@ namespace kaldi {
    'primary' home remains on the CPU.. what we mean by this is that
    while the data remains on the GPU, the "primary" version of the
    Matrix object that holds the pointers will remain on the CPU.
+   We just copy it over to the GPU whenever it is changed.
  */
 
 template<typename Real>
@@ -94,9 +95,14 @@ class CuBlockMatrix {
 
 
   /// Copies elements within the block structure from matrix M, discarding others.
-  /// Note: this has not been impelemented in a very efficient way, it's used only
+  /// Note: this has not been implemented in a very efficient way, it's used only
   /// for testing.
   void CopyFromMat(const CuMatrix<Real> &M);
+
+  /// Normalizes the columns of *this so that each one sums to one.
+  /// On error (e.g. inf's), will set the column to a constant value that
+  /// sums to one.
+  void NormalizeColumns();
 
   void Swap(CuBlockMatrix *other);
   

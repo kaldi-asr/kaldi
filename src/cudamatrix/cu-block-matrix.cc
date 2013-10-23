@@ -165,6 +165,7 @@ void CuBlockMatrix<Real>::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</CuBlockMatrix>");  
 }
 
+
 template<class Real>
 void CuBlockMatrix<Real>::Read(std::istream &is, bool binary) {
   Destroy();

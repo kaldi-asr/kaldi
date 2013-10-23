@@ -221,6 +221,7 @@ class CuVector: public CuVectorBase<Real> {
   CuVector(MatrixIndexT dim, MatrixResizeType t = kSetZero) { Resize(dim, t); }
   
   CuVector(const CuVectorBase<Real> &v);
+
   CuVector(const VectorBase<Real> &v);  
   explicit CuVector(const CuVector<Real> &v) : CuVectorBase<Real>() {
     Resize(v.Dim(), kUndefined);

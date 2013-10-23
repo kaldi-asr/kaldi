@@ -49,7 +49,10 @@ class CuArray {
   /// Constructor from CPU-based int vector
   explicit CuArray<T>(const std::vector<T> &src):
     dim_(0), data_(NULL) { CopyFromVec(src); }
-  
+
+  explicit CuArray<T>(const CuArray<T> &src):
+   dim_(0), data_(NULL) { CopyFromArray(src); }
+
   /// Destructor
   ~CuArray() { Destroy(); }
 
@@ -73,6 +76,9 @@ class CuArray {
   /// and any constructors or assignment operators are not called.
   void CopyFromVec(const std::vector<T> &src);
 
+  /// This function resizes if needed.
+  void CopyFromArray(const CuArray<T> &src);
+
   /// This function resizes *dst if needed.  On resize of "dst", the STL vector
   /// may call copy-constructors, initializers, and assignment operators for
   /// existing objects (which will be overwritten), but the copy from GPU to CPU
@@ -88,6 +94,14 @@ class CuArray {
   /// assignment operators or destructors are not called.  This is NOT IMPLEMENTED
   /// YET except for T == int32 (the current implementation will just crash).
   void Set(const T &value);
+
+  CuArray<T> &operator= (const CuArray<T> &in) {
+    this->CopyFromArray(in); return *this;
+  }
+
+  CuArray<T> &operator= (const std::vector<T> &in) {
+    this->CopyFromVec(in); return *this;
+  }
   
  private:
   MatrixIndexT dim_;     ///< dimension of the vector

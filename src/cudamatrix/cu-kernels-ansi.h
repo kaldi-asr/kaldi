@@ -148,6 +148,9 @@ void cudaF_comp_obj_deriv(dim3 Gr,dim3 Bl, MatrixElement<float>* x, int s, const
 void cudaF_transpose_matrix(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);  
 void cudaF_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const float* T, MatrixDim tdim,
                       float *S, MatrixDim sdim);
+void cudaF_sum_column_ranges(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
+                             const float *src_data, MatrixDim src_dim,
+                             const Int32Pair *indices);  
 
   
 /*********************************************************
@@ -277,6 +280,10 @@ void cudaD_comp_obj_deriv(dim3 Gr,dim3 Bl, MatrixElement<double>* x, int s, cons
 void cudaD_transpose_matrix(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
 void cudaD_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta, const double* T, MatrixDim tdim,
                       double *S, MatrixDim sdim);
+void cudaD_sum_column_ranges(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
+                             const double *src_data, MatrixDim src_dim,
+                             const Int32Pair *indices);
+  
   
   
 } // extern "C" 

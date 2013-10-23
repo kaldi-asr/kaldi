@@ -1,9 +1,7 @@
-// nnet/nnet-cache-tgtmat.h
+// nnet/nnet-cache-conf.h
 
 // Copyright 2012  Brno University of Technology (author: Karel Vesely)
 
-// See ../../COPYING for clarification regarding multiple authors
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -18,12 +16,12 @@
 // limitations under the License.
 
 
-#ifndef KALDI_NNET_NNET_CACHE_TGTMAT_H_
-#define KALDI_NNET_NNET_CACHE_TGTMAT_H_
+#ifndef KALDI_NNET_NNET_CACHE_CONF_H_
+#define KALDI_NNET_NNET_CACHE_CONF_H_
 
 #include "base/kaldi-math.h"
-#include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-matrix.h"
+#include "cudamatrix/cu-math.h"
 
 namespace kaldi {
 namespace nnet1 {
@@ -31,24 +29,24 @@ namespace nnet1 {
 /**
  * The feature-target pair cache
  */
-class CacheTgtMat {
+class CacheConf {
   typedef enum { EMPTY, FILLING, FULL, EMPTYING } State;
 
  public:
-  CacheTgtMat() : state_(EMPTY), filling_pos_(0), emptying_pos_(0), 
+  CacheConf() : state_(EMPTY), filling_pos_(0), emptying_pos_(0), 
             cachesize_(0), bunchsize_(0), randomized_(false) 
   { }
-  ~CacheTgtMat() { }
+  ~CacheConf() { }
  
   /// Initialize the cache
   void Init(int32 cachesize, int32 bunchsize);
 
   /// Add data to cache
-  void AddData(const CuMatrix<BaseFloat> &features, const CuMatrix<BaseFloat> &targets);
+  void AddData(const CuMatrix<BaseFloat> &features, const std::vector<int32> &targets, const Vector<BaseFloat> &confidence);
   /// Randomizes the cache
   void Randomize();
   /// Get the bunch of training data from cache
-  void GetBunch(CuMatrix<BaseFloat> *features, CuMatrix<BaseFloat> *targets);
+  void GetBunch(CuMatrix<BaseFloat> *features, std::vector<int32> *targets, Vector<BaseFloat> *confidence);
 
 
   /// Returns true if the cache was completely filled
@@ -68,13 +66,13 @@ class CacheTgtMat {
 
 
  private:
-  struct GenerateRandom {
-    int32 operator()(int32 max) { 
+  struct GenerateRandom { 
+    int32 operator()(int32 max) const {
       // return lrand48() % max; 
       return RandInt(0, max-1); 
     }
   };
-
+  
   State state_; ///< Current state of the cache
 
   int32 filling_pos_;  ///< Number of frames filled to cache by AddData
@@ -89,9 +87,13 @@ class CacheTgtMat {
   CuMatrix<BaseFloat> features_random_; ///< Feature cache
   CuMatrix<BaseFloat> features_leftover_; ///< Feature cache
   
-  CuMatrix<BaseFloat> targets_;  ///< Desired vector cache
-  CuMatrix<BaseFloat> targets_random_;  ///< Desired vector cache
-  CuMatrix<BaseFloat> targets_leftover_;  ///< Desired vector cache
+  std::vector<int32> targets_;  ///< Desired vector cache
+  std::vector<int32> targets_random_;  ///< Desired vector cache
+  std::vector<int32> targets_leftover_;  ///< Desired vector cache
+
+  Vector<BaseFloat> confidence_;
+  Vector<BaseFloat> confidence_random_;
+  Vector<BaseFloat> confidence_leftover_;
 
   std::vector<int32> randmask_;
   CuArray<int32> randmask_device_;

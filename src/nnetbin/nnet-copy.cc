@@ -1,6 +1,6 @@
 // nnetbin/nnet-copy.cc
 
-// Copyright 2012  Karel Vesely
+// Copyright 2012  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -64,14 +64,14 @@ int main(int argc, char *argv[]) {
     // optionally remove N first layers
     if(remove_first_layers > 0) {
       for(int32 i=0; i<remove_first_layers; i++) {
-        nnet.RemoveLayer(0);
+        nnet.RemoveComponent(0);
       }
     }
    
     // optionally remove N last layers
     if(remove_last_layers > 0) {
       for(int32 i=0; i<remove_last_layers; i++) {
-        nnet.RemoveLastLayer();
+        nnet.RemoveLastComponent();
       }
     }
 

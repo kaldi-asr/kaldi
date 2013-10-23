@@ -450,7 +450,7 @@ class ScaleComponent: public Component {
 
 
 
-class MixtureProbComponent; // Forward declaration.
+class SumGroupComponent; // Forward declaration.
 class AffineComponent; // Forward declaration.
 
 class SoftmaxComponent: public NonlinearComponent {
@@ -472,12 +472,13 @@ class SoftmaxComponent: public NonlinearComponent {
                         Component *to_update, // may be identical to "this".
                         CuMatrix<BaseFloat> *in_deriv) const;
   
-  void MixUp(int32 num_mixtures, // implemented in mixup-nnet.cc
+  void MixUp(int32 num_mixtures,
              BaseFloat power,
              BaseFloat min_count,
              BaseFloat perturb_stddev,
              AffineComponent *ac,
-             MixtureProbComponent *mc);
+             SumGroupComponent *sc);
+  
   virtual Component* Copy() const { return new SoftmaxComponent(*this); }
  private:
   SoftmaxComponent &operator = (const SoftmaxComponent &other); // Disallow.
@@ -1227,8 +1228,6 @@ class BlockAffineComponentPreconditioned: public BlockAffineComponent {
 // one for each row).
 
 class MixtureProbComponent: public UpdatableComponent {
-  friend class SoftmaxComponent; // Mixing-up done by a function
-  // in that class.
  public:
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
@@ -1274,6 +1273,53 @@ class MixtureProbComponent: public UpdatableComponent {
   int32 input_dim_;
   int32 output_dim_;
 };
+
+
+// SumGroupComponent is used to sum up groups of posteriors.
+// It's used to introduce a kind of Gaussian-mixture-model-like
+// idea into neural nets.  This is basically a degenerate case of
+// MixtureProbComponent; we had to implement it separately to
+// be efficient for CUDA (we can use this one regardless whether
+// we have CUDA or not; it's the normal case we want anyway). 
+class SumGroupComponent: public Component {
+public:
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const { return output_dim_; }
+  void Init(const std::vector<int32> &sizes); // the vector is of the input dim
+                                              // (>= 1) for each output dim.
+  void GetSizes(std::vector<int32> *sizes) const; // Get a vector saying, for
+                                                  // each output-dim, how many
+                                                  // inputs were summed over.
+  virtual void InitFromString(std::string args);
+  SumGroupComponent() { }
+  virtual std::string Type() const { return "SumGroupComponent"; }
+  virtual bool BackpropNeedsInput() const { return false; }
+  virtual bool BackpropNeedsOutput() const { return false; }
+  virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         CuMatrix<BaseFloat> *out) const;
+  // Note: in_value and out_value are both dummy variables.
+  virtual void Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        CuMatrix<BaseFloat> *in_deriv) const;
+  virtual Component* Copy() const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(SumGroupComponent);
+  // Note: Int32Pair is just struct{ int32 first; int32 second }; it's defined
+  // in cu-matrixdim.h as extern "C" which is needed for the CUDA interface.
+  CuArray<Int32Pair> indexes_; // for each output index, the (start, end) input
+                               // index.
+  CuArray<int32> reverse_indexes_; // for each input index, the output index.
+  int32 input_dim_;
+  int32 output_dim_;  
+};
+
 
 /// PermuteComponent does a random permutation of the dimensions.  Useful in
 /// conjunction with block-diagonal transforms.

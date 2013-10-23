@@ -12,7 +12,7 @@ BINFILES = nnet-train-xent-hardlab-perutt \
 	nnet-train-mmi-sequential \
 	nnet-train-mpe-sequential \
 	rbm-train-cd1-frmshuff rbm-convert-to-nnet \
-	nnet-forward nnet-copy nnet1-info nnet-concat \
+	nnet-forward nnet-copy nnet-info nnet-concat \
 	transf-to-nnet cmvn-to-nnet 
 
 OBJFILES =

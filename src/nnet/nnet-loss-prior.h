@@ -1,6 +1,6 @@
 // nnet/nnet-loss-prior.h
 
-// Copyright 2012  Karel Vesely
+// Copyright 2012  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

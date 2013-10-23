@@ -27,15 +27,12 @@
 namespace kaldi {
 namespace nnet2 {
 
-/** Configuration class that controls neural net "mixupage" which is actually a
-    scaling on the parameters of each of the updatable layers.
- */
 struct NnetMixupConfig {
   BaseFloat power;
   BaseFloat min_count;
   int32 num_mixtures;
   BaseFloat perturb_stddev;
-
+  
   
   NnetMixupConfig(): power(0.25), min_count(1000.0),
                      num_mixtures(-1), perturb_stddev(0.01) { }
@@ -58,9 +55,8 @@ struct NnetMixupConfig {
   This function does something similar to Gaussian mixture splitting for
   GMMs, except applied to the output layer of the neural network.
   We create additional outputs, which will be summed over using a
-  MixtureProbComponent (if one does not already exist, it will be
-  added.) 
- */
+  SumGroupComponent.
+*/
 
 void MixupNnet(const NnetMixupConfig &mixup_config,
                Nnet *nnet);

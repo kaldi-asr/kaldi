@@ -341,6 +341,47 @@ template<typename Real> void UnitTestCuMatrixCopyCross2() {
 }
 
 template<typename Real>
+static void UnitTestCuMatrixSumColumnRanges() {
+  for (MatrixIndexT p = 0; p < 10; p++) {
+    MatrixIndexT num_cols1 = 10 + rand() % 10,
+        num_cols2 = 10 + rand() % 10,
+        num_rows = 10 + rand() % 10;
+    Matrix<Real> src(num_rows, num_cols1);
+    Matrix<Real> dst(num_rows, num_cols2);
+    std::vector<Int32Pair> indices(num_cols2);
+    for (MatrixIndexT i = 0; i < num_cols2; i++) {
+      indices[i].first = rand() % num_cols1;
+      int32 headroom = num_cols1 - indices[i].first,
+        size = (rand() % headroom) + 1;
+      indices[i].second = indices[i].first + size;
+      KALDI_ASSERT(indices[i].second >= indices[i].first &&
+                   indices[i].second <= num_cols1 &&
+                   indices[i].first >= 0);
+      // In the test we allow second == first.
+    }
+    src.SetRandn();
+    // Simple computation:
+    for (MatrixIndexT i = 0; i < num_rows; i++) {
+      for (MatrixIndexT j = 0; j < num_cols2; j++) {
+        int32 start = indices[j].first, end = indices[j].second;
+        Real sum = 0.0;
+        for (MatrixIndexT j2 = start; j2 < end; j2++)
+          sum += src(i, j2);
+        dst(i, j) = sum;
+      }
+    }
+    CuMatrix<Real> cu_src(src);
+    CuMatrix<Real> cu_dst(num_rows, num_cols2, kUndefined);
+    CuArray<Int32Pair> indices_tmp(indices);    
+    cu_dst.SumColumnRanges(cu_src, indices_tmp);
+    Matrix<Real> dst2(cu_dst);
+    AssertEqual(dst, dst2);
+  }
+}
+
+
+  
+template<typename Real>
 static void UnitTestCuMatrixCopyCols() {
   for (MatrixIndexT p = 0; p < 10; p++) {
     MatrixIndexT num_cols1 = 10 + rand() % 10,
@@ -353,8 +394,13 @@ static void UnitTestCuMatrixCopyCols() {
     std::vector<int32> reorder(num_cols2);
     for (int32 i = 0; i < num_cols2; i++)
       reorder[i] = -1 + (rand() % (num_cols1 + 1));
-    
-    N.CopyCols(M, reorder);
+
+    if (rand() % 2 == 0) {
+      N.CopyCols(M, reorder);
+    } else {
+      CuArray<int32> cuda_reorder(reorder);
+      N.CopyCols(M, cuda_reorder);
+    }
     
     for (int32 i = 0; i < num_rows; i++)
       for (int32 j = 0; j < num_cols2; j++)
@@ -1640,6 +1686,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixCopyFromTp<Real>();
   UnitTestCuMatrixAddMatTp<Real>();
   UnitTestCuMatrixCopyCols<Real>();
+  UnitTestCuMatrixSumColumnRanges<Real>();
   UnitTestCuMatrixCopyRows<Real>();
   UnitTestCuMatrixCopyRowsFromVec<Real>();
   UnitTestCuMatrixAddTpMat<Real>();

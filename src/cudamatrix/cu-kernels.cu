@@ -1299,6 +1299,64 @@ static void _block_add_mat_mat(CuBlockMatrixData *B_cu_data, int num_blocks,
 
 template<typename Real>
 __global__
+static void _blockadd_mat_blockmat_trans(Real *data, MatrixDim dim, const Real *A_data, int A_num_rows, int A_num_cols,
+                                    int A_row_stride, int A_col_stride, const CuBlockMatrixData *B_cu_data,
+                                    int B_num_blocks, Real alpha, Real beta) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x; // row-index into "data"
+  int j = blockIdx.y * blockDim.y + threadIdx.y; // block-index into B.
+  if (i >= A_num_rows || j >= B_num_blocks) return;
+
+  const CuBlockMatrixData &cu_data = B_cu_data[j];
+
+  // BT means B transposed.
+  int BT_row_start = cu_data.col_offset,
+      BT_col_start = cu_data.row_offset,
+      BT_num_rows = cu_data.matrix_dim.cols,
+      BT_num_cols = cu_data.matrix_dim.rows,
+      BT_col_stride = cu_data.matrix_dim.stride;
+  const Real *B_data = static_cast<Real*>(cu_data.matrix_data); // Cast from void;
+  // we avoided a bunch of hassle by doing this (relates to Ansi-C requirement).
+      
+  for (int k = 0; k < BT_num_cols; k++) {
+    const Real *this_BT_col = B_data + k * BT_col_stride;
+    const Real *this_A_row = A_data + i * A_row_stride + BT_row_start * A_col_stride;
+    // this_A_row points to the element A[i][BT_row_start], it's really just
+    // part of this row of A.
+    Real sum = 0.0;
+    for (int l = 0; l < BT_num_rows; l++) // l indexes rows of B.
+      sum += this_BT_col[l] * this_A_row[l * A_col_stride];
+
+    int index = i * dim.stride + (k + BT_col_start);
+    data[index] = alpha * sum + beta * data[index];
+  }
+}
+
+
+// Since this is a newer kernel, x is the row-index and y is the
+// column-index.
+template<typename Real>
+__global__
+static void _sum_column_ranges(Real *data, MatrixDim dim,
+                               const Real *src_data,
+                               MatrixDim src_dim,
+                               const Int32Pair *indices) {
+  int row = blockIdx.x * blockDim.x + threadIdx.x;
+  int col = blockIdx.y * blockDim.y + threadIdx.y;
+  if (row >= dim.rows || col >= dim.cols)
+    return;
+  int dest_index = row * dim.stride + col,
+    src_start_index = row * src_dim.stride + indices[col].first,
+      src_end_index = row * src_dim.stride + indices[col].second;
+  Real sum = 0.0;
+  for (int index = src_start_index; index < src_end_index; index++)
+    sum += src_data[index];
+  data[dest_index] = sum;
+}
+
+
+
+template<typename Real>
+__global__
 static void _soft_hinge(Real*y, const Real*x, MatrixDim d, int src_stride) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -2047,6 +2105,11 @@ void cudaF_copy_col_from_mat_fd(int Gr, int Bl, float* v, int col, const float* 
   _copy_col_from_mat_fd<<<Gr,Bl>>>(v,col,mat,dmat,dim);
 }
 
+void cudaF_sum_column_ranges(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
+                             const float *src_data, MatrixDim src_dim,
+                             const Int32Pair *indices) {
+  _sum_column_ranges<<<Gr,Bl>>>(data, dim, src_data, src_dim, indices);
+}
 
 
 
@@ -2407,6 +2470,11 @@ void cudaD_copy_rows_from_vec(dim3 Gr, dim3 Bl, double *mat_out, MatrixDim d_out
   _copy_rows_from_vec<<<Gr,Bl>>>(mat_out, d_out, v_in);
 }
 
+void cudaD_sum_column_ranges(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
+                             const double *src_data, MatrixDim src_dim,
+                             const Int32Pair *indices) {
+  _sum_column_ranges<<<Gr,Bl>>>(data, dim, src_data, src_dim, indices);
+}
 
 
 /* Some conversion kernels for which it's more convenient to not name them F or D. */

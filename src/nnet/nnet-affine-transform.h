@@ -1,6 +1,6 @@
 // nnet/nnet-affine-transform.h
 
-// Copyright 2011  Karel Vesely
+// Copyright 2011  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -31,17 +31,16 @@ namespace nnet1 {
 
 class AffineTransform : public UpdatableComponent {
  public:
-  AffineTransform(int32 dim_in, int32 dim_out, Nnet *nnet) 
-    : UpdatableComponent(dim_in, dim_out, nnet), 
+  AffineTransform(int32 dim_in, int32 dim_out) 
+    : UpdatableComponent(dim_in, dim_out), 
       linearity_(dim_out, dim_in), bias_(dim_out),
       linearity_corr_(dim_out, dim_in), bias_corr_(dim_out) 
   { }
   ~AffineTransform()
   { }
 
-  ComponentType GetType() const {
-    return kAffineTransform;
-  }
+  Component* Copy() const { return new AffineTransform(*this); }
+  ComponentType GetType() const { return kAffineTransform; }
 
   void ReadData(std::istream &is, bool binary) {
     linearity_.Read(is, binary);

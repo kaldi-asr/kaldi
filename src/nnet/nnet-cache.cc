@@ -1,6 +1,6 @@
 // nnet/nnet-cache.cc
 
-// Copyright 2011  Karel Vesely
+// Copyright 2011  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

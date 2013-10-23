@@ -1622,6 +1622,7 @@ void VectorBase<float>::CopyRowsFromMat(const CuMatrixBase<float> &mat);
 template
 void VectorBase<double>::CopyRowsFromMat(const CuMatrixBase<double> &mat);
 
+
 template<typename Real>
 void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
                                   const std::vector<MatrixIndexT> &reorder) {
@@ -1651,6 +1652,30 @@ void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
+                                  const CuArray<MatrixIndexT> &reorder) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(reorder.Dim() == NumCols());
+    KALDI_ASSERT(NumRows() == src.NumRows());
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    // This kernel, as it is newer has the (x,y) dims as (rows,cols).
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK), n_blocks(NumCols(), CU2DBLOCK));
+    cuda_copy_cols(dimGrid, dimBlock, data_, src.Data(), reorder.Data(), Dim(), src.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    std::vector<MatrixIndexT> reorder_cpu;
+    reorder.CopyToVec(&reorder_cpu);
+    Mat().CopyCols(src.Mat(), reorder_cpu);
+  }
+}
+
+  
+template<typename Real>
 void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
                                   const std::vector<MatrixIndexT> &reorder) {
 #if HAVE_CUDA == 1
@@ -1677,6 +1702,46 @@ void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
     Mat().CopyRows(src.Mat(), reorder);
   }
 }
+
+
+template<typename Real>
+void CuMatrixBase<Real>::SumColumnRanges(const CuMatrixBase<Real> &src,
+                                         const CuArray<Int32Pair> &indices) {
+  KALDI_ASSERT(static_cast<MatrixIndexT>(indices.Dim()) == NumCols());
+  KALDI_ASSERT(NumRows() == src.NumRows());
+  if (NumRows() == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    // This kernel, as it is newer has the (x,y) dims as (rows,cols).
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK), n_blocks(NumCols(), CU2DBLOCK));
+    cuda_sum_column_ranges(dimGrid, dimBlock, data_, Dim(), src.Data(), src.Dim(), indices.Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  { // Implement here for the CPU..
+    int32 num_rows = this->num_rows_, num_cols = this->num_cols_,
+       this_stride = this->stride_, src_stride = src.stride_;
+    Real *data = this->data_;
+    const Real *src_data = src.data_;
+    const Int32Pair *indices_data = indices.Data();
+    for (int32 row = 0; row < num_rows; row++) {
+      for (int32 col = 0; col < num_cols; col++) {
+        int32 start_col = indices_data[col].first,
+                end_col = indices_data[col].second;
+        Real sum = 0.0;
+        for (int32 src_col = start_col; src_col < end_col; src_col++)
+          sum += src_data[row * src_stride + src_col];
+        data[row * this_stride + col] = sum;
+      }
+    }
+  }
+}
+
+
 
 template<typename Real>
 void CuMatrixBase<Real>::CopyLowerToUpper() {

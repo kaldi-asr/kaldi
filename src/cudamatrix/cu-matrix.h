@@ -91,6 +91,11 @@ class CuMatrixBase {
   void CopyCols(const CuMatrixBase<Real> &src,
                 const std::vector<MatrixIndexT> &indices);
 
+  /// Version of CopyCols that takes CuArray argument.
+  void CopyCols(const CuMatrixBase<Real> &src,
+                const CuArray<MatrixIndexT> &indices);
+
+  
   /// Copies row r from row indices[r] of src.
   /// As a special case, if indexes[i] <== -1, sets row i to zero  
   /// "reorder".size() must equal this->NumRows(), 
@@ -98,6 +103,13 @@ class CuMatrixBase {
   /// and src.NumCols() must equal this.NumCols()
   void CopyRows(const CuMatrixBase<Real> &src,
                 const std::vector<MatrixIndexT> &indices);
+
+
+  /// For each row r of this and for each column c, sets (*this)(r, c) to the
+  /// sum \sum_j src(r, j), where j ranges from indices[c].first through
+  /// indices[c].second - 1.
+  void SumColumnRanges(const CuMatrixBase<Real> &src,
+                       const CuArray<Int32Pair> &indices);
 
 
   friend Real TraceMatMat<Real>(const CuMatrixBase<Real> &A,

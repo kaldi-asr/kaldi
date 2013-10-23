@@ -75,6 +75,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new AffinePreconInputComponent();
   } else if (component_type == "MixtureProbComponent") {
     ans = new MixtureProbComponent();
+  } else if (component_type == "SumGroupComponent") {
+    ans = new SumGroupComponent();
   } else if (component_type == "BlockAffineComponent") {
     ans = new BlockAffineComponent();
   } else if (component_type == "BlockAffineComponentPreconditioned") {
@@ -2920,6 +2922,92 @@ void MixtureProbComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
     offset += size;
   }
   KALDI_ASSERT(offset == params.Dim());
+}
+
+void SumGroupComponent::Init(const std::vector<int32> &sizes) {
+  KALDI_ASSERT(!sizes.empty());
+  std::vector<Int32Pair> cpu_vec(sizes.size());
+  std::vector<int32> reverse_cpu_vec;
+  int32 cur_index = 0;
+  for (size_t i = 0; i < sizes.size(); i++) {
+    KALDI_ASSERT(sizes[i] > 0);
+    cpu_vec[i].first = cur_index;
+    cpu_vec[i].second = cur_index + sizes[i];
+    cur_index += sizes[i];
+    for (int32 j = cpu_vec[i].first; j < cpu_vec[i].second; j++)
+      reverse_cpu_vec.push_back(i);
+  }
+  this->indexes_ = cpu_vec;
+  this->reverse_indexes_ = reverse_cpu_vec;
+  this->input_dim_ = cur_index;
+  this->output_dim_ = sizes.size();
+}
+
+void SumGroupComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  std::vector<int32> sizes;
+  bool ok = ParseFromString("sizes", &args, &sizes);
+
+  if (!ok || !args.empty() || sizes.empty())
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+  this->Init(sizes);
+}
+  
+Component* SumGroupComponent::Copy() const {
+  SumGroupComponent *ans = new SumGroupComponent();
+  ans->indexes_ = indexes_;
+  ans->reverse_indexes_ = reverse_indexes_;
+  ans->input_dim_ = input_dim_;
+  ans->output_dim_ = output_dim_;
+  return ans;
+}
+
+void SumGroupComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<SumGroupComponent>", "<Sizes>");
+  std::vector<int32> sizes;
+  ReadIntegerVector(is, binary, &sizes);
+  ExpectToken(is, binary, "<SumGroupComponent>");
+  this->Init(sizes);
+}
+
+void SumGroupComponent::GetSizes(std::vector<int32> *sizes) const {
+  std::vector<Int32Pair> indexes;
+  indexes_.CopyToVec(&indexes);
+  sizes->resize(indexes.size());
+  for (size_t i = 0; i < indexes.size(); i++) {
+    (*sizes)[i] = indexes[i].second - indexes[i].first;
+    if (i == 0) { KALDI_ASSERT(indexes[i].first == 0); }
+    else { KALDI_ASSERT(indexes[i].first == indexes[i-1].second); }
+    KALDI_ASSERT(indexes[i].second > indexes[i].first);
+    (*sizes)[i] = indexes[i].second - indexes[i].first;
+  }
+}
+
+void SumGroupComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<SumGroupComponent>");
+  WriteToken(os, binary, "<Sizes>");
+  std::vector<int32> sizes;
+  this->GetSizes(&sizes);
+  WriteIntegerVector(os, binary, sizes);
+  WriteToken(os, binary, "<SumGroupComponent>");
+}
+
+void SumGroupComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                                  int32 num_chunks,
+                                  CuMatrix<BaseFloat> *out) const {
+  out->Resize(in.NumRows(), this->OutputDim(), kUndefined);
+  out->SumColumnRanges(in, indexes_);
+}
+
+void SumGroupComponent::Backprop(const CuMatrixBase<BaseFloat> &, // in_value,
+                                 const CuMatrixBase<BaseFloat> &, // out_value,
+                                 const CuMatrixBase<BaseFloat> &out_deriv,
+                                 int32 num_chunks,
+                                 Component *to_update,
+                                 CuMatrix<BaseFloat> *in_deriv) const {
+  in_deriv->Resize(out_deriv.NumRows(), InputDim());
+  in_deriv->CopyCols(out_deriv, reverse_indexes_);
 }
 
 

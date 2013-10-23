@@ -79,22 +79,12 @@ void CuDevice::SelectGpuId(int32 gpu_id, bool abort_on_error) {
   // Check that we have a gpu available
   int32 n_gpu = 0;
   cudaGetDeviceCount(&n_gpu);
-  if(n_gpu == 0 && gpu_id == -2) {
+  if(n_gpu == 0) {
     // If we do automatic selection and no GPU is found, we run on a CPU
     if (abort_on_error) {
       KALDI_ERR << "No CUDA capable GPU was detected";
     } else {
       KALDI_WARN << "CUDA will NOT be used!!! No CUDA capable GPU detected...";
-      active_gpu_id_ = -2;
-      return;
-    }
-  }
-  if(n_gpu == 0) {
-    if (abort_on_error) {
-      KALDI_ERR << "No CUDA capable GPU was detected.";
-    } else {
-      KALDI_WARN << "No CUDA capable GPU detected, while explicitly asked for gpu-id '"
-                 << gpu_id << "'.CUDA will NOT be used!!!";
       active_gpu_id_ = -2;
       return;
     }
@@ -390,7 +380,7 @@ void CuDevice::PrintProfile() {
     for(it = profile_map_.begin(); it != profile_map_.end(); ++it)
       pairs.push_back(std::make_pair(it->second, it->first));
     std::sort(pairs.begin(), pairs.end());
-    size_t max_print = 15, start_pos = (pairs.size() > max_print ?
+    size_t max_print = 15, start_pos = (pairs.size() <= max_print ?
                                         0 : pairs.size() - max_print);
     for (size_t i = start_pos; i < pairs.size(); i++) 
       os << pairs[i].second << "\t" << pairs[i].first << "s\n";

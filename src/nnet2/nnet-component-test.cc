@@ -532,6 +532,27 @@ void UnitTestMixtureProbComponent() {
   }
 }
 
+
+void UnitTestSumGroupComponent() {
+  std::vector<int32> sizes;
+  int32 num_sizes = 1 + rand() % 5;
+  for (int32 i = 0; i < num_sizes; i++)
+    sizes.push_back(1 + rand() % 5); 
+  
+  {
+    SumGroupComponent component;
+    component.Init(sizes);
+    UnitTestGenericComponentInternal(component);
+  }
+  {
+    const char *str = "sizes=3:4:5";
+    SumGroupComponent component;
+    component.InitFromString(str);
+    UnitTestGenericComponentInternal(component);
+  }
+}
+
+
 void UnitTestDctComponent() {
   int32 m = 1 + rand() % 4, n = 1 + rand() % 4,
   dct_dim = m, dim = m * n;
@@ -760,6 +781,7 @@ int main() {
       UnitTestBlockAffineComponent();
       UnitTestBlockAffineComponentPreconditioned();
       UnitTestMixtureProbComponent();
+      UnitTestSumGroupComponent();
       UnitTestDctComponent();
       UnitTestFixedLinearComponent();
       UnitTestFixedAffineComponent();

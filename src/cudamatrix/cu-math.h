@@ -67,6 +67,7 @@ void Splice(const CuMatrix<Real> &src,
 /// The matrices src and tgt must have the same dimensions and
 /// the dimension of copy_from_indices must equal the number of columns
 /// in the src matrix. As a result, tgt(i, j) == src(i, copy_from_indices[j]).
+/// Also see CuMatrix::CopyCols(), which is more general.
 template<typename Real>
 void Copy(const CuMatrix<Real> &src,
           const CuArray<int32> &copy_from_indices,

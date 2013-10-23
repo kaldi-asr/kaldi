@@ -24,20 +24,9 @@
 namespace kaldi {
 namespace nnet2 {
 
-static BaseFloat GetFirstLearningRate(const Nnet &nnet) {
-  for (int32 c = 0; c < nnet.NumComponents(); c++) {
-    const UpdatableComponent *uc =
-        dynamic_cast<const UpdatableComponent*>(&(nnet.GetComponent(c)));
-    if (uc != NULL)
-      return uc->LearningRate();
-  }
-  KALDI_ERR << "Neural net has no updatable components";
-  return 0.0;
-}
-
 
 /** This function makes sure the neural net ends with a
-    MixtureProbComponent.  If it doesn't, it adds one
+    SumGroupComponent.  If it doesn't, it adds one
     (with a single mixture/matrix corresponding to each
     output element.)  [Before doing so, it makes sure
     that the last layer is a SoftmaxLayer, which is what
@@ -48,24 +37,20 @@ static BaseFloat GetFirstLearningRate(const Nnet &nnet) {
 static void GiveNnetCorrectTopology(Nnet *nnet,
                                     AffineComponent **affine_component,
                                     SoftmaxComponent **softmax_component,
-                                    MixtureProbComponent **mixture_prob_component) {
+                                    SumGroupComponent **sum_group_component) {
   int32 nc = nnet->NumComponents();
   KALDI_ASSERT(nc > 0);
   Component* component = &(nnet->GetComponent(nc - 1));
-  if ((*mixture_prob_component =
-       dynamic_cast<MixtureProbComponent*>(component)) == NULL) {
-    KALDI_LOG << "Adding MixtureProbComponent to neural net.";
+  if ((*sum_group_component =
+       dynamic_cast<SumGroupComponent*>(component)) == NULL) {
+    KALDI_LOG << "Adding SumGroupComponent to neural net.";
     int32 dim = component->OutputDim();
     // Give it the same learning rate as the first updatable layer we have.
-    BaseFloat learning_rate = GetFirstLearningRate(*nnet),
-        diag_element = 0.999; // actually it's a don't care.
     std::vector<int32> sizes(dim, 1); // a vector of all ones, of dimension "dim".
   
-    *mixture_prob_component = new MixtureProbComponent();
-    (*mixture_prob_component)->Init(learning_rate,
-                                    diag_element,
-                                    sizes);
-    nnet->Append(*mixture_prob_component);
+    *sum_group_component = new SumGroupComponent();
+    (*sum_group_component)->Init(sizes);
+    nnet->Append(*sum_group_component);
     nc++;
   }
   component = &(nnet->GetComponent(nc - 2));    
@@ -84,14 +69,16 @@ static void GiveNnetCorrectTopology(Nnet *nnet,
 /**
    This function works as follows.
    We first make sure the neural net has the correct topology, so its
-   last component is a MixtureProbComponent.
+   last component is a SumGroupComponent.
 
-   We then get the counts for each matrix in the MixtureProbComponent (these
+   We then get the counts for each matrix in the SumGroupComponent (these
    will either correspond to leaves in the decision tree, or level-1 leaves, if
    we have a 2-level-tree system).  We work out the total count for each of these
    matrices, by getting the count from the SoftmaxComponent.
-   
-   Then, for each matrix in the Mixturemixture-prob component, we
+
+   We then increase, if necessary, the dimensions that the SumGroupComponent sums
+   over increase the dimension of the SoftmaxComponent if necessary, and duplicate
+   and then perturb the relevant rows of the AffineComponent.
  */
 
 
@@ -100,18 +87,18 @@ void MixupNnet(const NnetMixupConfig &mixup_config,
                Nnet *nnet) {
   AffineComponent *affine_component = NULL;
   SoftmaxComponent *softmax_component = NULL;
-  MixtureProbComponent *mixture_prob_component = NULL;
+  SumGroupComponent *sum_group_component = NULL;
   GiveNnetCorrectTopology(nnet,
                           &affine_component,
                           &softmax_component,
-                          &mixture_prob_component); // Adds a MixtureProbComponent if needed.
+                          &sum_group_component); // Adds a SumGroupComponent if needed.
   
   softmax_component->MixUp(mixup_config.num_mixtures,
                            mixup_config.power,
                            mixup_config.min_count,
                            mixup_config.perturb_stddev,
                            affine_component,
-                           mixture_prob_component);
+                           sum_group_component);
   nnet->Check(); // Checks that dimensions all match up.
 }
 
@@ -120,15 +107,16 @@ void MixupNnet(const NnetMixupConfig &mixup_config,
 void SoftmaxComponent::MixUp(int32 num_mixtures,
                              BaseFloat power,
                              BaseFloat min_count,
-                             BaseFloat perturb_stddev, 
+                             BaseFloat perturb_stddev,
                              AffineComponent *ac,
-                             MixtureProbComponent *mc) {
-  
+                             SumGroupComponent *sc) {
   // "counts" is derived from this->counts_ by summing.
-  Vector<BaseFloat> counts(mc->params_.size());
+  std::vector<int32> old_sizes;
+  sc->GetSizes(&old_sizes);
+  Vector<BaseFloat> counts(old_sizes.size());
   int32 old_dim = 0;
-  for (size_t i = 0; i < mc->params_.size(); i++) {
-    int32 this_input_dim = mc->params_[i].NumCols();
+  for (size_t i = 0; i < old_sizes.size(); i++) {
+    int32 this_input_dim = old_sizes[i];
     BaseFloat this_tot_count = 0.0; /// Total the count out of
     /// all the output dims of the softmax layer that correspond
     /// to this mixture.  We'll use this total to allocate new quasi-Gaussians.
@@ -141,16 +129,18 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
 
   std::vector<int32> targets; // #mixtures for each state.
 
+
   // Get the target number of mixtures for each state.
   GetSplitTargets(counts, num_mixtures, power, min_count, &targets);
-  KALDI_ASSERT(targets.size() == mc->params_.size());
-  // floor each target to the current #mixture components.
+  KALDI_ASSERT(targets.size() == old_sizes.size());
+  std::vector<int32> new_sizes(old_sizes.size());
   for (size_t i = 0; i < targets.size(); i++)
-    targets[i] = std::max(targets[i], mc->params_[i].NumCols());
-  int32 new_dim = std::accumulate(targets.begin(), targets.end(),
+    new_sizes[i] = std::max(targets[i], old_sizes[i]);
+  int32 new_dim = std::accumulate(new_sizes.begin(), new_sizes.end(),
                                   static_cast<int32>(0)),
       affine_input_dim = ac->InputDim();
   KALDI_ASSERT(new_dim >= old_dim);
+  sc->Init(new_sizes);
   
   // bias and linear terms from affine component:
   Vector<BaseFloat> old_bias_term(ac->bias_params_);
@@ -165,11 +155,10 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
   // respectively.  They get incremented in the following loop.
   int32 old_offset = 0, new_offset = 0;
   Vector<BaseFloat> old_counts(this->value_sum_);
-  for (size_t i = 0; i < mc->params_.size(); i++) {
-    const CuMatrix<BaseFloat> &this_old_params(mc->params_[i]);
-    int32 this_old_dim = this_old_params.NumCols(),
-        this_new_dim = targets[i],
-        this_cur_dim = this_old_dim; // this_cur_dim is loop variable.
+  for (size_t i = 0; i < old_sizes.size(); i++) {
+    int32 this_old_dim = old_sizes[i],
+          this_new_dim = new_sizes[i],
+          this_cur_dim = this_old_dim; // this_cur_dim is loop variable.
     
     SubMatrix<BaseFloat> this_old_linear_term(old_linear_term,
                                               old_offset, this_old_dim,
@@ -184,8 +173,6 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
                         old_offset, this_old_dim),
         this_new_counts(new_counts,
                         new_offset, this_new_dim);
-    Matrix<BaseFloat> this_new_params(this_old_params.NumRows(),
-                                      this_new_dim);
     
     // Copy the same-dimensional part of the parameters and counts.
     this_new_linear_term.Range(0, this_old_dim, 0, affine_input_dim).
@@ -195,8 +182,6 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
     this_new_counts.Range(0, this_old_dim).
         CopyFromVec(this_old_counts);
     // this_new_params is the mixture weights.
-    this_new_params.Range(0, this_old_params.NumRows(), 0, this_old_dim).
-        CopyFromMat(this_old_params);
     // Add the new components...
     for (; this_cur_dim < this_new_dim; this_cur_dim++) {
       BaseFloat *count_begin = this_new_counts.Data(),
@@ -216,13 +201,9 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
       new_vec.AddVec(-perturb_stddev, rand);
       this_new_bias_term(max_index) += log(0.5);
       this_new_bias_term(new_index) = this_new_bias_term(max_index);
-      // now copy the column of the MixtureProbComponent parameters.
-      for (int32 j = 0; j < this_new_params.NumRows(); j++)
-        this_new_params(j, new_index) = this_new_params(j, max_index);
     }
     old_offset += this_old_dim;
     new_offset += this_new_dim;
-    mc->params_[i] = this_new_params;
   }
   KALDI_ASSERT(old_offset == old_dim && new_offset == new_dim);
   ac->SetParams(new_bias_term, new_linear_term);
@@ -230,8 +211,6 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
   this->value_sum_.CopyFromVec(new_counts);
   this->count_ = this->value_sum_.Sum();
   this->dim_ = new_dim;
-  mc->input_dim_ = new_dim; // keep this up to date.
-  // We already updated mc->params_.
   KALDI_LOG << "Mixed up from dimension of " << old_dim << " to " << new_dim
             << " in the softmax layer.";
 }

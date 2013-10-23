@@ -13,18 +13,17 @@
 
 ( 
   if [ ! -f exp/nnet5b/final.mdl ]; then
-    steps/nnet2/train_tanh.sh --cmd "$decode_cmd -l gpu=1" --parallel-opts "" --stage 253 \
-      --num-threads 1 \
-      --mix-up 8000 \
+    steps/nnet2/train_tanh.sh --cmd "$decode_cmd -l gpu=1" --parallel-opts "" --io-opts "-tc 5 -l gpu=0" --stage -3 \
+      --num-threads 1 --minibatch-size 512 --max-change 40.0 --mix-up 8000 \
       --initial-learning-rate 0.01 --final-learning-rate 0.001 \
       --num-jobs-nnet 8 --num-hidden-layers 4 \
       --hidden-layer-dim 1024 \
-      data/train_100k_nodup data/lang exp/tri4a exp/nnet5b || exit 1;
+      data/train_100k_nodup data/lang exp/tri4a exp/nnet5b2 || exit 1;
   fi
 
   for lm_suffix in tg fsh_tgpr; do
     steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 30 \
       --config conf/decode.config --transform-dir exp/tri4a/decode_eval2000_sw1_${lm_suffix} \
-      exp/tri4a/graph_sw1_${lm_suffix} data/eval2000 exp/nnet5b/decode_eval2000_sw1_${lm_suffix} &
+      exp/tri4a/graph_sw1_${lm_suffix} data/eval2000 exp/nnet5b2/decode_eval2000_sw1_${lm_suffix} &
   done
 )
