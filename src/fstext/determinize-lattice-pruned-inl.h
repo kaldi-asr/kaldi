@@ -679,25 +679,33 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
           Element next_elem;
           next_elem.state = arc.nextstate;
           next_elem.weight = Times(elem.weight, arc.weight);
-          // now must append strings
-          if (arc.olabel == 0)
-            next_elem.string = elem.string;
-          else
-            next_elem.string = repository_.Successor(elem.string, arc.olabel);
+          // next_elem.string is not set up yet... create it only
+          // when we know we need it (this is an optimization) 
           
           typename unordered_map<InputStateId, Element>::iterator
               iter = cur_subset.find(next_elem.state);
           if (iter == cur_subset.end()) {
             // was no such StateId: insert and add to queue.
+            next_elem.string = (arc.olabel == 0 ? elem.string :
+                                repository_.Successor(elem.string, arc.olabel));
             cur_subset[next_elem.state] = next_elem;
             queue.push_back(next_elem);
           } else {
-            // was not inserted because one already there.  In normal determinization we'd
-            // add the weights.  Here, we find which one has the better weight, and
-            // keep its corresponding string.
-            int comp = Compare(next_elem.weight, next_elem.string,
-                               iter->second.weight, iter->second.string);
+            // was not inserted because one already there.  In normal
+            // determinization we'd add the weights.  Here, we find which one
+            // has the better weight, and keep its corresponding string.
+            int comp = fst::Compare(next_elem.weight, iter->second.weight);
+            if (comp == 0) { // A tie on weights.  This should be a rare case;
+                             // we don't optimize for it.
+              next_elem.string = (arc.olabel == 0 ? elem.string :
+                                  repository_.Successor(elem.string, 
+                                                        arc.olabel));
+              comp = Compare(next_elem.weight, next_elem.string,
+                             iter->second.weight, iter->second.string);              
+            }
             if(comp == 1) { // next_elem is better, so use its (weight, string)
+              next_elem.string = (arc.olabel == 0 ? elem.string :
+                                  repository_.Successor(elem.string, arc.olabel));
               iter->second.string = next_elem.string;
               iter->second.weight = next_elem.weight;
               queue.push_back(next_elem);
@@ -834,11 +842,11 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   // ProcessTransition was called from "ProcessTransitions" in the non-pruned
   // code, but now we in effect put the calls to ProcessTransition on a priority
   // queue, and it now gets called directly from Determinize().  This function
-  // processes a transition from state "state".  The set "subset" of Elements
+  // processes a transition from state "ostate_id".  The set "subset" of Elements
   // represents a set of next-states with associated weights and strings, each
   // one arising from an arc from some state in a determinized-state; the
   // next-states are unique (there is only one Entry assocated with each)
-   void ProcessTransition(OutputStateId ostate_id, Label ilabel, vector<Element> *subset) {
+  void ProcessTransition(OutputStateId ostate_id, Label ilabel, vector<Element> *subset) {
 
      Weight forward_weight = output_states_[ostate_id]->forward_weight;
      StringId common_str;

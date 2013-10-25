@@ -1,6 +1,6 @@
 // nnet/nnet-trnopts.h
 
-// Copyright 2013 Brno University of Technology (Author: Karel Vesely)
+// Copyright 2013  Brno University of Technology (Author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

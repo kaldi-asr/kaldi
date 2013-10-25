@@ -1170,7 +1170,7 @@ template<class Real> static void UnitTestEig() {
     Pinv.Invert();
     Matrix<Real> D(dimM, dimM);
     CreateEigenvalueMatrix(real_eigs, imag_eigs, &D);
-
+    
     // check that M = P D P^{-1}.
     Matrix<Real> tmp(dimM, dimM);
     tmp.AddMatMat(1.0, P, kNoTrans, D, kNoTrans, 0.0);  // tmp = P * D
@@ -3594,7 +3594,11 @@ template<class Real> static void UnitTestCompressedMatrix() {
       CompressedMatrix cmat2(M2);
       Matrix<Real> M3(cmat.NumRows(), cmat.NumCols());
       cmat2.CopyToMat(&M3);
-      if (!M2.ApproxEqual(M3, 1.0e-06)) {
+      if (!M2.ApproxEqual(M3, 1.0e-05)) {
+        KALDI_LOG << "cmat is: ";
+        cmat.Write(std::cout, false);
+        KALDI_LOG << "cmat2 is: ";
+        cmat2.Write(std::cout, false);
         KALDI_ERR << "Matrices differ " << M2 << " vs. " << M3 << ", M2 range is "
                   << M2.Min() << " to " << M2.Max() << ", M3 range is " 
                   << M3.Min() << " to " << M3.Max();
@@ -3654,6 +3658,7 @@ template<class Real> static void UnitTestCompressedMatrix() {
         InitKaldiInputStream(ins, &binary_in);
         cmat2.Read(ins, binary_in);
       }
+#if 1
       { // check that compressed-matrix can be read as matrix.
         bool binary_in;
         std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
@@ -3663,6 +3668,25 @@ template<class Real> static void UnitTestCompressedMatrix() {
         Matrix<Real> mat2(cmat2);
         AssertEqual(mat1, mat2);
       }
+#endif
+
+
+      { // check that matrix can be read as compressed-matrix.
+        Matrix<Real> mat1(cmat);
+        {
+          std::ofstream outs("tmpf", std::ios_base::out |std::ios_base::binary);
+          InitKaldiOutputStream(outs, binary);
+          mat1.Write(outs, binary);
+        }
+        bool binary_in;
+        std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
+        InitKaldiInputStream(ins, &binary_in);
+        CompressedMatrix cmat2;
+        cmat2.Read(ins, binary_in);
+        Matrix<Real> mat2(cmat2);
+        AssertEqual(mat1, mat2);
+      }
+      
       
       Matrix<Real> M3(cmat2.NumRows(), cmat2.NumCols());
       cmat2.CopyToMat(&M3);

@@ -5,7 +5,12 @@ include ../kaldi.mk
 
 # The PA_RingBuffer interface is internal and is not exported in the .so libray
 # so we have to link against the static one
-EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
+
+ifneq "$(wildcard ../../tools/portaudio/install/lib/libportaudio.a)" ""
+    EXTRA_LDLIBS = ../../tools/portaudio/install/lib/libportaudio.a
+else 
+    EXTRA_LDLIBS = ../../tools/portaudio/install/lib64/libportaudio.a
+endif
 
 UNAME=$(shell uname)
 ifeq ($(UNAME), Linux)

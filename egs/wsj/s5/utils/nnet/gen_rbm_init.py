@@ -64,6 +64,9 @@ if len(options.cmvn_nnet)>0:
     #make sure file starts by <addshift>
     line = f.readline()
     arr = line.split(' ')
+    if arr[0] == '<Nnet>': #optionally skip <Nnet>
+        line = f.readline()
+        arr = line.split(' ')
     if arr[0] != '<addshift>':
         raise Exception('missing <addshift> in '+options.cmvn_nnet)
     #get the p's

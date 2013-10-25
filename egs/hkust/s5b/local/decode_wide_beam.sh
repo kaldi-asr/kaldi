@@ -115,10 +115,10 @@ local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/sgmm_5a_mmi_b0.1/decode
 local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/sgmm_5a_mmi_b0.1/decode_wide_eval_closelm_2
 local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/sgmm_5a_mmi_b0.1/decode_wide_eval_closelm_3
 local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/sgmm_5a_mmi_b0.1/decode_wide_eval_closelm_4             # sgmm+bMMI 
-local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_8m_6l/decode_nnwide_eval_closelm                   # nnet 6 layers (983 neurons)
-local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_tanh_6l/decode_wide_eval_closelm                   # nnet2 6 layers (1024 neurons)
-local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_4m_3l/decode_wide_eval_closelm                     # nnet 4 layers (823 neurons)
-local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/tri5a_pretrain-dbn_dnn/decode_closelm_dnnwide           # pretrained 6 layers RBM DNN
+local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_8m_6l/decode_nnwide_eval_closelm                   # nnet 6 hidden layers (983 neurons)
+local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_tanh_6l/decode_wide_eval_closelm                   # nnet2 6 hidden layers (1024 neurons)
+local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/nnet_4m_3l/decode_wide_eval_closelm                     # nnet 3 hidden layers (823 neurons)
+local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/tri5a_pretrain-dbn_dnn/decode_closelm_dnnwide           # pretrained 6 hidden layers RBM DNN
 local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it1_dnnwide 
 local/ext/score.sh data/eval exp/tri5a/graph_closelm exp/tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it2_dnnwide  # state level minimum bayes risk DNN
 

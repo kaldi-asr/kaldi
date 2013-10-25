@@ -46,12 +46,18 @@ nnet_tanh_6l/decode_eval/cer_10:%CER 21.34 [ 1614 / 7562, 369 ins, 487 del, 758 
 nnet_4m_3l/decode_eval/cer_10:%CER 22.38 [ 1692 / 7562, 372 ins, 510 del, 810 sub ]	    # 3 hidden layers neural network
 nnet_tanh_3l/decode_eval/cer_10:%CER 22.11 [ 1672 / 7562, 391 ins, 489 del, 792 sub ]	    # 3 hidden layers neural network (nnet2 script, 1024 neurons)
 
-tri5a_pretrain-dbn_dnn/decode/cer_10:%CER 20.48 [ 1549 / 7562, 383 ins, 468 del, 698 sub ]  # 6 layers DNN - pretrained RBM, cross entropy trained DNN  
-tri5a_pretrain-dbn_dnn_smbr/decode_it1/cer_10:%CER 18.73 [ 1416 / 7562, 306 ins, 453 del, 657 sub ] # sMBR trained DNN  
+tri5a_pretrain-dbn_dnn/decode/cer_10:%CER 20.48 [ 1549 / 7562, 383 ins, 468 del, 698 sub ]  # 6 layers DNN - pretrained RBM, cross entropy trained DNN 
+tri5a_pretrain-dbn_dnn_smbr/decode_it1/cer_10:%CER 18.73 [ 1416 / 7562, 306 ins, 453 del, 657 sub ] # sMBR trained DNN (1024 neurons)
 tri5a_pretrain-dbn_dnn_smbr/decode_it2/cer_10:%CER 18.73 [ 1416 / 7562, 310 ins, 446 del, 660 sub ]
 tri5a_pretrain-dbn_dnn_smbr/decode_it3/cer_10:%CER 18.62 [ 1408 / 7562, 313 ins, 446 del, 649 sub ]
 tri5a_pretrain-dbn_dnn_smbr/decode_it4/cer_10:%CER 18.66 [ 1411 / 7562, 307 ins, 458 del, 646 sub ]
 
+tri5a_pretrain-dbn_dnn2/decode/cer_10:%CER 20.56 [ 1555 / 7562, 388 ins, 463 del, 704 sub ] # (2048 neurons) <= doesn't outperform 1024 neurons system 
+tri5a_pretrain-dbn_dnn_smbr2/decode_it1/cer_10:%CER 19.06 [ 1441 / 7562, 319 ins, 472 del, 650 sub ] # sMBR trained DNN <= converge quickly 
+tri5a_pretrain-dbn_dnn_smbr2/decode_it2/cer_10:%CER 19.08 [ 1443 / 7562, 315 ins, 470 del, 658 sub ]
+tri5a_pretrain-dbn_dnn_smbr2/decode_it3/cer_10:%CER 19.00 [ 1437 / 7562, 315 ins, 462 del, 660 sub ]
+tri5a_pretrain-dbn_dnn_smbr2/decode_it4/cer_10:%CER 18.96 [ 1434 / 7562, 314 ins, 470 del, 650 sub ]
+tri5a_pretrain-dbn_dnn_smbr2/decode_it5/cer_10:%CER 18.95 [ 1433 / 7562, 317 ins, 460 del, 656 sub ]
 
 ### 16K wordlist close LM, the perplexity of the LM was optimized with the sentences of evaluation data
 tri1/decode_eval_closelm/cer_10:%CER 46.69 [ 3531 / 7562, 1205 ins, 407 del, 1919 sub ]
@@ -106,6 +112,12 @@ tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it2/cer_10:%CER 15.30 [ 1157 / 7562, 
 tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it3/cer_10:%CER 15.52 [ 1174 / 7562, 280 ins, 408 del, 486 sub ]
 tri5a_pretrain-dbn_dnn_smbr/decode_closelm_it4/cer_10:%CER 15.62 [ 1181 / 7562, 278 ins, 412 del, 491 sub ]
 
+tri5a_pretrain-dbn_dnn2/decode_closelm_xeon3.5/cer_10:%CER 17.06 [ 1290 / 7562, 347 ins, 433 del, 510 sub ]
+tri5a_pretrain-dbn_dnn_smbr2/decode_closelm_it1/cer_10:%CER 15.87 [ 1200 / 7562, 292 ins, 436 del, 472 sub ] 
+tri5a_pretrain-dbn_dnn_smbr2/decode_closelm_it2/cer_10:%CER 15.71 [ 1188 / 7562, 285 ins, 433 del, 470 sub ]
+tri5a_pretrain-dbn_dnn_smbr2/decode_closelm_it3/cer_10:%CER 15.76 [ 1192 / 7562, 286 ins, 430 del, 476 sub ]
+tri5a_pretrain-dbn_dnn_smbr2/decode_closelm_it4/cer_10:%CER 15.74 [ 1190 / 7562, 287 ins, 428 del, 475 sub ]
+tri5a_pretrain-dbn_dnn_smbr2/decode_closelm_it5/cer_10:%CER 15.70 [ 1187 / 7562, 286 ins, 428 del, 473 sub ]
 
 
 ##### Below are the results of wide beam decoding #####

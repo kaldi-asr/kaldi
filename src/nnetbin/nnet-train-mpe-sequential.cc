@@ -1,6 +1,6 @@
 // nnetbin/nnet-train-mpe-sequential.cc
 
-// Copyright 2011-2013  Karel Vesely;  Arnab Ghoshal
+// Copyright 2011-2013  Brno University of Technology (author: Karel Vesely);  Arnab Ghoshal
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -175,9 +175,9 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     nnet.Read(model_filename);
     // using activations directly: remove softmax, if present
-    if (nnet.Layer(nnet.LayerCount()-1)->GetType() == Component::kSoftmax) {
+    if (nnet.GetComponent(nnet.NumComponents()-1).GetType() == Component::kSoftmax) {
       KALDI_LOG << "Removing softmax from the nnet " << model_filename;
-      nnet.RemoveLayer(nnet.LayerCount()-1);
+      nnet.RemoveComponent(nnet.NumComponents()-1);
     } else {
       KALDI_LOG << "The nnet was without softmax " << model_filename;
     }
@@ -357,7 +357,7 @@ int main(int argc, char *argv[]) {
 
     // add the softmax layer back before writing
     KALDI_LOG << "Appending the softmax " << target_model_filename;
-    nnet.AppendLayer(new Softmax(nnet.OutputDim(),nnet.OutputDim(),&nnet));
+    nnet.AppendComponent(new Softmax(nnet.OutputDim(),nnet.OutputDim()));
     //store the nnet
     nnet.Write(target_model_filename, binary);
 

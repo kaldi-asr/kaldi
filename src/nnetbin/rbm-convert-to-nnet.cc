@@ -57,9 +57,9 @@ int main(int argc, char *argv[]) {
       nnet.Read(ki.Stream(), binary_read);
     }
     
-    KALDI_ASSERT(nnet.LayerCount() == 1);
-    KALDI_ASSERT(nnet.Layer(0)->GetType() == Component::kRbm);
-    RbmBase& rbm = dynamic_cast<RbmBase&>(*nnet.Layer(0));
+    KALDI_ASSERT(nnet.NumComponents() == 1);
+    KALDI_ASSERT(nnet.GetComponent(0).GetType() == Component::kRbm);
+    RbmBase& rbm = dynamic_cast<RbmBase&>(nnet.GetComponent(0));
 
     {
       Output ko(model_out_filename, binary_write);
