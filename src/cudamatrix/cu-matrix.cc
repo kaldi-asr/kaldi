@@ -992,20 +992,21 @@ an element in "this" matrix = (the element in matrix sv_labels) divided by (the 
 
 */
 template<typename Real>
-void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& sv_labels, const CuMatrix<Real> &output, Real *tot_objf, Real* tot_weight) {
+void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& sv_labels,
+                                      const CuMatrix<Real> &output,
+                                      Real *tot_objf, Real* tot_weight) {
+  { // check the input.
+    typedef typename std::vector<MatrixElement<Real> >::const_iterator Iter;
+    MatrixIndexT num_rows = this->num_rows_, num_cols = this->num_cols_;
+    for (Iter iter = sv_labels.begin(); iter != sv_labels.end(); ++iter) {
+      KALDI_ASSERT(iter->row < num_rows && iter->row >= 0 &&
+                     iter->column < num_cols && iter->column >= 0);
+    }
+  }
+  
  # if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-/*
-    CuVector<SupervisionLabel> sv_labels(num_chunks_ * data[m].labels.size());
-    int32 cur_index = 0;
-    for (int32 m = 0; m < num_chunks_; m++) {
-      for (size_t i = 0; i < data[m].labels.size(); i++) {
-        sv_labels(cur_index).m = m;
-        sv_labels(cur_index).label = data[m].labels[i].first;
-        sv_labels(cur_index++).weight = data[m].labels[i].second;
-      }
-    }
-// */
+
     void *addr = CuDevice::Instantiate().Malloc(sv_labels.size() * sizeof(MatrixElement<Real>));
     CU_SAFE_CALL(cudaMemcpy(addr, sv_labels.data(), sv_labels.size() * sizeof(MatrixElement<Real>), cudaMemcpyHostToDevice));
     Timer tim;

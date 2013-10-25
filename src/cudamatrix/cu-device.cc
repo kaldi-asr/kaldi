@@ -716,7 +716,15 @@ CuAllocator::~CuAllocator() {
       KALDI_WARN << info->currently_used << " memory chunks of size "
                  << info->row_bytes << " per row, and " << info->num_rows
                  << " rows, were allocated and not freed.";
-    }      
+    }
+  }
+
+
+  typedef unordered_map<std::pair<size_t, size_t>, MemInfoForSize *>::iterator IterType2;
+  for (IterType2 iter = size_to_list_.begin(); iter != size_to_list_.end();
+       ++iter) {
+    MemInfoForSize *info = iter->second;
+    delete info;
   }
 }
 
