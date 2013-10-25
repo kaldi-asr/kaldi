@@ -20,11 +20,12 @@ lmwt_dnn_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
 icu_opt=(--use-icu true --icu-transform Any-Lower)
 
 if [[ `hostname` == *.tacc.utexas.edu ]] ; then
-  dnn_train_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6" --num-jobs-nnet 16 --stage 0)
+  dnn_train_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6" --num-jobs-nnet 16 )
   decode_extra_opts=( --num-threads 4 --parallel-opts "-pe smp 4" )
   sgmm_train_extra_opts=( )
   sgmm_group_extra_opts=( --num_iters 25 ) 
   sgmm_denlats_extra_opts=( --num-threads 2 )
+  sgmm_mmi_extra_opts=(--cmd "lonestar.py -pe smp 4")
 else
   dnn_train_extra_opts=(--num-threads 8 --parallel-opts "-pe smp 7" --cmd "queue.pl -l arch=*64,mem_free=4.0G,ram_free=0.75G" )
   decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G")

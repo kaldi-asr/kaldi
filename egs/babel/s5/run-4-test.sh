@@ -1,9 +1,9 @@
 #!/bin/bash 
-set -e
-set -o pipefail
-
 . conf/common_vars.sh || exit 1;
 . ./lang.conf || exit 1;
+
+set -e
+set -o pipefail
 
 
 type=dev10h

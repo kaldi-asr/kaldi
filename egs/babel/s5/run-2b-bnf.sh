@@ -22,6 +22,27 @@ cmd=run.pl
 # At this point you may want to make sure the directory exp_BNF/bnf_dnn is
 # somewhere with a lot of space, preferably on the local GPU-containing machine.
 
+mkdir -p exp_BNF/bnf_dnn
+mkdir -p $working_dir
+
+! gmm-info exp/tri5_ali/final.mdl >&/dev/null && \
+   echo "Error getting GMM info from exp/tri5_ali/final.mdl" && exit 1;
+
+num_pdfs=`gmm-info exp/tri5_ali/final.mdl | grep pdfs | awk '{print $NF}'` || exit 1;
+
+[ -z "$babel_type" ] && echo "Variable babel_type not set " && exit 1;
+
+# Note: align_fmllr.sh will have been run in run-1-main.sh
+# make exp_BNF a link to local storage before running this.  It produces a lot of temp files.
+
+echo ---------------------------------------------------------------------
+echo "Starting exp_BNF pfile extraction on" `date`
+echo ---------------------------------------------------------------------
+if [ ! -s exp_BNF/bnf_dnn_run/concat.pfile ]; then
+  steps_BNF/build_nnet_pfile.sh --cmd lonestar.py  --nj 1 --every-nth-frame "$bnf_every_nth_frame" \
+    data/train data/lang exp/tri5_ali $working_dir || exit 1
+fi
+
 if [ ! -d ptdnn ]; then
   echo "Checking out PTDNN code.  You will have to edit the config file!"
   svn co svn://svn.code.sf.net/p/ptdnn/code-0/trunk/ptdnn ptdnn
@@ -35,24 +56,14 @@ fi
 if ! nvidia-smi; then
   echo "The command nvidia-smi was not found: this probably means you don't have a GPU.  Not continuing"
   echo "(Note: this script might still work, it would just be slower.)"
-  exit 1;
+  exit 1
 fi
 
 if ! python -c 'import theano;'; then
   echo "Theano does not seem to be installed on your machine.  Not continuing."
   echo "(Note: this script might still work, it would just be slower.)"
-  exit 1;
+  exit 1
 fi
-
-mkdir -p exp_BNF/bnf_dnn
-mkdir -p $working_dir
-
-! gmm-info exp/tri5_ali/final.mdl >&/dev/null && \
-   echo "Error getting GMM info from exp/tri5_ali/final.mdl" && exit 1;
-
-num_pdfs=`gmm-info exp/tri5_ali/final.mdl | grep pdfs | awk '{print $NF}'` || exit 1;
-
-[ -z "$babel_type" ] && echo "Variable babel_type not set " && exit 1;
 
 # Now we copy conf/bnf/config_limited.py or conf/bnf/config_full.py, as appropriate,
 # to ptdnn/exp_bnf/config.py, replacing a couple of things as we copy it.
@@ -66,21 +77,26 @@ config_in=conf/bnf/config_${babel_type}.py
 echo ---------------------------------------------------------------------
 echo "Starting exp_BNF/bnf_dnn on" `date`
 echo ---------------------------------------------------------------------
-# Note: align_fmllr.sh will have been run in run-1-main.sh
-# make exp_BNF a link to local storage before running this.  It produces a lot of temp files.
-
-if [ ! -s exp_BNF/bnf_dnn_run/concat.pfile ]; then
-  steps_BNF/build_nnet_pfile.sh --nj 1 --every-nth-frame "$bnf_every_nth_frame" \
-    data/train data/lang exp/tri5_ali $working_dir || exit 1
-fi
 
 #export LD_LIBRARY_PATH=/opt/nvidia_cuda/cuda-5.0/lib64
 #export PATH=$PATH:/opt/nvidia_cuda/cuda-5.0/lib64/libcublas
 
-$cmd $working_dir/theano.log \
-  export PYTHONPATH=$PYTHONPATH:`pwd`/ptdnn/ \; \
-  export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 \; \
-  python ptdnn/main.py 
+if [ ! -f $working_dir/.pretrain.done ] ; then
+  $cmd $working_dir/log/pretrain.log \
+    export PYTHONPATH=$PYTHONPATH:`pwd`/ptdnn/ \; \
+    export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 \; \
+    python ptdnn/pretrain.py 
+  touch $working_dir/.pretrain.done
+fi
+
+
+if [ ! -f $working_dir/.finetune.done ] ; then
+  $cmd $working_dir/log/finetune.log \
+    export PYTHONPATH=$PYTHONPATH:`pwd`/ptdnn/ \; \
+    export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 \; \
+    python ptdnn/finetune.py 
+  touch $working_dir/.finetune.done
+fi
 
 mkdir -p exp_BNF/bnf_dnn
 cp -r $working_dir/{final.mat,final.nnet,log,LOG,theano.log} exp_BNF/bnf_dnn/
