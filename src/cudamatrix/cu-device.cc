@@ -690,8 +690,6 @@ CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true),
 CuDevice::~CuDevice() {
   if (Enabled()) {
     CU_SAFE_CALL(cublasShutdown());
-  } else if (active_gpu_id_ == -1) {
-    KALDI_WARN << "CUDA was NOT used....";
   }
   if (allocator_ != NULL)
     delete allocator_;
