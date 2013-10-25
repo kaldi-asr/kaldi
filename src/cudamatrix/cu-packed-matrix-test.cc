@@ -244,8 +244,7 @@ int main() {
   using namespace kaldi;
 #if HAVE_CUDA == 1
   // Select the GPU
-  kaldi::int32 use_gpu_id = -2;
-  CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+  CuDevice::Instantiate().SelectGpuId("yes");
 #endif
   kaldi::CudaPackedMatrixUnitTest<float>();
 #if HAVE_CUDA == 1

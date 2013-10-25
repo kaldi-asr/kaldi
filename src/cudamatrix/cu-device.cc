@@ -27,6 +27,7 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
+#include <string>
 #include <vector>
 #include <algorithm>
 #include <dlfcn.h>
@@ -40,104 +41,112 @@
 namespace kaldi {
 
 
-
 /** 
- * SelectGpuId(gpu_id) 
+ * SelectGpuId(use_gpu) 
  *
- * The argument 'gpu_id' meaning: 0..N selects a GPU, 
- * -1 disables CUDA, -2 performs GPU auto-detection.
+ * There are 3 'use_gpu' modes for GPU selection:
+ * "yes"      -- Select GPU automatically (or get one by exclusive mode) 
+ *               and die if this fails.
+ * "optional" -- Do as above, but if it fails, back off to CPU.
+ * "no"       -- Run on CPU.
  *
- * If there is no GPU in the system, and we have GPU auto-detection,
- * or GPU is manually disabled the computation will run on CPU. 
- * In other cases it is an error (manual selection).
+ * In case of Compute exclusive mode, the GPU is selected by OS.
  *
- * In case of Compute exclusive mode, the GPU is selected by OS, 
- * this has priority over manual/auto selection of GPU.
+ * Otherwise GPU selection is based on largest proportion of free memory.
+ * This can eventually lead to multiple processes computing on single GPU,
+ * which is slow. More practical is to use "compute exclusive mode".
  *
- * Since the autoselection of GPU is not perfect, it may still 
- * happen that two processes compute on single GPU, which is slow. 
- * The users are advised to use manual selection or exclusive mode.
- *
- * This method must be called at the very beginning of the program
- * (before the cudamatrix objects allocate memory for the data), 
- * or not at all (when we intentionally want to run on the CPU). 
+ * This method is to be called at the very beginning of the program
+ * (before first allocation in cudamatrix), or not at all (default to CPU).
  *
  */
-void CuDevice::SelectGpuId(int32 gpu_id, bool abort_on_error) {
+void CuDevice::SelectGpuId(std::string use_gpu) {
+  // Possible modes  
+  if (use_gpu != "yes" && use_gpu != "no" && use_gpu != "optionaly") {
+    KALDI_ERR << "Please choose : --use-gpu=yes|no|optionaly, passed '" << use_gpu << "'";
+  }
+ 
   // Make sure this function is not called twice!
   if (Enabled()) {
     KALDI_ERR << "There is already an active GPU " << active_gpu_id_ 
               << ", cannot change it on the fly!";
   }
   // Allow the GPU to stay disabled
-  if(!Enabled() && gpu_id == -1) { 
-    KALDI_LOG << "Selected device: " << gpu_id 
-              << ", we don't even try to get a GPU. We run on CPU.";
-    active_gpu_id_ = -1;
+  if(!Enabled() && use_gpu == "no") { 
+    KALDI_LOG << "Manually selected to compute on CPU.";
     return;
   }
+
   // Check that we have a gpu available
   int32 n_gpu = 0;
   cudaGetDeviceCount(&n_gpu);
   if(n_gpu == 0) {
-    // If we do automatic selection and no GPU is found, we run on a CPU
-    if (abort_on_error) {
-      KALDI_ERR << "No CUDA capable GPU was detected";
-    } else {
-      KALDI_WARN << "CUDA will NOT be used!!! No CUDA capable GPU detected...";
-      active_gpu_id_ = -2;
+    if (use_gpu == "yes") {
+      KALDI_ERR << "No CUDA GPU detected!";
+    }
+    if (use_gpu == "optional") {
+      KALDI_WARN << "Running on CPU!!! No CUDA GPU detected...";
       return;
     }
   }
-  
-  // Now we know that there is a GPU in the system, 
-  // and we don't want to have it disabled. 
+
   //
-  // For the GPU selection there are 3 possibilities, 
-  // with priorities according to the order:
+  // Create a CUDA context : in case of compute-exclusive mode OS selects gpu_id,
+  // or default gpu_id=0. In the case with no free GPUs a context cannot be created
+  // (compute-exclusive mode).
   //
-  // 1.) We have compute exclusive mode on (GPU is selected by OS)
-  // 2.) User did not specify the GPU-id (default value -2), 
-  //     we will do automatic selection.
-  // 3.) User specified the GPU to run on, so we select it.
-  bool error;
-  if (IsComputeExclusive(&error)) { 
-    FinalizeActiveGpu();
-    return;
-  }
-  if (error) { // There was some error detecting compute-exclusive status
-               // (perhaps no GPU available).  Sleep a bit and retry.
+  cudaError_t e;
+  e = cudaThreadSynchronize(); //<< CUDA context gets created here.
+  if (e != cudaSuccess) {
+    // So far no we don't have context, sleep a bit and retry.
     int32 sec_sleep = 2;
     KALDI_WARN << "Will try again to get a GPU after " << sec_sleep 
                << " seconds.";
     sleep(sec_sleep);
-
-    if (IsComputeExclusive(&error)) {
-      FinalizeActiveGpu();
-      return;
-    } else {
-      if (abort_on_error) {
-        KALDI_ERR << "Error acquiring GPU in exclusive mode.";
-      } else {
-        KALDI_WARN << "Error selecting GPU.  CUDA will NOT be used!!!.";
-        active_gpu_id_ = -2;
+    //
+    e = cudaThreadSynchronize(); //<< 2nd trial to get CUDA context.
+    if (e != cudaSuccess) {
+      if (use_gpu == "yes") {
+        KALDI_ERR << "Failed to create CUDA context, no more unused GPUs?";
+      }
+      if (use_gpu == "optional") {
+        KALDI_WARN << "Running on CPU!!! No more unused CUDA GPUs?";
         return;
       }
     }
   }
-  
-  bool ans = (gpu_id == -2 ? SelectGpuIdAuto() : SelectGpuIdManual(gpu_id));
-  if (ans) {
+
+  // Re-assure we have the context
+  KALDI_ASSERT(cudaSuccess == cudaThreadSynchronize());
+
+  // Check if the machine use compute exclusive mode 
+  if (IsComputeExclusive()) {
     FinalizeActiveGpu();
+    return;
   } else {
-    if (abort_on_error) {
-      KALDI_ERR << "Error acquiring GPU.";
-    } else {
-      KALDI_WARN << "Error selecting GPU.  CUDA will NOT be used!!!.";
-      active_gpu_id_ = -2;
+    // Or suggest to use compute exclusive mode
+    if(n_gpu > 1) { 
+      KALDI_WARN << "Hint: It is practical to set the GPUs into ``compute exclusive mode''."
+                 << " Selection of free GPUs would be done by OS automatically.";
+    }
+    // And select the GPU according to proportion of free memory
+    if(SelectGpuIdAuto()) {
+      FinalizeActiveGpu();
+      return;
+    } else { 
+      // Could not get GPU, after prevously having the CUDA context?
+      // Strange but not impossible...
+      if (use_gpu == "yes") {
+        KALDI_ERR << "Error acquiring GPU.";
+      }
+      if (use_gpu == "optional") {
+        KALDI_WARN << "Running on CPU!!! Error acquiring GPU.";
+        return;
+      }
     }
   }
 }
+
 
 void CuDevice::FinalizeActiveGpu() {
   // The device at this point should have active GPU, so we can query its name
@@ -171,41 +180,6 @@ void CuDevice::FinalizeActiveGpu() {
   return;
 }
 
-bool CuDevice::SelectGpuIdManual(int32 gpu_id) {
-  //  The user selected a particular GPU using --use-gpu-id=X; try to select
-  //  that one.
-  int32 ret = cudaSetDevice(gpu_id);
-  //handle the possible errors (no recovery!!!)
-  switch(ret) {
-  case cudaSuccess : {
-    //create the GPU context
-    cudaError_t e;
-    e = cudaThreadSynchronize(); //deprecated, but for legacy not cudaDeviceSynchronize
-    if(e != cudaSuccess) {
-      KALDI_WARN << "Failed to create CUDA context on a GPU.";
-      return false;
-    }
-    //this was okay, so we are done!
-    KALDI_LOG << "Selected device: " << gpu_id << " (manually)";
-    return true;
-  }
-  case cudaErrorInvalidDevice : { 
-    int32 n_gpu = 0;
-    cudaGetDeviceCount(&n_gpu);
-    KALDI_WARN << "cudaSetDevice(" << gpu_id << "):"
-              << " '" << gpu_id << "' is not a VALID CUDA device! "
-              << " (system has " << n_gpu << " GPUs,"
-              << " valid IDs 0.." << n_gpu-1 << ")";
-    return false;
-  }
-  default :
-    KALDI_WARN << "cudaSetDevice(" << gpu_id << "): "
-              << "returned " << ret << ", " 
-              << cudaGetErrorString((cudaError_t)ret);
-    return false;
-  }
-}
-
 
 bool CuDevice::DoublePrecisionSupported() {
   if (!Enabled()) return true;
@@ -214,45 +188,20 @@ bool CuDevice::DoublePrecisionSupported() {
 }
 
 
-bool CuDevice::IsComputeExclusive(bool *error) {
-  // check that we have a gpu
-  *error = false;
-  int32 n_gpu = 0;
-  cudaGetDeviceCount(&n_gpu);
-  if(n_gpu == 0) {
-    KALDI_LOG << "No CUDA devices found";
-    return false;
-  }
-  
-  // Create a GPU context
-  // This will be kept if we detect compute exclusive mode
-  // or released in the other case.
-  //
-  // It does not harm if the function gets called twice,
-  // and the context is already created.
-  cudaError_t e;
-  e = cudaThreadSynchronize(); //deprecated, but for legacy not cudaDeviceSynchronize
-  if (e != cudaSuccess) {
-    KALDI_WARN << "Failed to create CUDA context on a GPU.  No more unused GPUs "
-               << "in compute exclusive mode?";
-    *error = true;
-    return false;
-  }
-  
+bool CuDevice::IsComputeExclusive() {
+  // assume we already have an CUDA context created
+  KALDI_ASSERT(cudaSuccess == cudaThreadSynchronize());
+
   // get the device-id and its device-properties
   int32 gpu_id = -1;
-  e = cudaGetDevice(&gpu_id);
+  cudaError_t e = cudaGetDevice(&gpu_id);
   if(e != cudaSuccess) {
-    KALDI_WARN << "Failed to get current device";
-    *error = true;
-    return false;
+    KALDI_ERR << "Failed to get current device";
   }
   struct cudaDeviceProp gpu_prop;
   e = cudaGetDeviceProperties(&gpu_prop, gpu_id);
   if(e != cudaSuccess) {
-    KALDI_WARN << "Failed to get device properties";
-    *error = true;
-    return false;
+    KALDI_ERR << "Failed to get device properties";
   }
   // find out whether compute exclusive mode is used
   switch (gpu_prop.computeMode) {
@@ -271,9 +220,7 @@ bool CuDevice::IsComputeExclusive(bool *error) {
       // in this case we release the GPU context...
       e = cudaThreadExit(); //deprecated, but for legacy reason not cudaDeviceReset
       if(e != cudaSuccess) {
-        KALDI_WARN << "Failed to release CUDA context on a GPU";
-        *error = true;
-        return false;
+        KALDI_ERR << "Failed to release CUDA context on a GPU";
       }
       return false;
   }
@@ -281,7 +228,7 @@ bool CuDevice::IsComputeExclusive(bool *error) {
 
 
 bool CuDevice::SelectGpuIdAuto() {
-  // check that we have at least one gpu
+  // Check that we have at least one gpu
   int32 n_gpu = 0;
   cudaGetDeviceCount(&n_gpu);
   if(n_gpu == 0) {
@@ -291,7 +238,7 @@ bool CuDevice::SelectGpuIdAuto() {
   
   // The GPU is selected according to maximal free memory ratio
   std::vector<float> free_mem_ratio(n_gpu+1, 0.0);
-  //get ratios of memory use, if possible
+  // Get ratios of memory use, if possible
   KALDI_LOG << "Selecting from " << n_gpu << " GPUs";
   for(int32 n = 0; n < n_gpu; n++) {
     int32 ret = cudaSetDevice(n);
@@ -337,10 +284,7 @@ bool CuDevice::SelectGpuIdAuto() {
     if(free_mem_ratio[n] > free_mem_ratio[max_id]) max_id=n;
   }
   //the free_mem_ratio should be bigger than zero
-  if(!free_mem_ratio[max_id] > 0.0) {
-    KALDI_WARN << "No device could be selected (this should never happen)";
-    return false;
-  }
+  KALDI_ASSERT(free_mem_ratio[max_id] > 0.0);
 
   //finally select the GPU
   KALDI_LOG << "Selected device: " << max_id << " (automatically)";
@@ -738,7 +682,7 @@ void* CuDevice::Malloc(size_t size) {
   return allocator_->Malloc(size);
 }
 
-CuDevice::CuDevice(): active_gpu_id_(-3), verbose_(true),
+CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true),
                       allocator_(new CuAllocator(CuAllocatorOptions(), this))
   { }
 
@@ -746,8 +690,8 @@ CuDevice::CuDevice(): active_gpu_id_(-3), verbose_(true),
 CuDevice::~CuDevice() {
   if (Enabled()) {
     CU_SAFE_CALL(cublasShutdown());
-  } else if (active_gpu_id_ == -2) {
-    KALDI_WARN << "CUDA was NOT used! No CUDA GPU detected!";
+  } else if (active_gpu_id_ == -1) {
+    KALDI_WARN << "CUDA was NOT used....";
   }
   if (allocator_ != NULL)
     delete allocator_;

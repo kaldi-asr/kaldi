@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     bool binary_write = true;
     bool zero_stats = true;
     int32 srand_seed = 0;
-    int32 use_gpu_id = -2;
+    std::string use_gpu="yes";
     NnetSimpleTrainerConfig train_config;
     
     ParseOptions po(usage);
@@ -57,9 +57,7 @@ int main(int argc, char *argv[]) {
     po.Register("srand", &srand_seed, "Seed for random number generator "
                 "(relevant if you have layers of type AffineComponentPreconditioned "
                 "with l2-penalty != 0.0");
-    po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic "
-                "selection, -1 disable GPU, 0..N select GPU).  Only has effect if compiled "
-                "with CUDA");    
+    po.Register("use-gpu", &use_gpu, "yes|no|optionaly, only has effect if compiled with CUDA"); 
     
     train_config.Register(&po);
     
@@ -72,7 +70,7 @@ int main(int argc, char *argv[]) {
     srand(srand_seed);
     
 #if HAVE_CUDA==1
-    CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
     std::string nnet_rxfilename = po.GetArg(1),

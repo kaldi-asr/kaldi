@@ -21,7 +21,6 @@ learn_rate=0.00001
 halving_factor=1.0 #ie. disable halving
 drop_frames=true
 verbose=1
-use_gpu_id=
 
 seed=777    # seed value used for training data shuffling
 # End configuration section
@@ -168,7 +167,6 @@ while [ $x -le $num_iters ]; do
        --learn-rate=$learn_rate \
        --drop-frames=$drop_frames \
        --verbose=$verbose \
-       ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
        $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet || exit 1
   fi
   cur_mdl=$dir/$x.nnet

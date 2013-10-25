@@ -695,10 +695,8 @@ int main(int argc, char *argv[]) {
   const char *usage = "Usage: cu-vector-test [options]";
 
   ParseOptions po(usage);
-  int32 use_gpu_id = -2;    
-  po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic "
-              "selection, -1 disable GPU, 0..N select GPU).  Only has effect if compiled "
-              "with CUDA");
+  std::string use_gpu = "yes";    
+  po.Register("use-gpu", &use_gpu, "yes|no|optional");
   po.Read(argc, argv);
 
   if (po.NumArgs() != 0) {
@@ -709,9 +707,9 @@ int main(int argc, char *argv[]) {
   for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
-      CuDevice::Instantiate().SelectGpuId(-1); // -1 means no GPU
+      CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
     else
-      CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+      CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
 

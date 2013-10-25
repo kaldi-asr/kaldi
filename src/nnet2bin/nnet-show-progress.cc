@@ -45,13 +45,11 @@ int main(int argc, char *argv[]) {
 
     int32 num_segments = 1;
     int32 batch_size = 1024;
-    int32 use_gpu_id = -2;
+    std::string use_gpu = "yes";
     
     po.Register("num-segments", &num_segments,
                 "Number of line segments used for computing derivatives");
-    po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic "
-                "selection, -1 disable GPU, 0..N select GPU).  Only has effect if compiled "
-                "with CUDA");    
+    po.Register("use-gpu", &use_gpu, "yes|no|optionaly, only has effect if compiled with CUDA"); 
     
     po.Read(argc, argv);
     
@@ -61,7 +59,7 @@ int main(int argc, char *argv[]) {
     }
     
 #if HAVE_CUDA==1
-    CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
     std::string nnet1_rxfilename = po.GetArg(1),

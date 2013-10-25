@@ -128,16 +128,9 @@ int main(int argc, char *argv[]) {
     po.Register("drop-frames", &drop_frames, 
                 "Drop frames, where is zero den-posterior under numerator path "
                 "(ie. path not in lattice)");
-    
 
-#if HAVE_CUDA == 1
-    kaldi::int32 use_gpu_id=-2;
-    po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID "
-                "(-2 automatic selection, -1 disable GPU, 0..N select GPU)");
-#else
-    int32 use_gpu_id=0;
-    po.Register("use-gpu-id", &use_gpu_id, "Unused, kaldi is compiled w/o CUDA");
-#endif
+    std::string use_gpu="yes";
+    po.Register("use-gpu", &use_gpu, "yes|no|optionaly, only has effect if compiled with CUDA"); 
 
     po.Read(argc, argv);
 
@@ -162,7 +155,7 @@ int main(int argc, char *argv[]) {
 
     // Select the GPU
 #if HAVE_CUDA == 1
-    CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
     Nnet nnet_transf;

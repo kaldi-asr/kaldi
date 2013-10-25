@@ -46,7 +46,6 @@ train_opts=        # options, passed to the training script
 train_tool=        # optionally change the training tool
 
 # OTHER
-use_gpu_id= # manually select GPU id to run on, (-1 disables GPU)
 analyze_alignments=true # run the alignment analysis script
 seed=777    # seed value used for training data shuffling and initialization
 # End configuration.
@@ -258,7 +257,7 @@ else
   feature_transform_old=$feature_transform
   feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
   echo "Renormalizing MLP input features into $feature_transform"
-  nnet-forward ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
+  nnet-forward --use-gpu=yes \
     $feature_transform_old "$(echo $feats_tr | sed 's|train.scp|train.scp.10k|')" \
     ark:- 2>$dir/log/nnet-forward-cmvn.log |\
   compute-cmvn-stats ark:- - | cmvn-to-nnet - - |\
@@ -315,7 +314,6 @@ steps/train_nnet_scheduler.sh \
   ${train_opts} \
   ${train_tool:+ --train-tool "$train_tool"} \
   ${config:+ --config $config} \
-  ${use_gpu_id:+ --use-gpu-id $use_gpu_id} \
   $mlp_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir || exit 1
 
 

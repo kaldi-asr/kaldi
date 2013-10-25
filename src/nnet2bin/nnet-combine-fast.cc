@@ -47,13 +47,11 @@ int main(int argc, char *argv[]) {
     
     bool binary_write = true;
     NnetCombineFastConfig combine_config;
-    int32 use_gpu_id = -2;
+    std::string use_gpu = "yes";
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic "
-                "selection, -1 disable GPU, 0..N select GPU).  Only has effect if compiled "
-                "with CUDA and --num-threads=1");
+    po.Register("use-gpu", &use_gpu, "yes|no|optionaly, only has effect if compiled with CUDA"); 
     
     combine_config.Register(&po);
     
@@ -71,7 +69,7 @@ int main(int argc, char *argv[]) {
 
 #if HAVE_CUDA==1
     if (combine_config.num_threads == 1)
-      CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+      CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
     

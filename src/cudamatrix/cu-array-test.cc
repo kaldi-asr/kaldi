@@ -102,9 +102,9 @@ int main() {
   for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
-      CuDevice::Instantiate().SelectGpuId(-1); // -1 means no GPU
+      CuDevice::Instantiate().SelectGpuId("no");
     else
-      CuDevice::Instantiate().SelectGpuId(-2); // -2 .. automatic selection
+      CuDevice::Instantiate().SelectGpuId("yes");
 #endif
 
     //kaldi::UnitTestCuArray<float>();

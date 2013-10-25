@@ -176,7 +176,7 @@ template<typename Real> void CudaMatrixSpeedTest() {
 int main() {
     //Select the GPU
 #if HAVE_CUDA == 1
-    CuDevice::Instantiate().SelectGpuId(-2); //-2 .. automatic selection
+    CuDevice::Instantiate().SelectGpuId("yes"); //-2 .. automatic selection
 #endif
 
     kaldi::CudaMatrixSpeedTest<float>();

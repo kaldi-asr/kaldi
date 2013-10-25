@@ -55,17 +55,17 @@ class CuDevice {
   
   void Free(void *ptr);
   
-  /**********************************/
-  // Instance interface
- 
-  /// Check if the CUDA device is selected for use
+  /// Select a GPU for computation, the 'use_gpu' modes are:
+  ///  "yes"      -- Select GPU automatically and die if this fails.
+  ///  "optional" -- Do as above, but if it fails, back off to CPU. 
+  ///  "no"       -- Run on CPU. 
+  ///  (more comments in cu-device.cc)
+  void SelectGpuId(std::string use_gpu);
+
+  /// Check if the CUDA GPU is selected for use
   bool Enabled() const {
     return (active_gpu_id_ > -1); 
   }
-
-  /// Manually select GPU by id (more comments in cu-device.cc)
-  void SelectGpuId(int32 gpu_id,
-                   bool abort_on_failure = true);
 
   /// Get the active GPU id
   int32 ActiveGpuId() {
@@ -105,7 +105,7 @@ class CuDevice {
   /// otherwise.  Sets error to true if there was some error, such as that we
   /// were running in compute exclusive modes but no GPUs available; otherwise
   /// sets it to false.
-  bool IsComputeExclusive(bool *error);
+  bool IsComputeExclusive();
 
   /// Automatically select GPU and get CUDA context.  Returns true on success.
   bool SelectGpuIdAuto();
