@@ -95,13 +95,17 @@ class DoBackpropParallelClass: public MultiThreadable {
       // To ensure correctness, we work on separate copies of the gradient
       // object, which we'll sum at the end.  This is used for exact gradient
       // computation.
-      nnet_to_update_ = new Nnet(*(other.nnet_to_update_));
-      // our "nnet_to_update_" variable is a copy of the neural network
-      // we are to update (presumably a gradient).  If we don't set these
-      // to zero we would end up adding multiple copies of the any initial
-      // gradient that "nnet_to_update_" contained when we initialize
-      // the first instance of the class.
-      nnet_to_update_->SetZero(true);      
+      if (other.nnet_to_update_ != NULL) {
+        nnet_to_update_ = new Nnet(*(other.nnet_to_update_));
+        // our "nnet_to_update_" variable is a copy of the neural network
+        // we are to update (presumably a gradient).  If we don't set these
+        // to zero we would end up adding multiple copies of the any initial
+        // gradient that "nnet_to_update_" contained when we initialize
+        // the first instance of the class.
+        nnet_to_update_->SetZero(true);      
+      } else { // support case where we don't really need a gradient.
+        nnet_to_update_ = NULL;
+      }
     }    
   }
   // This does the main function of the class.
@@ -110,10 +114,14 @@ class DoBackpropParallelClass: public MultiThreadable {
     while (repository_->ProvideExamples(&examples)) {
       // This is a function call to a function defined in
       // nnet-update.h
-      BaseFloat tot_loglike = DoBackprop(nnet_, examples, nnet_to_update_);
+      double tot_loglike;
+      if (nnet_to_update_ != NULL) 
+        tot_loglike = DoBackprop(nnet_, examples, nnet_to_update_);
+      else
+        tot_loglike = ComputeNnetObjf(nnet_, examples);
       tot_weight_ += TotalNnetTrainingWeight(examples);
       log_prob_ += tot_loglike;
-      KALDI_VLOG(1) << "Thread " << thread_id_ << " saw "
+      KALDI_VLOG(4) << "Thread " << thread_id_ << " saw "
                     << tot_weight_ << " frames so far (weighted); likelihood "
                     << "per frame so far is " << (log_prob_ / tot_weight_);
       examples.clear();

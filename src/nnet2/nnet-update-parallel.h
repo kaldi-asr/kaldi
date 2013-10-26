@@ -133,7 +133,7 @@ struct SafeBackpropConfig {
 /// learning rates, but if at a certain point it decreases the learning rate of
 /// a layer by a certain factor, it also scales the changes in parameters of
 /// that layer by the same factor, as if it had "retroactively applied" the
-/// learning rate change.
+/// learning rate change.  Note: we didn't end up using this much.
 BaseFloat DoBackpropParallelSafe(
     int32 minibatch_size,
     const SafeBackpropConfig &safe_config,
@@ -148,7 +148,8 @@ BaseFloat DoBackpropParallelSafe(
 /// "momentum_minibatches" minibatches.  This number of minibatches is the
 /// global number over all threads, not per thread.  Caution: we effectively
 /// lose a little data at the end of the run, corresponding to approximately
-/// "momentum_minibatches" batches of data.
+/// "momentum_minibatches" batches of data.  Note: we didn't end up
+/// really using this; it didn't turn out to be helpful.
 BaseFloat DoBackpropParallelMomentum(
     int32 minibatch_size,
     BaseFloat momentum_minibatches,
@@ -158,12 +159,31 @@ BaseFloat DoBackpropParallelMomentum(
 
 /// This version of DoBackpropParallel takes a vector of examples, and will
 /// typically be used to compute the exact gradient. 
-  double DoBackpropParallel(const Nnet &nnet,
-                            int32 minibatch_size,
-                            int32 num_threads,
-                            const std::vector<NnetTrainingExample> &examples,
-                            double *num_frames,
-                            Nnet *nnet_to_update);
+double DoBackpropParallel(const Nnet &nnet,
+                          int32 minibatch_size,
+                          int32 num_threads,
+                          const std::vector<NnetTrainingExample> &examples,
+                          double *num_frames,
+                          Nnet *nnet_to_update);
+
+
+
+/// This is basically to clarify the fact that DoBackpropParallel will
+/// also work with nnet_to_update == NULL, and will compute the objf.
+/// Both versions of the function will support it, but this
+/// version (that takes a vector) is currently the only one we need
+/// to do this with.
+inline double ComputeNnetObjfParallel(
+    const Nnet &nnet,
+    int32 minibatch_size,
+    int32 num_threads,
+    const std::vector<NnetTrainingExample> &examples,
+    double *num_frames) {
+  return DoBackpropParallel(nnet, minibatch_size, num_threads,
+                            examples, num_frames, NULL);
+}
+
+
 
 
 

@@ -40,7 +40,7 @@ namespace nnet2 {
 
 /// This function computes the objective function and either updates the model
 /// or adds to parameter gradients.  Returns the cross-entropy objective
-/// function summed over all samples (normalize this by
+/// function summed over all samples (normalize this by dividing by
 /// TotalNnetTrainingWeight(examples)).  It is mostly a wrapper for
 /// a class NnetUpdater that's defined in nnet-update.cc, but we
 /// don't want to expose that complexity at this level.

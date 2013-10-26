@@ -141,9 +141,9 @@ class FastNnetCombiner {
   }    
   
  private:
-  static int32 GetInitialModel(
+  int32 GetInitialModel(
       const std::vector<NnetTrainingExample> &validation_set,
-      const std::vector<Nnet> &nnets);
+      const std::vector<Nnet> &nnets) const;
 
   void GetInitialParams();
   
@@ -331,20 +331,21 @@ void FastNnetCombiner::ComputeCurrentNnet(
 /// Returns an integer saying which model to use:
 /// either 0 ... num-models - 1 for the best individual model,
 /// or (#models) for the average of all of them.
-//static
 int32 FastNnetCombiner::GetInitialModel(
     const std::vector<NnetTrainingExample> &validation_set,
-    const std::vector<Nnet> &nnets) {
-  int32 minibatch_size = 1024;
+    const std::vector<Nnet> &nnets) const {
   int32 num_nnets = static_cast<int32>(nnets.size());
   KALDI_ASSERT(!nnets.empty());
-  double tot_frames = validation_set.size();
   int32 best_n = -1;
   double best_objf;
   Vector<double> objfs(nnets.size());
   for (int32 n = 0; n < num_nnets; n++) {
-    double objf = ComputeNnetObjf(nnets[n], validation_set,
-                                     minibatch_size) / tot_frames;
+    double num_frames;
+    double objf = ComputeNnetObjfParallel(nnets[n], config_.minibatch_size,
+                                          config_.num_threads, validation_set,
+                                          &num_frames);
+    KALDI_ASSERT(num_frames != 0);
+    objf /= num_frames;
     
     if (n == 0 || objf > best_objf) {
       best_objf = objf;
@@ -361,8 +362,11 @@ int32 FastNnetCombiner::GetInitialModel(
     scale_params.Set(1.0 / num_nnets);
     Nnet average_nnet;
     CombineNnets(scale_params, nnets, &average_nnet);
-    double objf = ComputeNnetObjf(average_nnet, validation_set,
-                                     minibatch_size) / tot_frames;
+    double num_frames;
+    double objf = ComputeNnetObjfParallel(average_nnet, config_.minibatch_size,
+                                          config_.num_threads, validation_set,
+                                          &num_frames);
+    objf /= num_frames;
     KALDI_LOG << "Objf with all neural nets averaged is " << objf;
     if (objf > best_objf) {
       return num_nnets;
