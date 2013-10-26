@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     po.Register("drop-data", &drop_data, "Threshold for random dropping of the data (0 no-drop, 1 drop-all)");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, "yes|no|optionaly, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
 
     po.Read(argc, argv);
 

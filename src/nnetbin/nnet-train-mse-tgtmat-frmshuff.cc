@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
     po.Register("seed", &seed, "Seed value for srand, sets fixed order of frame-shuffling");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, "yes|no|optionaly, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
     
     po.Read(argc, argv);
 

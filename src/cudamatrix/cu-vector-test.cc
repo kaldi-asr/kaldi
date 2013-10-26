@@ -698,7 +698,7 @@ int main(int argc, char *argv[]) {
   std::string use_gpu = "yes";    
   po.Register("use-gpu", &use_gpu, "yes|no|optional");
   po.Read(argc, argv);
-
+  
   if (po.NumArgs() != 0) {
     po.PrintUsage();
     exit(1);

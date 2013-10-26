@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     po.Register("feature-transform", &feature_transform, "Feature transform in Nnet format");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, "yes|no|optionaly, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
     
     po.Read(argc, argv);
 

@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
                 "(ie. path not in lattice)");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, "yes|no|optionaly, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
 
     po.Read(argc, argv);
 
@@ -250,7 +250,7 @@ int main(int argc, char *argv[]) {
       if (old_acoustic_scale != 1.0) {
         fst::ScaleLattice(fst::AcousticLatticeScale(old_acoustic_scale), &den_lat);
       }
-      // optionaly sort it topologically
+      // optional sort it topologically
       kaldi::uint64 props = den_lat.Properties(fst::kFstProperties, false);
       if (!(props & fst::kTopSorted)) {
         if (fst::TopSort(&den_lat) == false)

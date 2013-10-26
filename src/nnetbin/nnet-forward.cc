@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     po.Register("apply-log", &apply_log, "Transform MLP output to logscale");
 
     std::string use_gpu="no";
-    po.Register("use-gpu", &use_gpu, "yes|no|optionaly, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
 
     po.Read(argc, argv);
 

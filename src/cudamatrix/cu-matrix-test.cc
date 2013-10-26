@@ -1733,9 +1733,9 @@ int main() {
   for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
-      CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
+      CuDevice::Instantiate().SelectGpuId("no");
     else
-      CuDevice::Instantiate().SelectGpuId("yes"); // -2 .. automatic selection
+      CuDevice::Instantiate().SelectGpuId("yes");
 #endif
 
     kaldi::CudaMatrixUnitTest<float>();

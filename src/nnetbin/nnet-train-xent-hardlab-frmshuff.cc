@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, "yes|no|optionaly, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
     
     po.Read(argc, argv);
 
