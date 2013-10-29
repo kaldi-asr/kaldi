@@ -1,6 +1,7 @@
-// fstext/determinize-lattice-pruned.h
+// lat/determinize-lattice-pruned.h
 
-// Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2012  Microsoft Corporation
+//           2012-2013  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -17,8 +18,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_FSTEXT_DETERMINIZE_LATTICE_PRUNED_H_
-#define KALDI_FSTEXT_DETERMINIZE_LATTICE_PRUNED_H_
+#ifndef KALDI_LAT_DETERMINIZE_LATTICE_PRUNED_H_
+#define KALDI_LAT_DETERMINIZE_LATTICE_PRUNED_H_
 #include <fst/fstlib.h>
 #include <fst/fst-decl.h>
 #include <algorithm>
@@ -113,11 +114,13 @@ struct DeterminizeLatticePrunedOptions {
   // (a case that wouldn't be caught by max_mem).
   int max_states;
   int max_arcs;
+  float retry_cutoff;
   DeterminizeLatticePrunedOptions(): delta(kDelta),
                                      max_mem(-1),
                                      max_loop(-1),
                                      max_states(-1),
-                                     max_arcs(-1) { }
+                                     max_arcs(-1),
+                                     retry_cutoff(0.5) { }
   void Register (kaldi::OptionsItf *po) {
     po->Register("delta", &delta, "Tolerance used in determinization");
     po->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
@@ -129,7 +132,10 @@ struct DeterminizeLatticePrunedOptions {
     po->Register("max-loop", &max_loop, "Option used to detect a particular "
                 "type of determinization failure, typically due to invalid input "
                 "(e.g., negative-cost loops)");
-
+    po->Register("retry-cutoff", &retry_cutoff, "Controls pruning un-determinized "
+                 "lattice and retrying determinization: if effective-beam < "
+                 "retry-cutoff * beam, we prune the raw lattice and retry.  Avoids "
+                 "ever getting empty output for long segments.");
   }
 };
 
@@ -169,11 +175,8 @@ bool DeterminizeLatticePruned(
 
 
 
-
 /// @} end "addtogroup fst_extensions"
 
 } // end namespace fst
-
-#include "fstext/determinize-lattice-pruned-inl.h"
 
 #endif

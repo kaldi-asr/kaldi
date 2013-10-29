@@ -36,10 +36,10 @@ TESTFILES =
 
 # Note: we intentionally list kaldi-gmm.a both before and after kaldi-transform.a, because
 # each requires symbols from the other.
-ADDLIBS = ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a  ../feat/kaldi-feat.a \
-          ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../gmm/kaldi-gmm.a \
-					../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  \
-					../thread/kaldi-thread.a ../util/kaldi-util.a ../base/kaldi-base.a 
+ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../feat/kaldi-feat.a \
+	../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../gmm/kaldi-gmm.a \
+	../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  \
+	../thread/kaldi-thread.a ../util/kaldi-util.a ../base/kaldi-base.a 
 
 
 include ../makefiles/default_rules.mk
