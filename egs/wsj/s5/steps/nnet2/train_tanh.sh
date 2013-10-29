@@ -352,11 +352,18 @@ for x in `seq $start $num_iters`; do
 done
 
 if [ $stage -le $num_iters ]; then
+  # Below, use --use-gpu=no to disable nnet-combine-fast from using a GPU, as
+  # if there are many models it can give out-of-memory error; set num-threads to 8
+  # to speed it up (this isn't ideal...)
+  this_num_threads=$num_threads
+  [ $this_num_threads -lt 8 ] && this_num_threads=8
   num_egs=`nnet-copy-egs ark:$egs_dir/combine.egs ark:/dev/null 2>&1 | tail -n 1 | awk '{print $NF}'`
-  mb=$[($num_egs+$num_threads-1)/$num_threads]
+  mb=$[($num_egs+$this_num_threads-1)/$this_num_threads]
+  [ $mb -gt 512 ] && mb=512
   $cmd $parallel_opts $dir/log/combine.log \
-    nnet-combine-fast --num-threads=$num_threads --verbose=3 --minibatch-size=$mb \
-    "${nnets_list[@]}" ark:$egs_dir/combine.egs $dir/final.mdl || exit 1;
+    nnet-combine-fast --use-gpu=no --num-threads=$this_num_threads \
+      --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
+      $dir/final.mdl || exit 1;
 fi
 
 # Compute the probability of the final, combined model with
