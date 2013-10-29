@@ -81,3 +81,34 @@ for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep WER $x/wer_* | 
 %WER 37.81 [ 18686 / 49427, 2078 ins, 4625 del, 11983 sub ] exp/tri4b/decode_train_dev_sw1_fsh_tgpr.si/wer_15
 %WER 29.53 [ 14598 / 49427, 1885 ins, 3538 del, 9175 sub ] exp/tri4b/decode_train_dev_sw1_tg/wer_16
 %WER 38.42 [ 18990 / 49427, 2154 ins, 4461 del, 12375 sub ] exp/tri4b/decode_train_dev_sw1_tg.si/wer_15
+
+
+# some GPU results.  You'll have to figure out from the scripts in local/nnet2/ what each one is.
+
+%WER 19.0 | 1831 21395 | 83.1 11.5 5.4 2.1 19.0 57.6 | exp/nnet5a/decode_eval2000_sw1_fsh_tgpr/score_11/eval2000.ctm.swbd.filt.sys
+%WER 19.5 | 1831 21395 | 82.8 11.8 5.4 2.3 19.5 57.5 | exp/nnet5a/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
+%WER 18.8 | 1831 21395 | 82.9 11.2 5.9 1.7 18.8 56.1 | exp/nnet5a2/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
+%WER 19.4 | 1831 21395 | 82.4 11.6 5.9 1.8 19.4 56.2 | exp/nnet5a2/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 18.3 | 1831 21395 | 83.4 11.0 5.6 1.7 18.3 56.6 | exp/nnet5b/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
+%WER 18.7 | 1831 21395 | 83.1 11.3 5.6 1.9 18.7 56.7 | exp/nnet5b/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 18.0 | 1831 21395 | 83.7 10.7 5.5 1.7 18.0 55.5 | exp/nnet5b2/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
+%WER 18.6 | 1831 21395 | 83.4 11.2 5.4 2.0 18.6 56.6 | exp/nnet5b2/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
+%WER 15.3 | 1831 21395 | 86.5 9.0 4.5 1.8 15.3 53.0 | exp/nnet5c/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys # note: compare with Karel's 15.4 number below.
+%WER 15.7 | 1831 21395 | 86.1 9.3 4.5 1.9 15.7 53.3 | exp/nnet5c/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+
+
+
+
+
+# Below are the results from the Karel's DNN recipe (Oct 11 2013) from 'local/run_dnn.sh'
+# DNN with RBM pre-training, 6hidden layers, 2048 neurons each, ~9k outputs
+%WER 15.4 | 1831 21395 | 86.2 9.0 4.8 1.6 15.4 52.2 | exp/tri4b_pretrain-dbn_dnn/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
+# sMBR sequence-discriminative training, 1+2 epochs (lattices re-generated after 1st epoch of sMBR training)
+%WER 14.5 | 1831 21395 | 87.4 8.9 3.7 2.0 14.5 51.4 | exp/tri4b_pretrain-dbn_dnn_smbr/decode_eval2000_sw1_fsh_tgpr_it1/score_14/eval2000.ctm.swbd.filt.sys
+%WER 14.2 | 1831 21395 | 87.7 8.7 3.6 1.9 14.2 50.4 | exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval2000_sw1_fsh_tgpr_it1/score_14/eval2000.ctm.swbd.filt.sys
+%WER 14.1 | 1831 21395 | 87.8 8.7 3.5 1.9 14.1 50.4 | exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval2000_sw1_fsh_tgpr_it2/score_14/eval2000.ctm.swbd.filt.sys
+# Final system rescored by sw1_fsh trigram (unpruned)
+%WER 13.4 | 1831 21395 | 88.4 8.2 3.4 1.8 13.4 49.2 | exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval2000_sw1_fsh_tg.3_it2/score_14/eval2000.ctm.swbd.filt.sys
+
+
+
