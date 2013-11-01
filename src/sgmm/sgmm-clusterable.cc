@@ -235,7 +235,7 @@ bool AccumulateSgmmTreeStats(const TransitionModel &trans_model,
           phone = 0;  // ContextDependency class uses 0 to mean "out of window".
         
         if (is_ctx_dep || j == P)
-          evec.push_back(std::make_pair<EventKeyType, EventValueType>(j, phone));
+          evec.push_back(std::make_pair(static_cast<EventKeyType>(j), static_cast<EventValueType>(phone)));
       }
       for (int j = 0; j < static_cast<int>(split_alignment[i+P].size());j++) {
         // for central phone of this window...

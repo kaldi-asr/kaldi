@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
     for (std::map<EventType, SgmmClusterable*>::const_iterator iter = tree_stats.begin();  
         iter != tree_stats.end();
         iter++ ) {
-      stats.push_back(std::make_pair<EventType, Clusterable*>(iter->first, iter->second));
+      stats.push_back(std::make_pair(iter->first, static_cast<Clusterable*>(iter->second)));
     }
     tree_stats.clear();
 
