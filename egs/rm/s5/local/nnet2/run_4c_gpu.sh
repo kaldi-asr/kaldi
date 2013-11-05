@@ -13,7 +13,7 @@ parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network, y
 
 . cmd.sh
 
-(  steps/nnet2/train_tanh.sh  --num-epochs 20 --stage 23 \
+(  steps/nnet2/train_tanh.sh  --num-epochs 20 \
      --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
      --num-epochs-extra 10 --add-layers-period 1 \
      --num-hidden-layers 2 \
