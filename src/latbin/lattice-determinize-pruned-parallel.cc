@@ -19,7 +19,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "lat/kaldi-lattice.h"
-#include "fstext/determinize-lattice-pruned.h"
+#include "lat/determinize-lattice-pruned.h"
 #include "lat/lattice-functions.h"
 #include "lat/push-lattice.h"
 #include "lat/minimize-lattice.h"

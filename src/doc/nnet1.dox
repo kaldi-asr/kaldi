@@ -34,6 +34,8 @@ namespace nnet1 {
   Whole DNN training is running in a single GPU using CUDA, however cudamatrix library is designed
   to also run on machines without a GPU, but this tends to be more than 10x slower.
 
+  We have run and tested this implementation with CUDA (4.2, 5.0, 5.5) release versions.
+
   The recipes for standard databases (rm/wsj/swbd) are located at :
   egs/{rm,wsj}/s5/local/run_dnn.sh egs/swbd/s5b/local/run_dnn.sh
 

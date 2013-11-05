@@ -224,3 +224,361 @@
   };
   
   
+*** interval-set.h
+***************
+*** 37,74 ****
+  class IntervalSet {
+   public:
+    struct Interval {
+!     T begin;
+!     T end;
+  
+!     Interval() : begin(-1), end(-1) {}
+  
+!     Interval(T b, T e) : begin(b), end(e) {}
+  
+      bool operator<(const Interval &i) const {
+!       return begin < i.begin || (begin == i.begin && end > i.end);
+      }
+  
+      bool operator==(const Interval &i) const {
+!       return begin == i.begin && end == i.end;
+      }
+  
+      bool operator!=(const Interval &i) const {
+!       return begin != i.begin || end != i.end;
+      }
+  
+      istream &Read(istream &strm) {
+        T n;
+        ReadType(strm, &n);
+!       begin = n;
+        ReadType(strm, &n);
+!       end = n;
+        return strm;
+      }
+  
+      ostream &Write(ostream &strm) const {
+!       T n = begin;
+        WriteType(strm, n);
+!       n = end;
+        WriteType(strm, n);
+        return strm;
+      }
+--- 37,74 ----
+  class IntervalSet {
+   public:
+    struct Interval {
+!     T begin_;
+!     T end_;
+  
+!     Interval() : begin_(-1), end_(-1) {}
+  
+!     Interval(T b, T e) : begin_(b), end_(e) {}
+  
+      bool operator<(const Interval &i) const {
+!       return begin_ < i.begin_ || (begin_ == i.begin_ && end_ > i.end_);
+      }
+  
+      bool operator==(const Interval &i) const {
+!       return begin_ == i.begin_ && end_ == i.end_;
+      }
+  
+      bool operator!=(const Interval &i) const {
+!       return begin_ != i.begin_ || end_ != i.end_;
+      }
+  
+      istream &Read(istream &strm) {
+        T n;
+        ReadType(strm, &n);
+!       begin_ = n;
+        ReadType(strm, &n);
+!       end_ = n;
+        return strm;
+      }
+  
+      ostream &Write(ostream &strm) const {
+!       T n = begin_;
+        WriteType(strm, n);
+!       n = end_;
+        WriteType(strm, n);
+        return strm;
+      }
+***************
+*** 108,114 ****
+          lower_bound(intervals_.begin(), intervals_.end(), interval);
+      if (lb == intervals_.begin())
+        return false;
+!     return (--lb)->end > value;
+    }
+  
+    // Requires intervals be normalized.
+--- 108,114 ----
+          lower_bound(intervals_.begin(), intervals_.end(), interval);
+      if (lb == intervals_.begin())
+        return false;
+!     return (--lb)->end_ > value;
+    }
+  
+    // Requires intervals be normalized.
+***************
+*** 123,129 ****
+  
+    bool Singleton() const {
+      return intervals_.size() == 1 &&
+!         intervals_[0].begin + 1 == intervals_[0].end;
+    }
+  
+  
+--- 123,129 ----
+  
+    bool Singleton() const {
+      return intervals_.size() == 1 &&
+!         intervals_[0].begin_ + 1 == intervals_[0].end_;
+    }
+  
+  
+***************
+*** 178,194 ****
+    T size = 0;
+    for (T i = 0; i < intervals_.size(); ++i) {
+      Interval &inti = intervals_[i];
+!     if (inti.begin == inti.end)
+        continue;
+      for (T j = i + 1; j < intervals_.size(); ++j) {
+        Interval &intj = intervals_[j];
+!       if (intj.begin > inti.end)
+          break;
+!       if (intj.end > inti.end)
+!         inti.end = intj.end;
+        ++i;
+      }
+!     count_ += inti.end - inti.begin;
+      intervals_[size++] = inti;
+    }
+    intervals_.resize(size);
+--- 178,194 ----
+    T size = 0;
+    for (T i = 0; i < intervals_.size(); ++i) {
+      Interval &inti = intervals_[i];
+!     if (inti.begin_ == inti.end_)
+        continue;
+      for (T j = i + 1; j < intervals_.size(); ++j) {
+        Interval &intj = intervals_[j];
+!       if (intj.begin_ > inti.end_)
+          break;
+!       if (intj.end_ > inti.end_)
+!         inti.end_ = intj.end_;
+        ++i;
+      }
+!     count_ += inti.end_ - inti.begin_;
+      intervals_[size++] = inti;
+    }
+    intervals_.resize(size);
+***************
+*** 208,224 ****
+    oset->count_ = 0;
+  
+    while (it1 != intervals_.end() && it2 != iintervals->end()) {
+!     if (it1->end <= it2->begin) {
+        ++it1;
+!     } else if (it2->end <= it1->begin) {
+        ++it2;
+      } else {
+        Interval interval;
+!       interval.begin = max(it1->begin, it2->begin);
+!       interval.end = min(it1->end, it2->end);
+        ointervals->push_back(interval);
+!       oset->count_ += interval.end - interval.begin;
+!       if (it1->end < it2->end)
+          ++it1;
+        else
+          ++it2;
+--- 208,224 ----
+    oset->count_ = 0;
+  
+    while (it1 != intervals_.end() && it2 != iintervals->end()) {
+!     if (it1->end_ <= it2->begin_) {
+        ++it1;
+!     } else if (it2->end_ <= it1->begin_) {
+        ++it2;
+      } else {
+        Interval interval;
+!       interval.begin_ = max(it1->begin_, it2->begin_);
+!       interval.end_ = min(it1->end_, it2->end_);
+        ointervals->push_back(interval);
+!       oset->count_ += interval.end_ - interval.begin_;
+!       if (it1->end_ < it2->end_)
+          ++it1;
+        else
+          ++it2;
+***************
+*** 235,255 ****
+    oset->count_ = 0;
+  
+    Interval interval;
+!   interval.begin = 0;
+    for (typename vector<Interval>::const_iterator it = intervals_.begin();
+         it != intervals_.end();
+         ++it) {
+!     interval.end = min(it->begin, maxval);
+!     if (interval.begin < interval.end) {
+        ointervals->push_back(interval);
+!       oset->count_ += interval.end - interval.begin;
+      }
+!     interval.begin = it->end;
+    }
+!   interval.end = maxval;
+!   if (interval.begin < interval.end) {
+      ointervals->push_back(interval);
+!     oset->count_ += interval.end - interval.begin;
+    }
+  }
+  
+--- 235,255 ----
+    oset->count_ = 0;
+  
+    Interval interval;
+!   interval.begin_ = 0;
+    for (typename vector<Interval>::const_iterator it = intervals_.begin();
+         it != intervals_.end();
+         ++it) {
+!     interval.end_ = min(it->begin_, maxval);
+!     if (interval.begin_ < interval.end_) {
+        ointervals->push_back(interval);
+!       oset->count_ += interval.end_ - interval.begin_;
+      }
+!     interval.begin_ = it->end_;
+    }
+!   interval.end_ = maxval;
+!   if (interval.begin_ < interval.end_) {
+      ointervals->push_back(interval);
+!     oset->count_ += interval.end_ - interval.begin_;
+    }
+  }
+  
+***************
+*** 263,269 ****
+      oset->count_ = 0;
+    } else {
+      IntervalSet<T> cset;
+!     iset.Complement(intervals_.back().end, &cset);
+      Intersect(cset, oset);
+    }
+  }
+--- 263,269 ----
+      oset->count_ = 0;
+    } else {
+      IntervalSet<T> cset;
+!     iset.Complement(intervals_.back().end_, &cset);
+      Intersect(cset, oset);
+    }
+  }
+***************
+*** 277,285 ****
+    typename vector<Interval>::const_iterator it2 = intervals->begin();
+  
+    while (it1 != intervals_.end() && it2 != intervals->end()) {
+!     if (it1->end <= it2->begin) {
+        ++it1;
+!     } else if (it2->end <= it1->begin) {
+        ++it2;
+      } else {
+        return true;
+--- 277,285 ----
+    typename vector<Interval>::const_iterator it2 = intervals->begin();
+  
+    while (it1 != intervals_.end() && it2 != intervals->end()) {
+!     if (it1->end_ <= it2->begin_) {
+        ++it1;
+!     } else if (it2->end_ <= it1->begin_) {
+        ++it2;
+      } else {
+        return true;
+***************
+*** 300,320 ****
+    bool overlap = false; // point in both intervals_ and intervals
+  
+    while (it1 != intervals_.end() && it2 != intervals->end()) {
+!     if (it1->end <= it2->begin) {  // no overlap - it1 first
+        only1 = true;
+        ++it1;
+!     } else if (it2->end <= it1->begin) {  // no overlap - it2 first
+        only2 = true;
+        ++it2;
+!     } else if (it2->begin == it1->begin && it2->end == it1->end) {  // equals
+        overlap = true;
+        ++it1;
+        ++it2;
+!     } else if (it2->begin <= it1->begin && it2->end >= it1->end) {  // 1 c 2
+        only2 = true;
+        overlap = true;
+        ++it1;
+!     } else if (it1->begin <= it2->begin && it1->end >= it2->end) {  // 2 c 1
+        only1 = true;
+        overlap = true;
+        ++it2;
+--- 300,320 ----
+    bool overlap = false; // point in both intervals_ and intervals
+  
+    while (it1 != intervals_.end() && it2 != intervals->end()) {
+!     if (it1->end_ <= it2->begin_) {  // no overlap - it1 first
+        only1 = true;
+        ++it1;
+!     } else if (it2->end_ <= it1->begin_) {  // no overlap - it2 first
+        only2 = true;
+        ++it2;
+!     } else if (it2->begin_ == it1->begin_ && it2->end_ == it1->end_) {  // equals
+        overlap = true;
+        ++it1;
+        ++it2;
+!     } else if (it2->begin_ <= it1->begin_ && it2->end_ >= it1->end_) {  // 1 c 2
+        only2 = true;
+        overlap = true;
+        ++it1;
+!     } else if (it1->begin_ <= it2->begin_ && it1->end_ >= it2->end_) {  // 2 c 1
+        only1 = true;
+        overlap = true;
+        ++it2;
+***************
+*** 346,356 ****
+    typename vector<Interval>::const_iterator it2 = intervals->begin();
+  
+    while (it1 != intervals_.end() && it2 != intervals->end()) {
+!     if (it1->end <= it2->begin) {  // no overlap - it1 first
+        ++it1;
+!     } else if (it2->begin < it1->begin || it2->end > it1->end) {  // no C
+        return false;
+!     } else if (it2->end == it1->end) {
+        ++it1;
+        ++it2;
+      } else {
+--- 346,356 ----
+    typename vector<Interval>::const_iterator it2 = intervals->begin();
+  
+    while (it1 != intervals_.end() && it2 != intervals->end()) {
+!     if (it1->end_ <= it2->begin_) {  // no overlap - it1 first
+        ++it1;
+!     } else if (it2->begin_ < it1->begin_ || it2->end_ > it1->end_) {  // no C
+        return false;
+!     } else if (it2->end_ == it1->end_) {
+        ++it1;
+        ++it2;
+      } else {
+***************
+*** 370,376 ****
+         ++it) {
+      if (it != intervals->begin())
+        strm << ",";
+!     strm << "[" << it->begin << "," << it->end << ")";
+    }
+    strm << "}";
+    return strm;
+--- 370,376 ----
+         ++it) {
+      if (it != intervals->begin())
+        strm << ",";
+!     strm << "[" << it->begin_ << "," << it->end_ << ")";
+    }
+    strm << "}";
+    return strm;

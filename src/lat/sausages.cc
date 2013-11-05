@@ -238,8 +238,7 @@ void MinimumBayesRisk::AccStats() {
   for (int32 q = 1; q <= Q; q++) {
     for (map<int32, double>::iterator iter = gamma[q].begin();
          iter != gamma[q].end(); ++iter)
-      gamma_[q-1].push_back(std::make_pair<int32, BaseFloat>(iter->first,
-                                                             iter->second));
+      gamma_[q-1].push_back(std::make_pair(iter->first, static_cast<BaseFloat>(iter->second)));
     // sort gamma_[q-1] from largest to smallest posterior.
     GammaCompare comp;
     std::sort(gamma_[q-1].begin(), gamma_[q-1].end(), comp);

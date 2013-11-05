@@ -1,6 +1,7 @@
-// fstext/determinize-lattice-pruned-test.cc
+// lat/determinize-lattice-pruned-test.cc
 
-// Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2012  Microsoft Corporation
+//           2012-2013  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -17,20 +18,24 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "fstext/determinize-lattice-pruned.h"
+#include "lat/determinize-lattice-pruned.h"
 #include "fstext/lattice-utils.h"
 #include "fstext/fst-test-utils.h"
+#include "lat/kaldi-lattice.h"
+#include "lat/lattice-functions.h"
 
 namespace fst {
-
-
+// Caution: these tests are not as generic as you might think from all the
+// templates in the code.  They are basically only valid for LatticeArc.
+// This is partly due to the fact that certain templates need to be instantiated
+// in other .cc files in this directory.
 
 // test that determinization proceeds correctly on general
 // FSTs (not guaranteed determinzable, but we use the
 // max-states option to stop it getting out of control).
 template<class Arc> void TestDeterminizeLatticePruned() {
+  typedef kaldi::int32 Int;
   typedef typename Arc::Weight Weight;
-  typedef int32 Int;
   typedef ArcTpl<CompactLatticeWeightTpl<Weight, Int> > CompactArc;
   
   for(int i = 0; i < 100; i++) {
@@ -45,7 +50,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
     // weights to be broken, which causes the wrong path to be chosen as far
     // as the string part is concerned.
     
-    VectorFst<Arc> *fst = RandFst<Arc>();
+    VectorFst<Arc> *fst = RandPairFst<Arc>();
     if (rand() % 2 == 0)
       TopSort(fst);
 
@@ -64,7 +69,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
       lat_opts.max_mem = ((rand() % 2 == 0) ? 100 : 1000);
       lat_opts.max_states = ((rand() % 2 == 0) ? -1 : 20);
       lat_opts.max_arcs = ((rand() % 2 == 0) ? -1 : 30);
-      bool ans = DeterminizeLatticePruned<TropicalWeight, int32>(*fst, 10.0, &det_fst, lat_opts);
+      bool ans = DeterminizeLatticePruned<Weight, Int>(*fst, 10.0, &det_fst, lat_opts);
 
       std::cout << "FST after lattice-determinizing is:\n";
       {
@@ -77,8 +82,9 @@ template<class Arc> void TestDeterminizeLatticePruned() {
       // for any input-symbol sequence....
 
 
-      VectorFst<Arc> pruned_fst;
-      Prune(*fst, &pruned_fst, 10.0);
+      VectorFst<Arc> pruned_fst(*fst);
+      if (pruned_fst.NumStates() != 0)
+        kaldi::PruneLattice(10.0, &pruned_fst);
       
       VectorFst<CompactArc> compact_pruned_fst, compact_pruned_det_fst;
       ConvertLattice<Weight, Int>(pruned_fst, &compact_pruned_fst, false);
@@ -107,17 +113,18 @@ template<class Arc> void TestDeterminizeLatticePruned() {
 // test that determinization proceeds without crash on acyclic FSTs
 // (guaranteed determinizable in this sense).
 template<class Arc> void TestDeterminizeLatticePruned2() {
+  typedef typename Arc::Weight Weight;
   RandFstOptions opts;
   opts.acyclic = true;
   for(int i = 0; i < 100; i++) {
-    VectorFst<Arc> *fst = RandFst<Arc>(opts);
+    VectorFst<Arc> *fst = RandPairFst<Arc>(opts);
     std::cout << "FST before lattice-determinizing is:\n";
     {
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> ofst;
-    DeterminizeLatticePruned<TropicalWeight, int32>(*fst, 10.0, &ofst);
+    DeterminizeLatticePruned<Weight, int32>(*fst, 10.0, &ofst);
     std::cout << "FST after lattice-determinizing is:\n";
     {
       FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true);
@@ -132,7 +139,7 @@ template<class Arc> void TestDeterminizeLatticePruned2() {
 
 int main() {
   using namespace fst;
-  TestDeterminizeLatticePruned<StdArc>();
-  TestDeterminizeLatticePruned2<StdArc>();
+  TestDeterminizeLatticePruned<kaldi::LatticeArc>();
+  TestDeterminizeLatticePruned2<kaldi::LatticeArc>();
   std::cout << "Tests succeeded\n";
 }

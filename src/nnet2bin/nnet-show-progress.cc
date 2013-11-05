@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
 
     int32 num_segments = 1;
     int32 batch_size = 1024;
-    std::string use_gpu = "yes";
+    std::string use_gpu = "optional";
     
     po.Register("num-segments", &num_segments,
                 "Number of line segments used for computing derivatives");

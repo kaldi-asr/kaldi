@@ -354,7 +354,7 @@ class TableWriter {
   // Returns true if open for writing.
   bool IsOpen() const;
 
-  // Write the object.  Throws  std::runtime_erroron error (via the
+  // Write the object.  Throws  std::runtime_error on error (via the
   // KALDI_ERR macro)
   inline void Write(const std::string &key, const T &value) const;
 

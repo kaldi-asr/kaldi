@@ -27,7 +27,7 @@
 #include "fst/fstlib.h"
 #include "itf/decodable-itf.h"
 #include "fstext/fstext-lib.h"
-#include "fstext/determinize-lattice-pruned.h"
+#include "lat/determinize-lattice-pruned.h"
 #include "lat/kaldi-lattice.h"
 
 namespace kaldi {

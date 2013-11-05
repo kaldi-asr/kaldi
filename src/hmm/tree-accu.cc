@@ -83,7 +83,7 @@ void AccumulateTreeStats(const TransitionModel &trans_model,
         // [setting it to zero would have the same effect given the "normal"
         // recipe but might be less robust to changes in tree-building recipe].
         if (is_ctx_dep || j == P)
-          evec.push_back(std::make_pair<EventKeyType, EventValueType>(j, phone));
+          evec.push_back(std::make_pair(static_cast<EventKeyType>(j), static_cast<EventValueType>(phone)));
       }
       for (int j = 0; j < static_cast<int>(split_alignment[i+P].size());j++) {
         // for central phone of this window...

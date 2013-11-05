@@ -223,18 +223,6 @@ BaseFloat TotalNnetTrainingWeight(const std::vector<NnetTrainingExample> &egs) {
   return ans;
 }
 
-double DoBackprop(const Nnet &nnet,
-                  const std::vector<NnetTrainingExample> &examples,
-                  Nnet *nnet_to_update) {
-  try {
-    KALDI_ASSERT(nnet_to_update != NULL && "Call ComputeNnetObjf() instead.");
-    NnetUpdater updater(nnet, nnet_to_update);
-    return updater.ComputeForMinibatch(examples);
-  } catch (...) {
-    KALDI_LOG << "Error doing backprop, nnet info is: " << nnet.Info();
-    throw;
-  }
-}
 
 double ComputeNnetObjf(const Nnet &nnet,
                        const std::vector<NnetTrainingExample> &examples) {
@@ -242,6 +230,19 @@ double ComputeNnetObjf(const Nnet &nnet,
   return updater.ComputeForMinibatch(examples);
 }
 
+double DoBackprop(const Nnet &nnet,
+                  const std::vector<NnetTrainingExample> &examples,
+                  Nnet *nnet_to_update) {
+  if (nnet_to_update == NULL)
+    return ComputeNnetObjf(nnet, examples);
+  try {
+    NnetUpdater updater(nnet, nnet_to_update);
+    return updater.ComputeForMinibatch(examples);
+  } catch (...) {
+    KALDI_LOG << "Error doing backprop, nnet info is: " << nnet.Info();
+    throw;
+  }
+}
 
 double ComputeNnetGradient(
     const Nnet &nnet,

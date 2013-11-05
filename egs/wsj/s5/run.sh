@@ -330,6 +330,7 @@ local/run_dnn.sh
 
 
 # KWS setup. We leave it commented out by default
+
 # $duration is the length of the search collection, in seconds
 #duration=`feat-to-len scp:data/test_eval92/feats.scp  ark,t:- | awk '{x+=$2} END{print x/100;}'`
 #local/generate_example_kws.sh data/test_eval92/ data/kws/

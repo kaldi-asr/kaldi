@@ -15,7 +15,7 @@ endif
 UNAME=$(shell uname)
 ifeq ($(UNAME), Linux)
   ifneq ($(wildcard ../../tools/portaudio/install/include/pa_linux_alsa.h),)
-    EXTRA_LDLIBS += -lasound
+    EXTRA_LDLIBS += -lasound -lrt
   else
     EXTRA_LDLIBS += -lrt
   endif

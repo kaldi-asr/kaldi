@@ -62,8 +62,8 @@ namespace kaldi {
  */
 void CuDevice::SelectGpuId(std::string use_gpu) {
   // Possible modes  
-  if (use_gpu != "yes" && use_gpu != "no" && use_gpu != "optionaly") {
-    KALDI_ERR << "Please choose : --use-gpu=yes|no|optionaly, passed '" << use_gpu << "'";
+  if (use_gpu != "yes" && use_gpu != "no" && use_gpu != "optional") {
+    KALDI_ERR << "Please choose : --use-gpu=yes|no|optional, passed '" << use_gpu << "'";
   }
  
   // Make sure this function is not called twice!

@@ -889,6 +889,7 @@ void VectorBase<double>::MulElements(const VectorBase<float> &v);
 template<typename Real>
 void VectorBase<Real>::AddVecVec(Real alpha, const VectorBase<Real> &v,
                                  const VectorBase<Real> &r, Real beta) {
+  KALDI_ASSERT(v.data_ != this->data_ && r.data_ != this->data_);
   // We pretend that v is a band-diagonal matrix.
   KALDI_ASSERT(dim_ == v.dim_ && dim_ == r.dim_);
   cblas_Xgbmv(kNoTrans, dim_, dim_, 0, 0, alpha, v.data_, 1,

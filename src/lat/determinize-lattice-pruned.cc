@@ -1,6 +1,7 @@
-// fstext/determinize-lattice-pruned-inl.h
+// lat/determinize-lattice-pruned-inl.h
 
-// Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2012  Microsoft Corporation
+//           2012-2013  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -17,10 +18,6 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_FSTEXT_DETERMINIZE_LATTICE_PRUNED_INL_H_
-#define KALDI_FSTEXT_DETERMINIZE_LATTICE_PRUNED_INL_H_
-// Do not include this file directly.  It is included by determinize-lattice.h
-
 #ifdef _MSC_VER
 #include <unordered_map>
 #else
@@ -30,9 +27,10 @@
 using std::tr1::unordered_map;
 #include <climits>
 #include "fstext/determinize-lattice.h" // for LatticeStringRepository
+#include "lat/lattice-functions.h" // for PruneLattice
+#include "lat/determinize-lattice-pruned.h"
 
 namespace fst {
-
 
 // class LatticeDeterminizerPruned is templated on the same types that
 // CompactLatticeWeight is templated on: the base weight (Weight), typically
@@ -58,7 +56,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   // weight stores the original output-symbol strings).  If destroy == true,
   // release memory as we go (but we cannot output again).
   void Output(MutableFst<CompactArc>  *ofst, bool destroy = true) {
-    assert(determinized_);
+    KALDI_ASSERT(determinized_);
     typedef typename Arc::StateId StateId;
     StateId nStates = static_cast<StateId>(output_states_.size());
     if (destroy)
@@ -70,7 +68,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     }
     for (StateId s = 0;s < nStates;s++) {
       OutputStateId news = ofst->AddState();
-      assert(news == s);
+      KALDI_ASSERT(news == s);
     }
     ofst->SetStart(0);
     // now process transitions.
@@ -121,7 +119,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // Add basic states-- but we will add extra ones to account for strings on output.
     for (OutputStateId s = 0;s < nStates;s++) {
       OutputStateId news = ofst->AddState();
-      assert(news == s);
+      KALDI_ASSERT(news == s);
     }
     ofst->SetStart(0);
     for (OutputStateId this_state_id = 0; this_state_id < nStates; this_state_id++) {
@@ -330,8 +328,8 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     return true;
   }
   
-  bool Determinize() {
-    assert(!determinized_);
+  bool Determinize(double *effective_beam) {
+    KALDI_ASSERT(!determinized_);
     // This determinizes the input fst but leaves it in the "special format"
     // in "output_arcs_".  Must be called after Initialize().  To get the
     // output, call one of the Output routines.
@@ -369,6 +367,12 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       delete task;
     }
     determinized_ = true;
+    if (effective_beam != NULL) {
+      if (queue_.empty()) *effective_beam = beam_;
+      else
+        *effective_beam = queue_.top()->priority_cost -
+            backward_costs_[ifst_->Start()];
+    }
     return (queue_.empty()); // return success if queue was empty, i.e. we processed
     // all tasks and did not break out of the loop early due to reaching a memory,
     // arc or state limit.
@@ -437,7 +441,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
    public:
     bool operator ()(const vector<Element> * s1, const vector<Element> * s2) const {
       size_t sz = s1->size();
-      assert(sz>=0);
+      KALDI_ASSERT(sz>=0);
       if (sz != s2->size()) return false;
       typename vector<Element>::const_iterator iter1 = s1->begin(),
           iter1_end = s1->end(), iter2=s2->begin();
@@ -459,7 +463,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
    public:
     bool operator ()(const vector<Element> * s1, const vector<Element> * s2) const {
       size_t sz = s1->size();
-      assert(sz>=0);
+      KALDI_ASSERT(sz>=0);
       if (sz != s2->size()) return false;
       typename vector<Element>::const_iterator iter1 = s1->begin(),
           iter1_end = s1->end(), iter2=s2->begin();
@@ -488,7 +492,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   // minimal (only states with output symbols on arcs leaving them, and final
   // states).  Output is not necessarily normalized, even if input_subset was.
   void ConvertToMinimal(vector<Element> *subset) {
-    assert(!subset->empty());
+    KALDI_ASSERT(!subset->empty());
     typename vector<Element>::iterator cur_in = subset->begin(),
         cur_out = subset->begin(), end = subset->end();
     while (cur_in != end) {
@@ -507,24 +511,22 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   // out its final-weight, and puts stuff on the queue relating to its
   // transitions.
   OutputStateId MinimalToStateId(const vector<Element> &subset,
-                                 const Weight &forward_weight) {
+                                 const double forward_cost) {
     typename MinimalSubsetHash::const_iterator iter
         = minimal_hash_.find(&subset);
     if (iter != minimal_hash_.end()) { // Found a matching subset.
       OutputStateId state_id = iter->second;
       const OutputState &state = *(output_states_[state_id]);
       // Below is just a check that the algorithm is working...
-      if (fst::Compare(forward_weight, state.forward_weight) > 0
-          && !ApproxEqual(forward_weight, state.forward_weight,
-                          0.1)) { // TODO:  remove this once we're sure it's working...
+      if (forward_cost < state.forward_cost - 0.1) {
         // for large weights, this check could fail due to roundoff.
-        KALDI_WARN << "New weight is more (check the difference is small) "
-                   << forward_weight << ", "
-                   << state.forward_weight;
+        KALDI_WARN << "New cost is less (check the difference is small) "
+                   << forward_cost << ", "
+                   << state.forward_cost;
       }
     }
     OutputStateId state_id = static_cast<OutputStateId>(output_states_.size());
-    OutputState *new_state = new OutputState(subset, forward_weight);
+    OutputState *new_state = new OutputState(subset, forward_cost);
     minimal_hash_[&(new_state->minimal_subset)] = state_id;
     output_states_.push_back(new_state);
     num_elems_ += subset.size();
@@ -540,7 +542,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   // Given a normalized initial subset of elements (i.e. before epsilon closure),
   // compute the corresponding output-state.
   OutputStateId InitialToStateId(const vector<Element> &subset_in,
-                                 Weight forward_weight,
+                                 double forward_cost,
                                  Weight *remaining_weight,
                                  StringId *common_prefix) {
     typename InitialSubsetHash::const_iterator iter
@@ -568,8 +570,8 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // common string and weight in "elem".  The subset is now a minimal,
     // normalized subset.
 
-    forward_weight = Times(elem.weight, forward_weight);
-    OutputStateId ans = MinimalToStateId(subset, forward_weight);
+    forward_cost += ConvertToCost(elem.weight);
+    OutputStateId ans = MinimalToStateId(subset, forward_cost);
     *remaining_weight = elem.weight;
     *common_prefix = elem.string;
     if (elem.weight == Weight::Zero())
@@ -611,7 +613,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       if (a_vec[i] < b_vec[i]) return -1;
       else if (a_vec[i] > b_vec[i]) return 1;
     }
-    assert(0); // because we checked if a_str == b_str above, shouldn't reach here
+    KALDI_ASSERT(0); // because we checked if a_str == b_str above, shouldn't reach here
     return 0;
   }
   
@@ -758,8 +760,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       }
     }
     if (is_final &&
-        ConvertToCost(final_weight) + ConvertToCost(state.forward_weight)
-        <= cutoff_) {
+        ConvertToCost(final_weight) + state.forward_cost <= cutoff_) {
       // store final weights in TempArc structure, just like a transition.
       // Note: we only store the final-weight if it's inside the pruning beam, hence
       // the stuff with Compare.
@@ -794,7 +795,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       weight = Plus(weight, (*elems)[i].weight);
       repository_.ReduceToCommonPrefix((*elems)[i].string, &common_prefix);
     }
-    assert(weight != Weight::Zero()); // we made sure to ignore arcs with zero
+    KALDI_ASSERT(weight != Weight::Zero()); // we made sure to ignore arcs with zero
     // weights on them, so we shouldn't have zero here.
     size_t prefix_len = common_prefix.size();
     for(size_t i = 0; i < size; i++) {
@@ -812,9 +813,9 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   void MakeSubsetUnique(vector<Element> *subset) {
     typedef typename vector<Element>::iterator IterType;
     
-    // This assert is designed to fail (usually) if the subset is not sorted on
+    // This KALDI_ASSERT is designed to fail (usually) if the subset is not sorted on
     // state.
-    assert(subset->size() < 2 || (*subset)[0].state <= (*subset)[1].state);
+    KALDI_ASSERT(subset->size() < 2 || (*subset)[0].state <= (*subset)[1].state);
     
     IterType cur_in = subset->begin(), cur_out = cur_in, end = subset->end();
     size_t num_out = 0;
@@ -848,24 +849,23 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   // next-states are unique (there is only one Entry assocated with each)
   void ProcessTransition(OutputStateId ostate_id, Label ilabel, vector<Element> *subset) {
 
-     Weight forward_weight = output_states_[ostate_id]->forward_weight;
-     StringId common_str;
-     Weight tot_weight;
-     NormalizeSubset(subset, &tot_weight, &common_str);
-     forward_weight = Times(tot_weight, forward_weight); // used in working out
-     // the forward_weight of the next state.
+    double forward_cost = output_states_[ostate_id]->forward_cost;
+    StringId common_str;
+    Weight tot_weight;
+    NormalizeSubset(subset, &tot_weight, &common_str);
+    forward_cost += ConvertToCost(tot_weight);
      
-     OutputStateId nextstate;
-     {
-       Weight next_tot_weight;
-       StringId next_common_str;
-       nextstate = InitialToStateId(*subset,
-                                    forward_weight,
-                                    &next_tot_weight,
-                                    &next_common_str);
-       common_str = repository_.Concatenate(common_str, next_common_str);
-       tot_weight = Times(tot_weight, next_tot_weight);
-     }
+    OutputStateId nextstate;
+    {
+      Weight next_tot_weight;
+      StringId next_common_str;
+      nextstate = InitialToStateId(*subset,
+                                   forward_cost,
+                                   &next_tot_weight,
+                                   &next_common_str);
+      common_str = repository_.Concatenate(common_str, next_common_str);
+      tot_weight = Times(tot_weight, next_tot_weight);
+    }
 
     // Now add an arc to the next state (would have been created if necessary by
     // InitialToStateId).
@@ -950,7 +950,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       while (cur != end && cur->first == ilabel) {
         task->subset.push_back(cur->second);
         const Element &element = cur->second;
-        // Note: we'll later include the factor of "forward_weight" in the
+        // Note: we'll later include the term "forward_cost" in the
         // priority_cost.
         task->priority_cost = std::min(task->priority_cost,
                                        ConvertToCost(element.weight) +
@@ -962,8 +962,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       // the total-weight of the input FST, like a total-path weight... of
       // course, it will typically be less (in the semiring) than that.
       // note: we represent it just as a double.
-      task->priority_cost +=
-          ConvertToCost(output_states_[output_state_id]->forward_weight);
+      task->priority_cost += output_states_[output_state_id]->forward_cost;
 
       if (task->priority_cost > cutoff_) {
         // This task would never get done as it's past the pruning cutoff.
@@ -973,6 +972,15 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
         queue_.push(task); // Push the task onto the queue.  The queue keeps it      
         // in prioritized order, so we always process the one with the "best"
         // weight (highest in the semiring).
+
+        { // this is a check.
+          double best_cost = backward_costs_[ifst_->Start()],
+              tolerance = 0.01;
+          if (task->priority_cost < best_cost - tolerance) {
+            KALDI_WARN << "Cost below best cost was encountered:"
+                       << task->priority_cost << " < " << best_cost;
+          }
+        }
       }
     }
     all_elems.clear(); // as it's a reference to a class variable; we want it to stay
@@ -983,7 +991,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   bool IsIsymbolOrFinal(InputStateId state) { // returns true if this state
     // of the input FST either is final or has an osymbol on an arc out of it.
     // Uses the vector isymbol_or_final_ as a cache for this info.
-    assert(state >= 0);
+    KALDI_ASSERT(state >= 0);
     if (isymbol_or_final_.size() <= state)
       isymbol_or_final_.resize(state+1, static_cast<char>(OSF_UNKNOWN));
     if (isymbol_or_final_[state] == static_cast<char>(OSF_NO))
@@ -1008,7 +1016,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
 
   void ComputeBackwardWeight() {
     // Sets up the backward_costs_ array, and the cutoff_ variable.
-    assert(beam_ > 0);
+    KALDI_ASSERT(beam_ > 0);
     if (ifst_->Properties(kTopSorted, true) != 0) { // is topologically sorted-> easier.
       backward_costs_.resize(ifst_->NumStates());
       for (StateId s = ifst_->NumStates() - 1; s >= 0; s--) {
@@ -1076,8 +1084,8 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       // Weight::One() is the "forward-weight" of this determinized state...
       // i.e. the minimal cost from the start of the determinized FST to this
       // state [One() because it's the start state].
-      OutputState *initial_state = new OutputState(subset, Weight::One());
-      assert(output_states_.empty());
+      OutputState *initial_state = new OutputState(subset, 0);
+      KALDI_ASSERT(output_states_.empty());
       output_states_.push_back(initial_state);
       num_elems_ += subset.size();
       OutputStateId initial_state_id = 0;
@@ -1096,14 +1104,14 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // Note: the final-weight is included here with kNoStateId as the state id.  We
     // always process the final-weight regardless of the beam; when producing the
     // output we may have to ignore some of these.
-    Weight forward_weight; // Represents minimal cost from start-state
+    double forward_cost; // Represents minimal cost from start-state
     // to this state.  Used in prioritization of tasks, and pruning.
     // Note: we know this minimal cost from when we first create the OutputState;
     // this is because of the priority-queue we use, that ensures that the
     // "best" path into the state will be expanded first.
     OutputState(const vector<Element> &minimal_subset,
-                const Weight &forward_weight): minimal_subset(minimal_subset),
-                                               forward_weight(forward_weight) { }
+                double forward_cost): minimal_subset(minimal_subset),
+                                      forward_cost(forward_cost) { }
   };
   
   vector<OutputState*> output_states_; // All the info about the output states.
@@ -1186,23 +1194,8 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
 
 // normally Weight would be LatticeWeight<float> (which has two floats),
 // or possibly TropicalWeightTpl<float>, and IntType would be int32.
-template<class Weight, class IntType>
-bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
-                              double beam,
-                              MutableFst<ArcTpl<Weight> > *ofst,
-                              DeterminizeLatticePrunedOptions opts) {
-  ofst->SetInputSymbols(ifst.InputSymbols());
-  ofst->SetOutputSymbols(ifst.OutputSymbols());
-  LatticeDeterminizerPruned<Weight, IntType> det(ifst, beam, opts);
-  bool ans = det.Determinize(); // if it returns false it will typically still produce
-  // reasonable output, just with a narrower beam than "beam".
-  det.Output(ofst);
-  return ans;
-}
-
-
-// normally Weight would be LatticeWeight<float> (which has two floats),
-// or possibly TropicalWeightTpl<float>, and IntType would be int32.
+// Caution: there are two versions of the function DeterminizeLatticePruned,
+// with identical code but different output FST types.
 template<class Weight, class IntType>
 bool DeterminizeLatticePruned(
     const ExpandedFst<ArcTpl<Weight> >&ifst,
@@ -1211,16 +1204,108 @@ bool DeterminizeLatticePruned(
     DeterminizeLatticePrunedOptions opts) {
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
-  LatticeDeterminizerPruned<Weight, IntType> det(ifst, beam, opts);
-  bool ans = det.Determinize(); // if it returns false it will typically still produce
-  // reasonable output, just with a narrower beam than "beam".
-  det.Output(ofst);
-  return ans;
+  KALDI_ASSERT(opts.retry_cutoff >= 0.0 && opts.retry_cutoff < 1.0);
+  int32 max_num_iters = 10;  // avoid the potential for infinite loops if
+                             // retrying.
+  VectorFst<ArcTpl<Weight> > temp_fst;
+
+  for (int32 iter = 0; iter < max_num_iters; iter++) {
+    LatticeDeterminizerPruned<Weight, IntType> det(iter == 0 ? ifst : temp_fst,
+                                                   beam, opts);
+    double effective_beam;
+    bool ans = det.Determinize(&effective_beam);
+    // if it returns false it will typically still
+    // produce reasonable output, just with a
+    // narrower beam than "beam".
+    if (effective_beam >= beam * opts.retry_cutoff ||
+        iter + 1 == max_num_iters) {
+      det.Output(ofst);
+      return ans;
+    } else {
+      // The code below to set "beam" is a heuristic.
+      // If effective_beam is very small, we want to reduce by a lot.
+      // But never change the beam by more than a factor of two.
+      if (effective_beam < 0.0) effective_beam = 0.0;
+      double new_beam = beam * sqrt(effective_beam / beam);
+      if (new_beam < 0.5 * beam) new_beam = 0.5 * beam;
+      beam = new_beam;
+      if (iter == 0) temp_fst = ifst;
+      kaldi::PruneLattice(beam, &temp_fst);
+      KALDI_LOG << "Pruned state-level lattice with beam " << beam
+                << " and retrying determinization with that beam.";
+    }
+  }
+  return false; // Suppress compiler warning; this code is unreachable.
 }
 
 
+// normally Weight would be LatticeWeight<float> (which has two floats),
+// or possibly TropicalWeightTpl<float>, and IntType would be int32.
+// Caution: there are two versions of the function DeterminizeLatticePruned,
+// with identical code but different output FST types.
+template<class Weight, class IntType>
+bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
+                              double beam,
+                              MutableFst<ArcTpl<Weight> > *ofst,
+                              DeterminizeLatticePrunedOptions opts) {
+  ofst->SetInputSymbols(ifst.InputSymbols());
+  ofst->SetOutputSymbols(ifst.OutputSymbols());
+  KALDI_ASSERT(opts.retry_cutoff >= 0.0 && opts.retry_cutoff < 1.0);
+  int32 max_num_iters = 10;  // avoid the potential for infinite loops if
+                             // retrying.
+  VectorFst<ArcTpl<Weight> > temp_fst;
+
+  for (int32 iter = 0; iter < max_num_iters; iter++) {
+    LatticeDeterminizerPruned<Weight, IntType> det(iter == 0 ? ifst : temp_fst,
+                                                   beam, opts);
+    double effective_beam;
+    bool ans = det.Determinize(&effective_beam);
+    // if it returns false it will typically still
+    // produce reasonable output, just with a
+    // narrower beam than "beam".
+    if (effective_beam >= beam * opts.retry_cutoff ||
+        iter + 1 == max_num_iters) {
+      det.Output(ofst);
+      return ans;
+    } else {
+      // The code below to set "beam" is a heuristic.
+      // If effective_beam is very small, we want to reduce by a lot.
+      // But never change the beam by more than a factor of two.
+      if (effective_beam < 0)
+        effective_beam = 0;
+      double new_beam = beam * sqrt(effective_beam / beam);
+      if (new_beam < 0.5 * beam) new_beam = 0.5 * beam;
+      beam = new_beam;
+      KALDI_WARN << "Effective beam " << effective_beam << " was less than beam "
+                 << beam << " * cutoff " << opts.retry_cutoff << ", pruning raw "
+                 << "lattice with new beam " << new_beam << " and retrying.";
+      if (iter == 0) temp_fst = ifst;
+      kaldi::PruneLattice(beam, &temp_fst);
+    }
+  }
+  return false; // Suppress compiler warning; this code is unreachable.
+}
+
+
+// Instantiate the templates for the types we might need.
+// Note: there are actually two templates, each of which
+// we instantiate for a single type.
+
+template
+bool DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
+    const ExpandedFst<kaldi::LatticeArc> &ifst,
+    double prune,
+    MutableFst<kaldi::CompactLatticeArc> *ofst, 
+    DeterminizeLatticePrunedOptions opts);
+
+template
+bool DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
+    const ExpandedFst<kaldi::LatticeArc> &ifst,
+    double prune,
+    MutableFst<kaldi::LatticeArc> *ofst, 
+    DeterminizeLatticePrunedOptions opts);
+
 
 }
 
 
-#endif

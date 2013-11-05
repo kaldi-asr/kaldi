@@ -28,29 +28,29 @@ namespace kaldi {
 using std::vector;
 using std::set;
 
-typedef set<fst::StdArc::Label> LabelSet; 
+typedef unordered_set<fst::StdArc::Label> LabelSet; 
 
-void ReadSymbolList(const std::string &filename,
+void ReadSymbolList(const std::string &rxfilename,
                     fst::SymbolTable *word_syms,
                     LabelSet *lset) {
-  std::ifstream is(filename.c_str());
-  if (!is.good()) 
-    KALDI_ERR << "ReadSymbolList: could not open symbol list "<<filename;
+  Input ki(rxfilename);
   std::string line;
   assert(lset != NULL);
   lset->clear();
-  while (getline(is, line)) {
+  while (getline(ki.Stream(), line)) {
     std::string sym;
     std::istringstream ss(line);
     ss >> sym >> std::ws;
     if (ss.fail() || !ss.eof()) {
-      KALDI_ERR << "Bad line in symbol list: "<< line<<", file is: "<<filename;
+      KALDI_ERR << "Bad line in symbol list: "<< line
+                << ", file is: " << PrintableRxfilename(rxfilename);
     }
     fst::StdArc::Label lab = word_syms->Find(sym.c_str());
     if (lab == fst::SymbolTable::kNoSymbol) {
-      KALDI_ERR << "Can't find symbol in symbol table: "<< line<<", file is: "<<filename;
+      KALDI_ERR << "Can't find symbol in symbol table: "
+                << line << ", file is: "
+                << PrintableRxfilename(rxfilename);
     }
-    cerr << "ReadSymbolList: adding symbol "<<sym<<" ("<<lab<<")"<<endl;
     lset->insert(lab);
   }
 }
@@ -61,9 +61,10 @@ void MapWildCards(const LabelSet &wildcards, fst::StdVectorFst *ofst) {
     fst::StdArc::StateId s = siter.Value();
     for (fst::MutableArcIterator<fst::StdVectorFst> aiter(ofst, s); !aiter.Done();  aiter.Next()) {
       fst::StdArc arc(aiter.Value());
-      LabelSet::iterator it = wildcards.find(arc.ilabel);
+      LabelSet::const_iterator it = wildcards.find(arc.ilabel);
       if (it != wildcards.end()) {
-        cerr << "MapWildCards: mapping symbol "<<arc.ilabel<<" to epsilon"<<endl;
+        KALDI_VLOG(4) << "MapWildCards: mapping symbol " << arc.ilabel
+                      << " to epsilon" << endl;
         arc.ilabel = 0;
       }
       it = wildcards.find(arc.olabel);
@@ -240,13 +241,22 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     
     std::string word_syms_filename;
-    std::string wild_syms_filename;
-
+    std::string wild_syms_rxfilename;
+    std::string wildcard_symbols;
     std::string lats_wspecifier;
     
-    po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
-    po.Register("wildcard-symbols-list", &wild_syms_filename, "List of symbols that don't count as errors");
-    po.Register("write-lattices", &lats_wspecifier, "If supplied, write 1-best path as lattices to this wspecifier");
+    po.Register("word-symbol-table", &word_syms_filename,
+                "Symbol table for words [for debug output]");
+    po.Register("wildcard-symbols-list", &wild_syms_rxfilename, "Filename (generally, "
+                "rxfilename) for file containing text-form list of symbols that "
+                "don't count as errors; this option requires --word-symbol-table."
+                "  Deprecated; use --wildcard-symbols option.");
+    po.Register("wildcard-symbols", &wildcard_symbols,
+                "Colon-separated list of integer ids of symbols that "
+                "don't count as errors.  Preferred alternative to deprecated "
+                "option --wildcard-symbols-list.");
+    po.Register("write-lattices", &lats_wspecifier, "If supplied, write 1-best "
+                "path as lattices to this wspecifier");
     
     po.Read(argc, argv);
  
@@ -272,14 +282,26 @@ int main(int argc, char *argv[]) {
     if (word_syms_filename != "") 
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_ERR << "Could not read symbol table from file "
-        << word_syms_filename;
+                  << word_syms_filename;
 
-    LabelSet wild_syms;
-    if (wild_syms_filename != "") {
+    LabelSet wildcards;
+    if (wild_syms_rxfilename != "") {
+      KALDI_WARN << "--wildcard-symbols-list option deprecated.";
+      KALDI_ASSERT(wildcard_symbols.empty() && "Do not use both "
+                   "--wildcard-symbols and --wildcard-symbols-list options.");
       KALDI_ASSERT(word_syms != NULL && "--wildcard-symbols-list option "
                    "requires --word-symbol-table option");
-      ReadSymbolList(wild_syms_filename, word_syms, &wild_syms);
-    }
+      ReadSymbolList(wild_syms_rxfilename, word_syms, &wildcards);
+    } else {
+      std::vector<fst::StdArc::Label> wildcard_symbols_vec;
+      if (!SplitStringToIntegers(wildcard_symbols, ":", false,
+                                 &wildcard_symbols_vec)) {
+        KALDI_ERR << "Expected colon-separated list of integers for "
+                  << "--wildcard-symbols option, got: " << wildcard_symbols;
+      }
+      for (size_t i = 0; i < wildcard_symbols_vec.size(); i++)
+        wildcards.insert(wildcard_symbols_vec[i]);
+    }  
     
     int32 n_done = 0, n_fail = 0;
     int32 tot_correct=0, tot_substitutions=0, tot_insertions=0, tot_deletions=0,
@@ -292,7 +314,7 @@ int main(int argc, char *argv[]) {
 
       // remove all weights while creating a standard FST
       VectorFst<StdArc> lattice_fst;
-      ConvertLatticeToUnweightedAcceptor(lat, wild_syms, &lattice_fst);
+      ConvertLatticeToUnweightedAcceptor(lat, wildcards, &lattice_fst);
       CheckFst(lattice_fst, "lattice_fst_", key);
       
       // TODO: map certain symbols (using an FST created with CreateMapFst())
@@ -305,6 +327,7 @@ int main(int argc, char *argv[]) {
       const std::vector<int32> &reference = reference_reader.Value(key);
       VectorFst<StdArc> reference_fst;
       MakeLinearAcceptor(reference, &reference_fst);
+      MapWildCards(wildcards, &reference_fst); // Remove any wildcards in reference.
       
       CheckFst(reference_fst, "reference_fst_", key);
             
@@ -393,6 +416,7 @@ int main(int argc, char *argv[]) {
     }
     if (word_syms) delete word_syms;
     int32 tot_errs = tot_substitutions + tot_deletions + tot_insertions;
+    // Warning: the script egs/s5/*/steps/oracle_wer.sh parses the next line.
     KALDI_LOG << "Overall %WER " << (100.*tot_errs)/tot_words << " [ "
               << tot_errs << " / " << tot_words << ", " << tot_insertions
               << " insertions, " << tot_deletions << " deletions, "

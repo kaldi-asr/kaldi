@@ -462,7 +462,7 @@ void TestClusterEventMapRestricted() {
 
     for (size_t j = 0; j < keys.size(); j++) {
       EventValueType val = rand() % 100;
-      evec.push_back(std::make_pair<EventKeyType, EventValueType>(keys[j], val));
+      evec.push_back(std::make_pair(keys[j], val));
     }
     stats.push_back(std::make_pair(evec, static_cast<Clusterable*>(new ScalarClusterable(RandGauss()))));
   }
@@ -557,7 +557,7 @@ void TestShareEventMapLeaves() {
 
     for (size_t j = 0; j < keys.size(); j++) {
       EventValueType val = rand() % 100;
-      evec.push_back(std::make_pair<EventKeyType, EventValueType>(keys[j], val));
+      evec.push_back(std::make_pair(keys[j], val));
     }
     stats.push_back(std::make_pair(evec, static_cast<Clusterable*>(new ScalarClusterable(RandGauss()))));
   }

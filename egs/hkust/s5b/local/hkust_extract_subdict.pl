@@ -16,22 +16,31 @@
 # WORDX WORDY 
 # WORDX WORDY WORDZ
 
-if($#ARGV+1 != 2 && $#ARGV+1 != 3) {
+if(@ARGV < 2 || @ARGV > 4) {
   printUsage();
   exit;
 }
 
+$dictfile = shift @ARGV;
+$inputfile = shift @ARGV;
+
 $usespron=0;
-if(@ARGV == 3) {
-  if($ARGV[2] ne "--spron") {
-    printUsage();
-    exit;
-  }
-  $usespron=1;
+$mergeword=0;
+$mergewordhypen=0;
+
+while (@ARGV > 0) {
+  $param = shift @ARGV;
+  if($param eq "--spron") { $usespron=1; }
+  elsif ($param eq "--mergewords" ) { $mergeword = 1; }
+  elsif ($param eq "--mergewords_withhypen" ) { $mergewordhypen = 1; }
+  else { printUsage(); exit; }
 }
 
-$dictfile=$ARGV[0];
-$inputfile=$ARGV[1];
+if($mergeword==1 && $mergewordhypen==1) {
+  print "--mergewords option and --mergewords_withhypen option can not be used at the same time,\n";
+  print "please apply with only one of them.\n";
+  exit;
+}
 
 %dictionarylist=();
 open(INFILE, $dictfile) || die("Can't open dict ".$dictfile."\n");
@@ -51,6 +60,12 @@ open(INFILE, $inputfile) || die("Can't open wordlist ".$inputfile."\n");
 while(<INFILE>) {
   chomp;
   $phrase = $_;
+  if($mergeword==1) {
+    $phrase =~ s/\s+//g;
+  }
+  elsif($mergewordhypen==1) {
+    $phrase =~ s/\s+/-/g;
+  }
   @line = split(/\s+/);
 
   ## single pronunciation handling
@@ -59,10 +74,7 @@ while(<INFILE>) {
       next;
     }
 
-    for($i=0; $i<scalar(@line); $i++) {
-      print $line[$i]." ";
-    }
-    print "\t";
+    print $phrase."\t";
 
     for($i=0; $i<scalar(@line); $i++) {
       if(!exists($dictionarylist{$line[$i]})) {
@@ -123,8 +135,14 @@ while(<INFILE>) {
 close(INFILE);
 
 sub printUsage {
-    print "usage: perl hkust_extract_subdict.pl dict wordlist [--spron]\n\n";
-    print "### this script handle multiple pronunciations for dict in default\n";
-    print "### if you want to extract single(top) pronunciation from dict, please use the option --spron\n\n";
+    print "usage: perl hkust_extract_subdict.pl dict wordlist [--spron] [--mergewords | --mergewords_withhypen]\n\n";
+    print "### This script can output a subdict when a dictionary and a wordlist are supplied\n";
+    print "### This script can also generate dict entries for wordlist with multiple words in line\n\n";
+    print "### This script handles multiple pronunciations for dict by default.\n";
+    print "### If you want to extract single(top) pronunciation from dict, please use the option --spron\n\n";
+    print "### The --mergewords option is useful if you want to merge the multiple words to single phrase \n";
+    print "    in output format (e.g. 特別 行政 區 => 特別行政區)\n";
+    print "### The --mergewords_withhypen option is the same as --mergewords option except it merges the \n";
+    print "    multiple words with hypen in between (e.g. MACBOOK PRO => MACBOOK-PRO) in output format\n\n";
 }
 

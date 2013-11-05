@@ -71,3 +71,5 @@ acwt=0.1
   data-fmllr-tri5a/train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1;
 }
 
+## The above process were repeated for 2048 neurons system as well (i.e. --hid-dim 2048), CE DNN => "exp/tri5a_pretrain-dbn2",sMBR => "exp/tri5a_pretrain-dbn_dnn_smbr2" 
+

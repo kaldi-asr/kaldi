@@ -18,9 +18,9 @@ sub KeywordSort {
 
 my $Usage = <<EOU;
 This script reads a alignment.csv file and computes the ATWV, OTWV, MTWV by
-sweeping the threshold. The duration of the search collection is supposed to be
-provided. In the Babel case, the duration should be half of the total audio
-duration.
+sweeping the threshold. It also computes the lattice recall. The duration of
+the search collection is supposed to be provided. In the Babel case, the
+duration should be half of the total audio duration.
 
 The alignment.csv file is supposed to have the following fields for each line:
 language,file,channel,termid,term,ref_bt,ref_et,sys_bt,sys_et,sys_score,
@@ -56,6 +56,9 @@ open(A, "<$alignment_in") || die "$0: Fail to open alignment file: $alignment_in
 my %Ntrue;
 my %keywords;
 my %alignment;
+my $true_miss = 0;
+my $soft_miss = 0;
+my $true_hit = 0;
 while (<A>) {
   chomp;
   my @col = split(',');
@@ -94,6 +97,15 @@ while (<A>) {
     }
     $Ntrue{$col[3]} += 1;
     $keywords{$col[3]} = 1;
+
+    # The following is for lattice recall.
+    if ($col[11] eq "CORR" && $col[10] eq "YES") {
+      $true_hit ++;
+    } elsif ($col[11] eq "MISS" && $col[10] eq "NO") {
+      $soft_miss ++;
+    } elsif ($col[11] eq "MISS" && $col[10] eq "") {
+      $true_miss ++;
+    }
     next;
   }
 }
@@ -159,6 +171,9 @@ $otwv /= scalar(keys %keywords);
 $otwv = sprintf("%.4f", $otwv);
 $mtwv /= scalar(keys %keywords);
 $mtwv = sprintf("%.4f", $mtwv);
+my $lattice_recall = 1 - $true_miss / ($true_miss + $soft_miss + $true_hit);
+$lattice_recall = sprintf("%.4f", $lattice_recall);
 print "ATWV = $atwv\n";
 print "OTWV = $otwv\n";
 print "MTWV = $mtwv, THRESHOLD = $mtwv_threshold\n";
+print "Lattice Recall = $lattice_recall\n";
