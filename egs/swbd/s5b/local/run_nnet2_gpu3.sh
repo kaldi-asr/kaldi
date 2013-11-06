@@ -13,7 +13,7 @@
 
 ( 
   if [ ! -f exp/nnet5c/final.mdl ]; then
-    steps/nnet2/train_tanh.sh --cmd "$decode_cmd -l gpu=1" --parallel-opts "" --io-opts "-tc 5 -l gpu=0" --stage 442 \
+    steps/nnet2/train_tanh.sh --cmd "$decode_cmd" --parallel-opts "-l gpu=1" --io-opts "-tc 5" \
       --num-threads 1 --minibatch-size 512 --max-change 40.0 --mix-up 20000 --samples-per-iter 300000 \
       --num-epochs 10 --num-epochs-extra 3 --initial-learning-rate 0.0067 --final-learning-rate 0.00067 \
       --num-jobs-nnet 10 --num-hidden-layers 5 --hidden-layer-dim 1536 data/train_nodup data/lang \
