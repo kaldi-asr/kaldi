@@ -255,6 +255,13 @@ echo "$0: (while reducing learning rate) + (with constant learning rate)."
 # adding the hidden layers and the end of training.
 mix_up_iter=$[$num_iters/2]
 
+if [ $num_threads -eq 1 ]; then
+  train_suffix="-simple" # this enables us to use GPU code if
+                         # we have just one thread.
+else
+  train_suffix="-parallel --num-threads=$num_threads"
+fi
+
 x=0
 while [ $x -lt $num_iters ]; do
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
@@ -265,7 +272,7 @@ while [ $x -lt $num_iters ]; do
       nnet-compute-prob $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
     if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
       $cmd $dir/log/progress.$x.log \
-        nnet-show-progress $dir/$[$x-1].mdl $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
+        nnet-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
     fi
     
     echo "Training neural net (pass $x)"
@@ -274,7 +281,7 @@ while [ $x -lt $num_iters ]; do
     $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
       nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
       ark:$egs_dir/egs.JOB.$[$x%$iters_per_epoch].ark ark:- \| \
-      nnet-train-parallel --num-threads=$num_threads \
+      nnet-train$train_suffix \
          --minibatch-size=$minibatch_size --srand=$x "$mdl" \
         ark:- $dir/$[$x+1].JOB.mdl \
       || exit 1;
@@ -342,11 +349,18 @@ for x in `seq $start $num_iters`; do
 done
 
 if [ $stage -le $num_iters ]; then
+  # Below, use --use-gpu=no to disable nnet-combine-fast from using a GPU, as
+  # if there are many models it can give out-of-memory error; set num-threads to 8
+  # to speed it up (this isn't ideal...)
+  this_num_threads=$num_threads
+  [ $this_num_threads -lt 8 ] && this_num_threads=8
   num_egs=`nnet-copy-egs ark:$egs_dir/combine.egs ark:/dev/null 2>&1 | tail -n 1 | awk '{print $NF}'`
-  mb=$[($num_egs+$num_threads-1)/$num_threads]
+  mb=$[($num_egs+$this_num_threads-1)/$this_num_threads]
+  [ $mb -gt 512 ] && mb=512
   $cmd $parallel_opts $dir/log/combine.log \
-    nnet-combine-fast --num-threads=$num_threads --verbose=3 --minibatch-size=$mb \
-    "${nnets_list[@]}" ark:$egs_dir/combine.egs $dir/final.mdl || exit 1;
+    nnet-combine-fast --use-gpu=no --num-threads=$this_num_threads \
+      --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
+      $dir/final.mdl || exit 1;
 fi
 
 # Compute the probability of the final, combined model with
