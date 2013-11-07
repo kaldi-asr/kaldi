@@ -60,11 +60,12 @@ struct NnetCombineFastConfig {
   int32 minibatch_size; // e.g. 1028; a larger minibatch size we use in
   // the gradient computation.
   int32 max_lbfgs_dim;
+  BaseFloat regularizer;
   
   NnetCombineFastConfig(): initial_model(-1), num_lbfgs_iters(10),
                            num_threads(1), initial_impr(0.01), alpha(0.01),
                            fisher_minibatch_size(64), minibatch_size(1024),
-                           max_lbfgs_dim(10) {}
+                           max_lbfgs_dim(10), regularizer(0.0) {}
   
   void Register(OptionsItf *po) {
     po->Register("initial-model", &initial_model, "Specifies where to start the "
@@ -87,6 +88,9 @@ struct NnetCombineFastConfig {
     po->Register("max-lbfgs-dim", &max_lbfgs_dim, "Maximum dimension to use in "
                  "L-BFGS (will not get higher than this even if the dimension "
                  "of the space gets higher.)");
+    po->Register("regularizer", &regularizer, "Add to the objective "
+                 "function (which is average log-like per frame), -0.5 * "
+                 "regularizer * square of parameters.");
   }  
 };
 

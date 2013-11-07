@@ -113,7 +113,8 @@ class FastNnetCombiner {
     int32 dim = params_.Dim();
     KALDI_ASSERT(dim > 0);
     Vector<double> gradient(dim);
-  
+    
+    double regularizer_objf, initial_regularizer_objf; // for diagnostics
     double objf, initial_objf;
 
     LbfgsOptions lbfgs_options;
@@ -126,18 +127,30 @@ class FastNnetCombiner {
     
     for (int32 i = 0; i < config_.num_lbfgs_iters; i++) {
       params_.CopyFromVec(lbfgs.GetProposedValue());
-      objf = ComputeObjfAndGradient(&gradient);
+      objf = ComputeObjfAndGradient(&gradient, &regularizer_objf);
       // Note: there is debug printout in ComputeObjfAndGradient
       // (at verbose-level 2).
-      if (i == 0) initial_objf = objf;
+      if (i == 0) {
+        initial_objf = objf;
+        initial_regularizer_objf = regularizer_objf;
+      }
       lbfgs.DoStep(objf, gradient);
     }
     params_ = lbfgs.GetValue(&objf);
     
-    ComputeCurrentNnet(nnet_out_, true); // create the output neural net,
-    // and prints out the scaling factors.
-    KALDI_LOG << "Combining nnets, objf per frame changed from "
-              << initial_objf << " to " << objf;
+    ComputeCurrentNnet(nnet_out_, true); // create the output neural net, and
+                                         // print out the scaling factors.
+    if (config_.regularizer != 0.0) {
+      double initial_part = initial_objf - initial_regularizer_objf,
+          part = objf - regularizer_objf;
+      KALDI_LOG << "Combining nnets, objf/frame + regularizer changed from "
+                << initial_part << " + " << initial_regularizer_objf
+                << " = " << objf << " to " << part << " + " << regularizer_objf
+                << " = " << objf;
+    } else {
+      KALDI_LOG << "Combining nnets, objf per frame changed from "
+                << initial_objf << " to " << objf;
+    }
   }    
   
  private:
@@ -149,9 +162,13 @@ class FastNnetCombiner {
   
   void ComputePreconditioner();
 
-  // Computes objfective
+  // Computes and returns objective function per frame, including
+  // regularizer term if applicable.  Also puts just the regularizer
+  // term in *regularizer_objf.
   double ComputeObjfAndGradient(
-      Vector<double> *gradient);
+      Vector<double> *gradient,
+      double *regularizer_objf);
+  
   void ComputeCurrentNnet(
       Nnet *dest, bool debug = false);
 
@@ -167,8 +184,10 @@ class FastNnetCombiner {
   // so p = C^{-T} \hat{p}.
   TpMatrix<double> C_;
   TpMatrix<double> C_inv_;
-  Vector<double> params_; // the parameters we're optimizing-- in
-  // the preconditioned space.
+  Vector<double> params_; // the parameters we're optimizing-- in the
+                          // preconditioned space.  These are the same dimension
+                          // as the number of nnets we're combining times the
+                          // number of updatable layers.
   
   const NnetCombineFastConfig &config_;
   const std::vector<NnetTrainingExample> &egs_;
@@ -242,6 +261,8 @@ void FastNnetCombiner::ComputePreconditioner() {
   params_.AddTpVec(1.0, C_, kTrans, raw_params, 0.0); 
 }
 
+// Note, we ignore the regularizer in selecting the best one.  It shouldn't
+// really matter.
 void FastNnetCombiner::GetInitialParams() {
   int32 initial_model = config_.initial_model,
       num_nnets = static_cast<int32>(nnets_.size());
@@ -272,7 +293,8 @@ void FastNnetCombiner::GetInitialParams() {
 
 /// Computes objf at point "params_".
 double FastNnetCombiner::ComputeObjfAndGradient(
-    Vector<double> *gradient) {
+    Vector<double> *gradient,
+    double *regularizer_objf_ptr) {
   Nnet nnet;
   ComputeCurrentNnet(&nnet); // compute it at the value "params_".
   
@@ -287,6 +309,8 @@ double FastNnetCombiner::ComputeObjfAndGradient(
   // raw_gradient is gradient in non-preconditioned space.
   Vector<double> raw_gradient(params_.Dim());
 
+
+  double regularizer_objf = 0.0; // sum of -0.5 * config_.regularizer * params-squared.
   int32 i = 0; // index into raw_gradient
   int32 num_nnets = nnets_.size();
   for (int32 n = 0; n < num_nnets; n++) {
@@ -294,19 +318,37 @@ double FastNnetCombiner::ComputeObjfAndGradient(
       const UpdatableComponent *uc =
           dynamic_cast<const UpdatableComponent*>(&(nnets_[n].GetComponent(j))),
           *uc_gradient =
-          dynamic_cast<const UpdatableComponent*>(&(nnet_gradient.GetComponent(j)));
+          dynamic_cast<const UpdatableComponent*>(&(nnet_gradient.GetComponent(j))),
+          *uc_params =
+          dynamic_cast<const UpdatableComponent*>(&(nnet.GetComponent(j)));
       if (uc != NULL) {
-        double dotprod = uc->DotProduct(*uc_gradient) / tot_weight;
-        raw_gradient(i) = dotprod; 
+        double gradient = uc->DotProduct(*uc_gradient) / tot_weight;
+        // "gradient" is the derivative of the objective function w.r.t. this
+        // element of the parameters (i.e. this weight, which gets applied to
+        // the j'th component of the n'th source neural net).
+        if (config_.regularizer != 0.0) {
+          gradient -= config_.regularizer * uc->DotProduct(*uc_params);
+          if (n == 0) // only add this once...
+            regularizer_objf +=
+                -0.5 * config_.regularizer * uc_params->DotProduct(*uc_params);
+        }
+        raw_gradient(i) = gradient;
         i++;
       }
     }
   }
-  KALDI_VLOG(2) << "Objf is " << objf << ", raw gradient is " << raw_gradient;
+  if (config_.regularizer != 0.0) {
+    KALDI_VLOG(2) << "Objf is " << objf << " + regularizer " << regularizer_objf
+                  << " = " << (objf + regularizer_objf) << ", raw gradient is "
+                  << raw_gradient;
+  } else {
+    KALDI_VLOG(2) << "Objf is " << objf << ", raw gradient is " << raw_gradient;
+  }
   KALDI_ASSERT(i == raw_gradient.Dim());
   // \hat{g} = C^{-1} g.
   gradient->AddTpVec(1.0, C_inv_, kNoTrans, raw_gradient, 0.0);
-  return objf;
+  *regularizer_objf_ptr = regularizer_objf;
+  return objf + regularizer_objf;
 }
 
 void FastNnetCombiner::ComputeCurrentNnet(

@@ -208,3 +208,8 @@ exit 0
 exp/nnet5c1/decode_bd_tgpr_dev93/wer_14:%WER 7.32 [ 603 / 8234, 61 ins, 101 del, 441 sub ]
 exp/nnet5c1/decode_bd_tgpr_eval92/wer_14:%WER 4.39 [ 248 / 5643, 32 ins, 17 del, 199 sub ]
 # Note: my 4.39% result is worse than Karel's 3.56%.
+
+
+# This is the same recipe run on a GPU.. probably better due to the reduced number of jobs (4 vs. 16).
+%WER 7.04 [ 580 / 8234, 68 ins, 93 del, 419 sub ] exp/nnet5c_gpu/decode_bd_tgpr_dev93/wer_13
+%WER 3.86 [ 218 / 5643, 28 ins, 13 del, 177 sub ] exp/nnet5c_gpu/decode_bd_tgpr_eval92/wer_14
