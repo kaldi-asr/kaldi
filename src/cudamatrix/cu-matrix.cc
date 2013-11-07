@@ -601,6 +601,8 @@ void CuMatrixBase<Real>::Scale(Real value) {
   }
 }
 
+
+
 template<typename Real> 
 void CuMatrixBase<Real>::ApplyLog() { 
   #if HAVE_CUDA == 1 
@@ -718,64 +720,7 @@ void CuMatrixBase<Real>::MulRowsVec(const CuVectorBase<Real> &scale) {
   }
 }
 
-template<typename Real> 
-void CuMatrixBase<Real>::MulRowsGroupMat(const CuMatrixBase<Real> &src) {
-  KALDI_ASSERT(src.NumCols() > 0 && src.NumCols() <= this->NumCols());
-  KALDI_ASSERT(this->NumCols() % src.NumCols() == 0 || 
-  	this->NumCols() % (src.NumCols() - 1) < this->NumCols() / (src.NumCols() - 1));
-  int group_size = 0;
-  if (this->NumCols() % src.NumCols() == 0) {
-    group_size = this->NumCols() / src.NumCols();
-  } else {
-    group_size = this->NumCols() / (src.NumCols() - 1); 
-  }
-#if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
 
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
-
-    cuda_mul_rows_group_mat(dimGrid, dimBlock, this->data_, src.data_, Dim(), src.Stride(), group_size);
-    CU_SAFE_CALL(cudaGetLastError());
-
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-#endif
-  {
-    Mat().MulRowsGroupMat(src.Mat());
-  }
-}
-template<typename Real>
-void CuMatrixBase<Real>::CalcPnormDeriv(const CuMatrixBase<Real> &src1, const CuMatrixBase<Real> &src2, Real power) {
- KALDI_ASSERT(src2.NumCols() > 0 && src2.NumCols() <= this->NumCols());
-  KALDI_ASSERT(this->NumCols() % src2.NumCols() == 0 || 
-  	this->NumCols() % (src2.NumCols() - 1) < this->NumCols() / (src2.NumCols() - 1));
-  int group_size = 0;
-  if (this->NumCols() % src2.NumCols() == 0) {
-    group_size = this->NumCols() / src2.NumCols();
-  } else {
-    group_size = this->NumCols() / (src2.NumCols() - 1); 
-  }
-#if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
-
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
-
-    KALDI_LOG << "src1" << src1;
-    cuda_calc_pnorm_deriv(dimGrid, dimBlock, this->data_, this->Size(), src1.Data(), src2.Data(), Dim(), src2.Stride(), group_size, power);
-    KALDI_LOG << "src1" << src1;
-    CU_SAFE_CALL(cudaGetLastError());
-
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-#endif
-  {
-    Mat().CalcPnormDeriv(src1.Mat(), src2.Mat(), power);
-  }
-}
 
 template<typename Real>
 void CuMatrixBase<Real>::DivRowsVec(const CuVectorBase<Real> &div) {
@@ -1036,25 +981,7 @@ void CuMatrixBase<Real>::SoftHinge(const CuMatrixBase<Real> &src) {
   }
 }
 
-template<typename Real>
-void CuMatrixBase<Real>::GroupPnorm(const CuMatrixBase<Real> &src, Real power) {
-  //KALDI_ASSERT(SameDimAndStride(*this, src));
-  int group_size = src.NumCols() / this->NumCols();
-  KALDI_ASSERT(src.NumCols() == this->NumCols() * group_size);
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
-    cuda_group_pnorm(dimGrid, dimBlock, this->data_, src.data_, this->Dim(), src.Stride(), group_size, power);
-    CU_SAFE_CALL(cudaGetLastError());
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-  #endif
-  {
-    Mat().GroupPnorm(src.Mat(), power);
-  }
-}
+
 /*
 Think of sv_labels as a Matrix, denoting the "correct" label of each frame to each phone-state; it's very likely to contain a LOT of zeros
 

@@ -773,8 +773,6 @@ int main() {
       UnitTestGenericComponent<RectifiedLinearComponent>();
       UnitTestGenericComponent<SoftHingeComponent>();
       UnitTestGenericComponent<PowerExpandComponent>("higher-power-scale=0.1");
-     // UnitTestGenericComponent<PnormComponent>("group-size=4 p=2");
-      UnitTestGenericComponent<NormalizeComponent>();
       UnitTestSigmoidComponent();
       UnitTestAffineComponent();
       UnitTestPiecewiseLinearComponent();

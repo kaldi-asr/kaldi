@@ -209,25 +209,6 @@ static void UnitTestCuMatrixSoftHinge() {
   AssertEqual(H,H2);
 }
 
-template<typename Real> 
-static void UnitTestCuMatrixGroupPnorm() {
-  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
-  // M = 256; N = 256;
-  for (int32 K = 1; K < 30; K++) {
-    for (int32 p = 2; p < 10; p++) {
-      int32 N_src = N * K;
-      Matrix<Real> H_src(M, N_src);
-      H_src.SetRandn();
-      Matrix<Real> H(M, N);
-      H.GroupPnorm(H_src, p);
-      CuMatrix<Real> D(H_src);
-      CuMatrix<Real> E(M, N);
-      E.GroupPnorm(D, p);
-      Matrix<Real> H2(E);
-      AssertEqual(H,H2);
-    }
-  }
-}
 
 template<typename Real> 
 static void UnitTestCuMatrixSet() {
@@ -548,7 +529,6 @@ template<typename Real>
 static void UnitTestCuMatrixMulRowsVec() {
   for (int32 i = 0; i < 5; i++) {
     int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
-   // int32 dimM = 256, dimN = 256;
     Matrix<Real> Hm(dimM, dimN);
     Vector<Real> Hv(dimM);
     RandGaussMatrix(&Hm);
@@ -566,65 +546,6 @@ static void UnitTestCuMatrixMulRowsVec() {
     Dm.CopyToMat(&Hm2);
 
     AssertEqual(Hm,Hm2);
-  }
-}
-
-template<typename Real> 
-static void UnitTestCuMatrixMulRowsGroupMat() {
-  for (int32 i = 0; i < 5; i++) {
-    int32 dimM = 100 + rand() % 200, dimNs = 100 + rand() % 200;
-    // int32 dimM = 1000, dimNs = 1000;
-    int32 group_size = 1 + rand() % 10;
-    //int32 group_size = 1;
-    int32 dimN = group_size * dimNs - rand() % group_size;
-    Matrix<Real> Hm(dimM, dimN);
-    Matrix<Real> Hs(dimM, dimNs);
-    RandGaussMatrix(&Hm);
-    RandGaussMatrix(&Hs);
-
-    CuMatrix<Real> Dm(dimM, dimN);
-    CuMatrix<Real> Ds(dimM, dimNs);
-    Dm.CopyFromMat(Hm);
-    Ds.CopyFromMat(Hs);
-    
-    Dm.MulRowsGroupMat(Ds);
-    Hm.MulRowsGroupMat(Hs);
-    
-    Matrix<Real> Hm2(dimM, dimN);
-    Dm.CopyToMat(&Hm2);
-    AssertEqual(Hm,Hm2);
-  }
-}
-
-template<typename Real> 
-static void UnitTestCuMatrixCalcPnormDeriv() {
-  for (int32 i = 0; i < 5; i++) {
-    int32 dimM = 100 + rand() % 200, dimNs = 100 + rand() % 200;
-    int32 group_size = 1 + rand() % 10;
-    // int32 dimM = 256, dimNs = 2;
-    // int32 group_size = 2;
-    int32 dimN = group_size * dimNs - rand() % group_size;
-    Matrix<Real> Hm(dimM, dimN);
-    Matrix<Real> Hr(dimM, dimN);
-    Matrix<Real> Hs(dimM, dimNs);
-    RandGaussMatrix(&Hm);
-    RandGaussMatrix(&Hs);
-
-    CuMatrix<Real> Dm(dimM, dimN);
-    CuMatrix<Real> Dr(dimM, dimN);
-    CuMatrix<Real> Ds(dimM, dimNs);
-    Dm.CopyFromMat(Hm);
-    Dr.CopyFromMat(Hr);
-    Ds.CopyFromMat(Hs);
-    
-    // KALDI_LOG << "Hr " << Hr << " Dr " << Dr << "Ds" << Ds << " Hs " << Hs ; 
-    Dr.CalcPnormDeriv(Dm, Ds, 2);
-    Hr.CalcPnormDeriv(Hm, Hs, 2);
-    
-    // KALDI_LOG << "Hr " << Hr << " Dr " << Dr << "Ds" << Ds << " Hs " << Hs ; 
-    Matrix<Real> Hr2(dimM, dimN);
-    Dr.CopyToMat(&Hr2);
-    AssertEqual(Hr,Hr2);
   }
 }
 
@@ -1733,86 +1654,75 @@ static void UnitTestCuMatrixObjfDeriv() {
 }
 
 template<typename Real> void CudaMatrixUnitTest() {
-//  UnitTestCuMatrixTraceMatMat<Real>();
-//  UnitTestCuMatrixObjfDeriv<Real>();
-//  //test CuMatrix<Real> methods by cross-check with Matrix
-//  UnitTestCuMatrixCopyCross<Real>();
-//  UnitTestCuMatrixCopyCross2<Real>();
-//  UnitTestCuMatrixApplyLog<Real>();
-//  UnitTestCuMatrixSetRandn<Real>();
-//  UnitTestCuMatrixSetRandUniform<Real>();
-//  UnitTestCuMatrixScale<Real>();
-//  UnitTestCuMatrixSigmoid<Real>();
-//  UnitTestCuMatrixSoftHinge<Real>();
-//  UnitTestCuMatrixGroupPnorm<Real>();
- // UnitTestCuMatrixApplyPow<Real>();
- // UnitTestCuMatrixSet<Real>();
- // UnitTestCuMatrixAdd<Real>();
- // UnitTestCuMatrixApplyFloor<Real>();
- // UnitTestCuMatrixApplyHeaviside<Real>();
- // UnitTestCuMatrixMulElements<Real>();
- // UnitTestCuMatrixMax<Real>();
-  //UnitTestCuMatrixMulColsVec<Real>();
- // UnitTestCuMatrixMulRowsVec<Real>();
-  UnitTestCuMatrixMulRowsGroupMat<Real>();
-  UnitTestCuMatrixGroupPnorm<Real>(); 
-  UnitTestCuMatrixCalcPnormDeriv<Real>();
- // UnitTestCuMatrixCalcPnormDeriv<Real>();
- // UnitTestCuMatrixDivRowsVec<Real>();
- // UnitTestCuMatrixAddMat<Real>();
- // UnitTestCuMatrixSum<Real>();
- // UnitTestCuMatrixAddVecToCols<Real>();
- // UnitTestCuMatrixAddVecToRows<Real>();
- // UnitTestCuMatrixAddMatMat<Real>();
- // UnitTestCuMatrixSymAddMat2<Real>();
- // UnitTestCuMatrixSymInvertPosDef<Real>();
- // UnitTestCuMatrixCopyFromMat<Real>();
- // UnitTestCuMatrixCopyFromTp<Real>();
- // UnitTestCuMatrixAddMatTp<Real>();
- // UnitTestCuMatrixCopyCols<Real>();
- // UnitTestCuMatrixSumColumnRanges<Real>();
- // UnitTestCuMatrixCopyRows<Real>();
- // UnitTestCuMatrixCopyRowsFromVec<Real>();
- // UnitTestCuMatrixAddTpMat<Real>();
- // UnitTestCuMatrixTranspose<Real>();
- // UnitTestCuMatrixCopyUpperToLower<Real>();
- // UnitTestCuMatrixCopyLowerToUpper<Real>();
- // //test CuVector<Real> methods
- // UnitTestCuVectorAddVec<Real>();
- // UnitTestCuVectorAddRowSumMat<Real>();
- // UnitTestCuVectorAddRowSumMatLarge<Real>();
- // UnitTestCuVectorAddColSumMat<Real>();
- // UnitTestCuVectorAddColSumMatLarge<Real>();
- // UnitTestCuSubMatrix<Real>();
- // UnitTestCuVectorInvertElements<Real>();
- // UnitTestCuMatrixIO<Real>();
- // UnitTestCuSigmoid<Real>();
- // UnitTestCuApproxEqual<Real>();
- // UnitTestCuCopy<Real, float>();
+  UnitTestCuMatrixTraceMatMat<Real>();
+  UnitTestCuMatrixObjfDeriv<Real>();
+  //test CuMatrix<Real> methods by cross-check with Matrix
+  UnitTestCuMatrixCopyCross<Real>();
+  UnitTestCuMatrixCopyCross2<Real>();
+  UnitTestCuMatrixApplyLog<Real>();
+  UnitTestCuMatrixSetRandn<Real>();
+  UnitTestCuMatrixSetRandUniform<Real>();
+  UnitTestCuMatrixScale<Real>();
+  UnitTestCuMatrixSigmoid<Real>();
+  UnitTestCuMatrixSoftHinge<Real>();
+  UnitTestCuMatrixApplyPow<Real>();
+  UnitTestCuMatrixSet<Real>();
+  UnitTestCuMatrixAdd<Real>();
+  UnitTestCuMatrixApplyFloor<Real>();
+  UnitTestCuMatrixApplyHeaviside<Real>();
+  UnitTestCuMatrixMulElements<Real>();
+  UnitTestCuMatrixMax<Real>();
+  UnitTestCuMatrixMulColsVec<Real>();
+  UnitTestCuMatrixMulRowsVec<Real>();
+  UnitTestCuMatrixDivRowsVec<Real>();
+  UnitTestCuMatrixAddMat<Real>();
+  UnitTestCuMatrixSum<Real>();
+  UnitTestCuMatrixAddVecToCols<Real>();
+  UnitTestCuMatrixAddVecToRows<Real>();
+  UnitTestCuMatrixAddMatMat<Real>();
+  UnitTestCuMatrixSymAddMat2<Real>();
+  UnitTestCuMatrixSymInvertPosDef<Real>();
+  UnitTestCuMatrixCopyFromMat<Real>();
+  UnitTestCuMatrixCopyFromTp<Real>();
+  UnitTestCuMatrixAddMatTp<Real>();
+  UnitTestCuMatrixCopyCols<Real>();
+  UnitTestCuMatrixSumColumnRanges<Real>();
+  UnitTestCuMatrixCopyRows<Real>();
+  UnitTestCuMatrixCopyRowsFromVec<Real>();
+  UnitTestCuMatrixAddTpMat<Real>();
+  UnitTestCuMatrixTranspose<Real>();
+  UnitTestCuMatrixCopyUpperToLower<Real>();
+  UnitTestCuMatrixCopyLowerToUpper<Real>();
+  //test CuVector<Real> methods
+  UnitTestCuVectorAddVec<Real>();
+  UnitTestCuVectorAddRowSumMat<Real>();
+  UnitTestCuVectorAddRowSumMatLarge<Real>();
+  UnitTestCuVectorAddColSumMat<Real>();
+  UnitTestCuVectorAddColSumMatLarge<Real>();
+  UnitTestCuSubMatrix<Real>();
+  UnitTestCuVectorInvertElements<Real>();
+  UnitTestCuMatrixIO<Real>();
+  UnitTestCuSigmoid<Real>();
+  UnitTestCuApproxEqual<Real>();
+  UnitTestCuCopy<Real, float>();
 #if HAVE_CUDA == 1  
   if (CuDevice::Instantiate().DoublePrecisionSupported())
 #endif
-//    UnitTestCuCopy<Real, double>();
-//  UnitTestCuMatrixGroupPnorm<Real>();
-//  UnitTestCuMatrixAddToDiag<Real>();
-//  UnitTestCuMatrixAdd2<Real>();
-//  UnitTestCuDiffSigmoid<Real>();
- // UnitTestCuMatrixCalcPnormDeriv<Real>();
-  // UnitTestCuMatrixMulRowsVec<Real>();
-  UnitTestCuMatrixMulRowsGroupMat<Real>();
-  UnitTestCuMatrixGroupPnorm<Real>();
-  UnitTestCuMatrixCalcPnormDeriv<Real>();
-//  UnitTestCuFindRowMaxId<Real>();
-//  UnitTestCuSoftmax<Real>();
-//  UnitTestCuDiffXent<Real>();
-//  UnitTestCheck<Real>();
-//  UnitTestSwapCu2Cu<Real>();
-//  UnitTestSwapCu2M<Real>();
-//  UnitTestCuMatrixAddDiagVecMat<Real>();
-//  UnitTestCuTanh<Real>();
-//  UnitTestCuDiffTanh<Real>();
-//  UnitTestCuVectorAddTpVec<Real>();
-//  UnitTestCuVectorMulTp<Real>();
+    UnitTestCuCopy<Real, double>();
+  UnitTestCuMatrixAddToDiag<Real>();
+  UnitTestCuMatrixAdd2<Real>();
+  UnitTestCuDiffSigmoid<Real>();
+  UnitTestCuFindRowMaxId<Real>();
+  UnitTestCuSoftmax<Real>();
+  UnitTestCuDiffXent<Real>();
+  UnitTestCheck<Real>();
+  UnitTestSwapCu2Cu<Real>();
+  UnitTestSwapCu2M<Real>();
+  UnitTestCuMatrixAddDiagVecMat<Real>();
+  UnitTestCuTanh<Real>();
+  UnitTestCuDiffTanh<Real>();
+  UnitTestCuVectorAddTpVec<Real>();
+  UnitTestCuVectorMulTp<Real>();
 }
 
 
@@ -1820,7 +1730,7 @@ template<typename Real> void CudaMatrixUnitTest() {
 
 
 int main() {
-  for (int32 loop = 1; loop < 2; loop++) {
+  for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");

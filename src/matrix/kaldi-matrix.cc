@@ -967,57 +967,6 @@ void MatrixBase<Real>::MulRowsVec(const VectorBase<Real> &scale) {
   }
 }
 
-template<typename Real> 
-void MatrixBase<Real>::MulRowsGroupMat(const MatrixBase<Real> &src) {
-  KALDI_ASSERT(src.NumCols() > 0 && src.NumCols() <= this->NumCols());
-  KALDI_ASSERT(this->NumCols() % src.NumCols() == 0 || 
-  	this->NumCols() % (src.NumCols() - 1) < this->NumCols() / (src.NumCols() - 1));
-  int group_size = 0;
-  if (this->NumCols() % src.NumCols() == 0) {
-    group_size = this->NumCols() / src.NumCols();
-  } else {
-    group_size = this->NumCols() / (src.NumCols() - 1); 
-  }
-  MatrixIndexT M = num_rows_, N = num_cols_;
-
-  for (MatrixIndexT i = 0; i < M; i++) 
-    for (MatrixIndexT j = 0; j < N; j++) 
-      (*this)(i, j) *= src(i, j / group_size);
-}
-
-template<typename Real> 
-void MatrixBase<Real>::CalcPnormDeriv(const MatrixBase<Real> &src1, const MatrixBase<Real> &src2, Real power) {
-  KALDI_ASSERT(src2.NumCols() > 0 && src2.NumCols() <= this->NumCols());
-  KALDI_ASSERT(this->NumCols() % src2.NumCols() == 0 || 
-  	this->NumCols() % (src2.NumCols() - 1) < this->NumCols() / (src2.NumCols() - 1));
-  int group_size = 0;
-  if (this->NumCols() % src2.NumCols() == 0) {
-    group_size = this->NumCols() / src2.NumCols();
-  } else {
-    group_size = this->NumCols() / (src2.NumCols() - 1); 
-  }
-  MatrixIndexT M = this->NumRows(), N = this->NumCols(); 
-
-  if (power == 1.0) {   
-    for (MatrixIndexT i = 0; i < M; i++) 
-      for (MatrixIndexT j = 0; j < N; j++) 
-	  (*this)(i, j) = (src1(i, j) == 0 ? 0 : (src1(i, j) > 0 ? 1 : -1));
-  } else {
-    for (MatrixIndexT i = 0; i < M; i++) {
-      for (MatrixIndexT j = 0; j < N; j++) {
-        if (src2(i, j / group_size) == 0) {
-          (*this)(i, j) = 0;
-        } else {
-      	  (*this)(i, j) = pow(std::abs(src1(i, j)), power - 1) * 
-	  (src2(i, j / group_size) > 0 ? pow(src2(i, j / group_size), 1 - power) : 1) * 
-	  (src1(i, j) >= 0 ? 1 : -1) ;
-        }
-      }
-    }
-  }
-}
-
-
 template<typename Real>  // scales each column by scale[i].
 void MatrixBase<Real>::MulColsVec(const VectorBase<Real> &scale) {
   KALDI_ASSERT(scale.Dim() == num_cols_);
@@ -2337,22 +2286,6 @@ void MatrixBase<Real>::SoftHinge(const MatrixBase<Real> &src) {
       // approaches y=x.
       else y = log1p(exp(x));
       row_data[c] = y;
-    }
-  }
-}
-template<typename Real>
-void MatrixBase<Real>::GroupPnorm(const MatrixBase<Real> &src, Real power) {
-  int group_size = src.NumCols() / this->NumCols();
-  KALDI_ASSERT(src.NumCols() == this->NumCols() * group_size);
-  Matrix<Real> src_mod(src);
-  for (MatrixIndexT i = 0; i < src_mod.NumRows(); i++) {
-    for (MatrixIndexT j = 0; j < this->NumCols(); j++) {
-      BaseFloat max_value = src_mod.Row(i).Range(j * group_size,  group_size).Max();
-      BaseFloat min_value = src_mod.Row(i).Range(j * group_size,  group_size).Min();
-      max_value = (max_value > -min_value ? max_value : -min_value); // let max_value be the largest abs(value)
-      src_mod.Row(i).Range(j * group_size,  group_size).Scale(1.0 / max_value);
-      (*this)(i, j) = src_mod.Row(i).Range(j * group_size,  group_size).Norm(power);
-      (*this)(i, j) *= max_value;
     }
   }
 }

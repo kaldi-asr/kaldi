@@ -240,13 +240,6 @@ class MatrixBase {
   /// each row by a scalar taken from that dimension of the vector.
   void MulRowsVec(const VectorBase<Real> &scale);
 
-  /// divide each row into src.NumCols() groups, 
-  /// and then scale i'th row's jth group of elements by src[i, j].   
-  void MulRowsGroupMat(const MatrixBase<Real> &src);
-  
-  /// calculate derivatives for pnorm component
-  void CalcPnormDeriv(const MatrixBase<Real> &src1, const MatrixBase<Real> &src2, Real power);
-  
   /// Returns logdet of matrix.
   Real LogDet(Real *det_sign = NULL) const;
   
@@ -415,10 +408,6 @@ class MatrixBase {
   /// Set each element to y = log(1 + exp(x))
   void SoftHinge(const MatrixBase<Real> &src);
   
-  /// Apply the function y(i) = (sum_{j = i*G}^{(i+1)*G-1} x_j ^ (power)) ^ (1 / p)
-  /// where G = x.NumCols() / y.NumCols() must be an integer.
-  void GroupPnorm(const MatrixBase<Real> &src, Real power);
-
   /// Set each element to the tanh of the corresponding element of "src".
   void Tanh(const MatrixBase<Real> &src);
 
