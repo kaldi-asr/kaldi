@@ -194,7 +194,7 @@ if [ $stage -le 6 ]; then
     lattice-determinize-pruned$thread_string --acoustic-scale=$acwt --beam=$lattice_beam ark:- \
     "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
-rm $dir/pre_lat.*.gz
+#rm $dir/pre_lat.*.gz ##TEMP!
 
 # The output of this script is the files "lat.*.gz"-- we'll rescore this at different
 # acoustic scales to get the final output.
