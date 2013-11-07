@@ -177,6 +177,9 @@ class CuMatrixBase {
   /// This is like a soft ReLU.
   void SoftHinge(const CuMatrixBase<Real> &src);
 
+  /// Apply the function y(i) = (sum_{j = i*G}^{(i+1)*G-1} x_j ^ (power)) ^ (1 / p)
+  /// where G = x.NumCols() / y.NumCols() must be an integer.
+  void GroupPnorm(const CuMatrixBase<Real> &src, Real power);
   /// Compute the hyperbolic tangent (tanh) function; element by element,
   /// *this = tanh(src).
   void Tanh(const CuMatrixBase<Real> &src);
@@ -249,7 +252,11 @@ class CuMatrixBase {
   /// scale i'th column by scale[i]
   void MulColsVec(const CuVectorBase<Real> &scale); 
   /// scale i'th row by scale[i]
-  void MulRowsVec(const CuVectorBase<Real> &scale); 
+  void MulRowsVec(const CuVectorBase<Real> &scale);
+  /// divide each row into src.NumCols() groups, and then scale i'th row's jth group of elements by src[i, j].   
+  void MulRowsGroupMat(const CuMatrixBase<Real> &src);
+  /// calculate derivatives for pnorm component
+  void CalcPnormDeriv(const CuMatrixBase<Real> &src1, const CuMatrixBase<Real> &src2, Real power);
   /// divide i'th row by scale[i]
   void DivRowsVec(const CuVectorBase<Real> &div);
   /// B = aplha * A + beta * B

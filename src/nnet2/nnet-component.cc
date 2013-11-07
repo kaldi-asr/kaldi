@@ -53,8 +53,12 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new SoftmaxComponent();
   } else if (component_type == "RectifiedLinearComponent") {
     ans = new RectifiedLinearComponent();
+  } else if (component_type == "NormalizeComponent") {
+    ans = new NormalizeComponent();
   } else if (component_type == "SoftHingeComponent") {
     ans = new SoftHingeComponent();
+  } else if (component_type == "PnormComponent") {
+    ans = new PnormComponent();
   } else if (component_type == "ScaleComponent") {
     ans = new ScaleComponent();
   } else if (component_type == "PowerExpandComponent") {
@@ -493,6 +497,161 @@ void NonlinearComponent::InitFromString(std::string args) {
   Init(dim);
 }
 
+void PnormComponent::Init(int32 dim, int32 group_size, BaseFloat p) {
+  input_dim_ = dim;
+  output_dim_ = input_dim_ / group_size;
+  if (input_dim_ % group_size != 0) { output_dim_++; }
+  group_size_ = group_size;
+  p_ = p;
+  KALDI_ASSERT(input_dim_ > 0 && group_size >= 1 && p_ >= 0);
+}
+
+void PnormComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  int32 dim, group_size = 5;
+  BaseFloat p = 2;
+  ParseFromString("group-size", &args, &group_size); // Optional.
+  ParseFromString("p", &args, &p); // Optional.
+  // Accept either "dim" or "input-dim" to specify the input dim.
+  // "input-dim" is the canonical one; "dim" simplifies the testing code.
+  bool ok = (ParseFromString("dim", &args, &dim) ||
+             ParseFromString("input-dim", &args, &dim));
+  if (!ok || !args.empty() || dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+  Init(dim, group_size, p);
+}
+
+
+void PnormComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                                     int32 num_chunks,
+                                     CuMatrix<BaseFloat> *out) const {
+  out->Resize(in.NumRows(), output_dim_, kUndefined);
+  CuMatrix<BaseFloat> in_extended(in);
+  in_extended.Resize(in.NumRows(), output_dim_ * group_size_, kUndefined);
+  if (in_extended.NumCols() > in.NumCols()){
+    in_extended.Range(0, in.NumRows(), in.NumCols(), in_extended.NumCols() - in.NumCols()).SetZero();
+  }
+  out->GroupPnorm(in_extended, p_);
+//  for (int32 i = 0; i < in.NumRows(); i++) {
+//    for (int32 j = 0; j < output_dim_; j++) {
+//      BaseFloat max_value = in_extended.Row(i).Range(j * group_size_,  group_size_).Max();
+//      BaseFloat min_value = in_extended.Row(i).Range(j * group_size_,  group_size_).Min();
+//      max_value = (max_value > -min_value ? max_value : -min_value); // let max_value be the largest abs(value)
+//      in_extended.Row(i).Range(j * group_size_,  group_size_).Scale(1.0 / max_value);
+//      (*out)(i, j) = in_extended.Row(i).Range(j * group_size_,  group_size_).Norm(p_);
+//      (*out)(i, j) = (*out)(i, j) * max_value;
+//    }
+//  }
+}
+
+void PnormComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                                    const CuMatrixBase<BaseFloat> &out_value,
+                                    const CuMatrixBase<BaseFloat> &out_deriv,
+                                    int32, // num_chunks
+                                    Component *to_update, // to_update
+                                    CuMatrix<BaseFloat> *in_deriv) const {
+  in_deriv->Resize(in_value.NumRows(), in_value.NumCols(), kSetZero);
+  in_deriv->CalcPnormDeriv(in_value, out_value, p_);
+  in_deriv->MulRowsGroupMat(out_deriv); 
+//  for (CuMatrixIndexT i = 0; i < in_deriv->NumRows(); i++) {
+//    for (CuMatrixIndexT j = 0; j < in_deriv->NumCols(); j++) {
+//      if (out_value(i, j / group_size_) == 0) {
+//        (*in_deriv)(i, j) = 0;
+//        // (*in_deriv)(i, j) = pow(std::abs(in_value(i, j)), p_ - 1) * 1 * (in_value(i, j) >= 0 ? 1 : -1);
+//      } else {
+//      	(*in_deriv)(i, j) = pow(std::abs(in_value(i, j)), p_ - 1) * pow(out_value(i, j / group_size_), 1 - p_) * (in_value(i, j) >= 0 ? 1 : -1);
+//      }
+//    }
+//  }
+//
+//  for (CuMatrixIndexT i = 0; i < in_deriv->NumRows(); i++) {
+//    for (CuMatrixIndexT j = 0; j < in_deriv->NumCols(); j++) {
+//      (*in_deriv)(i, j) *= out_deriv(i, j / group_size_);
+//    }
+//  }
+}
+
+void PnormComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<PnormComponent>", "<InputDim>");
+  ReadBasicType(is, binary, &input_dim_);
+  ExpectToken(is, binary, "<OutputDim>");
+  ReadBasicType(is, binary, &output_dim_);
+  ExpectToken(is, binary, "<GroupSize>");
+  ReadBasicType(is, binary, &group_size_);
+  ExpectToken(is, binary, "<P>");
+  ReadBasicType(is, binary, &p_);
+  ExpectToken(is, binary, "</PnormComponent>");
+}
+
+void PnormComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<PnormComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, input_dim_);
+  WriteToken(os, binary, "<OutputDim>");
+  WriteBasicType(os, binary, output_dim_);
+  WriteToken(os, binary, "<GroupSize>");
+  WriteBasicType(os, binary, group_size_);
+  WriteToken(os, binary, "<P>");
+  WriteBasicType(os, binary, p_);
+  WriteToken(os, binary, "</PnormComponent>");
+}
+
+std::string PnormComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", input-dim = " << input_dim_
+         << ", output-dim = " << output_dim_
+         << ", group-size = " << group_size_
+	 << ", p = " << p_;
+  return stream.str();
+}
+
+void NormalizeComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                              int32, // num_chunks
+                              CuMatrix<BaseFloat> *out) const {
+  *out = in;
+  CuMatrix<BaseFloat> in_sq(in);
+  in_sq.ApplyPow(2.0);
+  CuVector<BaseFloat> in_norm(in.NumRows());
+  in_norm.AddColSumMat(1.0, in_sq);
+  in_norm.ApplyPow(0.5);
+  BaseFloat max_length = 1 * sqrt(in.NumCols());
+  in_norm.Scale(1 / max_length);
+  in_norm.ApplyFloor(1.0);
+  in_norm.InvertElements();
+  out->MulRowsVec(in_norm);  
+}
+
+void NormalizeComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                                        const CuMatrixBase<BaseFloat> &out_value,
+                                        const CuMatrixBase<BaseFloat> &out_deriv,
+                                        int32, // num_chunks
+                                        Component *to_update,
+                                        CuMatrix<BaseFloat> *in_deriv) const {
+
+  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols(),
+                   kUndefined);
+  in_deriv->Set(1);
+  CuMatrix<BaseFloat> in_sq(in_value);
+  in_sq.ApplyPow(2.0);
+  CuVector<BaseFloat> in_norm(in_value.NumRows());
+  in_norm.AddColSumMat(1.0, in_sq);
+  in_norm.ApplyPow(0.5);
+  BaseFloat max_length = 1 * sqrt(in_deriv->NumCols());
+  for (int32 i = 0; i < in_deriv->NumRows(); i++) {
+    if (in_norm(i) > max_length) {
+      BaseFloat dF_df = VecVec(out_deriv.Row(i), in_value.Row(i));
+      BaseFloat factor = max_length / in_norm(i);
+      in_deriv->Row(i).Scale(factor);
+      // h = g * f
+      in_deriv->Row(i).MulElements(out_deriv.Row(i));
+      // h += - max_length * (g dot x) * ||x||^(-1.5) * x 
+      in_deriv->Row(i).AddVec(- dF_df * max_length * pow(in_norm(i), -3.0), in_value.Row(i));
+    } else {
+      in_deriv->Row(i).MulElements(out_deriv.Row(i));
+    }
+  }
+}
 void SigmoidComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                                  int32, // num_chunks
                                  CuMatrix<BaseFloat> *out) const {
