@@ -7,7 +7,7 @@
 train_stage=-100
 temp_dir=  # e.g. --temp-dir /export/m1-02/dpovey/kaldi-dan2/egs/wsj/s5/
 parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network, you'll likely have to change it.
-dir=exp/nnet5c_gpu
+dir=exp/nnet5c2_gpu
 
 # Note: since we multiplied the num-jobs by 1/4, we halved the
 # learning rate, relative to run_5c.sh
@@ -24,9 +24,9 @@ dir=exp/nnet5c_gpu
   fi
 
   steps/nnet2/train_tanh.sh \
-   --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
+   --num-jobs-nnet 8 --num-threads 1 --parallel-opts "$parallel_opts" \
    --mix-up 8000 \
-   --initial-learning-rate 0.005 --final-learning-rate 0.0005 \
+   --initial-learning-rate 0.0075 --final-learning-rate 0.00075 \
    --num-hidden-layers 4 --hidden-layer-dim 1024 \
    --cmd "$decode_cmd" \
     data/train_si284 data/lang exp/tri4b_ali_si284 $dir || exit 1
