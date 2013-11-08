@@ -136,8 +136,8 @@ done
 
 
 # Set some variables.
-num_leaves=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/number of pdfs/{print $NF}'` || exit 1;
-
+num_leaves=`am-info $alidir/final.mdl 2>/dev/null | awk '/number of pdfs/{print $NF}'` || exit 1;
+ 
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 # in this dir we'll have just one job.
 sdata=$data/split$nj
