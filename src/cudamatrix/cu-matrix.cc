@@ -1305,13 +1305,9 @@ void CuMatrixBase<Real>::SymInvertPosDef() {
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(NumRows(),CU1DBLOCK));
     CuMatrix<Real> temp(num_rows_, num_rows_);
-    //int dim = num_rows_;
     Real value = 1.0;
     cuda_set_diag(dimGrid, dimBlock, temp.Data(), value, temp.Dim());
-    //Matrix<Real> A(dim,dim);
-    //temp.CopyToMat(&A);
     this->Cholesky();
-    //CuSpMatrix<Real> L(*this, kTakeLower);
     {
       Timer tim;
       Real alpha = 1.0;
@@ -1319,24 +1315,9 @@ void CuMatrixBase<Real>::SymInvertPosDef() {
                   temp.Stride());
       CU_SAFE_CALL(cudaGetLastError());
       CuDevice::Instantiate().AccuProfile("CuMatrixBase::InvertPSD(trsm)", tim.Elapsed());
-    }
-    
+    }    
     this->AddMatMat(1, temp, kTrans, temp, kNoTrans, 0);
-
     this->CopyLowerToUpper();
-    /*    if (0) {
-      Timer tim;
-      Real alpha = 1.0, beta = 0.0;
-      dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-      dim3 dimGrid(n_blocks(num_cols_, CU2DBLOCK), n_blocks(num_rows_, CU2DBLOCK));
-      
-      cuda_sy_add_tr2(dimGrid, dimBlock, alpha, beta,
-                      temp.Data(), temp.Dim(), data_, Dim());
-      CU_SAFE_CALL(cudaGetLastError());
-      CuDevice::Instantiate().AccuProfile("CuMatrixBase::InvertPSD(sy_add_tr2)",
-                                          tim.Elapsed());
-                                          } */
-    
   } else
 #endif
   {
