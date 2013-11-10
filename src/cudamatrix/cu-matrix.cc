@@ -601,8 +601,6 @@ void CuMatrixBase<Real>::Scale(Real value) {
   }
 }
 
-
-
 template<typename Real> 
 void CuMatrixBase<Real>::ApplyLog() { 
   #if HAVE_CUDA == 1 
@@ -720,7 +718,52 @@ void CuMatrixBase<Real>::MulRowsVec(const CuVectorBase<Real> &scale) {
   }
 }
 
+template<typename Real> 
+void CuMatrixBase<Real>::MulRowsGroupMat(const CuMatrixBase<Real> &src) {
+  KALDI_ASSERT(src.NumCols() > 0);
+  int group_size = this->NumCols() / src.NumCols();
+#if HAVE_CUDA == 1 
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
 
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+
+    cuda_mul_rows_group_mat(dimGrid, dimBlock, this->data_, src.data_,
+                            this->Dim(), src.Stride(), group_size);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().MulRowsGroupMat(src.Mat());
+  }
+}
+template<typename Real>
+void CuMatrixBase<Real>::GroupPnormDeriv(const CuMatrixBase<Real> &src1,
+                                         const CuMatrixBase<Real> &src2,
+                                         Real power) {
+  KALDI_ASSERT(src2.NumCols() > 0);
+  int group_size = this->NumCols() / src2.NumCols();
+  KALDI_ASSERT(this->NumCols() == src2.NumCols() * group_size);
+#if HAVE_CUDA == 1 
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+
+    cuda_calc_pnorm_deriv(dimGrid, dimBlock, this->data_, src1.Data(), src2.Data(), Dim(), src2.Stride(), group_size, power);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().GroupPnormDeriv(src1.Mat(), src2.Mat(), power);
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::DivRowsVec(const CuVectorBase<Real> &div) {
@@ -981,7 +1024,25 @@ void CuMatrixBase<Real>::SoftHinge(const CuMatrixBase<Real> &src) {
   }
 }
 
-
+template<typename Real>
+void CuMatrixBase<Real>::GroupPnorm(const CuMatrixBase<Real> &src, Real power) {
+  int group_size = src.NumCols() / this->NumCols();
+  KALDI_ASSERT(src.NumCols() == this->NumCols() * group_size &&
+               this->NumRows() == src.NumRows());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
+    cuda_group_pnorm(dimGrid, dimBlock, this->data_, src.data_, this->Dim(), src.Stride(), group_size, power);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    Mat().GroupPnorm(src.Mat(), power);
+  }
+}
 /*
 Think of sv_labels as a Matrix, denoting the "correct" label of each frame to each phone-state; it's very likely to contain a LOT of zeros
 
@@ -1043,32 +1104,6 @@ void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-/*
-#if 1
-    // enable 'tree-reduce' functions, 
-    //find maximum in each row (tree reduction)
-    CuArray<int32> max_id;
-    src.FindRowMaxId(&max_id); 
-    //in each row subtract maximum, apply exp (grid kernel)
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(src.num_cols_, CU2DBLOCK), n_blocks(src.num_rows_, CU2DBLOCK));
-    cuda_softmax_part(dimGrid, dimBlock, src.data_, max_id.Data(), this->data_, src.Dim()); 
-    //sum the rows to get normalizers (tree reduction) 
-    CuVector<Real> sum(src.num_rows_);
-    sum.AddColSumMat(1.0, *this, 0.0);
-    //divide by normalizers to get posteriors (grid kernel)
-    this->DivRowsVec(sum);
-#else
-    // disable 'tree-reduce' functions, 
-    // slower, but can be used for debugging
-    size_t dimBlock = CU2DBLOCK;
-    size_t dimGrid  = n_blocks(src.num_rows_, CU2DBLOCK);
-
-    cuda_softmax(dimGrid, dimBlock, data_, src.data_, src.Dim());
-    CU_SAFE_CALL(cudaGetLastError());
-#endif
-*/
-
     size_t dimBlock = src.num_cols_ > CU1DBLOCK ? CU1DBLOCK : src.num_cols_;
     size_t dimGrid = src.num_rows_;
     cuda_softmax_reduce(dimGrid, dimBlock, data_, src.data_, Dim(), src.Stride());

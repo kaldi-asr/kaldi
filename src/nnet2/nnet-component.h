@@ -298,6 +298,7 @@ class NonlinearComponent: public Component {
   void SetDim(int32 dim);
   
  protected:
+  friend class NormalizationComponent;
   friend class SigmoidComponent;
   friend class TanhComponent;
   friend class SoftmaxComponent;
@@ -316,6 +317,66 @@ class NonlinearComponent: public Component {
   CuVector<double> deriv_sum_; // stats of the derivative of the nonlinearity (only
   // applicable to element-by-element nonlinearities, not Softmax.
   double count_;
+};
+
+class PnormComponent: public Component {
+ public:
+  void Init(int32 input_dim, int32 output_dim, BaseFloat p);
+  explicit PnormComponent(int32 input_dim, int32 output_dim, BaseFloat p) {
+    Init(input_dim, output_dim, p);
+  }
+  PnormComponent(): input_dim_(0), output_dim_(0), p_(0) { }
+  virtual std::string Type() const { return "PnormComponent"; }
+  virtual void InitFromString(std::string args); 
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const { return output_dim_; }
+  virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         CuMatrix<BaseFloat> *out) const;
+  virtual void Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        CuMatrix<BaseFloat> *in_deriv) const;
+  virtual bool BackpropNeedsInput() const { return true; }
+  virtual bool BackpropNeedsOutput() const { return true; }
+  virtual Component* Copy() const { return new PnormComponent(input_dim_,
+                                                              output_dim_, p_); }
+  
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+  
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual std::string Info() const;
+ protected:
+  int32 input_dim_;
+  int32 output_dim_;
+  BaseFloat p_;
+};
+
+class NormalizeComponent: public NonlinearComponent {
+ public:
+  explicit NormalizeComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit NormalizeComponent(const NormalizeComponent &other): NonlinearComponent(other) { }
+  NormalizeComponent() { }
+  virtual std::string Type() const { return "NormalizeComponent"; }
+  virtual Component* Copy() const { return new NormalizeComponent(*this); }
+  virtual bool BackpropNeedsInput() { return true; }
+  virtual bool BackpropNeedsOutput() { return true; }
+  virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         CuMatrix<BaseFloat> *out) const; 
+  virtual void Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        CuMatrix<BaseFloat> *in_deriv) const;
+ private:
+  NormalizeComponent &operator = (const NormalizeComponent &other); // Disallow.
 };
 
 class SigmoidComponent: public NonlinearComponent {

@@ -209,6 +209,29 @@ static void UnitTestCuMatrixSoftHinge() {
   AssertEqual(H,H2);
 }
 
+template<typename Real> 
+static void UnitTestCuMatrixGroupPnorm() {
+  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+  // M = 256; N = 256;
+  for (int32 K = 1; K < 5; K++) {
+    for (int32 q = 2; q < 10; q++) {
+      BaseFloat p = 1.0 + 0.2 * q;
+      int32 N_src = N * K;
+      Matrix<Real> H_src(M, N_src);
+      H_src.SetRandn();
+      if (rand () % 2 == 0)
+        H_src.ApplyFloor(0.0); // will put some zeros in the matrix.. harder to
+                               // do derivatives.
+      Matrix<Real> H(M, N);
+      H.GroupPnorm(H_src, p);
+      CuMatrix<Real> D(H_src);
+      CuMatrix<Real> E(M, N);
+      E.GroupPnorm(D, p);
+      Matrix<Real> H2(E);
+      AssertEqual(H,H2);
+    }
+  }
+}
 
 template<typename Real> 
 static void UnitTestCuMatrixSet() {
@@ -529,6 +552,7 @@ template<typename Real>
 static void UnitTestCuMatrixMulRowsVec() {
   for (int32 i = 0; i < 5; i++) {
     int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+   // int32 dimM = 256, dimN = 256;
     Matrix<Real> Hm(dimM, dimN);
     Vector<Real> Hv(dimM);
     RandGaussMatrix(&Hm);
@@ -546,6 +570,69 @@ static void UnitTestCuMatrixMulRowsVec() {
     Dm.CopyToMat(&Hm2);
 
     AssertEqual(Hm,Hm2);
+  }
+}
+
+template<typename Real> 
+static void UnitTestCuMatrixMulRowsGroupMat() {
+  for (int32 i = 0; i < 5; i++) {
+    int32 dimM = 100 + rand() % 200, dimNs = 100 + rand() % 200;
+    // int32 dimM = 1000, dimNs = 1000;
+    int32 group_size = 1 + rand() % 10;
+    //int32 group_size = 1;
+    int32 dimN = group_size * dimNs;
+    Matrix<Real> Hm(dimM, dimN);
+    Matrix<Real> Hs(dimM, dimNs);
+    RandGaussMatrix(&Hm);
+    RandGaussMatrix(&Hs);
+
+    CuMatrix<Real> Dm(dimM, dimN);
+    CuMatrix<Real> Ds(dimM, dimNs);
+    Dm.CopyFromMat(Hm);
+    Ds.CopyFromMat(Hs);
+    
+    Dm.MulRowsGroupMat(Ds);
+    Hm.MulRowsGroupMat(Hs);
+    
+    Matrix<Real> Hm2(dimM, dimN);
+    Dm.CopyToMat(&Hm2);
+    AssertEqual(Hm,Hm2);
+  }
+}
+
+template<typename Real> 
+static void UnitTestCuMatrixGroupPnormDeriv() {
+  for (int32 i = 0; i < 5; i++) {
+    int32 dimM = 100 + rand() % 200, dimNs = 100 + rand() % 200;
+    int32 group_size = 1 + rand() % 10;
+    BaseFloat power = 1.1 + 0.1 * (rand() % 10);
+    // int32 dimM = 256, dimNs = 2;
+    // int32 group_size = 2;
+    int32 dimN = group_size * dimNs;
+    Matrix<Real> Hm(dimM, dimN);
+    Matrix<Real> Hr(dimM, dimN);
+    Matrix<Real> Hs(dimM, dimNs);
+    RandGaussMatrix(&Hs);
+    if (rand () % 2 == 0)
+      Hm.ApplyFloor(0.0); // will put some zeros in the matrix.. harder to
+                          // do derivatives.
+    Hs.GroupPnorm(Hm, power);
+    
+    CuMatrix<Real> Dm(dimM, dimN);
+    CuMatrix<Real> Dr(dimM, dimN);
+    CuMatrix<Real> Ds(dimM, dimNs);
+    Dm.CopyFromMat(Hm);
+    Dr.CopyFromMat(Hr);
+    Ds.CopyFromMat(Hs);
+    
+    // KALDI_LOG << "Hr " << Hr << " Dr " << Dr << "Ds" << Ds << " Hs " << Hs ; 
+    Dr.GroupPnormDeriv(Dm, Ds, power);
+    Hr.GroupPnormDeriv(Hm, Hs, power);
+    
+    // KALDI_LOG << "Hr " << Hr << " Dr " << Dr << "Ds" << Ds << " Hs " << Hs ; 
+    Matrix<Real> Hr2(dimM, dimN);
+    Dr.CopyToMat(&Hr2);
+    AssertEqual(Hr,Hr2);
   }
 }
 
@@ -1693,7 +1780,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixTranspose<Real>();
   UnitTestCuMatrixCopyUpperToLower<Real>();
   UnitTestCuMatrixCopyLowerToUpper<Real>();
-  //test CuVector<Real> methods
+  // test CuVector<Real> methods
   UnitTestCuVectorAddVec<Real>();
   UnitTestCuVectorAddRowSumMat<Real>();
   UnitTestCuVectorAddRowSumMatLarge<Real>();
@@ -1712,6 +1799,10 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixAddToDiag<Real>();
   UnitTestCuMatrixAdd2<Real>();
   UnitTestCuDiffSigmoid<Real>();
+  UnitTestCuMatrixGroupPnorm<Real>();  
+  UnitTestCuMatrixGroupPnormDeriv<Real>();
+  UnitTestCuMatrixMulRowsVec<Real>();
+  UnitTestCuMatrixMulRowsGroupMat<Real>();
   UnitTestCuFindRowMaxId<Real>();
   UnitTestCuSoftmax<Real>();
   UnitTestCuDiffXent<Real>();

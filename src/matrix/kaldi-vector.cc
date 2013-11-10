@@ -470,20 +470,25 @@ Real VectorBase<Real>::Norm(Real p) const {
     return sqrt(sum);
   } else {
     Real tmp;
+    bool ok = true;
     for (MatrixIndexT i = 0; i < dim_; i++) {
       tmp = pow(std::abs(data_[i]), p);
-      if (tmp == HUGE_VAL) {  // HUGE_VAL is what pow returns on error.
-        KALDI_ERR << "Could not raise element " << i << "to power " << p
-                  << ": returned value = " << tmp;
-      }
+      if (tmp == HUGE_VAL) // HUGE_VAL is what pow returns on error.
+        ok = false;
       sum += tmp;
     }
     tmp = pow(sum, static_cast<Real>(1.0/p));
-    if (tmp == HUGE_VAL) {  // HUGE_VAL is what errno returns on error.
-      KALDI_ERR << "Could not take the " << p << "-th root of " << sum
-                << "; returned value = " << tmp;
-    }
-    return tmp;
+    KALDI_ASSERT(tmp != HUGE_VAL); // should not happen here.
+    if (ok) {
+      return tmp;
+    } else {
+      Real maximum = this->Max(), minimum = this->Min(),
+          max_abs = std::max(maximum, -minimum);
+      KALDI_ASSERT(max_abs > 0); // Or should not have reached here.
+      Vector<Real> tmp(*this);
+      tmp.Scale(1.0 / max_abs);
+      return tmp.Norm(p) * max_abs;
+    }      
   }
 }
 
