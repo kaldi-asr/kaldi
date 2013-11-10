@@ -570,21 +570,65 @@ std::string PnormComponent::Info() const {
   return stream.str();
 }
 
+
+// This component modifies the vector of activations by scaling it so that the
+// root-mean-square does not exceed one.
 void NormalizeComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                               int32, // num_chunks
                               CuMatrix<BaseFloat> *out) const {
   *out = in;
-  CuMatrix<BaseFloat> in_sq(in);
-  in_sq.ApplyPow(2.0);
   CuVector<BaseFloat> in_norm(in.NumRows());
-  in_norm.AddColSumMat(1.0, in_sq);
-  in_norm.ApplyPow(0.5);
-  BaseFloat max_length = 1 * sqrt(in.NumCols());
-  in_norm.Scale(1 / max_length);
+  in_norm.AddDiagMat2(1.0 / in.NumCols(),
+                      in, kNoTrans, 0.0);
   in_norm.ApplyFloor(1.0);
-  in_norm.InvertElements();
-  out->MulRowsVec(in_norm);  
+  in_norm.ApplyPow(-0.5);
+  out->MulRowsVec(in_norm);
 }
+
+/*
+  A note on the derivative of NormalizeComponent...
+  let both row_in and row_out be vectors of dimension D.
+  Let p = row_in^T row_in / D, and let
+      f = 1 / sqrt(max(1, p)), and we compute row_out as:
+row_out = f row_in.
+  Suppose we have a quantity deriv_out which is the derivative
+  of the objective function w.r.t. row_out.  We want to compute
+  deriv_in which is the derivative of the objective function w.r.t.
+  row_in.  Let the objective function be F.  One term is obvious: we have
+     deriv_in = f deriv_out + ....
+  next we have to take into account the derivative that gets back-propagated
+  through f.  Obviously, dF/df = deriv_out^T row_in.
+  And df/dp = (p <= 1.0 ? 0.0 : -0.5 p^{-1.5}) = (f == 1.0 ? 0.0 : -0.5 f^3),
+  and dp/d(row_in) = 2/D row_in. [it's vector_valued].
+  So this term in dF/d(row_in) equals:
+    dF/df df/dp dp/d(row_in)   =    2/D (f == 1.0 ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
+  So
+     deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3 / D) (deriv_out^T row_in) row_in
+
+  Note to Samuel: you can do this as follows.  In Vector and CuVector, add
+  a function like this:
+  
+   /// Set each element to y = (x == orig ? changed : x).
+   void ReplaceValue(Real orig, Real changed);
+
+  Of course, you'll need to write testing code for this.  Please don't forget to
+  write testing code for the CPU-based version: your CPU-based p-norm code was
+  not tested and it had bugs.  Generally, to test things like this I just compute
+  the function manually using a simple loop and compare it with the
+  member-function version.
+
+   Then, compute in_norm as in Propagate(), and do
+      in_deriv.AddDiagVecMat(1.0, in_norm, out_deriv, kNoTrans, 0.0),
+  which gives you the first term in your derivative (see equation for "deriv_in" above)... then do
+   in_norm.ReplaceValue(1.0, 0.0);
+   in_norm.ApplyPow(3.0);
+  then create a vector dot_products to hold each element of the expression (deriv_out^T row_in)
+  that I mentioned above: something like
+   dot_products.AddDiagMatMat(1.0, deriv_out, kNoTrans, in_value, kTrans, 0.0);
+   dot_products.MulElements(in_norm);
+   // then add the second term to the derivatives:  
+   in_deriv.AddDiagVecMat(-1.0 / D, dot_products, in_value, 1.0);
+*/
 
 void NormalizeComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
                                   const CuMatrixBase<BaseFloat> &out_value,
