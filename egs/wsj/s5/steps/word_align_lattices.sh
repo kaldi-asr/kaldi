@@ -18,7 +18,7 @@ done
 if [ $# != 3 ]; then
    echo "Word-align lattices (make the arcs sync up with words)"
    echo ""
-   echo "Usage: scripts/walign_lats.sh [options] <lang-dir> <decode-dir-in> <decode-dir-out>"
+   echo "Usage: $0 [options] <lang-dir> <decode-dir-in> <decode-dir-out>"
    echo "options: [--cmd (run.pl|queue.pl [queue opts])] [--silence-label <integer-id-of-silence-word>]"
    exit 1;
 fi

@@ -459,10 +459,8 @@ static void _calc_pnorm_deriv(Real *deriv, const Real *vec, const Real *norm,
     Real vec_element_sign = (vec_element > 0 ? 1 : -1);
     Real ans;
     if (norm_element <= 0.0) ans = 0.0; // The derivative is either zero or undefined at the origin.
-    else if (power == 1.0) ans = vec_element_sign;
-    else
-      ans = vec_element_sign * pow(std::abs(vec_element), power - 1) *
-          pow(norm_element, 1 - power);
+    else ans = vec_element_sign * pow(std::abs(vec_element), power - 1) *
+             pow(norm_element, 1 - power);
     deriv[dst_index] = ans;
   }
 }

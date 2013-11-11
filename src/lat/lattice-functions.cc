@@ -522,6 +522,47 @@ BaseFloat CompactLatticeDepth(const CompactLattice &clat,
 }
 
 
+void CompactLatticeDepthPerFrame(const CompactLattice &clat,
+                                 std::vector<int32> *depth_per_frame) {
+  typedef CompactLattice::Arc::StateId StateId;
+  if (clat.Properties(fst::kTopSorted, true) == 0) {
+    KALDI_ERR << "Lattice input to CompactLatticeDepthPerFrame was not "
+              << "topologically sorted.";
+  }
+  if (clat.Start() == fst::kNoStateId) {
+    depth_per_frame->clear();
+    return;
+  }
+  vector<int32> state_times;
+  int32 T = CompactLatticeStateTimes(clat, &state_times);
+
+  depth_per_frame->clear();
+  if (T <= 0) {
+    return;
+  } else {
+    depth_per_frame->resize(T, 0);
+    for (StateId s = 0; s < clat.NumStates(); s++) {
+      int32 start_time = state_times[s];
+      for (fst::ArcIterator<CompactLattice> aiter(clat, s); !aiter.Done();
+           aiter.Next()) {
+        const CompactLatticeArc &arc = aiter.Value();
+        int32 len = arc.weight.String().size();
+        for (int32 t = start_time; t < start_time + len; t++) {
+          KALDI_ASSERT(t < T);
+          (*depth_per_frame)[t]++;
+        }
+      }
+      int32 final_len = clat.Final(s).String().size();
+      for (int32 t = start_time; t < start_time + final_len; t++) {
+        KALDI_ASSERT(t < T);
+        (*depth_per_frame)[t]++;
+      }
+    }
+  }
+}
+
+
+
 void ConvertCompactLatticeToPhones(const TransitionModel &trans,
                                    CompactLattice *clat) {
   typedef CompactLatticeArc Arc;

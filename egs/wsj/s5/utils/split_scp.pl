@@ -110,6 +110,10 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     # equal number of speakers.
     $numspks = @spkrs;  # number of speakers.
     $numscps = @OUTPUTS; # number of output files.
+    if ($numspks < $numscps) {
+      die "Refusing to split data because number of speakers $numspks is less " .
+          "than the number of output .scp files $numscps";
+    }
     for($scpidx = 0; $scpidx < $numscps; $scpidx++) {
         $scparray[$scpidx] = []; # [] is array reference.
     }

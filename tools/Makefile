@@ -11,6 +11,7 @@ check_required_programs:
 	which svn
 	which gcc
 	which g++
+	which patch
 
 clean: openfst_cleaned sclite_cleaned  irstlm_cleaned
 

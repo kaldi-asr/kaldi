@@ -72,19 +72,19 @@ cat $keywords | perl -e '
 #cat $kwsdatadir/keywords.txt | babel/filter_keywords.pl $langdir/words.txt - - | \
 #  sym2int.pl --map-oov 0 -f 2- $langdir/words.txt | \
 if  $case_insensitive && ! $use_icu  ; then
-  echo "Running case insensitive processing"
+  echo "$0: Running case insensitive processing"
   cat $langdir/words.txt | tr '[:lower:]' '[:upper:]'  > $kwsdatadir/words.txt
   [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && \
-    echo "Warning, multiple words in dictionary differ only in case: " 
+    echo "$0: Warning, multiple words in dictionary differ only in case: " 
     
 
   cat $kwsdatadir/keywords.txt | tr '[:lower:]' '[:upper:]'  | \
     sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
 elif  $case_insensitive && $use_icu ; then
-  echo "Running case insensitive processing (using ICU with transform \"$icu_transform\")"
+  echo "$0: Running case insensitive processing (using ICU with transform \"$icu_transform\")"
   cat $langdir/words.txt | uconv -f utf8 -t utf8 -x "$icu_transform"  > $kwsdatadir/words.txt
   [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && \
-    echo "Warning, multiple words in dictionary differ only in case: " 
+    echo "$0: Warning, multiple words in dictionary differ only in case: " 
 
   paste <(cut -f 1  $kwsdatadir/keywords.txt  ) \
         <(cut -f 2  $kwsdatadir/keywords.txt | uconv -f utf8 -t utf8 -x "$icu_transform" ) | \
@@ -112,7 +112,7 @@ if [ -z $silence_word ]; then
 else
   silence_int=`grep -w $silence_word $langdir/words.txt | awk '{print $2}'`
   [ -z $silence_int ] && \
-     echo "Error: could not find integer representation of silence word $silence_word" && exit 1;
+     echo "$0: Error: could not find integer representation of silence word $silence_word" && exit 1;
   transcripts-to-fsts ark:$kwsdatadir/keywords.int ark,t:- | \
     awk -v 'OFS=\t' -v silint=$silence_int '{if (NF == 4 && $1 != 0) { print $1, $1, silint, silint; } print; }' \
      > $kwsdatadir/keywords.fsts
@@ -133,4 +133,4 @@ cat $datadir/segments | \
 # to modify the commands below accoring to your rttm file
 cat $datadir/segments | awk '{print $1" "$2}' | sort | uniq > $kwsdatadir/utter_map;
 
-echo "Kws data preparation succeeded"
+echo "$0: Kws data preparation succeeded"

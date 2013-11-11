@@ -253,11 +253,11 @@ void UnitTestPnormComponent() {
   // We're testing that the gradients are computed correctly:
   // the input gradients and the model gradients.
 
-  for (int32 i = 0; i < 2; i++) {
+  for (int32 i = 0; i < 5; i++) {
     int32 output_dim = 10 + rand() % 20,
         group_size = 1 + rand() % 10,
         input_dim = output_dim * group_size;
-    BaseFloat p = 0.7 + 0.1 * (rand() % 20);
+    BaseFloat p = 0.6 + 0.1 * (rand() % 20);
     
     PnormComponent component(input_dim, output_dim, p);
     UnitTestGenericComponentInternal(component);

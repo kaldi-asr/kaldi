@@ -77,6 +77,12 @@ void TopSortLatticeIfNeeded(Lattice *clat);
 BaseFloat CompactLatticeDepth(const CompactLattice &clat,
                               int32 *num_frames = NULL);
 
+/// This function returns, for each frame, the number of arcs crossing that
+/// frame.
+void CompactLatticeDepthPerFrame(const CompactLattice &clat,
+                                 std::vector<int32> *depth_per_frame);
+
+
 /// This function limits the depth of the lattice, per frame: that means, it
 /// does not allow more than a specified number of arcs active on any given
 /// frame.  This can be used to reduce the size of the "very deep" portions of
