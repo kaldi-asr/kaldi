@@ -46,7 +46,7 @@ int32 LatticeStateTimes(const Lattice &lat, std::vector<int32> *times);
 /// be topologically sorted.  Returns length of the utterance in frames, which
 /// may not be the same as the maximum time in the lattice, due to frames
 /// in the final-prob.
-int32 CompactLatticeStateTimes(const CompactLattice &lat,
+int32 CompactLatticeStateTimes(const CompactLattice &clat,
                                std::vector<int32> *times);
 
 /// This function does the forward-backward over lattices and computes the
