@@ -158,7 +158,7 @@ echo "$0: giving samples-per-iteration of $samples_per_iter_real (you requested 
 ## If --est-lda=true, o LDA on top of whatever features we already have; store
 ## the matrix which we'll put into the neural network as a constant.
 
-feat_dim=`feat-to-dim "$train_subset_feats" -` || exit 1;
+feat_dim=`feat-to-dim "$train_subset_feats" - 2>/dev/null` || exit 1;
 lda_dim=$[$feat_dim*(1+2*($splice_width))]; # No dim reduction.
 
 nnet_context_opts="--left-context=$splice_width --right-context=$splice_width"

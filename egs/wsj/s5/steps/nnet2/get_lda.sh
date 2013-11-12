@@ -72,31 +72,28 @@ fi
 echo "$0: feature type is $feat_type"
 
 case $feat_type in
-  raw) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+  raw) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
    ;;
   lda) 
     splice_opts=`cat $alidir/splice_opts 2>/dev/null`
     cp $alidir/splice_opts $dir 2>/dev/null
     cp $alidir/final.mat $dir    
-      feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-      train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn --norm-vars=false --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+      feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
 if [ -f $alidir/trans.1 ] && [ $feat_type != "raw" ]; then
   echo "$0: using transforms from $alidir"
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$alidir/trans.JOB ark:- ark:- |"
-  train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $alidir/trans.*|' ark:- ark:- |"
 fi
 if [ -f $alidir/raw_trans.1 ] && [ $feat_type == "raw" ]; then
   echo "$0: using raw-fMLLR transforms from $alidir"
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$alidir/raw_trans.JOB ark:- ark:- |"
-  train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $alidir/raw_trans.*|' ark:- ark:- |"
 fi
 
 
-feat_dim=`feat-to-dim "$train_subset_feats" -` || exit 1;
+feats_one="$(echo "$feats" | sed s:JOB:1:g)"
+feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
 lda_dim=$[$feat_dim*(1+2*($splice_width))]; # No dim reduction.
 
 if [ $stage -le 0 ]; then

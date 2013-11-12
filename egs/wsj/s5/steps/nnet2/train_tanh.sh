@@ -150,13 +150,6 @@ cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/tree $dir
 
 
-# Get list of validation utterances. 
-awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
-    > $dir/valid_uttlist || exit 1;
-awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-     head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
-
-
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
   steps/nnet2/get_lda.sh $lda_opts --splice-width $splice_width --cmd "$cmd" $data $lang $alidir $dir || exit 1;
