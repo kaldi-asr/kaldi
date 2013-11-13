@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
@@ -63,6 +63,7 @@ cleanup=true
 egs_dir=
 lda_opts=
 egs_opts=
+x=0
 # End configuration section.
 
 
@@ -250,7 +251,6 @@ fi
 
 
 
-x=0
 while [ $x -lt $num_iters ]; do
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
     # Set off jobs doing some diagnostics, in the background.
@@ -258,10 +258,10 @@ while [ $x -lt $num_iters ]; do
       nnet-compute-prob $dir/$x.mdl ark:$egs_dir/valid_diagnostic.egs &
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet-compute-prob $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
-    if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
-      $cmd $dir/log/progress.$x.log \
-        nnet-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
-    fi
+ #   if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
+ #     $cmd $dir/log/progress.$x.log \
+ #       nnet-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
+ #   fi
     
     echo "Training neural net (pass $x)"
     if [ $x -gt 0 ] && \
@@ -373,8 +373,8 @@ echo Done
 if $cleanup; then
   echo Cleaning up data
   if [ $egs_dir == "$dir/egs" ]; then
-    echo Removing training examples
-    rm $dir/egs/egs*
+    #echo Removing training examples
+    #rm $dir/egs/egs*
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do

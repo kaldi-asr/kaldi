@@ -1,9 +1,14 @@
 #!/bin/bash
 
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+# Copyright 2012  Johns Hopkins University (Author: Daniel Povey). 
+#	    2013  Xiaohui Zhang
+# Apache 2.0.
 
 
-# This script trains a fairly vanilla network with tanh nonlinearities.
+# This script trains neural network with pnorm nonlinearities. 
+# The difference with train_tanh.sh is that, instead of setting 
+# hidden_layer_size, you should set pnorm_input_size and pnorm_output_size.
+# Also the P value (the order of the p-norm) should be set.
 
 # Begin configuration section.
 cmd=run.pl
@@ -23,9 +28,8 @@ num_frames_shrink=2000 # note: must be <= --num-frames-diagnostic option to get_
                        # given.
 softmax_learning_rate_factor=0.5 # Train this layer half as fast as the other layers.
 
-hidden_layer_dim=300 #  You may want this larger, e.g. 1024 or 2048.
-group_size=10
-maxout_dim=$[$hidden_layer_dim * $group_size]
+pnorm_input_dim=3000 
+pnorm_output_dim=300
 p=2
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
@@ -66,6 +70,7 @@ cleanup=true
 egs_dir=
 lda_opts=
 egs_opts=
+x=0
 # End configuration section.
 
 
@@ -177,10 +182,12 @@ if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
       $data $lang $alidir $dir || exit 1;
 fi
 
+echo $egs_dir
 if [ -z $egs_dir ]; then
   egs_dir=$dir/egs
 fi
 
+echo $egs_dir
 iters_per_epoch=`cat $egs_dir/iters_per_epoch`  || exit 1;
 ! [ $num_jobs_nnet -eq `cat $egs_dir/num_jobs_nnet` ] && \
   echo "$0: Warning: using --num-jobs-nnet=`cat $egs_dir/num_jobs_nnet` from $egs_dir"
@@ -210,23 +217,23 @@ if [ $stage -le -2 ]; then
     ext_feat_dim=$feat_dim
   fi
 
-  stddev=`perl -e "print 1.0/sqrt($hidden_layer_dim);"`
+  stddev=`perl -e "print 1.0/sqrt($pnorm_input_dim);"`
   cat >$dir/nnet.config <<EOF
 SpliceComponent input-dim=$ext_feat_dim left-context=$splice_width right-context=$splice_width const-component-dim=$spk_vec_dim
 FixedAffineComponent matrix=$lda_mat
-AffineComponentPreconditioned input-dim=$ext_lda_dim output-dim=$hidden_layer_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
-PnormComponent dim=$maxout_dim group-size=$group_size p=$p
-NormalizeComponent dim=$hidden_layer_dim
-AffineComponentPreconditioned input-dim=$hidden_layer_dim output-dim=$num_leaves alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=0 bias-stddev=0
+AffineComponentPreconditioned input-dim=$ext_lda_dim output-dim=$pnorm_input_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
+PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim p=$p
+NormalizeComponent dim=$pnorm_output_dim
+AffineComponentPreconditioned input-dim=$pnorm_output_dim output-dim=$num_leaves alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=0 bias-stddev=0
 SoftmaxComponent dim=$num_leaves
 EOF
 
   # to hidden.config it will write the part of the config corresponding to a
   # single hidden layer; we need this to add new layers. 
   cat >$dir/hidden.config <<EOF
-AffineComponentPreconditioned input-dim=$hidden_layer_dim output-dim=$hidden_layer_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
-PnormComponent dim=$maxout_dim group-size=$group_size p=$p
-NormalizeComponent dim=$hidden_layer_dim
+AffineComponentPreconditioned input-dim=$pnorm_output_dim output-dim=$pnorm_input_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
+PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim p=$p
+NormalizeComponent dim=$pnorm_output_dim
 EOF
   $cmd $dir/log/nnet_init.log \
     nnet-am-init $alidir/tree $lang/topo "nnet-init $dir/nnet.config -|" \
@@ -262,7 +269,6 @@ fi
 
 
 
-x=0
 while [ $x -lt $num_iters ]; do
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
     # Set off jobs doing some diagnostics, in the background.
@@ -270,10 +276,10 @@ while [ $x -lt $num_iters ]; do
       nnet-compute-prob $dir/$x.mdl ark:$egs_dir/valid_diagnostic.egs &
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet-compute-prob $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
-    if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
-      $cmd $dir/log/progress.$x.log \
-        nnet-show-progress $dir/$[$x-1].mdl $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
-    fi
+  #  if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
+  #    $cmd $dir/log/progress.$x.log \
+  #      nnet-show-progress $dir/$[$x-1].mdl $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
+  #  fi
     
     echo "Training neural net (pass $x)"
     if [ $x -gt 0 ] && \
@@ -386,7 +392,7 @@ if $cleanup; then
   echo Cleaning up data
   if [ $egs_dir == "$dir/egs" ]; then
     echo Removing training examples
-    rm $dir/egs/egs*
+    # rm $dir/egs/egs*
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
