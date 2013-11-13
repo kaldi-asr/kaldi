@@ -3,6 +3,8 @@
 // Copyright 2009-2012  Karel Vesely
 //                2013  Ehsan Variani
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//		  2013  Hainan Xu
+//		  2013  Xiaohui Zhang	
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -464,6 +466,16 @@ static void _calc_pnorm_deriv(Real *deriv, const Real *vec, const Real *norm,
     deriv[dst_index] = ans;
   }
 }
+
+/// Set each element to y = (x == orig ? changed : x).
+template<typename Real>
+__global__
+static void _replace_value(Real *vec, int dim, Real orig, Real changed) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < dim)
+    if (vec[i] == orig) vec[i] = changed;
+}
+
 
 template<typename Real>
 __global__
@@ -1404,7 +1416,8 @@ static void _soft_hinge(Real*y, const Real*x, MatrixDim d, int src_stride) {
 
 template<typename Real>
 __global__
-static void _group_pnorm(Real *y, const Real *x, MatrixDim d, int src_stride, int group_size, Real power) {
+static void _group_pnorm(Real *y, const Real *x, MatrixDim d, int src_stride, 
+			 int group_size, Real power) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   if (j < d.rows  && i < d.cols) {
@@ -1412,7 +1425,8 @@ static void _group_pnorm(Real *y, const Real *x, MatrixDim d, int src_stride, in
     Real tmp = 0;
     int src_begin_index = i * group_size + j * src_stride;
     int src_end_index = src_begin_index + group_size;
-    for (int src_index = src_begin_index; src_index < src_end_index; src_index ++) {
+    for (int src_index = src_begin_index; src_index < src_end_index; 
+         src_index ++) {
       tmp += pow(std::abs(x[src_index]), power); 
     }
     tmp = pow(tmp, Real(1.0 / power));
@@ -1420,7 +1434,8 @@ static void _group_pnorm(Real *y, const Real *x, MatrixDim d, int src_stride, in
       y[dst_index] = tmp;
     } else {
       Real max_value = x[src_begin_index], min_value = max_value;
-      for (int src_index = src_begin_index + 1; src_index < src_end_index; src_index ++) {
+      for (int src_index = src_begin_index + 1; 
+      	   src_index < src_end_index; src_index ++) {
         if (x[src_index] > max_value) 
           max_value = x[src_index];
         if (x[src_index] < min_value) 
@@ -1928,13 +1943,17 @@ void cudaF_mul_rows_vec(dim3 Gr, dim3 Bl, float* mat, const float* scale, Matrix
   _mul_rows_vec<<<Gr,Bl>>>(mat,scale,d);
 }
 
-void cudaF_mul_rows_group_mat(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size) {
+void cudaF_mul_rows_group_mat(dim3 Gr, dim3 Bl, float *y, const float *x, 
+			      MatrixDim d, int src_stride, int group_size) {
   _mul_rows_group_mat<<<Gr,Bl>>>(y, x, d, src_stride, group_size);
 }
 
-void cudaF_calc_pnorm_deriv(dim3 Gr, dim3 Bl, float*y, const float *x1, const float *x2, MatrixDim d, int src_stride, int group_size, float power) {
+void cudaF_calc_pnorm_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1, 
+			    const float *x2, MatrixDim d, int src_stride,
+			    int group_size, float power) {
   _calc_pnorm_deriv<<<Gr,Bl>>>(y, x1, x2, d, src_stride, group_size, power);
 }
+
 void cudaF_div_rows_vec(dim3 Gr, dim3 Bl, float* mat, const float* vec_div, MatrixDim d) {
   _div_rows_vec<<<Gr,Bl>>>(mat, vec_div, d);
 }
@@ -1966,6 +1985,11 @@ void cudaF_apply_mask(dim3 Gr, dim3 Bl, float* mat, const char* mask, MatrixDim 
 /*
  * CuVector
  */
+
+void cudaF_replace_value(int Gr, int Bl, float *v, int dim, float orig, float changed) {
+  _replace_value<<<Gr,Bl>>>(v, dim, orig, changed);
+}
+
 void cudaF_set_bias_params(int Gr, int Bl, float* v, const float* a, float param_1, float param_2, float param_3, int* flag, int dim) {
   _set_bias_params<<<Gr,Bl>>>(v,a,param_1,param_2,param_3,flag,dim);
 }
@@ -2315,11 +2339,14 @@ void cudaD_mul_rows_vec(dim3 Gr, dim3 Bl, double* mat, const double* scale, Matr
   _mul_rows_vec<<<Gr,Bl>>>(mat,scale,d);
 }
 
-void cudaD_mul_rows_group_mat(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, int src_stride, int group_size) {
+void cudaD_mul_rows_group_mat(dim3 Gr, dim3 Bl, double* y, const double* x, 
+			      MatrixDim d, int src_stride, int group_size) {
   _mul_rows_group_mat<<<Gr,Bl>>>(y, x, d, src_stride, group_size);
 }
 
-void cudaD_calc_pnorm_deriv(dim3 Gr, dim3 Bl, double*y, const double* x1, const double* x2, MatrixDim d, int src_stride, int group_size, double power) {
+void cudaD_calc_pnorm_deriv(dim3 Gr, dim3 Bl, double*y, const double* x1, 
+			    const double* x2, MatrixDim d, int src_stride, 
+			    int group_size, double power) {
   _calc_pnorm_deriv<<<Gr,Bl>>>(y, x1, x2, d, src_stride, group_size, power);
 }
 
@@ -2354,6 +2381,10 @@ void cudaD_apply_mask(dim3 Gr, dim3 Bl, double* mat, const char* mask, MatrixDim
 /*
  * CuVector
  */
+void cudaD_replace_value(int Gr, int Bl, double *v, int dim, double orig, double changed) {
+  _replace_value<<<Gr,Bl>>>(v, dim, orig, changed);
+}
+
 void cudaD_set_bias_params(int Gr, int Bl, double* v, const double* a, double param_1, double param_2, double param_3, int* flag, int dim) {
   _set_bias_params<<<Gr,Bl>>>(v,a,param_1,param_2,param_3,flag,dim);
 }
@@ -2484,7 +2515,8 @@ void cudaD_soft_hinge (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d
   _soft_hinge<<<Gr,Bl>>>(y, x, d, src_stride); 
 }
 
-void cudaD_group_pnorm(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, int src_stride, int group_size, double power) {
+void cudaD_group_pnorm(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, 
+		       int src_stride, int group_size, double power) {
   _group_pnorm<<<Gr,Bl>>>(y, x, d, src_stride, group_size, power);
 }
 

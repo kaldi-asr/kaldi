@@ -3,6 +3,7 @@
 // Copyright 2009-2012  Karel Vesely
 //                      Johns Hopkins University (author: Daniel Povey)
 //                      Lucas Ondel
+//		  2013  Xiaohui Zhang	
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -183,6 +184,10 @@ class CuVectorBase {
   
   Real Max() const;  
   Real Min() const;
+  
+  // Set each element to y = (x == orig ? changed : x).
+  void ReplaceValue(Real orig, Real changed);
+  
   void MulElements(const CuVectorBase<Real> &v);
  protected:
 

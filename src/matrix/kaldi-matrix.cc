@@ -5,7 +5,6 @@
 //                       Yanmin Qian;  Petr Schwarz;  Jan Silovsky;
 //                       Haihua Xu
 
-
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -1018,7 +1017,6 @@ void MatrixBase<Real>::GroupPnormDeriv(const MatrixBase<Real> &src1,
     }
   }
 }
-
 
 template<typename Real>  // scales each column by scale[i].
 void MatrixBase<Real>::MulColsVec(const VectorBase<Real> &scale) {

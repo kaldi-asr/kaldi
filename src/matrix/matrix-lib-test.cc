@@ -610,6 +610,21 @@ static void UnitTestVectorMin() {
   KALDI_ASSERT(m == V(i));
 }
 
+template<typename Real>  
+static void UnitTestReplaceValue(){
+  MatrixIndexT dim = 10 + rand() % 2;
+  Real orig = 0.1 * (rand() % 100), changed = 0.1 * (rand() % 50);
+  Vector<Real> V(dim);
+  V.SetRandn();
+  V(dim / 2) = orig;
+  Vector<Real> V1(V);
+  for (MatrixIndexT i = 0; i < V1.Dim(); i ++) {
+    if (V1(i) == orig) V1(i) = changed;
+  }
+  V.ReplaceValue(orig, changed);
+  AssertEqual(V, V1);
+}
+
 
 template<typename Real>
 static void UnitTestNorm() {  // test some simple norm properties: scaling.  also ApproxEqual test.
@@ -4042,7 +4057,6 @@ static void UnitTestTopEigs() {
   }
 }
 
-
 template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestAddMatSmat<Real>();
   UnitTestFloorChol<Real>();
@@ -4174,6 +4188,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestPca<Real>(full_test);
   UnitTestPca2<Real>(full_test);
   UnitTestAddVecVec<Real>();
+  UnitTestReplaceValue<Real>();
   // The next one is slow.  The upshot is that Eig is up to ten times faster
   // than SVD. 
   // UnitTestSvdSpeed<Real>();

@@ -872,7 +872,12 @@ void VectorBase<Real>::MulElements(const VectorBase<Real> &v) {
   }
 }
 
-
+template<typename Real>  // Set each element to y = (x == orig ? changed : x).
+void VectorBase<Real>::ReplaceValue(Real orig, Real changed) {
+  Real *data = data_;
+  for (MatrixIndexT i = 0; i < dim_; i++) 
+    if (data[i] == orig) data[i] = changed;
+}
 
 
 template<typename Real>

@@ -2,6 +2,7 @@
 
 // Copyright 2011-2012  Karel Vesely
 //                      Johns Hopkins University (author: Daniel Povey)
+//	          2013  Xiaohui Zhang	
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -605,13 +606,17 @@ row_out = f row_in.
   So
      deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3 / D) (deriv_out^T row_in) row_in
 
-  Note to Samuel: you can do this as follows.  In Vector and CuVector, add
-  a function like this:
-  
-   /// Set each element to y = (x == orig ? changed : x).
-   void ReplaceValue(Real orig, Real changed);
+*/
 
-  Of course, you'll need to write testing code for this.  Please don't forget to
+void NormalizeComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                                  const CuMatrixBase<BaseFloat> &out_value,
+                                  const CuMatrixBase<BaseFloat> &out_deriv,
+                                  int32, // num_chunks
+                                  Component *to_update,
+                                  CuMatrix<BaseFloat> *in_deriv) const {
+  
+
+  /* Of course, you'll need to write testing code for this.  Please don't forget to
   write testing code for the CPU-based version: your CPU-based p-norm code was
   not tested and it had bugs.  Generally, to test things like this I just compute
   the function manually using a simple loop and compare it with the
@@ -624,41 +629,26 @@ row_out = f row_in.
    in_norm.ApplyPow(3.0);
   then create a vector dot_products to hold each element of the expression (deriv_out^T row_in)
   that I mentioned above: something like
-   dot_products.AddDiagMatMat(1.0, deriv_out, kNoTrans, in_value, kTrans, 0.0);
+   dot_products.AdyydDiagMatMat(1.0, deriv_out, kNoTrans, in_value, kTrans, 0.0);
    dot_products.MulElements(in_norm);
    // then add the second term to the derivatives:  
    in_deriv.AddDiagVecMat(-1.0 / D, dot_products, in_value, 1.0);
 */
-
-void NormalizeComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
-                                  const CuMatrixBase<BaseFloat> &out_value,
-                                  const CuMatrixBase<BaseFloat> &out_deriv,
-                                  int32, // num_chunks
-                                  Component *to_update,
-                                  CuMatrix<BaseFloat> *in_deriv) const {
-
   in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols(),
                    kUndefined);
-  in_deriv->Set(1);
-  CuMatrix<BaseFloat> in_sq(in_value);
-  in_sq.ApplyPow(2.0);
+  
   CuVector<BaseFloat> in_norm(in_value.NumRows());
-  in_norm.AddColSumMat(1.0, in_sq);
-  in_norm.ApplyPow(0.5);
-  BaseFloat max_length = 1 * sqrt(in_deriv->NumCols());
-  for (int32 i = 0; i < in_deriv->NumRows(); i++) {
-    if (in_norm(i) > max_length) {
-      BaseFloat dF_df = VecVec(out_deriv.Row(i), in_value.Row(i));
-      BaseFloat factor = max_length / in_norm(i);
-      in_deriv->Row(i).Scale(factor);
-      // h = g * f
-      in_deriv->Row(i).MulElements(out_deriv.Row(i));
-      // h += - max_length * (g dot x) * ||x||^(-1.5) * x 
-      in_deriv->Row(i).AddVec(- dF_df * max_length * pow(in_norm(i), -3.0), in_value.Row(i));
-    } else {
-      in_deriv->Row(i).MulElements(out_deriv.Row(i));
-    }
-  }
+  in_norm.AddDiagMat2(1.0 / in_value.NumCols(),
+                      in_value, kNoTrans, 0.0);
+  in_norm.ApplyFloor(1.0);
+  in_norm.ApplyPow(-0.5);
+  in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv, kNoTrans, 0.0),
+  in_norm.ReplaceValue(1.0, 0.0);
+  in_norm.ApplyPow(3.0);
+  CuVector<BaseFloat> dot_products(in_deriv->NumRows());
+  dot_products.AddDiagMatMat(1.0, out_deriv, kNoTrans, in_value, kTrans, 0.0);
+  dot_products.MulElements(in_norm);
+  in_deriv->AddDiagVecMat(-1.0 / in_value.NumCols(), dot_products, in_value, kNoTrans, 1.0);
 }
 
 void SigmoidComponent::Propagate(const CuMatrixBase<BaseFloat> &in,

@@ -604,6 +604,23 @@ Real CuVectorBase<Real>::Max() const {
   return result;
 }
 
+template<typename Real> 
+void CuVectorBase<Real>::ReplaceValue(Real orig, Real changed) {
+#if HAVE_CUDA == 1 
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(dim_, CU1DBLOCK));
+    cuda_replace_value(dimGrid, dimBlock, data_, dim_, orig, changed);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Vec().ReplaceValue(orig, changed);
+  }
+}
+
 template<typename Real>
 void CuVectorBase<Real>::MulElements(const CuVectorBase<Real> &v) {
   KALDI_ASSERT(dim_ == v.dim_);

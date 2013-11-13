@@ -253,6 +253,20 @@ template<typename Real> void CuVectorUnitTestApproxEqual() {
   }
 }
 
+template<typename Real> static void UnitTestCuVectorReplaceValue() {
+  for (int32 i = 0; i < 5; i++) {
+    int32 dim = 100 + rand() % 200;
+    Real orig = 0.1 * (rand() % 100), changed = 0.1 * (rand() % 50);
+    Vector<Real> vec(dim);
+    vec.SetRandn();
+    vec(dim / 2) = orig;
+    CuVector<Real> vec1(vec);
+    vec.ReplaceValue(orig, changed);
+    vec1.ReplaceValue(orig, changed);
+    Vector<Real> vec2(vec1);
+    AssertEqual(vec, vec2);
+  }
+}
 
 template<typename Real> void CuVectorUnitTestInvertElements() {
   // Also tests MulElements();
@@ -662,6 +676,7 @@ template<typename Real> void CuVectorUnitTest() {
   CuVectorUnitTestInvertElements<Real>();
   CuVectorUnitTestAddRowSumMat<Real>();
   CuVectorUnitTestAddColSumMat<Real>();
+  UnitTestCuVectorReplaceValue<Real>();
   UnitTestCuVectorAddTp<Real>();
   UnitTestCuVectorMulTp<Real>();
   UnitTestCuSubVector<Real>();

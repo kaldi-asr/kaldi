@@ -3,6 +3,8 @@
 // Copyright 2009-2012  Karel Vesely
 //                2013  Ehsan Variani
 //                2014  Johns Hopkins University (author: Daniel Povey)
+//		  2013  Hainan Xu
+//		  2013  Xiaohui Zhang	
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -112,7 +114,6 @@ inline void cuda_mul_cols_vec(dim3 Gr, dim3 Bl, float *mat, const float *scale, 
 inline void cuda_mul_rows_vec(dim3 Gr, dim3 Bl, float *mat, const float *scale, MatrixDim d) { cudaF_mul_rows_vec(Gr,Bl,mat,scale,d); }
 inline void cuda_mul_rows_group_mat(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size) { cudaF_mul_rows_group_mat(Gr, Bl, y, x, d, src_stride, group_size); }
 inline void cuda_calc_pnorm_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1, const float *x2,  MatrixDim d, int src_stride, int group_size, float power) {cudaF_calc_pnorm_deriv(Gr, Bl, y, x1, x2, d, src_stride, group_size, power); }
-inline void cuda_div_rows_vec(dim3 Gr, dim3 Bl, float *mat, const float *vec_div, MatrixDim d) { cudaF_div_rows_vec(Gr,Bl,mat,vec_div,d); }
 inline void cuda_add_mat(dim3 Gr, dim3 Bl, float alpha, const float *A, float beta, float *dst, MatrixDim d) { cudaF_add_mat(Gr,Bl,alpha,A,beta,dst,d); }
 inline void cuda_add_vec_to_cols(dim3 Gr, dim3 Bl, float alpha, const float *col, float beta, float *dst, MatrixDim d) { cudaF_add_vec_to_cols(Gr,Bl,alpha,col,beta,dst,d); }
 inline void cuda_add_vec_to_rows(dim3 Gr, dim3 Bl, float alpha, const float *row, float beta, float *dst, MatrixDim d) { cudaF_add_vec_to_rows(Gr,Bl,alpha,row,beta,dst,d); }
@@ -126,6 +127,8 @@ inline void cuda_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const flo
 /*
  * CuVector
  */
+inline void cuda_replace_value(int Gr, int Bl, float *v, int dim, float orig, float changed) {cudaF_replace_value(Gr, Bl, v, dim, orig, changed); }
+inline void cuda_div_rows_vec(dim3 Gr, dim3 Bl, float *mat, const float *vec_div, MatrixDim d) { cudaF_div_rows_vec(Gr,Bl,mat,vec_div,d); }
 inline void cuda_set_bias_params(int Gr, int Bl, float* v, const float* a, float param_1, float param_2, float param_3, int* flag, int dim) { cudaF_set_bias_params(Gr,Bl,v,a,param_1,param_2,param_3,flag,dim); }
 inline void cuda_copy_from_vec_df(int Gr, int Bl, double* v_out, const float* v_in, int dim) { cudaF_copy_from_vec_df(Gr,Bl,v_out,v_in,dim); }
 inline void cuda_copy_from_vec_fd(int Gr, int Bl, float* v_out, const float* v_in, int dim) { cudaF_copy_from_vec_fd(Gr,Bl,v_out,v_in,dim); }
@@ -267,7 +270,6 @@ inline void cuda_mul_cols_vec(dim3 Gr, dim3 Bl, double *mat, const double *scale
 inline void cuda_mul_rows_vec(dim3 Gr, dim3 Bl, double *mat, const double *scale, MatrixDim d) { cudaD_mul_rows_vec(Gr,Bl,mat,scale,d); }
 inline void cuda_mul_rows_group_mat(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride, int group_size) { cudaD_mul_rows_group_mat(Gr, Bl, y, x, d, src_stride, group_size); }
 inline void cuda_calc_pnorm_deriv(dim3 Gr, dim3 Bl, double *y, const double *x1, const double *x2,  MatrixDim d, int src_stride, int group_size, double power) {cudaD_calc_pnorm_deriv(Gr, Bl, y, x1, x2, d, src_stride, group_size, power); }
-inline void cuda_div_rows_vec(dim3 Gr, dim3 Bl, double *mat, const double *vec_div, MatrixDim d) { cudaD_div_rows_vec(Gr,Bl,mat,vec_div,d); }
 inline void cuda_add_mat(dim3 Gr, dim3 Bl, double alpha, const double *A, double beta, double *dst, MatrixDim d) { cudaD_add_mat(Gr,Bl,alpha,A,beta,dst,d); }
 inline void cuda_add_vec_to_cols(dim3 Gr, dim3 Bl, double alpha, const double *col, double beta, double *dst, MatrixDim d) { cudaD_add_vec_to_cols(Gr,Bl,alpha,col,beta,dst,d); }
 inline void cuda_add_vec_to_rows(dim3 Gr, dim3 Bl, double alpha, const double *row, double beta, double *dst, MatrixDim d) { cudaD_add_vec_to_rows(Gr,Bl,alpha,row,beta,dst,d); }
@@ -281,6 +283,8 @@ inline void cuda_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta, const d
 /*
  * CuVector
  */
+inline void cuda_replace_value(int Gr, int Bl, double *v, int dim, double orig, double changed) {cudaD_replace_value(Gr, Bl, v, dim, orig, changed); }
+inline void cuda_div_rows_vec(dim3 Gr, dim3 Bl, double *mat, const double *vec_div, MatrixDim d) { cudaD_div_rows_vec(Gr,Bl,mat,vec_div,d); }
 inline void cuda_set_bias_params(int Gr, int Bl, double* v, const double* a, double param_1, double param_2, double param_3, int* flag, int dim) { cudaD_set_bias_params(Gr,Bl,v,a,param_1,param_2,param_3,flag,dim); }
 inline void cuda_copy_from_vec_df(int Gr, int Bl, double* v_out, const double* v_in, int dim) { cudaD_copy_from_vec_df(Gr,Bl,v_out,v_in,dim); }
 inline void cuda_copy_from_vec_fd(int Gr, int Bl, float* v_out, const double* v_in, int dim) { cudaD_copy_from_vec_fd(Gr,Bl,v_out,v_in,dim); }

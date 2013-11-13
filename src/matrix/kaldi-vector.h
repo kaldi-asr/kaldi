@@ -197,6 +197,9 @@ class VectorBase {
                 const MatrixTransposeType trans, const VectorBase<Real> &v,
                 const Real beta);  // **beta previously defaulted to 0.0**
 
+  /// Set each element to y = (x == orig ? changed : x).
+  void ReplaceValue(Real orig, Real changed);
+
   /// Multipy element-by-element by another vector.
   void MulElements(const VectorBase<Real> &v);
   /// Multipy element-by-element by another vector of different type.

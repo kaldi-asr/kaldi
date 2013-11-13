@@ -3,6 +3,8 @@
 // Copyright 2010  Karel Vesely
 //           2013  Lucas Ondel
 //           2013  Johns Hopkins University (author: Daniel Povey)
+//	     2013  Hainan Xu	
+//	     2013  Xiaohui Zhang	
 
 // See ../../COPYING for clarification regarding multiple authors
 //

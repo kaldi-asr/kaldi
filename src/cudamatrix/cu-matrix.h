@@ -2,6 +2,8 @@
 
 // Copyright 2009-2012  Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//		  2013  Hainan Xu
+//		  2013  Xiaohui Zhang	
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -189,7 +191,6 @@ class CuMatrixBase {
   /// "output-elem" is whichever element of output depends on that input element.
   void GroupPnormDeriv(const CuMatrixBase<Real> &input,
                        const CuMatrixBase<Real> &output, Real power);
-
   
   /// Compute the hyperbolic tangent (tanh) function; element by element,
   /// *this = tanh(src).
