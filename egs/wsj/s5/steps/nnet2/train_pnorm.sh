@@ -7,7 +7,7 @@
 
 # This script trains neural network with pnorm nonlinearities. 
 # The difference with train_tanh.sh is that, instead of setting 
-# hidden_layer_size, you should set pnorm_input_size and pnorm_output_size.
+# hidden_layer_size, you should set pnorm_input_dim and pnorm_output_dim.
 # Also the P value (the order of the p-norm) should be set.
 
 # Begin configuration section.
