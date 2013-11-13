@@ -392,7 +392,7 @@ if $cleanup; then
   echo Cleaning up data
   if [ $egs_dir == "$dir/egs" ]; then
     echo Removing training examples
-    # rm $dir/egs/egs*
+    rm $dir/egs/egs*
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
