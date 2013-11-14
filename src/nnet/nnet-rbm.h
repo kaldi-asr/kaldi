@@ -86,6 +86,8 @@ class RbmBase : public UpdatableComponent {
   void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) { }
   // RBMs use option class RbmTrainOptions
   void SetTrainOptions(const NnetTrainOptions&) { }
+  const NnetTrainOptions& GetTrainOptions() const { /* avoid warning */return opts_; }
+  
   NnetTrainOptions opts_;
  //
  ////
