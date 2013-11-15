@@ -82,6 +82,7 @@ int main(int argc, char *argv[]) {
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string key = feature_reader.Key();
       if (!posteriors_reader.HasKey(key)) {
+        KALDI_WARN << "Could not find posteriors for utterance " << key;
         num_err++;
       } else {
         const Matrix<BaseFloat> &mat = feature_reader.Value();

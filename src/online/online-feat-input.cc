@@ -514,7 +514,7 @@ void OnlineFeatureMatrix::GetNextFeatures() {
 
 
 bool OnlineFeatureMatrix::IsValidFrame (int32 frame) {
-  KALDI_ASSERT(frame >= feat_offset_ &&
+   KALDI_ASSERT(frame >= feat_offset_ &&
                "You are attempting to get expired frames.");
   if (frame < feat_offset_ + feat_matrix_.NumRows())
     return true;
