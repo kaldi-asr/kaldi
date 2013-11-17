@@ -1,6 +1,7 @@
 // lat/kaldi-lattice.cc
 
 // Copyright 2009-2011     Microsoft Corporation
+//                2013     Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -58,8 +59,8 @@ Lattice* ConvertToLattice(Lattice *ifst) {
 }
 
 
-// static member function..
-bool CompactLatticeHolder::Write(std::ostream &os, bool binary, const CompactLattice &t) {
+bool WriteCompactLattice(std::ostream &os, bool binary,
+                         const CompactLattice &t) {
   if (binary) {
     fst::FstWriteOptions opts;    
     // Leave all the options default.  Normally these lattices wouldn't have any
@@ -300,36 +301,10 @@ Lattice *ReadLatticeText(std::istream &is) {
   }
 }
 
-
-
-bool CompactLatticeHolder::Read(std::istream &is) {
-  Clear(); // in case anything currently stored.
-  int c = is.peek();
-  if (c == -1) {
-    KALDI_WARN << "End of stream detected reading CompactLattice.";
-    return false;
-  } else if (isspace(c)) { // The text form of the lattice begins
-    // with space (normally, '\n'), so this means it's text (the binary form
-    // cannot begin with space because it starts with the FST Type() which is not
-    // space).
-    // The next line would normally consume the \r on Windows, plus any
-    // extra spaces that might have got in there somehow.
-    while (std::isspace(is.peek()) && is.peek() != '\n') is.get();
-    if (is.peek() == '\n') is.get(); // consume the newline.
-    else { // saw spaces but no newline.. this is not expected.
-      KALDI_WARN << "Reading compact lattice: unexpected sequence of spaces "
-                 << " at file position " << is.tellg();
-      return false;
-    }
-    t_ = ReadCompactLatticeText(is); // that routine will warn on error.
-    return (t_ != NULL);
-  } else if (c != 214) { // 214 is first char of FST magic number,
-    // on little-endian machines which is all we support (\326 octal)
-    KALDI_WARN << "Reading compact lattice: does not appear to be an FST "
-               << " [non-space but no magic number detected], file pos is "
-               << is.tellg();
-    return false;
-  } else {
+bool ReadCompactLattice(std::istream &is, bool binary,
+                        CompactLattice **clat) {
+  KALDI_ASSERT(*clat == NULL);
+  if (binary) {
     fst::FstHeader hdr;
     if (!hdr.Read(is, "<unknown>")) {
       KALDI_WARN << "Reading compact lattice: error reading FST header.";
@@ -370,14 +345,47 @@ bool CompactLatticeHolder::Read(std::istream &is) {
       KALDI_WARN << "Error reading compact lattice (after reading header).";
       return false;
     }
-    t_ = ans;
+    *clat = ans;
     return true;
+  } else {
+    // The next line would normally consume the \r on Windows, plus any
+    // extra spaces that might have got in there somehow.
+    while (std::isspace(is.peek()) && is.peek() != '\n') is.get();
+    if (is.peek() == '\n') is.get(); // consume the newline.
+    else { // saw spaces but no newline.. this is not expected.
+      KALDI_WARN << "Reading compact lattice: unexpected sequence of spaces "
+                 << " at file position " << is.tellg();
+      return false;
+    }
+    *clat = ReadCompactLatticeText(is); // that routine will warn on error.
+    return (*clat != NULL);
+  }
+}
+
+
+bool CompactLatticeHolder::Read(std::istream &is) {
+  Clear(); // in case anything currently stored.
+  int c = is.peek();
+  if (c == -1) {
+    KALDI_WARN << "End of stream detected reading CompactLattice.";
+    return false;
+  } else if (isspace(c)) { // The text form of the lattice begins
+    // with space (normally, '\n'), so this means it's text (the binary form
+    // cannot begin with space because it starts with the FST Type() which is not
+    // space).
+    return ReadCompactLattice(is, false, &t_);
+  } else if (c != 214) { // 214 is first char of FST magic number,
+    // on little-endian machines which is all we support (\326 octal)
+    KALDI_WARN << "Reading compact lattice: does not appear to be an FST "
+               << " [non-space but no magic number detected], file pos is "
+               << is.tellg();
+    return false;
+  } else {
+    return ReadCompactLattice(is, true, &t_);
   }
 }     
 
-
-// static member function..
-bool LatticeHolder::Write(std::ostream &os, bool binary, const Lattice &t) {
+bool WriteLattice(std::ostream &os, bool binary, const Lattice &t) {
   if (binary) {
     fst::FstWriteOptions opts;    
     // Leave all the options default.  Normally these lattices wouldn't have any
@@ -406,42 +414,17 @@ bool LatticeHolder::Write(std::ostream &os, bool binary, const Lattice &t) {
   }
 }
 
-
-bool LatticeHolder::Read(std::istream &is) {
-  Clear(); // in case anything currently stored.
-  int c = is.peek();
-  if (c == -1) {
-    KALDI_WARN << "End of stream detected reading Lattice.";
-    return false;
-  } else if (isspace(c)) { // The text form of the lattice begins
-    // with space (normally, '\n'), so this means it's text (the binary form
-    // cannot begin with space because it starts with the FST Type() which is not
-    // space).
-    // The next line would normally consume the \r on Windows, plus any
-    // extra spaces that might have got in there somehow.
-    while (std::isspace(is.peek()) && is.peek() != '\n') is.get();
-    if (is.peek() == '\n') is.get(); // consume the newline.
-    else { // saw spaces but no newline.. this is not expected.
-      KALDI_WARN << "Reading compact lattice: unexpected sequence of spaces "
-                 << " at file position " << is.tellg();
-      return false;
-    }
-    t_ = ReadLatticeText(is); // that routine will warn on error.
-    return (t_ != NULL);
-  } else if (c != 214) { // 214 is first char of FST magic number,
-    // on little-endian machines which is all we support (\326 octal)
-    KALDI_WARN << "Reading compact lattice: does not appear to be an FST "
-               << " [non-space but no magic number detected], file pos is "
-               << is.tellg();
-    return false;
-  } else {
+bool ReadLattice(std::istream &is, bool binary,
+                 Lattice **lat) {
+  KALDI_ASSERT(*lat == NULL);
+  if (binary) {
     fst::FstHeader hdr;
     if (!hdr.Read(is, "<unknown>")) {
-      KALDI_WARN << "Reading compact lattice: error reading FST header.";
+      KALDI_WARN << "Reading lattice: error reading FST header.";
       return false;
     }
     if (hdr.FstType() != "vector") {
-      KALDI_WARN << "Reading compact lattice: unsupported FST type: "
+      KALDI_WARN << "Reading lattice: unsupported FST type: "
                  << hdr.FstType();
       return false;
     }
@@ -475,8 +458,46 @@ bool LatticeHolder::Read(std::istream &is) {
       KALDI_WARN << "Error reading lattice (after reading header).";
       return false;
     }
-    t_ = ans;
+    *lat = ans;
     return true;
+  } else {
+    // The next line would normally consume the \r on Windows, plus any
+    // extra spaces that might have got in there somehow.
+    while (std::isspace(is.peek()) && is.peek() != '\n') is.get();
+    if (is.peek() == '\n') is.get(); // consume the newline.
+    else { // saw spaces but no newline.. this is not expected.
+      KALDI_WARN << "Reading compact lattice: unexpected sequence of spaces "
+                 << " at file position " << is.tellg();
+      return false;
+    }
+    *lat = ReadLatticeText(is); // that routine will warn on error.
+    return (*lat != NULL);
+  }
+}
+
+
+/* Since we don't write the binary headers for this type of holder,
+   we use a different method to work out whether we're in binary mode.
+ */
+bool LatticeHolder::Read(std::istream &is) {
+  Clear(); // in case anything currently stored.
+  int c = is.peek();
+  if (c == -1) {
+    KALDI_WARN << "End of stream detected reading Lattice.";
+    return false;
+  } else if (isspace(c)) { // The text form of the lattice begins
+    // with space (normally, '\n'), so this means it's text (the binary form
+    // cannot begin with space because it starts with the FST Type() which is not
+    // space).
+    return ReadLattice(is, false, &t_);
+  } else if (c != 214) { // 214 is first char of FST magic number,
+    // on little-endian machines which is all we support (\326 octal)
+    KALDI_WARN << "Reading compact lattice: does not appear to be an FST "
+               << " [non-space but no magic number detected], file pos is "
+               << is.tellg();
+    return false;
+  } else {
+    return ReadLattice(is, true, &t_);
   }
 }     
 

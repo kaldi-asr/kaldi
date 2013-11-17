@@ -1121,16 +1121,24 @@ void AddWordInsPenToCompactLattice(BaseFloat word_ins_penalty,
   }  // end looping over states  
 } 
 
-struct Tuple {
-  Tuple(int32 state, int32 arc, int32 offset):
-    state_id(state), arc_id(arc), trans_offset(offset) {}
+struct ClatRescoreTuple {
+  ClatRescoreTuple(int32 state, int32 arc, int32 tid):
+      state_id(state), arc_id(arc), tid(tid) { }
   int32 state_id;
   int32 arc_id;
-  int32 trans_offset;
+  int32 tid;
 };
 
-bool RescoreCompactLattice(DecodableInterface *decodable,
-                           CompactLattice *clat) {
+/** RescoreCompactLatticeInternal is the internal code for both
+    RescoreCompactLattice and RescoreCompatLatticeSpeedup.  For
+    RescoreCompactLattice, "tmodel" will be NULL and speedup_factor will be 1.0.
+ */
+bool RescoreCompactLatticeInternal(
+    const TransitionModel *tmodel,
+    BaseFloat speedup_factor,
+    DecodableInterface *decodable,
+    CompactLattice *clat) {
+  KALDI_ASSERT(speedup_factor >= 1.0);
   if (clat->NumStates() == 0) {
     KALDI_WARN << "Rescoring empty lattice";
     return false;
@@ -1145,7 +1153,7 @@ bool RescoreCompactLattice(DecodableInterface *decodable,
   std::vector<int32> state_times;
   int32 utt_len = kaldi::CompactLatticeStateTimes(*clat, &state_times);
   
-  std::vector<std::vector<Tuple> > time_to_state(utt_len);
+  std::vector<std::vector<ClatRescoreTuple> > time_to_state(utt_len);
 
   int32 num_states = clat->NumStates();
   KALDI_ASSERT(num_states == state_times.size());
@@ -1160,7 +1168,8 @@ bool RescoreCompactLattice(DecodableInterface *decodable,
       
       for (size_t offset = 0; offset < arc_string.size(); offset++) {
         if (t < utt_len) { // end state may be past this..
-          time_to_state[t+offset].push_back(Tuple(state, arc_id, offset));
+          int32 tid = arc_string[offset];
+          time_to_state[t+offset].push_back(ClatRescoreTuple(state, arc_id, tid));
         } else {
           if (t != utt_len) {
             KALDI_WARN << "There appears to be lattice/feature mismatch, "
@@ -1176,7 +1185,8 @@ bool RescoreCompactLattice(DecodableInterface *decodable,
       for (size_t offset = 0; offset < arc_string.size(); offset++) {
         KALDI_ASSERT(t + offset < utt_len); // already checked in
         // CompactLatticeStateTimes, so would be code error.
-        time_to_state[t+offset].push_back(Tuple(state, arc_id, offset));
+        time_to_state[t+offset].push_back(
+            ClatRescoreTuple(state, arc_id, arc_string[offset]));
       }
     }
   }
@@ -1187,18 +1197,47 @@ bool RescoreCompactLattice(DecodableInterface *decodable,
       KALDI_WARN << "Mismatch in lattice and feature length";
       return false;
     }
+    // frame_scale is the scale we put on the computed acoustic probs for this
+    // frame.  It will always be 1.0 if tmodel == NULL (i.e. if we are not doing
+    // the "speedup" code).  For frames with multiple pdf-ids it will be one.
+    // For frames with only one pdf-id, it will equal speedup_factor (>=1.0)
+    // with probability 1.0 / speedup_factor, and zero otherwise.  If it is zero,
+    // we can avoid computing the probabilities.
+    BaseFloat frame_scale = 1.0; 
+    KALDI_ASSERT(!time_to_state[t].empty());
+    if (tmodel != NULL) {
+      int32 pdf_id = tmodel->TransitionIdToPdf(time_to_state[t][0].tid);
+      bool frame_has_multiple_pdfs = false;
+      for (size_t i = 1; i < time_to_state[t].size(); i++) {
+        if (tmodel->TransitionIdToPdf(time_to_state[t][i].tid) != pdf_id) {
+          frame_has_multiple_pdfs = true;
+          break;
+        }
+      }
+      if (frame_has_multiple_pdfs) {
+        frame_scale = 1.0;
+      } else {        
+        if (WithProb(1.0 / speedup_factor)) {
+          frame_scale = speedup_factor;
+        } else {
+          frame_scale = 0.0;
+        }
+      }
+      if (frame_scale == 0.0)
+        continue; // the code below would be pointless.
+    }
+    
     for (size_t i = 0; i < time_to_state[t].size(); i++) {
       int32 state = time_to_state[t][i].state_id;
       int32 arc_id = time_to_state[t][i].arc_id;
-      int32 offset = time_to_state[t][i].trans_offset;
-
+      int32 tid = time_to_state[t][i].tid;
+      
       if (arc_id == -1) { // Final state
         // Access the trans_id
         CompactLatticeWeight curr_clat_weight = clat->Final(state);
-        int32 trans_id = curr_clat_weight.String()[offset];
         
         // Calculate likelihood
-        BaseFloat log_like = decodable->LogLikelihood(t, trans_id);
+        BaseFloat log_like = decodable->LogLikelihood(t, tid) * frame_scale;
         // update weight
         CompactLatticeWeight new_clat_weight = curr_clat_weight;
         LatticeWeight new_lat_weight = new_clat_weight.Weight();
@@ -1208,13 +1247,11 @@ bool RescoreCompactLattice(DecodableInterface *decodable,
       } else {
         fst::MutableArcIterator<CompactLattice> aiter(clat, state);
 
-        // Access the trans_id
         aiter.Seek(arc_id);
         CompactLatticeArc arc = aiter.Value();
-        int32 trans_id = arc.weight.String()[offset];
 
         // Calculate likelihood
-        BaseFloat log_like = decodable->LogLikelihood(t, trans_id);
+        BaseFloat log_like = decodable->LogLikelihood(t, tid) * frame_scale;
         // update weight
         LatticeWeight new_weight = arc.weight.Weight();
         new_weight.SetValue2(-log_like + arc.weight.Weight().Value2());
@@ -1225,6 +1262,21 @@ bool RescoreCompactLattice(DecodableInterface *decodable,
   }
   return true;
 }
+
+
+bool RescoreCompactLatticeSpeedup(
+    const TransitionModel &tmodel,
+    BaseFloat speedup_factor,
+    DecodableInterface *decodable,
+    CompactLattice *clat) {
+  return RescoreCompactLatticeInternal(&tmodel, speedup_factor, decodable, clat);
+}
+
+bool RescoreCompactLattice(DecodableInterface *decodable,
+                           CompactLattice *clat) {
+  return RescoreCompactLatticeInternal(NULL, 1.0, decodable, clat);
+}
+
 
 bool RescoreLattice(DecodableInterface *decodable,
                     Lattice *lat) {

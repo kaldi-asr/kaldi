@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
       " e.g.: sgmm2-rescore-lattice 1.mdl ark:1.lats scp:trn.scp ark:2.lats\n";
 
     kaldi::BaseFloat old_acoustic_scale = 0.0;
+    bool speedup = false;
     BaseFloat log_prune = 5.0;
     std::string gselect_rspecifier, spkvecs_rspecifier, utt2spk_rspecifier;
 
@@ -58,7 +59,13 @@ int main(int argc, char *argv[]) {
                 "rspecifier for utterance to speaker map");
     po.Register("gselect", &gselect_rspecifier,
                 "Precomputed Gaussian indices (rspecifier)");
+    po.Register("speedup", &speedup,
+                "If true, enable a faster version of the computation that "
+                "saves times when there is only one pdf-id on a single frame "
+                "by only sometimes (randomly) computing the probabilities, and "
+                "then scaling them up to preserve corpus-level diagnostics.");
 
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -133,10 +140,20 @@ int main(int argc, char *argv[]) {
       DecodableAmSgmm2 sgmm2_decodable(am_sgmm, trans_model, feats,
                                        gselect, log_prune, &spk_vars);
 
-      if (kaldi::RescoreCompactLattice(&sgmm2_decodable, &clat)) {
+      if (!speedup) {
+        if (kaldi::RescoreCompactLattice(&sgmm2_decodable, &clat)) {
           compact_lattice_writer.Write(utt, clat);
           num_done++;
-      } else num_err++;
+        } else num_err++;
+      } else {
+        BaseFloat speedup_factor = 100.0; 
+        if (kaldi::RescoreCompactLatticeSpeedup(trans_model, speedup_factor,
+                                                &sgmm2_decodable,
+                                                &clat)) {
+          compact_lattice_writer.Write(utt, clat);
+          num_done++;
+        } else num_err++;
+      }        
     }
 
     KALDI_LOG << "Done " << num_done << " lattices, errors on "
