@@ -194,6 +194,24 @@ void AddWordInsPenToCompactLattice(BaseFloat word_ins_penalty,
 bool RescoreCompactLattice(DecodableInterface *decodable,
                            CompactLattice *clat);
 
+/// This function is like RescoreCompactLattice, but it is modified to avoid
+/// computing probabilities on most frames where all the pdf-ids are the same.
+/// (it needs the transition-model to work out whether two transition-ids map to
+/// the same pdf-id, and it assumes that the lattice has transition-ids on it).
+/// The naive thing would be to just set all probabilities to zero on frames
+/// where all the pdf-ids are the same (because this value won't affect the
+/// lattice posterior).  But this would become confusing when we compute
+/// corpus-level diagnostics such as the MMI objective function.  Instead,
+/// imagine speedup_factor = 100 (it must be >= 1.0)... with probability (1.0 /
+/// speedup_factor) we compute those likelihoods and multiply them by
+/// speedup_factor; otherwise we set them to zero.  This gives the right
+/// expected probability so our corpus-level diagnostics will be about right.
+bool RescoreCompactLatticeSpeedup(
+    const TransitionModel &tmodel,
+    BaseFloat speedup_factor,
+    DecodableInterface *decodable,
+    CompactLattice *clat);
+
 
 /// This function *adds* the negated scores obtained from the Decodable object,
 /// to the acoustic scores on the arcs.  If you want to replace them, you should

@@ -158,7 +158,7 @@ if [ $spkdim -gt 0 ]; then  ### For models with speaker vectors:
   if [ $stage -le 4 ]; then
     $cmd JOB=1:$nj $dir/log/vecs_pass2.JOB.log \
       gunzip -c $dir/pre_lat.JOB.gz \| \
-      sgmm-rescore-lattice --spk-vecs=ark:$dir/pre_vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk \
+      sgmm-rescore-lattice --speedup=true --spk-vecs=ark:$dir/pre_vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk \
       "$gselect_opt" $srcdir/final.mdl ark:- "$feats" ark:- \| \
       lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
       lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
@@ -176,7 +176,7 @@ if [ $spkdim -gt 0 ]; then  ### For models with speaker vectors:
       echo "$0: computing fMLLR transforms."
       $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
 	gunzip -c $dir/pre_lat.JOB.gz \| \
-	sgmm-rescore-lattice --spk-vecs=ark:$dir/vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk \
+	sgmm-rescore-lattice --speedup=true --spk-vecs=ark:$dir/vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk \
 	"$gselect_opt" $srcdir/final.mdl ark:- "$feats" ark:- \| \
 	lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
 	lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
@@ -210,7 +210,7 @@ else  ### For models without speaker vectors:
       echo "$0: computing fMLLR transforms."
       $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
 	gunzip -c $dir/pre_lat.JOB.gz \| \
-	sgmm-rescore-lattice --utt2spk=ark:$sdata/JOB/utt2spk \
+	sgmm-rescore-lattice --speedup=true --utt2spk=ark:$sdata/JOB/utt2spk \
 	"$gselect_opt" $srcdir/final.mdl ark:- "$feats" ark:- \| \
 	lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
 	lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \

@@ -173,6 +173,8 @@ int main(int argc, char *argv[]) {
           tot_abs_weight_this_file = 0.0;
         
       for (size_t i = 0; i < posterior.size(); i++) {
+        if (posterior[i].empty())
+          continue;
         am_sgmm.ComputePerFrameVars(features.Row(i), gselect[i], spk_vars,
                                     &per_frame_vars);
         
