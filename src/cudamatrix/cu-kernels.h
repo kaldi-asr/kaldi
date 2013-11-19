@@ -3,8 +3,9 @@
 // Copyright 2009-2012  Karel Vesely
 //                2013  Ehsan Variani
 //                2014  Johns Hopkins University (author: Daniel Povey)
-//		  2013  Hainan Xu
-//		  2013  Xiaohui Zhang	
+//                2013  Hainan Xu
+//                2013  Xiaohui Zhang	
+//                2013  Johns Hopkins University (author: Guoguo Chen)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -218,6 +219,11 @@ inline void cuda_sum_column_ranges(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
                                    const Int32Pair *indices) {
   cudaF_sum_column_ranges(Gr, Bl, data, dim, src_data, src_dim, indices);
 }
+inline void cuda_matrix_lookup(dim3 Gr, dim3 Bl, const float *data,
+                               MatrixDim dim, const Int32Pair *indices,
+                               int indices_size, float *output) {
+  cudaF_matrix_lookup(Gr, Bl, data, dim, indices, indices_size, output);
+}
 
 
 // double versions
@@ -366,6 +372,11 @@ inline void cuda_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<double>* x, int3
 inline void cuda_sum_column_ranges(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
                                    const double *src_data, MatrixDim src_dim, const Int32Pair *indices) {
   cudaD_sum_column_ranges(Gr, Bl, data, dim, src_data, src_dim, indices);
+}
+inline void cuda_matrix_lookup(dim3 Gr, dim3 Bl, const double *data,
+                               MatrixDim dim, const Int32Pair *indices,
+                               int indices_size, double *output) {
+  cudaD_matrix_lookup(Gr, Bl, data, dim, indices, indices_size, output);
 }
 
 

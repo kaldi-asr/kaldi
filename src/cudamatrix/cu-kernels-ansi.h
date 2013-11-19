@@ -2,8 +2,9 @@
 
 // Copyright 2009-2012  Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)
-//       	  2013  Hainan Xu	
-//	          2013  Xiaohui Zhang	
+//                2013  Hainan Xu	
+//                2013  Xiaohui Zhang
+//                2013	Johns Hopkins University (author: Guoguo Chen)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -157,6 +158,9 @@ void cudaF_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const float* T,
 void cudaF_sum_column_ranges(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
                              const float *src_data, MatrixDim src_dim,
                              const Int32Pair *indices);  
+void cudaF_matrix_lookup(dim3 Gr, dim3 Bl, const float *data, MatrixDim dim,
+                         const Int32Pair *indices, int indices_size,
+                         float *output);
 
   
 /*********************************************************
@@ -293,6 +297,9 @@ void cudaD_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta, const double*
 void cudaD_sum_column_ranges(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
                              const double *src_data, MatrixDim src_dim,
                              const Int32Pair *indices);
+void cudaD_matrix_lookup(dim3 Gr, dim3 Bl, const double *data, MatrixDim dim,
+                         const Int32Pair *indices, int indices_size,
+                         double *output);
   
   
   

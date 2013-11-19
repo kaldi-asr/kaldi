@@ -3,8 +3,9 @@
 // Copyright 2009-2012  Karel Vesely
 //                2013  Ehsan Variani
 //                2013  Johns Hopkins University (author: Daniel Povey)
-//		  2013  Hainan Xu
-//		  2013  Xiaohui Zhang	
+//                2013  Hainan Xu
+//                2013  Xiaohui Zhang
+//                2013  Johns Hopkins University (author: Guoguo Chen)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -986,6 +987,22 @@ static void _cuda_comp_obj_deriv(MatrixElement<Real> *x, int s, const Real* z, M
 
 template<typename Real>
 __global__
+static void _matrix_lookup(const Real *data, MatrixDim dim,
+                           const Int32Pair *indices,
+                           int indices_size, Real *output) {
+  int row = blockIdx.x * blockDim.x + threadIdx.x;
+  int col = blockIdx.y * blockDim.y + threadIdx.y;
+  if (row >= dim.rows || col >= dim.cols)
+    return;
+  for (int i = 0; i < indices_size; ++i) {
+    if (row == indices[i].first && col == indices[i].second) {
+      output[i] = data[row * dim.stride + col];
+    }
+  }
+}
+
+template<typename Real>
+__global__
 static void _vec_sum(Real *v, Real *sum, int dim, int inc) {
   int i = threadIdx.x;
   __shared__ Real row_data[CU1DBLOCK];  
@@ -1396,8 +1413,6 @@ static void _sum_column_ranges(Real *data, MatrixDim dim,
     sum += src_data[index];
   data[dst_index] = sum;
 }
-
-
 
 template<typename Real>
 __global__
@@ -2218,6 +2233,12 @@ void cudaF_sum_column_ranges(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
   _sum_column_ranges<<<Gr,Bl>>>(data, dim, src_data, src_dim, indices);
 }
 
+void cudaF_matrix_lookup(dim3 Gr, dim3 Bl, const float *data, MatrixDim dim,
+                         const Int32Pair *indices, int indices_size,
+                         float *output) {
+  _matrix_lookup<<<Gr,Bl>>>(data, dim, indices, indices_size, output);
+}
+
 
 
 /*
@@ -2601,6 +2622,12 @@ void cudaD_sum_column_ranges(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
                              const double *src_data, MatrixDim src_dim,
                              const Int32Pair *indices) {
   _sum_column_ranges<<<Gr,Bl>>>(data, dim, src_data, src_dim, indices);
+}
+
+void cudaD_matrix_lookup(dim3 Gr, dim3 Bl, const double *data, MatrixDim dim,
+                         const Int32Pair *indices, int indices_size,
+                         double *output) {
+  _matrix_lookup<<<Gr,Bl>>>(data, dim, indices, indices_size, output);
 }
 
 

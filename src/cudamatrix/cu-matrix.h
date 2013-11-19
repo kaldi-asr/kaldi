@@ -2,8 +2,9 @@
 
 // Copyright 2009-2012  Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)
-//		  2013  Hainan Xu
-//		  2013  Xiaohui Zhang	
+//                2013  Hainan Xu
+//                2013  Xiaohui Zhang
+//                2013  Johns Hopkins University (author: Guoguo Chen)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -392,6 +393,11 @@ class CuMatrixBase {
   void SetRandUniform();
 
   void Write(std::ostream &os, bool binary) const;
+
+  // This function resizes the output to indices.size(), and for each element of
+  // indices it interprets it as a (row, column) index into *this, and puts
+  // (*this)(row, column) into the corresponding element of "output".
+  void Lookup(const std::vector<Int32Pair> &indices, std::vector<Real> *output);
  protected:
   // The following two functions should only be called if we did not compile with CUDA
   // or could not get a CUDA card; in that case the contents are interpreted the

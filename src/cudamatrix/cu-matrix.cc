@@ -3,8 +3,9 @@
 // Copyright 2009-2012  Karel Vesely, Lucas Ondel
 //                2013  Ehsan Variani
 //                2013  Johns Hopkins University (author: Daniel Povey)
-//		  2013  Hainan Xu
-//		  2013  Xiaohui Zhang	
+//                2013  Hainan Xu
+//                2013  Xiaohui Zhang
+//                2013  Johns Hopkins University (author: Guoguo Chen)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -1999,6 +2000,46 @@ void CuMatrixBase<Real>::AddMatBlock(
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
+                                std::vector<Real> *output) {
+  // Checks the dimension.
+  MatrixIndexT num_rows = this->num_rows_, num_cols = this->num_cols_;
+  for (int32 i = 0; i < indices.size(); ++i) {
+    KALDI_ASSERT(indices[i].first < num_rows && indices[i].first >= 0 &&
+                 indices[i].second < num_cols && indices[i].second >= 0);
+  }
+  
+  // Checks the pointer.
+  KALDI_ASSERT(output != NULL);
+
+  // Resizes the output vector.
+  output->resize(indices.size());
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuArray<Int32Pair> cuda_indices(indices);
+    CuArray<Real> cuda_output(output->size());
+
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK), n_blocks(NumCols(), CU2DBLOCK));
+
+    cuda_matrix_lookup(dimGrid, dimBlock, this->data_, this->Dim(),
+                       cuda_indices.Data(), indices.size(), cuda_output.Data());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    cuda_output.CopyToVec(output);
+    
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    for (int32 i = 0; i < indices.size(); i++) {
+      (*output)[i] = (*this)(indices[i].first, indices[i].second);
+    }
+  }
+}
 
 /**
  * Print the matrix to stream

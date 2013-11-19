@@ -3,8 +3,9 @@
 // Copyright 2010  Karel Vesely
 //           2013  Lucas Ondel
 //           2013  Johns Hopkins University (author: Daniel Povey)
-//	     2013  Hainan Xu	
-//	     2013  Xiaohui Zhang	
+//           2013  Hainan Xu	
+//           2013  Xiaohui Zhang
+//           2013  Johns Hopkins University (author: Guoguo Chen)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -74,8 +75,8 @@ static void RandZeroToOneMatrix(MatrixBase<Real>* mat) {
 }
 
 
-
-static void AssertEqual(std::vector<int32> &A, std::vector<int32> &B) {
+template<typename Real>
+static void AssertEqual(std::vector<Real> &A, std::vector<Real> &B) {
   KALDI_ASSERT(A.size() == B.size());
   for (size_t i=0; i < A.size(); i++)
     KALDI_ASSERT(A[i] == B[i]);
@@ -1742,6 +1743,35 @@ static void UnitTestCuMatrixObjfDeriv() {
 
 }
 
+template<typename Real> 
+static void UnitTestCuMatrixLookup() {
+  for (int32 i = 0; i < 5; i++) {
+    int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+    CuMatrix<Real> H(dimM, dimN);
+    H.SetRandn();
+
+    std::vector<Int32Pair> indices;
+    std::vector<Real> reference;
+    std::vector<Real> output;
+
+    // Generates the indices and the reference.
+    for (int32 j = 0; j < 10 + rand() % 10; j++) {
+      MatrixIndexT r = rand() % dimM;
+      MatrixIndexT c = rand() % dimN;
+
+      Int32Pair tmp_pair;
+      tmp_pair.first = r;
+      tmp_pair.second = c;
+      indices.push_back(tmp_pair);
+      reference.push_back(H(r, c));
+    }
+
+    H.Lookup(indices, &output);
+
+    AssertEqual(reference, output);
+  }
+}
+
 template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixTraceMatMat<Real>();
   UnitTestCuMatrixObjfDeriv<Real>();
@@ -1782,6 +1812,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixTranspose<Real>();
   UnitTestCuMatrixCopyUpperToLower<Real>();
   UnitTestCuMatrixCopyLowerToUpper<Real>();
+  UnitTestCuMatrixLookup<Real>();
   // test CuVector<Real> methods
   UnitTestCuVectorAddVec<Real>();
   UnitTestCuVectorAddRowSumMat<Real>();
