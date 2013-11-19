@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
                 "in expectation copy a sample this many times.  It will copy it a number "
                 "of times equal to floor(keep-proportion) or ceil(keep-proportion).");
     po.Register("srand", &srand_seed, "Seed for random number generator "
-                "(only relevant if --random=true or --keep-proportion != 1.0)");
+                "(only relevant if --keep-proportion != 1.0)");
     
     po.Read(argc, argv);
 

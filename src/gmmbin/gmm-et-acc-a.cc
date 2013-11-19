@@ -27,6 +27,7 @@ using std::vector;
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
 #include "transform/exponential-transform.h"
+#include "hmm/posterior.h"
 
 int main(int argc, char *argv[]) {
   try {

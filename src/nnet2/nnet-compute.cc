@@ -18,7 +18,7 @@
 // limitations under the License.
 
 #include "nnet2/nnet-compute.h"
-#include "util/kaldi-holder.h" // for Posterior
+#include "hmm/posterior.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -114,6 +114,8 @@ void NnetComputer::Propagate() {
 
 BaseFloat NnetComputer::ComputeLastLayerDeriv(const Posterior &pdf_post,
                                               CuMatrix<BaseFloat> *deriv) const {
+  // TODO: convert this to proper CUDA code, c.f.g. ComputeObjfAndDeriv
+  // in nnet-update.cc
   int32 num_components = nnet_.NumComponents();
   double tot_objf = 0.0, tot_weight = 0.0;
   const CuMatrix<BaseFloat> &last_layer_output = forward_data_[num_components];

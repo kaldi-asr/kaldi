@@ -27,6 +27,7 @@ using std::vector;
 #include "sgmm/am-sgmm.h"
 #include "sgmm/fmllr-sgmm.h"
 #include "hmm/transition-model.h"
+#include "hmm/posterior.h"
 
 namespace kaldi {
 

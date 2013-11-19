@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+# Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 # MMI training (or optionally boosted MMI, if you give the --boost option),
 # for SGMMs.  4 iterations (by default) of Extended Baum-Welch update.
@@ -9,7 +9,7 @@ cmd=run.pl
 num_iters=4
 boost=0.0
 cancel=true # if true, cancel num and den counts on each frame.
-zero_if_disjoint=false
+drop_frames=false # this is the same as frame dropping (see Karel's ICASSP2013 paper).
 acwt=0.1
 stage=0
 update_opts=
@@ -112,7 +112,7 @@ while [ $x -lt $num_iters ]; do
       test -s $dir/den_acc.$x.JOB.gz -a -s $dir/num_acc.$x.JOB.gz '||' \
       sgmm2-rescore-lattice --speedup=true "$gselect_opt" $spkvecs_opt $dir/$x.mdl "$lats" "$feats" ark:- \| \
       lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-      sum-post --zero-if-disjoint=$zero_if_disjoint --merge=$cancel --scale1=-1 \
+      sum-post --drop-frames=$drop_frames --merge=$cancel --scale1=-1 \
       ark:- "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- |" ark:- \| \
       sgmm2-acc-stats2 "$gselect_opt" $spkvecs_opt $dir/$x.mdl "$feats" ark,s,cs:- \
       "|gzip -c >$dir/num_acc.$x.JOB.gz" "|gzip -c >$dir/den_acc.$x.JOB.gz" || exit 1;

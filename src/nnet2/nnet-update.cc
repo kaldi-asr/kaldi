@@ -128,19 +128,13 @@ double NnetUpdater::ComputeObjfAndDeriv(
   const CuMatrix<BaseFloat> &output(forward_data_[num_components]);
   KALDI_ASSERT(SameDim(output, *deriv));
 
-  // Note: we need to CUDA-ify this block of code somehow, it is
-  // becoming a limiting factor.
-
-  std::vector<MatrixElement<BaseFloat> > sv_labels;//(num_chunks_ * data[m].labels.size());
-  //int32 cur_index = 0;
+  std::vector<MatrixElement<BaseFloat> > sv_labels;
+  sv_labels.reserve(num_chunks_); // We must have at least this many labels.
   for (int32 m = 0; m < num_chunks_; m++) {
     for (size_t i = 0; i < data[m].labels.size(); i++) {
       MatrixElement<BaseFloat> 
          tmp = {m, data[m].labels[i].first, data[m].labels[i].second};
       sv_labels.push_back(tmp);
-      //(sv_labels.Data() +cur_index)->m = m;
-      //(sv_labels.Data() +cur_index)->label = data[m].labels[i].first;
-      //(sv_labels.Data() +cur_index)->weight = data[m].labels[i].second;
     }
   }
 

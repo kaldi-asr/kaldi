@@ -20,7 +20,8 @@ shrink_interval=5 # shrink every $shrink_interval iters except while we are
 shrink=true
 num_frames_shrink=2000 # note: must be <= --num-frames-diagnostic option to get_egs.sh, if
                        # given.
-softmax_learning_rate_factor=0.5 # Train this layer half as fast as the other layers.
+final_learning_rate_factor=0.5 # Train the two last layers of parameters half as
+                               # fast as the other layers.
 
 hidden_layer_dim=300 #  You may want this larger, e.g. 1024 or 2048.
 
@@ -63,6 +64,7 @@ cleanup=true
 egs_dir=
 lda_opts=
 egs_opts=
+transform_dir=
 # End configuration section.
 
 
@@ -106,7 +108,7 @@ if [ $# != 4 ]; then
   echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
-  echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
+  echo "  --samples-per-iter <#samples|200000>             # Number of samples of data to process per iteration, per"
   echo "                                                   # process."
   echo "  --splice-width <width|4>                         # Number of frames on each side to append for feature input"
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
@@ -144,7 +146,6 @@ sdata=$data/split$nj
 utils/split_data.sh $data $nj
 
 mkdir -p $dir/log
-echo $nj > $dir/num_jobs
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/tree $dir
@@ -162,8 +163,10 @@ lda_dim=`cat $dir/lda_dim` || exit 1;
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
   [ ! -z $spk_vecs_dir ] && spk_vecs_opt="--spk-vecs-dir $spk_vecs_dir";
-  steps/nnet2/get_egs.sh $spk_vecs_opt --samples-per-iter $samples_per_iter --num-jobs-nnet $num_jobs_nnet \
-      --splice-width $splice_width --stage $get_egs_stage --cmd "$cmd" $egs_opts --io-opts "$io_opts" \
+  [ ! -z $transform_dir ] && $transform_dir_opt="--transform-dir $transform_dir";
+  steps/nnet2/get_egs.sh $spk_vecs_opt $transform_dir_opt --samples-per-iter $samples_per_iter \
+      --num-jobs-nnet $num_jobs_nnet --splice-width $splice_width --stage $get_egs_stage \
+      --cmd "$cmd" $egs_opts --io-opts "$io_opts" \
       $data $lang $alidir $dir || exit 1;
 fi
 
@@ -287,15 +290,16 @@ while [ $x -lt $num_iters ]; do
     done
 
     learning_rate=`perl -e '($x,$n,$i,$f)=@ARGV; print ($x >= $n ? $f : $i*exp($x*log($f/$i)/$n));' $[$x+1] $num_iters_reduce $initial_learning_rate $final_learning_rate`;
-    softmax_learning_rate=`perl -e "print $learning_rate * $softmax_learning_rate_factor;"`;
+    final_learning_rate=`perl -e "print $learning_rate * $final_learning_rate_factor;"`;
     nnet-am-info $dir/$[$x+1].1.mdl > $dir/foo  2>/dev/null || exit 1
     nu=`cat $dir/foo | grep num-updatable-components | awk '{print $2}'`
     na=`cat $dir/foo | grep -v Fixed | grep AffineComponent | wc -l` 
     # na is number of last updatable AffineComponent layer [one-based, counting only
     # updatable components.]
+    # The last two layers will get this (usually lower) learning rate.
     lr_string="$learning_rate"
     for n in `seq 2 $nu`; do 
-      if [ $n -eq $na ] || [ $n -eq $[$na-1] ]; then lr=$softmax_learning_rate;
+      if [ $n -eq $na ] || [ $n -eq $[$na-1] ]; then lr=$final_learning_rate;
       else lr=$learning_rate; fi
       lr_string="$lr_string:$lr"
     done

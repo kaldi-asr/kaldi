@@ -24,7 +24,7 @@
 #include "sgmm2/am-sgmm2.h"
 #include "hmm/transition-model.h"
 #include "sgmm2/estimate-am-sgmm2.h"
-
+#include "hmm/posterior.h"
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;

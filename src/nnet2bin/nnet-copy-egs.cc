@@ -84,8 +84,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string examples_rspecifier = po.GetArg(1),
-        examples_wspecifier = po.GetArg(2);
+    std::string examples_rspecifier = po.GetArg(1);
 
     SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
 

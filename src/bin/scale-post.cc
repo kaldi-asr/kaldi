@@ -1,6 +1,7 @@
 // bin/scale-post.cc
 
-// Copyright 2011 Chao Weng 
+// Copyright 2011  Chao Weng
+//           2013  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -20,6 +21,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
+#include "hmm/posterior.h"
 
 
 int main(int argc, char *argv[]) {
@@ -54,26 +56,22 @@ int main(int argc, char *argv[]) {
     }
 
 
-    kaldi::SequentialPosteriorReader posterior_reader(post_rspecifier);
-    kaldi::RandomAccessBaseFloatReader scale_reader(scale_or_scale_rspecifier);
-    kaldi::PosteriorWriter posterior_writer(post_wspecifier); 
+    SequentialPosteriorReader posterior_reader(post_rspecifier);
+    RandomAccessBaseFloatReader scale_reader(scale_or_scale_rspecifier);
+    PosteriorWriter posterior_writer(post_wspecifier); 
 
     int32 num_scaled = 0, num_no_scale = 0;  
    
     for (; !posterior_reader.Done(); posterior_reader.Next()) {
       std::string key = posterior_reader.Key();
-      kaldi::Posterior posterior = posterior_reader.Value();
+      Posterior posterior = posterior_reader.Value();
       posterior_reader.FreeCurrent();
       if (scale_or_scale_rspecifier != "" && !scale_reader.HasKey(key)) {
         num_no_scale++;
       } else {
         BaseFloat post_scale = (scale_or_scale_rspecifier == "" ? global_scale
                                 : scale_reader.Value(key));
-        for (size_t i = 0; i < posterior.size(); i++) {
-          for (size_t j = 0; j < posterior[i].size(); j++) {
-            posterior[i][j].second = posterior[i][j].second * post_scale;  	 
-          }
-        }
+        ScalePosterior(post_scale, &posterior);
         num_scaled++; 
         posterior_writer.Write(key, posterior);
       }

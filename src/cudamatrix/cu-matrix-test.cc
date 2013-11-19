@@ -1880,6 +1880,7 @@ int main() {
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.\n";
   }
+  SetVerboseLevel(4);
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().PrintProfile();
 #endif

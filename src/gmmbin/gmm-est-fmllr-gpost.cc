@@ -28,6 +28,7 @@ using std::vector;
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
 #include "transform/fmllr-diag-gmm.h"
+#include "hmm/posterior.h"
 
 namespace kaldi {
 void AccumulateForUtterance(const Matrix<BaseFloat> &feats,

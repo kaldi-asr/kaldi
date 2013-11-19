@@ -80,7 +80,12 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary_read);
       am_nnet2.Read(ki.Stream(), binary_read);
     }    
-
+    
+    if (am_nnet1.GetNnet().GetParameterDim() !=
+        am_nnet2.GetNnet().GetParameterDim()) {
+      KALDI_WARN << "Parameter-dim mismatch, cannot show progress.";
+      exit(0);
+    }
     
     Nnet nnet_gradient(am_nnet2.GetNnet());
     const bool treat_as_gradient = true;

@@ -23,6 +23,7 @@
 #include "nnet2/nnet-update.h"
 #include "nnet2/nnet-compute.h"
 #include "itf/options-itf.h"
+#include "hmm/posterior.h"
 
 namespace kaldi {
 namespace nnet2 {

@@ -26,7 +26,7 @@
 #include "gmm/am-diag-gmm.h"
 #include "gmm/mle-am-diag-gmm.h"
 #include "hmm/transition-model.h"
-#include "util/kaldi-holder.h" // for Posterior
+#include "hmm/posterior.h"
 
 namespace kaldi {
 

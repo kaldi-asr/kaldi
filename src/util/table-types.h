@@ -125,20 +125,6 @@ typedef SequentialTableReader<TokenVectorHolder> SequentialTokenVectorReader;
 typedef RandomAccessTableReader<TokenVectorHolder> RandomAccessTokenVectorReader;
 
 
-// Posterior is a typedef: vector<vector<pair<int32, BaseFloat> > >,
-// representing posteriors over (typically) transition-ids for an
-// utterance.
-typedef TableWriter<PosteriorHolder> PosteriorWriter;
-typedef SequentialTableReader<PosteriorHolder> SequentialPosteriorReader;
-typedef RandomAccessTableReader<PosteriorHolder> RandomAccessPosteriorReader;
-
-
-// typedef std::vector<std::vector<std::pair<int32, Vector<BaseFloat> > > > GauPost;
-typedef TableWriter<GauPostHolder> GauPostWriter;
-typedef SequentialTableReader<GauPostHolder> SequentialGauPostReader;
-
-typedef RandomAccessTableReader<GauPostHolder> RandomAccessGauPostReader;
-
 /// @}
 
 // Note: for FST reader/writer, see ../fstext/fstext-utils.h

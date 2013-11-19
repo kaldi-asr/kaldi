@@ -20,6 +20,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
+#include "hmm/posterior.h"
 
 
 int main(int argc, char *argv[]) {
@@ -45,9 +46,9 @@ int main(int argc, char *argv[]) {
         weights_rspecifier = po.GetArg(2),
         post_wspecifier = po.GetArg(3);
 
-    kaldi::SequentialPosteriorReader posterior_reader(post_rspecifier);
-    kaldi::RandomAccessBaseFloatVectorReader weights_reader(weights_rspecifier);
-    kaldi::PosteriorWriter post_writer(post_wspecifier); 
+    SequentialPosteriorReader posterior_reader(post_rspecifier);
+    RandomAccessBaseFloatVectorReader weights_reader(weights_rspecifier);
+    PosteriorWriter post_writer(post_wspecifier); 
     
     int32 num_done = 0, num_err = 0;
     

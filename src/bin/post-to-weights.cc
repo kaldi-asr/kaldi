@@ -20,6 +20,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
+#include "hmm/posterior.h"
 
 
 int main(int argc, char *argv[]) {
@@ -43,14 +44,14 @@ int main(int argc, char *argv[]) {
     std::string post_rspecifier = po.GetArg(1),
         weights_wspecifier = po.GetArg(2);
 
-    kaldi::SequentialPosteriorReader posterior_reader(post_rspecifier);
-    kaldi::BaseFloatVectorWriter weights_writer(weights_wspecifier); 
+    SequentialPosteriorReader posterior_reader(post_rspecifier);
+    BaseFloatVectorWriter weights_writer(weights_wspecifier); 
     
     int32 num_done = 0;
     
     for (; !posterior_reader.Done(); posterior_reader.Next()) {
       std::string key = posterior_reader.Key();
-      const kaldi::Posterior &posterior = posterior_reader.Value();
+      const Posterior &posterior = posterior_reader.Value();
       int32 num_frames = static_cast<int32>(posterior.size());
       Vector<BaseFloat> weights(num_frames);
       for (int32 i = 0; i < num_frames; i++) {

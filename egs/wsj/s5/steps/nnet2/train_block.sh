@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
-# this is as train_tanh3.sh but for on top of fbank feats-- we have block-diagonal
+# this is as train_tanh.sh but for on top of fbank feats-- we have block-diagonal
 # transforms for the first few layers, on separate frequency bands.
 # Otherwise it's tanh.
 

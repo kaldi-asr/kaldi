@@ -22,7 +22,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
-
+#include "hmm/posterior.h"
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;

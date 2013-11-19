@@ -76,7 +76,12 @@ class ParseOptions : public OptionsItf {
   void Register(const std::string &name,
                 double *ptr, const std::string &doc); 
   void Register(const std::string &name,
-                std::string *ptr, const std::string &doc); 
+                std::string *ptr, const std::string &doc);
+
+  /// If called after registering an option and before calling
+  /// Read(), disables that option from being used.  Will crash
+  /// at runtime if that option had not been registered.
+  void DisableOption(const std::string &name);
 
   /// This one is used for registering standard parameters of all the programs
   template<typename T>
@@ -93,7 +98,7 @@ class ParseOptions : public OptionsItf {
    * Returns the first position in argv that was not used.
    * [typically not useful: use NumParams() and GetParam(). ]
    */
-  int Read(int argc, const char*const *argv);
+  int Read(int argc, const char *const *argv);
 
   /// Prints the usage documentation [provided in the constructor].
   void PrintUsage(bool print_command_line = false);

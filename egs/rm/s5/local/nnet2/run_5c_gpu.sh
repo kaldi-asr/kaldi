@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# Caution: this is unfinished!
+exit 1;
+
+# This is neural net training on top of adapted 40-dimensional features.
+# This version of the script uses GPUs.  We distinguish it by putting "_gpu"
+# at the end of the directory name.
+#
+# Since we're using one quarter the number of jobs (num-jobs-nnet) as the
+# run_4c.sh script, we halve the learning rate (generally speaking, splitting
+# the difference like this is probably a good idea.)
+
+
+parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network,
+                                      # you'll likely have to change it.  we'll
+                                      # use it later on, in the training (it's
+                                      # not used in denlat creation)
+. cmd.sh
+
+# The denominator lattice creation currently doesn't use GPUs.
+
+# Note: we specify 1G each for the mem_free and ram_free which, is per
+# thread... it will likely be less than the default.  Increase the beam relative
+# to the defaults; this is just for this RM setup, where the default beams will
+# likely generate very thin lattices.  Note: the transform-dir is important to
+# specify, since this system is on top of fMLLR features.
+
+nj=8
+
+steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
+      --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
+      --beam 20.0 --lattice-beam 10.0 \
+      --transform-dir exp/tri3b_ali \
+     data/train data/lang exp/nnet4c_gpu exp/nnet4c_gpu_denlats
+
+steps/nnet2/align.sh  --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
+      --transform-dir exp/tri3b_ali \
+      --nj $nj data/train data/lang exp/nnet4c_gpu exp/nnet4c_gpu_ali
+
+
+steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" \
+    --num-threads 1 --parallel-opts "-l gpu=1" data/train data/lang \
+    exp/tri3b_ali exp/nnet4c_gpu_denlats exp/nnet4c_gpu/final.mdl exp/tri5c_mpe
+
+
+exit 0;
+
+(  steps/nnet2/train_tanh.sh  --num-epochs 20 \
+     --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
+     --num-epochs-extra 10 --add-layers-period 1 \
+     --num-hidden-layers 2 \
+     --mix-up 4000 \
+     --initial-learning-rate 0.01 --final-learning-rate 0.002 \
+     --cmd "$decode_cmd" \
+     --hidden-layer-dim 375 \
+     data/train data/lang exp/tri3b_ali exp/nnet4c_gpu
+
+   steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/nnet4c_gpu/decode 
+
+   steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+     --transform-dir exp/tri3b/decode_ug \
+     exp/tri3b/graph_ug data/test exp/nnet4c_gpu/decode_ug
+
+)
+
+
+
+
+# The following is some test commands that I ran in order to verify that
+# the neural-net splitting and excising code was working as intended.
+
+# (
+# acoustic_scale=0.1
+# for criterion in smbr mmi mpfe; do
+#   for drop_frames in true false; do
+#     nnet-get-egs-discriminative  --drop-frames=$drop_frames  --criterion=$criterion --excise=true exp/tri5c_mpe/0.mdl 'ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:data/train/split8/1/utt2spk scp:data/train/split8/1/cmvn.scp "scp:head -n 40 data/train/split8/1/feats.scp|" ark:- | splice-feats --left-context=3 --right-context=3 ark:- ark:- | transform-feats exp/tri5c_mpe/final.mat ark:- ark:- | transform-feats --utt2spk=ark:data/train/split8/1/utt2spk ark:exp/tri3b_ali/trans.1 ark:- ark:- |' 'ark,s,cs:gunzip -c exp/nnet4c_gpu_ali/ali.1.gz |' 'ark,s,cs:gunzip -c exp/nnet4c_gpu_denlats/lat.1.gz|' "ark:|nnet-combine-egs-discriminative ark:- ark:1.egs"
+
+#     nnet-get-egs-discriminative --drop-frames=$drop_frames --criterion=$criterion --split=false --excise=false exp/tri5c_mpe/0.mdl 'ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:data/train/split8/1/utt2spk scp:data/train/split8/1/cmvn.scp "scp:head -n 40 data/train/split8/1/feats.scp|" ark:- | splice-feats --left-context=3 --right-context=3 ark:- ark:- | transform-feats exp/tri5c_mpe/final.mat ark:- ark:- | transform-feats --utt2spk=ark:data/train/split8/1/utt2spk ark:exp/tri3b_ali/trans.1 ark:- ark:- |' 'ark,s,cs:gunzip -c exp/nnet4c_gpu_ali/ali.1.gz |' 'ark,s,cs:gunzip -c exp/nnet4c_gpu_denlats/lat.1.gz|' ark:2.egs
+
+#    nnet-compare-hash-discriminative --acoustic-scale=$acoustic_scale --drop-frames=$drop_frames --criterion=$criterion exp/nnet4c_gpu/final.mdl ark:1.egs ark:2.egs || exit 1;
+#  done
+# done
+# )

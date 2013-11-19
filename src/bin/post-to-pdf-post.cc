@@ -1,6 +1,6 @@
 // bin/post-to-pdf-post.cc
 
-// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,8 +23,7 @@
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
 #include "hmm/hmm-utils.h"
-
-
+#include "hmm/posterior.h"
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -63,27 +62,8 @@ int main(int argc, char *argv[]) {
     
     for (; !posterior_reader.Done(); posterior_reader.Next()) {
       const kaldi::Posterior &posterior = posterior_reader.Value();
-      int32 num_frames = static_cast<int32>(posterior.size());
-      kaldi::Posterior pdf_posterior(num_frames);
-      for (int32 i = 0; i < num_frames; i++) {
-        std::map<int32, BaseFloat> pdf_to_post;
-        
-        for (int32 j = 0; j < static_cast<int32>(posterior[i].size()); j++) {
-          int32 tid = posterior[i][j].first,
-              phone = trans_model.TransitionIdToPdf(tid);
-          BaseFloat post = posterior[i][j].second;
-          if (pdf_to_post.count(phone) == 0)
-            pdf_to_post[phone] = post;
-          else
-            pdf_to_post[phone] += post;
-        }
-        pdf_posterior[i].reserve(pdf_to_post.size());
-        for (std::map<int32, BaseFloat>::const_iterator iter =
-                 pdf_to_post.begin(); iter != pdf_to_post.end(); ++iter) {
-          pdf_posterior[i].push_back(
-              std::make_pair(iter->first, iter->second));
-        }
-      }
+      kaldi::Posterior pdf_posterior;
+      ConvertPosteriorToPdfs(trans_model, posterior, &pdf_posterior);
       posterior_writer.Write(posterior_reader.Key(), pdf_posterior);
       num_done++;
     }

@@ -435,6 +435,8 @@ void Nnet::RemovePreconditioning() {
       components_[i] = ac;
     }
   }
+  SetIndexes();
+  Check();
 }
 
 void Nnet::AddNnet(const VectorBase<BaseFloat> &scale_params,
