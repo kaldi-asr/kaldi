@@ -21,6 +21,7 @@ skip_scoring=false
 skip_optimization=false # true can speed it up if #keywords is small.
 max_states=150000
 indices_dir=
+kwsout_dir=
 stage=0
 word_ins_penalty=0
 extraid=
@@ -57,11 +58,16 @@ else
   kwsdatadir=$datadir/${extraid}_kws
 fi
 
-if [ -z $extraid ] ; then
-  kwsoutdir=$decodedir/kws
+if [ -z $kwsout_dir ] ; then
+  if [ -z $extraid ] ; then
+    kwsoutdir=$decodedir/kws
+  else
+    kwsoutdir=$decodedir/${extraid}_kws
+  fi
 else
-  kwsoutdir=$decodedir/${extraid}_kws
+  kwsoutdir=$kwsout_dir
 fi
+mkdir -p $kwsoutdir
 
 if [ -z $indices_dir ]; then
   indices_dir=$kwsoutdir
@@ -102,10 +108,9 @@ else
     model_flags=
 fi
   
-mkdir -p $kwsoutdir
 
 if [ $stage -le 0 ] ; then
-  if [ ! -f $kwsoutdir/.done.index ] ; then
+  if [ ! -f $indices_dir/.done.index ] ; then
     for lmwt in `seq $min_lmwt $max_lmwt` ; do
         indices=${indices_dir}_$lmwt
         mkdir -p $indices
@@ -117,12 +122,13 @@ if [ $stage -le 0 ] ; then
           --word-ins-penalty $word_ins_penalty --max-silence-frames $max_silence_frames\
           $kwsdatadir $langdir $decodedir $indices  || exit 1
     done
-    touch $kwsoutdir/.done.index
+    touch $indices_dir/.done.index
   else
     echo "Assuming indexing has been aready done. If you really need to re-run "
     echo "the indexing again, delete the file $kwsoutdir/.done.index"
   fi
 fi
+
 
 if [ $stage -le 1 ]; then
   for lmwt in `seq $min_lmwt $max_lmwt` ; do
