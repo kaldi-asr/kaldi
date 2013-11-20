@@ -36,6 +36,8 @@ namespace nnet1 {
 class Nnet {
  public:
   Nnet() {}
+  Nnet(const Nnet& other); // Copy constructor.
+  Nnet &operator = (const Nnet& other); // Assignment operator.
 
   ~Nnet(); 
 
@@ -86,25 +88,33 @@ class Nnet {
   /// Get the number of parameters in the network
   int32 NumParams() const;
   /// Get the network weights in a supervector
-  void GetWeights(Vector<BaseFloat>* wei_copy);
+  void GetParams(Vector<BaseFloat>* wei_copy) const;
+  /// Get the network weights in a supervector
+  void GetWeights(Vector<BaseFloat>* wei_copy) const;
   /// Set the network weights from a supervector
   void SetWeights(const Vector<BaseFloat>& wei_src);
   /// Get the gradient stored in the network
-  void GetGradient(Vector<BaseFloat>* grad_copy);
+  void GetGradient(Vector<BaseFloat>* grad_copy) const;
   
   /// Read the MLP from file (can add layers to exisiting instance of Nnet)
   void Read(const std::string &file);  
   /// Read the MLP from stream (can add layers to exisiting instance of Nnet)
   void Read(std::istream &in, bool binary);  
   /// Write MLP to file
-  void Write(const std::string &file, bool binary);
+  void Write(const std::string &file, bool binary) const;
   /// Write MLP to stream 
-  void Write(std::ostream &out, bool binary);   
+  void Write(std::ostream &out, bool binary) const;   
   
-  /// Create string with human readable description of the nnet instance
+  /// Create string with human readable description of the nnet
   std::string Info() const;
+  /// Create string with per-component gradient statistics
+  std::string InfoGradient() const;
+  /// Create string with propagation-buffer statistics
+  std::string InfoPropagate() const;
   /// Consistency check.
   void Check() const;
+  /// Relese the memory
+  void Destroy();
 
   /// Set training hyper-parameters to the network and its UpdatableComponent(s)
   void SetTrainOptions(const NnetTrainOptions& opts);
@@ -123,8 +133,6 @@ class Nnet {
 
   /// Option class with hyper-parameters passed to UpdatableComponent(s)
   NnetTrainOptions opts_;
-
-  KALDI_DISALLOW_COPY_AND_ASSIGN(Nnet);
 };
   
 

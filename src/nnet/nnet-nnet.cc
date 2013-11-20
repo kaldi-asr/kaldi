@@ -27,10 +27,38 @@
 namespace kaldi {
 namespace nnet1 {
 
-Nnet::~Nnet() {
-  for(int32 i=0; i<NumComponents(); i++) {
-    delete components_[i];
+
+Nnet::Nnet(const Nnet& other) {
+  // copy the components
+  for(int32 i=0; i<other.NumComponents(); i++) {
+    components_.push_back(other.GetComponent(i).Copy());
   }
+  // create empty buffers
+  propagate_buf_.resize(NumComponents()+1);
+  backpropagate_buf_.resize(NumComponents()-1);
+  // copy train opts
+  SetTrainOptions(other.opts_);
+  Check(); 
+}
+
+Nnet & Nnet::operator = (const Nnet& other) {
+  Destroy();
+  // copy the components
+  for(int32 i=0; i<other.NumComponents(); i++) {
+    components_.push_back(other.GetComponent(i).Copy());
+  }
+  // create empty buffers
+  propagate_buf_.resize(NumComponents()+1);
+  backpropagate_buf_.resize(NumComponents()-1);
+  // copy train opts
+  SetTrainOptions(other.opts_); 
+  Check();
+  return *this;
+}
+
+
+Nnet::~Nnet() {
+  Destroy();
 }
 
 
@@ -190,10 +218,28 @@ void Nnet::RemoveComponent(int32 component) {
 
 
 
+void Nnet::GetParams(Vector<BaseFloat>* wei_copy) const {
+  wei_copy->Resize(NumParams());
+  int32 pos = 0;
+  //copy the params
+  for(int32 i=0; i<components_.size(); i++) {
+    if(components_[i]->IsUpdatable()) {
+      UpdatableComponent& c = dynamic_cast<UpdatableComponent&>(*components_[i]);
+      Vector<BaseFloat> c_params; 
+      c.GetParams(&c_params);
+      wei_copy->Range(pos,c_params.Dim()).CopyFromVec(c_params);
+      pos += c_params.Dim();
+    }
+  }
+  KALDI_ASSERT(pos == NumParams());
+}
 
 
 
-void Nnet::GetWeights(Vector<BaseFloat>* wei_copy) {
+
+
+
+void Nnet::GetWeights(Vector<BaseFloat>* wei_copy) const {
   wei_copy->Resize(NumParams());
   int32 pos = 0;
   //copy the params
@@ -274,7 +320,7 @@ void Nnet::SetWeights(const Vector<BaseFloat>& wei_src) {
 }
 
  
-void Nnet::GetGradient(Vector<BaseFloat>* grad_copy) {
+void Nnet::GetGradient(Vector<BaseFloat>* grad_copy) const {
   grad_copy->Resize(NumParams());
   int32 pos = 0;
   //copy the params
@@ -315,14 +361,7 @@ int32 Nnet::NumParams() const {
   int32 n_params = 0;
   for(int32 n=0; n<components_.size(); n++) {
     if(components_[n]->IsUpdatable()) {
-      switch(components_[n]->GetType()) {
-        case Component::kAffineTransform :
-          n_params += (1 + components_[n]->InputDim()) * components_[n]->OutputDim();
-          break;
-        default :
-          KALDI_WARN << Component::TypeToMarker(components_[n]->GetType())
-                     << "is updatable, but its parameter count not implemented";
-      }
+      n_params += dynamic_cast<UpdatableComponent*>(components_[n])->NumParams();
     }
   }
   return n_params;
@@ -362,14 +401,14 @@ void Nnet::Read(std::istream &is, bool binary) {
 }
 
 
-void Nnet::Write(const std::string &file, bool binary) {
+void Nnet::Write(const std::string &file, bool binary) const {
   Output out(file, binary, true);
   Write(out.Stream(), binary);
   out.Close();
 }
 
 
-void Nnet::Write(std::ostream &os, bool binary) {
+void Nnet::Write(std::ostream &os, bool binary) const {
   Check();
   WriteToken(os, binary, "<Nnet>");
   if(binary == false) os << std::endl;
@@ -382,18 +421,66 @@ void Nnet::Write(std::ostream &os, bool binary) {
 
 
 std::string Nnet::Info() const {
+  // global info
   std::ostringstream ostr;
   ostr << "num-components " << NumComponents() << std::endl;
   ostr << "input-dim " << InputDim() << std::endl;
   ostr << "output-dim " << OutputDim() << std::endl;
   ostr << "number-of-parameters " << static_cast<float>(NumParams())/1e6 
        << " millions" << std::endl;
-  for (int32 i = 0; i < NumComponents(); i++)
+  // topology & weight stats
+  for (int32 i = 0; i < NumComponents(); i++) {
     ostr << "component " << i+1 << " : " 
          << Component::TypeToMarker(components_[i]->GetType()) 
          << ", input-dim " << components_[i]->InputDim()
          << ", output-dim " << components_[i]->OutputDim()
          << ", " << components_[i]->Info() << std::endl;
+  }
+  return ostr.str();
+}
+
+std::string Nnet::InfoGradient() const {
+  std::ostringstream ostr;
+  // basic info (static)
+  //ostr << Info(); 
+  
+  // gradient stats
+  ostr << "\ngradient stats :";
+  for (int32 i = 0; i < NumComponents(); i++) {
+    ostr << "component " << i+1 << " : " 
+         << Component::TypeToMarker(components_[i]->GetType()) 
+         << ", " << components_[i]->InfoGradient() << std::endl;
+  }
+  /*
+  // forward-pass buffer stats
+  ostr << "\nforward propagation buffer content :";
+  for (int32 i=0; i<propagate_buf_.size(); i++) {
+    ostr << "["<<1+i<< "] output of " 
+         << (i==0 ? "<input>" : Component::TypeToMarker(components_[i-1]->GetType()))
+         << MomentStatistics(propagate_buf_[i]) << std::endl;
+  }
+  // backpropagation buffer stats
+  ostr << "\nbackpropagation buffer content :";
+  for (int32 i=backpropagate_buf_.size()-1; i>=0; i--) {
+    ostr << "["<<1+i<< "] dE/dOutput of " 
+         << Component::TypeToMarker(components_[i]->GetType())
+         << MomentStatistics(backpropagate_buf_[i]) << std::endl;
+  }
+  */
+
+  return ostr.str();
+}
+
+
+std::string Nnet::InfoPropagate() const {
+  std::ostringstream ostr;
+  // forward-pass buffer stats
+  ostr << "\nforward propagation buffer content :\n";
+  for (int32 i=0; i<propagate_buf_.size(); i++) {
+    ostr << "["<<1+i<< "] output of " 
+         << (i==0 ? "<input>" : Component::TypeToMarker(components_[i-1]->GetType()))
+         << MomentStatistics(propagate_buf_[i]) << std::endl;
+  }
   return ostr.str();
 }
 
@@ -405,6 +492,26 @@ void Nnet::Check() const {
       next_input_dim = components_[i+1]->InputDim();
     KALDI_ASSERT(output_dim == next_input_dim);
   }
+  // check for nan/inf in network weights
+  Vector<BaseFloat> weights;
+  GetParams(&weights);
+  BaseFloat sum = weights.Sum();
+  if(isinf(sum)) {
+    KALDI_ERR << "'inf' in network parameters (weight explosion, try lower learning rate?)";
+  }
+  if(isnan(sum)) {
+    KALDI_ERR << "'nan' in network parameters (try lower learning rate?)";
+  }
+}
+
+
+void Nnet::Destroy() {
+  for(int32 i=0; i<NumComponents(); i++) {
+    delete components_[i];
+  }
+  components_.resize(0);
+  propagate_buf_.resize(0);
+  backpropagate_buf_.resize(0);
 }
 
 
