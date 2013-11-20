@@ -18,8 +18,8 @@
 // limitations under the License.
 
 #include "nnet/nnet-loss.h"
-
 #include "cudamatrix/cu-math.h"
+#include "hmm/posterior.h"
 
 #include <sstream>
 #include <iterator>
@@ -28,11 +28,13 @@ namespace kaldi {
 namespace nnet1 {
 
 
+/* Xent */
+
 void Xent::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &target, CuMatrix<BaseFloat> *diff) {
-  
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
   diff->Resize(net_out.NumRows(), net_out.NumCols());
+  int32 num_frames = net_out.NumRows();
 
   // compute derivative wrt. activations of last layer of neurons
   *diff = net_out;
@@ -42,36 +44,120 @@ void Xent::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &t
   // (-1 is an indicator to Report(.) to skip prining accuracy)
   correct_ = -1;
 
-  // TODO reimplement when needed, we compute xentropy ON CPU
-  int32 num_frames = net_out.NumRows(), num_states = net_out.NumCols();
-  Matrix<BaseFloat> target_host(num_frames, num_states, kUndefined),
-      net_out_host(num_frames, num_states, kUndefined);
-  target.CopyToMat(&target_host);
-  net_out.CopyToMat(&net_out_host);
+  // calculate cross_entropy (in GPU)
+  xentropy_aux_ = net_out; // y
+  xentropy_aux_.ApplyLog(); // log(y)
+  xentropy_aux_.MulElements(tgt_mat_device_); // t*log(y)
+  log_post_tgt_.Resize(num_frames);
+  log_post_tgt_.AddColSumMat(1.0,xentropy_aux_,0.0); // sum over cols (pdfs)
+  log_post_tgt_host_.Resize(num_frames);
+  log_post_tgt_.CopyToVec(&log_post_tgt_host_);
+  double cross_entropy = -log_post_tgt_host_.Sum(); // sum over rows (frames)
+  
+  // caluculate entropy (in GPU)
+  xentropy_aux_ = target; // t
+  xentropy_aux_.Add(1e-99); // avoid log(0)
+  xentropy_aux_.ApplyLog(); // log(t)
+  xentropy_aux_.MulElements(tgt_mat_device_); // t*log(t)
+  log_post_tgt_.Resize(num_frames);
+  log_post_tgt_.AddColSumMat(1.0,xentropy_aux_,0.0); // sum over cols (pdfs)
+  log_post_tgt_host_.Resize(num_frames);
+  log_post_tgt_.CopyToVec(&log_post_tgt_host_);
+  double entropy = -log_post_tgt_host_.Sum(); // sum over rows (frames)
 
-  BaseFloat val;
-  double loss = 0.0;
-  for(int32 r=0; r < num_frames; r++) {
-    for(int32 c=0; c < num_states; c++) {
-      val = -target_host(r, c)*log(net_out_host(r, c));
-      if (KALDI_ISINF(val)) val = 1e10;
-      loss += val;
+  loss_ += cross_entropy;
+  entropy_ += entropy;
+  frames_ += num_frames;
+}
+
+
+void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const Posterior& post, CuMatrix<BaseFloat>* diff) {
+  KALDI_ASSERT(&net_out != diff); // need distinct objects!
+  int32 num_frames = net_out.NumRows(),
+    num_pdf = net_out.NumCols();
+
+  // convert posterior to matrix
+  Matrix<BaseFloat> tgt_mat_host(num_frames, num_pdf, kSetZero); // zero-filled
+  for (int32 t = 0; t < post.size(); t++) {
+    for (int32 i = 0; i < post[t].size(); i++) {
+      int32 pdf = post[t][i].first;
+      tgt_mat_host(t, pdf) += post[t][i].second;
+    }
+  }
+  tgt_mat_device_ = tgt_mat_host; // -> GPU
+
+  // compute derivaitve w.r.t. pre-softmax activation (net_out - tgt)
+  *diff = net_out;
+  diff->AddMat(-1.0, tgt_mat_device_);
+
+  // evaluate the frame-level classification
+  int32 correct=0;
+  net_out.FindRowMaxId(&max_id_out_); // find max in nn-output
+  tgt_mat_device_.FindRowMaxId(&max_id_tgt_); // find max in targets
+  max_id_out_host_.resize(num_frames);
+  max_id_tgt_host_.resize(num_frames);
+  max_id_out_.CopyToVec(&max_id_out_host_);
+  max_id_tgt_.CopyToVec(&max_id_tgt_host_);
+  // count frames where maxima match
+  for(int32 i=0; i<num_frames; i++) {
+    if (max_id_tgt_host_[i] == max_id_out_host_[i]) correct++;
+  }
+  // TODO calculate phone-level accuracy,
+  // need to get shuffled phone-ids externally ...
+
+  // calculate cross_entropy (in GPU)
+  xentropy_aux_ = net_out; // y
+  xentropy_aux_.ApplyLog(); // log(y)
+  xentropy_aux_.MulElements(tgt_mat_device_); // t*log(y)
+  log_post_tgt_.Resize(num_frames);
+  log_post_tgt_.AddColSumMat(1.0,xentropy_aux_,0.0); // sum over cols (pdfs)
+  log_post_tgt_host_.Resize(num_frames);
+  log_post_tgt_.CopyToVec(&log_post_tgt_host_);
+  double cross_entropy = -log_post_tgt_host_.Sum(); // sum over rows (frames)
+
+  // calculate entropy (from Posterior)
+  double entropy = 0.0;
+  for (int32 t = 0; t < post.size(); t++) {
+    for (int32 i = 0; i < post[t].size(); i++) {
+      BaseFloat t = post[t][i].second;
+      entropy += -t*log(t);
     }
   }
   
-  loss_ += loss;
-  frames_ += net_out.NumRows();
+  // accumulate
+  loss_ += cross_entropy;
+  entropy_ += entropy;
+  correct_ += correct;
+  frames_ += num_frames;
+
+  // progressive loss reporting
+  {
+    static const int32 progress_step = 3600*100; // 1h
+    frames_progress_ += num_frames;
+    loss_progress_ += cross_entropy;
+    entropy_progress_ += entropy;
+    if (frames_progress_ > progress_step) {
+      KALDI_VLOG(1) << "ProgressLoss[" << frames_progress_/100/3600 << "h/" << frames_/100/3600 << "h]: " 
+                    << (loss_progress_-entropy_progress_)/frames_progress_ << " (Xent)";
+      // store
+      loss_vec_.push_back((loss_progress_-entropy_progress_)/frames_progress_);
+      // reset
+      frames_progress_ = 0;
+      loss_progress_ = 0.0;
+      entropy_progress_ = 0.0;
+    }
+  }
 }
 
 
 void Xent::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<int32> &target, CuMatrix<BaseFloat> *diff) {
   // evaluate the frame-level classification
   int32 correct=0;
-  net_out.FindRowMaxId(&max_id_);
-  max_id_.CopyToVec(&max_id_host_);
-  KALDI_ASSERT(max_id_host_.size() == target.size());
+  net_out.FindRowMaxId(&max_id_out_);
+  max_id_out_.CopyToVec(&max_id_out_host_);
+  KALDI_ASSERT(max_id_out_host_.size() == target.size());
   for(int32 i=0; i<static_cast<int32>(target.size()); i++) {
-    if (target[i] == max_id_host_[i]) correct++;
+    if (target[i] == max_id_out_host_[i]) correct++;
   }
   
   // get the xentropy and global error 
@@ -105,8 +191,14 @@ void Xent::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<int32> 
 
 std::string Xent::Report() {
   std::ostringstream oss;
-  oss << "Xent:" << loss_ << " frames:" << frames_ 
-      << " err/frm:" << loss_/frames_;
+  oss << "AvgLoss: " << (loss_-entropy_)/frames_ << " (Xent), "
+      << "[AvgXent: " << loss_/frames_ 
+      << ", AvgTargetEnt: " << entropy_/frames_ << "]" << std::endl;
+  if (loss_vec_.size() > 0) {
+     oss << "progress: [";
+     std::copy(loss_vec_.begin(),loss_vec_.end(),std::ostream_iterator<float>(oss," "));
+     oss << "]" << std::endl;
+  }
   if (correct_ >= 0.0) {
     oss << "\nFRAME_ACCURACY >> " << 100.0*correct_/frames_ << "% <<";
   }
@@ -114,92 +206,72 @@ std::string Xent::Report() {
 }
 
 
+/* Mse */
 
-
-void Mse::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &target, CuMatrix<BaseFloat> *diff) {
+void Mse::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& target, CuMatrix<BaseFloat>* diff) {
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
-
-
-  // compute derivative w.r.t. neural nerwork outputs
-  diff->Resize(net_out.NumRows(), net_out.NumCols());
-  diff->CopyFromMat(net_out);
-  diff->AddMat(-1.0, target);
-
-  // compute the per-frame MSE stats
-  diff_pow_2_.Resize(diff->NumRows(), diff->NumCols());
-  diff_pow_2_.CopyFromMat(*diff);
-  diff_pow_2_.MulElements(diff_pow_2_); //grid-like operation
-  // at this point we have computed 'diff_pow_2'
-  // now sum each row (device)
-  sum_diff_pow_2_.Resize(diff_pow_2_.NumRows());
-  sum_diff_pow_2_.AddColSumMat(1.0,diff_pow_2_,0.0); //tree-like reduction
-  // now sum the per-frame MSE (host)
-  sum_diff_pow_2_host_.Resize(sum_diff_pow_2_.Dim());
-  sum_diff_pow_2_.CopyToVec(&sum_diff_pow_2_host_);
-  // accumulate
-  loss_ += 0.5 * sum_diff_pow_2_host_.Sum();
-  frames_ += net_out.NumRows();
-}
-
-
-std::string Mse::Report() {
-  std::ostringstream oss;
-  oss << "Mse:" << loss_ << " frames:" << frames_
-      << " err/frm:" << loss_/frames_ 
-      << std::endl;
-  return oss.str();
-}
-
-
-
-
-void MseProgress::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& target, CuMatrix<BaseFloat>* diff) {
-  KALDI_ASSERT(net_out.NumCols() == target.NumCols());
-  KALDI_ASSERT(net_out.NumRows() == target.NumRows());
+  int32 num_frames = net_out.NumRows();
 
   //compute derivative w.r.t. neural nerwork outputs
-  diff->Resize(net_out.NumRows(),net_out.NumCols());
-  diff->CopyFromMat(net_out);
-  diff->AddMat(-1.0,target);
+  *diff = net_out; // y
+  diff->AddMat(-1.0,target); // (y - t)
 
-  // compute the per-frame MSE stats
-  diff_pow_2_.Resize(diff->NumRows(), diff->NumCols());
-  diff_pow_2_.CopyFromMat(*diff);
-  diff_pow_2_.MulElements(diff_pow_2_); //grid-like operation
-  // at this point we have computed 'diff_pow_2'
-  // now sum each row (device)
-  sum_diff_pow_2_.Resize(diff_pow_2_.NumRows());
-  sum_diff_pow_2_.AddColSumMat(1.0,diff_pow_2_,0.0); //tree-like reduction
-  // now sum the per-frame MSE (host)
-  sum_diff_pow_2_host_.Resize(sum_diff_pow_2_.Dim());
+  // Compute MeanSquareError loss of mini-batch
+  diff_pow_2_ = *diff;
+  diff_pow_2_.MulElements(diff_pow_2_); // (y - t)^2
+  sum_diff_pow_2_.Resize(num_frames);
+  sum_diff_pow_2_.AddColSumMat(1.0, diff_pow_2_, 0.0); // sum over cols (pdfs)
+  sum_diff_pow_2_host_.Resize(num_frames);
   sum_diff_pow_2_.CopyToVec(&sum_diff_pow_2_host_);
-  // accumulate progress statistics
-  loss_progress_ += 0.5 * sum_diff_pow_2_host_.Sum();
-  frames_progress_ += net_out.NumRows();
+  double mean_square_error = 0.5 * sum_diff_pow_2_host_.Sum(); // sum over rows (frames)
 
-  // monitor progress per progress_step_ frames
-  if(frames_progress_ > progress_step_) {
-    float loss_of_step = loss_progress_/frames_progress_;
-    loss_vec_.push_back(loss_of_step);
-    frames_ += frames_progress_; 
-    loss_ += loss_progress_;
-    KALDI_LOG << "Progress chunk #" << ++progress_ctr_ << " mse:" << loss_of_step << " [last " << frames_progress_/100/3600 << "h/" << frames_/100/3600 << "h]";
-    frames_progress_ = 0;
-    loss_progress_ = 0;
+  // accumulate
+  loss_ += mean_square_error;
+  frames_ += num_frames;
+
+  // progressive loss reporting
+  {
+    static const int32 progress_step = 1e6; // 2.77h
+    frames_progress_ += num_frames;
+    loss_progress_ += mean_square_error;
+    if (frames_progress_ > progress_step) {
+      KALDI_VLOG(1) << "ProgressLoss[" << frames_progress_/100/3600 << "h/" << frames_/100/3600 << "h]: " 
+                    << loss_progress_/frames_progress_ << " (Mse)";
+      // store
+      loss_vec_.push_back(loss_progress_/frames_progress_);
+      // reset
+      frames_progress_ = 0;
+      loss_progress_ = 0.0;
+    }
   }
 }
 
 
-std::string MseProgress::Report() {
+void Mse::Eval(const CuMatrix<BaseFloat>& net_out, const Posterior& post, CuMatrix<BaseFloat>* diff) {
+  // convert posterior to matrix
+  Matrix<BaseFloat> tgt_mat(net_out.NumRows(), net_out.NumCols(), kSetZero); // zero-filled
+  for (int32 t = 0; t < post.size(); t++) {
+    for (int32 i = 0; i < post[t].size(); i++) {
+      int32 pdf = post[t][i].first;
+      tgt_mat(t, pdf) += post[t][i].second;
+    }
+  }
+  // call the other eval function
+  Eval(net_out, CuMatrix<BaseFloat>(tgt_mat), diff);
+}
+ 
+
+std::string Mse::Report() {
+  // compute root mean square
+  int32 num_tgt = diff_pow_2_.NumCols();
+  BaseFloat root_mean_square = sqrt(loss_/frames_/num_tgt);
+  // build the mesage
   std::ostringstream oss;
-  oss << "Mse:" << loss_+loss_progress_ << " frames:" << frames_+frames_progress_
-      << " err/frm:" << (loss_+loss_progress_) / (frames_+frames_progress_)
-      << std::endl;
+  oss << "AvgLoss: " << loss_/frames_ << " (Mse), " << "[RMS " << root_mean_square << "]" << std::endl;
   oss << "progress: [";
   std::copy(loss_vec_.begin(),loss_vec_.end(),std::ostream_iterator<float>(oss," "));
   oss << "]" << std::endl;
-
   return oss.str();
 }
 

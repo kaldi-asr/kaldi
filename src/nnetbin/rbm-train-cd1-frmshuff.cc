@@ -1,6 +1,6 @@
 // nnetbin/rbm-train-cd1-frmshuff.cc
 
-// Copyright 2012  Brno University of Technology (Author: Karel Vesely)
+// Copyright 2012-2013  Brno University of Technology (Author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -21,7 +21,7 @@
 #include "nnet/nnet-rbm.h"
 #include "nnet/nnet-nnet.h"
 #include "nnet/nnet-loss.h"
-#include "nnet/nnet-cache.h"
+#include "nnet/nnet-randomizer.h"
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "util/timer.h"
@@ -58,9 +58,9 @@ int main(int argc, char *argv[]) {
     std::string feature_transform;
     po.Register("feature-transform", &feature_transform, "Feature transform in Nnet format");
 
-    int32 bunchsize=100, cachesize=32768;
-    po.Register("bunchsize", &bunchsize, "Size of weight update block");
-    po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling (max 8388479)");
+    NnetDataRandomizerOptions rnd_opts;
+    rnd_opts.minibatch_size = 100;
+    rnd_opts.Register(&po);
     
     BaseFloat drop_data = 0.0; 
     po.Register("drop-data", &drop_data, "Threshold for random dropping of the data (0 no-drop, 1 drop-all)");
@@ -86,7 +86,6 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
 
-    //Select the GPU
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
@@ -96,62 +95,57 @@ int main(int argc, char *argv[]) {
       rbm_transf.Read(feature_transform);
     }
 
+    // Read nnet, extract the RBM
     Nnet nnet;
     nnet.Read(model_filename);
     KALDI_ASSERT(nnet.NumComponents()==1);
     KALDI_ASSERT(nnet.GetComponent(0).GetType() == Component::kRbm);
     RbmBase &rbm = dynamic_cast<RbmBase&>(nnet.GetComponent(0));
 
-    // Configure the RBM
-    // first get make some options easy to access:
+    // Configure the RBM,
+    // make some constants accessible, will use them later:
     const BaseFloat& learn_rate = trn_opts.learn_rate;
     const BaseFloat& momentum = trn_opts.momentum;
     const BaseFloat& momentum_max = trn_opts.momentum_max;
     const int32& momentum_steps = trn_opts.momentum_steps;
     const int32& momentum_step_period = trn_opts.momentum_step_period;
-    // trn_opts_rbm is to be passed the RBM, copy the opts
+    // trn_opts_rbm is for RBM, copy the opts
     trn_opts_rbm = trn_opts;
-    trn_opts_rbm.learn_rate = learn_rate*(1-momentum);
+    trn_opts_rbm.learn_rate = learn_rate*(1-momentum); // keep `effective' learning rate constant
     // pass options to RBM
     rbm.SetRbmTrainOptions(trn_opts_rbm);
-
 
     kaldi::int64 total_frames = 0;
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
+    RandomizerMask randomizer_mask(rnd_opts);
+    MatrixRandomizer feature_randomizer(rnd_opts);
 
-    Cache cache;
-    cachesize = (cachesize/bunchsize)*bunchsize; // ensure divisibility
-    cache.Init(cachesize, bunchsize);
-
-    CuRand<BaseFloat> cu_rand;
-    MseProgress mse;
-
+    CuRand<BaseFloat> cu_rand; // parallel random number generator
+    Mse mse;
     
     CuMatrix<BaseFloat> feats, feats_transf, 
-                        pos_vis, pos_hid, pos_hid_aux, 
+                        pos_hid, pos_hid_aux, 
                         neg_vis, neg_hid;
     CuMatrix<BaseFloat> dummy_mse_mat;
-    std::vector<int32> dummy_cache_vec;
 
     Timer time;
-    double time_now = 0;
-    double time_next = 0;
     KALDI_LOG << "RBM TRAINING STARTED";
 
     int32 iter = 1;
     KALDI_LOG << "Iteration " << iter << "/" << num_iters;
 
-    int32 num_done = 0, num_cache = 0;
-    while (1) {
-      // fill the cache
-      while (!cache.Full() && !feature_reader.Done()) {
+    int32 num_done = 0;
+    while (!feature_reader.Done()) {
+      // fill the randomizer
+      for ( ; !feature_reader.Done(); feature_reader.Next()) {
         // get feature matrix
+        KALDI_VLOG(2) << feature_reader.Key();
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         // push features to GPU
         feats.Resize(mat.NumRows(),mat.NumCols());
         feats.CopyFromMat(mat);
-        // possibly apply transform (may contain splicing)
+        // apply optional feature transform
         rbm_transf.Feedforward(feats, &feats_transf);
         // subsample training data to get faster epochs on large datasets
         if(drop_data > 0.0) {
@@ -167,35 +161,28 @@ int main(int argc, char *argv[]) {
           feats_transf.Resize(mat2.NumRows(),mat2.NumCols());
           feats_transf.CopyFromMat(mat2);
         }
-        // resize the dummy vector to fill Cache:: with
-        dummy_cache_vec.resize(feats_transf.NumRows());
-        // add to cache
-        cache.AddData(feats_transf, dummy_cache_vec);
+        // add to randomizer
+        feature_randomizer.AddData(feats_transf);
         num_done++;
-        // next feature file... 
-        Timer t_features;
-        feature_reader.Next(); 
-        time_next += t_features.Elapsed();
+        // end when randomizer full
+        if (feature_randomizer.IsFull()) break;
 
         // report the speed
         if (num_done % 5000 == 0) {
-          time_now = time.Elapsed();
+          double time_now = time.Elapsed();
           KALDI_VLOG(1) << "After " << num_done << " utterances: time elapsed = "
                         << time_now/60 << " min; processed " << total_frames/time_now
                         << " frames per second.";
         }
       }
+
       // randomize
-      cache.Randomize();
-      // report
-      KALDI_VLOG(2) << "Cache #" << ++num_cache << " "
-                << (cache.Randomized()?"[RND]":"[NO-RND]")
-                << " segments: " << num_done
-                << " frames: " << static_cast<double>(total_frames)/360000 << "h";
-      // train with the cache
-      while (!cache.Empty()) {
+      feature_randomizer.Randomize(randomizer_mask.Generate(feature_randomizer.NumFrames()));
+
+      // train with data from randomizer (using mini-batches)
+      for( ; !feature_randomizer.Done(); feature_randomizer.Next()) {
         // get block of feature/target pairs
-        cache.GetBunch(&pos_vis, &dummy_cache_vec);
+        const CuMatrix<BaseFloat>& pos_vis = feature_randomizer.Value();
         // get the dims 
         int32 num_frames = pos_vis.NumRows(),
               dim_hid = rbm.OutputDim();
@@ -259,26 +246,19 @@ int main(int argc, char *argv[]) {
         feature_reader.Close();
         feature_reader.Open(feature_rspecifier);
       }
-        
-      // otherwise stop the training
-      if (feature_reader.Done()) break;
     }
 
     nnet.Write(target_model_filename, binary);
     
-    KALDI_LOG << "RBM TRAINING FINISHED " 
-              << time.Elapsed()/60 << " min, fps" << total_frames/time.Elapsed()
-              << ", feature wait " << time_next << "s"; 
-
-    KALDI_LOG << "Done " << iter << " iterations, " << num_done << " files.";
+    KALDI_LOG << "Done " << iter << " iterations, " << num_done << " files. "
+              << "[" << time.Elapsed()/60 << " min, fps" << total_frames/time.Elapsed() 
+              << "]";
 
     KALDI_LOG << mse.Report();
 
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
 #endif
-
-
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();

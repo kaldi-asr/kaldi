@@ -724,11 +724,10 @@ void CuMatrixBase<Real>::MulRowsVec(const CuVectorBase<Real> &scale) {
 template<typename Real> 
 void CuMatrixBase<Real>::MulRowsGroupMat(const CuMatrixBase<Real> &src) {
   KALDI_ASSERT(src.NumCols() > 0);
-  int group_size = this->NumCols() / src.NumCols();
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
-
+    int group_size = this->NumCols() / src.NumCols();
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
 

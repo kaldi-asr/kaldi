@@ -133,8 +133,8 @@ int main(int argc, char *argv[]) {
           continue;
         }
         // get feature alignment pair
-        const Matrix<BaseFloat> &mat = feature_reader.Value();
-        const std::vector<int32> &alignment = alignments_reader.Value(utt);
+        Matrix<BaseFloat> mat = feature_reader.Value();
+        std::vector<int32> alignment = alignments_reader.Value(utt);
         // check maximum length of utterance
         if (mat.NumRows() > max_frames) {
           KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
@@ -145,13 +145,25 @@ int main(int argc, char *argv[]) {
         }
         // check length match of features/alignments
         if ((int32)alignment.size() != mat.NumRows()) {
-          KALDI_WARN << "Alignment has wrong length, ali " << (alignment.size()) 
-                     << " vs. feats "<< (mat.NumRows()) << ", utt " << utt;
-          num_other_error++;
-          feature_reader.Next();
-          continue;
+          int32 diff = alignment.size() -  mat.NumRows();
+          int32 tolerance = 5; // allow some tolerance (truncate)
+          if (diff > 0 && diff < tolerance) { // alignment longer
+            for(int32 i=0; i<diff; i++) { alignment.pop_back(); }
+          }
+          if (diff < 0 && abs(diff) < tolerance) { // feature matrix longer
+            for(int32 i=0; i<abs(diff); i++) { mat.RemoveRow(mat.NumRows()-1); }
+          }
+          // check again
+          if ((int32)alignment.size() != mat.NumRows()) {
+            KALDI_WARN << "Length mismatch of alignment "<< (alignment.size()) << " vs. features "<< (mat.NumRows());
+            num_other_error++;
+            feature_reader.Next();
+            continue;
+          }
         }
-        
+        // check max value in alignment corresponds to NN output
+        KALDI_ASSERT(*std::max_element(alignment.begin(),alignment.end()) < nnet.OutputDim());
+ 
         // All the checks OK,
         // push features to GPU
         feats.Resize(mat.NumRows(), mat.NumCols(), kUndefined);
@@ -193,6 +205,16 @@ int main(int argc, char *argv[]) {
         xent.EvalVec(nnet_out, targets, &obj_diff);
         if (!crossvalidate) {
           nnet.Backpropagate(obj_diff, NULL);
+        }
+        // monitor the training
+        if (kaldi::g_kaldi_verbose_level >= 3) {
+          if ((total_frames/100000) != ((total_frames+nnet_in.NumRows())/100000)) { // print every 100k frames
+            if (!crossvalidate) {
+              KALDI_VLOG(3) << nnet.InfoGradient();
+            } else {
+              KALDI_VLOG(3) << nnet.InfoPropagate();
+            }
+          }
         }
         total_frames += nnet_in.NumRows();
       }

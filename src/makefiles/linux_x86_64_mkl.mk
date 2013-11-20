@@ -21,7 +21,7 @@ MKLLIB ?= $(MKLROOT)/lib/em64t
 
 CXXFLAGS = -m64 -msse -msse2 -Wall -I.. \
       -DKALDI_DOUBLEPRECISION=0 -DHAVE_POSIX_MEMALIGN \
-      -Wno-sign-compare -Winit-self \
+      -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
       -DHAVE_MKL -I$(MKLROOT)/include \
       -I$(FSTROOT)/include \
