@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This is not necessarily the top-level run.sh as it is in other directories.   see README.txt first.
-
+tri5_only=false
 [ ! -f ./lang.conf ] && echo "Language configuration does not exist! Use the configurations in conf/lang/* as a startup" && exit 1
 [ ! -f ./conf/common_vars.sh ] && echo "the file conf/common_vars.sh does not exist!" && exit 1
 
@@ -309,6 +309,12 @@ if [ ! -f exp/sgmm5_ali/.done ]; then
     --use-graphs true --use-gselect true \
     data/train data/lang exp/sgmm5 exp/sgmm5_ali
   touch exp/sgmm5_ali/.done
+fi
+
+if $tri5_only ; then
+  echo "Exiting after stage TRI5, as requested. "
+  echo "Everything went fine. Done"
+  exit 0;
 fi
 
 if [ ! -f exp/sgmm5_denlats/.done ]; then
