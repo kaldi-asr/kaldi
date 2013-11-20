@@ -110,12 +110,12 @@ fi
 if ! $fast_path ; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
-    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
     ${datadir} data/lang ${decode}
 
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
-    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
     ${datadir} data/lang  ${decode}.si
 fi
 
@@ -140,8 +140,8 @@ fi
 if ! $fast_path ; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip 0.5 \
-    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
-    ${datadir} data/lang  exp/sgmm5/decode_fmllr_${dirid}
+    "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
+    ${datadir} data/lang  exp_BNF/sgmm7/decode_fmllr_${dirid}
 fi
 
 ####################################################################
@@ -172,7 +172,7 @@ for iter in 1 2 3 4; do
   decode=exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_${dirid}_it$iter
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip 0.5 \
-    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
     ${datadir} data/lang $decode
 done
 
