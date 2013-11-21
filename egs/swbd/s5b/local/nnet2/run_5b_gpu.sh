@@ -61,7 +61,6 @@ if [ $stage -le 2 ]; then
   steps/nnet2/train_block.sh --stage "$train_stage" \
      --num-threads 1 --max-change 40.0 --minibatch-size 512 \
      --parallel-opts "-l gpu=1" \
-     --cleanup false \
      --initial-learning-rate 0.01 --final-learning-rate 0.001 \
      --num-epochs 10 --num-epochs-extra 5 \
      --cmd "$decode_cmd" \

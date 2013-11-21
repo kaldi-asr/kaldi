@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# This runs on the 100 hour subset.  This version of the recipe runs on GPUs.
+
+# This is on the full training set (with duplicates removed).  This version of the recipe runs on GPUs.
 # We assume you have 8 GPU cards.  You have to use --num-threads 1 so it will
 # use the version of the code that can use GPUs (the -parallel training code
 # cannot use GPUs unless we make further modifications as the CUDA model assumes
