@@ -29,7 +29,6 @@
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
 #include "feat/mel-computations.h"
-//#include "feat/feature-functions.h"
 
 namespace kaldi {
 /// @addtogroup  feat FeatureExtraction
@@ -50,7 +49,6 @@ struct PitchExtractionOptions {
                           // helping ensure pitch continuity in unvoiced region
   int32 lowpass_filter_width;       // Integer that determines filter width of lowpass filter
   int32 upsample_filter_width;  // Integer that determines filter width when upsampling NCCF
-  
   explicit PitchExtractionOptions() :
     min_f0(50),
     max_f0(550),
@@ -85,25 +83,23 @@ struct PitchExtractionOptions {
     po->Register("nccf-ballast", &nccf_ballast,
                  "Increasing this factor reduces NCCF for quiet frames");
     po->Register("lowpass-filter-width", &lowpass_filter_width,
-                 "Integer that determines filter width of lowpass filter, more gives sharper filter");
+                 "Integer that determines filter width of "
+                 "lowpass filter, more gives sharper filter");
     po->Register("upsample-filter-width", &upsample_filter_width,
                  "Integer that determines filter width when upsampling NCCF");
   }
   int32 NccfWindowSize() const {
     return static_cast<int32>(resample_freq * 0.001 * frame_opts.frame_length_ms);
   }
-
   int32 NccfWindowShift() const {
     return static_cast<int32>(resample_freq * 0.001 * frame_opts.frame_shift_ms);
   }
-
 };
-
 struct PostProcessOption {
   BaseFloat pitch_scale;           // the final pitch scaled with this value
   BaseFloat pov_scale;             // the final pov scaled with this value
   BaseFloat delta_pitch_scale;
-  int32 normalization_win_size; // Size of window used for moving window nomalization 
+  int32 normalization_win_size;   // Size of window used for moving window nomalization 
   int32 delta_win_size;    
   int32 nonlin_pov;             // nonlinearity warped function for pov feature      
   bool process_pitch;    
@@ -145,7 +141,5 @@ struct PostProcessOption {
   }
 };
 /// @} End of "addtogroup feat"
-
-} // namespace kaldi
-
+}  // namespace kaldi
 #endif  // KALDI_FEAT_PITCH_FUNCTIONS_H_
