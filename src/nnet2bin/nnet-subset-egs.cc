@@ -59,9 +59,9 @@ int main(int argc, char *argv[]) {
     std::string examples_rspecifier = po.GetArg(1),
         examples_wspecifier = po.GetArg(2);
 
-    std::vector<NnetTrainingExample> egs;
+    std::vector<NnetExample> egs;
     
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
 
     int64 num_read = 0;
     for (; !example_reader.Done(); example_reader.Next()) {
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     if (randomize_order)
       std::random_shuffle(egs.begin(), egs.end());
 
-    NnetTrainingExampleWriter writer(examples_wspecifier);
+    NnetExampleWriter writer(examples_wspecifier);
     for (size_t i = 0; i < egs.size(); i++) {
       std::ostringstream key;
       key << i;

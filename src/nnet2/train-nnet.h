@@ -76,12 +76,12 @@ struct NnetAdaptiveTrainerConfig {
 class NnetAdaptiveTrainer {
  public:
   NnetAdaptiveTrainer(const NnetAdaptiveTrainerConfig &config,
-                      const std::vector<NnetTrainingExample> &validation_set,
+                      const std::vector<NnetExample> &validation_set,
                       Nnet *nnet);
   
   /// TrainOnExample will take the example and add it to a buffer;
   /// if we've reached the minibatch size it will do the training.
-  void TrainOnExample(const NnetTrainingExample &value);
+  void TrainOnExample(const NnetExample &value);
 
   ~NnetAdaptiveTrainer();
  private:
@@ -95,7 +95,7 @@ class NnetAdaptiveTrainer {
   
   // Things we were given in the initializer:
   NnetAdaptiveTrainerConfig config_;
-  const std::vector<NnetTrainingExample> &validation_set_; // Stores validation data, used
+  const std::vector<NnetExample> &validation_set_; // Stores validation data, used
 
   // to compute gradient on validation set.
   Nnet *nnet_; // the nnet we're training.
@@ -103,7 +103,7 @@ class NnetAdaptiveTrainer {
   // State information:
   int32 num_phases_;
   int32 minibatches_seen_this_phase_;
-  std::vector<NnetTrainingExample> buffer_;
+  std::vector<NnetExample> buffer_;
   BaseFloat validation_objf_; // stores validation objective function at
   // start/end of phase.
   Nnet validation_gradient_; // validation gradient at start of this phase.
@@ -146,7 +146,7 @@ class NnetSimpleTrainer {
   
   /// TrainOnExample will take the example and add it to a buffer;
   /// if we've reached the minibatch size it will do the training.
-  void TrainOnExample(const NnetTrainingExample &value);
+  void TrainOnExample(const NnetExample &value);
 
   ~NnetSimpleTrainer();
  private:
@@ -166,7 +166,7 @@ class NnetSimpleTrainer {
   // State information:
   int32 num_phases_;
   int32 minibatches_seen_this_phase_;
-  std::vector<NnetTrainingExample> buffer_;
+  std::vector<NnetExample> buffer_;
 
   double logprob_this_phase_; // Needed for accumulating train log-prob on each phase.
   double count_this_phase_; // count corresponding to the above.

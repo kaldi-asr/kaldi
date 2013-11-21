@@ -27,7 +27,7 @@ namespace kaldi {
 namespace nnet2 {
 
 void ExamplesRepository::AcceptExamples(
-    std::vector<NnetTrainingExample> *examples) {
+    std::vector<NnetExample> *examples) {
   KALDI_ASSERT(!examples->empty());
   empty_semaphore_.Wait();
   KALDI_ASSERT(examples_.empty());
@@ -43,7 +43,7 @@ void ExamplesRepository::ExamplesDone() {
 }
 
 bool ExamplesRepository::ProvideExamples(
-    std::vector<NnetTrainingExample> *examples) {
+    std::vector<NnetExample> *examples) {
   full_semaphore_.Wait();
   if (done_) {
     KALDI_ASSERT(examples_.empty());
@@ -110,7 +110,7 @@ class DoBackpropParallelClass: public MultiThreadable {
   }
   // This does the main function of the class.
   void operator () () {
-    std::vector<NnetTrainingExample> examples;
+    std::vector<NnetExample> examples;
     while (repository_->ProvideExamples(&examples)) {
       // This is a function call to a function defined in
       // nnet-update.h
@@ -156,13 +156,13 @@ class DoBackpropParallelClass: public MultiThreadable {
 #if HAVE_CUDA == 1
 double DoBackpropSingleThreaded(const Nnet &nnet,
                                 int32 minibatch_size,
-                                SequentialNnetTrainingExampleReader *examples_reader,
+                                SequentialNnetExampleReader *examples_reader,
                                 double *tot_weight_out,
                                 Nnet *nnet_to_update) {
   double ans = 0.0, tot_weight = 0.0;
   KALDI_ASSERT(minibatch_size > 0);
   while (!examples_reader->Done()) {
-    std::vector<NnetTrainingExample> egs;
+    std::vector<NnetExample> egs;
     egs.reserve(minibatch_size);
     while (egs.size() < minibatch_size && examples_reader->Done()) {
       egs.push_back(examples_reader->Value());
@@ -179,7 +179,7 @@ double DoBackpropSingleThreaded(const Nnet &nnet,
 
 double DoBackpropParallel(const Nnet &nnet,
                           int32 minibatch_size,
-                          SequentialNnetTrainingExampleReader *examples_reader,
+                          SequentialNnetExampleReader *examples_reader,
                           double *tot_weight,
                           Nnet *nnet_to_update) {
 #if HAVE_CUDA == 1
@@ -209,7 +209,7 @@ double DoBackpropParallel(const Nnet &nnet,
     // process the examples.  They get re-joined in its destructor.
     MultiThreader<DoBackpropParallelClass> m(g_num_threads, c);
     
-    std::vector<NnetTrainingExample> examples;
+    std::vector<NnetExample> examples;
     for (; !examples_reader->Done(); examples_reader->Next()) {
       examples.push_back(examples_reader->Value());
       if (examples.size() == minibatch_size)
@@ -291,7 +291,7 @@ class ApplyMomentumClass: public MultiThreadable {
 BaseFloat DoBackpropParallelMomentum(
     int32 minibatch_size,
     BaseFloat momentum_minibatches,
-    SequentialNnetTrainingExampleReader *examples_reader,
+    SequentialNnetExampleReader *examples_reader,
     double *tot_weight,
     Nnet *nnet) {
 
@@ -333,7 +333,7 @@ BaseFloat DoBackpropParallelMomentum(
     // to handle the momentum; it transfers from the "nnet_gradient" to
     // "nnet".
     
-    std::vector<NnetTrainingExample> examples;
+    std::vector<NnetExample> examples;
     int64 counter = 0;
     for (; !examples_reader->Done(); examples_reader->Next()) {
       counter++;
@@ -417,7 +417,7 @@ class SafeBackpropClass: public MultiThreadable {
     Nnet initial_nnet(*nnet_); // Make a copy of the neural net with its value at the
     // start of training.   
     
-    std::vector<NnetTrainingExample> egs;
+    std::vector<NnetExample> egs;
 
     int32 counter = 0;
     while (safe_backprop_repository_->ProvideExamples(&egs)) {
@@ -429,7 +429,7 @@ class SafeBackpropClass: public MultiThreadable {
       // Now we're done with the examples, give them back to
       // "backprop_repository" so they can be trained on.
       while (!egs.empty()) {
-        std::vector<NnetTrainingExample> minibatch_egs;
+        std::vector<NnetExample> minibatch_egs;
         for (int32 i = 0; i < backprop_minibatch_size_ && !egs.empty(); i++) {
           minibatch_egs.push_back(egs.back());
           egs.pop_back();
@@ -608,7 +608,7 @@ class SafeBackpropClass: public MultiThreadable {
                            
   
   void CheckLearningRates(const Nnet &initial_nnet,
-                          const std::vector<NnetTrainingExample> &egs,
+                          const std::vector<NnetExample> &egs,
                           int32 counter) {
 
     Nnet intermediate_nnet(initial_nnet);
@@ -681,7 +681,7 @@ class SafeBackpropClass: public MultiThreadable {
 
 BaseFloat DoBackpropParallelSafe(int32 minibatch_size,
                                  const SafeBackpropConfig &safe_config,
-                                 SequentialNnetTrainingExampleReader *examples_reader,
+                                 SequentialNnetExampleReader *examples_reader,
                                  double *tot_weight,
                                  Nnet *nnet) {
   ExamplesRepository repository; // handles parallel programming issues
@@ -713,8 +713,8 @@ BaseFloat DoBackpropParallelSafe(int32 minibatch_size,
       MultiThreader<SafeBackpropClass> m_safe_backprop(1, sc);
 
     
-      std::vector<NnetTrainingExample> examples;
-      std::vector<NnetTrainingExample> safe_examples;
+      std::vector<NnetExample> examples;
+      std::vector<NnetExample> safe_examples;
 
       // We take every "modulus" frames and give it to the computation that
       // decides whether to limit the learning rates or not.
@@ -758,16 +758,16 @@ BaseFloat DoBackpropParallelSafe(int32 minibatch_size,
 
 double DoBackpropSingleThreaded(const Nnet &nnet,
                                 int32 minibatch_size,
-                                const std::vector<NnetTrainingExample> &egs,
+                                const std::vector<NnetExample> &egs,
                                 double *tot_weight,
                                 Nnet *nnet_to_update) {
   double ans = 0.0;
   *tot_weight = TotalNnetTrainingWeight(egs);
   for (size_t i = 0; i < egs.size(); i += minibatch_size) {
-    std::vector<NnetTrainingExample>::const_iterator end_iter =
+    std::vector<NnetExample>::const_iterator end_iter =
       (i + minibatch_size > egs.size() ? egs.end() : 
        egs.begin() + i + minibatch_size);
-    std::vector<NnetTrainingExample> this_egs(egs.begin() + i,
+    std::vector<NnetExample> this_egs(egs.begin() + i,
                                               end_iter);
     ans += DoBackprop(nnet, this_egs, nnet_to_update);
   }
@@ -778,7 +778,7 @@ double DoBackpropSingleThreaded(const Nnet &nnet,
 double DoBackpropParallel(const Nnet &nnet,
                           int32 minibatch_size,
                           int32 num_threads,
-                          const std::vector<NnetTrainingExample> &egs,
+                          const std::vector<NnetExample> &egs,
                           double *tot_weight,
                           Nnet *nnet_to_update) {
   if (num_threads == 1) // support GPUs: special case for 1 thread.
@@ -805,7 +805,7 @@ double DoBackpropParallel(const Nnet &nnet,
       int32 this_minibatch_size = std::min(minibatch_size, num_egs - offset);
 
       // We waste a little time copying the examples here, but it's very minor.
-      std::vector<NnetTrainingExample> examples(egs.begin() + offset,
+      std::vector<NnetExample> examples(egs.begin() + offset,
                                                 egs.begin() + offset + this_minibatch_size);
     
       repository.AcceptExamples(&examples);

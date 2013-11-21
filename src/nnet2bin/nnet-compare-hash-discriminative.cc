@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "Note: options --drop-frames and --criterion should be matched with the\n"
         "command line of nnet-get-egs-discriminative used to get the examples\n"
-        "nnet-compare-hash-discriminative --drop-frames=true --criterion=mmi ark:1.egs ark:2.egs\n";
+        "nnet-compare-hash-discriminative --drop-frames=true --criterion=mmi ark:1.degs ark:2.degs\n";
     
     std::string criterion = "smbr";
     bool drop_frames = false;
@@ -83,13 +83,13 @@ int main(int argc, char *argv[]) {
     double num_weight1 = 0.0, den_weight1 = 0.0, tot_t1 = 0.0;
     double num_weight2 = 0.0, den_weight2 = 0.0, tot_t2 = 0.0;
     
-    SequentialDiscriminativeNnetTrainingExampleReader
+    SequentialDiscriminativeNnetExampleReader
         example_reader1(examples_rspecifier1),
         example_reader2(examples_rspecifier2);
 
     KALDI_LOG << "Computing first hash function";
     for (; !example_reader1.Done(); example_reader1.Next(), num_done1++) {
-      DiscriminativeNnetTrainingExample eg = example_reader1.Value();
+      DiscriminativeNnetExample eg = example_reader1.Value();
       fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale),
                         &(eg.den_lat));
       UpdateHash(tmodel, eg, criterion, drop_frames, &hash1,
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Computing second hash function";
     for (; !example_reader2.Done(); example_reader2.Next(), num_done2++) {
-      DiscriminativeNnetTrainingExample eg = example_reader2.Value();
+      DiscriminativeNnetExample eg = example_reader2.Value();
       fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale),
                         &(eg.den_lat));
       UpdateHash(tmodel, eg, criterion, drop_frames, &hash2,

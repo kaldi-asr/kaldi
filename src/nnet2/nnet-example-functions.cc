@@ -32,7 +32,7 @@ bool LatticeToDiscriminativeExample(
     BaseFloat weight,
     int32 left_context,
     int32 right_context,
-    DiscriminativeNnetTrainingExample *eg) {
+    DiscriminativeNnetExample *eg) {
   KALDI_ASSERT(left_context >= 0 && right_context >= 0);
   int32 num_frames = alignment.size();
   if (num_frames == 0) {
@@ -104,8 +104,8 @@ class DiscriminativeExampleSplitter {
   DiscriminativeExampleSplitter(
       const SplitDiscriminativeExampleConfig &config,
       const TransitionModel &tmodel,
-      const DiscriminativeNnetTrainingExample &eg,
-      std::vector<DiscriminativeNnetTrainingExample> *egs_out):
+      const DiscriminativeNnetExample &eg,
+      std::vector<DiscriminativeNnetExample> *egs_out):
       config_(config), tmodel_(tmodel), eg_(eg), egs_out_(egs_out) { }
 
   void Excise(SplitExampleStats *stats) {
@@ -214,8 +214,8 @@ class DiscriminativeExampleSplitter {
   // The following variables are set in the initializer:
   const SplitDiscriminativeExampleConfig &config_;
   const TransitionModel &tmodel_;
-  const DiscriminativeNnetTrainingExample &eg_;
-  std::vector<DiscriminativeNnetTrainingExample> *egs_out_;
+  const DiscriminativeNnetExample &eg_;
+  std::vector<DiscriminativeNnetExample> *egs_out_;
   
   Lattice lat_; // lattice generated from eg_.den_lat, with epsilons removed etc.
 
@@ -419,7 +419,7 @@ void DiscriminativeExampleSplitter::DoExcise(SplitExampleStats *stats) {
     return;
   }
   egs_out_->resize(1);
-  DiscriminativeNnetTrainingExample &eg_out = (*egs_out_)[0];
+  DiscriminativeNnetExample &eg_out = (*egs_out_)[0];
 
   // start_t and end_t will be the central part of the segment, excluding any
   // frames at the edges that we can excise.
@@ -601,7 +601,7 @@ void DiscriminativeExampleSplitter::OutputOneSplit(int32 seg_begin,
   egs_out_->resize(egs_out_->size() + 1);
   int32 left_context = eg_.left_context, right_context = RightContext(),
       tot_context = left_context + right_context;
-  DiscriminativeNnetTrainingExample &eg_out = egs_out_->back();
+  DiscriminativeNnetExample &eg_out = egs_out_->back();
   eg_out.weight = eg_.weight;
 
   eg_out.num_ali.insert(eg_out.num_ali.end(),
@@ -766,8 +766,8 @@ void DiscriminativeExampleSplitter::SelfTest() {
 void SplitDiscriminativeExample(
     const SplitDiscriminativeExampleConfig &config,
     const TransitionModel &tmodel,
-    const DiscriminativeNnetTrainingExample &eg,
-    std::vector<DiscriminativeNnetTrainingExample> *egs_out,
+    const DiscriminativeNnetExample &eg,
+    std::vector<DiscriminativeNnetExample> *egs_out,
     SplitExampleStats *stats_out) {
   DiscriminativeExampleSplitter splitter(config, tmodel, eg, egs_out);
   splitter.Split(stats_out);
@@ -777,8 +777,8 @@ void SplitDiscriminativeExample(
 void ExciseDiscriminativeExample(
     const SplitDiscriminativeExampleConfig &config,
     const TransitionModel &tmodel,
-    const DiscriminativeNnetTrainingExample &eg,
-    std::vector<DiscriminativeNnetTrainingExample> *egs_out,    
+    const DiscriminativeNnetExample &eg,
+    std::vector<DiscriminativeNnetExample> *egs_out,    
     SplitExampleStats *stats_out) {
   DiscriminativeExampleSplitter splitter(config, tmodel, eg, egs_out);
   splitter.Excise(stats_out);
@@ -787,7 +787,7 @@ void ExciseDiscriminativeExample(
 
 void UpdateHash(
     const TransitionModel &tmodel,
-    const DiscriminativeNnetTrainingExample &eg,
+    const DiscriminativeNnetExample &eg,
     std::string criterion,
     bool drop_frames,
     Matrix<double> *hash,
@@ -841,7 +841,7 @@ void ExampleToPdfPost(
     const std::vector<int32> &silence_phones,    
     std::string criterion,
     bool drop_frames,
-    const DiscriminativeNnetTrainingExample &eg,
+    const DiscriminativeNnetExample &eg,
     Posterior *post) {
   KALDI_ASSERT(criterion == "mpfe" || criterion == "smbr" || criterion == "mmi");
   
@@ -889,10 +889,10 @@ void SolvePackingProblem(BaseFloat max_cost,
 }
 
 void AppendDiscriminativeExamples(
-    const std::vector<const DiscriminativeNnetTrainingExample*> &input,
-    DiscriminativeNnetTrainingExample *output) {
+    const std::vector<const DiscriminativeNnetExample*> &input,
+    DiscriminativeNnetExample *output) {
   KALDI_ASSERT(!input.empty());
-  const DiscriminativeNnetTrainingExample &eg0 = *(input[0]);
+  const DiscriminativeNnetExample &eg0 = *(input[0]);
   
   KALDI_ASSERT(eg0.spk_info.Dim() == 0);
   int32 feat_dim = eg0.input_frames.NumCols(),
@@ -936,7 +936,7 @@ void AppendDiscriminativeExamples(
   int32 feat_offset = eg0.input_frames.NumRows();
   
   for (size_t i = 1; i < input.size(); i++) {
-    const DiscriminativeNnetTrainingExample &eg_i = *(input[i]);
+    const DiscriminativeNnetExample &eg_i = *(input[i]);
         
     output->input_frames.Range(feat_offset, eg_i.input_frames.NumRows(),
                                0, feat_dim).CopyFromMat(eg_i.input_frames);
@@ -955,8 +955,8 @@ void AppendDiscriminativeExamples(
   
 void CombineDiscriminativeExamples(
     int32 max_length,
-    const std::vector<DiscriminativeNnetTrainingExample> &input,
-    std::vector<DiscriminativeNnetTrainingExample> *output) {
+    const std::vector<DiscriminativeNnetExample> &input,
+    std::vector<DiscriminativeNnetExample> *output) {
   if (!input.empty() && input[0].spk_info.Dim() != 0) {
     // if we have non-empty spk_info we cannot combine the examples -> just
     // return them as-is.
@@ -976,7 +976,7 @@ void CombineDiscriminativeExamples(
   output->clear();
   output->resize(groups.size());
   for (size_t i = 0; i < groups.size(); i++) {
-    std::vector<const DiscriminativeNnetTrainingExample*> group_egs;
+    std::vector<const DiscriminativeNnetExample*> group_egs;
     for (size_t j = 0; j < groups[i].size(); j++) {
       size_t index = groups[i][j];
       group_egs.push_back(&(input[index]));

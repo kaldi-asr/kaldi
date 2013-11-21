@@ -47,7 +47,7 @@ static void CombineNnets(const Vector<BaseFloat> &scale_params,
 /// either 0 ... num-models - 1 for the best individual model,
 /// or (#models) for the average of all of them.
 static int32 GetInitialModel(
-    const std::vector<NnetTrainingExample> &validation_set,
+    const std::vector<NnetExample> &validation_set,
     const std::vector<Nnet> &nnets) {
   int32 minibatch_size = 1024;
   int32 num_nnets = static_cast<int32>(nnets.size());
@@ -90,7 +90,7 @@ static int32 GetInitialModel(
 // which has the best validation set objective function.
 static void GetInitialScaleParams(
     const NnetCombineConfig &combine_config,
-    const std::vector<NnetTrainingExample> &validation_set,
+    const std::vector<NnetExample> &validation_set,
     const std::vector<Nnet> &nnets,
     Vector<double> *scale_params) {
 
@@ -122,7 +122,7 @@ static void GetInitialScaleParams(
 
 
 static double ComputeObjfAndGradient(
-    const std::vector<NnetTrainingExample> &validation_set,
+    const std::vector<NnetExample> &validation_set,
     const Vector<double> &scale_params,
     const std::vector<Nnet> &nnets,
     bool debug,
@@ -191,7 +191,7 @@ static double ComputeObjfAndGradient(
                                    
 
 void CombineNnets(const NnetCombineConfig &combine_config,
-                  const std::vector<NnetTrainingExample> &validation_set,
+                  const std::vector<NnetExample> &validation_set,
                   const std::vector<Nnet> &nnets,
                   Nnet *nnet_out) {
 

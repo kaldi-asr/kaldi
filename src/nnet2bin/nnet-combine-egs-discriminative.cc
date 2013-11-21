@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet-combine-egs-discriminative [options] <egs-rspecifier> <egs-wspecifier>\n"
         "\n"
         "e.g.\n"
-        "nnet-combine-egs-discriminative --max-length=512 ark:temp.1.egs ark:1.egs\n";
+        "nnet-combine-egs-discriminative --max-length=512 ark:temp.1.degs ark:1.degs\n";
         
     int32 max_length = 512;
     int32 hard_max_length = 2048;
@@ -65,15 +65,15 @@ int main(int argc, char *argv[]) {
     std::string examples_rspecifier = po.GetArg(1),
         examples_wspecifier = po.GetArg(2);
 
-    SequentialDiscriminativeNnetTrainingExampleReader example_reader(
+    SequentialDiscriminativeNnetExampleReader example_reader(
         examples_rspecifier);
-    DiscriminativeNnetTrainingExampleWriter example_writer(
+    DiscriminativeNnetExampleWriter example_writer(
         examples_wspecifier);
 
     int64 num_read = 0, num_written = 0, num_discarded = 0;
 
     while (!example_reader.Done()) {
-      std::vector<DiscriminativeNnetTrainingExample> buffer;
+      std::vector<DiscriminativeNnetExample> buffer;
       size_t size = batch_size;
       buffer.reserve(size);
 
@@ -83,11 +83,11 @@ int main(int argc, char *argv[]) {
         num_read++;
       }
 
-      std::vector<DiscriminativeNnetTrainingExample> combined;
+      std::vector<DiscriminativeNnetExample> combined;
       CombineDiscriminativeExamples(max_length, buffer, &combined);
       buffer.clear();
       for (size_t i = 0; i < combined.size(); i++) {
-        const DiscriminativeNnetTrainingExample &eg = combined[i];
+        const DiscriminativeNnetExample &eg = combined[i];
         int32 num_frames = eg.input_frames.NumRows();
         if (num_frames > hard_max_length) {
           KALDI_WARN << "Discarding segment of length " << num_frames

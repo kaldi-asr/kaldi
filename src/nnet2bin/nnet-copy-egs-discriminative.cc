@@ -58,9 +58,9 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet-copy-egs-discriminative [options] <egs-rspecifier> <egs-wspecifier1> [<egs-wspecifier2> ...]\n"
         "\n"
         "e.g.\n"
-        "nnet-copy-egs-discriminative ark:train.egs ark,t:text.egs\n"
+        "nnet-copy-egs-discriminative ark:train.degs ark,t:text.degs\n"
         "or:\n"
-        "nnet-copy-egs-discriminative ark:train.egs ark:1.egs ark:2.egs\n";
+        "nnet-copy-egs-discriminative ark:train.degs ark:1.degs ark:2.degs\n";
         
     bool random = false;
     int32 srand_seed = 0;
@@ -86,13 +86,13 @@ int main(int argc, char *argv[]) {
 
     std::string examples_rspecifier = po.GetArg(1);
 
-    SequentialDiscriminativeNnetTrainingExampleReader example_reader(
+    SequentialDiscriminativeNnetExampleReader example_reader(
         examples_rspecifier);
 
     int32 num_outputs = po.NumArgs() - 1;
-    std::vector<DiscriminativeNnetTrainingExampleWriter*> example_writers(num_outputs);
+    std::vector<DiscriminativeNnetExampleWriter*> example_writers(num_outputs);
     for (int32 i = 0; i < num_outputs; i++)
-      example_writers[i] = new DiscriminativeNnetTrainingExampleWriter(
+      example_writers[i] = new DiscriminativeNnetExampleWriter(
           po.GetArg(i+2));
 
     

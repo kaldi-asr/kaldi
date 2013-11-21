@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "An example [where $feats expands to the actual features]:\n"
         "nnet-get-egs-discriminative --acoustic-scale=0.1 \\\n"
-        "  1.mdl '$feats' 'ark,s,cs:gunzip -c ali.1.gz|' 'ark,s,cs:gunzip -c lat.1.gz|' ark:-\n";
+        "  1.mdl '$feats' 'ark,s,cs:gunzip -c ali.1.gz|' 'ark,s,cs:gunzip -c lat.1.gz|' ark:1.degs\n";
     
     std::string spk_vecs_rspecifier, utt2spk_rspecifier;
     
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
     RandomAccessCompactLatticeReader clat_reader(clat_rspecifier);
     RandomAccessBaseFloatVectorReaderMapped vecs_reader(
         spk_vecs_rspecifier, utt2spk_rspecifier);
-    DiscriminativeNnetTrainingExampleWriter example_writer(examples_wspecifier);
+    DiscriminativeNnetExampleWriter example_writer(examples_wspecifier);
     
     int32 num_done = 0, num_err = 0;
     int32 spk_dim = -1;
@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
 
 
       BaseFloat weight = 1.0;
-      DiscriminativeNnetTrainingExample eg;
+      DiscriminativeNnetExample eg;
 
       if (!LatticeToDiscriminativeExample(alignment, spk_info, feats,
                                           clat, weight,
@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
         continue;
       }
       
-      std::vector<DiscriminativeNnetTrainingExample> egs;
+      std::vector<DiscriminativeNnetExample> egs;
       SplitDiscriminativeExample(split_config, trans_model, eg,
                                  &egs, &stats);
 
@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
                     << egs.size() << " pieces.";
       for (size_t i = 0; i < egs.size(); i++) {
         // Note: excised_egs will be of size 0 or 1.
-        std::vector<DiscriminativeNnetTrainingExample> excised_egs;
+        std::vector<DiscriminativeNnetExample> excised_egs;
         ExciseDiscriminativeExample(split_config, trans_model, egs[i],
                                     &excised_egs, &stats);
         for (size_t j = 0; j < excised_egs.size(); j++) {

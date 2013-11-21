@@ -59,8 +59,8 @@ int main(int argc, char *argv[]) {
     std::string examples_rspecifier = po.GetArg(1),
         examples_wspecifier = po.GetArg(2);
 
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
-    NnetTrainingExampleWriter example_writer(examples_wspecifier);
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
+    NnetExampleWriter example_writer(examples_wspecifier);
 
     
     int64 num_read = 0, num_written = 0;

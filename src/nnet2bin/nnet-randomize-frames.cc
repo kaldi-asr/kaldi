@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
     RandomAccessBaseFloatVectorReader vecs_reader(spk_vecs_rspecifier); // may be empty.
-    NnetTrainingExampleWriter example_writer(examples_wspecifier);
+    NnetExampleWriter example_writer(examples_wspecifier);
     
     int32 num_done = 0, num_err = 0;
     

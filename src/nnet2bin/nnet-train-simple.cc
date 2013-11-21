@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
         NnetSimpleTrainer trainer(train_config,
                                   &(am_nnet.GetNnet()));
       
-        SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+        SequentialNnetExampleReader example_reader(examples_rspecifier);
 
         for (; !example_reader.Done(); example_reader.Next(), num_examples++)
           trainer.TrainOnExample(example_reader.Value());  // It all happens here!

@@ -395,9 +395,10 @@ class CuMatrixBase {
   void Write(std::ostream &os, bool binary) const;
 
   // This function resizes the output to indices.size(), and for each element of
-  // indices it interprets it as a (row, column) index into *this, and puts
+  // "indices" it interprets it as a (row, column) index into *this, and puts
   // (*this)(row, column) into the corresponding element of "output".
-  void Lookup(const std::vector<Int32Pair> &indices, std::vector<Real> *output);
+  void Lookup(const std::vector<Int32Pair> &indices,
+              std::vector<Real> *output) const;
  protected:
   // The following two functions should only be called if we did not compile with CUDA
   // or could not get a CUDA card; in that case the contents are interpreted the

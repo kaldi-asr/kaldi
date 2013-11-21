@@ -36,7 +36,7 @@ class ExamplesRepository {
  public:
   /// The following function is called by the code that reads in the examples,
   /// with a batch of examples.  [It will empty the vector "examples").
-  void AcceptExamples(std::vector<NnetTrainingExample> *examples);
+  void AcceptExamples(std::vector<NnetExample> *examples);
 
   /// The following function is called by the code that reads in the examples,
   /// when we're done reading examples.
@@ -46,14 +46,14 @@ class ExamplesRepository {
   /// training examples, and if they are available, puts them in "examples" and
   /// returns true.  It returns false when there are no examples left and
   /// ExamplesDone() has been called.
-  bool ProvideExamples(std::vector<NnetTrainingExample> *examples);
+  bool ProvideExamples(std::vector<NnetExample> *examples);
   
   ExamplesRepository(): empty_semaphore_(1), done_(false) { }
  private:
   Semaphore full_semaphore_;
   Semaphore empty_semaphore_;
 
-  std::vector<NnetTrainingExample> examples_;
+  std::vector<NnetExample> examples_;
   bool done_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(ExamplesRepository);
 };
@@ -74,7 +74,7 @@ class ExamplesRepository {
 /// outputs the #frames into "num_frames".
 double DoBackpropParallel(const Nnet &nnet,
                           int32 minibatch_size,
-                          SequentialNnetTrainingExampleReader *example_reader,
+                          SequentialNnetExampleReader *example_reader,
                           double *tot_weight,
                           Nnet *nnet_to_update);
 
@@ -137,7 +137,7 @@ struct SafeBackpropConfig {
 BaseFloat DoBackpropParallelSafe(
     int32 minibatch_size,
     const SafeBackpropConfig &safe_config,
-    SequentialNnetTrainingExampleReader *example_reader,
+    SequentialNnetExampleReader *example_reader,
     double *num_frames,
     Nnet *nnet);
 
@@ -153,7 +153,7 @@ BaseFloat DoBackpropParallelSafe(
 BaseFloat DoBackpropParallelMomentum(
     int32 minibatch_size,
     BaseFloat momentum_minibatches,
-    SequentialNnetTrainingExampleReader *example_reader,
+    SequentialNnetExampleReader *example_reader,
     double *num_frames,
     Nnet *nnet);
 
@@ -162,7 +162,7 @@ BaseFloat DoBackpropParallelMomentum(
 double DoBackpropParallel(const Nnet &nnet,
                           int32 minibatch_size,
                           int32 num_threads,
-                          const std::vector<NnetTrainingExample> &examples,
+                          const std::vector<NnetExample> &examples,
                           double *num_frames,
                           Nnet *nnet_to_update);
 
@@ -177,7 +177,7 @@ inline double ComputeNnetObjfParallel(
     const Nnet &nnet,
     int32 minibatch_size,
     int32 num_threads,
-    const std::vector<NnetTrainingExample> &examples,
+    const std::vector<NnetExample> &examples,
     double *num_frames) {
   return DoBackpropParallel(nnet, minibatch_size, num_threads,
                             examples, num_frames, NULL);

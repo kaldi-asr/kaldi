@@ -49,9 +49,9 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         int32 right_context,
                         BaseFloat keep_proportion,
                         int64 *num_frames_written,
-                        NnetTrainingExampleWriter *example_writer) {
+                        NnetExampleWriter *example_writer) {
   KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
-  NnetTrainingExample eg;
+  NnetExample eg;
   Matrix<BaseFloat> input_frames(left_context + 1 + right_context,
                                  feats.NumCols());
   eg.left_context = left_context;
@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
     RandomAccessBaseFloatVectorReaderMapped vecs_reader(
         spk_vecs_rspecifier, utt2spk_rspecifier);
-    NnetTrainingExampleWriter example_writer(examples_wspecifier);
+    NnetExampleWriter example_writer(examples_wspecifier);
     
     int32 num_done = 0, num_err = 0;
     int32 spk_dim = -1;

@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage:  nnet-shuffle-egs-discriminative [options] <egs-rspecifier> <egs-wspecifier>\n"
         "\n"
-        "nnet-shuffle-egs-discriminative --srand=1 ark:train.egs ark:shuffled.egs\n";
+        "nnet-shuffle-egs-discriminative --srand=1 ark:train.degs ark:shuffled.degs\n";
     
     int32 srand_seed = 0;
     int32 buffer_size = 0;
@@ -60,17 +60,17 @@ int main(int argc, char *argv[]) {
 
     int64 num_done = 0;
 
-    std::vector<DiscriminativeNnetTrainingExample*> egs;
-    SequentialDiscriminativeNnetTrainingExampleReader example_reader(
+    std::vector<DiscriminativeNnetExample*> egs;
+    SequentialDiscriminativeNnetExampleReader example_reader(
         examples_rspecifier);
-    DiscriminativeNnetTrainingExampleWriter example_writer(
+    DiscriminativeNnetExampleWriter example_writer(
         examples_wspecifier);
     if (buffer_size == 0) { // Do full randomization
       // Putting in an extra level of indirection here to avoid excessive
       // computation and memory demands when we have to resize the vector.
     
       for (; !example_reader.Done(); example_reader.Next())
-        egs.push_back(new DiscriminativeNnetTrainingExample(
+        egs.push_back(new DiscriminativeNnetExample(
             example_reader.Value()));
       
       std::random_shuffle(egs.begin(), egs.end());
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
       for (; !example_reader.Done(); example_reader.Next()) {
         int32 index = RandInt(0, buffer_size - 1);
         if (egs[index] == NULL) {
-          egs[index] = new DiscriminativeNnetTrainingExample(example_reader.Value());
+          egs[index] = new DiscriminativeNnetExample(example_reader.Value());
         } else {
           std::ostringstream ostr;
           ostr << num_done;

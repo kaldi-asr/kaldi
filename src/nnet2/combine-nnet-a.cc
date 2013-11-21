@@ -59,7 +59,7 @@ static void AddDirection(const Nnet &orig_nnet,
 
 
 static BaseFloat ComputeObjfAndGradient(
-    const std::vector<NnetTrainingExample> &validation_set,
+    const std::vector<NnetExample> &validation_set,
     const Vector<double> &scale_params,
     const Nnet &orig_nnet,
     const Nnet &direction,
@@ -100,7 +100,7 @@ static BaseFloat ComputeObjfAndGradient(
                                    
 
 void CombineNnetsA(const NnetCombineAconfig &config,
-                   const std::vector<NnetTrainingExample> &validation_set,
+                   const std::vector<NnetExample> &validation_set,
                    const std::vector<Nnet> &nnets,
                    Nnet *nnet_out) {
 

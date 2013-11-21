@@ -97,11 +97,11 @@ int main(int argc, char *argv[]) {
       nnets[n] = am_nnet.GetNnet();
     }      
     
-    std::vector<NnetTrainingExample> validation_set; // stores validation
+    std::vector<NnetExample> validation_set; // stores validation
     // frames.
 
     { // This block adds samples to "validation_set".
-      SequentialNnetTrainingExampleReader example_reader(
+      SequentialNnetExampleReader example_reader(
           valid_examples_rspecifier);
       for (; !example_reader.Done(); example_reader.Next())
         validation_set.push_back(example_reader.Value());

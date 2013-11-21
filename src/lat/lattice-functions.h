@@ -128,7 +128,7 @@ void ConvertCompactLatticeToPhones(const TransitionModel &trans_model,
 /// Boosts LM probabilities by b * [#frame errors]; equivalently, adds
 /// -b*[#frame errors] to the graph-component of the cost of each arc/path.
 /// There is a frame error if a particular transition-id on a particular frame
-/// corresponds to a phone not appearining in active_phones for that frame.
+/// corresponds to a phone not matching transcription's alignment for that frame.
 /// This is used in "margin-inspired" discriminative training, esp. Boosted MMI.
 /// The TransitionModel is used to map transition-ids in the lattice
 /// input-side to phones; the phones appearing in
@@ -138,7 +138,7 @@ void ConvertCompactLatticeToPhones(const TransitionModel &trans_model,
 /// Returns true on success, false if there was some kind of mismatch.
 /// At input, silence_phones must be sorted and unique.
 bool LatticeBoost(const TransitionModel &trans,
-                  const std::vector<std::set<int32> > &active_phones,
+                  const std::vector<int32> &alignment,
                   const std::vector<int32> &silence_phones,
                   BaseFloat b,
                   BaseFloat max_silence_error,

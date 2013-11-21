@@ -86,12 +86,12 @@ int main(int argc, char *argv[]) {
 
     std::string examples_rspecifier = po.GetArg(1);
 
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
 
     int32 num_outputs = po.NumArgs() - 1;
-    std::vector<NnetTrainingExampleWriter*> example_writers(num_outputs);
+    std::vector<NnetExampleWriter*> example_writers(num_outputs);
     for (int32 i = 0; i < num_outputs; i++)
-      example_writers[i] = new NnetTrainingExampleWriter(po.GetArg(i+2));
+      example_writers[i] = new NnetExampleWriter(po.GetArg(i+2));
 
     
     int64 num_read = 0, num_written = 0;

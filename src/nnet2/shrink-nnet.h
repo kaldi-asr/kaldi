@@ -48,7 +48,7 @@ struct NnetShrinkConfig {
 };
 
 void ShrinkNnet(const NnetShrinkConfig &shrink_config,
-                const std::vector<NnetTrainingExample> &validation_set,
+                const std::vector<NnetExample> &validation_set,
                 Nnet *nnet);
   
 

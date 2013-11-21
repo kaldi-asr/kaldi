@@ -23,7 +23,7 @@
 /** @file
     Note on how to parse this filename: it contains functions relatied to
     neural-net training examples, mostly discriminative neural-net training examples,
-   i.e. type DiscriminativeNnetTrainingExample    
+   i.e. type DiscriminativeNnetExample    
 */
 
 #include "nnet2/nnet-nnet.h"
@@ -42,7 +42,7 @@ namespace nnet2 {
 
 
 // This file relates to the creation of examples for discriminative training
-// (see struct DiscriminativeNnetTrainingExample, in ./nnet-example.h).
+// (see struct DiscriminativeNnetExample, in ./nnet-example.h).
 
 
 /** Config structure for SplitExample, for splitting discriminative
@@ -145,7 +145,7 @@ bool LatticeToDiscriminativeExample(
     BaseFloat weight,
     int32 left_context,
     int32 right_context,
-    DiscriminativeNnetTrainingExample *eg);
+    DiscriminativeNnetExample *eg);
 
 
 /** Split a "discriminative example" into multiple pieces,
@@ -154,8 +154,8 @@ bool LatticeToDiscriminativeExample(
 void SplitDiscriminativeExample(
     const SplitDiscriminativeExampleConfig &config,
     const TransitionModel &tmodel,
-    const DiscriminativeNnetTrainingExample &eg,
-    std::vector<DiscriminativeNnetTrainingExample> *egs_out,
+    const DiscriminativeNnetExample &eg,
+    std::vector<DiscriminativeNnetExample> *egs_out,
     SplitExampleStats *stats_out);
 
 /** Remove unnecessary frames from discriminative training
@@ -164,8 +164,8 @@ void SplitDiscriminativeExample(
 void ExciseDiscriminativeExample(
     const SplitDiscriminativeExampleConfig &config,
     const TransitionModel &tmodel,
-    const DiscriminativeNnetTrainingExample &eg,
-    std::vector<DiscriminativeNnetTrainingExample> *egs_out,
+    const DiscriminativeNnetExample &eg,
+    std::vector<DiscriminativeNnetExample> *egs_out,
     SplitExampleStats *stats_out);
 
 
@@ -186,8 +186,8 @@ void ExciseDiscriminativeExample(
    case).
 */
 void AppendDiscriminativeExamples(
-    const std::vector<const DiscriminativeNnetTrainingExample*> &input,
-    DiscriminativeNnetTrainingExample *output);
+    const std::vector<const DiscriminativeNnetExample*> &input,
+    DiscriminativeNnetExample *output);
 
 /**
    This function is used to combine multiple discriminative-training
@@ -212,8 +212,8 @@ void AppendDiscriminativeExamples(
 */
 void CombineDiscriminativeExamples(
     int32 max_length,
-    const std::vector<DiscriminativeNnetTrainingExample> &input,
-    std::vector<DiscriminativeNnetTrainingExample> *output);
+    const std::vector<DiscriminativeNnetExample> &input,
+    std::vector<DiscriminativeNnetExample> *output);
                      
 /**
    This function solves the "packing problem" using the "first fit" algorithm.
@@ -248,7 +248,7 @@ void ExampleToPdfPost(
     const std::vector<int32> &silence_phones,
     std::string criterion,
     bool drop_frames,
-    const DiscriminativeNnetTrainingExample &eg,
+    const DiscriminativeNnetExample &eg,
     Posterior *post);
 
 /**
@@ -279,7 +279,7 @@ void ExampleToPdfPost(
 */
 void UpdateHash(
     const TransitionModel &tmodel,
-    const DiscriminativeNnetTrainingExample &eg,
+    const DiscriminativeNnetExample &eg,
     std::string criterion,
     bool drop_frames,
     Matrix<double> *hash,

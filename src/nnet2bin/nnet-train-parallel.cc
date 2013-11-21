@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     if (zero_stats) am_nnet.GetNnet().ZeroStats();
 
     double num_examples = 0;
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
     
 
     if (momentum_minibatches == 0.0)

@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 
 
     double num_examples = 0.0;
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
 
     AmNnet am_gradient(am_nnet);
     bool is_gradient = true;

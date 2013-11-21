@@ -69,7 +69,7 @@ struct NnetRescaleConfig {
 };
 
 void RescaleNnet(const NnetRescaleConfig &rescale_config,
-                 const std::vector<NnetTrainingExample> &examples,
+                 const std::vector<NnetExample> &examples,
                  Nnet *nnet);
   
 

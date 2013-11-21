@@ -65,7 +65,7 @@ class NnetDataRandomizer {
   
   bool Done();
   void Next();
-  const NnetTrainingExample &Value();
+  const NnetExample &Value();
   ~NnetDataRandomizer();
  private:
   void Init(); // This function is called the first time Next() or Value() is
@@ -73,7 +73,7 @@ class NnetDataRandomizer {
   
   /// Called from Next().
   void GetExample(const std::pair<int32, int32> &pair,
-                  NnetTrainingExample *example) const;
+                  NnetExample *example) const;
   
   /// Called when samples_ is empty: sets up samples_.
   void RandomizeSamples(); 
@@ -101,7 +101,7 @@ class NnetDataRandomizer {
   // the whole data, we store pairs here that record the (file, frame) index
   // of each randomized sample.  We pop elements off this list.
   
-  NnetTrainingExample cur_example_; // Returned from Value().  NnetDataRandomizerConfig_ config_;
+  NnetExample cur_example_; // Returned from Value().  NnetDataRandomizerConfig_ config_;
 };
 
 

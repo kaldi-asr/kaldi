@@ -1,6 +1,6 @@
-// nnet2bin/nnet-train-parallel-safe.cc
+// nnet2bin/nnet-train-discriminative-simple.cc
 
-// Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2013  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -21,8 +21,8 @@
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
 #include "nnet2/nnet-randomize.h"
-#include "nnet2/nnet-update-parallel.h"
 #include "nnet2/am-nnet.h"
+#include "nnet2/nnet-compute-discriminative.h"
 
 
 int main(int argc, char *argv[]) {
@@ -30,48 +30,42 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     using namespace kaldi::nnet2;
     typedef kaldi::int32 int32;
+    typedef kaldi::int64 int64;
 
     const char *usage =
-        "Train the neural network parameters with backprop and stochastic\n"
-        "gradient descent using minibatches.  The training frames and labels\n"
-        "are read via a pipe from nnet-randomize-frames.  This is like nnet-train-simple,\n"
-        "but uses multiple threads in a Hogwild type of update.\n"
+        "Train the neural network parameters with a discriminative objective\n"
+        "function (MMI, SMBR or MPFE).  This uses training examples prepared with\n"
+        "nnet-get-egs-discriminative\n"
         "\n"
-        "Usage:  nnet-train-parallel-safe [options] <model-in> <training-examples-in> <model-out>\n"
-        "\n"
+        "Usage:  nnet-train-discriminative-simple [options] <model-in> <training-examples-in> <model-out>\n"
         "e.g.:\n"
-        "nnet-randomize-frames [args] | nnet-train-simple 1.nnet ark:- 2.nnet\n";
+        "nnet-train-discriminative-simple 1.nnet ark:1.degs 2.nnet\n";
     
     bool binary_write = true;
-    bool zero_stats = true;
-    int32 minibatch_size = 1024;
-    int32 srand_seed = 0;
-    SafeBackpropConfig safe_config;
+    std::string use_gpu="yes";
+    NnetDiscriminativeUpdateOptions update_opts;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("zero-stats", &zero_stats, "If true, zero stats "
-                "stored with the neural net (only affects mixing up).");
-    po.Register("srand", &srand_seed,
-                "Seed for random number generator (e.g., for dropout)");
-    po.Register("num-threads", &g_num_threads, "Number of training threads to use "
-                "in the parallel update. [Note: if you use a parallel "
-                "implementation of BLAS, the actual number of threads may be larger.]");
-    po.Register("minibatch-size", &minibatch_size, "Number of examples to use for "
-                "each minibatch during training.");
-    safe_config.Register(&po);
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA");
+    update_opts.Register(&po);
     
     po.Read(argc, argv);
-    srand(srand_seed);
     
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
     
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
+#endif
+
     std::string nnet_rxfilename = po.GetArg(1),
         examples_rspecifier = po.GetArg(2),
         nnet_wxfilename = po.GetArg(3);
+
+    int64 num_examples = 0;
 
     TransitionModel trans_model;
     AmNnet am_nnet;
@@ -82,29 +76,31 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary_read);
     }
 
-    KALDI_ASSERT(minibatch_size > 0);
-
-    ExamplesRepository repository;
     
-    if (zero_stats) am_nnet.GetNnet().ZeroStats();
+    NnetDiscriminativeStats stats;
+    SequentialDiscriminativeNnetExampleReader example_reader(examples_rspecifier);
 
-    double num_examples = 0;
-    SequentialNnetExampleReader example_reader(examples_rspecifier);
-    
+    for (; !example_reader.Done(); example_reader.Next(), num_examples++) {
+      NnetDiscriminativeUpdate(am_nnet, trans_model, update_opts,
+                               example_reader.Value(),
+                               &(am_nnet.GetNnet()), &stats);
+      if (num_examples % 10 == 0 && num_examples != 0) { // each example might be 500 frames.
+        if (GetVerboseLevel() >= 2) {
+          stats.Print(update_opts.criterion);
+        }
+      }          
+    }
 
-
-    DoBackpropParallelSafe(minibatch_size,
-                           safe_config,
-                           &example_reader,
-                           &num_examples,
-                           &(am_nnet.GetNnet()));
-    
+    stats.Print(update_opts.criterion);
+        
     {
       Output ko(nnet_wxfilename, binary_write);
       trans_model.Write(ko.Stream(), binary_write);
       am_nnet.Write(ko.Stream(), binary_write);
     }
-    
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
     KALDI_LOG << "Finished training, processed " << num_examples
               << " training examples.  Wrote model to "
               << nnet_wxfilename;

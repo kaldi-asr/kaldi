@@ -46,23 +46,23 @@ namespace nnet2 {
 /// don't want to expose that complexity at this level.
 /// All these examples will be treated as one minibatch.
 double DoBackprop(const Nnet &nnet,
-                  const std::vector<NnetTrainingExample> &examples,
+                  const std::vector<NnetExample> &examples,
                   Nnet *nnet_to_update);
 
 /// Returns the total weight summed over all the examples... just a simple
 /// utility function.
-BaseFloat TotalNnetTrainingWeight(const std::vector<NnetTrainingExample> &egs);
+BaseFloat TotalNnetTrainingWeight(const std::vector<NnetExample> &egs);
 
 /// Computes objective function over a minibatch.  Returns the *total* weighted
 /// objective function over the minibatch.
 double ComputeNnetObjf(const Nnet &nnet,
-                       const std::vector<NnetTrainingExample> &examples);
+                       const std::vector<NnetExample> &examples);
 
 /// This version of ComputeNnetObjf breaks up the examples into
 /// multiple minibatches to do the computation.
 /// Returns the *total* (weighted) objective function.
 double ComputeNnetObjf(const Nnet &nnet,                          
-                       const std::vector<NnetTrainingExample> &examples,
+                       const std::vector<NnetExample> &examples,
                        int32 minibatch_size);
 
 
@@ -71,7 +71,7 @@ double ComputeNnetObjf(const Nnet &nnet,
 /// It returns the *average* objective function per frame.
 double ComputeNnetGradient(
     const Nnet &nnet,
-    const std::vector<NnetTrainingExample> &examples,
+    const std::vector<NnetExample> &examples,
     int32 batch_size,
     Nnet *gradient);
 

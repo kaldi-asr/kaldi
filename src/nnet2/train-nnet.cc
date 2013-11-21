@@ -24,7 +24,7 @@ namespace nnet2 {
 
 NnetAdaptiveTrainer::NnetAdaptiveTrainer(
     const NnetAdaptiveTrainerConfig &config,
-    const std::vector<NnetTrainingExample> &validation_set,
+    const std::vector<NnetExample> &validation_set,
     Nnet *nnet):
     config_(config), validation_set_(validation_set), nnet_(nnet) {
   num_phases_ = 0;
@@ -159,7 +159,7 @@ NnetAdaptiveTrainer::~NnetAdaptiveTrainer() {
             << (validation_objf_-initial_validation_objf_);  
 }
 
-void NnetAdaptiveTrainer::TrainOnExample(const NnetTrainingExample &value) {
+void NnetAdaptiveTrainer::TrainOnExample(const NnetExample &value) {
   buffer_.push_back(value);
   if (static_cast<int32>(buffer_.size()) == config_.minibatch_size)
     TrainOneMinibatch();
@@ -174,7 +174,7 @@ NnetSimpleTrainer::NnetSimpleTrainer(
   BeginNewPhase(first_time);
 }
 
-void NnetSimpleTrainer::TrainOnExample(const NnetTrainingExample &value) {
+void NnetSimpleTrainer::TrainOnExample(const NnetExample &value) {
   buffer_.push_back(value);
   if (static_cast<int32>(buffer_.size()) == config_.minibatch_size)
     TrainOneMinibatch();

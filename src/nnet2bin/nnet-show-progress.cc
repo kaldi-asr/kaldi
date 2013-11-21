@@ -91,8 +91,8 @@ int main(int argc, char *argv[]) {
     const bool treat_as_gradient = true;
     nnet_gradient.SetZero(treat_as_gradient);
     
-    std::vector<NnetTrainingExample> examples;
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+    std::vector<NnetExample> examples;
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
     for (; !example_reader.Done(); example_reader.Next())
       examples.push_back(example_reader.Value());
 

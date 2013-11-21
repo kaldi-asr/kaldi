@@ -27,13 +27,13 @@
 namespace kaldi {
 namespace nnet2 {
 
-// NnetTrainingExample is the input data and corresponding labels (or labels)
+// NnetExample is the input data and corresponding labels (or labels)
 // for one frame of input, used for standard cross-entropy training of neural
 // nets.  In the normal case there will be just one label, with a weight of 1.0.
 // But, for example, in discriminative training there might be a mixture of
 // labels with different weights.  (note: we may not end up using
 // this for discriminative training after all.)
-struct NnetTrainingExample {
+struct NnetExample {
 
   /// The label(s) for this frame; in the normal case, this will be a vector of
   /// length one, containing (the pdf-id, 1.0)
@@ -59,9 +59,9 @@ struct NnetTrainingExample {
 };
 
 
-typedef TableWriter<KaldiObjectHolder<NnetTrainingExample > > NnetTrainingExampleWriter;
-typedef SequentialTableReader<KaldiObjectHolder<NnetTrainingExample > > SequentialNnetTrainingExampleReader;
-typedef RandomAccessTableReader<KaldiObjectHolder<NnetTrainingExample > > RandomAccessNnetTrainingExampleReader;
+typedef TableWriter<KaldiObjectHolder<NnetExample > > NnetExampleWriter;
+typedef SequentialTableReader<KaldiObjectHolder<NnetExample > > SequentialNnetExampleReader;
+typedef RandomAccessTableReader<KaldiObjectHolder<NnetExample > > RandomAccessNnetExampleReader;
 
 
 /**
@@ -74,7 +74,7 @@ typedef RandomAccessTableReader<KaldiObjectHolder<NnetTrainingExample > > Random
    not part of any standard recipe right now but is included in case it's useful
    in the future).
  */
-struct DiscriminativeNnetTrainingExample {
+struct DiscriminativeNnetExample {
   /// The weight we assign to this example;
   /// this will typically be one, but we include it
   /// for the sake of generality.  
@@ -117,12 +117,12 @@ struct DiscriminativeNnetTrainingExample {
 };
 
 // Tes, the length of typenames is getting out of hand.
-typedef TableWriter<KaldiObjectHolder<DiscriminativeNnetTrainingExample > >
-   DiscriminativeNnetTrainingExampleWriter;
-typedef SequentialTableReader<KaldiObjectHolder<DiscriminativeNnetTrainingExample > >
-   SequentialDiscriminativeNnetTrainingExampleReader;
-typedef RandomAccessTableReader<KaldiObjectHolder<DiscriminativeNnetTrainingExample > >
-   RandomAccessDiscriminativeNnetTrainingExampleReader;
+typedef TableWriter<KaldiObjectHolder<DiscriminativeNnetExample > >
+   DiscriminativeNnetExampleWriter;
+typedef SequentialTableReader<KaldiObjectHolder<DiscriminativeNnetExample > >
+   SequentialDiscriminativeNnetExampleReader;
+typedef RandomAccessTableReader<KaldiObjectHolder<DiscriminativeNnetExample > >
+   RandomAccessDiscriminativeNnetExampleReader;
 
 
 }

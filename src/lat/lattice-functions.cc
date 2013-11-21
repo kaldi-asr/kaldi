@@ -599,7 +599,7 @@ void ConvertCompactLatticeToPhones(const TransitionModel &trans,
 }
 
 bool LatticeBoost(const TransitionModel &trans,
-                  const std::vector<std::set<int32> > &active_phones,
+                  const std::vector<int32> &alignment,
                   const std::vector<int32> &silence_phones,
                   BaseFloat b,
                   BaseFloat max_silence_error,
@@ -611,24 +611,23 @@ bool LatticeBoost(const TransitionModel &trans,
   KALDI_ASSERT(max_silence_error >= 0.0 && max_silence_error <= 1.0);
   vector<int32> state_times;
   int32 num_states = lat->NumStates();
-  LatticeStateTimes(*lat, &state_times);
+  int32 num_frames = LatticeStateTimes(*lat, &state_times);
+  KALDI_ASSERT(num_frames == static_cast<int32>(alignment.size()));
   for (int32 state = 0; state < num_states; state++) {
     int32 cur_time = state_times[state];
-    if (cur_time < 0 || cur_time > active_phones.size()) {
-      KALDI_WARN << "Lattice is too long for active_phones: mismatched den and num lattices/alignments?";
-      return false;
-    }
     for (fst::MutableArcIterator<Lattice> aiter(lat, state); !aiter.Done();
          aiter.Next()) {
       LatticeArc arc = aiter.Value();
       if (arc.ilabel != 0) {  // Non-epsilon arc
         if (arc.ilabel < 0 || arc.ilabel > trans.NumTransitionIds()) {
-          KALDI_WARN << "Lattice has out-of-range transition-ids: lattice/model mismatch?";
+          KALDI_WARN << "Lattice has out-of-range transition-ids: "
+                     << "lattice/model mismatch?";
           return false;
         }
-        int32 phone = trans.TransitionIdToPhone(arc.ilabel);
+        int32 phone = trans.TransitionIdToPhone(arc.ilabel),
+            ref_phone = trans.TransitionIdToPhone(alignment[cur_time]);
         BaseFloat frame_error;
-        if (active_phones[cur_time].count(phone) == 1) {
+        if (phone == ref_phone) {
           frame_error = 0.0;
         } else { // an error...
           if (std::binary_search(silence_phones.begin(), silence_phones.end(), phone))
@@ -646,6 +645,7 @@ bool LatticeBoost(const TransitionModel &trans,
   }
   return true;
 }
+
 
 
 BaseFloat LatticeForwardBackwardMpeVariants(

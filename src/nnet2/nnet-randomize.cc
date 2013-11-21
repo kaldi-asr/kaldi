@@ -75,7 +75,7 @@ NnetDataRandomizer::~NnetDataRandomizer() {
 }
 
 void NnetDataRandomizer::GetExample(const std::pair<int32, int32> &pair,
-                                    NnetTrainingExample *example) const {
+                                    NnetExample *example) const {
   int32 file_index = pair.first,
       frame_index = pair.second;
   KALDI_ASSERT(static_cast<size_t>(file_index) < data_.size());
@@ -109,7 +109,7 @@ bool NnetDataRandomizer::Done() {
   return false;
 }
 
-const NnetTrainingExample &NnetDataRandomizer::Value() {
+const NnetExample &NnetDataRandomizer::Value() {
   KALDI_ASSERT(!Done());  // implies !samples_.empty().
   GetExample(samples_.back(), &cur_example_);
   return cur_example_;

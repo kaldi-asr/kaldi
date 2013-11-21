@@ -26,7 +26,7 @@ namespace nnet2 {
 class NnetRescaler {
  public:
   NnetRescaler(const NnetRescaleConfig &config,
-               const std::vector<NnetTrainingExample> &examples,
+               const std::vector<NnetExample> &examples,
                Nnet *nnet):
       config_(config), examples_(examples), nnet_(nnet) {}
                             
@@ -34,7 +34,7 @@ class NnetRescaler {
 
  private:
   /// takes the input and formats as a single matrix, in forward_data_[0].
-  void FormatInput(const std::vector<NnetTrainingExample> &data,
+  void FormatInput(const std::vector<NnetExample> &data,
                    CuMatrix<BaseFloat> *input);
   void RescaleComponent(int32 c, int32 num_chunks,
                         CuMatrixBase<BaseFloat> *cur_data_in,
@@ -45,14 +45,14 @@ class NnetRescaler {
   BaseFloat GetTargetAvgDeriv(int32 c);
   
   const NnetRescaleConfig &config_;
-  const std::vector<NnetTrainingExample> &examples_;
+  const std::vector<NnetExample> &examples_;
   Nnet *nnet_;
   std::set<int32> relevant_indexes_; // values of c with AffineComponent followed
   // by (at c+1) NonlinearComponent that is not SoftmaxComponent.
 };
 
 
-void NnetRescaler::FormatInput(const std::vector<NnetTrainingExample> &data,
+void NnetRescaler::FormatInput(const std::vector<NnetExample> &data,
                                CuMatrix<BaseFloat> *input) {
   KALDI_ASSERT(data.size() > 0);
   int32 num_splice = nnet_->LeftContext() + 1 + nnet_->RightContext();
@@ -205,7 +205,7 @@ void NnetRescaler::Rescale() {
 }
 
 void RescaleNnet(const NnetRescaleConfig &rescale_config,
-                 const std::vector<NnetTrainingExample> &examples,
+                 const std::vector<NnetExample> &examples,
                  Nnet *nnet) {
   NnetRescaler rescaler(rescale_config, examples, nnet);
   rescaler.Rescale();

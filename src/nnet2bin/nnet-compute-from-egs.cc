@@ -58,14 +58,14 @@ int main(int argc, char *argv[]) {
     
     int64 num_egs = 0;
 
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
     BaseFloatMatrixWriter writer(features_or_loglikes_wspecifier);
     
     int32 left_context = nnet.LeftContext(),
         context = nnet.LeftContext() + 1 + nnet.RightContext();
 
     for (; !example_reader.Done(); example_reader.Next()) {
-      const NnetTrainingExample &eg = example_reader.Value();
+      const NnetExample &eg = example_reader.Value();
       Matrix<BaseFloat> input_frames(eg.input_frames);
       int32 start_dim = eg.left_context - left_context;
       SubMatrix<BaseFloat> cpu_input_block(input_frames,

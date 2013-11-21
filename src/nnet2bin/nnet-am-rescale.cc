@@ -69,10 +69,10 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary);
     }
 
-    std::vector<NnetTrainingExample> egs;
+    std::vector<NnetExample> egs;
 
     // This block adds samples to "egs".
-    SequentialNnetTrainingExampleReader example_reader(
+    SequentialNnetExampleReader example_reader(
         egs_rspecifier);
     for (; !example_reader.Done(); example_reader.Next())
       egs.push_back(example_reader.Value());

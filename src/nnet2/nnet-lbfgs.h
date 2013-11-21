@@ -55,7 +55,7 @@ class NnetLbfgsTrainer {
  public:
   NnetLbfgsTrainer(const NnetLbfgsTrainerConfig &config): config_(config) { }
 
-  void AddTrainingExample(const NnetTrainingExample &eg) { egs_.push_back(eg); }
+  void AddExample(const NnetExample &eg) { egs_.push_back(eg); }
   
   void Train(Nnet *nnet);
 
@@ -78,7 +78,7 @@ class NnetLbfgsTrainer {
   OptimizeLbfgs<BaseFloat> *lbfgs_;
   BaseFloat initial_objf_;
   const NnetLbfgsTrainerConfig &config_;
-  std::vector<NnetTrainingExample> egs_;  
+  std::vector<NnetExample> egs_;  
 };
 
 

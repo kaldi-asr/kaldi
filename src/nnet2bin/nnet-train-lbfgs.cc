@@ -78,9 +78,9 @@ int main(int argc, char *argv[]) {
     
     int64 num_examples = 0;
       
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
     for (; !example_reader.Done(); example_reader.Next(), num_examples++)
-      trainer.AddTrainingExample(example_reader.Value());
+      trainer.AddExample(example_reader.Value());
 
     trainer.Train(&(am_nnet.GetNnet()));
     

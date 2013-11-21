@@ -2001,7 +2001,7 @@ void CuMatrixBase<Real>::AddMatBlock(
 
 template<typename Real>
 void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
-                                std::vector<Real> *output) {
+                                std::vector<Real> *output) const {
   // Checks the dimension.
   MatrixIndexT num_rows = this->num_rows_, num_cols = this->num_cols_;
   for (int32 i = 0; i < indices.size(); ++i) {

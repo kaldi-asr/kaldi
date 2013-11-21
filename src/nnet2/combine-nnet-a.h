@@ -73,7 +73,7 @@ struct NnetCombineAconfig {
 };
 
 void CombineNnetsA(const NnetCombineAconfig &combine_config,
-                   const std::vector<NnetTrainingExample> &validation_set,
+                   const std::vector<NnetExample> &validation_set,
                    const std::vector<Nnet> &nnets_in,
                    Nnet *nnet_out);
   

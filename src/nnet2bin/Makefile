@@ -21,7 +21,8 @@ BINFILES = nnet-randomize-frames nnet-am-info nnet-train nnet-init \
    nnet-am-widen nnet-show-progress nnet-limit-degradation \
    nnet-get-feature-transform-multi nnet-copy-egs-discriminative \
    nnet-get-egs-discriminative nnet-shuffle-egs-discriminative \
-   nnet-compare-hash-discriminative nnet-combine-egs-discriminative
+   nnet-compare-hash-discriminative nnet-combine-egs-discriminative \
+   nnet-train-discriminative-simple
 
 OBJFILES =
 

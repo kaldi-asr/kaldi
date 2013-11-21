@@ -65,10 +65,10 @@ int main(int argc, char *argv[]) {
     }
 
 
-    std::vector<NnetTrainingExample> examples;
+    std::vector<NnetExample> examples;
     double tot_like = 0, tot_frames = 0;
     int64 num_examples = 0;
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
     for (; !example_reader.Done(); example_reader.Next(), num_examples++) {
       if (examples.size() == 1000) {
         tot_like += ComputeNnetObjf(am_nnet.GetNnet(), examples);

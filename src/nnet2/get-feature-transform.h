@@ -39,7 +39,7 @@ struct FeatureTransformEstimateOptions {
   FeatureTransformEstimateOptions(): remove_offset(true), dim(200),
                                      within_class_factor(0.001), max_singular_value(5.0) { }
   
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("remove-offset", &remove_offset, "If true, output an affine "
                  "transform that makes the projected data mean equal to zero.");
     po->Register("dim", &dim, "Dimension to project to with LDA");

@@ -60,15 +60,15 @@ int main(int argc, char *argv[]) {
 
     int64 num_done = 0;
 
-    std::vector<NnetTrainingExample*> egs;
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
-    NnetTrainingExampleWriter example_writer(examples_wspecifier);
+    std::vector<NnetExample*> egs;
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
+    NnetExampleWriter example_writer(examples_wspecifier);
     if (buffer_size == 0) { // Do full randomization
       // Putting in an extra level of indirection here to avoid excessive
       // computation and memory demands when we have to resize the vector.
     
       for (; !example_reader.Done(); example_reader.Next())
-        egs.push_back(new NnetTrainingExample(example_reader.Value()));
+        egs.push_back(new NnetExample(example_reader.Value()));
       
       std::random_shuffle(egs.begin(), egs.end());
     } else {
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
       for (; !example_reader.Done(); example_reader.Next()) {
         int32 index = RandInt(0, buffer_size - 1);
         if (egs[index] == NULL) {
-          egs[index] = new NnetTrainingExample(example_reader.Value());
+          egs[index] = new NnetExample(example_reader.Value());
         } else {
           std::ostringstream ostr;
           ostr << num_done;

@@ -24,7 +24,7 @@ namespace nnet2 {
 
 
 // This class NnetUpdater contains functions for updating the neural net or
-// computing its gradient, given a set of NnetTrainingExamples.  Its
+// computing its gradient, given a set of NnetExamples.  Its
 // functionality is exported by DoBackprop(), and by ComputeNnetObjf(), so we
 // define it in the .cc file.
 class NnetUpdater {
@@ -36,13 +36,13 @@ class NnetUpdater {
   NnetUpdater(const Nnet &nnet,
               Nnet *nnet_to_update);
   
-  double ComputeForMinibatch(const std::vector<NnetTrainingExample> &data);
+  double ComputeForMinibatch(const std::vector<NnetExample> &data);
   // returns average objective function over this minibatch.
   
  private:
 
   /// takes the input and formats as a single matrix, in forward_data_[0].
-  void FormatInput(const std::vector<NnetTrainingExample> &data);
+  void FormatInput(const std::vector<NnetExample> &data);
   
   // Possibly splices input together from forward_data_[component].
   //   MatrixBase<BaseFloat> &GetSplicedInput(int32 component, Matrix<BaseFloat> *temp_matrix);
@@ -50,14 +50,14 @@ class NnetUpdater {
   void Propagate();
 
   /// Computes objective function and derivative at output layer.
-  double ComputeObjfAndDeriv(const std::vector<NnetTrainingExample> &data,
+  double ComputeObjfAndDeriv(const std::vector<NnetExample> &data,
                              CuMatrix<BaseFloat> *deriv) const;
   
   /// Returns objf summed (and weighted) over samples.
   /// Note: "deriv" will contain, at input, the derivative w.r.t. the
   /// output layer but will be used as a temporary variable by
   /// this function.
-  void Backprop(const std::vector<NnetTrainingExample> &data,
+  void Backprop(const std::vector<NnetExample> &data,
                 CuMatrix<BaseFloat> *deriv);
 
   const Nnet &nnet_;
@@ -68,7 +68,7 @@ class NnetUpdater {
   // for the outputs of each of the components.
 
   // These weights are one per parameter; they equal to the "weight"
-  // member variables in the NnetTrainingExample structures.  These
+  // member variables in the NnetExample structures.  These
   // will typically be about one on average.
   CuVector<BaseFloat> chunk_weights_;
 };
@@ -80,7 +80,7 @@ NnetUpdater::NnetUpdater(const Nnet &nnet,
  
 
 double NnetUpdater::ComputeForMinibatch(
-    const std::vector<NnetTrainingExample> &data) {
+    const std::vector<NnetExample> &data) {
   FormatInput(data);
   Propagate();
   CuMatrix<BaseFloat> tmp_deriv;
@@ -120,7 +120,7 @@ void NnetUpdater::Propagate() {
 }
 
 double NnetUpdater::ComputeObjfAndDeriv(
-    const std::vector<NnetTrainingExample> &data,
+    const std::vector<NnetExample> &data,
     CuMatrix<BaseFloat> *deriv) const {
   BaseFloat tot_objf = 0.0, tot_weight = 0.0;
   int32 num_components = nnet_.NumComponents();  
@@ -146,7 +146,7 @@ double NnetUpdater::ComputeObjfAndDeriv(
 }
 
 
-void NnetUpdater::Backprop(const std::vector<NnetTrainingExample> &data,
+void NnetUpdater::Backprop(const std::vector<NnetExample> &data,
                            CuMatrix<BaseFloat> *deriv) {
   int32 num_chunks = data.size();
   // We assume ComputeObjfAndDeriv has already been called.
@@ -166,7 +166,7 @@ void NnetUpdater::Backprop(const std::vector<NnetTrainingExample> &data,
 }
 
 
-void NnetUpdater::FormatInput(const std::vector<NnetTrainingExample> &data) {
+void NnetUpdater::FormatInput(const std::vector<NnetExample> &data) {
   KALDI_ASSERT(data.size() > 0);
   int32 num_splice = nnet_.LeftContext() + 1 + nnet_.RightContext();
   KALDI_ASSERT(data[0].input_frames.NumRows() >= num_splice);
@@ -178,7 +178,7 @@ void NnetUpdater::FormatInput(const std::vector<NnetTrainingExample> &data) {
   KALDI_ASSERT(tot_dim == nnet_.InputDim());
   KALDI_ASSERT(data[0].left_context >= nnet_.LeftContext());
   int32 ignore_frames = data[0].left_context - nnet_.LeftContext(); // If
-  // the NnetTrainingExample has more left-context than we need, ignore some.
+  // the NnetExample has more left-context than we need, ignore some.
   // this may happen in settings where we increase the amount of context during
   // training, e.g. by adding layers that require more context.
   num_chunks_ = data.size();
@@ -209,7 +209,7 @@ void NnetUpdater::FormatInput(const std::vector<NnetTrainingExample> &data) {
   forward_data_[0].Swap(&temp_forward_data); // Copy to GPU, if being used.
 }
 
-BaseFloat TotalNnetTrainingWeight(const std::vector<NnetTrainingExample> &egs) {
+BaseFloat TotalNnetTrainingWeight(const std::vector<NnetExample> &egs) {
   double ans = 0.0;
   for (size_t i = 0; i < egs.size(); i++)
     for (size_t j = 0; j < egs[i].labels.size(); j++)
@@ -219,13 +219,13 @@ BaseFloat TotalNnetTrainingWeight(const std::vector<NnetTrainingExample> &egs) {
 
 
 double ComputeNnetObjf(const Nnet &nnet,
-                       const std::vector<NnetTrainingExample> &examples) {
+                       const std::vector<NnetExample> &examples) {
   NnetUpdater updater(nnet, NULL);
   return updater.ComputeForMinibatch(examples);
 }
 
 double DoBackprop(const Nnet &nnet,
-                  const std::vector<NnetTrainingExample> &examples,
+                  const std::vector<NnetExample> &examples,
                   Nnet *nnet_to_update) {
   if (nnet_to_update == NULL)
     return ComputeNnetObjf(nnet, examples);
@@ -240,12 +240,12 @@ double DoBackprop(const Nnet &nnet,
 
 double ComputeNnetGradient(
     const Nnet &nnet,
-    const std::vector<NnetTrainingExample> &validation_set,
+    const std::vector<NnetExample> &validation_set,
     int32 batch_size,
     Nnet *gradient) {
   bool treat_as_gradient = true;
   gradient->SetZero(treat_as_gradient);
-  std::vector<NnetTrainingExample> batch;
+  std::vector<NnetExample> batch;
   batch.reserve(batch_size);
   double tot_objf = 0.0;
   for (int32 start_pos = 0;
@@ -267,9 +267,9 @@ double ComputeNnetGradient(
 
 double ComputeNnetObjf(
     const Nnet &nnet,
-    const std::vector<NnetTrainingExample> &validation_set,
+    const std::vector<NnetExample> &validation_set,
     int32 batch_size) {
-  std::vector<NnetTrainingExample> batch;
+  std::vector<NnetExample> batch;
   batch.reserve(batch_size);
   double tot_objf = 0.0;
   for (int32 start_pos = 0;

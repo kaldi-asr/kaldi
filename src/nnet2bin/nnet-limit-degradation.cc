@@ -81,8 +81,8 @@ int main(int argc, char *argv[]) {
       am_nnet2.Read(ki.Stream(), binary_read);
     }    
         
-    std::vector<NnetTrainingExample> examples;
-    SequentialNnetTrainingExampleReader example_reader(examples_rspecifier);
+    std::vector<NnetExample> examples;
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
     for (; !example_reader.Done(); example_reader.Next())
       examples.push_back(example_reader.Value());
 

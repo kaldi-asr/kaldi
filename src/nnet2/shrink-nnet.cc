@@ -23,7 +23,7 @@ namespace kaldi {
 namespace nnet2 {
 
 static BaseFloat ComputeObjfAndGradient(
-    const std::vector<NnetTrainingExample> &validation_set,
+    const std::vector<NnetExample> &validation_set,
     const Vector<double> &log_scale_params,
     const Nnet &nnet,
     Vector<double> *gradient) {
@@ -64,7 +64,7 @@ static BaseFloat ComputeObjfAndGradient(
                                    
 
 void ShrinkNnet(const NnetShrinkConfig &shrink_config,
-                const std::vector<NnetTrainingExample> &validation_set,
+                const std::vector<NnetExample> &validation_set,
                 Nnet *nnet) {
 
   int32 dim = nnet->NumUpdatableComponents();

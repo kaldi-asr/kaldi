@@ -24,10 +24,10 @@
 namespace kaldi {
 namespace nnet2 {
 
-void NnetTrainingExample::Write(std::ostream &os, bool binary) const {
+void NnetExample::Write(std::ostream &os, bool binary) const {
   // Note: weight, label, input_frames and spk_info are members.  This is a
   // struct.
-  WriteToken(os, binary, "<NnetTrainingExample>");
+  WriteToken(os, binary, "<NnetExample>");
   WriteToken(os, binary, "<Labels>");
   int32 size = labels.size();
   WriteBasicType(os, binary, size);
@@ -41,12 +41,12 @@ void NnetTrainingExample::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, left_context);
   WriteToken(os, binary, "<SpkInfo>");
   spk_info.Write(os, binary);
-  WriteToken(os, binary, "</NnetTrainingExample>");
+  WriteToken(os, binary, "</NnetExample>");
 }
-void NnetTrainingExample::Read(std::istream &is, bool binary) {
+void NnetExample::Read(std::istream &is, bool binary) {
   // Note: weight, label, input_frames, left_context and spk_info are members.
   // This is a struct.
-  ExpectToken(is, binary, "<NnetTrainingExample>");  
+  ExpectToken(is, binary, "<NnetExample>");  
   ExpectToken(is, binary, "<Labels>");
   int32 size;
   ReadBasicType(is, binary, &size);
@@ -63,15 +63,15 @@ void NnetTrainingExample::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &left_context);
   ExpectToken(is, binary, "<SpkInfo>");
   spk_info.Read(is, binary);
-  ExpectToken(is, binary, "</NnetTrainingExample>");
+  ExpectToken(is, binary, "</NnetExample>");
 }
 
 
-void DiscriminativeNnetTrainingExample::Write(std::ostream &os,
+void DiscriminativeNnetExample::Write(std::ostream &os,
                                               bool binary) const {
   // Note: weight, num_ali, den_lat, input_frames, left_context and spk_info are
   // members.  This is a struct.
-  WriteToken(os, binary, "<DiscriminativeNnetTrainingExample>");
+  WriteToken(os, binary, "<DiscriminativeNnetExample>");
   WriteToken(os, binary, "<Weight>");
   WriteBasicType(os, binary, weight);
   WriteToken(os, binary, "<NumAli>");
@@ -91,14 +91,14 @@ void DiscriminativeNnetTrainingExample::Write(std::ostream &os,
   WriteBasicType(os, binary, left_context);
   WriteToken(os, binary, "<SpkInfo>");
   spk_info.Write(os, binary);
-  WriteToken(os, binary, "</DiscriminativeNnetTrainingExample>");
+  WriteToken(os, binary, "</DiscriminativeNnetExample>");
 }
 
-void DiscriminativeNnetTrainingExample::Read(std::istream &is,
+void DiscriminativeNnetExample::Read(std::istream &is,
                                              bool binary) {
   // Note: weight, num_ali, den_lat, input_frames, left_context and spk_info are
   // members.  This is a struct.
-  ExpectToken(is, binary, "<DiscriminativeNnetTrainingExample>");
+  ExpectToken(is, binary, "<DiscriminativeNnetExample>");
   ExpectToken(is, binary, "<Weight>");
   ReadBasicType(is, binary, &weight);
   ExpectToken(is, binary, "<NumAli>");
@@ -117,10 +117,10 @@ void DiscriminativeNnetTrainingExample::Read(std::istream &is,
   ReadBasicType(is, binary, &left_context);
   ExpectToken(is, binary, "<SpkInfo>");
   spk_info.Read(is, binary);
-  ExpectToken(is, binary, "</DiscriminativeNnetTrainingExample>");
+  ExpectToken(is, binary, "</DiscriminativeNnetExample>");
 }
 
-void DiscriminativeNnetTrainingExample::Check() const {
+void DiscriminativeNnetExample::Check() const {
   KALDI_ASSERT(weight > 0.0);
   KALDI_ASSERT(!num_ali.empty());
   int32 num_frames = static_cast<int32>(num_ali.size());
