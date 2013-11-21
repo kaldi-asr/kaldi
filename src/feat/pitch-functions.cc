@@ -16,12 +16,12 @@
 // limitations under the License.
 
 
+#include <algorithm>
+#include <limits>
 #include "feat/feature-functions.h"
 #include "matrix/matrix-functions.h"
 #include "feat/pitch-functions.h"
 #include "feat/mel-computations.h"
-#include <algorithm>
-#include <limits>
 
 namespace kaldi {
 
@@ -53,12 +53,14 @@ void WeightedMwn(int32 normalization_window_size,
       if (window_start < 0) window_start = 0;
     }
     if (last_window_start == -1) {
-      SubMatrix<BaseFloat> pitch_part(input, window_start, window_end-window_start,
+      SubMatrix<BaseFloat> pitch_part(input, window_start,
+                                      window_end - window_start,
                                       1, 1);
-      SubMatrix<BaseFloat> pov_part(input, window_start, window_end-window_start,
+      SubMatrix<BaseFloat> pov_part(input, window_start,
+                                    window_end - window_start,
                                     0, 1);
       Matrix<BaseFloat> pov_pitch(1, 1);
-      pov_pitch.AddMatMat(1.0, pitch_part, kTrans,pov_part, kNoTrans, 0.0);
+      pov_pitch.AddMatMat(1.0, pitch_part, kTrans, pov_part, kNoTrans, 0.0);
 
       // sum of pov
       pov_sum =  pov_part.Sum();
@@ -78,7 +80,6 @@ void WeightedMwn(int32 normalization_window_size,
         SubVector<BaseFloat> frame_to_add(input, last_window_end);
         pov_sum += frame_to_add(0);
         weighted_sum(0) += frame_to_add(0) * frame_to_add(1);
-
       }
       cur_sum(1) = weighted_sum(0);
     }
@@ -96,10 +97,10 @@ void WeightedMwn(int32 normalization_window_size,
         }
 }
 // it would process the raw pov using some nonlinearity
-// if apply_sigmoid, it would map the pov to [0,1] using sigmoid function
+// if apply_sigmoid, it would map the pov to [0, 1] using sigmoid function
 // nonlin 1 : power function as nonlineariy
 //        2 : new nonlinearty for pov (coeffs trained by keele)
-// apply_sigmoid to map the pov to [0,1] using sigmoid function
+// apply_sigmoid to map the pov to [0, 1] using sigmoid function
 void ProcessPovFeatures(Matrix<BaseFloat> *input,
                         int nonlin,
                         bool apply_sigmoid) {
@@ -107,8 +108,8 @@ void ProcessPovFeatures(Matrix<BaseFloat> *input,
   int32 num_frames = input->NumRows();
   if (nonlin == 1) {
     for (int32 i = 0; i < num_frames; i++) {
-      BaseFloat p = (*input)(i,0);
-      if (p > 1.0 ) {
+      BaseFloat p = (*input)(i, 0);
+      if (p > 1.0) {
         p = 1.0;
       } else if (p < -1.0) {
         p = -1.0;
@@ -118,10 +119,10 @@ void ProcessPovFeatures(Matrix<BaseFloat> *input,
     }
   } else if (nonlin == 2) {
     for (int32 i = 0; i < num_frames; i++) {
-      BaseFloat p = fabs((*input)(i,0));
+      BaseFloat p = fabs((*input)(i, 0));
       if (p > 1.0)
         p = 1.0;
-      p = -5.2 + 5.4*exp(7.5*(p-1.0)) + 4.8*p -2.0 * exp(-10.0*p)+4.2*exp(20.0*(p-1.0));
+      p = -5.2 + 5.4 * exp(7.5*(p-1.0)) + 4.8*p -2.0 * exp(-10.0*p)+4.2*exp(20.0*(p-1.0));
       if (apply_sigmoid)
         p = 1.0/(1+exp(-1.0 * p));
       (*input)(i, 0) = p;
@@ -306,15 +307,15 @@ void PreProcess(const PitchExtractionOptions opts,
   for (int32 i = 0; i < resampled_len; i++)
     resampled_t[i] = static_cast<double>(i) / opts.resample_freq;
   Matrix<double> input_wave(1, wave.Dim()), output_wave(1, resampled_len);
-  input_wave.CopyRowFromVec(wave,0);
+  input_wave.CopyRowFromVec(wave, 0);
   ArbitraryResample resample(num_samples_in, opts.frame_opts.samp_freq,
                              opts.lowpass_cutoff,
                              resampled_t, opts.lowpass_filter_width);
   resample.Upsample(input_wave, &output_wave);
-  processed_wave->CopyRowFromMat(output_wave,0);
+  processed_wave->CopyRowFromMat(output_wave, 0);
 
   // Normalize input signal using rms
-  double rms = pow(VecVec((*processed_wave),(*processed_wave))/processed_wave->Dim(),0.5);
+  double rms = pow(VecVec((*processed_wave),(*processed_wave))/processed_wave->Dim(), 0.5);
   (*processed_wave).Scale(1.0/rms);
 }
 
@@ -480,8 +481,8 @@ class PitchExtractor {
   void GetPitch(Matrix<BaseFloat> *output) {
     output->Resize(num_frames_, 2);
     for(int32 frm = 0; frm < num_frames_; frm++) {
-      (*output)(frm,0) = static_cast<BaseFloat>(frames_[frm+1].pov);
-      (*output)(frm,1) = static_cast<BaseFloat>(frames_[frm+1].truepitch);
+      (*output)(frm, 0) = static_cast<BaseFloat>(frames_[frm+1].pov);
+      (*output)(frm, 1) = static_cast<BaseFloat>(frames_[frm+1].truepitch);
     }
   }
  private:
@@ -567,21 +568,21 @@ void ExtractDeltaPitch(const PostProcessOptions &opts,
                        const Vector<BaseFloat> &input,
                        Vector<BaseFloat> *output) {
   int32 num_frames = input.Dim();
+  DeltaFeaturesOptions delta_opts;
+  delta_opts.order = 1;
+  delta_opts.window = opts.delta_window;
+  Matrix<BaseFloat> matrix_input(num_frames, 1),
+      matrix_output;
+  matrix_input.CopyColFromVec(input, 0);
+  ComputeDeltas(delta_opts, matrix_input, &matrix_output);
+  KALDI_ASSERT(matrix_output.NumRows() == matrix_input.NumRows() &&
+               matrix_output.NumCols() == 2);
   output->Resize(num_frames);
-  output->SetZero();
-  int32 half_len = (opts.delta_window_size -1)/2;
-  std::vector<BaseFloat> scale_vec = opts.Scale();
+  output->CopyColFromMat(matrix_output, 2);
 
-  for (int32 i = 0; i < num_frames; i++) {
-    for (int32 j = -half_len; j < opts.delta_window_size + 1; j++) {
-      int32 frame_num = i + j;
-      if (frame_num < 0) 
-        frame_num = 0;
-      else if (frame_num > num_frames-1) 
-        frame_num = num_frames - 1;
-      (*output)(i) +=  scale_vec[j+half_len] * input(frame_num);
-    }
-  }
+  // Add a small amount of noise to the delta-pitch.. this is to stop peaks
+  // appearing in the distribution of delta pitch, that correspond to the
+  // discretization interval for log-pitch.
   Vector<BaseFloat> noise(num_frames);
   noise.SetRandn();
   noise.Scale(opts.delta_pitch_noise_stddev);

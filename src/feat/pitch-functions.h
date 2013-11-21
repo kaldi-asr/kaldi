@@ -38,23 +38,24 @@ struct PitchExtractionOptions {
   FrameExtractionOptions frame_opts;
   double min_f0;          // min f0 to search (Hz)
   double max_f0;          // max f0 to search (Hz)
-  double soft_min_f0;     // Minimum f0, applied in soft way, must not exceed min-f0
-  double penalty_factor;     // cost factor for FO change
-  double double_cost;     // cost of exact FO doubling or halving
+  double soft_min_f0;     // Minimum f0, applied in soft way, must not exceed
+                          // min-f0
+  double penalty_factor;  // cost factor for FO change
   double lowpass_cutoff;  // cutoff frequency for Low pass filter
   double upsample_cutoff; // cutoff frequency we apply for upsampling Nccf
   double resample_freq;   // Integer that determines filter width when upsampling NCCF
   double delta_pitch;     // the pitch tolerance in pruning lags
   double nccf_ballast;    // Increasing this factor reduces NCCF for quiet frames,
                           // helping ensure pitch continuity in unvoiced region
-  int32 lowpass_filter_width;       // Integer that determines filter width of lowpass filter
-  int32 upsample_filter_width;  // Integer that determines filter width when upsampling NCCF
+  int32 lowpass_filter_width;   // Integer that determines filter width of
+                                // lowpass filter
+  int32 upsample_filter_width;  // Integer that determines filter width when
+                                // upsampling NCCF
   explicit PitchExtractionOptions() :
     min_f0(50),
     max_f0(400),
     soft_min_f0(10.0),
     penalty_factor(0.1),
-    double_cost(1000),
     lowpass_cutoff(1500),
     upsample_cutoff(2000),
     resample_freq(4000),
@@ -79,7 +80,8 @@ struct PitchExtractionOptions {
     po->Register("resample-freq", &resample_freq,
                  "Integer that determines filter width when upsampling NCCF");
     po->Register("delta-pitch", &delta_pitch,
-                 "Smallest relative change in pitch that our algorithm measures");
+                 "Smallest relative change in pitch that our algorithm "
+                 "measures");
     po->Register("nccf-ballast", &nccf_ballast,
                  "Increasing this factor reduces NCCF for quiet frames");
     po->Register("lowpass-filter-width", &lowpass_filter_width,
@@ -101,10 +103,11 @@ struct PostProcessOptions {
   BaseFloat pov_scale;            // the final pov scaled with this value
   BaseFloat delta_pitch_scale;
   BaseFloat delta_pitch_noise_stddev; // stddev of noise we add to delta-pitch
-  int32 normalization_window_size;    // Size of window used for moving window nomalization 
-  int32 delta_window_size;    
+  int32 normalization_window_size;    // Size of window used for moving window
+                                      // normalization
+  int32 delta_window;    
   int32 pov_nonlinearity;  // which nonlinearity formula to use for POV feature.
-  bool process_pitch;    
+  bool process_pitch;
   bool add_delta_pitch;
   explicit PostProcessOptions() : 
     pitch_scale(2.0),
@@ -112,8 +115,8 @@ struct PostProcessOptions {
     delta_pitch_scale(10.0),
     delta_pitch_noise_stddev(0.01),
     normalization_window_size(151),
-    delta_window_size(5),
-    pov_nonlinearity(2),
+    delta_window(2),
+    pov_nonlinearity(1),
     add_delta_pitch(true) {}
 
   void Register(ParseOptions *po) {
@@ -129,20 +132,15 @@ struct PostProcessOptions {
                  "pitch creation.  The purpose is to get rid of peaks in the "
                  "delta-pitch caused by discretization of pitch values.");
     po->Register("normalization-window-size", &normalization_window_size,
-                 "size of window used for moving window nomalization");
-    po->Register("delta-window-size", &delta_window_size,
-                 "size of window for extracting delta pitch");
+                 "Size of window used for moving window nomalization");
+    po->Register("delta-window", &delta_window,
+                 "Number of frames on each side of central frame, to use for delta window.");
     po->Register("pov-nonlinearity", &pov_nonlinearity,
                  "Controls which nonlinearity we use to warp the NCCF to get a POV measure."
                  "If 1, use (1.001 - nccf)^0.15 - 1; "
                  "if 2, use a longer formula that approximates log(POV / (POV-1)).");
     po->Register("add-delta-pitch", &add_delta_pitch,
                 "If true, derivative of log-pitch is added to output features");
-  }
-  std::vector<BaseFloat> Scale() const { 
-    BaseFloat coeffs[] = {-0.2, -0.1 , 0, 0.1 , 0.2};
-    std::vector<BaseFloat> scale(coeffs, coeffs + sizeof(coeffs) / sizeof(BaseFloat));
-    return scale;
   }
 };
 /// @} End of "addtogroup feat"

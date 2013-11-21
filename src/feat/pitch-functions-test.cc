@@ -508,8 +508,8 @@ void UnitTestPostProcess() {
     op.max_f0 = 400;
     Matrix<BaseFloat> m, m2;
     Compute(op, waveform, &m);
-    PostProcessOption postprop_op;
-    postprop_op.nonlin_pov = 2;
+    PostProcessOptions postprop_op;
+    postprop_op.pov_nonlinearity = 2;
     PostProcessPitch(postprop_op, m, &m2);
     std::string outfile = "keele/kaldi/"+num+"-speedup-kaldi-processed.txt";
     std::ofstream os(outfile.c_str()); 
@@ -527,28 +527,28 @@ void UnitTestDeltaPitch() {
     for (int32 j = 2; j < num_frames-2; j++)  
       output_feat2(j) = 1.0 / 10.0  *
         (-2.0 * feat(j-2) - feat(j-1) + feat(j+1) + 2.0 * feat(j+2));
-    PostProcessOption op;  
+    PostProcessOptions op;  
     ExtractDeltaPitch(op, feat, &output_feat);
     for (int32 j = 0; j < num_frames; j++)
       std::cout << output_feat(j) << " , " << output_feat2(j) << " ";
   }
 }
 static void UnitTestFeat() {
-  //UnitTestSimple();
-  //UnitTestGetf0Compare1();
+  UnitTestSimple();
+  UnitTestGetf0Compare1();
   //UnitTestGetf0CompareKeele();
-  //UnitTestPenaltyFactor();
+  UnitTestPenaltyFactor();
   //UnitTestKeeleNccfBallast();
   //UnitTestVietnamese();
-  //UnitTestResample();
-  //UnitTestWeightedMwn1();
-  //UnitTestWeightedMwn2();
-  //UnitTestTakeLogOfPitch();
+  UnitTestResample();
+  UnitTestWeightedMwn1();
+  UnitTestWeightedMwn2();
+  UnitTestTakeLogOfPitch();
   //UnitTestPitchExtractionSpeed();
-  UnitTestPitchExtractorCompareKeele();
-  //UnitTestDiffSampleRate();
-  //UnitTestPostProcess();
-  //UnitTestDeltaPitch();
+  //UnitTestPitchExtractorCompareKeele();
+  UnitTestDiffSampleRate();
+  UnitTestPostProcess();
+  UnitTestDeltaPitch();
 }
 
 
