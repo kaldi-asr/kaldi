@@ -108,7 +108,7 @@ fi
 
 # concatenate the .scp files together.
 for ((n=1; n<=nj; n++)); do
-  cat $pitchdir/pitch_$name.$n.scp || exit 1;
+  cat $pitchdir/raw_pitch_$name.$n.scp || exit 1;
 done > $data/feats.scp
 
 rm $logdir/wav.*.scp  $logdir/segments.* 2>/dev/null
