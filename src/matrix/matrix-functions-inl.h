@@ -28,14 +28,14 @@
 namespace kaldi {
 
 //! ComplexMul implements, inline, the complex multiplication b *= a.
-template<class Real> inline void ComplexMul(const Real &a_re, const Real &a_im,
+template<typename Real> inline void ComplexMul(const Real &a_re, const Real &a_im,
                                             Real *b_re, Real *b_im) {
   Real tmp_re = (*b_re * a_re) - (*b_im * a_im);
   *b_im = *b_re * a_im + *b_im * a_re;
   *b_re = tmp_re;
 }
 
-template<class Real> inline void ComplexAddProduct(const Real &a_re, const Real &a_im,
+template<typename Real> inline void ComplexAddProduct(const Real &a_re, const Real &a_im,
                                                    const Real &b_re, const Real &b_im,
                                                    Real *c_re, Real *c_im) {
   *c_re += b_re*a_re - b_im*a_im;
@@ -43,7 +43,7 @@ template<class Real> inline void ComplexAddProduct(const Real &a_re, const Real 
 }
 
 
-template<class Real> inline void ComplexImExp(Real x, Real *a_re, Real *a_im) {
+template<typename Real> inline void ComplexImExp(Real x, Real *a_re, Real *a_im) {
   *a_re = std::cos(x);
   *a_im = std::sin(x);
 }

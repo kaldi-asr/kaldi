@@ -193,7 +193,7 @@ void SpMatrix<Real>::CopyFromMat(const MatrixBase<Real> &M,
   }
 }
 
-template<class Real>
+template<typename Real>
 Real SpMatrix<Real>::Trace() const {
   const Real *data = this->data_;
   MatrixIndexT num_rows = this->num_rows_;
@@ -204,8 +204,8 @@ Real SpMatrix<Real>::Trace() const {
 }
 
 // diagonal update, this <-- this + diag(v)
-template<class Real>
-template<class OtherReal>
+template<typename Real>
+template<typename OtherReal>
 void  SpMatrix<Real>::AddVec(const Real alpha, const VectorBase<OtherReal> &v) {
   int32 num_rows = this->num_rows_;
   KALDI_ASSERT(num_rows == v.Dim() && num_rows > 0);
@@ -316,7 +316,7 @@ void SpMatrix<Real>::Invert(Real *logdet, Real *det_sign, bool need_inverse) {
 }
 #else
 // in the ATLAS case, these are not implemented using a library and we back off to something else.
-template<class Real>
+template<typename Real>
 void SpMatrix<Real>::Invert(Real *logdet, Real *det_sign, bool need_inverse) {
   Matrix<Real> M(this->NumRows(), this->NumCols());
   M.CopyFromSp(*this);
@@ -481,7 +481,7 @@ double TraceMatSpMatSp(const MatrixBase<double> &A, MatrixTransposeType transA,
                        MatrixTransposeType transC, const SpMatrix<double> &D);
 
 
-template<class Real>
+template<typename Real>
 bool SpMatrix<Real>::IsDiagonal(Real cutoff) const {
   MatrixIndexT R = this->NumRows();
   Real bad_sum = 0.0, good_sum = 0.0;
@@ -496,7 +496,7 @@ bool SpMatrix<Real>::IsDiagonal(Real cutoff) const {
   return (!(bad_sum > good_sum * cutoff));
 }
 
-template<class Real>
+template<typename Real>
 bool SpMatrix<Real>::IsUnit(Real cutoff) const {
   MatrixIndexT R = this->NumRows();
   Real max = 0.0;  // max error
@@ -507,7 +507,7 @@ bool SpMatrix<Real>::IsUnit(Real cutoff) const {
   return (max <= cutoff);
 }
 
-template<class Real>
+template<typename Real>
 bool SpMatrix<Real>::IsTridiagonal(Real cutoff) const {
   MatrixIndexT R = this->NumRows();
   Real max_abs_2diag = 0.0, max_abs_offdiag = 0.0;
@@ -523,13 +523,13 @@ bool SpMatrix<Real>::IsTridiagonal(Real cutoff) const {
   return (max_abs_offdiag <= cutoff * max_abs_2diag);
 }
 
-template<class Real>
+template<typename Real>
 bool SpMatrix<Real>::IsZero(Real cutoff) const {
   if (this->num_rows_ == 0) return true;
   return (this->Max() <= cutoff && this->Min() >= -cutoff);
 }
 
-template<class Real>
+template<typename Real>
 Real SpMatrix<Real>::FrobeniusNorm() const {
   Real sum = 0.0;
   MatrixIndexT R = this->NumRows();
@@ -541,14 +541,14 @@ Real SpMatrix<Real>::FrobeniusNorm() const {
   return sqrt(sum);
 }
 
-template<class Real>
+template<typename Real>
 bool SpMatrix<Real>::ApproxEqual(const SpMatrix<Real> &other, float tol) const {
   if (this->NumRows() != other.NumRows())
     KALDI_ERR << "SpMatrix::AproxEqual, size mismatch, "
               << this->NumRows() << " vs. " << other.NumRows();
   SpMatrix<Real> tmp(*this);
   tmp.AddSp(-1.0, other);
-  return (tmp.FrobeniusNorm() <= tol * this->FrobeniusNorm());
+  return (tmp.FrobeniusNorm() <= tol * std::max(this->FrobeniusNorm(), other.FrobeniusNorm()));
 }
 
 // function Floor: A = Floor(B, alpha * C) ... see tutorial document.
@@ -600,7 +600,7 @@ int SpMatrix<Real>::ApplyFloor(const SpMatrix<Real> &C, Real alpha,
   return nfloored;
 }
 
-template<class Real>
+template<typename Real>
 Real SpMatrix<Real>::LogDet(Real *det_sign) const {
   Real log_det;
   SpMatrix<Real> tmp(*this);
@@ -648,7 +648,7 @@ MatrixIndexT SpMatrix<Real>::LimitCond(Real maxCond, bool invert) {  // e.g. max
       s(i) = sqrt(std::max(s(i), floor));
   }
   P.MulColsVec(s);
-  (*this).AddMat2(1.0, P, kNoTrans);  // (*this) = P*P^T.  ... (*this) = P * floor(s) * P^T  ... if P was original P.
+  (*this).AddMat2(1.0, P, kNoTrans, 0.0);  // (*this) = P*P^T.  ... (*this) = P * floor(s) * P^T  ... if P was original P.
   return nfloored;
 }
 
@@ -965,8 +965,8 @@ void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<double> &v) 
 }
 
 
-template<class Real>
-template<class OtherReal>
+template<typename Real>
+template<typename OtherReal>
 void SpMatrix<Real>::AddVec2(const Real alpha, const VectorBase<OtherReal> &v) {
   KALDI_ASSERT(v.Dim() == this->NumRows());
   Real *data = this->data_;
@@ -984,7 +984,7 @@ template
 void SpMatrix<double>::AddVec2(const double alpha, const VectorBase<float> &v);
 
 
-template<class Real>
+template<typename Real>
 Real VecSpVec(const VectorBase<Real> &v1, const SpMatrix<Real> &M,
               const VectorBase<Real> &v2) {
   MatrixIndexT D = M.NumRows();
@@ -1002,7 +1002,7 @@ double VecSpVec(const VectorBase<double> &v1, const SpMatrix<double> &M,
                 const VectorBase<double> &v2);
 
 
-template<class Real>
+template<typename Real>
 void SpMatrix<Real>::AddMat2Sp(
     const Real alpha, const MatrixBase<Real> &M,
     MatrixTransposeType transM, const SpMatrix<Real> &A, const Real beta) {
@@ -1046,7 +1046,7 @@ void SpMatrix<Real>::AddMat2Sp(
   }
 }
 
-template<class Real>
+template<typename Real>
 void SpMatrix<Real>::AddSmat2Sp(
     const Real alpha, const MatrixBase<Real> &M,
     MatrixTransposeType transM, const SpMatrix<Real> &A,
@@ -1101,7 +1101,7 @@ void SpMatrix<Real>::AddSmat2Sp(
   }
 }
 
-template<class Real>
+template<typename Real>
 void SpMatrix<Real>::AddMat2Vec(const Real alpha,
                                 const MatrixBase<Real> &M,
                                 MatrixTransposeType transM,
@@ -1130,7 +1130,7 @@ void SpMatrix<Real>::AddMat2Vec(const Real alpha,
   }
 }
 
-template<class Real>
+template<typename Real>
 void SpMatrix<Real>::AddMat2(const Real alpha, const MatrixBase<Real> &M,
                              MatrixTransposeType transM, const Real beta)  {
   KALDI_ASSERT((transM == kNoTrans && this->NumRows() == M.NumRows())
@@ -1159,7 +1159,7 @@ void SpMatrix<Real>::AddMat2(const Real alpha, const MatrixBase<Real> &M,
   this->CopyFromMat(temp_mat, kTakeLower);
 }
 
-template<class Real>
+template<typename Real>
 void SpMatrix<Real>::AddTp2Sp(const Real alpha, const TpMatrix<Real> &T,
                               MatrixTransposeType transM, const SpMatrix<Real> &A,
                               const Real beta) {
@@ -1167,7 +1167,7 @@ void SpMatrix<Real>::AddTp2Sp(const Real alpha, const TpMatrix<Real> &T,
   AddMat2Sp(alpha, Tmat, transM, A, beta);
 }
 
-template<class Real>
+template<typename Real>
 void SpMatrix<Real>::AddVecVec(const Real alpha, const VectorBase<Real> &v,
                                const VectorBase<Real> &w) {
   int32 dim = this->NumRows();
@@ -1176,7 +1176,7 @@ void SpMatrix<Real>::AddVecVec(const Real alpha, const VectorBase<Real> &v,
 }
 
 
-template<class Real>
+template<typename Real>
 void SpMatrix<Real>::AddTp2(const Real alpha, const TpMatrix<Real> &T,
                             MatrixTransposeType transM, const Real beta) {
   Matrix<Real> Tmat(T);
@@ -1191,7 +1191,7 @@ template class SpMatrix<float>;
 template class SpMatrix<double>;
 
 
-template<class Real>
+template<typename Real>
 Real TraceSpSpLower(const SpMatrix<Real> &A, const SpMatrix<Real> &B) {
   MatrixIndexT adim = A.NumRows();
   KALDI_ASSERT(adim == B.NumRows());

@@ -76,7 +76,7 @@ void MatrixRandomizer::Randomize(const std::vector<int32>& mask) {
   // Use auxiliary buffer for unshuffled data
   CuMatrix<BaseFloat> data_aux(data_);
   // Put the mask to GPU 
-  CuStlVector<int32> mask_in_gpu(mask.size());
+  CuArray<int32> mask_in_gpu(mask.size());
   mask_in_gpu.CopyFromVec(mask);
   // randomize the data, mask is used to index rows in source matrix
   cu::Randomize(data_aux, mask_in_gpu, &data_);

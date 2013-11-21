@@ -24,7 +24,7 @@
 
 namespace kaldi {
 
-template<class Real>
+template<typename Real>
 inline CuSubMatrix<Real>::CuSubMatrix(const CuMatrixBase<Real> &mat,
                                       const MatrixIndexT row_offset,
                                       const MatrixIndexT num_rows,

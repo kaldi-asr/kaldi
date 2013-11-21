@@ -50,8 +50,6 @@ splice_step=1      # Stepsize of the splicing (1 is consecutive splice,
                    # value 2 would do [ -10 -8 -6 -4 -2 0 2 4 6 8 10 ] splicing)
 # misc.
 verbose=1 # enable per-cache reports
-# gpu config
-use_gpu_id= # manually select GPU id to run on, (-1 disables GPU) 
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -172,7 +170,7 @@ else
   feature_transform_old=$feature_transform
   feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
   echo "Renormalizing MLP input features into $feature_transform"
-  nnet-forward ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
+  nnet-forward --use-gpu=yes \
     $feature_transform_old "$(echo $feats | sed 's|train.scp|train.scp.10k|')" \
     ark:- 2>$dir/log/cmvn_glob_fwd.log |\
   compute-cmvn-stats ark:- - | cmvn-to-nnet - - |\
@@ -186,7 +184,7 @@ fi
 
 
 ###### GET THE DIMENSIONS ######
-num_fea=$(feat-to-dim --print-args=false "$feats nnet-forward --use-gpu-id=-1 $feature_transform ark:- ark:- |" - 2>/dev/null)
+num_fea=$(feat-to-dim --print-args=false "$feats nnet-forward --use-gpu=no $feature_transform ark:- ark:- |" - 2>/dev/null)
 num_hid=$hid_dim
 
 
@@ -208,14 +206,14 @@ for depth in $(seq 1 $nn_depth); do
     rbm-train-cd1-frmshuff --learn-rate=$rbm_lrate_low --l2-penalty=$rbm_l2penalty \
       --num-iters=$((2*$rbm_iter)) --drop-data=$rbm_drop_data --verbose=$verbose \
       --feature-transform=$feature_transform \
-      ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} $rbm_extra_opts \
+      $rbm_extra_opts \
       $RBM.init "$feats" $RBM 2>$dir/log/rbm.$depth.log || exit 1
   else
     #This is Bernoulli-Bernoulli RBM
     #cmvn stats for init
     echo "Computing cmvn stats '$dir/$depth.cmvn' for RBM initialization"
     if [ ! -f $dir/$depth.cmvn ]; then 
-      nnet-forward ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
+      nnet-forward --use-gpu=yes \
        "nnet-concat $feature_transform $dir/$((depth-1)).dbn - |" \
         "$(echo $feats | sed 's|train.scp|train.scp.10k|')" \
         ark:- 2>$dir/log/cmvn_fwd.$depth.log | \
@@ -232,7 +230,7 @@ for depth in $(seq 1 $nn_depth); do
     rbm-train-cd1-frmshuff --learn-rate=$rbm_lrate --l2-penalty=$rbm_l2penalty \
       --num-iters=$rbm_iter --drop-data=$rbm_drop_data --verbose=$verbose \
       --feature-transform="nnet-concat $feature_transform $dir/$((depth-1)).dbn - |" \
-      ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} $rbm_extra_opts \
+      $rbm_extra_opts \
       $RBM.init "$feats" $RBM 2>$dir/log/rbm.$depth.log || exit 1
   fi
 

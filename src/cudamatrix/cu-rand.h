@@ -24,7 +24,7 @@
 
 
 #include "cudamatrix/cu-matrix.h"
-
+#include "base/kaldi-math.h"
 
 namespace kaldi {
 
@@ -33,25 +33,18 @@ template<typename Real>
 class CuRand {
  public:
 
-  CuRand()
-   : z1_(NULL), z2_(NULL), z3_(NULL), z4_(NULL), state_size_(0),
-     host_(NULL), host_size_(0)
-  { }
+  CuRand(): z1_(NULL), z2_(NULL), z3_(NULL), z4_(NULL), state_size_(0) { }
 
-  ~CuRand() {
-#if HAVE_CUDA == 1
-    cudaFree(z1_); cudaFree(z2_); cudaFree(z3_); cudaFree(z4_);
-#endif
-    delete[] host_;
-  }
-
+  ~CuRand();
+  
   /// on demand seeding of all the buffers
   void SeedGpu(MatrixIndexT state_size);
 
-  /// fill with uniform random numbers (0.0-1.0)
-  void RandUniform(CuMatrix<Real> *tgt);
+  /// fill with numbers drawn from uniform distribution on [0, 1]
+  void RandUniform(CuMatrixBase<Real> *tgt);
   /// fill with normal random numbers
-  void RandGaussian(CuMatrix<Real> *tgt);
+  void RandGaussian(CuMatrixBase<Real> *tgt);
+  void RandGaussian(CuVectorBase<Real> *tgt);
 
   /// align probabilities to discrete 0/1 states (use uniform samplig)
   void BinarizeProbs(const CuMatrix<Real> &probs, CuMatrix<Real> *states);
@@ -59,8 +52,9 @@ class CuRand {
   void AddGaussNoise(CuMatrix<Real> *tgt, Real gscale = 1.0);
 
  private:
-  /// seed one buffer
-  void SeedBuffer(uint32* *tgt, MatrixIndexT state_size);
+  /// seed one buffer on the GPU.  If state_size == 0, just frees any
+  /// existing buffers.
+  void SeedBuffer(MatrixIndexT state_size, uint32 **tgt);
    
  private:
 
@@ -75,18 +69,12 @@ class CuRand {
   /// Inner state of the ``grid-like'' random number generator
   uint32 *z1_, *z2_, *z3_, *z4_; 
   int32 state_size_; ///< size of the buffers
-
-  uint32 *host_; ///< host bufer, used for initializing
-  int32 host_size_; ///< size of the host buffer
-
+  
   CuMatrix<Real> tmp_; ///< auxiliary matrix
 };
 
 
-
 } // namsepace
-
-#include "cudamatrix/cu-rand-inl.h"
 
 #endif
 
