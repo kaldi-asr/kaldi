@@ -81,9 +81,9 @@ int main(int argc, char *argv[]) {
         }
       }
       
-      if (pitch_opts.frame_opts.samp_freq != wave_data.SampFreq())
+      if (pitch_opts.samp_freq != wave_data.SampFreq())
         KALDI_ERR << "Sample frequency mismatch: you specified "
-                  << pitch_opts.frame_opts.samp_freq << " but data has "
+                  << pitch_opts.samp_freq << " but data has "
                   << wave_data.SampFreq() << " (use --sample-frequency option)";
       
       
