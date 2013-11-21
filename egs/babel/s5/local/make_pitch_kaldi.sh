@@ -8,7 +8,9 @@
 # Begin configuration section.
 nj=4
 cmd=run.pl
+debug_file=
 pitch_config=conf/pitch.conf
+postprocess_config=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -19,8 +21,11 @@ if [ -f path.sh ]; then . ./path.sh; fi
 if [ $# != 3 ]; then
    echo "usage: make_pitch_new.sh [options] <data-dir> <log-dir> <path-to-pitchdir>";
    echo "options: "
-   echo "  --pitch-config <config-file>                      # config passed to process-kaldi-pitch-feats "
+   echo "  --pitch-config <config-file>                     # config passed to compute-kaldi-pitch-feats "
+   echo "  --postprocess-config <config-file>               # config passed to process-kaldi-pitch-feats "
    echo "  --nj <nj>                                        # number of parallel jobs"
+   echo "  --debug-file <file>                              # name of matlab file to write some diagnostic"
+   echo "                                                   # information to (about distribution of outputs)"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    exit 1;
 fi
@@ -65,11 +70,18 @@ if [ -f $data/segments ]; then
   utils/split_scp.pl $data/segments $split_segments || exit 1;
   rm $logdir/.error 2>/dev/null
 
+  if [ ! -z "$postprocess_config" ]; then
+    postprocess_config_opt="--config=$postprocess_config";
+  else
+    postprocess_config_opt=
+  fi
+
   $cmd JOB=1:$nj $logdir/make_pitch.JOB.log \
     extract-segments scp:$scp $logdir/segments.JOB ark:- \| \
-    process-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- \
-    ark,scp:$pitchdir/raw_pitch_$name.JOB.ark,$pitchdir/raw_pitch_$name.JOB.scp \
-     || exit 1;
+    compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- ark:- \| \
+    process-kaldi-pitch-feats $postprocess_config_opt ark:- \
+      ark,scp:$pitchdir/raw_pitch_$name.JOB.ark,$pitchdir/raw_pitch_$name.JOB.scp \
+      || exit 1;
 
 else
   echo "$0: [info]: no segments file exists: assuming wav.scp indexed by utterance."
@@ -82,7 +94,7 @@ else
  
   $cmd JOB=1:$nj $logdir/make_pitch.JOB.log \
     process-kaldi-pitch-feats  --verbose=2 --config=$pitch_config scp:$logdir/wav.JOB.scp \
-      ark,scp:$pitchdir/raw_pitch_$name.JOB.ark,$pitchdir/raw_pitch_$name.JOB.scp \
+      ark,scp:$pitchdir/pitch_$name.JOB.ark,$pitchdir/pitch_$name.JOB.scp \
       || exit 1;
 
 fi
@@ -96,15 +108,26 @@ fi
 
 # concatenate the .scp files together.
 for ((n=1; n<=nj; n++)); do
-  cat $pitchdir/raw_pitch_$name.$n.scp || exit 1;
+  cat $pitchdir/pitch_$name.$n.scp || exit 1;
 done > $data/feats.scp
 
-debug=~/temp2.m
-echo "A = [" > $debug
-copy-feats scp:$data/feats.scp ark,t:- | grep -v ']' | grep -v '\[' | awk '{if (NF == 2) { print; }}' | head -n 200000 \
-  >> $debug
+rm $logdir/wav.*.scp  $logdir/segments.* 2>/dev/null
 
-cat <<'EOF' >>$debug
+nf=`cat $data/feats.scp | wc -l` 
+nu=`cat $data/utt2spk | wc -l` 
+if [ $nf -ne $nu ]; then
+  echo "It seems not all of the feature files were successfully ($nf != $nu);"
+  echo "consider using utils/fix_data_dir.sh $data"
+fi
+
+echo "Succeeded creating Kaldi pitch features for $name"
+
+if [ ! -z "$debug_file" ]; then
+  echo "A = [" > $debug_file
+  copy-feats scp:$data/feats.scp ark,t:- | grep -v ']' | grep -v '\[' | awk '{if (NF == 2) { print; }}' | head -n 200000 \
+    >> $debug
+
+  cat <<'EOF' >>$debug
 ];
 pov = A(:, 1);
 pitch = A(:, 2);
@@ -131,16 +154,4 @@ legend('delta-pitch');
 print -deps 'C.eps'
 EOF
 
-exit 0;
-
-
-rm $logdir/wav.*.scp  $logdir/segments.* 2>/dev/null
-
-nf=`cat $data/feats.scp | wc -l` 
-nu=`cat $data/utt2spk | wc -l` 
-if [ $nf -ne $nu ]; then
-  echo "It seems not all of the feature files were successfully ($nf != $nu);"
-  echo "consider using utils/fix_data_dir.sh $data"
 fi
-
-echo "Succeeded creating Pitch features for $name"

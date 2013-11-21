@@ -1,4 +1,4 @@
-// feat/pitch-functions-speedup.h
+// feat/pitch-functions.h
 
 // Copyright     2013  Pegah Ghahremani
 
@@ -51,7 +51,7 @@ struct PitchExtractionOptions {
   int32 upsample_filter_width;  // Integer that determines filter width when upsampling NCCF
   explicit PitchExtractionOptions() :
     min_f0(50),
-    max_f0(550),
+    max_f0(400),
     soft_min_f0(10.0),
     penalty_factor(0.1),
     double_cost(1000),
@@ -95,42 +95,47 @@ struct PitchExtractionOptions {
     return static_cast<int32>(resample_freq * 0.001 * frame_opts.frame_shift_ms);
   }
 };
-struct PostProcessOption {
-  BaseFloat pitch_scale;           // the final pitch scaled with this value
-  BaseFloat pov_scale;             // the final pov scaled with this value
+
+struct PostProcessOptions {
+  BaseFloat pitch_scale;          // the final pitch scaled with this value
+  BaseFloat pov_scale;            // the final pov scaled with this value
   BaseFloat delta_pitch_scale;
-  int32 normalization_win_size;   // Size of window used for moving window nomalization 
-  int32 delta_win_size;    
-  int32 nonlin_pov;             // nonlinearity warped function for pov feature      
+  BaseFloat delta_pitch_noise_stddev; // stddev of noise we add to delta-pitch
+  int32 normalization_window_size;    // Size of window used for moving window nomalization 
+  int32 delta_window_size;    
+  int32 pov_nonlinearity;  // which nonlinearity formula to use for POV feature.
   bool process_pitch;    
   bool add_delta_pitch;
-  explicit PostProcessOption() : 
-    pitch_scale(2),
-    pov_scale(2),
-    delta_pitch_scale(10),
-    normalization_win_size(151),
-    delta_win_size(5),
-    nonlin_pov(1),
-    process_pitch(true),
+  explicit PostProcessOptions() : 
+    pitch_scale(2.0),
+    pov_scale(2.0),
+    delta_pitch_scale(10.0),
+    delta_pitch_noise_stddev(0.01),
+    normalization_window_size(151),
+    delta_window_size(5),
+    pov_nonlinearity(2),
     add_delta_pitch(true) {}
 
   void Register(ParseOptions *po) {
     po->Register("pitch-scale", &pitch_scale,
-                  "Term to scale the final pitch value");
+                 "Scaling factor for the final normalized log-pitch value");
     po->Register("pov-scale", &pov_scale,
-                 "Term to scale the final pov value");
+                 "Scaling factor for final POV (probability of voicing) feature");
     po->Register("delta-pitch-scale", &delta_pitch_scale,
                  "Term to scale the final delta pitch");
-    po->Register("normalization-win-size", &normalization_win_size,
+    po->Register("delta-pitch-noise-stddev", &delta_pitch_noise_stddev,
+                 "Standard deviation for noise we add to the delta pitch (before"
+                 " scaling); should be about the same as delta-pitch option to "
+                 "pitch creation.  The purpose is to get rid of peaks in the "
+                 "delta-pitch caused by discretization of pitch values.");
+    po->Register("normalization-window-size", &normalization_window_size,
                  "size of window used for moving window nomalization");
-    po->Register("delta-win-size", &delta_win_size,
+    po->Register("delta-window-size", &delta_window_size,
                  "size of window for extracting delta pitch");
-    po->Register("nonlin-pov", &nonlin_pov,
+    po->Register("pov-nonlinearity", &pov_nonlinearity,
                  "Controls which nonlinearity we use to warp the NCCF to get a POV measure."
                  "If 1, use (1.001 - nccf)^0.15 - 1; "
                  "if 2, use a longer formula that approximates log(POV / (POV-1)).");
-    po->Register("process-pitch", &process_pitch,
-                 "Process pitch and pov after extraction and apply nonlinearity or WMWN on tham");
     po->Register("add-delta-pitch", &add_delta_pitch,
                 "If true, derivative of log-pitch is added to output features");
   }
