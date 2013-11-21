@@ -579,7 +579,7 @@ void ExtractDeltaPitch(const PostProcessOptions &opts,
   KALDI_ASSERT(matrix_output.NumRows() == matrix_input.NumRows() &&
                matrix_output.NumCols() == 2);
   output->Resize(num_frames);
-  output->CopyColFromMat(matrix_output, 2);
+  output->CopyColFromMat(matrix_output, 1);
 
   // Add a small amount of noise to the delta-pitch.. this is to stop peaks
   // appearing in the distribution of delta pitch, that correspond to the
