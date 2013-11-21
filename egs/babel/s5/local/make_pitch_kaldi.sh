@@ -80,7 +80,7 @@ if [ -f $data/segments ]; then
     extract-segments scp:$scp $logdir/segments.JOB ark:- \| \
     compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- ark:- \| \
     process-kaldi-pitch-feats $postprocess_config_opt ark:- \
-      ark,scp:$pitchdir/raw_pitch_$name.JOB.ark,$pitchdir/raw_pitch_$name.JOB.scp \
+      ark,scp:$pitchdir/pitch_$name.JOB.ark,$pitchdir/pitch_$name.JOB.scp \
       || exit 1;
 
 else
@@ -95,7 +95,7 @@ else
   $cmd JOB=1:$nj $logdir/make_pitch.JOB.log \
     compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- ark:- \| \
     process-kaldi-pitch-feats $postprocess_config_opt ark:- \
-      ark,scp:$pitchdir/raw_pitch_$name.JOB.ark,$pitchdir/raw_pitch_$name.JOB.scp \
+      ark,scp:$pitchdir/pitch_$name.JOB.ark,$pitchdir/pitch_$name.JOB.scp \
       || exit 1;
 fi
 
@@ -108,7 +108,7 @@ fi
 
 # concatenate the .scp files together.
 for ((n=1; n<=nj; n++)); do
-  cat $pitchdir/raw_pitch_$name.$n.scp || exit 1;
+  cat $pitchdir/pitch_$name.$n.scp || exit 1;
 done > $data/feats.scp
 
 rm $logdir/wav.*.scp  $logdir/segments.* 2>/dev/null
