@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
       }
 
       double tot = features.Sum();
-      if (features.NumRows() != 2 || KALDI_ISINF(tot) || KALDI_ISNAN(tot)) {
+      if (features.NumCols() != 2 || KALDI_ISINF(tot) || KALDI_ISNAN(tot)) {
         KALDI_WARN << "Pitch extraction failed for utterance " << utt
                    << ", num-rows is " << features.NumRows() << ", total is "
                    << tot;
