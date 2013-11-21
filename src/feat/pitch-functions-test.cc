@@ -41,11 +41,7 @@ static void UnitTestSimple() {
   // the parametrization object
   PitchExtractionOptions op;
   // trying to have same opts as baseline.
-  op.frame_opts.dither = 0.0;
-  op.frame_opts.preemph_coeff = 0.0;
-  op.frame_opts.window_type = "hamming";
-  op.frame_opts.remove_dc_offset = false;
-  op.frame_opts.round_to_power_of_two = true;
+  op.preemph_coeff = 0.0;
   // compute pitch.
   Compute(op, v, &m);
   std::cout << "Test passed :)\n\n";
@@ -66,11 +62,7 @@ static void UnitTestGetf0Compare1() {
   }
   // use pitch code with default configuration..
   PitchExtractionOptions op;  
-  op.frame_opts.dither = 0.0;
-  op.frame_opts.preemph_coeff = 0.0;
-  op.frame_opts.window_type = "hamming";
-  op.frame_opts.remove_dc_offset = false;
-  op.frame_opts.round_to_power_of_two = true;
+  op.preemph_coeff = 0.0;
   // compute pitch.
   Matrix<BaseFloat> m;
   Compute(op, waveform, &m);    
@@ -97,11 +89,8 @@ static void UnitTestGetf0CompareKeele() {
     SubVector<BaseFloat> waveform(wave.Data(), 0); 
     // use pitch code with default configuration..
     PitchExtractionOptions op;
-    op.frame_opts.window_type = "rectangular";
-    op.frame_opts.remove_dc_offset = false;
-    op.frame_opts.round_to_power_of_two = false;
-    op.frame_opts.samp_freq = 8000;
-    op.frame_opts.preemph_coeff = exp(-7000/op.frame_opts.samp_freq);
+    op.samp_freq = 8000;
+    op.preemph_coeff = exp(-7000/op.samp_freq);
     // compute pitch.
     Matrix<BaseFloat> m;
     Compute(op, waveform, &m);    
@@ -133,12 +122,8 @@ static void UnitTestPenaltyFactor() {
       // use pitch code with default configuration..
       PitchExtractionOptions op;  
       op.penalty_factor = k * 0.05;
-      op.frame_opts.dither = 0.0;
-      op.frame_opts.preemph_coeff = 0.0;
-      op.frame_opts.window_type = "rectangular";
-      op.frame_opts.remove_dc_offset = false;
-      op.frame_opts.round_to_power_of_two = true;
-      op.frame_opts.samp_freq = 8000;
+      op.preemph_coeff = 0.0;
+      op.samp_freq = 8000;
       // compute pitch.
       Matrix<BaseFloat> m;
       Compute(op, waveform, &m);    
@@ -174,12 +159,8 @@ static void UnitTestKeeleNccfBallast() {
       SubVector<BaseFloat> waveform(wave.Data(), 0); 
       // use pitch code with default configuration..
       PitchExtractionOptions op;  
-      op.frame_opts.dither = 0.0;
-      op.frame_opts.window_type = "rectangular";
-      op.frame_opts.remove_dc_offset = false;
-      op.frame_opts.round_to_power_of_two = true;
-      op.frame_opts.samp_freq = 8000;
-      op.frame_opts.preemph_coeff = exp(-7000/op.frame_opts.samp_freq);
+      op.samp_freq = 8000;
+      op.preemph_coeff = exp(-7000/op.samp_freq);
       op.nccf_ballast = 0.1 * k;  
       std::cout << " nccf_ballast " << op.nccf_ballast << std::endl;
       // compute pitch.
@@ -207,12 +188,8 @@ static void UnitTestVietnamese() {
   SubVector<BaseFloat> waveform(wave.Data(), 0); 
   // use pitch code with default configuration..
   PitchExtractionOptions op;
-  op.frame_opts.dither = 0.0;
-  op.frame_opts.window_type = "rectangular";
-  op.frame_opts.remove_dc_offset = false;
-  op.frame_opts.round_to_power_of_two = false;
-  op.frame_opts.samp_freq = 8000;
-  op.frame_opts.preemph_coeff = exp(-7000/op.frame_opts.samp_freq);
+  op.samp_freq = 8000;
+  op.preemph_coeff = exp(-7000/op.samp_freq);
   // compute pitch.
   Matrix<BaseFloat> m;
   Compute(op, waveform, &m);    
@@ -370,11 +347,8 @@ static void UnitTestPitchExtractionSpeed() {
   std::cout << "=== UnitTestPitchExtractionSpeed() ===\n";
   // use pitch code with default configuration..
   PitchExtractionOptions op_fast;
-  op_fast.frame_opts.window_type = "rectangular";
-  op_fast.frame_opts.remove_dc_offset = false;
-  op_fast.frame_opts.round_to_power_of_two = false;
-  op_fast.frame_opts.samp_freq = 8000;
-  op_fast.frame_opts.preemph_coeff = exp(-7000/op_fast.frame_opts.samp_freq);
+  op_fast.samp_freq = 8000;
+  op_fast.preemph_coeff = exp(-7000/op_fast.samp_freq);
   op_fast.lowpass_cutoff = 1000;
   op_fast.max_f0 = 400; 
   for (int32 i = 1; i < 2; i++) {
@@ -406,7 +380,7 @@ static void UnitTestPitchExtractionSpeed() {
       Compute(op_fast, waveform, &m);
     ftime( &tstruct );
     tend = tstruct.time * 1000 + tstruct.millitm;
-    double tot_real_time = test_num * waveform.Dim() / op_fast.frame_opts.samp_freq;
+    double tot_real_time = test_num * waveform.Dim() / op_fast.samp_freq;
     tot_ft = (tend - tstart)/tot_real_time;
     std::cout << " Pitch extraction time per second of speech " 
               << tot_ft << " msec " << std::endl;
@@ -416,11 +390,8 @@ static void UnitTestPitchExtractorCompareKeele() {
   std::cout << "=== UnitTestPitchExtractorCompareKeele() ===\n";
   // use pitch code with default configuration..
   PitchExtractionOptions op;
-  op.frame_opts.window_type = "rectangular";
-  op.frame_opts.remove_dc_offset = false;
-  op.frame_opts.round_to_power_of_two = false;
-  op.frame_opts.samp_freq = 8000;
-  op.frame_opts.preemph_coeff = exp(-7000/op.frame_opts.samp_freq);
+  op.samp_freq = 8000;
+  op.preemph_coeff = exp(-7000/op.samp_freq);
   for (int32 i = 1; i < 11; i++) {
     std::string wavefile;
     std::string num;
@@ -448,11 +419,8 @@ static void UnitTestPitchExtractorCompareKeele() {
 void UnitTestDiffSampleRate() {
   int sample_rate = 16000; 
   PitchExtractionOptions op_fast;
-  op_fast.frame_opts.window_type = "rectangular";
-  op_fast.frame_opts.remove_dc_offset = false;
-  op_fast.frame_opts.round_to_power_of_two = false;
-  op_fast.frame_opts.samp_freq = static_cast<double>(sample_rate);
-  op_fast.frame_opts.preemph_coeff = exp(-7000/op_fast.frame_opts.samp_freq);
+  op_fast.samp_freq = static_cast<double>(sample_rate);
+  op_fast.preemph_coeff = exp(-7000/op_fast.samp_freq);
   op_fast.lowpass_cutoff = 1000;
   op_fast.max_f0 = 400;
   std::string samp_rate = boost::lexical_cast<std::string>(sample_rate/1000);
@@ -499,11 +467,8 @@ void UnitTestPostProcess() {
     KALDI_ASSERT(wave.Data().NumRows() == 1);       
     SubVector<BaseFloat> waveform(wave.Data(), 0);
     PitchExtractionOptions op;
-    op.frame_opts.window_type = "rectangular";
-    op.frame_opts.remove_dc_offset = false;
-    op.frame_opts.round_to_power_of_two = false;
-    op.frame_opts.samp_freq = 8000;
-    op.frame_opts.preemph_coeff = exp(-7000/op.frame_opts.samp_freq);
+    op.samp_freq = 8000;
+    op.preemph_coeff = exp(-7000/op.samp_freq);
     op.lowpass_cutoff = 1000;
     op.max_f0 = 400;
     Matrix<BaseFloat> m, m2;

@@ -158,10 +158,10 @@ void PreemphasizeFrame(VectorBase<double> *waveform, double preemph_coeff) {
   (*waveform)(0) -= preemph_coeff * (*waveform)(0);
 }
 
-void ExtractFrameNccf(const VectorBase<double> &wave,
-                      int32 frame_num,
-                      const PitchExtractionOptions &opts,
-                      Vector<double> *window) {
+void ExtractFrame(const VectorBase<double> &wave,
+                  int32 frame_num,
+                  const PitchExtractionOptions &opts,
+                  Vector<double> *window) {
 
   int32 frame_shift = opts.NccfWindowShift();
   int32 frame_length = opts.NccfWindowSize();
@@ -185,8 +185,8 @@ void ExtractFrameNccf(const VectorBase<double> &wave,
 
   //if (opts.dither != 0.0) Dither(&window_part, opts.dither);
 
-  if (opts.frame_opts.preemph_coeff != 0.0)
-    PreemphasizeFrame(&window_part, opts.frame_opts.preemph_coeff);
+  if (opts.preemph_coeff != 0.0)
+    PreemphasizeFrame(&window_part, opts.preemph_coeff);
 
   if (end > wave.Dim())
     SubVector<double>(*window, frame_length_new-end+wave.Dim(),
@@ -300,7 +300,7 @@ void PreProcess(const PitchExtractionOptions opts,
   KALDI_ASSERT(processed_wave != NULL);
   // down-sample and Low-Pass filtering the input wave
   int32 num_samples_in = wave.Dim();
-  double dt = opts.frame_opts.samp_freq / opts.resample_freq;
+  double dt = opts.samp_freq / opts.resample_freq;
   int32 resampled_len = 1 + static_cast<int>(num_samples_in / dt);
   processed_wave->Resize(resampled_len); // filtered wave
   std::vector<double> resampled_t(resampled_len);
@@ -308,7 +308,7 @@ void PreProcess(const PitchExtractionOptions opts,
     resampled_t[i] = static_cast<double>(i) / opts.resample_freq;
   Matrix<double> input_wave(1, wave.Dim()), output_wave(1, resampled_len);
   input_wave.CopyRowFromVec(wave, 0);
-  ArbitraryResample resample(num_samples_in, opts.frame_opts.samp_freq,
+  ArbitraryResample resample(num_samples_in, opts.samp_freq,
                              opts.lowpass_cutoff,
                              resampled_t, opts.lowpass_filter_width);
   resample.Upsample(input_wave, &output_wave);
@@ -316,38 +316,39 @@ void PreProcess(const PitchExtractionOptions opts,
 
   // Normalize input signal using rms
   double rms = pow(VecVec((*processed_wave),(*processed_wave))/processed_wave->Dim(), 0.5);
-  (*processed_wave).Scale(1.0/rms);
+  if (rms != 0.0)
+    (*processed_wave).Scale(1.0/rms);
 }
 
 void Nccf(const Vector<double> &wave,
           int32 start, int32 end,
-          int32 Nccf_window_size,
-          Vector<double> *iner_prod,
+          int32 nccf_window_size,
+          Vector<double> *inner_prod,
           Vector<double> *norm_prod) {
   Vector<double> zero_mean_wave(wave);
-  SubVector<double> wave_part(wave, 0, Nccf_window_size);
-  zero_mean_wave.Add(-wave_part.Sum()/Nccf_window_size); // subtract mean-frame from wave
+  SubVector<double> wave_part(wave, 0, nccf_window_size);
+  zero_mean_wave.Add(-wave_part.Sum()/nccf_window_size); // subtract mean-frame from wave
 
   double e1, e2, sum;
-  SubVector<double> sub_vec1(zero_mean_wave, 0, Nccf_window_size);
+  SubVector<double> sub_vec1(zero_mean_wave, 0, nccf_window_size);
   e1 = VecVec(sub_vec1,sub_vec1);
   for (int32 lag = start; lag < end; lag++) {
-    SubVector<double> sub_vec2(zero_mean_wave, lag, Nccf_window_size);
+    SubVector<double> sub_vec2(zero_mean_wave, lag, nccf_window_size);
     e2 = VecVec(sub_vec2,sub_vec2);
     sum = VecVec(sub_vec1,sub_vec2);
-    (*iner_prod)(lag-start) = sum;
+    (*inner_prod)(lag-start) = sum;
     (*norm_prod)(lag-start) = e1*e2;
   }
 }
 
-void ProcessNccf(const Vector<double> &iner_prod,
+void ProcessNccf(const Vector<double> &inner_prod,
                  const Vector<double> &norm_prod,
                  const double &a_fact,
                  int32 start, int32 end,
                  SubVector<double> *autocorr) {
   for (int32 lag = start; lag < end; lag++) {
     if (norm_prod(lag-start) != 0.0)
-      (*autocorr)(lag) = iner_prod(lag-start) / pow(norm_prod(lag-start) + a_fact, 0.5);
+      (*autocorr)(lag) = inner_prod(lag-start) / pow(norm_prod(lag-start) + a_fact, 0.5);
     KALDI_ASSERT((*autocorr)(lag) < 1.01 && (*autocorr)(lag) > -1.01);
   }
 }
@@ -531,19 +532,19 @@ void Compute(const PitchExtractionOptions &opts,
   Matrix<double> nccf_pitch(rows_out, num_max_lag + 1),
       nccf_pov(rows_out, num_max_lag + 1);
   for (int32 r = 0; r < rows_out; r++) {  // r is frame index.
-    ExtractFrameNccf( processed_wave, r,
-                      opts, &window);
+    ExtractFrame( processed_wave, r,
+                  opts, &window);
     // compute nccf for pitch extraction
     a_fact = a_fact_orig;
-    Vector<double> iner_prod(num_lags), norm_prod(num_lags);
+    Vector<double> inner_prod(num_lags), norm_prod(num_lags);
     Nccf(window, start, end, opts.NccfWindowSize(),
-         &iner_prod, &norm_prod);
+         &inner_prod, &norm_prod);
     SubVector<double> nccf_pitch_vec(nccf_pitch.Row(r));
-    ProcessNccf(iner_prod, norm_prod, a_fact, start, end, &(nccf_pitch_vec));
+    ProcessNccf(inner_prod, norm_prod, a_fact, start, end, &(nccf_pitch_vec));
     // compute the Nccf for Probability of voicing estimation
     a_fact = pow(10,-9);
     SubVector<double> nccf_pov_vec(nccf_pov.Row(r));
-    ProcessNccf(iner_prod, norm_prod, a_fact, start, end, &(nccf_pov_vec));
+    ProcessNccf(inner_prod, norm_prod, a_fact, start, end, &(nccf_pov_vec));
   }
   std::vector<double> lag_vec(num_states);
   for (int32 i = 0; i < num_states; i++)

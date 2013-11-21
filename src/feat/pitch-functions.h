@@ -35,36 +35,50 @@ namespace kaldi {
 /// @{
 
 struct PitchExtractionOptions {
-  FrameExtractionOptions frame_opts;
-  double min_f0;          // min f0 to search (Hz)
-  double max_f0;          // max f0 to search (Hz)
-  double soft_min_f0;     // Minimum f0, applied in soft way, must not exceed
+  // FrameExtractionOptions frame_opts;
+  BaseFloat samp_freq;
+  BaseFloat frame_shift_ms;  // in milliseconds.
+  BaseFloat frame_length_ms;  // in milliseconds.
+  BaseFloat preemph_coeff;  // Preemphasis coefficient.  
+  BaseFloat min_f0;          // min f0 to search (Hz)
+  BaseFloat max_f0;          // max f0 to search (Hz)
+  BaseFloat soft_min_f0;     // Minimum f0, applied in soft way, must not exceed
                           // min-f0
-  double penalty_factor;  // cost factor for FO change
-  double lowpass_cutoff;  // cutoff frequency for Low pass filter
-  double upsample_cutoff; // cutoff frequency we apply for upsampling Nccf
-  double resample_freq;   // Integer that determines filter width when upsampling NCCF
-  double delta_pitch;     // the pitch tolerance in pruning lags
-  double nccf_ballast;    // Increasing this factor reduces NCCF for quiet frames,
+  BaseFloat penalty_factor;  // cost factor for FO change
+  BaseFloat lowpass_cutoff;  // cutoff frequency for Low pass filter
+  BaseFloat upsample_cutoff; // cutoff frequency we apply for upsampling Nccf
+  BaseFloat resample_freq;   // Integer that determines filter width when upsampling NCCF
+  BaseFloat delta_pitch;     // the pitch tolerance in pruning lags
+  BaseFloat nccf_ballast;    // Increasing this factor reduces NCCF for quiet frames,
                           // helping ensure pitch continuity in unvoiced region
   int32 lowpass_filter_width;   // Integer that determines filter width of
                                 // lowpass filter
   int32 upsample_filter_width;  // Integer that determines filter width when
                                 // upsampling NCCF
   explicit PitchExtractionOptions() :
-    min_f0(50),
-    max_f0(400),
-    soft_min_f0(10.0),
-    penalty_factor(0.1),
-    lowpass_cutoff(1500),
-    upsample_cutoff(2000),
-    resample_freq(4000),
-    delta_pitch(0.01),
-    nccf_ballast(0.625),
-    lowpass_filter_width(2),
-    upsample_filter_width(5) {}
+      samp_freq(16000),
+      frame_shift_ms(10.0),
+      frame_length_ms(25.0),
+      preemph_coeff(0.97),
+      min_f0(50),
+      max_f0(400),
+      soft_min_f0(10.0),
+      penalty_factor(0.1),
+      lowpass_cutoff(1500),
+      upsample_cutoff(2000),
+      resample_freq(4000),
+      delta_pitch(0.01),
+      nccf_ballast(0.625),
+      lowpass_filter_width(2),
+      upsample_filter_width(5) {}
   void Register(ParseOptions *po) {
-    frame_opts.Register(po);
+    po->Register("sample-frequency", &samp_freq,
+                 "Waveform data sample frequency (must match the waveform file, "
+                 "if specified there)");
+    po->Register("frame-length", &frame_length_ms, "Frame length in milliseconds");
+    po->Register("frame-shift", &frame_shift_ms, "Frame shift in milliseconds");
+    po->Register("preemphasis-coefficient", &preemph_coeff,
+                 "Coefficient for use in signal preemphasis");
     po->Register("min-f0", &min_f0,
                  "min. F0 to search for (Hz)");
     po->Register("max-f0", &max_f0,
@@ -91,10 +105,10 @@ struct PitchExtractionOptions {
                  "Integer that determines filter width when upsampling NCCF");
   }
   int32 NccfWindowSize() const {
-    return static_cast<int32>(resample_freq * 0.001 * frame_opts.frame_length_ms);
+    return static_cast<int32>(resample_freq * 0.001 * frame_length_ms);
   }
   int32 NccfWindowShift() const {
-    return static_cast<int32>(resample_freq * 0.001 * frame_opts.frame_shift_ms);
+    return static_cast<int32>(resample_freq * 0.001 * frame_shift_ms);
   }
 };
 
