@@ -59,7 +59,7 @@ for file_basename in `cat $input_data_list`; do
     if [[ -e $abs_src_dir/transcription/$file_basename.txt ]] ; then
         ln -sf $abs_src_dir/transcription/$file_basename.txt $abs_tgt_dir/transcription || exit 1
     else
-        echo "File $abs_src_dir/audio/$file_basename.txt does not exist!"
+        echo "File $abs_src_dir/transcription/$file_basename.txt does not exist!"
 
         if ! $ignore_missing_txt ; then
           exit 1;

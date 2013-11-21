@@ -29,13 +29,13 @@ bool ContextDependency::Compute(const std::vector<int32> &phoneseq,
   KALDI_ASSERT(static_cast<int32>(phoneseq.size()) == N_);
   EventType  event_vec;
   event_vec.reserve(N_+1);
-  event_vec.push_back(std::make_pair<EventKeyType, EventValueType>
-                      (kPdfClass,  // -1
-                       pdf_class));
+  event_vec.push_back(std::make_pair
+                      (static_cast<EventKeyType>(kPdfClass),  // -1
+                       static_cast<EventValueType>(pdf_class)));
   KALDI_COMPILE_TIME_ASSERT(kPdfClass < 0);  // or it would not be sorted.
   for (int32 i = 0;i < N_;i++) {
-    event_vec.push_back(std::make_pair<EventKeyType, EventValueType>
-                        (i, static_cast<EventValueType>(phoneseq[i])));
+    event_vec.push_back(std::make_pair
+                        (static_cast<EventKeyType>(i), static_cast<EventValueType>(phoneseq[i])));
     KALDI_ASSERT(static_cast<EventAnswerType>(phoneseq[i]) != -1);  // >=0 ?
   }
   KALDI_ASSERT(pdf_id != NULL);
@@ -204,7 +204,7 @@ void ContextDependency::GetPdfInfo(const std::vector<int32> &phones,
       }
       for (size_t j = 0; j < pdfs.size(); j++) {
         KALDI_ASSERT(static_cast<size_t>(pdfs[j]) < pdf_info->size());
-        (*pdf_info)[pdfs[j]].push_back(std::make_pair<int32, int32>(phone, pos));
+        (*pdf_info)[pdfs[j]].push_back(std::make_pair(phone, pos));
       }
     }
   }

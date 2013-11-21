@@ -140,6 +140,8 @@ int main(int argc, char *argv[]) {
         BaseFloat tot_like_this_file = 0.0, tot_weight = 0.0;
 
         for (size_t i = 0; i < posterior.size(); i++) {
+          if (posterior[i].empty())
+            continue;
           std::vector<int32> this_gselect;
           if (!gselect->empty()) this_gselect = (*gselect)[i];
           else am_sgmm.GaussianSelection(sgmm_opts, mat.Row(i), &this_gselect);

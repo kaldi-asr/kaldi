@@ -202,7 +202,7 @@ if [ ! -f exp/tri5_dev2h_ali/.done ]; then
   echo --------------------------------------------------------------------
 
   steps/align_fmllr.sh --retry-beam 80 \
-    --boost-silence $boost_sil --nj $decode_nj --cmd "$train_cmd" \
+    --boost-silence $boost_sil --nj ${dev2h_nj} --cmd "$train_cmd" \
     data/dev2h data/lang exp/tri5 exp/tri5_dev2h_ali
 
   touch exp/tri5_dev2h_ali/.done
@@ -231,7 +231,7 @@ if [ ! -d $target/data/dev10h ]; then
 fi
 
 for n in 2 10; do
-  if [ ! -d $target/data/dev${n}h/kws/.done ]; then
+  if [ -d data/dev${n}h/kws ] &&  [ ! -d $target/data/dev${n}h/kws/.done ]; then
     echo ---------------------------------------------------------------------
     echo "Preparing kws directory in $target/data/dev${n}h/kws"
     echo --------------------------------------------------------------------

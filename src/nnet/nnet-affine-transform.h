@@ -56,10 +56,25 @@ class AffineTransform : public UpdatableComponent {
     bias_.Write(os, binary);
   }
 
+  int32 NumParams() const { return linearity_.NumRows()*linearity_.NumCols() + bias_.Dim(); }
+  void GetParams(Vector<BaseFloat>* wei_copy) const {
+    wei_copy->Resize(NumParams());
+    Matrix<BaseFloat> l(linearity_.NumRows(),linearity_.NumCols());
+    linearity_.CopyToMat(&l);
+    wei_copy->Range(0,linearity_.NumRows()*linearity_.NumCols()).CopyRowsFromMat(l);
+    Vector<BaseFloat> v(bias_.Dim());
+    bias_.CopyToVec(&v);
+    wei_copy->Range(linearity_.NumRows()*linearity_.NumCols(), bias_.Dim()).CopyFromVec(v);
+  }
   std::string Info() const {
     return std::string("\n  linearity") + MomentStatistics(linearity_) +
            "\n  bias" + MomentStatistics(bias_);
   }
+  std::string InfoGradient() const {
+    return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) +
+           "\n  bias_grad" + MomentStatistics(bias_corr_);
+  }
+
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     // precopy bias

@@ -279,7 +279,7 @@ class LatticeLexiconWordAligner {
     // that we won't necessarily give a final-prob to all of the things
     // that go onto final_queue_.
     if (lat_in_.Final(tuple.input_state) != CompactLatticeWeight::Zero())
-      final_queue_.push_back(std::make_pair<Tuple, StateId>(tuple, output_state));
+      final_queue_.push_back(std::make_pair(tuple, output_state));
   }
   
   LatticeLexiconWordAligner(const CompactLattice &lat,
@@ -570,7 +570,7 @@ void LatticeLexiconWordAligner::ProcessFinalForceOut() {
       // Note: the following call may add to queue_, but we'll clear it,
       // we don't want to process these states.
       StateId new_state = GetStateForTuple(tuple);
-      new_final_queue_.push_back(std::make_pair<Tuple, StateId>(tuple, new_state));
+      new_final_queue_.push_back(std::make_pair(tuple, new_state));
     }
   }
   queue_.clear();
@@ -820,7 +820,7 @@ void WordAlignLatticeLexiconInfo::UpdateNumPhonesMap(
   int32 num_phones = static_cast<int32>(lexicon_entry.size()) - 2;
   int32 word = lexicon_entry[0];
   if (num_phones_map_.count(word) == 0)
-    num_phones_map_[word] = std::make_pair<int32, int32>(num_phones, num_phones);
+    num_phones_map_[word] = std::make_pair(num_phones, num_phones);
   else {
     std::pair<int32, int32> &pr = num_phones_map_[word];
     pr.first = std::min(pr.first, num_phones); // update min-num-phones

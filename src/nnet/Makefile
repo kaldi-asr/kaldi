@@ -6,10 +6,11 @@ include ../kaldi.mk
 
 LDFLAGS += $(CUDA_LDFLAGS)
 
-TESTFILES = nnet-test
+TESTFILES = nnet-test nnet-randomizer-test
 
 OBJFILES = nnet-nnet.o nnet-component.o nnet-loss.o nnet-cache.o \
-           nnet-cache-tgtmat.o nnet-cache-conf.o nnet-loss-prior.o nnet-pdf-prior.o
+           nnet-cache-tgtmat.o nnet-cache-conf.o nnet-loss-prior.o nnet-pdf-prior.o \
+	   nnet-randomizer.o
 
 LIBNAME = kaldi-nnet
 

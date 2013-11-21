@@ -109,7 +109,7 @@ while [ $x -lt $num_iters ]; do
   # can cancel them per frame.
   if [ $stage -le $x ]; then
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
-      sgmm-rescore-lattice "$gselect_opt" $spkvecs_opt $dir/$x.mdl "$lats" "$feats" ark:- \| \
+      sgmm-rescore-lattice --speedup=true "$gselect_opt" $spkvecs_opt $dir/$x.mdl "$lats" "$feats" ark:- \| \
       lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
       sum-post --merge=$cancel --scale1=-1 \
       ark:- "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- |" ark:- \| \
