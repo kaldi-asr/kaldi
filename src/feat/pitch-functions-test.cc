@@ -27,6 +27,12 @@
 
 using namespace kaldi;
 
+std::string ConvertIntToString(const int &number) {
+  std::stringstream ss;  //create a stringstream
+  ss << number;  //add number to the stream
+  return ss.str();  //return a string with the contents of the stream
+}
+
 static void UnitTestSimple() {
   std::cout << "=== UnitTestSimple() ===\n";
 
@@ -75,10 +81,10 @@ static void UnitTestGetf0CompareKeele() {
     std::string wavefile;
     std::string num;
     if( i < 6) {
-      num = "f"+boost::lexical_cast<std::string>(i)+"nw0000";
+      num = "f" + ConvertIntToString(i) + "nw0000";
       wavefile = "keele/resampled/"+num+".wav";
     } else {
-      num = "m"+boost::lexical_cast<std::string>(i-5)+"nw0000";
+      num = "f" + ConvertIntToString(i-5) + "nw0000";  
       wavefile = "keele/resampled/"+num+".wav";
     }
     std::cout << "--- " << wavefile << " ---\n";
@@ -90,7 +96,7 @@ static void UnitTestGetf0CompareKeele() {
     // use pitch code with default configuration..
     PitchExtractionOptions op;
     op.samp_freq = 8000;
-    op.preemph_coeff = exp(-7000/op.samp_freq);
+    op.preemph_coeff = exp(-7000/op.resample_freq);
     // compute pitch.
     Matrix<BaseFloat> m;
     Compute(op, waveform, &m);    
@@ -107,10 +113,10 @@ static void UnitTestPenaltyFactor() {
       std::string wavefile;
       std::string num;
       if( i < 6) {
-        num = "f"+boost::lexical_cast<std::string>(i)+"nw0000";
+        num = "f"+ConvertIntToString(i)+"nw0000";
         wavefile = "keele/resampled/"+num+".wav";
       } else {
-        num = "m"+boost::lexical_cast<std::string>(i-5)+"nw0000";
+        num = "m"+ConvertIntToString(i-5)+"nw0000";
         wavefile = "keele/resampled/"+num+".wav";
       }
       std::cout << "--- " << wavefile << " ---\n";
@@ -127,7 +133,7 @@ static void UnitTestPenaltyFactor() {
       // compute pitch.
       Matrix<BaseFloat> m;
       Compute(op, waveform, &m);    
-      std::string penaltyfactor = boost::lexical_cast<std::string>(k);
+      std::string penaltyfactor = ConvertIntToString(k);
       std::string outfile = "keele/freqw/kaldi/"+num+"-kaldi-penalty-"+penaltyfactor+".txt";
       std::ofstream os(outfile.c_str()); 
       m.Write(os, false);
@@ -143,11 +149,11 @@ static void UnitTestKeeleNccfBallast() {
       std::string pgtfile;
       std::string num;
       if( i < 6) {
-        num = "f"+boost::lexical_cast<std::string>(i)+"nw0000";
+        num = "f"+ConvertIntToString(i)+"nw0000";
         wavefile = "keele/resampled/"+num+".wav";
         pgtfile =  "keele/ptk/pgt/"+num+"-pgt.txt";
       } else {
-        num = "m"+boost::lexical_cast<std::string>(i-5)+"nw0000";
+        num = "m"+ConvertIntToString(i-5)+"nw0000";
         wavefile = "keele/resampled/"+num+".wav";
         pgtfile =  "keele/ptk/pgt/"+num+"-pgt.txt";
       }
@@ -160,13 +166,13 @@ static void UnitTestKeeleNccfBallast() {
       // use pitch code with default configuration..
       PitchExtractionOptions op;  
       op.samp_freq = 8000;
-      op.preemph_coeff = exp(-7000/op.samp_freq);
+      op.preemph_coeff = exp(-7000/op.resample_freq);
       op.nccf_ballast = 0.1 * k;  
       std::cout << " nccf_ballast " << op.nccf_ballast << std::endl;
       // compute pitch.
       Matrix<BaseFloat> m;
       Compute(op, waveform, &m); 
-      std::string nccfballast = boost::lexical_cast<std::string>(op.nccf_ballast); 
+      std::string nccfballast = ConvertIntToString(op.nccf_ballast); 
       std::string outfile = "keele/afact/"+num+"-kaldi-nccf-ballast-"+nccfballast+".txt";
       std::ofstream os(outfile.c_str());
       m.Write(os, false);
@@ -189,7 +195,7 @@ static void UnitTestVietnamese() {
   // use pitch code with default configuration..
   PitchExtractionOptions op;
   op.samp_freq = 8000;
-  op.preemph_coeff = exp(-7000/op.samp_freq);
+  op.preemph_coeff = exp(-7000/op.resample_freq);
   // compute pitch.
   Matrix<BaseFloat> m;
   Compute(op, waveform, &m);    
@@ -293,7 +299,7 @@ static void UnitTestWeightedMwn2() {
     output_feats2(num_frames, 2);
   for (int32 i = 0; i < 9; i++) {   
     int32 normalization_win_size = (i+1)*25;  
-    std::string wsize = boost::lexical_cast<std::string>(normalization_win_size); 
+    std::string wsize = ConvertIntToString(normalization_win_size); 
     WeightedMwn(normalization_win_size, feats, &output_feats);  
     for (int32 t = 0; t < num_frames; t++) {
       int32 window_begin, window_end; 
@@ -348,17 +354,17 @@ static void UnitTestPitchExtractionSpeed() {
   // use pitch code with default configuration..
   PitchExtractionOptions op_fast;
   op_fast.samp_freq = 8000;
-  op_fast.preemph_coeff = exp(-7000/op_fast.samp_freq);
+  op_fast.preemph_coeff = exp(-7000/op_fast.resample_freq);
   op_fast.lowpass_cutoff = 1000;
   op_fast.max_f0 = 400; 
   for (int32 i = 1; i < 2; i++) {
     std::string wavefile;
     std::string num;
     if( i < 6) {
-      num = "f"+boost::lexical_cast<std::string>(i)+"nw0000";
+      num = "f"+ConvertIntToString(i)+"nw0000";
       wavefile = "keele/resampled/"+num+".wav";
     } else {
-      num = "m"+boost::lexical_cast<std::string>(i-5)+"nw0000";
+      num = "m"+ConvertIntToString(i-5)+"nw0000";
       wavefile = "keele/resampled/"+num+".wav";
     }
     std::cout << "--- " << wavefile << " ---\n";
@@ -391,15 +397,15 @@ static void UnitTestPitchExtractorCompareKeele() {
   // use pitch code with default configuration..
   PitchExtractionOptions op;
   op.samp_freq = 8000;
-  op.preemph_coeff = exp(-7000/op.samp_freq);
+  op.preemph_coeff = exp(-7000/op.resample_freq);
   for (int32 i = 1; i < 11; i++) {
     std::string wavefile;
     std::string num;
     if( i < 6) {
-      num = "f"+boost::lexical_cast<std::string>(i)+"nw0000";
+      num = "f"+ConvertIntToString(i)+"nw0000";
       wavefile = "keele/resampled/"+num+".wav";
     } else {
-      num = "m"+boost::lexical_cast<std::string>(i-5)+"nw0000";
+      num = "m"+ConvertIntToString(i-5)+"nw0000";
       wavefile = "keele/resampled/"+num+".wav";
     }
     std::cout << "--- " << wavefile << " ---\n";
@@ -420,19 +426,19 @@ void UnitTestDiffSampleRate() {
   int sample_rate = 16000; 
   PitchExtractionOptions op_fast;
   op_fast.samp_freq = static_cast<double>(sample_rate);
-  op_fast.preemph_coeff = exp(-7000/op_fast.samp_freq);
+  op_fast.preemph_coeff = exp(-7000/op_fast.resample_freq);
   op_fast.lowpass_cutoff = 1000;
   op_fast.max_f0 = 400;
-  std::string samp_rate = boost::lexical_cast<std::string>(sample_rate/1000);
+  std::string samp_rate = ConvertIntToString(sample_rate/1000);
   for (int32 i = 1; i < 11; i++) {
     std::string wavefile;
     std::string num;
     if( i < 6) {
-      num = "f"+boost::lexical_cast<std::string>(i)+"nw0000";
+      num = "f"+ConvertIntToString(i)+"nw0000";
       //wavefile = "keele/resampled/10kHz/"+num+".wav";
       wavefile = "keele/"+samp_rate+"kHz/"+num+".wav";
     } else {
-      num = "m"+boost::lexical_cast<std::string>(i-5)+"nw0000";
+      num = "m"+ConvertIntToString(i-5)+"nw0000";
       //wavefile = "keele/resampled/10kHz/"+num+".wav";
       wavefile = "keele/"+samp_rate+"kHz/"+num+".wav";
     }
@@ -454,10 +460,10 @@ void UnitTestPostProcess() {
     std::string wavefile;
     std::string num;
     if( i < 6) {
-      num = "f"+boost::lexical_cast<std::string>(i)+"nw0000";
+      num = "f"+ConvertIntToString(i)+"nw0000";
       wavefile = "keele/resampled/"+num+".wav";
     } else {
-      num = "m"+boost::lexical_cast<std::string>(i-5)+"nw0000";
+      num = "m"+ConvertIntToString(i-5)+"nw0000";
       wavefile = "keele/resampled/"+num+".wav";
     }
     std::cout << "--- " << wavefile << " ---\n";
@@ -468,7 +474,7 @@ void UnitTestPostProcess() {
     SubVector<BaseFloat> waveform(wave.Data(), 0);
     PitchExtractionOptions op;
     op.samp_freq = 8000;
-    op.preemph_coeff = exp(-7000/op.samp_freq);
+    op.preemph_coeff = exp(-7000/op.resample_freq);
     op.lowpass_cutoff = 1000;
     op.max_f0 = 400;
     Matrix<BaseFloat> m, m2;
@@ -499,21 +505,21 @@ void UnitTestDeltaPitch() {
   }
 }
 static void UnitTestFeat() {
-  UnitTestSimple();
-  UnitTestGetf0Compare1();
-  //UnitTestGetf0CompareKeele();
-  UnitTestPenaltyFactor();
+  //UnitTestSimple();
+  //UnitTestGetf0Compare1();
+  UnitTestGetf0CompareKeele();
+  //UnitTestPenaltyFactor();
   //UnitTestKeeleNccfBallast();
   //UnitTestVietnamese();
-  UnitTestResample();
-  UnitTestWeightedMwn1();
-  UnitTestWeightedMwn2();
-  UnitTestTakeLogOfPitch();
+  //UnitTestResample();
+  //UnitTestWeightedMwn1();
+  //UnitTestWeightedMwn2();
+  //UnitTestTakeLogOfPitch();
   //UnitTestPitchExtractionSpeed();
   //UnitTestPitchExtractorCompareKeele();
-  UnitTestDiffSampleRate();
-  UnitTestPostProcess();
-  UnitTestDeltaPitch();
+  //UnitTestDiffSampleRate();
+  //UnitTestPostProcess();
+  //UnitTestDeltaPitch();
 }
 
 
