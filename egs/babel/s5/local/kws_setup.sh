@@ -92,16 +92,15 @@ fi
 
 if $kwlist_wordlist ; then 
 (
-echo '<kwlist ecf_filename="kwlist.xml" language="" encoding="UTF-8" compareNormalize="lowercase" version="" >'
-id=1
-while read line; do
-  id_str=$( printf "KWS$langid-%04d\n" $id )
-  echo "  <kw kwid=\"$id_str\">"
-  echo "    <kwtext>$line</kwtext>"
-  echo "  </kw>"
-  id=$(( $id + 1 ))
-done < ${kwlist_file}
-echo '</kwlist>'
+ echo '<kwlist ecf_filename="kwlist.xml" language="" encoding="UTF-8" compareNormalize="lowercase" version="" >'
+ while read line; do
+   id_str=`echo $line | cut -f 1 -d ' '`
+   kw_str=`echo $line | cut -f 2- -d ' '`
+   echo "  <kw kwid=\"$id_str\">"
+   echo "    <kwtext>$kw_str</kwtext>"
+   echo "  </kw>"
+ done < ${kwlist_file}
+ echo '</kwlist>'
 ) > $kwsdatadir/kwlist.xml || exit 1
 else
   cp "$kwlist_file" $kwsdatadir/kwlist.xml || exit 1
@@ -129,3 +128,16 @@ local/kws_data_prep.sh --case-insensitive ${case_insensitive} \
 #~  echo '</kwlist>'
 #~  ) > $kwsdatadir/kwlist.xml || exit 1
 #~
+#-(
+#-echo '<kwlist ecf_filename="kwlist.xml" language="" encoding="UTF-8" compareNormalize="lowercase" version="" >'
+#-id=1
+#-while read line; do
+#-  id_str=$( printf "KWS$langid-%04d\n" $id )
+#-  echo "  <kw kwid=\"$id_str\">"
+#-  echo "    <kwtext>$line</kwtext>"
+#-  echo "  </kw>"
+#-  id=$(( $id + 1 ))
+#-done < ${kwlist_file}
+#-echo '</kwlist>'
+#-) > $kwsdatadir/kwlist.xml || exit 1
+#-

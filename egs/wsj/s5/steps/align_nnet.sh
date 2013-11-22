@@ -18,7 +18,7 @@ align_to_lats=false # optionally produce alignment in lattice format
  lats_decode_opts="--acoustic-scale=0.1 --beam=20 --latbeam=10"
  lats_graph_scales="--transition-scale=1.0 --self-loop-scale=0.1"
 
-use_gpu_id=-1 # disable gpu
+use_gpu="no" # yes|no|optionaly
 # End configuration options.
 
 [ $# -gt 0 ] && echo "$0 $@"  # Print the command line for logging
@@ -76,7 +76,7 @@ if [ -f $srcdir/delta_order ]; then
   feats="$feats add-deltas --delta-order=$delta_order ark:- ark:- |"
 fi
 # Finally add feature_transform and the MLP
-feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu-id=$use_gpu_id $nnet ark:- ark:- |"
+feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet ark:- ark:- |"
 
 
 echo "$0: aligning data '$data' using nnet/model '$srcdir', putting alignments in '$dir'"

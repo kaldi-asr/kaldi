@@ -82,12 +82,12 @@ if  $case_insensitive && ! $use_icu  ; then
     sym2int.pl --map-oov 0 -f 2- $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
 elif  $case_insensitive && $use_icu ; then
   echo "$0: Running case insensitive processing (using ICU with transform \"$icu_transform\")"
-  cat $langdir/words.txt | uconv -f utf8 -t utf8 -x "$icu_transform"  > $kwsdatadir/words.txt
+  cat $langdir/words.txt | uconv -f utf8 -t utf8 -x "${icu_transform}"  > $kwsdatadir/words.txt
   [ `cut -f 1 -d ' ' $kwsdatadir/words.txt | sort -u | wc -l` -ne `cat $kwsdatadir/words.txt | wc -l` ] && \
     echo "$0: Warning, multiple words in dictionary differ only in case: " 
 
   paste <(cut -f 1  $kwsdatadir/keywords.txt  ) \
-        <(cut -f 2  $kwsdatadir/keywords.txt | uconv -f utf8 -t utf8 -x "$icu_transform" ) | \
+        <(cut -f 2  $kwsdatadir/keywords.txt | uconv -f utf8 -t utf8 -x "${icu_transform}" ) |\
     local/kwords2indices.pl --map-oov 0  $kwsdatadir/words.txt > $kwsdatadir/keywords_all.int
 else
   cp $langdir/words.txt  $kwsdatadir/words.txt

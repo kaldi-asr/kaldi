@@ -341,7 +341,7 @@ if [ -f exp/tri6_nnet/.done ]; then
 
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
-    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
     ${datadir} data/lang $decode
 fi
 

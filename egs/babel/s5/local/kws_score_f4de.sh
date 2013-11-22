@@ -65,6 +65,10 @@ echo KWSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwlist \
 KWSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwlist \
     -s $kwsoutputdir/kwslist.xml -c -o -b -d -f ${kwsoutputdir}${f4de_prefix} || exit 1;
 
+duration=`cat ${kwsoutputdir}${f4de_prefix}/sum.txt | grep TotDur | cut -f 3 -d '|' | sed "s/\s*//g"`
+
+local/kws_oracle_threshold.pl --duration $duration ${kwsoutputdir}${f4de_prefix}/alignment.csv > ${kwsoutputdir}${f4de_prefix}/metrics.txt
+
 exit 0;
 
 

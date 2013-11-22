@@ -588,6 +588,7 @@ void* CuAllocator::MallocInternal(size_t row_bytes,
       if (ret != 0) {
         KALDI_WARN << "Allocation of memory block of " << size << " bytes "
                    << "failed, releasing cached memory and retrying.";
+        cudaGetLastError(); // reset the error state
         ReleaseAllCachedMemory();
         ret = cudaMalloc(&ans, size);
         if (ret != 0)
@@ -603,6 +604,7 @@ void* CuAllocator::MallocInternal(size_t row_bytes,
         KALDI_WARN << "Allocation of " << num_rows << " rows, each of size "
                    << row_bytes << " bytes failed,  releasing cached "
                    << "memory and retrying.";
+        cudaGetLastError(); // reset the error state
         ReleaseAllCachedMemory();
         ret = cudaMallocPitch(&ans, &pitch, row_bytes, num_rows);
         if (ret != 0) {
