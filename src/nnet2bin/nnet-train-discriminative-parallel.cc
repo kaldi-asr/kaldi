@@ -43,6 +43,7 @@ int main(int argc, char *argv[]) {
         "nnet-train-discriminative-parallel --num-threads=8 1.nnet ark:1.degs 2.nnet\n";
     
     bool binary_write = true;
+    std::string use_gpu = "yes";
     int32 num_threads = 1;
     NnetDiscriminativeUpdateOptions update_opts;
     

@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
         "nnet-train-discriminative-simple 1.nnet ark:1.degs 2.nnet\n";
     
     bool binary_write = true;
-    std::string use_gpu="yes";
+    std::string use_gpu = "yes";
     NnetDiscriminativeUpdateOptions update_opts;
     
     ParseOptions po(usage);

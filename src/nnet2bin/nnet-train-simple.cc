@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     bool binary_write = true;
     bool zero_stats = true;
     int32 srand_seed = 0;
-    std::string use_gpu="yes";
+    std::string use_gpu = "yes";
     NnetSimpleTrainerConfig train_config;
     
     ParseOptions po(usage);
