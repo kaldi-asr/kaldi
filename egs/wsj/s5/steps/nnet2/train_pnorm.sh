@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey). 
-#	    2013  Xiaohui Zhang
+#           2013  Xiaohui Zhang
 # Apache 2.0.
 
 
@@ -21,11 +21,6 @@ num_iters_final=20 # Maximum number of final iterations to give to the
 initial_learning_rate=0.04
 final_learning_rate=0.004
 bias_stddev=0.5
-shrink_interval=5 # shrink every $shrink_interval iters except while we are 
-                  # still adding layers, when we do it every iter.
-shrink=true
-num_frames_shrink=2000 # note: must be <= --num-frames-diagnostic option to get_egs.sh, if
-                       # given.
 softmax_learning_rate_factor=0.5 # Train this layer half as fast as the other layers.
 
 pnorm_input_dim=3000 
@@ -321,19 +316,6 @@ while [ $x -lt $num_iters ]; do
     $cmd $dir/log/average.$x.log \
       nnet-am-average $nnets_list - \| \
       nnet-am-copy --learning-rates=$lr_string - $dir/$[$x+1].mdl || exit 1;
-
-    if $shrink && [ $[$x % $shrink_interval] -eq 0 ]; then
-      mb=$[($num_frames_shrink+$num_threads-1)/$num_threads]
-      $cmd $parallel_opts $dir/log/shrink.$x.log \
-        nnet-subset-egs --n=$num_frames_shrink --randomize-order=true --srand=$x \
-          ark:$egs_dir/train_diagnostic.egs ark:-  \| \
-        nnet-combine-fast --num-threads=$num_threads --verbose=3 --minibatch-size=$mb \
-          $dir/$[$x+1].mdl ark:- $dir/$[$x+1].mdl || exit 1;
-    else
-      # On other iters, do nnet-am-fix which is much faster and has roughly
-      # the same effect.
-      nnet-am-fix $dir/$[$x+1].mdl $dir/$[$x+1].mdl 2>$dir/log/fix.$x.log 
-    fi
 
     if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
       # mix up.
