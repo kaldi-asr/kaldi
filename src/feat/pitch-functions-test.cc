@@ -22,8 +22,9 @@
 #include "base/kaldi-math.h"
 #include "matrix/kaldi-matrix-inl.h"
 #include "feat/wave-reader.h"
-#include <boost/lexical_cast.hpp>
 #include <sys/timeb.h>
+#include <sys/stat.h>
+#include <sys/types.h> 
 
 using namespace kaldi;
 
@@ -32,7 +33,50 @@ std::string ConvertIntToString(const int &number) {
   ss << number;  //add number to the stream
   return ss.str();  //return a string with the contents of the stream
 }
-
+bool DirExist(const std::string &dirname) {
+  struct stat st;
+  if(stat(dirname.c_str(),&st) != 0) {
+    std::cout << " directory " << dirname << " does not exist!" ;
+    return false;
+  }
+  return true;
+}
+bool CheckKeele() {
+  std::string wavefile;
+  std::string num, ans, dir = "keele/resampled/";
+  bool dir_exist =  DirExist(dir);
+  if (!dir_exist) {
+    std::cout << "Do you have keele database?(yes/no)";
+    std::cin >> ans;
+    if (ans == "no") {
+      std::cout << " You need to download the keele database!"
+                << " The link for download is : " << std::endl;
+      return false;
+    } else if (ans == "yes") {
+      std::cout << "what is your directory for keele database? ";
+      std::cin >> dir;
+    }
+  }
+  if (DirExist(dir)) {
+    return false;
+  } else {
+    for(int32 i = 1; i < 11; i++) {
+      if( i < 6) {
+        num = "f" + ConvertIntToString(i) + "nw0000";
+        wavefile = dir+num+".wav";
+      } else {
+        num = "m" + ConvertIntToString(i-5) + "nw0000";  
+        wavefile = dir+num+".wav";
+      }
+      std::ifstream fin(wavefile.c_str() );
+      if(fin.fail()) {
+        std::cout << " file " << num << ".wav does not exist" << std::endl;
+        return false;
+      }
+    }
+  }
+  return true;
+}
 static void UnitTestSimple() {
   std::cout << "=== UnitTestSimple() ===\n";
 
@@ -77,32 +121,38 @@ static void UnitTestGetf0Compare1() {
 // Compare pitch from Getf0 and Kaldi pitch tracker on KEELE corpora 
 static void UnitTestGetf0CompareKeele() {
   std::cout << "=== UnitTestGetf0CompareKeele() ===\n";
-  for (int32 i = 1; i < 11; i++) {
-    std::string wavefile;
-    std::string num;
-    if( i < 6) {
-      num = "f" + ConvertIntToString(i) + "nw0000";
-      wavefile = "keele/resampled/"+num+".wav";
-    } else {
-      num = "f" + ConvertIntToString(i-5) + "nw0000";  
-      wavefile = "keele/resampled/"+num+".wav";
+  if (CheckKeele()) {
+    for (int32 i = 1; i < 11; i++) {
+      std::string wavefile;
+      std::string num;
+      if( i < 6) {
+        num = "f" + ConvertIntToString(i) + "nw0000";
+        wavefile = "keele/resampled/"+num+".wav";
+      } else {
+        num = "m" + ConvertIntToString(i-5) + "nw0000";  
+        wavefile = "keele/resampled/"+num+".wav";
+      }
+      std::cout << "--- " << wavefile << " ---\n";
+      std::ifstream is(wavefile.c_str());
+      WaveData wave;  
+      wave.Read(is);     
+      KALDI_ASSERT(wave.Data().NumRows() == 1);       
+      SubVector<BaseFloat> waveform(wave.Data(), 0); 
+      // use pitch code with default configuration..
+      PitchExtractionOptions op;
+      op.samp_freq = 8000;
+      //op.preemph_coeff = exp(-7000/op.resample_freq);
+      //op.preemph_coeff = exp(-7000/op.samp_freq);
+      op.preemph_coeff =0;
+      op.nccf_ballast = 0.1;
+      op.frame_length_ms = 20.0;
+      // compute pitch.
+      Matrix<BaseFloat> m;
+      Compute(op, waveform, &m);    
+      std::string outfile = "keele/kaldi/"+num+"-kaldi.txt";
+      std::ofstream os(outfile.c_str()); 
+      m.Write(os, false);
     }
-    std::cout << "--- " << wavefile << " ---\n";
-    std::ifstream is(wavefile.c_str());
-    WaveData wave;  
-    wave.Read(is);     
-    KALDI_ASSERT(wave.Data().NumRows() == 1);       
-    SubVector<BaseFloat> waveform(wave.Data(), 0); 
-    // use pitch code with default configuration..
-    PitchExtractionOptions op;
-    op.samp_freq = 8000;
-    op.preemph_coeff = exp(-7000/op.resample_freq);
-    // compute pitch.
-    Matrix<BaseFloat> m;
-    Compute(op, waveform, &m);    
-    std::string outfile = "keele/kaldi/"+num+"-kaldi.txt";
-    std::ofstream os(outfile.c_str()); 
-    m.Write(os, false);
   }
 }
 /* change freq_weight to investigate the results */
@@ -505,6 +555,7 @@ void UnitTestDeltaPitch() {
   }
 }
 static void UnitTestFeat() {
+  //CheckKeele();
   //UnitTestSimple();
   //UnitTestGetf0Compare1();
   UnitTestGetf0CompareKeele();
