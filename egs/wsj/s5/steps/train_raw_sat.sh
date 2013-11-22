@@ -68,11 +68,13 @@ silphonelist=`cat $lang/phones/silence.csl`
 ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 sdata=$data/split$nj;
 splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
+norm_vars=`cat $alidir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
 phone_map_opt=
 [ ! -z "$phone_map" ] && phone_map_opt="--phone-map='$phone_map'"
 
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
+cp $alidir/norm_vars $dir 2>/dev/null # cmn/cmvn option.
 
 echo $nj >$dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
@@ -84,7 +86,7 @@ if [[ ! -f $alidir/final.mat || ! -f $alidir/full.mat ]]; then
   exit 1
 fi
 
-sisplicedfeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
+sisplicedfeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
 sifeats="$sisplicedfeats transform-feats $alidir/final.mat ark:- ark:- |"
 
 
@@ -109,7 +111,7 @@ else
   cur_trans_dir=$dir
 fi
 
-splicedfeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$cur_trans_dir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- |"
+splicedfeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$cur_trans_dir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- |"
 
 
 if [ $stage -le -5 ]; then
@@ -219,7 +221,7 @@ while [ $x -lt $num_iters ]; do
       done
     fi
     cur_trans_dir=$dir
-    splicedfeats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$cur_trans_dir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- |"
+    splicedfeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$cur_trans_dir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- |"
     feats="$splicedfeats transform-feats $dir/$cur_lda_iter.mat ark:- ark:- |"
   fi
 

@@ -185,8 +185,9 @@ echo "Feature dim is : $feat_dim"
 
 if [ ! -z "$feature_transform" ]; then
   echo "Using pre-computed feature-transform : '$feature_transform'"
+  [ ! -f $feature_transform ] && echo "Missing file '$feature_transform'" && exit 1
   tmp=$dir/$(basename $feature_transform) 
-  cp $feature_transform $tmp; feature_transform=$tmp
+  cp $feature_transform $tmp; feature_transform=$tmp 
 else
   # Generate the splice transform
   echo "Using splice +/- $splice , step $splice_step"
@@ -298,6 +299,7 @@ else
 
   #optionally prepend dbn to the initialization
   if [ ! -z $dbn ]; then
+    [ ! -f $dbn ] && echo "Missing file '$dbn'" && exit 1
     mlp_init_old=$mlp_init; mlp_init=$dir/nnet_$(basename $dbn)_dnn.init
     nnet-concat $dbn $mlp_init_old $mlp_init 
   fi

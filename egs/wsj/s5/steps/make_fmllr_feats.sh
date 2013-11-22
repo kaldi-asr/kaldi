@@ -1,19 +1,16 @@
 #!/bin/bash
 
-# Copyright 2012  Karel Vesely
-#                 Johns Hopkins University (Author: Daniel Povey),
+# Copyright 2012-2013  Brno University of Technology (Author: Karel Vesely),
 #                 
 # Apache 2.0.
-
-# This script is for use in neural network training and testing; it dumps
-# (LDA+MLLT or splice+delta) + fMLLR features in a similar format to
-# conventional raw MFCC features. 
+#
+# This script dumps fMLLR features in a new data directory, 
+# which is later used for neural network training/testing.
 
 # Begin configuration section.  
 nj=4
 cmd=run.pl
 transform_dir=
-norm_vars=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -37,22 +34,15 @@ if [ $# != 5 ]; then
    exit 1;
 fi
 
-
 data=$1
 srcdata=$2
 gmmdir=$3
 logdir=$4
 feadir=$5
 
-
-
-#srcdir=$1 -> gmmdir
-#data=$2 -> srcdata
-#dir=$3 -> ruzne
-#tgtdata=$4 -> feadir
-
 sdata=$srcdata/split$nj;
-splice_opts=`cat $gmmdir/splice_opts 2>/dev/null`
+splice_opts=`cat $gmmdir/splice_opts 2>/dev/null` # frame-splicing options.
+norm_vars=`cat $srcdir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
 
 mkdir -p $data $logdir $feadir
 [[ -d $sdata && $srcdata/feats.scp -ot $sdata ]] || split_data.sh $srcdata $nj || exit 1;
@@ -73,27 +63,23 @@ esac
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "Using fMLLR transforms from $transform_dir"
   [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist." && exit 1
-#  [ "`cat $transform_dir/num_jobs`" -ne $nj ] && \
-#     echo "Mismatch in number of jobs with $transform_dir" && exit 1;
-#  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk \"ark:cat $transform_dir/trans.* |\" ark:- ark:- |"
 fi
 
-
-#prepare the dir
-cp $srcdata/* $data; rm $data/{feats.scp,cmvn.scp};
+# prepare the dir
+cp $srcdata/* $data 2>/dev/null; rm $data/{feats,cmvn}.scp;
 
 # make $bnfeadir an absolute pathname.
 feadir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $feadir ${PWD}`
 
 name=`basename $data`
 
-#forward the feats
+# forward the feats
 $cmd JOB=1:$nj $logdir/make_fmllr_feats.JOB.log \
   copy-feats "$feats" \
   ark,scp:$feadir/feats_fmllr_$name.JOB.ark,$feadir/feats_fmllr_$name.JOB.scp || exit 1;
    
-#merge the feats to single SCP
+# merge the SCPs
 for n in $(seq 1 $nj); do
   cat $feadir/feats_fmllr_$name.$n.scp 
 done > $data/feats.scp
