@@ -72,8 +72,9 @@ struct NnetDiscriminativeStats {
                         // SMBR/MPFE, 0.
   double tot_den_objf;  // for MMI, the (weighted) denominator likelihood; for
                         // SMBR/MPFE, the objective function.
-  NnetDiscriminativeStats() { std::memset(this, sizeof(*this), 0);}
+  NnetDiscriminativeStats() { std::memset(this, 0, sizeof(*this)); }
   void Print(std::string criterion); // const NnetDiscriminativeUpdateOptions &opts);
+  void Add(const NnetDiscriminativeStats &other);
 };
 
 /** Does the neural net computation, lattice forward-backward, and backprop,
@@ -106,4 +107,4 @@ void NnetDiscriminativeUpdate(const AmNnet &am_nnet,
 } // namespace nnet2
 } // namespace kaldi
 
-#endif // KALDI_NNET2_NNET_COMPUTE_H_
+#endif // KALDI_NNET2_NNET_COMPUTE_DISCRIMINATIVE_H_

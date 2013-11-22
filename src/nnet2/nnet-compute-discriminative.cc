@@ -370,6 +370,13 @@ void NnetDiscriminativeUpdate(const AmNnet &am_nnet,
   updater.Update();
 }
 
+void NnetDiscriminativeStats::Add(const NnetDiscriminativeStats &other) {
+  tot_t += other.tot_t;
+  tot_t_weighted += other.tot_t_weighted;
+  tot_num_count += other.tot_num_count;
+  tot_num_objf += other.tot_num_objf;
+  tot_den_objf += other.tot_den_objf;
+}
 
 void NnetDiscriminativeStats::Print(std::string criterion) {
   KALDI_ASSERT(criterion == "mmi" || criterion == "smbr" ||

@@ -28,6 +28,9 @@ else
 
   # This one is on top of 40-dim + fMLLR features
   local/nnet2/run_4c.sh
+
+  # This is discriminative training on top of 4c.
+  local/nnet2/run_5c.sh
 fi
   
 

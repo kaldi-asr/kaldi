@@ -3,24 +3,23 @@
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 # This script does MPE or fMMI state-level minimum bayes risk (sMBR) training.
-# Note: the temporary data is put in <exp-dir>/egs/, so if you want
+# Note: the temporary data is put in <exp-dir>/degs/, so if you want
 # to use a different disk for that, just make that a soft link to some other
 # volume.
 
 # Begin configuration section.
 cmd=run.pl
 num_epochs=4       # Number of epochs of training
-initial_learning_rate=0.00002
-final_learning_rate=0.00001
-final_learning_rate_factor=0.5 # Train last two layers half as fast as the other layers.
-
-
-
+learning_rate=0.00002
+acoustic_scale=0.1  # acoustic scale for MMI/MPFE/SMBR training.
+criterion=smbr
+boost=0.0       # option relevant for MMI
+drop_frames=false #  option relevant for MMI
 num_jobs_nnet=4    # Number of neural net jobs to run in parallel.  Note: this
                    # will interact with the learning rates (if you decrease
                    # this, you'll have to decrease the learning rate, and vice
                    # versa).
-samples_per_iter=200000 # measured in frames, not in "examples"
+samples_per_iter=400000 # measured in frames, not in "examples"
 
 spk_vecs_dir=
 
@@ -35,9 +34,9 @@ stage=-8
 
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 
-num_threads=16 # this is the default but you may want to change it, e.g. to 1 if
-               # using GPUs.
-parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" # by default we use 16 threads; this lets the queue know.
+num_threads=16  # this is the default but you may want to change it, e.g. to 1 if
+                # using GPUs.
+parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" # by default we use 4 threads; this lets the queue know.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
 transform_dir= # If this is a SAT system, directory for transforms
 cleanup=true
@@ -76,7 +75,8 @@ if [ $# != 6 ]; then
   echo "                                                   # process."
   echo "  --stage <stage|-8>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
-  
+  echo "  --criterion <criterion|smbr>                     # Training criterion: may be smbr, mmi or mpfe"
+  echo "  --boost <boost|0.0>                              # Boosting factor for MMI (e.g., 0.1)"
   exit 1;
 fi
 
@@ -108,8 +108,9 @@ mkdir -p $dir || exit 1;
 sdata=$data/split$nj
 utils/split_data.sh $data $nj
 
-mkdir -p $dir/log $dir/egs
+mkdir -p $dir/log $dir/degs
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
+silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/tree $dir
 
@@ -153,17 +154,17 @@ fi
 # Working out number of iterations per epoch.
 iters_per_epoch=`perl -e "print int($num_frames/($samples_per_iter * $num_jobs_nnet) + 0.5);"` || exit 1;
 [ $iters_per_epoch -eq 0 ] && iters_per_epoch=1
-echo $iters_per_epoch > $dir/egs/iters_per_epoch  || exit 1;
+echo $iters_per_epoch > $dir/degs/iters_per_epoch  || exit 1;
 
 samples_per_iter_real=$[$num_frames/($num_jobs_nnet*$iters_per_epoch)]
 echo "$0: Every epoch, splitting the data up into $iters_per_epoch iterations,"
 echo "$0: giving samples-per-iteration of $samples_per_iter_real (you requested $samples_per_iter)."
 
 
-
 if [ $stage -le -7 ]; then
   echo "$0: Copying initial model and removing any preconditioning"
-  nnet-am-copy --remove-preconditioning=true $src_model $dir/0.mdl || exit 1;
+  nnet-am-copy --learning-rate=$learning_rate --remove-preconditioning=true \
+    "$src_model" $dir/0.mdl || exit 1;
 fi
 
 if [ $stage -le -6 ]; then
@@ -177,11 +178,12 @@ if [ $stage -le -6 ]; then
 
   egs_list=
   for n in `seq 1 $num_jobs_nnet`; do
-    egs_list="$egs_list ark:$dir/egs/egs_orig.$n.JOB.ark"
+    egs_list="$egs_list ark:$dir/degs/degs_orig.$n.JOB.ark"
   done
 
   $cmd $io_opts JOB=1:$nj $dir/log/get_egs.JOB.log \
-    nnet-get-egs-discriminative "${spk_vecs_opt[@]}" $dir/0.mdl "$feats" \
+    nnet-get-egs-discriminative --criterion=$criterion --drop-frames=$drop_frames \
+    "${spk_vecs_opt[@]}" $dir/0.mdl "$feats" \
     "ark,s,cs:gunzip -c $alidir/ali.JOB.gz |" \
     "ark,s,cs:gunzip -c $denlatdir/lat.JOB.gz|" ark:- \| \
     nnet-copy-egs-discriminative ark:- $egs_list || exit 1;
@@ -197,20 +199,20 @@ if [ $stage -le -5 ]; then
   if [ $iters_per_epoch -eq 1 ]; then
     echo "Since iters-per-epoch == 1, just concatenating the data."
     for n in `seq 1 $num_jobs_nnet`; do
-      cat $dir/egs/egs_orig.$n.*.ark > $dir/egs/egs_tmp.$n.0.ark || exit 1;
-      rm $dir/egs/egs_orig.$n.*.ark  # don't "|| exit 1", due to NFS bugs...
+      cat $dir/degs/degs_orig.$n.*.ark > $dir/degs/degs_tmp.$n.0.ark || exit 1;
+      rm $dir/degs/degs_orig.$n.*.ark  # don't "|| exit 1", due to NFS bugs...
     done
   else # We'll have to split it up using nnet-copy-egs.
     egs_list=
     for n in `seq 0 $[$iters_per_epoch-1]`; do
-      egs_list="$egs_list ark:$dir/egs/egs_tmp.JOB.$n.ark"
+      egs_list="$egs_list ark:$dir/degs/degs_tmp.JOB.$n.ark"
     done
     # note, the "|| true" below is a workaround for NFS bugs
     # we encountered running this script with Debian-7, NFS-v4.
     $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/split_egs.JOB.log \
-      nnet-copy-egs-discriminative --random=$random_copy --srand=JOB \
-        "ark:cat $dir/egs/egs_orig.JOB.*.ark|" $egs_list '&&' \
-        '(' rm $dir/egs/egs_orig.JOB.*.ark '||' true ')' || exit 1;
+      nnet-copy-egs-discriminative --srand=JOB \
+        "ark:cat $dir/degs/degs_orig.JOB.*.ark|" $egs_list '&&' \
+        '(' rm $dir/degs/degs_orig.JOB.*.ark '||' true ')' || exit 1;
   fi
 fi
 
@@ -218,6 +220,9 @@ fi
 if [ $stage -le -4 ]; then
   # Next, shuffle the order of the examples in each of those files.
   # Each one should not be too large, so we can do this in memory.
+  # Then combine the examples together to form suitable-size minibatches
+  # (for discriminative examples, it's one example per minibatch, so we
+  # have to combine the lattices).
   echo "Shuffling the order of training examples"
   echo "(in order to avoid stressing the disk, these won't all run at once)."
 
@@ -226,8 +231,9 @@ if [ $stage -le -4 ]; then
   for n in `seq 0 $[$iters_per_epoch-1]`; do
     $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/shuffle.$n.JOB.log \
       nnet-shuffle-egs-discriminative "--srand=\$[JOB+($num_jobs_nnet*$n)]" \
-      ark:$dir/egs/egs_tmp.JOB.$n.ark ark:$dir/egs/egs.JOB.$n.ark '&&' \
-      '(' rm $dir/egs/egs_tmp.JOB.$n.ark '||' true ')' || exit 1;
+      ark:$dir/degs/degs_tmp.JOB.$n.ark ark:- \| \
+      nnet-combine-egs-discriminative ark:- ark:$dir/degs/degs.JOB.$n.ark '&&' \
+      '(' rm $dir/degs/degs_tmp.JOB.$n.ark '||' true ')' || exit 1;
   done
 fi
 
@@ -235,52 +241,25 @@ num_iters=$[$num_epochs * $iters_per_epoch];
 
 echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
 
-exit 0;
-
-
-# This is when we decide to mix up from: halfway between when we've finished
-# adding the hidden layers and the end of training.
-finish_add_layers_iter=$[($num_hidden_layers-$initial_num_hidden_layers+1)*$add_layers_period]
-mix_up_iter=$[($num_iters + $finish_add_layers_iter)/2]
-
 if [ $num_threads -eq 1 ]; then
-  train_suffix="-simple" # this enables us to use GPU code if
-                         # we have just one thread.
+ train_suffix="-simple" # this enables us to use GPU code if
+                        # we have just one thread.
 else
   train_suffix="-parallel --num-threads=$num_threads"
 fi
 
 
-
 x=0
 while [ $x -lt $num_iters ]; do
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
-    # Set off jobs doing some diagnostics, in the background.
-    $cmd $dir/log/compute_prob_valid.$x.log \
-      nnet-compute-prob $dir/$x.mdl ark:$egs_dir/valid_diagnostic.egs &
-    $cmd $dir/log/compute_prob_train.$x.log \
-      nnet-compute-prob $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
-    if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
-      $cmd $dir/log/progress.$x.log \
-        nnet-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
-    fi
     
     echo "Training neural net (pass $x)"
-    if [ $x -gt 0 ] && \
-      [ $x -le $[($num_hidden_layers-1)*$add_layers_period] ] && \
-      [ $[($x-1) % $add_layers_period] -eq 0 ]; then
-      mdl="nnet-init --srand=$x $dir/hidden.config - | nnet-insert $dir/$x.mdl - - |"
-    else
-      mdl=$dir/$x.mdl
-    fi
-
 
     $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
-      nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
-      ark:$egs_dir/egs.JOB.$[$x%$iters_per_epoch].ark ark:- \| \
-      nnet-train$train_suffix \
-         --minibatch-size=$minibatch_size --srand=$x "$mdl" \
-        ark:- $dir/$[$x+1].JOB.mdl \
+      nnet-train-discriminative$train_suffix --silence-phones=$silphonelist \
+       --criterion=$criterion --drop-frames=$drop_frames \
+       --boost=$boost --acoustic-scale=$acoustic_scale \
+       $dir/$x.mdl ark:$dir/degs/degs.JOB.$[$x%$iters_per_epoch].ark $dir/$[$x+1].JOB.mdl \
       || exit 1;
 
     nnets_list=
@@ -288,101 +267,38 @@ while [ $x -lt $num_iters ]; do
       nnets_list="$nnets_list $dir/$[$x+1].$n.mdl"
     done
 
-    learning_rate=`perl -e '($x,$n,$i,$f)=@ARGV; print ($x >= $n ? $f : $i*exp($x*log($f/$i)/$n));' $[$x+1] $num_iters_reduce $initial_learning_rate $final_learning_rate`;
-    softmax_learning_rate=`perl -e "print $learning_rate * $softmax_learning_rate_factor;"`;
-    nnet-am-info $dir/$[$x+1].1.mdl > $dir/foo  2>/dev/null || exit 1
-    nu=`cat $dir/foo | grep num-updatable-components | awk '{print $2}'`
-    na=`cat $dir/foo | grep -v Fixed | grep AffineComponent | wc -l` 
-    # na is number of last updatable AffineComponent layer [one-based, counting only
-    # updatable components.]
-    lr_string="$learning_rate"
-    for n in `seq 2 $nu`; do 
-      if [ $n -eq $na ] || [ $n -eq $[$na-1] ]; then lr=$softmax_learning_rate;
-      else lr=$learning_rate; fi
-      lr_string="$lr_string:$lr"
-    done
-    
     $cmd $dir/log/average.$x.log \
-      nnet-am-average $nnets_list - \| \
-      nnet-am-copy --learning-rates=$lr_string - $dir/$[$x+1].mdl || exit 1;
+      nnet-am-average $nnets_list $dir/$[$x+1].mdl || exit 1;
 
-    if $shrink && [ $[$x % $shrink_interval] -eq 0 ]; then
-      mb=$[($num_frames_shrink+$num_threads-1)/$num_threads]
-      $cmd $parallel_opts $dir/log/shrink.$x.log \
-        nnet-subset-egs --n=$num_frames_shrink --randomize-order=true --srand=$x \
-          ark:$egs_dir/train_diagnostic.egs ark:-  \| \
-        nnet-combine-fast --num-threads=$num_threads --verbose=3 --minibatch-size=$mb \
-          $dir/$[$x+1].mdl ark:- $dir/$[$x+1].mdl || exit 1;
-    else
-      # On other iters, do nnet-am-fix which is much faster and has roughly
-      # the same effect.
-      nnet-am-fix $dir/$[$x+1].mdl $dir/$[$x+1].mdl 2>$dir/log/fix.$x.log 
-    fi
-
-    if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
-      # mix up.
-      echo Mixing up from $num_leaves to $mix_up components
-      $cmd $dir/log/mix_up.$x.log \
-        nnet-am-mixup --min-count=10 --num-mixtures=$mix_up \
-        $dir/$[$x+1].mdl $dir/$[$x+1].mdl || exit 1;
-    fi
     rm $nnets_list
   fi
+
   x=$[$x+1]
 done
 
-# Now do combination.
-# At the end, final.mdl will be a combination of the last e.g. 10 models.
-nnets_list=()
-if [ $num_iters_final -gt $num_iters_extra ]; then
-  echo "Setting num_iters_final=$num_iters_extra"
-fi
-start=$[$num_iters-$num_iters_final+1]
-for x in `seq $start $num_iters`; do
-  idx=$[$x-$start]
-  if [ $x -gt $mix_up_iter ]; then
-    nnets_list[$idx]=$dir/$x.mdl # "nnet-am-copy --remove-dropout=true $dir/$x.mdl - |"
-  fi
-done
+rm $dir/final.mdl 2>/dev/null
+ln -s $x.mdl $dir/final.mdl
 
-if [ $stage -le $num_iters ]; then
-  # Below, use --use-gpu=no to disable nnet-combine-fast from using a GPU, as
-  # if there are many models it can give out-of-memory error; set num-threads to 8
-  # to speed it up (this isn't ideal...)
-  this_num_threads=$num_threads
-  [ $this_num_threads -lt 8 ] && this_num_threads=8
-  num_egs=`nnet-copy-egs ark:$egs_dir/combine.egs ark:/dev/null 2>&1 | tail -n 1 | awk '{print $NF}'`
-  mb=$[($num_egs+$this_num_threads-1)/$this_num_threads]
-  [ $mb -gt 512 ] && mb=512
-  $cmd $parallel_opts $dir/log/combine.log \
-    nnet-combine-fast --use-gpu=no --num-threads=$this_num_threads \
-      --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
-      $dir/final.mdl || exit 1;
-fi
-
-# Compute the probability of the final, combined model with
-# the same subset we used for the previous compute_probs, as the
-# different subsets will lead to different probs.
-$cmd $dir/log/compute_prob_valid.final.log \
-  nnet-compute-prob $dir/final.mdl ark:$egs_dir/valid_diagnostic.egs &
-$cmd $dir/log/compute_prob_train.final.log \
-  nnet-compute-prob $dir/final.mdl ark:$egs_dir/train_diagnostic.egs &
-
-sleep 2
 
 echo Done
 
 if $cleanup; then
   echo Cleaning up data
-  if [ $egs_dir == "$dir/egs" ]; then
-    echo Removing training examples
-    rm $dir/egs/egs*
-  fi
+
+  echo Removing training examples
+  rm $dir/degs/degs*
+
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
-    if [ $[$x%10] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then 
-       # delete all but every 10th model; don't delete the ones which combine to form the final model.
-      rm $dir/$x.mdl
+    if [ $[$x%$iters_per_epoch] -ne 0 ]; then
+      # delete all but the epoch-final models.
+      rm $dir/$x.mdl 2>/dev/null
     fi
   done
 fi
+
+for n in $(seq 0 $num_epochs); do
+  x=$[$n*$iters_per_epoch]
+  rm $dir/epoch$n.mdl 2>/dev/null
+  ln -s $x.mdl $dir/epoch$n.mdl
+done

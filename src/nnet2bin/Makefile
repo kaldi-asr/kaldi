@@ -17,12 +17,12 @@ BINFILES = nnet-randomize-frames nnet-am-info nnet-train nnet-init \
    nnet-logprob2-parallel nnet-logprob-parallel nnet-am-stats nnet-am-rescale \
    nnet-am-limit-rank nnet-latgen-faster-parallel nnet-to-raw-nnet nnet-compute \
    raw-nnet-concat nnet-am-limit-rank-final raw-nnet-info \
-   nnet-get-feature-transform nnet-compute-from-egs nnet-train-parallel-safe \
+   nnet-get-feature-transform nnet-compute-from-egs \
    nnet-am-widen nnet-show-progress nnet-limit-degradation \
    nnet-get-feature-transform-multi nnet-copy-egs-discriminative \
    nnet-get-egs-discriminative nnet-shuffle-egs-discriminative \
    nnet-compare-hash-discriminative nnet-combine-egs-discriminative \
-   nnet-train-discriminative-simple
+   nnet-train-discriminative-simple nnet-train-discriminative-parallel
 
 OBJFILES =
 

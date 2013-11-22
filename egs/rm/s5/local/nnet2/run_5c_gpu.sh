@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Caution: this is unfinished!
-exit 1;
-
 # This is neural net training on top of adapted 40-dimensional features.
 # This version of the script uses GPUs.  We distinguish it by putting "_gpu"
 # at the end of the directory name.
@@ -38,34 +35,24 @@ steps/nnet2/align.sh  --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
       --transform-dir exp/tri3b_ali \
       --nj $nj data/train data/lang exp/nnet4c_gpu exp/nnet4c_gpu_ali
 
-
+# rename from tri to nnet
 steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" \
+    --num-jobs-nnet 2 \
     --num-threads 1 --parallel-opts "-l gpu=1" data/train data/lang \
-    exp/tri3b_ali exp/nnet4c_gpu_denlats exp/nnet4c_gpu/final.mdl exp/tri5c_mpe
+    exp/nnet4c_gpu_ali exp/nnet4c_gpu_denlats exp/nnet4c_gpu/final.mdl exp/nnet5c_mpe_gpu
+
+for epoch in 1 2 3 4; do
+   steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 --iter epoch$epoch \
+     --transform-dir exp/tri3b/decode \
+     exp/tri3b/graph data/test exp/nnet5c_mpe_gpu/decode_epoch$epoch  &
+
+   steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 --iter epoch$epoch \
+     --transform-dir exp/tri3b/decode_ug \
+     exp/tri3b/graph_ug data/test exp/nnet5c_mpe_gpu/decode_ug_epoch$epoch &
+done
 
 
 exit 0;
-
-(  steps/nnet2/train_tanh.sh  --num-epochs 20 \
-     --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
-     --num-epochs-extra 10 --add-layers-period 1 \
-     --num-hidden-layers 2 \
-     --mix-up 4000 \
-     --initial-learning-rate 0.01 --final-learning-rate 0.002 \
-     --cmd "$decode_cmd" \
-     --hidden-layer-dim 375 \
-     data/train data/lang exp/tri3b_ali exp/nnet4c_gpu
-
-   steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
-     --transform-dir exp/tri3b/decode \
-     exp/tri3b/graph data/test exp/nnet4c_gpu/decode 
-
-   steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
-     --transform-dir exp/tri3b/decode_ug \
-     exp/tri3b/graph_ug data/test exp/nnet4c_gpu/decode_ug
-
-)
-
 
 
 

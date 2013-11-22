@@ -94,8 +94,30 @@ exit 0
 
 %WER 1.75 [ 219 / 12533, 23 ins, 54 del, 142 sub ] exp/nnet4c/decode/wer_4
 %WER 8.83 [ 1107 / 12533, 70 ins, 206 del, 831 sub ] exp/nnet4c/decode_ug/wer_10
+
 %WER 1.76 [ 220 / 12533, 16 ins, 60 del, 144 sub ] exp/nnet4c_gpu/decode/wer_6
 %WER 8.82 [ 1106 / 12533, 90 ins, 173 del, 843 sub ] exp/nnet4c_gpu/decode_ug/wer_11
+
+# Discriminatively trained system (using SMBR, on CPU)
+%WER 1.70 [ 213 / 12533, 21 ins, 52 del, 140 sub ] exp/nnet5c_mpe/decode_epoch1/wer_4
+%WER 1.71 [ 214 / 12533, 21 ins, 50 del, 143 sub ] exp/nnet5c_mpe/decode_epoch2/wer_4
+%WER 1.66 [ 208 / 12533, 29 ins, 36 del, 143 sub ] exp/nnet5c_mpe/decode_epoch3/wer_3
+%WER 1.75 [ 219 / 12533, 32 ins, 46 del, 141 sub ] exp/nnet5c_mpe/decode_epoch4/wer_4
+%WER 8.50 [ 1065 / 12533, 82 ins, 181 del, 802 sub ] exp/nnet5c_mpe/decode_ug_epoch1/wer_9
+%WER 8.39 [ 1052 / 12533, 71 ins, 189 del, 792 sub ] exp/nnet5c_mpe/decode_ug_epoch2/wer_10
+%WER 8.31 [ 1042 / 12533, 73 ins, 183 del, 786 sub ] exp/nnet5c_mpe/decode_ug_epoch3/wer_10
+%WER 8.33 [ 1044 / 12533, 75 ins, 178 del, 791 sub ] exp/nnet5c_mpe/decode_ug_epoch4/wer_10
+
+
+# Discriminatively trained system (using SMBR, on GPU)
+%WER 1.73 [ 217 / 12533, 17 ins, 55 del, 145 sub ] exp/nnet5c_mpe_gpu/decode_epoch1/wer_6
+%WER 1.76 [ 221 / 12533, 20 ins, 52 del, 149 sub ] exp/nnet5c_mpe_gpu/decode_epoch2/wer_6
+%WER 1.72 [ 215 / 12533, 18 ins, 52 del, 145 sub ] exp/nnet5c_mpe_gpu/decode_epoch3/wer_6
+%WER 1.67 [ 209 / 12533, 14 ins, 53 del, 142 sub ] exp/nnet5c_mpe_gpu/decode_epoch4/wer_7
+%WER 8.58 [ 1075 / 12533, 100 ins, 157 del, 818 sub ] exp/nnet5c_mpe_gpu/decode_ug_epoch1/wer_10
+%WER 8.43 [ 1056 / 12533, 97 ins, 153 del, 806 sub ] exp/nnet5c_mpe_gpu/decode_ug_epoch2/wer_10
+%WER 8.43 [ 1057 / 12533, 100 ins, 153 del, 804 sub ] exp/nnet5c_mpe_gpu/decode_ug_epoch3/wer_10
+%WER 8.36 [ 1048 / 12533, 89 ins, 158 del, 801 sub ] exp/nnet5c_mpe_gpu/decode_ug_epoch4/wer_11
 
 
 # DNN systems (Karel)
