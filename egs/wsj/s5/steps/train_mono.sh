@@ -20,6 +20,7 @@ config= # name of config file.
 stage=-4
 power=0.25 # exponent to determine number of gaussians from occurrence counts
 feat_dim=-1 # This option is now ignored but retained for compatibility.
+norm_vars=false # false : cmn, true : cmvn
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -50,8 +51,9 @@ echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
+echo $norm_vars > $dir/norm_vars # keep track of feature normalization type for decoding, alignment
 
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
 example_feats="`echo $feats | sed s/JOB/1/g`";
 
 echo "$0: Initializing monophone system."

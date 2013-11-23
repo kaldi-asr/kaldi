@@ -23,7 +23,6 @@ beam=10
 retry_beam=40
 boost_silence=1.0 # factor by which to boost silence during alignment.
 fmllr_update_type=full
-norm_vars=false
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -60,7 +59,8 @@ cp $srcdir/{tree,final.mdl} $dir || exit 1;
 cp $srcdir/final.occs $dir;
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
 cp $srcdir/splice_opts $dir 2>/dev/null # frame-splicing options.
-
+norm_vars=`cat $srcdir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
+cp $srcdir/norm_vars $dir 2>/dev/null # cmn/cmvn option.
 
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type"
