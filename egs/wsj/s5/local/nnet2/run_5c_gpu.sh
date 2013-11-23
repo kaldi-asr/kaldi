@@ -23,7 +23,7 @@ dir=exp/nnet5c_gpu
     ln -s $temp_dir/$dir/egs $dir/
   fi
 
-  steps/nnet2/train_tanh.sh \
+  steps/nnet2/train_tanh.sh --stage $train_stage \
    --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
    --mix-up 8000 \
    --initial-learning-rate 0.005 --final-learning-rate 0.0005 \
@@ -31,11 +31,11 @@ dir=exp/nnet5c_gpu
    --cmd "$decode_cmd" \
     data/train_si284 data/lang exp/tri4b_ali_si284 $dir || exit 1
   
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 10 \
+  steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 10 \
     --transform-dir exp/tri4b/decode_bd_tgpr_dev93 \
      exp/tri4b/graph_bd_tgpr data/test_dev93 $dir/decode_bd_tgpr_dev93
 
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 8 \
+  steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 8 \
     --transform-dir exp/tri4b/decode_bd_tgpr_eval92 \
      exp/tri4b/graph_bd_tgpr data/test_eval92 $dir/decode_bd_tgpr_eval92
 )

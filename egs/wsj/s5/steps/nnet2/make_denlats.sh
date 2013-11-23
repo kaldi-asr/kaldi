@@ -50,6 +50,10 @@ lang=$2
 srcdir=$3
 dir=$4
 
+for f in $data/feats.scp $lang/L.fst $srcdir/final.mdl; do
+  [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1;
+done
+
 sdata=$data/split$nj
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 thread_string=

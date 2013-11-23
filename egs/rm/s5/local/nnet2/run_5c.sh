@@ -28,7 +28,6 @@ steps/nnet2/align.sh  --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
       --transform-dir exp/tri3b_ali \
       --nj $nj data/train data/lang exp/nnet4c exp/nnet4c_ali
 
-# rename from tri to nnet
 steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" \
     --num-jobs-nnet 2 data/train data/lang \
     exp/nnet4c_ali exp/nnet4c_denlats exp/nnet4c/final.mdl exp/nnet5c_mpe

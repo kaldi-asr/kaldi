@@ -1,12 +1,10 @@
 #!/bin/bash
 
-# This is neural net training on top of adapted 40-dimensional features.
+
+# This script demonstrates discriminative training of neural nets.
+# It's on top of run_4c_gpu.sh which uses adapted 40-dimensional features.
 # This version of the script uses GPUs.  We distinguish it by putting "_gpu"
 # at the end of the directory name.
-#
-# Since we're using one quarter the number of jobs (num-jobs-nnet) as the
-# run_4c.sh script, we halve the learning rate (generally speaking, splitting
-# the difference like this is probably a good idea.)
 
 
 parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network,
@@ -23,7 +21,7 @@ parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network,
 # likely generate very thin lattices.  Note: the transform-dir is important to
 # specify, since this system is on top of fMLLR features.
 
-nj=8
+nj=$(cat exp/tri3b_ali/num_jobs)
 
 steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
       --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
@@ -35,7 +33,6 @@ steps/nnet2/align.sh  --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
       --transform-dir exp/tri3b_ali \
       --nj $nj data/train data/lang exp/nnet4c_gpu exp/nnet4c_gpu_ali
 
-# rename from tri to nnet
 steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" \
     --num-jobs-nnet 2 \
     --num-threads 1 --parallel-opts "-l gpu=1" data/train data/lang \
