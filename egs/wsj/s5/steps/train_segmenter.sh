@@ -49,6 +49,7 @@ numgauss=$numleaves
 incgauss=$[($totgauss-$numgauss)/$max_iter_inc] # per-iter increment for #Gauss
 oov=`cat $lang/oov.int` || exit 1;
 ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
+norm_vars=`cat $srcdir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
 nj=`cat $alidir/num_jobs` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
@@ -56,7 +57,7 @@ echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
-feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
 
 rm $dir/.error 2>/dev/null
 
