@@ -116,7 +116,7 @@ if [ $sub_split -eq 1 ]; then
      $dir/dengraph/HCLG.fst ark:- "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 else
   for n in `seq $nj`; do
-    if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $alidir/final.mdl ]; then
+    if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $srcdir/final.mdl ]; then
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
     else 
       sdata2=$data/split$nj/$n/split$sub_split;
