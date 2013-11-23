@@ -137,6 +137,7 @@ class CuMatrixBase {
 
   bool IsUnit(Real tol = 0.001) const;  
 
+  /// True if ((*this)-other).FrobeniusNorm() <= tol * this->FrobeniusNorm()
   bool ApproxEqual(const CuMatrixBase<Real> &other, float tol = 0.01) const;
   
   /// Get size of matrix in bytes
