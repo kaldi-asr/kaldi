@@ -65,7 +65,6 @@ cleanup=true
 egs_dir=
 lda_opts=
 egs_opts=
-x=0
 # End configuration section.
 
 
@@ -262,7 +261,7 @@ else
   train_suffix="-parallel --num-threads=$num_threads"
 fi
 
-
+x=0
 
 while [ $x -lt $num_iters ]; do
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
@@ -271,10 +270,10 @@ while [ $x -lt $num_iters ]; do
       nnet-compute-prob $dir/$x.mdl ark:$egs_dir/valid_diagnostic.egs &
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet-compute-prob $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
-  #  if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
-  #    $cmd $dir/log/progress.$x.log \
-  #      nnet-show-progress $dir/$[$x-1].mdl $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
-  #  fi
+    if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
+      $cmd $dir/log/progress.$x.log \
+        nnet-show-progress $dir/$[$x-1].mdl $dir/$x.mdl ark:$egs_dir/train_diagnostic.egs &
+    fi
     
     echo "Training neural net (pass $x)"
     if [ $x -gt 0 ] && \
