@@ -73,6 +73,15 @@ static void AssertEqual(const CuBlockMatrix<Real> &A,
 }
 
 
+template<typename Real> 
+static bool ApproxEqual(const CuBlockMatrix<Real> &A,
+                        const CuBlockMatrix<Real> &B,
+                        float tol = 0.001) {
+  CuMatrix<Real> Acopy(A), Bcopy(B);
+  return Acopy.ApproxEqual(Bcopy, tol);
+}
+
+
 
 
 
@@ -192,7 +201,13 @@ static void UnitTestCuBlockMatrixAddMatMat() {
     // same as B.
     Bcopy.CopyFromMat(Bmat); // copy block-structured part from Bmat to Bcopy.
 
-    AssertEqual(B, Bcopy);
+    if (!ApproxEqual(B, Bcopy)) {
+      KALDI_WARN << "CuBlockMatrixTest failure, please report to maintainers: Bcopy = "
+                 << Bcopy << ", B = " << B << ", C = " << C << ", D = " << D
+                 << ", Bmat = " << B << " transD = " << transD << ", transC = "
+                 << transC;
+      KALDI_ERR << "Please give this log to the maintainers.";
+    }
     KALDI_ASSERT(Bmat.Sum() != 0 || B_num_rows == 0);
   }
 }
