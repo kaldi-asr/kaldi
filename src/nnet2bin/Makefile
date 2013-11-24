@@ -6,7 +6,7 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-BINFILES = nnet-randomize-frames nnet-am-info nnet-train nnet-init \
+BINFILES = nnet-randomize-frames nnet-am-info nnet-init \
    nnet-train-simple nnet-train-transitions nnet-latgen-faster nnet-am-copy \
    nnet-am-init nnet-insert nnet-align-compiled \
    nnet-compute-prob nnet-copy-egs nnet-shrink nnet-combine nnet-combine-a \

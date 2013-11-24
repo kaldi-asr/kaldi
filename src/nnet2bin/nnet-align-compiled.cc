@@ -48,19 +48,25 @@ int main(int argc, char *argv[]) {
         "   nnet-align-compiled 1.mdl ark:- scp:train.scp t, ark:1.ali\n";
 
     ParseOptions po(usage);
-    bool binary = true;
+    std::string use_gpu = "yes";
     BaseFloat beam = 200.0;
     BaseFloat retry_beam = 0.0;
     BaseFloat acoustic_scale = 1.0;
     BaseFloat transition_scale = 1.0;
     BaseFloat self_loop_scale = 1.0;
 
-    po.Register("binary", &binary, "Write output in binary mode");
     po.Register("beam", &beam, "Decoding beam");
-    po.Register("retry-beam", &retry_beam, "Decoding beam for second try at alignment");
-    po.Register("transition-scale", &transition_scale, "Transition-probability scale [relative to acoustics]");
-    po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
-    po.Register("self-loop-scale", &self_loop_scale, "Scale of self-loop versus non-self-loop log probs [relative to acoustics]");
+    po.Register("retry-beam", &retry_beam,
+                "Decoding beam for second try at alignment");
+    po.Register("transition-scale", &transition_scale,
+                "Transition-probability scale [relative to acoustics]");
+    po.Register("acoustic-scale", &acoustic_scale,
+                "Scaling factor for acoustic likelihoods");
+    po.Register("self-loop-scale", &self_loop_scale,
+                "Scale of self-loop versus non-self-loop "
+                "log probs [relative to acoustics]");
+    po.Register("use-gpu", &use_gpu,
+                "yes|no|optional, only has effect if compiled with CUDA");     
     po.Read(argc, argv);
 
     if (po.NumArgs() < 4 || po.NumArgs() > 5) {
@@ -74,12 +80,16 @@ int main(int argc, char *argv[]) {
     FasterDecoderOptions decode_opts;
     decode_opts.beam = beam;  // Don't set the other options.
 
-    std::string model_in_filename = po.GetArg(1);
-    std::string fst_rspecifier = po.GetArg(2);
-    std::string feature_rspecifier = po.GetArg(3);
-    std::string alignment_wspecifier = po.GetArg(4);
-    std::string scores_wspecifier = po.GetOptArg(5);
-
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
+#endif
+    
+    std::string model_in_filename = po.GetArg(1),
+        fst_rspecifier = po.GetArg(2),
+        feature_rspecifier = po.GetArg(3),
+        alignment_wspecifier = po.GetArg(4),
+        scores_wspecifier = po.GetOptArg(5);
+        
     TransitionModel trans_model;
     AmNnet am_nnet;
     {
@@ -164,6 +174,9 @@ int main(int argc, char *argv[]) {
             scores_writer.Write(key, -(weight.Value1()+weight.Value2()));
           alignment_writer.Write(key, alignment);
           num_success ++;
+          KALDI_VLOG(2) << "Log-like per frame for utterance " << key 
+                        << " is " << (like / features.NumRows()) << " over "
+                        << features.NumRows() << " frames.";
           if (num_success % 50  == 0) {
             KALDI_LOG << "Processed " << num_success << " utterances, "
                       << "log-like per frame for " << key << " is "
