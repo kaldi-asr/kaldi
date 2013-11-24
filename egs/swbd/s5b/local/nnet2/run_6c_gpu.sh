@@ -11,9 +11,14 @@ gpu_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network,
                                       # you'll likely have to change it.  we'll
                                       # use it later on, in the training (it's
                                       # not used in denlat creation)
-. cmd.sh
+stage=0
+train_stage=-100
 
 set -e # exit on error.
+
+. cmd.sh
+. utils/parse_options.sh
+
 
 # The denominator lattice creation currently doesn't use GPUs.
 
@@ -25,28 +30,35 @@ set -e # exit on error.
 
 nj=$(cat exp/tri4b/num_jobs)
 
-steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
-      --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
-      --transform-dir exp/tri4b \
-     data/train_nodup data/lang exp/nnet5c_gpu exp/nnet5c_gpu_denlats
+if [ $stage -le 0 ]; then
+  steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
+    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
+    --transform-dir exp/tri4b \
+    data/train_nodup data/lang exp/nnet5c_gpu exp/nnet5c_gpu_denlats
+fi
 
-steps/nnet2/align.sh  --cmd "$decode_cmd $gpu_opts" --use-gpu yes \
-      --transform-dir exp/tri4b \
-      --nj $nj data/train_nodup data/lang exp/nnet5c_gpu exp/nnet5c_gpu_ali
+if [ $stage -le 1 ]; then
+  steps/nnet2/align.sh  --cmd "$decode_cmd $gpu_opts" --use-gpu yes \
+    --transform-dir exp/tri4b \
+    --nj $nj data/train_nodup data/lang exp/nnet5c_gpu exp/nnet5c_gpu_ali
+fi
 
-# rename from tri to nnet
-steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" \
-    --num-jobs-nnet 4 \
+if [ $stage -le 2 ]; then
+  steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" \
+    --num-jobs-nnet 4 --stage $train_stage \
     --num-threads 1 --parallel-opts "$gpu_opts" data/train data/lang \
     exp/nnet5c_gpu_ali exp/nnet5c_gpu_denlats exp/nnet5c_gpu/final.mdl exp/nnet6c_mpe_gpu
+fi
 
-for epoch in 1 2 3 4; do
-  for lm_suffix in tg fsh_tgpr; do
-    steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 30 --iter epoch$epoch \
-      --config conf/decode.config --transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \
-      exp/tri4b/graph_sw1_${lm_suffix} data/eval2000 exp/nnet6c_mpe_gpu/decode_eval2000_sw1_${lm_suffix}_epoch$epoch &
+if [ $stage -le 3 ]; then
+  for epoch in 1 2 3 4; do
+    for lm_suffix in tg fsh_tgpr; do
+      steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 30 --iter epoch$epoch \
+        --config conf/decode.config --transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \
+        exp/tri4b/graph_sw1_${lm_suffix} data/eval2000 exp/nnet6c_mpe_gpu/decode_eval2000_sw1_${lm_suffix}_epoch$epoch &
+    done
   done
-done
+fi
 
 
 exit 0;
