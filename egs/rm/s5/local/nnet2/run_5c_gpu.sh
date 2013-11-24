@@ -7,7 +7,7 @@
 # at the end of the directory name.
 
 
-parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network,
+gpu_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network,
                                       # you'll likely have to change it.  we'll
                                       # use it later on, in the training (it's
                                       # not used in denlat creation)
@@ -29,13 +29,13 @@ steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
       --transform-dir exp/tri3b_ali \
      data/train data/lang exp/nnet4c_gpu exp/nnet4c_gpu_denlats
 
-steps/nnet2/align.sh  --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
+steps/nnet2/align.sh  --cmd "$decode_cmd $gpu_opts" --use-gpu yes \
       --transform-dir exp/tri3b_ali \
       --nj $nj data/train data/lang exp/nnet4c_gpu exp/nnet4c_gpu_ali
 
 steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" \
     --num-jobs-nnet 2 \
-    --num-threads 1 --parallel-opts "-l gpu=1" data/train data/lang \
+    --num-threads 1 --parallel-opts "$gpu_opts" data/train data/lang \
     exp/nnet4c_gpu_ali exp/nnet4c_gpu_denlats exp/nnet4c_gpu/final.mdl exp/nnet5c_mpe_gpu
 
 for epoch in 1 2 3 4; do
