@@ -194,7 +194,8 @@ void ExtractFrame(const VectorBase<double> &wave,
 }
 
 double InterCost(double lag_prev, double lag_next) {
-  double cost = pow(log(lag_prev / lag_next), 2);
+  double diff_log_Lag = log(lag_prev / lag_next);
+  double cost = diff_log_Lag * diff_log_Lag;
   return cost;
 }
 
@@ -371,7 +372,7 @@ void SelectLag(const PitchExtractionOptions &opts,
   while ( lag <= max_lag) {
     (*lags)(count) = lag;
     count++;
-    lag = min_lag * pow((1 + opts.delta_pitch), count);
+    lag = lag * (1 + opts.delta_pitch);
   }
   lags->Resize(count, kCopyData);
   (*state_num) = count;
@@ -417,6 +418,7 @@ class PitchExtractor {
     ComputeLocalCost(correl);
     double intercost, min_c, this_c;
     int best_b, min_i, max_i;
+    BaseFloat delta_pitch_sq = log(1 + opts_.delta_pitch) * log(1 + opts_.delta_pitch);
     // loop over frames
     for(int32 t = 1; t < num_frames_ + 1; t++) {
       // Forward Pass
@@ -429,7 +431,8 @@ class PitchExtractor {
         best_b = -1;
 
         for (int32 k = min_i; k <= i; k++) {
-          intercost = InterCost(lags_(i), lags_(k));
+          intercost = (i-k) * (i-k) * delta_pitch_sq;
+          //intercost = InterCost(lags_(i), lags_(k));
           this_c = frames_[t-1].obj_func(k)+ opts_.penalty_factor * intercost;
           if (this_c < min_c) {
             min_c = this_c;
@@ -449,7 +452,8 @@ class PitchExtractor {
         best_b = frames_[t].back_pointers(i);
 
         for (int32 k = i+1 ; k <= max_i; k++) {
-          intercost = InterCost( lags_(i), lags_(k));
+          //intercost = InterCost( lags_(i), lags_(k));
+          intercost = (i-k) * (i-k) * delta_pitch_sq;
           this_c = frames_[t-1].obj_func(k)+ opts_.penalty_factor *intercost;
           if (this_c < min_c) {
             min_c = this_c;
@@ -528,23 +532,22 @@ void Compute(const PitchExtractionOptions &opts,
 
   Vector<double> lags;
   SelectLag(opts, &num_states, &lags);
-  double a_fact, a_fact_orig = pow(opts.NccfWindowSize(), 4) * opts.nccf_ballast;
+  double a_fact_pitch = pow(opts.NccfWindowSize(), 4) * opts.nccf_ballast,
+    a_fact_pov = pow(10,-9);
   Matrix<double> nccf_pitch(rows_out, num_max_lag + 1),
       nccf_pov(rows_out, num_max_lag + 1);
   for (int32 r = 0; r < rows_out; r++) {  // r is frame index.
     ExtractFrame( processed_wave, r,
                   opts, &window);
     // compute nccf for pitch extraction
-    a_fact = a_fact_orig;
     Vector<double> inner_prod(num_lags), norm_prod(num_lags);
     Nccf(window, start, end, opts.NccfWindowSize(),
          &inner_prod, &norm_prod);
     SubVector<double> nccf_pitch_vec(nccf_pitch.Row(r));
-    ProcessNccf(inner_prod, norm_prod, a_fact, start, end, &(nccf_pitch_vec));
+    ProcessNccf(inner_prod, norm_prod, a_fact_pitch, start, end, &(nccf_pitch_vec));
     // compute the Nccf for Probability of voicing estimation
-    a_fact = pow(10,-9);
     SubVector<double> nccf_pov_vec(nccf_pov.Row(r));
-    ProcessNccf(inner_prod, norm_prod, a_fact, start, end, &(nccf_pov_vec));
+    ProcessNccf(inner_prod, norm_prod, a_fact_pov, start, end, &(nccf_pov_vec));
   }
   std::vector<double> lag_vec(num_states);
   for (int32 i = 0; i < num_states; i++)
