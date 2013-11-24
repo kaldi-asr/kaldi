@@ -193,13 +193,6 @@ void ExtractFrame(const VectorBase<double> &wave,
                       end-wave.Dim()).SetZero();
 }
 
-double InterCost(double lag_prev, double lag_next) {
-  double diff_log_Lag = log(lag_prev / lag_next);
-  double cost = diff_log_Lag * diff_log_Lag;
-  return cost;
-}
-
-
 class ArbitraryResample {
  public:
   ArbitraryResample(int32 num_samples_in, double samp_rate_in,
@@ -432,7 +425,6 @@ class PitchExtractor {
 
         for (int32 k = min_i; k <= i; k++) {
           intercost = (i-k) * (i-k) * delta_pitch_sq;
-          //intercost = InterCost(lags_(i), lags_(k));
           this_c = frames_[t-1].obj_func(k)+ opts_.penalty_factor * intercost;
           if (this_c < min_c) {
             min_c = this_c;
@@ -452,7 +444,6 @@ class PitchExtractor {
         best_b = frames_[t].back_pointers(i);
 
         for (int32 k = i+1 ; k <= max_i; k++) {
-          //intercost = InterCost( lags_(i), lags_(k));
           intercost = (i-k) * (i-k) * delta_pitch_sq;
           this_c = frames_[t-1].obj_func(k)+ opts_.penalty_factor *intercost;
           if (this_c < min_c) {
