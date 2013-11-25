@@ -93,7 +93,7 @@ else
   utils/split_scp.pl $scp $split_scps || exit 1;
  
   $cmd JOB=1:$nj $logdir/make_pitch.JOB.log \
-    compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- ark:- \| \
+    compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config scp:$logdir/wav.JOB.scp ark:- \| \
     process-kaldi-pitch-feats $postprocess_config_opt ark:- \
       ark,scp:$pitchdir/pitch_$name.JOB.ark,$pitchdir/pitch_$name.JOB.scp \
       || exit 1;
