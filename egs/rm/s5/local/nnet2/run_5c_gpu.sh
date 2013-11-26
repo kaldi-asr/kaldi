@@ -34,7 +34,7 @@ steps/nnet2/align.sh  --cmd "$decode_cmd $gpu_opts" --use-gpu yes \
       --nj $nj data/train data/lang exp/nnet4c_gpu exp/nnet4c_gpu_ali
 
 steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" \
-    --num-jobs-nnet 2 \
+    --num-jobs-nnet 2 --transform-dir exp/tri3b_ali \
     --num-threads 1 --parallel-opts "$gpu_opts" data/train data/lang \
     exp/nnet4c_gpu_ali exp/nnet4c_gpu_denlats exp/nnet4c_gpu/final.mdl exp/nnet5c_mpe_gpu
 

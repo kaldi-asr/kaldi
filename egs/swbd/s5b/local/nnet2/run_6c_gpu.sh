@@ -44,14 +44,16 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" \
+  steps/nnet2/train_discriminative.sh --cmd "$decode_cmd"  --learning-rate 0.000002 \
+    --num-epochs 2 \
     --num-jobs-nnet 4 --stage $train_stage \
+    --transform-dir exp/tri4b \
     --num-threads 1 --parallel-opts "$gpu_opts" data/train data/lang \
     exp/nnet5c_gpu_ali exp/nnet5c_gpu_denlats exp/nnet5c_gpu/final.mdl exp/nnet6c_mpe_gpu
 fi
 
 if [ $stage -le 3 ]; then
-  for epoch in 1 2 3 4; do
+  for epoch in 1 2; do
     for lm_suffix in tg fsh_tgpr; do
       steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 30 --iter epoch$epoch \
         --config conf/decode.config --transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \

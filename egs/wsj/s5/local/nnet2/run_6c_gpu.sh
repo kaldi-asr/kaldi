@@ -31,12 +31,12 @@ steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
      data/train_si284 data/lang exp/nnet5c_gpu exp/nnet5c_gpu_denlats
 
 steps/nnet2/align.sh  --cmd "$decode_cmd $gpu_opts" \
-      --use-gpu=yes --transform-dir exp/tri4b_ali_si284 \
-      --nj $nj data/train data/lang exp/nnet5c_gpu exp/nnet5c_gpu_ali
+      --use-gpu yes --transform-dir exp/tri4b_ali_si284 \
+      --nj $nj data/train_si284 data/lang exp/nnet5c_gpu exp/nnet5c_gpu_ali
 
-steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" \
-    --num-jobs-nnet 4 \
-    --num-threads 1 --parallel-opts "$gpu_opts" data/train data/lang \
+steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" --learning-rate 0.000002 \
+    --num-jobs-nnet 4  --transform-dir exp/tri4b_ali_si284 \
+    --num-threads 1 --parallel-opts "$gpu_opts" data/train_si284 data/lang \
     exp/nnet5c_gpu_ali exp/nnet5c_gpu_denlats exp/nnet5c_gpu/final.mdl exp/nnet6c_mpe_gpu
 
 for epoch in 1 2 3 4; do

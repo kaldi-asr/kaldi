@@ -41,6 +41,7 @@ parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" # by default we use 4 thre
 transform_dir= # If this is a SAT system, directory for transforms
 cleanup=true
 transform_dir=
+degs_dir=
 # End configuration section.
 
 
@@ -77,6 +78,7 @@ if [ $# != 6 ]; then
   echo "                                                   # the middle."
   echo "  --criterion <criterion|smbr>                     # Training criterion: may be smbr, mmi or mpfe"
   echo "  --boost <boost|0.0>                              # Boosting factor for MMI (e.g., 0.1)"
+  echo "  --degs-dir <dir|"">                              # Directory for discriminative examples, e.g. exp/foo/degs"
   exit 1;
 fi
 
@@ -102,13 +104,12 @@ if ! [ $nj == $(cat $denlatdir/num_jobs) ]; then
   exit 1;
 fi
 
-mkdir -p $dir || exit 1;
-
+mkdir -p $dir/log || exit 1;
+[ -z "$degs_dir" ] && mkdir -p $dir/degs
 
 sdata=$data/split$nj
 utils/split_data.sh $data $nj
 
-mkdir -p $dir/log $dir/degs
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 norm_vars=`cat $alidir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
@@ -145,23 +146,29 @@ if [ -f $transform_dir/raw_trans.1 ] && [ $feat_type == "raw" ]; then
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/raw_trans.JOB ark:- ark:- |"
 fi
 
-if [ $stage -le -8 ]; then
-  echo "$0: working out number of frames of training data"
-  num_frames=`feat-to-len scp:$data/feats.scp ark,t:- | awk '{x += $2;} END{print x;}'` || exit 1;
-  echo $num_frames > $dir/num_frames
-else
-  num_frames=`cat $dir/num_frames` || exit 1;
-fi
+
+if [ -z "$degs_dir" ]; then
+  if [ $stage -le -8 ]; then
+    echo "$0: working out number of frames of training data"
+    num_frames=`feat-to-len scp:$data/feats.scp ark,t:- | awk '{x += $2;} END{print x;}'` || exit 1;
+    echo $num_frames > $dir/num_frames
+  else
+    num_frames=`cat $dir/num_frames` || exit 1;
+  fi
 
 # Working out number of iterations per epoch.
-iters_per_epoch=`perl -e "print int($num_frames/($samples_per_iter * $num_jobs_nnet) + 0.5);"` || exit 1;
-[ $iters_per_epoch -eq 0 ] && iters_per_epoch=1
-echo $iters_per_epoch > $dir/degs/iters_per_epoch  || exit 1;
+  iters_per_epoch=`perl -e "print int($num_frames/($samples_per_iter * $num_jobs_nnet) + 0.5);"` || exit 1;
+  [ $iters_per_epoch -eq 0 ] && iters_per_epoch=1
+  echo $iters_per_epoch > $dir/degs/iters_per_epoch  || exit 1;
 
-samples_per_iter_real=$[$num_frames/($num_jobs_nnet*$iters_per_epoch)]
-echo "$0: Every epoch, splitting the data up into $iters_per_epoch iterations,"
-echo "$0: giving samples-per-iteration of $samples_per_iter_real (you requested $samples_per_iter)."
-
+  samples_per_iter_real=$[$num_frames/($num_jobs_nnet*$iters_per_epoch)]
+  echo "$0: Every epoch, splitting the data up into $iters_per_epoch iterations,"
+  echo "$0: giving samples-per-iteration of $samples_per_iter_real (you requested $samples_per_iter)."
+else
+  iters_per_epoch=$(cat $degs_dir/iters_per_epoch) || exit 1;
+  [ -z "$iters_per_epoch" ] && exit 1;
+  echo "$0: Every epoch, splitting the data up into $iters_per_epoch iterations"
+fi
 
 if [ $stage -le -7 ]; then
   echo "$0: Copying initial model and removing any preconditioning"
@@ -169,7 +176,7 @@ if [ $stage -le -7 ]; then
     "$src_model" $dir/0.mdl || exit 1;
 fi
 
-if [ $stage -le -6 ]; then
+if [ $stage -le -6 ] && [ -z "$degs_dir" ]; then
   echo "$0: getting initial training examples by splitting lattices"
   if [ ! -z $spk_vecs_dir ]; then
     [ ! -f $spk_vecs_dir/vecs.1 ] && echo "No such file $spk_vecs_dir/vecs.1" && exit 1;
@@ -191,7 +198,7 @@ if [ $stage -le -6 ]; then
     nnet-copy-egs-discriminative ark:- $egs_list || exit 1;
 fi
 
-if [ $stage -le -5 ]; then
+if [ $stage -le -5 ] && [ -z "$degs_dir" ]; then
   echo "$0: rearranging examples into parts for different parallel jobs"
 
   # combine all the "egs_orig.JOB.*.scp" (over the $nj splits of the data) and
@@ -219,7 +226,7 @@ if [ $stage -le -5 ]; then
 fi
 
 
-if [ $stage -le -4 ]; then
+if [ $stage -le -4 ] && [ -z "$degs_dir" ]; then
   # Next, shuffle the order of the examples in each of those files.
   # Each one should not be too large, so we can do this in memory.
   # Then combine the examples together to form suitable-size minibatches
@@ -237,6 +244,10 @@ if [ $stage -le -4 ]; then
       nnet-combine-egs-discriminative ark:- ark:$dir/degs/degs.JOB.$n.ark '&&' \
       '(' rm $dir/degs/degs_tmp.JOB.$n.ark '||' true ')' || exit 1;
   done
+fi
+
+if [ -z "$degs_dir" ]; then
+  degs_dir=$dir/degs
 fi
 
 num_iters=$[$num_epochs * $iters_per_epoch];
@@ -261,7 +272,7 @@ while [ $x -lt $num_iters ]; do
       nnet-train-discriminative$train_suffix --silence-phones=$silphonelist \
        --criterion=$criterion --drop-frames=$drop_frames \
        --boost=$boost --acoustic-scale=$acoustic_scale \
-       $dir/$x.mdl ark:$dir/degs/degs.JOB.$[$x%$iters_per_epoch].ark $dir/$[$x+1].JOB.mdl \
+       $dir/$x.mdl ark:$degs_dir/degs.JOB.$[$x%$iters_per_epoch].ark $dir/$[$x+1].JOB.mdl \
       || exit 1;
 
     nnets_list=
@@ -288,7 +299,9 @@ if $cleanup; then
   echo Cleaning up data
 
   echo Removing training examples
-  rm $dir/degs/degs*
+  if [ -d $dir/degs ] && [ ! -L $dir/degs ]; then # only remove if directory is not a soft link.
+    rm $dir/degs/degs*
+  fi
 
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
