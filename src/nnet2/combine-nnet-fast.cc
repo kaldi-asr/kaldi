@@ -145,7 +145,7 @@ class FastNnetCombiner {
           part = objf - regularizer_objf;
       KALDI_LOG << "Combining nnets, objf/frame + regularizer changed from "
                 << initial_part << " + " << initial_regularizer_objf
-                << " = " << objf << " to " << part << " + " << regularizer_objf
+                << " = " << initial_objf << " to " << part << " + " << regularizer_objf
                 << " = " << objf;
     } else {
       KALDI_LOG << "Combining nnets, objf per frame changed from "
