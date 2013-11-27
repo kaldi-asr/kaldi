@@ -25,8 +25,6 @@ end_halving_inc=0.1
 halving_factor=0.5
 # misc.
 verbose=1
-# gpu
-use_gpu_id=
 # tool
 train_tool="nnet-train-xent-hardlab-frmshuff"
  
@@ -73,7 +71,6 @@ mlp_base=${mlp_init##*/}; mlp_base=${mlp_base%.*}
 $train_tool --cross-validate=true \
  --bunchsize=$bunch_size --cachesize=$cache_size --verbose=$verbose \
  ${feature_transform:+ --feature-transform=$feature_transform} \
- ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
  $mlp_best "$feats_cv" "$labels_cv" \
  2> $dir/log/prerun.log || exit 1;
 
@@ -97,7 +94,6 @@ for iter in $(seq -w $max_iters); do
    --learn-rate=$learn_rate --momentum=$momentum --l1-penalty=$l1_penalty --l2-penalty=$l2_penalty \
    --bunchsize=$bunch_size --cachesize=$cache_size --randomize=true --verbose=$verbose \
    ${feature_transform:+ --feature-transform=$feature_transform} \
-   ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
    ${seed:+ --seed=$seed} \
    $mlp_best "$feats_tr" "$labels_tr" $mlp_next \
    2> $dir/log/iter$iter.log || exit 1; 
@@ -110,7 +106,6 @@ for iter in $(seq -w $max_iters); do
   $train_tool --cross-validate=true \
    --bunchsize=$bunch_size --cachesize=$cache_size --verbose=$verbose \
    ${feature_transform:+ --feature-transform=$feature_transform} \
-   ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
    $mlp_next "$feats_cv" "$labels_cv" \
    2>>$dir/log/iter$iter.log || exit 1;
   

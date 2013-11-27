@@ -38,6 +38,12 @@ typedef enum {
   kCopyData
 } MatrixResizeType;
 
+typedef enum {
+  kTakeLower,
+  kTakeUpper,
+  kTakeMean,
+  kTakeMeanAndCheck
+} SpCopyType;
 
 template<typename Real> class VectorBase;
 template<typename Real> class Vector;
@@ -57,6 +63,9 @@ template<typename Real> class CuMatrix;
 template<typename Real> class CuVectorBase;
 template<typename Real> class CuSubVector;
 template<typename Real> class CuVector;
+template<typename Real> class CuPackedMatrix;
+template<typename Real> class CuSpMatrix;
+template<typename Real> class CuTpMatrix;
 
 class CompressedMatrix;
 

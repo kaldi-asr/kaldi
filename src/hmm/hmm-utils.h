@@ -63,11 +63,16 @@ struct HTransducerConfig {
   // Note-- this Register registers the easy-to-register options
   // but not the "sym_type" which is an enum and should be handled
   // separately in main().
-  void Register (ParseOptions *po) {
-    po->Register("transition-scale", &transition_scale, "Scale of transition probs (relative to LM)");
-    po->Register("reverse", &reverse, "Set true to build time-reversed FST.");
-    po->Register("push-weights", &push_weights, "Push weights (only applicable if reverse == true)");
-    po->Register("push-delta", &push_delta, "Delta used in pushing weights (only applicable if reverse && push-weights");
+  void Register (OptionsItf *po) {
+    po->Register("transition-scale", &transition_scale,
+                 "Scale of transition probs (relative to LM)");
+    po->Register("reverse", &reverse,
+                 "Set true to build time-reversed FST.");
+    po->Register("push-weights", &push_weights,
+                 "Push weights (only applicable if reverse == true)");
+    po->Register("push-delta", &push_delta,
+                 "Delta used in pushing weights (only applicable if "
+                 "reverse && push-weights");
   }
 };
 

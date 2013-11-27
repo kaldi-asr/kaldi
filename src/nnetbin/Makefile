@@ -4,6 +4,7 @@ EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
 LDFLAGS += $(CUDA_LDFLAGS)
+LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = nnet-train-frmshuff \
         nnet-train-xent-hardlab-perutt \

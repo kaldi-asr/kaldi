@@ -23,7 +23,7 @@
 
 namespace kaldi {
 
-template<class Real>
+template<typename Real>
 void CompressedMatrix::CopyFromMat(
     const MatrixBase<Real> &mat) {
   if (data_ != NULL) {
@@ -95,6 +95,20 @@ void CompressedMatrix::CopyFromMat(const MatrixBase<float> &mat);
 template
 void CompressedMatrix::CopyFromMat(const MatrixBase<double> &mat);
 
+
+template<typename Real>
+CompressedMatrix &CompressedMatrix::operator =(const MatrixBase<Real> &mat) {
+  this->CopyFromMat(mat);
+  return *this;
+}
+
+// Instantiate the template for float and double.
+template
+CompressedMatrix& CompressedMatrix::operator =(const MatrixBase<float> &mat);
+
+template
+CompressedMatrix& CompressedMatrix::operator =(const MatrixBase<double> &mat);
+
 inline uint16 CompressedMatrix::FloatToUint16(
     const GlobalHeader &global_header,
     float value) {
@@ -114,7 +128,7 @@ inline float CompressedMatrix::Uint16ToFloat(
       + global_header.range * 1.52590218966964e-05 * value;
 }
 
-template<class Real>  // static
+template<typename Real>  // static
 void CompressedMatrix::ComputeColHeader(
     const GlobalHeader &global_header,
     const Real *data, MatrixIndexT stride,
@@ -229,7 +243,7 @@ inline float CompressedMatrix::CharToFloat(
 }
 
 
-template<class Real>  // static
+template<typename Real>  // static
 void CompressedMatrix::CompressColumn(
     const GlobalHeader &global_header,
     const Real *data, MatrixIndexT stride,
@@ -383,7 +397,7 @@ void CompressedMatrix::Read(std::istream &is, bool binary) {
     KALDI_ERR << "Failed to read data.";
 }
 
-template<class Real>
+template<typename Real>
 void CompressedMatrix::CopyToMat(MatrixBase<Real> *mat) const {
   if (data_ == NULL) {
     KALDI_ASSERT(mat->NumRows() == 0);

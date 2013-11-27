@@ -1,6 +1,7 @@
 // cudamatrix/cu-randkernels.cu
 
 // Copyright 2012  Karel Vesely
+//           2013 Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -110,6 +111,20 @@ static void _gauss_rand(Real* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda
 
 template<typename Real>
 __global__
+static void _vec_gauss_rand(Real* v, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, int dim) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (blockIdx.y > 0)
+     return;
+
+  if ( i < dim ) {
+    v[i] = BoxMuller<Real>(z1[i],z2[i],z3[i],z4[i]);
+  }
+}
+
+
+
+template<typename Real>
+__global__
 static void _binarize_probs(Real* states, const Real* probs, const Real* rand, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -136,6 +151,10 @@ void cudaF_gauss_rand(dim3 Gr, dim3 Bl, float* mat, uint32_cuda* z1, uint32_cuda
   _gauss_rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); 
 }
 
+void cudaF_vec_gauss_rand(int Gr, int Bl, float* v, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, int dim) {
+  _vec_gauss_rand<<<Gr,Bl>>>(v,z1,z2,z3,z4,dim);
+}
+
 void cudaF_binarize_probs(dim3 Gr, dim3 Bl, float* states, const float* probs, float* rand, MatrixDim d) { 
   _binarize_probs<<<Gr,Bl>>>(states,probs,rand,d); 
 }
@@ -151,6 +170,10 @@ void cudaD_rand(dim3 Gr, dim3 Bl, double* mat, uint32_cuda* z1, uint32_cuda* z2,
 
 void cudaD_gauss_rand(dim3 Gr, dim3 Bl, double* mat, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, MatrixDim d) { 
   _gauss_rand<<<Gr,Bl>>>(mat,z1,z2,z3,z4,d); 
+}
+
+void cudaD_vec_gauss_rand(int Gr, int Bl, double* v, uint32_cuda* z1, uint32_cuda* z2, uint32_cuda* z3, uint32_cuda* z4, int dim) {
+  _vec_gauss_rand<<<Gr,Bl>>>(v,z1,z2,z3,z4,dim);
 }
 
 void cudaD_binarize_probs(dim3 Gr, dim3 Bl, double* states, const double* probs, double* rand, MatrixDim d) { 

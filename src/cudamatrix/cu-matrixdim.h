@@ -1,6 +1,7 @@
 // cudamatrix/cu-matrixdim.h
 
 // Copyright 2009-2012  Karel Vesely
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -28,12 +29,20 @@
 #ifdef _MSC_VER
   typedef unsigned __int32 uint32_cuda;
   typedef __int32          int32_cuda;
+  typedef __int32          MatrixIndexT_cuda; // you'd have to change this if you changed MatrixIndexT from int32.
 #else
   #include <stdint.h>
   typedef uint32_t         uint32_cuda;
   typedef int32_t          int32_cuda;
+  typedef int32_t          MatrixIndexT_cuda; // you'd have to change this if you changed MatrixIndexT from int32.
 #endif
 
+template<typename Real>
+struct MatrixElement {
+  int32_cuda row;
+  int32_cuda column;
+  Real weight;
+};
 
 extern "C" {
   /**
@@ -45,8 +54,37 @@ extern "C" {
     int32_cuda cols;
     int32_cuda stride;
   } MatrixDim;
+
+// we define the following constants here because this file is included
+// both by the C++ code and also CUDA code.
+  
+
+// The size of a CUDA 1-d block, e.g. for vector operations..
+#define CU1DBLOCK 256
+
+// The size of edge of CUDA square block, e.g. for matrix operations.
+// Must be defined the same in cu-kernels-ansi.h
+#define CU2DBLOCK 16
+
+
+  /** This structure is used in cu-block-matrix.h to store information
+      about a block-diagonal matrix.  We declare it here so that it
+      will be accessible
+   */
+  typedef struct CuBlockMatrixData_ {
+    int32_cuda row_offset; // sum of #rows of previous M_i
+    int32_cuda col_offset; // sum of #cols of previous M_i
+    MatrixDim matrix_dim; // dimension of this M_i
+    void *matrix_data; // data for M_i.  This is a pointer to either float* or
+                       // double*.  Because C doesn't support templates and to
+                       // avoid extra coding to support the two cases, we
+                       // decided to make this a void* pointer.
+  } CuBlockMatrixData;
+
+  typedef struct Int32Pair {
+    int32_cuda first;
+    int32_cuda second;
+  } Int32Pair;
 }
 
 #endif
-
-

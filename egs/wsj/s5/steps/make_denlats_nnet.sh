@@ -19,7 +19,7 @@ max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
 # End configuration section.
-use_gpu_id=-1 # disable gpu
+use_gpu=no # yes|no|optional
 parallel_opts="-pe smp 2"
 
 echo "$0 $@"  # Print the command line for logging
@@ -48,7 +48,6 @@ srcdir=$3
 dir=$4
 
 sdata=$data/split$nj
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
@@ -108,7 +107,7 @@ if [ -f $srcdir/delta_order ]; then
   feats="$feats add-deltas --delta-order=$delta_order ark:- ark:- |"
 fi
 # Finally add feature_transform and the MLP
-feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu-id=$use_gpu_id $nnet ark:- ark:- |"
+feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet ark:- ark:- |"
 
 
 echo "$0: generating denlats from data '$data', putting lattices in '$dir'"
@@ -126,7 +125,7 @@ if [ $sub_split -eq 1 ]; then
       $dir/dengraph/HCLG.fst "$feats" "scp:$dir/lat.store_separately_as_gz.scp" || exit 1;
 else
   for n in `seq $nj`; do
-    if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $alidir/final.mdl ]; then
+    if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $srcdir/final.mdl ]; then
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
     else
       sdata2=$data/split$nj/$n/split$sub_split;

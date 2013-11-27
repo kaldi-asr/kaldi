@@ -69,7 +69,7 @@ void TpMatrix<Real>::Invert() {
 }
 
 /*
-template<class Real>
+template<typename Real>
 void TpMatrix<Real>::Invert() {
   Matrix<Real> tmp(*this);
   tmp.Invert();
@@ -127,7 +127,7 @@ void TpMatrix<Real>::Cholesky(const SpMatrix<Real> &orig) {
 }
 
 template<typename Real>
-void TpMatrix<Real>::CopyFromMat(MatrixBase<Real> &M,
+void TpMatrix<Real>::CopyFromMat(const MatrixBase<Real> &M,
                                  MatrixTransposeType Trans) {
   if (Trans == kNoTrans) {
     KALDI_ASSERT(this->NumRows() == M.NumRows() && M.NumRows() == M.NumCols());

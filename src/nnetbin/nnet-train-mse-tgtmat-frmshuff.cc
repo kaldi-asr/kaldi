@@ -61,13 +61,8 @@ int main(int argc, char *argv[]) {
     po.Register("cachesize", &cachesize, "Size of cache for frame level shuffling (max 8388479)");
     po.Register("seed", &seed, "Seed value for srand, sets fixed order of frame-shuffling");
 
-#if HAVE_CUDA==1
-    int32 use_gpu_id=-2;
-    po.Register("use-gpu-id", &use_gpu_id, "Manually select GPU by its ID (-2 automatic selection, -1 disable GPU, 0..N select GPU)");
-#else
-    int32 use_gpu_id=0;
-    po.Register("use-gpu-id", &use_gpu_id, "Unused, kaldi is compiled w/o CUDA");
-#endif
+    std::string use_gpu="yes";
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
     
     po.Read(argc, argv);
 
@@ -94,7 +89,7 @@ int main(int argc, char *argv[]) {
 
     //Select the GPU
 #if HAVE_CUDA==1
-    CuDevice::Instantiate().SelectGpuId(use_gpu_id);
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
     Nnet nnet_transf;

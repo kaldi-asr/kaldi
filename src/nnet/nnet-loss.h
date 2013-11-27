@@ -24,7 +24,7 @@
 #include "util/kaldi-holder.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
-#include "cudamatrix/cu-stlvector.h"
+#include "cudamatrix/cu-array.h"
 
 namespace kaldi {
 namespace nnet1 {
@@ -61,16 +61,17 @@ class Xent {
   std::vector<float> loss_vec_;
 
   // loss computation buffers
-  CuStlVector<int32>  target_device_;
+  CuArray<int32>  target_device_;
+
   CuVector<BaseFloat> log_post_tgt_;
   Vector<BaseFloat>   log_post_tgt_host_;
   CuMatrix<BaseFloat> tgt_mat_device_;
   CuMatrix<BaseFloat> xentropy_aux_;
 
   // frame classification buffers 
-  CuStlVector<int32> max_id_out_;
+  CuArray<int32> max_id_out_;
   std::vector<int32> max_id_out_host_;
-  CuStlVector<int32> max_id_tgt_;
+  CuArray<int32> max_id_tgt_;
   std::vector<int32> max_id_tgt_host_;
 
 };

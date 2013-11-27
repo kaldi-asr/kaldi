@@ -28,7 +28,7 @@ namespace kaldi {
 
 // Below, N&W refers to Nocedal and Wright, "Numerical Optimization", 2nd Ed.
 
-template<class Real>
+template<typename Real>
 OptimizeLbfgs<Real>::OptimizeLbfgs(const VectorBase<Real> &x,
                                    const LbfgsOptions &opts):
     opts_(opts), k_(0), computation_state_(kBeforeStep), H_was_set_(false) {
@@ -48,7 +48,7 @@ OptimizeLbfgs<Real>::OptimizeLbfgs(const VectorBase<Real> &x,
 }
 
 
-template<class Real>
+template<typename Real>
 Real OptimizeLbfgs<Real>::RecentStepLength() const {
   size_t n = step_lengths_.size();
   if (n == 0) return std::numeric_limits<Real>::infinity();
@@ -63,7 +63,7 @@ Real OptimizeLbfgs<Real>::RecentStepLength() const {
   }
 }
 
-template<class Real>
+template<typename Real>
 void OptimizeLbfgs<Real>::ComputeHifNeeded(const VectorBase<Real> &gradient) {
   if (k_ == 0) {
     if (H_.Dim() == 0) {
@@ -107,7 +107,7 @@ void OptimizeLbfgs<Real>::ComputeHifNeeded(const VectorBase<Real> &gradient) {
 // This represents the first 2 lines of Algorithm 7.5 (N&W), which
 // in fact is mostly a call to Algorithm 7.4.
 // Note: this is valid whether we are minimizing or maximizing.
-template<class Real>
+template<typename Real>
 void OptimizeLbfgs<Real>::ComputeNewDirection(Real function_value,
                                               const VectorBase<Real> &gradient) {
   KALDI_ASSERT(computation_state_ == kBeforeStep);
@@ -166,7 +166,7 @@ void OptimizeLbfgs<Real>::ComputeNewDirection(Real function_value,
 }
 
 
-template<class Real>
+template<typename Real>
 bool OptimizeLbfgs<Real>::AcceptStep(Real function_value,
                                      const VectorBase<Real> &gradient) {
   // Save s_k = x_{k+1} - x_{k}, and y_k = \nabla f_{k+1} - \nabla f_k.
@@ -200,7 +200,7 @@ bool OptimizeLbfgs<Real>::AcceptStep(Real function_value,
   return true; // We successfully accepted the step.
 }
 
-template<class Real>
+template<typename Real>
 void OptimizeLbfgs<Real>::RecordStepLength(Real s) {
   step_lengths_.push_back(s);
   if (step_lengths_.size() > static_cast<size_t>(opts_.avg_step_length))
@@ -208,7 +208,7 @@ void OptimizeLbfgs<Real>::RecordStepLength(Real s) {
 }
 
 
-template<class Real>
+template<typename Real>
 void OptimizeLbfgs<Real>::Restart(const VectorBase<Real> &x,
                                   Real f,
                                   const VectorBase<Real> &gradient) {
@@ -231,7 +231,7 @@ void OptimizeLbfgs<Real>::Restart(const VectorBase<Real> &x,
   ComputeNewDirection(f, gradient);
 }
 
-template<class Real>
+template<typename Real>
 void OptimizeLbfgs<Real>::StepSizeIteration(Real function_value,
                                             const VectorBase<Real> &gradient) {
   KALDI_VLOG(3) << "In step size iteration, function value changed "
@@ -376,7 +376,7 @@ void OptimizeLbfgs<Real>::StepSizeIteration(Real function_value,
   }
 }
 
-template<class Real>
+template<typename Real>
 void OptimizeLbfgs<Real>::DoStep(Real function_value,
                                  const VectorBase<Real> &gradient) {
   if (opts_.minimize ? function_value < best_f_ : function_value > best_f_) {
@@ -389,7 +389,7 @@ void OptimizeLbfgs<Real>::DoStep(Real function_value,
     StepSizeIteration(function_value, gradient);
 }
 
-template<class Real>
+template<typename Real>
 void OptimizeLbfgs<Real>::DoStep(Real function_value,
                                  const VectorBase<Real> &gradient,
                                  const VectorBase<Real> &diag_approx_2nd_deriv) {
@@ -408,7 +408,7 @@ void OptimizeLbfgs<Real>::DoStep(Real function_value,
   DoStep(function_value, gradient);
 }
 
-template<class Real>
+template<typename Real>
 const VectorBase<Real>&
 OptimizeLbfgs<Real>::GetValue(Real *objf_value) const {
   if (objf_value != NULL) *objf_value = best_f_;
