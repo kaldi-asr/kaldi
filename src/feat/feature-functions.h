@@ -21,8 +21,6 @@
 #ifndef KALDI_FEAT_FEATURE_FUNCTIONS_H_
 #define KALDI_FEAT_FEATURE_FUNCTIONS_H_
 
-#include <cassert>
-#include <cstdlib>
 #include <string>
 #include <vector>
 

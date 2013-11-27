@@ -1379,7 +1379,7 @@ bool CuMatrixBase<Real>::ApproxEqual(const CuMatrixBase<Real> &other,
                                      float tol) const {
   CuMatrix<Real> diff(*this);
   diff.AddMat(-1.0, other);
-  return (diff.FrobeniusNorm() <= tol);
+  return (diff.FrobeniusNorm() <= tol * (*this).FrobeniusNorm());
 }
 
 template<typename Real>

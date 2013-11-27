@@ -21,7 +21,7 @@ for x in `seq 3`; do
 done
 
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 [---no-feats] [---no-text] [---no-wav] data-dir"
+  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] data-dir"
   echo "e.g.: $0 data/train"
 fi
 
@@ -80,7 +80,7 @@ check_sorted $data/spk2utt
 cat $data/utt2spk | awk '{print $1;}' > $tmpdir/utts
 
 if [ ! -f $data/text ] && ! $no_text; then
-  echo "$0: no such file $data/text (if this is by design, specify ---no-text)"
+  echo "$0: no such file $data/text (if this is by design, specify --no-text)"
   exit 1;
 fi
 
@@ -104,7 +104,7 @@ fi
 
 
 if [ ! -f $data/wav.scp ] && ! $no_wav; then
-  echo "$0: no such file $data/wav.scp (if this is by design, specify ---no-wav)"
+  echo "$0: no such file $data/wav.scp (if this is by design, specify --no-wav)"
   exit 1;
 fi
 
@@ -187,7 +187,7 @@ if [ -f $data/wav.scp ]; then
 fi
 
 if [ ! -f $data/feats.scp ] && ! $no_feats; then
-  echo "$0: no such file $data/feats.scp (if this is by design, specify ---no-feats)"
+  echo "$0: no such file $data/feats.scp (if this is by design, specify --no-feats)"
   exit 1;
 fi
 

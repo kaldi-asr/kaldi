@@ -72,12 +72,12 @@ template<typename Real> static void UnitTestCholesky() {
     // set dimension
     // computing the matrix for cholesky input
     // CuMatrix is cuda matrix class while Matrix is cpu matrix class
-    CuMatrix<Real> A(dim,dim);
-    Matrix<Real> B(dim,dim);
+    CuMatrix<Real> A(dim, dim);
+    Matrix<Real> B(dim, dim);
     Vector<Real> C(dim);
     for (MatrixIndexT i = 0; i < dim; i++) {
-      B(i,i) = 1;
-      C(i) = i + 1;
+      B(i, i) = 1;
+      C(i) = 1 + rand() % 4;
     }
     B.AddVecVec(1.0, C, C);
     // copy the matrix to cudamatrix object

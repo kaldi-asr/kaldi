@@ -1239,7 +1239,7 @@ static void UnitTestCuApproxEqual() {
     Matrix<Real> diff(A), Bm(B);
     diff.AddMat(-1.0, Bm);
     Real norm = diff.FrobeniusNorm();
-    KALDI_ASSERT( (norm <= tol) == (A.ApproxEqual(B, tol)));
+    KALDI_ASSERT((norm <= tol * A.FrobeniusNorm()) == (A.ApproxEqual(B, tol)));
     tol *= 2.0;
   }
 }

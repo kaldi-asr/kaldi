@@ -103,7 +103,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
     KALDI_WARN << "Will try again to get a GPU after " << sec_sleep 
                << " seconds.";
     sleep(sec_sleep);
-    //
+    cudaGetLastError(); // reset the error state    
     e = cudaThreadSynchronize(); //<< 2nd trial to get CUDA context.
     if (e != cudaSuccess) {
       if (use_gpu == "yes") {
