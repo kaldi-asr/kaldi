@@ -114,7 +114,7 @@ void ProcessPovFeatures(Matrix<BaseFloat> *input,
       } else if (p < -1.0) {
         p = -1.0;
       }
-      (*input)(i, 0) = pow((1.0 - p), 0.15) - 1.0;
+      (*input)(i, 0) = pow((1.0001 - p), 0.15) - 1.0;
       KALDI_ASSERT((*input)(i, 0) - (*input)(i, 0) == 0);
     }
   } else if (nonlin == 2) {
@@ -122,9 +122,10 @@ void ProcessPovFeatures(Matrix<BaseFloat> *input,
       BaseFloat p = fabs((*input)(i, 0));
       if (p > 1.0)
         p = 1.0;
-      p = -5.2 + 5.4 * exp(7.5*(p-1.0)) + 4.8*p -2.0 * exp(-10.0*p)+4.2*exp(20.0*(p-1.0));
+      p = -5.2 + 5.4 * exp(7.5 * (p - 1.0)) +
+        4.8 * p -2.0 * exp(-10.0 * p)+4.2 * exp(20.0 * (p - 1.0));
       if (apply_sigmoid)
-        p = 1.0/(1+exp(-1.0 * p));
+        p = 1.0/(1 + exp(-1.0 * p));
       (*input)(i, 0) = p;
       KALDI_ASSERT((*input)(i, 0) - (*input)(i, 0) == 0);
     }
@@ -162,7 +163,6 @@ void ExtractFrame(const VectorBase<double> &wave,
                   int32 frame_num,
                   const PitchExtractionOptions &opts,
                   Vector<double> *window) {
-
   int32 frame_shift = opts.NccfWindowShift();
   int32 frame_length = opts.NccfWindowSize();
   int32 outer_max_lag = round(opts.resample_freq / opts.min_f0) +
@@ -182,9 +182,7 @@ void ExtractFrame(const VectorBase<double> &wave,
   SubVector<double>  window_part(*window, 0,
                                  std::min(frame_length_new, wave.Dim()-start));
   window_part.CopyFromVec(wave_part);
-
-  //if (opts.dither != 0.0) Dither(&window_part, opts.dither);
-
+  
   if (opts.preemph_coeff != 0.0)
     PreemphasizeFrame(&window_part, opts.preemph_coeff);
 
@@ -202,7 +200,7 @@ class ArbitraryResample {
       num_samples_in_(num_samples_in),
       samp_rate_in_(samp_rate_in),
       filter_cutoff_(filter_cutoff),
-      num_zeros_upsample_(num_zeros_upsample){
+      num_zeros_upsample_(num_zeros_upsample) {
     KALDI_ASSERT(num_samples_in > 0 && samp_rate_in > 0.0 &&
                  filter_cutoff > 0.0 &&
                  filter_cutoff * 2.0 <= samp_rate_in
@@ -213,12 +211,12 @@ class ArbitraryResample {
   }
 
   int32 NumSamplesIn() const { return num_samples_in_; }
-  int32 NumSamplesOut() const{ return indexes_.size(); }
+  int32 NumSamplesOut() const { return indexes_.size(); }
 
   void Upsample(const MatrixBase<double> &input,
                 MatrixBase<double> *output) {
     // each row of "input" corresponds to the data to resample;
-    //the corresponding row of "output" is the resampled data.
+    // the corresponding row of "output" is the resampled data.
 
     KALDI_ASSERT(input.NumRows() == output->NumRows() &&
                  input.NumCols() == num_samples_in_ &&
@@ -239,11 +237,11 @@ class ArbitraryResample {
     indexes_.resize(num_sample);
     for (int32  i = 0; i < num_sample; i++) {
       indexes_[i].first_index = std::max(0,
-                                         static_cast<int>(ceil(samp_rate_in_ * (sample_points[i]
-                                                                                - num_zeros_upsample_/(2.0 * filter_cutoff_)))));
+        static_cast<int>(ceil(samp_rate_in_ * (sample_points[i]
+        - num_zeros_upsample_/(2.0 * filter_cutoff_)))));
       last_ind = std::min((num_samples_in_ - 1),
-                          static_cast<int>(floor(samp_rate_in_ *
-                                                 (sample_points[i] + num_zeros_upsample_ / (2.0 * filter_cutoff_))) + 1));
+        static_cast<int>(floor(samp_rate_in_ *
+        (sample_points[i] + num_zeros_upsample_ / (2.0 * filter_cutoff_))) + 1));
       indexes_[i].num_indices = last_ind - indexes_[i].first_index + 1;
     }
   }
@@ -262,7 +260,7 @@ class ArbitraryResample {
       }
     }
   }
-  double FilterFunc(double &t) {
+  double FilterFunc(const double &t) {
     double f_t = 0,  win = 0;
 
     if (fabs(t) < num_zeros_upsample_ /(2.0 * filter_cutoff_))
@@ -278,13 +276,12 @@ class ArbitraryResample {
   double filter_cutoff_;
   int32 num_zeros_upsample_;
   struct IndexInfo {
-    int32 first_index; // The first input-sample index that we sum
-    // over, for this output-sample index.
-    int32 num_indices; // The number of indices that we sum over.
+    int32 first_index;  // The first input-sample index that we sum
+                        // over, for this output-sample index.
+    int32 num_indices;  // The number of indices that we sum over.
   };
-  std::vector<IndexInfo> indexes_; // indexes_.size() equals sample_points.size().
-  std::vector<Vector<double> > weights_; // weights_.size() equals sample_points.size()
-
+  std::vector<IndexInfo> indexes_;  // indexes_.size() equals sample_points.size().
+  std::vector<Vector<double> > weights_;  // weights_.size() equals sample_points.size()
 };
 
 
@@ -296,7 +293,7 @@ void PreProcess(const PitchExtractionOptions opts,
   int32 num_samples_in = wave.Dim();
   double dt = opts.samp_freq / opts.resample_freq;
   int32 resampled_len = 1 + static_cast<int>(num_samples_in / dt);
-  processed_wave->Resize(resampled_len); // filtered wave
+  processed_wave->Resize(resampled_len);  // filtered wave
   std::vector<double> resampled_t(resampled_len);
   for (int32 i = 0; i < resampled_len; i++)
     resampled_t[i] = static_cast<double>(i) / opts.resample_freq;
@@ -309,9 +306,9 @@ void PreProcess(const PitchExtractionOptions opts,
   processed_wave->CopyRowFromMat(output_wave, 0);
 
   // Normalize input signal using rms
-  double rms = pow(VecVec((*processed_wave),(*processed_wave))/processed_wave->Dim(), 0.5);
+  double rms = pow(VecVec((*processed_wave), (*processed_wave)) / processed_wave->Dim(), 0.5);
   if (rms != 0.0)
-    (*processed_wave).Scale(1.0/rms);
+    (*processed_wave).Scale(1.0 / rms);
 }
 
 void Nccf(const Vector<double> &wave,
@@ -321,17 +318,16 @@ void Nccf(const Vector<double> &wave,
           Vector<double> *norm_prod) {
   Vector<double> zero_mean_wave(wave);
   SubVector<double> wave_part(wave, 0, nccf_window_size);
-  zero_mean_wave.Add(-wave_part.Sum()/nccf_window_size); // subtract mean-frame from wave
-
+  zero_mean_wave.Add(-wave_part.Sum() / nccf_window_size);  // subtract mean-frame from wave
   double e1, e2, sum;
   SubVector<double> sub_vec1(zero_mean_wave, 0, nccf_window_size);
-  e1 = VecVec(sub_vec1,sub_vec1);
+  e1 = VecVec(sub_vec1, sub_vec1);
   for (int32 lag = start; lag < end; lag++) {
     SubVector<double> sub_vec2(zero_mean_wave, lag, nccf_window_size);
-    e2 = VecVec(sub_vec2,sub_vec2);
-    sum = VecVec(sub_vec1,sub_vec2);
+    e2 = VecVec(sub_vec2, sub_vec2);
+    sum = VecVec(sub_vec1, sub_vec2);
     (*inner_prod)(lag-start) = sum;
-    (*norm_prod)(lag-start) = e1*e2;
+    (*norm_prod)(lag-start) = e1 * e2;
   }
 }
 
@@ -362,7 +358,7 @@ void SelectLag(const PitchExtractionOptions &opts,
   // we choose sequence of lags which leads to  delta_pitch difference in pitch_space.
   double lag = min_lag;
   int32 count = 0;
-  while ( lag <= max_lag) {
+  while (lag <= max_lag) {
     (*lags)(count) = lag;
     count++;
     lag = lag * (1 + opts.delta_pitch);
@@ -393,19 +389,18 @@ class PitchExtractor {
   void ComputeLocalCost(const Matrix<double> &autocorrelation) {
     Vector<double> correl(state_num_);
 
-    for( int32 i = 1; i < num_frames_+1; i++ ) {
+    for (int32 i = 1; i < num_frames_ + 1; i++) {
       SubVector<double> frame(autocorrelation.Row(i-1));
       Vector<double> local_cost(state_num_);
-      for(int32 j = 0; j < state_num_; j++)
+      for (int32 j = 0; j < state_num_; j++)
         correl(j) = frame(j);
-
       // compute the local cost
       frames_[i].local_cost.Add(1.0);
       frames_[i].local_cost.AddVec(-1.0, correl);
       Vector<double> corr_lag_cost(state_num_);
       corr_lag_cost.AddVecVec(opts_.soft_min_f0, correl, lags_, 0);
       frames_[i].local_cost.AddVec(1.0, corr_lag_cost);
-    } // end of loop over frames
+    }  // end of loop over frames
   }
   void FastViterbi(const Matrix<double> &correl) {
     ComputeLocalCost(correl);
@@ -413,7 +408,7 @@ class PitchExtractor {
     int best_b, min_i, max_i;
     BaseFloat delta_pitch_sq = log(1 + opts_.delta_pitch) * log(1 + opts_.delta_pitch);
     // loop over frames
-    for(int32 t = 1; t < num_frames_ + 1; t++) {
+    for (int32 t = 1; t < num_frames_ + 1; t++) {
       // Forward Pass
       for (int32 i = 0; i < state_num_; i++) {
         if ( i == 0 )
@@ -455,7 +450,7 @@ class PitchExtractor {
         frames_[t].obj_func(i) = min_c + frames_[t].local_cost(i);
       }
     }
-    //FindBestPath(resampled_nccf_pov);
+    // FindBestPath(resampled_nccf_pov);
   }
 
   void FindBestPath(const Matrix<double> &correlation) {
@@ -464,9 +459,7 @@ class PitchExtractor {
     int32 best;
     double l_opt;
     frames_[i].obj_func.Min(&best);
-    //std::cout << " FastViterbi objective for fast viterbi "
-    //  << frames_[i].obj_func(best)/num_frames_  << std::endl;
-    while(i > 0) {
+    while (i > 0) {
       l_opt = lags_(best);
       frames_[i].truepitch = 1.0 / l_opt;
       frames_[i].pov = correlation(i-1, best);
@@ -476,10 +469,10 @@ class PitchExtractor {
   }
   void GetPitch(Matrix<BaseFloat> *output) {
     output->Resize(num_frames_, 2);
-    for(int32 frm = 0; frm < num_frames_; frm++) {
-      (*output)(frm, 0) = static_cast<BaseFloat>(frames_[frm+1].pov);
-      (*output)(frm, 1) = static_cast<BaseFloat>(frames_[frm+1].truepitch);
-    }
+    for (int32 frm = 0; frm < num_frames_; frm++) {
+      (*output)(frm, 0) = static_cast<BaseFloat>(frames_[frm + 1].pov);
+      (*output)(frm, 1) = static_cast<BaseFloat>(frames_[frm + 1].truepitch);
+    } 
   }
  private:
   PitchExtractionOptions opts_;
@@ -489,7 +482,7 @@ class PitchExtractor {
   struct PitchFrame {
     Vector<double> local_cost; 
     Vector<double> obj_func;      // optimal objective function for frame i
-    Vector<double> back_pointers; //
+    Vector<double> back_pointers;
     double truepitch;             // True pitch
     double pov;                   // probability of voicing
     explicit PitchFrame() {}
@@ -519,17 +512,16 @@ void Compute(const PitchExtractionOptions &opts,
       round(opts.resample_freq *  outer_min_lag) + 1;
   int32 start = round(opts.resample_freq  * outer_min_lag),
       end = round(opts.resample_freq / opts.min_f0) +
-      round(opts.lowpass_filter_width/2);
+      round(opts.lowpass_filter_width / 2);
 
   Vector<double> lags;
   SelectLag(opts, &num_states, &lags);
   double a_fact_pitch = pow(opts.NccfWindowSize(), 4) * opts.nccf_ballast,
-    a_fact_pov = pow(10,-9);
+    a_fact_pov = pow(10, -9);
   Matrix<double> nccf_pitch(rows_out, num_max_lag + 1),
       nccf_pov(rows_out, num_max_lag + 1);
   for (int32 r = 0; r < rows_out; r++) {  // r is frame index.
-    ExtractFrame( processed_wave, r,
-                  opts, &window);
+    ExtractFrame(processed_wave, r, opts, &window);
     // compute nccf for pitch extraction
     Vector<double> inner_prod(num_lags), norm_prod(num_lags);
     Nccf(window, start, end, opts.NccfWindowSize(),
@@ -555,7 +547,7 @@ void Compute(const PitchExtractionOptions &opts,
   PitchExtractor pitch(opts, lags, num_states, rows_out);
   pitch.FastViterbi(resampled_nccf_pitch);
   pitch.FindBestPath(resampled_nccf_pov);
-  output->Resize(rows_out, 2); // (pov, pitch)
+  output->Resize(rows_out, 2);  // (pov, pitch)
   pitch.GetPitch(output);
 }
 
@@ -592,11 +584,12 @@ void PostProcessPitch(const PostProcessOptions &opts,
   pov.CopyColFromMat(input, 0);
   pitch.CopyColFromMat(input, 1);
   bool apply_sigmoid = true;
-  int nonlinearity = 2; // use new nonlinearity
+  int nonlinearity = 2;  // use new nonlinearity
   TakeLogOfPitch(&processed_input);
   ProcessPovFeatures(&processed_input, nonlinearity, apply_sigmoid);
   Matrix<BaseFloat> processed_output(processed_input);
-  WeightedMwn(opts.normalization_window_size, processed_input, &processed_output);
+  WeightedMwn(opts.normalization_window_size, 
+              processed_input, &processed_output);
   processed_output.CopyColFromVec(pov, 0);
   apply_sigmoid = false;
   ProcessPovFeatures(&processed_output, opts.pov_nonlinearity, apply_sigmoid);
@@ -605,7 +598,7 @@ void PostProcessPitch(const PostProcessOptions &opts,
   pitch.CopyColFromMat(processed_output, 1);
   pitch.Scale(opts.pitch_scale);
 
-  if(opts.add_delta_pitch) {
+  if (opts.add_delta_pitch) {
     Vector<BaseFloat> delta_pitch, log_pitch(input.NumRows());
     log_pitch.CopyColFromMat(processed_input, 1);
     ExtractDeltaPitch(opts, log_pitch, &delta_pitch);
