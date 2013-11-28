@@ -152,14 +152,14 @@ if [ -z "$degs_dir" ]; then
     echo "$0: working out number of frames of training data"
     num_frames=`feat-to-len scp:$data/feats.scp ark,t:- | awk '{x += $2;} END{print x;}'` || exit 1;
     echo $num_frames > $dir/num_frames
+    # Working out number of iterations per epoch.
+    iters_per_epoch=`perl -e "print int($num_frames/($samples_per_iter * $num_jobs_nnet) + 0.5);"` || exit 1;
+    [ $iters_per_epoch -eq 0 ] && iters_per_epoch=1
+    echo $iters_per_epoch > $dir/degs/iters_per_epoch  || exit 1;
   else
-    num_frames=`cat $dir/num_frames` || exit 1;
+    num_frames=$(cat $dir/num_frames) || exit 1;
+    iters_per_epoch=$(cat $dir/degs/iters_per_epoch) || exit 1;
   fi
-
-# Working out number of iterations per epoch.
-  iters_per_epoch=`perl -e "print int($num_frames/($samples_per_iter * $num_jobs_nnet) + 0.5);"` || exit 1;
-  [ $iters_per_epoch -eq 0 ] && iters_per_epoch=1
-  echo $iters_per_epoch > $dir/degs/iters_per_epoch  || exit 1;
 
   samples_per_iter_real=$[$num_frames/($num_jobs_nnet*$iters_per_epoch)]
   echo "$0: Every epoch, splitting the data up into $iters_per_epoch iterations,"
@@ -262,7 +262,7 @@ else
 fi
 
 
-x=0
+x=0   
 while [ $x -lt $num_iters ]; do
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
     
