@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
       TrainOneIter(feats, gmm_opts, iter, num_threads, &gmm);
 
       int32 next_num_gauss = std::min(num_gauss, cur_num_gauss + gauss_inc);
-      if (next_num_gauss > cur_num_gauss) {
+      if (next_num_gauss > gmm.NumGauss()) {
         KALDI_LOG << "Splitting to " << next_num_gauss << " Gaussians.";
         gmm.Split(next_num_gauss, 0.1);
         cur_num_gauss = next_num_gauss;

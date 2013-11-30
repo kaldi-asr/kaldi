@@ -1,6 +1,6 @@
-// gmmbin/gmm-info.cc
+// fgmmbin/fgmm-global-info.cc
 
-// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -19,7 +19,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "gmm/am-diag-gmm.h"
+#include "gmm/full-gmm.h"
 #include "hmm/transition-model.h"
 
 int main(int argc, char *argv[]) {
@@ -28,10 +28,11 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Write to standard output various properties of GMM-based model\n"
-        "Usage:  gmm-info [options] <model-in>\n"
+        "Write to standard output various properties of full-covariance GMM model\n"
+        "This is for a single mixture of Gaussians, e.g. as used for a UBM.\n"
+        "Usage:  gmm-info [options] <gmm>\n"
         "e.g.:\n"
-        " gmm-info 1.mdl\n";
+        " fgmm-info 1.ubm\n";
     
     ParseOptions po(usage);
     
@@ -42,25 +43,13 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string model_in_filename = po.GetArg(1);
+    std::string model_rxfilename = po.GetArg(1);
 
-    AmDiagGmm am_gmm;
-    TransitionModel trans_model;
-    {
-      bool binary_read;
-      Input ki(model_in_filename, &binary_read);
-      trans_model.Read(ki.Stream(), binary_read);
-      am_gmm.Read(ki.Stream(), binary_read);
-    }
+    FullGmm gmm;
+    ReadKaldiObject(model_rxfilename, &gmm);
 
-    std::cout << "number of phones " << trans_model.GetPhones().size() << '\n';
-    std::cout << "number of pdfs " << trans_model.NumPdfs() << '\n';
-    std::cout << "number of transition-ids " << trans_model.NumTransitionIds()
-              << '\n';
-    std::cout << "number of transition-states "
-              << trans_model.NumTransitionStates() << '\n';
-    std::cout << "feature dimension " << am_gmm.Dim() << '\n';
-    std::cout << "number of gaussians " << am_gmm.NumGauss() << '\n';
+    std::cout << "number of gaussians " << gmm.NumGauss() << '\n';
+    std::cout << "feature dimension " << gmm.Dim() << '\n';
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
