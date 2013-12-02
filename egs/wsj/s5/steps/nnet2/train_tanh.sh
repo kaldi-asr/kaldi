@@ -292,7 +292,7 @@ while [ $x -lt $num_iters ]; do
     done
 
     learning_rate=`perl -e '($x,$n,$i,$f)=@ARGV; print ($x >= $n ? $f : $i*exp($x*log($f/$i)/$n));' $[$x+1] $num_iters_reduce $initial_learning_rate $final_learning_rate`;
-    final_learning_rate=`perl -e "print $learning_rate * $final_learning_rate_factor;"`;
+    last_layer_learning_rate=`perl -e "print $learning_rate * $final_learning_rate_factor;"`;
     nnet-am-info $dir/$[$x+1].1.mdl > $dir/foo  2>/dev/null || exit 1
     nu=`cat $dir/foo | grep num-updatable-components | awk '{print $2}'`
     na=`cat $dir/foo | grep -v Fixed | grep AffineComponent | wc -l` 
@@ -301,7 +301,7 @@ while [ $x -lt $num_iters ]; do
     # The last two layers will get this (usually lower) learning rate.
     lr_string="$learning_rate"
     for n in `seq 2 $nu`; do 
-      if [ $n -eq $na ] || [ $n -eq $[$na-1] ]; then lr=$final_learning_rate;
+      if [ $n -eq $na ] || [ $n -eq $[$na-1] ]; then lr=$last_layer_learning_rate;
       else lr=$learning_rate; fi
       lr_string="$lr_string:$lr"
     done
