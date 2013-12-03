@@ -406,8 +406,8 @@ class PipeInputImpl: public InputImplBase {
       return false;
     } else {
 #ifndef _MSC_VER
-      fb_ = new PipebufType(f_,  // Using his constructor won't lead the
-                                 // destructor close the stream.
+      fb_ = new PipebufType(f_,  // Using this constructor won't lead the
+                                 // destructor to close the stream.
                                  (binary ? std::ios_base::in|std::ios_base::binary
                                   :std::ios_base::in));
       KALDI_ASSERT(fb_ != NULL);  // or would be alloc error.

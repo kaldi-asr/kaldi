@@ -1,5 +1,6 @@
 #!/bin/bash
-# Copyright 2010-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2010-2011  Microsoft Corporation 
+#           2012-2013  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
 
@@ -89,6 +90,7 @@ fi
 function do_filtering {
   # assumes the utt2spk and spk2utt files already exist.
   [ -f $srcdir/feats.scp ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/feats.scp >$destdir/feats.scp
+  [ -f $srcdir/vad.scp ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/vad.scp >$destdir/vad.scp
   [ -f $srcdir/wav.scp ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/wav.scp >$destdir/wav.scp
   [ -f $srcdir/text ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/text >$destdir/text
   [ -f $srcdir/spk2gender ] && utils/filter_scp.pl $destdir/spk2utt <$srcdir/spk2gender >$destdir/spk2gender

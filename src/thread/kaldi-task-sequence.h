@@ -43,15 +43,15 @@ namespace kaldi {
    Here, we will still accept objects of some class C with an operator () that
    takes no arguments.  C may also have a constructor and a destructor that do
    something (typically the constructor just sets variables, and the destructor
-   does some kind of output).  We 
-   have a templated class TaskSequencer<C> which is responsible for running
-   the jobs in parallel.  It has a function Run() that will accept a new object
-   of class C; this will block until a thread is free, at which time it will
-   start running the operator () of the class.  When classes are finished running,
-   the object will be deleted.  Class TaskSequencer guarantees that the
-   destructors will be called sequentially (not in parallel) and in the same
-   order the objects were given to the Run() function, so that it is safe for
-   the destructor to have side effects such as outputting data.
+   does some kind of output).  We have a templated class TaskSequencer<C> which
+   is responsible for running the jobs in parallel.  It has a function Run()
+   that will accept a new object of class C; this will block until a thread is
+   free, at which time it will spawn a thread that starts running the operator
+   () of the class.  When classes are finished running, the objects will be
+   deleted.  Class TaskSequencer guarantees that the destructors will be called
+   sequentially (not in parallel) and in the same order the objects were given
+   to the Run() function, so that it is safe for the destructor to have side
+   effects such as outputting data.
 
    Note: the destructor of TaskSequencer will wait for any remaining jobs that
    are still running and will call the destructors.   

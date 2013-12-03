@@ -116,9 +116,6 @@ int32 main(int argc, char *argv[]) {
       return 1;
     }
 
-    if (left_context % kDeltaOrder != 0 || left_context != right_context)
-      KALDI_ERR<< "Invalid left/right context parameters!";
-
     std::string model_rspecifier = po.GetArg(1), fst_rspecifier = po.GetArg(2),
         word_syms_filename = po.GetArg(3), silence_phones_str = po.GetArg(4),
         word_boundary_filename = po.GetOptArg(6), lda_mat_rspecifier = po
@@ -210,10 +207,6 @@ int32 main(int argc, char *argv[]) {
       } else {
         DeltaFeaturesOptions opts;
         opts.order = kDeltaOrder;
-        // Note from Dan: keeping the next statement for back-compatibility,
-        // but I don't think this is really the right way to set the window-size
-        // in the delta computation: it should be a separate config.
-        opts.window = left_context / 2;
         feat_transform = new OnlineDeltaInput(opts, &cmn_input);
       }
 
