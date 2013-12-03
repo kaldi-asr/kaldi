@@ -835,15 +835,19 @@ static void UnitTestCuMatrixSymInvertPosDef() {
     Real alpha = 0.3, beta = 1.75432;
     M.SymAddMat2(alpha, N, trans, beta);
     // M.AddMatMat(alpha, N, trans, N, other_trans, beta);
-    SpMatrix<Real> S(CuSpMatrix<Real>(M, kTakeLower));
+    CuSpMatrix<Real> spTemp(M, kTakeLower);
+    SpMatrix<Real> S(spTemp);
     S.Invert();
-    CuMatrix<Real> M_orig(CuSpMatrix<Real>(M, kTakeLower));
+    CuSpMatrix<Real> spTemp2(M, kTakeLower);
+    CuMatrix<Real> M_orig(spTemp2);
     M.SymInvertPosDef();
-    CuMatrix<Real> M_inverted(CuSpMatrix<Real>(M, kTakeLower));
+    CuSpMatrix<Real> spTemp3(M, kTakeLower);
+    CuMatrix<Real> M_inverted(spTemp3);
     CuMatrix<Real> M_prod(dimM, dimM);
     M_prod.AddMatMat(Real(1.0), M_orig, kNoTrans, M_inverted, kNoTrans, Real(0.0));
     KALDI_ASSERT(M_prod.IsUnit());
-    SpMatrix<Real> S2(CuSpMatrix<Real>(M, kTakeLower));
+    CuSpMatrix<Real> spTemp4(M, kTakeLower);
+    SpMatrix<Real> S2(spTemp4);
     KALDI_ASSERT(ApproxEqual(S, S2, (Real)0.1));
     KALDI_ASSERT(dimM == 0 || S.Trace() != 0);
   }

@@ -20,7 +20,7 @@ export PATH=$KALDI_ROOT/tools/kaldi_lm:$PATH
  else
    echo Downloading and installing the kaldi_lm tools
    if [ ! -f kaldi_lm.tar.gz ]; then
-     wget http://merlin.fit.vutbr.cz/kaldi/kaldi_lm.tar.gz || exit 1;
+     wget http://www.danielpovey.com/files/kaldi/kaldi_lm.tar.gz || exit 1;
    fi
    tar -xvzf kaldi_lm.tar.gz || exit 1;
    cd kaldi_lm

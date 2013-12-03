@@ -64,7 +64,8 @@ class Component {
     kTranspose,
     kBlockLinearity,
     kAddShift,
-    kRescale
+    kRescale,
+    kKlHmm
   } ComponentType;
   /// A pair of type and marker 
   struct key_value {

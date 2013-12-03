@@ -61,13 +61,16 @@ void InitGmmFromRandomFrames(const Matrix<BaseFloat> &feats, DiagGmm *gmm) {
 void TrainOneIter(const Matrix<BaseFloat> &feats,
                   const MleDiagGmmOptions &gmm_opts,
                   int32 iter,
+                  int32 num_threads,
                   DiagGmm *gmm) {
   AccumDiagGmm gmm_acc(*gmm, kGmmAll);
 
-  double tot_like = 0.0;
-  
-  for (int32 t = 0; t < feats.NumRows(); t++)
-    tot_like += gmm_acc.AccumulateFromDiag(*gmm, feats.Row(t), 1.0);
+  Vector<BaseFloat> frame_weights(feats.NumRows(), kUndefined);
+  frame_weights.Set(1.0);
+
+  double tot_like;
+  tot_like = gmm_acc.AccumulateFromDiagMultiThreaded(*gmm, feats, frame_weights,
+                                                     num_threads);
 
   KALDI_LOG << "Likelihood per frame on iteration " << iter
             << " was " << (tot_like / feats.NumRows()) << " over "
@@ -97,17 +100,24 @@ int main(int argc, char *argv[]) {
     
     bool binary = true;
     int32 num_gauss = 100;
+    int32 num_gauss_init = 0;
     int32 num_iters = 50;
     int32 num_frames = 200000;
     int32 srand_seed = 0;
+    int32 num_threads = 4;
     
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("num-gauss", &num_gauss, "Number of Gaussians in the model");
+    po.Register("num-gauss-init", &num_gauss_init, "Number of Gaussians in "
+                "the model initially (if nonzero and less than num_gauss, "
+                "we'll do mixture splitting)");
     po.Register("num-iters", &num_iters, "Number of iterations of training");
     po.Register("num-frames", &num_frames, "Number of feature vectors to store in "
                 "memory and train on (randomly chosen from the input features)");
     po.Register("srand", &srand_seed, "Seed for random number generator ");
-    
+    po.Register("num-threads", &num_threads, "Number of threads used for "
+                "statistics accumulation");
+                
     gmm_opts.Register(&po);
 
     po.Read(argc, argv);
@@ -132,7 +142,7 @@ int main(int argc, char *argv[]) {
     int64 num_read = 0, dim = 0;
 
     KALDI_LOG << "Reading features (will keep " << num_frames << " frames.)";
-
+    
     for (; !feature_reader.Done(); feature_reader.Next()) {
       const Matrix<BaseFloat>  &this_feats = feature_reader.Value();
       for (int32 t = 0; t < this_feats.NumRows(); t++) {
@@ -160,15 +170,36 @@ int main(int argc, char *argv[]) {
       KALDI_WARN << "Number of frames read " << num_read << " was less than "
                  << "target number " << num_frames << ", using all we read.";
       feats.Resize(num_read, dim, kCopyData);
+    } else {
+      BaseFloat percent = num_frames * 100.0 / num_read;
+      KALDI_LOG << "Kept " << num_frames << " out of " << num_read
+                << " input frames = " << percent << "%.";
     }
 
-    DiagGmm gmm(num_gauss, dim);
-
-    KALDI_LOG << "Initializing GMM means from random frames";
-    InitGmmFromRandomFrames(feats, &gmm);
+    if (num_gauss_init <= 0 || num_gauss_init > num_gauss)
+      num_gauss_init = num_gauss;
     
-    for (int32 iter = 0; iter < num_iters; iter++)
-      TrainOneIter(feats, gmm_opts, iter, &gmm);
+    DiagGmm gmm(num_gauss_init, dim);
+    
+    KALDI_LOG << "Initializing GMM means from random frames to "
+              << num_gauss_init << " Gaussians.";
+    InitGmmFromRandomFrames(feats, &gmm);
+
+    // we'll increase the #Gaussians by splitting,
+    // till halfway through training.
+    int32 cur_num_gauss = num_gauss_init,
+        gauss_inc = (num_gauss - num_gauss_init) / (num_iters / 2);
+        
+    for (int32 iter = 0; iter < num_iters; iter++) {
+      TrainOneIter(feats, gmm_opts, iter, num_threads, &gmm);
+
+      int32 next_num_gauss = std::min(num_gauss, cur_num_gauss + gauss_inc);
+      if (next_num_gauss > gmm.NumGauss()) {
+        KALDI_LOG << "Splitting to " << next_num_gauss << " Gaussians.";
+        gmm.Split(next_num_gauss, 0.1);
+        cur_num_gauss = next_num_gauss;
+      }
+    }
 
     WriteKaldiObject(gmm, model_wxfilename, binary);
     KALDI_LOG << "Wrote model to " << model_wxfilename;

@@ -105,9 +105,8 @@ int main(int argc, char *argv[]) {
               gmm.GaussianSelectionPreselect(mat.Row(i), preselect[i],
                                              num_gselect, &(gselect[i]));
       } else { // No "preselect" [i.e. no existing gselect]: simple case.
-        for (int32 i = 0; i < mat.NumRows(); i++)
-          tot_like_this_file += 
-              gmm.GaussianSelection(mat.Row(i), num_gselect, &(gselect[i]));
+        tot_like_this_file =
+            gmm.GaussianSelection(mat, num_gselect, &gselect);
       }
       
       gselect_writer.Write(utt, gselect);

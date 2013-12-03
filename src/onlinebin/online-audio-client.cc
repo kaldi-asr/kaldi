@@ -60,14 +60,12 @@ int main(int argc, char** argv) {
             "e.g.: ./online-audio-client 192.168.50.12 9012 'scp:wav_files.scp'\n\n";
     ParseOptions po(usage);
 
-    bool htk = false, vtt = false, silent = false;
+    bool htk = false, vtt = false;
     int32 channel = -1;
     int32 packet_size = 1024;
 
     po.Register("htk", &htk, "Save the result to an HTK label file");
     po.Register("vtt", &vtt, "Save the result to a WebVTT subtitle file");
-    po.Register("silent", &silent,
-                "Don't print any output (except for errors)");
     po.Register(
         "channel", &channel,
         "Channel to extract (-1 -> expect mono, 0 -> left, 1 -> right)");
@@ -116,10 +114,8 @@ int main(int argc, char** argv) {
       return -1;
     }
 
-    if (!silent) {
-      std::cout << "Connected to KALDI server at host " << server_addr_str
-          << " port " << server_port << std::endl;
-    }
+    KALDI_VLOG(2) << "Connected to KALDI server at host " << server_addr_str
+                  << " port " << server_port << std::endl;
 
     char* pack_buffer = new char[packet_size];
 
@@ -127,8 +123,7 @@ int main(int argc, char** argv) {
     for (; !reader.Done(); reader.Next()) {
       std::string wav_key = reader.Key();
 
-      if (!silent)
-        std::cout << "File: " << wav_key << std::endl;
+      KALDI_VLOG(2) << "File: " << wav_key << std::endl;
 
       const WaveData &wav_data = reader.Value();
 
@@ -260,10 +255,10 @@ int main(int argc, char** argv) {
         }
       }
 
-      if (!silent) {
+      {
         float speed = total_input_dur / total_reco_dur;
-        std::cout << "Recognized (" << speed << "xRT): " << reco_output
-                  << std::endl;
+        KALDI_VLOG(2) << "Recognized (" << speed << "xRT): " << reco_output
+                      << std::endl;
       }
 
       if (htk) {

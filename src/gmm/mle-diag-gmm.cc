@@ -1,6 +1,6 @@
 // gmm/mle-diag-gmm.cc
 
-// Copyright 2009-2012  Saarland University;  Georg Stemmer;  Jan Silovsky;
+// Copyright 2009-2013  Saarland University;  Georg Stemmer;  Jan Silovsky;
 //                      Microsoft Corporation; Yanmin Qian;
 //                      Johns Hopkins University (author: Daniel Povey);
 //                      Cisco Systems (author: Neha Agrawal)
@@ -26,6 +26,7 @@
 
 #include "gmm/diag-gmm.h"
 #include "gmm/mle-diag-gmm.h"
+#include "thread/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -201,7 +202,6 @@ BaseFloat AccumDiagGmm::AccumulateFromDiag(const DiagGmm &gmm,
   AccumulateFromPosteriors(data, posteriors);
   return log_like;
 }
-
 
 // Careful: this wouldn't be valid if it were used to update the
 // Gaussian weights.
@@ -477,6 +477,85 @@ void MapDiagGmmUpdate(const MapDiagGmmOptions &config,
   if (count_out) *count_out = occ_sum;
 }
 
+
+class AccumulateMultiThreadedClass: public MultiThreadable {
+ public:
+  AccumulateMultiThreadedClass(const DiagGmm &diag_gmm,
+                               const MatrixBase<BaseFloat> &data,
+                               const VectorBase<BaseFloat> &frame_weights,
+                               AccumDiagGmm *accum,
+                               double *tot_like):
+      diag_gmm_(diag_gmm), data_(data),
+      frame_weights_(frame_weights), dest_accum_(accum),
+      tot_like_ptr_(tot_like), tot_like_(0.0) { }
+  AccumulateMultiThreadedClass(const AccumulateMultiThreadedClass &other):
+    diag_gmm_(other.diag_gmm_), data_(other.data_),
+    frame_weights_(other.frame_weights_), dest_accum_(other.dest_accum_),
+    accum_(diag_gmm_, dest_accum_->Flags()), tot_like_ptr_(other.tot_like_ptr_),
+    tot_like_(0.0) {
+    KALDI_ASSERT(data_.NumRows() == frame_weights_.Dim());
+  }
+  void operator () () {
+    int32 num_frames = data_.NumRows(), num_threads = num_threads_,
+        block_size = (num_frames + num_threads - 1) / num_threads,
+        block_start = block_size * thread_id_,
+        block_end = std::min(num_frames, block_start + block_size);
+    tot_like_ = 0.0;
+    double tot_weight = 0.0;
+    for (int32 t = block_start; t < block_end; t++) {
+      tot_like_ += frame_weights_(t) *
+          accum_.AccumulateFromDiag(diag_gmm_, data_.Row(t), frame_weights_(t));
+      tot_weight += frame_weights_(t);
+    }
+    KALDI_VLOG(3) << "Thread " << thread_id_ << " saw average likeliood/frame "
+                  << (tot_like_ / tot_weight) << " over " << tot_weight
+                  << " (weighted) frames.";
+  }
+  ~AccumulateMultiThreadedClass() {
+    if (accum_.Dim() != 0) { // if our accumulator is set up (this is not true
+      // for the single object we use to initialize the others)
+      dest_accum_->Add(1.0, accum_);
+      *tot_like_ptr_ += tot_like_;
+    }
+  }
+ private:
+  const DiagGmm &diag_gmm_;
+  const MatrixBase<BaseFloat> &data_;
+  const VectorBase<BaseFloat> &frame_weights_;
+  AccumDiagGmm *dest_accum_;
+  AccumDiagGmm accum_;
+  double *tot_like_ptr_;
+  double tot_like_;
+};
+  
+
+BaseFloat AccumDiagGmm::AccumulateFromDiagMultiThreaded(
+    const DiagGmm &gmm,
+    const MatrixBase<BaseFloat> &data,
+    const VectorBase<BaseFloat> &frame_weights,
+    int32 num_threads) {
+
+  double tot_like = 0.0;
+  AccumulateMultiThreadedClass accumulator(gmm, data, frame_weights,
+                                           this, &tot_like);
+  {
+    // Note: everything happens in the constructor and destructor of
+    // the object created below.
+    MultiThreader<AccumulateMultiThreadedClass> threader(num_threads,
+                                                         accumulator);
+    // we need to make sure it's destroyed before we access the
+    // value of tot_like.
+  }
+  return tot_like;
+}
+
+void AccumDiagGmm::AssertEqual(const AccumDiagGmm &other) {
+  KALDI_ASSERT(dim_ == other.dim_ && num_comp_ == other.num_comp_ &&
+               flags_ == other.flags_);
+  KALDI_ASSERT(occupancy_.ApproxEqual(other.occupancy_));
+  KALDI_ASSERT(mean_accumulator_.ApproxEqual(other.mean_accumulator_));
+  KALDI_ASSERT(variance_accumulator_.ApproxEqual(other.variance_accumulator_));
+}
 
 
 }  // End of namespace kaldi

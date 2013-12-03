@@ -324,6 +324,8 @@ local/run_sgmm2.sh
 # You probably wany to run the hybrid recipe as it is complementary:
 local/run_dnn.sh
 
+# You probably want to try KL-HMM 
+#local/run_kl_hmm.sh
 
 # Getting results [see RESULTS file]
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
