@@ -16,7 +16,7 @@ OBJFILES =
 TESTFILES =
 
 ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../feat/kaldi-feat.a \
-          ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
+          ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a ../thread/kaldi-thread.a \
 		  ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  \
 		  ../util/kaldi-util.a ../base/kaldi-base.a 
 
