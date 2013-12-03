@@ -58,7 +58,9 @@ int main(int argc, char *argv[]) {
     po.Register("thresh", &thresh, "Log-likelihood change threshold for "
                 "tree-building");
     po.Register("cluster-thresh", &cluster_thresh, "Log-likelihood change "
-                "threshold for clustering after tree-building");
+                "threshold for clustering after tree-building.  0 means "
+                "no clustering; -1 means use as a clustering threshold the "
+                "likelihood change of the final split.");
 
     po.Read(argc, argv);
 

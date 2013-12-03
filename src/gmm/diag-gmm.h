@@ -81,6 +81,13 @@ class DiagGmm {
   void LogLikelihoods(const VectorBase<BaseFloat> &data,
                       Vector<BaseFloat> *loglikes) const;
 
+  /// This version of the LogLikelihoods function operates on
+  /// a sequence of frames simultaneously; the row index of both "data" and
+  /// "loglikes" is the frame index.
+  void LogLikelihoods(const MatrixBase<BaseFloat> &data,
+                      Matrix<BaseFloat> *loglikes) const;
+
+  
   /// Outputs the per-component log-likelihoods of a subset of mixture
   /// components.  Note: at output, loglikes->Dim() will equal indices.size().
   /// loglikes[i] will correspond to the log-likelihood of the Gaussian
@@ -89,13 +96,20 @@ class DiagGmm {
                                const std::vector<int32> &indices,
                                Vector<BaseFloat> *loglikes) const;
 
-  /// Get gaussian selection information for one frame.  Returns log-like for
+  /// Get gaussian selection information for one frame.  Returns og-like 
   /// this frame.  Output is the best "num_gselect" indices, sorted from best to
   /// worst likelihood.  If "num_gselect" > NumGauss(), sets it to NumGauss().
   BaseFloat GaussianSelection(const VectorBase<BaseFloat> &data,
                               int32 num_gselect,
                               std::vector<int32> *output) const;
 
+  /// This version of the Gaussian selection function works for a sequence
+  /// of frames rather than just a single frame.  Returns sum of the log-likes
+  /// over all frames.
+  BaseFloat GaussianSelection(const MatrixBase<BaseFloat> &data,
+                              int32 num_gselect,
+                              std::vector<std::vector<int32> > *output) const;
+  
   /// Get gaussian selection information for one frame.  Returns log-like for
   /// this frame.  Output is the best "num_gselect" indices that were
   /// preselected, sorted from best to worst likelihood.  If "num_gselect" >
