@@ -89,7 +89,8 @@ int32 MergePosteriors(const Posterior &post1,
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    typedef kaldi::int32 int32;  
+    typedef kaldi::int32 int32;
+    typedef kaldi::int64 int64;
 
     const char *usage =
         "Sum two sets of posteriors for each utterance, e.g. useful in fMMI.\n"
