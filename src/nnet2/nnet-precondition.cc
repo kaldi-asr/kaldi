@@ -46,7 +46,8 @@ void PreconditionDirections(const CuMatrixBase<BaseFloat> &R,
     G.SymAddMat2(1.0 / (N-1), R, kTrans, 1.0);
     G.CopyLowerToUpper();
     if (GetVerboseLevel() >= 5 && rand() % 20 == 0) {
-      SpMatrix<BaseFloat> G_cpu(CuSpMatrix<BaseFloat>(G, kTakeLower));
+      CuSpMatrix<BaseFloat> tmp(G, kTakeLower);
+      SpMatrix<BaseFloat> G_cpu(tmp);
       G_cpu.PrintEigs("G");
     }
     G.SymInvertPosDef();
@@ -69,7 +70,8 @@ void PreconditionDirections(const CuMatrixBase<BaseFloat> &R,
     S.CopyLowerToUpper();
     // invert S, so now S = (\lambda I + (N-1) R R^T)^{-1}.
     if (GetVerboseLevel() >= 5 && rand() % 20 == 0) {
-      SpMatrix<BaseFloat> S_cpu(CuSpMatrix<BaseFloat>(S, kTakeLower));
+      CuSpMatrix<BaseFloat> tmp(S, kTakeLower);
+      SpMatrix<BaseFloat> S_cpu(tmp);
       S_cpu.PrintEigs("S");
     }
     S.SymInvertPosDef();
