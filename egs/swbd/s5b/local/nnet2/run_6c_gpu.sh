@@ -28,24 +28,12 @@ set -e # exit on error.
 # likely generate very thin lattices.  Note: the transform-dir is important to
 # specify, since this system is on top of fMLLR features.
 
-nj=$(cat exp/tri4b/num_jobs)
 
-if [ $stage -le 0 ]; then
-  steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
-    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
-    --transform-dir exp/tri4b \
-    data/train_nodup data/lang exp/nnet5c_gpu exp/nnet5c_gpu_denlats
-fi
-
-if [ $stage -le 1 ]; then
-  steps/nnet2/align.sh  --cmd "$decode_cmd $gpu_opts" --use-gpu yes \
-    --transform-dir exp/tri4b \
-    --nj $nj data/train_nodup data/lang exp/nnet5c_gpu exp/nnet5c_gpu_ali
-fi
 
 if [ $stage -le 2 ]; then
   steps/nnet2/train_discriminative.sh --cmd "$decode_cmd"  --learning-rate 0.000002 \
-    --num-epochs 2 \
+    --modify-learning-rates true --last-layer-factor 0.1 \
+    --num-epochs 4 --cleanup false \
     --num-jobs-nnet 4 --stage $train_stage \
     --transform-dir exp/tri4b \
     --num-threads 1 --parallel-opts "$gpu_opts" data/train data/lang \
@@ -53,7 +41,7 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  for epoch in 1 2; do
+  for epoch in 1 2 3 4; do 
     for lm_suffix in tg fsh_tgpr; do
       steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 30 --iter epoch$epoch \
         --config conf/decode.config --transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \
@@ -63,5 +51,5 @@ if [ $stage -le 3 ]; then
 fi
 
 
-exit 0;
 
+exit 0;

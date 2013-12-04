@@ -99,6 +99,15 @@ for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep WER $x/wer_* | 
 %WER 17.9 | 1831 21395 | 83.8 10.8 5.5 1.7 17.9 55.8 | exp/nnet6a_gpu/decode_eval2000_sw1_fsh_tgpr/score_13/eval2000.ctm.swbd.filt.sys
 %WER 18.4 | 1831 21395 | 83.6 11.4 5.0 2.1 18.4 56.1 | exp/nnet6a_gpu/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
 
+# Discriminative training on top of 5c (14.6 still not as Good as Karel's 14.1 number with this LM, but getting closer).
+%WER 15.0 | 1831 21395 | 87.3 9.0 3.7 2.3 15.0 52.2 | exp/nnet6c_mpe_gpu/decode_eval2000_sw1_fsh_tgpr_epoch1/score_15/eval2000.ctm.swbd.filt.sys
+%WER 14.8 | 1831 21395 | 87.3 8.9 3.8 2.2 14.8 51.9 | exp/nnet6c_mpe_gpu/decode_eval2000_sw1_fsh_tgpr_epoch2/score_16/eval2000.ctm.swbd.filt.sys
+%WER 14.7 | 1831 21395 | 87.5 8.9 3.6 2.2 14.7 51.7 | exp/nnet6c_mpe_gpu/decode_eval2000_sw1_fsh_tgpr_epoch3/score_16/eval2000.ctm.swbd.filt.sys
+%WER 14.6 | 1831 21395 | 87.6 8.9 3.6 2.2 14.6 51.5 | exp/nnet6c_mpe_gpu/decode_eval2000_sw1_fsh_tgpr_epoch4/score_16/eval2000.ctm.swbd.filt.sys
+%WER 15.2 | 1831 21395 | 87.1 9.1 3.8 2.3 15.2 53.1 | exp/nnet6c_mpe_gpu/decode_eval2000_sw1_tg_epoch1/score_15/eval2000.ctm.swbd.filt.sys
+%WER 15.1 | 1831 21395 | 87.4 9.1 3.5 2.5 15.1 52.6 | exp/nnet6c_mpe_gpu/decode_eval2000_sw1_tg_epoch2/score_13/eval2000.ctm.swbd.filt.sys
+%WER 15.0 | 1831 21395 | 87.5 9.0 3.5 2.5 15.0 52.4 | exp/nnet6c_mpe_gpu/decode_eval2000_sw1_tg_epoch3/score_14/eval2000.ctm.swbd.filt.sys
+%WER 14.9 | 1831 21395 | 87.4 9.1 3.5 2.4 14.9 52.3 | exp/nnet6c_mpe_gpu/decode_eval2000_sw1_tg_epoch4/score_15/eval2000.ctm.swbd.filt.sys
 
 
 
@@ -112,6 +121,4 @@ for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep WER $x/wer_* | 
 %WER 14.1 | 1831 21395 | 87.8 8.7 3.5 1.9 14.1 50.4 | exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval2000_sw1_fsh_tgpr_it2/score_14/eval2000.ctm.swbd.filt.sys
 # Final system rescored by sw1_fsh trigram (unpruned)
 %WER 13.4 | 1831 21395 | 88.4 8.2 3.4 1.8 13.4 49.2 | exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval2000_sw1_fsh_tg.3_it2/score_14/eval2000.ctm.swbd.filt.sys
-
-
 
