@@ -1,13 +1,22 @@
-#!/usr/bin/python -u
+#!/usr/bin/python
 
-# egs/wsj/s2/scripts/gen_rbm_init.py
+# Copyright 2012  Brno University of Technology (author: Karel Vesely)
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# Copyright 2012  Karel Vesely
+#  http://www.apache.org/licenses/LICENSE-2.0
 #
-# Initializes the RBM Neural Network
+# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+# MERCHANTABLITY OR NON-INFRINGEMENT.
+# See the Apache 2 License for the specific language governing permissions and
+# limitations under the License.
+
 #
-# calling example:
-# python gen_mlp_init.py --dimIn=598 --dimOut=135 --dimHid=1024:1024:1024 
+# Initialization of single RBM (``layer'')
 #
 
 import math, random

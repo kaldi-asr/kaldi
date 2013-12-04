@@ -58,7 +58,7 @@ struct PitchExtractionOptions {
   explicit PitchExtractionOptions() :
       samp_freq(16000),
       frame_shift_ms(10.0),
-      frame_length_ms(20.0),
+      frame_length_ms(25.0),
       preemph_coeff(0.97),
       min_f0(50),
       max_f0(400),

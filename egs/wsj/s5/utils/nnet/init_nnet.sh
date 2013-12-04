@@ -35,6 +35,7 @@ in_dim=$1
 out_dim=$2
 nnet_out=$3
 dir=$(dirname $nnet_out)
+[ ! -d $dir ] && mkdir -p $dir
 
 ###
 ### What is the topology? Straight or bottleneck?
