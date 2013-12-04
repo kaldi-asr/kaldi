@@ -25,6 +25,20 @@
 #include "nnet2/am-nnet.h"
 
 
+namespace kaldi {
+namespace nnet2 {
+void SetMaxChange(BaseFloat max_change, Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *component = &(nnet->GetComponent(c));
+    AffineComponentPreconditioned *ac =
+        dynamic_cast<AffineComponentPreconditioned*>(component);
+    if (ac != NULL)
+      ac->SetMaxChange(max_change);
+  }
+}
+}
+}
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -45,15 +59,15 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     BaseFloat average_learning_rate = 0.0;
-    std::string use_gpu = "optional";
-
+    BaseFloat last_layer_factor = 1.0;
+    
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("average-learning-rate", &average_learning_rate,
                 "If supplied, change learning rate geometric mean to the given "
                 "value.");
-    po.Register("use-gpu", &use_gpu,
-                "yes|no|optional, only has effect if compiled with CUDA"); 
+    po.Register("last-layer-factor", &last_layer_factor, "Factor that "
+                "reduces the target relative learning rate for last layer.");
 
     po.Read(argc, argv);
 
@@ -63,10 +77,6 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_ASSERT(average_learning_rate >= 0);
-
-#if HAVE_CUDA==1
-    CuDevice::Instantiate().SelectGpuId(use_gpu);
-#endif
 
     std::string prev_nnet_rxfilename = po.GetArg(1),
         cur_nnet_rxfilename = po.GetArg(2),
@@ -133,32 +143,44 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // Gets learning rates for current neural net.
-    Vector<BaseFloat> cur_nnet_learning_rates(num_updatable);
+    // Gets learning rates for previous neural net.
+    Vector<BaseFloat> prev_nnet_learning_rates(num_updatable),
+        cur_nnet_learning_rates(num_updatable);
+    am_prev_nnet.GetNnet().GetLearningRates(&prev_nnet_learning_rates);
     am_cur_nnet.GetNnet().GetLearningRates(&cur_nnet_learning_rates);
-    KALDI_LOG << "Old learning rates for current model per layers are "
+    KALDI_LOG << "Learning rates for previous model per layer are "
+              << prev_nnet_learning_rates;
+    KALDI_LOG << "Learning rates for current model per layer are "
               << cur_nnet_learning_rates;
-
+    
     // Gets target geometric mean.
-    BaseFloat target_geo_mean = 0.0; 
+    BaseFloat target_geometric_mean = 0.0; 
     if (average_learning_rate == 0.0) {
-      target_geo_mean = exp(cur_nnet_learning_rates.SumLog()
-                            / static_cast<BaseFloat>(num_updatable));
+      target_geometric_mean = exp(cur_nnet_learning_rates.SumLog()
+                                  / static_cast<BaseFloat>(num_updatable));
     } else {
-      target_geo_mean = average_learning_rate;
+      target_geometric_mean = average_learning_rate;
     }
-    KALDI_ASSERT(target_geo_mean > 0.0);
+    KALDI_ASSERT(target_geometric_mean > 0.0);
 
-    // Works out the new learning rates.
-    cur_nnet_learning_rates.DivElements(relative_diff);
-    BaseFloat cur_geo_mean = exp(cur_nnet_learning_rates.SumLog()
+    // Works out the new learning rates.  We start from the previous model;
+    // this ensures that if this program is run twice, we get consistent
+    // results even if it's overwritten the current model.
+    Vector<BaseFloat> nnet_learning_rates(prev_nnet_learning_rates);
+    nnet_learning_rates.DivElements(relative_diff);
+    KALDI_ASSERT(last_layer_factor > 0.0);
+    nnet_learning_rates(num_updatable - 1) *= last_layer_factor;
+    BaseFloat cur_geometric_mean = exp(nnet_learning_rates.SumLog()
                                  / static_cast<BaseFloat>(num_updatable));
-    cur_nnet_learning_rates.Scale(target_geo_mean / cur_geo_mean);
+    nnet_learning_rates.Scale(target_geometric_mean / cur_geometric_mean);
     KALDI_LOG << "New learning rates for current model per layers are "
-              << cur_nnet_learning_rates;
+              << nnet_learning_rates;
 
     // Sets learning rates and writes updated model.
-    am_cur_nnet.GetNnet().SetLearningRates(cur_nnet_learning_rates);
+    am_cur_nnet.GetNnet().SetLearningRates(nnet_learning_rates);
+
+    SetMaxChange(0.0, &(am_cur_nnet.GetNnet()));
+    
     Output ko(modified_cur_nnet_rxfilename, binary_write);
     trans_model.Write(ko.Stream(), binary_write);
     am_cur_nnet.Write(ko.Stream(), binary_write);

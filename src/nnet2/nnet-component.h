@@ -726,7 +726,7 @@ class AffineComponentPreconditioned: public AffineComponent {
   virtual std::string Info() const;
   virtual Component* Copy() const;
   AffineComponentPreconditioned(): alpha_(1.0), max_change_(0.0) { }
-
+  void SetMaxChange(BaseFloat max_change) { max_change_ = max_change; }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponentPreconditioned);
   BaseFloat alpha_;
