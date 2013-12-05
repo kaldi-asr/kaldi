@@ -4,7 +4,7 @@
 # e.g. of usage:
 # local/nnet2/run_5d_gpu.sh --temp-dir /export/m1-01/dpovey/kaldi-dan2/egs/swbd/s5b
 
-dir=nnet5d_gpu_2n02002_nl4_3000600
+dir=nnet5d_gpu
 temp_dir=
 
 train_stage=-10

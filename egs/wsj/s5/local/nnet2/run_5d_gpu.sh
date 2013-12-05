@@ -7,7 +7,7 @@
 train_stage=-100
 temp_dir=  # e.g. --temp-dir /export/m1-02/dpovey/kaldi-dan2/egs/wsj/s5/
 parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network, you'll likely have to change it.
-dir=exp/nnet5d_gpu_si284_2n02002_nl4_50001000
+dir=exp/nnet5d_gpu
 
 # Note: since we multiplied the num-jobs by 1/4, we halved the
 # learning rate, relative to run_5c.sh

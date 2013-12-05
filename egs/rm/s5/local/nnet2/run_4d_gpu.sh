@@ -9,7 +9,7 @@ parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network, y
 
 . cmd.sh
 
-dir=exp/nnet4d_gpu_2norm_lr016004_dim1200600
+dir=exp/nnet4d_gpu
 (  steps/nnet2/train_pnorm.sh  --num-epochs 20 \
      --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
      --num-epochs-extra 10 --add-layers-period 1 \
