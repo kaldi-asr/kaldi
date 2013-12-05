@@ -102,7 +102,7 @@ if [ $stage -le 0 ] ; then
         kwsoutdir=$decodedir/kws_$lmwt
         mkdir -p $kwsoutdir
   
-        acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
+        acwt=`perl -e "print (1.0/$lmwt);"` 
         steps/make_index.sh --strict $strict --cmd "$cmd" --max-states $max_states\
           --acwt $acwt $model_flags --skip-optimization $skip_optimization \
           --word_ins_penalty $word_ins_penalty \

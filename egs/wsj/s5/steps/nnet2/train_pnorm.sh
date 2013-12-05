@@ -2,6 +2,7 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey). 
 #           2013  Xiaohui Zhang
+#           2013  Guoguo Chen
 # Apache 2.0.
 
 
@@ -21,8 +22,9 @@ num_iters_final=20 # Maximum number of final iterations to give to the
 initial_learning_rate=0.04
 final_learning_rate=0.004
 bias_stddev=0.5
-softmax_learning_rate_factor=0.5 # Train this layer half as fast as the other layers.
+softmax_learning_rate_factor=1.0 # In the default setting keep the same learning rate.
 
+combine_regularizer=1.0e-14 # Small regularizer so that parameters won't go crazy.
 pnorm_input_dim=3000 
 pnorm_output_dim=300
 p=2
@@ -48,7 +50,6 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
 
 add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
-
 stage=-5
 
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
@@ -72,7 +73,6 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
-
 
 if [ $# != 4 ]; then
   echo "Usage: $0 [opts] <data> <lang> <ali-dir> <exp-dir>"
@@ -150,14 +150,6 @@ echo $nj > $dir/num_jobs
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/tree $dir
-
-
-# Get list of validation utterances. 
-awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
-    > $dir/valid_uttlist || exit 1;
-awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-     head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
-
 
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
@@ -352,7 +344,7 @@ if [ $stage -le $num_iters ]; then
   mb=$[($num_egs+$this_num_threads-1)/$this_num_threads]
   [ $mb -gt 512 ] && mb=512
   $cmd $parallel_opts $dir/log/combine.log \
-    nnet-combine-fast --use-gpu=no --num-threads=$this_num_threads \
+    nnet-combine-fast --use-gpu=no --num-threads=$this_num_threads --regularizer=$combine_regularizer \
       --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
       $dir/final.mdl || exit 1;
 fi
