@@ -59,7 +59,7 @@ struct PitchExtractionOptions {
       samp_freq(16000),
       frame_shift_ms(10.0),
       frame_length_ms(25.0),
-      preemph_coeff(0.97),
+      preemph_coeff(0.0),
       min_f0(50),
       max_f0(400),
       soft_min_f0(10.0),
@@ -68,7 +68,7 @@ struct PitchExtractionOptions {
       upsample_cutoff(2000),
       resample_freq(4000),
       delta_pitch(0.005),
-      nccf_ballast(0.625),
+      nccf_ballast(0.7),
       lowpass_filter_width(1),
       upsample_filter_width(5) {}
   void Register(ParseOptions *po) {
