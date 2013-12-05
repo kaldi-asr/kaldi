@@ -1,6 +1,7 @@
 // cudamatrix/cu-math.h
 
 // Copyright 2009-2012  Karel Vesely
+//                2013  Johns Hopkins University (Author: David Snyder) 
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -22,7 +23,7 @@
 #ifndef KALDI_CUDAMATRIX_CU_MATH_H_
 #define KALDI_CUDAMATRIX_CU_MATH_H_
 #include "cudamatrix/cu-common.h"
-#include "cudamatrix/cu-stlvector.h"
+#include "cudamatrix/cu-array.h"
 #include "cudamatrix/cu-device.h"
 #include "util/timer.h"
 
@@ -38,21 +39,38 @@ template<typename Real>
 void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *gradient,
                   Real l1_penalty, Real learning_rate);
 
-/// ie. switch rows according to copy_from_idx
+/// Copies a permutation of src into tgt. The row permutation is specified in
+/// copy_from_idx such that src.Row(copy_from_idx[r]) == tgt.Row(r). The 
+/// dimensions of copy_from_idx must be equivalent to the number of rows in
+/// tgt and src and all elements in the vector must be in [0, src.numRows()-1].  
 template<typename Real>
 void Randomize(const CuMatrixBase<Real> &src,
-               const CuStlVector<int32> &copy_from_idx,
+               const CuArray<int32> &copy_from_idx,
                CuMatrixBase<Real> *tgt);
 
-/// ie. concatenate the frames with offsets from frame_offsets
+/// Splice concatenates frames of src as specified in frame_offsets into tgt.
+/// The dimensions of tgt must be equivalent to the number of rows in src
+/// and it must be that tgt.NumColumns == src.NumColumns * frame_offsets.Dim().
+/// As a result, tgt(i, k*n_cols + j) == src(i + frame_offsets[k], j) for the
+/// general case where i in [0..src.NumRows()-1], 
+/// k in [0..frame_offsets.Dim()-1], j in [0..src.NumRows()-1] 
+/// and n_cols = src.NumColumns(). If i + frame_offsets[k] is greater than the
+/// number of rows in src or less than 0 than the right side of the equation 
+/// is replaced by src(src.NumRows()-1, j) or src(0, j) respectively, to avoid
+/// an index out of bounds.
 template<typename Real>
 void Splice(const CuMatrix<Real> &src,
-            const CuStlVector<int32> &frame_offsets,
+            const CuArray<int32> &frame_offsets,
             CuMatrix<Real> *tgt);
 
+/// Copies elements from src into tgt as given by copy_from_indices.
+/// The matrices src and tgt must have the same dimensions and
+/// the dimension of copy_from_indices must equal the number of columns
+/// in the src matrix. As a result, tgt(i, j) == src(i, copy_from_indices[j]).
+/// Also see CuMatrix::CopyCols(), which is more general.
 template<typename Real>
 void Copy(const CuMatrix<Real> &src,
-          const CuStlVector<int32> &copy_from_indices,
+          const CuArray<int32> &copy_from_indices,
           CuMatrix<Real> *tgt);
 
 

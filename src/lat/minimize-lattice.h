@@ -34,7 +34,7 @@ namespace kaldi {
 
 
 /// This function minimizes the compact lattice.  It is to be called after
-/// determinization (see ../fstext/determinize-lattice-pruned.h) and pushing
+/// determinization (see ./determinize-lattice-pruned.h) and pushing
 /// (see ./push-lattice.h).  If the lattice is not determinized and pushed this
 /// function will not combine as many states as it could, but it won't crash.
 /// Returns true on success, and false if it failed due to topological sorting

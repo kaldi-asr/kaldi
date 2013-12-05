@@ -4,9 +4,13 @@
 . conf/common_vars.sh
 . ./lang.conf
 
+output=exp/tri6_nnet
+
 set -e
 set -o pipefail
 set -u
+
+. ./utils/parse_options.sh
 
 # Wait till the main run.sh gets to the stage where's it's 
 # finished aligning the tri5 model.
@@ -15,7 +19,7 @@ while [ ! -f exp/tri5_ali/.done ]; do sleep 30; done
 echo "...done waiting for exp/tri5_ali/.done"
 
 
-if [ ! -f exp/tri6_nnet/.done ]; then
+if [ ! -f $output/.done ]; then
   bash -x steps/train_nnet_cpu.sh  \
     --mix-up "$dnn_mixup" \
     --initial-learning-rate "$dnn_initial_learning_rate" \
@@ -25,8 +29,8 @@ if [ ! -f exp/tri6_nnet/.done ]; then
     --num-jobs-nnet $dnn_num_jobs \
     --cmd "$train_cmd" \
     "${dnn_train_extra_opts[@]}" \
-    data/train data/lang exp/tri5_ali exp/tri6_nnet  || exit 1;
-  touch exp/tri6_nnet/.done
+    data/train data/lang exp/tri5_ali $output  || exit 1;
+  touch $output/.done
 fi
 
 #The following has been commented as the 5-anydecode.sh script takes care about

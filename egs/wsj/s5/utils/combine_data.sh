@@ -28,7 +28,14 @@ mkdir -p $dest;
 
 export LC_ALL=C
 
-for file in utt2spk feats.scp text cmvn.scp segments reco2file_and_channel wav.scp $extra_files; do
+for dir in $*; do
+  if [ ! -f $dir/utt2spk ]; then
+    echo "$0: no such file $dir/utt2spk"
+    exit 1;
+  fi
+done
+
+for file in utt2spk feats.scp text cmvn.scp segments reco2file_and_channel wav.scp spk2gender $extra_files; do
   if [ -f $first_src/$file ]; then
     ( for f in $*; do cat $f/$file; done ) | sort -k1 > $dest/$file || exit 1;
     echo "$0: combined $file"

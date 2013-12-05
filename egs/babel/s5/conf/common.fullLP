@@ -29,8 +29,8 @@ if [[ `hostname` == *.tacc.utexas.edu ]] ; then
 else
   dnn_train_extra_opts=(--num-threads 8 --parallel-opts "-pe smp 7" --cmd "queue.pl -l arch=*64,mem_free=4.0G,ram_free=0.75G" )
   decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G")
-  sgmm_train_extra_opts=()
-  sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=6G,ram_free=2G" --cmd "queue.pl -l arch=*64 -l mem_free=2.0G,ram_free=2.0G") 
+  sgmm_train_extra_opts=( --num_iters 25 )
+  sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=7G,ram_free=2.75G" --cmd "queue.pl -l arch=*64 -l mem_free=3.0G,ram_free=3.0G") 
   sgmm_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
   sgmm_mmi_extra_opts=(--cmd "queue.pl -l arch=*64 -l mem_free=3.2G,ram_free=3.2G")
 fi
@@ -41,5 +41,8 @@ case_insensitive=true
 
 max_states=150000
 wip=0.5
+
+use_pitch=false
+use_ffv=false
 
 phoneme_mapping=

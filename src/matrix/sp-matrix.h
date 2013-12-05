@@ -28,14 +28,6 @@
 
 namespace kaldi {
 
-/// \weakgroup matrix_funcs_misc
-typedef enum {
-  kTakeLower,
-  kTakeUpper,
-  kTakeMean,
-  kTakeMeanAndCheck
-} SpCopyType;
-
 
 /// \addtogroup matrix_group
 /// @{
@@ -47,19 +39,25 @@ template<typename Real> class SpMatrix;
 */
 template<typename Real>
 class SpMatrix : public PackedMatrix<Real> {
+  friend class CuSpMatrix<Real>;
  public:
   // so it can use our assignment operator.
   friend class std::vector<Matrix<Real> >;
 
   SpMatrix(): PackedMatrix<Real>() {}
 
+  /// Copy constructor from CUDA version of SpMatrix
+  /// This is defined in ../cudamatrix/cu-sp-matrix.h
+  
+  explicit SpMatrix(const CuSpMatrix<Real> &cu);
+ 
   explicit SpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)
       : PackedMatrix<Real>(r, resize_type) {}
 
   SpMatrix(const SpMatrix<Real> &orig)
       : PackedMatrix<Real>(orig) {}
 
-  template<class OtherReal>
+  template<typename OtherReal>
   explicit SpMatrix(const SpMatrix<OtherReal> &orig)
       : PackedMatrix<Real>(orig) {}
 
@@ -77,8 +75,6 @@ class SpMatrix : public PackedMatrix<Real> {
   }
 #endif
 
-  ~SpMatrix() {}
-
   /// Shallow swap.
   void Swap(SpMatrix *other);
 
@@ -90,7 +86,7 @@ class SpMatrix : public PackedMatrix<Real> {
     PackedMatrix<Real>::CopyFromPacked(other);
   }
 
-  template<class OtherReal>
+  template<typename OtherReal>
   void CopyFromSp(const SpMatrix<OtherReal> &other) {
     PackedMatrix<Real>::CopyFromPacked(other);
   }
@@ -231,7 +227,7 @@ class SpMatrix : public PackedMatrix<Real> {
   Real LogDet(Real *det_sign = NULL) const;
 
   /// rank-one update, this <-- this + alpha v v'
-  template<class OtherReal>
+  template<typename OtherReal>
   void AddVec2(const Real alpha, const VectorBase<OtherReal> &v);
 
   /// rank-two update, this <-- this + alpha (v w' + w v').
@@ -243,7 +239,7 @@ class SpMatrix : public PackedMatrix<Real> {
                  const SpMatrix<Real> &S, const Real beta);
   
   /// diagonal update, this <-- this + diag(v)
-  template<class OtherReal>
+  template<typename OtherReal>
   void AddVec(const Real alpha, const VectorBase<OtherReal> &v);
 
   /// rank-N update:
@@ -251,8 +247,9 @@ class SpMatrix : public PackedMatrix<Real> {
   /// (*this) = beta*(*this) + alpha * M * M^T,
   /// or  (if transM == kTrans)
   ///  (*this) = beta*(*this) + alpha * M^T * M
+  /// Note: beta used to default to 0.0.
   void AddMat2(const Real alpha, const MatrixBase<Real> &M,
-               MatrixTransposeType transM, const Real beta = 0.0);
+               MatrixTransposeType transM, const Real beta);
 
   /// Extension of rank-N update:
   /// this <-- beta*this  +  alpha * M * A * M^T.
@@ -286,8 +283,7 @@ class SpMatrix : public PackedMatrix<Real> {
   /// can implement it more efficiently.
   void AddTp2(const Real alpha, const TpMatrix<Real> &T,
               MatrixTransposeType transM, const Real beta = 0.0);
-  
-  
+
   /// Extension of rank-N update:
   /// this <-- beta*this + alpha * M * diag(v) * M^T.
   /// if transM == kTrans, then
@@ -381,6 +377,20 @@ float TraceSpSp(const SpMatrix<float> &A, const SpMatrix<float> &B);
 double TraceSpSp(const SpMatrix<double> &A, const SpMatrix<double> &B);
 
 
+template<typename Real>
+inline bool ApproxEqual(const SpMatrix<Real> &A,
+                        const SpMatrix<Real> &B, Real tol = 0.01) {
+  return  A.ApproxEqual(B, tol);
+}
+
+template<typename Real>
+inline void AssertEqual(const SpMatrix<Real> &A,
+                        const SpMatrix<Real> &B, Real tol = 0.01) {
+  KALDI_ASSERT(ApproxEqual(A, B, tol));
+}
+
+
+
 /// Returns tr(A B).
 template<typename Real, typename OtherReal>
 Real TraceSpSp(const SpMatrix<Real> &A, const SpMatrix<OtherReal> &B);
@@ -419,7 +429,7 @@ Real TraceMatSpMatSp(const MatrixBase<Real> &A, MatrixTransposeType transA,
 
 /// Returns \f$ v_1^T M v_2 \f$
 /// Not as efficient as it could be where v1 == v2.
-template<class Real>
+template<typename Real>
 Real VecSpVec(const VectorBase<Real> &v1, const SpMatrix<Real> &M,
                const VectorBase<Real> &v2);
 
@@ -461,7 +471,7 @@ struct SolverOptions {
 /// Assumes H positive semidefinite.
 /// Returns the objective-function change.
 
-template<class Real>
+template<typename Real>
 Real SolveQuadraticProblem(const SpMatrix<Real> &H,
                            const VectorBase<Real> &g,
                            const SolverOptions &opts,
@@ -479,7 +489,7 @@ Real SolveQuadraticProblem(const SpMatrix<Real> &H,
 /// diagonal_precondition option is newly added, to handle problems
 /// where different dimensions have very different scaling (we recommend to use
 /// the option but it's set false for back compatibility).
-template<class Real>
+template<typename Real>
 Real SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
                                  const MatrixBase<Real> &Y,
                                  const SpMatrix<Real> &P,
@@ -490,7 +500,7 @@ Real SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
 /// \f[   Q(M) =  tr(M^T G) -0.5 tr(P_1 M Q_1 M^T) -0.5 tr(P_2 M Q_2 M^T).   \f]
 /// Encountered in matrix update with a prior. We also apply a limit on the
 /// condition but it should be less frequently necessary, and can be set larger.
-template<class Real>
+template<typename Real>
 Real SolveDoubleQuadraticMatrixProblem(const MatrixBase<Real> &G,
                                        const SpMatrix<Real> &P1,
                                        const SpMatrix<Real> &P2,

@@ -11,6 +11,7 @@ check_required_programs:
 	which svn
 	which gcc
 	which g++
+	which patch
 
 clean: openfst_cleaned sclite_cleaned  irstlm_cleaned
 
@@ -43,7 +44,7 @@ openfst_compiled: openfst-1.3.2/Makefile
 	$(MAKE) install
 
 openfst/lib:
-	-cd openfst && [ -d lib64 -a ! -d lib ] && ln -s lib64 lib
+	-cd openfst && [ -d lib64 ] && [ ! -d lib ] && ln -s lib64 lib
 
 openfst-1.3.2/Makefile: openfst-1.3.2/.patched
 		cd openfst-1.3.2/; \
@@ -127,7 +128,8 @@ sph2pipe_v2.5: sph2pipe_v2.5.tar.gz
 		tar xzf sph2pipe_v2.5.tar.gz
 
 sph2pipe_v2.5.tar.gz:
-		wget -T 10 -t 3 http://merlin.fit.vutbr.cz/kaldi/sph2pipe_v2.5.tar.gz
+		wget --no-check-certificate -T 10  https://sourceforge.net/projects/kaldi/files/sph2pipe_v2.5.tar.gz || \
+        wget -T 10 -t 3 http://www.danielpovey.com/files/kaldi/sph2pipe_v2.5.tar.gz
 
 openblas: openblas_compiled
 

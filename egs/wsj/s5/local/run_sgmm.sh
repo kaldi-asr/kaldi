@@ -17,7 +17,7 @@
 
   steps/train_sgmm.sh --cmd "$train_cmd" \
     3500 10000 data/train_si84 data/lang exp/tri4b_ali_si84 \
-    exp/ubm5b/final.ubm exp/sgmm5a || exit 1;
+    exp/ubm5a/final.ubm exp/sgmm5a || exit 1;
 
   (
     utils/mkgraph.sh data/lang_test_tgpr exp/sgmm5a exp/sgmm5a/graph_tgpr
@@ -110,4 +110,3 @@ steps/train_sgmm.sh  --cmd "$train_cmd" \
 # Decode from lattices in exp/sgmm5a/decode_tgpr_dev93.
 steps/decode_sgmm_fromlats.sh --cmd "$decode_cmd"  --transform-dir exp/tri4b/decode_tgpr_dev93 \
    data/test_dev93 data/lang_test_tgpr exp/sgmm5a/decode_tgpr_dev93 exp/sgmm5c/decode_tgpr_dev93 
-

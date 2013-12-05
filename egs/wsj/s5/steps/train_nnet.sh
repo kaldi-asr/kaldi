@@ -46,7 +46,6 @@ train_opts=        # options, passed to the training script
 train_tool=        # optionally change the training tool
 
 # OTHER
-use_gpu_id= # manually select GPU id to run on, (-1 disables GPU)
 analyze_alignments=true # run the alignment analysis script
 seed=777    # seed value used for training data shuffling and initialization
 # End configuration.
@@ -186,8 +185,9 @@ echo "Feature dim is : $feat_dim"
 
 if [ ! -z "$feature_transform" ]; then
   echo "Using pre-computed feature-transform : '$feature_transform'"
+  [ ! -f $feature_transform ] && echo "Missing file '$feature_transform'" && exit 1
   tmp=$dir/$(basename $feature_transform) 
-  cp $feature_transform $tmp; feature_transform=$tmp
+  cp $feature_transform $tmp; feature_transform=$tmp 
 else
   # Generate the splice transform
   echo "Using splice +/- $splice , step $splice_step"
@@ -258,7 +258,7 @@ else
   feature_transform_old=$feature_transform
   feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
   echo "Renormalizing MLP input features into $feature_transform"
-  nnet-forward ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
+  nnet-forward --use-gpu=yes \
     $feature_transform_old "$(echo $feats_tr | sed 's|train.scp|train.scp.10k|')" \
     ark:- 2>$dir/log/nnet-forward-cmvn.log |\
   compute-cmvn-stats ark:- - | cmvn-to-nnet - - |\
@@ -299,6 +299,7 @@ else
 
   #optionally prepend dbn to the initialization
   if [ ! -z $dbn ]; then
+    [ ! -f $dbn ] && echo "Missing file '$dbn'" && exit 1
     mlp_init_old=$mlp_init; mlp_init=$dir/nnet_$(basename $dbn)_dnn.init
     nnet-concat $dbn $mlp_init_old $mlp_init 
   fi
@@ -315,7 +316,6 @@ steps/train_nnet_scheduler.sh \
   ${train_opts} \
   ${train_tool:+ --train-tool "$train_tool"} \
   ${config:+ --config $config} \
-  ${use_gpu_id:+ --use-gpu-id $use_gpu_id} \
   $mlp_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir || exit 1
 
 

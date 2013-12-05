@@ -406,7 +406,7 @@ EventMap *BuildTreeTwoLevel(Questions &qopts,
     // same value in "first_level_tree" are contiguous.
     std::vector<std::pair<int32, int32> > leaf_pairs;
     for (size_t i = 0; i < leaf_map->size(); i++)
-      leaf_pairs.push_back(std::make_pair<int32,int32>((*leaf_map)[i], i));
+      leaf_pairs.push_back(std::make_pair((*leaf_map)[i], static_cast<int32>(i)));
     // pair of (small-tree-number, big-tree-number).
     std::sort(leaf_pairs.begin(), leaf_pairs.end());
     std::vector<int32> old2new_map(leaf_map->size()),

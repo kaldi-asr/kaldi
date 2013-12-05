@@ -25,7 +25,7 @@ scoring_opts="--min-lmwt 4 --max-lmwt 15"
 
 num_threads=1 # if >1, will use latgen-faster-parallel
 parallel_opts="-pe smp $((num_threads+1))" # use 2 CPUs (1 DNN-forward, 1 decoder)
-use_gpu_id=-1 # -1 disable gpu
+use_gpu="no" # yes|no|optionaly
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -104,7 +104,7 @@ fi
 # Run the decoding in the queue
 if [ $stage -le 0 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
-    nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu-id=$use_gpu_id $nnet "$feats" ark:- \| \
+    nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
     latgen-faster-mapped$thread_string --max-active=$max_active --max-mem=$max_mem --beam=$beam \
     --lattice-beam=$latbeam --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $model $graphdir/HCLG.fst ark:- "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;

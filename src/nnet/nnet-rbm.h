@@ -28,7 +28,7 @@
 namespace kaldi {
 namespace nnet1 {
 
-class RbmBase : public UpdatableComponent {
+class RbmBase : public Component {
  public:
   typedef enum {
     BERNOULLI,
@@ -36,7 +36,7 @@ class RbmBase : public UpdatableComponent {
   } RbmNodeType;
  
   RbmBase(int32 dim_in, int32 dim_out) 
-   : UpdatableComponent(dim_in, dim_out)
+   : Component(dim_in, dim_out)
   { }
   
   /*Is included in Component:: itf
@@ -82,12 +82,6 @@ class RbmBase : public UpdatableComponent {
                      const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) { }
   void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
                         const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) { }
-  // RBMs use RbmUpdate(.)
-  void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) { }
-  // RBMs use option class RbmTrainOptions
-  void SetTrainOptions(const NnetTrainOptions&) { }
-  const NnetTrainOptions& GetTrainOptions() const { }
-  NnetTrainOptions opts_;
  //
  ////
 
@@ -149,7 +143,7 @@ class Rbm : public RbmBase {
   }
 
 
-  // UpdatableComponent API
+  // Component API
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     // precopy bias
     out->AddVecToRows(1.0, hid_bias_, 0.0);
@@ -159,17 +153,6 @@ class Rbm : public RbmBase {
     if (hid_type_ == RbmBase::BERNOULLI) {
       out->Sigmoid(*out);
     }
-  }
-
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
-    KALDI_ERR << "Cannot back-propagate through RBM!"
-              << "Better convert it to <affinetransform> and <sigmoid>";
-  }
-  virtual void Update(const CuMatrix<BaseFloat> &input,
-                      const CuMatrix<BaseFloat> &diff) {
-    KALDI_ERR << "Cannot update RBM by backprop!"
-              << "Better convert it to <affinetransform> and <sigmoid>";
   }
 
   // RBM training API

@@ -21,7 +21,6 @@ halving_factor=1.0 #ie. disable halving
 do_smbr=true
 use_silphones=false #setting this to something will enable giving siphones to nnet-mpe
 verbose=1
-use_gpu_id=
 
 seed=777    # seed value used for training data shuffling
 # End configuration section
@@ -151,7 +150,6 @@ while [ $x -le $num_iters ]; do
        --do-smbr=$do_smbr \
        --verbose=$verbose \
        $mpe_silphones_arg \
-       ${use_gpu_id:+ --use-gpu-id=$use_gpu_id} \
        $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet || exit 1
   fi
   cur_mdl=$dir/$x.nnet

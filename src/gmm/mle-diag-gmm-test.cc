@@ -372,6 +372,31 @@ UnitTestEstimateDiagGmm() {
     test_io(*gmm, est_gmm, true, feats);   // Binary mode
   }
 
+  { // Test multi-threaded update.
+    GmmFlagsType flags_all = kGmmAll;
+    est_gmm.Resize(gmm->NumGauss(),
+      gmm->Dim(), flags_all);
+    est_gmm.SetZero(flags_all);
+
+    Vector<BaseFloat> weights(counter);
+    for (size_t i = 0; i < counter; i++)
+      weights(i) = 0.5 + 0.1 * (rand() % 10);
+
+    
+    float loglike = 0.0;
+    for (size_t i = 0; i < counter; i++) {
+      loglike += weights(i) *
+          est_gmm.AccumulateFromDiag(*gmm, feats.Row(i), weights(i));
+    }
+    AccumDiagGmm est_gmm2(*gmm, flags_all);
+    int32 num_threads = 2;
+    float loglike2 =
+        est_gmm2.AccumulateFromDiagMultiThreaded(*gmm, feats, weights, num_threads);
+    AssertEqual(loglike, loglike2);
+    est_gmm.AssertEqual(est_gmm2);
+  }
+
+  
   delete gmm;
 }
 

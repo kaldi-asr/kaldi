@@ -1,9 +1,11 @@
 #!/bin/bash
 
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2012-2013  Brno University of Technology (Author: Karel Vesely),
+#
 # Apache 2.0
-# Decoding of fMMI or fMPE models (feature-space discriminative training).
-# If transform-dir supplied, expects e.g. fMLLR transforms in that dir.
+#
+# This script dumps fMMI features in a new data directory, 
+# which is later used for neural network training/testing.
 
 # Begin configuration section.  
 iter=final
@@ -35,22 +37,15 @@ if [ $# != 5 ]; then
    exit 1;
 fi
 
-
 data=$1
 srcdata=$2
 gmmdir=$3
 logdir=$4
 feadir=$5
 
-
-
-#srcdir=$1 -> gmmdir
-#data=$2 -> srcdata
-#dir=$3 -> ruzne
-#tgtdata=$4 -> feadir
-
 sdata=$srcdata/split$nj;
 splice_opts=`cat $gmmdir/splice_opts 2>/dev/null`
+norm_vars=`cat $gmmdir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
 
 mkdir -p $data $logdir $feadir
 [[ -d $sdata && $srcdata/feats.scp -ot $sdata ]] || split_data.sh $srcdata $nj || exit 1;
@@ -63,8 +58,8 @@ if [ -f $gmmdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type";
 
 case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $gmmdir/final.mat ark:- ark:- |";;
+  delta) feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
+  lda) feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $gmmdir/final.mat ark:- ark:- |";;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
 
@@ -81,18 +76,18 @@ $cmd JOB=1:$nj $logdir/gselect.JOB.log \
   gmm-gselect --n=$ngselect $gmmdir/$iter.fmpe "$feats" \
   "ark:|gzip -c >$feadir/gselect.JOB.gz" || exit 1;
 
-#prepare the dir
-cp $srcdata/* $data; rm $data/{feats.scp,cmvn.scp};
+# prepare the dir
+cp $srcdata/* $data 2>/dev/null; rm $data/{feats,cmvn}.scp;
 
 # make $bnfeadir an absolute pathname.
 feadir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $feadir ${PWD}`
 
-#forward the feats
+# forward the feats
 $cmd JOB=1:$nj $logdir/make_fmmi_feats.JOB.log \
   fmpe-apply-transform $gmmdir/$iter.fmpe "$feats" "ark,s,cs:gunzip -c $feadir/gselect.JOB.gz|"  \
   ark,scp:$feadir/feats_fmmi.JOB.ark,$feadir/feats_fmmi.JOB.scp || exit 1;
    
-#merge the feats to single SCP
+# merge the feats to single SCP
 for n in $(seq 1 $nj); do
   cat $feadir/feats_fmmi.$n.scp 
 done > $data/feats.scp

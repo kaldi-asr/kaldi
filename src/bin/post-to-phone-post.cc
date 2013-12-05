@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
         for (std::map<int32, BaseFloat>::const_iterator iter =
                  phone_to_post.begin(); iter != phone_to_post.end(); ++iter) {
           phone_posterior[i].push_back(
-              std::make_pair<int32, BaseFloat>(iter->first, iter->second));
+              std::make_pair(iter->first, iter->second));
         }
       }
       posterior_writer.Write(posterior_reader.Key(), phone_posterior);

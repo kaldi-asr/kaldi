@@ -47,7 +47,6 @@ num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # If you supply num-threads, you should supply this too.
 skip_scoring=false
 scoring_opts=
-norm_vars=false
 # End configuration section
 echo "$0 $@"  # Print the command line for logging
 
@@ -91,6 +90,7 @@ mkdir -p $dir/log
 split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
+norm_vars=`cat $srcdir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
 
 silphonelist=`cat $graphdir/phones/silence.csl` || exit 1;
 

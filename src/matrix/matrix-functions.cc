@@ -26,7 +26,7 @@
 
 namespace kaldi {
 
-template<class Real> void ComplexFt (const VectorBase<Real> &in,
+template<typename Real> void ComplexFt (const VectorBase<Real> &in,
                                      VectorBase<Real> *out, bool forward) {
   int exp_sign = (forward ? -1 : 1);
   KALDI_ASSERT(out != NULL);
@@ -93,7 +93,7 @@ void ComplexFt (const VectorBase<double> &in,
 //! of the recursion.
 
 
-template<class Real>
+template<typename Real>
 void ComplexFftRecursive (Real *data, int nffts, int N,
                           const int *factor_begin,
                           const int *factor_end, bool forward,
@@ -331,7 +331,7 @@ void ComplexFftRecursive (Real *data, int nffts, int N,
 
 // This is the outer-layer calling code for ComplexFftRecursive.
 // It factorizes the dimension and then calls the FFT routine.
-template<class Real> void ComplexFft(VectorBase<Real> *v, bool forward, Vector<Real> *tmp_in) {
+template<typename Real> void ComplexFft(VectorBase<Real> *v, bool forward, Vector<Real> *tmp_in) {
   KALDI_ASSERT(v != NULL);
 
   if (v->Dim()<=1) return;
@@ -347,7 +347,7 @@ template<class Real> void ComplexFft(VectorBase<Real> *v, bool forward, Vector<R
 }
 
 //! Inefficient version of Fourier transform, for testing purposes.
-template<class Real> void RealFftInefficient (VectorBase<Real> *v, bool forward) {
+template<typename Real> void RealFftInefficient (VectorBase<Real> *v, bool forward) {
   KALDI_ASSERT(v != NULL);
   MatrixIndexT N = v->Dim();
   KALDI_ASSERT(N%2 == 0);
@@ -388,7 +388,7 @@ void ComplexFft(VectorBase<double> *v, bool forward, Vector<double> *tmp_in);
 
 
 // See the long comment below for the math behind this.
-template<class Real> void RealFft (VectorBase<Real> *v, bool forward) {
+template<typename Real> void RealFft (VectorBase<Real> *v, bool forward) {
   KALDI_ASSERT(v != NULL);
   MatrixIndexT N = v->Dim(), N2 = N/2;
   KALDI_ASSERT(N%2 == 0);
@@ -589,7 +589,7 @@ so: re(D_k)= 1/2 (im(B_k) + im(B_{N/2-k}))                             (z2)
 
  */
 
-template<class Real> void ComputeDctMatrix(Matrix<Real> *M) {
+template<typename Real> void ComputeDctMatrix(Matrix<Real> *M) {
   //KALDI_ASSERT(M->NumRows() == M->NumCols());
   MatrixIndexT K = M->NumRows();
   MatrixIndexT N = M->NumCols();
@@ -612,7 +612,7 @@ template void ComputeDctMatrix(Matrix<float> *M);
 template void ComputeDctMatrix(Matrix<double> *M);
 
 
-template<class Real>
+template<typename Real>
 void MatrixExponential<Real>::Clear() {
   N_ = 0;
   P_.Resize(0, 0);
@@ -620,7 +620,7 @@ void MatrixExponential<Real>::Clear() {
   powers_.clear();
 }
 
-template<class Real>
+template<typename Real>
 void MatrixExponential<Real>::Compute(const MatrixBase<Real> &M,
                                       MatrixBase<Real> *X) {
   // does *X = exp(M)
@@ -650,7 +650,7 @@ void MatrixExponential<Real>::Compute(const MatrixBase<Real> &M,
     (*X)(i, i) += 1.0;
 };
 
-template<class Real>
+template<typename Real>
 void MatrixExponential<Real>::Compute(const SpMatrix<Real> &M,
                                       SpMatrix<Real> *X) {
   Matrix<Real> Mfull(M), Xfull(M.NumRows(), M.NumCols());
@@ -659,7 +659,7 @@ void MatrixExponential<Real>::Compute(const SpMatrix<Real> &M,
 }
 
 
-template<class Real>
+template<typename Real>
 MatrixIndexT MatrixExponential<Real>::ComputeN(const MatrixBase<Real> &M) {
   // Computes the power of two we want to use.  Aim to get
   // AScaled.FrobeniusNorm() < 1/10.
@@ -674,7 +674,7 @@ MatrixIndexT MatrixExponential<Real>::ComputeN(const MatrixBase<Real> &M) {
   return N;
 }
 
-template<class Real>
+template<typename Real>
 void MatrixExponential<Real>::ComputeTaylor(const MatrixBase<Real> &P, MatrixBase<Real> *B0) {
   KALDI_ASSERT(P.FrobeniusNorm() < 1.001);  // should actually be << 1
   // for this to work fast enough.
@@ -710,7 +710,7 @@ void MatrixExponential<Real>::ComputeTaylor(const MatrixBase<Real> &P, MatrixBas
   }
 }
 
-template<class Real>
+template<typename Real>
 void MatrixExponential<Real>::Backprop(const MatrixBase<Real> &hX,
                                        MatrixBase<Real> *hM) const {
   MatrixIndexT dim = P_.NumRows();
@@ -747,7 +747,7 @@ void MatrixExponential<Real>::Backprop(const MatrixBase<Real> &hX,
 }
 
 
-template<class Real>
+template<typename Real>
 void MatrixExponential<Real>::Backprop(const SpMatrix<Real> &hX,
                                        SpMatrix<Real> *hM) const {
   Matrix<Real> hXfull(hX), hMfull(hX.NumRows(), hX.NumCols());
@@ -756,7 +756,7 @@ void MatrixExponential<Real>::Backprop(const SpMatrix<Real> &hX,
 }
 
 
-template<class Real>
+template<typename Real>
 void MatrixExponential<Real>::BackpropTaylor(const MatrixBase<Real> &hB0,
                                              MatrixBase<Real> *hP) const {
   // Backprop through the Taylor-series computation.
@@ -819,7 +819,7 @@ template class MatrixExponential<float>;
 template class MatrixExponential<double>;
 
 
-template<class Real>
+template<typename Real>
 void ComputePca(const MatrixBase<Real> &X,
                 MatrixBase<Real> *U,
                 MatrixBase<Real> *A,
@@ -861,7 +861,7 @@ void ComputePca(const MatrixBase<Real> &X,
       A->AddMatMat(1.0, X, kNoTrans, *U, kTrans, 0.0);
   } else {  // Do inner-product PCA.
     SpMatrix<Real> Nsp(N);  // Matrix of inner products.
-    Nsp.AddMat2(1.0, X, kNoTrans);  // M <-- X X^T
+    Nsp.AddMat2(1.0, X, kNoTrans, 0.0);  // M <-- X X^T
 
     Matrix<Real> Vtmp;
     Vector<Real> l;
@@ -929,7 +929,7 @@ void ComputePca(const MatrixBase<double> &X,
 // Added by Dan, Feb. 13 2012. 
 // This function does: *plus += max(0, a b^T),
 // *minus += max(0, -(a b^T)).
-template<class Real>
+template<typename Real>
 void AddOuterProductPlusMinus(Real alpha,
                               const VectorBase<Real> &a,
                               const VectorBase<Real> &b,

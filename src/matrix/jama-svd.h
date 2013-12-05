@@ -61,7 +61,7 @@ namespace kaldi {
  */
 
 
-template<class Real>
+template<typename Real>
 bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
                                MatrixBase<Real> *U_in,
                                MatrixBase<Real> *V_in) {  //  Destructive!

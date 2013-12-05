@@ -17,7 +17,7 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-rescore-mapped lattice-depth lattice-align-phones \
            lattice-to-smbr-post lattice-determinize-pruned-parallel \
            lattice-add-penalty lattice-align-words-lexicon lattice-push \
-           lattice-minimize lattice-limit-depth
+           lattice-minimize lattice-limit-depth lattice-depth-per-frame
 
 
 OBJFILES =

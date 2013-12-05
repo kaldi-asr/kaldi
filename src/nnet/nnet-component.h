@@ -57,7 +57,7 @@ class Component {
     kTanh,
     kDropout,
 
-    kTranform =  0x0400,
+    kTranform = 0x0400,
     kRbm,
     kSplice,
     kCopy,
@@ -65,7 +65,7 @@ class Component {
     kBlockLinearity,
     kAddShift,
     kRescale,
-    kLog
+    kKlHmm
   } ComponentType;
   /// A pair of type and marker 
   struct key_value {
@@ -120,6 +120,7 @@ class Component {
 
   /// Optionally print some additional info
   virtual std::string Info() const { return ""; }
+  virtual std::string InfoGradient() const { return ""; }
 
  /// Abstract interface for propagation/backpropagation 
  protected:
@@ -163,6 +164,10 @@ class UpdatableComponent : public Component {
   bool IsUpdatable() const { 
     return true; 
   }
+
+  /// Number of trainable parameters
+  virtual int32 NumParams() const = 0;
+  virtual void GetParams(Vector<BaseFloat> *params) const = 0;
 
   /// Compute gradient and update parameters
   virtual void Update(const CuMatrix<BaseFloat> &input,

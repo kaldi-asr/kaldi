@@ -75,7 +75,9 @@ int main(int argc, char *argv[]) {
       num_done++;
     }
     KALDI_LOG << "Done " << num_done << " lattices.";
-    KALDI_LOG << "Overall density is " << (sum_depth / total_t);
+    // Warning: the script egs/s5/*/steps/oracle_wer.sh parses the next line.
+    KALDI_LOG << "Overall density is " << (sum_depth / total_t) << " over "
+              << total_t << " frames.";
     if (num_done != 0) return 0;
     else return 1;
   } catch (const std::exception &e) {

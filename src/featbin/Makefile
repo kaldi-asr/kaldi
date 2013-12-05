@@ -11,7 +11,8 @@ BINFILES = compute-mfcc-feats compute-plp-feats compute-fbank-feats \
     get-full-lda-mat compute-spectrogram-feats extract-feature-segments \
     reverse-feats paste-feats select-feats subsample-feats process-pitch-feats \
     interpolate-pitch copy-feats-to-htk extract-rows apply-cmvn-sliding \
-    compute-cmvn-stats-two-channel
+    compute-cmvn-stats-two-channel compute-kaldi-pitch-feats \
+    process-kaldi-pitch-feats compare-feats
 
 OBJFILES = 
 
@@ -20,8 +21,8 @@ OBJFILES =
 TESTFILES =
 
 ADDLIBS = ../feat/kaldi-feat.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
-         ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a ../util/kaldi-util.a \
-         ../base/kaldi-base.a
+         ../thread/kaldi-thread.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a \
+         ../util/kaldi-util.a ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk
 

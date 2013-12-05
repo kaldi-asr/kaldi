@@ -45,13 +45,39 @@ typedef fst::VectorFst<LatticeArc> Lattice;
 
 typedef fst::VectorFst<CompactLatticeArc> CompactLattice;
 
+// The following functions for writing and reading lattices in binary or text
+// form are provided here in case you need to include lattices in larger,
+// Kaldi-type objects with their own Read and Write functions.  Caution: these
+// functions return false on stream failure rather than throwing an exception as
+// most similar Kaldi functions would do.
+
+bool WriteCompactLattice(std::ostream &os, bool binary,
+                         const CompactLattice &clat);
+bool WriteLattice(std::ostream &os, bool binary,
+                  const Lattice &lat);
+
+// the following function requires that *clat be
+// NULL when called.
+bool ReadCompactLattice(std::istream &is, bool binary,
+                        CompactLattice **clat);
+// the following function requires that *lat be
+// NULL when called.
+bool ReadLattice(std::istream &is, bool binary,
+                 Lattice **lat);
+
+
 class CompactLatticeHolder {
  public:
   typedef CompactLattice T;
 
   CompactLatticeHolder() { t_ = NULL; }
 
-  static bool Write(std::ostream &os, bool binary, const T &t);
+  static bool Write(std::ostream &os, bool binary, const T &t) {
+    // Note: we don't include the binary-mode header when writing
+    // this object to disk; this ensures that if we write to single
+    // files, the result can be read by OpenFst.
+    return WriteCompactLattice(os, binary, t);
+  }
 
   bool Read(std::istream &is);
 
@@ -76,7 +102,12 @@ class LatticeHolder {
 
   LatticeHolder() { t_ = NULL; }
 
-  static bool Write(std::ostream &os, bool binary, const T &t);
+  static bool Write(std::ostream &os, bool binary, const T &t) {
+    // Note: we don't include the binary-mode header when writing
+    // this object to disk; this ensures that if we write to single
+    // files, the result can be read by OpenFst.
+    return WriteLattice(os, binary, t);
+  }
 
   bool Read(std::istream &is);
 

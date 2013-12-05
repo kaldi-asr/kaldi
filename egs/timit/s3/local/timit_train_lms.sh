@@ -53,7 +53,7 @@ export PATH=$PATH:`pwd`/../../../tools/kaldi_lm
  else
    echo Downloading and installing the kaldi_lm tools
    if [ ! -f kaldi_lm.tar.gz ]; then
-     wget http://merlin.fit.vutbr.cz/kaldi/kaldi_lm.tar.gz || exit 1;
+     wget http://www.danielpovey.com/files/kaldi/kaldi_lm.tar.gz || exit 1;
    fi
    tar -xvzf kaldi_lm.tar.gz || exit 1;
    cd kaldi_lm
@@ -87,7 +87,7 @@ cat $trans_file | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1
 ! merge_ngrams </dev/null >&/dev/null  && \
      echo merge_ngrams not found in kaldi_lm. You need to have kaldi_lm on your path OR && \
      echo You can do the following:  && \
-     echo  1. Install the latest version from http://merlin.fit.vutbr.cz/kaldi/kaldi_lm.tar.gz  && \
+     echo  1. Install the latest version from http://www.danielpovey.com/files/kaldi/kaldi_lm.tar.gz  && \
      echo  2. you delete kaldi_lm, and kaldi_lm.tar.gz in the tools folder. This script will automatically install it. && \
    exit 1;
 

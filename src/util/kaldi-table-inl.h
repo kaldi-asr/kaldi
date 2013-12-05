@@ -598,7 +598,7 @@ template<class Holder> class TableWriterImplBase {
   virtual bool Open(const std::string &wspecifier) = 0;
 
   // Write returns true on success, false on failure, but
-  // some errors may not be detected till we call Close().
+  // some errors may not be detected until we call Close().
   // It throws (via KALDI_ERR) if called wrongly.  We could
   // have just thrown on all errors, since this is what
   // TableWriter does; it was designed this way because originally
@@ -1992,8 +1992,8 @@ template<class Holder>  class RandomAccessTableReaderUnsortedArchiveImpl:
         // of the object in holder_ to map_.
         // Insert it into map_.
         std::pair<typename MapType::iterator, bool> pr =
-            map_.insert(std::make_pair<const std::string, Holder*>(cur_key_,
-                                                                   holder_));
+            map_.insert(typename MapType::value_type(cur_key_, holder_));
+
         if (!pr.second) {  // Was not inserted-- previous element w/ same key
           delete holder_;  // map was not changed, no ownership transferred.
           KALDI_ERR << "Error in RandomAccessTableReader: duplicate key "

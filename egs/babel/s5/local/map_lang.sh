@@ -11,6 +11,6 @@ for variable in $VARIABLES ; do
 		declare -x $variable
 	fi
 done
-train_nj=24
+train_nj=32
 dev10h_nj=60
 

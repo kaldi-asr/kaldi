@@ -41,7 +41,7 @@ namespace kaldi {
 // Microsoft Corporation
 // This is a more efficient way of doing the complex FFT than ComplexFft
 // above, but it only works for powers of 2.
-template<class Real>
+template<typename Real>
 class SplitRadixComplexFft {
  public:
   typedef MatrixIndexT Integer;
@@ -83,7 +83,7 @@ class SplitRadixComplexFft {
   // data.
 };
 
-template<class Real>
+template<typename Real>
 class SplitRadixRealFft: private SplitRadixComplexFft<Real> {
  public:
   SplitRadixRealFft(MatrixIndexT N):  // will fail unless N>=4 and N is a power of 2.

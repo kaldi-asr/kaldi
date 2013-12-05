@@ -44,6 +44,7 @@ int main(int argc, char *argv[]) {
         " e.g.: sgmm-rescore-lattice 1.mdl ark:1.lats scp:trn.scp ark:2.lats\n";
 
     kaldi::BaseFloat old_acoustic_scale = 0.0;
+    bool speedup = false;    
     BaseFloat log_prune = 5.0;
     std::string gselect_rspecifier, spkvecs_rspecifier, utt2spk_rspecifier;
     SgmmGselectConfig sgmm_opts;
@@ -57,6 +58,12 @@ int main(int argc, char *argv[]) {
                 "rspecifier for utterance to speaker map");
     po.Register("gselect", &gselect_rspecifier,
                 "Precomputed Gaussian indices (rspecifier)");
+    po.Register("speedup", &speedup,
+                "If true, enable a faster version of the computation that "
+                "saves times when there is only one pdf-id on a single frame "
+                "by only sometimes (randomly) computing the probabilities, and "
+                "then scaling them up to preserve corpus-level diagnostics.");
+    
     sgmm_opts.Register(&po);
 
     po.Read(argc, argv);
@@ -89,12 +96,12 @@ int main(int argc, char *argv[]) {
     // Write as compact lattice.
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
-    int32 n_done = 0, num_no_feats = 0, num_other_error = 0;
+    int32 num_done = 0, num_err = 0;
     for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
       std::string utt = compact_lattice_reader.Key();
       if (!feature_reader.HasKey(utt)) {
         KALDI_WARN << "No feature found for utterance " << utt << ". Skipping";
-        num_no_feats++;
+        num_err++;
         continue;
       }
 
@@ -113,7 +120,7 @@ int main(int argc, char *argv[]) {
           am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
         } else {
           KALDI_WARN << "Cannot find speaker vector for " << utt;
-          num_other_error++;
+          num_err++;
           continue;
         }
       }  // else spk_vars is "empty"
@@ -132,14 +139,25 @@ int main(int argc, char *argv[]) {
                                      trans_model, feats, *gselect,
                                      log_prune);
 
-      if (kaldi::RescoreCompactLattice(&sgmm_decodable, &clat)) {
+      if (!speedup) {
+        if (kaldi::RescoreCompactLattice(&sgmm_decodable, &clat)) {
           compact_lattice_writer.Write(utt, clat);
-          n_done++;
-      } else num_other_error++;
+          num_done++;
+        } else num_err++;
+      } else {
+        BaseFloat speedup_factor = 100.0; 
+        if (kaldi::RescoreCompactLatticeSpeedup(trans_model, speedup_factor,
+                                                &sgmm_decodable,
+                                                &clat)) {
+          compact_lattice_writer.Write(utt, clat);
+          num_done++;
+        } else num_err++;
+      }        
     }
 
-    KALDI_LOG << "Done " << n_done << " lattices.";
-    return (n_done != 0 ? 0 : 1);
+    KALDI_LOG << "Done " << num_done << " lattices, errors on "
+              << num_err;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

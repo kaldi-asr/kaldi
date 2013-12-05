@@ -16,7 +16,7 @@ numGaussUBM=400
 numLeavesSGMM=7000
 numGaussSGMM=9000
 
-decode_nj=20
+decode_nj=5
 train_nj=30
 
 echo ============================================================================

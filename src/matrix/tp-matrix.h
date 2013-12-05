@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Ondrej Glembek;  Lukas Burget;  Microsoft Corporation;
 //                      Saarland University;  Yanmin Qian;   Haihua Xu
+//                2013  Johns Hopkins Universith (author: Daniel Povey)
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -33,15 +34,22 @@ template<typename Real> class TpMatrix;
 /// @brief Packed symetric matrix class
 template<typename Real>
 class TpMatrix : public PackedMatrix<Real> {
+  friend class CuTpMatrix<float>;
+  friend class CuTpMatrix<double>;
  public:
   TpMatrix() : PackedMatrix<Real>() {}
   explicit TpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)
       : PackedMatrix<Real>(r, resize_type) {}
   TpMatrix(const TpMatrix<Real>& Orig) : PackedMatrix<Real>(Orig) {}
-  template<class OtherReal> explicit TpMatrix(const TpMatrix<OtherReal>& Orig)
-      : PackedMatrix<Real>(Orig) {}
-  ~TpMatrix() {}
 
+  /// Copy constructor from CUDA TpMatrix
+  /// This is defined in ../cudamatrix/cu-tp-matrix.cc
+  explicit TpMatrix(const CuTpMatrix<Real> &cu);
+  
+  
+  template<typename OtherReal> explicit TpMatrix(const TpMatrix<OtherReal>& Orig)
+      : PackedMatrix<Real>(Orig) {}
+  
   Real operator() (MatrixIndexT r, MatrixIndexT c) const {
     if (static_cast<UnsignedMatrixIndexT>(c) >
         static_cast<UnsignedMatrixIndexT>(r)) {
@@ -85,15 +93,18 @@ class TpMatrix : public PackedMatrix<Real> {
 
   /// CopyFromMat copies the lower triangle of M into *this
   /// (or the upper triangle, if Trans == kTrans).
-  void CopyFromMat(MatrixBase<Real> &M,
+  void CopyFromMat(const MatrixBase<Real> &M,
                    MatrixTransposeType Trans = kNoTrans);
 
-  /// CopyFromTp copies andother triangular matrix into this one.
+  /// This is implemented in ../cudamatrix/cu-tp-matrix.cc
+  void CopyFromMat(const CuTpMatrix<Real> &other);
+  
+  /// CopyFromTp copies another triangular matrix into this one.
   void CopyFromTp(const TpMatrix<Real> &other) {
     PackedMatrix<Real>::CopyFromPacked(other);
   }
 
-  template<class OtherReal> void CopyFromTp(const TpMatrix<OtherReal> &other) {
+  template<typename OtherReal> void CopyFromTp(const TpMatrix<OtherReal> &other) {
     PackedMatrix<Real>::CopyFromPacked(other);
   }
 

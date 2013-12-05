@@ -99,7 +99,8 @@ void EbwAmSgmm2Updater::Update(const MleAmSgmm2Accs &num_accs,
   KALDI_LOG << "***Note: for this to be at all meaningful, if you use "
             << "\"canceled\" stats you will have to renormalize this over "
             << "the \"real\" frame count.";
-
+  KALDI_ASSERT(num_accs.total_frames_ > 0 && den_accs.total_frames_ > 0);
+  
   model->ComputeNormalizers();
 }
 

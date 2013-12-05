@@ -61,6 +61,7 @@ int main(int argc, char *argv[]) {
               << trans_model.NumTransitionStates() << '\n';
     std::cout << "feature dimension " << am_gmm.Dim() << '\n';
     std::cout << "number of gaussians " << am_gmm.NumGauss() << '\n';
+    return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;

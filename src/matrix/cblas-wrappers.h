@@ -17,6 +17,9 @@
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
+#ifndef KALDI_MATRIX_CBLAS_WRAPPERS_H_
+#define KALDI_MATRIX_CBLAS_WRAPPERS_H_ 1
+
 
 #include <limits>
 #include "matrix/sp-matrix.h"
@@ -235,6 +238,8 @@ inline void cblas_Xgemm(const double alpha,
               alpha, Adata, a_stride, Bdata, b_stride,
               beta, Mdata, stride); 
 }
+
+
 inline void cblas_Xsymm(const float alpha,
                         MatrixIndexT sz,
                         const float *Adata,MatrixIndexT a_stride,
@@ -470,3 +475,5 @@ inline void clapack_Xgetri(MatrixIndexT num_rows, double *Mdata, MatrixIndexT st
 
 }
 // namespace kaldi
+
+#endif

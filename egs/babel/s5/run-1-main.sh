@@ -1,14 +1,17 @@
 #!/bin/bash
 
 # This is not necessarily the top-level run.sh as it is in other directories.   see README.txt first.
+tri5_only=false
+tri5_only=false
+sgmm2_only=false
+denlats_only=false
 
 [ ! -f ./lang.conf ] && echo "Language configuration does not exist! Use the configurations in conf/lang/* as a startup" && exit 1
 [ ! -f ./conf/common_vars.sh ] && echo "the file conf/common_vars.sh does not exist!" && exit 1
 
-. conf/common_vars.sh || exit 1;
-. ./lang.conf || exit 1;
-
 [ -f local.conf ] && . ./local.conf
+
+. ./utils/parse_options.sh
 
 set -e           #Exit on non-zero return code from any command
 set -o pipefail  #Exit if any of the commands in the pipeline will 
@@ -258,6 +261,13 @@ if [ ! -f exp/tri5/.done ]; then
   touch exp/tri5/.done
 fi
 
+if $tri5_only ; then
+  echo ---------------------------------------------------------------------
+  echo "Finish after TRI5 requested. Done."
+  echo "Finished successfully on" `date`
+  echo ---------------------------------------------------------------------
+  exit
+fi
 
 ################################################################################
 # Ready to start SGMM training
@@ -300,6 +310,14 @@ fi
 # Ready to start discriminative SGMM training
 ################################################################################
 
+if $sgmm2_only ; then
+  echo ---------------------------------------------------------------------
+  echo "Finish after SGMM2 requested. Done."
+  echo "Finished successfully on" `date`
+  echo ---------------------------------------------------------------------
+  exit 0;
+fi
+
 if [ ! -f exp/sgmm5_ali/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting exp/sgmm5_ali on" `date`
@@ -311,6 +329,12 @@ if [ ! -f exp/sgmm5_ali/.done ]; then
   touch exp/sgmm5_ali/.done
 fi
 
+if $tri5_only ; then
+  echo "Exiting after stage TRI5, as requested. "
+  echo "Everything went fine. Done"
+  exit 0;
+fi
+
 if [ ! -f exp/sgmm5_denlats/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting exp/sgmm5_denlats on" `date`
@@ -320,6 +344,14 @@ if [ ! -f exp/sgmm5_denlats/.done ]; then
     --beam 10.0 --lattice-beam 6 --cmd "$decode_cmd" --transform-dir exp/tri5_ali \
     data/train data/lang exp/sgmm5_ali exp/sgmm5_denlats
   touch exp/sgmm5_denlats/.done
+fi
+
+if $denlats_only ; then
+  echo ---------------------------------------------------------------------
+  echo "Finish after SGMM2 Denominator Lattices requested. Done."
+  echo "Finished successfully on" `date`
+  echo ---------------------------------------------------------------------
+  exit 0
 fi
 
 if [ ! -f exp/sgmm5_mmi_b0.1/.done ]; then

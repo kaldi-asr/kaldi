@@ -60,6 +60,7 @@ int main(int argc, char *argv[]) {
     BaseFloatMatrixWriter feat_writer(wspecifier);
 
     int32 num_done = 0, num_err = 0;
+    int64 frames_in = 0, frames_out = 0;
     
     // process all keys
     for (; !feat_reader.Done(); feat_reader.Next()) {
@@ -71,6 +72,9 @@ int main(int argc, char *argv[]) {
       int32 num_indexes = 0;
       for (int32 k = offset; k < feats.NumRows(); k += n)
         num_indexes++; // k is the index.
+
+      frames_in += feats.NumRows();
+      frames_out += num_indexes;
       
       if (num_indexes == 0) {
         KALDI_WARN << "For utterance " << utt << ", output would have no rows, "
@@ -88,8 +92,9 @@ int main(int argc, char *argv[]) {
       feat_writer.Write(utt, output);
       num_done++;
     }
-    KALDI_LOG << "Sub-sampled " << num_done << " feats; " << num_err
+    KALDI_LOG << "Sub-sampled " << num_done << " feature matrices; " << num_err
               << " with errors.";
+    KALDI_LOG << "Reduced " << frames_in << " frames to " << frames_out;
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

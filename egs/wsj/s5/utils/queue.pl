@@ -107,7 +107,7 @@ $qdir = "$dir/q";
 $qdir =~ s:/(log|LOG)/*q:/q:; # If qdir ends in .../log/q, make it just .../q.
 $queue_logfile = "$qdir/$base";
 
-if (!-d $dir) { system "mkdir $dir 2>/dev/null"; } # another job may be doing this...
+if (!-d $dir) { system "mkdir -p $dir 2>/dev/null"; } # another job may be doing this...
 if (!-d $dir) { die "Cannot make the directory $dir\n"; }
 # make a directory called "q",
 # where we will put the log created by qsub... normally this doesn't contain
@@ -231,23 +231,46 @@ if (! $sync) { # We're not submitting with -sync y, so we
 
       # Check that the job exists in SGE. Job can be killed if duration 
       # exceeds some hard limit, or in case of a machine shutdown. 
-      if(($check_sge_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on SGE.
-        if ( -f $f ) { next; }; #syncfile appeared, ok
+      if (($check_sge_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on SGE.
+        if ( -f $f ) { next; }; #syncfile appeared: OK.
         $ret = system("qstat -j $sge_job_id >/dev/null 2>/dev/null");
-        if($ret != 0) {
+        if ($ret == 1) { # Job does not seem to exist.
           # Don't consider immediately missing job as error, first wait some  
           # time to make sure it is not just delayed creation of the syncfile.
           sleep(3);
+          # Sometimes NFS gets confused and thinks it's transmitted the directory
+          # but it hasn't, due to timestamp issues.  Changing something in the
+          # directory will usually fix that.
+          system("touch $qdir/.kick");
+          system("rm $qdir/.kick 2>/dev/null");
           if ( -f $f ) { next; }; #syncfile appeared, ok
           sleep(7);
+          system("touch $qdir/.kick");
+          system("rm $qdir/.kick 2>/dev/null");
           if ( -f $f ) { next; }; #syncfile appeared, ok
           sleep(20);
           if ( -f $f ) { next; }; #syncfile appeared, ok
-          #Otherwise it is an error
           if (defined $jobname) { $logfile =~ s/\$SGE_TASK_ID/*/g; }
-          print STDERR "queue.pl: Error, unfinished job no longer exists, log is in $logfile\n";
-          print STDERR "          Possible reasons: a) Exceeded time limit? -> Use more jobs! b) Shutdown/Frozen machine? -> Run again!\n";
-          exit(1);
+          $last_line = `tail -n 1 $logfile`;
+          if ($last_line =~ m/status 0$/ && (-M $logfile) < 0) {
+            # if the last line of $logfile ended with "status 0" and
+            # $logfile is newer than this program [(-M $logfile) gives the
+            # time elapsed between file modification and the start of this
+            # program], then we assume the program really finished OK,
+            # and maybe something is up with the file system.
+            print STDERR "**queue.pl: syncfile was not created but job seems to have\n" .
+              "**completed OK.  Probably your file-system has problems.\n" .
+              "**This is just a warning.\n";
+          } else {
+            print STDERR "queue.pl: Error, unfinished job no " .
+              "longer exists, log is in $logfile, " .
+              "syncfile is $f, return status of qstat was $ret\n" .
+              "Possible reasons: a) Exceeded time limit? -> Use more jobs!" .
+              " b) Shutdown/Frozen machine? -> Run again!\n";
+            exit(1);
+          }
+        } elsif ($ret != 0) {
+          print STDERR "queue.pl: Warning: qstat command returned status $ret\n";
         }
       }
     }
