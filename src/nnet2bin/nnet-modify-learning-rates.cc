@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
     BaseFloat cur_geometric_mean = exp(nnet_learning_rates.SumLog()
                                  / static_cast<BaseFloat>(num_updatable));
     nnet_learning_rates.Scale(target_geometric_mean / cur_geometric_mean);
-    KALDI_LOG << "New learning rates for current model per layers are "
+    KALDI_LOG << "New learning rates for current model per layer are "
               << nnet_learning_rates;
 
     // Sets learning rates and writes updated model.

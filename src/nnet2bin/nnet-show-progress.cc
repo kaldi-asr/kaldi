@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
         Nnet nnet_gradient(am_nnet2.GetNnet());
         const bool treat_as_gradient = true;
         nnet_gradient.SetZero(treat_as_gradient);
-      
+
         double objf_per_frame = ComputeNnetGradient(interp_nnet, examples,
                                                     batch_size, &nnet_gradient);
         KALDI_LOG << "At position " << middle << ", objf per frame is " << objf_per_frame;
