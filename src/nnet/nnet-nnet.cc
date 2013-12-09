@@ -496,10 +496,10 @@ void Nnet::Check() const {
   Vector<BaseFloat> weights;
   GetParams(&weights);
   BaseFloat sum = weights.Sum();
-  if(isinf(sum)) {
+  if(KALDI_ISINF(sum)) {
     KALDI_ERR << "'inf' in network parameters (weight explosion, try lower learning rate?)";
   }
-  if(isnan(sum)) {
+  if(KALDI_ISNAN(sum)) {
     KALDI_ERR << "'nan' in network parameters (try lower learning rate?)";
   }
 }

@@ -8,10 +8,11 @@ About the GlobalPhone corpus:
 
 Each subdirectory of this directory contains the
 scripts for a sequence of experiments.  
-Note: s1 is the "default" set of scripts at the moment.
 
-  s1: This setup is experiments with GMM-based systems with various 
-      Maximum Likelihood 
-      techniques including global and speaker-specific transforms.
-      See a parallel setup in ../wsj/s3
+
+Please see s5/ which is the currently recommended set of scripts.
+(the scripts in s1/ are deprecated.)
+
+ 
+
 
