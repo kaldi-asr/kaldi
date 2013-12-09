@@ -51,6 +51,8 @@ openfst-1.3.2/Makefile: openfst-1.3.2/.patched
 		./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts
 
 
+# patches for openfst. openfst_gcc41up.patch is a patch for openfst to \
+# support multi-threads when compile with g++ (gcc) version above 4.1
 .PHONY: openfst-1.3.2/.patched
 openfst-1.3.2/.patched: | openfst-1.3.2_tgt
 		-cd openfst-1.3.2/src/include/fst; \
