@@ -189,7 +189,7 @@ if [ $stage -le $num_iters ]; then
   num_egs=`nnet-copy-egs ark:$egs_dir/combine.egs ark:/dev/null 2>&1 | tail -n 1 | awk '{print $NF}'`
   mb=$[($num_egs+$num_threads-1)/$num_threads]
   $cmd $parallel_opts $dir/log/combine.log \
-    nnet-combine-fast --num-threads=$num_threads --verbose=3 --minibatch-size=$mb \
+    nnet-combine-fast --use-gpu=no --num-threads=$num_threads --verbose=3 --minibatch-size=$mb \
     $nnets_list ark:$egs_dir/combine.egs $dir/final.mdl || exit 1;
 fi
 

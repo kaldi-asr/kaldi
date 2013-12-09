@@ -6,7 +6,6 @@
 
 dir=nnet5d_gpu
 temp_dir=
-
 train_stage=-10
 
 . cmd.sh

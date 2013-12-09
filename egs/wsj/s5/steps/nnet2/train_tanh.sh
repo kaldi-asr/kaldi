@@ -47,7 +47,8 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
 
 add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
-
+modify_learning_rates=false
+last_layer_factor=0.1 # relates to modify_learning_rates.
 stage=-5
 
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
@@ -152,7 +153,6 @@ cp $alidir/norm_vars $dir 2>/dev/null
 cp $alidir/tree $dir
 
 
-
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
   steps/nnet2/get_lda.sh $lda_opts --splice-width $splice_width --cmd "$cmd" $data $lang $alidir $dir || exit 1;
@@ -244,6 +244,7 @@ echo "$0: (while reducing learning rate) + (with constant learning rate)."
 # This is when we decide to mix up from: halfway between when we've finished
 # adding the hidden layers and the end of training.
 finish_add_layers_iter=$[($num_hidden_layers-$initial_num_hidden_layers+1)*$add_layers_period]
+first_modify_iter=$[$finish_add_layers_iter + $add_layers_period]
 mix_up_iter=$[($num_iters + $finish_add_layers_iter)/2]
 
 if [ $num_threads -eq 1 ]; then
@@ -310,12 +311,19 @@ while [ $x -lt $num_iters ]; do
       nnet-am-average $nnets_list - \| \
       nnet-am-copy --learning-rates=$lr_string - $dir/$[$x+1].mdl || exit 1;
 
+    if $modify_learning_rates && [ $x -ge $first_modify_iter ]; then
+      $cmd $dir/log/modify_learning_rates.$x.log \
+        nnet-modify-learning-rates --last-layer-factor=$last_layer_factor \
+          --average-learning-rate=$learning_rate \
+        $dir/$x.mdl $dir/$[$x+1].mdl $dir/$[$x+1].mdl || exit 1;
+    fi
+
     if $shrink && [ $[$x % $shrink_interval] -eq 0 ]; then
       mb=$[($num_frames_shrink+$num_threads-1)/$num_threads]
       $cmd $parallel_opts $dir/log/shrink.$x.log \
         nnet-subset-egs --n=$num_frames_shrink --randomize-order=true --srand=$x \
           ark:$egs_dir/train_diagnostic.egs ark:-  \| \
-        nnet-combine-fast --num-threads=$num_threads --verbose=3 --minibatch-size=$mb \
+        nnet-combine-fast --use-gpu=no --num-threads=$num_threads --verbose=3 --minibatch-size=$mb \
           $dir/$[$x+1].mdl ark:- $dir/$[$x+1].mdl || exit 1;
     else
       # On other iters, do nnet-am-fix which is much faster and has roughly

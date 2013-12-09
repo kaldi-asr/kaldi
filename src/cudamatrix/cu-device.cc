@@ -99,7 +99,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   e = cudaThreadSynchronize(); //<< CUDA context gets created here.
   if (e != cudaSuccess) {
     // So far no we don't have context, sleep a bit and retry.
-    int32 sec_sleep = 2;
+    int32 sec_sleep = (use_gpu == "yes" ? 20 : 2);
     KALDI_WARN << "Will try again to get a GPU after " << sec_sleep 
                << " seconds.";
     sleep(sec_sleep);
