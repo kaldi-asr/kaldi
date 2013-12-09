@@ -55,6 +55,7 @@ openfst-1.3.2/Makefile: openfst-1.3.2/.patched
 openfst-1.3.2/.patched: | openfst-1.3.2_tgt
 		-cd openfst-1.3.2/src/include/fst; \
 		patch -p0 -N < ../../../../openfst.patch;
+		g++ --version | awk '{if(NR==1 && $$2=="(GCC)" && $$3>"4.1") print "cd openfst-1.3.2/src/include/fst; patch -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
 		touch $@ 	
 
 openfst-1.3.2_tgt: openfst-1.3.2.tar.gz
