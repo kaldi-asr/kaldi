@@ -12,7 +12,7 @@ BINFILES = compute-mfcc-feats compute-plp-feats compute-fbank-feats \
     reverse-feats paste-feats select-feats subsample-feats process-pitch-feats \
     interpolate-pitch copy-feats-to-htk extract-rows apply-cmvn-sliding \
     compute-cmvn-stats-two-channel compute-kaldi-pitch-feats \
-    process-kaldi-pitch-feats compare-feats
+    process-kaldi-pitch-feats compare-feats wav-to-duration
 
 OBJFILES = 
 

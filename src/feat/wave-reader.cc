@@ -1,6 +1,8 @@
 // feat/wave-reader.cc
 
 // Copyright 2009-2011  Karel Vesely;  Petr Motlicek
+//                2013  Florent Masson
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -38,31 +40,28 @@ void WaveData::Expect4ByteTag(std::istream &is, const char *expected) {
     KALDI_ERR << "WaveData: expected " << expected << ", got " << tmp;
 }
 
-// static
-uint32 WaveData::ReadUint32(std::istream &is) {
+uint32 WaveData::ReadUint32(std::istream &is, bool swap) {
   union {
     char result[4];
     uint32 ans;
   } u;
   is.read(u.result, 4);
-#ifdef __BIG_ENDIAN__
-  KALDI_SWAP4(u.result);
-#endif
+  if (swap)
+    KALDI_SWAP4(u.result);
   if (is.fail())
     KALDI_ERR << "WaveData: unexpected end of file.";
   return u.ans;
 }
 
-// static
-uint16 WaveData::ReadUint16(std::istream &is) {
+
+uint16 WaveData::ReadUint16(std::istream &is, bool swap) {
   union {
     char result[2];
     int16 ans;
   } u;
   is.read(u.result, 2);
-#ifdef __BIG_ENDIAN__
-  KALDI_SWAP2(u.result);
-#endif
+  if (swap)
+    KALDI_SWAP2(u.result);
   if (is.fail())
     KALDI_ERR << "WaveData: unexpected end of file.";
   return u.ans;
@@ -109,21 +108,37 @@ void WaveData::WriteUint16(std::ostream &os, int16 i) {
 void WaveData::Read(std::istream &is) {
   data_.Resize(0, 0);  // clear the data.
 
-  Expect4ByteTag(is, "RIFF");
-  uint32 riff_chunk_size = ReadUint32(is);
-  Expect4ByteTag(is, "WAVE");
+  char tmp[5];
+  tmp[4] = '\0';
+  Read4ByteTag(is, &tmp[0]);
+  bool is_rifx;
+  if (!strcmp(tmp, "RIFF"))
+    is_rifx = false;
+  else if (!strcmp(tmp, "RIFX"))
+    is_rifx = true;
+  else
+    KALDI_ERR << "WaveData: expected RIFF or RIFX, got " << tmp;
 
+#ifdef __BIG_ENDIAN__  
+  bool swap = !is_rifx;
+#else
+  bool swap = is_rifx;
+#endif
+  
+  uint32 riff_chunk_size = ReadUint32(is, swap);
+  Expect4ByteTag(is, "WAVE");
+  
   uint32 riff_chunk_read = 0;
   riff_chunk_read += 4;  // WAVE included in riff_chunk_size.
 
   Expect4ByteTag(is, "fmt ");
-  uint32 subchunk1_size = ReadUint32(is);
-  uint16 audio_format = ReadUint16(is),
-      num_channels = ReadUint16(is);
-  uint32 sample_rate = ReadUint32(is),
-      byte_rate = ReadUint32(is),
-      block_align = ReadUint16(is),
-      bits_per_sample = ReadUint16(is);
+  uint32 subchunk1_size = ReadUint32(is, swap);
+  uint16 audio_format = ReadUint16(is, swap),
+      num_channels = ReadUint16(is, swap);
+  uint32 sample_rate = ReadUint32(is, swap),
+      byte_rate = ReadUint32(is, swap),
+      block_align = ReadUint16(is, swap),
+      bits_per_sample = ReadUint16(is, swap);
 
   if (audio_format != 1)
     KALDI_ERR << "WaveData: can read only PCM data, audio_format is not 1: "
@@ -160,7 +175,7 @@ void WaveData::Read(std::istream &is) {
   if (!strncmp(next_chunk_name, "fact", 4)) {
     // will just ignore the "fact" chunk.  for non-compressed data
     // (which we don't support anyway), it doesn't contain useful information.
-    uint32 chunk_sz = ReadUint32(is);
+    uint32 chunk_sz = ReadUint32(is, swap);
     if (chunk_sz != 4)
       KALDI_WARN << "Expected fact chunk to be 4 bytes long.";
     for (uint32 i = 0; i < chunk_sz; i++)
@@ -176,7 +191,7 @@ void WaveData::Read(std::istream &is) {
     KALDI_ERR << "WaveData: expected data chunk, got instead "
               << next_chunk_name;
 
-  uint32 data_chunk_size = ReadUint32(is);
+  uint32 data_chunk_size = ReadUint32(is, swap);
   riff_chunk_read += 4;
   std::vector<char> chunk_data_vec(data_chunk_size);
   char *data_ptr = &(chunk_data_vec[0]);
@@ -207,9 +222,8 @@ void WaveData::Read(std::istream &is) {
         case 16:
           {
             int16 k = *reinterpret_cast<uint16*>(data_ptr);
-#ifdef __BIG_ENDIAN__
-            KALDI_SWAP2(k);
-#endif
+            if (swap)
+              KALDI_SWAP2(k);
             data_(j, i) =  k;
             data_ptr += 2;
             break;
@@ -217,9 +231,8 @@ void WaveData::Read(std::istream &is) {
         case 32:
           {
             int32 k = *reinterpret_cast<uint32*>(data_ptr);
-#ifdef __BIG_ENDIAN__
-            KALDI_SWAP4(k);
-#endif
+            if (swap)
+              KALDI_SWAP4(k);
             data_(j, i) =  k;
             data_ptr += 4;
             break;

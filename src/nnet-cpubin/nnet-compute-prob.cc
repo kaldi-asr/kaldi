@@ -81,7 +81,6 @@ int main(int argc, char *argv[]) {
     }
     if (!examples.empty()) {
       tot_like += ComputeNnetObjf(am_nnet.GetNnet(), examples);
-      num_examples += examples.size();
     }
 
     KALDI_LOG << "Saw " << num_examples << " examples, average "

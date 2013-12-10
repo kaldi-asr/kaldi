@@ -892,11 +892,11 @@ Real TraceMatMatMatMat(const MatrixBase<Real> &A, MatrixTransposeType transA,
 /// the same as U->NumCols(), and we sort s from greatest to least absolute
 /// value (if sort_on_absolute_value == true) or greatest to least value
 /// otherwise, moving the columns of U, if it exists, and the rows of Vt, if it
-/// exists around in the same way.  Note: the "absolute value" part won't matter
+/// exists, around in the same way.  Note: the "absolute value" part won't matter
 /// if this is an actual SVD, since singular values are non-negative.
 template<typename Real> void SortSvd(VectorBase<Real> *s, MatrixBase<Real> *U,
-                                  MatrixBase<Real>* Vt = NULL,
-                                  bool sort_on_absolute_value = true);
+                                     MatrixBase<Real>* Vt = NULL,
+                                     bool sort_on_absolute_value = true);
 
 /// Creates the eigenvalue matrix D that is part of the decomposition used Matrix::Eig.
 /// D will be block-diagonal with blocks of size 1 (for real eigenvalues) or 2x2

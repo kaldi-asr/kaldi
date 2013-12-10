@@ -71,7 +71,7 @@ struct PitchExtractionOptions {
       nccf_ballast(0.7),
       lowpass_filter_width(1),
       upsample_filter_width(5) {}
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("sample-frequency", &samp_freq,
                  "Waveform data sample frequency (must match the waveform file, "
                  "if specified there)");

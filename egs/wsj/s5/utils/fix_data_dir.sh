@@ -94,21 +94,24 @@ function filter_speakers {
   # throughout this program, we regard utt2spk as primary and spk2utt as derived, so...
   utils/utt2spk_to_spk2utt.pl $data/utt2spk > $data/spk2utt
 
-  if [ -f $data/cmvn.scp ]; then
-    cat $data/spk2utt | awk '{print $1}' >$tmpdir/speakers
-    cat $data/cmvn.scp | awk '{print $1}' >$tmpdir/speakers.cmvn
-    utils/filter_scp.pl $data/cmvn.scp $tmpdir/speakers > $tmpdir/speakers.tmp
-    mv $tmpdir/speakers.tmp $tmpdir/speakers
+  cat $data/spk2utt | awk '{print $1}' > $tmpdir/speakers
+  for s in cmvn.scp spk2gender; do
+    f=$data/$s
+    if [ -f $f ]; then
+      utils/filter_scp.pl $f $tmpdir/speakers > $tmpdir/speakers.tmp
+      mv $tmpdir/speakers.tmp $tmpdir/speakers
+    fi
+  done
 
-    filter_file $tmpdir/speakers $data/cmvn.scp
-    filter_file $tmpdir/speakers $data/spk2utt
-    utils/spk2utt_to_utt2spk.pl $data/spk2utt > $data/utt2spk
-  fi
-  if [ -f $data/spk2gender ]; then
-    # We don't handle the case when the spk2gender does not cover all speakers.
-    cat $data/spk2utt | awk '{print $1}' >$tmpdir/speakers
-    filter_file $tmpdir/speakers $data/spk2gender 
-  fi
+  filter_file $tmpdir/speakers $data/spk2utt
+  utils/spk2utt_to_utt2spk.pl $data/spk2utt > $data/utt2spk
+
+  for s in cmvn.scp spk2gender; do
+    f=$data/$s
+    if [ -f $f ]; then
+      filter_file $tmpdir/speakers $f
+    fi
+  done
 }
 
 function filter_utts {
