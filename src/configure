@@ -306,11 +306,21 @@ function linux_configure_cuda {
   fi
 }
 
+function fix_cxx_flag {
+  CXXCOMPILER=`grep "CXX = " kaldi.mk | awk '{print $3}'`
+  if [ $CXXCOMPILER=="g++" ]; then
+    $CXXCOMPILER -dumpversion | \
+    awk '{if(NR==1 && $1<"4.4") print "sed \"s/-Wno-unused-local-typedefs//g\" \
+    kaldi.mk > tmpf; mv tmpf kaldi.mk; "}' | sh -
+  fi
+}
+
 function linux_atlas_failure { # function we use when we couldn't find
    # ATLAS libs.
    echo ATLASINC = [somewhere]/include >> kaldi.mk
    echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk  
    cat makefiles/linux_atlas.mk >> kaldi.mk
+   fix_cxx_flag
    echo "** $* ***"
    echo "**  ERROR   **"
    echo "**Configure cannot proceed automatically, but by editing kaldi.mk"
@@ -354,6 +364,7 @@ function linux_configure_debian_ubuntu {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
+  fix_cxx_flag
   echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && linux_configure_cuda
   exit 0;
@@ -367,6 +378,7 @@ function linux_configure_debian7 {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
+  fix_cxx_flag
   echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && linux_configure_cuda
   exit 0;
@@ -419,6 +431,7 @@ function linux_configure_static {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
+  fix_cxx_flag
   $use_cuda && linux_configure_cuda
   echo "Successfully configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
   exit 0;
@@ -486,6 +499,7 @@ function linux_configure_dynamic {
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
+  fix_cxx_flag
   $use_cuda && linux_configure_cuda
   echo "Successfully configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   exit 0;
@@ -682,6 +696,7 @@ if [ "`uname`" == "Linux" ]; then
     echo FSTROOT = $FSTROOT >> kaldi.mk
     check_exists makefiles/linux_x86_64_mkl.mk
     cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
+    fix_cxx_flag
     echo "MKLFLAGS = ${MKL_LINK_LINE} ${OMP_LINK_LINE} " >> kaldi.mk
 
     $use_cuda && linux_configure_cuda
@@ -704,6 +719,7 @@ if [ "`uname`" == "Linux" ]; then
       failure "makefiles/linux_clapack.mk not found."
     fi
     cat makefiles/linux_clapack.mk >> kaldi.mk
+    fix_cxx_flag
     echo "Warning (CLAPACK): this part of the configure process is not properly tested and will not work."
     $use_cuda && linux_configure_cuda
     echo "Successfully configured for Linux with CLAPACK libs from $CLAPACKROOT"
@@ -718,6 +734,7 @@ if [ "`uname`" == "Linux" ]; then
     fi
     echo "Your math library seems to be OpenBLAS.  Configuring appropriately."
     cat makefiles/linux_openblas.mk >> kaldi.mk
+    fix_cxx_flag
     if $static_math; then
       echo "Configuring static OpenBlas since --static-math=yes"
       OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a -lgfortran"
