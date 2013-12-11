@@ -98,7 +98,7 @@ while [ $x -lt $num_iters ]; do
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
       gmm-rescore-lattice $cur_mdl "$lats" "$feats" ark:- \| \
       lattice-to-mpe-post --acoustic-scale=$acwt $cur_mdl \
-        "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-post ark:- ark:- |" ark:- ark:- \| \
+        "ark,s,cs:gunzip -c $alidir/ali.JOB.gz |" ark:- ark:- \| \
       gmm-acc-stats2 $cur_mdl "$feats" ark,s,cs:- \
         $dir/num_acc.$x.JOB.acc $dir/den_acc.$x.JOB.acc || exit 1;
 
@@ -112,11 +112,11 @@ while [ $x -lt $num_iters ]; do
       gmm-sum-accs $dir/num_acc.$x.acc $dir/num_acc.$x.*.acc || exit 1;
     rm $dir/num_acc.$x.*.acc
 
-  # note: this tau value is for smoothing towards model parameters, not
-  # as in the Boosted MMI paper, not towards the ML stats as in the earlier
-  # work on discriminative training (e.g. my thesis).  
-  # You could use gmm-ismooth-stats to smooth to the ML stats, if you had
-  # them available [here they're not available if cancel=true].
+    # note: this tau value is for smoothing towards model parameters, not
+    # as in the Boosted MMI paper, not towards the ML stats as in the earlier
+    # work on discriminative training (e.g. my thesis).  
+    # You could use gmm-ismooth-stats to smooth to the ML stats, if you had
+    # them available [here they're not available if cancel=true].
     if ! $smooth_to_model; then
       echo "Iteration $x of MPE: computing ml (smoothing) stats"
       $cmd JOB=1:$nj $dir/log/acc_ml.$x.JOB.log \

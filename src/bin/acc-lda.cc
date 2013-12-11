@@ -21,6 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
+#include "hmm/posterior.h"
 #include "transform/lda-estimate.h"
 
 /** @brief Accumulate LDA statistics based on pdf-ids. Inputs are the

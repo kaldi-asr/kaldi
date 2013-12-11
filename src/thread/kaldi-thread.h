@@ -112,31 +112,43 @@ class ExampleClass: public MultiThreadable {
   // Have additional member variables as needed.
 };
 
+
 template<class C>
 class MultiThreader {
  public:
   MultiThreader(int32 num_threads,
                 const C &c_in):
-      threads_(new pthread_t[num_threads]),
-      cvec_(num_threads, c_in) {
-    pthread_attr_t pthread_attr;
-    pthread_attr_init(&pthread_attr);
-    for (int32 thread = 0; thread < num_threads; thread++) {
-      cvec_[thread].thread_id_ = thread;
-      cvec_[thread].num_threads_ = num_threads;
-      int32 ret;
-      if ((ret=pthread_create(&(threads_[thread]),
-                              &pthread_attr, C::run, &(cvec_[thread])))) {
-        const char *c = strerror(ret);
-        if (c == NULL) { c = "[NULL]"; }
-        KALDI_ERR << "Error creating thread, errno was: " << c;
+    threads_(new pthread_t[std::max<int32>(1, num_threads)]),
+    cvec_(std::max<int32>(1, num_threads), c_in) {
+    if (num_threads == 0) {
+      // This is a special case with num_threads == 0, which behaves like with
+      // num_threads == 1 but without creating extra threads.  This can be
+      // useful in GPU computations where threads cannot be used.
+      threads_[0] = 0;
+      cvec_[0].thread_id_ = 0;
+      cvec_[0].num_threads_ = 1;
+      (cvec_[0])();
+    } else {
+      pthread_attr_t pthread_attr;
+      pthread_attr_init(&pthread_attr);
+      for (int32 thread = 0; thread < num_threads; thread++) {
+        cvec_[thread].thread_id_ = thread;
+        cvec_[thread].num_threads_ = num_threads;
+        int32 ret;
+        if ((ret=pthread_create(&(threads_[thread]),
+                                &pthread_attr, C::run, &(cvec_[thread])))) {
+          const char *c = strerror(ret);
+          if (c == NULL) { c = "[NULL]"; }
+          KALDI_ERR << "Error creating thread, errno was: " << c;
+        }
       }
     }
   }
   ~MultiThreader() {
     for (size_t thread = 0; thread < cvec_.size(); thread++)
-      if (pthread_join(threads_[thread], NULL))
-        KALDI_ERR << "Error rejoining thread.";
+      if (threads_[thread] != 0)
+        if (pthread_join(threads_[thread], NULL))
+          KALDI_ERR << "Error rejoining thread.";
     delete [] threads_;
   }
  private:
@@ -144,9 +156,10 @@ class MultiThreader {
   std::vector<C> cvec_;
 };
 
-/// Here, class C should inherit from MultiThreader.
-/// Note: if you want to control the number of threads yourself,
-/// just initialize the MultiThreader<C> object yourself.
+/// Here, class C should inherit from MultiThreadable.  Note: if you want to
+/// control the number of threads yourself, or need to do something in the main
+/// thread of the program while the objects exist, just initialize the
+/// MultiThreader<C> object yourself.
 template<class C> void RunMultiThreaded(const C &c_in) {
   MultiThreader<C> m(g_num_threads, c_in);
 }

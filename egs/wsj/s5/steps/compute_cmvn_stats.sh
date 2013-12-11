@@ -87,8 +87,8 @@ cp $cmvndir/cmvn_$name.scp $data/cmvn.scp || exit 1;
 nc=`cat $data/cmvn.scp | wc -l` 
 nu=`cat $data/spk2utt | wc -l` 
 if [ $nc -ne $nu ]; then
-  echo "Error: it seems not all of the speakers got cmvn stats ($nc != $nu);"
-  exit 1;
+  echo "$0: warning: it seems not all of the speakers got cmvn stats ($nc != $nu);"
+  [ $nc -eq 0 ] && exit 1;
 fi
 
 echo "Succeeded creating CMVN stats for $name"

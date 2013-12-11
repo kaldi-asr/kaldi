@@ -160,9 +160,6 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri4a exp/tri4a_ali_100k_nodup
 
 
-# Some experiments with neural nets:
-#local/run_nnet_cpu.sh &
-
 
 #local/run_sgmm.sh
 local/run_sgmm2.sh

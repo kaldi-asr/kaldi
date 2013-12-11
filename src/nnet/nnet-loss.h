@@ -25,6 +25,7 @@
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-array.h"
+#include "hmm/posterior.h"
 
 namespace kaldi {
 namespace nnet1 {

@@ -2,7 +2,8 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
-
+echo "*** Warning, this script is deprecated and will eventually be deleted. ***"
+echo "*** Please replace with steps/nnet2/train_tanh.sh ***"
 
 # Begin configuration section.
 cmd=run.pl

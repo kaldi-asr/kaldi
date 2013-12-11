@@ -1069,7 +1069,12 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
   
  # if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-
+    if (sv_labels.empty()) {
+      KALDI_WARN << "Empty supervision labels";
+      *tot_objf = 0.0;
+      *tot_weight = 0.0;
+      return;
+    }
     void *addr = CuDevice::Instantiate().Malloc(sv_labels.size() * sizeof(MatrixElement<Real>));
     CU_SAFE_CALL(cudaMemcpy(addr, sv_labels.data(), sv_labels.size() * sizeof(MatrixElement<Real>), cudaMemcpyHostToDevice));
     Timer tim;

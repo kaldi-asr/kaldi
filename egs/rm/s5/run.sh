@@ -10,7 +10,9 @@
 
 #local/rm_data_prep.sh /mnt/matylda2/data/RM || exit 1;
 
-local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp || exit 1;
+#local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp || exit 1;
+
+local/rm_data_prep.sh /home/dpovey/data/LDC93S3A/rm_comp || exit 1;
 
 utils/prepare_lang.sh data/local/dict '!SIL' data/local/lang data/lang || exit 1;
 

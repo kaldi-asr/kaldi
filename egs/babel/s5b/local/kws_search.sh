@@ -115,7 +115,7 @@ if [ $stage -le 0 ] ; then
         indices=${indices_dir}_$lmwt
         mkdir -p $indices
   
-        acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
+        acwt=`perl -e "print (1.0/$lmwt);"` 
         [ ! -z $silence_word ] && silence_opt="--silence-word $silence_word"
         steps/make_index.sh $silence_opt --cmd "$cmd" --acwt $acwt $model_flags\
           --skip-optimization $skip_optimization --max-states $max_states \

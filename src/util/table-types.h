@@ -54,6 +54,25 @@ typedef TableWriter<KaldiObjectHolder<Vector<double> > >  DoubleVectorWriter;
 typedef SequentialTableReader<KaldiObjectHolder<Vector<double> > >  SequentialDoubleVectorReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<Vector<double> > >  RandomAccessDoubleVectorReader;
 
+typedef TableWriter<KaldiObjectHolder<CuMatrix<BaseFloat> > >  BaseFloatCuMatrixWriter;
+typedef SequentialTableReader<KaldiObjectHolder<CuMatrix<BaseFloat> > >  SequentialBaseFloatCuMatrixReader;
+typedef RandomAccessTableReader<KaldiObjectHolder<CuMatrix<BaseFloat> > >  RandomAccessBaseFloatCuMatrixReader;
+typedef RandomAccessTableReaderMapped<KaldiObjectHolder<CuMatrix<BaseFloat> > >  RandomAccessBaseFloatCuMatrixReaderMapped;
+
+typedef TableWriter<KaldiObjectHolder<CuMatrix<double> > >  DoubleCuMatrixWriter;
+typedef SequentialTableReader<KaldiObjectHolder<CuMatrix<double> > >  SequentialDoubleCuMatrixReader;
+typedef RandomAccessTableReader<KaldiObjectHolder<CuMatrix<double> > >  RandomAccessDoubleCuMatrixReader;
+typedef RandomAccessTableReaderMapped<KaldiObjectHolder<CuMatrix<double> > >  RandomAccessDoubleCuMatrixReaderMapped;
+
+typedef TableWriter<KaldiObjectHolder<CuVector<BaseFloat> > >  BaseFloatCuVectorWriter;
+typedef SequentialTableReader<KaldiObjectHolder<CuVector<BaseFloat> > >  SequentialBaseFloatCuVectorReader;
+typedef RandomAccessTableReader<KaldiObjectHolder<CuVector<BaseFloat> > >  RandomAccessBaseFloatCuVectorReader;
+typedef RandomAccessTableReaderMapped<KaldiObjectHolder<CuVector<BaseFloat> > >  RandomAccessBaseFloatCuVectorReaderMapped;
+
+typedef TableWriter<KaldiObjectHolder<CuVector<double> > >  DoubleCuVectorWriter;
+typedef SequentialTableReader<KaldiObjectHolder<CuVector<double> > >  SequentialDoubleCuVectorReader;
+typedef RandomAccessTableReader<KaldiObjectHolder<CuVector<double> > >  RandomAccessDoubleCuVectorReader;
+
 
 typedef TableWriter<BasicHolder<int32> >  Int32Writer;
 typedef SequentialTableReader<BasicHolder<int32> >  SequentialInt32Reader;
@@ -105,20 +124,6 @@ typedef TableWriter<TokenVectorHolder> TokenVectorWriter;
 typedef SequentialTableReader<TokenVectorHolder> SequentialTokenVectorReader;
 typedef RandomAccessTableReader<TokenVectorHolder> RandomAccessTokenVectorReader;
 
-
-// Posterior is a typedef: vector<vector<pair<int32, BaseFloat> > >,
-// representing posteriors over (typically) transition-ids for an
-// utterance.
-typedef TableWriter<PosteriorHolder> PosteriorWriter;
-typedef SequentialTableReader<PosteriorHolder> SequentialPosteriorReader;
-typedef RandomAccessTableReader<PosteriorHolder> RandomAccessPosteriorReader;
-
-
-// typedef std::vector<std::vector<std::pair<int32, Vector<BaseFloat> > > > GauPost;
-typedef TableWriter<GauPostHolder> GauPostWriter;
-typedef SequentialTableReader<GauPostHolder> SequentialGauPostReader;
-
-typedef RandomAccessTableReader<GauPostHolder> RandomAccessGauPostReader;
 
 /// @}
 

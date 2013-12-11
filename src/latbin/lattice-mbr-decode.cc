@@ -19,6 +19,7 @@
 
 #include "util/common-utils.h"
 #include "lat/sausages.h"
+#include "hmm/posterior.h"
 
 int main(int argc, char *argv[]) {
   try {

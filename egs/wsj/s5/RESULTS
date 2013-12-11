@@ -208,3 +208,20 @@ exit 0
 exp/nnet5c1/decode_bd_tgpr_dev93/wer_14:%WER 7.32 [ 603 / 8234, 61 ins, 101 del, 441 sub ]
 exp/nnet5c1/decode_bd_tgpr_eval92/wer_14:%WER 4.39 [ 248 / 5643, 32 ins, 17 del, 199 sub ]
 # Note: my 4.39% result is worse than Karel's 3.56%.
+
+
+# some GPU-based neural network training results...
+
+# Below is the recipe with multiple VTLN warps and mel-filterbank inputs..
+%WER 7.24 [ 596 / 8234, 62 ins, 98 del, 436 sub ] exp/nnet5b_gpu/decode_bd_tgpr_dev93/wer_15
+%WER 3.95 [ 223 / 5643, 30 ins, 18 del, 175 sub ] exp/nnet5b_gpu/decode_bd_tgpr_eval92/wer_16
+
+# 5c2 is GPU tanh recipe with 8 jobs, lr = 0.075 to 0.0075
+%WER 7.38 [ 608 / 8234, 79 ins, 90 del, 439 sub ] exp/nnet5c2_gpu/decode_bd_tgpr_dev93/wer_12
+%WER 4.08 [ 230 / 5643, 32 ins, 14 del, 184 sub ] exp/nnet5c2_gpu/decode_bd_tgpr_eval92/wer_11
+
+# 5c is GPU tanh recipe with 4 jobs, lr = 0.05 to 0.005
+# This is the same recipe run on a GPU.. probably better due to the reduced number of jobs (4 vs. 16).
+%WER 7.04 [ 580 / 8234, 68 ins, 93 del, 419 sub ] exp/nnet5c_gpu/decode_bd_tgpr_dev93/wer_13
+%WER 3.86 [ 218 / 5643, 28 ins, 13 del, 177 sub ] exp/nnet5c_gpu/decode_bd_tgpr_eval92/wer_14
+

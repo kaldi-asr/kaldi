@@ -1,12 +1,15 @@
 # DNN hybrid system training parameters
-dnn_mixup=12000
-dnn_num_jobs=16
-dnn_initial_learning_rate=0.01
-dnn_final_learning_rate=0.001
-dnn_num_parameters=7000000
-dnn_num_hidden_layers=4
-dnn_mem_reqs="mem_free=2.0G,ram_free=0.5G"
-dnn_extra_opts=
+dnn_num_hidden_layers=5
+dnn_input_dim=5000
+dnn_output_dim=500
+dnn_minibatch_size=128
+dnn_init_learning_rate=0.008
+dnn_final_learning_rate=0.0008
+dnn_max_change=10
+dnn_num_jobs=8
+dnn_num_threads=1
+dnn_mixup=5000
+dnn_parallel_opts="-l gpu=1,hostname=g*"
 
 bnf_every_nth_frame=2 # take every 2nd frame.
 babel_type=full
@@ -20,13 +23,11 @@ lmwt_dnn_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
 icu_opt=(--use-icu true --icu-transform Any-Lower)
 
 if [[ `hostname` == *.tacc.utexas.edu ]] ; then
-  dnn_train_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6" --num-jobs-nnet 16 --stage 0)
   decode_extra_opts=( --num-threads 4 --parallel-opts "-pe smp 4" )
   sgmm_train_extra_opts=( )
   sgmm_group_extra_opts=( --num_iters 25 ) 
   sgmm_denlats_extra_opts=( --num-threads 2 )
 else
-  dnn_train_extra_opts=(--num-threads 8 --parallel-opts "-pe smp 7" --cmd "queue.pl -l arch=*64,mem_free=4.0G,ram_free=0.75G" )
   decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G")
   sgmm_train_extra_opts=( --num_iters 25 )
   sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=7G,ram_free=2.75G" --cmd "queue.pl -l arch=*64 -l mem_free=3.0G,ram_free=3.0G") 

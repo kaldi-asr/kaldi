@@ -18,8 +18,8 @@
 // limitations under the License.
 
 #include "nnet/nnet-loss.h"
-
 #include "cudamatrix/cu-math.h"
+#include "hmm/posterior.h"
 
 #include <sstream>
 #include <iterator>

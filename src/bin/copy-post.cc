@@ -20,23 +20,8 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
+#include "hmm/posterior.h"
 
-namespace kaldi {
-
-void ScalePosteriors(BaseFloat scale, Posterior *post) {
-  if (scale == 1.0) return;
-  for (size_t i = 0; i < post->size(); i++) {
-    if (scale == 0.0) {
-      (*post)[i].clear();
-    } else {
-      for (size_t j = 0; j < (*post)[i].size(); j++)
-        (*post)[i][j].second *= scale;
-    }
-  }
-}
-
-
-} // end namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {
@@ -72,7 +57,7 @@ int main(int argc, char *argv[]) {
 
       if (scale != 1.0) {
         kaldi::Posterior posterior = posterior_reader.Value();
-        ScalePosteriors(scale, &posterior);
+        ScalePosterior(scale, &posterior);
         posterior_writer.Write(key, posterior);
       } else {
         posterior_writer.Write(key, posterior_reader.Value());

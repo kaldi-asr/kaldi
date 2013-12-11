@@ -1,6 +1,7 @@
 // latbin/lattice-to-mpe-post.cc
 
-// Copyright 2009-2012  Chao Weng 
+// Copyright 2009-2012  Chao Weng
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -35,9 +36,9 @@ int main(int argc, char *argv[]) {
   
     const char *usage =
         "Do forward-backward and collect frame level MPE posteriors over\n" 
-        "lattices, which can be fed into gmm-acc-stats2 to do MPE traning,\n"
-        "Note: output posteriors do NOT fulfill the condition as regular one,\n"
-        "i.e., positive, and summed up to 1 within one frame.\n"
+        "lattices, which can be fed into gmm-acc-stats2 to do MPE traning.\n"
+        "Caution: this is not really MPE, this is MPFE (minimum phone frame\n"
+        "error).  The posteriors may be positive or negative.\n"
         "Usage: lattice-to-mpe-post [options] <model> <num-posteriors-rspecifier>\n"
         " <lats-rspecifier> <posteriors-wspecifier> \n"
         "e.g.: lattice-to-mpe-post --acoustic-scale=0.1 1.mdl ark:num.post\n"
@@ -64,20 +65,24 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "Invalid silence-phones string " << silence_phones_str;
     kaldi::SortAndUniq(&silence_phones);
     if (silence_phones.empty())
-      KALDI_WARN <<"No silence phones specified, make sure this is what you intended.";
+      KALDI_WARN << "No silence phones specified, make sure this is what you intended.";
 
     if (acoustic_scale == 0.0)
       KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
 
     std::string model_filename = po.GetArg(1), 
-        posteriors_rspecifier = po.GetArg(2),  
+        alignments_rspecifier = po.GetArg(2),  
         lats_rspecifier = po.GetArg(3),
         posteriors_wspecifier = po.GetArg(4);
 
-    kaldi::SequentialLatticeReader lattice_reader(lats_rspecifier);
-    kaldi::PosteriorWriter posterior_writer(posteriors_wspecifier);
-    kaldi::RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
-
+    SequentialLatticeReader lattice_reader(lats_rspecifier);
+    PosteriorWriter posterior_writer(posteriors_wspecifier);
+    if (alignments_rspecifier.find("ali-to-post") != std::string::npos) {
+      KALDI_WARN << "Warning, this program has been changed to read alignments "
+                 << "not posteriors.  Remove ali-to-post from your scripts.";
+    }
+    RandomAccessInt32VectorReader alignments_reader(alignments_rspecifier);
+    
     TransitionModel trans_model;
     {
       bool binary;
@@ -103,24 +108,15 @@ int main(int argc, char *argv[]) {
           KALDI_ERR << "Cycles detected in lattice.";
       }
       
-      vector< std::map<int32, char> > arc_accs;
-      if (!posteriors_reader.HasKey(key)) {
+      if (!alignments_reader.HasKey(key)) {
+        KALDI_WARN << "No alignment for utterance " << key;
         num_err++;
       } else {
-        const Posterior &posterior = posteriors_reader.Value(key);
-        arc_accs.resize(posterior.size());
-        for (size_t i = 0; i < posterior.size(); i++) {
-          for (size_t j = 0; j < posterior[i].size(); j++) {
-            int32 tid = posterior[i][j].first,  // transition identifier.
-                tstate = trans_model.TransitionIdToTransitionState(tid),
-                phone = trans_model.TransitionStateToPhone(tstate);
-            arc_accs[i][phone] = 1;
-          }
-        }
-        kaldi::Posterior post;
-        lat_frame_acc = kaldi::LatticeForwardBackwardMpe(lat, trans_model,
-                                                         arc_accs, &post,
-                                                         silence_phones);
+        const std::vector<int32> &alignment = alignments_reader.Value(key);
+        Posterior post;
+        lat_frame_acc = LatticeForwardBackwardMpeVariants(
+            trans_model, silence_phones, lat, alignment,
+            "mpfe", &post);
         total_lat_frame_acc += lat_frame_acc;
         lat_time = post.size();
         total_time += lat_time;
