@@ -62,6 +62,7 @@ void UnitTestSolvePackingProblem() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet2;
+  using kaldi::int32;
   for (int32 i = 0; i < 10; i++)
     UnitTestSolvePackingProblem();
 }
