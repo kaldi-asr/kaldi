@@ -34,6 +34,8 @@
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   using namespace kaldi::nnet1;
+  typedef kaldi::int32 int32;
+  
   try {
     const char *usage =
         "Perform one iteration of Neural Network training by stochastic gradient descent.\n"

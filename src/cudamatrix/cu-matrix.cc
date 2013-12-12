@@ -148,19 +148,6 @@ void CuMatrix<Real>::Swap(Matrix<Real> *mat) {
 }
 
 template <typename Real>
-template <typename OtherReal>
- CuMatrix<Real>::CuMatrix(const CuTpMatrix<OtherReal> & M,
-                          MatrixTransposeType trans): CuMatrixBase<Real>() {
-  if (trans == kNoTrans) {
-    Resize(M.NumRows(), M.NumCols(), kUndefined);
-    this->CopyFromTp(M);
-  } else {
-    Resize(M.NumCols(), M.NumRows(), kUndefined);
-    this->CopyFromTp(M, kTrans);
-  }
-}
-
-template <typename Real>
 void CuMatrixBase<Real>::CopyFromBlock(const CuBlockMatrix<Real> &B,
                                        MatrixTransposeType trans) {
   this->SetZero();

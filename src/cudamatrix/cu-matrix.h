@@ -486,8 +486,11 @@ class CuMatrix: public CuMatrixBase<Real> {
   /// Copy constructor taking TpMatrix...
   template <typename OtherReal>
   explicit CuMatrix(const CuTpMatrix<OtherReal> & M,
-                    MatrixTransposeType trans = kNoTrans);
-  
+                    MatrixTransposeType trans = kNoTrans) : CuMatrixBase<Real>() {
+    Resize(M.NumCols(), M.NumRows(), kUndefined);
+    this->CopyFromTp(M, trans);
+  }
+
   /// Copy constructor: as above, but from another type.
   template<typename OtherReal>
   explicit CuMatrix(const CuMatrixBase<OtherReal> &M,
