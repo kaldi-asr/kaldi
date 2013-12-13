@@ -13,7 +13,7 @@ SUBDIRS = base matrix util feat tree thread gmm tied transform sgmm \
 MEMTESTDIRS = base matrix util feat tree thread gmm tied transform sgmm \
           fstext hmm lm decoder lat nnet \
           bin fstbin gmmbin fgmmbin tiedbin sgmmbin featbin \
-          nnetbin latbin sgmm2 sgmm2bin kwsbin
+          nnetbin latbin sgmm2 nnet2 nnet2bin sgmm2bin kwsbin
  
 CUDAMEMTESTDIR = cudamatrix
 
