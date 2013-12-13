@@ -49,8 +49,12 @@ void CuArray<T>::Resize(MatrixIndexT dim, MatrixResizeType resize_type) {
   if (dim == 0) return;
   
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
-    CU_SAFE_CALL(cudaMalloc((void**)&data_, dim*sizeof(T)));
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    this->data_ = static_cast<T*>(CuDevice::Instantiate().Malloc(dim * sizeof(T)));
+    this->dim_ = dim;
+    if (resize_type == kSetZero) this->SetZero();
+    CuDevice::Instantiate().AccuProfile("CuArray::Resize", tim.Elapsed());    
   } else
 #endif
   {
@@ -75,7 +79,7 @@ void CuArray<T>::Destroy() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     if (data_ != NULL) {
-      CU_SAFE_CALL(cudaFree(data_));
+      CuDevice::Instantiate().Free(this->data_);
     }
   } else
 #endif
