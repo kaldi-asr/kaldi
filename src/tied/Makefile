@@ -13,7 +13,7 @@ OBJFILES = tied-gmm.o mle-tied-gmm.o am-tied-diag-gmm.o mle-am-tied-diag-gmm.o \
 LIBNAME = kaldi-tied
 
 ADDLIBS = ../base/kaldi-base.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
-	../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../transform/kaldi-transform.a
+	../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../transform/kaldi-transform.a ../thread/kaldi-thread.a
 
 include ../makefiles/default_rules.mk
 
