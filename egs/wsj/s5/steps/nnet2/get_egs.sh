@@ -10,8 +10,6 @@ cmd=run.pl
 feat_type=
 num_utts_subset=300    # number of utterances in validation and training
                        # subsets used for shrinkage and diagnostics
-hidden_layer_dim=300
-within_class_factor=0.0001
 num_valid_frames_combine=0 # #valid frames for combination weights at the very end.
 num_train_frames_combine=10000 # # train frames for the above.
 num_frames_diagnostic=4000 # number of frames for "compute_prob" jobs

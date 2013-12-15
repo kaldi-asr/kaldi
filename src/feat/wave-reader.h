@@ -69,8 +69,6 @@ class WaveData {
   /// Write() will throw on error.   os should be opened in binary mode.
   void Write(std::ostream &os) const;
 
-  // Write function not written yet but should be doable.
-
   // This function returns the wave data-- it's in a matrix
   // becase there may be multiple channels.  In the normal case
   // there's just one channel so Data() will have one row.
