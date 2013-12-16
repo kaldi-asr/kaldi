@@ -574,6 +574,7 @@ std::string PnormComponent::Info() const {
 
 // This component modifies the vector of activations by scaling it so that the
 // root-mean-square does not exceed one.
+const BaseFloat NormalizeComponent::kNormFloor = pow(2, -66);
 void NormalizeComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                               int32, // num_chunks
                               CuMatrix<BaseFloat> *out) const {
@@ -581,7 +582,7 @@ void NormalizeComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
   CuVector<BaseFloat> in_norm(in.NumRows());
   in_norm.AddDiagMat2(1.0 / in.NumCols(),
                       in, kNoTrans, 0.0);
-  in_norm.ApplyFloor(1.0);
+  in_norm.ApplyFloor(kNormFloor);
   in_norm.ApplyPow(-0.5);
   out->MulRowsVec(in_norm);
 }
@@ -590,7 +591,7 @@ void NormalizeComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
   A note on the derivative of NormalizeComponent...
   let both row_in and row_out be vectors of dimension D.
   Let p = row_in^T row_in / D, and let
-      f = 1 / sqrt(max(1, p)), and we compute row_out as:
+      f = 1 / sqrt(max(kNormFloor, p)), and we compute row_out as:
 row_out = f row_in.
   Suppose we have a quantity deriv_out which is the derivative
   of the objective function w.r.t. row_out.  We want to compute
@@ -599,10 +600,10 @@ row_out = f row_in.
      deriv_in = f deriv_out + ....
   next we have to take into account the derivative that gets back-propagated
   through f.  Obviously, dF/df = deriv_out^T row_in.
-  And df/dp = (p <= 1.0 ? 0.0 : -0.5 p^{-1.5}) = (f == 1.0 ? 0.0 : -0.5 f^3),
+  And df/dp = (p <= kNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == 1 / sqrt(kNormFloor) ? 0.0 : -0.5 f^3),
   and dp/d(row_in) = 2/D row_in. [it's vector_valued].
   So this term in dF/d(row_in) equals:
-    dF/df df/dp dp/d(row_in)   =    2/D (f == 1.0 ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
+    dF/df df/dp dp/d(row_in)   =    2/D (f == 1 / sqrt(kNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
   So
      deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3 / D) (deriv_out^T row_in) row_in
 
@@ -640,14 +641,15 @@ void NormalizeComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
   CuVector<BaseFloat> in_norm(in_value.NumRows());
   in_norm.AddDiagMat2(1.0 / in_value.NumCols(),
                       in_value, kNoTrans, 0.0);
-  in_norm.ApplyFloor(1.0);
+  in_norm.ApplyFloor(kNormFloor);
   in_norm.ApplyPow(-0.5);
   in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv, kNoTrans, 0.0),
-  in_norm.ReplaceValue(1.0, 0.0);
+  in_norm.ReplaceValue(1.0 / sqrt(kNormFloor), 0.0);
   in_norm.ApplyPow(3.0);
   CuVector<BaseFloat> dot_products(in_deriv->NumRows());
   dot_products.AddDiagMatMat(1.0, out_deriv, kNoTrans, in_value, kTrans, 0.0);
   dot_products.MulElements(in_norm);
+  
   in_deriv->AddDiagVecMat(-1.0 / in_value.NumCols(), dot_products, in_value, kNoTrans, 1.0);
 }
 

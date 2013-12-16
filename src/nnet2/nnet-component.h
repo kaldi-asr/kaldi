@@ -378,7 +378,12 @@ class NormalizeComponent: public NonlinearComponent {
                         CuMatrix<BaseFloat> *in_deriv) const;
  private:
   NormalizeComponent &operator = (const NormalizeComponent &other); // Disallow.
+  static const BaseFloat kNormFloor;
+  // about 0.7e-20.  We need a value that's exactly representable in
+  // float and whose inverse square root is also exactly representable
+  // in float (hence, an even power of two).
 };
+
 
 class SigmoidComponent: public NonlinearComponent {
  public:
