@@ -97,7 +97,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
         }
       }        
       perturbed_input.SetRandn();
-      perturbed_input.Scale(2.0e-04); // scale by a small amount so it's like a delta.
+      perturbed_input.Scale(1.0e-04); // scale by a small amount so it's like a delta.
       BaseFloat predicted_difference = TraceMatMat(perturbed_input,
                                                    input_deriv, kTrans);
       perturbed_input.AddMat(1.0, input); // now it's the input + a delta.
@@ -257,7 +257,7 @@ void UnitTestPnormComponent() {
     int32 output_dim = 10 + rand() % 20,
         group_size = 1 + rand() % 10,
         input_dim = output_dim * group_size;
-    BaseFloat p = 0.6 + 0.1 * (rand() % 20);
+    BaseFloat p = 0.8 + 0.1 * (rand() % 20);
     
     PnormComponent component(input_dim, output_dim, p);
     UnitTestGenericComponentInternal(component);

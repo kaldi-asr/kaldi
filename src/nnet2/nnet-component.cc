@@ -643,7 +643,7 @@ void NormalizeComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
                       in_value, kNoTrans, 0.0);
   in_norm.ApplyFloor(kNormFloor);
   in_norm.ApplyPow(-0.5);
-  in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv, kNoTrans, 0.0),
+  in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv, kNoTrans, 0.0);
   in_norm.ReplaceValue(1.0 / sqrt(kNormFloor), 0.0);
   in_norm.ApplyPow(3.0);
   CuVector<BaseFloat> dot_products(in_deriv->NumRows());

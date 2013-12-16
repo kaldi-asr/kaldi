@@ -14,11 +14,8 @@ About the Switchboard corpus
 Each subdirectory of this directory contains the
 scripts for a sequence of experiments.
 
-  s3: 
-   This an older, now-deprecated recipe.
-
-  s5: This is the "new-new-style" recipe.  
-    All further work will be on top of this style of recipe.
+  s5: This is slightly out of date, please see s5b which
+    has been improved in various ways.
 
   s5b: This is a cleaned-up version of s5, based on Arnab's
     "edinburgh" recipe, but still somewhat under construction.

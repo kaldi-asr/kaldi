@@ -8,20 +8,10 @@ About the Wall Street Journal corpus:
     The latter option is cheaper and includes only the Sennheiser
     microphone data (which is all we use in the example scripts).
 
-
 Each subdirectory of this directory contains the
-scripts for a sequence of experiments.  Note: s3 is the "default" set of
-scripts at the moment.
+scripts for a sequence of experiments.  [note: most of the older
+example scripts have been deleted, but are still available at
+^/branches/complete].
 
-  s1: This setup is experiments with GMM-based systems with various 
-      Maximum Likelihood 
-      techniques including global and speaker-specific transforms.
-      See a parallel setup in ../rm/s1 
-
-  s2: This setup is experiments with pure hybrid system as well 
-      as with Tandem bottleneck feature system.
-
-  s3: This is the "new-style" recipe, now superseded by s5.
-
-  s5: This is the newest-style recipe. 
+  s5: This is the current recommended recipe. 
 
