@@ -36,8 +36,12 @@ mklibdir:
 
 #I don't want to call rm -rf
 rmlibdir:
-	-rm $(KALDILIBDIR)/*{.so,.a,.o}
+ifneq ($(KALDILIBDIR), )
+	-rm $(KALDILIBDIR)/*{.so,.a,.o} 
 	-rmdir $(KALDILIBDIR)
+else
+	@true
+endif
 
 .PHONY: checkversion
 checkversion:
