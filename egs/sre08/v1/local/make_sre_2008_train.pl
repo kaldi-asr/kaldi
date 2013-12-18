@@ -30,7 +30,7 @@ while(<WAVLIST>) {
   @A = split("/", $sph);
   $basename = $A[$#A];
   $raw_basename = $basename;
-  $raw_basename =~ s/\.sph// || die "bad basename $basename";
+  $raw_basename =~ s/\.sph$// || die "bad basename $basename";
   $wav{$raw_basename} = $sph;
 }
 
@@ -58,7 +58,7 @@ foreach $gender (@gender_list) {
         $basename = $B[0];
         $side = $B[1];
         $raw_basename = $basename;
-        $raw_basename =~ s/.sph//;
+        $raw_basename =~ s/.sph$//;
         $side = $B[1];
         $uttId = $spkr . "-" . $raw_basename . "_" . $side; # prefix spkr-id to utt-id to ensure sorted order.
         if ($side eq "A") {

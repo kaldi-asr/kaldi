@@ -13,8 +13,8 @@ mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
 local/make_fisher.sh /export/corpora3/LDC/{LDC2004S13,LDC2004T19} data/fisher1
-#Processed 4948 utterances; 902 had missing wav data. (note: we may just have
-# missing data at JHU, possibly this is unusual)
+#Processed 4948 utterances; 902 had missing wav data. (note: we should figure
+#out why so much data goes missing.)
 local/make_fisher.sh /export/corpora3/LDC/{LDC2005S13,LDC2005T19} data/fisher2
 #Processed 5848 utterances; 1 had missing wav data.
 utils/combine_data.sh data/fisher data/fisher1 data/fisher2 
@@ -27,11 +27,11 @@ mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
 set -e
-steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" data/fisher exp/make_mfcc/train $mfccdir
-steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" data/sre08_train_short2_female exp/make_mfcc_sre08_train_short2_female $mfccdir
-steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" data/sre08_train_short2_male exp/make_mfcc_sre08_train_short2_male $mfccdir
-steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" data/sre08_test_short3_female exp/make_mfcc_sre08_test_short3_female $mfccdir
-steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" data/sre08_test_short3_male exp/make_mfcc_sre08_test_short3_male $mfccdir
+steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" data/fisher exp/make_mfcc $mfccdir
+steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" data/sre08_train_short2_female exp/make_mfcc $mfccdir
+steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" data/sre08_train_short2_male exp/make_mfcc $mfccdir
+steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" data/sre08_test_short3_female exp/make_mfcc $mfccdir
+steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" data/sre08_test_short3_male exp/make_mfcc $mfccdir
 
 
 sid/compute_vad_decision.sh --nj 4 --cmd "$train_cmd" data/fisher exp/make_vad $vaddir
