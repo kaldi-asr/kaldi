@@ -28,6 +28,7 @@
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
+  typedef kaldi::int64 int64;
   try {
     const char *usage =
         "Computes dot-products between iVectors; useful in application of an\n"

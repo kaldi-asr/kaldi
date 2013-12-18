@@ -67,7 +67,7 @@ steps/decode.sh --nj 2 --cmd "$decode_cmd" --config conf/decode.config exp/tri3a
 ### SAT (speaker adaptive training)
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" data/train data/lang exp/tri3a exp/tri3a_ali || exit 1;
 steps/train_sat.sh  --cmd "$train_cmd" 4000 100000 data/train data/lang exp/tri3a_ali exp/tri4a || exit 1;
-steps/train_sat.sh  --cmd "$train_cmd" 2500 20000 data/train data/lang exp/tri3a_ali_100k exp/tri4a_20k || exit 1; 
+steps/train_sat.sh  --cmd "$train_cmd" 2500 20000 data/train data/lang exp/tri3a_ali exp/tri4a_20k || exit 1; 
 
 utils/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph 
 utils/mkgraph.sh data/lang_test_closelm exp/tri4a exp/tri4a/graph_closelm 
