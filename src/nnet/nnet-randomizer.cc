@@ -73,13 +73,17 @@ void MatrixRandomizer::Randomize(const std::vector<int32>& mask) {
   KALDI_ASSERT(data_begin_ == 0);
   KALDI_ASSERT(data_end_ > 0);
   KALDI_ASSERT(data_end_ == mask.size());
-  // Use auxiliary buffer for unshuffled data
-  CuMatrix<BaseFloat> data_aux(data_);
+  // Copy to auxiliary buffer for unshuffled data
+  data_aux_ = data_;
   // Put the mask to GPU 
   CuArray<int32> mask_in_gpu(mask.size());
   mask_in_gpu.CopyFromVec(mask);
-  // randomize the data, mask is used to index rows in source matrix
-  cu::Randomize(data_aux, mask_in_gpu, &data_);
+  // Randomize the data, mask is used to index rows in source matrix:
+  // (Here the vector 'mask_in_gpu' is typically shorter than number of rows in 'data_aux_',
+  //  because the the buffer 'data_aux_' is larger than capacity 'randomizer_size'.
+  //  The extra rows in 'data_aux_' do not contain speech frames and are not copied
+  //  from 'data_aux_', the extra rows in 'data_' are unchanged by cu::Randomize.)
+  cu::Randomize(data_aux_, mask_in_gpu, &data_);
 }
 
 void MatrixRandomizer::Next() {

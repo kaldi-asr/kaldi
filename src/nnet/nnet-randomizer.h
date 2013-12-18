@@ -88,6 +88,7 @@ class MatrixRandomizer {
 
  private:
   CuMatrix<BaseFloat> data_; // can be larger than 'randomizer_size'
+  CuMatrix<BaseFloat> data_aux_; // auxiliary buffer for shuffling
   CuMatrix<BaseFloat> minibatch_; // buffer for mini-batch
 
   /// Cursor to beginning of data (row index, moves as mini-batches are delivered)
