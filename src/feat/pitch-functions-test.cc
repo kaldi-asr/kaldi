@@ -41,42 +41,7 @@ bool DirExist(const std::string &dirname) {
   }
   return true;
 }
-bool CheckKeele() {
-  std::string wavefile;
-  std::string num, ans, dir = "keele/resampled/";
-  bool dir_exist =  DirExist(dir);
-  if (!dir_exist) {
-    std::cout << "Do you have keele database?(yes/no)";
-    std::cin >> ans;
-    if (ans == "no") {
-      std::cout << " You need to download the keele database!"
-                << " The link for download is : " << std::endl;
-      return false;
-    } else if (ans == "yes") {
-      std::cout << "what is your directory for keele database? ";
-      std::cin >> dir;
-    }
-  }
-  if (DirExist(dir)) {
-    return false;
-  } else {
-    for(int32 i = 1; i < 11; i++) {
-      if( i < 6) {
-        num = "f" + ConvertIntToString(i) + "nw0000";
-        wavefile = dir+num+".wav";
-      } else {
-        num = "m" + ConvertIntToString(i-5) + "nw0000";  
-        wavefile = dir+num+".wav";
-      }
-      std::ifstream fin(wavefile.c_str() );
-      if(fin.fail()) {
-        std::cout << " file " << num << ".wav does not exist" << std::endl;
-        return false;
-      }
-    }
-  }
-  return true;
-}
+
 static void UnitTestSimple() {
   std::cout << "=== UnitTestSimple() ===\n";
 
@@ -91,68 +56,40 @@ static void UnitTestSimple() {
   // the parametrization object
   PitchExtractionOptions op;
   // trying to have same opts as baseline.
-  op.preemph_coeff = 0.0;
   // compute pitch.
   Compute(op, v, &m);
-  std::cout << "Test passed :)\n\n";
+  std::cout << "Test passed :)\n";
 }
 
-static void UnitTestGetf0Compare1() {
-  std::cout << "=== UnitTestGetf0Compare1() ===\n";
-  std::ifstream is("test_data/test.wav");
-  WaveData wave;  
-  wave.Read(is);     
-  KALDI_ASSERT(wave.Data().NumRows() == 1);        
-  SubVector<BaseFloat> waveform(wave.Data(), 0); 
-  // Run the Getf0 pitch features
-  Matrix<BaseFloat> getf0_pitch;
-  {
-    std::ifstream is("test_data/getf0test.pitch");
-    //getf0_pitch.Read(is);
-  }
-  // use pitch code with default configuration..
-  PitchExtractionOptions op;  
-  op.preemph_coeff = 0.0;
-  // compute pitch.
-  Matrix<BaseFloat> m;
-  Compute(op, waveform, &m);    
-}
 
-// Compare pitch from Getf0 and Kaldi pitch tracker on KEELE corpora 
-static void UnitTestGetf0CompareKeele() {
-  std::cout << "=== UnitTestGetf0CompareKeele() ===\n";
-  if (CheckKeele()) {
-    for (int32 i = 1; i < 11; i++) {
-      std::string wavefile;
-      std::string num;
-      if( i < 6) {
-        num = "f" + ConvertIntToString(i) + "nw0000";
-        wavefile = "keele/resampled/"+num+".wav";
-      } else {
-        num = "m" + ConvertIntToString(i-5) + "nw0000";  
-        wavefile = "keele/resampled/"+num+".wav";
-      }
-      std::cout << "--- " << wavefile << " ---\n";
-      std::ifstream is(wavefile.c_str());
-      WaveData wave;  
-      wave.Read(is);     
-      KALDI_ASSERT(wave.Data().NumRows() == 1);       
-      SubVector<BaseFloat> waveform(wave.Data(), 0); 
-      // use pitch code with default configuration..
-      PitchExtractionOptions op;
-      op.samp_freq = 8000;
-      //op.preemph_coeff = exp(-7000/op.resample_freq);
-      //op.preemph_coeff = exp(-7000/op.samp_freq);
-      op.preemph_coeff =0;
-      op.nccf_ballast = 0.1;
-      op.frame_length_ms = 20.0;
-      // compute pitch.
-      Matrix<BaseFloat> m;
-      Compute(op, waveform, &m);    
-      std::string outfile = "keele/kaldi/"+num+"-kaldi.txt";
-      std::ofstream os(outfile.c_str()); 
-      m.Write(os, false);
+// Compare pitch using Kaldi pitch tracker on KEELE corpora 
+static void UnitTestKeele() {
+  std::cout << "=== UnitTestKeele() ===\n";
+  for (int32 i = 1; i < 11; i++) {
+    std::string wavefile;
+    std::string num;
+    if( i < 6) {
+      num = "f" + ConvertIntToString(i) + "nw0000";
+      wavefile = "keele/16kHz/"+num+".wav";
+    } else {
+      num = "m" + ConvertIntToString(i-5) + "nw0000";  
+      wavefile = "keele/16kHz/"+num+".wav";
     }
+    std::cout << "--- " << wavefile << " ---\n";
+    std::ifstream is(wavefile.c_str());
+    WaveData wave;  
+    wave.Read(is);    
+    KALDI_ASSERT(wave.Data().NumRows() == 1);       
+    SubVector<BaseFloat> waveform(wave.Data(), 0); 
+    // use pitch code with default configuration..
+    PitchExtractionOptions op;
+    op.nccf_ballast = 0.1;
+    // compute pitch.
+    Matrix<BaseFloat> m;
+    Compute(op, waveform, &m);    
+    std::string outfile = "keele/"+num+"-kaldi.txt";
+    std::ofstream os(outfile.c_str()); 
+    m.Write(os, false);
   }
 }
 /* change freq_weight to investigate the results */
@@ -164,10 +101,10 @@ static void UnitTestPenaltyFactor() {
       std::string num;
       if( i < 6) {
         num = "f"+ConvertIntToString(i)+"nw0000";
-        wavefile = "keele/resampled/"+num+".wav";
+        wavefile = "keele/16kHz/"+num+".wav";
       } else {
         num = "m"+ConvertIntToString(i-5)+"nw0000";
-        wavefile = "keele/resampled/"+num+".wav";
+        wavefile = "keele/16kHz/"+num+".wav";
       }
       std::cout << "--- " << wavefile << " ---\n";
       std::ifstream is(wavefile.c_str());
@@ -178,13 +115,12 @@ static void UnitTestPenaltyFactor() {
       // use pitch code with default configuration..
       PitchExtractionOptions op;  
       op.penalty_factor = k * 0.05;
-      op.preemph_coeff = 0.0;
-      op.samp_freq = 8000;
+      op.nccf_ballast = 0.1;
       // compute pitch.
       Matrix<BaseFloat> m;
       Compute(op, waveform, &m);    
       std::string penaltyfactor = ConvertIntToString(k);
-      std::string outfile = "keele/freqw/kaldi/"+num+"-kaldi-penalty-"+penaltyfactor+".txt";
+      std::string outfile = "keele/"+num+"-kaldi-penalty-"+penaltyfactor+".txt";
       std::ofstream os(outfile.c_str()); 
       m.Write(os, false);
     }
@@ -196,16 +132,13 @@ static void UnitTestKeeleNccfBallast() {
   for(int32 k = 1; k < 10; k++) {
     for (int32 i = 1; i < 2; i++) {
       std::string wavefile;
-      std::string pgtfile;
       std::string num;
       if( i < 6) {
         num = "f"+ConvertIntToString(i)+"nw0000";
-        wavefile = "keele/resampled/"+num+".wav";
-        pgtfile =  "keele/ptk/pgt/"+num+"-pgt.txt";
+        wavefile = "keele/16kHz/"+num+".wav";
       } else {
         num = "m"+ConvertIntToString(i-5)+"nw0000";
-        wavefile = "keele/resampled/"+num+".wav";
-        pgtfile =  "keele/ptk/pgt/"+num+"-pgt.txt";
+        wavefile = "keele/16kHz/"+num+".wav";
       }
       std::cout << "--- " << wavefile << " ---\n";
       std::ifstream is(wavefile.c_str());
@@ -215,84 +148,20 @@ static void UnitTestKeeleNccfBallast() {
       SubVector<BaseFloat> waveform(wave.Data(), 0); 
       // use pitch code with default configuration..
       PitchExtractionOptions op;  
-      op.samp_freq = 8000;
-      op.preemph_coeff = exp(-7000/op.resample_freq);
-      op.nccf_ballast = 0.1 * k;  
+      op.nccf_ballast = 0.05 * k;  
       std::cout << " nccf_ballast " << op.nccf_ballast << std::endl;
       // compute pitch.
       Matrix<BaseFloat> m;
       Compute(op, waveform, &m); 
       std::string nccfballast = ConvertIntToString(op.nccf_ballast); 
-      std::string outfile = "keele/afact/"+num+"-kaldi-nccf-ballast-"+nccfballast+".txt";
+      std::string outfile = "keele/"+num+"-kaldi-nccf-ballast-"+nccfballast+".txt";
       std::ofstream os(outfile.c_str());
       m.Write(os, false);
     }
   }
 }
-static void UnitTestVietnamese() {
-  std::cout << "=== UnitTestVietnamese() ===\n";
-  std::string wavefile, dir, fname;
-  dir = "keele/babel/";
-  fname = "58357_A_20120507_125021_025089";
-  wavefile = dir + fname + ".wav";
-  // read the wavefile
-  std::cout << "--- " << fname << " ---\n";
-  std::ifstream is(wavefile.c_str());
-  WaveData wave;  
-  wave.Read(is);     
-  KALDI_ASSERT(wave.Data().NumRows() == 1);
-  SubVector<BaseFloat> waveform(wave.Data(), 0); 
-  // use pitch code with default configuration..
-  PitchExtractionOptions op;
-  op.samp_freq = 8000;
-  op.preemph_coeff = exp(-7000/op.resample_freq);
-  // compute pitch.
-  Matrix<BaseFloat> m;
-  Compute(op, waveform, &m);    
-  std::string outfile = "keele/kaldi/"+fname+".txt";
-  std::ofstream os(outfile.c_str()); 
-  m.Write(os, false);
-}
-static void UnitTestResample() {
-  std::cout << "== UnitTestResample ===\n";
-  std::string wavefile, dir, fname; 
-  dir = "keele/babel/";
-  fname = "58357_A_20120507_125021_025089";
-  wavefile = dir + fname + ".wav";
-  // read the wavefile
-  std::cout << "--- " << fname << " ---\n";
-  std::ifstream is(wavefile.c_str());
-  WaveData wave;  
-  wave.Read(is);     
-  KALDI_ASSERT(wave.Data().NumRows() == 1);
-  //lowpass filtering and resampling the wave file  
-  double sample_freq = 8000;
-  double resample_freq = 4000;
-  int32 lowpass_filter_width = 2;
-  double lowpass_filter_cutoff = 1500;
-  double dt = sample_freq / resample_freq;
-  int32 sample_num = wave.Data().NumCols(); 
-  int32 resampled_len = static_cast<int>(sample_num/dt);
-  std::vector<double> resampled_t(resampled_len); 
-  for (int32 i = 0; i < resampled_len; i++) 
-    resampled_t[i] = static_cast<double>(i) / resample_freq;
-  ArbitraryResample resample(sample_num, sample_freq,
-                             lowpass_filter_cutoff, resampled_t,
-                             lowpass_filter_width);
-  Matrix<double> input_wave(wave.Data());
-  Matrix<double> resampled_wave(1, resampled_len);
-  resample.Upsample(input_wave, &resampled_wave);
-  std::cout << " original_wave \n";   
-  for (int32 i = 0; i < 200; i++) 
-    std::cout << input_wave(0,i) << " ";  
-  std::cout << "\n resampled_wave \n";
-  for (int32 i = 0; i < resampled_len; i++)
-    std::cout << resampled_wave(0,i) << " ";
-  std::cout << " \n resampled_t \n";
-  for (int32 i = 0; i < 100; i++)  
-    std::cout << resampled_t[i] << " "; 
-}
-static void UnitTestWeightedMwn1() {
+
+static void UnitTestWeightedMwn() {
   std::cout << "=== UnitTestWeightedMwn1() ===\n";
   // compare the results of WeightedMwn1 and Sliding CMN with uniform weights.
   for (int32 i = 0; i < 1000; i++) {
@@ -331,54 +200,8 @@ static void UnitTestWeightedMwn1() {
   }
   ProcessPovFeatures(&feat, 2, true);  
   WeightedMwn(normalization_win_size, feat, &output_feat);
-  for (int32 j = 0; j < num_frames; j++)
-    std::cout << feat(j, 0) << " " << feat(j, 1) <<  
-      " "  << output_feat(j, 1) << std::endl;
 }
-static void UnitTestWeightedMwn2() {
-  // Test WMWN with different window size on vietnamse wavefile
-  // initialize using pitch + pov of Vietnamese wavefile
-  Matrix<BaseFloat> feats(2, 2);
-  std::string fname = "pitch_noMWN";
-  std::string infile = "keele/kaldi/"+fname+".txt";
-  std::ifstream is(infile.c_str()); 
-  feats.Read(is, false, false);
-  ProcessPovFeatures(&feats, 2, true);  
-  int32 num_frames = feats.NumRows();
-  Matrix<BaseFloat> output_feats(num_frames, 2),
-    output_feats2(num_frames, 2);
-  for (int32 i = 0; i < 9; i++) {   
-    int32 normalization_win_size = (i+1)*25;  
-    std::string wsize = ConvertIntToString(normalization_win_size); 
-    WeightedMwn(normalization_win_size, feats, &output_feats);  
-    for (int32 t = 0; t < num_frames; t++) {
-      int32 window_begin, window_end; 
-      window_begin = t - (normalization_win_size / 2),  
-      window_end = window_begin + normalization_win_size;  
-      int32 shift = 0;
-      if (window_begin < 0) 
-        shift = -window_begin;
-      else if (window_end > num_frames)
-        shift = num_frames - window_end;
-      window_end += shift;
-      window_begin += shift;
-      double sum = 0.0, sum_pov = 0.0;
-      for (int32 t2 = window_begin; t2 < window_end; t2++) {
-        sum += feats(t2,1) * feats(t2,0);
-        sum_pov += feats(t2,0);
-      }
-      double mean = sum / sum_pov,
-      data = feats(t,1), norm_data = data - mean; 
-      output_feats2(t,1) = norm_data;
-    }
-    std::string outfile = "keele/kaldi/"+fname+"-WMWN-ws"+wsize+".txt";  
-    std::ofstream os(outfile.c_str());
-    output_feats.Write(os,false);
-    if ( ! output_feats.ApproxEqual(output_feats, 0.0001)) {
-      KALDI_ERR << "Features differ " << output_feats << " vs. " << output_feats2;
-    }
-  }
-}
+
 static void UnitTestTakeLogOfPitch() {
  for (int32 i = 0; i < 100; i++) {
    int num_frame = 50 + (rand() % 200 * 200);
@@ -402,20 +225,18 @@ static void UnitTestTakeLogOfPitch() {
 static void UnitTestPitchExtractionSpeed() {
   std::cout << "=== UnitTestPitchExtractionSpeed() ===\n";
   // use pitch code with default configuration..
-  PitchExtractionOptions op_fast;
-  op_fast.samp_freq = 8000;
-  op_fast.preemph_coeff = exp(-7000/op_fast.resample_freq);
-  op_fast.lowpass_cutoff = 1000;
-  op_fast.max_f0 = 400; 
+  PitchExtractionOptions op;
+  op.nccf_ballast = 0.1;
+  op.lowpass_cutoff = 1000;
   for (int32 i = 1; i < 2; i++) {
     std::string wavefile;
     std::string num;
     if( i < 6) {
       num = "f"+ConvertIntToString(i)+"nw0000";
-      wavefile = "keele/resampled/"+num+".wav";
+      wavefile = "keele/16kHz/"+num+".wav";
     } else {
       num = "m"+ConvertIntToString(i-5)+"nw0000";
-      wavefile = "keele/resampled/"+num+".wav";
+      wavefile = "keele/16kHz/"+num+".wav";
     }
     std::cout << "--- " << wavefile << " ---\n";
     std::ifstream is(wavefile.c_str());
@@ -433,10 +254,10 @@ static void UnitTestPitchExtractionSpeed() {
     ftime( &tstruct );
     tstart = tstruct.time * 1000 + tstruct.millitm;
     for (int32 t = 0; t < test_num; t++)
-      Compute(op_fast, waveform, &m);
+      Compute(op, waveform, &m);
     ftime( &tstruct );
     tend = tstruct.time * 1000 + tstruct.millitm;
-    double tot_real_time = test_num * waveform.Dim() / op_fast.samp_freq;
+    double tot_real_time = test_num * waveform.Dim() / op.samp_freq;
     tot_ft = (tend - tstart)/tot_real_time;
     std::cout << " Pitch extraction time per second of speech " 
               << tot_ft << " msec " << std::endl;
@@ -446,17 +267,16 @@ static void UnitTestPitchExtractorCompareKeele() {
   std::cout << "=== UnitTestPitchExtractorCompareKeele() ===\n";
   // use pitch code with default configuration..
   PitchExtractionOptions op;
-  op.samp_freq = 8000;
-  op.preemph_coeff = exp(-7000/op.resample_freq);
+  op.nccf_ballast = 0.1;
   for (int32 i = 1; i < 11; i++) {
     std::string wavefile;
     std::string num;
     if( i < 6) {
       num = "f"+ConvertIntToString(i)+"nw0000";
-      wavefile = "keele/resampled/"+num+".wav";
+      wavefile = "keele/16kHz/"+num+".wav";
     } else {
       num = "m"+ConvertIntToString(i-5)+"nw0000";
-      wavefile = "keele/resampled/"+num+".wav";
+      wavefile = "keele/16kHz/"+num+".wav";
     }
     std::cout << "--- " << wavefile << " ---\n";
     std::ifstream is(wavefile.c_str());
@@ -467,29 +287,29 @@ static void UnitTestPitchExtractorCompareKeele() {
     // compute pitch.
     Matrix<BaseFloat> m;
     Compute(op, waveform, &m);
-    std::string outfile = "keele/kaldi/"+num+"-speedup-kaldi1.txt";
+    std::string outfile = "keele/"+num+"-speedup-kaldi1.txt";
     std::ofstream os(outfile.c_str()); 
     m.Write(os, false);
   }
 }
 void UnitTestDiffSampleRate() {
+  // you need to use sox to change sampling rate 
+  // e.g. sox -r 10k input.wav output.wav
+  // put them in keele/(samp_rate in kHz)+"kHz" e.g. keele/10kHz  
   int sample_rate = 16000; 
-  PitchExtractionOptions op_fast;
-  op_fast.samp_freq = static_cast<double>(sample_rate);
-  op_fast.preemph_coeff = exp(-7000/op_fast.resample_freq);
-  op_fast.lowpass_cutoff = 1000;
-  op_fast.max_f0 = 400;
+  PitchExtractionOptions op;
+  op.samp_freq = static_cast<double>(sample_rate);
+  op.lowpass_cutoff = 1000;
+  op.max_f0 = 400;
   std::string samp_rate = ConvertIntToString(sample_rate/1000);
   for (int32 i = 1; i < 11; i++) {
     std::string wavefile;
     std::string num;
     if( i < 6) {
       num = "f"+ConvertIntToString(i)+"nw0000";
-      //wavefile = "keele/resampled/10kHz/"+num+".wav";
       wavefile = "keele/"+samp_rate+"kHz/"+num+".wav";
     } else {
       num = "m"+ConvertIntToString(i-5)+"nw0000";
-      //wavefile = "keele/resampled/10kHz/"+num+".wav";
       wavefile = "keele/"+samp_rate+"kHz/"+num+".wav";
     }
     std::cout << "--- " << wavefile << " ---\n";
@@ -499,8 +319,8 @@ void UnitTestDiffSampleRate() {
     KALDI_ASSERT(wave.Data().NumRows() == 1);       
     SubVector<BaseFloat> waveform(wave.Data(), 0);
     Matrix<BaseFloat> m;
-    Compute(op_fast, waveform, &m);
-    std::string outfile = "keele/kaldi/"+num+"-speedup-kaldi-"+samp_rate+"kHz.txt";
+    Compute(op, waveform, &m);
+    std::string outfile = "keele/"+num+"-kaldi-samp-freq-"+samp_rate+"kHz.txt";
     std::ofstream os(outfile.c_str()); 
     m.Write(os, false); 
   } 
@@ -511,10 +331,10 @@ void UnitTestPostProcess() {
     std::string num;
     if( i < 6) {
       num = "f"+ConvertIntToString(i)+"nw0000";
-      wavefile = "keele/resampled/"+num+".wav";
+      wavefile = "keele/16kHz/"+num+".wav";
     } else {
       num = "m"+ConvertIntToString(i-5)+"nw0000";
-      wavefile = "keele/resampled/"+num+".wav";
+      wavefile = "keele/16kHz/"+num+".wav";
     }
     std::cout << "--- " << wavefile << " ---\n";
     std::ifstream is(wavefile.c_str());
@@ -523,16 +343,15 @@ void UnitTestPostProcess() {
     KALDI_ASSERT(wave.Data().NumRows() == 1);       
     SubVector<BaseFloat> waveform(wave.Data(), 0);
     PitchExtractionOptions op;
-    op.samp_freq = 8000;
-    op.preemph_coeff = exp(-7000/op.resample_freq);
     op.lowpass_cutoff = 1000;
+    op.nccf_ballast = 0.1;
     op.max_f0 = 400;
     Matrix<BaseFloat> m, m2;
     Compute(op, waveform, &m);
     PostProcessOptions postprop_op;
     postprop_op.pov_nonlinearity = 2;
     PostProcessPitch(postprop_op, m, &m2);
-    std::string outfile = "keele/kaldi/"+num+"-speedup-kaldi-processed.txt";
+    std::string outfile = "keele/"+num+"-processed-kaldi.txt";
     std::ofstream os(outfile.c_str()); 
     m2.Write(os, false); 
   } 
@@ -554,32 +373,65 @@ void UnitTestDeltaPitch() {
       std::cout << output_feat(j) << " , " << output_feat2(j) << " ";
   }
 }
-static void UnitTestFeat() {
-  //CheckKeele();
-  //UnitTestSimple();
-  //UnitTestGetf0Compare1();
-  UnitTestGetf0CompareKeele();
-  //UnitTestPenaltyFactor();
-  //UnitTestKeeleNccfBallast();
-  //UnitTestVietnamese();
-  //UnitTestResample();
-  //UnitTestWeightedMwn1();
-  //UnitTestWeightedMwn2();
-  //UnitTestTakeLogOfPitch();
-  //UnitTestPitchExtractionSpeed();
-  //UnitTestPitchExtractorCompareKeele();
-  //UnitTestDiffSampleRate();
-  //UnitTestPostProcess();
-  //UnitTestDeltaPitch();
+
+void UnitTestResample() {
+  std::cout << "=== UnitTestResample() ===\n";
+  // Resample the sine wave
+  double sample_freq = 2000;
+  double resample_freq = 1000;
+  double lowpass_filter_cutoff = 1000;
+  int sample_num = 1000;
+  int32 lowpass_filter_width = 2;   
+  Matrix<double> input_wave(1, sample_num);
+  for (int32 i = 0; i < sample_num; i++) 
+    input_wave(0, i) = sin(2*M_PI/sample_freq * i);
+  double dt = sample_freq / resample_freq;  
+  int32 resampled_len = static_cast<int>(sample_num/dt); 
+  std::vector<double> resampled_t(resampled_len); 
+  Matrix<double> resampled_wave1(1, resampled_len),    
+                 resampled_wave2(1, resampled_len); 
+  for (int32 i = 0; i < resampled_len; i++)  {     
+    resampled_t[i] = static_cast<double>(i) / resample_freq;       
+    resampled_wave2(0, i) = sin(2 * M_PI * resampled_t[i]);
+  }
+  ArbitraryResample resample(sample_num, sample_freq,
+                             lowpass_filter_cutoff, resampled_t,
+                             lowpass_filter_width);
+  resample.Upsample(input_wave, &resampled_wave1);
+  
+  if(!resampled_wave1.ApproxEqual(resampled_wave2, 0.01)) {
+    KALDI_ERR << "Resampled wave " << resampled_wave1 << " vs. " << resampled_wave2;
+  }
 }
 
+static void UnitTestFeatNoKeele() {
+  UnitTestSimple();
+  UnitTestDeltaPitch();
+  UnitTestTakeLogOfPitch();
+  UnitTestWeightedMwn();
+  UnitTestResample();
+}
 
-
+static void UnitTestFeatWithKeele() {
+  UnitTestKeele();
+  UnitTestPenaltyFactor();
+  UnitTestKeeleNccfBallast();
+  UnitTestPitchExtractionSpeed();
+  UnitTestPitchExtractorCompareKeele();
+  UnitTestDiffSampleRate();
+  UnitTestPostProcess();
+}
 
 int main() {
   try {
-    for (int i = 0; i < 1; i++)
-      UnitTestFeat();
+    UnitTestFeatNoKeele();
+    if (DirExist("keele/16kHz")) {
+      UnitTestFeatWithKeele();  
+    } else {
+      KALDI_LOG << "Not running tests that require the Keele database, "
+        << "please ask g.meyer@somewhere.edu for the database if you need it.\n"
+        << " you need to put keele wave file in keele/16kHz directory";
+    }
     std::cout << "Tests succeeded.\n";
     return 0;
   } catch (const std::exception &e) {
