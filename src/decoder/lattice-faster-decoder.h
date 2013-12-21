@@ -109,9 +109,12 @@ class LatticeFasterDecoder {
     if (delete_fst_) delete &(fst_);
   }
 
-  // Returns true if any kind of traceback is available (not necessarily from
-  // a final state).
+  /// Decodes until there are no more frames left in the "decodable" object..
+  /// note, this may block waiting for input if the "decodable" object blocks.
+  /// Returns true if any kind of traceback is available (not necessarily from a
+  /// final state).
   bool Decode(DecodableInterface *decodable);
+
   
   /// says whether a final-state was active on the last frame.  If it was not, the
   /// lattice (or traceback) will end with states that are not final-states.
@@ -129,7 +132,29 @@ class LatticeFasterDecoder {
   // lattice (one path per word sequence).
   bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const;
 
+  /// InitDecoding initializes the decoding, and should only be used if
+  /// you intend to call DecodeNonblocking().  If you call Decode(), you don't
+  /// need to call this.  You can call InitDecoding if you have already decoded
+  /// an utterance and want to start with a new utterance.
+  void InitDecoding();
+  
+  /// This will decode until there are no more frames ready in the decodable
+  /// object.  You can keep calling it each time more frames become available.
+  /// It returns true if there are still active tokens.  It should rarely or
+  /// never return false, and if it does, you can just abandon this utterance or
+  /// signal an error.  TODO: implement this.
+  bool DecodeNonblocking(DecodableInterface *decodable);
 
+  /// FinalRelativeCost() serves the same function as ReachedFinal(), but gives
+  /// more information; if no final-state is active at the current frame, it
+  /// returns infinity; if the final-state is the most likely state it returns
+  /// zero; otherwise it returns the difference between the best state's
+  /// likelihood and the final-state likelihood (always a positive number).
+  /// This can be used to help decide when to stop decoding, in an online
+  /// application (e.g.  detecting whether you have reached the end of the
+  /// grammar).  TODO: implement this.
+  BaseFloat FinalRelativeCost() const;
+  
  private:
   struct Token;
   // ForwardLinks are the links from a token to a token on the next frame.
@@ -181,7 +206,7 @@ class LatticeFasterDecoder {
     }
   };
   
-  // head and tail of per-frame list of Tokens (list is in topological order),
+  // head of per-frame list of Tokens (list is in topological order),
   // and something saying whether we ever pruned it using PruneForwardLinks.
   struct TokenList {
     Token *toks;
@@ -278,6 +303,10 @@ class LatticeFasterDecoder {
   // on the last frame.
   std::map<Token*, BaseFloat> final_costs_; // A cache of final-costs
   // of tokens on the last frame-- it's just convenient to store it this way.
+
+  int32 num_frames_; // the number of frames we have decoded, or -1 if
+                     // we have not initialized the decoding.  TODO: use this.
+  
   
   // It might seem unclear why we call ClearToks(toks_.Clear()).
   // There are two separate cleanup tasks we need to do at when we start a new file.
