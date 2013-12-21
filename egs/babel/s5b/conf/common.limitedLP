@@ -18,7 +18,10 @@ use_pitch=false
 
 lmwt_plp_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
 lmwt_bnf_extra_opts=( --min-lmwt 13 --max-lmwt 18 )
-lmwt_dnn_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
+lmwt_dnn_extra_opts=( --min-lmwt 9 --max-lmwt 13 )
+
+dnn_beam=16.0
+dnn_lat_beam=8.5
 
 icu_opt=(--use-icu true --icu-transform Any-Lower)
 
