@@ -408,13 +408,13 @@ static void UnitTestFeatNoKeele() {
   UnitTestResample();
 }
 static void UnitTestFeatWithKeele() {
-  //UnitTestKeele();
-  //UnitTestPenaltyFactor();
-  //UnitTestKeeleNccfBallast();
-  //UnitTestPitchExtractionSpeed();
-  //UnitTestPitchExtractorCompareKeele();
-  //UnitTestDiffSampleRate();
-  //UnitTestPostProcess();
+  UnitTestKeele();
+  UnitTestPenaltyFactor();
+  UnitTestKeeleNccfBallast();
+  UnitTestPitchExtractionSpeed();
+  UnitTestPitchExtractorCompareKeele();
+  UnitTestDiffSampleRate();
+  UnitTestPostProcess();
 }
 
 int main() {
