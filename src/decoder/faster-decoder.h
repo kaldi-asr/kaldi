@@ -1,6 +1,7 @@
 // decoder/faster-decoder.h
 
-// Copyright 2009-2011 Microsoft Corporation
+// Copyright 2009-2011  Microsoft Corporation
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -79,11 +80,25 @@ class FasterDecoder {
   ~FasterDecoder() { ClearToks(toks_.Clear()); }
 
   void Decode(DecodableInterface *decodable);
-
+  
   bool ReachedFinal();
 
   bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out);
 
+  // As an alternative to Decode(), you can call InitDecoding
+  // and then (possibly multiple times) DecodeNonblocking().
+  void InitDecoding();
+  
+  /// This will decode until there are no more frames ready in the decodable
+  /// object.  You can keep calling it each time more frames become available.
+  /// If max_num_frames is specified, it specifies the maximum number of frames
+  /// the function will decode before returning.
+  void DecodeNonblocking(DecodableInterface *decodable,
+                         int32 max_num_frames = -1);
+
+  /// Returns the number of frames already decoded.  
+  int32 NumFramesDecoded() const;
+  
  protected:
 
   class Token {
@@ -153,6 +168,9 @@ class FasterDecoder {
   std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // make it class member to avoid internal new/delete.
+
+  // Keep track of the number of frames decoded in the current file.
+  int32 num_frames_decoded_;
 
   // It might seem unclear why we call ClearToks(toks_.Clear()).
   // There are two separate cleanup tasks we need to do at when we start a new file.

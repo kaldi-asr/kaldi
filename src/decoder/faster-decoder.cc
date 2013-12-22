@@ -1,7 +1,7 @@
 // decoder/faster-decoder.cc
 
-// Copyright 2009-2012 Microsoft Corporation
-//                     Johns Hopkins University (author: Daniel Povey)
+// Copyright 2009-2011 Microsoft Corporation
+//           2012-2013 Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -24,7 +24,8 @@ namespace kaldi {
 
 
 FasterDecoder::FasterDecoder(const fst::Fst<fst::StdArc> &fst,
-                             const FasterDecoderOptions &opts): fst_(fst), config_(opts) {
+                             const FasterDecoderOptions &opts):
+    fst_(fst), config_(opts), num_frames_decoded_(-1) {
   KALDI_ASSERT(config_.hash_ratio >= 1.0);  // less doesn't make much sense.
   KALDI_ASSERT(config_.max_active > 1);
   KALDI_ASSERT(config_.min_active >= 0 && config_.min_active < config_.max_active);
@@ -32,7 +33,7 @@ FasterDecoder::FasterDecoder(const fst::Fst<fst::StdArc> &fst,
 }
 
 
-void FasterDecoder::Decode(DecodableInterface *decodable) {
+void FasterDecoder::InitDecoding() {
   // clean up from last time:
   ClearToks(toks_.Clear());
   StateId start_state = fst_.Start();
@@ -40,11 +41,43 @@ void FasterDecoder::Decode(DecodableInterface *decodable) {
   Arc dummy_arc(0, 0, Weight::One(), start_state);
   toks_.Insert(start_state, new Token(dummy_arc, NULL));
   ProcessNonemitting(std::numeric_limits<float>::max());
+  num_frames_decoded_ = 0;
+}
+
+
+void FasterDecoder::Decode(DecodableInterface *decodable) {
+  InitDecoding();
   for (int32 frame = 0; !decodable->IsLastFrame(frame-1); frame++) {
     BaseFloat weight_cutoff = ProcessEmitting(decodable, frame);
     ProcessNonemitting(weight_cutoff);
   }
 }
+
+void FasterDecoder::DecodeNonblocking(DecodableInterface *decodable,
+                                      int32 max_num_frames) {
+  KALDI_ASSERT(num_frames_decoded_ >= 0 &&
+               "You must call InitDecoding() before DecodeNonblocking()");
+  int32 num_frames_ready = decodable->NumFramesReady();
+  // num_frames_ready must be >= num_frames_decoded, or else
+  // the number of frames ready must have decreased (which doesn't
+  // make sense) or the decodable object changed between calls
+  // (which isn't allowed).
+  KALDI_ASSERT(num_frames_ready >= num_frames_decoded_);
+  int32 target_frames_decoded = num_frames_ready;
+  if (max_num_frames > 0)
+    target_frames_decoded = std::min(target_frames_decoded,
+                                     num_frames_decoded_ + max_num_frames);
+  while (num_frames_decoded_ < target_frames_decoded) {
+    // note: ProcessEmitting() increments num_frames_decoded_
+    BaseFloat weight_cutoff = ProcessEmitting(decodable, num_frames_decoded_);
+    ProcessNonemitting(weight_cutoff); 
+  }    
+}
+
+int32 FasterDecoder::NumFramesDecoded() const {
+  return num_frames_decoded_;
+}
+
 
 bool FasterDecoder::ReachedFinal() {
   for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
@@ -267,6 +300,7 @@ BaseFloat FasterDecoder::ProcessEmitting(DecodableInterface *decodable, int fram
     Token::TokenDelete(e->val);
     toks_.Delete(e);
   }
+  num_frames_decoded_++;
   return next_weight_cutoff;
 }
 

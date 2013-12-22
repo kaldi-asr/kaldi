@@ -142,8 +142,11 @@ class LatticeFasterDecoder {
   /// object.  You can keep calling it each time more frames become available.
   /// It returns true if there are still active tokens.  It should rarely or
   /// never return false, and if it does, you can just abandon this utterance or
-  /// signal an error.  TODO: implement this.
-  bool DecodeNonblocking(DecodableInterface *decodable);
+  /// signal an error.
+  /// If max_num_frames is specified, it specifies the maximum number of frames
+  /// the function will decode before returning.
+  bool DecodeNonblocking(DecodableInterface *decodable,
+                         int32 max_num_frames = -1);
 
   /// FinalRelativeCost() serves the same function as ReachedFinal(), but gives
   /// more information; if no final-state is active at the current frame, it
