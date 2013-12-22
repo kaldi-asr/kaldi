@@ -69,18 +69,20 @@ class OnlineFeatureInterface {
   /// in an online-decoding setting, and would only return true in a
   /// decoding-from-matrix setting where we want to allow the last delta or LDA
   /// features to be flushed out for compatibility with the baseline setup.
-  virtual bool IsLastFrame(int32 frame) = 0;
-
+  virtual bool IsLastFrame(int32 frame) const = 0;
+  
 
   /// Returns the number of frames that are currently ready to be processed.
-  virtual int32 NumFramesReady();
+  virtual int32 NumFramesReady() const;
 
   
   /// Gets the feature for this frame.  Before calling this for a given frame,
   /// it's assumed that you have already called IsLastFrame(frame - 1) and it
   /// returned false, or [preferably] you called FrameIsReady(frame) and it returned
   /// true.  Otherwise it may crash.
-  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);  
+  /// This is not declared const, in case there is some kind of caching going
+  /// on, but most of the time it shouldn't modify the class.
+  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
 };
 
 /// @}

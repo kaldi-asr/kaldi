@@ -29,7 +29,7 @@ int32 NumFrames(int32 nsamp,
                 const FrameExtractionOptions &opts) {
   int32 frame_shift = opts.WindowShift();
   int32 frame_length = opts.WindowSize();
-  assert(frame_shift != 0 && frame_length != 0);
+  KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
   if (static_cast<int32>(nsamp) < frame_length)
     return 0;
   else
@@ -49,7 +49,7 @@ void Dither(VectorBase<BaseFloat> *waveform, BaseFloat dither_value) {
 
 void Preemphasize(VectorBase<BaseFloat> *waveform, BaseFloat preemph_coeff) {
   if (preemph_coeff == 0.0) return;
-  assert(preemph_coeff >= 0.0 && preemph_coeff <= 1.0);
+  KALDI_ASSERT(preemph_coeff >= 0.0 && preemph_coeff <= 1.0);
   for (int32 i = waveform->Dim()-1; i > 0; i--)
     (*waveform)(i) -= preemph_coeff * (*waveform)(i-1);
   (*waveform)(0) -= preemph_coeff * (*waveform)(0);
@@ -59,7 +59,7 @@ void Preemphasize(VectorBase<BaseFloat> *waveform, BaseFloat preemph_coeff) {
 
 FeatureWindowFunction::FeatureWindowFunction(const FrameExtractionOptions &opts) {
   int32 frame_length = opts.WindowSize();
-  assert(frame_length > 0);
+  KALDI_ASSERT(frame_length > 0);
   window.Resize(frame_length);
   for (int32 i = 0; i < frame_length; i++) {
     BaseFloat i_fl = static_cast<BaseFloat>(i);
@@ -89,11 +89,11 @@ void ExtractWindow(const VectorBase<BaseFloat> &wave,
                    BaseFloat *log_energy_pre_window) {
   int32 frame_shift = opts.WindowShift();
   int32 frame_length = opts.WindowSize();
-  assert(window_function.window.Dim() == frame_length);
-  assert(frame_shift != 0 && frame_length != 0);
+  KALDI_ASSERT(window_function.window.Dim() == frame_length);
+  KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
   int32 start = frame_shift*f, end = start + frame_length;
-  assert(start >= 0 && end <= wave.Dim());
-  assert(window != NULL);
+  KALDI_ASSERT(start >= 0 && end <= wave.Dim());
+  KALDI_ASSERT(window != NULL);
   int32 frame_length_padded = opts.PaddedWindowSize();
 
   if (window->Dim() != frame_length_padded)
@@ -130,10 +130,10 @@ void ExtractWaveformRemainder(const VectorBase<BaseFloat> &wave,
   int32 num_frames = NumFrames(wave.Dim(), opts);
   // offset is the amount at the start that has been extracted.
   int32 offset = num_frames * frame_shift;
-  assert(wave_remainder != NULL);
+  KALDI_ASSERT(wave_remainder != NULL);
   int32 remaining_len = wave.Dim() - offset;
   wave_remainder->Resize(remaining_len);
-  assert(remaining_len >= 0);
+  KALDI_ASSERT(remaining_len >= 0);
   if (remaining_len > 0)
     wave_remainder->CopyFromVec(SubVector<BaseFloat>(wave, offset, remaining_len));
 }
@@ -143,7 +143,7 @@ void ComputePowerSpectrum(VectorBase<BaseFloat> *waveform) {
   int32 dim = waveform->Dim();
 
   // no, letting it be non-power-of-two for now.
-  // assert(dim > 0 && (dim & (dim-1) == 0));  // make sure a power of two.. actually my FFT code
+  // KALDI_ASSERT(dim > 0 && (dim & (dim-1) == 0));  // make sure a power of two.. actually my FFT code
   // does not require this (dan) but this is better in case we use different code [dan].
 
   // RealFft(waveform, true);  // true == forward (not inverse) FFT; makes no difference here,
@@ -165,9 +165,9 @@ void ComputePowerSpectrum(VectorBase<BaseFloat> *waveform) {
 
 
 DeltaFeatures::DeltaFeatures(const DeltaFeaturesOptions &opts): opts_(opts) {
-  assert(opts.order >= 0 && opts.order < 1000);  // just make sure we don't get binary junk.
+  KALDI_ASSERT(opts.order >= 0 && opts.order < 1000);  // just make sure we don't get binary junk.
   // opts will normally be 2 or 3.
-  assert(opts.window > 0 && opts.window < 1000);  // again, basic sanity check.
+  KALDI_ASSERT(opts.window > 0 && opts.window < 1000);  // again, basic sanity check.
   // normally the window size will be two.
 
   scales_.resize(opts.order+1);
@@ -181,7 +181,7 @@ DeltaFeatures::DeltaFeatures(const DeltaFeaturesOptions &opts): opts_(opts) {
     // work if instead we later make it an array and do opts.window[i-1],
     // or something like that. "window" is a parameter specifying delta-window
     // width which is actually 2*window + 1.
-    assert(window != 0);
+    KALDI_ASSERT(window != 0);
     int32 prev_offset = (static_cast<int32>(prev_scales.Dim()-1))/2,
         cur_offset = prev_offset + window;
     cur_scales.Resize(prev_scales.Dim() + 2*window);  // also zeros it.
@@ -200,11 +200,11 @@ DeltaFeatures::DeltaFeatures(const DeltaFeaturesOptions &opts): opts_(opts) {
 
 void DeltaFeatures::Process(const MatrixBase<BaseFloat> &input_feats,
                             int32 frame,
-                            SubVector<BaseFloat> *output_frame) const {
-  assert(frame < input_feats.NumRows());
+                            VectorBase<BaseFloat> *output_frame) const {
+  KALDI_ASSERT(frame < input_feats.NumRows());
   int32 num_frames = input_feats.NumRows(),
       feat_dim = input_feats.NumCols();
-  assert(static_cast<int32>(output_frame->Dim()) == feat_dim * (opts_.order+1));
+  KALDI_ASSERT(static_cast<int32>(output_frame->Dim()) == feat_dim * (opts_.order+1));
   output_frame->SetZero();
   for (int32 i = 0; i <= opts_.order; i++) {
     const Vector<BaseFloat> &scales = scales_[i];
@@ -276,7 +276,7 @@ void InitIdftBases(int32 n_bases, int32 dimension, Matrix<BaseFloat> *mat_out) {
 BaseFloat ComputeLpc(const VectorBase<BaseFloat> &autocorr_in,
                      Vector<BaseFloat> *lpc_out) {
   int32 n = autocorr_in.Dim() - 1;
-  assert(lpc_out->Dim() == n);
+  KALDI_ASSERT(lpc_out->Dim() == n);
   Vector<BaseFloat> tmp(n);
   BaseFloat ans =  Durbin(n, autocorr_in.Data(),
                           lpc_out->Data(),

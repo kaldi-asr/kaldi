@@ -206,7 +206,7 @@ class DeltaFeatures {
 
   void Process(const MatrixBase<BaseFloat> &input_feats,
                int32 frame,
-               SubVector<BaseFloat> *output_frame) const;
+               VectorBase<BaseFloat> *output_frame) const;
  private:
   DeltaFeaturesOptions opts_;
   std::vector<Vector<BaseFloat> > scales_;  // a scaling window for each

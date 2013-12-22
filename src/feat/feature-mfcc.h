@@ -86,7 +86,7 @@ class Mfcc {
   explicit Mfcc(const MfccOptions &opts);
   ~Mfcc();
 
-  int32 Dim() { return opts_.num_ceps; }
+  int32 Dim() const { return opts_.num_ceps; }
 
   /// Will throw exception on failure (e.g. if file too short for even one
   /// frame).  The output "wave_remainder" is the last frame or two of the
@@ -100,6 +100,7 @@ class Mfcc {
                Matrix<BaseFloat> *output,
                Vector<BaseFloat> *wave_remainder = NULL);
 
+  typedef MfccOptions Options;
  private:
   const MelBanks *GetMelBanks(BaseFloat vtln_warp);
   MfccOptions opts_;

@@ -1,7 +1,10 @@
 #!/bin/bash
-
 # Copyright 2013   Daniel Povey
 # Apache 2.0.
+#
+# See README.txt for more info on data required.
+# Results (EERs) are inline in comments below.
+
 # 
 # This example script is still a bit of a mess, and needs to be
 # cleaned up, but it shows you all the basic ingredients.
@@ -58,16 +61,16 @@ utils/subset_data_dir.sh data/fisher_male 4000 data/fisher_male_4k
 utils/subset_data_dir.sh data/fisher_female 4000 data/fisher_female_4k
 
 
-sid/train_diag_ubm.sh --cmd "$train_cmd" data/fisher_2k 2048 exp/diag_ubm_2048
+sid/train_diag_ubm.sh --nj 30 --cmd "$train_cmd" data/fisher_2k 2048 exp/diag_ubm_2048
 
-sid/train_full_ubm.sh --cmd "$train_cmd" data/fisher_4k exp/diag_ubm_2048 exp/full_ubm_2048
+sid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/fisher_4k exp/diag_ubm_2048 exp/full_ubm_2048
 
 # Get male and female versions of the UBM in one pass; make sure not to remove
 # any Gaussians due to low counts (so they stay matched).  This will be more convenient
 # for gender-id.
-sid/train_full_ubm.sh --remove-low-count-gaussians false --num-iters 1 --cmd "$train_cmd" \
+sid/train_full_ubm.sh --nj 30 --remove-low-count-gaussians false --num-iters 1 --cmd "$train_cmd" \
    data/fisher_male_4k exp/full_ubm_2048 exp/full_ubm_2048_male &
-sid/train_full_ubm.sh --remove-low-count-gaussians false --num-iters 1 --cmd "$train_cmd" \
+sid/train_full_ubm.sh --nj 30 --remove-low-count-gaussians false --num-iters 1 --cmd "$train_cmd" \
    data/fisher_female_4k exp/full_ubm_2048 exp/full_ubm_2048_female &
 wait
 
@@ -91,8 +94,11 @@ sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \
 # The script below demonstrates the gender-id script.  We don't really use
 # it for anything here, because the SRE 2008 data is already split up by
 # gender and gender identification is not required for the eval.
+# It prints out the error rate based on the info in the spk2gender file;
+# see exp/gender_id_fisher/error_rate where it is also printed.
 sid/gender_id.sh --cmd "$train_cmd" --nj 150 exp/full_ubm_2048{,_male,_female} \
   data/fisher exp/gender_id_fisher
+# Gender-id error rate is 2.58%
 
 # Extract the iVectors for the Fisher data.
 sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
@@ -124,14 +130,17 @@ cat $trials | awk '{print $1, $2}' | \
   scp:exp/ivectors_sre08_test_short3_female/spk_ivector.scp \
    foo
 
-# This condition, the telephone-only condition, is the only one for which we get results
-# in the ballpark of the SRE08 official results-- this makes sense because we used Fisher
-# for system development data, and this is the only condition that matches the train
-# condition.
-condition=6
-awk '{print $3}' foo | paste - $trials | awk -v c=$condition '{n=4+c; if ($n == "Y") print $1, $4}' | \
-  compute-eer -
-# LOG (compute-eer:main():compute-eer.cc:136) Equal error rate is 11.5854%, at threshold 55.3259 
+local/score_sre08.sh $trials foo
+
+#Scoring against data/sre08_trials/short2-short3-female.trials
+#  Condition:      1      2      3      4      5      6      7      8
+#        EER:  29.07   4.48  28.89  20.57  19.83  11.14   7.35   7.89
+
+# The following shows a more direct way to get the scores.
+#condition=6
+#awk '{print $3}' foo | paste - $trials | awk -v c=$condition '{n=4+c; if ($n == "Y") print $1, $4}' | \
+#  compute-eer -
+# LOG (compute-eer:main():compute-eer.cc:136) Equal error rate is 11.1419%, at threshold 55.9827
 
 # Note: to see how you can plot the DET curve, look at
 # local/det_curve_example.sh
@@ -140,24 +149,23 @@ awk '{print $3}' foo | paste - $trials | awk -v c=$condition '{n=4+c; if ($n == 
 ### Demonstrate what happens if we reduce the dimension with LDA
 
  ivector-compute-lda --dim=150 --total-covariance-factor=0.1 \
-  'ark:ivector-normalize-length scp:exp/ivectors_male/ivector.scp  ark:- |' ark:data/fisher_male/utt2spk \
-    exp/ivectors_male/transform.mat
+  'ark:ivector-normalize-length scp:exp/ivectors_fisher_male/ivector.scp  ark:- |' ark:data/fisher_male/utt2spk \
+    exp/ivectors_fisher_male/transform.mat
  ivector-compute-lda --dim=150  --total-covariance-factor=0.1 \
-  'ark:ivector-normalize-length scp:exp/ivectors_female/ivector.scp  ark:- |' ark:data/fisher_female/utt2spk \
-    exp/ivectors_female/transform.mat
+  'ark:ivector-normalize-length scp:exp/ivectors_fisher_female/ivector.scp  ark:- |' ark:data/fisher_female/utt2spk \
+    exp/ivectors_fisher_female/transform.mat
 
  trials=data/sre08_trials/short2-short3-female.trials
  cat $trials | awk '{print $1, $2}' | \
   ivector-compute-dot-products - \
-   'ark:ivector-transform exp/ivectors_female/transform.mat scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
-   'ark:ivector-transform exp/ivectors_female/transform.mat scp:exp/ivectors_sre08_test_short3_female/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
+   'ark:ivector-transform exp/ivectors_fisher_female/transform.mat scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
+   'ark:ivector-transform exp/ivectors_fisher_female/transform.mat scp:exp/ivectors_sre08_test_short3_female/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
    foo
 
-condition=6
-awk '{print $3}' foo | paste - $trials | awk -v c=$condition '{n=4+c; if ($n == "Y") print $1, $4}' | \
-  compute-eer -
-# LOG (compute-eer:main():compute-eer.cc:136) Equal error rate is 10.7539%, at threshold 36.7174
-
+local/score_sre08.sh $trials foo
+#Scoring against data/sre08_trials/short2-short3-female.trials
+#  Condition:      1      2      3      4      5      6      7      8
+#        EER:  24.16   2.69  24.06  13.96  14.66  10.48   6.59   6.84
 
 
 
@@ -174,8 +182,9 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_u
    "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp ark:- |" \
    "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_test_short3_female/ivector.scp ark:- |" \
    "cat $trials | awk '{print \$1, \$2}' |" foo
-condition=6
-awk '{print $3}' foo | paste - $trials | awk -v c=$condition '{n=4+c; if ($n == "Y") print $1, $4}' | \
-  compute-eer -
-#LOG (compute-eer:main():compute-eer.cc:136) Equal error rate is 8.81375%, at threshold -116.896
 
+local/score_sre08.sh $trials foo
+
+#Scoring against data/sre08_trials/short2-short3-female.trials
+#  Condition:      1      2      3      4      5      6      7      8
+#        EER:  20.55   2.09  20.76  17.27  12.14   8.59   4.69   4.74

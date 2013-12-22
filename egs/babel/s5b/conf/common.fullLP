@@ -1,14 +1,14 @@
 # DNN hybrid system training parameters
-dnn_num_hidden_layers=5
-dnn_input_dim=5000
-dnn_output_dim=500
+dnn_num_hidden_layers=4
+dnn_input_dim=4000
+dnn_output_dim=400
 dnn_minibatch_size=128
 dnn_init_learning_rate=0.008
 dnn_final_learning_rate=0.0008
 dnn_max_change=10
 dnn_num_jobs=8
 dnn_num_threads=1
-dnn_mixup=5000
+dnn_mixup=12000
 dnn_parallel_opts="-l gpu=1,hostname=g*"
 
 bnf_every_nth_frame=2 # take every 2nd frame.
@@ -18,7 +18,10 @@ use_pitch=false
 
 lmwt_plp_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
 lmwt_bnf_extra_opts=( --min-lmwt 13 --max-lmwt 18 )
-lmwt_dnn_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
+lmwt_dnn_extra_opts=( --min-lmwt 9 --max-lmwt 13 )
+
+dnn_beam=16.0
+dnn_lat_beam=8.5
 
 icu_opt=(--use-icu true --icu-transform Any-Lower)
 

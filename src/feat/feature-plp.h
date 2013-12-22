@@ -100,13 +100,14 @@ class Plp {
   explicit Plp(const PlpOptions &opts);
   ~Plp();
 
-  int32 Dim() { return opts_.num_ceps; }
+  int32 Dim() const { return opts_.num_ceps; }
 
   void Compute(const VectorBase<BaseFloat> &wave,
                BaseFloat vtln_warp,
                Matrix<BaseFloat> *output,
                Vector<BaseFloat> *wave_remainder = NULL);
 
+  typedef PlpOptions Options;
  private:
   const MelBanks *GetMelBanks(BaseFloat vtln_warp);
   const Vector<BaseFloat> *GetEqualLoudness(BaseFloat vtln_warp);

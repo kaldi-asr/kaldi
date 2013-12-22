@@ -67,6 +67,7 @@ class DecodableInterface {
   /// know when to stop decoding.
   virtual bool NumFramesReady() {
     KALDI_ERR << "NumFramesReady() not implemented for this decodable type.";
+    return true;
   }
 
   /// Returns the number of states in the acoustic model

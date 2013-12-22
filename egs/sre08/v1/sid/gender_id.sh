@@ -134,7 +134,7 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ] && [ -f $data/spk2gender ]; then
-  utils/apply_map.pl -f 2 data/train/spk2gender  <data/train/utt2spk | \
+  utils/apply_map.pl -f 2 $data/spk2gender  <$data/utt2spk | \
     utils/filter_scp.pl $dir/utt2gender > $dir/utt2gender.ref
   n1=$(cat $dir/utt2gender | wc -l)
   n2=$(cat $dir/utt2gender.ref | wc -l)
@@ -145,7 +145,7 @@ if [ $stage -le 3 ] && [ -f $data/spk2gender ]; then
   n3=$(cat $dir/utt2gender.incorrect | wc -l)
   
   err=$(perl -e "printf('%.2f', (100.0 * $n3 / $n1));")
-  echo "Gender-id error rate is $err%"
+  echo "Gender-id error rate is $err%" | tee $dir/error_rate
 fi
 
 
