@@ -59,6 +59,7 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     BaseFloat average_learning_rate = 0.0;
+    BaseFloat first_layer_factor = 1.0;
     BaseFloat last_layer_factor = 1.0;
     
     ParseOptions po(usage);
@@ -66,6 +67,8 @@ int main(int argc, char *argv[]) {
     po.Register("average-learning-rate", &average_learning_rate,
                 "If supplied, change learning rate geometric mean to the given "
                 "value.");
+    po.Register("first-layer-factor", &first_layer_factor, "Factor that "
+                "reduces the target relative learning rate for first layer.");
     po.Register("last-layer-factor", &last_layer_factor, "Factor that "
                 "reduces the target relative learning rate for last layer.");
 
@@ -170,6 +173,8 @@ int main(int argc, char *argv[]) {
     nnet_learning_rates.DivElements(relative_diff);
     KALDI_ASSERT(last_layer_factor > 0.0);
     nnet_learning_rates(num_updatable - 1) *= last_layer_factor;
+    KALDI_ASSERT(first_layer_factor > 0.0);
+    nnet_learning_rates(0) *= first_layer_factor;
     BaseFloat cur_geometric_mean = exp(nnet_learning_rates.SumLog()
                                  / static_cast<BaseFloat>(num_updatable));
     nnet_learning_rates.Scale(target_geometric_mean / cur_geometric_mean);

@@ -23,7 +23,8 @@ samples_per_iter=400000 # measured in frames, not in "examples"
 
 spk_vecs_dir=
 modify_learning_rates=false
-last_layer_factor=1.0 # relates to modify-learning-rates
+last_layer_factor=1.0  # relates to modify-learning-rates
+first_layer_factor=1.0 # relates to modify-learning-rates
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
                 # on each iter.  You could set it to 0 or to a large value for complete
                 # randomization, but this would both consume memory and cause spikes in
@@ -288,7 +289,8 @@ while [ $x -lt $num_iters ]; do
 
     if $modify_learning_rates; then
       $cmd $dir/log/modify_learning_rates.$x.log \
-        nnet-modify-learning-rates --last-layer-factor=$last_layer_factor $dir/$x.mdl \
+        nnet-modify-learning-rates --last-layer-factor=$last_layer_factor \
+           --first-layer-factor=$first_layer_factor $dir/$x.mdl \
            $dir/$[$x+1].mdl $dir/$[$x+1].mdl
     fi
     rm $nnets_list

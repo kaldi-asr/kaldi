@@ -375,8 +375,11 @@ function linux_configure_debian7 {
   for f in $ATLASLIBS; do 
     [ ! -f $f ] && return 1;
   done
+  libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
+  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_debian7" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
+  echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
+  echo 
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
   echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"

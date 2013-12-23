@@ -365,7 +365,10 @@ void FastNnetCombiner::ComputeCurrentNnet(
     raw_params = params_; // C not set up yet: interpret params_ as raw parameters.
   
   if (debug) {
-    KALDI_LOG << "Scale parameters are " << raw_params;
+    Matrix<double> params_mat(num_nnets,
+                              nnets_[0].NumUpdatableComponents());
+    params_mat.CopyRowsFromVec(raw_params);
+    KALDI_LOG << "Scale parameters are " << params_mat;
   }
   CombineNnets(raw_params, nnets_, dest);
 }
@@ -399,7 +402,9 @@ int32 FastNnetCombiner::GetInitialModel(
 
   int32 num_uc = nnets[0].NumUpdatableComponents();
 
-  { // Now try a version where all the neural nets have the same weight.
+  if (num_nnets > 1) { // Now try a version where all the neural nets have the
+                       // same weight.  Don't do this if num_nnets == 1 as
+                       // it would be a waste of time (identical to n == 0).
     Vector<double> scale_params(num_uc * num_nnets);
     scale_params.Set(1.0 / num_nnets);
     Nnet average_nnet;
@@ -415,6 +420,8 @@ int32 FastNnetCombiner::GetInitialModel(
     } else {
       return best_n;
     }
+  } else {
+    return best_n;
   }
 }
 

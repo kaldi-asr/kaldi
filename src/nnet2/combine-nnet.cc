@@ -238,8 +238,13 @@ void CombineNnets(const NnetCombineConfig &combine_config,
   Vector<BaseFloat> scale_params_float(scale_params);
 
   KALDI_LOG << "Combining nnets, validation objf per frame changed from "
-            << initial_objf << " to " << objf << ", scale factors are "
-            << scale_params_float;
+            << initial_objf << " to " << objf;
+
+  Matrix<BaseFloat> scale_params_mat(nnets.size(),
+                                     nnets[0].NumUpdatableComponents());
+  scale_params_mat.CopyRowsFromVec(scale_params_float);
+  KALDI_LOG << "Final scale factors are " << scale_params_mat;
+  
   CombineNnets(scale_params_float, nnets, nnet_out);
 }
  
