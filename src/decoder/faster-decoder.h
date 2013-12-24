@@ -85,19 +85,19 @@ class FasterDecoder {
 
   bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out);
 
-  // As an alternative to Decode(), you can call InitDecoding
-  // and then (possibly multiple times) DecodeNonblocking().
+  /// As a new alternative to Decode(), you can call InitDecoding
+  /// and then (possibly multiple times) DecodeNonblocking().
   void InitDecoding();
   
+
   /// This will decode until there are no more frames ready in the decodable
-  /// object.  You can keep calling it each time more frames become available.
-  /// If max_num_frames is specified, it specifies the maximum number of frames
-  /// the function will decode before returning.
+  /// object, but if max_num_frames is >= 0 it will decode no more than
+  /// that many frames.
   void DecodeNonblocking(DecodableInterface *decodable,
                          int32 max_num_frames = -1);
 
   /// Returns the number of frames already decoded.  
-  int32 NumFramesDecoded() const;
+  int32 NumFramesDecoded() const { return num_frames_decoded_; }
   
  protected:
 
@@ -154,7 +154,9 @@ class FasterDecoder {
   void PossiblyResizeHash(size_t num_toks);
 
   // ProcessEmitting returns the likelihood cutoff used.
-  BaseFloat ProcessEmitting(DecodableInterface *decodable, int frame);
+  // It decodes the frame num_frames_decoded_ of the decodable object
+  // and then increments num_frames_decoded_
+  BaseFloat ProcessEmitting(DecodableInterface *decodable);
 
   // TODO: first time we go through this, could avoid using the queue.
   void ProcessNonemitting(BaseFloat cutoff);

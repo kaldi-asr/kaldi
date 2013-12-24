@@ -72,7 +72,9 @@ class OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const = 0;
   
 
-  /// Returns the number of frames that are currently ready to be processed.
+  /// Returns the total number of frames, since the start of the utterance, that
+  /// are now available.  In an online-decoding context, this may increase with
+  /// time as more data becomes available.
   virtual int32 NumFramesReady() const;
 
   

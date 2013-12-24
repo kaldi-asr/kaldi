@@ -47,8 +47,8 @@ void FasterDecoder::InitDecoding() {
 
 void FasterDecoder::Decode(DecodableInterface *decodable) {
   InitDecoding();
-  for (int32 frame = 0; !decodable->IsLastFrame(frame-1); frame++) {
-    BaseFloat weight_cutoff = ProcessEmitting(decodable, frame);
+  while (!decodable->IsLastFrame(num_frames_decoded_ - 1)) {
+    BaseFloat weight_cutoff = ProcessEmitting(decodable);
     ProcessNonemitting(weight_cutoff);
   }
 }
@@ -64,18 +64,14 @@ void FasterDecoder::DecodeNonblocking(DecodableInterface *decodable,
   // (which isn't allowed).
   KALDI_ASSERT(num_frames_ready >= num_frames_decoded_);
   int32 target_frames_decoded = num_frames_ready;
-  if (max_num_frames > 0)
+  if (max_num_frames >= 0)
     target_frames_decoded = std::min(target_frames_decoded,
                                      num_frames_decoded_ + max_num_frames);
   while (num_frames_decoded_ < target_frames_decoded) {
     // note: ProcessEmitting() increments num_frames_decoded_
-    BaseFloat weight_cutoff = ProcessEmitting(decodable, num_frames_decoded_);
+    BaseFloat weight_cutoff = ProcessEmitting(decodable);
     ProcessNonemitting(weight_cutoff); 
   }    
-}
-
-int32 FasterDecoder::NumFramesDecoded() const {
-  return num_frames_decoded_;
 }
 
 
@@ -223,7 +219,8 @@ void FasterDecoder::PossiblyResizeHash(size_t num_toks) {
 }
 
 // ProcessEmitting returns the likelihood cutoff used.
-BaseFloat FasterDecoder::ProcessEmitting(DecodableInterface *decodable, int frame) {
+BaseFloat FasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
+  int32 frame = num_frames_decoded_;
   Elem *last_toks = toks_.Clear();
   size_t tok_cnt;
   BaseFloat adaptive_beam;

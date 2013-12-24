@@ -132,32 +132,30 @@ class LatticeFasterDecoder {
   // lattice (one path per word sequence).
   bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const;
 
-  /// InitDecoding initializes the decoding, and should only be used if
-  /// you intend to call DecodeNonblocking().  If you call Decode(), you don't
-  /// need to call this.  You can call InitDecoding if you have already decoded
-  /// an utterance and want to start with a new utterance.
+  /// InitDecoding initializes the decoding, and should only be used if you
+  /// intend to call DecodeNonblocking().  If you call Decode(), you don't need
+  /// to call this.  You can call InitDecoding if you have already decoded an
+  /// utterance and want to start with a new utterance.
   void InitDecoding();
   
   /// This will decode until there are no more frames ready in the decodable
   /// object.  You can keep calling it each time more frames become available.
-  /// It returns true if there are still active tokens.  It should rarely or
-  /// never return false, and if it does, you can just abandon this utterance or
-  /// signal an error.
   /// If max_num_frames is specified, it specifies the maximum number of frames
   /// the function will decode before returning.
-  bool DecodeNonblocking(DecodableInterface *decodable,
+  void DecodeNonblocking(DecodableInterface *decodable,
                          int32 max_num_frames = -1);
 
   /// FinalRelativeCost() serves the same function as ReachedFinal(), but gives
-  /// more information; if no final-state is active at the current frame, it
-  /// returns infinity; if the final-state is the most likely state it returns
-  /// zero; otherwise it returns the difference between the best state's
-  /// likelihood and the final-state likelihood (always a positive number).
-  /// This can be used to help decide when to stop decoding, in an online
-  /// application (e.g.  detecting whether you have reached the end of the
-  /// grammar).  TODO: implement this.
+  /// more information.  It returns the difference between the best (final-cost
+  /// plus cost) of any token on the final frame, and the best cost of any token
+  /// on the final frame.  If it is infinity it means no final-states were
+  /// present on the final frame.  It will usually be nonnegative.  If it not
+  /// too positive (e.g. < 5 is my first guess, but this is not tested) you can
+  /// take it as a good indication that we reached the final-state with
+  /// reasonable likelihood.
   BaseFloat FinalRelativeCost() const;
-  
+
+  int32 NumFramesDecoded() { return active_toks_.size() - 1; }
  private:
   struct Token;
   // ForwardLinks are the links from a token to a token on the next frame.
@@ -223,15 +221,16 @@ class LatticeFasterDecoder {
 
   void PossiblyResizeHash(size_t num_toks);
 
-  // FindOrAddToken either locates a token in hash of toks_,
-  // or if necessary inserts a new, empty token (i.e. with no forward links)
-  // for the current frame.  [note: it's inserted if necessary into hash toks_
-  // and also into the singly linked list of tokens active on this frame
-  // (whose head is at active_toks_[frame]).
-  // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
-  // if the token was newly created or the cost changed.
-  inline Token *FindOrAddToken(StateId state, int32 frame, BaseFloat tot_cost,
-                               bool *changed);
+  // FindOrAddToken either locates a token in hash of toks_, or if necessary
+  // inserts a new, empty token (i.e. with no forward links) for the current
+  // frame.  [note: it's inserted if necessary into hash toks_ and also into the
+  // singly linked list of tokens active on this frame (whose head is at
+  // active_toks_[frame]).  The frame_plus_one argument is the acoustic frame
+  // index plus one, which is used to index into the active_toks_ array.
+  // Returns the Token pointer.  Sets "changed" (if non-NULL) to true if the
+  // token was newly created or the cost changed.
+  inline Token *FindOrAddToken(StateId state, int32 frame_plus_one,
+                               BaseFloat tot_cost, bool *changed);
   
   // prunes outgoing links for all tokens in active_toks_[frame]
   // it's called by PruneActiveTokens
@@ -242,7 +241,7 @@ class LatticeFasterDecoder {
   //    toward the beginning of the file.
   // extra_costs_changed is set to true if extra_cost was changed for any token
   // links_pruned is set to true if any link in any token was pruned
-  void PruneForwardLinks(int32 frame, bool *extra_costs_changed,
+  void PruneForwardLinks(int32 frame_plus_one, bool *extra_costs_changed,
                          bool *links_pruned,
                          BaseFloat delta);
 
@@ -250,39 +249,39 @@ class LatticeFasterDecoder {
   // PruneForwardLinksFinal is a version of PruneForwardLinks that we call
   // on the final frame.  If there are final tokens active, it uses
   // the final-probs for pruning, otherwise it treats all tokens as final.
-  void PruneForwardLinksFinal(int32 frame);
+  void PruneForwardLinksFinal();
   
   // Prune away any tokens on this frame that have no forward links.
   // [we don't do this in PruneForwardLinks because it would give us
   // a problem with dangling pointers].
   // It's called by PruneActiveTokens if any forward links have been pruned
-  void PruneTokensForFrame(int32 frame);
+  void PruneTokensForFrame(int32 frame_plus_one);
   
-  // Go backwards through still-alive tokens, pruning them.  note: cur_frame is
-  // where hash toks_ are (so we do not want to mess with it because these tokens
-  // don't yet have forward pointers), but we do all previous frames, unless we
-  // know that we can safely ignore them because the frame after them was unchanged.
-  // delta controls when it considers a cost to have changed enough to continue
-  // going backward and propagating the change.
-  // for a larger delta, we will recurse less far back
-  void PruneActiveTokens(int32 cur_frame, BaseFloat delta);
+  // Go backwards through still-alive tokens, pruning them.  note: we don't do
+  // the latest frame because that is where hash toks_ are (so we do not want to
+  // mess with it because these tokens don't yet have forward pointers), but we
+  // do all previous frames, unless we know that we can safely ignore them
+  // because the frame after them was unchanged.  delta controls when it
+  // considers a cost to have changed enough to continue going backward and
+  // propagating the change.  for a larger delta, we will recurse less far back
+  void PruneActiveTokens(BaseFloat delta);
 
   /// Version of PruneActiveTokens that we call on the final frame.
   /// Takes into account the final-prob of tokens.
-  void PruneActiveTokensFinal(int32 cur_frame);
+  void PruneActiveTokensFinal();
   
   /// Gets the weight cutoff.  Also counts the active tokens.
   BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
                       BaseFloat *adaptive_beam, Elem **best_elem);
 
   /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
-  void ProcessEmitting(DecodableInterface *decodable, int32 frame);
-
+  void ProcessEmitting(DecodableInterface *decodable);
+  
   /// Processes nonemitting (epsilon) arcs for one frame.
-  /// Ccalled after ProcessEmitting on each frame.
+  /// Called after ProcessEmitting on each frame.
   /// TODO: could possibly add adaptive_beam back as an argument here (was
   /// returned from ProcessEmitting, in faster-decoder.h).
-  void ProcessNonemitting(int32 frame);
+  void ProcessNonemitting();
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of
@@ -306,9 +305,6 @@ class LatticeFasterDecoder {
   // on the last frame.
   std::map<Token*, BaseFloat> final_costs_; // A cache of final-costs
   // of tokens on the last frame-- it's just convenient to store it this way.
-
-  int32 num_frames_; // the number of frames we have decoded, or -1 if
-                     // we have not initialized the decoding.  TODO: use this.
   
   // There are various cleanup tasks... the the toks_ structure contains
   // singly linked lists of Token pointers, where Elem is the list type.
