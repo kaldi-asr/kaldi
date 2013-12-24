@@ -28,6 +28,18 @@ set -e # exit on error.
 # likely generate very thin lattices.  Note: the transform-dir is important to
 # specify, since this system is on top of fMLLR features.
 
+if [ $stage -le 0 ]; then
+  steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
+    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
+    --transform-dir exp/tri4b \
+    data/train_nodup data/lang exp/nnet5c_gpu exp/nnet5c_gpu_denlats
+fi
+
+if [ $stage -le 1 ]; then
+  steps/nnet2/align.sh  --cmd "$decode_cmd $gpu_opts" --use-gpu yes \
+    --transform-dir exp/tri4b \
+    --nj $nj data/train_nodup data/lang exp/nnet5c_gpu exp/nnet5c_gpu_ali
+fi
 
 
 if [ $stage -le 2 ]; then

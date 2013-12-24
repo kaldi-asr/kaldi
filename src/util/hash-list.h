@@ -67,7 +67,7 @@ template<class I, class T> class HashList {
   /// class.
   Elem *GetList();
 
-  /// Think of this like delete[].  It is to be called for each Elem in turn
+  /// Think of this like delete().  It is to be called for each Elem in turn
   /// after you "obtained ownership" by doing Clear().  This is not the opposite of
   /// Insert, it is the opposite of New.  It's really a memory operation.
   inline void Delete(Elem *e);

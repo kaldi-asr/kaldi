@@ -118,6 +118,7 @@ void UnitTestIvectorExtractor() {
     TestIvectorStatsIO(stats);
     
     IvectorExtractorEstimationOptions estimation_opts;
+    estimation_opts.gaussian_min_count = dim + 5;
     double auxf = stats.AuxfPerFrame(),
         auxf_impr = stats.Update(estimation_opts, &extractor);
 

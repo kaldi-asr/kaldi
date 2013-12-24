@@ -46,9 +46,9 @@ void CompressedMatrix::CopyFromMat(
   float min_value = mat.Min(), max_value = mat.Max();
   if (max_value == min_value)
     max_value = min_value + (1.0 + fabs(min_value)); // ensure it's strictly
-  // greater than min_value,
-  // even if matrix is
-  // constant.
+                                                     // greater than min_value,
+                                                     // even if matrix is
+                                                     // constant.
 
   global_header.min_value = min_value;
   global_header.range = max_value - min_value;
@@ -121,8 +121,8 @@ inline uint16 CompressedMatrix::FloatToUint16(
 }
 
 inline float CompressedMatrix::Uint16ToFloat(
-    const GlobalHeader &global_header,
-    uint16 value) {
+        const GlobalHeader &global_header,
+        uint16 value) {
   // the constant 1.52590218966964e-05 is 1/65535.
   return global_header.min_value
       + global_header.range * 1.52590218966964e-05 * value;
@@ -133,42 +133,31 @@ void CompressedMatrix::ComputeColHeader(
     const GlobalHeader &global_header,
     const Real *data, MatrixIndexT stride,
     int32 num_rows, CompressedMatrix::PerColHeader *header) {
-  KALDI_ASSERT(num_rows > 0);
-  int32 bug_workaround = 2;
-  // bug_workaround would be zero, except we need to fix the gcc bug
-  // http://gcc.gnu.org/bugzilla/show_bug.cgi?id=58800
-  // we're creating some space at the end of the array where the standard
-  // library seems to be wrongly trying to access.  This will at least
-  // stop the memory corruption.
-  std::vector<Real> sdata(num_rows + bug_workaround); // the sorted data.
-  for (size_t i = 0, size = num_rows; i < size; i++)
+  assert(num_rows > 0);
+  std::vector<Real> sdata(num_rows); // the sorted data.
+  for (size_t i = 0, size = sdata.size(); i < size; i++)
     sdata[i] = data[i*stride];
 
-  // Note: we replace sdata.end() with sdata_end below; it is required
-  // by the bug workaround.
-  typename std::vector<Real>::iterator sdata_end = sdata.end() - bug_workaround;
-  
   if (num_rows >= 5) {
     int quarter_nr = num_rows/4;
-    
-    // std::sort(sdata.begin(), sdata_end);
+    // std::sort(sdata.begin(), sdata.end());
     // The elements at positions 0, quarter_nr,
     // 3*quarter_nr, and num_rows-1 need to be in sorted order.
-    std::nth_element(sdata.begin(), sdata.begin() + quarter_nr, sdata_end);
+    std::nth_element(sdata.begin(), sdata.begin() + quarter_nr, sdata.end());
     // Now, sdata.begin() + quarter_nr contains the element that would appear
     // in sorted order, in that position.
     std::nth_element(sdata.begin(), sdata.begin(), sdata.begin() + quarter_nr);
     // Now, sdata.begin() and sdata.begin() + quarter_nr contain the elements
     // that would appear at those positions in sorted order.
     std::nth_element(sdata.begin() + quarter_nr + 1,
-                     sdata.begin() + (3*quarter_nr), sdata_end);
+                     sdata.begin() + (3*quarter_nr), sdata.end());
     // Now, sdata.begin(), sdata.begin() + quarter_nr, and sdata.begin() +
     // 3*quarter_nr, contain the elements that would appear at those positions
     // in sorted order.
-    std::nth_element(sdata.begin() + (3*quarter_nr) + 1, sdata_end - 1,
-                     sdata_end);
+    std::nth_element(sdata.begin() + (3*quarter_nr) + 1, sdata.end() - 1,
+                     sdata.end());
     // Now, sdata.begin(), sdata.begin() + quarter_nr, and sdata.begin() +
-    // 3*quarter_nr, and sdata_end - 1, contain the elements that would appear
+    // 3*quarter_nr, and sdata.end() - 1, contain the elements that would appear
     // at those positions in sorted order.
     
     header->percentile_0 = FloatToUint16(global_header, sdata[0]);
@@ -183,7 +172,7 @@ void CompressedMatrix::ComputeColHeader(
         header->percentile_75 + static_cast<uint16>(1));
     
   } else {  // handle this pathological case.
-    std::sort(sdata.begin(), sdata_end);
+    std::sort(sdata.begin(), sdata.end());
     // Note: we know num_rows is at least 1.
     header->percentile_0 = FloatToUint16(global_header, sdata[0]);
     if (num_rows > 1)
@@ -283,7 +272,7 @@ void* CompressedMatrix::AllocateData(int32 num_bytes) {
 }
 
 #define DEBUG_COMPRESSED_MATRIX 0 // Must be zero for Kaldi to work; use 1 only
-// for debugging.
+                                  // for debugging.
 
 void CompressedMatrix::Write(std::ostream &os, bool binary) const {
   if (binary) {  // Binary-mode write:
@@ -364,9 +353,9 @@ void CompressedMatrix::Read(std::istream &is, bool binary) {
       // and you want back-compatibility for reading.
       Matrix<BaseFloat> M;
       M.Read(is, binary); // This will crash if it was not a Matrix.  This might happen,
-      // for instance, if the CompressedMatrix was written using the
-      // older code where we didn't write the token "CM", we just
-      // wrote the binary data directly.
+                          // for instance, if the CompressedMatrix was written using the
+                          // older code where we didn't write the token "CM", we just
+                          // wrote the binary data directly.
       this->CopyFromMat(M);
     }
   } else {  // Text-mode read.
@@ -398,7 +387,7 @@ void CompressedMatrix::Read(std::istream &is, bool binary) {
       for (int32 j = 0; j < h.num_rows; j++, c++) {
         int i;
         is >> i;
-        KALDI_ASSERT(i >= 0 && i <= 255);
+        assert(i >= 0 && i <= 255);
         *c = static_cast<unsigned char>(i);
       }
     }
@@ -455,9 +444,9 @@ void CompressedMatrix::CopyRowToVec(MatrixIndexT row,
   for (int32 i = 0; i < h->num_cols;
        i++, per_col_header++, byte_data+=h->num_rows) {
     float p0 = Uint16ToFloat(*h, per_col_header->percentile_0),
-        p25 = Uint16ToFloat(*h, per_col_header->percentile_25),
-        p75 = Uint16ToFloat(*h, per_col_header->percentile_75),
-        p100 = Uint16ToFloat(*h, per_col_header->percentile_100);
+          p25 = Uint16ToFloat(*h, per_col_header->percentile_25),
+          p75 = Uint16ToFloat(*h, per_col_header->percentile_75),
+          p100 = Uint16ToFloat(*h, per_col_header->percentile_100);
     float f = CharToFloat(p0, p25, p75, p100, *byte_data);
     (*v)(i) = f;
   }
@@ -476,9 +465,9 @@ void CompressedMatrix::CopyColToVec(MatrixIndexT col,
   byte_data += col*h->num_rows;  // point to first value in the column we want
   per_col_header += col;
   float p0 = Uint16ToFloat(*h, per_col_header->percentile_0),
-      p25 = Uint16ToFloat(*h, per_col_header->percentile_25),
-      p75 = Uint16ToFloat(*h, per_col_header->percentile_75),
-      p100 = Uint16ToFloat(*h, per_col_header->percentile_100);
+        p25 = Uint16ToFloat(*h, per_col_header->percentile_25),
+        p75 = Uint16ToFloat(*h, per_col_header->percentile_75),
+        p100 = Uint16ToFloat(*h, per_col_header->percentile_100);
   for (int32 i = 0; i < h->num_rows; i++, byte_data++) {
     float f = CharToFloat(p0, p25, p75, p100, *byte_data);
     (*v)(i) = f;
@@ -524,9 +513,9 @@ void CompressedMatrix::CopyToMat(int32 row_offset,
        i++, per_col_header++, start_of_subcol+=num_rows) {
     byte_data = start_of_subcol;
     float p0 = Uint16ToFloat(*h, per_col_header->percentile_0),
-        p25 = Uint16ToFloat(*h, per_col_header->percentile_25),
-        p75 = Uint16ToFloat(*h, per_col_header->percentile_75),
-        p100 = Uint16ToFloat(*h, per_col_header->percentile_100);
+          p25 = Uint16ToFloat(*h, per_col_header->percentile_25),
+          p75 = Uint16ToFloat(*h, per_col_header->percentile_75),
+          p100 = Uint16ToFloat(*h, per_col_header->percentile_100);
     for (int32 j = 0; j < tgt_rows; j++, byte_data++) {
       float f = CharToFloat(p0, p25, p75, p100, *byte_data);
       (*dest)(j, i) = f;
@@ -536,11 +525,11 @@ void CompressedMatrix::CopyToMat(int32 row_offset,
 
 // instantiate the templates.
 template void CompressedMatrix::CopyToMat(int32,
-                                          int32,
-                                          MatrixBase<float> *dest) const;
+               int32,
+               MatrixBase<float> *dest) const;
 template void CompressedMatrix::CopyToMat(int32,
-                                          int32,
-                                          MatrixBase<double> *dest) const;
+               int32,
+               MatrixBase<double> *dest) const;
 
 void CompressedMatrix::Destroy() {
   if (data_ != NULL) {

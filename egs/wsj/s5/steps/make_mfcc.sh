@@ -9,7 +9,7 @@
 nj=4
 cmd=run.pl
 mfcc_config=conf/mfcc.conf
-compress=false
+compress=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
