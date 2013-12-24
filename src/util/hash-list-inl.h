@@ -102,8 +102,19 @@ inline typename HashList<I, T>::Elem* HashList<I, T>::New() {
 
 template<class I, class T>
 HashList<I, T>::~HashList() {
-  for (size_t i = 0; i < allocated_.size(); i++)
+  // First test whether we had any memory leak within the
+  // HashList, i.e. things for which the user did not call Delete().
+  size_t num_in_list = 0, num_allocated = 0;
+  for (Elem *e = freed_head_; e != NULL; e = e->tail)
+    num_in_list++;
+  for (size_t i = 0; i < allocated_.size(); i++) {
+    num_allocated += allocate_block_size_;
     delete[] allocated_[i];
+  }
+  if (num_in_list != num_allocated) {
+    KALDI_WARN << "Possible memory leak: " << num_in_list
+               << " != " << num_allocated;
+  }
 }
 
 

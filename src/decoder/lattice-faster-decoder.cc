@@ -43,7 +43,7 @@ LatticeFasterDecoder::LatticeFasterDecoder(const LatticeFasterDecoderConfig &con
 // a final state).
 bool LatticeFasterDecoder::Decode(DecodableInterface *decodable) {
   // clean up from last time:
-  ClearToks(toks_.Clear());
+  DeleteElems(toks_.Clear());
   cost_offsets_.clear();
   ClearActiveTokens();
   warned_ = false;
@@ -337,6 +337,7 @@ void LatticeFasterDecoder::PruneForwardLinksFinal(int32 frame) {
     tok_to_final_cost[tok] = final_cost;
     best_cost_nofinal = std::min(best_cost_nofinal, tok->tot_cost);
   }
+  DeleteElems(cur_toks);
   final_active_ = (best_cost_final != infinity);
     
   // Now go through tokens on this frame, pruning forward links...  may have
@@ -702,13 +703,12 @@ void LatticeFasterDecoder::ProcessNonemitting(int32 frame) {
 }
 
 
-void LatticeFasterDecoder::ClearToks(Elem *list) {
+void LatticeFasterDecoder::DeleteElems(Elem *list) {
   for (Elem *e = list, *e_tail; e != NULL; e = e_tail) {
     // Token::TokenDelete(e->val);
     e_tail = e->tail;
     toks_.Delete(e);
   }
-  toks_.Clear();
 }
   
 void LatticeFasterDecoder::ClearActiveTokens() { // a cleanup routine, at utt end/begin
