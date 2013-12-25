@@ -221,7 +221,9 @@ LmExampleDeterministicOnDemandFst<Arc>::LmExampleDeterministicOnDemandFst(
 template<class Arc>
 typename Arc::Weight LmExampleDeterministicOnDemandFst<Arc>::Final(StateId s) {
   KALDI_ASSERT(static_cast<size_t>(s) < state_vec_.size());
-  const std::vector<Label> &wseq = state_vec_[s];
+  // In a real version you would probably use the following variable somehow
+  // (commenting it because it's generating warnings).
+  // const std::vector<Label> &wseq = state_vec_[s];
   float log_prob = -0.5; // e.g. log_prob = lm->GetLogProb(wseq, eos_symbol_);
   return Weight(-log_prob); // assuming weight is FloatWeight.
 }

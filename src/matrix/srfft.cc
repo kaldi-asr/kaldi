@@ -87,10 +87,10 @@ void SplitRadixComplexFft<Real>::ComputeTables() {
       for (n = 1; n < m4; n++) {
         if (n == m8) continue;
         ang = n * M_2PI / m;
-        c = cos(ang); s = sin(ang);
+        c = std::cos(ang); s = std::sin(ang);
         *cn++ = c; *spcn++ = - (s + c); *smcn++ = s - c;
         ang = 3 * n * M_2PI / m;
-        c = cos(ang); s = sin(ang);
+        c = std::cos(ang); s = std::sin(ang);
         *c3n++ = c; *spc3n++ = - (s + c); *smc3n++ = s - c;
       }
     }

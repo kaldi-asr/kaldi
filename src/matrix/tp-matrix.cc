@@ -116,8 +116,8 @@ void TpMatrix<Real>::Cholesky(const SpMatrix<Real> &orig) {
     d = orig_jdata[j] - d;
     
     if (d >= 0.0) {
-      // (*this)(j, j) = sqrt(d);
-      jdata[j] = sqrt(d);
+      // (*this)(j, j) = std::sqrt(d);
+      jdata[j] = std::sqrt(d);
     } else {
       KALDI_WARN << "Cholesky decomposition failed. Maybe matrix "
           "is not positive definite. Throwing error";
