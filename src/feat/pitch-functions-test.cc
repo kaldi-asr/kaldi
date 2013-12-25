@@ -340,7 +340,7 @@ void UnitTestPostProcess() {
     op.max_f0 = 400;
     Matrix<BaseFloat> m, m2;
     Compute(op, waveform, &m);
-    PostProcessOptions postprop_op;
+    PostProcessPitchOptions postprop_op;
     postprop_op.pov_nonlinearity = 2;
     PostProcessPitch(postprop_op, m, &m2);
     std::string outfile = "keele/"+num+"-processed-kaldi.txt";
@@ -359,7 +359,7 @@ void UnitTestDeltaPitch() {
     for (int32 j = 2; j < num_frames - 2; j++)  
       output_feat2(j) = 1.0 / 10.0  *
         (-2.0 * feat(j - 2) - feat(j - 1) + feat(j + 1) + 2.0 * feat(j + 2));
-    PostProcessOptions op;  
+    PostProcessPitchOptions op;  
     op.delta_pitch_noise_stddev = 0;
     ExtractDeltaPitch(op, feat, &output_feat);
     if (!output_feat.ApproxEqual(output_feat2, 0.05)) {
