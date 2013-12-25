@@ -551,7 +551,7 @@ void Compute(const PitchExtractionOptions &opts,
   pitch.GetPitch(output);
 }
 
-void ExtractDeltaPitch(const PostProcessOptions &opts,
+void ExtractDeltaPitch(const PostProcessPitchOptions &opts,
                        const Vector<BaseFloat> &input,
                        Vector<BaseFloat> *output) {
   int32 num_frames = input.Dim();
@@ -576,7 +576,7 @@ void ExtractDeltaPitch(const PostProcessOptions &opts,
   output->AddVec(1.0, noise);
 }
 
-void PostProcessPitch(const PostProcessOptions &opts,
+void PostProcessPitch(const PostProcessPitchOptions &opts,
                       const Matrix<BaseFloat> &input,
                       Matrix<BaseFloat> *output) {
   Matrix<BaseFloat> processed_input = input;

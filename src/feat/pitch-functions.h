@@ -112,7 +112,7 @@ struct PitchExtractionOptions {
   }
 };
 
-struct PostProcessOptions {
+struct PostProcessPitchOptions {
   BaseFloat pitch_scale;          // the final pitch scaled with this value
   BaseFloat pov_scale;            // the final pov scaled with this value
   BaseFloat delta_pitch_scale;
@@ -123,7 +123,7 @@ struct PostProcessOptions {
   int32 pov_nonlinearity;  // which nonlinearity formula to use for POV feature.
   bool process_pitch;
   bool add_delta_pitch;
-  explicit PostProcessOptions() : 
+  explicit PostProcessPitchOptions() : 
     pitch_scale(2.0),
     pov_scale(2.0),
     delta_pitch_scale(10.0),
@@ -139,9 +139,9 @@ struct PostProcessOptions {
     po->Register("pov-scale", &pov_scale,
                  "Scaling factor for final POV (probability of voicing) feature");
     po->Register("delta-pitch-scale", &delta_pitch_scale,
-                 "Term to scale the final delta pitch");
+                 "Term to scale the final delta log-pitch");
     po->Register("delta-pitch-noise-stddev", &delta_pitch_noise_stddev,
-                 "Standard deviation for noise we add to the delta pitch (before"
+                 "Standard deviation for noise we add to the delta log-pitch (before"
                  " scaling); should be about the same as delta-pitch option to "
                  "pitch creation.  The purpose is to get rid of peaks in the "
                  "delta-pitch caused by discretization of pitch values.");
@@ -154,7 +154,7 @@ struct PostProcessOptions {
                  "If 1, use (1.001 - nccf)^0.15 - 1; "
                  "if 2, use a longer formula that approximates log(POV / (POV-1)).");
     po->Register("add-delta-pitch", &add_delta_pitch,
-                "If true, derivative of log-pitch is added to output features");
+                "If true, time derivative of log-pitch is added to output features");
   }
 };
 /// @} End of "addtogroup feat"
