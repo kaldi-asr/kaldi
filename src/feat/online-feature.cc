@@ -121,7 +121,8 @@ void OnlineSpliceFrames::GetFeature(int32 frame, VectorBase<BaseFloat> *feat) {
 }
 
 OnlineLda::OnlineLda(const Matrix<BaseFloat> &transform,
-                     OnlineFeatureInterface *src): src_(src) {
+                     OnlineFeatureInterface *src, bool is_online): 
+    src_(src), is_online_(is_online) {
   int32 src_dim = src_->Dim();
   if (transform.NumCols() == src_dim) { // Linear transform
     linear_term_ = transform;
@@ -189,8 +190,8 @@ void OnlineDeltaFeatures::GetFeature(int32 frame,
 
 
 OnlineDeltaFeatures::OnlineDeltaFeatures(const DeltaFeaturesOptions &opts,
-                                         OnlineFeatureInterface *src):
-    src_(src), opts_(opts), delta_features_(opts) { }
+                                OnlineFeatureInterface *src, bool is_online):
+    src_(src), opts_(opts), delta_features_(opts), is_online_(is_online) { }
 
 
 }  // namespace kaldi

@@ -45,8 +45,9 @@ class OnlineMfccOrPlp: public OnlineFeatureInterface {
   // First, functions that are present in the interface:
   //
   virtual int32 Dim() const { return mfcc_or_plp_.Dim(); }
-  virtual void Recompute() { } // This does nothing since MFCC computation is
-                               // not affected by future context.
+
+  virtual void SetOnlineMode(bool is_online) { }  // This does nothing since MFCC 
+                             // computation is not affected by future context.
 
   // Note: this will only ever return true if you call InputFinished(), which
   // isn't really necessary to do unless you want to make sure to flush out the
@@ -103,6 +104,50 @@ typedef OnlineMfccOrPlp<Mfcc> OnlineMfcc;
 typedef OnlineMfccOrPlp<Plp> OnlinePlp;
 
 
+class OnlineCmvn : public OnlineFeatureInterface {
+ public:
+  //
+  // First, functions that are present in the interface:
+  //
+  virtual int32 Dim() const;
+
+  virtual void SetOnlineMode(bool is_online) { 
+    is_online_ = is_online;
+    src_->SetOnlineMode(is_online); 
+  }
+
+  virtual bool IsLastFrame(int32 frame) const;
+
+  virtual int32 NumFramesReady() const;
+  
+  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
+  
+  //
+  // Next, functions that are not in the interface.
+  //
+  OnlineCmvn(int32 cmvn_window, OnlineFeatureInterface *src, bool is_online):
+    cmvn_window_(cmvn_window), src_(src), is_online_(is_online) { }
+
+  /// The GetStats function returns statistics
+  /// which are needed to compute Cepstral mean and variance.
+  /// The statistics can be used for Initialization of new OnlineCmvn object.
+  void GetStats(Vector<double> *cur_sum, Vector<double> *cur_sumsq, int32 *window_frames) const;
+
+  /// Start using immediately the statistics for normalisation.
+  void ApplyStats(const Vector<double> &cur_sum, const Vector<double> &cur_sumsq, int32 window_frames);
+
+ private:
+  bool normalize_variance_;
+  int32 min_window_;
+  int32 cmvn_window_;
+  int32 stats_collected_;
+  Vector<double> cur_sum_;
+  Vector<double> cur_sumsq_;
+  OnlineFeatureInterface *src_;
+  bool is_online_;
+};
+
+
 class OnlineSpliceFrames: public OnlineFeatureInterface {
  public:
   //
@@ -112,7 +157,10 @@ class OnlineSpliceFrames: public OnlineFeatureInterface {
     return src_->Dim() * (1 + left_context_ * right_context_);
   }
 
-  virtual void Recompute() { src_->Recompute(); }
+  virtual void SetOnlineMode(bool is_online) { 
+    is_online_ = is_online;
+    src_->SetOnlineMode(is_online); 
+  }
 
   virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
 
@@ -124,13 +172,15 @@ class OnlineSpliceFrames: public OnlineFeatureInterface {
   // Next, functions that are not in the interface.
   //
   OnlineSpliceFrames(int32 left_context, int32 right_context,
-                     OnlineFeatureInterface *src):
-      left_context_(left_context), right_context_(right_context), src_(src) { }
+                     OnlineFeatureInterface *src, bool is_online=true):
+      left_context_(left_context), right_context_(right_context), 
+      src_(src), is_online_(is_online) { }
   
  private:
   int32 left_context_;
   int32 right_context_;
   OnlineFeatureInterface *src_;
+  bool is_online_;
 };
 
 /// This online-feature class implements LDA, or more generally any linear or
@@ -142,7 +192,10 @@ class OnlineLda: public OnlineFeatureInterface {
   //
   virtual int32 Dim() const { return offset_.Dim(); }
   
-  virtual void Recompute() { src_->Recompute(); }  
+  virtual void SetOnlineMode(bool is_online) { 
+    is_online_ = is_online;
+    src_->SetOnlineMode(is_online); 
+  }
 
   virtual bool IsLastFrame(int32 frame) { return src_->IsLastFrame(frame); }
 
@@ -157,12 +210,13 @@ class OnlineLda: public OnlineFeatureInterface {
   /// The transform can be a linear transform, or an affine transform
   /// where the last column is the offset.
   OnlineLda(const Matrix<BaseFloat> &transform,
-            OnlineFeatureInterface *src);
+            OnlineFeatureInterface *src, bool is_online);
   
  private:
   OnlineFeatureInterface *src_;
   Matrix<BaseFloat> linear_term_;
   Vector<BaseFloat> offset_;  
+  bool is_online_;
 };
 
 class OnlineDeltaFeatures: public OnlineFeatureInterface {
@@ -172,7 +226,10 @@ class OnlineDeltaFeatures: public OnlineFeatureInterface {
   //
   virtual int32 Dim() const;
   
-  virtual void Recompute() { src_->Recompute(); }
+  virtual void SetOnlineMode(bool is_online) { 
+    is_online_ = is_online;
+    src_->SetOnlineMode(is_online); 
+  }
 
   virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
 
@@ -184,12 +241,13 @@ class OnlineDeltaFeatures: public OnlineFeatureInterface {
   // Next, functions that are not in the interface.
   //
   OnlineDeltaFeatures(const DeltaFeaturesOptions &opts,
-                      OnlineFeatureInterface *src);
+                      OnlineFeatureInterface *src, bool is_online);
   
  private:
   OnlineFeatureInterface *src_;
   DeltaFeaturesOptions opts_;
   DeltaFeatures delta_features_; // This class contains just a few coefficients.
+  bool is_online_;
 };
 
 
