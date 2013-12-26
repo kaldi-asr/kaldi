@@ -15,10 +15,11 @@ dir=exp/nnet4d_gpu
      --num-epochs-extra 10 --add-layers-period 1 \
      --num-hidden-layers 2 \
      --mix-up 4000 \
-     --initial-learning-rate 0.016 --final-learning-rate 0.004 \
+     --initial-learning-rate 0.02 --final-learning-rate 0.004 \
      --cmd "$decode_cmd" \
-     --pnorm-input-dim 1200 \
-     --pnorm-output-dim 600 \
+     --pnorm-input-dim 1000 \
+     --pnorm-output-dim 200 \
+     --combine-regularizer 1.0e-12 \
      data/train data/lang exp/tri3b_ali $dir 
 
    steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
