@@ -804,9 +804,11 @@ void VectorBase<Real>::Tanh(const VectorBase<Real> &src) {
   for (MatrixIndexT i = 0; i < dim_; i++) {
     Real x = src.data_[i];
     if (x > 0.0) {
-      x = -1.0 + 2.0 / (1.0 + std::exp(-2.0 * x));
+      Real inv_expx = std::exp(-x);
+      x = -1.0 + 2.0 / (1.0 + inv_expx * inv_expx);
     } else {
-      x = 1.0 - 2.0 / (1.0 + std::exp(2.0 * x));
+      Real inv_expx = std::exp(x);
+      x = 1.0 - 2.0 / (1.0 + inv_expx * inv_expx);
     }
     data_[i] = x;
   }
