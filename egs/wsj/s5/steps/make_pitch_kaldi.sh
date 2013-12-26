@@ -20,7 +20,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
-   echo "usage: make_pitch_new.sh [options] <data-dir> <log-dir> <path-to-pitchdir>";
+   echo "usage: make_pitch_kaldi.sh [options] <data-dir> <log-dir> <path-to-pitchdir>";
    echo "options: "
    echo "  --pitch-config <config-file>                     # config passed to compute-kaldi-pitch-feats "
    echo "  --postprocess-config <config-file>               # config passed to process-kaldi-pitch-feats "

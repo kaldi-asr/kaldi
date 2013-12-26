@@ -294,10 +294,13 @@ template<class I> void Factorize(I m, std::vector<I> *factors) {
   }
 }
 
+inline double Hypot(double x, double y) {  return hypot(x, y); }
 
-inline double Hypot(double X, double Y) {  return hypot(X, Y); }
+inline float Hypot(float x, float y) {  return hypotf(x, y); }
 
-inline float Hypot(float X, float Y) {  return hypotf(X, Y); }
+inline double Log1p(double x) {  return log1p(x); }
+
+inline float Log1p(float x) {  return log1pf(x); }
 
 
 

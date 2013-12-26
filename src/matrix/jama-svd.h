@@ -427,7 +427,7 @@ bool MatrixBase<Real>::JamaSvd(VectorBase<Real> *s_in,
         Real c = (sp*epm1)*(sp*epm1);
         Real shift = 0.0;
         if ((b != 0.0) || (c != 0.0)) {
-          shift = sqrt(b*b + c);
+          shift = std::sqrt(b*b + c);
           if (b < 0.0) {
             shift = -shift;
           }

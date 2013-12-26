@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "Usage: process-kaldi-pitch-feats [options...] <feat-rspecifier> <feats-wspecifier>\n";
     
     ParseOptions po(usage);
-    PostProcessOptions postprocess_opts;
+    PostProcessPitchOptions postprocess_opts;
     postprocess_opts.Register(&po); 
 
     po.Read(argc, argv);

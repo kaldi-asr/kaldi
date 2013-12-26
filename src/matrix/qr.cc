@@ -65,7 +65,7 @@ void House(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
   else {
     // When we say x1 = x[0], we reference the one-based indexing
     // in Golub and Van Loan.
-    Real x1 = x[0] * s, mu = sqrt(x1*x1 + sigma);
+    Real x1 = x[0] * s, mu = std::sqrt(x1*x1 + sigma);
     if (x1 <= 0) {
       v[0] = x1 - mu;
     } else {
@@ -111,7 +111,7 @@ void HouseBackward(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
                "Tridiagonalizing matrix that is too large or has NaNs.");
   if (sigma == 0.0) *beta = 0.0;
   else {
-    Real x1 = x[dim-1]*s, mu = sqrt(x1*x1 + sigma);
+    Real x1 = x[dim-1]*s, mu = std::sqrt(x1*x1 + sigma);
     if (x1 <= 0) {
       v[dim-1] = x1 - mu;
     } else {
@@ -162,7 +162,7 @@ void SpMatrix<Real>::Tridiagonalize(MatrixBase<Real> *Q) {
     // this relies on the fact that w and p are the same pointer.
     // We're doing A(k, k-1) = ||Arow||.  It happens that this element
     // is indexed at ksize + k - 1 in the packed lower-triangular format.
-    data[ksize + k - 1] = sqrt(cblas_Xdot(k, Arow, 1, Arow, 1));
+    data[ksize + k - 1] = std::sqrt(cblas_Xdot(k, Arow, 1, Arow, 1));
     for (MatrixIndexT i = 0; i + 1 < k; i++)
       data[ksize + i] = 0; // This is not in Golub and Van Loan but is
     // necessary if we're not using parts of A to store the Householder
@@ -227,7 +227,7 @@ void QrStep(MatrixIndexT n,
   Real   d = (diag[n-2] - diag[n-1]) / 2.0,
       t2_n_n1 = off_diag[n-2]*off_diag[n-2],
       sgn_d = (d > 0.0 ? 1.0 : (d < 0.0 ? -1.0 : 0.0)),
-      mu = diag[n-1] - t2_n_n1 / (d + sgn_d*sqrt(d*d + t2_n_n1)),
+      mu = diag[n-1] - t2_n_n1 / (d + sgn_d*std::sqrt(d*d + t2_n_n1)),
       x = diag[0] - mu,
       z = off_diag[0];
   Real *Qdata = (Q == NULL ? NULL : Q->Data());
@@ -484,7 +484,7 @@ void SpMatrix<Real>::TopEigs(VectorBase<Real> *s, MatrixBase<Real> *P,
       // OK, at this point we're satisfied that r is orthogonal
       // to all previous rows.
       KALDI_ASSERT(end_prod != 0.0); // should have looped.
-      r.Scale(1.0 / sqrt(end_prod)); // make it unit.
+      r.Scale(1.0 / std::sqrt(end_prod)); // make it unit.
       Q.Row(d+1).CopyFromVec(r);
     }
   }
