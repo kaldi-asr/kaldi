@@ -1,8 +1,9 @@
 // cudamatrix/cu-device.cc
 
-// Copyright 2009-2012  Karel Vesely
+// Copyright 2009-2013  Karel Vesely
 //                2013  Lucas Ondel
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//                2013  Ricky Chan Ho Yin	
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -570,6 +571,8 @@ void* CuAllocator::MallocInternal(size_t row_bytes,
   // row_bytes == 0, and num_rows is just the size to be allocated.
   KALDI_ASSERT(num_rows != 0 && (row_bytes != 0) == (pitch_out != NULL));
   
+  int32 max_retry = 3;
+
   MemInfoForSize *info = FindMemInfo(row_bytes, num_rows);
   if (!info->freed.empty()) { // We can satisfy the request with cached,
                               // previously-allocated memory.
@@ -584,35 +587,40 @@ void* CuAllocator::MallocInternal(size_t row_bytes,
     void *ans;
     if (row_bytes == 0) { // Simple malloc request, not "MallocPitch".
       size_t size = num_rows;
+      int32 cur_retry = 0;
       int32 ret = cudaMalloc(&ans, size);
-      if (ret != 0) {
+      while (ret != 0 && cur_retry < max_retry) {
         KALDI_WARN << "Allocation of memory block of " << size << " bytes "
                    << "failed, releasing cached memory and retrying.";
         cudaGetLastError(); // reset the error state
         ReleaseAllCachedMemory();
+        cur_retry++;
         ret = cudaMalloc(&ans, size);
-        if (ret != 0)
-          KALDI_WARN << "Allocation failed for the second time.    Printing "
-                    << "device memory usage and exiting";
-          device_->PrintMemoryUsage();
-          KALDI_ERR << "Memory allocation failure";
+        if (ret != 0) KALDI_WARN << "Allocation failed for the " << cur_retry+1 << " time.";
+      }
+      if (cur_retry == max_retry) {
+        KALDI_WARN << "Printing device memory usage and exiting ";
+        device_->PrintMemoryUsage();
+        KALDI_ERR << "Memory allocation failure";
       }
     } else {
       size_t pitch;
+      int32 cur_retry = 0;
       int32 ret = cudaMallocPitch(&ans, &pitch, row_bytes, num_rows);
-      if (ret != 0) { // allocation failed...
+      while (ret != 0 && cur_retry < max_retry) { // allocation failed...
         KALDI_WARN << "Allocation of " << num_rows << " rows, each of size "
                    << row_bytes << " bytes failed,  releasing cached "
                    << "memory and retrying.";
         cudaGetLastError(); // reset the error state
         ReleaseAllCachedMemory();
+        cur_retry++;
         ret = cudaMallocPitch(&ans, &pitch, row_bytes, num_rows);
-        if (ret != 0) {
-          KALDI_WARN << "Allocation failed for the second time.    Printing "
-                    << "device memory usage and exiting";
-          device_->PrintMemoryUsage();
-          KALDI_ERR << "Memory allocation failure";
-        }
+        if (ret != 0) KALDI_WARN << "Allocation failed for the " << cur_retry+1 << " time.";
+      }
+      if (cur_retry == max_retry) {
+        KALDI_WARN << "Printing device memory usage and exiting ";
+        device_->PrintMemoryUsage();
+        KALDI_ERR << "Memory allocation failure";
       }
       KALDI_ASSERT(pitch > 0);
       if (info->pitch == 0) { // First allocation; have not set info->pitch yet.
