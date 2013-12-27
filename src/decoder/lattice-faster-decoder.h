@@ -46,6 +46,9 @@ struct LatticeFasterDecoderConfig {
   int32 max_arcs; // max #arcs in lattice.
   BaseFloat beam_delta; // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
+  BaseFloat prune_scale;   // Note: we don't make this configurable on the command line,
+                           // it's not a very important parameter.  It affects the
+                           // algorithm that prunes the tokens as we go.
   LatticeFasterDecoderConfig(): beam(16.0),
                                 max_active(std::numeric_limits<int32>::max()),
                                 min_active(200),
@@ -56,7 +59,8 @@ struct LatticeFasterDecoderConfig {
                                 max_loop(0), // means we don't use this constraint.
                                 max_arcs(-1),
                                 beam_delta(0.5),
-                                hash_ratio(2.0) { }
+                                hash_ratio(2.0),
+                                prune_scale(0.1) { }
   void Register(OptionsItf *po) {
     po->Register("beam", &beam, "Decoding beam.");
     po->Register("max-active", &max_active, "Decoder max active states.");
@@ -74,7 +78,8 @@ struct LatticeFasterDecoderConfig {
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0 
-                 && prune_interval > 0 && beam_delta > 0.0 && hash_ratio >= 1.0);
+                 && prune_interval > 0 && beam_delta > 0.0 && hash_ratio >= 1.0
+                 && prune_scale > 0.0 && prune_scale < 1.0);
   }
 };
 
@@ -118,18 +123,20 @@ class LatticeFasterDecoder {
   
   /// says whether a final-state was active on the last frame.  If it was not, the
   /// lattice (or traceback) will end with states that are not final-states.
-  bool ReachedFinal() const { return final_active_; }
+  bool ReachedFinal() const {
+    return FinalRelativeCost() != std::numeric_limits<BaseFloat>::infinity();
+  }
 
   // Outputs an FST corresponding to the single best path
-  // through the lattice.
+  // through the lattice.  Returns true if result is nonempty.
   bool GetBestPath(fst::MutableFst<LatticeArc> *ofst) const;
 
   // Outputs an FST corresponding to the raw, state-level
-  // tracebacks.
+  // tracebacks.  Returns true if result is nonempty.
   bool GetRawLattice(fst::MutableFst<LatticeArc> *ofst) const;
 
-  // Outputs an FST corresponding to the lattice-determinized
-  // lattice (one path per word sequence).
+  // Outputs an FST corresponding to the lattice-determinized lattice (one path
+  // per word sequence).  Returns true if result is nonempty.
   bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const;
 
   /// InitDecoding initializes the decoding, and should only be used if you
@@ -145,6 +152,17 @@ class LatticeFasterDecoder {
   void DecodeNonblocking(DecodableInterface *decodable,
                          int32 max_num_frames = -1);
 
+  /// This function may be optionally called after DecodeNonblocking(), when you
+  /// do not plan to decode any further.  It does an extra pruning step that
+  /// will help to prune the lattices output by GetLattice and (particularly)
+  /// GetRawLattice more accurately, particularly toward the end of the
+  /// utterance.  It does this by using the final-probs in pruning (if any
+  /// final-state survived); it also does a final pruning step that visits all
+  /// states (the pruning that is done during decoding may fail to prune states
+  /// that are within kPruningScale = 0.1 outside of the beam).  If you call
+  /// this, you cannot call DecodeNonblocking again (it will fail).
+  void FinalizeDecoding();
+
   /// FinalRelativeCost() serves the same function as ReachedFinal(), but gives
   /// more information.  It returns the difference between the best (final-cost
   /// plus cost) of any token on the final frame, and the best cost of any token
@@ -155,7 +173,7 @@ class LatticeFasterDecoder {
   /// reasonable likelihood.
   BaseFloat FinalRelativeCost() const;
 
-  int32 NumFramesDecoded() { return active_toks_.size() - 1; }
+  inline int32 NumFramesDecoded() { return active_toks_.size() - 1; }
  private:
   struct Token;
   // ForwardLinks are the links from a token to a token on the next frame.
@@ -245,7 +263,23 @@ class LatticeFasterDecoder {
                          bool *links_pruned,
                          BaseFloat delta);
 
-
+  // This function computes, the final-costs for tokens active on the final
+  // frame.  It outputs to final-costs, if non-NULL, a map from the Token*
+  // pointer to the final-prob of the corresponding state, or zero for all states if
+  // none were final.  It outputs to final_relative_cost, if non-NULL, the
+  // difference between the best forward-cost including the final-prob cost, and
+  // the best forward-cost without including the final-prob cost (this will
+  // usually be positive), or infinity if there were no final-probs.  It outputs
+  // to final_best_cost, if non-NULL, the lowest for any token t active on the
+  // final frame, of t + final-cost[t], where final-cost[t] is the final-cost
+  // in the graph of the state corresponding to token t, or zero if there
+  // were no final-probs active on the final frame.
+  // You cannot call this after FinalizeDecoding() has been called; in that
+  // case you should get the answer from class-member variables.
+  void ComputeFinalCosts(unordered_map<Token*, BaseFloat> *final_costs,
+                         BaseFloat *final_relative_cost,
+                         BaseFloat *final_best_cost) const;
+  
   // PruneForwardLinksFinal is a version of PruneForwardLinks that we call
   // on the final frame.  If there are final tokens active, it uses
   // the final-probs for pruning, otherwise it treats all tokens as final.
@@ -266,10 +300,6 @@ class LatticeFasterDecoder {
   // propagating the change.  for a larger delta, we will recurse less far back
   void PruneActiveTokens(BaseFloat delta);
 
-  /// Version of PruneActiveTokens that we call on the final frame.
-  /// Takes into account the final-prob of tokens.
-  void PruneActiveTokensFinal();
-  
   /// Gets the weight cutoff.  Also counts the active tokens.
   BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
                       BaseFloat *adaptive_beam, Elem **best_elem);
@@ -285,8 +315,13 @@ class LatticeFasterDecoder {
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of
-  // them at a time can be indexed by StateId.
+  // them at a time can be indexed by StateId.  It is indexed by frame-index
+  // plus one, where the frame-index is zero-based, as used in decodable object.
+  // That is, the emitting probs of frame t are accounted for in tokens at
+  // toks_[t+1].  The zeroth frame is for nonemitting transition at the start of
+  // the graph.
   HashList<StateId, Token*> toks_;
+  
   std::vector<TokenList> active_toks_; // Lists of tokens, indexed by
   // frame (members of TokenList are toks, must_prune_forward_links,
   // must_prune_tokens).
@@ -301,10 +336,21 @@ class LatticeFasterDecoder {
   LatticeFasterDecoderConfig config_;
   int32 num_toks_; // current total #toks allocated...
   bool warned_;
-  bool final_active_; // use this to say whether we found active final tokens
-  // on the last frame.
-  std::map<Token*, BaseFloat> final_costs_; // A cache of final-costs
-  // of tokens on the last frame-- it's just convenient to store it this way.
+
+  /// decoding_finalized_ is true if someone called FinalizeDecoding().  [note,
+  /// calling this is optional].  If true, it's forbidden to decode more.  Also,
+  /// if this is set, then the output of ComputeFinalCosts() is in the next
+  /// three variables.  The reason we need to do this is that after
+  /// FinalizeDecoding() calls PruneTokensForFrame() for the final frame, some
+  /// of the tokens on the last frame are freed, and some of the pointers in
+  /// toks_.GetList() will from that point be dangling.
+  
+  bool decoding_finalized_;
+  /// For the meaning of the next 3 variables, see the comment for
+  /// decoding_finalized_ above., and ComputeFinalCosts().
+  unordered_map<Token*, BaseFloat> final_costs_;
+  BaseFloat final_relative_cost_;
+  BaseFloat final_best_cost_;
   
   // There are various cleanup tasks... the the toks_ structure contains
   // singly linked lists of Token pointers, where Elem is the list type.

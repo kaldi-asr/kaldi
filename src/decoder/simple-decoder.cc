@@ -55,6 +55,29 @@ void SimpleDecoder::InitDecoding() {
   ProcessNonemitting();
 }
 
+void SimpleDecoder::DecodeNonblocking(DecodableInterface *decodable,
+                                      int32 max_num_frames) {
+  KALDI_ASSERT(num_frames_decoded_ >= 0 &&
+               "You must call InitDecoding() before DecodeNonblocking()");
+  int32 num_frames_ready = decodable->NumFramesReady();
+  // num_frames_ready must be >= num_frames_decoded, or else
+  // the number of frames ready must have decreased (which doesn't
+  // make sense) or the decodable object changed between calls
+  // (which isn't allowed).
+  KALDI_ASSERT(num_frames_ready >= num_frames_decoded_);
+  int32 target_frames_decoded = num_frames_ready;
+  if (max_num_frames >= 0)
+    target_frames_decoded = std::min(target_frames_decoded,
+                                     num_frames_decoded_ + max_num_frames);
+  while (num_frames_decoded_ < target_frames_decoded) {
+    // note: ProcessEmitting() increments num_frames_decoded_
+    ClearToks(prev_toks_);
+    cur_toks_.swap(prev_toks_);
+    ProcessEmitting(decodable);
+    ProcessNonemitting();
+    PruneToks(beam_, &cur_toks_);
+  }   
+}
 
 bool SimpleDecoder::ReachedFinal() const {
   for (unordered_map<StateId, Token*>::const_iterator iter = cur_toks_.begin();
@@ -72,8 +95,8 @@ BaseFloat SimpleDecoder::FinalRelativeCost() const {
   // pruning failure), return infinity.
   if (cur_toks_.empty())
     return std::numeric_limits<BaseFloat>::infinity();
-  Weight best_weight = Weight::Zero();
-  Weight best_weight_with_final = Weight::Zero();
+  Weight best_weight = Weight::Zero(),
+      best_weight_with_final = Weight::Zero();
   for (unordered_map<StateId, Token*>::const_iterator iter = cur_toks_.begin();
        iter != cur_toks_.end();
        ++iter) {
@@ -141,6 +164,7 @@ bool SimpleDecoder::GetBestPath(fst::MutableFst<fst::StdArc> *fst_out) const {
   fst::RemoveEpsLocal(fst_out);
   return true;
 }
+
 
 void SimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
   int32 frame = num_frames_decoded_;

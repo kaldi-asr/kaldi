@@ -96,7 +96,7 @@ class BiglmFasterDecoder {
   }
 
   bool ReachedFinal() {
-    for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
+    for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
       PairId state_pair = e->key;
       StateId state = PairToState(state_pair),
           lm_state = PairToLmState(state_pair);
@@ -121,12 +121,12 @@ class BiglmFasterDecoder {
     // to the best final token (i.e. the one with best weight best_weight, below).
     bool is_final = ReachedFinal();
     if (!is_final) {
-      for (Elem *e = toks_.GetList(); e != NULL; e = e->tail)
+      for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail)
         if (best_tok == NULL || *best_tok < *(e->val) )
           best_tok = e->val;
     } else {
       Weight best_weight = Weight::Zero();
-      for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
+      for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
         Weight fst_final = fst_.Final(PairToState(e->key)),
             lm_final = lm_diff_fst_->Final(PairToLmState(e->key)),
             final = Times(fst_final, lm_final);
@@ -404,7 +404,7 @@ class BiglmFasterDecoder {
   void ProcessNonemitting(BaseFloat cutoff) {
     // Processes nonemitting arcs for one frame. 
     KALDI_ASSERT(queue_.empty());
-    for (Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
+    for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
       queue_.push_back(e->key);
     while (!queue_.empty()) {
       PairId state_pair = queue_.back();

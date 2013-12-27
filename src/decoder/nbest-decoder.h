@@ -43,9 +43,9 @@ struct NBestDecoderOptions {
   BaseFloat beam_delta;
   BaseFloat hash_ratio;
   NBestDecoderOptions(): beam(16.0),
-                          max_active(std::numeric_limits<int32>::max()),
-                          n_best(1),
-                          beam_delta(0.5), hash_ratio(2.0) { }
+                         max_active(std::numeric_limits<int32>::max()),
+                         n_best(1),
+                         beam_delta(0.5), hash_ratio(2.0) { }
   void Register(OptionsItf *po, bool full) {  /// if "full", use obscure
     /// options too.
     /// Depends on program.
@@ -61,6 +61,15 @@ struct NBestDecoderOptions {
   }
 };
 
+/** Caution: this decoder was written essentially as testing code for lattice-faster-decoder,
+    and is not very useful; it would be better to pipe the lattices from lattice-faster-decoder
+    into lattice-to-nbest if you want an n-best list.  We will likely eventually delete this
+    from the trunk and leave it only in ^/branches/complete.
+
+    We are not planning to modify this decoder to support the "newer interface" with
+    InitDecoding() and DecodeNonblocking().
+*/
+
 class NBestDecoder {
  public:
   // maybe use fst<LatticeArc>/fst<CompactLatticeArc>, as in lat/kaldi-lattice.h
@@ -72,7 +81,7 @@ class NBestDecoder {
 
   // instantiate this class once for each thing you have to decode.
   NBestDecoder(const fst::Fst<fst::StdArc> &fst,
-                NBestDecoderOptions opts): fst_(fst), opts_(opts) {
+               NBestDecoderOptions opts): fst_(fst), opts_(opts) {
     assert(opts_.hash_ratio >= 1.0);  // less doesn't make much sense.
     assert(opts_.max_active > 1);
     toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
@@ -103,13 +112,11 @@ class NBestDecoder {
     for (int32 frame = 0; !decodable_->IsLastFrame(frame-1); frame++) {
       BaseFloat adaptive_beam = PropagateEmitting(frame);
       PropagateEpsilon(adaptive_beam);
-      // Prune();
-      // if (frame==12) break;
     }
   }
 
   bool ReachedFinal() {
-    for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
+    for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
       Weight this_weight = Times(e->val->c, fst_.Final(e->key));
       if (this_weight != Weight::Zero()) {
         return true;
@@ -119,7 +126,7 @@ class NBestDecoder {
   }
 
   bool GetNBestLattice(fst::MutableFst<CompactLatticeArc> *fst_out,
-                        bool *was_final, int32 *nbest, BaseFloat *nbest_beam) {
+                       bool *was_final, int32 *nbest, BaseFloat *nbest_beam) {
     // GetBestPath gets the decoding output.  If is_final == true, it limits itself
     // to final states; otherwise it gets the most likely token not taking into
     // account final-probs.  fst_out will be empty (Start() == kNoStateId) if
@@ -127,7 +134,7 @@ class NBestDecoder {
     // (thus, fst_out will be nonempty), otherwise zero.
     int n_paths = 0;
     BaseFloat worst_final = 0.0,
-              best_final = std::numeric_limits<BaseFloat>::infinity();
+        best_final = std::numeric_limits<BaseFloat>::infinity();
     *was_final = ReachedFinal();
     Elem *last_toks = toks_.Clear(); // P <- C , C = {}
     Token *tok = token_store_.CreateTok(0, NULL);
@@ -167,7 +174,7 @@ class NBestDecoder {
     for (Elem *e = last_toks, *e_tail = NULL; e != NULL; e = e_tail) {
       Token *best_tok = e->val;
       BaseFloat amscore = best_tok->ca.Value(),
-                lmscore = best_tok->c.Value() - amscore;
+          lmscore = best_tok->c.Value() - amscore;
       if (KALDI_ISINF(amscore) || KALDI_ISINF(lmscore)) {
         KALDI_WARN << "infinity token! probably too narrow beam to retrieve n best";
         e_tail = e->tail;
@@ -217,16 +224,16 @@ class NBestDecoder {
     RemoveEpsLocal(fst_out);
     return true;
   }
-//  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out, bool *was_final) {
-//    fst::VectorFst<CompactLatticeArc> fst, fst_one;
-//    if (!GetNBestLattice(&fst, was_final)) return false;
-    // std::cout << "n-best paths:\n";
-    // fst::FstPrinter<CompactLatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
-    // fstprinter.Print(&std::cout, "standard output");
-//    ShortestPath(fst, &fst_one);
-//    ConvertLattice(fst_one, fst_out, true);
-//    return true;
-//  } 
+  //  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out, bool *was_final) {
+  //    fst::VectorFst<CompactLatticeArc> fst, fst_one;
+  //    if (!GetNBestLattice(&fst, was_final)) return false;
+  // std::cout << "n-best paths:\n";
+  // fst::FstPrinter<CompactLatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
+  // fstprinter.Print(&std::cout, "standard output");
+  //    ShortestPath(fst, &fst_one);
+  //    ConvertLattice(fst_one, fst_out, true);
+  //    return true;
+  //  } 
   
  private:
 
@@ -263,8 +270,8 @@ class NBestDecoder {
           if (t1 == t2) { return true; }
           if ((!t1) || (!t2)) { return false; }
         }
-	KALDI_ASSERT(false); // should never reach this point
-	return true;
+        KALDI_ASSERT(false); // should never reach this point
+        return true;
       }
     };
     typedef HashList<StateId, Token*> TokenHash;
@@ -365,7 +372,7 @@ class NBestDecoder {
       tmp->previous = prev;
       if (prev) {
         prev->refs++;
-	tmp->hash = prev->hash * 97 + static_cast<unsigned>(output);
+        tmp->hash = prev->hash * 97 + static_cast<unsigned>(output);
       } else {
         tmp->hash = static_cast<unsigned>(output);
       }
@@ -399,8 +406,8 @@ class NBestDecoder {
         if (tok == new_tok) { return false; }
         BaseFloat w = static_cast<BaseFloat>(tok->c.Value());
         if (w > worst_weight) {
-           worst_weight = w;
-           worst_elem = e;
+          worst_weight = w;
+          worst_elem = e;
         }
         if (tok->Equal(new_tok)) { // if they have the same output sequence
           if (w < new_weight) {
@@ -430,7 +437,7 @@ class NBestDecoder {
       }
     }
     inline Token* Advance(Token *source, Arc &arc, int32 frame,
-        BaseFloat cutoff) {
+                          BaseFloat cutoff) {
       // compute new weight	
       Weight w = Times(source->c, arc.weight);
       Weight amscore = Weight::One();
@@ -440,7 +447,7 @@ class NBestDecoder {
       }
       Weight wa = Times(source->ca, amscore);
       if (w.Value() > cutoff) {  // prune
-          return NULL;
+        return NULL;
       }
       // create new token  
       Token *tok;
@@ -559,8 +566,8 @@ class NBestDecoder {
       StateId state = best_elem->key;
       Token *tok = best_elem->val;
       for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
-          !aiter.Done();
-          aiter.Next()) {
+           !aiter.Done();
+           aiter.Next()) {
         Arc arc = aiter.Value();
         if (arc.ilabel != 0) {  // propagate..
           arc.weight = Times(arc.weight,
@@ -588,12 +595,12 @@ class NBestDecoder {
         // np++;
         // assert(state == tok->arc_.nextstate);
         for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
-            !aiter.Done(); aiter.Next()) {
-        // for all a in A(state)    
+             !aiter.Done(); aiter.Next()) {
+          // for all a in A(state)    
           Arc arc = aiter.Value();
           if (arc.ilabel != 0) {  // propagate only emitting
             Token *new_tok = 
-	      token_store_.Advance(tok, arc, frame, next_weight_cutoff);
+                token_store_.Advance(tok, arc, frame, next_weight_cutoff);
             if (new_tok) {
               Elem *e_found = toks_.Find(arc.nextstate);
               if (e_found == NULL) {
@@ -619,7 +626,7 @@ class NBestDecoder {
     assert(queue_.empty());
     queue_.max_load_factor(1.0);
     float best_weight = 1.0e+10;
-    for (Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
+    for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
       // queue_.push_back(e->key);
       queue_.insert(e->key);
       best_weight = std::min(best_weight, e->val->c.Value());
@@ -647,7 +654,7 @@ class NBestDecoder {
         // assert(tok != NULL && state == tok->arc_.nextstate);
         assert(tok != NULL);
         for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
-            !aiter.Done(); aiter.Next()) {
+             !aiter.Done(); aiter.Next()) {
           // for all a in A(state)
           Arc arc = aiter.Value();
           if (arc.ilabel == 0) {  // propagate nonemitting only...
@@ -698,7 +705,6 @@ class NBestDecoder {
       toks_.Delete(e);
     }
   }
-
 };
 
 

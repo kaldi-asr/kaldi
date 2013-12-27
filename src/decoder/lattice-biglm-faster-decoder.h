@@ -756,7 +756,7 @@ class LatticeBiglmFasterDecoder {
 
     KALDI_ASSERT(queue_.empty());
     BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
-    for (Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
+    for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
       queue_.push_back(e->key);
       // for pruning with current best token
       best_cost = std::min(best_cost, static_cast<BaseFloat>(e->val->tot_cost));

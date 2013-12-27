@@ -80,9 +80,13 @@ class FasterDecoder {
   ~FasterDecoder() { ClearToks(toks_.Clear()); }
 
   void Decode(DecodableInterface *decodable);
-  
+
+  /// Returns true if a final state was active on the last frame.
   bool ReachedFinal();
 
+  /// Returns true if the output best path was not the empty
+  /// FST (will only return false in unusual circumstances where
+  /// no tokens survived).
   bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out);
 
   /// As a new alternative to Decode(), you can call InitDecoding

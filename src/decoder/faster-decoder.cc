@@ -76,7 +76,7 @@ void FasterDecoder::DecodeNonblocking(DecodableInterface *decodable,
 
 
 bool FasterDecoder::ReachedFinal() {
-  for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
+  for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
     Weight this_weight = Times(e->val->weight_, fst_.Final(e->key));
     if (this_weight != Weight::Zero())
       return true;
@@ -94,12 +94,12 @@ bool FasterDecoder::GetBestPath(fst::MutableFst<LatticeArc> *fst_out) {
   Token *best_tok = NULL;
   bool is_final = ReachedFinal();
   if (!is_final) {
-    for (Elem *e = toks_.GetList(); e != NULL; e = e->tail)
+    for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail)
       if (best_tok == NULL || *best_tok < *(e->val) )
         best_tok = e->val;
   } else {
     Weight best_weight = Weight::Zero();
-    for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
+    for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
       Weight this_weight = Times(e->val->weight_, fst_.Final(e->key));
       if (this_weight != Weight::Zero() &&
           this_weight.Value() < best_weight.Value()) {
@@ -305,7 +305,7 @@ BaseFloat FasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
 void FasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
   // Processes nonemitting arcs for one frame. 
   KALDI_ASSERT(queue_.empty());
-  for (Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
+  for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
     queue_.push_back(e->key);
   while (!queue_.empty()) {
     StateId state = queue_.back();

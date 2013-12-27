@@ -66,7 +66,7 @@ template<class Int, class T> void TestHashList() {
     }
 
     // Now make sure h and m2 are the same.
-    Elem *list = hash.GetList();
+    const Elem *list = hash.GetList();
     size_t count = 0;
     for (; list != NULL; list = list->tail, count++) {
       KALDI_ASSERT(m1[list->key] == list->val);

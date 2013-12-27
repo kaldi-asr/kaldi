@@ -1,7 +1,7 @@
 // decoder/lattice-tracking-decoder.h
 
 // Copyright 2012 BUT (Author: Mirko Hannemann) Johns Hopkins University
-// (Author: Daniel Povey)
+//                    (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -101,7 +101,10 @@ struct LatticeTrackingDecoderConfig {
    the ilabels contain the state in HCLG (corresponding to the preceding-state of
    the arc in the lattice), and the olabels contain the arc index corresponding to
    that transition in the lattice, i.e. the offset into the list of arcs transitioning
-   from that state in HCLG.   
+   from that state in HCLG.
+
+   Since this decocer is somewhat special-purpose, and is not widely used in the
+   recipes, we are not updating it to the "new interface" with DecodeNonblocking().
  */
 class LatticeTrackingDecoder {
  public:

@@ -1,6 +1,7 @@
 // util/hash-list-inl.h
 
-// Copyright 2009-2011     Microsoft Corporation
+// Copyright 2009-2011   Microsoft Corporation
+//                2013   Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -56,7 +57,7 @@ typename HashList<I, T>::Elem* HashList<I, T>::Clear() {
 }
 
 template<class I, class T>
-typename HashList<I, T>::Elem* HashList<I, T>::GetList() {
+const typename HashList<I, T>::Elem* HashList<I, T>::GetList() const {
   return list_head_;
 }
 

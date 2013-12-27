@@ -125,8 +125,8 @@ class OnlineCmvn : public OnlineFeatureInterface {
   //
   // Next, functions that are not in the interface.
   //
-  OnlineCmvn(int32 cmvn_window, OnlineFeatureInterface *src, bool is_online):
-    cmvn_window_(cmvn_window), src_(src), is_online_(is_online) { }
+  OnlineCmvn(int32 cmvn_window, OnlineFeatureInterface *src):
+      cmvn_window_(cmvn_window), src_(src), is_online_(true) { }
 
   /// The GetStats function returns statistics
   /// which are needed to compute Cepstral mean and variance.
@@ -172,9 +172,9 @@ class OnlineSpliceFrames: public OnlineFeatureInterface {
   // Next, functions that are not in the interface.
   //
   OnlineSpliceFrames(int32 left_context, int32 right_context,
-                     OnlineFeatureInterface *src, bool is_online=true):
+                     OnlineFeatureInterface *src):
       left_context_(left_context), right_context_(right_context), 
-      src_(src), is_online_(is_online) { }
+      src_(src), is_online_(true) { }
   
  private:
   int32 left_context_;

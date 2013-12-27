@@ -44,9 +44,10 @@ class SimpleDecoder {
 
   ~SimpleDecoder();
 
-  // Returns true if any tokens reached the end of the file (regardless of
-  // whether they are in a final state); query ReachedFinal() after Decode()
-  // to see whether we reached a final state.
+  /// Decode this utterance.
+  /// Returns true if any tokens reached the end of the file (regardless of
+  /// whether they are in a final state); query ReachedFinal() after Decode()
+  /// to see whether we reached a final state.
   bool Decode(DecodableInterface *decodable);
 
   bool ReachedFinal() const;
@@ -76,7 +77,8 @@ class SimpleDecoder {
 
   /// This will decode until there are no more frames ready in the decodable
   /// object, but if max_num_frames is >= 0 it will decode no more than
-  /// that many frames.
+  /// that many frames.  If it returns false, then no tokens are alive,
+  /// which is a kind of error state.
   void DecodeNonblocking(DecodableInterface *decodable,
                          int32 max_num_frames = -1);
   

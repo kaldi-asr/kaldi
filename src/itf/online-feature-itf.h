@@ -58,6 +58,18 @@ class OnlineFeatureInterface {
   /// feature.
   virtual void Recompute();
 
+  /// This sets the online mode (online or not online) of the feature
+  /// computation.  On initialization, the class should be in online mode.  If
+  /// you call SetOnlineMode(false), it should then return features that are the
+  /// same as if you had computed them in batch mode; for example, batch-mode
+  /// cepstral mean normalization (CMN) instead of online CMN.  The imagined
+  /// use-case is to first generate a lattice using online-mode features, 
+  /// then rescore them using batch-mode features.  This function will typically
+  /// call SetOnlineMode from any source object of type OnlineFeatureInterface.
+  /// See examples in ../feat/online/feature.h.
+  virtual void SetOnlineMode(bool is_online);
+  
+
   /// Returns true if this is the last frame.  Frames are zero-based, so the
   /// first frame is zero.  IsLastFrame(-1) will return false, unless the file
   /// is empty (which is a case that I'm not sure all the code will handle, so
