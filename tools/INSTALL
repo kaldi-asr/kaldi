@@ -10,7 +10,8 @@ an option like "-j 4" to "make"; this will speed things up.
  installed on your system; ignore it unless you get errors from
  ../src/configure.]
 
----
+**** IGNORE THE REST OF THIS FILE!  ****
+
 The rest of this file contains the old, manual instructions, which
 we keep around in case they are useful for someone, but they are
 basically deprecated.
