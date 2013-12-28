@@ -160,8 +160,6 @@ int main(int argc, char *argv[]) {
           KALDI_WARN << "Decoder did not reach end-state, "
                      << "outputting partial traceback since --allow-partial=true";
         num_success++;
-        if (!decoder.ReachedFinal())
-          KALDI_WARN << "Decoder did not reach end-state, outputting partial traceback.";
         std::vector<int32> alignment;
         std::vector<int32> words;
         LatticeWeight weight;

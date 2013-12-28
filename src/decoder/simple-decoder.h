@@ -25,6 +25,7 @@
 
 #include "util/stl-utils.h"
 #include "fst/fstlib.h"
+#include "lat/kaldi-lattice.h"
 #include "itf/decodable-itf.h"
 
 namespace kaldi {
@@ -35,10 +36,10 @@ namespace kaldi {
  */
 class SimpleDecoder {
  public:
-  typedef fst::StdArc Arc;
-  typedef Arc::Label Label;
-  typedef Arc::StateId StateId;
-  typedef Arc::Weight Weight;
+  typedef fst::StdArc StdArc;
+  typedef StdArc::Weight StdWeight;
+  typedef StdArc::Label Label;
+  typedef StdArc::StateId StateId;
   
   SimpleDecoder(const fst::Fst<fst::StdArc> &fst, BaseFloat beam): fst_(fst), beam_(beam) { }
 
@@ -58,8 +59,8 @@ class SimpleDecoder {
   // fst_out will be empty (Start() == kNoStateId) if nothing was available due to
   // search error.
   // If Decode() returned true, it is safe to assume GetBestPath will return true.
-  bool GetBestPath(fst::MutableFst<fst::StdArc> *fst_out) const;
-
+  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out) const;
+  
   /// *** The next functions are from the "new interface". ***
   
   /// FinalRelativeCost() serves the same function as ReachedFinal(), but gives
@@ -89,21 +90,28 @@ class SimpleDecoder {
 
   class Token {
    public:
-    Arc arc_;
+    LatticeArc arc_; // We use LatticeArc so that we can separately
+                     // store the acoustic and graph cost, in case
+                     // we need to produce lattice-formatted output.
     Token *prev_;
     int32 ref_count_;
-    Weight weight_; // accumulated weight up to this point.
-    Token(const Arc &arc, Token *prev): arc_(arc), prev_(prev), ref_count_(1) {
+    double cost_; // accumulated total cost up to this point.
+    Token(const StdArc &arc,
+          BaseFloat acoustic_cost,
+          Token *prev): prev_(prev), ref_count_(1) {
+      arc_.ilabel = arc.ilabel;
+      arc_.olabel = arc.olabel;
+      arc_.weight = LatticeWeight(arc.weight.Value(), acoustic_cost);
+      arc_.nextstate = arc.nextstate;
       if (prev) {
         prev->ref_count_++;
-        weight_ = Times(prev->weight_, arc.weight);
+        cost_ = prev->cost_ + (arc.weight.Value() + acoustic_cost);
       } else {
-        weight_ = arc.weight;
+        cost_ = arc.weight.Value() + acoustic_cost;
       }
     }
     bool operator < (const Token &other) {
-      return weight_.Value() > other.weight_.Value();
-      // This makes sense for log + tropical semiring.
+      return cost_ > other.cost_;
     }
 
     static void TokenDelete(Token *tok) {

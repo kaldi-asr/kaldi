@@ -42,8 +42,14 @@ int main(int argc, char *argv[]) {
     BaseFloat delta = 0.1; // Use a relatively high delta as for long paths, the absolute
     // scores can be quite large.
     int32 num_paths = 20;
-    po.Register("delta", &delta, "Delta parameter for equivalence test");
-    po.Register("num-paths", &num_paths, "Number of paths per lattice for testing randomized equivalence");
+    BaseFloat max_error_proportion = 0.0;
+    po.Register("delta", &delta,
+                "Delta parameter for equivalence test");
+    po.Register("num-paths", &num_paths,
+                "Number of paths per lattice for testing randomized equivalence");
+    po.Register("max-error-proportion", &max_error_proportion,
+                "Maximum proportion of missing 2nd lattices, or inequivalent "
+                "lattices, we allow before returning nonzero status");
     
     po.Read(argc, argv);
 
@@ -52,6 +58,8 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    KALDI_ASSERT(max_error_proportion >= 0.0 && max_error_proportion <= 1.0);
+    
     std::string lats_rspecifier1 = po.GetArg(1),
         lats_rspecifier2 = po.GetArg(2);
 
@@ -85,7 +93,11 @@ int main(int argc, char *argv[]) {
               << n_equivalent << " were equivalent, " << n_inequivalent
               << " were not; for " << n_no2nd << ", could not find 2nd lattice."; 
 
-    return (n_inequivalent == 0);
+    int32 num_inputs = n_equivalent + n_inequivalent + n_no2nd;
+    int32 max_bad = max_error_proportion * num_inputs;
+                
+    if (n_no2nd > max_bad) return -1; // treat this as error.
+    else return (n_inequivalent > max_bad ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

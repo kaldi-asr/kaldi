@@ -1,6 +1,7 @@
 // gmmbin/gmm-decode-simple.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2013  Johns Hopkins University
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -26,6 +27,8 @@
 #include "fstext/fstext-lib.h"
 #include "decoder/simple-decoder.h"
 #include "gmm/decodable-am-diag-gmm.h"
+#include "fstext/lattice-utils.h"
+#include "lat/kaldi-lattice.h"
 #include "util/timer.h"
 
 
@@ -40,7 +43,12 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Decode features using GMM-based model.\n"
-        "Usage:   gmm-decode-simple [options] model-in fst-in features-rspecifier words-wspecifier [alignments-wspecifier]\n";
+        "Viterbi decoding, Only produces linear sequence; any lattice\n"
+        "produced is linear\n"
+        "\n"
+        "Usage:   gmm-decode-simple [options] <model-in> <fst-in> "
+        "<features-rspecifier> <words-wspecifier> [<alignments-wspecifier>] "
+        "[<lattice-wspecifier>]";
     ParseOptions po(usage);
     Timer timer;
     bool allow_partial = true; 
@@ -57,7 +65,7 @@ int main(int argc, char *argv[]) {
                 "Produce output even when final state was not reached");
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 4 || po.NumArgs() > 5) {
+    if (po.NumArgs() < 4 || po.NumArgs() > 6) {
       po.PrintUsage();
       exit(1);
     }
@@ -66,7 +74,8 @@ int main(int argc, char *argv[]) {
         fst_in_filename = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
         words_wspecifier = po.GetArg(4),
-        alignment_wspecifier = po.GetOptArg(5);
+        alignment_wspecifier = po.GetOptArg(5),
+        lattice_wspecifier = po.GetOptArg(6);
 
     TransitionModel trans_model;
     AmDiagGmm am_gmm;
@@ -82,6 +91,8 @@ int main(int argc, char *argv[]) {
     Int32VectorWriter words_writer(words_wspecifier);
 
     Int32VectorWriter alignment_writer(alignment_wspecifier);
+
+    CompactLatticeWriter clat_writer(lattice_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") 
@@ -110,7 +121,7 @@ int main(int argc, char *argv[]) {
                                              acoustic_scale);
       decoder.Decode(&gmm_decodable);
 
-      VectorFst<StdArc> decoded;  // linear FST.
+      VectorFst<LatticeArc> decoded;  // linear FST.
 
       if ( (allow_partial || decoder.ReachedFinal())
            && decoder.GetBestPath(&decoded) ) {
@@ -118,19 +129,26 @@ int main(int argc, char *argv[]) {
           KALDI_WARN << "Decoder did not reach end-state, "
                      << "outputting partial traceback since --allow-partial=true";
         num_success++;
-        if (!decoder.ReachedFinal())
-          KALDI_WARN << "Decoder did not reach end-state, outputting partial traceback.";
 
         std::vector<int32> alignment;
         std::vector<int32> words;
-        StdArc::Weight weight;
+        LatticeWeight weight;
         frame_count += features.NumRows();
 
         GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
 
         words_writer.Write(utt, words);
-        if (alignment_writer.IsOpen())
+        if (alignment_wspecifier != "")
           alignment_writer.Write(utt, alignment);
+        if (lattice_wspecifier != "") {
+          // We'll write the lattice without acoustic scaling.
+          if (acoustic_scale != 0.0)
+            fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale),
+                              &decoded);
+          fst::VectorFst<CompactLatticeArc> clat;
+          ConvertLattice(decoded, &clat, true);
+          clat_writer.Write(utt, clat);
+        }
         if (word_syms != NULL) {
           std::cerr << utt << ' ';
           for (size_t i = 0; i < words.size(); i++) {
@@ -141,7 +159,7 @@ int main(int argc, char *argv[]) {
           }
           std::cerr << '\n';
         }
-        BaseFloat like = -weight.Value();
+        BaseFloat like = -ConvertToCost(weight);
         tot_like += like;
         KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
                   << (like / features.NumRows()) << " over "

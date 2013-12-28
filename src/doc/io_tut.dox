@@ -159,6 +159,13 @@ already being used.  It is particularly useful with tables (see next section).
      because we have made the copy-matrix program support non-table I/O directly,
      so you could have written just "copy-matrix - -".  If you have to use
      this trick too much, it's better to modify the program concerned.
+   - If you want to extract just one member from an archive, you can use the ",p" option for the "scp:" wspecifier to
+     cause it to write out just that element, and ignore the other missing elements in the scp file.
+     Suppose the key you want is "foo_bar" and an archive named some_archive.ark contains matrices, then
+     you could extract that element as follows:
+\verbatim
+     copy-matrix 'ark:some_archive.ark' 'scp,t,p:echo foo_bar -|'
+\endverbatim
    - In certain cases the archive-reading code allows for limited type conversion, e.g.
      between float and double for matrices, or Lattice and CompactLattice for lattices.
 

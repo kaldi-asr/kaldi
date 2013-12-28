@@ -1,6 +1,7 @@
 // util/kaldi-table.h
 
-// Copyright 2009-2011     Microsoft Corporation
+// Copyright 2009-2011    Microsoft Corporation
+//                2013    Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -57,21 +58,24 @@ typedef std::vector<std::string> KeyList;
 //
 //  ark:wxfilename
 //  scp:rxfilename
-//  ark, scp:filename, wxfilename
-//  ark, scp:filename, wxfilename
+//  ark,scp:filename,wxfilename
+//  ark,scp:filename,wxfilename
 //
 //
 //  We also allow the following modifiers:
 //  t means text mode.
 //  b means binary mode.
 //  f means flush the stream after writing each entry.
-//  (nf means don't flush, and isn't very useful as the default is to flush).
+//   (nf means don't flush, and isn't very useful as the default is to flush).
+//  p means permissive mode, when writing to an "scp" file only: will ignore
+//     missing scp entries, i.e. won't write anything for those files but will
+//     return success status).
 //
 //  So the following are valid wspecifiers:
-//  b, f, ark:foo
-//  "b, f, ark:| gzip -c > foo"
-//  "t, nf, ark, scp:foo.ark, |gzip -c > foo.scp.gz"
-//  b, ark:-
+//  ark,b,f:foo
+//  "ark,b,b:| gzip -c > foo"
+//  "ark,scp,t,nf:foo.ark,|gzip -c > foo.scp.gz"
+//  ark,b:-
 //
 //  The meanings of rxfilename and wxfilename are as described in
 //  kaldi-stream.h (they are filenames but include pipes, stdin/stdout
@@ -89,14 +93,14 @@ typedef std::vector<std::string> KeyList;
 //  would be:
 //   key xfilename
 //
-//  The type ark, scp:filename, xfilename means
+//  The type ark,scp:filename,wxfilename means
 //  we write both an archive and an scp file that specifies offsets into the
 //  archive, with lines like:
 //    key filename:12407
 //  where the number is the byte offset into the file.
 //  In this case we restrict the archive-filename to be an actual filename,
 //  as we can't see a situtation where an extended filename would make sense
-//  for this.
+//  for this (we can't fseek() in pipes).
 
 enum WspecifierType  {
   kNoWspecifier,
@@ -108,7 +112,8 @@ enum WspecifierType  {
 struct WspecifierOptions {
   bool binary;
   bool flush;
-  WspecifierOptions(): binary(true), flush(false) { }
+  bool permissive; // will ignore absent scp entries.
+  WspecifierOptions(): binary(true), flush(false), permissive(false) { }
 };
 
 // ClassifyWspecifier returns the type of the wspecifier string,
@@ -191,6 +196,7 @@ struct  RspecifierOptions {
   bool permissive;  // If "permissive", when reading from scp files it treats
   // scp files that can't be read as if the corresponding key were not there.
   // For archive files it will suppress errors getting thrown if the archive
+  
   // is corrupted and can't be read to the end.
 
   RspecifierOptions(): once(false), sorted(false),

@@ -36,7 +36,7 @@ done
 mkdir -p $lang_out || exit 1;
 
 grep -v '#' $lang/phones.txt >  $lang_out/phones.txt # no disambig symbols
-   # needed; G and L . G will be deterministic.
+      # needed; G and L . G will be deterministic.
 cp $lang/topo $lang_out
 rm -r $lang_out/phones 2>/dev/null
 cp -r $lang/phones/ $lang_out/
