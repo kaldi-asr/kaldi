@@ -94,7 +94,7 @@ done
 
 local/make_rm_lm.pl $RMROOT/rm1_audio1/rm1/doc/wp_gram.txt  > $tmpdir/G.txt || exit 1;
 
-mkdir data/local/dict
+mkdir -p data/local/dict
 
 # Getting lexicon
 local/make_rm_dict.pl  $RMROOT/rm1_audio2/2_4_2/score/src/rdev/pcdsril.txt \
