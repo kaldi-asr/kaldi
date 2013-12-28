@@ -106,6 +106,7 @@ void GetInputSymbols(const Fst<Arc> &fst,
     all_syms.erase(0);
   KALDI_ASSERT(symbols != NULL);
   kaldi::CopySetToVector(all_syms, symbols);
+  std::sort(symbols->begin(), symbols->end());
 }
 
 

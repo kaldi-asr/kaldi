@@ -49,7 +49,8 @@ template<class Arc>
 typename Arc::StateId NumArcs(const ExpandedFst<Arc> &fst);
 
 /// GetInputSymbols gets the list of symbols on the input of fst
-/// (including epsilon, if include_eps == true)
+/// (including epsilon, if include_eps == true), as a sorted, unique
+/// list.
 template<class Arc, class I>
 void GetInputSymbols(const Fst<Arc> &fst,
                      bool include_eps,

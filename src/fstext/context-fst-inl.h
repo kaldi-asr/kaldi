@@ -496,13 +496,14 @@ inline void ComposeContext(vector<int32> &disambig_syms_in,
                            vector<vector<int32> > *ilabels_out) {
   assert(ifst != NULL && ofst != NULL);
   assert(N > 0);
-  assert(P>=0);
+  assert(P >= 0);
   assert(P < N);
 
   vector<int32> disambig_syms(disambig_syms_in);
   std::sort(disambig_syms.begin(), disambig_syms.end());
   vector<int32> all_syms;
   GetInputSymbols(*ifst, false/*no eps*/, &all_syms);
+  std::sort(all_syms.begin(), all_syms.end());
   vector<int32> phones;
   for (size_t i = 0; i < all_syms.size(); i++)
     if (!std::binary_search(disambig_syms.begin(), disambig_syms.end(), all_syms[i]))
