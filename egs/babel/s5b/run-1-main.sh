@@ -129,21 +129,15 @@ echo ---------------------------------------------------------------------
 
 if [ ! -f data/train/.plp.done ]; then
   if [ "$use_pitch" = "false" ] && [ "$use_ffv" = "false" ]; then
-   steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/train exp/make_plp/train plp
+    steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/train exp/make_plp/train plp
   elif [ "$use_pitch" = "true" ] && [ "$use_ffv" = "true" ]; then
-    cp -rT data/train data/train_plp; cp -rT data/train data/train_pitch; cp -rT data/train data/train_ffv
-    steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/train_plp exp/make_plp/train plp_tmp_train
-    steps/make_pitch_kaldi.sh --cmd "$train_cmd" --nj $train_nj data/train_pitch exp/make_pitch/train pitch_tmp_train
+    cp -rT data/train data/train_plp_pitch; cp -rT data/train data/train_ffv
+    steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $train_nj data/train_plp_pitch exp/make_plp_pitch/train plp_pitch_tmp_train
     local/make_ffv.sh --cmd "$train_cmd"  --nj $train_nj data/train_ffv exp/make_ffv/train ffv_tmp_train
-    steps/append_feats.sh --cmd "$train_cmd" --nj $train_nj data/train{_plp,_pitch,_plp_pitch} exp/make_pitch/append_train_pitch plp_tmp_train
     steps/append_feats.sh --cmd "$train_cmd" --nj $train_nj data/train{_plp_pitch,_ffv,} exp/make_ffv/append_train_pitch_ffv plp
-    rm -rf {plp,pitch,ffv}_tmp_train data/train_{plp,pitch,plp_pitch}
+    rm -rf {plp_pitch,ffv}_tmp_train data/train_{plp_pitch,ffv}
   elif [ "$use_pitch" = "true" ]; then
-    cp -rT data/train data/train_plp; cp -rT data/train data/train_pitch
-    steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/train_plp exp/make_plp/train plp_tmp_train
-    steps/make_pitch_kaldi.sh --cmd "$train_cmd" --nj $train_nj data/train_pitch exp/make_pitch/train pitch_tmp_train
-    steps/append_feats.sh --cmd "$train_cmd" --nj $train_nj data/train{_plp,_pitch,} exp/make_pitch/append_train plp
-    rm -rf {plp,pitch}_tmp_train data/train_{plp,pitch}
+    steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $train_nj data/train exp/make_plp_pitch/train plp
   elif [ "$use_ffv" = "true" ]; then
     cp -rT data/train data/train_plp; cp -rT data/train data/train_ffv
     steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/train_plp exp/make_plp/train plp_tmp_train
