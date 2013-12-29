@@ -329,7 +329,7 @@ if [ -f exp/tri6_nnet/.done ]; then
       --beam $dnn_beam --lat-beam $dnn_lat_beam \
       --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${dirid} \
-      exp/tri5/graph ${datadir} $decode |tee $decode/decode.log
+      exp/tri5/graph ${datadir} $decode | tee $decode/decode.log
 
     touch $decode/.done
   fi
@@ -338,6 +338,33 @@ if [ -f exp/tri6_nnet/.done ]; then
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
     "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
     ${datadir} data/lang $decode
+fi
+
+####################################################################
+##
+## DNN_MPE decoding
+##
+####################################################################
+if [ -f exp/tri6_nnet_mpe/.done ]; then
+  for epoch in 1 2 3 4; do
+    decode=exp/tri6_nnet_mpe/decode_${dirid}_epoch$epoch
+    if [ ! -f $decode/.done ]; then
+      mkdir -p $decode
+      steps/nnet2/decode.sh \
+        --cmd "$decode_cmd" --nj $my_nj --iter epoch$epoch \
+        --beam $dnn_beam --lat-beam $dnn_lat_beam \
+        --skip-scoring true "${decode_extra_opts[@]}" \
+        --transform-dir exp/tri5/decode_${dirid} \
+        exp/tri5/graph ${datadir} $decode | tee $decode/decode.log
+
+      touch $decode/.done
+    fi
+
+    local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+      --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
+      "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+      ${datadir} data/lang $decode
+  done
 fi
 
 echo "Everything looking good...." 
