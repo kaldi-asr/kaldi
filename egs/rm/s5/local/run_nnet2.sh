@@ -17,8 +17,14 @@ if $use_gpu; then
   # This one is on top of 40-dim + fMLLR features
   local/nnet2/run_4c_gpu.sh
 
+  # This one is for training pnorm nnets on top of 40-dim + fMLLR features
+  local/nnet2/run_4d_gpu.sh
+  
   # This is discriminative training on top of 4c.
   local/nnet2/run_5c_gpu.sh
+  
+  # This is discriminative training on top of 4d.
+  local/nnet2/run_5d_gpu.sh
 else
   # This example runs on top of "raw-fMLLR" features:
   local/nnet2/run_4a.sh
@@ -29,14 +35,8 @@ else
   # This one is on top of 40-dim + fMLLR features
   local/nnet2/run_4c.sh
 
-  # This one is for training pnorm nnets on top of 40-dim + fMLLR features
-  local/nnet2/run_4d.sh
-  
   # This is discriminative training on top of 4c.
   local/nnet2/run_5c.sh
-  
-  # This is discriminative training on top of 4d.
-  local/nnet2/run_5d.sh
 fi
   
 
