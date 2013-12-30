@@ -234,7 +234,8 @@ if (! $sync) { # We're not submitting with -sync y, so we
       if (($check_sge_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on SGE.
         if ( -f $f ) { next; }; #syncfile appeared: OK.
         $ret = system("qstat -j $sge_job_id >/dev/null 2>/dev/null");
-        if ($ret == 1) { # Job does not seem to exist.
+        # system(...) : To get the actual exit value, shift $ret right by eight bits.
+        if ($ret>>8 == 1) { # Job does not seem to exist 
           # Don't consider immediately missing job as error, first wait some  
           # time to make sure it is not just delayed creation of the syncfile.
           sleep(3);
@@ -270,7 +271,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
             exit(1);
           }
         } elsif ($ret != 0) {
-          print STDERR "queue.pl: Warning: qstat command returned status $ret\n";
+          print STDERR "queue.pl: Warning: qstat command returned status $ret (qstat -j $sge_job_id,$!)\n";
         }
       }
     }
