@@ -132,6 +132,7 @@ cat $trials | awk '{print $1, $2}' | \
 
 local/score_sre08.sh $trials foo
 
+
 #Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      1      2      3      4      5      6      7      8
 #        EER:  29.07   4.48  28.89  20.57  19.83  11.14   7.35   7.89
@@ -145,6 +146,9 @@ local/score_sre08.sh $trials foo
 # Note: to see how you can plot the DET curve, look at
 # local/det_curve_example.sh
 
+# The following will take a little while to run; it demonstrates running the system
+# without weights.
+# local/run_no_weights.sh
 
 ### Demonstrate what happens if we reduce the dimension with LDA
 
@@ -174,14 +178,14 @@ local/score_sre08.sh $trials foo
 
 ivector-compute-plda ark:data/fisher_female/spk2utt \
   'ark:ivector-normalize-length scp:exp/ivectors_fisher_female/ivector.scp  ark:- |' \
-    exp/ivectors_fisher_female/plda
+    exp/ivectors_fisher_female/plda 2>exp/ivectors_fisher_female/log/plda.log
 
 
 ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_utts.ark \
    "ivector-copy-plda --smoothing=0.0 exp/ivectors_fisher_female/plda - |" \
    "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp ark:- |" \
    "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_test_short3_female/ivector.scp ark:- |" \
-   "cat $trials | awk '{print \$1, \$2}' |" foo
+   "cat '$trials' | awk '{print \$1, \$2}' |" foo
 
 local/score_sre08.sh $trials foo
 
