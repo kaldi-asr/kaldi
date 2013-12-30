@@ -159,6 +159,7 @@ int main(int argc, char *argv[]) {
     // Select the GPU
 #if HAVE_CUDA == 1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
+    CuDevice::Instantiate().DisableCaching();
 #endif
 
     Nnet nnet_transf;

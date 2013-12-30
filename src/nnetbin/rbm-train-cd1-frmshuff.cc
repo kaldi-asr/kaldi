@@ -62,6 +62,9 @@ int main(int argc, char *argv[]) {
     NnetDataRandomizerOptions rnd_opts;
     rnd_opts.minibatch_size = 100;
     rnd_opts.Register(&po);
+
+    kaldi::int32 max_frames = 6000; // Allow segments maximum of 30 seconds by default
+    po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
     
     BaseFloat drop_data = 0.0; 
     po.Register("drop-data", &drop_data, "Threshold for random dropping of the data (0 no-drop, 1 drop-all)");
@@ -89,6 +92,7 @@ int main(int argc, char *argv[]) {
 
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
+    CuDevice::Instantiate().DisableCaching();
 #endif
 
     Nnet rbm_transf;
@@ -136,13 +140,21 @@ int main(int argc, char *argv[]) {
     int32 iter = 1;
     KALDI_LOG << "Iteration " << iter << "/" << num_iters;
 
-    int32 num_done = 0;
+    int32 num_done = 0, num_other_error = 0;
     while (!feature_reader.Done()) {
       // fill the randomizer
       for ( ; !feature_reader.Done(); feature_reader.Next()) {
+        std::string utt = feature_reader.Key();
+        KALDI_VLOG(2) << utt;
         // get feature matrix
-        KALDI_VLOG(2) << feature_reader.Key();
         const Matrix<BaseFloat> &mat = feature_reader.Value();
+        // skip too long segments (avoid runinning out of memory)
+        if (mat.NumRows() > max_frames) {
+          KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
+            " frames, which is more than " << max_frames << ".";
+          num_other_error++;
+          continue;
+        }
         // push features to GPU
         feats.Resize(mat.NumRows(),mat.NumCols());
         feats.CopyFromMat(mat);
@@ -251,7 +263,8 @@ int main(int argc, char *argv[]) {
 
     nnet.Write(target_model_filename, binary);
     
-    KALDI_LOG << "Done " << iter << " iterations, " << num_done << " files. "
+    KALDI_LOG << "Done " << iter << " iterations, " << num_done << " files, "
+              << "skipped " << num_other_error << " files. "
               << "[" << time.Elapsed()/60 << " min, fps" << total_frames/time.Elapsed() 
               << "]";
 
