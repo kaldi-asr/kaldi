@@ -198,7 +198,7 @@ void WaveData::Read(std::istream &is) {
   is.read(data_ptr, data_chunk_size);
   riff_chunk_read += data_chunk_size;
 
-  if (riff_chunk_read  != riff_chunk_size)
+  if (riff_chunk_read != riff_chunk_size)
     KALDI_WARN << "Expected " << riff_chunk_size << " bytes in RIFF chunk, but got "
                << riff_chunk_read << " (do not support reading multiple data chunks).";
   if (is.fail())

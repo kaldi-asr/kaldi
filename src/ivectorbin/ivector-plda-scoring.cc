@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Reading test iVectors";
     for (; !test_ivector_reader.Done(); test_ivector_reader.Next()) {
       std::string utt = test_ivector_reader.Key();
-      if (train_ivectors.count(utt) != 0) {
+      if (test_ivectors.count(utt) != 0) {
         KALDI_ERR << "Duplicate test iVector found for utterance " << utt;
       }
       const Vector<BaseFloat> &ivector = test_ivector_reader.Value();

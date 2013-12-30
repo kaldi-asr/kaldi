@@ -153,7 +153,7 @@ int32 PitchNumFrames(int32 nsamp,
 }
 void PreemphasizeFrame(VectorBase<double> *waveform, double preemph_coeff) {
   if (preemph_coeff == 0.0) return;
-  assert(preemph_coeff >= 0.0 && preemph_coeff <= 1.0);
+  KALDI_ASSERT(preemph_coeff >= 0.0 && preemph_coeff <= 1.0);
   for (int32 i = waveform->Dim()-1; i > 0; i--)
     (*waveform)(i) -= preemph_coeff * (*waveform)(i-1);
   (*waveform)(0) -= preemph_coeff * (*waveform)(0);

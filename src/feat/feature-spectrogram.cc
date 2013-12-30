@@ -42,7 +42,7 @@ Spectrogram::~Spectrogram() {
 void Spectrogram::Compute(const VectorBase<BaseFloat> &wave,
                    Matrix<BaseFloat> *output,
                    Vector<BaseFloat> *wave_remainder) {
-  assert(output != NULL);
+  KALDI_ASSERT(output != NULL);
 
   // Get dimensions of output features
   int32 rows_out = NumFrames(wave.Dim(), opts_.frame_opts);

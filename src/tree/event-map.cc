@@ -194,7 +194,7 @@ void SplitEventMap::Write(std::ostream &os, bool binary) {
   WriteBasicType(os, binary, key_);
   // WriteIntegerVector(os, binary, yes_set_);
   yes_set_.Write(os, binary);
-  assert(yes_ != NULL && no_ != NULL);
+  KALDI_ASSERT(yes_ != NULL && no_ != NULL);
   WriteToken(os, binary, "{");
   yes_->Write(os, binary);
   no_->Write(os, binary);
@@ -237,7 +237,7 @@ void WriteEventType(std::ostream &os, bool binary, const EventType &evec) {
 }
 
 void ReadEventType(std::istream &is, bool binary, EventType *evec) {
-  assert(evec != NULL);
+  KALDI_ASSERT(evec != NULL);
   ExpectToken(is, binary, "EV");
   uint32 size;
   ReadBasicType(is, binary, &size);
@@ -268,7 +268,7 @@ size_t EventMapVectorHash::operator ()(const EventType &vec) {
   for (; iter != end; ++iter) {
 #ifdef KALDI_PARANOID // Check names are distinct and increasing.
     EventType::const_iterator iter2=iter; iter2++;
-    if (iter2 != end) { assert(iter->first < iter2->first); }
+    if (iter2 != end) { KALDI_ASSERT(iter->first < iter2->first); }
 #endif
     ans += iter->first + kPrime1*iter->second;
     ans *= kPrime2;
@@ -282,7 +282,7 @@ void EventMap::Check(const std::vector<std::pair<EventKeyType, EventValueType> >
   // will crash if not sorted or has duplicates
   size_t sz = event.size();
   for (size_t i = 0;i+1 < sz;i++)
-    assert(event[i].first < event[i+1].first);
+    KALDI_ASSERT(event[i].first < event[i+1].first);
 }
 
 
@@ -330,7 +330,7 @@ TableEventMap::TableEventMap(EventKeyType key, const std::map<EventValueType, Ev
     table_.resize(highest_val+1, NULL);
     std::map<EventValueType, EventMap*>::const_iterator iter = map_in.begin(), end = map_in.end();
     for (; iter != end; ++iter) {
-      assert(iter->first >= 0 && iter->first <= highest_val);
+      KALDI_ASSERT(iter->first >= 0 && iter->first <= highest_val);
       table_[iter->first] = iter->second;
     }
   }
@@ -344,7 +344,7 @@ TableEventMap::TableEventMap(EventKeyType key, const std::map<EventValueType, Ev
     table_.resize(highest_val+1, NULL);
     std::map<EventValueType, EventAnswerType>::const_iterator iter = map_in.begin(), end = map_in.end();
     for (; iter != end; ++iter) {
-      assert(iter->first >= 0 && iter->first <= highest_val);
+      KALDI_ASSERT(iter->first >= 0 && iter->first <= highest_val);
       table_[iter->first] = new ConstantEventMap(iter->second);
     }
   }

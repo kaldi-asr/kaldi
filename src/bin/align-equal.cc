@@ -116,8 +116,8 @@ int main(int argc, char *argv[]) {
           std::vector<int32> aligned_seq, words;
           StdArc::Weight w;
           GetLinearSymbolSequence(path, &aligned_seq, &words, &w);
-          assert(aligned_seq.size() == num_frames);
-          assert(words == transcript);
+          KALDI_ASSERT(aligned_seq.size() == num_frames);
+          KALDI_ASSERT(words == transcript);
           alignment_writer.Write(key, aligned_seq);
           done++;
         } else {

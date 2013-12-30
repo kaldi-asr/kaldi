@@ -120,9 +120,9 @@ void ReadBasicType<double>(std::istream &is, bool binary, double *d) {
 }
 
 void CheckToken(const char *token) {
-  assert(*token != '\0');  // check it's nonempty.
+  KALDI_ASSERT(*token != '\0');  // check it's nonempty.
   while (*token != '\0') {
-    assert(!::isspace(*token));
+    KALDI_ASSERT(!::isspace(*token));
     token++;
   }
 }
@@ -130,7 +130,7 @@ void CheckToken(const char *token) {
 void WriteToken(std::ostream &os, bool binary, const char *token) {
   // binary mode is ignored;
   // we use space as termination character in either case.
-  assert(token != NULL);
+  KALDI_ASSERT(token != NULL);
   CheckToken(token);  // make sure it's valid (can be read back)
   os << token << " ";
   if (os.fail()) {
@@ -148,7 +148,7 @@ void WriteToken(std::ostream &os, bool binary, const std::string & token) {
 }
 
 void ReadToken(std::istream &is, bool binary, std::string *str) {
-  assert(str != NULL);
+  KALDI_ASSERT(str != NULL);
   if (!binary) is >> std::ws;  // consume whitespace.
   is >> *str;
   if (is.fail()) {
@@ -183,7 +183,7 @@ int PeekToken(std::istream &is, bool binary) {
 
 void ExpectToken(std::istream &is, bool binary, const char *token) {
   int pos_at_start = is.tellg();
-  assert(token != NULL);
+  KALDI_ASSERT(token != NULL);
   CheckToken(token);  // make sure it's valid (can be read back)
   if (!binary) is >> std::ws;  // consume whitespace.
   std::string str;

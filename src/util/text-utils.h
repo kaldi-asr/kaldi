@@ -66,7 +66,7 @@ bool SplitStringToIntegers(const std::string &full,
                                                      // should probably be true
                                                      // if "delim" is spaces].
                            std::vector<I> *out) {
-  assert(out != NULL);
+  KALDI_ASSERT(out != NULL);
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   if ( *(full.c_str()) == '\0') {
     out->clear();

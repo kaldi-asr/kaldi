@@ -38,7 +38,7 @@ void GetSeenPhones(BuildTreeStatsType &stats, int P, std::vector<int32> *phones_
     const EventType &evec = stats[i].first;
     for (size_t j = 0; j < evec.size(); j++) {
       if (evec[j].first == P) {  // "key" is position P
-        assert(evec[j].second != 0);
+        KALDI_ASSERT(evec[j].second != 0);
         phones_set.insert(evec[j].second);  // insert "value" of this
         // phone.
       }

@@ -133,7 +133,7 @@ void CompressedMatrix::ComputeColHeader(
     const GlobalHeader &global_header,
     const Real *data, MatrixIndexT stride,
     int32 num_rows, CompressedMatrix::PerColHeader *header) {
-  assert(num_rows > 0);
+  KALDI_ASSERT(num_rows > 0);
   std::vector<Real> sdata(num_rows); // the sorted data.
   for (size_t i = 0, size = sdata.size(); i < size; i++)
     sdata[i] = data[i*stride];
@@ -387,7 +387,7 @@ void CompressedMatrix::Read(std::istream &is, bool binary) {
       for (int32 j = 0; j < h.num_rows; j++, c++) {
         int i;
         is >> i;
-        assert(i >= 0 && i <= 255);
+        KALDI_ASSERT(i >= 0 && i <= 255);
         *c = static_cast<unsigned char>(i);
       }
     }

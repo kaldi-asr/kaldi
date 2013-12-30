@@ -149,7 +149,7 @@ static bool GetActiveParents(int32 node, const vector<int32> &parents,
       return false;
     }
   }
-  assert(false);  // Never reached
+  KALDI_ASSERT(false);  // Never reached
 }
 
 /// Parses the regression tree and finds the nodes whose occupancies (read
@@ -310,7 +310,7 @@ void RegressionTree::Read(std::istream &in, bool binary,
   ExpectToken(in, binary, "<REGTREE>");
   ExpectToken(in, binary, "<NUMNODES>");
   ReadBasicType(in, binary, &num_nodes_);
-  assert(num_nodes_ > 0);
+  KALDI_ASSERT(num_nodes_ > 0);
   parents_.resize(static_cast<size_t>(num_nodes_));
   ExpectToken(in, binary, "<PARENTS>");
   ReadIntegerVector(in, binary, &parents_);
@@ -319,21 +319,21 @@ void RegressionTree::Read(std::istream &in, bool binary,
   ExpectToken(in, binary, "<BASECLASSES>");
   ExpectToken(in, binary, "<NUMBASECLASSES>");
   ReadBasicType(in, binary, &num_baseclasses_);
-  assert(num_baseclasses_ >0);
+  KALDI_ASSERT(num_baseclasses_ >0);
   baseclasses_.resize(static_cast<size_t>(num_baseclasses_));
   for (int32 bclass = 0; bclass < num_baseclasses_; bclass++) {
     ExpectToken(in, binary, "<CLASS>");
     int32 class_id, num_comp, pdf_id, gauss_id;
     ReadBasicType(in, binary, &class_id);
     ReadBasicType(in, binary, &num_comp);
-    assert(class_id == bclass && num_comp > 0);
+    KALDI_ASSERT(class_id == bclass && num_comp > 0);
     total_gauss += num_comp;
     baseclasses_[bclass].reserve(num_comp);
 
     for (int32 i = 0; i < num_comp; i++) {
       ReadBasicType(in, binary, &pdf_id);
       ReadBasicType(in, binary, &gauss_id);
-      assert(pdf_id >= 0 && gauss_id >= 0);
+      KALDI_ASSERT(pdf_id >= 0 && gauss_id >= 0);
       baseclasses_[bclass].push_back(std::make_pair(pdf_id, gauss_id));
     }
 

@@ -40,7 +40,7 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
       (frame_opts.round_to_power_of_two ?
        RoundUpToNearestPowerOfTwo(window_length) :
        window_length);
-  assert(window_length_padded % 2 == 0);
+  KALDI_ASSERT(window_length_padded % 2 == 0);
   int32 num_fft_bins = window_length_padded/2;
   BaseFloat nyquist = 0.5 * sample_freq;
 

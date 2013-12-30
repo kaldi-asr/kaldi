@@ -516,7 +516,7 @@ void ParseOptions::NormalizeArgName(std::string *str) {
   }
   *str = out;
 
-  assert(str->length() > 0);
+  KALDI_ASSERT(str->length() > 0);
 }
 
 

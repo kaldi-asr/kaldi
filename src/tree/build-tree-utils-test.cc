@@ -30,8 +30,8 @@ void TestTrivialTree() {
   EventMap *tree = TrivialTree(&nleaves);
   EventType empty; EventAnswerType ans;
   bool b = tree->Map(empty, &ans);
-  assert(b);
-  assert(nleaves == 1);
+  KALDI_ASSERT(b);
+  KALDI_ASSERT(nleaves == 1);
   delete tree;
 }
 
@@ -64,7 +64,7 @@ void TestPossibleValues() {
       std::cout<<'\n';
       for (size_t i = 0;i < vals2.size();i++) std::cout << vals2[i] << " ";
       std::cout<<'\n';
-      assert(0);
+      KALDI_ASSERT(0);
     }
   }
 }
@@ -178,13 +178,13 @@ void TestFindAllKeys() {
       std::vector<EventKeyType> keys1, keys2;
       CopySetToVector(all_keys_union, &keys1);
       FindAllKeys(stats, kAllKeysUnion, &keys2);
-      assert(keys1 == keys2);
+      KALDI_ASSERT(keys1 == keys2);
     }
     {  // test in intersection mode.
       std::vector<EventKeyType> keys1, keys2;
       CopySetToVector(all_keys_intersection, &keys1);
       FindAllKeys(stats, kAllKeysIntersection, &keys2);
-      assert(keys1 == keys2);
+      KALDI_ASSERT(keys1 == keys2);
     }
     {  // test in insist-same mode.
       std::vector<EventKeyType> keys1, keys2;
@@ -192,11 +192,11 @@ void TestFindAllKeys() {
       try {
         FindAllKeys(stats, kAllKeysInsistIdentical, &keys2);  // note, it SHOULD throw an exception here.
         // This is for testing purposes.  It gets caught.
-        assert(keys1 == keys2);
-        assert(all_keys_union == all_keys_intersection);
+        KALDI_ASSERT(keys1 == keys2);
+        KALDI_ASSERT(all_keys_union == all_keys_intersection);
       } catch(...) {  // it should throw exception if all keys are not the same.
         KALDI_LOG << "Ignore previous error.";
-        assert(all_keys_union != all_keys_intersection);
+        KALDI_ASSERT(all_keys_union != all_keys_intersection);
       }
     }
   }
@@ -223,7 +223,7 @@ void TestDoTableSplit() {
     EventMap *trivial_map = TrivialTree(&nleaves);
 
     EventMap *table_map = DoTableSplit(*trivial_map, k, stats, &nleaves);
-    assert(nleaves <= numvals);
+    KALDI_ASSERT(nleaves <= numvals);
     for (size_t i = 0;i < 10;i++) {
       size_t idx1 = RandInt(0, stats.size()-1), idx2 = RandInt(0, stats.size()-1);
       EventAnswerType ans1;
@@ -234,16 +234,16 @@ void TestDoTableSplit() {
       EventValueType val1, val2;
       bool b = EventMap::Lookup(stats[idx1].first, k, &val1)
              && EventMap::Lookup(stats[idx2].first, k, &val2);
-      assert(b);
-      assert(val1 >= 0 );
-      assert( (val1 == val2) == (ans1 == ans2) );
+      KALDI_ASSERT(b);
+      KALDI_ASSERT(val1 >= 0 );
+      KALDI_ASSERT( (val1 == val2) == (ans1 == ans2) );
     }
     for (EventValueType i = 0;i < numvals+1;i++) {
       if (all_vals.count(i) == 0) {
         EventType v; v.push_back(std::make_pair(k, i));
         EventAnswerType ans;
         bool b = table_map->Map(v, &ans);
-        assert(!b);  // check it maps stuff we never saw to undefined.
+        KALDI_ASSERT(!b);  // check it maps stuff we never saw to undefined.
       }
     }
     delete trivial_map;
@@ -273,19 +273,19 @@ void TestClusterEventMapGetMappingAndRenumberEventMap() {
     EventMap *trivial_map = TrivialTree(&nleaves);
 
     EventMap *table_map = DoTableSplit(*trivial_map, key, stats, &nleaves);
-    assert(nleaves == cur_value);
+    KALDI_ASSERT(nleaves == cur_value);
 
     std::vector<EventMap*> mapping;
     int32 num_reduced = ClusterEventMapGetMapping(*table_map, stats, 0.1, &mapping);
 
     std::cout << "TestCluster(): num_reduced = "<<num_reduced<<", expected: "<<cur_value<<" - "<<num_clust<<" = "<<(cur_value-num_clust)<<'\n';
-    assert(num_reduced == cur_value - num_clust);
+    KALDI_ASSERT(num_reduced == cur_value - num_clust);
 
     EventMap *clustered_map = table_map->Copy(mapping);
 
     EventAnswerType new_nleaves;
     EventMap *renumbered_map = RenumberEventMap(*clustered_map, &new_nleaves);
-    assert(new_nleaves == num_clust);
+    KALDI_ASSERT(new_nleaves == num_clust);
 
     std::vector<EventAnswerType> orig_answers, clustered_answers, renumbered_answers;
 
@@ -297,10 +297,10 @@ void TestClusterEventMapGetMappingAndRenumberEventMap() {
     SortAndUniq(&orig_answers);
     SortAndUniq(&clustered_answers);
     SortAndUniq(&renumbered_answers);
-    assert(orig_answers.size() == (size_t) cur_value);
-    assert(clustered_answers.size() == (size_t) num_clust);
-    assert(renumbered_answers.size() == (size_t) num_clust);
-    assert(renumbered_map->MaxResult()+1 == num_clust);
+    KALDI_ASSERT(orig_answers.size() == (size_t) cur_value);
+    KALDI_ASSERT(clustered_answers.size() == (size_t) num_clust);
+    KALDI_ASSERT(renumbered_answers.size() == (size_t) num_clust);
+    KALDI_ASSERT(renumbered_map->MaxResult()+1 == num_clust);
 
     DeletePointers(&mapping);
     delete renumbered_map;
@@ -334,19 +334,19 @@ void TestClusterEventMapGetMappingAndRenumberEventMap2() {
     EventMap *trivial_map = TrivialTree(&nleaves);
 
     EventMap *table_map = DoTableSplit(*trivial_map, key, stats, &nleaves);
-    assert(nleaves == cur_value);
+    KALDI_ASSERT(nleaves == cur_value);
 
     std::vector<EventMap*> mapping;
     int32 num_reduced = ClusterEventMapGetMapping(*table_map, stats_reduced, 0.1, &mapping);
 
     std::cout << "TestCluster(): num_reduced = "<<num_reduced<<", expected [ignoring gaps]: "<<cur_value<<" - "<<num_clust<<" = "<<(cur_value-num_clust)<<'\n';
-    // assert(num_reduced == cur_value - num_clust);
+    // KALDI_ASSERT(num_reduced == cur_value - num_clust);
 
     EventMap *clustered_map = table_map->Copy(mapping);
 
     EventAnswerType new_nleaves;
     EventMap *renumbered_map = RenumberEventMap(*clustered_map, &new_nleaves);
-    // assert(new_nleaves == num_clust);
+    // KALDI_ASSERT(new_nleaves == num_clust);
 
     std::vector<EventAnswerType> orig_answers, clustered_answers, renumbered_answers;
 
@@ -358,10 +358,10 @@ void TestClusterEventMapGetMappingAndRenumberEventMap2() {
     SortAndUniq(&orig_answers);
     SortAndUniq(&clustered_answers);
     SortAndUniq(&renumbered_answers);
-    // assert(orig_answers.size() == (size_t) cur_value);
-    // assert(clustered_answers.size() == (size_t) num_clust);
-    // assert(renumbered_answers.size() == (size_t) num_clust);
-    // assert(renumbered_map->MaxResult()+1 == num_clust);
+    // KALDI_ASSERT(orig_answers.size() == (size_t) cur_value);
+    // KALDI_ASSERT(clustered_answers.size() == (size_t) num_clust);
+    // KALDI_ASSERT(renumbered_answers.size() == (size_t) num_clust);
+    // KALDI_ASSERT(renumbered_map->MaxResult()+1 == num_clust);
 
     DeletePointers(&mapping);
     delete renumbered_map;
@@ -398,7 +398,7 @@ void TestClusterEventMap() {
     EventMap *trivial_map = TrivialTree(&nleaves);
 
     EventMap *table_map = DoTableSplit(*trivial_map, key, stats, &nleaves);
-    assert(nleaves == cur_value);
+    KALDI_ASSERT(nleaves == cur_value);
 
     std::set<EventValueType> exclude_leaves;
     for (size_t i = 0;i < 4;i++) exclude_leaves.insert(rand() % num_clust);
@@ -411,7 +411,7 @@ void TestClusterEventMap() {
         stats_included.push_back(stats[i]);
       }
     }
-    assert(!stats_excluded.empty()&&!stats_included.empty() && stats_excluded.size()+stats_included.size() == stats.size());
+    KALDI_ASSERT(!stats_excluded.empty()&&!stats_included.empty() && stats_excluded.size()+stats_included.size() == stats.size());
 
     int32 num_reduced;
     EventMap *clustered_map = ClusterEventMap(*table_map, stats_included, 0.1, &num_reduced);
@@ -423,7 +423,7 @@ void TestClusterEventMap() {
       const EventType &evec = stats_excluded[i].first;
       EventAnswerType ans;  table_map->Map(evec, &ans);
       EventAnswerType  ans2; clustered_map->Map(evec, &ans2);
-      assert(ans == ans2);
+      KALDI_ASSERT(ans == ans2);
     }
 
     delete clustered_map;
@@ -492,7 +492,7 @@ void TestClusterEventMapRestricted() {
   BaseFloat impr;
   EventMap *split_tree = SplitDecisionTree(*table_split_map, stats, qo, thresh, max_leaves,
                                            &nleaves, &impr, &smallest_split);
-  assert((nleaves <= max_leaves || nleaves == nleaves_after_table_split) && smallest_split >= thresh);
+  KALDI_ASSERT((nleaves <= max_leaves || nleaves == nleaves_after_table_split) && smallest_split >= thresh);
 
   std::cout << "TestClusterEventMapRestricted: after building decision tree, " <<nleaves<<'\n';
 
@@ -502,7 +502,7 @@ void TestClusterEventMapRestricted() {
     EventMap *map_clustered = ClusterEventMap(*split_tree, stats,
                                               thresh, &num_removed);
     std::cout << "ClusterEventMap: num_removed = "<<num_removed;
-    assert(num_removed == nleaves - 1);
+    KALDI_ASSERT(num_removed == nleaves - 1);
     delete map_clustered;
   }
 
@@ -521,7 +521,7 @@ void TestClusterEventMapRestricted() {
 
     std::cout << "ClusterEventMapRestricted: num_removed = "<<num_removed;
     // should take it back to status after table split.
-    assert(num_removed == nleaves - nleaves_after_table_split);
+    KALDI_ASSERT(num_removed == nleaves - nleaves_after_table_split);
     delete map_clustered;
   }
 
@@ -587,7 +587,7 @@ void TestShareEventMapLeaves() {
   BaseFloat smallest_split;
   EventMap *split_tree = SplitDecisionTree(*table_split_map, stats, qo, thresh, max_leaves,
                                            &nleaves, &impr, &smallest_split);
-  assert((nleaves <= max_leaves || nleaves == nleaves_after_table_split) && smallest_split >= thresh);
+  KALDI_ASSERT((nleaves <= max_leaves || nleaves == nleaves_after_table_split) && smallest_split >= thresh);
 
   std::cout << "TestShareEventMapLeaves: after building decision tree, " <<nleaves<<'\n';
 
@@ -602,7 +602,7 @@ void TestShareEventMapLeaves() {
   EventKeyType key = special_keys[rand() % special_keys.size()];
   std::vector<EventValueType> values;
   bool always_defined = PossibleValues(key, stats, &values);
-  assert(always_defined);
+  KALDI_ASSERT(always_defined);
 
   std::set<EventValueType> to_share;
   for (size_t i = 0; i < 3; i++) to_share.insert(values[rand() % values.size()]);
@@ -619,14 +619,14 @@ void TestShareEventMapLeaves() {
                                          key,
                                          share_value,
                                          &num_leaves);
-  assert(num_leaves <= nleaves);
+  KALDI_ASSERT(num_leaves <= nleaves);
   for (size_t i = 0; i < share_value.size(); i++) {
     EventType evec;
     std::vector<EventAnswerType> answers;
     evec.push_back(MakeEventPair(key, share_value[i][0]));
     shared->MultiMap(evec, &answers);
     SortAndUniq(&answers);
-    assert(answers.size() == 1);  // should have been shared.
+    KALDI_ASSERT(answers.size() == 1);  // should have been shared.
   }
   delete shared;
 
@@ -702,7 +702,7 @@ void TestQuestionsInitRand() {
     if (n_stats > 0) {
       if (p < 2) {
         for (size_t i = 0;i < keys_all.size();i++) {
-          assert(qo.HasQuestionsForKey(keys_all[i]));
+          KALDI_ASSERT(qo.HasQuestionsForKey(keys_all[i]));
           const QuestionsForKey &opts = qo.GetQuestionsOf(keys_all[i]);
           std::cout << "num-quest: "<< opts.initial_questions.size() << '\n';
           for (size_t j = 0;j < opts.initial_questions.size();j++) {
@@ -714,12 +714,12 @@ void TestQuestionsInitRand() {
       }
       if (intersection) {
         for (size_t i = 0;i < keys_all.size();i++) {
-          assert(qo.HasQuestionsForKey(keys_all[i]));
+          KALDI_ASSERT(qo.HasQuestionsForKey(keys_all[i]));
           qo.GetQuestionsOf(keys_all[i]);
         }
       } else {  // union: expect to see all keys that were in the data.
         for (std::set<int32>::iterator iter = keys_all_saw_set.begin(); iter != keys_all_saw_set.end(); iter++) {
-          assert(qo.HasQuestionsForKey(*iter));
+          KALDI_ASSERT(qo.HasQuestionsForKey(*iter));
         }
       }
     }
@@ -778,7 +778,7 @@ void TestSplitDecisionTree() {
     if (n_stats > 0) {
       if (p < 2) {
         for (size_t i = 0;i < keys_all.size();i++) {
-          assert(qo.HasQuestionsForKey(keys_all[i]));
+          KALDI_ASSERT(qo.HasQuestionsForKey(keys_all[i]));
           const QuestionsForKey &opts = qo.GetQuestionsOf(keys_all[i]);
           std::cout << "num-quest: "<< opts.initial_questions.size() << '\n';
           for (size_t j = 0;j < opts.initial_questions.size();j++) {
@@ -790,12 +790,12 @@ void TestSplitDecisionTree() {
       }
       if (intersection) {
         for (size_t i = 0;i < keys_all.size();i++) {
-          assert(qo.HasQuestionsForKey(keys_all[i]));
+          KALDI_ASSERT(qo.HasQuestionsForKey(keys_all[i]));
           qo.GetQuestionsOf(keys_all[i]);
         }
       } else {  // union: expect to see all keys that were in the data.
         for (std::set<int32>::iterator iter = keys_all_saw_set.begin(); iter != keys_all_saw_set.end(); iter++) {
-          assert(qo.HasQuestionsForKey(*iter));
+          KALDI_ASSERT(qo.HasQuestionsForKey(*iter));
         }
       }
       std::cout << "num_quest = " <<num_quest<<", num_iters = "<<num_iters<<'\n';
@@ -808,12 +808,12 @@ void TestSplitDecisionTree() {
       BaseFloat impr, smallest_split;
       EventMap *split_tree = SplitDecisionTree(*trivial_tree, stats, qo, thresh, max_leaves,
                                                &num_leaves, &impr, &smallest_split);
-      assert(num_leaves <= max_leaves && smallest_split >= thresh);
+      KALDI_ASSERT(num_leaves <= max_leaves && smallest_split >= thresh);
 
       {
         BaseFloat impr_check = ObjfGivenMap(stats, *split_tree) - ObjfGivenMap(stats, *trivial_tree);
         std::cout << "Objf impr is " << impr << ", computed differently: " <<impr_check<<'\n';
-        assert(fabs(impr - impr_check) < 0.1);
+        KALDI_ASSERT(fabs(impr - impr_check) < 0.1);
       }
 
 
@@ -858,7 +858,7 @@ void TestBuildTreeStatsIo(bool binary) {
       Input ki(filename, &binary_in);
       ReadBuildTreeStats(ki.Stream(),
                          binary_in, gc, &stats2);
-      assert(stats == stats2);
+      KALDI_ASSERT(stats == stats2);
     }
   }
 }

@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
         std::vector<fst::VectorFst<fst::StdArc>* > fsts;
         if (!gc.CompileGraphs(grammars, &fsts))
           KALDI_ERR << "Not expecting CompileGraphs to fail.";
-        assert(fsts.size() == keys.size());
+        KALDI_ASSERT(fsts.size() == keys.size());
 
         for (size_t i = 0; i < fsts.size(); i++) {
           delete grammars[i];

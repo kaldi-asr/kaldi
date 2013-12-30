@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
         if (!gc.CompileGraphsFromText(transcripts, &fsts)) {
           KALDI_ERR << "Not expecting CompileGraphs to fail.";
         }
-        assert(fsts.size() == keys.size());
+        KALDI_ASSERT(fsts.size() == keys.size());
         for (size_t i = 0; i < fsts.size(); i++) {
           if (fsts[i]->Start() != fst::kNoStateId) {
             num_succeed++;

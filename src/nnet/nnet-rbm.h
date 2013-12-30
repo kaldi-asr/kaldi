@@ -178,7 +178,7 @@ class Rbm : public RbmBase {
   
   void RbmUpdate(const CuMatrix<BaseFloat> &pos_vis, const CuMatrix<BaseFloat> &pos_hid, const CuMatrix<BaseFloat> &neg_vis, const CuMatrix<BaseFloat> &neg_hid) {
 
-    assert(pos_vis.NumRows() == pos_hid.NumRows() &&
+    KALDI_ASSERT(pos_vis.NumRows() == pos_hid.NumRows() &&
            pos_vis.NumRows() == neg_vis.NumRows() &&
            pos_vis.NumRows() == neg_hid.NumRows() &&
            pos_vis.NumCols() == neg_vis.NumCols() &&

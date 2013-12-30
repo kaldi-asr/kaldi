@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
                    << PrintableWxfilename(old2new_map_wxfilename);
 
     std::vector<std::vector<int32> > new_ilabels;
-    assert(old2new_mapping.size() != 0);
+    KALDI_ASSERT(old2new_mapping.size() != 0);
     new_ilabels.resize(1 + *std::max_element(old2new_mapping.begin(),
                                              old2new_mapping.end()));
     for (size_t old_idx = 0; old_idx < old2new_mapping.size(); old_idx++) {

@@ -33,21 +33,21 @@ void GenRandStats(int32 dim, int32 num_stats, int32 N, int32 P,
                   bool ensure_all_phones_covered,
                   BuildTreeStatsType *stats_out) {
 
-  assert(dim > 0);
-  assert(num_stats > 0);
-  assert(N > 0);
-  assert(P < N);
-  assert(phone_ids.size() != 0);
-  assert(stats_out != NULL && stats_out->empty());
+  KALDI_ASSERT(dim > 0);
+  KALDI_ASSERT(num_stats > 0);
+  KALDI_ASSERT(N > 0);
+  KALDI_ASSERT(P < N);
+  KALDI_ASSERT(phone_ids.size() != 0);
+  KALDI_ASSERT(stats_out != NULL && stats_out->empty());
   int32 max_phone = *std::max_element(phone_ids.begin(), phone_ids.end());
-  assert(phone2hmm_length.size() >= static_cast<size_t>(1 + max_phone));
-  assert(is_ctx_dep.size() >= static_cast<size_t>(1 + max_phone));
+  KALDI_ASSERT(phone2hmm_length.size() >= static_cast<size_t>(1 + max_phone));
+  KALDI_ASSERT(is_ctx_dep.size() >= static_cast<size_t>(1 + max_phone));
 
   // Make sure phone id's distinct.
   {
     std::vector<int32> tmp(phone_ids);
     SortAndUniq(&tmp);
-    assert(tmp.size() == phone_ids.size());
+    KALDI_ASSERT(tmp.size() == phone_ids.size());
   }
   size_t num_phones = phone_ids.size();
 
@@ -100,7 +100,7 @@ void GenRandStats(int32 dim, int32 num_stats, int32 N, int32 P,
           if (k == P) weight += 1.0;
           weights(k) = weight;
         }
-        assert(weights.Sum() != 0);
+        KALDI_ASSERT(weights.Sum() != 0);
         weights.Scale(1.0 / weights.Sum());
         for (int32 k = 0; k < N; k++)
           mean.AddVec(weights(k), phone_vecs.Row(phone_vec[k]));
@@ -142,9 +142,9 @@ EventMap *BuildTree(Questions &qopts,
                     int32 max_leaves,
                     BaseFloat cluster_thresh,  // typically == thresh.  If negative, use smallest split.
                     int32 P) {
-  assert(thresh > 0 || max_leaves > 0);
-  assert(stats.size() != 0);
-  assert(!phone_sets.empty()
+  KALDI_ASSERT(thresh > 0 || max_leaves > 0);
+  KALDI_ASSERT(stats.size() != 0);
+  KALDI_ASSERT(!phone_sets.empty()
          && phone_sets.size() == share_roots.size()
          && do_split.size() == phone_sets.size());
 
@@ -175,7 +175,7 @@ EventMap *BuildTree(Questions &qopts,
 
   std::sort(nonsplit_phones.begin(), nonsplit_phones.end());
 
-  assert(IsSortedAndUniq(nonsplit_phones));
+  KALDI_ASSERT(IsSortedAndUniq(nonsplit_phones));
   BuildTreeStatsType filtered_stats;
   FilterStatsByKey(stats, P, nonsplit_phones, false,  // retain only those not
                    // in "nonsplit_phones"
@@ -342,7 +342,7 @@ EventMap *BuildTreeTwoLevel(Questions &qopts,
       nonsplit_phones.insert(nonsplit_phones.end(), phone_sets[i].begin(), phone_sets[i].end());
   std::sort(nonsplit_phones.begin(), nonsplit_phones.end());
 
-  assert(IsSortedAndUniq(nonsplit_phones));
+  KALDI_ASSERT(IsSortedAndUniq(nonsplit_phones));
   BuildTreeStatsType filtered_stats;
   FilterStatsByKey(stats, P, nonsplit_phones, false,  // retain only those not
                    // in "nonsplit_phones"
@@ -437,7 +437,7 @@ void ReadSymbolTableAsIntegers(std::string filename,
   if (!is.good())
     KALDI_ERR << "ReadSymbolTableAsIntegers: could not open symbol table "<<filename;
   std::string line;
-  assert(syms != NULL);
+  KALDI_ASSERT(syms != NULL);
   syms->clear();
   while (getline(is, line)) {
     std::string sym;
@@ -470,15 +470,15 @@ static void ObtainSetsOfPhones(const std::vector<std::vector<int32> > &phone_set
                                const std::vector<int32> &clust_assignments,  // clust->parent
                                int32 num_leaves,  // number of clusters present..
                                std::vector<std::vector<int32> > *sets_out) {
-  assert(sets_out != NULL);
+  KALDI_ASSERT(sets_out != NULL);
   sets_out->clear();
   std::vector<std::vector<int32> > raw_sets(clust_assignments.size());
 
-  assert(num_leaves < static_cast<int32>(clust_assignments.size()));
-  assert(assignments.size() == phone_sets.size());
+  KALDI_ASSERT(num_leaves < static_cast<int32>(clust_assignments.size()));
+  KALDI_ASSERT(assignments.size() == phone_sets.size());
   for (size_t i = 0; i < assignments.size(); i++) {
     int32 clust = assignments[i];  // this is an index into phone_sets.
-    assert(clust>=0 && clust < num_leaves);
+    KALDI_ASSERT(clust>=0 && clust < num_leaves);
     for (size_t j = 0; j < phone_sets[i].size(); j++) {
       // and not just a hole.
       raw_sets[clust].push_back(phone_sets[i][j]);
@@ -492,7 +492,7 @@ static void ObtainSetsOfPhones(const std::vector<std::vector<int32> > &phone_set
   for (int32 j = 0; j < static_cast<int32>(clust_assignments.size()); j++) {
     int32 parent = clust_assignments[j];
     std::sort(raw_sets[j].begin(), raw_sets[j].end());
-    assert(IsSortedAndUniq(raw_sets[j]));  // should be no dups.
+    KALDI_ASSERT(IsSortedAndUniq(raw_sets[j]));  // should be no dups.
     if (parent < static_cast<int32>(clust_assignments.size())-1) {  // parent is not out of range [i.e. not the top one]...
       // add all j's phones to its parent.
       raw_sets[parent].insert(raw_sets[parent].end(),
@@ -542,7 +542,7 @@ void AutomaticallyObtainQuestions(BuildTreeStatsType &stats,
 
   std::vector<int32> all_pdf_classes(all_pdf_classes_in);
   SortAndUniq(&all_pdf_classes);
-  assert(!all_pdf_classes.empty());
+  KALDI_ASSERT(!all_pdf_classes.empty());
 
   BuildTreeStatsType retained_stats;
   FilterStatsByKey(stats, kPdfClass, all_pdf_classes,
@@ -648,7 +648,7 @@ void KMeansClusterPhones(BuildTreeStatsType &stats,
 
   std::vector<int32> all_pdf_classes(all_pdf_classes_in);
   SortAndUniq(&all_pdf_classes);
-  assert(!all_pdf_classes.empty());
+  KALDI_ASSERT(!all_pdf_classes.empty());
 
   BuildTreeStatsType retained_stats;
   FilterStatsByKey(stats, kPdfClass, all_pdf_classes,
@@ -718,7 +718,7 @@ void KMeansClusterPhones(BuildTreeStatsType &stats,
   KALDI_ASSERT(assignments.size() == phone_sets.size());
   for (size_t i = 0; i < assignments.size(); i++) {
     int32 class_idx = assignments[i];
-    assert(static_cast<size_t>(class_idx) < sets_out->size());
+    KALDI_ASSERT(static_cast<size_t>(class_idx) < sets_out->size());
     for (size_t j = 0; j < phone_sets[i].size(); j++)
       (*sets_out)[class_idx].push_back(phone_sets[i][j]);
   }
