@@ -216,6 +216,19 @@ void AddWordInsPenToCompactLattice(BaseFloat word_ins_penalty,
 bool RescoreCompactLattice(DecodableInterface *decodable,
                            CompactLattice *clat);
 
+
+/// This function returns the number of words in the longest sentence in a
+/// CompactLattice (i.e. the the maximum of any path, of the count of
+/// olabels on that path).
+int32 LongestSentenceLength(const Lattice &lat);
+
+/// This function returns the number of words in the longest sentence in a
+/// CompactLattice, i.e. the the maximum of any path, of the count of
+/// labels on that path... note, in CompactLattice, the ilabels and olabels
+/// are identical because it is an acceptor.
+int32 LongestSentenceLength(const CompactLattice &lat);
+
+
 /// This function is like RescoreCompactLattice, but it is modified to avoid
 /// computing probabilities on most frames where all the pdf-ids are the same.
 /// (it needs the transition-model to work out whether two transition-ids map to

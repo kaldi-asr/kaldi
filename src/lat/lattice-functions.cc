@@ -31,8 +31,7 @@ using std::map;
 using std::vector;
 
 int32 LatticeStateTimes(const Lattice &lat, vector<int32> *times) {
-  kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
-  if (!(props & fst::kTopSorted))
+  if (!lat.Properties(fst::kTopSorted, true))
     KALDI_ERR << "Input lattice must be topologically sorted.";
   KALDI_ASSERT(lat.Start() == 0);
   int32 num_states = lat.NumStates();
@@ -65,8 +64,7 @@ int32 LatticeStateTimes(const Lattice &lat, vector<int32> *times) {
 }
 
 int32 CompactLatticeStateTimes(const CompactLattice &lat, vector<int32> *times) {
-  kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
-  if (!(props & fst::kTopSorted))
+  if (!lat.Properties(fst::kTopSorted, true))
     KALDI_ERR << "Input lattice must be topologically sorted.";
   KALDI_ASSERT(lat.Start() == 0);
   int32 num_states = lat.NumStates();
@@ -111,8 +109,7 @@ bool PruneLattice(BaseFloat beam, LatType *lat) {
   typedef typename Arc::StateId StateId;
   
   KALDI_ASSERT(beam > 0.0);
-  kaldi::uint64 props = lat->Properties(fst::kFstProperties, false);
-  if (!(props & fst::kTopSorted)) {
+  if (!lat->Properties(fst::kTopSorted, true)) {
     if (fst::TopSort(lat) == false) {
       KALDI_WARN << "Cycles detected in lattice";
       return false;
@@ -987,8 +984,7 @@ bool RescoreCompactLatticeInternal(
     KALDI_WARN << "Rescoring empty lattice";
     return false;
   }
-  uint64 props = clat->Properties(fst::kFstProperties, false);
-  if (!(props & fst::kTopSorted)) {
+  if (!clat->Properties(fst::kTopSorted, true)) {
     if (fst::TopSort(clat) == false) {
       KALDI_WARN << "Cycles detected in lattice.";
       return false;
@@ -1128,8 +1124,7 @@ bool RescoreLattice(DecodableInterface *decodable,
     KALDI_WARN << "Rescoring empty lattice";
     return false;
   }
-  uint64 props = lat->Properties(fst::kFstProperties, false);
-  if (!(props & fst::kTopSorted)) {
+  if (!lat->Properties(fst::kTopSorted, true)) {  
     if (fst::TopSort(lat) == false) {
       KALDI_WARN << "Cycles detected in lattice.";
       return false;
@@ -1213,6 +1208,84 @@ BaseFloat LatticeForwardBackwardMmi(
   
   return ans;
 }
+
+
+int32 LongestSentenceLength(const Lattice &lat) {
+  typedef Lattice::Arc Arc;
+  typedef Arc::Label Label;
+  typedef Arc::StateId StateId;
+  
+  if (lat.Properties(fst::kTopSorted, true) == 0) {
+    Lattice lat_copy(lat);
+    if (!TopSort(&lat_copy))
+      KALDI_ERR << "Was not able to topologically sort lattice (cycles found?)";
+    return LongestSentenceLength(lat);
+  }
+  std::vector<int32> max_length(lat.NumStates(), 0);
+  int32 lattice_max_length = 0;
+  for (StateId s = 0; s < lat.NumStates(); s++) {
+    int32 this_max_length = max_length[s];
+    for (fst::ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      bool arc_has_word = (arc.olabel != 0);
+      StateId nextstate = arc.nextstate;
+      KALDI_ASSERT(static_cast<size_t>(nextstate) < max_length.size());
+      if (arc_has_word) {
+        // A lattice should ideally not have cycles anyway; a cycle with a word
+        // on is something very bad.
+        KALDI_ASSERT(nextstate > s && "Lattice has cycles with words on.");
+        max_length[nextstate] = std::max(max_length[nextstate],
+                                         this_max_length + 1);
+      } else {
+        max_length[nextstate] = std::max(max_length[nextstate],
+                                         this_max_length);
+      }
+    }
+    if (lat.Final(s) != LatticeWeight::Zero())
+      lattice_max_length = std::max(lattice_max_length, max_length[s]);
+  }
+  return lattice_max_length;
+}
+
+int32 LongestSentenceLength(const CompactLattice &clat) {
+  typedef CompactLattice::Arc Arc;
+  typedef Arc::Label Label;
+  typedef Arc::StateId StateId;
+  
+  if (clat.Properties(fst::kTopSorted, true) == 0) {
+    CompactLattice clat_copy(clat);
+    if (!TopSort(&clat_copy))
+      KALDI_ERR << "Was not able to topologically sort lattice (cycles found?)";
+    return LongestSentenceLength(clat);
+  }
+  std::vector<int32> max_length(clat.NumStates(), 0);
+  int32 lattice_max_length = 0;
+  for (StateId s = 0; s < clat.NumStates(); s++) {
+    int32 this_max_length = max_length[s];
+    for (fst::ArcIterator<CompactLattice> aiter(clat, s);
+         !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      bool arc_has_word = (arc.ilabel != 0); // note: olabel == ilabel.
+      // also note: for normal CompactLattice, e.g. as produced by
+      // determinization, all arcs will have nonzero labels, but the user might
+      // decide to remplace some of the labels with zero for some reason, and we
+      // want to support this.
+      StateId nextstate = arc.nextstate;
+      KALDI_ASSERT(static_cast<size_t>(nextstate) < max_length.size());
+      KALDI_ASSERT(nextstate > s && "CompactLattice has cycles");
+      if (arc_has_word)
+        max_length[nextstate] = std::max(max_length[nextstate],
+                                         this_max_length + 1);
+      else
+        max_length[nextstate] = std::max(max_length[nextstate],
+                                         this_max_length);
+    }
+    if (clat.Final(s) != CompactLatticeWeight::Zero())
+      lattice_max_length = std::max(lattice_max_length, max_length[s]);
+  }
+  return lattice_max_length;
+}
+
 
 
 }  // namespace kaldi
