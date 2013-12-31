@@ -42,15 +42,6 @@ class OnlineFeatureInterface {
  public:
   virtual int32 Dim() const; /// returns the feature dimension.
 
-  /// Calling SetOnlineMode switches the class between
-  /// online[default] and batch processing of its features.
-  /// It is usefull for algorithms such as CMVN and pitch extraction, 
-  /// which are not purely frame-to-frame).
-  /// For batch mode (is_online==false) make sure that input features
-  /// are available for whole utterance, because the output features
-  /// are computed on all input features at once.
-  virtual void SetOnlineMode(bool is_online);
-
   /// This sets the online mode (online or not online) of the feature
   /// computation.  On initialization, the class should be in online mode.  If
   /// you call SetOnlineMode(false), it should then return features that are the

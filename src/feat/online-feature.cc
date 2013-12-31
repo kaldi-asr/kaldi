@@ -101,13 +101,13 @@ template class OnlineMfccOrPlp<Plp>;
 /// The statistics were collected also using the vector feat.
 /// The function UndoStats recomputes the stats,
 /// so they corresponds to statistics computed without feat vector.
-void UndoStats(const VectorBase<BaseFloat> & feat, 
-                Matrix<BaseFloat> *stats);
+void UndoStats(const Matrix<double> & feat, 
+                Matrix<double> *stats);
 
 // TODO heavily based on src/transform/cmvn.h:ApplyCmvn.
 void ApplyCmvn(const MatrixBase<double> &stats, 
                 bool var_norm,
-                VectorBase<BaseFloat> *feat) ;
+                VectorBase<BaseFloat> *feat);
 
 void OnlineCmvn::GetFeature(int32 frame, VectorBase<BaseFloat> *feat) {
   src_->GetFeature(frame, feat);
@@ -115,25 +115,26 @@ void OnlineCmvn::GetFeature(int32 frame, VectorBase<BaseFloat> *feat) {
     // Apply the normalization from cached statistics.
     ApplyCmvn(stats_[frame], norm_var_, feat);
   } else {
-    VectorBase<BaseFloat> fresh;
-    fresh.CopyFromVec(*feat);
-    window_.push(fresh);  // window_ is FIFO
+    // Add the statistics for the new frame
+    // Storing count, sum and sum_square is the best way how to compute
+    // on the fly variance since 
+    // Var(a[n+1]) = Sum(a[0:n+1]^2) - Mean(a[0:n+1])^2 =
+    //             = Sum(a[0:n]^2) + (a[n]^2) - Mean(a[0:n+1])^2
+    Matrix<double> one_frame_stat;
+    one_frame_stat.Resize(2, src_->Dim() + 1, kSetZero);
+    AccCmvnStats(*feat, 1.0, &one_frame_stat);
+    AccCmvnStats(*feat, 1.0, &sliding_stat_);
+    window_.push_back(one_frame_stat);  // window_ is FIFO
     if(WindowSize() > cmvn_window_) {
       // Before removing the frame update the sliding_stat_
-      UndoStats(window_.first(), &sliding_stat_);
-      window_.pop();  // Removes the old frame
+      UndoStats(window_.front(), &sliding_stat_);
+      window_.pop_front();  // Removes the old frame
     } else if (WindowSize() < min_window_) {
       KALDI_ERR << "Supply more frames for input!" << std::endl
                 << "Can not compute CM[V]N on " << WindowSize() << 
                 "frames with minimal window size " << min_window_ << 
                 "!" << std::endl;
     }
-    // Add the statistics for the new frame
-    // Storing count, sum and sum_square is the best way how to compute
-    // on the fly variance since 
-    // Var(a[n+1]) = Sum(a[0:n+1]^2) - Mean(a[0:n+1])^2 =
-    //             = Sum(a[0:n]^2) + (a[n]^2) - Mean(a[0:n+1])^2
-    AccCmvnStats(fresh, 1.0, &sliding_stat_);
     // Store them to the cache
     stats_.push_back(sliding_stat_);
     KALDI_ASSERT(stats_.size() == frame);
@@ -145,24 +146,47 @@ void OnlineCmvn::GetFeature(int32 frame, VectorBase<BaseFloat> *feat) {
 void OnlineCmvn::ApplyStats(const Matrix<BaseFloat> &stats) {
   KALDI_ASSERT(stats.NumCols() == sliding_stat_.NumCols());
   KALDI_ASSERT(stats.NumRows() == sliding_stat_.NumRows());
-  sliding_stat_.CopyFromMat(stats);
    
-  // Create artificial frames which corresponds to stored statistics
+  sliding_stat_.CopyFromMat(stats);
+  int32 dim = sliding_stat_.NumCols() - 1;
+  double count = sliding_stat_(0, dim);
+
+  // Create artificial cumsum and cumsumsquared stats 
+  // which corresponds to stats 
+  Matrix<double> artificial;
+  // distributing cumsum and cumsumsquared equally
+  for (int32 d = 0; d < dim; ++d) {
+    double &m = artificial(0, d);
+    double &v = artificial(0, d);
+    m = stats(0, d) / count;
+    v = stats(1, d) / count;
+  }
+  // setting the count for one frame statistics and the dummy value
+  double &one_frame_count = artificial(0, dim);
+  double &dummy = artificial(1, dim);
+  dummy = 0;
+  one_frame_count = 1;
+
+  // fill the window with artificial stats
   window_.clear();
-  int32 win_size = WindowSize();
-  VectorBase<BaseFloat > artificial1;
-  VectorBase<BaseFloat> artificial2;
-  // If variance>0 then we need atleast 2 different vectors
-  // TODO fill it with non-zero variance vector
-  // TODO scale to fit the variance. 
-  // TODO shift it in other direction than mean
-  // for(int32 i = 0; i < win_size; ++i) {
-  //   window_.push(artificial);
-  // }
+  for(int i = 0; i < count; ++i) {
+    window_.push_back(artificial);
+  }
 }
 
-void UndoStats(const VectorBase<BaseFloat> &feat, Matrix<BaseFloat> *stats) {
-  // TODO 
+void UndoStats(const Matrix<double> &frame_stat, Matrix<double> *sliding_stats) {
+  KALDI_ASSERT(sliding_stats->NumRows() == 2 && frame_stat.NumRows() == 2);
+  KALDI_ASSERT(sliding_stats->NumCols() == frame_stat.NumCols());
+  int32 dim = frame_stat.NumCols();
+  for (int32 d = 0; d < dim; ++d) {
+    double &m = (*sliding_stats)(0, d);
+    double &v = (*sliding_stats)(1, d);
+    m = m - frame_stat(0, d); // subtracting from cumsum
+    v = v - frame_stat(1, d); // subtracting from cumsumsq
+  }
+  // decrease the count of applied frames stats
+  double &count = (*sliding_stats)(0, dim);
+  count--;
 }
 
 void ApplyCmvn(const MatrixBase<double> &stats,
@@ -244,13 +268,8 @@ void OnlineSpliceFrames::GetFeature(int32 frame, VectorBase<BaseFloat> *feat) {
 }
 
 OnlineLda::OnlineLda(const Matrix<BaseFloat> &transform,
-<<<<<<< HEAD
                      OnlineFeatureInterface *src):
     src_(src) {
-=======
-                     OnlineFeatureInterface *src): 
-    src_(src), is_online_(true) {
->>>>>>> sb-online: Delete is_online from constructor functions
   int32 src_dim = src_->Dim();
   if (transform.NumCols() == src_dim) { // Linear transform
     linear_term_ = transform;
@@ -318,13 +337,8 @@ void OnlineDeltaFeatures::GetFeature(int32 frame,
 
 
 OnlineDeltaFeatures::OnlineDeltaFeatures(const DeltaFeaturesOptions &opts,
-<<<<<<< HEAD
                                          OnlineFeatureInterface *src):
     src_(src), opts_(opts), delta_features_(opts) { }
-=======
-                                OnlineFeatureInterface *src):
-    src_(src), opts_(opts), delta_features_(opts), is_online_(true) { }
->>>>>>> sb-online: Delete is_online from constructor functions
 
 
 }  // namespace kaldi

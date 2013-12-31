@@ -23,7 +23,7 @@
 
 #include <string>
 #include <vector>
-#include <queue>
+#include <deque>
 
 #include "matrix/matrix-lib.h"
 #include "util/common-utils.h"
@@ -120,6 +120,7 @@ class OnlineCmvn : public OnlineFeatureInterface {
 
   virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
 
+  // FIXME now CMVN "eats" min-window frames
   virtual int32 NumFramesReady() {
     return std::max(src_->NumFramesReady() - min_window_, 0); 
   }
@@ -130,16 +131,8 @@ class OnlineCmvn : public OnlineFeatureInterface {
   // Next, functions that are not in the interface.
   //
   OnlineCmvn(int32 cmvn_window, OnlineFeatureInterface *src):
-<<<<<<< HEAD
-<<<<<<< HEAD
-      cmvn_window_(cmvn_window), src_(src), is_online_(true) { }
-=======
-    cmvn_window_(cmvn_window), src_(src), is_online_(true) { }
->>>>>>> sb-online: Delete is_online from constructor functions
-=======
     norm_var_(true), cmvn_window_(cmvn_window), src_(src), is_online_(true) 
     { sliding_stat_.Resize(2, src->Dim() + 1, kSetZero); }
->>>>>>> sb-online: Cmvn implementation skeleton. Does not compile.
 
   /// Should be called after calling GetFeature on the last available frame
   void GetStats(Matrix<BaseFloat> *stats) const {
@@ -166,8 +159,8 @@ class OnlineCmvn : public OnlineFeatureInterface {
                               // Matrix size is (2, Dim() + 1)
                               // At Matrix(0, dim) is stored used window size
                               // At Matrix(1, dim) is always stored 0 -> dummy
-  std::queue<Vector<BaseFloat> > window_;
-  std::vector<MatrixBase<double> > stats_; 
+  std::deque<Matrix<double> > window_;
+  std::vector<Matrix<double> > stats_; 
   OnlineFeatureInterface *src_;
   bool is_online_;
 };
