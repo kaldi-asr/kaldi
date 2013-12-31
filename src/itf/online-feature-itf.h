@@ -37,26 +37,19 @@ namespace kaldi {
 /// OnlineFeatureInterface, is not specified in the interface and you will
 /// likely define constructors or methods that are specific to the derived type
 /// which will take care of that.
-///
-/// Notice the Recompute() function.  If you call this it signals the class that
-/// it can, if it wants, recompute the features in a better way, for example
-/// replacing online cepstral mean normalization with whole-file cepstral mean
-/// normalization.  The likely usage of this from the calling code is to
-/// decode the file and make lattices; call Recompute(); and then get all
-/// the features again to rescore the lattice.
 
 class OnlineFeatureInterface {
  public:
   virtual int32 Dim() const; /// returns the feature dimension.
 
-  /// Calling Recompute() will signal the class that it may recompute
-  /// all its features if it wants (e.g. convert online to batch-mode CMN,
-  /// and the same for any algorithms, such as pitch extraction, which are
-  /// not purely frame-to-frame).
-  /// If two calls to GetFeature() are separated by a call to Recompute(),
-  /// there is no expetation that the two calls will return the same
-  /// feature.
-  virtual void Recompute();
+  /// Calling SetOnlineMode switches the class between
+  /// online[default] and batch processing of its features.
+  /// It is usefull for algorithms such as CMVN and pitch extraction, 
+  /// which are not purely frame-to-frame).
+  /// For batch mode (is_online==false) make sure that input features
+  /// are available for whole utterance, because the output features
+  /// are computed on all input features at once.
+  virtual void SetOnlineMode(bool is_online);
 
   /// This sets the online mode (online or not online) of the feature
   /// computation.  On initialization, the class should be in online mode.  If

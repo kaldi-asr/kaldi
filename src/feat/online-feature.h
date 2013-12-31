@@ -126,7 +126,11 @@ class OnlineCmvn : public OnlineFeatureInterface {
   // Next, functions that are not in the interface.
   //
   OnlineCmvn(int32 cmvn_window, OnlineFeatureInterface *src):
+<<<<<<< HEAD
       cmvn_window_(cmvn_window), src_(src), is_online_(true) { }
+=======
+    cmvn_window_(cmvn_window), src_(src), is_online_(true) { }
+>>>>>>> sb-online: Delete is_online from constructor functions
 
   /// The GetStats function returns statistics
   /// which are needed to compute Cepstral mean and variance.
