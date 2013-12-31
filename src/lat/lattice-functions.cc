@@ -1219,7 +1219,7 @@ int32 LongestSentenceLength(const Lattice &lat) {
     Lattice lat_copy(lat);
     if (!TopSort(&lat_copy))
       KALDI_ERR << "Was not able to topologically sort lattice (cycles found?)";
-    return LongestSentenceLength(lat);
+    return LongestSentenceLength(lat_copy);
   }
   std::vector<int32> max_length(lat.NumStates(), 0);
   int32 lattice_max_length = 0;
@@ -1256,7 +1256,7 @@ int32 LongestSentenceLength(const CompactLattice &clat) {
     CompactLattice clat_copy(clat);
     if (!TopSort(&clat_copy))
       KALDI_ERR << "Was not able to topologically sort lattice (cycles found?)";
-    return LongestSentenceLength(clat);
+    return LongestSentenceLength(clat_copy);
   }
   std::vector<int32> max_length(clat.NumStates(), 0);
   int32 lattice_max_length = 0;

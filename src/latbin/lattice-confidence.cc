@@ -85,8 +85,13 @@ int main(int argc, char *argv[]) {
       SequentialCompactLatticeReader clat_reader(lats_rspecifier);
       
       for (; !clat_reader.Done(); clat_reader.Next()) {
-        const CompactLattice &clat = clat_reader.Value();
+        CompactLattice clat = clat_reader.Value();
         std::string key = clat_reader.Key();
+        // FreeCurrent() is an optimization that prevents the lattice from being
+        // copied unnecessarily (OpenFst does copy-on-write).
+        clat_reader.FreeCurrent();
+        if (acoustic_scale != 1.0 || lm_scale != 1.0)
+          fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &clat);
 
         int32 num_paths;
         std::vector<int32> best_sentence, second_best_sentence;
@@ -116,9 +121,13 @@ int main(int argc, char *argv[]) {
       SequentialLatticeReader lat_reader(lats_rspecifier);
       
       for (; !lat_reader.Done(); lat_reader.Next()) {
-        const Lattice &lat = lat_reader.Value();
+        Lattice lat = lat_reader.Value();
         std::string key = lat_reader.Key();
-
+        // FreeCurrent() is an optimization that prevents the lattice from being
+        // copied unnecessarily (OpenFst does copy-on-write).
+        lat_reader.FreeCurrent();
+        if (acoustic_scale != 1.0 || lm_scale != 1.0)
+          fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &lat);
         int32 num_paths;
         std::vector<int32> best_sentence, second_best_sentence;
         BaseFloat confidence;

@@ -39,6 +39,7 @@ BaseFloat SentenceLevelConfidence(const CompactLattice &clat,
   */
   Lattice lat;
   ConvertLattice(clat, &lat);
+  
   std::vector<Lattice> lats;
   NbestAsFsts(lat, 2, &lats);
   int32 n = lats.size();
@@ -87,20 +88,25 @@ BaseFloat SentenceLevelConfidence(const Lattice &lat,
                                   std::vector<int32> *second_best_sentence) {
   int32 max_sentence_length = LongestSentenceLength(lat);
   fst::DeterminizeLatticePrunedOptions determinize_opts;
-  // safety_factor is just in case I forgot some reason why we might need a
-  // couple extra arcs.  Setting it to 4 for extra safety costs very little.
-  int32 safety_factor = 4;
-  determinize_opts.max_arcs = max_sentence_length * 2 + safety_factor;
+  // The basic idea of expanding only up to "max_sentence_length * 2" arcs,
+  // is that that should be sufficient to get the best and second-best paths
+  // through the lattice, which is all we need for this particular application.
+  // "safety_term" is just in case there is some reason why we might need a few
+  // extra arcs, e.g. in case of a tie on the weights of the second-best path.
+  int32 safety_term = 4 + max_sentence_length;
+  determinize_opts.max_arcs = max_sentence_length * 2 + safety_term
   // set prune_beam to a large value... we don't really rely on the beam; we
   // rely on the max_arcs variable to limit the size of the lattice.
-  BaseFloat prune_beam = 1000.0; 
+  double prune_beam = std::numeric_limits<double>::infinity();
 
   CompactLattice clat;
   // We ignore the return status of DeterminizeLatticePruned.  It will likely
   // return false, but this is expected because the expansion is limited
   // by "max_arcs" not "prune_beam".
-  DeterminizeLatticePruned(lat, prune_beam, &clat, determinize_opts);
-
+  Lattice inverse_lat(lat);
+  fst::Invert(&inverse_lat); // Swap input and output symbols.
+  DeterminizeLatticePruned(inverse_lat, prune_beam, &clat, determinize_opts);
+  
   // Call the version of this function that takes a CompactLattice.
   return SentenceLevelConfidence(clat, num_paths,
                                  best_sentence, second_best_sentence);

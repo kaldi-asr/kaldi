@@ -1214,10 +1214,11 @@ bool DeterminizeLatticePruned(
                                                    beam, opts);
     double effective_beam;
     bool ans = det.Determinize(&effective_beam);
-    // if it returns false it will typically still
-    // produce reasonable output, just with a
-    // narrower beam than "beam".
+    // if it returns false it will typically still produce reasonable output,
+    // just with a narrower beam than "beam".  If the user specifies an infinite
+    // beam we don't do this beam-narrowing.
     if (effective_beam >= beam * opts.retry_cutoff ||
+        beam == std::numeric_limits<double>::infinity() ||
         iter + 1 == max_num_iters) {
       det.Output(ofst);
       return ans;
