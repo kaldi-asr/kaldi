@@ -18,6 +18,7 @@
 // limitations under the License.
 
 #include "feat/online-feature.h"
+#include "transform/cmvn.h"
 
 namespace kaldi {
 
@@ -94,6 +95,128 @@ void OnlineMfccOrPlp<C>::AcceptWaveform(BaseFloat sampling_rate,
 // instantiate the templates defined here for MFCC and PLP classes.
 template class OnlineMfccOrPlp<Mfcc>;
 template class OnlineMfccOrPlp<Plp>;
+
+
+// TODO rename and move to OnlineCmvn class? 
+/// The statistics were collected also using the vector feat.
+/// The function UndoStats recomputes the stats,
+/// so they corresponds to statistics computed without feat vector.
+void UndoStats(const VectorBase<BaseFloat> & feat, 
+                Matrix<BaseFloat> *stats);
+
+// TODO heavily based on src/transform/cmvn.h:ApplyCmvn.
+void ApplyCmvn(const MatrixBase<double> &stats, 
+                bool var_norm,
+                VectorBase<BaseFloat> *feat) ;
+
+void OnlineCmvn::GetFeature(int32 frame, VectorBase<BaseFloat> *feat) {
+  src_->GetFeature(frame, feat);
+  if (frame < stats_.size()) {
+    // Apply the normalization from cached statistics.
+    ApplyCmvn(stats_[frame], norm_var_, feat);
+  } else {
+    VectorBase<BaseFloat> fresh;
+    fresh.CopyFromVec(*feat);
+    window_.push(fresh);  // window_ is FIFO
+    if(WindowSize() > cmvn_window_) {
+      // Before removing the frame update the sliding_stat_
+      UndoStats(window_.first(), &sliding_stat_);
+      window_.pop();  // Removes the old frame
+    } else if (WindowSize() < min_window_) {
+      KALDI_ERR << "Supply more frames for input!" << std::endl
+                << "Can not compute CM[V]N on " << WindowSize() << 
+                "frames with minimal window size " << min_window_ << 
+                "!" << std::endl;
+    }
+    // Add the statistics for the new frame
+    // Storing count, sum and sum_square is the best way how to compute
+    // on the fly variance since 
+    // Var(a[n+1]) = Sum(a[0:n+1]^2) - Mean(a[0:n+1])^2 =
+    //             = Sum(a[0:n]^2) + (a[n]^2) - Mean(a[0:n+1])^2
+    AccCmvnStats(fresh, 1.0, &sliding_stat_);
+    // Store them to the cache
+    stats_.push_back(sliding_stat_);
+    KALDI_ASSERT(stats_.size() == frame);
+    // Apply the freshly updated cmvn stats
+    ApplyCmvn(sliding_stat_, norm_var_, feat);
+  }
+}
+
+void OnlineCmvn::ApplyStats(const Matrix<BaseFloat> &stats) {
+  KALDI_ASSERT(stats.NumCols() == sliding_stat_.NumCols());
+  KALDI_ASSERT(stats.NumRows() == sliding_stat_.NumRows());
+  sliding_stat_.CopyFromMat(stats);
+   
+  // Create artificial frames which corresponds to stored statistics
+  window_.clear();
+  int32 win_size = WindowSize();
+  VectorBase<BaseFloat > artificial1;
+  VectorBase<BaseFloat> artificial2;
+  // If variance>0 then we need atleast 2 different vectors
+  // TODO fill it with non-zero variance vector
+  // TODO scale to fit the variance. 
+  // TODO shift it in other direction than mean
+  // for(int32 i = 0; i < win_size; ++i) {
+  //   window_.push(artificial);
+  // }
+}
+
+void UndoStats(const VectorBase<BaseFloat> &feat, Matrix<BaseFloat> *stats) {
+  // TODO 
+}
+
+void ApplyCmvn(const MatrixBase<double> &stats,
+               bool var_norm,
+               VectorBase<BaseFloat> *feats) {
+  KALDI_ASSERT(feats != NULL);
+  int32 dim = stats.NumCols() - 1;
+  if (stats.NumRows() > 2 || stats.NumRows() < 1 || feats->Dim() != dim) {
+    KALDI_ERR << "Dim mismatch in ApplyCmvn: cmvn "
+              << stats.NumRows() << 'x' << stats.NumCols()
+              << ", feats " << "1x" << feats->Dim();
+  }
+  if (stats.NumRows() == 1 && var_norm)
+    KALDI_ERR << "You requested variance normalization but no variance stats "
+              << "are supplied.";
+
+  double count = stats(0, dim);
+  // Do not change the threshold of 1.0 here: in the balanced-cmvn code, when
+  // computing an offset and representing it as stats, we use a count of one.
+  if (count < 1.0)
+    KALDI_ERR << "Insufficient stats for cepstral mean and variance normalization: "
+              << "count = " << count;
+
+  Matrix<BaseFloat> norm(2, dim);  // norm(0, d) = mean offset
+  // norm(1, d) = scale, e.g. x(d) <-- x(d)*norm(1, d) + norm(0, d).
+  for (int32 d = 0; d < dim; d++) {
+    double mean, offset, scale;
+    mean = stats(0, d)/count;
+    if (!var_norm) {
+      scale = 1.0;
+      offset = -mean;
+    } else {
+      double var = (stats(1, d)/count) - mean*mean,
+          floor = 1.0e-20;
+      if (var < floor) {
+        KALDI_WARN << "Flooring cepstral variance from " << var << " to "
+                   << floor;
+        var = floor;
+      }
+      scale = 1.0 / sqrt(var);
+      if (scale != scale || 1/scale == 0.0)
+        KALDI_ERR << "NaN or infinity in cepstral mean/variance computation\n";
+      offset = -(mean*scale);
+    }
+    norm(0, d) = offset;
+    norm(1, d) = scale;
+  }
+
+  // Apply the normalization.
+  for (int32 d = 0; d < dim; d++) {
+    BaseFloat &f = (*feats)(d);
+    f = norm(0, d) + f*norm(1, d);
+  }
+}
 
 int32 OnlineSpliceFrames::NumFramesReady() const {
   int32 num_frames = src_->NumFramesReady();

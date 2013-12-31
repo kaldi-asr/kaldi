@@ -23,6 +23,7 @@
 
 #include <string>
 #include <vector>
+#include <queue>
 
 #include "matrix/matrix-lib.h"
 #include "util/common-utils.h"
@@ -46,22 +47,22 @@ class OnlineMfccOrPlp: public OnlineFeatureInterface {
   //
   virtual int32 Dim() const { return mfcc_or_plp_.Dim(); }
 
-  virtual void SetOnlineMode(bool is_online) { }  // This does nothing since MFCC 
+  virtual void SetOnlineMode(bool is_online) { }  // This does nothing since MFCC
                              // computation is not affected by future context.
 
   // Note: this will only ever return true if you call InputFinished(), which
   // isn't really necessary to do unless you want to make sure to flush out the
   // last few frames of delta or LDA features to exactly match a non-online
-  // decode of some data.  
+  // decode of some data.
   virtual bool IsLastFrame(int32 frame) const;
   virtual int32 NumFramesReady() const { return num_frames_; }
-  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);  
+  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
 
   //
   // Next, functions that are not in the interface.
   //
   explicit OnlineMfccOrPlp(const typename C::Options &opts);
-  
+
   // This would be called from the application, when you get
   // more wave data.  Note: the sampling_rate is only provided so
   // the code can assert that it matches the sampling rate
@@ -74,7 +75,7 @@ class OnlineMfccOrPlp: public OnlineFeatureInterface {
   // more waveform.  This will help flush out the last few frames
   // of delta or LDA features.
   void InputFinished() { input_finished_= true; }
-  
+
  private:
   C mfcc_or_plp_; // class that does the MFCC or PLP computation
 
@@ -93,7 +94,7 @@ class OnlineMfccOrPlp: public OnlineFeatureInterface {
   // The sampling frequency, extracted from the config.  Should
   // be identical to the waveform supplied.
   BaseFloat sampling_frequency_;
-  
+
   // waveform_remainder_ is a short piece of waveform that we may need to keep
   // after extracting all the whole frames we can (whatever length of feature
   // will be required for the next phase of computation).
@@ -104,49 +105,69 @@ typedef OnlineMfccOrPlp<Mfcc> OnlineMfcc;
 typedef OnlineMfccOrPlp<Plp> OnlinePlp;
 
 
+
 class OnlineCmvn : public OnlineFeatureInterface {
  public:
   //
   // First, functions that are present in the interface:
   //
-  virtual int32 Dim() const;
+  virtual int32 Dim() const { return src_->Dim(); }
 
-  virtual void SetOnlineMode(bool is_online) { 
+  virtual void SetOnlineMode(bool is_online) {
     is_online_ = is_online;
-    src_->SetOnlineMode(is_online); 
+    src_->SetOnlineMode(is_online);
   }
 
   virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
 
-  virtual int32 NumFramesReady() const;
-  
+  virtual int32 NumFramesReady() {
+    return std::max(src_->NumFramesReady() - min_window_, 0); 
+  }
+
   virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
-  
+
   //
   // Next, functions that are not in the interface.
   //
   OnlineCmvn(int32 cmvn_window, OnlineFeatureInterface *src):
 <<<<<<< HEAD
+<<<<<<< HEAD
       cmvn_window_(cmvn_window), src_(src), is_online_(true) { }
 =======
     cmvn_window_(cmvn_window), src_(src), is_online_(true) { }
 >>>>>>> sb-online: Delete is_online from constructor functions
+=======
+    norm_var_(true), cmvn_window_(cmvn_window), src_(src), is_online_(true) 
+    { sliding_stat_.Resize(2, src->Dim() + 1, kSetZero); }
+>>>>>>> sb-online: Cmvn implementation skeleton. Does not compile.
 
-  /// The GetStats function returns statistics
-  /// which are needed to compute Cepstral mean and variance.
-  /// The statistics can be used for Initialization of new OnlineCmvn object.
-  void GetStats(Vector<double> *cur_sum, Vector<double> *cur_sumsq, int32 *window_frames) const;
+  /// Should be called after calling GetFeature on the last available frame
+  void GetStats(Matrix<BaseFloat> *stats) const {
+    stats->CopyFromMat(sliding_stat_);
+  }
 
   /// Start using immediately the statistics for normalisation.
-  void ApplyStats(const Vector<double> &cur_sum, const Vector<double> &cur_sumsq, int32 window_frames);
+  void ApplyStats(const Matrix<BaseFloat> &stats);
+
+  int32 WindowSize() { 
+    int32 last = sliding_stat_(0, sliding_stat_.NumCols() - 1);
+    int32 r = sliding_stat_(0, last); 
+    KALDI_ASSERT(r == window_.size());
+    return r;
+  }
 
  private:
-  bool normalize_variance_;
+  // TODO move norm_var_, min_window_, cmn_window_, is_online to OnlineCmvnOpts struct
+  bool norm_var_;  // FIXME does not store 2. row if norm_var_==false
   int32 min_window_;
   int32 cmvn_window_;
-  int32 stats_collected_;
-  Vector<double> cur_sum_;
-  Vector<double> cur_sumsq_;
+  Matrix<double> sliding_stat_;  // first row of Matrix is cumulated sum,
+                              // second row is the cumulated squared sum 
+                              // Matrix size is (2, Dim() + 1)
+                              // At Matrix(0, dim) is stored used window size
+                              // At Matrix(1, dim) is always stored 0 -> dummy
+  std::queue<Vector<BaseFloat> > window_;
+  std::vector<MatrixBase<double> > stats_; 
   OnlineFeatureInterface *src_;
   bool is_online_;
 };
@@ -161,25 +182,25 @@ class OnlineSpliceFrames: public OnlineFeatureInterface {
     return src_->Dim() * (1 + left_context_ * right_context_);
   }
 
-  virtual void SetOnlineMode(bool is_online) { 
+  virtual void SetOnlineMode(bool is_online) {
     is_online_ = is_online;
-    src_->SetOnlineMode(is_online); 
+    src_->SetOnlineMode(is_online);
   }
 
   virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
 
   virtual int32 NumFramesReady() const;
-  
+
   virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
-  
+
   //
   // Next, functions that are not in the interface.
   //
   OnlineSpliceFrames(int32 left_context, int32 right_context,
                      OnlineFeatureInterface *src):
-      left_context_(left_context), right_context_(right_context), 
+      left_context_(left_context), right_context_(right_context),
       src_(src), is_online_(true) { }
-  
+
  private:
   int32 left_context_;
   int32 right_context_;
@@ -195,17 +216,17 @@ class OnlineLda: public OnlineFeatureInterface {
   // First, functions that are present in the interface:
   //
   virtual int32 Dim() const { return offset_.Dim(); }
-  
-  virtual void SetOnlineMode(bool is_online) { 
+
+  virtual void SetOnlineMode(bool is_online) {
     is_online_ = is_online;
-    src_->SetOnlineMode(is_online); 
+    src_->SetOnlineMode(is_online);
   }
 
   virtual bool IsLastFrame(int32 frame) { return src_->IsLastFrame(frame); }
 
   virtual bool NumFramesReady() { return src_->NumFramesReady(); }
 
-  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);  
+  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
 
   //
   // Next, functions that are not in the interface.
@@ -215,11 +236,11 @@ class OnlineLda: public OnlineFeatureInterface {
   /// where the last column is the offset.
   OnlineLda(const Matrix<BaseFloat> &transform,
             OnlineFeatureInterface *src);
-  
+
  private:
   OnlineFeatureInterface *src_;
   Matrix<BaseFloat> linear_term_;
-  Vector<BaseFloat> offset_;  
+  Vector<BaseFloat> offset_;
   bool is_online_;
 };
 
@@ -229,24 +250,24 @@ class OnlineDeltaFeatures: public OnlineFeatureInterface {
   // First, functions that are present in the interface:
   //
   virtual int32 Dim() const;
-  
-  virtual void SetOnlineMode(bool is_online) { 
+
+  virtual void SetOnlineMode(bool is_online) {
     is_online_ = is_online;
-    src_->SetOnlineMode(is_online); 
+    src_->SetOnlineMode(is_online);
   }
 
   virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
 
   virtual int32 NumFramesReady() const;
-  
+
   virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
-  
+
   //
   // Next, functions that are not in the interface.
   //
   OnlineDeltaFeatures(const DeltaFeaturesOptions &opts,
                       OnlineFeatureInterface *src);
-  
+
  private:
   OnlineFeatureInterface *src_;
   DeltaFeaturesOptions opts_;
