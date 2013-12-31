@@ -210,7 +210,7 @@ class OnlineLda: public OnlineFeatureInterface {
   /// The transform can be a linear transform, or an affine transform
   /// where the last column is the offset.
   OnlineLda(const Matrix<BaseFloat> &transform,
-            OnlineFeatureInterface *src, bool is_online);
+            OnlineFeatureInterface *src);
   
  private:
   OnlineFeatureInterface *src_;
@@ -241,7 +241,7 @@ class OnlineDeltaFeatures: public OnlineFeatureInterface {
   // Next, functions that are not in the interface.
   //
   OnlineDeltaFeatures(const DeltaFeaturesOptions &opts,
-                      OnlineFeatureInterface *src, bool is_online);
+                      OnlineFeatureInterface *src);
   
  private:
   OnlineFeatureInterface *src_;
