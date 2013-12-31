@@ -116,7 +116,7 @@ class OnlineCmvn : public OnlineFeatureInterface {
     src_->SetOnlineMode(is_online); 
   }
 
-  virtual bool IsLastFrame(int32 frame) const;
+  virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
 
   virtual int32 NumFramesReady() const;
   
