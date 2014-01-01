@@ -799,6 +799,9 @@ bool ReadHtk(std::istream &is, Matrix<Real> *M, HtkHeader *header_ptr);
 template<typename Real>
 bool WriteHtk(std::ostream &os, const MatrixBase<Real> &M, HtkHeader htk_hdr);
 
+// Write (CMUSphinx format) features to file from matrix.
+template<typename Real>
+bool WriteSphinx(std::ostream &os, const MatrixBase<Real> &M);
 
 /// @} end of "addtogroup matrix_funcs_io"
 

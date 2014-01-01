@@ -2040,13 +2040,55 @@ bad:
   return false;
 }
 
-
 template
 bool WriteHtk(std::ostream &os, const MatrixBase<float> &M, HtkHeader htk_hdr);
 
 template
 bool WriteHtk(std::ostream &os, const MatrixBase<double> &M, HtkHeader htk_hdr);
 
+template<class Real>
+bool WriteSphinx(std::ostream &os, const MatrixBase<Real> &M)
+{
+  int size = M.NumRows() * M.NumCols();
+  os.write((char*)&size, sizeof(int));
+  if (os.fail())  goto bad;
+
+  MatrixIndexT i;
+  MatrixIndexT j;
+  if (sizeof(Real) == sizeof(float) && !MachineIsLittleEndian()) {
+    for (i = 0; i< M.NumRows(); i++) {  // Unlikely to reach here ever!
+      os.write((char*)M.RowData(i), sizeof(float)*M.NumCols());
+      if (os.fail()) goto bad;
+    }
+  } else {
+    float *pmem = new float[M.NumCols()];
+
+    for (i = 0; i < M.NumRows(); i++) {
+      const Real *rowData = M.RowData(i);
+      for (j = 0;j < M.NumCols();j++)
+        pmem[j] =  static_cast<float> ( rowData[j] );
+      if (MachineIsLittleEndian())
+        for (j = 0;j < M.NumCols();j++)
+          KALDI_SWAP4(pmem[j]);
+      os.write((char*)pmem, sizeof(float)*M.NumCols());
+      if (os.fail()) {
+        delete [] pmem;
+        goto bad;
+      }
+    }
+    delete [] pmem;
+  }
+  return true;
+bad:
+  KALDI_WARN << "Could not write to Sphinx feature file";
+  return false;
+}
+
+template
+bool WriteSphinx(std::ostream &os, const MatrixBase<float> &M);
+
+template
+bool WriteSphinx(std::ostream &os, const MatrixBase<double> &M);
 
 template <typename Real>
 Real TraceMatMatMat(const MatrixBase<Real> &A, MatrixTransposeType transA,
