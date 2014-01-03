@@ -266,7 +266,9 @@ void FastNnetCombiner::ComputePreconditioner() {
 void FastNnetCombiner::GetInitialParams() {
   int32 initial_model = config_.initial_model,
       num_nnets = static_cast<int32>(nnets_.size());
-  if (initial_model < 0 || initial_model > num_nnets)
+  if (initial_model > num_nnets)
+    initial_model = num_nnets;
+  if (initial_model < 0)
     initial_model = GetInitialModel(egs_, nnets_);
 
   KALDI_ASSERT(initial_model >= 0 && initial_model <= num_nnets);

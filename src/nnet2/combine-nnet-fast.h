@@ -70,7 +70,7 @@ struct NnetCombineFastConfig {
   void Register(OptionsItf *po) {
     po->Register("initial-model", &initial_model, "Specifies where to start the "
                  "optimization from.  If 0 ... #models-1, then specifies the model; "
-                 "if #models, then the average of all inputs; otherwise, chosen "
+                 "if >= #models, then the average of all inputs; if <0, chosen "
                  "automatically from the previous options.");
     po->Register("num-lbfgs-iters", &num_lbfgs_iters, "Maximum number of function "
                  "evaluations for L-BFGS to use when optimizing combination weights");

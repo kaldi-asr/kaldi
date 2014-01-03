@@ -572,9 +572,10 @@ std::string PnormComponent::Info() const {
 }
 
 
+const BaseFloat NormalizeComponent::kNormFloor = pow(2.0, -66);
 // This component modifies the vector of activations by scaling it so that the
-// root-mean-square does not exceed one.
-const BaseFloat NormalizeComponent::kNormFloor = pow(2, -66);
+// root-mean-square equals 1.0.
+
 void NormalizeComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                               int32, // num_chunks
                               CuMatrix<BaseFloat> *out) const {
@@ -615,26 +616,6 @@ void NormalizeComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
                                   int32, // num_chunks
                                   Component *to_update,
                                   CuMatrix<BaseFloat> *in_deriv) const {
-  
-
-  /* Of course, you'll need to write testing code for this.  Please don't forget to
-  write testing code for the CPU-based version: your CPU-based p-norm code was
-  not tested and it had bugs.  Generally, to test things like this I just compute
-  the function manually using a simple loop and compare it with the
-  member-function version.
-
-   Then, compute in_norm as in Propagate(), and do
-      in_deriv.AddDiagVecMat(1.0, in_norm, out_deriv, kNoTrans, 0.0),
-  which gives you the first term in your derivative (see equation for "deriv_in" above)... then do
-   in_norm.ReplaceValue(1.0, 0.0);
-   in_norm.ApplyPow(3.0);
-  then create a vector dot_products to hold each element of the expression (deriv_out^T row_in)
-  that I mentioned above: something like
-   dot_products.AdyydDiagMatMat(1.0, deriv_out, kNoTrans, in_value, kTrans, 0.0);
-   dot_products.MulElements(in_norm);
-   // then add the second term to the derivatives:  
-   in_deriv.AddDiagVecMat(-1.0 / D, dot_products, in_value, 1.0);
-*/
   in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols(),
                    kUndefined);
   
