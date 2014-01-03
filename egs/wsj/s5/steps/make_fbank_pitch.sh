@@ -1,7 +1,7 @@
 #!/bin/bash 
 
 # Copyright 2013 The Shenzhen Key Laboratory of Intelligent Media and Speech,
-#                PKU-HKUST Shenzhen Hong Kong Institution (Author: Shi Wei)
+#                PKU-HKUST Shenzhen Hong Kong Institution (Author: Wei Shi)
 # Apache 2.0
 # Combine filterbank and pitch features together 
 # Note: This file is based on make_fbank.sh and make_pitch_kaldi.sh

@@ -1,6 +1,7 @@
 // feat/pitch-functions.h
 
 // Copyright     2013  Pegah Ghahremani
+//               2014  IMSL, PKU-HKUST (author: Wei Shi)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +40,7 @@ struct PitchExtractionOptions {
   BaseFloat samp_freq;
   BaseFloat frame_shift_ms;  // in milliseconds.
   BaseFloat frame_length_ms;  // in milliseconds.
-  BaseFloat preemph_coeff;  // Preemphasis coefficient.  
+  BaseFloat preemph_coeff;  // Preemphasis coefficient.
   BaseFloat min_f0;          // min f0 to search (Hz)
   BaseFloat max_f0;          // max f0 to search (Hz)
   BaseFloat soft_min_f0;     // Minimum f0, applied in soft way, must not exceed
@@ -119,11 +120,14 @@ struct PostProcessPitchOptions {
   BaseFloat delta_pitch_noise_stddev; // stddev of noise we add to delta-pitch
   int32 normalization_window_size;    // Size of window used for moving window
                                       // normalization
-  int32 delta_window;    
+  int32 delta_window;
   int32 pov_nonlinearity;  // which nonlinearity formula to use for POV feature.
   bool process_pitch;
   bool add_delta_pitch;
-  explicit PostProcessPitchOptions() : 
+  bool add_raw_log_pitch;
+  bool add_normalized_log_pitch;
+  bool add_pov_feature;
+  explicit PostProcessPitchOptions() :
     pitch_scale(2.0),
     pov_scale(2.0),
     delta_pitch_scale(10.0),
@@ -131,7 +135,10 @@ struct PostProcessPitchOptions {
     normalization_window_size(151),
     delta_window(2),
     pov_nonlinearity(1),
-    add_delta_pitch(true) {}
+    add_delta_pitch(true),
+    add_raw_log_pitch(false),
+    add_normalized_log_pitch(true),
+    add_pov_feature(true) {}
 
   void Register(ParseOptions *po) {
     po->Register("pitch-scale", &pitch_scale,
@@ -155,6 +162,12 @@ struct PostProcessPitchOptions {
                  "if 2, use a longer formula that approximates log(POV / (POV-1)).");
     po->Register("add-delta-pitch", &add_delta_pitch,
                 "If true, time derivative of log-pitch is added to output features");
+    po->Register("add-raw-log-pitch", &add_raw_log_pitch,
+                "If true, log(pitch) is added to output features");
+    po->Register("add-normalized-log-pitch", &add_normalized_log_pitch,
+                "If true, the log-pitch with POV-weighted mean subtraction over 1.5 second window is added to output features");
+    po->Register("add-pov-feature", &add_pov_feature,
+                "If true, the warped NCCF is added to output features");
   }
 };
 /// @} End of "addtogroup feat"

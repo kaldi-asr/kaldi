@@ -1,6 +1,7 @@
 // feat/pitch-functions.cc
 
 // Copyright    2013  Pegah Ghahremani
+//              2014  IMSL, PKU-HKUST (author: Wei Shi)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -96,38 +97,95 @@ void WeightedMwn(int32 normalization_window_size,
     KALDI_ASSERT((*output)(t, 1) - (*output)(t, 1) == 0)
         }
 }
+void WeightedMwn(int32 normalization_window_size,
+                 const VectorBase<BaseFloat> &pov,
+                 const VectorBase<BaseFloat> &raw_log_pitch,
+                 Vector<BaseFloat> *mean_subtracted_log_pitch) {
+  int32 num_frames = pov.Dim();
+  KALDI_ASSERT(num_frames == raw_log_pitch.Dim());
+  int32 last_window_start = -1, last_window_end = -1;
+  BaseFloat weighted_sum = 0.0, pov_sum = 0.0;
+
+  for (int32 t = 0; t < num_frames; t++) {
+    int32 window_start, window_end;
+    window_start = t - (normalization_window_size/2);
+    window_end = window_start + normalization_window_size;
+
+    if (window_start < 0) {
+      window_end -=window_start;
+      window_start = 0;
+    }
+
+    if (window_end > num_frames) {
+      window_start -= (window_end - num_frames);
+      window_end = num_frames;
+      if (window_start < 0) window_start = 0;
+    }
+    if (last_window_start == -1) {
+      SubVector<BaseFloat> pitch_part(raw_log_pitch, window_start,
+                                      window_end - window_start);
+      SubVector<BaseFloat> pov_part(pov, window_start,
+                                    window_end - window_start);
+      // weighted sum of pitch
+      weighted_sum += VecVec(pitch_part, pov_part);
+
+      // sum of pov
+      pov_sum =  pov_part.Sum();
+    } else {
+      if (window_start > last_window_start) {
+        KALDI_ASSERT(window_start == last_window_start + 1);
+        pov_sum -= pov(last_window_start);
+        weighted_sum -= pov(last_window_start)*raw_log_pitch(last_window_start);
+      }
+      if (window_end > last_window_end) {
+        KALDI_ASSERT(window_end == last_window_end + 1);
+        pov_sum += pov(last_window_end);
+        weighted_sum += pov(last_window_end) * raw_log_pitch(last_window_end);
+      }
+    }
+
+    KALDI_ASSERT(window_end - window_start > 0);
+    last_window_start = window_start;
+    last_window_end = window_end;
+    (*mean_subtracted_log_pitch)(t) = raw_log_pitch(t) -
+                                      weighted_sum / pov_sum;
+    KALDI_ASSERT((*mean_subtracted_log_pitch)(t) -
+                 (*mean_subtracted_log_pitch)(t) == 0);
+  }
+}
+
 // it would process the raw pov using some nonlinearity
 // if apply_sigmoid, it would map the pov to [0, 1] using sigmoid function
 // nonlin 1 : power function as nonlineariy
 //        2 : new nonlinearty for pov (coeffs trained by keele)
 // apply_sigmoid to map the pov to [0, 1] using sigmoid function
-void ProcessPovFeatures(Matrix<BaseFloat> *input,
+void ProcessPovFeatures(Vector<BaseFloat> *pov,
                         int nonlin,
                         bool apply_sigmoid) {
   if (nonlin != 1 && nonlin != 2) KALDI_ERR << " nonlin should be 1 or 2";
-  int32 num_frames = input->NumRows();
+  int32 num_frames = pov->Dim();
   if (nonlin == 1) {
     for (int32 i = 0; i < num_frames; i++) {
-      BaseFloat p = (*input)(i, 0);
+      BaseFloat p = (*pov)(i);
       if (p > 1.0) {
         p = 1.0;
       } else if (p < -1.0) {
         p = -1.0;
       }
-      (*input)(i, 0) = pow((1.0001 - p), 0.15) - 1.0;
-      KALDI_ASSERT((*input)(i, 0) - (*input)(i, 0) == 0);
+      (*pov)(i) = pow((1.0001 - p), 0.15) - 1.0;
+      KALDI_ASSERT((*pov)(i) - (*pov)(i) == 0);
     }
   } else if (nonlin == 2) {
     for (int32 i = 0; i < num_frames; i++) {
-      BaseFloat p = fabs((*input)(i, 0));
+      BaseFloat p = fabs((*pov)(i));
       if (p > 1.0)
         p = 1.0;
       p = -5.2 + 5.4 * exp(7.5 * (p - 1.0)) +
         4.8 * p -2.0 * exp(-10.0 * p)+4.2 * exp(20.0 * (p - 1.0));
       if (apply_sigmoid)
         p = 1.0/(1 + exp(-1.0 * p));
-      (*input)(i, 0) = p;
-      KALDI_ASSERT((*input)(i, 0) - (*input)(i, 0) == 0);
+      (*pov)(i) = p;
+      KALDI_ASSERT((*pov)(i) - (*pov)(i) == 0);
     }
   }
 }
@@ -140,6 +198,7 @@ void TakeLogOfPitch(Matrix<BaseFloat> *input) {
     (*input)(i, 1) = log(p);
   }
 }
+
 
 int32 PitchNumFrames(int32 nsamp,
                      const PitchExtractionOptions &opts) {
@@ -182,7 +241,7 @@ void ExtractFrame(const VectorBase<double> &wave,
   SubVector<double>  window_part(*window, 0,
                                  std::min(frame_length_new, wave.Dim()-start));
   window_part.CopyFromVec(wave_part);
-  
+
   if (opts.preemph_coeff != 0.0)
     PreemphasizeFrame(&window_part, opts.preemph_coeff);
 
@@ -472,7 +531,7 @@ class PitchExtractor {
     for (int32 frm = 0; frm < num_frames_; frm++) {
       (*output)(frm, 0) = static_cast<BaseFloat>(frames_[frm + 1].pov);
       (*output)(frm, 1) = static_cast<BaseFloat>(frames_[frm + 1].truepitch);
-    } 
+    }
   }
  private:
   PitchExtractionOptions opts_;
@@ -480,7 +539,7 @@ class PitchExtractor {
   int32 num_frames_;     // number of frames in input wave
   Vector<double> lags_;    // all lags used in viterbi
   struct PitchFrame {
-    Vector<double> local_cost; 
+    Vector<double> local_cost;
     Vector<double> obj_func;      // optimal objective function for frame i
     Vector<double> back_pointers;
     double truepitch;             // True pitch
@@ -576,44 +635,62 @@ void ExtractDeltaPitch(const PostProcessPitchOptions &opts,
   output->AddVec(1.0, noise);
 }
 
+
 void PostProcessPitch(const PostProcessPitchOptions &opts,
                       const Matrix<BaseFloat> &input,
                       Matrix<BaseFloat> *output) {
-  Matrix<BaseFloat> processed_input = input;
-  Vector<BaseFloat> pov(input.NumRows()), pitch(input.NumRows());
-  pov.CopyColFromMat(input, 0);
-  pitch.CopyColFromMat(input, 1);
+  Vector<BaseFloat> pov(input.NumRows()),
+                    pitch(input.NumRows()),
+                    delta_pitch(input.NumRows()),
+                    log_pitch(input.NumRows());
+  Vector<BaseFloat> pov_tmp(input.NumRows());
   bool apply_sigmoid = true;
-  int nonlinearity = 2;  // use new nonlinearity
-  TakeLogOfPitch(&processed_input);
-  ProcessPovFeatures(&processed_input, nonlinearity, apply_sigmoid);
-  Matrix<BaseFloat> processed_output(processed_input);
-  WeightedMwn(opts.normalization_window_size, 
-              processed_input, &processed_output);
-  processed_output.CopyColFromVec(pov, 0);
-  apply_sigmoid = false;
-  ProcessPovFeatures(&processed_output, opts.pov_nonlinearity, apply_sigmoid);
-  pov.CopyColFromMat(processed_output, 0);
-  pov.Scale(opts.pov_scale);
-  pitch.CopyColFromMat(processed_output, 1);
+  int32 nonlinearity = 2;  // use new nonlinearity
+
+  pov.CopyColFromMat(input, 0);
+  pitch.CopyColFromMat(input,1);
+  pov_tmp = pov;
+  ProcessPovFeatures(&pov_tmp, nonlinearity, apply_sigmoid);
+  pitch.ApplyLog();
+  log_pitch = pitch;
+  WeightedMwn(opts.normalization_window_size,
+              pov_tmp, log_pitch, &pitch);
   pitch.Scale(opts.pitch_scale);
 
+  apply_sigmoid = false;
+  ProcessPovFeatures(&pov, opts.pov_nonlinearity, apply_sigmoid);
+  pov.Scale(opts.pov_scale);
+
+  ExtractDeltaPitch(opts, log_pitch, &delta_pitch);
+  delta_pitch.Scale(opts.delta_pitch_scale);
+
+  int32 output_ncols = 0;
+  if (opts.add_pov_feature) {
+    output->Resize(input.NumRows(), output_ncols+1, kCopyData);
+    output->CopyColFromVec(pov, output_ncols);
+    output_ncols++;
+  }
+  if (opts.add_normalized_log_pitch) {
+    output->Resize(input.NumRows(), output_ncols+1, kCopyData);
+    output->CopyColFromVec(pitch, output_ncols);
+    output_ncols++;
+  }
   if (opts.add_delta_pitch) {
-    Vector<BaseFloat> delta_pitch, log_pitch(input.NumRows());
-    log_pitch.CopyColFromMat(processed_input, 1);
-    ExtractDeltaPitch(opts, log_pitch, &delta_pitch);
-    delta_pitch.Scale(opts.delta_pitch_scale);
-    output->Resize(input.NumRows(), 3);
-    output->SetZero();
-    output->CopyColFromVec(pov, 0);
-    output->CopyColFromVec(pitch, 1);
-    output->CopyColFromVec(delta_pitch, 2);
-  } else {
-    output->Resize(input.NumRows(), 2);
-    output->SetZero();
-    output->CopyColFromVec(pov, 0);
-    output->CopyColFromVec(pitch, 1);
+    output->Resize(input.NumRows(), output_ncols+1, kCopyData);
+    output->CopyColFromVec(delta_pitch, output_ncols);
+    output_ncols++;
+  }
+  if (opts.add_raw_log_pitch) {
+    output->Resize(input.NumRows(), output_ncols+1, kCopyData);
+    output->CopyColFromVec(log_pitch, output_ncols);
+    output_ncols++;
+  }
+  // If none of the features are chosen, select pov-feature by default
+  if ( output_ncols == 0 ){
+    KALDI_ERR << " At least one of the pitch features should be chosen. "
+      << "Check your post-process pitch options.";
   }
 }
+
 
 }  // namespace kaldi
