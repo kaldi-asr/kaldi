@@ -1,6 +1,7 @@
 // feat/pitch-functions-test.cc
 
 // Copyright    2013  Pegah Ghahremani
+//              2014  IMSL, PKU-HKUST (author: Wei Shi)
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -161,12 +162,10 @@ static void UnitTestWeightedMwn() {
     int32 num_frames = 1 + (rand()%10 * 10);
     int32 normalization_win_size = 5 + rand() % 50;
     Matrix<BaseFloat> feat(num_frames, 2),
-                      output_feat(num_frames, 2),
-                      output_feat1(num_frames, 2);
+                      output_feat(num_frames, 2);
     feat.SetRandn();
     for (int32 j = 0; j < num_frames; j++)
       feat(j, 0) = 1;
-    WeightedMwn(normalization_win_size, feat, &output_feat);
 
     Vector<BaseFloat> pov(num_frames),
                       log_pitch(num_frames),
@@ -175,7 +174,7 @@ static void UnitTestWeightedMwn() {
     log_pitch.CopyColFromMat(feat,1);
     WeightedMwn(normalization_win_size, pov, log_pitch ,
                 &mean_subtracted_log_pitch);
-    output_feat1.CopyColFromVec(mean_subtracted_log_pitch, 1);
+    output_feat.CopyColFromVec(mean_subtracted_log_pitch, 1);
 
     // SlidingWindow
     SlidingWindowCmnOptions opts;
@@ -188,17 +187,14 @@ static void UnitTestWeightedMwn() {
     SlidingWindowCmn(opts, feat, &output_feat2);
     for (int32 j = 0; j < num_frames; j++)
       output_feat(j, 0) = 0.0;
-    if (!output_feat1.ApproxEqual(output_feat2, 0.001)) {
-      Matrix<BaseFloat> output_all(num_frames, 3);
+    if (!output_feat.ApproxEqual(output_feat2, 0.001)) {
+      Matrix<BaseFloat> output_all(num_frames, 2);
       Vector<BaseFloat> pitch(num_frames),
-                        pitch1(num_frames),
                         pitch2(num_frames);
       pitch.CopyColFromMat(output_feat,1);
-      pitch1.CopyColFromMat(output_feat1,1);
       pitch2.CopyColFromMat(output_feat2,1);
       output_all.CopyColFromVec( pitch, 0 );
-      output_all.CopyColFromVec( pitch1, 1 );
-      output_all.CopyColFromVec( pitch2, 2 );
+      output_all.CopyColFromVec( pitch2, 1 );
       KALDI_ERR << "Feafures differ:\n" << output_all ;
     }
   }
