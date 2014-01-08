@@ -36,7 +36,7 @@ void WeightedMwn(int32 normalization_window_size,
   int32 num_frames = pov.Dim();
   KALDI_ASSERT(num_frames == raw_log_pitch.Dim());
   int32 last_window_start = -1, last_window_end = -1;
-  BaseFloat weighted_sum = 0.0, pov_sum = 0.0;
+  double weighted_sum = 0.0, pov_sum = 0.0;
 
   for (int32 t = 0; t < num_frames; t++) {
     int32 window_start, window_end;
@@ -44,7 +44,7 @@ void WeightedMwn(int32 normalization_window_size,
     window_end = window_start + normalization_window_size;
 
     if (window_start < 0) {
-      window_end -=window_start;
+      window_end -= window_start;
       window_start = 0;
     }
 
@@ -62,7 +62,7 @@ void WeightedMwn(int32 normalization_window_size,
       weighted_sum += VecVec(pitch_part, pov_part);
 
       // sum of pov
-      pov_sum =  pov_part.Sum();
+      pov_sum = pov_part.Sum();
     } else {
       if (window_start > last_window_start) {
         KALDI_ASSERT(window_start == last_window_start + 1);
@@ -99,6 +99,7 @@ void ProcessPovFeatures(Vector<BaseFloat> *pov,
   if (nonlin == 1) {
     for (int32 i = 0; i < num_frames; i++) {
       BaseFloat p = (*pov)(i);
+      // p should always be in [-1, 1], but make extra sure of this.
       if (p > 1.0) {
         p = 1.0;
       } else if (p < -1.0) {
@@ -111,11 +112,19 @@ void ProcessPovFeatures(Vector<BaseFloat> *pov,
     for (int32 i = 0; i < num_frames; i++) {
       BaseFloat p = fabs((*pov)(i));
       if (p > 1.0)
-        p = 1.0;
+        p = 1.0; // should never happen, but just confirm this.
+      // The following formula was manually constructed to roughly approximate
+      // log(POV / (1-POV)) as a function of fabs(NCCF), on the Keele data,
+      // although we also aimed that it should produce a not-too-peaky
+      // distribution when used to warp the NCCF, so we made some small
+      // compromises.  Note: choosing fabs(NCCF) as an input seemed reasonable
+      // because the POV did seem to have a minimum around NCCF=0 and was very
+      // roughly symmetric on the range [-0.5, 0.5]...  NCCF more negative than
+      // -0.5 was quite rare.
       p = -5.2 + 5.4 * exp(7.5 * (p - 1.0)) +
-        4.8 * p -2.0 * exp(-10.0 * p)+4.2 * exp(20.0 * (p - 1.0));
+          4.8 * p - 2.0 * exp(-10.0 * p) + 4.2 * exp(20.0 * (p - 1.0));
       if (apply_sigmoid)
-        p = 1.0/(1 + exp(-1.0 * p));
+        p = 1.0 / (1 + exp(-1.0 * p));
       (*pov)(i) = p;
       KALDI_ASSERT((*pov)(i) - (*pov)(i) == 0);
     }
@@ -577,7 +586,9 @@ void PostProcessPitch(const PostProcessPitchOptions &opts,
                     log_pitch(input.NumRows());
   Vector<BaseFloat> pov_tmp(input.NumRows());
   bool apply_sigmoid = true;
-  int32 nonlinearity = 2;  // use new nonlinearity
+  int32 nonlinearity = 2;  // use the more complex nonlinearity to
+                           // get the POV between zero and one for
+                           // purposes of POV-weighted mean subtraction.
 
   pov.CopyColFromMat(input, 0);
   pitch.CopyColFromMat(input,1);
