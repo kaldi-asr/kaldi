@@ -82,8 +82,16 @@ if ! $skip_kws ; then
         $data_dir $lang_dir $decode_dir ${dev2shadow} ${eval2shadow}
     else
       local/kws_search.sh --cmd "$cmd" --max-states ${max_states} \
-        --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
+        --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
         $lang_dir $data_dir $decode_dir
+
+      if [ -f $data_dir/extra_kws_tasks ]; then
+        for extraid in `cat $data_dir/extra_kws_tasks` ; do
+          local/kws_search.sh --cmd "$cmd" --extraid $extraid --max-states ${max_states} \
+            --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
+            $lang_dir $data_dir $decode_dir
+        done
+      fi
     fi
     touch $decode_dir/.kws.done
   fi
