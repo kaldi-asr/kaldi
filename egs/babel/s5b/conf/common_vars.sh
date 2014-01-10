@@ -2,6 +2,7 @@
 glmFile=conf/glm
 duptime=0.5
 case_insensitive=false
+use_pitch=true
 # Lexicon and Language Model parameters
 oovSymbol="<unk>"
 lexiconFlags="-oov <unk>"
