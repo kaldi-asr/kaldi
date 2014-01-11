@@ -60,8 +60,14 @@ do
     COMMAND=`echo $COMMAND -mix-lm${j} ${array_model[$i]}/lm_0/$n -mix-lambda${j} ${array_wgt[$i]}`
     let i++
   done
-  echo "$srilmbinpath/ngram -renorm -map-unk \<unk\> $COMMAND -mix-lm ${array_model[$i]}/lm_0/$n -write-lm $NAME_LABEL/$NAME_LABEL.$n"
-  `echo $srilmbinpath/ngram -renorm -map-unk \<unk\> $COMMAND -mix-lm ${array_model[$i]}/lm_0/$n -write-lm $NAME_LABEL/$NAME_LABEL.$n`
+  if [ $n == "fg" ]
+  then 
+    echo "$srilmbinpath/ngram -order 4 -renorm -map-unk \<unk\> $COMMAND -mix-lm ${array_model[$i]}/lm_0/$n -write-lm $NAME_LABEL/$NAME_LABEL.$n"
+    `echo $srilmbinpath/ngram -order 4 -renorm -map-unk \<unk\> $COMMAND -mix-lm ${array_model[$i]}/lm_0/$n -write-lm $NAME_LABEL/$NAME_LABEL.$n`
+  else 
+    echo "$srilmbinpath/ngram -renorm -map-unk \<unk\> $COMMAND -mix-lm ${array_model[$i]}/lm_0/$n -write-lm $NAME_LABEL/$NAME_LABEL.$n"
+    `echo $srilmbinpath/ngram -renorm -map-unk \<unk\> $COMMAND -mix-lm ${array_model[$i]}/lm_0/$n -write-lm $NAME_LABEL/$NAME_LABEL.$n`
+  fi
 done
 
 echo "[[test perplexity]]" 
