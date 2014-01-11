@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         "process-kaldi-pitch-feats.\n"
         "Usage: compute-kaldi-pitch-feats [options...] <wav-rspecifier> <feats-wspecifier>\n"
         "e.g.\n"
-        "compute-kaldi-pitch-feats --samp-freq=8000 scp:wav.scp ark:- \n";
+        "compute-kaldi-pitch-feats --sample-frequency=8000 scp:wav.scp ark:- \n";
     
     
     ParseOptions po(usage);
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
                         // similar.
 
     pitch_opts.Register(&po);
-
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {

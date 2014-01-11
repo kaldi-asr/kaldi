@@ -572,8 +572,7 @@ void ExtractDeltaPitch(const PostProcessPitchOptions &opts,
   // discretization interval for log-pitch.
   Vector<BaseFloat> noise(num_frames);
   noise.SetRandn();
-  noise.Scale(opts.delta_pitch_noise_stddev);
-  output->AddVec(1.0, noise);
+  output->AddVec(opts.delta_pitch_noise_stddev, noise);
 }
 
 
@@ -609,22 +608,22 @@ void PostProcessPitch(const PostProcessPitchOptions &opts,
 
   int32 output_ncols = 0;
   if (opts.add_pov_feature) {
-    output->Resize(input.NumRows(), output_ncols+1, kCopyData);
+    output->Resize(input.NumRows(), output_ncols + 1, kCopyData);
     output->CopyColFromVec(pov, output_ncols);
     output_ncols++;
   }
   if (opts.add_normalized_log_pitch) {
-    output->Resize(input.NumRows(), output_ncols+1, kCopyData);
+    output->Resize(input.NumRows(), output_ncols + 1, kCopyData);
     output->CopyColFromVec(pitch, output_ncols);
     output_ncols++;
   }
   if (opts.add_delta_pitch) {
-    output->Resize(input.NumRows(), output_ncols+1, kCopyData);
+    output->Resize(input.NumRows(), output_ncols + 1, kCopyData);
     output->CopyColFromVec(delta_pitch, output_ncols);
     output_ncols++;
   }
   if (opts.add_raw_log_pitch) {
-    output->Resize(input.NumRows(), output_ncols+1, kCopyData);
+    output->Resize(input.NumRows(), output_ncols + 1, kCopyData);
     output->CopyColFromVec(log_pitch, output_ncols);
     output_ncols++;
   }

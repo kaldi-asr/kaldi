@@ -41,9 +41,15 @@ int main(int argc, char *argv[]) {
         "Usage: process-kaldi-pitch-feats [options...] <feat-rspecifier> <feats-wspecifier>\n";
 
     ParseOptions po(usage);
+
+    int32 srand_seed = 0;
+    
     PostProcessPitchOptions postprocess_opts;
     postprocess_opts.Register(&po);
 
+    po.Register("srand", &srand_seed, "Seed for random number generator, used to "
+                "add noise to delta-log-pitch features");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -51,6 +57,8 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
+    srand(srand_seed);
+    
     std::string feat_rspecifier = po.GetArg(1),
         feat_wspecifier = po.GetArg(2);
 
