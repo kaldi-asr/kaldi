@@ -400,6 +400,11 @@ class CuMatrixBase {
   // (*this)(row, column) into the corresponding element of "output".
   void Lookup(const std::vector<Int32Pair> &indices,
               std::vector<Real> *output) const;
+
+  // Creates binary mask with per-element equality predicates of *this, mat.
+  // Output stored to 'mask', values : 1.0 = equal, 0.0 = not-equal.
+  void EqualElementMask(const CuMatrixBase<Real> &mat, CuMatrix<Real> *mask);
+
  protected:
   // The following two functions should only be called if we did not compile with CUDA
   // or could not get a CUDA card; in that case the contents are interpreted the
