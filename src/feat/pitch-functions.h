@@ -47,7 +47,6 @@ struct PitchExtractionOptions {
                           // min-f0
   BaseFloat penalty_factor;  // cost factor for FO change
   BaseFloat lowpass_cutoff;  // cutoff frequency for Low pass filter
-  BaseFloat upsample_cutoff; // cutoff frequency we apply for upsampling Nccf
   BaseFloat resample_freq;   // Integer that determines filter width when upsampling NCCF
   BaseFloat delta_pitch;     // the pitch tolerance in pruning lags
   BaseFloat nccf_ballast;    // Increasing this factor reduces NCCF for quiet frames,
@@ -66,7 +65,6 @@ struct PitchExtractionOptions {
       soft_min_f0(10.0),
       penalty_factor(0.1),
       lowpass_cutoff(1000),
-      upsample_cutoff(2000),
       resample_freq(4000),
       delta_pitch(0.005),
       nccf_ballast(0.7),
@@ -89,9 +87,7 @@ struct PitchExtractionOptions {
     po->Register("penalty-factor", &penalty_factor,
                  "cost factor for FO change.");
     po->Register("lowpass-cutoff", &lowpass_cutoff,
-                 "cuttoff frequency for LowPass filter (Hz) ");
-    po->Register("upsample-cutoff", &upsample_cutoff,
-                 "cuttoff frequency for upsampling filter (Hz) ");
+                 "cutoff frequency for LowPass filter (Hz) ");
     po->Register("resample-freq", &resample_freq,
                  "Integer that determines filter width when upsampling NCCF");
     po->Register("delta-pitch", &delta_pitch,

@@ -536,8 +536,18 @@ void Compute(const PitchExtractionOptions &opts,
   for (int32 i = 0; i < num_states; i++)
     lag_vec[i] = static_cast<double>(lags(i));
   // upsample the nccf to have better pitch and pov estimation
+
+  // upsample_cutoff is the filter cutoff for upsampling the NCCF, which is the
+  // Nyquist of the resampling frequency.  The NCCF is (almost completely)
+  // bandlimited to around "lowpass_cutoff" (1000 by default), and when the
+  // spectrum of this bandlimited signal is convolved with the spectrum of an
+  // impulse train with frequency "resample_freq", which are separated by 4kHz,
+  // we get energy at -5000,-3000, -1000...1000, 3000..5000, etc.  Filtering at
+  // half the Nyquist (2000 by default) is sufficient to get only the first
+  // repetition.
+  BaseFloat upsample_cutoff = opts.resample_freq * 0.5;
   ArbitraryResample resample(num_max_lag + 1, opts.resample_freq,
-                             opts.upsample_cutoff,
+                             upsample_cutoff,
                              lag_vec, opts.upsample_filter_width);
   Matrix<double> resampled_nccf_pitch(rows_out, num_states);
   resample.Upsample(nccf_pitch, &resampled_nccf_pitch);
