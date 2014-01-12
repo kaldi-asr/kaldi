@@ -189,6 +189,7 @@ if ($ret != 0) {
     print STDERR "queue.pl: job writing to $logfile failed\n";
   } else {
     print STDERR "queue.pl: error submitting jobs to queue (return status was $ret)\n";
+    print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
     print STDERR `tail $queue_logfile`;
   }
   exit(1);
@@ -235,23 +236,32 @@ if (! $sync) { # We're not submitting with -sync y, so we
         if ( -f $f ) { next; }; #syncfile appeared: OK.
         $ret = system("qstat -j $sge_job_id >/dev/null 2>/dev/null");
         # system(...) : To get the actual exit value, shift $ret right by eight bits.
-        if ($ret>>8 == 1) { # Job does not seem to exist 
+        if ($ret>>8 == 1) {     # Job does not seem to exist
           # Don't consider immediately missing job as error, first wait some  
           # time to make sure it is not just delayed creation of the syncfile.
+
           sleep(3);
           # Sometimes NFS gets confused and thinks it's transmitted the directory
           # but it hasn't, due to timestamp issues.  Changing something in the
           # directory will usually fix that.
           system("touch $qdir/.kick");
           system("rm $qdir/.kick 2>/dev/null");
-          if ( -f $f ) { next; }; #syncfile appeared, ok
+          if ( -f $f ) { next; }   #syncfile appeared, ok
           sleep(7);
           system("touch $qdir/.kick");
+          sleep(1);
           system("rm $qdir/.kick 2>/dev/null");
-          if ( -f $f ) { next; }; #syncfile appeared, ok
-          sleep(20);
-          if ( -f $f ) { next; }; #syncfile appeared, ok
-          if (defined $jobname) { $logfile =~ s/\$SGE_TASK_ID/*/g; }
+          if ( -f $f ) {  next; }   #syncfile appeared, ok
+          sleep(60);
+          system("touch $qdir/.kick");
+          sleep(1);
+          system("rm $qdir/.kick 2>/dev/null");
+          if ( -f $f ) { next; }  #syncfile appeared, ok
+          $f =~ m/\.(\d+)$/ || die "Bad sync-file name $f";
+          $job_id = $1;
+          if (defined $jobname) {
+            $logfile =~ s/\$SGE_TASK_ID/$job_id/g;
+          }
           $last_line = `tail -n 1 $logfile`;
           if ($last_line =~ m/status 0$/ && (-M $logfile) < 0) {
             # if the last line of $logfile ended with "status 0" and
@@ -263,8 +273,9 @@ if (! $sync) { # We're not submitting with -sync y, so we
               "**completed OK.  Probably your file-system has problems.\n" .
               "**This is just a warning.\n";
           } else {
+            chop $last_line;
             print STDERR "queue.pl: Error, unfinished job no " .
-              "longer exists, log is in $logfile, " .
+              "longer exists, log is in $logfile, last line is '$last_line'" .
               "syncfile is $f, return status of qstat was $ret\n" .
               "Possible reasons: a) Exceeded time limit? -> Use more jobs!" .
               " b) Shutdown/Frozen machine? -> Run again!\n";
