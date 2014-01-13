@@ -367,6 +367,28 @@ int32 Nnet::NumParams() const {
   return n_params;
 }
 
+void Nnet::Init(const std::string &file) {
+  Input in(file);
+  std::istream &is = in.Stream();
+  ExpectToken(is, false, "<NnetProto>");
+  // do the initialization with config lines
+  std::string conf_line;
+  while (1) {
+    if (is.eof()) KALDI_ERR << "Missing </NnetProto> at the end.";
+    KALDI_ASSERT(is.good());
+    if ('/' == PeekToken(is, false)) { // end the loop
+      ExpectToken(is, false, "</NnetProto>");
+      break;
+    }
+    std::getline(is, conf_line); // get the line in config file
+    KALDI_VLOG(1) << conf_line; 
+    AppendComponent(Component::Init(conf_line+"\n"));
+  }
+  // cleanup
+  in.Close();
+  Check();
+}
+
 
 void Nnet::Read(const std::string &file) {
   bool binary;
@@ -441,48 +463,40 @@ std::string Nnet::Info() const {
 
 std::string Nnet::InfoGradient() const {
   std::ostringstream ostr;
-  // basic info (static)
-  //ostr << Info(); 
-  
   // gradient stats
-  ostr << "\ngradient stats :";
+  ostr << "### Gradient stats :\n";
   for (int32 i = 0; i < NumComponents(); i++) {
-    ostr << "component " << i+1 << " : " 
+    ostr << "Component " << i+1 << " : " 
          << Component::TypeToMarker(components_[i]->GetType()) 
          << ", " << components_[i]->InfoGradient() << std::endl;
   }
-  /*
-  // forward-pass buffer stats
-  ostr << "\nforward propagation buffer content :";
-  for (int32 i=0; i<propagate_buf_.size(); i++) {
-    ostr << "["<<1+i<< "] output of " 
-         << (i==0 ? "<input>" : Component::TypeToMarker(components_[i-1]->GetType()))
-         << MomentStatistics(propagate_buf_[i]) << std::endl;
-  }
-  // backpropagation buffer stats
-  ostr << "\nbackpropagation buffer content :";
-  for (int32 i=backpropagate_buf_.size()-1; i>=0; i--) {
-    ostr << "["<<1+i<< "] dE/dOutput of " 
-         << Component::TypeToMarker(components_[i]->GetType())
-         << MomentStatistics(backpropagate_buf_[i]) << std::endl;
-  }
-  */
-
   return ostr.str();
 }
-
 
 std::string Nnet::InfoPropagate() const {
   std::ostringstream ostr;
   // forward-pass buffer stats
-  ostr << "\nforward propagation buffer content :\n";
+  ostr << "### Forward propagation buffer content :\n";
   for (int32 i=0; i<propagate_buf_.size(); i++) {
     ostr << "["<<1+i<< "] output of " 
-         << (i==0 ? "<input>" : Component::TypeToMarker(components_[i-1]->GetType()))
+         << (i==0 ? "<Input>" : Component::TypeToMarker(components_[i-1]->GetType()))
          << MomentStatistics(propagate_buf_[i]) << std::endl;
   }
   return ostr.str();
 }
+
+std::string Nnet::InfoBackPropagate() const {
+  std::ostringstream ostr;
+  // forward-pass buffer stats
+  ostr << "### Backward propagation buffer content :\n";
+  for (int32 i=0; i<backpropagate_buf_.size(); i++) {
+    ostr << "["<<1+i<< "] diff-output of " 
+         << Component::TypeToMarker(components_[i]->GetType())
+         << MomentStatistics(backpropagate_buf_[i]) << std::endl;
+  }
+  return ostr.str();
+}
+
 
 
 void Nnet::Check() const {

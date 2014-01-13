@@ -403,7 +403,7 @@ class CuMatrixBase {
 
   // Creates binary mask with per-element equality predicates of *this, mat.
   // Output stored to 'mask', values : 1.0 = equal, 0.0 = not-equal.
-  void EqualElementMask(const CuMatrixBase<Real> &mat, CuMatrix<Real> *mask);
+  void EqualElementMask(const CuMatrixBase<Real> &mat, CuMatrix<Real> *mask) const;
 
  protected:
   // The following two functions should only be called if we did not compile with CUDA

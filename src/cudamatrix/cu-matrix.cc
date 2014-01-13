@@ -2033,7 +2033,7 @@ void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::EqualElementMask(const CuMatrixBase<Real> &mat, CuMatrix<Real> *mask) {
+void CuMatrixBase<Real>::EqualElementMask(const CuMatrixBase<Real> &mat, CuMatrix<Real> *mask) const {
   // Check the inputs:
   KALDI_ASSERT(mat.NumRows() == NumRows() && mat.NumCols() == NumCols());
   KALDI_ASSERT(mask != NULL);

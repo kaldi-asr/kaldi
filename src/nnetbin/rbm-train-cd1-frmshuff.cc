@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
       // fill the randomizer
       for ( ; !feature_reader.Done(); feature_reader.Next()) {
         std::string utt = feature_reader.Key();
-        KALDI_VLOG(2) << utt;
+        KALDI_VLOG(3) << utt;
         // get feature matrix
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         // skip too long segments (avoid runinning out of memory)
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
         rbm.Propagate(pos_vis, &pos_hid);
 
         // alter the hidden values, so we can generate negative example
-        if (rbm.HidType() == Rbm::BERNOULLI) {
+        if (rbm.HidType() == Rbm::Bernoulli) {
           pos_hid_aux.Resize(num_frames, dim_hid);
           cu_rand.BinarizeProbs(pos_hid, &pos_hid_aux);
         } else {

@@ -96,6 +96,8 @@ class Nnet {
   /// Get the gradient stored in the network
   void GetGradient(Vector<BaseFloat>* grad_copy) const;
   
+  /// Initialize MLP from config
+  void Init(const std::string &config_file);
   /// Read the MLP from file (can add layers to exisiting instance of Nnet)
   void Read(const std::string &file);  
   /// Read the MLP from stream (can add layers to exisiting instance of Nnet)
@@ -111,6 +113,8 @@ class Nnet {
   std::string InfoGradient() const;
   /// Create string with propagation-buffer statistics
   std::string InfoPropagate() const;
+  /// Create string with back-propagation-buffer statistics
+  std::string InfoBackPropagate() const;
   /// Consistency check.
   void Check() const;
   /// Relese the memory
