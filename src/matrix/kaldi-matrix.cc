@@ -174,6 +174,29 @@ void MatrixBase<Real>::AddMatMat(const Real alpha,
 }
 
 template<typename Real>
+void MatrixBase<Real>::AddMatMatDivMat(const MatrixBase<Real>& A,
+             	     		       const MatrixBase<Real>& B,
+                    		       const MatrixBase<Real>& C) {
+  KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
+  KALDI_ASSERT(A.NumRows() == C.NumRows() && A.NumCols() == C.NumCols());
+  for (int32 r = 0; r < A.NumRows(); r++) { // each frame...
+    for (int32 c = 0; c < A.NumCols(); c++) {
+      BaseFloat i = C(r, c), o = B(r, c), od = A(r, c),
+          id;
+      if (i != 0.0) {
+        id = od * (o / i); /// o / i is either zero or "scale".
+      } else {
+        id = od; /// Just imagine the scale was 1.0.  This is somehow true in
+        /// expectation; anyway, this case should basically never happen so it doesn't
+        /// really matter.
+      }
+      (*this)(r, c) = id;
+    }
+  }
+}
+
+
+template<typename Real>
 void MatrixBase<Real>::CopyLowerToUpper() {
   KALDI_ASSERT(num_rows_ == num_cols_);
   Real *data = data_;

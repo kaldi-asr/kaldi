@@ -511,6 +511,18 @@ static void _add_mat(Real alpha, const Real* src, Real beta, Real* dst, MatrixDi
     dst[index] = alpha*src[index_src] + beta*dst[index];
 }
 
+template<typename Real>
+__global__
+static void _add_mat_mat_div_mat(const Real* A, const Real* B, const Real* C, Real* dst, MatrixDim d) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j*d.stride;
+  if (i < d.cols && j < d.rows)
+    if (C[index] == 0)
+      dst[index] = A[index];
+    else
+      dst[index] = A[index] * B[index] / C[index];
+}
 
 // Given a matrix input S (not packed!) and a lower-triangular matrix L,
 // this function does S = beta S + alpha * L^T L.  This is used in PSD matrix inversion.
@@ -1990,6 +2002,10 @@ void cudaF_add_mat(dim3 Gr, dim3 Bl, float alpha, const float* src, float beta, 
   _add_mat<<<Gr,Bl>>>(alpha,src,beta,dst,d,src_stride); 
 }
 
+void cudaF_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B, const float *C, float *dst, MatrixDim d) {
+  _add_mat_mat_div_mat<<<Gr,Bl>>>(A,B,C,dst,d);
+}
+
 void cudaF_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const float* T, MatrixDim tdim,
                       float *S, MatrixDim sdim) {
   _sy_add_tr2<<<Gr,Bl>>>(alpha, beta, T, tdim, S, sdim);
@@ -2394,6 +2410,10 @@ void cudaD_div_rows_vec(dim3 Gr, dim3 Bl, double* mat, const double* vec_div, Ma
 
 void cudaD_add_mat(dim3 Gr, dim3 Bl, double alpha, const double* src, double beta, double* dst, MatrixDim d, int src_stride) {
   _add_mat<<<Gr,Bl>>>(alpha,src,beta,dst,d,src_stride); 
+}
+
+void cudaD_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A, const double *B, const double *C, double *dst, MatrixDim d) {
+  _add_mat_mat_div_mat<<<Gr,Bl>>>(A,B,C,dst,d);
 }
 
 void cudaD_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta, const double* T, MatrixDim tdim,

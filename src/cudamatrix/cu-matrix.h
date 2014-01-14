@@ -280,7 +280,8 @@ class CuMatrixBase {
   /// C = alpha * A(^T)*B(^T) + beta * C
   void AddMatMat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
                  const CuMatrixBase<Real> &B, MatrixTransposeType transB, Real beta);
-
+  /// *this = a * b / c (by element; when c = 0, *this = a)
+  void AddMatMatDivMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C);
   /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only
   /// updates the lower triangle of *this.  It will leave the matrix asymmetric;
   /// if you need it symmetric as a regular matrix, do CopyLowerToUpper().
