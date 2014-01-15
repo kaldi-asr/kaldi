@@ -13,6 +13,7 @@ data_only=false
 fast_path=true
 skip_kws=false
 skip_stt=false
+skip_scoring=false
 max_states=150000
 wip=0.5
 . utils/parse_options.sh
@@ -58,7 +59,8 @@ function make_plp {
   utils/fix_data_dir.sh data/${t}
 }
 
-if [ ${type} == shadow ] ; then
+#if [ ${type} == shadow ] || [ ${type} == eval ] ; then
+if  [[ ${type} == shadow || $type == eval || $type == semitrain || $type == devtrain ]] ; then
   mandatory_variables=""
   optional_variables=""
 else
@@ -97,7 +99,7 @@ done
 
 datadir=data/${type}.uem
 dirid=${type}.uem
-
+skip_scoring=false
 if [[ $type == shadow ]] ; then
   if [ ! -f ${datadir}/.done ]; then
     # we expect that the ${dev2shadow} as well as ${eval2shadow} already exist
@@ -117,13 +119,53 @@ if [[ $type == shadow ]] ; then
     touch ${datadir}/.done
   fi
   my_nj=$eval_nj
-else
+elif [[ $type == eval || $type == semitrain || $type == devtrain ]] ; then
   if [ ! -d data/raw_${type}_data ]; then
     echo ---------------------------------------------------------------------
     echo "Subsetting the ${type} set"
     echo ---------------------------------------------------------------------
     
+    local/make_corpus_subset.sh --ignore-missing-txt true "$my_data_dir" "$my_data_list" ./data/raw_${type}_data
+  fi
+  my_data_dir=`readlink -f ./data/raw_${type}_data`
+
+  skip_scoring=true
+
+  nj_max=`cat $my_data_list | wc -l`
+  if [[ "$nj_max" -lt "$my_nj" ]] ; then
+    echo "The maximum reasonable number of jobs is $nj_max -- you have $my_nj! (The training and decoding process has file-granularity)"
+    exit 1
+    my_nj=$nj_max
+  fi
+  
+  if [ ! -f ${datadir}/.done ]; then
+    if [[ ! -f ${datadir}/wav.scp || ${datadir}/wav.scp -ot "$my_data_cmudb" ]]; then
+      echo ---------------------------------------------------------------------
+      echo "Preparing ${type} data lists in ${datadir} on" `date`
+      echo ---------------------------------------------------------------------
+      mkdir -p ${datadir}
+      local/cmu_uem2kaldi_dir.sh --filelist $my_data_list \
+        $my_data_cmudb  $my_data_dir ${datadir}
+    fi
+
+    if [ ! -f ${datadir}/.plp.done ]; then
+      echo ---------------------------------------------------------------------
+      echo "Preparing ${type} parametrization files in ${datadir} on" `date`
+      echo ---------------------------------------------------------------------
+      make_plp ${dirid}
+      touch ${datadir}/.plp.done
+    fi
+
+    touch ${datadir}/.done
+  fi
+else
+  if [ ! -f data/raw_${type}_data/.done ]; then
+    echo ---------------------------------------------------------------------
+    echo "Subsetting the ${type} set"
+    echo ---------------------------------------------------------------------
+    
     local/make_corpus_subset.sh "$my_data_dir" "$my_data_list" ./data/raw_${type}_data
+    touch data/raw_${type}_data/.done
   fi
   my_data_dir=`readlink -f ./data/raw_${type}_data`
 
@@ -196,6 +238,7 @@ if ! $skip_kws  && [ ! -f ${datadir}/kws/.done ] ; then
       data/lang ${datadir} ${datadir}/kws
     utils/fix_data_dir.sh ${datadir}
 
+
     touch ${datadir}/kws/.done
   else
     kws_flags=()
@@ -210,8 +253,27 @@ if ! $skip_kws  && [ ! -f ${datadir}/kws/.done ] ; then
       "${kws_flags[@]}" "${icu_opt[@]}" \
       $my_ecf_file $my_kwlist_file data/lang ${datadir}
 
+    if [ ${#my_more_kwlists[@]} -ne 0  ] ; then
+      touch $datadir/extra_kws_tasks
+      for extraid in "${!my_more_kwlists[@]}" ; do
+        kwlist=${my_more_kwlists[$extraid]}
+        local/kws_setup.sh --rttm-file ${datadir}/kws/rttm --extraid $extraid \
+          --case_insensitive $case_insensitive "${icu_opt[@]}"  \
+          ${datadir}/kws/ecf.xml $kwlist data/lang ${datadir}
+        echo $extraid >> $datadir/extra_kws_tasks;  sort -u $datadir/extra_kws_tasks -o  $datadir/extra_kws_tasks
+      done
+    fi
     touch ${datadir}/kws/.done
   fi
+
+  langid=`ls -1 data/raw_${type}_data/audio/ | head -n 1| cut -d '_' -f 3`
+  local/kws_setup.sh --kwlist-wordlist true --rttm-file $datadir/kws/rttm  --extraid fullvocab  \
+    $datadir/kws/ecf.xml  <(cat data/lang/words.txt | grep -v -F "<" | grep -v -F "#"  | awk "{printf \"KWID$langid-FULLVOCAB-%05d %s\\n\", \$2, \$1 }" ) data/lang ${datadir}
+  echo fullvocab >> $datadir/extra_kws_tasks;  sort -u $datadir/extra_kws_tasks -o  $datadir/extra_kws_tasks
+
+  #local/make_lexicon_subset.sh $data_dir/transcription $lexicon_file $datadir/filtered_lexicon.txt
+  #local/kws_setup.sh --kwlist-wordlist true --rttm-file $datadir/kws/rttm  --extraid vocab  \
+  #  $datadir/kws/ecf.xml  <(cut -f 1 $datadir/filtered_lexicon.txt  | grep -v -F "<" | grep -v -F "#"  | awk "{printf \"KWID$langid-VOCAB-%05d data/raw_${type}_data/.done %s\\n\", \$2, \$1 }" ) data/lang ${datadir}
 fi
 
 if $data_only ; then
@@ -243,12 +305,12 @@ if [ ! -f ${decode}/.done ]; then
 fi
 
 if ! $fast_path ; then
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
     "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
     ${datadir} data/lang ${decode}
 
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
     "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
     ${datadir} data/lang ${decode}.si
@@ -273,7 +335,7 @@ if [ ! -f $decode/.done ]; then
 fi
 
 if ! $fast_path ; then
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
     "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
     ${datadir} data/lang  exp/sgmm5/decode_fmllr_${dirid}
@@ -305,7 +367,7 @@ done
 for iter in 1 2 3 4; do
   # Decode SGMM+MMI (via rescoring).
   decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dirid}_it$iter
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
     "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
     ${datadir} data/lang $decode
@@ -329,7 +391,7 @@ if [ -f exp/tri6_nnet/.done ]; then
     touch $decode/.done
   fi
 
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
     "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
     ${datadir} data/lang $decode
@@ -355,7 +417,7 @@ if [ -f exp/tri6_nnet_mpe/.done ]; then
       touch $decode/.done
     fi
 
-    local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
       --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
       "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
       ${datadir} data/lang $decode

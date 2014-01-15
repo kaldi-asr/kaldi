@@ -61,7 +61,7 @@ mkdir -p $odir/log
 weight=`echo "scale=2; 1/$num_sys" | bc`
 systems=""
 for i in `seq 0 $[num_sys-1]`; do
-  if [ -f ${decode_dirs[$i]} ] ;
+  if [ -f ${decode_dirs[$i]} ] ; then
     systems+="$weight ${decode_dirs[$i]}"
   else
     kwsfile=${decode_dirs[$i]}/kwslist.unnormalized.xml
