@@ -2,6 +2,7 @@
 
 # This is not necessarily the top-level run.sh as it is in other directories.   see README.txt first.
 tri5_only=false
+
 [ ! -f ./lang.conf ] && echo "Language configuration does not exist! Use the configurations in conf/lang/* as a startup" && exit 1
 [ ! -f ./conf/common_vars.sh ] && echo "the file conf/common_vars.sh does not exist!" && exit 1
 
@@ -9,6 +10,8 @@ tri5_only=false
 . ./lang.conf || exit 1;
 
 [ -f local.conf ] && . ./local.conf
+
+. ./utils/parse_options.sh
 
 set -e           #Exit on non-zero return code from any command
 set -o pipefail  #Exit if any of the commands in the pipeline will 
@@ -59,8 +62,9 @@ if [[ ! -f data/local/lexicon.txt || data/local/lexicon.txt -ot "$lexicon_file" 
   echo ---------------------------------------------------------------------
   echo "Preparing lexicon in data/local on" `date`
   echo ---------------------------------------------------------------------
+  local/make_lexicon_subset.sh $train_data_dir/transcription $lexicon_file data/local/filtered_lexicon.txt
   local/prepare_lexicon.pl  --phonemap "$phoneme_mapping" \
-    $lexiconFlags $lexicon_file data/local
+    $lexiconFlags data/local/filtered_lexicon.txt data/local
 fi
 
 mkdir -p data/lang
@@ -267,6 +271,12 @@ if [ ! -f exp/tri5_ali/.done ]; then
   touch exp/tri5_ali/.done
 fi
 
+if $tri5_only ; then
+  echo "Exiting after stage TRI5, as requested. "
+  echo "Everything went fine. Done"
+  exit 0;
+fi
+
 if [ ! -f exp/ubm5/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting exp/ubm5 on" `date`
@@ -305,11 +315,6 @@ if [ ! -f exp/sgmm5_ali/.done ]; then
   touch exp/sgmm5_ali/.done
 fi
 
-if $tri5_only ; then
-  echo "Exiting after stage TRI5, as requested. "
-  echo "Everything went fine. Done"
-  exit 0;
-fi
 
 if [ ! -f exp/sgmm5_denlats/.done ]; then
   echo ---------------------------------------------------------------------

@@ -65,6 +65,7 @@ fi
 if [ $stage -le 1 ]; then
   # Remove some stuff we don't want to score, from the ctm.
   for x in $dir/score_*/$name.ctm; do
+    cp $x $x.orig;
     cp $x $x.bkup1;
     cat $x.bkup1 | grep -v -E '\[NOISE|LAUGHTER|VOCALIZED-NOISE\]' | \
       grep -v -E '<UNK>|%HESITATION|\(\(\)\)' | \

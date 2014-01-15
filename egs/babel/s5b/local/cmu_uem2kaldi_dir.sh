@@ -69,6 +69,11 @@ if [ $? -ne 0 ] ; then
   echo "Could not find sph2pipe binary. Add it to PATH"  
   exit 1;
 fi
+sox=`which sox`
+if [ $? -ne 0 ] ; then
+  echo "Could not find sox binary. Add it to PATH"  
+  exit 1;
+fi
 
 echo "Creating the $datadir/wav.scp file"
 (
@@ -76,6 +81,8 @@ echo "Creating the $datadir/wav.scp file"
   for file in `cut -f 2 -d ' ' $datadir/segments` ; do
     if [ -f $audiopath/audio/$file.sph ] ; then
       echo "$file $sph2pipe -f wav -p -c 1 $audiopath/audio/$file.sph |"
+    elif [ -f $audiopath/audio/$file.wav ] ; then
+      echo "$file $sox $audiopath/audio/$file.wav -r 8000 -c 1 -b 16 -t wav - downsample |"
     else
       echo "Audio file $audiopath/audio/$file.sph does not exist!" >&2 
       exit 1
@@ -89,13 +96,12 @@ echo "Creating the $datadir/wav.scp file"
 
 l1=`wc -l $datadir/wav.scp | cut -f 1 -d ' ' `
 echo "wav.scp contains $l1 files"
-if [ ! -z $filelist ] ; then
+if [ ! -z $filelist ] ; then 
   l2=`wc -l $filelist | cut -f 1 -d ' '`
   echo "filelist `basename $filelist` contains $l2 files"
 
   if [ "$l1" -ne "$l2" ] ; then
-    echo "Not all files from the specified fileset made their way into wav.scp"
-    exit 1
+    echo "WARNING: Not all files from the specified fileset made their way into wav.scp"
   fi
 fi
 
@@ -111,7 +117,7 @@ fi
 
 # 6. reco2file_and_channel
 echo "Creating the $datadir/reco2file_and_channel file"
-(for f in $( cut -f 8 -d ' '  $datadir/wav.scp ) ; do p=`basename $f .sph`; echo $p $p 1; done) > $datadir/reco2file_and_channel
+(for f in $( cut -f 1 -d ' '  $datadir/wav.scp ) ; do echo $f $f 1; done) > $datadir/reco2file_and_channel
 
 echo "Everything done"
 

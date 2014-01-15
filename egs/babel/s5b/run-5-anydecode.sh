@@ -60,7 +60,7 @@ function make_plp {
   utils/fix_data_dir.sh data/${t}
 }
 
-if [ ${type} == shadow ] ; then
+if [ ${type} == shadow ] || [ ${type} == eval ] ; then
   mandatory_variables=""
   optional_variables=""
 else
@@ -77,12 +77,23 @@ eval my_data_dir=\$${type}_data_dir
 eval my_data_list=\$${type}_data_list
 eval my_stm_file=\$${type}_stm_file
 
-
 eval my_ecf_file=\$${type}_ecf_file 
 eval my_subset_ecf=\$${type}_subset_ecf 
 eval my_kwlist_file=\$${type}_kwlist_file 
 eval my_rttm_file=\$${type}_rttm_file
 eval my_nj=\$${type}_nj  #for shadow, this will be re-set when appropriate
+
+declare -A my_more_kwlists
+eval my_more_kwlist_keys="\${!${type}_more_kwlists[@]}"
+declare -p my_more_kwlist_keys
+for key in $my_more_kwlist_keys  # make sure you include the quotes there
+do
+  echo $key
+  eval my_more_kwlist_val="\${${type}_more_kwlists[$key]}"
+  echo $my_more_kwlist_val
+  my_more_kwlists["$key"]="${my_more_kwlist_val}"
+done
+
 
 for variable in $mandatory_variables ; do
   eval my_variable=\$${variable}
@@ -123,12 +134,13 @@ if [[ $type == shadow ]] ; then
   fi
   my_nj=$eval_nj
 else
-  if [ ! -d data/raw_${type}_data ]; then
+  if [ ! -f data/raw_${type}_data/.done ]; then
     echo ---------------------------------------------------------------------
     echo "Subsetting the ${type} set"
     echo ---------------------------------------------------------------------
     
     local/make_corpus_subset.sh "$my_data_dir" "$my_data_list" ./data/raw_${type}_data
+    touch data/raw_${type}_data/.done
   fi
   my_data_dir=`readlink -f ./data/raw_${type}_data`
 
@@ -201,6 +213,7 @@ if ! $skip_kws  && [ ! -f ${datadir}/kws/.done ] ; then
       data/lang ${datadir} ${datadir}/kws
     utils/fix_data_dir.sh ${datadir}
 
+
     touch ${datadir}/kws/.done
   else
     kws_flags=()
@@ -215,8 +228,27 @@ if ! $skip_kws  && [ ! -f ${datadir}/kws/.done ] ; then
       "${kws_flags[@]}" "${icu_opt[@]}" \
       $my_ecf_file $my_kwlist_file data/lang ${datadir}
 
+    if [ ${#my_more_kwlists[@]} -ne 0  ] ; then
+      touch $datadir/extra_kws_tasks
+      for extraid in "${!my_more_kwlists[@]}" ; do
+        kwlist=${my_more_kwlists[$extraid]}
+        local/kws_setup.sh --rttm-file ${datadir}/kws/rttm --extraid $extraid \
+          --case_insensitive $case_insensitive "${icu_opt[@]}"  \
+          ${datadir}/kws/ecf.xml $kwlist data/lang ${datadir}
+        echo $extraid >> $datadir/extra_kws_tasks;  sort -u $datadir/extra_kws_tasks -o  $datadir/extra_kws_tasks
+      done
+    fi
     touch ${datadir}/kws/.done
   fi
+
+  langid=`ls -1 data/raw_${type}_data/audio/ | head -n 1| cut -d '_' -f 3`
+  local/kws_setup.sh --kwlist-wordlist true --rttm-file $datadir/kws/rttm  --extraid fullvocab  \
+    $datadir/kws/ecf.xml  <(cat data/lang/words.txt | grep -v -F "<" | grep -v -F "#"  | awk "{printf \"KWID$langid-FULLVOCAB-%05d %s\\n\", \$2, \$1 }" ) data/lang ${datadir}
+  echo fullvocab >> $datadir/extra_kws_tasks;  sort -u $datadir/extra_kws_tasks -o  $datadir/extra_kws_tasks
+
+  #local/make_lexicon_subset.sh $data_dir/transcription $lexicon_file $datadir/filtered_lexicon.txt
+  #local/kws_setup.sh --kwlist-wordlist true --rttm-file $datadir/kws/rttm  --extraid vocab  \
+  #  $datadir/kws/ecf.xml  <(cut -f 1 $datadir/filtered_lexicon.txt  | grep -v -F "<" | grep -v -F "#"  | awk "{printf \"KWID$langid-VOCAB-%05d data/raw_${type}_data/.done %s\\n\", \$2, \$1 }" ) data/lang ${datadir}
 fi
 
 if $data_only ; then
