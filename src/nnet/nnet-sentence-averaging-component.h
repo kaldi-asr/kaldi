@@ -43,21 +43,21 @@ class SentenceAveragingComponent : public UpdatableComponent {
   void InitData(std::istream &is) {
     // define options
     std::string nested_nnet_filename;
-    std::string nested_nnet_config;
+    std::string nested_nnet_proto;
     // parse config
     std::string token; 
     while (!is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<NestedNnetFilename>") ReadToken(is, false, &nested_nnet_filename);
-      else if (token == "<NestedNnetConfig>") ReadToken(is, false, &nested_nnet_config);
+      else if (token == "<NestedNnetProto>") ReadToken(is, false, &nested_nnet_proto);
       else if (token == "<LearnRateFactor>") ReadBasicType(is, false, &learn_rate_factor_);
       else KALDI_ERR << "Unknown token " << token << " Typo in config?";
       is >> std::ws; // eat-up whitespace
     }
     // initialize (read already prepared nnet from file)
-    KALDI_ASSERT((nested_nnet_config != "") ^ (nested_nnet_filename != "")); //xor
+    KALDI_ASSERT((nested_nnet_proto != "") ^ (nested_nnet_filename != "")); //xor
     if (nested_nnet_filename != "") nnet_.Read(nested_nnet_filename);
-    if (nested_nnet_config != "") nnet_.Init(nested_nnet_config);
+    if (nested_nnet_proto != "") nnet_.Init(nested_nnet_proto);
     // check dims of nested nnet
     KALDI_ASSERT(InputDim() == nnet_.InputDim());
     KALDI_ASSERT(OutputDim() == nnet_.OutputDim() + InputDim());

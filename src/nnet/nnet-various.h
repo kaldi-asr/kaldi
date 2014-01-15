@@ -1,6 +1,6 @@
 // nnet/nnet-various.h
 
-// Copyright 2012-2013  Brno University of Technology (author: Karel Vesely)
+// Copyright 2012-2014  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,6 +23,9 @@
 
 #include "nnet/nnet-component.h"
 #include "cudamatrix/cu-math.h"
+#include "util/text-utils.h"
+
+#include <algorithm>
 
 namespace kaldi {
 namespace nnet1 {
@@ -174,38 +177,107 @@ class CopyComponent: public Component {
   Component* Copy() const { return new CopyComponent(*this); }
   ComponentType GetType() const { return kCopy; }
 
-  void ReadData(std::istream &is, bool binary) { 
-    // read double vector
-    Vector<double> vec_d;
-    vec_d.Read(is, binary);
-    // subtract 1
-    vec_d.Add(-1.0);
-    // convert to int vector
-    std::vector<int32> vec_i(vec_d.Dim());
-    for(int32 i=0; i<vec_d.Dim(); i++) {
-      vec_i[i] = round(vec_d(i));
+  void InitData(std::istream &is) {
+    // define options
+    std::vector<int32> copy_from_indices;
+    std::vector<std::vector<int32> > build_vector;
+    // parse config
+    std::string token; 
+    while (!is.eof()) {
+      ReadToken(is, false, &token); 
+      /**/ if (token == "<ReadVector>") {
+        ReadIntegerVector(is, false, &copy_from_indices);
+      } else if (token == "<BuildVector>") { 
+        // <BuildVector> 1:1:1000 1:1:1000 1 2 3 1:10 </BuildVector> [matlab indexing]
+        // read the colon-separated-lists:
+        while (!is.eof()) { 
+          std::string colon_sep_list_or_end;
+          ReadToken(is, false, &colon_sep_list_or_end);
+          if (colon_sep_list_or_end == "</BuildVector>") break;
+          std::vector<int32> v;
+          SplitStringToIntegers(colon_sep_list_or_end, ":", false, &v);
+          build_vector.push_back(v);
+        }
+      } else {
+        KALDI_ERR << "Unknown token " << token << ", a typo in config?"
+                  << " (ReadVector|BuildVector)";
+      }
+      is >> std::ws; // eat-up whitespace
     }
-    // push to GPU
-    copy_from_indices_.CopyFromVec(vec_i); 
+
+    // build the vector, using <BuildVector> ... </BuildVector> inputs
+    if (build_vector.size() > 0) {
+      for (int32 i=0; i<build_vector.size(); i++) {
+        switch (build_vector[i].size()) {
+          case 1:
+            copy_from_indices.push_back(build_vector[i][0]);
+            break;
+          case 2: { // assuming step 1
+            int32 min=build_vector[i][0], max=build_vector[i][1];
+            KALDI_ASSERT(min <= max);
+            for (int32 j=min; j<=max; j++) {
+              copy_from_indices.push_back(j);
+            }}
+            break;
+          case 3: { // step can be negative -> flipped min/max
+            int32 min=build_vector[i][0], step=build_vector[i][1], max=build_vector[i][2];
+            KALDI_ASSERT((min <= max && step > 0) || (min >= max && step < 0));
+            for (int32 j=min; j<=max; j += step) {
+              copy_from_indices.push_back(j);
+            }}
+            break;
+          case 0:
+          default: 
+            KALDI_ERR << "Error parsing <BuildVector>";
+        }
+      }
+    }
+    
+    // decrease by 1
+    std::vector<int32>& v = copy_from_indices;
+    std::transform(v.begin(), v.end(), v.begin(), op_decrease);
+    // copy to GPU
+    copy_from_indices_ = copy_from_indices;
+
+    // check range
+    for (int32 i=0; i<copy_from_indices.size(); i++) {
+      KALDI_ASSERT(copy_from_indices[i] >= 0);
+      KALDI_ASSERT(copy_from_indices[i] < InputDim());
+    }
+    // check dim
+    KALDI_ASSERT(copy_from_indices_.Dim() == OutputDim());
   }
 
-  void WriteData(std::ostream &os, bool binary) const { 
-    std::vector<int32> vec_i;
-    copy_from_indices_.CopyToVec(&vec_i);
-    Vector<double> vec_d(vec_i.size());
-    for(int32 i=0; i<vec_d.Dim(); i++) {
-      vec_d(i) = vec_i[i];
-    }
-    vec_d.Add(1.0);
-    vec_d.Write(os, binary);
+  void ReadData(std::istream &is, bool binary) { 
+    std::vector<int32> copy_from_indices;
+    ReadIntegerVector(is, false, &copy_from_indices);
+    // -1 from each element 
+    std::vector<int32>& v = copy_from_indices;
+    std::transform(v.begin(), v.end(), v.begin(), op_decrease);
+    // 
+    copy_from_indices_ = copy_from_indices;
+    KALDI_ASSERT(copy_from_indices_.Dim() == OutputDim());
+  }
+
+  void WriteData(std::ostream &os, bool binary) const {
+    std::vector<int32> copy_from_indices(copy_from_indices_.Dim());
+    copy_from_indices_.CopyToVec(&copy_from_indices);
+    // +1 to each element 
+    std::vector<int32>& v = copy_from_indices;
+    std::transform(v.begin(), v.end(), v.begin(), op_increase);
+    // 
+    WriteIntegerVector(os, binary, copy_from_indices); 
   }
  
   std::string Info() const {
+    /*
     std::ostringstream ostr;
     ostr << "\n  copy_from_indices " << copy_from_indices_;
     std::string str = ostr.str();
     str.erase(str.end()-1);
     return str;
+    */
+    return "";
   }
   
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) { 
@@ -219,6 +291,10 @@ class CopyComponent: public Component {
 
  protected:
   CuArray<int32> copy_from_indices_;
+
+ private:
+  static int32 op_increase (int32 i) { return ++i; }
+  static int32 op_decrease (int32 i) { return --i; }
 };
 
 
@@ -227,16 +303,33 @@ class CopyComponent: public Component {
  * Adds shift to all the lines of the matrix
  * (can be used for global mean normalization)
  */
-class AddShift : public Component {
+class AddShift : public UpdatableComponent {
  public:
   AddShift(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out), shift_data_(dim_in)
+    : UpdatableComponent(dim_in, dim_out), shift_data_(dim_in)
   { }
   ~AddShift()
   { }
 
   Component* Copy() const { return new AddShift(*this); }
   ComponentType GetType() const { return kAddShift; }
+
+  void InitData(std::istream &is) {
+    // define options
+    float init_param = 0.0;
+    // parse config
+    std::string token; 
+    while (!is.eof()) {
+      ReadToken(is, false, &token); 
+      /**/ if (token == "<InitParam>") ReadBasicType(is, false, &init_param);
+      else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
+                     << " (InitParam)";
+      is >> std::ws; // eat-up whitespace
+    }
+    // initialize
+    shift_data_.Resize(InputDim(), kSetZero); // set to zero
+    shift_data_.Set(init_param);
+  }
 
   void ReadData(std::istream &is, bool binary) { 
     //read the shift data
@@ -246,10 +339,22 @@ class AddShift : public Component {
   void WriteData(std::ostream &os, bool binary) const { 
     shift_data_.Write(os, binary);
   }
+  
+  int32 NumParams() const { return shift_data_.Dim(); }
+
+  void GetParams(Vector<BaseFloat>* wei_copy) const {
+    wei_copy->Resize(InputDim());
+    shift_data_.CopyToVec(wei_copy);
+  }
    
   std::string Info() const {
     return std::string("\n  shift_data") + MomentStatistics(shift_data_);
   }
+
+  std::string InfoGradient() const {
+    return std::string("\n  shift_data_grad") + MomentStatistics(shift_data_grad_);
+  }
+
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) { 
     out->CopyFromMat(in);
@@ -263,11 +368,20 @@ class AddShift : public Component {
     in_diff->CopyFromMat(out_diff);
   }
 
+  void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) {
+    // we use following hyperparameters from the option class
+    const BaseFloat lr = opts_.learn_rate;
+    // gradient
+    shift_data_grad_.Resize(InputDim(), kSetZero); // reset
+    shift_data_grad_.AddRowSumMat(1.0, diff, 0.0);
+    // update
+    shift_data_.AddVec(-lr, shift_data_grad_);
+  }
+
   //Data accessors
   const CuVector<BaseFloat>& GetShiftVec() {
     return shift_data_;
   }
-
   void SetShiftVec(const CuVector<BaseFloat>& shift_data) {
     KALDI_ASSERT(shift_data.Dim() == shift_data_.Dim());
     shift_data_.CopyFromVec(shift_data);
@@ -275,6 +389,7 @@ class AddShift : public Component {
 
  protected:
   CuVector<BaseFloat> shift_data_;
+  CuVector<BaseFloat> shift_data_grad_;
 };
 
 
@@ -283,16 +398,33 @@ class AddShift : public Component {
  * Rescale the data column-wise by a vector
  * (can be used for global variance normalization)
  */
-class Rescale : public Component {
+class Rescale : public UpdatableComponent {
  public:
   Rescale(int32 dim_in, int32 dim_out)
-    : Component(dim_in, dim_out), scale_data_(dim_in)
+    : UpdatableComponent(dim_in, dim_out), scale_data_(dim_in)
   { }
   ~Rescale()
   { }
 
   Component* Copy() const { return new Rescale(*this); }
   ComponentType GetType() const { return kRescale; }
+
+  void InitData(std::istream &is) {
+    // define options
+    float init_param = 0.0;
+    // parse config
+    std::string token; 
+    while (!is.eof()) {
+      ReadToken(is, false, &token); 
+      /**/ if (token == "<InitParam>") ReadBasicType(is, false, &init_param);
+      else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
+                     << " (InitParam)";
+      is >> std::ws; // eat-up whitespace
+    }
+    // initialize
+    scale_data_.Resize(InputDim(), kSetZero);
+    scale_data_.Set(init_param);
+  }
 
   void ReadData(std::istream &is, bool binary) { 
     // read the shift data
@@ -302,10 +434,22 @@ class Rescale : public Component {
   void WriteData(std::ostream &os, bool binary) const { 
     scale_data_.Write(os, binary);
   }
+
+  int32 NumParams() const { return scale_data_.Dim(); }
+
+  void GetParams(Vector<BaseFloat>* wei_copy) const {
+    wei_copy->Resize(InputDim());
+    scale_data_.CopyToVec(wei_copy);
+  }
  
   std::string Info() const {
     return std::string("\n  scale_data") + MomentStatistics(scale_data_);
   }
+  
+  std::string InfoGradient() const {
+    return std::string("\n  scale_data_grad") + MomentStatistics(scale_data_grad_);
+  }
+  
   
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) { 
     out->CopyFromMat(in);
@@ -320,11 +464,22 @@ class Rescale : public Component {
     in_diff->MulColsVec(scale_data_);
   }
 
+  void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) {
+    // we use following hyperparameters from the option class
+    const BaseFloat lr = opts_.learn_rate;
+    // gradient
+    scale_data_grad_.Resize(InputDim(), kSetZero); // reset
+    CuMatrix<BaseFloat> gradient_aux(diff);
+    gradient_aux.MulElements(input);
+    scale_data_grad_.AddRowSumMat(1.0, gradient_aux, 0.0);
+    // update
+    scale_data_.AddVec(-lr, scale_data_grad_);
+  }
+
   // Data accessors
   const CuVector<BaseFloat>& GetScaleVec() {
     return scale_data_;
   }
-
   void SetScaleVec(const CuVector<BaseFloat>& scale_data) {
     KALDI_ASSERT(scale_data.Dim() == scale_data_.Dim());
     scale_data_.CopyFromVec(scale_data);
@@ -332,6 +487,7 @@ class Rescale : public Component {
 
  protected:
   CuVector<BaseFloat> scale_data_;
+  CuVector<BaseFloat> scale_data_grad_;
 };
 
 
