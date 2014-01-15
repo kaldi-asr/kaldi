@@ -29,6 +29,10 @@ local/timit_data_prep.sh $timit || exit 1;
 
 local/timit_prepare_dict.sh || exit 1;
 
+# Caution below: we insert optional-silence with probability 0.5, which is the
+# default, but this is probably not appropriate for this setup, since silence
+# appears also as a word in the dictionary and is scored.  We could stop this
+# by using the option --sil-prob 0.0, but apparently this makes results worse.
 utils/prepare_lang.sh --position-dependent-phones false --num-sil-states 3 \
  data/local/dict "sil" data/local/lang_tmp data/lang || exit 1;
 

@@ -4105,7 +4105,7 @@ void DropoutComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
   if ((high_scale - low_scale) != 1.0)
     out->Scale(high_scale - low_scale); // now, "dp" are 0 and (1-dp) are "high_scale-low_scale".
   if (low_scale != 0.0)
-    out->Add(low_scale); // now "dp" equale "low_scale" and (1.0-dp) equal "high_scale".
+    out->Add(low_scale); // now "dp" equal "low_scale" and (1.0-dp) equal "high_scale".
 
   out->MulElements(in);
 }

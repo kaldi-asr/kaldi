@@ -506,7 +506,8 @@ inline void ComposeContext(vector<int32> &disambig_syms_in,
   std::sort(all_syms.begin(), all_syms.end());
   vector<int32> phones;
   for (size_t i = 0; i < all_syms.size(); i++)
-    if (!std::binary_search(disambig_syms.begin(), disambig_syms.end(), all_syms[i]))
+    if (!std::binary_search(disambig_syms.begin(),
+                            disambig_syms.end(), all_syms[i]))
       phones.push_back(all_syms[i]);
   
   // Get subsequential symbol that does not clash with

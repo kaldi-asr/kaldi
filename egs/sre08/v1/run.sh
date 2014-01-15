@@ -133,9 +133,10 @@ cat $trials | awk '{print $1, $2}' | \
 local/score_sre08.sh $trials foo
 
 
+# Scores were:
 #Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      1      2      3      4      5      6      7      8
-#        EER:  29.07   4.48  28.89  20.57  19.83  11.14   7.35   7.89
+#        EER:  27.75   4.48  27.36  21.77  19.95  10.70   7.22   7.37
 
 # The following shows a more direct way to get the scores.
 #condition=6
@@ -146,9 +147,6 @@ local/score_sre08.sh $trials foo
 # Note: to see how you can plot the DET curve, look at
 # local/det_curve_example.sh
 
-# The following will take a little while to run; it demonstrates running the system
-# without weights.
-# local/run_no_weights.sh
 
 ### Demonstrate what happens if we reduce the dimension with LDA
 
@@ -167,6 +165,7 @@ local/score_sre08.sh $trials foo
    foo
 
 local/score_sre08.sh $trials foo
+# Need to redo these results (out of date):
 #Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      1      2      3      4      5      6      7      8
 #        EER:  24.16   2.69  24.06  13.96  14.66  10.48   6.59   6.84
@@ -189,6 +188,8 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_u
 
 local/score_sre08.sh $trials foo
 
+
+# Result is below:
 #Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      1      2      3      4      5      6      7      8
-#        EER:  20.55   2.09  20.76  17.27  12.14   8.59   4.69   4.74
+#        EER:  19.66   2.69  19.72  17.87  12.26   8.09   4.56   4.47
