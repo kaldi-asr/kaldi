@@ -31,7 +31,7 @@ struct LdaEstimateOptions {
   int32 dim;
   bool allow_large_dim;
   BaseFloat within_class_factor; // TODO: remove this eventually, it
-  // is deprecated (that code is now in ../nnet-cpu/get-feature-transform.{h,cc})
+  // is deprecated (that code is now in ../nnet2/get-feature-transform.{h,cc})
   LdaEstimateOptions(): remove_offset(false), dim(40), allow_large_dim(false),
                         within_class_factor(1.0) { }
   

@@ -97,8 +97,8 @@ void Questions::InitRand(const BuildTreeStatsType &stats, int32 num_quest, int32
     EventKeyType key = all_keys[i];
     std::vector<EventValueType> all_values;
     bool b = PossibleValues(key, stats, &all_values);  // get possible values.
-    if (all_keys_type != kAllKeysUnion) assert(b);
-    assert(all_values.size() != 0);  // since key exists in stats, must have some value defined.
+    if (all_keys_type != kAllKeysUnion) KALDI_ASSERT(b);
+    KALDI_ASSERT(all_values.size() != 0);  // since key exists in stats, must have some value defined.
     QuestionsForKey q_for_key;
     q_for_key.refine_opts.num_iters = num_iters_refine;
     q_for_key.initial_questions.clear();  // Make sure empty.
@@ -111,7 +111,7 @@ void Questions::InitRand(const BuildTreeStatsType &stats, int32 num_quest, int32
         for (size_t j = 0;j < all_values.size()/2;j++)
           this_quest.push_back(all_values[RandInt(0, all_values.size()-1)]);
         SortAndUniq(&this_quest);
-        assert(!this_quest.empty());
+        KALDI_ASSERT(!this_quest.empty());
       }
       SortAndUniq(&q_for_key.initial_questions);  // Ensure unique questions.
     }

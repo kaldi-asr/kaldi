@@ -176,6 +176,8 @@ KaldiErrorMessage::~KaldiErrorMessage() {
 #else
     throw std::runtime_error(ss.str());
 #endif
+  } else {
+    abort(); // This may be temporary...
   }
 }
 

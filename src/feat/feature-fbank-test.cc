@@ -51,14 +51,14 @@ static void UnitTestReadWave() {
   std::ifstream input(
     "test_data/test_matlab.ascii"
   );
-  assert(input.good());
+  KALDI_ASSERT(input.good());
   v2.Read(input, false);
   input.close();
 
   std::cout << "<<<=== Comparing freshly read waveform to 'libsndfile' waveform\n";
-  assert(v.Dim() == v2.Dim());
+  KALDI_ASSERT(v.Dim() == v2.Dim());
   for (int32 i = 0; i < v.Dim(); i++) {
-    assert(v(i) == v2(i));
+    KALDI_ASSERT(v(i) == v2(i));
   }
   std::cout << "<<<=== Comparing done\n";
 
@@ -124,7 +124,7 @@ static void UnitTestHTKCompare1() {
     std::ifstream is("test_data/test.wav.fbank_htk.1",
                      std::ios::in | std::ios_base::binary);
     bool ans = ReadHtk(is, &htk_features, 0);
-    assert(ans);
+    KALDI_ASSERT(ans);
   }
 
   // use fbank with default configuration...
@@ -149,8 +149,8 @@ static void UnitTestHTKCompare1() {
   // compare the results
   bool passed = true;
   int32 i_old = -1;
-  assert(kaldi_features.NumRows() == htk_features.NumRows());
-  assert(kaldi_features.NumCols() == htk_features.NumCols());
+  KALDI_ASSERT(kaldi_features.NumRows() == htk_features.NumRows());
+  KALDI_ASSERT(kaldi_features.NumCols() == htk_features.NumCols());
   // Ignore ends-- we make slightly different choices than
   // HTK about how to treat the deltas at the ends.
   for (int32 i = 10; i+10 < kaldi_features.NumRows(); i++) {

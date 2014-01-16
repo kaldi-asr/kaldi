@@ -11,6 +11,7 @@ cmd=run.pl
 debug_file=
 pitch_config=conf/pitch.conf
 postprocess_config=
+compress=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -19,7 +20,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
-   echo "usage: make_pitch_new.sh [options] <data-dir> <log-dir> <path-to-pitchdir>";
+   echo "usage: make_pitch_kaldi.sh [options] <data-dir> <log-dir> <path-to-pitchdir>";
    echo "options: "
    echo "  --pitch-config <config-file>                     # config passed to compute-kaldi-pitch-feats "
    echo "  --postprocess-config <config-file>               # config passed to process-kaldi-pitch-feats "
@@ -79,7 +80,8 @@ if [ -f $data/segments ]; then
   $cmd JOB=1:$nj $logdir/make_pitch.JOB.log \
     extract-segments scp:$scp $logdir/segments.JOB ark:- \| \
     compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- ark:- \| \
-    process-kaldi-pitch-feats $postprocess_config_opt ark:- \
+    process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- \| \
+    copy-feats --compress=$compress ark:- \
       ark,scp:$pitchdir/pitch_$name.JOB.ark,$pitchdir/pitch_$name.JOB.scp \
       || exit 1;
 

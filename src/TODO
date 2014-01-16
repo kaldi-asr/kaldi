@@ -1,3 +1,54 @@
+
+- To Matrix and CuMatrix, add a function 
+
+
+(Z)
+ Need to improve the efficiency of CudaMalloc.  I would suggest
+ to have some kind of CPU-hosted map from size (or x,y size for CudaMallocPitch),
+ to the address, that when we free stuff we just keep the pointer..
+
+
+(A)
+  Need to improve the efficiency of
+  (i)     TraceMatMat (for CuMatrix)
+  (ii)    CuMatrix::AddDiagMatMat
+  (iii)   CuVector::Sum();
+
+(B)
+  
+  // Make a matrix symmetric by either copying the lower to upper triangle
+  // copying upper to lower, taking the mean, or taking the mean and checking
+  // it was already almost symmetric.  You can test it by making sure that
+  // it behaves the same as the SpMatrix CopyFromMat function, e.g. first
+  // calling Symmetrize with a particular argument "t" and then creating an SpMatrix
+  // from the matrix with kTakeMeanAndCheck, should give the same result as
+  // initializing the SpMatrix with the original matrix and "t".  kTakeMeanAndCheck
+  // means set to the mean, but check they were approximately equal; see the SpMatrix
+  // code for how to implement it (in fact, the code can be based on the same code
+  // in SpMatrix::CopyFrommat).
+  void Symmetrize(SpCopyType symmetrize_type);
+
+  // This function should call dsymm (it can, arbitrarily, add to the lower triangle),
+  // and then Symmetrize(kTakeLower).  Before calling dsymm we should check that
+  // the original matrix is approximately symmetric: we can do #ifdef KALDI_PARANOID,
+  // Symmetrize(kTakeMeanAndCheck). #endif.
+  void SymmetricAddMatMat(Real alpha, const Matrix<Real> &A, MatrixTransposeType transA,
+                          const Matrix<Real> &B, MatrixTransposeType transB, Real beta);
+                   
+
+
+
+(C)
+The functions in CuMath.h that say "this needs documentation" need documentation
+(i.e.  comments saying what the functions do).  Someone would need to look at
+the code and figure out what the functions do (it's not my code).  Please look
+at cu-matrix.h, for the similar functions CopyRows() and CopyCols(), for what I
+consider to be adequate documentation.  Also these functions would need testing
+code, if it doesn't already exist.
+
+
+
+-
  Help needed:
   - Proofread documentation and make suggestions for 
     changes/clarification.

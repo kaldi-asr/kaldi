@@ -111,11 +111,12 @@ fi
 
 if [ $stage -le 0 ] ; then
   if [ ! -f $indices_dir/.done.index ] ; then
+    [ ! -d $indices_dir ] && mkdir  $indices_dir
     for lmwt in `seq $min_lmwt $max_lmwt` ; do
         indices=${indices_dir}_$lmwt
         mkdir -p $indices
   
-        acwt=`echo "scale=5; 1/$lmwt" | bc -l | sed "s/^./0./g"` 
+        acwt=`perl -e "print (1.0/$lmwt);"` 
         [ ! -z $silence_word ] && silence_opt="--silence-word $silence_word"
         steps/make_index.sh $silence_opt --cmd "$cmd" --acwt $acwt $model_flags\
           --skip-optimization $skip_optimization --max-states $max_states \
@@ -125,7 +126,7 @@ if [ $stage -le 0 ] ; then
     touch $indices_dir/.done.index
   else
     echo "Assuming indexing has been aready done. If you really need to re-run "
-    echo "the indexing again, delete the file $kwsoutdir/.done.index"
+    echo "the indexing again, delete the file $indices_dir/.done.index"
   fi
 fi
 

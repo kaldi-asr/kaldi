@@ -24,6 +24,7 @@
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
 #include "hmm/hmm-utils.h"
+#include "hmm/posterior.h"
 
 /** @brief Convert alignments to viterbi style posteriors. The aligned
     symbol gets a weight of 1.0 */
@@ -57,11 +58,8 @@ int main(int argc, char *argv[]) {
       num_done++;
       const std::vector<int32> &alignment = alignment_reader.Value();
       // Posterior is vector<vector<pair<int32, BaseFloat> > >
-      Posterior post(alignment.size());
-      for (size_t i = 0; i < alignment.size(); i++) {
-        int32 tid = alignment[i];
-        post[i].push_back(std::make_pair(tid, 1.0));
-      }
+      Posterior post;
+      AlignmentToPosterior(alignment, &post);
       posterior_writer.Write(alignment_reader.Key(), post);
     }
     KALDI_LOG << "Converted " << num_done << " alignments.";

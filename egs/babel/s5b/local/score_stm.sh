@@ -55,7 +55,7 @@ set -u
 
 ScoringProgram=`which sclite` || ScoringProgram=$KALDI_ROOT/tools/sctk-2.4.0/bin/sclite
 [ ! -x $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
-SortingProgram=`which hubscr.pl` || ScoringProgram=$KALDI_ROOT/tools/sctk-2.4.0/bin/hubscr.pl
+SortingProgram=`which hubscr.pl` || SortingProgram=$KALDI_ROOT/tools/sctk-2.4.0/bin/hubscr.pl
 [ ! -x $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
 
 

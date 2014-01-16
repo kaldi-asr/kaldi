@@ -23,6 +23,7 @@
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
 #include "hmm/hmm-utils.h"
+#include "hmm/posterior.h"
 
 /* Convert a matrix probabilities 
    to something of type Posterior, i.e. for each utterance, a

@@ -23,7 +23,7 @@
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
 #include "transform/hlda.h"
-
+#include "hmm/posterior.h"
 
 
 

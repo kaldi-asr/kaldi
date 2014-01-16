@@ -70,4 +70,3 @@ if [ $stage -le 4 ]; then
    steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 --feat-type raw \
      exp/tri3b/graph_ug data/test_fbank exp/nnet4b/decode_ug
 fi
-

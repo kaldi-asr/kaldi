@@ -159,7 +159,9 @@ class SpMatrix : public PackedMatrix<Real> {
   /// Solves the symmetric eigenvalue problem: at end we should have (*this) = P
   /// * diag(s) * P^T.  We solve the problem using the symmetric QR method.
   /// P may be NULL.
-  /// Implemented in qr.cc. 
+  /// Implemented in qr.cc.
+  /// If you need the eigenvalues sorted, the function SortSvd declared in
+  /// kaldi-matrix is suitable.
   void Eig(VectorBase<Real> *s, MatrixBase<Real> *P = NULL) const;
   
   /// This function gives you, approximately, the largest eigenvalues of the

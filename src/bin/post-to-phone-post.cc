@@ -1,6 +1,6 @@
 // bin/post-to-phone-post.cc
 
-// Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2012-2013  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -21,6 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
+#include "hmm/posterior.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -59,27 +60,8 @@ int main(int argc, char *argv[]) {
     
     for (; !posterior_reader.Done(); posterior_reader.Next()) {
       const kaldi::Posterior &posterior = posterior_reader.Value();
-      int32 num_frames = static_cast<int32>(posterior.size());
-      kaldi::Posterior phone_posterior(num_frames);
-      for (int32 i = 0; i < num_frames; i++) {
-        std::map<int32, BaseFloat> phone_to_post;
-        
-        for (int32 j = 0; j < static_cast<int32>(posterior[i].size()); j++) {
-          int32 tid = posterior[i][j].first,
-              phone = trans_model.TransitionIdToPhone(tid);
-          BaseFloat post = posterior[i][j].second;
-          if (phone_to_post.count(phone) == 0)
-            phone_to_post[phone] = post;
-          else
-            phone_to_post[phone] += post;
-        }
-        phone_posterior[i].reserve(phone_to_post.size());
-        for (std::map<int32, BaseFloat>::const_iterator iter =
-                 phone_to_post.begin(); iter != phone_to_post.end(); ++iter) {
-          phone_posterior[i].push_back(
-              std::make_pair(iter->first, iter->second));
-        }
-      }
+      kaldi::Posterior phone_posterior;
+      ConvertPosteriorToPhones(trans_model, posterior, &phone_posterior);
       posterior_writer.Write(posterior_reader.Key(), phone_posterior);
       num_done++;
     }

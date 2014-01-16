@@ -190,7 +190,7 @@ class LatticeFasterDecoder {
     TokenList(): toks(NULL), must_prune_forward_links(true),
                  must_prune_tokens(true) { }
   };
-  
+
   typedef HashList<StateId, Token*>::Elem Elem;
 
   void PossiblyResizeHash(size_t num_toks);
@@ -279,13 +279,18 @@ class LatticeFasterDecoder {
   std::map<Token*, BaseFloat> final_costs_; // A cache of final-costs
   // of tokens on the last frame-- it's just convenient to store it this way.
   
-  // It might seem unclear why we call ClearToks(toks_.Clear()).
-  // There are two separate cleanup tasks we need to do at when we start a new file.
-  // one is to delete the Token objects in the list; the other is to delete
-  // the Elem objects.  toks_.Clear() just clears them from the hash and gives ownership
-  // to the caller, who then has to call toks_.Delete(e) for each one.  It was designed
-  // this way for convenience in propagating tokens from one frame to the next.
-  void ClearToks(Elem *list);
+  // There are various cleanup tasks... the the toks_ structure contains
+  // singly linked lists of Token pointers, where Elem is the list type.
+  // It also indexes them in a hash, indexed by state (this hash is only
+  // maintained for the most recent frame).  toks_.Clear()
+  // deletes them from the hash and returns the list of Elems.  The
+  // function DeleteElems calls toks_.Delete(elem) for each elem in
+  // the list, which returns ownership of the Elem to the toks_ structure
+  // for reuse, but does not delete the Token pointer.  The Token pointers
+  // are reference-counted and are ultimately deleted in PruneTokensForFrame,
+  // but are also linked together on each frame by their own linked-list,
+  // using the "next" pointer.  We delete them manually.
+  void DeleteElems(Elem *list);
   
   void ClearActiveTokens();
   

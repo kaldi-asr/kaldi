@@ -70,13 +70,13 @@ BaseFloat ScalarClusterable::Objf() const {
   if (count_ == 0) {
     return 0;
   } else {
-    assert(count_ > 0);
+    KALDI_ASSERT(count_ > 0);
     return -(x2_ - x_ * x_ / count_);
   }
 }
 
 void ScalarClusterable::Add(const Clusterable &other_in) {
-  assert(other_in.Type() == "scalar");
+  KALDI_ASSERT(other_in.Type() == "scalar");
   const ScalarClusterable *other =
       static_cast<const ScalarClusterable*>(&other_in);
   x_ += other->x_;
@@ -85,7 +85,7 @@ void ScalarClusterable::Add(const Clusterable &other_in) {
 }
 
 void ScalarClusterable::Sub(const Clusterable &other_in) {
-  assert(other_in.Type() == "scalar");
+  KALDI_ASSERT(other_in.Type() == "scalar");
   const ScalarClusterable *other =
       static_cast<const ScalarClusterable*>(&other_in);
   x_ -= other->x_;
@@ -142,7 +142,7 @@ void GaussClusterable::AddStats(const VectorBase<BaseFloat> &vec,
 }
 
 void GaussClusterable::Add(const Clusterable &other_in) {
-  assert(other_in.Type() == "gauss");
+  KALDI_ASSERT(other_in.Type() == "gauss");
   const GaussClusterable *other =
       static_cast<const GaussClusterable*>(&other_in);
   count_ += other->count_;
@@ -150,7 +150,7 @@ void GaussClusterable::Add(const Clusterable &other_in) {
 }
 
 void GaussClusterable::Sub(const Clusterable &other_in) {
-  assert(other_in.Type() == "gauss");
+  KALDI_ASSERT(other_in.Type() == "gauss");
   const GaussClusterable *other =
       static_cast<const GaussClusterable*>(&other_in);
   count_ -= other->count_;
@@ -158,14 +158,14 @@ void GaussClusterable::Sub(const Clusterable &other_in) {
 }
 
 Clusterable* GaussClusterable::Copy() const {
-  assert(stats_.NumRows() == 2);
+  KALDI_ASSERT(stats_.NumRows() == 2);
   GaussClusterable *ans = new GaussClusterable(stats_.NumCols(), var_floor_);
   ans->Add(*this);
   return ans;
 }
 
 void GaussClusterable::Scale(BaseFloat f) {
-  assert(f >= 0.0);
+  KALDI_ASSERT(f >= 0.0);
   count_ *= f;
   stats_.Scale(f);
 }

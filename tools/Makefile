@@ -1,6 +1,8 @@
 # SHELL += -x
 
-all: check_required_programs sph2pipe atlas irstlm_tgt openfst_tgt
+CXX = g++
+
+all: check_required_programs sph2pipe atlas irstlm_tgt sclite_tgt openfst_tgt
 
 
 check_required_programs:
@@ -51,10 +53,13 @@ openfst-1.3.2/Makefile: openfst-1.3.2/.patched
 		./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts
 
 
+# patches for openfst. openfst_gcc41up.patch is a patch for openfst to \
+# support multi-threads when compile with g++ (gcc) version above 4.1
 .PHONY: openfst-1.3.2/.patched
 openfst-1.3.2/.patched: | openfst-1.3.2_tgt
 		-cd openfst-1.3.2/src/include/fst; \
 		patch -p0 -N < ../../../../openfst.patch;
+		$(CXX) -dumpversion | awk '{if(NR==1 && $$1>"4.1") print "cd openfst-1.3.2/src/include/fst; patch -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
 		touch $@ 	
 
 openfst-1.3.2_tgt: openfst-1.3.2.tar.gz

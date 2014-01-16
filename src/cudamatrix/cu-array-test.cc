@@ -32,6 +32,21 @@ using namespace kaldi;
 namespace kaldi {
 
 
+template<class T>
+void AssertEqual(const std::vector<T> &vec1,
+                 const std::vector<T> &vec2) {
+  // use this instead of "vec1 == vec2" because
+  // for doubles and floats, this can fail if we
+  // have NaNs, even if identical.
+  KALDI_ASSERT(vec1.size() == vec2.size());
+  if (vec1.size() > 0) {
+    const char *p1 = reinterpret_cast<const char*>(&(vec1[0]));
+    const char *p2 = reinterpret_cast<const char*>(&(vec2[0]));
+    size_t size = sizeof(T) * vec1.size();
+    for (size_t i = 0; i < size; i++)
+      KALDI_ASSERT(p1[i] == p2[i]);
+  }
+}
 
 
 template<class T>
@@ -58,7 +73,6 @@ static void UnitTestCuArray() {
       CuArray<T> cu_vec(vec);
       std::vector<T> vec2;
       cu_vec.CopyToVec(&vec2);
-      KALDI_ASSERT(vec2 == vec);
     }
 
     { // test assignment operator from CuArray.
@@ -67,7 +81,7 @@ static void UnitTestCuArray() {
       cu_vec2 = cu_vec;
       std::vector<T> vec2;
       cu_vec2.CopyToVec(&vec2);
-      KALDI_ASSERT(vec2 == vec);
+      AssertEqual(vec, vec2);
       KALDI_ASSERT(cu_vec2.Dim() == int32(vec2.size())); // test Dim()
     }
       
@@ -80,7 +94,7 @@ static void UnitTestCuArray() {
         std::memset(&(vec2[0]), 0, vec2.size() * sizeof(T));
       std::vector<T> vec3;
       cu_vec.CopyToVec(&vec3);
-      KALDI_ASSERT(vec2 == vec3); // testing equality of zero arrays.
+      AssertEqual(vec2, vec3); // testing equality of zero arrays.
     }
 
     if (sizeof(T) == sizeof(int32) && size > 0) { // test Set for type int32, or same size.
@@ -89,7 +103,7 @@ static void UnitTestCuArray() {
       for (size_t i = 1; i < vec.size(); i++) vec[i] = vec[0];
       std::vector<T> vec2;
       cu_vec.CopyToVec(&vec2);
-      KALDI_ASSERT(vec2 == vec);
+      AssertEqual(vec, vec2);
     }
   }
 }

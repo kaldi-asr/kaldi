@@ -26,6 +26,7 @@ using std::vector;
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
+#include "hmm/posterior.h"
 #include "transform/regtree-fmllr-diag-gmm.h"
 
 int main(int argc, char *argv[]) {

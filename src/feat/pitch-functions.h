@@ -1,6 +1,7 @@
 // feat/pitch-functions.h
 
 // Copyright     2013  Pegah Ghahremani
+//               2014  IMSL, PKU-HKUST (author: Wei Shi)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,14 +40,13 @@ struct PitchExtractionOptions {
   BaseFloat samp_freq;
   BaseFloat frame_shift_ms;  // in milliseconds.
   BaseFloat frame_length_ms;  // in milliseconds.
-  BaseFloat preemph_coeff;  // Preemphasis coefficient.  
+  BaseFloat preemph_coeff;  // Preemphasis coefficient.
   BaseFloat min_f0;          // min f0 to search (Hz)
   BaseFloat max_f0;          // max f0 to search (Hz)
   BaseFloat soft_min_f0;     // Minimum f0, applied in soft way, must not exceed
                           // min-f0
   BaseFloat penalty_factor;  // cost factor for FO change
   BaseFloat lowpass_cutoff;  // cutoff frequency for Low pass filter
-  BaseFloat upsample_cutoff; // cutoff frequency we apply for upsampling Nccf
   BaseFloat resample_freq;   // Integer that determines filter width when upsampling NCCF
   BaseFloat delta_pitch;     // the pitch tolerance in pruning lags
   BaseFloat nccf_ballast;    // Increasing this factor reduces NCCF for quiet frames,
@@ -65,13 +65,12 @@ struct PitchExtractionOptions {
       soft_min_f0(10.0),
       penalty_factor(0.1),
       lowpass_cutoff(1000),
-      upsample_cutoff(2000),
       resample_freq(4000),
       delta_pitch(0.005),
       nccf_ballast(0.7),
       lowpass_filter_width(1),
       upsample_filter_width(5) {}
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("sample-frequency", &samp_freq,
                  "Waveform data sample frequency (must match the waveform file, "
                  "if specified there)");
@@ -88,9 +87,7 @@ struct PitchExtractionOptions {
     po->Register("penalty-factor", &penalty_factor,
                  "cost factor for FO change.");
     po->Register("lowpass-cutoff", &lowpass_cutoff,
-                 "cuttoff frequency for LowPass filter (Hz) ");
-    po->Register("upsample-cutoff", &upsample_cutoff,
-                 "cuttoff frequency for upsampling filter (Hz) ");
+                 "cutoff frequency for LowPass filter (Hz) ");
     po->Register("resample-freq", &resample_freq,
                  "Integer that determines filter width when upsampling NCCF");
     po->Register("delta-pitch", &delta_pitch,
@@ -112,18 +109,21 @@ struct PitchExtractionOptions {
   }
 };
 
-struct PostProcessOptions {
+struct PostProcessPitchOptions {
   BaseFloat pitch_scale;          // the final pitch scaled with this value
   BaseFloat pov_scale;            // the final pov scaled with this value
   BaseFloat delta_pitch_scale;
   BaseFloat delta_pitch_noise_stddev; // stddev of noise we add to delta-pitch
   int32 normalization_window_size;    // Size of window used for moving window
                                       // normalization
-  int32 delta_window;    
+  int32 delta_window;
   int32 pov_nonlinearity;  // which nonlinearity formula to use for POV feature.
   bool process_pitch;
   bool add_delta_pitch;
-  explicit PostProcessOptions() : 
+  bool add_raw_log_pitch;
+  bool add_normalized_log_pitch;
+  bool add_pov_feature;
+  explicit PostProcessPitchOptions() :
     pitch_scale(2.0),
     pov_scale(2.0),
     delta_pitch_scale(10.0),
@@ -131,7 +131,10 @@ struct PostProcessOptions {
     normalization_window_size(151),
     delta_window(2),
     pov_nonlinearity(1),
-    add_delta_pitch(true) {}
+    add_delta_pitch(true),
+    add_raw_log_pitch(false),
+    add_normalized_log_pitch(true),
+    add_pov_feature(true) {}
 
   void Register(ParseOptions *po) {
     po->Register("pitch-scale", &pitch_scale,
@@ -139,9 +142,9 @@ struct PostProcessOptions {
     po->Register("pov-scale", &pov_scale,
                  "Scaling factor for final POV (probability of voicing) feature");
     po->Register("delta-pitch-scale", &delta_pitch_scale,
-                 "Term to scale the final delta pitch");
+                 "Term to scale the final delta log-pitch");
     po->Register("delta-pitch-noise-stddev", &delta_pitch_noise_stddev,
-                 "Standard deviation for noise we add to the delta pitch (before"
+                 "Standard deviation for noise we add to the delta log-pitch (before"
                  " scaling); should be about the same as delta-pitch option to "
                  "pitch creation.  The purpose is to get rid of peaks in the "
                  "delta-pitch caused by discretization of pitch values.");
@@ -154,7 +157,13 @@ struct PostProcessOptions {
                  "If 1, use (1.001 - nccf)^0.15 - 1; "
                  "if 2, use a longer formula that approximates log(POV / (POV-1)).");
     po->Register("add-delta-pitch", &add_delta_pitch,
-                "If true, derivative of log-pitch is added to output features");
+                "If true, time derivative of log-pitch is added to output features");
+    po->Register("add-raw-log-pitch", &add_raw_log_pitch,
+                "If true, log(pitch) is added to output features");
+    po->Register("add-normalized-log-pitch", &add_normalized_log_pitch,
+                "If true, the log-pitch with POV-weighted mean subtraction over 1.5 second window is added to output features");
+    po->Register("add-pov-feature", &add_pov_feature,
+                "If true, the warped NCCF is added to output features");
   }
 };
 /// @} End of "addtogroup feat"

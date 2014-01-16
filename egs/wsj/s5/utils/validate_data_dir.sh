@@ -51,11 +51,11 @@ trap 'rm -rf "$tmpdir"' EXIT HUP INT PIPE TERM
 
 export LC_ALL=C
 
-function check_sorted {
-  ! cat $1 | sort | cmp -s - $1 && \
-    echo "$0: file $1 is not in sorted order" && exit 1;
-  
+function check_sorted_and_uniq {
+  ! awk '{print $1}' $1 | sort | uniq | cmp -s - <(awk '{print $1}' $1) && \
+    echo "$0: file $1 is not in sorted order or has duplicates" && exit 1;
 }
+
 function partial_diff {
   diff $1 $2 | head -n 6
   echo "..."
@@ -65,13 +65,13 @@ function partial_diff {
   echo "[Lengths are $1=$n1 versus $2=$n2]"
 }
 
-check_sorted $data/utt2spk
+check_sorted_and_uniq $data/utt2spk
 
 ! cat $data/utt2spk | sort -k2 | cmp -s - $data/utt2spk && \
    echo "$0: utt2spk is not in sorted order when sorted first on speaker-id " && \
    echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
 
-check_sorted $data/spk2utt
+check_sorted_and_uniq $data/spk2utt
 
 ! cmp -s <(cat $data/utt2spk | awk '{print $1, $2;}') \
      <(utils/spk2utt_to_utt2spk.pl $data/spk2utt)  && \
@@ -86,7 +86,7 @@ fi
 
 num_utts=`cat $tmpdir/utts | wc -l`
 if [ -f $data/text ]; then
-  check_sorted $data/text
+  check_sorted_and_uniq $data/text
   text_len=`cat $data/text | wc -l`
   awk '{print $1}' < $data/text > $tmpdir/utts.txt
   if ! cmp -s $tmpdir/utts{,.txt}; then
@@ -109,11 +109,11 @@ if [ ! -f $data/wav.scp ] && ! $no_wav; then
 fi
 
 if [ -f $data/wav.scp ]; then
-  check_sorted $data/wav.scp
+  check_sorted_and_uniq $data/wav.scp
 
   if [ -f $data/segments ]; then
 
-    check_sorted $data/segments
+    check_sorted_and_uniq $data/segments
     # We have a segments file -> interpret wav file as "recording-ids" not utterance-ids.
     ! cat $data/segments | \
       awk '{if (NF != 4 || !($4 > $3)) { print "Bad line in segments file", $0; exit(1); }}' && \
@@ -136,7 +136,7 @@ if [ -f $data/wav.scp ]; then
     fi
     if [ -f $data/reco2file_and_channel ]; then
       # this file is needed only for ctm scoring; it's indexed by recording-id.
-      check_sorted $data/reco2file_and_channel
+      check_sorted_and_uniq $data/reco2file_and_channel
       ! cat $data/reco2file_and_channel | \
         awk '{if (NF != 3 || ($3 != "A" && $3 != "B" )) { 
                 if ( NF == 3 && $3 == "1" ) {
@@ -171,7 +171,7 @@ if [ -f $data/wav.scp ]; then
 
     if [ -f $data/reco2file_and_channel ]; then
       # this file is needed only for ctm scoring; it's indexed by recording-id.
-      check_sorted $data/reco2file_and_channel
+      check_sorted_and_uniq $data/reco2file_and_channel
       ! cat $data/reco2file_and_channel | \
         awk '{if (NF != 3 || ($3 != "A" && $3 != "B")) { print "Bad line ", $0; exit 1; }}' && \
         echo "$0: badly formatted reco2file_and_channel file" && exit 1;
@@ -192,7 +192,7 @@ if [ ! -f $data/feats.scp ] && ! $no_feats; then
 fi
 
 if [ -f $data/feats.scp ]; then
-  check_sorted $data/feats.scp
+  check_sorted_and_uniq $data/feats.scp
   cat $data/feats.scp | awk '{print $1}' > $tmpdir/utts.feats
   if ! cmp -s $tmpdir/utts{,.feats}; then
     echo "$0: Error: in $data, utterance-ids extracted from utt2spk and features"
@@ -203,7 +203,7 @@ if [ -f $data/feats.scp ]; then
 fi
 
 if [ -f $data/cmvn.scp ]; then
-  check_sorted $data/cmvn.scp
+  check_sorted_and_uniq $data/cmvn.scp
   cat $data/cmvn.scp | awk '{print $1}' > $tmpdir/speakers.cmvn
   cat $data/spk2utt | awk '{print $1}' > $tmpdir/speakers
   if ! cmp -s $tmpdir/speakers{,.cmvn}; then
@@ -215,7 +215,7 @@ if [ -f $data/cmvn.scp ]; then
 fi
 
 if [ -f $data/spk2gender ]; then
-  check_sorted $data/spk2gender
+  check_sorted_and_uniq $data/spk2gender
   ! cat $data/spk2gender | awk '{if (!((NF == 2 && ($2 == "m" || $2 == "f")))) exit 1; }' && \
      echo "Mal-formed spk2gender file" && exit 1;
   cat $data/spk2gender | awk '{print $1}' > $tmpdir/speakers.spk2gender
@@ -225,6 +225,14 @@ if [ -f $data/spk2gender ]; then
     echo "$0: differ, partial diff is:"
     partial_diff $tmpdir/speakers{,.spk2gender}
     exit 1;
+  fi
+fi
+
+if [ -f $data/vad.scp ]; then
+  check_sorted_and_uniq $data/vad.scp
+  if ! cmp -s <( awk '{print $1}' $data/utt2spk ) \
+    <( awk '{print $1}' $data/vad.scp ); then
+    echo "$0: error: in $data, vad.scp and utt2spk do not have identical utterance-id list"
   fi
 fi
 

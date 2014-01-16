@@ -9,7 +9,7 @@
 nj=4
 cmd=run.pl
 fbank_config=conf/fbank.conf
-compress=false
+compress=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -66,7 +66,7 @@ if [ -f $data/segments ]; then
   utils/split_scp.pl $data/segments $split_segments || exit 1;
   rm $logdir/.error 2>/dev/null
 
-  $cmd JOB=1:$nj $logdir/make_fbank.JOB.log \
+  $cmd JOB=1:$nj $logdir/make_fbank_${name}.JOB.log \
     extract-segments scp:$scp $logdir/segments.JOB ark:- \| \
     compute-fbank-feats --verbose=2 --config=$fbank_config ark:- ark:- \| \
     copy-feats --compress=$compress ark:- \
@@ -82,7 +82,7 @@ else
 
   utils/split_scp.pl $scp $split_scps || exit 1;
  
-  $cmd JOB=1:$nj $logdir/make_fbank.JOB.log \
+  $cmd JOB=1:$nj $logdir/make_fbank_${name}.JOB.log \
     compute-fbank-feats  --verbose=2 --config=$fbank_config scp:$logdir/wav.JOB.scp ark:- \| \
     copy-feats --compress=$compress ark:- \
      ark,scp:$fbankdir/raw_fbank_$name.JOB.ark,$fbankdir/raw_fbank_$name.JOB.scp \
@@ -93,7 +93,7 @@ fi
 
 if [ -f $logdir/.error.$name ]; then
   echo "Error producing fbank features for $name:"
-  tail $logdir/make_fbank.*.log
+  tail $logdir/make_fbank_${name}.1.log
   exit 1;
 fi
 

@@ -106,12 +106,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
         const std::vector<int32> &alignment = alignment_reader.Value(key);
-        std::vector<std::set<int32> > phones_seen(alignment.size());
-        for (size_t i = 0; i < alignment.size(); i++) {
-          // next line may crash if alignments mismatched w/ model:
-          phones_seen[i].insert(trans.TransitionIdToPhone(alignment[i]));
-        }
-        if (!LatticeBoost(trans, phones_seen, silence_phones, b,
+        if (!LatticeBoost(trans, alignment, silence_phones, b,
                           max_silence_error, &lat)) {
           n_err++; // will already have printed warning.
           continue;

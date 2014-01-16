@@ -150,7 +150,7 @@ void FindAllKeys(const BuildTreeStatsType &stats, AllKeysType keys_type,
 /// Returns a tree with just one node.  Used @ start of tree-building process.
 /// Not really used in current recipes.
 inline EventMap *TrivialTree(int32 *num_leaves) {
-  assert(*num_leaves == 0);  // in envisaged usage.
+  KALDI_ASSERT(*num_leaves == 0);  // in envisaged usage.
   return new ConstantEventMap( (*num_leaves)++ );
 }
 

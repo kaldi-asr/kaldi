@@ -538,7 +538,7 @@ Real SpMatrix<Real>::FrobeniusNorm() const {
       sum += (*this)(i, j) * (*this)(i, j) * 2;
     sum += (*this)(i, i) * (*this)(i, i);
   }
-  return sqrt(sum);
+  return std::sqrt(sum);
 }
 
 template<typename Real>
@@ -561,7 +561,7 @@ int SpMatrix<Real>::ApplyFloor(const SpMatrix<Real> &C, Real alpha,
   KALDI_ASSERT(alpha > 0);
   TpMatrix<Real> L(dim);
   L.Cholesky(C);
-  L.Scale(sqrt(alpha));  // equivalent to scaling C by alpha.
+  L.Scale(std::sqrt(alpha));  // equivalent to scaling C by alpha.
   TpMatrix<Real> LInv(L);
   LInv.Invert();
 
@@ -643,9 +643,9 @@ MatrixIndexT SpMatrix<Real>::LimitCond(Real maxCond, bool invert) {  // e.g. max
   for (MatrixIndexT i = 0; i < Dim; i++) {
     if (s(i) <= floor) nfloored++;
     if (invert)
-      s(i) = 1.0 / sqrt(std::max(s(i), floor));
+      s(i) = 1.0 / std::sqrt(std::max(s(i), floor));
     else
-      s(i) = sqrt(std::max(s(i), floor));
+      s(i) = std::sqrt(std::max(s(i), floor));
   }
   P.MulColsVec(s);
   (*this).AddMat2(1.0, P, kNoTrans, 0.0);  // (*this) = P*P^T.  ... (*this) = P * floor(s) * P^T  ... if P was original P.

@@ -69,7 +69,7 @@ fi
 
 #cut the MLP
 nnet=$bnfeadir/feature_extractor.nnet
-copy-nnet --remove-last-layers=$remove_last_layers --binary=false $nndir/final.nnet $nnet 2>$logdir/feature_extractor.log
+nnet-copy --remove-last-layers=$remove_last_layers --binary=false $nndir/final.nnet $nnet 2>$logdir/feature_extractor.log
 
 #get the feature transform
 feature_transform=$nndir/final.feature_transform

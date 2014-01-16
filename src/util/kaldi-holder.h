@@ -143,15 +143,6 @@ template<class SomeType> class GenericHolder {
 // The following two typedefs should probably be in their own file, but they're
 // here until there are enough of them to warrant their own header.
 
-/// Posterior is a typedef for storing acoustic-state (actually, transition-id)
-/// posteriors over an utterance.  The "int32" is a transition-id, and the BaseFloat
-/// is a probability (typically between zero and one).
-typedef std::vector<std::vector<std::pair<int32, BaseFloat> > > Posterior;
-
-/// GauPost is a typedef for storing Gaussian-level posteriors for an utterance.
-/// the "int32" is a transition-id, and the Vector<BaseFloat> is a vector of
-/// Gaussian posteriors.
-typedef std::vector<std::vector<std::pair<int32, Vector<BaseFloat> > > > GauPost;
 
 /// \addtogroup holders
 /// @{
@@ -204,12 +195,6 @@ class HtkMatrixHolder;
 
 /// A class for reading/writing Sphinx format matrices.
 template<int kFeatDim=13> class SphinxMatrixHolder;
-
-/// Holder for Posteriors.
-class PosteriorHolder;
-
-/// Holder for GauPost objects.
-class GauPostHolder;
 
 
 /// @} end "addtogroup holders"

@@ -162,6 +162,20 @@ void ParseOptions::RegisterSpecific(const std::string &name,
   doc_map_[idx] = DocInfo(name, doc + " (string, default = \"" + *s + "\")",
                           is_standard);
 }
+void ParseOptions::DisableOption(const std::string &name) {
+  if (argv_ != NULL)
+    KALDI_ERR << "DisableOption must not be called after calling Read().";
+  if (doc_map_.erase(name) == 0)
+    KALDI_ERR << "Option " << name
+              << " was not registered so cannot be disabled: ";
+  bool_map_.erase(name);
+  int_map_.erase(name);
+  uint_map_.erase(name);
+  float_map_.erase(name);
+  double_map_.erase(name);
+  string_map_.erase(name);
+}
+
 
 int ParseOptions::NumArgs() {
   return positional_args_.size();
@@ -502,7 +516,7 @@ void ParseOptions::NormalizeArgName(std::string *str) {
   }
   *str = out;
 
-  assert(str->length() > 0);
+  KALDI_ASSERT(str->length() > 0);
 }
 
 

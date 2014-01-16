@@ -18,10 +18,12 @@ of experiments.
   s3: Monophone GMM/HMM system trained with Maximum likelihood. Training
       is done with 61 phonemes, that are collapsed down to 39 phoneme
       during testing. Implemented by Navdeep Jaitly (ndjaitly@cs.toronto.edu)
-      
+      [from Dan: I believe this is now somewhat out of date, please us s5/]
+
   s4: Monophone, Triphone GMM/HMM systems trained with Maximum Likelihood.
       Training is done on 48 phonemes  (see- Lee and Hon: Speaker-Independent
       Phone Recognition Using Hidden Markov Models. IEEE TRANSACTIONS ON
       ACOUSTICS. SPEECH, AND SIGNAL PROCESSING, VOL. 31. NO. 11, PG. 1641-48,
       NOVEMBER 1989, ). Implemented by Arnab Ghoshal (arnab13@gmail.com)
 
+  s5: the currently recommended recipe.

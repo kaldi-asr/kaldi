@@ -99,7 +99,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   e = cudaThreadSynchronize(); //<< CUDA context gets created here.
   if (e != cudaSuccess) {
     // So far no we don't have context, sleep a bit and retry.
-    int32 sec_sleep = 2;
+    int32 sec_sleep = (use_gpu == "yes" ? 20 : 2);
     KALDI_WARN << "Will try again to get a GPU after " << sec_sleep 
                << " seconds.";
     sleep(sec_sleep);
@@ -410,10 +410,12 @@ void CuDevice::DeviceGetName(char* name, int32 len, int32 dev) {
 
 
 struct CuAllocatorOptions {
+  bool cache_memory; // Enable GPU memory caching, (false = disable).
   int32 count; // Number of times we free and delete a particular size before we
                // start to cache it.
   int32 cleanup_interval_bytes;
-  CuAllocatorOptions(): count(1), cleanup_interval_bytes(1000000) { }
+  CuAllocatorOptions()
+   : cache_memory(true), count(1), cleanup_interval_bytes(1000000) { }
 };
 
 
@@ -432,6 +434,8 @@ class CuAllocator {
   inline void *MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch);
   
   inline void Free(void *ptr);
+
+  inline void DisableCaching();
 
   ~CuAllocator();
  private:
@@ -591,11 +595,12 @@ void* CuAllocator::MallocInternal(size_t row_bytes,
         cudaGetLastError(); // reset the error state
         ReleaseAllCachedMemory();
         ret = cudaMalloc(&ans, size);
-        if (ret != 0)
+        if (ret != 0) {
           KALDI_WARN << "Allocation failed for the second time.    Printing "
                     << "device memory usage and exiting";
           device_->PrintMemoryUsage();
           KALDI_ERR << "Memory allocation failure";
+        }
       }
     } else {
       size_t pitch;
@@ -639,7 +644,8 @@ void CuAllocator::Free(void *addr) {
   MemInfoForSize *info = iter->second;
   addr_to_list_.erase(addr); // Erase this element in the addr_to_list_ map.
   info->currently_used--;
-  if (info->countdown == 0) { // We have freed [i.e. actually freed with
+  if (info->countdown == 0 && opts_.cache_memory) { 
+                              // We have freed [i.e. actually freed with
                               // CudaFree()] enough of these that we think
                               // we're wasting too much time this way and
                               // need to start caching them.
@@ -649,6 +655,13 @@ void CuAllocator::Free(void *addr) {
     CU_SAFE_CALL(cudaFree(addr)); // This is how we free, even if allocated with
                                   // cudaMallocPitch().
   }
+}
+
+
+inline void CuAllocator::DisableCaching() {
+  KALDI_LOG << "Disabling caching of GPU memory.";
+  KALDI_ASSERT(size_to_list_.empty()); // No memory allocated yet!
+  opts_.cache_memory = false;
 }
 
 void CuAllocator::ReleaseAllCachedMemory(bool destroy) {
@@ -742,6 +755,10 @@ void* CuDevice::MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
 
 void* CuDevice::Malloc(size_t size) {
   return allocator_->Malloc(size);
+}
+
+void CuDevice::DisableCaching() {
+  allocator_->DisableCaching();
 }
 
 CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true),

@@ -33,7 +33,7 @@ void TimerTest() {
 #endif
   BaseFloat f = timer.Elapsed();
   std::cout << "time is " << f;
-  assert(fabs(1.0 - f) < 0.1);
+  KALDI_ASSERT(fabs(1.0 - f) < 0.1);
 }
 
 }

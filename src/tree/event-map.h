@@ -319,7 +319,7 @@ class SplitEventMap: public EventMap {  // A decision tree [non-leaf] node.
   SplitEventMap(EventKeyType key, const std::vector<EventValueType> &yes_set,
                 EventMap *yes, EventMap *no): key_(key), yes_set_(yes_set), yes_(yes), no_(no) {
     KALDI_PARANOID_ASSERT(IsSorted(yes_set));
-    assert(yes_ != NULL && no_ != NULL);
+    KALDI_ASSERT(yes_ != NULL && no_ != NULL);
   }
 
 
@@ -327,7 +327,7 @@ class SplitEventMap: public EventMap {  // A decision tree [non-leaf] node.
   /// This constructor used in the Copy() function.
   SplitEventMap(EventKeyType key, const ConstIntegerSet<EventValueType> &yes_set,
                 EventMap *yes, EventMap *no): key_(key), yes_set_(yes_set), yes_(yes), no_(no) {
-    assert(yes_ != NULL && no_ != NULL);
+    KALDI_ASSERT(yes_ != NULL && no_ != NULL);
   }
   void Destroy() {
     delete yes_; delete no_;

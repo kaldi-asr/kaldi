@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
           GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
           BaseFloat like = (-weight.Value1() -weight.Value2()) / acoustic_scale;
           tot_like += like;
-          assert(words == transcript);
+          KALDI_ASSERT(words == transcript);
           alignment_writer.Write(key, alignment);
           num_success ++;
           if (num_success % 50  == 0) {

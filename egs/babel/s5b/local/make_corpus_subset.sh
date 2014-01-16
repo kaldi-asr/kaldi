@@ -43,6 +43,8 @@ mkdir -p $output_data_dir/audio
 abs_src_dir=`readlink -f $input_data_dir` 
 abs_tgt_dir=`readlink -f $output_data_dir`
 
+num_warns=3;
+
 echo "Making subset..."
 for file_basename in `cat $input_data_list`; do
     if [[ -e $abs_src_dir/audio/$file_basename.sph ]] ; then
@@ -51,7 +53,7 @@ for file_basename in `cat $input_data_list`; do
       if [[ -e $abs_src_dir/audio/$file_basename.wav ]] ; then
         ln -sf $abs_src_dir/audio/$file_basename.wav $abs_tgt_dir/audio || exit 1
       else
-        echo "File $abs_src_dir/audio/$file_basename.sph|wav does not exist!"
+        echo "File $abs_src_dir/audio/$file_basename.sph|wav does not exist!"  >&2
         exit 1
       fi
     fi
@@ -59,10 +61,15 @@ for file_basename in `cat $input_data_list`; do
     if [[ -e $abs_src_dir/transcription/$file_basename.txt ]] ; then
         ln -sf $abs_src_dir/transcription/$file_basename.txt $abs_tgt_dir/transcription || exit 1
     else
-        echo "File $abs_src_dir/transcription/$file_basename.txt does not exist!"
-
         if ! $ignore_missing_txt ; then
+          echo "File $abs_src_dir/transcription/$file_basename.txt does not exist!"
           exit 1;
+        elif [ $num_warns -gt 0 ]; then
+          echo "WARNING: File $abs_src_dir/transcription/$file_basename.txt does not exist!"
+          num_warns=$(($num_warns - 1))
+        elif [ $num_warns -eq 0 ]; then
+          echo "Not warning anymore"
+          num_warns=$(($num_warns - 1))
         fi
     fi
 done

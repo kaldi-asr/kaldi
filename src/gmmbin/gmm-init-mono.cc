@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 
     std::string topo_filename = po.GetArg(1);
     int dim = atoi(po.GetArg(2).c_str());
-    assert(dim> 0 && dim < 10000);
+    KALDI_ASSERT(dim> 0 && dim < 10000);
     std::string model_filename = po.GetArg(3);
     std::string tree_filename = po.GetArg(4);
 

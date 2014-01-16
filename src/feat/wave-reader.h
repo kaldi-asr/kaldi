@@ -1,6 +1,8 @@
 // feat/wave-reader.h
 
 // Copyright 2009-2011  Karel Vesely;  Microsoft Corporation
+//                2013  Florent Masson
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -31,7 +33,7 @@
 //  fmt_ data ... data
 //
 //
-//  Riff is a general continer, which usually contains one WAVE chunk
+//  Riff is a general container, which usually contains one WAVE chunk
 //  each WAVE chunk has header sub-chunk 'fmt_'
 //  and one or more data sub-chunks 'data'
 //
@@ -67,8 +69,6 @@ class WaveData {
   /// Write() will throw on error.   os should be opened in binary mode.
   void Write(std::ostream &os) const;
 
-  // Write function not written yet but should be doable.
-
   // This function returns the wave data-- it's in a matrix
   // becase there may be multiple channels.  In the normal case
   // there's just one channel so Data() will have one row.
@@ -93,8 +93,8 @@ class WaveData {
   Matrix<BaseFloat> data_;
   BaseFloat samp_freq_;
   static void Expect4ByteTag(std::istream &is, const char *expected);
-  static uint32 ReadUint32(std::istream &is);
-  static uint16 ReadUint16(std::istream &is);
+  uint32 ReadUint32(std::istream &is, bool swap);
+  uint16 ReadUint16(std::istream &is, bool swap);
   static void Read4ByteTag(std::istream &is, char *dest);
 
   static void WriteUint32(std::ostream &os, int32 i);

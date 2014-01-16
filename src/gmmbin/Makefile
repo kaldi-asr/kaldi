@@ -7,14 +7,13 @@ include ../kaldi.mk
 BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-decode-faster gmm-decode-simple gmm-decode-nbest gmm-align-compiled \
            gmm-sum-accs gmm-init-trans gmm-est-regtree-fmllr gmm-acc-stats-twofeats \
-           gmm-acc-stats gmm-init-lvtln gmm-est-lvtln-trans gmm-train-lvtln-special \
+           gmm-acc-stats\
            gmm-acc-mllt gmm-mixup gmm-init-model \
-           gmm-acc-hlda gmm-est-hlda gmm-transform-means gmm-init-et gmm-est-et \
-           gmm-et-acc-a gmm-et-est-a gmm-copy-et gmm-et-get-b gmm-et-get-a \
+           gmm-acc-hlda gmm-est-hlda gmm-transform-means \
            gmm-make-regtree gmm-decode-faster-regtree-fmllr gmm-post-to-gpost \
            gmm-est-fmllr-gpost gmm-est-fmllr gmm-est-regtree-fmllr-ali \
            gmm-est-regtree-mllr gmm-compute-likes \
-           gmm-decode-faster-regtree-mllr gmm-et-apply-c gmm-latgen-simple \
+           gmm-decode-faster-regtree-mllr gmm-latgen-simple \
            gmm-rescore-lattice gmm-decode-biglm-faster \
            gmm-est-gaussians-ebw gmm-est-weights-ebw gmm-latgen-faster gmm-copy \
            gmm-global-acc-stats gmm-global-est gmm-global-sum-accs gmm-gselect \

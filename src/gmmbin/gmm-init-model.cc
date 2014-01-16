@@ -90,7 +90,7 @@ void InitAmGmm(const BuildTreeStatsType &stats,
     x2.AddVec2(-1.0, x);  // subtract mean^2.
     x2.ApplyFloor(var_floor);
     x2.InvertElements();  // get inv-var.
-    assert(x2.Min() > 0);
+    KALDI_ASSERT(x2.Min() > 0);
 
     Matrix<BaseFloat> mean(1, x.Dim());
     mean.Row(0).CopyFromVec(x);

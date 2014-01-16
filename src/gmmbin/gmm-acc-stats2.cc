@@ -23,7 +23,7 @@
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
 #include "gmm/mle-am-diag-gmm.h"
-
+#include "hmm/posterior.h"
 
 
 int main(int argc, char *argv[]) {

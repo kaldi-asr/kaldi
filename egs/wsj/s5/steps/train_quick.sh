@@ -3,9 +3,10 @@
 
 
 # Train a model on top of existing features (no feature-space learning of any
-# kind is done).  This script initializes the model from each stage of the
-# previous system's model, judging the similarities based on overlap of counts
-# in the tree stats.
+# kind is done).  This script initializes the model (i.e., the GMMs) from the
+# previous system's model.  That is: for each state in the current model (after
+# tree building), it chooses the closes state in the old model, judging the
+# similarities based on overlap of counts in the tree stats.
 
 # Begin configuration..
 cmd=run.pl
@@ -73,6 +74,7 @@ case $feat_type in
   delta) sifeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
   lda) sifeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
     cp $alidir/final.mat $dir    
+    cp $alidir/full.mat $dir 2>/dev/null
     ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac

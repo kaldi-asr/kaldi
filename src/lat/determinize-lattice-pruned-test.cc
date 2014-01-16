@@ -76,7 +76,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
         FstPrinter<Arc> fstprinter(det_fst, NULL, NULL, NULL, false, true);
         fstprinter.Print(&std::cout, "standard output");
       }
-      assert(det_fst.Properties(kIDeterministic, true) & kIDeterministic);
+      KALDI_ASSERT(det_fst.Properties(kIDeterministic, true) & kIDeterministic);
       // OK, now determinize it a different way and check equivalence.
       // [note: it's not normal determinization, it's taking the best path
       // for any input-symbol sequence....
@@ -102,7 +102,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
       }
 
       if (ans)
-        assert(RandEquivalent(compact_pruned_det_fst, compact_pruned_fst, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length, max*/));
+        KALDI_ASSERT(RandEquivalent(compact_pruned_det_fst, compact_pruned_fst, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length, max*/));
     } catch (...) {
       std::cout << "Failed to lattice-determinize this FST (probably not determinizable)\n";
     }

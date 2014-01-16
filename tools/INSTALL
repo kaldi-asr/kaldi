@@ -10,7 +10,8 @@ an option like "-j 4" to "make"; this will speed things up.
  installed on your system; ignore it unless you get errors from
  ../src/configure.]
 
----
+**** IGNORE THE REST OF THIS FILE!  ****
+
 The rest of this file contains the old, manual instructions, which
 we keep around in case they are useful for someone, but they are
 basically deprecated.
@@ -113,7 +114,7 @@ This is not needed for the basic system builds (RM has its own
 non-ARPA LM, and WSJ comes with LMs).  So installing this may be
 left till later, if you are in a hurry.
 
-svn co https://irstlm.svn.sourceforge.net/svnroot/irstlm/trunk irstlm
+svn co https://svn.code.sf.net/p/irstlm/code/trunk irstlm
 cd irstlm
 [
 if your aclocal and automake are too old, you may want to 

@@ -25,7 +25,7 @@ namespace kaldi {
 // These routines are tested in matrix/matrix-test.cc
 
 int32 RoundUpToNearestPowerOfTwo(int32 n) {
-  assert(n > 0);
+  KALDI_ASSERT(n > 0);
   n--;
   n |= n >> 1;
   n |= n >> 2;
@@ -59,7 +59,7 @@ bool WithProb(BaseFloat prob) {
 }
 
 int32 RandInt(int32 min_val, int32 max_val) {  // This is not exact.
-  assert(max_val >= min_val);
+  KALDI_ASSERT(max_val >= min_val);
   if (max_val == min_val) return min_val;
 
 #ifdef _MSC_VER
@@ -90,7 +90,7 @@ int32 RandInt(int32 min_val, int32 max_val) {  // This is not exact.
 // to lambda.  Faster algorithms exist but are more complex.
 int32 RandPoisson(float lambda) {
   // Knuth's algorithm.
-  assert(lambda >= 0);
+  KALDI_ASSERT(lambda >= 0);
   float L = expf(-lambda), p = 1.0;
   int32 k = 0;
   do {

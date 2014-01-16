@@ -82,7 +82,7 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
       prod *= (*this)(i, i);
       if (i == num_rows_ - 1 || std::fabs(prod) < 1.0e-10 ||
           std::fabs(prod) > 1.0e+10) {
-        if (log_det != NULL) *log_det += log(fabs(prod));
+        if (log_det != NULL) *log_det += std::log(std::fabs(prod));
         if (det_sign != NULL) *det_sign *= (prod > 0 ? 1.0 : -1.0);
         prod = 1.0;
       }
@@ -172,6 +172,29 @@ void MatrixBase<Real>::AddMatMat(const Real alpha,
               transB, B.data_, B.stride_, beta, data_, num_rows_, num_cols_, stride_);
 
 }
+
+template<typename Real>
+void MatrixBase<Real>::AddMatMatDivMat(const MatrixBase<Real>& A,
+             	     		       const MatrixBase<Real>& B,
+                    		       const MatrixBase<Real>& C) {
+  KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
+  KALDI_ASSERT(A.NumRows() == C.NumRows() && A.NumCols() == C.NumCols());
+  for (int32 r = 0; r < A.NumRows(); r++) { // each frame...
+    for (int32 c = 0; c < A.NumCols(); c++) {
+      BaseFloat i = C(r, c), o = B(r, c), od = A(r, c),
+          id;
+      if (i != 0.0) {
+        id = od * (o / i); /// o / i is either zero or "scale".
+      } else {
+        id = od; /// Just imagine the scale was 1.0.  This is somehow true in
+        /// expectation; anyway, this case should basically never happen so it doesn't
+        /// really matter.
+      }
+      (*this)(r, c) = id;
+    }
+  }
+}
+
 
 template<typename Real>
 void MatrixBase<Real>::CopyLowerToUpper() {
@@ -1590,7 +1613,7 @@ bool MatrixBase<Real>::IsZero(Real cutoff)const {
 
 template<typename Real>
 Real MatrixBase<Real>::FrobeniusNorm() const{
-  return sqrt(TraceMatMat(*this, *this, kTrans));
+  return std::sqrt(TraceMatMat(*this, *this, kTrans));
 }
 
 template<typename Real>
@@ -1652,7 +1675,7 @@ void MatrixBase<Real>::OrthogonalizeRows() {
         if (counter > 100)
           KALDI_ERR << "Loop detected while orthogalizing matrix.";
       } else {
-        this->Row(i).Scale(1.0 / sqrt(end_prod));
+        this->Row(i).Scale(1.0 / std::sqrt(end_prod));
         break;
       } 
     }
@@ -2040,13 +2063,55 @@ bad:
   return false;
 }
 
-
 template
 bool WriteHtk(std::ostream &os, const MatrixBase<float> &M, HtkHeader htk_hdr);
 
 template
 bool WriteHtk(std::ostream &os, const MatrixBase<double> &M, HtkHeader htk_hdr);
 
+template<class Real>
+bool WriteSphinx(std::ostream &os, const MatrixBase<Real> &M)
+{
+  int size = M.NumRows() * M.NumCols();
+  os.write((char*)&size, sizeof(int));
+  if (os.fail())  goto bad;
+
+  MatrixIndexT i;
+  MatrixIndexT j;
+  if (sizeof(Real) == sizeof(float) && !MachineIsLittleEndian()) {
+    for (i = 0; i< M.NumRows(); i++) {  // Unlikely to reach here ever!
+      os.write((char*)M.RowData(i), sizeof(float)*M.NumCols());
+      if (os.fail()) goto bad;
+    }
+  } else {
+    float *pmem = new float[M.NumCols()];
+
+    for (i = 0; i < M.NumRows(); i++) {
+      const Real *rowData = M.RowData(i);
+      for (j = 0;j < M.NumCols();j++)
+        pmem[j] =  static_cast<float> ( rowData[j] );
+      if (MachineIsLittleEndian())
+        for (j = 0;j < M.NumCols();j++)
+          KALDI_SWAP4(pmem[j]);
+      os.write((char*)pmem, sizeof(float)*M.NumCols());
+      if (os.fail()) {
+        delete [] pmem;
+        goto bad;
+      }
+    }
+    delete [] pmem;
+  }
+  return true;
+bad:
+  KALDI_WARN << "Could not write to Sphinx feature file";
+  return false;
+}
+
+template
+bool WriteSphinx(std::ostream &os, const MatrixBase<float> &M);
+
+template
+bool WriteSphinx(std::ostream &os, const MatrixBase<double> &M);
 
 template <typename Real>
 Real TraceMatMatMat(const MatrixBase<Real> &A, MatrixTransposeType transA,
@@ -2291,7 +2356,7 @@ Real MatrixBase<Real>::LogSumExp(Real prune) const {
     for (MatrixIndexT j = 0; j < num_cols_; j++) {
       BaseFloat f = (*this)(i, j);
       if (f >= cutoff)
-        sum_relto_max_elem += exp(f - max_elem);
+        sum_relto_max_elem += std::exp(f - max_elem);
     }
   }
   return max_elem + std::log(sum_relto_max_elem);
@@ -2303,7 +2368,7 @@ Real MatrixBase<Real>::ApplySoftMax() {
   // the 'max' helps to get in good numeric range.
   for (MatrixIndexT i = 0; i < num_rows_; i++)
     for (MatrixIndexT j = 0; j < num_cols_; j++)
-      sum += ((*this)(i, j) = exp((*this)(i, j) - max));
+      sum += ((*this)(i, j) = std::exp((*this)(i, j) - max));
   this->Scale(1.0 / sum);
   return max + log(sum);
 }
@@ -2335,7 +2400,8 @@ void MatrixBase<Real>::SoftHinge(const MatrixBase<Real> &src) {
       Real x = src_row_data[c], y;
       if (x > 10.0) y = x; // avoid exponentiating large numbers; function
       // approaches y=x.
-      else y = log1p(exp(x));
+      else y = Log1p(std::exp(x)); // defined in kaldi-math.h, calls log1p or
+                                   // log1pf
       row_data[c] = y;
     }
   }

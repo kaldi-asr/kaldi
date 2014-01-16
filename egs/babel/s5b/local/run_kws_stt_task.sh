@@ -27,6 +27,7 @@ max_lmwt=12
 cer=0
 skip_kws=false
 skip_stt=false
+skip_scoring=false
 cmd=run.pl
 max_states=150000
 dev2shadow=
@@ -66,7 +67,7 @@ if [ ! -f $decode_dir/.score.done ]; then
     local/split_ctms.sh --cmd "$cmd" --cer $cer \
       --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
       $data_dir $decode_dir ${dev2shadow} ${eval2shadow}
-  else
+  elif ! $skip_scoring ; then
     local/score_stm.sh --cmd "$cmd"  --cer $cer \
       --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
       $data_dir $lang_dir $decode_dir
@@ -82,8 +83,16 @@ if ! $skip_kws ; then
         $data_dir $lang_dir $decode_dir ${dev2shadow} ${eval2shadow}
     else
       local/kws_search.sh --cmd "$cmd" --max-states ${max_states} \
-        --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
+        --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
         $lang_dir $data_dir $decode_dir
+
+      if [ -f $data_dir/extra_kws_tasks ]; then
+        for extraid in `cat $data_dir/extra_kws_tasks` ; do
+          local/kws_search.sh --cmd "$cmd" --extraid $extraid --max-states ${max_states} \
+            --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
+            $lang_dir $data_dir $decode_dir
+        done
+      fi
     fi
     touch $decode_dir/.kws.done
   fi

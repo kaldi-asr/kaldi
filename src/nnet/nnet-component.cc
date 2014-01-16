@@ -25,45 +25,136 @@
 #include "nnet/nnet-affine-transform.h"
 #include "nnet/nnet-rbm.h"
 #include "nnet/nnet-various.h"
+#include "nnet/nnet-sentence-averaging-component.h"
 #include "nnet/nnet-kl-hmm.h"
+#include "nnet/nnet-convolutional-component.h"
+#include "nnet/nnet-average-pooling-component.h"
+#include "nnet/nnet-max-pooling-component.h"
+
+#include <sstream>
 
 namespace kaldi {
 namespace nnet1 {
 
 
 const struct Component::key_value Component::kMarkerMap[] = {
-  { Component::kAffineTransform,"<affinetransform>" },
-  { Component::kSoftmax,"<softmax>" },
-  { Component::kSigmoid,"<sigmoid>" },
-  { Component::kTanh,"<tanh>" },
-  { Component::kDropout,"<dropout>" },
-  { Component::kRbm,"<rbm>" },
-  { Component::kSplice,"<splice>" },
-  { Component::kCopy,"<copy>" },
-  { Component::kAddShift,"<addshift>" },
-  { Component::kRescale,"<rescale>" },
-  { Component::kKlHmm,"<klhmm>" }
+  { Component::kAffineTransform,"<AffineTransform>" },
+  { Component::kConvolutionalComponent,"<ConvolutionalComponent>"},
+  { Component::kSoftmax,"<Softmax>" },
+  { Component::kSigmoid,"<Sigmoid>" },
+  { Component::kTanh,"<Tanh>" },
+  { Component::kDropout,"<Dropout>" },
+  { Component::kRbm,"<Rbm>" },
+  { Component::kSplice,"<Splice>" },
+  { Component::kCopy,"<Copy>" },
+  { Component::kAddShift,"<AddShift>" },
+  { Component::kRescale,"<Rescale>" },
+  { Component::kKlHmm,"<KlHmm>" },
+  { Component::kSentenceAveragingComponent,"<SentenceAveragingComponent>"},
+  { Component::kAveragePoolingComponent,"<AveragePoolingComponent>"},
+  { Component::kMaxPoolingComponent, "<MaxPoolingComponent>"},
 };
 
 
 const char* Component::TypeToMarker(ComponentType t) {
   int32 N=sizeof(kMarkerMap)/sizeof(kMarkerMap[0]);
   for(int i=0; i<N; i++) {
-    if (kMarkerMap[i].key == t) 
-      return kMarkerMap[i].value;
+    if (kMarkerMap[i].key == t) return kMarkerMap[i].value;
   }
   KALDI_ERR << "Unknown type" << t;
   return NULL;
 }
 
 Component::ComponentType Component::MarkerToType(const std::string &s) {
+  std::string s_lowercase(s);
+  std::transform(s.begin(), s.end(), s_lowercase.begin(), ::tolower); // lc
   int32 N=sizeof(kMarkerMap)/sizeof(kMarkerMap[0]);
   for(int i=0; i<N; i++) {
-    if (0 == strcmp(kMarkerMap[i].value, s.c_str())) 
-      return kMarkerMap[i].key;
+    std::string m(kMarkerMap[i].value);
+    std::string m_lowercase(m);
+    std::transform(m.begin(), m.end(), m_lowercase.begin(), ::tolower);
+    if (s_lowercase == m_lowercase) return kMarkerMap[i].key;
   }
-  KALDI_ERR << "Unknown marker : \'" << s << "\'";
+  KALDI_ERR << "Unknown marker : '" << s << "'";
   return kUnknown;
+}
+
+
+Component* Component::NewComponentOfType(ComponentType comp_type,
+                      int32 input_dim, int32 output_dim) {
+  Component *ans = NULL;
+  switch (comp_type) {
+    case Component::kAffineTransform :
+      ans = new AffineTransform(input_dim, output_dim); 
+      break;
+    case Component::kConvolutionalComponent :
+      ans = new ConvolutionalComponent(input_dim, output_dim);
+      break;
+    case Component::kSoftmax :
+      ans = new Softmax(input_dim, output_dim);
+      break;
+    case Component::kSigmoid :
+      ans = new Sigmoid(input_dim, output_dim);
+      break;
+    case Component::kTanh :
+      ans = new Tanh(input_dim, output_dim);
+      break;
+    case Component::kDropout :
+      ans = new Dropout(input_dim, output_dim); 
+      break;
+    case Component::kRbm :
+      ans = new Rbm(input_dim, output_dim);
+      break;
+    case Component::kSplice :
+      ans = new Splice(input_dim, output_dim);
+      break;
+    case Component::kCopy :
+      ans = new CopyComponent(input_dim, output_dim);
+      break;
+    case Component::kAddShift :
+      ans = new AddShift(input_dim, output_dim);
+      break;
+    case Component::kRescale :
+      ans = new Rescale(input_dim, output_dim);
+      break;
+    case Component::kKlHmm :
+      ans = new KlHmm(input_dim, output_dim);
+      break;
+    case Component::kSentenceAveragingComponent :
+      ans = new SentenceAveragingComponent(input_dim, output_dim);
+      break;
+    case Component::kAveragePoolingComponent :
+      ans = new AveragePoolingComponent(input_dim, output_dim);
+      break;
+    case Component::kMaxPoolingComponent :
+      ans = new MaxPoolingComponent(input_dim, output_dim);
+      break;
+    case Component::kUnknown :
+    default :
+      KALDI_ERR << "Missing type: " << TypeToMarker(comp_type);
+  }
+  return ans;
+}
+
+
+Component* Component::Init(const std::string &conf_line) {
+  std::istringstream is(conf_line);
+  std::string component_type_string;
+  int32 input_dim, output_dim;
+
+  // initialize component w/o internal data
+  ReadToken(is, false, &component_type_string);
+  ComponentType component_type = MarkerToType(component_type_string);
+  ExpectToken(is, false, "<InputDim>");
+  ReadBasicType(is, false, &input_dim); 
+  ExpectToken(is, false, "<OutputDim>");
+  ReadBasicType(is, false, &output_dim);
+  Component *ans = NewComponentOfType(component_type, input_dim, output_dim);
+
+  // initialize internal data with the remaining part of config line
+  ans->InitData(is);
+
+  return ans;
 }
 
 
@@ -75,7 +166,6 @@ Component* Component::Read(std::istream &is, bool binary) {
   if (first_char == EOF) return NULL;
 
   ReadToken(is, binary, &token);
-  
   // Skip optional initial token
   if(token == "<Nnet>") {
     ReadToken(is, binary, &token); // Next token is a Component
@@ -84,54 +174,13 @@ Component* Component::Read(std::istream &is, bool binary) {
   if(token == "</Nnet>") {
     return NULL;
   }
-    
-  Component::ComponentType comp_type = Component::MarkerToType(token);
 
   ReadBasicType(is, binary, &dim_out); 
   ReadBasicType(is, binary, &dim_in);
 
-  Component *p_comp=NULL;
-  switch (comp_type) {
-    case Component::kAffineTransform :
-      p_comp = new AffineTransform(dim_in, dim_out); 
-      break;
-    case Component::kSoftmax :
-      p_comp = new Softmax(dim_in, dim_out);
-      break;
-    case Component::kSigmoid :
-      p_comp = new Sigmoid(dim_in, dim_out);
-      break;
-    case Component::kTanh :
-      p_comp = new Tanh(dim_in, dim_out);
-      break;
-    case Component::kDropout :
-      p_comp = new Dropout(dim_in, dim_out); 
-      break;
-    case Component::kRbm :
-      p_comp = new Rbm(dim_in, dim_out);
-      break;
-    case Component::kSplice :
-      p_comp = new Splice(dim_in, dim_out);
-      break;
-    case Component::kCopy :
-      p_comp = new CopyComponent(dim_in, dim_out);
-      break;
-    case Component::kAddShift :
-      p_comp = new AddShift(dim_in, dim_out);
-      break;
-    case Component::kRescale :
-      p_comp = new Rescale(dim_in, dim_out);
-      break;
-    case Component::kKlHmm :
-      p_comp = new KlHmm(dim_in, dim_out);
-      break;
-    case Component::kUnknown :
-    default :
-      KALDI_ERR << "Missing type: " << token;
-  }
-
-  p_comp->ReadData(is, binary);
-  return p_comp;
+  Component *ans = NewComponentOfType(MarkerToType(token), dim_in, dim_out);
+  ans->ReadData(is, binary);
+  return ans;
 }
 
 

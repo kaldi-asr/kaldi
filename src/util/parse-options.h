@@ -50,13 +50,20 @@ class ParseOptions : public OptionsItf {
   }
 
   /**
-   * This is a constructor for the special case where some options are
-   * registered with a prefix to avoid conflicts.  The object thus created will
-   * only be used temporarily to register an options class with the original
-   * options parser (which is passed as the *other pointer) using the given
-   * prefix.  It should not be used for any other purpose, and the prefix must
-   * not be the empty string.  It seems to be the least bad way of implementing
-   * options with prefixes at this point.
+    This is a constructor for the special case where some options are
+    registered with a prefix to avoid conflicts.  The object thus created will
+    only be used temporarily to register an options class with the original
+    options parser (which is passed as the *other pointer) using the given
+    prefix.  It should not be used for any other purpose, and the prefix must
+    not be the empty string.  It seems to be the least bad way of implementing
+    options with prefixes at this point.
+    Example of usage is:
+     ParseOptions po;  // original ParseOptions object
+     ParseOptions po_mfcc("mfcc", &po); // object with prefix.
+     MfccOptions mfcc_opts;
+     mfcc_opts.Register(&po_mfcc);
+    The options will now get registered as, e.g., --mfcc.frame-shift=10.0
+    instead of just --frame-shift=10.0
    */
   ParseOptions(const std::string &prefix, ParseOptions *other) :
     print_args_(false), help_(false), usage_(""), argc_(0), argv_(NULL),
@@ -76,7 +83,12 @@ class ParseOptions : public OptionsItf {
   void Register(const std::string &name,
                 double *ptr, const std::string &doc); 
   void Register(const std::string &name,
-                std::string *ptr, const std::string &doc); 
+                std::string *ptr, const std::string &doc);
+
+  /// If called after registering an option and before calling
+  /// Read(), disables that option from being used.  Will crash
+  /// at runtime if that option had not been registered.
+  void DisableOption(const std::string &name);
 
   /// This one is used for registering standard parameters of all the programs
   template<typename T>
@@ -84,16 +96,16 @@ class ParseOptions : public OptionsItf {
                         T *ptr, const std::string &doc);
 
   /**
-   * Parses the command line options and fills the ParseOptions-registered
-   * variables. This must be called after all the variables were registered!!!
-   *
-   * Initially the variables have implicit values,
-   * then the config file values are set-up,
-   * finally the command line vaues given.
-   * Returns the first position in argv that was not used.
-   * [typically not useful: use NumParams() and GetParam(). ]
+    Parses the command line options and fills the ParseOptions-registered
+    variables. This must be called after all the variables were registered!!!
+   
+    Initially the variables have implicit values,
+    then the config file values are set-up,
+    finally the command line vaues given.
+    Returns the first position in argv that was not used.
+    [typically not useful: use NumParams() and GetParam(). ]
    */
-  int Read(int argc, const char*const *argv);
+  int Read(int argc, const char *const *argv);
 
   /// Prints the usage documentation [provided in the constructor].
   void PrintUsage(bool print_command_line = false);
@@ -184,7 +196,7 @@ class ParseOptions : public OptionsItf {
   std::map<std::string, std::string*> string_map_;
 
   /**
-   * Structure for options' documentation
+     Structure for options' documentation
    */
   struct DocInfo {
     DocInfo() {}
