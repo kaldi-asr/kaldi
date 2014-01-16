@@ -105,6 +105,12 @@ class ParseOptions : public OptionsItf {
   /// Prints the actual configuration of all the registered variables
   void PrintConfig(std::ostream &os);
 
+  /// Reads the options values from a config file.  Must be called after
+  /// registering all options.  This is usually used internally after the
+  /// standard --config option is used, but it may also be called from a
+  /// program.
+  void ReadConfigFile(const std::string &filename);
+
   /// Number of positional parameters (c.f. argc-1).
   int NumArgs();
 
@@ -155,9 +161,6 @@ class ParseOptions : public OptionsItf {
   template<typename T>
   void RegisterCommon(const std::string &name,
                       T *ptr, const std::string &doc, bool is_standard);
-
-  /// Reads the options values from a config file
-  void ReadConfigFile(const std::string &filename);
 
   /// SplitLongArg parses an argument of the form --a=b, --a=, or --a,
   /// and sets "has_equal_sign" to true if an equals-sign was parsed..
@@ -219,6 +222,20 @@ class ParseOptions : public OptionsItf {
   const std::string prefix_;
   ParseOptions *other_parser_;
 };
+
+/// This template is provided for convenience in reading config classes from
+/// files; this is not the standard way to read configuration options, but may
+/// occasionally be needed.  This function assumes the config has a function
+/// "void Register(OptionsItf *po)" which it can call to register the
+/// ParseOptions object.
+template<class C> void ReadConfigFromFile(const std::string config_filename,
+                                          C *c) {
+  ParseOptions po;
+  c->Register(&po);
+  po.ReadConfigFile(config_filename);
+}
+
+
 
 }  // namespace kaldi
 

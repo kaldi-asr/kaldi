@@ -94,7 +94,7 @@ BaseFloat SentenceLevelConfidence(const Lattice &lat,
   // "safety_term" is just in case there is some reason why we might need a few
   // extra arcs, e.g. in case of a tie on the weights of the second-best path.
   int32 safety_term = 4 + max_sentence_length;
-  determinize_opts.max_arcs = max_sentence_length * 2 + safety_term
+  determinize_opts.max_arcs = max_sentence_length * 2 + safety_term;
   // set prune_beam to a large value... we don't really rely on the beam; we
   // rely on the max_arcs variable to limit the size of the lattice.
   double prune_beam = std::numeric_limits<double>::infinity();
