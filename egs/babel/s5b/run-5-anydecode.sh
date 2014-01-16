@@ -210,7 +210,7 @@ if ! $skip_kws  && [ ! -f ${datadir}/kws/.done ] ; then
 
     local/kws_data_prep.sh --case_insensitive $case_insensitive \
       "${icu_opt[@]}" \
-      data/lang ${datadir} ${datadir}/kws
+      data/lang ${datadir} ${datadir}/kws || exit 1
     utils/fix_data_dir.sh ${datadir}
 
 
@@ -226,7 +226,7 @@ if ! $skip_kws  && [ ! -f ${datadir}/kws/.done ] ; then
     
     local/kws_setup.sh --case_insensitive $case_insensitive \
       "${kws_flags[@]}" "${icu_opt[@]}" \
-      $my_ecf_file $my_kwlist_file data/lang ${datadir}
+      $my_ecf_file $my_kwlist_file data/lang ${datadir} || exit 1
 
     if [ ${#my_more_kwlists[@]} -ne 0  ] ; then
       touch $datadir/extra_kws_tasks
@@ -234,7 +234,7 @@ if ! $skip_kws  && [ ! -f ${datadir}/kws/.done ] ; then
         kwlist=${my_more_kwlists[$extraid]}
         local/kws_setup.sh --rttm-file ${datadir}/kws/rttm --extraid $extraid \
           --case_insensitive $case_insensitive "${icu_opt[@]}"  \
-          ${datadir}/kws/ecf.xml $kwlist data/lang ${datadir}
+          ${datadir}/kws/ecf.xml $kwlist data/lang ${datadir} || exit 1
         echo $extraid >> $datadir/extra_kws_tasks;  sort -u $datadir/extra_kws_tasks -o  $datadir/extra_kws_tasks
       done
     fi
@@ -243,7 +243,9 @@ if ! $skip_kws  && [ ! -f ${datadir}/kws/.done ] ; then
 
   langid=`ls -1 data/raw_${type}_data/audio/ | head -n 1| cut -d '_' -f 3`
   local/kws_setup.sh --kwlist-wordlist true --rttm-file $datadir/kws/rttm  --extraid fullvocab  \
-    $datadir/kws/ecf.xml  <(cat data/lang/words.txt | grep -v -F "<" | grep -v -F "#"  | awk "{printf \"KWID$langid-FULLVOCAB-%05d %s\\n\", \$2, \$1 }" ) data/lang ${datadir}
+    $datadir/kws/ecf.xml <(cat data/lang/words.txt | grep -v -F "<" | grep -v -F "#"  | \
+                            awk "{printf \"KWID$langid-FULLVOCAB-%05d %s\\n\", \$2, \$1 }" ) \
+    data/lang ${datadir} || exit 1
   echo fullvocab >> $datadir/extra_kws_tasks;  sort -u $datadir/extra_kws_tasks -o  $datadir/extra_kws_tasks
 
   #local/make_lexicon_subset.sh $data_dir/transcription $lexicon_file $datadir/filtered_lexicon.txt
