@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012/2013  Brno University of Technology (Author: Karel Vesely)
+# Copyright 2012/2013  Karel Vesely (Brno University of Technology)
 # Apache 2.0
 
 # Begin configuration.
@@ -8,13 +8,12 @@ config=            # config, which is also sent to all other scripts
 
 # NETWORK INITIALIZATION
 mlp_init=          # select initialized MLP (override initialization)
-mlp_proto=         # select network prototype (initialize it)
-proto_opts=        # non-default options for 'make_nnet_proto.py'
-feature_transform= # provide feature transform (=splice,rescaling,...) (don't build new one)
+feature_transform= # select feature transform (=splice,rescaling,...) (don't build new one)
 #
+model_size=8000000 # nr. of parameteres in MLP
 hid_layers=4       # nr. of hidden layers (prior to sotfmax or bottleneck)
-hid_dim=1024       # select hidden dimension
 bn_dim=            # set a value to get a bottleneck network
+hid_dim=           # select hidden dimension directly (override $model_size)
 dbn=               # select DBN to prepend to the MLP initialization
 #
 init_opts=         # options, passed to the initialization script
@@ -47,7 +46,7 @@ train_opts=        # options, passed to the training script
 train_tool=        # optionally change the training tool
 
 # OTHER
-use_gpu_id= # manually select GPU id to run on, (-1 disables GPU)
+analyze_alignments=true # run the alignment analysis script
 seed=777    # seed value used for training data shuffling and initialization
 # End configuration.
 
@@ -90,7 +89,7 @@ printf "\t CV-set    : $data_cv $alidir_cv \n"
 
 mkdir -p $dir/{log,nnet}
 
-# skip when already trained
+#skip when already trained
 [ -e $dir/final.nnet ] && printf "\nSKIPPING TRAINING... ($0)\nnnet already trained : $dir/final.nnet ($(readlink $dir/final.nnet))\n\n" && exit 0
 
 ###### PREPARE ALIGNMENTS ######
@@ -102,17 +101,22 @@ if [ ! -z $labels ]; then
   labels_cv="$labels"
 else
   echo "Using PDF targets from dirs '$alidir' '$alidir_cv'"
-  # define pdf-alignment rspecifiers
-  labels_tr_ali="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz |\" ark:- |" # for analyze-counts.
-  labels_tr="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz |\" ark:- | ali-to-post ark:- ark:- |"
-  labels_cv="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir_cv/ali.*.gz |\" ark:- | ali-to-post ark:- ark:- |"
+  #define pdf-alignment rspecifiers
+  labels_tr="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz |\" ark:- |"
+  labels_cv="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir_cv/ali.*.gz |\" ark:- |"
 
-  # get pdf-counts, used later to post-process DNN posteriors
-  analyze-counts --binary=false "$labels_tr_ali" $dir/ali_train_pdf.counts || exit 1
-  # copy the old transition model, will be needed by decoder
+  #get the priors, get pdf-counts from alignments
+  analyze-counts --binary=false "$labels_tr" $dir/ali_train_pdf.counts || exit 1
+  #copy the old transition model, will be needed by decoder
   copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl || exit 1
-  # copy the tree
+  #copy the tree
   cp $alidir/tree $dir/tree || exit 1
+
+  #analyze the train/cv alignments
+  if [ "$analyze_alignments" == "true" ]; then
+    utils/nnet/analyze_alignments.sh "TRAINING SET" "ark:gunzip -c $alidir/ali.*.gz |" $dir/final.mdl $lang > $dir/__ali_stats_train
+    utils/nnet/analyze_alignments.sh "VALIDATION SET" "ark:gunzip -c $alidir_cv/ali.*.gz |" $dir/final.mdl $lang > $dir/__ali_stats_cv
+  fi
 fi
 
 ###### PREPARE FEATURES ######
@@ -125,7 +129,7 @@ cp $data_cv/feats.scp $dir/cv.scp
 # print the list sizes
 wc -l $dir/train.scp $dir/cv.scp
 
-# re-save the shuffled features, so they are stored sequentially on the disk in /tmp/
+#re-save the shuffled features, so they are stored sequentially on the disk in /tmp/
 if [ "$copy_feats" == "true" ]; then
   tmpdir=$(mktemp -d); mv $dir/train.scp $dir/train.scp_non_local
   utils/nnet/copy_feats.sh $dir/train.scp_non_local $tmpdir $dir/train.scp
@@ -140,11 +144,11 @@ head -n 10000 $dir/train.scp > $dir/train.scp.10k
 
 ###### PREPARE FEATURE PIPELINE ######
 
-# read the features
+#read the features
 feats_tr="ark:copy-feats scp:$dir/train.scp ark:- |"
 feats_cv="ark:copy-feats scp:$dir/cv.scp ark:- |"
 
-# optionally add per-speaker CMVN
+#optionally add per-speaker CMVN
 if [ $apply_cmvn == "true" ]; then
   echo "Will use CMVN statistics : $data/cmvn.scp, $data_cv/cmvn.scp"
   [ ! -r $data/cmvn.scp ] && echo "Cannot find cmvn stats $data/cmvn.scp" && exit 1;
@@ -157,7 +161,7 @@ else
   echo "apply_cmvn is disabled (per speaker norm. on input features)"
 fi
 
-# optionally add deltas
+#optionally add deltas
 if [ "$delta_order" != "" ]; then
   feats_tr="$feats_tr add-deltas --delta-order=$delta_order ark:- ark:- |"
   feats_cv="$feats_cv add-deltas --delta-order=$delta_order ark:- ark:- |"
@@ -165,23 +169,25 @@ if [ "$delta_order" != "" ]; then
   echo "add-deltas (delta_order $delta_order)"
 fi
 
-# get feature dim
+#get feature dim
 echo "Getting feature dim : "
 feat_dim=$(feat-to-dim --print-args=false "$feats_tr" -)
 echo "Feature dim is : $feat_dim"
 
 # Now we will start building complex feature_transform which will 
-# be forwarded in CUDA to have fast run-time.
+# be forwarded in CUDA to gain more speed.
 #
 # We will use 1GPU for both feature_transform and MLP training in one binary tool. 
-# This is against the kaldi spirit to have many independent small processing units, 
-# but it is necessary because of compute exclusive mode, where GPU cannot be shared
-# by multiple processes.
+# This is against the kaldi spirit, but it is necessary, because on some sites a GPU 
+# cannot be shared accross by two or more processes (compute exclusive mode),
+# and we would like to use single GPU per training instance,
+# so that the grid resources can be used efficiently...
 
 if [ ! -z "$feature_transform" ]; then
   echo "Using pre-computed feature-transform : '$feature_transform'"
+  [ ! -f $feature_transform ] && echo "Missing file '$feature_transform'" && exit 1
   tmp=$dir/$(basename $feature_transform) 
-  cp $feature_transform $tmp; feature_transform=$tmp
+  cp $feature_transform $tmp; feature_transform=$tmp 
 else
   # Generate the splice transform
   echo "Using splice +/- $splice , step $splice_step"
@@ -267,13 +273,9 @@ fi
 ###### INITIALIZE THE NNET ######
 echo 
 echo "# NN-INITIALIZATION"
-[ ! -z "$mlp_init" ] && echo "Using pre-initialized network '$mlp_init'";
-if [ ! -z "$mlp_proto" ]; then 
-  echo "Initializing using network prototype '$mlp_proto'";
-  mlp_init=$dir/nnet.init; log=$dir/log/nnet_initialize.log
-  nnet-initialize $mlp_proto $mlp_init 2>$log || { cat $log; exit 1; } 
-fi
-if [[ -z "$mlp_init" && -z "$mlp_proto" ]]; then
+if [ ! -z "$mlp_init" ]; then
+  echo "Using pre-initalized network $mlp_init";
+else
   echo "Getting input/output dims :"
   #initializing the MLP, get the i/o dims...
   #input-dim
@@ -286,21 +288,20 @@ if [[ -z "$mlp_init" && -z "$mlp_proto" ]]; then
   #output-dim
   [ -z $num_tgt ] && num_tgt=$(hmm-info --print-args=false $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
 
-  # make network prototype
-  mlp_proto=$dir/nnet.proto
-  echo "Genrating network prototype $mlp_proto"
-  utils/nnet/make_nnet_proto.py $proto_opts \
-    ${bn_dim:+ --bottleneck-dim=$bn_dim} \
-    $num_fea $num_tgt $hid_layers $hid_dim >$mlp_proto || exit 1
-  # initialize
-  mlp_init=$dir/nnet.init; log=$dir/log/nnet_initialize.log
-  echo "Initializing $mlp_proto -> $mlp_init"
-  nnet-initialize $mlp_proto $mlp_init 2>$log || { cat $log; exit 1; }
+  #run the MLP initializing script
+  mlp_init=$dir/nnet.init
+  utils/nnet/init_nnet.sh --model_size $model_size --hid_layers $hid_layers \
+    ${bn_dim:+ --bn-dim $bn_dim} \
+    ${hid_dim:+ --hid-dim $hid_dim} \
+    --seed $seed ${init_opts} \
+    ${config:+ --config $config} \
+    $num_fea $num_tgt $mlp_init || exit 1
 
   #optionally prepend dbn to the initialization
   if [ ! -z $dbn ]; then
+    [ ! -f $dbn ] && echo "Missing file '$dbn'" && exit 1
     mlp_init_old=$mlp_init; mlp_init=$dir/nnet_$(basename $dbn)_dnn.init
-    nnet-concat $dbn $mlp_init_old $mlp_init || exit 1 
+    nnet-concat $dbn $mlp_init_old $mlp_init 
   fi
 fi
 
@@ -311,7 +312,7 @@ echo "# RUNNING THE NN-TRAINING SCHEDULER"
 steps/train_nnet_scheduler.sh \
   --feature-transform $feature_transform \
   --learn-rate $learn_rate \
-  --randomizer-seed $seed \
+  --seed $seed \
   ${train_opts} \
   ${train_tool:+ --train-tool "$train_tool"} \
   ${config:+ --config $config} \

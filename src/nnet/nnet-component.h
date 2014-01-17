@@ -70,7 +70,8 @@ class Component {
     kKlHmm = 0x0800,
     kSentenceAveragingComponent,
     kAveragePoolingComponent,
-    kMaxPoolingComponent
+    kMaxPoolingComponent,
+    kParallelComponent
   } ComponentType;
   /// A pair of type and marker 
   struct key_value {
@@ -228,16 +229,27 @@ inline void Component::Backpropagate(const CuMatrix<BaseFloat> &in,
     KALDI_ERR << "Non-matching output dims, component:" << output_dim_ 
               << " data:" << out_diff.NumCols();
   }
-  // Allocate target buffer
-  in_diff->Resize(out_diff.NumRows(), input_dim_, kSetZero); // reset
-  // Asserts on the dims
-  KALDI_ASSERT((in.NumRows() == out.NumRows()) &&
-               (in.NumRows() == out_diff.NumRows()) &&
-               (in.NumRows() == in_diff->NumRows()));
-  KALDI_ASSERT(in.NumCols() == in_diff->NumCols());
-  KALDI_ASSERT(out.NumCols() == out_diff.NumCols());
-  // Call the backprop implementation of the component
-  BackpropagateFnc(in, out, out_diff, in_diff);
+  
+  // Target buffer NULL : backpropagate only through components with nested nnets.
+  if (in_diff == NULL) {
+    if (GetType() == kParallelComponent ||
+        GetType() == kSentenceAveragingComponent) {
+      BackpropagateFnc(in, out, out_diff, NULL);
+    } else {
+      return;
+    }
+  } else {
+    // Allocate target buffer
+    in_diff->Resize(out_diff.NumRows(), input_dim_, kSetZero); // reset
+    // Asserts on the dims
+    KALDI_ASSERT((in.NumRows() == out.NumRows()) &&
+                 (in.NumRows() == out_diff.NumRows()) &&
+                 (in.NumRows() == in_diff->NumRows()));
+    KALDI_ASSERT(in.NumCols() == in_diff->NumCols());
+    KALDI_ASSERT(out.NumCols() == out_diff.NumCols());
+    // Call the backprop implementation of the component
+    BackpropagateFnc(in, out, out_diff, in_diff);
+  }
 }
 
 

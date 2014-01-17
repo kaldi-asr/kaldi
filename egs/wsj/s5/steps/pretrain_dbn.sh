@@ -200,7 +200,11 @@ for depth in $(seq 1 $nn_depth); do
     #This is Gaussian-Bernoulli RBM
     #initialize
     echo "Initializing '$RBM.init'"
-    utils/nnet/gen_rbm_init.py --dim=${num_fea}:${num_hid} --gauss --vistype=gauss --hidtype=bern > $RBM.init || exit 1
+    echo "<NnetProto>
+    <Rbm> <InputDim> $num_fea <OutputDim> $num_hid <VisibleType> gauss <HiddenType> bern
+    </NnetProto>
+    " > $RBM.proto
+    nnet-initialize $RBM.proto $RBM.init 2>$dir/log/nnet-initialize.$depth.log || exit 1
     #pre-train
     echo "Pretraining '$RBM' (reduced lrate and 2x more iters)"
     rbm-train-cd1-frmshuff --learn-rate=$rbm_lrate_low --l2-penalty=$rbm_l2penalty \
@@ -224,7 +228,11 @@ for depth in $(seq 1 $nn_depth); do
     fi
     #initialize
     echo "Initializing '$RBM.init'"
-    utils/nnet/gen_rbm_init.py --dim=${num_hid}:${num_hid} --gauss --vistype=bern --hidtype=bern --cmvn-nnet=$dir/$depth.cmvn > $RBM.init || exit 1
+    echo "<NnetProto>
+    <Rbm> <InputDim> $num_hid <OutputDim> $num_hid <VisibleType> bern <HiddenType> bern <VisibleBiasCmvnFilename> $dir/$depth.cmvn
+    </NnetProto>
+    " > $RBM.proto
+    nnet-initialize $RBM.proto $RBM.init 2>$dir/log/nnet-initialize.$depth.log || exit 1
     #pre-train
     echo "Pretraining '$RBM'"
     rbm-train-cd1-frmshuff --learn-rate=$rbm_lrate --l2-penalty=$rbm_l2penalty \

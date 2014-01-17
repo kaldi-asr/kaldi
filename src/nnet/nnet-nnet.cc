@@ -110,7 +110,7 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat
   }
 
   // backpropagate by using buffers
-  for(i--; i >= 1; i--) {
+  for (i--; i >= 1; i--) {
     components_[i]->Backpropagate(propagate_buf_[i], propagate_buf_[i+1],
                             backpropagate_buf_[i], &backpropagate_buf_[i-1]);
     if (components_[i]->IsUpdatable()) {
@@ -120,11 +120,8 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat
   }
 
   // now backpropagate through first layer, 
-  // but only if asked to (by in_diff pointer)
-  if (NULL != in_diff) {
-    components_[0]->Backpropagate(propagate_buf_[0], propagate_buf_[1],
-                            backpropagate_buf_[0], in_diff);
-  }
+  components_[0]->Backpropagate(propagate_buf_[0], propagate_buf_[1],
+                                backpropagate_buf_[0], in_diff);
 
   // update the first layer 
   if (components_[0]->IsUpdatable()) {

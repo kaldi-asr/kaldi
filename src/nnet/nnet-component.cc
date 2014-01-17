@@ -30,6 +30,7 @@
 #include "nnet/nnet-convolutional-component.h"
 #include "nnet/nnet-average-pooling-component.h"
 #include "nnet/nnet-max-pooling-component.h"
+#include "nnet/nnet-parallel-component.h"
 
 #include <sstream>
 
@@ -53,6 +54,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kSentenceAveragingComponent,"<SentenceAveragingComponent>"},
   { Component::kAveragePoolingComponent,"<AveragePoolingComponent>"},
   { Component::kMaxPoolingComponent, "<MaxPoolingComponent>"},
+  { Component::kParallelComponent, "<ParallelComponent>"},
 };
 
 
@@ -128,6 +130,9 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kMaxPoolingComponent :
       ans = new MaxPoolingComponent(input_dim, output_dim);
+      break;
+    case Component::kParallelComponent :
+      ans = new ParallelComponent(input_dim, output_dim);
       break;
     case Component::kUnknown :
     default :
