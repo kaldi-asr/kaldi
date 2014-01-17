@@ -202,7 +202,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     }
     $numlines = @F;
     if($numlines == 0) {
-        print STDERR "split_scp.pl: error: empty input scp file $inscp";
+        print STDERR "split_scp.pl: error: empty input scp file $inscp , ";
         $error = 1;
     }
     $linesperscp = int( $numlines / $numscps); # the "whole part"..

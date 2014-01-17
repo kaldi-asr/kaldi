@@ -51,6 +51,9 @@ int main(int argc, char *argv[]) {
     bool binary = false; 
     po.Register("binary", &binary, "Write output in binary mode");
 
+    bool with_bug = true; 
+    po.Register("with-bug", &with_bug, "Apply bug which led to better results (set-initial-momentum-to-max)");
+    
     int32 num_iters = 1; 
     po.Register("num-iters", &num_iters, 
                 "Number of iterations (smaller datasets should have more iterations, "
@@ -240,12 +243,12 @@ int main(int argc, char *argv[]) {
           if(n - n_prev > 0) {
             n_prev = n;
             BaseFloat learning_rate_actual = learn_rate*(1-momentum_actual);
-            KALDI_VLOG(1) << "Setting momentum " << momentum_actual 
+            KALDI_VLOG(1) << "Setting momentum " << (with_bug ? momentum_max : momentum_actual)
                           << " and learning rate " << learning_rate_actual
                           << " after processing " 
                           << static_cast<double>(total_frames)/360000 << "h";
             // pass values to rbm
-            trn_opts_rbm.momentum = momentum_actual;
+            trn_opts_rbm.momentum = (with_bug ? momentum_max : momentum_actual);
             trn_opts_rbm.learn_rate = learning_rate_actual;
             rbm.SetRbmTrainOptions(trn_opts_rbm);
           }
