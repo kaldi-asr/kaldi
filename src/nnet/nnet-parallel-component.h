@@ -26,6 +26,8 @@
 #include "nnet/nnet-various.h"
 #include "cudamatrix/cu-math.h"
 
+#include <sstream>
+
 namespace kaldi {
 namespace nnet1 {
 
@@ -140,9 +142,33 @@ class ParallelComponent : public UpdatableComponent {
     return num_params_sum;
   }
 
-  void GetParams(Vector<BaseFloat>* wei_copy) const { KALDI_ERR << "UNIMPLEMENTED"; /*wei_copy->Resize(NumParams()); nnet_.GetParams(wei_copy);*/ }
-  std::string Info() const { return ""; /* return std::string("nested_network {\n") + nnet_.Info() + "}\n"; */ }
-  std::string InfoGradient() const { return ""; /*return std::string("nested_gradient {\n") + nnet_.InfoGradient() + "}\n";*/ }
+  void GetParams(Vector<BaseFloat>* wei_copy) const { 
+    wei_copy->Resize(NumParams());
+    int32 offset = 0;
+    for (int32 i=0; i<nnet_.size(); i++) {
+      Vector<BaseFloat> wei_aux;
+      nnet_[i].GetParams(&wei_aux);
+      wei_copy->Range(offset, wei_aux.Dim()).CopyFromVec(wei_aux);
+      offset += wei_aux.Dim();
+    }
+    KALDI_ASSERT(offset == NumParams());
+  }
+    
+  std::string Info() const { 
+    std::ostringstream os;
+    for (int32 i=0; i<nnet_.size(); i++) {
+      os << "nested_network #" << i+1 << "{\n" << nnet_[i].Info() << "}\n";
+    }
+    return os.str();
+  }
+                       
+  std::string InfoGradient() const {
+    std::ostringstream os;
+    for (int32 i=0; i<nnet_.size(); i++) {
+      os << "nested_gradient #" << i+1 << "{\n" << nnet_[i].InfoGradient() << "}\n";
+    }
+    return os.str();
+  }
 
   void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
     int32 input_offset = 0, output_offset = 0;
@@ -165,9 +191,10 @@ class ParallelComponent : public UpdatableComponent {
     for (int32 i=0; i<nnet_.size(); i++) {
       CuSubMatrix<BaseFloat> src(out_diff.ColRange(output_offset, nnet_[i].OutputDim()));
       CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(input_offset, nnet_[i].InputDim()));
-      //
+      // 
       CuMatrix<BaseFloat> tgt_aux;
-      nnet_[i].Backpropagate(CuMatrix<BaseFloat>(src), &tgt_aux); // need CuMatrix<> here
+      CuMatrix<BaseFloat> src_aux(src);
+      nnet_[i].Backpropagate(src_aux, &tgt_aux); // need CuMatrix<> here
       tgt.CopyFromMat(tgt_aux);
       //
       input_offset += nnet_[i].InputDim();

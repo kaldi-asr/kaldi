@@ -65,15 +65,13 @@ Nnet::~Nnet() {
 void Nnet::Propagate(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
   KALDI_ASSERT(NULL != out);
 
-  if (NumComponents() == 0) { 
-    out->Resize(in.NumRows(), in.NumCols());
-    out->CopyFromMat(in); 
+  if (NumComponents() == 0) {
+    (*out) = in; // copy 
     return; 
   }
 
   // we need at least L+1 input buffers
   KALDI_ASSERT((int32)propagate_buf_.size() >= NumComponents()+1);
-
   
   propagate_buf_[0].Resize(in.NumRows(), in.NumCols());
   propagate_buf_[0].CopyFromMat(in);
@@ -89,17 +87,33 @@ void Nnet::Propagate(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
 
 
 void Nnet::Backpropagate(const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
-  if(NumComponents() == 0) { KALDI_ERR << "Cannot backpropagate on empty network"; }
+
+  //////////////////////////////////////
+  // Backpropagation
+  //
+
+  // 0 layers
+  if(NumComponents() == 0) { 
+    (*in_diff) = out_diff; //copy
+    return;
+  }
 
   // we need at least L+1 input bufers
   KALDI_ASSERT((int32)propagate_buf_.size() >= NumComponents()+1);
   // we need at least L-1 error derivative bufers
   KALDI_ASSERT((int32)backpropagate_buf_.size() >= NumComponents()-1);
 
-  //////////////////////////////////////
-  // Backpropagation
-  //
+  // 1 layer
+  if(NumComponents() == 1) { 
+    components_[0]->Backpropagate(propagate_buf_[0], propagate_buf_[1], out_diff, in_diff);
+    if (components_[0]->IsUpdatable()) {
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[0]);
+      uc->Update(propagate_buf_[0], out_diff);
+    }
+    return;
+  }
 
+  // >1 layers
   // we don't copy the out_diff to buffers, we use it as it is...
   int32 i = components_.size()-1;
   components_.back()->Backpropagate(propagate_buf_[i], propagate_buf_[i+1], 

@@ -118,26 +118,16 @@ class Splice : public Component {
   ComponentType GetType() const { return kSplice; }
 
   void ReadData(std::istream &is, bool binary) {
-    // read double vector
-    Vector<double> vec_d;
-    vec_d.Read(is, binary);
-    // convert to int vector
-    std::vector<int32> vec_i(vec_d.Dim());
-    for(int32 i=0; i<vec_d.Dim(); i++) {
-      vec_i[i] = round(vec_d(i));
-    }
-    // push to GPU
-    frame_offsets_.CopyFromVec(vec_i); 
+    std::vector<int32> frame_offsets;
+    ReadIntegerVector(is, binary, &frame_offsets);
+    frame_offsets_ = frame_offsets; // to GPU
+    KALDI_ASSERT(frame_offsets_.Dim() * InputDim() == OutputDim());
   }
 
   void WriteData(std::ostream &os, bool binary) const {
-    std::vector<int32> vec_i;
-    frame_offsets_.CopyToVec(&vec_i);
-    Vector<double> vec_d(vec_i.size());
-    for(int32 i=0; i<vec_d.Dim(); i++) {
-      vec_d(i) = vec_i[i];
-    }
-    vec_d.Write(os, binary);
+    std::vector<int32> frame_offsets(frame_offsets_.Dim());
+    frame_offsets_.CopyToVec(&frame_offsets);
+    WriteIntegerVector(os, binary, frame_offsets);
   }
   
   std::string Info() const {
@@ -250,7 +240,7 @@ class CopyComponent: public Component {
 
   void ReadData(std::istream &is, bool binary) { 
     std::vector<int32> copy_from_indices;
-    ReadIntegerVector(is, false, &copy_from_indices);
+    ReadIntegerVector(is, binary, &copy_from_indices);
     // -1 from each element 
     std::vector<int32>& v = copy_from_indices;
     std::transform(v.begin(), v.end(), v.begin(), op_decrease);
@@ -286,7 +276,12 @@ class CopyComponent: public Component {
 
   void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
                         const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
-    KALDI_ERR << __func__ << "Not implemented!";
+    static bool warning_displayed = false;
+    if (!warning_displayed) {
+      KALDI_WARN << __func__ << "Not implemented!";
+      warning_displayed = true;
+    }
+    in_diff->SetZero();
   }
 
  protected:
