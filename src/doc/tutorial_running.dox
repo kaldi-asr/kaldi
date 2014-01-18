@@ -60,6 +60,7 @@ smaller datasets, execute the following command on your shell.
 
 \verbatim
 train_cmd="run.pl"
+decode_cmd="run.pl"
 \endverbatim
 
 If you do have GridEngine installed, you should use the queue.pl file with
@@ -161,6 +162,12 @@ The file L.fst is the compiled lexicon in FST format. To see what kind of inform
  fstprint --isymbols=data/lang/phones.txt --osymbols=data/lang/words.txt data/lang/L.fst | head
 \endverbatim
 
+If the bash cannot find command fstprint, you need to add OpenFST's installation path to the PATH environment varible. Simply run the script path.sh will do this:
+
+\verbatim
+. ./path.sh
+\endverbatim
+
 The next step is to use the files created in the previous step to create an FST describing the grammar for the language. To do this, go back to the directory s5 and execute the following command : 
 
 \verbatim
@@ -183,9 +190,9 @@ for x in test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92 train
 done
 \endverbatim
 
-Run these jobs. They use several CPUs in parallel and should be done in around two minutes on a fast machine. Look at the file exp/make_mfcc/train/make_mfcc.1.log to see the logging output of the program that creates the MFCCs. At the top of it you will see the command line (Kaldi programs will always echo the command line unless you specify --print-args=false). 
+Run these jobs. They use several CPUs in parallel and should be done in around two minutes on a fast machine. You may change the --nj option(which specifies the number of jobs to run) according to the number of CPUs of your machine. Look at the file exp/make_mfcc/train/make_mfcc.1.log to see the logging output of the program that creates the MFCCs. At the top of it you will see the command line (Kaldi programs will always echo the command line unless you specify --print-args=false). 
 
-In the script steps/make_mfcc_train.sh, look at the line that invokes split_scp.pl. You can probably guess what this does.
+In the script steps/make_mfcc.sh, look at the line that invokes split_scp.pl. You can probably guess what this does.
 
 By typing
 \verbatim
@@ -205,20 +212,20 @@ less $featdir/raw_mfcc_train.1.ark
 \endverbatim
 Be careful-- the .ark file contains binary data (you may have to type "reset" if your terminal doesn't work right after looking at it).
 
-By listing the files you can see that the .ark files are quite big (because they contain the actual data). You can view one of these archive files more conveniently by typing (Assuming you are in the s5 directory):
+By listing the files you can see that the .ark files are quite big (because they contain the actual data). You can view one of these archive files more conveniently by typing (Assuming you are in the s5 directory and have run script path.sh):
 
 \verbatim
-../../../src/copy-feats ark:/my/disk/rm_mfccdir/train_raw_mfcc1.ark ark,t:- | head
+copy-feats ark:$featdir/raw_mfcc_train.1.ark ark,t:- | head
 \endverbatim
 
 You can remove the ",t" modifier from this command and try it again if you like-- but it might be a good to pipe it into "less" because the data will be binary. An alternative way to view the same data is to do:
 
 \verbatim
-../../../src/copy-feats scp:/my/disk/rm_mfccdir/train_raw_mfcc1.scp ark,t:- | head
+copy-feats scp:$featdir/raw_mfcc_train.1.scp ark,t:- | head
 \endverbatim
 
 This is because these archive and script files both represent the same data (well, technically
-the archive only represents one quarter of it because we split it into four pieces).  Notice
+the archive only represents one eighth of it because we split it into eight pieces).  Notice
 the "scp:" and "ark:" prefixes in these commands.  Kaldi doesn't attempt to work
 out whether something is a script file or archive format from the data itself,
 and in fact Kaldi never attempts to work things out from file suffixes.  This is
@@ -227,7 +234,7 @@ pipes (because pipes don't normally have a name).
 
 Now type the following command:
 \verbatim
-head -10 my/disk/rm_mfccdir/raw_mfcc_train.1.scp | tail -1 | ../../../src/featbin/copy-feats scp:- ark,t:- | head
+head -10 $featdir/raw_mfcc_train.1.scp | tail -1 | copy-feats scp:- ark,t:- | head
 \endverbatim
 
 This prints out some data from the tenth training file.  Notice that in
@@ -303,7 +310,7 @@ A few generic points about scripts and archives:
 To give you some idea how archives and script files can be used within pipes,
 type the following command and try to understand what is going on:
 \verbatim
-head -1 my/disk/rm_mfccdir/raw_mfcc_train.1.scp | ../../../src/featbin/copy-feats scp:- ark:- | ../../../src/featbin/copy-feats ark:- ark,t:- | head
+head -1 $featdir/raw_mfcc_train.1.scp | copy-feats scp:- ark:- | copy-feats ark:- ark,t:- | head
 \endverbatim
 
 It might help to run these commands in sequence and observe what happens. With copy-feats, remember to pipe the output to head because you might be listing a lot of content (which could possibly be binary in the case of ark files). 
@@ -339,7 +346,7 @@ although a better idea is to run your shell from "screen" so it won't get killed
 There is actually very little output that goes to the standard out and error of this
 script; most of it goes to log files in exp/mono/.
 
-While it is running, look at the file exp/mono/topo.  This file is created immediately.
+While it is running, look at the file data/lang/topo.  This file is created immediately.
 One of the phones has a different topology from the others.  Look at data/phones.txt
 in order to figure out from the numeric id which phone it is.  Notice that each entry in
 the topology file has a final state with no transitions out of it.  The convention in
@@ -348,7 +355,6 @@ last state is final (with probability one).
 
 Type 
 \verbatim
-. path.sh
 gmm-copy --binary=false exp/mono/0.mdl - | less
 \endverbatim
 and look at the model file.  You will see that it contains the information in 
@@ -414,19 +420,19 @@ that are too large.  The reason is that the alignment file
 does not contain p.d.f. id's.  It contains a slightly more fine-grained identifier
 that we call a "transition-id".  This also encodes the phone and the transition within
 the prototype topology of the phone.  This is useful for a number of reasons.
-If you want an explation of what a particular transition-id is (e.g. you are looking
+If you want an explanation of what a particular transition-id is (e.g. you are looking
 at an alignment in cur.ali and you see one repeated a lot and you wonder why),
 you can use the program "show-transitions" to show you some information about the transition-ids.
 Type
 \verbatim
-  show-transitions data/phones.txt exp/mono/0.mdl
+  show-transitions data/lang/phones.txt exp/mono/0.mdl
 \endverbatim
 If you have a file with occupation counts in it (a file named *.occs), you can give this as
 a second argument and it will show you some more information.
 
 To view the alignments in a more human-friendly form, try the following:
 \verbatim
- show-alignments data/phones.txt exp/mono/0.mdl ark:exp/mono/cur.ali | less
+ show-alignments data/lang/phones.txt exp/mono/0.mdl ark:exp/mono/cur.ali | less
 \endverbatim
 For more details on things like HMM topologies, transition-ids,
 transition modeling and so on, see \ref hmm.
@@ -434,72 +440,67 @@ transition modeling and so on, see \ref hmm.
 Next let's look at how training is progressing (this step assumes your shell is bash).
 Type
 \verbatim
-grep Overall exp/mono/acc.{?,??}.log
+grep Overall exp/mono/log/acc.{?,??}.{?,??}.log
 \endverbatim
 You can see the acoustic likelihods on each iteration.  Next look at one of the files
-exp/mono/update.*.log to see what kind of information is in the update log.
+exp/mono/log/update.*.log to see what kind of information is in the update log.
 
-When the monophone training is finished, start the monophone decoding with:
+When the monophone training is finished, we can test the monophone decoding. Before decoding, we have to creat the decode graph. Type:
 \verbatim
-steps/decode_mono.sh &
+utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
 \endverbatim
-Be careful-- this job uses about 6 cores, and if your machine has less than this it may
-become sluggish.  You can first edit it by replacing the "&" with ";", and this will make it use
-just one core; it will be slower but won't slow down your machine, and you can look at the partial 
-output.
-It first puts some output on the screen that comes from the graph creation
-process.  Look at the script steps/decode_mono.sh and see where it invokes
-the script to create the graph (near the top).  Then view the graph-creation
-script that is invoked (scripts/mkgraph.sh).  Look at the programs that this 
-script calls.  The names of many of them start with "fst" (e.g. fsttablecompose),
-most of these programs are not actually from the OpenFst distribution.  We created
-some of our own FST-manipulating programs.  You can find out
-where these programs are located as follows.  Take an arbitrary program that
-is invoked in scripts/mkgraph.sh (say, fstdeterminizestar).  Then type:
+
+Look at the programs that utils/mkgraph.sh calls. The names of many of them start with "fst" (e.g. fsttablecompose), most of these programs are not actually from the OpenFst distribution. We created some of our own FST-manipulating programs. You can find out where these programs are located as follows. Take an arbitrary program that is invoked in utils/mkgraph.sh (say, fstdeterminizestar). Then type:
 \verbatim
-. path.sh
 which fstdeterminizestar
 \endverbatim
+
 The reason why we have different versions of the programs is mostly because we
 have a slightly different (less AT&T-ish) way of using FSTs in speech recognition.
 For example, "fstdeterminizestar" corresponds to "classical" determinization in which
-we remove epsilon arcs.  See \ref graph for more information.
+we remove epsilon arcs.  See \ref graph for more information. After graph creation process, we can start the monophone decoding with:
+
+\verbatim
+steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+  exp/mono/graph data/test exp/mono/decode
+\endverbatim
+
 To see some of the decoded output
 \verbatim
-less exp/decode_mono/decode_mar87.log 
+less exp/mono/decode/log/decode.2.log 
 \endverbatim
 You can see that it puts the transcript on the screen.  The text form of the
 transcript only appears in the logging information: the actual output of this
-program appears in the file exp/decode_mono/test_mar87.tra.  Look at this file.
-Then view it as words by typing:
+program appears in the file exp/mono/decode/scoring/2.tra. The number in those 
+tra files represent the language model(LM) scale used the decoding process.
+Here we use LM scale equals from 2 to 13 by default(see local/score.sh for details). 
+To view the actual decoded word sequence from a tra file(take 2.tra as an example), type:
 \verbatim
-scripts/int2sym.pl --ignore-first-field data/words.txt exp/decode_mono/test_mar87.tra 
+utils/int2sym.pl -f 2- data/lang/words.txt exp/mono/decode/scoring/2.tra
 \endverbatim
 There is a corresponding script called sym2int.pl.  You can convert it back
 to integer form by typing:
 \verbatim
-scripts/int2sym.pl --ignore-first-field data/words.txt exp/decode_mono/test_mar87.tra | \
- scripts/sym2int.pl --ignore-first-field data/words.txt 
+utils/int2sym.pl -f 2- data/lang/words.txt exp/mono/decode/scoring/2.tra | \
+ utils/sym2int.pl -f 2- data/lang/words.txt 
 \endverbatim
-The <DFN>--ignore-first-field</DFN> option is so that it doesn't try to convert the utterance
+The <DFN>-f 2-</DFN> option is so that it doesn't try to convert the utterance
 id to an integer.
 Next, try doing
 \verbatim
-tail exp/decode_mono/decode_mar87.log 
+tail exp/mono/decode/log/decode.2.log 
 \endverbatim
 It will print out some useful summary information at the end, including the
 real-time factor and the average log-likelihood per frame.  The real-time factor
 will typically be about 0.2 to 0.3 (i.e. faster than real time).  This depends
 on your CPU, how many jobs were on the machine and other factors.  This script
-runs six jobs in parallel, so if your machine has fewer than six cores it may be
+runs 20 jobs in parallel, so if your machine has fewer than 20 cores it may be
 much slower.  Note that we use a fairly wide beam (20), for accurate results; in a
 typical LVCSR setup, the beam would be much smaller (e.g. around 13).
 
 Look at the top of the log file again, and focus on the command line.  The optional
-arguments are before the positional arguments (this is mandatory).  In a separate
-window (in the directory s1/), type
+arguments are before the positional arguments (this is mandatory).  Type
 \verbatim
-. path.sh
 gmm-decode-faster
 \endverbatim
 to see the usage message, and match up the arguments with what you see in the log file.
@@ -509,12 +510,8 @@ to figure out what they mean.  Look at the rspecifier that corresponds to the fe
 try to understand it (this one has spaces inside, so Kaldi prints it out with single quotes
 around it so that you could paste it into the shell and the program would run as intended).
 
-Next, type
-\verbatim
-nohup steps/train_tri1.sh &
-\endverbatim
-and while this is running (it should take about ten minutes), we will do the next
-step of tutorial.
+The moniphone system is now finished and we will do triphone training and decoding in the 
+next step of tutorial.
 
   \ref tutorial "Up: Kaldi tutorial" <BR>
   \ref tutorial_looking "Previous: Overview of the distribution" <BR>
