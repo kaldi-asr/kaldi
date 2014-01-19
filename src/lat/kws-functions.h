@@ -35,7 +35,10 @@ class Interval {
   Interval() {}
   Interval(int32 start, int32 end) : start_(start), end_(end) {}
   Interval(const Interval &interval) : start_(interval.Start()), end_(interval.End()) {}
-  int32 overlap(Interval interval);
+  int32 Overlap(Interval interval) {
+    return std::max<int32>(0, std::min(end_, interval.end_) -
+                              std::max(start_, interval.start_));
+  }
   int32 Start() const {return start_;}
   int32 End() const {return end_;}
   ~Interval() {}
@@ -56,6 +59,8 @@ bool CompareInterval(const Interval &i1,
 // 0 1 a a (0.1s ~ 0.5s) and 2 3 a a (0.2s ~ 0.4s) are within the same cluster; 
 // 0 1 a a (0.1s ~ 0.5s) and 5 6 b b (0.2s ~ 0.4s) are in different clusters; 
 // 0 1 a a (0.1s ~ 0.5s) and 7 8 a a (0.9s ~ 1.4s) are also in different clusters.
+// It puts disambiguating symbols in the olabels, leaving the words on the
+// ilabels.
 bool ClusterLattice(CompactLattice *clat, 
                     const vector<int32> &state_times);
 
@@ -90,9 +95,9 @@ void RemoveLongSilences(int32 max_silence_frames,
                         const vector<int32> &state_times, 
                         KwsProductFst *factor_transducer);
 
-// Do the factor merging part: encode input and output, and alpply weighted
-// epsilon removal, determinization and minimization.
-void DoFactorMerging(KwsProductFst factor_transducer,
+// Do the factor merging part: encode input and output, and apply weighted
+// epsilon removal, determinization and minimization.  Modifies factor_transducer.
+void DoFactorMerging(KwsProductFst *factor_transducer,
                      KwsLexicographicFst *index_transducer);
 
 // Do the factor disambiguation step: remove the cluster id's for the non-final
@@ -102,6 +107,18 @@ void DoFactorDisambiguation(KwsLexicographicFst *index_transducer);
 // Do the optimization: do encoded determinization, minimization
 void OptimizeFactorTransducer(KwsLexicographicFst *index_transducer);
 
+// the following two functions will, if GetVerboseLevel() >= 2, check that the
+// cost of the second-best path in the transducers is not negative, and print
+// out some associated debugging info if GetVerboseLevel() >= 3.  The best path
+// in the transducers will typically be for the empty word sequence, and it may
+// have negative cost (i.e. probability more than one), but the second-best one
+// should not have negative cost.  A warning will be printed if
+// GetVerboseLevel() >= 2 and a substantially negative cost is found.
+void MaybeDoSanityCheck(const KwsProductFst &factor_transducer);
+void MaybeDoSanityCheck(const KwsLexicographicFst &index_transducer);
+
+
 } // namespace kaldi
+
 
 #endif  // KALDI_LAT_KWS_FUNCTIONS_H_
