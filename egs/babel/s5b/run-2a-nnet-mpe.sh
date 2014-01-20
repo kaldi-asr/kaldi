@@ -38,6 +38,7 @@ if [ ! -f exp/tri6_nnet_mpe/.done ]; then
     --modify-learning-rates true \
     --last-layer-factor $dnn_mpe_last_layer_factor \
     --num-epochs 4 --cleanup true \
+    --retroactive $dnn_mpe_retroactive \
     --num-jobs-nnet $dnn_num_jobs --stage $train_stage \
     --transform-dir exp/tri5_ali --num-threads 1 \
     --parallel-opts "$dnn_parallel_opts" data/train data/lang \

@@ -355,6 +355,11 @@ if [ $stage -le $num_iters ]; then
       --num-threads=$this_num_threads --regularizer=$combine_regularizer \
       --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
       $dir/final.mdl || exit 1;
+
+  # Normalize stddev for affine or block affine layers that are followed by a
+  # pnorm layer and then a normalize layer.
+  $cmd $parallel_opts $dir/log/normalize.log \
+    nnet-normalize-stddev $dir/final.mdl $dir/final.mdl || exit 1;
 fi
 
 # Compute the probability of the final, combined model with

@@ -53,6 +53,9 @@ struct NnetCombineFastConfig {
   int32 num_lbfgs_iters; 
   int32 num_threads;
   BaseFloat initial_impr;
+  BaseFloat fisher_floor; // Flooring value we use for Fisher matrix (mainly
+                          // makes a difference in pnorm systems, where there
+                          // are don't-care directions in parameter space.
   BaseFloat alpha; // A smoothing value we use in getting the Fisher matrix.
   int32 fisher_minibatch_size; // e.g. 64; a relatively small minibatch size we
   // use in the Fisher matrix computation (smaller will generally mean more accurate
@@ -63,8 +66,8 @@ struct NnetCombineFastConfig {
   BaseFloat regularizer;
   
   NnetCombineFastConfig(): initial_model(-1), num_lbfgs_iters(10),
-                           num_threads(1), initial_impr(0.01), alpha(0.01),
-                           fisher_minibatch_size(64), minibatch_size(1024),
+                           num_threads(1), initial_impr(0.01), fisher_floor(1.0e-20),
+                           alpha(0.01), fisher_minibatch_size(64), minibatch_size(1024),
                            max_lbfgs_dim(10), regularizer(0.0) {}
   
   void Register(OptionsItf *po) {
@@ -78,6 +81,8 @@ struct NnetCombineFastConfig {
                  "We aim for on the first iteration.");
     po->Register("num-threads", &num_threads, "Number of threads to use in "
                  "multi-core computation");
+    po->Register("fisher-floor", &fisher_floor,
+                 "Floor for diagonal of Fisher matrix (used in preconditioning)");
     po->Register("alpha", &alpha, "Value we use in smoothing the Fisher matrix "
                  "with its diagonal, in preconditioning the update.");
     po->Register("fisher-minibatch-size", &fisher_minibatch_size, "Size of minibatch "

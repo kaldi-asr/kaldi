@@ -44,6 +44,7 @@ transform_dir= # If this is a SAT system, directory for transforms
 cleanup=true
 transform_dir=
 degs_dir=
+retroactive=false
 # End configuration section.
 
 
@@ -289,9 +290,10 @@ while [ $x -lt $num_iters ]; do
 
     if $modify_learning_rates; then
       $cmd $dir/log/modify_learning_rates.$x.log \
-        nnet-modify-learning-rates --last-layer-factor=$last_layer_factor \
-           --first-layer-factor=$first_layer_factor $dir/$x.mdl \
-           $dir/$[$x+1].mdl $dir/$[$x+1].mdl
+        nnet-modify-learning-rates --retroactive=$retroactive \
+        --last-layer-factor=$last_layer_factor \
+        --first-layer-factor=$first_layer_factor \
+        $dir/$x.mdl $dir/$[$x+1].mdl $dir/$[$x+1].mdl || exit 1;
     fi
     rm $nnets_list
   fi

@@ -7,8 +7,9 @@ dnn_final_learning_rate=0.0008
 dnn_max_change=10
 dnn_mixup=12000
 
-dnn_mpe_learning_rate=0.00009
+dnn_mpe_learning_rate=0.00012
 dnn_mpe_last_layer_factor=0.1
+dnn_mpe_retroactive=true
 
 bnf_every_nth_frame=2 # take every 2nd frame.
 babel_type=full

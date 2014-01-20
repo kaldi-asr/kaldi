@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
         "This program modifies the learning rates so as to equalize the\n"
         "relative changes in parameters for each layer, while keeping their\n"
         "geometric mean the same (or changing it to a value specified using\n"
-        "the --average-learning-rate option)."
+        "the --average-learning-rate option).\n"
         "\n"
         "Usage: nnet-modify-learning-rates [options] <prev-model> \\\n"
         "                                  <cur-model> <modified-cur-model>\n"
@@ -58,6 +58,7 @@ int main(int argc, char *argv[]) {
         "                                 5.mdl 6.mdl 6.mdl\n";
 
     bool binary_write = true;
+    bool retroactive = false;
     BaseFloat average_learning_rate = 0.0;
     BaseFloat first_layer_factor = 1.0;
     BaseFloat last_layer_factor = 1.0;
@@ -71,6 +72,8 @@ int main(int argc, char *argv[]) {
                 "reduces the target relative learning rate for first layer.");
     po.Register("last-layer-factor", &last_layer_factor, "Factor that "
                 "reduces the target relative learning rate for last layer.");
+    po.Register("retroactive", &retroactive, "If true, scale the parameter "
+                "differences as well.");
 
     po.Read(argc, argv);
 
@@ -180,6 +183,17 @@ int main(int argc, char *argv[]) {
     nnet_learning_rates.Scale(target_geometric_mean / cur_geometric_mean);
     KALDI_LOG << "New learning rates for current model per layer are "
               << nnet_learning_rates;
+
+    // Changes the parameter differences if --retroactivate is set to true.
+    if (retroactive) {
+      Vector<BaseFloat> scale_factors(nnet_learning_rates);
+      scale_factors.DivElements(prev_nnet_learning_rates);
+      am_cur_nnet.GetNnet().AddNnet(-1.0, am_prev_nnet.GetNnet());
+      am_cur_nnet.GetNnet().ScaleComponents(scale_factors);
+      am_cur_nnet.GetNnet().AddNnet(1.0, am_prev_nnet.GetNnet());
+      KALDI_LOG << "Scale parameter difference retroactively. Scaling factors "
+                << "are " << scale_factors;
+    }
 
     // Sets learning rates and writes updated model.
     am_cur_nnet.GetNnet().SetLearningRates(nnet_learning_rates);

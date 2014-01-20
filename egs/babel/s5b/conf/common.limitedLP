@@ -9,6 +9,7 @@ dnn_mixup=5000
 
 dnn_mpe_learning_rate=0.00009
 dnn_mpe_last_layer_factor=0.1
+dnn_mpe_retroactive=true
 
 bnf_every_nth_frame=1 # take all frames.
 babel_type=limited
