@@ -59,8 +59,8 @@ int main(int argc, char *argv[]) {
                 "update: subset of mvwt.");
     po.Register("perturb-factor", &perturb_factor, "While mixing up, perturb "
                 "means by standard deviation times this factor.");
-    po.Register("write-occs", &occs_out_filename, "File to write state "
-                "occupancies to.");
+    po.Register("write-occs", &occs_out_filename, "File to write pdf "
+                "occupation counts to.");
     tcfg.Register(&po);
     gmm_opts.Register(&po);
 
@@ -117,22 +117,23 @@ int main(int argc, char *argv[]) {
                 << (tot_like/tot_t) << " over " << tot_t << " frames.";
     }
 
-    if (mixup != 0 || mixdown != 0 || !occs_out_filename.empty()) {  // get state occs
-      Vector<BaseFloat> state_occs;
-      state_occs.Resize(gmm_accs.NumAccs());
+    if (mixup != 0 || mixdown != 0 || !occs_out_filename.empty()) {
+      // get pdf occupation counts
+      Vector<BaseFloat> pdf_occs;
+      pdf_occs.Resize(gmm_accs.NumAccs());
       for (int i = 0; i < gmm_accs.NumAccs(); i++)
-        state_occs(i) = gmm_accs.GetAcc(i).occupancy().Sum();
+        pdf_occs(i) = gmm_accs.GetAcc(i).occupancy().Sum();
 
       if (mixdown != 0)
-        am_gmm.MergeByCount(state_occs, mixdown, power, min_count);
+        am_gmm.MergeByCount(pdf_occs, mixdown, power, min_count);
 
       if (mixup != 0)
-        am_gmm.SplitByCount(state_occs, mixup, perturb_factor,
+        am_gmm.SplitByCount(pdf_occs, mixup, perturb_factor,
                             power, min_count);
 
       if (!occs_out_filename.empty()) {
         bool binary = false;
-        WriteKaldiObject(state_occs, occs_out_filename, binary);
+        WriteKaldiObject(pdf_occs, occs_out_filename, binary);
       }
     }
 

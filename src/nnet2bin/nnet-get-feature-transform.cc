@@ -32,8 +32,13 @@ int main(int argc, char *argv[]) {
 
     bool binary = true;
     FeatureTransformEstimateOptions opts;
+    std::string write_cholesky;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write accumulators in binary mode.");
+    po.Register("write-cholesky", &write_cholesky, "If supplied, write to this "
+                "wxfilename the Cholesky factor of the within-class covariance."
+                "Can be used for perturbing features.  E.g. "
+                "--write-cholesky=exp/nnet5/cholesky.tpmat");
     opts.Register(&po);
     po.Read(argc, argv);
 
@@ -52,9 +57,11 @@ int main(int argc, char *argv[]) {
     }
 
     Matrix<BaseFloat> mat;
-    fte.Estimate(opts, &mat);
+    TpMatrix<BaseFloat> cholesky;
+    fte.Estimate(opts, &mat, write_cholesky != "" ? &cholesky : NULL);
     WriteKaldiObject(mat, projection_wxfilename, binary);
-    
+    if (write_cholesky != "")
+      WriteKaldiObject(cholesky, write_cholesky, binary);
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
