@@ -117,6 +117,70 @@ class Splice : public Component {
   Component* Copy() const { return new Splice(*this); }
   ComponentType GetType() const { return kSplice; }
 
+  void InitData(std::istream &is) {
+    // define options
+    std::vector<int32> frame_offsets;
+    std::vector<std::vector<int32> > build_vector;
+    // parse config
+    std::string token; 
+    while (!is.eof()) {
+      ReadToken(is, false, &token); 
+      /**/ if (token == "<ReadVector>") {
+        ReadIntegerVector(is, false, &frame_offsets);
+      } else if (token == "<BuildVector>") { 
+        // <BuildVector> 1:1:1000 1:1:1000 1 2 3 1:10 </BuildVector> [matlab indexing]
+        // read the colon-separated-lists:
+        while (!is.eof()) { 
+          std::string colon_sep_list_or_end;
+          ReadToken(is, false, &colon_sep_list_or_end);
+          if (colon_sep_list_or_end == "</BuildVector>") break;
+          std::vector<int32> v;
+          SplitStringToIntegers(colon_sep_list_or_end, ":", false, &v);
+          build_vector.push_back(v);
+        }
+      } else {
+        KALDI_ERR << "Unknown token " << token << ", a typo in config?"
+                  << " (ReadVector|BuildVector)";
+      }
+      is >> std::ws; // eat-up whitespace
+    }
+
+    // build the vector, using <BuildVector> ... </BuildVector> inputs
+    if (build_vector.size() > 0) {
+      for (int32 i=0; i<build_vector.size(); i++) {
+        switch (build_vector[i].size()) {
+          case 1:
+            frame_offsets.push_back(build_vector[i][0]);
+            break;
+          case 2: { // assuming step 1
+            int32 min=build_vector[i][0], max=build_vector[i][1];
+            KALDI_ASSERT(min <= max);
+            for (int32 j=min; j<=max; j++) {
+              frame_offsets.push_back(j);
+            }}
+            break;
+          case 3: { // step can be negative -> flipped min/max
+            int32 min=build_vector[i][0], step=build_vector[i][1], max=build_vector[i][2];
+            KALDI_ASSERT((min <= max && step > 0) || (min >= max && step < 0));
+            for (int32 j=min; j<=max; j += step) {
+              frame_offsets.push_back(j);
+            }}
+            break;
+          case 0:
+          default: 
+            KALDI_ERR << "Error parsing <BuildVector>";
+        }
+      }
+    }
+    
+    // copy to GPU
+    frame_offsets_ = frame_offsets;
+
+    // check dim
+    KALDI_ASSERT(frame_offsets_.Dim()*InputDim() == OutputDim());
+  }
+
+
   void ReadData(std::istream &is, bool binary) {
     std::vector<int32> frame_offsets;
     ReadIntegerVector(is, binary, &frame_offsets);
