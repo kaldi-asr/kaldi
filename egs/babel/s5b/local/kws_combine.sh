@@ -58,7 +58,7 @@ duration=`head -1 $ecf |\
 
 mkdir -p $odir/log
 
-weight=`echo "scale=2; 1/$num_sys" | bc`
+weight=$(perl -e "print (1.0/$num_sys);")
 systems=""
 for i in `seq 0 $[num_sys-1]`; do
   if [ -f ${decode_dirs[$i]} ] ; then
