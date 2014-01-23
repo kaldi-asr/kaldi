@@ -22,6 +22,7 @@
 #include "util/common-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/phone-align-lattice.h"
+#include "lat/lattice-functions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -80,6 +81,7 @@ int main(int argc, char *argv[]) {
         else {
           if (aligned_clat.Start() != fst::kNoStateId) {
             KALDI_LOG << "Outputting partial lattice for " << key;
+            TopSortCompactLatticeIfNeeded(&aligned_clat);
             clat_writer.Write(key, aligned_clat);
           }
         }
@@ -90,6 +92,7 @@ int main(int argc, char *argv[]) {
         } else {
           num_done++;
           KALDI_VLOG(2) << "Aligned lattice for " << key;
+          TopSortCompactLatticeIfNeeded(&aligned_clat);
           clat_writer.Write(key, aligned_clat);
         }
       }

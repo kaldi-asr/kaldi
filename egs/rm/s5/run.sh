@@ -8,11 +8,11 @@
 # subdirectories named as follows:
 #    rm1_audio1  rm1_audio2	rm2_audio
 
-#local/rm_data_prep.sh /mnt/matylda2/data/RM || exit 1;
+local/rm_data_prep.sh /mnt/matylda2/data/RM || exit 1;
 
 #local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp || exit 1;
 
-local/rm_data_prep.sh /home/dpovey/data/LDC93S3A/rm_comp || exit 1;
+#local/rm_data_prep.sh /home/dpovey/data/LDC93S3A/rm_comp || exit 1;
 
 utils/prepare_lang.sh data/local/dict '!SIL' data/local/lang data/lang || exit 1;
 
@@ -97,6 +97,8 @@ steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 steps/align_si.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
    data/train data/lang exp/tri2b exp/tri2b_ali || exit 1;
 
+false && \
+{
 #  Do MMI on top of LDA+MLLT.
 steps/make_denlats.sh --nj 8 --cmd "$train_cmd" \
   data/train data/lang exp/tri2b exp/tri2b_denlats || exit 1;
@@ -120,7 +122,7 @@ steps/decode.sh --config conf/decode.config --iter 4 --nj 20 --cmd "$decode_cmd"
    exp/tri2b/graph data/test exp/tri2b_mpe/decode_it4 || exit 1;
 steps/decode.sh --config conf/decode.config --iter 3 --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b_mpe/decode_it3 || exit 1;
-
+}
 
 ## Do LDA+MLLT+SAT, and decode.
 steps/train_sat.sh 1800 9000 data/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
@@ -139,6 +141,11 @@ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 steps/align_fmllr.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
   data/train data/lang exp/tri3b exp/tri3b_ali || exit 1;
 
+local/run_dnn.sh || exit 1;
+
+
+false && \
+{
 ## MMI on top of tri3b (i.e. LDA+MLLT+SAT+MMI)
 steps/make_denlats.sh --config conf/decode.config \
    --nj 8 --cmd "$train_cmd" --transform-dir exp/tri3b_ali \
@@ -198,3 +205,4 @@ local/run_sgmm2.sh
 # The following script depends on local/run_raw_fmllr.sh having been run.
 #
 # local/run_nnet2.sh
+}
