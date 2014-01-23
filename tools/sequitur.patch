@@ -1,0 +1,113 @@
+--- g2p/Utility.cc	2013-04-22 17:59:44.507473917 -0400
++++ Utility.cc	2013-04-22 17:56:57.862944655 -0400
+@@ -31,6 +31,7 @@
+ #include <iomanip>
+ #include <iostream>
+ #include <string>
++#include <cstdio>
+ 
+ using namespace Core;
+
+--- g2p/setup.py	2011-08-03 09:38:38.000000000 -0400
++++ setup.py	2013-04-22 18:50:58.158946383 -0400
+@@ -33,7 +33,7 @@
+     '_sequitur_',
+     language = 'c++',
+     define_macros=[
+-	('MULTIGRAM_SIZE', '2')],
++	('MULTIGRAM_SIZE', '5')],
+     sources = [
+ 	'sequitur.i',
+ 	'Assertions.cc',
+--- g2p/PriorityQueue.hh	2011-08-03 09:38:18.000000000 -0400
++++ PriorityQueue.hh	2014-01-23 12:10:24.209785867 -0500
+@@ -65,7 +65,7 @@
+ 	/** Remove top-most item */
+ 	void pop() {
+ 	    require(!Precursor::empty());
+-	    move(1, Precursor::size());
++	    this->move(1, Precursor::size());
+ 	    Precursor::deleteLast();
+ 	    if (Precursor::size() > 0) downHeap(1);
+ 	    verify_(invariant());
+@@ -83,7 +83,7 @@
+ 
+ 	/** Insert new item */
+ 	void insert(const Item &e) {
+-	    append(e);
++	    this->append(e);
+ 	    upHeap(Precursor::size()) ;
+ 	    verify_(invariant());
+ 	    //if (size() > maxSize_) deleteLast();
+@@ -94,33 +94,33 @@
+     void PriorityQueueBase<H, PF>::downHeap(Index i) {
+ 	require(1 <= i && i <= Precursor::size());
+ 	Index j;
+-	Item e = item(i);
++	Item e = this->item(i);
+ 	while (i <= Precursor::size() / 2) {
+ 	    j = 2 * i;
+-	    if (j < Precursor::size() && precedes_(item(j+1), item(j))) j = j + 1;
+-	    if (!precedes_(item(j), e)) break;
+-	    move(i, j);
++	    if (j < Precursor::size() && precedes_(this->item(j+1), this->item(j))) j = j + 1;
++	    if (!precedes_(this->item(j), e)) break;
++	    this->move(i, j);
+ 	    i = j;
+ 	}
+-	put(i, e);
++	this->put(i, e);
+     }
+ 
+     template <class H, class PF>
+     void PriorityQueueBase<H, PF>::upHeap(Index i) {
+ 	require(1 <= i && i <= Precursor::size());
+-	Item e = item(i);
+-	while (i > 1 && !precedes_(item(i/2), e)) {
+-	    move(i, i/2);
++	Item e = this->item(i);
++	while (i > 1 && !precedes_(this->item(i/2), e)) {
++	    this->move(i, i/2);
+ 	    i /= 2;
+ 	}
+-	put(i, e);
++	this->put(i, e);
+     }
+ 
+     template <class H, class PF>
+     bool PriorityQueueBase<H, PF>::invariant() const {
+ 	if (!Precursor::invariant()) return false;
+ 	for (Index i = 2 ; i < Precursor::size() ; ++i)
+-	    if (precedes_(item(i), item(i/2)))
++	    if (precedes_(this->item(i), this->item(i/2)))
+ 		return false;
+ 	return true;
+     }
+@@ -242,9 +242,9 @@
+ 	    Precursor(precedes, maxSize) {}
+ 
+ 	void insert(const typename Precursor::Item &e) {
+-	    require(!contains(key_(e)));
++	    require(!this->contains(this->key_(e)));
+ 	    Precursor::insert(e) ;
+-	    ensure(contains(key_(e))) ;
++	    ensure(this->contains(this->key_(e))) ;
+ 	}
+ 
+ 	void changeTop(const typename Precursor::Item &e) {
+@@ -289,11 +289,11 @@
+ 	 * given item dropped, and the stack is unchanged.
+ 	 */
+ 	bool insertOrRelax(const typename Precursor::Item &e) {
+-	    if (contains(key_(e))) {
+-		typename Precursor::Index i = Precursor::map_[key_(e)] ;
+-		if (precedes_(e, Precursor::heap_[i])) {
++	    if (this->contains(this->key_(e))) {
++		typename Precursor::Index i = Precursor::map_[this->key_(e)] ;
++		if (this->precedes_(e, Precursor::heap_[i])) {
+ 		    Precursor::heap_[i] = e;
+-		    upHeap(i);
++		    this->upHeap(i);
+ 		    verify_(invariant());
+ 		} else return false;
+ 	    } else insert(e);
