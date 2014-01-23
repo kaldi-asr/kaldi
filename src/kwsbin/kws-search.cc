@@ -194,28 +194,28 @@ int main(int argc, char *argv[]) {
         keyword = tmp;
       }
 
-      KwsLexicographicFst kFst;
-      KwsLexicographicFst rFst;
-      Map(keyword, &kFst, VectorFstToKwsLexicographicFstMapper());
-      Compose(kFst, index, &rFst);
-      Project(&rFst, PROJECT_OUTPUT);
-      Minimize(&rFst);
-      ShortestPath(rFst, &rFst, n_best);
-      RmEpsilon(&rFst);
+      KwsLexicographicFst keyword_fst;
+      KwsLexicographicFst result_fst;
+      Map(keyword, &keyword_fst, VectorFstToKwsLexicographicFstMapper());
+      Compose(keyword_fst, index, &result_fst);
+      Project(&result_fst, PROJECT_OUTPUT);
+      Minimize(&result_fst);
+      ShortestPath(result_fst, &result_fst, n_best);
+      RmEpsilon(&result_fst);
 
       // No result found
-      if (rFst.Start() == kNoStateId)
+      if (result_fst.Start() == kNoStateId)
         continue;
 
       // Got something here
       double score;
       int32 tbeg, tend, uid;
       for (ArcIterator<KwsLexicographicFst> 
-           aiter(rFst, rFst.Start()); !aiter.Done(); aiter.Next()) {
+           aiter(result_fst, result_fst.Start()); !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
 
         // We're expecting a two-state FST
-        if (rFst.Final(arc.nextstate) != Weight::One()) {
+        if (result_fst.Final(arc.nextstate) != Weight::One()) {
           KALDI_WARN << "The resulting FST does not have the expected structure for key " << key;
           n_fail++;
           continue;
