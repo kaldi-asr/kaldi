@@ -499,6 +499,11 @@ class MatrixBase {
                  const MatrixBase<Real>& A, MatrixTransposeType transA,
                  const MatrixBase<Real>& B, MatrixTransposeType transB,
                  const Real beta);
+ 
+  /// *this = a * b / c (by element; when c = 0, *this = a)
+  void AddMatMatDivMat(const MatrixBase<Real>& A,
+             	       const MatrixBase<Real>& B,
+                       const MatrixBase<Real>& C);
 
   /// A version of AddMatMat specialized for when the second argument
   /// contains a lot of zeroes.
@@ -799,6 +804,9 @@ bool ReadHtk(std::istream &is, Matrix<Real> *M, HtkHeader *header_ptr);
 template<typename Real>
 bool WriteHtk(std::ostream &os, const MatrixBase<Real> &M, HtkHeader htk_hdr);
 
+// Write (CMUSphinx format) features to file from matrix.
+template<typename Real>
+bool WriteSphinx(std::ostream &os, const MatrixBase<Real> &M);
 
 /// @} end of "addtogroup matrix_funcs_io"
 

@@ -103,9 +103,10 @@ int main(int argc, char *argv[]) {
     po.Register("nbest", &n_best, "Return the best n hypotheses.");
     po.Register("keyword-nbest", &keyword_nbest,
                 "Pick the best n keywords if the FST contains multiple keywords.");
-    po.Register("strict", &strict, "Will allow 0 lattice if it is set to false.");
+    po.Register("strict", &strict, "Affects the return status of the program.");
     po.Register("negative-tolerance", &negative_tolerance, 
-                "The program will die if we get negative score smaller than the tolerance.");
+                "The program will print a warning if we get negative score smaller "
+                "than this tolerance.");
     po.Register("keyword-beam", &keyword_beam,
                 "Prune the FST with the given beam if the FST contains multiple keywords.");
 
@@ -193,42 +194,43 @@ int main(int argc, char *argv[]) {
         keyword = tmp;
       }
 
-      KwsLexicographicFst kFst;
-      KwsLexicographicFst rFst;
-      Map(keyword, &kFst, VectorFstToKwsLexicographicFstMapper());
-      Compose(kFst, index, &rFst);
-      Project(&rFst, PROJECT_OUTPUT);
-      Minimize(&rFst);
-      ShortestPath(rFst, &rFst, n_best);
-      RmEpsilon(&rFst);
+      KwsLexicographicFst keyword_fst;
+      KwsLexicographicFst result_fst;
+      Map(keyword, &keyword_fst, VectorFstToKwsLexicographicFstMapper());
+      Compose(keyword_fst, index, &result_fst);
+      Project(&result_fst, PROJECT_OUTPUT);
+      Minimize(&result_fst);
+      ShortestPath(result_fst, &result_fst, n_best);
+      RmEpsilon(&result_fst);
 
       // No result found
-      if (rFst.Start() == kNoStateId)
+      if (result_fst.Start() == kNoStateId)
         continue;
 
       // Got something here
       double score;
       int32 tbeg, tend, uid;
       for (ArcIterator<KwsLexicographicFst> 
-           aiter(rFst, rFst.Start()); !aiter.Done(); aiter.Next()) {
-        Arc arc = aiter.Value();
-        Weight weight = arc.weight;
+           aiter(result_fst, result_fst.Start()); !aiter.Done(); aiter.Next()) {
+        const Arc &arc = aiter.Value();
 
         // We're expecting a two-state FST
-        if (rFst.Final(arc.nextstate) == Weight::Zero()) {
-          KALDI_WARN << "The resulting FST is not a two-state FST for key " << key;
+        if (result_fst.Final(arc.nextstate) != Weight::One()) {
+          KALDI_WARN << "The resulting FST does not have the expected structure for key " << key;
           n_fail++;
           continue;
         }
 
         uint64 osymbol = label_decoder[arc.olabel];
         uid = (int32)DecodeLabelUid(osymbol);
-        tbeg = weight.Value2().Value1().Value();
-        tend = weight.Value2().Value2().Value();
-        score = weight.Value1().Value();
+        tbeg = arc.weight.Value2().Value1().Value();
+        tend = arc.weight.Value2().Value2().Value();
+        score = arc.weight.Value1().Value();
 
         if (score < 0) {
-          KALDI_ASSERT(score >= negative_tolerance);
+          if (score < negative_tolerance) {
+            KALDI_WARN << "Score out of expected range: " << score;
+          }
           score = 0.0;
         }
         vector<double> result;

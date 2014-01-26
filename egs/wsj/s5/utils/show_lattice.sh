@@ -17,7 +17,7 @@ uttid=$1
 lat=$2
 words=$3
 
-tmpdir=$(mktemp -d); trap "rm -r $tmpdir" EXIT # cleanup
+tmpdir=$(mktemp -d); # trap "rm -r $tmpdir" EXIT # cleanup
 
 gunzip -c $lat | lattice-to-fst ark:- "scp,p:echo $uttid $tmpdir/$uttid.fst|" || exit 1;
 ! [ -s $tmpdir/$uttid.fst ] && \

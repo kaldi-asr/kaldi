@@ -54,6 +54,9 @@ class CuDevice {
   void* MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch);
   
   void Free(void *ptr);
+
+  /// Disable GPU memory caching
+  void DisableCaching();
   
   /// Select a GPU for computation, the 'use_gpu' modes are:
   ///  "yes"      -- Select GPU automatically and die if this fails.

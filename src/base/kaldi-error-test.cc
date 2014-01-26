@@ -45,7 +45,7 @@ int main() {
   kaldi::g_program_name = "/foo/bar/kaldi-error-test";
   try {
     kaldi::UnitTestError();
-    assert(0);  // should not happen.
+    KALDI_ASSERT(0);  // should not happen.
   } catch (std::runtime_error &r) {
     std::cout << "UnitTestError: the error we generated was: " << r.what();
   }

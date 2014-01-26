@@ -82,8 +82,8 @@ class NBestDecoder {
   // instantiate this class once for each thing you have to decode.
   NBestDecoder(const fst::Fst<fst::StdArc> &fst,
                NBestDecoderOptions opts): fst_(fst), opts_(opts) {
-    assert(opts_.hash_ratio >= 1.0);  // less doesn't make much sense.
-    assert(opts_.max_active > 1);
+    KALDI_ASSERT(opts_.hash_ratio >= 1.0);  // less doesn't make much sense.
+    KALDI_ASSERT(opts_.max_active > 1);
     toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
     decodable_ = NULL;
   }
@@ -102,7 +102,7 @@ class NBestDecoder {
     ClearToks(toks_.Clear());
     token_store_.Init(decodable, &toks_, opts_.n_best);
     StateId start_state = fst_.Start();
-    assert(start_state != fst::kNoStateId);
+    KALDI_ASSERT(start_state != fst::kNoStateId);
     Token *tok = token_store_.CreateTok(0, NULL);
     tok->c = Weight::One();
     tok->ca = Weight::One();
@@ -380,7 +380,7 @@ class NBestDecoder {
     }
 
     inline Token* Combine(Token *tok1, Token *tok2) { // Viterbi version
-      assert(tok1);
+      KALDI_ASSERT(tok1);
       if (!tok2) return tok1;
       if (tok1 == tok2) return tok1;
       if (tok1->c.Value() < tok2->c.Value()) {
@@ -593,7 +593,7 @@ class NBestDecoder {
       Token *tok = e->val;
       if (tok->c.Value() < weight_cutoff) {  // not pruned.
         // np++;
-        // assert(state == tok->arc_.nextstate);
+        // KALDI_ASSERT(state == tok->arc_.nextstate);
         for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
              !aiter.Done(); aiter.Next()) {
           // for all a in A(state)    
@@ -623,7 +623,7 @@ class NBestDecoder {
   void PropagateEpsilon(BaseFloat adaptive_beam) {
     // Processes nonemitting arcs for one frame.  Propagates within
     // cur_toks_.
-    assert(queue_.empty());
+    KALDI_ASSERT(queue_.empty());
     queue_.max_load_factor(1.0);
     float best_weight = 1.0e+10;
     for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
@@ -651,8 +651,8 @@ class NBestDecoder {
         if (tok->c.Value() > cutoff) {  // Don't bother processing successors.
           continue;
         }
-        // assert(tok != NULL && state == tok->arc_.nextstate);
-        assert(tok != NULL);
+        // KALDI_ASSERT(tok != NULL && state == tok->arc_.nextstate);
+        KALDI_ASSERT(tok != NULL);
         for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
              !aiter.Done(); aiter.Next()) {
           // for all a in A(state)

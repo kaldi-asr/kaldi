@@ -49,7 +49,7 @@ bool ReadScriptFile(const std::string &rxfilename,
 bool ReadScriptFile(std::istream &is,
                     bool warn,
                     std::vector<std::pair<std::string, std::string> > *script_out) {
-  assert(script_out != NULL);
+  KALDI_ASSERT(script_out != NULL);
   std::string line;
   int line_number = 0;
   while (getline(is, line)) {

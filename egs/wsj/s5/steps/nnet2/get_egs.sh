@@ -152,6 +152,16 @@ samples_per_iter_real=$[$num_frames/($num_jobs_nnet*$iters_per_epoch)]
 echo "$0: Every epoch, splitting the data up into $iters_per_epoch iterations,"
 echo "$0: giving samples-per-iteration of $samples_per_iter_real (you requested $samples_per_iter)."
 
+# Making soft links to storage directories.
+for x in `seq 1 $num_jobs_nnet`; do
+  for y in `seq 0 $[$iters_per_epoch-1]`; do
+    utils/create_data_link.pl $dir/egs/egs.$x.$y.ark
+    utils/create_data_link.pl $dir/egs/egs_tmp.$x.$y.ark
+  done
+  for y in `seq 1 $nj`; do
+    utils/create_data_link.pl $dir/egs/egs_orig.$x.$y.ark
+  done
+done
 
 nnet_context_opts="--left-context=$splice_width --right-context=$splice_width"
 mkdir -p $dir/egs

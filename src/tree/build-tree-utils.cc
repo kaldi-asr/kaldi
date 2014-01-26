@@ -44,8 +44,8 @@ void WriteBuildTreeStats(std::ostream &os, bool binary, const BuildTreeStatsType
 
 
 void ReadBuildTreeStats(std::istream &is, bool binary, const Clusterable &example, BuildTreeStatsType *stats) {
-  assert(stats != NULL);
-  assert(stats->empty());
+  KALDI_ASSERT(stats != NULL);
+  KALDI_ASSERT(stats->empty());
   ExpectToken(is, binary, "BTS");
   uint32 size;
   ReadBasicType(is, binary, &size);
@@ -90,7 +90,7 @@ static void GetEventKeys(const EventType &vec, std::vector<EventKeyType> *keys) 
 // recall:
 // typedef std::vector<std::pair<EventType, Clusterable*> > BuildTreeStatsType;
 void FindAllKeys(const BuildTreeStatsType &stats, AllKeysType keys_type, std::vector<EventKeyType> *keys_out) {
-  assert(keys_out != NULL);
+  KALDI_ASSERT(keys_out != NULL);
   BuildTreeStatsType::const_iterator iter = stats.begin(), end = stats.end();
   if (iter == end) return;  // empty set of keys.
   std::vector<EventKeyType> keys;
@@ -110,7 +110,7 @@ void FindAllKeys(const BuildTreeStatsType &stats, AllKeysType keys_type, std::ve
       new_keys.erase(end_iter, new_keys.end());
       keys = new_keys;
     } else {  // union.
-      assert(keys_type == kAllKeysUnion);
+      KALDI_ASSERT(keys_type == kAllKeysUnion);
       std::vector<EventKeyType> new_keys(keys.size()+keys2.size());
       // following line relies on sorted order of event keys.
       std::vector<EventKeyType>::iterator end_iter =
@@ -135,8 +135,8 @@ EventMap *DoTableSplit(const EventMap &orig, EventKeyType key,  const BuildTreeS
       // first work out the possible values the name takes.
       std::vector<EventValueType> vals;  // vals are put here, sorted.
       bool all_present = PossibleValues(key, split_stats[leaf], &vals);
-      assert(all_present);  // currently do not support mapping undefined values.
-      assert(!vals.empty() && vals.front() >= 0);  // don't support mapping negative values
+      KALDI_ASSERT(all_present);  // currently do not support mapping undefined values.
+      KALDI_ASSERT(!vals.empty() && vals.front() >= 0);  // don't support mapping negative values
       // at present time-- would need different EventMap type, not TableEventMap.
       std::vector<EventMap*> table(vals.back()+1, (EventMap*)NULL);
       for (size_t idx = 0;idx < vals.size();idx++) {
@@ -171,7 +171,7 @@ EventMap *DoTableSplitMultiple(const EventMap &orig, const std::vector<EventKeyT
 
 void SplitStatsByMap(const BuildTreeStatsType &stats, const EventMap &e, std::vector<BuildTreeStatsType> *stats_out) {
   BuildTreeStatsType::const_iterator iter, end = stats.end();
-  assert(stats_out != NULL);
+  KALDI_ASSERT(stats_out != NULL);
   stats_out->clear();
   size_t size = 0;
   for (iter = stats.begin(); iter != end; ++iter) {
@@ -190,14 +190,14 @@ void SplitStatsByMap(const BuildTreeStatsType &stats, const EventMap &e, std::ve
     const EventType &evec = iter->first;
     EventAnswerType ans;
     bool b = e.Map(evec, &ans);
-    assert(b);
+    KALDI_ASSERT(b);
     (*stats_out)[ans].push_back(*iter);
   }
 }
 
 void SplitStatsByKey(const BuildTreeStatsType &stats_in, EventKeyType key, std::vector<BuildTreeStatsType> *stats_out) {
   BuildTreeStatsType::const_iterator iter, end = stats_in.end();
-  assert(stats_out != NULL);
+  KALDI_ASSERT(stats_out != NULL);
   stats_out->clear();
   size_t size = 0;
   // This loop works out size of output vector.
@@ -225,9 +225,9 @@ void FilterStatsByKey(const BuildTreeStatsType &stats_in,
                       bool include_if_present,  // true-> retain only in "values",
                       // false-> retain only not in "values".
                       BuildTreeStatsType *stats_out) {
-  assert(IsSortedAndUniq(values));
+  KALDI_ASSERT(IsSortedAndUniq(values));
   BuildTreeStatsType::const_iterator iter, end = stats_in.end();
-  assert(stats_out != NULL);
+  KALDI_ASSERT(stats_out != NULL);
   stats_out->clear();
 
   for (iter = stats_in.begin(); iter != end; ++iter) {
@@ -277,7 +277,7 @@ BaseFloat SumObjf(const BuildTreeStatsType &stats_in) {
 
 
 void SumStatsVec(const std::vector<BuildTreeStatsType> &stats_in, std::vector<Clusterable*> *stats_out) {
-  assert(stats_out != NULL && stats_out->empty());
+  KALDI_ASSERT(stats_out != NULL && stats_out->empty());
   stats_out->resize(stats_in.size(), NULL);
   for (size_t i = 0;i < stats_in.size();i++) (*stats_out)[i] = SumStats(stats_in[i]);
 }
@@ -297,7 +297,7 @@ BaseFloat ObjfGivenMap(const BuildTreeStatsType &stats_in, const EventMap &e) {
 BaseFloat ComputeInitialSplit(const std::vector<Clusterable*> &summed_stats,
                               const Questions &q_opts, EventKeyType key,
                               std::vector<EventValueType> *yes_set) {
-  assert(yes_set != NULL);
+  KALDI_ASSERT(yes_set != NULL);
   yes_set->clear();
   const QuestionsForKey &key_opts = q_opts.GetQuestionsOf(key);
 
@@ -317,7 +317,7 @@ BaseFloat ComputeInitialSplit(const std::vector<Clusterable*> &summed_stats,
     std::vector<int32> assignments(summed_stats.size(), 0);  // 0 is index of "no".
     std::vector<Clusterable*> clusters(2);  // no and yes clusters.
     for (std::vector<EventValueType>::const_iterator iter = yes_set.begin(); iter != yes_set.end(); iter++) {
-      assert(*iter>=0);
+      KALDI_ASSERT(*iter>=0);
       if (*iter < (EventValueType)assignments.size()) assignments[*iter] = 1;
     }
     kaldi::AddToClustersOptimized(summed_stats, assignments, *total, &clusters);
@@ -326,7 +326,7 @@ BaseFloat ComputeInitialSplit(const std::vector<Clusterable*> &summed_stats,
     if (this_objf < unsplit_objf- 0.001*std::abs(unsplit_objf)) {  // got worse; should never happen.
       // of course small differences can be caused by roundoff.
       KALDI_WARN << "Objective function got worse when building tree: "<< this_objf << " < " << unsplit_objf;
-      assert(!(this_objf < unsplit_objf - 0.01*(200 + std::abs(unsplit_objf))));  // do assert on more stringent check.
+      KALDI_ASSERT(!(this_objf < unsplit_objf - 0.01*(200 + std::abs(unsplit_objf))));  // do assert on more stringent check.
     }
 
     BaseFloat this_objf_change = this_objf - unsplit_objf;
@@ -368,7 +368,7 @@ BaseFloat FindBestSplitForKey(const BuildTreeStatsType &stats,
 
   std::vector<int32> assignments(summed_stats.size(), 0);  // assigns to "no" (0) by default.
   for (std::vector<EventValueType>::const_iterator iter = yes_set.begin(); iter != yes_set.end(); iter++) {
-    assert(*iter>=0);
+    KALDI_ASSERT(*iter>=0);
     if (*iter < (EventValueType)assignments.size()) {
       // this guard necessary in case stats did not have all the
       // values present in "yes_set".
@@ -393,7 +393,7 @@ BaseFloat FindBestSplitForKey(const BuildTreeStatsType &stats,
     // zero iters.
     BaseFloat refine_impr = RefineClusters(summed_stats, &clusters, &assignments,
                                            q_opts.GetQuestionsOf(key).refine_opts);
-    assert(refine_impr > std::min(-1.0, -0.1*fabs(improvement)));
+    KALDI_ASSERT(refine_impr > std::min(-1.0, -0.1*fabs(improvement)));
     // refine_impr should always be positive
     improvement += refine_impr;
     yes_set.clear();
@@ -404,7 +404,7 @@ BaseFloat FindBestSplitForKey(const BuildTreeStatsType &stats,
   DeletePointers(&clusters);
 #ifdef KALDI_PARANOID
   {  // Check the "ans" is correct.
-    assert(clusters.size() == 2 && clusters[0] == 0 && clusters[1] == 0);
+    KALDI_ASSERT(clusters.size() == 2 && clusters[0] == 0 && clusters[1] == 0);
     AddToClusters(summed_stats, assignments, &clusters);
     BaseFloat impr;
     if (clusters[0] == NULL || clusters[1] == NULL) impr = 0.0;
@@ -456,8 +456,8 @@ class DecisionTreeSplitter {
  private:
   void DoSplitInternal(int32 *next_leaf) {
     // Does the split; applicable only to leaf nodes.
-    assert(!yes_);  // make sure children not already set up.
-    assert(best_split_impr_ > 0);
+    KALDI_ASSERT(!yes_);  // make sure children not already set up.
+    KALDI_ASSERT(best_split_impr_ > 0);
     EventAnswerType yes_leaf = leaf_, no_leaf = (*next_leaf)++;
     leaf_ = -1;  // we now have no leaf.
     // Now split the stats.
@@ -537,7 +537,7 @@ EventMap *SplitDecisionTree(const EventMap &input_map,
                             int32 *num_leaves,
                             BaseFloat *obj_impr_out,
                             BaseFloat *smallest_split_change_out) {
-  assert(num_leaves != NULL && *num_leaves > 0);  // can't be 0 or input_map would be empty.
+  KALDI_ASSERT(num_leaves != NULL && *num_leaves > 0);  // can't be 0 or input_map would be empty.
   int32 num_empty_leaves = 0;
   BaseFloat like_impr = 0.0;
   BaseFloat smallest_split_change = 1.0e+20;
@@ -546,7 +546,7 @@ EventMap *SplitDecisionTree(const EventMap &input_map,
     // the structures generated during splitting remain as trees at each array location.
     std::vector<BuildTreeStatsType> split_stats;
     SplitStatsByMap(stats, input_map, &split_stats);
-    assert(split_stats.size() != 0);
+    KALDI_ASSERT(split_stats.size() != 0);
     builders.resize(split_stats.size());  // size == #leaves.
     for (size_t i = 0;i < split_stats.size();i++) {
       EventAnswerType leaf = static_cast<EventAnswerType>(i);
@@ -597,7 +597,7 @@ EventMap *SplitDecisionTree(const EventMap &input_map,
 
 int ClusterEventMapGetMapping(const EventMap &e_in, const BuildTreeStatsType &stats, BaseFloat thresh, std::vector<EventMap*> *mapping) {
   // First map stats
-  assert(stats.size() != 0);
+  KALDI_ASSERT(stats.size() != 0);
   std::vector<BuildTreeStatsType> split_stats;
   SplitStatsByMap(stats, e_in, &split_stats);
   std::vector<Clusterable*> summed_stats;
@@ -628,22 +628,22 @@ int ClusterEventMapGetMapping(const EventMap &e_in, const BuildTreeStatsType &st
                            &assignments);  // this algorithm is quadratic, so might be quite slow.
 
 
-  assert(assignments.size() == summed_stats_contiguous.size() && !assignments.empty());
+  KALDI_ASSERT(assignments.size() == summed_stats_contiguous.size() && !assignments.empty());
   size_t num_clust = * std::max_element(assignments.begin(), assignments.end()) + 1;
   int32 num_combined = summed_stats_contiguous.size() - num_clust;
-  assert(num_combined >= 0);
+  KALDI_ASSERT(num_combined >= 0);
 
   KALDI_VLOG(2) <<  "ClusterBottomUp combined "<< num_combined << " leaves and gave a likelihood change of " << change << ", normalized = " << (change/normalizer) << ", normalizer = " << normalizer;
-  assert(change < 0.0001);  // should be negative or zero.
+  KALDI_ASSERT(change < 0.0001);  // should be negative or zero.
 
-  assert(mapping != NULL);
+  KALDI_ASSERT(mapping != NULL);
   if (max_index >= mapping->size()) mapping->resize(max_index+1, NULL);
 
   for (size_t i = 0;i < summed_stats_contiguous.size();i++) {
     size_t index = indexes[i];
     size_t new_index = indexes[assignments[i]];  // index assigned by clusterig-- map to existing indices in the map,
     // that we clustered from, so we don't conflict with indices in other parts of the tree.
-    assert((*mapping)[index] == NULL || "Error: Cluster seems to have been called for different parts of the tree with overlapping sets of indices.");
+    KALDI_ASSERT((*mapping)[index] == NULL || "Error: Cluster seems to have been called for different parts of the tree with overlapping sets of indices.");
     (*mapping)[index] = new ConstantEventMap(new_index);
   }
   DeletePointers(&summed_stats);
@@ -656,7 +656,7 @@ EventMap *RenumberEventMap(const EventMap &e_in, int32 *num_leaves) {
   std::vector<EventAnswerType> initial_leaves;  // before renumbering.
   e_in.MultiMap(empty_vec, &initial_leaves);
   if (initial_leaves.empty()) {
-    assert(num_leaves);
+    KALDI_ASSERT(num_leaves);
     if (num_leaves) *num_leaves = 0;
     return e_in.Copy();
   }
@@ -666,12 +666,12 @@ EventMap *RenumberEventMap(const EventMap &e_in, int32 *num_leaves) {
   std::vector<EventAnswerType>::iterator iter = initial_leaves.begin(), end = initial_leaves.end();
   EventAnswerType cur_leaf = 0;
   for (; iter != end; ++iter) {
-    assert(*iter >= 0 && *iter<max_leaf_plus_one);
+    KALDI_ASSERT(*iter >= 0 && *iter<max_leaf_plus_one);
     mapping[*iter] = new ConstantEventMap(cur_leaf++);
   }
   EventMap *ans = e_in.Copy(mapping);
   DeletePointers(&mapping);
-  assert((size_t)cur_leaf == initial_leaves.size());
+  KALDI_ASSERT((size_t)cur_leaf == initial_leaves.size());
   if (num_leaves) *num_leaves = cur_leaf;
   return ans;
 }
@@ -725,10 +725,10 @@ EventMap *ShareEventMapLeaves(const EventMap &e_in, EventKeyType key,
       // to this value.
       for (size_t j = 1; j < pdfs[i].size(); j++) {
         EventAnswerType leaf = pdfs[i][j];
-        assert(leaf>=0);
+        KALDI_ASSERT(leaf>=0);
         if (remapping.size() <= static_cast<size_t>(leaf))
           remapping.resize(leaf+1, NULL);
-        assert(remapping[leaf] == NULL);
+        KALDI_ASSERT(remapping[leaf] == NULL);
         remapping[leaf] = new ConstantEventMap(map_to_this);
       }
     }
@@ -742,7 +742,7 @@ EventMap *ShareEventMapLeaves(const EventMap &e_in, EventKeyType key,
 
 
 void DeleteBuildTreeStats(BuildTreeStatsType *stats) {
-  assert(stats != NULL);
+  KALDI_ASSERT(stats != NULL);
   BuildTreeStatsType::iterator iter = stats->begin(), end = stats->end();
   for (; iter!= end; ++iter) if (iter->second != NULL) { delete iter->second; iter->second = NULL; } // set to NULL for extra safety.
 }
@@ -859,13 +859,13 @@ EventMap *GetStubMap(int32 P,
                      int32 *num_leaves_out) {
 
   {  // Checking inputs.
-    assert(!phone_sets.empty() && share_roots.size() == phone_sets.size());
+    KALDI_ASSERT(!phone_sets.empty() && share_roots.size() == phone_sets.size());
     std::set<int32> all_phones;
     for (size_t i = 0; i < phone_sets.size(); i++) {
-      assert(IsSortedAndUniq(phone_sets[i]));
-      assert(!phone_sets[i].empty());
+      KALDI_ASSERT(IsSortedAndUniq(phone_sets[i]));
+      KALDI_ASSERT(!phone_sets[i].empty());
       for (size_t j = 0; j < phone_sets[i].size(); j++) {
-        assert(all_phones.count(phone_sets[i][j]) == 0);  // check not present.
+        KALDI_ASSERT(all_phones.count(phone_sets[i][j]) == 0);  // check not present.
         all_phones.insert(phone_sets[i][j]);
       }
     }
@@ -922,7 +922,7 @@ EventMap *GetStubMap(int32 P,
       EventMap *this_stub = GetStubMap(P, phone_sets_tmp, phone2num_pdf_classes,
                                        share_roots_tmp,
                                        num_leaves_out);
-      assert(m.count(phone_sets_tmp[0][0]) == 0);
+      KALDI_ASSERT(m.count(phone_sets_tmp[0][0]) == 0);
       m[phone_sets_tmp[0][0]] = this_stub;
     }
     return new TableEventMap(P, m);
@@ -948,7 +948,7 @@ EventMap *GetStubMap(int32 P,
       for (size_t j = 0; j < phone_sets[i].size(); j++)
         all_in_first_set.push_back(phone_sets[i][j]);
     std::sort(all_in_first_set.begin(), all_in_first_set.end());
-    assert(IsSortedAndUniq(all_in_first_set));
+    KALDI_ASSERT(IsSortedAndUniq(all_in_first_set));
     return new SplitEventMap(P, all_in_first_set, map1, map2);
   }
 }

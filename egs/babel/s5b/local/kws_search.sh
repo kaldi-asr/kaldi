@@ -111,6 +111,7 @@ fi
 
 if [ $stage -le 0 ] ; then
   if [ ! -f $indices_dir/.done.index ] ; then
+    [ ! -d $indices_dir ] && mkdir  $indices_dir
     for lmwt in `seq $min_lmwt $max_lmwt` ; do
         indices=${indices_dir}_$lmwt
         mkdir -p $indices
@@ -125,7 +126,7 @@ if [ $stage -le 0 ] ; then
     touch $indices_dir/.done.index
   else
     echo "Assuming indexing has been aready done. If you really need to re-run "
-    echo "the indexing again, delete the file $kwsoutdir/.done.index"
+    echo "the indexing again, delete the file $indices_dir/.done.index"
   fi
 fi
 

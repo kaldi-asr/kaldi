@@ -26,13 +26,14 @@ namespace kaldi {
 
 
 void FeatureTransformEstimate::Estimate(const FeatureTransformEstimateOptions &opts,
-                                        Matrix<BaseFloat> *M) const { 
+                                        Matrix<BaseFloat> *M,
+                                        TpMatrix<BaseFloat> *C) const { 
   double count;
   Vector<double> total_mean;
   SpMatrix<double> total_covar, between_covar;
   GetStats(&total_covar, &between_covar, &total_mean, &count);
   KALDI_LOG << "Data count is " << count;
-  EstimateInternal(opts, total_covar, between_covar, total_mean, M);
+  EstimateInternal(opts, total_covar, between_covar, total_mean, M, C);
 }
 
 // static
@@ -41,8 +42,9 @@ void FeatureTransformEstimate::EstimateInternal(
     const SpMatrix<double> &total_covar,
     const SpMatrix<double> &between_covar,
     const Vector<double> &total_mean,
-    Matrix<BaseFloat> *M) {
-
+    Matrix<BaseFloat> *M,
+    TpMatrix<BaseFloat> *C) {
+  
   int32 target_dim = opts.dim, dim = total_covar.NumRows();
   KALDI_ASSERT(target_dim > 0);
   // between-class covar is of most rank C-1
@@ -54,6 +56,10 @@ void FeatureTransformEstimate::EstimateInternal(
   TpMatrix<double> wc_covar_sqrt(dim);
   try {
     wc_covar_sqrt.Cholesky(wc_covar);
+    if (C != NULL) {
+      C->Resize(dim);
+      C->CopyFromTp(wc_covar_sqrt);
+    }
   } catch (...) {
     BaseFloat smooth = 1.0e-03 * wc_covar.Trace() / wc_covar.NumRows();
     KALDI_LOG << "Cholesky failed (possibly not +ve definite), so adding " << smooth
@@ -141,7 +147,7 @@ void FeatureTransformEstimateMulti::EstimateTransformPart(
   FeatureTransformEstimateOptions opts_tmp(opts);
   opts_tmp.dim = proj_dim;
   EstimateInternal(opts_tmp, total_covar_proj, between_covar_proj, mean_proj,
-                   &M_proj);
+                   &M_proj, NULL);
   if (M_proj.NumCols() == proj_dim + 1) { // Extend transform to add the extra "1" that we
                                           // use to handle mean shifts..
     transform.Resize(proj_dim + 1, full_dim + 1, kCopyData);

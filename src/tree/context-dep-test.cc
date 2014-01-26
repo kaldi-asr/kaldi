@@ -46,7 +46,7 @@ void TestContextDep() {
     BaseFloat like_after = tmp->Objf() / tmp->Normalizer();
     std::cout << "Like_before = " << like_before <<", after = "<<like_after <<" over "<<tmp->Normalizer()<<" frames.\n";
     if (tmp->Normalizer() > 0.1)
-      assert(like_after <= like_before);  // should get worse after combining stats.
+      KALDI_ASSERT(like_after <= like_before);  // should get worse after combining stats.
     delete tmp;
   }
   for (size_t i = 0;i < nGauss;i++)
@@ -66,7 +66,7 @@ void TestMonophoneContextDependency() {
 
   std::vector<std::vector<std::pair<int32, int32> > >  pdf_info;
   cd->GetPdfInfo(phones, phone2num_classes, &pdf_info);
-  assert(pdf_info.size() == phones.size() * 3 &&
+  KALDI_ASSERT(pdf_info.size() == phones.size() * 3 &&
        pdf_info[rand() % pdf_info.size()].size() == 1);
   delete cd;
 }
@@ -93,7 +93,7 @@ void TestGenRandContextDependency() {
       dep->GetPdfInfo(phones, phone2num_pdf_classes, &pdf_info);
       std::vector<bool> all_phones(phones.back()+1, false);  // making sure all covered.
       for (size_t i = 0; i < pdf_info.size(); i++) {
-        assert(!pdf_info[i].empty());  // make sure pdf seen.
+        KALDI_ASSERT(!pdf_info[i].empty());  // make sure pdf seen.
         for (size_t j = 0; j < pdf_info[i].size(); j++) {
           int32 idx = pdf_info[i][j].first;
           KALDI_ASSERT(static_cast<size_t>(idx) < all_phones.size());
@@ -101,7 +101,7 @@ void TestGenRandContextDependency() {
         }
       }
       if (ensure_all_covered)
-        for (size_t k = 0; k < phones.size(); k++) assert(all_phones[phones[k]]);
+        for (size_t k = 0; k < phones.size(); k++) KALDI_ASSERT(all_phones[phones[k]]);
     }
 
     dep->Write(outfile, binary);
@@ -117,7 +117,7 @@ void TestGenRandContextDependency() {
     std::ostringstream ostr1, ostr2;
     dep->Write(ostr1, false);
     dep2.Write(ostr2, false);
-    assert(ostr1.str() == ostr2.str());
+    KALDI_ASSERT(ostr1.str() == ostr2.str());
   }
 
   delete dep;

@@ -126,7 +126,8 @@ my $method = 1;
 my $power = 0.5;
 GetOptions('tolerance=f'    => \$tolerance, 
  'method=i'                 => \$method,
- 'power=f'                  => \$power);
+ 'power=f'                  => \$power,
+ 'inv-power=f'              => sub { (my $opt, my $val) = @_; $power = 1.0/$val;});
 
 @ARGV >= 3 || die $Usage;
 

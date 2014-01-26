@@ -74,31 +74,31 @@ void UnitTestIo(bool binary) {
       InitKaldiInputStream(infile, &binary_in);
       int64 i1_in;
       ReadBasicType(infile, binary_in, &i1_in);
-      assert(i1_in == i1);
+      KALDI_ASSERT(i1_in == i1);
       uint16 i2_in;
       ReadBasicType(infile, binary_in, &i2_in);
-      assert(i2_in == i2);
+      KALDI_ASSERT(i2_in == i2);
       char c_in;
       ReadBasicType(infile, binary_in, &c_in);
-      assert(c_in == c);
+      KALDI_ASSERT(c_in == c);
       std::vector<int32> vec1_in;
       ReadIntegerVector(infile, binary_in, &vec1_in);
-      assert(vec1_in == vec1);
+      KALDI_ASSERT(vec1_in == vec1);
       std::vector<uint16> vec2_in;
       ReadIntegerVector(infile, binary_in, &vec2_in);
-      assert(vec2_in == vec2);
+      KALDI_ASSERT(vec2_in == vec2);
       std::vector<char> vec3_in;
       ReadIntegerVector(infile, binary_in, &vec3_in);
-      assert(vec3_in == vec3);
+      KALDI_ASSERT(vec3_in == vec3);
       std::string  token1_in, token2_in;
-      assert(Peek(infile, binary_in) == static_cast<int>(*token1));
-      assert(PeekToken(infile, binary_in) == (int)*token1); // Note:
+      KALDI_ASSERT(Peek(infile, binary_in) == static_cast<int>(*token1));
+      KALDI_ASSERT(PeekToken(infile, binary_in) == (int)*token1); // Note:
       // the stuff with skipping over '<' is tested in ../util/kaldi-io-test.cc,
       // since we need to make sure it works with pipes.
       ReadToken(infile, binary_in, &token1_in);
-      assert(token1_in == std::string(token1));
+      KALDI_ASSERT(token1_in == std::string(token1));
       ReadToken(infile, binary_in, &token2_in);
-      assert(token2_in == std::string(token2));
+      KALDI_ASSERT(token2_in == std::string(token2));
       if (rand() % 2 == 0)
         ExpectToken(infile, binary_in, token3.c_str());
       else
@@ -115,8 +115,8 @@ void UnitTestIo(bool binary) {
       float d2_in;  // wrong type.
       ReadBasicType(infile, binary_in, &d2_in);
       AssertEqual(d2_in, d2);
-      assert(Peek(infile, binary_in) == -1);
-      assert(PeekToken(infile, binary_in) == -1);
+      KALDI_ASSERT(Peek(infile, binary_in) == -1);
+      KALDI_ASSERT(PeekToken(infile, binary_in) == -1);
     }
   }
 }

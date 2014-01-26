@@ -68,17 +68,17 @@ void TestGenRandStats() {
     for (size_t i = 0;i < stats.size();i++) {
       EventValueType central_phone;
       bool b = EventMap::Lookup(stats[i].first, P, &central_phone);
-      assert(b);
+      KALDI_ASSERT(b);
       EventValueType position;
       b = EventMap::Lookup(stats[i].first, kPdfClass, &position);
-      assert(b);
-      assert(position>=0 && position < hmm_lengths[central_phone]);
+      KALDI_ASSERT(b);
+      KALDI_ASSERT(position>=0 && position < hmm_lengths[central_phone]);
 
       for (EventKeyType j = 0; j < N; j++) {
         if (j != P) {  // non-"central" phone.
           EventValueType ctx_phone;
           b = EventMap::Lookup(stats[i].first, j, &ctx_phone);
-          assert(is_ctx_dep[central_phone] == b);
+          KALDI_ASSERT(is_ctx_dep[central_phone] == b);
         }
       }
     }
@@ -144,7 +144,7 @@ void TestBuildTree() {
       std::vector<EventKeyType> keys;
       qopts.GetKeysWithQuestions(&keys);
       for (size_t i = 0;i < keys.size();i++) {
-        assert(qopts.HasQuestionsForKey(keys[i]));
+        KALDI_ASSERT(qopts.HasQuestionsForKey(keys[i]));
         const QuestionsForKey &opts = qopts.GetQuestionsOf(keys[i]);
         std::cout << "num-quest: "<< opts.initial_questions.size() << '\n';
         for (size_t j = 0;j < opts.initial_questions.size();j++) {

@@ -107,6 +107,7 @@ void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const Posterior& post, CuMat
 
   // calculate cross_entropy (in GPU)
   xentropy_aux_ = net_out; // y
+  xentropy_aux_.Add(1e-20); // avoid -inf
   xentropy_aux_.ApplyLog(); // log(y)
   xentropy_aux_.MulElements(tgt_mat_device_); // t*log(y)
   log_post_tgt_.Resize(num_frames);

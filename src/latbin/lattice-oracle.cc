@@ -35,7 +35,7 @@ void ReadSymbolList(const std::string &rxfilename,
                     LabelSet *lset) {
   Input ki(rxfilename);
   std::string line;
-  assert(lset != NULL);
+  KALDI_ASSERT(lset != NULL);
   lset->clear();
   while (getline(ki.Stream(), line)) {
     std::string sym;

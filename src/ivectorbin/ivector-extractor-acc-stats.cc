@@ -95,6 +95,14 @@ int main(int argc, char *argv[]) {
         posteriors_rspecifier = po.GetArg(3),
         accs_wxfilename = po.GetArg(4);
 
+
+    // Initialize these Reader objects before reading the IvectorExtractor,
+    // because it uses up a lot of memory and any fork() after that will
+    // be in danger of causing an allocation failure.
+    SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
+    RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
+
+    
     IvectorExtractor extractor;
     ReadKaldiObject(ivector_extractor_rxfilename, &extractor);
     
@@ -104,10 +112,6 @@ int main(int argc, char *argv[]) {
     int64 tot_t = 0;
     int32 num_done = 0, num_err = 0;
     
-
-    SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
-    RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
-
     {
       TaskSequencer<IvectorTask> sequencer(sequencer_opts);
       

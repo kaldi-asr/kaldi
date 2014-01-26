@@ -65,15 +65,13 @@ Nnet::~Nnet() {
 void Nnet::Propagate(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
   KALDI_ASSERT(NULL != out);
 
-  if (NumComponents() == 0) { 
-    out->Resize(in.NumRows(), in.NumCols());
-    out->CopyFromMat(in); 
+  if (NumComponents() == 0) {
+    (*out) = in; // copy 
     return; 
   }
 
   // we need at least L+1 input buffers
   KALDI_ASSERT((int32)propagate_buf_.size() >= NumComponents()+1);
-
   
   propagate_buf_[0].Resize(in.NumRows(), in.NumCols());
   propagate_buf_[0].CopyFromMat(in);
@@ -89,17 +87,33 @@ void Nnet::Propagate(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
 
 
 void Nnet::Backpropagate(const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
-  if(NumComponents() == 0) { KALDI_ERR << "Cannot backpropagate on empty network"; }
+
+  //////////////////////////////////////
+  // Backpropagation
+  //
+
+  // 0 layers
+  if(NumComponents() == 0) { 
+    (*in_diff) = out_diff; //copy
+    return;
+  }
 
   // we need at least L+1 input bufers
   KALDI_ASSERT((int32)propagate_buf_.size() >= NumComponents()+1);
   // we need at least L-1 error derivative bufers
   KALDI_ASSERT((int32)backpropagate_buf_.size() >= NumComponents()-1);
 
-  //////////////////////////////////////
-  // Backpropagation
-  //
+  // 1 layer
+  if(NumComponents() == 1) { 
+    components_[0]->Backpropagate(propagate_buf_[0], propagate_buf_[1], out_diff, in_diff);
+    if (components_[0]->IsUpdatable()) {
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[0]);
+      uc->Update(propagate_buf_[0], out_diff);
+    }
+    return;
+  }
 
+  // >1 layers
   // we don't copy the out_diff to buffers, we use it as it is...
   int32 i = components_.size()-1;
   components_.back()->Backpropagate(propagate_buf_[i], propagate_buf_[i+1], 
@@ -110,7 +124,7 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat
   }
 
   // backpropagate by using buffers
-  for(i--; i >= 1; i--) {
+  for (i--; i >= 1; i--) {
     components_[i]->Backpropagate(propagate_buf_[i], propagate_buf_[i+1],
                             backpropagate_buf_[i], &backpropagate_buf_[i-1]);
     if (components_[i]->IsUpdatable()) {
@@ -120,11 +134,8 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat
   }
 
   // now backpropagate through first layer, 
-  // but only if asked to (by in_diff pointer)
-  if (NULL != in_diff) {
-    components_[0]->Backpropagate(propagate_buf_[0], propagate_buf_[1],
-                            backpropagate_buf_[0], in_diff);
-  }
+  components_[0]->Backpropagate(propagate_buf_[0], propagate_buf_[1],
+                                backpropagate_buf_[0], in_diff);
 
   // update the first layer 
   if (components_[0]->IsUpdatable()) {
@@ -367,6 +378,28 @@ int32 Nnet::NumParams() const {
   return n_params;
 }
 
+void Nnet::Init(const std::string &file) {
+  Input in(file);
+  std::istream &is = in.Stream();
+  ExpectToken(is, false, "<NnetProto>");
+  // do the initialization with config lines
+  std::string conf_line;
+  while (1) {
+    if (is.eof()) KALDI_ERR << "Missing </NnetProto> at the end.";
+    KALDI_ASSERT(is.good());
+    if ('/' == PeekToken(is, false)) { // end the loop
+      ExpectToken(is, false, "</NnetProto>");
+      break;
+    }
+    std::getline(is, conf_line); // get the line in config file
+    KALDI_VLOG(1) << conf_line; 
+    AppendComponent(Component::Init(conf_line+"\n"));
+  }
+  // cleanup
+  in.Close();
+  Check();
+}
+
 
 void Nnet::Read(const std::string &file) {
   bool binary;
@@ -441,48 +474,40 @@ std::string Nnet::Info() const {
 
 std::string Nnet::InfoGradient() const {
   std::ostringstream ostr;
-  // basic info (static)
-  //ostr << Info(); 
-  
   // gradient stats
-  ostr << "\ngradient stats :";
+  ostr << "### Gradient stats :\n";
   for (int32 i = 0; i < NumComponents(); i++) {
-    ostr << "component " << i+1 << " : " 
+    ostr << "Component " << i+1 << " : " 
          << Component::TypeToMarker(components_[i]->GetType()) 
          << ", " << components_[i]->InfoGradient() << std::endl;
   }
-  /*
-  // forward-pass buffer stats
-  ostr << "\nforward propagation buffer content :";
-  for (int32 i=0; i<propagate_buf_.size(); i++) {
-    ostr << "["<<1+i<< "] output of " 
-         << (i==0 ? "<input>" : Component::TypeToMarker(components_[i-1]->GetType()))
-         << MomentStatistics(propagate_buf_[i]) << std::endl;
-  }
-  // backpropagation buffer stats
-  ostr << "\nbackpropagation buffer content :";
-  for (int32 i=backpropagate_buf_.size()-1; i>=0; i--) {
-    ostr << "["<<1+i<< "] dE/dOutput of " 
-         << Component::TypeToMarker(components_[i]->GetType())
-         << MomentStatistics(backpropagate_buf_[i]) << std::endl;
-  }
-  */
-
   return ostr.str();
 }
-
 
 std::string Nnet::InfoPropagate() const {
   std::ostringstream ostr;
   // forward-pass buffer stats
-  ostr << "\nforward propagation buffer content :\n";
+  ostr << "### Forward propagation buffer content :\n";
   for (int32 i=0; i<propagate_buf_.size(); i++) {
     ostr << "["<<1+i<< "] output of " 
-         << (i==0 ? "<input>" : Component::TypeToMarker(components_[i-1]->GetType()))
+         << (i==0 ? "<Input>" : Component::TypeToMarker(components_[i-1]->GetType()))
          << MomentStatistics(propagate_buf_[i]) << std::endl;
   }
   return ostr.str();
 }
+
+std::string Nnet::InfoBackPropagate() const {
+  std::ostringstream ostr;
+  // forward-pass buffer stats
+  ostr << "### Backward propagation buffer content :\n";
+  for (int32 i=0; i<backpropagate_buf_.size(); i++) {
+    ostr << "["<<1+i<< "] diff-output of " 
+         << Component::TypeToMarker(components_[i]->GetType())
+         << MomentStatistics(backpropagate_buf_[i]) << std::endl;
+  }
+  return ostr.str();
+}
+
 
 
 void Nnet::Check() const {

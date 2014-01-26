@@ -31,8 +31,8 @@ TrainingGraphCompiler::TrainingGraphCompiler(const TransitionModel &trans_model,
   using namespace fst;
   const std::vector<int32> &phone_syms = trans_model_.GetPhones();  // needed to create context fst.
 
-  assert(!phone_syms.empty());
-  assert(IsSortedAndUniq(phone_syms));
+  KALDI_ASSERT(!phone_syms.empty());
+  KALDI_ASSERT(IsSortedAndUniq(phone_syms));
   SortAndUniq(&disambig_syms_);
   for (int32 i = 0; i < disambig_syms_.size(); i++)
     if (std::binary_search(phone_syms.begin(), phone_syms.end(),
@@ -71,14 +71,14 @@ bool TrainingGraphCompiler::CompileGraphFromText(
 bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word_fst,
                                          fst::VectorFst<fst::StdArc> *out_fst) {
   using namespace fst;
-  assert(lex_fst_ !=NULL);
-  assert(out_fst != NULL);
+  KALDI_ASSERT(lex_fst_ !=NULL);
+  KALDI_ASSERT(out_fst != NULL);
 
   VectorFst<StdArc> phone2word_fst;
   // TableCompose more efficient than compose.
   TableCompose(*lex_fst_, word_fst, &phone2word_fst, &lex_cache_);
 
-  assert(phone2word_fst.Start() != kNoStateId);
+  KALDI_ASSERT(phone2word_fst.Start() != kNoStateId);
 
   ContextFst<StdArc> *cfst = NULL;
   {  // make cfst [ it's expanded on the fly ]
@@ -99,7 +99,7 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
   // ComposeContextFst is like Compose but faster for this particular Fst type.
   // [and doesn't expand too many arcs in the ContextFst.]
 
-  assert(ctx2word_fst.Start() != kNoStateId);
+  KALDI_ASSERT(ctx2word_fst.Start() != kNoStateId);
 
   HTransducerConfig h_cfg;
   h_cfg.transition_scale = opts_.transition_scale;
@@ -115,7 +115,7 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
   VectorFst<StdArc> &trans2word_fst = *out_fst;  // transition-id to word.
   TableCompose(*H, ctx2word_fst, &trans2word_fst);
   
-  assert(trans2word_fst.Start() != kNoStateId);
+  KALDI_ASSERT(trans2word_fst.Start() != kNoStateId);
 
   // Epsilon-removal and determinization combined. This will fail if not determinizable.
   DeterminizeStarInLog(&trans2word_fst);
@@ -166,8 +166,8 @@ bool TrainingGraphCompiler::CompileGraphs(
     std::vector<fst::VectorFst<fst::StdArc>* > *out_fsts) {
 
   using namespace fst;
-  assert(lex_fst_ !=NULL);
-  assert(out_fsts != NULL && out_fsts->empty());
+  KALDI_ASSERT(lex_fst_ !=NULL);
+  KALDI_ASSERT(out_fsts != NULL && out_fsts->empty());
   out_fsts->resize(word_fsts.size(), NULL);
   if (word_fsts.empty()) return true;
 
@@ -198,7 +198,7 @@ bool TrainingGraphCompiler::CompileGraphs(
     // ComposeContextFst is like Compose but faster for this particular Fst type.
     // [and doesn't expand too many arcs in the ContextFst.]
 
-    assert(ctx2word_fst.Start() != kNoStateId);
+    KALDI_ASSERT(ctx2word_fst.Start() != kNoStateId);
 
     (*out_fsts)[i] = ctx2word_fst.Copy();  // For now this contains the FST with symbols
     // representing phones-in-context.
@@ -237,7 +237,7 @@ bool TrainingGraphCompiler::CompileGraphs(
                  opts_.reorder,
                  &trans2word_fst);
 
-    assert(trans2word_fst.Start() != kNoStateId);
+    KALDI_ASSERT(trans2word_fst.Start() != kNoStateId);
 
     *((*out_fsts)[i]) = trans2word_fst;
   }

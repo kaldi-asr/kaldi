@@ -46,7 +46,10 @@ $outdir = "";
 if (@ARGV == 2) {
   $outdir = pop @ARGV;
   unless (-d $outdir) {
-    print STDERR "Could not find directory $outdir\n";
+    system("mkdir -p $outdir");
+  }
+  unless (-d $outdir) {
+    print STDERR "Could not create directory $outdir\n";
     exit 1;
   }
 }

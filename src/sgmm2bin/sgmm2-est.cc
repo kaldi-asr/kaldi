@@ -59,8 +59,8 @@ int main(int argc, char *argv[]) {
                 "are increasing the speaker dimension from zero.");
     po.Register("remove-speaker-space", &remove_speaker_space, "Remove speaker-specific "
                 "projections N");
-    po.Register("write-occs", &occs_out_filename, "File to write state "
-                "occupancies to.");
+    po.Register("write-occs", &occs_out_filename, "File to write pdf "
+                "occupantion counts to.");
     po.Register("update-flags", &update_flags_str, "Which SGMM parameters to "
                 "update: subset of vMNwcSt.");
     po.Register("write-flags", &write_flags_str, "Which SGMM parameters to "
@@ -118,15 +118,15 @@ int main(int argc, char *argv[]) {
       updater.Update(sgmm_accs, &am_sgmm, update_flags);
     }
 
-    Vector<BaseFloat> state_occs;
-    sgmm_accs.GetStateOccupancies(&state_occs);
+    Vector<BaseFloat> pdf_occs;
+    sgmm_accs.GetStateOccupancies(&pdf_occs);
 
     if (split_opts.split_substates != 0)
-      am_sgmm.SplitSubstates(state_occs, split_opts);
+      am_sgmm.SplitSubstates(pdf_occs, split_opts);
 
     if (!occs_out_filename.empty()) {
       kaldi::Output ko(occs_out_filename, binary_write);
-      state_occs.Write(ko.Stream(), binary_write);
+      pdf_occs.Write(ko.Stream(), binary_write);
     }
 
     if (increase_phn_dim != 0 || increase_spk_dim != 0) {

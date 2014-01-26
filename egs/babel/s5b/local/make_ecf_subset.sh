@@ -42,7 +42,7 @@ if [[ ! -f "$src_ecf_file" ]]; then
 fi
 
 
-duration=`grep -F -f $list_file $src_ecf_file | sed "s/.*dur=\"\([0-9.][0-9.]*\).*/\1  /g" | paste -s  -d "+" | bc -l`
+duration=`grep -F -f $list_file $src_ecf_file | sed "s/.*dur=\"\([0-9.][0-9.]*\).*/\1  /g" | awk '{x += $1;} END{print x;}'`
 
 # Output is produced here:
 (

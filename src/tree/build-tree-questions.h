@@ -61,7 +61,7 @@ struct QuestionsForKey {  // Configuration class associated with a particular ke
   }
 
   void Check() const {
-    for (size_t i = 0;i < initial_questions.size();i++) assert(IsSorted(initial_questions[i]));
+    for (size_t i = 0;i < initial_questions.size();i++) KALDI_ASSERT(IsSorted(initial_questions[i]));
   }
 
   void Write(std::ostream &os, bool binary) const;
@@ -82,7 +82,7 @@ class Questions {  // careful, this is a class.
       KALDI_ERR << "Questions: no options for key "<< key;
     }
     size_t idx = iter->second;
-    assert(idx < key_options_.size());
+    KALDI_ASSERT(idx < key_options_.size());
     key_options_[idx]->Check();
     return *(key_options_[idx]);
   }
@@ -94,12 +94,12 @@ class Questions {  // careful, this is a class.
       *(key_options_.back()) = options_of_key;
     } else {
       size_t idx = key_idx_[key];
-      assert(idx < key_options_.size());
+      KALDI_ASSERT(idx < key_options_.size());
       *(key_options_[idx]) = options_of_key;
     }
   }
   void GetKeysWithQuestions(std::vector<EventKeyType> *keys_out) const {
-    assert(keys_out != NULL);
+    KALDI_ASSERT(keys_out != NULL);
     CopyMapKeysToVector(key_idx_, keys_out);
   }
   const bool HasQuestionsForKey(EventKeyType key) const { return (key_idx_.count(key) != 0); }

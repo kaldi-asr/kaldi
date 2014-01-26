@@ -2,6 +2,7 @@
 
 // Copyright 2013   Pegah Ghahremani
 //                  Johns Hopkins University (author: Daniel Povey)
+//           2014   IMSL, PKU-HKUST (author: Wei Shi)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,23 +29,35 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Post-process Kaldi pitch features, consisting of pitch and NCCF, into\n"
         "features suitable for input to ASR system.  Default setup produces\n"
-        "3-dimensional features consisting of (pov-feature, pitch-feature, "
+        "3-dimensional features consisting of (pov-feature, pitch-feature,\n"
         "delta-pitch-feature), where pov-feature is warped NCCF, pitch-feature\n"
         "is log-pitch with POV-weighted mean subtraction over 1.5 second window,\n"
         "and delta-pitch-feature is delta feature computed on raw log pitch.\n"
+        "In general, you can select from four features: (pov-feature, \n"
+        "pitch-feature, delta-pitch-feature, raw-log-pitch), produced in that \n"
+        "order, by setting the boolean options (--add-pov-feature, \n"
+        "--add-normalized-log-pitch, --add-delta-pitch and --add-raw-log-pitch)\n"
         "\n"
         "Usage: process-kaldi-pitch-feats [options...] <feat-rspecifier> <feats-wspecifier>\n";
-    
-    ParseOptions po(usage);
-    PostProcessPitchOptions postprocess_opts;
-    postprocess_opts.Register(&po); 
 
+    ParseOptions po(usage);
+
+    int32 srand_seed = 0;
+    
+    PostProcessPitchOptions postprocess_opts;
+    postprocess_opts.Register(&po);
+
+    po.Register("srand", &srand_seed, "Seed for random number generator, used to "
+                "add noise to delta-log-pitch features");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
+
+    srand(srand_seed);
     
     std::string feat_rspecifier = po.GetArg(1),
         feat_wspecifier = po.GetArg(2);
@@ -54,12 +67,12 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0;
     for (; !feat_reader.Done(); feat_reader.Next()) {
-      std::string utt = feat_reader.Key();  
-      const Matrix<BaseFloat> &features = feat_reader.Value(); 
-      
+      std::string utt = feat_reader.Key();
+      const Matrix<BaseFloat> &features = feat_reader.Value();
+
       Matrix<BaseFloat> processed_feats(features);
       PostProcessPitch(postprocess_opts, features, &processed_feats);
-      
+
       feat_writer.Write(utt, processed_feats);
       num_done++;
     }

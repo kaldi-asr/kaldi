@@ -72,9 +72,9 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string model_filename = po.GetArg(1),
-        feature_rspecifier = po.GetArg(2),
-        targets_rspecifier = po.GetArg(3);
+    std::string feature_rspecifier = po.GetArg(1),
+      targets_rspecifier = po.GetArg(2),
+      model_filename = po.GetArg(3);
         
     std::string target_model_filename;
     if (!crossvalidate) {
@@ -88,6 +88,7 @@ int main(int argc, char *argv[]) {
     //Select the GPU
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
+    CuDevice::Instantiate().DisableCaching();
 #endif
 
     Nnet nnet_transf;
@@ -126,7 +127,7 @@ int main(int argc, char *argv[]) {
       // fill the randomizer
       for ( ; !feature_reader.Done(); feature_reader.Next()) {
         std::string utt = feature_reader.Key();
-        KALDI_VLOG(2) << "Reading " << utt;
+        KALDI_VLOG(3) << "Reading " << utt;
         // check that we have targets
         if (!targets_reader.HasKey(utt)) {
           KALDI_WARN << utt << ", missing targets";
@@ -181,6 +182,8 @@ int main(int argc, char *argv[]) {
         targets_randomizer.AddData(targets);
         weights_randomizer.AddData(weights);
         num_done++;
+        // end when randomizer full
+        if (feature_randomizer.IsFull()) break;
       
         // report the speed
         if (num_done % 5000 == 0) {
@@ -228,18 +231,38 @@ int main(int argc, char *argv[]) {
           nnet.Backpropagate(obj_diff, NULL);
         }
 
+        // 1st minibatch : show what happens in network 
+        if (kaldi::g_kaldi_verbose_level >= 1 && total_frames == 0) { // vlog-1
+          KALDI_VLOG(1) << "### After " << total_frames << " frames,";
+          KALDI_VLOG(1) << nnet.InfoPropagate();
+          if (!crossvalidate) {
+            KALDI_VLOG(1) << nnet.InfoBackPropagate();
+            KALDI_VLOG(1) << nnet.InfoGradient();
+          }
+        }
+        
         // monitor the NN training
-        if (kaldi::g_kaldi_verbose_level >= 3) {
-          if ((total_frames/100000) != ((total_frames+nnet_in.NumRows())/100000)) { // print every 100k frames
+        if (kaldi::g_kaldi_verbose_level >= 2) { // vlog-2
+          if ((total_frames/25000) != ((total_frames+nnet_in.NumRows())/25000)) { // print every 25k frames
+            KALDI_VLOG(2) << "### After " << total_frames << " frames,";
+            KALDI_VLOG(2) << nnet.InfoPropagate();
             if (!crossvalidate) {
-              KALDI_VLOG(3) << nnet.InfoGradient();
-            } else {
-              KALDI_VLOG(3) << nnet.InfoPropagate();
+              KALDI_VLOG(2) << nnet.InfoGradient();
             }
           }
         }
-
+        
         total_frames += nnet_in.NumRows();
+      }
+    }
+    
+    // after last minibatch : show what happens in network 
+    if (kaldi::g_kaldi_verbose_level >= 1) { // vlog-1
+      KALDI_VLOG(1) << "### After " << total_frames << " frames,";
+      KALDI_VLOG(1) << nnet.InfoPropagate();
+      if (!crossvalidate) {
+        KALDI_VLOG(1) << nnet.InfoBackPropagate();
+        KALDI_VLOG(1) << nnet.InfoGradient();
       }
     }
 

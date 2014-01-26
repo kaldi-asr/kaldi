@@ -343,10 +343,23 @@ if [ $stage -le $num_iters ]; then
   num_egs=`nnet-copy-egs ark:$egs_dir/combine.egs ark:/dev/null 2>&1 | tail -n 1 | awk '{print $NF}'`
   mb=$[($num_egs+$this_num_threads-1)/$this_num_threads]
   [ $mb -gt 512 ] && mb=512
+  # Setting --initial-model to a large value makes it initialize the combination
+  # with the average of all the models.  It's important not to start with a
+  # single model, or, due to the invariance to scaling that these nonlinearities
+  # give us, we get zero diagonal entries in the fisher matrix that
+  # nnet-combine-fast uses for scaling, which after flooring and inversion, has
+  # the effect that the initial model chosen gets much higher learning rates
+  # than the others.  This prevents the optimization from working well.
   $cmd $parallel_opts $dir/log/combine.log \
-    nnet-combine-fast --use-gpu=no --num-threads=$this_num_threads --regularizer=$combine_regularizer \
+    nnet-combine-fast --initial-model=100000 --num-lbfgs-iters=40 --use-gpu=no \
+      --num-threads=$this_num_threads --regularizer=$combine_regularizer \
       --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
       $dir/final.mdl || exit 1;
+
+  # Normalize stddev for affine or block affine layers that are followed by a
+  # pnorm layer and then a normalize layer.
+  $cmd $parallel_opts $dir/log/normalize.log \
+    nnet-normalize-stddev $dir/final.mdl $dir/final.mdl || exit 1;
 fi
 
 # Compute the probability of the final, combined model with

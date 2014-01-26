@@ -315,8 +315,8 @@ class LatticeWordAligner {
       if (max_states_ > 0 && lat_out_->NumStates() > max_states_) {
         KALDI_WARN << "Number of states in lattice exceeded max-states of "
                    << max_states_ << ", original lattice had "
-                   << lat_.NumStates() << " states.  Returning empty lattice.";
-        lat_out_->DeleteStates();
+                   << lat_.NumStates() << " states.  Returning what we have.";
+        RemoveEpsilonsFromLattice();
         return false;
       }
       ProcessQueueElement();
@@ -335,6 +335,7 @@ class LatticeWordAligner {
   CompactLattice *lat_out_;
 
   std::vector<std::pair<Tuple, StateId> > queue_;
+  
   MapType map_; // map from tuples to StateId.
   bool error_;
   

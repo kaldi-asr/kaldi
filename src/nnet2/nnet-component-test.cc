@@ -245,6 +245,28 @@ void UnitTestGenericComponent(std::string extra_str = "") {
   }
 }
 
+void UnitTestMaxoutComponent() {
+  // works if it has an initializer from int,
+  // e.g. tanh, sigmoid.
+  
+  // We're testing that the gradients are computed correctly:
+  // the input gradients and the model gradients.
+
+  for (int32 i = 0; i < 5; i++) {
+    int32 output_dim = 10 + rand() % 20,
+        group_size = 1 + rand() % 10,
+        input_dim = output_dim * group_size;
+    
+    MaxoutComponent component(input_dim, output_dim);
+    UnitTestGenericComponentInternal(component);
+  }
+
+  {
+    MaxoutComponent component;
+    component.InitFromString("input-dim=15 output-dim=5");
+    UnitTestGenericComponentInternal(component);
+  }
+}
 
 void UnitTestPnormComponent() {
   // works if it has an initializer from int,
@@ -800,6 +822,7 @@ int main() {
       UnitTestGenericComponent<RectifiedLinearComponent>();
       UnitTestGenericComponent<SoftHingeComponent>();
       UnitTestGenericComponent<PowerExpandComponent>("higher-power-scale=0.1");
+      UnitTestMaxoutComponent(); 
       UnitTestPnormComponent(); 
       UnitTestGenericComponent<NormalizeComponent>();
       UnitTestSigmoidComponent();

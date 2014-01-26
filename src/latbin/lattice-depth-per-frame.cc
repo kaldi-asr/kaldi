@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     
     const char *usage =
         "For each lattice, compute a vector of length (num-frames) saying how\n"
-        "may arcs cross each frame\n"
+        "may arcs cross each frame.  See also lattice-depth\n"
         "Usage: lattice-depth-per-frame <lattice-rspecifier> <depth-wspecifier>\n"
         "E.g.: lattice-depth-per-frame ark:- ark,t:-\n";
 

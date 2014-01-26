@@ -46,7 +46,7 @@ test_io(const RegressionTree &regtree,
 
 // void
 // join_gmm(const DiagGmm &gmm1, const DiagGmm &gmm2, DiagGmm *gmm) {
-//  assert(gmm1.Dimension() == gmm2.Dimension());
+//  KALDI_ASSERT(gmm1.Dimension() == gmm2.Dimension());
 //  size_t num_comp = gmm1.NumGauss() + gmm2.NumGauss();
 //  size_t dim = gmm1.Dimension();
 //

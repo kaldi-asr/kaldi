@@ -792,7 +792,7 @@ void CuMatrixBase<Real>::AddMat(Real alpha, const CuMatrixBase<Real>& A, Real be
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
 
-    cuda_add_mat(dimGrid, dimBlock, alpha, A.data_, beta, data_, Dim());
+    cuda_add_mat(dimGrid, dimBlock, alpha, A.data_, beta, data_, Dim(), A.Stride());
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -804,7 +804,31 @@ void CuMatrixBase<Real>::AddMat(Real alpha, const CuMatrixBase<Real>& A, Real be
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::AddMatMatDivMat(const CuMatrixBase<Real> &A, 
+					const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
 
+    KALDI_ASSERT(num_rows_ == A.num_rows_ && num_cols_ == A.num_cols_);
+    KALDI_ASSERT(num_rows_ == B.num_rows_ && num_cols_ == B.num_cols_);
+    KALDI_ASSERT(num_rows_ == C.num_rows_ && num_cols_ == C.num_cols_);
+    if (num_rows_ == 0) return;
+
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+
+    cuda_add_mat_mat_div_mat(dimGrid, dimBlock, A.data_, B.data_, C.data_, data_, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().AddMatMatDivMat(A.Mat(), B.Mat(), C.Mat());
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::AddVecToCols(Real alpha,
@@ -2031,6 +2055,36 @@ void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
     }
   }
 }
+
+template<typename Real>
+void CuMatrixBase<Real>::EqualElementMask(const CuMatrixBase<Real> &mat, CuMatrix<Real> *mask) const {
+  // Check the inputs:
+  KALDI_ASSERT(mat.NumRows() == NumRows() && mat.NumCols() == NumCols());
+  KALDI_ASSERT(mask != NULL);
+  // Resizes the output matrix:
+  mask->Resize(NumRows(), NumCols(), kSetZero);
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+    
+    cuda_equal_element_mask(dimGrid, dimBlock, this->data_, mat.Data(), mask->Data(), this->Dim(), mat.Stride(), mask->Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    for (int32 r = 0; r < NumRows(); r++) {
+      for (int32 c = 0; c < NumCols(); c++) {
+        (*mask)(r,c) = ((*this)(r,c) ==  mat(r,c) ? 1.0 : 0.0);
+      }
+    }
+  }
+}
+
 
 /**
  * Print the matrix to stream

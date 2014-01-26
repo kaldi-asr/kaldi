@@ -66,7 +66,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     bool binary;
     RspecifierType rs = ClassifyRspecifier(rspecifier, &script_rxfilename_,
                                            &opts_);
-    assert(rs == kScriptRspecifier);
+    KALDI_ASSERT(rs == kScriptRspecifier);
     if (!script_input_.Open(script_rxfilename_, &binary)) {  // Failure on Open
       KALDI_WARN << "Failed to open script file "
                  << PrintableRxfilename(script_rxfilename_);
@@ -320,7 +320,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
     }
     RspecifierType rs = ClassifyRspecifier(rspecifier, &archive_rxfilename_,
                                            &opts_);
-    assert(rs == kArchiveRspecifier);
+    KALDI_ASSERT(rs == kArchiveRspecifier);
 
     bool ans;
     // NULL means don't expect binary-mode header
@@ -1463,7 +1463,7 @@ template<class Holder>  class RandomAccessTableReaderArchiveImplBase:
     }
     RspecifierType rs = ClassifyRspecifier(rspecifier, &archive_rxfilename_,
                                            &opts_);
-    assert(rs == kArchiveRspecifier);
+    KALDI_ASSERT(rs == kArchiveRspecifier);
 
     // NULL means don't expect binary-mode header
     bool ans;
@@ -1564,7 +1564,7 @@ template<class Holder>  class RandomAccessTableReaderArchiveImplBase:
 
   ~RandomAccessTableReaderArchiveImplBase() {
     // The child class has the responsibility to call CloseInternal().
-    assert(state_ == kUninitialized && holder_ == NULL);
+    KALDI_ASSERT(state_ == kUninitialized && holder_ == NULL);
   }
  private:
   Input input_;       // Input object for the archive
@@ -1784,7 +1784,7 @@ template<class Holder>  class RandomAccessTableReaderSortedArchiveImpl:
   void HandlePendingDelete() {
     const size_t npos = static_cast<size_t>(-1);
     if (pending_delete_ != npos) {
-      assert(pending_delete_ < seen_pairs_.size());
+      KALDI_ASSERT(pending_delete_ < seen_pairs_.size());
       KALDI_ASSERT(seen_pairs_[pending_delete_].second != NULL);
       delete seen_pairs_[pending_delete_].second;
       seen_pairs_[pending_delete_].second = NULL;

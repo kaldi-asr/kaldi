@@ -73,7 +73,7 @@ void TestHmmTopology() {
     std::ostringstream oss1, oss2;
     topo.Write(oss1, false);
     topo2.Write(oss2, false);
-    assert(oss1.str() == oss2.str());
+    KALDI_ASSERT(oss1.str() == oss2.str());
   }
 }
 

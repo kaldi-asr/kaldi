@@ -89,7 +89,6 @@ const BaseFloat kBaseLogZero = -std::numeric_limits<BaseFloat>::infinity();
 const BaseFloat kBaseFloatMax = std::numeric_limits<BaseFloat>::max();
 
 // Returns a random integer between min and max inclusive.
-
 int32 RandInt(int32 min, int32 max);
 
 bool WithProb(BaseFloat prob); // Returns true with probability "prob",

@@ -44,12 +44,13 @@ class Component {
 
  /// Component type identification mechanism
  public: 
-  /// Types of the Components
+  /// Types of Components
   typedef enum {
     kUnknown = 0x0,
      
     kUpdatableComponent = 0x0100, 
     kAffineTransform,
+    kConvolutionalComponent,
 
     kActivationFunction = 0x0200, 
     kSoftmax, 
@@ -65,7 +66,12 @@ class Component {
     kBlockLinearity,
     kAddShift,
     kRescale,
-    kKlHmm
+    
+    kKlHmm = 0x0800,
+    kSentenceAveragingComponent,
+    kAveragePoolingComponent,
+    kMaxPoolingComponent,
+    kParallelComponent
   } ComponentType;
   /// A pair of type and marker 
   struct key_value {
@@ -76,7 +82,7 @@ class Component {
   static const struct key_value kMarkerMap[];
   /// Convert component type to marker
   static const char* TypeToMarker(ComponentType t);
-  /// Convert marker to component type
+  /// Convert marker to component type (case insensitive)
   static ComponentType MarkerToType(const std::string &s);
  
  /// General interface of a component  
@@ -113,6 +119,8 @@ class Component {
                      const CuMatrix<BaseFloat> &out_diff,
                      CuMatrix<BaseFloat> *in_diff); 
 
+  /// Initialize component from a line in config file
+  static Component* Init(const std::string &conf_line);
   /// Read component from stream
   static Component* Read(std::istream &is, bool binary);
   /// Write component to stream
@@ -121,6 +129,7 @@ class Component {
   /// Optionally print some additional info
   virtual std::string Info() const { return ""; }
   virtual std::string InfoGradient() const { return ""; }
+
 
  /// Abstract interface for propagation/backpropagation 
  protected:
@@ -133,17 +142,24 @@ class Component {
                                 const CuMatrix<BaseFloat> &out_diff,
                                 CuMatrix<BaseFloat> *in_diff) = 0;
 
+  /// Initialize internal data of a component
+  virtual void InitData(std::istream &is) { }
+
   /// Reads the component content
   virtual void ReadData(std::istream &is, bool binary) { }
 
   /// Writes the component content
   virtual void WriteData(std::ostream &os, bool binary) const { }
 
-
  /// Data members
  protected:
   int32 input_dim_;  ///< Size of input vectors
   int32 output_dim_; ///< Size of output vectors
+
+ private:
+  /// Create new intance of component
+  static Component* NewComponentOfType(ComponentType t, 
+                      int32 input_dim, int32 output_dim);
   
  protected:
   //KALDI_DISALLOW_COPY_AND_ASSIGN(Component);
@@ -182,6 +198,8 @@ class UpdatableComponent : public Component {
     return opts_; 
   }
 
+  virtual void InitData(std::istream &is) = 0;
+
  protected:
   /// Option-class with training hyper-parameters
   NnetTrainOptions opts_; 
@@ -192,12 +210,11 @@ inline void Component::Propagate(const CuMatrix<BaseFloat> &in,
                                  CuMatrix<BaseFloat> *out) {
   // Check the dims
   if (input_dim_ != in.NumCols()) {
-    KALDI_ERR << "Non-matching dims, component:" << input_dim_ << " data:" << in.NumCols();
+    KALDI_ERR << "Non-matching dims! " << TypeToMarker(GetType()) 
+              << " input-dim : " << input_dim_ << " data : " << in.NumCols();
   }
   // Allocate target buffer
-  if (output_dim_ != out->NumCols() || in.NumRows() != out->NumRows()) {
-    out->Resize(in.NumRows(), output_dim_);
-  }
+  out->Resize(in.NumRows(), output_dim_, kSetZero); // reset
   // Call the propagation implementation of the component
   PropagateFnc(in, out);
 }
@@ -212,18 +229,27 @@ inline void Component::Backpropagate(const CuMatrix<BaseFloat> &in,
     KALDI_ERR << "Non-matching output dims, component:" << output_dim_ 
               << " data:" << out_diff.NumCols();
   }
-  // Allocate target buffer
-  if (input_dim_ != in_diff->NumCols() || out_diff.NumRows() != in_diff->NumRows()) {
-    in_diff->Resize(out_diff.NumRows(), input_dim_);
+  
+  // Target buffer NULL : backpropagate only through components with nested nnets.
+  if (in_diff == NULL) {
+    if (GetType() == kParallelComponent ||
+        GetType() == kSentenceAveragingComponent) {
+      BackpropagateFnc(in, out, out_diff, NULL);
+    } else {
+      return;
+    }
+  } else {
+    // Allocate target buffer
+    in_diff->Resize(out_diff.NumRows(), input_dim_, kSetZero); // reset
+    // Asserts on the dims
+    KALDI_ASSERT((in.NumRows() == out.NumRows()) &&
+                 (in.NumRows() == out_diff.NumRows()) &&
+                 (in.NumRows() == in_diff->NumRows()));
+    KALDI_ASSERT(in.NumCols() == in_diff->NumCols());
+    KALDI_ASSERT(out.NumCols() == out_diff.NumCols());
+    // Call the backprop implementation of the component
+    BackpropagateFnc(in, out, out_diff, in_diff);
   }
-  // Asserts on the dims
-  KALDI_ASSERT((in.NumRows() == out.NumRows()) &&
-               (in.NumRows() == out_diff.NumRows()) &&
-               (in.NumRows() == in_diff->NumRows()));
-  KALDI_ASSERT(in.NumCols() == in_diff->NumCols());
-  KALDI_ASSERT(out.NumCols() == out_diff.NumCols());
-  // Call the backprop implementation of the component
-  BackpropagateFnc(in, out, out_diff, in_diff);
 }
 
 

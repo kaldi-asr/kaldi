@@ -1,6 +1,7 @@
 // feat/pitch-functions-test.cc
 
 // Copyright    2013  Pegah Ghahremani
+//              2014  IMSL, PKU-HKUST (author: Wei Shi)
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -23,7 +24,7 @@
 #include "feat/wave-reader.h"
 #include "sys/timeb.h"
 #include "sys/stat.h"
-#include "sys/types.h" 
+#include "sys/types.h"
 using namespace kaldi;
 
 std::string ConvertIntToString(const int &number) {
@@ -161,11 +162,20 @@ static void UnitTestWeightedMwn() {
     int32 num_frames = 1 + (rand()%10 * 10);
     int32 normalization_win_size = 5 + rand() % 50;
     Matrix<BaseFloat> feat(num_frames, 2),
-      output_feat(num_frames, 2);
+                      output_feat(num_frames, 2);
     feat.SetRandn();
     for (int32 j = 0; j < num_frames; j++)
       feat(j, 0) = 1;
-    WeightedMwn(normalization_win_size, feat, &output_feat);
+
+    Vector<BaseFloat> pov(num_frames),
+                      log_pitch(num_frames),
+                      mean_subtracted_log_pitch(num_frames);
+    pov.CopyColFromMat(feat, 0);
+    log_pitch.CopyColFromMat(feat,1);
+    WeightedMwn(normalization_win_size, pov, log_pitch ,
+                &mean_subtracted_log_pitch);
+    output_feat.CopyColFromVec(mean_subtracted_log_pitch, 1);
+
     // SlidingWindow
     SlidingWindowCmnOptions opts;
     opts.cmn_window = normalization_win_size;
@@ -178,10 +188,18 @@ static void UnitTestWeightedMwn() {
     for (int32 j = 0; j < num_frames; j++)
       output_feat(j, 0) = 0.0;
     if (!output_feat.ApproxEqual(output_feat2, 0.001)) {
-      KALDI_ERR << "Feafures differ " << output_feat << " vs." << output_feat2;
+      Matrix<BaseFloat> output_all(num_frames, 2);
+      Vector<BaseFloat> pitch(num_frames),
+                        pitch2(num_frames);
+      pitch.CopyColFromMat(output_feat,1);
+      pitch2.CopyColFromMat(output_feat2,1);
+      output_all.CopyColFromVec( pitch, 0 );
+      output_all.CopyColFromVec( pitch2, 1 );
+      KALDI_ERR << "Feafures differ:\n" << output_all ;
     }
   }
   // Weighted Moving Window Normalization with non-uniform weights
+  /*
   int32 num_frames = 1 + (rand()%10 * 20);
   int32 normalization_win_size = 5 + rand() % 50;
   Matrix<BaseFloat> feat(num_frames, 2),
@@ -193,6 +211,7 @@ static void UnitTestWeightedMwn() {
   }
   ProcessPovFeatures(&feat, 2, true);
   WeightedMwn(normalization_win_size, feat, &output_feat);
+  */
 }
 static void UnitTestTakeLogOfPitch() {
   for (int32 i = 0; i < 100; i++) {
@@ -212,7 +231,7 @@ static void UnitTestTakeLogOfPitch() {
     if (input.ApproxEqual(output, 0.0001)) {
       KALDI_ERR << " Log of Matrix differs " << input << " vs. " << output;
     }
-  } 
+  }
 }
 static void UnitTestPitchExtractionSpeed() {
   KALDI_LOG << "=== UnitTestPitchExtractionSpeed() ===\n";
@@ -287,7 +306,7 @@ static void UnitTestPitchExtractorCompareKeele() {
 void UnitTestDiffSampleRate() {
   // you need to use sox to change sampling rate
   // e.g. sox -r 10k input.wav output.wav
-  // put them in keele/(samp_rate in kHz)+"kHz" e.g. keele/10kHz  
+  // put them in keele/(samp_rate in kHz)+"kHz" e.g. keele/10kHz
   int sample_rate = 16000;
   PitchExtractionOptions op;
   op.samp_freq = static_cast<double>(sample_rate);
@@ -315,7 +334,7 @@ void UnitTestDiffSampleRate() {
     std::string outfile = "keele/"+num+"-kaldi-samp-freq-"+samp_rate+"kHz.txt";
     std::ofstream os(outfile.c_str());
     m.Write(os, false);
-  } 
+  }
 }
 void UnitTestPostProcess() {
   for (int32 i = 1; i < 11; i++) {
@@ -346,7 +365,7 @@ void UnitTestPostProcess() {
     std::string outfile = "keele/"+num+"-processed-kaldi.txt";
     std::ofstream os(outfile.c_str());
     m2.Write(os, false);
-  } 
+  }
 }
 void UnitTestDeltaPitch() {
   KALDI_LOG << "=== UnitTestDeltaPitch() ===\n";
@@ -356,10 +375,10 @@ void UnitTestDeltaPitch() {
       output_feat(num_frames), output_feat2(num_frames);
     for (int32 j = 0; j < num_frames; j++)
       feat(j) = 0.2 * j;
-    for (int32 j = 2; j < num_frames - 2; j++)  
+    for (int32 j = 2; j < num_frames - 2; j++)
       output_feat2(j) = 1.0 / 10.0  *
         (-2.0 * feat(j - 2) - feat(j - 1) + feat(j + 1) + 2.0 * feat(j + 2));
-    PostProcessPitchOptions op;  
+    PostProcessPitchOptions op;
     op.delta_pitch_noise_stddev = 0;
     ExtractDeltaPitch(op, feat, &output_feat);
     if (!output_feat.ApproxEqual(output_feat2, 0.05)) {
@@ -376,26 +395,26 @@ void UnitTestResample() {
   double resample_freq = 1000;
   double lowpass_filter_cutoff = 1000;
   int sample_num = 1000;
-  int32 lowpass_filter_width = 2;   
+  int32 lowpass_filter_width = 2;
   Matrix<double> input_wave(1, sample_num);
   for (int32 i = 0; i < sample_num; i++)
     input_wave(0, i) = sin(2*M_PI/sample_freq * i);
   double dt = sample_freq / resample_freq;
   int32 resampled_len = static_cast<int>(sample_num/dt);
-  std::vector<double> resampled_t(resampled_len); 
-  Matrix<double> resampled_wave1(1, resampled_len),    
-                 resampled_wave2(1, resampled_len); 
-  for (int32 i = 0; i < resampled_len; i++)  {     
-    resampled_t[i] = static_cast<double>(i) / resample_freq;       
+  std::vector<double> resampled_t(resampled_len);
+  Matrix<double> resampled_wave1(1, resampled_len),
+                 resampled_wave2(1, resampled_len);
+  for (int32 i = 0; i < resampled_len; i++)  {
+    resampled_t[i] = static_cast<double>(i) / resample_freq;
     resampled_wave2(0, i) = sin(2 * M_PI * resampled_t[i]);
   }
   ArbitraryResample resample(sample_num, sample_freq,
                              lowpass_filter_cutoff, resampled_t,
                              lowpass_filter_width);
   resample.Upsample(input_wave, &resampled_wave1);
-  
+
   if (!resampled_wave1.ApproxEqual(resampled_wave2, 0.01)) {
-    KALDI_ERR << "Resampled wave " << resampled_wave1 
+    KALDI_ERR << "Resampled wave " << resampled_wave1
               << " vs. " << resampled_wave2;
   }
 }

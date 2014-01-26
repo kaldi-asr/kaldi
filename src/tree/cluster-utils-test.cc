@@ -46,7 +46,7 @@ static void TestClusterUtils() {  // just some very basic tests of the GaussClus
     BaseFloat like_after = tmp->Objf() / tmp->Normalizer();
     std::cout << "Like_before = " << like_before <<", after = "<<like_after <<" over "<<tmp->Normalizer()<<" frames.\n";
     if (tmp->Normalizer() > 0.1)
-      assert(like_after <= like_before);  // should get worse after combining stats.
+      KALDI_ASSERT(like_after <= like_before);  // should get worse after combining stats.
     delete tmp;
   }
   for (size_t i = 0;i < nGauss;i++)
@@ -110,7 +110,7 @@ static void TestEnsureClusterableVectorNotNull() {
   std::vector<Clusterable*> vec(4);
   vec[1] = a.Copy(); vec[3] = a.Copy();
   EnsureClusterableVectorNotNull(&vec);
-  assert(vec[0] != NULL && vec[2] != NULL && vec[0]->Objf() == 0 && vec[2]->Objf() == 0 && vec[0] != vec[2] && vec[0] != vec[1]);
+  KALDI_ASSERT(vec[0] != NULL && vec[2] != NULL && vec[0]->Objf() == 0 && vec[2]->Objf() == 0 && vec[0] != vec[2] && vec[0] != vec[1]);
   DeletePointers(&vec);
 }
 
@@ -127,8 +127,8 @@ static void TestAddToClusters() {
   AddToClusters(stats, assignments, &clusters2);  // do this twice.
   AddToClusters(stats, assignments, &clusters2);
 
-  assert(clusters.size() == 5);
-  assert(clusters[0] == NULL && clusters[1] != NULL && clusters[4] != NULL);
+  KALDI_ASSERT(clusters.size() == 5);
+  KALDI_ASSERT(clusters[0] == NULL && clusters[1] != NULL && clusters[4] != NULL);
   for (size_t i = 0;i < 5;i++) {
     if (clusters[i] != NULL) {
       AssertEqual(clusters2[i]->Objf(), clusters[i]->Objf()*2);
@@ -161,7 +161,7 @@ static void TestAddToClustersOptimized() {
     std::vector<Clusterable*> clusts2;
     Clusterable *total = SumClusterable(stats);
     if (total == NULL) {  // no stats were non-NULL.
-      assert(stats.size() == 0 || stats[0] == NULL);
+      KALDI_ASSERT(stats.size() == 0 || stats[0] == NULL);
       DeletePointers(&stats);
       continue;
     }
@@ -173,10 +173,10 @@ static void TestAddToClustersOptimized() {
         tot3 = SumClusterableNormalizer(clusts2);
     AssertEqual(tot1, tot2);
     AssertEqual(tot1, tot3);
-    assert(clusts1.size() == clusts2.size());
+    KALDI_ASSERT(clusts1.size() == clusts2.size());
     for (size_t i = 0;i < clusts1.size();i++) {
       if (clusts1[i] != NULL || clusts2[i] != NULL) {
-        assert(clusts1[i] != NULL && clusts2[i] != NULL);
+        KALDI_ASSERT(clusts1[i] != NULL && clusts2[i] != NULL);
         AssertEqual(clusts1[i]->Normalizer(), clusts2[i]->Normalizer());
         AssertEqual( ((ScalarClusterable*)clusts1[i])->Mean(),
                      ((ScalarClusterable*)clusts2[i])->Mean() );
@@ -213,7 +213,7 @@ static void TestClusterBottomUp() {
 
     float ans = ClusterBottomUp(points, max_merge_thresh, min_clust, &clusters, &assignments);
 
-    assert(ans < 0.000001);  //  objf change should be negative.
+    KALDI_ASSERT(ans < 0.000001);  //  objf change should be negative.
     std::cout << "Objf change from bottom-up clustering is "<<ans<<'\n';
 
     ClusterBottomUp(points, max_merge_thresh, min_clust, NULL, NULL);  // make sure no crash.
@@ -227,15 +227,15 @@ static void TestClusterBottomUp() {
       }
     }
 
-    assert(clusters.size() == std::max(n_clust, std::min(points.size(), min_clust)));
+    KALDI_ASSERT(clusters.size() == std::max(n_clust, std::min(points.size(), min_clust)));
 
     for (size_t i = 0;i < points.size();i++) {
       size_t j = rand() % points.size();
       BaseFloat xi = ((ScalarClusterable*)points[i])->Mean(),
           xj = ((ScalarClusterable*)points[j])->Mean();
       if (fabs(xi-xj) < 0.011) {
-        if (clusters.size() == n_clust) assert(assignments[i] == assignments[j]);
-      } else assert(assignments[i] != assignments[j]);
+        if (clusters.size() == n_clust) KALDI_ASSERT(assignments[i] == assignments[j]);
+      } else KALDI_ASSERT(assignments[i] != assignments[j]);
     }
     DeletePointers(&clusters);
     DeletePointers(&points);
@@ -276,7 +276,7 @@ static void TestRefineClusters() {
     clust_objf_after = SumClusterableObjf(clusters);
     std::cout << "TestRefineClusters: objfs are: "<<points_objf<<" "<<clust_objf_before<<" "<<clust_objf_after<<", impr = "<<impr<<'\n';
     if (cfg.top_n >=(int32) n_clust) {  // check exact.
-      assert(clust_objf_after <= 0.01*points.size());
+      KALDI_ASSERT(clust_objf_after <= 0.01*points.size());
     }
     AssertEqual(clust_objf_after - clust_objf_before, impr);
     DeletePointers(&clusters);
@@ -312,7 +312,7 @@ static void TestClusterKMeans() {
     if (clusters.size() != n_clust) {
       std::cout << "Warning: unexpected number of clusters "<<clusters.size()<<" vs. "<<n_clust<<"\n";
     }
-    assert(assignments.size() == points.size());
+    KALDI_ASSERT(assignments.size() == points.size());
 
     if (clust_objf < -1.0 * points.size()) {  // a bit high...
       std::cout << "Warning: ClusterKMeans did not work quite as well as expected\n";
@@ -339,7 +339,7 @@ static void TestClusterKMeans() {
   }
   if (n_wrong_tot*4 > n_points_tot) {
     std::cout << "Got too many wrong in k-means test [may not be fatal, but check it out.\n";
-    assert(0);
+    KALDI_ASSERT(0);
   }
 }
 
@@ -365,8 +365,8 @@ static void TestTreeCluster() {
 
     if (n < 3) TreeCluster(points, n_clust, NULL, NULL, NULL, NULL, tcfg);  // make sure no crash
 
-    assert(num_leaves == n_clust);
-    assert(clusters_ext.size() >= static_cast<size_t>(n_clust));
+    KALDI_ASSERT(num_leaves == n_clust);
+    KALDI_ASSERT(clusters_ext.size() >= static_cast<size_t>(n_clust));
     std::vector<Clusterable*> clusters(clusters_ext);
     clusters.resize(n_clust);  // ignore non-leaves.
     BaseFloat clust_objf = SumClusterableObjf(clusters);
@@ -378,16 +378,16 @@ static void TestTreeCluster() {
     for (int32 i = 0;i<static_cast<int32>(clusters_ext.size());i++) {
       if (n < 2) // avoid generating too much output.
         std::cout << "Cluster "<<i<<": "<<((ScalarClusterable*)clusters_ext[i])->Info()<<", parent is: "<< clust_assignments[i]<<"\n";
-      assert(clust_assignments[i]>i || (i+1 == static_cast<int32>(clusters_ext.size()) && clust_assignments[i] == i));
+      KALDI_ASSERT(clust_assignments[i]>i || (i+1 == static_cast<int32>(clusters_ext.size()) && clust_assignments[i] == i));
       if (i == static_cast<int32>(clusters_ext.size())-1)
-        assert(clust_assignments[i] == i);  // top node.
+        KALDI_ASSERT(clust_assignments[i] == i);  // top node.
     }
     DeletePointers(&clusters_ext);
     DeletePointers(&points);
   }
   if (n_wrong_tot*4 > n_points_tot) {
     std::cout << "Got too many wrong in k-means test [may not be fatal, but check it out.\n";
-    assert(0);
+    KALDI_ASSERT(0);
   }
 }
 
@@ -427,13 +427,13 @@ static void TestClusterTopDown() {
         std::cout.precision(old_prec);
       }
     }
-    assert(clusters.size() == n_clust);
+    KALDI_ASSERT(clusters.size() == n_clust);
     DeletePointers(&clusters);
     DeletePointers(&points);
   }
   if (n_wrong_tot*4 > n_points_tot) {
     std::cout << "Got too many wrong in k-means test [may not be fatal, but check it out.\n";
-    assert(0);
+    KALDI_ASSERT(0);
   }
 }
 

@@ -76,7 +76,7 @@ if len(options.cmvn_nnet)>0:
     if arr[0] == '<Nnet>': #optionally skip <Nnet>
         line = f.readline()
         arr = line.split(' ')
-    if arr[0] != '<addshift>':
+    if arr[0].lower() != '<addshift>':
         raise Exception('missing <addshift> in '+options.cmvn_nnet)
     #get the p's
     line = f.readline()

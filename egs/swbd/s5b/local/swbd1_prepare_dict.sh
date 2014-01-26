@@ -21,7 +21,7 @@ srcdict=$srcdir/swb_ms98_transcriptions/sw-ms98-dict.text
 #(2a) Dictionary preparation:
 # Pre-processing (Upper-case, remove comments)
 awk 'BEGIN{getline}($0 !~ /^#/) {$0=tolower($0); print}' \
-  $srcdict | sort | awk '($0 !~ /^[:space:]*$/) {print}' \
+  $srcdict | sort | awk '($0 !~ /^[[:space:]]*$/) {print}' \
    > $dir/lexicon1.txt || exit 1;
 
 

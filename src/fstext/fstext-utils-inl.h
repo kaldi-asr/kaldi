@@ -106,6 +106,7 @@ void GetInputSymbols(const Fst<Arc> &fst,
     all_syms.erase(0);
   KALDI_ASSERT(symbols != NULL);
   kaldi::CopySetToVector(all_syms, symbols);
+  std::sort(symbols->begin(), symbols->end());
 }
 
 
@@ -284,73 +285,73 @@ bool GetLinearSymbolSequences(const Fst<Arc> &fst,
 
 // see fstext-utils.sh for comment.
 template<class Arc>
+void ConvertNbestToVector(const Fst<Arc> &fst,
+                          vector<VectorFst<Arc> > *fsts_out) {
+  typedef typename Arc::Weight Weight;
+  typedef typename Arc::StateId StateId;
+  fsts_out->clear();
+  StateId start_state = fst.Start();
+  if (start_state == kNoStateId) return; // No output.
+  size_t n_arcs = fst.NumArcs(start_state);
+  bool start_is_final = (fst.Final(start_state) != Weight::Zero());
+  fsts_out->reserve(n_arcs + (start_is_final ? 1 : 0));
+
+  if (start_is_final) {
+    fsts_out->resize(fsts_out->size() + 1);
+    StateId start_state_out = fsts_out->back().AddState();
+    fsts_out->back().SetFinal(start_state_out, fst.Final(start_state));
+  }
+  
+  for (ArcIterator<Fst<Arc> > start_aiter(fst, start_state);
+       !start_aiter.Done();
+       start_aiter.Next()) {
+    fsts_out->resize(fsts_out->size() + 1);
+    VectorFst<Arc> &ofst = fsts_out->back();
+    const Arc &first_arc = start_aiter.Value();
+    StateId cur_state = start_state,
+        cur_ostate = ofst.AddState();
+    ofst.SetStart(cur_ostate);
+    StateId next_ostate = ofst.AddState();
+    ofst.AddArc(cur_ostate, Arc(first_arc.ilabel, first_arc.olabel,
+                                first_arc.weight, next_ostate));
+    cur_state = first_arc.nextstate;
+    cur_ostate = next_ostate;
+    while (1) {
+      size_t this_n_arcs = fst.NumArcs(cur_state);
+      KALDI_ASSERT(this_n_arcs <= 1); // or it violates our assumptions
+                                      // about the input.
+      if (this_n_arcs == 1) {
+        KALDI_ASSERT(fst.Final(cur_state) == Weight::Zero());
+        // or problem with ShortestPath.
+        ArcIterator<Fst<Arc> > aiter(fst, cur_state);
+        const Arc &arc = aiter.Value();
+        next_ostate = ofst.AddState();
+        ofst.AddArc(cur_ostate, Arc(arc.ilabel, arc.olabel,
+                                    arc.weight, next_ostate));
+        cur_state = arc.nextstate;
+        cur_ostate = next_ostate;
+      } else {
+        KALDI_ASSERT(fst.Final(cur_state) != Weight::Zero());
+        // or problem with ShortestPath.
+        ofst.SetFinal(cur_ostate, fst.Final(cur_state));
+        break;
+      }
+    }
+  }
+}
+
+
+// see fstext-utils.sh for comment.
+template<class Arc>
 void NbestAsFsts(const Fst<Arc> &fst,
                  size_t n,
                  vector<VectorFst<Arc> > *fsts_out) {
-  typedef typename Arc::StateId StateId;
-  typedef typename Arc::Label Label;
-  typedef typename Arc::Weight Weight;
   KALDI_ASSERT(n > 0);
   KALDI_ASSERT(fsts_out != NULL);
   VectorFst<Arc> nbest_fst;
   ShortestPath(fst, &nbest_fst, n);
-  fsts_out->clear();
-  StateId start_state = nbest_fst.Start();
-  if (start_state == kNoStateId) return; // No output.
-  size_t n_arcs = nbest_fst.NumArcs(start_state);
-  if (n_arcs == 0) {
-    // this is kind of a special case and I'm not sure if it's even
-    // possible, but we'll allow it.
-    KALDI_ASSERT(nbest_fst.Final(start_state) != Weight::Zero());
-    fsts_out->resize(1);
-    (*fsts_out)[0] = nbest_fst; // Just one path in it.
-  } else {
-    KALDI_ASSERT(nbest_fst.Final(start_state) == Weight::Zero());
-    // As far as I know, it's not possible for the output of ShortestPath
-    // to have a final-prob and also an arc out of the start state.
-    // It's supposed to have an arc out for each path.
-    KALDI_ASSERT(n_arcs <= n); // or bug in ShortestPath algorithm.
-    fsts_out->resize(n_arcs);
-
-    size_t k = 0;
-    for (ArcIterator<Fst<Arc> > start_aiter(nbest_fst, start_state);
-         !start_aiter.Done();
-         start_aiter.Next(), k++) {
-      KALDI_ASSERT(k < n_arcs);
-      VectorFst<Arc> &ofst = (*fsts_out)[k];
-      const Arc &first_arc = start_aiter.Value();
-      StateId cur_state = start_state,
-          cur_ostate = ofst.AddState();
-      ofst.SetStart(cur_ostate);
-      StateId next_ostate = ofst.AddState();
-      ofst.AddArc(cur_ostate, Arc(first_arc.ilabel, first_arc.olabel,
-                                  first_arc.weight, next_ostate));
-      cur_state = first_arc.nextstate;
-      cur_ostate = next_ostate;
-      while (1) {
-        size_t this_n_arcs = nbest_fst.NumArcs(cur_state);
-        KALDI_ASSERT(this_n_arcs <= 1); // or problem with ShortestPath.
-        if (this_n_arcs == 1) {
-          KALDI_ASSERT(nbest_fst.Final(cur_state) == Weight::Zero());
-          // or problem with ShortestPath.
-          ArcIterator<Fst<Arc> > aiter(nbest_fst, cur_state);
-          const Arc &arc = aiter.Value();
-          next_ostate = ofst.AddState();
-          ofst.AddArc(cur_ostate, Arc(arc.ilabel, arc.olabel,
-                                      arc.weight, next_ostate));
-          cur_state = arc.nextstate;
-          cur_ostate = next_ostate;
-        } else {
-          KALDI_ASSERT(nbest_fst.Final(cur_state) != Weight::Zero());
-          // or problem with ShortestPath.
-          ofst.SetFinal(cur_ostate, nbest_fst.Final(cur_state));
-          break;
-        }
-      }
-    }
-    KALDI_ASSERT(k == n_arcs);
-  }
-}
+  ConvertNbestToVector(nbest_fst, fsts_out);
+}    
 
 template<class Arc, class I>
 void MakeLinearAcceptorWithAlternatives(const vector<vector<I> > &labels,

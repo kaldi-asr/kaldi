@@ -33,6 +33,7 @@ cmd="run.pl"
 stage=-4
 num_gselect=20 # Gaussian-selection using diagonal model: number of Gaussians to select
 ivector_dim=400 # dimension of the extracted i-vector
+use_weights=false # set to true to turn on the regression of log-weights on the ivector.
 num_iters=10
 min_post=0.025 # Minimum posterior to use (posteriors below this are pruned out)
 num_samples_for_weights=3 # smaller than the default for speed (relates to a sampling method)
@@ -82,7 +83,7 @@ utils/split_data.sh $data $nj_full || exit 1;
 
 parallel_opts="-pe smp $[$num_threads*$num_processes]"
 ## Set up features.
-feats="ark,s,cs:apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
+feats="ark,s,cs:add-deltas scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
 
 # Initialize the i-vector extractor using the FGMM input
 if [ $stage -le -2 ]; then
@@ -90,7 +91,8 @@ if [ $stage -le -2 ]; then
   $cmd $dir/log/convert.log \
     fgmm-global-to-gmm $dir/final.ubm $dir/final.dubm || exit 1;
   $cmd $dir/log/init.log \
-    ivector-extractor-init --ivector-dim=$ivector_dim $dir/final.ubm $dir/0.ie || exit 1
+    ivector-extractor-init --ivector-dim=$ivector_dim --use-weights=$use_weights \
+     $dir/final.ubm $dir/0.ie || exit 1
 fi 
 
 # Do Gaussian selection and posterior extracion

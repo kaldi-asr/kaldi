@@ -60,6 +60,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new SoftHingeComponent();
   } else if (component_type == "PnormComponent") {
     ans = new PnormComponent();
+  } else if (component_type == "MaxoutComponent") {
+    ans = new MaxoutComponent();
   } else if (component_type == "ScaleComponent") {
     ans = new ScaleComponent();
   } else if (component_type == "PowerExpandComponent") {
@@ -498,6 +500,91 @@ void NonlinearComponent::InitFromString(std::string args) {
   Init(dim);
 }
 
+void MaxoutComponent::Init(int32 input_dim, int32 output_dim)  {
+  input_dim_ = input_dim;
+  output_dim_ = output_dim;
+  if (input_dim_ == 0)
+    input_dim_ = 10 * output_dim_; // default group size : 10
+  KALDI_ASSERT(input_dim_ > 0 && output_dim_ >= 0);
+  KALDI_ASSERT(input_dim_ % output_dim_ == 0) 
+}
+
+void MaxoutComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  int32 input_dim = 0;
+  int32 output_dim = 0;
+  bool ok = ParseFromString("output-dim", &args, &output_dim) &&
+      ParseFromString("input-dim", &args, &input_dim);
+  KALDI_LOG << output_dim << " " << input_dim << " " << ok;
+  if (!ok || !args.empty() || output_dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+  Init(input_dim, output_dim);
+}
+
+
+void MaxoutComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                                int32 num_chunks,
+                                CuMatrix<BaseFloat> *out) const {
+  out->Resize(in.NumRows(), output_dim_, kUndefined);
+  int32 group_size = input_dim_ / output_dim_;
+  for (MatrixIndexT j = 0; j < output_dim_; j++) {
+    CuSubMatrix<BaseFloat> pool(out->ColRange(j, 1));
+    pool.Set(-1e20);
+    for (MatrixIndexT i = 0; i < group_size; i++)
+      pool.Max(in.ColRange(j * group_size + i, 1));
+  }
+}
+
+void MaxoutComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                               const CuMatrixBase<BaseFloat> &out_value,
+                               const CuMatrixBase<BaseFloat> &out_deriv,
+                               int32, // num_chunks
+                               Component *to_update, // to_update
+                               CuMatrix<BaseFloat> *in_deriv) const {
+  int32 group_size = input_dim_ / output_dim_;
+  in_deriv->Resize(in_value.NumRows(), in_value.NumCols(), kSetZero);
+  for (MatrixIndexT j = 0; j < output_dim_; j++) {
+    CuSubMatrix<BaseFloat> out_j(out_value.ColRange(j, 1));
+    for (MatrixIndexT i = 0; i < group_size; i++) {
+        CuSubMatrix<BaseFloat> in_i(in_value.ColRange(j * group_size + i, 1));
+        CuSubMatrix<BaseFloat> in_deriv_i(in_deriv->ColRange(j * group_size + i, 1));
+        CuMatrix<BaseFloat> out_deriv_j(out_deriv.ColRange(j, 1));
+
+        // Only the pool-inputs with 'max-values' are used to back-propagate into,
+        // the rest of derivatives is zeroed-out by a mask.
+        CuMatrix<BaseFloat> mask;
+        in_i.EqualElementMask(out_j, &mask);
+        out_deriv_j.MulElements(mask);
+        in_deriv_i.AddMat(1.0, out_deriv_j, 1.0); 
+    }
+  }
+}
+
+void MaxoutComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<MaxoutComponent>", "<InputDim>");
+  ReadBasicType(is, binary, &input_dim_);
+  ExpectToken(is, binary, "<OutputDim>");
+  ReadBasicType(is, binary, &output_dim_);
+  ExpectToken(is, binary, "</MaxoutComponent>");
+}
+
+void MaxoutComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<MaxoutComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, input_dim_);
+  WriteToken(os, binary, "<OutputDim>");
+  WriteBasicType(os, binary, output_dim_);
+  WriteToken(os, binary, "</MaxoutComponent>");
+}
+
+std::string MaxoutComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", input-dim = " << input_dim_
+         << ", output-dim = " << output_dim_;
+  return stream.str();
+}
+
 void PnormComponent::Init(int32 input_dim, int32 output_dim, BaseFloat p)  {
   input_dim_ = input_dim;
   output_dim_ = output_dim;
@@ -572,9 +659,10 @@ std::string PnormComponent::Info() const {
 }
 
 
+const BaseFloat NormalizeComponent::kNormFloor = pow(2.0, -66);
 // This component modifies the vector of activations by scaling it so that the
-// root-mean-square does not exceed one.
-const BaseFloat NormalizeComponent::kNormFloor = pow(2, -66);
+// root-mean-square equals 1.0.
+
 void NormalizeComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                               int32, // num_chunks
                               CuMatrix<BaseFloat> *out) const {
@@ -615,28 +703,7 @@ void NormalizeComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
                                   int32, // num_chunks
                                   Component *to_update,
                                   CuMatrix<BaseFloat> *in_deriv) const {
-  
-
-  /* Of course, you'll need to write testing code for this.  Please don't forget to
-  write testing code for the CPU-based version: your CPU-based p-norm code was
-  not tested and it had bugs.  Generally, to test things like this I just compute
-  the function manually using a simple loop and compare it with the
-  member-function version.
-
-   Then, compute in_norm as in Propagate(), and do
-      in_deriv.AddDiagVecMat(1.0, in_norm, out_deriv, kNoTrans, 0.0),
-  which gives you the first term in your derivative (see equation for "deriv_in" above)... then do
-   in_norm.ReplaceValue(1.0, 0.0);
-   in_norm.ApplyPow(3.0);
-  then create a vector dot_products to hold each element of the expression (deriv_out^T row_in)
-  that I mentioned above: something like
-   dot_products.AdyydDiagMatMat(1.0, deriv_out, kNoTrans, in_value, kTrans, 0.0);
-   dot_products.MulElements(in_norm);
-   // then add the second term to the derivatives:  
-   in_deriv.AddDiagVecMat(-1.0 / D, dot_products, in_value, 1.0);
-*/
-  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols(),
-                   kUndefined);
+  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
   
   CuVector<BaseFloat> in_norm(in_value.NumRows());
   in_norm.AddDiagMat2(1.0 / in_value.NumCols(),
@@ -4008,10 +4075,9 @@ void DropoutComponent::Init(int32 dim,
   dropout_scale_ = dropout_scale;
 }
   
-void DropoutComponent::Propagate(
-    const CuMatrixBase<BaseFloat> &in,
-    int32 num_chunks,
-    CuMatrix<BaseFloat> *out) const {
+void DropoutComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+    				 int32 num_chunks,
+    				 CuMatrix<BaseFloat> *out) const {
   KALDI_ASSERT(in.NumCols() == this->InputDim());
   out->Resize(in.NumRows(), in.NumCols());
 
@@ -4038,26 +4104,9 @@ void DropoutComponent::Propagate(
   if ((high_scale - low_scale) != 1.0)
     out->Scale(high_scale - low_scale); // now, "dp" are 0 and (1-dp) are "high_scale-low_scale".
   if (low_scale != 0.0)
-    out->Add(low_scale); // now "dp" equale "low_scale" and (1.0-dp) equal "high_scale".
+    out->Add(low_scale); // now "dp" equal "low_scale" and (1.0-dp) equal "high_scale".
 
   out->MulElements(in);
-  
-  /*
-    old code, before it was CUDA-ified:
-  Vector<BaseFloat> scales(dim);
-  BaseFloat *begin = scales.Data(), *mid = begin + num_low,
-      *end = begin + dim;
-  std::fill(begin, mid, low_scale);
-  std::fill(mid, end, high_scale);
-  
-  out->CopyFromMat(in);
-  for (int32 r = 0; r < out->NumRows(); r++) {
-    CuSubVector<BaseFloat> out_row(*out, r);
-    std::random_shuffle(begin, end); // get new random ordering of kept components.
-    // depends on rand().
-    out_row.MulElements(scales);
-    }*/
-
 }
 
 void DropoutComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
@@ -4068,20 +4117,7 @@ void DropoutComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
                                 CuMatrix<BaseFloat> *in_deriv) const {
   KALDI_ASSERT(SameDim(in_value, out_value) && SameDim(in_value, out_deriv));
   in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
-  for (int32 r = 0; r < in_value.NumRows(); r++) { // each frame...
-    for (int32 c = 0; c < in_value.NumCols(); c++) {
-      BaseFloat i = in_value(r, c), o = out_value(r, c), od = out_deriv(r, c),
-          id;
-      if (i != 0.0) {
-        id = od * (o / i); /// o / i is either zero or "scale".
-      } else {
-        id = od; /// Just imagine the scale was 1.0.  This is somehow true in
-        /// expectation; anyway, this case should basically never happen so it doesn't
-        /// really matter.
-      }
-      (*in_deriv)(r, c) = id;
-    }
-  }
+  in_deriv->AddMatMatDivMat(out_deriv, out_value, in_value);
 }
 
 Component* DropoutComponent::Copy() const {

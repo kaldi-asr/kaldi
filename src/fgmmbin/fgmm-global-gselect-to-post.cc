@@ -28,6 +28,7 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     typedef kaldi::int32 int32;
+    typedef kaldi::int64 int64;
 
     const char *usage =
         "Given features and Gaussian-selection (gselect) information for\n"
@@ -62,6 +63,7 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(model_rxfilename, &fgmm);
     
     double tot_loglike = 0.0, tot_frames = 0.0;
+    int64 tot_posts = 0;
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
@@ -117,9 +119,12 @@ int main(int argc, char *argv[]) {
               loglikes.Scale(1.0 / sum);
             }
           }
-          for (int32 i = 0; i < loglikes.Dim(); i++)
-            if (loglikes(i) != 0.0)
+          for (int32 i = 0; i < loglikes.Dim(); i++) {
+            if (loglikes(i) != 0.0) {
               post[t].push_back(std::make_pair(this_gselect[i], loglikes(i)));
+              tot_posts++;
+            }
+          }
           KALDI_ASSERT(!post[t].empty());
         }
       }
@@ -139,8 +144,9 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_LOG << "Done " << num_done << " files; " << num_err << " had errors.";
-    KALDI_LOG << "Overall loglike per frame is " << (tot_loglike/tot_frames)
-              << " over " << tot_frames << " frames.";
+    KALDI_LOG << "Overall loglike per frame is " << (tot_loglike / tot_frames)
+              << " with " << (tot_posts / tot_frames) << " entries per frame, "
+              << " over " << tot_frames << " frames";
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

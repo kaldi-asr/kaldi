@@ -208,15 +208,15 @@ void DeltaFeatures::Process(const MatrixBase<BaseFloat> &input_feats,
   output_frame->SetZero();
   for (int32 i = 0; i <= opts_.order; i++) {
     const Vector<BaseFloat> &scales = scales_[i];
-    int32 offset = (scales.Dim()-1)/2;
+    int32 max_offset = (scales.Dim() - 1) / 2;
     SubVector<BaseFloat> output(*output_frame, i*feat_dim, feat_dim);
-    for (int32 j = -offset; j <= offset; j++) {
+    for (int32 j = -max_offset; j <= max_offset; j++) {
       // if asked to read
       int32 offset_frame = frame + j;
       if (offset_frame < 0) offset_frame = 0;
       else if (offset_frame >= num_frames)
-        offset_frame = num_frames-1;
-      BaseFloat scale = scales(j+offset);
+        offset_frame = num_frames - 1;
+      BaseFloat scale = scales(j + max_offset);
       if (scale != 0.0)
         output.AddVec(scale, input_feats.Row(offset_frame));
     }

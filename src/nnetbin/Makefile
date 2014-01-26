@@ -14,7 +14,7 @@ BINFILES = nnet-train-frmshuff \
         nnet-train-mpe-sequential \
         rbm-train-cd1-frmshuff rbm-convert-to-nnet \
         nnet-forward nnet-copy nnet-info nnet-concat \
-        transf-to-nnet cmvn-to-nnet \
+        transf-to-nnet cmvn-to-nnet nnet-initialize \
         nnet-kl-hmm-acc nnet-kl-hmm-mat-to-component 
 
 OBJFILES =

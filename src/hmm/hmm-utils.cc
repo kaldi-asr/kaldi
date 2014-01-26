@@ -96,7 +96,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
   std::vector<StateId> state_ids;
   for (size_t i = 0; i < entry.size(); i++)
     state_ids.push_back(ans->AddState());
-  assert(state_ids.size() != 0);  // Or empty topology entry.
+  KALDI_ASSERT(state_ids.size() != 0);  // Or empty topology entry.
   ans->SetStart(state_ids[0]);
   StateId final = state_ids.back();
   ans->SetFinal(final, Weight::One());
@@ -196,7 +196,7 @@ GetHmmAsFstSimple(std::vector<int32> phone_window,
   std::vector<StateId> state_ids;
   for (size_t i = 0; i < entry.size(); i++)
     state_ids.push_back(ans->AddState());
-  assert(state_ids.size() > 1);  // Or invalid topology entry.
+  KALDI_ASSERT(state_ids.size() > 1);  // Or invalid topology entry.
   ans->SetStart(state_ids[0]);
   StateId final = state_ids.back();
   ans->SetFinal(final, Weight::One());
@@ -254,7 +254,7 @@ fst::VectorFst<fst::StdArc> *GetHTransducer (const std::vector<std::vector<int32
                                              const TransitionModel &trans_model,
                                              const HTransducerConfig &config,
                                              std::vector<int32> *disambig_syms_left) {
-  assert(ilabel_info.size() >= 1 && ilabel_info[0].size() == 0);  // make sure that eps == eps.
+  KALDI_ASSERT(ilabel_info.size() >= 1 && ilabel_info[0].size() == 0);  // make sure that eps == eps.
   HmmCacheType cache;
   // "cache" is an optimization that prevents GetHmmAsFst repeating work
   // unnecessarily.
@@ -267,17 +267,17 @@ fst::VectorFst<fst::StdArc> *GetHTransducer (const std::vector<std::vector<int32
   std::vector<const ExpandedFst<Arc>* > fsts(ilabel_info.size(), NULL);
   std::vector<int32> phones = trans_model.GetPhones();
 
-  assert(disambig_syms_left != 0);
+  KALDI_ASSERT(disambig_syms_left != 0);
   disambig_syms_left->clear();
 
   int32 first_disambig_sym = trans_model.NumTransitionIds() + 1;  // First disambig symbol we can have on the input side.
   int32 next_disambig_sym = first_disambig_sym;
 
   if (ilabel_info.size() > 0)
-    assert(ilabel_info[0].size() == 0);  // make sure epsilon is epsilon...
+    KALDI_ASSERT(ilabel_info[0].size() == 0);  // make sure epsilon is epsilon...
 
   for (int32 j = 1; j < static_cast<int32>(ilabel_info.size()); j++) {  // zero is eps.
-    assert(!ilabel_info[j].empty());
+    KALDI_ASSERT(!ilabel_info[j].empty());
     if (ilabel_info[j].size() == 1 &&
        ilabel_info[j][0] <= 0) {  // disambig symbol
 
@@ -316,7 +316,7 @@ void GetIlabelMapping (const std::vector<std::vector<int32> > &ilabel_info_old,
                        const ContextDependencyInterface &ctx_dep,
                        const TransitionModel &trans_model,
                        std::vector<int32> *old2new_map) {
-  assert(old2new_map != NULL);
+  KALDI_ASSERT(old2new_map != NULL);
 
   /// The next variable maps from the (central-phone, pdf-sequence) to
   /// the index in ilabel_info_old corresponding to the first phone-in-context
@@ -341,7 +341,7 @@ void GetIlabelMapping (const std::vector<std::vector<int32> > &ilabel_info_old,
     if (vec.size() == 1 && vec[0] <= 0) {  // disambig.
       old2old_map[i] = i;
     } else {
-      assert(vec.size() == static_cast<size_t>(N));
+      KALDI_ASSERT(vec.size() == static_cast<size_t>(N));
       // work out the vector of context-dependent phone
       int32 central_phone = vec[P];
       int32 num_pdf_classes = trans_model.GetTopo().NumPdfClasses(central_phone);
@@ -435,7 +435,7 @@ public:
       return trans_model_.TransitionIdToTransitionState(label);
     } else {  // 0 or (presumably) disambiguation symbol.  Map to zero
       if (label != 0)
-        assert(std::binary_search(disambig_syms_.begin(), disambig_syms_.end(), label));  // or invalid label
+        KALDI_ASSERT(std::binary_search(disambig_syms_.begin(), disambig_syms_.end(), label));  // or invalid label
       return 0;
     }
   }
@@ -461,7 +461,7 @@ static void AddSelfLoopsBefore(const TransitionModel &trans_model,
   MakePrecedingInputSymbolsSameClass(true, fst, f);
 
   int32 kNoTransState = f(kNoLabel);
-  assert(kNoTransState == -1);
+  KALDI_ASSERT(kNoTransState == -1);
 
   // use the following to keep track of the transition-state for each state.
   std::vector<int32> state_in(fst->NumStates(), kNoTransState);
@@ -488,7 +488,7 @@ static void AddSelfLoopsBefore(const TransitionModel &trans_model,
     }
   }
 
-  assert(state_in[fst->Start()] == kNoStateId || state_in[fst->Start()] == 0);
+  KALDI_ASSERT(state_in[fst->Start()] == kNoStateId || state_in[fst->Start()] == 0);
   // or MakePrecedingInputSymbolsSame failed.
 
   // The next loop looks at each graph state, adds the self-loop [if needed] and
@@ -543,13 +543,13 @@ static void AddSelfLoopsAfter(const TransitionModel &trans_model,
   StateId num_states = fst->NumStates();
   for (StateId s = 0; s < num_states; s++) {
     int32 my_trans_state = f(kNoLabel);
-    assert(my_trans_state == -1);
+    KALDI_ASSERT(my_trans_state == -1);
     for (MutableArcIterator<VectorFst<Arc> > aiter(fst, s);
          !aiter.Done();
          aiter.Next()) {
       Arc arc = aiter.Value();
       if (my_trans_state == -1) my_trans_state = f(arc.ilabel);
-      else assert(my_trans_state == f(arc.ilabel));  // or MakeFollowingInputSymbolsSameClass failed.
+      else KALDI_ASSERT(my_trans_state == f(arc.ilabel));  // or MakeFollowingInputSymbolsSameClass failed.
       if (my_trans_state > 0) {  // transition-id; multiply weight...
         BaseFloat log_prob = trans_model.GetNonSelfLoopLogProb(my_trans_state);
         arc.weight = Times(arc.weight, Weight(-log_prob*self_loop_scale));
@@ -557,7 +557,7 @@ static void AddSelfLoopsAfter(const TransitionModel &trans_model,
       }
     }
     if (fst->Final(s) != Weight::Zero()) {
-      assert(my_trans_state == kNoLabel || my_trans_state == 0);  // or MakeFollowingInputSymbolsSameClass failed.
+      KALDI_ASSERT(my_trans_state == kNoLabel || my_trans_state == 0);  // or MakeFollowingInputSymbolsSameClass failed.
     }
     if (my_trans_state != kNoLabel && my_trans_state != 0) {
       // a transition-state;  add self-loop, if it has one.
@@ -575,7 +575,7 @@ void AddSelfLoops(const TransitionModel &trans_model,
                   BaseFloat self_loop_scale,
                   bool reorder,  // true->dan-style, false->lukas-style.
                   fst::VectorFst<fst::StdArc> *fst) {
-  assert(fst->Start() != fst::kNoStateId);
+  KALDI_ASSERT(fst->Start() != fst::kNoStateId);
   if (reorder)
     AddSelfLoopsBefore(trans_model, disambig_syms, self_loop_scale, fst);
   else
@@ -642,7 +642,7 @@ static bool SplitToPhonesInternal(const TransitionModel &trans_model,
       else {  // reordered.
         while (i+1 < alignment.size() &&
               trans_model.IsSelfLoop(alignment[i+1])) {
-          assert(trans_model.TransitionIdToTransitionState(alignment[i]) == 
+          KALDI_ASSERT(trans_model.TransitionIdToTransitionState(alignment[i]) == 
                  trans_model.TransitionIdToTransitionState(alignment[i+1]));
           i++;
         }
@@ -688,7 +688,7 @@ static bool SplitToPhonesInternal(const TransitionModel &trans_model,
 bool SplitToPhones(const TransitionModel &trans_model,
                    const std::vector<int32> &alignment,
                    std::vector<std::vector<int32> > *split_alignment) {
-  assert(split_alignment != NULL);
+  KALDI_ASSERT(split_alignment != NULL);
   split_alignment->clear();
 
   bool is_reordered = IsReordered(trans_model, alignment);
@@ -703,14 +703,14 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
                       const std::vector<int32> &old_alignment,
                       const std::vector<int32> *phone_map,
                       std::vector<int32> *new_alignment) {
-  assert(new_alignment != NULL);
+  KALDI_ASSERT(new_alignment != NULL);
   new_alignment->clear();
   std::vector<std::vector<int32> > split;  // split into phones.
   if (!SplitToPhones(old_trans_model, old_alignment, &split))
     return false;
   std::vector<int32> phones(split.size());
   for (size_t i = 0; i < split.size(); i++) {
-    assert(!split[i].empty());
+    KALDI_ASSERT(!split[i].empty());
     phones[i] = old_trans_model.TransitionIdToPhone(split[i][0]);
   }
   if (phone_map != NULL) {  // Map the phone sequence.
@@ -764,7 +764,7 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
       }
     }
   }
-  assert(new_alignment->size() == old_alignment.size());
+  KALDI_ASSERT(new_alignment->size() == old_alignment.size());
   return true;
 }
 
@@ -798,7 +798,7 @@ void AddTransitionProbs(const TransitionModel &trans_model,
                         BaseFloat self_loop_scale,
                         fst::VectorFst<fst::StdArc> *fst) {
   using namespace fst;
-  assert(IsSortedAndUniq(disambig_syms));
+  KALDI_ASSERT(IsSortedAndUniq(disambig_syms));
   int num_tids = trans_model.NumTransitionIds();
   for (StateIterator<VectorFst<StdArc> > siter(*fst);
       !siter.Done();

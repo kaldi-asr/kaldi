@@ -132,22 +132,41 @@ if [ $stage -le 1 ] ; then
       steps/search_index.sh --cmd "$cmd" $kwsdatadir $kwsoutdir  || exit 1
 
       [ ! -f $datasetA/kws/utter_id ] && echo "File $datasetA/kws/utter_id must exist!" && exit 1;
-      
       cat $kwsoutdir/result.* | \
         grep -F -f <(cut -f 1 -d ' ' $datasetA/kws/utter_id ) |\
         grep "^KW[-a-zA-Z0-9]*-A " | \
         sed 's/^\(KW.*\)-A /\1 /g' > $dirA/results 
+
       [ ! -f $datasetB/kws/utter_id ] && echo "File $datasetB/kws/utter_id must exist!" && exit 1;
       cat $kwsoutdir/result.* | \
         grep -F -f <(cut -f 1 -d ' ' $datasetB/kws/utter_id ) |\
         grep "^KW[-a-zA-Z0-9]*-B " | \
         sed 's/^\(KW.*\)-B /\1 /g' > $dirB/results
 
+
+      dirA=$decodedir/`basename $datasetA`_`basename $datasetB`/kws_$lmwt
+      dirB=$decodedir/`basename $datasetB`_`basename $datasetA`/kws_$lmwt
+      mkdir -p $dirA
+      mkdir -p $dirB
+      [ ! -f $datasetA/kws/utter_id ] && echo "File $datasetA/kws/utter_id must exist!" && exit 1;
+      cat $kwsoutdir/result.* | \
+        grep -F -f <(cut -f 1 -d ' ' $datasetA/kws/utter_id ) |\
+        grep "^KW[-a-zA-Z0-9]*-B " | \
+        sed 's/^\(KW.*\)-B /\1 /g' > $dirA/results 
+
+      [ ! -f $datasetB/kws/utter_id ] && echo "File $datasetB/kws/utter_id must exist!" && exit 1;
+      cat $kwsoutdir/result.* | \
+        grep -F -f <(cut -f 1 -d ' ' $datasetB/kws/utter_id ) |\
+        grep "^KW[-a-zA-Z0-9]*-A " | \
+        sed 's/^\(KW.*\)-A /\1 /g' > $dirB/results
   done
 fi
 
 rootdirA=$decodedir/`basename $datasetA`
 rootdirB=$decodedir/`basename $datasetB`
+rootdirAB=$decodedir/`basename $datasetA`_`basename $datasetB`
+rootdirBA=$decodedir/`basename $datasetB`_`basename $datasetA`
+
 
 echo "Processing $datasetA"
 if [ $stage -le 2 ] ; then
@@ -157,6 +176,13 @@ if [ $stage -le 2 ] ; then
     utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
       --segments=$datadir/segments --normalize=true --remove-dup=true\
       --map-utter=$kwsdatadir/utter_map  --digits=3 - $rootdirA/kws_LMWT/kwslist.xml || exit 1
+
+  $cmd LMWT=$min_lmwt:$max_lmwt $rootdirAB/kws/kws_write_normalized.LMWT.log \
+    set -e';' set -o pipefail';' \
+    cat $rootdirAB/kws_LMWT/results \| \
+    utils/write_kwslist.pl --flen=0.01 --duration=$durationA \
+      --segments=$datadir/segments --normalize=true --remove-dup=true\
+      --map-utter=$kwsdatadir/utter_map  --digits=3 - $rootdirAB/kws_LMWT/kwslist.xml || exit 1
 fi
 
 if [ $stage -le 3 ] ; then
@@ -166,6 +192,13 @@ if [ $stage -le 3 ] ; then
     utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$durationA \
       --segments=$datadir/segments --normalize=false --remove-dup=true\
       --map-utter=$kwsdatadir/utter_map - $rootdirA/kws_LMWT/kwslist.unnormalized.xml || exit 1
+  
+  $cmd LMWT=$min_lmwt:$max_lmwt $rootdirAB/kws/kws_write_unnormalized.LMWT.log \
+    set -e';' set -o pipefail';' \
+    cat $rootdirAB/kws_LMWT/results \| \
+    utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$durationA \
+      --segments=$datadir/segments --normalize=false --remove-dup=true\
+      --map-utter=$kwsdatadir/utter_map - $rootdirAB/kws_LMWT/kwslist.unnormalized.xml || exit 1
 fi
 
 echo "Scoring $datasetA"
@@ -178,6 +211,8 @@ if [ $stage -le 4 ] ; then
   else
     $cmd LMWT=$min_lmwt:$max_lmwt $rootdirA/kws/kws_scoring.LMWT.log \
       local/kws_score.sh $datasetA $rootdirA/kws_LMWT 
+    $cmd LMWT=$min_lmwt:$max_lmwt $rootdirAB/kws/kws_scoring.LMWT.log \
+      local/kws_score.sh --kwlist $datasetB/kws/kwlist.xml $datasetA $rootdirAB/kws_LMWT 
   fi
 fi
 
@@ -189,6 +224,12 @@ if [ $stage -le 5 ] ; then
     utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
       --segments=$datadir/segments --normalize=true --digits=3  --remove-dup=true\
       --map-utter=$kwsdatadir/utter_map - $rootdirB/kws_LMWT/kwslist.xml || exit 1
+  $cmd LMWT=$min_lmwt:$max_lmwt $rootdirBA/kws/kws_write_normalized.LMWT.log \
+    set -e';' set -o pipefail';' \
+    cat $rootdirBA/kws_LMWT/results \| \
+    utils/write_kwslist.pl --flen=0.01 --duration=$durationB \
+      --segments=$datadir/segments --normalize=true --digits=3  --remove-dup=true\
+      --map-utter=$kwsdatadir/utter_map - $rootdirBA/kws_LMWT/kwslist.xml || exit 1
 fi
 
 if [ $stage -le 6 ] ; then
@@ -198,6 +239,12 @@ if [ $stage -le 6 ] ; then
     utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$durationB \
       --segments=$datadir/segments --normalize=false --remove-dup=true\
       --map-utter=$kwsdatadir/utter_map - $rootdirB/kws_LMWT/kwslist.unnormalized.xml || exit 1
+  $cmd LMWT=$min_lmwt:$max_lmwt $rootdirBA/kws/kws_write_unnormalized.LMWT.log \
+    set -e';' set -o pipefail';' \
+    cat $rootdirBA/kws_LMWT/results \| \
+    utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$durationB \
+      --segments=$datadir/segments --normalize=false --remove-dup=true\
+      --map-utter=$kwsdatadir/utter_map - $rootdirBA/kws_LMWT/kwslist.unnormalized.xml || exit 1
 fi
 
 echo "Scoring $datasetB"
@@ -209,6 +256,8 @@ if [ $stage -le 7 ] ; then
   else
     $cmd LMWT=$min_lmwt:$max_lmwt $rootdirB/kws/kws_scoring.LMWT.log \
       local/kws_score.sh $datasetB $rootdirB/kws_LMWT || exit 1
+    $cmd LMWT=$min_lmwt:$max_lmwt $rootdirBA/kws/kws_scoring.LMWT.log \
+      local/kws_score.sh --kwlist $datasetA/kws/kwlist.xml $datasetB $rootdirBA/kws_LMWT || exit 1
   fi
 fi
 

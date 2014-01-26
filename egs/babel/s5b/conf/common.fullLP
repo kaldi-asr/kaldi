@@ -2,19 +2,19 @@
 dnn_num_hidden_layers=4
 dnn_input_dim=4000
 dnn_output_dim=400
-dnn_minibatch_size=128
 dnn_init_learning_rate=0.008
 dnn_final_learning_rate=0.0008
 dnn_max_change=10
-dnn_num_jobs=8
-dnn_num_threads=1
 dnn_mixup=12000
-dnn_parallel_opts="-l gpu=1,hostname=g*"
+
+dnn_mpe_learning_rate=0.00012
+dnn_mpe_last_layer_factor=0.1
+dnn_mpe_retroactive=true
 
 bnf_every_nth_frame=2 # take every 2nd frame.
 babel_type=full
 
-use_pitch=false
+use_pitch=true
 
 lmwt_plp_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
 lmwt_bnf_extra_opts=( --min-lmwt 13 --max-lmwt 18 )
@@ -30,12 +30,21 @@ if [[ `hostname` == *.tacc.utexas.edu ]] ; then
   sgmm_train_extra_opts=( )
   sgmm_group_extra_opts=( --num_iters 25 ) 
   sgmm_denlats_extra_opts=( --num-threads 2 )
+  dnn_denlats_extra_opts=( --num-threads 2 )
+  dnn_parallel_opts="-l gpu=1"
 else
   decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G")
-  sgmm_train_extra_opts=( --num_iters 25 )
+  sgmm_train_extra_opts=( --num-iters 25 )
   sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=7G,ram_free=2.75G" --cmd "queue.pl -l arch=*64 -l mem_free=3.0G,ram_free=3.0G") 
   sgmm_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
   sgmm_mmi_extra_opts=(--cmd "queue.pl -l arch=*64 -l mem_free=3.2G,ram_free=3.2G")
+  dnn_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
+
+  dnn_cpu_parallel_opts=(--minibatch-size 128 --num-jobs-nnet 8 --num-threads 16 \
+                         --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
+  dnn_gpu_parallel_opts=(--minibatch-size 128 --num-jobs-nnet 8 --num-threads 1 \
+                         --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
+
 fi
  
 icu_transform="Any-Lower"
@@ -45,7 +54,5 @@ case_insensitive=true
 max_states=150000
 wip=0.5
 
-use_pitch=false
-use_ffv=false
 
 phoneme_mapping=

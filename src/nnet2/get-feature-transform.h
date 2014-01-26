@@ -65,16 +65,19 @@ class FeatureTransformEstimate: public LdaEstimate {
   /// with an extra column which corresponds to mean-offset removal (the matrix
   /// should be multiplied by the feature with a 1 appended to give the correct
   /// result, as with other Kaldi transforms.)
-  /// The "remove_offset" argument is new and should be set to false for back
-  /// compatibility.
-  void Estimate(const FeatureTransformEstimateOptions &opts, 
-                Matrix<BaseFloat> *M) const;
+  /// "within_cholesky" is a pointer to an SpMatrix that, if non-NULL, will
+  /// be set to the Cholesky factor of the within-class covariance matrix.
+  /// This is used for perturbing features.
+  void Estimate(const FeatureTransformEstimateOptions &opts,
+                Matrix<BaseFloat> *M,
+                TpMatrix<BaseFloat> *within_cholesky) const;
  protected:
   static void EstimateInternal(const FeatureTransformEstimateOptions &opts,
                                const SpMatrix<double> &total_covar,
                                const SpMatrix<double> &between_covar,
                                const Vector<double> &mean,
-                               Matrix<BaseFloat> *M);
+                               Matrix<BaseFloat> *M,
+                               TpMatrix<BaseFloat> *C);
 };
 
 

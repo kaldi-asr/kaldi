@@ -96,7 +96,7 @@ data=data-fbank
   dir=exp/tri5a_uc-mlp-part1
   ali=exp/tri5a_ali
   $cuda_cmd $dir/_train_nnet.log \
-    steps/train_nnet.sh --hid-layers 2 --hid-dim 1200 --bn-dim 80 --feat-type traps --splice-lr 5 --traps-dct-basis 6  --learn-rate 0.008 --bunch-size 256 \
+    steps/train_nnet.sh --hid-layers 2 --hid-dim 1200 --bn-dim 80 --apply-cmvn true --feat-type traps --splice 5 --traps-dct-basis 6  --learn-rate 0.008 \
     data-fbank/train_100k_nodup data-fbank/train_dev data/lang ${ali}_100k_nodup ${ali}_dev $dir || exit 1;
   } 
 
@@ -117,7 +117,7 @@ data=data-fbank
   dir=exp/tri5a_uc-mlp-part2
   ali=exp/tri5a_ali
   $cuda_cmd $dir/_train_nnet.log \
-    steps/train_nnet.sh --hid-layers 2 --hid-dim 1200 --bn-dim 30 --feature-transform $feature_transform --learn-rate 0.008 --bunch-size 256 \
+    steps/train_nnet.sh --hid-layers 2 --hid-dim 1200 --bn-dim 30 --apply-cmvn true --feature-transform $feature_transform --learn-rate 0.008 \
     data-fbank/train_100k_nodup data-fbank/train_dev data/lang ${ali}_100k_nodup ${ali}_dev $dir || exit 1;
   }
 }

@@ -50,7 +50,7 @@ void TestEventMap() {
   tvec.push_back(C1b);
 
   TableEventMap *T1 = new TableEventMap(1, tvec);  // takes ownership of C0a, C1b
-  assert(T1->MaxResult() == 1);
+  KALDI_ASSERT(T1->MaxResult() == 1);
 
   {
     int32 num_leaves;
@@ -92,11 +92,11 @@ void TestEventMap() {
       AnswerType ans;
       // T3.Map(vec, &ans);
       if (init_map.count(i) == 0) {
-        assert( ! T3.Map(vec, &ans) );  // false
+        KALDI_ASSERT( ! T3.Map(vec, &ans) );  // false
       } else {
         bool b = T3.Map(vec, &ans);
-        assert(b);
-        assert(ans == init_map[i]);  // true
+        KALDI_ASSERT(b);
+        KALDI_ASSERT(ans == init_map[i]);  // true
       }
     }
   }
@@ -132,7 +132,7 @@ void TestEventTypeIo(bool binary) {
         EventType evec2;
         evec2.push_back(std::make_pair<EventKeyType, EventValueType>(1, 1));  // make it nonempty.
         ReadEventType(infile, binary_in, &evec2);
-        assert(evec2 == event_vec);
+        KALDI_ASSERT(evec2 == event_vec);
       }
     }
   }
@@ -144,7 +144,7 @@ EventMap *RandomEventMap(const std::vector<EventKeyType> &keys) {
   // Do not mess with the probabilities inside this routine or there
   // is a danger this function will blow up.
   int32 max_val = kMaxVal;
-  assert(keys.size() != 0);
+  KALDI_ASSERT(keys.size() != 0);
   float f = RandUniform();
   if (f < 0.333) {  // w.p. 0.333, return ConstantEventMap.
     return new ConstantEventMap(rand() % max_val);
@@ -199,7 +199,7 @@ void TestEventMapIo(bool binary) {
     EventMap::Write(str2_out, binary, read_map);
 
     // Checking we can write the map, read it in, and get the same string form.
-    assert(str_out.str() == str2_out.str());
+    KALDI_ASSERT(str_out.str() == str2_out.str());
     delete read_map;
     delete rand_map;
   }

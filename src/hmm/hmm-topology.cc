@@ -101,7 +101,7 @@ void HmmTopology::Read(std::istream &is, bool binary) {
           int32 phone = phones[i];
           if (static_cast<int32>(phone2idx_.size()) <= phone)
             phone2idx_.resize(phone+1, -1);  // -1 is invalid index.
-          assert(phone > 0);
+          KALDI_ASSERT(phone > 0);
           if (phone2idx_[phone] != -1)
             KALDI_ERR << "Phone with index "<<(i)<<" appears in multiple topology entries.";
           phone2idx_[phone] = my_index;
@@ -110,7 +110,7 @@ void HmmTopology::Read(std::istream &is, bool binary) {
       }
     }
     std::sort(phones_.begin(), phones_.end());
-    assert(IsSortedAndUniq(phones_));
+    KALDI_ASSERT(IsSortedAndUniq(phones_));
   } else {  // binary I/O, just read member objects directly from disk.
     ReadIntegerVector(is, binary, &phones_);
     ReadIntegerVector(is, binary, &phone2idx_);
@@ -246,7 +246,7 @@ void HmmTopology::Check() {
         if (seen_transition.count(dst_state) != 0)
           KALDI_ERR << "HmmTopology::Check(), duplicate transition found.";
         if (dst_state == k) {  // self_loop...
-          assert(entries_[i][j].pdf_class != kNoPdf && "Nonemitting states cannot have self-loops.");
+          KALDI_ASSERT(entries_[i][j].pdf_class != kNoPdf && "Nonemitting states cannot have self-loops.");
         }
         seen_transition.insert(dst_state);
         has_trans_in[dst_state] = true;
