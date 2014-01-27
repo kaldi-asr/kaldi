@@ -143,8 +143,8 @@ struct DeterminizeLatticePrunedOptions {
     This function implements the normal version of DeterminizeLattice, in which the
     output strings are represented using sequences of arcs, where all but the
     first one has an epsilon on the input side.  It also prunes using the beam
-    in the "prune" parameter.  The input FST should be topologically sorted, for
-    greatest efficiency.  More efficient if ifst is arc-sorted on input label.
+    in the "prune" parameter.  The input FST must be topologically sorted in order
+    for the algorithm to work. For efficiency it is recommended to sort ilabel as well.
     Returns true on success, and false if it had to terminate the determinization
     earlier than specified by the "prune" beam-- that is, if it terminated because
     of the max_mem, max_loop or max_arcs constraints in the options.
@@ -159,9 +159,9 @@ bool DeterminizeLatticePruned(
 
 /*  This is a version of DeterminizeLattice with a slightly more "natural" output format,
     where the output sequences are encoded using the CompactLatticeArcTpl template
-    (i.e. the sequences of output symbols are represented directly as strings)
-    Input FST should be topologically sorted, for greatest efficiency.
-    More efficient if ifst is arc-sorted on input label.
+    (i.e. the sequences of output symbols are represented directly as strings The input
+    FST must be topologically sorted in order for the algorithm to work. For efficiency
+    it is recommended to sort the ilabel for the input FST as well.
     Returns true on success, and false if it had to terminate the determinization
     earlier than specified by the "prune" beam-- that is, if it terminated because
     of the max_mem, max_loop or max_arcs constraints in the options.
