@@ -48,7 +48,7 @@ void PrintAlignmentStats(const std::vector<T> &ref,
     if (it->first == eps) {
       os << "insertion " << it->second << std::endl;
     } else if (it->second == eps) {
-      os << "deletion " << it->second << std::endl;
+      os << "deletion " << it->first << std::endl;
     } else if (it->first != it->second) {
       os << "substitution " << it->first << ' ' << it->second << std::endl;
     } else {
