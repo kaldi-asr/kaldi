@@ -243,7 +243,7 @@ echo "$0: (while reducing learning rate) + (with constant learning rate)."
 
 # This is when we decide to mix up from: halfway between when we've finished
 # adding the hidden layers and the end of training.
-finish_add_layers_iter=$[($num_hidden_layers-$initial_num_hidden_layers+1)*$add_layers_period]
+finish_add_layers_iter=$[$num_hidden_layers * $add_layers_period]
 mix_up_iter=$[($num_iters + $finish_add_layers_iter)/2]
 
 if [ $num_threads -eq 1 ]; then
