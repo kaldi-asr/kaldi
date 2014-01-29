@@ -149,7 +149,8 @@ static void UnitTestKeeleNccfBallast() {
       Matrix<BaseFloat> m;
       Compute(op, waveform, &m);
       std::string nccfballast = ConvertIntToString(op.nccf_ballast);
-      std::string outfile = "keele/"+num+"-kaldi-nccf-ballast-"+nccfballast+".txt";
+      std::string outfile = "keele/"+num
+        +"-kaldi-nccf-ballast-"+nccfballast+".txt";
       std::ofstream os(outfile.c_str());
       m.Write(os, false);
     }
@@ -171,7 +172,7 @@ static void UnitTestWeightedMwn() {
                       log_pitch(num_frames),
                       mean_subtracted_log_pitch(num_frames);
     pov.CopyColFromMat(feat, 0);
-    log_pitch.CopyColFromMat(feat,1);
+    log_pitch.CopyColFromMat(feat, 1);
     WeightedMwn(normalization_win_size, pov, log_pitch ,
                 &mean_subtracted_log_pitch);
     output_feat.CopyColFromVec(mean_subtracted_log_pitch, 1);
@@ -191,11 +192,11 @@ static void UnitTestWeightedMwn() {
       Matrix<BaseFloat> output_all(num_frames, 2);
       Vector<BaseFloat> pitch(num_frames),
                         pitch2(num_frames);
-      pitch.CopyColFromMat(output_feat,1);
-      pitch2.CopyColFromMat(output_feat2,1);
-      output_all.CopyColFromVec( pitch, 0 );
-      output_all.CopyColFromVec( pitch2, 1 );
-      KALDI_ERR << "Feafures differ:\n" << output_all ;
+      pitch.CopyColFromMat(output_feat, 1);
+      pitch2.CopyColFromMat(output_feat2, 1);
+      output_all.CopyColFromVec(pitch, 0);
+      output_all.CopyColFromVec(pitch2, 1);
+      KALDI_ERR << "Feafures differ:\n" << output_all;
     }
   }
   // Weighted Moving Window Normalization with non-uniform weights
@@ -382,7 +383,8 @@ void UnitTestDeltaPitch() {
     op.delta_pitch_noise_stddev = 0;
     ExtractDeltaPitch(op, feat, &output_feat);
     if (!output_feat.ApproxEqual(output_feat2, 0.05)) {
-      KALDI_ERR << "output feat " << output_feat << " vs. " << " ouput feat2 " << output_feat2;
+      KALDI_ERR << "output feat " << output_feat << " vs. "
+        << " ouput feat2 " << output_feat2;
     }
     for (int32 j = 0; j < num_frames; j++)
       KALDI_LOG << output_feat(j) << " , " << output_feat2(j) << " ";
@@ -403,7 +405,8 @@ void UnitTestResample() {
   int32 resampled_len = static_cast<int>(sample_num/dt);
   std::vector<double> resampled_t(resampled_len);
   Matrix<double> resampled_wave1(1, resampled_len),
-                 resampled_wave2(1, resampled_len);
+                 resampled_wave2(1, resampled_len),
+                 resampled_wave3(1, resampled_len);
   for (int32 i = 0; i < resampled_len; i++)  {
     resampled_t[i] = static_cast<double>(i) / resample_freq;
     resampled_wave2(0, i) = sin(2 * M_PI * resampled_t[i]);
@@ -416,6 +419,20 @@ void UnitTestResample() {
   if (!resampled_wave1.ApproxEqual(resampled_wave2, 0.01)) {
     KALDI_ERR << "Resampled wave " << resampled_wave1
               << " vs. " << resampled_wave2;
+  }
+  // UnitTest of LinearResample, should equals ArbitraryResample
+  Vector<double> input_wave_vec(sample_num);
+  input_wave_vec.CopyRowFromMat(input_wave, 0);
+  Vector<double> resampled_wave_vec(resampled_len);
+  LinearResample resample3(sample_freq, resample_freq,
+                             lowpass_filter_cutoff,
+                             lowpass_filter_width);
+  resample3.Upsample(input_wave_vec, &resampled_wave_vec);
+  resampled_wave3.CopyRowFromVec(resampled_wave_vec, 0);
+
+  if (!resampled_wave3.ApproxEqual(resampled_wave1, 0.0001)) {
+    KALDI_ERR << "Resampled wave " << resampled_wave3
+              << " vs. " << resampled_wave1;
   }
 }
 
