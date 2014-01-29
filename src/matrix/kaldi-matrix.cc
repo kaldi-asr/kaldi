@@ -2356,7 +2356,7 @@ Real MatrixBase<Real>::LogSumExp(Real prune) const {
     for (MatrixIndexT j = 0; j < num_cols_; j++) {
       BaseFloat f = (*this)(i, j);
       if (f >= cutoff)
-        sum_relto_max_elem += std::exp(f - max_elem);
+        sum_relto_max_elem += Exp(f - max_elem);
     }
   }
   return max_elem + std::log(sum_relto_max_elem);
@@ -2368,7 +2368,7 @@ Real MatrixBase<Real>::ApplySoftMax() {
   // the 'max' helps to get in good numeric range.
   for (MatrixIndexT i = 0; i < num_rows_; i++)
     for (MatrixIndexT j = 0; j < num_cols_; j++)
-      sum += ((*this)(i, j) = std::exp((*this)(i, j) - max));
+      sum += ((*this)(i, j) = Exp((*this)(i, j) - max));
   this->Scale(1.0 / sum);
   return max + log(sum);
 }
@@ -2400,8 +2400,7 @@ void MatrixBase<Real>::SoftHinge(const MatrixBase<Real> &src) {
       Real x = src_row_data[c], y;
       if (x > 10.0) y = x; // avoid exponentiating large numbers; function
       // approaches y=x.
-      else y = Log1p(std::exp(x)); // defined in kaldi-math.h, calls log1p or
-                                   // log1pf
+      else y = Log1p(Exp(x)); // these defined in kaldi-math.h
       row_data[c] = y;
     }
   }

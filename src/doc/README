@@ -15,19 +15,14 @@
 # end then import the contents of .ssh/id_dsa.pub into
 # http://sourceforge.net/account/services 
 
-#(from Dan:) The commands below show how I compile the documentation and
-#copy it to the homepage at sourceforge.  (We also maintain a version 
-#at http://merlin.fit.vutbr.cz/kaldi but this will eventually be 
-#discontinued).
+#(from Dan:) The commands below show how I compile the documentation and copy it
+#to the homepage at sourceforge.  I do this from JHU at the current time.
 
 # cd to src/
 doc/make_tools.sh
 doxygen
-cp ~/sourceforge/kaldi/trunk/src/doc/*.pptx ~/sourceforge/kaldi/trunk/src/html/; 
+cp doc/*.pptx html/;
 
-# outdated instructions:
-#echo 'for x in ~/sourceforge/kaldi/trunk/src/html/*
-#    do cp -r $x /var/www/html/kaldi; done' | ssh merlin bash
 
 tar -czf html.tar.gz html
 scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/

@@ -257,7 +257,13 @@ class RandomAccessTableReader {
 
   ~RandomAccessTableReader();
 
+  // Allow copy-constructor only for non-opened readers (needed for inclusion in
+  // stl vector)
+  RandomAccessTableReader(const RandomAccessTableReader<Holder> &other):
+      impl_(NULL) { KALDI_ASSERT(other.impl_ == NULL); }
  private:
+  // Disallow assignment.
+  RandomAccessTableReader &operator=(const RandomAccessTableReader<Holder>&);
   void CheckImpl() const; // Checks that impl_ is non-NULL; prints an error
                           // message and dies (with KALDI_ERR) if NULL.
   RandomAccessTableReaderImplBase<Holder> *impl_;
@@ -332,7 +338,14 @@ class SequentialTableReader {
   // we reached the end of the archive or script, or because there was an error
   // that prevented further reading.
   ~SequentialTableReader();
+
+  // Allow copy-constructor only for non-opened readers (needed for inclusion in
+  // stl vector)
+  SequentialTableReader(const SequentialTableReader<Holder> &other):
+      impl_(NULL) { KALDI_ASSERT(other.impl_ == NULL); }
  private:
+  // Disallow assignment.
+  SequentialTableReader &operator = (const SequentialTableReader<Holder>&); 
   void CheckImpl() const; // Checks that impl_ is non-NULL; prints an error
                           // message and dies (with KALDI_ERR) if NULL.
   SequentialTableReaderImplBase<Holder> *impl_;
@@ -378,7 +391,14 @@ class TableWriter {
   bool Close();
 
   ~TableWriter();
+  
+  // Allow copy-constructor only for non-opened writers (needed for inclusion in
+  // stl vector)
+  TableWriter(const TableWriter &other): impl_(NULL) {
+    KALDI_ASSERT(other.impl_ == NULL);
+  }
  private:
+  TableWriter &operator = (const TableWriter&); // Disallow assignment.
   void CheckImpl() const; // Checks that impl_ is non-NULL; prints an error
                           // message and dies (with KALDI_ERR) if NULL.
   TableWriterImplBase<Holder> *impl_;
@@ -418,8 +438,13 @@ class RandomAccessTableReaderMapped {
   inline bool IsOpen() const { return reader_.IsOpen(); }
   inline bool Close() { return reader_.Close(); }
   
-  // Use the default destructor.
+
+
+  // The default copy-constructor will do what we want: it will crash
+  // for already-opened readers, by calling the member-variable copy-constructors.
  private:
+  // Disallow assignment.
+  RandomAccessTableReaderMapped &operator=(const RandomAccessTableReaderMapped<Holder>&);
   RandomAccessTableReader<Holder> reader_;
   RandomAccessTableReader<TokenHolder> token_reader_;
   std::string utt2spk_rxfilename_; // Used only in diagnostic messages.

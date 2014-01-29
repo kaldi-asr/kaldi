@@ -696,7 +696,7 @@ Real VectorBase<Real>::LogSumExp(Real prune) const {
   for (MatrixIndexT i = 0; i < dim_; i++) {
     BaseFloat f = data_[i];
     if (f >= cutoff)
-      sum_relto_max_elem += std::exp(f - max_elem);
+      sum_relto_max_elem += Exp(f - max_elem);
   }
   return max_elem + std::log(sum_relto_max_elem);
 }
@@ -728,7 +728,7 @@ void VectorBase<Real>::ApplyLogAndCopy(const VectorBase<Real> &v) {
 template<typename Real>
 void VectorBase<Real>::ApplyExp() {
   for (MatrixIndexT i = 0; i < dim_; i++) {
-    data_[i] = std::exp(data_[i]);
+    data_[i] = Exp(data_[i]);
   }
 }
 
@@ -779,7 +779,7 @@ template<typename Real>
 Real VectorBase<Real>::ApplySoftMax() {
 Real max = this->Max(), sum = 0.0;
   for (MatrixIndexT i = 0; i < dim_; i++) {
-    sum += (data_[i] = std::exp(data_[i] - max));
+    sum += (data_[i] = Exp(data_[i] - max));
   }
   this->Scale(1.0 / sum);
   return max + std::log(sum);
@@ -804,10 +804,10 @@ void VectorBase<Real>::Tanh(const VectorBase<Real> &src) {
   for (MatrixIndexT i = 0; i < dim_; i++) {
     Real x = src.data_[i];
     if (x > 0.0) {
-      Real inv_expx = std::exp(-x);
+      Real inv_expx = Exp(-x);
       x = -1.0 + 2.0 / (1.0 + inv_expx * inv_expx);
     } else {
-      Real inv_expx = std::exp(x);
+      Real inv_expx = Exp(x);
       x = 1.0 - 2.0 / (1.0 + inv_expx * inv_expx);
     }
     data_[i] = x;
@@ -843,9 +843,9 @@ void VectorBase<Real>::Sigmoid(const VectorBase<Real> &src) {
     Real x = src.data_[i];
     // We aim to avoid floating-point overflow here.
     if (x > 0.0) {
-      x = 1.0 / (1.0 + std::exp(-x));
+      x = 1.0 / (1.0 + Exp(-x));
     } else {
-      Real ex = std::exp(x);
+      Real ex = Exp(x);
       x = ex / (ex + 1.0);
     }
     data_[i] = x;
