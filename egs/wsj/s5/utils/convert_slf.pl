@@ -98,10 +98,9 @@ while(<FI>) {
     $gs *= -1;
     $as *= -1;
 
-    # the state sequence is something like 1_2_4_56_45 so we remove all digits and count the _+1
-    $ss =~ s/[0-9]*//g;
-    $ss = 1 + length $ss;
-
+    # the state sequence is something like 1_2_4_56_45, get number of tokens after splitting by '_':
+    $ss = scalar split(/_/, $ss);
+    
     # update the end time
     die "Node $s not yet visited, is lattice sorted topologically? $utt" unless exists $nodes{$s};
     $time_end = $nodes{$s}{t} + $ss * $framerate;
@@ -122,9 +121,8 @@ while(<FI>) {
     $gs *= -1;
     $as *= -1;
     
-    # the state sequence is something like 1_2_4_56_45 so we remove all digits and count the _+1
-    $ss =~ s/[0-9]*//g;
-    $ss = 1 + length $ss;
+    # the state sequence is something like 1_2_4_56_45, get number of tokens after splitting by '_':
+    $ss = scalar split(/_/, $ss);
     
     # keep track of the number of outgoing arcs for each node 
     # (later, we will connect sinks to the terminal state)
@@ -140,8 +138,8 @@ while(<FI>) {
       die "Node $e has different words on incoming links, $w vs. ".$nodes{$e}{W}.". ".
           "Words can't be stored in the nodes, use --word-to-link, $utt.\n" 
        if ($w ne $nodes{$e}{W}) and not $wordtolink;
-      #print STDERR "Node $e previsouly stored with different time ".$nodes{$e}{t}." now $time_end, $utt.\n"
-      # if $time_end ne $nodes{$e}{t};
+      die "Node $e previously stored with different time ".$nodes{$e}{t}." now $time_end, $utt.\n"
+       if $time_end ne $nodes{$e}{t};
     }
     # add node; do not overwrite
     $nodes{$e} = { W=>$w, t=>$time_end, n_out_arcs=>0 } unless defined $nodes{$e};
