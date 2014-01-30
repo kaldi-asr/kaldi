@@ -4,7 +4,6 @@ dnn_input_dim=4000
 dnn_output_dim=400
 dnn_init_learning_rate=0.008
 dnn_final_learning_rate=0.0008
-dnn_max_change=10
 dnn_mixup=12000
 
 dnn_mpe_learning_rate=0.00012
@@ -40,9 +39,9 @@ else
   sgmm_mmi_extra_opts=(--cmd "queue.pl -l arch=*64 -l mem_free=3.2G,ram_free=3.2G")
   dnn_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
 
-  dnn_cpu_parallel_opts=(--minibatch-size 128 --num-jobs-nnet 8 --num-threads 16 \
+  dnn_cpu_parallel_opts=(--minibatch-size 128 --max-change 10 --num-jobs-nnet 8 --num-threads 16 \
                          --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
-  dnn_gpu_parallel_opts=(--minibatch-size 128 --num-jobs-nnet 8 --num-threads 1 \
+  dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 8 --num-threads 1 \
                          --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
 
 fi
