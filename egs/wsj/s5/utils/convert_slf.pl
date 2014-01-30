@@ -8,6 +8,8 @@
 
 # Node is represented by hash:
 # { W=>[word], t=>[time], n_out_arcs=>[number_of_outgoing_arcs] };
+# (Time internally represented as integer number of frames.)
+#
 # Link representation by hash:
 # { S=>[start_node], E=>[end_node], W=>[word], v=>[0], a=>[acoustic_score], l=>[graph_score] }
 # 
@@ -103,7 +105,7 @@ while(<FI>) {
     
     # update the end time
     die "Node $s not yet visited, is lattice sorted topologically? $utt" unless exists $nodes{$s};
-    $time_end = $nodes{$s}{t} + $ss * $framerate;
+    $time_end = $nodes{$s}{t} + $ss;
     if ($latest_time < $time_end) { $latest_time = $time_end; }
 
     # add the link data
@@ -130,7 +132,7 @@ while(<FI>) {
 
     # keep track of timing
     die "Node $s not yet visited, is lattice sorted topologically? $utt" unless exists $nodes{$s};
-    $time_end = $nodes{$s}{t} + $ss * $framerate;
+    $time_end = $nodes{$s}{t} + $ss;
     if ($latest_time < $time_end) { $latest_time = $time_end; }
 
     # sanity check on already existing node
@@ -190,9 +192,9 @@ while(<FI>) {
     # nodes
     for $n (sort { $a <=> $b } keys %nodes) {
       if ($wordtolink) {
-        printf FH "I=%d\tt=%.2f\n", $n, $nodes{$n}{t};
+        printf FH "I=%d\tt=%.2f\n", $n, $nodes{$n}{t}*$framerate;
       } else {
-        printf FH "I=%d\tW=%s\tt=%.2f\n", $n, $nodes{$n}{W}, $nodes{$n}{t};
+        printf FH "I=%d\tW=%s\tt=%.2f\n", $n, $nodes{$n}{W}, $nodes{$n}{t}*$framerate;
       }
     }
 
