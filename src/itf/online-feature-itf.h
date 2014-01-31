@@ -20,6 +20,7 @@
 #ifndef KALDI_ITF_ONLINE_FEATURE_ITF_H_
 #define KALDI_ITF_ONLINE_FEATURE_ITF_H_ 1
 #include "base/kaldi-common.h"
+#include "matrix/matrix-lib.h"
 
 namespace kaldi {
 /// @ingroup Interfaces
@@ -42,18 +43,6 @@ class OnlineFeatureInterface {
  public:
   virtual int32 Dim() const; /// returns the feature dimension.
 
-  /// This sets the online mode (online or not online) of the feature
-  /// computation.  On initialization, the class should be in online mode.  If
-  /// you call SetOnlineMode(false), it should then return features that are the
-  /// same as if you had computed them in batch mode; for example, batch-mode
-  /// cepstral mean normalization (CMN) instead of online CMN.  The imagined
-  /// use-case is to first generate a lattice using online-mode features, 
-  /// then rescore them using batch-mode features.  This function will typically
-  /// call SetOnlineMode from any source object of type OnlineFeatureInterface.
-  /// See examples in ../feat/online/feature.h.
-  virtual void SetOnlineMode(bool is_online);
-  
-
   /// Returns true if this is the last frame.  Frames are zero-based, so the
   /// first frame is zero.  IsLastFrame(-1) will return false, unless the file
   /// is empty (which is a case that I'm not sure all the code will handle, so
@@ -72,15 +61,14 @@ class OnlineFeatureInterface {
   /// are now available.  In an online-decoding context, this may increase with
   /// time as more data becomes available.
   virtual int32 NumFramesReady() const;
-
   
-  /// Gets the feature for this frame.  Before calling this for a given frame,
-  /// it's assumed that you have already called IsLastFrame(frame - 1) and it
-  /// returned false, or [preferably] you called FrameIsReady(frame) and it returned
-  /// true.  Otherwise it may crash.
-  /// This is not declared const, in case there is some kind of caching going
-  /// on, but most of the time it shouldn't modify the class.
-  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
+  /// Gets the feature vector for this frame.  Before calling this for a given
+  /// frame, it's assumed that you have already called IsLastFrame(frame - 1)
+  /// and it returned false, or [preferably] you called FrameIsReady(frame) and
+  /// it returned true.  Otherwise it may crash.  This is not declared const, in
+  /// case there is some kind of caching going on, but most of the time it
+  /// shouldn't modify the class.
+  virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 };
 
 /// @}

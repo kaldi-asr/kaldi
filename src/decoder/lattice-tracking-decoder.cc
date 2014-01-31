@@ -78,7 +78,8 @@ bool LatticeTrackingDecoder::Decode(DecodableInterface *decodable,
 // through the lattice.
 bool LatticeTrackingDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst) const {
   fst::VectorFst<LatticeArc> fst;
-  if (!GetRawLattice(&fst)) return false;
+  GetRawLattice(&fst);
+  if (fst.NumStates() == 0) return false;
   // std::cout << "Raw lattice is:\n";
   // fst::FstPrinter<LatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
   // fstprinter.Print(&std::cout, "standard output");
@@ -157,7 +158,8 @@ bool LatticeTrackingDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) co
 // lattice (one path per word sequence).
 bool LatticeTrackingDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const {
   Lattice raw_fst;
-  if (!GetRawLattice(&raw_fst)) return false;
+  GetRawLattice(&raw_fst);
+  if (raw_fst.NumStates() == 0) return false;
   Invert(&raw_fst); // make it so word labels are on the input.
   if (!TopSort(&raw_fst)) // topological sort makes lattice-determinization more efficient
     KALDI_WARN << "Topological sorting of state-level lattice failed "
@@ -884,7 +886,9 @@ bool DecodeUtteranceLatticeTracking(
     double *like_ptr) { // puts utterance's like in like_ptr on success.
   using fst::VectorFst;
 
-  if (!decoder.Decode(&decodable, arc_graph)) {
+
+  decoder.Decode(&decodable, arc_graph);
+  if (arc_graph.NumStates() == 0) {
     KALDI_WARN << "Failed to decode file " << utt;
     return false;
   }
@@ -932,7 +936,8 @@ bool DecodeUtteranceLatticeTracking(
 
   if (determinize) {
     CompactLattice fst;
-    if (!decoder.GetLattice(&fst))
+    decoder.GetLattice(&fst);
+    if (fst.NumStates() == 0)
       KALDI_ERR << "Unexpected problem getting lattice for utterance "
                 << utt;
     if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
@@ -940,7 +945,8 @@ bool DecodeUtteranceLatticeTracking(
     compact_lattice_writer->Write(utt, fst);
   } else {
     Lattice fst;
-    if (!decoder.GetRawLattice(&fst)) 
+    decoder.GetRawLattice(&fst);
+    if (fst.NumStates() == 0)
       KALDI_ERR << "Unexpected problem getting lattice for utterance "
                 << utt;
     fst::Connect(&fst); // Will get rid of this later... shouldn't have any

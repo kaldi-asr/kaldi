@@ -69,9 +69,8 @@ bool LatticeFasterDecoder::Decode(DecodableInterface *decodable) {
   // numbering, which we have to correct for when we call it.
 
   while (!decodable->IsLastFrame(NumFramesDecoded() - 1)) {
-    if (NumFramesDecoded() % config_.prune_interval == 0) {
+    if (NumFramesDecoded() % config_.prune_interval == 0)
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
-    }
     ProcessEmitting(decodable); // Note: the value returned by
                                 // NumFramesDecoded() is incremented by
                                 // ProcessEmitting().
@@ -86,24 +85,30 @@ bool LatticeFasterDecoder::Decode(DecodableInterface *decodable) {
 
 // Outputs an FST corresponding to the single best path
 // through the lattice.
-bool LatticeFasterDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst) const {
+bool LatticeFasterDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst,
+                                       bool use_final_probs) const {
   fst::VectorFst<LatticeArc> fst;
-  if (!GetRawLattice(&fst)) return false;
-  // std::cout << "Raw lattice is:\n";
-  // fst::FstPrinter<LatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
-  // fstprinter.Print(&std::cout, "standard output");
+  GetRawLattice(&fst, use_final_probs);
   ShortestPath(fst, ofst);
-  return true;
+  return (ofst->NumStates() != 0);
 }
 
 // Outputs an FST corresponding to the raw, state-level
 // tracebacks.
-bool LatticeFasterDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) const {
+bool LatticeFasterDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
+                                         bool use_final_probs) const {
   typedef LatticeArc Arc;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
   typedef Arc::Label Label;
 
+  // Note: you can't use the old interface (Decode()) if you want to
+  // get the lattice with use_final_probs = false.  You'd have to do
+  // InitDecoding() and then DecodeNonblocking().
+  if (decoding_finalized_ && !use_final_probs)
+    KALDI_ERR << "You cannot call FinalizeDecoding() and then call "
+              << "GetRawLattice() with use_final_probs == false";
+  
   unordered_map<Token*, BaseFloat> final_costs_local;
   
   const unordered_map<Token*, BaseFloat> &final_costs =
@@ -116,7 +121,8 @@ bool LatticeFasterDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) cons
   // an extra frame for the start-state).
   int32 num_frames = active_toks_.size() - 1;
   KALDI_ASSERT(num_frames > 0);
-  unordered_map<Token*, StateId> tok_map(num_toks_/2 + 3); // bucket count
+  const int32 bucket_count = num_toks_/2 + 3;
+  unordered_map<Token*, StateId> tok_map(bucket_count);
   // First create all states.
   for (int32 f = 0; f <= num_frames; f++) {
     if (active_toks_[f].toks == NULL) {
@@ -162,8 +168,12 @@ bool LatticeFasterDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) cons
       if (f == num_frames) {
         unordered_map<Token*, BaseFloat>::const_iterator iter =
             final_costs.find(tok);
-        if (iter != final_costs.end())
-          ofst->SetFinal(cur_state, LatticeWeight(iter->second, 0));
+        if (!use_final_probs) {
+          ofst->SetFinal(cur_state, LatticeWeight::One());
+        } else {
+          if (iter != final_costs.end())
+            ofst->SetFinal(cur_state, LatticeWeight(iter->second, 0));
+        }
       }
     }
   }
@@ -173,9 +183,10 @@ bool LatticeFasterDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) cons
 
 // Outputs an FST corresponding to the lattice-determinized
 // lattice (one path per word sequence).
-bool LatticeFasterDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const {
+bool LatticeFasterDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst,
+                                      bool use_final_probs) const {
   Lattice raw_fst;
-  if (!GetRawLattice(&raw_fst)) return false;
+  GetRawLattice(&raw_fst, use_final_probs);
   Invert(&raw_fst); // make it so word labels are on the input.
   if (!TopSort(&raw_fst)) // topological sort makes lattice-determinization more efficient
     KALDI_WARN << "Topological sorting of state-level lattice failed "
@@ -195,7 +206,9 @@ bool LatticeFasterDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) 
   raw_fst.DeleteStates(); // Free memory-- raw_fst no longer needed.
   Connect(ofst); // Remove unreachable states... there might be
   // a small number of these, in some cases.
-  return true;
+  // Note: if something went wrong and the raw lattice was empty,
+  // we should still get to this point in the code without warnings or failures.
+  return (ofst->NumStates() != 0);
 }
 
 void LatticeFasterDecoder::PossiblyResizeHash(size_t num_toks) {
@@ -330,12 +343,12 @@ void LatticeFasterDecoder::PruneForwardLinks(
 // on the final frame.  If there are final tokens active, it uses
 // the final-probs for pruning, otherwise it treats all tokens as final.
 void LatticeFasterDecoder::PruneForwardLinksFinal() {
+  KALDI_ASSERT(!active_toks_.empty());
   int32 frame_plus_one = active_toks_.size() - 1;
   
   if (active_toks_[frame_plus_one].toks == NULL ) // empty list; should not happen.
     KALDI_WARN << "No tokens alive at end of file\n";
 
-  
   typedef unordered_map<Token*, BaseFloat>::const_iterator IterType;  
   ComputeFinalCosts(&final_costs_, &final_relative_cost_, &final_best_cost_);
   decoding_finalized_ = true;
@@ -446,13 +459,11 @@ void LatticeFasterDecoder::PruneTokensForFrame(int32 frame_plus_one) {
   }
 }
   
-// Go backwards through still-alive tokens, pruning them.  note: cur_frame is
-// where hash toks_ are (so we do not want to mess with it because these tokens
-// don't yet have forward pointers), but we do all previous frames, unless we
-// know that we can safely ignore them because the frame after them was unchanged.
-// delta controls when it considers a cost to have changed enough to continue
-// going backward and propagating the change.
-// for a larger delta, we will recurse less far back
+// Go backwards through still-alive tokens, pruning them, starting not from
+// the current frame (where we want to keep all tokens) but from the frame before
+// that.  We go backwards through the frames and stop when we reach a point
+// where the delta-costs are not changing (and the delta controls when we consider
+// a cost to have "not changed").
 void LatticeFasterDecoder::PruneActiveTokens(BaseFloat delta) {
   int32 cur_frame_plus_one = NumFramesDecoded();
   int32 num_toks_begin = num_toks_;
@@ -572,7 +583,7 @@ void LatticeFasterDecoder::FinalizeDecoding() {
     PruneTokensForFrame(f + 1);
   }
   PruneTokensForFrame(0); 
-  KALDI_VLOG(3) << "PruneActiveTokensFinal: pruned tokens from " << num_toks_begin
+  KALDI_VLOG(3) << "pruned tokens from " << num_toks_begin
                 << " to " << num_toks_;
 }
   
@@ -881,16 +892,21 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
 
   if (determinize_) {
     clat_ = new CompactLattice;
-    if (!decoder_->GetLattice(clat_))
+    decoder_->GetLattice(clat_);
+    if (clat_->NumStates() == 0) {
+      // the error shouldn't happen here, so make it KALDI_ERR.
       KALDI_ERR << "Unexpected problem getting lattice for utterance "
                 << utt_;
+    }
     if (acoustic_scale_ != 0.0) // We'll write the lattice without acoustic scaling
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), clat_);
   } else {
     lat_ = new Lattice;
-    if (!decoder_->GetRawLattice(lat_)) 
+    decoder_->GetRawLattice(lat_);
+    if (lat_->NumStates() == 0) {
       KALDI_ERR << "Unexpected problem getting lattice for utterance "
                 << utt_;
+    }
     fst::Connect(lat_); // Will get rid of this later... shouldn't have any
     // disconnected states there, but we seem to.
     if (acoustic_scale_ != 0.0) // We'll write the lattice without acoustic scaling
@@ -914,10 +930,11 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
     { // First do some stuff with word-level traceback...
       // This is basically for diagnostics.
       fst::VectorFst<LatticeArc> decoded;
-      if (!decoder_->GetBestPath(&decoded)) 
+      decoder_->GetBestPath(&decoded);
+      if (decoded.NumStates() == 0) {
         // Shouldn't really reach this point as already checked success.
         KALDI_ERR << "Failed to get traceback for utterance " << utt_;
-
+      }
       std::vector<int32> alignment;
       std::vector<int32> words;
       GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
@@ -1042,7 +1059,8 @@ bool DecodeUtteranceLatticeFaster(
 
   if (determinize) {
     CompactLattice fst;
-    if (!decoder.GetLattice(&fst))
+    decoder.GetLattice(&fst);
+    if (fst.NumStates() == 0)
       KALDI_ERR << "Unexpected problem getting lattice for utterance "
                 << utt;
     if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
@@ -1050,7 +1068,8 @@ bool DecodeUtteranceLatticeFaster(
     compact_lattice_writer->Write(utt, fst);
   } else {
     Lattice fst;
-    if (!decoder.GetRawLattice(&fst)) 
+    decoder.GetRawLattice(&fst);
+    if (fst.NumStates() == 0)
       KALDI_ERR << "Unexpected problem getting lattice for utterance "
                 << utt;
     fst::Connect(&fst); // Will get rid of this later... shouldn't have any

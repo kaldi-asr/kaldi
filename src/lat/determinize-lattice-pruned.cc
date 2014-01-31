@@ -1204,6 +1204,10 @@ bool DeterminizeLatticePruned(
     DeterminizeLatticePrunedOptions opts) {
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
+  if (ifst.NumStates() == 0) {
+    ofst->DeleteStates();
+    return true;
+  }
   KALDI_ASSERT(opts.retry_cutoff >= 0.0 && opts.retry_cutoff < 1.0);
   int32 max_num_iters = 10;  // avoid the potential for infinite loops if
                              // retrying.
@@ -1252,6 +1256,10 @@ bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
   KALDI_ASSERT(opts.retry_cutoff >= 0.0 && opts.retry_cutoff < 1.0);
+  if (ifst.NumStates() == 0) {
+    ofst->DeleteStates();
+    return true;
+  }
   int32 max_num_iters = 10;  // avoid the potential for infinite loops if
                              // retrying.
   VectorFst<ArcTpl<Weight> > temp_fst;

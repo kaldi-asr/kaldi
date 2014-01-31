@@ -67,7 +67,8 @@ bool DecodeUtterance(LatticeBiglmFasterDecoder &decoder, // not const but is rea
   int32 num_frames;
   { // First do some stuff with word-level traceback...
     VectorFst<LatticeArc> decoded;
-    if (!decoder.GetBestPath(&decoded)) 
+    decoder.GetBestPath(&decoded);
+    if (decoded.NumStates() == 0)
       // Shouldn't really reach this point as already checked success.
       KALDI_ERR << "Failed to get traceback for utterance " << utt;
 
@@ -94,7 +95,8 @@ bool DecodeUtterance(LatticeBiglmFasterDecoder &decoder, // not const but is rea
 
   if (determinize) {
     CompactLattice fst;
-    if (!decoder.GetLattice(&fst))
+    decoder.GetLattice(&fst);
+    if (fst.NumStates() == 0)
       KALDI_ERR << "Unexpected problem getting lattice for utterance "
                 << utt;
     if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
@@ -102,7 +104,8 @@ bool DecodeUtterance(LatticeBiglmFasterDecoder &decoder, // not const but is rea
     compact_lattice_writer->Write(utt, fst);
   } else {
     Lattice fst;
-    if (!decoder.GetRawLattice(&fst)) 
+    decoder.GetRawLattice(&fst);
+    if (!fst.NumStates() == 0)
       KALDI_ERR << "Unexpected problem getting lattice for utterance "
                 << utt;
     fst::Connect(&fst); // Will get rid of this later... shouldn't have any

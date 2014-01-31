@@ -276,7 +276,7 @@ struct SlidingWindowCmnOptions {
     po->Register("norm-vars", &normalize_variance, "If true, normalize "
                  "variance to one."); // naming this as in apply-cmvn.cc
     po->Register("center", &center, "If true, use a window centered on the "
-                 "current frame (to the extent possible, modulo end effects)."
+                 "current frame (to the extent possible, modulo end effects). "
                  "If false, window is to the left.");
   }
   void Check() const;

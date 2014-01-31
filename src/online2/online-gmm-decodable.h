@@ -1,10 +1,9 @@
-// online/online-decodable.h
+// online/online-gmm-decodable.h
 
-// Copyright 2012 Cisco Systems (author: Matthias Paulik)
+// Copyright 2012  Cisco Systems (author: Matthias Paulik)
+//           2013  Vassil Panayotov
+//           2014  Johns Hopkins Universithy (author: Daniel Povey)
 
-//   Modifications to the original contribution by Cisco Systems made by:
-//   Vassil Panayotov,
-//   Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -21,37 +20,38 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_ONLINE_ONLINE_DECODABLE_H_
-#define KALDI_ONLINE_ONLINE_DECODABLE_H_
+#ifndef KALDI_ONLINE2_ONLINE_GMM_DECODABLE_H_
+#define KALDI_ONLINE2_ONLINE_GMM_DECODABLE_H_
 
-#include "online/online-feat-input.h"
+#include "itf/online-feature-itf.h"
 #include "gmm/decodable-am-diag-gmm.h"
+#include "matrix/matrix-lib.h"
 
 namespace kaldi {
 
 
-
-// A decodable, taking input from an OnlineFeatureInput object on-demand
-class OnlineDecodableDiagGmmScaled : public DecodableInterface {
+class DecodableDiagGmmScaledOnline : public DecodableInterface {
  public:
-  OnlineDecodableDiagGmmScaled(const AmDiagGmm &am,
+  DecodableDiagGmmScaledOnline(const AmDiagGmm &am,
                                const TransitionModel &trans_model,
                                const BaseFloat scale,
-                               OnlineFeatureMatrix *input_feats);
+                               OnlineFeatureInterface *input_feats);
 
   
-  /// Returns the log likelihood, which will be negated in the decoder.
+  /// Returns the scaled log likelihood
   virtual BaseFloat LogLikelihood(int32 frame, int32 index);
   
   virtual bool IsLastFrame(int32 frame) const;
+
+  virtual int32 NumFramesReady() const;  
   
   /// Indices are one-based!  This is for compatibility with OpenFst.
-  virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
+  virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
 
  private:
   void CacheFrame(int32 frame);
   
-  OnlineFeatureMatrix *features_;
+  OnlineFeatureInterface *features_;
   const AmDiagGmm &ac_model_;
   BaseFloat ac_scale_;
   const TransitionModel &trans_model_;
@@ -60,9 +60,9 @@ class OnlineDecodableDiagGmmScaled : public DecodableInterface {
   int32 cur_frame_;
   std::vector<std::pair<int32, BaseFloat> > cache_;
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineDecodableDiagGmmScaled);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableDiagGmmScaledOnline);
 };
 
 } // namespace kaldi
 
-#endif // KALDI_ONLINE_ONLINE_DECODABLE_H_
+#endif // KALDI_ONLINE2_ONLINE_GMM_DECODABLE_H_

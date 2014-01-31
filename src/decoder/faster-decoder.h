@@ -112,6 +112,8 @@ class FasterDecoder {
     // "cost_" and prev->cost_.
     Token *prev_;
     int32 ref_count_;
+    // if you are looking for weight_ here, it was removed and now we just have
+    // cost_, which corresponds to ConvertToCost(weight_).
     double cost_;
     inline Token(const Arc &arc, BaseFloat ac_cost, Token *prev):
         arc_(arc), prev_(prev), ref_count_(1) {
@@ -119,7 +121,7 @@ class FasterDecoder {
         prev->ref_count_++;
         cost_ = prev->cost_ + arc.weight.Value() + ac_cost;
       } else {
-        cost_ = + arc.weight.Value() + ac_cost;
+        cost_ = arc.weight.Value() + ac_cost;
       }
     }
     inline Token(const Arc &arc, Token *prev):

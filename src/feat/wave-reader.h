@@ -75,7 +75,7 @@ class WaveData {
   const Matrix<BaseFloat> &Data() const { return data_; }
 
   BaseFloat SampFreq() const { return samp_freq_; }
-
+  
   // Returns the duration in seconds
   BaseFloat Duration() const { return data_.NumCols()/samp_freq_; }
 

@@ -1,4 +1,4 @@
-// feat/online-feature.h
+// online2/online-feature.h
 
 // Copyright 2013   Johns Hopkins University (author: Daniel Povey)
 
@@ -18,8 +18,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_FEAT_ONLINE_FEATURE_H_
-#define KALDI_FEAT_ONLINE_FEATURE_H_
+#ifndef KALDI_ONLINE2_ONLINE_FEATURE_H_
+#define KALDI_ONLINE2_ONLINE_FEATURE_H_
 
 #include <string>
 #include <vector>
@@ -37,8 +37,6 @@ namespace kaldi {
 /// @addtogroup  onlinefeat OnlineFeatureExtraction
 /// @{
 
-
-
 template<class C>
 class OnlineMfccOrPlp: public OnlineFeatureInterface {
  public:
@@ -46,17 +44,14 @@ class OnlineMfccOrPlp: public OnlineFeatureInterface {
   // First, functions that are present in the interface:
   //
   virtual int32 Dim() const { return mfcc_or_plp_.Dim(); }
-
-  virtual void SetOnlineMode(bool is_online) { }  // This does nothing since MFCC
-                             // computation is not affected by future context.
-
+  
   // Note: this will only ever return true if you call InputFinished(), which
   // isn't really necessary to do unless you want to make sure to flush out the
   // last few frames of delta or LDA features to exactly match a non-online
   // decode of some data.
   virtual bool IsLastFrame(int32 frame) const;
   virtual int32 NumFramesReady() const { return num_frames_; }
-  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
+  virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   //
   // Next, functions that are not in the interface.
@@ -105,18 +100,44 @@ typedef OnlineMfccOrPlp<Mfcc> OnlineMfcc;
 typedef OnlineMfccOrPlp<Plp> OnlinePlp;
 
 
+/**
+   This struct stores stats fromthe OnlineCmvn feature-processing
+   object.  It is useful in transferring stats between utterances.
+   It also has a bool "frozen" value that is true if someone has
+   called Freeze() on the OnlineCmvn object that was used to create
+   these stats.  In that case the stats will represent the stats
+   up to the point where we froze the CMVN.  
+*/
+struct OnlineCmvnStats {
+  OnlineCmvnStats(): frozen(false) { }
+  Matrix<BaseFloat> stats;
+  bool frozen; /// if true, we're not further updating the CMVN
+               /// but will leave it at its current value.
+};
 
 class OnlineCmvn : public OnlineFeatureInterface {
  public:
+  // Initializer that includes prior stats (e.g. global stats,
+  // or stats from the same utterance).  Just provide empty matrices
+  // if you don't have stats available for either category
+  OnlineCmvn(SlidingWindowCmnOptions &opts,
+             const Matrix<BaseFloat> &global_stats,
+             const OnlineCmvnStats &prev_utt_stats);
+  
+  
   //
   // First, functions that are present in the interface:
   //
   virtual int32 Dim() const { return src_->Dim(); }
 
-  virtual void SetOnlineMode(bool is_online) {
-    is_online_ = is_online;
-    src_->SetOnlineMode(is_online);
-  }
+  void Freeze(); // From this point it will freeze the CMN and will stop it
+                 // from changing.  Note: it won't freeze it to its current
+                 // value from online sliding-window adaptation, it will freeze it
+                 // to the whole-file value.  You can use GetCurrentStats()
+
+  // Gets the current
+  void GetCurrentState(
+      Matrix<BaseFloat> *cmvn_stats);
 
   virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
 
@@ -125,7 +146,7 @@ class OnlineCmvn : public OnlineFeatureInterface {
     return std::max(src_->NumFramesReady() - min_window_, 0); 
   }
 
-  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
+  virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   //
   // Next, functions that are not in the interface.
@@ -134,7 +155,7 @@ class OnlineCmvn : public OnlineFeatureInterface {
     norm_var_(true), cmvn_window_(cmvn_window), src_(src), is_online_(true) 
     { sliding_stat_.Resize(2, src->Dim() + 1, kSetZero); }
 
-  /// Should be called after calling GetFeature on the last available frame
+  /// Should be called after calling GetFrame on the last available frame
   void GetStats(Matrix<BaseFloat> *stats) const {
     stats->CopyFromMat(sliding_stat_);
   }
@@ -175,16 +196,11 @@ class OnlineSpliceFrames: public OnlineFeatureInterface {
     return src_->Dim() * (1 + left_context_ * right_context_);
   }
 
-  virtual void SetOnlineMode(bool is_online) {
-    is_online_ = is_online;
-    src_->SetOnlineMode(is_online);
-  }
-
   virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
 
   virtual int32 NumFramesReady() const;
 
-  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
+  virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   //
   // Next, functions that are not in the interface.
@@ -210,16 +226,11 @@ class OnlineLda: public OnlineFeatureInterface {
   //
   virtual int32 Dim() const { return offset_.Dim(); }
 
-  virtual void SetOnlineMode(bool is_online) {
-    is_online_ = is_online;
-    src_->SetOnlineMode(is_online);
-  }
-
   virtual bool IsLastFrame(int32 frame) { return src_->IsLastFrame(frame); }
 
   virtual bool NumFramesReady() { return src_->NumFramesReady(); }
 
-  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
+  virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   //
   // Next, functions that are not in the interface.
@@ -237,28 +248,23 @@ class OnlineLda: public OnlineFeatureInterface {
   bool is_online_;
 };
 
-class OnlineDeltaFeatures: public OnlineFeatureInterface {
+class OnlineDeltaFeature: public OnlineFeatureInterface {
  public:
   //
   // First, functions that are present in the interface:
   //
   virtual int32 Dim() const;
 
-  virtual void SetOnlineMode(bool is_online) {
-    is_online_ = is_online;
-    src_->SetOnlineMode(is_online);
-  }
-
   virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
 
   virtual int32 NumFramesReady() const;
 
-  virtual void GetFeature(int32 frame, VectorBase<BaseFloat> *feat);
+  virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   //
   // Next, functions that are not in the interface.
   //
-  OnlineDeltaFeatures(const DeltaFeaturesOptions &opts,
+  OnlineDeltaFeature(const DeltaFeaturesOptions &opts,
                       OnlineFeatureInterface *src);
 
  private:
@@ -268,6 +274,15 @@ class OnlineDeltaFeatures: public OnlineFeatureInterface {
   bool is_online_;
 };
 
+class OnlineCacheFeature: public OnlineFeatureInterface {
+ public:
+  virtual int32 Dim() const;
+
+  void EmptyCache(); // this should be called if you change the underlying
+                     // features in some way.
+ private:
+  // ...
+};
 
 
 /// @} End of "addtogroup onlinefeat"
@@ -275,4 +290,4 @@ class OnlineDeltaFeatures: public OnlineFeatureInterface {
 
 
 
-#endif  // KALDI_FEAT_ONLINE_FEATURE_H_
+#endif  // KALDI_ONLINE2_ONLINE_FEATURE_H_

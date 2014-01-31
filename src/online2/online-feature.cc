@@ -1,4 +1,4 @@
-// feat/online-feature.cc
+// online2/online-feature.cc
 
 // Copyright    2013  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,14 +17,14 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "feat/online-feature.h"
+#include "online2/online-feature.h"
 #include "transform/cmvn.h"
 
 namespace kaldi {
 
 
 template<class C>
-void OnlineMfccOrPlp<C>::GetFeature(int32 frame, VectorBase<BaseFloat> *feat) {
+void OnlineMfccOrPlp<C>::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
   KALDI_ASSERT(frame >= 0 && frame < num_frames_);
   KALDI_ASSERT(feat->Dim() == Dim());
   feat->CopyFromVec(features_.Row(frame));
@@ -109,8 +109,8 @@ void ApplyCmvn(const MatrixBase<double> &stats,
                 bool var_norm,
                 VectorBase<BaseFloat> *feat);
 
-void OnlineCmvn::GetFeature(int32 frame, VectorBase<BaseFloat> *feat) {
-  src_->GetFeature(frame, feat);
+void OnlineCmvn::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
+  src_->GetFrame(frame, feat);
   if (frame < stats_.size()) {
     // Apply the normalization from cached statistics.
     ApplyCmvn(stats_[frame], norm_var_, feat);
@@ -250,7 +250,7 @@ int32 OnlineSpliceFrames::NumFramesReady() const {
     return std::max<int32>(0, num_frames - right_context_);
 }
 
-void OnlineSpliceFrames::GetFeature(int32 frame, VectorBase<BaseFloat> *feat) {
+void OnlineSpliceFrames::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
   KALDI_ASSERT(left_context_ >= 0 && right_context_ >= 0);
   KALDI_ASSERT(frame > 0 && frame < NumFramesReady());
   int32 dim_in = src_->Dim();
@@ -263,7 +263,7 @@ void OnlineSpliceFrames::GetFeature(int32 frame, VectorBase<BaseFloat> *feat) {
     int32 n = t2 - (frame - left_context_); // 0 for left-most frame, increases to
                                             // the right.
     SubVector<BaseFloat> part(*feat, n * dim_in, dim_in);
-    src_->GetFeature(t2_limited, &part);
+    src_->GetFrame(t2_limited, &part);
   }  
 }
 
@@ -285,20 +285,20 @@ OnlineLda::OnlineLda(const Matrix<BaseFloat> &transform,
   }
 }
 
-void OnlineLda::GetFeature(int32 frame, VectorBase<BaseFloat> *feat) {
+void OnlineLda::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
   Vector<BaseFloat> input_feat(linear_term_.NumCols());
-  src_->GetFeature(frame, &input_feat);
+  src_->GetFrame(frame, &input_feat);
   feat->CopyFromVec(offset_);
   feat->AddMatVec(1.0, linear_term_, kNoTrans, input_feat, 1.0);
 }
 
 
-int32 OnlineDeltaFeatures::Dim() const {
+int32 OnlineDeltaFeature::Dim() const {
   int32 src_dim = src_->Dim();
   return src_dim * (1 + opts_.order);
 }
 
-int32 OnlineDeltaFeatures::NumFramesReady() const {
+int32 OnlineDeltaFeature::NumFramesReady() const {
   int32 num_frames = src_->NumFramesReady(),
       context = opts_.order * opts_.window;
   // "context" is the number of frames on the left or (more relevant
@@ -309,8 +309,8 @@ int32 OnlineDeltaFeatures::NumFramesReady() const {
     return std::max<int32>(0, num_frames - context);
 }
 
-void OnlineDeltaFeatures::GetFeature(int32 frame,
-                                     VectorBase<BaseFloat> *feat) {
+void OnlineDeltaFeature::GetFrame(int32 frame,
+                                      VectorBase<BaseFloat> *feat) {
   KALDI_ASSERT(frame >= 0 && frame < NumFramesReady());
   KALDI_ASSERT(feat->Dim() == Dim());
   // We'll produce a temporary matrix containing the features we want to
@@ -328,7 +328,7 @@ void OnlineDeltaFeatures::GetFeature(int32 frame,
   Matrix<BaseFloat> temp_src(temp_num_frames, src_dim);
   for (int32 t = left_frame; t <= right_frame; t++) {
     SubVector<BaseFloat> temp_row(temp_src, t - left_frame);
-    src_->GetFeature(t, &temp_row);
+    src_->GetFrame(t, &temp_row);
   }
   int32 temp_t = frame - left_frame; // temp_t is the offset of frame "frame"
                                      // within temp_src
@@ -336,8 +336,8 @@ void OnlineDeltaFeatures::GetFeature(int32 frame,
 }
 
 
-OnlineDeltaFeatures::OnlineDeltaFeatures(const DeltaFeaturesOptions &opts,
-                                         OnlineFeatureInterface *src):
+OnlineDeltaFeature::OnlineDeltaFeature(const DeltaFeaturesOptions &opts,
+                                       OnlineFeatureInterface *src):
     src_(src), opts_(opts), delta_features_(opts) { }
 
 

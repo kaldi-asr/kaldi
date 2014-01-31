@@ -32,33 +32,33 @@ using std::string;
 
 namespace kaldi {
 
-void BasisFmllrAccus::Write(std::ostream &out_stream, bool binary) const {
+void BasisFmllrAccus::Write(std::ostream &os, bool binary) const {
 
-  WriteToken(out_stream, binary, "<BASISFMLLRACCUS>");
-  WriteToken(out_stream, binary, "<BETA>");
-  WriteBasicType(out_stream, binary, beta_);
-  if (!binary) out_stream << '\n';
+  WriteToken(os, binary, "<BASISFMLLRACCUS>");
+  WriteToken(os, binary, "<BETA>");
+  WriteBasicType(os, binary, beta_);
+  if (!binary) os << '\n';
   if (grad_scatter_.NumCols() != 0) {
-    WriteToken(out_stream, binary, "<GRADSCATTER>");
-    grad_scatter_.Write(out_stream, binary);
+    WriteToken(os, binary, "<GRADSCATTER>");
+    grad_scatter_.Write(os, binary);
   }
-  WriteToken(out_stream, binary, "</BASISFMLLRACCUS>");
+  WriteToken(os, binary, "</BASISFMLLRACCUS>");
 }
 
-void BasisFmllrAccus::Read(std::istream &in_stream, bool binary,
+void BasisFmllrAccus::Read(std::istream &is, bool binary,
                            bool add) {
-  ExpectToken(in_stream, binary, "<BASISFMLLRACCUS>");
-  ExpectToken(in_stream, binary, "<BETA>");
+  ExpectToken(is, binary, "<BASISFMLLRACCUS>");
+  ExpectToken(is, binary, "<BETA>");
   double tmp_beta = 0;
-  ReadBasicType(in_stream, binary, &tmp_beta);
+  ReadBasicType(is, binary, &tmp_beta);
   if (add) {
     beta_ += tmp_beta;
   } else {
 	beta_ = tmp_beta;
   }
-  ExpectToken(in_stream, binary, "<GRADSCATTER>");
-  grad_scatter_.Read(in_stream, binary, add);
-  ExpectToken(in_stream, binary, "</BASISFMLLRACCUS>");
+  ExpectToken(is, binary, "<GRADSCATTER>");
+  grad_scatter_.Read(is, binary, add);
+  ExpectToken(is, binary, "</BASISFMLLRACCUS>");
 }
 
 void BasisFmllrAccus::ResizeAccus(int32 dim) {
@@ -95,41 +95,44 @@ void BasisFmllrAccus::AccuGradientScatter(
   }
 }
 
-void BasisFmllrEstimate::WriteBasis(std::ostream &out_stream, bool binary) const {
+void BasisFmllrEstimate::Write(std::ostream &os, bool binary) const {
   uint32 tmp_uint32;
 
-  WriteToken(out_stream, binary, "<BASISFMLLRPARAM>");
+  WriteToken(os, binary, "<BASISFMLLRPARAM>");
 
-  WriteToken(out_stream, binary, "<NUMBASIS>");
+  WriteToken(os, binary, "<NUMBASIS>");
   tmp_uint32 = static_cast<uint32>(basis_size_);
-  WriteBasicType(out_stream, binary, tmp_uint32);
+  WriteBasicType(os, binary, tmp_uint32);
   if (fmllr_basis_.size() != 0) {
-    WriteToken(out_stream, binary, "<BASIS>");
+    WriteToken(os, binary, "<BASIS>");
 	for (int32 n = 0; n < basis_size_; ++n) {
-      fmllr_basis_[n].Write(out_stream, binary);
+      fmllr_basis_[n].Write(os, binary);
 	}
   }
-  WriteToken(out_stream, binary, "</BASISFMLLRPARAM>");
+  WriteToken(os, binary, "</BASISFMLLRPARAM>");
 }
 
-void BasisFmllrEstimate::ReadBasis(std::istream &in_stream, bool binary,
-                                   bool add) {
+void BasisFmllrEstimate::Read(std::istream &is, bool binary) {
   uint32 tmp_uint32;
   string token;
 
-  ExpectToken(in_stream, binary, "<BASISFMLLRPARAM>");
+  ExpectToken(is, binary, "<BASISFMLLRPARAM>");
 
-  ExpectToken(in_stream, binary, "<NUMBASIS>");
-  ReadBasicType(in_stream, binary, &tmp_uint32);
+  ExpectToken(is, binary, "<NUMBASIS>");
+  ReadBasicType(is, binary, &tmp_uint32);
   basis_size_ = static_cast<int32>(tmp_uint32);
-
-  ExpectToken(in_stream, binary, "<BASIS>");
+  KALDI_ASSERT(basis_size_ > 0);
+  ExpectToken(is, binary, "<BASIS>");
   fmllr_basis_.resize(basis_size_);
   for (int32 n = 0; n < basis_size_; ++n) {
-    fmllr_basis_[n].Read(in_stream, binary, add);
+    fmllr_basis_[n].Read(is, binary);
+    if (n == 0)
+      dim_ = fmllr_basis_[n].NumRows();
+    else {
+      KALDI_ASSERT(dim_ == fmllr_basis_[n].NumRows());
+    }
   }
-  ExpectToken(in_stream, binary, "</BASISFMLLRPARAM>");
-
+  ExpectToken(is, binary, "</BASISFMLLRPARAM>");
 }
 
 void BasisFmllrEstimate::ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
@@ -250,7 +253,11 @@ double BasisFmllrEstimate::ComputeTransform(
     const AffineXformStats &spk_stats,
     Matrix<BaseFloat> *out_xform,
     Vector<BaseFloat> *coefficient,
-    BasisFmllrOptions options) {
+    BasisFmllrOptions options) const {
+  if (coefficient == NULL) {
+    Vector<BaseFloat> tmp;
+    return ComputeTransform(spk_stats, out_xform, &tmp, options);
+  }
   KALDI_ASSERT(dim_ == spk_stats.dim_);
   if (spk_stats.beta_ < options.min_count) {
     KALDI_WARN << "Not updating fMLLR since count is below min-count: "

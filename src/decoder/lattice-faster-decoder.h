@@ -119,25 +119,39 @@ class LatticeFasterDecoder {
   /// Returns true if any kind of traceback is available (not necessarily from a
   /// final state).
   bool Decode(DecodableInterface *decodable);
-
+  
   
   /// says whether a final-state was active on the last frame.  If it was not, the
   /// lattice (or traceback) will end with states that are not final-states.
   bool ReachedFinal() const {
     return FinalRelativeCost() != std::numeric_limits<BaseFloat>::infinity();
   }
-
+  
   // Outputs an FST corresponding to the single best path
-  // through the lattice.  Returns true if result is nonempty.
-  bool GetBestPath(fst::MutableFst<LatticeArc> *ofst) const;
+  // through the lattice.  Returns true if result is nonempty
+  // (using the return status is deprecated, it will become void).
+  // If "use_final_probs" is true AND we reached the final-state
+  // of the graph then it will include those as final-probs, else
+  // it will treat all final-probs as one.
+  bool GetBestPath(fst::MutableFst<LatticeArc> *ofst,
+                   bool use_final_probs = true) const;
 
   // Outputs an FST corresponding to the raw, state-level
   // tracebacks.  Returns true if result is nonempty.
-  bool GetRawLattice(fst::MutableFst<LatticeArc> *ofst) const;
-
+  // If "use_final_probs" is true AND we reached the final-state
+  // of the graph then it will include those as final-probs, else
+  // it will treat all final-probs as one.
+  bool GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
+                     bool use_final_probs = true) const;
+  
   // Outputs an FST corresponding to the lattice-determinized lattice (one path
   // per word sequence).  Returns true if result is nonempty.
-  bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const;
+  // If "use_final_probs" is true AND we reached the final-state
+  // of the graph then it will include those as final-probs, else
+  // it will treat all final-probs as one.  [will become deprecated,
+  // users should determinize themselves.]
+  bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst,
+                  bool use_final_probs = true) const;
 
   /// InitDecoding initializes the decoding, and should only be used if you
   /// intend to call DecodeNonblocking().  If you call Decode(), you don't need
@@ -160,10 +174,13 @@ class LatticeFasterDecoder {
   /// final-state survived); it also does a final pruning step that visits all
   /// states (the pruning that is done during decoding may fail to prune states
   /// that are within kPruningScale = 0.1 outside of the beam).  If you call
-  /// this, you cannot call DecodeNonblocking again (it will fail).
+  /// this, you cannot call DecodeNonblocking again (it will fail), and you
+  /// cannot call GetLattice() and related functions with use_final_probs =
+  /// false.
+  /// Used to be called PruneActiveTokensFinal().  
   void FinalizeDecoding();
 
-  /// FinalRelativeCost() serves the same function as ReachedFinal(), but gives
+  /// FinalRelativeCost() serves the same purpose as ReachedFinal(), but gives
   /// more information.  It returns the difference between the best (final-cost
   /// plus cost) of any token on the final frame, and the best cost of any token
   /// on the final frame.  If it is infinity it means no final-states were
@@ -172,7 +189,7 @@ class LatticeFasterDecoder {
   /// take it as a good indication that we reached the final-state with
   /// reasonable likelihood.
   BaseFloat FinalRelativeCost() const;
-
+  
   inline int32 NumFramesDecoded() { return active_toks_.size() - 1; }
  private:
   struct Token;
@@ -263,7 +280,7 @@ class LatticeFasterDecoder {
                          bool *links_pruned,
                          BaseFloat delta);
 
-  // This function computes, the final-costs for tokens active on the final
+  // This function computes the final-costs for tokens active on the final
   // frame.  It outputs to final-costs, if non-NULL, a map from the Token*
   // pointer to the final-prob of the corresponding state, or zero for all states if
   // none were final.  It outputs to final_relative_cost, if non-NULL, the
@@ -291,13 +308,14 @@ class LatticeFasterDecoder {
   // It's called by PruneActiveTokens if any forward links have been pruned
   void PruneTokensForFrame(int32 frame_plus_one);
   
-  // Go backwards through still-alive tokens, pruning them.  note: we don't do
-  // the latest frame because that is where hash toks_ are (so we do not want to
-  // mess with it because these tokens don't yet have forward pointers), but we
-  // do all previous frames, unless we know that we can safely ignore them
-  // because the frame after them was unchanged.  delta controls when it
-  // considers a cost to have changed enough to continue going backward and
-  // propagating the change.  for a larger delta, we will recurse less far back
+
+  // Go backwards through still-alive tokens, pruning them if the
+  // forward+backward cost is more than lat_beam away from the best path.  It's
+  // possible to prove that this is "correct" in the sense that we won't lose
+  // anything outside of lat_beam, regardless of what happens in the future.
+  // delta controls when it considers a cost to have changed enough to continue
+  // going backward and propagating the change.  larger delta -> will recurse
+  // less far.
   void PruneActiveTokens(BaseFloat delta);
 
   /// Gets the weight cutoff.  Also counts the active tokens.
@@ -342,9 +360,8 @@ class LatticeFasterDecoder {
   /// if this is set, then the output of ComputeFinalCosts() is in the next
   /// three variables.  The reason we need to do this is that after
   /// FinalizeDecoding() calls PruneTokensForFrame() for the final frame, some
-  /// of the tokens on the last frame are freed, and some of the pointers in
-  /// toks_.GetList() will from that point be dangling.
-  
+  /// of the tokens on the last frame are freed, so we free the list from toks_
+  /// to avoid having dangling pointers hanging around.
   bool decoding_finalized_;
   /// For the meaning of the next 3 variables, see the comment for
   /// decoding_finalized_ above., and ComputeFinalCosts().

@@ -95,13 +95,9 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary);
     }
 
-    BasisFmllrEstimate basis_est(am_gmm.Dim());
-    {
-      bool binary;
-      Input ki(basis_rspecifier, &binary);
-      basis_est.ReadBasis(ki.Stream(), binary, false);
-    }
-
+    BasisFmllrEstimate basis_est;
+    ReadKaldiObject(basis_rspecifier, &basis_est);
+    
     RandomAccessGauPostReader gpost_reader(gpost_rspecifier);
 
     double tot_impr = 0.0, tot_t = 0.0;

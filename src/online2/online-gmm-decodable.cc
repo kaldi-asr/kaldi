@@ -1,9 +1,8 @@
-// online/online-decodable.cc
+// online2/online-gmm-decodable.cc
 
-// Copyright 2012 Cisco Systems (author: Matthias Paulik)
-
-//   Modifications to the original contribution by Cisco Systems made by:
-//   Vassil Panayotov
+// Copyright 2012  Cisco Systems (author: Matthias Paulik)
+//           2013  Vassil Panayotov
+//           2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -20,37 +19,30 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "online/online-decodable.h"
+#include "online2/online-gmm-decodable.h"
 
 namespace kaldi {
 
-OnlineDecodableDiagGmmScaled::OnlineDecodableDiagGmmScaled(
+DecodableDiagGmmScaledOnline::DecodableDiagGmmScaledOnline(
     const AmDiagGmm &am, const TransitionModel &trans_model,
-    const BaseFloat scale, OnlineFeatureMatrix *input_feats):  
+    const BaseFloat scale, OnlineFeatureInterface *input_feats):  
       features_(input_feats), ac_model_(am),
       ac_scale_(scale), trans_model_(trans_model),
-      feat_dim_(input_feats->Dim()), cur_frame_(-1) {
-  if (!input_feats->IsValidFrame(0)) {
-    // It's not safe to throw from a constructor, so please check
-    // this condition yourself before reaching this point in the code.
-    KALDI_ERR << "Attempt to initialize decodable object with empty "
-              << "input: please check this before the initializer!";
-  }
+      feat_dim_(input_feats->Dim()), cur_feats_(feat_dim_),
+      cur_frame_(-1) {
   int32 num_pdfs = trans_model_.NumPdfs();
   cache_.resize(num_pdfs, std::make_pair<int32,BaseFloat>(-1, 0.0));
 }
 
-void OnlineDecodableDiagGmmScaled::CacheFrame(int32 frame) {
-  KALDI_ASSERT(frame >= 0);
-  cur_feats_.Resize(feat_dim_);
-  if (!features_->IsValidFrame(frame))
-    KALDI_ERR << "Request for invalid frame (you need to check IsLastFrame, or, "
-              << "for frame zero, check that the input is valid.";
-  cur_feats_.CopyFromVec(features_->GetFrame(frame));
+void DecodableDiagGmmScaledOnline::CacheFrame(int32 frame) {
+  // The call below will fail if "frame" is an invalid index, i.e. <0
+  // or >= features_->NumFramesReady(), so there
+  // is no need to check again.
+  features_->GetFrame(frame, &cur_feats_);
   cur_frame_ = frame;
 }
 
-BaseFloat OnlineDecodableDiagGmmScaled::LogLikelihood(int32 frame, int32 index) {
+BaseFloat DecodableDiagGmmScaledOnline::LogLikelihood(int32 frame, int32 index) {
   if (frame != cur_frame_)
     CacheFrame(frame);
   int32 pdf_id = trans_model_.TransitionIdToPdf(index);
@@ -63,8 +55,12 @@ BaseFloat OnlineDecodableDiagGmmScaled::LogLikelihood(int32 frame, int32 index) 
 }
 
 
-bool OnlineDecodableDiagGmmScaled::IsLastFrame(int32 frame) const {
-  return !features_->IsValidFrame(frame+1);
+bool DecodableDiagGmmScaledOnline::IsLastFrame(int32 frame) const {
+  return !features_->IsLastFrame(frame);
+}
+
+int32 DecodableDiagGmmScaledOnline::NumFramesReady() const {
+  return features_->NumFramesReady();
 }
 
 } // namespace kaldi

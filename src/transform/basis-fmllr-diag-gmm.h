@@ -105,15 +105,16 @@ class BasisFmllrAccus {
 class BasisFmllrEstimate {
 
  public:
-  BasisFmllrEstimate() { }
+  BasisFmllrEstimate(): dim_(0), basis_size_(0) { }
   explicit BasisFmllrEstimate(int32 dim) {
 	  dim_ = dim; basis_size_ = dim * (dim + 1);
   }
 
-  /// Routines for reading and writing fMLLR base matrices
-  void WriteBasis(std::ostream &out_stream, bool binary) const;
-  void ReadBasis(std::istream &in_stream, bool binary, bool add = false);
+  /// Routines for reading and writing fMLLR basis matrices
+  void Write(std::ostream &out_stream, bool binary) const;
+  void Read(std::istream &in_stream, bool binary);
 
+  
   /// Estimate the base matrices efficiently in a Maximum Likelihood manner.
   /// It takes diagonal GMM as argument, which will be used for preconditioner
   /// computation. The total number of bases is fixed to
@@ -136,20 +137,21 @@ class BasisFmllrEstimate {
   /// The basis weights (d_{1}, d_{2}, ..., d_{N}) are also optimized
   /// explicitly. Finally, it returns objective function improvement over
   /// all the iterations.
+  /// The coefficients are output to "coefficients" only if the vector is
+  /// provided.
   /// See section 5.3 of the paper for more details.
   double ComputeTransform(const AffineXformStats &spk_stats,
                           Matrix<BaseFloat> *out_xform,
                           Vector<BaseFloat> *coefficients,
-                          BasisFmllrOptions options);
+                          BasisFmllrOptions options) const;
 
   /// Basis matrices. Dim is [T] [D] [D+1]
   /// T is the number of bases
-  vector< Matrix<BaseFloat> > fmllr_basis_;
+  std::vector< Matrix<BaseFloat> > fmllr_basis_;
   /// Feature dimension
   int32 dim_;
   /// Number of bases D*(D+1)
   int32 basis_size_;
-
 };
 
 

@@ -777,13 +777,12 @@ MatrixIndexT VectorBase<Real>::ApplyFloor(const VectorBase<Real> &floor_vec) {
 
 template<typename Real>
 Real VectorBase<Real>::ApplySoftMax() {
-Real max = this->Max(), sum = 0.0;
+  Real max = this->Max(), sum = 0.0;
   for (MatrixIndexT i = 0; i < dim_; i++) {
     sum += (data_[i] = std::exp(data_[i] - max));
   }
   this->Scale(1.0 / sum);
   return max + std::log(sum);
-
 }
 
 #ifdef HAVE_MKL

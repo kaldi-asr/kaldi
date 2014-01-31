@@ -58,22 +58,22 @@ class DecodableInterface {
   /// in an online-decoding setting, and would only return true in a
   /// decoding-from-matrix setting where we want to allow the last delta or LDA
   /// features to be flushed out for compatibility with the baseline setup.
-  virtual bool IsLastFrame(int32 frame) = 0;
-
+  virtual bool IsLastFrame(int32 frame) const = 0;
+  
   /// The call NumFramesReady() will return the number of frames currently available
   /// for this decodable object.  This is for use in setups where you don't want the
   /// decoder to block while waiting for input.  This is newly added as of Jan 2014,
-  /// and I hope going forward to rely on this mechanism more than IsLastFrame to
+  /// and I hope, going forward, to rely on this mechanism more than IsLastFrame to
   /// know when to stop decoding.
-  virtual bool NumFramesReady() {
+  virtual int32 NumFramesReady() const {
     KALDI_ERR << "NumFramesReady() not implemented for this decodable type.";
-    return true;
+    return -1;
   }
 
   /// Returns the number of states in the acoustic model
   /// (they will be indexed one-based, i.e. from 1 to NumIndices();
   /// this is for compatibility with OpenFst.
-  virtual int32 NumIndices() = 0;
+  virtual int32 NumIndices() const = 0;
   
   virtual ~DecodableInterface() {}
 };
