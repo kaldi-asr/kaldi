@@ -22,7 +22,7 @@ fi
 
 if [[ "$type" != "dev10h" && "$type" != "dev2h" && "$type" != "eval" && "$type" != "shadow" ]] ; then
   echo "Warning: invalid variable type=${type}, valid values are dev10h|dev2h|eval"
-  echo "Hope you know what your ar doing!"
+  echo "Hope you know what your are doing!"
 fi
 
 

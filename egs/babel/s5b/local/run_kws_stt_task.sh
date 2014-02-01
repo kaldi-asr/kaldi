@@ -35,11 +35,16 @@ eval2shadow=
 wip=0.5 #Word insertion penalty
 #End of options
 
+if [ $(basename $0) == score.sh ]; then
+  skip_kws=true
+fi
+
 echo $0 "$@"
 . utils/parse_options.sh     
 
 if [ $# -ne 3 ]; then
-  echo "Usage: $0  <arpa-lm-file> <lang-dir> <dest-dir>"
+  echo "Usage: $0 [options] <data-dir> <lang-dir> <decode-dir>"
+  echo " e.g.: $0 data/dev10h data/lang exp/tri6/decode_dev10h"
   exit 1;
 fi
 
