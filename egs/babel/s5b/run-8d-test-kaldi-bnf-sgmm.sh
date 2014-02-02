@@ -20,14 +20,15 @@ if [ $# -ne 0 ]; then
   exit 1
 fi
 
-if [[ "$type" != "dev10h" && "$type" != "dev2h" && "$type" != "eval" && "$type" != "shadow" ]] ; then
-  echo "Warning: invalid variable type=${type}, valid values are dev10h|dev2h|eval"
-  echo "Hope you know what your are doing!"
+if ! echo {dev10h,dev2h,eval}{,.uem} | grep -w "$type" >/dev/null; then
+  # note: echo dev10.uem | grep -w dev10h will produce a match, but this
+  # doesn't matter because dev10h is also a valid value.
+  echo "Invalid variable type=${type}, valid values are " {dev10h,dev2h,eval}{,.uem}
+  exit 1;
 fi
 
-
-datadir=data/app_${type}.uem
-dirid=${type}.uem
+dirid=${type}
+datadir=data_bnf/${dirid}_app
 
 [ ! -d data/${dirid} ] && echo "No such directory data/${dirid}" && exit 1;
 [ ! -d exp/tri5/decode_${dirid} ] && echo "No such directory exp/tri5/decode_${dirid}" && exit 1;
@@ -36,53 +37,27 @@ dirid=${type}.uem
 my_nj=`cat exp/tri5/decode_${dirid}/num_jobs` || exit 1;
 
 
-
-if [ ! -f data/bnf_${dirid}/.done ]; then
-  [ ! -d data/bnf_${dirid} ] && \
-    mkdir -p $tmpdir/data/bnf_${dirid} && \
-    ln -s $tmpdir/data/bnf_${dirid} data/bnf_${dirid}
-
-  steps_BNF/make_bnf_feat.sh --nj $my_nj --cmd "$decode_cmd" \
-    --transform_dir exp/tri5/decode_${dirid}/ \
-    data/${dirid} data/bnf_${dirid} exp_BNF/bnf_dnn \
-    exp/tri5_ali exp_BNF/make_bnf_${dirid}
-
-  touch data/bnf_${dirid}/.done
+if [ ! data_bnf/${dirid}_bnf/.done -nt exp/tri5/decode_${dirid}/.done ] || \
+   [ ! data_bnf/${dirid}_bnf/.done -nt exp_bnf/tri6_bnf/.done ]; then
+  # put the archives in mfcc/.
+  local/nnet2/dump_bottleneck_features.sh --nj $my_nj --cmd "$train_cmd" \
+    --transform-dir exp/tri5/decode_${dirid} data/${dirid} data_bnf/${dirid}_bnf exp_bnf/tri6_bnf mfcc exp_bnf/dump_bnf
+  touch data_bnf/${dirid}_bnf/.done
 fi
 
-if [ ! -f data/sat_${dirid}/.done ]; then
-  [ ! -d data/sat_${dirid} ] && \
-    mkdir -p $tmpdir/data/sat_${dirid} && \
-    ln -s $tmpdir/data/sat_${dirid} data/sat_${dirid}
+if [ ! data_bnf/${dirid}_app/.done -nt data_bnf/${dirid}_bnf/.done ]; then
+  steps/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
+    --nj $train_nj --transform-dir exp/tri5/decode_${dirid} data_bnf/${dirid}_sat data/${dirid} \
+    exp/tri5_ali exp_bnf/make_fmllr_feats/log mfcc/ 
 
-  steps/make_fmllr_feats.sh --cmd "$decode_cmd -tc 10" --nj $my_nj \
-    --transform-dir exp/tri5/decode_${dirid}  \
-    data/sat_${dirid} data/${dirid} exp/tri5 \
-    exp_BNF/make_fmllr_feats_${dirid}/log plp_processed
-
-  touch data/sat_${dirid}/.done
+  steps/append_feats.sh --cmd "$train_cmd" --nj 4 \
+    data_bnf/${dirid}_bnf data_bnf/${dirid}_sat data_bnf/${dirid}_app \
+    exp_bnf/append_feats/log mfcc/ 
+  steps/compute_cmvn_stats.sh --fake data_bnf/${dirid}_app exp_bnf/make_fmllr_feats mfcc
+  rm -r data_bnf/${dirid}_sat
+  touch data_bnf/${dirid}_app/.done
 fi
 
-if [ ! -f $datadir/.done ]; then
-  [ ! -d ${datadir} ] && \
-    mkdir -p $tmpdir/${datadir} && \
-    ln -s $tmpdir/${datadir} ${datadir}
-
-  steps/append_feats.sh --cmd "$decode_cmd" --nj 4 \
-    data/bnf_${dirid} data/sat_${dirid} ${datadir} \
-    exp_BNF/append_feats/log plp_processed/
-
-  steps/compute_cmvn_stats.sh --fake \
-    ${datadir} exp/make_plp/app_${dirid} plp_processed
-
-  ln -s `pwd`/data/${dirid}/kws ${datadir}/kws
-  touch ${datadir}/.done
-fi
-
-if $data_only ; then
-  echo "Exiting, as data-only was requested..."
-  exit 0;
-fi
 
 
 ####################################################################
@@ -90,20 +65,21 @@ fi
 ## FMLLR decoding 
 ##
 ####################################################################
-decode=exp_BNF/tri6/decode_${dirid}
+decode=exp_bnf/tri6/decode_${dirid}
 if [ ! -f ${decode}/.done ]; then
   echo ---------------------------------------------------------------------
-  echo "Spawning decoding with SAT models  on" `date`
+  echo "Spawning decoding with SAT models on top of bottleneck features on" `date`
   echo ---------------------------------------------------------------------
   utils/mkgraph.sh \
-    data/lang exp_BNF/tri6 exp_BNF/tri6/graph |tee exp_BNF/tri6/mkgraph.log
+    data/lang exp_bnf/tri6 exp_bnf/tri6/graph |tee exp_bnf/tri6/mkgraph.log
 
   mkdir -p $decode
   #By default, we do not care about the lattices for this step -- we just want the transforms
   #Therefore, we will reduce the beam sizes, to reduce the decoding times
-  steps/decode_fmllr_extra.sh --skip-scoring true --beam 10 --lattice-beam 4\
+  steps/decode_fmllr_extra.sh --skip-scoring true --beam 10 --lattice-beam 4 \
+    --acwt $bnf_decode_acwt \
     --nj $my_nj --cmd "$decode_cmd" "${decode_extra_opts[@]}"\
-    exp_BNF/tri6/graph ${datadir} ${decode} |tee ${decode}/decode.log
+    exp_bnf/tri6/graph ${datadir} ${decode} |tee ${decode}/decode.log
   touch ${decode}/.done
 fi
 
@@ -122,18 +98,19 @@ fi
 ####################################################################
 ## SGMM2 decoding 
 ####################################################################
-decode=exp_BNF/sgmm7/decode_fmllr_${dirid}
+decode=exp_bnf/sgmm7/decode_fmllr_${dirid}
 if [ ! -f $decode/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Spawning $decode on" `date`
   echo ---------------------------------------------------------------------
   utils/mkgraph.sh \
-    data/lang exp_BNF/sgmm7 exp_BNF/sgmm7/graph |tee exp_BNF/sgmm7/mkgraph.log
+    data/lang exp_bnf/sgmm7 exp_bnf/sgmm7/graph |tee exp_bnf/sgmm7/mkgraph.log
 
   mkdir -p $decode
   steps/decode_sgmm2.sh --skip-scoring true --use-fmllr true --nj $my_nj \
-    --cmd "$decode_cmd" --transform-dir exp_BNF/tri6/decode_${dirid} "${decode_extra_opts[@]}"\
-    exp_BNF/sgmm7/graph ${datadir} $decode |tee $decode/decode.log
+    --acwt $bnf_decode_acwt \
+    --cmd "$decode_cmd" --transform-dir exp_bnf/tri6/decode_${dirid} "${decode_extra_opts[@]}"\
+    exp_bnf/sgmm7/graph ${datadir} $decode |tee $decode/decode.log
   touch $decode/.done
 fi
 
@@ -141,7 +118,7 @@ if ! $fast_path ; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip 0.5 \
     "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
-    ${datadir} data/lang  exp_BNF/sgmm7/decode_fmllr_${dirid}
+    ${datadir} data/lang  exp_bnf/sgmm7/decode_fmllr_${dirid}
 fi
 
 ####################################################################
@@ -152,13 +129,13 @@ fi
 
 for iter in 1 2 3 4; do
   # Decode SGMM+MMI (via rescoring).
-  decode=exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_${dirid}_it$iter
+  decode=exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_${dirid}_it$iter
   if [ ! -f $decode/.done ]; then
 
     mkdir -p $decode
     steps/decode_sgmm2_rescore.sh  --skip-scoring true \
-      --cmd "$decode_cmd" --iter $iter --transform-dir exp_BNF/tri6/decode_${dirid} \
-      data/lang ${datadir} exp_BNF/sgmm7/decode_fmllr_${dirid} $decode | tee ${decode}/decode.log
+      --cmd "$decode_cmd" --iter $iter --transform-dir exp_bnf/tri6/decode_${dirid} \
+      data/lang ${datadir} exp_bnf/sgmm7/decode_fmllr_${dirid} $decode | tee ${decode}/decode.log
 
     touch $decode/.done
   fi
@@ -169,13 +146,12 @@ done
 #b)Run KW search
 for iter in 1 2 3 4; do
   # Decode SGMM+MMI (via rescoring).
-  decode=exp_BNF/sgmm7_mmi_b0.1/decode_fmllr_${dirid}_it$iter
+  decode=exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_${dirid}_it$iter
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip 0.5 \
     "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
     ${datadir} data/lang $decode
 done
 
-
-echo "Everything looking good...." 
+echo "$0: Everything looking good...." 
 exit 0
