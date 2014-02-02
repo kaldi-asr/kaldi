@@ -55,6 +55,7 @@ if [ ! data_bnf/${dirid}_app/.done -nt data_bnf/${dirid}_bnf/.done ]; then
     exp_bnf/append_feats/log mfcc/ 
   steps/compute_cmvn_stats.sh --fake data_bnf/${dirid}_app exp_bnf/make_fmllr_feats mfcc
   rm -r data_bnf/${dirid}_sat
+  cp -r data/${dirid}/kws* data_bnf/${dirid}_app/
   touch data_bnf/${dirid}_app/.done
 fi
 
@@ -68,7 +69,7 @@ fi
 decode=exp_bnf/tri6/decode_${dirid}
 if [ ! -f ${decode}/.done ]; then
   echo ---------------------------------------------------------------------
-  echo "Spawning decoding with SAT models on top of bottleneck features on" `date`
+  echo "Decoding with SAT models on top of bottleneck features on" `date`
   echo ---------------------------------------------------------------------
   utils/mkgraph.sh \
     data/lang exp_bnf/tri6 exp_bnf/tri6/graph |tee exp_bnf/tri6/mkgraph.log
