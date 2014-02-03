@@ -2,10 +2,10 @@
 bnf_num_hidden_layers=5
 bottleneck_dim=42
 bnf_hidden_layer_dim=1024
-bnf_minibatch_size=128
+bnf_minibatch_size=512
 bnf_init_learning_rate=0.008
 bnf_final_learning_rate=0.0008
-bnf_max_change=10
+bnf_max_change=40
 bnf_num_jobs=4
 bnf_num_threads=1
 bnf_mixup=5000

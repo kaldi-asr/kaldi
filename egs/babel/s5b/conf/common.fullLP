@@ -2,13 +2,13 @@
 bnf_num_hidden_layers=6
 bottleneck_dim=42
 bnf_hidden_layer_dim=2048
-bnf_minibatch_size=128
+bnf_minibatch_size=512
 bnf_init_learning_rate=0.008
 bnf_final_learning_rate=0.0008
-bnf_max_change=10
+bnf_max_change=40
 bnf_num_jobs=4
 bnf_num_threads=1
-bnf_mixup=5000
+bnf_mixup=10000
 bnf_mpe_learning_rate=0.00009
 bnf_mpe_last_layer_factor=0.1
 bnf_num_gauss_ubm=550 # use fewer UBM Gaussians than the
