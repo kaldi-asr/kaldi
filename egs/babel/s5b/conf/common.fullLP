@@ -15,7 +15,7 @@ bnf_num_gauss_ubm=550 # use fewer UBM Gaussians than the
                       # non-bottleneck system (which has 800)
 bnf_num_gauss_sgmm=50000 # use fewer SGMM sub-states than the
                          # non-bottleneck system (which has 80000).
-bnf_decode_acwt=0.06
+bnf_decode_acwt=0.05
 
 # DNN hybrid system training parameters
 dnn_num_hidden_layers=4
@@ -35,7 +35,7 @@ babel_type=full
 use_pitch=true
 
 lmwt_plp_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
-lmwt_bnf_extra_opts=( --min-lmwt 13 --max-lmwt 18 )
+lmwt_bnf_extra_opts=( --min-lmwt 15 --max-lmwt 22 )
 lmwt_dnn_extra_opts=( --min-lmwt 9 --max-lmwt 13 )
 
 dnn_beam=16.0
