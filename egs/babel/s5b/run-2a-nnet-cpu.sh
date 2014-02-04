@@ -25,7 +25,6 @@ if [ ! -f exp/tri6_nnet/.done ]; then
     --num-hidden-layers $dnn_num_hidden_layers \
     --pnorm-input-dim $dnn_input_dim \
     --pnorm-output-dim $dnn_output_dim \
-    --max-change $dnn_max_change \
     --cmd "$train_cmd" \
     "${dnn_cpu_parallel_opts[@]}" \
     data/train data/lang exp/tri5_ali exp/tri6_nnet || exit 1
