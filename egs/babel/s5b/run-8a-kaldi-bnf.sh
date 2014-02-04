@@ -45,21 +45,21 @@ fi
 
 if [ ! -f data_bnf/train_bnf/.done ]; then
   mkdir -p data_bnf
-  # put the archives in mfcc/.
+  # put the archives in plp/.
   local/nnet2/dump_bottleneck_features.sh --nj $train_nj --cmd "$train_cmd" \
-    --transform-dir exp/tri5 data/train data_bnf/train_bnf exp_bnf/tri6_bnf mfcc exp_bnf/dump_bnf
+    --transform-dir exp/tri5 data/train data_bnf/train_bnf exp_bnf/tri6_bnf plp exp_bnf/dump_bnf
   touch data_bnf/train_bnf/.done
 fi 
 
 if [ ! data_bnf/train_app/.done -nt data_bnf/train_bnf/.done ]; then
   steps/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
     --nj $train_nj --transform-dir exp/tri5_ali  data_bnf/train_sat data/train \
-    exp/tri5_ali exp_bnf/make_fmllr_feats/log mfcc/ 
+    exp/tri5_ali exp_bnf/make_fmllr_feats/log plp/ 
 
   steps/append_feats.sh --cmd "$train_cmd" --nj 4 \
     data_bnf/train_bnf data_bnf/train_sat data_bnf/train_app \
-    exp_bnf/append_feats/log mfcc/ 
-  steps/compute_cmvn_stats.sh --fake data_bnf/train_app exp_bnf/make_fmllr_feats mfcc
+    exp_bnf/append_feats/log plp/ 
+  steps/compute_cmvn_stats.sh --fake data_bnf/train_app exp_bnf/make_fmllr_feats plp
   rm -r data_bnf/train_sat
 
   touch data_bnf/train_app/.done

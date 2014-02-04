@@ -39,21 +39,21 @@ my_nj=`cat exp/tri5/decode_${dirid}/num_jobs` || exit 1;
 
 if [ ! data_bnf/${dirid}_bnf/.done -nt exp/tri5/decode_${dirid}/.done ] || \
    [ ! data_bnf/${dirid}_bnf/.done -nt exp_bnf/tri6_bnf/.done ]; then
-  # put the archives in mfcc/.
+  # put the archives in plp/.
   local/nnet2/dump_bottleneck_features.sh --nj $my_nj --cmd "$train_cmd" \
-    --transform-dir exp/tri5/decode_${dirid} data/${dirid} data_bnf/${dirid}_bnf exp_bnf/tri6_bnf mfcc exp_bnf/dump_bnf
+    --transform-dir exp/tri5/decode_${dirid} data/${dirid} data_bnf/${dirid}_bnf exp_bnf/tri6_bnf plp exp_bnf/dump_bnf
   touch data_bnf/${dirid}_bnf/.done
 fi
 
 if [ ! data_bnf/${dirid}_app/.done -nt data_bnf/${dirid}_bnf/.done ]; then
   steps/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
     --nj $train_nj --transform-dir exp/tri5/decode_${dirid} data_bnf/${dirid}_sat data/${dirid} \
-    exp/tri5_ali exp_bnf/make_fmllr_feats/log mfcc/ 
+    exp/tri5_ali exp_bnf/make_fmllr_feats/log plp/ 
 
   steps/append_feats.sh --cmd "$train_cmd" --nj 4 \
     data_bnf/${dirid}_bnf data_bnf/${dirid}_sat data_bnf/${dirid}_app \
-    exp_bnf/append_feats/log mfcc/ 
-  steps/compute_cmvn_stats.sh --fake data_bnf/${dirid}_app exp_bnf/make_fmllr_feats mfcc
+    exp_bnf/append_feats/log plp/ 
+  steps/compute_cmvn_stats.sh --fake data_bnf/${dirid}_app exp_bnf/make_fmllr_feats plp
   rm -r data_bnf/${dirid}_sat
   cp -r data/${dirid}/kws* data_bnf/${dirid}_app/
   touch data_bnf/${dirid}_app/.done
