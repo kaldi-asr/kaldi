@@ -37,7 +37,7 @@ use_pitch=true
 
 lmwt_plp_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
 lmwt_bnf_extra_opts=( --min-lmwt 15 --max-lmwt 22 )
-lmwt_dnn_extra_opts=( --min-lmwt 9 --max-lmwt 13 )
+lmwt_dnn_extra_opts=( --min-lmwt 10 --max-lmwt 15 )
 
 dnn_beam=16.0
 dnn_lat_beam=8.5
