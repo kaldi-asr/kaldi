@@ -65,6 +65,7 @@ parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" # by default we use 16 thr
 cleanup=true
 egs_dir=
 lda_opts=
+lda_dim=
 egs_opts=
 # End configuration section.
 
