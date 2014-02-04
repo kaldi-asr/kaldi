@@ -6,16 +6,19 @@
 # Convert a kaldi-lattice to HTK SLF format;  if given an output
 # directory, each lattice will be put in an individual gzipped file.
 
-# Node is represented by hash:
+# Internal representation of nodes, links:
+# node hash:
 # { W=>[word], t=>[time], n_out_arcs=>[number_of_outgoing_arcs] };
 # (Time internally represented as integer number of frames.)
-#
-# Link representation by hash:
+# link hash:
 # { S=>[start_node], E=>[end_node], W=>[word], v=>[0], a=>[acoustic_score], l=>[graph_score] }
 # 
-# Words are internally added both to links and nodes, we can choose where to print them.
-# More common is to put words to nodes, which is the default. In that case applies a sanity
-# check that all original links pointing to same node must have had same symbol.
+# The HTK output supports:
+# - words on links [default],
+#   - simpler, same as in kaldi lattices, node-ids in output correspond to kaldi lattices
+# - words on nodes,
+#   - apart from original nodes, there are extra nodes containing the words.
+#   - each original ark is replaced by word-node and two links, connecting it with original nodes.
 
 
 use utf8;
@@ -26,30 +29,37 @@ binmode(STDOUT, ":encoding(utf8)");
 
 # defaults
 $framerate=0.01;
-$wordtolink=0;
+$wordtonode=0;
 
-if (@ARGV < 1 || @ARGV > 2) {
-  print STDERR "Convert kaldi lattices to HTK SLF (v1.1) format.\n";
-  print STDERR "Usage: convert_slf.pl [options] lat-file.txt [out-dir]\n";
-  print STDERR "  e.g. lattice-word-align 'ark:gunzip -c lat.gz |' ark,t:- | $0 - slf/\n";
-  print STDERR "Options regarding the SLF output:
-  --frame-rate x  Frame rate to compute timing information (default: $framerate)
-  --word-to-link   Print the word symbols at links (default: words at nodes)
-";
+$usage="Convert kaldi lattices to HTK SLF (v1.1) format.\n".
+       "Usage: convert_slf.pl [options] lat-file.txt [out-dir]\n".
+       "  e.g. lattice-align-words lang/phones/word_boundary.int final.mdl 'ark:gunzip -c lat.gz |' ark,t:- | $0 - slf/\n".
+       "\n".
+       "Options regarding the SLF output:\n".
+       "  --frame-rate x  Frame rate to compute timing information (default: $framerate)\n".
+       "  --word-to-node  Print the word symbols on nodes (adds extra nodes+links; default: words at links)\n".
+       "\n";
 
-  exit 1;
-}
-
+# parse options
 while (@ARGV gt 0 and $ARGV[0] =~ m/^--/) {
   $param = shift @ARGV;
   if ($param eq "--frame-rate") { $framerate = shift @ARGV; }
-  elsif ($param eq "--word-to-link") { $wordtolink = 1; }
+  elsif ($param eq "--word-to-node") { $wordtonode = 1;}
   else {
     print STDERR "Unknown option $param\n";
+    print STDERR;
+    print STDERR $usage;
     exit 1;
   }
 }
 
+# check positional arg count
+if (@ARGV < 1 || @ARGV > 2) {
+  print STDERR $usage;
+  exit 1;
+}
+
+# store gzipped lattices individually to outdir:
 $outdir = "";
 if (@ARGV == 2) {
   $outdir = pop @ARGV;
@@ -59,19 +69,21 @@ if (@ARGV == 2) {
     exit 1;
   }
 }
-
-
-
-$utt = "";
-$latest_time;
-@links = ();
-%nodes = ();
-%accepting_states = ();
-%n_out_arcs = ();
-
+# or we'll print lattices to stdout:
 if ($outdir eq "") {
   open(FH, ">-") or die "Could not write to stdout (???)\n";
 }
+
+
+### parse kaldi lattices:
+
+$utt = "";
+$arc = 0;
+$latest_time = 0.0;
+@links = ();
+%nodes = ();
+%nodes_extra = ();
+%accepting_states = ();
 
 open (FI, $ARGV[0]) or die "Could not read from file\n";
 binmode(FI, ":encoding(utf8)");
@@ -84,8 +96,7 @@ while(<FI>) {
   if (@A == 1 and $utt eq "") {
     # new lattice
     $utt = $A[0];
-    $nodes{0} = { W=>"!NULL", t=>0.0, n_out_arcs=>0 };
-    $latest_time = 0.0;
+    $nodes{0} = { W=>"!NULL", t=>0.0, n_out_arcs=>0 }; #initial node
 
   } elsif (@A == 1) {
     # accepting node without FST weight, store data for link to terminal super-state
@@ -137,17 +148,46 @@ while(<FI>) {
 
     # sanity check on already existing node
     if (exists $nodes{$e}) {
-      die "Node $e has different words on incoming links, $w vs. ".$nodes{$e}{W}.". ".
-          "Words can't be stored in the nodes, use --word-to-link, $utt.\n" 
-       if ($w ne $nodes{$e}{W}) and not $wordtolink;
       die "Node $e previously stored with different time ".$nodes{$e}{t}." now $time_end, $utt.\n"
        if $time_end ne $nodes{$e}{t};
     }
-    # add node; do not overwrite
-    $nodes{$e} = { W=>$w, t=>$time_end, n_out_arcs=>0 } unless defined $nodes{$e};
 
-    # add the link data
-    push @links, { S=>$s, E=>$e, W=>$w, v=>0, a=>$as, l=>$gs };
+    # store internal representation of the arc
+    if (not $wordtonode) {
+      # The words on links, the lattice keeps it's original structure,
+      # add node; do not overwrite
+      $nodes{$e} = { t=>$time_end, n_out_arcs=>0 } unless defined $nodes{$e};
+      # add the link data
+      push @links, { S=>$s, E=>$e, W=>$w, v=>0, a=>$as, l=>$gs };
+
+    } else {
+      # The problem here was that, if we have a node with several incoming links,
+      # the links can have different words on it, so we cannot simply put word from 
+      # link into the node.
+      #
+      # The simple solution is:
+      # each FST arc gets replaced by extra node with word and two links,
+      # connecting it with original nodes.
+      #
+      # The lattice gets larger, and it is good to minimize the lattice during importing.
+      #
+      # During reading the FST, we don't know how many nodes there are in total, 
+      # so the extra nodes are stored separately, indexed by arc number, 
+      # and links have flags describing which type of node are they connected to.
+
+      # add 'extra node' containing the word:
+      $nodes_extra{$arc} = { W=>$w, t=>$time_end };
+      # add 'original node'; do not overwrite
+      $nodes{$e} = { W=>"!NULL", t=>$time_end, n_out_arcs=>0 } unless defined $nodes{$e};
+      
+      # add the link from 'original node' to 'extra node'
+      push @links, { S=>$s, E=>$arc, W=>$w, v=>0, a=>$as, l=>$gs, to_extra_node=>1 };
+      # add the link from 'extra node' to 'original node'
+      push @links, { S=>$arc, E=>$e, W=>$w, v=>0, a=>0, l=>0, from_extra_node=>1 };
+   
+      # increase arc counter 
+      $arc++;
+    }
 
   } elsif (@A == 0) { # end of lattice reading, we'll add terminal super-state, and print it soon...
     # find sinks
@@ -161,15 +201,17 @@ while(<FI>) {
       print STDERR "Error: $utt does not have at least one sink node-- cyclic lattice??\n";
     }
 
-    # add terminal super-state, as we need to add link with optional fst-weight from accepting state.
+    # add terminal super-state,
     $last_node = max(keys(%nodes)) + 1;
     $nodes{$last_node} = { W=>"!NULL", t=>$latest_time };
-    # accepting states may contain weights
+
+    # connect all accepting states with terminal super-state,
     for $accept (sort { $a <=> $b } keys %accepting_states) {
       %a = %{$accepting_states{$accept}};
       push @links, { S=>$accept, E=>$last_node, W=>$a{W}, v=>$a{v}, a=>$a{a}, l=>$a{l} };
     }
-    # sinks that are not accepting states have no weights
+
+    # connect also all sinks that are not accepting states,
     for $sink (sort { $a <=> $b } keys %sinks) {
       unless(exists($accepting_states{$sink})) {
         print STDERR "WARNING: detected sink node which is not accepting state in lattice $utt, incomplete lattice?\n";
@@ -184,26 +226,50 @@ while(<FI>) {
       binmode(FH, ":encoding(utf8)");
     } 
 
-    # header
-    print FH "VERSION=1.1\n";
-    print FH "UTTERANCE=$utt\n";
-    print FH "N=".(keys %nodes)."\tL=".(@links)."\n";
+    if (not $wordtonode) {
+      # print lattice with words on links:
+      
+      # header
+      print FH "VERSION=1.1\n";
+      print FH "UTTERANCE=$utt\n";
+      print FH "N=".(keys %nodes)."\tL=".(@links)."\n";
 
-    # nodes
-    for $n (sort { $a <=> $b } keys %nodes) {
-      if ($wordtolink) {
+      # nodes
+      for $n (sort { $a <=> $b } keys %nodes) {
         printf FH "I=%d\tt=%.2f\n", $n, $nodes{$n}{t}*$framerate;
-      } else {
+      }
+
+      # links/arks
+      for $i (0 .. $#links) {
+        %l = %{$links[$i]}; # get hash representing the link...
+        printf FH "J=$i\tS=%d\tE=%d\tW=%s\tv=%f\ta=%f\tl=%f\n", $l{S}, $l{E}, $l{W}, $l{v}, $l{a}, $l{l};
+      }
+
+    } else {
+      # print lattice with words in the nodes:
+
+      # header
+      print FH "VERSION=1.1\n";
+      print FH "UTTERANCE=$utt\n";
+      print FH "N=".(scalar(keys(%nodes))+scalar(keys(%nodes_extra)))."\tL=".(@links)."\n";
+
+      # number of original nodes, offset of extra_nodes
+      $node_id_offset = scalar keys %nodes;
+
+      # nodes
+      for $n (sort { $a <=> $b } keys %nodes) {
         printf FH "I=%d\tW=%s\tt=%.2f\n", $n, $nodes{$n}{W}, $nodes{$n}{t}*$framerate;
       }
-    }
+      # extra nodes
+      for $n (sort { $a <=> $b } keys %nodes_extra) {
+        printf FH "I=%d\tW=%s\tt=%.2f\n", $n+$node_id_offset, $nodes_extra{$n}{W}, $nodes_extra{$n}{t}*$framerate;
+      }
 
-    # links/arks
-    for $i (0 .. $#links) {
-      %l = %{$links[$i]}; # get hash representing the link...
-      if ($wordtolink) {
-        printf FH "J=$i\tS=%d\tE=%d\tW=%s\tv=%f\ta=%f\tl=%f\n", $l{S}, $l{E}, $l{W}, $l{v}, $l{a}, $l{l};
-      } else {
+      # links/arks
+      for $i (0 .. $#links) {
+        %l = %{$links[$i]}; # get hash representing the link...
+        if ($l{from_extra_node}) { $l{S} += $node_id_offset; }
+        if ($l{to_extra_node}) { $l{E} += $node_id_offset; }
         printf FH "J=$i\tS=%d\tE=%d\tv=%f\ta=%f\tl=%f\n", $l{S}, $l{E}, $l{v}, $l{a}, $l{l};
       }
     }
@@ -215,8 +281,11 @@ while(<FI>) {
 
     # clear data
     $utt = "";
+    $arc = 0;
+    $latest_time = 0.0;
     @links = ();
     %nodes = ();
+    %nodes_extra = ();
     %accepting_states = ();
   } else {
     die "Unexpected column number of input line\n$_";
