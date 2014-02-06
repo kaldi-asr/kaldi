@@ -398,6 +398,11 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       return (state != other.state || string != other.string ||
               weight != other.weight);
     }
+    // This operator is only intended for the priority_queue in the function
+    // EpsilonClosure().
+    bool operator > (const Element &other) const {
+      return state > other.state;
+    }
   };
 
   // Arcs in the format we temporarily create in this class (a representation, essentially of
@@ -616,8 +621,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     KALDI_ASSERT(0); // because we checked if a_str == b_str above, shouldn't reach here
     return 0;
   }
-  
-  
+
   // This function computes epsilon closure of subset of states by following epsilon links.
   // Called by InitialToStateId and Initialize.
   // Has no side effects except on the string repository.  The "output_subset" is not
@@ -647,16 +651,16 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // find whether input fst is known to be sorted on input label. 
     bool sorted = ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
 
-    std::deque<Element> queue;
+    std::priority_queue<Element, vector<Element>, greater<Element> > queue;
     for (typename vector<Element>::const_iterator iter = subset->begin();
          iter != subset->end();
-         ++iter) queue.push_back(*iter);
+         ++iter) queue.push(*iter);
     bool replaced_elems = false; // relates to an optimization, see below.
     int counter = 0; // stops infinite loops here for non-lattice-determinizable input
     // (e.g. input with negative-cost epsilon loops); useful in testing.
     while (queue.size() != 0) {
-      Element elem = queue.front();
-      queue.pop_front();
+      Element elem = queue.top();
+      queue.pop();
       
       // The next if-statement is a kind of optimization.  It's to prevent us
       // unnecessarily repeating the processing of a state.  "cur_subset" always
@@ -691,7 +695,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
             next_elem.string = (arc.olabel == 0 ? elem.string :
                                 repository_.Successor(elem.string, arc.olabel));
             cur_subset[next_elem.state] = next_elem;
-            queue.push_back(next_elem);
+            queue.push(next_elem);
           } else {
             // was not inserted because one already there.  In normal
             // determinization we'd add the weights.  Here, we find which one
@@ -710,7 +714,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
                                   repository_.Successor(elem.string, arc.olabel));
               iter->second.string = next_elem.string;
               iter->second.weight = next_elem.weight;
-              queue.push_back(next_elem);
+              queue.push(next_elem);
               replaced_elems = true;
             }
             // else it is the same or worse, so use original one.
@@ -1017,29 +1021,20 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   void ComputeBackwardWeight() {
     // Sets up the backward_costs_ array, and the cutoff_ variable.
     KALDI_ASSERT(beam_ > 0);
-    if (ifst_->Properties(kTopSorted, true) != 0) { // is topologically sorted-> easier.
-      backward_costs_.resize(ifst_->NumStates());
-      for (StateId s = ifst_->NumStates() - 1; s >= 0; s--) {
-        double &cost = backward_costs_[s];
-        cost = ConvertToCost(ifst_->Final(s));
-        for (ArcIterator<ExpandedFst<Arc> > aiter(*ifst_, s); 
-             !aiter.Done(); aiter.Next()) {
-          const Arc &arc = aiter.Value();
-          cost = std::min(cost,
-                          ConvertToCost(arc.weight) + backward_costs_[arc.nextstate]);
-        }
+
+    // Only handle the toplogically sorted case.
+    backward_costs_.resize(ifst_->NumStates());
+    for (StateId s = ifst_->NumStates() - 1; s >= 0; s--) {
+      double &cost = backward_costs_[s];
+      cost = ConvertToCost(ifst_->Final(s));
+      for (ArcIterator<ExpandedFst<Arc> > aiter(*ifst_, s);
+           !aiter.Done(); aiter.Next()) {
+        const Arc &arc = aiter.Value();
+        cost = std::min(cost,
+                        ConvertToCost(arc.weight) + backward_costs_[arc.nextstate]);
       }
-    } else {
-      KALDI_WARN << "Input FST not topologically sorted; algorithm is less efficient.";
-      // Use the generic ShortestDistance algorithm.  Note: we could probably
-      // set it up to use this for the top-sorted case and still be efficient,
-      // but I'm not sure how.
-      std::vector<Weight> backward_weights_(ifst_->NumStates());
-      backward_costs_.resize(ifst_->NumStates());
-      ShortestDistance(*ifst_, &backward_weights_, true);
-      for (int32 i = 0; i < ifst_->NumStates(); i++)
-        backward_costs_[i] = ConvertToCost(backward_weights_[i]);
     }
+
     if (ifst_->Start() == kNoStateId) return; // we'll be returning
     // an empty FST.
     
@@ -1050,6 +1045,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   }
   
   void InitializeDeterminization() {
+    KALDI_ASSERT(ifst_->Properties(kTopSorted, true) != 0);
     ComputeBackwardWeight();
 #if !(__GNUC__ == 4 && __GNUC_MINOR__ == 0)
     if(ifst_->Properties(kExpanded, false) != 0) { // if we know the number of

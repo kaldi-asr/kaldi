@@ -1,6 +1,7 @@
 // util/kaldi-table-inl.h
 
-// Copyright 2009-2011     Microsoft Corporation
+// Copyright 2009-2011    Microsoft Corporation
+//                2013    Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -44,7 +45,10 @@ template<class Holder> class SequentialTableReaderImplBase {
   virtual void FreeCurrent() = 0;
   virtual void Next() = 0;
   virtual bool Close() = 0;
+  SequentialTableReaderImplBase() { }
   virtual ~SequentialTableReaderImplBase() { }
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(SequentialTableReaderImplBase);  
 };
 
 
@@ -199,13 +203,13 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
   virtual ~SequentialTableReaderScriptImpl() {
     if (state_ == kError)
       KALDI_ERR << "TableReader: reading script file failed: from scp "
-                 << PrintableRxfilename(script_rxfilename_);
+                << PrintableRxfilename(script_rxfilename_);
     // If you don't want this exception to be thrown you can
     // call Close() and check the status.
     if (state_ == kLoadSucceeded)
       holder_.Clear();
   }
- private:
+ private:  
   bool LoadCurrent() {
     // Attempts to load object whose rxfilename is on the current scp line.
     if (state_ != kHaveScpLine)
@@ -265,7 +269,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
 
   Input script_input_;  // Input object for the .scp file
   Input data_input_;   // Input object for the entries in
-                       // the script file.
+  // the script file.
   Holder holder_;  // Holds the object.
   bool binary_;  // Binary-mode archive.
   std::string key_;
@@ -279,14 +283,15 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     kEof,     // We did Next() and found eof in script file.       no         no
     kError,   // Some other error                                  no         yes
     kHaveScpLine,  // Just called Open() or Next() and have a       no         yes
-                  // line of the script file but no data.
+    // line of the script file but no data.
     kLoadSucceeded,  // Called LoadCurrent() and it succeeded.     yes         yes
     kLoadFailed,  // Called LoadCurrent() and it failed,           no         yes
-                  // or the user called FreeCurrent().. note,
-                  // if when called by user we are in this state,
-                  // it means the user called FreeCurrent().
+    // or the user called FreeCurrent().. note,
+    // if when called by user we are in this state,
+    // it means the user called FreeCurrent().
     kFileStart,        // [state we only use internally]           no         yes
   } state_;
+ private:
 };
 
 
@@ -615,6 +620,10 @@ template<class Holder> class TableWriterImplBase {
 
   // May throw on write error if Close was not called.
   virtual ~TableWriterImplBase() { }
+
+  TableWriterImplBase() { }
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(TableWriterImplBase);
 };
 
 
@@ -780,8 +789,8 @@ class TableWriterScriptImpl: public TableWriterImplBase<Holder> {
     KALDI_ASSERT(script_.empty());  // no way it could be nonempty at this point.
 
     if (! ReadScriptFile(script_rxfilename_,
-                        true,  // print any warnings
-                        &script_)) {  // error reading script file or invalid format
+                         true,  // print any warnings
+                         &script_)) {  // error reading script file or invalid format
       state_ = kNotReadScript;
       return false;  // no need to print further warnings.  user gets the error.
     }
@@ -821,10 +830,15 @@ class TableWriterScriptImpl: public TableWriterImplBase<Holder> {
 
     std::string wxfilename;
     if (!LookupFilename(key, &wxfilename)) {
-      KALDI_WARN << "TableWriter: script file "
-                 << PrintableRxfilename(script_rxfilename_)
-                 << " has no entry for key "<<key;
-      return false;
+      if (opts_.permissive) {
+        return true; // In permissive mode, it's as if we're writing to /dev/null
+                     // for missing keys.
+      } else {
+        KALDI_WARN << "TableWriter: script file "
+                   << PrintableRxfilename(script_rxfilename_)
+                   << " has no entry for key "<<key;
+        return false;
+      }
     }
     Output output;
     if (!output.Open(wxfilename, opts_.binary, false)) {
@@ -836,7 +850,7 @@ class TableWriterScriptImpl: public TableWriterImplBase<Holder> {
       return false;
     }
     if (!Holder::Write(output.Stream(), opts_.binary, value)
-       || !output.Close()) {
+        || !output.Close()) {
       KALDI_WARN << "TableWriter: failed to write data to "
                  << PrintableWxfilename(wxfilename);
       return false;

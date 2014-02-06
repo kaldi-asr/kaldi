@@ -89,7 +89,6 @@ const BaseFloat kBaseLogZero = -std::numeric_limits<BaseFloat>::infinity();
 const BaseFloat kBaseFloatMax = std::numeric_limits<BaseFloat>::max();
 
 // Returns a random integer between min and max inclusive.
-
 int32 RandInt(int32 min, int32 max);
 
 bool WithProb(BaseFloat prob); // Returns true with probability "prob",
@@ -302,6 +301,9 @@ inline double Log1p(double x) {  return log1p(x); }
 
 inline float Log1p(float x) {  return log1pf(x); }
 
+inline double Exp(double x) { return exp(x); }
+
+inline float Exp(float x) { return expf(x); }
 
 
 }  // namespace kaldi

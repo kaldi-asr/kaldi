@@ -45,14 +45,16 @@ template<class Arc> void TestDeterminizeLatticePruned() {
     opts.n_final = 2;
     opts.allow_empty = false;
     opts.weight_multiplier = 0.5; // impt for the randomly generated weights
+    opts.acyclic = true;
     // to be exactly representable in float,
     // or this test fails because numerical differences can cause symmetry in 
     // weights to be broken, which causes the wrong path to be chosen as far
     // as the string part is concerned.
     
-    VectorFst<Arc> *fst = RandPairFst<Arc>();
-    if (rand() % 2 == 0)
-      TopSort(fst);
+    VectorFst<Arc> *fst = RandPairFst<Arc>(opts);
+
+    bool sorted = TopSort(fst);
+    KALDI_ASSERT(sorted);
 
     ILabelCompare<Arc> ilabel_comp;
     if (rand() % 2 == 0)

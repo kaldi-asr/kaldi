@@ -39,14 +39,22 @@ int main(int argc, char *argv[]) {
       
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
+    bool random = false;
+    int32 srand_seed = 0;
     int32 n = 1;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("n", &n, "Number of distinct paths");
+    po.Register("random", &random,
+                "If true, generate n random paths instead of n-best paths");
+    po.Register("srand", &srand_seed, "Seed for random number generator "
+                "(only relevant if --random=true)");
+    
     
     po.Read(argc, argv);
 
     KALDI_ASSERT(n > 0);
+    srand(srand_seed);        
 
     if (po.NumArgs() != 2) {
       po.PrintUsage();
@@ -63,7 +71,7 @@ int main(int argc, char *argv[]) {
     
     // Write as compact lattice.
     CompactLatticeWriter compact_nbest_writer(lats_wspecifier); 
-
+    
     int32 n_done = 0;
     int64 n_paths_out = 0;
 
@@ -76,8 +84,19 @@ int main(int argc, char *argv[]) {
       fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
 
       std::vector<Lattice> nbest_lats;
-      fst::NbestAsFsts(lat, n, &nbest_lats);
-
+      {
+        Lattice nbest_lat;
+        if (!random) {
+          fst::ShortestPath(lat, &nbest_lat, n);
+        } else {
+          fst::UniformArcSelector<LatticeArc> uniform_selector;
+          fst::RandGenOptions<fst::UniformArcSelector<LatticeArc> > opts(uniform_selector);
+          opts.npath = n;
+          fst::RandGen(lat, &nbest_lat, opts);
+        }
+        fst::ConvertNbestToVector(nbest_lat, &nbest_lats);
+      }
+      
       if (nbest_lats.empty()) {
         KALDI_WARN << "Possibly empty lattice for utterance-id " << key
                    << "(no N-best entries)";

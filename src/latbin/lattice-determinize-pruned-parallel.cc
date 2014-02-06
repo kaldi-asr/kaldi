@@ -155,6 +155,9 @@ int main(int argc, char *argv[]) {
 
       Lattice *lat = lat_reader.Value().Copy(); // will give ownership to "task"
                                                 // below
+      
+      KALDI_VLOG(2) << "Processing lattice " << key;
+
       DeterminizeLatticeTask *task = new DeterminizeLatticeTask(
           determinize_config, key, acoustic_scale, beam, minimize,
           lat, &compact_lat_writer, &n_warn);

@@ -243,8 +243,9 @@ void FastNnetCombiner::ComputePreconditioner() {
   // Make zero diagonal elements of F non-zero.  Relates to updatable
   // components that have no effect, e.g. MixtureProbComponents that have
   // no real free parameters.
+  KALDI_ASSERT(config_.fisher_floor > 0.0);
   for (int32 i = 0; i < F.NumRows(); i++)
-    if (F(i, i) < 1.0e-20) F(i, i) = 1.0e-20;
+    F(i, i) = std::max<BaseFloat>(F(i, i), config_.fisher_floor);
   // We next smooth the diagonal elements of F by a small amount.
   // This is mainly necessary in case the number of minibatches is
   // smaller than the dimension of F; we want to ensure F is full rank.

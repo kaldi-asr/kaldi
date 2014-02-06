@@ -389,6 +389,9 @@ namespace kaldi {
      - "f" (flush) means flush the stream after each write operation.
      - "nf" (no-flush) means don't flush the stream after each write operation (would currently
         be pointless, but calling code can change the default).
+     - "p" means permissive mode, which affects "scp:" wspecifiers where the scp
+        file is missing some entries: the "p" option will cause it to silently
+        not write anything for these files, and report no error.
 
     Examples of wspecifiers using a lot of options are
     \verbatim

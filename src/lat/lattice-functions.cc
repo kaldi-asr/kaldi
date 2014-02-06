@@ -740,13 +740,13 @@ BaseFloat LatticeForwardBackwardMpeVariants(
           frame_acc = (phone == ref_phone && !phone_is_sil) ? 1.0 : 0.0;
         }
       }
-      double arc_scale = std::exp(alpha[s] + arc_like - alpha[arc.nextstate]);
+      double arc_scale = Exp(alpha[s] + arc_like - alpha[arc.nextstate]);
       alpha_smbr[arc.nextstate] += arc_scale * (alpha_smbr[s] + frame_acc);
     }
     Weight f = lat.Final(s);
     if (f != Weight::Zero()) {
       double final_like = this_alpha - (f.Value1() + f.Value2());
-      double arc_scale = std::exp(final_like - tot_forward_prob);
+      double arc_scale = Exp(final_like - tot_forward_prob);
       tot_forward_score += arc_scale * alpha_smbr[s];
       KALDI_ASSERT(state_times[s] == max_time &&
                    "Lattice is inconsistent (final-prob not at max_time)");
@@ -774,7 +774,7 @@ BaseFloat LatticeForwardBackwardMpeVariants(
           frame_acc = (phone == ref_phone && !phone_is_sil) ? 1.0 : 0.0;
         }
       }
-      double arc_scale = std::exp(beta[arc.nextstate] + arc_like - beta[s]);
+      double arc_scale = Exp(beta[arc.nextstate] + arc_like - beta[s]);
       // check arc_scale NAN,
       // this is to prevent partial paths in Lattices
       // i.e., paths don't survive to the final state

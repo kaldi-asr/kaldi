@@ -160,7 +160,7 @@ sgmm2: base util matrix gmm tree transform thread hmm
 fstext: base util matrix tree
 hmm: base tree matrix 
 lm: base util
-decoder: base util matrix gmm sgmm hmm tree transform
+decoder: base util matrix gmm sgmm hmm tree transform lat
 lat: base util hmm
 cudamatrix: base util matrix	
 nnet: base util matrix cudamatrix

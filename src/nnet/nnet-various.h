@@ -117,27 +117,81 @@ class Splice : public Component {
   Component* Copy() const { return new Splice(*this); }
   ComponentType GetType() const { return kSplice; }
 
-  void ReadData(std::istream &is, bool binary) {
-    // read double vector
-    Vector<double> vec_d;
-    vec_d.Read(is, binary);
-    // convert to int vector
-    std::vector<int32> vec_i(vec_d.Dim());
-    for(int32 i=0; i<vec_d.Dim(); i++) {
-      vec_i[i] = round(vec_d(i));
+  void InitData(std::istream &is) {
+    // define options
+    std::vector<int32> frame_offsets;
+    std::vector<std::vector<int32> > build_vector;
+    // parse config
+    std::string token; 
+    while (!is.eof()) {
+      ReadToken(is, false, &token); 
+      /**/ if (token == "<ReadVector>") {
+        ReadIntegerVector(is, false, &frame_offsets);
+      } else if (token == "<BuildVector>") { 
+        // <BuildVector> 1:1:1000 1:1:1000 1 2 3 1:10 </BuildVector> [matlab indexing]
+        // read the colon-separated-lists:
+        while (!is.eof()) { 
+          std::string colon_sep_list_or_end;
+          ReadToken(is, false, &colon_sep_list_or_end);
+          if (colon_sep_list_or_end == "</BuildVector>") break;
+          std::vector<int32> v;
+          SplitStringToIntegers(colon_sep_list_or_end, ":", false, &v);
+          build_vector.push_back(v);
+        }
+      } else {
+        KALDI_ERR << "Unknown token " << token << ", a typo in config?"
+                  << " (ReadVector|BuildVector)";
+      }
+      is >> std::ws; // eat-up whitespace
     }
-    // push to GPU
-    frame_offsets_.CopyFromVec(vec_i); 
+
+    // build the vector, using <BuildVector> ... </BuildVector> inputs
+    if (build_vector.size() > 0) {
+      for (int32 i=0; i<build_vector.size(); i++) {
+        switch (build_vector[i].size()) {
+          case 1:
+            frame_offsets.push_back(build_vector[i][0]);
+            break;
+          case 2: { // assuming step 1
+            int32 min=build_vector[i][0], max=build_vector[i][1];
+            KALDI_ASSERT(min <= max);
+            for (int32 j=min; j<=max; j++) {
+              frame_offsets.push_back(j);
+            }}
+            break;
+          case 3: { // step can be negative -> flipped min/max
+            int32 min=build_vector[i][0], step=build_vector[i][1], max=build_vector[i][2];
+            KALDI_ASSERT((min <= max && step > 0) || (min >= max && step < 0));
+            for (int32 j=min; j<=max; j += step) {
+              frame_offsets.push_back(j);
+            }}
+            break;
+          case 0:
+          default: 
+            KALDI_ERR << "Error parsing <BuildVector>";
+        }
+      }
+    }
+    
+    // copy to GPU
+    frame_offsets_ = frame_offsets;
+
+    // check dim
+    KALDI_ASSERT(frame_offsets_.Dim()*InputDim() == OutputDim());
+  }
+
+
+  void ReadData(std::istream &is, bool binary) {
+    std::vector<int32> frame_offsets;
+    ReadIntegerVector(is, binary, &frame_offsets);
+    frame_offsets_ = frame_offsets; // to GPU
+    KALDI_ASSERT(frame_offsets_.Dim() * InputDim() == OutputDim());
   }
 
   void WriteData(std::ostream &os, bool binary) const {
-    std::vector<int32> vec_i;
-    frame_offsets_.CopyToVec(&vec_i);
-    Vector<double> vec_d(vec_i.size());
-    for(int32 i=0; i<vec_d.Dim(); i++) {
-      vec_d(i) = vec_i[i];
-    }
-    vec_d.Write(os, binary);
+    std::vector<int32> frame_offsets(frame_offsets_.Dim());
+    frame_offsets_.CopyToVec(&frame_offsets);
+    WriteIntegerVector(os, binary, frame_offsets);
   }
   
   std::string Info() const {
@@ -250,7 +304,7 @@ class CopyComponent: public Component {
 
   void ReadData(std::istream &is, bool binary) { 
     std::vector<int32> copy_from_indices;
-    ReadIntegerVector(is, false, &copy_from_indices);
+    ReadIntegerVector(is, binary, &copy_from_indices);
     // -1 from each element 
     std::vector<int32>& v = copy_from_indices;
     std::transform(v.begin(), v.end(), v.begin(), op_decrease);
@@ -286,7 +340,12 @@ class CopyComponent: public Component {
 
   void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
                         const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
-    KALDI_ERR << __func__ << "Not implemented!";
+    static bool warning_displayed = false;
+    if (!warning_displayed) {
+      KALDI_WARN << __func__ << "Not implemented!";
+      warning_displayed = true;
+    }
+    in_diff->SetZero();
   }
 
  protected:

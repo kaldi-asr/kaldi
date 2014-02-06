@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     
     const char *usage =
         "Compute the lattice depths in terms of the average number of arcs that\n"
-        "cross a frame\n"
+        "cross a frame.  See also lattice-depth-per-frame\n"
         "Usage: lattice-depth <lattice-rspecifier> [<depth-wspecifier>]\n"
         "E.g.: lattice-depth ark:- ark,t:-\n";
 

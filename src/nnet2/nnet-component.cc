@@ -703,8 +703,7 @@ void NormalizeComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
                                   int32, // num_chunks
                                   Component *to_update,
                                   CuMatrix<BaseFloat> *in_deriv) const {
-  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols(),
-                   kUndefined);
+  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
   
   CuVector<BaseFloat> in_norm(in_value.NumRows());
   in_norm.AddDiagMat2(1.0 / in_value.NumCols(),

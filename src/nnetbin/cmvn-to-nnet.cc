@@ -37,10 +37,12 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = false;
     bool tied_normalzation = false;
+    float var_floor = 1e-10;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("tied-normalization", &tied_normalzation, "The normalization is tied accross all the input dimensions");
+    po.Register("var-floor", &var_floor, "Floor the variance, so the factors in <Rescale> are bounded.");
 
     po.Read(argc, argv);
 
@@ -73,6 +75,10 @@ int main(int argc, char *argv[]) {
     for(int32 d=0; d<cmvn_stats.NumCols()-1; d++) {
       BaseFloat mean = cmvn_stats(0,d)/count;
       BaseFloat var = cmvn_stats(1,d)/count - mean*mean;
+      if (var <= var_floor) {
+        KALDI_WARN << "Very small variance " << var << " flooring to " << var_floor;
+        var = var_floor;
+      }
       shift(d) = -mean;
       scale(d) = 1.0 / sqrt(var);
     }

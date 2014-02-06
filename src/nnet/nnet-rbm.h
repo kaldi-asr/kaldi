@@ -106,7 +106,9 @@ class Rbm : public RbmBase {
     // define options
     std::string vis_type;
     std::string hid_type;
-    float vis_bias_mean = 0.0, hid_bias_mean = -4.0, param_stddev = 0.1;
+    float vis_bias_mean = 0.0, vis_bias_range = 0.0, 
+          hid_bias_mean = 0.0, hid_bias_range = 0.0, 
+          param_stddev = 0.1;
     std::string vis_bias_cmvn_file; // initialize biases to logit(p_active)
     // parse config
     std::string token; 
@@ -115,7 +117,9 @@ class Rbm : public RbmBase {
       /**/ if (token == "<VisibleType>") ReadToken(is, false, &vis_type);
       else if (token == "<HiddenType>") ReadToken(is, false, &hid_type);
       else if (token == "<VisibleBiasMean>") ReadBasicType(is, false, &vis_bias_mean);
+      else if (token == "<VisibleBiasRange>") ReadBasicType(is, false, &vis_bias_range);
       else if (token == "<HiddenBiasMean>") ReadBasicType(is, false, &hid_bias_mean);
+      else if (token == "<HiddenBiasRange>") ReadBasicType(is, false, &hid_bias_range);
       else if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<VisibleBiasCmvnFilename>") ReadToken(is, false, &vis_bias_cmvn_file);
       else KALDI_ERR << "Unknown token " << token << " Typo in config?";
@@ -143,14 +147,16 @@ class Rbm : public RbmBase {
     // hidden-bias
     Vector<BaseFloat> vec(output_dim_);
     for (int32 i=0; i<output_dim_; i++) {
-      vec(i) = hid_bias_mean + (RandUniform()/5.0 - 0.1); // +/- 0.1 from bias_mean
+      // +/- 1/2*bias_range from bias_mean:
+      vec(i) = hid_bias_mean + (RandUniform() - 0.5) * hid_bias_range; 
     }
     hid_bias_ = vec;
     // visible-bias
     if (vis_bias_cmvn_file == "") {
       Vector<BaseFloat> vec2(input_dim_);
       for (int32 i=0; i<input_dim_; i++) {
-        vec2(i) = vis_bias_mean + (RandUniform()/5.0 - 0.1); // +/- 0.1 from bias_mean
+        // +/- 1/2*bias_range from bias_mean:
+        vec2(i) = vis_bias_mean + (RandUniform() - 0.5) * vis_bias_range; 
       }
       vis_bias_ = vec2;
     } else {

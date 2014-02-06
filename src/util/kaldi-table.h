@@ -1,6 +1,7 @@
 // util/kaldi-table.h
 
-// Copyright 2009-2011     Microsoft Corporation
+// Copyright 2009-2011    Microsoft Corporation
+//                2013    Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -57,21 +58,24 @@ typedef std::vector<std::string> KeyList;
 //
 //  ark:wxfilename
 //  scp:rxfilename
-//  ark, scp:filename, wxfilename
-//  ark, scp:filename, wxfilename
+//  ark,scp:filename,wxfilename
+//  ark,scp:filename,wxfilename
 //
 //
 //  We also allow the following modifiers:
 //  t means text mode.
 //  b means binary mode.
 //  f means flush the stream after writing each entry.
-//  (nf means don't flush, and isn't very useful as the default is to flush).
+//   (nf means don't flush, and isn't very useful as the default is to flush).
+//  p means permissive mode, when writing to an "scp" file only: will ignore
+//     missing scp entries, i.e. won't write anything for those files but will
+//     return success status).
 //
 //  So the following are valid wspecifiers:
-//  b, f, ark:foo
-//  "b, f, ark:| gzip -c > foo"
-//  "t, nf, ark, scp:foo.ark, |gzip -c > foo.scp.gz"
-//  b, ark:-
+//  ark,b,f:foo
+//  "ark,b,b:| gzip -c > foo"
+//  "ark,scp,t,nf:foo.ark,|gzip -c > foo.scp.gz"
+//  ark,b:-
 //
 //  The meanings of rxfilename and wxfilename are as described in
 //  kaldi-stream.h (they are filenames but include pipes, stdin/stdout
@@ -89,14 +93,14 @@ typedef std::vector<std::string> KeyList;
 //  would be:
 //   key xfilename
 //
-//  The type ark, scp:filename, xfilename means
+//  The type ark,scp:filename,wxfilename means
 //  we write both an archive and an scp file that specifies offsets into the
 //  archive, with lines like:
 //    key filename:12407
 //  where the number is the byte offset into the file.
 //  In this case we restrict the archive-filename to be an actual filename,
 //  as we can't see a situtation where an extended filename would make sense
-//  for this.
+//  for this (we can't fseek() in pipes).
 
 enum WspecifierType  {
   kNoWspecifier,
@@ -108,7 +112,8 @@ enum WspecifierType  {
 struct WspecifierOptions {
   bool binary;
   bool flush;
-  WspecifierOptions(): binary(true), flush(false) { }
+  bool permissive; // will ignore absent scp entries.
+  WspecifierOptions(): binary(true), flush(false), permissive(false) { }
 };
 
 // ClassifyWspecifier returns the type of the wspecifier string,
@@ -191,6 +196,7 @@ struct  RspecifierOptions {
   bool permissive;  // If "permissive", when reading from scp files it treats
   // scp files that can't be read as if the corresponding key were not there.
   // For archive files it will suppress errors getting thrown if the archive
+  
   // is corrupted and can't be read to the end.
 
   RspecifierOptions(): once(false), sorted(false),
@@ -251,7 +257,13 @@ class RandomAccessTableReader {
 
   ~RandomAccessTableReader();
 
+  // Allow copy-constructor only for non-opened readers (needed for inclusion in
+  // stl vector)
+  RandomAccessTableReader(const RandomAccessTableReader<Holder> &other):
+      impl_(NULL) { KALDI_ASSERT(other.impl_ == NULL); }
  private:
+  // Disallow assignment.
+  RandomAccessTableReader &operator=(const RandomAccessTableReader<Holder>&);
   void CheckImpl() const; // Checks that impl_ is non-NULL; prints an error
                           // message and dies (with KALDI_ERR) if NULL.
   RandomAccessTableReaderImplBase<Holder> *impl_;
@@ -326,7 +338,14 @@ class SequentialTableReader {
   // we reached the end of the archive or script, or because there was an error
   // that prevented further reading.
   ~SequentialTableReader();
+
+  // Allow copy-constructor only for non-opened readers (needed for inclusion in
+  // stl vector)
+  SequentialTableReader(const SequentialTableReader<Holder> &other):
+      impl_(NULL) { KALDI_ASSERT(other.impl_ == NULL); }
  private:
+  // Disallow assignment.
+  SequentialTableReader &operator = (const SequentialTableReader<Holder>&); 
   void CheckImpl() const; // Checks that impl_ is non-NULL; prints an error
                           // message and dies (with KALDI_ERR) if NULL.
   SequentialTableReaderImplBase<Holder> *impl_;
@@ -372,7 +391,14 @@ class TableWriter {
   bool Close();
 
   ~TableWriter();
+  
+  // Allow copy-constructor only for non-opened writers (needed for inclusion in
+  // stl vector)
+  TableWriter(const TableWriter &other): impl_(NULL) {
+    KALDI_ASSERT(other.impl_ == NULL);
+  }
  private:
+  TableWriter &operator = (const TableWriter&); // Disallow assignment.
   void CheckImpl() const; // Checks that impl_ is non-NULL; prints an error
                           // message and dies (with KALDI_ERR) if NULL.
   TableWriterImplBase<Holder> *impl_;
@@ -412,8 +438,13 @@ class RandomAccessTableReaderMapped {
   inline bool IsOpen() const { return reader_.IsOpen(); }
   inline bool Close() { return reader_.Close(); }
   
-  // Use the default destructor.
+
+
+  // The default copy-constructor will do what we want: it will crash
+  // for already-opened readers, by calling the member-variable copy-constructors.
  private:
+  // Disallow assignment.
+  RandomAccessTableReaderMapped &operator=(const RandomAccessTableReaderMapped<Holder>&);
   RandomAccessTableReader<Holder> reader_;
   RandomAccessTableReader<TokenHolder> token_reader_;
   std::string utt2spk_rxfilename_; // Used only in diagnostic messages.
