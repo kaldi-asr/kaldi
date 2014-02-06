@@ -16,11 +16,11 @@ def make_path(path):
 			raise
 
 def tail(n, filename):
-    import subprocess
-    p=subprocess.Popen(['tail','-n',str(n),filename], stdout=subprocess.PIPE)
-    soutput,sinput=p.communicate()
-    soutput=soutput.split("\n")
-    return soutput
+	import subprocess
+	p=subprocess.Popen(['tail','-n',str(n),filename], stdout=subprocess.PIPE)
+	soutput,sinput=p.communicate()
+	soutput=soutput.split("\n")
+	return soutput
 
 def KaldiLauncher(lo, **kwargs):
 	jobid = JobId()
@@ -48,9 +48,7 @@ def KaldiLauncher(lo, **kwargs):
 	generator=ListCommandlineGenerator(list=commands, cores=cores)
 	tasks = TaskGenerator(generator, completion=completion, debug=debug )
 
- 	job = LauncherJob( hostpool=hostpool, 
-				taskgenerator=tasks, 
-        debug=debug,**kwargs)
+	job = LauncherJob( hostpool=hostpool, taskgenerator=tasks, debug=debug,**kwargs)
 
 	job.run()
 	#At this point all the .done files should exist and everything should be finalized.
@@ -84,12 +82,23 @@ def KaldiLauncher(lo, **kwargs):
 	#Remove service files. Be careful not to remove something that might be needed in problem diagnostics	
 	for i in xrange(len(commands)):
 		out_file=os.path.join(qdir, ce.outstring+str(i))
+
+		#First, let's wait on files missing (it might be that those are missing
+		#just because of slow shared filesystem synchronization
 		if not os.path.isfile(out_file):
-			sys.stderr.write("ERROR: " + "The following file is missing:\n")
-			sys.stderr.write("ERROR: " + "\t" + out_file + "\n")
-			sys.stderr.write("ERROR: " + "That means something went wrong, but we don't know what. Try to figure out what and fix it\n");
-			sys.exit(-1);
-		elif os.stat(out_file).st_size != 0:
+			import time
+			sched_rate=[0.5, 1, 2, 4, 8 ];
+			for delay in sched_rate:
+				time.sleep(delay);
+				if os.path.isfile(out_file):
+					break;
+			if not os.path.isfile(out_file):
+				sys.stderr.write("ERROR: " + "The following file is missing:\n")
+				sys.stderr.write("ERROR: " + "\t" + out_file + "\n")
+				sys.stderr.write("ERROR: " + "That means something went wrong, but we don't know what. Try to figure out what and fix it\n");
+				sys.exit(-1);
+
+		if os.stat(out_file).st_size != 0:
 			sys.stderr.write("ERROR: " + "The following file has non-zero size:\n")
 			sys.stderr.write("ERROR: " + "\t" + out_file + "\n")
 			sys.stderr.write("ERROR: " + "That means something went wrong, but we don't know what. Try to figure out what and fix it\n");

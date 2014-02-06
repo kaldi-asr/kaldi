@@ -4,7 +4,9 @@
 #
 # See README.txt for more info on data required.
 # Results (EERs) are inline in comments below.
-
+#
+# Also see local/run_more_data.sh which duplicates this example but
+# with additional development data.
 # 
 # This example script is still a bit of a mess, and needs to be
 # cleaned up, but it shows you all the basic ingredients.
@@ -119,8 +121,6 @@ sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
 sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
    exp/extractor_2048_male data/sre08_test_short3_male exp/ivectors_sre08_test_short3_male
 
-
-
 ### Demonstrate simple cosine-distance scoring:
 
 trials=data/sre08_trials/short2-short3-female.trials
@@ -128,15 +128,27 @@ cat $trials | awk '{print $1, $2}' | \
  ivector-compute-dot-products - \
   scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp \
   scp:exp/ivectors_sre08_test_short3_female/spk_ivector.scp \
+   foo 
+
+local/score_sre08.sh $trials foo
+
+# Results for Female:
+# Scoring against data/sre08_trials/short2-short3-female.trials
+#  Condition:      1      2      3      4      5      6      7      8
+#        EER:  27.58   5.07  27.44  20.87  21.03  10.92   7.48   8.42
+trials=data/sre08_trials/short2-short3-male.trials
+cat $trials | awk '{print $1, $2}' | \
+ ivector-compute-dot-products - \
+  scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp \
+  scp:exp/ivectors_sre08_test_short3_male/spk_ivector.scp \
    foo
 
 local/score_sre08.sh $trials foo
 
-
-# Scores were:
-#Scoring against data/sre08_trials/short2-short3-female.trials
+# Results for Male:
+# Scoring against data/sre08_trials/short2-short3-male.trials
 #  Condition:      1      2      3      4      5      6      7      8
-#        EER:  27.75   4.48  27.36  21.77  19.95  10.70   7.22   7.37
+#        EER:  26.40   4.03  26.31  17.08  16.88   8.70   6.83   4.82
 
 # The following shows a more direct way to get the scores.
 #condition=6
@@ -150,9 +162,6 @@ local/score_sre08.sh $trials foo
 
 ### Demonstrate what happens if we reduce the dimension with LDA
 
- ivector-compute-lda --dim=150 --total-covariance-factor=0.1 \
-  'ark:ivector-normalize-length scp:exp/ivectors_fisher_male/ivector.scp  ark:- |' ark:data/fisher_male/utt2spk \
-    exp/ivectors_fisher_male/transform.mat
  ivector-compute-lda --dim=150  --total-covariance-factor=0.1 \
   'ark:ivector-normalize-length scp:exp/ivectors_fisher_female/ivector.scp  ark:- |' ark:data/fisher_female/utt2spk \
     exp/ivectors_fisher_female/transform.mat
@@ -165,15 +174,41 @@ local/score_sre08.sh $trials foo
    foo
 
 local/score_sre08.sh $trials foo
-# Need to redo these results (out of date):
-#Scoring against data/sre08_trials/short2-short3-female.trials
+
+# Results for Female:
+# Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      1      2      3      4      5      6      7      8
-#        EER:  24.16   2.69  24.06  13.96  14.66  10.48   6.59   6.84
+#        EER:  23.06   2.39  22.84  14.11  16.35   9.65   6.59   7.37
 
+ ivector-compute-lda --dim=150 --total-covariance-factor=0.1 \
+  'ark:ivector-normalize-length scp:exp/ivectors_fisher_male/ivector.scp  ark:- |' ark:data/fisher_male/utt2spk \
+    exp/ivectors_fisher_male/transform.mat
 
+ trials=data/sre08_trials/short2-short3-male.trials
+ cat $trials | awk '{print $1, $2}' | \
+  ivector-compute-dot-products - \
+   'ark:ivector-transform exp/ivectors_fisher_male/transform.mat scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
+   'ark:ivector-transform exp/ivectors_fisher_male/transform.mat scp:exp/ivectors_sre08_test_short3_male/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
+   foo
+
+local/score_sre08.sh $trials foo
+
+# Results for Male:
+# Scoring against data/sre08_trials/short2-short3-male.trials
+#  Condition:      1      2      3      4      5      6      7      8
+#        EER:  18.69   2.02  18.81  13.21  12.50   7.44   6.15   4.39
+
+### Demonstrate PLDA scoring:
 
 ## Note: below, the ivector-subtract-global-mean step doesn't appear to affect
 ## the EER, although it does shift the threshold.
+
+ trials=data/sre08_trials/short2-short3-female.trials
+ cat $trials | awk '{print $1, $2}' | \
+  ivector-compute-dot-products - \
+   'ark:ivector-transform exp/ivectors_fisher_female/transform.mat scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
+   'ark:ivector-transform exp/ivectors_fisher_female/transform.mat scp:exp/ivectors_sre08_test_short3_female/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
+   foo
 
 ivector-compute-plda ark:data/fisher_female/spk2utt \
   'ark:ivector-normalize-length scp:exp/ivectors_fisher_female/ivector.scp  ark:- |' \
@@ -188,8 +223,31 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_u
 
 local/score_sre08.sh $trials foo
 
-
-# Result is below:
-#Scoring against data/sre08_trials/short2-short3-female.trials
+# Result for Female is below:
+# Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      1      2      3      4      5      6      7      8
-#        EER:  19.66   2.69  19.72  17.87  12.26   8.09   4.56   4.47
+#        EER:  19.88   2.69  20.08  16.97  12.98   8.20   4.44   4.74
+
+ trials=data/sre08_trials/short2-short3-male.trials
+ cat $trials | awk '{print $1, $2}' | \
+  ivector-compute-dot-products - \
+   'ark:ivector-transform exp/ivectors_fisher_male/transform.mat scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
+   'ark:ivector-transform exp/ivectors_fisher_male/transform.mat scp:exp/ivectors_sre08_test_short3_male/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
+   foo
+
+ivector-compute-plda ark:data/fisher_male/spk2utt \
+  'ark:ivector-normalize-length scp:exp/ivectors_fisher_male/ivector.scp  ark:- |' \
+    exp/ivectors_fisher_male/plda 2>exp/ivectors_fisher_male/log/plda.log
+
+ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utts.ark \
+   "ivector-copy-plda --smoothing=0.0 exp/ivectors_fisher_male/plda - |" \
+   "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp ark:- |" \
+   "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_test_short3_male/ivector.scp ark:- |" \
+   "cat '$trials' | awk '{print \$1, \$2}' |" foo
+
+local/score_sre08.sh $trials foo
+
+# Result for Male is below:
+# Scoring against data/sre08_trials/short2-short3-male.trials
+#  Condition:      1      2      3      4      5      6      7      8
+#        EER:  16.14   2.02  16.55  13.44  10.31   6.98   4.56   3.51

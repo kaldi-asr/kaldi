@@ -196,8 +196,7 @@ while ($line=<INLEX>) {
                       if (( $is_original_phone{$phone} ) and not defined( $substituted_phones{phone}) ) {
                         die "ERROR, the $new_phone and $phone are both existing phones, so we cannot do automatic map!";
                       } else {
-                        print STDERR "WARNING, phone $phone was substituted for $new_phone\n" unless $substituted_phones{$phone};
-                       
+                        print STDERR "WARNING, phone $phone was replaced with $new_phone\n" unless $substituted_phones{$phone};
                       }
                       $is_original_phone{$new_phone} = "$new_phone";
                       $substituted_phones{$phone} = $new_phone;

@@ -37,24 +37,12 @@ fi
 
 function make_plp {
   t=$1
-
-  if [ "$use_pitch" = "false" ] && [ "$use_ffv" = "false" ]; then
-   steps/make_plp.sh --cmd "$decode_cmd" --nj $my_nj data/${t} exp/make_plp/${t} plp
-  elif [ "$use_pitch" = "true" ] && [ "$use_ffv" = "true" ]; then
-    cp -rT data/${t} data/${t}_plp_pitch; cp -rT data/${t} data/${t}_ffv
-    steps/make_plp_pitch.sh --cmd "$decode_cmd" --nj $my_nj data/${t}_plp_pitch exp/make_plp_pitch/${t} plp_pitch_tmp_${t}
-    local/make_ffv.sh --cmd "$decode_cmd"  --nj $my_nj data/${t}_ffv exp/make_ffv/${t} ffv_tmp_${t}
-    steps/append_feats.sh --cmd "$decode_cmd" --nj $my_nj data/${t}{_plp_pitch,_ffv,} exp/make_ffv/append_${t}_pitch_ffv plp
-    rm -rf {plp_pitch,ffv}_tmp_${t} data/${t}_{plp_pitch,ffv}
-  elif [ "$use_pitch" = "true" ]; then
+  if $use_pitch; then
     steps/make_plp_pitch.sh --cmd "$decode_cmd" --nj $my_nj data/${t} exp/make_plp_pitch/${t} plp
-  elif [ "$use_ffv" = "true" ]; then
-    cp -rT data/${t} data/${t}_plp; cp -rT data/${t} data/${t}_ffv
-    steps/make_plp.sh --cmd "$decode_cmd" --nj $my_nj data/${t}_plp exp/make_plp/${t} plp_tmp_${t}
-    local/make_ffv.sh --cmd "$decode_cmd" --nj $my_nj data/${t}_ffv exp/make_ffv/${t} ffv_tmp_${t}
-    steps/append_feats.sh --cmd "$decode_cmd" --nj $my_nj data/${t}{_plp,_ffv,} exp/make_ffv/append_${t} plp
-    rm -rf {plp,ffv}_tmp_${t} data/${t}_{plp,ffv}
+  else
+    steps/make_plp.sh --cmd "$decode_cmd" --nj $my_nj data/${t} exp/make_plp/${t} plp
   fi
+  utils/fix_data_dir.sh data/${t}
   steps/compute_cmvn_stats.sh data/${t} exp/make_plp/${t} plp
   utils/fix_data_dir.sh data/${t}
 }
@@ -407,7 +395,7 @@ if [ -f exp/tri6_nnet/.done ]; then
 
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
-    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
     ${datadir} data/lang $decode
 fi
 

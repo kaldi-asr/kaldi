@@ -22,7 +22,7 @@ fi
 
 if [[ "$type" != "dev10h" && "$type" != "dev2h" && "$type" != "eval" && "$type" != "shadow" ]] ; then
   echo "Warning: invalid variable type=${type}, valid values are dev10h|dev2h|eval"
-  echo "Hope you know what your ar doing!"
+  echo "Hope you know what your are doing!"
 fi
 
 
@@ -141,7 +141,7 @@ if ! $fast_path ; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip 0.5 \
     "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
-    ${datadir} data/lang  exp/sgmm5/decode_fmllr_${dirid}
+    ${datadir} data/lang  exp_BNF/sgmm7/decode_fmllr_${dirid}
 fi
 
 ####################################################################

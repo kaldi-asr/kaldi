@@ -2,6 +2,7 @@
 
 # This is not necessarily the top-level run.sh as it is in other directories.   see README.txt first.
 tri5_only=false
+sgmm5_only=false
 
 [ ! -f ./lang.conf ] && echo "Language configuration does not exist! Use the configurations in conf/lang/* as a startup" && exit 1
 [ ! -f ./conf/common_vars.sh ] && echo "the file conf/common_vars.sh does not exist!" && exit 1
@@ -132,27 +133,13 @@ echo "Starting plp feature extraction for data/train in plp on" `date`
 echo ---------------------------------------------------------------------
 
 if [ ! -f data/train/.plp.done ]; then
-  if [ "$use_pitch" = "false" ] && [ "$use_ffv" = "false" ]; then
-    steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/train exp/make_plp/train plp
-  elif [ "$use_pitch" = "true" ] && [ "$use_ffv" = "true" ]; then
-    cp -rT data/train data/train_plp_pitch; cp -rT data/train data/train_ffv
-    steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $train_nj data/train_plp_pitch exp/make_plp_pitch/train plp_pitch_tmp_train
-    local/make_ffv.sh --cmd "$train_cmd"  --nj $train_nj data/train_ffv exp/make_ffv/train ffv_tmp_train
-    steps/append_feats.sh --cmd "$train_cmd" --nj $train_nj data/train{_plp_pitch,_ffv,} exp/make_ffv/append_train_pitch_ffv plp
-    rm -rf {plp_pitch,ffv}_tmp_train data/train_{plp_pitch,ffv}
-  elif [ "$use_pitch" = "true" ]; then
+  if $use_pitch; then
     steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $train_nj data/train exp/make_plp_pitch/train plp
-  elif [ "$use_ffv" = "true" ]; then
-    cp -rT data/train data/train_plp; cp -rT data/train data/train_ffv
-    steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/train_plp exp/make_plp/train plp_tmp_train
-    local/make_ffv.sh --cleanup false --cmd "$train_cmd" --nj $train_nj data/train_ffv exp/make_ffv/train ffv_tmp_train
-    steps/append_feats.sh --cmd "$train_cmd" --nj $train_nj data/train{_plp,_ffv,} exp/make_ffv/append_train plp
-    rm -rf {plp,ffv}_tmp_train data/train_{plp,ffv}
+  else
+    steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/train exp/make_plp/train plp
   fi
   utils/fix_data_dir.sh data/train
-  steps/compute_cmvn_stats.sh \
-    data/train exp/make_plp/train plp
-  # In case plp or pitch extraction failed on some utterances, delist them
+  steps/compute_cmvn_stats.sh data/train exp/make_plp/train plp
   utils/fix_data_dir.sh data/train
   touch data/train/.plp.done
 fi
@@ -300,6 +287,11 @@ if [ ! -f exp/sgmm5/.done ]; then
   touch exp/sgmm5/.done
 fi
 
+if $sgmm5_only ; then
+  echo "Exiting after stage SGMM5, as requested. "
+  echo "Everything went fine. Done"
+  exit 0;
+fi
 ################################################################################
 # Ready to start discriminative SGMM training
 ################################################################################

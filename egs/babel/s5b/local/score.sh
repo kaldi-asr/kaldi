@@ -1,1 +1,1 @@
-score_sctk.sh
+run_kws_stt_task.sh

@@ -65,6 +65,7 @@ parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" # by default we use 16 thr
 cleanup=true
 egs_dir=
 lda_opts=
+lda_dim=
 egs_opts=
 # End configuration section.
 
@@ -243,7 +244,7 @@ echo "$0: (while reducing learning rate) + (with constant learning rate)."
 
 # This is when we decide to mix up from: halfway between when we've finished
 # adding the hidden layers and the end of training.
-finish_add_layers_iter=$[($num_hidden_layers-$initial_num_hidden_layers+1)*$add_layers_period]
+finish_add_layers_iter=$[$num_hidden_layers * $add_layers_period]
 mix_up_iter=$[($num_iters + $finish_add_layers_iter)/2]
 
 if [ $num_threads -eq 1 ]; then
@@ -355,6 +356,11 @@ if [ $stage -le $num_iters ]; then
       --num-threads=$this_num_threads --regularizer=$combine_regularizer \
       --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
       $dir/final.mdl || exit 1;
+
+  # Normalize stddev for affine or block affine layers that are followed by a
+  # pnorm layer and then a normalize layer.
+  $cmd $parallel_opts $dir/log/normalize.log \
+    nnet-normalize-stddev $dir/final.mdl $dir/final.mdl || exit 1;
 fi
 
 # Compute the probability of the final, combined model with

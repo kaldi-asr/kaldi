@@ -176,6 +176,5 @@ for iter in 1 2 3 4; do
     ${datadir} data/lang $decode
 done
 
-
 echo "Everything looking good...." 
 exit 0
