@@ -294,13 +294,8 @@ class LatticeLexiconWordAligner {
       partial_word_label_(partial_word_label == 0 ?
                           kTemporaryEpsilon : partial_word_label),
       error_(false) {
-    bool test = true;
-    uint64 props = lat_in_.Properties(fst::kIDeterministic|fst::kIEpsilons, test);
-    if (props != fst::kIDeterministic) {
-      KALDI_WARN << "[Lattice has input epsilons and/or is not input-deterministic "
-                 << "(in Mohri sense)]-- i.e. lattice is not deterministic.  "
-                 << "Word-alignment may be slow and-or blow up in memory.";
-    }
+    // lat_in_ is after PhoneAlignLattice, it is not deterministic and contains epsilons
+
     fst::CreateSuperFinal(&lat_in_); // Creates a super-final state, so the
     // only final-probs are One().  Note: the member lat_in_ is not a reference.
     
@@ -985,10 +980,20 @@ bool WordAlignLatticeLexicon(const CompactLattice &lat,
   phone_align_opts.reorder = opts.reorder;
   phone_align_opts.replace_output_symbols = false;
   phone_align_opts.remove_epsilon = false;
-  
+ 
+  // Input Lattice should be deterministic and w/o epsilons.
+  bool test = true;
+  uint64 props = lat.Properties(fst::kIDeterministic|fst::kIEpsilons, test);
+  if (props != fst::kIDeterministic) {
+    KALDI_WARN << "[Lattice has input epsilons and/or is not input-deterministic "
+               << "(in Mohri sense)]-- i.e. lattice is not deterministic.  "
+               << "Word-alignment may be slow and-or blow up in memory.";
+  }
+
   CompactLattice phone_aligned_lat;
   bool ans = PhoneAlignLattice(lat, tmodel, phone_align_opts,
                                &phone_aligned_lat);
+  // 'phone_aligned_lat' is no longer deterministic and contains epsilons.
 
   int32 max_states;
   if (opts.max_expand <= 0) {
