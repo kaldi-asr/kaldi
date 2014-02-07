@@ -1,6 +1,7 @@
 // nnet2/nnet-update.cc
 
 // Copyright 2012   Johns Hopkins University (author: Daniel Povey)
+//           2014   Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,55 +24,6 @@ namespace kaldi {
 namespace nnet2 {
 
 
-// This class NnetUpdater contains functions for updating the neural net or
-// computing its gradient, given a set of NnetExamples.  Its
-// functionality is exported by DoBackprop(), and by ComputeNnetObjf(), so we
-// define it in the .cc file.
-class NnetUpdater {
- public:
-  // Note: in the case of training with SGD, "nnet" and "nnet_to_update" will
-  // be identical.  They'll be different if we're accumulating the gradient
-  // for a held-out set and don't want to update the model.  Note: nnet_to_update
-  // may be NULL if you don't want do do backprop.
-  NnetUpdater(const Nnet &nnet,
-              Nnet *nnet_to_update);
-  
-  double ComputeForMinibatch(const std::vector<NnetExample> &data);
-  // returns average objective function over this minibatch.
-  
- private:
-
-  /// takes the input and formats as a single matrix, in forward_data_[0].
-  void FormatInput(const std::vector<NnetExample> &data);
-  
-  // Possibly splices input together from forward_data_[component].
-  //   MatrixBase<BaseFloat> &GetSplicedInput(int32 component, Matrix<BaseFloat> *temp_matrix);
-
-  void Propagate();
-
-  /// Computes objective function and derivative at output layer.
-  double ComputeObjfAndDeriv(const std::vector<NnetExample> &data,
-                             CuMatrix<BaseFloat> *deriv) const;
-  
-  /// Returns objf summed (and weighted) over samples.
-  /// Note: "deriv" will contain, at input, the derivative w.r.t. the
-  /// output layer but will be used as a temporary variable by
-  /// this function.
-  void Backprop(const std::vector<NnetExample> &data,
-                CuMatrix<BaseFloat> *deriv);
-
-  const Nnet &nnet_;
-  Nnet *nnet_to_update_;
-  int32 num_chunks_; // same as the minibatch size.
-  
-  std::vector<CuMatrix<BaseFloat> > forward_data_; // The forward data
-  // for the outputs of each of the components.
-
-  // These weights are one per parameter; they equal to the "weight"
-  // member variables in the NnetExample structures.  These
-  // will typically be about one on average.
-  CuVector<BaseFloat> chunk_weights_;
-};
 
 NnetUpdater::NnetUpdater(const Nnet &nnet,
                          Nnet *nnet_to_update):
@@ -89,6 +41,12 @@ double NnetUpdater::ComputeForMinibatch(
     Backprop(data, &tmp_deriv); // this is summed (after weighting), not
                                 // averaged.
   return ans;
+}
+
+void NnetUpdater::GetOutput(CuMatrix<BaseFloat> *output) {
+  int32 num_components = nnet_.NumComponents(); 
+  KALDI_ASSERT(forward_data_.size() == nnet_.NumComponents() + 1); 
+  *output = forward_data_[num_components];
 }
 
 void NnetUpdater::Propagate() {

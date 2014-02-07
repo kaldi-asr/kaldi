@@ -214,6 +214,7 @@ inline void cuda_copy_from_sp(int Gr, int Bl, const float* x, float* y, int d_in
 inline void cuda_take_lower(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in) { cudaF_take_lower(Gr,Bl,x,y,d_in); }
 inline void cuda_take_upper(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in) { cudaF_take_upper(Gr,Bl,x,y,d_in); }
 inline void cuda_take_mean(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in) { cudaF_take_mean(Gr,Bl,x,y,d_in); }
+inline void cuda_matrix_add_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim dim, float alpha, MatrixElement<float>* x, int s) { cudaF_matrix_add_elements(Gr, Bl, data, dim, alpha, x, s); }
 inline void cuda_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<float>* x, int32 size, const float* z, MatrixDim d, float* z2, MatrixDim d2, float* t) {cudaF_comp_obj_deriv(Gr,Bl,x,size,z,d,z2,d2,t); }
 inline void cuda_sum_column_ranges(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
                                    const float *src_data, MatrixDim src_dim,
@@ -376,6 +377,7 @@ inline void cuda_copy_from_sp(int Gr, int Bl, const double* x, double* y, int d_
 inline void cuda_take_lower(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in) { cudaD_take_lower(Gr,Bl,x,y,d_in); }
 inline void cuda_take_upper(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in) { cudaD_take_upper(Gr,Bl,x,y,d_in); }
 inline void cuda_take_mean(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in) { cudaD_take_mean(Gr,Bl,x,y,d_in); }
+inline void cuda_matrix_add_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim dim, double alpha, MatrixElement<double>* x, int s) { cudaD_matrix_add_elements(Gr, Bl, data, dim, alpha, x, s); }
 inline void cuda_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<double>* x, int32 size, const double* z, MatrixDim d, double* z2, MatrixDim d2, double* t) {cudaD_comp_obj_deriv(Gr,Bl,x,size,z,d,z2,d2,t); }
 inline void cuda_sum_column_ranges(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
                                    const double *src_data, MatrixDim src_dim, const Int32Pair *indices) {
