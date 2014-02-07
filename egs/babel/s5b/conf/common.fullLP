@@ -25,7 +25,7 @@ dnn_init_learning_rate=0.008
 dnn_final_learning_rate=0.0008
 dnn_mixup=12000
 
-dnn_mpe_learning_rate=0.00012
+dnn_mpe_learning_rate=0.00008
 dnn_mpe_last_layer_factor=0.1
 dnn_mpe_retroactive=true
 
@@ -50,6 +50,7 @@ if [[ `hostname` == *.tacc.utexas.edu ]] ; then
   sgmm_denlats_extra_opts=( --num-threads 2 )
   dnn_denlats_extra_opts=( --num-threads 2 )
   dnn_parallel_opts="-l gpu=1"
+  dnn_gpu_mpe_parallel_opts=(--num-jobs-nnet 8 --num-threads 1)
 else
   decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G")
   sgmm_train_extra_opts=( --num-iters 25 )
@@ -62,6 +63,9 @@ else
                          --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
   dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 8 --num-threads 1 \
                          --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
+  dnn_parallel_opts="-l gpu=1"
+  dnn_gpu_mpe_parallel_opts=(--num-jobs-nnet 8 --num-threads 1 \
+                             --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
 fi
  
 icu_transform="Any-Lower"
