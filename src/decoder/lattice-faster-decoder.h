@@ -2,6 +2,7 @@
 
 // Copyright 2009-2013  Microsoft Corporation;  Mirko Hannemann;
 //                      Johns Hopkins University (Author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -40,41 +41,38 @@ struct LatticeFasterDecoderConfig {
   int32 prune_interval;
   bool determinize_lattice; // not inspected by this class... used in
   // command-line program.
-  int32 max_mem; // max memory usage in determinization
-  int32 max_loop; // can be used to debug non-determinizable input, but for now,
-  // inadvisable to set it.
-  int32 max_arcs; // max #arcs in lattice.
   BaseFloat beam_delta; // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
+  fst::DeterminizeLatticePhonePrunedOptions det_opts;
   LatticeFasterDecoderConfig(): beam(16.0),
                                 max_active(std::numeric_limits<int32>::max()),
                                 min_active(200),
                                 lattice_beam(10.0),
                                 prune_interval(25),
                                 determinize_lattice(true),
-                                max_mem(50000000), // 50 MB (probably corresponds to 100 really)
-                                max_loop(0), // means we don't use this constraint.
-                                max_arcs(-1),
                                 beam_delta(0.5),
-                                hash_ratio(2.0) { }
+                                hash_ratio(2.0) {}
   void Register(OptionsItf *po) {
+    det_opts.Register(po);
     po->Register("beam", &beam, "Decoding beam.");
     po->Register("max-active", &max_active, "Decoder max active states.");
     po->Register("min-active", &min_active, "Decoder minimum #active states.");
     po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
-    po->Register("prune-interval", &prune_interval, "Interval (in frames) at which to prune tokens");
-    po->Register("determinize-lattice", &determinize_lattice, "If true, determinize the lattice (in a special sense, keeping only best pdf-sequence for each word-sequence).");
-    po->Register("max-mem", &max_mem, "Maximum approximate memory consumption (in bytes) to use in determinization (probably real consumption would be many times this)");
-    po->Register("max-loop", &max_loop, "Option to detect a certain type of failure in lattice determinization (not critical)");
-    po->Register("max-arcs", &max_arcs, "If >0, maximum #arcs allowed in output lattice (total, not per state)");
-    po->Register("beam-delta", &beam_delta, "Increment used in decoding-- this parameter is obscure"
-                 "and relates to a speedup in the way the max-active constraint is applied.  Larger"
-                 "is more accurate.");
-    po->Register("hash-ratio", &hash_ratio, "Setting used in decoder to control hash behavior");
+    po->Register("prune-interval", &prune_interval, "Interval (in frames) at "
+                 "which to prune tokens");
+    po->Register("determinize-lattice", &determinize_lattice, "If true, "
+                 "determinize the lattice (in a special sense, keeping only "
+                 "best pdf-sequence for each word-sequence).");
+    po->Register("beam-delta", &beam_delta, "Increment used in decoding-- this "
+                 "parameter is obscure and relates to a speedup in the way the "
+                 "max-active constraint is applied.  Larger is more accurate.");
+    po->Register("hash-ratio", &hash_ratio, "Setting used in decoder to control"
+                 " hash behavior");
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0 
-                 && prune_interval > 0 && beam_delta > 0.0 && hash_ratio >= 1.0);
+                 && prune_interval > 0 && beam_delta > 0.0
+                 && hash_ratio >= 1.0);
   }
 };
 
@@ -104,6 +102,10 @@ class LatticeFasterDecoder {
     config_ = config;
   }
 
+  LatticeFasterDecoderConfig GetOptions() {
+    return config_;
+  }
+
   ~LatticeFasterDecoder() {
     ClearActiveTokens();
     if (delete_fst_) delete &(fst_);
@@ -125,6 +127,8 @@ class LatticeFasterDecoder {
   // tracebacks.
   bool GetRawLattice(fst::MutableFst<LatticeArc> *ofst) const;
 
+  // This function is now deprecated, since now we do determinization from
+  // outside the LatticeTrackingDecoder class.
   // Outputs an FST corresponding to the lattice-determinized
   // lattice (one path per word sequence).
   bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const;
@@ -306,6 +310,7 @@ class LatticeFasterDecoder {
 bool DecodeUtteranceLatticeFaster(
     LatticeFasterDecoder &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
+    const TransitionModel &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -315,7 +320,7 @@ bool DecodeUtteranceLatticeFaster(
     Int32VectorWriter *words_writer,
     CompactLatticeWriter *compact_lattice_writer,
     LatticeWriter *lattice_writer,
-    double *like_ptr); // puts utterance's likelihood in like_ptr on success.
+    double *like_ptr);  // puts utterance's likelihood in like_ptr on success.
 
 // This class basically does the same job as the function
 // DecodeUtteranceLatticeFaster, but in a way that allows us
@@ -331,6 +336,7 @@ class DecodeUtteranceLatticeFasterClass {
   DecodeUtteranceLatticeFasterClass( 
       LatticeFasterDecoder *decoder,
       DecodableInterface *decodable,
+      const TransitionModel &trans_model,
       const fst::SymbolTable *word_syms,
       std::string utt,
       BaseFloat acoustic_scale,
@@ -351,6 +357,7 @@ class DecodeUtteranceLatticeFasterClass {
   // The following variables correspond to inputs:
   LatticeFasterDecoder *decoder_;
   DecodableInterface *decodable_;
+  const TransitionModel *trans_model_;
   const fst::SymbolTable *word_syms_;
   std::string utt_;
   BaseFloat acoustic_scale_;

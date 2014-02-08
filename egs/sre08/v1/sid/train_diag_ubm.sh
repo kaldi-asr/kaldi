@@ -26,6 +26,7 @@ initial_gauss_proportion=0.5 # Start with half the target number of Gaussians
 subsample=5 # subsample all features with this periodicity, in the main E-M phase.
 cleanup=true
 min_gaussian_weight=0.0001
+remove_low_count_gaussians=true # set this to false if you need #gauss to stay fixed.
 num_threads=32
 parallel_opts="-pe smp 32"
 # End configuration section.
@@ -120,9 +121,11 @@ for x in `seq 0 $[$num_iters-1]`; do
       $dir/$x.dubm "$feats" $dir/$x.JOB.acc || exit 1;
     if [ $x -lt $[$num_iters-1] ]; then # Don't remove low-count Gaussians till last iter,
       opt="--remove-low-count-gaussians=false" # or gselect info won't be valid any more.
+    else
+      opt="--remove-low-count-gaussians=$remove_low_count_gaussians"
     fi
     $cmd $dir/log/update.$x.log \
-      gmm-global-est $opt $dir/$x.dubm "gmm-global-sum-accs - $dir/$x.*.acc|" \
+      gmm-global-est $opt --min-gaussian-weight=$min_gaussian_weight $dir/$x.dubm "gmm-global-sum-accs - $dir/$x.*.acc|" \
       $dir/$[$x+1].dubm || exit 1;
     rm $dir/$x.*.acc $dir/$x.dubm
   fi

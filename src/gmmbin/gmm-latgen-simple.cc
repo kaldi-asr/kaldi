@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -28,73 +29,6 @@
 #include "decoder/lattice-simple-decoder.h"
 #include "gmm/decodable-am-diag-gmm.h"
 #include "util/timer.h"
-
-
-namespace kaldi {
-// Takes care of output.  Returns total like.
-double ProcessDecodedOutput(const LatticeSimpleDecoder &decoder,
-                            const fst::SymbolTable *word_syms,
-                            std::string utt,
-                            double acoustic_scale,
-                            bool determinize,
-                            Int32VectorWriter *alignment_writer,
-                            Int32VectorWriter *words_writer,
-                            CompactLatticeWriter *compact_lattice_writer,
-                            LatticeWriter *lattice_writer) {
-  using fst::VectorFst;
-  
-  double likelihood;
-  { // First do some stuff with word-level traceback...
-    VectorFst<LatticeArc> decoded;
-    if (!decoder.GetBestPath(&decoded)) 
-      // Shouldn't really reach this point as already checked success.
-      KALDI_ERR << "Failed to get traceback for utterance " << utt;
-
-    std::vector<int32> alignment;
-    std::vector<int32> words;
-    LatticeWeight weight;
-    GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-    if (words_writer->IsOpen())
-      words_writer->Write(utt, words);
-    if (alignment_writer->IsOpen())
-      alignment_writer->Write(utt, alignment);
-    if (word_syms != NULL) {
-      std::cerr << utt << ' ';
-      for (size_t i = 0; i < words.size(); i++) {
-        std::string s = word_syms->Find(words[i]);
-        if (s == "")
-          KALDI_ERR << "Word-id " << words[i] <<" not in symbol table.";
-        std::cerr << s << ' ';
-      }
-      std::cerr << '\n';
-    }
-    likelihood = -(weight.Value1() + weight.Value2());
-  }
-
-  if (determinize) {
-    CompactLattice fst;
-    if (!decoder.GetLattice(&fst))
-      KALDI_ERR << "Unexpected problem getting lattice for utterance "
-                << utt;
-    if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
-    compact_lattice_writer->Write(utt, fst);
-  } else {
-    Lattice fst;
-    if (!decoder.GetRawLattice(&fst)) 
-      KALDI_ERR << "Unexpected problem getting lattice for utterance "
-                << utt;
-    fst::Connect(&fst); // Will get rid of this later... shouldn't have any
-    // disconnected states there, but we seem to.
-    if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
-    lattice_writer->Write(utt, fst);
-  }
-  return likelihood;
-}
-
-}
-
 
 
 int main(int argc, char *argv[]) {
@@ -185,34 +119,15 @@ int main(int argc, char *argv[]) {
       DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
                                              acoustic_scale);
 
-      if (!decoder.Decode(&gmm_decodable)) {
-        KALDI_WARN << "Failed to decode file " << utt;
-        num_fail++;
-        continue;
-      }
-
-      frame_count += features.NumRows();
       double like;
-      if (!decoder.ReachedFinal()) {
-        if (allow_partial) {
-          KALDI_WARN << "Outputting partial output for utterance " << utt
-                     << " since no final-state reached\n";
-        } else {
-          KALDI_WARN << "Not producing output for utterance " << utt
-                     << " since no final-state reached and "
-                     << "--allow-partial=false.\n";
-          num_fail++;
-          continue;
-        }
-      }
-      like = ProcessDecodedOutput(decoder, word_syms, utt, acoustic_scale,
-                                  determinize, &alignment_writer, &words_writer,
-                                  &compact_lattice_writer, &lattice_writer);
-      tot_like += like;
-      KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
-                << (like / features.NumRows()) << " over "
-                << features.NumRows() << " frames.";
-      num_success++;
+      if (DecodeUtteranceLatticeSimple(
+              decoder, gmm_decodable, trans_model, word_syms, utt,
+              acoustic_scale, determinize, allow_partial, &alignment_writer,
+              &words_writer, &compact_lattice_writer, &lattice_writer, &like)) {
+        tot_like += like;
+        frame_count += features.NumRows();
+        num_success++;
+      } else num_fail++;
     }
       
     double elapsed = timer.Elapsed();

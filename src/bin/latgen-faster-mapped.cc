@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Microsoft Corporation, Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//                2014  Guoguo Chen
  
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -116,9 +117,10 @@ int main(int argc, char *argv[]) {
 
           double like;
           if (DecodeUtteranceLatticeFaster(
-                  decoder, decodable, word_syms, utt, acoustic_scale,
-                  determinize, allow_partial, &alignment_writer, &words_writer,
-                  &compact_lattice_writer, &lattice_writer, &like)) {
+                  decoder, decodable, trans_model, word_syms, utt,
+                  acoustic_scale, determinize, allow_partial, &alignment_writer,
+                  &words_writer, &compact_lattice_writer, &lattice_writer,
+                  &like)) {
             tot_like += like;
             frame_count += loglikes.NumRows();
             num_success++;
@@ -147,7 +149,7 @@ int main(int argc, char *argv[]) {
         DecodableMatrixScaledMapped decodable(trans_model, loglikes, acoustic_scale);
         double like;
         if (DecodeUtteranceLatticeFaster(
-                decoder, decodable, word_syms, utt, acoustic_scale,
+                decoder, decodable, trans_model, word_syms, utt, acoustic_scale,
                 determinize, allow_partial, &alignment_writer, &words_writer,
                 &compact_lattice_writer, &lattice_writer, &like)) {
           tot_like += like;

@@ -135,7 +135,7 @@ local/score_sre08.sh $trials foo
 # Results for Female:
 # Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      1      2      3      4      5      6      7      8
-#        EER:  27.58   5.07  27.44  20.87  21.03  10.92   7.48   8.42
+#        EER:  28.14   4.78  27.68  21.77  20.07  11.03   6.97   7.63
 trials=data/sre08_trials/short2-short3-male.trials
 cat $trials | awk '{print $1, $2}' | \
  ivector-compute-dot-products - \
@@ -148,7 +148,7 @@ local/score_sre08.sh $trials foo
 # Results for Male:
 # Scoring against data/sre08_trials/short2-short3-male.trials
 #  Condition:      1      2      3      4      5      6      7      8
-#        EER:  26.40   4.03  26.31  17.08  16.88   8.70   6.83   4.82
+#        EER:  26.38   3.63  26.39  17.31  17.34   8.24   6.83   5.26
 
 # The following shows a more direct way to get the scores.
 #condition=6
@@ -178,7 +178,7 @@ local/score_sre08.sh $trials foo
 # Results for Female:
 # Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      1      2      3      4      5      6      7      8
-#        EER:  23.06   2.39  22.84  14.11  16.35   9.65   6.59   7.37
+#        EER:  23.86   2.09  23.46  15.92  16.71  10.09   5.96   7.37
 
  ivector-compute-lda --dim=150 --total-covariance-factor=0.1 \
   'ark:ivector-normalize-length scp:exp/ivectors_fisher_male/ivector.scp  ark:- |' ark:data/fisher_male/utt2spk \
@@ -196,7 +196,7 @@ local/score_sre08.sh $trials foo
 # Results for Male:
 # Scoring against data/sre08_trials/short2-short3-male.trials
 #  Condition:      1      2      3      4      5      6      7      8
-#        EER:  18.69   2.02  18.81  13.21  12.50   7.44   6.15   4.39
+#        EER:  18.96   1.61  18.93  12.30  12.50   8.01   6.83   4.82
 
 ### Demonstrate PLDA scoring:
 
@@ -226,7 +226,7 @@ local/score_sre08.sh $trials foo
 # Result for Female is below:
 # Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      1      2      3      4      5      6      7      8
-#        EER:  19.88   2.69  20.08  16.97  12.98   8.20   4.44   4.74
+#        EER:  20.03   2.09  20.21  16.67  12.14   8.59   4.82   5.00
 
  trials=data/sre08_trials/short2-short3-male.trials
  cat $trials | awk '{print $1, $2}' | \
@@ -250,4 +250,4 @@ local/score_sre08.sh $trials foo
 # Result for Male is below:
 # Scoring against data/sre08_trials/short2-short3-male.trials
 #  Condition:      1      2      3      4      5      6      7      8
-#        EER:  16.14   2.02  16.55  13.44  10.31   6.98   4.56   3.51
+#        EER:  15.98   1.61  16.27  12.98  11.25   6.75   4.78   4.39

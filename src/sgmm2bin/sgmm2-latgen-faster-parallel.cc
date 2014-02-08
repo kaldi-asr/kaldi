@@ -2,6 +2,7 @@
 
 // Copyright 2009-2013  Saarland University;  Microsoft Corporation;
 //                      Johns Hopkins University (author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -91,10 +92,12 @@ void ProcessUtterance(const AmSgmm2 &am_sgmm,
       spk_vars, log_prune, acoustic_scale);
 
   // takes ownership of decoder and sgmm_decodable.
-  DecodeUtteranceLatticeFasterClass *task = new DecodeUtteranceLatticeFasterClass(
-      decoder, sgmm_decodable, word_syms, utt, acoustic_scale, determinize,
-      allow_partial, alignments_writer, words_writer, compact_lattice_writer,
-      lattice_writer, like_sum, frame_sum, num_done, num_err, NULL);
+  DecodeUtteranceLatticeFasterClass *task =
+      new DecodeUtteranceLatticeFasterClass(
+          decoder, sgmm_decodable, trans_model, word_syms, utt, acoustic_scale,
+          determinize, allow_partial, alignments_writer, words_writer,
+          compact_lattice_writer, lattice_writer, like_sum, frame_sum, num_done,
+          num_err, NULL);
 
   sequencer->Run(task); // takes ownership.
 }

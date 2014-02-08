@@ -28,12 +28,12 @@ if [ ! -d data/raw_train_data ]; then
     local/make_corpus_subset.sh "$train_data_dir" "$train_data_list" ./data/raw_train_data
     train_data_dir=`readlink -f ./data/raw_train_data`
 
-    nj_max=`cat $train_data_list | wc -l`
-    if [[ "$nj_max" -lt "$train_nj" ]] ; then
-        echo "The maximum reasonable number of jobs is $nj_max (you have $train_nj)! (The training and decoding process has file-granularity)"
-        exit 1;
-        train_nj=$nj_max
-    fi
+fi
+nj_max=`cat $train_data_list | wc -l`
+if [[ "$nj_max" -lt "$train_nj" ]] ; then
+    echo "The maximum reasonable number of jobs is $nj_max (you have $train_nj)! (The training and decoding process has file-granularity)"
+    exit 1;
+    train_nj=$nj_max
 fi
 train_data_dir=`readlink -f ./data/raw_train_data`
 

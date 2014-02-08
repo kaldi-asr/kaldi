@@ -2,6 +2,7 @@
 
 // Copyright 2012-2013  BUT (author: Mirko Hannemann)
 //                      Johns Hopkins University (author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -134,8 +135,8 @@ int main(int argc, char *argv[]) {
 
           double like;
           if (DecodeUtteranceLatticeTracking(
-                  decoder, gmm_decodable, arc_graph, word_syms, utt,
-                  acoustic_scale, determinize, allow_partial,
+                  decoder, gmm_decodable, trans_model, arc_graph, word_syms,
+                  utt, acoustic_scale, determinize, allow_partial,
                   &alignment_writer, &words_writer, &compact_lattice_writer,
                   &lattice_writer, &like)) {
             tot_like += like;
@@ -177,10 +178,10 @@ int main(int argc, char *argv[]) {
 
         double like;
         if (DecodeUtteranceLatticeTracking(
-                decoder, gmm_decodable, arc_graph, word_syms, utt,
-                acoustic_scale, determinize, allow_partial,
-                &alignment_writer, &words_writer, &compact_lattice_writer,
-                &lattice_writer, &like)) {
+                decoder, gmm_decodable, trans_model, arc_graph, word_syms, utt,
+                acoustic_scale, determinize, allow_partial, &alignment_writer,
+                &words_writer, &compact_lattice_writer, &lattice_writer,
+                &like)) {
           tot_like += like;
           frame_count += features.NumRows();
           num_success++;

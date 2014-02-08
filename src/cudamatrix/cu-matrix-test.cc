@@ -1192,6 +1192,24 @@ static void UnitTestCuVectorInvertElements() {
   AssertEqual(Hv,Hv2);
 }
 
+template<typename Real> 
+static void UnitTestCuMatrixInvertElements() {
+  Matrix<Real> Hm(77, 77);
+  InitRand(&Hm);
+
+  CuMatrix<Real> Dm(77, 77);
+  Dm.CopyFromMat(Hm);
+
+  Dm.InvertElements();
+  Hm.InvertElements();
+
+  Matrix<Real> Hm2(77, 77);
+  Dm.CopyToMat(&Hm2);
+  
+  AssertEqual(Hm,Hm2);
+}
+
+
 template<class Real>
 static void UnitTestCuMatrixIO() {
   for (int32 i = 0; i < 10; i++) {
@@ -1754,6 +1772,29 @@ static void UnitTestCuMatrixObjfDeriv() {
 }
 
 template<typename Real> 
+static void UnitTestCuMatrixAddElements() {
+  for (int32 i = 0; i < 5; i++) {
+    int32 dimM = 1000 + rand() % 200, dimN = 1000 + rand() % 200;
+   // int32 dimM = 256, dimN = 256;
+    CuMatrix<Real> H(dimM, dimN);
+    H.SetRandn();
+    CuMatrix<Real> M(H);
+    std::vector<MatrixElement<Real> > input;
+    BaseFloat scale = -1 + (0.33 * (rand() % 5));
+    for (int32 j = 0; j < 100 + rand() % 10; j++) {
+      MatrixIndexT r = rand() % dimM;
+      MatrixIndexT c = rand() % dimN;
+      BaseFloat offset = -1 + (0.33 * (rand() % 5));
+      M(r, c) += scale * offset;
+      MatrixElement<Real> t = {r, c, offset};
+      input.push_back(t);
+    }
+    H.AddElements(scale, input);
+
+    AssertEqual(H, M);
+  }
+}
+template<typename Real> 
 static void UnitTestCuMatrixLookup() {
   for (int32 i = 0; i < 5; i++) {
     int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
@@ -1844,6 +1885,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixTranspose<Real>();
   UnitTestCuMatrixCopyUpperToLower<Real>();
   UnitTestCuMatrixCopyLowerToUpper<Real>();
+  UnitTestCuMatrixAddElements<Real>();
   UnitTestCuMatrixLookup<Real>();
   UnitTestCuMatrixEqualElementMask<Real>();
   // test CuVector<Real> methods
@@ -1853,6 +1895,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuVectorAddColSumMat<Real>();
   UnitTestCuVectorAddColSumMatLarge<Real>();
   UnitTestCuSubMatrix<Real>();
+  UnitTestCuMatrixInvertElements<Real>();
   UnitTestCuVectorInvertElements<Real>();
   UnitTestCuMatrixIO<Real>();
   UnitTestCuSigmoid<Real>();

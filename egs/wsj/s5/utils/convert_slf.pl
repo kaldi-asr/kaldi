@@ -33,7 +33,7 @@ $wordtonode=0;
 
 $usage="Convert kaldi lattices to HTK SLF (v1.1) format.\n".
        "Usage: convert_slf.pl [options] lat-file.txt [out-dir]\n".
-       "  e.g. lattice-align-words lang/phones/word_boundary.int final.mdl 'ark:gunzip -c lat.gz |' ark,t:- | utils/int2sym.pl -k 3 lang/words.txt | $0 - slf/\n".
+       "  e.g. lattice-align-words lang/phones/word_boundary.int final.mdl 'ark:gunzip -c lat.gz |' ark,t:- | utils/int2sym.pl -f 3 lang/words.txt | $0 - slf/\n".
        "\n".
        "Options regarding the SLF output:\n".
        "  --frame-rate x  Frame rate to compute timing information (default: $framerate)\n".

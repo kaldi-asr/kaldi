@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Microsoft Corporation
 //                      Johns Hopkins University (Author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -131,6 +132,8 @@ bool LatticeSimpleDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) cons
   return (cur_state != 0);
 }
 
+// This function is now deprecated, since now we do determinization from outside
+// the LatticeSimpleDecoder class.
 // Outputs an FST corresponding to the lattice-determinized
 // lattice (one path per word sequence).
 bool LatticeSimpleDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const {
@@ -147,9 +150,7 @@ bool LatticeSimpleDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) 
   // lattice-determinization more efficient.
     
   fst::DeterminizeLatticePrunedOptions lat_opts;
-  lat_opts.max_mem = config_.max_mem;
-  lat_opts.max_loop = config_.max_loop;
-  lat_opts.max_arcs = config_.max_arcs;
+  lat_opts.max_mem = config_.det_opts.max_mem;
     
   DeterminizeLatticePruned(raw_fst, config_.lattice_beam, ofst, lat_opts);
   raw_fst.DeleteStates(); // Free memory-- raw_fst no longer needed.
@@ -584,6 +585,113 @@ void LatticeSimpleDecoder::PruneCurrentTokens(BaseFloat beam, unordered_map<Stat
   }
   KALDI_VLOG(2) <<  "Pruned to "<<(retained.size())<<" toks.\n";
   tmp.swap(*toks);
+}
+
+// Takes care of output.  Returns true on success.
+bool DecodeUtteranceLatticeSimple(
+    LatticeSimpleDecoder &decoder, // not const but is really an input.
+    DecodableInterface &decodable, // not const but is really an input.
+    const TransitionModel &trans_model,
+    const fst::SymbolTable *word_syms,
+    std::string utt,
+    double acoustic_scale,
+    bool determinize,
+    bool allow_partial,
+    Int32VectorWriter *alignment_writer,
+    Int32VectorWriter *words_writer,
+    CompactLatticeWriter *compact_lattice_writer,
+    LatticeWriter *lattice_writer,
+    double *like_ptr) { // puts utterance's like in like_ptr on success.
+  using fst::VectorFst;
+
+  if (!decoder.Decode(&decodable)) {
+    KALDI_WARN << "Failed to decode file " << utt;
+    return false;
+  }
+  if (!decoder.ReachedFinal()) {
+    if (allow_partial) {
+      KALDI_WARN << "Outputting partial output for utterance " << utt
+                 << " since no final-state reached\n";
+    } else {
+      KALDI_WARN << "Not producing output for utterance " << utt
+                 << " since no final-state reached and "
+                 << "--allow-partial=false.\n";
+      return false;
+    }
+  }
+
+  double likelihood;
+  LatticeWeight weight;
+  int32 num_frames;
+  { // First do some stuff with word-level traceback...
+    VectorFst<LatticeArc> decoded;
+    if (!decoder.GetBestPath(&decoded))
+      // Shouldn't really reach this point as already checked success.
+      KALDI_ERR << "Failed to get traceback for utterance " << utt;
+
+    std::vector<int32> alignment;
+    std::vector<int32> words;
+    GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
+    num_frames = alignment.size();
+    if (words_writer->IsOpen())
+      words_writer->Write(utt, words);
+    if (alignment_writer->IsOpen())
+      alignment_writer->Write(utt, alignment);
+    if (word_syms != NULL) {
+      std::cerr << utt << ' ';
+      for (size_t i = 0; i < words.size(); i++) {
+        std::string s = word_syms->Find(words[i]);
+        if (s == "")
+          KALDI_ERR << "Word-id " << words[i] <<" not in symbol table.";
+        std::cerr << s << ' ';
+      }
+      std::cerr << '\n';
+    }
+    likelihood = -(weight.Value1() + weight.Value2());
+  }
+
+  // Get lattice, and do determinization if requested.
+  Lattice lat;
+  if (!decoder.GetRawLattice(&lat))
+    KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
+  fst::Connect(&lat);
+  if (determinize) {
+    Invert(&lat);
+    if (!TopSort(&lat)) {
+      // Cannot topologically sort the lattice -- determinization will fail.
+      KALDI_WARN << "Topological sorting of state-level lattice failed "
+                 << "(probably your lexicon has empty words or your LM has "
+                 << "epsilon cycles).";
+      return false;
+    }
+    fst::ILabelCompare<LatticeArc> ilabel_comp;
+    ArcSort(&lat, ilabel_comp);
+    CompactLattice clat;
+    if (!DeterminizeLatticePhonePruned(trans_model,
+                                       &lat,
+                                       decoder.GetOptions().lattice_beam,
+                                       &clat,
+                                       decoder.GetOptions().det_opts))
+      KALDI_WARN << "Determinization finished earlier than the beam for "
+                 << "utterance " << utt;
+    fst::Connect(&clat);
+    // We'll write the lattice without acoustic scaling.
+    if (acoustic_scale != 0.0)
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
+    compact_lattice_writer->Write(utt, clat);
+  } else {
+    // We'll write the lattice without acoustic scaling.
+    if (acoustic_scale != 0.0)
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &lat);
+    lattice_writer->Write(utt, lat);
+  }
+  KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
+            << (likelihood / num_frames) << " over "
+            << num_frames << " frames.";
+  KALDI_VLOG(2) << "Cost for utterance " << utt << " is "
+                << weight.Value1() << " + " << weight.Value2();
+  *like_ptr = likelihood;
+  return true;
 }
 
 

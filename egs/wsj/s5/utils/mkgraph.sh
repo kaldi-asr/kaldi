@@ -114,6 +114,7 @@ fi
 cp $lang/words.txt $dir/ || exit 1;
 mkdir -p $dir/phones
 cp $lang/phones/word_boundary.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
+cp $lang/phones/align_lexicon.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
   # but ignore the error if it's not there.
 
 cp $lang/phones/disambig.{txt,int} $dir/phones/ 2> /dev/null

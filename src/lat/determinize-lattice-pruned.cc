@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Microsoft Corporation
 //           2012-2013  Johns Hopkins University (Author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -27,6 +28,7 @@
 using std::tr1::unordered_map;
 #include <climits>
 #include "fstext/determinize-lattice.h" // for LatticeStringRepository
+#include "fstext/fstext-utils.h"
 #include "lat/lattice-functions.h" // for PruneLattice
 #include "lat/determinize-lattice-pruned.h"
 
@@ -1271,10 +1273,10 @@ bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
         effective_beam = 0;
       double new_beam = beam * sqrt(effective_beam / beam);
       if (new_beam < 0.5 * beam) new_beam = 0.5 * beam;
-      beam = new_beam;
       KALDI_WARN << "Effective beam " << effective_beam << " was less than beam "
                  << beam << " * cutoff " << opts.retry_cutoff << ", pruning raw "
                  << "lattice with new beam " << new_beam << " and retrying.";
+      beam = new_beam;
       if (iter == 0) temp_fst = ifst;
       kaldi::PruneLattice(beam, &temp_fst);
     }
@@ -1282,11 +1284,189 @@ bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
   return false; // Suppress compiler warning; this code is unreachable.
 }
 
+template<class Weight>
+typename ArcTpl<Weight>::Label DeterminizeLatticeInsertPhones(
+    const kaldi::TransitionModel &trans_model,
+    MutableFst<ArcTpl<Weight> > *fst) {
+  // Define some types.
+  typedef ArcTpl<Weight> Arc;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Label Label;
+
+  // Work out the first phone symbol. This is more related to the phone
+  // insertion function, so we put it here and make it the returning value of
+  // DeterminizeLatticeInsertPhones(). 
+  Label first_phone_label = HighestNumberedInputSymbol(*fst) + 1;
+
+  // Insert phones here.
+  for (StateIterator<MutableFst<Arc> > siter(*fst);
+       !siter.Done(); siter.Next()) {
+    StateId state = siter.Value();
+    if (state == fst->Start())
+      continue;
+    for (MutableArcIterator<MutableFst<Arc> > aiter(fst, state);
+         !aiter.Done(); aiter.Next()) {
+      Arc arc = aiter.Value();
+
+      // Note: the words are on the input symbol side and transition-id's are on
+      // the output symbol side.
+      if ((arc.olabel != 0)
+          && (trans_model.TransitionIdToHmmState(arc.olabel) == 0)
+          && (!trans_model.IsSelfLoop(arc.olabel))) {
+        Label phone =
+            static_cast<Label>(trans_model.TransitionIdToPhone(arc.olabel));
+
+        // Skips <eps>.
+        KALDI_ASSERT(phone != 0);
+
+        if (arc.ilabel == 0) {
+          // If there is no word on the arc, insert the phone directly.
+          arc.ilabel = first_phone_label + phone;
+        } else {
+          // Otherwise, add an additional arc.
+          StateId additional_state = fst->AddState();
+          StateId next_state = arc.nextstate;
+          arc.nextstate = additional_state;
+          fst->AddArc(additional_state,
+                      Arc(first_phone_label + phone, 0,
+                          Weight::One(), next_state));
+        }
+      }
+
+      aiter.SetValue(arc);
+    }
+  }
+
+  return first_phone_label;
+}
+
+template<class Weight>
+void DeterminizeLatticeDeletePhones(
+    typename ArcTpl<Weight>::Label first_phone_label,
+    MutableFst<ArcTpl<Weight> > *fst) {
+  // Define some types.
+  typedef ArcTpl<Weight> Arc;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Label Label;
+
+  // Delete phones here.
+  for (StateIterator<MutableFst<Arc> > siter(*fst);
+       !siter.Done(); siter.Next()) {
+    StateId state = siter.Value();
+    for (MutableArcIterator<MutableFst<Arc> > aiter(fst, state);
+         !aiter.Done(); aiter.Next()) {
+      Arc arc = aiter.Value();
+
+      if (arc.ilabel >= first_phone_label)
+        arc.ilabel = 0;
+
+      aiter.SetValue(arc);
+    }
+  }
+}
+
+/** This function does a first pass determinization with phone symbols inserted
+    at phone boundary. It uses a transition model to work out the transition-id
+    to phone map. First, phones will be inserted into the word level lattice.
+    Second, determinization will be applied on top of the phone + word lattice.
+    Finally, the inserted phones will be removed, converting the lattice back to
+    a word level lattice. The output lattice of this pass is not deterministic,
+    since we remove the phone symbols as a last step. It is supposed to be
+    followed by another pass of determinization at the word level. It could also
+    be useful for some other applications such as fMLLR estimation, confidence
+    estimation, discriminative training, etc.
+*/
+template<class Weight, class IntType>
+bool DeterminizeLatticePhonePrunedFirstPass(
+    const kaldi::TransitionModel &trans_model,
+    double beam,
+    MutableFst<ArcTpl<Weight> > *fst,
+    const DeterminizeLatticePrunedOptions &opts) {
+  // First, insert the phones.
+  typename ArcTpl<Weight>::Label first_phone_label =
+      DeterminizeLatticeInsertPhones(trans_model, fst);
+  KALDI_ASSERT(TopSort(fst));
+  
+  // Second, do determinization with phone inserted.
+  bool ans = DeterminizeLatticePruned<Weight, IntType>(*fst, beam, fst, opts);
+
+  // Finally, remove the inserted phones.
+  DeterminizeLatticeDeletePhones(first_phone_label, fst);
+  KALDI_ASSERT(TopSort(fst));
+
+  return ans;
+}
+
+// "Destructive" version of DeterminizeLatticePhonePruned() where the input
+// lattice might be modified.
+template<class Weight, class IntType>
+bool DeterminizeLatticePhonePruned(
+    const kaldi::TransitionModel &trans_model,
+    MutableFst<ArcTpl<Weight> > *ifst,
+    double beam,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
+    DeterminizeLatticePhonePrunedOptions opts) {
+  // Returning status.
+  bool ans = true;
+
+  // Make sure at least one of opts.phone_determinize and opts.word_determinize
+  // is not false, otherwise calling this function doesn't make any sense.
+  if ((opts.phone_determinize || opts.word_determinize) == false) {
+    KALDI_WARN << "Both --phone-determinize and --word-determinize are set to "
+               << "false, copying lattice without determinization.";
+    // We are expecting the words on the input side.
+    ConvertLattice<Weight, IntType>(*ifst, ofst, false);
+    return ans;
+  }
+
+  // Determinization options.
+  DeterminizeLatticePrunedOptions det_opts;
+  det_opts.delta = opts.delta;
+  det_opts.max_mem = opts.max_mem;
+
+  // If --phone-determinize is true, do the determinization on phone + word
+  // lattices.
+  if (opts.phone_determinize) {
+    KALDI_VLOG(1) << "Doing first pass of determinization on phone + word "
+                  << "lattices."; 
+    ans = DeterminizeLatticePhonePrunedFirstPass<Weight, IntType>(
+        trans_model, beam, ifst, det_opts) && ans;
+
+    // If --word-determinize is false, we've finished the job and return here.
+    if (!opts.word_determinize) {
+      // We are expecting the words on the input side.
+      ConvertLattice<Weight, IntType>(*ifst, ofst, false);
+      return ans;
+    }
+  }
+
+  // If --word-determinize is true, do the determinization on word lattices.
+  if (opts.word_determinize) {
+    KALDI_VLOG(1) << "Doing second pass of determinization on word lattices.";
+    ans = DeterminizeLatticePruned<Weight, IntType>(
+        *ifst, beam, ofst, det_opts) && ans;
+  }
+
+  return ans;
+}
+
+// Normal verson of DeterminizeLatticePhonePruned(), where the input lattice
+// will be kept as unchanged.
+template<class Weight, class IntType>
+bool DeterminizeLatticePhonePruned(
+    const kaldi::TransitionModel &trans_model,
+    const ExpandedFst<ArcTpl<Weight> > &ifst,
+    double beam,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
+    DeterminizeLatticePhonePrunedOptions opts) {
+  VectorFst<ArcTpl<Weight> > temp_fst(ifst);
+  return DeterminizeLatticePhonePruned(trans_model, &temp_fst,
+                                       beam, ofst, opts);
+}
 
 // Instantiate the templates for the types we might need.
-// Note: there are actually two templates, each of which
+// Note: there are actually four templates, each of which
 // we instantiate for a single type.
-
 template
 bool DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
     const ExpandedFst<kaldi::LatticeArc> &ifst,
@@ -1301,6 +1481,21 @@ bool DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
     MutableFst<kaldi::LatticeArc> *ofst, 
     DeterminizeLatticePrunedOptions opts);
 
+template
+bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
+    const kaldi::TransitionModel &trans_model,
+    const ExpandedFst<kaldi::LatticeArc> &ifst,
+    double prune,
+    MutableFst<kaldi::CompactLatticeArc> *ofst,
+    DeterminizeLatticePhonePrunedOptions opts);
+
+template
+bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
+    const kaldi::TransitionModel &trans_model,
+    MutableFst<kaldi::LatticeArc> *ifst,
+    double prune,
+    MutableFst<kaldi::CompactLatticeArc> *ofst,
+    DeterminizeLatticePhonePrunedOptions opts);
 
 }
 
