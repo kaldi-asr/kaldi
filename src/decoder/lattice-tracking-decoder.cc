@@ -2,6 +2,7 @@
 
 // Copyright 2012  BUT (Author: Mirko Hannemann)
 //                 Johns Hopkins University (Author: Daniel Povey)
+//           2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -153,6 +154,8 @@ bool LatticeTrackingDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) co
   return (cur_state != 0);
 }
 
+// This function is now deprecated, since now we do determinization from outside
+// the LatticeTrackingDecoder class.
 // Outputs an FST corresponding to the lattice-determinized
 // lattice (one path per word sequence).
 bool LatticeTrackingDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const {
@@ -169,9 +172,7 @@ bool LatticeTrackingDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst
   // lattice-determinization more efficient.
     
   fst::DeterminizeLatticePrunedOptions lat_opts;
-  lat_opts.max_mem = config_.max_mem;
-  lat_opts.max_loop = config_.max_loop;
-  lat_opts.max_arcs = config_.max_arcs;
+  lat_opts.max_mem = config_.det_opts.max_mem;
     
   DeterminizeLatticePruned(raw_fst, config_.lattice_beam, ofst, lat_opts);
   raw_fst.DeleteStates(); // Free memory-- raw_fst no longer needed.
@@ -871,6 +872,7 @@ void LatticeTrackingDecoder::ClearActiveTokens() { // a cleanup routine, at utt 
 bool DecodeUtteranceLatticeTracking(
     LatticeTrackingDecoder &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
+    const TransitionModel &trans_model,
     const fst::StdVectorFst &arc_graph, // contains graph arcs from forward pass lattice
     const fst::SymbolTable *word_syms,
     std::string utt,
@@ -930,24 +932,40 @@ bool DecodeUtteranceLatticeTracking(
     likelihood = -(weight.Value1() + weight.Value2());
   }
 
+  // Get lattice, and do determinization if requested.
+  Lattice lat;
+  if (!decoder.GetRawLattice(&lat))
+    KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
+  fst::Connect(&lat);
   if (determinize) {
-    CompactLattice fst;
-    if (!decoder.GetLattice(&fst))
-      KALDI_ERR << "Unexpected problem getting lattice for utterance "
-                << utt;
-    if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
-    compact_lattice_writer->Write(utt, fst);
+    Invert(&lat);
+    if (!TopSort(&lat)) {
+      // Cannot topologically sort the lattice -- determinization will fail.
+      KALDI_WARN << "Topological sorting of state-level lattice failed "
+                 << "(probably your lexicon has empty words or your LM has "
+                 << "epsilon cycles).";
+      return false;
+    }
+    fst::ILabelCompare<LatticeArc> ilabel_comp;
+    ArcSort(&lat, ilabel_comp);
+    CompactLattice clat;
+    if (!DeterminizeLatticePhonePruned(trans_model,
+                                       &lat,
+                                       decoder.GetOptions().lattice_beam,
+                                       &clat,
+                                       decoder.GetOptions().det_opts))
+      KALDI_WARN << "Determinization finished earlier than the beam for "
+                 << "utterance " << utt;
+    fst::Connect(&clat);
+    // We'll write the lattice without acoustic scaling.
+    if (acoustic_scale != 0.0)
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
+    compact_lattice_writer->Write(utt, clat);
   } else {
-    Lattice fst;
-    if (!decoder.GetRawLattice(&fst)) 
-      KALDI_ERR << "Unexpected problem getting lattice for utterance "
-                << utt;
-    fst::Connect(&fst); // Will get rid of this later... shouldn't have any
-    // disconnected states there, but we seem to.
-    if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
-    lattice_writer->Write(utt, fst);
+    // We'll write the lattice without acoustic scaling.
+    if (acoustic_scale != 0.0)
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &lat);
+    lattice_writer->Write(utt, lat);
   }
   KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
             << (likelihood / num_frames) << " over "

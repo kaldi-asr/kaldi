@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Microsoft Corporation
 //           2012-2013  Johns Hopkins University (Author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -27,6 +28,7 @@
 #include <set>
 #include <vector>
 #include "fstext/lattice-weight.h"
+#include "hmm/transition-model.h"
 #include "itf/options-itf.h"
 
 namespace fst {
@@ -139,6 +141,34 @@ struct DeterminizeLatticePrunedOptions {
   }
 };
 
+struct DeterminizeLatticePhonePrunedOptions {
+  // delta: a small offset used to measure equality of weights.
+  float delta;
+  // max_mem: if > 0, determinization will fail and return false when the
+  // algorithm's (approximate) memory consumption crosses this threshold.
+  int max_mem;
+  // phone_determinize: if true, do a first pass determinization on both phones
+  // and words.
+  bool phone_determinize;
+  // word_determinize: if true, do a second pass determinization on words only.
+  bool word_determinize;
+  DeterminizeLatticePhonePrunedOptions(): delta(kDelta),
+                                          max_mem(50000000),
+                                          phone_determinize(true),
+                                          word_determinize(true) {}
+  void Register (kaldi::OptionsItf *po) {
+    po->Register("delta", &delta, "Tolerance used in determinization");
+    po->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
+                "determinization (real usage might be many times this).");
+    po->Register("phone-determinize", &phone_determinize, "If true, do an "
+                 "initial pass of determinization on both phones and words (see"
+                 " also --word-determinize)");
+    po->Register("word-determinize", &word_determinize, "If true, do a second "
+                 "pass of determinization on words only (see also "
+                 "--phone-determinize)");
+  }
+};
+
 /**
     This function implements the normal version of DeterminizeLattice, in which the
     output strings are represented using sequences of arcs, where all but the
@@ -173,7 +203,58 @@ bool DeterminizeLatticePruned(
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
     DeterminizeLatticePrunedOptions opts = DeterminizeLatticePrunedOptions());
 
+/** This function takes in lattices and inserts phones at phone boundaries. It
+    uses the transition model to work out the transition_id to phone map. The
+    returning value is the starting index of the phone label. Typically we pick
+    (maximum_output_label_index + 1) as this value. The inserted phones are then
+    mapped to (returning_value + original_phone_label) in the new lattice. The
+    returning value will be used by DeterminizeLatticeDeletePhones() where it
+    works out the phones according to this value.
+*/
+template<class Weight>
+typename ArcTpl<Weight>::Label DeterminizeLatticeInsertPhones(
+    const kaldi::TransitionModel &trans_model,
+    MutableFst<ArcTpl<Weight> > *fst);
 
+/** This function takes in lattices and deletes "phones" from them. The "phones"
+    here are actually any label that is larger than first_phone_label because
+    when we insert phones into the lattice, we map the original phone label to
+    (first_phone_label + original_phone_label). It is supposed to be used
+    together with DeterminizeLatticeInsertPhones()
+*/
+template<class Weight>
+void DeterminizeLatticeDeletePhones(
+    typename ArcTpl<Weight>::Label first_phone_label,
+    MutableFst<ArcTpl<Weight> > *fst);
+
+/** This function is a wrapper of DeterminizeLatticePhonePrunedFirstPass() and
+    DeterminizeLatticePruned(). If --phone-determinize is set to true, it first
+    calls DeterminizeLatticePhonePrunedFirstPass() to do the initial pass of
+    determinization on the phone + word lattices. If --word-determinize is set
+    true, it then does a second pass of determinization on the word lattices by
+    calling DeterminizeLatticePruned(). If both are set to false, then it gives
+    a warning and copying the lattices without determinization.
+*/
+template<class Weight, class IntType>
+bool DeterminizeLatticePhonePruned(
+    const kaldi::TransitionModel &trans_model,
+    const ExpandedFst<ArcTpl<Weight> > &ifst,
+    double prune,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
+    DeterminizeLatticePhonePrunedOptions opts
+      = DeterminizeLatticePhonePrunedOptions());
+
+/** "Destructive" version of DeterminizeLatticePhonePruned() where the input
+    lattice might be changed. 
+*/
+template<class Weight, class IntType>
+bool DeterminizeLatticePhonePruned(
+    const kaldi::TransitionModel &trans_model,
+    MutableFst<ArcTpl<Weight> > *ifst,
+    double prune,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
+    DeterminizeLatticePhonePrunedOptions opts
+      = DeterminizeLatticePhonePrunedOptions());
 
 /// @} end "addtogroup fst_extensions"
 

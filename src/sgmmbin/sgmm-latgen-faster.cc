@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation;
 //                      Johns Hopkins University (author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -81,8 +82,8 @@ bool ProcessUtterance(LatticeFasterDecoder &decoder,
                                        log_prune, acoustic_scale);
 
   return DecodeUtteranceLatticeFaster(
-      decoder, sgmm_decodable, word_syms, utt, acoustic_scale, determinize,
-      allow_partial, alignments_writer, words_writer,
+      decoder, sgmm_decodable, trans_model, word_syms, utt, acoustic_scale,
+      determinize, allow_partial, alignments_writer, words_writer,
       compact_lattice_writer, lattice_writer, like_ptr);
 }
 

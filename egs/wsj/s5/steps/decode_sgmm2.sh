@@ -20,7 +20,6 @@ gselect=15  # Number of Gaussian-selection indices for SGMMs.  [Note:
 first_pass_gselect=3 # Use a smaller number of Gaussian-selection indices in 
             # the 1st pass of decoding (lattice generation).
 max_active=7000
-max_arcs=-1
 
 #WARNING: This option is renamed lat_beam (it was renamed to follow the naming 
 #         in the other scripts
@@ -123,7 +122,7 @@ fi
 if [ $stage -le 2 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode_pass1.JOB.log \
     sgmm2-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
-    --max-arcs=$max_arcs --acoustic-scale=$acwt --determinize-lattice=false --allow-partial=true \
+    --acoustic-scale=$acwt --determinize-lattice=false --allow-partial=true \
     --word-symbol-table=$graphdir/words.txt "$gselect_opt_1stpass" $srcdir/final.alimdl \
     $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/pre_lat.JOB.gz" || exit 1;
 fi
