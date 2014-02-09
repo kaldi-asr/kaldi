@@ -25,11 +25,13 @@ fi
 echo "Scoring against $trials"
 
 printf '% 12s' 'Condition:'
-for condition in $(seq 8); do
+for condition in $(seq 0 8); do
   printf '% 7d' $condition;
 done
 echo
 printf '% 12s' 'EER:'
+eer=$(awk '{print $3}' $scores | paste - $trials | awk '{print $1, $4}' | compute-eer - 2>/dev/null)
+printf '% 7.2f' $eer
 for condition in $(seq 8); do
   eer=$(awk '{print $3}' $scores | paste - $trials | awk -v c=$condition '{n=4+c; if ($n == "Y") print $1, $4}' | compute-eer - 2>/dev/null)
   printf '% 7.2f' $eer
