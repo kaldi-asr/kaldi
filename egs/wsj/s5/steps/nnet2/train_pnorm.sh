@@ -92,7 +92,6 @@ if [ $# != 4 ]; then
   echo "  --final-learning-rate  <final-learning-rate|0.004>   # Learning rate at end of training, e.g. 0.004 for small"
   echo "                                                   # data, 0.001 for large data"
   echo "  --num-hidden-layers <#hidden-layers|2>           # Number of hidden layers, e.g. 2 for 3 hours of data, 4 for 100hrs"
-  echo "  --initial-num-hidden-layers <#hidden-layers|1>   # Number of hidden layers to start with."
   echo "  --add-layers-period <#iters|2>                   # Number of iterations between adding hidden layers"
   echo "  --mix-up <#pseudo-gaussians|0>                   # Can be used to have multiple targets in final output layer,"
   echo "                                                   # per context-dependent state.  Try a number several times #states."

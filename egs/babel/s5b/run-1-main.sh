@@ -3,8 +3,8 @@
 # This is not necessarily the top-level run.sh as it is in other directories.   see README.txt first.
 tri5_only=false
 
-[ ! -f ./lang.conf ] && echo "Language configuration does not exist! Use the configurations in conf/lang/* as a startup" && exit 1
-[ ! -f ./conf/common_vars.sh ] && echo "the file conf/common_vars.sh does not exist!" && exit 1
+[ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
+[ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1
 
 . conf/common_vars.sh || exit 1;
 . ./lang.conf || exit 1;
@@ -120,6 +120,7 @@ if [[ ! -f data/srilm/lm.gz || data/srilm/lm.gz -ot data/train/text ]]; then
   local/train_lms_srilm.sh --dev-text data/dev2h/text \
     --train-text data/train/text data data/srilm 
 fi
+
 if [[ ! -f data/lang/G.fst || data/lang/G.fst -ot data/srilm/lm.gz ]]; then
   echo ---------------------------------------------------------------------
   echo "Creating G.fst on " `date`
