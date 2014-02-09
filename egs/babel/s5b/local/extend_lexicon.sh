@@ -4,6 +4,93 @@
 #           2014  Guoguo Chen
 # Apache 2.0.
 
+# This script takes an input lexicon (e.g. lexicon.txt) and generates likely
+# out of vocabulary words from it, with their associated spellings.  It outputs
+# two files: lexiconp.txt (this is the lexicon format that has pronunciation
+# probabilities; the words in the original lexicon have probability one), and
+# oov2prob, which says how the OOV mass is distributed among the new OOV words
+# in the lexicon.  
+
+# It assumes that the syllables in pronunciations in the input lexicon.txt are
+# separated by tabs, as is normal for the BABEL setup; the syllable boundaries
+# are necessary for the method that this script uses.
+
+# We use SRILM to train an lm (lm.gz) by treating the sequence of syllables in a
+# pronunciation like the sequence of words in a sentence; we use a 3-gram
+# Kneser-Ney smoothed model, as this seemed to work best.  We then generate
+# "sentences" (really, pronunciations) from this LM using the "ngram" command
+# from SRILM with the "-gen" option.  We do this in parallel, and also use SRILM
+# to compute the probabilities of these "sentences".  Then the "--num-prons"
+# most likely generated pronunciations are selected (by default: one million).
+
+# Next, we use the g2p tool from "Sequitur" to learn a mapping from
+# pronuciations of words to their spellings.  This is the opposite of the normal
+# direction of prediction, so we refer to the models as "p2g".  To do this, we
+# give g2p a reversed version of the input lexicon, so while the input lexicon
+# might have entries like
+#  Hi   h ay
+# the reversed lexicon would have entries like
+#  hay  H i
+# We were concerned that depending on the way the phones are represented as
+# letters, there might be a lot of ambiguity introduced when we get rid of the
+# spaces (e.g. does "hay" come from h+ay, or h+a+y?), and that this might hurt
+# the accuracy of the g2p prediction.  We did not want to introduce a separator
+# because we felt that this would make the mapping harder for g2p to learn.
+# Instead we mapped the phones to unique letters; this is what the "phone_map"
+# file is about.  Furthermore, in BABEL we have the concept of tags on the
+# phones, e.g. in a tonal language, ay_3 might be the phone "ay" with tone 3.  
+# As far as Kaldi is concerned, ay_3 is a single phone.  To avoid the number of
+# letters blowing up too much, we make these tags separate letters when generating
+# phone_map, so ay_3 might be mapped to kX with ay mapping to k and 3 mapping to
+# X.  To avoid ambiguity being introduced, we ensure that the alphabets for the
+# phones and the tags are distinct (and in general, we allow multiple tags, with
+# the tags in different positions having distinct alphabets).
+
+# Once we have our g2p models trained (and the g2p training is the most time
+# consuming aspect of this script), we apply g2p to all of our generated
+# pronunciations to give us likely spelling variants.  The number of
+# alternatives is controlled by the options --var-mass (default: 0.8, meaning we
+# generate 0.8 of the entire probability mass), and --var-counts (default: 3,
+# meaning we generate at most 3 alternative spellings per pronunciation).  We
+# take the probabilities of the OOVs (as assigned by the syllable-level LM) and
+# multiply them by the spelling probabilities assigned by g2p, to give us the
+# probability of the (pronunciation, word) pair.  From these pairs we strip out
+# those with words (spellings) that were in the original lexicon, and those with
+# pronunciations shorter than a specified minimum --min-phones (default: 3).  We
+# then limit the total number of pairs to --num-prons (default: one million) and
+# scale us the probabilities of the pairs pairs so that they sum to one overall.
+
+# We format this information as two pieces: a lexicon with probabilities
+# (lexiconp.txt) and a file that gives us the probability of each OOV word
+# (oov2prob).  The probabilities in lexiconp.txt are normalized so that the most
+# probable pronunciation of each word is 1; the probabilities in oov2prob are
+# normalized such that if we multiply by the pronunciation probability in
+# lexiconp.txt, we would get the probability we assigned to that (pronunciation,
+# word) pair.
+
+# These outputs are used as follows: lexiconp.txt will be used by
+# utils/prepare_lang.sh to generate L.fst and L_disambig.fst in the lang/
+# directory, so the lexicon FSTs and words.txt will include the generated OOVs.
+# oov2prob will be used when generating the grammar transducer G.fst by
+# local/arpa2G.sh.  For example, if you call arpa2G.sh with the options
+# --oov-prob-file some/dir/oov2prob --unk-fraction 0.33, it will put all the OOVs
+# listed in some/dir/oov2prob as if they were unigrams in G.fst, with probability
+# equal to 0.33 times the probability listed in oov2prob.  However, that script
+# will not allow the unigram probability of any OOV word to be more probable than
+# the least probable word which was originally in the ARPA file (not counting <s>,
+# which generally has probability -99); this is applied as a ceiling on the 
+# unknown-word probabilities.  Note: the --unk-fraction should probably be
+# similar to the OOV rate in that language.  Calculating the OOV rate on some
+# dev data is one reasonable way to set this; see the commands at the very
+# bottom of this file for an example of how we can compute the OOV rate.
+# (Arguably, one should give an even higher fraction than this, because given the
+# unigram state, the probability of seeing an unknown word is higher).
+# It might seem appropriate to use as "unk-fraction" the probability of
+# the unknown word (<unk> or <UNK>) in the LM itself.  However, this depends
+# how the LM was estimated; I think in the BABEL setup, <unk> appears as
+# an actual word in the transcripts, and the probability that the LM assigns
+# to it seems to be lower than appropriate.
+
 stage=-5
 g2p_iters=5
 num_prons=1000000 # number of prons to generate.
@@ -190,7 +277,6 @@ while(1) {
     echo "  please run with larger --nj, currently $nj "
     exit 1;
   fi
-
 fi
 
 
@@ -391,8 +477,8 @@ fi
 if [ $stage -le $[$g2p_iters+2] ]; then
   # put it to the output directory $localdir e.g. data/local/
   cat $dir/lexiconp_in.txt $dir/lexiconp_oov.txt | \
-    local/apply_map_tab_preserving.pl -f 3- $dir/phone_map.reverse | sort -u > $working_dir/lexiconp.txt
-  cp $dir/oov2prob $working_dir/oov2prob
+    local/apply_map_tab_preserving.pl -f 3- $dir/phone_map.reverse | sort -u > $toplevel_dir/lexiconp.txt
+  cp $dir/oov2prob $toplevel_dir/oov2prob
 fi
 
 exit 0;
