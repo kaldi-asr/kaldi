@@ -19,7 +19,13 @@ $ignore_oov = 0;
 
 for($x = 0; $x < 2; $x++) {
   if ($ARGV[0] eq "--map-oov") {
-    shift @ARGV; $map_oov = shift @ARGV;
+    shift @ARGV; 
+    $map_oov = shift @ARGV;
+    if ($map_oov eq "-f" || $map_oov =~ m/words\.txt$/ || $map_oov eq "") {
+      # disallow '-f', the empty string and anything ending in words.txt as the
+      # OOV symbol because these are likely command-line errors.
+      die "the --map-oov option requires an argument";
+    }
   }
   if ($ARGV[0] eq "-f") {
     shift @ARGV; 

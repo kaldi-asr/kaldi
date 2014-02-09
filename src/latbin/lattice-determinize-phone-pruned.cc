@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
 
       if (!TopSort(&lat)) {
         KALDI_WARN << "Could not topologically sort lattice: this probably "
-            "means it has bad properties e.g. epsilon cycles. Your LM or "
+            "means it has bad properties e.g. epsilon cycles.  Your LM or "
             "lexicon might be broken, e.g. LM with epsilon cycles or lexicon "
             "with empty words.";
         n_fail++;
