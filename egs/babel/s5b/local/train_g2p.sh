@@ -62,7 +62,7 @@ if [ ! -z $icu_transform ] ; then
 fi
 
 if ! g2p=`which g2p.py` ; then
-  echo "The Sequitur was not found !"
+  echo "Sequitur was not found !"
   echo "Go to $KALDI/tools and execute extras/install_sequitur.sh"
   exit 1
 fi
