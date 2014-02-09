@@ -144,15 +144,6 @@ head -n 10000 $dir/train.scp > $dir/train.scp.10k
 feats_tr="ark:copy-feats scp:$dir/train.scp ark:- |"
 feats_cv="ark:copy-feats scp:$dir/cv.scp ark:- |"
 
-# CMVN:
-# optionally import CMVN config from pre-training
-if [ ! -z $feature_transform ]; then
-  norm_vars_file=$(dirname $feature_transform)/norm_vars 
-  if [ -e $norm_vars_file ]; then
-    apply_cmvn=true; norm_vars=$(cat $norm_vars_file);
-  fi
-  echo "Imported CMVN config from pre-training: apply_cmvn=$apply_cmvn; norm_vars=$norm_vars"
-fi
 # optionally add per-speaker CMVN
 if [ $apply_cmvn == "true" ]; then
   echo "Will use CMVN statistics : $data/cmvn.scp, $data_cv/cmvn.scp"

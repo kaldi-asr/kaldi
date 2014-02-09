@@ -11,6 +11,7 @@ stage=0
 nj=4
 cmd=run.pl
 max_active=7000
+max_arcs=-1
 beam=13.0
 latbeam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).

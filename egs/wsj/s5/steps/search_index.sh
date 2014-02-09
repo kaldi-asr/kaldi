@@ -45,6 +45,6 @@ done
 $cmd JOB=1:$nj $kwsdir/log/search.JOB.log \
   kws-search --strict=$strict --negative-tolerance=-1 \
   "ark:gzip -cdf $indices_dir/index.JOB.gz|" ark:$keywords \
-  "ark,t:|int2sym.pl -f 2 $kwsdatadir/utter_id > $kwsdir/result.JOB" || exit 1;
+  "ark,t:|int2sym.pl -f 2 $kwsdatadir/utter_id > $kwsdir/result.JOB"
 
 exit 0;

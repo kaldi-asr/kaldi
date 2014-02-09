@@ -30,6 +30,7 @@
 # Begin configuration section
 first_beam=10.0 # Beam used in initial, speaker-indep. pass
 first_max_active=2000 # max-active used in initial pass.
+first_max_arcs=-1
 alignment_model=
 adapt_model=
 final_model=
@@ -38,6 +39,7 @@ acwt=0.083333 # Acoustic weight used in getting fMLLR transforms, and also in
               # lattice generation.
 max_active=7000
 use_normal_fmllr=false
+max_arcs=-1
 beam=13.0
 lattice_beam=6.0
 nj=4
@@ -116,7 +118,7 @@ if [ -z "$si_dir" ]; then # we need to do the speaker-independent decoding pass.
     steps/decode.sh --parallel-opts "$parallel_opts" --scoring-opts "$scoring_opts" \
               --num-threads $num_threads --skip-scoring $skip_scoring \
               --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam \
-              --model $alignment_model --max-active \
+              --model $alignment_model --max-arcs $max_arcs --max-active \
               $first_max_active $graphdir $data $si_dir || exit 1;
   fi
 fi
@@ -166,8 +168,8 @@ if [ $stage -le 2 ]; then
   echo "$0: doing main lattice generation phase"
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
     gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
-    --acoustic-scale=$acwt --determinize-lattice=false \
-    --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+    --acoustic-scale=$acwt \
+    --determinize-lattice=false --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $adapt_model $graphdir/HCLG.fst "$pass1feats" "ark:|gzip -c > $dir/lat.tmp.JOB.gz" \
     || exit 1;
 fi

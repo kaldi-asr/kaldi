@@ -30,8 +30,6 @@
 # nnet config
 nn_depth=6     #number of hidden layers
 hid_dim=2048   #number of units per layer
-param_stddev_first=0.1 #init parameters in 1st RBM
-param_stddev=0.1 #init parameters in other RBMs
 # number of iterations
 rbm_iter=1            #number of pre-training epochs (Gaussian-Bernoulli RBM has 2x more)
 rbm_drop_data=0.0     #sample the training set, 1.0 drops all the data, 0.0 keeps all
@@ -44,7 +42,6 @@ rbm_extra_opts=
 copy_feats=true    # resave the features randomized consecutively to tmpdir
 # feature config
 feature_transform= # Optionally reuse feature processing front-end (override splice,etc.)
-feature_transform_proto= # Optionally pass prototype of feature transform
 delta_order=       # Optionally use deltas on the input features
 apply_cmvn=false   # Optionally do CMVN of the input features
 norm_vars=false    # When apply_cmvn=true, this enables CVN
@@ -164,16 +161,10 @@ if [ ! -z "$feature_transform" ]; then
   echo Using already prepared feature_transform: $feature_transform
   cp $feature_transform $dir/final.feature_transform
 else
-  if [ ! -z "$feature_transform_proto" ]; then
-    feature_transform=$dir/tr_$(basename $feature_transform_proto)
-    log=$dir/log/feature-transform-initialize.log
-    nnet-initialize --binary=false $feature_transform_proto $feature_transform 2>$log || { cat $log; exit 1; }
-  else
-    # Generate the splice transform
-    echo "Using splice +/- $splice , step $splice_step"
-    feature_transform=$dir/tr_splice$splice-$splice_step.nnet
-    utils/nnet/gen_splice.py --fea-dim=$feat_dim --splice=$splice --splice-step=$splice_step > $feature_transform
-  fi
+  # Generate the splice transform
+  echo "Using splice +/- $splice , step $splice_step"
+  feature_transform=$dir/tr_splice$splice-$splice_step.nnet
+  utils/nnet/gen_splice.py --fea-dim=$feat_dim --splice=$splice --splice-step=$splice_step > $feature_transform
 
   # Renormalize the MLP input to zero mean and unit variance
   feature_transform_old=$feature_transform
@@ -210,7 +201,7 @@ for depth in $(seq 1 $nn_depth); do
     #initialize
     echo "Initializing '$RBM.init'"
     echo "<NnetProto>
-    <Rbm> <InputDim> $num_fea <OutputDim> $num_hid <VisibleType> gauss <HiddenType> bern <ParamStddev> $param_stddev_first
+    <Rbm> <InputDim> $num_fea <OutputDim> $num_hid <VisibleType> gauss <HiddenType> bern
     </NnetProto>
     " > $RBM.proto
     nnet-initialize $RBM.proto $RBM.init 2>$dir/log/nnet-initialize.$depth.log || exit 1
@@ -238,7 +229,7 @@ for depth in $(seq 1 $nn_depth); do
     #initialize
     echo "Initializing '$RBM.init'"
     echo "<NnetProto>
-    <Rbm> <InputDim> $num_hid <OutputDim> $num_hid <VisibleType> bern <HiddenType> bern <ParamStddev> $param_stddev <VisibleBiasCmvnFilename> $dir/$depth.cmvn
+    <Rbm> <InputDim> $num_hid <OutputDim> $num_hid <VisibleType> bern <HiddenType> bern <VisibleBiasCmvnFilename> $dir/$depth.cmvn
     </NnetProto>
     " > $RBM.proto
     nnet-initialize $RBM.proto $RBM.init 2>$dir/log/nnet-initialize.$depth.log || exit 1
