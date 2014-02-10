@@ -6,7 +6,7 @@
 # Downloads and extracts the data from VoxForge website
 
 # defines "DATA_ROOT" variable - the location to store data 
-source path.sh
+source ./path.sh
 
 DATA_SRC="http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit"
 DATA_TGZ=${DATA_ROOT}/tgz

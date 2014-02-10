@@ -53,7 +53,7 @@ if [[ `hostname` == *.tacc.utexas.edu ]] ; then
 
   dnn_cpu_parallel_opts=(--minibatch-size 128 --num-jobs-nnet 8 --num-threads 16 \
                          --parallel-opts "-pe smp 16" )
-  dnn_gpu_parallel_opts=(--minibatch-size 128 --num-jobs-nnet 4 --num-threads 1 )
+  dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 4 --num-threads 1)
 
   dnn_gpu_mpe_parallel_opts=(--num-jobs-nnet 4 --num-threads 1)
 else

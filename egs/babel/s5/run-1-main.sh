@@ -2,12 +2,12 @@
 
 # This is not necessarily the top-level run.sh as it is in other directories.   see README.txt first.
 tri5_only=false
-tri5_only=false
-sgmm2_only=false
-denlats_only=false
 
 [ ! -f ./lang.conf ] && echo "Language configuration does not exist! Use the configurations in conf/lang/* as a startup" && exit 1
 [ ! -f ./conf/common_vars.sh ] && echo "the file conf/common_vars.sh does not exist!" && exit 1
+
+. conf/common_vars.sh || exit 1;
+. ./lang.conf || exit 1;
 
 [ -f local.conf ] && . ./local.conf
 
@@ -27,12 +27,12 @@ if [ ! -d data/raw_train_data ]; then
     local/make_corpus_subset.sh "$train_data_dir" "$train_data_list" ./data/raw_train_data
     train_data_dir=`readlink -f ./data/raw_train_data`
 
-    nj_max=`cat $train_data_list | wc -l`
-    if [[ "$nj_max" -lt "$train_nj" ]] ; then
-        echo "The maximum reasonable number of jobs is $nj_max (you have $train_nj)! (The training and decoding process has file-granularity)"
-        exit 1;
-        train_nj=$nj_max
-    fi
+fi
+nj_max=`cat $train_data_list | wc -l`
+if [[ "$nj_max" -lt "$train_nj" ]] ; then
+    echo "The maximum reasonable number of jobs is $nj_max (you have $train_nj)! (The training and decoding process has file-granularity)"
+    exit 1;
+    train_nj=$nj_max
 fi
 train_data_dir=`readlink -f ./data/raw_train_data`
 
@@ -62,8 +62,9 @@ if [[ ! -f data/local/lexicon.txt || data/local/lexicon.txt -ot "$lexicon_file" 
   echo ---------------------------------------------------------------------
   echo "Preparing lexicon in data/local on" `date`
   echo ---------------------------------------------------------------------
+  local/make_lexicon_subset.sh $train_data_dir/transcription $lexicon_file data/local/filtered_lexicon.txt
   local/prepare_lexicon.pl  --phonemap "$phoneme_mapping" \
-    $lexiconFlags $lexicon_file data/local
+    $lexiconFlags data/local/filtered_lexicon.txt data/local
 fi
 
 mkdir -p data/lang
@@ -119,6 +120,7 @@ if [[ ! -f data/srilm/lm.gz || data/srilm/lm.gz -ot data/train/text ]]; then
   local/train_lms_srilm.sh --dev-text data/dev2h/text \
     --train-text data/train/text data data/srilm 
 fi
+
 if [[ ! -f data/lang/G.fst || data/lang/G.fst -ot data/srilm/lm.gz ]]; then
   echo ---------------------------------------------------------------------
   echo "Creating G.fst on " `date`
@@ -155,8 +157,7 @@ if [ ! -f data/train/.plp.done ]; then
     rm -rf {plp,ffv}_tmp_train data/train_{plp,ffv}
   fi
   utils/fix_data_dir.sh data/train
-  steps/compute_cmvn_stats.sh \
-    data/train exp/make_plp/train plp
+  steps/compute_cmvn_stats.sh data/train exp/make_plp/train plp
   # In case plp or pitch extraction failed on some utterances, delist them
   utils/fix_data_dir.sh data/train
   touch data/train/.plp.done
@@ -261,13 +262,6 @@ if [ ! -f exp/tri5/.done ]; then
   touch exp/tri5/.done
 fi
 
-if $tri5_only ; then
-  echo ---------------------------------------------------------------------
-  echo "Finish after TRI5 requested. Done."
-  echo "Finished successfully on" `date`
-  echo ---------------------------------------------------------------------
-  exit
-fi
 
 ################################################################################
 # Ready to start SGMM training
@@ -281,6 +275,12 @@ if [ ! -f exp/tri5_ali/.done ]; then
     --boost-silence $boost_sil --nj $train_nj --cmd "$train_cmd" \
     data/train data/lang exp/tri5 exp/tri5_ali
   touch exp/tri5_ali/.done
+fi
+
+if $tri5_only ; then
+  echo "Exiting after stage TRI5, as requested. "
+  echo "Everything went fine. Done"
+  exit 0;
 fi
 
 if [ ! -f exp/ubm5/.done ]; then
@@ -310,14 +310,6 @@ fi
 # Ready to start discriminative SGMM training
 ################################################################################
 
-if $sgmm2_only ; then
-  echo ---------------------------------------------------------------------
-  echo "Finish after SGMM2 requested. Done."
-  echo "Finished successfully on" `date`
-  echo ---------------------------------------------------------------------
-  exit 0;
-fi
-
 if [ ! -f exp/sgmm5_ali/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting exp/sgmm5_ali on" `date`
@@ -329,11 +321,6 @@ if [ ! -f exp/sgmm5_ali/.done ]; then
   touch exp/sgmm5_ali/.done
 fi
 
-if $tri5_only ; then
-  echo "Exiting after stage TRI5, as requested. "
-  echo "Everything went fine. Done"
-  exit 0;
-fi
 
 if [ ! -f exp/sgmm5_denlats/.done ]; then
   echo ---------------------------------------------------------------------
@@ -346,21 +333,13 @@ if [ ! -f exp/sgmm5_denlats/.done ]; then
   touch exp/sgmm5_denlats/.done
 fi
 
-if $denlats_only ; then
-  echo ---------------------------------------------------------------------
-  echo "Finish after SGMM2 Denominator Lattices requested. Done."
-  echo "Finished successfully on" `date`
-  echo ---------------------------------------------------------------------
-  exit 0
-fi
-
 if [ ! -f exp/sgmm5_mmi_b0.1/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting exp/sgmm5_mmi_b0.1 on" `date`
   echo ---------------------------------------------------------------------
   steps/train_mmi_sgmm2.sh \
     --cmd "$train_cmd" "${sgmm_mmi_extra_opts[@]}" \
-    --zero-if-disjoint true --transform-dir exp/tri5_ali --boost 0.1 \
+    --drop-frames true --transform-dir exp/tri5_ali --boost 0.1 \
     data/train data/lang exp/sgmm5_ali exp/sgmm5_denlats \
     exp/sgmm5_mmi_b0.1
   touch exp/sgmm5_mmi_b0.1/.done

@@ -23,6 +23,7 @@ def tail(n, filename):
 	return soutput
 
 def KaldiLauncher(lo, **kwargs):
+	import time;
 	jobid = JobId()
 	debug = kwargs.pop("debug","")
 	qdir= os.path.join(lo.qdir, lo.taskname);
@@ -53,6 +54,7 @@ def KaldiLauncher(lo, **kwargs):
 	job.run()
 	#At this point all the .done files should exist and everything should be finalized.
 	num_failed=0;
+	time.sleep(5); #Lets wait for a while to give the shared fs time to sync
 	for logfile in logfiles:
 		if not os.path.isfile(logfile):
 			sys.stderr.write("The file " + logfile + "does not exists.\n");

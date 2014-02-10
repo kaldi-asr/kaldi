@@ -50,7 +50,7 @@ done
 mkdir -p $tgtdir
 
 # Extract the word list from the training dictionary; exclude special symbols
-sort $words_file | cut -f1 -d' ' | grep -v '\#0' | grep -v '<eps>' > $tgtdir/vocab
+sort $words_file | awk '{print $1}' | grep -v '\#0' | grep -v '<eps>' > $tgtdir/vocab
 if (($?)); then
   echo "Failed to create vocab from $words_file"
   exit 1
