@@ -122,10 +122,14 @@ while(<FI>) {
     # add the link data
     $accepting_states{$A[0]} = { W=>"!NULL", v=>0, a=>$as, l=>$gs };
 
-  } elsif (@A == 4) {
+  } elsif (@A == 4 or @A == 3) {
     # FSA arc
     ($s, $e, $w, $info) = @A;
-    ($gs, $as, $ss) = split(/,/, $info);
+    if ($info ne "") {
+      ($gs, $as, $ss) = split(/,/, $info);
+    } else {
+      $gs = 0; $as = 0; $ss = "";
+    }
 
     # rename epsilons to null
     $w = "!NULL" if $w eq "<eps>";
