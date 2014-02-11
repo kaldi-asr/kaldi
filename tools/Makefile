@@ -69,7 +69,7 @@ openfst-1.3.2_tgt: openfst-1.3.2.tar.gz
 
 openfst-1.3.2.tar.gz: 
 		wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.3.2.tar.gz || \
-		wget -T 10 -t 3 --no-check-certificate http://www.openfst.org/twiki/pub/FST/FstDownload/openfst-1.3.2.tar.gz
+		wget -T 10 -t 3 --no-check-certificate http://www.danielpovey.com/files/data/openfst-1.3.2.tar.gz 
 
 sclite_tgt: sclite_compiled
 
