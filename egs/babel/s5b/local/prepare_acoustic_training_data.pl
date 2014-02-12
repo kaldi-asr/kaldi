@@ -95,7 +95,6 @@ use Getopt::Long;
 #
 ########################################################################
 
-print STDERR "$0 " . join(" ", @ARGV) . "\n";
 GetOptions("fragmentMarkers=s" => \$fragMarkers,
            "oov=s" => \$OOV_symbol, 
            "vocab=s" => \$vocabFile,
@@ -163,7 +162,7 @@ if (-d $TranscriptionDir) {
             open (TRANSCRIPT, $inputspec) || die "Unable to open $filename";
             while ($line=<TRANSCRIPT>) {
                 chomp $line;
-                if ($line =~ m:^\s*\[([0-9]+\.*[0-9]*)\]\s*$:) {
+                if ($line =~ m:^\[([0-9]+\.*[0-9]*)\]$:) {
                     $thisTimeMark = $1;
                     if ($thisTimeMark < $prevTimeMark) {
                       print STDERR ("$0 ERROR: Found segment with negative duration in $filename\n");
@@ -243,7 +242,6 @@ if (-d $TranscriptionDir) {
 			} else {
 			    # This is a just regular spoken word
 			    if ($vocabFile && (! $inVocab{$w}) && $fragMarkers) {
-            print "Not in vocab: $w\n";
 				# $w is a potential OOV token
 				# Remove fragMarkers to see if $w becomes in-vocabulary
 				while ($w =~ m:^(\S+[$fragMarkers]|[$fragMarkers]\S+)$:) {

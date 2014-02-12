@@ -130,7 +130,7 @@ if [ $stage -le 1 ]; then
       kwsoutput=${kwsoutdir}_$lmwt
       indices=${indices_dir}_$lmwt
       mkdir -p $kwsoutdir
-      steps/search_index.sh --cmd "$cmd" --indices-dir $indices --strict false \
+      steps/search_index.sh --cmd "$cmd" --indices-dir $indices \
         $kwsdatadir $kwsoutput  || exit 1
   done
 fi
