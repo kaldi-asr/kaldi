@@ -72,15 +72,19 @@ void Xent::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &t
 
 
 void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const Posterior& post, CuMatrix<BaseFloat>* diff) {
-  KALDI_ASSERT(&net_out != diff); // need distinct objects!
   int32 num_frames = net_out.NumRows(),
     num_pdf = net_out.NumCols();
+  KALDI_ASSERT(num_frames == post.size());
 
   // convert posterior to matrix
   Matrix<BaseFloat> tgt_mat_host(num_frames, num_pdf, kSetZero); // zero-filled
   for (int32 t = 0; t < post.size(); t++) {
     for (int32 i = 0; i < post[t].size(); i++) {
       int32 pdf = post[t][i].first;
+      if (pdf >= num_pdf) {
+        KALDI_ERR << "Posterior pdf-id out of NN-output dimension, please check number of pdfs by 'hmm-info'."
+                  << " nn-outputs : " << num_pdf << ", posterior pdf-id : " << pdf;
+      }
       tgt_mat_host(t, pdf) += post[t][i].second;
     }
   }
@@ -120,8 +124,8 @@ void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const Posterior& post, CuMat
   double entropy = 0.0;
   for (int32 t = 0; t < post.size(); t++) {
     for (int32 i = 0; i < post[t].size(); i++) {
-      BaseFloat t = post[t][i].second;
-      entropy += -t*log(t);
+      BaseFloat p = post[t][i].second;
+      entropy += -p*log(p);
     }
   }
   
@@ -250,11 +254,19 @@ void Mse::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& ta
 
 
 void Mse::Eval(const CuMatrix<BaseFloat>& net_out, const Posterior& post, CuMatrix<BaseFloat>* diff) {
+  int32 num_frames = net_out.NumRows(),
+    num_pdf = net_out.NumCols();
+  KALDI_ASSERT(num_frames == post.size());
+
   // convert posterior to matrix
-  Matrix<BaseFloat> tgt_mat(net_out.NumRows(), net_out.NumCols(), kSetZero); // zero-filled
+  Matrix<BaseFloat> tgt_mat(num_frames, num_pdf, kSetZero); // zero-filled
   for (int32 t = 0; t < post.size(); t++) {
     for (int32 i = 0; i < post[t].size(); i++) {
       int32 pdf = post[t][i].first;
+      if (pdf >= num_pdf) {
+        KALDI_ERR << "Posterior pdf-id out of NN-output dimension, please check number of pdfs by 'hmm-info'."
+                  << " nn-outputs : " << num_pdf << ", posterior pdf-id : " << pdf;
+      }
       tgt_mat(t, pdf) += post[t][i].second;
     }
   }
