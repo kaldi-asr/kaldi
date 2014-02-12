@@ -43,6 +43,7 @@ my $del_count = 0;
 while (<I>) {
   chomp;
   my @col = split();
+  @col > 0 || next;
   @col == 3 || die "$0: Bad line in confusion matrix file: $_\n";
   my ($p1, $p2, $count) = ($col[0], $col[1], $col[2]);
   $count >= $cutoff || next;

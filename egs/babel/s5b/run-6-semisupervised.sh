@@ -16,7 +16,7 @@ set -o pipefail  #Exit if any of the commands in the pipeline will
 set -u           #Fail on an undefined variable
 
 target=`pwd`-unsupervised2
-min_cf=0.9
+min_cf=0.7
 max_cf=1.0
 expand_boundaries=0.0
 
@@ -43,6 +43,8 @@ mkdir -p $target/data
 for dir in raw_train_data raw_dev2h_data raw_dev10h_data; do
   ln -s `pwd`/data/$dir $target/data/ || true;
 done
+ln -s `pwd`/data/dev10h.uem $target/data
+ln -s `pwd`/data/dev2h.uem $target/data
 ln -s `pwd`/data/dev10h $target/data
 ln -s `pwd`/data/dev2h $target/data
 ln -s `pwd`/data/lang $target/data
@@ -56,9 +58,8 @@ for train_data_source in devtrain.uem semitrain.uem ; do
   tgt_datadir=data/train_${train_data_source}
   mkdir -p $target/$tgt_datadir
 
-  local/ctm2segments.pl --min-cf $min_cf --max-cf $max_cf \
-    --extend-segments $expand_boundaries \
-    exp/sgmm5_mmi_b0.1/decode_fmllr_${train_data_source}_it1/score_10/${train_data_source}.ctm.bkup1 $target/$tgt_datadir
+  local/ctm2segments.pl --min-cf $min_cf --max-cf $max_cf --cf-rule min \
+    data/${train_data_source} exp/sgmm5_mmi_b0.1/decode_fmllr_${train_data_source}_it1/score_10/${train_data_source}.utt.ctm $target/$tgt_datadir
 
   cp data/${train_data_source}/wav.scp  $target/$tgt_datadir
 
@@ -107,16 +108,16 @@ touch $target/data/lang/G.fst
       data/train data/lang exp/tri5 exp/tri5_ali || exit 1
     touch exp/tri5_ali/.done
   fi
-  
-  #For the time being, lets just train a new network.
-  ./run-2a-nnet-cpu.sh
 
-  exit 0
+  steps/nnet2/update_pnorm.sh --minibatch-size 128 \
+    --num-jobs-nnet 8 --num-threads 16 --parallel-opts '-pe smp 16' \
+    --cmd 'queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G' \
+    data/train data/lang exp/tri5_ali /export/a13/jtrmal/babel/206-zulu-limitedLP-kpitch2/exp/tri6_nnet exp/tri6_nnet
+  touch exp/tri6_nnet/.done 
 
-  mkdir -p $target/exp/tri6_nnet_2b
-  nnet-am-copy --binary=true --learning-rates="0.00342279:0.00342279:0.0:0" exp/tri6_nnet/final.mdl $target/exp/tri6_nnet_2b/init.mdl
+ ./run-5-anydecode2.sh --skip-kws true
 
-  cp exp/tri6_nnet_2b/init.mdl exp/tri6_nnet_2b/0.mdl
+
 
   #--steps/update_nnet_cpu.sh \
   #--  --mix-up "$dnn_mixup" \

@@ -26,6 +26,19 @@ if [ $# -ne 0 ]; then
   exit 1
 fi
 
+#For backward compatibility, we will assume the dirid is "UEM" if no extension used
+if [[ "${type%.*}" ==  "$type" ]]; then
+  #If no extension had been  used
+  datadir=data/${type}.uem
+  dirid=${type}.uem
+else
+  datadir=data/${type}
+  dirid=${type}
+  type="${type%%.*}"
+fi
+#Now the $type value will be the dataset name without any UEM extension. 
+#Still,we are able to figure out the correct output directory to use when running decoding
+
 if [[ "$type" != "dev10h" && "$type" != "dev2h" && "$type" != "eval" && "$type" != "shadow" ]] ; then
   echo "Warning: invalid variable type=${type}, valid values are dev10h|dev2h|eval"
   echo "Hope you know what your ar doing!"
@@ -100,9 +113,6 @@ for variable in $option_variables ; do
   echo "$variable=$my_variable"
 done
 
-datadir=data/${type}.uem
-dirid=${type}.uem
-skip_scoring=false
 if [[ $type == shadow ]] ; then
   if [ ! -f ${datadir}/.done ]; then
     # we expect that the ${dev2shadow} as well as ${eval2shadow} already exist
