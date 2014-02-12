@@ -101,7 +101,7 @@ gunzip -c $lmfile | \
 fstisstochastic $destdir/G.fst || true;
 
 if $cleanup; then
-  rm $destdir/lm_tmp.gz 2>/dev/null
+  rm $destdir/lm_tmp.gz  2>/dev/null || true;
 fi
 
 exit 0
