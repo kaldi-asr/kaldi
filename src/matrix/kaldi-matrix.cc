@@ -2072,13 +2072,16 @@ bool WriteHtk(std::ostream &os, const MatrixBase<double> &M, HtkHeader htk_hdr);
 template<class Real>
 bool WriteSphinx(std::ostream &os, const MatrixBase<Real> &M)
 {
+  // CMUSphinx mfc file header contains count of the floats, followed
+  // by the data in float little endian format.
+
   int size = M.NumRows() * M.NumCols();
   os.write((char*)&size, sizeof(int));
   if (os.fail())  goto bad;
 
   MatrixIndexT i;
   MatrixIndexT j;
-  if (sizeof(Real) == sizeof(float) && !MachineIsLittleEndian()) {
+  if (sizeof(Real) == sizeof(float) && MachineIsLittleEndian()) {
     for (i = 0; i< M.NumRows(); i++) {  // Unlikely to reach here ever!
       os.write((char*)M.RowData(i), sizeof(float)*M.NumCols());
       if (os.fail()) goto bad;
@@ -2090,7 +2093,7 @@ bool WriteSphinx(std::ostream &os, const MatrixBase<Real> &M)
       const Real *rowData = M.RowData(i);
       for (j = 0;j < M.NumCols();j++)
         pmem[j] =  static_cast<float> ( rowData[j] );
-      if (MachineIsLittleEndian())
+      if (!MachineIsLittleEndian())
         for (j = 0;j < M.NumCols();j++)
           KALDI_SWAP4(pmem[j]);
       os.write((char*)pmem, sizeof(float)*M.NumCols());
