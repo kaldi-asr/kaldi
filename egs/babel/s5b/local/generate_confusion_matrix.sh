@@ -15,6 +15,23 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 5 ]; then
   echo "Usage $0 [options] <data-dir> <model-dir> <ali-dir> <decode-dir> <out-dir>"
+  echo " e.g.: local/prepare_confusions.sh --nj 32  exp/sgmm5/graph exp/sgmm5 exp/sgmm5_ali exp/sgmm5_denlats  exp/conf_matrix"
+  echo ""
+  echo "main options (for others, see top of script file)"
+  echo "  --nj <nj>                                # number of parallel jobs"
+  echo "  --cmd <cmd>                              # Command to run in parallel with"
+  echo "  --acwt <value|default=0.1>               # Acoustic model weight. Value will be used for 1-best path decoding of the lattices"
+  echo ""
+  echo "Please note that the output confusion matrix will be phoneme-based"
+  echo "and all the phone contexts  (singleton, intra, begin, end) or phoneme"
+  echo "tags (such as tone or stress) will be collapsed into a single monophone"
+  echo ""
+  echo "The output format is line oriented."
+  echo "Each line can have one of these four formats (A, B being different phones, <eps> special symbol"
+  echo "  A A count        #Number of hits, i.e. correctly determined phones"
+  echo "  A B count        #Number of substitutions of A with B   "
+  echo "  A <eps> count    #Number of deletions"
+  echo "  <eps> A count    #Number of insertions"
   exit 1;
 fi
 
