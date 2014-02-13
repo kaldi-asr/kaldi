@@ -62,7 +62,7 @@ weight=$(perl -e "print (1.0/$num_sys);")
 systems=""
 for i in `seq 0 $[num_sys-1]`; do
   if [ -f ${decode_dirs[$i]} ] ; then
-    systems+="$weight ${decode_dirs[$i]}"
+    systems+="$weight ${decode_dirs[$i]} "
   else
     kwsfile=${decode_dirs[$i]}/kwslist.unnormalized.xml
     [ ! -f ${kwsfile} ] && echo "The file ${kwsfile} does not exist!" && exit 1
@@ -71,18 +71,18 @@ for i in `seq 0 $[num_sys-1]`; do
 done
 
 # Combination of the weighted sum and power rule
-$cmd PWR=1:10 $odir/log/combine_kws.PWR.log \
+$cmd PWR=1:9 $odir/log/combine_kws.PWR.log \
   mkdir -p $odir/kws_PWR/ '&&' \
-  local/naive_comb.pl --method=2 --inv-power=PWR \
+  local/naive_comb.pl --method=2 --power=0.PWR \
     $systems $odir/kws_PWR/kwslist.unnormalized.xml || exit 1
 
-$cmd PWR=1:10 $odir/log/postprocess_kws.PWR.log \
+$cmd PWR=1:9 $odir/log/postprocess_kws.PWR.log \
   utils/kwslist_post_process.pl --duration=${duration} --digits=3 \
     --normalize=true --Ntrue-scale=${Ntrue_scale} \
     $odir/kws_PWR/kwslist.unnormalized.xml \
     $odir/kws_PWR/kwslist.xml || exit 1
 
 if ! $skip_scoring ; then
-$cmd PWR=1:10 $odir/log/score_kws.PWR.log \
+$cmd PWR=1:9 $odir/log/score_kws.PWR.log \
   local/kws_score.sh $datadir $odir/kws_PWR || exit 1
 fi
