@@ -94,9 +94,9 @@
 stage=-5
 g2p_iters=5
 num_prons=1000000 # number of prons to generate.
-num_sent_gen=300000 # number of sents per job to generate.
-                    # this times nj should exceed num_prons by
-                    # a factor of at least several.
+num_sent_gen=12000000 # number of sents to generate. this should
+                      # exceed num_prons by a factor of at least
+                      # several.
 nj=40 # number of jobs to use for generation.
 encoding='utf-8' # option for g2p; leave this as it is.
 # the following two options are used in g2p generation.
@@ -112,8 +112,8 @@ cleanup=true
 . utils/parse_options.sh
 . path.sh
 
-if [ $# -ne 2 ]; then
-  echo "$0: usage: extend_lexicon.sh [options] <lexicon-in> <working-dir>"
+if [ $# -ne 2 ] && [ $# -ne 3 ]; then
+  echo "$0: usage: extend_lexicon.sh [options] <lexicon-in> <working-dir> [dev_text]"
   echo " e.g.: $0 data/local/lexicon_orig.txt data/local/extend/"
   echo "Will create in <working-dir> the files lexiconp.txt and oov2prob"
   echo "where lexiconp.txt is an extended lexicon with pronunciation"
@@ -128,6 +128,10 @@ fi
 
 input_lexicon=$1
 toplevel_dir=$2 # e.g. data/local/extend
+dev_text=
+if [ $# -eq 3 ]; then
+  dev_text=$3
+fi
 
 dir=$2/tmp  # most of our work happens in this "tmp" directory.
 
@@ -184,7 +188,7 @@ if [ $stage -le -5 ]; then
   cat $toplevel_dir/input_lexicon.txt | \
    awk '{for(n=2;n<=NF;n++) seen[$n]=1;} END{for (key in seen) print key;}' >$dir/phonelist
 
-   cat $dir/phonelist | perl -e ' @ids = ("a".."z", "A".."Z");
+   cat $dir/phonelist | perl -e ' @ids = ("a".."z", "A".."Z", "0".."9");
   @map = (); while(<>) {
   chomp;  $output = "$_ ";
   @col = split("_");
@@ -237,8 +241,10 @@ if [ $stage -le -2 ]; then
   mkdir -p $dir/log
   echo "$0: generating words from the syllable LM"
 
+  per_job_num_sent_gen=$[$num_sent_gen/$nj]
+
   $cmd JOB=1:$nj $dir/log/gen.JOB.log \
-    $ngram -lm $dir/lm.gz -gen $num_sent_gen -seed JOB \| \
+    $ngram -lm $dir/lm.gz -gen $per_job_num_sent_gen -seed JOB \| \
       sort -u \> $dir/sents.JOB || exit 1;
 fi
 
@@ -291,8 +297,13 @@ fi
 
 
 if [ $stage -le 0 ]; then
-  cat $dir/lexicon_in_nosil.txt | \
-    perl -ane '@A = split; $w = shift @A; print join("", @A) . "\t" . join(" ", split("", $w)) . "\n";' > $dir/lexicon_reverse.txt
+  cat $dir/lexicon_in_nosil.txt | perl -ane '
+    use Encode qw(decode encode);
+    @A = split; $w = shift @A;
+    $w = Encode::decode("'$encoding'", $w);
+    $w = join(" ", split("", $w));
+    $w = Encode::encode("'$encoding'", $w);
+    print join("", @A) . "\t" . $w . "\n";' > $dir/lexicon_reverse.txt
 
   echo "$0: Training the G2P model (iter 0)"
   if ! $skip_done || [ ! -f $dir/p2g.model.0 ]; then
@@ -316,7 +327,7 @@ for i in `seq 0 $(($g2p_iters-2))`; do
       echo "$0: $dir/p2g.model.$ii already exists: skipping it since --skip-done is true"
     fi
   fi
-  rm $dir/p2g.model.final
+  rm -f $dir/p2g.model.final
   ln -s p2g.model.$(($i+1)) $dir/p2g.model.final
 done
 
@@ -479,6 +490,45 @@ if [ $stage -le $[$g2p_iters+2] ]; then
   cat $dir/lexiconp_in.txt $dir/lexiconp_oov.txt | \
     local/apply_map_tab_preserving.pl -f 3- $dir/phone_map.reverse | sort -u > $toplevel_dir/lexiconp.txt
   cp $dir/oov2prob $toplevel_dir/oov2prob
+fi
+
+# Finally, if $dev_text is not empty, print out OOV rate. We assame $dev_text is
+# in the following format:
+# 14350_A_20121123_042710_001717 yebo yini
+# where "14350_A_20121123_042710_001717" is the utterance id and "yebo yini" is
+# the actual words.
+if [ ! -z $dev_text ]; then
+  # Original token OOV rate
+  cat $dev_text | awk '{for(n=2;n<=NF;n++) { print $n; }}' |\
+  perl -e '$lex = shift @ARGV; open(L, "<$lex")||die; while(<L>){ @A=split; $seen{$A[0]}=1;}
+    while(<STDIN>) { @A=split; $word=$A[0]; $tot++; if(defined $seen{$word}) { $invoc++; }}
+    $oov_rate = 100.0 * (1.0 - ($invoc / $tot));
+    printf("Seen $invoc out of $tot tokens; token OOV rate is %.2f\n", $oov_rate);' \
+    $toplevel_dir/input_lexicon.txt > $toplevel_dir/original_oov_rates
+
+  # New token OOV rate
+  cat $dev_text | awk '{for(n=2;n<=NF;n++) { print $n; }}' |\
+  perl -e '$lex = shift @ARGV; open(L, "<$lex")||die; while(<L>){ @A=split; $seen{$A[0]}=1;}
+    while(<STDIN>) { @A=split; $word=$A[0]; $tot++; if(defined $seen{$word}) { $invoc++; }}
+    $oov_rate = 100.0 * (1.0 - ($invoc / $tot));
+    printf("Seen $invoc out of $tot tokens; token OOV rate is %.2f\n", $oov_rate);' \
+    $toplevel_dir/lexiconp.txt > $toplevel_dir/new_oov_rates
+  
+  # Original type OOV rate
+  cat $dev_text | awk '{for(n=2;n<=NF;n++) { print $n; }}' | sort -u |\
+  perl -e '$lex = shift @ARGV; open(L, "<$lex")||die; while(<L>){ @A=split; $seen{$A[0]}=1;}
+    while(<STDIN>) { @A=split; $word=$A[0]; $tot++; if(defined $seen{$word}) { $invoc++; }}
+    $oov_rate = 100.0 * (1.0 - ($invoc / $tot));
+    printf("Seen $invoc out of $tot types; type OOV rate is %.2f\n", $oov_rate);' \
+    $toplevel_dir/input_lexicon.txt >> $toplevel_dir/original_oov_rates
+
+  # New type OOV rate
+  cat $dev_text | awk '{for(n=2;n<=NF;n++) { print $n; }}' | sort -u |\
+  perl -e '$lex = shift @ARGV; open(L, "<$lex")||die; while(<L>){ @A=split; $seen{$A[0]}=1;}
+    while(<STDIN>) { @A=split; $word=$A[0]; $tot++; if(defined $seen{$word}) { $invoc++; }}
+    $oov_rate = 100.0 * (1.0 - ($invoc / $tot));
+    printf("Seen $invoc out of $tot types; type OOV rate is %.2f\n", $oov_rate);' \
+    $toplevel_dir/lexiconp.txt >> $toplevel_dir/new_oov_rates
 fi
 
 exit 0;
