@@ -30,6 +30,7 @@
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
+  typedef kaldi::uint64 uint64;
   try {
     const char *usage =
         "Counts element frequencies from integer vector table.\n"
@@ -109,7 +110,7 @@ int main(int argc, char *argv[]) {
       
       // sort the counts
       std::vector<std::pair<int32,int32> > sorted_counts;
-      for (int32 i=0; i<counts.size(); i++) {
+      for (int32 i = 0; i < counts.size(); i++) {
         sorted_counts.push_back(std::make_pair(counts[i], i));
       }
       std::sort(sorted_counts.begin(), sorted_counts.end());
