@@ -254,10 +254,11 @@ void InitIdftBases(int32 n_bases, int32 dimension, Matrix<BaseFloat> *mat_out);
 BaseFloat ComputeLpc(const VectorBase<BaseFloat> &autocorr_in,
                      Vector<BaseFloat> *lpc_out);
 
-
+// This is used for speaker-id.  Also see OnlineCmnOptions in ../online2/, which
+// is online CMN with no latency, for online speech recognition.
 struct SlidingWindowCmnOptions {
-  int cmn_window;
-  int min_window;
+  int32 cmn_window;
+  int32 min_window;
   bool normalize_variance;
   bool center;
   

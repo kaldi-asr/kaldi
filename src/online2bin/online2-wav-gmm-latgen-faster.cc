@@ -20,6 +20,8 @@
 #include "feat/wave-reader.h"
 #include "online2/online-feature-pipeline.h"
 #include "online2/online-gmm-decoding.h"
+#include "online2/onlinebin-util.h"
+#include "fstext/fstext-lib.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -37,16 +39,16 @@ int main(int argc, char *argv[]) {
         "Usage: online-wav-gmm-decode-faster [options] <fst-in> <wav-rspecifier> "
         "<lattice-wspecifier> "
         "e.g.: ... \n"
-        "[TODO]\n"
+        "[TODO]\n";
     ParseOptions po(usage);
 
-    std::string spk2utt;
+    std::string spk2utt_rspecifier;
     OnlineFeaturePipelineConfig feature_config;
     OnlineGmmDecodingConfig decode_config;
     
     feature_config.Register(&po);
     decode_config.Register(&po);
-    po.Register("spk2utt", &spk2utt, "rspecifier for spk2utt mapping, "
+    po.Register("spk2utt", &spk2utt_rspecifier, "rspecifier for spk2utt map, "
                 "used when multiple utterances of the same speaker are "
                 "to be processed in incremental-adaptation mode");
     
@@ -67,12 +69,12 @@ int main(int argc, char *argv[]) {
         wav_rspecifier = po.GetArg(2),
         lat_wspecifier = po.GetArg(3);
 
-    fst::Fst<fst::StdArc> decode_fst = *ReadDecodeGraph(fst_rspecifier);
-
-
+    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
+    
+    
     int32 num_done = 0, num_err = 0;
     
-    if (spk2utt_rxfilename == "") {
+    if (spk2utt_rspecifier == "") {
       SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
       // TODO.
     } else {
@@ -94,6 +96,7 @@ int main(int argc, char *argv[]) {
           SingleUtteranceGmmDecoder decoder(decode_config,
                                             gmm_models,
                                             pipeline_prototype,
+                                            *decode_fst,
                                             adaptation_state);
           const WaveData &wave_data = wav_reader.Value(utt);
           // get the data for channel zero (if the signal is not mono, we only
@@ -110,7 +113,6 @@ int main(int argc, char *argv[]) {
             if (this_num_samp > data.Dim() - samp_offset)
               this_num_samp = data.Dim() - samp_offset;
             SubVector<BaseFloat> wave_part(data, samp_offset, this_num_samp);
-            KALDI_ASSERT(data.SampFreq() == decoder.FeaturePipeline().SampFreq());
             decoder.FeaturePipeline().AcceptWaveform(wave_data.SampFreq(),
                                                      wave_part);
             decoder.AdvanceFirstPass();
@@ -119,9 +121,9 @@ int main(int argc, char *argv[]) {
           decoder.SecondPass(); // note: you could call this at any point if
                                 // you wanted the second-pass output.
 
-          
-        }  
-    
+        }
+      }
+    }
     
     
     Int32VectorWriter words_writer(words_wspecifier);

@@ -97,150 +97,157 @@ template class OnlineMfccOrPlp<Mfcc>;
 template class OnlineMfccOrPlp<Plp>;
 
 
-// TODO rename and move to OnlineCmvn class? 
-/// The statistics were collected also using the vector feat.
-/// The function UndoStats recomputes the stats,
-/// so they corresponds to statistics computed without feat vector.
-void UndoStats(const Matrix<double> & feat, 
-                Matrix<double> *stats);
+void OnlineCmvn::ComputeStatsForFrame(int32 frame,
+                                      MatrixBase<double> *stats_out) {
+  KALDI_ASSERT(frame >= 0 && frame < src_->NumFramesReady());
+  int32 modulus = opts_.modulus;
 
-// TODO heavily based on src/transform/cmvn.h:ApplyCmvn.
-void ApplyCmvn(const MatrixBase<double> &stats, 
-                bool var_norm,
-                VectorBase<BaseFloat> *feat);
+  int32 index = frame / modulus; // rounds down, so this is the index into
+                                 // raw_stats_ of the most recent cached
+                                 // set of stats.
+  if (index >= raw_stats_.size())
+    index = static_cast<int32>(raw_stats_.size()) - 1;
+  // most_recent_frame is most recent cached frame, or -1.
+  int32 most_recent_frame = (index >= 0 ? index * modulus : -1); 
 
-void OnlineCmvn::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
-  src_->GetFrame(frame, feat);
-  if (frame < stats_.size()) {
-    // Apply the normalization from cached statistics.
-    ApplyCmvn(stats_[frame], norm_var_, feat);
+  int32 dim = this->Dim();
+  Matrix<double> stats(2, dim + 1);
+  
+  if (index >= 0)
+    stats.CopyFromMat(raw_stats_[index]);
+
+  Vector<BaseFloat> feats(dim);
+  Vector<double> feats_dbl(dim);
+
+  KALDI_ASSERT(most_recent_frame >= -1 && most_recent_frame <= frame);
+  
+  for (int32 f = most_recent_frame + 1; f <= frame; f++) {
+    src_->GetFrame(f, &feats);
+    feats_dbl.CopyFromVec(feats);
+    stats.Row(0).Range(0, dim).AddVec(1.0, feats_dbl);
+    stats.Row(1).Range(0, dim).AddVec2(1.0, feats_dbl);
+    stats(0, dim) += 1.0;
+    
+    int32 prev_f = f - opts_.cmn_window; 
+    if (prev_f >= 0) {
+      // we need to subtract frame prev_f from the stats.
+      src_->GetFrame(prev_f, &feats);
+      feats_dbl.CopyFromVec(feats);
+      stats.Row(0).Range(0, dim).AddVec(-1.0, feats_dbl);
+      stats.Row(1).Range(0, dim).AddVec2(-1.0, feats_dbl);
+      stats(0, dim) -= 1.0;
+    }
+    if (f % modulus == 0) {
+      int32 this_index = f / modulus;
+      KALDI_ASSERT(this_index == raw_stats_.size());
+      raw_stats_.resize(this_index + 1);
+      raw_stats_[this_index] = stats;
+    }
+  }
+  stats_out->CopyFromMat(stats);
+}
+
+
+// static
+void OnlineCmvn::SmoothOnlineCmvnStats(const MatrixBase<double> &speaker_stats,
+                                       const MatrixBase<double> &global_stats,
+                                       const OnlineCmvnOptions &opts,
+                                       MatrixBase<double> *stats) {
+  int32 dim = stats->NumCols() - 1;
+  double cur_count = (*stats)(0, dim);
+  // If count exceeded cmn_window it would be an error in how "window_stats"
+  // was accumulated.
+  KALDI_ASSERT(cur_count <= 1.001 * opts.cmn_window);
+  if (cur_count >= opts.cmn_window) return;
+  if (speaker_stats.NumRows() != 0) { // if we have speaker stats..
+    double count_from_speaker = opts.cmn_window - cur_count,
+        speaker_count = speaker_stats(0, dim);
+    if (count_from_speaker > opts.speaker_frames)
+      count_from_speaker = opts.speaker_frames;
+    if (count_from_speaker > speaker_count)
+      count_from_speaker = speaker_count;
+    if (count_from_speaker > 0.0)
+      stats->AddMat(count_from_speaker / speaker_count,
+                             speaker_stats);
+    cur_count = (*stats)(0, dim);
+  }
+  if (cur_count >= opts.cmn_window) return;  
+  if (global_stats.NumRows() != 0) {
+    double count_from_global = opts.cmn_window - cur_count,
+        global_count = global_stats(0, dim);
+    KALDI_ASSERT(global_count > 0.0);
+    if (count_from_global > opts.global_frames)
+      count_from_global = opts.global_frames;
+    if (count_from_global > 0.0)
+      stats->AddMat(count_from_global / global_count,
+                             global_stats);
   } else {
-    // Add the statistics for the new frame
-    // Storing count, sum and sum_square is the best way how to compute
-    // on the fly variance since 
-    // Var(a[n+1]) = Sum(a[0:n+1]^2) - Mean(a[0:n+1])^2 =
-    //             = Sum(a[0:n]^2) + (a[n]^2) - Mean(a[0:n+1])^2
-    Matrix<double> one_frame_stat;
-    one_frame_stat.Resize(2, src_->Dim() + 1, kSetZero);
-    AccCmvnStats(*feat, 1.0, &one_frame_stat);
-    AccCmvnStats(*feat, 1.0, &sliding_stat_);
-    window_.push_back(one_frame_stat);  // window_ is FIFO
-    if(WindowSize() > cmvn_window_) {
-      // Before removing the frame update the sliding_stat_
-      UndoStats(window_.front(), &sliding_stat_);
-      window_.pop_front();  // Removes the old frame
-    } else if (WindowSize() < min_window_) {
-      KALDI_ERR << "Supply more frames for input!" << std::endl
-                << "Can not compute CM[V]N on " << WindowSize() << 
-                "frames with minimal window size " << min_window_ << 
-                "!" << std::endl;
+    KALDI_ERR << "Global CMN stats are required";
+  }
+}
+
+void OnlineCmvn::GetFrame(int32 frame,
+                          VectorBase<BaseFloat> *feat) {
+  src_->GetFrame(frame, feat);
+  KALDI_ASSERT(feat->Dim() == this->Dim());
+  int32 dim = feat->Dim();
+  Matrix<double> stats(2, dim + 1);
+  if (frozen_state_.NumRows() != 0) { // the CMVN state has been frozen.
+    stats.CopyFromMat(frozen_state_);
+  } else {
+    // first get the raw CMVN stats (this involves caching..)
+    this->ComputeStatsForFrame(frame, &stats);
+    // now smooth them.
+    SmoothOnlineCmvnStats(orig_state_.speaker_cmvn_stats,
+                          orig_state_.global_cmvn_stats,
+                          opts_,
+                          &stats);
+  }
+
+  // call the function ApplyCmvn declared in ../transform/cmvn.h, which
+  // requires a matrix.
+  Matrix<BaseFloat> feat_mat(1, dim);
+  feat_mat.Row(0).CopyFromVec(*feat);
+  // the function ApplyCmvn takes a matrix, so form a one-row matrix to give it.
+  ApplyCmvn(stats, opts_.normalize_variance, &feat_mat);
+  feat->CopyFromVec(feat_mat.Row(0));
+}
+
+void OnlineCmvn::Freeze(int32 cur_frame) {
+  int32 dim = this->Dim();
+  Matrix<double> stats(2, dim + 1);
+  // get the raw CMVN stats
+  this->ComputeStatsForFrame(cur_frame, &stats);
+  // now smooth them.
+  SmoothOnlineCmvnStats(orig_state_.speaker_cmvn_stats,
+                        orig_state_.global_cmvn_stats,
+                        opts_,
+                        &stats);
+  this->frozen_state_ = stats;
+}
+
+void OnlineCmvn::OutputState(int32 cur_frame,
+                             OnlineCmvnState *state_out) {
+  *state_out = this->orig_state_;
+  { // This block updates state_out->speaker_cmvn_stats
+    int32 dim = this->Dim();
+    if (state_out->speaker_cmvn_stats.NumRows() == 0)
+      state_out->speaker_cmvn_stats.Resize(2, dim + 1);
+    Vector<BaseFloat> feat(dim);
+    Vector<double> feat_dbl(dim);
+    for (int32 t = 0; t <= cur_frame; t++) {
+      src_->GetFrame(t, &feat);
+      feat_dbl.CopyFromVec(feat);
+      state_out->speaker_cmvn_stats(0, dim) += 1.0;
+      state_out->speaker_cmvn_stats.Row(0).Range(0, dim).AddVec(1.0, feat_dbl);
+      state_out->speaker_cmvn_stats.Row(1).Range(0, dim).AddVec2(1.0, feat_dbl);
     }
-    // Store them to the cache
-    stats_.push_back(sliding_stat_);
-    KALDI_ASSERT(stats_.size() == frame);
-    // Apply the freshly updated cmvn stats
-    ApplyCmvn(sliding_stat_, norm_var_, feat);
   }
+  // Store any frozen state (the effect of the user possibly
+  // having called Freeze().
+  state_out->frozen_state = frozen_state_;
 }
 
-void OnlineCmvn::ApplyStats(const Matrix<BaseFloat> &stats) {
-  KALDI_ASSERT(stats.NumCols() == sliding_stat_.NumCols());
-  KALDI_ASSERT(stats.NumRows() == sliding_stat_.NumRows());
-   
-  sliding_stat_.CopyFromMat(stats);
-  int32 dim = sliding_stat_.NumCols() - 1;
-  double count = sliding_stat_(0, dim);
-
-  // Create artificial cumsum and cumsumsquared stats 
-  // which corresponds to stats 
-  Matrix<double> artificial;
-  // distributing cumsum and cumsumsquared equally
-  for (int32 d = 0; d < dim; ++d) {
-    double &m = artificial(0, d);
-    double &v = artificial(0, d);
-    m = stats(0, d) / count;
-    v = stats(1, d) / count;
-  }
-  // setting the count for one frame statistics and the dummy value
-  double &one_frame_count = artificial(0, dim);
-  double &dummy = artificial(1, dim);
-  dummy = 0;
-  one_frame_count = 1;
-
-  // fill the window with artificial stats
-  window_.clear();
-  for(int i = 0; i < count; ++i) {
-    window_.push_back(artificial);
-  }
-}
-
-void UndoStats(const Matrix<double> &frame_stat, Matrix<double> *sliding_stats) {
-  KALDI_ASSERT(sliding_stats->NumRows() == 2 && frame_stat.NumRows() == 2);
-  KALDI_ASSERT(sliding_stats->NumCols() == frame_stat.NumCols());
-  int32 dim = frame_stat.NumCols();
-  for (int32 d = 0; d < dim; ++d) {
-    double &m = (*sliding_stats)(0, d);
-    double &v = (*sliding_stats)(1, d);
-    m = m - frame_stat(0, d); // subtracting from cumsum
-    v = v - frame_stat(1, d); // subtracting from cumsumsq
-  }
-  // decrease the count of applied frames stats
-  double &count = (*sliding_stats)(0, dim);
-  count--;
-}
-
-void ApplyCmvn(const MatrixBase<double> &stats,
-               bool var_norm,
-               VectorBase<BaseFloat> *feats) {
-  KALDI_ASSERT(feats != NULL);
-  int32 dim = stats.NumCols() - 1;
-  if (stats.NumRows() > 2 || stats.NumRows() < 1 || feats->Dim() != dim) {
-    KALDI_ERR << "Dim mismatch in ApplyCmvn: cmvn "
-              << stats.NumRows() << 'x' << stats.NumCols()
-              << ", feats " << "1x" << feats->Dim();
-  }
-  if (stats.NumRows() == 1 && var_norm)
-    KALDI_ERR << "You requested variance normalization but no variance stats "
-              << "are supplied.";
-
-  double count = stats(0, dim);
-  // Do not change the threshold of 1.0 here: in the balanced-cmvn code, when
-  // computing an offset and representing it as stats, we use a count of one.
-  if (count < 1.0)
-    KALDI_ERR << "Insufficient stats for cepstral mean and variance normalization: "
-              << "count = " << count;
-
-  Matrix<BaseFloat> norm(2, dim);  // norm(0, d) = mean offset
-  // norm(1, d) = scale, e.g. x(d) <-- x(d)*norm(1, d) + norm(0, d).
-  for (int32 d = 0; d < dim; d++) {
-    double mean, offset, scale;
-    mean = stats(0, d)/count;
-    if (!var_norm) {
-      scale = 1.0;
-      offset = -mean;
-    } else {
-      double var = (stats(1, d)/count) - mean*mean,
-          floor = 1.0e-20;
-      if (var < floor) {
-        KALDI_WARN << "Flooring cepstral variance from " << var << " to "
-                   << floor;
-        var = floor;
-      }
-      scale = 1.0 / sqrt(var);
-      if (scale != scale || 1/scale == 0.0)
-        KALDI_ERR << "NaN or infinity in cepstral mean/variance computation\n";
-      offset = -(mean*scale);
-    }
-    norm(0, d) = offset;
-    norm(1, d) = scale;
-  }
-
-  // Apply the normalization.
-  for (int32 d = 0; d < dim; d++) {
-    BaseFloat &f = (*feats)(d);
-    f = norm(0, d) + f*norm(1, d);
-  }
-}
 
 int32 OnlineSpliceFrames::NumFramesReady() const {
   int32 num_frames = src_->NumFramesReady();

@@ -100,90 +100,184 @@ typedef OnlineMfccOrPlp<Mfcc> OnlineMfcc;
 typedef OnlineMfccOrPlp<Plp> OnlinePlp;
 
 
-/**
-   This struct stores stats fromthe OnlineCmvn feature-processing
-   object.  It is useful in transferring stats between utterances.
-   It also has a bool "frozen" value that is true if someone has
-   called Freeze() on the OnlineCmvn object that was used to create
-   these stats.  In that case the stats will represent the stats
-   up to the point where we froze the CMVN.  
-*/
-struct OnlineCmvnStats {
-  OnlineCmvnStats(): frozen(false) { }
-  Matrix<BaseFloat> stats;
-  bool frozen; /// if true, we're not further updating the CMVN
-               /// but will leave it at its current value.
+/// This class takes a Matrix<BaseFloat> and wraps it as an
+/// OnlineFeatureInterface: this can be useful where some earlier stage of
+/// feature processing has been done offline but you want to use part of the
+/// online pipeline.
+class OnlineMatrixFeature: public OnlineFeatureInterface {
+ public:
+  /// Caution: this class maintains the const reference from the constructor, so
+  /// don't let it go out of scope while this object exists.
+  OnlineMatrixFeature(const Matrix<BaseFloat> &mat): mat_(mat) { }
+
+  virtual int32 Dim() const { return mat_.NumCols(); }
+
+  virtual int32 NumFramesReady() const { return mat_.NumRows(); }
+
+  virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
+    feat->CopyFromVec(mat_.Row(frame));
+  }
+
+  virtual bool IsLastFrame(int32 frame) const {
+    return (frame + 1 == mat_.NumCols());
+  }
+  
+ private:
+  const Matrix<BaseFloat> &mat_;
 };
+  
+
+// Note the similarity with SlidingWindowCmnOptions, but there
+// are also differences.  One which doesn't appear in the config
+// itself, because it's a difference between the setups, is that
+// in OnlineCmn, we carry over data from the previous utterance,
+// or, if no previous utterance is available, from global stats,
+// or, if previous utterances are available but the total amount
+// of data is less than prev_frames, we pad with up to "global_frames"
+// frames from the global stats.
+struct OnlineCmvnOptions {
+  int32 cmn_window;
+  int32 speaker_frames; // must be <= cmn_window
+  int32 global_frames; // must be <= speaker_frames.
+  bool normalize_variance;
+
+  int32 modulus; // not configurable from command line, relates to how the class
+                 // computes the cmvn internally.
+  
+  OnlineCmvnOptions():
+      cmn_window(600),
+      speaker_frames(600),
+      global_frames(200),
+      normalize_variance(false),
+      modulus(10) { }
+  
+  void Check() {
+    KALDI_ASSERT(speaker_frames <= cmn_window && global_frames <= speaker_frames
+                 && modulus > 0);
+  }
+
+  void Register(ParseOptions *po) {
+    po->Register("cmn-window", &cmn_window, "Number of frames of sliding context "
+                 "for cepstral mean normalization.");
+    po->Register("global-frames", &global_frames, "Number of frames of "
+                 "global-average cepstral mean normalization stats to use for "
+                 "first utterance of a speaker");
+    po->Register("speaker-frames", &speaker_frames, "Number of frames of "
+                 "previous utterance(s) from this speaker to use in cepstral "
+                 "mean normalization");
+    // we name the config string "norm-vars" for compatibility with
+    // ../featbin/apply-cmvn.cc
+    po->Register("norm-vars", &normalize_variance, "If true, do "
+                 "cepstral variance normalization in addition to cepstral mean "
+                 "normalization ");
+  }
+};
+
+
+
+/** Struct OnlineCmvnState stores the state of CMVN adaptation between
+    utterances.  It stores the global CMVN stats and the stats of the current
+    speaker (if we have seen previous utterances for this speaker), and possibly
+    will have a member "frozen_state": if the user has called the function
+    Freeze() of class OnlineCmvn, to fix the CMVN so we can estimate fMLLR on
+    top of the fixed value, this will reflect how we were normalizing the mean
+    and (if applicable) variance at the time when that function was called.
+*/
+struct OnlineCmvnState {
+  // The following is the total CMVN stats for this speaker (up till now), in
+  // the same format.
+  Matrix<double> speaker_cmvn_stats;
+
+  // The following is the global CMVN stats, in the usual
+  // format, of dimension 2 x (dim+1), as [  sum-stats          count
+  //                                       sum-sqared-stats   0    ]
+  Matrix<double> global_cmvn_stats;
+
+  // If nonempty, contains CMVN stats representing the "frozen" state
+  // of CMVN that reflects how we were normalizing the data when the
+  // user called the Freeze() function in class OnlineCmvn. 
+  Matrix<double> frozen_state;
+  
+  OnlineCmvnState() { }
+  OnlineCmvnState(const Matrix<double> &global_stats):
+      global_cmvn_stats(global_stats) { }
+};
+
 
 class OnlineCmvn : public OnlineFeatureInterface {
  public:
-  // Initializer that includes prior stats (e.g. global stats,
-  // or stats from the same utterance).  Just provide empty matrices
-  // if you don't have stats available for either category
-  OnlineCmvn(SlidingWindowCmnOptions &opts,
-             const Matrix<BaseFloat> &global_stats,
-             const OnlineCmvnStats &prev_utt_stats);
-  
-  
+
   //
   // First, functions that are present in the interface:
   //
   virtual int32 Dim() const { return src_->Dim(); }
 
-  void Freeze(); // From this point it will freeze the CMN and will stop it
-                 // from changing.  Note: it won't freeze it to its current
-                 // value from online sliding-window adaptation, it will freeze it
-                 // to the whole-file value.  You can use GetCurrentStats()
-
-  // Gets the current
-  void GetCurrentState(
-      Matrix<BaseFloat> *cmvn_stats);
-
   virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
 
-  // FIXME now CMVN "eats" min-window frames
-  virtual int32 NumFramesReady() {
-    return std::max(src_->NumFramesReady() - min_window_, 0); 
-  }
-
+  // The online cmvn does not introduce any additional latency.
+  virtual int32 NumFramesReady() { return src_->NumFramesReady(); }
+    
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   //
   // Next, functions that are not in the interface.
   //
-  OnlineCmvn(int32 cmvn_window, OnlineFeatureInterface *src):
-    norm_var_(true), cmvn_window_(cmvn_window), src_(src), is_online_(true) 
-    { sliding_stat_.Resize(2, src->Dim() + 1, kSetZero); }
 
-  /// Should be called after calling GetFrame on the last available frame
-  void GetStats(Matrix<BaseFloat> *stats) const {
-    stats->CopyFromMat(sliding_stat_);
-  }
 
-  /// Start using immediately the statistics for normalisation.
-  void ApplyStats(const Matrix<BaseFloat> &stats);
+  OnlineCmvn(const OnlineCmvnOptions &opts,
+             const OnlineCmvnState &cmvn_state,
+             OnlineFeatureInterface *src):
+      opts_(opts), orig_state_(cmvn_state),
+      frozen_state_(cmvn_state.frozen_state), src_(src) { }
+  
+  // Outputs any state information from this utterance to "cmvn_state".
+  // The value of "cmvn_state" before the call does not matter: the output
+  // depends on the value of OnlineCmvnState the class was initialized
+  // with, the input feature values up to cur_frame, and the effects
+  // of the user possibly having called Freeze().
+  void OutputState(int32 cur_frame,
+                   OnlineCmvnState *cmvn_state);
+  
 
-  int32 WindowSize() { 
-    int32 last = sliding_stat_(0, sliding_stat_.NumCols() - 1);
-    int32 r = sliding_stat_(0, last); 
-    KALDI_ASSERT(r == window_.size());
-    return r;
-  }
-
+  // From this point it will freeze the CMN to what it would have
+  // been if measured at frame "cur_frame", and it will stop it
+  // from changing further. This also applies retroactively for this utterance, so if you
+  // call GetFrame() on previous frames, it will use the CMVN stats
+  // from cur_frame; and it applies in the future too if you then
+  // call OutputState() and use this state to initialize the next
+  // utterance's CMVN object.
+  void Freeze(int32 cur_frame); 
+  
  private:
-  // TODO move norm_var_, min_window_, cmn_window_, is_online to OnlineCmvnOpts struct
-  bool norm_var_;  // FIXME does not store 2. row if norm_var_==false
-  int32 min_window_;
-  int32 cmvn_window_;
-  Matrix<double> sliding_stat_;  // first row of Matrix is cumulated sum,
-                              // second row is the cumulated squared sum 
-                              // Matrix size is (2, Dim() + 1)
-                              // At Matrix(0, dim) is stored used window size
-                              // At Matrix(1, dim) is always stored 0 -> dummy
-  std::deque<Matrix<double> > window_;
-  std::vector<Matrix<double> > stats_; 
+
+  /// Smooth the CMVN stats "stats" (which are stored in the normal format as a
+  /// 2 x (dim+1) matrix), by possibly adding some stats from "global_stats"
+  /// and/or "speaker_stats", controlled by the config.  The best way to
+  /// understand the smoothing rule we use is just to look at the code.
+  static void SmoothOnlineCmvnStats(const MatrixBase<double> &speaker_stats,
+                                    const MatrixBase<double> &global_stats,
+                                    const OnlineCmvnOptions &opts,
+                                    MatrixBase<double> *stats);
+  
+  /// Computes the raw CMVN stats for this frame, making use of (and updating if
+  /// necessary) the cached statistics in raw_stats_.  This means the (x,
+  /// x^2, count) stats for the last up to opts_.cmn_window frames.
+  void ComputeStatsForFrame(int32 frame,
+                            MatrixBase<double> *stats);
+  
+  
+  OnlineCmvnOptions opts_;
+  OnlineCmvnState orig_state_; // reflects the state before we saw this utterance.
+  Matrix<double> frozen_state_; // If the user called Freeze(), this variable
+                                // will reflect the CMVN state that we froze at.
+  
+  // The variable below reflects the raw (count, x, x^2) statistics of the input, computed 
+  // every opts_.modulus frames.  raw_stats_[n / opts_.modulus] contains
+  // the (count, x, x^2) statistics for the frames from std::max(0, n - opts_.cmn_window)
+  // through n.
+  std::vector<Matrix<double> > raw_stats_;
+
   OnlineFeatureInterface *src_;
-  bool is_online_;
 };
 
 
@@ -197,11 +291,11 @@ class OnlineSpliceFrames: public OnlineFeatureInterface {
   }
 
   virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
-
+  
   virtual int32 NumFramesReady() const;
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
-
+  
   //
   // Next, functions that are not in the interface.
   //

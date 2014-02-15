@@ -43,6 +43,7 @@ namespace kaldi {
 struct OnlineGmmDecodingConfig {
   OnlineFeaturePipelineConfig feature_config;
 
+  BaseFloat fmllr_lattice_beam;
   BasisFmllrOptions basis_opts; // options for basis-fMLLR adaptation.
 
   LatticeFasterDecoderConfig faster_decoder_opts;
@@ -63,7 +64,7 @@ struct OnlineGmmDecodingConfig {
   int32 adaptation_threshold; // number of frames after which we first adapt.
                               // TODO: set this, make sure it's used (from calling code?)
   
-  OnlineGmmDecodingConfig(): acoustic_scale(0.1) { }
+  OnlineGmmDecodingConfig():  fmllr_lattice_beam(3.0), acoustic_scale(0.1) { }
   
   void Register(OptionsItf *po) {
     feature_config.Register(po);
@@ -116,7 +117,7 @@ class OnlineGmmDecodingModels {
 
 
 struct SpeakerAdaptationState {
-  OnlineCmvnStats cmvn_stats;
+  OnlineCmvnState cmvn_state;
   FmllrDiagGmmAccs spk_stats;
   Matrix<BaseFloat> cur_transform;
 };
@@ -127,6 +128,7 @@ struct SpeakerAdaptationState {
    than manually putting things together yourself.
 */
 class SingleUtteranceGmmDecoder {
+ public:
   SingleUtteranceGmmDecoder(const OnlineGmmDecodingConfig &config,
                             const OnlineGmmDecodingModels &models,                            
                             const OnlineFeaturePipeline &feature_prototype,
@@ -138,7 +140,10 @@ class SingleUtteranceGmmDecoder {
   /// advance the first pass as far as we can.
   void AdvanceFirstPass();
 
-
+  /// Returns true if we already have an fMLLR transform.  The user will
+  /// already know this; the call is for convenience.  
+  bool HasTransform() const;
+  
   /// Estimate the [basis-]fMLLR transform and apply it to the features.
   /// This will get used if you call RescoreLattice() or if you just
   /// continue decoding; however to get it applied retroactively
@@ -146,11 +151,17 @@ class SingleUtteranceGmmDecoder {
   /// "end_of_utterance" just affects how we interpret the final-probs in the
   /// lattice.
   void EstimateFmllr(bool end_of_utterance);
+
+  
   
   void GetAdaptationState(SpeakerAdaptationState *adaptation_state);
 
   ~SingleUtteranceGmmDecoder();
  private:
+  void AccumulateFmllrStats(const CompactLattice &clat,
+                            FmllrDiagGmmAccs *spk_stats);
+
+  
   OnlineGmmDecodingConfig config_;
   const OnlineGmmDecodingModels &models_;
   OnlineFeaturePipeline *feature_pipeline_;
