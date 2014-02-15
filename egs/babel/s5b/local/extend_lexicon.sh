@@ -109,6 +109,8 @@ skip_done=false # if true, allows us to skip over done g2p stages.
 cmd=run.pl
 cleanup=true
 
+echo "$0 $@"  # Print the command line for logging
+
 . utils/parse_options.sh
 . path.sh
 
