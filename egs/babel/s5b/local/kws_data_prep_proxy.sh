@@ -6,8 +6,12 @@
 # Begin configuration section.  
 nj=8
 cmd=run.pl
-beam=5              # Beam for proxy FST
-nbest=100           # Use first n best proxy keywords
+beam=-1             # Beam for proxy FST, -1 means no prune
+phone_beam=-1       # Beam for KxL2xE FST, -1 means no prune
+nbest=-1            # Use top n best proxy keywords in proxy FST, -1 means all
+                    # proxies
+phone_nbest=50      # Use top n best phone sequences in KxL2xE, -1 means all
+                    # phone sequences
 phone_cutoff=5      # We don't generate proxy keywords for OOV keywords that
                     # have less phones than the specified cutoff as they may
                     # introduce a lot false alarms
@@ -74,15 +78,19 @@ cat $keywords | perl -e '
 
 # Takes care of upper/lower case.
 cp $langdir/words.txt $kwsdatadir/words.txt
-cp $l1_lexicon $kwsdatadir/tmp/L1.tmp.lex
+cat $l1_lexicon | sed 's/\s/ /g' > $kwsdatadir/tmp/L1.tmp.lex
 if $case_insensitive; then
   echo "$0: Running case insensitive processing"
   echo "$0: Using ICU with transofrm \"$icu_transform\""
 
+  # Processing words.txt
+  cat $kwsdatadir/words.txt |\
+    uconv -f utf8 -t utf8 -x "${icu_transform}"  > $kwsdatadir/words.norm.txt
+
   # Processing lexicon
   cat $l2_lexicon | sed 's/\s/ /g' | cut -d ' ' -f 1 |\
     uconv -f utf8 -t utf8 -x "${icu_transform}" |\
-    paste - <(cat $l2_lexicon | sed 's/\s/ /g' | cut -d ' ' -f 2-) \
+    paste -d ' ' - <(cat $l2_lexicon | sed 's/\s/ /g' | cut -d ' ' -f 2-) \
     > $kwsdatadir/tmp/L2.tmp.lex
 
   paste <(cut -f 1 $kwsdatadir/raw_keywords_all.txt) \
@@ -90,10 +98,10 @@ if $case_insensitive; then
     uconv -f utf8 -t utf8 -x "${icu_transform}") \
     > $kwsdatadir/keywords_all.txt
   cat $kwsdatadir/keywords_all.txt |\
-    local/kwords2indices.pl --map-oov 0 $kwsdatadir/words.txt \
+    local/kwords2indices.pl --map-oov 0 $kwsdatadir/words.norm.txt \
     > $kwsdatadir/keywords_all.int
 else
-  cp $l2_lexicon $kwsdatadir/tmp/L2.tmp.lex
+  cat $l2_lexicon | sed 's/\s/ /g' > $kwsdatadir/tmp/L2.tmp.lex
   cp $kwsdatadir/raw_keywords_all.txt $kwsdatadir/keywords_all.txt
   
   cat $kwsdatadir/keywords_all.txt | \
@@ -101,20 +109,15 @@ else
     > $kwsdatadir/keywords_all.int
 fi
 
-# Maps original phone set to a "reduced" phone set. If a word appears in both l1
-# lexicon and l2 lexicon, we use the pronunciation from l1 lexicon. The final l2
-# lexicon includes all the words from the original l1 and l2 lexicon.
-cat $kwsdatadir/tmp/L1.tmp.lex | sed 's/\s/ /g' | cut -d ' ' -f 1 |\
-  paste - <(cat $kwsdatadir/tmp/L1.tmp.lex | sed 's/\s/ /g' | cut -d ' ' -f 2-|\
+# Maps original phone set to a "reduced" phone set.
+cat $kwsdatadir/tmp/L1.tmp.lex | cut -d ' ' -f 1 |\
+  paste - <(cat $kwsdatadir/tmp/L1.tmp.lex | cut -d ' ' -f 2-|\
   sed 's/_[B|E|I|S]//g' | sed 's/_[%|"]//g') |\
   awk '{if(NF>=2) {print $0}}' > $kwsdatadir/tmp/L1.lex
-cat $kwsdatadir/tmp/L2.tmp.lex | sed 's/\s/ /g' | cut -d ' ' -f 1 |\
-  paste - <(cat $kwsdatadir/tmp/L2.tmp.lex | sed 's/\s/ /g' | cut -d ' ' -f 2-|\
+cat $kwsdatadir/tmp/L2.tmp.lex | cut -d ' ' -f 1 |\
+  paste - <(cat $kwsdatadir/tmp/L2.tmp.lex | cut -d ' ' -f 2-|\
   sed 's/_[B|E|I|S]//g' | sed 's/_[%|"]//g') |\
-  awk '{if(NF>=2) {print $0}}' |\
-  grep -v -f <(cat $kwsdatadir/tmp/L1.lex |\
-  awk '{print "^"$1"[\t| ]"}' | sort -u) |\
-  cat - $kwsdatadir/tmp/L1.lex > $kwsdatadir/tmp/L2.lex
+  awk '{if(NF>=2) {print $0}}' > $kwsdatadir/tmp/L2.lex
 rm -f $kwsdatadir/tmp/L1.tmp.lex $kwsdatadir/tmp/L2.tmp.lex
 
 # Writes some scoring related files.
@@ -187,6 +190,7 @@ cat $kwsdatadir/keywords_proxy.txt | perl -e '
 # Creates proxy keywords.
 local/generate_proxy_keywords.sh \
   --cmd "$cmd" --nj "$nj" --beam "$beam" --nbest "$nbest" \
+  --phone-beam $phone_beam --phone-nbest $phone_nbest \
   --confusion-matrix "$confusion_matrix" --count-cutoff "$count_cutoff" \
   --pron-probs "$pron_probs" $kwsdatadir/tmp/
 cp $kwsdatadir/tmp/keywords.fsts $kwsdatadir

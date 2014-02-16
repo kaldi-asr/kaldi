@@ -6,8 +6,12 @@
 # Begin configuration section.  
 nj=8
 cmd=run.pl
-beam=5              # Beam for proxy FST
-nbest=100           # Use first n best proxy keywords
+beam=-1             # Beam for proxy FST, -1 means no prune
+phone_beam=-1       # Beam for KxL2xE FST, -1 means no prune
+nbest=-1            # Use top n best proxy keywords in proxy FST, -1 means all
+                    # proxies
+phone_nbest=50      # Use top n best phone sequences in KxL2xE, -1 means all
+                    # phone sequences
 confusion_matrix=   # If supplied, using corresponding E transducer
 count_cutoff=1      # Minimal count to be considered in the confusion matrix;
                     # will ignore phone pairs that have count less than this.
@@ -96,7 +100,7 @@ cat $kwsdatadir/phones.txt |\
 
 # Pre-composes L2 and E, for the sake of efficiency
 fstcompose $kwsdatadir/L2.fst $kwsdatadir/E.fst |\
-  fstarcsort --sort_type=olabel > $kwsdatadir/L2xE.fst
+  fstarcsort --sort_type=ilabel > $kwsdatadir/L2xE.fst
 
 keywords=$kwsdatadir/keywords.int
 # Prepares for parallelization
@@ -113,7 +117,9 @@ fi
 mkdir -p $kwsdatadir/split/log
 $cmd JOB=1:$nj $kwsdatadir/split/log/proxy.JOB.log \
   split -n l/JOB/$nj $keywords \| \
-  generate-proxy-keywords --verbose=1 --cost-threshold=$beam --nBest=$nbest \
+  generate-proxy-keywords --verbose=1 \
+  --proxy-beam=$beam --proxy-nbest=$nbest \
+  --phone-beam=$phone_beam --phone-nbest=$phone_nbest \
   $kwsdatadir/L2xE.fst $kwsdatadir/L1.fst ark:- ark:$kwsdatadir/split/proxy.JOB.fsts
 
 proxy_fsts=""
