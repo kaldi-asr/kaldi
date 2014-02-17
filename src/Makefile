@@ -23,7 +23,7 @@ SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
 
 # Optional subdirectories
-EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
+EXT_SUBDIRS = online onlinebin dec-wrap 
 EXT_SUBDIRS_LIB = $(filter-out %bin, $(EXT_SUBDIRS))
 
 include kaldi.mk
@@ -168,6 +168,6 @@ nnet2: base util matrix thread lat
 ivector: base util matrix thread transform tree gmm 
 #3)Dependencies for optional parts of Kaldi
 onlinebin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online
-# python-kaldi-decoding: base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
+dec-wrap: base matrix util feat tree optimization thread gmm tied transform sgmm sgmm2 fstext hmm decoder lat
 online: decoder
 kwsbin: fstext lat base util

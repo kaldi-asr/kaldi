@@ -1,0 +1,7 @@
+include README*
+include Makefile
+include *.mk
+# todo add recursive
+include *.json
+include *.config
+prune build/dist

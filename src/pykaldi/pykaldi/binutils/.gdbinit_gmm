@@ -1,0 +1,7 @@
+directory ../../../dec-wrap
+directory ../../../decoder
+directory ../../../feat
+
+b feature-mfcc.cc:75
+
+run
