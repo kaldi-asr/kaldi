@@ -41,9 +41,6 @@
     svn co https://svn.code.sf.net/p/kaldi/code/trunk kaldi-trunk
   \endverbatim
 
-  Please note that we used to suggest the "svn" URI instead of the "https" one but it 
-  seems that recently the "svn" URI had been disallowed on sf.net.
-
   You can check out the "stable" branch of Kaldi, which is mostly a subset of the
   "trunk" with more stringent quality control, as follows (but note: right now, it is
   a few months behind the trunk):
