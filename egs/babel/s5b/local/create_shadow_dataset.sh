@@ -172,9 +172,5 @@ if [ $stage -le 3 ] ; then
   ' $dest/kws/kwlist.xml $dest/kws/kws_map.dev.txt $dest/kws/kws_map.test.txt || exit 1
 fi
 
-#RTTM file is not necessary
-
-utils/fix_data_dir.sh data/shadow.uem
-
 exit 0
 
