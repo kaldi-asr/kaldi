@@ -105,7 +105,7 @@ fstcompose $kwsdatadir/L2.fst $kwsdatadir/E.fst |\
 keywords=$kwsdatadir/keywords.int
 # Prepares for parallelization
 cat $kwsdatadir/keywords.txt |\
-  utils/sym2int.pl -f 2- $kwsdatadir/words.txt > $keywords
+  utils/sym2int.pl -f 2- $kwsdatadir/words.txt | sort -R > $keywords
 
 nof_keywords=`cat $keywords|wc -l`
 if [ $nj -gt $nof_keywords ]; then

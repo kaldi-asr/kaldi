@@ -33,9 +33,9 @@ echo $0 "$@"
 
 if [ $# -ne 5 ]; then
   echo "Usage: local/kws_data_prep_proxy.sh <lang-dir> <data-dir> \\"
-  echo "                 <kws-data-dir> <L1-lexicon> <L2-lexicon>"
+  echo "                 <L1-lexicon> <L2-lexicon> <kws-data-dir>"
   echo " e.g.: local/kws_data_prep_proxy.sh data/lang/ data/dev10h/ \\"
-  echo "      data/dev10h/kws/ data/local/tmp.lang/lexiconp.txt oov_lexicon.txt"
+  echo "      data/local/tmp.lang/lexiconp.txt oov_lexicon.txt data/dev10h/kws/"
   echo "allowed options:"
   echo "  --case-sensitive <true|false>  # Being case-sensitive or not"
   echo "  --icu-transform  <string>      # Transliteration for upper/lower case" 
@@ -49,9 +49,9 @@ set -o pipefail
 
 langdir=$1
 datadir=$2
-kwsdatadir=$3
-l1_lexicon=$4
-l2_lexicon=$5
+l1_lexicon=$3
+l2_lexicon=$4
+kwsdatadir=$5
 
 # Checks some files.
 for f in $langdir/words.txt $kwsdatadir/kwlist.xml $l1_lexicon $l2_lexicon; do
@@ -109,17 +109,6 @@ else
     > $kwsdatadir/keywords_all.int
 fi
 
-# Maps original phone set to a "reduced" phone set.
-cat $kwsdatadir/tmp/L1.tmp.lex | cut -d ' ' -f 1 |\
-  paste - <(cat $kwsdatadir/tmp/L1.tmp.lex | cut -d ' ' -f 2-|\
-  sed 's/_[B|E|I|S]//g' | sed 's/_[%|"]//g') |\
-  awk '{if(NF>=2) {print $0}}' > $kwsdatadir/tmp/L1.lex
-cat $kwsdatadir/tmp/L2.tmp.lex | cut -d ' ' -f 1 |\
-  paste - <(cat $kwsdatadir/tmp/L2.tmp.lex | cut -d ' ' -f 2-|\
-  sed 's/_[B|E|I|S]//g' | sed 's/_[%|"]//g') |\
-  awk '{if(NF>=2) {print $0}}' > $kwsdatadir/tmp/L2.lex
-rm -f $kwsdatadir/tmp/L1.tmp.lex $kwsdatadir/tmp/L2.tmp.lex
-
 # Writes some scoring related files.
 cat $kwsdatadir/keywords_all.int |\
   egrep -v " 0 | 0$" | cut -f 1 -d ' ' |\
@@ -140,6 +129,66 @@ else
 fi
 cat $kwsdatadir/keywords_all.txt |\
   grep -f $kwsdatadir/keywords_proxy.list > $kwsdatadir/keywords_proxy.txt
+cat $kwsdatadir/keywords_proxy.txt |\
+  cut -f 2- | awk '{for(x=1;x<=NF;x++) {print $x;}}' |\
+  sort -u > $kwsdatadir/keywords_proxy_words.list
+
+# Maps original phone set to a "reduced" phone set. We limit L2 to only cover
+# the words that are actually used in keywords_proxy.txt for efficiency purpose.
+# Besides, if L1 and L2 contains the same words, we use the pronunciation from
+# L1 since it is the lexicon used for the LVCSR training.
+cat $kwsdatadir/tmp/L1.tmp.lex | cut -d ' ' -f 1 |\
+  paste -d ' ' - <(cat $kwsdatadir/tmp/L1.tmp.lex | cut -d ' ' -f 2-|\
+  sed 's/_[B|E|I|S]//g' | sed 's/_[%|"]//g') |\
+  awk '{if(NF>=2) {print $0}}' > $kwsdatadir/tmp/L1.lex
+cat $kwsdatadir/tmp/L2.tmp.lex | cut -d ' ' -f 1 |\
+  paste -d ' ' - <(cat $kwsdatadir/tmp/L2.tmp.lex | cut -d ' ' -f 2-|\
+  sed 's/_[B|E|I|S]//g' | sed 's/_[%|"]//g') |\
+  awk '{if(NF>=2) {print $0}}' | perl -e '
+  ($lex1, $words) = @ARGV;
+  open(L, "<$lex1") || die "Fail to open $lex1.\n";
+  open(W, "<$words") || die "Fail to open $words.\n";
+  while (<L>) {
+    chomp;
+    @col = split;
+    @col >= 2 || die "Too few columsn in \"$_\".\n";
+    $w = $col[0];
+    $w_p = $_;
+    if (defined($lex1{$w})) {
+      push(@{$lex1{$w}}, $w_p);
+    } else {
+      $lex1{$w} = [$w_p];
+    }
+  }
+  close(L);
+  while (<STDIN>) {
+    chomp;
+    @col = split;
+    @col >= 2 || die "Too few columsn in \"$_\".\n";
+    $w = $col[0];
+    $w_p = $_;
+    if (defined($lex1{$w})) {
+      next;
+    }
+    if (defined($lex2{$w})) {
+      push(@{$lex2{$w}}, $w_p);
+    } else {
+      $lex2{$w} = [$w_p];
+    }
+  }
+  %lex = (%lex1, %lex2);
+  while (<W>) {
+    chomp;
+    if (defined($lex{$_})) {
+      foreach $x (@{$lex{$_}}) {
+        print "$x\n";
+      }
+    }
+  }
+  close(W);
+  ' $kwsdatadir/tmp/L1.lex $kwsdatadir/keywords_proxy_words.list \
+  > $kwsdatadir/tmp/L2.lex
+rm -f $kwsdatadir/tmp/L1.tmp.lex $kwsdatadir/tmp/L2.tmp.lex
 
 # Creates words.txt that covers all the words in L1.lex and L2.lex. We append
 # new words to the original word symbol table.
