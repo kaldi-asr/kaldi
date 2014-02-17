@@ -134,7 +134,7 @@ class LatticeFasterDecoder {
   bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const;
 
 
- private:
+ protected:
   struct Token;
   // ForwardLinks are the links from a token to a token on the next frame.
   // or sometimes on the current frame (for input-epsilon links).
