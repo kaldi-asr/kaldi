@@ -37,10 +37,14 @@ fi
 set -o errtrace 
 trap "echo Exited!; exit;" SIGINT SIGTERM
 
+dataset_segments=${dir##*.}
+dataset_dir=data/$dir
+dataset_id=$dir
+dataset_type=${dir%%.*}
 #By default, we want the script to accept how the dataset should be handled,
 #i.e. of  what kind is the dataset
 if [ -z ${kind} ] ; then
-  if [ "$datset_type" == "dev2h" ] || [ "$dataset_type" == "dev10h" ] ; then
+  if [ "$dataset_type" == "dev2h" ] || [ "$dataset_type" == "dev10h" ] ; then
     dataset_kind=supervised
   elif [ "$dataset_type" == "shadow" ] ; then
     dataset_kind=shadow
@@ -50,10 +54,6 @@ if [ -z ${kind} ] ; then
 else
   dataset_kind=$kind
 fi
-dataset_segments=${dir##*.}
-dataset_dir=data/$dir
-dataset_id=$dir
-dataset_type=${dir%%.*}
 
 if [ -z $dataset_segments ]; then
   echo "You have to specify the segmentation type as well"
@@ -63,6 +63,10 @@ if [ -z $dataset_segments ]; then
   echo "\tpem   #PEM segmentation"
   echo "\tuem   #UEM segmentation in the CMU database format"
   echo "\tseg   #UEM segmentation (kaldi-native)"
+fi
+
+if [ "$dataset_kind" == "unsupervised" ]; then
+  skip_scoring=true
 fi
 
 #Just a minor safety precaution to prevent using incorrect settings
@@ -79,10 +83,11 @@ eval my_data_list=\$${dataset_type}_data_list
 eval my_stm_file=\$${dataset_type}_stm_file
 
 eval my_ecf_file=\$${dataset_type}_ecf_file 
-eval my_subset_ecf=\$${dataset_type}_subset_ecf 
 eval my_kwlist_file=\$${dataset_type}_kwlist_file 
 eval my_rttm_file=\$${dataset_type}_rttm_file
 eval my_nj=\$${dataset_type}_nj  #for shadow, this will be re-set when appropriate
+my_subset_ecf=false
+eval [ \${${dataset_type}_subset_ecf+x}  ] && my_subset_ecf=\$${dataset_type}_subset_ecf 
 
 declare -A my_more_kwlists
 eval my_more_kwlist_keys="\${!${dataset_type}_more_kwlists[@]}"
@@ -111,7 +116,7 @@ function check_variables_are_set {
   for variable in $mandatory_variables ; do
     eval my_variable=\$${variable}
     if [ -z $my_variable ] ; then
-      echo "Mandatory variable ${variable/my_/$dataset_type} is not set! " \
+      echo "Mandatory variable ${variable/my/$dataset_type} is not set! " \
            "You should probably set the variable in the config file "
       exit 1
     else
