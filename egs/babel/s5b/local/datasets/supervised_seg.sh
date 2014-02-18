@@ -54,7 +54,7 @@ if [ "$l1" -ne "$l2" ] ; then
 fi
 
 echo "Creating the $unseg_dir/reco2file_and_channel file"
-cat $unseg_dir/wav.scp | awk '{print $1, $1, A;}' > $unseg_dir/reco2file_and_channel
+cat $unseg_dir/wav.scp | awk '{print $1, $1, "A";}' > $unseg_dir/reco2file_and_channel
 cat $unseg_dir/wav.scp | awk '{print $1, $1;}' > $unseg_dir/utt2spk
 utils/utt2spk_to_spk2utt.pl $unseg_dir/utt2spk > $unseg_dir/spk2utt
   

@@ -55,7 +55,7 @@ if [ $ali_nj -ne $lat_nj ] ; then
   echo "Alignments num_jobs and lattices num_jobs mismatch!"
   exit 1
 fi
-[ ! $nj -le $ali_nj ] && echo "Number of jobs is too high (max is $ali_nj)." && exit 1
+[ ! $nj -le $ali_nj ] && echo "Number of jobs is too high (max is $ali_nj)." && nj=$ali_nj
 
 mkdir -p $wdir/log
 
