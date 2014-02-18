@@ -92,15 +92,13 @@ use Getopt::Long;
       $nVoclNoise = "<noise>";
       $silence    = "<silence>";
       $icu_transform="";
-      $get_whole_transcripts = "false";
 #
 ########################################################################
 
 GetOptions("fragmentMarkers=s" => \$fragMarkers,
            "oov=s" => \$OOV_symbol, 
            "vocab=s" => \$vocabFile,
-           "icu-transform=s" => \$icu_transform,
-           "get-whole-transcripts=s" => \$get_whole_transcripts
+           "icu-transform=s" => \$icu_transform
            );
 
 if ($#ARGV == 1) {
@@ -118,7 +116,6 @@ if ($#ARGV == 1) {
     print STDERR ("\t--vocab <file>             File containing the permitted vocabulary\n");
     print STDERR ("\t--oov <symbol>             Use this symbol for OOV words (default <unk>)\n");
     print STDERR ("\t--fragmentMarkers <chars>  Remove these from ends of words to minimize OOVs (default none)\n");
-    print STDERR ("\t--get-whole-transcripts (true|false) Do not remove utterances containing no speech\n");
     exit(1);
 }
 
@@ -275,10 +272,8 @@ if (-d $TranscriptionDir) {
 			}
 		    }
 		    $text =~ s:^\s+::; # Remove leading white space, if any
-        # Transcriptions must contain real words to be useful in training
-        if ($get_whole_transcripts ne "true") {
-          $text =~ s:^(($OOV_symbol|$vocalNoise|$nVoclNoise|$silence)[ ]{0,1})+$::;
-        }
+                    # Transcriptions must contain real words to be useful in training
+                    $text =~ s:^(($OOV_symbol|$vocalNoise|$nVoclNoise|$silence)[ ]{0,1})+$::;
 		}
 	    }
             close(TRANSCRIPTION);
@@ -344,9 +339,10 @@ if (-d $AudioDir) {
 
     @AudioFiles = `ls ${AudioDir}/*.wav`;
     if ($#AudioFiles >= 0) {
-        $soxi=`which soxi` or die "$0: Could not find soxi binary -- do you have sox installed?\n";
+        $soxi=`which soxi` or die "Could not find soxi binary -- do you have sox installed?\n";
         chomp $soxi;
         printf STDERR ("$0: Found %d .wav files in $AudioDir\n", ($#AudioFiles +1));
+        print STDERR "Soxi found: $soxi\n";
         $numFiles = 0;
         while ($filename = shift @AudioFiles) {
             $fileID = $filename;

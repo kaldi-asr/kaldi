@@ -80,9 +80,6 @@ $reco2ctmFile = "$inDir/reco2file_and_channel";
 # Read the segmentIDs, file-IDs, start- and end-times from the segments file
 ################################################################################
 
-my $num_failed_parses=0;
-my $num_failed_parses_max=10;
-
 die "Current version of script requires a segments file" unless (-e $segmentsFile);
 
 open(SEGMENTS, $segmentsFile)
@@ -91,19 +88,13 @@ $numSegments = 0;
 while ($line=<SEGMENTS>) {
     @tokens = split(/\s+/, $line);
     unless ($#tokens == 3) {
-      $num_failed_parses+=1;
-      print STDERR "$0: Couldn't parse line $. in $segmentsFile\n" 
-        if ($num_failed_parses == 1);
-      print STDERR ("\tLine: $line")
-        if ($num_failed_parses le $num_failed_parses_max);
-      print STDERR "$0: Maximal threshold for failed line parses reached. Not warning anymore\n"
-        if ($num_failed_parses eq $num_failed_parses_max);
-    	next;
+	print STDERR ("$0: Couldn't parse line $. in $segmentsFile\n\t$line\n");
+	next;
     }
     $segmentID = shift @tokens;
     if (exists $fileID{$segmentID}) {
-      print STDERR ("$0: Skipping duplicate segment ID $segmentID in $segmentsFile\n");
-    	next;
+	print STDERR ("$0: Skipping duplicate segment ID $segmentID in $segmentsFile\n");
+	next;
     }
     $fileID{$segmentID}    = shift @tokens;
     $startTime{$segmentID} = shift @tokens;
@@ -112,7 +103,6 @@ while ($line=<SEGMENTS>) {
 }
 close(SEGMENTS);
 print STDERR ("$0: Read info about $numSegments segment IDs from $segmentsFile\n");
-print STDERR ("$0: In total $num_failed_parses lines failed to be parsed.\n");
 
 ################################################################################
 # Read the waveform filenames from the wav.scp file.  (Parse sph2pipe command.)
@@ -121,21 +111,14 @@ print STDERR ("$0: In total $num_failed_parses lines failed to be parsed.\n");
 open(SCP, $scpFile)
     || die "Unable to open scp file $scpFile\n";
 $numRecordings = 0;
-$num_failed_parses=0;
 while ($line=<SCP>) {
     chomp;
     if ($line =~ m:^\s*(\S+)\s+(.+)$:) {
 	$recordingID  = $1;
 	$waveformFile = $2;
     } else {
-      $num_failed_parses+=1;
-      print STDERR ("$0: Couldn't parse line $. in $scpFile\n")
-        if ($num_failed_parses == 1);
-      print STDERR ("\tLine: $line")
-        if ($num_failed_parses le $num_failed_parses_max);
-      print STDERR "$0: Maximal threshold for failed line parses reached. Not warning anymore\n"
-        if ($num_failed_parses eq $num_failed_parses_max);
-      next;
+	print STDERR ("$0: Couldn't parse line $. in $scpFile\n\t$line\n");
+	next;
     }
     if (exists $waveform{$recordingID}) {
 	print STDERR ("$0: Skipping duplicate recording ID $recordingID in $scpFile\n");
@@ -179,7 +162,6 @@ while ($line=<SCP>) {
 }
 close(SCP);
 print STDERR ("$0: Read filenames for $numRecordings recording IDs from $scpFile\n");
-print STDERR ("$0: In total $num_failed_parses lines failed to be parsed.\n");
 
 ################################################################################
 # Read speaker information from the utt2spk file
@@ -188,18 +170,11 @@ print STDERR ("$0: In total $num_failed_parses lines failed to be parsed.\n");
 open(UTT2SPK, $utt2spkFile)
     || die "Unable to read utt2spk file $utt2spkFile";
 $numSegments = 0;
-$num_failed_parses = 0;
 while ($line=<UTT2SPK>) {
     @tokens = split(/\s+/, $line);
     if (! ($#tokens == 1)) {
-      $num_failed_parses+=1;
-      print STDERR ("$0: Couldn't parse line $. in $utt2spkFile\n")
-        if ($num_failed_parses == 1);
-      print STDERR ("\tLine: $line")
-        if ($num_failed_parses le $num_failed_parses_max);
-      print STDERR "$0: Maximal threshold for failed line parses reached. Not warning anymore\n"
-        if ($num_failed_parses eq $num_failed_parses_max);
-      next;
+	print STDERR ("$0: Couldn't parse line $. in $utt2spkFile\n\t$line\n");
+	next;
     }
     $segmentID = shift @tokens;
     if (exists $speakerID{$segmentID}) {
@@ -211,7 +186,6 @@ while ($line=<UTT2SPK>) {
 }
 close(UTT2SPK);
 print STDERR ("$0: Read speaker IDs for $numSegments segments from $utt2spkFile\n");
-print STDERR ("$0: In total $num_failed_parses lines failed to be parsed.\n");
 
 ################################################################################
 # Read the transcriptions from the text file
@@ -220,21 +194,14 @@ print STDERR ("$0: In total $num_failed_parses lines failed to be parsed.\n");
 open(TEXT, $textFile)
     || die "Unable to read text file $textFile";
 $numSegments = $numWords = 0;
-$num_failed_parses = 0;
 while ($line=<TEXT>) {
     chomp;
     if ($line =~ m:^(\S+)\s+(.+)$:) {
 	$segmentID   = $1;
 	$text          = $2;
     } else {
-      $num_failed_parses+=1;
-      print STDERR ("$0: Couldn't parse line $. in $textFile\n")
-        if ($num_failed_parses == 1);
-      print STDERR ("\tLine: $line")
-        if ($num_failed_parses <= $num_failed_parses_max);
-      print STDERR "$0: Maximal threshold for failed line parses reached ($num_failed_parses/$num_failed_parses_max). Not warning anymore\n"
-        if ($num_failed_parses == $num_failed_parses_max);
-      next;
+	print STDERR ("$0: Couldn't parse line $. in $textFile\n\t$line\n");
+	next;
     }
     if (exists $transcription{$segmentID}) {
 	print STDERR ("$0: Skipping duplicate segment ID $segmentID in $segmentsFile\n");
@@ -267,7 +234,6 @@ while ($line=<TEXT>) {
 }
 close(TEXT);
 print STDERR ("$0: Read transcriptions for $numSegments segments ($numWords words) from $textFile\n");
-print STDERR ("$0: In total $num_failed_parses lines failed to be parsed.\n");
 
 ################################################################################
 # Write the transcriptions in stm format to a file named stm
