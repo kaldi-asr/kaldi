@@ -22,6 +22,8 @@ randprune=4.0 # This is approximately the ratio by which we will speed up the
 splice_opts=
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 norm_vars=false # false : cmn, true : cmvn
+                # To turn off CMN completely, supply the --fake option to
+                # compute_cmvn.sh.
 # End configuration.
 train_tree=true  # if false, don't actually train the tree.
 use_lda_mat=  # If supplied, use this LDA[+MLLT] matrix.
