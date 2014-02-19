@@ -6,13 +6,13 @@
 # Usage: make-sre-2008-train.pl <path to LDC2011S05> <Path to root level output dir>
 
 
-if (@ARGV != 2) {
-  print STDERR "Usage: $0 <path-to-LDC2011S05> <path-to-output>\n";
-  print STDERR "e.g. $0 /export/corpora5/LDC/LDC2011S05 data\n";
+if (@ARGV != 3) {
+  print STDERR "Usage: $0 <path to language abreviations file> <path-to-LDC2011S05> <path-to-output>\n";
+  print STDERR "e.g. $0 local/language_abbreviations.txt /export/corpora5/LDC/LDC2011S05 data\n";
   exit(1);
 }
 
-($db_base, $out_base_dir) = @ARGV;
+($lang_abbreviation_file, $db_base, $out_base_dir) = @ARGV;
 
 $tmp_dir = "$out_base_dir/tmp";
 if (system("mkdir -p $tmp_dir") != 0) {
@@ -22,6 +22,20 @@ if (system("mkdir -p $tmp_dir") != 0) {
 if (system("find $db_base -name '*.sph' > $tmp_dir/sph.list") != 0) {
   die "Error getting list of sph files";
 }
+
+open(LANG, "<", $lang_abbreviation_file) or die "cannot open file $lang_abbreviation_file";
+$num=0;
+while(<LANG>) {
+  chomp;
+  $line = $_;
+  @l=split("[ ]",$line);
+  $long_lang{$l[0]} = $l[1];
+  $abbr_lang{$l[1]} = $l[0];
+  $num_lang{$l[0]} = sprintf("%04d", $num);
+  $num++;
+}
+close LANG;
+
 
 open(WAVLIST, "<", "$tmp_dir/sph.list") or die "cannot open wav list";
 
@@ -35,37 +49,58 @@ while(<WAVLIST>) {
   $wav{$raw_basename} = $sph;
 }
 
-$cfile1=$db_base . "/data/keys/NIST_SRE08_KEYS.v0.1/segment-keys/train/NIST_SRE08_10sec.train.segment.key";
-$cfile2=$db_base . "/data/keys/NIST_SRE08_KEYS.v0.1/segment-keys/train/NIST_SRE08_short2.train.segment.key";
-@cflist = ($cfile1,$cfile2);
+# $cfile1=$db_base . "/data/keys/NIST_SRE08_KEYS.v0.1/segment-keys/train/NIST_SRE08_10sec.train.segment.key";
+# $cfile2=$db_base . "/data/keys/NIST_SRE08_KEYS.v0.1/segment-keys/train/NIST_SRE08_short2.train.segment.key";
+# @cflist = ($cfile1,$cfile2);
+# foreach $cf (@cflist) {
+#     open(SEGKEY, "<", $cf) or die "Cannot open $cf";
+#     $t = <SEGKEY>;
+#     while (<SEGKEY>) {
+#         $t = $_;
+#         @t = split(",",$t);
+#         $spk_chan_nat = $t[5];
+#         @s=split("[\ :]",$spk_chan_nat);
+#         $speechtype=$t[3];
+#         $language=$t[4];
+#         $segment=$t[0];
+#         $spk = $s[0];
+#         $channel_type = $s[1];
+#         $native = $s[2];
+        
+#         $speechtype{$segment} = $speechtype;
+#         $lang[1]{$segment} = $language;
+#         $speaker[1]{$segment} = $spk;
+#         $channel_type[1]{$segment} = $channel_type;
+#         $native_lang[1]{$segment} = $native;
+
+#         $spk = $s[3];
+#         $channel_type = $s[4];
+#         $native = $s[5];
+#         $lang[2]{$segment} = $language;
+#         $speaker[2]{$segment} = $spk;
+#         $channel_type[2]{$segment} = $channel_type;
+#         $native_lang[2]{$segment} = $native;
+#     }
+#     close(SEGKEY);
+# }
+$cfile3=$db_base . "/docs/NIST_SRE08_header_info.all.train.csv";
+@cflist = ($cfile3);
 foreach $cf (@cflist) {
     open(SEGKEY, "<", $cf) or die "Cannot open $cf";
     $t = <SEGKEY>;
     while (<SEGKEY>) {
         $t = $_;
         @t = split(",",$t);
-        $spk_chan_nat = $t[5];
-        @s=split("[\ :]",$spk_chan_nat);
-        $speechtype=$t[3];
-        $language=$t[4];
+        $speechtype=$t[2];
+        $language=$t[1];
         $segment=$t[0];
-        $spk = $s[0];
-        $channel_type = $s[1];
-        $native = $s[2];
+        $segment =~ s/\.sph$//;
         
         $speechtype{$segment} = $speechtype;
         $lang[1]{$segment} = $language;
-        $speaker[1]{$segment} = $spk;
         $channel_type[1]{$segment} = $channel_type;
-        $native_lang[1]{$segment} = $native;
-
-        $spk = $s[3];
-        $channel_type = $s[4];
-        $native = $s[5];
         $lang[2]{$segment} = $language;
-        $speaker[2]{$segment} = $spk;
         $channel_type[2]{$segment} = $channel_type;
-        $native_lang[2]{$segment} = $native;
     }
     close(SEGKEY);
 }
@@ -89,7 +124,6 @@ foreach $gender (@gender_list) {
       $line = $_;
       @A = split(" ",$line);
       $spkr = $A[0];
-      print GNDR "$spkr $g\n";
       @wav_list = split(",", $A[1]);
       foreach $wav_id (@wav_list) {
         @B = split(":", $wav_id);
@@ -98,7 +132,6 @@ foreach $gender (@gender_list) {
         $raw_basename = $basename;
         $raw_basename =~ s/.sph$//;
         $side = $B[1];
-        $uttId = $spkr . "-" . $raw_basename . "_" . $side; # prefix spkr-id to utt-id to ensure sorted order.
         if ($side eq "A") {
           $channel = 1;
         } elsif ($side eq "B") {
@@ -106,16 +139,19 @@ foreach $gender (@gender_list) {
         } else {
           die "unknown channel $side\n";
         }
+        $uttId = $num_lang{$lang[$channel]{$raw_basename}} . "_" . $A[0] . "_" . $raw_basename . "_" . $side; # prefix language-number to utt-id to ensure sorted order.
+        $spkr = $num_lang{$lang[$channel]{$raw_basename}} . "_" . $A[0];
         $wave = $wav{$raw_basename};
-        if ( $wave && -e $wave ) {
+        if ( $wave && -e $wave &&  $long_lang{$lang[$channel]{$raw_basename}}) {
           print WAV "$uttId"," sph2pipe -f wav -p -c $channel $wave |\n";
           print SPKR "$uttId"," $spkr","\n";
-          print LANG "$uttId"," $lang[$channel]{$raw_basename}\n";
+          print LANG "$uttId"," $long_lang{$lang[$channel]{$raw_basename}}\n";
           print CHAN "$uttId"," $channel_type[$channel]{$raw_basename}\n";
         } else {
-          print STDERR "No wave file for utterance $raw_basename\n";
+          print STDERR "No wave file or language missing for utterance $raw_basename\n";
         }
       }
+      print GNDR "$spkr $g\n";
     }
     close(GNDR) || die;
     close(SPKR) || die;
@@ -123,7 +159,7 @@ foreach $gender (@gender_list) {
     if (system("utils/utt2spk_to_spk2utt.pl $out_dir/utt2spk >$out_dir/spk2utt") != 0) {
       die "Error creating spk2utt file in directory $out_dir";
     }
-    system("utils/fix_data_dir.sh $out_dir");
+    system("utils/fix_data_dir.sh $out_dir 1");
     if (system("utils/validate_data_dir.sh --no-text --no-feats $out_dir") != 0) {
       die "Error validating directory $out_dir";
     }
