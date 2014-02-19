@@ -5,13 +5,16 @@
 # text, and utt2spk are present in any of them.
 # It puts the original contents of data-dir into 
 # data-dir/.backup
+# giving the second option of <LANG> to do utt2lang processing instead of utt2spk processing
 
-if [ $# != 1 ]; then
-  echo "Usage: fix_data_dir.sh data-dir"
+if [ $# -lt 1 ]; then
+  echo "Usage: fix_data_dir.sh data-dir <LANG=1/0>"
   exit 1
 fi
 
 data=$1
+lang=$2
+
 mkdir -p $data/.backup
 
 [ ! -d $data ] && echo "$0: no such directory $data" && exit 1;
@@ -35,7 +38,7 @@ function check_sorted {
   fi
 }
 
-for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp reco2file_and_channel spk2gender; do
+for x in utt2lang utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp reco2file_and_channel spk2gender; do
   if [ -f $data/$x ]; then
     cp $data/$x $data/.backup/$x
     check_sorted $data/$x
@@ -114,20 +117,44 @@ function filter_speakers {
   done
 }
 
+function filter_langs {
+  # throughout this program, we regard utt2lang as primary and lang2utt as derived, so...
+  utils/utt2spk_to_spk2utt.pl $data/utt2lang > $data/lang2utt
+
+  cat $data/lang2utt | awk '{print $1}' > $tmpdir/languages
+  for s in cmvn.scp; do
+    f=$data/$s
+    if [ -f $f ]; then
+      utils/filter_scp.pl $f $tmpdir/languages > $tmpdir/languages.tmp
+      mv $tmpdir/languages.tmp $tmpdir/languages
+    fi
+  done
+
+  filter_file $tmpdir/languages $data/lang2utt
+  utils/spk2utt_to_utt2spk.pl $data/lang2utt > $data/utt2lang
+
+  for s in cmvn.scp; do
+    f=$data/$s
+    if [ -f $f ]; then
+      filter_file $tmpdir/languages $f
+    fi
+  done
+}
+
 function filter_utts {
   cat $data/utt2spk | awk '{print $1}' > $tmpdir/utts
 
 # Do a check.
 
-  ! cat $data/utt2spk | sort | cmp - $data/utt2spk && \
-    echo "utt2spk is not in sorted order (fix this yourself)" && exit 1;
+  ! cat $data/utt2lang | sort | cmp - $data/utt2lang && \
+    echo "utt2lang is not in sorted order (fix this yourself)" && exit 1;
 
-  ! cat $data/utt2spk | sort -k2 | cmp - $data/utt2spk && \
-    echo "utt2spk is not in sorted order when sorted first on speaker-id " && \
-    echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
+  ! cat $data/utt2lang | sort -k2 | cmp - $data/utt2lang && \
+    echo "utt2lang is not in sorted order when sorted first on language-id " && \
+    echo "(fix this by making language-ids prefixes of utt-ids)" && exit 1;
 
-  ! cat $data/spk2utt | sort | cmp - $data/spk2utt && \
-    echo "spk2utt is not in sorted order (fix this yourself)" && exit 1;
+  ! cat $data/lang2utt | sort | cmp - $data/lang2utt && \
+    echo "lang2utt is not in sorted order (fix this yourself)" && exit 1;
 
 
   maybe_wav=
@@ -167,6 +194,9 @@ function filter_utts {
 
 filter_recordings
 filter_speakers
+if [ $lang -eq 1 ] ; then
+  filter_langs
+fi
 filter_utts
 filter_recordings
 
