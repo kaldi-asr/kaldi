@@ -1,6 +1,7 @@
-// bin/scale-vecs.cc
+// bin/vector-scale.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -27,8 +28,9 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
 
     const char *usage =
-        "Scale a set of vectors in a Table (useful for speaker vectors)\n"
-        "Usage: scale-vecs [options] in-rspecifier out-wspecifier\n";
+        "Scale a set of vectors in a Table (useful for speaker vectors and "
+        "per-frame weights)\n"
+        "Usage: vector-scale [options] <in-rspecifier> <out-wspecifier>\n";
 
     ParseOptions po(usage);
     BaseFloat scale = 1.0;
