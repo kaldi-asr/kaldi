@@ -11,7 +11,7 @@ set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
-local/make-sre-2008-train.pl local/language_abbreviations.txt /export/corpora5/LDC/LDC2011S05 data
+local/make_sre_2008_train.pl local/language_abbreviations.txt /export/corpora5/LDC/LDC2011S05 data
 utils/combine_data.sh data/sre08_train_short2 data/sre08_train_short2_male data/sre08_train_short2_female
 
 mfccdir=`pwd`/mfcc
