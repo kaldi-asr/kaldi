@@ -51,6 +51,7 @@ class Component {
     kUpdatableComponent = 0x0100, 
     kAffineTransform,
     kConvolutionalComponent,
+    kConvolutional2DComponent,
 
     kActivationFunction = 0x0200, 
     kSoftmax, 
@@ -70,7 +71,9 @@ class Component {
     kKlHmm = 0x0800,
     kSentenceAveragingComponent,
     kAveragePoolingComponent,
+    kAveragePooling2DComponent,
     kMaxPoolingComponent,
+    kMaxPooling2DComponent,
     kParallelComponent
   } ComponentType;
   /// A pair of type and marker 

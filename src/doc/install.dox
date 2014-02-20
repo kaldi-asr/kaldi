@@ -38,13 +38,14 @@
   possibly including unfinished and experimental features, can
    be downloaded by typing into a shell:
   \verbatim
-    svn co svn://svn.code.sf.net/p/kaldi/code/trunk kaldi-trunk
+    svn co https://svn.code.sf.net/p/kaldi/code/trunk kaldi-trunk
   \endverbatim
+
   You can check out the "stable" branch of Kaldi, which is mostly a subset of the
   "trunk" with more stringent quality control, as follows (but note: right now, it is
   a few months behind the trunk):
   \verbatim
-    svn co svn://svn.code.sf.net/p/kaldi/code/stable kaldi-stable
+    svn co https://svn.code.sf.net/p/kaldi/code/stable kaldi-stable
   \endverbatim
    If you want to get updates and bug fixes you can go to some checked-out
  directory, and type

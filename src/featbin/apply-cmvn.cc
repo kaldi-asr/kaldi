@@ -36,8 +36,11 @@ int main(int argc, char *argv[]) {
     std::string utt2spk_rspecifier;
     bool norm_vars = false;
     po.Register("utt2spk", &utt2spk_rspecifier, "rspecifier for utterance to speaker map");
-    po.Register("norm-vars", &norm_vars, "If true, normalize variances");
-
+    po.Register("norm-vars", &norm_vars, "If true, normalize variances.  Note: "
+                "to turn off mean normalization also, it's generally easiest to "
+                "compute 'fake' CMVN stats with zero/one mean/variance."
+                "See the --fake option to compute_cmvn_stats.sh");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {

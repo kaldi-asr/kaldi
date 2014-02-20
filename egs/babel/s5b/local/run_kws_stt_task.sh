@@ -28,6 +28,7 @@ cer=0
 skip_kws=false
 skip_stt=false
 skip_scoring=false
+extra_kws=false
 cmd=run.pl
 max_states=150000
 dev2shadow=
@@ -62,8 +63,9 @@ else
   exit 1
 fi
 
-
-if [ ! -f $decode_dir/.score.done ]; then 
+##NB: The first ".done" files are used for backward compatibility only
+##NB: should be removed in a near future...
+if  [ ! -f $decode_dir/.score.done ] && [ ! -f $decode_dir/.done.score ]; then 
   local/lattice_to_ctm.sh --cmd "$cmd" --word-ins-penalty $wip \
     --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
     $data_dir $lang_dir $decode_dir
@@ -77,28 +79,30 @@ if [ ! -f $decode_dir/.score.done ]; then
       --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
       $data_dir $lang_dir $decode_dir
   fi
-  touch $decode_dir/.score.done
+  touch $decode_dir/.done.score
 fi
 
 if ! $skip_kws ; then
-  if [ ! -f $decode_dir/.kws.done ]; then 
+  if [ ! -f $decode_dir/.kws.done ] && [ ! -f $decode_dir/.done.kws ]; then 
     if [[ "$type" == shadow* ]]; then
       local/shadow_set_kws_search.sh --cmd "$cmd" --max-states ${max_states} \
         --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
         $data_dir $lang_dir $decode_dir ${dev2shadow} ${eval2shadow}
     else
       local/kws_search.sh --cmd "$cmd" --max-states ${max_states} \
-        --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
-        $lang_dir $data_dir $decode_dir
-
-      if [ -f $data_dir/extra_kws_tasks ]; then
-        for extraid in `cat $data_dir/extra_kws_tasks` ; do
-          local/kws_search.sh --cmd "$cmd" --extraid $extraid --max-states ${max_states} \
-            --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
-            $lang_dir $data_dir $decode_dir
-        done
-      fi
+        --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} --skip-scoring $skip_scoring\
+        --indices-dir $decode_dir/kws_indices $lang_dir $data_dir $decode_dir
     fi
-    touch $decode_dir/.kws.done
+    touch $decode_dir/.done.kws
+  fi
+  if $extra_kws && [ -f $data_dir/extra_kws_tasks ]; then
+    for extraid in `cat $data_dir/extra_kws_tasks` ; do
+      [ -f $decode_dir/.done.kws.$extraid ] && continue;
+      local/kws_search.sh --cmd "$cmd" --extraid $extraid  \
+        --max-states ${max_states} --min-lmwt ${min_lmwt} --skip-scoring $skip_scoring\
+         --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
+        $lang_dir $data_dir $decode_dir
+      touch $decode_dir/.done.kws.$extraid
+    done
   fi
 fi

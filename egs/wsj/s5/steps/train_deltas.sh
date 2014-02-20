@@ -16,7 +16,8 @@ retry_beam=40
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 power=0.25 # Exponent for number of gaussians according to occurrence counts
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
-norm_vars=false # false : cmn, true : cmvn
+norm_vars=false # false : cmn, true : cmvn.  To turn off CMN completely,
+                # supply the --fake option to compute_cmvn_stats.sh
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging

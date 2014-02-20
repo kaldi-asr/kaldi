@@ -46,7 +46,7 @@ mkdir -p $output/log
 
 model=$modeldir/g2p.model.final
 [ ! -f $model ] && echo "File $model not found in the directory $data." && exit 1
-[ ! -f $wordlist ] && echo "File $wordlist not found!" && exit 1
+#[ ! -x $wordlist ] && echo "File $wordlist not found!" && exit 1
 
 cp $wordlist $output/wordlist.orig.txt
 
@@ -58,7 +58,7 @@ if [ ! -z $icu_transform ] ; then
   > $output/transform_map.txt
   cut -f 1 $output/transform_map.txt | sort -u > $output/wordlist.txt
 else
-  cp $wordlist $output/wordlist.txt
+  cp $output/wordlist.orig.txt  $output/wordlist.txt
 fi
 
 if ! g2p=`which g2p.py` ; then
@@ -84,7 +84,7 @@ cat $output/output.* > $output/output
 #and use the transform_map file we generated beforehand
 #Also, because the sequitur output is not readily usable as lexicon (it adds 
 #one more column with ordering of the pron. variants) convert it into the proper lexicon form
-output_lex=$output/`basename $wordlist`
+output_lex=$output/lexicon.lex
 if [ ! -z $icu_transform ] ; then
   #also, the transform is generally N -> 1, i.e. we have to take
   #extra care of words that might have been mapped into the same one
@@ -97,7 +97,7 @@ if [ ! -z $icu_transform ] ; then
            open(LEX, $ARGV[1]) or die "Could not open file $ARGV[1]";
            while(<LEX>) {chomp; @F=split /\t/;
              if ( $#F != 3 ) {
-               print STDERR "WARNING: Non-acceptable entry \"" . join(" ", @F) . "\"\n";
+               print STDERR "WARNING: Non-acceptable entry \"" . join(" ", @F) . "\" ($#F splits)\n";
                next;
              }
              foreach $word (@{$MAP{$F[0]}} ) {

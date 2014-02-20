@@ -10,11 +10,13 @@ set -u
 dnn_num_hidden_layers=4
 dnn_pnorm_input_dim=3000
 dnn_pnorm_output_dim=300
+dnn_init_learning_rate=0.004
+dnn_final_learning_rate=0.001
 train_stage=-10
 temp_dir=`pwd`/nnet_gpu_egs
 ensemble_size=4
 initial_beta=0.1
-final_beta=2
+final_beta=5
 dir=exp/tri6b_nnet
 egs_dir=
 
