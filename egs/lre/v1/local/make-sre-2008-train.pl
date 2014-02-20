@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use Data::Dumper;
 #
 # Copyright 2013-2014 Daniel Povey
 #                2014 David Snyder
@@ -28,7 +29,7 @@ $num=0;
 while(<LANG>) {
   chomp;
   $line = $_;
-  @l=split("[ ]",$line);
+  @l=split(' ', $line);
   $long_lang{$l[0]} = $l[1];
   $abbr_lang{$l[1]} = $l[0];
   $num_lang{$l[0]} = sprintf("%04d", $num);
@@ -142,7 +143,9 @@ foreach $gender (@gender_list) {
         $uttId = $num_lang{$lang[$channel]{$raw_basename}} . "_" . $A[0] . "_" . $raw_basename . "_" . $side; # prefix language-number to utt-id to ensure sorted order.
         $spkr = $num_lang{$lang[$channel]{$raw_basename}} . "_" . $A[0];
         $wave = $wav{$raw_basename};
-        if ( $wave && -e $wave &&  $long_lang{$lang[$channel]{$raw_basename}}) {
+        #print STDERR Dumper %long_lang;
+        #print STDERR Dumper $lang[$channel]{$raw_basename};
+        if ( $wave && -e $wave && $long_lang{$lang[$channel]{$raw_basename}}) {
           print WAV "$uttId"," sph2pipe -f wav -p -c $channel $wave |\n";
           print SPKR "$uttId"," $spkr","\n";
           print LANG "$uttId"," $long_lang{$lang[$channel]{$raw_basename}}\n";
@@ -160,6 +163,7 @@ foreach $gender (@gender_list) {
       die "Error creating spk2utt file in directory $out_dir";
     }
     system("utils/fix_data_dir.sh $out_dir 1");
+    system("utils/fix_data_dir.sh $out_dir 0");
     if (system("utils/validate_data_dir.sh --no-text --no-feats $out_dir") != 0) {
       die "Error validating directory $out_dir";
     }
