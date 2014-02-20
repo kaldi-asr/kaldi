@@ -32,10 +32,10 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Perform one iteration of Neural Network training by mini-batch Stochastic Gradient Descent.\n"
-        "This version use pdf-posterior as targets, for basic training see ali-to-post.\n"
-        "Usage:  nnet-train-xent-posterior-frmshuff [options] <model-in> <feature-rspecifier> <targets-rspecifier> [<model-out>]\n"
+        "This version use pdf-posterior as targets, prepared typically by ali-to-post.\n"
+        "Usage:  nnet-train-frmshuff [options] <feature-rspecifier> <targets-rspecifier> <model-in> [<model-out>]\n"
         "e.g.: \n"
-        " nnet-train-xent-posterior-frmshuff nnet.init scp:feature.scp ark:posterior.ark nnet.iter1\n";
+        " nnet-train-frmshuff scp:feature.scp ark:posterior.ark nnet.init nnet.iter1\n";
 
     ParseOptions po(usage);
 
