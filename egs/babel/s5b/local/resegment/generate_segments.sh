@@ -18,9 +18,6 @@ get_text=false  # Get text corresponding to new segments in ${output_dir}
 noise_oov=false     # Treat <oov> as noise instead of speech
 beam=7.0
 max_active=1000
-boost_silence=1.0   # Boost silence probailities in the model. 
-                    # Seems to reduce the false alarms. 
-                    # But may result in more deletions.
 
 #debugging stuff
 echo $0 $@
@@ -40,7 +37,6 @@ if [ $# -ne 5 ]; then
   echo "    --segmentation-opts '--opt1 opt1val --opt2 opt2val' # options for segmentation.py"
   echo "    --reference-rttm        # Reference RTTM file that will be used for analysis of the segmentation"
   echo "    --get-text (true|false) # Convert text from base data directory to correspond to the new segments"
-  echo "    --boost-silence         # Boost probability of optional silence during decoding (default: 1.5)"
   echo 
   echo "e.g.:"
   echo "$0 data/dev10h data/lang exp/tri4b_seg exp/tri4b_resegment_dev10h"
@@ -65,9 +61,8 @@ total_time=0
 t1=$(date +%s)
 
 if [ $stage -le 0 ] ; then
-  steps/decode_nolats.sh --write-words false --write-alignments true \
+  steps/decode_nolats.sh $decode_extra_opts --write-words false --write-alignments true \
     --cmd "$cmd" --nj $nj --beam $beam --max-active $max_active \
-    --boost-silence $boost_silence --silence-phones-list `cat $lang/phones/optional_silence.csl` \
     $model_dir/phone_graph $datadir $model_dir/decode_${dirid} || exit 1
 fi
 
