@@ -1,0 +1,45 @@
+ACE aceh Aceh Aceh
+AMH amharic Amharic Amharic
+ARQ arabic.algerian Arabic Algerian Arabic: Algerian
+AYL arabic.libyan Arabic Libyan Arabic: Libyan
+ARY arabic.moroccan Arabic Moroccan Arabic: Moroccan
+ARB arabic.standard Arabic standard Arabic: standard
+AEB arabic.tunisian Arabic Tunisian Arabic: Tunisian
+BEN bengali Bengali Bengali
+BUR burmese Burmese Burmese
+CHE chechen Chechen Chechen
+YUH chinese.cantonese Chinese Cantonese Chinese: Cantonese (Guangdong Hua/Yue Yu)
+CHN chinese.mandarin.mainland Chinese Mandarin Chinese: Standard Mandarin (Putonghua)
+CHT chinese.mandarin.taiwan Chinese Mandarin Chinese: Mandarin - Taiwan Dialect
+CFR chinese.min Chinese Min Nan Chinese: Southern Min/Taiwanese (Min Nan Hua/Taiwan Hua)
+WUU chinese.wu Chinese Wu Chinese: Shanghai Wu Dialect (Shanghai Hua)
+USE english.american English American English: American
+AUE english.australian English Australian English: Australian/New Zealand
+GBE english.british English British English: British
+INE english.indian English Indian English: Indian
+ENG english.varied English Mixed/Non-native English: ESL/varied
+FAR farsi Farsi Farsi
+FRA french French French
+GEO georgian Georgian Georgian
+DEU german German German
+GRN guarani Guarani Guarani
+HIN hindustani.hindi Hindi Hindi
+URD hindustani.urdu Urdu Urdu
+IND indonesian Indonesian
+ITA italian Italian Italian
+JPN japanese Japanese Japanese
+KHM khmer Khmer Khmer
+KOR korean Korean Korean
+LAO lao Lao Lao
+PAN punjabi Punjabi Punjabi
+RUS russian Russian Russian
+SPC spanish.caribbean Spanish Caribbean Spanish: Caribbean
+SPN spanish.noncaribbean Spanish Non-Caribbean Spanish: Non-Caribbean
+SPA spanish Spanish Spanish
+TGL tagalog Tagalog Tagalog
+TAM tamil Tamil Tamil
+THA thai Thai Thai
+TIR tigrigna Tigrigna Tigrigna
+UKR ukranian Ukrainian Ukrainian
+UZB uzbek Uzbek Uzbek
+VIE vietnamese Vietnamese Vietnamese
