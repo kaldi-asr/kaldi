@@ -69,17 +69,10 @@ if [ "$dataset_kind" == "unsupervised" ]; then
   skip_scoring=true
 fi
 
-#Just a minor safety precaution to prevent using incorrect settings
-#The dataset_* variables should be used.
-set -e
-set -o pipefail
-set -u
-unset dir
-unset kind
-
 #The $dataset_type value will be the dataset name without any extrension
-eval my_data_dir=\$${dataset_type}_data_dir
-eval my_data_list=\$${dataset_type}_data_list
+eval my_data_dir=( "\${${dataset_type}_data_dir[@]}" )
+eval my_data_list=( "\${${dataset_type}_data_list[@]}" )
+
 eval my_stm_file=\$${dataset_type}_stm_file
 
 eval my_ecf_file=\$${dataset_type}_ecf_file 
@@ -97,6 +90,13 @@ do
   my_more_kwlists["$key"]="${my_more_kwlist_val}"
 done
 
+#Just a minor safety precaution to prevent using incorrect settings
+#The dataset_* variables should be used.
+set -e
+set -o pipefail
+set -u
+unset dir
+unset kind
 
 function make_plp {
   target=$1
@@ -157,13 +157,29 @@ else
     echo ---------------------------------------------------------------------
     echo "Subsetting the ${dataset_type} set"
     echo ---------------------------------------------------------------------
+   
+    l1=${#my_data_dir[*]}
+    l2=${#my_data_list[*]}
+    if [ "$l1" -ne "$l2" ]; then
+      echo "Error, the number of source files lists is not the same as the number of source dirs!"
+      exit 1
+    fi
     
-    local/make_corpus_subset.sh "$my_data_dir" "$my_data_list" \
-      ./data/raw_${dataset_type}_data
+    resource_string=""
+    if [ "$dataset_kind" == "unsupervised" ]; then
+      resource_string+=" --ignore-missing-txt true"
+    fi
+
+    for i in `seq 0 $(($l1 - 1))`; do
+      resource_string+=" ${my_data_dir[$i]} "
+      resource_string+=" ${my_data_list[$i]} "
+    done
+    local/make_corpus_subset.sh $resource_string ./data/raw_${dataset_type}_data
     touch data/raw_${dataset_type}_data/.done
   fi
   my_data_dir=`readlink -f ./data/raw_${dataset_type}_data`
-  nj_max=`cat $my_data_list | wc -l`
+  [ -f $my_data_dir/filelist.list ] && my_data_list=$my_data_dir/filelist.list
+  nj_max=`cat $my_data_list | wc -l` || nj_max=`ls $my_data_dir/audio | wc -l`
 fi
 if [ $nj_max -lt $my_nj ] ; then
   echo "Number of jobs ($my_nj) is too big!"
