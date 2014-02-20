@@ -28,39 +28,6 @@ using std::string;
 #include "matrix/kaldi-vector.h"
 #include "transform/transform-common.h"
 
-namespace kaldi {
-
-// This is a wrapper for SplitStringToFloats, with added checks to make sure
-// the weights are valid probabilities.
-void SplitStringToWeights(const string &full, const char *delim,
-                          vector<BaseFloat> *out) {
-  vector<BaseFloat> tmp;
-  SplitStringToFloats(full, delim, true /*omit empty strings*/, &tmp);
-  if (tmp.size() != out->size()) {
-    KALDI_WARN << "Expecting " << out->size() << " weights, found " << tmp.size()
-               << ": using uniform weights.";
-    return;
-  }
-  BaseFloat sum = 0;
-  for (vector<BaseFloat>::const_iterator itr = tmp.begin();
-       itr != tmp.end(); ++itr) {
-    if (*itr < 0.0) {
-      KALDI_WARN << "Cannot use negative weight: " << *itr << "; input string: "
-                 << full << "\n\tUsing uniform weights.";
-      return;
-    }
-    sum += (*itr);
-  }
-  if (sum != 1.0) {
-    KALDI_WARN << "Weights sum to " << sum << " instead of 1: renormalizing";
-    for (vector<BaseFloat>::iterator itr = tmp.begin();
-         itr != tmp.end(); ++itr)
-      (*itr) /= sum;
-  }
-  out->swap(tmp);
-}
-
-}
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -72,14 +39,12 @@ int main(int argc, char *argv[]) {
         "Usage: vector-sum [options] vector-in-rspecifier1 [vector-in-rspecifier2 vector-in-rspecifier3 ...] (vector-out-wspecifier\n"
         " e.g.: vector-sum ark:1.weights ark:2.weights ark:combine.weights\n";
     
-    bool interpolate = false;
     std::string weight_str;
 
     ParseOptions po(usage);
 
     po.Register("weights", &weight_str, "Colon-separated list of weights "
-                "for each vector that is optionally normalized to sum to 1 by giving --interpolate true");
-    po.Register("interpolate", &interpolate, "Set true to normalize the weights to sum to 1");
+                "for each vector.");
 
     po.Read(argc, argv);
 
@@ -107,11 +72,7 @@ int main(int argc, char *argv[]) {
 
     std::vector<BaseFloat> weights(num_args-1, 1.0/(num_args-1));
     if (!weight_str.empty()) {
-      if (interpolate) {
-        SplitStringToWeights(weight_str, ":", &weights);
-      } else {
-        SplitStringToFloats(weight_str, ":", true, &weights);
-      }
+      SplitStringToFloats(weight_str, ":", true, &weights);
     }
  
     int32 n_utts = 0, n_total_vectors = 0, 

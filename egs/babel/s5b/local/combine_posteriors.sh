@@ -40,7 +40,7 @@ stage=-10
 #end configuration section.
 
 help_message="Usage: "$(basename $0)" [options] <data-dir> <graph-dir|lang-dir> <decode-dir1>[:weight] <decode-dir2>[:weight] [<decode-dir3>[:weight] ... ] <out-dir>
-     E.g. "$(basename $0)" data/train_unt.seg data/lang exp/tri1/decode exp/tri2/decode exp/tri3/decode exp/combine
+     E.g. "$(basename $0)" data/train_unt.seg data/lang exp/tri1/decode:0.5 exp/tri2/decode:0.25 exp/tri3/decode:0.25 exp/combine
 Options:
   --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes.
 ";
@@ -82,6 +82,8 @@ if [ $stage -lt -1 ]; then
   fi
 fi
 
+weights_sum=0.0
+
 for i in `seq 0 $[num_sys-1]`; do
   decode_dir=${decode_dirs[$i]}
 
@@ -93,7 +95,11 @@ for i in `seq 0 $[num_sys-1]`; do
   else
     interpolation_weights="$interpolation_weights:$weight"
   fi
+
+  weights_sum=`perl -e "print STDOUT $weights_sum + $weight"`
 done
+
+inv_weights_sum=`perl -e "print STDOUT 1.0/$weights_sum`
 
 for i in `seq 0 $[num_sys-1]`; do
   if [ $stage -lt $i ]; then
@@ -132,8 +138,8 @@ if [ $stage -lt $num_sys ]; then
   done
 
   $cmd JOB=1:$nj $dir/log/interpolate_post.JOB.log \
-    vector-sum --interpolate=true --weights=$interpolation_weights \
-    $file_list "ark:| gzip -c > $out_decode/weights.JOB.gz" || exit 1
+    vector-sum --weights=$interpolation_weights \
+    $file_list "ark:| vector-scale --scale=$inv_weights_sum ark:- ark:- | gzip -c > $out_decode/weights.JOB.gz" || exit 1
 fi
 
 exit 0

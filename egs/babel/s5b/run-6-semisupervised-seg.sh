@@ -158,7 +158,7 @@ if [ ! -f exp/tri6_nnet_semi_supervised/.done ]; then
     data/train $untranscribed_datadir data/lang \
     $ali_dir $decode exp/tri6_nnet_semi_supervised || exit 1;
 
-  local/nnet2/train_pnorm.sh \
+  steps/nnet2/train_pnorm.sh \
     --stage $train_stage --mix-up $dnn_mixup \
     --initial-learning-rate $dnn_init_learning_rate \
     --final-learning-rate $dnn_final_learning_rate \
@@ -170,7 +170,6 @@ if [ ! -f exp/tri6_nnet_semi_supervised/.done ]; then
     --num-epochs-extra $num_epochs_extra \
     --num-iters-final $num_iters_final \
     --cmd "$train_cmd" "${dnn_gpu_parallel_opts[@]}" \
-    --transform-dir exp/tri5_ali \
     --egs-dir exp/tri6_nnet_semi_supervised/egs \
     data/train data/lang $ali_dir exp/tri6_nnet_semi_supervised || exit 1
 
@@ -178,6 +177,8 @@ if [ ! -f exp/tri6_nnet_semi_supervised/.done ]; then
 fi
 
 if $do_supervised_tuning; then
+  # Necessary only when semi-supervised DNN is trained using the unsupervised 
+  # data that was decoded using only the tri6_nnet system.
   if [ ! -f exp/tri6_nnet_supervised_tuning/.done ]; then
     steps/nnet2/update_pnorm.sh \
       --stage $train_stage --mix-up $dnn_mixup \
@@ -186,11 +187,10 @@ if $do_supervised_tuning; then
       --cmd "$train_cmd" \
       "${dnn_gpu_parallel_opts[@]}" \
       --num-epochs 2 --num-iters-final 5 \
-      --transform-dir exp/tri5_ali \
-      data/train \
-      data/lang $ali_dir \
+      --egs-opts "--transform-dir exp/tri5_ali" \
+      data/train data/lang $ali_dir \
       exp/tri6_nnet_semi_supervised exp/tri6_nnet_supervised_tuning || exit 1
 
     touch exp/tri6_nnet_supervised_tuning/.done
   fi
-fi
+  i
