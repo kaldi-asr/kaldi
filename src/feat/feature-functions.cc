@@ -223,6 +223,53 @@ void DeltaFeatures::Process(const MatrixBase<BaseFloat> &input_feats,
   }
 }
 
+ShiftedDeltaFeatures::ShiftedDeltaFeatures(
+  const ShiftedDeltaFeaturesOptions &opts): opts_(opts) {
+  KALDI_ASSERT(opts.window > 0 && opts.window < 1000);
+
+  // Default window is 1.
+  int32 window = opts.window;
+  KALDI_ASSERT(window != 0);
+  scales_.Resize(1 + 2*window);  // also zeros it.
+  BaseFloat normalizer = 0.0;
+  for (int32 j = -window; j <= window; j++) {
+    normalizer += j*j;
+    scales_(j + window) += static_cast<BaseFloat>(j);
+  }
+  scales_.Scale(1.0 / normalizer);
+}
+
+void ShiftedDeltaFeatures::Process(const MatrixBase<BaseFloat> &input_feats,
+                            int32 frame,
+                            SubVector<BaseFloat> *output_frame) const {
+  KALDI_ASSERT(frame < input_feats.NumRows());
+  int32 num_frames = input_feats.NumRows(),
+      feat_dim = input_feats.NumCols();
+  KALDI_ASSERT(static_cast<int32>(output_frame->Dim()) 
+               == feat_dim * (opts_.num_blocks + 1));
+  output_frame->SetZero();
+
+  // The original features  
+  SubVector<BaseFloat> output(*output_frame, 0, feat_dim);
+  output.AddVec(1.0, input_feats.Row(frame));
+
+  // Concatenate the delta-blocks. Each block is block_shift 
+  // (usually 3) frames apart. 
+  for (int32 i = 0; i < opts_.num_blocks; i++) {
+    int32 max_offset = (scales_.Dim() - 1) / 2;
+    SubVector<BaseFloat> output(*output_frame, (i + 1) * feat_dim, feat_dim);
+    for (int32 j = -max_offset; j <= max_offset; j++) {
+      int32 offset_frame = frame + j + i * opts_.block_shift;
+      if (offset_frame < 0) offset_frame = 0;
+      else if (offset_frame >= num_frames)
+        offset_frame = num_frames - 1;
+      BaseFloat scale = scales_(j + max_offset);
+      if (scale != 0.0)
+        output.AddVec(scale, input_feats.Row(offset_frame));
+    }
+  }
+}
+
 void ComputeDeltas(const DeltaFeaturesOptions &delta_opts,
                    const MatrixBase<BaseFloat> &input_features,
                    Matrix<BaseFloat> *output_features) {
@@ -236,7 +283,19 @@ void ComputeDeltas(const DeltaFeaturesOptions &delta_opts,
   }
 }
 
-
+void ComputeShiftedDeltas(const ShiftedDeltaFeaturesOptions &delta_opts,
+                   const MatrixBase<BaseFloat> &input_features,
+                   Matrix<BaseFloat> *output_features) {
+  output_features->Resize(input_features.NumRows(),
+                          input_features.NumCols()
+                          * (delta_opts.num_blocks + 1));
+  ShiftedDeltaFeatures delta(delta_opts);
+  
+  for (int32 r = 0; r < static_cast<int32>(input_features.NumRows()); r++) {
+    SubVector<BaseFloat> row(*output_features, r);
+    delta.Process(input_features, r, &row);
+  }
+}
 
 
 

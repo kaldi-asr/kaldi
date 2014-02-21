@@ -31,72 +31,62 @@ using std::string;
 #include "util/timer.h"
 
 namespace kaldi {
-// Takes care of output.  Returns total like.
-double ProcessDecodedOutput(const LatticeSimpleDecoder &decoder,
-                            const fst::SymbolTable *word_syms,
-                            std::string utt,
-                            double acoustic_scale,
-                            bool determinize,
-                            Int32VectorWriter *alignment_writer,
-                            Int32VectorWriter *words_writer,
-                            CompactLatticeWriter *compact_lattice_writer,
-                            LatticeWriter *lattice_writer) {
+
+// the reference arguments at the beginning are not const as the style guide
+// requires, but are best viewed as inputs.
+bool ProcessUtterance(LatticeSimpleDecoder &decoder,
+                      const AmSgmm &am_sgmm,
+                      const TransitionModel &trans_model,
+                      const SgmmGselectConfig &sgmm_opts,
+                      double log_prune,
+                      double acoustic_scale,
+                      const Matrix<BaseFloat> &features,
+                      RandomAccessInt32VectorVectorReader &gselect_reader,
+                      RandomAccessBaseFloatVectorReaderMapped &spkvecs_reader,
+                      const fst::SymbolTable *word_syms,
+                      const std::string &utt,
+                      bool determinize,
+                      bool allow_partial,
+                      Int32VectorWriter *alignments_writer,
+                      Int32VectorWriter *words_writer,
+                      CompactLatticeWriter *compact_lattice_writer,
+                      LatticeWriter *lattice_writer,
+                      double *like_ptr) { // puts utterance's like in like_ptr on success.
   using fst::VectorFst;
-  
-  double likelihood;
-  { // First do some stuff with word-level traceback...
-    VectorFst<LatticeArc> decoded;
-    if (!decoder.GetBestPath(&decoded)) 
-      // Shouldn't really reach this point as already checked success.
-      KALDI_ERR << "Failed to get traceback for utterance " << utt;
 
-    std::vector<int32> alignment;
-    std::vector<int32> words;
-    LatticeWeight weight;
-    GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-    if (words_writer->IsOpen())
-      words_writer->Write(utt, words);
-    if (alignment_writer->IsOpen())
-      alignment_writer->Write(utt, alignment);
-    if (word_syms != NULL) {
-      std::cerr << utt << ' ';
-      for (size_t i = 0; i < words.size(); i++) {
-        std::string s = word_syms->Find(words[i]);
-        if (s == "")
-          KALDI_ERR << "Word-id " << words[i] <<" not in symbol table.";
-        std::cerr << s << ' ';
-      }
-      std::cerr << '\n';
+  SgmmPerSpkDerivedVars spk_vars;
+  if (spkvecs_reader.IsOpen()) {
+    if (spkvecs_reader.HasKey(utt)) {
+      spk_vars.v_s = spkvecs_reader.Value(utt);
+      am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
+    } else {
+      KALDI_WARN << "Cannot find speaker vector for " << utt << ", not decoding this utterance";
+      return false; // We could use zero, but probably the user would want to know about this
+      // (this would normally be a script error or some kind of failure).
     }
-    likelihood = -(weight.Value1() + weight.Value2());
   }
+  bool has_gselect = false;
+  if (gselect_reader.IsOpen()) {
+    has_gselect = gselect_reader.HasKey(utt)
+        && gselect_reader.Value(utt).size() == features.NumRows();
+    if (!has_gselect)
+      KALDI_WARN << "No Gaussian-selection info available for utterance "
+                 << utt << " (or wrong size)";
+  }
+  std::vector<std::vector<int32> > empty_gselect;
+  const std::vector<std::vector<int32> > *gselect =
+      (has_gselect ? &gselect_reader.Value(utt) : &empty_gselect);
+  DecodableAmSgmmScaled sgmm_decodable(sgmm_opts, am_sgmm, spk_vars,
+                                       trans_model, features, *gselect,
+                                       log_prune, acoustic_scale);
 
-  if (determinize) {
-    CompactLattice fst;
-    decoder.GetLattice(&fst);
-    if (fst.NumStates() == 0)
-      KALDI_ERR << "Unexpected problem getting lattice for utterance "
-                << utt;
-    if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
-    compact_lattice_writer->Write(utt, fst);
-  } else {
-    Lattice fst;
-    decoder.GetRawLattice(&fst);
-    if (fst.NumStates() == 0)
-      KALDI_ERR << "Unexpected problem getting lattice for utterance "
-                << utt;
-    fst::Connect(&fst); // Will get rid of this later... shouldn't have any
-    // disconnected states there, but we seem to.
-    if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
-    lattice_writer->Write(utt, fst);
-  }
-  return likelihood;
+  return DecodeUtteranceLatticeSimple(
+      decoder, sgmm_decodable, trans_model, word_syms, utt, acoustic_scale,
+      determinize, allow_partial, alignments_writer, words_writer,
+      compact_lattice_writer, lattice_writer, like_ptr);
 }
 
-}
-
+} //  end namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {
@@ -197,7 +187,6 @@ int main(int argc, char *argv[]) {
     LatticeSimpleDecoder decoder(*decode_fst, decoder_opts);
     
     Timer timer;
-    const std::vector<std::vector<int32> > empty_gselect;
 
     for (; !feature_reader.Done(); feature_reader.Next()) {
       string utt = feature_reader.Key();
@@ -208,62 +197,19 @@ int main(int argc, char *argv[]) {
         num_fail++;
         continue;
       }
-
-      SgmmPerSpkDerivedVars spk_vars;
-      if (spkvecs_reader.IsOpen()) {
-        if (spkvecs_reader.HasKey(utt)) {
-          spk_vars.v_s = spkvecs_reader.Value(utt);
-          am_sgmm.ComputePerSpkDerivedVars(&spk_vars);
-        } else {
-          KALDI_WARN << "Cannot find speaker vector for " << utt;
-          num_fail++;
-          continue;
-        }
-      }  // else spk_vars is "empty"
-
-      bool has_gselect = false;
-      if (gselect_reader.IsOpen()) {
-        has_gselect = gselect_reader.HasKey(utt)
-                      && gselect_reader.Value(utt).size() == features.NumRows();
-        if (!has_gselect)
-          KALDI_WARN << "No Gaussian-selection info available for utterance "
-                     << utt << " (or wrong size)";
-      }
-      const std::vector<std::vector<int32> > *gselect =
-          (has_gselect ? &gselect_reader.Value(utt) : &empty_gselect);
-
-      DecodableAmSgmmScaled sgmm_decodable(sgmm_opts, am_sgmm, spk_vars,
-                                           trans_model, features, *gselect,
-                                           log_prune, acoustic_scale);
-
-      if (!decoder.Decode(&sgmm_decodable)) {
-        KALDI_WARN << "Failed to decode file " << utt;
-        num_fail++;
-        continue;
-      }
-
-      frame_count += features.NumRows();
       double like;
-      if (!decoder.ReachedFinal()) {
-        if (allow_partial) {
-          KALDI_WARN << "Outputting partial output for utterance " << utt
-                     << " since no final-state reached\n";
-          num_fail++;
-        } else {
-          KALDI_WARN << "Not producing output for utterance " << utt
-                     << " since no final-state reached and "
-                     << "--allow-partial=false.\n";
-          continue;
-        }
-      }
-      like = ProcessDecodedOutput(decoder, word_syms, utt, acoustic_scale,
-                                  determinize, &alignment_writer, &words_writer,
-                                  &compact_lattice_writer, &lattice_writer);
-      tot_like += like;
-      KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
-                << (like / features.NumRows()) << " over "
-                << features.NumRows() << " frames.";
-      num_success++;
+      if (ProcessUtterance(decoder, am_sgmm, trans_model, sgmm_opts, log_prune,
+                           acoustic_scale, features, gselect_reader,
+                           spkvecs_reader, word_syms, utt, determinize,
+                           allow_partial, &alignment_writer, &words_writer,
+                           &compact_lattice_writer, &lattice_writer, &like)) {
+        tot_like += like;
+        frame_count += features.NumRows();
+        KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
+                  << (like / features.NumRows()) << " over "
+                  << features.NumRows() << " frames.";
+        num_success++;
+      } else num_fail++;
     }
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken [excluding initialization] "<< elapsed

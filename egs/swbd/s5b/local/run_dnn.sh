@@ -52,7 +52,7 @@ steps/make_fmllr_feats.sh --nj 20 --cmd "$train_cmd" \
 dir=data-fmllr-tri4b/train_nodup
 # Save the fMLLR features
 steps/make_fmllr_feats.sh --nj 60 --cmd "$train_cmd" \
-   --transform-dir exp/tri4b_ali_all \
+   --transform-dir exp/tri4b_ali_nodup \
    $dir data/train_nodup $gmmdir $dir/_log $dir/_data || exit 1
 }
 
@@ -86,7 +86,7 @@ dbn=exp/tri4b_pretrain-dbn/6.dbn
 (tail --pid=$$ -F $dir/_train_nnet.log 2>/dev/null)& 
 $cuda_cmd $dir/_train_nnet.log \
   steps/train_nnet.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
-  data-fmllr-tri4b/train_nodup data-fmllr-tri4b/train_dev data/lang ${ali}_all ${ali}_dev $dir || exit 1;
+  data-fmllr-tri4b/train_nodup data-fmllr-tri4b/train_dev data/lang ${ali}_nodup ${ali}_dev $dir || exit 1;
 # decode (reuse HCLG graph)
 steps/decode_nnet.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.0833 \
   exp/tri4b/graph_sw1_fsh_tgpr data-fmllr-tri4b/train_dev $dir/decode_train_dev_sw1_fsh_tgpr || exit 1;
@@ -115,17 +115,17 @@ acwt=0.08333
 #false && \
 {
 steps/align_nnet.sh --nj 250 --cmd "$train_cmd" \
-  data-fmllr-tri4b/train_nodup data/lang $srcdir ${srcdir}_ali_all || exit 1;
+  data-fmllr-tri4b/train_nodup data/lang $srcdir ${srcdir}_ali_nodup || exit 1;
 steps/make_denlats_nnet.sh --nj 10 --sub-split 100 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
-  data-fmllr-tri4b/train_nodup data/lang $srcdir ${srcdir}_denlats_all  || exit 1;
+  data-fmllr-tri4b/train_nodup data/lang $srcdir ${srcdir}_denlats_nodup  || exit 1;
 }
 # Now we re-train the hybrid by single iteration of sMBR 
 #false && \
 {
 steps/train_nnet_mpe.sh --cmd "$cuda_cmd" --num-iters 1 --acwt $acwt --do-smbr true \
   data-fmllr-tri4b/train_nodup data/lang $srcdir \
-  ${srcdir}_ali_all \
-  ${srcdir}_denlats_all \
+  ${srcdir}_ali_nodup \
+  ${srcdir}_denlats_nodup \
   $dir || exit 1
 }
 # Decode
@@ -155,17 +155,17 @@ acwt=0.08333
 #false && \
 {
 steps/align_nnet.sh --nj 250 --cmd "$train_cmd" \
-  data-fmllr-tri4b/train_nodup data/lang $srcdir ${srcdir}_ali_all || exit 1;
+  data-fmllr-tri4b/train_nodup data/lang $srcdir ${srcdir}_ali_nodup || exit 1;
 steps/make_denlats_nnet.sh --nj 10 --sub-split 100 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
-  data-fmllr-tri4b/train_nodup data/lang $srcdir ${srcdir}_denlats_all  || exit 1;
+  data-fmllr-tri4b/train_nodup data/lang $srcdir ${srcdir}_denlats_nodup  || exit 1;
 }
 # Now we re-train the hybrid by several iterations of sMBR 
 #false && \
 {
 steps/train_nnet_mpe.sh --cmd "$cuda_cmd" --num-iters 2 --acwt $acwt --do-smbr true \
   data-fmllr-tri4b/train_nodup data/lang $srcdir \
-  ${srcdir}_ali_all \
-  ${srcdir}_denlats_all \
+  ${srcdir}_ali_nodup \
+  ${srcdir}_denlats_nodup \
   $dir || exit 1
 }
 # Decode

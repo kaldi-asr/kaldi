@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Microsoft Corporation  Mirko Hannemann
 //                      Johns Hopkins University (Author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -181,6 +182,8 @@ bool LatticeFasterDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
   return (cur_state != 0);
 }
 
+// This function is now deprecated, since now we do determinization from outside
+// the LatticeFasterDecoder class.
 // Outputs an FST corresponding to the lattice-determinized
 // lattice (one path per word sequence).
 bool LatticeFasterDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst,
@@ -196,11 +199,9 @@ bool LatticeFasterDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst,
   fst::ILabelCompare<LatticeArc> ilabel_comp;
   ArcSort(&raw_fst, ilabel_comp); // sort on ilabel; makes
   // lattice-determinization more efficient.
-    
+
   fst::DeterminizeLatticePrunedOptions lat_opts;
-  lat_opts.max_mem = config_.max_mem;
-  lat_opts.max_loop = config_.max_loop;
-  lat_opts.max_arcs = config_.max_arcs;
+  lat_opts.max_mem = config_.det_opts.max_mem;
     
   DeterminizeLatticePruned(raw_fst, config_.lattice_beam, ofst, lat_opts);
   raw_fst.DeleteStates(); // Free memory-- raw_fst no longer needed.
@@ -839,6 +840,7 @@ void LatticeFasterDecoder::ClearActiveTokens() { // a cleanup routine, at utt en
 DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
     LatticeFasterDecoder *decoder,
     DecodableInterface *decodable,
+    const TransitionModel &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     BaseFloat acoustic_scale,
@@ -853,7 +855,7 @@ DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
     int32 *num_done, // on success (including partial decode), increments this.
     int32 *num_err,  // on failure, increments this.
     int32 *num_partial):  // If partial decode (final-state not reached), increments this.
-    decoder_(decoder), decodable_(decodable),
+    decoder_(decoder), decodable_(decodable), trans_model_(&trans_model),
     word_syms_(word_syms), utt_(utt), acoustic_scale_(acoustic_scale),
     determinize_(determinize), allow_partial_(allow_partial),
     alignments_writer_(alignments_writer),
@@ -861,7 +863,8 @@ DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
     compact_lattice_writer_(compact_lattice_writer),
     lattice_writer_(lattice_writer),
     like_sum_(like_sum), frame_sum_(frame_sum),
-    num_done_(num_done), num_err_(num_err), num_partial_(num_partial),
+    num_done_(num_done), num_err_(num_err),
+    num_partial_(num_partial),
     computed_(false), success_(false), partial_(false),
     clat_(NULL), lat_(NULL) { }
 
@@ -890,15 +893,36 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
   }
   if (!success_) return;
 
+  // Get lattice, and do determinization if requested.
+  lat_ = new Lattice;
+  decoder_->GetRawLattice(lat_);
+  if (lat_->NumStates() == 0)
+    KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt_;
+  fst::Connect(lat_);
   if (determinize_) {
-    clat_ = new CompactLattice;
-    decoder_->GetLattice(clat_);
-    if (clat_->NumStates() == 0) {
-      // the error shouldn't happen here, so make it KALDI_ERR.
-      KALDI_ERR << "Unexpected problem getting lattice for utterance "
-                << utt_;
+    Invert(lat_);
+    if (!TopSort(lat_)) {
+      // Cannot topologically sort the lattice -- determinization will fail.
+      KALDI_WARN << "Topological sorting of state-level lattice failed "
+                 << "(probably your lexicon has empty words or your LM has "
+                 << "epsilon cycles).";
+      delete lat_;    // Delete it here.
+      success_ = false;
+      return;
     }
-    if (acoustic_scale_ != 0.0) // We'll write the lattice without acoustic scaling
+    fst::ILabelCompare<LatticeArc> ilabel_comp;
+    ArcSort(lat_, ilabel_comp);
+    if (!DeterminizeLatticePhonePruned(*trans_model_,
+                                       lat_,
+                                       decoder_->GetOptions().lattice_beam,
+                                       clat_,
+                                       decoder_->GetOptions().det_opts))
+      KALDI_WARN << "Determinization finished earlier than the beam for "
+                 << "utterance " << utt_;
+    delete lat_;
+    fst::Connect(clat_);
+    // We'll write the lattice without acoustic scaling.
+    if (acoustic_scale_ != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), clat_);
   } else {
     lat_ = new Lattice;
@@ -908,8 +932,9 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
                 << utt_;
     }
     fst::Connect(lat_); // Will get rid of this later... shouldn't have any
-    // disconnected states there, but we seem to.
-    if (acoustic_scale_ != 0.0) // We'll write the lattice without acoustic scaling
+                        // disconnected states there, but we seem to.
+    // We'll write the lattice without acoustic scaling.
+    if (acoustic_scale_ != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), lat_); 
   }  
 }
@@ -999,6 +1024,7 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
 bool DecodeUtteranceLatticeFaster(
     LatticeFasterDecoder &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
+    const TransitionModel &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -1057,15 +1083,36 @@ bool DecodeUtteranceLatticeFaster(
     likelihood = -(weight.Value1() + weight.Value2());
   }
 
+  // Get lattice, and do determinization if requested.
+  Lattice lat;
+  decoder.GetRawLattice(&lat);
+  if (lat.NumStates() == 0)
+    KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
+  fst::Connect(&lat);
   if (determinize) {
-    CompactLattice fst;
-    decoder.GetLattice(&fst);
-    if (fst.NumStates() == 0)
-      KALDI_ERR << "Unexpected problem getting lattice for utterance "
-                << utt;
-    if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
-    compact_lattice_writer->Write(utt, fst);
+    Invert(&lat);
+    if (!TopSort(&lat)) {
+      // Cannot topologically sort the lattice -- determinization will fail.
+      KALDI_WARN << "Topological sorting of state-level lattice failed "
+                 << "(probably your lexicon has empty words or your LM has "
+                 << "epsilon cycles).";
+      return false;
+    }
+    fst::ILabelCompare<LatticeArc> ilabel_comp;
+    ArcSort(&lat, ilabel_comp);
+    CompactLattice clat;
+    if (!DeterminizeLatticePhonePruned(trans_model,
+                                       &lat,
+                                       decoder.GetOptions().lattice_beam,
+                                       &clat,
+                                       decoder.GetOptions().det_opts))
+      KALDI_WARN << "Determinization finished earlier than the beam for "
+                 << "utterance " << utt;
+    fst::Connect(&clat);
+    // We'll write the lattice without acoustic scaling.
+    if (acoustic_scale != 0.0)
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
+    compact_lattice_writer->Write(utt, clat);
   } else {
     Lattice fst;
     decoder.GetRawLattice(&fst);
@@ -1073,7 +1120,7 @@ bool DecodeUtteranceLatticeFaster(
       KALDI_ERR << "Unexpected problem getting lattice for utterance "
                 << utt;
     fst::Connect(&fst); // Will get rid of this later... shouldn't have any
-    // disconnected states there, but we seem to.
+                        // disconnected states there, but we seem to.
     if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
     lattice_writer->Write(utt, fst);

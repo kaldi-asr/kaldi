@@ -82,6 +82,8 @@ if [ -f $alidir/trans.1 ]; then
   echo "$0: using transforms from $alidir"
   ln.pl $alidir/trans.* $dir # Link them to dest dir.
   feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans.JOB ark:- ark:- |"
+else
+  feats="$sifeats"
 fi
 ##
 

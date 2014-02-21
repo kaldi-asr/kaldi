@@ -7,7 +7,7 @@ LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = nnet-randomize-frames nnet-am-info nnet-init \
-   nnet-train-simple nnet-train-transitions nnet-latgen-faster nnet-am-copy \
+   nnet-train-simple nnet-train-ensemble nnet-train-transitions nnet-latgen-faster nnet-am-copy \
    nnet-am-init nnet-insert nnet-align-compiled \
    nnet-compute-prob nnet-copy-egs nnet-shrink nnet-combine nnet-combine-a \
    nnet-am-average nnet-am-combine nnet-am-compute nnet-am-shrink nnet-am-mixup \
@@ -15,7 +15,7 @@ BINFILES = nnet-randomize-frames nnet-am-info nnet-init \
    nnet-get-preconditioner nnet-precondition nnet-select-egs nnet-combine-fast \
    nnet-subset-egs nnet-shuffle-egs nnet-am-fix nnet-logprob  nnet-logprob2 \
    nnet-logprob2-parallel nnet-logprob-parallel nnet-am-stats nnet-am-rescale \
-   nnet-am-limit-rank nnet-latgen-faster-parallel nnet-to-raw-nnet nnet-compute \
+   nnet-am-limit-rank nnet-latgen-faster-parallel lnnet-to-raw-nnet nnet-compute \
    raw-nnet-concat nnet-am-limit-rank-final raw-nnet-info \
    nnet-get-feature-transform nnet-compute-from-egs \
    nnet-am-widen nnet-show-progress nnet-limit-degradation \
@@ -23,7 +23,8 @@ BINFILES = nnet-randomize-frames nnet-am-info nnet-init \
    nnet-get-egs-discriminative nnet-shuffle-egs-discriminative \
    nnet-compare-hash-discriminative nnet-combine-egs-discriminative \
    nnet-train-discriminative-simple nnet-train-discriminative-parallel \
-   nnet-modify-learning-rates nnet-normalize-stddev nnet-perturb-egs nnet-perturb-egs-fmllr
+   nnet-modify-learning-rates nnet-normalize-stddev nnet-perturb-egs nnet-perturb-egs-fmllr \
+ 	 nnet-get-weighted-egs 
 
 OBJFILES =
 

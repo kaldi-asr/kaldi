@@ -15,6 +15,9 @@ skip_kws=false
 skip_stt=false
 max_states=150000
 wip=0.5
+
+echo "$0 $@"
+
 . utils/parse_options.sh
 
 if [ $# -ne 0 ]; then
@@ -36,25 +39,11 @@ fi
 
 function make_plp {
   t=$1
-
-  if [ "$use_pitch" = "false" ] && [ "$use_ffv" = "false" ]; then
-   steps/make_plp.sh --cmd "$decode_cmd" --nj $my_nj data/${t} exp/make_plp/${t} plp
-  elif [ "$use_pitch" = "true" ] && [ "$use_ffv" = "true" ]; then
-    cp -rT data/${t} data/${t}_plp_pitch; cp -rT data/${t} data/${t}_ffv
-    steps/make_plp_pitch.sh --cmd "$decode_cmd" --nj $my_nj data/${t}_plp_pitch exp/make_plp_pitch/${t} plp_pitch_tmp_${t}
-    local/make_ffv.sh --cmd "$decode_cmd"  --nj $my_nj data/${t}_ffv exp/make_ffv/${t} ffv_tmp_${t}
-    steps/append_feats.sh --cmd "$decode_cmd" --nj $my_nj data/${t}{_plp_pitch,_ffv,} exp/make_ffv/append_${t}_pitch_ffv plp
-    rm -rf {plp_pitch,ffv}_tmp_${t} data/${t}_{plp_pitch,ffv}
-  elif [ "$use_pitch" = "true" ]; then
+  if $use_pitch; then
     steps/make_plp_pitch.sh --cmd "$decode_cmd" --nj $my_nj data/${t} exp/make_plp_pitch/${t} plp
-  elif [ "$use_ffv" = "true" ]; then
-    cp -rT data/${t} data/${t}_plp; cp -rT data/${t} data/${t}_ffv
-    steps/make_plp.sh --cmd "$decode_cmd" --nj $my_nj data/${t}_plp exp/make_plp/${t} plp_tmp_${t}
-    local/make_ffv.sh --cmd "$decode_cmd" --nj $my_nj data/${t}_ffv exp/make_ffv/${t} ffv_tmp_${t}
-    steps/append_feats.sh --cmd "$decode_cmd" --nj $my_nj data/${t}{_plp,_ffv,} exp/make_ffv/append_${t} plp
-    rm -rf {plp,ffv}_tmp_${t} data/${t}_{plp,ffv}
+  else
+    steps/make_plp.sh --cmd "$decode_cmd" --nj $my_nj data/${t} exp/make_plp/${t} plp
   fi
-
   utils/fix_data_dir.sh data/${t}
   steps/compute_cmvn_stats.sh data/${t} exp/make_plp/${t} plp
   utils/fix_data_dir.sh data/${t}
@@ -309,13 +298,13 @@ if [ ! -f $decode/.done ]; then
     --cmd "$decode_cmd" --transform-dir exp/tri5/decode_${dirid} "${decode_extra_opts[@]}"\
     exp/sgmm5/graph ${datadir} $decode |tee $decode/decode.log
   touch $decode/.done
-fi
 
-if ! $fast_path ; then
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
-    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
-    ${datadir} data/lang  exp/sgmm5/decode_fmllr_${dirid}
+  if ! $fast_path ; then
+    local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
+      --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
+      "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+      ${datadir} data/lang  exp/sgmm5/decode_fmllr_${dirid}
+  fi
 fi
 
 ####################################################################
@@ -325,7 +314,7 @@ fi
 ####################################################################
 
 for iter in 1 2 3 4; do
-  # Decode SGMM+MMI (via rescoring).
+    # Decode SGMM+MMI (via rescoring).
   decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dirid}_it$iter
   if [ ! -f $decode/.done ]; then
 
@@ -338,21 +327,22 @@ for iter in 1 2 3 4; do
   fi
 done
 
-#We are done -- all lattices has been generated. We have to
-#a)Run MBR decoding
-#b)Run KW search
+  #We are done -- all lattices has been generated. We have to
+  #a)Run MBR decoding
+  #b)Run KW search
 for iter in 1 2 3 4; do
-  # Decode SGMM+MMI (via rescoring).
+    # Decode SGMM+MMI (via rescoring).
   decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dirid}_it$iter
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
+      --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
     "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
     ${datadir} data/lang $decode
 done
 
+
 ####################################################################
 ##
-## DNN decoding
+## DNN ("compatibility") decoding -- also, just decode the "default" net
 ##
 ####################################################################
 if [ -f exp/tri6_nnet/.done ]; then
@@ -374,6 +364,53 @@ if [ -f exp/tri6_nnet/.done ]; then
     ${datadir} data/lang $decode
 fi
 
+####################################################################
+##
+## DNN (nextgen DNN) decoding
+##
+####################################################################
+if [ -f exp/tri6a_nnet/.done ]; then
+  decode=exp/tri6a_nnet/decode_${dirid}
+  if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
+    steps/nnet2/decode.sh --cmd "$decode_cmd" --nj $my_nj \
+      --beam $dnn_beam --lat-beam $dnn_lat_beam \
+      --skip-scoring true "${decode_extra_opts[@]}" \
+      --transform-dir exp/tri5/decode_${dirid} \
+      exp/tri5/graph ${datadir} $decode | tee $decode/decode.log
+
+    touch $decode/.done
+  fi
+
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
+    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+    ${datadir} data/lang $decode
+fi
+
+####################################################################
+##
+## DNN (ensemble) decoding
+##
+####################################################################
+if [ -f exp/tri6b_nnet/.done ]; then
+  decode=exp/tri6b_nnet/decode_${dirid}
+  if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
+    steps/nnet2/decode.sh --cmd "$decode_cmd" --nj $my_nj \
+      --beam $dnn_beam --lat-beam $dnn_lat_beam \
+      --skip-scoring true "${decode_extra_opts[@]}" \
+      --transform-dir exp/tri5/decode_${dirid} \
+      exp/tri5/graph ${datadir} $decode | tee $decode/decode.log
+
+    touch $decode/.done
+  fi
+
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
+    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+    ${datadir} data/lang $decode
+fi
 ####################################################################
 ##
 ## DNN_MPE decoding

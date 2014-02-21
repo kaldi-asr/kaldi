@@ -93,13 +93,17 @@ fi
 if $kwlist_wordlist ; then 
 (
  echo '<kwlist ecf_filename="kwlist.xml" language="" encoding="UTF-8" compareNormalize="lowercase" version="" >'
- while read line; do
-   id_str=`echo $line | cut -f 1 -d ' '`
-   kw_str=`echo $line | cut -f 2- -d ' '`
-   echo "  <kw kwid=\"$id_str\">"
-   echo "    <kwtext>$kw_str</kwtext>"
-   echo "  </kw>"
- done < ${kwlist_file}
+ awk '{ printf("  <kw kwid=\"%s\">\n", $1);
+        printf("    <kwtext>"); for (n=2;n<=NF;n++){ printf("%s", $n); if(n<NF){printf(" ");} }
+        printf("</kwtext>\n");
+        printf("  </kw>\n"); }' < ${kwlist_file}
+ # while read line; do
+ #   id_str=`echo $line | cut -f 1 -d ' '`
+ #   kw_str=`echo $line | cut -f 2- -d ' '`
+ #   echo "  <kw kwid=\"$id_str\">"
+ #   echo "    <kwtext>$kw_str</kwtext>"
+ #   echo "  </kw>"
+ # done < ${kwlist_file}
  echo '</kwlist>'
 ) > $kwsdatadir/kwlist.xml || exit 1
 else

@@ -3,6 +3,7 @@
 // Copyright 2009-2012  Microsoft Corporation, Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)
 //                2013  GoVIvace Inc. (author: Nagendra Goel)
+//                2014  Guoguo Chen
  
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -125,9 +126,9 @@ int main(int argc, char *argv[]) {
               new DecodableMatrixScaledMapped(trans_model, acoustic_scale, loglikes);
           DecodeUtteranceLatticeFasterClass *task =
               new DecodeUtteranceLatticeFasterClass(
-                  decoder, decodable, word_syms, utt, acoustic_scale,
-                  determinize, allow_partial, &alignment_writer, &words_writer,
-                  &compact_lattice_writer, &lattice_writer,
+                  decoder, decodable, trans_model, word_syms, utt,
+                  acoustic_scale, determinize, allow_partial, &alignment_writer,
+                  &words_writer, &compact_lattice_writer, &lattice_writer,
                   &tot_like, &frame_count, &num_success, &num_fail, NULL);
 
           sequencer.Run(task); // takes ownership of "task",
@@ -159,10 +160,10 @@ int main(int argc, char *argv[]) {
             DecodableMatrixScaledMapped(trans_model, acoustic_scale, loglikes);
         DecodeUtteranceLatticeFasterClass *task =
             new DecodeUtteranceLatticeFasterClass(
-                decoder, decodable, word_syms, utt, acoustic_scale,
+                decoder, decodable, trans_model, word_syms, utt, acoustic_scale,
                 determinize, allow_partial, &alignment_writer, &words_writer,
-                &compact_lattice_writer, &lattice_writer,
-                &tot_like, &frame_count, &num_success, &num_fail, NULL);
+                &compact_lattice_writer, &lattice_writer, &tot_like,
+                &frame_count, &num_success, &num_fail, NULL);
         sequencer.Run(task); // takes ownership of "task",
         // and will delete it when done.
       }

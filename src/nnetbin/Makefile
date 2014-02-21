@@ -7,9 +7,7 @@ LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = nnet-train-frmshuff \
-        nnet-train-xent-hardlab-perutt \
-        nnet-train-xent-hardlab-frmshuff \
-        nnet-train-mse-tgtmat-frmshuff \
+        nnet-train-perutt \
         nnet-train-mmi-sequential \
         nnet-train-mpe-sequential \
         rbm-train-cd1-frmshuff rbm-convert-to-nnet \

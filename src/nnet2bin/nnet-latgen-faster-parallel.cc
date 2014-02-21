@@ -2,6 +2,7 @@
 
 // Copyright 2009-2013   Microsoft Corporation
 //                       Johns Hopkins University (author: Daniel Povey)
+//                2014   Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -151,7 +152,7 @@ int main(int argc, char *argv[]) {
           DecodeUtteranceLatticeFasterClass *task =
               new DecodeUtteranceLatticeFasterClass(
                   decoder, nnet_decodable, // takes ownership of these two.
-                  word_syms, utt, acoustic_scale, determinize,
+                  trans_model, word_syms, utt, acoustic_scale, determinize,
                   allow_partial, &alignment_writer, &words_writer,
                   &compact_lattice_writer, &lattice_writer,
                   &tot_like, &frame_count, &num_done, &num_err, NULL);
@@ -202,7 +203,7 @@ int main(int argc, char *argv[]) {
         DecodeUtteranceLatticeFasterClass *task =
             new DecodeUtteranceLatticeFasterClass(
                 decoder, nnet_decodable, // takes ownership of these two.
-                word_syms, utt, acoustic_scale, determinize,
+                trans_model, word_syms, utt, acoustic_scale, determinize,
                 allow_partial, &alignment_writer, &words_writer,
                 &compact_lattice_writer, &lattice_writer,
                 &tot_like, &frame_count, &num_done, &num_err, NULL);

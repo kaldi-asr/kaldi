@@ -1,6 +1,6 @@
 // bin/analyze-counts.cc
 
-// Copyright 2012 Karel Vesely (Brno University of Technology)
+// Copyright 2012-2014 Brno University of Technology (Author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -21,28 +21,35 @@
 */
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
+#include "fst/fstlib.h"
 
 #include <iomanip>
+#include <algorithm>
+#include <numeric>
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
+  typedef kaldi::uint64 uint64;
   try {
     const char *usage =
-        "Creates the counts from the int32 vectors (alignments).\n"
+        "Counts element frequencies from integer vector table.\n"
+        "(eg. for example to get pdf-counts to estimate DNN-output priros, or data analysis)\n"
+        "Verbosity : level 1 => print frequencies and histogram\n"
+        "\n"
         "Usage:  analyze-counts  [options] <alignments-rspecifier> <counts-wxfilname>\n"
         "e.g.: \n"
-        " analyze-counts ark:1.ali prior.counts\n";
+        " analyze-counts ark:1.ali prior.counts\n"
+        " Show phone counts by:\n"
+        " ali-to-phone --per-frame=true ark:1.ali ark:- | analyze-counts --verbose=1 ark:- - >/dev/null\n";
+    
     ParseOptions po(usage);
     
     bool binary = false;
+    std::string symbol_table_filename = "";
+    
     po.Register("binary", &binary, "write in binary mode");
-
-    bool rescale_to_probs = false;
-    po.Register("rescale-to-probs", &rescale_to_probs, "rescale the output to probablities instead");
-
-    bool show_histogram = false;
-    po.Register("show-histogram", &show_histogram, "show histgram to standard output");
+    po.Register("symbol-table", &symbol_table_filename, "Read symbol table for display of counts");
 
     po.Read(argc, argv);
 
@@ -56,7 +63,8 @@ int main(int argc, char *argv[]) {
 
     SequentialInt32VectorReader reader(alignments_rspecifier);
 
-    std::vector<int32> counts;
+    // Get the counts
+    std::vector<uint64> counts;
     int32 num_done = 0;
     for (; !reader.Done(); reader.Next()) {
       std::string key = reader.Key();
@@ -67,56 +75,66 @@ int main(int argc, char *argv[]) {
         if(value >= counts.size()) {
           counts.resize(value+1);
         }
-        counts[value]++; // accumulate counts
+        counts[value]++; // Accumulate
       }
 
       num_done++;
     }
 
-    //need at least one occurence for each tgt, so there is no nan during decoding
+    // We need at least one occurence for each tgt, so there is no nan during decoding
+    std::vector<uint64> counts_nozero(counts);
     for(size_t i = 0; i < counts.size(); i++) {
-      if(counts[i] == 0) counts[i]++;
+      if(counts_nozero[i] == 0) {
+        KALDI_WARN << "Zero count for element " << i << ", force setting to one."
+                   << " This avoids divide-by-zero when used counts used in decoding.";
+        counts_nozero[i]++;
+      }
     }
 
-    //convert to BaseFloat and write
-    Vector<BaseFloat> counts_f(counts.size());
-    for(int32 i=0; i<counts.size(); i++) {
-      counts_f(i) = counts[i];
-    }
-    //optionally rescale to probs
-    if(rescale_to_probs) {
-      counts_f.Scale(1.0/counts_f.Sum());
-    }
+    // Write
     Output ko(wxfilename, binary);
-    counts_f.Write(ko.Stream(),binary);
-    //optionally show histogram
-    if(show_histogram) {
-      int32 n_bins=20;
-      BaseFloat min = counts_f.Min(), max = counts_f.Max();
-      BaseFloat step = (max-min)/n_bins;
-      //accumulate bins
-      int32 zero_bin = 0;
-      std::vector<int32> hist_bin(n_bins+1);
-      for (int32 i=0; i<counts_f.Dim(); i++) {
-        if(counts_f(i) == 0.0) { 
-          zero_bin++;
-        } else {
-          hist_bin[floor((counts_f(i)-min)/step)]++;
-        }
+    WriteIntegerVector(ko.Stream(), binary, counts_nozero);
+
+    ////
+    //// THE REST IS FOR ANALYSIS, IT GETS PRINTED TO LOG
+    ////
+    if (symbol_table_filename != "" || (kaldi::g_kaldi_verbose_level >= 1)) {
+
+      // load the symbol table
+      fst::SymbolTable *elem_syms = NULL;
+      if (symbol_table_filename != "") {
+          elem_syms = fst::SymbolTable::ReadText(symbol_table_filename);
+          if (!elem_syms)
+            KALDI_ERR << "Could not read symbol table from file " << symbol_table_filename;
       }
-      //print the histogram
-      using namespace std;
-      int32 w=6, w2=3;
-      std::cerr << "\%\%\% Histogram of the vector elements \%\%\%\n";
-      std::cerr << "min : " << min << "  max: " << max << "\n";
-      std::cerr << setw(w) << zero_bin << "\t" << setprecision(w2) << 0.0 << " exactly\n";
-      for (int32 i=0; i<hist_bin.size(); i++) {
-        std::cerr << setw(w) << hist_bin[i] << "\t" << setprecision(w2) << min+i*step << " to " << setprecision(w2) <<  min+(i+1)*step << "\n";
+      
+      // sort the counts
+      std::vector<std::pair<int32,int32> > sorted_counts;
+      for (int32 i = 0; i < counts.size(); i++) {
+        sorted_counts.push_back(std::make_pair(counts[i], i));
       }
-      std::cerr << "\%\%\%\n";
+      std::sort(sorted_counts.begin(), sorted_counts.end());
+      
+      // print
+      std::ostringstream os;
+      int32 sum = std::accumulate(counts.begin(),counts.end(), 0);
+      os << "Printing...\n### The sorted count table," << std::endl;
+      os << "count\t(norm),\tid\t(symbol):" << std::endl;
+      for (int32 i=0; i<sorted_counts.size(); i++) {
+        os << sorted_counts[i].first << "\t(" 
+           << static_cast<float>(sorted_counts[i].first) / sum << "),\t"
+           << sorted_counts[i].second << "\t" 
+           << (elem_syms != NULL ? std::string("(")+elem_syms->Find(sorted_counts[i].second)+")" : "")
+           << std::endl;
+      }
+      os << "\n#total " << sum 
+         << " (" << static_cast<float>(sum)/100/3600 << "h)" 
+         << std::endl;
+      KALDI_LOG << os.str();
     }
 
     KALDI_LOG << "Summed " << num_done << " int32 vectors to counts.";
+    KALDI_LOG << "Counts written to " << wxfilename;
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();

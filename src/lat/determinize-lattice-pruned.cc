@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Microsoft Corporation
 //           2012-2013  Johns Hopkins University (Author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -27,6 +28,7 @@
 using std::tr1::unordered_map;
 #include <climits>
 #include "fstext/determinize-lattice.h" // for LatticeStringRepository
+#include "fstext/fstext-utils.h"
 #include "lat/lattice-functions.h" // for PruneLattice
 #include "lat/determinize-lattice-pruned.h"
 
@@ -117,7 +119,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     if (destroy)
       FreeMostMemory();
     // Add basic states-- but we will add extra ones to account for strings on output.
-    for (OutputStateId s = 0;s < nStates;s++) {
+    for (OutputStateId s = 0; s< nStates;s++) {
       OutputStateId news = ofst->AddState();
       KALDI_ASSERT(news == s);
     }
@@ -398,6 +400,11 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       return (state != other.state || string != other.string ||
               weight != other.weight);
     }
+    // This operator is only intended for the priority_queue in the function
+    // EpsilonClosure().
+    bool operator > (const Element &other) const {
+      return state > other.state;
+    }
   };
 
   // Arcs in the format we temporarily create in this class (a representation, essentially of
@@ -616,8 +623,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     KALDI_ASSERT(0); // because we checked if a_str == b_str above, shouldn't reach here
     return 0;
   }
-  
-  
+
   // This function computes epsilon closure of subset of states by following epsilon links.
   // Called by InitialToStateId and Initialize.
   // Has no side effects except on the string repository.  The "output_subset" is not
@@ -633,7 +639,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
 
     {
       MapIter iter = cur_subset.end();
-      for (size_t i = 0;i < subset->size();i++) {
+      for (size_t i = 0; i < subset->size(); i++) {
         std::pair<const InputStateId, Element> pr((*subset)[i].state, (*subset)[i]);
 #if __GNUC__ == 4 && __GNUC_MINOR__ == 0
         iter = cur_subset.insert(iter, pr).first;
@@ -647,16 +653,16 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // find whether input fst is known to be sorted on input label. 
     bool sorted = ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
 
-    std::deque<Element> queue;
+    std::priority_queue<Element, vector<Element>, greater<Element> > queue;
     for (typename vector<Element>::const_iterator iter = subset->begin();
          iter != subset->end();
-         ++iter) queue.push_back(*iter);
+         ++iter) queue.push(*iter);
     bool replaced_elems = false; // relates to an optimization, see below.
     int counter = 0; // stops infinite loops here for non-lattice-determinizable input
     // (e.g. input with negative-cost epsilon loops); useful in testing.
     while (queue.size() != 0) {
-      Element elem = queue.front();
-      queue.pop_front();
+      Element elem = queue.top();
+      queue.pop();
       
       // The next if-statement is a kind of optimization.  It's to prevent us
       // unnecessarily repeating the processing of a state.  "cur_subset" always
@@ -691,7 +697,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
             next_elem.string = (arc.olabel == 0 ? elem.string :
                                 repository_.Successor(elem.string, arc.olabel));
             cur_subset[next_elem.state] = next_elem;
-            queue.push_back(next_elem);
+            queue.push(next_elem);
           } else {
             // was not inserted because one already there.  In normal
             // determinization we'd add the weights.  Here, we find which one
@@ -710,7 +716,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
                                   repository_.Successor(elem.string, arc.olabel));
               iter->second.string = next_elem.string;
               iter->second.weight = next_elem.weight;
-              queue.push_back(next_elem);
+              queue.push(next_elem);
               replaced_elems = true;
             }
             // else it is the same or worse, so use original one.
@@ -975,7 +981,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
 
         { // this is a check.
           double best_cost = backward_costs_[ifst_->Start()],
-              tolerance = 0.01;
+              tolerance = 0.01 + 1.0e-04 * abs(best_cost);
           if (task->priority_cost < best_cost - tolerance) {
             KALDI_WARN << "Cost below best cost was encountered:"
                        << task->priority_cost << " < " << best_cost;
@@ -1017,29 +1023,20 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   void ComputeBackwardWeight() {
     // Sets up the backward_costs_ array, and the cutoff_ variable.
     KALDI_ASSERT(beam_ > 0);
-    if (ifst_->Properties(kTopSorted, true) != 0) { // is topologically sorted-> easier.
-      backward_costs_.resize(ifst_->NumStates());
-      for (StateId s = ifst_->NumStates() - 1; s >= 0; s--) {
-        double &cost = backward_costs_[s];
-        cost = ConvertToCost(ifst_->Final(s));
-        for (ArcIterator<ExpandedFst<Arc> > aiter(*ifst_, s); 
-             !aiter.Done(); aiter.Next()) {
-          const Arc &arc = aiter.Value();
-          cost = std::min(cost,
-                          ConvertToCost(arc.weight) + backward_costs_[arc.nextstate]);
-        }
+
+    // Only handle the toplogically sorted case.
+    backward_costs_.resize(ifst_->NumStates());
+    for (StateId s = ifst_->NumStates() - 1; s >= 0; s--) {
+      double &cost = backward_costs_[s];
+      cost = ConvertToCost(ifst_->Final(s));
+      for (ArcIterator<ExpandedFst<Arc> > aiter(*ifst_, s);
+           !aiter.Done(); aiter.Next()) {
+        const Arc &arc = aiter.Value();
+        cost = std::min(cost,
+                        ConvertToCost(arc.weight) + backward_costs_[arc.nextstate]);
       }
-    } else {
-      KALDI_WARN << "Input FST not topologically sorted; algorithm is less efficient.";
-      // Use the generic ShortestDistance algorithm.  Note: we could probably
-      // set it up to use this for the top-sorted case and still be efficient,
-      // but I'm not sure how.
-      std::vector<Weight> backward_weights_(ifst_->NumStates());
-      backward_costs_.resize(ifst_->NumStates());
-      ShortestDistance(*ifst_, &backward_weights_, true);
-      for (int32 i = 0; i < ifst_->NumStates(); i++)
-        backward_costs_[i] = ConvertToCost(backward_weights_[i]);
     }
+
     if (ifst_->Start() == kNoStateId) return; // we'll be returning
     // an empty FST.
     
@@ -1050,6 +1047,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   }
   
   void InitializeDeterminization() {
+    KALDI_ASSERT(ifst_->Properties(kTopSorted, true) != 0);
     ComputeBackwardWeight();
 #if !(__GNUC__ == 4 && __GNUC_MINOR__ == 0)
     if(ifst_->Properties(kExpanded, false) != 0) { // if we know the number of
@@ -1284,10 +1282,10 @@ bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
         effective_beam = 0;
       double new_beam = beam * sqrt(effective_beam / beam);
       if (new_beam < 0.5 * beam) new_beam = 0.5 * beam;
-      beam = new_beam;
       KALDI_WARN << "Effective beam " << effective_beam << " was less than beam "
                  << beam << " * cutoff " << opts.retry_cutoff << ", pruning raw "
                  << "lattice with new beam " << new_beam << " and retrying.";
+      beam = new_beam;
       if (iter == 0) temp_fst = ifst;
       kaldi::PruneLattice(beam, &temp_fst);
     }
@@ -1295,11 +1293,189 @@ bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
   return false; // Suppress compiler warning; this code is unreachable.
 }
 
+template<class Weight>
+typename ArcTpl<Weight>::Label DeterminizeLatticeInsertPhones(
+    const kaldi::TransitionModel &trans_model,
+    MutableFst<ArcTpl<Weight> > *fst) {
+  // Define some types.
+  typedef ArcTpl<Weight> Arc;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Label Label;
+
+  // Work out the first phone symbol. This is more related to the phone
+  // insertion function, so we put it here and make it the returning value of
+  // DeterminizeLatticeInsertPhones(). 
+  Label first_phone_label = HighestNumberedInputSymbol(*fst) + 1;
+
+  // Insert phones here.
+  for (StateIterator<MutableFst<Arc> > siter(*fst);
+       !siter.Done(); siter.Next()) {
+    StateId state = siter.Value();
+    if (state == fst->Start())
+      continue;
+    for (MutableArcIterator<MutableFst<Arc> > aiter(fst, state);
+         !aiter.Done(); aiter.Next()) {
+      Arc arc = aiter.Value();
+
+      // Note: the words are on the input symbol side and transition-id's are on
+      // the output symbol side.
+      if ((arc.olabel != 0)
+          && (trans_model.TransitionIdToHmmState(arc.olabel) == 0)
+          && (!trans_model.IsSelfLoop(arc.olabel))) {
+        Label phone =
+            static_cast<Label>(trans_model.TransitionIdToPhone(arc.olabel));
+
+        // Skips <eps>.
+        KALDI_ASSERT(phone != 0);
+
+        if (arc.ilabel == 0) {
+          // If there is no word on the arc, insert the phone directly.
+          arc.ilabel = first_phone_label + phone;
+        } else {
+          // Otherwise, add an additional arc.
+          StateId additional_state = fst->AddState();
+          StateId next_state = arc.nextstate;
+          arc.nextstate = additional_state;
+          fst->AddArc(additional_state,
+                      Arc(first_phone_label + phone, 0,
+                          Weight::One(), next_state));
+        }
+      }
+
+      aiter.SetValue(arc);
+    }
+  }
+
+  return first_phone_label;
+}
+
+template<class Weight>
+void DeterminizeLatticeDeletePhones(
+    typename ArcTpl<Weight>::Label first_phone_label,
+    MutableFst<ArcTpl<Weight> > *fst) {
+  // Define some types.
+  typedef ArcTpl<Weight> Arc;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Label Label;
+
+  // Delete phones here.
+  for (StateIterator<MutableFst<Arc> > siter(*fst);
+       !siter.Done(); siter.Next()) {
+    StateId state = siter.Value();
+    for (MutableArcIterator<MutableFst<Arc> > aiter(fst, state);
+         !aiter.Done(); aiter.Next()) {
+      Arc arc = aiter.Value();
+
+      if (arc.ilabel >= first_phone_label)
+        arc.ilabel = 0;
+
+      aiter.SetValue(arc);
+    }
+  }
+}
+
+/** This function does a first pass determinization with phone symbols inserted
+    at phone boundary. It uses a transition model to work out the transition-id
+    to phone map. First, phones will be inserted into the word level lattice.
+    Second, determinization will be applied on top of the phone + word lattice.
+    Finally, the inserted phones will be removed, converting the lattice back to
+    a word level lattice. The output lattice of this pass is not deterministic,
+    since we remove the phone symbols as a last step. It is supposed to be
+    followed by another pass of determinization at the word level. It could also
+    be useful for some other applications such as fMLLR estimation, confidence
+    estimation, discriminative training, etc.
+*/
+template<class Weight, class IntType>
+bool DeterminizeLatticePhonePrunedFirstPass(
+    const kaldi::TransitionModel &trans_model,
+    double beam,
+    MutableFst<ArcTpl<Weight> > *fst,
+    const DeterminizeLatticePrunedOptions &opts) {
+  // First, insert the phones.
+  typename ArcTpl<Weight>::Label first_phone_label =
+      DeterminizeLatticeInsertPhones(trans_model, fst);
+  KALDI_ASSERT(TopSort(fst));
+  
+  // Second, do determinization with phone inserted.
+  bool ans = DeterminizeLatticePruned<Weight, IntType>(*fst, beam, fst, opts);
+
+  // Finally, remove the inserted phones.
+  DeterminizeLatticeDeletePhones(first_phone_label, fst);
+  KALDI_ASSERT(TopSort(fst));
+
+  return ans;
+}
+
+// "Destructive" version of DeterminizeLatticePhonePruned() where the input
+// lattice might be modified.
+template<class Weight, class IntType>
+bool DeterminizeLatticePhonePruned(
+    const kaldi::TransitionModel &trans_model,
+    MutableFst<ArcTpl<Weight> > *ifst,
+    double beam,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
+    DeterminizeLatticePhonePrunedOptions opts) {
+  // Returning status.
+  bool ans = true;
+
+  // Make sure at least one of opts.phone_determinize and opts.word_determinize
+  // is not false, otherwise calling this function doesn't make any sense.
+  if ((opts.phone_determinize || opts.word_determinize) == false) {
+    KALDI_WARN << "Both --phone-determinize and --word-determinize are set to "
+               << "false, copying lattice without determinization.";
+    // We are expecting the words on the input side.
+    ConvertLattice<Weight, IntType>(*ifst, ofst, false);
+    return ans;
+  }
+
+  // Determinization options.
+  DeterminizeLatticePrunedOptions det_opts;
+  det_opts.delta = opts.delta;
+  det_opts.max_mem = opts.max_mem;
+
+  // If --phone-determinize is true, do the determinization on phone + word
+  // lattices.
+  if (opts.phone_determinize) {
+    KALDI_VLOG(1) << "Doing first pass of determinization on phone + word "
+                  << "lattices."; 
+    ans = DeterminizeLatticePhonePrunedFirstPass<Weight, IntType>(
+        trans_model, beam, ifst, det_opts) && ans;
+
+    // If --word-determinize is false, we've finished the job and return here.
+    if (!opts.word_determinize) {
+      // We are expecting the words on the input side.
+      ConvertLattice<Weight, IntType>(*ifst, ofst, false);
+      return ans;
+    }
+  }
+
+  // If --word-determinize is true, do the determinization on word lattices.
+  if (opts.word_determinize) {
+    KALDI_VLOG(1) << "Doing second pass of determinization on word lattices.";
+    ans = DeterminizeLatticePruned<Weight, IntType>(
+        *ifst, beam, ofst, det_opts) && ans;
+  }
+
+  return ans;
+}
+
+// Normal verson of DeterminizeLatticePhonePruned(), where the input lattice
+// will be kept as unchanged.
+template<class Weight, class IntType>
+bool DeterminizeLatticePhonePruned(
+    const kaldi::TransitionModel &trans_model,
+    const ExpandedFst<ArcTpl<Weight> > &ifst,
+    double beam,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
+    DeterminizeLatticePhonePrunedOptions opts) {
+  VectorFst<ArcTpl<Weight> > temp_fst(ifst);
+  return DeterminizeLatticePhonePruned(trans_model, &temp_fst,
+                                       beam, ofst, opts);
+}
 
 // Instantiate the templates for the types we might need.
-// Note: there are actually two templates, each of which
+// Note: there are actually four templates, each of which
 // we instantiate for a single type.
-
 template
 bool DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
     const ExpandedFst<kaldi::LatticeArc> &ifst,
@@ -1314,6 +1490,21 @@ bool DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
     MutableFst<kaldi::LatticeArc> *ofst, 
     DeterminizeLatticePrunedOptions opts);
 
+template
+bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
+    const kaldi::TransitionModel &trans_model,
+    const ExpandedFst<kaldi::LatticeArc> &ifst,
+    double prune,
+    MutableFst<kaldi::CompactLatticeArc> *ofst,
+    DeterminizeLatticePhonePrunedOptions opts);
+
+template
+bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
+    const kaldi::TransitionModel &trans_model,
+    MutableFst<kaldi::LatticeArc> *ifst,
+    double prune,
+    MutableFst<kaldi::CompactLatticeArc> *ofst,
+    DeterminizeLatticePhonePrunedOptions opts);
 
 }
 

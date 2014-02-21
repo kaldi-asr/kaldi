@@ -45,7 +45,10 @@ template<class Holder> class SequentialTableReaderImplBase {
   virtual void FreeCurrent() = 0;
   virtual void Next() = 0;
   virtual bool Close() = 0;
+  SequentialTableReaderImplBase() { }
   virtual ~SequentialTableReaderImplBase() { }
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(SequentialTableReaderImplBase);  
 };
 
 
@@ -206,7 +209,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     if (state_ == kLoadSucceeded)
       holder_.Clear();
   }
- private:
+ private:  
   bool LoadCurrent() {
     // Attempts to load object whose rxfilename is on the current scp line.
     if (state_ != kHaveScpLine)
@@ -288,6 +291,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     // it means the user called FreeCurrent().
     kFileStart,        // [state we only use internally]           no         yes
   } state_;
+ private:
 };
 
 
@@ -616,6 +620,10 @@ template<class Holder> class TableWriterImplBase {
 
   // May throw on write error if Close was not called.
   virtual ~TableWriterImplBase() { }
+
+  TableWriterImplBase() { }
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(TableWriterImplBase);
 };
 
 

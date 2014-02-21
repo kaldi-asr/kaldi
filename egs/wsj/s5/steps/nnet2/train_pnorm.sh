@@ -65,6 +65,7 @@ parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" # by default we use 16 thr
 cleanup=true
 egs_dir=
 lda_opts=
+lda_dim=
 egs_opts=
 # End configuration section.
 
@@ -91,7 +92,6 @@ if [ $# != 4 ]; then
   echo "  --final-learning-rate  <final-learning-rate|0.004>   # Learning rate at end of training, e.g. 0.004 for small"
   echo "                                                   # data, 0.001 for large data"
   echo "  --num-hidden-layers <#hidden-layers|2>           # Number of hidden layers, e.g. 2 for 3 hours of data, 4 for 100hrs"
-  echo "  --initial-num-hidden-layers <#hidden-layers|1>   # Number of hidden layers to start with."
   echo "  --add-layers-period <#iters|2>                   # Number of iterations between adding hidden layers"
   echo "  --mix-up <#pseudo-gaussians|0>                   # Can be used to have multiple targets in final output layer,"
   echo "                                                   # per context-dependent state.  Try a number several times #states."
@@ -138,7 +138,9 @@ done
 
 
 # Set some variables.
-num_leaves=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/number of pdfs/{print $NF}'` || exit 1;
+num_leaves=`tree-info $alidir/tree 2>/dev/null | awk '{print $2}'` || exit 1
+[ -z $num_leaves ] && echo "\$num_leaves is unset" && exit 1
+[ "$num_leaves" -eq "0" ] && echo "\$num_leaves is 0" && exit 1
 
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 # in this dir we'll have just one job.
@@ -243,7 +245,7 @@ echo "$0: (while reducing learning rate) + (with constant learning rate)."
 
 # This is when we decide to mix up from: halfway between when we've finished
 # adding the hidden layers and the end of training.
-finish_add_layers_iter=$[($num_hidden_layers-$initial_num_hidden_layers+1)*$add_layers_period]
+finish_add_layers_iter=$[$num_hidden_layers * $add_layers_period]
 mix_up_iter=$[($num_iters + $finish_add_layers_iter)/2]
 
 if [ $num_threads -eq 1 ]; then

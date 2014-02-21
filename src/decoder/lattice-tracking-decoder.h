@@ -2,6 +2,7 @@
 
 // Copyright 2012 BUT (Author: Mirko Hannemann) Johns Hopkins University
 //                    (Author: Daniel Povey)
+//           2014 Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -38,40 +39,38 @@ struct LatticeTrackingDecoderConfig {
   int32 prune_interval;
   bool determinize_lattice; // not inspected by this class... used in
   // command-line program.
-  int32 max_mem; // max memory usage in determinization
-  int32 max_loop; // can be used to debug non-determinizable input, but for now,
-  // inadvisable to set it.
-  int32 max_arcs; // max #arcs in lattice.
   BaseFloat beam_delta; // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
   BaseFloat extra_beam; // added to beam of tracked tokens from first pass
   BaseFloat max_beam; // maximum beam (in case tracked tokens go too far from beam)
+  fst::DeterminizeLatticePhonePrunedOptions det_opts;
 
   LatticeTrackingDecoderConfig(): beam(16.0),
                                 max_active(std::numeric_limits<int32>::max()),
                                 lattice_beam(10.0),
                                 prune_interval(25),
                                 determinize_lattice(true),
-                                max_mem(50000000), // 50 MB (probably corresponds to 100 really)
-                                max_loop(0), // means we don't use this constraint.
-                                max_arcs(-1),
                                 beam_delta(0.5),
                                 hash_ratio(2.0),
                                 extra_beam(4.0),
                                 max_beam(40.0) { }
   void Register(OptionsItf *po) {
+    det_opts.Register(po);
     po->Register("beam", &beam, "Decoding beam.");
     po->Register("max-active", &max_active, "Decoder max active states.");
     po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
-    po->Register("prune-interval", &prune_interval, "Interval (in frames) at which to prune tokens");
-    po->Register("determinize-lattice", &determinize_lattice, "If true, determinize the lattice (in a special sense, keeping only best pdf-sequence for each word-sequence).");
-    po->Register("max-mem", &max_mem, "Maximum approximate memory consumption (in bytes) to use in determinization (probably real consumption would be many times this)");
-    po->Register("max-loop", &max_loop, "Option to detect a certain type of failure in lattice determinization (not critical)");
-    po->Register("max-arcs", &max_arcs, "If >0, maximum #arcs allowed in output lattice (total, not per state)");
+    po->Register("prune-interval", &prune_interval, "Interval (in frames) at "
+                 "which to prune tokens");
+    po->Register("determinize-lattice", &determinize_lattice, "If true, "
+                 "determinize the lattice (in a special sense, keeping only "
+                 "best pdf-sequence for each word-sequence).");
     po->Register("beam-delta", &beam_delta, "Increment used in decoding");
-    po->Register("hash-ratio", &hash_ratio, "Setting used in decoder to control hash behavior");
-    po->Register("extra-beam", &extra_beam, "Increment used in decoding (added to worst tracked token from first pass)");
-    po->Register("max-beam", &max_beam, "Maximum beam (in case tracked tokens go too far from beam)");
+    po->Register("hash-ratio", &hash_ratio, "Setting used in decoder to control"
+                 " hash behavior");
+    po->Register("extra-beam", &extra_beam, "Increment used in decoding (added "
+                 "to worst tracked token from first pass)");
+    po->Register("max-beam", &max_beam, "Maximum beam (in case tracked tokens "
+                 "go too far from beam)");
 
   }
   void Check() const {
@@ -121,6 +120,10 @@ class LatticeTrackingDecoder {
     config_ = config;
   }
 
+  LatticeTrackingDecoderConfig GetOptions() {
+    return config_;
+  }
+
   ~LatticeTrackingDecoder() { ClearActiveTokens(); }
 
   /// Returns true if any kind of traceback is available (not necessarily from
@@ -145,6 +148,8 @@ class LatticeTrackingDecoder {
   // tracebacks.
   bool GetRawLattice(fst::MutableFst<LatticeArc> *ofst) const;
 
+  // This function is now deprecated, since now we do determinization from
+  // outside the LatticeTrackingDecoder class.
   // Outputs an FST corresponding to the lattice-determinized
   // lattice (one path per word sequence).
   bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const;
@@ -327,6 +332,7 @@ class LatticeTrackingDecoder {
 bool DecodeUtteranceLatticeTracking(
     LatticeTrackingDecoder &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
+    const TransitionModel &trans_model,
     const fst::StdVectorFst &arc_graph, // contains graph arcs from forward pass lattice
     const fst::SymbolTable *word_syms,
     std::string utt,
@@ -337,7 +343,7 @@ bool DecodeUtteranceLatticeTracking(
     Int32VectorWriter *words_writer,
     CompactLatticeWriter *compact_lattice_writer,
     LatticeWriter *lattice_writer,
-    double *like_ptr); // puts utterance's likelihood in like_ptr on success.
+    double *like_ptr);  // puts utterance's likelihood in like_ptr on success.
 
 
 } // end namespace kaldi.

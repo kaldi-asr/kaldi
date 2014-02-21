@@ -130,7 +130,7 @@ fi
 if [ ! -f exp_BNF/sgmm7_mmi_b0.1/.done ]; then
   steps/train_mmi_sgmm2.sh \
     --cmd "$train_cmd" --acwt 0.06 \
-    --transform-dir exp_BNF/tri6_ali --boost 0.1 --zero-if-disjoint true \
+    --transform-dir exp_BNF/tri6_ali --boost 0.1 --drop-frames true \
     data/app_train data/lang exp_BNF/sgmm7_ali exp_BNF/sgmm7_denlats \
     exp_BNF/sgmm7_mmi_b0.1 
   touch exp_BNF/sgmm7_mmi_b0.1/.done;

@@ -777,7 +777,26 @@ void CuMatrixBase<Real>::DivRowsVec(const CuVectorBase<Real> &div) {
     Mat().MulRowsVec(temp);
   }
 }
+ 
+template<typename Real>
+void CuMatrixBase<Real>::InvertElements() {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
 
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+
+    cuda_invert_elements(dimGrid, dimBlock, data_, Dim()); 
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().InvertElements();
+  }
+}
 
 
 template<typename Real>
@@ -2012,6 +2031,40 @@ void CuMatrixBase<Real>::AddMatBlock(
     // Note: the values being compared below are all after applying any
     // transposition to B.
     KALDI_ASSERT(row_offset == B_num_rows && col_offset == B_num_cols);
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::AddElements(Real alpha, 
+                                     const std::vector<MatrixElement<Real> >& input) {
+  // Checks the dimension.
+  MatrixIndexT num_rows = this->num_rows_, num_cols = this->num_cols_;
+  for (int32 i = 0; i < input.size(); ++i) {
+    KALDI_ASSERT(input[i].row < num_rows && input[i].row >= 0 &&
+                 input[i].column < num_cols && input[i].column >= 0);
+  }
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    void *addr = CuDevice::Instantiate().Malloc(input.size() * sizeof(MatrixElement<Real>));
+    CU_SAFE_CALL(cudaMemcpy(addr, input.data(),
+	                    input.size() * sizeof(MatrixElement<Real>),
+                            cudaMemcpyHostToDevice));
+
+    Timer tim;
+    int dimBlock(CU1DBLOCK);
+    int dimGrid = 1;// only 1 block here. we have loops in each thread  //(n_blocks(dim_, CU1DBLOCK));
+
+    cuda_matrix_add_elements(dimGrid, dimBlock, this->data_, this->Dim(),
+                             alpha, (MatrixElement<Real>*)addr, input.size());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().Free(addr);
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    for (int32 i = 0; i < input.size(); i++) {
+      (*this)(input[i].row, input[i].column) += alpha * input[i].weight;
+    }
   }
 }
 

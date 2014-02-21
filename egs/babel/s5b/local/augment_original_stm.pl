@@ -53,7 +53,7 @@ while(<STM>) {
   chop;
   (my $filename, my $line, my $aggregated, my $seg_start, my $seg_end, my $text) = split(/\s+/, $_, 6);
   #print "$filename, $seg_start, $seg_end, $text\n";
-
+  $line="A";
   if (( $prev_filename ne  $filename ) && ( ";;$prev_filename" ne  $filename)){
     my $_filename = $filename;
     $_filename =~ s/^;;//g;
@@ -63,7 +63,7 @@ while(<STM>) {
     @timestamps = @{$segments{$_filename}};
     #print Dumper(\@timestamps);
     $i=0;
-    print RECO "$_filename $_filename 1\n";
+    print RECO "$_filename $_filename $line\n";
   }
 
   my $max_i=@timestamps;

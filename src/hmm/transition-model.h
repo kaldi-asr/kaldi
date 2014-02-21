@@ -205,7 +205,7 @@ class TransitionModel {
 
   /// Returns the log-prob of the non-self-loop probability
   /// mass for this transition state. (you can get the self-loop prob, if a self-loop
-  /// exists, by/ calling GetTransitionLogProb(SelfLoopOf(trans_state)).
+  /// exists, by calling GetTransitionLogProb(SelfLoopOf(trans_state)).
   BaseFloat GetNonSelfLoopLogProb(int32 trans_state) const;
 
   /// Does Maximum Likelihood estimation.  The stats are counts/weights, indexed

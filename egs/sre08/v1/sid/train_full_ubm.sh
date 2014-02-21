@@ -101,7 +101,7 @@ while [ $x -lt $num_iters ]; do
       lowcount_opt="--remove-low-count-gaussians=false"
     fi
     $cmd $dir/log/update.$x.log \
-    fgmm-global-est $lowcount_opt --verbose=2 $dir/$x.ubm "fgmm-global-sum-accs - $dir/$x.*.acc |" \
+    fgmm-global-est $lowcount_opt --min-gaussian-weight=$min_gaussian_weight --verbose=2 $dir/$x.ubm "fgmm-global-sum-accs - $dir/$x.*.acc |" \
       $dir/$[$x+1].ubm || exit 1;
     $cleanup && rm $dir/$x.*.acc $dir/$x.ubm
   fi

@@ -168,7 +168,7 @@ void FmllrInnerUpdate(SpMatrix<double> &inv_G,
   cofact_mat.Invert(&logdet);
   // Removed this step because it's not necessary and could lead to
   // under/overflow [Dan]
-  // cofact_mat.Scale(std::exp(logdet));
+  // cofact_mat.Scale(exp(logdet));
   
   // The extended cofactor vector for the current row
   Vector<double> cofact_row(dim + 1);

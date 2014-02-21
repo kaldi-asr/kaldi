@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Microsoft Corporation
 //           2012-2014  Johns Hopkins University (Author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -46,30 +47,27 @@ struct LatticeSimpleDecoderConfig {
   bool determinize_lattice; // not inspected by this class... used in
   // command-line program.
   bool prune_lattice;
-  int32 max_mem;
-  int32 max_loop;
-  int32 max_arcs;
   BaseFloat beam_ratio;
   BaseFloat prune_scale;   // Note: we don't make this configurable on the command line,
                            // it's not a very important parameter.  It affects the
                            // algorithm that prunes the tokens as we go.
+  fst::DeterminizeLatticePhonePrunedOptions det_opts;
+
   LatticeSimpleDecoderConfig(): beam(16.0),
                                 lattice_beam(10.0),
                                 prune_interval(25),
                                 determinize_lattice(true),
-                                max_mem(50000000), // 50 MB (probably corresponds to 500, really)
-                                max_loop(500000),
-                                max_arcs(-1),
                                 beam_ratio(0.9),
                                 prune_scale(0.1) { }
   void Register(OptionsItf *po) {
+    det_opts.Register(po);
     po->Register("beam", &beam, "Decoding beam.");
     po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
-    po->Register("prune-interval", &prune_interval, "Interval (in frames) at which to prune tokens");
-    po->Register("determinize-lattice", &determinize_lattice, "If true, determinize the lattice (in a special sense, keeping only best pdf-sequence for each word-sequence).");
-    po->Register("max-mem", &max_mem, "Maximum approximate memory consumption (in bytes) to use in determinization (probably real consumption would be many times this)");
-    po->Register("max-loop", &max_loop, "Option to detect a certain type of failure in lattice determinization (not critical)");
-    po->Register("max-arcs", &max_arcs, "If >0, maximum #arcs allowed in output lattice (total, not per state)");
+    po->Register("prune-interval", &prune_interval, "Interval (in frames) at "
+                 "which to prune tokens");
+    po->Register("determinize-lattice", &determinize_lattice, "If true, "
+                 "determinize the lattice (in a special sense, keeping only "
+                 "best pdf-sequence for each word-sequence).");
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && lattice_beam > 0.0 && prune_interval > 0);
@@ -93,6 +91,10 @@ class LatticeSimpleDecoder {
       fst_(fst), config_(config), num_toks_(0) { config.Check(); }
   
   ~LatticeSimpleDecoder() { ClearActiveTokens(); }
+
+  LatticeSimpleDecoderConfig GetOptions() {
+    return config_;
+  }
 
   // Returns true if any kind of traceback is available (not necessarily from
   // a final state).
@@ -153,6 +155,8 @@ class LatticeSimpleDecoder {
   bool GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
                      bool use_final_probs = true) const;
 
+  // This function is now deprecated, since now we do determinization from
+  // outside the LatticeTrackingDecoder class.
   // Outputs an FST corresponding to the lattice-determinized
   // lattice (one path per word sequence).  [will become deprecated,
   // users should determinize themselves.]
@@ -312,6 +316,27 @@ class LatticeSimpleDecoder {
   BaseFloat final_relative_cost_;
   BaseFloat final_best_cost_;  
 };
+
+// This function DecodeUtteranceLatticeSimple is used in several decoders, and
+// we have moved it here.  Note: this is really "binary-level" code as it
+// involves table readers and writers; we've just put it here as there is no
+// other obvious place to put it.  If determinize == false, it writes to
+// lattice_writer, else to compact_lattice_writer.  The writers for
+// alignments and words will only be written to if they are open.
+bool DecodeUtteranceLatticeSimple(
+    LatticeSimpleDecoder &decoder, // not const but is really an input.
+    DecodableInterface &decodable, // not const but is really an input.
+    const TransitionModel &trans_model,
+    const fst::SymbolTable *word_syms,
+    std::string utt,
+    double acoustic_scale,
+    bool determinize,
+    bool allow_partial,
+    Int32VectorWriter *alignments_writer,
+    Int32VectorWriter *words_writer,
+    CompactLatticeWriter *compact_lattice_writer,
+    LatticeWriter *lattice_writer,
+    double *like_ptr);  // puts utterance's likelihood in like_ptr on success.
 
 
 } // end namespace kaldi.

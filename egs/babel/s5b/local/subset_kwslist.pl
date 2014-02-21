@@ -9,13 +9,13 @@ use XML::Simple;
 use Data::Dumper;
 
 binmode STDOUT, ":utf8";
-my @keywords;
-while (my $line = <STDIN>) {
-  chomp $line;
-  push @keywords, $line;
+
+my %seen;
+while (my $keyword = <STDIN>) {
+  chomp $keyword;
+  $seen{$keyword} = 1;
 }
 
-#print "Will retain ",  scalar(@keywords), " keywords\n";
 
 my $data = XMLin($ARGV[0], ForceArray => 1);
 
@@ -23,7 +23,7 @@ my $data = XMLin($ARGV[0], ForceArray => 1);
 my @filtered_kws = ();
 
 foreach my $kwentry (@{$data->{kw}}) {
-  if ($kwentry->{kwid} ~~ @keywords ) {
+  if (defined $seen{$kwentry->{kwid}}) {
     push @filtered_kws, $kwentry;
   }
 }

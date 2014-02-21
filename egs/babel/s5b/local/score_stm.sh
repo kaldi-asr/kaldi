@@ -20,7 +20,6 @@
 # begin configuration section.
 cmd=run.pl
 cer=0
-decode_mbr=true
 min_lmwt=7
 max_lmwt=17
 model=

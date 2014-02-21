@@ -31,10 +31,10 @@
 ###
 
 # Now import all the configs specified by command-line, in left-to-right order
-for ((n=1; n<$#; n++)); do
-  if [ "${!n}" == "--config" ]; then
-    n_plus1=$((n+1))
-    config=${!n_plus1}
+for ((argpos=1; argpos<$#; argpos++)); do
+  if [ "${!argpos}" == "--config" ]; then
+    argpos_plus1=$((argpos+1))
+    config=${!argpos_plus1}
     [ ! -r $config ] && echo "$0: missing config '$config'" && exit 1
     . $config  # source the config file.
   fi
