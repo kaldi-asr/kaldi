@@ -3,7 +3,7 @@
 # Copyright 2013-2014 Daniel Povey
 #                2014 David Snyder
 # Apache 2.0.
-# Usage: make-sre-2008-train.pl <path to LDC2011S05> <Path to root level output dir>
+# Usage: make_sre_2008_train.pl <path to LDC2011S05> <Path to root level output dir>
 
 use local::load_lang;
 
