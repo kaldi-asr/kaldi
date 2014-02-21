@@ -118,6 +118,7 @@ function filter_speakers {
 function filter_langs {
   # throughout this program, we regard utt2lang as primary and lang2utt as derived, so...
   utils/utt2spk_to_spk2utt.pl $data/utt2lang > $data/lang2utt
+  check_sorted $data/utt2lang;
   check_sorted $data/lang2utt;
 
   cat $data/lang2utt | awk '{print $1}' > $tmpdir/languages
@@ -154,6 +155,9 @@ function filter_utts {
 
   ! cat $data/spk2utt | sort | cmp - $data/spk2utt && \
     echo "spk2utt is not in sorted order (fix this yourself)" && exit 1;
+
+  ! cat $data/utt2lang | sort -k2 | cmp - $data/utt2lang && \
+    echo "utt2lang is not in sorted order (fix this yourself)" && exit 1;
 
   ! cat $data/utt2lang | sort | cmp - $data/utt2lang && \
     echo "utt2lang is not in sorted order (fix this yourself)" && exit 1;

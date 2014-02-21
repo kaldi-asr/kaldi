@@ -48,6 +48,6 @@ done
 utils/utt2spk_to_spk2utt.pl <$dest/utt2spk >$dest/spk2utt
 utils/utt2spk_to_spk2utt.pl <$dest/utt2lang >$dest/lang2utt
 
-utils/fix_data_dir.sh $dest || exit 1;
+utils/fix_data_dir.sh $dest 1 || exit 1;
 
 exit 0
