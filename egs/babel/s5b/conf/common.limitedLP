@@ -15,7 +15,7 @@ bnf_num_gauss_ubm=500 # use fewer UBM Gaussians than the
                       # non-bottleneck system (which has 750)
 bnf_num_gauss_sgmm=10000 # use fewer SGMM sub-states than the
                          # non-bottleneck system (which has 18000).
-bnf_decode_acwt=0.05
+bnf_decode_acwt=0.066666
 
 
 ## DNN hybrid system training parameters

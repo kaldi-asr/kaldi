@@ -135,7 +135,7 @@ while [ $x -lt $num_iters ]; do
   x=$[$x+1];
 done
 
-rm $dir/final.mdl 2>/dev/null
+rm $dir/final.mdl $dir/final.occs 2>/dev/null
 ln -s $x.mdl $dir/final.mdl
 ln -s $x.occs $dir/final.occs
 
