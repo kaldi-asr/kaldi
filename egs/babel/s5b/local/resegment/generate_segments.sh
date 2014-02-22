@@ -61,7 +61,7 @@ total_time=0
 t1=$(date +%s)
 
 if [ $stage -le 0 ] ; then
-  steps/decode_nolats.sh $decode_extra_opts --write-words false --write-alignments true \
+  steps/decode_nolats.sh $decoder_extra_opts --write-words false --write-alignments true \
     --cmd "$cmd" --nj $nj --beam $beam --max-active $max_active \
     $model_dir/phone_graph $datadir $model_dir/decode_${dirid} || exit 1
 fi

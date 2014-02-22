@@ -33,7 +33,7 @@ steps/decode_sgmm2.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd
     --transform-dir exp/tri3b/decode data/lang data/test exp/sgmm2_4a/decode exp/sgmm2_4a_mmi_b0.2/decode_it$iter &
  done  
 (
- steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" --transform-dir exp/tri3b --boost 0.2 --zero-if-disjoint true \
+ steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" --transform-dir exp/tri3b --boost 0.2 --drop-frames true \
    data/train data/lang exp/sgmm2_4a_ali exp/sgmm2_4a_denlats exp/sgmm2_4a_mmi_b0.2_x 
 
  for iter in 1 2 3 4; do

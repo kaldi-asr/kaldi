@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 
 # Copyright 2014  Vimal Manohar
 # Apache 2.0
@@ -6,7 +6,11 @@
 import os, glob, argparse, sys, re, time
 from argparse import ArgumentParser
 
-import numpy as np
+use_numpy = True
+try:
+  import numpy as np
+except ImportError:
+  use_numpy = False
 
 # Global stats for analysis taking RTTM file as reference
 global_analysis_get_initial_segments = None
@@ -157,18 +161,19 @@ class Analysis:
         max_length    = max([0]+self.type_counts[j][i])
         min_length    = min([10000]+self.type_counts[j][i])
         mean_length   = mean(self.type_counts[j][i])
-        try:
-          percentile25  = np.percentile(self.type_counts[j][i], 25)
-        except ValueError:
-          percentile25 = 0
-        try:
-          percentile50  = np.percentile(self.type_counts[j][i], 50)
-        except ValueError:
-          percentile50 = 0
-        try:
-          percentile75  = np.percentile(self.type_counts[j][i], 75)
-        except ValueError:
-          percentile75 = 0
+        if use_numpy:
+          try:
+            percentile25  = np.percentile(self.type_counts[j][i], 25)
+          except ValueError:
+            percentile25 = 0
+          try:
+            percentile50  = np.percentile(self.type_counts[j][i], 50)
+          except ValueError:
+            percentile50 = 0
+          try:
+            percentile75  = np.percentile(self.type_counts[j][i], 75)
+          except ValueError:
+            percentile75 = 0
 
         file_handle.write("File %s: %s : TypeStats: Type %d %d: Min: %4d Max: %4d Mean: %4d percentile25: %4d percentile50: %4d percentile75: %4d\n" % (self.file_id, self.prefix, j, i,  min_length, max_length, mean_length, percentile25, percentile50, percentile75))
       # End for loop over 9 different kinds of segments
@@ -183,18 +188,19 @@ class Analysis:
       self.max_length[i]    = max([0]+self.state_count[i])
       self.min_length[i]    = min([10000]+self.state_count[i])
       self.mean_length[i]   = mean(self.state_count[i])
-      try:
-        self.percentile25[i]  = np.percentile(self.state_count[i], 25)
-      except ValueError:
-        self.percentile25[i] = 0
-      try:
-        self.percentile50[i]  = np.percentile(self.state_count[i], 50)
-      except ValueError:
-        self.percentile50[i] = 0
-      try:
-        self.percentile75[i]  = np.percentile(self.state_count[i], 75)
-      except ValueError:
-        self.percentile75[i] = 0
+      if use_numpy:
+        try:
+          self.percentile25[i]  = np.percentile(self.state_count[i], 25)
+        except ValueError:
+          self.percentile25[i] = 0
+        try:
+          self.percentile50[i]  = np.percentile(self.state_count[i], 50)
+        except ValueError:
+          self.percentile50[i] = 0
+        try:
+          self.percentile75[i]  = np.percentile(self.state_count[i], 75)
+        except ValueError:
+          self.percentile75[i] = 0
 
       file_handle.write("File %s: %s : Length: Type %d: Min: %4d Max: %4d Mean: %4d percentile25: %4d percentile50: %4d percentile75: %4d\n" % (self.file_id, self.prefix, i,  self.min_length[i], self.max_length[i], self.mean_length[i], self.percentile25[i], self.percentile50[i], self.percentile75[i]))
     # End for loop over 9 cells

@@ -41,8 +41,8 @@ for iter in 1 2 3 4; do
 done
 
 
-(  # testing zero-if-disjoint.
- steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" --transform-dir exp/tri4a_ali_100k_nodup --boost 0.1 --zero-if-disjoint true \
+(  # testing drop-frames.
+ steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" --transform-dir exp/tri4a_ali_100k_nodup --boost 0.1 --drop-frames true \
   data/train_100k_nodup data/lang exp/sgmm2_5a_ali_100k_nodup exp/sgmm2_5a_denlats_100k_nodup exp/sgmm2_5a_mmi_b0.1_z
 
  for iter in 1 2 3 4; do
@@ -53,9 +53,9 @@ done
  wait
 )
 
-( # testing zero-if-disjoint.
+( # testing drop-frames.
   # The same after a code speedup.
- steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" --transform-dir exp/tri4a_ali_100k_nodup --boost 0.1 --zero-if-disjoint true \
+ steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" --transform-dir exp/tri4a_ali_100k_nodup --boost 0.1 --drop-frames true \
   data/train_100k_nodup data/lang exp/sgmm2_5a_ali_100k_nodup exp/sgmm2_5a_denlats_100k_nodup exp/sgmm2_5a_mmi_b0.1_z2
 
  for iter in 1 2 3 4; do
