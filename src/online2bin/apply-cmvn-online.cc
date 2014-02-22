@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
             SubVector<BaseFloat> row(normalized_feats, t);
             online_cmvn.GetFrame(t, &row);
           }
-          online_cmvn.OutputState(feats.NumRows() - 1, &cmvn_state);
+          online_cmvn.GetState(feats.NumRows() - 1, &cmvn_state);
           
           num_done++;
           tot_t += feats.NumRows();

@@ -180,7 +180,7 @@ struct DeterminizeLatticePhonePrunedOptions {
     of the max_mem, max_loop or max_arcs constraints in the options.
     CAUTION: you may want to use the version below which outputs to CompactLattice.
 */
-template<class Weight, class IntType>
+template<class Weight>
 bool DeterminizeLatticePruned(
     const ExpandedFst<ArcTpl<Weight> > &ifst,
     double prune,

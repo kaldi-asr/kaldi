@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
           // Compute the transform and write it out.
           Matrix<BaseFloat> transform(am_gmm.Dim(), am_gmm.Dim() + 1);
           transform.SetUnit();
-          Vector<BaseFloat> weights(am_gmm.Dim() * (am_gmm.Dim() + 1)); // size will be adjusted
+          Vector<BaseFloat> weights;
           impr = basis_est.ComputeTransform(spk_stats, &transform,
                                             &weights, basis_fmllr_opts);
           spk_tot_t = spk_stats.beta_;
@@ -191,7 +191,7 @@ int main(int argc, char *argv[]) {
         {  // Compute the transform and write it out.
           Matrix<BaseFloat> transform(am_gmm.Dim(), am_gmm.Dim()+1);
           transform.SetUnit();
-          Vector<BaseFloat> weights(am_gmm.Dim() * (am_gmm.Dim() + 1)); // size will be adjusted
+          Vector<BaseFloat> weights;
           impr = basis_est.ComputeTransform(spk_stats, &transform,
                                             &weights, basis_fmllr_opts);
           utt_tot_t = spk_stats.beta_;

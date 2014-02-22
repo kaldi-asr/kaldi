@@ -285,7 +285,7 @@ double BasisFmllrEstimate::ComputeTransform(
     double impr_spk = 0;
     for (int32 iter = 1; iter <= options.num_iters; ++iter) {
 	  // Auxf computation based on FmllrAuxFuncDiagGmm from fmllr-diag-gmm.cc
-	  double startObj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
+	  double start_obj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
 
 	  // Contribution of quadratic terms to derivative
 	  // Eq. (37)  s_{d} = G_{d} w_{d}
@@ -333,11 +333,11 @@ double BasisFmllrEstimate::ComputeTransform(
 	  double endObj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
 
       KALDI_VLOG(2) << "Objective function (iter=" << iter << "): "
-                    << startObj / spk_stats.beta_  << " -> "
+                    << start_obj / spk_stats.beta_  << " -> "
                     << (endObj / spk_stats.beta_) << " over "
                     << spk_stats.beta_ << " frames";
 
-	  impr_spk += (endObj - startObj);
+	  impr_spk += (endObj - start_obj);
     }  // loop over iters
 
     out_xform->CopyFromMat(W_mat, kNoTrans);

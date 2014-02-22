@@ -41,7 +41,7 @@ namespace kaldi {
 
 class OnlineFeatureInterface {
  public:
-  virtual int32 Dim() const; /// returns the feature dimension.
+  virtual int32 Dim() const = 0; /// returns the feature dimension.
 
   /// Returns true if this is the last frame.  Frames are zero-based, so the
   /// first frame is zero.  IsLastFrame(-1) will return false, unless the file
@@ -60,7 +60,7 @@ class OnlineFeatureInterface {
   /// Returns the total number of frames, since the start of the utterance, that
   /// are now available.  In an online-decoding context, this may increase with
   /// time as more data becomes available.
-  virtual int32 NumFramesReady() const;
+  virtual int32 NumFramesReady() const = 0;
   
   /// Gets the feature vector for this frame.  Before calling this for a given
   /// frame, it's assumed that you have already called IsLastFrame(frame - 1)
@@ -68,7 +68,12 @@ class OnlineFeatureInterface {
   /// it returned true.  Otherwise it may crash.  This is not declared const, in
   /// case there is some kind of caching going on, but most of the time it
   /// shouldn't modify the class.
-  virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
+  virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat) = 0;
+
+  /// Virtual destructor.  Note: constructors that take another member of
+  /// type OnlineFeatureInterface are not expected to take ownership of
+  /// that pointer; the caller needs to keep track of that manually.
+  virtual ~OnlineFeatureInterface() { }
 };
 
 /// @}

@@ -209,7 +209,11 @@ void OnlineCmvn::GetFrame(int32 frame,
   Matrix<BaseFloat> feat_mat(1, dim);
   feat_mat.Row(0).CopyFromVec(*feat);
   // the function ApplyCmvn takes a matrix, so form a one-row matrix to give it.
-  ApplyCmvn(stats, opts_.normalize_variance, &feat_mat);
+  if (opts_.normalize_mean)
+    ApplyCmvn(stats, opts_.normalize_variance, &feat_mat);
+  else {
+    KALDI_ASSERT(!opts_.normalize_variance);
+  }
   feat->CopyFromVec(feat_mat.Row(0));
 }
 
@@ -226,8 +230,8 @@ void OnlineCmvn::Freeze(int32 cur_frame) {
   this->frozen_state_ = stats;
 }
 
-void OnlineCmvn::OutputState(int32 cur_frame,
-                             OnlineCmvnState *state_out) {
+void OnlineCmvn::GetState(int32 cur_frame,
+                          OnlineCmvnState *state_out) {
   *state_out = this->orig_state_;
   { // This block updates state_out->speaker_cmvn_stats
     int32 dim = this->Dim();
@@ -248,6 +252,12 @@ void OnlineCmvn::OutputState(int32 cur_frame,
   state_out->frozen_state = frozen_state_;
 }
 
+void OnlineCmvn::SetState(const OnlineCmvnState &cmvn_state) {
+  KALDI_ASSERT(raw_stats_.empty() &&
+               "You cannot call SetState() after processing data.");
+  orig_state_ = cmvn_state;
+  frozen_state_ = cmvn_state.frozen_state;
+}
 
 int32 OnlineSpliceFrames::NumFramesReady() const {
   int32 num_frames = src_->NumFramesReady();
@@ -274,8 +284,8 @@ void OnlineSpliceFrames::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
   }  
 }
 
-OnlineLda::OnlineLda(const Matrix<BaseFloat> &transform,
-                     OnlineFeatureInterface *src):
+OnlineTransform::OnlineTransform(const MatrixBase<BaseFloat> &transform,
+                                 OnlineFeatureInterface *src):
     src_(src) {
   int32 src_dim = src_->Dim();
   if (transform.NumCols() == src_dim) { // Linear transform
@@ -292,7 +302,7 @@ OnlineLda::OnlineLda(const Matrix<BaseFloat> &transform,
   }
 }
 
-void OnlineLda::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
+void OnlineTransform::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
   Vector<BaseFloat> input_feat(linear_term_.NumCols());
   src_->GetFrame(frame, &input_feat);
   feat->CopyFromVec(offset_);
@@ -346,6 +356,29 @@ void OnlineDeltaFeature::GetFrame(int32 frame,
 OnlineDeltaFeature::OnlineDeltaFeature(const DeltaFeaturesOptions &opts,
                                        OnlineFeatureInterface *src):
     src_(src), opts_(opts), delta_features_(opts) { }
+
+
+void OnlineCacheFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
+  KALDI_ASSERT(frame >= 0);
+  if (static_cast<size_t>(frame) < cache_.size() && cache_[frame] != NULL) {
+    feat->CopyFromVec(*(cache_[frame]));
+  } else {
+    if (static_cast<size_t>(frame) < cache_.size())
+      cache_.resize(frame + 1, NULL);
+    int32 dim = this->Dim();
+    cache_[frame] = new Vector<BaseFloat>(dim);
+    // The following call will crash if frame "frame" is not ready.
+    src_->GetFrame(frame, cache_[frame]);
+    feat->CopyFromVec(*(cache_[frame]));
+  }
+}
+
+void OnlineCacheFeature::ClearCache() {
+  for (size_t i = 0; i < cache_.size(); i++)
+    if (cache_[i] != NULL)
+      delete cache_[i];
+  cache_.resize(0);
+}
 
 
 }  // namespace kaldi

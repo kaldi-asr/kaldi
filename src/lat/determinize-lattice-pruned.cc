@@ -1246,11 +1246,12 @@ bool DeterminizeLatticePruned(
 // or possibly TropicalWeightTpl<float>, and IntType would be int32.
 // Caution: there are two versions of the function DeterminizeLatticePruned,
 // with identical code but different output FST types.
-template<class Weight, class IntType>
+template<class Weight>
 bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
                               double beam,
                               MutableFst<ArcTpl<Weight> > *ofst,
                               DeterminizeLatticePrunedOptions opts) {
+  typedef int32 IntType;
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
   KALDI_ASSERT(opts.retry_cutoff >= 0.0 && opts.retry_cutoff < 1.0);
@@ -1397,7 +1398,7 @@ bool DeterminizeLatticePhonePrunedFirstPass(
   KALDI_ASSERT(TopSort(fst));
   
   // Second, do determinization with phone inserted.
-  bool ans = DeterminizeLatticePruned<Weight, IntType>(*fst, beam, fst, opts);
+  bool ans = DeterminizeLatticePruned<Weight>(*fst, beam, fst, opts);
 
   // Finally, remove the inserted phones.
   DeterminizeLatticeDeletePhones(first_phone_label, fst);
@@ -1477,14 +1478,14 @@ bool DeterminizeLatticePhonePruned(
 // Note: there are actually four templates, each of which
 // we instantiate for a single type.
 template
-bool DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
+bool DeterminizeLatticePruned<kaldi::LatticeWeight>(
     const ExpandedFst<kaldi::LatticeArc> &ifst,
     double prune,
     MutableFst<kaldi::CompactLatticeArc> *ofst, 
     DeterminizeLatticePrunedOptions opts);
 
 template
-bool DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
+bool DeterminizeLatticePruned<kaldi::LatticeWeight>(
     const ExpandedFst<kaldi::LatticeArc> &ifst,
     double prune,
     MutableFst<kaldi::LatticeArc> *ofst, 

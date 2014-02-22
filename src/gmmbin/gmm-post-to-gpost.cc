@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
                 pdf_id = trans_model.TransitionIdToPdf(tid);
             BaseFloat weight = posterior[i][j].second;
             const DiagGmm &gmm = am_gmm.GetPdf(pdf_id);
-            Vector<BaseFloat> this_post_vec;           
+            Vector<BaseFloat> this_post_vec;
             BaseFloat like =
                 gmm.ComponentPosteriors(mat.Row(i), &this_post_vec);
             this_post_vec.Scale(weight);

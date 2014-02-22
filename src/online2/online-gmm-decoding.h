@@ -35,15 +35,17 @@
 #include "decoder/lattice-faster-decoder.h"
 #include "hmm/transition-model.h"
 #include "gmm/am-diag-gmm.h"
+#include "hmm/posterior.h"
 
 
 namespace kaldi {
 
 
 struct OnlineGmmDecodingConfig {
-  OnlineFeaturePipelineConfig feature_config;
+  OnlineFeaturePipelineCommandLineConfig feature_config;
 
   BaseFloat fmllr_lattice_beam;
+
   BasisFmllrOptions basis_opts; // options for basis-fMLLR adaptation.
 
   LatticeFasterDecoderConfig faster_decoder_opts;
@@ -52,19 +54,24 @@ struct OnlineGmmDecodingConfig {
   std::string online_alimdl_rxfilename;
   // rxfilename for model used for estimating fMLLR transforms (only needed if
   // different from online_alimdl_rxfilename):
-  std::string mdl_rxfilename;
+  std::string model_rxfilename;
   // rxfilename for possible discriminatively trained
-  // model (only needed if different from mdl_rxfilename).
-  std::string final_mdl_rxfilename;
+  // model (only needed if different from model_rxfilename).
+  std::string final_model_rxfilename;
+  // rxfilename for the BasisFmllrEstimate object containing the basis
+  // used for basis-fMLLR.
+  std::string fmllr_basis_rxfilename;
 
   BaseFloat acoustic_scale;
 
   std::string silence_phones;
+  BaseFloat silence_weight;
   
   int32 adaptation_threshold; // number of frames after which we first adapt.
                               // TODO: set this, make sure it's used (from calling code?)
   
-  OnlineGmmDecodingConfig():  fmllr_lattice_beam(3.0), acoustic_scale(0.1) { }
+  OnlineGmmDecodingConfig():  fmllr_lattice_beam(3.0), acoustic_scale(0.1),
+                              silence_weight(0.1) { }
   
   void Register(OptionsItf *po) {
     feature_config.Register(po);
@@ -75,6 +82,21 @@ struct OnlineGmmDecodingConfig {
     po->Register("silence-phones", &silence_phones,
                  "Colon-separated list of integer ids of silence phones, e.g. "
                  "1:2:3 (affects adaptation).");
+    po->Register("silence-weight", &silence_weight,
+                 "Weight applied to silence frames for fMLLR estimation (if "
+                 "--silence-phones option is supplied)");
+    po->Register("fmllr-lattice-beam", &fmllr_lattice_beam, "Beam used in "
+                 "pruning lattices for fMLLR estimation");
+    po->Register("online-alignment-model", &online_alimdl_rxfilename,
+                 "(Extended) filename for model trained with online CMN "
+                 "features, e.g. from apply-cmvn-online.");
+    po->Register("model", &model_rxfilename, "(Extended) filename for model, "
+                 "typically the one used for fMLLR computation.  Required option.");
+    po->Register("final-model", &final_model_rxfilename, "(Extended) filename "
+                 "for final model, e.g. discriminatively trained model, if it "
+                 "differs from that supplied to --model option");
+    po->Register("fmllr-basis", &fmllr_basis_rxfilename, "(Extended) filename "
+                 "of fMLLR basis object, as output by gmm-basis-fmllr-training");
   }
 };
 
@@ -99,6 +121,8 @@ class OnlineGmmDecodingModels {
 
   const AmDiagGmm &GetFinalModel() const;
 
+  const BasisFmllrEstimate &GetFmllrBasis() const;
+  
  private:
   // The transition-model is only needed for its integer ids, and these need to
   // be identical for all 3 models, so we only store one (it doesn't matter
@@ -112,20 +136,23 @@ class OnlineGmmDecodingModels {
   // The discriminatively trained model (if supplied);
   // otherwise use model_ if supplied, otherwise use
   // online_alignment_model_:
-  AmDiagGmm final_model_;   
+  AmDiagGmm final_model_;
+  // The following object contains the basis elements for
+  // "Basis fMLLR".
+  BasisFmllrEstimate fmllr_basis_;
 };
 
 
 struct SpeakerAdaptationState {
   OnlineCmvnState cmvn_state;
   FmllrDiagGmmAccs spk_stats;
-  Matrix<BaseFloat> cur_transform;
+  Matrix<BaseFloat> transform;
 };
 
 /**
    You will instantiate this class when you want to decode a single
    utterance using the online-decoding setup.  This is an alternative
-   than manually putting things together yourself.
+   to manually putting things together yourself.
 */
 class SingleUtteranceGmmDecoder {
  public:
@@ -142,30 +169,59 @@ class SingleUtteranceGmmDecoder {
 
   /// Returns true if we already have an fMLLR transform.  The user will
   /// already know this; the call is for convenience.  
-  bool HasTransform() const;
+  bool HaveTransform() const;
   
   /// Estimate the [basis-]fMLLR transform and apply it to the features.
   /// This will get used if you call RescoreLattice() or if you just
   /// continue decoding; however to get it applied retroactively
   /// you'd have to call RescoreLattice().
   /// "end_of_utterance" just affects how we interpret the final-probs in the
-  /// lattice.
+  /// lattice.  This should generally be true if you think you've reached
+  /// the end of the grammar, and false otherwise.
   void EstimateFmllr(bool end_of_utterance);
+  
+  void GetAdaptationState(SpeakerAdaptationState *adaptation_state) const;
 
-  
-  
-  void GetAdaptationState(SpeakerAdaptationState *adaptation_state);
+  /// Gets the lattice.  If rescore_if_needed is true, and if there is any point
+  /// in rescoring the state-level lattice (see RescoringIsNeeded()).  The
+  /// output lattice has any acoustic scaling in it (which will typically be
+  /// desirable in an online-decoding context); if you want an un-scaled
+  /// lattice, scale it using ScaleLattice() with the inverse of the acoustic weight.
+  /// "end_of_utterance" will be true if you want the final-probs to be included.
+  void GetLattice(bool rescore_if_needed,
+                  bool end_of_utterance,
+                  CompactLattice *clat) const;
+
+  /// This function outputs to "final_relative_cost", if non-NULL, a number >= 0
+  /// that will be close to zero if the final-probs were close to the best probs
+  /// active on the final frame.  (the output to final_relative_cost is based on
+  /// the first-pass decoding).  If it's close to zero (e.g. < 5, as a guess),
+  /// it means you reached the end of the grammar with good probability, which
+  /// can be taken as a good sign that the input was OK.
+  BaseFloat FinalRelativeCost() { return decoder_.FinalRelativeCost(); }
 
   ~SingleUtteranceGmmDecoder();
  private:
-  void AccumulateFmllrStats(const CompactLattice &clat,
-                            FmllrDiagGmmAccs *spk_stats);
+  // Note: the GauPost this outputs is indexed by pdf-id, not transition-id as
+  // normal.
+  bool GetGaussianPosteriors(bool end_of_utterance, GauPost *gpost);
 
-  
+  /// Returns true if doing a lattice rescoring pass would have any point, i.e.
+  /// if we have estimated fMLLR during this utterance, or if we have a
+  /// discriminative model that differs from the fMLLR model *and* we currently
+  /// have fMLLR features.
+  bool RescoringIsNeeded() const;
+
   OnlineGmmDecodingConfig config_;
+  std::vector<int32> silence_phones_; // sorted, unique list of silence phones,
+                                      // derived from config_
   const OnlineGmmDecodingModels &models_;
   OnlineFeaturePipeline *feature_pipeline_;
   const SpeakerAdaptationState &orig_adaptation_state_;
+  // adaptation_state_ generally reflects the "current" state of the adptation.
+  // Note: adaptation_state_.cmvn_state is just copied from
+  // orig_adaptation_state, the function GetAdaptationState() gets the CMVN
+  // state.
   SpeakerAdaptationState adaptation_state_;
   LatticeFasterDecoder decoder_;
   

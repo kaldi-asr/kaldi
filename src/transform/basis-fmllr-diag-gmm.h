@@ -103,7 +103,7 @@ class BasisFmllrAccus {
  *  Estimation functions for basis fMLLR.
  */
 class BasisFmllrEstimate {
-
+  
  public:
   BasisFmllrEstimate(): dim_(0), basis_size_(0) { }
   explicit BasisFmllrEstimate(int32 dim) {
@@ -132,11 +132,16 @@ class BasisFmllrEstimate {
   void ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
                             SpMatrix<double> *pre_cond);
 
+  int32 Dim() const { return dim_; }
+
+  int32 BasisSize() const { return basis_size_; }
+  
   /// This function performs speaker adaptation, computing the fMLLR matrix
   /// based on speaker statistics. It takes fMLLR stats as argument.
   /// The basis weights (d_{1}, d_{2}, ..., d_{N}) are also optimized
   /// explicitly. Finally, it returns objective function improvement over
-  /// all the iterations.
+  /// all the iterations, compared with the value at the initial value of
+  /// "out_xform" (or the unit transform if not provided).
   /// The coefficients are output to "coefficients" only if the vector is
   /// provided.
   /// See section 5.3 of the paper for more details.
@@ -145,6 +150,8 @@ class BasisFmllrEstimate {
                           Vector<BaseFloat> *coefficients,
                           BasisFmllrOptions options) const;
 
+ private:
+  
   /// Basis matrices. Dim is [T] [D] [D+1]
   /// T is the number of bases
   std::vector< Matrix<BaseFloat> > fmllr_basis_;
