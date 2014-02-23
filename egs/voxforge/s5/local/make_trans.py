@@ -46,5 +46,5 @@ for uid in utt_ids:
     if not uid in utt2trans:
         err("No transcript found for %s_%s" % (id_prefix, uid))
         continue
-    print "%s_%s %s" % (id_prefix, uid, utt2trans[uid])
+    print "%s-%s %s" % (id_prefix, uid, utt2trans[uid])
 
