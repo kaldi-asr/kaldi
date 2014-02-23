@@ -140,6 +140,7 @@ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
    exp/tri3b/graph_ug data/test exp/tri3b/decode_ug
 )
 
+
 # Align all data with LDA+MLLT+SAT system (tri3b)
 steps/align_fmllr.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
   data/train data/lang exp/tri3b exp/tri3b_ali

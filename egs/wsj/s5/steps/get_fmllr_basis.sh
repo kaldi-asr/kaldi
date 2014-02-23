@@ -12,8 +12,6 @@ scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 per_utt=true # If true, then treat each utterance as a separate speaker for purposes of
   # basis training... this is recommended if the number of actual speakers in your
   # training set is less than (feature-dim) * (feature-dim+1).
-align_beam=10
-retry_beam=40
 silence_weight=0.01
 cmd=run.pl
 # End configuration section
@@ -42,7 +40,7 @@ sdata=$data/split$nj;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 splice_opts=`cat $dir/splice_opts 2>/dev/null` # frame-splicing options.
-norm_vars=`cat $srcdir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
+norm_vars=`cat $dir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
@@ -60,9 +58,9 @@ case $feat_type in
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
 
-  # Set up the adapted features "$feats" for training set.
+# Set up the adapted features "$feats" for training set.
 if [ -f $srcdir/trans.1 ]; then 
-  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$sdata/trans.JOB ark:- ark:- |";
+  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$srcdir/trans.JOB ark:- ark:- |";
 else
   feats="$sifeats";
 fi

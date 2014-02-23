@@ -973,7 +973,7 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
         for (size_t i = 0; i < words.size(); i++) {
           std::string s = word_syms_->Find(words[i]);
           if (s == "")
-            KALDI_ERR << "Word-id " << words[i] <<" not in symbol table.";
+            KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
           std::cerr << s << ' ';
         }
         std::cerr << '\n';
@@ -1075,7 +1075,7 @@ bool DecodeUtteranceLatticeFaster(
       for (size_t i = 0; i < words.size(); i++) {
         std::string s = word_syms->Find(words[i]);
         if (s == "")
-          KALDI_ERR << "Word-id " << words[i] <<" not in symbol table.";
+          KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
         std::cerr << s << ' ';
       }
       std::cerr << '\n';

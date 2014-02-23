@@ -42,8 +42,6 @@ namespace kaldi {
 
 
 struct OnlineGmmDecodingConfig {
-  OnlineFeaturePipelineCommandLineConfig feature_config;
-
   BaseFloat fmllr_lattice_beam;
 
   BasisFmllrOptions basis_opts; // options for basis-fMLLR adaptation.
@@ -57,7 +55,7 @@ struct OnlineGmmDecodingConfig {
   std::string model_rxfilename;
   // rxfilename for possible discriminatively trained
   // model (only needed if different from model_rxfilename).
-  std::string final_model_rxfilename;
+  std::string rescore_model_rxfilename;
   // rxfilename for the BasisFmllrEstimate object containing the basis
   // used for basis-fMLLR.
   std::string fmllr_basis_rxfilename;
@@ -74,8 +72,11 @@ struct OnlineGmmDecodingConfig {
                               silence_weight(0.1) { }
   
   void Register(OptionsItf *po) {
-    feature_config.Register(po);
-    basis_opts.Register(po);
+    { // register basis_opts with prefix, there are getting to be too many
+      // options.
+      ParseOptions basis_po("basis", po);
+      basis_opts.Register(&basis_po);
+    }
     faster_decoder_opts.Register(po);
     po->Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
@@ -92,9 +93,10 @@ struct OnlineGmmDecodingConfig {
                  "features, e.g. from apply-cmvn-online.");
     po->Register("model", &model_rxfilename, "(Extended) filename for model, "
                  "typically the one used for fMLLR computation.  Required option.");
-    po->Register("final-model", &final_model_rxfilename, "(Extended) filename "
-                 "for final model, e.g. discriminatively trained model, if it "
-                 "differs from that supplied to --model option");
+    po->Register("rescore-model", &rescore_model_rxfilename, "(Extended) filename "
+                 "for model to rescore lattices with, e.g. discriminatively trained"
+                 "model, if it differs from that supplied to --model option.  Must"
+                 "have the same tree.");
     po->Register("fmllr-basis", &fmllr_basis_rxfilename, "(Extended) filename "
                  "of fMLLR basis object, as output by gmm-basis-fmllr-training");
   }
@@ -136,7 +138,7 @@ class OnlineGmmDecodingModels {
   // The discriminatively trained model (if supplied);
   // otherwise use model_ if supplied, otherwise use
   // online_alignment_model_:
-  AmDiagGmm final_model_;
+  AmDiagGmm rescore_model_;
   // The following object contains the basis elements for
   // "Basis fMLLR".
   BasisFmllrEstimate fmllr_basis_;

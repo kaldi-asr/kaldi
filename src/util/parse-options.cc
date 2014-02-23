@@ -75,7 +75,7 @@ void ParseOptions::RegisterTmpl(const std::string &name, T *ptr,
     KALDI_ASSERT(prefix_ != "" &&
                  "Cannot use empty prefix when registering with prefix.");
     std::string new_name = prefix_ + '.' + name;  // --name becomes --prefix.name
-    other_parser_->RegisterCommon(new_name, ptr, doc, false);
+    other_parser_->Register(new_name, ptr, doc);
   }
 }
 

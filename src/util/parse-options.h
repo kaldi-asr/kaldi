@@ -41,7 +41,8 @@ class ParseOptions : public OptionsItf {
 #ifndef _MSC_VER  // This is just a convenient place to set the stderr to line
     setlinebuf(stderr);  // buffering mode, since it's called at program start.
 #endif  // This helps ensure different programs' output is not mixed up.
-    RegisterStandard("config", &config_, "Configuration file with options");
+    RegisterStandard("config", &config_, "Configuration file to read (this "
+                     "option may be repeated)");
     RegisterStandard("print-args", &print_args_,
                      "Print the command line arguments (to stderr)");
     RegisterStandard("help", &help_, "Print out usage message");
@@ -65,7 +66,7 @@ class ParseOptions : public OptionsItf {
     The options will now get registered as, e.g., --mfcc.frame-shift=10.0
     instead of just --frame-shift=10.0
    */
-  ParseOptions(const std::string &prefix, ParseOptions *other) :
+  ParseOptions(const std::string &prefix, OptionsItf *other) :
     print_args_(false), help_(false), usage_(""), argc_(0), argv_(NULL),
     prefix_(prefix), other_parser_(other) {}
 
@@ -227,7 +228,7 @@ class ParseOptions : public OptionsItf {
   /// These members are not normally used. They are only used when the object
   /// is constructed with a prefix
   const std::string prefix_;
-  ParseOptions *other_parser_;
+  OptionsItf *other_parser_;
 };
 
 /// This template is provided for convenience in reading config classes from

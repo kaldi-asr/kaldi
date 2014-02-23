@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "beginning.\n"
         "\n"
         "Usage: apply-cmvn-online [options] <global-cmvn-stats> <feature-rspecifier> "
-        "<feature-wspecifier>"
+        "<feature-wspecifier>\n"
         "e.g. apply-cmvn-online 'matrix-sum scp:data/train/cmvn.scp -|' data/train/split8/1/feats.scp ark:-\n"
         "or: apply-cmvn-online --spk2utt=ark:data/train/split8/1/spk2utt 'matrix-sum scp:data/train/cmvn.scp -|' "
         " data/train/split8/1/feats.scp ark:-\n";

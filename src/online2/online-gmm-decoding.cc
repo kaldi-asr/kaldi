@@ -41,6 +41,7 @@ SingleUtteranceGmmDecoder::SingleUtteranceGmmDecoder(
               << config_.silence_phones << "'";
   SortAndUniq(&silence_phones_);
   feature_pipeline_->SetTransform(adaptation_state_.transform);
+  decoder_.InitDecoding();
 }
     
 
@@ -59,7 +60,7 @@ void SingleUtteranceGmmDecoder::AdvanceFirstPass() {
                                          feature_pipeline_);
 
   // This will decode as many frames as are currently available.
-  decoder_.Decode(&decodable);  
+  decoder_.DecodeNonblocking(&decodable);  
 }
 
 // Note: the GauPost this outputs is indexed by pdf-id, not transition-id as
@@ -290,15 +291,15 @@ OnlineGmmDecodingModels::OnlineGmmDecodingModels(
     online_alignment_model_.Read(ki.Stream(), binary);
   }
 
-  if (!config.final_model_rxfilename.empty()) {
+  if (!config.rescore_model_rxfilename.empty()) {
     bool binary;
-    Input ki(config.final_model_rxfilename, &binary);
+    Input ki(config.rescore_model_rxfilename, &binary);
     TransitionModel tmodel;
     tmodel.Read(ki.Stream(), binary);
     if (!tmodel.Compatible(tmodel_))
       KALDI_ERR << "Incompatible models given to the --model and "
                 << "--final-model options";
-    final_model_.Read(ki.Stream(), binary);
+    rescore_model_.Read(ki.Stream(), binary);
   }
 
   if (!config.fmllr_basis_rxfilename.empty()) {
@@ -326,8 +327,8 @@ const AmDiagGmm &OnlineGmmDecodingModels::GetModel() const {
 }
 
 const AmDiagGmm &OnlineGmmDecodingModels::GetFinalModel() const {
-  if (final_model_.NumPdfs() != 0)
-    return final_model_;
+  if (rescore_model_.NumPdfs() != 0)
+    return rescore_model_;
   else
     return model_;
 }

@@ -55,13 +55,17 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
     KALDI_ERR << "You cannot supply both the --splice-config "
               << "and --delta-config options";
   lda_rxfilename = config.lda_rxfilename;
+  global_cmvn_stats_rxfilename = config.global_cmvn_stats_rxfilename;
+  if (global_cmvn_stats_rxfilename == "")
+    KALDI_ERR << "--global-cmvn-stats option is required.";
 }
 
 
 OnlineFeaturePipeline::OnlineFeaturePipeline(
     const OnlineFeaturePipelineConfig &config,
-    const Matrix<BaseFloat> &lda_mat):
-    config_(config), lda_mat_(lda_mat) {
+    const Matrix<BaseFloat> &lda_mat,
+    const Matrix<BaseFloat> &global_cmvn_stats):
+    config_(config), lda_mat_(lda_mat), global_cmvn_stats_(global_cmvn_stats) {
   Init();
 }
 
@@ -71,11 +75,15 @@ OnlineFeaturePipeline::OnlineFeaturePipeline(
     config_(config) {
   if (config.lda_rxfilename != "")
     ReadKaldiObject(config.lda_rxfilename, &lda_mat_);    
+  if (config.global_cmvn_stats_rxfilename != "")
+    ReadKaldiObject(config.global_cmvn_stats_rxfilename,
+                    &global_cmvn_stats_);    
   Init();
 }
 
 OnlineFeaturePipeline* OnlineFeaturePipeline::New() const {
-  return new OnlineFeaturePipeline(config_, lda_mat_);
+  return new OnlineFeaturePipeline(config_, lda_mat_,
+                                   global_cmvn_stats_);
 }
 
 OnlineFeatureInterface* OnlineFeaturePipeline::UnadaptedFeature() const {
@@ -115,8 +123,13 @@ void OnlineFeaturePipeline::Init() {
   } else {
     KALDI_ERR << "Code error: invalid feature type " << config_.feature_type;
   }
-  cmvn_ = new OnlineCmvn(config_.cmvn_opts, base_feature_);
 
+  {
+    KALDI_ASSERT(global_cmvn_stats_.NumRows() != 0);
+    Matrix<double> global_cmvn_stats_dbl(global_cmvn_stats_);
+    OnlineCmvnState initial_state(global_cmvn_stats_dbl);
+    cmvn_ = new OnlineCmvn(config_.cmvn_opts, initial_state, base_feature_);
+  }
 
   if (config_.splice_frames && config_.apply_deltas) {
     KALDI_ERR << "You cannot supply both the --delta-config and "

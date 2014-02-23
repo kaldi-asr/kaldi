@@ -58,7 +58,7 @@ struct OnlineFeaturePipelineCommandLineConfig {
   void Register(OptionsItf *po) {
     po->Register("mfcc-config", &mfcc_config, "Configuration class file for MFCC "
                  "features (e.g. conf/mfcc.conf)");
-    po->Register("mfcc-config", &mfcc_config, "Configuration class file for PLP "
+    po->Register("plp-config", &plp_config, "Configuration class file for PLP "
                  "features (e.g. conf/plp.conf)");
     po->Register("cmvn-config", &cmvn_config, "Configuration class "
                  "file for online CMVN features (e.g. conf/online_cmvn.conf)");
@@ -105,7 +105,9 @@ struct OnlineFeaturePipelineConfig {
   DeltaFeaturesOptions delta_opts; // Options for delta computation, if done.
 
   std::string lda_rxfilename; // Filename for reading LDA or LDA+MLLT matrix, if
-                              // used.  
+                              // used.
+  std::string global_cmvn_stats_rxfilename; // Filename used for reading global
+                                            // CMVN stats
 };
 
 
@@ -163,7 +165,8 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
   /// it has the same effect as initializing from just "cfg", but avoids
   /// re-reading the LDA transform from disk.
   OnlineFeaturePipeline(const OnlineFeaturePipelineConfig &cfg,
-                        const Matrix<BaseFloat> &lda_mat);
+                        const Matrix<BaseFloat> &lda_mat,
+                        const Matrix<BaseFloat> &global_cmvn_stats);
 
   /// Init() is to be called from the constructor; it assumes the pointer
   /// members are all uninitialized but config_ and lda_mat_ are
@@ -172,7 +175,8 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
   
   OnlineFeaturePipelineConfig config_;
   Matrix<BaseFloat> lda_mat_; // LDA matrix, if supplied.
-
+  Matrix<BaseFloat> global_cmvn_stats_; // Global CMVN stats.
+  
   OnlineBaseFeature *base_feature_;
   // base_feature_ is the MFCC or PLP feature.
   // In future if we want to append pitch features, we'll add a pitch_ member

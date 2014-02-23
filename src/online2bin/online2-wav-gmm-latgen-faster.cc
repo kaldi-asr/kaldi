@@ -22,6 +22,51 @@
 #include "online2/online-gmm-decoding.h"
 #include "online2/onlinebin-util.h"
 #include "fstext/fstext-lib.h"
+#include "lat/lattice-functions.h"
+
+namespace kaldi {
+
+void GetDiagnosticsAndPrintOutput(const std::string &utt,
+                                  const fst::SymbolTable *word_syms,
+                                  const CompactLattice &clat,
+                                  int64 *tot_num_frames,
+                                  double *tot_like) {
+  if (clat.NumStates() == 0) {
+    KALDI_WARN << "Empty lattice.";
+    return;
+  }
+  CompactLattice best_path_clat;
+  CompactLatticeShortestPath(clat, &best_path_clat);
+
+  Lattice best_path_lat;
+  ConvertLattice(best_path_clat, &best_path_lat);
+
+  double likelihood;
+  LatticeWeight weight;
+  int32 num_frames;
+  std::vector<int32> alignment;
+  std::vector<int32> words;
+  GetLinearSymbolSequence(best_path_lat, &alignment, &words, &weight);
+  num_frames = alignment.size();
+  likelihood = -(weight.Value1() + weight.Value2());
+  *tot_num_frames += num_frames;
+  *tot_like += likelihood;
+  KALDI_VLOG(2) << "Likelihood per frame for utterance " << utt << " is "
+                << (likelihood / num_frames) << " over " << num_frames
+                << " frames.";
+             
+  if (word_syms != NULL) {
+    std::cerr << utt << ' ';
+    for (size_t i = 0; i < words.size(); i++) {
+      std::string s = word_syms->Find(words[i]);
+      if (s == "")
+        KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
+      std::cerr << s << ' ';
+    }
+  }
+}
+
+}
 
 int main(int argc, char *argv[]) {
   try {
@@ -42,8 +87,12 @@ int main(int argc, char *argv[]) {
         "[TODO]\n";
     ParseOptions po(usage);
 
+    std::string word_syms_rxfilename;
     OnlineFeaturePipelineCommandLineConfig feature_cmdline_config;
     OnlineGmmDecodingConfig decode_config;
+    
+    po.Register("word-symbol-table", &word_syms_rxfilename,
+                "Symbol table for words [for debug output]");
     
     feature_cmdline_config.Register(&po);
     decode_config.Register(&po);
@@ -55,15 +104,16 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
+    std::string fst_rxfilename = po.GetArg(1),
+        spk2utt_rspecifier = po.GetArg(2),
+        wav_rspecifier = po.GetArg(3),
+        clat_wspecifier = po.GetArg(4);
+    
     OnlineFeaturePipelineConfig feature_config(feature_cmdline_config);
     OnlineFeaturePipeline pipeline_prototype(feature_config);
     // The following object initializes the models we use in decoding.
     OnlineGmmDecodingModels gmm_models(decode_config);
     
-    std::string fst_rxfilename = po.GetArg(1),
-        spk2utt_rspecifier = po.GetArg(2),
-        wav_rspecifier = po.GetArg(3),
-        clat_wspecifier = po.GetArg(4);
     
     fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
     
@@ -71,9 +121,17 @@ int main(int argc, char *argv[]) {
     // For first utterance, re-estimate fMLLR every two seconds.
     int32 fmllr_interval_first_utt = 200;
     
+
+    fst::SymbolTable *word_syms = NULL;
+    if (word_syms_rxfilename != "") 
+      if (!(word_syms = fst::SymbolTable::ReadText(word_syms_rxfilename)))
+        KALDI_ERR << "Could not read symbol table from file "
+                  << word_syms_rxfilename;
     
     int32 num_done = 0, num_err = 0;
-    
+    double tot_like;
+    int64 num_frames;
+   
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessTableReader<WaveHolder> wav_reader(wav_rspecifier);
     CompactLatticeWriter clat_writer(clat_wspecifier);
@@ -115,7 +173,7 @@ int main(int argc, char *argv[]) {
           decoder.AdvanceFirstPass();
             
           int32 new_frames_ready = decoder.FeaturePipeline().NumFramesReady();
-          bool end_of_utterance = true;
+          bool end_of_utterance = false;
           if (i == 0 &&
               old_frames_ready / fmllr_interval_first_utt !=
               new_frames_ready / fmllr_interval_first_utt)
@@ -131,6 +189,9 @@ int main(int argc, char *argv[]) {
                            end_of_utterance,
                            &clat);
 
+        GetDiagnosticsAndPrintOutput(utt, word_syms, clat,
+                                     &num_frames, &tot_like);
+        
         // In an application you might avoid updating the adptation state if you
         // felt the utterance had low confidence.  See lat/confidence.h
         decoder.GetAdaptationState(&adaptation_state);
@@ -144,8 +205,12 @@ int main(int argc, char *argv[]) {
         num_done++;
       }
     }
-    KALDI_LOG << "Decoded " << num_done << " utterances.";
-    if (decode_fst) delete decode_fst;
+    KALDI_LOG << "Decoded " << num_done << " utterances, "
+              << num_err << " with errors.";
+    KALDI_LOG << "Average likelihood per frame was " << (tot_like / num_frames)
+              << " per frame over " << num_frames << " frames.";
+    delete decode_fst;
+    delete word_syms; // will delete if non-NULL.
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception& e) {
     std::cerr << e.what();

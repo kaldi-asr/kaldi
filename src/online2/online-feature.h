@@ -334,7 +334,7 @@ class OnlineSpliceFrames: public OnlineFeatureInterface {
   // First, functions that are present in the interface:
   //
   virtual int32 Dim() const {
-    return src_->Dim() * (1 + left_context_ * right_context_);
+    return src_->Dim() * (1 + left_context_ + right_context_);
   }
 
   virtual bool IsLastFrame(int32 frame) const { return src_->IsLastFrame(frame); }
