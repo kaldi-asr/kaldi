@@ -24,7 +24,7 @@
 #include "nnet/nnet-trnopts.h"
 #include "nnet/nnet-nnet.h"
 #include "nnet/nnet-loss.h"
-#include "nnet/nnet-cache-tgtmat.h"
+// #include "nnet/nnet-cache-tgtmat.h"
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "util/timer.h"
