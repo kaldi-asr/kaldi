@@ -81,17 +81,16 @@ int main(int argc, char *argv[]) {
     for (; !posterior_reader.Done(); posterior_reader.Next()) {
       num_posteriors++;
       // Posterior is vector<vector<pair<int32, BaseFloat> > >
-      const Posterior &post = posterior_reader.Value();
+      Posterior post = posterior_reader.Value();
       // Posterior is vector<vector<pair<int32, BaseFloat> > >
-      Posterior new_post;
       if (distribute)
-        WeightSilencePostDistributed(post, trans_model, silence_set,
-                                     silence_weight, &new_post);
+        WeightSilencePostDistributed(trans_model, silence_set,
+                                     silence_weight, &post);
       else
-        WeightSilencePost(post, trans_model, silence_set,
-                          silence_weight, &new_post);
+        WeightSilencePost(trans_model, silence_set,
+                          silence_weight, &post);
       
-      posterior_writer.Write(posterior_reader.Key(), new_post);
+      posterior_writer.Write(posterior_reader.Key(), post);
     }
     KALDI_LOG << "Done " << num_posteriors << " posteriors.";
     return (num_posteriors != 0 ? 0 : 1);
@@ -100,5 +99,4 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
 

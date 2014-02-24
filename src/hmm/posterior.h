@@ -1,7 +1,7 @@
 // hmm/posterior.h
 
 // Copyright 2009-2011     Microsoft Corporation
-//                2013     Johns Hopkins University (author: Daniel Povey)
+//           2013-2014     Johns Hopkins University (author: Daniel Povey)
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -160,21 +160,23 @@ void ConvertPosteriorToPhones(const TransitionModel &tmodel,
 
 /// Weight any silence phones in the posterior (i.e. any phones
 /// in the set "silence_set" by scale "silence_scale".
-void WeightSilencePost(const Posterior &post,
-                       const TransitionModel &trans_model,
+/// The interface was changed in Feb 2014 to do the modification
+/// "in-place" rather than having separate input and output.
+void WeightSilencePost(const TransitionModel &trans_model,
                        const ConstIntegerSet<int32> &silence_set,
                        BaseFloat silence_scale,
-                       Posterior *new_post);
+                       Posterior *post);
 
 /// This is similar to WeightSilencePost, except that on each frame it
 /// works out the amount by which the overall posterior would be reduced,
 /// and scales down everything on that frame by the same amount.  It
 /// has the effect that frames that are mostly silence get down-weighted.
-void WeightSilencePostDistributed(const Posterior &post,
-                                  const TransitionModel &trans_model,
+/// The interface was changed in Feb 2014 to do the modification
+/// "in-place" rather than having separate input and output.
+void WeightSilencePostDistributed(const TransitionModel &trans_model,
                                   const ConstIntegerSet<int32> &silence_set,
                                   BaseFloat silence_scale,
-                                  Posterior *new_post);
+                                  Posterior *post);
 
 /// @} end "addtogroup posterior_group"
 

@@ -323,43 +323,41 @@ void ConvertPosteriorToPhones(const TransitionModel &tmodel,
 }
 
 
-void WeightSilencePost(const Posterior &post,
-                       const TransitionModel &trans_model,
+void WeightSilencePost(const TransitionModel &trans_model,
                        const ConstIntegerSet<int32> &silence_set,
                        BaseFloat silence_scale,
-                       Posterior *new_post) {
-  new_post->clear();
-  new_post->resize(post.size());
-  for (size_t i = 0; i < post.size(); i++) {
-    (*new_post)[i].reserve(post[i].size());  // more efficient.
-    for (size_t j = 0; j < post[i].size(); j++) {
-      int32 tid = post[i][j].first,
+                       Posterior *post) {
+  for (size_t i = 0; i < post->size(); i++) {
+    std::vector<std::pair<int32, BaseFloat> > this_post;
+    this_post.reserve((*post)[i].size());
+    for (size_t j = 0; j < (*post)[i].size(); j++) {
+      int32 tid = (*post)[i][j].first,
           phone = trans_model.TransitionIdToPhone(tid);
-      BaseFloat weight = post[i][j].second;
+      BaseFloat weight = (*post)[i][j].second;
       if (silence_set.count(phone) != 0) {  // is a silence.
         if (silence_scale != 0.0)
-          (*new_post)[i].push_back(std::make_pair(tid, weight*silence_scale));
+          this_post.push_back(std::make_pair(tid, weight*silence_scale));
       } else {
-        (*new_post)[i].push_back(std::make_pair(tid, weight));
+        this_post.push_back(std::make_pair(tid, weight));
       }
     }
+    (*post)[i].swap(this_post);
   }
 }
 
 
-void WeightSilencePostDistributed(const Posterior &post,
-                                  const TransitionModel &trans_model,
+void WeightSilencePostDistributed(const TransitionModel &trans_model,
                                   const ConstIntegerSet<int32> &silence_set,
                                   BaseFloat silence_scale,
-                                  Posterior *new_post) {
-  new_post->clear();
-  new_post->resize(post.size());
-  for (size_t i = 0; i < post.size(); i++) {
+                                  Posterior *post) {
+  for (size_t i = 0; i < post->size(); i++) {
+    std::vector<std::pair<int32, BaseFloat> > this_post;
+    this_post.reserve((*post)[i].size());
     BaseFloat sil_weight = 0.0, nonsil_weight = 0.0;   
-    for (size_t j = 0; j < post[i].size(); j++) {
-      int32 tid = post[i][j].first,
+    for (size_t j = 0; j < (*post)[i].size(); j++) {
+      int32 tid = (*post)[i][j].first,
           phone = trans_model.TransitionIdToPhone(tid);
-      BaseFloat weight = post[i][j].second;
+      BaseFloat weight = (*post)[i][j].second;
       if (silence_set.count(phone) != 0) sil_weight += weight;
       else nonsil_weight += weight;
     }
@@ -368,12 +366,14 @@ void WeightSilencePostDistributed(const Posterior &post,
     if (sil_weight + nonsil_weight == 0.0) continue;
     BaseFloat frame_scale = (sil_weight * silence_scale + nonsil_weight) /
                             (sil_weight + nonsil_weight);
-    if (frame_scale == 0.0) continue;
-    for (size_t j = 0; j < post[i].size(); j++) {
-      int32 tid = post[i][j].first;
-      BaseFloat weight = post[i][j].second;    
-      (*new_post)[i].push_back(std::make_pair(tid, weight * frame_scale));
+    if (frame_scale != 0.0) {
+      for (size_t j = 0; j < (*post)[i].size(); j++) {
+        int32 tid = (*post)[i][j].first;
+        BaseFloat weight = (*post)[i][j].second;    
+        this_post.push_back(std::make_pair(tid, weight * frame_scale));
+      }
     }
+    (*post)[i].swap(this_post);    
   }
 }
 

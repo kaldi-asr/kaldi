@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     for (; !clat_reader.Done(); clat_reader.Next()) {
       std::string key = clat_reader.Key();
       const CompactLattice &clat = clat_reader.Value();
-
+      
       CompactLattice aligned_clat;
       
       bool ok = WordAlignLatticeLexicon(clat, tmodel, lexicon_info, opts,
