@@ -46,7 +46,6 @@ for file in utt2spk utt2lang feats.scp text cmvn.scp segments reco2file_and_chan
 done
 
 utils/utt2spk_to_spk2utt.pl <$dest/utt2spk >$dest/spk2utt
-utils/utt2spk_to_spk2utt.pl <$dest/utt2lang >$dest/lang2utt
 
 utils/fix_data_dir.sh $dest 1 || exit 1;
 

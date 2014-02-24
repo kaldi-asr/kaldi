@@ -5,16 +5,13 @@
 # text, and utt2spk are present in any of them.
 # It puts the original contents of data-dir into 
 # data-dir/.backup
-# giving the second option of <LANG> to do utt2lang processing instead of utt2spk processing
 
-if [ $# -lt 1 ]; then
-  echo "Usage: fix_data_dir.sh data-dir <LANG=1/0>"
+if [ $# != 1 ]; then
+  echo "Usage: fix_data_dir.sh data-dir"
   exit 1
 fi
 
 data=$1
-lang=$2
-
 mkdir -p $data/.backup
 
 [ ! -d $data ] && echo "$0: no such directory $data" && exit 1;
@@ -25,6 +22,7 @@ tmpdir=$(mktemp -d);
 trap 'rm -rf "$tmpdir"' EXIT HUP INT PIPE TERM
 
 export LC_ALL=C
+
 
 function check_sorted {
   file=$1
@@ -37,12 +35,13 @@ function check_sorted {
   fi
 }
 
-for x in utt2lang lang2utt utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp reco2file_and_channel spk2gender; do
+for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp reco2file_and_channel spk2gender utt2lang; do
   if [ -f $data/$x ]; then
     cp $data/$x $data/.backup/$x
     check_sorted $data/$x
   fi
 done
+
 
 function filter_file {
   filter=$1
@@ -115,32 +114,6 @@ function filter_speakers {
   done
 }
 
-function filter_langs {
-  # throughout this program, we regard utt2lang as primary and lang2utt as derived, so...
-  utils/utt2spk_to_spk2utt.pl $data/utt2lang > $data/lang2utt
-  check_sorted $data/utt2lang;
-  check_sorted $data/lang2utt;
-
-  cat $data/lang2utt | awk '{print $1}' > $tmpdir/languages
-  for s in cmvn.scp; do
-    f=$data/$s
-    if [ -f $f ]; then
-      utils/filter_scp.pl $f $tmpdir/languages > $tmpdir/languages.tmp
-      mv $tmpdir/languages.tmp $tmpdir/languages
-    fi
-  done
-
-  filter_file $tmpdir/languages $data/lang2utt
-  utils/spk2utt_to_utt2spk.pl $data/lang2utt > $data/utt2lang
-
-  for s in cmvn.scp; do
-    f=$data/$s
-    if [ -f $f ]; then
-      filter_file $tmpdir/languages $f
-    fi
-  done
-}
-
 function filter_utts {
   cat $data/utt2spk | awk '{print $1}' > $tmpdir/utts
 
@@ -156,19 +129,10 @@ function filter_utts {
   ! cat $data/spk2utt | sort | cmp - $data/spk2utt && \
     echo "spk2utt is not in sorted order (fix this yourself)" && exit 1;
 
-  ! cat $data/utt2lang | sort -k2 | cmp - $data/utt2lang && \
-    echo "utt2lang is not in sorted order (fix this yourself)" && exit 1;
-
-  ! cat $data/utt2lang | sort | cmp - $data/utt2lang && \
-    echo "utt2lang is not in sorted order (fix this yourself)" && exit 1;
-
-  ! cat $data/lang2utt | sort | diff - $data/lang2utt && \
-    echo "lang2utt is not in sorted order (fix this yourself)" && exit 1;
-
 
   maybe_wav=
   [ ! -f $data/segments ] && maybe_wav=wav.scp  # wav indexed by utts only if segments does not exist.
-  for x in feats.scp text segments $maybe_wav; do
+  for x in feats.scp text segments utt2lang $maybe_wav; do
     if [ -f $data/$x ]; then
       utils/filter_scp.pl $data/$x $tmpdir/utts > $tmpdir/utts.tmp
       mv $tmpdir/utts.tmp $tmpdir/utts
@@ -183,7 +147,6 @@ function filter_utts {
   else
     nfeats=0
   fi
-
   ntext=`cat $data/text 2>/dev/null | wc -l`
   if [ "$nutts" -ne "$nfeats" -o "$nutts" -ne "$ntext" ]; then
     echo "fix_data_dir.sh: kept $nutts utterances, vs. $nfeats features and $ntext transcriptions."
@@ -191,7 +154,7 @@ function filter_utts {
     echo "fix_data_dir.sh: kept all $nutts utterances."
   fi
 
-  for x in utt2lang utt2spk feats.scp text segments $maybe_wav; do
+  for x in utt2spk feats.scp text segments utt2lang $maybe_wav; do
     if [ -f $data/$x ]; then
       cp $data/$x $data/.backup/$x
       if ! cmp -s $data/$x <( utils/filter_scp.pl $tmpdir/utts $data/$x ) ; then
@@ -203,9 +166,6 @@ function filter_utts {
 }
 
 filter_recordings
-if [ $lang -eq 1 ] ; then
-  filter_langs
-fi
 filter_speakers
 filter_utts
 filter_recordings
