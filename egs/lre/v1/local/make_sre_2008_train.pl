@@ -114,10 +114,7 @@ foreach $gender (@gender_list) {
     if (system("utils/utt2spk_to_spk2utt.pl $out_dir/utt2spk >$out_dir/spk2utt") != 0) {
       die "Error creating spk2utt file in directory $out_dir";
     }
-    if (system("utils/utt2spk_to_spk2utt.pl $out_dir/utt2lang >$out_dir/lang2utt") != 0) {
-      die "Error creating spk2utt file in directory $out_dir";
-    }
-    system("utils/fix_data_dir.sh $out_dir 1");
+    system("utils/fix_data_dir.sh $out_dir");
     if (system("utils/validate_data_dir.sh --no-text --no-feats $out_dir") != 0) {
       die "Error validating directory $out_dir";
     }
