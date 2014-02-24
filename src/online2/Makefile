@@ -3,7 +3,7 @@ all:
 
 include ../kaldi.mk
 
-TESTFILES = 
+TESTFILES = online-feat-test
 
 OBJFILES = online-feature.o online-gmm-decodable.o online-feature-pipeline.o \
            online-gmm-decoding.o onlinebin-util.o

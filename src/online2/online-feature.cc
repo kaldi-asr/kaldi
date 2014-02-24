@@ -67,7 +67,7 @@ void OnlineMfccOrPlp<C>::AcceptWaveform(BaseFloat sampling_rate,
                         waveform.Dim()).CopyFromVec(waveform);
   }
   waveform_remainder_.Resize(0);
-  
+
   Matrix<BaseFloat> feats;
   BaseFloat vtln_warp = 1.0; // We don't support VTLN warping in this wrapper.
   mfcc_or_plp_.Compute(wave_to_use, vtln_warp, &feats, &waveform_remainder_);
@@ -108,11 +108,11 @@ void OnlineCmvn::ComputeStatsForFrame(int32 frame,
   if (index >= raw_stats_.size())
     index = static_cast<int32>(raw_stats_.size()) - 1;
   // most_recent_frame is most recent cached frame, or -1.
-  int32 most_recent_frame = (index >= 0 ? index * modulus : -1); 
+  int32 most_recent_frame = (index >= 0 ? index * modulus : -1);
 
   int32 dim = this->Dim();
   Matrix<double> stats(2, dim + 1);
-  
+
   if (index >= 0)
     stats.CopyFromMat(raw_stats_[index]);
 
@@ -120,15 +120,15 @@ void OnlineCmvn::ComputeStatsForFrame(int32 frame,
   Vector<double> feats_dbl(dim);
 
   KALDI_ASSERT(most_recent_frame >= -1 && most_recent_frame <= frame);
-  
+
   for (int32 f = most_recent_frame + 1; f <= frame; f++) {
     src_->GetFrame(f, &feats);
     feats_dbl.CopyFromVec(feats);
     stats.Row(0).Range(0, dim).AddVec(1.0, feats_dbl);
     stats.Row(1).Range(0, dim).AddVec2(1.0, feats_dbl);
     stats(0, dim) += 1.0;
-    
-    int32 prev_f = f - opts_.cmn_window; 
+
+    int32 prev_f = f - opts_.cmn_window;
     if (prev_f >= 0) {
       // we need to subtract frame prev_f from the stats.
       src_->GetFrame(prev_f, &feats);
@@ -171,7 +171,7 @@ void OnlineCmvn::SmoothOnlineCmvnStats(const MatrixBase<double> &speaker_stats,
                              speaker_stats);
     cur_count = (*stats)(0, dim);
   }
-  if (cur_count >= opts.cmn_window) return;  
+  if (cur_count >= opts.cmn_window) return;
   if (global_stats.NumRows() != 0) {
     double count_from_global = opts.cmn_window - cur_count,
         global_count = global_stats(0, dim);
@@ -281,7 +281,7 @@ void OnlineSpliceFrames::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
                                             // the right.
     SubVector<BaseFloat> part(*feat, n * dim_in, dim_in);
     src_->GetFrame(t2_limited, &part);
-  }  
+  }
 }
 
 OnlineTransform::OnlineTransform(const MatrixBase<BaseFloat> &transform,
@@ -362,7 +362,7 @@ void OnlineCacheFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
   if (static_cast<size_t>(frame) < cache_.size() && cache_[frame] != NULL) {
     feat->CopyFromVec(*(cache_[frame]));
   } else {
-    if (static_cast<size_t>(frame) < cache_.size())
+    if (static_cast<size_t>(frame) >= cache_.size())
       cache_.resize(frame + 1, NULL);
     int32 dim = this->Dim();
     cache_[frame] = new Vector<BaseFloat>(dim);
