@@ -48,6 +48,8 @@ void GetOutput(OnlineFeatureInterface *a,
     frame_num++;
   }
 
+  KALDI_ASSERT(cached_frames.size() == a->NumFramesReady());
+
   output->Resize(cached_frames.size(), dim);
   for(int32 i = 0; i < cached_frames.size(); i++){
     output->CopyRowFromVec( *(cached_frames[i]), i );
