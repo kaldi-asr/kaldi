@@ -269,7 +269,7 @@ int32 OnlineSpliceFrames::NumFramesReady() const {
 
 void OnlineSpliceFrames::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
   KALDI_ASSERT(left_context_ >= 0 && right_context_ >= 0);
-  KALDI_ASSERT(frame > 0 && frame < NumFramesReady());
+  KALDI_ASSERT(frame >= 0 && frame < NumFramesReady());
   int32 dim_in = src_->Dim();
   KALDI_ASSERT(feat->Dim() == dim_in * (1 + left_context_ + right_context_));
   int32 T = src_->NumFramesReady();
@@ -292,8 +292,7 @@ OnlineTransform::OnlineTransform(const MatrixBase<BaseFloat> &transform,
     linear_term_ = transform;
     offset_.Resize(transform.NumRows()); // Resize() will zero it.
   } else if (transform.NumCols() == src_dim + 1) { // Affine transform
-    linear_term_.CopyFromMat(transform.Range(0, transform.NumRows(),
-                                             0, src_dim));
+    linear_term_ = transform.Range(0, transform.NumRows(), 0, src_dim);
     offset_.Resize(transform.NumRows());
     offset_.CopyColFromMat(transform, src_dim);
   } else {

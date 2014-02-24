@@ -106,7 +106,9 @@ bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
     KALDI_WARN << "Got empty lattice.  Not estimating fMLLR.";
     return false;
   }
-
+  
+  TopSortLatticeIfNeeded(&det_lat);
+  
   // Note: the acoustic scale we use here is whatever we decoded with.
   Posterior post;
   BaseFloat tot_fb_like = LatticeForwardBackward(det_lat, &post);
@@ -145,10 +147,9 @@ bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
       (*gpost)[i].push_back(std::make_pair(pdf_id, this_post_vec));
     }
   }
-  KALDI_ASSERT(fabs(tot_weight - pdf_post.size()) < 0.01 * pdf_post.size());
   KALDI_VLOG(3) << "Average likelihood weighted by posterior was "
                 << (tot_like / tot_weight) << " over" << tot_weight
-                << " frames.";  
+                << " frames (after downweighting silence).";  
   return true;
 }
 
@@ -259,11 +260,13 @@ void SingleUtteranceGmmDecoder::GetLattice(bool rescore_if_needed,
                                            config_.acoustic_scale,
                                            feature_pipeline_);
 
-    if (!kaldi::RescoreCompactLattice(&decodable, clat))
+    if (!kaldi::RescoreLattice(&decodable, &lat))
       KALDI_WARN << "Error rescoring lattice";
   }
   PruneLattice(lat_beam, &lat);
-    
+
+  TopSortLatticeIfNeeded(&lat);
+  Invert(&lat);
   // TODO: after Guoguo finishes wrapper, convert to phone version.
   fst::DeterminizeLatticePruned(lat, lat_beam, clat);
 }

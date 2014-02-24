@@ -1032,9 +1032,9 @@ bool RescoreCompactLatticeInternal(
   }
 
   for (int32 t = 0; t < utt_len; t++) {
-    if ((t < utt_len - 1) == decodable->IsLastFrame(t)) {
-      // this if-statement compares two boolean values.
-      KALDI_WARN << "Mismatch in lattice and feature length";
+    if ((t < utt_len - 1) && decodable->IsLastFrame(t)) {
+      KALDI_WARN << "Features are too short for lattice: utt-len is "
+                 << utt_len << ", " << t << " is last frame";
       return false;
     }
     // frame_scale is the scale we put on the computed acoustic probs for this
@@ -1146,9 +1146,9 @@ bool RescoreLattice(DecodableInterface *decodable,
 
 
   for (int32 t = 0; t < utt_len; t++) {
-    if ((t < utt_len - 1) == decodable->IsLastFrame(t)) {
-      // this if-statement compares two boolean values.
-      KALDI_WARN << "Mismatch in lattice and feature length";
+    if ((t < utt_len - 1) && decodable->IsLastFrame(t)) {
+      KALDI_WARN << "Features are too short for lattice: utt-len is "
+                 << utt_len << ", " << t << " is last frame";
       return false;
     }
     for (size_t i = 0; i < time_to_state[t].size(); i++) {

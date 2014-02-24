@@ -37,7 +37,7 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
   }
   CompactLattice best_path_clat;
   CompactLatticeShortestPath(clat, &best_path_clat);
-
+  
   Lattice best_path_lat;
   ConvertLattice(best_path_clat, &best_path_lat);
 
@@ -63,6 +63,7 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
         KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
       std::cerr << s << ' ';
     }
+    std::cerr << std::endl;
   }
 }
 

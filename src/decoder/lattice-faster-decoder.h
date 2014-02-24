@@ -110,11 +110,8 @@ class LatticeFasterDecoder {
     return config_;
   }
 
-  ~LatticeFasterDecoder() {
-    ClearActiveTokens();
-    if (delete_fst_) delete &(fst_);
-  }
-
+  ~LatticeFasterDecoder();
+  
   /// Decodes until there are no more frames left in the "decodable" object..
   /// note, this may block waiting for input if the "decodable" object blocks.
   /// Returns true if any kind of traceback is available (not necessarily from a

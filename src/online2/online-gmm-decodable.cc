@@ -56,7 +56,7 @@ BaseFloat DecodableDiagGmmScaledOnline::LogLikelihood(int32 frame, int32 index) 
 
 
 bool DecodableDiagGmmScaledOnline::IsLastFrame(int32 frame) const {
-  return !features_->IsLastFrame(frame);
+  return features_->IsLastFrame(frame);
 }
 
 int32 DecodableDiagGmmScaledOnline::NumFramesReady() const {

@@ -40,6 +40,12 @@ LatticeFasterDecoder::LatticeFasterDecoder(const LatticeFasterDecoderConfig &con
 }
 
 
+LatticeFasterDecoder::~LatticeFasterDecoder() {
+  DeleteElems(toks_.Clear());    
+  ClearActiveTokens();
+  if (delete_fst_) delete &(fst_);
+}
+
 void LatticeFasterDecoder::InitDecoding() {
   // clean up from last time:
   DeleteElems(toks_.Clear());
@@ -357,8 +363,8 @@ void LatticeFasterDecoder::PruneForwardLinksFinal() {
   // otherwise there would be a time, after calling PruneTokensForFrame() on the
   // final frame, when toks_.GetList() or toks_.Clear() would contain pointers
   // to nonexistent tokens.
-  DeleteElems(toks_.Clear()); 
-
+  DeleteElems(toks_.Clear());
+  
   // Now go through tokens on this frame, pruning forward links...  may have to
   // iterate a few times until there is no more change, because the list is not
   // in topological order.  This is a modified version of the code in
