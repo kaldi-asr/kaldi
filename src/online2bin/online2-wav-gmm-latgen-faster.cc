@@ -75,8 +75,8 @@ int main(int argc, char *argv[]) {
     using namespace fst;
 
     typedef kaldi::int32 int32;
+    typedef kaldi::int64 int64;
     
-
     const char *usage =
         "Reads in wav file(s) and simulates online decoding, including\n"
         "basis-fMLLR adaptation.  Writes lattices.  Models are provided via\n"
