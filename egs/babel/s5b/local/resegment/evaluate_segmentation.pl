@@ -1,5 +1,8 @@
 #!/usr/bin/perl
 
+# Copyright 2014  Johns Hopkins University (Author: Sanjeev Khudanpur), Vimal Manohar 
+# Apache 2.0
+
 ################################################################################
 #
 # This script was written to check the goodness of automatic segmentation tools

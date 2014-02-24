@@ -47,34 +47,34 @@ if [ ! -f data_bnf/train_bnf/.done ]; then
   mkdir -p data_bnf
   # put the archives in plp/.
   local/nnet2/dump_bottleneck_features.sh --nj $train_nj --cmd "$train_cmd" \
-    --transform-dir exp/tri5 data/train data_bnf/train_bnf exp_bnf/tri6_bnf plp exp_bnf/dump_bnf
+    --transform-dir exp/tri5 data/train data_bnf/train_bnf exp_bnf/tri6_bnf param_plp exp_bnf/dump_bnf
   touch data_bnf/train_bnf/.done
 fi 
 
-if [ ! data_bnf/train_app/.done -nt data_bnf/train_bnf/.done ]; then
+if [ ! data_bnf/train/.done -nt data_bnf/train_bnf/.done ]; then
   steps/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
     --nj $train_nj --transform-dir exp/tri5_ali  data_bnf/train_sat data/train \
-    exp/tri5_ali exp_bnf/make_fmllr_feats/log plp/ 
+    exp/tri5_ali exp_bnf/make_fmllr_feats/log param_bnf/ 
 
   steps/append_feats.sh --cmd "$train_cmd" --nj 4 \
-    data_bnf/train_bnf data_bnf/train_sat data_bnf/train_app \
-    exp_bnf/append_feats/log plp/ 
-  steps/compute_cmvn_stats.sh --fake data_bnf/train_app exp_bnf/make_fmllr_feats plp
+    data_bnf/train_bnf data_bnf/train_sat data_bnf/train \
+    exp_bnf/append_feats/log param_bnf/ 
+  steps/compute_cmvn_stats.sh --fake data_bnf/train exp_bnf/make_fmllr_feats param_bnf
   rm -r data_bnf/train_sat
 
-  touch data_bnf/train_app/.done
+  touch data_bnf/train/.done
 fi
 
-if [ ! exp_bnf/tri5/.done -nt data_bnf/train_app/.done ]; then
+if [ ! exp_bnf/tri5/.done -nt data_bnf/train/.done ]; then
   steps/train_lda_mllt.sh --splice-opts "--left-context=1 --right-context=1" \
     --dim 60 --boost-silence $boost_sil --cmd "$train_cmd" \
-    $numLeavesMLLT $numGaussMLLT data_bnf/train_app data/lang exp/tri5_ali exp_bnf/tri5 ;
+    $numLeavesMLLT $numGaussMLLT data_bnf/train data/lang exp/tri5_ali exp_bnf/tri5 ;
   touch exp_bnf/tri5/.done
 fi
 
 if [ ! exp_bnf/tri6/.done -nt exp_bnf/tri5/.done ]; then
   steps/train_sat.sh --boost-silence $boost_sil --cmd "$train_cmd" \
-    $numLeavesSAT $numGaussSAT data_bnf/train_app data/lang exp_bnf/tri5 exp_bnf/tri6
+    $numLeavesSAT $numGaussSAT data_bnf/train data/lang exp_bnf/tri5 exp_bnf/tri6
   touch exp_bnf/tri6/.done
 fi
 

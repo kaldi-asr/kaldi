@@ -19,10 +19,12 @@ order=3
 cut -f2- -d' ' < $locdata/test_trans.txt |\
   sed -e 's:[ ]\+: :g' | sort -u > $loctmp/test_utt.txt
 
+# We are not removing the test utterances in the current version of the recipe
+# because this messes up with some of the later stages - e.g. too many OOV
+# words in tri2b_mmi
 cut -f2- -d' ' < $locdata/train_trans.txt |\
    sed -e 's:[ ]\+: :g' |\
-   gawk 'NR==FNR{test[$0]; next;} !($0 in test)' \
-     $loctmp/test_utt.txt - | sort -u > $loctmp/corpus.txt
+   sort -u > $loctmp/corpus.txt
 
 if [ ! -f "tools/mitlm-svn/bin/estimate-ngram" ]; then
   echo "--- Downloading and compiling MITLM toolkit ..."
@@ -31,7 +33,7 @@ if [ ! -f "tools/mitlm-svn/bin/estimate-ngram" ]; then
     { echo "SVN client is needed but not found" ; exit 1; }
   svn checkout http://mitlm.googlecode.com/svn/trunk/ tools/mitlm-svn
   cd tools/mitlm-svn/
-  ./autogen.sh
+  F77=gfortran ./autogen.sh
   ./configure --prefix=`pwd`
   make
   make install

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Copyright 2014  Vimal Manohar, Johns Hopkins University (Author: Jan Trmal)
+# Apache 2.0
 
 #Begin configuration section
 

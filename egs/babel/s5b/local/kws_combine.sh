@@ -25,13 +25,12 @@
 # begin configuration section.
 cmd=run.pl
 stage=0
-# Combination power
-power=0.4
 # Ntrue-scale
 Ntrue_scale=1.1
 min_lmw=8
 max_lmw=12
 skip_scoring=false
+optimize_weights=false
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
@@ -58,17 +57,32 @@ duration=`head -1 $ecf |\
 
 mkdir -p $odir/log
 
-weight=$(perl -e "print (1.0/$num_sys);")
+total_sum=0
+for i in `seq 0 $[num_sys-1]`; do
+  decode_dir=${decode_dirs[$i]}
+  offset=`echo $decode_dir | cut -d: -s -f2` # add this to the lm-weight.
+  [ -z "$offset" ] && offset=1
+  total_sum=$(($total_sum+$offset))
+done
+
 systems=""
 for i in `seq 0 $[num_sys-1]`; do
-  if [ -f ${decode_dirs[$i]} ] ; then
-    systems+="$weight ${decode_dirs[$i]} "
+  decode_dir=${decode_dirs[$i]}
+  offset=`echo $decode_dir | cut -d: -s -f2` # add this to the lm-weight.
+  decode_dir=`echo $decode_dir | cut -d: -f1`
+  [ -z "$offset" ] && offset=1
+  
+  weight=$(perl -e "print ($offset/$total_sum);")
+  if [ -f $decode_dir ] ; then
+    systems+="$weight $decode_dir "
   else
-    kwsfile=${decode_dirs[$i]}/kwslist.unnormalized.xml
+    kwsfile=$decode_dir/kwslist.unnormalized.xml
     [ ! -f ${kwsfile} ] && echo "The file ${kwsfile} does not exist!" && exit 1
     systems+="$weight ${kwsfile} "
   fi
 done
+
+echo $systems
 
 # Combination of the weighted sum and power rule
 $cmd PWR=1:9 $odir/log/combine_kws.PWR.log \
@@ -86,3 +100,5 @@ if ! $skip_scoring ; then
 $cmd PWR=1:9 $odir/log/score_kws.PWR.log \
   local/kws_score.sh $datadir $odir/kws_PWR || exit 1
 fi
+
+

@@ -58,7 +58,8 @@ if [ ! -f conf/g2p_model ]; then
 fi
 
 echo "--- Preparing pronunciations for OOV words ..."
-python tools/g2p/lib/python${pyver}/site-packages/g2p.py \
+export PYTHONPATH=`readlink -f tools/g2p/lib/python*/site-packages`
+python tools/g2p/g2p.py \
   --model=conf/g2p_model --apply $locdict/vocab-oov.txt > $locdict/lexicon-oov.txt
 
 cat $locdict/lexicon-oov.txt $locdict/lexicon-iv.txt |\

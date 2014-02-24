@@ -603,7 +603,6 @@ void PnormComponent::InitFromString(std::string args) {
   bool ok = ParseFromString("output-dim", &args, &output_dim) &&
       ParseFromString("input-dim", &args, &input_dim);
   ParseFromString("p", &args, &p);
-  KALDI_LOG << output_dim << " " << input_dim << " " << p << " " << ok;
   if (!ok || !args.empty() || output_dim <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << orig_args << "\"";

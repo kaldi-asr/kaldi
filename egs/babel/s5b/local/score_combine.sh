@@ -148,6 +148,7 @@ if [ $stage -le 1 ]; then
     cat $x.bkup1 | grep -v -E '\[NOISE|LAUGHTER|VOCALIZED-NOISE\]' | \
       grep -v -E '<UNK>|%HESITATION|\(\(\)\)' | \
       grep -v -E '<eps>' | \
+      grep -v -E '<hes>' | \
       grep -v -E '<noise>' | \
       grep -v -E '<silence>' | \
       grep -v -E '<unk>' | \

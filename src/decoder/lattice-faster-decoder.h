@@ -43,6 +43,9 @@ struct LatticeFasterDecoderConfig {
   // command-line program.
   BaseFloat beam_delta; // has nothing to do with beam_ratio
   BaseFloat hash_ratio;
+  // Most of the options inside det_opts are not actually queried by the
+  // LatticeFasterDecoder class itself, but by the code that calls it, for
+  // example in the function DecodeUtteranceLatticeFaster.
   fst::DeterminizeLatticePhonePrunedOptions det_opts;
   LatticeFasterDecoderConfig(): beam(16.0),
                                 max_active(std::numeric_limits<int32>::max()),

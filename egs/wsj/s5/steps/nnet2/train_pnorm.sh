@@ -138,7 +138,9 @@ done
 
 
 # Set some variables.
-num_leaves=`gmm-info $alidir/final.mdl 2>/dev/null | awk '/number of pdfs/{print $NF}'` || exit 1;
+num_leaves=`tree-info $alidir/tree 2>/dev/null | awk '{print $2}'` || exit 1
+[ -z $num_leaves ] && echo "\$num_leaves is unset" && exit 1
+[ "$num_leaves" -eq "0" ] && echo "\$num_leaves is 0" && exit 1
 
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 # in this dir we'll have just one job.
