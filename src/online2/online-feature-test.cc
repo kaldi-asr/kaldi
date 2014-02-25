@@ -145,8 +145,7 @@ void TestOnlineSpliceFrames() {
   Matrix<BaseFloat> output_feats2(num_frames, output_dim);
   SpliceFrames(input_feats, opts.left_context, opts.right_context, &output_feats2);
 
-  //KALDI_ASSERT(output_feats1.ApproxEqual(output_feats2));
-
+  KALDI_ASSERT(output_feats1.ApproxEqual(output_feats2));
 }
 
 void TestOnlineMfcc() {
