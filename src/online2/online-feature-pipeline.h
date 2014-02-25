@@ -141,6 +141,12 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
   /// it equals what's in the config.
   void AcceptWaveform(BaseFloat sampling_rate,
                       const VectorBase<BaseFloat> &waveform);
+
+
+  // InputFinished() tells the class you won't be providing any
+  // more waveform.  This will help flush out the last few frames
+  // of delta or LDA features.
+  void InputFinished();
   
   // This object is used to set the fMLLR transform.  Call it with
   // the empty matrix if you want to stop it using any transform.

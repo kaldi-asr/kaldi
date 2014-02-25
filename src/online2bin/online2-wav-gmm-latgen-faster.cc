@@ -21,6 +21,7 @@
 #include "online2/online-feature-pipeline.h"
 #include "online2/online-gmm-decoding.h"
 #include "online2/onlinebin-util.h"
+#include "online2/online-timing.h"
 #include "fstext/fstext-lib.h"
 #include "lat/lattice-functions.h"
 
@@ -67,6 +68,7 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
   }
 }
 
+  
 }
 
 int main(int argc, char *argv[]) {
@@ -136,7 +138,9 @@ int main(int argc, char *argv[]) {
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessTableReader<WaveHolder> wav_reader(wav_rspecifier);
     CompactLatticeWriter clat_writer(clat_wspecifier);
-      
+
+    OnlineTimingStats timing_stats;
+    
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {      
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
@@ -156,6 +160,8 @@ int main(int argc, char *argv[]) {
         const WaveData &wave_data = wav_reader.Value(utt);
         // get the data for channel zero (if the signal is not mono, we only
         // take the first channel).
+        OnlineTimer decoding_timer(utt);
+        
         SubVector<BaseFloat> data(wave_data.Data(), 0);
         // Very arbitrarily, we decide to process at most one second
         // at a time.
@@ -171,6 +177,12 @@ int main(int argc, char *argv[]) {
           int32 old_frames_ready = decoder.FeaturePipeline().NumFramesReady();
           decoder.FeaturePipeline().AcceptWaveform(wave_data.SampFreq(),
                                                    wave_part);
+
+          decoding_timer.WaitUntil((samp_offset + this_num_samp) /
+                                   wave_data.SampFreq());
+
+          if (this_num_samp == data.Dim() - samp_offset)  // no more input.
+            decoder.FeaturePipeline().InputFinished();  // flush out last frames
           decoder.AdvanceFirstPass();
             
           int32 new_frames_ready = decoder.FeaturePipeline().NumFramesReady();
@@ -192,6 +204,8 @@ int main(int argc, char *argv[]) {
 
         GetDiagnosticsAndPrintOutput(utt, word_syms, clat,
                                      &num_frames, &tot_like);
+
+        decoding_timer.OutputStats(&timing_stats);
         
         // In an application you might avoid updating the adptation state if you
         // felt the utterance had low confidence.  See lat/confidence.h
@@ -206,6 +220,7 @@ int main(int argc, char *argv[]) {
         num_done++;
       }
     }
+    timing_stats.Print();
     KALDI_LOG << "Decoded " << num_done << " utterances, "
               << num_err << " with errors.";
     KALDI_LOG << "Average likelihood per frame was " << (tot_like / num_frames)

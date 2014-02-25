@@ -202,9 +202,9 @@ void OnlineFeaturePipeline::AcceptWaveform(
   base_feature_->AcceptWaveform(sampling_rate, waveform);
 }
 
+void OnlineFeaturePipeline::InputFinished() {
+  base_feature_->InputFinished();
+}
 
-
-// acceptwaveform
-// things in interface.
 
 }  // namespace kaldi

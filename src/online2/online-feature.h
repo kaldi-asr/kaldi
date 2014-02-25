@@ -48,6 +48,10 @@ class OnlineBaseFeature: public OnlineFeatureInterface {
   virtual void AcceptWaveform(BaseFloat sampling_rate,
                               const VectorBase<BaseFloat> &waveform) = 0;
 
+  // InputFinished() tells the class you won't be providing any
+  // more waveform.  This will help flush out the last few frames
+  // of delta or LDA features.
+  virtual void InputFinished() = 0;
 };
 
 
@@ -83,7 +87,7 @@ class OnlineMfccOrPlp: public OnlineBaseFeature {
   // InputFinished() tells the class you won't be providing any
   // more waveform.  This will help flush out the last few frames
   // of delta or LDA features.
-  void InputFinished() { input_finished_= true; }
+  virtual void InputFinished() { input_finished_= true; }
 
 
  private:
