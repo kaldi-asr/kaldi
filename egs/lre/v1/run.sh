@@ -23,7 +23,7 @@ local/make_ldc96s.pl 55 /export/corpora5/LDC/LDC96S55 data
 local/make_ldc96s.pl 56 /export/corpora5/LDC/LDC96S56 data
 local/make_ldc96s.pl 57 /export/corpora5/LDC/LDC96S57 data
 local/make_ldc96s.pl 58 /export/corpora5/LDC/LDC96S58 data
-utils/combine_data.sh data/train data/sre08_train_10sec_female data/sre08_train_10sec_male \
+utils/combine_data.sh data/all data/sre08_train_10sec_female data/sre08_train_10sec_male \
     data/sre08_train_3conv_female data/sre08_train_3conv_male data/sre08_train_8conv_female \
     data/sre08_train_8conv_male data/sre08_train_short2_male data/sre08_train_short2_female data/ldc96s*
 
@@ -31,13 +31,19 @@ mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
 set -e
-steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" data/train exp/make_mfcc $mfccdir
+steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" data/all exp/make_mfcc $mfccdir
 
-lid/compute_vad_decision.sh --nj 4 --cmd "$train_cmd" data/train exp/make_vad $vaddir
+lid/compute_vad_decision.sh --nj 4 --cmd "$train_cmd" data/all exp/make_vad $vaddir
+
+# Use 4k of the 14k utterances for testing, but make sure the speakers do not
+# overlap with the rest of the data, which will be used for training.
+utils/subset_data_dir.sh --speakers data/all 4000 data/test
+utils/filter_scp.pl --exclude data/test/spk2utt < data/all/spk2utt  | awk '{print $1}' > foo
+utils/subset_data_dir.sh --spk-list foo data/all data/train
 
 
-utils/subset_data_dir.sh data/sre08_train 3000 data/train_3k
-utils/subset_data_dir.sh data/sre08_train 6000 data/train_6k
+utils/subset_data_dir.sh data/train 3000 data/train_3k
+utils/subset_data_dir.sh data/train 6000 data/train_6k
 
 
 lid/train_diag_ubm.sh --nj 30 --cmd "$train_cmd" data/train_3k 2048 exp/diag_ubm_2048
