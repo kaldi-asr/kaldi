@@ -78,6 +78,6 @@ if [ $stage -le 2 ]; then
   echo "$0: computing mean of iVectors for each speaker and length-normalizing"
   $cmd $dir/log/speaker_mean.log \
     ivector-normalize-length scp:$dir/ivector.scp  ark:- \| \
-    ivector-mean "ark:utils/spk2utt_to_utt2spl.pl $data/utt2lang|" ark:- ark:- ark,t:$dir/num_utts.ark \| \
+    ivector-mean "ark:utils/spk2utt_to_utt2spk.pl $data/utt2lang|" ark:- ark:- ark,t:$dir/num_utts.ark \| \
     ivector-normalize-length ark:- ark,scp:$dir/lang_ivector.ark,$dir/lang_ivector.scp || exit 1;
 fi
