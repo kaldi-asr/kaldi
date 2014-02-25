@@ -100,25 +100,15 @@ bool DecodeUtterance(LatticeBiglmFasterDecoder &decoder, // not const but is rea
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
   fst::Connect(&lat);
   if (determinize) {
-    Invert(&lat);
-    if (!TopSort(&lat)) {
-      // Cannot topologically sort the lattice -- determinization will fail.
-      KALDI_WARN << "Topological sorting of state-level lattice failed "
-                 << "(probably your lexicon has empty words or your LM has "
-                 << "epsilon cycles).";
-      return false;
-    }
-    fst::ILabelCompare<LatticeArc> ilabel_comp;
-    ArcSort(&lat, ilabel_comp);
     CompactLattice clat;
-    if (!DeterminizeLatticePhonePruned(trans_model,
-                                       &lat,
-                                       decoder.GetOptions().lattice_beam,
-                                       &clat,
-                                       decoder.GetOptions().det_opts))
+    if (!DeterminizeLatticePhonePrunedWrapper(
+            trans_model,
+            &lat,
+            decoder.GetOptions().lattice_beam,
+            &clat,
+            decoder.GetOptions().det_opts))
       KALDI_WARN << "Determinization finished earlier than the beam for "
                  << "utterance " << utt;
-    fst::Connect(&clat);
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);

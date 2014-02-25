@@ -1,6 +1,7 @@
 // gmmbin/gmm-acc-hlda.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -106,11 +107,12 @@ int main(int argc, char *argv[]) {
         num_done++;
         BaseFloat tot_like_this_file = 0.0, tot_weight = 0.0;
 
+        Posterior pdf_posterior;
+        ConvertPosteriorToPdfs(trans_model, posterior, &pdf_posterior);
         for (size_t i = 0; i < posterior.size(); i++) {
-          for (size_t j = 0; j < posterior[i].size(); j++) {
-            int32 tid = posterior[i][j].first,  // transition identifier.
-                pdf_id = trans_model.TransitionIdToPdf(tid);
-            BaseFloat weight = posterior[i][j].second;
+          for (size_t j = 0; j < pdf_posterior[i].size(); j++) {
+            int32 pdf_id = pdf_posterior[i][j].first;
+            BaseFloat weight = pdf_posterior[i][j].second;
 
             Vector<BaseFloat> posteriors;
             const DiagGmm &gmm = am_gmm.GetPdf(pdf_id);

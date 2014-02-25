@@ -1,6 +1,7 @@
 // gmmbin/gmm-est-regtree-fmllr.cc
 
 // Copyright 2009-2011  Saarland University;  Microsoft Corporation
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -117,10 +118,12 @@ int main(int argc, char *argv[]) {
           }
 
           BaseFloat file_like = 0.0, file_t = 0.0;
+          Posterior pdf_posterior;
+          ConvertPosteriorToPdfs(trans_model, posterior, &pdf_posterior);
           for (size_t i = 0; i < posterior.size(); i++) {
-            for (size_t j = 0; j < posterior[i].size(); j++) {
-              int32 pdf_id = trans_model.TransitionIdToPdf(posterior[i][j].first);
-              BaseFloat prob = posterior[i][j].second;
+            for (size_t j = 0; j < pdf_posterior[i].size(); j++) {
+              int32 pdf_id = pdf_posterior[i][j].first;
+              BaseFloat prob = pdf_posterior[i][j].second;
               file_like += fmllr_accs.AccumulateForGmm(regtree, am_gmm,
                                                        feats.Row(i), pdf_id,
                                                        prob);
@@ -168,10 +171,12 @@ int main(int argc, char *argv[]) {
         num_done++;
         BaseFloat file_like = 0.0, file_t = 0.0;
         fmllr_accs.SetZero();
+        Posterior pdf_posterior;
+        ConvertPosteriorToPdfs(trans_model, posterior, &pdf_posterior);
         for (size_t i = 0; i < posterior.size(); i++) {
-          for (size_t j = 0; j < posterior[i].size(); j++) {
-            int32 pdf_id = trans_model.TransitionIdToPdf(posterior[i][j].first);
-            BaseFloat prob = posterior[i][j].second;
+          for (size_t j = 0; j < pdf_posterior[i].size(); j++) {
+            int32 pdf_id = pdf_posterior[i][j].first;
+            BaseFloat prob = pdf_posterior[i][j].second;
             file_like += fmllr_accs.AccumulateForGmm(regtree, am_gmm,
                                                      feats.Row(i), pdf_id,
                                                      prob);

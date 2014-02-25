@@ -1,6 +1,7 @@
 // bin/acc-lda.cc
 
 // Copyright 2009-2011  Microsoft Corporation, Go-Vivace Inc.
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -95,14 +96,15 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
+      Posterior pdf_post;
+      ConvertPosteriorToPdfs(trans_model, post, &pdf_post);
       for (int32 i = 0; i < feats.NumRows(); i++) {
         SubVector<BaseFloat> feat(feats, i);
-        for (size_t j = 0; j < post[i].size(); j++) {
-          int32 tid = post[i][j].first;
-          BaseFloat weight = RandPrune(post[i][j].second, rand_prune);
+        for (size_t j = 0; j < pdf_post[i].size(); j++) {
+          int32 pdf_id = pdf_post[i][j].first;
+          BaseFloat weight = RandPrune(pdf_post[i][j].second, rand_prune);
           if (weight != 0.0) {
-            int32 pdf = trans_model.TransitionIdToPdf(tid);
-            lda.Accumulate(feat, pdf, weight);
+            lda.Accumulate(feat, pdf_id, weight);
           }
         }
       }

@@ -1464,6 +1464,30 @@ bool DeterminizeLatticePhonePruned(
                                        beam, ofst, opts);
 }
 
+bool DeterminizeLatticePhonePrunedWrapper(
+    const kaldi::TransitionModel &trans_model,
+    MutableFst<kaldi::LatticeArc> *ifst,
+    double beam,
+    MutableFst<kaldi::CompactLatticeArc> *ofst,
+    DeterminizeLatticePhonePrunedOptions opts) {
+  bool ans = true;
+  Invert(ifst);
+  if (ifst->Properties(fst::kTopSorted, true) == 0) {
+    if (!TopSort(ifst)) {
+      // Cannot topologically sort the lattice -- determinization will fail.
+      KALDI_ERR << "Topological sorting of state-level lattice failed (probably"
+                << " your lexicon has empty words or your LM has epsilon cycles"
+                << ").";
+    }
+  }
+  ILabelCompare<kaldi::LatticeArc> ilabel_comp;
+  ArcSort(ifst, ilabel_comp);
+  ans = DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
+      trans_model, ifst, beam, ofst, opts);
+  Connect(ofst);
+  return ans;
+}
+
 // Instantiate the templates for the types we might need.
 // Note: there are actually four templates, each of which
 // we instantiate for a single type.
