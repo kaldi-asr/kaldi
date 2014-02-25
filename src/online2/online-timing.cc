@@ -22,19 +22,22 @@
 namespace kaldi {
 
 OnlineTimingStats::OnlineTimingStats():
-    num_utts_(0), total_audio_(0.0),
-    total_time_taken_(0.0), max_wait_(0.0) {
+    num_utts_(0), total_audio_(0.0), total_time_taken_(0.0),
+    total_time_waited_(0.0), max_delay_(0.0) {
 }
 
 void OnlineTimingStats::Print(){
   double real_time_factor = total_time_taken_ / total_audio_,
-      average_wait = (total_time_taken_ - total_audio_) / num_utts_;
+      average_wait = (total_time_taken_ - total_audio_) / num_utts_,
+      idle_proportion = total_time_waited_ / total_audio_,
+      idle_percent = 100.0 * idle_proportion;
 
   KALDI_LOG << "Timing stats: real-time factor was " << real_time_factor
             << " (note: this cannot be less than one.)";
-  KALDI_LOG << "Average wait was " << average_wait << " seconds.";
-  KALDI_LOG << "Longest wait was " << max_wait_ << " seconds for utterance "
-            << '\'' << max_wait_utt_ << '\'';
+  KALDI_LOG << "Average delay was " << average_wait << " seconds.";
+  KALDI_LOG << "Percentage of time spent idling was " << idle_percent;
+  KALDI_LOG << "Longest delay was " << max_delay_ << " seconds for utterance "
+            << '\'' << max_delay_utt_ << '\'';
 
   
 }
@@ -72,9 +75,10 @@ void OnlineTimer::OutputStats(OnlineTimingStats *stats) {
   stats->num_utts_++;
   stats->total_audio_ += utterance_length_;
   stats->total_time_taken_ += processing_time;
-  if (wait_time > stats->max_wait_) {
-    stats->max_wait_ = wait_time;
-    stats->max_wait_utt_ = utterance_id_;
+  stats->total_time_waited_ += waited_;
+  if (wait_time > stats->max_delay_) {
+    stats->max_delay_ = wait_time;
+    stats->max_delay_utt_ = utterance_id_;
   }
 }
 

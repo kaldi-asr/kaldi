@@ -48,8 +48,9 @@ class OnlineTimingStats {
   // all times are in seconds.
   double total_audio_; // total time of audio.
   double total_time_taken_;
-  double max_wait_; // maximum time we waited for response
-  std::string max_wait_utt_;
+  double total_time_waited_; // total time in wait() state.
+  double max_delay_; // maximum delay at utterance end.
+  std::string max_delay_utt_;
 };
 
 
