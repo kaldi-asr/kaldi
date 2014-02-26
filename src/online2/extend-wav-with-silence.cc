@@ -31,7 +31,10 @@ void FindQuietestSegment(const Vector<BaseFloat> &wav_in,
 
 void ExtendWaveWithSilence(const Vector<BaseFloat> &wav_in,
                            BaseFloat samp_rate,
-                           Vector<BaseFloat> *wav_out);
+                           Vector<BaseFloat> *wav_out,
+                           BaseFloat sil_search_len,
+                           BaseFloat sil_extract_len,
+                           BaseFloat sil_extract_shift);
 
 }
 
@@ -49,9 +52,21 @@ int main(int argc, char *argv[]) {
         "Usage: extend-wav-with-silence [options] <wav-rspecifier> <wav-wspecifier>\n";
 
     ParseOptions po(usage);
-    BaseFloat sil_len = 5.0;
-    po.Register("extra-silence-length", &sil_len, "the lenght of silence that will be "
-                "appended to the end of each waveform.");
+    BaseFloat sil_len = 5.0,
+      sil_search_len = 0.5,
+      sil_extract_len = 0.1,
+      sil_extract_shift = 0.05;
+    po.Register("extra-silence-length", &sil_len, "the length of silence that will be "
+                "appended to the end of each waveform, in seconds.");
+    po.Register("silence-search-length", &sil_search_len, "the length at the beginning "
+                "or end of each waveform in which to search for the quietest segment of "
+                "silence, in seconds.");
+    po.Register("silence-extract-length", &sil_extract_len, "the length of silence segments "
+                "to be extracted from the waveform, which must be smaller than silence-"
+                "search-length, in seconds.");
+    po.Register("silence-extract-shift", &sil_extract_shift, "the shift length when searching "
+                "for segments of silences, typically samller than silence-extract-length, "
+                "in seconds.");
 
     po.Read(argc, argv);
 
@@ -79,7 +94,8 @@ int main(int argc, char *argv[]) {
       for(int32 i = 0; i < num_chan; i++){
         Vector<BaseFloat> wav_this_chan(wave_data.Row(i));
         Vector<BaseFloat> wav_extend(wav_this_chan.Dim() + num_ext_samp);
-        ExtendWaveWithSilence(wav_this_chan, samp_freq, &wav_extend);
+        ExtendWaveWithSilence(wav_this_chan, samp_freq, &wav_extend,
+                              sil_search_len, sil_extract_len, sil_extract_shift);
         KALDI_ASSERT(wav_extend.Dim() == wav_this_chan.Dim() + num_ext_samp);
         new_wave.CopyRowFromVec(wav_extend, i);
       }
@@ -101,9 +117,13 @@ namespace kaldi{
 
 void ExtendWaveWithSilence(const Vector<BaseFloat> &wav_in,
                            BaseFloat samp_rate,
-                           Vector<BaseFloat> *wav_out){
+                           Vector<BaseFloat> *wav_out,
+                           BaseFloat sil_search_len,
+                           BaseFloat sil_extract_len,
+                           BaseFloat sil_extract_shift){
   Vector<BaseFloat> quietest_seg;
-  FindQuietestSegment(wav_in, samp_rate, &quietest_seg, 0.5, 0.05, 0.025);
+  FindQuietestSegment(wav_in, samp_rate, &quietest_seg,
+                      sil_search_len, sil_extract_len, sil_extract_shift);
 
   int32 window_size = quietest_seg.Dim(),
     window_size_half = window_size / 2;
@@ -129,7 +149,7 @@ void ExtendWaveWithSilence(const Vector<BaseFloat> &wav_in,
     tmp_offset += window_size_half;
   }
   for(int32 i = tmp_offset; i < wav_extend.Dim(); i++)
-    wav_extend(i) += half_window(i-tmp_offset);
+    wav_extend(i) += windowed_silence(i-tmp_offset);
 
   *wav_out = wav_extend;
 }
