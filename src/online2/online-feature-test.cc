@@ -1,4 +1,4 @@
-// online/online-feat-test.cc
+// online2/online-feature-test.cc
 
 // 2014  IMSL, PKU-HKUST (author: Wei Shi)
 
@@ -19,6 +19,7 @@
 
 #include "online2/online-feature.h"
 #include "feat/wave-reader.h"
+#include "transform/transform-common.h"
 
 namespace kaldi {
 
@@ -244,16 +245,60 @@ void TestOnlinePlp() {
   }
 }
 
+void TestOnlineTransform() {
+  std::ifstream is("../feat/test_data/test.wav");
+  WaveData wave;
+  wave.Read(is);
+  KALDI_ASSERT(wave.Data().NumRows() == 1);
+  SubVector<BaseFloat> waveform(wave.Data(), 0);
+
+  // build online feature interface, take OnlineMfcc as an example
+  MfccOptions op;
+  op.frame_opts.dither = 0.0;
+  op.frame_opts.preemph_coeff = 0.0;
+  op.frame_opts.window_type = "hamming";
+  op.frame_opts.remove_dc_offset = false;
+  op.frame_opts.round_to_power_of_two = true;
+  op.frame_opts.samp_freq = wave.SampFreq();
+  op.mel_opts.low_freq = 0.0;
+  op.htk_compat = false;
+  op.use_energy = false;  // C0 not energy.
+  OnlineMfcc online_mfcc(op);
+
+  online_mfcc.AcceptWaveform(wave.SampFreq(), waveform);
+  online_mfcc.InputFinished();
+  Matrix<BaseFloat> mfcc_feats;
+  GetOutput(&online_mfcc, &mfcc_feats);
+
+  // Affine transform
+  Matrix<BaseFloat> trans(online_mfcc.Dim(), online_mfcc.Dim() + 1);
+  trans.SetRandn();
+  OnlineTransform online_trans(trans, &online_mfcc);
+
+  Matrix<BaseFloat> trans_feats;
+  GetOutput(&online_trans, &trans_feats);
+
+  Matrix<BaseFloat> output_feats(mfcc_feats.NumRows(), mfcc_feats.NumCols());
+  for(int32 i = 0; i < mfcc_feats.NumRows(); i++){
+    Vector<BaseFloat> vec_tmp(mfcc_feats.Row(i));
+    ApplyAffineTransform(trans, &vec_tmp);
+    output_feats.CopyRowFromVec(vec_tmp, i);
+  }
+
+  AssertEqual(trans_feats, output_feats);
+}
+
 }  // end namespace kaldi
 
 int main() {
   using namespace kaldi;
-  for (int i = 0; i < 40; i++) {
+  for (int i = 0; i < 10; i++) {
     TestOnlineMatrixCacheFeature();
     TestOnlineDeltaFeature();
     TestOnlineSpliceFrames();
     TestOnlineMfcc();
     TestOnlinePlp();
+    TestOnlineTransform();
   }
   std::cout << "Test OK.\n";
 }
