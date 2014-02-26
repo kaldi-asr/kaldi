@@ -41,7 +41,7 @@ srcdir=$1
 data=$2
 dir=$3
 
-for f in $srcdir/final.ie $srcdir/final.ubm $data/feats.scp ; do
+for f in $srcdir/final.ie $srcdir/final.ubm $data/feats.scp $data/utt2lang; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
 
