@@ -1,8 +1,11 @@
 #!/bin/bash
 
+
 # Apache2.0 
 # Prepared by Hong Kong University of Science and Technology (Author: Ricky Chan Ho Yin)
 #
+# Note: currently this setup is incomplete and lacks the data preparation part,
+# because the data has not all been released from HKUST.
 
 . cmd.sh
 
