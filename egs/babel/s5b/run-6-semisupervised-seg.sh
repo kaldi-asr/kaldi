@@ -26,8 +26,9 @@ decode_dir=
 ali_dir=
 nj=32
 weight_threshold=0.7
-do_supervised_tuning=false      # Set to true only when using posteriors 
-                                # from a single DNN system
+do_supervised_tuning=true       # Update only the last layer using only 
+                                # the supervised data after the semi-supervised 
+                                # training of DNN
 
 . parse_options.sh || exit 1
 
@@ -38,8 +39,7 @@ if [ $# -ne 1 ]; then
   echo "--decode-dir <decode_directory>   # Decode directory with posteriors and best path done"
   echo "--ali-dir <alignment_directory>   # Alignment directory"
   echo "--weight-threshold <0.7>          # Frame confidence threshold for frame selection"
-  echo "--do-supervised-tuning (default: false) # Train only the last layer at the end."
-  echo "                                    # Use true if using unsupervised data posteriors from only the DNN system"
+  echo "--do-supervised-tuning (default: true) # Train only the last layer at the end."
   echo "e.g.: "
   echo "$0 --decode-dir exp/dnn_sgmm_combine/decode_train_unt.seg --ali-dir exp/tri6_nnet_ali data/train_unt.seg"
   exit 1
@@ -146,10 +146,9 @@ fi
 #
 ###############################################################################
 
-if [ ! -f exp/tri6_nnet_semi_supervised/.done ]; then
+mkdir -p exp/tri6_nnet_semi_supervised
 
-  mkdir -p exp/tri6_nnet_semi_supervised
-
+if [ ! -f exp/tri6_nnet_semi_supervised/.egs.done ]; then
   local/nnet2/get_egs_semi_supervised.sh $spk_vecs_opt \
     "${egs_gpu_opts[@]}" --io-opts "$egs_io_opts" \
     --transform-dir-sup exp/tri5_ali \
@@ -158,6 +157,10 @@ if [ ! -f exp/tri6_nnet_semi_supervised/.done ]; then
     data/train $untranscribed_datadir data/lang \
     $ali_dir $decode exp/tri6_nnet_semi_supervised || exit 1;
 
+  touch exp/tri6_nnet_semi_supervised/.egs.done
+fi
+
+if [ ! -f exp/tri6_nnet_semi_supervised/.done ]; then
   steps/nnet2/train_pnorm.sh \
     --stage $train_stage --mix-up $dnn_mixup \
     --initial-learning-rate $dnn_init_learning_rate \
@@ -170,6 +173,7 @@ if [ ! -f exp/tri6_nnet_semi_supervised/.done ]; then
     --num-epochs-extra $num_epochs_extra \
     --num-iters-final $num_iters_final \
     --cmd "$train_cmd" "${dnn_gpu_parallel_opts[@]}" \
+    --transform-dir exp/tri5_ali \
     --egs-dir exp/tri6_nnet_semi_supervised/egs \
     data/train data/lang $ali_dir exp/tri6_nnet_semi_supervised || exit 1
 
@@ -180,17 +184,22 @@ if $do_supervised_tuning; then
   # Necessary only when semi-supervised DNN is trained using the unsupervised 
   # data that was decoded using only the tri6_nnet system.
   if [ ! -f exp/tri6_nnet_supervised_tuning/.done ]; then
-    steps/nnet2/update_pnorm.sh \
+    learning_rates="0"
+    for i in `seq 1 $[dnn_num_hidden_layers-1]`; do
+      learning_rates="$learning_rates:0"
+    done
+    learning_rates="$learning_rates:0.0008"
+
+    steps/nnet2/update_nnet.sh \
       --stage $train_stage --mix-up $dnn_mixup \
-      --learning-rates "0:0:0:0.0008" \
-      --max-change $dnn_max_change \
+      --learning-rates $learning_rates \
       --cmd "$train_cmd" \
       "${dnn_gpu_parallel_opts[@]}" \
       --num-epochs 2 --num-iters-final 5 \
-      --egs-opts "--transform-dir exp/tri5_ali" \
+      --transform-dir exp/tri5_ali \
       data/train data/lang $ali_dir \
       exp/tri6_nnet_semi_supervised exp/tri6_nnet_supervised_tuning || exit 1
 
     touch exp/tri6_nnet_supervised_tuning/.done
   fi
-  i
+fi
