@@ -1,6 +1,7 @@
 // sgmmbin/sgmm-est-spkvecs.cc
 
 // Copyright 2009-2012  Saarland University  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -41,6 +42,8 @@ void AccumulateForUtterance(const Matrix<BaseFloat> &feats,
                             MleSgmmSpeakerAccs *spk_stats) {
   kaldi::SgmmPerFrameDerivedVars per_frame_vars;
 
+  Posterior pdf_post;
+  ConvertPosteriorToPdfs(trans_model, post, &pdf_post);
   for (size_t i = 0; i < post.size(); i++) {
     std::vector<int32> this_gselect;
     if (!gselect.empty())
@@ -49,9 +52,9 @@ void AccumulateForUtterance(const Matrix<BaseFloat> &feats,
       am_sgmm.GaussianSelection(gselect_opts, feats.Row(i), &this_gselect);
     am_sgmm.ComputePerFrameVars(feats.Row(i), this_gselect, spk_vars, 0.0, &per_frame_vars);
 
-    for (size_t j = 0; j < post[i].size(); j++) {
-      int32 pdf_id = trans_model.TransitionIdToPdf(post[i][j].first);
-      spk_stats->Accumulate(am_sgmm, per_frame_vars, pdf_id, post[i][j].second);
+    for (size_t j = 0; j < pdf_post[i].size(); j++) {
+      int32 pdf_id = pdf_post[i][j].first;
+      spk_stats->Accumulate(am_sgmm, per_frame_vars, pdf_id, pdf_post[i][j].second);
     }
   }
 }

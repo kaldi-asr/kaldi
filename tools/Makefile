@@ -50,7 +50,7 @@ openfst/lib:
 
 openfst-1.3.2/Makefile: openfst-1.3.2/.patched
 		cd openfst-1.3.2/; \
-		./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts
+		LIBS="-ldl" ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts
 
 
 # patches for openfst. openfst_gcc41up.patch is a patch for openfst to \

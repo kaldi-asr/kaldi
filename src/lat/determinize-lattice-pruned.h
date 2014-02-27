@@ -30,6 +30,7 @@
 #include "fstext/lattice-weight.h"
 #include "hmm/transition-model.h"
 #include "itf/options-itf.h"
+#include "lat/kaldi-lattice.h"
 
 namespace fst {
 
@@ -253,6 +254,19 @@ bool DeterminizeLatticePhonePruned(
     MutableFst<ArcTpl<Weight> > *ifst,
     double prune,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
+    DeterminizeLatticePhonePrunedOptions opts
+      = DeterminizeLatticePhonePrunedOptions());
+
+/** This function is a wrapper of DeterminizeLatticePhonePruned() that works for
+    Lattice type FSTs. Unlike other determinization routines, the function
+    requires "ifst" to have transition-id's on the input side and words on the
+    output side.
+*/
+bool DeterminizeLatticePhonePrunedWrapper(
+    const kaldi::TransitionModel &trans_model,
+    MutableFst<kaldi::LatticeArc> *ifst,
+    double prune,
+    MutableFst<kaldi::CompactLatticeArc> *ofst,
     DeterminizeLatticePhonePrunedOptions opts
       = DeterminizeLatticePhonePrunedOptions());
 

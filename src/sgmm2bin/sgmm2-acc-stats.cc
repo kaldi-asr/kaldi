@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012   Saarland University (Author:  Arnab Ghoshal),
 //                       Johns Hopkins University (Author:  Daniel Povey)
+//                2014   Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -160,20 +161,27 @@ int main(int argc, char *argv[]) {
         num_done++;
       
         BaseFloat tot_like_this_file = 0.0, tot_weight = 0.0;
-      
+
+        Posterior pdf_posterior;
+        ConvertPosteriorToPdfs(trans_model, posterior, &pdf_posterior);
         for (size_t i = 0; i < posterior.size(); i++) {
           am_sgmm.ComputePerFrameVars(features.Row(i), gselect[i], spk_vars,
                                       &per_frame_vars);
-
-          for (size_t j = 0; j < posterior[i].size(); j++) {
-            int32 tid = posterior[i][j].first,  // transition identifier.
-                pdf_id = trans_model.TransitionIdToPdf(tid);
-            BaseFloat weight = posterior[i][j].second;
-            trans_model.Accumulate(weight, tid, &transition_accs);
+          // Accumulates for SGMM.
+          for (size_t j = 0; j < pdf_posterior[i].size(); j++) {
+            int32 pdf_id = pdf_posterior[i][j].first;
+            BaseFloat weight = pdf_posterior[i][j].second;
             tot_like_this_file += sgmm_accs.Accumulate(am_sgmm, per_frame_vars,
                                                        pdf_id, weight, &spk_vars)
                 * weight;
             tot_weight += weight;
+          }
+
+          // Accumulates for transitions.
+          for (size_t j = 0; j < posterior[i].size(); j++) {
+            int32 tid = posterior[i][j].first;
+            BaseFloat weight = posterior[i][j].second;
+            trans_model.Accumulate(weight, tid, &transition_accs);
           }
         }
         
