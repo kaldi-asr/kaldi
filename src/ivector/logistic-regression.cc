@@ -72,7 +72,7 @@ void LogisticRegression::GetPosteriors(const Matrix<double> &xs,
   int32 xs_num_rows = xs.NumRows(),
         xs_num_cols = xs.NumCols();
   
-  KALDI_ASSERT(xs_num_rows == posteriors->NumRows());
+  posteriors->Resize(xs_num_rows, weights_.NumRows());
 
   Matrix<double> xs_with_prior(xs_num_rows, xs_num_cols + 1);
   SubMatrix<double> sub_xs(xs_with_prior, 0, xs_num_rows, 0, xs_num_cols);
