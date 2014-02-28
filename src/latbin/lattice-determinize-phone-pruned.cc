@@ -22,7 +22,6 @@
 #include "lat/determinize-lattice-pruned.h"
 #include "lat/lattice-functions.h"
 #include "lat/push-lattice.h"
-#include "lat/minimize-lattice.h"
 #include "util/common-utils.h"
 
 int main(int argc, char *argv[]) {
@@ -46,15 +45,12 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
     BaseFloat beam = 10.0;
-    bool minimize = false;
     fst::DeterminizeLatticePhonePrunedOptions opts;
     opts.max_mem = 50000000;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic"
                 " likelihoods.");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling].");
-    po.Register("minimize", &minimize, "If true, push and minimize after "
-                "determinization");
     opts.Register(&po);
     po.Read(argc, argv);
 
@@ -97,12 +93,6 @@ int main(int argc, char *argv[]) {
         KALDI_WARN << "For key " << key << ", determinization did not succeed"
             "(partial output will be pruned tighter than the specified beam.)";
         n_warn++;
-      }
-
-      if (minimize) {
-        PushCompactLatticeStrings(&det_clat);
-        PushCompactLatticeWeights(&det_clat);
-        MinimizeCompactLattice(&det_clat);
       }
 
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &det_clat);

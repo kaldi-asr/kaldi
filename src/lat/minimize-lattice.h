@@ -1,6 +1,7 @@
 // lat/minimize-lattice.h
 
 // Copyright 2013        Johns Hopkins University (Author: Daniel Povey)
+//           2014        Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -30,7 +31,7 @@
 #include "hmm/transition-model.h"
 #include "lat/kaldi-lattice.h"
 
-namespace kaldi {
+namespace fst {
 
 
 /// This function minimizes the compact lattice.  It is to be called after
@@ -39,10 +40,13 @@ namespace kaldi {
 /// function will not combine as many states as it could, but it won't crash.
 /// Returns true on success, and false if it failed due to topological sorting
 /// failing.
-bool MinimizeCompactLattice(CompactLattice *clat, float delta = fst::kDelta);
+template<class Weight, class IntType>
+bool MinimizeCompactLattice(
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *clat,
+    float delta = fst::kDelta);
 
 
 
-}  // namespace kaldi
+}  // namespace fst
 
 #endif  // KALDI_LAT_PUSH_LATTICE_H_

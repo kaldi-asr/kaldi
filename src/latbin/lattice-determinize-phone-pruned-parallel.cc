@@ -22,7 +22,6 @@
 #include "lat/determinize-lattice-pruned.h"
 #include "lat/lattice-functions.h"
 #include "lat/push-lattice.h"
-#include "lat/minimize-lattice.h"
 #include "util/common-utils.h"
 #include "thread/kaldi-task-sequence.h"
 
@@ -37,12 +36,11 @@ class DeterminizeLatticeTask {
       std::string key,
       BaseFloat acoustic_scale,
       BaseFloat beam,
-      bool minimize,
       Lattice *lat,
       CompactLatticeWriter *clat_writer,
       int32 *num_warn):
       trans_model_(&trans_model), opts_(opts), key_(key),
-      acoustic_scale_(acoustic_scale), beam_(beam), minimize_(minimize),
+      acoustic_scale_(acoustic_scale), beam_(beam),
       lat_(lat), clat_writer_(clat_writer), num_warn_(num_warn) { }
 
   void operator () () {
@@ -60,11 +58,6 @@ class DeterminizeLatticeTask {
     delete lat_;
     lat_ = NULL;
 
-    if (minimize_) {
-      PushCompactLatticeStrings(&det_clat_);
-      PushCompactLatticeWeights(&det_clat_);
-      MinimizeCompactLattice(&det_clat_);
-    }
     // Invert the original acoustic scaling
     fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale_),
                       &det_clat_);
@@ -81,7 +74,6 @@ class DeterminizeLatticeTask {
   std::string key_;
   BaseFloat acoustic_scale_;
   BaseFloat beam_;
-  bool minimize_;
   // The lattice we're working on. Owned locally.
   Lattice *lat_;
   // The output of our process. Will be written to clat_writer_ in the
@@ -117,7 +109,6 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
     BaseFloat beam = 10.0;
-    bool minimize = false;
 
     TaskSequencerConfig sequencer_opts;
     fst::DeterminizeLatticePhonePrunedOptions determinize_opts;
@@ -126,8 +117,6 @@ int main(int argc, char *argv[]) {
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic"
                 " likelihoods.");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling].");
-    po.Register("minimize", &minimize, "If true, push and minimize after "
-                "determinization");
     determinize_opts.Register(&po);
     sequencer_opts.Register(&po);
     po.Read(argc, argv);
@@ -167,7 +156,7 @@ int main(int argc, char *argv[]) {
       KALDI_VLOG(2) << "Processing lattice " << key;
 
       DeterminizeLatticeTask *task = new DeterminizeLatticeTask(
-          trans_model, determinize_opts, key, acoustic_scale, beam, minimize,
+          trans_model, determinize_opts, key, acoustic_scale, beam,
           lat, &compact_lat_writer, &n_warn);
       sequencer.Run(task);
 

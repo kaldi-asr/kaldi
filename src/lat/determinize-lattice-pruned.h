@@ -153,10 +153,13 @@ struct DeterminizeLatticePhonePrunedOptions {
   bool phone_determinize;
   // word_determinize: if true, do a second pass determinization on words only.
   bool word_determinize;
+  // minimize: if true, push and minimize after determinization.
+  bool minimize;
   DeterminizeLatticePhonePrunedOptions(): delta(kDelta),
                                           max_mem(50000000),
                                           phone_determinize(true),
-                                          word_determinize(true) {}
+                                          word_determinize(true),
+                                          minimize(false) {}
   void Register (kaldi::OptionsItf *po) {
     po->Register("delta", &delta, "Tolerance used in determinization");
     po->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
@@ -167,6 +170,8 @@ struct DeterminizeLatticePhonePrunedOptions {
     po->Register("word-determinize", &word_determinize, "If true, do a second "
                  "pass of determinization on words only (see also "
                  "--phone-determinize)");
+    po->Register("minimize", &minimize, "If true, push and minimize after "
+                 "determinization.");
   }
 };
 

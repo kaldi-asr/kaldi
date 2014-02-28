@@ -1,6 +1,7 @@
 // lat/push-lattice.h
 
 // Copyright 2013        Johns Hopkins University (Author: Daniel Povey)
+//           2014        Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -30,7 +31,7 @@
 #include "hmm/transition-model.h"
 #include "lat/kaldi-lattice.h"
 
-namespace kaldi {
+namespace fst {
 
 
 /// This function pushes the transition-ids as far towards the start as they
@@ -42,7 +43,9 @@ namespace kaldi {
 /// which should never happen, but we handle it gracefully by just leaving the
 /// lattice the same.
 /// This function used to be called just PushCompactLattice.
-bool PushCompactLatticeStrings(CompactLattice *clat);
+template<class Weight, class IntType>
+bool PushCompactLatticeStrings(
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *clat);
 
 /// This function pushes the weights in the CompactLattice so that all states
 /// except possibly the start state, have Weight components (of type
@@ -50,8 +53,10 @@ bool PushCompactLatticeStrings(CompactLattice *clat);
 /// weights as negated log-probs).  It returns true on success, false if it
 /// failed due to TopSort failing, which should never happen, but we handle it
 /// gracefully by just leaving the lattice the same.
-bool PushCompactLatticeWeights(CompactLattice *clat);
+template<class Weight, class IntType>
+bool PushCompactLatticeWeights(
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *clat);
 
-}  // namespace kaldi
+}  // namespace fst
 
 #endif  // KALDI_LAT_PUSH_LATTICE_H_
