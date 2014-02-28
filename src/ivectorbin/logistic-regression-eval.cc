@@ -24,16 +24,17 @@
 
 using namespace kaldi;
 
-void posteriors(ParseOptions &po, const LogisticRegressionConfig &config) {
+int ComputePosteriors(ParseOptions &po, const LogisticRegressionConfig &config) {
   std::string model = po.GetArg(1),
-        vector_rspecifier = po.GetArg(2),
-        posteriors_out = po.GetArg(3);
-
-  LogisticRegression classifier = LogisticRegression();
+      vector_rspecifier = po.GetArg(2),
+      posteriors_wspecifier = po.GetArg(3);
+  
+  LogisticRegression classifier;
   ReadKaldiObject(model, &classifier);
   
   std::vector<Vector<BaseFloat> > vectors;
   SequentialBaseFloatVectorReader vector_reader(vector_rspecifier);
+  BaseFloatVectorWriter posterior_writer(posteriors_wspecifier);
   std::vector<std::string> utt_list;
   int32 num_utt_done = 0;
 
@@ -45,6 +46,11 @@ void posteriors(ParseOptions &po, const LogisticRegressionConfig &config) {
     num_utt_done++;
   }
 
+  if (vectors.empty()) {
+    KALDI_WARN << "Read no input";
+    return 1;
+  }
+  
   Matrix<double> xs(vectors.size(), vectors[0].Dim());
   for (int i = 0; i < vectors.size(); i++) {
     xs.Row(i).CopyFromVec(vectors[i]);
@@ -52,19 +58,20 @@ void posteriors(ParseOptions &po, const LogisticRegressionConfig &config) {
  
   Matrix<double> posteriors;
   classifier.GetPosteriors(xs, &posteriors);
-  std::ofstream posteriors_xwstream(posteriors_out.c_str(), std::ios::out);
+  
   KALDI_LOG << "Calculated posteriors for " << num_utt_done << " vectors.";
   for (int i = 0; i < posteriors.NumRows(); i++) {
-    posteriors_xwstream << utt_list[i] << " " << posteriors.Row(i);
-  }
-  posteriors_xwstream.close();
+    Vector<BaseFloat> row(posteriors.Row(i));
+    posterior_writer.Write(utt_list[i], row);
+  }  
+  return (num_utt_done == 0 ? 1 : 0);
 }
 
-void scores(ParseOptions &po, const LogisticRegressionConfig &config) {
+int32 ComputeScores(ParseOptions &po, const LogisticRegressionConfig &config) {
   std::string model_rspecifier = po.GetArg(1),
-        trials_rspecifier = po.GetArg(2),
-        vector_rspecifier = po.GetArg(3),
-        scores_out = po.GetArg(4);
+      trials_rspecifier = po.GetArg(2),
+      vector_rspecifier = po.GetArg(3),
+      scores_out = po.GetArg(4);
 
   SequentialInt32Reader class_reader(trials_rspecifier);
   LogisticRegression classifier = LogisticRegression();
@@ -91,6 +98,11 @@ void scores(ParseOptions &po, const LogisticRegressionConfig &config) {
     }
   }
 
+  if (vectors.empty()) {
+    KALDI_WARN << "Read no input";
+    return 1;
+  }
+  
   Matrix<double> xs(vectors.size(), vectors[0].Dim());
   for (int i = 0; i < vectors.size(); i++) {
     xs.Row(i).CopyFromVec(vectors[i]);
@@ -98,15 +110,17 @@ void scores(ParseOptions &po, const LogisticRegressionConfig &config) {
  
   Matrix<double> posteriors;
   classifier.GetPosteriors(xs, &posteriors);
+
+  bool binary = false;
+  Output ko(scores_out.c_str(), binary);
   
-  std::ofstream scores_xwstream(scores_out.c_str(), std::ios::out);
   for (int i = 0; i < ys.size(); i++) {
-    scores_xwstream << utt_list[i] << " " << ys[i] << " " << posteriors(i, ys[i]) << std::endl;
+    ko.Stream() << utt_list[i] << " " << ys[i] << " " << posteriors(i, ys[i]) << std::endl;
   }
-  scores_xwstream.close();
-  KALDI_LOG << "Calculated scores for" << num_utt_done 
+  KALDI_LOG << "Calculated scores for " << num_utt_done 
             << " vectors with "
             << num_utt_err << " missing. ";
+  return (num_utt_done == 0 ? 1 : 0);
 }
 
 int main(int argc, char *argv[]) {
@@ -116,10 +130,10 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Evaluates a model on input vectors and outputs either\n"
         "posterior probability or scores.\n"
-        "Usage1: logistic-regression-eval <model> <input-vectors>\n"
-        "                                <output-posteriors>\n"
-        "Usage2: logistic-regression-eval <model> <trials> <input-vectors>\n"
-        "                                <output-scores>\n";
+        "Usage1: logistic-regression-eval <model> <input-vectors-rspecifier>\n"
+        "                                <output-posteriors-wspecifier>\n"
+        "Usage2: logistic-regression-eval <model> <trials-file> <input-vectors-rspecifier>\n"
+        "                                <output-scores-file>\n";
     
   ParseOptions po(usage);
 
@@ -134,9 +148,9 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   
-  (po.NumArgs() == 4) ? scores(po, config) : posteriors(po, config);
-
-  return 0;
+  return (po.NumArgs() == 4) ?
+      ComputeScores(po, config) :
+      ComputePosteriors(po, config);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

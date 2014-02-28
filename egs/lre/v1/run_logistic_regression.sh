@@ -29,9 +29,25 @@ posterior_output=posteriors
 scores=posteriors
 
 classes=exp/ivectors_train/trials
-utils/utt2lang_to_utt2langint.py exp/ivectors_train/languages.txt \
-    data/train/utt2lang $trials
 
-logistic-regression-eval $model scp:$train_ivectors $posterior_output 2>$log
-logistic-regression-eval $model ark:$trials scp:$train_ivectors $scores 2>$log
+trials="utils/sym2int.pl -f 2 exp/ivectors_train/languages.txt data/train/utt2lang|"
+scores="|utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt  >exp/ivectors_train/train_scores"
 
+logistic-regression-eval $model scp:$train_ivectors ark,t:exp/ivectors_train/posteriors
+logistic-regression-eval $model "ark:$trials" scp:$train_ivectors "$scores"
+
+logistic-regression-eval $model scp:$train_ivectors ark,t:- | \
+  awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) { max=$f; argmax=f; }}  print $1, (argmax - 3); }' | \
+  utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt >exp/ivectors_train/train_output
+
+# note: we treat the language as a sentence; it happens that the WER/SER
+# corresponds to the recognition error rate.
+compute-wer --text ark:data/train/utt2lang ark:exp/ivectors_train/train_output
+
+# It perfectly classifies the training data:
+#%WER 0.00 [ 0 / 10173, 0 ins, 0 del, 0 sub ]
+#%SER 0.00 [ 0 / 10173 ]
+#Scored 10173 sentences, 0 not present in hyp.
+
+
+# someone needs to extend this to run on the dev data.
