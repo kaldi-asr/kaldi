@@ -58,3 +58,4 @@ lid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \
 
 lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
    exp/extractor_2048 data/train exp/ivectors_train
+
