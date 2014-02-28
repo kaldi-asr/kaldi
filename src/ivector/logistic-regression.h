@@ -26,6 +26,15 @@
 
 namespace kaldi {
 
+struct LogisticRegressionConfig {
+  int32 max_steps;
+  LogisticRegressionConfig(): max_steps(20) { }
+  void Register(OptionsItf *po) {
+    po->Register("max-steps", &max_steps,
+                 "Maximum steps in L-BFGS.");
+  }
+};
+
 class LogisticRegression {
   public:
     // xs and ys are the training data. Each row of xs is a vector

@@ -11,7 +11,8 @@ BINFILES = ivector-extractor-init ivector-extractor-acc-stats \
            ivector-transform ivector-compute-dot-products ivector-mean \
            ivector-compute-lda ivector-compute-plda \
 	       ivector-copy-plda compute-eer \
-           ivector-subtract-global-mean ivector-plda-scoring
+           ivector-subtract-global-mean ivector-plda-scoring \
+           logistic-regression-train
 
 OBJFILES =
 
