@@ -178,7 +178,7 @@ steps/align_fmllr.sh --nj 10 \
 #RBM pretraining
 dir=exp/tri4a_dnn_pretrain
 $cuda_cmd $dir/_pretrain_dbn.log \
-  steps/pretrain_dbn.sh --use-gpu-id 0 --nn-depth 7 --rbm-iter 3 data-fbank/train_si84_noisy $dir
+  steps/nnet/pretrain_dbn.sh --use-gpu-id 0 --nn-depth 7 --rbm-iter 3 data-fbank/train_si84_noisy $dir
 #BP 
 dir=exp/tri4a_dnn
 ali=exp/tri3b_ali_si84_noisy
@@ -186,20 +186,20 @@ ali_dev=exp/tri3b_ali_dev_dt_05
 feature_transform=exp/tri4a_dnn_pretrain/final.feature_transform
 dbn=exp/tri4a_dnn_pretrain/7.dbn
 $cuda_cmd $dir/_train_nnet.log \
-  steps/train_nnet.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
+  steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
   data-fbank/train_si84_noisy data-fbank/dev_dt_05_noisy data/lang $ali $ali_dev $dir || exit 1;
 
 utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri4a_dnn exp/tri4a_dnn/graph_tgpr_5k || exit 1;
-steps/decode_nnet.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
+steps/nnet/decode.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
   exp/tri4a_dnn/graph_tgpr_5k data-fbank/test_eval92_5k_noisy $dir/decode_tgpr_5k_eval92_5k_noisy || exit 1;
 
 #Retrain system using new ali,
 #this is essential 
 #repeat this process for 3 times 
 srcdir=exp/tri4a_dnn
-steps/align_nnet.sh --nj 10 \
+steps/nnet/align.sh --nj 10 \
   data-fbank/train_si84_noisy data/lang $srcdir ${srcdir}_ali_si84_noisy || exit 1;
-steps/align_nnet.sh --nj 10 \
+steps/nnet/align.sh --nj 10 \
   data-fbank/dev_dt_05_noisy data/lang $srcdir ${srcdir}_ali_dt_05_noisy || exit 1;
 
 #no need to do pretraining again
@@ -209,18 +209,18 @@ ali_dev=exp/tri4a_dnn_ali_dt_05_noisy
 feature_transform=exp/tri4a_dnn_pretrain/final.feature_transform
 dbn=exp/tri4a_dnn_pretrain/7.dbn
 $cuda_cmd $dir/_train_nnet.log \
-  steps/train_nnet.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
+  steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
   data-fbank/train_si84_noisy data-fbank/dev_dt_05_noisy data/lang $ali $ali_dev $dir || exit 1;
 
 utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri5a_dnn exp/tri5a_dnn/graph_tgpr_5k || exit 1;
-steps/decode_nnet.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
+steps/nnet/decode.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
   exp/tri5a_dnn/graph_tgpr_5k data-fbank/test_eval92_5k_noisy $dir/decode_tgpr_5k_eval92_5k_noisy || exit 1;
 
 
 srcdir=exp/tri5a_dnn
-steps/align_nnet.sh --nj 10 \
+steps/nnet/align.sh --nj 10 \
   data-fbank/train_si84_noisy data/lang $srcdir ${srcdir}_ali_si84_noisy || exit 1;
-steps/align_nnet.sh --nj 10 \
+steps/nnet/align.sh --nj 10 \
   data-fbank/dev_dt_05_noisy data/lang $srcdir ${srcdir}_ali_dt_05_noisy || exit 1;
 
 . ./path.sh
@@ -230,17 +230,17 @@ ali_dev=exp/tri5a_dnn_ali_dt_05_noisy
 feature_transform=exp/tri4a_dnn_pretrain/final.feature_transform
 dbn=exp/tri4a_dnn_pretrain/7.dbn
 $cuda_cmd $dir/_train_nnet.log \
-  steps/train_nnet.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
+  steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
   data-fbank/train_si84_noisy data-fbank/dev_dt_05_noisy data/lang $ali $ali_dev $dir || exit 1;
 
 utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri6a_dnn exp/tri6a_dnn/graph_tgpr_5k || exit 1;
-steps/decode_nnet.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
+steps/nnet/decode.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
   exp/tri6a_dnn/graph_tgpr_5k data-fbank/test_eval92_5k_noisy $dir/decode_tgpr_5k_eval92_5k_noisy || exit 1;
 
 srcdir=exp/tri6a_dnn
-steps/align_nnet.sh --nj 10 \
+steps/nnet/align.sh --nj 10 \
   data-fbank/train_si84_noisy data/lang $srcdir ${srcdir}_ali_si84_noisy || exit 1;
-steps/align_nnet.sh --nj 10 \
+steps/nnet/align.sh --nj 10 \
   data-fbank/dev_dt_05_noisy data/lang $srcdir ${srcdir}_ali_dt_05_noisy || exit 1;
 
 . ./path.sh
@@ -250,11 +250,11 @@ ali_dev=exp/tri6a_dnn_ali_dt_05_noisy
 feature_transform=exp/tri4a_dnn_pretrain/final.feature_transform
 dbn=exp/tri4a_dnn_pretrain/7.dbn
 $cuda_cmd $dir/_train_nnet.log \
-  steps/train_nnet.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
+  steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
   data-fbank/train_si84_noisy data-fbank/dev_dt_05_noisy data/lang $ali $ali_dev $dir || exit 1;
 
 utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri7a_dnn exp/tri7a_dnn/graph_tgpr_5k || exit 1;
-steps/decode_nnet.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
+steps/nnet/decode.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
   exp/tri7a_dnn/graph_tgpr_5k data-fbank/test_eval92_5k_noisy $dir/decode_tgpr_5k_eval92_5k_noisy || exit 1;
 
 
