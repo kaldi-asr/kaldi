@@ -113,6 +113,7 @@ double LogisticRegression::DoStep(const Matrix<double> &xs,
   // Update weights
   Vector<double> new_w(lbfgs->GetProposedValue());
   weights_.CopyRowsFromVec(new_w);
+  KALDI_LOG << "Objective function is " << objf;
   return objf;
 }
 

@@ -40,8 +40,8 @@ class LogisticRegression {
     // xs and ys are the training data. Each row of xs is a vector
     // corresponding to the class label in the same row of ys. 
     // weights contains the trained parameters.
-    void Train(const Matrix<double> &xs, const std::vector<int32> &ys,
-               Matrix<double> *weights, int32 max_steps);
+  void Train(const Matrix<double> &xs, const std::vector<int32> &ys,
+             Matrix<double> *weights, int32 max_steps);
  
     // Calculates the posterior of the class label of input xs.
     // The rows of posteriors corresponds to the rows of xs: the 
