@@ -38,11 +38,11 @@ logistic-regression-eval $model "ark:$trials" scp:$train_ivectors "$scores"
 
 logistic-regression-eval $model scp:$train_ivectors ark,t:- | \
   awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) { max=$f; argmax=f; }}  print $1, (argmax - 3); }' | \
-  utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt >exp/ivectors_train/train_output
+  utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt >exp/ivectors_train/output
 
 # note: we treat the language as a sentence; it happens that the WER/SER
 # corresponds to the recognition error rate.
-compute-wer --text ark:data/train/utt2lang ark:exp/ivectors_train/train_output
+compute-wer --text ark:data/train/utt2lang ark:exp/ivectors_train/output
 
 # It perfectly classifies the training data:
 #%WER 0.00 [ 0 / 10173, 0 ins, 0 del, 0 sub ]
@@ -50,4 +50,18 @@ compute-wer --text ark:data/train/utt2lang ark:exp/ivectors_train/train_output
 #Scored 10173 sentences, 0 not present in hyp.
 
 
+logistic-regression-eval $model scp:exp/ivectors_test/ivector.scp ark,t:- | \
+  awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) { max=$f; argmax=f; }}  print $1, (argmax - 3); }' | \
+  utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt >exp/ivectors_test/output
+
+
 # someone needs to extend this to run on the dev data.
+
+compute-wer --text ark:data/test/utt2lang ark:exp/ivectors_test/output
+
+#compute-wer --text ark:data/test/utt2lang ark:exp/ivectors_test/output
+#compute-wer --text ark:data/test/utt2lang ark:exp/ivectors_test/output 
+#%WER 2.97 [ 119 / 4000, 0 ins, 0 del, 119 sub ]
+#%SER 2.97 [ 119 / 4000 ]
+#Scored 4000 sentences, 0 not present in hyp.
+
