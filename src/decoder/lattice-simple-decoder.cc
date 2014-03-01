@@ -65,7 +65,7 @@ bool LatticeSimpleDecoder::Decode(DecodableInterface *decodable) {
 
 // Outputs an FST corresponding to the single best path
 // through the lattice.
-bool LatticeSimpleDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst,
+bool LatticeSimpleDecoder::GetBestPath(Lattice *ofst,
                                        bool use_final_probs) const {
   fst::VectorFst<LatticeArc> fst;
   GetRawLattice(&fst, use_final_probs);
@@ -75,7 +75,7 @@ bool LatticeSimpleDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst,
 
 // Outputs an FST corresponding to the raw, state-level
 // tracebacks.
-bool LatticeSimpleDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
+bool LatticeSimpleDecoder::GetRawLattice(Lattice *ofst,
                                          bool use_final_probs) const {
   typedef LatticeArc Arc;
   typedef Arc::StateId StateId;
@@ -155,8 +155,9 @@ bool LatticeSimpleDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
 // the LatticeSimpleDecoder class.
 // Outputs an FST corresponding to the lattice-determinized
 // lattice (one path per word sequence).
-bool LatticeSimpleDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst,
-                                      bool use_final_probs) const {
+bool LatticeSimpleDecoder::GetLattice(
+    CompactLattice *ofst,
+    bool use_final_probs) const {
   Lattice raw_fst;
   GetRawLattice(&raw_fst, use_final_probs);
   Invert(&raw_fst); // make it so word labels are on the input.

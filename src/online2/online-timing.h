@@ -29,7 +29,7 @@
 #include "base/kaldi-error.h"
 
 namespace kaldi {
-/// @addtogroup  onlinefeat OnlineFeatureExtraction
+/// @addtogroup  onlinedecoding OnlineDecoding
 /// @{
 
 
@@ -100,8 +100,7 @@ class OnlineTimer {
 };
 
 
-
-/// @} End of "addtogroup onlinefeat"
+/// @} End of "addtogroup onlinedecoding"
 }  // namespace kaldi
 
 

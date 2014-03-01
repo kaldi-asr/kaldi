@@ -99,8 +99,6 @@ int main(int argc, char *argv[]) {
         KALDI_ASSERT(wav_extend.Dim() == wav_this_chan.Dim() + num_ext_samp);
         new_wave.CopyRowFromVec(wav_extend, i);
       }
-
-      new_wave.Scale(0.5);
       WaveData wave_out(samp_freq, new_wave);
       writer.Write(wav_key, wave_out);
       num_success++;
@@ -204,4 +202,3 @@ void FindQuietestSegment(const Vector<BaseFloat> &wav_in,
 }
 
 }
-

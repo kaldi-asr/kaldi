@@ -248,6 +248,19 @@ SingleUtteranceGmmDecoder::~SingleUtteranceGmmDecoder() {
   delete feature_pipeline_;
 }
 
+bool SingleUtteranceGmmDecoder::EndpointDetected(
+    const OnlineEndpointConfig &config) const {
+  Lattice best_path;
+  const bool end_of_utterance = false;
+  if (decoder_.NumFramesDecoded() == 0)
+    return false;
+  decoder_.GetBestPath(&best_path, end_of_utterance);
+  const TransitionModel &tmodel = models_.GetTransitionModel();
+  return kaldi::EndpointDetected(tmodel, best_path, config,
+                                 feature_pipeline_->FrameShiftInSeconds(),
+                                 decoder_.FinalRelativeCost());
+}
+
 void SingleUtteranceGmmDecoder::GetLattice(bool rescore_if_needed,
                                            bool end_of_utterance,
                                            CompactLattice *clat) const {

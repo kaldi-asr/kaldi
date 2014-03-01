@@ -202,6 +202,7 @@ if [ $stage -le 3 ]; then
     echo "--rescore-model=$dir/final.rescore_mdl" >>$conf
   fi
   echo "--silence-phones=$silphonelist" >>$conf
+  echo "--endpoint.silence-phones=$silphonelist" >>$conf
   echo "--global-cmvn-stats=$dir/global_cmvn.stats" >>$conf
   echo "$0: created config file $conf"
 fi

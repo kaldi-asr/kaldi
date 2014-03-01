@@ -59,7 +59,7 @@ class SimpleDecoder {
   // fst_out will be empty (Start() == kNoStateId) if nothing was available due to
   // search error.
   // If Decode() returned true, it is safe to assume GetBestPath will return true.
-  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out) const;
+  bool GetBestPath(Lattice *fst_out) const;
   
   /// *** The next functions are from the "new interface". ***
   

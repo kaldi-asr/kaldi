@@ -32,6 +32,7 @@
 #include "transform/fmllr-diag-gmm.h"
 #include "online2/online-feature-pipeline.h"
 #include "online2/online-gmm-decodable.h"
+#include "online2/online-endpoint.h"
 #include "decoder/lattice-faster-decoder.h"
 #include "hmm/transition-model.h"
 #include "gmm/am-diag-gmm.h"
@@ -39,6 +40,8 @@
 
 
 namespace kaldi {
+/// @addtogroup  onlinedecoding OnlineDecoding
+/// @{
 
 
 struct OnlineGmmDecodingConfig {
@@ -202,6 +205,11 @@ class SingleUtteranceGmmDecoder {
   /// can be taken as a good sign that the input was OK.
   BaseFloat FinalRelativeCost() { return decoder_.FinalRelativeCost(); }
 
+
+  /// This function calls EndpointDetected from online-endpoint.h,
+  /// with the required arguments.
+  bool EndpointDetected(const OnlineEndpointConfig &config) const;
+
   ~SingleUtteranceGmmDecoder();
  private:
   // Note: the GauPost this outputs is indexed by pdf-id, not transition-id as
@@ -230,7 +238,7 @@ class SingleUtteranceGmmDecoder {
 };
 
   
-
+/// @} End of "addtogroup onlinedecoding"
 
 }  // namespace kaldi
 

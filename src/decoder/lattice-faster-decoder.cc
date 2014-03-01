@@ -112,7 +112,7 @@ bool LatticeFasterDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst,
 
 // Outputs an FST corresponding to the raw, state-level
 // tracebacks.
-bool LatticeFasterDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
+bool LatticeFasterDecoder::GetRawLattice(Lattice *ofst,
                                          bool use_final_probs) const {
   typedef LatticeArc Arc;
   typedef Arc::StateId StateId;
@@ -199,9 +199,9 @@ bool LatticeFasterDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
 }
 
 bool LatticeFasterDecoder::GetRawLatticePruned(
-                             fst::MutableFst<LatticeArc> *ofst,
-                             bool use_final_probs,
-                             BaseFloat beam) const {
+    Lattice *ofst,
+    bool use_final_probs,
+    BaseFloat beam) const {
   typedef LatticeArc Arc;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
@@ -248,17 +248,17 @@ bool LatticeFasterDecoder::GetRawLatticePruned(
     ofst->SetStart(ofst->NumStates()-1);
 
   // Next create states for "good" tokens
-  StateId cur_state = 0;
   while (!tok_queue.empty()) {
     std::pair<Token*, int32> cur_tok_pair = tok_queue.front();
     tok_queue.pop();
     Token *cur_tok = cur_tok_pair.first;
     int32 cur_frame = cur_tok_pair.second;
-
+    KALDI_ASSERT(cur_frame >= 0 && cur_frame <= cost_offsets_.size());
+    
     unordered_map<Token*, StateId>::const_iterator iter =
-            tok_map.find(cur_tok);
+        tok_map.find(cur_tok);
     KALDI_ASSERT(iter != tok_map.end());
-    cur_state = iter->second;
+    StateId cur_state = iter->second;
 
     for (ForwardLink *l = cur_tok->links;
          l != NULL;
@@ -267,23 +267,21 @@ bool LatticeFasterDecoder::GetRawLatticePruned(
       if (next_tok->extra_cost < beam) {
         // so both the current and the next token are good, create the arc
         int32 next_frame = l->ilabel == 0 ? cur_frame : cur_frame + 1;
-        std::pair<Token*, int32> next_tok_pair(next_tok, next_frame);
-        // creat state for new token and put it in queue for further processing
-        tok_map[next_tok] = ofst->AddState();
-        tok_queue.push(next_tok_pair);
-        StateId nextstate = tok_map[next_tok];
-        BaseFloat cost_offset = 0.0;
-        if (l->ilabel != 0) {  // emitting..
-          KALDI_ASSERT(cur_frame >= 0 && cur_frame < cost_offsets_.size());
-          cost_offset = cost_offsets_[cur_frame];
+        StateId nextstate;
+        if (tok_map.find(next_tok) == tok_map.end()) {
+          nextstate = tok_map[next_tok] = ofst->AddState();
+          tok_queue.push(std::pair<Token*, int32>(next_tok, next_frame));
+        } else {
+          nextstate = tok_map[next_tok];
         }
+        BaseFloat cost_offset = (l->ilabel != 0 ? cost_offsets_[cur_frame] : 0);
         Arc arc(l->ilabel, l->olabel,
                 Weight(l->graph_cost, l->acoustic_cost - cost_offset),
                 nextstate);
         ofst->AddArc(cur_state, arc);
       }
     }
-
+    
     if (cur_frame == num_frames) {
       unordered_map<Token*, BaseFloat>::const_iterator iter =
         final_costs.find(cur_tok);
@@ -296,15 +294,14 @@ bool LatticeFasterDecoder::GetRawLatticePruned(
     }
   }
 
-  KALDI_ASSERT(cur_state + 1 == ofst->NumStates());
-  return (cur_state != 0);
+  return (ofst->NumStates() != 0);
 }
 
 // This function is now deprecated, since now we do determinization from outside
 // the LatticeFasterDecoder class.
 // Outputs an FST corresponding to the lattice-determinized
 // lattice (one path per word sequence).
-bool LatticeFasterDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst,
+bool LatticeFasterDecoder::GetLattice(CompactLattice *ofst,
                                       bool use_final_probs) const {
   Lattice raw_fst;
   GetRawLattice(&raw_fst, use_final_probs);

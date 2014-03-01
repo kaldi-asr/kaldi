@@ -4,7 +4,8 @@ all:
 include ../kaldi.mk
 
 
-BINFILES = online2-wav-gmm-latgen-faster apply-cmvn-online
+BINFILES = online2-wav-gmm-latgen-faster apply-cmvn-online \
+     extend-wav-with-silence
 
 OBJFILES = 
 

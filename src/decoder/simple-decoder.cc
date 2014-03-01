@@ -118,7 +118,7 @@ BaseFloat SimpleDecoder::FinalRelativeCost() const {
   return extra_cost;
 }
 
-bool SimpleDecoder::GetBestPath(fst::MutableFst<LatticeArc> *fst_out) const {
+bool SimpleDecoder::GetBestPath(Lattice *fst_out) const {
   fst_out->DeleteStates();
   Token *best_tok = NULL;
   bool is_final = ReachedFinal();

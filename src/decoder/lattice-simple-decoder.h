@@ -143,7 +143,7 @@ class LatticeSimpleDecoder {
   // If "use_final_probs" is true AND we reached the final-state
   // of the graph then it will include those as final-probs, else
   // it will treat all final-probs as one.
-  bool GetBestPath(fst::MutableFst<LatticeArc> *ofst,
+  bool GetBestPath(Lattice *lat,
                    bool use_final_probs = true) const;
 
   // Outputs an FST corresponding to the raw, state-level
@@ -152,7 +152,7 @@ class LatticeSimpleDecoder {
   // If "use_final_probs" is true AND we reached the final-state
   // of the graph then it will include those as final-probs, else
   // it will treat all final-probs as one.
-  bool GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
+  bool GetRawLattice(Lattice *lat,
                      bool use_final_probs = true) const;
 
   // This function is now deprecated, since now we do determinization from
@@ -160,7 +160,7 @@ class LatticeSimpleDecoder {
   // Outputs an FST corresponding to the lattice-determinized
   // lattice (one path per word sequence).  [will become deprecated,
   // users should determinize themselves.]
-  bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst,
+  bool GetLattice(CompactLattice *clat,
                   bool use_final_probs = true) const;
   
   inline int32 NumFramesDecoded() const { return active_toks_.size() - 1; }  

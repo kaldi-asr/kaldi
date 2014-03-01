@@ -1,4 +1,4 @@
-// onlinebin/online2-wav-gmm-decode-faster.cc
+// onlinebin/online2-wav-gmm-decode-faster-endpoint.cc
 
 // Copyright 2014  Johns Hopkins University (author: Daniel Povey)
 
@@ -22,6 +22,7 @@
 #include "online2/online-gmm-decoding.h"
 #include "online2/onlinebin-util.h"
 #include "online2/online-timing.h"
+#include "online2/online-endpoint.h"
 #include "fstext/fstext-lib.h"
 #include "lat/lattice-functions.h"
 
@@ -81,24 +82,39 @@ int main(int argc, char *argv[]) {
     
     const char *usage =
         "Reads in wav file(s) and simulates online decoding, including\n"
-        "basis-fMLLR adaptation.  Writes lattices.  Models are provided via\n"
-        "options.\n"
+        "basis-fMLLR adaptation and endpointing.  Writes lattices.\n"
+        "Models are specified via options.\n"
         "\n"
         "Usage: online2-wav-gmm-decode-faster [options] <fst-in> <spk2utt-rspecifier> "
-        "<wav-rspecifier> <lattice-wspecifier> "
-        "e.g.: ... \n"
-        "[TODO]\n";
+        "<wav-rspecifier> <lattice-wspecifier>\n"
+        "Run ^/egs/rm/s5/local/run_online_decoding.sh for example\n";        
+
     ParseOptions po(usage);
 
     std::string word_syms_rxfilename;
+
+    OnlineEndpointConfig endpoint_config;
     OnlineFeaturePipelineCommandLineConfig feature_cmdline_config;
     OnlineGmmDecodingConfig decode_config;
-    
+
+    // For first utterance, re-estimate fMLLR every two seconds.
+    int32 fmllr_interval_first_utt = 200;
+    BaseFloat chunk_length_secs = 0.05;
+    bool do_endpointing = false;
+
+    po.Register("chunk-length", &chunk_length_secs,
+                "Length of chunk size in seconds, that we process.");
+    po.Register("fmllr-interval-first-utt", &fmllr_interval_first_utt,
+                "Interval in frames at which we re-estimate fMLLR for "
+                "the first utterance of each speaker");
     po.Register("word-symbol-table", &word_syms_rxfilename,
                 "Symbol table for words [for debug output]");
+    po.Register("do-endpointing", &do_endpointing,
+                "If true, apply endpoint detection");
     
     feature_cmdline_config.Register(&po);
     decode_config.Register(&po);
+    endpoint_config.Register(&po);
     
     po.Read(argc, argv);
     
@@ -107,6 +123,7 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
+    
     std::string fst_rxfilename = po.GetArg(1),
         spk2utt_rspecifier = po.GetArg(2),
         wav_rspecifier = po.GetArg(3),
@@ -119,12 +136,7 @@ int main(int argc, char *argv[]) {
     
     
     fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
-    
-
-    // For first utterance, re-estimate fMLLR every two seconds.
-    int32 fmllr_interval_first_utt = 200;
-    
-
+        
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_rxfilename != "") 
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_rxfilename)))
@@ -163,13 +175,11 @@ int main(int argc, char *argv[]) {
         OnlineTimer decoding_timer(utt);
         
         SubVector<BaseFloat> data(wave_data.Data(), 0);
-        // Very arbitrarily, we decide to process at most one second
-        // at a time.
-        int32 samp_offset = 0, max_samp = wave_data.SampFreq();
+        // Very arbitrarily, we decide to process at most one tenth of a second
+        // at a time.  
+        int32 samp_offset = 0, max_samp = wave_data.SampFreq() * chunk_length_secs;
         while (samp_offset < data.Dim()) {
-          // This randomness is just for testing purposes and to demonstrate
-          // that you can process arbitrary amounts of data.
-          int32 this_num_samp = rand() % max_samp;
+          int32 this_num_samp = max_samp;
           if (this_num_samp == 0) this_num_samp = 1;
           if (this_num_samp > data.Dim() - samp_offset)
             this_num_samp = data.Dim() - samp_offset;
@@ -193,6 +203,9 @@ int main(int argc, char *argv[]) {
             decoder.EstimateFmllr(end_of_utterance);
             
           samp_offset += this_num_samp;
+
+          if (do_endpointing && decoder.EndpointDetected(endpoint_config))
+            break;
         }
         bool end_of_utterance = true;
         decoder.EstimateFmllr(end_of_utterance);

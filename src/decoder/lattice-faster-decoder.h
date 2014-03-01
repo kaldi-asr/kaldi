@@ -133,14 +133,14 @@ class LatticeFasterDecoder {
   // it will treat all final-probs as one.
   bool GetBestPath(fst::MutableFst<LatticeArc> *ofst,
                    bool use_final_probs = true) const;
-
+  
 
   // Outputs an FST corresponding to the raw, state-level
   // tracebacks.  Returns true if result is nonempty.
   // If "use_final_probs" is true AND we reached the final-state
   // of the graph then it will include those as final-probs, else
   // it will treat all final-probs as one.
-  bool GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
+  bool GetRawLattice(Lattice *ofst,
                      bool use_final_probs = true) const;
 
   // Outputs an FST corresponding to the lattice-determinized lattice (one path
@@ -149,7 +149,7 @@ class LatticeFasterDecoder {
   // of the graph then it will include those as final-probs, else
   // it will treat all final-probs as one.  [will become deprecated,
   // users should determinize themselves.]
-  bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst,
+  bool GetLattice(CompactLattice *ofst,
                   bool use_final_probs = true) const;
 
   /// InitDecoding initializes the decoding, and should only be used if you
@@ -189,7 +189,7 @@ class LatticeFasterDecoder {
   /// reasonable likelihood.
   BaseFloat FinalRelativeCost() const;
 
-  inline int32 NumFramesDecoded() { return active_toks_.size() - 1; }
+  inline int32 NumFramesDecoded() const { return active_toks_.size() - 1; }
  private:
   struct Token;
   // ForwardLinks are the links from a token to a token on the next frame.
@@ -333,7 +333,7 @@ class LatticeFasterDecoder {
   // Behaves the same like GetRawLattice but only processes
   // tokens whose extra_cost is smaller than beam(plus the lowest
   // extra_cost of it's corresponding frame).
-  bool GetRawLatticePruned(fst::MutableFst<LatticeArc> *ofst,
+  bool GetRawLatticePruned(Lattice *ofst,
                            bool use_final_probs = true,
                            BaseFloat beam = 0.1) const;
 
@@ -472,6 +472,9 @@ class DecodeUtteranceLatticeFasterClass {
   CompactLattice *clat_; // Stored output, if determinize_ == true.
   Lattice *lat_; // Stored output, if determinize_ == false.
 };
+
+
+
 
 
 } // end namespace kaldi.

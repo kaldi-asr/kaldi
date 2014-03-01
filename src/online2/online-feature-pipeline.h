@@ -89,6 +89,8 @@ struct OnlineFeaturePipelineConfig {
 
   OnlineFeaturePipelineConfig(
       const OnlineFeaturePipelineCommandLineConfig &cmdline_config);
+
+  BaseFloat FrameShiftInSeconds() const;
   
   std::string feature_type; // "mfcc" or "plp", for now.
                             // When we add pitch we'll have a separate "add_pitch"
@@ -108,6 +110,7 @@ struct OnlineFeaturePipelineConfig {
                               // used.
   std::string global_cmvn_stats_rxfilename; // Filename used for reading global
                                             // CMVN stats
+  
 };
 
 
@@ -142,7 +145,8 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
   void AcceptWaveform(BaseFloat sampling_rate,
                       const VectorBase<BaseFloat> &waveform);
 
-
+  BaseFloat FrameShiftInSeconds() const { return config_.FrameShiftInSeconds(); }
+  
   // InputFinished() tells the class you won't be providing any
   // more waveform.  This will help flush out the last few frames
   // of delta or LDA features.
