@@ -1,6 +1,7 @@
 // gmmbin/gmm-post-to-gpost.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -69,7 +70,7 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
 
-    GauPostWriter gpost_writer(gpost_wspecifier);
+    GaussPostWriter gpost_writer(gpost_wspecifier);
 
     int32 num_done = 0, num_no_posterior = 0, num_other_error = 0;
     for (; !feature_reader.Done(); feature_reader.Next()) {
@@ -79,7 +80,7 @@ int main(int argc, char *argv[]) {
       } else {
         const Matrix<BaseFloat> &mat = feature_reader.Value();
         const Posterior &posterior = posteriors_reader.Value(key);
-        GauPost gpost(posterior.size());
+        GaussPost gpost(posterior.size());
 
         if (posterior.size() != mat.NumRows()) {
           KALDI_WARN << "Posterior vector has wrong size "<< (posterior.size()) << " vs. "<< (mat.NumRows());
@@ -90,12 +91,13 @@ int main(int argc, char *argv[]) {
         num_done++;
         BaseFloat tot_like_this_file = 0.0, tot_weight = 0.0;
 
+        Posterior pdf_posterior;
+        ConvertPosteriorToPdfs(trans_model, posterior, &pdf_posterior);
         for (size_t i = 0; i < posterior.size(); i++) {
-          gpost[i].reserve(posterior[i].size());
-          for (size_t j = 0; j < posterior[i].size(); j++) {
-            int32 tid = posterior[i][j].first,  // transition identifier.
-                pdf_id = trans_model.TransitionIdToPdf(tid);
-            BaseFloat weight = posterior[i][j].second;
+          gpost[i].reserve(pdf_posterior[i].size());
+          for (size_t j = 0; j < pdf_posterior[i].size(); j++) {
+            int32 pdf_id = pdf_posterior[i][j].first;
+            BaseFloat weight = pdf_posterior[i][j].second;
             const DiagGmm &gmm = am_gmm.GetPdf(pdf_id);
             Vector<BaseFloat> this_post_vec;
             BaseFloat like =
@@ -106,7 +108,7 @@ int main(int argc, char *argv[]) {
                 this_post_vec(k) = RandPrune(this_post_vec(k),
                                              rand_prune);
             if (!this_post_vec.IsZero())
-              gpost[i].push_back(std::make_pair(tid, this_post_vec));
+              gpost[i].push_back(std::make_pair(pdf_id, this_post_vec));
             tot_like_this_file += like * weight;
             tot_weight += weight;
           }

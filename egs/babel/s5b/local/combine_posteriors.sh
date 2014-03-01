@@ -91,15 +91,15 @@ for i in `seq 0 $[num_sys-1]`; do
   [ -z "$weight" ] && weight=1.0
 
   if [ $i -eq 0 ]; then
-    interpolation_weights=$weight
+    file_list="\"ark,s,cs:gunzip -c $out_decode/weights.$i.JOB.gz | vector-scale --scale=$weight ark:- ark:- |\""
   else
-    interpolation_weights="$interpolation_weights:$weight"
+    file_list="$file_list \"ark,s,cs:gunzip -c $out_decode/weights.$i.JOB.gz | vector-scale --scale=$weight ark:- ark:- |\""
   fi
 
   weights_sum=`perl -e "print STDOUT $weights_sum + $weight"`
 done
 
-inv_weights_sum=`perl -e "print STDOUT 1.0/$weights_sum`
+inv_weights_sum=`perl -e "print STDOUT 1.0/$weights_sum"`
 
 for i in `seq 0 $[num_sys-1]`; do
   if [ $stage -lt $i ]; then
@@ -132,14 +132,14 @@ for i in `seq 0 $[num_sys-1]`; do
 done
 
 if [ $stage -lt $num_sys ]; then
-  file_list="\"ark,s,cs:gunzip -c $out_decode/weights.0.JOB.gz |\""
-  for i in `seq 1 $[num_sys-1]`; do
-    file_list="$file_list \"ark,s,cs:gunzip -c $out_decode/weights.$i.JOB.gz |\""
-  done
-
-  $cmd JOB=1:$nj $dir/log/interpolate_post.JOB.log \
-    vector-sum --weights=$interpolation_weights \
-    $file_list "ark:| vector-scale --scale=$inv_weights_sum ark:- ark:- | gzip -c > $out_decode/weights.JOB.gz" || exit 1
+  if [ "$num_sys" -eq 1 ]; then
+    $cmd JOB=1:$nj $dir/log/move_post.JOB.log \
+      mv $out_decode/weights.0.JOB.gz $out_decode/weights.JOB.gz || exit 1
+  else
+    $cmd JOB=1:$nj $dir/log/interpolate_post.JOB.log \
+      vector-sum $file_list \
+      "ark:| vector-scale --scale=$inv_weights_sum ark:- ark:- | gzip -c > $out_decode/weights.JOB.gz" || exit 1
+  fi
 fi
 
 exit 0

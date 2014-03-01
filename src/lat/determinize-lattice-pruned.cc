@@ -29,7 +29,9 @@ using std::tr1::unordered_map;
 #include <climits>
 #include "fstext/determinize-lattice.h" // for LatticeStringRepository
 #include "fstext/fstext-utils.h"
-#include "lat/lattice-functions.h" // for PruneLattice
+#include "lat/lattice-functions.h"  // for PruneLattice
+#include "lat/minimize-lattice.h"   // for minimization
+#include "lat/push-lattice.h"       // for minimization
 #include "lat/determinize-lattice-pruned.h"
 
 namespace fst {
@@ -1457,6 +1459,14 @@ bool DeterminizeLatticePhonePruned(
         *ifst, beam, ofst, det_opts) && ans;
   }
 
+  // If --minimize is true, push and minimize after determinization.
+  if (opts.minimize) {
+    KALDI_VLOG(1) << "Pushing and minimizing on word lattices.";
+    ans = PushCompactLatticeStrings<Weight, IntType>(ofst) && ans;
+    ans = PushCompactLatticeWeights<Weight, IntType>(ofst) && ans;
+    ans = MinimizeCompactLattice<Weight, IntType>(ofst) && ans;
+  }
+
   return ans;
 }
 
@@ -1472,6 +1482,30 @@ bool DeterminizeLatticePhonePruned(
   VectorFst<ArcTpl<Weight> > temp_fst(ifst);
   return DeterminizeLatticePhonePruned(trans_model, &temp_fst,
                                        beam, ofst, opts);
+}
+
+bool DeterminizeLatticePhonePrunedWrapper(
+    const kaldi::TransitionModel &trans_model,
+    MutableFst<kaldi::LatticeArc> *ifst,
+    double beam,
+    MutableFst<kaldi::CompactLatticeArc> *ofst,
+    DeterminizeLatticePhonePrunedOptions opts) {
+  bool ans = true;
+  Invert(ifst);
+  if (ifst->Properties(fst::kTopSorted, true) == 0) {
+    if (!TopSort(ifst)) {
+      // Cannot topologically sort the lattice -- determinization will fail.
+      KALDI_ERR << "Topological sorting of state-level lattice failed (probably"
+                << " your lexicon has empty words or your LM has epsilon cycles"
+                << ").";
+    }
+  }
+  ILabelCompare<kaldi::LatticeArc> ilabel_comp;
+  ArcSort(ifst, ilabel_comp);
+  ans = DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
+      trans_model, ifst, beam, ofst, opts);
+  Connect(ofst);
+  return ans;
 }
 
 // Instantiate the templates for the types we might need.

@@ -212,9 +212,7 @@ class SingleUtteranceGmmDecoder {
 
   ~SingleUtteranceGmmDecoder();
  private:
-  // Note: the GauPost this outputs is indexed by pdf-id, not transition-id as
-  // normal.
-  bool GetGaussianPosteriors(bool end_of_utterance, GauPost *gpost);
+  bool GetGaussianPosteriors(bool end_of_utterance, GaussPost *gpost);
 
   /// Returns true if doing a lattice rescoring pass would have any point, i.e.
   /// if we have estimated fMLLR during this utterance, or if we have a

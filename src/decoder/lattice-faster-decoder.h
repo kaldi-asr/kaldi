@@ -46,6 +46,9 @@ struct LatticeFasterDecoderConfig {
   BaseFloat prune_scale;   // Note: we don't make this configurable on the command line,
                            // it's not a very important parameter.  It affects the
                            // algorithm that prunes the tokens as we go.
+  // Most of the options inside det_opts are not actually queried by the
+  // LatticeFasterDecoder class itself, but by the code that calls it, for
+  // example in the function DecodeUtteranceLatticeFaster.
   fst::DeterminizeLatticePhonePrunedOptions det_opts;
   LatticeFasterDecoderConfig(): beam(16.0),
                                 max_active(std::numeric_limits<int32>::max()),

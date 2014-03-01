@@ -2,6 +2,7 @@
 
 // Copyright 2012  Cisco Systems (author: Neha Agrawal)
 //                 Johns Hopkins University (author: Daniel Povey)
+//           2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -119,11 +120,12 @@ int main(int argc, char *argv[]) {
           }
 
           BaseFloat file_like = 0.0, file_t = 0.0;
+          Posterior pdf_posterior;
+          ConvertPosteriorToPdfs(trans_model, posterior, &pdf_posterior);
           for ( size_t i = 0; i < posterior.size(); i++ ) {
-            for ( size_t j = 0; j < posterior[i].size(); j++ ) {
-              int32 pdf_id = 
-                  trans_model.TransitionIdToPdf(posterior[i][j].first); 
-              BaseFloat weight = posterior[i][j].second; 
+            for ( size_t j = 0; j < pdf_posterior[i].size(); j++ ) {
+              int32 pdf_id = pdf_posterior[i][j].first; 
+              BaseFloat weight = pdf_posterior[i][j].second; 
               file_like += map_accs.AccumulateForGmm(copy_am_gmm,
                                                      feats.Row(i),
                                                      pdf_id, weight);
@@ -183,11 +185,12 @@ int main(int argc, char *argv[]) {
         }
         num_done++;
         BaseFloat file_like = 0.0, file_t = 0.0;
+        Posterior pdf_posterior;
+        ConvertPosteriorToPdfs(trans_model, posterior, &pdf_posterior);
         for ( size_t i = 0; i < posterior.size(); i++ ) {
-          for ( size_t j = 0; j < posterior[i].size(); j++ ) {
-            int32 pdf_id = 
-                trans_model.TransitionIdToPdf(posterior[i][j].first);
-            BaseFloat prob = posterior[i][j].second;
+          for ( size_t j = 0; j < pdf_posterior[i].size(); j++ ) {
+            int32 pdf_id = pdf_posterior[i][j].first;
+            BaseFloat prob = pdf_posterior[i][j].second;
             file_like += map_accs.AccumulateForGmm(copy_am_gmm,feats.Row(i),
                                                    pdf_id, prob);
             file_t += prob;

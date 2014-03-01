@@ -13,6 +13,7 @@ set -e
 
 local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp
 
+
 #local/rm_data_prep.sh /home/dpovey/data/LDC93S3A/rm_comp
 
 

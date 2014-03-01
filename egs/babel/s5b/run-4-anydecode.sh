@@ -378,7 +378,8 @@ if [ -f exp/tri6_nnet/.done ]; then
   decode=exp/tri6_nnet/decode_${dataset_id}
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
-    steps/nnet2/decode.sh --cmd "$decode_cmd" --nj $my_nj \
+    steps/nnet2/decode.sh \
+      --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
       --beam $dnn_beam --lat-beam $dnn_lat_beam \
       --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${dataset_id} \
@@ -403,7 +404,8 @@ if [ -f exp/tri6a_nnet/.done ]; then
   decode=exp/tri6a_nnet/decode_${dataset_id}
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
-    steps/nnet2/decode.sh --cmd "$decode_cmd" --nj $my_nj \
+    steps/nnet2/decode.sh \
+      --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
       --beam $dnn_beam --lat-beam $dnn_lat_beam \
       --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${dataset_id} \
@@ -428,7 +430,8 @@ if [ -f exp/tri6b_nnet/.done ]; then
   decode=exp/tri6b_nnet/decode_${dataset_id}
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
-    steps/nnet2/decode.sh --cmd "$decode_cmd" --nj $my_nj \
+    steps/nnet2/decode.sh \
+      --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
       --beam $dnn_beam --lat-beam $dnn_lat_beam \
       --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${dataset_id} \
@@ -453,7 +456,7 @@ if [ -f exp/tri6_nnet_mpe/.done ]; then
     decode=exp/tri6_nnet_mpe/decode_${dataset_id}_epoch$epoch
     if [ ! -f $decode/.done ]; then
       mkdir -p $decode
-      steps/nnet2/decode.sh \
+      steps/nnet2/decode.sh --minimize $minimize \
         --cmd "$decode_cmd" --nj $my_nj --iter epoch$epoch \
         --beam $dnn_beam --lat-beam $dnn_lat_beam \
         --skip-scoring true "${decode_extra_opts[@]}" \

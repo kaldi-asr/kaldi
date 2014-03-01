@@ -1,6 +1,7 @@
 // gmmbin/gmm-est-fmllr-raw-gpost.cc
 
 // Copyright 2013  Johns Hopkins University (author: Daniel Povey)
+//           2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -29,12 +30,12 @@ namespace kaldi {
 
 void AccStatsForUtterance(const TransitionModel &trans_model,
                           const AmDiagGmm &am_gmm,
-                          const GauPost &gpost,
+                          const GaussPost &gpost,
                           const Matrix<BaseFloat> &feats,
                           FmllrRawAccs *accs) {
   for (size_t t = 0; t < gpost.size(); t++) {
     for (size_t i = 0; i < gpost[t].size(); i++) {
-      int32 pdf = trans_model.TransitionIdToPdf(gpost[t][i].first);
+      int32 pdf = gpost[t][i].first;
       const Vector<BaseFloat> &posterior(gpost[t][i].second);      
       accs->AccumulateFromPosteriors(am_gmm.GetPdf(pdf),
                                      feats.Row(t), posterior);
@@ -94,7 +95,7 @@ int main(int argc, char *argv[]) {
     Matrix<BaseFloat> full_lda_mat;
     ReadKaldiObject(full_lda_mat_rxfilename, &full_lda_mat);
     
-    RandomAccessGauPostReader gpost_reader(gpost_rspecifier);
+    RandomAccessGaussPostReader gpost_reader(gpost_rspecifier);
     BaseFloatMatrixWriter transform_writer(transform_wspecifier);
     
     double tot_auxf_impr = 0.0, tot_count = 0.0;
@@ -121,7 +122,7 @@ int main(int argc, char *argv[]) {
             continue;
           }
           const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
-          const GauPost &gpost = gpost_reader.Value(utt);
+          const GaussPost &gpost = gpost_reader.Value(utt);
           if (static_cast<int32>(gpost.size()) != feats.NumRows()) {
             KALDI_WARN << "Size mismatch between gposteriors " << gpost.size()
                        << " and features " << feats.NumRows();
@@ -155,7 +156,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
         const Matrix<BaseFloat> &feats = feature_reader.Value();
-        const GauPost &gpost = gpost_reader.Value(utt);
+        const GaussPost &gpost = gpost_reader.Value(utt);
 
         if (static_cast<int32>(gpost.size()) != feats.NumRows()) {
           KALDI_WARN << "Size mismatch between posteriors " << gpost.size()

@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
       vector_in_fns[i-2] = po.GetArg(i);
     }
 
-    std::vector<BaseFloat> weights(num_args-1, 1.0/(num_args-1));
+    std::vector<BaseFloat> weights(num_args-1, 1.0);
     if (!weight_str.empty()) {
       SplitStringToFloats(weight_str, ":", true, &weights);
     }

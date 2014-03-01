@@ -84,3 +84,5 @@ extend_lexicon=true
 unk_fraction_boost=1.0
 num_sent_gen=12000000
 num_prons=1000000
+
+minimize=true

@@ -63,11 +63,9 @@ void SingleUtteranceGmmDecoder::AdvanceFirstPass() {
   decoder_.DecodeNonblocking(&decodable);  
 }
 
-// Note: the GauPost this outputs is indexed by pdf-id, not transition-id as
-// normal.
 // We exclude the silence phones from the Gaussian posteriors.
 bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
-                                                      GauPost *gpost) {
+                                                      GaussPost *gpost) {
   // Gets the Gaussian-level posteriors for this utterance, using whatever
   // features and model we are currently decoding with.  We'll use these
   // to estimate basis-fMLLR with.
@@ -160,9 +158,9 @@ void SingleUtteranceGmmDecoder::EstimateFmllr(bool end_of_utterance) {
   }
 
 
-  GauPost gpost; // this gpost has pdf-id, not transition-id.
+  GaussPost gpost;
   GetGaussianPosteriors(end_of_utterance, &gpost);
-
+  
   FmllrDiagGmmAccs &spk_stats = adaptation_state_.spk_stats;
   
   int32 dim = feature_pipeline_->Dim();

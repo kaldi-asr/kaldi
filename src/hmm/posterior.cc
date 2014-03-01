@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -136,13 +137,13 @@ bool PosteriorHolder::Read(std::istream &is) {
 }
 
 // static
-bool GauPostHolder::Write(std::ostream &os, bool binary, const T &t) {
+bool GaussPostHolder::Write(std::ostream &os, bool binary, const T &t) {
   InitKaldiOutputStream(os, binary);  // Puts binary header if binary mode.
   try {
     // We don't bother making this a one-line format.
     int32 sz = t.size();
     WriteBasicType(os, binary, sz);
-    for (GauPost::const_iterator iter = t.begin(); iter != t.end(); ++iter) {
+    for (GaussPost::const_iterator iter = t.begin(); iter != t.end(); ++iter) {
       int32 sz2 = iter->size();
       WriteBasicType(os, binary, sz2);
       for (std::vector<std::pair<int32, Vector<BaseFloat> > >::const_iterator iter2=iter->begin();
@@ -161,7 +162,7 @@ bool GauPostHolder::Write(std::ostream &os, bool binary, const T &t) {
   }
 }
 
-bool GauPostHolder::Read(std::istream &is) {
+bool GaussPostHolder::Read(std::istream &is) {
   t_.clear();
 
   bool is_binary;
@@ -175,7 +176,7 @@ bool GauPostHolder::Read(std::istream &is) {
     if (sz < 0)
       KALDI_ERR << "Reading posteriors: got negative size\n";
     t_.resize(sz);
-    for (GauPost::iterator iter = t_.begin(); iter != t_.end(); ++iter) {
+    for (GaussPost::iterator iter = t_.begin(); iter != t_.end(); ++iter) {
       int32 sz2;
       ReadBasicType(is, is_binary, &sz2);
       if (sz2 < 0)
@@ -267,6 +268,27 @@ void AlignmentToPosterior(const std::vector<int32> &ali,
     (*post)[i].resize(1);
     (*post)[i][0].first = ali[i];
     (*post)[i][0].second = 1.0;
+  }
+}
+
+struct ComparePosteriorByPdfs {
+  const TransitionModel *tmodel_;
+  ComparePosteriorByPdfs(const TransitionModel &tmodel): tmodel_(&tmodel) {}
+  bool operator() (const std::pair<int32, BaseFloat> &a,
+                   const std::pair<int32, BaseFloat> &b) {
+    if (tmodel_->TransitionIdToPdf(a.first)
+        < tmodel_->TransitionIdToPdf(b.first))
+      return true;
+    else
+      return false;
+  }
+};
+
+void SortPosteriorByPdfs(const TransitionModel &tmodel,
+                         Posterior *post) {
+  ComparePosteriorByPdfs compare(tmodel);
+  for (size_t i = 0; i < post->size(); i++) {
+    sort((*post)[i].begin(), (*post)[i].end(), compare);
   }
 }
 

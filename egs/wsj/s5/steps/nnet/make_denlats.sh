@@ -151,7 +151,7 @@ fi
 
 #2) Generate 'scp' for reading the lattices
 for n in `seq $nj`; do
-  find $dir/lat${n} -name *.gz | awk -v FS="/" '{ print gensub(".gz","","",$NF)" gunzip -c "$0" |"; }' 
+  find $dir/lat${n} -name "*.gz" | awk -v FS="/" '{ print gensub(".gz","","",$NF)" gunzip -c "$0" |"; }' 
 done >$dir/lat.scp
 
 echo "$0: done generating denominator lattices."

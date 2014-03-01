@@ -1015,27 +1015,15 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt_;
   fst::Connect(lat_);
   if (determinize_) {
-    Invert(lat_);
-    if (!TopSort(lat_)) {
-      // Cannot topologically sort the lattice -- determinization will fail.
-      KALDI_WARN << "Topological sorting of state-level lattice failed "
-                 << "(probably your lexicon has empty words or your LM has "
-                 << "epsilon cycles).";
-      delete lat_;    // Delete it here.
-      success_ = false;
-      return;
-    }
-    fst::ILabelCompare<LatticeArc> ilabel_comp;
-    ArcSort(lat_, ilabel_comp);
-    if (!DeterminizeLatticePhonePruned(*trans_model_,
-                                       lat_,
-                                       decoder_->GetOptions().lattice_beam,
-                                       clat_,
-                                       decoder_->GetOptions().det_opts))
+    if (!DeterminizeLatticePhonePrunedWrapper(
+            *trans_model_,
+            lat_,
+            decoder_->GetOptions().lattice_beam,
+            clat_,
+            decoder_->GetOptions().det_opts))
       KALDI_WARN << "Determinization finished earlier than the beam for "
                  << "utterance " << utt_;
     delete lat_;
-    fst::Connect(clat_);
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale_ != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), clat_);
@@ -1205,25 +1193,15 @@ bool DecodeUtteranceLatticeFaster(
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
   fst::Connect(&lat);
   if (determinize) {
-    Invert(&lat);
-    if (!TopSort(&lat)) {
-      // Cannot topologically sort the lattice -- determinization will fail.
-      KALDI_WARN << "Topological sorting of state-level lattice failed "
-                 << "(probably your lexicon has empty words or your LM has "
-                 << "epsilon cycles).";
-      return false;
-    }
-    fst::ILabelCompare<LatticeArc> ilabel_comp;
-    ArcSort(&lat, ilabel_comp);
     CompactLattice clat;
-    if (!DeterminizeLatticePhonePruned(trans_model,
-                                       &lat,
-                                       decoder.GetOptions().lattice_beam,
-                                       &clat,
-                                       decoder.GetOptions().det_opts))
+    if (!DeterminizeLatticePhonePrunedWrapper(
+            trans_model,
+            &lat,
+            decoder.GetOptions().lattice_beam,
+            &clat,
+            decoder.GetOptions().det_opts))
       KALDI_WARN << "Determinization finished earlier than the beam for "
                  << "utterance " << utt;
-    fst::Connect(&clat);
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);

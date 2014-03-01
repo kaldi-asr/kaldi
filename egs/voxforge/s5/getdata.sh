@@ -5,17 +5,13 @@
 
 # Downloads and extracts the data from VoxForge website
 
-# defines "DATA_ROOT" variable - the location to store data 
+# defines the "DATA_ROOT" variable - the location to store data 
 source ./path.sh
 
 DATA_SRC="http://www.repository.voxforge1.org/downloads/SpeechCorpus/Trunk/Audio/Main/16kHz_16bit"
 DATA_TGZ=${DATA_ROOT}/tgz
 DATA_EXTRACT=${DATA_ROOT}/extracted
 
-# delete the archive after it's extracted?
-deltgz=false
-
-# give the user opportunity to change behaviour using cmd line - e.g. --deltgz true
 source utils/parse_options.sh
 
 mkdir -p ${DATA_TGZ} 2>/dev/null
@@ -34,7 +30,3 @@ echo "--- Starting VoxForge archives extraction ..."
 for a in ${DATA_TGZ}/*.tgz; do
   tar -C ${DATA_EXTRACT} -xf $a
 done
-
-if ${deltgz}; then
-  rm -rf ${DATA_TGZ}
-fi

@@ -73,7 +73,8 @@ if [ ! exp_bnf/tri7_nnet/decode_${dirid}/.done -nt data_bnf/${dirid}_bnf/.done ]
   decode=exp_bnf/tri7_nnet/decode_${dirid}
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
-    steps/nnet2/decode.sh --cmd "$decode_cmd" --nj $my_nj \
+    steps/nnet2/decode.sh \
+      --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
       --acwt $bnf_decode_acwt \
       --beam $dnn_beam --lat-beam $dnn_lat_beam \
       --skip-scoring true "${decode_extra_opts[@]}" \

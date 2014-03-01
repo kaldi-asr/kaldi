@@ -35,8 +35,8 @@ mkdir -p $loctmp
 # names don't follow the "speaker-YYYYMMDD-<random_3letter_suffix>" convention.
 # The ";tx;d;:x" part of the expression is to filter out the directories,
 # not matched by the expression
-ls -d $DATA/*/ |\
- sed -e 's:.*/\(\(.*\)\-[0-9]\{8\,10\}[a-z]*\([_\-].*\)\?\)/:\2:;tx;d;:x' |\
+find $DATA/* -maxdepth 0 |\
+ sed -Ee 's:.*/((.+)\-[0-9]{8,10}[a-z]*([_\-].*)?):\2:;tx;d;:x' |\
  sort -u > $loctmp/speakers_all.txt
 
 nspk_all=`wc -l $loctmp/speakers_all.txt | cut -f1 -d' '`
@@ -65,19 +65,16 @@ ls -d ${DATA}/*/ |\
  gawk 'BEGIN {FS="-"} NR==FNR{arr[$1]; next;} ($1 in arr)' \
   $loctmp/speakers_train.txt - | sort > $loctmp/dir_train.txt
 
-
-sets="test train"
 logdir=exp/data_prep
 mkdir -p $logdir
 > $logdir/make_trans.log
 rm ${locdata}/spk2gender 2>/dev/null
-for s in $sets; do
+for s in test train; do
  echo "--- Preparing ${s}_wav.scp, ${s}_trans.txt and ${s}.utt2spk ..." 
  while read d; do
   spkname=`echo $d | cut -f1 -d'-'`;
-  spksfx=`echo $d | cut -f2- -d'-'`;
-  spksxf=`echo $spksfx | sed -e 's:_:\-:g'`
-  idpfx="${spkname}_${spksfx}";
+  spksfx=`echo $d | cut -f2- -d'-'`; # | sed -e 's:_:\-:g'`;
+  idpfx="${spkname}-${spksfx}";
   dir=${DATA}/$d
 
   rdm=`find $dir/etc/ -iname 'readme'`
@@ -114,7 +111,7 @@ for s in $sets; do
     bw=`basename $w`
     wavname=${bw%.$wavtype}
     all_wavs="$all_wavs $wavname"
-    id="${idpfx}_${wavname}"
+    id="${idpfx}-${wavname}"
     if [ ! -s $w ]; then
      echo "$w is zero-size - skipping ..."
      continue
@@ -131,12 +128,7 @@ for s in $sets; do
    2>>${logdir}/make_trans.log >> ${loctmp}/${s}_trans.txt.unsorted
  done < $loctmp/dir_${s}.txt
 
- # the sorted order of speakers may not be the same as the sorted order of the
- # full utterance IDs. Consider for example speakers "joel" and "joel4".
- # In respect to speaker ordering "joel" comes before "joel4", but when the
- # speciffic utterance IDs are compared like "joel_XXX" and "joel4_YYY",
- # "4" gets compared to "_" and the order is reversed.
- # Also filter out the audio for which there is no proper transcript
+ # filter out the audio for which there is no proper transcript
  gawk 'NR==FNR{trans[$1]; next} ($1 in trans)' FS=" " \
    ${loctmp}/${s}_trans.txt.unsorted ${loctmp}/${s}_wav.scp.unsorted |\
    sort -k1 > ${locdata}/${s}_wav.scp
@@ -150,7 +142,9 @@ for s in $sets; do
  echo "--- Preparing ${s}.spk2utt ..."
  cat $locdata/${s}_trans.txt |\
   cut -f1 -d' ' |\
-  gawk 'BEGIN {FS="_"} {names[$1]=names[$1] " " $0;} END {for (k in names) {print k, names[k];}}' | sort -k1 > $locdata/${s}.spk2utt
+  gawk 'BEGIN {FS="-"}
+        {names[$1]=names[$1] " " $0;}
+        END {for (k in names) {print k, names[k];}}' | sort -k1 > $locdata/${s}.spk2utt
 done;
 
 trans_err=`wc -l ${logdir}/make_trans.log | cut -f1 -d" "`

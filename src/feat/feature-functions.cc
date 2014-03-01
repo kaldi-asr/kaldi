@@ -427,19 +427,22 @@ void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
                                       window_start, window_end - window_start,
                                       0, dim);
       cur_sum.AddRowSumMat(1.0, input_part , 0.0);
-      cur_sumsq.AddDiagMat2(1.0, input_part, kTrans, 0.0);
+      if (opts.normalize_variance)
+        cur_sumsq.AddDiagMat2(1.0, input_part, kTrans, 0.0);
     } else {
       if (window_start > last_window_start) {
         KALDI_ASSERT(window_start == last_window_start + 1);
         SubVector<double> frame_to_remove(input, last_window_start);
         cur_sum.AddVec(-1.0, frame_to_remove);
-        cur_sumsq.AddVec2(-1.0, frame_to_remove);
+        if (opts.normalize_variance)
+          cur_sumsq.AddVec2(-1.0, frame_to_remove);
       }
       if (window_end > last_window_end) {
         KALDI_ASSERT(window_end == last_window_end + 1);
         SubVector<double> frame_to_add(input, last_window_end);
         cur_sum.AddVec(1.0, frame_to_add);
-        cur_sumsq.AddVec2(1.0, frame_to_add);
+        if (opts.normalize_variance)
+          cur_sumsq.AddVec2(1.0, frame_to_add);
       }
     }
     int32 window_frames = window_end - window_start;
