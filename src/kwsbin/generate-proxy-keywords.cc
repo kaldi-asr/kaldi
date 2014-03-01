@@ -155,17 +155,17 @@ int main(int argc, char *argv[]) {
       }
       if (phone_nbest > 0) {
         KALDI_VLOG(1) << "ShortestPath(KxL2xE, " << phone_nbest << ")";
-        proxy = tmp_proxy;
-        tmp_proxy.DeleteStates(); // Not needed for now.
-        ShortestPath(proxy, &tmp_proxy, phone_nbest, true, true);
-        proxy.DeleteStates();     // Not needed for now.
+        ShortestPath(tmp_proxy, &proxy, phone_nbest, true, true);
+        tmp_proxy.DeleteStates();   // Not needed for now.
+        KALDI_VLOG(1) << "RmEpsilon(KxL2xE)";
+        RmEpsilon(&proxy);
+        KALDI_VLOG(1) << "Determinize(KxL2xE)";
+        Determinize(proxy, &tmp_proxy);
+        proxy.DeleteStates();       // Not needed for now.
       }
-      KALDI_VLOG(1) << "Determinize(KxL2xE)";
-      Determinize(tmp_proxy, &proxy);
-      tmp_proxy.DeleteStates();
-      KALDI_VLOG(1) << "RmEpsilon(KxL2xE)";
-      RmEpsilon(&proxy);
       KALDI_VLOG(1) << "ArcSort(KxL2xE, OLabel)";
+      proxy = tmp_proxy;
+      tmp_proxy.DeleteStates();     // Not needed for now.
       ArcSort(&proxy, OLabelCompare<StdArc>());
 
       // Composing KxL2xE and L1'. We assume L1' is ilabel sorted.
