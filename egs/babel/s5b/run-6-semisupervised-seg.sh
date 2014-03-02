@@ -16,7 +16,7 @@ set -o pipefail  #Exit if any of the commands in the pipeline will
 . path.sh
 
 # Can provide different neural net structure than for supervised data
-[ -f conf/common.semisupervised.limitedLP ] && . conf/common.semisupervised.limitedLP    
+. conf/common.semisupervised.limitedLP || exit 1
 
 #debugging stuff
 echo $0 $@
@@ -25,10 +25,6 @@ train_stage=-100
 decode_dir=
 ali_dir=
 nj=
-weight_threshold=0.7
-do_supervised_tuning=true       # Update only the last layer using only 
-                                # the supervised data after the semi-supervised 
-                                # training of DNN
 
 . parse_options.sh || exit 1
 
@@ -170,7 +166,6 @@ if [ ! -f exp/tri6_nnet_semi_supervised/.done ]; then
     --num-hidden-layers $dnn_num_hidden_layers \
     --pnorm-input-dim $dnn_input_dim \
     --pnorm-output-dim $dnn_output_dim \
-    --max-change $dnn_max_change \
     --num-epochs $num_epochs \
     --num-epochs-extra $num_epochs_extra \
     --num-iters-final $num_iters_final \
@@ -195,7 +190,7 @@ if $do_supervised_tuning; then
     steps/nnet2/update_nnet.sh \
       --learning-rates $learning_rates \
       --cmd "$train_cmd" \
-      "${dnn_gpu_parallel_opts[@]}" \
+      "${dnn_update_gpu_parallel_opts[@]}" \
       --num-epochs 2 --num-iters-final 5 \
       --transform-dir exp/tri5_ali \
       data/train data/lang $ali_dir \
