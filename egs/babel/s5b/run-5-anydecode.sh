@@ -13,6 +13,7 @@ data_only=false
 fast_path=true
 skip_kws=false
 skip_stt=false
+skip_scoring=false
 max_states=150000
 wip=0.5
 
