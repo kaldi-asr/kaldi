@@ -24,7 +24,7 @@ echo $0 $@
 train_stage=-100
 decode_dir=
 ali_dir=
-nj=32
+nj=
 weight_threshold=0.7
 do_supervised_tuning=true       # Update only the last layer using only 
                                 # the supervised data after the semi-supervised 
@@ -35,7 +35,7 @@ do_supervised_tuning=true       # Update only the last layer using only
 if [ $# -ne 1 ]; then
   echo "Usage: $0 [options] <untranscribed-data-dir>" 
   echo 
-  echo "--nj  <num_jobs>      # Number of parallel jobs for decoding untranscribed data"
+  echo "--nj  <num_jobs>                  # Number of parallel jobs for decoding untranscribed data"
   echo "--decode-dir <decode_directory>   # Decode directory with posteriors and best path done"
   echo "--ali-dir <alignment_directory>   # Alignment directory"
   echo "--weight-threshold <0.7>          # Frame confidence threshold for frame selection"
@@ -46,6 +46,8 @@ if [ $# -ne 1 ]; then
 fi
 
 untranscribed_datadir=$1
+
+[ -z $nj ] && nj=$unsup_nj
 
 ###############################################################################
 #
@@ -191,7 +193,6 @@ if $do_supervised_tuning; then
     learning_rates="$learning_rates:0.0008"
 
     steps/nnet2/update_nnet.sh \
-      --stage $train_stage --mix-up $dnn_mixup \
       --learning-rates $learning_rates \
       --cmd "$train_cmd" \
       "${dnn_gpu_parallel_opts[@]}" \
