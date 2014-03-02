@@ -54,8 +54,8 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     BaseFloat sil_len = 5.0,
       sil_search_len = 0.5,
-      sil_extract_len = 0.1,
-      sil_extract_shift = 0.05;
+      sil_extract_len = 0.05,
+      sil_extract_shift = 0.025;
     po.Register("extra-silence-length", &sil_len, "the length of silence that will be "
                 "appended to the end of each waveform, in seconds.");
     po.Register("silence-search-length", &sil_search_len, "the length at the beginning "
