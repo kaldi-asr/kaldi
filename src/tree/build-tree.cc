@@ -148,11 +148,6 @@ EventMap *BuildTree(Questions &qopts,
          && phone_sets.size() == share_roots.size()
          && do_split.size() == phone_sets.size());
 
-  for (size_t i = 0; i < do_split.size(); i++)
-    if (do_split[i]) // you could remove this check and the code would still
-      // work.
-      KALDI_ASSERT(share_roots[i] && "We don't support splitting non-shared roots.");
-
   // the inputs will be further checked in GetStubMap.
   int32 num_leaves = 0;  // allocator for leaves.
   

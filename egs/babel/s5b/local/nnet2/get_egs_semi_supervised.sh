@@ -105,7 +105,7 @@ mkdir -p $dir/log
 echo $nj_sup > $dir/num_jobs_sup
 echo $nj_unsup > $dir/num_jobs_unsup
 
-cp $alidir/tree $dir   # best_path_ali.*.gz must be converted to this tree if needed
+cp $alidir/tree $dir
 
 awk '{print $1}' $data_sup/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist
 
@@ -302,7 +302,7 @@ if [ $stage -le 3 ]; then
     nnet-get-weighted-egs $nnet_context_opts "${spk_vecs_opt_unsup[@]}" \
     --weight-threshold=$weight_threshold --use-frame-weights=$use_frame_weights \
     --use-frame-selection=$use_frame_selection "$feats_unsup" \
-    "ark,s,cs:gunzip -c $latdir/best_path_ali.JOB.gz | convert-ali $latdir/../final.mdl $alidir/final.mdl $dir/tree ark:- ark:- | ali-to-pdf $latdir/../final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
+    "ark,s,cs:gunzip -c $latdir/best_path_ali.JOB.gz | convert-ali $latdir/../final.mdl $alidir/final.mdl $dir/tree ark:- ark:- | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
     "ark,s,cs:gunzip -c $latdir/weights.JOB.gz |" ark:- \| \
     nnet-copy-egs ark:- $egs_list || exit 1;
 

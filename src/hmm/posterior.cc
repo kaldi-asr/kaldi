@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -136,13 +137,13 @@ bool PosteriorHolder::Read(std::istream &is) {
 }
 
 // static
-bool GauPostHolder::Write(std::ostream &os, bool binary, const T &t) {
+bool GaussPostHolder::Write(std::ostream &os, bool binary, const T &t) {
   InitKaldiOutputStream(os, binary);  // Puts binary header if binary mode.
   try {
     // We don't bother making this a one-line format.
     int32 sz = t.size();
     WriteBasicType(os, binary, sz);
-    for (GauPost::const_iterator iter = t.begin(); iter != t.end(); ++iter) {
+    for (GaussPost::const_iterator iter = t.begin(); iter != t.end(); ++iter) {
       int32 sz2 = iter->size();
       WriteBasicType(os, binary, sz2);
       for (std::vector<std::pair<int32, Vector<BaseFloat> > >::const_iterator iter2=iter->begin();
@@ -161,7 +162,7 @@ bool GauPostHolder::Write(std::ostream &os, bool binary, const T &t) {
   }
 }
 
-bool GauPostHolder::Read(std::istream &is) {
+bool GaussPostHolder::Read(std::istream &is) {
   t_.clear();
 
   bool is_binary;
@@ -175,7 +176,7 @@ bool GauPostHolder::Read(std::istream &is) {
     if (sz < 0)
       KALDI_ERR << "Reading posteriors: got negative size\n";
     t_.resize(sz);
-    for (GauPost::iterator iter = t_.begin(); iter != t_.end(); ++iter) {
+    for (GaussPost::iterator iter = t_.begin(); iter != t_.end(); ++iter) {
       int32 sz2;
       ReadBasicType(is, is_binary, &sz2);
       if (sz2 < 0)
@@ -270,6 +271,27 @@ void AlignmentToPosterior(const std::vector<int32> &ali,
   }
 }
 
+struct ComparePosteriorByPdfs {
+  const TransitionModel *tmodel_;
+  ComparePosteriorByPdfs(const TransitionModel &tmodel): tmodel_(&tmodel) {}
+  bool operator() (const std::pair<int32, BaseFloat> &a,
+                   const std::pair<int32, BaseFloat> &b) {
+    if (tmodel_->TransitionIdToPdf(a.first)
+        < tmodel_->TransitionIdToPdf(b.first))
+      return true;
+    else
+      return false;
+  }
+};
+
+void SortPosteriorByPdfs(const TransitionModel &tmodel,
+                         Posterior *post) {
+  ComparePosteriorByPdfs compare(tmodel);
+  for (size_t i = 0; i < post->size(); i++) {
+    sort((*post)[i].begin(), (*post)[i].end(), compare);
+  }
+}
+
 void ConvertPosteriorToPdfs(const TransitionModel &tmodel,
                             const Posterior &post_in,
                             Posterior *post_out) {
@@ -323,43 +345,41 @@ void ConvertPosteriorToPhones(const TransitionModel &tmodel,
 }
 
 
-void WeightSilencePost(const Posterior &post,
-                       const TransitionModel &trans_model,
+void WeightSilencePost(const TransitionModel &trans_model,
                        const ConstIntegerSet<int32> &silence_set,
                        BaseFloat silence_scale,
-                       Posterior *new_post) {
-  new_post->clear();
-  new_post->resize(post.size());
-  for (size_t i = 0; i < post.size(); i++) {
-    (*new_post)[i].reserve(post[i].size());  // more efficient.
-    for (size_t j = 0; j < post[i].size(); j++) {
-      int32 tid = post[i][j].first,
+                       Posterior *post) {
+  for (size_t i = 0; i < post->size(); i++) {
+    std::vector<std::pair<int32, BaseFloat> > this_post;
+    this_post.reserve((*post)[i].size());
+    for (size_t j = 0; j < (*post)[i].size(); j++) {
+      int32 tid = (*post)[i][j].first,
           phone = trans_model.TransitionIdToPhone(tid);
-      BaseFloat weight = post[i][j].second;
+      BaseFloat weight = (*post)[i][j].second;
       if (silence_set.count(phone) != 0) {  // is a silence.
         if (silence_scale != 0.0)
-          (*new_post)[i].push_back(std::make_pair(tid, weight*silence_scale));
+          this_post.push_back(std::make_pair(tid, weight*silence_scale));
       } else {
-        (*new_post)[i].push_back(std::make_pair(tid, weight));
+        this_post.push_back(std::make_pair(tid, weight));
       }
     }
+    (*post)[i].swap(this_post);
   }
 }
 
 
-void WeightSilencePostDistributed(const Posterior &post,
-                                  const TransitionModel &trans_model,
+void WeightSilencePostDistributed(const TransitionModel &trans_model,
                                   const ConstIntegerSet<int32> &silence_set,
                                   BaseFloat silence_scale,
-                                  Posterior *new_post) {
-  new_post->clear();
-  new_post->resize(post.size());
-  for (size_t i = 0; i < post.size(); i++) {
+                                  Posterior *post) {
+  for (size_t i = 0; i < post->size(); i++) {
+    std::vector<std::pair<int32, BaseFloat> > this_post;
+    this_post.reserve((*post)[i].size());
     BaseFloat sil_weight = 0.0, nonsil_weight = 0.0;   
-    for (size_t j = 0; j < post[i].size(); j++) {
-      int32 tid = post[i][j].first,
+    for (size_t j = 0; j < (*post)[i].size(); j++) {
+      int32 tid = (*post)[i][j].first,
           phone = trans_model.TransitionIdToPhone(tid);
-      BaseFloat weight = post[i][j].second;
+      BaseFloat weight = (*post)[i][j].second;
       if (silence_set.count(phone) != 0) sil_weight += weight;
       else nonsil_weight += weight;
     }
@@ -368,12 +388,14 @@ void WeightSilencePostDistributed(const Posterior &post,
     if (sil_weight + nonsil_weight == 0.0) continue;
     BaseFloat frame_scale = (sil_weight * silence_scale + nonsil_weight) /
                             (sil_weight + nonsil_weight);
-    if (frame_scale == 0.0) continue;
-    for (size_t j = 0; j < post[i].size(); j++) {
-      int32 tid = post[i][j].first;
-      BaseFloat weight = post[i][j].second;    
-      (*new_post)[i].push_back(std::make_pair(tid, weight * frame_scale));
+    if (frame_scale != 0.0) {
+      for (size_t j = 0; j < (*post)[i].size(); j++) {
+        int32 tid = (*post)[i][j].first;
+        BaseFloat weight = (*post)[i][j].second;    
+        this_post.push_back(std::make_pair(tid, weight * frame_scale));
+      }
     }
+    (*post)[i].swap(this_post);    
   }
 }
 

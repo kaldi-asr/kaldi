@@ -1,6 +1,7 @@
 // gmmbin/gmm-acc-stats.cc
 
 // Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -98,15 +99,23 @@ int main(int argc, char *argv[]) {
         num_done++;
         BaseFloat tot_like_this_file = 0.0, tot_weight = 0.0;
 
+        Posterior pdf_posterior;
+        ConvertPosteriorToPdfs(trans_model, posterior, &pdf_posterior);
         for (size_t i = 0; i < posterior.size(); i++) {
-          for (size_t j = 0; j < posterior[i].size(); j++) {
-            int32 tid = posterior[i][j].first,  // transition identifier.
-                pdf_id = trans_model.TransitionIdToPdf(tid);
-            BaseFloat weight = posterior[i][j].second;
-            trans_model.Accumulate(weight, tid, &transition_accs);
+          // Accumulates for GMM.
+          for (size_t j = 0; j < pdf_posterior[i].size(); j++) {
+            int32 pdf_id = pdf_posterior[i][j].first;
+            BaseFloat weight = pdf_posterior[i][j].second;
             tot_like_this_file += gmm_accs.AccumulateForGmm(am_gmm, mat.Row(i), pdf_id, weight)
                 * weight;
             tot_weight += weight;
+          }
+
+          // Accumulates for transitions.
+          for (size_t j = 0; j < posterior[i].size(); j++) {
+            int32 tid = posterior[i][j].first;
+            BaseFloat weight = posterior[i][j].second;
+            trans_model.Accumulate(weight, tid, &transition_accs);
           }
         }
         if (num_done % 50 == 0) {

@@ -22,7 +22,6 @@
 #include "lat/determinize-lattice-pruned.h"
 #include "lat/lattice-functions.h"
 #include "lat/push-lattice.h"
-#include "lat/minimize-lattice.h"
 #include "util/common-utils.h"
 #include "thread/kaldi-task-sequence.h"
 
@@ -37,63 +36,37 @@ class DeterminizeLatticeTask {
       std::string key,
       BaseFloat acoustic_scale,
       BaseFloat beam,
-      bool minimize,
       Lattice *lat,
       CompactLatticeWriter *clat_writer,
-      int32 *num_warn,
-      int32 *num_fail):
+      int32 *num_warn):
       trans_model_(&trans_model), opts_(opts), key_(key),
-      acoustic_scale_(acoustic_scale), beam_(beam), minimize_(minimize),
-      lat_(lat), clat_writer_(clat_writer), num_warn_(num_warn),
-      num_fail_(num_fail), skip_writting_(false) { }
+      acoustic_scale_(acoustic_scale), beam_(beam),
+      lat_(lat), clat_writer_(clat_writer), num_warn_(num_warn) { }
 
   void operator () () {
-    // Put word labels on the input side.
-    Invert(lat_);
-
     // We apply the acoustic scale before determinization and will undo it
     // afterward, since it can affect the result.
     fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale_), lat_);
 
-    if (!TopSort(lat_)) {
-      KALDI_WARN << "Could not topologically sort lattice: this probably means "
-          "it has bad properties e.g. epsilon cycles. Your LM or lexicon might "
-          "be broken, e.g. LM with epsilon cycles or lexicon with empty words.";
-      (*num_fail_)++;
-      skip_writting_ = true;
-
-      delete lat_;
-      lat_ = NULL;
-    } else {
-      fst::ArcSort(lat_, fst::ILabelCompare<LatticeArc>());
-
-      if (!DeterminizeLatticePhonePruned(
-              *trans_model_, lat_, beam_, &det_clat_, opts_)) {
-        KALDI_WARN << "For key " << key_ << ", determinization did not succeed"
-            "(partial output will be pruned tighter than the specified beam.)";
-        (*num_warn_)++;
-      }
-
-      delete lat_;
-      lat_ = NULL;
-
-      if (minimize_) {
-        PushCompactLatticeStrings(&det_clat_);
-        PushCompactLatticeWeights(&det_clat_);
-        MinimizeCompactLattice(&det_clat_);
-      }
-      // Invert the original acoustic scaling
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale_),
-                        &det_clat_);
+    if (!DeterminizeLatticePhonePrunedWrapper(
+            *trans_model_, lat_, beam_, &det_clat_, opts_)) {
+      KALDI_WARN << "For key " << key_ << ", determinization did not succeed"
+          "(partial output will be pruned tighter than the specified beam.)";
+      (*num_warn_)++;
     }
+
+    delete lat_;
+    lat_ = NULL;
+
+    // Invert the original acoustic scaling
+    fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale_),
+                      &det_clat_);
   }
 
   ~DeterminizeLatticeTask() {
-    if (!skip_writting_) {
-      KALDI_VLOG(2) << "Wrote lattice with " << det_clat_.NumStates()
-                    << " for key " << key_;
-      clat_writer_->Write(key_, det_clat_);
-    }
+    KALDI_VLOG(2) << "Wrote lattice with " << det_clat_.NumStates()
+                  << " for key " << key_;
+    clat_writer_->Write(key_, det_clat_);
   }
  private:
   const TransitionModel *trans_model_;
@@ -101,7 +74,6 @@ class DeterminizeLatticeTask {
   std::string key_;
   BaseFloat acoustic_scale_;
   BaseFloat beam_;
-  bool minimize_;
   // The lattice we're working on. Owned locally.
   Lattice *lat_;
   // The output of our process. Will be written to clat_writer_ in the
@@ -109,8 +81,6 @@ class DeterminizeLatticeTask {
   CompactLattice det_clat_;
   CompactLatticeWriter *clat_writer_;
   int32 *num_warn_;
-  int32 *num_fail_;
-  bool skip_writting_;
 
 };
 
@@ -139,7 +109,6 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
     BaseFloat beam = 10.0;
-    bool minimize = false;
 
     TaskSequencerConfig sequencer_opts;
     fst::DeterminizeLatticePhonePrunedOptions determinize_opts;
@@ -148,8 +117,6 @@ int main(int argc, char *argv[]) {
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic"
                 " likelihoods.");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling].");
-    po.Register("minimize", &minimize, "If true, push and minimize after "
-                "determinization");
     determinize_opts.Register(&po);
     sequencer_opts.Register(&po);
     po.Read(argc, argv);
@@ -175,7 +142,7 @@ int main(int argc, char *argv[]) {
 
     TaskSequencer<DeterminizeLatticeTask> sequencer(sequencer_opts);
 
-    int32 n_done = 0, n_warn = 0, n_fail = 0;
+    int32 n_done = 0, n_warn = 0;
 
     if (acoustic_scale == 0.0)
       KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
@@ -189,8 +156,8 @@ int main(int argc, char *argv[]) {
       KALDI_VLOG(2) << "Processing lattice " << key;
 
       DeterminizeLatticeTask *task = new DeterminizeLatticeTask(
-          trans_model, determinize_opts, key, acoustic_scale, beam, minimize,
-          lat, &compact_lat_writer, &n_warn, &n_fail);
+          trans_model, determinize_opts, key, acoustic_scale, beam,
+          lat, &compact_lat_writer, &n_warn);
       sequencer.Run(task);
 
       n_done++;
@@ -198,7 +165,7 @@ int main(int argc, char *argv[]) {
     sequencer.Wait();
     KALDI_LOG << "Done " << n_done << " lattices, determinization finished "
               << "earlier than specified by the beam on " << n_warn << " of "
-              << "these, failed for " << n_fail;
+              << "these.";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

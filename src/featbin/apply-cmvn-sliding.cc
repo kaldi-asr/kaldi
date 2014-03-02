@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
         continue;
       }
       Matrix<BaseFloat> cmvn_feat(feat.NumRows(),
-                                  feat.NumCols());
+                                  feat.NumCols(), kUndefined);
 
       SlidingWindowCmn(opts, feat, &cmvn_feat);
       

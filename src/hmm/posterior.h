@@ -1,7 +1,8 @@
 // hmm/posterior.h
 
 // Copyright 2009-2011     Microsoft Corporation
-//                2013     Johns Hopkins University (author: Daniel Povey)
+//           2013-2014     Johns Hopkins University (author: Daniel Povey)
+//                2014     Guoguo Chen
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -40,10 +41,14 @@ namespace kaldi {
 /// is a probability (typically between zero and one).
 typedef std::vector<std::vector<std::pair<int32, BaseFloat> > > Posterior;
 
-/// GauPost is a typedef for storing Gaussian-level posteriors for an utterance.
+/// GaussPost is a typedef for storing Gaussian-level posteriors for an utterance.
 /// the "int32" is a transition-id, and the Vector<BaseFloat> is a vector of
 /// Gaussian posteriors.
-typedef std::vector<std::vector<std::pair<int32, Vector<BaseFloat> > > > GauPost;
+/// WARNING: We changed "int32" from transition-id to pdf-id, and the change is
+/// applied for all programs using GaussPost. This is for efficiency purpose. We
+/// also changed the name slightly from GauPost to GaussPost to reduce the
+/// chance that the change will go un-noticed in downstream code.
+typedef std::vector<std::vector<std::pair<int32, Vector<BaseFloat> > > > GaussPost;
 
 
 // PosteriorHolder is a holder for Posterior, which is
@@ -75,19 +80,19 @@ class PosteriorHolder {
 };
 
 
-// GauPostHolder is a holder for GauPost, which is
+// GaussPostHolder is a holder for GaussPost, which is
 // std::vector<std::vector<std::pair<int32, Vector<BaseFloat> > > >
 // This is used for storing posteriors of transition id's for an
 // utterance.
-class GauPostHolder {
+class GaussPostHolder {
  public:
-  typedef GauPost T;
+  typedef GaussPost T;
 
-  GauPostHolder() { }
+  GaussPostHolder() { }
 
   static bool Write(std::ostream &os, bool binary, const T &t);  
 
-  void Clear() {  GauPost tmp;  std::swap(tmp, t_); }
+  void Clear() {  GaussPost tmp;  std::swap(tmp, t_); }
 
   // Reads into the holder.
   bool Read(std::istream &is);
@@ -99,7 +104,7 @@ class GauPostHolder {
   const T &Value() const { return t_; }
   
  private:
-  KALDI_DISALLOW_COPY_AND_ASSIGN(GauPostHolder);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(GaussPostHolder);
   T t_;
 };
 
@@ -112,10 +117,10 @@ typedef SequentialTableReader<PosteriorHolder> SequentialPosteriorReader;
 typedef RandomAccessTableReader<PosteriorHolder> RandomAccessPosteriorReader;
 
 
-// typedef std::vector<std::vector<std::pair<int32, Vector<BaseFloat> > > > GauPost;
-typedef TableWriter<GauPostHolder> GauPostWriter;
-typedef SequentialTableReader<GauPostHolder> SequentialGauPostReader;
-typedef RandomAccessTableReader<GauPostHolder> RandomAccessGauPostReader;
+// typedef std::vector<std::vector<std::pair<int32, Vector<BaseFloat> > > > GaussPost;
+typedef TableWriter<GaussPostHolder> GaussPostWriter;
+typedef SequentialTableReader<GaussPostHolder> SequentialGaussPostReader;
+typedef RandomAccessTableReader<GaussPostHolder> RandomAccessGaussPostReader;
 
 
 /// Scales the BaseFloat (weight) element in the posterior entries.
@@ -146,6 +151,11 @@ int32 MergePosteriors(const Posterior &post1,
 void AlignmentToPosterior(const std::vector<int32> &ali,
                           Posterior *post);
 
+/// Sorts posterior entries so that transition-ids with same pdf-id are next to
+/// each other.
+void SortPosteriorByPdfs(const TransitionModel &tmodel,
+                         Posterior *post);
+
 /// Converts a posterior over transition-ids to be a posterior
 /// over pdf-ids.
 void ConvertPosteriorToPdfs(const TransitionModel &tmodel,
@@ -160,21 +170,23 @@ void ConvertPosteriorToPhones(const TransitionModel &tmodel,
 
 /// Weight any silence phones in the posterior (i.e. any phones
 /// in the set "silence_set" by scale "silence_scale".
-void WeightSilencePost(const Posterior &post,
-                       const TransitionModel &trans_model,
+/// The interface was changed in Feb 2014 to do the modification
+/// "in-place" rather than having separate input and output.
+void WeightSilencePost(const TransitionModel &trans_model,
                        const ConstIntegerSet<int32> &silence_set,
                        BaseFloat silence_scale,
-                       Posterior *new_post);
+                       Posterior *post);
 
 /// This is similar to WeightSilencePost, except that on each frame it
 /// works out the amount by which the overall posterior would be reduced,
 /// and scales down everything on that frame by the same amount.  It
 /// has the effect that frames that are mostly silence get down-weighted.
-void WeightSilencePostDistributed(const Posterior &post,
-                                  const TransitionModel &trans_model,
+/// The interface was changed in Feb 2014 to do the modification
+/// "in-place" rather than having separate input and output.
+void WeightSilencePostDistributed(const TransitionModel &trans_model,
                                   const ConstIntegerSet<int32> &silence_set,
                                   BaseFloat silence_scale,
-                                  Posterior *new_post);
+                                  Posterior *post);
 
 /// @} end "addtogroup posterior_group"
 
