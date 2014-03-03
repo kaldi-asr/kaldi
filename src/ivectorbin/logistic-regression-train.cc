@@ -99,9 +99,8 @@ int main(int argc, char *argv[]) {
     xs.Row(i).CopyFromVec(vectors[i]);
   }
   
-  Matrix<double> weights(num_classes, xs.NumCols());
   LogisticRegression classifier = LogisticRegression();
-  classifier.Train(xs, ys, &weights, config.max_steps);
+  classifier.Train(xs, ys, config);
   WriteKaldiObject(classifier, model_out, binary);
 
   return 0;

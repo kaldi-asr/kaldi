@@ -20,7 +20,6 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "matrix/matrix-lib.h"
-//#include "thread/kaldi-task-sequence.h"
 #include <numeric>
 
 
@@ -28,10 +27,13 @@ namespace kaldi {
 
 struct LogisticRegressionConfig {
   int32 max_steps;
-  LogisticRegressionConfig(): max_steps(20) { }
+  double normalizer;
+  LogisticRegressionConfig(): max_steps(20), normalizer(0.01) { }
   void Register(OptionsItf *po) {
     po->Register("max-steps", &max_steps,
                  "Maximum steps in L-BFGS.");
+    po->Register("normalizer", &normalizer,
+                 "Coefficient for L2 regularization.");
   }
 };
 
@@ -39,31 +41,40 @@ class LogisticRegression {
   public:
     // xs and ys are the training data. Each row of xs is a vector
     // corresponding to the class label in the same row of ys. 
-    // weights contains the trained parameters.
   void Train(const Matrix<double> &xs, const std::vector<int32> &ys,
-             Matrix<double> *weights, int32 max_steps);
+             const LogisticRegressionConfig &conf);
  
     // Calculates the posterior of the class label of input xs.
     // The rows of posteriors corresponds to the rows of xs: the 
     // individual data points to be evaluated. The columns of 
     // posteriors are the integer class labels.
     void GetPosteriors(const Matrix<double> &xs, Matrix<double> *posteriors);
- 
+
+    // Calculates the posterior of the class label of input x.
+    // The indices of posteriors are the class labels.
+    void GetPosteriors(const Vector<double> &x, Vector<double> *posteriors);
+
+    void Write(std::ostream &os, bool binary) const;
+    void Read(std::istream &is, bool binary);
+
+protected:
+    void friend UnitTestTrain();
+    void friend UnitTestPosteriors();
     // Performs a step in the L-BFGS. This is mostly used internally
     // By Train() and for testing.   
     double DoStep(const Matrix<double> &xs, 
     Matrix<double> *xw, const std::vector<int32> &ys, 
-                OptimizeLbfgs<double> *lbfgs);
+                OptimizeLbfgs<double> *lbfgs,
+                double normalizer);
 
     // Returns the objective function given the training data, xs, ys.
-    // The gradient is also calculated, and returned in grad.
+    // The gradient is also calculated, and returned in grad. Uses
+    // L2 regularization.
     double GetObjfAndGrad(const Matrix<double> &xs, 
                          const std::vector<int32> &ys, 
                          const Matrix<double> &xw, 
-                         Matrix<double> *grad);
-
-    void Write(std::ostream &os, bool binary) const;
-    void Read(std::istream &is, bool binary);
+                         Matrix<double> *grad,
+                         double normalizer);
     
     // Sets the weights. This is generalyl used for testing.
     void SetWeights(const Matrix<double> &weights);

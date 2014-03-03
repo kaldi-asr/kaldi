@@ -24,21 +24,22 @@ namespace kaldi {
 
 void LogisticRegression::Train(const Matrix<double> &xs, 
                                const std::vector<int32> &ys,
-                               Matrix<double> *weights, int32 max_steps) {
+                               const LogisticRegressionConfig &conf) {
 
   int32 xs_num_rows = xs.NumRows(), xs_num_cols = xs.NumCols(),
-                     w_num_rows = weights->NumRows(), 
-                     w_num_cols = weights->NumCols(),
                      num_ys = ys.size();
-  KALDI_ASSERT(xs_num_cols == w_num_cols);
   KALDI_ASSERT(xs_num_rows == num_ys);
+  int32 max_steps = conf.max_steps;
+  double normalizer = conf.normalizer;
   
   // Adding on extra column for each x to handle the prior.
   Matrix<double> xs_with_prior(xs_num_rows, xs_num_cols + 1);
   SubMatrix<double> sub_xs(xs_with_prior, 0, xs_num_rows, 0, xs_num_cols);
   sub_xs.CopyFromMat(xs);
-  Matrix<double> xw(xs_num_rows, w_num_rows);
-  weights_.Resize(w_num_rows, w_num_cols + 1);
+
+  int32 num_classes = *std::max_element(ys.begin(), ys.end()) + 1;
+  weights_.Resize(num_classes, xs_num_cols + 1);
+  Matrix<double> xw(xs_num_rows, num_classes);
 
   // Adding on extra column for each x to handle the prior.
   for (int32 i = 0; i < xs_num_rows; i++) {
@@ -56,15 +57,11 @@ void LogisticRegression::Train(const Matrix<double> &xs,
   OptimizeLbfgs<double> lbfgs(init_w, lbfgs_opts);
 
   for (int32 step = 0; step < max_steps; step++) {
-    DoStep(xs_with_prior, &xw, ys, &lbfgs);
+    DoStep(xs_with_prior, &xw, ys, &lbfgs, normalizer);
   }
 
   Vector<double> best_w(lbfgs.GetValue());
   weights_.CopyRowsFromVec(best_w);
-  SubMatrix<double> trained_weights(weights_, 0, w_num_rows, 
-                                    0, xs_num_cols);
-  weights->SetZero();
-  weights->CopyFromMat(trained_weights);
 }
 
 void LogisticRegression::GetPosteriors(const Matrix<double> &xs,
@@ -89,9 +86,27 @@ void LogisticRegression::GetPosteriors(const Matrix<double> &xs,
   }
 }
 
+void LogisticRegression::GetPosteriors(const Vector<double> &x,
+                   Vector<double> *posteriors) {
+  int32 x_dim = x.Dim();
+  
+  posteriors->Resize(weights_.NumRows());
+
+  Vector<double> x_with_prior(x_dim + 1);
+  SubVector<double> sub_x(x_with_prior, 0, x_dim);
+  sub_x.CopyFromVec(x);
+  // Adding on extra element to handle the prior
+  x_with_prior(x_dim) = 1.0;
+  
+  posteriors->AddMatVec(1.0, weights_, kNoTrans, x_with_prior, kNoTrans);
+  posteriors->ApplySoftMax();
+  posteriors->ApplyLog();
+}
+
 double LogisticRegression::DoStep(const Matrix<double> &xs,
     Matrix<double> *xw,
-    const std::vector<int32> &ys, OptimizeLbfgs<double> *lbfgs) {
+    const std::vector<int32> &ys, OptimizeLbfgs<double> *lbfgs,
+    double normalizer) {
   Matrix<double> gradient(weights_.NumRows(), weights_.NumCols());
   // Vector form of the above matrix
   Vector<double> grad_vec(weights_.NumRows() * weights_.NumCols());
@@ -101,7 +116,7 @@ double LogisticRegression::DoStep(const Matrix<double> &xs,
   xw->AddMatMat(1.0, xs, kNoTrans, weights_, kTrans, 0.0);
 
   // Calculate both the gradient and the objective function.
-  double objf = GetObjfAndGrad(xs, ys, *xw, &gradient);
+  double objf = GetObjfAndGrad(xs, ys, *xw, &gradient, normalizer);
 
   // Convert gradient (a matrix) into a vector of size
   // gradient.NumCols * gradient.NumRows.
@@ -118,16 +133,17 @@ double LogisticRegression::DoStep(const Matrix<double> &xs,
 }
 
 double LogisticRegression::GetObjfAndGrad(const Matrix<double> &xs,
-  const std::vector<int32> &ys, 
-  const Matrix<double> &xw,
-  Matrix<double> *grad) {
+  const std::vector<int32> &ys, const Matrix<double> &xw,
+  Matrix<double> *grad, double normalizer) {
   double objf = 0.0;
   // For each training example class
   for (int32 i = 0; i < ys.size(); i++) {
     Vector<double> row(xw.NumCols());
     row.CopyFromVec(xw.Row(i));
     row.ApplySoftMax();
-    objf += std::log(std::max(row(ys[i]), 1.0e-20));
+    //objf += std::log(std::max(row(ys[i]), 1.0e-20));
+    objf += std::log(std::max(row(ys[i]), 1.0e-20)) 
+            - 0.5 * normalizer * TraceMatMat(weights_, weights_, kTrans);
     SubVector<double> x = xs.Row(i);
     // Iterate over the class labels
     for (int32 k = 0; k < weights_.NumRows(); k++) {
@@ -140,6 +156,7 @@ double LogisticRegression::GetObjfAndGrad(const Matrix<double> &xs,
       }
     }
   }
+  grad->AddMat(-1.0 * normalizer, weights_);
   grad->Scale(1.0/ys.size());
   return objf/ys.size();
 }
