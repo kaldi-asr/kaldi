@@ -45,8 +45,8 @@ SingleUtteranceGmmDecoder::SingleUtteranceGmmDecoder(
 }
     
 
-/** Advance the first-pass decoding as far as we can. */
-void SingleUtteranceGmmDecoder::AdvanceFirstPass() {
+// Advance the decoding as far as we can, and possibly estimate fMLLR.
+void SingleUtteranceGmmDecoder::AdvanceDecoding() {
   
   const AmDiagGmm &am_gmm = (HaveTransform() ? models_.GetModel() :
                              models_.GetOnlineAlignmentModel());
@@ -59,10 +59,30 @@ void SingleUtteranceGmmDecoder::AdvanceFirstPass() {
                                          config_.acoustic_scale,
                                          feature_pipeline_);
 
+  int32 old_frames = decoder_.NumFramesDecoded();
+  
   // This will decode as many frames as are currently available.
-  decoder_.DecodeNonblocking(&decodable);  
+  decoder_.DecodeNonblocking(&decodable);
+
+  
+  {  // possibly estimate fMLLR.
+    int32 new_frames = decoder_.NumFramesDecoded();
+    BaseFloat frame_shift = feature_pipeline_->FrameShiftInSeconds();
+    // if the original adaptation state (at utterance-start) had no transform,
+    // then this means it's the first utt of the speaker... even if not, if we
+    // don't have a transform it probably makes sense to treat it as the 1st utt
+    // of the speaker, i.e. to do fMLLR adaptation sooner.
+    bool is_first_utterance_of_speaker =
+        (orig_adaptation_state_.transform.NumRows() == 0);
+    bool end_of_utterance = false;
+    if (config_.adaptation_policy_opts.DoAdapt(old_frames * frame_shift,
+                                               new_frames * frame_shift,
+                                               is_first_utterance_of_speaker))
+      this->EstimateFmllr(end_of_utterance);
+  }
 }
 
+// gets Gaussian posteriors for purposes of fMLLR estimation.
 // We exclude the silence phones from the Gaussian posteriors.
 bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
                                                       GaussPost *gpost) {
@@ -87,24 +107,32 @@ bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
   
   KALDI_ASSERT(config_.fmllr_lattice_beam > 0.0);
   PruneLattice(config_.fmllr_lattice_beam, &raw_lat);
+
+#if 1 // Do determinization. 
   Lattice det_lat; // lattice-determinized lattice-- represent this as Lattice
                    // not CompactLattice, as LatticeForwardBackward() does not
                    // accept CompactLattice.
 
 
-  // TODO: after Guoguo finishes wrapper, convert to phone version.
-  // Ignore the return status of DeterminizeLatticePruned; it doesn't matter
-  // much if determinization finishes sooner than the beam.
+  TopSortLatticeIfNeeded(&det_lat);
+  fst::Invert(&raw_lat); // want to determinize on words.
+  fst::ILabelCompare<kaldi::LatticeArc> ilabel_comp;
+  fst::ArcSort(&raw_lat, ilabel_comp); // improves efficiency of determinization
+  
   fst::DeterminizeLatticePruned(raw_lat,
                                 double(config_.fmllr_lattice_beam),
                                 &det_lat);
+
+  fst::Invert(&det_lat); // invert back.
   
   if (det_lat.NumStates() == 0) {
     // Do nothing if the lattice is empty.  This should not happen.
     KALDI_WARN << "Got empty lattice.  Not estimating fMLLR.";
     return false;
   }
-  
+#else
+  Lattice &det_lat = raw_lat; // Don't determinize.
+#endif
   TopSortLatticeIfNeeded(&det_lat);
   
   // Note: the acoustic scale we use here is whatever we decoded with.
@@ -146,7 +174,7 @@ bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
     }
   }
   KALDI_VLOG(3) << "Average likelihood weighted by posterior was "
-                << (tot_like / tot_weight) << " over" << tot_weight
+                << (tot_like / tot_weight) << " over " << tot_weight
                 << " frames (after downweighting silence).";  
   return true;
 }
@@ -246,17 +274,63 @@ SingleUtteranceGmmDecoder::~SingleUtteranceGmmDecoder() {
   delete feature_pipeline_;
 }
 
+
+/**
+   There is a potential efficiency bottleneck here: each time we process a chunk
+   of data we call EndpointDetected(), which calls GetBestPath().  This makes
+   the whole decodinng algorithm quadratic in the length of the utterance
+   (typically for dialog-type applications we'll limit the maximum length we
+   process somehow, so this might not be a huge problem).  If this turns out to
+   be a problem in practice, we can reorganize this code a bit, so that it uses
+   only a fixed-length trailing piece of the best path, e.g. the last second or
+   so.  It would be possible to modify the GetBestPath function of the decoder
+   to support this efficiently.
+ */
 bool SingleUtteranceGmmDecoder::EndpointDetected(
-    const OnlineEndpointConfig &config) const {
+    const OnlineEndpointConfig &config) {
   Lattice best_path;
-  const bool end_of_utterance = false;
-  if (decoder_.NumFramesDecoded() == 0)
-    return false;
-  decoder_.GetBestPath(&best_path, end_of_utterance);
+  if (decoder_.NumFramesDecoded() == 0) return false;
+
+  int32 best_tid = decoder_.GetBestTransitionId();
+  BaseFloat frame_shift = feature_pipeline_->FrameShiftInSeconds(),
+      final_relative_cost = decoder_.FinalRelativeCost();
+
   const TransitionModel &tmodel = models_.GetTransitionModel();
-  return kaldi::EndpointDetected(tmodel, best_path, config,
-                                 feature_pipeline_->FrameShiftInSeconds(),
-                                 decoder_.FinalRelativeCost());
+
+  bool possible =
+      EndpointPossible(tmodel, config, best_tid, 
+                       decoder_.NumFramesDecoded(),
+                       frame_shift, final_relative_cost);
+
+  // the randomness relates to self-testing.
+  if (!possible && rand() % 20 != 0)
+    return false;
+  
+  decoder_.GetBestPathFast(&best_path);
+  bool ans = kaldi::EndpointDetected(tmodel, best_path, config,
+                                     frame_shift, final_relative_cost);
+  if (ans && !possible) {
+    // this should not happen
+    KALDI_WARN << "Inconsistency detected in endpointing (code error)";
+  }
+  {  // self-test GetBestTransitionId().
+    std::vector<int32> transitions;
+    fst::GetLinearSymbolSequence<LatticeArc,int32>(best_path, &transitions,
+                                                   NULL, NULL);
+    if (transitions.back() != best_tid) {
+      KALDI_WARN << "Inconsistency detected between GetBestPathFast and "
+                 << "GetBestTransitionId()";
+      Lattice best_path_exact;
+      decoder_.GetBestPath(&best_path_exact);
+      std::vector<int32> transitions_exact;
+      fst::GetLinearSymbolSequence<LatticeArc,int32>(best_path_exact,
+                                                     &transitions_exact,
+                                                     NULL, NULL);
+      if (transitions_exact.back() != best_tid)
+        KALDI_WARN << "Also inconsistent with exact best-path.";
+    }
+  }
+  return ans;
 }
 
 void SingleUtteranceGmmDecoder::GetLattice(bool rescore_if_needed,
@@ -276,10 +350,10 @@ void SingleUtteranceGmmDecoder::GetLattice(bool rescore_if_needed,
   }
   PruneLattice(lat_beam, &lat);
 
-  TopSortLatticeIfNeeded(&lat);
-  Invert(&lat);
-  // TODO: after Guoguo finishes wrapper, convert to phone version.
-  fst::DeterminizeLatticePruned(lat, lat_beam, clat);
+  DeterminizeLatticePhonePrunedWrapper(models_.GetTransitionModel(),
+                                       &lat, lat_beam, clat,
+                                       config_.faster_decoder_opts.det_opts);
+  
 }
 
 OnlineGmmDecodingModels::OnlineGmmDecodingModels(
@@ -350,5 +424,37 @@ const AmDiagGmm &OnlineGmmDecodingModels::GetFinalModel() const {
 const BasisFmllrEstimate &OnlineGmmDecodingModels::GetFmllrBasis() const {
   return fmllr_basis_;  
 }
+
+
+void OnlineGmmDecodingAdaptationPolicyConfig::Check() const {
+  KALDI_ASSERT(adaptation_first_utt_delay > 0.0 &&
+               adaptation_first_utt_ratio > 1.0);
+  KALDI_ASSERT(adaptation_delay > 0.0 &&
+               adaptation_ratio > 1.0);
+}
+
+bool OnlineGmmDecodingAdaptationPolicyConfig::DoAdapt(
+    BaseFloat chunk_begin_secs,
+    BaseFloat chunk_end_secs,
+    bool is_first_utterance) const {
+  Check();
+  if (is_first_utterance) {
+    // We aim to return true if a member of the sequence
+    // ( adaptation_first_utt_delay * adaptation_first_utt_ratio^n )
+    // for  n = 0, 1, 2, ...
+    // is in the range [ chunk_begin_secs, chunk_end_secs ).
+    BaseFloat delay = adaptation_first_utt_delay;
+    while (delay < chunk_begin_secs)
+      delay *= adaptation_first_utt_ratio;
+    return (delay < chunk_end_secs);
+  } else {
+    // as above, but remove "first_utt".
+    BaseFloat delay = adaptation_delay;
+    while (delay < chunk_begin_secs)
+      delay *= adaptation_ratio;
+    return (delay < chunk_end_secs);
+  }
+}
+
 
 }  // namespace kaldi

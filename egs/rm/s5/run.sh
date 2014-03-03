@@ -161,7 +161,7 @@ steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_mmi/decode2
 
 # demonstration script for online decoding.
-#local/run_online.sh
+#local/run_online_decoding.sh
 
 
 

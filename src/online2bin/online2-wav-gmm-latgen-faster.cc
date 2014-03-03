@@ -97,16 +97,11 @@ int main(int argc, char *argv[]) {
     OnlineFeaturePipelineCommandLineConfig feature_cmdline_config;
     OnlineGmmDecodingConfig decode_config;
 
-    // For first utterance, re-estimate fMLLR every two seconds.
-    int32 fmllr_interval_first_utt = 200;
     BaseFloat chunk_length_secs = 0.05;
     bool do_endpointing = false;
 
     po.Register("chunk-length", &chunk_length_secs,
                 "Length of chunk size in seconds, that we process.");
-    po.Register("fmllr-interval-first-utt", &fmllr_interval_first_utt,
-                "Interval in frames at which we re-estimate fMLLR for "
-                "the first utterance of each speaker");
     po.Register("word-symbol-table", &word_syms_rxfilename,
                 "Symbol table for words [for debug output]");
     po.Register("do-endpointing", &do_endpointing,
@@ -144,8 +139,8 @@ int main(int argc, char *argv[]) {
                   << word_syms_rxfilename;
     
     int32 num_done = 0, num_err = 0;
-    double tot_like;
-    int64 num_frames;
+    double tot_like = 0.0;
+    int64 num_frames = 0;
    
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessTableReader<WaveHolder> wav_reader(wav_rspecifier);
@@ -184,7 +179,7 @@ int main(int argc, char *argv[]) {
           if (this_num_samp > data.Dim() - samp_offset)
             this_num_samp = data.Dim() - samp_offset;
           SubVector<BaseFloat> wave_part(data, samp_offset, this_num_samp);
-          int32 old_frames_ready = decoder.FeaturePipeline().NumFramesReady();
+
           decoder.FeaturePipeline().AcceptWaveform(wave_data.SampFreq(),
                                                    wave_part);
 
@@ -193,17 +188,10 @@ int main(int argc, char *argv[]) {
 
           if (this_num_samp == data.Dim() - samp_offset)  // no more input.
             decoder.FeaturePipeline().InputFinished();  // flush out last frames
-          decoder.AdvanceFirstPass();
-            
-          int32 new_frames_ready = decoder.FeaturePipeline().NumFramesReady();
-          bool end_of_utterance = false;
-          if (i == 0 &&
-              old_frames_ready / fmllr_interval_first_utt !=
-              new_frames_ready / fmllr_interval_first_utt)
-            decoder.EstimateFmllr(end_of_utterance);
-            
+          decoder.AdvanceDecoding();
+                      
           samp_offset += this_num_samp;
-
+          
           if (do_endpointing && decoder.EndpointDetected(endpoint_config))
             break;
         }

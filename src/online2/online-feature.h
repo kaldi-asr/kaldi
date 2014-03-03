@@ -162,7 +162,8 @@ struct OnlineCmvnOptions {
   bool normalize_variance;
 
   int32 modulus; // not configurable from command line, relates to how the class
-                 // computes the cmvn internally.
+                 // computes the cmvn internally.  smaller->more time-efficient
+                 // but less memory-efficient.  Must be >= 1.
 
   OnlineCmvnOptions():
       cmn_window(600),
@@ -170,7 +171,7 @@ struct OnlineCmvnOptions {
       global_frames(200),
       normalize_mean(true),
       normalize_variance(false),
-      modulus(10) { }
+      modulus(5) { }
 
   void Check() {
     KALDI_ASSERT(speaker_frames <= cmn_window && global_frames <= speaker_frames

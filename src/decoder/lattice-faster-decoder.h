@@ -50,6 +50,7 @@ struct LatticeFasterDecoderConfig {
   // LatticeFasterDecoder class itself, but by the code that calls it, for
   // example in the function DecodeUtteranceLatticeFaster.
   fst::DeterminizeLatticePhonePrunedOptions det_opts;
+  
   LatticeFasterDecoderConfig(): beam(16.0),
                                 max_active(std::numeric_limits<int32>::max()),
                                 min_active(200),
@@ -112,7 +113,7 @@ class LatticeFasterDecoder {
   LatticeFasterDecoderConfig GetOptions() {
     return config_;
   }
-
+  
   ~LatticeFasterDecoder();
 
   /// Decodes until there are no more frames left in the "decodable" object..
@@ -128,30 +129,50 @@ class LatticeFasterDecoder {
     return FinalRelativeCost() != std::numeric_limits<BaseFloat>::infinity();
   }
 
-  // Outputs an FST corresponding to the single best path
-  // through the lattice.  Returns true if result is nonempty
-  // (using the return status is deprecated, it will become void).
-  // If "use_final_probs" is true AND we reached the final-state
-  // of the graph then it will include those as final-probs, else
-  // it will treat all final-probs as one.
-  bool GetBestPath(fst::MutableFst<LatticeArc> *ofst,
+  /// Outputs an FST corresponding to the single best path
+  /// through the lattice.  Returns true if result is nonempty
+  /// (using the return status is deprecated, it will become void).
+  /// If "use_final_probs" is true AND we reached the final-state
+  /// of the graph then it will include those as final-probs, else
+  /// it will treat all final-probs as one.
+  bool GetBestPath(Lattice *ofst,
                    bool use_final_probs = true) const;
-  
 
-  // Outputs an FST corresponding to the raw, state-level
-  // tracebacks.  Returns true if result is nonempty.
-  // If "use_final_probs" is true AND we reached the final-state
-  // of the graph then it will include those as final-probs, else
-  // it will treat all final-probs as one.
+
+  /// This version of GetBestPath is faster than GetBestPath (it uses the
+  /// "extra_cost" field of the tokens to improve the speed) but for reasons
+  /// related to laziness in how we keep the "extra_cost" field updated (relates
+  /// to config_.prune_scale), we cannot guarantee that the path it returns will
+  /// be the very best one.  This version does not support use_final_probs =
+  /// true, it is like calling GetBestPath with use_final_probs = false.  The
+  /// path returned will be quite close in likelihood to the best path,
+  /// differing by up to config_.lattice_beam * config_.prune_scale or a small
+  /// multiple thereof.  It's not const for technical reasons (it has to call
+  /// PruneActiveTokens() for greatest efficiency, which is not const).  You can
+  /// make this more accurate by making config_.prune_scale smaller (caution:
+  /// this may slightly increase the time taken in PruneActiveTokens()).
+  bool GetBestPathFast(Lattice *ofst);
+
+  /// This function returns the final transition-id on the best path ending on
+  /// the current frame.  This is useful in endpoint detection, see ../online2/.
+  /// Will crash if NumFramesDecoded() <= 0.
+  int32 GetBestTransitionId() const;
+
+
+  /// Outputs an FST corresponding to the raw, state-level
+  /// tracebacks.  Returns true if result is nonempty.
+  /// If "use_final_probs" is true AND we reached the final-state
+  /// of the graph then it will include those as final-probs, else
+  /// it will treat all final-probs as one.
   bool GetRawLattice(Lattice *ofst,
                      bool use_final_probs = true) const;
 
-  // Outputs an FST corresponding to the lattice-determinized lattice (one path
-  // per word sequence).  Returns true if result is nonempty.
-  // If "use_final_probs" is true AND we reached the final-state
-  // of the graph then it will include those as final-probs, else
-  // it will treat all final-probs as one.  [will become deprecated,
-  // users should determinize themselves.]
+  /// Outputs an FST corresponding to the lattice-determinized lattice (one path
+  /// per word sequence).  Returns true if result is nonempty.
+  /// If "use_final_probs" is true AND we reached the final-state
+  /// of the graph then it will include those as final-probs, else
+  /// it will treat all final-probs as one.  [will become deprecated,
+  /// users should determinize themselves.]
   bool GetLattice(CompactLattice *ofst,
                   bool use_final_probs = true) const;
 
@@ -216,7 +237,7 @@ class LatticeFasterDecoder {
   // Token is what's resident in a particular state at a particular time.
   // In this decoder a Token actually contains *forward* links.
   // When first created, a Token just has the (total) cost.    We add forward
-  // links to it when we process the next frame.
+  // links from it when we process the next frame.
   struct Token {
     BaseFloat tot_cost; // would equal weight.Value()... cost up to this point.
     BaseFloat extra_cost; // >= 0.  After calling PruneForwardLinks, this equals

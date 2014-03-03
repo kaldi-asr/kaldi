@@ -187,7 +187,7 @@ class LatticeSimpleDecoder {
   // Token is what's resident in a particular state at a particular time.
   // In this decoder a Token actually contains *forward* links.
   // When first created, a Token just has the (total) cost.    We add forward
-  // links to it when we process the next frame.
+  // links from it when we process the next frame.
   struct Token {
     BaseFloat tot_cost; // would equal weight.Value()... cost up to this point.
     BaseFloat extra_cost; // >= 0.  After calling PruneForwardLinks, this equals

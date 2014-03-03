@@ -1,7 +1,7 @@
 // gmmbin/gmm-latgen-faster.cc
 
 // Copyright 2009-2012  Microsoft Corporation
-//                      Johns Hopkins University (author: Daniel Povey)
+//           2013-2014  Johns Hopkins University (author: Daniel Povey)
 //                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors

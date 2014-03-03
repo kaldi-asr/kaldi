@@ -21,6 +21,7 @@
 // limitations under the License.
 
 #include "decoder/lattice-faster-decoder.h"
+#include "lat/lattice-functions.h"
 
 namespace kaldi {
 
@@ -92,21 +93,45 @@ bool LatticeFasterDecoder::Decode(DecodableInterface *decodable) {
 }
 
 
-// Outputs an FST corresponding to the single best path
-// through the lattice.
-bool LatticeFasterDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst,
+bool LatticeFasterDecoder::GetBestPath(Lattice *olat,
                                        bool use_final_probs) const {
-  fst::VectorFst<LatticeArc> fst;
+  Lattice lat;
+  GetRawLattice(&lat, use_final_probs);
+  ShortestPath(lat, olat);
+  return (olat->NumStates() != 0);
+}
 
-  GetRawLatticePruned(&fst, use_final_probs, 0.01);
-  ShortestPath(fst, ofst);
-  if (ofst->Start() == fst::kNoStateId) {
+
+// Outputs an FST corresponding to the single best path through the lattice,
+// without considering the final-probs.
+bool LatticeFasterDecoder::GetBestPathFast(Lattice *olat) {
+
+  // we make the following call for efficiency, so the extra_cost_ variables are
+  // more accurate and more pruning is done.  This prevents the "lat" variable
+  // below from becoming a too-large FST.  The beam we give it is potentially
+  // less than config_.lattice_beam * config_.prune_scale, which will generally
+  // improve the accuracy of the best-path calculation, while providing no
+  // guarantees.
+  BaseFloat delta = 0.01,
+      beam = std::min(config_.lattice_beam * config_.prune_scale, delta);
+  PruneActiveTokens(beam);
+  
+  Lattice lat;
+  bool use_final_probs = false;
+  GetRawLatticePruned(&lat, use_final_probs, 3 * delta);
+  ShortestPath(lat, olat);
+  if (olat->Start() == fst::kNoStateId) {
+    KALDI_VLOG(2) << "Best-path failed, trying again with larger beam.";
     // Empty FST, try it again with a larger beam
-    GetRawLatticePruned(&fst, use_final_probs, 1.0);
-    ShortestPath(fst, ofst);
+    GetRawLatticePruned(&lat, use_final_probs, 1.0);
+    ShortestPath(lat, olat);
   }
-
-  return (ofst->NumStates() != 0);
+  if (olat->Start() == fst::kNoStateId) {
+    // still didn't get any best-path, just use the inefficient version.
+    // This shouldn't happen.
+    return GetBestPath(olat, use_final_probs);
+  }
+  return (olat->NumStates() != 0);
 }
 
 
@@ -156,7 +181,7 @@ bool LatticeFasterDecoder::GetRawLattice(Lattice *ofst,
     if (f == 0 && ofst->NumStates() > 0)
       ofst->SetStart(ofst->NumStates()-1);
   }
-  KALDI_VLOG(3) << "init:" << num_toks_/2 + 3 << " buckets:"
+  KALDI_VLOG(4) << "init:" << num_toks_/2 + 3 << " buckets:"
                 << tok_map.bucket_count() << " load:" << tok_map.load_factor()
                 << " max:" << tok_map.max_load_factor();
   // Now create all arcs.
@@ -236,17 +261,17 @@ bool LatticeFasterDecoder::GetRawLatticePruned(
 
   unordered_map<Token*, StateId> tok_map;
   std::queue<std::pair<Token*, int32> > tok_queue;
-  // First initialize the queue and states
+  // First initialize the queue and states.  Put the initial state on the queue;
+  // this is the last token in the list active_toks_[0].toks.
   for (Token *tok = active_toks_[0].toks; tok != NULL; tok = tok->next) {
-    if (tok->extra_cost < beam) {
+    if (tok->next == NULL) {
       tok_map[tok] = ofst->AddState();
+      ofst->SetStart(tok_map[tok]);
       std::pair<Token*, int32> tok_pair(tok, 0);  // #frame = 0
       tok_queue.push(tok_pair);
     }
-  }
-  if (ofst->NumStates() > 0)
-    ofst->SetStart(ofst->NumStates()-1);
-
+  }  
+  
   // Next create states for "good" tokens
   while (!tok_queue.empty()) {
     std::pair<Token*, int32> cur_tok_pair = tok_queue.front();
@@ -265,7 +290,7 @@ bool LatticeFasterDecoder::GetRawLatticePruned(
          l = l->next) {
       Token *next_tok = l->next_tok;
       if (next_tok->extra_cost < beam) {
-        // so both the current and the next token are good, create the arc
+        // so both the current and the next token are good; create the arc
         int32 next_frame = l->ilabel == 0 ? cur_frame : cur_frame + 1;
         StateId nextstate;
         if (tok_map.find(next_tok) == tok_map.end()) {
@@ -605,7 +630,7 @@ void LatticeFasterDecoder::PruneActiveTokens(BaseFloat delta) {
       active_toks_[f+1].must_prune_tokens = false;
     }
   }
-  KALDI_VLOG(3) << "PruneActiveTokens: pruned tokens from " << num_toks_begin
+  KALDI_VLOG(4) << "PruneActiveTokens: pruned tokens from " << num_toks_begin
                 << " to " << num_toks_;
 }
 
@@ -658,6 +683,39 @@ void LatticeFasterDecoder::ComputeFinalCosts(
   }
 }
 
+int32 LatticeFasterDecoder::GetBestTransitionId() const {
+  KALDI_ASSERT(NumFramesDecoded() > 0);
+  // We get the token list not on the last index of active_toks_, but the index
+  // before that.  The transition-ids are on the ForwardLink structure when this
+  // goes between frames, and they point in a forward direction, so to access
+  // the latest ones, we need to start from the last-but-one frame.
+  Token *tok = active_toks_[active_toks_.size() - 2].toks;
+  if (tok == NULL) {
+    KALDI_WARN << "No tokens survived."; // this is a very bad situation.
+    return 1; // This should be a valid transition-id.
+  }
+  BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
+  int32 best_tid = -1;
+  for (; tok != NULL; tok = tok->next) {
+    BaseFloat tok_cost = tok->tot_cost;
+    for (ForwardLink *link = tok->links; link != NULL; link = link->next) {
+      if (link->ilabel != 0) {  // emitting arc...
+        BaseFloat this_cost = tok_cost + link->graph_cost + link->acoustic_cost;
+        if (this_cost < best_cost) {
+          best_cost = this_cost;
+          best_tid = link->ilabel;
+        }
+      }
+    }
+  }
+  if (best_tid == -1) {
+    KALDI_WARN << "Found no transition-id";
+    return 1;
+  }
+  return best_tid;
+}
+
+
 void LatticeFasterDecoder::DecodeNonblocking(DecodableInterface *decodable,
                                              int32 max_num_frames) {
   KALDI_ASSERT(!active_toks_.empty() && !decoding_finalized_ &&
@@ -699,7 +757,7 @@ void LatticeFasterDecoder::FinalizeDecoding() {
     PruneTokensForFrame(f + 1);
   }
   PruneTokensForFrame(0);
-  KALDI_VLOG(3) << "pruned tokens from " << num_toks_begin
+  KALDI_VLOG(4) << "pruned tokens from " << num_toks_begin
                 << " to " << num_toks_;
 }
 

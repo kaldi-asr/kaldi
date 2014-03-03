@@ -167,6 +167,10 @@ struct OnlineEndpointConfig {
 };
 
 
+
+
+
+
 /// This function returns true if this set of endpointing
 /// rules thinks we should terminate decoding.  Note: in verbose
 /// mode it will print logging information when returning true.
@@ -175,6 +179,22 @@ bool EndpointDetected(const TransitionModel &tmodel,
                       const OnlineEndpointConfig &config,
                       BaseFloat frame_shift_in_seconds,
                       BaseFloat final_relative_cost);
+
+/// The purpose of this function is to do triage before
+/// getting the best-path to call EndpointDetected(), since
+/// getting the best-path costs time.  This function returns
+/// true if, given that "best_current_transition_id" is the
+/// final transition-id of the best path, and the other
+/// info provided, we *might* be at an endpoint.  Most of the
+/// time, it will return true if "best_current_transition_id"
+/// is silence.
+bool EndpointPossible(const TransitionModel &tmodel,
+                      const OnlineEndpointConfig &config,                      
+                      int32 best_current_transition_id,
+                      int32 num_frames_decoded,
+                      BaseFloat frame_shift_in_seconds,
+                      BaseFloat final_relative_cost);
+
   
 
 

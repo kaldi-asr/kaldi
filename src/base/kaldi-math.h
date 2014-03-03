@@ -101,8 +101,8 @@ inline float RandUniform() {  // random intended to be strictly between 0 and 1.
 }
 
 inline float RandGauss() {
-  return static_cast<float>(sqrt (-2 * std::log(RandUniform()))
-                            * cos(2*M_PI*RandUniform()));
+  return static_cast<float>(sqrtf (-2 * logf(RandUniform()))
+                            * cosf(2*M_PI*RandUniform()));
 }
 
 // Returns poisson-distributed random number.  Uses Knuth's algorithm.

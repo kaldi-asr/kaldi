@@ -298,7 +298,7 @@ void ConvertPosteriorToPdfs(const TransitionModel &tmodel,
   post_out->clear();
   post_out->resize(post_in.size());
   for (size_t i = 0; i < post_out->size(); i++) {
-    std::map<int32, BaseFloat> pdf_to_post;
+    unordered_map<int32, BaseFloat> pdf_to_post;
     for (size_t j = 0; j < post_in[i].size(); j++) {
       int32 tid = post_in[i][j].first,
           pdf_id = tmodel.TransitionIdToPdf(tid);
@@ -309,7 +309,7 @@ void ConvertPosteriorToPdfs(const TransitionModel &tmodel,
         pdf_to_post[pdf_id] += post;
     }
     (*post_out)[i].reserve(pdf_to_post.size());
-    for (std::map<int32, BaseFloat>::const_iterator iter =
+    for (unordered_map<int32, BaseFloat>::const_iterator iter =
              pdf_to_post.begin(); iter != pdf_to_post.end(); ++iter) {
       if (iter->second != 0.0)
         (*post_out)[i].push_back(

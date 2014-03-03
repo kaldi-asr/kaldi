@@ -332,7 +332,7 @@ double BasisFmllrEstimate::ComputeTransform(
 	  // Check auxiliary function
 	  double endObj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
 
-      KALDI_VLOG(2) << "Objective function (iter=" << iter << "): "
+      KALDI_VLOG(4) << "Objective function (iter=" << iter << "): "
                     << start_obj / spk_stats.beta_  << " -> "
                     << (endObj / spk_stats.beta_) << " over "
                     << spk_stats.beta_ << " frames";

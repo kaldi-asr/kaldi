@@ -44,12 +44,65 @@ namespace kaldi {
 /// @{
 
 
+
+/// This configuration class controls when to re-estimate the basis-fMLLR during
+/// online decoding.  The basic model is to re-estimate it on a certain time t
+/// (e.g. after 1 second) and then at a set of times forming a geometric series,
+/// e.g. 1.5, 1.5^2, etc.  We specify different configurations for the first
+/// utterance of a speaker (which requires more frequent adaptation), and for
+/// subsequent utterances.  We also re-estimate fMLLR at the end of every
+/// utterance, but this is done directly from the calling code, not by the class
+/// SingleUtteranceGmmDecoder.
+struct OnlineGmmDecodingAdaptationPolicyConfig {
+  BaseFloat adaptation_first_utt_delay;
+  BaseFloat adaptation_first_utt_ratio;
+  BaseFloat adaptation_delay;
+  BaseFloat adaptation_ratio;
+  OnlineGmmDecodingAdaptationPolicyConfig():
+      adaptation_first_utt_delay(2.0),
+      adaptation_first_utt_ratio(1.5),
+      adaptation_delay(5.0),
+      adaptation_ratio(2.0) { }
+
+  void Register(OptionsItf *po) {
+    po->Register("adaptation-first-utt-delay", &adaptation_first_utt_delay,
+                 "Delay before first basis-fMLLR adaptation for first utterance "
+                 "of each speaker");
+    po->Register("adaptation-first-utt-ratio", &adaptation_first_utt_ratio,
+                 "Ratio that controls frequency of fMLLR adaptation for first "
+                 "utterance of each speaker");
+    po->Register("adaptation-delay", &adaptation_first_utt_delay,
+                 "Delay before first basis-fMLLR adaptation for not-first "
+                 "utterances of each speaker");
+    po->Register("adaptation-ratio", &adaptation_first_utt_ratio,
+                 "Ratio that controls frequency of fMLLR adaptation for "
+                 "not-first utterances of each speaker");
+  }
+  
+  /// Check that configuration values make sense.
+  void Check() const;
+  
+  /// This function returns true if we are scheduled
+  /// to re-estimate fMLLR somewhere in the interval
+  /// [ chunk_begin_secs, chunk_end_secs ).
+  bool DoAdapt(BaseFloat chunk_begin_secs,
+               BaseFloat chunk_end_secs,
+               bool is_first_utterance) const;
+      
+};
+
+
+
+
+
 struct OnlineGmmDecodingConfig {
   BaseFloat fmllr_lattice_beam;
-
+  
   BasisFmllrOptions basis_opts; // options for basis-fMLLR adaptation.
 
   LatticeFasterDecoderConfig faster_decoder_opts;
+  
+  OnlineGmmDecodingAdaptationPolicyConfig adaptation_policy_opts;
   
   // rxfilename for model trained with online-CMN features:
   std::string online_alimdl_rxfilename;
@@ -68,9 +121,7 @@ struct OnlineGmmDecodingConfig {
   std::string silence_phones;
   BaseFloat silence_weight;
   
-  int32 adaptation_threshold; // number of frames after which we first adapt.
-                              // TODO: set this, make sure it's used (from calling code?)
-  
+
   OnlineGmmDecodingConfig():  fmllr_lattice_beam(3.0), acoustic_scale(0.1),
                               silence_weight(0.1) { }
   
@@ -80,6 +131,7 @@ struct OnlineGmmDecodingConfig {
       ParseOptions basis_po("basis", po);
       basis_opts.Register(&basis_po);
     }
+    adaptation_policy_opts.Register(po);
     faster_decoder_opts.Register(po);
     po->Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
@@ -169,8 +221,12 @@ class SingleUtteranceGmmDecoder {
 
   OnlineFeaturePipeline &FeaturePipeline() { return *feature_pipeline_; }
 
-  /// advance the first pass as far as we can.
-  void AdvanceFirstPass();
+  /// advance the decoding as far as we can.  May also estimate fMLLR after
+  /// advancing the decoding, depending on the configuration values in
+  /// config_.adaptation_policy_opts.  [Note: we expect the user will also call
+  /// EstimateFmllr() at utterance end, which should generally improve the
+  /// quality of the estimated transforms, although we don't rely on this].
+  void AdvanceDecoding();
 
   /// Returns true if we already have an fMLLR transform.  The user will
   /// already know this; the call is for convenience.  
@@ -208,7 +264,7 @@ class SingleUtteranceGmmDecoder {
 
   /// This function calls EndpointDetected from online-endpoint.h,
   /// with the required arguments.
-  bool EndpointDetected(const OnlineEndpointConfig &config) const;
+  bool EndpointDetected(const OnlineEndpointConfig &config);
 
   ~SingleUtteranceGmmDecoder();
  private:
