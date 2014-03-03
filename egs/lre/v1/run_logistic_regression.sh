@@ -10,7 +10,7 @@
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
-
+config=conf/logistic-regression.conf
 
 awk '{print $2}' data/train/utt2lang  | sort -u | \
   awk '{print $1, NR-1}' >  exp/ivectors_train/languages.txt
@@ -23,7 +23,8 @@ train_ivectors=exp/ivectors_train/ivector.scp
 classes="ark:utils/sym2int.pl -f 2 exp/ivectors_train/languages.txt data/train/utt2lang|"
 
 . path.sh
-logistic-regression-train scp:$train_ivectors "$classes" $model 2>$log
+logistic-regression-train --config=$config scp:$train_ivectors \
+                          "$classes" $model 2>$log
 
 posterior_output=posteriors
 scores=posteriors
