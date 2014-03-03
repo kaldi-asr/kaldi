@@ -141,7 +141,6 @@ double LogisticRegression::GetObjfAndGrad(const Matrix<double> &xs,
     Vector<double> row(xw.NumCols());
     row.CopyFromVec(xw.Row(i));
     row.ApplySoftMax();
-    //objf += std::log(std::max(row(ys[i]), 1.0e-20));
     objf += std::log(std::max(row(ys[i]), 1.0e-20));
     SubVector<double> x = xs.Row(i);
     // Iterate over the class labels
@@ -155,10 +154,12 @@ double LogisticRegression::GetObjfAndGrad(const Matrix<double> &xs,
       }
     }
   }
-  grad->AddMat(-1.0 * normalizer, weights_);
+  // Scale and add regularization term.
   grad->Scale(1.0/ys.size());
+  grad->AddMat(-1.0 * normalizer, weights_);
+  objf /= ys.size();
   objf -= 0.5 * normalizer * TraceMatMat(weights_, weights_, kTrans);
-  return objf/ys.size();
+  return objf;
 }
 
 void LogisticRegression::SetWeights(const Matrix<double> &weights) {
