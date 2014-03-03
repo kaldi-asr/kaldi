@@ -220,7 +220,6 @@ EOF
   # bottleneck layer; we need this to add bottleneck layer.
   cat >$dir/bnf.config <<EOF
 AffineComponentPreconditioned input-dim=$hidden_layer_dim output-dim=$bottleneck_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
-TanhComponent dim=$bottleneck_dim
 AffineComponentPreconditioned input-dim=$bottleneck_dim output-dim=$hidden_layer_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$bottleneck_stddev bias-stddev=$bias_stddev
 TanhComponent dim=$hidden_layer_dim
 EOF
