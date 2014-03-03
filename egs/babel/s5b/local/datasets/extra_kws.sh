@@ -27,6 +27,7 @@ function setup_oov_search {
   local g2p_mass=0.95
   local beam=5
   local phone_beam=4
+  #local phone_nbest=150
   local phone_nbest=-1
   local phone_cutoff=5
 
@@ -37,10 +38,10 @@ function setup_oov_search {
   local kwsdatadir=$data_dir/${extraid}_kws
 
   mkdir -p $kwsdatadir
-  cp $source_dir/kwlist*.xml $kwsdatadir
-  cp $source_dir/ecf.xml $kwsdatadir
-  cp $source_dir/utter_* $kwsdatadir
-  [ -f $source_dir/rttm ] && cp $source_dir/rttm $kwsdatadir
+
+  for file in $source_dir/rttm  $source_dir/utter_* $source_dir/kwlist*.xml $source_dir/ecf.xml ; do
+    cp -f $file $kwsdatadir
+  done
 
   kwlist=$source_dir/kwlist_outvocab.xml
   #Get the KW list
@@ -73,7 +74,7 @@ function setup_oov_search {
 
   L1_lex=data/local/lexiconp.txt
   local/kws_data_prep_proxy.sh \
-    --cmd "$decode_cmd" --nj $my_nj \
+    --cmd "$decode_cmd -pe smp 4" --nj $my_nj \
     --case-insensitive true \
     --confusion-matrix $confusion \
     --phone-cutoff $phone_cutoff \

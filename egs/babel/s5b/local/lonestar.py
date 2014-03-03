@@ -54,28 +54,44 @@ def KaldiLauncher(lo, **kwargs):
 	job.run()
 	#At this point all the .done files should exist and everything should be finalized.
 	num_failed=0;
-	time.sleep(5); #Lets wait for a while to give the shared fs time to sync
+	time.sleep(1); #Lets wait for a while to give the shared fs time to sync
+	error_pending=True
 	for logfile in logfiles:
+		import time
+		sched_rate=[0, 0.5, 1, 2, 4, 8, 15, 32 ];
+		for delay in sched_rate:
+			time.sleep(delay);
+			if os.path.isfile(logfile):
+				break;
 		if not os.path.isfile(logfile):
-			sys.stderr.write("The file " + logfile + "does not exists.\n");
+			sys.stderr.write("ERROR: " + "The following file is missing:\n")
+			sys.stderr.write("ERROR: " + "\t" + logfile + "\n")
+			sys.stderr.write("ERROR: " + "That means something went wrong, but we don't know what. Try to figure out what and fix it\n");
 			sys.exit(-1);
 	
-		lines=tail(10, logfile)
-		with_status=filter(lambda x:re.search(r'with status (\d+)', x), lines)
+		error_pending=True;
+		for delay in sched_rate:
+			time.sleep(delay);
+			
+			lines=tail(10, logfile)
+			with_status=filter(lambda x:re.search(r'with status (\d+)', x), lines)
 		
-		if len(with_status) == 0:
-			sys.stderr.write("The last line(s) of the log-file " + logfile + " does not seem"
-					" to indicate return status as expected\n");
+			if len(with_status) == 0:
+				sys.stderr.write("The last line(s) of the log-file " + logfile + " does not seem"
+						" to indicate return status as expected\n");
+			elif len(with_status) > 1:
+				sys.stderr.write("The last line(s) of the log-file " + logfile + " does seem"
+						" to indicate multiple return statuses \n");
+			else: 
+				status_re=re.search(r'with status (\d+)', with_status[0]);
+				status=status_re.group(1);
+				if status == '0':
+					error_pending=False;
+				break;
+			sys.stderr.write("INFO: Waiting for status in files, sleeping %d seconds\n" %	(delay,))
+		if error_pending:
 			num_failed+=1;
-		elif len(with_status) > 1:
-			sys.stderr.write("The last line(s) of the log-file " + logfile + " does seem"
-					" to indicate multiple return statuses \n");
-			num_failed+=1;
-		else: 
-			status_re=re.search(r'with status (\d+)', with_status[0]);
-			status=status_re.group(1);
-			if status != '0':
-				num_failed += 1;
+
 	if num_failed != 0:
 		sys.stderr.write(sys.argv[0] + ": " + str(num_failed) + "/" + str(len(logfiles)) +  " failed \n");
 		sys.stderr.write(sys.argv[0] + ": See  " + lo.logfile.replace("${PY_LAUNCHER_ID}", "*" ) + " for details\n");

@@ -347,7 +347,7 @@ if [ $stage -le $g2p_iters ]; then
   echo "$0: Applying the G2P model to wordlist $wordlist"
 
   $cmd JOB=1:$nj $dir/log/apply_p2g.JOB.log \
-    split -n l/JOB/$nj $dir/fake_word_list.txt \| \
+    cat $dir/fake_word_list.txt \| utils/split.pl -n l/JOB/$nj \| \
     g2p.py -V $var_mass --variants-number $var_counts --encoding $encoding \
       --model $dir/p2g.model.final --apply - \
     \> $dir/p2g_output.JOB || exit 1;

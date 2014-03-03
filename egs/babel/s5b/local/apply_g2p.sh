@@ -72,7 +72,7 @@ echo "Applying the G2P model to wordlist $wordlist"
 
 if [ $stage -le 0 ]; then
   $cmd JOBS=1:$nj $output/log/apply.JOBS.log \
-    split -n l/JOBS/$nj $output/wordlist.txt \| \
+    cat $output/wordlist.txt \| utils/split.pl -n l/JOBS/$nj \| \
     g2p.py -V $var_mass --variants-number $var_counts --encoding $encoding \
       --model $modeldir/g2p.model.final --apply - \
     \> $output/output.JOBS

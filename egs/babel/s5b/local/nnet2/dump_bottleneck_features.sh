@@ -84,17 +84,22 @@ if [ $stage -le 1 ]; then
 fi
 
 N0=$(cat $data/feats.scp | wc -l) 
-N1=$(cat $archivedir/raw_bnfeat_$name.*.scp | wc -l)
-if [[ "$N0" != "$N1" ]]; then
-  echo "Error happens when generating BNF for $name (Original:$N0  BNF:$N1)"
-  exit 1;
-fi
+#eval files=$archivedir/raw_bnfeat_$name.{1..$nj}.scp
+#N1=$(cat $files | wc -l)
 
 echo -n >$bnf_data/feats.scp
 # Concatenate feats.scp into bnf_data
 for n in `seq 1 $nj`; do
   cat $archivedir/raw_bnfeat_$name.$n.scp >> $bnf_data/feats.scp
 done
+
+N1=$(cat $bnf_data/feats.scp | wc -l) 
+#N1=$(cat $archivedir/raw_bnfeat_$name.[1-9].scp $archivedir/raw_bnfeat_$name.[1-9][0-9].scp | wc -l)
+if [[ "$N0" != "$N1" ]]; then
+  ls -al $archivedir/raw_bnfeat_$name.*.scp
+  echo "Error happens when generating BNF for $name (Original:$N0  BNF:$N1)"
+  exit 1;
+fi
 
 for f in segments spk2utt text utt2spk wav.scp char.stm glm kws reco2file_and_channel stm; do
   [ -e $data/$f ] && cp -r $data/$f $bnf_data/$f
