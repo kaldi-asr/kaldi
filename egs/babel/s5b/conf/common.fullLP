@@ -92,3 +92,13 @@ num_sent_gen=12000000
 num_prons=1000000
 
 minimize=true
+
+proxy_phone_beam=-1
+proxy_phone_nbest=-1
+proxy_beam=5
+proxy_nbest=500
+
+proxy_extlex_phone_beam=-1
+proxy_extlex_phone_nbest=300
+proxy_extlex_beam=-1
+proxy_extlex_nbest=-1

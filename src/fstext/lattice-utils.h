@@ -247,4 +247,4 @@ void PruneCompactLattice(
 
 #include "fstext/lattice-utils-inl.h"
 
-#endif  // KALDI_FSTEXT_LATTICE_WEIGHT_H_
+#endif  // KALDI_FSTEXT_LATTICE_UTILS_H_

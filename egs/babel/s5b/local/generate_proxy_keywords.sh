@@ -62,25 +62,44 @@ phone_start=2
 if [ $pron_probs ]; then
   phone_start=3
 fi
-cat $kwsdatadir/L2.lex $kwsdatadir/L1.lex |\
-  awk '{for(i='$phone_start'; i <= NF; i++) {print $i;}}' |\
-  sort -u | sed '1i\<eps>' | awk 'BEGIN{x=0} {print $0"\t"x; x++;}' \
-  > $kwsdatadir/phones.txt
 
-# Compiles lexicon into FST
 pron_probs_param="";
 if [ $pron_probs ]; then
   pron_probs_param="--pron-probs";
 fi
+
+ndisambig=`utils/add_lex_disambig.pl \
+  $pron_probs_param $kwsdatadir/L1.lex $kwsdatadir/L1_disambig.lex`
+ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
+( for n in `seq 0 $ndisambig`; do echo '#'$n; done ) > $kwsdatadir/disambig.txt
+
+cat $kwsdatadir/L2.lex $kwsdatadir/L1.lex |\
+  awk '{for(i='$phone_start'; i <= NF; i++) {print $i;}}' |\
+  sort -u | sed '1i\<eps>' |\
+  cat - $kwsdatadir/disambig.txt | awk 'BEGIN{x=0} {print $0"\t"x; x++;}' \
+  > $kwsdatadir/phones.txt
+
+# Compiles lexicon into FST
 cat $kwsdatadir/L2.lex |\
   utils/make_lexicon_fst.pl $pron_probs_param - |\
   fstcompile --isymbols=$kwsdatadir/phones.txt \
   --osymbols=$kwsdatadir/words.txt - |\
   fstinvert | fstarcsort --sort_type=olabel > $kwsdatadir/L2.fst
-cat $kwsdatadir/L1.lex |\
+
+phone_disambig_symbol=`grep \#0 $kwsdatadir/phones.txt | awk '{print $2}'`
+word_disambig_symbol=`grep \#0 $kwsdatadir/words.txt | awk '{print $2}'`
+phone_disambig_symbols=`grep \# $kwsdatadir/phones.txt |\
+  awk '{print $2}' | tr "\n" " "`
+word_disambig_symbols=`grep \# $kwsdatadir/words.txt |\
+  awk '{print $2}' | tr "\n" " "`
+cat $kwsdatadir/L1_disambig.lex |\
   utils/make_lexicon_fst.pl $pron_probs_param - |\
   fstcompile --isymbols=$kwsdatadir/phones.txt \
   --osymbols=$kwsdatadir/words.txt - |\
+  fstaddselfloops "echo $phone_disambig_symbol |" \
+  "echo $word_disambig_symbol |" |\
+  fstdeterminize | fstrmsymbols "echo $phone_disambig_symbols|" |\
+  fstrmsymbols --remove-from-output=true "echo $word_disambig_symbols|" |\
   fstarcsort --sort_type=ilabel > $kwsdatadir/L1.fst
 
 # Compiles E.fst
