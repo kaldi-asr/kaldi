@@ -263,7 +263,9 @@ bool DeterminizeLatticePhonePruned(
       = DeterminizeLatticePhonePrunedOptions());
 
 /** This function is a wrapper of DeterminizeLatticePhonePruned() that works for
-    Lattice type FSTs. Unlike other determinization routines, the function
+    Lattice type FSTs.  It simplifies the calling process by calling
+    TopSort() Invert() and ArcSort() for you.
+    Unlike other determinization routines, the function
     requires "ifst" to have transition-id's on the input side and words on the
     output side.
 */

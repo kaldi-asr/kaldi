@@ -463,7 +463,7 @@ template<typename Real> void CuVectorUnitTestApplyExp() {
   vector.ApplyExp();
   for(int32 j = 0; j < dim; j++) {
     //std::cout<<"diff is "<<exp(vector2(j))-vector(j)<<std::endl;;
-    KALDI_ASSERT(abs(exp(vector2(j))-vector(j)) < 0.000001 )
+    KALDI_ASSERT(std::abs(exp(vector2(j))-vector(j)) < 0.000001 )
   }
 
 }
@@ -482,7 +482,7 @@ template<typename Real> void CuVectorUnitTestApplyLog() {
   vector.ApplyLog();
   for(int32 j = 0; j < dim; j++) {
     //std::cout<<"diff is "<<exp(vector2(j))-vector(j)<<std::endl;;
-    KALDI_ASSERT(abs(log(vector2(j))-vector(j)) < 0.000001 )
+    KALDI_ASSERT(std::abs(log(vector2(j))-vector(j)) < 0.000001 )
   }
 }
 
