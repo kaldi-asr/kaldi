@@ -95,7 +95,13 @@ class LatticeFasterDecoder {
   typedef Arc::Label Label;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
-
+  struct BestPathIterator {
+    void *tok;
+    int32 frame;
+    BestPathIterator(void *t, int32 f): tok(t), frame(f) { }
+    bool Done() { return tok == NULL; }
+  };
+  
   // instantiate this class once for each thing you have to decode.
   LatticeFasterDecoder(const fst::Fst<fst::StdArc> &fst,
                        const LatticeFasterDecoderConfig &config);
@@ -138,26 +144,40 @@ class LatticeFasterDecoder {
   bool GetBestPath(Lattice *ofst,
                    bool use_final_probs = true) const;
 
-
-  /// This version of GetBestPath is faster than GetBestPath (it uses the
-  /// "extra_cost" field of the tokens to improve the speed) but for reasons
-  /// related to laziness in how we keep the "extra_cost" field updated (relates
-  /// to config_.prune_scale), we cannot guarantee that the path it returns will
-  /// be the very best one.  This version does not support use_final_probs =
-  /// true, it is like calling GetBestPath with use_final_probs = false.  The
-  /// path returned will be quite close in likelihood to the best path,
-  /// differing by up to config_.lattice_beam * config_.prune_scale or a small
-  /// multiple thereof.  It's not const for technical reasons (it has to call
-  /// PruneActiveTokens() for greatest efficiency, which is not const).  You can
-  /// make this more accurate by making config_.prune_scale smaller (caution:
-  /// this may slightly increase the time taken in PruneActiveTokens()).
-  bool GetBestPathFast(Lattice *ofst);
-
-  /// This function returns the final transition-id on the best path ending on
-  /// the current frame.  This is useful in endpoint detection, see ../online2/.
-  /// Will crash if NumFramesDecoded() <= 0.
-  int32 GetBestTransitionId() const;
-
+  
+  /// This function does a self-test; it will print a warning
+  /// if the sequences from GetBestPath vs GetBestPathFast differ.
+  bool TestGetBestPath(bool use_final_probs = true) const;
+  
+  /// This version of GetBestPath() is faster than GetBestPath() but should give
+  /// identical results; it uses BestPathEnd() and TraceBackOneLinke() to
+  /// produce the best-path.
+  bool GetBestPathFast(Lattice *ofst, bool use_final_probs = true) const;
+  
+  
+  /// This function returns an iterator that can be used to trace back
+  /// the best path.  If use_final_probs == true and at least one final state
+  /// survived till the end, it will use the final-probs in working out the best
+  /// final Token, and will output the final cost to *final_cost (if non-NULL),
+  /// else it will use only the forward likelihood, and will put zero in
+  /// *final_cost (if non-NULL).
+  /// Requires that NumFramesDecoded() > 0.
+  BestPathIterator BestPathEnd(bool use_final_probs,
+                               BaseFloat *final_cost = NULL) const;
+  
+  /// This function can be used in conjunction with BestPathEnd() to trace back
+  /// the best path one link at a time (e.g. this can be useful in endpoint
+  /// detection).  By "link" we mean a link in the graph; not all links cross
+  /// frame boundaries, but each time you see a nonzero ilabel you can interpret
+  /// that as a frame.  The return value is the updated iterator.  Note: if the
+  /// ilabel or olabel it outputs is zero, you can interpret this as there being
+  /// no ilabel or olabel on that link.  It outputs to acoustic_cost and
+  /// graph_cost the acoustic cost and graph cost respectively, from this link.
+  /// NULL pointers are allowed.
+  BestPathIterator TraceBackOneLink(
+      BestPathIterator iter, int32 *ilabel, int32 *olabel,
+      BaseFloat *graph_cost, BaseFloat *acoustic_cost) const;
+  
 
   /// Outputs an FST corresponding to the raw, state-level
   /// tracebacks.  Returns true if result is nonempty.
@@ -167,6 +187,13 @@ class LatticeFasterDecoder {
   bool GetRawLattice(Lattice *ofst,
                      bool use_final_probs = true) const;
 
+  /// Behaves the same like GetRawLattice but only processes tokens whose
+  /// extra_cost is smaller than the best-cost plus the specified beam.
+  bool GetRawLatticePruned(Lattice *ofst,
+                           bool use_final_probs,
+                           BaseFloat beam) const;
+
+  
   /// Outputs an FST corresponding to the lattice-determinized lattice (one path
   /// per word sequence).  Returns true if result is nonempty.
   /// If "use_final_probs" is true AND we reached the final-state
@@ -214,10 +241,11 @@ class LatticeFasterDecoder {
   BaseFloat FinalRelativeCost() const;
 
   inline int32 NumFramesDecoded() const { return active_toks_.size() - 1; }
+
  private:
-  struct Token;
   // ForwardLinks are the links from a token to a token on the next frame.
   // or sometimes on the current frame (for input-epsilon links).
+  struct Token;
   struct ForwardLink {
     Token *next_tok; // the next token [or NULL if represents final-state]
     Label ilabel; // ilabel on link.
@@ -251,9 +279,16 @@ class LatticeFasterDecoder {
 
     Token *next; // Next in list of tokens for this frame.
 
+    Token *backpointer; // best preceding Token (could be on this frame or a
+                        // previous frame).  This is only required for an
+                        // efficient GetBestPath function, it plays no part in
+                        // the lattice generation (the "links" list is what
+                        // stores the forward links, for that).
+
     inline Token(BaseFloat tot_cost, BaseFloat extra_cost, ForwardLink *links,
-                 Token *next): tot_cost(tot_cost), extra_cost(extra_cost),
-                 links(links), next(next) { }
+                 Token *next, Token *backpointer):
+        tot_cost(tot_cost), extra_cost(extra_cost), links(links), next(next),
+        backpointer(backpointer) { }
     inline void DeleteForwardLinks() {
       ForwardLink *l = links, *m;
       while (l != NULL) {
@@ -288,7 +323,8 @@ class LatticeFasterDecoder {
   // Returns the Token pointer.  Sets "changed" (if non-NULL) to true if the
   // token was newly created or the cost changed.
   inline Token *FindOrAddToken(StateId state, int32 frame_plus_one,
-                               BaseFloat tot_cost, bool *changed);
+                               BaseFloat tot_cost, Token *backpointer,
+                               bool *changed);
 
   // prunes outgoing links for all tokens in active_toks_[frame]
   // it's called by PruneActiveTokens
@@ -305,15 +341,18 @@ class LatticeFasterDecoder {
 
   // This function computes the final-costs for tokens active on the final
   // frame.  It outputs to final-costs, if non-NULL, a map from the Token*
-  // pointer to the final-prob of the corresponding state, or zero for all states if
-  // none were final.  It outputs to final_relative_cost, if non-NULL, the
-  // difference between the best forward-cost including the final-prob cost, and
-  // the best forward-cost without including the final-prob cost (this will
-  // usually be positive), or infinity if there were no final-probs.  It outputs
-  // to final_best_cost, if non-NULL, the lowest for any token t active on the
-  // final frame, of t + final-cost[t], where final-cost[t] is the final-cost
-  // in the graph of the state corresponding to token t, or zero if there
-  // were no final-probs active on the final frame.
+  // pointer to the final-prob of the corresponding state, for all Tokens
+  // that correspond to states that have final-probs.  This map will be
+  // empty if there were no final-probs.  It outputs to
+  // final_relative_cost, if non-NULL, the difference between the best
+  // forward-cost including the final-prob cost, and the best forward-cost
+  // without including the final-prob cost (this will usually be positive), or
+  // infinity if there were no final-probs.  [c.f. FinalRelativeCost(), which
+  // outputs this quanitity].  It outputs to final_best_cost, if
+  // non-NULL, the lowest for any token t active on the final frame, of
+  // forward-cost[t] + final-cost[t], where final-cost[t] is the final-cost in
+  // the graph of the state corresponding to token t, or the best of
+  // forward-cost[t] if there were no final-probs active on the final frame.
   // You cannot call this after FinalizeDecoding() has been called; in that
   // case you should get the answer from class-member variables.
   void ComputeFinalCosts(unordered_map<Token*, BaseFloat> *final_costs,
@@ -353,13 +392,6 @@ class LatticeFasterDecoder {
   /// TODO: could possibly add adaptive_beam back as an argument here (was
   /// returned from ProcessEmitting, in faster-decoder.h).
   void ProcessNonemitting();
-
-  // Behaves the same like GetRawLattice but only processes
-  // tokens whose extra_cost is smaller than beam(plus the lowest
-  // extra_cost of it's corresponding frame).
-  bool GetRawLatticePruned(Lattice *ofst,
-                           bool use_final_probs = true,
-                           BaseFloat beam = 0.1) const;
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of

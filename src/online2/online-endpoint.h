@@ -174,26 +174,23 @@ struct OnlineEndpointConfig {
 /// This function returns true if this set of endpointing
 /// rules thinks we should terminate decoding.  Note: in verbose
 /// mode it will print logging information when returning true.
-bool EndpointDetected(const TransitionModel &tmodel,
-                      const Lattice &best_path,
-                      const OnlineEndpointConfig &config,
+bool EndpointDetected(const OnlineEndpointConfig &config,
+                      int32 num_frames_decoded,
+                      int32 trailing_silence_frames,
                       BaseFloat frame_shift_in_seconds,
                       BaseFloat final_relative_cost);
 
-/// The purpose of this function is to do triage before
-/// getting the best-path to call EndpointDetected(), since
-/// getting the best-path costs time.  This function returns
-/// true if, given that "best_current_transition_id" is the
-/// final transition-id of the best path, and the other
-/// info provided, we *might* be at an endpoint.  Most of the
-/// time, it will return true if "best_current_transition_id"
-/// is silence.
-bool EndpointPossible(const TransitionModel &tmodel,
-                      const OnlineEndpointConfig &config,                      
-                      int32 best_current_transition_id,
-                      int32 num_frames_decoded,
-                      BaseFloat frame_shift_in_seconds,
-                      BaseFloat final_relative_cost);
+class LatticeFasterDecoder;
+
+/// returns the number of frames of trailing silence in the best-path traceback
+/// (not using final-probs).  "silence_phones" is a colon-separated list of
+/// integer id's of phones that we consider silence.  We use the the BestPathEnd()
+/// and TraceBackOneLink() functions of LatticeFasterDecoder to do this
+/// efficiently.
+int32 TrailingSilenceLength(const TransitionModel &tmodel,
+                            const std::string &silence_phones,
+                            const LatticeFasterDecoder &decoder);
+
 
   
 

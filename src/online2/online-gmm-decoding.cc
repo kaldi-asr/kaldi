@@ -94,10 +94,14 @@ bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
     return false;
   }
 
+
+  KALDI_ASSERT(config_.fmllr_lattice_beam > 0.0);
+  
   // Note: we'll just use whatever acoustic scaling factor we were decoding
   // with.  This is in the lattice that we get from decoder_.GetRawLattice().
   Lattice raw_lat;
-  decoder_.GetRawLattice(&raw_lat, end_of_utterance);
+  decoder_.GetRawLatticePruned(&raw_lat, end_of_utterance,
+                               config_.fmllr_lattice_beam);
 
   // At this point we could rescore the lattice if we wanted, and
   // this might improve the accuracy on long utterances that were
@@ -105,7 +109,6 @@ bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
   // estimated the fMLLR by the time we reach this code (e.g. this
   // was the second call).  We don't do this right now.
   
-  KALDI_ASSERT(config_.fmllr_lattice_beam > 0.0);
   PruneLattice(config_.fmllr_lattice_beam, &raw_lat);
 
 #if 1 // Do determinization. 
@@ -291,46 +294,21 @@ bool SingleUtteranceGmmDecoder::EndpointDetected(
   Lattice best_path;
   if (decoder_.NumFramesDecoded() == 0) return false;
 
-  int32 best_tid = decoder_.GetBestTransitionId();
   BaseFloat frame_shift = feature_pipeline_->FrameShiftInSeconds(),
       final_relative_cost = decoder_.FinalRelativeCost();
 
   const TransitionModel &tmodel = models_.GetTransitionModel();
 
-  bool possible =
-      EndpointPossible(tmodel, config, best_tid, 
-                       decoder_.NumFramesDecoded(),
-                       frame_shift, final_relative_cost);
+  int32 num_frames_decoded = decoder_.NumFramesDecoded(),
+      silence_frames = TrailingSilenceLength(tmodel,
+                                             config.silence_phones,
+                                             decoder_);
 
-  // the randomness relates to self-testing.
-  if (!possible && rand() % 20 != 0)
-    return false;
+  // if (rand() % 50 == 0)
+  //   decoder_.TestGetBestPath(rand() % 2 == 0);
   
-  decoder_.GetBestPathFast(&best_path);
-  bool ans = kaldi::EndpointDetected(tmodel, best_path, config,
-                                     frame_shift, final_relative_cost);
-  if (ans && !possible) {
-    // this should not happen
-    KALDI_WARN << "Inconsistency detected in endpointing (code error)";
-  }
-  {  // self-test GetBestTransitionId().
-    std::vector<int32> transitions;
-    fst::GetLinearSymbolSequence<LatticeArc,int32>(best_path, &transitions,
-                                                   NULL, NULL);
-    if (transitions.back() != best_tid) {
-      KALDI_WARN << "Inconsistency detected between GetBestPathFast and "
-                 << "GetBestTransitionId()";
-      Lattice best_path_exact;
-      decoder_.GetBestPath(&best_path_exact);
-      std::vector<int32> transitions_exact;
-      fst::GetLinearSymbolSequence<LatticeArc,int32>(best_path_exact,
-                                                     &transitions_exact,
-                                                     NULL, NULL);
-      if (transitions_exact.back() != best_tid)
-        KALDI_WARN << "Also inconsistent with exact best-path.";
-    }
-  }
-  return ans;
+  return kaldi::EndpointDetected(config, num_frames_decoded, silence_frames, 
+                                 frame_shift, final_relative_cost);
 }
 
 void SingleUtteranceGmmDecoder::GetLattice(bool rescore_if_needed,

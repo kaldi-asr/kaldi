@@ -18,47 +18,9 @@
 // limitations under the License.
 
 #include "online2/online-endpoint.h"
+#include "decoder/lattice-faster-decoder.h"
 
 namespace kaldi {
-
-static inline void GetBestPathStats(const TransitionModel &tmodel,
-                                    const Lattice &best_path,
-                                    const OnlineEndpointConfig &config,
-                                    BaseFloat frame_shift_in_seconds,
-                                    BaseFloat *utterance_length,
-                                    BaseFloat *trailing_silence) {
-  std::vector<int32> silence_phones;
-  if (!SplitStringToIntegers(config.silence_phones, ":", false, &silence_phones))
-    KALDI_ERR << "Bad --silence-phones option in endpointing config: "
-              << config.silence_phones;
-  std::sort(silence_phones.begin(), silence_phones.end());
-  KALDI_ASSERT(IsSortedAndUniq(silence_phones) &&
-               "Duplicates in --silence-phones option in endpointing config");
-  KALDI_ASSERT(!silence_phones.empty() &&
-               "Endpointing requires nonempty --endpoint.silence-phones option");
-  ConstIntegerSet<int32> silence_set(silence_phones);
-  
-  std::vector<int32> alignment;
-
-  fst::GetLinearSymbolSequence<LatticeArc,int32>(best_path, &alignment, NULL, NULL);
-
-  *utterance_length = alignment.size() * frame_shift_in_seconds;
-  if (alignment.empty()) {
-    *trailing_silence = 0.0;
-    return;
-  }
-  
-  int32 num_sil_frames = 0;
-  for (int32 n = alignment.size() - 1; n >= 0; n--) {
-    int32 phone = tmodel.TransitionIdToPhone(alignment[n]);
-    if (silence_set.count(phone) != 0)
-      num_sil_frames++;
-    else
-      break;
-  }
-  *trailing_silence = num_sil_frames * frame_shift_in_seconds;
-}
-
 
 static bool RuleActivated(const OnlineEndpointRule &rule,
                           const std::string &rule_name,
@@ -71,7 +33,7 @@ static bool RuleActivated(const OnlineEndpointRule &rule,
       trailing_silence >= rule.min_trailing_silence &&
       relative_cost <= rule.max_relative_cost &&
       utterance_length >= rule.min_utterance_length;
-  if (ans && rule_name != "") {
+  if (ans) {
     KALDI_VLOG(2) << "Endpointing rule " << rule_name << " activated: "
                   << (contains_nonsilence ? "true" : "false" ) << ','
                   << trailing_silence << ',' << relative_cost << ','
@@ -80,16 +42,16 @@ static bool RuleActivated(const OnlineEndpointRule &rule,
   return ans;
 }
 
-bool EndpointDetected(const TransitionModel &tmodel,
-                      const Lattice &best_path,
-                      const OnlineEndpointConfig &config,
+bool EndpointDetected(const OnlineEndpointConfig &config,
+                      int32 num_frames_decoded,
+                      int32 trailing_silence_frames,
                       BaseFloat frame_shift_in_seconds,
                       BaseFloat final_relative_cost) {
-  if (best_path.NumStates() == 0) return false;
-  KALDI_ASSERT(final_relative_cost >= 0.0);
-  BaseFloat utterance_length, trailing_silence;
-  GetBestPathStats(tmodel, best_path, config, frame_shift_in_seconds,
-                   &utterance_length, &trailing_silence);
+  KALDI_ASSERT(final_relative_cost >= 0.0 &&
+               num_frames_decoded >= trailing_silence_frames);
+
+  BaseFloat utterance_length = num_frames_decoded * frame_shift_in_seconds,
+      trailing_silence = trailing_silence_frames * frame_shift_in_seconds;
   
   if (RuleActivated(config.rule1, "rule1",
                     trailing_silence, final_relative_cost, utterance_length))
@@ -109,56 +71,39 @@ bool EndpointDetected(const TransitionModel &tmodel,
   return false;
 }
 
-
-bool EndpointPossible(const TransitionModel &tmodel,
-                      const OnlineEndpointConfig &config,                      
-                      int32 best_current_transition_id,
-                      int32 num_frames_decoded,
-                      BaseFloat frame_shift_in_seconds,
-                      BaseFloat final_relative_cost) {
-  KALDI_ASSERT(final_relative_cost >= 0.0);
-  BaseFloat utterance_length = num_frames_decoded * frame_shift_in_seconds,
-      trailing_silence;
-
+int32 TrailingSilenceLength(const TransitionModel &tmodel,
+                            const std::string &silence_phones_str,
+                            const LatticeFasterDecoder &decoder) {
   std::vector<int32> silence_phones;
-  if (!SplitStringToIntegers(config.silence_phones, ":", false, &silence_phones))
+  if (!SplitStringToIntegers(silence_phones_str, ":", false, &silence_phones))
     KALDI_ERR << "Bad --silence-phones option in endpointing config: "
-              << config.silence_phones;
+              << silence_phones_str;
   std::sort(silence_phones.begin(), silence_phones.end());
-  int32 final_phone = tmodel.TransitionIdToPhone(best_current_transition_id);
-  if (std::binary_search(silence_phones.begin(),
-                         silence_phones.end(), final_phone)) {
-    // ends in silence...
-    // Pretend that the length of trailing silence is just slightly less
-    // than the utterance length.  This will always be the case that is most
-    // likely to activate the rule (some rules require some nonsilence in the
-    // traceback, which is why having the trailing_silence slightly less
-    // than utterance_length matters).  It's important that 0.999 isn't so close
-    // to 1 that trailing_silence == utterance_length to machine precision.
-    trailing_silence = utterance_length * 0.999;
-  } else {
-    trailing_silence = 0.0;
-  }
-                         
-  // Below, give "" for the rule names, which will suppress logging.
-  if (RuleActivated(config.rule1, "",
-                    trailing_silence, final_relative_cost, utterance_length))
-    return true;
-  if (RuleActivated(config.rule2, "",
-                    trailing_silence, final_relative_cost, utterance_length))
-    return true;
-  if (RuleActivated(config.rule3, "",
-                    trailing_silence, final_relative_cost, utterance_length))
-    return true;
-  if (RuleActivated(config.rule4, "",
-                    trailing_silence, final_relative_cost, utterance_length))
-    return true;
-  if (RuleActivated(config.rule5, "",
-                    trailing_silence, final_relative_cost, utterance_length))
-    return true;
-  return false;
-}
+  KALDI_ASSERT(IsSortedAndUniq(silence_phones) &&
+               "Duplicates in --silence-phones option in endpointing config");
+  KALDI_ASSERT(!silence_phones.empty() &&
+               "Endpointing requires nonempty --endpoint.silence-phones option");
+  ConstIntegerSet<int32> silence_set(silence_phones);
 
+  bool use_final_probs = false;
+  LatticeFasterDecoder::BestPathIterator iter =
+      decoder.BestPathEnd(use_final_probs, NULL);
+  int32 num_silence_frames = 0;
+  while (!iter.Done()) {  // we're going backwards in time from the most
+                          // recently decoded frame...
+    int32 ilabel, olabel;
+    iter = decoder.TraceBackOneLink(iter, &ilabel, &olabel, NULL, NULL);
+    if (ilabel != 0) {
+      int32 phone = tmodel.TransitionIdToPhone(ilabel);
+      if (silence_set.count(phone) != 0) {
+        num_silence_frames++;
+      } else {
+        break; // stop counting as soon as we hit non-silence.
+      }
+    }
+  }
+  return num_silence_frames;
+}
 
 
 
