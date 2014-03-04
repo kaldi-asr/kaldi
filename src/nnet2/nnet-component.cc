@@ -1,8 +1,8 @@
 // nnet2/nnet-component.cc
 
 // Copyright 2011-2012  Karel Vesely
-//                      Johns Hopkins University (author: Daniel Povey)
-//	          2013  Xiaohui Zhang	
+//           2013-2014  Johns Hopkins University (author: Daniel Povey)
+//	              2013  Xiaohui Zhang	
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -104,8 +104,6 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new DropoutComponent();
   } else if (component_type == "AdditiveNoiseComponent") {
     ans = new AdditiveNoiseComponent();
-  } else if (component_type == "InformationBottleneckComponent") {
-    ans = new InformationBottleneckComponent();
   }
   return ans;
 }
@@ -4170,146 +4168,6 @@ void AdditiveNoiseComponent::Propagate(
   const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&rand);
   out->AddMat(stddev_, rand);
 }
-
-
-std::string InformationBottleneckComponent::Info() const {
-  std::stringstream stream;
-  stream << Type() << ", input-dim=" << InputDim()
-         << ", output-dim=" << OutputDim() << ", noise-proportion="
-         << noise_proportion_;
-  return stream.str();
-}
-
-
-void InformationBottleneckComponent::InitFromString(std::string args) {
-  std::string orig_args(args);
-  int32 dim;
-  BaseFloat noise_proportion = 0.1;
-  bool ok = ParseFromString("dim", &args, &dim);
-  ParseFromString("noise-proportion", &args, &noise_proportion);  
-  
-  if (!ok || !args.empty() || dim <= 0)
-    KALDI_ERR << "Invalid initializer for layer of type InformationBottleneckComponent: \""
-              << orig_args << "\"";
-  Init(dim, noise_proportion);
-}
-
-void InformationBottleneckComponent::Read(std::istream &is, bool binary) {
-  ExpectOneOrTwoTokens(is, binary, "<InformationBottleneckComponent>", "<Dim>");
-  ReadBasicType(is, binary, &dim_);
-  ExpectToken(is, binary, "<NoiseProportion>");
-  ReadBasicType(is, binary, &noise_proportion_);
-  ExpectToken(is, binary, "<Sumsq>");
-  sumsq_.Read(is, binary);
-  ExpectToken(is, binary, "<Count>");
-  ReadBasicType(is, binary, &count_);
-  ExpectToken(is, binary, "</InformationBottleneckComponent>");
-}
-
-void InformationBottleneckComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<InformationBottleneckComponent>");
-  WriteToken(os, binary, "<Dim>");
-  WriteBasicType(os, binary, dim_);
-  WriteToken(os, binary, "<NoiseProportion>");
-  WriteBasicType(os, binary, noise_proportion_);
-  WriteToken(os, binary, "<Sumsq>");
-  sumsq_.Write(os, binary);
-  WriteToken(os, binary, "<Count>");
-  WriteBasicType(os, binary, count_);
-  WriteToken(os, binary, "</InformationBottleneckComponent>");  
-}
-
-void InformationBottleneckComponent::Init(int32 dim,
-                                          BaseFloat noise_proportion) {
-  dim_ = dim;
-  noise_proportion_ = noise_proportion;
-  sumsq_.Resize(dim);
-  count_ = 0.0;
-}
-  
-void InformationBottleneckComponent::Propagate(
-    const CuMatrixBase<BaseFloat> &in,
-    int32 num_chunks,
-    CuMatrix<BaseFloat> *out) const {
-  KALDI_ASSERT(in.NumCols() == this->InputDim());
-
-  *out = in;
-  CuMatrix<BaseFloat> rand(in.NumRows(), in.NumCols());
-  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&rand);
-  int32 dim = InputDim();
-  
-  for (int32 t = 0; t < in.NumRows(); t++) {
-    CuSubVector<BaseFloat> out_vec(*out, t), rand_vec(rand, t);
-    // we already copied in to *out.
-    BaseFloat in_variance = VecVec(out_vec, out_vec) / dim,
-        random_weight = sqrt(noise_proportion_ * in_variance);
-    out_vec.AddVec(random_weight, rand_vec);
-  }
-}
-
-void InformationBottleneckComponent::Backprop(
-    const CuMatrixBase<BaseFloat> &in_value,
-    const CuMatrixBase<BaseFloat> &out_value,
-    const CuMatrixBase<BaseFloat> &out_deriv,
-    int32 num_chunks,
-    Component *to_update, // may be identical to "this".
-    CuMatrix<BaseFloat> *in_deriv) const {
-  KALDI_ASSERT(SameDim(in_value, out_value));
-  KALDI_ASSERT(SameDim(in_value, out_deriv));
-  in_deriv->Resize(in_value.NumRows(), in_value.NumCols());
-
-  int32 dim = InputDim();
-  CuVector<BaseFloat> rand_row(dim);
-  for (int32 t = 0; t < in_value.NumRows(); t++) {
-    CuSubVector<BaseFloat> in_vec(in_value, t),
-        out_vec(out_value, t), out_deriv_vec(out_deriv, t),
-        in_deriv_vec(*in_deriv, t);
-    rand_row.CopyFromVec(out_vec);
-    rand_row.AddVec(-1.0, in_vec);
-    // At this point, rand_row equals random_weight * rand_vec
-    // in the Propagate code.
-    BaseFloat in_variance = VecVec(in_vec, in_vec) / dim,
-        random_weight = sqrt(noise_proportion_ * in_variance);
-    // Above, in_variance and random_weight have the same value as
-    // in the Propagatte code.
-    KALDI_ASSERT(random_weight != 0.0);
-    rand_row.Scale(1.0 / random_weight); // Now it's equivalent to
-    // the t'th row of "rand" in the Propagate function.
-    BaseFloat df_drandom_weight = VecVec(rand_row, out_deriv_vec);
-    // df_drandom_weight is the partial derivative of the objective function
-    // w.r.t. "random_weight".
-    BaseFloat df_din_variance = 0.5 * df_drandom_weight * noise_proportion_ / random_weight;
-    // df_din_variance is the partial derivative of the objective function
-    // w.r.t. "in_variance".  It comes from differentiating the expression
-    // for "random_weight".
-    
-    // First handle the straightforward part of the derivative w.r.t. in_deriv_vec.
-    in_deriv_vec.CopyFromVec(out_deriv_vec);
-    // The next term handles the part that comes from the effect of the length of
-    // "in_vec" on the noise variance.  It comes from propagating back through the
-    // expression for "in_variance".  Note: df_din_variance will on average be
-    // negative.
-    in_deriv_vec.AddVec((2.0 / dim) * df_din_variance, in_vec);
-  }
-
-  // Now accumulate the sumsq_ stats.  We code this in such a way that if
-  // multiple threads are working on the same object, the errors caused won't
-  // be too catastrophic
-  if (to_update != NULL) {
-    InformationBottleneckComponent *to_update_ib =
-        dynamic_cast<InformationBottleneckComponent*>(to_update);
-    to_update_ib->count_ += in_value.NumRows();
-    to_update_ib->sumsq_.AddDiagMat2(1.0, in_value, kTrans, 1.0);
-    const BaseFloat max_count = 1000.0;
-    if (to_update_ib->count_ > max_count) {
-      BaseFloat scale = max_count / to_update_ib->count_;
-      to_update_ib->count_ *= scale;
-      to_update_ib->sumsq_.Scale(scale);
-    }
-  }
-}
-
-
 
 void AffineComponentA::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<AffineComponentA>", "<LearningRate>");

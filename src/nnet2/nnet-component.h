@@ -917,54 +917,6 @@ class RandomComponent: public Component {
 };
 
 
-/// This type of component is to be used in training.  It adds Gaussian noise to
-/// what passes through it, to limit the capacity of the channel.  It differs
-/// from AdditiveNoiseComponent in that the variance of the noise is proportional
-/// to the length of the input vector.  This will have the effect of encouraging
-/// "non-informative" inputs to become close to zero, so that the noise on the
-/// informative inputs becomes larger, and will hence help us to identify these
-/// non-informative inputs.
-class InformationBottleneckComponent: public RandomComponent {
- public:
-  void Init(int32 dim, BaseFloat noise_stddev);
-  InformationBottleneckComponent(int32 dim, BaseFloat noise_proportion) {
-    Init(dim, noise_proportion); }
-  InformationBottleneckComponent(): dim_(0), noise_proportion_(0.1),
-                                    count_(0.0) { }
-  virtual int32 InputDim() const { return dim_; }
-  virtual int32 OutputDim() const { return dim_; }
-  virtual void InitFromString(std::string args);
-  virtual std::string Info() const;
-  
-  virtual void Read(std::istream &is, bool binary);
-  
-  virtual void Write(std::ostream &os, bool binary) const;
-      
-  virtual std::string Type() const { return "InformationBottleneckComponent"; }
-
-  virtual bool BackpropNeedsInput() const { return true; }
-  virtual bool BackpropNeedsOutput() const { return true; }  
-  virtual Component* Copy() const {
-    return new InformationBottleneckComponent(dim_, noise_proportion_);
-  }
-  virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
-                         int32 num_chunks,
-                         CuMatrix<BaseFloat> *out) const; 
-  virtual void Backprop(const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &out_value,
-                        const CuMatrixBase<BaseFloat> &out_deriv,
-                        int32 num_chunks,
-                        Component *to_update, // may be identical to "this".
-                        CuMatrix<BaseFloat> *in_deriv) const;
- private:
-  int32 dim_;  
-  BaseFloat noise_proportion_; // as a proportion of variance...
-  // The next two values are purely diagnostic, they are used to keep track of
-  // the variance of different input dimensions.
-  CuVector<BaseFloat> sumsq_;
-  BaseFloat count_;
-};
-
 
 struct PreconditionConfig { // relates to AffineComponentA
   BaseFloat alpha;

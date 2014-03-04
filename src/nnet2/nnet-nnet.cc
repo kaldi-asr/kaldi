@@ -396,8 +396,7 @@ void Nnet::RemoveDropout() {
   int32 removed = 0;
   for (size_t i = 0; i < components_.size(); i++) {
     if (dynamic_cast<DropoutComponent*>(components_[i]) != NULL ||
-        dynamic_cast<AdditiveNoiseComponent*>(components_[i]) != NULL ||
-        dynamic_cast<InformationBottleneckComponent*>(components_[i]) != NULL) {
+        dynamic_cast<AdditiveNoiseComponent*>(components_[i]) != NULL) {
       delete components_[i];
       removed++;
     } else {
