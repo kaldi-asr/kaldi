@@ -91,10 +91,10 @@ int32 TrailingSilenceLength(const TransitionModel &tmodel,
   int32 num_silence_frames = 0;
   while (!iter.Done()) {  // we're going backwards in time from the most
                           // recently decoded frame...
-    int32 ilabel, olabel;
-    iter = decoder.TraceBackOneLink(iter, &ilabel, &olabel, NULL, NULL);
-    if (ilabel != 0) {
-      int32 phone = tmodel.TransitionIdToPhone(ilabel);
+    LatticeArc arc;
+    iter = decoder.TraceBackBestPath(iter, &arc);
+    if (arc.ilabel != 0) {
+      int32 phone = tmodel.TransitionIdToPhone(arc.ilabel);
       if (silence_set.count(phone) != 0) {
         num_silence_frames++;
       } else {

@@ -93,20 +93,18 @@ bool LatticeFasterDecoder::Decode(DecodableInterface *decodable) {
 }
 
 
-bool LatticeFasterDecoder::GetBestPath(Lattice *olat,
-                                       bool use_final_probs) const {
-  Lattice lat;
-  GetRawLattice(&lat, use_final_probs);
-  ShortestPath(lat, olat);
-  return (olat->NumStates() != 0);
-}
+
 
 
 bool LatticeFasterDecoder::TestGetBestPath(bool use_final_probs) const {
   Lattice lat1;
-  GetBestPath(&lat1, use_final_probs);
+  {
+    Lattice raw_lat;
+    GetRawLattice(&raw_lat, use_final_probs);
+    ShortestPath(raw_lat, &lat1);
+  }
   Lattice lat2;
-  GetBestPathFast(&lat2, use_final_probs);  
+  GetBestPath(&lat2, use_final_probs);  
   BaseFloat delta = 0.1;
   int32 num_paths = 1;
   if (!fst::RandEquivalent(lat1, lat2, num_paths, delta, rand())) {
@@ -118,10 +116,9 @@ bool LatticeFasterDecoder::TestGetBestPath(bool use_final_probs) const {
 }
 
 
-// Outputs an FST corresponding to the single best path through the lattice,
-// without considering the final-probs.
-bool LatticeFasterDecoder::GetBestPathFast(Lattice *olat,
-                                           bool use_final_probs) const {
+// Outputs an FST corresponding to the single best path through the lattice.
+bool LatticeFasterDecoder::GetBestPath(Lattice *olat,
+                                       bool use_final_probs) const {
   olat->DeleteStates();
   BaseFloat final_graph_cost;
   BestPathIterator iter = BestPathEnd(use_final_probs, &final_graph_cost);
@@ -130,14 +127,11 @@ bool LatticeFasterDecoder::GetBestPathFast(Lattice *olat,
   StateId state = olat->AddState();
   olat->SetFinal(state, LatticeWeight(final_graph_cost, 0.0));
   while (!iter.Done()) {
-    Label ilabel, olabel;
-    BaseFloat graph_cost, acoustic_cost;
-    iter = TraceBackOneLink(iter, &ilabel, &olabel,
-                            &graph_cost, &acoustic_cost);
+    LatticeArc arc;
+    iter = TraceBackBestPath(iter, &arc);
+    arc.nextstate = state;
     StateId new_state = olat->AddState();
-    olat->AddArc(new_state,
-                 LatticeArc(ilabel, olabel,
-                            LatticeWeight(graph_cost, acoustic_cost), state));
+    olat->AddArc(new_state, arc);
     state = new_state;
   }
   olat->SetStart(state);
@@ -744,10 +738,9 @@ LatticeFasterDecoder::BestPathIterator LatticeFasterDecoder::BestPathEnd(
 }
 
 
-LatticeFasterDecoder::BestPathIterator LatticeFasterDecoder::TraceBackOneLink(
-    BestPathIterator iter, int32 *ilabel, int32 *olabel,
-    BaseFloat *graph_cost, BaseFloat *acoustic_cost) const {
-  KALDI_ASSERT(!iter.Done());
+LatticeFasterDecoder::BestPathIterator LatticeFasterDecoder::TraceBackBestPath(
+    BestPathIterator iter, LatticeArc *oarc) const {
+  KALDI_ASSERT(!iter.Done() && oarc != NULL);
   Token *tok = static_cast<Token*>(iter.tok);
   int32 cur_t = iter.frame, ret_t = cur_t;
   if (tok->backpointer != NULL) {
@@ -755,15 +748,16 @@ LatticeFasterDecoder::BestPathIterator LatticeFasterDecoder::TraceBackOneLink(
     for (link = tok->backpointer->links;
          link != NULL; link = link->next) {
       if (link->next_tok == tok) { // this is the link to "tok"
-        if (olabel) *olabel = link->olabel;
-        if (ilabel) *ilabel = link->ilabel;
-        if (graph_cost) *graph_cost = link->graph_cost;      
-        if (acoustic_cost) *acoustic_cost = link->acoustic_cost;
+        oarc->ilabel = link->ilabel;
+        oarc->olabel = link->olabel;
+        BaseFloat graph_cost = link->graph_cost,
+            acoustic_cost = link->acoustic_cost;
         if (link->ilabel != 0) {
           KALDI_ASSERT(static_cast<size_t>(cur_t) < cost_offsets_.size());
-          if (acoustic_cost) *acoustic_cost -= cost_offsets_[cur_t];
+          acoustic_cost -= cost_offsets_[cur_t];
           ret_t--;
         }
+        oarc->weight = LatticeWeight(graph_cost, acoustic_cost);
         break;
       }
     }
@@ -772,14 +766,12 @@ LatticeFasterDecoder::BestPathIterator LatticeFasterDecoder::TraceBackOneLink(
                 << "bug in token-pruning algorithm)";
     }
   } else {
-    if (ilabel) *ilabel = 0;
-    if (olabel) *olabel = 0;
-    if (graph_cost) *graph_cost = 0.0;
-    if (acoustic_cost) *acoustic_cost = 0.0;
+    oarc->ilabel = 0;
+    oarc->olabel = 0;
+    oarc->weight = LatticeWeight::One(); // zero costs.
   }
   return BestPathIterator(tok->backpointer, ret_t);
 }
-
 
 
 void LatticeFasterDecoder::DecodeNonblocking(DecodableInterface *decodable,

@@ -135,24 +135,18 @@ class LatticeFasterDecoder {
     return FinalRelativeCost() != std::numeric_limits<BaseFloat>::infinity();
   }
 
-  /// Outputs an FST corresponding to the single best path
-  /// through the lattice.  Returns true if result is nonempty
-  /// (using the return status is deprecated, it will become void).
-  /// If "use_final_probs" is true AND we reached the final-state
-  /// of the graph then it will include those as final-probs, else
+  /// Outputs an FST corresponding to the single best path through the lattice.
+  /// Returns true if result is nonempty (using the return status is deprecated,
+  /// it will become void).  If "use_final_probs" is true AND we reached the
+  /// final-state of the graph then it will include those as final-probs, else
   /// it will treat all final-probs as one.
   bool GetBestPath(Lattice *ofst,
                    bool use_final_probs = true) const;
 
   
-  /// This function does a self-test; it will print a warning
-  /// if the sequences from GetBestPath vs GetBestPathFast differ.
+  /// This function does a self-test of GetBestPath().  Returns true on
+  /// success; returns false and prints a warning on failure.
   bool TestGetBestPath(bool use_final_probs = true) const;
-  
-  /// This version of GetBestPath() is faster than GetBestPath() but should give
-  /// identical results; it uses BestPathEnd() and TraceBackOneLinke() to
-  /// produce the best-path.
-  bool GetBestPathFast(Lattice *ofst, bool use_final_probs = true) const;
   
   
   /// This function returns an iterator that can be used to trace back
@@ -164,21 +158,18 @@ class LatticeFasterDecoder {
   /// Requires that NumFramesDecoded() > 0.
   BestPathIterator BestPathEnd(bool use_final_probs,
                                BaseFloat *final_cost = NULL) const;
-  
+
+
   /// This function can be used in conjunction with BestPathEnd() to trace back
   /// the best path one link at a time (e.g. this can be useful in endpoint
   /// detection).  By "link" we mean a link in the graph; not all links cross
   /// frame boundaries, but each time you see a nonzero ilabel you can interpret
-  /// that as a frame.  The return value is the updated iterator.  Note: if the
-  /// ilabel or olabel it outputs is zero, you can interpret this as there being
-  /// no ilabel or olabel on that link.  It outputs to acoustic_cost and
-  /// graph_cost the acoustic cost and graph cost respectively, from this link.
-  /// NULL pointers are allowed.
-  BestPathIterator TraceBackOneLink(
-      BestPathIterator iter, int32 *ilabel, int32 *olabel,
-      BaseFloat *graph_cost, BaseFloat *acoustic_cost) const;
+  /// that as a frame.  The return value is the updated iterator.  It outputs
+  /// the ilabel and olabel, and the (graph and acoustic) weight to the "arc" pointer,
+  /// while leaving its "nextstate" variable unchanged.
+  BestPathIterator TraceBackBestPath(
+      BestPathIterator iter, LatticeArc *arc) const;
   
-
   /// Outputs an FST corresponding to the raw, state-level
   /// tracebacks.  Returns true if result is nonempty.
   /// If "use_final_probs" is true AND we reached the final-state
