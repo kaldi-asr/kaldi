@@ -23,12 +23,13 @@ min_iters=
 #start_halving_inc=0.5
 #end_halving_inc=0.1
 start_halving_impr=0.01
-end_halving_impr=0.0001
+end_halving_impr=0.001
 halving_factor=0.5
 # misc.
 verbose=1
 # tool
 train_tool="nnet-train-frmshuff"
+frame_weights=
  
 # End configuration.
 
@@ -70,11 +71,13 @@ mlp_base=${mlp_init##*/}; mlp_base=${mlp_base%.*}
 [ -e $dir/.learn_rate ] && learn_rate=$(cat $dir/.learn_rate)
 
 # cross-validation on original network
+log=$dir/log/iter00.initial.log; hostname>$log
 $train_tool --cross-validate=true \
  --minibatch-size=$minibatch_size --randomizer-size=$randomizer_size --verbose=$verbose \
  ${feature_transform:+ --feature-transform=$feature_transform} \
+ ${frame_weights:+ "--frame-weights=$frame_weights"} \
  "$feats_cv" "$labels_cv" $mlp_best \
- 2> $dir/log/iter00.initial.log || exit 1;
+ 2>> $log || exit 1;
 
 loss=$(cat $dir/log/iter00.initial.log | grep "AvgLoss:" | tail -n 1 | awk '{ print $4; }')
 loss_type=$(cat $dir/log/iter00.initial.log | grep "AvgLoss:" | tail -n 1 | awk '{ print $5; }')
@@ -92,24 +95,28 @@ for iter in $(seq -w $max_iters); do
   [ -e $dir/.done_iter$iter ] && echo -n "skipping... " && ls $mlp_next* && continue 
   
   # training
+  log=$dir/log/iter${iter}.tr.log; hostname>$log
   $train_tool \
    --learn-rate=$learn_rate --momentum=$momentum --l1-penalty=$l1_penalty --l2-penalty=$l2_penalty \
    --minibatch-size=$minibatch_size --randomizer-size=$randomizer_size --randomize=true --verbose=$verbose \
    --binary=true \
    ${feature_transform:+ --feature-transform=$feature_transform} \
+   ${frame_weights:+ "--frame-weights=$frame_weights"} \
    ${randomizer_seed:+ --randomizer-seed=$randomizer_seed} \
    "$feats_tr" "$labels_tr" $mlp_best $mlp_next \
-   2> $dir/log/iter${iter}.tr.log || exit 1; 
+   2>> $log || exit 1; 
 
   tr_loss=$(cat $dir/log/iter${iter}.tr.log | grep "AvgLoss:" | tail -n 1 | awk '{ print $4; }')
   echo -n "TRAIN AVG.LOSS $(printf "%.4f" $tr_loss), (lrate$(printf "%.6g" $learn_rate)), "
   
   # cross-validation
+  log=$dir/log/iter${iter}.cv.log; hostname>$log
   $train_tool --cross-validate=true \
    --minibatch-size=$minibatch_size --randomizer-size=$randomizer_size --verbose=$verbose \
    ${feature_transform:+ --feature-transform=$feature_transform} \
+   ${frame_weights:+ "--frame-weights=$frame_weights"} \
    "$feats_cv" "$labels_cv" $mlp_next \
-   2>$dir/log/iter${iter}.cv.log || exit 1;
+   2>>$log || exit 1;
   
   loss_new=$(cat $dir/log/iter${iter}.cv.log | grep "AvgLoss:" | tail -n 1 | awk '{ print $4; }')
   echo -n "CROSSVAL AVG.LOSS $(printf "%.4f" $loss_new), "

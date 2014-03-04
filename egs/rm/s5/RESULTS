@@ -126,18 +126,19 @@ exit 0
 %WER 1.40 [ 176 / 12533, 30 ins, 28 del, 118 sub ] exp/nnet5d_mpe_gpu/decode_epoch3/wer_2
 %WER 7.99 [ 1001 / 12533, 66 ins, 193 del, 742 sub ] exp/nnet5d_mpe_gpu/decode_ug_epoch2/wer_9
 
+
 # DNN systems (Karel)
 # note from Dan-- these are from an older RESULTS file as I did not rerun these
 # last time I created this.
 # Per-frame cross-entropy training
-%WER 1.58 [ 198 / 12533, 28 ins, 44 del, 126 sub ] exp/tri3b_pretrain-dbn_dnn/decode/wer_3
+%WER 1.66 [ 208 / 12533, 27 ins, 49 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_3
 # Sequence-based sMBR training
-%WER 1.54 [ 193 / 12533, 29 ins, 40 del, 124 sub ] exp/tri3b_pretrain-dbn_dnn_smbr/decode_it1/wer_3
-%WER 1.52 [ 190 / 12533, 23 ins, 45 del, 122 sub ] exp/tri3b_pretrain-dbn_dnn_smbr/decode_it2/wer_4
-%WER 1.48 [ 185 / 12533, 22 ins, 42 del, 121 sub ] exp/tri3b_pretrain-dbn_dnn_smbr/decode_it3/wer_4
-%WER 1.50 [ 188 / 12533, 25 ins, 40 del, 123 sub ] exp/tri3b_pretrain-dbn_dnn_smbr/decode_it4/wer_4
-%WER 1.50 [ 188 / 12533, 21 ins, 46 del, 121 sub ] exp/tri3b_pretrain-dbn_dnn_smbr/decode_it5/wer_5
-%WER 1.49 [ 187 / 12533, 22 ins, 44 del, 121 sub ] exp/tri3b_pretrain-dbn_dnn_smbr/decode_it6/wer_5
+%WER 1.64 [ 206 / 12533, 24 ins, 49 del, 133 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it1/wer_4
+%WER 1.62 [ 203 / 12533, 25 ins, 46 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it2/wer_4
+%WER 1.59 [ 199 / 12533, 25 ins, 42 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it3/wer_4
+%WER 1.60 [ 201 / 12533, 35 ins, 33 del, 133 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it4/wer_3
+%WER 1.58 [ 198 / 12533, 31 ins, 37 del, 130 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it5/wer_4
+%WER 1.59 [ 199 / 12533, 31 ins, 37 del, 131 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it6/wer_4
 
 
 # Some system combination experiments.

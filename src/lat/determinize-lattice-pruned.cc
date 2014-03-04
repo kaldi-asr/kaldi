@@ -983,7 +983,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
 
         { // this is a check.
           double best_cost = backward_costs_[ifst_->Start()],
-              tolerance = 0.01 + 1.0e-04 * abs(best_cost);
+              tolerance = 0.01 + 1.0e-04 * std::abs(best_cost);
           if (task->priority_cost < best_cost - tolerance) {
             KALDI_WARN << "Cost below best cost was encountered:"
                        << task->priority_cost << " < " << best_cost;

@@ -41,7 +41,7 @@ Real SpMatrix<Real>::LogPosDefDet() const {
 
   for (MatrixIndexT i = 0; i < this->NumRows(); i++) {
     diag = static_cast<double>(chol(i, i));
-    det += log(diag);
+    det += kaldi::Log(diag);
   }
   return static_cast<Real>(2*det);
 }
@@ -287,7 +287,7 @@ void SpMatrix<Real>::Invert(Real *logdet, Real *det_sign, bool need_inverse) {
         }
         if (i == (int)(this->num_rows_-1) || fabs(prod) < 1.0e-10 || fabs(prod) > 1.0e+10) {
           if (prod < 0) { prod = -prod; sign *= -1; }
-          log_prod += log(fabs(prod));
+          log_prod += kaldi::Log(std::abs(prod));
           prod = 1.0;
         }
       }

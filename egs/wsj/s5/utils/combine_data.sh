@@ -6,7 +6,8 @@
 # for what these directories contain.
 
 # Begin configuration section. 
-extra_files= #specify addtional files in 'src-data-dir' to merge, ex. "file1 file2 ..."
+extra_files= # specify addtional files in 'src-data-dir' to merge, ex. "file1 file2 ..."
+skip_fix=false # skip the fix_data_dir.sh in the end
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -46,6 +47,8 @@ done
 
 utils/utt2spk_to_spk2utt.pl <$dest/utt2spk >$dest/spk2utt
 
-utils/fix_data_dir.sh $dest || exit 1;
+if ! $skip_fix ; then
+  utils/fix_data_dir.sh $dest || exit 1;
+fi
 
 exit 0

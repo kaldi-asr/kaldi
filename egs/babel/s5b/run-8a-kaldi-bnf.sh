@@ -42,12 +42,12 @@ if [ ! -f exp_bnf/tri6_bnf/.done ]; then
   touch exp_bnf/tri6_bnf/.done
 fi
 
-
+[ ! -d param_bnf ] && mkdir -p param_bnf
 if [ ! -f data_bnf/train_bnf/.done ]; then
   mkdir -p data_bnf
   # put the archives in plp/.
   local/nnet2/dump_bottleneck_features.sh --nj $train_nj --cmd "$train_cmd" \
-    --transform-dir exp/tri5 data/train data_bnf/train_bnf exp_bnf/tri6_bnf param_plp exp_bnf/dump_bnf
+    --transform-dir exp/tri5 data/train data_bnf/train_bnf exp_bnf/tri6_bnf param_bnf exp_bnf/dump_bnf
   touch data_bnf/train_bnf/.done
 fi 
 

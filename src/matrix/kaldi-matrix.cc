@@ -82,7 +82,7 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
       prod *= (*this)(i, i);
       if (i == num_rows_ - 1 || std::fabs(prod) < 1.0e-10 ||
           std::fabs(prod) > 1.0e+10) {
-        if (log_det != NULL) *log_det += std::log(std::fabs(prod));
+        if (log_det != NULL) *log_det += Log(std::fabs(prod));
         if (det_sign != NULL) *det_sign *= (prod > 0 ? 1.0 : -1.0);
         prod = 1.0;
       }
@@ -2362,7 +2362,7 @@ Real MatrixBase<Real>::LogSumExp(Real prune) const {
         sum_relto_max_elem += Exp(f - max_elem);
     }
   }
-  return max_elem + std::log(sum_relto_max_elem);
+  return max_elem + Log(sum_relto_max_elem);
 }
 
 template<typename Real>
@@ -2373,7 +2373,7 @@ Real MatrixBase<Real>::ApplySoftMax() {
     for (MatrixIndexT j = 0; j < num_cols_; j++)
       sum += ((*this)(i, j) = Exp((*this)(i, j) - max));
   this->Scale(1.0 / sum);
-  return max + log(sum);
+  return max + Log(sum);
 }
 
 template<typename Real>

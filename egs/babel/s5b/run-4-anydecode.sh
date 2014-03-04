@@ -17,7 +17,7 @@ skip_stt=false
 skip_scoring=false
 max_states=150000
 extra_kws=true
-vocab_kws=true
+vocab_kws=false
 wip=0.5
 shadow_set_extra_opts=( --wip $wip )
 
@@ -72,15 +72,22 @@ fi
 #The $dataset_type value will be the dataset name without any extrension
 eval my_data_dir=( "\${${dataset_type}_data_dir[@]}" )
 eval my_data_list=( "\${${dataset_type}_data_list[@]}" )
+if [ -z $my_data_dir ] || [ -z $my_data_list ] ; then
+  echo "Error: The dir you specified ($dataset_id) does not have existing config";
+  exit 1
+fi
 
 eval my_stm_file=\$${dataset_type}_stm_file
-
 eval my_ecf_file=\$${dataset_type}_ecf_file 
 eval my_kwlist_file=\$${dataset_type}_kwlist_file 
 eval my_rttm_file=\$${dataset_type}_rttm_file
 eval my_nj=\$${dataset_type}_nj  #for shadow, this will be re-set when appropriate
+
 my_subset_ecf=false
-eval [ \${${dataset_type}_subset_ecf+x}  ] && my_subset_ecf=\$${dataset_type}_subset_ecf 
+eval ind=\${${dataset_type}_subset_ecf+x}
+if [ "$ind" == "x" ] ; then
+  my_subset_ecf=\$${dataset_type}_subset_ecf
+fi
 
 declare -A my_more_kwlists
 eval my_more_kwlist_keys="\${!${dataset_type}_more_kwlists[@]}"
@@ -181,7 +188,7 @@ else
   [ -f $my_data_dir/filelist.list ] && my_data_list=$my_data_dir/filelist.list
   nj_max=`cat $my_data_list | wc -l` || nj_max=`ls $my_data_dir/audio | wc -l`
 fi
-if [ $nj_max -lt $my_nj ] ; then
+if [ "$nj_max" -lt "$my_nj" ] ; then
   echo "Number of jobs ($my_nj) is too big!"
   echo "The maximum reasonable number of jobs is $nj_max"
   my_nj=$nj_max
@@ -474,5 +481,33 @@ if [ -f exp/tri6_nnet_mpe/.done ]; then
   done
 fi
 
+####################################################################
+##
+## DNN semi-supervised training decoding
+##
+####################################################################
+for dnn in tri6_nnet_semi_supervised tri6_nnet_semi_supervised2 \
+          tri6_nnet_supervised_tuning tri6_nnet_supervised_tuning2 ; do
+  if [ -f exp/$dnn/.done ]; then
+    decode=exp/$dnn/decode_${dataset_id}
+    if [ ! -f $decode/.done ]; then
+      mkdir -p $decode
+      steps/nnet2/decode.sh \
+        --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
+        --beam $dnn_beam --lat-beam $dnn_lat_beam \
+        --skip-scoring true "${decode_extra_opts[@]}" \
+        --transform-dir exp/tri5/decode_${dataset_id} \
+        exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
+
+      touch $decode/.done
+    fi
+
+    local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+      --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+      --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+      "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+      ${dataset_dir} data/lang $decode
+  fi
+done
 echo "Everything looking good...." 
 exit 0

@@ -354,22 +354,6 @@ void UnitTestAdditiveNoiseComponent() {
 }
 
 
-void UnitTestInformationBottleneckComponent() {
-  // We're testing that the gradients are computed correctly:
-  // the input gradients and the model gradients.
-  
-  int32 input_dim = 10 + rand() % 50;
-  {
-    InformationBottleneckComponent ib_component(input_dim, 0.1);
-    UnitTestGenericComponentInternal(ib_component);
-  }
-  {
-    InformationBottleneckComponent ib_component;
-    ib_component.InitFromString("dim=15 noise-proportion=0.2");
-    UnitTestGenericComponentInternal(ib_component);
-  }
-}
-
 void UnitTestPiecewiseLinearComponent() {
   BaseFloat learning_rate = 0.01, max_change = 0.1 * (rand() % 2);
   int32 dim = 5 + rand() % 10, N = 3 + 2 * (rand() % 5);
@@ -842,7 +826,6 @@ int main() {
       UnitTestAffineComponentModified();
       UnitTestDropoutComponent();
       UnitTestAdditiveNoiseComponent();
-      UnitTestInformationBottleneckComponent();
       UnitTestParsing();
       if (loop == 0)
         KALDI_LOG << "Tests without GPU use succeeded.\n";

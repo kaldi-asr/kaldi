@@ -45,6 +45,7 @@ num_tgt=           # force to use number of outputs in the MLP (default is autod
 learn_rate=0.008   # initial learning rate
 train_opts=        # options, passed to the training script
 train_tool=        # optionally change the training tool
+frame_weights=     # per-frame weights for gradient weighting
 
 # OTHER
 use_gpu_id= # manually select GPU id to run on, (-1 disables GPU)
@@ -103,16 +104,21 @@ if [ ! -z $labels ]; then
 else
   echo "Using PDF targets from dirs '$alidir' '$alidir_cv'"
   # define pdf-alignment rspecifiers
-  labels_tr_ali="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz |\" ark:- |" # for analyze-counts.
   labels_tr="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz |\" ark:- | ali-to-post ark:- ark:- |"
   labels_cv="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir_cv/ali.*.gz |\" ark:- | ali-to-post ark:- ark:- |"
+  # 
+  labels_tr_pdf="ark:ali-to-pdf $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz |\" ark:- |" # for analyze-counts.
+  labels_tr_phn="ark:ali-to-phones --per-frame=true $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz |\" ark:- |"
 
   # get pdf-counts, used later to post-process DNN posteriors
-  analyze-counts --binary=false "$labels_tr_ali" $dir/ali_train_pdf.counts || exit 1
+  analyze-counts --verbose=1 --binary=false "$labels_tr_pdf" $dir/ali_train_pdf.counts 2>$dir/log/analyze_counts_pdf.log || exit 1
   # copy the old transition model, will be needed by decoder
   copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl || exit 1
   # copy the tree
   cp $alidir/tree $dir/tree || exit 1
+
+  # make phone counts for analysis
+  analyze-counts --verbose=1 --symbol-table=$lang/phones.txt "$labels_tr_phn" /dev/null 2>$dir/log/analyze_counts_phones.log || exit 1
 fi
 
 ###### PREPARE FEATURES ######
@@ -218,7 +224,7 @@ else
     transf)
       feature_transform_old=$feature_transform
       feature_transform=${feature_transform%.nnet}_transf_splice${splice_after_transf}.nnet
-      [ -z $transf ] && $alidir/final.mat
+      [ -z $transf ] && transf=$alidir/final.mat
       [ ! -f $transf ] && echo "Missing transf $transf" && exit 1
       feat_dim=$(feat-to-dim "$feats_tr nnet-forward 'nnet-concat $feature_transform_old \"transf-to-nnet $transf - |\" - |' ark:- ark:- |" -)
       nnet-concat --binary=false $feature_transform_old \
@@ -323,6 +329,7 @@ steps/nnet/train_scheduler.sh \
   --randomizer-seed $seed \
   ${train_opts} \
   ${train_tool:+ --train-tool "$train_tool"} \
+  ${frame_weights:+ --frame-weights "$frame_weights"} \
   ${config:+ --config $config} \
   $mlp_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir || exit 1
 

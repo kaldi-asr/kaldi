@@ -644,11 +644,11 @@ Real VectorBase<Real>::SumLog() const {
     // Possible future work (arnab): change these magic values to pre-defined
     // constants
     if (prod < 1.0e-10 || prod > 1.0e+10) {  
-      sum_log += std::log(prod);
+      sum_log += Log(prod);
       prod = 1.0;
     }
   }
-  if (prod != 1.0) sum_log += std::log(prod);
+  if (prod != 1.0) sum_log += Log(prod);
   return sum_log;
 }
 
@@ -698,7 +698,7 @@ Real VectorBase<Real>::LogSumExp(Real prune) const {
     if (f >= cutoff)
       sum_relto_max_elem += Exp(f - max_elem);
   }
-  return max_elem + std::log(sum_relto_max_elem);
+  return max_elem + Log(sum_relto_max_elem);
 }
 
 template<typename Real>
@@ -713,7 +713,7 @@ void VectorBase<Real>::ApplyLog() {
   for (MatrixIndexT i = 0; i < dim_; i++) {
     if (data_[i] < 0.0)
       KALDI_ERR << "Trying to take log of a negative number.";
-    data_[i] = std::log(data_[i]);
+    data_[i] = Log(data_[i]);
   }
 }
 
@@ -721,7 +721,7 @@ template<typename Real>
 void VectorBase<Real>::ApplyLogAndCopy(const VectorBase<Real> &v) {
   KALDI_ASSERT(dim_ == v.Dim());
   for (MatrixIndexT i = 0; i < dim_; i++) {
-    data_[i] = std::log(v(i));
+    data_[i] = Log(v(i));
   }
 }
 
@@ -782,7 +782,7 @@ Real VectorBase<Real>::ApplySoftMax() {
     sum += (data_[i] = Exp(data_[i] - max));
   }
   this->Scale(1.0 / sum);
-  return max + std::log(sum);
+  return max + Log(sum);
 }
 
 #ifdef HAVE_MKL

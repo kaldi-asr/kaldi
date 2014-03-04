@@ -69,8 +69,7 @@ if  [[ ${type} == shadow || $type == eval || $type == semitrain || $type == devt
   optional_variables=""
 else
   mandatory_variables="${type}_data_dir ${type}_data_list ${type}_stm_file \
-    ${type}_ecf_file ${type}_kwlist_file ${type}_rttm_file ${type}_nj \
-    ${type}_data_cmudb"
+    ${type}_ecf_file ${type}_kwlist_file ${type}_rttm_file ${type}_nj" 
   optional_variables="${type}_subset_ecf "
 fi
 
