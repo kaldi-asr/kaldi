@@ -56,11 +56,12 @@ if [[ `hostname` == *.tacc.utexas.edu ]] ; then
 
   dnn_cpu_parallel_opts=(--minibatch-size 128 --num-jobs-nnet 8 --num-threads 16 \
                          --parallel-opts "-pe smp 16" )
-  dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 4 --num-threads 1)
+  dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 4 --num-threads 1
+                         --parallel-opts "-pe smp 16" )
 
   dnn_gpu_mpe_parallel_opts=(--num-jobs-nnet 4 --num-threads 1)
 
-  dnn_update_parallel_opts=( --num-epochs 15 --num-epochs-extra 5 --num-iters-final 20 )
+  dnn_update_parallel_opts=( --num-epochs 15 --num-iters-final 20 )
 else
   decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G")
   sgmm_train_extra_opts=( --num-iters 25 )
@@ -77,7 +78,7 @@ else
   dnn_gpu_mpe_parallel_opts=(--num-jobs-nnet 4 --num-threads 1 \
                              --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
 
-  dnn_update_parallel_opts=( --num-epochs 15 --num-epochs-extra 5 --num-iters-final 20 )
+  dnn_update_parallel_opts=( --num-epochs 15 --num-iters-final 20 )
 fi
  
 icu_transform="Any-Lower"
