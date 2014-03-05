@@ -132,16 +132,17 @@ BaseFloat LogisticRegression::DoStep(const Matrix<BaseFloat> &xs,
   return objf;
 }
 
-BaseFloat LogisticRegression::GetObjfAndGrad(const Matrix<BaseFloat> &xs,
-  const std::vector<int32> &ys, const Matrix<BaseFloat> &xw,
-  Matrix<BaseFloat> *grad, BaseFloat normalizer) {
-  BaseFloat objf = 0.0;
+BaseFloat LogisticRegression::GetObjfAndGrad(
+    const Matrix<BaseFloat> &xs,
+    const std::vector<int32> &ys, const Matrix<BaseFloat> &xw,
+    Matrix<BaseFloat> *grad, BaseFloat normalizer) {
+  BaseFloat raw_objf = 0.0;
   // For each training example class
   for (int32 i = 0; i < ys.size(); i++) {
     Vector<BaseFloat> row(xw.NumCols());
     row.CopyFromVec(xw.Row(i));
     row.ApplySoftMax();
-    objf += std::log(std::max<BaseFloat>(row(ys[i]), 1.0e-20));
+    raw_objf += std::log(std::max<BaseFloat>(row(ys[i]), 1.0e-20));
     SubVector<BaseFloat> x = xs.Row(i);
     // Iterate over the class labels
     for (int32 k = 0; k < weights_.NumRows(); k++) {
@@ -157,9 +158,11 @@ BaseFloat LogisticRegression::GetObjfAndGrad(const Matrix<BaseFloat> &xs,
   // Scale and add regularization term.
   grad->Scale(1.0/ys.size());
   grad->AddMat(-1.0 * normalizer, weights_);
-  objf /= ys.size();
-  objf -= 0.5 * normalizer * TraceMatMat(weights_, weights_, kTrans);
-  return objf;
+  raw_objf /= ys.size();
+  BaseFloat regularizer = - 0.5 * normalizer * TraceMatMat(weights_, weights_, kTrans);
+  KALDI_VLOG(2) << "Objf is " << raw_objf << " + " << regularizer
+                << " = " << (raw_objf + regularizer);
+  return raw_objf + regularizer;
 }
 
 void LogisticRegression::SetWeights(const Matrix<BaseFloat> &weights) {

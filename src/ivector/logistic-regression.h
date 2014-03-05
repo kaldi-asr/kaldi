@@ -28,7 +28,7 @@ namespace kaldi {
 struct LogisticRegressionConfig {
   int32 max_steps;
   double normalizer;
-  LogisticRegressionConfig(): max_steps(20), normalizer(0.01) { }
+  LogisticRegressionConfig(): max_steps(20), normalizer(0.002) { }
   void Register(OptionsItf *po) {
     po->Register("max-steps", &max_steps,
                  "Maximum steps in L-BFGS.");
