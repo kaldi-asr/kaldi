@@ -19,10 +19,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-// Note on svn: this file is "upstream" from lattice-faster-online-decoder.h, and
-// changes in this file should be merged into lattice-faster-online-decoder.h,
-// after committing the changes to this file, using the command
-// svn merge lattice-faster-decoder.h lattice-faster-online-decoder.h
+// Note on svn: this file is "upstream" from lattice-faster-online-decoder.h,
+// and changes in this file should be merged into
+// lattice-faster-online-decoder.h, after committing the changes to this file,
+// using the command
+// svn merge ^/sandbox/online/src/decoder/lattice-faster-decoder.h lattice-faster-online-decoder.h
 
 #ifndef KALDI_DECODER_LATTICE_FASTER_DECODER_H_
 #define KALDI_DECODER_LATTICE_FASTER_DECODER_H_

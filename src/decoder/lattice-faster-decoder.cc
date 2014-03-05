@@ -23,7 +23,7 @@
 // Note on svn: this file is "upstream" from lattice-faster-online-decoder.cc, and
 // changes in this file should be merged into lattice-faster-online-decoder.cc,
 // after committing the changes to this file, using the command
-// svn merge lattice-faster-decoder.cc lattice-faster-online-decoder.cc
+// svn merge ^/sandbox/online/src/decoder/lattice-faster-decoder.cc lattice-faster-online-decoder.cc
 
 #include "decoder/lattice-faster-decoder.h"
 #include "lat/lattice-functions.h"
