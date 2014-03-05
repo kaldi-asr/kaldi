@@ -23,6 +23,10 @@ local/make_ldc96s.pl 55 /export/corpora5/LDC/LDC96S55 data
 local/make_ldc96s.pl 56 /export/corpora5/LDC/LDC96S56 data
 local/make_ldc96s.pl 57 /export/corpora5/LDC/LDC96S57 data
 local/make_ldc96s.pl 58 /export/corpora5/LDC/LDC96S58 data
+
+# we're not doing anything with the lre07 data currently.
+local/make_lre07.pl /export/corpora5/LDC/LDC2009S04 data/lre07
+
 utils/combine_data.sh data/all data/sre08_train_10sec_female data/sre08_train_10sec_male \
     data/sre08_train_3conv_female data/sre08_train_3conv_male data/sre08_train_8conv_female \
     data/sre08_train_8conv_male data/sre08_train_short2_male data/sre08_train_short2_female data/ldc96s*
