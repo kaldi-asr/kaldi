@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright  2014   David Snyder
+# Copyright  2014   David Snyder,  Daniel Povey
 # Apache 2.0.
 #
 # An in progress example script for training and evaluating
@@ -22,14 +22,22 @@ model=exp/ivectors_train/logistic_regression
 train_ivectors=exp/ivectors_train/ivector.scp
 classes="ark:utils/sym2int.pl -f 2 exp/ivectors_train/languages.txt data/train/utt2lang|"
 
+
+utils/sym2int.pl -f 2 exp/ivectors_train/languages.txt data/train/utt2lang | \
+  awk '{print $2}' | sort -n | uniq -c | \
+  awk 'BEGIN{printf(" [ ");} {printf("%s ", 1.0/$1); } END{print(" ]"); }' \
+   >exp/ivectors_train/inv_priors.vec
+
+
+
 . path.sh
+
 logistic-regression-train --config=$config scp:$train_ivectors \
-                          "$classes" $model 2>$log
+                          "$classes" $model 2>$log 
 
-posterior_output=posteriors
-scores=posteriors
-
-classes=exp/ivectors_train/trials
+#( logistic-regression-train --config=$config scp:$train_ivectors \
+#                          "$classes" - | \
+# logistic-regression-copy --scale-priors=exp/ivectors_train/inv_priors.vec - $model ) 2>$log
 
 trials="utils/sym2int.pl -f 2 exp/ivectors_train/languages.txt data/train/utt2lang|"
 scores="|utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt  >exp/ivectors_train/train_scores"

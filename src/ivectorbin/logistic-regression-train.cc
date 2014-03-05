@@ -43,67 +43,68 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write output in binary mode");
     po.Read(argc, argv);
     
-  if (po.NumArgs() != 3) {
-    po.PrintUsage();
-    exit(1);
-  }
+    if (po.NumArgs() != 3) {
+      po.PrintUsage();
+      exit(1);
+    }
 
-  std::string vector_rspecifier = po.GetArg(1),
+    std::string vector_rspecifier = po.GetArg(1),
         class_rspecifier = po.GetArg(2),
         model_out = po.GetArg(3);
 
-  RandomAccessBaseFloatVectorReader vector_reader(vector_rspecifier);
-  SequentialInt32Reader class_reader(class_rspecifier);
+    RandomAccessBaseFloatVectorReader vector_reader(vector_rspecifier);
+    SequentialInt32Reader class_reader(class_rspecifier);
     
-  std::vector<int32> ys;
-  std::vector<std::string> utt_ids;
-  std::vector<Vector<BaseFloat> > vectors;
+    std::vector<int32> ys;
+    std::vector<std::string> utt_ids;
+    std::vector<Vector<BaseFloat> > vectors;
 
-  int32 num_utt_done = 0, num_utt_err = 0;
+    int32 num_utt_done = 0, num_utt_err = 0;
 
-  int32 num_classes = 0;
-  for (; !class_reader.Done(); class_reader.Next()) {
-    std::string utt = class_reader.Key();
-    int32 class_label = class_reader.Value();
-    if (!vector_reader.HasKey(utt)) {
-      KALDI_WARN << "No vector for utterance " << utt;
-      num_utt_err++;
-    } else {
-      ys.push_back(class_label);
-      const Vector<BaseFloat> &vector = vector_reader.Value(utt);
-      vectors.push_back(vector);
+    int32 num_classes = 0;
+    for (; !class_reader.Done(); class_reader.Next()) {
+      std::string utt = class_reader.Key();
+      int32 class_label = class_reader.Value();
+      if (!vector_reader.HasKey(utt)) {
+        KALDI_WARN << "No vector for utterance " << utt;
+        num_utt_err++;
+      } else {
+        ys.push_back(class_label);
+        const Vector<BaseFloat> &vector = vector_reader.Value(utt);
+        vectors.push_back(vector);
     
-      // Since there are no gaps in the class labels and we
-      // start at 0, the largest label is the number of the
-      // of the classes - 1.
-      if (class_label > num_classes) {
-        num_classes = class_label;
+        // Since there are no gaps in the class labels and we
+        // start at 0, the largest label is the number of the
+        // of the classes - 1.
+        if (class_label > num_classes) {
+          num_classes = class_label;
+        }
+        num_utt_done++;
       }
-      num_utt_done++;
     }
-  }
 
-  // Since the largest label is 1 minus the number of
-  // classes.
-  num_classes += 1;
+    // Since the largest label is 1 minus the number of
+    // classes.
+    num_classes += 1;
 
-  KALDI_LOG << "Retrieved " << num_utt_done << " vectors with "
-            << num_utt_err << " missing. "
-            << "There were " << num_classes << " class labels.";
+    KALDI_LOG << "Retrieved " << num_utt_done << " vectors with "
+              << num_utt_err << " missing. "
+              << "There were " << num_classes << " class labels.";
 
-  if (num_utt_done == 0)
-    KALDI_ERR << "No vectors processed. Unable to train.";
+    if (num_utt_done == 0)
+      KALDI_ERR << "No vectors processed. Unable to train.";
 
-  Matrix<double> xs(vectors.size(), vectors[0].Dim());
-  for (int i = 0; i < vectors.size(); i++) {
-    xs.Row(i).CopyFromVec(vectors[i]);
-  }
+    Matrix<BaseFloat> xs(vectors.size(), vectors[0].Dim());
+    for (int i = 0; i < vectors.size(); i++) {
+      xs.Row(i).CopyFromVec(vectors[i]);
+    }
+    vectors.clear();
   
-  LogisticRegression classifier = LogisticRegression();
-  classifier.Train(xs, ys, config);
-  WriteKaldiObject(classifier, model_out, binary);
+    LogisticRegression classifier = LogisticRegression();
+    classifier.Train(xs, ys, config);
+    WriteKaldiObject(classifier, model_out, binary);
 
-  return 0;
+    return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

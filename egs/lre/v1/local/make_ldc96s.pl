@@ -112,7 +112,7 @@ foreach ('devtest', 'evltest', 'train') {
                      my $speaker = $lang_code . '_' . $orig_speaker;
                      my $utt = $speaker . '_ldc96s' . $dataset . '_' . $call;
                      print $wav_file
-                       $utt, 'sph2pipe -f wav -p -c 1', $File::Find::name;
+                       $utt, 'sph2pipe -f wav -p -c 1', $File::Find::name, '|';
                      print $utt2lang_file   $utt    , $lang_name;
                      print $utt2spk_file    $utt    , $speaker;
                      print $spk2gender_file $speaker, $gender;

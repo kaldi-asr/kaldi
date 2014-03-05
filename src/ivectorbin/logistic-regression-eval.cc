@@ -41,29 +41,12 @@ int ComputePosteriors(ParseOptions &po, const LogisticRegressionConfig &config) 
   for (; !vector_reader.Done(); vector_reader.Next()) {
     std::string utt = vector_reader.Key();
     const Vector<BaseFloat> &vector = vector_reader.Value();
-    vectors.push_back(vector);
-    utt_list.push_back(utt);
+    Vector<BaseFloat> posteriors;
+    classifier.GetPosteriors(vector, &posteriors);
+    posterior_writer.Write(utt, posteriors);
     num_utt_done++;
   }
-
-  if (vectors.empty()) {
-    KALDI_WARN << "Read no input";
-    return 1;
-  }
-  
-  Matrix<double> xs(vectors.size(), vectors[0].Dim());
-  for (int i = 0; i < vectors.size(); i++) {
-    xs.Row(i).CopyFromVec(vectors[i]);
-  }
- 
-  Matrix<double> posteriors;
-  classifier.GetPosteriors(xs, &posteriors);
-  
   KALDI_LOG << "Calculated posteriors for " << num_utt_done << " vectors.";
-  for (int i = 0; i < posteriors.NumRows(); i++) {
-    Vector<BaseFloat> row(posteriors.Row(i));
-    posterior_writer.Write(utt_list[i], row);
-  }  
   return (num_utt_done == 0 ? 1 : 0);
 }
 
@@ -103,12 +86,12 @@ int32 ComputeScores(ParseOptions &po, const LogisticRegressionConfig &config) {
     return 1;
   }
   
-  Matrix<double> xs(vectors.size(), vectors[0].Dim());
+  Matrix<BaseFloat> xs(vectors.size(), vectors[0].Dim());
   for (int i = 0; i < vectors.size(); i++) {
     xs.Row(i).CopyFromVec(vectors[i]);
   }
  
-  Matrix<double> posteriors;
+  Matrix<BaseFloat> posteriors;
   classifier.GetPosteriors(xs, &posteriors);
 
   bool binary = false;
