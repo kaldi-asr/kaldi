@@ -99,10 +99,14 @@ foreach ('devtest', 'evltest', 'train') {
   File::Find::find(sub {
 
                      my ($call   ) = /^(.*)\.sph$/o or return;
-                     my  $orig_speaker  = $speaker{$call};
-
-                     if (!$orig_speaker) {
-                       warn "$call: No call metadata.\n";
+                     my $orig_speaker  = $speaker{$call};
+                     my $gender = $gender{$call};
+                     if (!defined $orig_speaker) {
+                       warn "No speaker defined for call $call.\n";
+                       return;
+                     }
+                     if (!defined $gender || !($gender eq "f" || $gender eq "m")) {
+                       warn "No gender defined or bad gender '$gender' for call $call.\n";
                        return;
                      }
                      my $speaker = $lang_code . '_' . $orig_speaker;
@@ -111,7 +115,7 @@ foreach ('devtest', 'evltest', 'train') {
                        $utt, 'sph2pipe -f wav -p -c 1', $File::Find::name;
                      print $utt2lang_file   $utt    , $lang_name;
                      print $utt2spk_file    $utt    , $speaker;
-                     print $spk2gender_file $speaker, $gender{$call};
+                     print $spk2gender_file $speaker, $gender;
 
                    }, $in_top . $_);
 
