@@ -33,7 +33,7 @@
 #include "online2/online-feature-pipeline.h"
 #include "online2/online-gmm-decodable.h"
 #include "online2/online-endpoint.h"
-#include "decoder/lattice-faster-decoder.h"
+#include "decoder/lattice-faster-online-decoder.h"
 #include "hmm/transition-model.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/posterior.h"
@@ -287,7 +287,7 @@ class SingleUtteranceGmmDecoder {
   // orig_adaptation_state, the function GetAdaptationState() gets the CMVN
   // state.
   SpeakerAdaptationState adaptation_state_;
-  LatticeFasterDecoder decoder_;
+  LatticeFasterOnlineDecoder decoder_;
   
 };
 

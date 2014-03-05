@@ -18,7 +18,7 @@
 // limitations under the License.
 
 #include "online2/online-endpoint.h"
-#include "decoder/lattice-faster-decoder.h"
+#include "decoder/lattice-faster-online-decoder.h"
 
 namespace kaldi {
 
@@ -73,7 +73,7 @@ bool EndpointDetected(const OnlineEndpointConfig &config,
 
 int32 TrailingSilenceLength(const TransitionModel &tmodel,
                             const std::string &silence_phones_str,
-                            const LatticeFasterDecoder &decoder) {
+                            const LatticeFasterOnlineDecoder &decoder) {
   std::vector<int32> silence_phones;
   if (!SplitStringToIntegers(silence_phones_str, ":", false, &silence_phones))
     KALDI_ERR << "Bad --silence-phones option in endpointing config: "
@@ -86,7 +86,7 @@ int32 TrailingSilenceLength(const TransitionModel &tmodel,
   ConstIntegerSet<int32> silence_set(silence_phones);
 
   bool use_final_probs = false;
-  LatticeFasterDecoder::BestPathIterator iter =
+  LatticeFasterOnlineDecoder::BestPathIterator iter =
       decoder.BestPathEnd(use_final_probs, NULL);
   int32 num_silence_frames = 0;
   while (!iter.Done()) {  // we're going backwards in time from the most
