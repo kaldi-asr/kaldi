@@ -39,21 +39,23 @@ struct LogisticRegressionConfig {
 
 class LogisticRegression {
  public:
+
   // xs and ys are the training data. Each row of xs is a vector
   // corresponding to the class label in the same row of ys. 
-
   void Train(const Matrix<BaseFloat> &xs, const std::vector<int32> &ys,
              const LogisticRegressionConfig &conf);
  
-  // Calculates the posterior of the class label of input xs.
-  // The rows of posteriors corresponds to the rows of xs: the 
+  // Calculates the log posterior of the class label given the input xs.
+  // The rows of log_posteriors corresponds to the rows of xs: the 
   // individual data points to be evaluated. The columns of 
-  // posteriors are the integer class labels.
-  void GetPosteriors(const Matrix<BaseFloat> &xs, Matrix<BaseFloat> *posteriors);
+  // log_posteriors are the integer class labels.
+  void GetLogPosteriors(const Matrix<BaseFloat> &xs, 
+                        Matrix<BaseFloat> *log_posteriors);
 
-  // Calculates the posterior of the class label of input x.
-  // The indices of posteriors are the class labels.
-  void GetPosteriors(const Vector<BaseFloat> &x, Vector<BaseFloat> *posteriors);
+  // Calculates the log posterior of the class label given the input x.
+  // The indices of log_posteriors are the class labels.
+  void GetLogPosteriors(const Vector<BaseFloat> &x, 
+                        Vector<BaseFloat> *log_posteriors);
   
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);

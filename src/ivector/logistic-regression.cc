@@ -64,12 +64,12 @@ void LogisticRegression::Train(const Matrix<BaseFloat> &xs,
   weights_.CopyRowsFromVec(best_w);
 }
 
-void LogisticRegression::GetPosteriors(const Matrix<BaseFloat> &xs,
-                                       Matrix<BaseFloat> *posteriors) {
+void LogisticRegression::GetLogPosteriors(const Matrix<BaseFloat> &xs,
+                                       Matrix<BaseFloat> *log_posteriors) {
   int32 xs_num_rows = xs.NumRows(),
         xs_num_cols = xs.NumCols();
   
-  posteriors->Resize(xs_num_rows, weights_.NumRows());
+  log_posteriors->Resize(xs_num_rows, weights_.NumRows());
 
   Matrix<BaseFloat> xs_with_prior(xs_num_rows, xs_num_cols + 1);
   SubMatrix<BaseFloat> sub_xs(xs_with_prior, 0, xs_num_rows, 0, xs_num_cols);
@@ -78,19 +78,18 @@ void LogisticRegression::GetPosteriors(const Matrix<BaseFloat> &xs,
   for (int32 i = 0; i < xs_num_rows; i++) {
     xs_with_prior(i, xs_num_cols) = 1.0;
   }
-  posteriors->AddMatMat(1.0, xs_with_prior, kNoTrans, weights_, 
+  log_posteriors->AddMatMat(1.0, xs_with_prior, kNoTrans, weights_, 
                         kTrans, 0.0);
-  for (int32 i = 0; i < posteriors->NumRows(); i++) {
-    posteriors->Row(i).ApplySoftMax();
-    posteriors->Row(i).ApplyLog();
+  for (int32 i = 0; i < log_posteriors->NumRows(); i++) {
+    log_posteriors->Row(i).Add(-log_posteriors->Row(i).LogSumExp());
   }
 }
 
-void LogisticRegression::GetPosteriors(const Vector<BaseFloat> &x,
-                                       Vector<BaseFloat> *posteriors) {
+void LogisticRegression::GetLogPosteriors(const Vector<BaseFloat> &x,
+                                       Vector<BaseFloat> *log_posteriors) {
   int32 x_dim = x.Dim();
   
-  posteriors->Resize(weights_.NumRows());
+  log_posteriors->Resize(weights_.NumRows());
 
   Vector<BaseFloat> x_with_prior(x_dim + 1);
   SubVector<BaseFloat> sub_x(x_with_prior, 0, x_dim);
@@ -98,9 +97,8 @@ void LogisticRegression::GetPosteriors(const Vector<BaseFloat> &x,
   // Adding on extra element to handle the prior
   x_with_prior(x_dim) = 1.0;
   
-  posteriors->AddMatVec(1.0, weights_, kNoTrans, x_with_prior, kNoTrans);
-  posteriors->ApplySoftMax();
-  posteriors->ApplyLog();
+  log_posteriors->AddMatVec(1.0, weights_, kNoTrans, x_with_prior, kNoTrans);
+  log_posteriors->Add(-log_posteriors->LogSumExp());
 }
 
 BaseFloat LogisticRegression::DoStep(const Matrix<BaseFloat> &xs,

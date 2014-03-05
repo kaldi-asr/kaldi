@@ -31,34 +31,34 @@ void UnitTestPosteriors() {
   conf.max_steps = 20;
   conf.normalizer = 0.001;
 
-  Matrix<double> xs(n_xs, n_features);
+  Matrix<BaseFloat> xs(n_xs, n_features);
   xs.SetRandn();
-  Matrix<double> weights(n_labels, n_features + 1);
+  Matrix<BaseFloat> weights(n_labels, n_features + 1);
   weights.SetRandn();
   LogisticRegression classifier = LogisticRegression();
   classifier.SetWeights(weights);
   
   // Get posteriors for the xs using batch and serial methods.
-  Matrix<double> batch_posteriors;
-  classifier.GetPosteriors(xs, &batch_posteriors);
-  Matrix<double> posteriors(n_xs, n_labels);
+  Matrix<BaseFloat> batch_log_posteriors;
+  classifier.GetLogPosteriors(xs, &batch_log_posteriors);
+  Matrix<BaseFloat> log_posteriors(n_xs, n_labels);
 
   for (int32 i = 0; i < n_xs; i++) {
-    Vector<double> x(n_features);
+    Vector<BaseFloat> x(n_features);
     x.CopyRowFromMat(xs, i);
-    Vector<double> post;
-    classifier.GetPosteriors(x, &post);
+    Vector<BaseFloat> log_post;
+    classifier.GetLogPosteriors(x, &log_post);
     
     // Verify that sum_y p(y|x) = 1.0.
-    Vector<double> post_exp(post);
-    post_exp.ApplyExp();
-    KALDI_ASSERT(ApproxEqual(post_exp.Sum(), 1.0));
-    posteriors.Row(i).CopyFromVec(post);
+    Vector<BaseFloat> post(log_post);
+    post.ApplyExp();
+    KALDI_ASSERT(ApproxEqual(post.Sum(), 1.0));
+    log_posteriors.Row(i).CopyFromVec(log_post);
   }
   
   // Verify equivalence of batch and serial methods.
   float tolerance = 0.01;
-  KALDI_ASSERT(posteriors.ApproxEqual(batch_posteriors, tolerance));
+  KALDI_ASSERT(log_posteriors.ApproxEqual(batch_log_posteriors, tolerance));
 }
 
 void UnitTestTrain() {
@@ -67,7 +67,7 @@ void UnitTestTrain() {
         n_xs = rand() % 200 + 100,
         n_labels = rand() % 20 + 10;
   double normalizer = 0.01;
-  Matrix<double> xs(n_xs, n_features);
+  Matrix<BaseFloat> xs(n_xs, n_features);
   xs.SetRandn();
 
   std::vector<int32> ys;
@@ -84,27 +84,27 @@ void UnitTestTrain() {
 
   // Internally in LogisticRegression we add an additional element to
   // the x vectors: a 1.0 which handles the prior.
-  Matrix<double> xs_with_prior(n_xs, n_features + 1);
+  Matrix<BaseFloat> xs_with_prior(n_xs, n_features + 1);
   for (int32 i = 0; i < n_xs; i++) {
     xs_with_prior(i, n_xs) = 1.0;
   }
-  SubMatrix<double> sub_xs(xs_with_prior, 0, n_xs, 0, n_features);
+  SubMatrix<BaseFloat> sub_xs(xs_with_prior, 0, n_xs, 0, n_features);
   sub_xs.CopyFromMat(xs);
 
-  Matrix<double> xw(n_xs, n_labels);
+  Matrix<BaseFloat> xw(n_xs, n_labels);
   xw.AddMatMat(1.0, xs_with_prior, kNoTrans, classifier.weights_, 
                kTrans, 0.0);
 
-  Matrix<double> grad(classifier.weights_.NumRows(),
+  Matrix<BaseFloat> grad(classifier.weights_.NumRows(),
                       classifier.weights_.NumCols());
 
   double objf_trained = classifier.GetObjfAndGrad(xs_with_prior, 
                                                   ys, xw, &grad, normalizer);
 
   // Calculate objective function using a random weight matrix.
-  Matrix<double> xw_rand(n_xs, n_labels);
+  Matrix<BaseFloat> xw_rand(n_xs, n_labels);
   
-  Matrix<double> weights_rand(classifier.weights_);
+  Matrix<BaseFloat> weights_rand(classifier.weights_);
   weights_rand.SetRandn();
   xw.AddMatMat(1.0, xs_with_prior, kNoTrans, weights_rand, 
                kTrans, 0.0);

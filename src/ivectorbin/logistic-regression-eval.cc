@@ -24,29 +24,29 @@
 
 using namespace kaldi;
 
-int ComputePosteriors(ParseOptions &po, const LogisticRegressionConfig &config) {
+int ComputeLogPosteriors(ParseOptions &po, const LogisticRegressionConfig &config) {
   std::string model = po.GetArg(1),
       vector_rspecifier = po.GetArg(2),
-      posteriors_wspecifier = po.GetArg(3);
+      log_posteriors_wspecifier = po.GetArg(3);
   
   LogisticRegression classifier;
   ReadKaldiObject(model, &classifier);
   
   std::vector<Vector<BaseFloat> > vectors;
   SequentialBaseFloatVectorReader vector_reader(vector_rspecifier);
-  BaseFloatVectorWriter posterior_writer(posteriors_wspecifier);
+  BaseFloatVectorWriter posterior_writer(log_posteriors_wspecifier);
   std::vector<std::string> utt_list;
   int32 num_utt_done = 0;
 
   for (; !vector_reader.Done(); vector_reader.Next()) {
     std::string utt = vector_reader.Key();
     const Vector<BaseFloat> &vector = vector_reader.Value();
-    Vector<BaseFloat> posteriors;
-    classifier.GetPosteriors(vector, &posteriors);
-    posterior_writer.Write(utt, posteriors);
+    Vector<BaseFloat> log_posteriors;
+    classifier.GetLogPosteriors(vector, &log_posteriors);
+    posterior_writer.Write(utt, log_posteriors);
     num_utt_done++;
   }
-  KALDI_LOG << "Calculated posteriors for " << num_utt_done << " vectors.";
+  KALDI_LOG << "Calculated log posteriors for " << num_utt_done << " vectors.";
   return (num_utt_done == 0 ? 1 : 0);
 }
 
@@ -91,14 +91,14 @@ int32 ComputeScores(ParseOptions &po, const LogisticRegressionConfig &config) {
     xs.Row(i).CopyFromVec(vectors[i]);
   }
  
-  Matrix<BaseFloat> posteriors;
-  classifier.GetPosteriors(xs, &posteriors);
+  Matrix<BaseFloat> log_posteriors;
+  classifier.GetLogPosteriors(xs, &log_posteriors);
 
   bool binary = false;
   Output ko(scores_out.c_str(), binary);
   
   for (int i = 0; i < ys.size(); i++) {
-    ko.Stream() << utt_list[i] << " " << ys[i] << " " << posteriors(i, ys[i]) << std::endl;
+    ko.Stream() << utt_list[i] << " " << ys[i] << " " << log_posteriors(i, ys[i]) << std::endl;
   }
   KALDI_LOG << "Calculated scores for " << num_utt_done 
             << " vectors with "
@@ -112,9 +112,9 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Evaluates a model on input vectors and outputs either\n"
-        "posterior probability or scores.\n"
+        "log posterior probabilities or scores.\n"
         "Usage1: logistic-regression-eval <model> <input-vectors-rspecifier>\n"
-        "                                <output-posteriors-wspecifier>\n"
+        "                                <output-log-posteriors-wspecifier>\n"
         "Usage2: logistic-regression-eval <model> <trials-file> <input-vectors-rspecifier>\n"
         "                                <output-scores-file>\n";
     
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
   
   return (po.NumArgs() == 4) ?
       ComputeScores(po, config) :
-      ComputePosteriors(po, config);
+      ComputeLogPosteriors(po, config);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
