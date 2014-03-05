@@ -304,8 +304,8 @@ bool SingleUtteranceGmmDecoder::EndpointDetected(
                                              config.silence_phones,
                                              decoder_);
 
-  if (rand() % 50 == 0)
-    decoder_.TestGetBestPath(rand() % 2 == 0);
+  //if (rand() % 50 == 0)
+  //  decoder_.TestGetBestPath(rand() % 2 == 0);
   
   return kaldi::EndpointDetected(config, num_frames_decoded, silence_frames, 
                                  frame_shift, final_relative_cost);
