@@ -558,7 +558,7 @@ if [ "`uname`" == "Darwin"  ]; then
   fi
   echo FSTROOT = $FSTROOT >> kaldi.mk
   # posix_memalign and gcc -rdynamic options not present on OS X 10.5.*
-  osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | sed -e 's?\.[^.]*$??'`
+  osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | awk '{split($0,a,"\."); print a[1] "." a[2]; }'`
   echo "Configuring for OS X version $osx_ver ..."
   if [ "$osx_ver" == "10.5" ]; then
     check_exists makefiles/darwin_10_5.mk
@@ -572,6 +572,9 @@ if [ "`uname`" == "Darwin"  ]; then
   elif [ "$osx_ver" == "10.8" ]; then
     check_exists makefiles/darwin_10_8.mk
     cat makefiles/darwin_10_8.mk >> kaldi.mk 
+  elif [ "$osx_ver" == "10.9" ]; then
+    check_exists makefiles/darwin_10_9.mk
+    cat makefiles/darwin_10_9.mk >> kaldi.mk 
   else 
     failure "OS X version '$osx_ver' not supported"
   fi
