@@ -34,7 +34,7 @@ if [ ! -f ${dataset_dir}/kws/.done ] ; then
 
     touch ${dataset_dir}/kws/.done
   else # This will work for both supervised and unsupervised dataset kinds
-    kws_flags=()
+    kws_flags=(--use-icu true)
     if [  "${dataset_kind}" == "supervised"  ] ; then
       kws_flags+=(--rttm-file $my_rttm_file )
     fi

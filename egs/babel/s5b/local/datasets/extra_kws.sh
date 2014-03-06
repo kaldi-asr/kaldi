@@ -88,7 +88,7 @@ if [ "$dataset_kind" == "shadow" ]; then
   true #we do not support multiple kw lists for shadow set system
    
 else # This will work for both supervised and unsupervised dataset kinds
-  kws_flags=()
+  kws_flags=( --use-icu true )
   if [  "${dataset_kind}" == "supervised"  ] ; then
     #The presence of the file had been already verified, so just 
     #add the correct switches
