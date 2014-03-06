@@ -76,6 +76,7 @@ sclite_tgt: sclite_compiled
 .PHONY: sclite_compiled
 sclite_compiled: sctk_patched
 		cd sctk-2.4.0; \
+		patch -p0 -N < ../sctk.patch; \
 		{ . ../extras/install_sctk_patched.sh; } && $(MAKE) config && $(MAKE) all && $(MAKE) install && $(MAKE) doc
 
 .PHONY: sctk_patched
