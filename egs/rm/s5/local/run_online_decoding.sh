@@ -4,7 +4,7 @@
 
 
 steps/online/prepare_online_decoding.sh --cmd "$train_cmd" data/train data/lang \
-    exp/tri3b exp/tri3b_mmi/final.mdl exp/tri3b_online/
+    exp/tri3b exp/tri3b_mmi/final.mdl exp/tri3b_online/ || exit 1;
 
 steps/online/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 exp/tri3b/graph \
   data/test exp/tri3b_online/decode

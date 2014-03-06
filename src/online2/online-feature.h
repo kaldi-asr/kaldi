@@ -164,6 +164,8 @@ struct OnlineCmvnOptions {
   int32 modulus; // not configurable from command line, relates to how the class
                  // computes the cmvn internally.  smaller->more time-efficient
                  // but less memory-efficient.  Must be >= 1.
+  int32 ring_buffer_size; // not configurable from command line; size of ring buffer
+                 // used for caching CMVN stats.
 
   OnlineCmvnOptions():
       cmn_window(600),
@@ -171,7 +173,8 @@ struct OnlineCmvnOptions {
       global_frames(200),
       normalize_mean(true),
       normalize_variance(false),
-      modulus(5) { }
+      modulus(20),
+      ring_buffer_size(20) { }
 
   void Check() {
     KALDI_ASSERT(speaker_frames <= cmn_window && global_frames <= speaker_frames
@@ -231,7 +234,7 @@ struct OnlineCmvnState {
 };
 
 
-class OnlineCmvn : public OnlineFeatureInterface {
+class OnlineCmvn: public OnlineFeatureInterface {
  public:
 
   //
@@ -256,7 +259,7 @@ class OnlineCmvn : public OnlineFeatureInterface {
              const OnlineCmvnState &cmvn_state,
              OnlineFeatureInterface *src):
       opts_(opts), src_(src) { SetState(cmvn_state); }
-
+  
   /// Initializer that does not set the cmvn state:
   /// after calling this, you should call SetState().
   OnlineCmvn(const OnlineCmvnOptions &opts,
@@ -288,6 +291,7 @@ class OnlineCmvn : public OnlineFeatureInterface {
   // utterance's CMVN object.
   void Freeze(int32 cur_frame);
 
+  virtual ~OnlineCmvn();
  private:
 
   /// Smooth the CMVN stats "stats" (which are stored in the normal format as a
@@ -299,6 +303,18 @@ class OnlineCmvn : public OnlineFeatureInterface {
                                     const OnlineCmvnOptions &opts,
                                     MatrixBase<double> *stats);
 
+  /// Get the most recent cached frame of CMVN stats.  [If no frames
+  /// were cached, sets up empty stats for frame zero and returns that].
+  void GetMostRecentCachedFrame(int32 frame,
+                                int32 *cached_frame,
+                                Matrix<double> *stats);
+
+  /// Cache this frame of stats.
+  void CacheFrame(int32 frame, const Matrix<double> &stats);
+
+  /// Initialize ring buffer for caching stats.
+  inline void InitRingBufferIfNeeded();
+  
   /// Computes the raw CMVN stats for this frame, making use of (and updating if
   /// necessary) the cached statistics in raw_stats_.  This means the (x,
   /// x^2, count) stats for the last up to opts_.cmn_window frames.
@@ -315,7 +331,10 @@ class OnlineCmvn : public OnlineFeatureInterface {
   // every opts_.modulus frames.  raw_stats_[n / opts_.modulus] contains
   // the (count, x, x^2) statistics for the frames from std::max(0, n - opts_.cmn_window)
   // through n.
-  std::vector<Matrix<double> > raw_stats_;
+  std::vector<Matrix<double>*> cached_stats_modulo_;
+  // the variable below is a ring-buffer of cached stats.  the int32 is the
+  // frame index.
+  std::vector<std::pair<int32, Matrix<double> > > cached_stats_ring_;
 
   OnlineFeatureInterface *src_; // Not owned here
 };

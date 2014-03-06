@@ -93,8 +93,7 @@ bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
     KALDI_WARN << "You have decoded no data so cannot estimate fMLLR.";
     return false;
   }
-
-
+  
   KALDI_ASSERT(config_.fmllr_lattice_beam > 0.0);
   
   // Note: we'll just use whatever acoustic scaling factor we were decoding
@@ -102,7 +101,7 @@ bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
   Lattice raw_lat;
   decoder_.GetRawLatticePruned(&raw_lat, end_of_utterance,
                                config_.fmllr_lattice_beam);
-
+  
   // At this point we could rescore the lattice if we wanted, and
   // this might improve the accuracy on long utterances that were
   // the first utterance of that speaker, if we had already

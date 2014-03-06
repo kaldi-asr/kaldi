@@ -96,53 +96,111 @@ void OnlineMfccOrPlp<C>::AcceptWaveform(BaseFloat sampling_rate,
 template class OnlineMfccOrPlp<Mfcc>;
 template class OnlineMfccOrPlp<Plp>;
 
+void OnlineCmvn::GetMostRecentCachedFrame(int32 frame,
+                                          int32 *cached_frame,
+                                          Matrix<double> *stats) {
+  KALDI_ASSERT(frame >= 0);
+  InitRingBufferIfNeeded();
+  // look for a cached frame on a previous frame as close as possible in time
+  // to "frame".  Return if we get one.
+  for (int32 t = frame; t >= 0 && t >= frame - opts_.ring_buffer_size; t--) {
+    if (t % opts_.modulus == 0) {
+      // if this frame should be cached in cached_stats_modulo_, then
+      // we'll look there, and we won't go back any further in time.
+      break;
+    }
+    int32 index = t % opts_.ring_buffer_size;
+    if (cached_stats_ring_[index].first == t) {
+      *cached_frame = t;
+      *stats = cached_stats_ring_[index].second;
+      return;
+    }
+  }
+  int32 n = frame / opts_.modulus;
+  if (n >= cached_stats_modulo_.size()) {
+    if (cached_stats_modulo_.size() == 0) {
+      *cached_frame = -1;
+      stats->Resize(2, this->Dim() + 1);
+      return;
+    } else {
+      n = static_cast<int32>(cached_stats_modulo_.size() - 1);
+    }
+  }
+  *cached_frame = n * opts_.modulus;
+  KALDI_ASSERT(cached_stats_modulo_[n] != NULL);
+  *stats = *(cached_stats_modulo_[n]);
+}
+
+// Initialize ring buffer for caching stats.
+void OnlineCmvn::InitRingBufferIfNeeded() {
+  if (cached_stats_ring_.empty() && opts_.ring_buffer_size > 0) {
+    Matrix<double> temp(2, this->Dim() + 1);
+    cached_stats_ring_.resize(opts_.ring_buffer_size,
+                              std::pair<int32, Matrix<double> >(-1, temp));
+  }
+}
+
+void OnlineCmvn::CacheFrame(int32 frame, const Matrix<double> &stats) {
+  KALDI_ASSERT(frame >= 0);
+  if (frame % opts_.modulus == 0) { // store in cached_stats_modulo_.
+    int32 n = frame / opts_.modulus;
+    if (n >= cached_stats_modulo_.size()) {
+      // The following assert is a limitation on in what order you can call
+      // CacheFrame.  Fortunately the calling code always calls it in sequence,
+      // which it has to because you need a previous frame to compute the
+      // current one.
+      KALDI_ASSERT(n == cached_stats_modulo_.size());
+      cached_stats_modulo_.push_back(new Matrix<double>(stats));
+    } else {
+      KALDI_WARN << "Did not expect to reach this part of code.";
+      // do what seems right, but we shouldn't get here.
+      cached_stats_modulo_[n]->CopyFromMat(stats);
+    }
+  } else { // store in the ring buffer.
+    InitRingBufferIfNeeded();
+    if (!cached_stats_ring_.empty()) {
+      int32 index = frame % cached_stats_ring_.size();
+      cached_stats_ring_[index].first = frame;
+      cached_stats_ring_[index].second.CopyFromMat(stats);
+    }
+  }
+}
+
+OnlineCmvn::~OnlineCmvn() {
+  for (size_t i = 0; i < cached_stats_modulo_.size(); i++)
+    delete cached_stats_modulo_[i];
+  cached_stats_modulo_.clear();
+}
 
 void OnlineCmvn::ComputeStatsForFrame(int32 frame,
                                       MatrixBase<double> *stats_out) {
   KALDI_ASSERT(frame >= 0 && frame < src_->NumFramesReady());
-  int32 modulus = opts_.modulus;
 
-  int32 index = frame / modulus; // rounds down, so this is the index into
-                                 // raw_stats_ of the most recent cached
-                                 // set of stats.
-  if (index >= raw_stats_.size())
-    index = static_cast<int32>(raw_stats_.size()) - 1;
-  // most_recent_frame is most recent cached frame, or -1.
-  int32 most_recent_frame = (index >= 0 ? index * modulus : -1);
-
-  int32 dim = this->Dim();
+  int32 dim = this->Dim(), cur_frame;
   Matrix<double> stats(2, dim + 1);
-
-  if (index >= 0)
-    stats.CopyFromMat(raw_stats_[index]);
-
+  GetMostRecentCachedFrame(frame, &cur_frame, &stats);
+  
   Vector<BaseFloat> feats(dim);
   Vector<double> feats_dbl(dim);
-
-  KALDI_ASSERT(most_recent_frame >= -1 && most_recent_frame <= frame);
-
-  for (int32 f = most_recent_frame + 1; f <= frame; f++) {
-    src_->GetFrame(f, &feats);
+  while (cur_frame < frame) {
+    cur_frame++;
+    src_->GetFrame(cur_frame, &feats);
     feats_dbl.CopyFromVec(feats);
     stats.Row(0).Range(0, dim).AddVec(1.0, feats_dbl);
     stats.Row(1).Range(0, dim).AddVec2(1.0, feats_dbl);
     stats(0, dim) += 1.0;
-
-    int32 prev_f = f - opts_.cmn_window;
-    if (prev_f >= 0) {
+    // it's a sliding buffer; a frame at the back may be
+    // leaving the buffer so we have to subtract that.
+    int32 prev_frame = cur_frame - opts_.cmn_window;
+    if (prev_frame >= 0) {
       // we need to subtract frame prev_f from the stats.
-      src_->GetFrame(prev_f, &feats);
+      src_->GetFrame(prev_frame, &feats);
       feats_dbl.CopyFromVec(feats);
       stats.Row(0).Range(0, dim).AddVec(-1.0, feats_dbl);
       stats.Row(1).Range(0, dim).AddVec2(-1.0, feats_dbl);
       stats(0, dim) -= 1.0;
     }
-    if (f % modulus == 0) {
-      int32 this_index = f / modulus;
-      KALDI_ASSERT(this_index == raw_stats_.size());
-      raw_stats_.resize(this_index + 1);
-      raw_stats_[this_index] = stats;
-    }
+    CacheFrame(cur_frame, stats);
   }
   stats_out->CopyFromMat(stats);
 }
@@ -253,7 +311,7 @@ void OnlineCmvn::GetState(int32 cur_frame,
 }
 
 void OnlineCmvn::SetState(const OnlineCmvnState &cmvn_state) {
-  KALDI_ASSERT(raw_stats_.empty() &&
+  KALDI_ASSERT(cached_stats_modulo_.empty() &&
                "You cannot call SetState() after processing data.");
   orig_state_ = cmvn_state;
   frozen_state_ = cmvn_state.frozen_state;

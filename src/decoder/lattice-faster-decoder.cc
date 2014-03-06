@@ -3,7 +3,6 @@
 // Copyright 2009-2012  Microsoft Corporation  Mirko Hannemann
 //           2013-2014  Johns Hopkins University (Author: Daniel Povey)
 //                2014  Guoguo Chen
-//                2014  IMSL, PKU-HKUST (author: Wei Shi)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
