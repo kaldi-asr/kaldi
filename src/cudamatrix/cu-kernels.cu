@@ -276,8 +276,8 @@ static void _copy_col_from_vec(Real* mat, const Real* v, int col, MatrixDim d) {
 template<typename Real>
 __global__
 static void _apply_exp(Real* mat, MatrixDim d) {
-  int32_cuda i = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j * d.stride;
   if ( i < d.cols && j < d.rows ) {
     mat[index] = exp(mat[index]);
