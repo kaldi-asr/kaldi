@@ -1,6 +1,7 @@
 // fstext/determinize-star.h
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -74,13 +75,19 @@ namespace fst {
     executing, the algorithm will print a traceback and terminate (used in
     fstdeterminizestar.cc debug non-terminating determinization).
     If max_states is positive, it will stop determinization and throw an
-    exception as soon as the max-states is reached.  This can be useful in test.
+    exception as soon as the max-states is reached. This can be useful in test.
+    If allow_partial is true, the algorithm will output partial results when the
+    specified max_states is reached (when larger than zero), instead of throwing
+    out an error.
+    The function will return false if partial FST is generated, and true if the
+    complete determinized FST is generated.
 */
 template<class Arc>
-void DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst,
+bool DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst,
                      float delta = kDelta,
                      bool *debug_ptr = NULL,
-                     int max_states = -1);
+                     int max_states = -1,
+                     bool allow_partial = false);
 
 
 
@@ -89,11 +96,17 @@ void DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst,
     are strings.
     If max_states is positive, it will stop determinization and throw an
     exception as soon as the max-states is reached.  This can be useful in test.
+    If allow_partial is true, the algorithm will output partial results when the
+    specified max_states is reached (when larger than zero), instead of throwing
+    out an error.
+    The function will return false if partial FST is generated, and true if the
+    complete determinized FST is generated.
 */
 template<class Arc>
-void DeterminizeStar(Fst<Arc> &ifst, MutableFst<GallicArc<Arc> > *ofst,
+bool DeterminizeStar(Fst<Arc> &ifst, MutableFst<GallicArc<Arc> > *ofst,
                      float delta = kDelta, bool *debug_ptr = NULL,
-                     int max_states = -1);
+                     int max_states = -1,
+                     bool allow_partial = false);
 
 
 /// @} end "addtogroup fst_extensions"

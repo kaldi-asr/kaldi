@@ -47,8 +47,18 @@ int main(int argc, char *argv[]) {
 
     int32 max_silence_frames = 50;
     bool strict = true;
-    po.Register("max-silence-frames", &max_silence_frames, "Maximum #frames for silence arc.");
-    po.Register("strict", &strict, "Will allow 0 lattice if it is set to false.");
+    bool allow_partial = true;
+    BaseFloat max_states_scale = 4;
+    po.Register("max-silence-frames", &max_silence_frames, "Maximum #frames for"
+                " silence arc.");
+    po.Register("strict", &strict, "Setting --strict=false will cause successful "
+                "termination even if we processed no lattices.");
+    po.Register("max-states-scale", &max_states_scale, "Number of states in the"
+                " original lattice times this scale is the number of states "
+                "allowed when optimizing the index. Negative number means no "
+                "limit on the number of states.");
+    po.Register("allow-partial", &allow_partial, "Allow partial output if fails"
+                " to determinize, otherwise skip determinization if it fails.");
 
     po.Read(argc, argv);
 
@@ -72,13 +82,20 @@ int main(int argc, char *argv[]) {
     int32 n_done = 0;
     int32 n_fail = 0;
 
+    int32 max_states = -1;
+
     for (; !clat_reader.Done(); clat_reader.Next()) {
       std::string key = clat_reader.Key();
       CompactLattice clat = clat_reader.Value();
       clat_reader.FreeCurrent();
-      KALDI_VLOG(1) << "Processing lattice " << key;
+      KALDI_LOG << "Processing lattice " << key;
 
-      //Check if we have the corresponding utterance id
+      if (max_states_scale > 0) {
+        max_states = static_cast<int32>(
+            max_states_scale * static_cast<BaseFloat>(clat.NumStates()));
+      }
+
+      // Check if we have the corresponding utterance id.
       if (!usymtab_reader.HasKey(key)) {
         KALDI_WARN << "Cannot find utterance id for " << key;
         n_fail++;
@@ -172,7 +189,7 @@ int main(int argc, char *argv[]) {
       // Optimize the above factor transducer. It corresponds to the
       // "Optimization" step in the paper.
       KALDI_VLOG(1) << "Optimizing factor transducer...";
-      OptimizeFactorTransducer(&index_transducer);
+      OptimizeFactorTransducer(&index_transducer, max_states, allow_partial);
 
       MaybeDoSanityCheck(index_transducer);      
       

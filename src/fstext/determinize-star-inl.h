@@ -289,9 +289,11 @@ template<class Arc> class DeterminizerStar {
 
   // Initializer.  After initializing the object you will typically call one of
   // the Output functions.
-  DeterminizerStar(const Fst<Arc> &ifst, float delta = kDelta, int max_states = -1):
+  DeterminizerStar(const Fst<Arc> &ifst, float delta = kDelta,
+                   int max_states = -1, bool allow_partial = false):
       ifst_(ifst.Copy()), delta_(delta), max_states_(max_states),
-      determinized_(false), equal_(delta),
+      determinized_(false), allow_partial_(allow_partial),
+      is_partial_(false), equal_(delta),
       hash_(ifst.Properties(kExpanded, false) ? down_cast<const ExpandedFst<Arc>*, const Fst<Arc> >(&ifst)->NumStates()/2 + 3 : 20, hasher_, equal_) { }
 
   void Determinize(bool *debug_ptr) {
@@ -311,20 +313,29 @@ template<class Arc> class DeterminizerStar {
       assert(cur_id == 0 && "Do not call Determinize twice.");
     }
     while (!Q_.empty()) {
-      pair<vector<Element>*, OutputStateId> cur_pair = Q_.back();
-      Q_.pop_back();
+      pair<vector<Element>*, OutputStateId> cur_pair = Q_.front();
+      Q_.pop_front();
       ProcessSubset(cur_pair);
       if (debug_ptr && *debug_ptr) Debug();  // will exit.
       if (max_states_ > 0 && output_arcs_.size() > max_states_) {
-        std::cerr << "Determinization aborted since passed " << max_states_
-                  << " states.\n";
-        throw std::runtime_error("max-states reached in determinization");
+        if (allow_partial_ == false) {
+          std::cerr << "Determinization aborted since passed " << max_states_
+                    << " states.\n";
+          throw std::runtime_error("max-states reached in determinization");
+        } else {
+          KALDI_WARN << "Determinization terminated since passed " << max_states_
+                     << " states, partial results will be generated.";
+          is_partial_ = true;
+          break;
+        }
       }
     }
     determinized_ = true;
   }
 
-
+  bool IsPartial() {
+    return is_partial_;
+  }
   
   // frees all except output_arcs_, which contains the important info
   // we need to output.
@@ -753,7 +764,15 @@ template<class Arc> class DeterminizerStar {
       OutputStateId new_state_id = (OutputStateId) output_arcs_.size();
       hash_[new_subset] = new_state_id;
       output_arcs_.push_back(vector<TempArc>());
-      Q_.push_back(pair<vector<Element>*, OutputStateId>(new_subset,  new_state_id));
+      if (allow_partial_ == false) {
+        // If --allow-partial is not requested, we do the old way.
+        Q_.push_front(pair<vector<Element>*, OutputStateId>(new_subset,  new_state_id));
+      } else {
+        // If --allow-partial is requested, we do breadth first search. This
+        // ensures that when we return partial results, we return the states
+        // that are reachable by the fewest steps from the start state.
+        Q_.push_back(pair<vector<Element>*, OutputStateId>(new_subset,  new_state_id));
+      }
       return new_state_id;
     } else {
       return iter->second;  // the OutputStateId.
@@ -846,7 +865,7 @@ template<class Arc> class DeterminizerStar {
 
 
   DISALLOW_COPY_AND_ASSIGN(DeterminizerStar);
-  vector<pair<vector<Element>*, OutputStateId> > Q_;  // queue of subsets to be processed.
+  deque<pair<vector<Element>*, OutputStateId> > Q_;  // queue of subsets to be processed.
 
   vector<vector<TempArc> > output_arcs_;  // essentially an FST in our format.
 
@@ -854,6 +873,8 @@ template<class Arc> class DeterminizerStar {
   float delta_;
   int max_states_;
   bool determinized_; // used to check usage.
+  bool allow_partial_;  // output paritial results or not
+  bool is_partial_;     // if we get partial results or not
   SubsetKey hasher_;  // object that computes keys-- has no data members.
   SubsetEqual equal_;  // object that compares subsets-- only data member is delta_.
   SubsetHash hash_;  // hash from Subset to StateId in final Fst.
@@ -863,24 +884,28 @@ template<class Arc> class DeterminizerStar {
 
 
 template<class Arc>
-void DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst,
-                     float delta, bool *debug_ptr, int max_states) {
+bool DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst,
+                     float delta, bool *debug_ptr, int max_states,
+                     bool allow_partial) {
   ofst->SetOutputSymbols(ifst.OutputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
-  DeterminizerStar<Arc> det(ifst, delta, max_states);
+  DeterminizerStar<Arc> det(ifst, delta, max_states, allow_partial);
   det.Determinize(debug_ptr);
   det.Output(ofst);
+  return det.IsPartial();
 }
 
 
 template<class Arc>
-void DeterminizeStar(Fst<Arc> &ifst, MutableFst<GallicArc<Arc> > *ofst, float delta,
-                     bool *debug_ptr, int max_states) {
+bool DeterminizeStar(Fst<Arc> &ifst, MutableFst<GallicArc<Arc> > *ofst, float delta,
+                     bool *debug_ptr, int max_states,
+                     bool allow_partial) {
   ofst->SetOutputSymbols(ifst.InputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
-  DeterminizerStar<Arc> det(ifst, delta, max_states);
+  DeterminizerStar<Arc> det(ifst, delta, max_states, allow_partial);
   det.Determinize(debug_ptr);
   det.Output(ofst);
+  return det.IsPartial();
 }
 
 
