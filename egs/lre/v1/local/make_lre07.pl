@@ -2,6 +2,7 @@
 #
 # Usage: make_lre07.pl <path-to-LDC2009S04> <output-dir>
 
+
 if (@ARGV != 2) {
   print STDERR "Usage: $0 <path-to-LDC2009S04> <output-dir>\n";
   print STDERR "e.g. $0 /export/corpora5/LDC/LDC2009S04 data/lre07\n";
@@ -33,6 +34,17 @@ while (<WAVLIST>) {
 open(WAV, ">$dir/wav.scp") || die "Failed opening output file $out_dir/wav.scp";
 open(UTT2SPK, ">$dir/utt2spk") || die "Failed opening output file $dir/utt2spk";
 open(SPK2UTT, ">$dir/spk2utt") || die "Failed opening output file $dir/spk2utt";
+open(UTT2LANG, ">$dir/utt2lang") || die "Failed opening output file $dir/utt2lang";
+
+my $key_str = `wget -qO- "http://www.itl.nist.gov/iad/mig/tests/lang/2007/lid07key_v5.txt"`;
+@key_lines = split("\n",$key_str);
+%utt2lang = (); 
+foreach (@key_lines) {
+  @words = split(' ', $_);
+  if (index($words[0], "#") == -1) {
+    $utt2lang{$words[0]} = $words[1];
+  }
+}
 
 foreach (sort keys(%wav)) {
   $uttId = $_;
@@ -41,10 +53,12 @@ foreach (sort keys(%wav)) {
   # utterances: an identity map.
   print UTT2SPK "$uttId $uttId\n";
   print SPK2UTT "$uttId $uttId\n";
+  print UTT2LANG "$uttId $utt2lang{$uttId}\n";
 }
 close(WAV) || die;
 close(UTT2SPK) || die;
 close(SPK2UTT) || die;
+close(UTT2LANG) || die;
 close(WAVLIST) || die;
 system("rm -r $dir/tmp");
 
