@@ -1,7 +1,18 @@
 # SHELL += -x
 
-CXX = g++
+CXX ?= g++
+CXXFLAGS ?=
+LDFLAGS ?=
 
+# On Mac OS 10.9, g++ is actually clang in disguise which by default uses the
+# new c++ standard library libc++. Since openfst uses stuff from the tr1
+# namespace, we need to tell clang to use libstdc++ instead.
+COMPILER = $(shell $(CXX) -v 2>&1 )
+ifeq ($(findstring clang,$(COMPILER)),clang)
+	CXXFLAGS += -stdlib=libstdc++
+	LDFLAGS += -stdlib=libstdc++
+endif
+	
 all: check_required_programs sph2pipe atlas irstlm_tgt sclite_tgt openfst_tgt
 
 
@@ -12,7 +23,7 @@ check_required_programs:
 	which libtoolize || which glibtoolize
 	which svn
 	which gcc
-	which g++
+	which $(CXX)
 	which patch
 
 clean: openfst_cleaned sclite_cleaned  irstlm_cleaned
@@ -50,7 +61,7 @@ openfst/lib:
 
 openfst-1.3.2/Makefile: openfst-1.3.2/.patched
 		cd openfst-1.3.2/; \
-		LIBS="-ldl" ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts
+		./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 
 
 # patches for openfst. openfst_gcc41up.patch is a patch for openfst to \
