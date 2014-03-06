@@ -1,8 +1,6 @@
 # SHELL += -x
 
-CXX ?= g++
-CXXFLAGS ?=
-LDFLAGS ?=
+CXX = g++
 
 # On Mac OS 10.9, g++ is actually clang in disguise which by default uses the
 # new c++ standard library libc++. Since openfst uses stuff from the tr1
@@ -12,7 +10,7 @@ ifeq ($(findstring clang,$(COMPILER)),clang)
 	CXXFLAGS += -stdlib=libstdc++
 	LDFLAGS += -stdlib=libstdc++
 endif
-	
+
 all: check_required_programs sph2pipe atlas irstlm_tgt sclite_tgt openfst_tgt
 
 
