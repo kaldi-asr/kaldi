@@ -39,9 +39,9 @@ void UnitTestReadScriptFile() {
     bool ans = ReadScriptFile(ss, true, &script);
     KALDI_ASSERT(ans);
     std::vector<pr> script2;
-    script2.push_back(std::make_pair<std::string, std::string>("a", "b"));
-    script2.push_back(std::make_pair<std::string, std::string>("c", "d"));
-    script2.push_back(std::make_pair<std::string, std::string>("c", "d e"));
+    script2.push_back(std::pair<std::string, std::string>("a", "b"));
+    script2.push_back(std::pair<std::string, std::string>("c", "d"));
+    script2.push_back(std::pair<std::string, std::string>("c", "d e"));
     KALDI_ASSERT(script == script2);
   }
   {
@@ -70,7 +70,7 @@ void UnitTestReadScriptFile() {
     bool ans = ReadScriptFile("gunzip -c tmpf.gz |", true, &script);
     KALDI_ASSERT(ans);
     std::vector<pr> script2;
-    script2.push_back(std::make_pair<std::string, std::string>("a", "b"));
+    script2.push_back(std::pair<std::string, std::string>("a", "b"));
     KALDI_ASSERT(script == script2);
   }
 

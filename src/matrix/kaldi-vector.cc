@@ -945,8 +945,8 @@ template<typename OtherReal>
 void VectorBase<Real>::AddVec(const Real alpha, const VectorBase<OtherReal> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
   // remove __restrict__ if it causes compilation problems.
-  register __restrict__  Real *data = data_;
-  register __restrict__  OtherReal *other_data = v.data_;
+  register Real *__restrict__ data = data_;
+  register OtherReal *__restrict__ other_data = v.data_;
   MatrixIndexT dim = dim_;
   if (alpha != 1.0)
     for (MatrixIndexT i = 0; i < dim; i++)
@@ -966,8 +966,8 @@ template<typename OtherReal>
 void VectorBase<Real>::AddVec2(const Real alpha, const VectorBase<OtherReal> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
   // remove __restrict__ if it causes compilation problems.
-  register __restrict__  Real *data = data_;
-  register __restrict__  OtherReal *other_data = v.data_;
+  register Real *__restrict__ data = data_;
+  register OtherReal *__restrict__ other_data = v.data_;
   MatrixIndexT dim = dim_;
   if (alpha != 1.0)
     for (MatrixIndexT i = 0; i < dim; i++)

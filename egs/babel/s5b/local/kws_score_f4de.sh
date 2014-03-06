@@ -7,6 +7,8 @@
 # case_insensitive=true
 extraid=
 kwlist=
+ecf=
+rttm=
 f4de_prefix=
 # End configuration section.
 
@@ -43,6 +45,14 @@ if [ -z $kwlist ] ; then
   kwlist=$kwsdatadir/kwlist.xml
 fi
 
+if [ -z $rttm ] ; then
+  rttm=$kwsdatadir/rttm
+fi
+
+if [ -z $ecf ] ; then
+  ecf=$kwsdatadir/ecf.xml
+fi
+
 if [ ! -z ${f4de_prefix} ] ; then
   f4de_prefix="/${f4de_prefix}"
 fi
@@ -52,17 +62,17 @@ if [[ ! -d "$kwsdatadir" ]] ; then
     exit 1;
 fi
 
-for file in $kwsdatadir/ecf.xml $kwsdatadir/rttm $kwlist ; do
+for file in $ecf $rttm $kwlist ; do
     if [[ ! -f "$file" ]] ; then
         echo "FATAL: file $file does not exist!"
         exit 1;
     fi
 done
 
-echo KWSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwlist \
+echo KWSEval -e $ecf -r $rttm -t $kwlist \
     -s $kwsoutputdir/kwslist.xml -c -o -b -d -f $kwsoutputdir
 
-KWSEval -e $kwsdatadir/ecf.xml -r $kwsdatadir/rttm -t $kwlist \
+KWSEval -e $ecf -r $rttm -t $kwlist \
     -s $kwsoutputdir/kwslist.xml -c -o -b -d -f ${kwsoutputdir}${f4de_prefix} || exit 1;
 
 duration=`cat ${kwsoutputdir}${f4de_prefix}/sum.txt | grep TotDur | cut -f 3 -d '|' | sed "s/\s*//g"`

@@ -9,6 +9,7 @@ use_gpu=true
 if $use_gpu; then
   local/nnet2/run_5b_gpu.sh # various VTLN combinations,  Mel-filterbank features, si284 train (multiplied by 5).
   local/nnet2/run_5c_gpu.sh # this is on top of fMLLR features.
+  local/nnet2/run_5d_gpu.sh # this is p-norm training on top of fMLLR features.
 else
   local/nnet2/run_5b.sh # various VTLN combinations, Mel-filterbank features,  si284 train (multiplied by 5).
   local/nnet2/run_5c.sh # this is on top of fMLLR features.

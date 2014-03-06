@@ -74,10 +74,10 @@ void TestConvertStats() {
     BuildTreeStatsType stats;
     EventType evec;
     // this example is of ctx window (10, 11, 12), and pdf-class = 1.
-    evec.push_back(std::make_pair<int32, int32>(-1, 1));
-    evec.push_back(std::make_pair<int32, int32>(0, 10));
-    evec.push_back(std::make_pair<int32, int32>(1, 11));
-    evec.push_back(std::make_pair<int32, int32>(2, 12));
+    evec.push_back(std::pair<int32, int32>(-1, 1));
+    evec.push_back(std::pair<int32, int32>(0, 10));
+    evec.push_back(std::pair<int32, int32>(1, 11));
+    evec.push_back(std::pair<int32, int32>(2, 12));
     stats.push_back(std::make_pair(evec, static_cast<Clusterable*>(NULL)));
     int32 oldN = 3, oldP = 1, newN = 1, newP = 0;
     ConvertStats(oldN, oldP, newN, newP, &stats);
@@ -91,10 +91,10 @@ void TestConvertStats() {
     BuildTreeStatsType stats;
     EventType evec;
     // this example is of ctx window (10, 11, 12), and pdf-class = 1.
-    evec.push_back(std::make_pair<int32, int32>(-1, 1));
-    evec.push_back(std::make_pair<int32, int32>(0, 10));
-    evec.push_back(std::make_pair<int32, int32>(1, 11));
-    evec.push_back(std::make_pair<int32, int32>(2, 12));
+    evec.push_back(std::pair<int32, int32>(-1, 1));
+    evec.push_back(std::pair<int32, int32>(0, 10));
+    evec.push_back(std::pair<int32, int32>(1, 11));
+    evec.push_back(std::pair<int32, int32>(2, 12));
     stats.push_back(std::make_pair(evec, static_cast<Clusterable*>(NULL)));
     int32 oldN = 3, oldP = 1, newN = 2, newP = 1;
     ConvertStats(oldN, oldP, newN, newP, &stats);
@@ -109,10 +109,10 @@ void TestConvertStats() {
     BuildTreeStatsType stats;
     EventType evec;
     // this example is of ctx window (10, 11, 12), and pdf-class = 1.
-    evec.push_back(std::make_pair<int32, int32>(-1, 1));
-    evec.push_back(std::make_pair<int32, int32>(0, 10));
-    evec.push_back(std::make_pair<int32, int32>(1, 11));
-    evec.push_back(std::make_pair<int32, int32>(2, 12));
+    evec.push_back(std::pair<int32, int32>(-1, 1));
+    evec.push_back(std::pair<int32, int32>(0, 10));
+    evec.push_back(std::pair<int32, int32>(1, 11));
+    evec.push_back(std::pair<int32, int32>(2, 12));
     stats.push_back(std::make_pair(evec, static_cast<Clusterable*>(NULL)));
     int32 oldN = 3, oldP = 1, newN = 3, newP = 1;
     ConvertStats(oldN, oldP, newN, newP, &stats);

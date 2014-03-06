@@ -165,40 +165,24 @@ exit 0
 # Rescored with quinphone.
 # not updated
 
-# DNN on fMLLR features (Karel's setup). 
-%WER 7.24 [ 596 / 8234, 78 ins, 87 del, 431 sub ] exp/tri4a_dnn/decode_bd_tgpr_dev93/wer_11
-%WER 4.02 [ 227 / 5643, 38 ins, 12 del, 177 sub ] exp/tri4a_dnn/decode_bd_tgpr_eval92/wer_9
-%WER 9.96 [ 820 / 8234, 152 ins, 92 del, 576 sub ] exp/tri4a_dnn/decode_tgpr_dev93/wer_14
-%WER 6.50 [ 367 / 5643, 81 ins, 18 del, 268 sub ] exp/tri4a_dnn/decode_tgpr_eval92/wer_12
+
+# DNN on fMLLR features (Karel's setup, updated recipe [5.3.2014]). 
+# frame cross-entropy training
+%WER 6.74 [ 555 / 8234, 67 ins, 73 del, 415 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_bd_tgpr_dev93/wer_10
+%WER 4.09 [ 231 / 5643, 33 ins, 15 del, 183 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_bd_tgpr_eval92/wer_12
+# sMBR training (1 iteration)
+%WER 6.39 [ 526 / 8234, 56 ins, 77 del, 393 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_bd_tgpr_dev93_iter1/wer_11
+%WER 3.85 [ 217 / 5643, 23 ins, 16 del, 178 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_bd_tgpr_eval92_iter1/wer_14
+# sMBR training (1+4 iterations, lattices+alignment updated after 1st iteration)
+%WER 6.15 [ 506 / 8234, 55 ins, 70 del, 381 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_bd_tgpr_dev93_iter4/wer_11
+%WER 3.56 [ 201 / 5643, 24 ins, 9 del, 168 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_bd_tgpr_eval92_iter4/wer_13
+
 
 #DNN results  with cpu based setup
 %WER 7.21 [ 594 / 8234, 64 ins, 98 del, 432 sub ] exp/nnet5c1/decode_bd_tgpr_dev93/wer_14
 
 
 #==== Below are some DNN results from an older version of the RESULTS file,
-#====== that has some more complete results from Karel's DNN setup, including
-#====== discriminative training.
-
-# DNN on fMLLR features (Karel's setup).  Note: the dev93 results ARE VALID, 
-#   the fMLLR transforms are computed by decoding with GMM.
-# Cross-entropy training:
-%WER 6.74 [ 555 / 8234, 63 ins, 85 del, 407 sub ] exp/tri4b_pretrain-dbn_dnn/decode_bd_tgpr_dev93/wer_11
-%WER 4.18 [ 236 / 5643, 35 ins, 19 del, 182 sub ] exp/tri4b_pretrain-dbn_dnn/decode_bd_tgpr_eval92/wer_10
-# sMBR training:
-# - 1 + 4 itations : den-lats + num-alis regenerated after 1st iteration
-# dev93
-%WER 6.32 [ 520 / 8234, 48 ins, 84 del, 388 sub ] exp/tri4b_pretrain-dbn_dnn_smbr/decode_dev93_bd_tgpr_it1/wer_12
-%WER 6.15 [ 506 / 8234, 51 ins, 74 del, 381 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_dev93_bd_tgpr_it1/wer_11
-%WER 6.07 [ 500 / 8234, 52 ins, 68 del, 380 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_dev93_bd_tgpr_it2/wer_11
-%WER 6.07 [ 500 / 8234, 56 ins, 64 del, 380 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_dev93_bd_tgpr_it3/wer_10
-%WER 6.04 [ 497 / 8234, 52 ins, 71 del, 374 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_dev93_bd_tgpr_it4/wer_11
-# eval92
-%WER 3.77 [ 213 / 5643, 28 ins, 10 del, 175 sub ] exp/tri4b_pretrain-dbn_dnn_smbr/decode_eval92_bd_tgpr_it1/wer_11
-%WER 3.76 [ 212 / 5643, 33 ins, 8 del, 171 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval92_bd_tgpr_it1/wer_10
-%WER 3.65 [ 206 / 5643, 27 ins, 8 del, 171 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval92_bd_tgpr_it2/wer_11
-%WER 3.60 [ 203 / 5643, 27 ins, 11 del, 165 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval92_bd_tgpr_it3/wer_11
-%WER 3.56 [ 201 / 5643, 27 ins, 12 del, 162 sub ] exp/tri4b_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval92_bd_tgpr_it4/wer_11
-
 
 # Dan's cpu-based neural net recipe.  Note: the best number for dev93 is 7.10, an SGMM+MMI system,
 # and for eval92 is 3.79, the same system.  (On this setup, discriminative training helped a lot,

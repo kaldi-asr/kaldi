@@ -105,7 +105,9 @@ void DoFactorMerging(KwsProductFst *factor_transducer,
 void DoFactorDisambiguation(KwsLexicographicFst *index_transducer);
 
 // Do the optimization: do encoded determinization, minimization
-void OptimizeFactorTransducer(KwsLexicographicFst *index_transducer);
+void OptimizeFactorTransducer(KwsLexicographicFst *index_transducer,
+                              int32 max_states,
+                              bool allow_partial);
 
 // the following two functions will, if GetVerboseLevel() >= 2, check that the
 // cost of the second-best path in the transducers is not negative, and print
