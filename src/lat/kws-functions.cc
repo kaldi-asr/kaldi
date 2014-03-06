@@ -534,13 +534,25 @@ void DoFactorDisambiguation(KwsLexicographicFst *index_transducer) {
   }
 }
 
-void OptimizeFactorTransducer(KwsLexicographicFst *index_transducer) {
+void OptimizeFactorTransducer(KwsLexicographicFst *index_transducer,
+                              int32 max_states,
+                              bool allow_partial) {
   using namespace fst;
   KwsLexicographicFst ifst = *index_transducer;
   EncodeMapper<KwsLexicographicArc> encoder(kEncodeLabels, ENCODE);
   Encode(&ifst, &encoder);
   KALDI_VLOG(2) << "OptimizeFactorTransducer: determinization...";
-  Determinize(ifst, index_transducer);
+  if (allow_partial) {
+    DeterminizeStar(ifst, index_transducer, kDelta, NULL, max_states, true);
+  } else {
+      try {
+        DeterminizeStar(ifst, index_transducer, kDelta, NULL, max_states,
+                        false);
+      } catch(const std::exception &e) {
+        KALDI_WARN << e.what();
+        *index_transducer = ifst;
+      }
+  }
   KALDI_VLOG(2) << "OptimizeFactorTransducer: minimization...";
   Minimize(index_transducer);
   Decode(index_transducer, encoder);
