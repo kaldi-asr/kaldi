@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2013  Brno University of Technology (Author: Karel Vesely)  
+# Copyright 2013-2014  Brno University of Technology (Author: Karel Vesely)  
 # Apache 2.0.
 
 # Sequence-discriminative MPE/sMBR training of DNN.
@@ -19,7 +19,8 @@ lmwt=1.0
 learn_rate=0.00001
 halving_factor=1.0 #ie. disable halving
 do_smbr=true
-use_silphones=false #setting this to something will enable giving siphones to nnet-mpe
+use_silphones=false # exclude silphones from approximate accuracy computation
+unkphonelist= # exclude unkphones from approximate accuracy computation (overrides use_silphones)
 verbose=1
 
 seed=777    # seed value used for training data shuffling
@@ -63,8 +64,6 @@ cp $alidir/{final.mdl,tree} $dir
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
-
-
 #Get the files we will need
 nnet=$srcdir/$(readlink $srcdir/final.nnet || echo final.nnet);
 [ -z "$nnet" ] && echo "Error nnet '$nnet' does not exist!" && exit 1;
@@ -86,7 +85,8 @@ model=$dir/final.mdl
 
 #enable/disable silphones from MPE training
 mpe_silphones_arg= #empty
-[ "$use_silphones" == "true" ] && mpe_silphones_arg="--silence-phones=$silphonelist"
+$use_silphones && mpe_silphones_arg="--silence-phones=$silphonelist" # all silphones
+[ ! -z $unkphonelist ] && mpe_silphones_arg="--silence-phones=$unkphonelist" # unk only
 
 
 # Shuffle the feature list to make the GD stochastic!

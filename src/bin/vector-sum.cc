@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "Add vectors (e.g. weights, transition-accs; speaker vectors)\n"
         "If you need to scale the inputs, use vector-scale on the inputs\n"
         "\n"
-        "Usage: vector-sum [options] vector-in-rspecifier1 [vector-in-rspecifier2 vector-in-rspecifier3 ...] (vector-out-wspecifier\n"
+        "Usage: vector-sum [options] vector-in-rspecifier1 [vector-in-rspecifier2 vector-in-rspecifier3 ...] vector-out-wspecifier\n"
         " e.g.: vector-sum ark:1.weights ark:2.weights ark:combine.weights\n";
     
     std::string weight_str;

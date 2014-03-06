@@ -45,6 +45,7 @@ stage=0
 acwt=0.083333 # Acoustic weight used in getting fMLLR transforms, and also in 
               # lattice generation.
 max_active=7000
+max_mem=50000000
 beam=13.0
 lattice_beam=6.0
 nj=4
@@ -169,7 +170,7 @@ pass1feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/t
 if [ $stage -le 2 ]; then
   echo "$0: doing first adapted lattice generation phase"
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode1.JOB.log\
-    gmm-latgen-faster$thread_string --max-active=$first_max_active --beam=$first_beam --lattice-beam=$first_latbeam \
+    gmm-latgen-faster$thread_string --max-active=$first_max_active --max-mem=$max_mem --beam=$first_beam --lattice-beam=$first_latbeam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $adapt_model $graphdir/HCLG.fst "$pass1feats" "ark:|gzip -c > $dir/lat1.JOB.gz" \
     || exit 1;
@@ -205,7 +206,7 @@ pass2feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/t
 if [ $stage -le 4 ]; then
   echo "$0: doing final lattice generation phase"
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode2.JOB.log\
-    gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
+    gmm-latgen-faster$thread_string --max-active=$max_active --max-mem=$max_mem --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $adapt_model $graphdir/HCLG.fst "$pass2feats" "ark:|gzip -c > $dir/lat2.JOB.gz" \
     || exit 1;
