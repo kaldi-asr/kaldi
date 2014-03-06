@@ -143,6 +143,28 @@ static void UnitTestCuMatrixApplyLog() {
 }
 
 
+/*
+ * CuMatrix
+ */
+template<typename Real> 
+static void UnitTestCuMatrixApplyExp() {
+  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+  Matrix<Real> H(M, N);
+  H.SetRandn();
+  H.MulElements(H); // make numbers positive
+
+  CuMatrix<Real> D(H);
+
+  D.ApplyExp();
+  H.ApplyExp();
+
+  Matrix<Real> H2(D);
+
+  AssertEqual(H,H2);
+}
+
+
+
 template<typename Real> 
 static void UnitTestCuMatrixSigmoid() {
   for (int32 i = 0; i < 3; i++) {
@@ -1852,6 +1874,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixCopyCross<Real>();
   UnitTestCuMatrixCopyCross2<Real>();
   UnitTestCuMatrixApplyLog<Real>();
+  UnitTestCuMatrixApplyExp<Real>();
   UnitTestCuMatrixSetRandn<Real>();
   UnitTestCuMatrixSetRandUniform<Real>();
   UnitTestCuMatrixScale<Real>();
