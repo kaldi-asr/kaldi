@@ -130,7 +130,7 @@ void TestEventTypeIo(bool binary) {
         Input ki(filename, &binary_in);
         std::istream &infile = ki.Stream();
         EventType evec2;
-        evec2.push_back(std::make_pair<EventKeyType, EventValueType>(1, 1));  // make it nonempty.
+        evec2.push_back(std::pair<EventKeyType, EventValueType>(1, 1));  // make it nonempty.
         ReadEventType(infile, binary_in, &evec2);
         KALDI_ASSERT(evec2 == event_vec);
       }

@@ -37,7 +37,7 @@ OnlineDecodableDiagGmmScaled::OnlineDecodableDiagGmmScaled(
               << "input: please check this before the initializer!";
   }
   int32 num_pdfs = trans_model_.NumPdfs();
-  cache_.resize(num_pdfs, std::make_pair<int32,BaseFloat>(-1, 0.0));
+  cache_.resize(num_pdfs, std::pair<int32,BaseFloat>(-1, 0.0));
 }
 
 void OnlineDecodableDiagGmmScaled::CacheFrame(int32 frame) {
