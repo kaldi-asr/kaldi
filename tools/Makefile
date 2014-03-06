@@ -107,7 +107,7 @@ irstlm_tgt: irstlm_compiled
 .PHONY: irstlm_compiled
 irstlm_compiled: irstlm/Makefile
 		cd irstlm/; \
-		$(MAKE); $(MAKE) install	
+		make; $(MAKE) install	
 
 irstlm/Makefile: irstlm/.patched
 		cd irstlm; \
