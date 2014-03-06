@@ -237,7 +237,7 @@ class ParseOptions : public OptionsItf {
 /// ParseOptions object.
 template<class C> void ReadConfigFromFile(const std::string config_filename,
                                           C *c) {
-  ParseOptions po;
+  ParseOptions po("");
   c->Register(&po);
   po.ReadConfigFile(config_filename);
 }

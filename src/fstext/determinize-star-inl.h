@@ -21,6 +21,8 @@
 #define KALDI_FSTEXT_DETERMINIZE_STAR_INL_H_
 // Do not include this file directly.  It is included by determinize-star.h
 
+#include "base/kaldi-error.h"
+
 #ifdef _MSC_VER
 #include <unordered_map>
 #else

@@ -2,6 +2,15 @@
 
 CXX = g++
 
+# On Mac OS 10.9, g++ is actually clang in disguise which by default uses the
+# new c++ standard library libc++. Since openfst uses stuff from the tr1
+# namespace, we need to tell clang to use libstdc++ instead.
+COMPILER = $(shell $(CXX) -v 2>&1 )
+ifeq ($(findstring clang,$(COMPILER)),clang)
+	CXXFLAGS += -stdlib=libstdc++
+	LDFLAGS += -stdlib=libstdc++
+endif
+
 all: check_required_programs sph2pipe atlas irstlm_tgt sclite_tgt openfst_tgt
 
 
@@ -12,7 +21,7 @@ check_required_programs:
 	which libtoolize || which glibtoolize
 	which svn
 	which gcc
-	which g++
+	which $(CXX)
 	which patch
 
 clean: openfst_cleaned sclite_cleaned  irstlm_cleaned
@@ -50,7 +59,7 @@ openfst/lib:
 
 openfst-1.3.2/Makefile: openfst-1.3.2/.patched
 		cd openfst-1.3.2/; \
-		LIBS="-ldl" ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts
+		./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 
 
 # patches for openfst. openfst_gcc41up.patch is a patch for openfst to \
@@ -76,6 +85,7 @@ sclite_tgt: sclite_compiled
 .PHONY: sclite_compiled
 sclite_compiled: sctk_patched
 		cd sctk-2.4.0; \
+		patch -p0 -N < ../sctk.patch; \
 		{ . ../extras/install_sctk_patched.sh; } && $(MAKE) config && $(MAKE) all && $(MAKE) install && $(MAKE) doc
 
 .PHONY: sctk_patched
@@ -97,21 +107,24 @@ irstlm_tgt: irstlm_compiled
 .PHONY: irstlm_compiled
 irstlm_compiled: irstlm/Makefile
 		cd irstlm/; \
-		$(MAKE); $(MAKE) install	
+		make; $(MAKE) install	
 
 irstlm/Makefile: irstlm/.patched
 		cd irstlm; \
+	    automake --version | grep 1.13.1 >/dev/null && \
+         sed s:AM_CONFIG_HEADER:AC_CONFIG_HEADERS: <configure.in >configure.ac; \
 		(./regenerate-makefiles.sh || ./regenerate-makefiles.sh) && \
 		./configure --prefix `pwd` 
 
 
 irstlm/.patched: | irstlm
 		-cd irstlm;\
-		patch --verbose -N -p0 < ../interpolatedwrite-5.60.02.patch
-		touch $@ 		
+		patch --verbose -N -p0 < ../interpolatedwrite-5.60.02.patch; \
+		patch --verbose -N -p0 < ../irstlm.patch; \
+		touch .patched		
 
 irstlm:
-		svn -r 398 co https://svn.code.sf.net/p/irstlm/code/trunk irstlm
+		svn -r 398 co --non-interactive --trust-server-cert https://svn.code.sf.net/p/irstlm/code/trunk irstlm
 
 atlas: ATLAS/include/cblas.h
 

@@ -60,14 +60,6 @@ tar -xovzf pa_stable_v19_20111121.tgz || exit 1
 read -d '' pa_patch << "EOF"
 --- portaudio/Makefile.in	2012-08-05 10:42:05.000000000 +0300
 +++ portaudio/Makefile_mod.in	2012-08-05 10:41:54.000000000 +0300
-@@ -57,6 +57,7 @@
- 	src/common/pa_process.o \\
- 	src/common/pa_stream.o \\
- 	src/common/pa_trace.o \\
-+	src/common/pa_ringbuffer.o \\
- 	src/hostapi/skeleton/pa_hostapi_skeleton.o
- 
- LOOPBACK_OBJS = \\
 @@ -193,6 +194,8 @@
  	for include in $(INCLUDES); do \\
  		$(INSTALL_DATA) -m 644 $(top_srcdir)/include/$$include $(DESTDIR)$(includedir)/$$include; \\
@@ -90,7 +82,7 @@ if [ -z "$MACOS" ]; then
 fi
 
 ./configure --prefix=`pwd`/install --with-pic
-
+sed -i '40s:src/common/pa_ringbuffer.o::g; 40s:$: src/common/pa_ringbuffer.o:' Makefile
 
 if [ "$MACOS" != "" ]; then
     echo "detected MacOS operating system ... trying to fix Makefile"
