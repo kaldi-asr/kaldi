@@ -22,7 +22,7 @@ if [ $# -ne 0 ]; then
   exit 1
 fi
 
-if ! echo {dev10h,dev2h,eval,unsup}{,.uem,.seg} | grep -w "$type" >/dev/null; then
+if ! echo {dev10h,dev2h,eval,unsup,shadow}{,.uem,.seg} | grep -w "$type" >/dev/null; then
   # note: echo dev10.uem | grep -w dev10h will produce a match, but this
   # doesn't matter because dev10h is also a valid value.
   echo "Invalid variable type=${type}, valid values are " {dev10h,dev2h,eval,unsup}{,.uem,.seg}
@@ -49,7 +49,7 @@ if [ ! data_bnf/${dirid}_bnf/.done -nt exp/tri5/decode_${dirid}/.done ] || \
 fi
 
 if [ ! data_bnf/${dirid}/.done -nt data_bnf/${dirid}_bnf/.done ]; then
-  steps/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
+  steps/nnet/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
     --nj 16 --transform-dir exp/tri5/decode_${dirid} data_bnf/${dirid}_sat data/${dirid} \
     exp/tri5_ali exp_bnf/make_fmllr_feats/log param_bnf/ 
 

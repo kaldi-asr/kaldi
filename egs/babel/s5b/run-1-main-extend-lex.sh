@@ -177,6 +177,7 @@ if [ ! -f data/train/.plp.done ]; then
   touch data/train/.plp.done
 fi
 
+exit 0
 mkdir -p exp
 
 if [ ! -f data/train_sub3/.done ]; then
