@@ -1,6 +1,33 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# /tools/
+tools/ATLAS/
+tools/atlas3.8.3.tar.gz
+tools/irstlm/
+tools/openfst
+tools/openfst-1.3.2.tar.gz
+tools/openfst-1.3.2/
+tools/pa_stable_v19_20111121.tgz
+tools/portaudio/
+tools/sctk-2.4.0-20091110-0958.tar.bz2
+tools/sctk-2.4.0/
+tools/sph2pipe_v2.5.tar.gz
+tools/sph2pipe_v2.5/
 
 # /src/
-/src/kaldi.mk
+/src/kaldi.mk*
 
 # /src/base/
 /src/base/.depend.mk
@@ -67,6 +94,24 @@
 /src/bin/align-compiled-mapped
 /src/bin/latgen-faster-mapped
 /src/bin/analyze-counts
+/src/bin/am-info
+/src/bin/build-pfile-from-ali
+/src/bin/copy-post
+/src/bin/duplicate-matrix
+/src/bin/extract-ctx
+/src/bin/get-post-on-ali
+/src/bin/latgen-faster-mapped-parallel
+/src/bin/latgen-tracking-mapped
+/src/bin/logprob-to-post
+/src/bin/matrix-logprob
+/src/bin/matrix-sum
+/src/bin/pdf-to-counts
+/src/bin/post-to-pdf-post
+/src/bin/post-to-phone-post
+/src/bin/prob-to-post
+/src/bin/tree-info
+/src/bin/vector-scale
+/src/bin/vector-sum
 
 # /src/cudamatrix/
 /src/cudamatrix/.depend.mk
@@ -110,6 +155,21 @@
 /src/featbin/get-full-lda-mat
 /src/featbin/reverse-feats
 /src/featbin/compute-plp-feats
+/src/featbin/add-deltas-sdc
+/src/featbin/apply-cmvn-sliding
+/src/featbin/compare-feats
+/src/featbin/compute-cmvn-stats-two-channel
+/src/featbin/compute-kaldi-pitch-feats
+/src/featbin/copy-feats-to-htk
+/src/featbin/copy-feats-to-sphinx
+/src/featbin/extract-rows
+/src/featbin/interpolate-pitch
+/src/featbin/paste-feats
+/src/featbin/process-kaldi-pitch-feats
+/src/featbin/process-pitch-feats
+/src/featbin/select-feats
+/src/featbin/subsample-feats
+/src/featbin/wav-to-duration
 
 # /src/fgmmbin/
 /src/fgmmbin/.depend.mk
@@ -123,6 +183,8 @@
 /src/fgmmbin/fgmm-global-acc-stats-twofeats
 /src/fgmmbin/fgmm-global-copy
 /src/fgmmbin/fgmm-global-mixdown
+/src/fgmmbin/fgmm-global-gselect-to-post
+/src/fgmmbin/fgmm-global-info
 
 # /src/fstbin/
 /src/fstbin/.depend.mk
@@ -149,6 +211,9 @@
 /src/fstbin/fstdeterminizelog
 /src/fstbin/fstphicompose
 /src/fstbin/fstpropfinal
+/src/fstbin/fstpushspecial
+/src/fstbin/fstrhocompose
+/src/fstbin/fsts-to-transcripts
 
 # /src/fstext/
 /src/fstext/.depend.mk
@@ -254,11 +319,46 @@
 /src/gmmbin/gmm-global-acc-stats
 /src/gmmbin/gmm-global-est
 /src/gmmbin/gmm-global-acc-stats-twofeats
+/src/gmmbin/gmm-adapt-map
+/src/gmmbin/gmm-est-fmllr-raw
+/src/gmmbin/gmm-est-fmllr-raw-gpost
+/src/gmmbin/gmm-global-info
+/src/gmmbin/gmm-global-init-from-feats
+/src/gmmbin/gmm-latgen-faster-parallel
+/src/gmmbin/gmm-latgen-tracking
 
 # /src/hmm/
 /src/hmm/.depend.mk
 /src/hmm/hmm-topology-test
 /src/hmm/hmm-utils-test
+
+# /src/ivectorbin/
+/src/ivectorbin/.depend.mk
+/src/ivectorbin/compute-eer
+/src/ivectorbin/compute-vad
+/src/ivectorbin/ivector-compute-dot-products
+/src/ivectorbin/ivector-compute-lda
+/src/ivectorbin/ivector-compute-plda
+/src/ivectorbin/ivector-copy-plda
+/src/ivectorbin/ivector-extract
+/src/ivectorbin/ivector-extractor-acc-stats
+/src/ivectorbin/ivector-extractor-est
+/src/ivectorbin/ivector-extractor-init
+/src/ivectorbin/ivector-extractor-sum-accs
+/src/ivectorbin/ivector-mean
+/src/ivectorbin/ivector-normalize-length
+/src/ivectorbin/ivector-plda-scoring
+/src/ivectorbin/ivector-subtract-global-mean
+/src/ivectorbin/ivector-transform
+/src/ivectorbin/select-voiced-frames
+
+# /src/kwsbin/
+/src/kwsbin/.depend.mk
+/src/kwsbin/generate-proxy-keywords
+/src/kwsbin/kws-index-union
+/src/kwsbin/kws-search
+/src/kwsbin/lattice-to-kws-index
+/src/kwsbin/transcripts-to-fsts
 
 # /src/lat/
 /src/lat/.depend.mk
@@ -299,6 +399,21 @@
 /src/latbin/lattice-oracle
 /src/latbin/lattice-align-words
 /src/latbin/lattice-arcgraph
+/src/latbin/lattice-add-penalty
+/src/latbin/lattice-align-phones
+/src/latbin/lattice-align-words-lexicon
+/src/latbin/lattice-combine
+/src/latbin/lattice-depth
+/src/latbin/lattice-depth-per-frame
+/src/latbin/lattice-determinize-phone-pruned
+/src/latbin/lattice-determinize-phone-pruned-parallel
+/src/latbin/lattice-determinize-pruned-parallel
+/src/latbin/lattice-limit-depth
+/src/latbin/lattice-minimize
+/src/latbin/lattice-push
+/src/latbin/lattice-rescore-mapped
+/src/latbin/lattice-reverse
+/src/latbin/lattice-to-smbr-post
 
 # /src/lm/
 /src/lm/.depend.mk
@@ -314,10 +429,6 @@
 /src/nnet/.depend.mk
 /src/nnet/nnet-test
 
-# /src/nnet2/
-/src/nnet2/.depend.mk
-/src/nnet2/nnet-component-test
-
 # /src/nnetbin/
 /src/nnetbin/.depend.mk
 /src/nnetbin/nnet-train-xent-hardlab-perutt
@@ -329,40 +440,91 @@
 /src/nnetbin/rbm-convert-to-nnet
 /src/nnetbin/nnet-trim-n-last-transforms
 /src/nnetbin/nnet-train-mmi-sequential
+/src/nnetbin/cmvn-to-nnet
+/src/nnetbin/nnet-concat
+/src/nnetbin/nnet-info
+/src/nnetbin/nnet-initialize
+/src/nnetbin/nnet-kl-hmm-acc
+/src/nnetbin/nnet-kl-hmm-mat-to-component
+/src/nnetbin/nnet-train-frmshuff
+/src/nnetbin/nnet-train-mpe-sequential
+/src/nnetbin/nnet-train-perutt
+/src/nnetbin/transf-to-nnet
+
+# /src/nnet2/
+/src/nnet2/.depend.mk
+/src/nnet2/nnet-component-test
+
+# /src/nnet2bin/
+/src/nnet2bin/.depend.mk
+/src/nnet2bin/nnet-align-compiled
+/src/nnet2bin/nnet-am-average
+/src/nnet2bin/nnet-am-combine
+/src/nnet2bin/nnet-am-compute
+/src/nnet2bin/nnet-am-copy
+/src/nnet2bin/nnet-am-fix
+/src/nnet2bin/nnet-am-info
+/src/nnet2bin/nnet-am-init
+/src/nnet2bin/nnet-am-limit-rank
+/src/nnet2bin/nnet-am-limit-rank-final
+/src/nnet2bin/nnet-am-mixup
+/src/nnet2bin/nnet-am-rescale
+/src/nnet2bin/nnet-am-shrink
+/src/nnet2bin/nnet-am-stats
+/src/nnet2bin/nnet-am-widen
+/src/nnet2bin/nnet-combine
+/src/nnet2bin/nnet-combine-a
+/src/nnet2bin/nnet-combine-egs-discriminative
+/src/nnet2bin/nnet-combine-fast
+/src/nnet2bin/nnet-compare-hash-discriminative
+/src/nnet2bin/nnet-compute
+/src/nnet2bin/nnet-compute-from-egs
+/src/nnet2bin/nnet-compute-prob
+/src/nnet2bin/nnet-copy-egs
+/src/nnet2bin/nnet-copy-egs-discriminative
+/src/nnet2bin/nnet-get-egs
+/src/nnet2bin/nnet-get-egs-discriminative
+/src/nnet2bin/nnet-get-feature-transform
+/src/nnet2bin/nnet-get-feature-transform-multi
+/src/nnet2bin/nnet-get-preconditioner
+/src/nnet2bin/nnet-get-weighted-egs
+/src/nnet2bin/nnet-gradient
+/src/nnet2bin/nnet-init
+/src/nnet2bin/nnet-insert
+/src/nnet2bin/nnet-latgen-faster
+/src/nnet2bin/nnet-latgen-faster-parallel
+/src/nnet2bin/nnet-limit-degradation
+/src/nnet2bin/nnet-logprob
+/src/nnet2bin/nnet-logprob-parallel
+/src/nnet2bin/nnet-logprob2
+/src/nnet2bin/nnet-logprob2-parallel
+/src/nnet2bin/nnet-modify-learning-rates
+/src/nnet2bin/nnet-normalize-stddev
+/src/nnet2bin/nnet-perturb-egs
+/src/nnet2bin/nnet-perturb-egs-fmllr
+/src/nnet2bin/nnet-precondition
+/src/nnet2bin/nnet-randomize-frames
+/src/nnet2bin/nnet-select-egs
+/src/nnet2bin/nnet-show-progress
+/src/nnet2bin/nnet-shrink
+/src/nnet2bin/nnet-shuffle-egs
+/src/nnet2bin/nnet-shuffle-egs-discriminative
+/src/nnet2bin/nnet-subset-egs
+/src/nnet2bin/nnet-train-discriminative-parallel
+/src/nnet2bin/nnet-train-discriminative-simple
+/src/nnet2bin/nnet-train-ensemble
+/src/nnet2bin/nnet-train-lbfgs
+/src/nnet2bin/nnet-train-parallel
+/src/nnet2bin/nnet-train-simple
+/src/nnet2bin/nnet-train-transitions
+/src/nnet2bin/raw-nnet-concat
+/src/nnet2bin/raw-nnet-info
 
 # /src/sgmm/
 /src/sgmm/.depend.mk
 /src/sgmm/am-sgmm-test
 /src/sgmm/estimate-am-sgmm-test
 /src/sgmm/fmllr-sgmm-test
-
-# /src/sgmm2/
-/src/sgmm2/.depend.mk
-/src/sgmm2/am-sgmm-test
-/src/sgmm2/estimate-am-sgmm-test
-/src/sgmm2/fmllr-sgmm-test
-
-# /src/sgmm2bin/
-/src/sgmm2bin/.depend.mk
-/src/sgmm2bin/sgmm2-init
-/src/sgmm2bin/sgmm2-acc-stats
-/src/sgmm2bin/sgmm2-align-compiled
-/src/sgmm2bin/sgmm2-post-to-gpost
-/src/sgmm2bin/sgmm2-latgen-faster
-/src/sgmm2bin/sgmm2-rescore-lattice
-/src/sgmm2bin/sgmm2-copy
-/src/sgmm2bin/sgmm2-info
-/src/sgmm2bin/sgmm2-est-ebw
-/src/sgmm2bin/sgmm2-acc-stats2
-/src/sgmm2bin/sgmm2-comp-prexform
-/src/sgmm2bin/sgmm2-est-fmllr
-/src/sgmm2bin/sgmm2-project
-/src/sgmm2bin/sgmm2-gselect
-/src/sgmm2bin/sgmm2-est
-/src/sgmm2bin/sgmm2-sum-accs
-/src/sgmm2bin/sgmm2-est-spkvecs
-/src/sgmm2bin/sgmm2-acc-stats-gpost
-/src/sgmm2bin/sgmm2-est-spkvecs-gpost
 
 # /src/sgmmbin/
 /src/sgmmbin/.depend.mk
@@ -401,6 +563,38 @@
 /src/sgmmbin/sgmm-sum-accs
 /src/sgmmbin/sgmm-est
 /src/sgmmbin/sgmm-decode-faster
+
+# /src/sgmm2/
+/src/sgmm2/.depend.mk
+/src/sgmm2/am-sgmm-test
+/src/sgmm2/estimate-am-sgmm-test
+/src/sgmm2/fmllr-sgmm-test
+
+# /src/sgmm2bin/
+/src/sgmm2bin/.depend.mk
+/src/sgmm2bin/sgmm2-init
+/src/sgmm2bin/sgmm2-acc-stats
+/src/sgmm2bin/sgmm2-align-compiled
+/src/sgmm2bin/sgmm2-post-to-gpost
+/src/sgmm2bin/sgmm2-latgen-faster
+/src/sgmm2bin/sgmm2-rescore-lattice
+/src/sgmm2bin/sgmm2-copy
+/src/sgmm2bin/sgmm2-info
+/src/sgmm2bin/sgmm2-est-ebw
+/src/sgmm2bin/sgmm2-acc-stats2
+/src/sgmm2bin/sgmm2-comp-prexform
+/src/sgmm2bin/sgmm2-est-fmllr
+/src/sgmm2bin/sgmm2-project
+/src/sgmm2bin/sgmm2-gselect
+/src/sgmm2bin/sgmm2-est
+/src/sgmm2bin/sgmm2-sum-accs
+/src/sgmm2bin/sgmm2-est-spkvecs
+/src/sgmm2bin/sgmm2-acc-stats-gpost
+/src/sgmm2bin/sgmm2-est-spkvecs-gpost
+/src/sgmm2bin/sgmm2-latgen-faster-parallel
+
+# /src/thread/
+/src/thread/.depend.mk
 
 # /src/transform/
 /src/transform/.depend.mk
