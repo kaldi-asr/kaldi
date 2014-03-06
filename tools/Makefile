@@ -108,11 +108,13 @@ irstlm/Makefile: irstlm/.patched
 
 irstlm/.patched: | irstlm
 		-cd irstlm;\
-		patch --verbose -N -p0 < ../interpolatedwrite-5.60.02.patch
+		patch --verbose -N -p0 < ../interpolatedwrite-5.60.02.patch; \
+		patch --verbose -N -p0 < ../irstlm.patch; \
+		mv configure.in configure.ac
 		touch $@ 		
 
 irstlm:
-		svn -r 398 co https://svn.code.sf.net/p/irstlm/code/trunk irstlm
+		svn -r 398 co --non-interactive --trust-server-cert https://svn.code.sf.net/p/irstlm/code/trunk irstlm
 
 atlas: ATLAS/include/cblas.h
 
