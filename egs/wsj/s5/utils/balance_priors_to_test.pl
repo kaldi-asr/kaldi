@@ -60,8 +60,8 @@ while(<LANGUAGES>) {
 
 $priors = " [ ";
 foreach $lang (@idx_to_lang) {
-  $frac = (1.0*$test_count{$lang}) / ($train_count{$lang} + $test_count{$lang});
-  $priors .= "$frac ";
+  $ratio = (1.0*$test_count{$lang}) / $train_count{$lang};
+  $priors .= "$ratio ";
 }
 
 $priors .= " ]";
