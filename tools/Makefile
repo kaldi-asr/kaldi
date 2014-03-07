@@ -121,7 +121,7 @@ irstlm/.patched: | irstlm
 		-cd irstlm;\
 		patch --verbose -N -p0 < ../interpolatedwrite-5.60.02.patch; \
 		patch --verbose -N -p0 < ../irstlm.patch; \
-		touch $@ 		
+		touch .patched 		
 
 irstlm:
 		svn -r 398 co --non-interactive --trust-server-cert https://svn.code.sf.net/p/irstlm/code/trunk irstlm
