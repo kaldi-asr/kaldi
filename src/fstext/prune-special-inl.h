@@ -161,7 +161,7 @@ template<class Arc>
 void PruneSpecial(const Fst<Arc> &ifst,
                   VectorFst<Arc> *ofst,
                   typename Arc::Weight beam,
-                  size_t max_states = 0) {
+                  size_t max_states) {
   PruneSpecialClass<Arc> c(ifst, ofst, beam, max_states);
 }
 
