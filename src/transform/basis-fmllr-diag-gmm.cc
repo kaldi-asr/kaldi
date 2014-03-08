@@ -322,24 +322,22 @@ double BasisFmllrEstimate::ComputeTransform(
 	  Matrix<BaseFloat> delta_W(dim_, dim_ + 1);
 	  Vector<BaseFloat> delta_d(basis_size);
 	  for (int32 n = 0; n < basis_size; ++n) {
-	    Matrix<BaseFloat> basis_full(dim_, dim_ + 1);
-	    basis_full.CopyFromMat(fmllr_basis_[n]);
-	    delta_d(n) = TraceMatMat(basis_full, P, kTrans);
-	    delta_W.AddMat(delta_d(n), basis_full);
+	    delta_d(n) = TraceMatMat(fmllr_basis_[n], P, kTrans);
+	    delta_W.AddMat(delta_d(n), fmllr_basis_[n]);
 	  }
 
 	  BaseFloat step_size = CalBasisFmllrStepSize(spk_stats, delta_W, A, S, options.step_size_iters);
 	  W_mat.AddMat(step_size, delta_W, kNoTrans);
 	  coefficient->AddVec(step_size, delta_d);
 	  // Check auxiliary function
-	  BaseFloat endObj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
+	  BaseFloat end_obj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
 
       KALDI_VLOG(4) << "Objective function (iter=" << iter << "): "
                     << start_obj / spk_stats.beta_  << " -> "
-                    << (endObj / spk_stats.beta_) << " over "
+                    << (end_obj / spk_stats.beta_) << " over "
                     << spk_stats.beta_ << " frames";
 
-	  impr_spk += (endObj - start_obj);
+	  impr_spk += (end_obj - start_obj);
     }  // loop over iters
 
     out_xform->CopyFromMat(W_mat, kNoTrans);
@@ -349,10 +347,10 @@ double BasisFmllrEstimate::ComputeTransform(
 
 
 BaseFloat CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
-                             const Matrix<BaseFloat> &delta,
-                             const Matrix<BaseFloat> &A,
-                             const Matrix<BaseFloat> &S,
-                             int32 max_iters) {
+                                const Matrix<BaseFloat> &delta,
+                                const Matrix<BaseFloat> &A,
+                                const Matrix<BaseFloat> &S,
+                                int32 max_iters) {
   int32 dim = spk_stats.dim_;
   KALDI_ASSERT(dim == delta.NumRows() && dim == S.NumRows());
   // The first D columns of delta_W
@@ -366,8 +364,7 @@ BaseFloat CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
   BaseFloat c = 0;
   Vector<BaseFloat> G_row_delta(dim + 1);
   for (int32 d = 0; d < dim; ++d) {
-    SpMatrix<BaseFloat> spk_stats_Gtmp(spk_stats.G_[d].NumRows());
-    spk_stats_Gtmp.CopyFromSp(spk_stats.G_[d]);
+    SpMatrix<BaseFloat> spk_stats_Gtmp(spk_stats.G_[d]);
     G_row_delta.AddSpVec(1.0, spk_stats_Gtmp, delta.Row(d), 0.0);
     c += VecVec(G_row_delta, delta.Row(d));
   }
