@@ -35,7 +35,7 @@ classes="ark:utils/remove_dialect.pl data/train/utt2lang \
 # the languages as count(lang_test) / (count(lang_test) + count(lang_train)).
 utils/balance_priors_to_test.pl \
     <(utils/remove_dialect.pl data/train/utt2lang) \
-    <(utils/remove_dialect.pl data/lre07/utt2lang) \
+    <(utils/remove_dialect.pl data/test/utt2lang) \
     exp/ivectors_train/languages.txt \
     exp/ivectors_train/priors.vec
 
@@ -76,19 +76,19 @@ compute-wer --text ark:<(utils/remove_dialect.pl data/train/utt2lang) \
 
 
 logistic-regression-eval $model_rebalanced \
-  scp:exp/lre07/ivector.scp ark,t:- | \
+  scp:exp/test/ivector.scp ark,t:- | \
   awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) 
                           { max=$f; argmax=f; }}  
                           print $1, (argmax - 3); }' | \
-  utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt >exp/lre07/output
+  utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt >exp/test/output
 
 
 # someone needs to extend this to run on the dev data.
 
-compute-wer --text ark:<(utils/remove_dialect.pl data/lre07/utt2lang)\
-  ark:exp/lre07/output
-# compute-wer --text ark:/dev/fd/63 ark:exp/lre07/output 
-# %WER 52.58 [ 3958 / 7527, 0 ins, 0 del, 3958 sub ]
-# %SER 52.58 [ 3958 / 7527 ]
+compute-wer --text ark:<(utils/remove_dialect.pl data/test/utt2lang)\
+  ark:exp/test/output
+# compute-wer --text ark:/dev/fd/63 ark:exp/test/output 
+# %WER 58.83 [ 3958 / 7527, 0 ins, 0 del, 3958 sub ]
+# %SER 58.83 [ 3958 / 7527 ]
 # Scored 7527 sentences, 0 not present in hyp.
 

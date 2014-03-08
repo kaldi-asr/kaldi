@@ -1,0 +1,7 @@
+48 french
+49 arabic.standard
+54 korean
+55 chinese.mandarin.mainland
+56 chinese.mandarin.taiwan
+57 spanish.caribbean
+58 spanish.noncaribbean

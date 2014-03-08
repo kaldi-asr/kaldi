@@ -62,4 +62,4 @@ close(UTT2LANG) || die;
 close(WAVLIST) || die;
 system("rm -r $dir/tmp");
 
-(system("utils/validate_data_dir.sh --no-text --no-feats data/lre07") == 0) || die "Error validating data dir.";
+(system("utils/validate_data_dir.sh --no-text --no-feats $dir") == 0) || die "Error validating data dir.";
