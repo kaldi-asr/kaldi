@@ -269,7 +269,7 @@ double BasisFmllrEstimate::ComputeTransform(
       out_xform->Resize(dim_, dim_ + 1, kSetZero);
     }
     // Initialized either as [I;0] or as the current transform
-    Matrix<double> W_mat(dim_, dim_ + 1);
+    Matrix<BaseFloat> W_mat(dim_, dim_ + 1);
     if (out_xform->IsZero()) {
       W_mat.SetUnit();
     } else {
@@ -282,33 +282,35 @@ double BasisFmllrEstimate::ComputeTransform(
 
     coefficient->Resize(basis_size, kSetZero);
 
-    double impr_spk = 0;
+    BaseFloat impr_spk = 0;
     for (int32 iter = 1; iter <= options.num_iters; ++iter) {
 	  // Auxf computation based on FmllrAuxFuncDiagGmm from fmllr-diag-gmm.cc
-	  double start_obj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
+	  BaseFloat start_obj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
 
 	  // Contribution of quadratic terms to derivative
 	  // Eq. (37)  s_{d} = G_{d} w_{d}
-	  Matrix<double> S(dim_, dim_ + 1);
+	  Matrix<BaseFloat> S(dim_, dim_ + 1);
 	  for (int32 d = 0; d < dim_; ++d) {
-		Matrix<double> G_d_full(spk_stats.G_[d]);
+		Matrix<BaseFloat> G_d_full(spk_stats.G_[d]);
 		S.Row(d).AddMatVec(1.0, G_d_full, kNoTrans, W_mat.Row(d), 0.0);
 	  }
 
 	  // W_mat = [A; b]
-	  Matrix<double> A(dim_, dim_);
+	  Matrix<BaseFloat> A(dim_, dim_);
 	  A.CopyFromMat(W_mat.Range(0, dim_, 0, dim_));
-	  Matrix<double> A_inv(A);
+	  Matrix<BaseFloat> A_inv(A);
 	  A_inv.InvertDouble();
-	  Matrix<double> A_inv_trans(A_inv);
+	  Matrix<BaseFloat> A_inv_trans(A_inv);
 	  A_inv_trans.Transpose();
 	  // Compute gradient of auxf w.r.t. W_mat
 	  // Eq. (38)  P = beta [A^{-T}; 0] + K - S
-	  Matrix<double> P(dim_, dim_ + 1);
+	  Matrix<BaseFloat> P(dim_, dim_ + 1);
 	  P.SetZero();
 	  P.Range(0, dim_, 0, dim_).CopyFromMat(A_inv_trans);
 	  P.Scale(spk_stats.beta_);
-	  P.AddMat(1.0, spk_stats.K_);
+	  Matrix<BaseFloat> spk_stats_Ktmp(dim_, dim_ + 1);
+	  spk_stats_Ktmp.CopyFromMat(spk_stats.K_);
+	  P.AddMat(1.0, spk_stats_Ktmp);
 	  P.AddMat(-1.0, S);
 
       // Compute directional gradient restricted by bases. Here we only use
@@ -317,20 +319,20 @@ double BasisFmllrEstimate::ComputeTransform(
 	  // d_{1,2,...,N}.
 	  // Eq. (39)  delta(W) = \sum_n tr(\fmllr_basis_{n}^T \P) \fmllr_basis_{n}
 	  // delta(d_{n}) = tr(\fmllr_basis_{n}^T \P)
-	  Matrix<double> delta_W(dim_, dim_ + 1);
-	  Vector<double> delta_d(basis_size);
+	  Matrix<BaseFloat> delta_W(dim_, dim_ + 1);
+	  Vector<BaseFloat> delta_d(basis_size);
 	  for (int32 n = 0; n < basis_size; ++n) {
-	    Matrix<double> basis_full(dim_, dim_ + 1);
+	    Matrix<BaseFloat> basis_full(dim_, dim_ + 1);
 	    basis_full.CopyFromMat(fmllr_basis_[n]);
 	    delta_d(n) = TraceMatMat(basis_full, P, kTrans);
 	    delta_W.AddMat(delta_d(n), basis_full);
 	  }
 
-	  double step_size = CalBasisFmllrStepSize(spk_stats, delta_W, A, S, options.step_size_iters);
+	  BaseFloat step_size = CalBasisFmllrStepSize(spk_stats, delta_W, A, S, options.step_size_iters);
 	  W_mat.AddMat(step_size, delta_W, kNoTrans);
 	  coefficient->AddVec(step_size, delta_d);
 	  // Check auxiliary function
-	  double endObj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
+	  BaseFloat endObj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
 
       KALDI_VLOG(4) << "Objective function (iter=" << iter << "): "
                     << start_obj / spk_stats.beta_  << " -> "
@@ -346,31 +348,35 @@ double BasisFmllrEstimate::ComputeTransform(
 }
 
 
-double CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
-                             const Matrix<double> &delta,
-                             const Matrix<double> &A,
-                             const Matrix<double> &S,
+BaseFloat CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
+                             const Matrix<BaseFloat> &delta,
+                             const Matrix<BaseFloat> &A,
+                             const Matrix<BaseFloat> &S,
                              int32 max_iters) {
   int32 dim = spk_stats.dim_;
   KALDI_ASSERT(dim == delta.NumRows() && dim == S.NumRows());
   // The first D columns of delta_W
-  SubMatrix<double> delta_Dim(delta, 0, dim, 0, dim);
+  SubMatrix<BaseFloat> delta_Dim(delta, 0, dim, 0, dim);
   // Eq. (46): b = tr(delta K^T) - tr(delta S^T)
-  double b = TraceMatMat(delta, spk_stats.K_, kTrans)
+  Matrix<BaseFloat> spk_stats_Ktmp(dim, dim + 1);
+  spk_stats_Ktmp.CopyFromMat(spk_stats.K_);
+  BaseFloat b = TraceMatMat(delta, spk_stats_Ktmp, kTrans)
                  - TraceMatMat(delta, S, kTrans);
   // Eq. (47): c = sum_d tr(delta_{d} G_{d} delta_{d})
-  double c = 0;
-  Vector<double> G_row_delta(dim + 1);
+  BaseFloat c = 0;
+  Vector<BaseFloat> G_row_delta(dim + 1);
   for (int32 d = 0; d < dim; ++d) {
-    G_row_delta.AddSpVec(1.0, spk_stats.G_[d], delta.Row(d), 0.0);
+    SpMatrix<BaseFloat> spk_stats_Gtmp(spk_stats.G_[d].NumRows());
+    spk_stats_Gtmp.CopyFromSp(spk_stats.G_[d]);
+    G_row_delta.AddSpVec(1.0, spk_stats_Gtmp, delta.Row(d), 0.0);
     c += VecVec(G_row_delta, delta.Row(d));
   }
 
   // Sometimes, the change of step size, d1/d2, may get tiny
   // Due to numerical precision, we compute everything in double
-  double step_size = 0.0;
-  double obj_old, obj_new = 0.0;
-  Matrix<double> N(dim, dim);
+  BaseFloat step_size = 0.0;
+  BaseFloat obj_old, obj_new = 0.0;
+  Matrix<BaseFloat> N(dim, dim);
   for (int32 iter_step = 1; iter_step <= max_iters; ++iter_step) {
     if (iter_step == 1) {
       // k = 0, auxf = beta logdet(A)
@@ -382,17 +388,17 @@ double CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
     // Eq. (49): N = (A + k * delta_Dim)^{-1} delta_Dim
     // In case of bad condition, careful preconditioning should be done. Maybe safer
     // to use SolveQuadraticMatrixProblem. Future work for Yajie.
-    Matrix<double> tmp_A(A);
+    Matrix<BaseFloat> tmp_A(A);
     tmp_A.AddMat(step_size, delta_Dim, kNoTrans);
     tmp_A.InvertDouble();
     N.AddMatMat(1.0, tmp_A, kNoTrans, delta_Dim, kNoTrans, 0.0);
     // first-order derivative w.r.t. k
     // Eq. (50): d1 = beta * trace(N) + b - k * c
-    double d1 = spk_stats.beta_ * TraceMat(N) + b - step_size * c;
+    BaseFloat d1 = spk_stats.beta_ * TraceMat(N) + b - step_size * c;
     // second-order derivative w.r.t. k
     // Eq. (51): d2 = -beta * tr(N N) - c
-    double d2 = -c - spk_stats.beta_ * TraceMatMat(N, N, kNoTrans);
-    d2 = std::min(d2, -c / 10.0);
+    BaseFloat d2 = -c - spk_stats.beta_ * TraceMatMat(N, N, kNoTrans);
+    d2 = std::min((double)d2, -c / 10.0);
     // convergence judgment from fmllr-sgmm.cc
     // it seems to work well, though not sure whether 1e-06 is appropriate
     // note from Dan: commenting this out after someone complained it was
@@ -401,7 +407,7 @@ double CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
     // if (std::fabs(d1 / d2) < 0.000001) { break; }
 
     // Eq. (52): update step_size
-    double step_size_change = -(d1 / d2);
+    BaseFloat step_size_change = -(d1 / d2);
     step_size += step_size_change;
 
     // Repeatedly check auxiliary function; halve step size change if auxf decreases.
@@ -415,7 +421,7 @@ double CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
       obj_new = spk_stats.beta_ * tmp_A.LogDet() + step_size * b -
           0.5 * step_size * step_size * c;
 
-      if (obj_new - obj_old < -0.001) {  // deal with numerical issues
+      if (obj_new - obj_old < -1.0e-04 * spk_stats.beta_) {  // deal with numerical issues
         KALDI_WARN << "Objective function decreased (" << obj_old << "->"
                    << obj_new << "). Halving step size change ( step size "
                    << step_size << " -> " << (step_size - (step_size_change/2))
@@ -423,7 +429,7 @@ double CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
         step_size_change /= 2;
         step_size -= step_size_change;
       }
-    } while (obj_new - obj_old < -0.001 && step_size_change > 1e-05);
+    } while (obj_new - obj_old < -1.0e-04 * spk_stats.beta_ && step_size_change > 1e-05);
   }
   return step_size;
 }

@@ -103,7 +103,7 @@ class BasisFmllrAccus {
  *  Estimation functions for basis fMLLR.
  */
 class BasisFmllrEstimate {
-  
+
  public:
   BasisFmllrEstimate(): dim_(0), basis_size_(0) { }
   explicit BasisFmllrEstimate(int32 dim) {
@@ -114,7 +114,7 @@ class BasisFmllrEstimate {
   void Write(std::ostream &out_stream, bool binary) const;
   void Read(std::istream &in_stream, bool binary);
 
-  
+
   /// Estimate the base matrices efficiently in a Maximum Likelihood manner.
   /// It takes diagonal GMM as argument, which will be used for preconditioner
   /// computation. The total number of bases is fixed to
@@ -135,7 +135,7 @@ class BasisFmllrEstimate {
   int32 Dim() const { return dim_; }
 
   int32 BasisSize() const { return basis_size_; }
-  
+
   /// This function performs speaker adaptation, computing the fMLLR matrix
   /// based on speaker statistics. It takes fMLLR stats as argument.
   /// The basis weights (d_{1}, d_{2}, ..., d_{N}) are also optimized
@@ -151,7 +151,7 @@ class BasisFmllrEstimate {
                           BasisFmllrOptions options) const;
 
  private:
-  
+
   /// Basis matrices. Dim is [T] [D] [D+1]
   /// T is the number of bases
   std::vector< Matrix<BaseFloat> > fmllr_basis_;
@@ -167,10 +167,10 @@ class BasisFmllrEstimate {
 /// where each iteration should not decrease the auxiliary function. Note that
 /// the resulting step size \k should be close to 1. If \k <<1 or >>1, there
 /// maybe problems with preconditioning or the speaker stats.
-double CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
-                             const Matrix<double> &delta,
-                             const Matrix<double> &A,
-                             const Matrix<double> &S,
+BaseFloat CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
+                             const Matrix<BaseFloat> &delta,
+                             const Matrix<BaseFloat> &A,
+                             const Matrix<BaseFloat> &S,
                              int32 max_iters);
 
 } // namespace kaldi
