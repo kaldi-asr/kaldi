@@ -1049,6 +1049,11 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   }
   
   void InitializeDeterminization() {
+    // We insist that the input lattice be topologically sorted.  This is not a
+    // fundamental limitation of the algorithm (which in principle should be
+    // applicable to even cyclic FSTs), but it helps us more efficiently
+    // compute the backward_costs_ array.  There may be some other reason we
+    // require this, that escapes me at the moment.
     KALDI_ASSERT(ifst_->Properties(kTopSorted, true) != 0);
     ComputeBackwardWeight();
 #if !(__GNUC__ == 4 && __GNUC_MINOR__ == 0)

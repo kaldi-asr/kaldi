@@ -149,6 +149,7 @@ class LatticeFasterDecoder {
   /// If "use_final_probs" is true AND we reached the final-state
   /// of the graph then it will include those as final-probs, else
   /// it will treat all final-probs as one.
+  /// The raw lattice will be topologically sorted.
   bool GetRawLattice(Lattice *ofst,
                      bool use_final_probs = true) const;
 
@@ -395,6 +396,15 @@ class LatticeFasterDecoder {
   // but are also linked together on each frame by their own linked-list,
   // using the "next" pointer.  We delete them manually.
   void DeleteElems(Elem *list);
+
+  // This function takes a singly linked list of tokens for a single frame, and
+  // outputs a list of them in topological order (it will crash if no such order
+  // can be found, which will typically be due to decoding graphs with epsilon
+  // cycles, which are not allowed).  Note: the output list may contain NULLs,
+  // which the caller should pass over; it just happens to be more efficient for
+  // the algorithm to output a list that contains NULLs.
+  static void TopSortTokens(Token *tok_list,
+                            std::vector<Token*> *topsorted_list);
 
   void ClearActiveTokens();
 

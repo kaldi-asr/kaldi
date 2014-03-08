@@ -174,30 +174,29 @@ bool LatticeFasterOnlineDecoder::GetRawLattice(Lattice *ofst,
   const int32 bucket_count = num_toks_/2 + 3;
   unordered_map<Token*, StateId> tok_map(bucket_count);
   // First create all states.
+  std::vector<Token*> token_list;
   for (int32 f = 0; f <= num_frames; f++) {
     if (active_toks_[f].toks == NULL) {
       KALDI_WARN << "GetRawLattice: no tokens active on frame " << f
                  << ": not producing lattice.\n";
       return false;
     }
-    for (Token *tok = active_toks_[f].toks; tok != NULL; tok = tok->next)
-      tok_map[tok] = ofst->AddState();
-    // The next statement sets the start state of the output FST.
-    // Because we always add new states to the head of the list
-    // active_toks_[f].toks, and the start state was the first one
-    // added, it will be the last one added to ofst.
-    if (f == 0 && ofst->NumStates() > 0)
-      ofst->SetStart(ofst->NumStates()-1);
+    TopSortTokens(active_toks_[f].toks, &token_list);
+    for (size_t i = 0; i < token_list.size(); i++)
+      if (token_list[i] != NULL)
+        tok_map[token_list[i]] = ofst->AddState();    
   }
+  // The next statement sets the start state of the output FST.  Because we
+  // topologically sorted the tokens, state zero must be the start-state.
+  ofst->SetStart(0);
+  
   KALDI_VLOG(4) << "init:" << num_toks_/2 + 3 << " buckets:"
                 << tok_map.bucket_count() << " load:" << tok_map.load_factor()
                 << " max:" << tok_map.max_load_factor();
   // Now create all arcs.
-  StateId cur_state = 0;  // we rely on the fact that we numbered these
-  // consecutively (AddState() returns the numbers in order..)
   for (int32 f = 0; f <= num_frames; f++) {
-    for (Token *tok = active_toks_[f].toks; tok != NULL; tok = tok->next,
-             cur_state++) {
+    for (Token *tok = active_toks_[f].toks; tok != NULL; tok = tok->next) {
+      StateId cur_state = tok_map[tok];
       for (ForwardLink *l = tok->links;
            l != NULL;
            l = l->next) {
@@ -227,8 +226,7 @@ bool LatticeFasterOnlineDecoder::GetRawLattice(Lattice *ofst,
       }
     }
   }
-  KALDI_ASSERT(cur_state == ofst->NumStates());
-  return (cur_state != 0);
+  return (ofst->NumStates() > 0);
 }
 
 bool LatticeFasterOnlineDecoder::GetRawLatticePruned(
@@ -1042,6 +1040,79 @@ void LatticeFasterOnlineDecoder::ClearActiveTokens() { // a cleanup routine, at 
   active_toks_.clear();
   KALDI_ASSERT(num_toks_ == 0);
 }
+
+// static
+void LatticeFasterOnlineDecoder::TopSortTokens(Token *tok_list,
+                                               std::vector<Token*> *topsorted_list) {
+  unordered_map<Token*, int32> token2pos;
+  typedef unordered_map<Token*, int32>::iterator IterType;
+  int32 cur_pos = 0;
+  for (Token *tok = tok_list; tok != NULL; tok = tok->next)
+    token2pos[tok] = cur_pos++;
+
+  unordered_set<Token*> reprocess;
+
+  for (IterType iter = token2pos.begin(); iter != token2pos.end(); ++iter) {
+    Token *tok = iter->first;
+    int32 pos = iter->second;
+    for (ForwardLink *link = tok->links; link != NULL; link = link->next) {
+      if (link->ilabel == 0) {
+        // We only need to consider epsilon links, since non-epsilon links
+        // transition between frames and this function only needs to sort a list
+        // of tokens from a single frame.
+        IterType following_iter = token2pos.find(link->next_tok);
+        if (following_iter != token2pos.end()) { // another token on this frame,
+                                                 // so must consider it.
+          int32 next_pos = following_iter->second;
+          if (next_pos < pos) { // reassign the position of the next Token.
+            following_iter->second = cur_pos++;
+            reprocess.insert(link->next_tok);
+          }
+        }
+      }
+    }
+    // In case we had previously assigned this token to be reprocessed, we can
+    // erase it from that set because it's "happy now" (we just processed it).
+    reprocess.erase(tok);
+  }
+
+  size_t max_loop = 1000000, loop_count; // max_loop is to detect epsilon cycles.
+  for (loop_count = 0;
+       !reprocess.empty() && loop_count < max_loop; ++loop_count) {
+    std::vector<Token*> reprocess_vec;
+    for (unordered_set<Token*>::iterator iter = reprocess.begin();
+         iter != reprocess.end(); ++iter)
+      reprocess_vec.push_back(*iter);
+    reprocess.clear();
+    for (std::vector<Token*>::iterator iter = reprocess_vec.begin();
+         iter != reprocess_vec.end(); ++iter) {
+      Token *tok = *iter;
+      int32 pos = token2pos[tok];
+      // Repeat the processing we did above (for comments, see above).
+      for (ForwardLink *link = tok->links; link != NULL; link = link->next) {
+        if (link->ilabel == 0) {
+          IterType following_iter = token2pos.find(link->next_tok);
+          if (following_iter != token2pos.end()) {
+            int32 next_pos = following_iter->second;
+            if (next_pos < pos) {
+              following_iter->second = cur_pos++;
+              reprocess.insert(link->next_tok);
+            }
+          }
+        }
+      }
+    }
+  }
+  KALDI_ASSERT(loop_count < max_loop && "Epsilon loops exist in your decoding "
+               "graph (this is not allowed!)");
+
+  topsorted_list->clear();
+  topsorted_list->resize(cur_pos, NULL);  // create a list with NULLs in between.
+  for (IterType iter = token2pos.begin(); iter != token2pos.end(); ++iter)
+    (*topsorted_list)[iter->second] = iter->first;
+}
+
+
 
 
 } // end namespace kaldi.

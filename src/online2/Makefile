@@ -11,7 +11,9 @@ OBJFILES = online-feature.o online-gmm-decodable.o online-feature-pipeline.o \
 LIBNAME = kaldi-online2
 
 ADDLIBS = ../gmm/kaldi-gmm.a ../transform/kaldi-transform.a ../feat/kaldi-feat.a \
-     ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a
+     ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a \
+     ../lat/kaldi-lat.a ../decoder/kaldi-decoder.a ../hmm/kaldi-hmm.a
+
 
 include ../makefiles/default_rules.mk
 

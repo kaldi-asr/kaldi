@@ -116,7 +116,6 @@ bool SingleUtteranceGmmDecoder::GetGaussianPosteriors(bool end_of_utterance,
                    // accept CompactLattice.
 
 
-  TopSortLatticeIfNeeded(&det_lat);
   fst::Invert(&raw_lat); // want to determinize on words.
   fst::ILabelCompare<kaldi::LatticeArc> ilabel_comp;
   fst::ArcSort(&raw_lat, ilabel_comp); // improves efficiency of determinization
