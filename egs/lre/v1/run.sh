@@ -18,20 +18,11 @@ vaddir=`pwd`/mfcc
 
 lang=local/callfriend_lang.txt
 lang_abbrev=local/language_abbreviations.txt
-local/make_callfriend.pl $lang_abbrev \
-  /export/corpora5/LDC/LDC96S49 49 $lang data
-local/make_callfriend.pl $lang_abbrev \
-  /export/corpora5/LDC/LDC96S54 54 $lang data
-local/make_callfriend.pl $lang_abbrev \
-  /export/corpora5/LDC/LDC96S55 55 $lang data
-local/make_callfriend.pl $lang_abbrev \
-  /export/corpora5/LDC/LDC96S56 56 $lang data
-local/make_callfriend.pl $lang_abbrev \
-  /export/corpora5/LDC/LDC96S57 57 $lang data
-local/make_callfriend.pl $lang_abbrev \
-  /export/corpora5/LDC/LDC96S58 58 $lang data
-local/make_sre_2008_train.pl local/language_abbreviations.txt \
-  /export/corpora5/LDC/LDC2011S05 data
+
+for x in 49 51 55 56 57 58; do
+  local/make_callfriend.pl $lang_abbrev \
+    /export/corpora5/LDC/LDC96S49 $x $lang data
+done
 
 local/make_lre07.pl /export/corpora5/LDC/LDC2009S04 data/test
 
