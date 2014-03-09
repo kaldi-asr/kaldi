@@ -50,7 +50,10 @@ while($line = <LANGS>) {
     $channel = substr($channel, 0, 1);
 
     $wav = `find $db_dir -name "$seg_id*"`;
-   
+    chomp($wav);
+    if ($wav eq "") {
+      next;
+    }
     # Small adjustments needed to language format. 
     if ($lang eq "mandarin") {
       $lang = "chinese.mandarin.mainland";
@@ -70,8 +73,7 @@ while($line = <LANGS>) {
       next;
     }
     $uttId = $num_lang{$abbr_lang{$lang}}."_".$seg_id."_".$conv_id."_".$channel;
-
-    print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav"." |\n";
+    print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav \|\n";
     print UTT2SPK "$uttId $uttId\n";
     print UTT2LANG "$uttId $lang\n";
     print SPK2GEN "$uttId $gender\n";
@@ -135,8 +137,7 @@ for $set ("lid96d1", "lid96e1") {
 
       $wav = "$db_dir/$duration/$seg_id.sph";
       $uttId = $num_lang{$abbr_lang{$lang}}."_".$seg_id."_".$set."_".$duration;
-
-      print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav"." |\n";
+      print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav \|\n";
       print UTT2SPK "$uttId $uttId\n";
       print UTT2LANG "$uttId $lang\n";
       # Gender information is absent here, defaulting to male

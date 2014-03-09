@@ -100,7 +100,10 @@ while($line = <KEY>) {
     ($seg_id, $lang, $dialect, $conv_id, $channel, 
      $cut, $dur, $corp, $gender, $loc, $alt_lang) = split(" ", $line);
     $wav = `find $db_dir -name "$seg_id*"`;
-    
+    chomp($wav);
+    if ($wav eq "") {
+      next;
+    }
     $lang = lc $lang;
     $dialect = lc $dialect;
     if ($dialect eq "na") {
