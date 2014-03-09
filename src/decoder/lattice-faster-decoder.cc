@@ -846,9 +846,16 @@ void LatticeFasterDecoder::TopSortTokens(Token *tok_list,
                                          std::vector<Token*> *topsorted_list) {
   unordered_map<Token*, int32> token2pos;
   typedef unordered_map<Token*, int32>::iterator IterType;
-  int32 cur_pos = 0;
+  int32 num_toks = 0;
   for (Token *tok = tok_list; tok != NULL; tok = tok->next)
-    token2pos[tok] = cur_pos++;
+    num_toks++;
+  int32 cur_pos = 0;
+  // We assign the tokens numbers num_toks - 1, ... , 2, 1, 0.
+  // This is likely to be in closer to topological order than
+  // if we had given them ascending order, because of the way
+  // new tokens are put at the front of the list.
+  for (Token *tok = tok_list; tok != NULL; tok = tok->next)
+    token2pos[tok] = num_toks - ++cur_pos;
 
   unordered_set<Token*> reprocess;
 
