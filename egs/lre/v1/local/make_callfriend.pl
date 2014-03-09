@@ -33,9 +33,22 @@ $callinfo_file = `find $db_base -name "callinfo.tbl"`;
 open(CALLINFO, "<".$callinfo_file) || die "Cannot open $callinfo_file.";
 
 %speaker = ();
-while (<CALLINFO>) {
-  ($call, $speaker) = split(' PIN=|\|');
+%gender = ();
+while ($line = <CALLINFO>) {
+  chomp($line);
+  ($call, $speaker) = split(' PIN=|\|', $line);
+  ($garbage, $gender) = split('GENDER=|\|', $line);
   $speaker{$call} = $speaker;
+  $gender = lc $gender;
+  if ($gender eq "male") {
+    $gender{$call} = 'm';
+  } elsif ($gender eq "female") {
+    $gender{$call} = 'f';
+  # When both genders are speaking (eg, gender='both'), the corpus considers
+  # the gender to be "male." See spkrinfo.tbl in the data source. 
+  } else {
+    $gender{$call} = 'm';
+  }
 }
 
 foreach $set ('devtest', 'evltest', 'train') {
@@ -74,6 +87,8 @@ foreach $set ('devtest', 'evltest', 'train') {
     || die "Failed opening output file $out_dir/utt2lang";
   open(UTT2SPK, ">$out_dir" . '/utt2spk') 
     || die "Failed opening output file $out_dir/utt2spk";
+  open(SPK2GEN, ">$out_dir" . '/spk2gender') 
+    || die "Failed opening output file $out_dir/utt2gender";
   
   foreach (sort keys(%wav)) {
     if (exists($speaker{$_})) {
@@ -83,17 +98,21 @@ foreach $set ('devtest', 'evltest', 'train') {
     }
     $uttId = $spkr."_ldc96s".$dataset."_".$_;
     print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav{$_} |\n";
-    if (exists($speaker{$_})) {
-      print UTT2SPK "$uttId $spkr\n";
-    } else {
-      print UTT2SPK "$uttId $uttId\n";
-    }
+    print UTT2SPK "$uttId $uttId\n";
     print UTT2LANG "$uttId $lang\n";
+   
+    # The corpora defaults to male when gender info doesn't exist.
+    if (not exists $gender{$_}) {
+      print SPK2GEN "$uttId m\n";
+    } else {
+      print SPK2GEN "$uttId $gender{$_}\n";
+    }
   }
   
   close(WAV) || die;
   close(UTT2SPK) || die;
   close(UTT2LANG) || die;
+  close(SPK2GEN) || die;
   system("rm -r $out_base_dir/tmp");
 
   system("utils/fix_data_dir.sh $out_dir");

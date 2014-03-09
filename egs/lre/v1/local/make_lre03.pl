@@ -35,6 +35,8 @@ open(UTT2LANG, ">$out_dir" . '/utt2lang')
   || die "Failed opening output file $out_dir/utt2lang";
 open(UTT2SPK, ">$out_dir" . '/utt2spk') 
   || die "Failed opening output file $out_dir/utt2spk";
+open(SPK2GEN, ">$out_dir" . '/spk2gender') 
+  || die "Failed opening output file $out_dir/spk2gender";
 
 while($line = <LANGS>) {
   chomp($line);
@@ -44,6 +46,7 @@ while($line = <LANGS>) {
     $lang = lc $toks[1];
     $conv_id = $toks[2];
     $channel = $toks[3];
+    $gender = lc $toks[6];
     $channel = substr($channel, 0, 1);
 
     $wav = `find $db_dir -name "$seg_id*"`;
@@ -68,15 +71,17 @@ while($line = <LANGS>) {
     }
     $uttId = $num_lang{$abbr_lang{$lang}}."_".$seg_id."_".$conv_id."_".$channel;
 
-    print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav |\n";
+    print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav"." |\n";
     print UTT2SPK "$uttId $uttId\n";
     print UTT2LANG "$uttId $lang\n";
+    print SPK2GEN "$uttId $gender\n";
   }
 }
 
 close(WAV) || die;
 close(UTT2SPK) || die;
 close(UTT2LANG) || die;
+close(SPK2GEN) || die;
 close(LANGS) || die;
 
 print "Omitted $omitted utterances because they don't appear ",
@@ -110,6 +115,8 @@ for $set ("lid96d1", "lid96e1") {
    || die "Failed opening output file $out_dir/utt2lang";
   open(UTT2SPK, ">$out_dir" . '/utt2spk') 
     || die "Failed opening output file $out_dir/utt2spk";
+  open(SPK2GEN, ">$out_dir" . '/spk2gender') 
+    || die "Failed opening output file $out_dir/spk2gender";
   for $duration ("10", "3", "30") {
     $key = "$db_dir/$duration/seg_lang.ndx";
     open(KEY, "<$key") 
@@ -129,14 +136,19 @@ for $set ("lid96d1", "lid96e1") {
       $wav = "$db_dir/$duration/$seg_id.sph";
       $uttId = $num_lang{$abbr_lang{$lang}}."_".$seg_id."_".$set."_".$duration;
 
-      print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav |\n";
+      print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav"." |\n";
       print UTT2SPK "$uttId $uttId\n";
       print UTT2LANG "$uttId $lang\n";
+      # Gender information is absent here, defaulting to male
+      # since the language_id system doesn't take gender into account,
+      # currently.
+      print SPK2GEN "$uttId m\n";
     }
   }
   close(KEY) || die;
   close(WAV) || die;
   close(UTT2SPK) || die;
+  close(SPK2GEN) || die;
   close(UTT2LANG) || die;
   print "Omitted $omitted utterances because they don't appear ",
       "in language_abbreviation.txt\n";

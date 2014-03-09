@@ -28,6 +28,8 @@ open(UTT2LANG, ">$out_dir" . '/utt2lang')
   || die "Failed opening output file $out_dir/utt2lang";
 open(UTT2SPK, ">$out_dir" . '/utt2spk') 
   || die "Failed opening output file $out_dir/utt2spk";
+open(SPK2GEN, ">$out_dir" . '/spk2gender') 
+  || die "Failed opening output file $out_dir/spk2gender";
 
 open(KEY, "<$key") 
   || die "Failed opening input file $key";
@@ -54,11 +56,18 @@ while($line = <KEY>) {
     print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav |\n";
     print UTT2SPK "$uttId $uttId\n";
     print UTT2LANG "$uttId english.indian\n";
+    # Gender info doesn't exist for the Indian English
+    # only part of the corpora, defaulting to 'm.' This
+    # is justified since we don't need the gender for
+    # the language_id setup anyway, but it necessary for
+    # combining the datasets.
+    print SPK2GEN "$uttId m\n";
   }
 }
 close(WAV) || die;
 close(UTT2SPK) || die;
 close(UTT2LANG) || die;
+close(SPK2GEN) || die;
 
 system("utils/fix_data_dir.sh $out_dir");
 (system("utils/validate_data_dir.sh --no-text --no-feats $out_dir") == 0) 
@@ -81,19 +90,26 @@ open(UTT2LANG, ">$out_dir" . '/utt2lang')
   || die "Failed opening output file $out_dir/utt2lang";
 open(UTT2SPK, ">$out_dir" . '/utt2spk') 
   || die "Failed opening output file $out_dir/utt2spk";
+open(SPK2GEN, ">$out_dir" . '/spk2gender') 
+  || die "Failed opening output file $out_dir/spk2gender";
 
 $omitted = 0;
 while($line = <KEY>) {
   chomp($line);
   if (index($line, "#") == -1) {
     ($seg_id, $lang, $dialect, $conv_id, $channel, 
-     $cut, $dur, $corp, $gndr, $loc, $alt_lang) = split(" ", $line);
+     $cut, $dur, $corp, $gender, $loc, $alt_lang) = split(" ", $line);
     $wav = `find $db_dir -name "$seg_id*"`;
     
     $lang = lc $lang;
     $dialect = lc $dialect;
     if ($dialect eq "na") {
       $dialect = "";
+    }
+    $gender = lc $gender;
+    # Defaulting to male if the gender info is missing.
+    if (not ($gender eq 'm' || $gender eq 'f')) {
+      $gender = 'm';
     }
     
     # Elsewhere in the setup we consider Mandarin a dialect of
@@ -139,6 +155,7 @@ while($line = <KEY>) {
 
     print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav |\n";
     print UTT2SPK "$uttId $uttId\n";
+    print SPK2GEN "$uttId $gender\n";
     print UTT2LANG "$uttId $lang\n";
   }
 }
@@ -146,6 +163,7 @@ while($line = <KEY>) {
 close(WAV) || die;
 close(UTT2SPK) || die;
 close(UTT2LANG) || die;
+close(SPK2GEN) || die;
 
 print "Omitted $omitted utterances because they don't appear ",
       "in language_abbreviations.txt\n";
