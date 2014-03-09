@@ -98,8 +98,7 @@ function filter_speakers {
   for s in cmvn.scp spk2gender; do
     f=$data/$s
     if [ -f $f ]; then
-      utils/filter_scp.pl $f $tmpdir/speakers > $tmpdir/speakers.tmp
-      mv $tmpdir/speakers.tmp $tmpdir/speakers
+      filter_file $f $tmpdir/speakers
     fi
   done
 
@@ -141,17 +140,15 @@ function filter_utts {
   [ ! -s $tmpdir/utts ] && echo "fix_data_dir.sh: no utterances remained: not proceeding further." && \
     rm $tmpdir/utts && exit 1;
 
-  nutts=`cat $tmpdir/utts | wc -l`
-  if [ -f $data/feats.scp ]; then
-    nfeats=`cat $data/feats.scp | wc -l`
-  else
-    nfeats=0
-  fi
-  ntext=`cat $data/text 2>/dev/null | wc -l`
-  if [ "$nutts" -ne "$nfeats" -o "$nutts" -ne "$ntext" ]; then
-    echo "fix_data_dir.sh: kept $nutts utterances, vs. $nfeats features and $ntext transcriptions."
-  else
-    echo "fix_data_dir.sh: kept all $nutts utterances."
+
+  if [ -f $data/utt2spk ]; then
+    new_nutts=$(cat $tmpdir/utts | wc -l)
+    old_nutts=$(cat $data/utt2spk | wc -l)
+    if [ $new_nutts -ne $old_nutts ]; then
+      echo "fix_data_dir.sh: kept $new_utts utterances out of $old_nutts"
+    else
+      echo "fix_data_dir.sh: kept all $old_nutts utterances."
+    fi
   fi
 
   for x in utt2spk feats.scp text segments utt2lang $maybe_wav; do

@@ -35,7 +35,7 @@ classes="ark:utils/remove_dialect.pl data/train/utt2lang \
 # the languages as count(lang_test) / (count(lang_test) + count(lang_train)).
 utils/balance_priors_to_test.pl \
     <(utils/remove_dialect.pl data/train/utt2lang) \
-    <(utils/remove_dialect.pl data/test/utt2lang) \
+    <(utils/remove_dialect.pl data/lre07/utt2lang) \
     exp/ivectors_train/languages.txt \
     exp/ivectors_train/priors.vec
 
@@ -85,9 +85,9 @@ logistic-regression-eval $model_rebalanced \
 
 # someone needs to extend this to run on the dev data.
 
-compute-wer --text ark:<(utils/remove_dialect.pl data/test/utt2lang)\
+compute-wer --text ark:<(utils/remove_dialect.pl data/lre07/utt2lang)\
   ark:exp/ivectors_test/output
-# compute-wer --text ark:/dev/fd/63 ark:exp/test/output 
+# compute-wer --text ark:/dev/fd/63 ark:exp/lre07/output 
 # %WER 58.83 [ 3958 / 7527, 0 ins, 0 del, 3958 sub ]
 # %SER 58.83 [ 3958 / 7527 ]
 # Scored 7527 sentences, 0 not present in hyp.

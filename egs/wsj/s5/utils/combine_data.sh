@@ -17,6 +17,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# -lt 2 ]; then
   echo "Usage: combine_data.sh [--extra-files 'file1 file2'] <dest-data-dir> <src-data-dir1> <src-data-dir2> ..."
+  echo "Note, files that don't appear in first source dir will not be added even if they appear in later ones."
   exit 1
 fi
 
@@ -25,6 +26,7 @@ shift;
 
 first_src=$1;
 
+rm -r $dest 2>/dev/null
 mkdir -p $dest;
 
 export LC_ALL=C

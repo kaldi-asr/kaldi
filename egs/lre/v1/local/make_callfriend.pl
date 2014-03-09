@@ -1,55 +1,21 @@
 #! /usr/bin/perl
 #
-# Copyright 2014  David Snyder
+# Copyright 2014  David Snyder  Daniel Povey
 # Apache 2.0.
+use File::Basename;
 
-use local::load_lang;
-
-if (@ARGV != 5) {
-  print STDERR "Usage: $0 <lang-abbreviation-file> <path-to-LDC96S*>\
-                <dataset-num> <path-to-output>\n";
-  print STDERR "e.g. $0 language_abbreviation.txt \
-    /export/corpora5/LDC/LDC96S49 49 callfriend_lang.txt data\n";
+if (@ARGV != 3) {
+  print STDERR "Usage: $0 <path-to-LDC96S*> <language> <path-to-output>\n";
+  print STDERR "e.g. $0 /export/corpora5/LDC/LDC96S49 french data\n";
   exit(1);
 }
 
-($lang_abbreviation_file, $db_base, $dataset,
- $lang_table, $out_base_dir) = @ARGV;
+($db_base, $lang, $out_base_dir) = @ARGV;
 
-$lang = "";
-open(LANGTABLE, "<$lang_table");
-while($line = <LANGTABLE>) {
-  chomp($line);
-  ($dataset_id, $language) = split(" ", $line);
-  if ($dataset eq $dataset_id) {
-    $lang = $language;
-    last;
-  }
-}
+$ldc_code = lc basename($db_base);
 
-($long_lang, $abbr_lang, $num_lang) = load_lang($lang_abbreviation_file);
-
-$callinfo_file = `find $db_base -name "callinfo.tbl"`;
-open(CALLINFO, "<".$callinfo_file) || die "Cannot open $callinfo_file.";
-
-%speaker = ();
-%gender = ();
-while ($line = <CALLINFO>) {
-  chomp($line);
-  ($call, $speaker) = split(' PIN=|\|', $line);
-  ($garbage, $gender) = split('GENDER=|\|', $line);
-  $speaker{$call} = $speaker;
-  $gender = lc $gender;
-  if ($gender eq "male") {
-    $gender{$call} = 'm';
-  } elsif ($gender eq "female") {
-    $gender{$call} = 'f';
-  # When both genders are speaking (eg, gender='both'), the corpus considers
-  # the gender to be "male." See spkrinfo.tbl in the data source. 
-  } else {
-    $gender{$call} = 'm';
-  }
-}
+# We won't use the speaker or gender information.  Anyway it's not that useful
+# as it seems to be 2-wire recordings, and everything is mixed together.
 
 foreach $set ('devtest', 'evltest', 'train') {
   $tmp_dir = "$out_base_dir/tmp";
@@ -64,7 +30,8 @@ foreach $set ('devtest', 'evltest', 'train') {
   
   $tmp_dir = "$out_base_dir/tmp";
   open(WAVLIST, "<", "$tmp_dir/sph.list") or die "cannot open wav list";
-  
+
+  %wav = ();
   while($sph = <WAVLIST>) {
     chomp($sph);
     @A = split("/", $sph);
@@ -75,45 +42,32 @@ foreach $set ('devtest', 'evltest', 'train') {
   }
 
   close(WAVLIST) || die;
-  
-  $out_dir = $out_base_dir . '/ldc96s' . $dataset . '_' . $set;
+
+  $out_dir = $out_base_dir . "/" . $ldc_code . '_' . $set;
   if (system("mkdir -p $out_dir") != 0) {
     die "Error making directory $out_dir"; 
   }
-  
+
   open(WAV, ">$out_dir" . '/wav.scp') 
     || die "Failed opening output file $out_dir/wav.scp";
   open(UTT2LANG, ">$out_dir" . '/utt2lang') 
     || die "Failed opening output file $out_dir/utt2lang";
   open(UTT2SPK, ">$out_dir" . '/utt2spk') 
     || die "Failed opening output file $out_dir/utt2spk";
-  open(SPK2GEN, ">$out_dir" . '/spk2gender') 
-    || die "Failed opening output file $out_dir/utt2gender";
-  
-  foreach (sort keys(%wav)) {
-    if (exists($speaker{$_})) {
-      $spkr = $num_lang{$abbr_lang{$lang}}. "_" .$speaker{$_};
-    } else {
-      $spkr = $num_lang{$abbr_lang{$lang}};
-    }
-    $uttId = $spkr."_ldc96s".$dataset."_".$_;
-    print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav{$_} |\n";
-    print UTT2SPK "$uttId $uttId\n";
-    print UTT2LANG "$uttId $lang\n";
-   
-    # The corpora defaults to male when gender info doesn't exist.
-    if (not exists $gender{$_}) {
-      print SPK2GEN "$uttId m\n";
-    } else {
-      print SPK2GEN "$uttId $gender{$_}\n";
+
+  foreach $recording (sort keys(%wav)) {
+    foreach $channel ( (1, 2) ) {
+      $uttId = $ldc_code . "_" . $recording . "_" . $channel;
+      print WAV "$uttId"," sph2pipe -f wav -p -c ${channel} $wav{$recording} |\n";
+      print UTT2SPK "$uttId $uttId\n";
+      print UTT2LANG "$uttId $lang\n";
     }
   }
-  
+
   close(WAV) || die;
   close(UTT2SPK) || die;
   close(UTT2LANG) || die;
-  close(SPK2GEN) || die;
-  system("rm -r $out_base_dir/tmp");
+  #system("rm -r $out_base_dir/tmp");
 
   system("utils/fix_data_dir.sh $out_dir");
   (system("utils/validate_data_dir.sh --no-text --no-feats $out_dir") == 0) 

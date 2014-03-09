@@ -8,45 +8,63 @@
 . cmd.sh
 . path.sh
 set -e
+
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
-lang=local/callfriend_lang.txt
-lang_abbrev=local/language_abbreviations.txt
 
-local/make_sre_2008_train.pl local/language_abbreviations.txt /export/corpora5/LDC/LDC2011S05 data
+local/make_sre_2008_train.pl /export/corpora5/LDC/LDC2011S05 data
 
-for x in 49 51 55 56 57 58; do
-  local/make_callfriend.pl $lang_abbrev \
-    /export/corpora5/LDC/LDC96S49 $x $lang data
-done
+local/make_callfriend.pl /export/corpora5/LDC/LDC96S48 french data
+local/make_callfriend.pl /export/corpora5/LDC/LDC96S49 arabic.standard data
+local/make_callfriend.pl /export/corpora5/LDC/LDC96S54 korean data
+local/make_callfriend.pl /export/corpora5/LDC/LDC96S55 chinese.mandarin.mainland data
+local/make_callfriend.pl /export/corpora5/LDC/LDC96S56 chinese.mandarin.taiwan data
+local/make_callfriend.pl /export/corpora5/LDC/LDC96S57 spanish.caribbean data
+local/make_callfriend.pl /export/corpora5/LDC/LDC96S58 spanish.noncaribbean data
 
-local/make_lre03.pl $lang_abbrev /export/corpora4/LDC/LDC2006S31 data
-local/make_lre05.pl $lang_abbrev /export/corpora5/LDC/LDC2008S05 data
+local/make_lre03.pl /export/corpora4/LDC/LDC2006S31 data
+local/make_lre05.pl /export/corpora5/LDC/LDC2008S05 data
+local/make_lre07.pl /export/corpora5/LDC/LDC2009S04 data/lre07
 
-local/make_lre07.pl /export/corpora5/LDC/LDC2009S04 data/test
-
-utils/combine_data.sh data/train data/sre08_train_10sec_female \
+src_list="data/sre08_train_10sec_female \
     data/sre08_train_10sec_male data/sre08_train_3conv_female \
     data/sre08_train_3conv_male data/sre08_train_8conv_female \
     data/sre08_train_8conv_male data/sre08_train_short2_male \
     data/sre08_train_short2_female data/ldc96s* data/lid05d1 \
-    data/lid05e1 data/lid96d1 data/lid96e1 data/lre03
+    data/lid05e1 data/lid96d1 data/lid96e1 data/lre03"
+
+# Remove any spk2gender files that we have: since not all data
+# sources have this info, it will cause problems with combine_data.sh
+for d in $src_list; do rm $d/spk2gender 2>/dev/null; done
+
+utils/combine_data.sh data/train $src_list
+
+# original utt2lang will remain in data/train/.backup/utt2lang.
+utils/apply_map.pl -f 2 --permissive local/lang_map.txt  < data/train/utt2lang  2>/dev/null > foo
+cp foo data/train/utt2lang
+echo "**Language count in training:**"
+awk '{print $2}' foo | sort | uniq -c | sort -nr
+rm foo
+
+##
+## HERE
+##
 
 steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
   data/train exp/make_mfcc $mfccdir
 steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
-  data/test exp/make_mfcc $mfccdir
+  data/lre07 exp/make_mfcc $mfccdir
 
 lid/compute_vad_decision.sh --nj 4 --cmd "$train_cmd" data/train \
   exp/make_vad $vaddir
-lid/compute_vad_decision.sh --nj 4 --cmd "$train_cmd" data/test \
+lid/compute_vad_decision.sh --nj 4 --cmd "$train_cmd" data/lre07 \
   exp/make_vad $vaddir
 
 # Use 4k of the 14k utterances for testing, but make sure the speakers do not
 # overlap with the rest of the data, which will be used for training.
-#utils/subset_data_dir.sh --speakers data/all 4000 data/test
-#utils/filter_scp.pl --exclude data/test/spk2utt < data/all/spk2utt  | awk '{print $1}' > foo
+#utils/subset_data_dir.sh --speakers data/all 4000 data/lre07
+#utils/filter_scp.pl --exclude data/lre07/spk2utt < data/all/spk2utt  | awk '{print $1}' > foo
 #utils/subset_data_dir.sh --spk-list foo data/all data/train
 
 
@@ -71,6 +89,6 @@ lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
    exp/extractor_2048 data/train exp/ivectors_train
 
 lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
-   exp/extractor_2048 data/test exp/ivectors_test
+   exp/extractor_2048 data/lre07 exp/ivectors_test
 
 
