@@ -26,7 +26,7 @@ featdir=mfcc
 
 
 for x in test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92 train; do
-  steps/make_mfcc.sh --compress true --nj 8 --cmd "run.pl" data/$x exp/make_mfcc/$x $featdir  || exit 1;
+  steps/make_mfcc.sh --nj 8 --cmd "run.pl" data/$x exp/make_mfcc/$x $featdir  || exit 1;
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $featdir  || exit 1;
   #steps/make_plp.sh data/$x exp/make_plp/$x $featdir 4
 done
