@@ -7,7 +7,7 @@ endif
 CXXFLAGS = -msse -msse2 -Wall -I.. \
 	  -fPIC \
       -DKALDI_DOUBLEPRECISION=0 -DHAVE_POSIX_MEMALIGN \
-      -Wno-sign-compare -Winit-self -Wno-unused-local-typedefs \
+      -Wno-sign-compare -Winit-self \
       -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H \
       -DHAVE_CLAPACK \
       -I$(FSTROOT)/include \
@@ -33,5 +33,5 @@ endif
 # We need to tell recent versions of g++ to allow vector conversions without 
 # an explicit cast provided the vectors are of the same size.
 ifeq ($(findstring GCC,$(COMPILER)),GCC)
-	CXXFLAGS += -flax-vector-conversions
+	CXXFLAGS += -flax-vector-conversions -Wno-unused-local-typedefs
 endif
