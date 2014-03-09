@@ -275,6 +275,15 @@ double BasisFmllrEstimate::ComputeTransform(
     } else {
       W_mat.CopyFromMat(*out_xform);
     }
+
+    // Create temporary K and G quantities. Add for efficiency,
+    // avoid repetitions of converting the stats from double
+    // precision to single precision
+    Matrix<BaseFloat> stats_tmp_K(spk_stats.K_);
+    std::vector<SpMatrix<BaseFloat> > stats_tmp_G(dim_);
+    for (int32 d = 0; d < dim_; d++)
+      stats_tmp_G[d] = SpMatrix<BaseFloat>(spk_stats.G_[d]);
+
     // Number of bases for this speaker, according to the available
     // adaptation data
     int32 basis_size = int32 (std::min( double(basis_size_),
@@ -290,10 +299,9 @@ double BasisFmllrEstimate::ComputeTransform(
 	  // Contribution of quadratic terms to derivative
 	  // Eq. (37)  s_{d} = G_{d} w_{d}
 	  Matrix<BaseFloat> S(dim_, dim_ + 1);
-	  for (int32 d = 0; d < dim_; ++d) {
-		Matrix<BaseFloat> G_d_full(spk_stats.G_[d]);
-		S.Row(d).AddMatVec(1.0, G_d_full, kNoTrans, W_mat.Row(d), 0.0);
-	  }
+	  for (int32 d = 0; d < dim_; ++d)
+		S.Row(d).AddSpVec(1.0, stats_tmp_G[d], W_mat.Row(d), 0.0);
+
 
 	  // W_mat = [A; b]
 	  Matrix<BaseFloat> A(dim_, dim_);
@@ -308,9 +316,7 @@ double BasisFmllrEstimate::ComputeTransform(
 	  P.SetZero();
 	  P.Range(0, dim_, 0, dim_).CopyFromMat(A_inv_trans);
 	  P.Scale(spk_stats.beta_);
-	  Matrix<BaseFloat> spk_stats_Ktmp(dim_, dim_ + 1);
-	  spk_stats_Ktmp.CopyFromMat(spk_stats.K_);
-	  P.AddMat(1.0, spk_stats_Ktmp);
+	  P.AddMat(1.0, stats_tmp_K);
 	  P.AddMat(-1.0, S);
 
       // Compute directional gradient restricted by bases. Here we only use
@@ -326,7 +332,8 @@ double BasisFmllrEstimate::ComputeTransform(
 	    delta_W.AddMat(delta_d(n), fmllr_basis_[n]);
 	  }
 
-	  BaseFloat step_size = CalBasisFmllrStepSize(spk_stats, delta_W, A, S, options.step_size_iters);
+	  BaseFloat step_size = CalBasisFmllrStepSize(spk_stats, stats_tmp_K,
+        stats_tmp_G, delta_W, A, S, options.step_size_iters);
 	  W_mat.AddMat(step_size, delta_W, kNoTrans);
 	  coefficient->AddVec(step_size, delta_d);
 	  // Check auxiliary function
@@ -347,25 +354,25 @@ double BasisFmllrEstimate::ComputeTransform(
 
 
 BaseFloat CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
-                                const Matrix<BaseFloat> &delta,
-                                const Matrix<BaseFloat> &A,
-                                const Matrix<BaseFloat> &S,
-                                int32 max_iters) {
+  const Matrix<BaseFloat> &spk_stats_tmp_K,
+  const std::vector<SpMatrix<BaseFloat> > &spk_stats_tmp_G,
+  const Matrix<BaseFloat> &delta,
+  const Matrix<BaseFloat> &A,
+  const Matrix<BaseFloat> &S,
+  int32 max_iters) {
+
   int32 dim = spk_stats.dim_;
   KALDI_ASSERT(dim == delta.NumRows() && dim == S.NumRows());
   // The first D columns of delta_W
   SubMatrix<BaseFloat> delta_Dim(delta, 0, dim, 0, dim);
   // Eq. (46): b = tr(delta K^T) - tr(delta S^T)
-  Matrix<BaseFloat> spk_stats_Ktmp(dim, dim + 1);
-  spk_stats_Ktmp.CopyFromMat(spk_stats.K_);
-  BaseFloat b = TraceMatMat(delta, spk_stats_Ktmp, kTrans)
+  BaseFloat b = TraceMatMat(delta, spk_stats_tmp_K, kTrans)
                  - TraceMatMat(delta, S, kTrans);
   // Eq. (47): c = sum_d tr(delta_{d} G_{d} delta_{d})
   BaseFloat c = 0;
   Vector<BaseFloat> G_row_delta(dim + 1);
   for (int32 d = 0; d < dim; ++d) {
-    SpMatrix<BaseFloat> spk_stats_Gtmp(spk_stats.G_[d]);
-    G_row_delta.AddSpVec(1.0, spk_stats_Gtmp, delta.Row(d), 0.0);
+    G_row_delta.AddSpVec(1.0, spk_stats_tmp_G[d], delta.Row(d), 0.0);
     c += VecVec(G_row_delta, delta.Row(d));
   }
 

@@ -168,10 +168,12 @@ class BasisFmllrEstimate {
 /// the resulting step size \k should be close to 1. If \k <<1 or >>1, there
 /// maybe problems with preconditioning or the speaker stats.
 BaseFloat CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
-                             const Matrix<BaseFloat> &delta,
-                             const Matrix<BaseFloat> &A,
-                             const Matrix<BaseFloat> &S,
-                             int32 max_iters);
+  const Matrix<BaseFloat> &spk_stats_tmp_K,
+  const std::vector<SpMatrix<BaseFloat> > &spk_stats_tmp_G,
+  const Matrix<BaseFloat> &delta,
+  const Matrix<BaseFloat> &A,
+  const Matrix<BaseFloat> &S,
+  int32 max_iters);
 
 } // namespace kaldi
 
