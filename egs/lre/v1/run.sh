@@ -14,6 +14,8 @@ vaddir=`pwd`/mfcc
 lang=local/callfriend_lang.txt
 lang_abbrev=local/language_abbreviations.txt
 
+local/make_sre_2008_train.pl local/language_abbreviations.txt /export/corpora5/LDC/LDC2011S05 data
+
 for x in 49 51 55 56 57 58; do
   local/make_callfriend.pl $lang_abbrev \
     /export/corpora5/LDC/LDC96S49 $x $lang data
