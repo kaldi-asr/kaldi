@@ -11,11 +11,6 @@ set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
-#local/make_sre_2008_train.pl local/language_abbreviations.txt /export/corpora5/LDC/LDC2011S05 data
-#utils/combine_data.sh data/sre08_train data/sre08_train_10sec_female data/sre08_train_10sec_male \
-#    data/sre08_train_3conv_female data/sre08_train_3conv_male data/sre08_train_8conv_female \
-#    data/sre08_train_8conv_male data/sre08_train_short2_male data/sre08_train_short2_female /export/a14/kumar/kaldi/language_id/egs/lre/v1/data/ldc96s*
-
 lang=local/callfriend_lang.txt
 lang_abbrev=local/language_abbreviations.txt
 
@@ -24,6 +19,7 @@ for x in 49 51 55 56 57 58; do
     /export/corpora5/LDC/LDC96S49 $x $lang data
 done
 
+local/make_lre03.pl $lang_abbrev /export/corpora4/LDC/LDC2006S31 data
 local/make_lre05.pl $lang_abbrev /export/corpora5/LDC/LDC2008S05 data
 
 local/make_lre07.pl /export/corpora5/LDC/LDC2009S04 data/test
@@ -32,7 +28,8 @@ utils/combine_data.sh data/train data/sre08_train_10sec_female \
     data/sre08_train_10sec_male data/sre08_train_3conv_female \
     data/sre08_train_3conv_male data/sre08_train_8conv_female \
     data/sre08_train_8conv_male data/sre08_train_short2_male \
-    data/sre08_train_short2_female data/ldc96s* data/lid05d1 data/lid05e1
+    data/sre08_train_short2_female data/ldc96s* data/lid05d1 \
+    data/lid05e1 data/lid96d1 data/lid96e1 data/lre03
 
 steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
   data/train exp/make_mfcc $mfccdir
