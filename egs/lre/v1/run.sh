@@ -24,13 +24,15 @@ for x in 49 51 55 56 57 58; do
     /export/corpora5/LDC/LDC96S49 $x $lang data
 done
 
+local/make_lre05.pl $lang_abbrev /export/corpora5/LDC/LDC2008S05 data
+
 local/make_lre07.pl /export/corpora5/LDC/LDC2009S04 data/test
 
 utils/combine_data.sh data/train data/sre08_train_10sec_female \
     data/sre08_train_10sec_male data/sre08_train_3conv_female \
     data/sre08_train_3conv_male data/sre08_train_8conv_female \
     data/sre08_train_8conv_male data/sre08_train_short2_male \
-    data/sre08_train_short2_female data/ldc96s*
+    data/sre08_train_short2_female data/ldc96s* data/lid05d1 data/lid05e1
 
 steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
   data/train exp/make_mfcc $mfccdir
