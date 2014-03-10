@@ -38,14 +38,16 @@ src_list="data/sre08_train_10sec_female \
 # sources have this info, it will cause problems with combine_data.sh
 for d in $src_list; do rm $d/spk2gender 2>/dev/null; done
 
-utils/combine_data.sh data/train $src_list
+utils/combine_data.sh data/train_unsplit $src_list
 
-# original utt2lang will remain in data/train/.backup/utt2lang.
-utils/apply_map.pl -f 2 --permissive local/lang_map.txt  < data/train/utt2lang  2>/dev/null > foo
-cp foo data/train/utt2lang
+# original utt2lang will remain in data/train_unsplit/.backup/utt2lang.
+utils/apply_map.pl -f 2 --permissive local/lang_map.txt  < data/train_unsplit/utt2lang  2>/dev/null > foo
+cp foo data/train_unsplit/utt2lang
 echo "**Language count in training:**"
 awk '{print $2}' foo | sort | uniq -c | sort -nr
 rm foo
+
+local/split_long_utts.sh --max-utt-len 120 data/train_unsplit data/train
 
 ##
 ## HERE
@@ -68,17 +70,17 @@ lid/compute_vad_decision.sh --nj 4 --cmd "$train_cmd" data/lre07 \
 #utils/subset_data_dir.sh --spk-list foo data/all data/train
 
 
-utils/subset_data_dir.sh data/train 3000 data/train_3k
-utils/subset_data_dir.sh data/train 6000 data/train_6k
+utils/subset_data_dir.sh data/train 5000 data/train_5k
+utils/subset_data_dir.sh data/train 10000 data/train_10k
 
 
-lid/train_diag_ubm.sh --nj 30 --cmd "$train_cmd" data/train_3k 2048 \
+lid/train_diag_ubm.sh --nj 30 --cmd "$train_cmd" data/train_5k 2048 \
   exp/diag_ubm_2048
-lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/train_6k \
-  exp/diag_ubm_2048 exp/full_ubm_2048_6k
+lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/train_10k \
+  exp/diag_ubm_2048 exp/full_ubm_2048_10k
 
 lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/train \
-  exp/full_ubm_2048_6k exp/full_ubm_2048
+  exp/full_ubm_2048_10k exp/full_ubm_2048
 
 
 lid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \

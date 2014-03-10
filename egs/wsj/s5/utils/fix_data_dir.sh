@@ -145,7 +145,7 @@ function filter_utts {
     new_nutts=$(cat $tmpdir/utts | wc -l)
     old_nutts=$(cat $data/utt2spk | wc -l)
     if [ $new_nutts -ne $old_nutts ]; then
-      echo "fix_data_dir.sh: kept $new_utts utterances out of $old_nutts"
+      echo "fix_data_dir.sh: kept $new_nutts utterances out of $old_nutts"
     else
       echo "fix_data_dir.sh: kept all $old_nutts utterances."
     fi

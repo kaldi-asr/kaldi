@@ -92,13 +92,13 @@ else
   echo "$0: [info]: no segments file exists: assuming wav.scp indexed by utterance."
   split_scps=""
   for ((n=1; n<=nj; n++)); do
-    split_scps="$split_scps $logdir/wav.$n.scp"
+    split_scps="$split_scps $logdir/wav_${name}.$n.scp"
   done
 
   utils/split_scp.pl $scp $split_scps || exit 1;
   
-  plp_feats="ark:compute-plp-feats --verbose=2 --config=$plp_config scp:$logdir/wav.JOB.scp ark:- |"
-  pitch_feats="ark,s,cs:compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config scp:$logdir/wav.JOB.scp ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
+  plp_feats="ark:compute-plp-feats --verbose=2 --config=$plp_config scp:$logdir/wav_${name}.JOB.scp ark:- |"
+  pitch_feats="ark,s,cs:compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config scp:$logdir/wav_${name}.JOB.scp ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
  
   $cmd JOB=1:$nj $logdir/make_plp_pitch_${name}.JOB.log \
     paste-feats --length-tolerance=$paste_length_tolerance "$plp_feats" "$pitch_feats" ark:- \| \
@@ -120,7 +120,7 @@ for ((n=1; n<=nj; n++)); do
   cat $plp_pitch_dir/raw_plp_pitch_$name.$n.scp || exit 1;
 done > $data/feats.scp
 
-rm $logdir/wav.*.scp  $logdir/segments.* 2>/dev/null
+rm $logdir/wav_${name}.*.scp  $logdir/segments.* 2>/dev/null
 
 nf=`cat $data/feats.scp | wc -l` 
 nu=`cat $data/utt2spk | wc -l` 
