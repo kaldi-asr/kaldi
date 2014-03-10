@@ -51,7 +51,7 @@ rm foo
 ## HERE
 ##
 
-steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
+steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 100 --cmd "$train_cmd" \
   data/train exp/make_mfcc $mfccdir
 steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
   data/lre07 exp/make_mfcc $mfccdir

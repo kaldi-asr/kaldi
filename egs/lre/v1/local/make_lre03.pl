@@ -50,7 +50,7 @@ while($line = <DB>) {
   }
   $uttId = "lre03_${seg_id}";
   
-  print WAV "$uttId"," sph2pipe -f wav -p -c ${channel} $wav"." |\n";
+  print WAV "$uttId"," sph2pipe -f wav -p -c ${channel} $wav |\n";
   print UTT2SPK "$uttId $uttId\n";
   print UTT2LANG "$uttId $lang\n";
   print SPK2GEN "$uttId $gender\n";
@@ -90,7 +90,7 @@ for $set ("lid96d1", "lid96e1") {
 
       $wav = "$data_dir/$duration/$seg_id.sph";
       $uttId = "${set}_${seg_id}";
-      print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav"." |\n";
+      print WAV "$uttId"," sph2pipe -f wav -p -c 1 $wav |\n";
       print UTT2SPK "$uttId $uttId\n";
       print UTT2LANG "$uttId $lang\n";
       # Gender information is absent here, not outputting spk2gender file.

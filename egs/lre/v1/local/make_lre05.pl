@@ -33,7 +33,7 @@ while($line = <KEY>) {
   chomp($line);
   # If the line isn't a comment
   if (index($line, "#") == -1) {
-    ($fi, $lang, $conv_id, $chan, $test_cut) = split(" ", $line);
+    ($fi, $lang, $conv_id, $channel, $test_cut) = split(" ", $line);
     # Verify that we have only Indian English.
     if (not ($lang eq "IE")) {
       die "$db_ie contains non-Indian English utterances.";
@@ -43,7 +43,12 @@ while($line = <KEY>) {
     # This part of the corpus is only english.indian.
     $uttId = "lid05d1_$utt";
     $wav = $db_ie . $fi;
-    print WAV "$uttId"," sph2pipe -f wav -p -c $chan $wav |\n";
+    if (! -f $wav) {
+      print STDERR "No such file $wav (skipping)\n";
+      next;
+    }
+    $channel =~ tr/AB/12/;
+    print WAV "$uttId"," sph2pipe -f wav -p -c $channel $wav |\n";
     print UTT2SPK "$uttId $uttId\n";
     print UTT2LANG "$uttId english.indian\n";
   }
@@ -101,6 +106,7 @@ while($line = <KEY>) {
     }
 
     $uttId = "lid05e1_".$seg_id;
+    $channel =~ tr/AB/12/;
 
     print WAV "$uttId"," sph2pipe -f wav -p -c ${channel} $wav |\n";
     print UTT2SPK "$uttId $uttId\n";
