@@ -8,15 +8,13 @@
 . cmd.sh
 . path.sh
 set -e
-mfccdir=`pwd`/mfcc
-vaddir=`pwd`/mfcc
+
 config=conf/logistic-regression.conf
 
 awk '{print $2}' <(utils/remove_dialect.pl data/train/utt2lang) | sort -u | \
   awk '{print $1, NR-1}' >  exp/ivectors_train/languages.txt
 
 
-log=exp/ivectors_train/log/logistic_regression.log
 
 model=exp/ivectors_train/logistic_regression
 model_rebalanced=exp/ivectors_train/logistic_regression_rebalanced
@@ -40,12 +38,12 @@ utils/balance_priors_to_test.pl \
     exp/ivectors_train/priors.vec
 
 logistic-regression-train --config=$config scp:$train_ivectors \
-                          "$classes" $model 2>$log 
+                          "$classes" $model \
+   2>exp/ivectors_train/log/logistic_regression.log
 
-( logistic-regression-train --config=$config scp:$train_ivectors \
-                          "$classes" - | \
- logistic-regression-copy --scale-priors=exp/ivectors_train/priors.vec - \
- $model_rebalanced ) 2>$log
+
+ logistic-regression-copy --scale-priors=exp/ivectors_train/priors.vec \
+   $model $model_rebalanced
 
 trials="utils/remove_dialect.pl data/train/utt2lang \
         | utils/sym2int.pl -f 2 exp/ivectors_train/languages.txt -|"
@@ -57,7 +55,7 @@ logistic-regression-eval $model scp:$train_ivectors \
 
 logistic-regression-eval $model "ark:$trials" scp:$train_ivectors "$scores"
 
-logistic-regression-eval $model scp:$train_ivectors ark,t:- | \
+cat exp/ivectors_train/posteriors | \
   awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) 
                           { max=$f; argmax=f; }}  
                           print $1, (argmax - 3); }' | \
@@ -66,29 +64,28 @@ logistic-regression-eval $model scp:$train_ivectors ark,t:- | \
 
 # note: we treat the language as a sentence; it happens that the WER/SER
 # corresponds to the recognition error rate.
-compute-wer --text ark:<(utils/remove_dialect.pl data/train/utt2lang) \
+compute-wer --mode=present --text ark:<(utils/remove_dialect.pl data/train/utt2lang) \
   ark:exp/ivectors_train/output
 
-# It perfectly classifies the training data:
-#%WER 0.00 [ 0 / 10173, 0 ins, 0 del, 0 sub ]
-#%SER 0.00 [ 0 / 10173 ]
-#Scored 10173 sentences, 0 not present in hyp.
+
+#%WER 4.68 [ 3355 / 71668, 0 ins, 0 del, 3355 sub ] [PARTIAL]
+#%SER 4.68 [ 3355 / 71668 ]
+#Scored 71668 sentences, 16 not present in hyp.
 
 
 logistic-regression-eval $model_rebalanced \
-  scp:exp/ivectors_test/ivector.scp ark,t:- | \
+  scp:exp/ivectors_lre07/ivector.scp ark,t:- | \
   awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) 
                           { max=$f; argmax=f; }}  
                           print $1, (argmax - 3); }' | \
-  utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt >exp/ivectors_test/output
+  utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt >exp/ivectors_lre07/output
 
 
 # someone needs to extend this to run on the dev data.
 
-compute-wer --text ark:<(utils/remove_dialect.pl data/lre07/utt2lang)\
-  ark:exp/ivectors_test/output
-# compute-wer --text ark:/dev/fd/63 ark:exp/lre07/output 
-# %WER 58.83 [ 3958 / 7527, 0 ins, 0 del, 3958 sub ]
-# %SER 58.83 [ 3958 / 7527 ]
+compute-wer --text ark:<(utils/remove_dialect.pl data/lre07/utt2lang) \
+  ark:exp/ivectors_lre07/output
+> compute-wer --text ark:/dev/fd/63 ark:exp/ivectors_lre07/output 
+# %WER 34.34 [ 2585 / 7527, 0 ins, 0 del, 2585 sub ]
+# %SER 34.34 [ 2585 / 7527 ]
 # Scored 7527 sentences, 0 not present in hyp.
-

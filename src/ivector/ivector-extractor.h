@@ -57,6 +57,7 @@ struct IvectorEstimationOptions {
 
 
 class IvectorExtractor;
+class IvectorExtractorComputeDerivedVarsClass;
 
 /// These are the stats for a particular utterance, i.e. the sufficient stats
 /// for estimating an iVector (if need_2nd_order_stats == true, we can also
@@ -229,7 +230,9 @@ class IvectorExtractor {
   // because they do what we want.
  protected:
   void ComputeDerivedVars();
-
+  void ComputeDerivedVars(int32 i);
+  friend class IvectorExtractorComputeDerivedVarsClass;
+  
   // Imagine we'll project the iVectors with transformation T, so apply T^{-1}
   // where necessary to keep the model equivalent.  Used to keep unit variance
   // (like prior re-estimation).
@@ -311,8 +314,7 @@ struct IvectorExtractorEstimationOptions {
   double gaussian_min_count;
   int32 num_threads;
   IvectorExtractorEstimationOptions(): variance_floor_factor(0.1),
-                                       gaussian_min_count(100.0),
-                                       num_threads(1) { }
+                                       gaussian_min_count(100.0) { }
   void Register(OptionsItf *po) {
     po->Register("variance-floor-factor", &variance_floor_factor,
                  "Factor that determines variance flooring (we floor each covar "
@@ -320,8 +322,6 @@ struct IvectorExtractorEstimationOptions {
     po->Register("gaussian-min-count", &gaussian_min_count,
                  "Minimum total count per Gaussian, below which we refuse to "
                  "update any associated parameters.");
-    po->Register("num-threads", &num_threads,
-                 "Number of threads used in iVector estimation program");
   }
 };
 

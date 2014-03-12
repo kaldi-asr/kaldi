@@ -197,6 +197,17 @@ IvectorExtractor::IvectorExtractor(
   ComputeDerivedVars();
 }
 
+class IvectorExtractorComputeDerivedVarsClass {
+ public:
+  IvectorExtractorComputeDerivedVarsClass(IvectorExtractor *extractor,
+                                          int32 i):
+      extractor_(extractor), i_(i) { }
+  void operator () () { extractor_->ComputeDerivedVars(i_); }
+ private:
+  IvectorExtractor *extractor_;
+  int32 i_;
+};
+
 void IvectorExtractor::ComputeDerivedVars() {
   KALDI_LOG << "Computing derived variables for iVector extractor";
   gconsts_.Resize(NumGauss());
@@ -206,15 +217,30 @@ void IvectorExtractor::ComputeDerivedVars() {
     // the gconsts don't contain any weight-related terms.
   }
   U_.Resize(NumGauss(), IvectorDim() * (IvectorDim() + 1) / 2);
-  SpMatrix<double> temp_U(IvectorDim());
-  for (int32 i = 0; i < NumGauss(); i++) {
-    // temp_U = M_i^T Sigma_i^{-1} M_i
-    temp_U.AddMat2Sp(1.0, M_[i], kTrans, Sigma_inv_[i], 0.0);
-    SubVector<double> temp_U_vec(temp_U.Data(),
-                                 IvectorDim() * (IvectorDim() + 1) / 2);
-    U_.Row(i).CopyFromVec(temp_U_vec);
+
+  // Note, we could have used RunMultiThreaded for this and similar tasks we
+  // have here, but we found that we don't get as complete CPU utilization as we
+  // could because some tasks finish before others.
+  {
+    TaskSequencerConfig sequencer_opts;
+    sequencer_opts.num_threads = g_num_threads;
+    TaskSequencer<IvectorExtractorComputeDerivedVarsClass> sequencer(
+        sequencer_opts);
+    for (int32 i = 0; i < NumGauss(); i++)
+      sequencer.Run(new IvectorExtractorComputeDerivedVarsClass(this, i));
   }
   KALDI_LOG << "Done.";
+}
+
+  
+void IvectorExtractor::ComputeDerivedVars(int32 i) {
+  SpMatrix<double> temp_U(IvectorDim());
+  // temp_U = M_i^T Sigma_i^{-1} M_i
+  temp_U.AddMat2Sp(1.0, M_[i], kTrans, Sigma_inv_[i], 0.0);
+  SubVector<double> temp_U_vec(temp_U.Data(),
+                               IvectorDim() * (IvectorDim() + 1) / 2);
+  U_.Row(i).CopyFromVec(temp_U_vec);
+  
 }
 
 
@@ -986,7 +1012,7 @@ double IvectorStats::UpdateProjections(
   double tot_impr = 0.0;
   {
     TaskSequencerConfig sequencer_opts;
-    sequencer_opts.num_threads = opts.num_threads;
+    sequencer_opts.num_threads = g_num_threads;
     TaskSequencer<IvectorExtractorUpdateProjectionClass> sequencer(
         sequencer_opts);
     for (int32 i = 0; i < I; i++)
@@ -1149,7 +1175,7 @@ double IvectorStats::UpdateWeights(
   double tot_impr = 0.0;
   {
     TaskSequencerConfig sequencer_opts;
-    sequencer_opts.num_threads = opts.num_threads;
+    sequencer_opts.num_threads = g_num_threads;
     TaskSequencer<IvectorExtractorUpdateWeightClass> sequencer(
         sequencer_opts);
     for (int32 i = 0; i < I; i++)

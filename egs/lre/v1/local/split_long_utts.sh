@@ -75,6 +75,7 @@ if [ $stage -le 1 ]; then
     if ($len <= $max_utt_len) {
       print SEGMENTS "${utt}-1 ${utt} 0 -1\n";
       print UTT2SPK "${utt}-1 $speaker\n";
+      print UTT2LANG "${utt}-1 $language\n";
     } else {
       # We will now allow split length to exceed max_utt_len.
       $num_split = int(($len + 0.999*$max_utt_len) / $max_utt_len);

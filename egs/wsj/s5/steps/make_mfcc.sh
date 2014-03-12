@@ -77,13 +77,13 @@ else
   echo "$0: [info]: no segments file exists: assuming wav.scp indexed by utterance."
   split_scps=""
   for ((n=1; n<=nj; n++)); do
-    split_scps="$split_scps $logdir/wav.$n.scp"
+    split_scps="$split_scps $logdir/wav_${name}.$n.scp"
   done
 
   utils/split_scp.pl $scp $split_scps || exit 1;
 
   $cmd JOB=1:$nj $logdir/make_mfcc_${name}.JOB.log \
-    compute-mfcc-feats  --verbose=2 --config=$mfcc_config scp:$logdir/wav.JOB.scp ark:- \| \
+    compute-mfcc-feats  --verbose=2 --config=$mfcc_config scp:$logdir/wav_${name}.JOB.scp ark:- \| \
       copy-feats --compress=$compress ark:- \
       ark,scp:$mfccdir/raw_mfcc_$name.JOB.ark,$mfccdir/raw_mfcc_$name.JOB.scp \
       || exit 1;
@@ -102,7 +102,7 @@ for ((n=1; n<=nj; n++)); do
   cat $mfccdir/raw_mfcc_$name.$n.scp || exit 1;
 done > $data/feats.scp
 
-rm $logdir/wav.*.scp  $logdir/segments.* 2>/dev/null
+rm $logdir/wav_${name}.*.scp  $logdir/segments.* 2>/dev/null
 
 nf=`cat $data/feats.scp | wc -l` 
 nu=`cat $data/utt2spk | wc -l` 
