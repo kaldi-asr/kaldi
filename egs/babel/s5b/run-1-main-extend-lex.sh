@@ -24,14 +24,14 @@ if $extend_lexicon; then
 fi
 
 #Preparing dev2h and train directories
-if [ ! -d data/raw_train_data ]; then
+if [ ! -f data/raw_train_data/.done ]; then
     echo ---------------------------------------------------------------------
     echo "Subsetting the TRAIN set"
     echo ---------------------------------------------------------------------
 
     local/make_corpus_subset.sh "$train_data_dir" "$train_data_list" ./data/raw_train_data
     train_data_dir=`readlink -f ./data/raw_train_data`
-
+    touch data/raw_train_data/.done 
 fi
 nj_max=`cat $train_data_list | wc -l`
 if [[ "$nj_max" -lt "$train_nj" ]] ; then

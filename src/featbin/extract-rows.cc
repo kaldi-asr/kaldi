@@ -38,7 +38,8 @@ int main(int argc, char *argv[]) {
         "to integers by dividing by frame-shift.\n"
         "\n"
         "Usage: extract-rows [options] <segments-file> <features-rspecifier> <features-wspecifier>\n"
-        "  e.g. extract-rows --frame-shift=0.01 segments ark:feats-in.ark ark:feats-out.ark\n";
+        "  e.g. extract-rows --frame-shift=0.01 segments ark:feats-in.ark ark:feats-out.ark\n"
+        "See also select-feats, subset-feats, subsample-feats\n";
 
     ParseOptions po(usage);
 

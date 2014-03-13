@@ -18,18 +18,31 @@
 
 # This script takes a list of utterance-ids or any file whose first field
 # of each line is an utterance-id, and filters an scp
-# file (or any file whose first field is an utterance id), printing
-# out only those lines whose first field is in id_list.
+# file (or any file whose "n-th" field is an utterance id), printing
+# out only those lines whose "n-th" field is in id_list. The index of 
+# the "n-th" field is zero, by default, but can be changed by using \
+# the -f <n> switch
 
 $exclude = 0;
+$field = 0;
+$shifted = 0;
 
-if ($ARGV[0] eq "--exclude") {
-  $exclude = 1;
-  shift @ARGV;
-}
+do {
+  $shifted=0;
+  if ($ARGV[0] eq "--exclude") {
+    $exclude = 1;
+    shift @ARGV;
+    $shifted=1;
+  }
+  if ($ARGV[0] eq "-f") {
+    $field = $ARGV[1];
+    shift @ARGV; shift @ARGV;
+    $shifted=1
+  }
+} while ($shifted);
 
 if(@ARGV < 1 || @ARGV > 2) {
-  die "Usage: filter_scp.pl [--exclude] id_list [in.scp] > out.scp ";
+  die "Usage: filter_scp.pl [--exclude] [-f <field-to-filter-on>] id_list [in.scp] > out.scp ";
 }
 
 
@@ -44,7 +57,9 @@ while(<F>) {
 while(<>) {
   @A = split;
   @A > 0 || die "Invalid scp file line $_";
-  if((!$exclude && $seen{$A[0]}) || ($exclude && !defined $seen{$A[0]})) {
+  @A >= $field || die "Invalid scp file line $_";
+
+  if((!$exclude && $seen{$A[$field]}) || ($exclude && !defined $seen{$A[$field]})) {
     print $_;
   }
 }

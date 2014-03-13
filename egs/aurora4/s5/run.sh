@@ -107,7 +107,7 @@ steps/align_si.sh  --nj 10 \
 #RBM pretrain
 dir=exp/tri3a_dnn_pretrain
 $cuda_cmd $dir/_pretrain_dbn.log \
-  steps/pretrain_dbn.sh --use-gpu-id 0 --nn-depth 7 --rbm-iter 3 data-fbank/train_si84_multi $dir
+  steps/nnet/pretrain_dbn.sh --use-gpu-id 0 --nn-depth 7 --rbm-iter 3 data-fbank/train_si84_multi $dir
 
 dir=exp/tri3a_dnn
 ali=exp/tri2b_multi_ali_si84
@@ -115,20 +115,20 @@ ali_dev=exp/tri2b_multi_ali_dev_0330
 feature_transform=exp/tri3a_dnn_pretrain/final.feature_transform
 dbn=exp/tri3a_dnn_pretrain/7.dbn
 $cuda_cmd $dir/_train_nnet.log \
-  steps/train_nnet.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
+  steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
   data-fbank/train_si84_multi data-fbank/dev_0330 data/lang $ali $ali_dev $dir || exit 1;
 
 utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri3a_dnn exp/tri3a_dnn/graph_tgpr_5k || exit 1;
 dir=exp/tri3a_dnn
-steps/decode_nnet.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
+steps/nnet/decode.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
   exp/tri3a_dnn/graph_tgpr_5k data-fbank/test_eval92 $dir/decode_tgpr_5k_eval92 || exit 1;
 
 
 #realignments
 srcdir=exp/tri3a_dnn
-steps/align_nnet.sh --nj 10 \
+steps/nnet/align.sh --nj 10 \
   data-fbank/train_si84_multi data/lang $srcdir ${srcdir}_ali_si84_multi || exit 1;
-steps/align_nnet.sh --nj 10 \
+steps/nnet/align.sh --nj 10 \
   data-fbank/dev_0330 data/lang $srcdir ${srcdir}_ali_dev_0330 || exit 1;
 
 #train system again 
@@ -139,12 +139,12 @@ ali_dev=exp/tri3a_dnn_ali_dev_0330
 feature_transform=exp/tri3a_dnn_pretrain/final.feature_transform
 dbn=exp/tri3a_dnn_pretrain/7.dbn
 $cuda_cmd $dir/_train_nnet.log \
-  steps/train_nnet.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
+  steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
   data-fbank/train_si84_multi data-fbank/dev_0330 data/lang $ali $ali_dev $dir || exit 1;
 
 utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri4a_dnn exp/tri4a_dnn/graph_tgpr_5k || exit 1;
 dir=exp/tri4a_dnn
-steps/decode_nnet.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
+steps/nnet/decode.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
   exp/tri4a_dnn/graph_tgpr_5k data-fbank/test_eval92 $dir/decode_tgpr_5k_eval92 || exit 1;
 
 

@@ -21,6 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-utils.h"
+#include "fstext/prune-special.h"
 
 namespace fst {
 
@@ -78,6 +79,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
+    int32 max_states = 100000;
     int32 phone_nbest = 50;
     int32 proxy_nbest = 100;
     double phone_beam = 5;
@@ -90,6 +92,8 @@ int main(int argc, char *argv[]) {
                 "given beam, -1 means no prune.");
     po.Register("proxy-beam", &proxy_beam, "Prune KxL2xExL1' transducer to the "
                 "given beam, -1 means no prune.");
+    po.Register("max-states", &max_states, "Prune kxL2xExL1' transducer to the "
+                "given number of states, 0 means no prune.");
 
     po.Read(argc, argv);
 
@@ -155,37 +159,51 @@ int main(int argc, char *argv[]) {
       }
       if (phone_nbest > 0) {
         KALDI_VLOG(1) << "ShortestPath(KxL2xE, " << phone_nbest << ")";
-        proxy = tmp_proxy;
-        tmp_proxy.DeleteStates(); // Not needed for now.
-        ShortestPath(proxy, &tmp_proxy, phone_nbest, true, true);
-        proxy.DeleteStates();     // Not needed for now.
+        RmEpsilon(&tmp_proxy);
+        ShortestPath(tmp_proxy, &proxy, phone_nbest, true, true);
+        tmp_proxy.DeleteStates();   // Not needed for now.
+        KALDI_VLOG(1) << "Determinize(KxL2xE)";
+        Determinize(proxy, &tmp_proxy);
+        proxy.DeleteStates();       // Not needed for now.
       }
-      KALDI_VLOG(1) << "Determinize(KxL2xE)";
-      Determinize(tmp_proxy, &proxy);
-      tmp_proxy.DeleteStates();
-      KALDI_VLOG(1) << "RmEpsilon(KxL2xE)";
-      RmEpsilon(&proxy);
       KALDI_VLOG(1) << "ArcSort(KxL2xE, OLabel)";
+      proxy = tmp_proxy;
+      tmp_proxy.DeleteStates();     // Not needed for now.
       ArcSort(&proxy, OLabelCompare<StdArc>());
 
-      // Composing KxL2xE and L1'. We assume L1' is ilabel sorted.
-      KALDI_VLOG(1) << "Compose(KxL2xE, L1')";
-      RmEpsilon(&proxy);
-      ArcSort(&proxy, OLabelCompare<StdArc>());
-      Compose(proxy, *L1, &tmp_proxy);
-      proxy.DeleteStates();
 
       // Processing KxL2xExL1'.
-      KALDI_VLOG(1) << "Project(KxL2xExL1', PROJECT_OUTPUT)";
-      Project(&tmp_proxy, PROJECT_OUTPUT);
+      RmEpsilon(&proxy);
+      ArcSort(&proxy, OLabelCompare<StdArc>());
       if (proxy_beam >= 0) {
+        // We only use the delayed FST when pruning is requested, because we do
+        // the optimization in pruning.
+        // Composing KxL2xE and L1'. We assume L1' is ilabel sorted.
+        KALDI_VLOG(1) << "Compose(KxL2xE, L1')";
+        ComposeFst<StdArc> lazy_compose(proxy, *L1);
+        proxy.DeleteStates();
+
+        KALDI_VLOG(1) << "Project(KxL2xExL1', PROJECT_OUTPUT)";
+        ProjectFst<StdArc> lazy_project(lazy_compose, PROJECT_OUTPUT);
+
+        // This will likely be the most time consuming part, we use a special
+        // pruning algorithm where we don't expand the full FST.
         KALDI_VLOG(1) << "Prune(KxL2xExL1', " << proxy_beam << ")";
-        Prune(&tmp_proxy, proxy_beam);
+        PruneSpecial(lazy_project, &tmp_proxy, proxy_beam, max_states);
+      } else {
+        // If no pruning is requested, we do the normal composition.
+        KALDI_VLOG(1) << "Compose(KxL2xE, L1')";
+        Compose(proxy, *L1, &tmp_proxy);
+        proxy.DeleteStates();
+
+        KALDI_VLOG(1) << "Project(KxL2xExL1', PROJECT_OUTPUT)";
+        Project(&tmp_proxy, PROJECT_OUTPUT);
       }
       if (proxy_nbest > 0) {
         KALDI_VLOG(1) << "ShortestPath(KxL2xExL1', " << proxy_nbest << ")";
         proxy = tmp_proxy;
         tmp_proxy.DeleteStates(); // Not needed for now.
+        RmEpsilon(&proxy);
         ShortestPath(proxy, &tmp_proxy, proxy_nbest, true, true);
         proxy.DeleteStates();     // Not needed for now.
       }

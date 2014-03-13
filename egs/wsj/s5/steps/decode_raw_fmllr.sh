@@ -92,6 +92,8 @@ split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
 norm_vars=`cat $srcdir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
+raw_dim=$(feat-to-dim scp:$data/feats.scp -) || exit 1;
+! [ "$raw_dim" -gt 0 ] && echo "raw feature dim not set" && exit 1;
 
 silphonelist=`cat $graphdir/phones/silence.csl` || exit 1;
 
@@ -151,7 +153,7 @@ if [ $stage -le 1 ]; then
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
     weight-silence-post $silence_weight $silphonelist $alignment_model ark:- ark:- \| \
     gmm-post-to-gpost $alignment_model "$sifeats" ark:- ark:- \| \
-    gmm-est-fmllr-raw-gpost --spk2utt=ark:$sdata/JOB/spk2utt $adapt_model "$full_lda_mat" \
+    gmm-est-fmllr-raw-gpost --raw-feat-dim=$raw_dim --spk2utt=ark:$sdata/JOB/spk2utt $adapt_model "$full_lda_mat" \
       "$splicedfeats" ark,s,cs:- ark:$dir/pre_trans.JOB || exit 1;
 fi
 ##
@@ -183,7 +185,7 @@ if [ $stage -le 3 ]; then
     "ark:gunzip -c $dir/lat.tmp.JOB.gz|" ark:- \| \
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
     weight-silence-post $silence_weight $silphonelist $adapt_model ark:- ark:- \| \
-    gmm-est-fmllr-raw --spk2utt=ark:$sdata/JOB/spk2utt \
+    gmm-est-fmllr-raw --raw-feat-dim=$raw_dim --spk2utt=ark:$sdata/JOB/spk2utt \
      $adapt_model "$full_lda_mat" "$pass1splicedfeats" ark,s,cs:- ark:$dir/trans_tmp.JOB '&&' \
     compose-transforms --b-is-affine=true ark:$dir/trans_tmp.JOB ark:$dir/pre_trans.JOB \
     ark:$dir/raw_trans.JOB  || exit 1;

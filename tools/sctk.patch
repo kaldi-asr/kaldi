@@ -1,0 +1,11 @@
+--- src/rfilter1/makefile.in	2004-10-22 08:49:58.000000000 -0700
++++ src/rfilter1/makefile.in.new	2014-03-04 23:58:06.000000000 -0800
+@@ -16,7 +16,7 @@
+ bindir = $(PREFIX)/bin
+ 
+ rfilter1: rfilter1.c
+-	gcc $(OPTIONS) -o rfilter1 rfilter1.c
++	gcc $(OPTIONS) -ffreestanding -o rfilter1 rfilter1.c
+ 
+ setTests:
+ 	./rfilter1 ../test_suite/test.arb2004.glm < ../test_suite/test.arb2004.txt > ../test_suite/test.arb2004.txt.rfilter1

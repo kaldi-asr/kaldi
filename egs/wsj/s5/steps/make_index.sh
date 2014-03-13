@@ -10,7 +10,8 @@ acwt=0.083333
 lmwt=1.0
 max_silence_frames=50
 max_states=1000000
-max_expand=20 # limit memory blowup in lattice-align-words
+max_states_scale=4
+max_expand=30 # limit memory blowup in lattice-align-words
 strict=true
 word_ins_penalty=0
 silence_word=  # Specify this only if you did so in kws_setup
@@ -75,7 +76,8 @@ $cmd JOB=1:$nj $kwsdir/log/index.JOB.log \
   lattice-add-penalty --word-ins-penalty=$word_ins_penalty "ark:gzip -cdf $decodedir/lat.JOB.gz|" ark:- \| \
     lattice-align-words $silence_opt --max-expand=$max_expand $word_boundary $model  ark:- ark:- \| \
     lattice-scale --acoustic-scale=$acwt --lm-scale=$lmwt ark:- ark:- \| \
-    lattice-to-kws-index --max-silence-frames=$max_silence_frames --strict=$strict ark:$utter_id ark:- ark:- \| \
+    lattice-to-kws-index --max-states-scale=$max_states_scale --allow-partial=true \
+    --max-silence-frames=$max_silence_frames --strict=$strict ark:$utter_id ark:- ark:- \| \
     kws-index-union --skip-optimization=$skip_optimization --strict=$strict --max-states=$max_states \
     ark:- "ark:|gzip -c > $kwsdir/index.JOB.gz" || exit 1
     

@@ -15,6 +15,7 @@ cer=0
 declare -A dev10h_more_kwlists
 declare -A dev2h_more_kwlists
 declare -A eval_more_kwlists
+declare -A shadow_more_kwlists
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 [ -f ./cmd.sh ] && . ./cmd.sh; # source train and decode cmds.

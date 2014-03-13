@@ -105,7 +105,7 @@ class Nnet {
   /// NumUpdatableComponents()
   void ScaleComponents(const VectorBase<BaseFloat> &scales);
 
-  /// Excise any components of type DropoutComponent.
+  /// Excise any components of type DropoutComponent or AdditiveNoiseComponent
   void RemoveDropout();
 
   /// Calls SetDropoutScale for all the dropout nodes.

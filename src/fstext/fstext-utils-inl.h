@@ -926,7 +926,7 @@ bool EqualAlign(const Fst<Arc> &ifst,
   }
 
   if (num_ilabels > length) {
-    KALDI_WARN << "EqualAlign: utterance has too to frames " << length
+    KALDI_WARN << "EqualAlign: utterance has too few frames " << length
                << " to align.";
     return false;  // can't make it shorter by adding self-loops!.
   }

@@ -69,6 +69,9 @@ ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 sdata=$data/split$nj;
 splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 norm_vars=`cat $alidir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
+raw_dim=$(feat-to-dim scp:$data/feats.scp -) || exit 1;
+! [ "$raw_dim" -gt 0 ] && echo "raw feature dim not set" && exit 1;
+
 phone_map_opt=
 [ ! -z "$phone_map" ] && phone_map_opt="--phone-map='$phone_map'"
 
@@ -105,7 +108,7 @@ else
     $cmd JOB=1:$nj $dir/log/fmllr.0.JOB.log \
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
       weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
-      gmm-est-fmllr-raw --spk2utt=ark:$sdata/JOB/spk2utt $alidir/final.mdl \
+      gmm-est-fmllr-raw --raw-feat-dim=$raw_dim --spk2utt=ark:$sdata/JOB/spk2utt $alidir/final.mdl \
         "$full_lda_mat" "$sisplicedfeats" ark:- ark:$dir/raw_trans.JOB || exit 1;
   fi
   cur_trans_dir=$dir
@@ -210,7 +213,7 @@ while [ $x -lt $num_iters ]; do
       $cmd JOB=1:$nj $dir/log/fmllr.$x.JOB.log \
         ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \
         weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
-        gmm-est-fmllr-raw --spk2utt=ark:$sdata/JOB/spk2utt $dir/$x.mdl "$full_lda_mat" \
+        gmm-est-fmllr-raw --raw-feat-dim=$raw_dim --spk2utt=ark:$sdata/JOB/spk2utt $dir/$x.mdl "$full_lda_mat" \
           "$splicedfeats" ark:- ark:$dir/tmp_trans.JOB || exit 1;
       for n in `seq $nj`; do
         ! ( compose-transforms --b-is-affine=true \

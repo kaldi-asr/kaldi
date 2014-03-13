@@ -3,6 +3,7 @@
 // Copyright 2009-2011  Saarland University (Author: Arnab Ghoshal)
 //           2012-2013  Johns Hopkins University (Author: Daniel Povey);  Chao Weng;
 //                      Bagher BabaAli
+//                2014  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -24,7 +25,7 @@
 #include "hmm/transition-model.h"
 #include "util/stl-utils.h"
 
-namespace kaldi {
+namespace fst {
 
 /*
   Process the states in reverse topological order.
@@ -34,24 +35,20 @@ namespace kaldi {
   same equivalence class and that the weights are sufficiently similar.
 */
   
-
-using fst::ArcIterator;
-using fst::MutableArcIterator;
-using fst::kNoStateId;
-
-class CompactLatticeMinimizer {  
+template<class Weight, class IntType> class CompactLatticeMinimizer {
  public:
-  typedef CompactLattice::StateId StateId;
-  typedef CompactLatticeArc Arc;
-  typedef Arc::Label Label;
-  typedef CompactLatticeWeight Weight;
+  typedef CompactLatticeWeightTpl<Weight, IntType> CompactWeight;
+  typedef ArcTpl<CompactWeight> CompactArc;
+  typedef typename CompactArc::StateId StateId;
+  typedef typename CompactArc::Label Label;
   typedef size_t HashType;
   
-  CompactLatticeMinimizer(CompactLattice *clat, float delta = fst::kDelta):
+  CompactLatticeMinimizer(MutableFst<CompactArc> *clat,
+                          float delta = fst::kDelta):
       clat_(clat), delta_(delta) { }
 
   bool Minimize() {
-    if (clat_->Properties(fst::kTopSorted, true) == 0) {
+    if (clat_->Properties(kTopSorted, true) == 0) {
       if (!TopSort(clat_)) {
         KALDI_WARN << "Topological sorting of state-level lattice failed "
             "(probably your lexicon has empty words or your LM has epsilon cycles; this "
@@ -65,9 +62,9 @@ class CompactLatticeMinimizer {
     return true;
   }
   
-  static HashType ConvertStringToHashValue(const std::vector<int32> &vec) {
+  static HashType ConvertStringToHashValue(const std::vector<IntType> &vec) {
     const HashType prime = 53281;
-    VectorHasher<int32> h;
+    kaldi::VectorHasher<IntType> h;
     HashType ans = static_cast<HashType>(h(vec));
     if (ans == 0)  ans = prime;
     // We don't allow a zero answer, as this can cause too many values to be the
@@ -75,16 +72,16 @@ class CompactLatticeMinimizer {
     return ans;
   }
   
-  static void InitHashValue(const Weight &final_weight, HashType *h) {
+  static void InitHashValue(const CompactWeight &final_weight, HashType *h) {
     const HashType prime1 = 33317, prime2 = 607; // it's pretty random.
-    if (final_weight == Weight::Zero()) *h = prime1;
+    if (final_weight == CompactWeight::Zero()) *h = prime1;
     else *h = prime2 * ConvertStringToHashValue(final_weight.String());
   }
 
   // It's important that this function and UpdateHashValueForFinalProb be
   // insensitive to the order in which it's called, as the order of the arcs
   // won't necessarily be the same for different equivalent states.
-  static void UpdateHashValueForTransition(const Weight &weight,
+  static void UpdateHashValueForTransition(const CompactWeight &weight,
                                            Label label,
                                            HashType &next_state_hash,
                                            HashType *h) {
@@ -104,9 +101,9 @@ class CompactLatticeMinimizer {
     for (StateId s = clat_->NumStates() - 1; s >= 0; s--) {
       HashType this_hash;
       InitHashValue(clat_->Final(s), &this_hash);
-      for (ArcIterator<CompactLattice> aiter(*clat_, s); !aiter.Done();
-           aiter.Next()) {
-        const Arc &arc = aiter.Value();
+      for (ArcIterator<MutableFst<CompactArc> > aiter(*clat_, s);
+           !aiter.Done(); aiter.Next()) {
+        const CompactArc &arc = aiter.Value();
         HashType next_hash;
         if (arc.nextstate > s) {
           next_hash = state_hashes_[arc.nextstate];
@@ -136,7 +133,7 @@ class CompactLatticeMinimizer {
     // guaranteeing full minimization).  We could sort on the strings next, but
     // this would be an unnecessary hassle as we only really need good
     // performance on deterministic input.
-    bool operator () (const Arc &a, const Arc &b) const {
+    bool operator () (const CompactArc &a, const CompactArc &b) const {
       if (a.ilabel < b.ilabel) return true;
       else if (a.ilabel > b.ilabel) return false;
       else if (a.nextstate < b.nextstate) return true;
@@ -153,15 +150,15 @@ class CompactLatticeMinimizer {
       return false;
     if (clat_->NumArcs(s) != clat_->NumArcs(t))
       return false;
-    std::vector<Arc> s_arcs;
-    std::vector<Arc> t_arcs;
+    std::vector<CompactArc> s_arcs;
+    std::vector<CompactArc> t_arcs;
     for (int32 iter = 0; iter <= 1; iter++) {
       StateId state = (iter == 0 ? s : t);
-      std::vector<Arc> &arcs = (iter == 0 ? s_arcs : t_arcs);
+      std::vector<CompactArc> &arcs = (iter == 0 ? s_arcs : t_arcs);
       arcs.reserve(clat_->NumArcs(s));
-      for (ArcIterator<CompactLattice> aiter(*clat_, state); !aiter.Done();
-           aiter.Next()) {
-        Arc arc = aiter.Value();
+      for (ArcIterator<MutableFst<CompactArc> > aiter(*clat_, state);
+           !aiter.Done(); aiter.Next()) {
+        CompactArc arc = aiter.Value();
         if (arc.nextstate == state) {
           // This is a special case for states that have self-loops.  If two
           // states have an identical self-loop arc, they may be equivalent.
@@ -206,8 +203,8 @@ class CompactLatticeMinimizer {
     
 
     { // This block is just diagnostic.
-      typedef unordered_map<HashType, std::vector<StateId> >::const_iterator
-          HashIter;
+      typedef typename unordered_map<HashType,
+              std::vector<StateId> >::const_iterator HashIter;
       size_t max_size = 0;
       for (HashIter iter = hash_groups_.begin(); iter != hash_groups_.end();
            ++iter)
@@ -252,9 +249,9 @@ class CompactLatticeMinimizer {
     for (StateId s = 0; s < num_states; s++) {
       if (state_map_[s] != s)
         continue; // There is no point modifying states we're removing.
-      for (MutableArcIterator<CompactLattice> aiter(clat_, s); !aiter.Done();
-           aiter.Next()) {
-        Arc arc = aiter.Value();
+      for (MutableArcIterator<MutableFst<CompactArc> > aiter(clat_, s);
+           !aiter.Done(); aiter.Next()) {
+        CompactArc arc = aiter.Value();
         StateId mapped_nextstate = state_map_[arc.nextstate];
         if (mapped_nextstate != arc.nextstate) {
           arc.nextstate = mapped_nextstate;
@@ -265,7 +262,7 @@ class CompactLatticeMinimizer {
     fst::Connect(clat_);
   }
  private:
-  CompactLattice *clat_;
+  MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *clat_;
   float delta_;
   std::vector<HashType> state_hashes_;
   std::vector<StateId> state_map_; // maps each state to itself or to some
@@ -273,11 +270,18 @@ class CompactLatticeMinimizer {
                                    // class, we pick one arbitrarily.
 };
 
-bool MinimizeCompactLattice(CompactLattice *clat, float delta) {
-  CompactLatticeMinimizer minimizer(clat, delta);
+template<class Weight, class IntType>
+bool MinimizeCompactLattice(
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *clat,
+    float delta) {
+  CompactLatticeMinimizer<Weight, IntType> minimizer(clat, delta);
   return minimizer.Minimize();
 }
 
+// Instantiate for CompactLattice type.
+template
+bool MinimizeCompactLattice<kaldi::LatticeWeight, kaldi::int32>(
+    MutableFst<kaldi::CompactLatticeArc> *clat, float delta);
   
 
-}  // namespace kaldi
+}  // namespace fst

@@ -67,6 +67,9 @@ fi
 full_lda_mat="get-full-lda-mat --print-args=false $srcdir/final.mat $srcdir/full.mat -|"
 cp $srcdir/full.mat $srcdir/final.mat $dir 
 
+raw_dim=$(feat-to-dim scp:$data/feats.scp -) || exit 1;
+! [ "$raw_dim" -gt 0 ] && echo "raw feature dim not set" && exit 1;
+
 splicedfeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
 sifeats="$splicedfeats transform-feats $srcdir/final.mat ark:- ark:- |"
 
@@ -114,13 +117,13 @@ if [ $stage -le 2 ]; then
       ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
       gmm-post-to-gpost $alimdl "$sifeats" ark:- ark:- \| \
-      gmm-est-fmllr-raw-gpost --spk2utt=ark:$sdata/JOB/spk2utt \
+      gmm-est-fmllr-raw-gpost --raw-feat-dim=$raw_dim --spk2utt=ark:$sdata/JOB/spk2utt \
        $mdl "$full_lda_mat" "$splicedfeats" ark,s,cs:- ark:$dir/raw_trans.JOB || exit 1;
   else
     $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
       ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
-      gmm-est-fmllr-raw --spk2utt=ark:$sdata/JOB/spk2utt $mdl "$full_lda_mat" \
+      gmm-est-fmllr-raw --raw-feat-dim=$raw_dim --spk2utt=ark:$sdata/JOB/spk2utt $mdl "$full_lda_mat" \
        "$splicedfeats" ark,s,cs:- ark:$dir/raw_trans.JOB || exit 1;
   fi
 fi
