@@ -1,7 +1,8 @@
 // gmmbin/gmm-latgen-faster.cc
 
 // Copyright 2009-2012  Microsoft Corporation
-//                      Johns Hopkins University (author: Daniel Povey)
+//           2012-2013  Johns Hopkins University (author: Daniel Povey)
+//                2014  Alpha Cephei Inc.
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.

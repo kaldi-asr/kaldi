@@ -27,8 +27,10 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
 
     const char *usage =
-        "Copy a subset of features (the first n features)\n"
-        "Usage: subset-feats [options] in-rspecifier out-wspecifier\n";
+        "Copy a subset of features (the first n feature files)\n"
+        "Usually used where only a small amount of data is needed\n"
+        "Usage: subset-feats [options] in-rspecifier out-wspecifier\n"
+        "See also extract-rows, select-feats, subsample-feats\n";
 
     ParseOptions po(usage);
     
