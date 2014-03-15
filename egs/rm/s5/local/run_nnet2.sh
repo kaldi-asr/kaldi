@@ -18,6 +18,7 @@ if $use_gpu; then
   local/nnet2/run_4c_gpu.sh
 
   # This one is for training pnorm nnets on top of 40-dim + fMLLR features
+  # **THIS IS THE PRIMARY RECIPE**
   local/nnet2/run_4d_gpu.sh
   
   # This is discriminative training on top of 4c.
@@ -26,7 +27,8 @@ if $use_gpu; then
   # This is discriminative training on top of 4d.
   local/nnet2/run_5d_gpu.sh
 else
-  # This example runs on top of "raw-fMLLR" features:
+  # This example runs on top of "raw-fMLLR" features;
+  # you have to run local/run_raw_fmllr.sh first.
   local/nnet2/run_4a.sh
 
   # This one is on top of filter-bank features, with only CMN.
@@ -34,6 +36,9 @@ else
 
   # This one is on top of 40-dim + fMLLR features
   local/nnet2/run_4c.sh
+
+  # **THIS IS THE PRIMARY RECIPE**
+  local/nnet2/run_4d.sh
 
   # This is discriminative training on top of 4c.
   local/nnet2/run_5c.sh
