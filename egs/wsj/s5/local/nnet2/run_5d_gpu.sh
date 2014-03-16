@@ -23,7 +23,6 @@ dir=exp/nnet5d_gpu
 
   steps/nnet2/train_pnorm.sh --stage $train_stage \
    --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
-   --egs-dir exp/nnet5d_gpu/egs \
    --mix-up 8000 \
    --initial-learning-rate 0.02 --final-learning-rate 0.002 \
    --num-hidden-layers 4 \
