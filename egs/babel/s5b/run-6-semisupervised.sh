@@ -64,7 +64,7 @@ if [ ! -f $ali_dir/.done ]; then
     data/train data/lang exp/tri6_nnet $ali_dir || exit 1
   touch $ali_dir/.done
 fi
-
+exit 0
 echo "$0: Using supervised data alignments from $ali_dir"
 
 ###############################################################################
