@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Copyright 2012  Johns Hopkins University (Author: Guoguo Chen, Jan Trmal)
 # Apache 2.0.
