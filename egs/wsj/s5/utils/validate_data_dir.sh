@@ -140,14 +140,14 @@ if [ -f $data/wav.scp ]; then
       ! cat $data/reco2file_and_channel | \
         awk '{if (NF != 3 || ($3 != "A" && $3 != "B" )) { 
                 if ( NF == 3 && $3 == "1" ) {
-                  babel_warning_issued = 1;
+                  warning_issued = 1;
                 } else {
                   print "Bad line ", $0; exit 1; 
                 }
               }
             } 
             END {
-              if (babel_warning_issued == 1) {
+              if (warning_issued == 1) {
                 print "The channel should be marked as A or B, not 1! You should change it ASAP! "
               }
             }' && echo "$0: badly formatted reco2file_and_channel file" && exit 1;
