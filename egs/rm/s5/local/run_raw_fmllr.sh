@@ -25,8 +25,8 @@ steps/decode_raw_fmllr.sh --use-normal-fmllr true --config conf/decode.config --
 steps/align_raw_fmllr.sh --nj 8 --cmd "$train_cmd" data/train data/lang exp/tri3c exp/tri3c_ali
 
 
-## SGMM on top of LDA+MLLT+SAT features.
-## No-- this wasn't working because scripts don't support raw-fMLLR.
+                                        
+                                                                    
 if [ ! -f exp/ubm4c/final.mdl ]; then
   steps/train_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" 400 data/train data/lang exp/tri3c_ali exp/ubm4c || exit 1;
 fi

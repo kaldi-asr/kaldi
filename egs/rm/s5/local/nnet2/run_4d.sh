@@ -5,13 +5,17 @@
 # at the end of the directory name.
 
 
-parallel_opts="-l gpu=1" 
+# Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
+# almost the same, but this may be a little bit slow.
+num_threads=16
+parallel_opts="-pe smp $num_threads" 
+
 
 . cmd.sh
 
-dir=exp/nnet4d_gpu
+dir=exp/nnet4d
 (  steps/nnet2/train_pnorm.sh  --num-epochs 20 \
-     --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
+     --num-jobs-nnet 4 --num-threads $num_threads --parallel-opts "$parallel_opts" \
      --num-epochs-extra 10 --add-layers-period 1 \
      --num-hidden-layers 2 \
      --mix-up 4000 \
@@ -31,5 +35,3 @@ dir=exp/nnet4d_gpu
      exp/tri3b/graph_ug data/test $dir/decode_ug
 
 )
-
-

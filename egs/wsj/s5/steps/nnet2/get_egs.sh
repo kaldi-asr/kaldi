@@ -13,7 +13,7 @@ num_utts_subset=300    # number of utterances in validation and training
 num_valid_frames_combine=0 # #valid frames for combination weights at the very end.
 num_train_frames_combine=10000 # # train frames for the above.
 num_frames_diagnostic=4000 # number of frames for "compute_prob" jobs
-samples_per_iter=400000 # each iteration of training, see this many samples
+samples_per_iter=200000 # each iteration of training, see this many samples
                         # per job.  This is just a guideline; it will pick a number
                         # that divides the number of samples in the entire data.
 transform_dir=     # If supplied, overrides alidir

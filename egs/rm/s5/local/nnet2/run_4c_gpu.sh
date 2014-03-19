@@ -9,7 +9,7 @@
 # the difference like this is probably a good idea.)
 
 
-parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely have to change it.
 
 . cmd.sh
 

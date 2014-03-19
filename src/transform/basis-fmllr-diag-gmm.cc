@@ -1,6 +1,8 @@
 // transform/basis-fmllr-diag-gmm.cc
 
 // Copyright 2012  Carnegie Mellon University (author: Yajie Miao)
+//           2014  Johns Hopkins University (author: Daniel Povey)
+//           2014  IMSL, PKU-HKUST (Author: Wei Shi)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -31,6 +33,22 @@ using std::string;
 #include "transform/basis-fmllr-diag-gmm.h"
 
 namespace kaldi {
+
+
+/// This function takes the step direction (delta) of fMLLR matrix as argument,
+/// and optimize step size using Newton's method. This is an iterative method,
+/// where each iteration should not decrease the auxiliary function. Note that
+/// the resulting step size \k should be close to 1. If \k <<1 or >>1, there
+/// maybe problems with preconditioning or the speaker stats.
+static BaseFloat CalBasisFmllrStepSize(
+    const AffineXformStats &spk_stats,
+    const Matrix<BaseFloat> &spk_stats_tmp_K,
+    const std::vector<SpMatrix<BaseFloat> > &spk_stats_tmp_G,
+    const Matrix<BaseFloat> &delta,
+    const Matrix<BaseFloat> &A,
+    const Matrix<BaseFloat> &S,
+    int32 max_iters);
+
 
 void BasisFmllrAccus::Write(std::ostream &os, bool binary) const {
 
@@ -352,7 +370,7 @@ double BasisFmllrEstimate::ComputeTransform(
   }
 }
 
-
+// static
 BaseFloat CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
   const Matrix<BaseFloat> &spk_stats_tmp_K,
   const std::vector<SpMatrix<BaseFloat> > &spk_stats_tmp_G,

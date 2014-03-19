@@ -4,8 +4,9 @@
 
 
 # This example runs on top of "raw-fMLLR" features.
+# reducing splice-width from 7 to 5
 
-(  steps/nnet2/train_tanh.sh --splice-width 7 \
+(  steps/nnet2/train_tanh.sh --splice-width 5 --num-epochs 20 \
      --cleanup false \
      --initial-learning-rate 0.02 --final-learning-rate 0.004 \
      --num-hidden-layers 2 \

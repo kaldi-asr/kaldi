@@ -57,6 +57,7 @@ for f in $required; do
     exit 1;
   fi
 done
+utils/validate_data_dir.sh --no-text --no-feats $data || exit 1;
 
 if [ ! -z "$pitch_postprocess_config" ]; then
 	postprocess_config_opt="--config=$pitch_postprocess_config";
@@ -127,6 +128,11 @@ nu=`cat $data/utt2spk | wc -l`
 if [ $nf -ne $nu ]; then
   echo "It seems not all of the feature files were successfully processed ($nf != $nu);"
   echo "consider using utils/fix_data_dir.sh $data"
+fi
+
+if [ $nf -lt $[$nu - ($nu/20)] ]; then
+  echo "Less than 95% the features were successfully generated.  Probably a serious error."
+  exit 1;
 fi
 
 echo "Succeeded creating MFCC & Pitch features for $name"

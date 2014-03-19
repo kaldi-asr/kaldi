@@ -110,3 +110,4 @@ cat $dir/utt2spk | sort -k 2 | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exi
 
 echo Switchboard phase 1 data preparation succeeded.
 
+utils/fix_data_dir.sh $dest

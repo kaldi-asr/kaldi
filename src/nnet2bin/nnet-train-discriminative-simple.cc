@@ -67,36 +67,38 @@ int main(int argc, char *argv[]) {
 
     int64 num_examples = 0;
 
-    TransitionModel trans_model;
-    AmNnet am_nnet;
     {
-      bool binary_read;
-      Input ki(nnet_rxfilename, &binary_read);
-      trans_model.Read(ki.Stream(), binary_read);
-      am_nnet.Read(ki.Stream(), binary_read);
-    }
+      TransitionModel trans_model;
+      AmNnet am_nnet;
+      {
+        bool binary_read;
+        Input ki(nnet_rxfilename, &binary_read);
+        trans_model.Read(ki.Stream(), binary_read);
+        am_nnet.Read(ki.Stream(), binary_read);
+      }
 
     
-    NnetDiscriminativeStats stats;
-    SequentialDiscriminativeNnetExampleReader example_reader(examples_rspecifier);
+      NnetDiscriminativeStats stats;
+      SequentialDiscriminativeNnetExampleReader example_reader(examples_rspecifier);
 
-    for (; !example_reader.Done(); example_reader.Next(), num_examples++) {
-      NnetDiscriminativeUpdate(am_nnet, trans_model, update_opts,
-                               example_reader.Value(),
-                               &(am_nnet.GetNnet()), &stats);
-      if (num_examples % 10 == 0 && num_examples != 0) { // each example might be 500 frames.
-        if (GetVerboseLevel() >= 2) {
-          stats.Print(update_opts.criterion);
-        }
-      }          
-    }
+      for (; !example_reader.Done(); example_reader.Next(), num_examples++) {
+        NnetDiscriminativeUpdate(am_nnet, trans_model, update_opts,
+                                 example_reader.Value(),
+                                 &(am_nnet.GetNnet()), &stats);
+        if (num_examples % 10 == 0 && num_examples != 0) { // each example might be 500 frames.
+          if (GetVerboseLevel() >= 2) {
+            stats.Print(update_opts.criterion);
+          }
+        }          
+      }
 
-    stats.Print(update_opts.criterion);
+      stats.Print(update_opts.criterion);
         
-    {
-      Output ko(nnet_wxfilename, binary_write);
-      trans_model.Write(ko.Stream(), binary_write);
-      am_nnet.Write(ko.Stream(), binary_write);
+      {
+        Output ko(nnet_wxfilename, binary_write);
+        trans_model.Write(ko.Stream(), binary_write);
+        am_nnet.Write(ko.Stream(), binary_write);
+      }
     }
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
