@@ -16,7 +16,6 @@ num_iters=4
 min_gaussian_weight=1.0e-04
 remove_low_count_gaussians=true # set this to false if you need #gauss to stay fixed.
 cleanup=true
-variance_floor_factor=0.01
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -102,7 +101,7 @@ while [ $x -lt $num_iters ]; do
       lowcount_opt="--remove-low-count-gaussians=false"
     fi
     $cmd $dir/log/update.$x.log \
-    fgmm-global-est $lowcount_opt --variance-floor-factor=$variance_floor_factor --verbose=2 $dir/$x.ubm "fgmm-global-sum-accs - $dir/$x.*.acc |" \
+    fgmm-global-est $lowcount_opt --min-gaussian-weight=$min_gaussian_weight --verbose=2 $dir/$x.ubm "fgmm-global-sum-accs - $dir/$x.*.acc |" \
       $dir/$[$x+1].ubm || exit 1;
     $cleanup && rm $dir/$x.*.acc $dir/$x.ubm
   fi

@@ -300,16 +300,14 @@ void MleFullGmmUpdate(const MleFullGmmOptions &config,
   // done with respect to the flags.
 
   int32 num_gauss = gmm->NumGauss();
-  double occ_sum = fullgmm_acc.occupancy().Sum(),
-         covar_floor_factor = config.variance_floor_factor;
+  double occ_sum = fullgmm_acc.occupancy().Sum();
+
   int32 tot_floored = 0, gauss_floored = 0;
-  SpMatrix<double> covar_floor(gmm->Dim());
 
   // allocate the gmm in normal representation
   FullGmmNormal ngmm(*gmm);
-  std::vector<int32> to_remove;
 
-  KALDI_ASSERT(covar_floor_factor >= 0.0 && covar_floor_factor <= 1.0);
+  std::vector<int32> to_remove;
   for (int32 i = 0; i < num_gauss; i++) {
     double occ = fullgmm_acc.occupancy()(i);
     double prob;
@@ -346,24 +344,21 @@ void MleFullGmmUpdate(const MleFullGmmOptions &config,
           oldmean.AddVec(-1.0, ngmm.means_.Row(i));
           covar.AddVec2(1.0, oldmean);
         }
-        if (covar_floor_factor > 0.0) {
-          covar_floor.AddSp(1.0, covar);
-          gauss_floored += 1;
+
+        // Now flooring etc. of variance's eigenvalues.
+        BaseFloat floor = std::max(static_cast<double>(config.variance_floor),
+                                   covar.MaxAbsEig() / config.max_condition);
+        
+        int32 floored = covar.ApplyFloor(floor);
+
+        if (floored) {
+          tot_floored += floored;
+          gauss_floored++;
         }
+
         // transfer to estimate
         ngmm.vars_[i].CopyFromSp(covar);
       }
-      if (covar_floor_factor > 0.0) {
-        covar_floor.Scale(covar_floor_factor / gauss_floored);
-        for (int32 i = 0; i < num_gauss; i++) {
-          int32 num_floored = ngmm.vars_[i].ApplyFloor(covar_floor);
-          tot_floored += num_floored;
-          if (num_floored > 0)
-            KALDI_LOG << "For Gaussian index " << i << ", floored "
-                << num_floored << " eigenvalues of variance.";
-        }
-      }
-      //
     } else {  // Insufficient occupancy
       if (config.remove_low_count_gaussians &&
             static_cast<int32>(to_remove.size()) < num_gauss-1) {
