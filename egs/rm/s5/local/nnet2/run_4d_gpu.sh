@@ -9,7 +9,7 @@ parallel_opts="-l gpu=1"
 
 . cmd.sh
 
-dir=exp/nnet4d_gpu
+dir=exp/nnet4d_gpu_3
 (  steps/nnet2/train_pnorm.sh  --num-epochs 20 \
      --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
      --num-epochs-extra 10 --add-layers-period 1 \
@@ -17,8 +17,8 @@ dir=exp/nnet4d_gpu
      --mix-up 4000 \
      --initial-learning-rate 0.02 --final-learning-rate 0.004 \
      --cmd "$decode_cmd" \
-     --pnorm-input-dim 1000 \
-     --pnorm-output-dim 200 \
+     --pnorm-input-dim 900 \
+     --pnorm-output-dim 180 \
      --combine-regularizer 1.0e-12 \
      data/train data/lang exp/tri3b_ali $dir 
 
