@@ -14,11 +14,10 @@ config=conf/logistic-regression.conf
 awk '{print $2}' <(utils/remove_dialect.pl data/train/utt2lang) | sort -u | \
   awk '{print $1, NR-1}' >  exp/ivectors_train/languages.txt
 
-
-
 model=exp/ivectors_train/logistic_regression
 model_rebalanced=exp/ivectors_train/logistic_regression_rebalanced
-train_ivectors=exp/ivectors_train/ivector.scp
+train_ivectors="ark:ivector-normalize-length \
+         scp:exp/ivectors_train/ivector.scp ark:- |";
 classes="ark:utils/remove_dialect.pl data/train/utt2lang \
          | utils/sym2int.pl -f 2 exp/ivectors_train/languages.txt - |"
 
@@ -37,7 +36,7 @@ utils/balance_priors_to_test.pl \
     exp/ivectors_train/languages.txt \
     exp/ivectors_train/priors.vec
 
-logistic-regression-train --config=$config scp:$train_ivectors \
+logistic-regression-train --config=$config "$train_ivectors" \
                           "$classes" $model \
    2>exp/ivectors_train/log/logistic_regression.log
 
@@ -50,10 +49,10 @@ trials="utils/remove_dialect.pl data/train/utt2lang \
 scores="|utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt  \
         >exp/ivectors_train/train_scores"
 
-logistic-regression-eval $model scp:$train_ivectors \
+logistic-regression-eval $model "$train_ivectors" \
   ark,t:exp/ivectors_train/posteriors
 
-logistic-regression-eval $model "ark:$trials" scp:$train_ivectors "$scores"
+logistic-regression-eval $model "ark:$trials" "$train_ivectors" "$scores"
 
 cat exp/ivectors_train/posteriors | \
   awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) 
@@ -67,14 +66,13 @@ cat exp/ivectors_train/posteriors | \
 compute-wer --mode=present --text ark:<(utils/remove_dialect.pl data/train/utt2lang) \
   ark:exp/ivectors_train/output
 
+# %WER 5.35 [ 3834 / 71668, 0 ins, 0 del, 3834 sub ] [PARTIAL]
+# %SER 5.35 [ 3834 / 71668 ]
+# Scored 71668 sentences, 16 not present in hyp.
 
-#%WER 4.68 [ 3355 / 71668, 0 ins, 0 del, 3355 sub ] [PARTIAL]
-#%SER 4.68 [ 3355 / 71668 ]
-#Scored 71668 sentences, 16 not present in hyp.
-
-
+#  scp:exp/ivectors_lre07/ivector.scp ark,t:- | \
 logistic-regression-eval $model_rebalanced \
-  scp:exp/ivectors_lre07/ivector.scp ark,t:- | \
+  'ark:ivector-normalize-length scp:exp/ivectors_lre07/ivector.scp ark:- |' ark,t:- | \
   awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) 
                           { max=$f; argmax=f; }}  
                           print $1, (argmax - 3); }' | \
@@ -86,6 +84,6 @@ logistic-regression-eval $model_rebalanced \
 compute-wer --text ark:<(utils/remove_dialect.pl data/lre07/utt2lang) \
   ark:exp/ivectors_lre07/output
 > compute-wer --text ark:/dev/fd/63 ark:exp/ivectors_lre07/output 
-# %WER 34.34 [ 2585 / 7527, 0 ins, 0 del, 2585 sub ]
-# %SER 34.34 [ 2585 / 7527 ]
+# %WER 33.84 [ 2547 / 7527, 0 ins, 0 del, 2547 sub ]
+# %SER 33.84 [ 2547 / 7527 ]
 # Scored 7527 sentences, 0 not present in hyp.
