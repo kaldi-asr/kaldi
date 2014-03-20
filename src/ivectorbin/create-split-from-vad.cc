@@ -96,8 +96,8 @@ int main(int argc, char *argv[]) {
             num_split += 1;
           }
         }
-      num_utts_done++; 
       }
+      num_utts_done++; 
     }
     KALDI_LOG << "Split " << num_utts_done << " utts, " << num_err
               << " had errors.";
