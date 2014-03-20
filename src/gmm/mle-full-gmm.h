@@ -40,8 +40,8 @@ struct MleFullGmmOptions {
   BaseFloat min_gaussian_weight;
   /// Minimum occupancy count below which a Gaussian is removed
   BaseFloat min_gaussian_occupancy;
-  /// Floor on eigenvalues of covariance matrices
-  BaseFloat variance_floor;
+  /// Floors the variances to a fraction of the global variance.
+  BaseFloat variance_floor_factor;
   /// Maximum condition number of covariance matrices (apply
   /// floor to eigenvalues if they pass this).
   BaseFloat max_condition;
@@ -49,7 +49,7 @@ struct MleFullGmmOptions {
   MleFullGmmOptions() {
     min_gaussian_weight    = 1.0e-05;
     min_gaussian_occupancy     = 100.0;
-    variance_floor         = 0.001;
+    variance_floor_factor      = 1.0e-06;
     max_condition          = 1.0e+04;
     remove_low_count_gaussians = true;
   }
@@ -59,8 +59,8 @@ struct MleFullGmmOptions {
                  module+"Min Gaussian weight before we remove it.");
     po->Register("min-gaussian-occupancy", &min_gaussian_occupancy,
                  module+"Minimum count before we remove a Gaussian.");
-    po->Register("variance-floor", &variance_floor,
-                 module+"Minimum eigenvalue of covariance matrix.");
+    po->Register("variance-floor-factor", &variance_floor_factor,
+                 module+"Fraction of the global variance that we floor the individual variances to.");
     po->Register("max-condition", &max_condition,
                  module+"Maximum condition number of covariance matrix (use it to floor).");
     po->Register("remove-low-count-gaussians", &remove_low_count_gaussians,
