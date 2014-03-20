@@ -38,7 +38,8 @@ int main(int argc, char *argv[]) {
         "outputs as a matrix the result.  Used mostly for debugging.\n"
         "\n"
         "Usage:  nnet-compute-from-egs [options] <raw-nnet-in> <egs-rspecifier> "
-        "<feature-wspecifier>\n";
+        "<feature-wspecifier>\n"
+        "e.g.:  nnet-compute-from-egs 'nnet-to-raw-nnet final.mdl -|' egs.10.1.ark ark:-\n";
     
     ParseOptions po(usage);
 

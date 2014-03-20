@@ -733,7 +733,7 @@ void VectorBase<Real>::ApplyExp() {
 }
 
 template<typename Real>
-void VectorBase<Real>::Abs() {
+void VectorBase<Real>::ApplyAbs() {
   for (MatrixIndexT i = 0; i < dim_; i++) { data_[i] = std::abs(data_[i]); }
 }
 

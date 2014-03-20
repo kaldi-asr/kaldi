@@ -4045,12 +4045,12 @@ static void UnitTestTopEigs() {
       mat.Eig(&fulls, &fullP);
       KALDI_LOG << "Approximate eigs are " << s;
       // find sum of largest-abs-value eigs.
-      fulls.Abs();
+      fulls.ApplyAbs();
       std::sort(fulls.Data(), fulls.Data() + dim);
       SubVector<Real> tmp(fulls, dim - num_eigs, num_eigs);
       KALDI_LOG << "abs(real eigs) are " << tmp;
       BaseFloat real_sum = tmp.Sum();
-      s.Abs();
+      s.ApplyAbs();
       BaseFloat approx_sum = s.Sum();
       KALDI_LOG << "real sum is " << real_sum << ", approx_sum = " << approx_sum;
     }

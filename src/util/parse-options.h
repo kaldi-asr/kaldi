@@ -119,13 +119,13 @@ class ParseOptions : public OptionsItf {
   void ReadConfigFile(const std::string &filename);
 
   /// Number of positional parameters (c.f. argc-1).
-  int NumArgs();
+  int NumArgs() const;
 
   /// Returns one of the positional parameters; 1-based indexing for argc/argv
   /// compatibility. Will crash if param is not >=1 and <=NumArgs().
-  std::string GetArg(int param);
+  std::string GetArg(int param) const;
 
-  std::string GetOptArg(int param) {
+  std::string GetOptArg(int param) const {
     return (param <= NumArgs() ? GetArg(param) : "");
   }
 

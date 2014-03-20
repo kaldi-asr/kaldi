@@ -126,7 +126,7 @@ class VectorBase {
   void ApplyExp();
 
   /// Take absolute value of each of the elements
-  void Abs();
+  void ApplyAbs();
 
   /// Applies floor to all elements. Returns number of elements floored.
   MatrixIndexT ApplyFloor(Real floor_val);

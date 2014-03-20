@@ -29,7 +29,8 @@
 namespace kaldi {
 
 // This file is modified from transform/lda-estimate.h
-// It contains a class intended to be used in neural
+// It contains a class intended to be used in preconditioning
+// data for neural network training.
 
 struct FeatureTransformEstimateOptions {
   bool remove_offset;
