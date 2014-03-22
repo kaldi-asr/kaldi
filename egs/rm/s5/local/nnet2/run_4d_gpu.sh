@@ -9,7 +9,7 @@ parallel_opts="-l gpu=1"
 
 . cmd.sh
 
-dir=exp/nnet4d_gpu_3
+dir=exp/nnet4d_gpu
 (  steps/nnet2/train_pnorm.sh  --num-epochs 20 \
      --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
      --num-epochs-extra 10 --add-layers-period 1 \
