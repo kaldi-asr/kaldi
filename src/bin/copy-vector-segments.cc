@@ -1,4 +1,4 @@
-// featbin/copy-vector-segments.cc
+// bin/copy-vector-segments.cc
 
 // Copyright 2013 Korbinian Riedhammer
 //           2014 David Snyder
@@ -31,19 +31,16 @@ int main(int argc, char *argv[]) {
         "Extract certain elements of vectors.  This is useful for extracting\n"
         "segments from VAD files. The program expects a segments file in the\n"
         "form of\n"
-        "  segment-name utterance-id start end\n"
-        "where the segment-name is chosen by the user and utterance-id indexes"
-        "  the input vectors.\n"
-        "By default, 'start' and 'end' are zero-based indexes, but if you "
-        "specify the --frame-shift\n"
-        "option (e.g. --frame-shift=0.01), then they represent a time in "
-        "seconds, which are converted\n"
-        "to integers by dividing by frame-shift.\n"
+        "  segment-name vector-id start end\n"
+        "The segment-name is chosen by the user to identify the segment. The\n"
+        "vector-id indexes the input vectors. By default start and end are \n"
+        "zero-based indexes, but if the option --frame-shift is specified\n"
+        "(e.g., --frame-shift=0.01), then the columns represent start and\n"
+        "end times, respectively.\n"
         "\n"
-        "Usage: extract-rows [options] <segments-file> <vectors-rspecifier> "
-        "<vectors-wspecifier>\n"
-        "  e.g. extract-rows --frame-shift=0.01 segments ark:vad-in.ark "
-        "ark:vad-out.ark\n"
+        "Usage: copy-vector-segments [options] <segments-file> \n"
+        "<vectors-rspecifier> <vectors-wspecifier>\n"
+        "e.g. copy-vector-segments segments ark:vad-in.ark ark:vad-out.ark\n"
         "See also extract-rows, select-feats, subset-feats, subsample-feats\n";
 
     ParseOptions po(usage);

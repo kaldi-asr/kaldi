@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
         "E.g.: create-split-from-vad [options] scp:vad.scp feats_segment\n";
     
     ParseOptions po(usage);
-    int32 max_voiced = 60;
+    int32 max_voiced = 9000; // 90 seconds 
     po.Register("max-voiced", &max_voiced,
                 "Maximum number of voiced frames in each utterance "
                 "after split.");
@@ -57,35 +57,42 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatVectorReader vad_reader(vad_rspecifier);
     bool binary = false;
     Output feat_segment_writer(feat_segment_filename, binary);
-
-    std::vector<Vector<BaseFloat> > vads;
-    std::vector<string> utt_ids;
-    int32 num_err = 0;
+    int32 num_err = 0,
+          num_utts_done = 0,
+          total_splits = 0;
     for (;!vad_reader.Done(); vad_reader.Next()) {
       string utt = vad_reader.Key();
       const Vector<BaseFloat> &vad = vad_reader.Value();
-      if (vad.Sum() == 0.0) {
+      BaseFloat sum_voiced = vad.Sum();
+      if (sum_voiced == 0.0) {
         KALDI_WARN << "No features were judged as voiced for utterance "
                    << utt;
         num_err++;
         continue;
       }
-      utt_ids.push_back(utt);
-      vads.push_back(vad);
-    }
 
-    int32 num_utts_done = 0;    
-    for (int32 i = 0; i < vads.size(); i++) {
-      const Vector<BaseFloat> &vad = vads[i];
-      string utt = utt_ids[i];
-      int32 curr_sum_voiced_frames = 0;
-      int32 num_split = 1; // Starting with the first split
-      int32 first_frame = 0; // First frame of the first segment
+      // We want num_splits to produce segments which all
+      // have close to the same number of voiced frames. At the same
+      // time we want each segment's number of voiced frames to be
+      // as close as possible to what is specified by max_voiced.
+      int32 num_splits = std::ceil(sum_voiced / max_voiced),
+            curr_sum_voiced_frames = 0,
+            split = 1, // We start with the 1st split
+            first_frame = 0; // First frame of the first segment
                              // will start at 0.
+
+      // actual_max_voiced will be as large or smaller than max_voiced.
+      // For example, suppose we have 20000 voiced frames in an utterance
+      // and max_voiced = 9000. We want to avoid the situation in which the
+      // first two segments have 9000 voiced frames and the third segment has
+      // only 200 voiced frames. Given the example, actual_max_voiced
+      // is 6667, creating almost equal segments (the last has 6666 voiced
+      // voiced frames).
+      int32 actual_max_voiced = std::ceil(sum_voiced / num_splits);
       for (int32 j = 0; j < vad.Dim(); j++) {
         curr_sum_voiced_frames += vad(j);
-        if (curr_sum_voiced_frames == max_voiced) {
-          feat_segment_writer.Stream() << utt << "-" << num_split << " " 
+        if (curr_sum_voiced_frames == actual_max_voiced) {
+          feat_segment_writer.Stream() << utt << "-" << split << " " 
                                        << utt << " " << first_frame
                                        << " " << j << "\n";
           // If we're not at the last frame, prepare for the next
@@ -93,13 +100,16 @@ int main(int argc, char *argv[]) {
           if (j != vad.Dim() - 1) {
             curr_sum_voiced_frames = 0;
             first_frame = j + 1;
-            num_split += 1;
+            split += 1;
           }
+          total_splits++;
         }
       }
       num_utts_done++; 
     }
-    KALDI_LOG << "Split " << num_utts_done << " utts, " << num_err
+
+    KALDI_LOG << "Split " << num_utts_done << " utts into " 
+              << total_splits << " segments. " << num_err
               << " had errors.";
   } catch(const std::exception &e) {
     std::cerr << e.what();

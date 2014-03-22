@@ -21,7 +21,7 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         post-to-pdf-post duplicate-matrix logprob-to-post prob-to-post copy-post \
         matrix-logprob matrix-sum latgen-tracking-mapped \
         build-pfile-from-ali get-post-on-ali tree-info am-info \
-				vector-sum
+	vector-sum copy-vector-segments
 
 OBJFILES =
 
