@@ -177,11 +177,11 @@ void ParseOptions::DisableOption(const std::string &name) {
 }
 
 
-int ParseOptions::NumArgs() {
+int ParseOptions::NumArgs() const {
   return positional_args_.size();
 }
 
-std::string ParseOptions::GetArg(int i) {
+std::string ParseOptions::GetArg(int i) const {
   if (i < 1 || i > static_cast<int>(positional_args_.size()))
     KALDI_ERR << "ParseOptions::GetArg, invalid index " << i;  // code error
   // so use KALDI_ERR

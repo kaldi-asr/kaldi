@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     po.Register("set-priors", &set_priors, "If true, also set priors in neural "
                 "net (we divide by these in test time)");
     po.Register("prior-floor", &prior_floor, "When setting priors, floor for "
-                "priors (only used to avoid generating NaNs upon inversion)");
+                "priors");
     transition_update_config.Register(&po);
     
     po.Read(argc, argv);

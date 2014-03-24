@@ -23,6 +23,7 @@ for x in train dev test; do
   cp $srcdir/$x.spk2utt data/$x/spk2utt || exit 1;
   cp $srcdir/$x.utt2spk data/$x/utt2spk || exit 1;
   utils/filter_scp.pl data/$x/spk2utt $srcdir/$x.spk2gender > data/$x/spk2gender || exit 1;
+  utils/validate_data_dir.sh data/$x
 done
 
 # Next, for each type of language model, create the corresponding FST
@@ -65,6 +66,8 @@ for lm_suffix in bg; do
     echo "Language model has cycles with empty words" && exit 1
   rm -r $tmpdir/g
 done
+
+utils/validate_lang.pl data/lang_test_bg
 
 echo "Succeeded in formatting data."
 rm -r $tmpdir

@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
         "command cut -f ...\n"
         "Usage: select-feats selection in-rspecifier out-wspecifier\n"
         "  e.g. select-feats 0,24-22,3-12 scp:feats.scp ark,scp:feat-red.ark,feat-red.scp\n"
-        "See also extract-rows, subset-feats, subsample-feats\n";
+        "See also copy-feats, extract-rows, subset-feats, subsample-feats\n";
     
     ParseOptions po(usage);
     

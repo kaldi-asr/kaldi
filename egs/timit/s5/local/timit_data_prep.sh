@@ -103,7 +103,7 @@ for x in train dev test; do
   cut -f1 -d'_'  $x.uttids | paste -d' ' $x.uttids - > $x.utt2spk 
   cat $x.utt2spk | $utils/utt2spk_to_spk2utt.pl > $x.spk2utt || exit 1;
 
-  cat $x.spk2utt | awk '{print $1}' | perl -ane 'chop; m:^.:; print "$_ $&\n";' > $x.spk2gender
+  cat $x.spk2utt | awk '{print $1}' | perl -ane 'chop; m:^.:; $g = lc($&); print "$_ $g\n";' > $x.spk2gender
 done
 
 echo "Data preparation succeeded"
