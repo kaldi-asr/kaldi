@@ -27,7 +27,7 @@ check_required_programs:
 clean: openfst_cleaned sclite_cleaned  irstlm_cleaned
 
 openfst_cleaned:
-		$(MAKE) -C openfst-1.3.2 clean
+		$(MAKE) -C openfst-1.3.4 clean
 
 irstlm_cleaned:
 		$(MAKE) -C irstlm clean 
@@ -36,7 +36,7 @@ sclite_cleaned:
 		$(MAKE) -C sctk-2.4.0 clean
 
 distclean:
-		rm -rf openfst-1.3.2/
+		rm -rf openfst-1.3.4/
 		rm -rf sctk-2.4.0/
 		rm -rf ATLAS/
 		rm -rf irstlm/
@@ -44,41 +44,41 @@ distclean:
 		rm -rf sph2pipe_v2.5.tar.gz
 		rm -rf atlas3.8.3.tar.gz
 		rm -rf sctk-2.4.0-20091110-0958.tar.bz2
-		rm -rf openfst-1.3.2.tar.gz
+		rm -rf openfst-1.3.4.tar.gz
 		rm -f openfst
 
 openfst_tgt: openfst_compiled openfst/lib
 
 .PHONY: openfst_compiled
-openfst_compiled: openfst-1.3.2/Makefile
-	cd openfst-1.3.2/ && \
+openfst_compiled: openfst-1.3.4/Makefile
+	cd openfst-1.3.4/ && \
 	$(MAKE) install
 
 openfst/lib:
 	-cd openfst && [ -d lib64 ] && [ ! -d lib ] && ln -s lib64 lib
 
-openfst-1.3.2/Makefile: openfst-1.3.2/.patched
-		cd openfst-1.3.2/; \
+openfst-1.3.4/Makefile: openfst-1.3.4/.patched
+		cd openfst-1.3.4/; \
 		./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 
 
 # patches for openfst. openfst_gcc41up.patch is a patch for openfst to \
 # support multi-threads when compile with g++ (gcc) version above 4.1
-.PHONY: openfst-1.3.2/.patched
-openfst-1.3.2/.patched: | openfst-1.3.2_tgt
-		-cd openfst-1.3.2/src/include/fst; \
+.PHONY: openfst-1.3.4/.patched
+openfst-1.3.4/.patched: | openfst-1.3.4_tgt
+		-cd openfst-1.3.4/src/include/fst; \
 		patch -p0 -N < ../../../../openfst.patch;
-		$(CXX) -dumpversion | awk '{if(NR==1 && $$1>"4.1") print "cd openfst-1.3.2/src/include/fst; patch -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
+		$(CXX) -dumpversion | awk '{if(NR==1 && $$1>"4.1") print "cd openfst-1.3.4/src/include/fst; patch -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
 		touch $@ 	
 
-openfst-1.3.2_tgt: openfst-1.3.2.tar.gz
-		tar xozf openfst-1.3.2.tar.gz
+openfst-1.3.4_tgt: openfst-1.3.4.tar.gz
+		tar xozf openfst-1.3.4.tar.gz
 		-rm openfst
-		-ln -s openfst-1.3.2 openfst 
+		-ln -s openfst-1.3.4 openfst 
 
-openfst-1.3.2.tar.gz: 
-		wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.3.2.tar.gz || \
-		wget -T 10 -t 3 --no-check-certificate http://www.danielpovey.com/files/data/openfst-1.3.2.tar.gz 
+openfst-1.3.4.tar.gz: 
+		wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.3.4.tar.gz || \
+		wget -T 10 -t 3 --no-check-certificate http://www.danielpovey.com/files/data/openfst-1.3.4.tar.gz 
 
 sclite_tgt: sclite_compiled
 
