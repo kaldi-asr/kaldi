@@ -213,6 +213,10 @@ exp/nnet5c1/decode_bd_tgpr_eval92/wer_14:%WER 4.39 [ 248 / 5643, 32 ins, 17 del,
 %WER 7.13 [ 587 / 8234, 72 ins, 93 del, 422 sub ] exp/nnet5d_gpu/decode_bd_tgpr_dev93/wer_13
 %WER 4.06 [ 229 / 5643, 31 ins, 16 del, 182 sub ] exp/nnet5d_gpu/decode_bd_tgpr_eval92/wer_14
 
+# 5e is GPU version of ensemble training of pnorm nnets recipe, with 4 jobs; compare with nnet5d.
+%WER 7.19 [ 592 / 8234, 72 ins, 89 del, 431 sub ] exp/nnet5e_gpu/decode_bd_tgpr_dev93/wer_10
+%WER 3.97 [ 224 / 5643, 25 ins, 16 del, 183 sub ] exp/nnet5e_gpu/decode_bd_tgpr_eval92/wer_14
+
  # decoded with tgpr LM.
  %WER 9.55 [ 786 / 8234, 163 ins, 83 del, 540 sub ] exp/nnet5d_gpu/decode_tgpr_dev93/wer_13
  %WER 6.50 [ 367 / 5643, 95 ins, 16 del, 256 sub ] exp/nnet5d_gpu/decode_tgpr_eval92/wer_14

@@ -5,7 +5,7 @@
 # at the end of the directory name.
 
 
-parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="-l gpu=1" 
 
 . cmd.sh
 
@@ -17,8 +17,8 @@ dir=exp/nnet4d_gpu
      --mix-up 4000 \
      --initial-learning-rate 0.02 --final-learning-rate 0.004 \
      --cmd "$decode_cmd" \
-     --pnorm-input-dim 1000 \
-     --pnorm-output-dim 200 \
+     --pnorm-input-dim 900 \
+     --pnorm-output-dim 180 \
      --combine-regularizer 1.0e-12 \
      data/train data/lang exp/tri3b_ali $dir 
 

@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Extract certain row ranges of matrices.  This is most useful to extract segments\n"
-        "segments from feature files, for example to modify segmentations or to extract features\n"
+        "from feature files, for example to modify segmentations or to extract features\n"
         "corresponding to certain alignments.  The program expects a segments file in the\n"
         "form of\n"
         "  segment-name utterance-id start end\n"
@@ -39,8 +39,8 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: extract-rows [options] <segments-file> <features-rspecifier> <features-wspecifier>\n"
         "  e.g. extract-rows --frame-shift=0.01 segments ark:feats-in.ark ark:feats-out.ark\n"
-        "See also select-feats, subset-feats, subsample-feats\n";
-
+        "See also: select-feats, subset-feats, subsample-feats\n";
+    
     ParseOptions po(usage);
 
     float frame_shift = 0;

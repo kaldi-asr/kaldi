@@ -7,7 +7,7 @@
 # directory name.
 
 
-gpu_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network,
+gpu_opts="-l gpu=1"                   # This is suitable for the CLSP network,
                                       # you'll likely have to change it.  we'll
                                       # use it later on, in the training (it's
                                       # not used in denlat creation)

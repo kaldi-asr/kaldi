@@ -126,8 +126,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   } else {
     // Or suggest to use compute exclusive mode
     if(n_gpu > 1) { 
-      KALDI_WARN << "Hint: It is practical to set the GPUs into ``compute exclusive mode''."
-                 << " Selection of free GPUs would be done by OS automatically.";
+      KALDI_WARN << "Suggestion: use 'nvidia-smi -c 1' to set compute exclusive mode";
     }
     // And select the GPU according to proportion of free memory
     if(SelectGpuIdAuto()) {

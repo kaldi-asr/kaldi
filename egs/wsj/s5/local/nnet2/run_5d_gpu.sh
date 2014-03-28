@@ -5,7 +5,7 @@
 
 train_stage=-100
 temp_dir=  # e.g. --temp-dir /export/m1-02/dpovey/kaldi-dan2/egs/wsj/s5/
-parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely have to change it.
 dir=exp/nnet5d_gpu
 
 # Note: since we multiplied the num-jobs by 1/4, we halved the
@@ -23,7 +23,6 @@ dir=exp/nnet5d_gpu
 
   steps/nnet2/train_pnorm.sh --stage $train_stage \
    --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
-   --egs-dir exp/nnet5d_gpu/egs \
    --mix-up 8000 \
    --initial-learning-rate 0.02 --final-learning-rate 0.002 \
    --num-hidden-layers 4 \

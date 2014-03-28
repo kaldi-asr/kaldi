@@ -743,7 +743,7 @@ class PiecewiseLinearComponent: public UpdatableComponent {
   
   bool is_gradient_; // If true, treat this as just a gradient.
   BaseFloat max_change_; // If nonzero, maximum change allowed per individual
-                         // parameter per minibatch.
+                         // parameter per minibatch.  
 };
 
 

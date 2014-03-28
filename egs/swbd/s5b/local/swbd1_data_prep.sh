@@ -146,3 +146,4 @@ done
 
 echo Switchboard-1 data preparation succeeded.
 
+utils/fix_data_dir.sh data/train
