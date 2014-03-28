@@ -17,7 +17,7 @@ local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp
 utils/prepare_lang.sh data/local/dict '!SIL' data/local/lang data/lang 
 
 local/rm_prepare_grammar.sh  # Traditional RM grammar (bigram word-pair)
-local/rm_prepare_grammar_ug.sh| | exit 1; # Unigram grammar (gives worse results, but
+local/rm_prepare_grammar_ug.sh || exit 1; # Unigram grammar (gives worse results, but
                                           # changes in WER will be more significant.)
 
 # mfccdir should be some place with a largish disk where you
