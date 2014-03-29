@@ -26,20 +26,28 @@
 namespace kaldi {
 
 struct LogisticRegressionConfig {
-  int32 max_steps;
-  double normalizer;
-  LogisticRegressionConfig(): max_steps(20), normalizer(0.002) { }
+  int32 max_steps,
+        mix_up;
+  double normalizer,
+         power;
+  LogisticRegressionConfig(): max_steps(20), mix_up(0), 
+                              normalizer(0.0025), power(0.15){ }
   void Register(OptionsItf *po) {
     po->Register("max-steps", &max_steps,
                  "Maximum steps in L-BFGS.");
     po->Register("normalizer", &normalizer,
                  "Coefficient for L2 regularization.");
+    po->Register("mix-up", &mix_up,
+                 "Target number of mixture components to create, "
+                 "if supplied.");
+    po->Register("power", &power,
+                 "Power rule for determining the number of mixtures "
+                 "to create.");
   }
 };
 
 class LogisticRegression {
  public:
-
   // xs and ys are the training data. Each row of xs is a vector
   // corresponding to the class label in the same row of ys. 
   void Train(const Matrix<BaseFloat> &xs, const std::vector<int32> &ys,
@@ -74,6 +82,16 @@ class LogisticRegression {
                 OptimizeLbfgs<BaseFloat> *lbfgs,
                 BaseFloat normalizer);
 
+  void TrainParameters(const Matrix<BaseFloat> &xs, 
+             const std::vector<int32> &ys, 
+             const LogisticRegressionConfig &conf,
+             Matrix<BaseFloat> *xw);
+
+  // Creates the mixture components. Uses conf.mix_up, conf.power,
+  // the occupancy of ys and GetSplitTargets() to determin the number
+  // of mixture components for each weight index.
+  void MixUp(const std::vector<int32> &ys, const int32 &num_classes, 
+             const LogisticRegressionConfig &conf);
 
   // Returns the objective function given the training data, xs, ys.
   // The gradient is also calculated, and returned in grad. Uses
@@ -87,9 +105,17 @@ class LogisticRegression {
   // Sets the weights. This is generally used for testing.
   void SetWeights(const Matrix<BaseFloat> &weights);
  private:
-  // Each row of weights_ corresponds to the class labels and each column, a
-  // feature in the input vectors [the last column is the offset].
-  Matrix<BaseFloat> weights_;    
+  // Before mixture components or added, or if mix_up <= num_classes
+  // each row of weights_ corresponds to a class label.
+  // If mix_up > num_classes and after MixUp() is called the rows
+  // correspond to the mixture components. In either case each column
+  // corresponds to a feature in the input vectors (and the last column
+  // is an offset).
+  Matrix<BaseFloat> weights_;
+  // Maps from the row of weights_ to the class.  Normally the
+  // identity mapping, but may not be for multi-mixture logistic
+  // regression.
+  std::vector<int32> class_;    
 };
 
 }
