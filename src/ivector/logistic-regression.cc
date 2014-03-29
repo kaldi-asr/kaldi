@@ -281,7 +281,9 @@ void LogisticRegression::SetWeights(const Matrix<BaseFloat> &weights,
                                     const std::vector<int32> classes) {
   weights_.Resize(weights.NumRows(), weights.NumCols());
   weights_.CopyFromMat(weights);
-  class_ = classes;
+  class_.resize(classes.size());
+  for (int32 i = 0; i < class_.size(); i++) 
+    class_[i] = classes[i];
 }
 
 void LogisticRegression::ScalePriors(const Vector<BaseFloat> &scales) {
