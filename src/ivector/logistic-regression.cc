@@ -194,6 +194,7 @@ void LogisticRegression::GetLogPosteriors(const Vector<BaseFloat> &x,
       }
     }
   }
+  log_posteriors->ApplyLog();
   log_posteriors->Add(-xw.LogSumExp());
 }
 
@@ -276,9 +277,11 @@ BaseFloat LogisticRegression::GetObjfAndGrad(
   return raw_objf + regularizer;
 }
 
-void LogisticRegression::SetWeights(const Matrix<BaseFloat> &weights) {
+void LogisticRegression::SetWeights(const Matrix<BaseFloat> &weights,
+                                    const std::vector<int32> classes) {
   weights_.Resize(weights.NumRows(), weights.NumCols());
   weights_.CopyFromMat(weights);
+  class_ = classes;
 }
 
 void LogisticRegression::ScalePriors(const Vector<BaseFloat> &scales) {

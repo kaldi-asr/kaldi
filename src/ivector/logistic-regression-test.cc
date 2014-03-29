@@ -36,13 +36,16 @@ void UnitTestPosteriors() {
   Matrix<BaseFloat> weights(n_labels, n_features + 1);
   weights.SetRandn();
   LogisticRegression classifier = LogisticRegression();
-  classifier.SetWeights(weights);
+  std::vector<int32> classes;
+  for (int32 i = 0; i < weights.NumRows(); i++) {
+    classes.push_back(i);
+  }
+  classifier.SetWeights(weights, classes);
   
   // Get posteriors for the xs using batch and serial methods.
   Matrix<BaseFloat> batch_log_posteriors;
   classifier.GetLogPosteriors(xs, &batch_log_posteriors);
   Matrix<BaseFloat> log_posteriors(n_xs, n_labels);
-
   for (int32 i = 0; i < n_xs; i++) {
     Vector<BaseFloat> x(n_features);
     x.CopyRowFromMat(xs, i);

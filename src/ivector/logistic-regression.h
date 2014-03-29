@@ -102,9 +102,9 @@ class LogisticRegression {
                         Matrix<BaseFloat> *grad,
                         BaseFloat normalizer);
   
-  // Sets the weights. This is generally used for testing.
-  void SetWeights(const Matrix<BaseFloat> &weights);
- private:
+  // Sets the weights and class map. This is generally used for testing.
+  void SetWeights(const Matrix<BaseFloat> &weights, 
+                  const std::vector<int32> classes);
   // Before mixture components or added, or if mix_up <= num_classes
   // each row of weights_ corresponds to a class label.
   // If mix_up > num_classes and after MixUp() is called the rows
