@@ -36,7 +36,7 @@ src_list="data/sre08_train_10sec_female \
 
 # Remove any spk2gender files that we have: since not all data
 # sources have this info, it will cause problems with combine_data.sh
-for d in $src_list; do rm $d/spk2gender 2>/dev/null; done
+for d in $src_list; do rm -f $d/spk2gender 2>/dev/null; done
 
 utils/combine_data.sh data/train_unsplit $src_list
 
