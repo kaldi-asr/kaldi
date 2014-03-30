@@ -178,7 +178,7 @@ void FindQuietestSegment(const Vector<BaseFloat> &wav_in,
     seg_tmp = seg_this;
     seg_this.ApplyPow(2.0f);
     double energy_this = seg_this.Sum();
-    if(energy_this < min_energy){
+    if(energy_this < min_energy && energy_this > 0.0){
       min_energy = energy_this;
       wav_min_energy = seg_tmp;
     }
@@ -190,7 +190,7 @@ void FindQuietestSegment(const Vector<BaseFloat> &wav_in,
     seg_tmp = seg_this;
     seg_this.ApplyPow(2.0f);
     double energy_this = seg_this.Sum();
-    if(energy_this < min_energy){
+    if(energy_this < min_energy && energy_this > 0.0){
       min_energy = energy_this;
       wav_min_energy = seg_tmp;
     }

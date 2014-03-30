@@ -28,13 +28,27 @@
 
 namespace kaldi {
 
-// compute the Weighted Moving Window normalization
-// Subtract the weighted-moving average over a largish window
-// The weight is equal to probability of voicing per frame.
-void WeightedMwn(int32 normalization_window_size,
-                 const VectorBase<BaseFloat> &pov,
-                 const VectorBase<BaseFloat> &raw_log_pitch,
-                 Vector<BaseFloat> *mean_subtracted_log_pitch) {
+
+/*
+  WeightedMovingWindowNormalize is doing weighted moving window normalization.
+
+  The simple moving window normalization would be to set
+  mean_subtracted_log_pitch(i) to raw_log_pitch(i) minus
+  the average over the range of raw_log_pitch over the range
+  [ i - window-size/2 ... i + window-size/2 ].  At the edges of
+  the file, the window is truncated to be within the file.
+
+  Weighted moving window normalization subtracts a weighted
+  average, where the weight corresponds to "pov" (the probability
+  of voicing).  This seemed to slightly improve results versus
+  vanilla moving window normalization, although the effect was small.
+*/
+
+void WeightedMovingWindowNormalize(
+    int32 normalization_window_size,
+    const VectorBase<BaseFloat> &pov,
+    const VectorBase<BaseFloat> &raw_log_pitch,
+    Vector<BaseFloat> *normalized_log_pitch) {
   int32 num_frames = pov.Dim();
   KALDI_ASSERT(num_frames == raw_log_pitch.Dim());
   int32 last_window_start = -1, last_window_end = -1;
@@ -81,65 +95,64 @@ void WeightedMwn(int32 normalization_window_size,
     KALDI_ASSERT(window_end - window_start > 0);
     last_window_start = window_start;
     last_window_end = window_end;
-    (*mean_subtracted_log_pitch)(t) = raw_log_pitch(t) -
+    (*normalized_log_pitch)(t) = raw_log_pitch(t) -
                                       weighted_sum / pov_sum;
-    KALDI_ASSERT((*mean_subtracted_log_pitch)(t) -
-                 (*mean_subtracted_log_pitch)(t) == 0);
+    KALDI_ASSERT((*normalized_log_pitch)(t) -
+                 (*normalized_log_pitch)(t) == 0);
   }
 }
 
-// it would process the raw pov using some nonlinearity
-// if apply_sigmoid, it would map the pov to [0, 1] using sigmoid function
-// nonlin 1 : power function as nonlineariy
-//        2 : new nonlinearty for pov (coeffs trained by keele)
-// apply_sigmoid to map the pov to [0, 1] using sigmoid function
-void ProcessPovFeatures(Vector<BaseFloat> *pov,
-                        int nonlin,
-                        bool apply_sigmoid) {
-  if (nonlin != 1 && nonlin != 2) KALDI_ERR << " nonlin should be 1 or 2";
-  int32 num_frames = pov->Dim();
-  if (nonlin == 1) {
-    for (int32 i = 0; i < num_frames; i++) {
-      BaseFloat p = (*pov)(i);
-      // p should always be in [-1, 1], but make extra sure of this.
-      if (p > 1.0) {
-        p = 1.0;
-      } else if (p < -1.0) {
-        p = -1.0;
-      }
-      (*pov)(i) = pow((1.0001 - p), 0.15) - 1.0;
-      KALDI_ASSERT((*pov)(i) - (*pov)(i) == 0);
-    }
-  } else if (nonlin == 2) {
-    for (int32 i = 0; i < num_frames; i++) {
-      BaseFloat p = fabs((*pov)(i));
-      if (p > 1.0)
-        p = 1.0;  // should never happen, but just confirm this.
-      // The following formula was manually constructed to roughly approximate
-      // log(POV / (1-POV)) as a function of fabs(NCCF), on the Keele data,
-      // although we also aimed that it should produce a not-too-peaky
-      // distribution when used to warp the NCCF, so we made some small
-      // compromises.  Note: choosing fabs(NCCF) as an input seemed reasonable
-      // because the POV did seem to have a minimum around NCCF=0 and was very
-      // roughly symmetric on the range [-0.5, 0.5]...  NCCF more negative than
-      // -0.5 was quite rare.
-      p = -5.2 + 5.4 * exp(7.5 * (p - 1.0)) +
-          4.8 * p - 2.0 * exp(-10.0 * p) + 4.2 * exp(20.0 * (p - 1.0));
-      if (apply_sigmoid)
-        p = 1.0 / (1 + exp(-1.0 * p));
-      (*pov)(i) = p;
-      KALDI_ASSERT((*pov)(i) - (*pov)(i) == 0);
-    }
+/**
+   This function processes the NCCF n to a POV feature f by applying the formula
+     f = (1.0001 - n)^0.15  - 1.0.
+   This is a nonlinear function designed to make the output reasonably Gaussian
+   distributed.  Before doing this, the NCCF distribution is in the range [-1,
+   1] but has a strong peak just before 1.0, which this function smooths out.
+ */
+BaseFloat NccfToPovFeature(BaseFloat n) {
+  if (n > 1.0) {
+    n = 1.0;
+  } else if (n < -1.0) {
+    n = -1.0;
   }
+  BaseFloat f = pow((1.0001 - n), 0.15) - 1.0;
+  KALDI_ASSERT(f - f == 0);  // check for NaN,inf.
+  return f;
 }
 
-void TakeLogOfPitch(Matrix<BaseFloat> *input) {
-  int32 num_frames = input->NumRows();
-  for (int32 i = 0; i < num_frames; i++) {
-    BaseFloat p = (*input)(i, 1);
-    KALDI_ASSERT((*input)(i, 1) > 0.0);
-    (*input)(i, 1) = log(p);
-  }
+/**
+   This function processes the NCCF n to a reasonably accurate probability
+   of voicing p by applying the formula:
+
+      n' = fabs(n)
+      r = -5.2 + 5.4 * exp(7.5 * (n' - 1.0)) +
+           4.8 * n' - 2.0 * exp(-10.0 * n') + 4.2 * exp(20.0 * (n' - 1.0));
+      p = 1.0 / (1 + exp(-1.0 * r));
+
+   How did we get this formula?  We plotted the empirical log-prob-ratio of voicing
+    r = log( p[voiced] / p[not-voiced] )
+   [on the Keele database where voicing is marked], as a function of the NCCF at
+   the delay picked by our algorithm.  This was done on intervals of the NCCF, so
+   we had enough statistics to get that ratio.  The NCCF covers [-1, 1]; almost
+   all of the probability mass is on [0, 1] but the empirical POV seems fairly
+   symmetric with a minimum near zero, so we chose to make it a function of n' = fabs(n).
+   
+   Then we manually tuned a function (the one you see above) that approximated
+   the log-prob-ratio of voicing fairly well as a function of the absolute-value
+   NCCF n'; however, wasn't a very exact match since we were also trying to make
+   the transformed NCCF fairly Gaussian distributed, with a view to using it as
+   a feature-- an idea we later abandoned after a simpler formula worked better.
+ */
+BaseFloat NccfToPov(BaseFloat n) {
+  BaseFloat ndash = fabs(n);
+  if (ndash > 1.0) ndash = 1.0; // just in case it was slightly outside [-1, 1]
+
+  BaseFloat r = -5.2 + 5.4 * exp(7.5 * (ndash - 1.0)) + 4.8 * ndash -
+                2.0 * exp(-10.0 * ndash) + 4.2 * exp(20.0 * (ndash - 1.0));
+  // r is the approximate log-prob-ratio of voicing, log(p/(1-p)).
+  BaseFloat p = 1.0 / (1 + exp(-1.0 * r));
+  KALDI_ASSERT(p - p == 0);  // Check for NaN/inf
+  return p;
 }
 
 
@@ -695,6 +708,13 @@ void Compute(const PitchExtractionOptions &opts,
   pitch.GetPitch(output);
 }
 
+/**
+   This function applies to the pitch the normal delta (time-derivative)
+   computation using a five frame window, multiplying by a normalized version of
+   the scales [ -2, 1, 0, 1, 2 ].  It then adds a small amount of noise to the
+   output, in order to avoid peaks appearing in the distribution of delta pitch,
+   that correspond to the discretization interval for log-pitch.
+*/
 void ExtractDeltaPitch(const PostProcessPitchOptions &opts,
                        const Vector<BaseFloat> &input,
                        Vector<BaseFloat> *output) {
@@ -711,9 +731,6 @@ void ExtractDeltaPitch(const PostProcessPitchOptions &opts,
   output->Resize(num_frames);
   output->CopyColFromMat(matrix_output, 1);
 
-  // Add a small amount of noise to the delta-pitch.. this is to stop peaks
-  // appearing in the distribution of delta pitch, that correspond to the
-  // discretization interval for log-pitch.
   Vector<BaseFloat> noise(num_frames);
   noise.SetRandn();
   output->AddVec(opts.delta_pitch_noise_stddev, noise);
@@ -723,59 +740,53 @@ void ExtractDeltaPitch(const PostProcessPitchOptions &opts,
 void PostProcessPitch(const PostProcessPitchOptions &opts,
                       const Matrix<BaseFloat> &input,
                       Matrix<BaseFloat> *output) {
-  Vector<BaseFloat> pov(input.NumRows()),
-                    pitch(input.NumRows()),
-                    delta_pitch(input.NumRows()),
-                    log_pitch(input.NumRows());
-  Vector<BaseFloat> pov_tmp(input.NumRows());
-  bool apply_sigmoid = true;
-  int32 nonlinearity = 2;  // use the more complex nonlinearity to
-                           // get the POV between zero and one for
-                           // purposes of POV-weighted mean subtraction.
+  int32 T = input.NumRows();
+  // We've coded this for clarity rather than memory efficiency; anyway the
+  // memory consumption is trivial.
+  Vector<BaseFloat> nccf(T), raw_pitch(T), raw_log_pitch(T),
+      pov(T), pov_feature(T), normalized_log_pitch(T),
+      delta_log_pitch(T);
 
-  pov.CopyColFromMat(input, 0);
-  pitch.CopyColFromMat(input, 1);
-  pov_tmp = pov;
-  ProcessPovFeatures(&pov_tmp, nonlinearity, apply_sigmoid);
-  pitch.ApplyLog();
-  log_pitch = pitch;
-  WeightedMwn(opts.normalization_window_size,
-              pov_tmp, log_pitch, &pitch);
-  pitch.Scale(opts.pitch_scale);
+  nccf.CopyColFromMat(input, 0);
+  raw_pitch.CopyColFromMat(input, 1);
+  KALDI_ASSERT(raw_pitch.Min() > 0 && "Non-positive pitch.");
+  raw_log_pitch.CopyFromVec(raw_pitch);
+  raw_log_pitch.ApplyLog();
+  for (int32 t = 0; t < T; t++) {
+    pov(t) = NccfToPov(nccf(t));
+    pov_feature(t) = opts.pov_scale * NccfToPovFeature(nccf(t));
+  }
+  WeightedMovingWindowNormalize(opts.normalization_window_size,
+                                pov, raw_log_pitch, &normalized_log_pitch);
+  // the normalized log pitch has quite a small variance; scale it up a little
+  // (this interacts with variance flooring in early system build stages).
+  normalized_log_pitch.Scale(opts.pitch_scale);
+  
+  ExtractDeltaPitch(opts, raw_log_pitch, &delta_log_pitch);
+  delta_log_pitch.Scale(opts.delta_pitch_scale);
 
-  apply_sigmoid = false;
-  ProcessPovFeatures(&pov, opts.pov_nonlinearity, apply_sigmoid);
-  pov.Scale(opts.pov_scale);
-
-  ExtractDeltaPitch(opts, log_pitch, &delta_pitch);
-  delta_pitch.Scale(opts.delta_pitch_scale);
-
-  int32 output_ncols = 0;
-  if (opts.add_pov_feature) {
-    output->Resize(input.NumRows(), output_ncols + 1, kCopyData);
-    output->CopyColFromVec(pov, output_ncols);
-    output_ncols++;
-  }
-  if (opts.add_normalized_log_pitch) {
-    output->Resize(input.NumRows(), output_ncols + 1, kCopyData);
-    output->CopyColFromVec(pitch, output_ncols);
-    output_ncols++;
-  }
-  if (opts.add_delta_pitch) {
-    output->Resize(input.NumRows(), output_ncols + 1, kCopyData);
-    output->CopyColFromVec(delta_pitch, output_ncols);
-    output_ncols++;
-  }
-  if (opts.add_raw_log_pitch) {
-    output->Resize(input.NumRows(), output_ncols + 1, kCopyData);
-    output->CopyColFromVec(log_pitch, output_ncols);
-    output_ncols++;
-  }
-  // If none of the features are chosen, select pov-feature by default
+  // Normally we'll have all of these but raw_log_pitch.
+  int32 output_ncols =
+      (opts.add_pov_feature ? 1 : 0) +
+      (opts.add_normalized_log_pitch ? 1 : 0) +
+      (opts.add_delta_pitch ? 1 : 0) +
+      (opts.add_raw_log_pitch ? 1 : 0);
   if (output_ncols == 0) {
     KALDI_ERR << " At least one of the pitch features should be chosen. "
-      << "Check your post-process pitch options.";
-  }
+              << "Check your post-process pitch options.";
+  }  
+  output->Resize(T, output_ncols, kUndefined);
+  int32 col = 0;
+  if (opts.add_pov_feature)
+    output->CopyColFromVec(pov_feature, col++);
+  if (opts.add_normalized_log_pitch)
+    output->CopyColFromVec(normalized_log_pitch, col++);
+  if (opts.add_delta_pitch)
+    output->CopyColFromVec(delta_log_pitch, col++);
+  if (opts.add_raw_log_pitch)
+    output->CopyColFromVec(raw_log_pitch, col++);
+  KALDI_ASSERT(col == output_ncols);
+
 }
 
 

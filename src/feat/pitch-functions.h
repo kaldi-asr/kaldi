@@ -117,7 +117,6 @@ struct PostProcessPitchOptions {
   int32 normalization_window_size;    // Size of window used for moving window
                                       // normalization
   int32 delta_window;
-  int32 pov_nonlinearity;  // which nonlinearity formula to use for POV feature.
   bool process_pitch;
   bool add_delta_pitch;
   bool add_raw_log_pitch;
@@ -130,7 +129,6 @@ struct PostProcessPitchOptions {
     delta_pitch_noise_stddev(0.005),
     normalization_window_size(151),
     delta_window(2),
-    pov_nonlinearity(1),
     add_delta_pitch(true),
     add_raw_log_pitch(false),
     add_normalized_log_pitch(true),
@@ -152,14 +150,10 @@ struct PostProcessPitchOptions {
                  "Size of window used for moving window nomalization");
     po->Register("delta-window", &delta_window,
                  "Number of frames on each side of central frame, to use for delta window.");
-    po->Register("pov-nonlinearity", &pov_nonlinearity,
-                 "Controls which nonlinearity we use to warp the NCCF to get a POV measure."
-                 "If 1, use (1.001 - nccf)^0.15 - 1; "
-                 "if 2, use a longer formula that approximates log(POV / (POV-1)).");
     po->Register("add-delta-pitch", &add_delta_pitch,
-                "If true, time derivative of log-pitch is added to output features");
+                 "If true, time derivative of log-pitch is added to output features");
     po->Register("add-raw-log-pitch", &add_raw_log_pitch,
-                "If true, log(pitch) is added to output features");
+                 "If true, log(pitch) is added to output features");
     po->Register("add-normalized-log-pitch", &add_normalized_log_pitch,
                 "If true, the log-pitch with POV-weighted mean subtraction over 1.5 second window is added to output features");
     po->Register("add-pov-feature", &add_pov_feature,

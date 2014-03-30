@@ -156,9 +156,9 @@ static void UnitTestKeeleNccfBallast() {
     }
   }
 }
-static void UnitTestWeightedMwn() {
-  KALDI_LOG << "=== UnitTestWeightedMwn1() ===\n";
-  // compare the results of WeightedMwn1 and Sliding CMN with uniform weights.
+static void UnitTestWeightedMovingWindowNormalize() {
+  KALDI_LOG << "=== UnitTestWeightedMovingWindowNormalize1() ===\n";
+  // compare the results of WeightedMovingWindowNormalize and Sliding CMN with uniform weights.
   for (int32 i = 0; i < 1000; i++) {
     int32 num_frames = 1 + (rand()%10 * 10);
     int32 normalization_win_size = 5 + rand() % 50;
@@ -173,8 +173,8 @@ static void UnitTestWeightedMwn() {
                       mean_subtracted_log_pitch(num_frames);
     pov.CopyColFromMat(feat, 0);
     log_pitch.CopyColFromMat(feat, 1);
-    WeightedMwn(normalization_win_size, pov, log_pitch ,
-                &mean_subtracted_log_pitch);
+    WeightedMovingWindowNormalize(normalization_win_size, pov, log_pitch ,
+                                      &mean_subtracted_log_pitch);
     output_feat.CopyColFromVec(mean_subtracted_log_pitch, 1);
 
     // SlidingWindow
@@ -211,29 +211,10 @@ static void UnitTestWeightedMwn() {
     feat(j, 1) = feat(j, 1) * feat(j, 0);
   }
   ProcessPovFeatures(&feat, 2, true);
-  WeightedMwn(normalization_win_size, feat, &output_feat);
+  WeightedMovingWindowNormalize(normalization_win_size, feat, &output_feat);
   */
 }
-static void UnitTestTakeLogOfPitch() {
-  for (int32 i = 0; i < 100; i++) {
-    int num_frame = 50 + (rand() % 200 * 200);
-    Matrix<BaseFloat> input(num_frame, 2);
-    input.SetRandn();
-    input.Scale(100);
-    Matrix<BaseFloat> output(input);
-    for (int j = 0; j < num_frame; j++) {
-      if (input(j, 1) < 1) {
-        input(j, 1) = 10;
-        output(j, 1) = 10;
-      }
-      output(j, 1) = log(input(j, 2));
-    }
-    TakeLogOfPitch(&input);
-    if (input.ApproxEqual(output, 0.0001)) {
-      KALDI_ERR << " Log of Matrix differs " << input << " vs. " << output;
-    }
-  }
-}
+
 static void UnitTestPitchExtractionSpeed() {
   KALDI_LOG << "=== UnitTestPitchExtractionSpeed() ===\n";
   // use pitch code with default configuration..
@@ -361,7 +342,7 @@ void UnitTestPostProcess() {
     Matrix<BaseFloat> m, m2;
     Compute(op, waveform, &m);
     PostProcessPitchOptions postprop_op;
-    postprop_op.pov_nonlinearity = 2;
+    // postprop_op.pov_nonlinearity = 2;
     PostProcessPitch(postprop_op, m, &m2);
     std::string outfile = "keele/"+num+"-processed-kaldi.txt";
     std::ofstream os(outfile.c_str());
@@ -439,8 +420,7 @@ void UnitTestResample() {
 static void UnitTestFeatNoKeele() {
   UnitTestSimple();
   UnitTestDeltaPitch();
-  UnitTestTakeLogOfPitch();
-  UnitTestWeightedMwn();
+  UnitTestWeightedMovingWindowNormalize();
   UnitTestResample();
 }
 static void UnitTestFeatWithKeele() {
