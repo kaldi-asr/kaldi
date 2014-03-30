@@ -4,6 +4,9 @@
 DATA_ROOT=$1
 
 url=https://lindat.mff.cuni.cz/repository/xmlui/bitstream/handle/11858/00-097C-0000-0023-4670-6/data_voip_cs.tgz
+# This might be faster:
+#url=http://www.openslr.org/resources/6/data_voip_cs.tgz
+
 name=data_voip_cs
 extract_file=106277
 
