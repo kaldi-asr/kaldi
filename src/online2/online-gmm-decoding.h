@@ -287,8 +287,7 @@ class SingleUtteranceGmmDecoder {
   // orig_adaptation_state, the function GetAdaptationState() gets the CMVN
   // state.
   SpeakerAdaptationState adaptation_state_;
-  LatticeFasterOnlineDecoder decoder_;
-  
+  LatticeFasterOnlineDecoder decoder_;  
 };
 
   

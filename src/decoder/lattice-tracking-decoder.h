@@ -103,7 +103,7 @@ struct LatticeTrackingDecoderConfig {
    from that state in HCLG.
 
    Since this decocer is somewhat special-purpose, and is not widely used in the
-   recipes, we are not updating it to the "new interface" with DecodeNonblocking().
+   recipes, we are not updating it to the "new interface" with AdvanceDecoding().
  */
 class LatticeTrackingDecoder {
  public:

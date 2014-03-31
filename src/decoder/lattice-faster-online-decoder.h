@@ -141,7 +141,7 @@ class LatticeFasterOnlineDecoder {
 
   
   /// InitDecoding initializes the decoding, and should only be used if you
-  /// intend to call DecodeNonblocking().  If you call Decode(), you don't need
+  /// intend to call AdvanceDecoding().  If you call Decode(), you don't need
   /// to call this.  You can call InitDecoding if you have already decoded an
   /// utterance and want to start with a new utterance.
   void InitDecoding();
@@ -150,10 +150,10 @@ class LatticeFasterOnlineDecoder {
   /// object.  You can keep calling it each time more frames become available.
   /// If max_num_frames is specified, it specifies the maximum number of frames
   /// the function will decode before returning.
-  void DecodeNonblocking(DecodableInterface *decodable,
+  void AdvanceDecoding(DecodableInterface *decodable,
                          int32 max_num_frames = -1);
 
-  /// This function may be optionally called after DecodeNonblocking(), when you
+  /// This function may be optionally called after AdvanceDecoding(), when you
   /// do not plan to decode any further.  It does an extra pruning step that
   /// will help to prune the lattices output by GetLattice and (particularly)
   /// GetRawLattice more accurately, particularly toward the end of the
@@ -161,7 +161,7 @@ class LatticeFasterOnlineDecoder {
   /// final-state survived); it also does a final pruning step that visits all
   /// states (the pruning that is done during decoding may fail to prune states
   /// that are within kPruningScale = 0.1 outside of the beam).  If you call
-  /// this, you cannot call DecodeNonblocking again (it will fail), and you
+  /// this, you cannot call AdvanceDecoding again (it will fail), and you
   /// cannot call GetLattice() and related functions with use_final_probs =
   /// false.
   /// Used to be called PruneActiveTokensFinal().

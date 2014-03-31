@@ -70,9 +70,9 @@
    - \ref transform
    - \ref feat
    - \ref dnn
-    -\ref dnn1
-    -\ref dnn2
-   - \ref online_programs
+     - \ref dnn1
+     - \ref dnn2
+   - \ref online_decoding
    - \ref kws
    - \ref tools
 

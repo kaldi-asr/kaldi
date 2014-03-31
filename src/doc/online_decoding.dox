@@ -1,0 +1,224 @@
+// doc/online_decoding.dox
+
+// Copyright 2014  Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+   \page online_decoding  Online decoding in Kaldi
+
+ This page documents the capabilities for "online decoding" in Kaldi.  By
+ "online decoding" we mean decoding where the features are coming in in real
+ time, and you don't want to wait until all the audio is captured before
+ starting the online decoding.  (We're not using the phrase "real-time decoding"
+ because "real-time decoding" can also be used to mean decoding whose speed is
+ not slower than real time, even if it is applied in batch mode).
+
+ The approach that we took with Kaldi was to focus for the first few years
+ on off-line recognition, in order to reach state of the art performance
+ as quickly as possible.  Now we are making more of an effort to support
+ online decoding.
+
+ There are two online-decoding setups: the "old" online-decoding setup, in the
+ subdirectories online/ and onlinebin/, and the "new" decoding setup,
+ in online2/ and online2bin/.  The "old" online-decoding setup is now
+ deprecated, and may eventually be removed from the trunk (but remain in
+ ^/branches/complete).
+
+ There is some documentation for the older setup \ref online_programs "here", 
+ but we recommend to read this page first.
+
+  \section online_decoding_scope Scope of online decoding in Kaldi
+   
+  In Kaldi we aim to provide facilities for online decoding as a library.
+  That is, we aim to provide the functionality for online decoding but
+  not necessarily command-line tools for it.  The reason is, different
+  people's requirements will be very different depending on how the data is
+  captured and transmitted.  In the "old" online-decoding setup we provided facilities
+  for transferring data over UDP and the like, but in the "new" online-decoding
+  setup our only aim is to demonstrate the internal code, and for now
+  we don't provide any example programs that you could hook up to actual
+  real-time audio capture; you would have to do that yourself.
+ 
+  The program online2-wav-gmm-latgen-faster.cc is currently the primary example program
+  for the online-decoding setup.  This program is for GMM-based models.  It does
+  not support SGMMs or neural nets, we will add separate programs for those later.
+  It reads in whole wave files but internally it processes them chunk by chunk with
+  no dependency on the future.  In the example script egs/rm/s5/local/run_online_decoding.sh
+  you can see an example script for how you build models suitable for this program
+  to use, and evaluate it.  The main purpose of program is to apply the online-decoding
+  procedure within a typical batch-processing framework, so that you can easily
+  evaluate word error rates.  We plan to add similar programs for SGMMs and DNNs.
+  In order to actually do online decoding, you would have to modify this program.
+  We should note (and this is obvious to speech recognition people but not to outsiders) 
+  that the audio sample rate needs to exactly match what you used in training (and
+  oversampling won't work but subsampling will).
+
+  \section online_decoding_decoders Decoders versus decoding programs
+
+  In Kaldi, when we use the term "decoder" we don't generally mean the entire decoding
+  program.  We mean the inner decoder object, generally of the type LatticeFasterDecoder.
+  This object takes the decoding graph (as an FST), and the decodable object
+  (see \ref decodable_interface).  All the decoders naturally support online decoding; it 
+  is the code in the decoding program (but outside of the decoder) that needs to
+  change.  We should note, though, a difference in how you need to invoke the decoder
+  for online decoding.
+     - In the old online-decoding setup (in online/), if "decoder" is some decoder 
+       (e.g. of type LatticeFasterDecoder) and "decodable" is a decodable object of
+       a suitable type, you would call decoder.Decode(&decodable),
+       and this call would block until the input was finished (because the decoder
+       calls decodable.IsLastFrame(), which blocks).
+     - In the new online-decoding setup (in online2/), you would instead call
+       decoder.InitDecoding(), and then each time you get more feature data, you
+       would call decoder.AdvanceDecoding().  For offline use, you can still call
+       Decode().
+  
+  We should mention here that in the old online setup, there is a decoder called
+  OnlineFasterDecoder.  Do not assume from the name of this that it is the only
+  decoder to support online decoding.  The special thing about the OnlineFasterDecoder
+  is that it has the ability to work out which words are going to be "inevitably"
+  decoded regardless of what audio data comes in in future, so you can output those
+  words.  This is useful in an online-transcription context, and if there seems to
+  be a demand for this, we may move that decoder from online/ into the decoder/ 
+  directory and make it compatible with the new online setup.  
+  
+
+  \section online_decoding_feature Feature extraction in online decoding
+
+  Most of the complexity in online decoding relates to feature extraction
+  and adaptation.
+
+  In online-feature.h we provide classes that provide various components
+  of feature extraction, all inheriting from class OnlineFeatureInterface.
+  OnlineFeatureInterface is a base class for online feature extraction.
+  The interface specifies how the object provides the features to the caller
+  (OnlineFeatureInterface::GetFrame()) and how it says how many frames
+  are ready (OnlineFeatureInterface::NumFramesReady()), but does not
+  say how it obtains those features.  That is up to the child class.
+  
+  In online-feature.h we define classes OnlineMfcc and OnlinePlp which
+  are the lowest-level features.  They have a member function 
+  OnlineMfccOrPlp::AcceptWaveform(), which the user should call when
+  data is captured.  All the other online feature types in online-feature.h
+  are "derived" features, so they take an object of OnlineFeatureInterface
+  in their constructor and get their input features through a stored pointer
+  to that object.  
+
+  The only part of the online feature extraction code in online-feature.h
+  that is non-trivial is the cepstral mean and variance normalization (CMVN)
+  (and note that the fMLLR, or linear transform, estimation is not trivial but
+  the complexity lies elsewhere).  We describe the CMVN below.
+
+  \section online_decoding_cmvn Cepstral mean and variance normalization in online decoding
+
+  Cepstral mean normalization is a normalization method in which
+  the mean of the data (typically of the raw MFCC features) is subtracted.
+ "Cepstral" simply refers to the normal feature type; the first C in MFCC means
+  "Cepstral".. the cepstrum is the inverse fourier transform of the log spectrum,
+  although it's actually the cosine transform that is used.
+  Anyway, in cepstral variance normalization, each feature dimension is scaled
+  so that its variance is one.  In all the current scripts, we turn cepstral
+  variance normalization off and only use cepstral mean normalization, but the
+  same code handles both.  In the discussion below, for brevity we will refer only to cepstral
+  mean normalization.
+
+  In the Kaldi scripts, cepstral mean and variance normalization (CMVN) is
+  generally done on a per-speaker basis.  Obviously in an online-decoding
+  context, this is impossible to do because it is "non-causal" (the current
+  feature depends on future features).  
+
+  The basic solution we use is to do "moving-window" cepstral mean
+  normalization.  We accumulate the mean over a moving window of, by default, 6
+  seconds (see the "--cmn-window" option to programs in online2bin/, which
+  defaults to 600).  The options class for this computation, OnlineCmvnOptions,
+  also has extra configuration variables, speaker-frames (default: 600), and
+  global-frames (default: 200).  These specify how we make use of prior
+  information from the same speaker, or a global average of the cepstra, to
+  improve the estimate for the first few seconds of each utterance.
+  The program \ref apply-cmvn-online.cc "apply-cmvn-online" can apply this normalization
+  as part of a training pipeline so that we can can train on matched features.
+
+  \subsection online_decoding_cmvn_freeze Freezing the state of CMN
+
+  The OnlineCmvn class has functions \ref OnlineCmvn::GetState "GetState" and
+  \ref OnlineCmvn::SetState "SetState" that make it possible to keep track of
+  the state of the CMVN computation between speakers.  It also has a function
+  \ref OnlineCmvn::Freeze() "Freeze()".  This function causes it to freeze the
+  state of the cepstral mean normalization at a particular value, so that after
+  calling \ref OnlineCmvn::Freeze() "Freeze()", any calls to \ref
+  OnlineCmvn::GetFrame() "GetFrame()", even for earlier times, will apply the
+  mean offset that we were using when the user called \ref OnlineCmvn::Freeze()
+  "Freeze()".  This frozen state will also be propagated to future utterances of
+  the same speaker via the \ref OnlineCmvn::GetState "GetState" and \ref
+  OnlineCmvn::SetState "SetState" function calls.  The reason we do this is that
+  we don't believe it makes sense to do speaker adaptation with fMLLR on top
+  of a constantly varying CMN offset.  So when we start estimating fMLLR
+  (see below), we freeze the CMN state and leave it fixed in future.  The
+  value of CMN at the time we freeze it is not especially critical because fMLLR subsumes
+  CMN.   The reason we freeze the CMN state to a particular value rather than just
+  skip over the CMN when we start estimating fMLLR, is that we are actually
+  using a method called basis-fMLLR (again, see below) where we incrementally
+  estimate the parameters, and it is not completely invariant to offsets.
+
+ 
+  \section online_decoding_adaptation  Adaptation in online decoding
+
+ The most standard adaptation method used for speech recognition is
+ feature-space Maximum Likelihood Linear Regression (fMLLR), also known in the
+ literature as Constrained MLLR (CMLLR), but we use the term fMLLR in the Kaldi
+ code and documentation.  fMLLR consists of an affine (linear + offset) transform
+ of the features; the number of parameters is d * (d+1), where d is the
+ final feature dimension (typically 40).  In the online decoding program
+ a basis method to incrementally estimate an increasing number of 
+ transform parameters as we decode more data.  The top-level logic for this at the
+ decoder level is mostly implemented in class SingleUtteranceGmmDecoder.
+ 
+ The fMLLR estimation is done not continuously but periodically, since it involvesa
+ computing lattice posteriors and this can't very easily be done in a continuous
+ manner.  Configuration variables in class OnlineGmmDecodingAdaptationPolicyConfig 
+ determine when we re-estimate fMLLR.  The default currently is, during the first
+ utterance, to estimate it after 2 seconds, and thereafter at times in a geometrically
+ increasing ratio with constant 1.5 (so at 2 seconds, 3 seconds, 4.5 seconds...).
+ For later utterances we estimate it after 5 seconds, 10 seconds, 20 seconds and so on.
+ For all utterances we estimate it at the end of the utterance.
+
+ Note that the CMN adaptation state is frozen, as mentioned above, the first time
+ we estimate fMLLR for a speaker, which by default will be two seconds into the
+ first utterance.  
+
+ \section online_decoding_models  Use of multiple models in online decoding
+
+   In the online decoding decode for GMMs in online-gmm-decoding.h, up to three 
+  models can be supplied.  These are held in class OnlineGmmDecodingModels, which
+  takes care of the logic necessary to decide which model to use for different purposes
+  if fewer models are supplied.  The three models are:
+     - A speaker-independent model, trained with online-mode CMVN from
+       \ref apply-cmvn-onlin.cc apply-cmvn-online
+     - A speaker adapted model, trained with fMLLR
+     - A discriminatively trained version of the speaker adapted model
+  It is our practice to use a Maximum Likelihood estimated model to estimate
+  adaptation parameters, as this is more consistent with the Maximum framework 
+  than using a discriminatively trained model, although this probably makes little
+  difference and you would lose little (and save some memory) by using the discriminatively
+  trained model for this purpose. 
+
+
+*/
+
+
+}

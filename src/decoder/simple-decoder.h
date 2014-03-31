@@ -59,6 +59,8 @@ class SimpleDecoder {
   // fst_out will be empty (Start() == kNoStateId) if nothing was available due to
   // search error.
   // If Decode() returned true, it is safe to assume GetBestPath will return true.
+  // It returns true if the output lattice was nonempty (i.e. had states in it);
+  // using the return value is deprecated.
   bool GetBestPath(Lattice *fst_out) const;
   
   /// *** The next functions are from the "new interface". ***
@@ -71,7 +73,7 @@ class SimpleDecoder {
   BaseFloat FinalRelativeCost() const;
 
   /// InitDecoding initializes the decoding, and should only be used if you
-  /// intend to call DecodeNonblocking().  If you call Decode(), you don't need
+  /// intend to call AdvanceDecoding().  If you call Decode(), you don't need
   /// to call this.  You can call InitDecoding if you have already decoded an
   /// utterance and want to start with a new utterance. 
   void InitDecoding();  
@@ -80,7 +82,7 @@ class SimpleDecoder {
   /// object, but if max_num_frames is >= 0 it will decode no more than
   /// that many frames.  If it returns false, then no tokens are alive,
   /// which is a kind of error state.
-  void DecodeNonblocking(DecodableInterface *decodable,
+  void AdvanceDecoding(DecodableInterface *decodable,
                          int32 max_num_frames = -1);
   
   /// Returns the number of frames already decoded.  

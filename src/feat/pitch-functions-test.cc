@@ -55,7 +55,7 @@ static void UnitTestSimple() {
   PitchExtractionOptions op;
   // trying to have same opts as baseline.
   // compute pitch.
-  Compute(op, v, &m);
+  ComputeKaldiPitch(op, v, &m);
   KALDI_LOG << "Test passed :)\n";
 }
 // Compare pitch using Kaldi pitch tracker on KEELE corpora
@@ -82,7 +82,7 @@ static void UnitTestKeele() {
     op.nccf_ballast = 0.1;
     // compute pitch.
     Matrix<BaseFloat> m;
-    Compute(op, waveform, &m);
+    ComputeKaldiPitch(op, waveform, &m);
     std::string outfile = "keele/"+num+"-kaldi.txt";
     std::ofstream os(outfile.c_str());
     m.Write(os, false);
@@ -114,7 +114,7 @@ static void UnitTestPenaltyFactor() {
       op.nccf_ballast = 0.1;
       // compute pitch.
       Matrix<BaseFloat> m;
-      Compute(op, waveform, &m);
+      ComputeKaldiPitch(op, waveform, &m);
       std::string penaltyfactor = ConvertIntToString(k);
       std::string outfile = "keele/"+num+"-kaldi-penalty-"+penaltyfactor+".txt";
       std::ofstream os(outfile.c_str());
@@ -147,7 +147,7 @@ static void UnitTestKeeleNccfBallast() {
       KALDI_LOG << " nccf_ballast " << op.nccf_ballast << std::endl;
       // compute pitch.
       Matrix<BaseFloat> m;
-      Compute(op, waveform, &m);
+      ComputeKaldiPitch(op, waveform, &m);
       std::string nccfballast = ConvertIntToString(op.nccf_ballast);
       std::string outfile = "keele/"+num
         +"-kaldi-nccf-ballast-"+nccfballast+".txt";
@@ -247,7 +247,7 @@ static void UnitTestPitchExtractionSpeed() {
     ftime(&tstruct);
     tstart = tstruct.time * 1000 + tstruct.millitm;
     for (int32 t = 0; t < test_num; t++)
-      Compute(op, waveform, &m);
+      ComputeKaldiPitch(op, waveform, &m);
     ftime(&tstruct);
     tend = tstruct.time * 1000 + tstruct.millitm;
     double tot_real_time = test_num * waveform.Dim() / op.samp_freq;
@@ -279,7 +279,7 @@ static void UnitTestPitchExtractorCompareKeele() {
     SubVector<BaseFloat>  waveform(wave.Data(), 0);
     // compute pitch.
     Matrix<BaseFloat> m;
-    Compute(op, waveform, &m);
+    ComputeKaldiPitch(op, waveform, &m);
     std::string outfile = "keele/"+num+"-speedup-kaldi1.txt";
     std::ofstream os(outfile.c_str());
     m.Write(os, false);
@@ -312,7 +312,7 @@ void UnitTestDiffSampleRate() {
     KALDI_ASSERT(wave.Data().NumRows() == 1);
     SubVector<BaseFloat> waveform(wave.Data(), 0);
     Matrix<BaseFloat> m;
-    Compute(op, waveform, &m);
+    ComputeKaldiPitch(op, waveform, &m);
     std::string outfile = "keele/"+num+"-kaldi-samp-freq-"+samp_rate+"kHz.txt";
     std::ofstream os(outfile.c_str());
     m.Write(os, false);
@@ -340,7 +340,7 @@ void UnitTestPostProcess() {
     op.nccf_ballast = 0.1;
     op.max_f0 = 400;
     Matrix<BaseFloat> m, m2;
-    Compute(op, waveform, &m);
+    ComputeKaldiPitch(op, waveform, &m);
     PostProcessPitchOptions postprop_op;
     // postprop_op.pov_nonlinearity = 2;
     PostProcessPitch(postprop_op, m, &m2);
@@ -395,7 +395,7 @@ void UnitTestResample() {
   ArbitraryResample resample(sample_num, sample_freq,
                              lowpass_filter_cutoff, resampled_t,
                              lowpass_filter_width);
-  resample.Upsample(input_wave, &resampled_wave1);
+  resample.Resample(input_wave, &resampled_wave1);
 
   if (!resampled_wave1.ApproxEqual(resampled_wave2, 0.01)) {
     KALDI_ERR << "Resampled wave " << resampled_wave1
@@ -408,7 +408,7 @@ void UnitTestResample() {
   LinearResample resample3(sample_freq, resample_freq,
                              lowpass_filter_cutoff,
                              lowpass_filter_width);
-  resample3.Upsample(input_wave_vec, &resampled_wave_vec);
+  resample3.Resample(input_wave_vec, &resampled_wave_vec);
   resampled_wave3.CopyRowFromVec(resampled_wave_vec, 0);
 
   if (!resampled_wave3.ApproxEqual(resampled_wave1, 0.0001)) {

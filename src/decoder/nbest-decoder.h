@@ -67,7 +67,7 @@ struct NBestDecoderOptions {
     from the trunk and leave it only in ^/branches/complete.
 
     We are not planning to modify this decoder to support the "newer interface" with
-    InitDecoding() and DecodeNonblocking().
+    InitDecoding() and AdvanceDecoding().
 */
 
 class NBestDecoder {

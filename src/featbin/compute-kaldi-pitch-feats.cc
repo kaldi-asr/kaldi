@@ -18,7 +18,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "feat/pitch-functions.cc"
+#include "feat/pitch-functions.h"
 #include "feat/wave-reader.h"
 
 
@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
       SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
       Matrix<BaseFloat> features;
       try {
-        Compute(pitch_opts, waveform, &features);
+        ComputeKaldiPitch(pitch_opts, waveform, &features);
       } catch (...) {
         KALDI_WARN << "Failed to compute pitch for utterance "
                    << utt;

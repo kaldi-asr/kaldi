@@ -150,16 +150,43 @@ struct PostProcessPitchOptions {
                  "Size of window used for moving window nomalization");
     po->Register("delta-window", &delta_window,
                  "Number of frames on each side of central frame, to use for delta window.");
+    po->Register("add-pov-feature", &add_pov_feature,
+                "If true, the warped NCCF is added to output features");
+    po->Register("add-normalized-log-pitch", &add_normalized_log_pitch,
+                "If true, the log-pitch with POV-weighted mean subtraction over 1.5 second window is added to output features");
     po->Register("add-delta-pitch", &add_delta_pitch,
                  "If true, time derivative of log-pitch is added to output features");
     po->Register("add-raw-log-pitch", &add_raw_log_pitch,
                  "If true, log(pitch) is added to output features");
-    po->Register("add-normalized-log-pitch", &add_normalized_log_pitch,
-                "If true, the log-pitch with POV-weighted mean subtraction over 1.5 second window is added to output features");
-    po->Register("add-pov-feature", &add_pov_feature,
-                "If true, the warped NCCF is added to output features");
   }
 };
+
+
+/// This function extracts (pitch, NCCF) per frame, using the pitch extraction
+/// method described in "A Pitch Extraction Algorithm Tuned for Automatic Speech
+/// Recognition", Pegah Ghahremani, Bagher BabaAli, Daniel Povey, Korbinian
+/// Riedhammer, Jan Trmal and Sanjeev Khudanpur, ICASSP 2014.  The output will
+/// have as many rows as there are frames, and two columns corresponding to
+/// (pitch, NCCF).
+void ComputeKaldiPitch(const PitchExtractionOptions &opts,
+                       const VectorBase<BaseFloat> &wave,
+                       Matrix<BaseFloat> *output);
+
+/// This function processes the raw (pitch, NCCF) quantities computed by
+/// ComputeKaldiPitch, and processes them into features.  By default it will
+/// output three-dimensional features, (POV-feature, mean-subtracted-log-pitch,
+/// delta-of-raw-pitch), but this is configurable in the options.  The number of
+/// rows of "output" will be the number of frames (rows) in "input", and the
+/// number of columns will be the number of different types of features
+/// requested (by default, 3; 4 is the max).  The four config variables
+/// --add-pov-feature, --add-normalized-log-pitch, --add-delta-pitch,
+/// --add-raw-log-pitch determine which features we create; by default we create
+/// the first three.
+void PostProcessPitch(const PostProcessPitchOptions &opts,
+                      const Matrix<BaseFloat> &input,
+                      Matrix<BaseFloat> *output);
+
+
 /// @} End of "addtogroup feat"
 }  // namespace kaldi
 #endif  // KALDI_FEAT_PITCH_FUNCTIONS_H_

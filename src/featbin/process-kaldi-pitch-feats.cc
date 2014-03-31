@@ -19,7 +19,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "feat/pitch-functions.cc"
+#include "feat/pitch-functions.h"
 #include "feat/wave-reader.h"
 
 

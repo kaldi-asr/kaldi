@@ -90,14 +90,14 @@ class FasterDecoder {
   bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out);
 
   /// As a new alternative to Decode(), you can call InitDecoding
-  /// and then (possibly multiple times) DecodeNonblocking().
+  /// and then (possibly multiple times) AdvanceDecoding().
   void InitDecoding();
   
 
   /// This will decode until there are no more frames ready in the decodable
   /// object, but if max_num_frames is >= 0 it will decode no more than
   /// that many frames.
-  void DecodeNonblocking(DecodableInterface *decodable,
+  void AdvanceDecoding(DecodableInterface *decodable,
                          int32 max_num_frames = -1);
 
   /// Returns the number of frames already decoded.  

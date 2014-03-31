@@ -154,7 +154,7 @@ bool LatticeFasterOnlineDecoder::GetRawLattice(Lattice *ofst,
 
   // Note: you can't use the old interface (Decode()) if you want to
   // get the lattice with use_final_probs = false.  You'd have to do
-  // InitDecoding() and then DecodeNonblocking().
+  // InitDecoding() and then AdvanceDecoding().
   if (decoding_finalized_ && !use_final_probs)
     KALDI_ERR << "You cannot call FinalizeDecoding() and then call "
               << "GetRawLattice() with use_final_probs == false";
@@ -240,7 +240,7 @@ bool LatticeFasterOnlineDecoder::GetRawLatticePruned(
 
   // Note: you can't use the old interface (Decode()) if you want to
   // get the lattice with use_final_probs = false.  You'd have to do
-  // InitDecoding() and then DecodeNonblocking().
+  // InitDecoding() and then AdvanceDecoding().
   if (decoding_finalized_ && !use_final_probs)
     KALDI_ERR << "You cannot call FinalizeDecoding() and then call "
               << "GetRawLattice() with use_final_probs == false";
@@ -747,10 +747,10 @@ LatticeFasterOnlineDecoder::BestPathIterator LatticeFasterOnlineDecoder::TraceBa
 }
 
 
-void LatticeFasterOnlineDecoder::DecodeNonblocking(DecodableInterface *decodable,
+void LatticeFasterOnlineDecoder::AdvanceDecoding(DecodableInterface *decodable,
                                                    int32 max_num_frames) {
   KALDI_ASSERT(!active_toks_.empty() && !decoding_finalized_ &&
-               "You must call InitDecoding() before DecodeNonblocking");
+               "You must call InitDecoding() before AdvanceDecoding");
   int32 num_frames_ready = decodable->NumFramesReady();
   // num_frames_ready must be >= num_frames_decoded, or else
   // the number of frames ready must have decreased (which doesn't

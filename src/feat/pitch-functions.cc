@@ -234,7 +234,7 @@ class LinearResample {
     SetWeights();
   }
 
-  void Upsample(const VectorBase<double> &input,
+  void Resample(const VectorBase<double> &input,
                 VectorBase<double> *output) {
     // each row of "input" corresponds to the data to resample;
     // the corresponding row of "output" is the resampled data.
@@ -353,7 +353,7 @@ class ArbitraryResample {
   int32 NumSamplesIn() const { return num_samples_in_; }
   int32 NumSamplesOut() const { return indexes_.size(); }
 
-  void Upsample(const MatrixBase<double> &input,
+  void Resample(const MatrixBase<double> &input,
                 MatrixBase<double> *output) {
     // each row of "input" corresponds to the data to resample;
     // the corresponding row of "output" is the resampled data.
@@ -442,7 +442,7 @@ void PreProcess(const PitchExtractionOptions opts,
   LinearResample resample(opts.samp_freq, opts.resample_freq,
                           opts.lowpass_cutoff,
                           opts.lowpass_filter_width);
-  resample.Upsample(wave, processed_wave);
+  resample.Resample(wave, processed_wave);
 
   // Normalize input signal using rms
   double rms = pow(VecVec((*processed_wave), (*processed_wave))
@@ -634,9 +634,9 @@ class PitchExtractor {
   std::vector< PitchFrame > frames_;
 };
 
-void Compute(const PitchExtractionOptions &opts,
-             const VectorBase<BaseFloat> &wave,
-             Matrix<BaseFloat> *output) {
+void ComputeKaldiPitch(const PitchExtractionOptions &opts,
+                       const VectorBase<BaseFloat> &wave,
+                       Matrix<BaseFloat> *output) {
   KALDI_ASSERT(output != NULL);
   Vector<double> wave2(wave);
 
@@ -697,9 +697,9 @@ void Compute(const PitchExtractionOptions &opts,
                              upsample_cutoff,
                              lag_vec, opts.upsample_filter_width);
   Matrix<double> resampled_nccf_pitch(rows_out, num_states);
-  resample.Upsample(nccf_pitch, &resampled_nccf_pitch);
+  resample.Resample(nccf_pitch, &resampled_nccf_pitch);
   Matrix<double> resampled_nccf_pov(rows_out, num_states);
-  resample.Upsample(nccf_pov, &resampled_nccf_pov);
+  resample.Resample(nccf_pov, &resampled_nccf_pov);
 
   PitchExtractor pitch(opts, lags, num_states, rows_out);
   pitch.FastViterbi(resampled_nccf_pitch);

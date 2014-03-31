@@ -85,7 +85,7 @@ bool LatticeSimpleDecoder::GetRawLattice(Lattice *ofst,
 
   // Note: you can't use the old interface (Decode()) if you want to
   // get the lattice with use_final_probs = false.  You'd have to do
-  // InitDecoding() and then DecodeNonblocking().
+  // InitDecoding() and then AdvanceDecoding().
   if (decoding_finalized_ && !use_final_probs)
     KALDI_ERR << "You cannot call FinalizeDecoding() and then call "
               << "GetRawLattice() with use_final_probs == false";

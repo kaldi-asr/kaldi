@@ -53,10 +53,10 @@ void FasterDecoder::Decode(DecodableInterface *decodable) {
   }
 }
 
-void FasterDecoder::DecodeNonblocking(DecodableInterface *decodable,
+void FasterDecoder::AdvanceDecoding(DecodableInterface *decodable,
                                       int32 max_num_frames) {
   KALDI_ASSERT(num_frames_decoded_ >= 0 &&
-               "You must call InitDecoding() before DecodeNonblocking()");
+               "You must call InitDecoding() before AdvanceDecoding()");
   int32 num_frames_ready = decodable->NumFramesReady();
   // num_frames_ready must be >= num_frames_decoded, or else
   // the number of frames ready must have decreased (which doesn't

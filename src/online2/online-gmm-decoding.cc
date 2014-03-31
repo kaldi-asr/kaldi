@@ -62,7 +62,7 @@ void SingleUtteranceGmmDecoder::AdvanceDecoding() {
   int32 old_frames = decoder_.NumFramesDecoded();
   
   // This will decode as many frames as are currently available.
-  decoder_.DecodeNonblocking(&decodable);
+  decoder_.AdvanceDecoding(&decodable);
 
   
   {  // possibly estimate fMLLR.

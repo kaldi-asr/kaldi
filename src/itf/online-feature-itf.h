@@ -26,48 +26,52 @@ namespace kaldi {
 /// @ingroup Interfaces
 /// @{
 
+/**
+   OnlineFeatureInterface is an interface for online feature processing (it is
+   also usable in the offline setting, but currently we're not using it for
+   that).  This is for use in the online2/ directory, and it supersedes the
+   interface in ../online/online-feat-input.h.  We have a slighty different
+   model that puts more control in the hands of the calling thread, and won't
+   involve waiting on semaphores in the decoding thread.
 
-/// OnlineFeatureInterface is an interface for online feature processing, also
-/// usable in the offline setting.  This is for use in the online2/ directory,
-/// and it supersedes the interface in ../online/online-feat-input.h.  We have a
-/// slighty different model that puts more control in the hands of the calling
-/// thread, and won't involve waiting on semaphores in the decoding thread.
-///
-/// This interface only specifies how the object *outputs* the features.
-/// How it obtains the features, e.g. from a previous object or objects of type
-/// OnlineFeatureInterface, is not specified in the interface and you will
-/// likely define constructors or methods that are specific to the derived type
-/// which will take care of that.
+   This interface only specifies how the object *outputs* the features.
+   How it obtains the features, e.g. from a previous object or objects of type
+   OnlineFeatureInterface, is not specified in the interface and you will
+   likely define new constructors or methods in the derived type to do that.
 
+   You should appreciate that this interface is designed to allow random
+   access to features, as long as they are ready.  That is, the user
+   can call GetFrame for any frame less than NumFramesReady(), and when
+   implementing a child class you must not make assumptions about the
+   order in which the user makes these calls.
+*/
+   
 class OnlineFeatureInterface {
  public:
   virtual int32 Dim() const = 0; /// returns the feature dimension.
+  
+  /// Returns the total number of frames, since the start of the utterance, that
+  /// are now available.  In an online-decoding context, this will likely
+  /// increase with time as more data becomes available.
+  virtual int32 NumFramesReady() const = 0;
 
-  /// Returns true if this is the last frame.  Frames are zero-based, so the
+  /// Returns true if this is the last frame.  Frame indices are zero-based, so the
   /// first frame is zero.  IsLastFrame(-1) will return false, unless the file
   /// is empty (which is a case that I'm not sure all the code will handle, so
-  /// be careful).  Caution: the behavior of this function in an online setting
-  /// is being changed somewhat.  In future it may return false in cases where
+  /// be careful).  This function may return false for some frame if
   /// we haven't yet decided to terminate decoding, but later true if we decide
-  /// to terminate decoding.  The plan in future is to rely more on
-  /// NumFramesReady(), and in future, IsLastFrame() would always return false
-  /// in an online-decoding setting, and would only return true in a
-  /// decoding-from-matrix setting where we want to allow the last delta or LDA
-  /// features to be flushed out for compatibility with the baseline setup.
+  /// to terminate decoding.  This function exists mainly to correctly handle
+  /// end effects in feature extraction, and is not a mechanism to determine how
+  /// many frames are in the decodable object (as it used to be, and for backward
+  /// compatibility, still is, in the Decodable interface).
   virtual bool IsLastFrame(int32 frame) const = 0;
   
-
-  /// Returns the total number of frames, since the start of the utterance, that
-  /// are now available.  In an online-decoding context, this may increase with
-  /// time as more data becomes available.
-  virtual int32 NumFramesReady() const = 0;
-  
   /// Gets the feature vector for this frame.  Before calling this for a given
-  /// frame, it's assumed that you have already called IsLastFrame(frame - 1)
-  /// and it returned false, or [preferably] you called FrameIsReady(frame) and
-  /// it returned true.  Otherwise it may crash.  This is not declared const, in
-  /// case there is some kind of caching going on, but most of the time it
-  /// shouldn't modify the class.
+  /// frame, it is assumed that you called NumFramesReady() and it returned a
+  /// number greater than "frame".  Otherwise this call will likely crash with
+  /// an assert failure.  This function is not declared const, in case there is
+  /// some kind of caching going on, but most of the time it shouldn't modify
+  /// the class.
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat) = 0;
 
   /// Virtual destructor.  Note: constructors that take another member of
