@@ -2,8 +2,7 @@
 # Copyright  2014   David Snyder
 # Apache 2.0.
 #
-# An incomplete run.sh for this example. Currently this only trains up up a gender 
-# independent UBM and ivector with the SRE08 training data.
+# An incomplete run.sh for this example.
 
 . cmd.sh
 . path.sh
@@ -49,9 +48,11 @@ rm foo
 
 local/split_long_utts.sh --max-utt-len 120 data/train_unsplit data/train
 
-##
-## HERE
-##
+# This commented script is an alternative to the above utterance
+# splitting method. Here we split the utterance based on the number of 
+# frames which are voiced, rather than the total number of frames.
+# max_voiced=3000 
+# local/vad_split_utts.sh --max-voiced $max_voiced data/train_unsplit $mfccdir data/train
 
 steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 100 --cmd "$train_cmd" \
   data/train exp/make_mfcc $mfccdir
