@@ -91,7 +91,7 @@ class DiagGmm {
   /// Outputs the per-component log-likelihoods of a subset of mixture
   /// components.  Note: at output, loglikes->Dim() will equal indices.size().
   /// loglikes[i] will correspond to the log-likelihood of the Gaussian
-  /// indexed indices[i].
+  /// indexed indices[i], including the mixture weight.
   void LogLikelihoodsPreselect(const VectorBase<BaseFloat> &data,
                                const std::vector<int32> &indices,
                                Vector<BaseFloat> *loglikes) const;

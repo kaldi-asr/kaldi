@@ -151,7 +151,10 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << num_done << " files, " << num_err
               << " with errors.  Total frames " << tot_t;
     
-    WriteKaldiObject(stats, accs_wxfilename, binary);
+    {
+      Output ko(accs_wxfilename, binary);
+      stats.Write(ko.Stream(), binary);
+    }
     
     KALDI_LOG << "Wrote stats to " << accs_wxfilename;
 

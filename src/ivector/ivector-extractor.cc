@@ -607,6 +607,12 @@ IvectorStats::IvectorStats(const IvectorExtractor &extractor,
   for (int32 i = 0; i < I; i++)
     Y_[i].Resize(D, S);
   R_.Resize(I, S * (S + 1) / 2);
+  R_num_cached_ = 0;
+  KALDI_ASSERT(stats_opts.cache_size > 0 && "--cache-size=0 not allowed");
+
+  R_gamma_cache_.Resize(stats_opts.cache_size, I);
+  R_ivec_scatter_cache_.Resize(stats_opts.cache_size, S*(S+1)/2);
+  
   if (extractor.IvectorDependentWeights()) {
     Q_.Resize(I, S * (S + 1) / 2);
     G_.Resize(I, S);
@@ -627,7 +633,8 @@ void IvectorStats::CommitStatsForM(
     const IvectorExtractorUtteranceStats &utt_stats,
     const VectorBase<double> &ivec_mean,
     const SpMatrix<double> &ivec_var) {
-  subspace_stats_lock_.Lock();
+
+  gamma_Y_lock_.Lock();
 
   // We do the occupation stats here also.
   gamma_.AddVec(1.0, utt_stats.gamma);
@@ -637,17 +644,51 @@ void IvectorStats::CommitStatsForM(
     Y_[i].AddVecVec(1.0, utt_stats.X.Row(i),
                     Vector<double>(ivec_mean));
   }
+  gamma_Y_lock_.Unlock();
 
-  int32 ivector_dim = extractor.IvectorDim();
-  // Stats for the quadratic term in M:
   SpMatrix<double> ivec_scatter(ivec_var);
   ivec_scatter.AddVec2(1.0, ivec_mean);
+  
+  R_cache_lock_.Lock();
+  while (R_num_cached_ == R_gamma_cache_.NumRows()) {
+    // Cache full.  The "while" statement is in case of certain race conditions.
+    R_cache_lock_.Unlock();
+    FlushCache();
+    R_cache_lock_.Lock();    
+  }
+  R_gamma_cache_.Row(R_num_cached_).CopyFromVec(utt_stats.gamma);
+  int32 ivector_dim = ivec_mean.Dim();
   SubVector<double> ivec_scatter_vec(ivec_scatter.Data(),
                                      ivector_dim * (ivector_dim + 1) / 2);
-  R_.AddVecVec(1.0, utt_stats.gamma, ivec_scatter_vec);
-
-  subspace_stats_lock_.Unlock();
+  R_ivec_scatter_cache_.Row(R_num_cached_).CopyFromVec(ivec_scatter_vec);
+  R_num_cached_++;
+  R_cache_lock_.Unlock();
 }
+
+void IvectorStats::FlushCache() {
+  R_cache_lock_.Lock();
+  if (R_num_cached_ > 0) {
+    KALDI_VLOG(1) << "Flushing cache for IvectorStats";
+    // Store these quantities as copies in memory so other threads can use the
+    // cache while we update R_ from the cache.
+    Matrix<double> R_gamma_cache(
+        R_gamma_cache_.Range(0, R_num_cached_,
+                             0, R_gamma_cache_.NumCols()));
+    Matrix<double> R_ivec_scatter_cache(
+        R_ivec_scatter_cache_.Range(0, R_num_cached_,
+                                    0, R_ivec_scatter_cache_.NumCols()));
+    R_num_cached_ = 0; // As far as other threads are concerned, the cache is
+                       // cleared and they may write to it.
+    R_cache_lock_.Unlock();
+    R_lock_.Lock();
+    R_.AddMatMat(1.0, R_gamma_cache, kTrans,
+                 R_ivec_scatter_cache, kNoTrans, 1.0);
+    R_lock_.Unlock();
+  } else {
+    R_cache_lock_.Unlock();
+  }
+}
+
 
 void IvectorStats::CommitStatsForSigma(
     const IvectorExtractor &extractor,
@@ -861,7 +902,14 @@ void IvectorStats::Add(const IvectorStats &other) {
 }
 
 
+void IvectorStats::Write(std::ostream &os, bool binary) {
+  FlushCache(); // for R stats.
+  ((const IvectorStats&)(*this)).Write(os, binary); // call const version.
+}
+
+
 void IvectorStats::Write(std::ostream &os, bool binary) const {
+  KALDI_ASSERT(R_num_cached_ == 0 && "Please use the non-const Write().");
   WriteToken(os, binary, "<IvectorStats>");
   WriteToken(os, binary, "<TotAuxf>");
   WriteBasicType(os, binary, tot_auxf_);
@@ -873,9 +921,11 @@ void IvectorStats::Write(std::ostream &os, bool binary) const {
   for (int32 i = 0; i < size; i++)
     Y_[i].Write(os, binary);
   WriteToken(os, binary, "<R>");
-  R_.Write(os, binary);
+  Matrix<BaseFloat> R_float(R_);
+  R_float.Write(os, binary);
   WriteToken(os, binary, "<Q>");
-  Q_.Write(os, binary);
+  Matrix<BaseFloat> Q_float(Q_);
+  Q_float.Write(os, binary);
   WriteToken(os, binary, "<G>");
   G_.Write(os, binary);
   WriteToken(os, binary, "<S>");
