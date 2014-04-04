@@ -81,7 +81,6 @@ bool LatticeSimpleDecoder::GetRawLattice(Lattice *ofst,
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
   typedef Arc::Label Label;
-  ofst->DeleteStates();
 
   // Note: you can't use the old interface (Decode()) if you want to
   // get the lattice with use_final_probs = false.  You'd have to do
@@ -95,9 +94,10 @@ bool LatticeSimpleDecoder::GetRawLattice(Lattice *ofst,
   const unordered_map<Token*, BaseFloat> &final_costs =
       (decoding_finalized_ ? final_costs_ : final_costs_local);
 
-  if (!decoding_finalized_)
+  if (!decoding_finalized_ && use_final_probs)
     ComputeFinalCosts(&final_costs_local, NULL, NULL);
 
+  ofst->DeleteStates();
   int32 num_frames = NumFramesDecoded();
   KALDI_ASSERT(num_frames > 0);
   const int32 bucket_count = num_toks_/2 + 3;  
@@ -136,13 +136,13 @@ bool LatticeSimpleDecoder::GetRawLattice(Lattice *ofst,
         ofst->AddArc(cur_state, arc);
       }
       if (f == num_frames) {
-        unordered_map<Token*, BaseFloat>::const_iterator iter =
-            final_costs.find(tok);
-        if (!use_final_probs) {
-          ofst->SetFinal(cur_state, LatticeWeight::One());
-        } else {
+        if (use_final_probs && !final_costs.empty()) {
+          unordered_map<Token*, BaseFloat>::const_iterator iter =
+              final_costs.find(tok);
           if (iter != final_costs.end())
             ofst->SetFinal(cur_state, LatticeWeight(iter->second, 0));
+        } else {
+          ofst->SetFinal(cur_state, LatticeWeight::One());
         }
       }
     }
@@ -310,15 +310,8 @@ void LatticeSimpleDecoder::ComputeFinalCosts(
         cost_with_final = cost + final_cost;
     best_cost = std::min(cost, best_cost);
     best_cost_with_final = std::min(cost_with_final, best_cost_with_final);
-    if (final_costs != NULL)
+    if (final_costs != NULL && final_cost != infinity)
       (*final_costs)[tok] = final_cost;
-  }
-  if (best_cost_with_final == infinity && final_costs != NULL) {
-    // No states were final, so set all the costs in *final_costs to zero.
-    typedef unordered_map<Token*, BaseFloat>::iterator IterType;
-    for (IterType iter = final_costs->begin();
-         iter != final_costs->end(); ++iter)
-      iter->second = 0.0;
   }
   if (final_relative_cost != NULL) {
     if (best_cost == infinity && best_cost_with_final == infinity) {

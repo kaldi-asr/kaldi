@@ -636,8 +636,7 @@ void LatticeFasterOnlineDecoder::ComputeFinalCosts(
         cost_with_final = cost + final_cost;
     best_cost = std::min(cost, best_cost);
     best_cost_with_final = std::min(cost_with_final, best_cost_with_final);
-    if (final_costs != NULL &&
-        final_cost != std::numeric_limits<BaseFloat>::infinity())
+    if (final_costs != NULL && final_cost != infinity)
       (*final_costs)[tok] = final_cost;
     final_toks = next;
   }
