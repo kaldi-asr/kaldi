@@ -245,6 +245,8 @@ static inline void AssertLeq(float a, float b,
 // RoundUpToNearestPowerOfTwo does the obvious thing. It crashes if n <= 0.
 int32 RoundUpToNearestPowerOfTwo(int32 n);
 
+
+/// Returns the greatest common divisor of two integers.
 template<class I> I  Gcd(I m, I n) {
   if (m == 0 || n == 0) {
     if (m == 0 && n == 0) {  // gcd not defined, as all integers are divisors.
@@ -262,6 +264,14 @@ template<class I> I  Gcd(I m, I n) {
     n %= m;
     if (n == 0) return (m > 0 ? m : -m);
   }
+}
+
+/// Returns the least common multiple of two integers.  Will
+/// crash unless the inputs are positive.
+template<class I> I  Lcm(I m, I n) {
+  KALDI_ASSERT(m > 0 && n > 0);
+  I gcd = Gcd(m, n);
+  return gcd * (m/gcd) * (n/gcd);
 }
 
 template<class I> void Factorize(I m, std::vector<I> *factors) {

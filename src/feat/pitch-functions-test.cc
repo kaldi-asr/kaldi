@@ -20,9 +20,8 @@
 #include "feat/pitch-functions.cc"
 #include "feat/feature-plp.h"
 #include "base/kaldi-math.h"
-#include "matrix/kaldi-matrix-inl.h"
 #include "feat/wave-reader.h"
-#include "sys/timeb.h"
+#include "util/timer.h"
 #include "sys/stat.h"
 #include "sys/types.h"
 using namespace kaldi;
@@ -240,20 +239,13 @@ static void UnitTestPitchExtractionSpeed() {
     // compute pitch.
     int test_num = 10;
     Matrix<BaseFloat> m;
-    struct timeb tstruct;
-    int tstart = 0, tend = 0;
-    double tot_ft = 0;
-    // compute time for Pitch Extraction
-    ftime(&tstruct);
-    tstart = tstruct.time * 1000 + tstruct.millitm;
+    Timer timer;
     for (int32 t = 0; t < test_num; t++)
       ComputeKaldiPitch(op, waveform, &m);
-    ftime(&tstruct);
-    tend = tstruct.time * 1000 + tstruct.millitm;
-    double tot_real_time = test_num * waveform.Dim() / op.samp_freq;
-    tot_ft = (tend - tstart)/tot_real_time;
-    KALDI_LOG << " Pitch extraction time per second of speech "
-              << tot_ft << " msec " << std::endl;
+    double tot_time = timer.Elapsed(),
+        speech_time = test_num * waveform.Dim() / wave.SampFreq();
+    KALDI_LOG << " Pitch extraction time per second of speech is "
+              << (tot_time / speech_time) << " seconds " << std::endl;
   }
 }
 static void UnitTestPitchExtractorCompareKeele() {
@@ -371,57 +363,11 @@ void UnitTestDeltaPitch() {
       KALDI_LOG << output_feat(j) << " , " << output_feat2(j) << " ";
   }
 }
-void UnitTestResample() {
-  KALDI_LOG << "=== UnitTestResample() ===\n";
-  // Resample the sine wave
-  double sample_freq = 2000;
-  double resample_freq = 1000;
-  double lowpass_filter_cutoff = 1000;
-  int sample_num = 1000;
-  int32 lowpass_filter_width = 2;
-  Matrix<double> input_wave(1, sample_num);
-  for (int32 i = 0; i < sample_num; i++)
-    input_wave(0, i) = sin(2*M_PI/sample_freq * i);
-  double dt = sample_freq / resample_freq;
-  int32 resampled_len = static_cast<int>(sample_num/dt);
-  std::vector<double> resampled_t(resampled_len);
-  Matrix<double> resampled_wave1(1, resampled_len),
-                 resampled_wave2(1, resampled_len),
-                 resampled_wave3(1, resampled_len);
-  for (int32 i = 0; i < resampled_len; i++)  {
-    resampled_t[i] = static_cast<double>(i) / resample_freq;
-    resampled_wave2(0, i) = sin(2 * M_PI * resampled_t[i]);
-  }
-  ArbitraryResample resample(sample_num, sample_freq,
-                             lowpass_filter_cutoff, resampled_t,
-                             lowpass_filter_width);
-  resample.Resample(input_wave, &resampled_wave1);
-
-  if (!resampled_wave1.ApproxEqual(resampled_wave2, 0.01)) {
-    KALDI_ERR << "Resampled wave " << resampled_wave1
-              << " vs. " << resampled_wave2;
-  }
-  // UnitTest of LinearResample, should equals ArbitraryResample
-  Vector<double> input_wave_vec(sample_num);
-  input_wave_vec.CopyRowFromMat(input_wave, 0);
-  Vector<double> resampled_wave_vec(resampled_len);
-  LinearResample resample3(sample_freq, resample_freq,
-                             lowpass_filter_cutoff,
-                             lowpass_filter_width);
-  resample3.Resample(input_wave_vec, &resampled_wave_vec);
-  resampled_wave3.CopyRowFromVec(resampled_wave_vec, 0);
-
-  if (!resampled_wave3.ApproxEqual(resampled_wave1, 0.0001)) {
-    KALDI_ERR << "Resampled wave " << resampled_wave3
-              << " vs. " << resampled_wave1;
-  }
-}
 
 static void UnitTestFeatNoKeele() {
   UnitTestSimple();
   UnitTestDeltaPitch();
   UnitTestWeightedMovingWindowNormalize();
-  UnitTestResample();
 }
 static void UnitTestFeatWithKeele() {
   UnitTestKeele();
