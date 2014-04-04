@@ -126,12 +126,14 @@ class NBestDecoder {
   }
 
   bool GetNBestLattice(fst::MutableFst<CompactLatticeArc> *fst_out,
-                       bool *was_final, int32 *nbest, BaseFloat *nbest_beam) {
-    // GetBestPath gets the decoding output.  If is_final == true, it limits itself
-    // to final states; otherwise it gets the most likely token not taking into
-    // account final-probs.  fst_out will be empty (Start() == kNoStateId) if
-    // nothing was available.  It returns number of paths if it got output
-    // (thus, fst_out will be nonempty), otherwise zero.
+                       bool *was_final, int32 *nbest, BaseFloat *nbest_beam,
+                       bool use_final_probs = true) {
+    // GetNBestLattice gets the n-best decoding output. If "use_final_probs"
+    // is true AND we reached a final state, it limits itself to final states;
+    // otherwise it does not take into account final-probs.
+    // fst_out will be empty (Start() == kNoStateId) if nothing was available.
+    // It returns number of paths if it got output (thus, fst_out will be
+    // nonempty), otherwise zero.
     int n_paths = 0;
     BaseFloat worst_final = 0.0,
         best_final = std::numeric_limits<BaseFloat>::infinity();
@@ -153,7 +155,7 @@ class NBestDecoder {
     } else { // find best tokens in final states
       for (Elem *e = last_toks, *e_tail; e != NULL; e = e_tail) {
         Token *source = e->val;
-        Weight fw = fst_.Final(e->key);
+        Weight fw = use_final_probs ? fst_.Final(e->key) : Weight::One();
         if (fw != Weight::Zero()) {
           source->c = Times(source->c, fw);
           token_store_.CombineN(best_e, source);
