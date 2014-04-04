@@ -84,10 +84,14 @@ class FasterDecoder {
   /// Returns true if a final state was active on the last frame.
   bool ReachedFinal();
 
-  /// Returns true if the output best path was not the empty
+  /// GetBestPath gets the decoding traceback. If "use_final_probs" is true
+  /// AND we reached a final state, it limits itself to final states;
+  /// otherwise it gets the most likely token not taking into account
+  /// final-probs. Returns true if the output best path was not the empty
   /// FST (will only return false in unusual circumstances where
   /// no tokens survived).
-  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out);
+  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out, 
+                   bool use_final_probs = true);
 
   /// As a new alternative to Decode(), you can call InitDecoding
   /// and then (possibly multiple times) AdvanceDecoding().

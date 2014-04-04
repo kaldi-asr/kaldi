@@ -53,15 +53,15 @@ class SimpleDecoder {
 
   bool ReachedFinal() const;
 
-  // GetBestPath gets the decoding traceback.  If we reached a final state,
-  // it limits itself to final states;
+  // GetBestPath gets the decoding traceback. If "use_final_probs" is true
+  // AND we reached a final state, it limits itself to final states;
   // otherwise it gets the most likely token not taking into account final-probs.
   // fst_out will be empty (Start() == kNoStateId) if nothing was available due to
   // search error.
   // If Decode() returned true, it is safe to assume GetBestPath will return true.
   // It returns true if the output lattice was nonempty (i.e. had states in it);
   // using the return value is deprecated.
-  bool GetBestPath(Lattice *fst_out) const;
+  bool GetBestPath(Lattice *fst_out, bool use_final_probs = true) const;
   
   /// *** The next functions are from the "new interface". ***
   

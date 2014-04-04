@@ -77,9 +77,10 @@ bool LatticeTrackingDecoder::Decode(DecodableInterface *decodable,
 
 // Outputs an FST corresponding to the single best path
 // through the lattice.
-bool LatticeTrackingDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst) const {
+bool LatticeTrackingDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst,
+                                         bool use_final_probs) const {
   fst::VectorFst<LatticeArc> fst;
-  GetRawLattice(&fst);
+  GetRawLattice(&fst, use_final_probs);
   if (fst.NumStates() == 0) return false;
   // std::cout << "Raw lattice is:\n";
   // fst::FstPrinter<LatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
@@ -90,7 +91,8 @@ bool LatticeTrackingDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst) cons
 
 // Outputs an FST corresponding to the raw, state-level
 // tracebacks.
-bool LatticeTrackingDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) const {
+bool LatticeTrackingDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
+                                           bool use_final_probs) const {
   typedef LatticeArc Arc;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
@@ -144,10 +146,14 @@ bool LatticeTrackingDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) co
         ofst->AddArc(cur_state, arc);
       }
       if (f == num_frames) {
-        std::map<Token*, BaseFloat>::const_iterator iter =
-            final_costs_.find(tok);
-        if (iter != final_costs_.end())
-          ofst->SetFinal(cur_state, LatticeWeight(iter->second, 0));
+        if (use_final_probs && !final_costs_.empty()) {
+          std::map<Token*, BaseFloat>::const_iterator iter =
+              final_costs_.find(tok);
+          if (iter != final_costs_.end())
+            ofst->SetFinal(cur_state, LatticeWeight(iter->second, 0));
+        } else {
+          ofst->SetFinal(cur_state, LatticeWeight::One());
+        }
       }
     }
   }
@@ -159,9 +165,10 @@ bool LatticeTrackingDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) co
 // the LatticeTrackingDecoder class.
 // Outputs an FST corresponding to the lattice-determinized
 // lattice (one path per word sequence).
-bool LatticeTrackingDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const {
+bool LatticeTrackingDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst,
+                                        bool use_final_probs) const {
   Lattice raw_fst;
-  GetRawLattice(&raw_fst);
+  GetRawLattice(&raw_fst, use_final_probs);
   if (raw_fst.NumStates() == 0) return false;
   Invert(&raw_fst); // make it so word labels are on the input.
   if (!TopSort(&raw_fst)) // topological sort makes lattice-determinization more efficient

@@ -140,19 +140,33 @@ class LatticeTrackingDecoder {
   /// lattice (or traceback) will end with states that are not final-states.
   bool ReachedFinal() const { return final_active_; }
 
-  // Outputs an FST corresponding to the single best path
-  // through the lattice.
-  bool GetBestPath(fst::MutableFst<LatticeArc> *ofst) const;
+  /// Outputs an FST corresponding to the single best path through the lattice.
+  /// Returns true if result is nonempty (using the return status is deprecated,
+  /// it will become void).  If "use_final_probs" is true AND we reached the
+  /// final-state of the graph then it will include those as final-probs, else
+  /// it will treat all final-probs as one.  Note: this just calls GetRawLattice()
+  /// and figures out the shortest path.
+  bool GetBestPath(fst::MutableFst<LatticeArc> *ofst,
+                   bool use_final_probs = true) const;
 
-  // Outputs an FST corresponding to the raw, state-level
-  // tracebacks.
-  bool GetRawLattice(fst::MutableFst<LatticeArc> *ofst) const;
+  /// Outputs an FST corresponding to the raw, state-level
+  /// tracebacks.  Returns true if result is nonempty.
+  /// If "use_final_probs" is true AND we reached the final-state
+  /// of the graph then it will include those as final-probs, else
+  /// it will treat all final-probs as one.
+  /// The raw lattice will be topologically sorted.
+  bool GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
+                     bool use_final_probs = true) const;
 
-  // This function is now deprecated, since now we do determinization from
-  // outside the LatticeTrackingDecoder class.
-  // Outputs an FST corresponding to the lattice-determinized
-  // lattice (one path per word sequence).
-  bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const;
+  /// [Deprecated, users should now use GetRawLattice and determinize it
+  /// themselves, e.g. using DeterminizeLatticePhonePrunedWrapper].
+  /// Outputs an FST corresponding to the lattice-determinized
+  /// lattice (one path per word sequence).   Returns true if result is nonempty.
+  /// If "use_final_probs" is true AND we reached the final-state of the graph
+  /// then it will include those as final-probs, else it will treat all
+  /// final-probs as one.
+  bool GetLattice(fst::MutableFst<CompactLatticeArc> *ofst,
+                  bool use_final_probs = true) const;
   
  private:
   struct Token;

@@ -84,9 +84,11 @@ bool FasterDecoder::ReachedFinal() {
   return false;
 }
 
-bool FasterDecoder::GetBestPath(fst::MutableFst<LatticeArc> *fst_out) {
-  // GetBestPath gets the decoding output.  If is_final == true, it limits itself
-  // to final states; otherwise it gets the most likely token not taking into
+bool FasterDecoder::GetBestPath(fst::MutableFst<LatticeArc> *fst_out,
+                                bool use_final_probs) {
+  // GetBestPath gets the decoding output.  If "use_final_probs" is true
+  // AND we reached a final state, it limits itself to final states;
+  // otherwise it gets the most likely token not taking into
   // account final-probs.  fst_out will be empty (Start() == kNoStateId) if
   // nothing was available.  It returns true if it got output (thus, fst_out
   // will be nonempty).
@@ -134,7 +136,7 @@ bool FasterDecoder::GetBestPath(fst::MutableFst<LatticeArc> *fst_out) {
     fst_out->AddArc(cur_state, arc);
     cur_state = arc.nextstate;
   }
-  if (is_final) {
+  if (is_final && use_final_probs) {
     Weight final_weight = fst_.Final(best_tok->arc_.nextstate);
     fst_out->SetFinal(cur_state, LatticeWeight(final_weight.Value(), 0.0));
   } else {

@@ -118,7 +118,9 @@ BaseFloat SimpleDecoder::FinalRelativeCost() const {
   return extra_cost;
 }
 
-bool SimpleDecoder::GetBestPath(Lattice *fst_out) const {
+// Outputs an FST corresponding to the single best path
+// through the lattice.
+bool SimpleDecoder::GetBestPath(Lattice *fst_out, bool use_final_probs) const {
   fst_out->DeleteStates();
   Token *best_tok = NULL;
   bool is_final = ReachedFinal();
@@ -157,7 +159,7 @@ bool SimpleDecoder::GetBestPath(Lattice *fst_out) const {
     fst_out->AddArc(cur_state, arc);
     cur_state = arc.nextstate;
   }
-  if (is_final)
+  if (is_final && use_final_probs)
     fst_out->SetFinal(cur_state,
                       LatticeWeight(fst_.Final(best_tok->arc_.nextstate).Value(),
                                     0.0));
