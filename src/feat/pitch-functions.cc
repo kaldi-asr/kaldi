@@ -254,40 +254,40 @@ void Nccf(const Vector<BaseFloat> &wave,
 
 void ProcessNccf(const Vector<BaseFloat> &inner_prod,
                  const Vector<BaseFloat> &norm_prod,
-                 double a_fact,
+                 double nccf_ballast,
                  int32 start, int32 end,
                  SubVector<BaseFloat> *autocorr) {
   for (int32 lag = start; lag < end; lag++) {
-    if (norm_prod(lag-start) != 0.0)
-      (*autocorr)(lag) =
-        inner_prod(lag-start) / pow(norm_prod(lag-start) + a_fact, 0.5);
-    KALDI_ASSERT((*autocorr)(lag) < 1.01 && (*autocorr)(lag) > -1.01);
+    BaseFloat numerator = inner_prod(lag - start),
+        denominator = pow(norm_prod(lag-start) + nccf_ballast, 0.5),
+        nccf;
+    if (denominator != 0.0) {
+      nccf = numerator / denominator;
+    } else {
+      KALDI_ASSERT(numerator == 0.0);
+      nccf = 0.0;
+    }
+    KALDI_ASSERT(nccf < 1.01 && nccf > -1.01);
+    (*autocorr)(lag) = nccf;
   }
 }
 
+/**
+   This function selects the lags at which we measure the NCCF: we need
+   to select lags from 1/max_f0 to 1/min_f0, in a geometric progression
+   with ratio 1 + d.
+ */
 void SelectLags(const PitchExtractionOptions &opts,
-                int32 *state_num,
                 Vector<BaseFloat> *lags) {
+
   // choose lags relative to acceptable pitch tolerance
-  BaseFloat min_lag = 1.0 / (1.0 * opts.max_f0),
-      max_lag = 1.0 / (1.0 * opts.min_f0);
-  BaseFloat delta_lag = opts.upsample_filter_width/(2.0 * opts.resample_freq);
-
-  int32 lag_size = 1 + round(log((max_lag + delta_lag) / (min_lag - delta_lag))
-      / log(1.0 + opts.delta_pitch));
-  lags->Resize(lag_size);
-
-  // we choose sequence of lags which leads to delta_pitch difference in
-  // pitch_space.
-  BaseFloat lag = min_lag;
-  int32 count = 0;
-  while (lag <= max_lag) {
-    (*lags)(count) = lag;
-    count++;
-    lag = lag * (1 + opts.delta_pitch);
-  }
-  lags->Resize(count, kCopyData);
-  (*state_num) = count;
+  BaseFloat min_lag = 1.0 / opts.max_f0, max_lag = 1.0 / opts.min_f0;
+  
+  std::vector<BaseFloat> tmp_lags;
+  for (BaseFloat lag = min_lag; lag <= max_lag; lag *= 1.0 + opts.delta_pitch)
+    tmp_lags.push_back(lag);
+  lags->Resize(tmp_lags.size());
+  std::copy(tmp_lags.begin(), tmp_lags.end(), lags->Data());
 }
 
 class PitchExtractor {
@@ -309,25 +309,21 @@ class PitchExtractor {
   }
   ~PitchExtractor() {}
 
-  void ComputeLocalCost(const Matrix<BaseFloat> &autocorrelation) {
-    Vector<BaseFloat> correl(state_num_);
-
+  void ComputeLocalCost(const Matrix<BaseFloat> &nccf) {
     for (int32 i = 1; i < num_frames_ + 1; i++) {
-      SubVector<BaseFloat> frame(autocorrelation.Row(i-1));
+      SubVector<BaseFloat> frame(nccf.Row(i-1));
       Vector<BaseFloat> local_cost(state_num_);
-      for (int32 j = 0; j < state_num_; j++)
-        correl(j) = frame(j);
       // compute the local cost
       frames_[i].local_cost.Add(1.0);
-      frames_[i].local_cost.AddVec(-1.0, correl);
+      frames_[i].local_cost.AddVec(-1.0, frame);
       Vector<BaseFloat> corr_lag_cost(state_num_);
-      corr_lag_cost.AddVecVec(opts_.soft_min_f0, correl, lags_, 0);
+      corr_lag_cost.AddVecVec(opts_.soft_min_f0, frame, lags_, 0);
       frames_[i].local_cost.AddVec(1.0, corr_lag_cost);
     }  // end of loop over frames
   }
   
-  void FastViterbi(const Matrix<BaseFloat> &correlation) {
-    ComputeLocalCost(correlation);
+  void FastViterbi(const Matrix<BaseFloat> &nccf) {
+    ComputeLocalCost(nccf);
     double intercost, min_c, this_c;
     int best_b, min_i, max_i;
     BaseFloat delta_pitch_sq = log(1 + opts_.delta_pitch)
@@ -427,7 +423,7 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
   // Preprocess the wave
   Vector<BaseFloat> processed_wave(wave.Dim());
   PreProcess(opts, wave, &processed_wave);
-  int32 num_states, rows_out = PitchNumFrames(processed_wave.Dim(), opts);
+  int32 rows_out = PitchNumFrames(processed_wave.Dim(), opts);
   if (rows_out == 0)
     KALDI_ERR << "No frames fit in file (#samples is "
       << processed_wave.Dim() << ")";
@@ -442,26 +438,29 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
   int32 start = round(opts.resample_freq  * outer_min_lag),
       end = round(opts.resample_freq / opts.min_f0) +
       round(opts.lowpass_filter_width / 2);
-
+  
   Vector<BaseFloat> lags;
-  SelectLags(opts, &num_states, &lags);
-  double a_fact_pitch = pow(opts.NccfWindowSize(), 4) * opts.nccf_ballast,
-    a_fact_pov = pow(10, -9);
+  SelectLags(opts, &lags);
+  int32 num_states = lags.Dim();
   Matrix<BaseFloat> nccf_pitch(rows_out, num_max_lag + 1),
       nccf_pov(rows_out, num_max_lag + 1);
+
+  double nccf_ballast_pitch = pow(opts.NccfWindowSize(), 4) * opts.nccf_ballast;
+  double nccf_ballast_pov = 0.0;
+  
   for (int32 r = 0; r < rows_out; r++) {  // r is frame index.
     ExtractFrame(processed_wave, r, opts, &window);
     // compute nccf for pitch extraction
     Vector<BaseFloat> inner_prod(num_lags), norm_prod(num_lags);
     Nccf(window, start, end, opts.NccfWindowSize(),
          &inner_prod, &norm_prod);
-    SubVector<BaseFloat> nccf_pitch_vec(nccf_pitch.Row(r));
-    ProcessNccf(inner_prod, norm_prod, a_fact_pitch,
-        start, end, &(nccf_pitch_vec));
+    SubVector<BaseFloat> nccf_pitch_vec(nccf_pitch.Row(r));    
+    ProcessNccf(inner_prod, norm_prod, nccf_ballast_pitch,
+                start, end, &(nccf_pitch_vec));
     // compute the Nccf for Probability of voicing estimation
     SubVector<BaseFloat> nccf_pov_vec(nccf_pov.Row(r));
-    ProcessNccf(inner_prod, norm_prod, a_fact_pov,
-        start, end, &(nccf_pov_vec));
+    ProcessNccf(inner_prod, norm_prod, nccf_ballast_pov,
+                start, end, &(nccf_pov_vec));
   }
   Vector<BaseFloat> lag_vec(num_states);
   for (int32 i = 0; i < num_states; i++)
