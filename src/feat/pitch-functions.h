@@ -30,6 +30,7 @@
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
 #include "feat/mel-computations.h"
+#include "itf/online-feature-itf.h"
 
 namespace kaldi {
 /// @addtogroup  feat FeatureExtraction
@@ -160,6 +161,7 @@ struct PostProcessPitchOptions {
                  "If true, log(pitch) is added to output features");
   }
 };
+
 
 
 /// This function extracts (pitch, NCCF) per frame, using the pitch extraction

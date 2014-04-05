@@ -31,7 +31,7 @@ namespace kaldi {
 
 
 /*
-  WeightedMovingWindowNormalize is does weighted moving window normalization.
+  WeightedMovingWindowNormalize does weighted moving window normalization.
 
   The simplest possible moving window normalization would be to set
   mean_subtracted_log_pitch(i) to raw_log_pitch(i) minus
@@ -177,35 +177,32 @@ void PreemphasizeFrame(VectorBase<BaseFloat> *waveform, double preemph_coeff) {
 }
 
 void ExtractFrame(const VectorBase<BaseFloat> &wave,
-                  int32 frame_num,
+                  int32 frame_index,
                   const PitchExtractionOptions &opts,
                   Vector<BaseFloat> *window) {
   int32 frame_shift = opts.NccfWindowShift();
   int32 frame_length = opts.NccfWindowSize();
-  int32 outer_max_lag = round(opts.resample_freq / opts.min_f0) +
-      round(opts.lowpass_filter_width/2);
-
-  KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
-  int32 start = frame_shift * frame_num;
-  int32 end = start + outer_max_lag  + frame_length;
-  int32 frame_length_new = frame_length + outer_max_lag;
-
-  if (window->Dim() != frame_length_new)
-    window->Resize(frame_length_new);
+  double outer_max_lag =  1.0 / opts.min_f0 +
+      (opts.upsample_filter_width/(2.0 * opts.resample_freq));
+  int32 end_lag = floor(opts.resample_freq * outer_max_lag);
   
-  SubVector<BaseFloat> wave_part(wave, start,
-                              std::min(frame_length_new, wave.Dim()-start));
+  KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
+  int32 start = frame_shift * frame_index;
+  int32 frame_length_full = frame_length + end_lag;
 
-  SubVector<BaseFloat>  window_part(*window, 0,
-                                 std::min(frame_length_new, wave.Dim()-start));
-  window_part.CopyFromVec(wave_part);
+  if (window->Dim() != frame_length_full)
+    window->Resize(frame_length_full);
+
+  if (start + frame_length_full <= wave.Dim()) {
+    window->CopyFromVec(wave.Range(start, frame_length_full));
+  } else {
+    window->SetZero();
+    int32 size = wave.Dim() - start;
+    window->Range(0, size).CopyFromVec(wave.Range(start, size));
+  }
 
   if (opts.preemph_coeff != 0.0)
-    PreemphasizeFrame(&window_part, opts.preemph_coeff);
-
-  if (end > wave.Dim())
-    SubVector<BaseFloat>(*window, frame_length_new-end+wave.Dim(),
-                      end-wave.Dim()).SetZero();
+    PreemphasizeFrame(window, opts.preemph_coeff);
 }
 
 
@@ -231,11 +228,24 @@ void PreProcess(const PitchExtractionOptions opts,
     (*processed_wave).Scale(1.0 / rms);
 }
 
-void Nccf(const Vector<BaseFloat> &wave,
-          int32 start, int32 end,
-          int32 nccf_window_size,
-          Vector<BaseFloat> *inner_prod,
-          Vector<BaseFloat> *norm_prod) {
+
+/**
+   This function computes some dot products that are required
+   while computing the NCCF.
+   For each integer lag from start to end-1, this function
+   outputs to (*inner_prod)(lag - start), the dot-product
+   of a window starting at 0 with a window starting at
+   lag.  All windows are of length nccf_window_size.  It
+   outputs to (*norm_prod)(lag - start), e1 * e2, where
+   e1 is the dot-product of the un-shifted window with itself,
+   and d2 is the dot-product of the window shifted by "lag"
+   with itself.
+ */
+void ComputeCorrelation(const Vector<BaseFloat> &wave,
+                        int32 start, int32 end,
+                        int32 nccf_window_size,
+                        Vector<BaseFloat> *inner_prod,
+                        Vector<BaseFloat> *norm_prod) {
   Vector<BaseFloat> zero_mean_wave(wave);
   SubVector<BaseFloat> wave_part(wave, 0, nccf_window_size);
   // subtract mean-frame from wave
@@ -243,7 +253,7 @@ void Nccf(const Vector<BaseFloat> &wave,
   BaseFloat e1, e2, sum;
   SubVector<BaseFloat> sub_vec1(zero_mean_wave, 0, nccf_window_size);
   e1 = VecVec(sub_vec1, sub_vec1);
-  for (int32 lag = start; lag < end; lag++) {
+  for (int32 lag = start; lag <= end; lag++) {
     SubVector<BaseFloat> sub_vec2(zero_mean_wave, lag, nccf_window_size);
     e2 = VecVec(sub_vec2, sub_vec2);
     sum = VecVec(sub_vec1, sub_vec2);
@@ -252,14 +262,21 @@ void Nccf(const Vector<BaseFloat> &wave,
   }
 }
 
+/**
+   Computes the NCCF as a fraction of the numerator term (a dot product between
+   two vectors) and a denominator term which equals sqrt(e1*e2 + nccf_ballast)
+   where e1 and e2 are both dot-products of bits of the wave with themselves,
+   and e1*e2 is supplied as "norm_prod".
+ */
 void ProcessNccf(const Vector<BaseFloat> &inner_prod,
                  const Vector<BaseFloat> &norm_prod,
                  double nccf_ballast,
-                 int32 start, int32 end,
-                 SubVector<BaseFloat> *autocorr) {
-  for (int32 lag = start; lag < end; lag++) {
-    BaseFloat numerator = inner_prod(lag - start),
-        denominator = pow(norm_prod(lag-start) + nccf_ballast, 0.5),
+                 SubVector<BaseFloat> *nccf_vec) {
+  KALDI_ASSERT(inner_prod.Dim() == norm_prod.Dim() &&
+               inner_prod.Dim() == nccf_vec->Dim());
+  for (int32 lag = 0; lag < inner_prod.Dim(); lag++) {
+    BaseFloat numerator = inner_prod(lag),
+        denominator = pow(norm_prod(lag) + nccf_ballast, 0.5),
         nccf;
     if (denominator != 0.0) {
       nccf = numerator / denominator;
@@ -268,7 +285,7 @@ void ProcessNccf(const Vector<BaseFloat> &inner_prod,
       nccf = 0.0;
     }
     KALDI_ASSERT(nccf < 1.01 && nccf > -1.01);
-    (*autocorr)(lag) = nccf;
+    (*nccf_vec)(lag) = nccf;
   }
 }
 
@@ -292,19 +309,19 @@ void SelectLags(const PitchExtractionOptions &opts,
 
 class PitchExtractor {
  public:
-  explicit PitchExtractor(const PitchExtractionOptions &opts,
-                          const Vector<BaseFloat> lags,
-                          int32 state_num,
-                          int32 num_frames) :
+  PitchExtractor(const PitchExtractionOptions &opts,
+                 const Vector<BaseFloat> &lags,
+                 int32 num_states,
+                 int32 num_frames) :
       opts_(opts),
-      state_num_(state_num),
+      num_states_(num_states),
       num_frames_(num_frames),
       lags_(lags) {
     frames_.resize(num_frames_+1);
     for (int32 i = 0; i < num_frames_+1; i++) {
-      frames_[i].local_cost.Resize(state_num_);
-      frames_[i].obj_func.Resize(state_num_);
-      frames_[i].back_pointers.resize(state_num_);
+      frames_[i].local_cost.Resize(num_states_);
+      frames_[i].obj_func.Resize(num_states_);
+      frames_[i].back_pointers.resize(num_states_);
     }
   }
   ~PitchExtractor() {}
@@ -312,11 +329,11 @@ class PitchExtractor {
   void ComputeLocalCost(const Matrix<BaseFloat> &nccf) {
     for (int32 i = 1; i < num_frames_ + 1; i++) {
       SubVector<BaseFloat> frame(nccf.Row(i-1));
-      Vector<BaseFloat> local_cost(state_num_);
+      Vector<BaseFloat> local_cost(num_states_);
       // compute the local cost
       frames_[i].local_cost.Add(1.0);
       frames_[i].local_cost.AddVec(-1.0, frame);
-      Vector<BaseFloat> corr_lag_cost(state_num_);
+      Vector<BaseFloat> corr_lag_cost(num_states_);
       corr_lag_cost.AddVecVec(opts_.soft_min_f0, frame, lags_, 0);
       frames_[i].local_cost.AddVec(1.0, corr_lag_cost);
     }  // end of loop over frames
@@ -336,7 +353,7 @@ class PitchExtractor {
       // pitch on this frame].
       
       // Forward Pass
-      for (int32 i = 0; i < state_num_; i++) {
+      for (int32 i = 0; i < num_states_; i++) {
         if ( i == 0 )
           min_i = 0;
         else
@@ -356,9 +373,9 @@ class PitchExtractor {
         frames_[t].obj_func(i) = min_c + frames_[t].local_cost(i);
       }
       // Backward Pass
-      for (int32 i = state_num_-1; i >= 0; i--) {
-        if (i == state_num_-1)
-          max_i = state_num_-1;
+      for (int32 i = num_states_-1; i >= 0; i--) {
+        if (i == num_states_-1)
+          max_i = num_states_-1;
         else
           max_i = frames_[t].back_pointers[i+1];
         min_c = frames_[t].obj_func(i) - frames_[t].local_cost(i);
@@ -401,8 +418,8 @@ class PitchExtractor {
   }
  private:
   PitchExtractionOptions opts_;
-  int32 state_num_;      // number of states in Viterbi Computation
-  int32 num_frames_;     // number of frames in input wave
+  int32 num_states_;    // number of states in Viterbi Computation
+  int32 num_frames_;    // number of frames in input wave
   Vector<BaseFloat> lags_;    // all lags used in viterbi
   struct PitchFrame {
     Vector<BaseFloat> local_cost;
@@ -423,50 +440,57 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
   // Preprocess the wave
   Vector<BaseFloat> processed_wave(wave.Dim());
   PreProcess(opts, wave, &processed_wave);
-  int32 rows_out = PitchNumFrames(processed_wave.Dim(), opts);
-  if (rows_out == 0)
+  int32 num_frames = PitchNumFrames(processed_wave.Dim(), opts);
+  if (num_frames == 0)
     KALDI_ERR << "No frames fit in file (#samples is "
       << processed_wave.Dim() << ")";
   Vector<BaseFloat> window;       // windowed waveform.
-  double outer_min_lag = 1.0 / (1.0 * opts.max_f0) -
+  double outer_min_lag = 1.0 / opts.max_f0 -
       (opts.upsample_filter_width/(2.0 * opts.resample_freq));
-  double outer_max_lag = 1.0 / (1.0 * opts.min_f0) +
+  double outer_max_lag = 1.0 / opts.min_f0 +
       (opts.upsample_filter_width/(2.0 * opts.resample_freq));
-  int32 num_max_lag = round(outer_max_lag * opts.resample_freq) + 1;
-  int32 num_lags = round(opts.resample_freq * outer_max_lag) -
-      round(opts.resample_freq *  outer_min_lag) + 1;
-  int32 start = round(opts.resample_freq  * outer_min_lag),
-      end = round(opts.resample_freq / opts.min_f0) +
-      round(opts.lowpass_filter_width / 2);
-  
-  Vector<BaseFloat> lags;
-  SelectLags(opts, &lags);
-  int32 num_states = lags.Dim();
-  Matrix<BaseFloat> nccf_pitch(rows_out, num_max_lag + 1),
-      nccf_pov(rows_out, num_max_lag + 1);
 
+  int32 start = ceil(opts.resample_freq * outer_min_lag),
+      end = floor(opts.resample_freq * outer_max_lag),
+      num_initial_lags = end - start + 1;
+  // num_initial_lags is the number of lags we initially compute-- evenly
+  // spaced, integer lags-- before doing the resampling.
+  
+  Vector<BaseFloat> final_lags;
+  SelectLags(opts, &final_lags);
+  // final_lags is a list of the lags we want to resample the NCCF at;
+  // these are log-spaced so we have finer resolution for smaller lags.
+  
+  int32 num_states = final_lags.Dim();
+  Matrix<BaseFloat> nccf_pitch(num_frames, num_initial_lags),
+      nccf_pov(num_frames, num_initial_lags);
+  
   double nccf_ballast_pitch = pow(opts.NccfWindowSize(), 4) * opts.nccf_ballast;
   double nccf_ballast_pov = 0.0;
   
-  for (int32 r = 0; r < rows_out; r++) {  // r is frame index.
+  for (int32 r = 0; r < num_frames; r++) {  // r is frame index.
     ExtractFrame(processed_wave, r, opts, &window);
     // compute nccf for pitch extraction
-    Vector<BaseFloat> inner_prod(num_lags), norm_prod(num_lags);
-    Nccf(window, start, end, opts.NccfWindowSize(),
-         &inner_prod, &norm_prod);
+    Vector<BaseFloat> inner_prod(num_initial_lags), norm_prod(num_initial_lags);
+    ComputeCorrelation(window, start, end, opts.NccfWindowSize(),
+                       &inner_prod, &norm_prod);
     SubVector<BaseFloat> nccf_pitch_vec(nccf_pitch.Row(r));    
     ProcessNccf(inner_prod, norm_prod, nccf_ballast_pitch,
-                start, end, &(nccf_pitch_vec));
-    // compute the Nccf for Probability of voicing estimation
+                &(nccf_pitch_vec));
+    // compute the Nccf for Probability of voicing estimation;
+    // there is no ballast for this version of the NCCF.
     SubVector<BaseFloat> nccf_pov_vec(nccf_pov.Row(r));
     ProcessNccf(inner_prod, norm_prod, nccf_ballast_pov,
-                start, end, &(nccf_pov_vec));
+                &(nccf_pov_vec));
   }
-  Vector<BaseFloat> lag_vec(num_states);
-  for (int32 i = 0; i < num_states; i++)
-    lag_vec(i) = static_cast<BaseFloat>(lags(i));
-  // upsample the nccf to have better pitch and pov estimation
-
+  Vector<BaseFloat> final_lags_offset(final_lags);
+  // final_lags_offset is the final_lags with start / opts.resample_freq
+  // subtracted from each element, so we can treat the rows of nccf_pitch and
+  // nccf_pov as starting from sample zero in a signal that starts at the point
+  // start / opts.resample_freq.  This is necessary because the resampling code
+  // assumes that the input signal starts from sample zero.
+  final_lags_offset.Add(-start / opts.resample_freq);
+  
   // upsample_cutoff is the filter cutoff for upsampling the NCCF, which is the
   // Nyquist of the resampling frequency.  The NCCF is (almost completely)
   // bandlimited to around "lowpass_cutoff" (1000 by default), and when the
@@ -476,20 +500,20 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
   // half the Nyquist (2000 by default) is sufficient to get only the first
   // repetition.
   BaseFloat upsample_cutoff = opts.resample_freq * 0.5;
-  ArbitraryResample resample(num_max_lag + 1, opts.resample_freq,
-                             upsample_cutoff,
-                             lag_vec, opts.upsample_filter_width);
-  Matrix<BaseFloat> resampled_nccf_pitch(rows_out, num_states);
+  ArbitraryResample resample(num_initial_lags, opts.resample_freq,
+                             upsample_cutoff, final_lags_offset,
+                             opts.upsample_filter_width);
+  Matrix<BaseFloat> resampled_nccf_pitch(num_frames, num_states);
   resample.Resample(nccf_pitch, &resampled_nccf_pitch);
-  Matrix<BaseFloat> resampled_nccf_pov(rows_out, num_states);
+  Matrix<BaseFloat> resampled_nccf_pov(num_frames, num_states);
   resample.Resample(nccf_pov, &resampled_nccf_pov);
 
-  PitchExtractor pitch(opts, lags, num_states, rows_out);
+  PitchExtractor pitch(opts, final_lags, num_states, num_frames);
   pitch.FastViterbi(resampled_nccf_pitch);
   // pitch.FindBestPath will use the NCCF without the "ballast" term
   // when it notes the NCCF at each frame.
   pitch.FindBestPath(resampled_nccf_pov);
-  output->Resize(rows_out, 2);  // (pov, pitch)
+  output->Resize(num_frames, 2);  // (pov, pitch)
   pitch.GetPitchAndPov(output);
 }
 
@@ -571,7 +595,6 @@ void PostProcessPitch(const PostProcessPitchOptions &opts,
   if (opts.add_raw_log_pitch)
     output->CopyColFromVec(raw_log_pitch, col++);
   KALDI_ASSERT(col == output_ncols);
-
 }
 
 

@@ -38,22 +38,6 @@ namespace kaldi {
 /// @{
 
 
-/// Add a virtual class for "source" features such as MFCC or PLP.
-class OnlineBaseFeature: public OnlineFeatureInterface {
- public:
-  // This would be called from the application, when you get
-  // more wave data.  Note: the sampling_rate is only provided so
-  // the code can assert that it matches the sampling rate
-  // expected in the options.
-  virtual void AcceptWaveform(BaseFloat sampling_rate,
-                              const VectorBase<BaseFloat> &waveform) = 0;
-
-  // InputFinished() tells the class you won't be providing any
-  // more waveform.  This will help flush out the last few frames
-  // of delta or LDA features.
-  virtual void InputFinished() = 0;
-};
-
 
 template<class C>
 class OnlineMfccOrPlp: public OnlineBaseFeature {

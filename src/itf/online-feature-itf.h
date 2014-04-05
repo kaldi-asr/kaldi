@@ -77,8 +77,27 @@ class OnlineFeatureInterface {
   /// Virtual destructor.  Note: constructors that take another member of
   /// type OnlineFeatureInterface are not expected to take ownership of
   /// that pointer; the caller needs to keep track of that manually.
-  virtual ~OnlineFeatureInterface() { }
+  virtual ~OnlineFeatureInterface() { }  
 };
+
+
+/// Add a virtual class for "source" features such as MFCC or PLP or pitch
+/// features.
+class OnlineBaseFeature: public OnlineFeatureInterface {
+ public:
+  /// This would be called from the application, when you get more wave data.
+  /// Note: the sampling_rate is typically only provided so the code can assert
+  /// that it matches the sampling rate expected in the options.
+  virtual void AcceptWaveform(BaseFloat sampling_rate,
+                              const VectorBase<BaseFloat> &waveform) = 0;
+
+  /// InputFinished() tells the class you won't be providing any
+  /// more waveform.  This will help flush out the last few frames
+  /// of delta or LDA features (it will typically affect the return value
+  /// of IsLastFrame.
+  virtual void InputFinished() = 0;
+};
+
 
 /// @}
 }  // namespace Kaldi

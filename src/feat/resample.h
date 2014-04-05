@@ -133,7 +133,7 @@ class ArbitraryResample {
    ArbitraryResample because we can construct it just once.
 
    We require that the input and output sampling rate be specified as
-   integers, as this is an easy way to specify that their ratio be rational.   
+   integers, as this is an easy way to specify that their ratio be rational.
 */
 
 class LinearResample {
@@ -141,7 +141,9 @@ class LinearResample {
   /// Constructor.  We make the input and output sample rates integers, because
   /// we are going to need to find a common divisor.  This should just remind you
   /// that they need to be integers.  The filter cutoff needs to be less than
-  /// samp_rate_in_hz/2 and less than samp_rate_out_hz/2.
+  /// samp_rate_in_hz/2 and less than samp_rate_out_hz/2.  num_zeros controls
+  /// the sharpness of the filter, more == sharper but less efficient.  We suggest
+  /// around 4 to 10 for normal use.
   LinearResample(int32 samp_rate_in_hz,
                  int32 samp_rate_out_hz,
                  BaseFloat filter_cutoff_hz,
