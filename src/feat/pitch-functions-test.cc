@@ -2,6 +2,9 @@
 
 // Copyright    2013  Pegah Ghahremani
 //              2014  IMSL, PKU-HKUST (author: Wei Shi)
+//              2014  Yanqing Sun, Junjie Wang,
+//                    Daniel Povey, Korbinian Riedhammer
+
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -157,7 +160,8 @@ static void UnitTestKeeleNccfBallast() {
 }
 static void UnitTestWeightedMovingWindowNormalize() {
   KALDI_LOG << "=== UnitTestWeightedMovingWindowNormalize1() ===\n";
-  // compare the results of WeightedMovingWindowNormalize and Sliding CMN with uniform weights.
+  // compare the results of WeightedMovingWindowNormalize and Sliding CMN
+  // with uniform weights.
   for (int32 i = 0; i < 1000; i++) {
     int32 num_frames = 1 + (rand()%10 * 10);
     int32 normalization_win_size = 5 + rand() % 50;
@@ -173,7 +177,7 @@ static void UnitTestWeightedMovingWindowNormalize() {
     pov.CopyColFromMat(feat, 0);
     log_pitch.CopyColFromMat(feat, 1);
     WeightedMovingWindowNormalize(normalization_win_size, pov, log_pitch ,
-                                      &mean_subtracted_log_pitch);
+                                  &mean_subtracted_log_pitch);
     output_feat.CopyColFromVec(mean_subtracted_log_pitch, 1);
 
     // SlidingWindow
@@ -360,7 +364,7 @@ void UnitTestDeltaPitch() {
         << " ouput feat2 " << output_feat2;
     }
     for (int32 j = 0; j < num_frames; j++)
-      KALDI_LOG << output_feat(j) << " , " << output_feat2(j) << " ";
+      KALDI_VLOG(1) << output_feat(j) << " , " << output_feat2(j) << " ";
   }
 }
 

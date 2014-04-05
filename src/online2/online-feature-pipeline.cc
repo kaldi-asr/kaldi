@@ -37,7 +37,7 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
   }
   if (config.cmvn_config != "") {
     ReadConfigFromFile(config.cmvn_config, &cmvn_opts);
-  } // else use the defaults.
+  }  // else use the defaults.
 
   if (config.splice_config != "") {
     ReadConfigFromFile(config.splice_config, &splice_opts);
@@ -74,10 +74,10 @@ OnlineFeaturePipeline::OnlineFeaturePipeline(
     const OnlineFeaturePipelineConfig &config):
     config_(config) {
   if (config.lda_rxfilename != "")
-    ReadKaldiObject(config.lda_rxfilename, &lda_mat_);    
+    ReadKaldiObject(config.lda_rxfilename, &lda_mat_);
   if (config.global_cmvn_stats_rxfilename != "")
     ReadKaldiObject(config.global_cmvn_stats_rxfilename,
-                    &global_cmvn_stats_);    
+                    &global_cmvn_stats_);
   Init();
 }
 
@@ -97,7 +97,8 @@ OnlineFeatureInterface* OnlineFeaturePipeline::UnadaptedFeature() const {
 
 OnlineFeatureInterface* OnlineFeaturePipeline::AdaptedFeature() const {
   if (fmllr_) return fmllr_;
-  else return UnadaptedFeature();
+  else
+    return UnadaptedFeature();
 }
 
 
@@ -143,19 +144,19 @@ void OnlineFeaturePipeline::Init() {
   } else {
     splice_or_delta_ = NULL;
   }
-  
+
   if (lda_mat_.NumRows() != 0) {
     lda_ = new OnlineTransform(lda_mat_,
                                (splice_or_delta_ != NULL ?
                                 splice_or_delta_ : cmvn_));
   }
 
-  fmllr_ = NULL; // This will be set up if the user calls SetTransform().
+  fmllr_ = NULL;  // This will be set up if the user calls SetTransform().
 }
 
 void OnlineFeaturePipeline::SetTransform(
     const MatrixBase<BaseFloat> &transform) {
-  if (fmllr_ != NULL) { // we already had a transform;  delete this
+  if (fmllr_ != NULL) {  // we already had a transform;  delete this
     // object.
     delete fmllr_;
     fmllr_ = NULL;
@@ -168,7 +169,7 @@ void OnlineFeaturePipeline::SetTransform(
 
 
 void OnlineFeaturePipeline::FreezeCmvn() {
-  cmvn_->Freeze(cmvn_->NumFramesReady() - 1);  
+  cmvn_->Freeze(cmvn_->NumFramesReady() - 1);
 }
 
 int32 OnlineFeaturePipeline::Dim() const {
@@ -214,7 +215,7 @@ BaseFloat OnlineFeaturePipelineConfig::FrameShiftInSeconds() const {
   } else {
     KALDI_ERR << "Unknown feature type " << feature_type;
     return 0.0;
-  }  
+  }
 }
 
 

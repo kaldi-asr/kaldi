@@ -2,6 +2,7 @@
 
 // Copyright     2013  Pegah Ghahremani
 //               2014  IMSL, PKU-HKUST (author: Wei Shi)
+//               2014  Yanqing Sun, Junjie Wang
 //               2014  Johns Hopkins University (author: Daniel Povey)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -114,7 +115,7 @@ class ArbitraryResample {
   void SetWeights(const Vector<BaseFloat> &sample_points);
 
   BaseFloat FilterFunc(BaseFloat t) const;
-  
+
   int32 num_samples_in_;
   BaseFloat samp_rate_in_;
   BaseFloat filter_cutoff_;
@@ -139,11 +140,11 @@ class ArbitraryResample {
 class LinearResample {
  public:
   /// Constructor.  We make the input and output sample rates integers, because
-  /// we are going to need to find a common divisor.  This should just remind you
-  /// that they need to be integers.  The filter cutoff needs to be less than
-  /// samp_rate_in_hz/2 and less than samp_rate_out_hz/2.  num_zeros controls
-  /// the sharpness of the filter, more == sharper but less efficient.  We suggest
-  /// around 4 to 10 for normal use.
+  /// we are going to need to find a common divisor.  This should just remind
+  /// you that they need to be integers.  The filter cutoff needs to be less
+  /// than samp_rate_in_hz/2 and less than samp_rate_out_hz/2.  num_zeros
+  /// controls the sharpness of the filter, more == sharper but less efficient.
+  /// We suggest around 4 to 10 for normal use.
   LinearResample(int32 samp_rate_in_hz,
                  int32 samp_rate_out_hz,
                  BaseFloat filter_cutoff_hz,
@@ -168,7 +169,6 @@ class LinearResample {
   void Resample(const VectorBase<BaseFloat> &input,
                 bool flush,
                 Vector<BaseFloat> *output);
-  
 
   /// Calling the function Reset() resets the state of the object prior to
   /// processing a new signal; it is only necessary if you have called
@@ -182,25 +182,25 @@ class LinearResample {
   /// for a signal with "input_num_samp" input samples.  If flush == true,
   /// we return the largest n such that
   /// (n/samp_rate_out_) is in the interval [ 0, input_num_samp/samp_rate_in_ ),
-  /// and note that the interval is half-open.
-  /// If flush == false, define window_width as num_zeros / (2.0 * filter_cutoff_);
+  /// and note that the interval is half-open.  If flush == false,
+  /// define window_width as num_zeros / (2.0 * filter_cutoff_);
   /// we return the largest n such that (n/samp_rate_out_) is in the interval
   /// [ 0, input_num_samp/samp_rate_in_ - window_width ).
   int64 GetNumOutputSamples(int64 input_num_samp, bool flush) const;
 
 
-  /// Given an output-sample index, this function outputs to *first_samp_in the first
-  /// input-sample index that we have a weight on (may be negative),
+  /// Given an output-sample index, this function outputs to *first_samp_in the
+  /// first input-sample index that we have a weight on (may be negative),
   /// and to *samp_out_wrapped the index into weights_ where we can get the
   /// corresponding weights on the input.
   inline void GetIndexes(int64 samp_out,
                          int64 *first_samp_in,
                          int32 *samp_out_wrapped) const;
-  
+
   void SetRemainder(const VectorBase<BaseFloat> &input);
-  
+
   void SetIndexesAndWeights();
-  
+
   BaseFloat FilterFunc(BaseFloat) const;
 
   // The following variables are provided by the user.
@@ -209,10 +209,14 @@ class LinearResample {
   BaseFloat filter_cutoff_;
   int32 num_zeros_;
 
-  int32 input_samples_in_unit_;  ///< The number of input samples in the smallest repeating unit: num_samp_in_ =
-                                 ///< samp_rate_in_hz / Gcd(samp_rate_in_hz, samp_rate_out_hz)
-  int32 output_samples_in_unit_; ///< The number of output samples in the smallest repeating unit: num_samp_out_ =
-                                 ///< samp_rate_out_hz / Gcd(samp_rate_in_hz, samp_rate_out_hz)
+  int32 input_samples_in_unit_;   ///< The number of input samples in the
+                                  ///< smallest repeating unit: num_samp_in_ =
+                                  ///< samp_rate_in_hz / Gcd(samp_rate_in_hz,
+                                  ///< samp_rate_out_hz)
+  int32 output_samples_in_unit_;  ///< The number of output samples in the
+                                  ///< smallest repeating unit: num_samp_out_ =
+                                  ///< samp_rate_out_hz / Gcd(samp_rate_in_hz,
+                                  ///< samp_rate_out_hz)
 
 
   /// The first input-sample index that we sum over, for this output-sample
@@ -221,19 +225,19 @@ class LinearResample {
   /// extrapolate the correct input-sample index for arbitrary output samples.
   std::vector<int32> first_index_;
 
-  /// Weights on the input samples, for this output-sample index.  
-  std::vector<Vector<BaseFloat> > weights_;  
-  
+  /// Weights on the input samples, for this output-sample index.
+  std::vector<Vector<BaseFloat> > weights_;
 
   // the following variables keep track of where we are in a particular signal,
   // if it is being provided over multiple calls to Resample().
 
-  int64 input_sample_offset_;  ///< The number of input samples we have already received for
-                               ///<  this signal (including anything in remainder_)
-  int64 output_sample_offset_;  ///< The number of samples we have already output for this
-                                ///< signal.
-  Vector<BaseFloat> input_remainder_;  ///< A small trailing part of the previously
-                                       ///< seen input signal.
+  int64 input_sample_offset_;  ///< The number of input samples we have
+                               ///< already received for this signal
+                               ///< (including anything in remainder_)
+  int64 output_sample_offset_;  ///< The number of samples we have already
+                                ///< output for this signal.
+  Vector<BaseFloat> input_remainder_;  ///< A small trailing part of the
+                                       ///< previously seen input signal.
 };
 
 

@@ -52,26 +52,26 @@ struct OnlineFeaturePipelineCommandLineConfig {
   std::string delta_config;
   std::string splice_config;
   std::string lda_rxfilename;
-  
+
   OnlineFeaturePipelineCommandLineConfig() { }
 
   void Register(OptionsItf *po) {
-    po->Register("mfcc-config", &mfcc_config, "Configuration class file for MFCC "
-                 "features (e.g. conf/mfcc.conf)");
-    po->Register("plp-config", &plp_config, "Configuration class file for PLP "
-                 "features (e.g. conf/plp.conf)");
+    po->Register("mfcc-config", &mfcc_config, "Configuration class file for "
+                 "MFCC features (e.g. conf/mfcc.conf)");
+    po->Register("plp-config", &plp_config, "Configuration class file for "
+                 "PLP features (e.g. conf/plp.conf)");
     po->Register("cmvn-config", &cmvn_config, "Configuration class "
                  "file for online CMVN features (e.g. conf/online_cmvn.conf)");
     po->Register("global-cmvn-stats", &global_cmvn_stats_rxfilename,
-                 "(Extended) filename for global CMVN stats, e.g. obtained from "
-                 "'matrix-sum scp:data/train/cmvn.scp -'");
+                 "(Extended) filename for global CMVN stats, e.g. obtained "
+                 "from 'matrix-sum scp:data/train/cmvn.scp -'");
     po->Register("delta-config", &delta_config, "Configuration class file for "
                  "delta feature computation (if not supplied, will not apply "
                  "delta features; supply empty config to use defaults.)");
-    po->Register("splice-config", &splice_config, "Configuration class file for "
-                 "frame splicing, if done (e.g. prior to LDA)");
-    po->Register("lda-matrix", &lda_rxfilename, "Filename of LDA matrix (if using "
-                 "LDA), e.g. exp/foo/final.mat");
+    po->Register("splice-config", &splice_config, "Configuration class file "
+                 "for frame splicing, if done (e.g. prior to LDA)");
+    po->Register("lda-matrix", &lda_rxfilename, "Filename of LDA matrix (if "
+                 "using LDA), e.g. exp/foo/final.mat");
   }
 };
 
@@ -91,26 +91,26 @@ struct OnlineFeaturePipelineConfig {
       const OnlineFeaturePipelineCommandLineConfig &cmdline_config);
 
   BaseFloat FrameShiftInSeconds() const;
-  
-  std::string feature_type; // "mfcc" or "plp", for now.
-                            // When we add pitch we'll have a separate "add_pitch"
-                            // boolean variable.
-  MfccOptions mfcc_opts; // options for MFCC computation, if feature_type == "mfcc"
-  PlpOptions plp_opts; // Options for PLP computation, if feature_type == "plp"
 
-  OnlineCmvnOptions cmvn_opts; // Options for online CMN/CMVN computation.
+  std::string feature_type;  // "mfcc" or "plp", for now.
+                             // When we add pitch we'll have a separate
+                             // "add_pitch" boolean variable.
+  MfccOptions mfcc_opts;  // options for MFCC computation,
+                          // if feature_type == "mfcc"
+  PlpOptions plp_opts;  // Options for PLP computation, if feature_type == "plp"
+
+  OnlineCmvnOptions cmvn_opts;  // Options for online CMN/CMVN computation.
 
   bool splice_frames;
-  OnlineSpliceOptions splice_opts; // Options for frame splicing, if done.
-  
-  bool apply_deltas;
-  DeltaFeaturesOptions delta_opts; // Options for delta computation, if done.
+  OnlineSpliceOptions splice_opts;  // Options for frame splicing, if done.
 
-  std::string lda_rxfilename; // Filename for reading LDA or LDA+MLLT matrix, if
-                              // used.
-  std::string global_cmvn_stats_rxfilename; // Filename used for reading global
-                                            // CMVN stats
-  
+  bool apply_deltas;
+  DeltaFeaturesOptions delta_opts;  // Options for delta computation, if done.
+
+  std::string lda_rxfilename;  // Filename for reading LDA or LDA+MLLT matrix,
+                               // if used.
+  std::string global_cmvn_stats_rxfilename;  // Filename used for reading global
+                                             // CMVN stats
 };
 
 
@@ -123,35 +123,37 @@ struct OnlineFeaturePipelineConfig {
 /// generic.
 class OnlineFeaturePipeline: public OnlineFeatureInterface {
  public:
-  OnlineFeaturePipeline(const OnlineFeaturePipelineConfig &cfg);
+  explicit OnlineFeaturePipeline(const OnlineFeaturePipelineConfig &cfg);
 
   /// Member functions from OnlineFeatureInterface:
   virtual int32 Dim() const;
   virtual bool IsLastFrame(int32 frame) const;
   virtual int32 NumFramesReady() const;
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
-  
-  void FreezeCmvn(); // stop it from moving further (do this when you start using
-                     // fMLLR).  This will crash if NumFramesReady() == 0.
+
+  void FreezeCmvn();  // stop it from moving further (do this when you start
+                      // using fMLLR). This will crash if NumFramesReady() == 0.
 
   /// Set the CMVN state to a particular value (will generally be
   /// called after Copy().
   void SetCmvnState(const OnlineCmvnState &cmvn_state);
   void GetCmvnState(OnlineCmvnState *cmvn_state);
-  
+
   /// Accept more data to process (won't actually process it, will
   /// just copy it).   sampling_rate is necessary just to assert
   /// it equals what's in the config.
   void AcceptWaveform(BaseFloat sampling_rate,
                       const VectorBase<BaseFloat> &waveform);
 
-  BaseFloat FrameShiftInSeconds() const { return config_.FrameShiftInSeconds(); }
-  
+  BaseFloat FrameShiftInSeconds() const {
+    return config_.FrameShiftInSeconds();
+  }
+
   // InputFinished() tells the class you won't be providing any
   // more waveform.  This will help flush out the last few frames
   // of delta or LDA features.
   void InputFinished();
-  
+
   // This object is used to set the fMLLR transform.  Call it with
   // the empty matrix if you want to stop it using any transform.
   void SetTransform(const MatrixBase<BaseFloat> &transform);
@@ -160,7 +162,7 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
   // Returns true if an fMLLR transform has been set using
   // SetTransform().
   bool HaveFmllrTransform() { return fmllr_ != NULL; }
-  
+
   /// returns a newly initialized copy of *this-- this does not duplicate all
   /// the internal state or the speaker-adaptation state, but gives you a
   /// freshly initialized version of this object, as if you had initialized it
@@ -169,7 +171,7 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
   OnlineFeaturePipeline *New() const;
 
   virtual ~OnlineFeaturePipeline();
-  
+
  private:
   /// The following constructor is used internally in the New() function;
   /// it has the same effect as initializing from just "cfg", but avoids
@@ -182,28 +184,29 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
   /// members are all uninitialized but config_ and lda_mat_ are
   /// initialized.
   void Init();
-  
+
   OnlineFeaturePipelineConfig config_;
-  Matrix<BaseFloat> lda_mat_; // LDA matrix, if supplied.
-  Matrix<BaseFloat> global_cmvn_stats_; // Global CMVN stats.
-  
+  Matrix<BaseFloat> lda_mat_;  // LDA matrix, if supplied.
+  Matrix<BaseFloat> global_cmvn_stats_;  // Global CMVN stats.
+
   OnlineBaseFeature *base_feature_;
   // base_feature_ is the MFCC or PLP feature.
   // In future if we want to append pitch features, we'll add a pitch_ member
   // here and a member that appends the pitch and mfcc/plp features.
+  OnlineAppendFeature *append_feature_;
 
   OnlineCmvn *cmvn_;
-  OnlineFeatureInterface *splice_or_delta_; // This may be NULL if we're not
-                                            // doing splicing or deltas.
-  OnlineFeatureInterface *lda_; // If non-NULL, the LDA or LDA+MLLT transform.
+  OnlineFeatureInterface *splice_or_delta_;  // This may be NULL if we're not
+                                             // doing splicing or deltas.
+  OnlineFeatureInterface *lda_;  // If non-NULL, the LDA or LDA+MLLT transform.
 
   /// returns lda_ if it exists, else splice_or_delta_, else cmvn_.  If this
   /// were not private we would have const and non-const versions returning
   /// const and non-const pointers.
   OnlineFeatureInterface* UnadaptedFeature() const;
 
-  OnlineFeatureInterface *fmllr_; // non-NULL if we currently have an fMLLR
-                                  // transform.
+  OnlineFeatureInterface *fmllr_;  // non-NULL if we currently have an fMLLR
+                                   // transform.
 
   /// returns adapted feature if fmllr_ exists, else UnadaptedFeature().  If
   /// this were not private we would have const and non-const versions returning

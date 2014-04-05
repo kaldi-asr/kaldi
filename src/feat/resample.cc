@@ -37,7 +37,7 @@ LinearResample::LinearResample(int32 samp_rate_in_hz,
     filter_cutoff_(filter_cutoff_hz),
     num_zeros_(num_zeros) {
   KALDI_ASSERT(samp_rate_in_hz > 0.0 &&
-               samp_rate_out_hz > 0.0 && 
+               samp_rate_out_hz > 0.0 &&
                filter_cutoff_hz > 0.0 &&
                filter_cutoff_hz*2 < samp_rate_in_hz &&
                filter_cutoff_hz*2 < samp_rate_out_hz &&
@@ -48,12 +48,13 @@ LinearResample::LinearResample(int32 samp_rate_in_hz,
   int32 base_freq = Gcd(samp_rate_in_, samp_rate_out_);
   input_samples_in_unit_ = samp_rate_in_ / base_freq;
   output_samples_in_unit_ = samp_rate_out_ / base_freq;
-  
+
   SetIndexesAndWeights();
   Reset();
 }
 
-int64 LinearResample::GetNumOutputSamples(int64 input_num_samp, bool flush) const {
+int64 LinearResample::GetNumOutputSamples(int64 input_num_samp,
+                                          bool flush) const {
   // For exact computation, we measure time in "ticks" of 1.0 / tick_freq,
   // where tick_freq is the least common multiple of samp_rate_in_ and
   // samp_rate_out_.
@@ -126,7 +127,7 @@ void LinearResample::SetIndexesAndWeights() {
       // sign of delta_t doesn't matter.
       weights_[i](j) = FilterFunc(delta_t) / samp_rate_in_;
     }
-  }  
+  }
 }
 
 
@@ -181,7 +182,7 @@ void LinearResample::Resample(const VectorBase<BaseFloat> &input,
         BaseFloat weight = weights(i);
         int32 input_index = first_input_index + i;
         if (input_index < 0 && input_remainder_.Dim() + input_index >= 0) {
-          this_output += weight * 
+          this_output += weight *
               input_remainder_(input_remainder_.Dim() + input_index);
         } else if (input_index >= 0 && input_index < input_dim) {
           this_output += weight * input(input_index);
@@ -196,7 +197,7 @@ void LinearResample::Resample(const VectorBase<BaseFloat> &input,
     int32 output_index = static_cast<int32>(samp_out - output_sample_offset_);
     (*output)(output_index) = this_output;
   }
-  
+
   if (flush) {
     Reset();  // Reset the internal state.
   } else {
@@ -215,7 +216,7 @@ void LinearResample::SetRemainder(const VectorBase<BaseFloat> &input) {
   // input... anyway, storing more remainder than needed is not harmful.
   int32 max_remainder_needed = ceil(samp_rate_in_ * num_zeros_ /
                                     filter_cutoff_);
-  KALDI_LOG << "max-remainder-needed is " << max_remainder_needed;
+  KALDI_VLOG(1) << "max-remainder-needed is " << max_remainder_needed;
   input_remainder_.Resize(max_remainder_needed);
   for (int32 index = - input_remainder_.Dim(); index < 0; index++) {
     // we interpret "index" as an offset from the end of "input" and
@@ -227,7 +228,7 @@ void LinearResample::SetRemainder(const VectorBase<BaseFloat> &input) {
       input_remainder_(index + input_remainder_.Dim()) =
           old_remainder(input_index + old_remainder.Dim());
     // else leave it at zero.
-  }  
+  }
 }
 
 void LinearResample::Reset() {

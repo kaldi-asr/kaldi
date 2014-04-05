@@ -25,7 +25,6 @@
 #include "feat/pitch-functions.h"
 #include "feat/resample.h"
 #include "feat/mel-computations.h"
-#include "feat/resample.h"
 
 namespace kaldi {
 
@@ -146,7 +145,7 @@ BaseFloat NccfToPovFeature(BaseFloat n) {
  */
 BaseFloat NccfToPov(BaseFloat n) {
   BaseFloat ndash = fabs(n);
-  if (ndash > 1.0) ndash = 1.0; // just in case it was slightly outside [-1, 1]
+  if (ndash > 1.0) ndash = 1.0;  // just in case it was slightly outside [-1, 1]
 
   BaseFloat r = -5.2 + 5.4 * exp(7.5 * (ndash - 1.0)) + 4.8 * ndash -
                 2.0 * exp(-10.0 * ndash) + 4.2 * exp(20.0 * (ndash - 1.0));
@@ -185,7 +184,7 @@ void ExtractFrame(const VectorBase<BaseFloat> &wave,
   double outer_max_lag =  1.0 / opts.min_f0 +
       (opts.upsample_filter_width/(2.0 * opts.resample_freq));
   int32 end_lag = floor(opts.resample_freq * outer_max_lag);
-  
+
   KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
   int32 start = frame_shift * frame_index;
   int32 frame_length_full = frame_length + end_lag;
@@ -296,10 +295,9 @@ void ProcessNccf(const Vector<BaseFloat> &inner_prod,
  */
 void SelectLags(const PitchExtractionOptions &opts,
                 Vector<BaseFloat> *lags) {
-
   // choose lags relative to acceptable pitch tolerance
   BaseFloat min_lag = 1.0 / opts.max_f0, max_lag = 1.0 / opts.min_f0;
-  
+
   std::vector<BaseFloat> tmp_lags;
   for (BaseFloat lag = min_lag; lag <= max_lag; lag *= 1.0 + opts.delta_pitch)
     tmp_lags.push_back(lag);
@@ -319,39 +317,35 @@ class PitchExtractor {
       lags_(lags) {
     frames_.resize(num_frames_+1);
     for (int32 i = 0; i < num_frames_+1; i++) {
-      frames_[i].local_cost.Resize(num_states_);
       frames_[i].obj_func.Resize(num_states_);
       frames_[i].back_pointers.resize(num_states_);
     }
   }
   ~PitchExtractor() {}
 
-  void ComputeLocalCost(const Matrix<BaseFloat> &nccf) {
-    for (int32 i = 1; i < num_frames_ + 1; i++) {
-      SubVector<BaseFloat> frame(nccf.Row(i-1));
-      Vector<BaseFloat> local_cost(num_states_);
-      // compute the local cost
-      frames_[i].local_cost.Add(1.0);
-      frames_[i].local_cost.AddVec(-1.0, frame);
-      Vector<BaseFloat> corr_lag_cost(num_states_);
-      corr_lag_cost.AddVecVec(opts_.soft_min_f0, frame, lags_, 0);
-      frames_[i].local_cost.AddVec(1.0, corr_lag_cost);
-    }  // end of loop over frames
+  void ComputeLocalCost(const VectorBase<BaseFloat> &nccf_row,
+                        VectorBase<BaseFloat> *local_cost) {
+    // compute the local cost
+    local_cost->Set(1.0);
+    local_cost->AddVec(-1.0, nccf_row);
+    Vector<BaseFloat> corr_lag_cost(num_states_);
+    corr_lag_cost.AddVecVec(opts_.soft_min_f0, nccf_row, lags_, 0);
+    local_cost->AddVec(1.0, corr_lag_cost);
   }
-  
+
   void FastViterbi(const Matrix<BaseFloat> &nccf) {
-    ComputeLocalCost(nccf);
     double intercost, min_c, this_c;
     int best_b, min_i, max_i;
     BaseFloat delta_pitch_sq = log(1 + opts_.delta_pitch)
       * log(1 + opts_.delta_pitch);
     // loop over frames
     for (int32 t = 1; t < num_frames_ + 1; t++) {
-      // The stuff with the "forward pass" and "backward "pass" is described in the
-      // paper; it's an algorithm that allows us to compute the vector of forward-costs
-      // and back-pointers without accessing all of the pairs of [pitch on last frame,
-      // pitch on this frame].
-      
+      // The stuff with the "forward pass" and "backward "pass" is described in
+      // the paper; it's an algorithm that allows us to compute the vector of
+      // forward-costs and back-pointers without accessing all of the pairs of
+      // [pitch on last frame, pitch on this frame].
+      Vector<BaseFloat> local_cost(num_states_);
+      ComputeLocalCost(nccf.Row(t - 1), &local_cost);
       // Forward Pass
       for (int32 i = 0; i < num_states_; i++) {
         if ( i == 0 )
@@ -370,7 +364,7 @@ class PitchExtractor {
           }
         }
         frames_[t].back_pointers[i] = best_b;
-        frames_[t].obj_func(i) = min_c + frames_[t].local_cost(i);
+        frames_[t].obj_func(i) = min_c + local_cost(i);
       }
       // Backward Pass
       for (int32 i = num_states_-1; i >= 0; i--) {
@@ -378,7 +372,7 @@ class PitchExtractor {
           max_i = num_states_-1;
         else
           max_i = frames_[t].back_pointers[i+1];
-        min_c = frames_[t].obj_func(i) - frames_[t].local_cost(i);
+        min_c = frames_[t].obj_func(i) - local_cost(i);
         best_b = frames_[t].back_pointers[i];
 
         for (int32 k = i+1 ; k <= max_i; k++) {
@@ -390,7 +384,7 @@ class PitchExtractor {
           }
         }
         frames_[t].back_pointers[i] = best_b;
-        frames_[t].obj_func(i) = min_c + frames_[t].local_cost(i);
+        frames_[t].obj_func(i) = min_c + local_cost(i);
       }
     }
   }
@@ -422,7 +416,6 @@ class PitchExtractor {
   int32 num_frames_;    // number of frames in input wave
   Vector<BaseFloat> lags_;    // all lags used in viterbi
   struct PitchFrame {
-    Vector<BaseFloat> local_cost;
     Vector<double> obj_func;      // optimal objective function for frame i
     std::vector<int32> back_pointers;
     double truepitch;             // True pitch
@@ -455,26 +448,26 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
       num_initial_lags = end - start + 1;
   // num_initial_lags is the number of lags we initially compute-- evenly
   // spaced, integer lags-- before doing the resampling.
-  
+
   Vector<BaseFloat> final_lags;
   SelectLags(opts, &final_lags);
   // final_lags is a list of the lags we want to resample the NCCF at;
   // these are log-spaced so we have finer resolution for smaller lags.
-  
+
   int32 num_states = final_lags.Dim();
   Matrix<BaseFloat> nccf_pitch(num_frames, num_initial_lags),
       nccf_pov(num_frames, num_initial_lags);
-  
+
   double nccf_ballast_pitch = pow(opts.NccfWindowSize(), 4) * opts.nccf_ballast;
   double nccf_ballast_pov = 0.0;
-  
+
   for (int32 r = 0; r < num_frames; r++) {  // r is frame index.
     ExtractFrame(processed_wave, r, opts, &window);
     // compute nccf for pitch extraction
     Vector<BaseFloat> inner_prod(num_initial_lags), norm_prod(num_initial_lags);
     ComputeCorrelation(window, start, end, opts.NccfWindowSize(),
                        &inner_prod, &norm_prod);
-    SubVector<BaseFloat> nccf_pitch_vec(nccf_pitch.Row(r));    
+    SubVector<BaseFloat> nccf_pitch_vec(nccf_pitch.Row(r));
     ProcessNccf(inner_prod, norm_prod, nccf_ballast_pitch,
                 &(nccf_pitch_vec));
     // compute the Nccf for Probability of voicing estimation;
@@ -490,7 +483,7 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
   // start / opts.resample_freq.  This is necessary because the resampling code
   // assumes that the input signal starts from sample zero.
   final_lags_offset.Add(-start / opts.resample_freq);
-  
+
   // upsample_cutoff is the filter cutoff for upsampling the NCCF, which is the
   // Nyquist of the resampling frequency.  The NCCF is (almost completely)
   // bandlimited to around "lowpass_cutoff" (1000 by default), and when the
@@ -525,7 +518,7 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
    that correspond to the discretization interval for log-pitch.
 */
 void ExtractDeltaPitch(const PostProcessPitchOptions &opts,
-                       const Vector<BaseFloat> &input,
+                       const VectorBase<BaseFloat> &input,
                        Vector<BaseFloat> *output) {
   int32 num_frames = input.Dim();
   DeltaFeaturesOptions delta_opts;
@@ -547,7 +540,7 @@ void ExtractDeltaPitch(const PostProcessPitchOptions &opts,
 
 
 void PostProcessPitch(const PostProcessPitchOptions &opts,
-                      const Matrix<BaseFloat> &input,
+                      const MatrixBase<BaseFloat> &input,
                       Matrix<BaseFloat> *output) {
   int32 T = input.NumRows();
   // We've coded this for clarity rather than memory efficiency; anyway the
@@ -570,7 +563,7 @@ void PostProcessPitch(const PostProcessPitchOptions &opts,
   // the normalized log pitch has quite a small variance; scale it up a little
   // (this interacts with variance flooring in early system build stages).
   normalized_log_pitch.Scale(opts.pitch_scale);
-  
+
   ExtractDeltaPitch(opts, raw_log_pitch, &delta_log_pitch);
   delta_log_pitch.Scale(opts.delta_pitch_scale);
 
@@ -583,7 +576,7 @@ void PostProcessPitch(const PostProcessPitchOptions &opts,
   if (output_ncols == 0) {
     KALDI_ERR << " At least one of the pitch features should be chosen. "
               << "Check your post-process pitch options.";
-  }  
+  }
   output->Resize(T, output_ncols, kUndefined);
   int32 col = 0;
   if (opts.add_pov_feature)

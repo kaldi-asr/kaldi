@@ -2,6 +2,8 @@
 
 // Copyright     2013  Pegah Ghahremani
 //               2014  IMSL, PKU-HKUST (author: Wei Shi)
+//               2014  Yanqing Sun, Junjie Wang,
+//                     Daniel Povey, Korbinian Riedhammer
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,19 +41,21 @@ namespace kaldi {
 struct PitchExtractionOptions {
   // FrameExtractionOptions frame_opts;
   BaseFloat samp_freq;
-  BaseFloat frame_shift_ms;  // in milliseconds.
-  BaseFloat frame_length_ms;  // in milliseconds.
-  BaseFloat preemph_coeff;  // Preemphasis coefficient.
-  BaseFloat min_f0;          // min f0 to search (Hz)
-  BaseFloat max_f0;          // max f0 to search (Hz)
-  BaseFloat soft_min_f0;     // Minimum f0, applied in soft way, must not exceed
-                          // min-f0
-  BaseFloat penalty_factor;  // cost factor for FO change
-  BaseFloat lowpass_cutoff;  // cutoff frequency for Low pass filter
-  BaseFloat resample_freq;   // Integer that determines filter width when upsampling NCCF
-  BaseFloat delta_pitch;     // the pitch tolerance in pruning lags
-  BaseFloat nccf_ballast;    // Increasing this factor reduces NCCF for quiet frames,
-                          // helping ensure pitch continuity in unvoiced region
+  BaseFloat frame_shift_ms;     // in milliseconds.
+  BaseFloat frame_length_ms;    // in milliseconds.
+  BaseFloat preemph_coeff;      // Preemphasis coefficient.
+  BaseFloat min_f0;             // min f0 to search (Hz)
+  BaseFloat max_f0;             // max f0 to search (Hz)
+  BaseFloat soft_min_f0;        // Minimum f0, applied in soft way, must not
+                                // exceed min-f0
+  BaseFloat penalty_factor;     // cost factor for FO change
+  BaseFloat lowpass_cutoff;     // cutoff frequency for Low pass filter
+  BaseFloat resample_freq;      // Integer that determines filter width when
+                                // upsampling NCCF
+  BaseFloat delta_pitch;        // the pitch tolerance in pruning lags
+  BaseFloat nccf_ballast;       // Increasing this factor reduces NCCF for
+                                // quiet frames, helping ensure pitch
+                                // continuity in unvoiced region
   int32 lowpass_filter_width;   // Integer that determines filter width of
                                 // lowpass filter
   int32 upsample_filter_width;  // Integer that determines filter width when
@@ -73,9 +77,10 @@ struct PitchExtractionOptions {
       upsample_filter_width(5) {}
   void Register(OptionsItf *po) {
     po->Register("sample-frequency", &samp_freq,
-                 "Waveform data sample frequency (must match the waveform file, "
-                 "if specified there)");
-    po->Register("frame-length", &frame_length_ms, "Frame length in milliseconds");
+                 "Waveform data sample frequency (must match the waveform "
+                 "file, if specified there)");
+    po->Register("frame-length", &frame_length_ms, "Frame length in "
+                 "milliseconds");
     po->Register("frame-shift", &frame_shift_ms, "Frame shift in milliseconds");
     po->Register("preemphasis-coefficient", &preemph_coeff,
                  "Coefficient for use in signal preemphasis");
@@ -114,9 +119,9 @@ struct PostProcessPitchOptions {
   BaseFloat pitch_scale;          // the final pitch scaled with this value
   BaseFloat pov_scale;            // the final pov scaled with this value
   BaseFloat delta_pitch_scale;
-  BaseFloat delta_pitch_noise_stddev; // stddev of noise we add to delta-pitch
-  int32 normalization_window_size;    // Size of window used for moving window
-                                      // normalization
+  BaseFloat delta_pitch_noise_stddev;  // stddev of noise we add to delta-pitch
+  int32 normalization_window_size;     // Size of window used for moving window
+                                       // normalization
   int32 delta_window;
   bool process_pitch;
   bool add_delta_pitch;
@@ -139,24 +144,29 @@ struct PostProcessPitchOptions {
     po->Register("pitch-scale", &pitch_scale,
                  "Scaling factor for the final normalized log-pitch value");
     po->Register("pov-scale", &pov_scale,
-                 "Scaling factor for final POV (probability of voicing) feature");
+                 "Scaling factor for final POV (probability of voicing) "
+                 "feature");
     po->Register("delta-pitch-scale", &delta_pitch_scale,
                  "Term to scale the final delta log-pitch");
     po->Register("delta-pitch-noise-stddev", &delta_pitch_noise_stddev,
-                 "Standard deviation for noise we add to the delta log-pitch (before"
-                 " scaling); should be about the same as delta-pitch option to "
-                 "pitch creation.  The purpose is to get rid of peaks in the "
-                 "delta-pitch caused by discretization of pitch values.");
+                 "Standard deviation for noise we add to the delta log-pitch "
+                 "(before scaling); should be about the same as delta-pitch "
+                 "option to pitch creation.  The purpose is to get rid of "
+                 "peaks in the delta-pitch caused by discretization of pitch "
+                 "values.");
     po->Register("normalization-window-size", &normalization_window_size,
                  "Size of window used for moving window nomalization");
     po->Register("delta-window", &delta_window,
-                 "Number of frames on each side of central frame, to use for delta window.");
+                 "Number of frames on each side of central frame, to use for "
+                 "delta window.");
     po->Register("add-pov-feature", &add_pov_feature,
                 "If true, the warped NCCF is added to output features");
     po->Register("add-normalized-log-pitch", &add_normalized_log_pitch,
-                "If true, the log-pitch with POV-weighted mean subtraction over 1.5 second window is added to output features");
+                "If true, the log-pitch with POV-weighted mean subtraction "
+                "over 1.5 second window is added to output features");
     po->Register("add-delta-pitch", &add_delta_pitch,
-                 "If true, time derivative of log-pitch is added to output features");
+                "If true, time derivative of log-pitch is added to output "
+                "features");
     po->Register("add-raw-log-pitch", &add_raw_log_pitch,
                  "If true, log(pitch) is added to output features");
   }
@@ -185,7 +195,7 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
 /// --add-raw-log-pitch determine which features we create; by default we create
 /// the first three.
 void PostProcessPitch(const PostProcessPitchOptions &opts,
-                      const Matrix<BaseFloat> &input,
+                      const MatrixBase<BaseFloat> &input,
                       Matrix<BaseFloat> *output);
 
 

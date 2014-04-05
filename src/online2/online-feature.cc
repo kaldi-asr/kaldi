@@ -1,6 +1,8 @@
 // online2/online-feature.cc
 
 // Copyright    2013  Johns Hopkins University (author: Daniel Povey)
+//              2014  Yanqing Sun, Junjie Wang,
+//                    Daniel Povey, Korbinian Riedhammer
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -36,15 +38,15 @@ bool OnlineMfccOrPlp<C>::IsLastFrame(int32 frame) const {
 }
 
 template<class C>
-OnlineMfccOrPlp<C>::OnlineMfccOrPlp(const typename C::Options &opts):
-    mfcc_or_plp_(opts), input_finished_(false), num_frames_(0),
+OnlineMfccOrPlp<C>::OnlineMfccOrPlp(const typename C::Options &opts)
+    :mfcc_or_plp_(opts), input_finished_(false), num_frames_(0),
     sampling_frequency_(opts.frame_opts.samp_freq) { }
 
 template<class C>
 void OnlineMfccOrPlp<C>::AcceptWaveform(BaseFloat sampling_rate,
                                         const VectorBase<BaseFloat> &waveform) {
   if (waveform.Dim() == 0) {
-    return; // Nothing to do.
+    return;  // Nothing to do.
   }
   if (input_finished_) {
     KALDI_ERR << "AcceptWaveform called after InputFinished() was called.";
@@ -69,7 +71,7 @@ void OnlineMfccOrPlp<C>::AcceptWaveform(BaseFloat sampling_rate,
   waveform_remainder_.Resize(0);
 
   Matrix<BaseFloat> feats;
-  BaseFloat vtln_warp = 1.0; // We don't support VTLN warping in this wrapper.
+  BaseFloat vtln_warp = 1.0;  // We don't support VTLN warping in this wrapper.
   mfcc_or_plp_.Compute(wave_to_use, vtln_warp, &feats, &waveform_remainder_);
 
   if (feats.NumRows() == 0) {
@@ -142,7 +144,7 @@ void OnlineCmvn::InitRingBufferIfNeeded() {
 
 void OnlineCmvn::CacheFrame(int32 frame, const Matrix<double> &stats) {
   KALDI_ASSERT(frame >= 0);
-  if (frame % opts_.modulus == 0) { // store in cached_stats_modulo_.
+  if (frame % opts_.modulus == 0) {  // store in cached_stats_modulo_.
     int32 n = frame / opts_.modulus;
     if (n >= cached_stats_modulo_.size()) {
       // The following assert is a limitation on in what order you can call
@@ -156,7 +158,7 @@ void OnlineCmvn::CacheFrame(int32 frame, const Matrix<double> &stats) {
       // do what seems right, but we shouldn't get here.
       cached_stats_modulo_[n]->CopyFromMat(stats);
     }
-  } else { // store in the ring buffer.
+  } else {  // store in the ring buffer.
     InitRingBufferIfNeeded();
     if (!cached_stats_ring_.empty()) {
       int32 index = frame % cached_stats_ring_.size();
@@ -179,7 +181,7 @@ void OnlineCmvn::ComputeStatsForFrame(int32 frame,
   int32 dim = this->Dim(), cur_frame;
   Matrix<double> stats(2, dim + 1);
   GetMostRecentCachedFrame(frame, &cur_frame, &stats);
-  
+
   Vector<BaseFloat> feats(dim);
   Vector<double> feats_dbl(dim);
   while (cur_frame < frame) {
@@ -217,7 +219,7 @@ void OnlineCmvn::SmoothOnlineCmvnStats(const MatrixBase<double> &speaker_stats,
   // was accumulated.
   KALDI_ASSERT(cur_count <= 1.001 * opts.cmn_window);
   if (cur_count >= opts.cmn_window) return;
-  if (speaker_stats.NumRows() != 0) { // if we have speaker stats..
+  if (speaker_stats.NumRows() != 0) {  // if we have speaker stats..
     double count_from_speaker = opts.cmn_window - cur_count,
         speaker_count = speaker_stats(0, dim);
     if (count_from_speaker > opts.speaker_frames)
@@ -250,7 +252,7 @@ void OnlineCmvn::GetFrame(int32 frame,
   KALDI_ASSERT(feat->Dim() == this->Dim());
   int32 dim = feat->Dim();
   Matrix<double> stats(2, dim + 1);
-  if (frozen_state_.NumRows() != 0) { // the CMVN state has been frozen.
+  if (frozen_state_.NumRows() != 0) {  // the CMVN state has been frozen.
     stats.CopyFromMat(frozen_state_);
   } else {
     // first get the raw CMVN stats (this involves caching..)
@@ -269,9 +271,8 @@ void OnlineCmvn::GetFrame(int32 frame,
   // the function ApplyCmvn takes a matrix, so form a one-row matrix to give it.
   if (opts_.normalize_mean)
     ApplyCmvn(stats, opts_.normalize_variance, &feat_mat);
-  else {
+  else
     KALDI_ASSERT(!opts_.normalize_variance);
-  }
   feat->CopyFromVec(feat_mat.Row(0));
 }
 
@@ -335,8 +336,8 @@ void OnlineSpliceFrames::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
     int32 t2_limited = t2;
     if (t2_limited < 0) t2_limited = 0;
     if (t2_limited >= T) t2_limited = T - 1;
-    int32 n = t2 - (frame - left_context_); // 0 for left-most frame, increases to
-                                            // the right.
+    int32 n = t2 - (frame - left_context_);  // 0 for left-most frame,
+                                             // increases to the right.
     SubVector<BaseFloat> part(*feat, n * dim_in, dim_in);
     src_->GetFrame(t2_limited, &part);
   }
@@ -346,10 +347,10 @@ OnlineTransform::OnlineTransform(const MatrixBase<BaseFloat> &transform,
                                  OnlineFeatureInterface *src):
     src_(src) {
   int32 src_dim = src_->Dim();
-  if (transform.NumCols() == src_dim) { // Linear transform
+  if (transform.NumCols() == src_dim) {  // Linear transform
     linear_term_ = transform;
-    offset_.Resize(transform.NumRows()); // Resize() will zero it.
-  } else if (transform.NumCols() == src_dim + 1) { // Affine transform
+    offset_.Resize(transform.NumRows());  // Resize() will zero it.
+  } else if (transform.NumCols() == src_dim + 1) {  // Affine transform
     linear_term_ = transform.Range(0, transform.NumRows(), 0, src_dim);
     offset_.Resize(transform.NumRows());
     offset_.CopyColFromMat(transform, src_dim);
@@ -404,8 +405,8 @@ void OnlineDeltaFeature::GetFrame(int32 frame,
     SubVector<BaseFloat> temp_row(temp_src, t - left_frame);
     src_->GetFrame(t, &temp_row);
   }
-  int32 temp_t = frame - left_frame; // temp_t is the offset of frame "frame"
-                                     // within temp_src
+  int32 temp_t = frame - left_frame;  // temp_t is the offset of frame "frame"
+                                      // within temp_src
   delta_features_.Process(temp_src, temp_t, feat);
 }
 
@@ -437,5 +438,15 @@ void OnlineCacheFeature::ClearCache() {
   cache_.resize(0);
 }
 
+
+
+void OnlineAppendFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
+  KALDI_ASSERT(feat->Dim() == Dim());
+
+  SubVector<BaseFloat> feat1(*feat, 0, src1_->Dim());
+  SubVector<BaseFloat> feat2(*feat, src1_->Dim(), src2_->Dim());
+  src1_->GetFrame(frame, &feat1);
+  src2_->GetFrame(frame, &feat2);
+};
 
 }  // namespace kaldi
