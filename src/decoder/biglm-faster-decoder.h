@@ -109,7 +109,7 @@ class BiglmFasterDecoder {
     return false;
   }
 
-  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out
+  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out,
                    bool use_final_probs = true) {
     // GetBestPath gets the decoding output.  If "use_final_probs" is true
     // AND we reached a final state, it limits itself to final states;
