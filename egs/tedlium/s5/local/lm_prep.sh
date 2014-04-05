@@ -4,19 +4,11 @@
 if [ -f path.sh ]; then . path.sh; fi
 
 silprob=0.5
-mkdir -p data/lang_test data/train data/test
 
-arpa_lm=db/en-us.lm.gz
+arpa_lm=db/cmusphinx-5.0-en-us.lm.gz
 [ ! -f $arpa_lm ] && echo No such file $arpa_lm && exit 1;
 
-# Copy stuff into its final locations...
-
-for f in spk2utt utt2spk wav.scp text segments; do
-  cp data/local/train/$f data/train/$f
-  cp data/local/test/$f data/test/$f
-done
-
-rm -r data/lang_test
+rm -rf data/lang_test
 cp -r data/lang data/lang_test
 
 # grep -v '<s> <s>' etc. is only for future-proofing this script.  Our
