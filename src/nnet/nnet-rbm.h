@@ -398,8 +398,8 @@ class Rbm : public RbmBase {
     BaseFloat N = static_cast<BaseFloat>(pos_vis.NumRows());
     vis_hid_corr_.AddMatMat(-lr/N, neg_hid, kTrans, neg_vis, kNoTrans, mmt);
     vis_hid_corr_.AddMatMat(+lr/N, pos_hid, kTrans, pos_vis, kNoTrans, 1.0);
-    vis_hid_corr_.AddMat(-lr*l2, vis_hid_, 1.0);
-    vis_hid_.AddMat(1.0, vis_hid_corr_, 1.0);
+    vis_hid_corr_.AddMat(-lr*l2, vis_hid_);
+    vis_hid_.AddMat(1.0, vis_hid_corr_);
 
     //  UPDATE visbias vector
     //

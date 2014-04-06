@@ -742,12 +742,40 @@ static void UnitTestCuMatrixAddMat() {
   Da.CopyToMat(&Ha2);
 
   AssertEqual(Ha,Ha2);
-
+  
   //check use with submatrix
   CuMatrix<Real> mat1(10,10,kSetZero);
   mat1.AddMat(1.0,Da.Range(5,10,12,10)); //different stride for mat1,mat2
   CuMatrix<Real> mat2(Da.Range(5,10,12,10));
   AssertEqual(mat1,mat2);
+ 
+  for (int i = 0; i < 10; i++) {
+    int32 N = 5 * (10 + rand() % 10),  M = 100 + rand() % 50;  
+    Matrix<Real> Hc(N,M);
+    Matrix<Real> Hd(M,N);
+    RandGaussMatrix(&Hc);
+    RandGaussMatrix(&Hd);
+
+    CuMatrix<Real> Dc(N,M);
+    CuMatrix<Real> Dd(M,N);
+    Dc.CopyFromMat(Hc);
+    Dd.CopyFromMat(Hd);
+  
+    Real alpha = 0.5;
+    Dc.AddMat(alpha,Dd,kTrans);
+    Hc.AddMat(alpha,Hd,kTrans);
+  
+    Matrix<Real> Hc2(N,M);
+    Dc.CopyToMat(&Hc2);
+    AssertEqual(Hc,Hc2);
+
+    // check use with submatrix
+    CuMatrix<Real> mat3(N/5,M,kSetZero);
+    mat3.AddMat(1.0, Dd.Range(0,M,0,N/5),kTrans);
+    
+    CuMatrix<Real> mat4(Dd.Range(0,M,0,N/5),kTrans);
+    AssertEqual(mat3,mat4);
+  }
 }
 
 template<typename Real> 
