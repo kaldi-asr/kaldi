@@ -182,7 +182,7 @@ template<typename Real> void CuRand<Real>::BinarizeProbs(const CuMatrix<Real> &p
 template<typename Real> void CuRand<Real>::AddGaussNoise(CuMatrix<Real> *tgt, Real gscale) {
   tmp_.Resize(tgt->num_rows_, tgt->num_cols_);
   RandGaussian(&tmp_);
-  tgt->AddMat(gscale, tmp_, 1.0);
+  tgt->AddMat(gscale, tmp_);
 }
 
 // Instantiate the class for float and double.
