@@ -273,11 +273,11 @@ class CuMatrixBase {
   void DivRowsVec(const CuVectorBase<Real> &div);
   /// invert the matrix by elements.
   void InvertElements();
-  /// B = aplha * A
+  /// B = alpha * A
   void AddMat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA = kNoTrans);
-  /// B = aplha * row + beta * B
+  /// B = alpha * row + beta * B
   void AddVecToCols(Real alpha, const CuVectorBase<Real> &col, Real beta = 1.0);
-  /// B = aplha * row + beta * B
+  /// B = alpha * row + beta * B
   void AddVecToRows(Real alpha, const CuVectorBase<Real> &row, Real beta = 1.0);
   /// C = alpha * A(^T)*B(^T) + beta * C
   void AddMatMat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
