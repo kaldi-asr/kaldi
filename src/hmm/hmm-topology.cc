@@ -237,7 +237,7 @@ void HmmTopology::Check() {
         // and rescoring these with a different lexicon and LM.
         if (dst_state == num_states-1 // && j != 0
             && entries_[i][j].pdf_class == kNoPdf)
-          KALDI_ERR << "We do not allow any state " // "but the first state to be "
+          KALDI_ERR << "We do not allow any state to be "
               "nonemitting and have a transition to the final-state (this would "
               "stop the SplitToPhones function from identifying the last state "
               "of a phone.";
