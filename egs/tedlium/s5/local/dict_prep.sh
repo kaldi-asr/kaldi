@@ -4,9 +4,11 @@ mkdir -p $dir
 
 srcdict=db/TEDLIUM_release1/TEDLIUM.150K.dic
 
+# Join dicts and fix some troubles
 cat $srcdict db/extra.dic | LANG= LC_ALL= sort | sed 's:([0-9])::g' |
    grep -vw "ei" |
-   grep -vw "erj" > $dir/lexicon_words.txt 
+   grep -vw "erj" |
+   grep -v "text2pho.sh" > $dir/lexicon_words.txt 
 
 cat $dir/lexicon_words.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' | \
   grep -v SIL | sort > $dir/nonsilence_phones.txt  

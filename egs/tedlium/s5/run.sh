@@ -4,6 +4,7 @@
 . path.sh
 
 nj=8
+decode_nj=4
 
 # Data prep
 
@@ -37,7 +38,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
 
 utils/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph
 
-steps/decode.sh --nj $nj --cmd "$decode_cmd" \
+steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
   exp/tri1/graph data/test exp/tri1/decode
 
 steps/align_si.sh --nj $nj --cmd "$train_cmd" \
@@ -48,7 +49,7 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
 
 utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
 
-steps/decode.sh --nj $nj --cmd "$decode_cmd" \
+steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
    exp/tri2/graph data/test exp/tri2/decode
 
 steps/align_si.sh --nj $nj --cmd "$train_cmd" \
@@ -59,7 +60,7 @@ steps/train_sat.sh --cmd "$train_cmd" \
 
 utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph
 
-steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd" \
+steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" \
    exp/tri3/graph data/test exp/tri3/decode
 
 steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
@@ -73,6 +74,6 @@ steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 \
   exp/tri3_mmi_b0.1
 
 for iter in 3 4; do
-steps/decode.sh --nj $nj --cmd "$decode_cmd" --iter $iter \
+steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" --iter $iter \
    exp/tri3/graph data/test exp/tri3_mmi_b0.1/decode_it$iter
 done
