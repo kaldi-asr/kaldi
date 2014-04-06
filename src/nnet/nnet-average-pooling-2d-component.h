@@ -183,7 +183,7 @@ class AveragePooling2DComponent : public Component {
 	    int32 c=0;
 	    c=st+i*(num_input_fmaps*fmap_y_len_)+j*num_input_fmaps;
 	    CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c, num_input_fmaps));
-	    tgt.AddMat(1.0, src);
+	    tgt.AddMat(1.0, src, 1.0);
 	    patch_summands[c/num_input_fmaps] += 1;
 	    }
 	  }

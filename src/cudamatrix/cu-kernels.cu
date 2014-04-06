@@ -502,24 +502,13 @@ static void _div_rows_vec(Real* mat, const Real* vec_div, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _add_mat(Real alpha, const Real* src, Real* dst, MatrixDim d, int src_stride) {
+static void _add_mat(Real alpha, const Real* src, Real beta, Real* dst, MatrixDim d, int src_stride) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j*d.stride;
   int32_cuda index_src = i + j*src_stride;
   if (i < d.cols && j < d.rows)
-    dst[index] = alpha*src[index_src] + dst[index];
-}
-
-template<typename Real>
-__global__
-static void _add_mat_trans(Real alpha, const Real* src, Real* dst, MatrixDim d, int src_stride) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda index = i + j *d.stride;
-  int32_cuda index_src = j + i*src_stride;
-  if (i < d.cols && j < d.rows)
-    dst[index] = alpha*src[index_src] + dst[index];
+    dst[index] = alpha*src[index_src] + beta*dst[index];
 }
 
 template<typename Real>
@@ -2034,12 +2023,8 @@ void cudaF_div_rows_vec(dim3 Gr, dim3 Bl, float* mat, const float* vec_div, Matr
   _div_rows_vec<<<Gr,Bl>>>(mat, vec_div, d);
 }
 
-void cudaF_add_mat(dim3 Gr, dim3 Bl, float alpha, const float* src, float* dst, MatrixDim d, int src_stride, int A_trans) {
-  if (A_trans) {
-    _add_mat_trans<<<Gr,Bl>>>(alpha,src,dst,d,src_stride);  
-  } else {
-    _add_mat<<<Gr,Bl>>>(alpha,src,dst,d,src_stride);
-  }
+void cudaF_add_mat(dim3 Gr, dim3 Bl, float alpha, const float* src, float beta, float* dst, MatrixDim d, int src_stride) {
+  _add_mat<<<Gr,Bl>>>(alpha,src,beta,dst,d,src_stride); 
 }
 
 void cudaF_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B, const float *C, float *dst, MatrixDim d) {
@@ -2452,12 +2437,8 @@ void cudaD_div_rows_vec(dim3 Gr, dim3 Bl, double* mat, const double* vec_div, Ma
   _div_rows_vec<<<Gr,Bl>>>(mat, vec_div, d);
 }
 
-void cudaD_add_mat(dim3 Gr, dim3 Bl, double alpha, const double* src, double* dst, MatrixDim d, int src_stride, int A_trans) {
-  if (A_trans) {
-    _add_mat_trans<<<Gr,Bl>>>(alpha,src,dst,d,src_stride);
-  } else {
-    _add_mat<<<Gr,Bl>>>(alpha,src,dst,d,src_stride);   
-  }
+void cudaD_add_mat(dim3 Gr, dim3 Bl, double alpha, const double* src, double beta, double* dst, MatrixDim d, int src_stride) {
+  _add_mat<<<Gr,Bl>>>(alpha,src,beta,dst,d,src_stride); 
 }
 
 void cudaD_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A, const double *B, const double *C, double *dst, MatrixDim d) {

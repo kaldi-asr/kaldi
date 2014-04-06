@@ -133,7 +133,7 @@ class AveragePoolingComponent : public Component {
         int32 p = r + q * pool_step_;
         CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(p*pool_stride_, pool_stride_));
         CuSubMatrix<BaseFloat> src(out_diff.ColRange(q*pool_stride_, pool_stride_));
-        tgt.AddMat(1.0, src);
+        tgt.AddMat(1.0, src, 1.0);
         patch_summands[p] += 1;
       }
     }
