@@ -4,7 +4,7 @@
 . path.sh
 
 nj=8
-decode_nj=4
+decode_nj=2
 
 # Data prep
 
@@ -66,14 +66,14 @@ steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" \
 steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
    data/train data/lang exp/tri3 exp/tri3_ali
 
-steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" \
+steps/make_denlats.sh --transform-dir exp/tri3_ali --nj $nj --cmd "$decode_cmd" \
    data/train data/lang exp/tri3 exp/tri3_denlats
 
 steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 \
   data/train data/lang exp/tri3_ali exp/tri3_denlats \
   exp/tri3_mmi_b0.1
 
-for iter in 3 4; do
-steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" --iter $iter \
+for iter in 4; do
+steps/decode.sh --transform-dir exp/tri3/decode --nj $decode_nj --cmd "$decode_cmd" --iter $iter \
    exp/tri3/graph data/test exp/tri3_mmi_b0.1/decode_it$iter
 done
