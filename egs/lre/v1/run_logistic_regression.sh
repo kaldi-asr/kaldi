@@ -66,11 +66,9 @@ cat exp/ivectors_train/posteriors | \
 compute-wer --mode=present --text ark:<(utils/remove_dialect.pl data/train/utt2lang) \
   ark:exp/ivectors_train/output
 
-# %WER 4.73 [ 3389 / 71668, 0 ins, 0 del, 3389 sub ] [PARTIAL]
-# %SER 4.73 [ 3389 / 71668 ]
+# %WER 4.19 [ 3000 / 71668, 0 ins, 0 del, 3000 sub ] [PARTIAL]
+# %SER 4.19 [ 3000 / 71668 ]
 # Scored 71668 sentences, 16 not present in hyp.
-
-#  scp:exp/ivectors_lre07/ivector.scp ark,t:- | \
 logistic-regression-eval $model_rebalanced \
   'ark:ivector-normalize-length scp:exp/ivectors_lre07/ivector.scp ark:- |' ark,t:- | \
   awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) 
@@ -78,12 +76,9 @@ logistic-regression-eval $model_rebalanced \
                           print $1, (argmax - 3); }' | \
   utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt >exp/ivectors_lre07/output
 
-
-# someone needs to extend this to run on the dev data.
-
 compute-wer --text ark:<(utils/remove_dialect.pl data/lre07/utt2lang) \
   ark:exp/ivectors_lre07/output
-> compute-wer --text ark:/dev/fd/63 ark:exp/ivectors_lre07/output 
-# %WER 33.04 [ 2487 / 7527, 0 ins, 0 del, 2487 sub ]
-# %SER 33.04 [ 2487 / 7527 ]
+# %WER 32.58 [ 2452 / 7527, 0 ins, 0 del, 2452 sub ]
+# %SER 32.58 [ 2452 / 7527 ]
 # Scored 7527 sentences, 0 not present in hyp.
+

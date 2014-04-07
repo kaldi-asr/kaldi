@@ -84,7 +84,8 @@ utils/split_data.sh $data $nj_full || exit 1;
 
 parallel_opts="-pe smp $[$num_threads*$num_processes]"
 ## Set up features.
-feats="ark,s,cs:add-deltas-sdc scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
+
+feats="ark,s,cs:apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 scp:$sdata/JOB/feats.scp ark:- | add-deltas-sdc ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
 
 # Initialize the i-vector extractor using the FGMM input
 if [ $stage -le -2 ]; then

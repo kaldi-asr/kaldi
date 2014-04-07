@@ -61,10 +61,8 @@ echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
 utils/split_data.sh $data $nj || exit 1;
 
-
 ## Set up features.
-feats="ark,s,cs:add-deltas-sdc scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- | subsample-feats --n=$subsample ark:- ark:- |"
-
+feats="ark,s,cs:apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 scp:$sdata/JOB/feats.scp ark:- | add-deltas-sdc ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 
 if [ $stage -le -2 ]; then
   if [ -f $srcdir/final.dubm ]; then # diagonal-covariance in $srcdir
