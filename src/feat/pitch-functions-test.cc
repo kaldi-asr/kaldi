@@ -46,7 +46,6 @@ bool DirExist(const std::string &dirname) {
 static void UnitTestSimple() {
   KALDI_LOG << "=== UnitTestSimple() ===\n";
   Vector<BaseFloat> v(1000);
-  Vector<BaseFloat> out;
   Matrix<BaseFloat> m;
   // init with noise
   for (int32 i = 0; i < v.Dim(); i++) {
@@ -59,6 +58,62 @@ static void UnitTestSimple() {
   // compute pitch.
   ComputeKaldiPitch(op, v, &m);
   KALDI_LOG << "Test passed :)\n";
+}
+
+
+// Make sure that doing a calculation on the whole waveform gives
+// the same results as doing on the waveform broken into pieces.
+static void UnitTestPieces() {
+  KALDI_LOG << "=== UnitTestPieces() ===\n";
+  for (int32 n = 0; n < 10; n++) {
+    // the parametrization object
+    PitchExtractionOptions op;
+    op.nccf_ballast_online = true; // this is necessary for the computation
+    // to be identical regardless how many pieces we break the signal into.
+    
+    int32 size = 10000 + rand() % 50000;
+
+    Vector<BaseFloat> v(size);
+    // init with noise plus a sine-wave whose frequency is changing randomly.
+
+    double cur_freq = 200.0, normalized_time = 0.0;
+    
+    for (int32 i = 0; i < size; i++) {
+      v(i) = RandGauss() + cos(normalized_time * M_2PI);
+      cur_freq += RandGauss(); // let the frequency wander a little.
+      if (cur_freq < 100.0) cur_freq = 100.0;
+      if (cur_freq > 300.0) cur_freq = 300.0;
+      normalized_time += cur_freq / op.samp_freq;
+    }
+
+    Matrix<BaseFloat> m1;
+    
+    // trying to have same opts as baseline.
+    // compute pitch.
+    ComputeKaldiPitch(op, v, &m1);
+
+    Matrix<BaseFloat> m2;
+
+    { // compute it online with multiple pieces.
+      OnlinePitchFeature pitch_extractor(op);
+      int32 start_samp = 0;
+      while (start_samp < v.Dim()) {
+        int32 num_samp = rand() % (v.Dim() + 1 - start_samp);
+        SubVector<BaseFloat> v_part(v, start_samp, num_samp);
+        pitch_extractor.AcceptWaveform(op.samp_freq, v_part);
+        start_samp += num_samp;
+      }
+      pitch_extractor.InputFinished();
+      int32 num_frames = pitch_extractor.NumFramesReady();
+      m2.Resize(num_frames, 2);
+      for (int32 frame = 0; frame < num_frames; frame++) {
+        SubVector<BaseFloat> row(m2, frame);
+        pitch_extractor.GetFrame(frame, &row);
+      }
+    }    
+    AssertEqual(m1, m2);
+    KALDI_LOG << "Test passed :)\n";
+  }
 }
 
 
@@ -372,6 +427,7 @@ void UnitTestDeltaPitch() {
 
 static void UnitTestFeatNoKeele() {
   UnitTestSimple();
+  UnitTestPieces();
   UnitTestDeltaPitch();
   UnitTestWeightedMovingWindowNormalize();
 }

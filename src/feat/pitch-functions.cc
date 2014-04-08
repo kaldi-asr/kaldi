@@ -763,7 +763,7 @@ void OnlinePitchFeatureImpl::UpdateRemainder(
   // frame_info_ has an extra element at frame-1, so subtract
   // one from the length.
   int64 num_frames = static_cast<int64>(frame_info_.size()) - 1,
-      next_frame = num_frames + 1,
+      next_frame = num_frames,
       frame_shift = opts_.NccfWindowShift(),
       next_frame_sample = frame_shift * next_frame;
   
@@ -817,7 +817,7 @@ void OnlinePitchFeatureImpl::ExtractFrame(
   } else {
     // frame is partly in the remainder and partly in the new part.
     int32 remainder_offset = downsampled_signal_remainder_.Dim() + offset;
-    KALDI_ASSERT(remainder_offset > 0);  // or we didn't keep enough remainder.
+    KALDI_ASSERT(remainder_offset >= 0);  // or we didn't keep enough remainder.
     KALDI_ASSERT(offset + full_frame_length > 0);  // or we should have
                                                    // processed this frame last
                                                    // time.
@@ -904,20 +904,29 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
   int32 num_frames = NumFramesAvailable(
       downsampled_samples_processed_ + downsampled_wave.Dim());
   // "first_frame" is the first frame-index we process
-  int32 first_frame = frame_info_.size() - 1;
+  int32 first_frame = frame_info_.size() - 1,
+      num_new_frames = num_frames - first_frame;
+
+  if (num_new_frames == 0) {
+    UpdateRemainder(downsampled_wave);
+    return;
+    // continuing to the rest of the code would generate
+    // an error when sizing matrices with zero rows, and
+    // anyway is a waste of time.
+  }
   
   int32 num_measured_lags = nccf_last_lag_ + 1 - nccf_first_lag_,
       num_resampled_lags = lags_.Dim(),
       frame_shift = opts_.NccfWindowShift(),
       basic_frame_length = opts_.NccfWindowSize(),
       full_frame_length = basic_frame_length + nccf_last_lag_;
-  
+
   Vector<BaseFloat> window(full_frame_length),
       inner_prod(num_measured_lags),
       norm_prod(num_measured_lags);
-  Matrix<BaseFloat> nccf_pitch(num_frames, num_measured_lags),
-      nccf_pov(num_frames, num_measured_lags);
-
+  Matrix<BaseFloat> nccf_pitch(num_new_frames, num_measured_lags),
+      nccf_pov(num_new_frames, num_measured_lags);
+  
   Vector<double> cur_forward_cost(num_resampled_lags);
 
   // Because the resampling of the NCCF is more efficient when grouped together,
@@ -949,32 +958,34 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
     double nccf_ballast_pov = 0.0,
         nccf_ballast_pitch = pow(mean_square * basic_frame_length, 2) *
                               opts_.nccf_ballast;
-    SubVector<BaseFloat> nccf_pitch_row(nccf_pitch, frame);
+    SubVector<BaseFloat> nccf_pitch_row(nccf_pitch, frame - first_frame);
     ComputeNccf(inner_prod, norm_prod, nccf_ballast_pitch,
                 &nccf_pitch_row);
-    SubVector<BaseFloat> nccf_pov_row(nccf_pov, frame);    
+    SubVector<BaseFloat> nccf_pov_row(nccf_pov, frame - first_frame);
     ComputeNccf(inner_prod, norm_prod, nccf_ballast_pov,
                 &nccf_pov_row);
   }
 
-  Matrix<BaseFloat> nccf_pitch_resampled(num_frames, num_resampled_lags);
+  Matrix<BaseFloat> nccf_pitch_resampled(num_new_frames, num_resampled_lags);
   nccf_resampler_->Resample(nccf_pitch, &nccf_pitch_resampled);
   nccf_pitch.Resize(0, 0);  // no longer needed.
-  Matrix<BaseFloat> nccf_pov_resampled(num_frames, num_resampled_lags);  
+  Matrix<BaseFloat> nccf_pov_resampled(num_new_frames, num_resampled_lags);  
   nccf_resampler_->Resample(nccf_pov, &nccf_pov_resampled);
   nccf_pov.Resize(0, 0);  // no longer needed.  
 
-  for (int32 frame = first_frame; frame < num_frames; frame++) {  
+  for (int32 frame = first_frame; frame < num_frames; frame++) {
+    int32 frame_idx = frame - first_frame;
     PitchFrameInfo *prev_info = frame_info_.back(),
-        *cur_info = new PitchFrameInfo(opts_, nccf_pitch_resampled.Row(frame),
-                                       nccf_pov_resampled.Row(frame), lags_,
+        *cur_info = new PitchFrameInfo(opts_, nccf_pitch_resampled.Row(frame_idx),
+                                       nccf_pov_resampled.Row(frame_idx), lags_,
                                        forward_cost_, prev_info,
                                        &cur_forward_cost);
     forward_cost_.Swap(&cur_forward_cost);
     frame_info_.push_back(cur_info);
   }
-  UpdateRemainder(downsampled_wave);
 
+  UpdateRemainder(downsampled_wave);
+  
   // Trace back the best-path.
   int32 best_final_state;
   forward_cost_.Min(&best_final_state);
