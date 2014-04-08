@@ -1203,9 +1203,9 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
   // previously processed ones.
   int32 num_frames = NumFramesAvailable(
       downsampled_samples_processed_ + downsampled_wave.Dim());
-  // "frame" is the next frame-index we process
-  int32 frame = frame_info_.size() - 1;
-
+  // "first_frame" is the first frame-index we process
+  int32 first_frame = frame_info_.size() - 1;
+  
   int32 num_measured_lags = nccf_last_lag_ + 1 - nccf_first_lag_,
       num_resampled_lags = lags_.Dim(),
       frame_shift = opts_.NccfWindowShift(),
@@ -1214,18 +1214,17 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
   
   Vector<BaseFloat> window(full_frame_length),
       inner_prod(num_measured_lags),
-      norm_prod(num_measured_lags),
-      nccf_pitch(num_measured_lags),
-      nccf_pov(num_measured_lags),
-      nccf_pitch_resampled(num_resampled_lags),
-      nccf_pov_resampled(num_resampled_lags);
+      norm_prod(num_measured_lags);
+  Matrix<BaseFloat> nccf_pitch(num_frames, num_measured_lags),
+      nccf_pov(num_frames, num_measured_lags);
+
   Vector<double> cur_forward_cost(num_resampled_lags);
 
   // Because the resampling of the NCCF is more efficient when grouped together,
   // we first compute the NCCF for all frames, then resample as a matrix, then
   // do the Viterbi [that happens inside the constructor of PitchFrameInfo].
   
-  for (; frame < num_frames; frame++) {
+  for (int32 frame = first_frame; frame < num_frames; frame++) {
     // start_sample is index into the whole wave, not just this part.
     int64 start_sample = static_cast<int64>(frame) * frame_shift;
     ExtractFrame(downsampled_wave, start_sample, &window);
@@ -1250,25 +1249,25 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
     double nccf_ballast_pov = 0.0,
         nccf_ballast_pitch = pow(mean_square * basic_frame_length, 2) *
                               opts_.nccf_ballast;
-    ComputeNccf(inner_prod, norm_prod, nccf_ballast_pitch, &nccf_pitch);
-    ComputeNccf(inner_prod, norm_prod, nccf_ballast_pov, &nccf_pov);
+    SubVector<BaseFloat> nccf_pitch_row(nccf_pitch, frame);
+    ComputeNccf(inner_prod, norm_prod, nccf_ballast_pitch,
+                &nccf_pitch_row);
+    SubVector<BaseFloat> nccf_pov_row(nccf_pov, frame);    
+    ComputeNccf(inner_prod, norm_prod, nccf_ballast_pov,
+                &nccf_pov_row);
+  }
 
-    if (frame == 100) {
-      KALDI_VLOG(4) << "frame 100: nccf_pitch is " << nccf_pitch;
-    }
+  Matrix<BaseFloat> nccf_pitch_resampled(num_frames, num_resampled_lags);
+  nccf_resampler_->Resample(nccf_pitch, &nccf_pitch_resampled);
+  nccf_pitch.Resize(0, 0);  // no longer needed.
+  Matrix<BaseFloat> nccf_pov_resampled(num_frames, num_resampled_lags);  
+  nccf_resampler_->Resample(nccf_pov, &nccf_pov_resampled);
+  nccf_pov.Resize(0, 0);  // no longer needed.  
 
-    nccf_resampler_->Resample(nccf_pitch, &nccf_pitch_resampled);
-    nccf_resampler_->Resample(nccf_pov, &nccf_pov_resampled);
-
-
-    if (frame == 100) {
-      KALDI_VLOG(4) << "frame 100: nccf_pitch_resampled is " << nccf_pitch_resampled;
-    }
-
-    
+  for (int32 frame = first_frame; frame < num_frames; frame++) {  
     PitchFrameInfo *prev_info = frame_info_.back(),
-        *cur_info = new PitchFrameInfo(opts_, nccf_pitch_resampled,
-                                       nccf_pov_resampled, lags_,
+        *cur_info = new PitchFrameInfo(opts_, nccf_pitch_resampled.Row(frame),
+                                       nccf_pov_resampled.Row(frame), lags_,
                                        forward_cost_, prev_info,
                                        &cur_forward_cost);
     forward_cost_.Swap(&cur_forward_cost);
