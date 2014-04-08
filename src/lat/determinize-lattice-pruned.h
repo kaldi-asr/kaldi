@@ -243,6 +243,13 @@ void DeterminizeLatticeDeletePhones(
     true, it then does a second pass of determinization on the word lattices by
     calling DeterminizeLatticePruned(). If both are set to false, then it gives
     a warning and copying the lattices without determinization.
+
+    Note: the point of doing first a phone-level determinization pass and then
+    a word-level determinization pass is that it allows us to determinize
+    deeper lattices without "failing early" and returning a too-small lattice
+    due to the max-mem constraint.  The result should be the same as word-level
+    determinization in general, but for deeper lattices it is a bit faster,
+    despite the fact that we now have two passes of determinization by default.
 */
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(

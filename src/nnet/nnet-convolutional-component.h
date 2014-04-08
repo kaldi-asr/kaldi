@@ -276,7 +276,7 @@ class ConvolutionalComponent : public UpdatableComponent {
       for (int32 s=0; s<num_splice; s++) {
         CuSubMatrix<BaseFloat> src(feature_patch_diffs_[p].ColRange(s * patch_dim_, patch_dim_));
         CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(p * patch_step_ + s * patch_stride_, patch_dim_));
-        tgt.AddMat(1.0, src, 1.0); // sum
+        tgt.AddMat(1.0, src); // sum
         // add 1.0 to keep track of target columns in the sum
         in_diff_summands_.Range(p * patch_step_ + s * patch_stride_, patch_dim_).Add(1.0);
       }

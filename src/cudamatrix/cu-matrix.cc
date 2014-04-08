@@ -800,26 +800,29 @@ void CuMatrixBase<Real>::InvertElements() {
 
 
 template<typename Real>
-void CuMatrixBase<Real>::AddMat(Real alpha, const CuMatrixBase<Real>& A, Real beta) {
+void CuMatrixBase<Real>::AddMat(Real alpha, const CuMatrixBase<Real>& A, 
+                                MatrixTransposeType transA) {
+
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-
-    KALDI_ASSERT(num_rows_ == A.num_rows_ && num_cols_ == A.num_cols_);
+    if (transA == kNoTrans) {
+      KALDI_ASSERT(A.NumRows() == num_rows_ && A.NumCols() == num_cols_);
+    } else {
+      KALDI_ASSERT(A.NumCols() == num_rows_ && A.NumRows() == num_cols_);
+    }
     if (num_rows_ == 0) return;
-
+    Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
-
-    cuda_add_mat(dimGrid, dimBlock, alpha, A.data_, beta, data_, Dim(), A.Stride());
+    cuda_add_mat(dimGrid, dimBlock, alpha, A.data_, data_, Dim(), A.Stride(),
+                 (transA == kTrans ? 1 : 0)); 
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
-    Mat().Scale(beta);
-    Mat().AddMat(alpha, A.Mat());
+    Mat().AddMat(alpha, A.Mat(), transA);
   }
 }
 

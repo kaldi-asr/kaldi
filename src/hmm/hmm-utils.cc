@@ -671,12 +671,16 @@ static bool SplitToPhonesInternal(const TransitionModel &trans_model,
   size_t cur_point = 0;
   for (size_t i = 0; i < end_points.size(); i++) {
     split_output->push_back(std::vector<int32>());
-    // The next if-statement just checks that the initial trans-id
-    // of the alignment is an initial-state of a phone (a cursory check
-    // that the alignment is plausible).
-    if (trans_model.TransitionStateToHmmState
-       (trans_model.TransitionIdToTransitionState
-        (alignment[cur_point])) != 0) was_ok= false;
+    // The next if-statement checks if the initial trans-id at the current end
+    // point is the initial-state of the current phone if that initial-state
+    // is emitting (a cursory check that the alignment is plausible).
+    int32 trans_state = 
+      trans_model.TransitionIdToTransitionState(alignment[cur_point]);
+    int32 phone = trans_model.TransitionStateToPhone(trans_state);
+    int32 pdf_class = trans_model.GetTopo().TopologyForPhone(phone)[0].pdf_class;
+    if (pdf_class != kNoPdf)  // initial-state of the current phone is emitting
+      if (trans_model.TransitionStateToHmmState(trans_state) != 0)
+        was_ok= false;
     for (size_t j = cur_point; j < end_points[i]; j++)
       split_output->back().push_back(alignment[j]);
     cur_point = end_points[i];

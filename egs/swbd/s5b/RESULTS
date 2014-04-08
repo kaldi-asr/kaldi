@@ -96,6 +96,8 @@ for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep WER $x/wer_* | 
 %WER 18.6 | 1831 21395 | 83.4 11.2 5.4 2.0 18.6 56.6 | exp/nnet5b2.old/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
 %WER 15.3 | 1831 21395 | 86.5 9.0 4.5 1.8 15.3 53.0 | exp/nnet5c_gpu/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
 %WER 15.7 | 1831 21395 | 86.1 9.3 4.5 1.9 15.7 53.3 | exp/nnet5c_gpu/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 18.1 | 1831 21395 | 83.8 10.8 5.4 1.9 18.1 56.0 | exp/nnet5d_gpu/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys 
+%WER 17.5 | 1831 21395 | 84.1 10.4 5.4 1.7 17.5 54.9 | exp/nnet5d_gpu/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
 %WER 17.9 | 1831 21395 | 83.8 10.8 5.5 1.7 17.9 55.8 | exp/nnet6a_gpu/decode_eval2000_sw1_fsh_tgpr/score_13/eval2000.ctm.swbd.filt.sys
 %WER 18.4 | 1831 21395 | 83.6 11.4 5.0 2.1 18.4 56.1 | exp/nnet6a_gpu/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
 
