@@ -241,11 +241,6 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
                        const VectorBase<BaseFloat> &wave,
                        Matrix<BaseFloat> *output);
 
-// testing new version that uses OnlinePitchFeatureImpl internally.
-void ComputeKaldiPitchNew(const PitchExtractionOptions &opts,
-                          const VectorBase<BaseFloat> &wave,
-                          Matrix<BaseFloat> *output);
-
 /// This function processes the raw (NCCF, pitch) quantities computed by
 /// ComputeKaldiPitch, and processes them into features.  By default it will
 /// output three-dimensional features, (POV-feature, mean-subtracted-log-pitch,
