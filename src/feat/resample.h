@@ -109,6 +109,11 @@ class ArbitraryResample {
   /// and output.NumCols() should equal NumSamplesOut().
   void Resample(const MatrixBase<BaseFloat> &input,
                 MatrixBase<BaseFloat> *output) const;
+
+  /// This version of the Resample function processes just
+  /// one vector.
+  void Resample(const VectorBase<BaseFloat> &input,
+                VectorBase<BaseFloat> *output) const;  
  private:
   void SetIndexes(const Vector<BaseFloat> &sample_points);
 

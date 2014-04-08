@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
       SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
       Matrix<BaseFloat> features;
       try {
-        ComputeKaldiPitch(pitch_opts, waveform, &features);
+        ComputeKaldiPitchNew(pitch_opts, waveform, &features);
       } catch (...) {
         KALDI_WARN << "Failed to compute pitch for utterance "
                    << utt;

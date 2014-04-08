@@ -160,11 +160,16 @@ int32 PitchNumFrames(int32 nsamp,
                      const PitchExtractionOptions &opts) {
   int32 frame_shift = opts.NccfWindowShift();
   int32 frame_length = opts.NccfWindowSize();
-  KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
-  if (static_cast<int32>(nsamp) < frame_length)
+  double outer_max_lag =  1.0 / opts.min_f0 +
+      (opts.upsample_filter_width/(2.0 * opts.resample_freq));
+  int32 end_lag = floor(opts.resample_freq * outer_max_lag);
+  int32 frame_length_full = frame_length + end_lag;
+  
+  KALDI_ASSERT(frame_shift != 0 && frame_length_full != 0);
+  if (static_cast<int32>(nsamp) < frame_length_full)
     return 0;
   else
-    return (1 + ((nsamp - frame_length) / frame_shift));
+    return (1 + ((nsamp - frame_length_full) / frame_shift));
 }
 
 void PreemphasizeFrame(VectorBase<BaseFloat> *waveform, double preemph_coeff) {
@@ -222,7 +227,7 @@ void PreProcess(const PitchExtractionOptions opts,
 
   // Normalize input signal using rms
   double rms = pow(VecVec((*processed_wave), (*processed_wave))
-    / processed_wave->Dim(), 0.5);
+                   / processed_wave->Dim(), 0.5);
   if (rms != 0.0)
     (*processed_wave).Scale(1.0 / rms);
 }
@@ -240,24 +245,25 @@ void PreProcess(const PitchExtractionOptions opts,
    and d2 is the dot-product of the window shifted by "lag"
    with itself.
  */
-void ComputeCorrelation(const Vector<BaseFloat> &wave,
-                        int32 start, int32 end,
+void ComputeCorrelation(const VectorBase<BaseFloat> &wave,
+                        int32 first_lag, int32 last_lag,
                         int32 nccf_window_size,
-                        Vector<BaseFloat> *inner_prod,
-                        Vector<BaseFloat> *norm_prod) {
+                        VectorBase<BaseFloat> *inner_prod,
+                        VectorBase<BaseFloat> *norm_prod) {
   Vector<BaseFloat> zero_mean_wave(wave);
+  // TODO: possibly fix this, the mean normalization is done in a strange way.
   SubVector<BaseFloat> wave_part(wave, 0, nccf_window_size);
   // subtract mean-frame from wave
   zero_mean_wave.Add(-wave_part.Sum() / nccf_window_size);
   BaseFloat e1, e2, sum;
   SubVector<BaseFloat> sub_vec1(zero_mean_wave, 0, nccf_window_size);
   e1 = VecVec(sub_vec1, sub_vec1);
-  for (int32 lag = start; lag <= end; lag++) {
+  for (int32 lag = first_lag; lag <= last_lag; lag++) {
     SubVector<BaseFloat> sub_vec2(zero_mean_wave, lag, nccf_window_size);
     e2 = VecVec(sub_vec2, sub_vec2);
     sum = VecVec(sub_vec1, sub_vec2);
-    (*inner_prod)(lag-start) = sum;
-    (*norm_prod)(lag-start) = e1 * e2;
+    (*inner_prod)(lag - first_lag) = sum;
+    (*norm_prod)(lag - first_lag) = e1 * e2;
   }
 }
 
@@ -265,12 +271,13 @@ void ComputeCorrelation(const Vector<BaseFloat> &wave,
    Computes the NCCF as a fraction of the numerator term (a dot product between
    two vectors) and a denominator term which equals sqrt(e1*e2 + nccf_ballast)
    where e1 and e2 are both dot-products of bits of the wave with themselves,
-   and e1*e2 is supplied as "norm_prod".
- */
-void ProcessNccf(const Vector<BaseFloat> &inner_prod,
-                 const Vector<BaseFloat> &norm_prod,
+   and e1*e2 is supplied as "norm_prod".  These quantities are computed by
+   "ComputeCorrelation".
+*/
+void ComputeNccf(const VectorBase<BaseFloat> &inner_prod,
+                 const VectorBase<BaseFloat> &norm_prod,
                  double nccf_ballast,
-                 SubVector<BaseFloat> *nccf_vec) {
+                 VectorBase<BaseFloat> *nccf_vec) {
   KALDI_ASSERT(inner_prod.Dim() == norm_prod.Dim() &&
                inner_prod.Dim() == nccf_vec->Dim());
   for (int32 lag = 0; lag < inner_prod.Dim(); lag++) {
@@ -318,7 +325,7 @@ class PitchExtractor {
     frames_.resize(num_frames_+1);
     for (int32 i = 0; i < num_frames_+1; i++) {
       frames_[i].obj_func.Resize(num_states_);
-      frames_[i].back_pointers.resize(num_states_);
+      frames_[i].backpointers.resize(num_states_);
     }
   }
   ~PitchExtractor() {}
@@ -351,7 +358,7 @@ class PitchExtractor {
         if ( i == 0 )
           min_i = 0;
         else
-          min_i = frames_[t].back_pointers[i-1];
+          min_i = frames_[t].backpointers[i-1];
         min_c = std::numeric_limits<double>::infinity();
         best_b = -1;
 
@@ -363,7 +370,7 @@ class PitchExtractor {
             best_b = k;
           }
         }
-        frames_[t].back_pointers[i] = best_b;
+        frames_[t].backpointers[i] = best_b;
         frames_[t].obj_func(i) = min_c + local_cost(i);
       }
       // Backward Pass
@@ -371,9 +378,9 @@ class PitchExtractor {
         if (i == num_states_-1)
           max_i = num_states_-1;
         else
-          max_i = frames_[t].back_pointers[i+1];
+          max_i = frames_[t].backpointers[i+1];
         min_c = frames_[t].obj_func(i) - local_cost(i);
-        best_b = frames_[t].back_pointers[i];
+        best_b = frames_[t].backpointers[i];
 
         for (int32 k = i+1 ; k <= max_i; k++) {
           intercost = (i-k) * (i-k) * delta_pitch_sq;
@@ -383,9 +390,15 @@ class PitchExtractor {
             best_b = k;
           }
         }
-        frames_[t].back_pointers[i] = best_b;
+        frames_[t].backpointers[i] = best_b;
         frames_[t].obj_func(i) = min_c + local_cost(i);
       }
+    }
+    {
+      int32 num_frames = frames_.size() - 1;
+      KALDI_VLOG(3) << "Viterbi cost is " 
+                    << (frames_.back().obj_func.Min() / num_frames)
+                    << " per frame, over " << num_frames << " frames.";
     }
   }
 
@@ -399,7 +412,7 @@ class PitchExtractor {
       l_opt = lags_(best);
       frames_[i].truepitch = 1.0 / l_opt;
       frames_[i].pov = correlation(i-1, best);
-      best = frames_[i].back_pointers[best];
+      best = frames_[i].backpointers[best];
       i--;
     }
   }
@@ -417,7 +430,7 @@ class PitchExtractor {
   Vector<BaseFloat> lags_;    // all lags used in viterbi
   struct PitchFrame {
     Vector<double> obj_func;      // optimal objective function for frame i
-    std::vector<int32> back_pointers;
+    std::vector<int32> backpointers;
     double truepitch;             // True pitch
     double pov;                   // probability of voicing
     explicit PitchFrame() {}
@@ -458,8 +471,8 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
   Matrix<BaseFloat> nccf_pitch(num_frames, num_initial_lags),
       nccf_pov(num_frames, num_initial_lags);
 
-  double nccf_ballast_pitch = pow(opts.NccfWindowSize(), 4) * opts.nccf_ballast;
-  double nccf_ballast_pov = 0.0;
+  double nccf_ballast_pitch = pow(opts.NccfWindowSize(), 2) * opts.nccf_ballast,
+      nccf_ballast_pov = 0.0;
 
   for (int32 r = 0; r < num_frames; r++) {  // r is frame index.
     ExtractFrame(processed_wave, r, opts, &window);
@@ -468,12 +481,12 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
     ComputeCorrelation(window, start, end, opts.NccfWindowSize(),
                        &inner_prod, &norm_prod);
     SubVector<BaseFloat> nccf_pitch_vec(nccf_pitch.Row(r));
-    ProcessNccf(inner_prod, norm_prod, nccf_ballast_pitch,
+    ComputeNccf(inner_prod, norm_prod, nccf_ballast_pitch,
                 &(nccf_pitch_vec));
     // compute the Nccf for Probability of voicing estimation;
     // there is no ballast for this version of the NCCF.
     SubVector<BaseFloat> nccf_pov_vec(nccf_pov.Row(r));
-    ProcessNccf(inner_prod, norm_prod, nccf_ballast_pov,
+    ComputeNccf(inner_prod, norm_prod, nccf_ballast_pov,
                 &(nccf_pov_vec));
   }
   Vector<BaseFloat> final_lags_offset(final_lags);
@@ -500,6 +513,16 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
   resample.Resample(nccf_pitch, &resampled_nccf_pitch);
   Matrix<BaseFloat> resampled_nccf_pov(num_frames, num_states);
   resample.Resample(nccf_pov, &resampled_nccf_pov);
+
+
+  if (resampled_nccf_pitch.NumRows() > 100) {
+    KALDI_VLOG(4) << "frame 100: nccf_pitch is "
+                  << nccf_pitch.Row(100);
+    
+    KALDI_VLOG(4) << "frame 100: nccf_pitch_resampled is "
+                  << resampled_nccf_pitch.Row(100);
+  }
+  
 
   PitchExtractor pitch(opts, final_lags, num_states, num_frames);
   pitch.FastViterbi(resampled_nccf_pitch);
@@ -589,6 +612,734 @@ void PostProcessPitch(const PostProcessPitchOptions &opts,
     output->CopyColFromVec(raw_log_pitch, col++);
   KALDI_ASSERT(col == output_ncols);
 }
+
+/**
+   This function computes the local-cost for the Viterbi computation,
+   see eq. (5) in the paper.
+   @param  opts         The options as provided by the user
+   @param  nccf_pitch   The nccf as computed for the pitch computation (with ballast).
+   @param  lags         The log-spaced lags at which nccf_pitch is sampled.
+   @param  local_cost   We output the local-cost to here.
+*/
+void ComputeLocalCost(const VectorBase<BaseFloat> &nccf_pitch,
+                      const VectorBase<BaseFloat> &lags,
+                      const PitchExtractionOptions &opts,
+                      VectorBase<BaseFloat> *local_cost) {
+  // from the paper, eq. 5, local_cost = 1 - Phi(t,i)(1 - soft_min_f0 L_i)
+  // nccf is the nccf on this frame measured at the lags in "lags".
+  KALDI_ASSERT(nccf_pitch.Dim() == local_cost->Dim() &&
+               nccf_pitch.Dim() == lags.Dim());
+  local_cost->Set(1.0);
+  // add the term -Phi(t,i):
+  local_cost->AddVec(-1.0, nccf_pitch);
+  // add the term soft_min_f0 Phi(t,i) L_i
+  local_cost->AddVecVec(opts.soft_min_f0, lags, nccf_pitch, 1.0); 
+}
+
+
+
+// class PitchFrameInfo is used inside class OnlinePitchFeatureImpl.
+// It stores the information we need to keep around for a single frame
+// of the pitch computation.
+class PitchFrameInfo {
+ public:
+  /// This function resizes the arrays for this object and updates the reference
+  /// counts for the previous object (by decrementing those reference counts
+  /// when we destroy a StateInfo object).  A StateInfo object is considered to
+  /// be destroyed when we delete it, not when its reference counts goes to
+  /// zero.
+  void Cleanup(PitchFrameInfo *prev_frame);
+
+  /// This function may be called for the last (most recent) PitchFrameInfo object
+  /// with the best state (obtained from the externally held forward-costs).  It
+  /// traces back as far as needed to set the cur_best_state_, and as it's
+  /// going it sets the lag-index and pov_nccf in pitch_pov_iter, which
+  /// when it's called is an iterator to where to put the info for the final state;
+  /// the iterator will be decremented inside this function.
+  void SetBestState(int32 best_state,
+                    std::vector<std::pair<int32, BaseFloat> >::iterator lag_nccf_iter);
+                    
+                    
+
+  /// This function may be called on the last (most recent) PitchFrameInfo
+  /// object; it computes how many frames of latency there is because the
+  /// traceback has not yet settled on a single value for frames in the past.
+  /// It actually returns the minimum of max_latency and the actual latency,
+  /// which is an optimization because we won't care about latency past
+  /// a user-specified maximum latency.
+  int32 ComputeLatency(int32 max_latency);
+  
+  /// This function updates
+  bool UpdatePreviousBestState(PitchFrameInfo *prev_frame);
+
+  /// This constructor is used for frame -1; it sets the costs to be all zeros
+  /// the pov_nccf's to zero and the backpointers to -1.
+  PitchFrameInfo(int32 num_states);
+
+
+  /// This constructor is used for frames apart from frame -1; the bulk of
+  /// the Viterbi computation takes place inside this constructor.
+  ///  @param  opts         The options as provided by the user
+  ///  @param  nccf_pitch   The nccf as computed for the pitch computation (with ballast).
+  ///  @param  nccf_pov     The nccf as computed for the POV computation (without ballast).
+  ///  @param  lags         The log-spaced lags at which nccf_pitch and nccf_pov are sampled.
+  ///  @param  prev_frame_forward_cost   The forward-cost vector for the previous frame.
+  ///  @param  this_forward_cost   The forward-cost vector for this frame (to be computed).
+  PitchFrameInfo(const PitchExtractionOptions &opts,
+                 const VectorBase<BaseFloat> &nccf_pitch, 
+                 const VectorBase<BaseFloat> &nccf_pov,
+                 const VectorBase<BaseFloat> &lags,
+                 const VectorBase<double> &prev_forward_cost,
+                 PitchFrameInfo *prev_info,
+                 VectorBase<double> *this_forward_cost);
+ private:
+  // struct StateInfo is the information we keep for a single one of the log-spaced
+  // lags, for a single frame.  This is a state in the Viterbi computation.
+  struct StateInfo {
+    /// The state index on the previous frame that is the best preceding state
+    /// for this state.
+    int32 backpointer;
+    /// the version of the NCCF we keep for the POV computation (without the
+    /// ballast term).
+    BaseFloat pov_nccf;
+    StateInfo(): backpointer(0), pov_nccf(0.0) { }
+  };
+  std::vector<StateInfo> state_info_;
+  /// the state index of the first entry in "state_info"; this will initially be
+  /// zero, but after cleanup might be nonzero.
+  int32 state_offset_;
+
+  /// The current best state in the backtrace from the end.
+  int32 cur_best_state_;
+
+  /// The structure for the previous frame.
+  PitchFrameInfo *prev_info_;
+};
+
+
+// This constructor is used for frame -1; it sets the costs to be all zeros
+// the pov_nccf's to zero and the backpointers to -1.
+PitchFrameInfo::PitchFrameInfo(int32 num_states):
+    state_info_(num_states), state_offset_(0),
+    cur_best_state_(-1), prev_info_(NULL) { } 
+
+
+PitchFrameInfo::PitchFrameInfo(const PitchExtractionOptions &opts,
+                               const VectorBase<BaseFloat> &nccf_pitch, 
+                               const VectorBase<BaseFloat> &nccf_pov,
+                               const VectorBase<BaseFloat> &lags,
+                               const VectorBase<double> &prev_forward_cost,
+                               PitchFrameInfo *prev_info,
+                               VectorBase<double> *this_forward_cost):
+    state_info_(nccf_pitch.Dim()), state_offset_(0), cur_best_state_(-1),
+    prev_info_(prev_info) {
+  int32 num_states = nccf_pitch.Dim();
+  
+  Vector<BaseFloat> local_cost(num_states, kUndefined);
+  ComputeLocalCost(nccf_pitch, lags, opts, &local_cost);
+
+  const double delta_pitch_sq = pow(log(1.0 + opts.delta_pitch), 2.0),
+      inter_frame_factor = delta_pitch_sq * opts.penalty_factor;
+
+  // The algorithm has a forward pass and a backward pass, as briefly described
+  // in  the paper.
+  // We modified it for additional efficiency, to first compute every Nth frame
+  // using the forward and backward passes and then fill in the ones in between.
+  // the general principle is that the backpointer for state i must be >= the
+  // backpointer for state j, if j >= i.  There is no inexactness.
+  
+  const int32 modulus = 4;
+  int32 i;
+  // Forward Pass over every Nth frame  
+  for (i = 0; i < num_states; i += modulus) {
+    int32 min_i = (i == 0 ? 0 : state_info_[i - modulus].backpointer);
+    double min_cost = std::numeric_limits<double>::infinity();
+    double best_backpointer = -1;
+    
+    for (int32 k = min_i; k <= i; k++) {
+      double inter_frame_cost = (k - i) * (k - i) * inter_frame_factor;
+      double this_cost = prev_forward_cost(k) + inter_frame_cost;
+      if (this_cost < min_cost) {
+        min_cost = this_cost;
+        best_backpointer = k;
+      }
+    }
+    // note: the backpointer and forward-cost are not final, they might change
+    // in the backward pass.
+    state_info_[i].backpointer = best_backpointer;
+    // the forward cost does not get the cocal cost included until now.
+    (*this_forward_cost)(i) = min_cost + local_cost(i);
+  }
+
+  // Backward Pass over every Nth frame
+  int32 last_i = i - modulus; // the last one we processed in previous loop.
+  for (i = last_i; i >= 0; i -= modulus) {
+    int32 max_i = (i == last_i ?
+                   num_states - 1 : state_info_[i + modulus].backpointer);
+    double min_cost = (*this_forward_cost)(i) - local_cost(i);
+    int32 best_backpointer = state_info_[i].backpointer;
+    
+    for (int32 k = i + 1 ; k <= max_i; k++) {
+      double inter_frame_cost = (k - i) * (k - i) * inter_frame_factor;
+      double this_cost = prev_forward_cost(k) + inter_frame_cost;
+      if (this_cost < min_cost) {
+        min_cost = this_cost;
+        best_backpointer = k;
+      }
+    }
+    state_info_[i].backpointer = best_backpointer;
+    (*this_forward_cost)(i) = min_cost + local_cost(i);
+  }
+
+  // Fill in the frames in between every Nth frame.
+  for (int32 i = 0; i < num_states; i++) {
+    if (i % modulus != 0) {
+      int32 next_even_i = modulus * (i / modulus + 1);
+      int32 min_i = state_info_[i - 1].backpointer,
+          max_i = (next_even_i < num_states ?
+                   state_info_[next_even_i].backpointer :
+                   num_states - 1);
+
+      double min_cost = std::numeric_limits<double>::infinity();
+      int32 best_backpointer = -1;
+      for (int32 k = min_i; k <= max_i; k++) {
+        double inter_frame_cost = (k - i) * (k - i) * inter_frame_factor;
+        double this_cost = prev_forward_cost(k) + inter_frame_cost;
+        if (this_cost < min_cost) {
+          min_cost = this_cost;
+          best_backpointer = k;
+        }
+      }
+      KALDI_ASSERT(best_backpointer != -1);
+      state_info_[i].backpointer = best_backpointer;
+      (*this_forward_cost)(i) = min_cost + local_cost(i);      
+    }
+    // This is a convenient time to set the pov_nccf field for all i.
+    state_info_[i].pov_nccf = nccf_pov(i);
+  }
+    
+}
+
+void PitchFrameInfo::SetBestState(int32 best_state,
+                                  std::vector<std::pair<int32, BaseFloat> >::iterator iter) {
+  // This function would naturally be recursive, but we have coded this to avoid
+  // recursion, which would otherwise eat up the stack.  Think of it as a static
+  // member function, except we do use "this" right at the beginning.
+  PitchFrameInfo *this_info = this;  // it will change in the loop.
+  while (this_info != NULL) {
+    PitchFrameInfo *prev_info = this_info->prev_info_;
+    if (best_state == this_info->cur_best_state_) return;  // no change
+    if (prev_info != NULL)  // don't write anything for frame -1.
+      iter->first = best_state;
+    size_t state_info_index = best_state - this_info->state_offset_;
+    KALDI_ASSERT(state_info_index < this_info->state_info_.size());
+    this_info->cur_best_state_ = best_state;
+    best_state = this_info->state_info_[state_info_index].backpointer;
+    if (prev_info != NULL)  // don't write anything for frame -1.
+      iter->second = this_info->state_info_[state_info_index].pov_nccf;
+    this_info = prev_info;
+    iter--;
+  }    
+}
+
+
+int32 PitchFrameInfo::ComputeLatency(int32 max_latency) {
+  if (max_latency <= 0) return 0;
+
+  int32 latency = 0;
+  
+  // This function would naturally be recursive, but we have coded this to avoid
+  // recursion, which would otherwise eat up the stack.  Think of it as a static
+  // member function, except we do use "this" right at the beginning.
+  // This function is called only on the most recent PitchFrameInfo object.
+  int32 num_states = state_info_.size();
+  int32 min_living_state = 0, max_living_state = num_states - 1;
+  PitchFrameInfo *this_info = this; // it will change in the loop.
+
+  
+  for (; this_info != NULL && latency < max_latency;) {
+    int32 offset = this_info->state_offset_;
+    KALDI_ASSERT(min_living_state >= offset &&
+                 max_living_state - offset < this_info->state_info_.size());
+    min_living_state =
+        this_info->state_info_[min_living_state - offset].backpointer;
+    max_living_state =
+        this_info->state_info_[max_living_state - offset].backpointer;
+    if (min_living_state == max_living_state) {
+      return latency;
+    }
+    this_info = this_info->prev_info_;
+    if (this_info != NULL)  // avoid incrementing latency for frame -1,
+      latency++;            // as it's not a real frame.
+  }
+  return latency;
+}
+
+void PitchFrameInfo::Cleanup(PitchFrameInfo *prev_frame) {
+  KALDI_ERR << "Cleanup not implemented.";
+}
+
+
+
+
+
+// We could inherit from OnlineBaseFeature as we have the same interface,
+// but this will unnecessary force a lot of our functions to be virtual.
+class OnlinePitchFeatureImpl {
+ public:
+  explicit OnlinePitchFeatureImpl(const PitchExtractionOptions &opts);
+
+  int32 Dim() const { return 2; }
+
+  int32 NumFramesReady() const;
+
+  bool IsLastFrame(int32 frame) const;
+
+  void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
+
+  void AcceptWaveform(BaseFloat sampling_rate,
+                      const VectorBase<BaseFloat> &waveform);
+
+  void InputFinished();
+
+  ~OnlinePitchFeatureImpl();
+
+
+  // Copy-constructor, can be used to obtain a new copy of this object,
+  // any state from this utterance.
+  OnlinePitchFeatureImpl(const OnlinePitchFeatureImpl &other);
+  
+ private:
+
+  /// This function works out from the signal how many frames are currently
+  /// available to process (this is called from inside AcceptWaveform()).
+  /// Note: the number of frames differs slightly from the number the
+  /// old pitch code gave.
+  int32 NumFramesAvailable(int64 num_downsampled_samples) const;
+
+  /// This function extracts from the signal the samples numbered from
+  /// "sample_index" (numbered in the full downsampled signal, not just this
+  /// part), and of length equal to window->Dim().  It uses the data members
+  /// downsampled_samples_discarded_ and downsampled_signal_remainder_, as well
+  /// as the more recent part of the downsampled wave "downsampled_wave_part"
+  /// which is provided.
+  ///
+  /// @param downsampled_wave_part  One chunk of the downsampled wave.
+  /// @param sample_index  The desired starting sample index (measured from
+  ///                      the start of the whole signal, not just this part).
+  /// @param window  The part of the signal is output to here.
+  void ExtractFrame(const VectorBase<BaseFloat> &downsampled_wave_part,
+                    int64 frame_index,
+                    VectorBase<BaseFloat> *window);
+
+  /// This function updates downsampled_signal_remainder_,
+  /// downsampled_samples_processed_, and signal_sumsq_; it's called at the end
+  /// of AcceptWaveform().
+  void UpdateRemainder(const VectorBase<BaseFloat> &downsampled_wave_part);
+
+  
+  // The following variables don't change throughout the lifetime
+  // of this object.
+  PitchExtractionOptions opts_;
+
+  // the first lag of the downsampled signal at which we measure NCCF
+  int32 nccf_first_lag_;
+  // the last lag of the downsampled signal at which we measure NCCF
+  int32 nccf_last_lag_;
+
+  // The log-spaced lags at which we will resample the NCCF
+  Vector<BaseFloat> lags_;
+  
+  // This object is used to resample from evenly spaced to log-evenly-spaced
+  // nccf values.  It's a pointer for convenience of initialization, so we don't
+  // have to use the initializer from the constructor.
+  ArbitraryResample *nccf_resampler_;
+
+  // The following objects may change during the lifetime of this object.
+
+  // This object is used to resample the signal.
+  LinearResample *signal_resampler_;
+  
+  // frame_info_ is indexed by [frame-index + 1].  frame_info_[0] is an object
+  // that corresponds to frame -1, which is not a real frame.
+  std::vector<PitchFrameInfo*> frame_info_;
+
+  // Current number of frames which we can't output because Viterbi has not
+  // converged for them, or opts_.max_frames_latency if we have reached that
+  // limit.
+  int32 frames_latency_;
+  
+  // The forward-cost at the current frame (the last frame in frame_info_);
+  // this has the same dimension as lags_.
+  Vector<double> forward_cost_;
+
+  // The resampled-lag index and the NCCF (as computed for POV, without ballast
+  // term) for each frame, as determined by Viterbi traceback from the best
+  // final state.
+  std::vector<std::pair<int32, BaseFloat> > lag_nccf_;
+  
+  bool input_finished_;
+
+  /// sum-squared of previously processed parts of signal; used to get NCCF
+  /// ballast term.  Denominator is downsampled_samples_processed_.
+  double signal_sumsq_;
+  
+  /// downsampled_samples_processed is the number of samples (after
+  /// downsampling) that we got in previous calls to AcceptWaveform().
+  int64 downsampled_samples_processed_;
+  /// This is a small remainder of the previous downsampled signal;
+  /// it's used by ExtractFrame for frames near the boundary of two
+  /// waveforms supplied to AcceptWaveform().
+  Vector<BaseFloat> downsampled_signal_remainder_;
+};
+
+
+OnlinePitchFeatureImpl::OnlinePitchFeatureImpl(
+    const PitchExtractionOptions &opts):
+    opts_(opts), input_finished_(false), signal_sumsq_(0.0), 
+    downsampled_samples_processed_(0) {
+
+  signal_resampler_ = new LinearResample(opts.samp_freq, opts.resample_freq,
+                                         opts.lowpass_cutoff,
+                                         opts.lowpass_filter_width);
+  
+  double outer_min_lag = 1.0 / opts.max_f0 -
+      (opts.upsample_filter_width/(2.0 * opts.resample_freq));
+  double outer_max_lag = 1.0 / opts.min_f0 +
+      (opts.upsample_filter_width/(2.0 * opts.resample_freq));
+  nccf_first_lag_ = ceil(opts.resample_freq * outer_min_lag);
+  nccf_last_lag_ = floor(opts.resample_freq * outer_max_lag);
+
+  frames_latency_ = 0; // will be set in AcceptWaveform()
+  
+  // Choose the lags at which we resample the NCCF.
+  SelectLags(opts, &lags_);
+
+  // upsample_cutoff is the filter cutoff for upsampling the NCCF, which is the
+  // Nyquist of the resampling frequency.  The NCCF is (almost completely)
+  // bandlimited to around "lowpass_cutoff" (1000 by default), and when the
+  // spectrum of this bandlimited signal is convolved with the spectrum of an
+  // impulse train with frequency "resample_freq", which are separated by 4kHz,
+  // we get energy at -5000,-3000, -1000...1000, 3000..5000, etc.  Filtering at
+  // half the Nyquist (2000 by default) is sufficient to get only the first
+  // repetition.
+  BaseFloat upsample_cutoff = opts.resample_freq * 0.5;  
+
+
+  Vector<BaseFloat> lags_offset(lags_);
+  // lags_offset equals lags_ (which are the log-spaced lag values we want to
+  // measure the NCCF at) with nccf_first_lag_ / opts.resample_freq subtracted
+  // from each element, so we can treat the measured NCCF values as as starting
+  // from sample zero in a signal that starts at the point start /
+  // opts.resample_freq.  This is necessary because the ArbitraryResample code
+  // assumes that the input signal starts from sample zero.
+  lags_offset.Add(-nccf_first_lag_ / opts.resample_freq);
+
+  int32 num_measured_lags = nccf_last_lag_ + 1 - nccf_first_lag_;
+  
+  nccf_resampler_ = new ArbitraryResample(num_measured_lags, opts.resample_freq,
+                                          upsample_cutoff, lags_offset,
+                                          opts.upsample_filter_width);
+
+  // add a PitchInfo object for frame -1 (not a real frame).
+  frame_info_.push_back(new PitchFrameInfo(lags_.Dim()));
+  // zeroes forward_cost_; this is what we want for the fake frame -1.
+  forward_cost_.Resize(lags_.Dim()); 
+
+}
+
+
+int32 OnlinePitchFeatureImpl::NumFramesAvailable(
+    int64 num_downsampled_samples) const {
+  int32 frame_shift = opts_.NccfWindowShift(),
+      frame_length = opts_.NccfWindowSize(),
+      full_frame_length = frame_length + nccf_last_lag_;
+  if (num_downsampled_samples < full_frame_length) return 0;
+  else return ((num_downsampled_samples - full_frame_length) / frame_shift) + 1;
+}
+
+void OnlinePitchFeatureImpl::UpdateRemainder(
+    const VectorBase<BaseFloat> &downsampled_wave_part) {
+  // frame_info_ has an extra element at frame-1, so subtract
+  // one from the length.
+  int64 num_frames = static_cast<int64>(frame_info_.size()) - 1,
+      next_frame = num_frames + 1,
+      frame_shift = opts_.NccfWindowShift(),
+      next_frame_sample = frame_shift * next_frame;
+  
+  signal_sumsq_ += VecVec(downsampled_wave_part, downsampled_wave_part);
+  
+  // next_frame_sample is the first sample index we'll need for the
+  // next frame.
+  int64 next_downsampled_samples_processed =
+      downsampled_samples_processed_ + downsampled_wave_part.Dim();
+  
+  if (next_frame_sample > next_downsampled_samples_processed) {
+    // this could only happen in the weird situation that the full frame length
+    // is less than the frame shift.
+    int32 full_frame_length = opts_.NccfWindowSize() + nccf_last_lag_;
+    KALDI_ASSERT(full_frame_length < frame_shift && "Code error");
+    downsampled_signal_remainder_.Resize(0);
+  } else {
+    Vector<BaseFloat> new_remainder(next_downsampled_samples_processed -
+                                    next_frame_sample);
+    // note: next_frame_sample is the index into the entire signal, of
+    // new_remainder(0).
+    // i is the absolute index of the signal.
+    for (int64 i = next_frame_sample;
+         i < next_downsampled_samples_processed; i++) {
+      if (i >= downsampled_samples_processed_) {  // in current signal.
+        new_remainder(i - next_frame_sample) =
+            downsampled_wave_part(i - downsampled_samples_processed_);
+      } else { // in old remainder; only reach here if waveform supplied is tiny.
+        new_remainder(i - next_frame_sample) =
+            downsampled_signal_remainder_(i - downsampled_samples_processed_ +
+                                          downsampled_signal_remainder_.Dim());
+      }
+    }
+    downsampled_signal_remainder_.Swap(&new_remainder);
+  }
+  downsampled_samples_processed_ = next_downsampled_samples_processed;
+}
+
+void OnlinePitchFeatureImpl::ExtractFrame(
+    const VectorBase<BaseFloat> &downsampled_wave_part,
+    int64 sample_index,
+    VectorBase<BaseFloat> *window) {
+  int32 full_frame_length = window->Dim();
+  int32 offset = static_cast<int32>(sample_index -
+                                    downsampled_samples_processed_);
+  // "offset" is the offset of the start of the frame, into this
+  // signal.
+  if (offset >= 0) {
+    // frame is full inside the new part of the signal.
+    window->CopyFromVec(downsampled_wave_part.Range(offset, full_frame_length));
+  } else {
+    // frame is partly in the remainder and partly in the new part.
+    int32 remainder_offset = downsampled_signal_remainder_.Dim() + offset;
+    KALDI_ASSERT(remainder_offset > 0);  // or we didn't keep enough remainder.
+    KALDI_ASSERT(offset + full_frame_length > 0);  // or we should have
+                                                   // processed this frame last
+                                                   // time.
+    
+    int32 old_length = -offset, new_length = offset + full_frame_length;
+    window->Range(0, old_length).CopyFromVec(
+        downsampled_signal_remainder_.Range(remainder_offset, old_length));
+    window->Range(old_length, new_length).CopyFromVec(
+        downsampled_wave_part.Range(0, new_length));
+  }
+
+  if (opts_.preemph_coeff != 0.0) {
+    BaseFloat preemph_coeff = opts_.preemph_coeff;
+    for (int32 i = window->Dim() - 1; i > 0; i--)
+      (*window)(i) -= preemph_coeff * (*window)(i-1);
+    (*window)(0) *= (1.0 - preemph_coeff);
+  }
+}
+
+bool OnlinePitchFeatureImpl::IsLastFrame(int32 frame) const {
+  int32 T = NumFramesReady();
+  KALDI_ASSERT(frame < T);
+  return (input_finished_ && frame + 1 == T);
+}
+
+int32 OnlinePitchFeatureImpl::NumFramesReady() const {
+  int32 num_frames = lag_nccf_.size(),
+      latency = frames_latency_;
+  KALDI_ASSERT(latency <= num_frames);
+  return num_frames - latency;
+}
+
+
+void OnlinePitchFeatureImpl::GetFrame(int32 frame,
+                                      VectorBase<BaseFloat> *feat) {
+  KALDI_ASSERT(frame < NumFramesReady() && feat->Dim() == 2);
+  (*feat)(0) = lag_nccf_[frame].second;
+  (*feat)(1) = 1.0 / lags_(lag_nccf_[frame].first);
+}
+
+void OnlinePitchFeatureImpl::InputFinished() {
+  input_finished_ = true;
+  frames_latency_ = 0;
+  {
+    int32 num_frames = NumFramesReady();
+    KALDI_VLOG(3) << "Pitch-tracking Viterbi cost is "
+                  << (forward_cost_.Min() / num_frames)
+                  << " per frame, over " << num_frames << " frames.";
+  }
+}
+
+
+OnlinePitchFeatureImpl::~OnlinePitchFeatureImpl() {
+  delete nccf_resampler_;
+  delete signal_resampler_;
+  for (size_t i = 0; i < frame_info_.size(); i++)
+    delete frame_info_[i];
+}
+
+void OnlinePitchFeatureImpl::AcceptWaveform(
+    BaseFloat sampling_rate,
+    const VectorBase<BaseFloat> &wave) {
+  // we never flush out the last few samples of input waveform... this would on
+  // very rare occasions affect the number of frames processed, but since the
+  // number of frames produced is anyway different from the MFCC/PLP processing
+  // code, we already need to tolerate that.
+  const bool flush = false;
+
+  Vector<BaseFloat> downsampled_wave;
+  signal_resampler_->Resample(wave, flush, &downsampled_wave);
+
+  // these variables will be used to compute the root-mean-square value of the
+  // signal for the ballast term.
+  BaseFloat cur_sumsq = signal_sumsq_;
+  int64 cur_num_frames = downsampled_samples_processed_,
+      prev_frame_end_sample = 0;
+  if (!opts_.nccf_ballast_online) {
+    cur_sumsq += VecVec(downsampled_wave, downsampled_wave);
+    cur_num_frames += downsampled_wave.Dim();
+  }
+
+  // num_frames is the total number of frames we can now process, including
+  // previously processed ones.
+  int32 num_frames = NumFramesAvailable(
+      downsampled_samples_processed_ + downsampled_wave.Dim());
+  // "frame" is the next frame-index we process
+  int32 frame = frame_info_.size() - 1;
+
+  int32 num_measured_lags = nccf_last_lag_ + 1 - nccf_first_lag_,
+      num_resampled_lags = lags_.Dim(),
+      frame_shift = opts_.NccfWindowShift(),
+      basic_frame_length = opts_.NccfWindowSize(),
+      full_frame_length = basic_frame_length + nccf_last_lag_;
+  
+  Vector<BaseFloat> window(full_frame_length),
+      inner_prod(num_measured_lags),
+      norm_prod(num_measured_lags),
+      nccf_pitch(num_measured_lags),
+      nccf_pov(num_measured_lags),
+      nccf_pitch_resampled(num_resampled_lags),
+      nccf_pov_resampled(num_resampled_lags);
+  Vector<double> cur_forward_cost(num_resampled_lags);
+
+  // Because the resampling of the NCCF is more efficient when grouped together,
+  // we first compute the NCCF for all frames, then resample as a matrix, then
+  // do the Viterbi [that happens inside the constructor of PitchFrameInfo].
+  
+  for (; frame < num_frames; frame++) {
+    // start_sample is index into the whole wave, not just this part.
+    int64 start_sample = static_cast<int64>(frame) * frame_shift;
+    ExtractFrame(downsampled_wave, start_sample, &window);
+    if (opts_.nccf_ballast_online) {
+      // use only up to end of current frame to compute root-mean-square value.
+      // end_sample will be the sample-index into "downsampled_wave", so
+      // not really comparable to start_sample.
+      int64 end_sample = start_sample + full_frame_length -
+          downsampled_samples_processed_;
+      KALDI_ASSERT(end_sample > 0);  // or should have processed this frame last
+                                     // time.  Note: end_sample is one past last
+                                     // sample.
+      SubVector<BaseFloat> new_part(downsampled_wave, prev_frame_end_sample,
+                                    end_sample - prev_frame_end_sample);
+      cur_num_frames += new_part.Dim();
+      cur_sumsq += VecVec(new_part, new_part);
+      prev_frame_end_sample = end_sample;
+    }
+    double mean_square = cur_sumsq / cur_num_frames;
+    ComputeCorrelation(window, nccf_first_lag_, nccf_last_lag_,
+                       basic_frame_length, &inner_prod, &norm_prod);
+    double nccf_ballast_pov = 0.0,
+        nccf_ballast_pitch = pow(mean_square * basic_frame_length, 2) *
+                              opts_.nccf_ballast;
+    ComputeNccf(inner_prod, norm_prod, nccf_ballast_pitch, &nccf_pitch);
+    ComputeNccf(inner_prod, norm_prod, nccf_ballast_pov, &nccf_pov);
+
+    if (frame == 100) {
+      KALDI_VLOG(4) << "frame 100: nccf_pitch is " << nccf_pitch;
+    }
+
+    nccf_resampler_->Resample(nccf_pitch, &nccf_pitch_resampled);
+    nccf_resampler_->Resample(nccf_pov, &nccf_pov_resampled);
+
+
+    if (frame == 100) {
+      KALDI_VLOG(4) << "frame 100: nccf_pitch_resampled is " << nccf_pitch_resampled;
+    }
+
+    
+    PitchFrameInfo *prev_info = frame_info_.back(),
+        *cur_info = new PitchFrameInfo(opts_, nccf_pitch_resampled,
+                                       nccf_pov_resampled, lags_,
+                                       forward_cost_, prev_info,
+                                       &cur_forward_cost);
+    forward_cost_.Swap(&cur_forward_cost);
+    frame_info_.push_back(cur_info);
+  }
+  UpdateRemainder(downsampled_wave);
+
+  // Trace back the best-path.
+  int32 best_final_state;
+  forward_cost_.Min(&best_final_state);
+  lag_nccf_.resize(frame_info_.size() - 1);  // will keep any existing data.
+  std::vector<std::pair<int32, BaseFloat> >::iterator last_iter =
+      lag_nccf_.end() - 1;
+  frame_info_.back()->SetBestState(best_final_state, last_iter);
+  frames_latency_ = frame_info_.back()->ComputeLatency(opts_.max_frames_latency);
+}
+
+
+
+// Some functions that forward from OnlinePitchFeature to
+// OnlinePitchFeatureImpl.
+int32 OnlinePitchFeature::NumFramesReady() const {
+  return impl_->NumFramesReady();
+}
+
+OnlinePitchFeature::OnlinePitchFeature(const PitchExtractionOptions &opts):
+    impl_(new OnlinePitchFeatureImpl(opts)) { }
+
+bool OnlinePitchFeature::IsLastFrame(int32 frame) const {
+  return impl_->IsLastFrame(frame);
+}
+
+void OnlinePitchFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
+  impl_->GetFrame(frame, feat);
+}
+
+void OnlinePitchFeature::AcceptWaveform(
+    BaseFloat sampling_rate,
+    const VectorBase<BaseFloat> &waveform) {
+  impl_->AcceptWaveform(sampling_rate, waveform);
+}
+
+void OnlinePitchFeature::InputFinished() {
+  impl_->InputFinished();
+}
+
+OnlinePitchFeature::~OnlinePitchFeature() {
+  delete impl_;
+}
+    
+
+void ComputeKaldiPitchNew(const PitchExtractionOptions &opts,
+                          const VectorBase<BaseFloat> &wave,
+                          Matrix<BaseFloat> *output) {
+  OnlinePitchFeature pitch_extractor(opts);
+  pitch_extractor.AcceptWaveform(opts.samp_freq, wave);
+  pitch_extractor.InputFinished();
+  int32 num_frames = pitch_extractor.NumFramesReady();
+  if (num_frames == 0) {
+    KALDI_WARN << "No frames output in pitch extraction";
+    output->Resize(0, 0);
+    return;
+  }
+  output->Resize(num_frames, 2);
+  for (int32 frame = 0; frame < num_frames; frame++) {
+    SubVector<BaseFloat> row(*output, frame);
+    pitch_extractor.GetFrame(frame, &row);
+  }
+}
+
+
 
 
 }  // namespace kaldi

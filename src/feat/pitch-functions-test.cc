@@ -60,6 +60,32 @@ static void UnitTestSimple() {
   ComputeKaldiPitch(op, v, &m);
   KALDI_LOG << "Test passed :)\n";
 }
+
+
+
+static void UnitTestCompare() {
+  KALDI_LOG << "=== UnitTestSimple() ===\n";
+  Vector<BaseFloat> v(100000);
+  Vector<BaseFloat> out;
+  Matrix<BaseFloat> m, m2;
+  // init with noise
+  for (int32 i = 0; i < v.Dim(); i++) {
+    v(i) = (abs(i * 433024253) % 65535) - (65535 / 2);
+  }
+  KALDI_LOG << "<<<=== Just make sure it runs... Nothing is compared\n";
+  // the parametrization object
+  PitchExtractionOptions op;
+  op.penalty_factor = 0.001; // otherwise it's always the same pitch.
+  // trying to have same opts as baseline.
+  // compute pitch.
+  ComputeKaldiPitch(op, v, &m);
+  KALDI_LOG << "Pitch from old algorithm is " << m;
+  ComputeKaldiPitchNew(op, v, &m2);
+  KALDI_LOG << "Pitch from new algorithm is " << m2;
+
+  KALDI_ASSERT(m.ApproxEqual(m2, 0.01));  
+}
+
 // Compare pitch using Kaldi pitch tracker on KEELE corpora
 static void UnitTestKeele() {
   KALDI_LOG << "=== UnitTestKeele() ===\n";
@@ -370,6 +396,7 @@ void UnitTestDeltaPitch() {
 
 static void UnitTestFeatNoKeele() {
   UnitTestSimple();
+  UnitTestCompare();
   UnitTestDeltaPitch();
   UnitTestWeightedMovingWindowNormalize();
 }
@@ -384,6 +411,7 @@ static void UnitTestFeatWithKeele() {
 }
 
 int main() {
+  SetVerboseLevel(3);
   try {
     UnitTestFeatNoKeele();
     if (DirExist("keele/16kHz")) {

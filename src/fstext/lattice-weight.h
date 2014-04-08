@@ -342,7 +342,7 @@ inline LatticeWeightTpl<FloatType> Divide(const LatticeWeightTpl<FloatType> &w1,
                                           DivideType typ = DIVIDE_ANY) {
   typedef FloatType T;
   T a = w1.Value1() - w2.Value1(), b = w1.Value2() - w2.Value2();
-  if (a!=a || b!=b || a == -numeric_limits<T>::infinity()
+  if (a != a || b != b || a == -numeric_limits<T>::infinity()
      || b == -numeric_limits<T>::infinity()) {
     std::cerr << "LatticeWeightTpl::Divide, NaN or invalid number produced. "
               << "[dividing by zero?]  Returning zero.";

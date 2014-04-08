@@ -107,8 +107,15 @@ void UnitTestArbitraryResample() {
   }
   Matrix<BaseFloat> resampled_values(1, num_resamp);
 
-  resampler.Resample(sample_values,
-                     &resampled_values);
+
+  if (rand() % 2 == 0) {
+    resampler.Resample(sample_values,
+                       &resampled_values);
+  } else {
+    SubVector<BaseFloat> out(resampled_values, 0);
+    resampler.Resample(sample_values.Row(0),
+                       &out);
+  }
 
 
   for (int32 i = 0; i < num_resamp; i++) {

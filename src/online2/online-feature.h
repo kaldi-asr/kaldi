@@ -480,7 +480,7 @@ class OnlineAppendFeature: public OnlineFeatureInterface {
   virtual int32 NumFramesReady() const {
     return std::min(src1_->NumFramesReady(), src2_->NumFramesReady());
   }
-
+  
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   virtual ~OnlineAppendFeature() {  }

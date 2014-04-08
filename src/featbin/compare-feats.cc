@@ -54,25 +54,42 @@ int main(int argc, char *argv[]) {
 
     for (; !feat_reader1.Done(); feat_reader1.Next()) {
       std::string utt = feat_reader1.Key();
-      const Matrix<BaseFloat> &feat1 = feat_reader1.Value();
+      Matrix<BaseFloat> feat1 (feat_reader1.Value());
       if (!feat_reader2.HasKey(utt)) {
         KALDI_WARN << "Second table has no feature for utterance "
                    << utt;
         num_err++;
         continue;
       }
-      const Matrix<BaseFloat> &feat2 = feat_reader2.Value(utt);
-      if (!SameDim(feat1, feat2)) {
+      Matrix<BaseFloat> feat2 (feat_reader2.Value(utt));
+      if (feat1.NumCols() != feat2.NumCols()) {
         KALDI_WARN << "Feature dimensions differ for utterance "
-                   << utt << ", " << feat1.NumRows() << " by "
-                   << feat1.NumCols() << " vs. " << feat2.NumRows()
-                   << " by " << feat2.NumCols();
+                   << utt << ", " << feat1.NumCols() << " vs. "
+                   << feat1.NumCols() << ", skipping  utterance."
+                   << utt;
         num_err++;
         continue;
       }
+      if (feat1.NumRows() != feat2.NumRows()) {
+        if (abs(feat1.NumRows() - feat2.NumRows()) < 5) {
+          KALDI_WARN << "Number of frames differs slightly " << feat1.NumRows()
+                     << " vs. " << feat2.NumRows()
+                     << ", truncating larger file.";
+          int32 T = std::min(feat1.NumRows(), feat2.NumRows());
+          feat1.Resize(T, feat1.NumCols(), kCopyData);
+          feat2.Resize(T, feat2.NumCols(), kCopyData);
+        } else {
+          KALDI_WARN << "Number of frames differ " << feat1.NumRows()
+                     << " vs. " << feat2.NumRows()
+                     << ", skipping utterance." << utt;
+          num_err++;
+          continue;
+        }
+      }              
       prod1 += TraceMatMat(feat1, feat1, kTrans);
       prod2 += TraceMatMat(feat2, feat2, kTrans);
       cross_prod += TraceMatMat(feat1, feat2, kTrans);
+      num_done++;
     }
 
     KALDI_LOG << "Self-product of 1st features was " << prod1

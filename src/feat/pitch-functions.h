@@ -40,7 +40,7 @@ namespace kaldi {
 
 struct PitchExtractionOptions {
   // FrameExtractionOptions frame_opts;
-  BaseFloat samp_freq;
+  BaseFloat samp_freq;          // sample frequency in hertz
   BaseFloat frame_shift_ms;     // in milliseconds.
   BaseFloat frame_length_ms;    // in milliseconds.
   BaseFloat preemph_coeff;      // Preemphasis coefficient.
@@ -60,7 +60,17 @@ struct PitchExtractionOptions {
                                 // lowpass filter
   int32 upsample_filter_width;  // Integer that determines filter width when
                                 // upsampling NCCF
-  explicit PitchExtractionOptions() :
+
+  int32 max_frames_latency;     // The maximum number of frames of latency that
+                                // we allow the pitch-processing to introduce,
+                                // for online operation (this doesn't relate to
+                                // the CPU taken;
+  
+  bool nccf_ballast_online;     // This is a "hidden config" used only for
+                                // testing the online pitch extraction.  If true,
+                                // we compute the signal root-mean-squared for
+                                // the ballast term, only up to the current frame.
+  explicit PitchExtractionOptions():
       samp_freq(16000),
       frame_shift_ms(10.0),
       frame_length_ms(25.0),
@@ -72,10 +82,13 @@ struct PitchExtractionOptions {
       lowpass_cutoff(1000),
       resample_freq(4000),
       delta_pitch(0.005),
-      nccf_ballast(0.7),
+      nccf_ballast(7000),
       lowpass_filter_width(1),
-      upsample_filter_width(5) {}
-  void Register(OptionsItf *po) {
+      upsample_filter_width(5),
+      max_frames_latency(20),
+      nccf_ballast_online(false) {}
+  void Register(OptionsItf *po,
+                bool include_online_opts = false) {
     po->Register("sample-frequency", &samp_freq,
                  "Waveform data sample frequency (must match the waveform "
                  "file, if specified there)");
@@ -94,8 +107,9 @@ struct PitchExtractionOptions {
                  "cost factor for FO change.");
     po->Register("lowpass-cutoff", &lowpass_cutoff,
                  "cutoff frequency for LowPass filter (Hz) ");
-    po->Register("resample-freq", &resample_freq,
-                 "Integer that determines filter width when upsampling NCCF");
+    po->Register("resample-frequency", &resample_freq,
+                 "Frequency that we down-sample the signal to.  Must be "
+                 "more than twice lowpass-cutoff");
     po->Register("delta-pitch", &delta_pitch,
                  "Smallest relative change in pitch that our algorithm "
                  "measures");
@@ -106,10 +120,21 @@ struct PitchExtractionOptions {
                  "lowpass filter, more gives sharper filter");
     po->Register("upsample-filter-width", &upsample_filter_width,
                  "Integer that determines filter width when upsampling NCCF");
+    po->Register("nccf-ballast-online", &nccf_ballast_online,
+                 "Compute NCCF ballast using online version of the computation "
+                 "(more compatible with online feature extraction");
+    if (include_online_opts) {
+      po->Register("max-frames-latency", &max_frames_latency, "Maximum number "
+                   "of frames of latency that we allow pitch tracking to "
+                   "introduce into the feature processing");
+    }
   }
+  /// Returns the window-size in samples, after resampling.  This is the
+  /// "basic window size", not the full window size after extending by max-lag.
   int32 NccfWindowSize() const {
     return static_cast<int32>(resample_freq * 0.001 * frame_length_ms);
   }
+  /// Returns the window-shift in samples, after resampling.
   int32 NccfWindowShift() const {
     return static_cast<int32>(resample_freq * 0.001 * frame_shift_ms);
   }
@@ -173,18 +198,55 @@ struct PostProcessPitchOptions {
 };
 
 
+// We don't want to expose the pitch-extraction internals here as it's
+// quite complex, so we use a private implementation.
+class OnlinePitchFeatureImpl;
+
+
+// Note: to start on a new waveform, just construct a new version
+// of this object.
+class OnlinePitchFeature: public OnlineBaseFeature {
+ public:
+  explicit OnlinePitchFeature(const PitchExtractionOptions &opts);
+  
+  virtual int32 Dim() const { return 2; }
+
+  virtual int32 NumFramesReady() const;
+
+  virtual bool IsLastFrame(int32 frame) const;
+
+  /// Outputs the two-dimensional feature consisting of (pitch, NCCF).  You
+  /// should probably post-process this using class OnlinePostProcessPitch.
+  virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
+
+  virtual void AcceptWaveform(BaseFloat sampling_rate,
+                              const VectorBase<BaseFloat> &waveform);
+
+  virtual void InputFinished();
+
+  virtual ~OnlinePitchFeature();
+ private:
+  OnlinePitchFeatureImpl *impl_;
+  
+};
+
 
 /// This function extracts (pitch, NCCF) per frame, using the pitch extraction
 /// method described in "A Pitch Extraction Algorithm Tuned for Automatic Speech
 /// Recognition", Pegah Ghahremani, Bagher BabaAli, Daniel Povey, Korbinian
 /// Riedhammer, Jan Trmal and Sanjeev Khudanpur, ICASSP 2014.  The output will
 /// have as many rows as there are frames, and two columns corresponding to
-/// (pitch, NCCF).
+/// (NCCF, pitch)
 void ComputeKaldiPitch(const PitchExtractionOptions &opts,
                        const VectorBase<BaseFloat> &wave,
                        Matrix<BaseFloat> *output);
 
-/// This function processes the raw (pitch, NCCF) quantities computed by
+// testing new version that uses OnlinePitchFeatureImpl internally.
+void ComputeKaldiPitchNew(const PitchExtractionOptions &opts,
+                          const VectorBase<BaseFloat> &wave,
+                          Matrix<BaseFloat> *output);
+
+/// This function processes the raw (NCCF, pitch) quantities computed by
 /// ComputeKaldiPitch, and processes them into features.  By default it will
 /// output three-dimensional features, (POV-feature, mean-subtracted-log-pitch,
 /// delta-of-raw-pitch), but this is configurable in the options.  The number of

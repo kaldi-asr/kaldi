@@ -216,7 +216,6 @@ void LinearResample::SetRemainder(const VectorBase<BaseFloat> &input) {
   // input... anyway, storing more remainder than needed is not harmful.
   int32 max_remainder_needed = ceil(samp_rate_in_ * num_zeros_ /
                                     filter_cutoff_);
-  KALDI_VLOG(1) << "max-remainder-needed is " << max_remainder_needed;
   input_remainder_.Resize(max_remainder_needed);
   for (int32 index = - input_remainder_.Dim(); index < 0; index++) {
     // we interpret "index" as an offset from the end of "input" and
@@ -294,6 +293,18 @@ void ArbitraryResample::Resample(const MatrixBase<BaseFloat> &input,
     output_col.AddMatVec(1.0, input_part,
                          kNoTrans, weight_vec, 0.0);
     output->CopyColFromVec(output_col, i);
+  }
+}
+
+void ArbitraryResample::Resample(const VectorBase<BaseFloat> &input,
+                                 VectorBase<BaseFloat> *output) const {
+  KALDI_ASSERT(input.Dim() == num_samples_in_ &&
+               output->Dim() == weights_.size());
+  
+  int32 output_dim = output->Dim();
+  for (int32 i = 0; i < output_dim; i++) {
+    SubVector<BaseFloat> input_part(input, first_index_[i], weights_[i].Dim());
+    (*output)(i) = VecVec(input_part, weights_[i]);
   }
 }
 
