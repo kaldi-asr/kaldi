@@ -43,7 +43,7 @@ struct PitchExtractionOptions {
   BaseFloat samp_freq;          // sample frequency in hertz
   BaseFloat frame_shift_ms;     // in milliseconds.
   BaseFloat frame_length_ms;    // in milliseconds.
-  BaseFloat preemph_coeff;      // Preemphasis coefficient.
+  BaseFloat preemph_coeff;      // Preemphasis coefficient.  [use is deprecated.]
   BaseFloat min_f0;             // min f0 to search (Hz)
   BaseFloat max_f0;             // max f0 to search (Hz)
   BaseFloat soft_min_f0;        // Minimum f0, applied in soft way, must not
@@ -96,7 +96,7 @@ struct PitchExtractionOptions {
                  "milliseconds");
     po->Register("frame-shift", &frame_shift_ms, "Frame shift in milliseconds");
     po->Register("preemphasis-coefficient", &preemph_coeff,
-                 "Coefficient for use in signal preemphasis");
+                 "Coefficient for use in signal preemphasis (deprecated)");
     po->Register("min-f0", &min_f0,
                  "min. F0 to search for (Hz)");
     po->Register("max-f0", &max_f0,
