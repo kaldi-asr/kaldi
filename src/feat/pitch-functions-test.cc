@@ -116,6 +116,49 @@ static void UnitTestPieces() {
   }
 }
 
+// if we didn't #include pitch-functions.cc, we'd do this:
+// extern bool pitch_use_naive_search; // was declared in pitch-functions.cc
+
+// Make sure that doing a calculation on the whole waveform gives
+// the same results as doing on the waveform broken into pieces.
+static void UnitTestSearch() {
+  KALDI_LOG << "=== UnitTestSearch() ===\n";
+  for (int32 n = 0; n < 3; n++) {
+    // the parametrization object
+    PitchExtractionOptions op;
+    op.nccf_ballast_online = true; // this is necessary for the computation
+    // to be identical regardless how many pieces we break the signal into.
+    
+    int32 size = 10000 + rand() % 10000;
+
+    Vector<BaseFloat> v(size);
+    // init with noise plus a sine-wave whose frequency is changing randomly.
+
+    double cur_freq = 200.0, normalized_time = 0.0;
+    
+    for (int32 i = 0; i < size; i++) {
+      v(i) = RandGauss() + cos(normalized_time * M_2PI);
+      cur_freq += RandGauss(); // let the frequency wander a little.
+      if (cur_freq < 100.0) cur_freq = 100.0;
+      if (cur_freq > 300.0) cur_freq = 300.0;
+      normalized_time += cur_freq / op.samp_freq;
+    }
+
+    Matrix<BaseFloat> m1;
+    ComputeKaldiPitch(op, v, &m1);
+
+    pitch_use_naive_search = true;
+    
+    Matrix<BaseFloat> m2;
+    ComputeKaldiPitch(op, v, &m2);
+
+    pitch_use_naive_search = false;
+
+    AssertEqual(m1, m2, 1.0e-08);  // should be identical.
+  }
+  KALDI_LOG << "Test passed :)\n";
+}
+
 
 // Compare pitch using Kaldi pitch tracker on KEELE corpora
 static void UnitTestKeele() {
@@ -420,14 +463,13 @@ void UnitTestDeltaPitch() {
       KALDI_ERR << "output feat " << output_feat << " vs. "
         << " ouput feat2 " << output_feat2;
     }
-    for (int32 j = 0; j < num_frames; j++)
-      KALDI_VLOG(1) << output_feat(j) << " , " << output_feat2(j) << " ";
   }
 }
 
 static void UnitTestFeatNoKeele() {
   UnitTestSimple();
   UnitTestPieces();
+  UnitTestSearch();
   UnitTestDeltaPitch();
   UnitTestWeightedMovingWindowNormalize();
 }

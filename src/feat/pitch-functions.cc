@@ -338,6 +338,7 @@ void ComputeLocalCost(const VectorBase<BaseFloat> &nccf_pitch,
 }
 
 
+
 // class PitchFrameInfo is used inside class OnlinePitchFeatureImpl.
 // It stores the information we need to keep around for a single frame
 // of the pitch computation.
@@ -360,7 +361,6 @@ class PitchFrameInfo {
                     std::vector<std::pair<int32, BaseFloat> >::iterator lag_nccf_iter);
                     
                     
-
   /// This function may be called on the last (most recent) PitchFrameInfo
   /// object; it computes how many frames of latency there is because the
   /// traceback has not yet settled on a single value for frames in the past.
@@ -391,6 +391,7 @@ class PitchFrameInfo {
                  const VectorBase<BaseFloat> &lags,
                  const VectorBase<BaseFloat> &prev_forward_cost,
                  PitchFrameInfo *prev_info,
+                 std::vector<std::pair<int32, int32> > *index_info,
                  VectorBase<BaseFloat> *this_forward_cost);
  private:
   // struct StateInfo is the information we keep for a single one of the log-spaced
@@ -424,108 +425,187 @@ PitchFrameInfo::PitchFrameInfo(int32 num_states):
     cur_best_state_(-1), prev_info_(NULL) { } 
 
 
+bool pitch_use_naive_search = false;  // This is used in unit-tests.
+
 PitchFrameInfo::PitchFrameInfo(const PitchExtractionOptions &opts,
                                const VectorBase<BaseFloat> &nccf_pitch, 
                                const VectorBase<BaseFloat> &nccf_pov,
                                const VectorBase<BaseFloat> &lags,
-                               const VectorBase<BaseFloat> &prev_forward_cost,
+                               const VectorBase<BaseFloat> &prev_forward_cost_vec,
                                PitchFrameInfo *prev_info,
-                               VectorBase<BaseFloat> *this_forward_cost):
+                               std::vector<std::pair<int32, int32> > *index_info,
+                               VectorBase<BaseFloat> *this_forward_cost_vec):
     state_info_(nccf_pitch.Dim()), state_offset_(0), cur_best_state_(-1),
     prev_info_(prev_info) {
   int32 num_states = nccf_pitch.Dim();
   
   Vector<BaseFloat> local_cost(num_states, kUndefined);
   ComputeLocalCost(nccf_pitch, lags, opts, &local_cost);
-
+  
   const BaseFloat delta_pitch_sq = pow(log(1.0 + opts.delta_pitch), 2.0),
       inter_frame_factor = delta_pitch_sq * opts.penalty_factor;
 
   // index local_cost, prev_forward_cost and this_forward_cost using raw pointer
   // indexing not operator (), since this is the very inner loop and a lot of
   // time is taken here.
-  const BaseFloat  *local_cost_data = local_cost.Data(),
-      *prev_forward_cost_data = prev_forward_cost.Data();
-  BaseFloat *this_forward_cost_data = this_forward_cost->Data();
-      
-  
-  // The algorithm has a forward pass and a backward pass, as briefly described
-  // in  the paper.
-  // We modified it for additional efficiency, to first compute every Nth frame
-  // using the forward and backward passes and then fill in the ones in between.
-  // the general principle is that the backpointer for state i must be >= the
-  // backpointer for state j, if j >= i.  There is no inexactness.
-  
-  const int32 modulus = 4;
-  int32 i;
-  // Forward Pass over every Nth frame  
-  for (i = 0; i < num_states; i += modulus) {
-    int32 min_i = (i == 0 ? 0 : state_info_[i - modulus].backpointer);
-    BaseFloat min_cost = std::numeric_limits<double>::infinity();
-    int32 best_backpointer = -1;
-    
-    for (int32 k = min_i; k <= i; k++) {
-      BaseFloat inter_frame_cost = (k - i) * (k - i) * inter_frame_factor;
-      BaseFloat this_cost = prev_forward_cost_data[k] + inter_frame_cost;
-      if (this_cost < min_cost) {
-        min_cost = this_cost;
-        best_backpointer = k;
-      }
-    }
-    // note: the backpointer and forward-cost are not final, they might change
-    // in the backward pass.
-    state_info_[i].backpointer = best_backpointer;
-    // the forward cost does not get the cocal cost included until now.
-    this_forward_cost_data[i] = min_cost + local_cost_data[i];
-  }
+  const BaseFloat *prev_forward_cost = prev_forward_cost_vec.Data();
+  BaseFloat *this_forward_cost = this_forward_cost_vec->Data();
 
-  // Backward Pass over every Nth frame
-  int32 last_i = i - modulus; // the last one we processed in previous loop.
-  for (i = last_i; i >= 0; i -= modulus) {
-    int32 max_i = (i == last_i ?
-                   num_states - 1 : state_info_[i + modulus].backpointer);
-    BaseFloat min_cost = this_forward_cost_data[i] - local_cost_data[i];
-    int32 best_backpointer = state_info_[i].backpointer;
-    
-    for (int32 k = i + 1 ; k <= max_i; k++) {
-      BaseFloat inter_frame_cost = (k - i) * (k - i) * inter_frame_factor;
-      BaseFloat this_cost = prev_forward_cost_data[k] + inter_frame_cost;
-      if (this_cost < min_cost) {
-        min_cost = this_cost;
-        best_backpointer = k;
-      }
-    }
-    state_info_[i].backpointer = best_backpointer;
-    this_forward_cost_data[i] = min_cost + local_cost_data[i];
-  }
+  if (index_info->empty())
+    index_info->resize(num_states);
 
-  // Fill in the frames in between every Nth frame.
-  for (int32 i = 0; i < num_states; i++) {
-    if (i % modulus != 0) {
-      int32 next_even_i = modulus * (i / modulus + 1);
-      int32 min_i = state_info_[i - 1].backpointer,
-          max_i = (next_even_i < num_states ?
-                   state_info_[next_even_i].backpointer :
-                   num_states - 1);
+  // make it a reference for more concise indexing.
+  std::vector<std::pair<int32, int32> > &bounds = *index_info;
 
-      BaseFloat min_cost = std::numeric_limits<BaseFloat>::infinity();
-      int32 best_backpointer = -1;
-      for (int32 k = min_i; k <= max_i; k++) {
-        BaseFloat inter_frame_cost = (k - i) * (k - i) * inter_frame_factor;
-        BaseFloat this_cost = prev_forward_cost_data[k] + inter_frame_cost;
-        if (this_cost < min_cost) {
-          min_cost = this_cost;
-          best_backpointer = k;
+  /* bounds[i].first will be a lower bound on the backpointer for state i,
+     bounds[i].second will be an upper bound on it.  We progressively tighten
+     these bounds till we know the backpointers exactly.
+  */
+
+  if (pitch_use_naive_search) {
+    // This branch is only taken in unit-testing code.
+    for (int32 i = 0; i < num_states; i++) {
+      BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
+      int32 best_j = -1;
+      for (int32 j = 0; j < num_states; j++) {
+        BaseFloat this_cost = (j - i) * (j - i) * inter_frame_factor
+            + prev_forward_cost[j];
+        if (this_cost < best_cost) {
+          best_cost = this_cost;
+          best_j = j;
         }
       }
-      KALDI_ASSERT(best_backpointer != -1);
-      state_info_[i].backpointer = best_backpointer;
-      this_forward_cost_data[i] = min_cost + local_cost_data[i];      
+      this_forward_cost[i] = best_cost;
+      state_info_[i].backpointer = best_j;    
     }
-    // This is a convenient time to set the pov_nccf field for all i.
-    state_info_[i].pov_nccf = nccf_pov(i);
-  }
+  } else {
+    int32 last_backpointer = 0;
+    for (int32 i = 0; i < num_states; i++) {
+      int32 start_j = last_backpointer;
+      BaseFloat best_cost = (start_j - i) * (start_j - i) * inter_frame_factor
+          + prev_forward_cost[start_j];
+      int32 best_j = start_j;
     
+      for (int32 j = start_j + 1; j < num_states; j++) {
+        BaseFloat this_cost = (j - i) * (j - i) * inter_frame_factor
+            + prev_forward_cost[j];
+        if (this_cost < best_cost) {
+          best_cost = this_cost;
+          best_j = j;
+        } else {  // as soon as the costs stop improving, we stop searching.
+          break;  // this is a loose lower bound we're getting.
+        }
+      }
+      state_info_[i].backpointer = best_j;
+      this_forward_cost[i] = best_cost;
+      bounds[i].first = best_j;  // this is now a lower bound on the
+                                 // backpointer.
+      bounds[i].second = num_states - 1;  // we have no meaningful upper bound
+                                          // yet.
+      last_backpointer = best_j;
+    }
+
+    // we won't normally iterate as far as num_states; typically only 2 or 3, I
+    // hope.
+    for (int32 iter = 0; iter < num_states; iter++) {
+      bool changed = false;
+      if (iter % 2 == 0) {  // go backwards through the states
+        last_backpointer = num_states - 1;
+        for (int32 i = num_states - 1; i >= 0; i--) {
+          int32 lower_bound = bounds[i].first,
+              upper_bound = std::min(last_backpointer, bounds[i].second);
+          if (upper_bound == lower_bound) {
+            last_backpointer = lower_bound;
+            continue;
+          }
+          BaseFloat best_cost = this_forward_cost[i];
+          int32 best_j = state_info_[i].backpointer, initial_best_j = best_j;
+
+          if (best_j == upper_bound) {
+            // if best_j already equals upper bound, don't bother tightening the
+            // upper bound, we'll tighten the lower bound when the time comes.
+            last_backpointer = best_j;
+            continue;
+          }
+          // Below, we have j > lower_bound + 1 because we know we've already
+          // evaluated lower_bound and lower_bound + 1 [via knowledge of
+          // this algorithm.]
+          for (int32 j = upper_bound; j > lower_bound + 1; j--) {
+            BaseFloat this_cost = (j - i) * (j - i) * inter_frame_factor
+                + prev_forward_cost[j];
+            if (this_cost < best_cost) {
+              best_cost = this_cost;
+              best_j = j;
+            } else {  // as soon as the costs stop improving, we stop searching,
+              // unless the best j is still lower than j, in which case
+              // we obviously need to keep moving.
+              if (best_j > j)
+                break;  // this is a loose lower bound we're getting.
+            }
+          }
+          // our "best_j" is now an upper bound on the backpointer.
+          bounds[i].second = best_j;
+          if (best_j != initial_best_j) {
+            this_forward_cost[i] = best_cost;
+            state_info_[i].backpointer = best_j;
+            changed = true;
+          }
+          last_backpointer = best_j;
+        }
+      } else { // go forwards through the states.
+        last_backpointer = 0;
+        for (int32 i = 0; i < num_states; i++) {
+          int32 lower_bound = std::max(last_backpointer, bounds[i].first),
+              upper_bound = bounds[i].second;
+          if (upper_bound == lower_bound) {
+            last_backpointer = lower_bound;
+            continue;
+          }
+          BaseFloat best_cost = this_forward_cost[i];
+          int32 best_j = state_info_[i].backpointer, initial_best_j = best_j;
+
+          if (best_j == lower_bound) {
+            // if best_j already equals lower bound, we don't bother tightening
+            // the lower bound, we'll tighten the upper bound when the time
+            // comes.
+            last_backpointer = best_j;
+            continue;
+          }
+          // Below, we have j < upper_bound because we know we've already
+          // evaluated that point. 
+          for (int32 j = lower_bound; j < upper_bound - 1; j++) {
+            BaseFloat this_cost = (j - i) * (j - i) * inter_frame_factor
+                + prev_forward_cost[j];
+            if (this_cost < best_cost) {
+              best_cost = this_cost;
+              best_j = j;
+            } else {  // as soon as the costs stop improving, we stop searching,
+              // unless the best j is still higher than j, in which case
+              // we obviously need to keep moving.
+              if (best_j < j)
+                break;  // this is a loose lower bound we're getting.
+            }
+          }
+          // our "best_j" is now a lower bound on the backpointer.
+          bounds[i].first = best_j;
+          if (best_j != initial_best_j) {
+            this_forward_cost[i] = best_cost;
+            state_info_[i].backpointer = best_j;
+            changed = true;
+          }
+          last_backpointer = best_j;
+        }
+      }
+      if (!changed)
+        break;
+    }
+  }
+
+  this_forward_cost_vec->AddVec(1.0, local_cost);
+  
+  for (int32 i = 0; i < num_states; i++)
+    state_info_[i].pov_nccf = nccf_pov(i);
+
 }
 
 void PitchFrameInfo::SetBestState(int32 best_state,
@@ -707,6 +787,7 @@ class OnlinePitchFeatureImpl {
   /// it's used by ExtractFrame for frames near the boundary of two
   /// waveforms supplied to AcceptWaveform().
   Vector<BaseFloat> downsampled_signal_remainder_;
+
 };
 
 
@@ -991,12 +1072,14 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
   nccf_resampler_->Resample(nccf_pov, &nccf_pov_resampled);
   nccf_pov.Resize(0, 0);  // no longer needed.  
 
+  std::vector<std::pair<int32, int32 > > index_info;
+  
   for (int32 frame = first_frame; frame < num_frames; frame++) {
     int32 frame_idx = frame - first_frame;
     PitchFrameInfo *prev_info = frame_info_.back(),
         *cur_info = new PitchFrameInfo(opts_, nccf_pitch_resampled.Row(frame_idx),
                                        nccf_pov_resampled.Row(frame_idx), lags_,
-                                       forward_cost_, prev_info,
+                                       forward_cost_, prev_info, &index_info,
                                        &cur_forward_cost);
     forward_cost_.Swap(&cur_forward_cost);
     // Renormalize forward_cost so smallest element is zero.
