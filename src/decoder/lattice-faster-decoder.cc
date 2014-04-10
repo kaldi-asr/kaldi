@@ -981,6 +981,7 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt_;
   fst::Connect(lat_);
   if (determinize_) {
+    clat_ = new CompactLattice;
     if (!DeterminizeLatticePhonePrunedWrapper(
             *trans_model_,
             lat_,
