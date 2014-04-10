@@ -995,14 +995,6 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
     if (acoustic_scale_ != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), clat_);
   } else {
-    lat_ = new Lattice;
-    decoder_->GetRawLattice(lat_);
-    if (lat_->NumStates() == 0) {
-      KALDI_ERR << "Unexpected problem getting lattice for utterance "
-                << utt_;
-    }
-    fst::Connect(lat_); // Will get rid of this later... shouldn't have any
-                        // disconnected states there, but we seem to.
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale_ != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), lat_);
@@ -1174,16 +1166,10 @@ bool DecodeUtteranceLatticeFaster(
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
     compact_lattice_writer->Write(utt, clat);
   } else {
-    Lattice fst;
-    decoder.GetRawLattice(&fst);
-    if (fst.NumStates() == 0)
-      KALDI_ERR << "Unexpected problem getting lattice for utterance "
-                << utt;
-    fst::Connect(&fst); // Will get rid of this later... shouldn't have any
-                        // disconnected states there, but we seem to.
-    if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst);
-    lattice_writer->Write(utt, fst);
+    // We'll write the lattice without acoustic scaling.
+    if (acoustic_scale != 0.0)
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &lat);
+    lattice_writer->Write(utt, lat);
   }
   KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
             << (likelihood / num_frames) << " over "
