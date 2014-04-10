@@ -34,8 +34,6 @@ public class Options {
 
 	public static int AUDIO_PACKET_SIZE = 1024;
 
-	public static float AUDIO_SAMPLING_FREQUENCY = 16000.0f;
-
 	public static String MLF_FILENAME = "out.mlf";
 
 	public static int SUBTITLES_CHARS_PER_CUE = 64;
@@ -53,7 +51,6 @@ public class Options {
 		properties.put("KALDI_PORT", "" + KALDI_PORT);
 		properties.put("KALDI_ENCODING", KALDI_ENCODING);
 		properties.put("AUDIO_PACKET_SIZE", "" + AUDIO_PACKET_SIZE);
-		properties.put("AUDIO_SAMPLING_FREQUENCY", "" + AUDIO_SAMPLING_FREQUENCY);
 		properties.put("MLF_FILENAME", MLF_FILENAME);
 		properties.put("SUBTITLES_CHARS_PER_CUE", "" + SUBTITLES_CHARS_PER_CUE);
 		properties.put("SUBTITLES_TIME_DIFF", "" + SUBTITLES_TIME_DIFF);
@@ -79,8 +76,6 @@ public class Options {
 			KALDI_ENCODING = properties.getProperty("KALDI_ENCODING");
 		if (properties.containsKey("AUDIO_PACKET_SIZE"))
 			AUDIO_PACKET_SIZE = Integer.parseInt(properties.getProperty("AUDIO_PACKET_SIZE"));
-		if (properties.containsKey("AUDIO_SAMPLING_FREQUENCY"))
-			AUDIO_SAMPLING_FREQUENCY = Float.parseFloat(properties.getProperty("AUDIO_SAMPLING_FREQUENCY"));
 		if (properties.containsKey("MLF_FILENAME"))
 			MLF_FILENAME = properties.getProperty("MLF_FILENAME");
 		if (properties.containsKey("SUBTITLES_CHARS_PER_CUE"))

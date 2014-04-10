@@ -26,11 +26,13 @@ public class OutputProcess {
 		public String word;
 		public float start;
 		public float end;
+		public float confidence;
 
-		public Word(String word, float start, float end) {
+		public Word(String word, float start, float end, float confidence) {
 			this.word = word;
 			this.start = start;
 			this.end = end;
+			this.confidence = confidence;
 		}
 	}
 
@@ -61,6 +63,7 @@ public class OutputProcess {
 
 			for (Word word : words) {
 				textgrid.addSegment(0, word.start, word.end, word.word);
+				textgrid.addSegment(1, word.start, word.end, "" + word.confidence);
 			}
 
 			textgrid.tiers.get(0).name = "KALDI";
@@ -81,10 +84,10 @@ public class OutputProcess {
 		if (htk_file != null) {
 			PrintWriter htk = new PrintWriter(htk_file, Options.KALDI_ENCODING);
 			for (Word word : words) {
-				int s = (int) (word.start * Options.AUDIO_SAMPLING_FREQUENCY);
-				int e = (int) (word.end * Options.AUDIO_SAMPLING_FREQUENCY);
+				int s = (int) (word.start * 10000000);
+				int e = (int) (word.end * 10000000);
 
-				htk.println(s + " " + e + " " + word.word + " 0.0");
+				htk.println(s + " " + e + " " + word.word + " " + word.confidence);
 			}
 			htk.close();
 		}
