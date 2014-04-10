@@ -117,13 +117,21 @@ if [ $stage -le 1 ]; then
     "$feats" "ark:|gzip -c >$dir/gselect.JOB.gz" || exit 1;
 fi
 
+## Work out name of alignment model. ##
+if [ -z "$alignment_model" ]; then
+  if [ -f "$srcdir/final.alimdl" ]; then alignment_model=$srcdir/final.alimdl;
+  else alignment_model=$srcdir/final.mdl; fi
+fi
+[ ! -f "$alignment_model" ] && echo "$0: no alignment model $alignment_model " && exit 1;
+
+
 # Generate state-level lattice which we can rescore.  This is done with the alignment
 # model and no speaker-vectors.
 if [ $stage -le 2 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode_pass1.JOB.log \
     sgmm2-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --determinize-lattice=false --allow-partial=true \
-    --word-symbol-table=$graphdir/words.txt "$gselect_opt_1stpass" $srcdir/final.alimdl \
+    --word-symbol-table=$graphdir/words.txt "$gselect_opt_1stpass" $alignment_model \
     $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/pre_lat.JOB.gz" || exit 1;
 fi
 
@@ -138,8 +146,8 @@ if [ $stage -le 3 ]; then
     lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
     lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-    weight-silence-post 0.0 $silphonelist $srcdir/final.alimdl ark:- ark:- \| \
-    sgmm2-post-to-gpost "$gselect_opt" $srcdir/final.alimdl "$feats" ark:- ark:- \| \
+    weight-silence-post 0.0 $silphonelist $alignment_model ark:- ark:- \| \
+    sgmm2-post-to-gpost "$gselect_opt" $alignment_model "$feats" ark:- ark:- \| \
     sgmm2-est-spkvecs-gpost --spk2utt=ark:$sdata/JOB/spk2utt \
      $srcdir/final.mdl "$feats" ark,s,cs:- "ark:$dir/pre_vecs.JOB" || exit 1;
 fi
