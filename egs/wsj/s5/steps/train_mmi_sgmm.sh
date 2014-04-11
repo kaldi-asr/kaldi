@@ -59,6 +59,7 @@ echo $nj > $dir/num_jobs
 
 cp $alidir/tree $dir
 cp $alidir/final.mdl $dir/0.mdl
+cp $alidir/final.alimdl $dir
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
