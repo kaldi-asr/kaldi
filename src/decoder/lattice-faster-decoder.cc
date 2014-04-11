@@ -991,6 +991,7 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
       KALDI_WARN << "Determinization finished earlier than the beam for "
                  << "utterance " << utt_;
     delete lat_;
+    lat_ = NULL;
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale_ != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale_), clat_);
@@ -1052,6 +1053,7 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
         compact_lattice_writer_->Write(utt_, *clat_);
       }
       delete clat_;
+      clat_ = NULL;
     } else {
       KALDI_ASSERT(lattice_writer_ != NULL && lat_ != NULL);
       if (lat_->NumStates() == 0) {
@@ -1060,6 +1062,7 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
         lattice_writer_->Write(utt_, *lat_);
       }
       delete lat_;
+      lat_ = NULL;
     }
 
     // Print out logging information.

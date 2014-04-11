@@ -53,7 +53,7 @@ mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
-for f in $srcdir/conf/config $graphdir/HCLG.fst $graphdir/words.txt $data/wav.scp; do
+for f in $srcdir/conf/online_decoding.conf $graphdir/HCLG.fst $graphdir/words.txt $data/wav.scp; do
   if [ ! -f $f ]; then
     echo "$0: no such file $f"
     exit 1;
@@ -79,7 +79,7 @@ fi
 if [ $stage -le 0 ]; then
   $cmd JOB=1:$nj $dir/log/decode.JOB.log \
     online2-wav-gmm-latgen-faster --do-endpointing=$do_endpointing \
-     --config=$srcdir/conf/config \
+     --config=$srcdir/conf/online_decoding.conf \
      --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
      --acoustic-scale=$acwt --word-symbol-table=$graphdir/words.txt \
      $graphdir/HCLG.fst $spk2utt_rspecifier "$wav_rspecifier" \

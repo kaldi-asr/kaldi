@@ -53,7 +53,7 @@ dir=$5
 
 
 for f in $srcdir/final.mdl $srcdir/ali.1.gz $data/feats.scp $lang/phones.txt \
-    $srcdir/trans.1 $mmi_model $online_cmvn_config; do
+    $mmi_model $online_cmvn_config; do
   [ ! -f $f ] && echo "train_deltas.sh: no such file $f" && exit 1;
 done
 
@@ -159,11 +159,11 @@ if [ $stage -le 3 ]; then
   mkdir -p $dir/conf
   rm $dir/{plp,mfcc}.conf 2>/dev/null
   echo "$0: preparing configuration files in $dir/conf"
-  if [ -f $dir/conf/config ]; then
-    echo "$0: moving $dir/conf/config to $dir/conf/config.bak"
-    mv $dir/conf/config $dir/conf/config.bak
+  if [ -f $dir/conf/online_decoding.conf ]; then
+    echo "$0: moving $dir/conf/online_decoding.conf to $dir/conf/online_decoding.conf.bak"
+    mv $dir/conf/online_decoding.conf $dir/conf/online_decoding.conf.bak
   fi
-  conf=$dir/conf/config
+  conf=$dir/conf/online_decoding.conf
   echo -n >$conf
   case "$feature_type" in
     mfcc)

@@ -254,6 +254,11 @@ mix_up_iter=$[($num_iters + $finish_add_layers_iter)/2]
 if [ $num_threads -eq 1 ]; then
   train_suffix="-simple" # this enables us to use GPU code if
                          # we have just one thread.
+  if ! cuda-compiled; then
+    echo "$0: WARNING: you are running with one thread but you have not compiled"
+    echo "   for CUDA.  You may be running a setup optimized for GPUs.  If you have"
+    echo "   GPUs and have nvcc installed, go to src/ and do ./configure; make"
+  fi
 else
   train_suffix="-parallel --num-threads=$num_threads"
 fi

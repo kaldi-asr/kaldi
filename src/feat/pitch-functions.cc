@@ -504,9 +504,13 @@ PitchFrameInfo::PitchFrameInfo(const PitchExtractionOptions &opts,
                                           // yet.
       last_backpointer = best_j;
     }
-
-    // we won't normally iterate as far as num_states; typically only 2 or 3, I
-    // hope.
+    
+    // We iterate, progressively refining the upper and lower bounds until they
+    // meet and we know that the resulting backtraces are optimal.  Each
+    // iteration takes time linear in num_states.  We won't normally iterate as
+    // far as num_states; normally we only do two iterations; when printing out
+    // the number of iterations, it's rarely more than that (once I saw seven
+    // iterations).  Anyway, this part of the computation does not dominate.
     for (int32 iter = 0; iter < num_states; iter++) {
       bool changed = false;
       if (iter % 2 == 0) {  // go backwards through the states
