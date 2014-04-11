@@ -84,7 +84,7 @@ else
   utils/split_scp.pl $scp $split_scps || exit 1;
  
   $cmd JOB=1:$nj $logdir/make_mfcc_${name}.JOB.log \
-    compute-mfcc-feats  --verbose=2 --config=$mfcc_config scp:$logdir/wav.JOB.scp ark:- \| \
+    compute-mfcc-feats  --verbose=2 --config=$mfcc_config scp,p:$logdir/wav.JOB.scp ark:- \| \
       copy-feats --compress=$compress ark:- \
       ark,scp:$mfccdir/raw_mfcc_$name.JOB.ark,$mfccdir/raw_mfcc_$name.JOB.scp \
       || exit 1;
