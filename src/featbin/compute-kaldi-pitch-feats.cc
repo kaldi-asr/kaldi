@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     const char *usage =
         "Apply Kaldi pitch extractor, starting from wav input.  Output is 2-dimensional\n"
-        "features consisting of (pitch in Hz, NCCF), where NCCF is between -1 and 1, and\n"
+        "features consisting of (NCCF, pitch in Hz), where NCCF is between -1 and 1, and\n"
         "higher for voiced frames.  You will typically pipe this into\n"
         "process-kaldi-pitch-feats.\n"
         "Usage: compute-kaldi-pitch-feats [options...] <wav-rspecifier> <feats-wspecifier>\n"
