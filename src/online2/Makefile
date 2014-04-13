@@ -6,7 +6,8 @@ include ../kaldi.mk
 TESTFILES = online-feature-test
 
 OBJFILES = online-feature.o online-gmm-decodable.o online-feature-pipeline.o \
-           online-gmm-decoding.o online-timing.o online-endpoint.o onlinebin-util.o
+           online-gmm-decoding.o online-timing.o online-endpoint.o onlinebin-util.o \
+           online-speex-wrapper.o
 
 LIBNAME = kaldi-online2
 

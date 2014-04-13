@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
       writer.Write(wav_key, wave_out);
       num_success++;
     }
-    KALDI_LOG << "Successfully extended " << num_success;
+    KALDI_LOG << "Successfully extended " << num_success << " files.";
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();

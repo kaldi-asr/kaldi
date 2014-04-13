@@ -14,6 +14,7 @@ acwt=0.083333 # note: only really affects adaptation and pruning (scoring is on
               # lattices).
 per_utt=false
 do_endpointing=false
+do_speex_compressing=false
 scoring_opts=
 skip_scoring=false
 # End configuration section.
@@ -71,9 +72,17 @@ else
 fi
 
 if $do_endpointing; then
-  wav_rspecifier="ark:extend-wav-with-silence scp:$sdata/JOB/wav.scp ark:-|"
+	if $do_speex_compressing; then
+    wav_rspecifier="ark:compress-uncompress-speex scp:$sdata/JOB/wav.scp ark:-|extend-wav-with-silence ark:- ark:-|"
+  else
+    wav_rspecifier="ark:extend-wav-with-silence scp:$sdata/JOB/wav.scp ark:-|"
+  fi
 else
-  wav_rspecifier=scp:$sdata/JOB/wav.scp
+  if $do_speex_compressing; then
+  	wav_rspecifier="ark:compress-uncompress-speex scp:$sdata/JOB/wav.scp ark:-|"
+  else
+    wav_rspecifier=scp:$sdata/JOB/wav.scp
+  fi
 fi
 
 if [ $stage -le 0 ]; then
