@@ -5,6 +5,8 @@
 
 # Begin configuration.
 stage=0 # This allows restarting after partway, when something when wrong.
+add_pitch=false
+pitch_config=conf/pitch.conf
 online_cmvn_config=conf/online_cmvn.conf
 feature_type=mfcc
 per_utt_basis=true # If true, then treat each utterance as a separate speaker
@@ -192,8 +194,13 @@ if [ $stage -le 3 ]; then
                              # though.
     echo "--delta-config=$dir/conf/delta.conf" >>$conf
   fi
-  # Later we'll add support for pitch, but first we have to implement the online
-  # version of the pitch extractor.
+  if $add_pitch; then
+    echo "--pitch-config=$dir/conf/pitch.conf" >>$conf
+    if ! cp $pitch_config $dir/conf/pitch.conf; then
+      echo "$0: error copying pitch config to $dir/conf/"
+      exit 1;
+    fi;
+  fi
   
   echo "--fmllr-basis=$dir/fmllr.basis" >>$conf
   echo "--online-alignment-model=$dir/final.oalimdl" >>$conf

@@ -34,8 +34,6 @@
 #include "feat/feature-mfcc.h"
 #include "feat/feature-plp.h"
 #include "itf/online-feature-itf.h"
-#include "feat/resample.h"
-#include "feat/pitch-functions.h"
 
 namespace kaldi {
 /// @addtogroup  onlinefeat OnlineFeatureExtraction
@@ -480,7 +478,7 @@ class OnlineAppendFeature: public OnlineFeatureInterface {
   virtual int32 NumFramesReady() const {
     return std::min(src1_->NumFramesReady(), src2_->NumFramesReady());
   }
-  
+
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   virtual ~OnlineAppendFeature() {  }

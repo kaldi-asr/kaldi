@@ -29,6 +29,7 @@
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
 #include "online2/online-feature.h"
+#include "feat/pitch-functions.h"
 
 namespace kaldi {
 /// @addtogroup  onlinefeat OnlineFeatureExtraction
@@ -41,12 +42,11 @@ namespace kaldi {
 /// directly, it reads in the names of configuration classes.
 /// I'm conflicted about whether this is a wise thing to do, but I think
 /// for ease of scripting it's probably better to do it like this.
-/// 
 struct OnlineFeaturePipelineCommandLineConfig {
   std::string mfcc_config;
   std::string plp_config;
-  // later will have:
-  // std::string pitch_config;
+  std::string pitch_config;
+  std::string post_pitch_config;
   std::string cmvn_config;
   std::string global_cmvn_stats_rxfilename;
   std::string delta_config;
@@ -60,6 +60,10 @@ struct OnlineFeaturePipelineCommandLineConfig {
                  "MFCC features (e.g. conf/mfcc.conf)");
     po->Register("plp-config", &plp_config, "Configuration class file for "
                  "PLP features (e.g. conf/plp.conf)");
+    po->Register("pitch-config", &pitch_config, "Configuration class file for "
+                 "pitch features (e.g. conf/pitch.conf)");
+    po->Register("post-pitch-config", &post_pitch_config, "Configuration class "
+                 "file for pitch post-processing (e.g. conf/postpitch.conf)");
     po->Register("cmvn-config", &cmvn_config, "Configuration class "
                  "file for online CMVN features (e.g. conf/online_cmvn.conf)");
     po->Register("global-cmvn-stats", &global_cmvn_stats_rxfilename,
@@ -85,7 +89,8 @@ struct OnlineFeaturePipelineCommandLineConfig {
 /// well as from the command line.
 struct OnlineFeaturePipelineConfig {
   OnlineFeaturePipelineConfig():
-      feature_type("mfcc"), splice_frames(false), apply_deltas(true) { }
+      feature_type("mfcc"), add_pitch(false),
+      splice_frames(false), apply_deltas(true) { }
 
   OnlineFeaturePipelineConfig(
       const OnlineFeaturePipelineCommandLineConfig &cmdline_config);
@@ -93,11 +98,14 @@ struct OnlineFeaturePipelineConfig {
   BaseFloat FrameShiftInSeconds() const;
 
   std::string feature_type;  // "mfcc" or "plp", for now.
-                             // When we add pitch we'll have a separate
-                             // "add_pitch" boolean variable.
+  bool add_pitch;
   MfccOptions mfcc_opts;  // options for MFCC computation,
                           // if feature_type == "mfcc"
   PlpOptions plp_opts;  // Options for PLP computation, if feature_type == "plp"
+  PitchExtractionOptions pitch_opts;  // Options for pitch computation,
+                                      // if add_pitch = true
+  PostProcessPitchOptions post_pitch_opts;  // Options for pitch postprocessing,
+                                            // if add_pitch = true
 
   OnlineCmvnOptions cmvn_opts;  // Options for online CMN/CMVN computation.
 
@@ -193,6 +201,8 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
   // base_feature_ is the MFCC or PLP feature.
   // In future if we want to append pitch features, we'll add a pitch_ member
   // here and a member that appends the pitch and mfcc/plp features.
+  OnlinePitchFeature *pitch_;
+  OnlinePostProcessPitch *post_pitch_;
   OnlineAppendFeature *append_feature_;
 
   OnlineCmvn *cmvn_;

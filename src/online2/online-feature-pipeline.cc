@@ -35,6 +35,16 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
     KALDI_ERR << "Either the --mfcc-config or --plp-config options "
               << "must be supplied.";
   }
+  if (config.pitch_config != "") {
+    ReadConfigFromFile(config.pitch_config, &pitch_opts);
+    add_pitch = true;
+  } else {
+    add_pitch = false;
+  }
+  if (config.post_pitch_config != "") {
+    ReadConfigFromFile(config.post_pitch_config, &post_pitch_opts);
+  }  // else use the defaults.
+
   if (config.cmvn_config != "") {
     ReadConfigFromFile(config.cmvn_config, &cmvn_opts);
   }  // else use the defaults.
@@ -125,11 +135,21 @@ void OnlineFeaturePipeline::Init() {
     KALDI_ERR << "Code error: invalid feature type " << config_.feature_type;
   }
 
+  if (config_.add_pitch) {
+    pitch_ = new OnlinePitchFeature(config_.pitch_opts);
+    post_pitch_ = new OnlinePostProcessPitch(config_.post_pitch_opts, pitch_);
+    append_feature_ = new OnlineAppendFeature(base_feature_, post_pitch_);
+  }
+
   {
     KALDI_ASSERT(global_cmvn_stats_.NumRows() != 0);
     Matrix<double> global_cmvn_stats_dbl(global_cmvn_stats_);
     OnlineCmvnState initial_state(global_cmvn_stats_dbl);
-    cmvn_ = new OnlineCmvn(config_.cmvn_opts, initial_state, base_feature_);
+    if (config_.add_pitch) {
+      cmvn_ = new OnlineCmvn(config_.cmvn_opts, initial_state, append_feature_);
+    } else {
+      cmvn_ = new OnlineCmvn(config_.cmvn_opts, initial_state, base_feature_);
+    }
   }
 
   if (config_.splice_frames && config_.apply_deltas) {
@@ -195,16 +215,27 @@ OnlineFeaturePipeline::~OnlineFeaturePipeline() {
   delete splice_or_delta_;
   delete cmvn_;
   delete base_feature_;
+  if (config_.add_pitch) {
+    delete pitch_;
+    delete post_pitch_;
+    delete append_feature_;
+  }
 }
 
 void OnlineFeaturePipeline::AcceptWaveform(
     BaseFloat sampling_rate,
     const VectorBase<BaseFloat> &waveform) {
   base_feature_->AcceptWaveform(sampling_rate, waveform);
+  if (config_.add_pitch) {
+    pitch_->AcceptWaveform(sampling_rate, waveform);
+  }
 }
 
 void OnlineFeaturePipeline::InputFinished() {
   base_feature_->InputFinished();
+  if (config_.add_pitch) {
+    pitch_->InputFinished();
+  }
 }
 
 BaseFloat OnlineFeaturePipelineConfig::FrameShiftInSeconds() const {

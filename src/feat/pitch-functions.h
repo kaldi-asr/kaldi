@@ -43,7 +43,7 @@ struct PitchExtractionOptions {
   BaseFloat samp_freq;          // sample frequency in hertz
   BaseFloat frame_shift_ms;     // in milliseconds.
   BaseFloat frame_length_ms;    // in milliseconds.
-  BaseFloat preemph_coeff;      // Preemphasis coefficient.  [use is deprecated.]
+  BaseFloat preemph_coeff;      // Preemphasis coefficient. [use is deprecated.]
   BaseFloat min_f0;             // min f0 to search (Hz)
   BaseFloat max_f0;             // max f0 to search (Hz)
   BaseFloat soft_min_f0;        // Minimum f0, applied in soft way, must not
@@ -79,14 +79,15 @@ struct PitchExtractionOptions {
                                 // (e.g. if you plan to train models for the
                                 // online-deocding setup), you might want to set
                                 // this to a small value, like one frame.
-  
+
   bool nccf_ballast_online;     // This is a "hidden config" used only for
-                                // testing the online pitch extraction.  If true,
-                                // we compute the signal root-mean-squared for
-                                // the ballast term only up to the current frame,
-                                // rather than the end of the current chunk of signal.
-                                // This makes the output insensitive to the chunking,
-                                // which is useful for testing purposes.
+                                // testing the online pitch extraction.  If
+                                // true, we compute the signal root-mean-squared
+                                // for the ballast term, only up to the current
+                                // frame, rather than the end of the current
+                                // chunk of signal. This makes the output
+                                // insensitive to the chunking, which is useful
+                                // for testing purposes.
 
   explicit PitchExtractionOptions():
       samp_freq(16000),
@@ -106,7 +107,8 @@ struct PitchExtractionOptions {
       max_frames_latency(20),
       frames_per_chunk(0),
       nccf_ballast_online(false) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *po,
+                bool include_online_opts = false) {
     po->Register("sample-frequency", &samp_freq,
                  "Waveform data sample frequency (must match the waveform "
                  "file, if specified there)");
@@ -143,13 +145,14 @@ struct PitchExtractionOptions {
                  "you can set it to a small nonzero value, such as 1, for "
                  "better feature compatibility with online decoding (affects "
                  "energy normalization in the algorithm)");
-    po->Register("max-frames-latency", &max_frames_latency, "Maximum number "
-                 "of frames of latency that we allow pitch tracking to "
-                 "introduce into the feature processing (only relevant for"
-                 "online operation, not for compute-kaldi-pitch-feats)");
     po->Register("nccf-ballast-online", &nccf_ballast_online,
                  "Compute NCCF ballast using online version of the computation "
                  "(more compatible with online feature extraction");
+    if (include_online_opts) {
+      po->Register("max-frames-latency", &max_frames_latency, "Maximum number "
+                   "of frames of latency that we allow pitch tracking to "
+                   "introduce into the feature processing");
+    }
   }
   /// Returns the window-size in samples, after resampling.  This is the
   /// "basic window size", not the full window size after extending by max-lag.
@@ -230,7 +233,7 @@ class OnlinePitchFeatureImpl;
 class OnlinePitchFeature: public OnlineBaseFeature {
  public:
   explicit OnlinePitchFeature(const PitchExtractionOptions &opts);
-  
+
   virtual int32 Dim() const { return 2; }
 
   virtual int32 NumFramesReady() const;
@@ -249,7 +252,47 @@ class OnlinePitchFeature: public OnlineBaseFeature {
   virtual ~OnlinePitchFeature();
  private:
   OnlinePitchFeatureImpl *impl_;
-  
+};
+
+
+/// This online-feature class implements post processing of pitch features.
+/// Inputs are original 2 dims (pov, pitch). Original pov -> 2 kinds of povs,
+//  pitch -> log_pitch -> 2 kinds of pitch.
+class OnlinePostProcessPitch: public OnlineFeatureInterface {
+ public:
+  virtual int32 Dim() const { return dim_; }
+
+  virtual bool IsLastFrame(int32 frame) const {
+    return src_->IsLastFrame(frame); }
+
+  virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }
+
+  virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
+
+  virtual ~OnlinePostProcessPitch() {  }
+
+  OnlinePostProcessPitch(const PostProcessPitchOptions &opts,
+                         OnlinePitchFeature *src);
+
+  void UpdateFromPitch();
+  void ComputePostPitch(const VectorBase<BaseFloat> &nccf_append,
+                        const VectorBase<BaseFloat> &log_pitch_append);
+ private:
+
+  PostProcessPitchOptions opts_;
+
+  OnlineFeatureInterface *src_;
+
+  int32 dim_;
+
+  Matrix<BaseFloat> features_;
+
+  Vector<BaseFloat> pov_;
+  Vector<BaseFloat> pov_feature_;
+  Vector<BaseFloat> raw_log_pitch_;
+
+  int32 num_frames_;
+  int32 num_pitch_frames_;
 };
 
 

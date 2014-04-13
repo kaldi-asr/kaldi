@@ -68,34 +68,39 @@ static void UnitTestPieces() {
   for (int32 n = 0; n < 10; n++) {
     // the parametrization object
     PitchExtractionOptions op;
-    op.nccf_ballast_online = true; // this is necessary for the computation
+    PostProcessPitchOptions op2;
+    op2.delta_pitch_noise_stddev = 0.0;  // to avoid mismatch of delta_log_pitch
+                                         // brought by rand noise.
+    op.nccf_ballast_online = true;  // this is necessary for the computation
     // to be identical regardless how many pieces we break the signal into.
-    
+
     int32 size = 10000 + rand() % 50000;
 
     Vector<BaseFloat> v(size);
     // init with noise plus a sine-wave whose frequency is changing randomly.
 
     double cur_freq = 200.0, normalized_time = 0.0;
-    
+
     for (int32 i = 0; i < size; i++) {
       v(i) = RandGauss() + cos(normalized_time * M_2PI);
-      cur_freq += RandGauss(); // let the frequency wander a little.
+      cur_freq += RandGauss();  // let the frequency wander a little.
       if (cur_freq < 100.0) cur_freq = 100.0;
       if (cur_freq > 300.0) cur_freq = 300.0;
       normalized_time += cur_freq / op.samp_freq;
     }
 
-    Matrix<BaseFloat> m1;
-    
+    Matrix<BaseFloat> m1, m1p;
+
     // trying to have same opts as baseline.
     // compute pitch.
     ComputeKaldiPitch(op, v, &m1);
+    PostProcessPitch(op2, m1, &m1p);
 
-    Matrix<BaseFloat> m2;
+    Matrix<BaseFloat> m2, m2p;
 
     { // compute it online with multiple pieces.
       OnlinePitchFeature pitch_extractor(op);
+      OnlinePostProcessPitch postprocess_pitch(op2, &pitch_extractor);
       int32 start_samp = 0;
       while (start_samp < v.Dim()) {
         int32 num_samp = rand() % (v.Dim() + 1 - start_samp);
@@ -106,12 +111,16 @@ static void UnitTestPieces() {
       pitch_extractor.InputFinished();
       int32 num_frames = pitch_extractor.NumFramesReady();
       m2.Resize(num_frames, 2);
+      m2p.Resize(num_frames, postprocess_pitch.Dim());
       for (int32 frame = 0; frame < num_frames; frame++) {
         SubVector<BaseFloat> row(m2, frame);
         pitch_extractor.GetFrame(frame, &row);
+        SubVector<BaseFloat> rowp(m2p, frame);
+        postprocess_pitch.GetFrame(frame, &rowp);
       }
-    }    
+    }
     AssertEqual(m1, m2);
+    AssertEqual(m1p, m2p);
     KALDI_LOG << "Test passed :)\n";
   }
 }
@@ -126,19 +135,19 @@ static void UnitTestSearch() {
   for (int32 n = 0; n < 3; n++) {
     // the parametrization object
     PitchExtractionOptions op;
-    op.nccf_ballast_online = true; // this is necessary for the computation
+    op.nccf_ballast_online = true;  // this is necessary for the computation
     // to be identical regardless how many pieces we break the signal into.
-    
+
     int32 size = 10000 + rand() % 10000;
 
     Vector<BaseFloat> v(size);
     // init with noise plus a sine-wave whose frequency is changing randomly.
 
     double cur_freq = 200.0, normalized_time = 0.0;
-    
+
     for (int32 i = 0; i < size; i++) {
       v(i) = RandGauss() + cos(normalized_time * M_2PI);
-      cur_freq += RandGauss(); // let the frequency wander a little.
+      cur_freq += RandGauss();  // let the frequency wander a little.
       if (cur_freq < 100.0) cur_freq = 100.0;
       if (cur_freq > 300.0) cur_freq = 300.0;
       normalized_time += cur_freq / op.samp_freq;
@@ -148,7 +157,7 @@ static void UnitTestSearch() {
     ComputeKaldiPitch(op, v, &m1);
 
     pitch_use_naive_search = true;
-    
+
     Matrix<BaseFloat> m2;
     ComputeKaldiPitch(op, v, &m2);
 
