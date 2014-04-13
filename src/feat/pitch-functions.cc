@@ -992,12 +992,12 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
   // these variables will be used to compute the root-mean-square value of the
   // signal for the ballast term.
   double cur_sumsq = signal_sumsq_, cur_sum = signal_sum_;
-  int64 cur_num_frames = downsampled_samples_processed_,
+  int64 cur_num_samp = downsampled_samples_processed_,
       prev_frame_end_sample = 0;
   if (!opts_.nccf_ballast_online) {
     cur_sumsq += VecVec(downsampled_wave, downsampled_wave);
     cur_sum += downsampled_wave.Sum();
-    cur_num_frames += downsampled_wave.Dim();
+    cur_num_samp += downsampled_wave.Dim();
   }
 
   // num_frames is the total number of frames we can now process, including
@@ -1049,13 +1049,14 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
                                      // sample.
       SubVector<BaseFloat> new_part(downsampled_wave, prev_frame_end_sample,
                                     end_sample - prev_frame_end_sample);
-      cur_num_frames += new_part.Dim();
+      cur_num_samp += new_part.Dim();
       cur_sumsq += VecVec(new_part, new_part);
       cur_sum += new_part.Sum();
       prev_frame_end_sample = end_sample;
     }
-    double mean_square = cur_sumsq / cur_num_frames -
-        pow(cur_sum / cur_num_frames, 2.0);
+    double mean_square = cur_sumsq / cur_num_samp -
+        pow(cur_sum / cur_num_samp, 2.0);
+
     ComputeCorrelation(window, nccf_first_lag_, nccf_last_lag_,
                        basic_frame_length, &inner_prod, &norm_prod);
     double nccf_ballast_pov = 0.0,
@@ -1104,6 +1105,7 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
       lag_nccf_.end() - 1;
   frame_info_.back()->SetBestState(best_final_state, last_iter);
   frames_latency_ = frame_info_.back()->ComputeLatency(opts_.max_frames_latency);
+  KALDI_VLOG(4) << "Latency is " << frames_latency_;
 }
 
 
@@ -1144,7 +1146,22 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
                        const VectorBase<BaseFloat> &wave,
                        Matrix<BaseFloat> *output) {
   OnlinePitchFeature pitch_extractor(opts);
-  pitch_extractor.AcceptWaveform(opts.samp_freq, wave);
+
+  if (opts.frames_per_chunk == 0) {
+    pitch_extractor.AcceptWaveform(opts.samp_freq, wave);
+  } else {
+    // the user may set opts.frames_per_chunk for better compatibility with
+    // online operation.
+    KALDI_ASSERT(opts.frames_per_chunk > 0);
+    int32 cur_offset = 0, samp_per_chunk =
+        opts.frames_per_chunk * opts.samp_freq * 1.0e-03 * opts.frame_shift_ms;
+    while (cur_offset < wave.Dim()) {
+      int32 num_samp = std::min(samp_per_chunk, wave.Dim() - cur_offset);
+      SubVector<BaseFloat> wave_chunk(wave, cur_offset, num_samp);
+      pitch_extractor.AcceptWaveform(opts.samp_freq, wave_chunk);
+      cur_offset += num_samp;
+    }
+  }
   pitch_extractor.InputFinished();
   int32 num_frames = pitch_extractor.NumFramesReady();
   if (num_frames == 0) {

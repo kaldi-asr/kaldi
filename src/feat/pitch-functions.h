@@ -61,15 +61,33 @@ struct PitchExtractionOptions {
   int32 upsample_filter_width;  // Integer that determines filter width when
                                 // upsampling NCCF
 
+  // Below are newer config variables, not present in the original paper,
+  // that relate to the online pitch extraction algorithm.
   int32 max_frames_latency;     // The maximum number of frames of latency that
                                 // we allow the pitch-processing to introduce,
                                 // for online operation (this doesn't relate to
                                 // the CPU taken;
+
+  int32 frames_per_chunk;       // Only relevant for the function
+                                // ComputeKaldiPitch which is called by
+                                // compute-kaldi-pitch-feats.  If nonzero, we
+                                // provide the input as chunks of this size.
+                                // This affects the energy normalization which
+                                // has a small effect on the resulting features,
+                                // especially at the beginning of a file.  For
+                                // best compatibility with online operation
+                                // (e.g. if you plan to train models for the
+                                // online-deocding setup), you might want to set
+                                // this to a small value, like one frame.
   
   bool nccf_ballast_online;     // This is a "hidden config" used only for
                                 // testing the online pitch extraction.  If true,
                                 // we compute the signal root-mean-squared for
-                                // the ballast term, only up to the current frame.
+                                // the ballast term only up to the current frame,
+                                // rather than the end of the current chunk of signal.
+                                // This makes the output insensitive to the chunking,
+                                // which is useful for testing purposes.
+
   explicit PitchExtractionOptions():
       samp_freq(16000),
       frame_shift_ms(10.0),
@@ -86,9 +104,9 @@ struct PitchExtractionOptions {
       lowpass_filter_width(1),
       upsample_filter_width(5),
       max_frames_latency(20),
-      nccf_ballast_online(false) {}
-  void Register(OptionsItf *po,
-                bool include_online_opts = false) {
+      frames_per_chunk(0),
+      nccf_ballast_online(false) { }
+  void Register(OptionsItf *po) {
     po->Register("sample-frequency", &samp_freq,
                  "Waveform data sample frequency (must match the waveform "
                  "file, if specified there)");
@@ -120,14 +138,18 @@ struct PitchExtractionOptions {
                  "lowpass filter, more gives sharper filter");
     po->Register("upsample-filter-width", &upsample_filter_width,
                  "Integer that determines filter width when upsampling NCCF");
+    po->Register("frames-per-chunk", &frames_per_chunk, "Only relevant for "
+                 "offline pitch extraction (e.g. compute-kaldi-pitch-feats), "
+                 "you can set it to a small nonzero value, such as 1, for "
+                 "better feature compatibility with online decoding (affects "
+                 "energy normalization in the algorithm)");
+    po->Register("max-frames-latency", &max_frames_latency, "Maximum number "
+                 "of frames of latency that we allow pitch tracking to "
+                 "introduce into the feature processing (only relevant for"
+                 "online operation, not for compute-kaldi-pitch-feats)");
     po->Register("nccf-ballast-online", &nccf_ballast_online,
                  "Compute NCCF ballast using online version of the computation "
                  "(more compatible with online feature extraction");
-    if (include_online_opts) {
-      po->Register("max-frames-latency", &max_frames_latency, "Maximum number "
-                   "of frames of latency that we allow pitch tracking to "
-                   "introduce into the feature processing");
-    }
   }
   /// Returns the window-size in samples, after resampling.  This is the
   /// "basic window size", not the full window size after extending by max-lag.
