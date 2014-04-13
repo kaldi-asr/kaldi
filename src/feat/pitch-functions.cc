@@ -377,6 +377,12 @@ class PitchFrameInfo {
   /// the pov_nccf's to zero and the backpointers to -1.
   explicit PitchFrameInfo(int32 num_states);
 
+  /// This constructor is used for subsequent frames (not -1).
+  PitchFrameInfo(PitchFrameInfo *prev);
+
+  /// Record the nccf_pov value.
+  ///  @param  nccf_pov     The nccf as computed for the POV computation (without ballast).
+  void SetNccfPov(const VectorBase<BaseFloat> &nccf_pov);
 
   /// This constructor is used for frames apart from frame -1; the bulk of
   /// the Viterbi computation takes place inside this constructor.
@@ -389,16 +395,15 @@ class PitchFrameInfo {
   ///                       nccf_pov are sampled.
   ///  @param  prev_frame_forward_cost   The forward-cost vector for the
   ///                       previous frame.
+  ///  @param  index_info   A pointer to a temporary vector used by this function
   ///  @param  this_forward_cost   The forward-cost vector for this frame
   ///                       (to be computed).
-  PitchFrameInfo(const PitchExtractionOptions &opts,
-                 const VectorBase<BaseFloat> &nccf_pitch,
-                 const VectorBase<BaseFloat> &nccf_pov,
-                 const VectorBase<BaseFloat> &lags,
-                 const VectorBase<BaseFloat> &prev_forward_cost,
-                 PitchFrameInfo *prev_info,
-                 std::vector<std::pair<int32, int32> > *index_info,
-                 VectorBase<BaseFloat> *this_forward_cost);
+  void ComputeBacktraces(const PitchExtractionOptions &opts,
+                         const VectorBase<BaseFloat> &nccf_pitch, 
+                         const VectorBase<BaseFloat> &lags,
+                         const VectorBase<BaseFloat> &prev_forward_cost,
+                         std::vector<std::pair<int32, int32> > *index_info,
+                         VectorBase<BaseFloat> *this_forward_cost);
  private:
   // struct StateInfo is the information we keep for a single one of the
   // log-spaced lags, for a single frame.  This is a state in the Viterbi
@@ -434,17 +439,25 @@ PitchFrameInfo::PitchFrameInfo(int32 num_states)
 
 bool pitch_use_naive_search = false;  // This is used in unit-tests.
 
-PitchFrameInfo::PitchFrameInfo(
-                const PitchExtractionOptions &opts,
-                const VectorBase<BaseFloat> &nccf_pitch,
-                const VectorBase<BaseFloat> &nccf_pov,
-                const VectorBase<BaseFloat> &lags,
-                const VectorBase<BaseFloat> &prev_forward_cost_vec,
-                PitchFrameInfo *prev_info,
-                std::vector<std::pair<int32, int32> > *index_info,
-                VectorBase<BaseFloat> *this_forward_cost_vec):
-    state_info_(nccf_pitch.Dim()), state_offset_(0), cur_best_state_(-1),
-    prev_info_(prev_info) {
+
+PitchFrameInfo::PitchFrameInfo(PitchFrameInfo *prev_info):
+    state_info_(prev_info->state_info_.size()), state_offset_(0),
+    cur_best_state_(-1), prev_info_(prev_info) { }
+
+void PitchFrameInfo::SetNccfPov(const VectorBase<BaseFloat> &nccf_pov) {
+  int32 num_states = nccf_pov.Dim();
+  KALDI_ASSERT(num_states == state_info_.size());
+  for (int32 i = 0; i < num_states; i++)
+    state_info_[i].pov_nccf = nccf_pov(i);
+}
+
+void PitchFrameInfo::ComputeBacktraces(
+    const PitchExtractionOptions &opts,
+    const VectorBase<BaseFloat> &nccf_pitch, 
+    const VectorBase<BaseFloat> &lags,
+    const VectorBase<BaseFloat> &prev_forward_cost_vec,
+    std::vector<std::pair<int32, int32> > *index_info,
+    VectorBase<BaseFloat> *this_forward_cost_vec) {
   int32 num_states = nccf_pitch.Dim();
 
   Vector<BaseFloat> local_cost(num_states, kUndefined);
@@ -614,9 +627,6 @@ PitchFrameInfo::PitchFrameInfo(
   }
 
   this_forward_cost_vec->AddVec(1.0, local_cost);
-
-  for (int32 i = 0; i < num_states; i++)
-    state_info_[i].pov_nccf = nccf_pov(i);
 }
 
 void PitchFrameInfo::SetBestState(
@@ -1007,13 +1017,13 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
     cur_num_samp += downsampled_wave.Dim();
   }
 
-  // num_frames is the total number of frames we can now process, including
+  // end_frame is the total number of frames we can now process, including
   // previously processed ones.
-  int32 num_frames = NumFramesAvailable(
+  int32 end_frame = NumFramesAvailable(
       downsampled_samples_processed_ + downsampled_wave.Dim());
-  // "first_frame" is the first frame-index we process
-  int32 first_frame = frame_info_.size() - 1,
-      num_new_frames = num_frames - first_frame;
+  // "start_frame" is the first frame-index we process
+  int32 start_frame = frame_info_.size() - 1,
+      num_new_frames = end_frame - start_frame;
 
   if (num_new_frames == 0) {
     UpdateRemainder(downsampled_wave);
@@ -1037,11 +1047,12 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
 
   Vector<BaseFloat> cur_forward_cost(num_resampled_lags);
 
+
   // Because the resampling of the NCCF is more efficient when grouped together,
   // we first compute the NCCF for all frames, then resample as a matrix, then
   // do the Viterbi [that happens inside the constructor of PitchFrameInfo].
 
-  for (int32 frame = first_frame; frame < num_frames; frame++) {
+  for (int32 frame = start_frame; frame < end_frame; frame++) {
     // start_sample is index into the whole wave, not just this part.
     int64 start_sample = static_cast<int64>(frame) * frame_shift;
     ExtractFrame(downsampled_wave, start_sample, &window);
@@ -1069,10 +1080,10 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
     double nccf_ballast_pov = 0.0,
         nccf_ballast_pitch = pow(mean_square * basic_frame_length, 2) *
                               opts_.nccf_ballast;
-    SubVector<BaseFloat> nccf_pitch_row(nccf_pitch, frame - first_frame);
+    SubVector<BaseFloat> nccf_pitch_row(nccf_pitch, frame - start_frame);
     ComputeNccf(inner_prod, norm_prod, nccf_ballast_pitch,
                 &nccf_pitch_row);
-    SubVector<BaseFloat> nccf_pov_row(nccf_pov, frame - first_frame);
+    SubVector<BaseFloat> nccf_pov_row(nccf_pov, frame - start_frame);
     ComputeNccf(inner_prod, norm_prod, nccf_ballast_pov,
                 &nccf_pov_row);
   }
@@ -1086,19 +1097,19 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
 
   std::vector<std::pair<int32, int32 > > index_info;
 
-  for (int32 frame = first_frame; frame < num_frames; frame++) {
-    int32 frame_idx = frame - first_frame;
+  for (int32 frame = start_frame; frame < end_frame; frame++) {
+    int32 frame_idx = frame - start_frame;
     PitchFrameInfo *prev_info = frame_info_.back(),
-      *cur_info = new PitchFrameInfo(opts_, nccf_pitch_resampled.Row(frame_idx),
-                                     nccf_pov_resampled.Row(frame_idx), lags_,
-                                     forward_cost_, prev_info, &index_info,
-                                     &cur_forward_cost);
+        *cur_info = new PitchFrameInfo(prev_info);
+    cur_info->SetNccfPov(nccf_pov_resampled.Row(frame_idx));
+    cur_info->ComputeBacktraces(opts_, nccf_pitch_resampled.Row(frame_idx),
+                                lags_, forward_cost_, &index_info,
+                                &cur_forward_cost);
     forward_cost_.Swap(&cur_forward_cost);
     // Renormalize forward_cost so smallest element is zero.
     BaseFloat remainder = forward_cost_.Min();
     forward_cost_remainder_ += remainder;
     forward_cost_.Add(-remainder);
-
     frame_info_.push_back(cur_info);
   }
 
@@ -1185,6 +1196,51 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
 }
 
 
+/*
+  This comment describes our invesigation of how much latency the
+  online-processing algorithm introduces, i.e. how many frames you would
+  typically have to wait until the traceback converges, if you were to set the
+  --max-frames-latency to a very large value.
+  
+  This was done on a couple of files of language-id data.
+  
+  /home/dpovey/kaldi-online/src/featbin/compute-kaldi-pitch-feats --frames-per-chunk=10 --max-frames-latency=100 --verbose=4 --sample-frequency=8000 --resample-frequency=2600 "scp:head -n 2 data/train/wav.scp |" ark:/dev/null 2>&1   | grep Latency | wc
+   4871   24355  443991
+ /home/dpovey/kaldi-online/src/featbin/compute-kaldi-pitch-feats --frames-per-chunk=10 --max-frames-latency=100 --verbose=4 --sample-frequency=8000 --resample-frequency=2600 "scp:head -n 2 data/train/wav.scp |" ark:/dev/null 2>&1  | grep Latency | grep 100 | wc
+   1534    7670  141128
+
+# as above, but with 50 instead of 10 in the --max-frames-latency and grep statements.
+   2070   10350  188370
+# as above, but with 10 instead of 50.
+   4067   20335  370097
+
+   This says that out of 4871 selected frames [we measured the latency every 10
+   frames, since --frames-per-chunk=10], in 1534 frames (31%), the latency was
+    >= 100 frames, i.e. >= 1 second.  Including the other numbers, we can see
+    that
+
+    31% of frames had latency >= 1 second
+    42% of frames had latency >= 0.5 second
+    83% of frames had latency >= 0.1 second.
+
+  This doesn't necessarily mean that we actually have a latency of >= 1 second 31% of
+  the time when using these features, since by using the --max-frames-latency option
+  (default: 20 frames), it will limit the latency to, say, 0.2 seconds, and trace back
+  from the best current pitch.  Most of the time this will probably cause no change in
+  the pitch traceback since the best current pitch is probably the "right" point to
+  trace back from.  And anyway, in the online-decoding, we will most likely rescore
+  the features at the end anyway, and the traceback gets recomputed, so there will
+  be no inaccuracy (assuming the first-pass lattice had everything we needed).
+
+  Probably the greater source of inaccuracy due to the online algorithm is the
+  online energy-normalization, which affects the NCCF-ballast term, and which,
+  for reasons of efficiency, we don't attempt to "correct" in a later rescoring
+  pass.  This will make the most difference in the first few frames of the file,
+  before the first voicing, where it will tend to produce more pitch movement
+  than the offline version of the algorithm.  
+*/
+   
+
 // Function to do data accumulation for on-line usage
 template<typename Real>
 inline void AppendVector(const VectorBase<Real> &src, Vector<Real> *dst) {
@@ -1192,7 +1248,6 @@ inline void AppendVector(const VectorBase<Real> &src, Vector<Real> *dst) {
   dst->Resize(dst->Dim() + src.Dim(), kCopyData);
   dst->Range(dst->Dim() - src.Dim(), src.Dim()).CopyFromVec(src);
 }
-
 
 OnlinePostProcessPitch::OnlinePostProcessPitch(
     const PostProcessPitchOptions &opts,

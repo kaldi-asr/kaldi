@@ -79,7 +79,7 @@ struct PitchExtractionOptions {
                                 // (e.g. if you plan to train models for the
                                 // online-deocding setup), you might want to set
                                 // this to a small value, like one frame.
-
+  
   bool nccf_ballast_online;     // This is a "hidden config" used only for
                                 // testing the online pitch extraction.  If
                                 // true, we compute the signal root-mean-squared
@@ -107,6 +107,7 @@ struct PitchExtractionOptions {
       max_frames_latency(20),
       frames_per_chunk(0),
       nccf_ballast_online(false) { }
+  
   void Register(OptionsItf *po) {
     po->Register("sample-frequency", &samp_freq,
                  "Waveform data sample frequency (must match the waveform "
