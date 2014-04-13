@@ -999,12 +999,12 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
   // these variables will be used to compute the root-mean-square value of the
   // signal for the ballast term.
   double cur_sumsq = signal_sumsq_, cur_sum = signal_sum_;
-  int64 cur_num_frames = downsampled_samples_processed_,
+  int64 cur_num_samp = downsampled_samples_processed_,
       prev_frame_end_sample = 0;
   if (!opts_.nccf_ballast_online) {
     cur_sumsq += VecVec(downsampled_wave, downsampled_wave);
     cur_sum += downsampled_wave.Sum();
-    cur_num_frames += downsampled_wave.Dim();
+    cur_num_samp += downsampled_wave.Dim();
   }
 
   // num_frames is the total number of frames we can now process, including
@@ -1056,13 +1056,14 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
                                      // sample.
       SubVector<BaseFloat> new_part(downsampled_wave, prev_frame_end_sample,
                                     end_sample - prev_frame_end_sample);
-      cur_num_frames += new_part.Dim();
+      cur_num_samp += new_part.Dim();
       cur_sumsq += VecVec(new_part, new_part);
       cur_sum += new_part.Sum();
       prev_frame_end_sample = end_sample;
     }
-    double mean_square = cur_sumsq / cur_num_frames -
-        pow(cur_sum / cur_num_frames, 2.0);
+    double mean_square = cur_sumsq / cur_num_samp -
+        pow(cur_sum / cur_num_samp, 2.0);
+
     ComputeCorrelation(window, nccf_first_lag_, nccf_last_lag_,
                        basic_frame_length, &inner_prod, &norm_prod);
     double nccf_ballast_pov = 0.0,
@@ -1216,6 +1217,8 @@ void OnlinePostProcessPitch::GetFrame(int32 frame,
   feat->CopyFromVec(features_.Row(frame));
 }
 
+// Check if OnlinePitchFeature has generated some new frames.  If yes, will
+// post process them. If no new data, will return directly.
 void OnlinePostProcessPitch::UpdateFromPitch() {
   int32 new_num_pitch_frames = src_->NumFramesReady();
   if (new_num_pitch_frames <= num_pitch_frames_) return;
@@ -1238,6 +1241,9 @@ void OnlinePostProcessPitch::UpdateFromPitch() {
   num_pitch_frames_ = new_num_pitch_frames;
 }
 
+// Very similar to PostProcessPitch (offline version), except:
+// 1, accumulate pov{,_feature}, raw_log_pitch to provide larger context.
+// 2, might add some delay to get more accurate results.
 void OnlinePostProcessPitch::ComputePostPitch(
     const VectorBase<BaseFloat> &nccf_append,
     const VectorBase<BaseFloat> &raw_log_pitch_append) {
@@ -1257,15 +1263,10 @@ void OnlinePostProcessPitch::ComputePostPitch(
 
   // Process normalized-log-pitch feature
   AppendVector(raw_log_pitch_append, &raw_log_pitch_);
-//  WeightedMovingWindowNormalize(opts_.normalization_window_size,
-//                                pov,
-//                                raw_log_pitch_append,
-//                                &normalized_log_pitch);
   WeightedMovingWindowNormalize(opts_.normalization_window_size,
-                                pov_,
-                                raw_log_pitch_,
-                                &normalized_log_pitch,
-                                num_pitch_frames_);
+                                pov,
+                                raw_log_pitch_append,
+                                &normalized_log_pitch);
   // the normalized log pitch has quite a small variance; scale it up a little
   // (this interacts with variance flooring in early system build stages).
   normalized_log_pitch.Scale(opts_.pitch_scale);

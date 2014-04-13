@@ -107,8 +107,7 @@ struct PitchExtractionOptions {
       max_frames_latency(20),
       frames_per_chunk(0),
       nccf_ballast_online(false) { }
-  void Register(OptionsItf *po,
-                bool include_online_opts = false) {
+  void Register(OptionsItf *po) {
     po->Register("sample-frequency", &samp_freq,
                  "Waveform data sample frequency (must match the waveform "
                  "file, if specified there)");
@@ -145,14 +144,13 @@ struct PitchExtractionOptions {
                  "you can set it to a small nonzero value, such as 1, for "
                  "better feature compatibility with online decoding (affects "
                  "energy normalization in the algorithm)");
+    po->Register("max-frames-latency", &max_frames_latency, "Maximum number "
+                 "of frames of latency that we allow pitch tracking to "
+                 "introduce into the feature processing (only relevant for"
+                 "online operation, not for compute-kaldi-pitch-feats)");
     po->Register("nccf-ballast-online", &nccf_ballast_online,
                  "Compute NCCF ballast using online version of the computation "
                  "(more compatible with online feature extraction");
-    if (include_online_opts) {
-      po->Register("max-frames-latency", &max_frames_latency, "Maximum number "
-                   "of frames of latency that we allow pitch tracking to "
-                   "introduce into the feature processing");
-    }
   }
   /// Returns the window-size in samples, after resampling.  This is the
   /// "basic window size", not the full window size after extending by max-lag.
