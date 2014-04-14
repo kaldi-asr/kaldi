@@ -160,7 +160,6 @@ ccp $alidir/norm_vars $dir 2>/dev/null
 cp $alidir/tree $dir
 
 truncate_comp_num=$[2*$num_hidden_layers+1]
-#if false; then #100
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
   steps/nnet2/get_lda.sh $lda_opts --splice-width $splice_width --cmd "$cmd" $data $lang $alidir $dir || exit 1;
@@ -402,7 +401,6 @@ if $cleanup; then
     fi
   done
 fi
-#fi #100
 
 name=`basename $data`
 if [ -f $dir/final.mdl ]; then
