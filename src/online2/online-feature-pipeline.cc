@@ -169,6 +169,8 @@ void OnlineFeaturePipeline::Init() {
     lda_ = new OnlineTransform(lda_mat_,
                                (splice_or_delta_ != NULL ?
                                 splice_or_delta_ : cmvn_));
+  } else {
+    lda_ = NULL;
   }
 
   fmllr_ = NULL;  // This will be set up if the user calls SetTransform().
