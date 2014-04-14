@@ -188,10 +188,10 @@ if [ $stage -le 3 ]; then
     echo "--splice-config=$dir/conf/splice.conf" >>$conf
     echo "--lda-matrix=$dir/final.mat" >>$conf
   else
-    echo "$0: creating $dir/delta.conf"
-    echo -n >$dir/delta.conf # no non-default options currently supported.  It
-                             # needs it to know we're applying delta features,
-                             # though.
+    echo "$0: creating $dir/conf/delta.conf"
+    echo -n >$dir/conf/delta.conf # no non-default options currently supported.  It
+                                  # needs it to know we're applying delta features,
+                                  # though.
     echo "--delta-config=$dir/conf/delta.conf" >>$conf
   fi
   if $add_pitch; then
