@@ -42,19 +42,24 @@ namespace kaldi {
   average, where the weight corresponds to "pov" (the probability
   of voicing).  This seemed to slightly improve results versus
   vanilla moving window normalization, although the effect was small.
+
+  We add a variable 'frame_start' to make usage of larger temporal context,
+  which means [0, frame_start-1] is served as context, while the result of
+  [frame_start, end] is the data to be return.
 */
 
 void WeightedMovingWindowNormalize(
     int32 normalization_window_size,
     const VectorBase<BaseFloat> &pov,
     const VectorBase<BaseFloat> &raw_log_pitch,
-    Vector<BaseFloat> *normalized_log_pitch) {
+    Vector<BaseFloat> *normalized_log_pitch,
+    int32 frame_start) {
   int32 num_frames = pov.Dim();
   KALDI_ASSERT(num_frames == raw_log_pitch.Dim());
   int32 last_window_start = -1, last_window_end = -1;
   double weighted_sum = 0.0, pov_sum = 0.0;
 
-  for (int32 t = 0; t < num_frames; t++) {
+  for (int32 t = frame_start; t < num_frames; t++) {
     int32 window_start, window_end;
     window_start = t - (normalization_window_size/2);
     window_end = window_start + normalization_window_size;
@@ -95,10 +100,11 @@ void WeightedMovingWindowNormalize(
     KALDI_ASSERT(window_end - window_start > 0);
     last_window_start = window_start;
     last_window_end = window_end;
-    (*normalized_log_pitch)(t) = raw_log_pitch(t) -
-                                      weighted_sum / pov_sum;
-    KALDI_ASSERT((*normalized_log_pitch)(t) -
-                 (*normalized_log_pitch)(t) == 0);
+    int32 t2 = t - frame_start;
+    (*normalized_log_pitch)(t2) = raw_log_pitch(t) -
+                                  weighted_sum / pov_sum;
+    KALDI_ASSERT((*normalized_log_pitch)(t2) -
+                 (*normalized_log_pitch)(t2) == 0);
   }
 }
 
@@ -283,7 +289,7 @@ void PostProcessPitch(const PostProcessPitchOptions &opts,
     pov_feature(t) = opts.pov_scale * NccfToPovFeature(nccf(t));
   }
   WeightedMovingWindowNormalize(opts.normalization_window_size,
-                                pov, raw_log_pitch, &normalized_log_pitch);
+                                pov, raw_log_pitch, &normalized_log_pitch, 0);
   // the normalized log pitch has quite a small variance; scale it up a little
   // (this interacts with variance flooring in early system build stages).
   normalized_log_pitch.Scale(opts.pitch_scale);
@@ -1314,14 +1320,15 @@ void OnlinePostProcessPitch::ComputePostPitch(
     pov_feature(t) = opts_.pov_scale * NccfToPovFeature(nccf_append(t));
   }
   AppendVector(pov, &pov_);
-  AppendVector(pov_feature, &pov_feature_);
 
   // Process normalized-log-pitch feature
   AppendVector(raw_log_pitch_append, &raw_log_pitch_);
+  // Utilizing larger temporal context for beter performance
   WeightedMovingWindowNormalize(opts_.normalization_window_size,
-                                pov,
-                                raw_log_pitch_append,
-                                &normalized_log_pitch);
+                                pov_,
+                                raw_log_pitch_,
+                                &normalized_log_pitch,
+                                num_pitch_frames_);
   // the normalized log pitch has quite a small variance; scale it up a little
   // (this interacts with variance flooring in early system build stages).
   normalized_log_pitch.Scale(opts_.pitch_scale);

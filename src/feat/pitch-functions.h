@@ -287,7 +287,6 @@ class OnlinePostProcessPitch: public OnlineFeatureInterface {
   Matrix<BaseFloat> features_;
 
   Vector<BaseFloat> pov_;
-  Vector<BaseFloat> pov_feature_;
   Vector<BaseFloat> raw_log_pitch_;
 
   int32 num_frames_;
