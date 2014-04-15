@@ -98,9 +98,12 @@ exit 0
 %WER 1.76 [ 220 / 12533, 16 ins, 60 del, 144 sub ] exp/nnet4c_gpu/decode/wer_6
 %WER 8.82 [ 1106 / 12533, 90 ins, 173 del, 843 sub ] exp/nnet4c_gpu/decode_ug/wer_11
 
-%WER 1.70 [ 213 / 12533, 18 ins, 62 del, 133 sub ] exp/nnet4d_gpu/decode/wer_7
-%WER 8.28 [ 1038 / 12533, 77 ins, 158 del, 803 sub ] exp/nnet4d_gpu/decode_ug/wer_11
+%WER 1.61 [ 202 / 12533, 29 ins, 34 del, 139 sub ] exp/nnet4d_gpu/decode/wer_2
+%WER 8.48 [ 1063 / 12533, 76 ins, 176 del, 811 sub ] exp/nnet4d_gpu/decode_ug/wer_10
 
+%WER 1.37 [ 172 / 12533, 14 ins, 36 del, 122 sub ] exp/nnet4e_gpu/decode/wer_3
+%WER 8.03 [ 1006 / 12533, 61 ins, 179 del, 766 sub ] exp/nnet4e_gpu/decode_ug/wer_8
+ 
 # Discriminatively trained system (using SMBR, on CPU)
 %WER 1.70 [ 213 / 12533, 21 ins, 52 del, 140 sub ] exp/nnet5c_mpe/decode_epoch1/wer_4
 %WER 1.71 [ 214 / 12533, 21 ins, 50 del, 143 sub ] exp/nnet5c_mpe/decode_epoch2/wer_4
@@ -122,10 +125,14 @@ exit 0
 %WER 8.43 [ 1057 / 12533, 100 ins, 153 del, 804 sub ] exp/nnet5c_mpe_gpu/decode_ug_epoch3/wer_10
 %WER 8.36 [ 1048 / 12533, 89 ins, 158 del, 801 sub ] exp/nnet5c_mpe_gpu/decode_ug_epoch4/wer_11
 
-# Discriminatively trained system (using p-norm rather than tanh nonlinearities, using SMBR, on GPU)
-%WER 1.40 [ 176 / 12533, 30 ins, 28 del, 118 sub ] exp/nnet5d_mpe_gpu/decode_epoch3/wer_2
-%WER 7.99 [ 1001 / 12533, 66 ins, 193 del, 742 sub ] exp/nnet5d_mpe_gpu/decode_ug_epoch2/wer_9
 
+# Discriminatively trained system (using p-norm rather than tanh nonlinearities, using SMBR, on GPU)
+%WER 1.56 [ 195 / 12533, 28 ins, 31 del, 136 sub ] exp/nnet5d_mpe_gpu/decode_epoch2/wer_2
+%WER 8.35 [ 1047 / 12533, 77 ins, 171 del, 799 sub ] exp/nnet5d_mpe_gpu/decode_ug_epoch4/wer_10
+
+# Discriminatively trained system on top of ensemble trained p-norm network (using SMBR, on GPU)
+%WER 1.36 [ 170 / 12533, 15 ins, 34 del, 121 sub ] exp/nnet5e_mpe_gpu/decode_epoch2/wer_3
+%WER 7.73 [ 969 / 12533, 74 ins, 157 del, 738 sub ] exp/nnet5e_mpe_gpu/decode_ug_epoch4/wer_9
 
 # DNN systems (Karel)
 # note from Dan-- these are from an older RESULTS file as I did not rerun these
