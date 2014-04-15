@@ -324,6 +324,9 @@ done
 
 # local/run_sgmm2.sh
 
+# demonstration script for raw-fMLLR.  You should probably ignore this.
+# local/run_raw_fmllr.sh
+
 
 # # Karel's DNN recipe on top of fMLLR features
 # local/run_dnn.sh

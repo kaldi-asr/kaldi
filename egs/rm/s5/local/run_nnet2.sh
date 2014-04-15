@@ -42,6 +42,10 @@ else
 
   # This is discriminative training on top of 4c.
   local/nnet2/run_5c.sh
+
+  # This is p-norm on top of raw-fMLLR.
+  #local/nnet2/run_4e.sh
+
 fi
   
 
