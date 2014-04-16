@@ -28,6 +28,15 @@
 
 namespace kaldi {
 
+// This Round function is just a temporary patch to help Windows compilation; we
+// should not have been using the "round" function at all, and the version
+// of this code in "sandbox/online" that will eventually be merged here will
+// get rid of calls to round (or Round).
+inline int32 Round(BaseFloat x) {
+  return static_cast<int32>(x + 0.5);
+}
+
+
 // compute the Weighted Moving Window normalization
 // Subtract the weighted-moving average over a largish window
 // The weight is equal to probability of voicing per frame.
@@ -167,8 +176,8 @@ void ExtractFrame(const VectorBase<double> &wave,
                   Vector<double> *window) {
   int32 frame_shift = opts.NccfWindowShift();
   int32 frame_length = opts.NccfWindowSize();
-  int32 outer_max_lag = round(opts.resample_freq / opts.min_f0) +
-      round(opts.lowpass_filter_width/2);
+  int32 outer_max_lag = Round(opts.resample_freq / opts.min_f0) +
+      Round(opts.lowpass_filter_width/2);
 
   KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
   int32 start = frame_shift * frame_num;
@@ -480,7 +489,7 @@ void SelectLag(const PitchExtractionOptions &opts,
       max_lag = 1.0 / (1.0 * opts.min_f0);
   double delta_lag = opts.upsample_filter_width/(2.0 * opts.resample_freq);
 
-  int32 lag_size = 1 + round(log((max_lag + delta_lag) / (min_lag - delta_lag))
+  int32 lag_size = 1 + Round(log((max_lag + delta_lag) / (min_lag - delta_lag))
       / log(1.0 + opts.delta_pitch));
   lags->Resize(lag_size);
 
@@ -639,13 +648,13 @@ void Compute(const PitchExtractionOptions &opts,
       (opts.upsample_filter_width/(2.0 * opts.resample_freq));
   double outer_max_lag = 1.0 / (1.0 * opts.min_f0) +
       (opts.upsample_filter_width/(2.0 * opts.resample_freq));
-  int32 num_max_lag = round(outer_max_lag * opts.resample_freq) + 1;
-  int32 num_lags = round(opts.resample_freq * outer_max_lag) -
-      round(opts.resample_freq *  outer_min_lag) + 1;
-  int32 start = round(opts.resample_freq  * outer_min_lag),
-      end = round(opts.resample_freq / opts.min_f0) +
-      round(opts.lowpass_filter_width / 2);
-
+  int32 num_max_lag = Round(outer_max_lag * opts.resample_freq) + 1;
+  int32 num_lags = Round(opts.resample_freq * outer_max_lag) -
+      Round(opts.resample_freq *  outer_min_lag) + 1;
+  int32 start = Round(opts.resample_freq  * outer_min_lag),
+      end = Round(opts.resample_freq / opts.min_f0) +
+      Round(opts.lowpass_filter_width / 2);
+  
   Vector<double> lags;
   SelectLag(opts, &num_states, &lags);
   double a_fact_pitch = pow(opts.NccfWindowSize(), 4) * opts.nccf_ballast,
