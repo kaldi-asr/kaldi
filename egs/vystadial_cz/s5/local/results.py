@@ -15,7 +15,6 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License. #
 import argparse
-from numpy import mean
 import glob
 import sys
 import sqlite3
@@ -116,7 +115,8 @@ def createSmallTable(r):
             mins = None
         else:
             mins = min(s)  # returns tuple if s is list of tuples
-        d.append([k, mean(r), minw, mins])
+        mean_r = sum(r) / float(len(r))
+        d.append([k, mean_r, minw, mins])
     t = Table(d, ['exp', 'RT coef', 'WER', 'SER'])
     return t
 
