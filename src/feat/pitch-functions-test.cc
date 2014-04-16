@@ -20,14 +20,16 @@
 
 
 #include <iostream>
-#include "feat/pitch-functions.cc"
+#include "feat/pitch-functions.h"
 #include "feat/feature-plp.h"
 #include "base/kaldi-math.h"
 #include "feat/wave-reader.h"
 #include "util/timer.h"
 #include "sys/stat.h"
 #include "sys/types.h"
-using namespace kaldi;
+
+
+namespace kaldi {
 
 std::string ConvertIntToString(const int &number) {
   std::stringstream ss;  // create a stringstream
@@ -125,8 +127,7 @@ static void UnitTestPieces() {
   }
 }
 
-// if we didn't #include pitch-functions.cc, we'd do this:
-// extern bool pitch_use_naive_search; // was declared in pitch-functions.cc
+ extern bool pitch_use_naive_search; // was declared in pitch-functions.cc
 
 // Make sure that doing a calculation on the whole waveform gives
 // the same results as doing on the waveform broken into pieces.
@@ -267,6 +268,12 @@ static void UnitTestKeeleNccfBallast() {
     }
   }
 }
+
+extern void WeightedMovingWindowNormalize(
+    int32 normalization_window_size,
+    const VectorBase<BaseFloat> &pov,
+    const VectorBase<BaseFloat> &raw_log_pitch,
+    Vector<BaseFloat> *normalized_log_pitch);
 static void UnitTestWeightedMovingWindowNormalize() {
   KALDI_LOG << "=== UnitTestWeightedMovingWindowNormalize1() ===\n";
   // compare the results of WeightedMovingWindowNormalize and Sliding CMN
@@ -454,20 +461,27 @@ void UnitTestPostProcess() {
     m2.Write(os, false);
   }
 }
+
+extern void ExtractDeltaPitch(const PostProcessPitchOptions &opts,
+                              const VectorBase<BaseFloat> &input,
+                              Vector<BaseFloat> *output);
+
 void UnitTestDeltaPitch() {
   KALDI_LOG << "=== UnitTestDeltaPitch() ===\n";
   for (int32 i = 0; i < 1; i++) {
     int32 num_frames = 1 + (rand()%10 * 1000);
     Vector<BaseFloat> feat(num_frames),
       output_feat(num_frames), output_feat2(num_frames);
-    for (int32 j = 0; j < num_frames; j++)
-      feat(j) = 0.2 * j;
+    feat.SetRandn();
     for (int32 j = 2; j < num_frames - 2; j++)
       output_feat2(j) = 1.0 / 10.0  *
         (-2.0 * feat(j - 2) - feat(j - 1) + feat(j + 1) + 2.0 * feat(j + 2));
     PostProcessPitchOptions op;
     op.delta_pitch_noise_stddev = 0;
     ExtractDeltaPitch(op, feat, &output_feat);
+    // Don't test first 2 and last 2 frames.
+    output_feat(0) = output_feat(1) =
+        output_feat(num_frames - 2) = output_feat(num_frames - 1) = 0.0;
     if (!output_feat.ApproxEqual(output_feat2, 0.05)) {
       KALDI_ERR << "output feat " << output_feat << " vs. "
         << " ouput feat2 " << output_feat2;
@@ -492,7 +506,11 @@ static void UnitTestFeatWithKeele() {
   UnitTestPostProcess();
 }
 
+}
+
 int main() {
+  using namespace kaldi;
+  
   SetVerboseLevel(3);
   try {
     UnitTestFeatNoKeele();

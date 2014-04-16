@@ -354,13 +354,12 @@ class PitchFrameInfo {
   /// This function may be called for the last (most recent) PitchFrameInfo
   /// object with the best state (obtained from the externally held
   /// forward-costs). It traces back as far as needed to set the
-  /// cur_best_state_, and as it's going it sets the lag-index and pov_nccf
-  /// in pitch_pov_iter, which when it's called is an iterator to where to
-  /// put the info for the final state; the iterator will be decremented
-  /// inside this function.
+  /// cur_best_state_, and as it's going it sets the lag-index and pov_nccf in
+  /// pitch_pov_iter, which when it's called is an iterator to where to put the
+  /// info for the final state; the iterator will be decremented inside this
+  /// function. 
   void SetBestState(int32 best_state,
       std::vector<std::pair<int32, BaseFloat> >::iterator lag_nccf_iter);
-
 
   /// This function may be called on the last (most recent) PitchFrameInfo
   /// object; it computes how many frames of latency there is because the
@@ -625,7 +624,9 @@ void PitchFrameInfo::ComputeBacktraces(
         break;
     }
   }
-
+  // The next statement is needed due to RecomputeBacktraces: we have to
+  // invalidate the previously computed best-state info.
+  cur_best_state_ = -1;  
   this_forward_cost_vec->AddVec(1.0, local_cost);
 }
 
@@ -638,7 +639,8 @@ void PitchFrameInfo::SetBestState(
   PitchFrameInfo *this_info = this;  // it will change in the loop.
   while (this_info != NULL) {
     PitchFrameInfo *prev_info = this_info->prev_info_;
-    if (best_state == this_info->cur_best_state_) return;  // no change
+    if (best_state == this_info->cur_best_state_)
+      return;  // no change
     if (prev_info != NULL)  // don't write anything for frame -1.
       iter->first = best_state;
     size_t state_info_index = best_state - this_info->state_offset_;
@@ -651,7 +653,6 @@ void PitchFrameInfo::SetBestState(
     iter--;
   }
 }
-
 
 int32 PitchFrameInfo::ComputeLatency(int32 max_latency) {
   if (max_latency <= 0) return 0;
@@ -690,6 +691,24 @@ void PitchFrameInfo::Cleanup(PitchFrameInfo *prev_frame) {
 }
 
 
+// struct NccfInfo is used to cache certain quantities that we need for online
+// operation, for the first "recompute_frame" frames of the file (e.g. 300);
+// after that many frames, or after the user calls InputFinished(), we redo the
+// initial backtraces, as we'll then have a better estimate of the average signal
+// energy.
+struct NccfInfo {
+
+  Vector<BaseFloat> nccf_pitch_resampled;  // resampled nccf_pitch
+  BaseFloat avg_norm_prod; // average value of e1 * e2.
+  BaseFloat mean_square_energy;  // mean_square energy we used when computing the
+                                 // original ballast term for
+                                 // "nccf_pitch_resampled".
+  
+  NccfInfo(BaseFloat avg_norm_prod,
+           BaseFloat mean_square_energy):
+      avg_norm_prod(avg_norm_prod),
+      mean_square_energy(mean_square_energy) { }
+};
 
 
 
@@ -742,9 +761,21 @@ class OnlinePitchFeatureImpl {
                     int64 frame_index,
                     VectorBase<BaseFloat> *window);
 
+
+  /// This function is called after we reach frame "recompute_frame", or when
+  /// InputFinished() is called, whichever comes sooner.  It recomputes the
+  /// backtraces for frames zero through recompute_frame, if needed because the
+  /// average energy of the signal has changed, affecting the nccf ballast term.
+  /// It works out the average signal energy from
+  /// downsampled_samples_processed_, signal_sum_ and signal_sumsq_ (which, if
+  /// you see the calling code, might include more frames than just
+  /// "recompute_frame", it might include up to the end of the current chunk).
+  void RecomputeBacktraces();
+
+  
   /// This function updates downsampled_signal_remainder_,
-  /// downsampled_samples_processed_, and signal_sumsq_; it's called at the end
-  /// of AcceptWaveform().
+  /// downsampled_samples_processed_, signal_sum_ and signal_sumsq_; it's called
+  /// from AcceptWaveform().
   void UpdateRemainder(const VectorBase<BaseFloat> &downsampled_wave_part);
 
 
@@ -773,6 +804,13 @@ class OnlinePitchFeatureImpl {
   // frame_info_ is indexed by [frame-index + 1].  frame_info_[0] is an object
   // that corresponds to frame -1, which is not a real frame.
   std::vector<PitchFrameInfo*> frame_info_;
+
+
+  // nccf_info_ is indexed by frame-index, from frame 0 to at most
+  // opts_.recompute_frame - 1.  It contains some information we'll
+  // need to recompute the tracebacks after getting a better estimate
+  // of the average energy of the signal.
+  std::vector<NccfInfo*> nccf_info_;  
 
   // Current number of frames which we can't output because Viterbi has not
   // converged for them, or opts_.max_frames_latency if we have reached that
@@ -977,21 +1015,117 @@ void OnlinePitchFeatureImpl::GetFrame(int32 frame,
 
 void OnlinePitchFeatureImpl::InputFinished() {
   input_finished_ = true;
+  int32 num_frames = static_cast<size_t>(frame_info_.size() - 1);
+  if (num_frames < opts_.recompute_frame)
+    RecomputeBacktraces();
   frames_latency_ = 0;
-  {
-    int32 num_frames = NumFramesReady();
-    KALDI_VLOG(3) << "Pitch-tracking Viterbi cost is "
-                  << (forward_cost_remainder_ / num_frames)
-                  << " per frame, over " << num_frames << " frames.";
-  }
+  KALDI_VLOG(3) << "Pitch-tracking Viterbi cost is "
+                << (forward_cost_remainder_ / num_frames)
+                << " per frame, over " << num_frames << " frames.";
 }
 
+// see comment with declaration.  This is only relevant for online
+// operation (it gets called for non-online mode, but is a no-op).
+void OnlinePitchFeatureImpl::RecomputeBacktraces() {
+  int32 num_frames = static_cast<int32>(frame_info_.size()) - 1;
+  
+  // The assertion reflects how we believe this function will be called.
+  KALDI_ASSERT(num_frames <= opts_.recompute_frame);
+  KALDI_ASSERT(nccf_info_.size() == static_cast<size_t>(num_frames));
+  if (num_frames == 0)
+    return;
+  double num_samp = downsampled_samples_processed_, sum = signal_sum_,
+      sumsq = signal_sumsq_, mean = sum / num_samp;
+  BaseFloat mean_square = sumsq / num_samp - mean * mean;
+  
+  bool must_recompute = false;
+  BaseFloat threshold = 0.1;
+  for (int32 frame = 0; frame < num_frames; frame++)
+    if (!ApproxEqual(nccf_info_[frame]->mean_square_energy,
+                     mean_square), threshold)
+      must_recompute = true;
+  
+  if (!must_recompute) {
+    // Nothing to do.  We'll reach here, for instance, if everything was in one
+    // chunk and opts_.nccf_ballast_online == false.  This is the case for
+    // offline processing.
+    for (size_t i = 0; i < nccf_info_.size(); i++)
+      delete nccf_info_[i];
+    nccf_info_.clear();
+    return;
+  }
+  
+  int32 num_states = forward_cost_.Dim(),
+      basic_frame_length = opts_.NccfWindowSize();
+  
+  BaseFloat new_nccf_ballast = pow(mean_square * basic_frame_length, 2) *
+      opts_.nccf_ballast;
+  
+  double forward_cost_remainder = 0.0;
+  Vector<BaseFloat> forward_cost(num_states),  // start off at zero.
+      next_forward_cost(forward_cost);
+  std::vector<std::pair<int32, int32 > > index_info;
+  
+  for (int32 frame = 0; frame < num_frames; frame++) {
+    NccfInfo &nccf_info = *nccf_info_[frame];
+    BaseFloat old_mean_square = nccf_info_[frame]->mean_square_energy,
+        avg_norm_prod = nccf_info_[frame]->avg_norm_prod,
+        old_nccf_ballast = pow(old_mean_square * basic_frame_length, 2) *
+            opts_.nccf_ballast,
+        nccf_scale = pow((old_nccf_ballast + avg_norm_prod) /
+                         (new_nccf_ballast + avg_norm_prod),
+                         static_cast<BaseFloat>(0.5));
+    // The "nccf_scale" is an estimate of the scaling factor by which the NCCF
+    // would change on this frame, on average, by changing the ballast term from
+    // "old_nccf_ballast" to "new_nccf_ballast".  It's not exact because the
+    // "avg_norm_prod" is just an average of the product e1 * e2 of frame
+    // energies of the (frame, shifted-frame), but these won't change that much
+    // within a frame, and even if they do, the inaccuracy of the scaled NCCF
+    // will still be very small if the ballast term didn't change much, or if
+    // it's much larger or smaller than e1*e2.  By doing it as a simple scaling,
+    // we save the overhead of the NCCF resampling, which is a considerable part
+    // of the whole computation.
+    nccf_info.nccf_pitch_resampled.Scale(nccf_scale);
+    
+    frame_info_[frame + 1]->ComputeBacktraces(
+        opts_, nccf_info.nccf_pitch_resampled, lags_,
+        forward_cost, &index_info, &next_forward_cost);
+
+    forward_cost.Swap(&next_forward_cost);
+    BaseFloat remainder = forward_cost.Min();
+    forward_cost_remainder += remainder;
+    forward_cost.Add(-remainder);
+  }
+  KALDI_VLOG(3) << "Forward-cost per frame changed from "
+                << (forward_cost_remainder_ / num_frames) << " to "
+                << (forward_cost_remainder / num_frames);
+
+  forward_cost_remainder_ = forward_cost_remainder;
+  forward_cost_.Swap(&forward_cost);
+  
+  int32 best_final_state;
+  forward_cost_.Min(&best_final_state);
+  
+  if (lag_nccf_.size() != static_cast<size_t>(num_frames))
+    lag_nccf_.resize(num_frames);
+  
+  std::vector<std::pair<int32, BaseFloat> >::iterator last_iter =
+      lag_nccf_.end() - 1;
+  frame_info_.back()->SetBestState(best_final_state, last_iter);  
+  frames_latency_ =
+      frame_info_.back()->ComputeLatency(opts_.max_frames_latency);
+  for (size_t i = 0; i < nccf_info_.size(); i++)
+    delete nccf_info_[i];
+  nccf_info_.clear();  
+}
 
 OnlinePitchFeatureImpl::~OnlinePitchFeatureImpl() {
   delete nccf_resampler_;
   delete signal_resampler_;
   for (size_t i = 0; i < frame_info_.size(); i++)
     delete frame_info_[i];
+  for (size_t i = 0; i < nccf_info_.size(); i++)
+    delete nccf_info_[i];
 }
 
 void OnlinePitchFeatureImpl::AcceptWaveform(
@@ -1079,13 +1213,16 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
                        basic_frame_length, &inner_prod, &norm_prod);
     double nccf_ballast_pov = 0.0,
         nccf_ballast_pitch = pow(mean_square * basic_frame_length, 2) *
-                              opts_.nccf_ballast;
+             opts_.nccf_ballast,
+        avg_norm_prod = norm_prod.Sum() / norm_prod.Dim();
     SubVector<BaseFloat> nccf_pitch_row(nccf_pitch, frame - start_frame);
     ComputeNccf(inner_prod, norm_prod, nccf_ballast_pitch,
                 &nccf_pitch_row);
     SubVector<BaseFloat> nccf_pov_row(nccf_pov, frame - start_frame);
     ComputeNccf(inner_prod, norm_prod, nccf_ballast_pov,
                 &nccf_pov_row);
+    if (frame < opts_.recompute_frame)
+      nccf_info_.push_back(new NccfInfo(avg_norm_prod, mean_square));
   }
 
   Matrix<BaseFloat> nccf_pitch_resampled(num_new_frames, num_resampled_lags);
@@ -1095,8 +1232,13 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
   nccf_resampler_->Resample(nccf_pov, &nccf_pov_resampled);
   nccf_pov.Resize(0, 0);  // no longer needed.
 
-  std::vector<std::pair<int32, int32 > > index_info;
+  // We've finished dealing with the waveform so we can call UpdateRemainder
+  // now; we need to call it before we possibly call RecomputeBacktraces()
+  // below, which is why we don't do it at the very end.
+  UpdateRemainder(downsampled_wave);
 
+  std::vector<std::pair<int32, int32 > > index_info;
+  
   for (int32 frame = start_frame; frame < end_frame; frame++) {
     int32 frame_idx = frame - start_frame;
     PitchFrameInfo *prev_info = frame_info_.back(),
@@ -1111,10 +1253,13 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
     forward_cost_remainder_ += remainder;
     forward_cost_.Add(-remainder);
     frame_info_.push_back(cur_info);
+    if (frame < opts_.recompute_frame)
+      nccf_info_[frame]->nccf_pitch_resampled =
+          nccf_pitch_resampled.Row(frame_idx);
+    if (frame == opts_.recompute_frame - 1)
+      RecomputeBacktraces();
   }
-
-  UpdateRemainder(downsampled_wave);
-
+  
   // Trace back the best-path.
   int32 best_final_state;
   forward_cost_.Min(&best_final_state);
@@ -1161,9 +1306,66 @@ OnlinePitchFeature::~OnlinePitchFeature() {
 }
 
 
+/**
+   This function is called from ComputeKaldiPitch when the user
+   specifies opts.simulate_first_pass_online == true.  It gives
+   the "first-pass" version of the features, which you would get
+   on the first decoding pass in an online setting.  These may
+   differ slightly from the final features due to both the
+   way the Viterbi traceback works (this is affected by
+   opts.max_frames_latency), and the online way we compute
+   the average signal energy.
+*/
+void ComputeKaldiPitchFirstPass(
+    const PitchExtractionOptions &opts,
+    const VectorBase<BaseFloat> &wave,
+    Matrix<BaseFloat> *output) {
+
+  int32 cur_rows = 100;
+  Matrix<BaseFloat> feats(cur_rows, 2);
+  
+  OnlinePitchFeature pitch_extractor(opts);
+  KALDI_ASSERT(opts.frames_per_chunk > 0 &&
+               "--simulate-first-pass-online option does not make sense "
+               "unless you specify --frames-per-chunk");
+
+  int32 cur_offset = 0, cur_frame = 0, samp_per_chunk =
+      opts.frames_per_chunk * opts.samp_freq * 1.0e-03 * opts.frame_shift_ms;
+  
+  while (cur_offset < wave.Dim()) {
+    int32 num_samp = std::min(samp_per_chunk, wave.Dim() - cur_offset);
+    SubVector<BaseFloat> wave_chunk(wave, cur_offset, num_samp);
+    pitch_extractor.AcceptWaveform(opts.samp_freq, wave_chunk);
+    cur_offset += num_samp;
+    if (cur_offset == wave.Dim())
+      pitch_extractor.InputFinished();
+    // Get each frame as soon as it is ready.
+    for (; cur_frame < pitch_extractor.NumFramesReady(); cur_frame++) {
+      if (cur_frame >= cur_rows) {
+        cur_rows *= 2;
+        feats.Resize(cur_rows, 2, kCopyData);
+      }
+      SubVector<BaseFloat> row(feats, cur_frame);
+      pitch_extractor.GetFrame(cur_frame, &row);
+    }
+  }
+  if (cur_frame  == 0) {
+    KALDI_WARN << "No features output since wave file too short";
+    output->Resize(0, 0);
+  } else {
+    *output = feats.RowRange(0, cur_frame);
+  }
+}
+
+
+
 void ComputeKaldiPitch(const PitchExtractionOptions &opts,
                        const VectorBase<BaseFloat> &wave,
                        Matrix<BaseFloat> *output) {
+  if (opts.simulate_first_pass_online) {
+    ComputeKaldiPitchFirstPass(opts, wave, output);
+    return;
+  }
   OnlinePitchFeature pitch_extractor(opts);
 
   if (opts.frames_per_chunk == 0) {

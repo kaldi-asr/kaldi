@@ -79,7 +79,35 @@ struct PitchExtractionOptions {
                                 // (e.g. if you plan to train models for the
                                 // online-deocding setup), you might want to set
                                 // this to a small value, like one frame.
+
+  bool simulate_first_pass_online; // Only relevant for the function ComputeKaldiPitch
+                                // which is called by compute-kaldi-pitch-feats,
+                                // and only relevant if frames_per_chunk is
+                                // nonzero.  If true, it will query the features
+                                // as soon as they are available, which
+                                // simulates the first-pass features you would
+                                // get in online decoding.  If false, the
+                                // features you will get will be the same as
+                                // those available at the end of the utterance,
+                                // after InputFinished() has been called:
+                                // e.g. during lattice rescoring.
   
+  int32 recompute_frame;        // Only relevant for online operation or when
+                                // emulating online operation (e.g. when setting
+                                // frames_per_chunk).  This is the frame-index
+                                // on which we recompute the NCCF
+                                // (e.g. frame-index 500 = after 5 seconds); if
+                                // the segment ends before this we do it when
+                                // the segment ends.  We do this by re-computing
+                                // the signal average energy, which affects the
+                                // NCCF via the "ballast term", scaling the
+                                // resampled NCCF by a factor derived from the
+                                // average change in the "ballast term", and
+                                // re-doing the backtrace computation.  Making
+                                // this infinity would be the most exact, but
+                                // would introduce unwanted latency at the end
+                                // of long utterances, for little benefit.
+
   bool nccf_ballast_online;     // This is a "hidden config" used only for
                                 // testing the online pitch extraction.  If
                                 // true, we compute the signal root-mean-squared
@@ -106,6 +134,8 @@ struct PitchExtractionOptions {
       upsample_filter_width(5),
       max_frames_latency(20),
       frames_per_chunk(0),
+      simulate_first_pass_online(false),
+      recompute_frame(500),
       nccf_ballast_online(false) { }
   
   void Register(OptionsItf *po) {
@@ -142,16 +172,26 @@ struct PitchExtractionOptions {
                  "Integer that determines filter width when upsampling NCCF");
     po->Register("frames-per-chunk", &frames_per_chunk, "Only relevant for "
                  "offline pitch extraction (e.g. compute-kaldi-pitch-feats), "
-                 "you can set it to a small nonzero value, such as 1, for "
+                 "you can set it to a small nonzero value, such as 10, for "
                  "better feature compatibility with online decoding (affects "
                  "energy normalization in the algorithm)");
+    po->Register("simulate-first-pass-online", &simulate_first_pass_online,
+                 "If true, this compute-kaldi-pitch-feats will output features "
+                 "that correspond to what an online decoder would see in the "
+                 "first pass of decoding-- not the final version of the "
+                 "features, which is the default.  Relevant if "
+                 "--frames-per-chunk > 0");
+    po->Register("recompute-frame", &recompute_frame, "Only relevant for "
+                 "online pitch extraction, or for compatibility with online "
+                 "pitch extraction.  A non-critical parameter; the frame at "
+                 "which we recompute some of the forward pointers, after "
+                 "revising our estimate of the signal energy.  Relevant if"
+                 "--frames-per-chunk > 0");
     po->Register("max-frames-latency", &max_frames_latency, "Maximum number "
                  "of frames of latency that we allow pitch tracking to "
-                 "introduce into the feature processing (only relevant for"
-                 "online operation, not for compute-kaldi-pitch-feats)");
-    po->Register("nccf-ballast-online", &nccf_ballast_online,
-                 "Compute NCCF ballast using online version of the computation "
-                 "(more compatible with online feature extraction");
+                 "introduce into the feature processing (only affects output if "
+                 "if --frames-per-chunk > 0 and "
+                 "--simulate-first-pass-online=true");
   }
   /// Returns the window-size in samples, after resampling.  This is the
   /// "basic window size", not the full window size after extending by max-lag.
