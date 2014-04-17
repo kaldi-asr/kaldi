@@ -9,5 +9,8 @@ if [ -z $DATA_ROOT ]; then
   exit 1
 fi
 
+# Make sure that MITLM shared libs are found by the dynamic linker/loader
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/tools/mitlm-svn/lib
+
 # Needed for "correct" sorting
 export LC_ALL=C
