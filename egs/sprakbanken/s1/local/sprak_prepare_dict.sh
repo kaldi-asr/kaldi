@@ -16,18 +16,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-# Call this script from one level above, e.g. from the s1/ directory.  It puts
-# its output in data/local/.
-
-# The parts of the output of this that will be needed are
-# [in data/local/dict/ ]
-# lexicon.txt
-# extra_questions.txt
-# nonsilence_phones.txt
-# optional_silence.txt
-# silence_phones.txt
-
-# run this from ../
+exproot=$(pwd)
 dir=data/local/dict
 espeakdir='espeak-1.48.04-source'
 mkdir -p $dir
@@ -35,41 +24,45 @@ mkdir -p $dir
 
 # Dictionary preparation:
 
-
+(
 # Normalise transcripts and create a transcript file
 # Removes '.,:;?' and removes '\' before '\Komma' (dictated ',') 
 # outputs a normalised transcript without utterance ids
-# Not using transcripts1 currently
-python3 local/normalize_transcript.py data/train/text1 data/train/text2 $dir/transcripts1
+# Contains sentences that are also in test data, so only used for training the AM, not LM
+python3 local/normalize_transcript_prefixed.py data/train/text1 data/train/text2 $dir/transcripts.am
+
 
 # Additional normalisation, uppercasing, writing numbers etc.
 # must remove uttids and recombine afterwards
+ local/norm_dk/format_text.sh am data/train/text2 > data/train/text
+) &
 
- 
-local/norm_dk/format_text.sh am data/train/text2 > data/train/text
-
-# trainsents is output by sprak_data_prep.sh calling att_lm_prep.sh and contains
+# trainsents is output by sprak_data_prep.sh calling sprak_lm_prep.sh and contains
 # sentences that are disjoint from the test and dev set 
 # Because training data is read aloud, there are many occurences of the same
-# sentence and this will give artificially high scores so make sure the 
-# sentences are unique  
-sort -u data/local/data/trainsents > $dir/trainsents.uniq
-local/norm_dk/format_text.sh am $dir/trainsents.uniq > $dir/transcripts
+# sentence and bias towards the domain. Make a version where  
+# the sentences are unique to reduce bias.
+(
+python3 local/normalize_transcript.py data/local/data/trainsents $dir/trainsents.norm
+local/norm_dk/format_text.sh lm $dir/trainsents.norm > $dir/transcripts.txt
+sort -u $dir/transcripts.txt > $dir/transcripts.uniq
+) &
+wait
 
-
-# Create wordlist
-cat $dir/transcripts | tr [:blank:] '\n' | sort -u > $dir/wlist.txt
+# Create wordlist from the AM transcripts
+(
+cat $dir/transcripts.am | tr [:blank:] '\n' | sort -u > $dir/wlist.txt
+) &
 
 # Install eSpeak if it is not installed already
-
 cd $KALDI_ROOT/tools || exit 1; 
 
 if [ -d $espeakdir ]; 
   then
     echo eSpeak installed
   else
-    wget http://sourceforge.net/projects/espeak/files/espeak/espeak-1.48/espeak-1.48.04-source.zip
-if
+    wget http://sourceforge.net/projects/espeak/files/espeak/espeak-1.48/${espeakdir}.zip
+fi
 
 if [ -f $espeakdir.zip ];
   then
@@ -77,10 +70,18 @@ if [ -f $espeakdir.zip ];
     cd $espeakdir/src
     make || exit 1;
     echo Installed eSpeak
+  else
+    echo 'No zip file to unpack. Check whether it was downloaded and the version matches.';
+    exit 1;
 fi
 
+cd exproot || exit 1;
 
-# Run through espeak to get phonetics
+# Wait for the wordlist to be fully created
+wait 
+
+
+# Run wordlist through espeak to get phonetics
 # improvised parallelisation - simple call because 'split' often has different versions
 split -l 10000 $dir/wlist.txt $dir/Wtemp_
 for w in $dir/Wtemp_*; do
@@ -113,7 +114,6 @@ grep -P  "^.+\t.+$" $dir/lexicon1.txt > $dir/lexicon2.txt
 
 # Create nonsilence_phones.txt and put in in data/local/dict
 cat $dir/plist3.txt | tr [:blank:] '\n' | sort -u > $dir/nonsilence_phones1.txt
-
 grep -v "^$" $dir/nonsilence_phones1.txt > $dir/nonsilence_phones.txt
 
 # Add "!SIL SIL" to lexicon.txt
@@ -128,6 +128,7 @@ echo SIL > $dir/optional_silence.txt
 
 touch $dir/extra_questions.txt
 
+## TODO: add cleanup commands
 
 echo "Dictionary preparation succeeded"
 

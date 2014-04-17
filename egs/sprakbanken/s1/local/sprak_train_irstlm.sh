@@ -8,18 +8,14 @@
 # in various subdirectories of data/, e.g. data/lang, data/lang_test_ug,
 # data/train_si284, data/train_si84, etc.
 
-# Don't bother doing train_si84 separately (although we have the file lists
-# in data/local/) because it's just the first 7138 utterances in train_si284.
-# We'll create train_si84 after doing the feature extraction.
-
 . ./path.sh || exit 1;
 irstbin=$KALDI_ROOT/tools/irstlm/bin
 
 srcdict=$1
-lmdir=$5
 newtext=$2
-N=$4
 lm_suffix=$3
+N=$4
+lmdir=$5
 extdict=${srcdict}_$lm_suffix
 tmpdir=data/local/lm_tmp
 lang_tmp=data/local/lang_tmp
@@ -43,15 +39,13 @@ if [ ! -d $extdict ];
   done
 
   mv $extdict/lexicon.txt $extdict/oldlexicon.txt
-
-
 fi
 
 
 if [ ! -f $extdict/transcripts.uniq ];
   then
   # Create the text data for LMs and RNNs
-  cat $srcdict/transcripts.uniq $newtext > $extdict/transcripts.txt
+  cat $srcdict/transcripts.txt $newtext > $extdict/transcripts.txt
   sort -u $extdict/transcripts.txt > $extdict/transcripts.uniq
 fi
 
@@ -68,13 +62,11 @@ if [ ! -f $extdict/lexicon.txt ];
   nsplit=$((nwords / 8))
 
   # Create wordlist
-
   # Run through espeak to get phonetics
   split -l $nsplit $extdict/wlist.txt $extdict/Wtemp_
   for w in $extdict/Wtemp_*; do
     (cat $w | espeak -q -vda -x > $w.pho ) &
   done
-
   wait
 
   cat $extdict/Wtemp_*.pho > $extdict/plist.txt
@@ -99,9 +91,8 @@ if [ ! -f $extdict/lexicon.txt ];
   # Combine lexicons
   cat $extdict/oldlexicon.txt $extdict/newlexicon.txt > $extdict/templex
   sort -u $extdict/templex > $extdict/lexicon.txt
-
-
 fi
+
 
 if [ ! -d $extlang ];
   then
@@ -113,30 +104,24 @@ if [ ! -f $lmdir/extra4.ngt ];
   then
   echo "Preparing LM data"
 
-   #< data/local/gmf_lm/text.filt
-
   grep -P -v '^[\s?|\.|\!]*$' $newtext | \
   awk '{if(NF>=4){ printf("%s\n",$0); }}' > $lmdir/text.filt
-#    grep -P -v '^[\w\.\-]+? [\w\.\-]+? [\w\.\-]+?$' | \
-#    grep -P -v '^[\w\.\-]+? [\w\.\-]+?$' | \
-#    grep -P -v '^[\w\.\-]+?$' \
     
-
   # Envelop LM training data in context cues
   $irstbin/add-start-end.sh < $lmdir/text.filt > $lmdir/lm_input
 
 
-  # Next, create the corresponding FST
-  # and the corresponding lang_test_* directory.
     echo "Creating new binary ngram table $lmdir/extra4.ngt"
     ngt -i=$lmdir/lm_input -n=4 -o=$lmdir/extra4.ngt -b=yes
 fi
 
 echo "Training ARPA model extra$lm_suffix"
 
+# Randomly chose n=4 as upper bound for the ngram table
 tlm -tr=$lmdir/extra4.ngt -n=$N -lm=wb -o=$lmdir/extra${N}$lm_suffix
 
-
+# Next, create the corresponding FST
+# and the corresponding lang_test_* directory.
 test=data/lang_test_${N}${lm_suffix}
 mkdir -p $test
 

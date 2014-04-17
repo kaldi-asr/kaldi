@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Copyright 2013-2014 Author:  Andreas Kirkedal
-# Apache 2.0.
-
 
 if [ $# -le 1 ]; then
    echo "Arguments should be a file with a list of text files and a filename for the output."

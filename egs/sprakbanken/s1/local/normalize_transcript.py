@@ -1,67 +1,33 @@
-'''
-# Copyright 2013-2014 Mirsk Digital Aps  (Author: Andreas Kirkedal)
-
-# Licensed under the Apache License, Version 2.0 (the "License");                                                    
-# you may not use this file except in compliance with the License.                                                  
-# You may obtain a copy of the License at                                                                          
-#                                                                                                                 
-#  http://www.apache.org/licenses/LICENSE-2.0                                                                    
-#                                                                                                               
-# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY                                 
-# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED                                   
-# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,                                       
-# MERCHANTABLITY OR NON-INFRINGEMENT.                                                                                 
-# See the Apache 2 License for the specific language governing permissions and                                       
-# limitations under the License.
-'''
-
-
 import codecs
 import sys
 import re
 
 ## Global vars
 
-normdict = {#".": "",
-            ",": " ",
-            ":": " ",
-            ";": " ",
-            "?": " ",
+normdict = {".": "",
+            ",": "",
+            ":": "",
+            ";": "",
+            "?": "",
             "\\": " ",
             "\t": " "
-    }
+            }
 
 t_table = str.maketrans(normdict)
-
-## Utility function
-
-def getuttid_text(line):
-    return line.split(" ", 1)
 
 
 ## Main
 
-textin = codecs.open(sys.argv[1], "r", "utf8")
+transcript = codecs.open(sys.argv[1], "r")
 outtext = codecs.open(sys.argv[2], "w", "utf8")
 
-if len(sys.argv) > 3:
-    make_wlist = True
-    wlist = codecs.open(sys.argv[3], "w", "utf8")
-else:
-    make_wlist = False
 
-for line in textin:
-    utt_id, text = getuttid_text(line)
-    normtext1 = text.translate(t_table)
-    
+for line in transcript:
+    normtext1 = line.translate(t_table)
+
     normtext2 = re.sub(r'  +', ' ', normtext1.strip())
 
-    outtext.write(utt_id+ " " +normtext2+ "\n")
-    if make_wlist:
-        wlist.write(normtext2+ "\n")
+    outtext.write(normtext2.upper() + "\n")
 
-if make_wlist:
-    wlist.close()
-
-textin.close()
-outtext.close()    
+transcript.close()
+outtext.close()

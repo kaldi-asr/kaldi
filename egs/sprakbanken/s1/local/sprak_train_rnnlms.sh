@@ -1,14 +1,7 @@
 #!/bin/bash 
 
-# Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
+# Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson  Andreas Kirkedal
 
-# This script trains LMs on the WSJ LM-training data.
-# It requires that you have already run wsj_extend_dict.sh,
-# to get the larger-size dictionary including all of CMUdict
-# plus any OOVs and possible acronyms that we could easily 
-# derive pronunciations for.
-
-# This script takes no command-line arguments but takes the --cmd option.
 
 # Begin configuration section.
 rand_seed=0
@@ -24,14 +17,15 @@ rnnlm_ver=rnnlm-0.3e # version of RNNLM to use
 . utils/parse_options.sh
 
 if [ $# != 3 ]; then
-   echo "Usage: local/att_train_rnnlms.sh [options] <src-dir> <dev-set-file> <dest-dir>"
+   echo "Usage: local/sprak_train_rnnlms.sh [options] <src-dir> <dev-set-file> <dest-dir>"
    echo "For options, see top of script file"
    exit 1;
 fi
 
-dir=$3
+
 srcdir=$1
 devtext=$2
+dir=$3
 mkdir -p $dir
 
 export PATH=$KALDI_ROOT/tools/$rnnlm_ver:$PATH
@@ -60,7 +54,7 @@ export PATH=$KALDI_ROOT/tools/$rnnlm_ver:$PATH
 ) || exit 1;
 
 
-if [ ! -f $srcdir/transcripts.uniq -o ! -f $srcdir/lexicon.txt ]; then
+if [ ! -f $srcdir/transcripts.uniq -o ! || -f $srcdir/lexicon.txt ]; then
   echo "Expecting $srcdir/transcripts.uniq and $srcdir/lexicon.txt to exist";
   exit 1;
 fi

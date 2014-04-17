@@ -32,38 +32,6 @@ if [ ! -x $sph2pipe ]; then
 fi
 
 
-
-#cd $dir
-
-#mkdir -p $4/parallel/training $4/parallel/test
-
-## Create a parallel corpus with text/wav pairs with unique identifiers using session, speaker and utterance ids
-## The input text files are in iso8859-1, the output text files are in utf-8 and the wav files are actually sph
-
-## Training part
-#python3 $local/sprak2parallel.py $1 $4/parallel/training/$(basename $1) &
-#python3 $local/sprak2parallel.py $2 $4/parallel/training/$(basename $2) &
-
-## Testing part
-#python3 $local/sprak2parallel.py $3 $4/parallel/test/$(basename $3) &
-
-#wait
-
-## Creates a list of all the text files in the corpus
-#find $4/parallel/training -type f -name \*.txt > traintxtfiles
-#find $4/parallel/test -type f -name \*.txt > testtxtfiles
-
-## Creates an intermediate "text" file and the wav.scp and the utt2spk files
-## The wav.scp file contains commands to sph2pipe instead of filenames
-#python3 $local/sprak_data_prep.py traintxtfiles $traindir &
-
-## Ditto test corpus
-#python3 $local/sprak_data_prep.py testtxtfiles $testdir &
-
-#wait
- 
-#mkdir -p parallel/training parallel/test06 parallel/dev03
-
 # Create parallel file lists and text files, but keep sound files in the same location
 # Note: rename "da 0611 test" to "da_0611_test" for this to work
 find $3 -name "* *" -type d | rename 's/ /_/g'
@@ -103,25 +71,9 @@ python3 $local/sprak_data_prep.py $dir/devtxtfiles $devdir $dir/devsndfiles $sph
 sprak_prep_lm.sh $dir/lmtxtfiles $dir/trainsents
 wait
 
-# IF SPEAKER INFO CAN BE INCORPORATED
-#if [ ! -f wsj0-train-spkrinfo.txt ]; then
-#  echo "Could not get the spkrinfo.txt file from LDC website (moved)?"
-#  echo "This is possibly omitted from the training disks; couldn't find it." 
-#  echo "Everything else may have worked; we just may be missing gender info"
-#  echo "which is only needed for VTLN-related diagnostics anyway."
-#  exit 1
-#fi
-# Note: wsj0-train-spkrinfo.txt doesn't seem to be on the disks but the
-# LDC put it on the web.  Perhaps it was accidentally omitted from the
-# disks.  
+## TODO
 
-#cat links/11-13.1/wsj0/doc/spkrinfo.txt \
-#    links/13-32.1/wsj1/doc/evl_spok/spkrinfo.txt \
-#    links/13-34.1/wsj1/doc/dev_spok/spkrinfo.txt \
-#    links/13-34.1/wsj1/doc/train/spkrinfo.txt \
-#   ./wsj0-train-spkrinfo.txt  | \
-#    perl -ane 'tr/A-Z/a-z/; m/^;/ || print;' | \
-#   awk '{print $1, $2}' | grep -v -- -- | sort | uniq > spk2gender
-
+# Extract gender from spl files 
+# Decide how to handle cases with no gender specification
 
 echo "Data preparation succeeded"
