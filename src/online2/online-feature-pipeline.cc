@@ -85,7 +85,7 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
                  << "since you did not supply --splice-feats option.";
   }  // else use the defaults.
 
-  if (add_deltas && splice_feats)
+  if (config.add_deltas && config.splice_feats)
     KALDI_ERR << "You cannot supply both --add-deltas "
               << "and --splice-feats options";
 

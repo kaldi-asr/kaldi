@@ -58,7 +58,7 @@ struct OnlineFeaturePipelineCommandLineConfig {
   std::string lda_rxfilename;
 
   OnlineFeaturePipelineCommandLineConfig() :
-    feature_type("mfcc"), add_pitch(false), add_deltas(true),
+    feature_type("mfcc"), add_pitch(false), add_deltas(false),
     splice_feats(false) { }
 
   void Register(OptionsItf *po) {
