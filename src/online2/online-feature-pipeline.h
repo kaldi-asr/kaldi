@@ -43,35 +43,50 @@ namespace kaldi {
 /// I'm conflicted about whether this is a wise thing to do, but I think
 /// for ease of scripting it's probably better to do it like this.
 struct OnlineFeaturePipelineCommandLineConfig {
+  std::string feature_type;
   std::string mfcc_config;
   std::string plp_config;
+  bool add_pitch;
   std::string pitch_config;
-  std::string post_pitch_config;
+  std::string pitch_postprocess_config;
   std::string cmvn_config;
   std::string global_cmvn_stats_rxfilename;
+  bool add_deltas;
   std::string delta_config;
+  bool splice_feats;
   std::string splice_config;
   std::string lda_rxfilename;
 
-  OnlineFeaturePipelineCommandLineConfig() { }
+  OnlineFeaturePipelineCommandLineConfig() :
+    feature_type("mfcc"), add_pitch(false), add_deltas(true),
+    splice_feats(false) { }
 
   void Register(OptionsItf *po) {
+    po->Register("feature-type", &feature_type,
+                 "Base feature type [mfcc, plp]");
     po->Register("mfcc-config", &mfcc_config, "Configuration class file for "
                  "MFCC features (e.g. conf/mfcc.conf)");
     po->Register("plp-config", &plp_config, "Configuration class file for "
                  "PLP features (e.g. conf/plp.conf)");
+    po->Register("add-pitch", &add_pitch, "Append pitch features to raw "
+                 "MFCC/PLP features.");
     po->Register("pitch-config", &pitch_config, "Configuration class file for "
                  "pitch features (e.g. conf/pitch.conf)");
-    po->Register("post-pitch-config", &post_pitch_config, "Configuration class "
-                 "file for pitch post-processing (e.g. conf/postpitch.conf)");
+    po->Register("pitch-postprocess-config", &pitch_postprocess_config,
+                 "Configuration class file for post-processing pitch features "
+                 "(e.g. conf/pitch_postprocess.conf)");
     po->Register("cmvn-config", &cmvn_config, "Configuration class "
                  "file for online CMVN features (e.g. conf/online_cmvn.conf)");
     po->Register("global-cmvn-stats", &global_cmvn_stats_rxfilename,
                  "(Extended) filename for global CMVN stats, e.g. obtained "
                  "from 'matrix-sum scp:data/train/cmvn.scp -'");
+    po->Register("add-deltas", &add_deltas,
+                 "Append delta features.");
     po->Register("delta-config", &delta_config, "Configuration class file for "
                  "delta feature computation (if not supplied, will not apply "
                  "delta features; supply empty config to use defaults.)");
+    po->Register("splice-feats", &splice_feats, "Splice features with left and "
+                 "right context.");
     po->Register("splice-config", &splice_config, "Configuration class file "
                  "for frame splicing, if done (e.g. prior to LDA)");
     po->Register("lda-matrix", &lda_rxfilename, "Filename of LDA matrix (if "
@@ -89,8 +104,8 @@ struct OnlineFeaturePipelineCommandLineConfig {
 /// well as from the command line.
 struct OnlineFeaturePipelineConfig {
   OnlineFeaturePipelineConfig():
-      feature_type("mfcc"), add_pitch(false),
-      splice_frames(false), apply_deltas(true) { }
+      feature_type("mfcc"), add_pitch(false), add_deltas(true),
+      splice_feats(false) { }
 
   OnlineFeaturePipelineConfig(
       const OnlineFeaturePipelineCommandLineConfig &cmdline_config);
@@ -98,22 +113,23 @@ struct OnlineFeaturePipelineConfig {
   BaseFloat FrameShiftInSeconds() const;
 
   std::string feature_type;  // "mfcc" or "plp", for now.
-  bool add_pitch;
+
   MfccOptions mfcc_opts;  // options for MFCC computation,
                           // if feature_type == "mfcc"
   PlpOptions plp_opts;  // Options for PLP computation, if feature_type == "plp"
-  PitchExtractionOptions pitch_opts;  // Options for pitch computation,
-                                      // if add_pitch = true
-  PostProcessPitchOptions post_pitch_opts;  // Options for pitch postprocessing,
-                                            // if add_pitch = true
+
+  bool add_pitch;
+  PitchExtractionOptions pitch_opts;  // Options for pitch extraction, if done.
+  PostProcessPitchOptions pitch_postprocess_opts;  // Options for pitch
+                                                   // postprocessing
 
   OnlineCmvnOptions cmvn_opts;  // Options for online CMN/CMVN computation.
 
-  bool splice_frames;
-  OnlineSpliceOptions splice_opts;  // Options for frame splicing, if done.
-
-  bool apply_deltas;
+  bool add_deltas;
   DeltaFeaturesOptions delta_opts;  // Options for delta computation, if done.
+
+  bool splice_feats;
+  OnlineSpliceOptions splice_opts;  // Options for frame splicing, if done.
 
   std::string lda_rxfilename;  // Filename for reading LDA or LDA+MLLT matrix,
                                // if used.
@@ -197,13 +213,10 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
   Matrix<BaseFloat> lda_mat_;  // LDA matrix, if supplied.
   Matrix<BaseFloat> global_cmvn_stats_;  // Global CMVN stats.
 
-  OnlineBaseFeature *base_feature_;
-  // base_feature_ is the MFCC or PLP feature.
-  // In future if we want to append pitch features, we'll add a pitch_ member
-  // here and a member that appends the pitch and mfcc/plp features.
-  OnlinePitchFeature *pitch_;
-  OnlinePostProcessPitch *post_pitch_;
-  OnlineAppendFeature *append_feature_;
+  OnlineBaseFeature *base_feature_;        // MFCC/PLP
+  OnlinePitchFeature *pitch_;              // Raw pitch
+  OnlinePostProcessPitch *pitch_feature_;  // Postprocessed pitch
+  OnlineFeatureInterface *feature_;        // CMVN (+ postprocessed pitch)
 
   OnlineCmvn *cmvn_;
   OnlineFeatureInterface *splice_or_delta_;  // This may be NULL if we're not

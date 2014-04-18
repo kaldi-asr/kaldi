@@ -25,49 +25,71 @@ namespace kaldi {
 
 OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
     const OnlineFeaturePipelineCommandLineConfig &config) {
+  if (config.feature_type == "mfcc" || config.feature_type == "plp") {
+    feature_type = config.feature_type;
+  } else {
+    KALDI_ERR << "Invalid feature type: " << config.feature_type << ". "
+              << "Supported feature types: mfcc, plp.";
+  }
+
   if (config.mfcc_config != "") {
     ReadConfigFromFile(config.mfcc_config, &mfcc_opts);
-    feature_type = "mfcc";
-  } else if (config.plp_config != "") {
+    if (feature_type != "mfcc")
+      KALDI_WARN << "--mfcc-config option has no effect "
+                 << "since feature type is set to " << feature_type << ".";
+  }  // else use the defaults.
+
+  if (config.plp_config != "") {
     ReadConfigFromFile(config.plp_config, &plp_opts);
-    feature_type = "plp";
-  } else {
-    KALDI_ERR << "Either the --mfcc-config or --plp-config options "
-              << "must be supplied.";
-  }
+    if (feature_type != "plp")
+      KALDI_WARN << "--plp-config option has no effect "
+                 << "since feature type is set to " << feature_type << ".";
+  }  // else use the defaults.
+
+  add_pitch = config.add_pitch;
   if (config.pitch_config != "") {
     ReadConfigFromFile(config.pitch_config, &pitch_opts);
-    add_pitch = true;
-  } else {
-    add_pitch = false;
-  }
-  if (config.post_pitch_config != "") {
-    ReadConfigFromFile(config.post_pitch_config, &post_pitch_opts);
+    if (!add_pitch)
+      KALDI_WARN << "--pitch-config option has no effect "
+                 << "since you did not supply --add-pitch option.";
+  }  // else use the defaults.
+
+  if (config.pitch_postprocess_config != "") {
+    ReadConfigFromFile(config.pitch_postprocess_config, &pitch_postprocess_opts);
+    if (!add_pitch)
+      KALDI_WARN << "--pitch-postprocess-config option has no effect "
+                 << "since you did not supply --add-pitch option.";
   }  // else use the defaults.
 
   if (config.cmvn_config != "") {
     ReadConfigFromFile(config.cmvn_config, &cmvn_opts);
   }  // else use the defaults.
 
-  if (config.splice_config != "") {
-    ReadConfigFromFile(config.splice_config, &splice_opts);
-    splice_frames = true;
-  } else {
-    splice_frames = false;
-  }
-  if (config.delta_config != "") {
-    ReadConfigFromFile(config.delta_config, &delta_opts);
-    apply_deltas = true;
-  } else {
-    apply_deltas = false;
-  }
-  if (splice_frames && apply_deltas)
-    KALDI_ERR << "You cannot supply both the --splice-config "
-              << "and --delta-config options";
-  lda_rxfilename = config.lda_rxfilename;
   global_cmvn_stats_rxfilename = config.global_cmvn_stats_rxfilename;
   if (global_cmvn_stats_rxfilename == "")
     KALDI_ERR << "--global-cmvn-stats option is required.";
+
+  add_deltas = config.add_deltas;
+  if (config.delta_config != "") {
+    ReadConfigFromFile(config.delta_config, &delta_opts);
+    if (!add_deltas)
+      KALDI_WARN << "--delta-config option has no effect "
+                 << "since you did not supply --add-deltas option.";
+  }  // else use the defaults.
+
+  splice_feats = config.splice_feats;
+  if (config.splice_config != "") {
+    ReadConfigFromFile(config.splice_config, &splice_opts);
+    if (!splice_feats)
+      KALDI_WARN << "--splice-config option has no effect "
+                 << "since you did not supply --splice-feats option.";
+  }  // else use the defaults.
+
+  if (add_deltas && splice_feats)
+    KALDI_ERR << "You cannot supply both --add-deltas "
+              << "and --splice-feats options";
+
+  lda_rxfilename = config.lda_rxfilename;
 }
 
 
@@ -100,8 +122,8 @@ OnlineFeatureInterface* OnlineFeaturePipeline::UnadaptedFeature() const {
   if (lda_) return lda_;
   else if (splice_or_delta_) return splice_or_delta_;
   else {
-    KALDI_ASSERT(cmvn_ != NULL);
-    return cmvn_;
+    KALDI_ASSERT(feature_ != NULL);
+    return feature_;
   }
 }
 
@@ -135,32 +157,33 @@ void OnlineFeaturePipeline::Init() {
     KALDI_ERR << "Code error: invalid feature type " << config_.feature_type;
   }
 
-  if (config_.add_pitch) {
-    pitch_ = new OnlinePitchFeature(config_.pitch_opts);
-    post_pitch_ = new OnlinePostProcessPitch(config_.post_pitch_opts, pitch_);
-    append_feature_ = new OnlineAppendFeature(base_feature_, post_pitch_);
-  }
-
   {
     KALDI_ASSERT(global_cmvn_stats_.NumRows() != 0);
     Matrix<double> global_cmvn_stats_dbl(global_cmvn_stats_);
     OnlineCmvnState initial_state(global_cmvn_stats_dbl);
-    if (config_.add_pitch) {
-      cmvn_ = new OnlineCmvn(config_.cmvn_opts, initial_state, append_feature_);
-    } else {
-      cmvn_ = new OnlineCmvn(config_.cmvn_opts, initial_state, base_feature_);
-    }
+    cmvn_ = new OnlineCmvn(config_.cmvn_opts, initial_state, base_feature_);
   }
 
-  if (config_.splice_frames && config_.apply_deltas) {
-    KALDI_ERR << "You cannot supply both the --delta-config and "
-              << "--splice-config options";
-  } else if (config_.splice_frames) {
+  if (config_.add_pitch) {
+    pitch_ = new OnlinePitchFeature(config_.pitch_opts);
+    pitch_feature_ = new OnlinePostProcessPitch(config_.pitch_postprocess_opts,
+                                                pitch_);
+    feature_ = new OnlineAppendFeature(cmvn_, pitch_feature_);
+  } else {
+    pitch_ = NULL;
+    pitch_feature_ = NULL;
+    feature_ = cmvn_;
+  }
+
+  if (config_.splice_feats && config_.add_deltas) {
+    KALDI_ERR << "You cannot supply both --add-deltas and "
+              << "--splice-feats options.";
+  } else if (config_.splice_feats) {
     splice_or_delta_ = new OnlineSpliceFrames(config_.splice_opts,
-                                              cmvn_);
-  } else if (config_.apply_deltas) {
+                                              feature_);
+  } else if (config_.add_deltas) {
     splice_or_delta_ = new OnlineDeltaFeature(config_.delta_opts,
-                                              cmvn_);
+                                              feature_);
   } else {
     splice_or_delta_ = NULL;
   }
@@ -168,7 +191,7 @@ void OnlineFeaturePipeline::Init() {
   if (lda_mat_.NumRows() != 0) {
     lda_ = new OnlineTransform(lda_mat_,
                                (splice_or_delta_ != NULL ?
-                                splice_or_delta_ : cmvn_));
+                                splice_or_delta_ : feature_));
   } else {
     lda_ = NULL;
   }
@@ -215,29 +238,28 @@ OnlineFeaturePipeline::~OnlineFeaturePipeline() {
   delete fmllr_;
   delete lda_;
   delete splice_or_delta_;
+  // Guard against double deleting the cmvn_ ptr
+  if (pitch_feature_) {
+    delete feature_;  // equal to cmvn_ if pitch feats are not appended
+    delete pitch_feature_;
+    delete pitch_;
+  }
   delete cmvn_;
   delete base_feature_;
-  if (config_.add_pitch) {
-    delete pitch_;
-    delete post_pitch_;
-    delete append_feature_;
-  }
 }
 
 void OnlineFeaturePipeline::AcceptWaveform(
     BaseFloat sampling_rate,
     const VectorBase<BaseFloat> &waveform) {
   base_feature_->AcceptWaveform(sampling_rate, waveform);
-  if (config_.add_pitch) {
+  if (pitch_)
     pitch_->AcceptWaveform(sampling_rate, waveform);
-  }
 }
 
 void OnlineFeaturePipeline::InputFinished() {
   base_feature_->InputFinished();
-  if (config_.add_pitch) {
+  if (pitch_)
     pitch_->InputFinished();
-  }
 }
 
 BaseFloat OnlineFeaturePipelineConfig::FrameShiftInSeconds() const {
