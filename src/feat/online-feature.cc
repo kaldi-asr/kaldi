@@ -1,4 +1,4 @@
-// online2/online-feature.cc
+// feat/online-feature.cc
 
 // Copyright    2013  Johns Hopkins University (author: Daniel Povey)
 //              2014  Yanqing Sun, Junjie Wang,
@@ -19,7 +19,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "online2/online-feature.h"
+#include "feat/online-feature.h"
 #include "transform/cmvn.h"
 
 namespace kaldi {

@@ -1,4 +1,4 @@
-// online2/online-feature.h
+// feat/online-feature.h
 
 // Copyright 2013   Johns Hopkins University (author: Daniel Povey)
 //           2014   Yanqing Sun, Junjie Wang,

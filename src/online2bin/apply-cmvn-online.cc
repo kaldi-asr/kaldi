@@ -21,7 +21,7 @@
 #include <vector>
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "online2/online-feature.h"
+#include "feat/online-feature.h"
 
 
 int main(int argc, char *argv[]) {

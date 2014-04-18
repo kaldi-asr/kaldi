@@ -209,20 +209,32 @@ struct PostProcessPitchOptions {
   BaseFloat pov_scale;            // the final pov scaled with this value
   BaseFloat delta_pitch_scale;
   BaseFloat delta_pitch_noise_stddev;  // stddev of noise we add to delta-pitch
-  int32 normalization_window_size;     // Size of window used for moving window
-                                       // normalization
+  int32 normalization_left_context;  // left-context used for sliding-window
+                                     // normalization
+  int32 normalization_right_context; 
+
+  // The next two configs are only relevant for online pitch
+  // extraction.
+  int32 normalization_left_context_first_pass;
+  int32 normalization_right_context_first_pass;
+  
   int32 delta_window;
   bool process_pitch;
   bool add_delta_pitch;
   bool add_raw_log_pitch;
   bool add_normalized_log_pitch;
   bool add_pov_feature;
+  bool simulate_first_pass_online; // Only relevant for the function
+                                   // PostProcessPitch.
   explicit PostProcessPitchOptions() :
     pitch_scale(2.0),
     pov_scale(2.0),
     delta_pitch_scale(10.0),
     delta_pitch_noise_stddev(0.005),
-    normalization_window_size(151),
+    normalization_left_context(75),
+    normalization_right_context(75),
+    normalization_left_context_first_pass(75),
+    normalization_right_context_first_pass(30),
     delta_window(2),
     add_delta_pitch(true),
     add_raw_log_pitch(false),
@@ -243,8 +255,20 @@ struct PostProcessPitchOptions {
                  "option to pitch creation.  The purpose is to get rid of "
                  "peaks in the delta-pitch caused by discretization of pitch "
                  "values.");
-    po->Register("normalization-window-size", &normalization_window_size,
-                 "Size of window used for moving window nomalization");
+    po->Register("normalization-left-context", &normalization_left_context,
+                 "Left-context (in frames) for moving window normalization");
+    po->Register("normalization-right-context", &normalization_right_context,
+                 "Right-context (in frames) for moving window normalization");    
+    po->Register("normalization-left-context-first-pass",
+                 &normalization_left_context_first_pass,
+                 "Left-context (in frames) for moving window normalization, "
+                 "applied in approximate first pass of online decoding");
+    po->Register("normalization-right-context-first-pass",
+                 &normalization_right_context_first_pass,
+                 "Right-context (in frames) for moving window normalization, "
+                 "applied in approximate first pass of online decoding");
+    po->Register("normalization-right-context", &normalization_right_context,
+                 "Right-context (in frames) for moving window normalization");    
     po->Register("delta-window", &delta_window,
                  "Number of frames on each side of central frame, to use for "
                  "delta window.");
@@ -295,8 +319,9 @@ class OnlinePitchFeature: public OnlineBaseFeature {
 
 
 /// This online-feature class implements post processing of pitch features.
-/// Inputs are original 2 dims (pov, pitch). Original pov -> 2 kinds of povs,
-//  pitch -> log_pitch -> 2 kinds of pitch.
+/// Inputs are original 2 dims (pov, pitch).  It can produce various
+/// kinds of outputs, using the default options it will be (pov-feature,
+/// normalized-log-pitch, delta-log-pitch).
 class OnlinePostProcessPitch: public OnlineFeatureInterface {
  public:
   virtual int32 Dim() const { return dim_; }
@@ -304,34 +329,64 @@ class OnlinePostProcessPitch: public OnlineFeatureInterface {
   virtual bool IsLastFrame(int32 frame) const {
     return src_->IsLastFrame(frame); }
 
-  virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }
+  virtual int32 NumFramesReady() const;
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   virtual ~OnlinePostProcessPitch() {  }
 
   OnlinePostProcessPitch(const PostProcessPitchOptions &opts,
-                         OnlinePitchFeature *src);
-
-  void UpdateFromPitch();
-  void ComputePostPitch(const VectorBase<BaseFloat> &nccf_append,
-                        const VectorBase<BaseFloat> &log_pitch_append);
+                         OnlineFeatureInterface *src);
+  
  private:
-
   PostProcessPitchOptions opts_;
 
   OnlineFeatureInterface *src_;
+  
+  int32 dim_; // Output feature dimension, set in initializer.
+  
+  struct NormalizationStats {
+    int32 cur_num_frames; // value of src_->NumFramesReady() when "mean_pitch"
+                          // was set.
+    bool input_finished;  // true if input data was finished when "mean_pitch"
+                          // was computed.
+    double sum_pov;       // sum of pov over relevant range
+    double sum_log_pitch_pov; // sum of log(pitch) * pov over relevant range
+    NormalizationStats(): cur_num_frames(-1), input_finished(false),
+                          sum_pov(0.0), sum_log_pitch_pov(0.0) { }
+    
+  };
 
-  int32 dim_;
+  std::vector<BaseFloat> delta_feature_noise_;
+  
+  std::vector<NormalizationStats> normalization_stats_;
 
-  Matrix<BaseFloat> features_;
+  /// Computes and returns the POV feature for this frame.
+  /// Called from GetFrame().  
+  inline BaseFloat GetPovFeature(int32 frame) const;  
 
-  Vector<BaseFloat> pov_;
-  Vector<BaseFloat> pov_feature_;
-  Vector<BaseFloat> raw_log_pitch_;
+  /// Computes and returns the delta-log-pitch feature for this frame.
+  /// Called from GetFrame().
+  inline BaseFloat GetDeltaPitchFeature(int32 frame);
+  
+  /// Computes and returns the raw log-pitch feature for this frame.
+  /// Called from GetFrame().  
+  inline BaseFloat GetRawLogPitchFeature(int32 frame) const;
 
-  int32 num_frames_;
-  int32 num_pitch_frames_;
+  /// Computes and returns the mean-subtracted log-pitch feature for this frame.
+  /// Called from GetFrame().
+  inline BaseFloat GetNormalizedLogPitchFeature(int32 frame);
+
+
+  inline void GetNormalizationWindow(int32 frame,
+                                     int32 src_frames_ready,
+                                     bool input_finished,                                     
+                                     int32 *window_begin,
+                                     int32 *window_end) const;
+  
+  /// Makes sure the entry in normalization_stats_ for this frame is up to date;
+  /// called from GetNormalizedLogPitchFeature.
+  inline void UpdateFrame(int32 frame);
 };
 
 
@@ -358,6 +413,10 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
 void PostProcessPitch(const PostProcessPitchOptions &opts,
                       const MatrixBase<BaseFloat> &input,
                       Matrix<BaseFloat> *output);
+
+void PostProcessPitchNew(const PostProcessPitchOptions &opts,
+                         const MatrixBase<BaseFloat> &input,
+                         Matrix<BaseFloat> *output);
 
 
 /// @} End of "addtogroup feat"

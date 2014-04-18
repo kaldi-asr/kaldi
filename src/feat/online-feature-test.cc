@@ -1,4 +1,4 @@
-// online2/online-feature-test.cc
+// feat/online-feature-test.cc
 
 // Copyright 2014  IMSL, PKU-HKUST (author: Wei Shi)
 // Copyright 2014  Yanqing Sun, Junjie Wang,
@@ -19,7 +19,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "online2/online-feature.h"
+#include "feat/online-feature.h"
 #include "feat/wave-reader.h"
 #include "transform/transform-common.h"
 

@@ -45,45 +45,54 @@ namespace kaldi {
 */
 
 void WeightedMovingWindowNormalize(
-    int32 normalization_window_size,
+    int32 normalization_left_context,
+    int32 normalization_right_context,
     const VectorBase<BaseFloat> &pov,
     const VectorBase<BaseFloat> &raw_log_pitch,
     Vector<BaseFloat> *normalized_log_pitch) {
   int32 num_frames = pov.Dim();
   KALDI_ASSERT(num_frames == raw_log_pitch.Dim());
-  int32 last_window_start = -1, last_window_end = -1;
+  int32 last_window_begin = -1, last_window_end = -1;
   double weighted_sum = 0.0, pov_sum = 0.0;
 
   for (int32 t = 0; t < num_frames; t++) {
-    int32 window_start, window_end;
-    window_start = t - (normalization_window_size/2);
-    window_end = window_start + normalization_window_size;
+    int32 window_begin = t - normalization_left_context,
+        window_end = t + normalization_right_context + 1;
 
-    if (window_start < 0) {
-      window_end -= window_start;
-      window_start = 0;
-    }
-
-    if (window_end > num_frames) {
-      window_start -= (window_end - num_frames);
+    if (window_begin < 0)
+      window_begin = 0;
+    if (window_end > num_frames)
       window_end = num_frames;
-      if (window_start < 0) window_start = 0;
+
+    /*  Old code was below.  I'm simplifying this to make it easier
+        to replicate in the online setup, and to reduce latency at
+        the beginning of utterances.
+        // shift the window if it overlaps with the begin or end of the file.
+    if (window_begin < 0) {
+      window_end -= window_begin;
+      window_begin = 0;
     }
-    if (last_window_start == -1) {
-      SubVector<BaseFloat> pitch_part(raw_log_pitch, window_start,
-                                      window_end - window_start);
-      SubVector<BaseFloat> pov_part(pov, window_start,
-                                    window_end - window_start);
+    if (window_end > num_frames) {
+      window_begin -= (window_end - num_frames);
+      window_end = num_frames;
+      if (window_begin < 0) window_begin = 0;
+      }*/
+    
+    if (last_window_begin == -1) {
+      SubVector<BaseFloat> pitch_part(raw_log_pitch, window_begin,
+                                      window_end - window_begin);
+      SubVector<BaseFloat> pov_part(pov, window_begin,
+                                    window_end - window_begin);
       // weighted sum of pitch
       weighted_sum += VecVec(pitch_part, pov_part);
 
       // sum of pov
       pov_sum = pov_part.Sum();
     } else {
-      if (window_start > last_window_start) {
-        KALDI_ASSERT(window_start == last_window_start + 1);
-        pov_sum -= pov(last_window_start);
-        weighted_sum -= pov(last_window_start)*raw_log_pitch(last_window_start);
+      if (window_begin > last_window_begin) {
+        KALDI_ASSERT(window_begin == last_window_begin + 1);
+        pov_sum -= pov(last_window_begin);
+        weighted_sum -= pov(last_window_begin)*raw_log_pitch(last_window_begin);
       }
       if (window_end > last_window_end) {
         KALDI_ASSERT(window_end == last_window_end + 1);
@@ -92,8 +101,8 @@ void WeightedMovingWindowNormalize(
       }
     }
 
-    KALDI_ASSERT(window_end - window_start > 0);
-    last_window_start = window_start;
+    KALDI_ASSERT(window_end - window_begin > 0);
+    last_window_begin = window_begin;
     last_window_end = window_end;
     (*normalized_log_pitch)(t) = raw_log_pitch(t) -
                                       weighted_sum / pov_sum;
@@ -282,7 +291,8 @@ void PostProcessPitch(const PostProcessPitchOptions &opts,
     pov(t) = NccfToPov(nccf(t));
     pov_feature(t) = opts.pov_scale * NccfToPovFeature(nccf(t));
   }
-  WeightedMovingWindowNormalize(opts.normalization_window_size,
+  WeightedMovingWindowNormalize(opts.normalization_left_context,
+                                opts.normalization_right_context,
                                 pov, raw_log_pitch, &normalized_log_pitch);
   // the normalized log pitch has quite a small variance; scale it up a little
   // (this interacts with variance flooring in early system build stages).
@@ -1451,107 +1461,217 @@ inline void AppendVector(const VectorBase<Real> &src, Vector<Real> *dst) {
   dst->Range(dst->Dim() - src.Dim(), src.Dim()).CopyFromVec(src);
 }
 
+
+/**
+   Note on the implementation of OnlinePostProcessPitch: the
+   OnlineFeatureInterface allows random access to features (i.e. not necessarily
+   sequential order), so we need to support that.  But we don't need to support
+   it very efficiently, and our implementation is most efficient if frames are
+   accessed in sequential order.
+   
+   Also note: we have to be a bit careful in this implementation because
+   the input features may change.  That is: if we call
+   src_->GetFrame(t, &vec) from GetFrame(), we can't guarantee that a later
+   call to src_->GetFrame(t, &vec) from another GetFrame() will return the
+   same value.  In fact, while designing this class we used some knowledge
+   of how the OnlinePitchFeature class works to minimize the amount of
+   re-querying we had to do.
+*/
 OnlinePostProcessPitch::OnlinePostProcessPitch(
     const PostProcessPitchOptions &opts,
-    OnlinePitchFeature *src) : opts_(opts), src_(src),
-    num_frames_(0), num_pitch_frames_(0) {
-  // Normally we'll have all of these but raw_log_pitch.
-  dim_ = (opts.add_pov_feature ? 1 : 0)
-       + (opts.add_normalized_log_pitch ? 1 : 0)
-       + (opts.add_delta_pitch ? 1 : 0)
-       + (opts.add_raw_log_pitch ? 1 : 0);
-  if (dim_ == 0) {
-    KALDI_ERR << " At least one of the pitch features should be chosen. "
-      << "Check your post-process pitch options.";
-  }
+    OnlineFeatureInterface *src):
+    opts_(opts), src_(src),
+    dim_ ((opts.add_pov_feature ? 1 : 0)
+          + (opts.add_normalized_log_pitch ? 1 : 0)
+          + (opts.add_delta_pitch ? 1 : 0)
+          + (opts.add_raw_log_pitch ? 1 : 0)) {
+  KALDI_ASSERT(dim_ > 0 && 
+               " At least one of the pitch features should be chosen. "
+               "Check your post-process-pitch options.");
+  KALDI_ASSERT(src->Dim() == 2 &&
+               "Input feature must be pitch feature (should have dimension 2)");
 }
+
 
 void OnlinePostProcessPitch::GetFrame(int32 frame,
                                       VectorBase<BaseFloat> *feat) {
-  UpdateFromPitch();
-  KALDI_ASSERT(frame >= 0 && frame < num_frames_);
-  KALDI_ASSERT(feat->Dim() == Dim());
-  feat->CopyFromVec(features_.Row(frame));
-}
-
-// Check if OnlinePitchFeature has generated some new frames.  If yes, will
-// post process them. If no new data, will return directly.
-void OnlinePostProcessPitch::UpdateFromPitch() {
-  int32 new_num_pitch_frames = src_->NumFramesReady();
-  if (new_num_pitch_frames <= num_pitch_frames_) return;
-
-  // Get updated base frames
-  int32 num_frames_append = new_num_pitch_frames - num_pitch_frames_;
-  Matrix<BaseFloat> features_base_append(num_frames_append, src_->Dim());
-  for (int32 t = num_pitch_frames_; t < new_num_pitch_frames; t++) {
-    SubVector<BaseFloat> temp_row(
-        features_base_append.Row(t - num_pitch_frames_));
-    src_->GetFrame(t, &temp_row);
-  }
-  Vector<BaseFloat> nccf_append(num_frames_append),
-                    raw_log_pitch_append(num_frames_append);
-  nccf_append.CopyColFromMat(features_base_append, 0);
-  raw_log_pitch_append.CopyColFromMat(features_base_append, 1);
-  raw_log_pitch_append.ApplyLog();
-
-  ComputePostPitch(nccf_append, raw_log_pitch_append);
-  num_pitch_frames_ = new_num_pitch_frames;
-}
-
-// Very similar to PostProcessPitch (offline version), except:
-// 1, accumulate pov{,_feature}, raw_log_pitch to provide larger context.
-// 2, might add some delay to get more accurate results.
-void OnlinePostProcessPitch::ComputePostPitch(
-    const VectorBase<BaseFloat> &nccf_append,
-    const VectorBase<BaseFloat> &raw_log_pitch_append) {
-  int32 num_frames_append = nccf_append.Dim();
-  Vector<BaseFloat> pov(num_frames_append),
-                    pov_feature(num_frames_append),
-                    normalized_log_pitch(num_frames_append),
-                    delta_log_pitch(num_frames_append);
-
-  // Process two types of pov features
-  for (int32 t = 0; t < num_frames_append; t++) {
-    pov(t) = NccfToPov(nccf_append(t));
-    pov_feature(t) = opts_.pov_scale * NccfToPovFeature(nccf_append(t));
-  }
-  AppendVector(pov, &pov_);
-  AppendVector(pov_feature, &pov_feature_);
-
-  // Process normalized-log-pitch feature
-  AppendVector(raw_log_pitch_append, &raw_log_pitch_);
-  WeightedMovingWindowNormalize(opts_.normalization_window_size,
-                                pov,
-                                raw_log_pitch_append,
-                                &normalized_log_pitch);
-  // the normalized log pitch has quite a small variance; scale it up a little
-  // (this interacts with variance flooring in early system build stages).
-  normalized_log_pitch.Scale(opts_.pitch_scale);
-
-  // Process delta-pitch feature
-  ExtractDeltaPitch(opts_, raw_log_pitch_append, &delta_log_pitch);
-  delta_log_pitch.Scale(opts_.delta_pitch_scale);
-
-  BaseFloat increase_ratio = 1.5;  // This is explained before
-  int32 new_num_frames = num_frames_ + num_frames_append;
-  if (new_num_frames > features_.NumRows()) {
-    int32 new_num_rows =
-        std::max<int32>(new_num_frames, features_.NumRows() * increase_ratio);
-    features_.Resize(new_num_rows, Dim(), kCopyData);
-  }
-  SubMatrix<BaseFloat> output =
-      features_.Range(num_frames_, num_frames_append, 0, Dim());
-  int32 output_ncols = 0;
+  KALDI_ASSERT(feat->Dim() == dim_ &&
+               frame < NumFramesReady());
+  int32 index = 0;
   if (opts_.add_pov_feature)
-    output.CopyColFromVec(pov_feature, output_ncols++);
+    (*feat)(index++) = GetPovFeature(frame);
   if (opts_.add_normalized_log_pitch)
-    output.CopyColFromVec(normalized_log_pitch, output_ncols++);
+    (*feat)(index++) = GetNormalizedLogPitchFeature(frame);
   if (opts_.add_delta_pitch)
-    output.CopyColFromVec(delta_log_pitch, output_ncols++);
+    (*feat)(index++) = GetDeltaPitchFeature(frame);
   if (opts_.add_raw_log_pitch)
-    output.CopyColFromVec(raw_log_pitch_append, output_ncols++);
-  num_frames_ = new_num_frames;
+    (*feat)(index++) = GetRawLogPitchFeature(frame);
+  KALDI_ASSERT(index == dim_);
 }
 
+BaseFloat OnlinePostProcessPitch::GetPovFeature(int32 frame) const {
+  Vector<BaseFloat> tmp(2);
+  src_->GetFrame(frame, &tmp);
+  BaseFloat nccf = tmp(0);
+  return opts_.pov_scale * NccfToPovFeature(nccf);  
+}
+
+BaseFloat OnlinePostProcessPitch::GetDeltaPitchFeature(int32 frame) {
+  // Rather than computing the delta pitch directly in code here,
+  // which might seem easier, we accumulate a small window of features
+  // and call ComputeDeltas.  This might seem like overkill; the reason
+  // we do it this way is to ensure that the end effects (at file
+  // beginning and end) are handled in a consistent way.
+  Vector<BaseFloat> tmp(2);
+  int32 context = opts_.delta_window;
+  int32 start_frame = std::max(0, frame - context),
+      end_frame = std::min(frame + context + 1, src_->NumFramesReady()),
+      frames_in_window = end_frame - start_frame;
+  Matrix<BaseFloat> feats(frames_in_window, 1),
+      delta_feats;
+  
+  for (int32 f = start_frame; f < end_frame; f++) {
+    src_->GetFrame(f, &tmp);
+    double log_pitch = log(tmp(1));
+    feats(f - start_frame, 0) = log_pitch;
+  }
+  DeltaFeaturesOptions delta_opts;
+  delta_opts.order = 1;
+  delta_opts.window = opts_.delta_window;  
+  ComputeDeltas(delta_opts, feats, &delta_feats);
+  while (delta_feature_noise_.size() <= static_cast<size_t>(frame))
+    delta_feature_noise_.push_back(RandGauss() *
+                                   opts_.delta_pitch_noise_stddev);
+  // note: delta_feats will have two columns, second contains deltas.
+  return (delta_feats(frame - start_frame, 1) + delta_feature_noise_[frame]) *
+      opts_.delta_pitch_scale;
+}
+
+BaseFloat OnlinePostProcessPitch::GetRawLogPitchFeature(int32 frame) const {
+  Vector<BaseFloat> tmp(2);
+  src_->GetFrame(frame, &tmp);
+  BaseFloat pitch = tmp(1);
+  KALDI_ASSERT(pitch > 0);
+  return log(pitch);
+}
+
+BaseFloat OnlinePostProcessPitch::GetNormalizedLogPitchFeature(int32 frame) {
+  UpdateFrame(frame);
+  Vector<BaseFloat> tmp(2);
+  src_->GetFrame(frame, &tmp);
+  BaseFloat log_pitch = log(tmp(1)),
+      avg_log_pitch = normalization_stats_[frame].sum_log_pitch_pov /
+        normalization_stats_[frame].sum_pov,
+      normalized_log_pitch = log_pitch - avg_log_pitch;
+  return normalized_log_pitch * opts_.pitch_scale;
+}
+
+
+
+// inline
+void OnlinePostProcessPitch::GetNormalizationWindow(int32 t,
+                                                    int32 src_frames_ready,
+                                                    bool input_finished,
+                                                    int32 *window_begin,
+                                                    int32 *window_end) const {
+  int32 left_context = (input_finished ? opts_.normalization_left_context :
+                        opts_.normalization_left_context_first_pass);
+  int32 right_context = (input_finished ? opts_.normalization_right_context :
+                        opts_.normalization_right_context_first_pass);
+  *window_begin = std::max(0, t - left_context);
+  *window_end = std::min(t + right_context + 1, src_frames_ready);
+}
+
+
+// Makes sure the entry in normalization_stats_ for this frame is up to date;
+// called from GetNormalizedLogPitchFeature.
+// the cur_num_frames and input_finished variables are needed because the
+// pitch features for a given frame may change as we see more data.
+void OnlinePostProcessPitch::UpdateFrame(int32 frame) {
+  KALDI_ASSERT(frame >= 0);
+  if (normalization_stats_.size() <= frame)
+    normalization_stats_.resize(frame + 1);
+  int32 cur_num_frames = src_->NumFramesReady();
+  bool input_finished = src_->IsLastFrame(cur_num_frames - 1);
+
+  NormalizationStats &this_stats = normalization_stats_[frame];
+  if (this_stats.cur_num_frames == cur_num_frames &&
+      this_stats.input_finished == input_finished) {
+    // Stats are fully up-to-date.
+    return;
+  }
+  int32 this_window_begin, this_window_end;  
+  GetNormalizationWindow(frame, cur_num_frames, input_finished,
+                         &this_window_begin, &this_window_end);
+  
+  if (frame > 0) {
+    const NormalizationStats &prev_stats = normalization_stats_[frame - 1];
+    if (prev_stats.cur_num_frames == cur_num_frames &&
+        prev_stats.input_finished == input_finished) {
+      // we'll derive this_stats efficiently from prev_stats.
+      // Checking that cur_num_frames and input_finished have not changed
+      // ensures that the underlying features will not have changed.
+      this_stats = prev_stats;
+      int32 prev_window_begin, prev_window_end;
+      GetNormalizationWindow(frame - 1, cur_num_frames, input_finished,
+                             &prev_window_begin, &prev_window_end);
+      if (this_window_begin != prev_window_begin) {
+        KALDI_ASSERT(this_window_begin == prev_window_begin + 1);
+        Vector<BaseFloat> tmp(2);
+        src_->GetFrame(prev_window_begin, &tmp);
+        BaseFloat accurate_pov = NccfToPov(tmp(0)),
+            log_pitch = log(tmp(1));
+        this_stats.sum_pov -= accurate_pov;
+        this_stats.sum_log_pitch_pov -= accurate_pov * log_pitch;
+      }
+      if (this_window_end != prev_window_end) {
+        KALDI_ASSERT(this_window_end == prev_window_end + 1);
+        Vector<BaseFloat> tmp(2);
+        src_->GetFrame(prev_window_end, &tmp);
+        BaseFloat accurate_pov = NccfToPov(tmp(0)),
+            log_pitch = log(tmp(1));
+        this_stats.sum_pov += accurate_pov;
+        this_stats.sum_log_pitch_pov += accurate_pov * log_pitch;
+      }
+      return;      
+    }
+  }
+  // The way we do it here is not the most efficient way to do it;
+  // we'll see if it becomes a problem.  The issue is we have to redo
+  // this computation from scratch each time we process a new chunk, which
+  // may be a little inefficient if the chunk-size is very small.
+  this_stats.cur_num_frames = cur_num_frames;
+  this_stats.input_finished = input_finished;
+  this_stats.sum_pov = 0.0;
+  this_stats.sum_log_pitch_pov = 0.0;
+  Vector<BaseFloat> tmp(2);
+  for (int32 f = this_window_begin; f < this_window_end; f++) {
+    src_->GetFrame(f, &tmp);
+    BaseFloat accurate_pov = NccfToPov(tmp(0)),
+        log_pitch = log(tmp(1));    
+    this_stats.sum_pov += accurate_pov;
+    this_stats.sum_log_pitch_pov += accurate_pov * log_pitch;
+  }
+}
+
+int32 OnlinePostProcessPitch::NumFramesReady() const {
+  int32 src_frames_ready = src_->NumFramesReady();
+  if (src_frames_ready == 0) return 0;
+  else if (src_->IsLastFrame(src_frames_ready - 1)) {
+    return src_frames_ready;
+  } else {
+    return std::max(0, src_frames_ready -
+                    opts_.normalization_right_context_first_pass);
+  }
+}
+
+void PostProcessPitchNew(const PostProcessPitchOptions &opts,
+                         const MatrixBase<BaseFloat> &input,
+                         Matrix<BaseFloat> *output) {
+  
+  
+}
+
+    
 
 }  // namespace kaldi

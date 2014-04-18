@@ -3,9 +3,9 @@ all:
 
 include ../kaldi.mk
 
-TESTFILES = online-feature-test
+TESTFILES =
 
-OBJFILES = online-feature.o online-gmm-decodable.o online-feature-pipeline.o \
+OBJFILES = online-gmm-decodable.o online-feature-pipeline.o \
            online-gmm-decoding.o online-timing.o online-endpoint.o onlinebin-util.o \
            online-speex-wrapper.o
 

@@ -122,7 +122,9 @@ static void UnitTestPieces() {
       }
     }
     AssertEqual(m1, m2);
-    AssertEqual(m1p, m2p);
+    if (!ApproxEqual(m1p, m2p)) {
+      KALDI_ERR << "Post-processed pitch differs: " << m1p << " vs. " << m2p;
+    }
     KALDI_LOG << "Test passed :)\n";
   }
 }
@@ -270,68 +272,50 @@ static void UnitTestKeeleNccfBallast() {
 }
 
 extern void WeightedMovingWindowNormalize(
-    int32 normalization_window_size,
+    int32 normalization_left_context,
+    int32 normalization_right_context,
     const VectorBase<BaseFloat> &pov,
     const VectorBase<BaseFloat> &raw_log_pitch,
     Vector<BaseFloat> *normalized_log_pitch);
+
 static void UnitTestWeightedMovingWindowNormalize() {
   KALDI_LOG << "=== UnitTestWeightedMovingWindowNormalize1() ===\n";
   // compare the results of WeightedMovingWindowNormalize and Sliding CMN
   // with uniform weights.
-  for (int32 i = 0; i < 1000; i++) {
-    int32 num_frames = 1 + (rand()%10 * 10);
-    int32 normalization_win_size = 5 + rand() % 50;
+  for (int32 i = 0; i < 20; i++) {
+    int32 num_frames = 1 + (rand()%100 * 10);
+    int32 normalization_left_context = 5 + rand() % 50,
+        normalization_right_context =  5 + rand() % 50;
     Matrix<BaseFloat> feat(num_frames, 2),
                       output_feat(num_frames, 2);
     feat.SetRandn();
-    for (int32 j = 0; j < num_frames; j++)
-      feat(j, 0) = 1;
+    feat.ApplyFloor(0.0);
 
     Vector<BaseFloat> pov(num_frames),
                       log_pitch(num_frames),
                       mean_subtracted_log_pitch(num_frames);
     pov.CopyColFromMat(feat, 0);
     log_pitch.CopyColFromMat(feat, 1);
-    WeightedMovingWindowNormalize(normalization_win_size, pov, log_pitch ,
+    WeightedMovingWindowNormalize(normalization_left_context,
+                                  normalization_right_context,
+                                  pov, log_pitch ,
                                   &mean_subtracted_log_pitch);
     output_feat.CopyColFromVec(mean_subtracted_log_pitch, 1);
 
-    // SlidingWindow
-    SlidingWindowCmnOptions opts;
-    opts.cmn_window = normalization_win_size;
-    opts.center = true;
-    opts.min_window = 1 + rand() % 100;
-    if (opts.min_window > opts.cmn_window)
-      opts.min_window = opts.cmn_window;
-    Matrix<BaseFloat> output_feat2(num_frames, 2);
-    SlidingWindowCmn(opts, feat, &output_feat2);
-    for (int32 j = 0; j < num_frames; j++)
-      output_feat(j, 0) = 0.0;
-    if (!output_feat.ApproxEqual(output_feat2, 0.001)) {
-      Matrix<BaseFloat> output_all(num_frames, 2);
-      Vector<BaseFloat> pitch(num_frames),
-                        pitch2(num_frames);
-      pitch.CopyColFromMat(output_feat, 1);
-      pitch2.CopyColFromMat(output_feat2, 1);
-      output_all.CopyColFromVec(pitch, 0);
-      output_all.CopyColFromVec(pitch2, 1);
-      KALDI_ERR << "Feafures differ:\n" << output_all;
+    for (int32 iter = 0; iter < 10; iter++) {
+      int32 frame = rand() % num_frames;
+      double tot_weight = 0.0, tot = 0.0;
+      for (int32 i = 0; i < num_frames; i++) {
+        if (i >= frame - normalization_left_context &&
+            i <= frame + normalization_right_context) {
+          tot_weight += pov(i);
+          tot += pov(i) * log_pitch(i);
+        }
+      }
+      AssertEqual(log_pitch(frame) - tot / tot_weight,
+                  mean_subtracted_log_pitch(frame));
     }
   }
-  // Weighted Moving Window Normalization with non-uniform weights
-  /*
-  int32 num_frames = 1 + (rand()%10 * 20);
-  int32 normalization_win_size = 5 + rand() % 50;
-  Matrix<BaseFloat> feat(num_frames, 2),
-    output_feat(num_frames, 2);
-  for (int32 j = 0; j < num_frames; j++) {
-    int32 r = rand() % 2;
-    feat(j, 0) = RandUniform() / (1 + 1000.0 * r);
-    feat(j, 1) = feat(j, 1) * feat(j, 0);
-  }
-  ProcessPovFeatures(&feat, 2, true);
-  WeightedMovingWindowNormalize(normalization_win_size, feat, &output_feat);
-  */
 }
 
 static void UnitTestPitchExtractionSpeed() {

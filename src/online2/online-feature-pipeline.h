@@ -28,7 +28,7 @@
 #include "matrix/matrix-lib.h"
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
-#include "online2/online-feature.h"
+#include "feat/online-feature.h"
 #include "feat/pitch-functions.h"
 
 namespace kaldi {
