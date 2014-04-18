@@ -5,16 +5,16 @@
 
 # Begin configuration.
 stage=0 # This allows restarting after partway, when something when wrong.
+feature_type=mfcc
+online_cmvn_config=conf/online_cmvn.conf
 add_pitch=false
 pitch_config=conf/pitch.conf
-online_cmvn_config=conf/online_cmvn.conf
-feature_type=mfcc
 per_utt_basis=true # If true, then treat each utterance as a separate speaker
                    # for purposes of basis training... this is recommended if
                    # the number of actual speakers in your training set is less
                    # than (feature-dim) * (feature-dim+1).
-per_utt_cmvn=false # If true, apply online CMVN normalization per utterance rather
-                   # than per speaker.
+per_utt_cmvn=false # If true, apply online CMVN normalization per utterance
+                   # rather than per speaker.
 silence_weight=0.01
 cmd=run.pl
 cleanup=true
@@ -29,11 +29,13 @@ if [ $# -ne 5 ]; then
    echo "Usage: $0 [options] <data-dir> <lang-dir> <input-sat-dir> <input-MMI-model> <output-dir>"
    echo "e.g.: $0 data/train data/lang exp/tri3b exp/tri3b_mmi/final.mdl exp/tri3b_online"
    echo "main options (for others, see top of script file)"
-   echo "  --online-cmvn-config <config>                    # config for online cmvn,"
-   echo "                                                   # default conf/online_cmvn.conf"
    echo "  --feature-type <mfcc|plp>                        # Type of the base features; "
    echo "                                                   # important to generate the correct"
    echo "                                                   # configs in <output-dir>/conf/"
+   echo "  --online-cmvn-config <config>                    # config for online cmvn,"
+   echo "                                                   # default conf/online_cmvn.conf"
+   echo "  --add-pitch <true|false>                         # Append pitch features to cmvn"
+   echo "                                                   # (default: false)"
    echo "  --per-utt-cmvn <true|false>                      # Apply online CMVN per utt, not"
    echo "                                                   # per speaker (default: false)"
    echo "  --per-utt-basis <true|false>                     # Do basis computation per utterance"
@@ -169,9 +171,13 @@ if [ $stage -le 3 ]; then
   echo -n >$conf
   case "$feature_type" in
     mfcc)
+      echo "$0: creating $dir/conf/mfcc.conf"
       echo "--mfcc-config=$dir/conf/mfcc.conf" >>$conf
       cp conf/mfcc.conf $dir/conf/ ;;
     plp)
+      echo "$0: enabling plp features"
+      echo "--feature-type=plp" >>$conf
+      echo "$0: creating $dir/conf/plp.conf"
       echo "--plp-config=$dir/conf/plp.conf" >>$conf
       cp conf/plp.conf $dir/conf/ ;;
     *)
@@ -183,18 +189,21 @@ if [ $stage -le 3 ]; then
   fi
   echo "--cmvn-config=$dir/conf/online_cmvn.conf" >>$conf
   if [ -f $dir/final.mat ]; then
-    echo "$0: creating $dir/splice.conf"
+    echo "$0: enabling feature splicing"
+    echo "--splice-feats" >>$conf
+    echo "$0: creating $dir/conf/splice.conf"
     for x in $(cat $dir/splice_opts); do echo $x; done > $dir/conf/splice.conf
     echo "--splice-config=$dir/conf/splice.conf" >>$conf
+    echo "$0: enabling LDA"
     echo "--lda-matrix=$dir/final.mat" >>$conf
   else
-    echo "$0: creating $dir/conf/delta.conf"
-    echo -n >$dir/conf/delta.conf # no non-default options currently supported.  It
-                                  # needs it to know we're applying delta features,
-                                  # though.
-    echo "--delta-config=$dir/conf/delta.conf" >>$conf
+    echo "$0: enabling deltas"
+    echo "--add-deltas" >>$conf
   fi
   if $add_pitch; then
+    echo "$0: enabling pitch features"
+    echo "--add-pitch" >>$conf
+    echo "$0: creating $dir/conf/pitch.conf"
     echo "--pitch-config=$dir/conf/pitch.conf" >>$conf
     if ! cp $pitch_config $dir/conf/pitch.conf; then
       echo "$0: error copying pitch config to $dir/conf/"
