@@ -61,7 +61,7 @@ namespace kaldi {
     <contains-nonsilence> is true if the best traceback contains any nonsilence phone;
     <length-of-trailing-silence> is the length in seconds of silence phones at the
       end of the best traceback (we stop counting when we hit non-silence),
-    <max-relative-cost> is a value >= 0 extracted from the decoder, that is zero if
+    <relative-cost> is a value >= 0 extracted from the decoder, that is zero if
       a final-state of the grammar FST had the best cost at the final frame, and
       infinity if no final-state was active (and >0 for in-between cases).
     <utterance-length> is the number of seconds of the utterance that we have

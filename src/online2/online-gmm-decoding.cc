@@ -192,7 +192,6 @@ void SingleUtteranceGmmDecoder::EstimateFmllr(bool end_of_utterance) {
   
   FmllrDiagGmmAccs &spk_stats = adaptation_state_.spk_stats;
   
-  int32 dim = feature_pipeline_->Dim();
   if (spk_stats.beta_ !=
       orig_adaptation_state_.spk_stats.beta_) {
     // This could happen if the user called EstimateFmllr() twice on the
@@ -201,6 +200,8 @@ void SingleUtteranceGmmDecoder::EstimateFmllr(bool end_of_utterance) {
     // (possibly empty).
     spk_stats = orig_adaptation_state_.spk_stats;
   }
+  
+  int32 dim = feature_pipeline_->Dim();
   if (spk_stats.Dim() == 0)
     spk_stats.Init(dim);
   

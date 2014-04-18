@@ -83,7 +83,7 @@ struct OnlineFeaturePipelineCommandLineConfig {
 
 /// This configuration class is responsible for storing the configuration
 /// options for OnlineFeaturePipeline, but it does not set them.  To do that you
-/// should use OnlineFeaturePipelineCommandLineConfig, which can read in in the
+/// should use OnlineFeaturePipelineCommandLineConfig, which can read in the
 /// configuration from config files on disk.  The reason for structuring it this
 /// way with two config files, is to make it easier to configure from code as
 /// well as from the command line.

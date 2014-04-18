@@ -104,13 +104,13 @@ struct OnlineGmmDecodingConfig {
   
   OnlineGmmDecodingAdaptationPolicyConfig adaptation_policy_opts;
   
-  // rxfilename for model trained with online-CMN features:
+  // rxfilename for model trained with online-CMN features
+  // (only needed if different from model_rxfilename)
   std::string online_alimdl_rxfilename;
-  // rxfilename for model used for estimating fMLLR transforms (only needed if
-  // different from online_alimdl_rxfilename):
+  // rxfilename for model used for estimating fMLLR transforms
   std::string model_rxfilename;
-  // rxfilename for possible discriminatively trained
-  // model (only needed if different from model_rxfilename).
+  // rxfilename for possible discriminatively trained model
+  // (only needed if different from model_rxfilename)
   std::string rescore_model_rxfilename;
   // rxfilename for the BasisFmllrEstimate object containing the basis
   // used for basis-fMLLR.
@@ -185,14 +185,13 @@ class OnlineGmmDecodingModels {
   // be identical for all 3 models, so we only store one (it doesn't matter
   // which one).
   TransitionModel tmodel_; 
-  // The model trained with online-CMVN features:
+  // The model trained with online-CMVN features
+  // (if supplied, otherwise use model_)
   AmDiagGmm online_alignment_model_;
-  // The ML-trained model used to get transforms, if supplied (otherwise use
-  // online_alignment_model_):
+  // The ML-trained model used to get transforms (required)
   AmDiagGmm model_;
-  // The discriminatively trained model (if supplied);
-  // otherwise use model_ if supplied, otherwise use
-  // online_alignment_model_:
+  // The discriminatively trained model
+  // (if supplied, otherwise use model_)
   AmDiagGmm rescore_model_;
   // The following object contains the basis elements for
   // "Basis fMLLR".
@@ -282,12 +281,12 @@ class SingleUtteranceGmmDecoder {
   const OnlineGmmDecodingModels &models_;
   OnlineFeaturePipeline *feature_pipeline_;
   const SpeakerAdaptationState &orig_adaptation_state_;
-  // adaptation_state_ generally reflects the "current" state of the adptation.
-  // Note: adaptation_state_.cmvn_state is just copied from
+  // adaptation_state_ generally reflects the "current" state of the
+  // adaptation. Note: adaptation_state_.cmvn_state is just copied from
   // orig_adaptation_state, the function GetAdaptationState() gets the CMVN
   // state.
   SpeakerAdaptationState adaptation_state_;
-  LatticeFasterOnlineDecoder decoder_;  
+  LatticeFasterOnlineDecoder decoder_;
 };
 
   
