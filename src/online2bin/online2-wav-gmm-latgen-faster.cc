@@ -42,7 +42,7 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
   
   Lattice best_path_lat;
   ConvertLattice(best_path_clat, &best_path_lat);
-
+  
   double likelihood;
   LatticeWeight weight;
   int32 num_frames;
@@ -69,14 +69,13 @@ void GetDiagnosticsAndPrintOutput(const std::string &utt,
   }
 }
 
-  
 }
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace fst;
-
+    
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
     
@@ -85,21 +84,21 @@ int main(int argc, char *argv[]) {
         "basis-fMLLR adaptation and endpointing.  Writes lattices.\n"
         "Models are specified via options.\n"
         "\n"
-        "Usage: online2-wav-gmm-decode-faster [options] <fst-in> <spk2utt-rspecifier> "
-        "<wav-rspecifier> <lattice-wspecifier>\n"
-        "Run ^/egs/rm/s5/local/run_online_decoding.sh for example\n";        
-
+        "Usage: online2-wav-gmm-decode-faster [options] <fst-in> "
+        "<spk2utt-rspecifier> <wav-rspecifier> <lattice-wspecifier>\n"
+        "Run ^/egs/rm/s5/local/run_online_decoding.sh for example\n";
+    
     ParseOptions po(usage);
-
+    
     std::string word_syms_rxfilename;
-
+    
     OnlineEndpointConfig endpoint_config;
     OnlineFeaturePipelineCommandLineConfig feature_cmdline_config;
     OnlineGmmDecodingConfig decode_config;
-
+    
     BaseFloat chunk_length_secs = 0.05;
     bool do_endpointing = false;
-
+    
     po.Register("chunk-length", &chunk_length_secs,
                 "Length of chunk size in seconds, that we process.");
     po.Register("word-symbol-table", &word_syms_rxfilename,
@@ -117,7 +116,6 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       return 1;
     }
-
     
     std::string fst_rxfilename = po.GetArg(1),
         spk2utt_rspecifier = po.GetArg(2),
@@ -131,9 +129,9 @@ int main(int argc, char *argv[]) {
     
     
     fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
-        
+    
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_rxfilename != "") 
+    if (word_syms_rxfilename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_rxfilename)))
         KALDI_ERR << "Could not read symbol table from file "
                   << word_syms_rxfilename;
@@ -141,14 +139,14 @@ int main(int argc, char *argv[]) {
     int32 num_done = 0, num_err = 0;
     double tot_like = 0.0;
     int64 num_frames = 0;
-   
+    
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessTableReader<WaveHolder> wav_reader(wav_rspecifier);
     CompactLatticeWriter clat_writer(clat_wspecifier);
-
+    
     OnlineTimingStats timing_stats;
     
-    for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {      
+    for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
       SpeakerAdaptationState adaptation_state;
@@ -159,38 +157,39 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
+        const WaveData &wave_data = wav_reader.Value(utt);
+        // get the data for channel zero (if the signal is not mono, we only
+        // take the first channel).
+        SubVector<BaseFloat> data(wave_data.Data(), 0);
+        
         SingleUtteranceGmmDecoder decoder(decode_config,
                                           gmm_models,
                                           pipeline_prototype,
                                           *decode_fst,
                                           adaptation_state);
-        const WaveData &wave_data = wav_reader.Value(utt);
-        // get the data for channel zero (if the signal is not mono, we only
-        // take the first channel).
+        
         OnlineTimer decoding_timer(utt);
         
-        SubVector<BaseFloat> data(wave_data.Data(), 0);
-        // Very arbitrarily, we decide to process at most one tenth of a second
-        // at a time.  
-        int32 samp_offset = 0, max_samp = wave_data.SampFreq() * chunk_length_secs;
+        BaseFloat samp_freq = wave_data.SampFreq();
+        int32 chunk_length = int32(samp_freq * chunk_length_secs);
+        if (chunk_length == 0) chunk_length = 1;
+        
+        int32 samp_offset = 0;
         while (samp_offset < data.Dim()) {
-          int32 this_num_samp = max_samp;
-          if (this_num_samp == 0) this_num_samp = 1;
-          if (this_num_samp > data.Dim() - samp_offset)
-            this_num_samp = data.Dim() - samp_offset;
-          SubVector<BaseFloat> wave_part(data, samp_offset, this_num_samp);
-
-          decoder.FeaturePipeline().AcceptWaveform(wave_data.SampFreq(),
-                                                   wave_part);
-
-          decoding_timer.WaitUntil((samp_offset + this_num_samp) /
-                                   wave_data.SampFreq());
-
-          if (this_num_samp == data.Dim() - samp_offset)  // no more input.
-            decoder.FeaturePipeline().InputFinished();  // flush out last frames
+          int32 samp_remaining = data.Dim() - samp_offset;
+          int32 num_samp = chunk_length < samp_remaining ? chunk_length
+                                                         : samp_remaining;
+          
+          SubVector<BaseFloat> wave_part(data, samp_offset, num_samp);
+          decoder.FeaturePipeline().AcceptWaveform(samp_freq, wave_part);
+          
+          samp_offset += num_samp;
+          decoding_timer.WaitUntil(samp_offset / samp_freq);
+          if (samp_offset == data.Dim()) {
+            // no more input. flush out last frames
+            decoder.FeaturePipeline().InputFinished();
+          }
           decoder.AdvanceDecoding();
-                      
-          samp_offset += this_num_samp;
           
           if (do_endpointing && decoder.EndpointDetected(endpoint_config))
             break;
@@ -199,23 +198,22 @@ int main(int argc, char *argv[]) {
         decoder.EstimateFmllr(end_of_utterance);
         CompactLattice clat;
         bool rescore_if_needed = true;
-        decoder.GetLattice(rescore_if_needed,
-                           end_of_utterance,
-                           &clat);
-
+        decoder.GetLattice(rescore_if_needed, end_of_utterance, &clat);
+        
         GetDiagnosticsAndPrintOutput(utt, word_syms, clat,
                                      &num_frames, &tot_like);
-
+        
         decoding_timer.OutputStats(&timing_stats);
         
-        // In an application you might avoid updating the adptation state if you
-        // felt the utterance had low confidence.  See lat/confidence.h
+        // In an application you might avoid updating the adaptation state if
+        // you felt the utterance had low confidence.  See lat/confidence.h
         decoder.GetAdaptationState(&adaptation_state);
         
         // we want to output the lattice with un-scaled acoustics.
-        if (decode_config.acoustic_scale != 0.0)
-          ScaleLattice(AcousticLatticeScale(1.0 / decode_config.acoustic_scale),
-                       &clat);
+        if (decode_config.acoustic_scale != 0.0) {
+          BaseFloat inv_acoustic_scale = 1.0 / decode_config.acoustic_scale;
+          ScaleLattice(AcousticLatticeScale(inv_acoustic_scale), &clat);
+        }
         clat_writer.Write(utt, clat);
         KALDI_LOG << "Decoded utterance " << utt;
         num_done++;
