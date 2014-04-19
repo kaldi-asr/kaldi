@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This is like ../run.sh but with pitch; it's included to demonstrate the
+# online-decoding with pitch.
+
 . cmd.sh
 set -e # exit on error
 

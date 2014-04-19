@@ -165,6 +165,8 @@ steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 
 # demonstration script for online decoding.
 #local/run_online_decoding.sh
+# Note: for online decoding with pitch, look at local/run_pitch.sh, 
+# which calls local/run_online_decoding_pitch.sh
 
 
 
