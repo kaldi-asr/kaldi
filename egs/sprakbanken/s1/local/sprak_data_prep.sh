@@ -5,13 +5,6 @@
 # Apache 2.0.
 
 
-if [ $# -le 3 ]; then
-   echo "Arguments should be a list of directories and a destination, see ../run.sh for example."
-   exit 1;
-fi
-
-#rm -rf data 
-
 dir=`pwd`/data/local/data
 lmdir=`pwd`/data/local/arpa_lm
 traindir=`pwd`/data/train
@@ -22,9 +15,33 @@ local=`pwd`/local
 utils=`pwd`/utils
 
 
+if [ ! -d $dir/corpus ]; then
+
+	mkdir -p $dir/corpus/0565-1 $dir/corpus/0565-2
+
+	echo "Downloading and unpacking sprakbanken to $dir/corpus. This will take a while."
+
+	wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-1.tar.gz --directory-prefix=$dir/corpus &
+	wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-2.tar.gz --directory-prefix=$dir/corpus &
+	wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0611.tar.gz --directory-prefix=$dir/corpus
+	wait
+
+	echo "Corpus files downloaded. Unpacking."
+
+	tar -xzf 0565-1/da.16kHz.0565-1.tar.gz -C $dir/corpus/0565-1 &
+	tar -xzf 0565-2/da.16kHz.0565-2.tar.gz -C $dir/corpus/0565-2 &
+	tar -xzf 0611/da.16kHz.0611.tar.gz -C $dir/corpus
+	
+	# Create parallel file lists and text files, but keep sound files in the same location
+	# Note: rename "da 0611 test" to "da_0611_test" for this to work
+	mv $dir/corpus/"da 0611 test" $dir/corpus/0611
+	wait 
+
+	echo "Corpus unpacked succesfully."
+fi
+
 
 . ./path.sh # Needed for KALDI_ROOT
-export PATH=$PATH:$KALDI_ROOT/tools/irstlm/bin
 sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 if [ ! -x $sph2pipe ]; then
    echo "Could not find (or execute) the sph2pipe program at $sph2pipe";
@@ -32,43 +49,46 @@ if [ ! -x $sph2pipe ]; then
 fi
 
 
-# Create parallel file lists and text files, but keep sound files in the same location
-# Note: rename "da 0611 test" to "da_0611_test" for this to work
-find $3 -name "* *" -type d | rename 's/ /_/g'
+echo "Converting corpus files to a format consumable by Kaldi scripts."
+
+mkdir -p $dir/corpus/training/0565-1 $dir/corpus/training/0565-2
+
 # Writes the lists to data/local/data (~ 310h)
-python3 $local/sprak2kaldi.py $1 $dir/parallel/training/$(basename $1) & # ~130h
-python3 $local/sprak2kaldi.py $2 $dir/parallel/training/$(basename $2) & # ~115h
-python3 $local/sprak2kaldi.py $3/Stasjon05 $dir/parallel/training/0611_Stasjon05 & # ~51h
+python3 $local/sprak2kaldi.py $dir/corpus/0565-1 $dir/corpus/training/0565-1 & # ~130h
+python3 $local/sprak2kaldi.py $dir/corpus/0565-2 $dir/corpus/training/0565-2 & # ~115h
+python3 $local/sprak2kaldi.py $dir/corpus/0611/Stasjon05 $dir/corpus/training/0611_Stasjon05 & # ~51h
 
 # Ditto dev set (~ 16h)
-python3 $local/sprak2kaldi.py $3/Stasjon03 $dir/parallel/dev03 & 
+python3 $local/sprak2kaldi.py $dir/corpus/0611/Stasjon03 $dir/corpus/dev03 & 
 
 # Ditto test set (about 9 hours)
-python3 $local/sprak2kaldi.py $3/Stasjon06 $dir/parallel/test06 &
+python3 $local/sprak2kaldi.py $dir/corpus/0611/Stasjon06 $dir/corpus/test06 &
 
 wait
 
 # Combine training file lists
-cat $dir/parallel/training/$(basename $1)/txtlist $dir/parallel/training/$(basename $2)/txtlist $dir/parallel/training/0611_Stasjon05/txtlist > $dir/traintxtfiles
-cat $dir/parallel/training/$(basename $1)/sndlist $dir/parallel/training/$(basename $2)/sndlist $dir/parallel/training/0611_Stasjon05/sndlist > $dir/trainsndfiles
+cat $dir/corpus/training/0565-1/txtlist $dir/corpus/training/0565-2/txtlist $dir/corpus/training/0611_Stasjon05/txtlist > $dir/traintxtfiles
+cat $dir/corpus/training/0565-1/sndlist $dir/corpus/training/0565-2/sndlist $dir/corpus/training/0611_Stasjon05/sndlist > $dir/trainsndfiles
 
 # LM training files (test data is disjoint from training data)
-cat $dir/parallel/training/$(basename $1)/txtlist $dir/parallel/training/$(basename $2)/txtlist > $dir/lmtxtfiles
+cat $dir/corpus/training/0565-1/txtlist $dir/corpus/training/0565-2/txtlist > $dir/lmtxtfiles
 
 # Move test file lists to the right location
-mv $dir/parallel/dev03/txtlist $dir/devtxtfiles
-mv $dir/parallel/dev03/sndlist $dir/devsndfiles
+mv $dir/corpus/dev03/txtlist $dir/devtxtfiles
+mv $dir/corpus/dev03/sndlist $dir/devsndfiles
 
 
 # Move test file lists to the right location
-mv $dir/parallel/test06/txtlist $dir/testtxtfiles
-mv $dir/parallel/test06/sndlist $dir/testsndfiles
-
+mv $dir/corpus/test06/txtlist $dir/testtxtfiles
+mv $dir/corpus/test06/sndlist $dir/testsndfiles
 
 python3 $local/sprak_data_prep.py $dir/traintxtfiles $traindir $dir/trainsndfiles $sph2pipe &
 python3 $local/sprak_data_prep.py $dir/testtxtfiles $testdir $dir/testsndfiles $sph2pipe &
 python3 $local/sprak_data_prep.py $dir/devtxtfiles $devdir $dir/devsndfiles $sph2pipe &
-sprak_prep_lm.sh $dir/lmtxtfiles $dir/trainsents
+
+echo "$dir/lmtxtfiles"
+cat $dir/lmtxtfiles | while read l; do cat $l; done > $dir/lmsents
+
 wait
 
 ## TODO

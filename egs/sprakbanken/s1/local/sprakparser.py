@@ -153,11 +153,14 @@ class Session:
         return self.filestem+ "." +self.speaker_id+ "." +str(uid)+ "." +file_ending
         
     def wavpath(self, topfolder):
-        testpath = topfolder.replace("data", "speech")
+        prefix, suffix = topfolder.rsplit('/data/', 1)
+        testpath = os.path.join(prefix, 'speech', suffix)
+        #testpath = topfolder.replace("data", "speech")
         if os.path.exists(testpath):
             return os.path.join(testpath, self.filestem)
         else:
-            return os.path.join(topfolder.replace("data", "Speech"), self.filestem)
+            testpath = os.path.join(prefix, 'Speech', suffix)
+            return os.path.join(testpath, self.filestem)
             
     def get_vars(self, line):
         return line.split("=")[-1]

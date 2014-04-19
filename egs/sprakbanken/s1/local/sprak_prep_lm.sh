@@ -1,17 +1,10 @@
 #!/bin/bash
 
 
-if [ $# -le 1 ]; then
-   echo "Arguments should be a file with a list of text files and a filename for the output."
-   exit 1;
-fi
 
+dir=$1
 
-flist=$1
-$dir=$(dirname $flist)
-fout=$2
-
-split -l 50000 $flist $dir/templist_
+split -l 50000 $dir/lmtxtfiles $dir/templist_
 
 for f in $dir/templist_*; do 
     cat $f | while read l; do
@@ -19,9 +12,8 @@ for f in $dir/templist_*; do
     done > $f.sents;
 done
 
-cat $dir/templist_*.sents > $fout
+cat $dir/templist_*.sents > $dir/lmsents
 
 wait
 
-rm -f templist_*
-
+rm -f $dir/templist_*

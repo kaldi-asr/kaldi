@@ -16,6 +16,8 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
+KALDI_ROOT=$(pwd)/../../..
+
 exproot=$(pwd)
 dir=data/local/dict
 espeakdir='espeak-1.48.04-source'
@@ -24,29 +26,12 @@ mkdir -p $dir
 
 # Dictionary preparation:
 
-(
+
 # Normalise transcripts and create a transcript file
 # Removes '.,:;?' and removes '\' before '\Komma' (dictated ',') 
 # outputs a normalised transcript without utterance ids
-# Contains sentences that are also in test data, so only used for training the AM, not LM
-python3 local/normalize_transcript_prefixed.py data/train/text1 data/train/text2 $dir/transcripts.am
-
-
-# Additional normalisation, uppercasing, writing numbers etc.
-# must remove uttids and recombine afterwards
- local/norm_dk/format_text.sh am data/train/text2 > data/train/text
-) &
-
-# trainsents is output by sprak_data_prep.sh calling sprak_lm_prep.sh and contains
-# sentences that are disjoint from the test and dev set 
-# Because training data is read aloud, there are many occurences of the same
-# sentence and bias towards the domain. Make a version where  
-# the sentences are unique to reduce bias.
-(
-python3 local/normalize_transcript.py data/local/data/trainsents $dir/trainsents.norm
-local/norm_dk/format_text.sh lm $dir/trainsents.norm > $dir/transcripts.txt
-sort -u $dir/transcripts.txt > $dir/transcripts.uniq
-) &
+python3 local/normalize_transcript_prefixed.py data/train/text1 data/train/text2 $dir/transcripts.am &
+python3 local/normalize_transcript.py data/local/data/lmsents $dir/lmsents.norm
 wait
 
 # Create wordlist from the AM transcripts
@@ -54,12 +39,29 @@ wait
 cat $dir/transcripts.am | tr [:blank:] '\n' | sort -u > $dir/wlist.txt
 ) &
 
+
+# Additional normalisation, uppercasing, writing numbers etc.
+# must remove uttids and recombine afterwards
+ local/norm_dk/format_text.sh am data/train/text2 > data/train/text 
+
+
+# lmsents is output by sprak_data_prep.sh calling sprak_lm_prep.sh and contains
+# sentences that are disjoint from the test and dev set 
+# Because training data is read aloud, there are many occurences of the same
+# sentence and bias towards the domain. Make a version where  
+# the sentences are unique to reduce bias.
+local/norm_dk/format_text.sh lm $dir/lmsents.norm > $dir/transcripts.txt
+sort -u $dir/transcripts.txt > $dir/transcripts.uniq
+wait
+
+
+
 # Install eSpeak if it is not installed already
 cd $KALDI_ROOT/tools || exit 1; 
 
 if [ -d $espeakdir ]; 
   then
-    echo eSpeak installed
+    echo 'eSpeak installed'
   else
     wget http://sourceforge.net/projects/espeak/files/espeak/espeak-1.48/${espeakdir}.zip
 fi
@@ -69,7 +71,7 @@ if [ -f $espeakdir.zip ];
     unzip $espeakdir.zip
     cd $espeakdir/src
     make || exit 1;
-    echo Installed eSpeak
+    echo 'Installed eSpeak'
   else
     echo 'No zip file to unpack. Check whether it was downloaded and the version matches.';
     exit 1;

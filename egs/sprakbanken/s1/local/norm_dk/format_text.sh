@@ -17,11 +17,11 @@
 
 #dir=norm_dk
 
-#dos2unix $2
+dos2unix $2
 
 mode=$1
 
-dir=/home/ask/kaldi-trunk/egs/att/s5/local/norm_dk
+dir=$(pwd)/local/norm_dk
 
 abbr=$dir/anot.tmp
 rem=$dir/rem.tmp
@@ -43,18 +43,6 @@ python3 $dir/writenumbers.py $dir/numbersUp.tbl $num $nonum;
 cat $nonum | $dir/write_punct.sh | \
 perl -pi -e "s/^\n//" | PERLIO=:utf8 perl -pe '$_=uc'  #> ../${2%.*}.exp.txt
 
-#./expand_abbr_medical.sh $1 > anot.tmp
-#echo "Abbreviations expanded"
-#./remove_annotation.sh anot.tmp > rem.tmp
-#echo "Annotations removed"
-#./sent_split.sh rem.tmp > line.tmp
-#echo "Sentence splitting done"
-#./expand_dates.sh line.tmp |\
-#echo "Uniform date formatting completed"
-#./format_punct.sh  |\
-#echo "Punctuation formatting completed"
-#perl -pi -e "s/^\n//" > ${@%.*}.exp.txt
-#echo "Output has been uppercased"
 
 # Comment this line for debugging
 wait
