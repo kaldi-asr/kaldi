@@ -159,6 +159,17 @@ void OnlineFeaturePipeline::Init() {
 
   {
     KALDI_ASSERT(global_cmvn_stats_.NumRows() != 0);
+    if (config_.add_pitch) {
+      int32 global_dim = global_cmvn_stats_.NumCols() - 1;
+      int32 dim = base_feature_->Dim();
+      KALDI_ASSERT(global_dim >= dim);
+      if (global_dim > dim) {
+        Matrix<BaseFloat> last_col(global_cmvn_stats_.ColRange(global_dim, 1));
+        global_cmvn_stats_.Resize(global_cmvn_stats_.NumRows(), dim + 1,
+                                  kCopyData);
+        global_cmvn_stats_.ColRange(dim, 1).CopyFromMat(last_col);
+      }
+    }
     Matrix<double> global_cmvn_stats_dbl(global_cmvn_stats_);
     OnlineCmvnState initial_state(global_cmvn_stats_dbl);
     cmvn_ = new OnlineCmvn(config_.cmvn_opts, initial_state, base_feature_);
