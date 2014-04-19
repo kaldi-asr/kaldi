@@ -713,13 +713,9 @@ void MatrixBase<Real>::CopyFromSp(const SpMatrix<OtherReal> & M) {
 
 // Instantiate this function
 template
-void MatrixBase<float>::CopyFromSp(const SpMatrix<float> & M);
-template
 void MatrixBase<float>::CopyFromSp(const SpMatrix<double> & M);
 template
 void MatrixBase<double>::CopyFromSp(const SpMatrix<float> & M);
-template
-void MatrixBase<double>::CopyFromSp(const SpMatrix<double> & M);
 
 
 template<typename Real>

@@ -206,7 +206,10 @@ class ContextFst : public Fst<Arc> {
  public:
   friend class ArcIterator< ContextFst<Arc> >;
   friend class StateIterator< ContextFst<Arc> >;
-  friend class CacheArcIterator< ContextFst<Arc> >;
+  // We have to supply the default template argument below to work around a
+  // Visual Studio bug.
+  friend class CacheArcIterator< ContextFst<Arc>,
+                                 DefaultCacheStateAllocator<CacheState<Arc> >  >;
 
   typedef typename Arc::Weight Weight;
   typedef typename Arc::Label Label;

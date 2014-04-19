@@ -1,12 +1,12 @@
 #!/bin/bash 
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
-
-# This script trains a fairly vanilla network with tanh nonlinearities.
+#	    2014  Pegah Ghahremani
+# This script trains a fairly vanilla network with tanh nonlinearities to generate bottleneck features
 
 # Begin configuration section.
 cmd=run.pl
-num_epochs=15      # Number of epochs during which we reduce
+num_epochs=15    # Number of epochs during which we reduce
                    # the learning rate; number of iteration is worked out from this.
 num_epochs_extra=5 # Number of epochs after we stop reducing
                    # the learning rate.
@@ -23,8 +23,9 @@ num_frames_shrink=2000 # note: must be <= --num-frames-diagnostic option to get_
 final_learning_rate_factor=0.5 # Train the two last layers of parameters half as
                                # fast as the other layers.
 
-hidden_layer_dim=300 #  You may want this larger, e.g. 1024 or 2048.
+hidden_layer_dim=1024 #  You may want this larger, e.g. 1024 or 2048.
 
+bottleneck_dim=42  # bottleneck layer dimension
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
                    # be a problem with multi-threaded update.  Note: it also
@@ -37,7 +38,6 @@ samples_per_iter=200000 # each iteration of training, see this many samples
 num_jobs_nnet=16   # Number of neural net jobs to run in parallel.  This option
                    # is passed to get_egs.sh.
 get_egs_stage=0
-spk_vecs_dir=
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
                 # on each iter.  You could set it to 0 or to a large value for complete
@@ -47,6 +47,9 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
 
 add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
+bottleneck_layer_num=$num_hidden_layers-2 # bottleneck layer number between hidden layer 
+                                        # eg. 1024|1024|42|1024 bottleneck_layer_num = 2  
+
 modify_learning_rates=false
 last_layer_factor=0.1 # relates to modify_learning_rates.
 first_layer_factor=1.0 # relates to modify_learning_rates.
@@ -67,8 +70,7 @@ egs_dir=
 lda_opts=
 egs_opts=
 transform_dir=
-prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
-                        # more than enough.
+nj=
 # End configuration section.
 
 
@@ -116,7 +118,7 @@ if [ $# != 4 ]; then
   echo "                                                   # process."
   echo "  --splice-width <width|4>                         # Number of frames on each side to append for feature input"
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
-  echo "  --lda-dim <dim|250>                              # Dimension to reduce spliced features to with LDA"
+  echo "  --lda-dim <dim|250>                              # Dimension to nsformreduce spliced features to with LDA"
   echo "  --num-iters-final <#iters|10>                    # Number of final iterations to give to nnet-combine-fast to "
   echo "                                                   # interpolate parameters (the weights are learned with a validation set)"
   echo "  --num-utts-subset <#utts|300>                    # Number of utterances in subsets used for validation and diagnostics"
@@ -151,16 +153,16 @@ utils/split_data.sh $data $nj
 
 mkdir -p $dir/log
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
+cp $alidir/final.mat $dir 2>/dev/null
 cp $alidir/splice_opts $dir 2>/dev/null
-cp $alidir/norm_vars $dir 2>/dev/null
+norm_vars=`cat $alidir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
+ccp $alidir/norm_vars $dir 2>/dev/null
 cp $alidir/tree $dir
 
-
-[ -z "$transform_dir" ] && transform_dir=$alidir
-
+truncate_comp_num=$[2*$num_hidden_layers+1]
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
-  steps/nnet2/get_lda.sh $lda_opts --transform-dir $transform_dir --splice-width $splice_width --cmd "$cmd" $data $lang $alidir $dir || exit 1;
+  steps/nnet2/get_lda.sh $lda_opts --splice-width $splice_width --cmd "$cmd" $data $lang $alidir $dir || exit 1;
 fi
 
 # these files will have been written by get_lda.sh
@@ -169,8 +171,8 @@ lda_dim=`cat $dir/lda_dim` || exit 1;
 
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
-  [ ! -z $spk_vecs_dir ] && spk_vecs_opt="--spk-vecs-dir $spk_vecs_dir";
-  steps/nnet2/get_egs.sh $spk_vecs_opt --transform-dir $transform_dir --samples-per-iter $samples_per_iter \
+  [ ! -z $transform_dir ] && $transform_dir_opt="--transform-dir $transform_dir";
+  steps/nnet2/get_egs.sh $transform_dir_opt --samples-per-iter $samples_per_iter \
       --num-jobs-nnet $num_jobs_nnet --splice-width $splice_width --stage $get_egs_stage \
       --cmd "$cmd" $egs_opts --io-opts "$io_opts" \
       $data $lang $alidir $dir || exit 1;
@@ -194,26 +196,13 @@ fi
 if [ $stage -le -2 ]; then
   echo "$0: initializing neural net";
 
-  # Get spk-vec dim (in case we're using them).
-  if [ ! -z "$spk_vecs_dir" ]; then
-    spk_vec_dim=$[$(copy-vector --print-args=false "ark:cat $spk_vecs_dir/vecs.1|" ark,t:- | head -n 1 | wc -w) - 3];
-    ! [ $spk_vec_dim -gt 0 ] && echo "Error getting spk-vec dim" && exit 1;
-    ext_lda_dim=$[$lda_dim + $spk_vec_dim]
-    extend-transform-dim --new-dimension=$ext_lda_dim $dir/lda.mat $dir/lda_ext.mat || exit 1;
-    lda_mat=$dir/lda_ext.mat
-    ext_feat_dim=$[$feat_dim + $spk_vec_dim]
-  else
-    spk_vec_dim=0
-    lda_mat=$dir/lda.mat
-    ext_lda_dim=$lda_dim
-    ext_feat_dim=$feat_dim
-  fi
+  lda_mat=$dir/lda.mat
 
   stddev=`perl -e "print 1.0/sqrt($hidden_layer_dim);"`
   cat >$dir/nnet.config <<EOF
-SpliceComponent input-dim=$ext_feat_dim left-context=$splice_width right-context=$splice_width const-component-dim=$spk_vec_dim
+SpliceComponent input-dim=$feat_dim left-context=$splice_width right-context=$splice_width const-component-dim=0
 FixedAffineComponent matrix=$lda_mat
-AffineComponentPreconditioned input-dim=$ext_lda_dim output-dim=$hidden_layer_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
+AffineComponentPreconditioned input-dim=$lda_dim output-dim=$hidden_layer_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
 TanhComponent dim=$hidden_layer_dim
 AffineComponentPreconditioned input-dim=$hidden_layer_dim output-dim=$num_leaves alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=0 bias-stddev=0
 SoftmaxComponent dim=$num_leaves
@@ -223,6 +212,14 @@ EOF
   # single hidden layer; we need this to add new layers. 
   cat >$dir/hidden.config <<EOF
 AffineComponentPreconditioned input-dim=$hidden_layer_dim output-dim=$hidden_layer_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
+TanhComponent dim=$hidden_layer_dim
+EOF
+  bottleneck_stddev=`perl -e "print 1.0/sqrt($bottleneck_dim);"`
+  # bnf.config it will write the part of th config corresponding to a
+  # bottleneck layer; we need this to add bottleneck layer.
+  cat >$dir/bnf.config <<EOF
+AffineComponentPreconditioned input-dim=$hidden_layer_dim output-dim=$bottleneck_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
+AffineComponentPreconditioned input-dim=$bottleneck_dim output-dim=$hidden_layer_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$bottleneck_stddev bias-stddev=$bias_stddev
 TanhComponent dim=$hidden_layer_dim
 EOF
   $cmd $dir/log/nnet_init.log \
@@ -240,30 +237,23 @@ fi
 num_iters_reduce=$[$num_epochs * $iters_per_epoch];
 num_iters_extra=$[$num_epochs_extra * $iters_per_epoch];
 num_iters=$[$num_iters_reduce+$num_iters_extra]
-
+echo num_iters = $num_iters
 echo "$0: Will train for $num_epochs + $num_epochs_extra epochs, equalling "
 echo "$0: $num_iters_reduce + $num_iters_extra = $num_iters iterations, "
 echo "$0: (while reducing learning rate) + (with constant learning rate)."
 
 # This is when we decide to mix up from: halfway between when we've finished
 # adding the hidden layers and the end of training.
-finish_add_layers_iter=$[$num_hidden_layers * $add_layers_period]
+finish_add_layers_iter=$[($num_hidden_layers-$initial_num_hidden_layers+1)*$add_layers_period]
 first_modify_iter=$[$finish_add_layers_iter + $add_layers_period]
 mix_up_iter=$[($num_iters + $finish_add_layers_iter)/2]
-
+truncate_comp_num=$[2*$num_hidden_layers+1]
 if [ $num_threads -eq 1 ]; then
   train_suffix="-simple" # this enables us to use GPU code if
                          # we have just one thread.
-  if ! cuda-compiled; then
-    echo "$0: WARNING: you are running with one thread but you have not compiled"
-    echo "   for CUDA.  You may be running a setup optimized for GPUs.  If you have"
-    echo "   GPUs and have nvcc installed, go to src/ and do ./configure; make"
-  fi
 else
   train_suffix="-parallel --num-threads=$num_threads"
 fi
-
-
 
 x=0
 while [ $x -lt $num_iters ]; do
@@ -282,11 +272,15 @@ while [ $x -lt $num_iters ]; do
     if [ $x -gt 0 ] && \
       [ $x -le $[($num_hidden_layers-1)*$add_layers_period] ] && \
       [ $[($x-1) % $add_layers_period] -eq 0 ]; then
-      mdl="nnet-init --srand=$x $dir/hidden.config - | nnet-insert $dir/$x.mdl - - |"
+      if [ $[($x-1) / $add_layers_period] -eq $[($num_hidden_layers-2)] ]; then
+        echo bnf layer with x = $x
+        mdl="nnet-init --srand=$x $dir/bnf.config - | nnet-insert $dir/$x.mdl - - |"  
+      else
+        mdl="nnet-init --srand=$x $dir/hidden.config - | nnet-insert $dir/$x.mdl - - |"
+      fi
     else
       mdl=$dir/$x.mdl
     fi
-
 
     $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
       nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
@@ -379,36 +373,15 @@ if [ $stage -le $num_iters ]; then
     nnet-combine-fast --use-gpu=no --num-threads=$this_num_threads \
       --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
       $dir/final.mdl || exit 1;
-
-  # Compute the probability of the final, combined model with
-  # the same subset we used for the previous compute_probs, as the
-  # different subsets will lead to different probs.
-  $cmd $dir/log/compute_prob_valid.final.log \
-    nnet-compute-prob $dir/final.mdl ark:$egs_dir/valid_diagnostic.egs &
-  $cmd $dir/log/compute_prob_train.final.log \
-    nnet-compute-prob $dir/final.mdl ark:$egs_dir/train_diagnostic.egs &
 fi
 
-if [ $stage -le $[$num_iters+1] ]; then
-  echo "Getting average posterior for purposes of adjusting the priors."
-  # Note: this just uses CPUs, using a smallish subset of data.
-  rm $dir/post.*.vec 2>/dev/null
-  $cmd JOB=1:$num_jobs_nnet $dir/log/get_post.JOB.log \
-    nnet-subset-egs --n=$prior_subset_size ark:$egs_dir/egs.JOB.0.ark ark:- \| \
-    nnet-compute-from-egs "nnet-to-raw-nnet $dir/final.mdl -|" ark:- ark:- \| \
-    matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.JOB.vec || exit 1;
-
-  sleep 3;  # make sure there is time for $dir/post.*.vec to appear.
-
-  $cmd $dir/log/vector_sum.log \
-   vector-sum $dir/post.*.vec $dir/post.vec || exit 1;
-
-  rm $dir/post.*.vec;
-
-  echo "Re-adjusting priors based on computed posteriors"
-  $cmd $dir/log/adjust_priors.log \
-    nnet-adjust-priors $dir/final.mdl $dir/post.vec $dir/final.mdl || exit 1;
-fi
+# Compute the probability of the final, combined model with
+# the same subset we used for the previous compute_probs, as the
+# different subsets will lead to different probs.
+$cmd $dir/log/compute_prob_valid.final.log \
+  nnet-compute-prob $dir/final.mdl ark:$egs_dir/valid_diagnostic.egs &
+$cmd $dir/log/compute_prob_train.final.log \
+  nnet-compute-prob $dir/final.mdl ark:$egs_dir/train_diagnostic.egs &
 
 sleep 2
 
@@ -422,9 +395,17 @@ if $cleanup; then
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
-    if [ $[$x%100] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then 
+    if [ $[$x%10] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then 
        # delete all but every 10th model; don't delete the ones which combine to form the final model.
       rm $dir/$x.mdl
     fi
   done
 fi
+
+name=`basename $data`
+if [ -f $dir/final.mdl ]; then
+  nnet-to-raw-nnet --truncate=$truncate_comp_num $dir/final.mdl $dir/final.raw
+else 
+  echo "$0: we require final.mdl in source dir $dir"
+fi
+

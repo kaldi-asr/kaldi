@@ -1,31 +1,23 @@
 #!/bin/bash
 
-# This is pnorm neural net training on top of adapted 40-dimensional features.
-# This version of the script uses GPUs.  We distinguish it by putting "_gpu"
-# at the end of the directory name.
-
+# This is GPU based pnorm neural net ensemble training on top of adapted 40-dimensional features.
 
 parallel_opts="-l gpu=1" 
 
-. ./cmd.sh
-. ./path.sh
-! cuda-compiled && cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
-If you want to use GPUs (and have them), go to src/, and configure and make on a machine
-where "nvcc" is installed.
-EOF
+. cmd.sh
 
-dir=exp/nnet4d_gpu
-(  steps/nnet2/train_pnorm.sh  --num-epochs 20 \
+dir=exp/nnet4e_gpu
+(  steps/nnet2/train_pnorm_ensemble.sh  --num-epochs 20 \
      --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
      --num-epochs-extra 10 --add-layers-period 1 \
      --num-hidden-layers 2 \
      --mix-up 4000 \
      --initial-learning-rate 0.02 --final-learning-rate 0.004 \
      --cmd "$decode_cmd" \
-     --pnorm-input-dim 750 \
-     --pnorm-output-dim 150 \
-     --combine-regularizer 1.0e-12 \
+     --pnorm-input-dim 1000 \
+     --pnorm-output-dim 200 \
+     --combine-regularizer 1.0e-12 \    
+     --ensemble-size 4 --initial-beta 0.1 --final-beta 5 --beta-rule "linear" \
      data/train data/lang exp/tri3b_ali $dir 
 
    steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \

@@ -2,6 +2,9 @@
 
 . cmd.sh
 set -e # exit on error
+# mfccdir should be some place with a largish disk where you
+# want to store MFCC features.
+featdir=mfcc
 
 
 # call the next line with the directory where the RM data is
@@ -17,6 +20,7 @@ local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp
 
 utils/prepare_lang.sh data/local/dict '!SIL' data/local/lang data/lang
 
+
 local/rm_prepare_grammar.sh      # Traditional RM grammar (bigram word-pair)
 local/rm_prepare_grammar_ug.sh   # Unigram grammar (gives worse results, but
                                  # changes in WER will be more significant.)
@@ -24,7 +28,6 @@ local/rm_prepare_grammar_ug.sh   # Unigram grammar (gives worse results, but
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.   You can make a soft link if you want.
 featdir=mfcc
-
 
 for x in test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92 train; do
   steps/make_mfcc.sh --nj 8 --cmd "run.pl" data/$x exp/make_mfcc/$x $featdir
@@ -137,6 +140,13 @@ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
  steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
    exp/tri3b/graph_ug data/test exp/tri3b/decode_ug
 )
+
+
+#TEMP:
+local/run_raw_fmllr.sh
+local/nnet2/run_4a.sh
+#TEMP:
+exit 0; 
 
 
 # Align all data with LDA+MLLT+SAT system (tri3b)
