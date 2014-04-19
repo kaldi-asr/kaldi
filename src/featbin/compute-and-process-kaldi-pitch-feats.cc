@@ -1,4 +1,4 @@
-// featbin/compute-kaldi-pitch-feats.cc
+// featbin/compute-and-process-kaldi-pitch-feats.cc
 
 // Copyright 2013        Pegah Ghahremani
 //           2013-2014   Johns Hopkins University (author: Daniel Povey)
@@ -26,25 +26,29 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     const char *usage =
-        "Apply Kaldi pitch extractor, starting from wav input.  Output is 2-dimensional\n"
-        "features consisting of (NCCF, pitch in Hz), where NCCF is between -1 and 1, and\n"
-        "higher for voiced frames.  You will typically pipe this into\n"
-        "process-kaldi-pitch-feats.\n"
-        "Usage: compute-kaldi-pitch-feats [options...] <wav-rspecifier> <feats-wspecifier>\n"
-        "e.g.\n"
-        "compute-kaldi-pitch-feats --sample-frequency=8000 scp:wav.scp ark:- \n"
+        "Apply Kaldi pitch extractor and pitch post-processor, starting from wav input.\n"
+        "Equivalent to compute-kaldi-pitch-feats | process-kaldi-pitch-feats, except\n"
+        "that it is able to simulate online pitch extraction; see options like\n"
+        "--frames-per-chunk, --simulate-first-pass-online, --recompute-frame,\n"
+        "--normalization-right-context-first-pass.\n"
         "\n"
-        "See also: process-kaldi-pitch-feats, compute-and-process-kaldi-pitch-feats\n";
-    
+        "Usage: compute-and-process-kaldi-pitch-feats [options...] <wav-rspecifier> <feats-wspecifier>\n"
+        "e.g.\n"
+        "compute-and-process-kaldi-pitch-feats --simulate-first-pass-online=true \\\n"
+        "  --frames-per-chunk=10 --sample-frequency=8000 scp:wav.scp ark:- \n"
+        "See also: compute-kaldi-pitch-feats, process-kaldi-pitch-feats\n";
     
     ParseOptions po(usage);
     PitchExtractionOptions pitch_opts;
+    ProcessPitchOptions process_opts;
+
     int32 channel = -1; // Note: this isn't configurable because it's not a very
                         // good idea to control it this way: better to extract the
                         // on the command line (in the .scp file) using sox or
                         // similar.
 
     pitch_opts.Register(&po);
+    process_opts.Register(&po);
     
     po.Read(argc, argv);
 
@@ -92,14 +96,15 @@ int main(int argc, char *argv[]) {
       SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
       Matrix<BaseFloat> features;
       try {
-        ComputeKaldiPitch(pitch_opts, waveform, &features);
+        ComputeAndProcessKaldiPitch(pitch_opts, process_opts,
+                                    waveform, &features);
       } catch (...) {
         KALDI_WARN << "Failed to compute pitch for utterance "
                    << utt;
-        num_err++;        
+        num_err++;
         continue;
       }
-      
+
       feat_writer.Write(utt, features);
       if (num_done % 50 == 0 && num_done != 0)
         KALDI_VLOG(2) << "Processed " << num_done << " utterances";

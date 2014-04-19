@@ -47,75 +47,81 @@ struct PitchExtractionOptions {
   BaseFloat min_f0;             // min f0 to search (Hz)
   BaseFloat max_f0;             // max f0 to search (Hz)
   BaseFloat soft_min_f0;        // Minimum f0, applied in soft way, must not
-                                // exceed min-f0
+  // exceed min-f0
   BaseFloat penalty_factor;     // cost factor for FO change
   BaseFloat lowpass_cutoff;     // cutoff frequency for Low pass filter
   BaseFloat resample_freq;      // Integer that determines filter width when
-                                // upsampling NCCF
+  // upsampling NCCF
   BaseFloat delta_pitch;        // the pitch tolerance in pruning lags
   BaseFloat nccf_ballast;       // Increasing this factor reduces NCCF for
-                                // quiet frames, helping ensure pitch
-                                // continuity in unvoiced region
+  // quiet frames, helping ensure pitch
+  // continuity in unvoiced region
   int32 lowpass_filter_width;   // Integer that determines filter width of
-                                // lowpass filter
+  // lowpass filter
   int32 upsample_filter_width;  // Integer that determines filter width when
-                                // upsampling NCCF
+  // upsampling NCCF
 
   // Below are newer config variables, not present in the original paper,
   // that relate to the online pitch extraction algorithm.
   int32 max_frames_latency;     // The maximum number of frames of latency that
-                                // we allow the pitch-processing to introduce,
-                                // for online operation (this doesn't relate to
-                                // the CPU taken;
-
+  // we allow the pitch-processing to introduce,
+  // for online operation.  If you set this to a
+  // large value, there would be no inaccuracy
+  // from the Viterbi traceback (but it might make
+  // you wait to see the pitch).  This is not very
+  // relevant for the online operation:
+  // normalization-right-context-first-pass is
+  // more relevant, you can just leave this value
+  // at zero.
+  
   int32 frames_per_chunk;       // Only relevant for the function
-                                // ComputeKaldiPitch which is called by
-                                // compute-kaldi-pitch-feats.  If nonzero, we
-                                // provide the input as chunks of this size.
-                                // This affects the energy normalization which
-                                // has a small effect on the resulting features,
-                                // especially at the beginning of a file.  For
-                                // best compatibility with online operation
-                                // (e.g. if you plan to train models for the
-                                // online-deocding setup), you might want to set
-                                // this to a small value, like one frame.
+  // ComputeKaldiPitch which is called by
+  // compute-kaldi-pitch-feats.  If nonzero, we
+  // provide the input as chunks of this size.
+  // This affects the energy normalization which
+  // has a small effect on the resulting features,
+  // especially at the beginning of a file.  For
+  // best compatibility with online operation
+  // (e.g. if you plan to train models for the
+  // online-deocding setup), you might want to set
+  // this to a small value, like one frame.
 
   bool simulate_first_pass_online; // Only relevant for the function ComputeKaldiPitch
-                                // which is called by compute-kaldi-pitch-feats,
-                                // and only relevant if frames_per_chunk is
-                                // nonzero.  If true, it will query the features
-                                // as soon as they are available, which
-                                // simulates the first-pass features you would
-                                // get in online decoding.  If false, the
-                                // features you will get will be the same as
-                                // those available at the end of the utterance,
-                                // after InputFinished() has been called:
-                                // e.g. during lattice rescoring.
+  // which is called by compute-kaldi-pitch-feats,
+  // and only relevant if frames_per_chunk is
+  // nonzero.  If true, it will query the features
+  // as soon as they are available, which
+  // simulates the first-pass features you would
+  // get in online decoding.  If false, the
+  // features you will get will be the same as
+  // those available at the end of the utterance,
+  // after InputFinished() has been called:
+  // e.g. during lattice rescoring.
   
   int32 recompute_frame;        // Only relevant for online operation or when
-                                // emulating online operation (e.g. when setting
-                                // frames_per_chunk).  This is the frame-index
-                                // on which we recompute the NCCF
-                                // (e.g. frame-index 500 = after 5 seconds); if
-                                // the segment ends before this we do it when
-                                // the segment ends.  We do this by re-computing
-                                // the signal average energy, which affects the
-                                // NCCF via the "ballast term", scaling the
-                                // resampled NCCF by a factor derived from the
-                                // average change in the "ballast term", and
-                                // re-doing the backtrace computation.  Making
-                                // this infinity would be the most exact, but
-                                // would introduce unwanted latency at the end
-                                // of long utterances, for little benefit.
+  // emulating online operation (e.g. when setting
+  // frames_per_chunk).  This is the frame-index
+  // on which we recompute the NCCF
+  // (e.g. frame-index 500 = after 5 seconds); if
+  // the segment ends before this we do it when
+  // the segment ends.  We do this by re-computing
+  // the signal average energy, which affects the
+  // NCCF via the "ballast term", scaling the
+  // resampled NCCF by a factor derived from the
+  // average change in the "ballast term", and
+  // re-doing the backtrace computation.  Making
+  // this infinity would be the most exact, but
+  // would introduce unwanted latency at the end
+  // of long utterances, for little benefit.
 
   bool nccf_ballast_online;     // This is a "hidden config" used only for
-                                // testing the online pitch extraction.  If
-                                // true, we compute the signal root-mean-squared
-                                // for the ballast term, only up to the current
-                                // frame, rather than the end of the current
-                                // chunk of signal. This makes the output
-                                // insensitive to the chunking, which is useful
-                                // for testing purposes.
+  // testing the online pitch extraction.  If
+  // true, we compute the signal root-mean-squared
+  // for the ballast term, only up to the current
+  // frame, rather than the end of the current
+  // chunk of signal. This makes the output
+  // insensitive to the chunking, which is useful
+  // for testing purposes.
 
   explicit PitchExtractionOptions():
       samp_freq(16000),
@@ -132,7 +138,7 @@ struct PitchExtractionOptions {
       nccf_ballast(7000),
       lowpass_filter_width(1),
       upsample_filter_width(5),
-      max_frames_latency(20),
+      max_frames_latency(0),
       frames_per_chunk(0),
       simulate_first_pass_online(false),
       recompute_frame(500),
@@ -204,42 +210,48 @@ struct PitchExtractionOptions {
   }
 };
 
-struct PostProcessPitchOptions {
-  BaseFloat pitch_scale;          // the final pitch scaled with this value
-  BaseFloat pov_scale;            // the final pov scaled with this value
+struct ProcessPitchOptions {
+  BaseFloat pitch_scale;     // the final normalized-log-pitch feature is
+  // scaled with this value
+  BaseFloat pov_scale;       // the final POV feature is scaled with this value
+  BaseFloat pov_offset;     // An offset that can be added to the final POV
+                            // feature (useful for online-decoding, where
+                            // we don't do CMN to the pitch-derived features.
+  
   BaseFloat delta_pitch_scale;
   BaseFloat delta_pitch_noise_stddev;  // stddev of noise we add to delta-pitch
   int32 normalization_left_context;  // left-context used for sliding-window
-                                     // normalization
+  // normalization
   int32 normalization_right_context; 
 
   // The next two configs are only relevant for online pitch
   // extraction.
   int32 normalization_left_context_first_pass;
   int32 normalization_right_context_first_pass;
-  
+
   int32 delta_window;
-  bool process_pitch;
+  
+  bool add_pov_feature;  
+  bool add_normalized_log_pitch;  
   bool add_delta_pitch;
   bool add_raw_log_pitch;
-  bool add_normalized_log_pitch;
-  bool add_pov_feature;
-  bool simulate_first_pass_online; // Only relevant for the function
-                                   // PostProcessPitch.
-  explicit PostProcessPitchOptions() :
-    pitch_scale(2.0),
-    pov_scale(2.0),
-    delta_pitch_scale(10.0),
-    delta_pitch_noise_stddev(0.005),
-    normalization_left_context(75),
-    normalization_right_context(75),
-    normalization_left_context_first_pass(75),
-    normalization_right_context_first_pass(30),
-    delta_window(2),
-    add_delta_pitch(true),
-    add_raw_log_pitch(false),
-    add_normalized_log_pitch(true),
-    add_pov_feature(true) {}
+  
+  explicit ProcessPitchOptions() :
+      pitch_scale(2.0),
+      pov_scale(2.0),
+      pov_offset(0.0),
+      delta_pitch_scale(10.0),
+      delta_pitch_noise_stddev(0.005),
+      normalization_left_context(75),
+      normalization_right_context(75),
+      normalization_left_context_first_pass(75),
+      normalization_right_context_first_pass(30),
+      delta_window(2),
+      add_pov_feature(true),
+      add_normalized_log_pitch(true),
+      add_delta_pitch(true),
+      add_raw_log_pitch(false) { }
+
 
   void Register(ParseOptions *po) {
     po->Register("pitch-scale", &pitch_scale,
@@ -247,6 +259,9 @@ struct PostProcessPitchOptions {
     po->Register("pov-scale", &pov_scale,
                  "Scaling factor for final POV (probability of voicing) "
                  "feature");
+    po->Register("pov-offset", &pov_offset,
+                 "This can be used to add an offset to the POV feature. "
+                 "Intended for use in online decoding as a substitute for CMN.");
     po->Register("delta-pitch-scale", &delta_pitch_scale,
                  "Term to scale the final delta log-pitch");
     po->Register("delta-pitch-noise-stddev", &delta_pitch_noise_stddev,
@@ -267,19 +282,17 @@ struct PostProcessPitchOptions {
                  &normalization_right_context_first_pass,
                  "Right-context (in frames) for moving window normalization, "
                  "applied in approximate first pass of online decoding");
-    po->Register("normalization-right-context", &normalization_right_context,
-                 "Right-context (in frames) for moving window normalization");    
     po->Register("delta-window", &delta_window,
                  "Number of frames on each side of central frame, to use for "
                  "delta window.");
     po->Register("add-pov-feature", &add_pov_feature,
-                "If true, the warped NCCF is added to output features");
+                 "If true, the warped NCCF is added to output features");
     po->Register("add-normalized-log-pitch", &add_normalized_log_pitch,
-                "If true, the log-pitch with POV-weighted mean subtraction "
-                "over 1.5 second window is added to output features");
+                 "If true, the log-pitch with POV-weighted mean subtraction "
+                 "over 1.5 second window is added to output features");
     po->Register("add-delta-pitch", &add_delta_pitch,
-                "If true, time derivative of log-pitch is added to output "
-                "features");
+                 "If true, time derivative of log-pitch is added to output "
+                 "features");
     po->Register("add-raw-log-pitch", &add_raw_log_pitch,
                  "If true, log(pitch) is added to output features");
   }
@@ -304,7 +317,7 @@ class OnlinePitchFeature: public OnlineBaseFeature {
   virtual bool IsLastFrame(int32 frame) const;
 
   /// Outputs the two-dimensional feature consisting of (pitch, NCCF).  You
-  /// should probably post-process this using class OnlinePostProcessPitch.
+  /// should probably post-process this using class OnlineProcessPitch.
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
   virtual void AcceptWaveform(BaseFloat sampling_rate,
@@ -322,7 +335,7 @@ class OnlinePitchFeature: public OnlineBaseFeature {
 /// Inputs are original 2 dims (pov, pitch).  It can produce various
 /// kinds of outputs, using the default options it will be (pov-feature,
 /// normalized-log-pitch, delta-log-pitch).
-class OnlinePostProcessPitch: public OnlineFeatureInterface {
+class OnlineProcessPitch: public OnlineFeatureInterface {
  public:
   virtual int32 Dim() const { return dim_; }
 
@@ -333,13 +346,14 @@ class OnlinePostProcessPitch: public OnlineFeatureInterface {
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
-  virtual ~OnlinePostProcessPitch() {  }
+  virtual ~OnlineProcessPitch() {  }
 
-  OnlinePostProcessPitch(const PostProcessPitchOptions &opts,
-                         OnlineFeatureInterface *src);
+  // Does not take ownership of "src".
+  OnlineProcessPitch(const ProcessPitchOptions &opts,
+                     OnlineFeatureInterface *src);
   
  private:
-  PostProcessPitchOptions opts_;
+  ProcessPitchOptions opts_;
 
   OnlineFeatureInterface *src_;
   
@@ -347,9 +361,9 @@ class OnlinePostProcessPitch: public OnlineFeatureInterface {
   
   struct NormalizationStats {
     int32 cur_num_frames; // value of src_->NumFramesReady() when "mean_pitch"
-                          // was set.
+    // was set.
     bool input_finished;  // true if input data was finished when "mean_pitch"
-                          // was computed.
+    // was computed.
     double sum_pov;       // sum of pov over relevant range
     double sum_log_pitch_pov; // sum of log(pitch) * pov over relevant range
     NormalizationStats(): cur_num_frames(-1), input_finished(false),
@@ -410,13 +424,22 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
 /// --add-pov-feature, --add-normalized-log-pitch, --add-delta-pitch,
 /// --add-raw-log-pitch determine which features we create; by default we create
 /// the first three.
-void PostProcessPitch(const PostProcessPitchOptions &opts,
-                      const MatrixBase<BaseFloat> &input,
-                      Matrix<BaseFloat> *output);
+void ProcessPitch(const ProcessPitchOptions &opts,
+                  const MatrixBase<BaseFloat> &input,
+                  Matrix<BaseFloat> *output);
 
-void PostProcessPitchNew(const PostProcessPitchOptions &opts,
-                         const MatrixBase<BaseFloat> &input,
-                         Matrix<BaseFloat> *output);
+/// This function combines ComputeKaldiPitch and ProcessPitch.  The reason
+/// why we need a separate function to do this is in order to be able to
+/// accurately simulate the online pitch-processing, for testing and for
+/// training models matched to the "first-pass" features.  It is sensitive to
+/// the variables in pitch_opts that relate to online processing,
+/// i.e. max_frames_latency, frames_per_chunk, simulate_first_pass_online,
+/// recompute_frame.
+void ComputeAndProcessKaldiPitch(const PitchExtractionOptions &pitch_opts,
+                                 const ProcessPitchOptions &process_opts,
+                                 const VectorBase<BaseFloat> &wave,
+                                 Matrix<BaseFloat> *output);
+
 
 
 /// @} End of "addtogroup feat"

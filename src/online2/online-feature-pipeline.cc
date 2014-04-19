@@ -54,10 +54,10 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
                  << "since you did not supply --add-pitch option.";
   }  // else use the defaults.
 
-  if (config.pitch_postprocess_config != "") {
-    ReadConfigFromFile(config.pitch_postprocess_config, &pitch_postprocess_opts);
+  if (config.pitch_process_config != "") {
+    ReadConfigFromFile(config.pitch_process_config, &pitch_process_opts);
     if (!add_pitch)
-      KALDI_WARN << "--pitch-postprocess-config option has no effect "
+      KALDI_WARN << "--pitch-process-config option has no effect "
                  << "since you did not supply --add-pitch option.";
   }  // else use the defaults.
 
@@ -166,8 +166,8 @@ void OnlineFeaturePipeline::Init() {
 
   if (config_.add_pitch) {
     pitch_ = new OnlinePitchFeature(config_.pitch_opts);
-    pitch_feature_ = new OnlinePostProcessPitch(config_.pitch_postprocess_opts,
-                                                pitch_);
+    pitch_feature_ = new OnlineProcessPitch(config_.pitch_process_opts,
+                                            pitch_);
     feature_ = new OnlineAppendFeature(cmvn_, pitch_feature_);
   } else {
     pitch_ = NULL;

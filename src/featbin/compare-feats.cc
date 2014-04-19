@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
       if (feat1.NumCols() != feat2.NumCols()) {
         KALDI_WARN << "Feature dimensions differ for utterance "
                    << utt << ", " << feat1.NumCols() << " vs. "
-                   << feat1.NumCols() << ", skipping  utterance."
+                   << feat2.NumCols() << ", skipping  utterance."
                    << utt;
         num_err++;
         continue;

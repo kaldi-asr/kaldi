@@ -23,7 +23,6 @@
 #include "util/common-utils.h"
 #include "feat/online-feature.h"
 
-
 int main(int argc, char *argv[]) {
   try {
     typedef kaldi::int32 int32;
@@ -33,7 +32,7 @@ int main(int argc, char *argv[]) {
         "using the same code as used for online decoding in the 'new' setup in\n"
         "online2/ and online2bin/.  If the --spk2utt option is used, it uses\n"
         "prior utterances from the same speaker to back off two at the utterance\n"
-        "beginning.\n"
+        "beginning.  See also apply-cmvn-sliding.\n"
         "\n"
         "Usage: apply-cmvn-online [options] <global-cmvn-stats> <feature-rspecifier> "
         "<feature-wspecifier>\n"

@@ -113,7 +113,7 @@ class OnlineMatrixFeature: public OnlineFeatureInterface {
  public:
   /// Caution: this class maintains the const reference from the constructor, so
   /// don't let it go out of scope while this object exists.
-  explicit OnlineMatrixFeature(const Matrix<BaseFloat> &mat): mat_(mat) { }
+  explicit OnlineMatrixFeature(const MatrixBase<BaseFloat> &mat): mat_(mat) { }
 
   virtual int32 Dim() const { return mat_.NumCols(); }
 
@@ -128,7 +128,7 @@ class OnlineMatrixFeature: public OnlineFeatureInterface {
   }
 
  private:
-  const Matrix<BaseFloat> &mat_;
+  const MatrixBase<BaseFloat> &mat_;
 };
 
 

@@ -48,7 +48,7 @@ struct OnlineFeaturePipelineCommandLineConfig {
   std::string plp_config;
   bool add_pitch;
   std::string pitch_config;
-  std::string pitch_postprocess_config;
+  std::string pitch_process_config;
   std::string cmvn_config;
   std::string global_cmvn_stats_rxfilename;
   bool add_deltas;
@@ -72,9 +72,9 @@ struct OnlineFeaturePipelineCommandLineConfig {
                  "MFCC/PLP features.");
     po->Register("pitch-config", &pitch_config, "Configuration class file for "
                  "pitch features (e.g. conf/pitch.conf)");
-    po->Register("pitch-postprocess-config", &pitch_postprocess_config,
+    po->Register("pitch-process-config", &pitch_process_config,
                  "Configuration class file for post-processing pitch features "
-                 "(e.g. conf/pitch_postprocess.conf)");
+                 "(e.g. conf/pitch_process.conf)");
     po->Register("cmvn-config", &cmvn_config, "Configuration class "
                  "file for online CMVN features (e.g. conf/online_cmvn.conf)");
     po->Register("global-cmvn-stats", &global_cmvn_stats_rxfilename,
@@ -120,8 +120,8 @@ struct OnlineFeaturePipelineConfig {
 
   bool add_pitch;
   PitchExtractionOptions pitch_opts;  // Options for pitch extraction, if done.
-  PostProcessPitchOptions pitch_postprocess_opts;  // Options for pitch
-                                                   // postprocessing
+  ProcessPitchOptions pitch_process_opts;  // Options for pitch
+                                                   // processing
 
   OnlineCmvnOptions cmvn_opts;  // Options for online CMN/CMVN computation.
 
@@ -215,8 +215,8 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
 
   OnlineBaseFeature *base_feature_;        // MFCC/PLP
   OnlinePitchFeature *pitch_;              // Raw pitch
-  OnlinePostProcessPitch *pitch_feature_;  // Postprocessed pitch
-  OnlineFeatureInterface *feature_;        // CMVN (+ postprocessed pitch)
+  OnlineProcessPitch *pitch_feature_;  // Processed pitch
+  OnlineFeatureInterface *feature_;        // CMVN (+ processed pitch)
 
   OnlineCmvn *cmvn_;
   OnlineFeatureInterface *splice_or_delta_;  // This may be NULL if we're not

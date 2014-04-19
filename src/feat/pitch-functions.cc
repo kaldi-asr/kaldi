@@ -25,99 +25,19 @@
 #include "feat/pitch-functions.h"
 #include "feat/resample.h"
 #include "feat/mel-computations.h"
+#include "feat/online-feature.h"
 
 namespace kaldi {
 
 
-/*
-  WeightedMovingWindowNormalize does weighted moving window normalization.
-
-  The simplest possible moving window normalization would be to set
-  mean_subtracted_log_pitch(i) to raw_log_pitch(i) minus
-  the average over the range of raw_log_pitch over the range
-  [ i - window-size/2 ... i + window-size/2 ].  At the edges of
-  the file, the window is truncated to be within the file.
-
-  Weighted moving window normalization subtracts a weighted
-  average, where the weight corresponds to "pov" (the probability
-  of voicing).  This seemed to slightly improve results versus
-  vanilla moving window normalization, although the effect was small.
-*/
-
-void WeightedMovingWindowNormalize(
-    int32 normalization_left_context,
-    int32 normalization_right_context,
-    const VectorBase<BaseFloat> &pov,
-    const VectorBase<BaseFloat> &raw_log_pitch,
-    Vector<BaseFloat> *normalized_log_pitch) {
-  int32 num_frames = pov.Dim();
-  KALDI_ASSERT(num_frames == raw_log_pitch.Dim());
-  int32 last_window_begin = -1, last_window_end = -1;
-  double weighted_sum = 0.0, pov_sum = 0.0;
-
-  for (int32 t = 0; t < num_frames; t++) {
-    int32 window_begin = t - normalization_left_context,
-        window_end = t + normalization_right_context + 1;
-
-    if (window_begin < 0)
-      window_begin = 0;
-    if (window_end > num_frames)
-      window_end = num_frames;
-
-    /*  Old code was below.  I'm simplifying this to make it easier
-        to replicate in the online setup, and to reduce latency at
-        the beginning of utterances.
-        // shift the window if it overlaps with the begin or end of the file.
-    if (window_begin < 0) {
-      window_end -= window_begin;
-      window_begin = 0;
-    }
-    if (window_end > num_frames) {
-      window_begin -= (window_end - num_frames);
-      window_end = num_frames;
-      if (window_begin < 0) window_begin = 0;
-      }*/
-    
-    if (last_window_begin == -1) {
-      SubVector<BaseFloat> pitch_part(raw_log_pitch, window_begin,
-                                      window_end - window_begin);
-      SubVector<BaseFloat> pov_part(pov, window_begin,
-                                    window_end - window_begin);
-      // weighted sum of pitch
-      weighted_sum += VecVec(pitch_part, pov_part);
-
-      // sum of pov
-      pov_sum = pov_part.Sum();
-    } else {
-      if (window_begin > last_window_begin) {
-        KALDI_ASSERT(window_begin == last_window_begin + 1);
-        pov_sum -= pov(last_window_begin);
-        weighted_sum -= pov(last_window_begin)*raw_log_pitch(last_window_begin);
-      }
-      if (window_end > last_window_end) {
-        KALDI_ASSERT(window_end == last_window_end + 1);
-        pov_sum += pov(last_window_end);
-        weighted_sum += pov(last_window_end) * raw_log_pitch(last_window_end);
-      }
-    }
-
-    KALDI_ASSERT(window_end - window_begin > 0);
-    last_window_begin = window_begin;
-    last_window_end = window_end;
-    (*normalized_log_pitch)(t) = raw_log_pitch(t) -
-                                      weighted_sum / pov_sum;
-    KALDI_ASSERT((*normalized_log_pitch)(t) -
-                 (*normalized_log_pitch)(t) == 0);
-  }
-}
-
 /**
    This function processes the NCCF n to a POV feature f by applying the formula
-     f = (1.0001 - n)^0.15  - 1.0.
+     f = (1.0001 - n)^0.15  - 1.0
    This is a nonlinear function designed to make the output reasonably Gaussian
    distributed.  Before doing this, the NCCF distribution is in the range [-1,
    1] but has a strong peak just before 1.0, which this function smooths out.
- */
+*/
+
 BaseFloat NccfToPovFeature(BaseFloat n) {
   if (n > 1.0) {
     n = 1.0;
@@ -243,86 +163,6 @@ void SelectLags(const PitchExtractionOptions &opts,
   std::copy(tmp_lags.begin(), tmp_lags.end(), lags->Data());
 }
 
-/**
-   This function applies to the pitch the normal delta (time-derivative)
-   computation using a five frame window, multiplying by a normalized version of
-   the scales [ -2, 1, 0, 1, 2 ].  It then adds a small amount of noise to the
-   output, in order to avoid peaks appearing in the distribution of delta pitch,
-   that correspond to the discretization interval for log-pitch.
-*/
-void ExtractDeltaPitch(const PostProcessPitchOptions &opts,
-                       const VectorBase<BaseFloat> &input,
-                       Vector<BaseFloat> *output) {
-  int32 num_frames = input.Dim();
-  DeltaFeaturesOptions delta_opts;
-  delta_opts.order = 1;
-  delta_opts.window = opts.delta_window;
-  Matrix<BaseFloat> matrix_input(num_frames, 1),
-      matrix_output;
-  matrix_input.CopyColFromVec(input, 0);
-  ComputeDeltas(delta_opts, matrix_input, &matrix_output);
-  KALDI_ASSERT(matrix_output.NumRows() == matrix_input.NumRows() &&
-               matrix_output.NumCols() == 2);
-  output->Resize(num_frames);
-  output->CopyColFromMat(matrix_output, 1);
-
-  Vector<BaseFloat> noise(num_frames);
-  noise.SetRandn();
-  output->AddVec(opts.delta_pitch_noise_stddev, noise);
-}
-
-
-void PostProcessPitch(const PostProcessPitchOptions &opts,
-                      const MatrixBase<BaseFloat> &input,
-                      Matrix<BaseFloat> *output) {
-  int32 T = input.NumRows();
-  // We've coded this for clarity rather than memory efficiency; anyway the
-  // memory consumption is trivial.
-  Vector<BaseFloat> nccf(T), raw_pitch(T), raw_log_pitch(T),
-      pov(T), pov_feature(T), normalized_log_pitch(T),
-      delta_log_pitch(T);
-
-  nccf.CopyColFromMat(input, 0);
-  raw_pitch.CopyColFromMat(input, 1);
-  KALDI_ASSERT(raw_pitch.Min() > 0 && "Non-positive pitch.");
-  raw_log_pitch.CopyFromVec(raw_pitch);
-  raw_log_pitch.ApplyLog();
-  for (int32 t = 0; t < T; t++) {
-    pov(t) = NccfToPov(nccf(t));
-    pov_feature(t) = opts.pov_scale * NccfToPovFeature(nccf(t));
-  }
-  WeightedMovingWindowNormalize(opts.normalization_left_context,
-                                opts.normalization_right_context,
-                                pov, raw_log_pitch, &normalized_log_pitch);
-  // the normalized log pitch has quite a small variance; scale it up a little
-  // (this interacts with variance flooring in early system build stages).
-  normalized_log_pitch.Scale(opts.pitch_scale);
-
-  ExtractDeltaPitch(opts, raw_log_pitch, &delta_log_pitch);
-  delta_log_pitch.Scale(opts.delta_pitch_scale);
-
-  // Normally we'll have all of these but raw_log_pitch.
-  int32 output_ncols =
-      (opts.add_pov_feature ? 1 : 0) +
-      (opts.add_normalized_log_pitch ? 1 : 0) +
-      (opts.add_delta_pitch ? 1 : 0) +
-      (opts.add_raw_log_pitch ? 1 : 0);
-  if (output_ncols == 0) {
-    KALDI_ERR << " At least one of the pitch features should be chosen. "
-              << "Check your post-process pitch options.";
-  }
-  output->Resize(T, output_ncols, kUndefined);
-  int32 col = 0;
-  if (opts.add_pov_feature)
-    output->CopyColFromVec(pov_feature, col++);
-  if (opts.add_normalized_log_pitch)
-    output->CopyColFromVec(normalized_log_pitch, col++);
-  if (opts.add_delta_pitch)
-    output->CopyColFromVec(delta_log_pitch, col++);
-  if (opts.add_raw_log_pitch)
-    output->CopyColFromVec(raw_log_pitch, col++);
-  KALDI_ASSERT(col == output_ncols);
-}
 
 /**
    This function computes the local-cost for the Viterbi computation,
@@ -754,8 +594,10 @@ class OnlinePitchFeatureImpl {
   /// available to process (this is called from inside AcceptWaveform()).
   /// Note: the number of frames differs slightly from the number the
   /// old pitch code gave.
+  /// Note: the number this returns depends on whether input_finished_ == true;
+  /// if it is, it will "force out" a final frame or two.
   int32 NumFramesAvailable(int64 num_downsampled_samples) const;
-
+  
   /// This function extracts from the signal the samples numbered from
   /// "sample_index" (numbered in the full downsampled signal, not just this
   /// part), and of length equal to window->Dim().  It uses the data members
@@ -763,7 +605,8 @@ class OnlinePitchFeatureImpl {
   /// as the more recent part of the downsampled wave "downsampled_wave_part"
   /// which is provided.
   ///
-  /// @param downsampled_wave_part  One chunk of the downsampled wave.
+  /// @param downsampled_wave_part  One chunk of the downsampled wave,
+  ///                      starting from sample-index downsampled_samples_discarded_.
   /// @param sample_index  The desired starting sample index (measured from
   ///                      the start of the whole signal, not just this part).
   /// @param window  The part of the signal is output to here.
@@ -916,11 +759,14 @@ OnlinePitchFeatureImpl::OnlinePitchFeatureImpl(
 int32 OnlinePitchFeatureImpl::NumFramesAvailable(
     int64 num_downsampled_samples) const {
   int32 frame_shift = opts_.NccfWindowShift(),
-      frame_length = opts_.NccfWindowSize(),
-      full_frame_length = frame_length + nccf_last_lag_;
-  if (num_downsampled_samples < full_frame_length) return 0;
+      frame_length = opts_.NccfWindowSize();
+  // Use the "full frame length" to compute the number
+  // of frames only if the input is not finished.
+  if (!input_finished_)
+    frame_length += nccf_last_lag_;
+  if (num_downsampled_samples < frame_length) return 0;
   else
-    return ((num_downsampled_samples - full_frame_length) / frame_shift) + 1;
+    return ((num_downsampled_samples - frame_length) / frame_shift) + 1;
 }
 
 void OnlinePitchFeatureImpl::UpdateRemainder(
@@ -975,6 +821,20 @@ void OnlinePitchFeatureImpl::ExtractFrame(
   int32 full_frame_length = window->Dim();
   int32 offset = static_cast<int32>(sample_index -
                                     downsampled_samples_processed_);
+
+  if (offset + full_frame_length > downsampled_wave_part.Dim()) {
+    // Requested frame is past end of the signal.  This should only happen if
+    // input_finished_ == true, when we're flushing out the last couple of
+    // frames of signal.  In this case we pad with zeros.
+    KALDI_ASSERT(input_finished_);
+    int32 new_full_frame_length = downsampled_wave_part.Dim() - offset;
+    KALDI_ASSERT(new_full_frame_length > 0);
+    window->SetZero();
+    SubVector<BaseFloat> sub_window(*window, 0, new_full_frame_length);
+    ExtractFrame(downsampled_wave_part, sample_index, &sub_window);
+    return;
+  }
+  
   // "offset" is the offset of the start of the frame, into this
   // signal.
   if (offset >= 0) {
@@ -1025,6 +885,10 @@ void OnlinePitchFeatureImpl::GetFrame(int32 frame,
 
 void OnlinePitchFeatureImpl::InputFinished() {
   input_finished_ = true;
+  // Process an empty waveform; this has an effect because
+  // after setting input_finished_ to true, NumFramesAvailable()
+  // will return a slightly larger number.
+  AcceptWaveform(opts_.samp_freq, Vector<BaseFloat>());
   int32 num_frames = static_cast<size_t>(frame_info_.size() - 1);
   if (num_frames < opts_.recompute_frame)
     RecomputeBacktraces();
@@ -1141,12 +1005,10 @@ OnlinePitchFeatureImpl::~OnlinePitchFeatureImpl() {
 void OnlinePitchFeatureImpl::AcceptWaveform(
     BaseFloat sampling_rate,
     const VectorBase<BaseFloat> &wave) {
-  // we never flush out the last few samples of input waveform... this would on
-  // very rare occasions affect the number of frames processed, but since the
-  // number of frames produced is anyway different from the MFCC/PLP processing
-  // code, we already need to tolerate that.
-  const bool flush = false;
-
+  // flush out the last few samples of input waveform only if input_finished_ ==
+  // true.
+  const bool flush = input_finished_;
+  
   Vector<BaseFloat> downsampled_wave;
   signal_resampler_->Resample(wave, flush, &downsampled_wave);
 
@@ -1209,6 +1071,10 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
       KALDI_ASSERT(end_sample > 0);  // or should have processed this frame last
                                      // time.  Note: end_sample is one past last
                                      // sample.
+      if (end_sample > downsampled_wave.Dim()) {
+        KALDI_ASSERT(input_finished_);
+        end_sample = downsampled_wave.Dim();
+      }
       SubVector<BaseFloat> new_part(downsampled_wave, prev_frame_end_sample,
                                     end_sample - prev_frame_end_sample);
       cur_num_samp += new_part.Dim();
@@ -1463,7 +1329,7 @@ inline void AppendVector(const VectorBase<Real> &src, Vector<Real> *dst) {
 
 
 /**
-   Note on the implementation of OnlinePostProcessPitch: the
+   Note on the implementation of OnlineProcessPitch: the
    OnlineFeatureInterface allows random access to features (i.e. not necessarily
    sequential order), so we need to support that.  But we don't need to support
    it very efficiently, and our implementation is most efficient if frames are
@@ -1477,8 +1343,8 @@ inline void AppendVector(const VectorBase<Real> &src, Vector<Real> *dst) {
    of how the OnlinePitchFeature class works to minimize the amount of
    re-querying we had to do.
 */
-OnlinePostProcessPitch::OnlinePostProcessPitch(
-    const PostProcessPitchOptions &opts,
+OnlineProcessPitch::OnlineProcessPitch(
+    const ProcessPitchOptions &opts,
     OnlineFeatureInterface *src):
     opts_(opts), src_(src),
     dim_ ((opts.add_pov_feature ? 1 : 0)
@@ -1493,7 +1359,7 @@ OnlinePostProcessPitch::OnlinePostProcessPitch(
 }
 
 
-void OnlinePostProcessPitch::GetFrame(int32 frame,
+void OnlineProcessPitch::GetFrame(int32 frame,
                                       VectorBase<BaseFloat> *feat) {
   KALDI_ASSERT(feat->Dim() == dim_ &&
                frame < NumFramesReady());
@@ -1509,14 +1375,15 @@ void OnlinePostProcessPitch::GetFrame(int32 frame,
   KALDI_ASSERT(index == dim_);
 }
 
-BaseFloat OnlinePostProcessPitch::GetPovFeature(int32 frame) const {
+BaseFloat OnlineProcessPitch::GetPovFeature(int32 frame) const {
   Vector<BaseFloat> tmp(2);
   src_->GetFrame(frame, &tmp);
   BaseFloat nccf = tmp(0);
-  return opts_.pov_scale * NccfToPovFeature(nccf);  
+  return opts_.pov_scale * NccfToPovFeature(nccf)
+      + opts_.pov_offset;
 }
 
-BaseFloat OnlinePostProcessPitch::GetDeltaPitchFeature(int32 frame) {
+BaseFloat OnlineProcessPitch::GetDeltaPitchFeature(int32 frame) {
   // Rather than computing the delta pitch directly in code here,
   // which might seem easier, we accumulate a small window of features
   // and call ComputeDeltas.  This might seem like overkill; the reason
@@ -1547,7 +1414,7 @@ BaseFloat OnlinePostProcessPitch::GetDeltaPitchFeature(int32 frame) {
       opts_.delta_pitch_scale;
 }
 
-BaseFloat OnlinePostProcessPitch::GetRawLogPitchFeature(int32 frame) const {
+BaseFloat OnlineProcessPitch::GetRawLogPitchFeature(int32 frame) const {
   Vector<BaseFloat> tmp(2);
   src_->GetFrame(frame, &tmp);
   BaseFloat pitch = tmp(1);
@@ -1555,7 +1422,7 @@ BaseFloat OnlinePostProcessPitch::GetRawLogPitchFeature(int32 frame) const {
   return log(pitch);
 }
 
-BaseFloat OnlinePostProcessPitch::GetNormalizedLogPitchFeature(int32 frame) {
+BaseFloat OnlineProcessPitch::GetNormalizedLogPitchFeature(int32 frame) {
   UpdateFrame(frame);
   Vector<BaseFloat> tmp(2);
   src_->GetFrame(frame, &tmp);
@@ -1567,13 +1434,12 @@ BaseFloat OnlinePostProcessPitch::GetNormalizedLogPitchFeature(int32 frame) {
 }
 
 
-
 // inline
-void OnlinePostProcessPitch::GetNormalizationWindow(int32 t,
-                                                    int32 src_frames_ready,
-                                                    bool input_finished,
-                                                    int32 *window_begin,
-                                                    int32 *window_end) const {
+void OnlineProcessPitch::GetNormalizationWindow(int32 t,
+                                                int32 src_frames_ready,
+                                                bool input_finished,
+                                                int32 *window_begin,
+                                                int32 *window_end) const {
   int32 left_context = (input_finished ? opts_.normalization_left_context :
                         opts_.normalization_left_context_first_pass);
   int32 right_context = (input_finished ? opts_.normalization_right_context :
@@ -1587,7 +1453,7 @@ void OnlinePostProcessPitch::GetNormalizationWindow(int32 t,
 // called from GetNormalizedLogPitchFeature.
 // the cur_num_frames and input_finished variables are needed because the
 // pitch features for a given frame may change as we see more data.
-void OnlinePostProcessPitch::UpdateFrame(int32 frame) {
+void OnlineProcessPitch::UpdateFrame(int32 frame) {
   KALDI_ASSERT(frame >= 0);
   if (normalization_stats_.size() <= frame)
     normalization_stats_.resize(frame + 1);
@@ -1654,7 +1520,7 @@ void OnlinePostProcessPitch::UpdateFrame(int32 frame) {
   }
 }
 
-int32 OnlinePostProcessPitch::NumFramesReady() const {
+int32 OnlineProcessPitch::NumFramesReady() const {
   int32 src_frames_ready = src_->NumFramesReady();
   if (src_frames_ready == 0) return 0;
   else if (src_->IsLastFrame(src_frames_ready - 1)) {
@@ -1665,13 +1531,90 @@ int32 OnlinePostProcessPitch::NumFramesReady() const {
   }
 }
 
-void PostProcessPitchNew(const PostProcessPitchOptions &opts,
-                         const MatrixBase<BaseFloat> &input,
-                         Matrix<BaseFloat> *output) {
+void ProcessPitch(const ProcessPitchOptions &opts,
+                      const MatrixBase<BaseFloat> &input,
+                      Matrix<BaseFloat> *output) {
+  OnlineMatrixFeature pitch_feat(input);
   
-  
+  OnlineProcessPitch online_process_pitch(opts, &pitch_feat);
+
+  output->Resize(online_process_pitch.NumFramesReady(),
+                 online_process_pitch.Dim());
+  for (int32 t = 0; t < online_process_pitch.NumFramesReady(); t++) {
+    SubVector<BaseFloat> row(*output, t);
+    online_process_pitch.GetFrame(t, &row);
+  }
 }
 
-    
 
-}  // namespace kaldi
+void ComputeAndProcessKaldiPitch(
+    const PitchExtractionOptions &pitch_opts,
+    const ProcessPitchOptions &process_opts,    
+    const VectorBase<BaseFloat> &wave,
+    Matrix<BaseFloat> *output) {
+  
+  
+  OnlinePitchFeature pitch_extractor(pitch_opts);
+
+  if (pitch_opts.simulate_first_pass_online)
+    KALDI_ASSERT(pitch_opts.frames_per_chunk > 0 &&
+                 "--simulate-first-pass-online option does not make sense "
+                 "unless you specify --frames-per-chunk");
+
+  OnlineProcessPitch post_process(process_opts, &pitch_extractor);
+
+  int32 cur_rows = 100;
+  Matrix<BaseFloat> feats(cur_rows, post_process.Dim());
+  
+  int32 cur_offset = 0, cur_frame = 0,
+      samp_per_chunk = pitch_opts.frames_per_chunk *
+      pitch_opts.samp_freq * 1.0e-03 * pitch_opts.frame_shift_ms;
+
+
+  // We request the first-pass features as soon as they are available,
+  // regardless of whether opts.simulate_first_pass_online == true.  If
+  // opts.simulate_first_pass_online == true this should
+  // not affect the features generated, but it helps us to test the code
+  // in a way that's closer to what online decoding would see.
+  
+  while (cur_offset < wave.Dim()) {
+    int32 num_samp;
+    if (samp_per_chunk > 0)
+      num_samp = std::min(samp_per_chunk, wave.Dim() - cur_offset);
+    else  // user left opts.frames_per_chunk at zero.
+      num_samp = wave.Dim();
+    SubVector<BaseFloat> wave_chunk(wave, cur_offset, num_samp);
+    pitch_extractor.AcceptWaveform(pitch_opts.samp_freq, wave_chunk);
+    cur_offset += num_samp;
+    if (cur_offset == wave.Dim())
+      pitch_extractor.InputFinished();
+    // Get each frame as soon as it is ready.
+    for (; cur_frame < post_process.NumFramesReady(); cur_frame++) {
+      if (cur_frame >= cur_rows) {
+        cur_rows *= 2;
+        feats.Resize(cur_rows, post_process.Dim(), kCopyData);
+      }
+      SubVector<BaseFloat> row(feats, cur_frame);
+      post_process.GetFrame(cur_frame, &row);
+    }
+  }
+  
+  if (pitch_opts.simulate_first_pass_online) {
+    if (cur_frame == 0) {
+      KALDI_WARN << "No features output since wave file too short";
+      output->Resize(0, 0);
+    } else {
+      *output = feats.RowRange(0, cur_frame);
+    }
+  } else {
+    // want the "final" features, so get them again.
+    output->Resize(post_process.NumFramesReady(), post_process.Dim());
+    for (int32 frame = 0; frame < post_process.NumFramesReady(); frame++) {
+      SubVector<BaseFloat> row(*output, frame);
+      post_process.GetFrame(frame, &row);
+    }
+  }
+}
+
+
+}  // namespace kald

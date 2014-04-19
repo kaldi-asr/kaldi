@@ -70,7 +70,7 @@ static void UnitTestPieces() {
   for (int32 n = 0; n < 10; n++) {
     // the parametrization object
     PitchExtractionOptions op;
-    PostProcessPitchOptions op2;
+    ProcessPitchOptions op2;
     op2.delta_pitch_noise_stddev = 0.0;  // to avoid mismatch of delta_log_pitch
                                          // brought by rand noise.
     op.nccf_ballast_online = true;  // this is necessary for the computation
@@ -96,13 +96,13 @@ static void UnitTestPieces() {
     // trying to have same opts as baseline.
     // compute pitch.
     ComputeKaldiPitch(op, v, &m1);
-    PostProcessPitch(op2, m1, &m1p);
+    ProcessPitch(op2, m1, &m1p);
 
     Matrix<BaseFloat> m2, m2p;
 
     { // compute it online with multiple pieces.
       OnlinePitchFeature pitch_extractor(op);
-      OnlinePostProcessPitch postprocess_pitch(op2, &pitch_extractor);
+      OnlineProcessPitch process_pitch(op2, &pitch_extractor);
       int32 start_samp = 0;
       while (start_samp < v.Dim()) {
         int32 num_samp = rand() % (v.Dim() + 1 - start_samp);
@@ -113,12 +113,12 @@ static void UnitTestPieces() {
       pitch_extractor.InputFinished();
       int32 num_frames = pitch_extractor.NumFramesReady();
       m2.Resize(num_frames, 2);
-      m2p.Resize(num_frames, postprocess_pitch.Dim());
+      m2p.Resize(num_frames, process_pitch.Dim());
       for (int32 frame = 0; frame < num_frames; frame++) {
         SubVector<BaseFloat> row(m2, frame);
         pitch_extractor.GetFrame(frame, &row);
         SubVector<BaseFloat> rowp(m2p, frame);
-        postprocess_pitch.GetFrame(frame, &rowp);
+        process_pitch.GetFrame(frame, &rowp);
       }
     }
     AssertEqual(m1, m2);
@@ -129,7 +129,7 @@ static void UnitTestPieces() {
   }
 }
 
- extern bool pitch_use_naive_search; // was declared in pitch-functions.cc
+extern bool pitch_use_naive_search; // was declared in pitch-functions.cc
 
 // Make sure that doing a calculation on the whole waveform gives
 // the same results as doing on the waveform broken into pieces.
@@ -271,53 +271,6 @@ static void UnitTestKeeleNccfBallast() {
   }
 }
 
-extern void WeightedMovingWindowNormalize(
-    int32 normalization_left_context,
-    int32 normalization_right_context,
-    const VectorBase<BaseFloat> &pov,
-    const VectorBase<BaseFloat> &raw_log_pitch,
-    Vector<BaseFloat> *normalized_log_pitch);
-
-static void UnitTestWeightedMovingWindowNormalize() {
-  KALDI_LOG << "=== UnitTestWeightedMovingWindowNormalize1() ===\n";
-  // compare the results of WeightedMovingWindowNormalize and Sliding CMN
-  // with uniform weights.
-  for (int32 i = 0; i < 20; i++) {
-    int32 num_frames = 1 + (rand()%100 * 10);
-    int32 normalization_left_context = 5 + rand() % 50,
-        normalization_right_context =  5 + rand() % 50;
-    Matrix<BaseFloat> feat(num_frames, 2),
-                      output_feat(num_frames, 2);
-    feat.SetRandn();
-    feat.ApplyFloor(0.0);
-
-    Vector<BaseFloat> pov(num_frames),
-                      log_pitch(num_frames),
-                      mean_subtracted_log_pitch(num_frames);
-    pov.CopyColFromMat(feat, 0);
-    log_pitch.CopyColFromMat(feat, 1);
-    WeightedMovingWindowNormalize(normalization_left_context,
-                                  normalization_right_context,
-                                  pov, log_pitch ,
-                                  &mean_subtracted_log_pitch);
-    output_feat.CopyColFromVec(mean_subtracted_log_pitch, 1);
-
-    for (int32 iter = 0; iter < 10; iter++) {
-      int32 frame = rand() % num_frames;
-      double tot_weight = 0.0, tot = 0.0;
-      for (int32 i = 0; i < num_frames; i++) {
-        if (i >= frame - normalization_left_context &&
-            i <= frame + normalization_right_context) {
-          tot_weight += pov(i);
-          tot += pov(i) * log_pitch(i);
-        }
-      }
-      AssertEqual(log_pitch(frame) - tot / tot_weight,
-                  mean_subtracted_log_pitch(frame));
-    }
-  }
-}
-
 static void UnitTestPitchExtractionSpeed() {
   KALDI_LOG << "=== UnitTestPitchExtractionSpeed() ===\n";
   // use pitch code with default configuration..
@@ -414,7 +367,7 @@ void UnitTestDiffSampleRate() {
     m.Write(os, false);
   }
 }
-void UnitTestPostProcess() {
+void UnitTestProcess() {
   for (int32 i = 1; i < 11; i++) {
     std::string wavefile;
     std::string num;
@@ -437,39 +390,15 @@ void UnitTestPostProcess() {
     op.max_f0 = 400;
     Matrix<BaseFloat> m, m2;
     ComputeKaldiPitch(op, waveform, &m);
-    PostProcessPitchOptions postprop_op;
+    ProcessPitchOptions postprop_op;
     // postprop_op.pov_nonlinearity = 2;
-    PostProcessPitch(postprop_op, m, &m2);
+    // Use zero noise, or the features won't be identical.
+    postprop_op.delta_pitch_noise_stddev = 0.0;
+    ProcessPitch(postprop_op, m, &m2);
+
     std::string outfile = "keele/"+num+"-processed-kaldi.txt";
     std::ofstream os(outfile.c_str());
     m2.Write(os, false);
-  }
-}
-
-extern void ExtractDeltaPitch(const PostProcessPitchOptions &opts,
-                              const VectorBase<BaseFloat> &input,
-                              Vector<BaseFloat> *output);
-
-void UnitTestDeltaPitch() {
-  KALDI_LOG << "=== UnitTestDeltaPitch() ===\n";
-  for (int32 i = 0; i < 1; i++) {
-    int32 num_frames = 1 + (rand()%10 * 1000);
-    Vector<BaseFloat> feat(num_frames),
-      output_feat(num_frames), output_feat2(num_frames);
-    feat.SetRandn();
-    for (int32 j = 2; j < num_frames - 2; j++)
-      output_feat2(j) = 1.0 / 10.0  *
-        (-2.0 * feat(j - 2) - feat(j - 1) + feat(j + 1) + 2.0 * feat(j + 2));
-    PostProcessPitchOptions op;
-    op.delta_pitch_noise_stddev = 0;
-    ExtractDeltaPitch(op, feat, &output_feat);
-    // Don't test first 2 and last 2 frames.
-    output_feat(0) = output_feat(1) =
-        output_feat(num_frames - 2) = output_feat(num_frames - 1) = 0.0;
-    if (!output_feat.ApproxEqual(output_feat2, 0.05)) {
-      KALDI_ERR << "output feat " << output_feat << " vs. "
-        << " ouput feat2 " << output_feat2;
-    }
   }
 }
 
@@ -477,17 +406,16 @@ static void UnitTestFeatNoKeele() {
   UnitTestSimple();
   UnitTestPieces();
   UnitTestSearch();
-  UnitTestDeltaPitch();
-  UnitTestWeightedMovingWindowNormalize();
 }
+
 static void UnitTestFeatWithKeele() {
+  UnitTestProcess();
   UnitTestKeele();
   UnitTestPenaltyFactor();
   UnitTestKeeleNccfBallast();
   UnitTestPitchExtractionSpeed();
   UnitTestPitchExtractorCompareKeele();
   UnitTestDiffSampleRate();
-  UnitTestPostProcess();
 }
 
 }
