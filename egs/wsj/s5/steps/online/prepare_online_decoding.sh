@@ -9,6 +9,7 @@ feature_type=mfcc
 online_cmvn_config=conf/online_cmvn.conf
 add_pitch=false
 pitch_config=conf/pitch.conf
+pitch_process_config=conf/pitch_process.conf
 per_utt_basis=true # If true, then treat each utterance as a separate speaker
                    # for purposes of basis training... this is recommended if
                    # the number of actual speakers in your training set is less
@@ -209,6 +210,22 @@ if [ $stage -le 3 ]; then
       echo "$0: error copying pitch config to $dir/conf/"
       exit 1;
     fi;
+    echo "$0: creating $dir/conf/pitch_process.conf"
+    echo "--pitch-process-config=$dir/conf/pitch_process.conf" >>$conf
+    if ! cp $pitch_process_config $dir/conf/pitch_process.conf; then
+      echo "$0: error copying pitch process config to $dir/conf/"
+      exit 1;
+    fi;
+    nfields=$(sed -n '2,2p' $dir/global_cmvn.stats | \
+      perl -e '$_ = <>; s/^\s+|\s+$//g; print scalar(split);');
+    if [ $nfields != 17 ]; then
+      echo "$0: $dir/global_cmvn.stats has $nfields entries per row (expected 17)."
+      echo "$0: Did you append pitch features?"
+      exit 1;
+    fi
+    offset=$(sed -n '2,2p' $dir/global_cmvn.stats | \
+      perl -e '$_ = <>; s/^\s+|\s+$//g; ($t, $c) = (split)[13, 16]; print -$t/$c;');
+    echo "--pov-offset=$offset" >>$dir/conf/pitch_process.conf
   fi
   
   echo "--fmllr-basis=$dir/fmllr.basis" >>$conf
