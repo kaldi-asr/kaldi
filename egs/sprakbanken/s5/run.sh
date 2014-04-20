@@ -6,16 +6,16 @@
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 
-sprak1=/home/ask/0565-1
-sprak2=/home/ask/0565-2
-sprak3=/home/ask/0611
+corpus=data/local/data/corpus
 
-parallel=data/local/data/parallel
-mkdir -p $parallel/training
+sprak1=0565-1
+sprak2=0565-2
+sprak3=0611
 
-local/sprak_data_prep.sh $sprak1 $sprak2 $sprak3 $parallel || exit 1;
+local/sprak_data_prep.sh  || exit 1;
 
 local/sprak_prepare_dict.sh || exit 1;
+
 
 # Repeat text preparation on test set, but do not add to dictionary
 python3 local/normalize_transcript.py data/test/text1 data/test/text2 
