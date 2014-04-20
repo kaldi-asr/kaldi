@@ -203,12 +203,12 @@ echo ---------------------------------------------------------------------
 echo "Preparing ${dataset_kind} data files in ${dataset_dir} on" `date`
 echo ---------------------------------------------------------------------
 if [ ! -f  $dataset_dir/.done ] ; then
-  if [ "$dataset_kind" == "supervised" ]  ; then
-    if [ "$dataset_segments" == "seg" ] ; then
+  if [ "$dataset_kind" == "supervised" ]; then
+    if [ "$dataset_segments" == "seg" ]; then
       . ./local/datasets/supervised_seg.sh
-    elif [ "$dataset_segments" == "uem" ] ; then
+    elif [ "$dataset_segments" == "uem" ]; then
       . ./local/datasets/supervised_uem.sh
-    elif [ "$dataset_segments" == "pem" ] ; then
+    elif [ "$dataset_segments" == "pem" ]; then
       . ./local/datasets/supervised_pem.sh
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";

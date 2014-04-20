@@ -41,6 +41,9 @@ typedef unsigned __int64 uint64;
 typedef float          float32;
 typedef double        double64;
 }
+#include <basetsd.h>
+#define ssize_t SSIZE_T
+
 #else
 // we can do this a different way if some platform
 // we find in the future lacks stdint.h

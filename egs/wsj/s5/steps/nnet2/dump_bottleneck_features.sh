@@ -20,8 +20,8 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 5 ]; then
-   echo "usage: local/nnet2/dump_bottleneck_features.sh <input-data-dir> <output-data-dir> <bnf-nnet-dir> <archive-dir> <log-dir>"
-   echo "e.g.:  local/nnet2/dump_bottleneck_features.sh data/train data/train_bnf exp_bnf/bnf_net exp/tri5_ali mfcc exp_bnf/dump_bnf"
+   echo "usage: steps/nnet2/dump_bottleneck_features.sh <input-data-dir> <output-data-dir> <bnf-nnet-dir> <archive-dir> <log-dir>"
+   echo "e.g.:  steps/nnet2/dump_bottleneck_features.sh data/train data/train_bnf exp_bnf/bnf_net exp/tri5_ali mfcc exp_bnf/dump_bnf"
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
    echo "  --nj <nj>                                        # number of parallel jobs"

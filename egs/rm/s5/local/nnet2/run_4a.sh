@@ -14,14 +14,14 @@
      --mix-up 4000 \
      --cmd "$decode_cmd" \
      --hidden-layer-dim 375 \
-      data/train data/lang exp/tri3c_ali exp/nnet4a2  || exit 1
+      data/train data/lang exp/tri3c_ali exp/nnet4a  || exit 1
 
    steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 --feat-type raw \
      --transform-dir exp/tri3c/decode \
-     exp/tri3c/graph data/test exp/nnet4a2/decode
+     exp/tri3c/graph data/test exp/nnet4a/decode
 
    steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 --feat-type raw \
      --transform-dir exp/tri3c/decode_ug \
-     exp/tri3c/graph_ug data/test exp/nnet4a2/decode_ug
+     exp/tri3c/graph_ug data/test exp/nnet4a/decode_ug
  ) 
 

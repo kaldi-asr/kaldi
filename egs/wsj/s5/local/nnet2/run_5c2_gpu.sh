@@ -15,7 +15,13 @@ dir=exp/nnet5c2_gpu
 # Note: since we multiplied the num-jobs by 1/4, we halved the
 # learning rate, relative to run_5c.sh
 
-. ./cmd.sh
+. ././cmd.sh
+. ./path.sh
+! cuda-compiled && cat <<EOF && exit 1 
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+If you want to use GPUs (and have them), go to src/, and configure and make on a machine
+where "nvcc" is installed.
+EOF
 . utils/parse_options.sh
 
 ( 

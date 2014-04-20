@@ -46,7 +46,7 @@ name=`basename $data`; # e.g. eval2000
 mkdir -p $dir/scoring/log
 
 if [ $stage -le 0 ]; then
-  if [ -f $data/segments ]; then
+  if [ -f $data/segments ] && $use_segments; then
     f=$data/reco2file_and_channel
     [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
     filter_cmd="utils/convert_ctm.pl $data/segments $data/reco2file_and_channel"

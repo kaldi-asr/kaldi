@@ -7,7 +7,13 @@
 
 parallel_opts="-l gpu=1" 
 
-. cmd.sh
+. ./cmd.sh
+. ./path.sh
+! cuda-compiled && cat <<EOF && exit 1 
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+If you want to use GPUs (and have them), go to src/, and configure and make on a machine
+where "nvcc" is installed.
+EOF
 
 dir=exp/nnet4d_gpu
 (  steps/nnet2/train_pnorm.sh  --num-epochs 20 \
@@ -17,8 +23,8 @@ dir=exp/nnet4d_gpu
      --mix-up 4000 \
      --initial-learning-rate 0.02 --final-learning-rate 0.004 \
      --cmd "$decode_cmd" \
-     --pnorm-input-dim 900 \
-     --pnorm-output-dim 180 \
+     --pnorm-input-dim 750 \
+     --pnorm-output-dim 150 \
      --combine-regularizer 1.0e-12 \
      data/train data/lang exp/tri3b_ali $dir 
 
