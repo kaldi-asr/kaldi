@@ -17,27 +17,35 @@ utils=`pwd`/utils
 
 if [ ! -d $dir/corpus ]; then
 
-	mkdir -p $dir/corpus/0565-1 $dir/corpus/0565-2
+    mkdir -p $dir/corpus/0565-1 $dir/corpus/0565-2
 
-	echo "Downloading and unpacking sprakbanken to $dir/corpus. This will take a while."
+    echo "Downloading and unpacking sprakbanken to $dir/corpus. This will take a while."
+    if [ ! -f $dir/corpus/da.16kHz.0565-1.tar.gz ]; then 
+	( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-1.tar.gz --directory-prefix=$dir/corpus ) &
+    fi
 
-	wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-1.tar.gz --directory-prefix=$dir/corpus &
-	wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-2.tar.gz --directory-prefix=$dir/corpus &
-	wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0611.tar.gz --directory-prefix=$dir/corpus
-	wait
+    if [ ! -f $dir/corpus/da.16kHz.0565-2.tar.gz ]; then 
+	( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-2.tar.gz --directory-prefix=$dir/corpus ) &
+    fi
 
-	echo "Corpus files downloaded. Unpacking."
+    if [ ! -f $dir/corpus/da.16kHz.0565-1.tar.gz ]; then 
+	( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0611.tar.gz --directory-prefix=$dir/corpus ) &
+    fi
+    
+    wait
 
-	tar -xzf 0565-1/da.16kHz.0565-1.tar.gz -C $dir/corpus/0565-1 &
-	tar -xzf 0565-2/da.16kHz.0565-2.tar.gz -C $dir/corpus/0565-2 &
-	tar -xzf 0611/da.16kHz.0611.tar.gz -C $dir/corpus
+    echo "Corpus files downloaded. Unpacking."
+
+    tar -xzf $dir/corpus/da.16kHz.0565-1.tar.gz -C $dir/corpus/0565-1 &
+    tar -xzf $dir/corpus/da.16kHz.0565-2.tar.gz -C $dir/corpus/0565-2 &
+    tar -xzf $dir/corpus/da.16kHz.0611.tar.gz -C $dir/corpus
 	
-	# Create parallel file lists and text files, but keep sound files in the same location
-	# Note: rename "da 0611 test" to "da_0611_test" for this to work
-	mv $dir/corpus/"da 0611 test" $dir/corpus/0611
-	wait 
 
-	echo "Corpus unpacked succesfully."
+    # Note: rename "da 0611 test" to "da_0611_test" for this to work
+    mv $dir/corpus/"da 0611 test" $dir/corpus/0611
+    wait 
+    
+    echo "Corpus unpacked succesfully."
 fi
 
 
@@ -53,6 +61,8 @@ echo "Converting corpus files to a format consumable by Kaldi scripts."
 
 mkdir -p $dir/corpus/training/0565-1 $dir/corpus/training/0565-2
 
+
+# Create parallel file lists and text files, but keep sound files in the same location
 # Writes the lists to data/local/data (~ 310h)
 python3 $local/sprak2kaldi.py $dir/corpus/0565-1 $dir/corpus/training/0565-1 & # ~130h
 python3 $local/sprak2kaldi.py $dir/corpus/0565-2 $dir/corpus/training/0565-2 & # ~115h

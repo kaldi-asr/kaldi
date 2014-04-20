@@ -52,32 +52,25 @@ cat $dir/transcripts.am | tr [:blank:] '\n' | sort -u > $dir/wlist.txt
 # the sentences are unique to reduce bias.
 local/norm_dk/format_text.sh lm $dir/lmsents.norm > $dir/transcripts.txt
 sort -u $dir/transcripts.txt > $dir/transcripts.uniq
-wait
-
 
 
 # Install eSpeak if it is not installed already
-cd $KALDI_ROOT/tools || exit 1; 
 
-if [ -d $espeakdir ]; 
+if hash espeak 2>/dev/null;
   then
     echo 'eSpeak installed'
   else
+    cd $KALDI_ROOT/tools || exit 1; 
     wget http://sourceforge.net/projects/espeak/files/espeak/espeak-1.48/${espeakdir}.zip
-fi
-
-if [ -f $espeakdir.zip ];
-  then
+    wait
     unzip $espeakdir.zip
     cd $espeakdir/src
     make || exit 1;
     echo 'Installed eSpeak'
-  else
-    echo 'No zip file to unpack. Check whether it was downloaded and the version matches.';
-    exit 1;
+    cd exproot || exit 1;
 fi
 
-cd exproot || exit 1;
+
 
 # Wait for the wordlist to be fully created
 wait 
@@ -94,7 +87,6 @@ wait
 
 cat $dir/Wtemp_*.pho > $dir/plist.txt
 rm -f $dir/Wtemp_*
-
 
 
 # Filter transcription
