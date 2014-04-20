@@ -472,7 +472,7 @@ class OnlineAppendFeature: public OnlineFeatureInterface {
   virtual int32 Dim() const { return src1_->Dim() + src2_->Dim(); }
 
   virtual bool IsLastFrame(int32 frame) const {
-    return (src1_->IsLastFrame(frame) && src2_->IsLastFrame(frame));
+    return (src1_->IsLastFrame(frame) || src2_->IsLastFrame(frame));
   }
 
   virtual int32 NumFramesReady() const {
