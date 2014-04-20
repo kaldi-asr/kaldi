@@ -171,6 +171,43 @@ static void UnitTestSearch() {
   KALDI_LOG << "Test passed :)\n";
 }
 
+static void UnitTestComputeGPE() {
+  KALDI_LOG << "=== UnitTestPitchCompare ===\n";
+  int32 wrong_pitch = 0, tot_voiced = 0, tot_unvoiced = 0, num_frames = 0;
+  BaseFloat tol = 0.1, avg_d_kpitch = 0;
+  std::string pgtfile, kfile;
+  for (int32 i = 1; i < 11; i++) {
+    std::string wavefile;
+    std::string num;
+    if (i < 6) {
+      num = "f" + ConvertIntToString(i) + "nw0000";
+    } else {
+      num = "m" + ConvertIntToString(i-5) + "nw0000";
+    }
+    Matrix<BaseFloat> gross_pitch;
+    pgtfile = "keele/pgt/"+num+"-pgt.txt";
+    std::ifstream pgt(pgtfile.c_str());
+    gross_pitch.Read(pgt, false);
+    Matrix<BaseFloat> kaldi_pitch;
+    kfile = "keele/"+num+"-kaldi.txt";
+    std::ifstream kpitch(kfile.c_str());
+    kaldi_pitch.Read(kpitch, false);
+    num_frames = std::min(kaldi_pitch.NumRows(),gross_pitch.NumRows());
+    for (int32 j = 1; j < num_frames; j++) {
+      if (gross_pitch(j,2) == 1.0) {
+        tot_voiced++;
+        if (fabs((gross_pitch(j,1) - kaldi_pitch(j,1))/gross_pitch(j,1)) > tol) 
+          wrong_pitch++;
+      } else if (gross_pitch(j,2) == 0.0 && gross_pitch(j-1,2) == 0.0) {
+        tot_unvoiced++;
+        avg_d_kpitch += fabs(kaldi_pitch(j,1) - kaldi_pitch(j-1,1));
+      }
+    }
+  }
+  BaseFloat GPE = 1.0 * wrong_pitch / tot_voiced;
+  KALDI_LOG << " Gross Pitch Error with Rel.Error " << tol << "% is " << GPE ;
+  KALDI_LOG << "Average Kaldi delta_pitch for unvoiced regions" << avg_d_kpitch/tot_unvoiced;
+}
 
 // Compare pitch using Kaldi pitch tracker on KEELE corpora
 static void UnitTestKeele() {
@@ -193,7 +230,8 @@ static void UnitTestKeele() {
     SubVector<BaseFloat> waveform(wave.Data(), 0);
     // use pitch code with default configuration..
     PitchExtractionOptions op;
-    op.nccf_ballast = 0.1;
+    op.nccf_ballast = 1;
+    op.penalty_factor = 5; 
     // compute pitch.
     Matrix<BaseFloat> m;
     ComputeKaldiPitch(op, waveform, &m);
@@ -411,11 +449,13 @@ static void UnitTestFeatNoKeele() {
 static void UnitTestFeatWithKeele() {
   UnitTestProcess();
   UnitTestKeele();
+  UnitTestComputeGPE();
   UnitTestPenaltyFactor();
   UnitTestKeeleNccfBallast();
   UnitTestPitchExtractionSpeed();
   UnitTestPitchExtractorCompareKeele();
   UnitTestDiffSampleRate();
+
 }
 
 }
@@ -431,7 +471,8 @@ int main() {
     } else {
       KALDI_LOG << "Not running tests that require the Keele database, "
         << "please ask g.meyer@somewhere.edu for the database if you need it.\n"
-        << " you need to put keele wave file in keele/16kHz directory";
+        << " you need to change sampling frequency for keele wave file.\n"
+        << " i.e. sox f1nw0000.wav -r 16000 f1nw0000.wav and put them in keele/16kHz directory";
     }
     KALDI_LOG << "Tests succeeded.\n";
     return 0;
