@@ -172,9 +172,9 @@ static void UnitTestSearch() {
 }
 
 static void UnitTestComputeGPE() {
-  KALDI_LOG << "=== UnitTestPitchCompare ===\n";
+  KALDI_LOG << "=== UnitTestComputeGPE ===\n";
   int32 wrong_pitch = 0, tot_voiced = 0, tot_unvoiced = 0, num_frames = 0;
-  BaseFloat tol = 0.1, avg_d_kpitch = 0;
+  BaseFloat tol = 0.1, avg_d_kpitch = 0, real_pitch = 0;
   std::string pgtfile, kfile;
   for (int32 i = 1; i < 11; i++) {
     std::string wavefile;
@@ -185,7 +185,7 @@ static void UnitTestComputeGPE() {
       num = "m" + ConvertIntToString(i-5) + "nw0000";
     }
     Matrix<BaseFloat> gross_pitch;
-    pgtfile = "keele/pgt/"+num+"-pgt.txt";
+    pgtfile = "keele/keele-true-lags/"+num+".pev";
     std::ifstream pgt(pgtfile.c_str());
     gross_pitch.Read(pgt, false);
     Matrix<BaseFloat> kaldi_pitch;
@@ -194,19 +194,20 @@ static void UnitTestComputeGPE() {
     kaldi_pitch.Read(kpitch, false);
     num_frames = std::min(kaldi_pitch.NumRows(),gross_pitch.NumRows());
     for (int32 j = 1; j < num_frames; j++) {
-      if (gross_pitch(j,2) == 1.0) {
+      if (gross_pitch(j,0) > 0.0) {
         tot_voiced++;
-        if (fabs((gross_pitch(j,1) - kaldi_pitch(j,1))/gross_pitch(j,1)) > tol) 
+        real_pitch = 20000.0/gross_pitch(j,0);
+        if (fabs((real_pitch - kaldi_pitch(j,1))/real_pitch) > tol) 
           wrong_pitch++;
-      } else if (gross_pitch(j,2) == 0.0 && gross_pitch(j-1,2) == 0.0) {
+      } else if (gross_pitch(j,0) == 0.0 && gross_pitch(j-1,0) == 0.0) {
         tot_unvoiced++;
         avg_d_kpitch += fabs(kaldi_pitch(j,1) - kaldi_pitch(j-1,1));
       }
     }
   }
   BaseFloat GPE = 1.0 * wrong_pitch / tot_voiced;
-  KALDI_LOG << " Gross Pitch Error with Rel.Error " << tol << "% is " << GPE ;
-  KALDI_LOG << "Average Kaldi delta_pitch for unvoiced regions" << avg_d_kpitch/tot_unvoiced;
+  KALDI_LOG << " Gross Pitch Error with Rel.Error " << tol << " is " << GPE ;
+  KALDI_LOG << "Average Kaldi delta_pitch for unvoiced regions " << avg_d_kpitch/tot_unvoiced;
 }
 
 // Compare pitch using Kaldi pitch tracker on KEELE corpora
@@ -231,7 +232,7 @@ static void UnitTestKeele() {
     // use pitch code with default configuration..
     PitchExtractionOptions op;
     op.nccf_ballast = 1;
-    op.penalty_factor = 5; 
+    op.penalty_factor = 5;
     // compute pitch.
     Matrix<BaseFloat> m;
     ComputeKaldiPitch(op, waveform, &m);
@@ -470,9 +471,12 @@ int main() {
       UnitTestFeatWithKeele();
     } else {
       KALDI_LOG << "Not running tests that require the Keele database, "
-        << "please ask g.meyer@somewhere.edu for the database if you need it.\n"
+        << "please ask g.meyer@liverpool.ac.uk for the database if you need it.\n"
         << " you need to change sampling frequency for keele wave file.\n"
-        << " i.e. sox f1nw0000.wav -r 16000 f1nw0000.wav and put them in keele/16kHz directory";
+        << " i.e. sox f1nw0000.wav -r 16000 f1nw0000.wav and put them in keele/16kHz directory\n"
+        << " copy all *.pev files to keele/keele-true-lags and run following command in this directory to prepare data for computing GPE\n"
+        << " for f in *; do echo ' [' > tmp ; len=`cat $f | wc -l` ; head -n $(($len-1)) $f | tail -n $(($len-14)) >> tmp ; echo -n ] >> tmp ; mv tmp $f; done"
+        << " The GPE reported in paper is computed using pseudo-ground-truth pitch by voting among mentioned pitch trackers in paper\n";
     }
     KALDI_LOG << "Tests succeeded.\n";
     return 0;
