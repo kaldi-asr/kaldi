@@ -109,7 +109,7 @@ struct MleAmSgmmOptions {
     po->Register("cov-floor", &cov_floor, module+
                  "Covariance floor (fraction of average covariance).");
     po->Register("cov-diag-ratio", &cov_diag_ratio, module+
-                 "Minumum occ/dim ratio below which use diagonal covariances.");
+                 "Minimum occ/dim ratio below which use diagonal covariances.");
     po->Register("max-cond", &max_cond, module+"Maximum condition number beyond"
                  " which matrices are not updated.");
     po->Register("weight-projections-iters", &weight_projections_iters, module+
