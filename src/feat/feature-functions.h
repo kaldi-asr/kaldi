@@ -315,7 +315,7 @@ struct SlidingWindowCmnOptions {
   void Register(OptionsItf *po) {
     po->Register("cmn-window", &cmn_window, "Window in frames for running "
                  "average CMN computation");
-    po->Register("min-cmn-window", &min_window, "Minumum CMN window "
+    po->Register("min-cmn-window", &min_window, "Minimum CMN window "
                  "used at start of decoding (adds latency only at start). "
                  "Only applicable if center == false, ignored if center==true");
     po->Register("norm-vars", &normalize_variance, "If true, normalize "

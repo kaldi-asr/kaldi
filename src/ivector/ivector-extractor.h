@@ -1,6 +1,6 @@
 // ivector/ivector-extractor.h
 
-// Copyright 2013    Daniel Povey
+// Copyright 2013-2014    Daniel Povey
 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,6 +57,7 @@ struct IvectorEstimationOptions {
 
 
 class IvectorExtractor;
+class IvectorExtractorComputeDerivedVarsClass;
 
 /// These are the stats for a particular utterance, i.e. the sufficient stats
 /// for estimating an iVector (if need_2nd_order_stats == true, we can also
@@ -229,7 +230,9 @@ class IvectorExtractor {
   // because they do what we want.
  protected:
   void ComputeDerivedVars();
-
+  void ComputeDerivedVars(int32 i);
+  friend class IvectorExtractorComputeDerivedVarsClass;
+  
   // Imagine we'll project the iVectors with transformation T, so apply T^{-1}
   // where necessary to keep the model equivalent.  Used to keep unit variance
   // (like prior re-estimation).
@@ -288,10 +291,12 @@ struct IvectorStatsOptions {
   bool update_variances;
   bool compute_auxf;
   int32 num_samples_for_weights;
+  int cache_size;
 
   IvectorStatsOptions(): update_variances(true),
                          compute_auxf(true),
-                         num_samples_for_weights(10) { }
+                         num_samples_for_weights(10),
+                         cache_size(100) { }
   void Register(OptionsItf *po) {
     po->Register("update-variances", &update_variances, "If true, update the "
                  "Gaussian variances");
@@ -301,6 +306,8 @@ struct IvectorStatsOptions {
     po->Register("num-samples-for-weights", &num_samples_for_weights,
                  "Number of samples from iVector distribution to use "
                  "for accumulating stats for weight update.  Must be >1");
+    po->Register("cache-size", &cache_size, "Size of an internal "
+                 "cache (not critical, only affects speed/memory)");
   }
 };
 
@@ -311,8 +318,7 @@ struct IvectorExtractorEstimationOptions {
   double gaussian_min_count;
   int32 num_threads;
   IvectorExtractorEstimationOptions(): variance_floor_factor(0.1),
-                                       gaussian_min_count(100.0),
-                                       num_threads(1) { }
+                                       gaussian_min_count(100.0) { }
   void Register(OptionsItf *po) {
     po->Register("variance-floor-factor", &variance_floor_factor,
                  "Factor that determines variance flooring (we floor each covar "
@@ -320,8 +326,6 @@ struct IvectorExtractorEstimationOptions {
     po->Register("gaussian-min-count", &gaussian_min_count,
                  "Minimum total count per Gaussian, below which we refuse to "
                  "update any associated parameters.");
-    po->Register("num-threads", &num_threads,
-                 "Number of threads used in iVector estimation program");
   }
 };
 
@@ -333,7 +337,7 @@ class IvectorStats {
  public:
   friend class IvectorExtractor;
 
-  IvectorStats(): tot_auxf_(0.0), num_ivectors_(0) { }
+  IvectorStats(): tot_auxf_(0.0), R_num_cached_(0), num_ivectors_(0) { }
   
   IvectorStats(const IvectorExtractor &extractor,
                const IvectorStatsOptions &stats_opts);
@@ -354,7 +358,10 @@ class IvectorStats {
   
   void Read(std::istream &is, bool binary, bool add = false);
 
-  void Write(std::ostream &os, bool binary) const;
+  void Write(std::ostream &os, bool binary); // non-const version; relates to cache.
+
+  // const version of Write; may use extra memory if we have stuff cached
+  void Write(std::ostream &os, bool binary) const; 
 
   /// Returns the objf improvement per frame.
   double Update(const IvectorExtractorEstimationOptions &opts,
@@ -380,6 +387,9 @@ class IvectorStats {
                        const VectorBase<double> &ivec_mean,
                        const SpMatrix<double> &ivec_var);
 
+  /// Flushes the cache for the R_ stats.
+  void FlushCache();
+  
   /// Commit the stats used to update the variance.
   void CommitStatsForSigma(const IvectorExtractor &extractor,
                            const IvectorExtractorUtteranceStats &utt_stats);
@@ -404,7 +414,7 @@ class IvectorStats {
   
   // Updates M.  Returns the objf improvement per frame.
   double UpdateProjections(const IvectorExtractorEstimationOptions &opts,
-                     IvectorExtractor *extractor) const;
+                           IvectorExtractor *extractor) const;
 
   // This internally called function returns the objf improvement
   // for this Gaussian index.  Updates one M.
@@ -449,9 +459,9 @@ class IvectorStats {
   /// used to check convergence, etc.
   double tot_auxf_;
 
-  /// This mutex guards gamma_, Y_ and R_ (for multi-threaded
+  /// This mutex guards gamma_ and Y_ (for multi-threaded
   /// update)
-  Mutex subspace_stats_lock_; 
+  Mutex gamma_Y_lock_; 
   
   /// Total occupation count for each Gaussian index (zeroth-order stats)
   Vector<double> gamma_;
@@ -460,12 +470,27 @@ class IvectorStats {
   /// linear term in M.
   std::vector<Matrix<double> > Y_;
   
+  /// This mutex guards R_ (for multi-threaded update)
+  Mutex R_lock_; 
+
   /// R_i, quadratic term for ivector subspace (M matrix)estimation.  This is a
   /// kind of scatter of ivectors of training speakers, weighted by count for
   /// each Gaussian.  Conceptually vector<SpMatrix<double> >, but we store each
   /// SpMatrix as a row of R_.  Conceptually, the dim is [I][S][S]; the actual
   /// dim is [I][S*(S+1)/2].
   Matrix<double> R_;
+
+  /// This mutex guards R_num_cached_, R_gamma_cache_, R_ivec_cache_ (for
+  /// multi-threaded update)
+  Mutex R_cache_lock_; 
+  
+  /// To avoid too-frequent rank-1 update of R, which is slow, we cache some
+  /// quantities here.
+  int32 R_num_cached_;
+  /// dimension: [num-to-cache][I]
+  Matrix<double> R_gamma_cache_;
+  /// dimension: [num-to-cache][S*(S+1)/2]
+  Matrix<double> R_ivec_scatter_cache_;
 
   /// This mutex guards Q_ and G_ (for multi-threaded update)
   Mutex weight_stats_lock_;

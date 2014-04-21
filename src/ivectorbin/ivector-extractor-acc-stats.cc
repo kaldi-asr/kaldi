@@ -102,6 +102,12 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
 
+
+    // This is a bit of a mess... the code that reads in the extractor calls
+    // ComputeDerivedVars, and it can do this multi-threaded, controlled by
+    // g_num_threads.  So if the user specified the --num-threads option, which
+    // goes to sequencer_opts in this case, copy it to g_num_threads.
+    g_num_threads = sequencer_opts.num_threads;
     
     IvectorExtractor extractor;
     ReadKaldiObject(ivector_extractor_rxfilename, &extractor);
@@ -145,7 +151,10 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << num_done << " files, " << num_err
               << " with errors.  Total frames " << tot_t;
     
-    WriteKaldiObject(stats, accs_wxfilename, binary);
+    {
+      Output ko(accs_wxfilename, binary);
+      stats.Write(ko.Stream(), binary);
+    }
     
     KALDI_LOG << "Wrote stats to " << accs_wxfilename;
 

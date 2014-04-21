@@ -175,7 +175,8 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
 
   // InputFinished() tells the class you won't be providing any
   // more waveform.  This will help flush out the last few frames
-  // of delta or LDA features.
+  // of delta or LDA features, and finalize the pitch features
+  // (making them more accurate).
   void InputFinished();
 
   // This object is used to set the fMLLR transform.  Call it with
