@@ -11,28 +11,28 @@ set -e
 
 config=conf/logistic-regression.conf
 
-awk '{print $2}' <(utils/remove_dialect.pl data/train/utt2lang) | sort -u | \
+awk '{print $2}' <(lid/remove_dialect.pl data/train/utt2lang) | sort -u | \
   awk '{print $1, NR-1}' >  exp/ivectors_train/languages.txt
 
 model=exp/ivectors_train/logistic_regression
 model_rebalanced=exp/ivectors_train/logistic_regression_rebalanced
 train_ivectors="ark:ivector-normalize-length \
          scp:exp/ivectors_train/ivector.scp ark:- |";
-classes="ark:utils/remove_dialect.pl data/train/utt2lang \
+classes="ark:lid/remove_dialect.pl data/train/utt2lang \
          | utils/sym2int.pl -f 2 exp/ivectors_train/languages.txt - |"
 
 # An alternative prior.
 #utils/sym2int.pl -f 2 exp/ivectors_train/languages.txt \
-#  <(utils/remove_dialect.pl data/train/utt2lang) | \
+#  <(lid/remove_dialect.pl data/train/utt2lang) | \
 #  awk '{print $2}' | sort -n | uniq -c | \
 #  awk 'BEGIN{printf(" [ ");} {printf("%s ", 1.0/$1); } END{print(" ]"); }' \
 #   >exp/ivectors_train/inv_priors.vec
 
 # Create priors to rebalance the model. The following script rebalances
 # the languages as count(lang_test) / (count(lang_test) + count(lang_train)).
-utils/balance_priors_to_test.pl \
-    <(utils/remove_dialect.pl data/train/utt2lang) \
-    <(utils/remove_dialect.pl data/lre07/utt2lang) \
+lid/balance_priors_to_test.pl \
+    <(lid/remove_dialect.pl data/train/utt2lang) \
+    <(lid/remove_dialect.pl data/lre07/utt2lang) \
     exp/ivectors_train/languages.txt \
     exp/ivectors_train/priors.vec
 
@@ -44,7 +44,7 @@ logistic-regression-train --config=$config "$train_ivectors" \
  logistic-regression-copy --scale-priors=exp/ivectors_train/priors.vec \
    $model $model_rebalanced
 
-trials="utils/remove_dialect.pl data/train/utt2lang \
+trials="lid/remove_dialect.pl data/train/utt2lang \
         | utils/sym2int.pl -f 2 exp/ivectors_train/languages.txt -|"
 scores="|utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt  \
         >exp/ivectors_train/train_scores"
@@ -63,7 +63,7 @@ cat exp/ivectors_train/posteriors | \
 
 # note: we treat the language as a sentence; it happens that the WER/SER
 # corresponds to the recognition error rate.
-compute-wer --mode=present --text ark:<(utils/remove_dialect.pl data/train/utt2lang) \
+compute-wer --mode=present --text ark:<(lid/remove_dialect.pl data/train/utt2lang) \
   ark:exp/ivectors_train/output
 
 # %WER 4.19 [ 3000 / 71668, 0 ins, 0 del, 3000 sub ] [PARTIAL]
@@ -76,7 +76,7 @@ logistic-regression-eval $model_rebalanced \
                           print $1, (argmax - 3); }' | \
   utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt >exp/ivectors_lre07/output
 
-compute-wer --text ark:<(utils/remove_dialect.pl data/lre07/utt2lang) \
+compute-wer --text ark:<(lid/remove_dialect.pl data/lre07/utt2lang) \
   ark:exp/ivectors_lre07/output
 # %WER 32.58 [ 2452 / 7527, 0 ins, 0 del, 2452 sub ]
 # %SER 32.58 [ 2452 / 7527 ]
