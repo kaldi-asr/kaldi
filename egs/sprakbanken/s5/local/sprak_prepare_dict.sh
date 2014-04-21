@@ -29,24 +29,25 @@ mkdir -p $dir
 
 # Normalise transcripts and create a transcript file
 # Removes '.,:;?' and removes '\' before '\Komma' (dictated ',') 
-# outputs a normalised transcript without utterance ids
-python3 local/normalize_transcript_prefixed.py data/train/text1 data/train/text2 $dir/transcripts.am &
+# outputs a normalised transcript without utterance ids and a list of utterance ids 
+python3 local/normalize_transcript_prefixed.py data/train/text1 data/train/onlyids $dir/transcripts.am &
+
+
+# lmsents is output by sprak_data_prep.sh and contains
+# sentences that are disjoint from the test and dev set 
 python3 local/normalize_transcript.py data/local/data/lmsents $dir/lmsents.norm
 wait
 
 # Create wordlist from the AM transcripts
-(
-cat $dir/transcripts.am | tr [:blank:] '\n' | sort -u > $dir/wlist.txt
-) &
+cat $dir/transcripts.am | tr [:blank:] '\n' | sort -u > $dir/wlist.txt &
 
 
 # Additional normalisation, uppercasing, writing numbers etc.
-# must remove uttids and recombine afterwards
- local/norm_dk/format_text.sh am data/train/text2 > data/train/text 
+# and recombine with 
+local/norm_dk/format_text.sh am data/train/transcripts.am > data/train/onlytext
+paste data/train/onlyids data/train/onlytext > data/train/text 
 
 
-# lmsents is output by sprak_data_prep.sh calling sprak_lm_prep.sh and contains
-# sentences that are disjoint from the test and dev set 
 # Because training data is read aloud, there are many occurences of the same
 # sentence and bias towards the domain. Make a version where  
 # the sentences are unique to reduce bias.

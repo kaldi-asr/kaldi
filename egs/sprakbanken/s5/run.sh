@@ -6,14 +6,14 @@
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 
-corpus=data/local/data/corpus
 
-sprak1=0565-1
-sprak2=0565-2
-sprak3=0611
-
+# Download the corpus and prepare parallel lists of sound files and text files
+# Divide the corpus into train, dev and test sets
 local/sprak_data_prep.sh  || exit 1;
 
+
+# Perform text normalisation of the training set, prepare transcriptions
+# Put everything in data/local/dict
 local/sprak_prepare_dict.sh || exit 1;
 
 
@@ -21,8 +21,8 @@ local/sprak_prepare_dict.sh || exit 1;
 python3 local/normalize_transcript.py data/test/text1 data/test/text2 
 local/norm_dk/format_text.sh am data/test/text2 > data/test/text
 
-utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1;
 
+utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1;
 
 
 # Now make MFCC features.

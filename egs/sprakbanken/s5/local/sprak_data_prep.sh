@@ -18,36 +18,36 @@ utils=`pwd`/utils
 if [ ! -d $dir/corpus ]; then
 
     mkdir -p $dir/corpus/0565-1 $dir/corpus/0565-2
+fi 
 
-    echo "Downloading and unpacking sprakbanken to $dir/corpus. This will take a while."
-    if [ ! -f $dir/corpus/da.16kHz.0565-1.tar.gz ]; then 
-	( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-1.tar.gz --directory-prefix=$dir/corpus ) &
-    fi
+echo "Downloading and unpacking sprakbanken to $dir/corpus. This will take a while."
 
-    if [ ! -f $dir/corpus/da.16kHz.0565-2.tar.gz ]; then 
-	( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-2.tar.gz --directory-prefix=$dir/corpus ) &
-    fi
+if [ ! -f $dir/corpus/da.16kHz.0565-1.tar.gz ]; then 
+    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-1.tar.gz --directory-prefix=$dir/corpus ) &
+fi
 
-    if [ ! -f $dir/corpus/da.16kHz.0565-1.tar.gz ]; then 
-	( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0611.tar.gz --directory-prefix=$dir/corpus ) &
-    fi
-    
-    wait
+if [ ! -f $dir/corpus/da.16kHz.0565-2.tar.gz ]; then 
+    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-2.tar.gz --directory-prefix=$dir/corpus ) &
+fi
 
-    echo "Corpus files downloaded. Unpacking."
+if [ ! -f $dir/corpus/da.16kHz.0565-1.tar.gz ]; then 
+    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0611.tar.gz --directory-prefix=$dir/corpus ) &
+fi    
+wait
 
+echo "Corpus files downloaded."
+
+if [ ! -d $dir/corpus/0611 ]; then
+    echo "Unpacking files."
     tar -xzf $dir/corpus/da.16kHz.0565-1.tar.gz -C $dir/corpus/0565-1 &
     tar -xzf $dir/corpus/da.16kHz.0565-2.tar.gz -C $dir/corpus/0565-2 &
-    tar -xzf $dir/corpus/da.16kHz.0611.tar.gz -C $dir/corpus
-	
+    tar -xzf $dir/corpus/da.16kHz.0611.tar.gz -C $dir/corpus    
 
     # Note: rename "da 0611 test" to "da_0611_test" for this to work
     mv $dir/corpus/"da 0611 test" $dir/corpus/0611
-    wait 
-    
+    wait     
     echo "Corpus unpacked succesfully."
 fi
-
 
 . ./path.sh # Needed for KALDI_ROOT
 sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
