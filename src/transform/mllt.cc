@@ -169,20 +169,26 @@ BaseFloat MlltAccs::AccumulateFromGmm(const DiagGmm &gmm,
   return ans;
 }
 
-/*
-// static
-void MlltAccs::MultiplyGmmMeans(const Matrix<BaseFloat> &M,
-                                DiagGmm *gmm) {
-  KALDI_ASSERT(M.NumRows() == M.NumCols()
-               && M.NumRows() == gmm->Dim());
-  Matrix<BaseFloat> means;
-  gmm->GetMeans(&means);
-  Matrix<BaseFloat> new_means(means.NumRows(), means.NumCols());
-  // Rihth-multiply means by M^T (equivalenet to left-multiplying each
-  // row by M).
-  new_means.AddMatMat(1.0, means, kNoTrans, M, kTrans, 0.0);
-  gmm->SetMeans(new_means);
+
+BaseFloat MlltAccs::AccumulateFromGmmPreselect(
+    const DiagGmm &gmm,
+    const std::vector<int32> &gselect,
+    const VectorBase<BaseFloat> &data,
+    BaseFloat weight) {  // e.g. weight = 1.0
+  KALDI_ASSERT(!gselect.empty());
+  Vector<BaseFloat> loglikes;
+  gmm.LogLikelihoodsPreselect(data, gselect, &loglikes);
+  BaseFloat loglike = loglikes.ApplySoftMax();
+  // now "loglikes" is a vector of posteriors, indexed
+  // by the same index as gselect.
+  Vector<BaseFloat> posteriors(gmm.NumGauss());
+  for (size_t i = 0; i < gselect.size(); i++)
+    posteriors(gselect[i]) = loglikes(i) * weight;
+  AccumulateFromPosteriors(gmm, data, posteriors);
+  return loglike;
 }
-*/
+
+
+
 
 } // namespace kaldi

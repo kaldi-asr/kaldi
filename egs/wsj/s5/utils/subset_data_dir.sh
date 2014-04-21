@@ -8,11 +8,11 @@
 # See http://kaldi.sourceforge.net/data_prep.html#data_prep_data
 # for what these directories contain.
 
-# The script It creates a subset of that data, consisting of some specified
+# Thsi script creates a subset of that data, consisting of some specified
 # number of utterances.  (The selected utterances are distributed evenly
 # throughout the file, by the program ./subset_scp.pl).
 
-# There are four options, none compatible with any other.
+# There are six options, none compatible with any other.
 
 # If you give the --per-spk option, it will attempt to select the supplied
 # number of utterances for each speaker (typically you would supply a much
@@ -26,6 +26,9 @@
 # If you give the --first option, it will just give you the n first utterances.
 
 # If you give the --last option, it will just give you the n last utterances.
+
+# If you give the --spk-list option, it reads the speakers to keep from <speaker-list-file>"
+# (note, in this case there is no <num-utt> positional parameter; see usage message.)
 
 
 shortest=false
@@ -63,9 +66,11 @@ if [ $# != 3 ]; then
   echo "  subset_data_dir.sh [--spk-list <speaker-list-file>] <srcdir> <destdir>"
   echo "By default, randomly selects <num-utt> utterances from the data directory."
   echo "With --speakers, randomly selects enough speakers that we have <num-utt> utterances"
+  echo "With --per-spk, selects <num-utt> utterances per speaker, if available."
   echo "With --first, selects the first <num-utt> utterances"
   echo "With --last, selects the last <num-utt> utterances"
   echo "With --shortest, selects the shortest <num-utt> utterances."
+  echo "With --spk-list, reads the speakers to keep from <speaker-list-file>"
   exit 1;
 fi
 
@@ -91,6 +96,7 @@ function do_filtering {
   # assumes the utt2spk and spk2utt files already exist.
   [ -f $srcdir/feats.scp ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/feats.scp >$destdir/feats.scp
   [ -f $srcdir/vad.scp ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/vad.scp >$destdir/vad.scp
+  [ -f $srcdir/utt2lang ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/utt2lang >$destdir/utt2lang
   [ -f $srcdir/wav.scp ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/wav.scp >$destdir/wav.scp
   [ -f $srcdir/text ] && utils/filter_scp.pl $destdir/utt2spk <$srcdir/text >$destdir/text
   [ -f $srcdir/spk2gender ] && utils/filter_scp.pl $destdir/spk2utt <$srcdir/spk2gender >$destdir/spk2gender

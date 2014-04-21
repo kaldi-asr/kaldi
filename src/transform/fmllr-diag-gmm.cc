@@ -42,6 +42,28 @@ void FmllrDiagGmmAccs:: AccumulateFromPosteriors(
   stats.b.AddMatVec(1.0, pdf.inv_vars(), kTrans, posterior, 1.0);
 }
 
+void FmllrDiagGmmAccs:: AccumulateFromPosteriorsPreselect(
+    const DiagGmm &pdf,
+    const std::vector<int32> &gselect,
+    const VectorBase<BaseFloat> &data,
+    const VectorBase<BaseFloat> &posterior) {
+  
+  if (this->DataHasChanged(data)) {
+    CommitSingleFrameStats();
+    InitSingleFrameStats(data);
+  }
+  SingleFrameStats &stats = this->single_frame_stats_;
+  stats.count += posterior.Sum();
+  
+  const Matrix<BaseFloat> &means_invvars = pdf.means_invvars(),
+      &inv_vars = pdf.inv_vars();
+  KALDI_ASSERT(static_cast<int32>(gselect.size()) == posterior.Dim());
+  for (size_t i = 0; i < gselect.size(); i++) {
+    stats.a.AddVec(posterior(i), means_invvars.Row(gselect[i]));
+    stats.b.AddVec(posterior(i), inv_vars.Row(gselect[i]));
+  }
+}
+
 FmllrDiagGmmAccs::FmllrDiagGmmAccs(const DiagGmm &gmm,
                                    const AccumFullGmm &fgmm_accs):
     single_frame_stats_(gmm.Dim()), opts_(FmllrOptions()) {
@@ -88,6 +110,22 @@ BaseFloat FmllrDiagGmmAccs::AccumulateForGmm(const DiagGmm &pdf,
   AccumulateFromPosteriors(pdf, data, posterior);
   return loglike;
 }
+
+BaseFloat FmllrDiagGmmAccs::AccumulateForGmmPreselect(
+    const DiagGmm &pdf,
+    const std::vector<int32> &gselect,
+    const VectorBase<BaseFloat> &data,
+    BaseFloat weight) {
+  KALDI_ASSERT(!gselect.empty() && "Empty gselect information");
+  Vector<BaseFloat> loglikes;
+  pdf.LogLikelihoodsPreselect(data, gselect, &loglikes);
+
+  BaseFloat loglike = loglikes.ApplySoftMax(); // they are now posteriors.
+  loglikes.Scale(weight);
+  AccumulateFromPosteriorsPreselect(pdf, gselect, data, loglikes);
+  return loglike;
+}
+
 
 
 void FmllrDiagGmmAccs::Update(const FmllrOptions &opts,
