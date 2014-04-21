@@ -73,6 +73,7 @@ int main(int argc, char *argv[]) {
       prod1 += TraceMatMat(feat1, feat1, kTrans);
       prod2 += TraceMatMat(feat2, feat2, kTrans);
       cross_prod += TraceMatMat(feat1, feat2, kTrans);
+      num_done++;
     }
 
     KALDI_LOG << "Self-product of 1st features was " << prod1
@@ -85,6 +86,7 @@ int main(int argc, char *argv[]) {
     
     KALDI_LOG << "Processed " << num_done << " feature files, "
               << num_err << " had errors.";
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
