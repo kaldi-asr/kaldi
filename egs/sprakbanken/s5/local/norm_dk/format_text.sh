@@ -39,10 +39,9 @@ fi
 
 $dir/expand_dates.sh $line |\
 $dir/format_punct.sh  >  $num;
-python3 $dir/writenumbers.py $dir/numbersUp.tbl $num $nonum;
-cat $nonum | $dir/write_punct.sh | \
-perl -pi -e "s/^\n//" | PERLIO=:utf8 perl -pe '$_=uc'  #> ../${2%.*}.exp.txt
-
+#python3 $dir/writenumbers.py $dir/numbersUp.tbl $num $nonum;
+cat $num | $dir/write_punct.sh | \
+perl -pi -e "s/^\n//" | PERLIO=:utf8 perl -pe '$_=uc'
 
 # Comment this line for debugging
 wait

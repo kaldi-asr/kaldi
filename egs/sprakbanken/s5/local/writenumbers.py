@@ -211,30 +211,35 @@ def rmPvAnnotation(string):
     else:
         return string
 
+def normNumber(line, table):
+    tokens = line.split()
+    keys = table.keys()
+    for num, tok in enumerate(tokens):
+        newtoks = splitNumeric(tok)
+        if newtoks != False:
+            newtoks = writeOutSplits(newtoks)
+            written = [writeNumber(x, table, keys) for x in newtoks if x.isnumeric()]
+            newstring = list2string(written)
+        else:
+            newstring = writeNumber(tok, table, keys)
+        tokens[num] = newstring
+    return list2string(tokens, newline=True)
+
+
 def writeOutNumbers(infile, outfile, tablefile="numbers.tbl"):
     '''Uses a table of numbers-text to write out numbers in the infile.'''
     text = codecs.open(infile, "r", "utf8")
     fout = codecs.open(outfile, "w", "utf8")
     table = loadNumTable(tablefile)
-    keys = table.keys()
+#    keys = table.keys()
     for line in text:
-        tokens = line.split()
-        for num, tok in enumerate(tokens):
-            newtoks = splitNumeric(tok)
-#            tok = rmPvAnnotation(tok)
-            if newtoks != False:
-                newtoks = writeOutSplits(newtoks)
-                written = [writeNumber(x, table, keys) for x in newtoks if x.isnumeric()]
-                newstring = list2string(written)
-            else:
-                newstring = writeNumber(tok, table, keys)
-            tokens[num] = newstring
-        cleanline = list2string(tokens, newline=True)
+        cleanline = normNumber(line, table)
         #print(cleanline)
         fout.write(cleanline)
      
     text.close()
     fout.close()
+
 
 if __name__ == '__main__':
     

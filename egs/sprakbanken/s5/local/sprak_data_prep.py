@@ -85,7 +85,6 @@ def txt2wav(fstring):
 
 
 def make_kaldi_scp(line, sph, wav=False):
-#    global sph2pipe
     if not wav:
         wavpath = txt2wav(line)
     else:

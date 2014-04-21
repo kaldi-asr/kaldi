@@ -23,7 +23,7 @@ local/norm_dk/format_text.sh am data/test/text2 > data/test/text
 
 
 utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1;
-
+exit
 
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you

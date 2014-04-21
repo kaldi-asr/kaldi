@@ -39,10 +39,10 @@ perl -pe 's/([S|s]t\.p\.) et c./\1_et_c\./g' | \
 perl -pe 's/([S|s]tet) p et c/\1 p_et_c\./g' | \
 perl -pe 's/BS([\.|:|,| ])/Blodsukker\1/g' | \
 perl -pe 's/UE([\.|:| ])/Underekstremitet\1/g' | \
-perl -pe 's/ AF([\.|:|,| ])/ Atrieflagren\1/g' | \
+perl -pe 's/ AF([\.|:|,])/ Atrieflagren\1/g' | \
 perl -pe 's/ AS([\.|:|,| ])/ Aortastenose\1/g' | \
 perl -pe 's/ UL([\.|:|,| ])/ Ultralyd\1/g' | \
-perl -pe 's/BT([\.|:|,| ])/Blodtryk\1/g' | \
+perl -pe 's/ BT([\.|:|,| ])/Blodtryk\1/g' | \
 perl -pe 's/([S|s])at\./\1aturation/g' | \
 perl -pe 's/([E|e])\.?v\.?t\.?/\1ventuelt/g' | \
 perl -pe 's/([S|s])t\. ?([p|c]\.)/\1tet\. \2/g' | \

@@ -96,7 +96,6 @@ python3 $local/sprak_data_prep.py $dir/traintxtfiles $traindir $dir/trainsndfile
 python3 $local/sprak_data_prep.py $dir/testtxtfiles $testdir $dir/testsndfiles $sph2pipe &
 python3 $local/sprak_data_prep.py $dir/devtxtfiles $devdir $dir/devsndfiles $sph2pipe &
 
-echo "$dir/lmtxtfiles"
 cat $dir/lmtxtfiles | while read l; do cat $l; done > $dir/lmsents
 
 wait

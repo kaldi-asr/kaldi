@@ -19,6 +19,7 @@
 import codecs
 import sys
 import re
+import writenumbers
 
 ## Global vars
 
@@ -42,22 +43,20 @@ def getuttid_text(line):
 
 ## Main
 
-textin = codecs.open(sys.argv[1], "r", "utf8")
-outtext = codecs.open(sys.argv[2], "w", "utf8")
+numtable = writenumbers.loadNumTable(sys.argv[1])
+textin = codecs.open(sys.argv[2], "r", "utf8")
 fid = codecs.open(sys.argv[3], "w", "utf8")
-
+outtext = codecs.open(sys.argv[4], "w", "utf8")
 
 for line in textin:
-    utt_id, text = getuttid_text(line)
-    normtext1 = text.translate(t_table)
+        utt_id, text = getuttid_text(line)
+        normtext1 = text.translate(t_table)
+        normtext2 = re.sub(r'  +', ' ', normtext1.strip())
+        normtext3 = writenumbers.normNumber(normtext2, numtable)
 
-    normtext2 = re.sub(r'  +', ' ', normtext1.strip())
-
-    outtext.write(utt_id + "\n")
-    wlist.write(normtext2 + "\n")
-
-if make_wlist:
-    wlist.close()
+        fid.write(utt_id + "\n")
+        outtext.write(normtext3 + "\n")
 
 textin.close()
 outtext.close()
+fid.close()
