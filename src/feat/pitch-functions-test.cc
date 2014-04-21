@@ -175,7 +175,6 @@ static void UnitTestComputeGPE() {
   KALDI_LOG << "=== UnitTestComputeGPE ===\n";
   int32 wrong_pitch = 0, tot_voiced = 0, tot_unvoiced = 0, num_frames = 0;
   BaseFloat tol = 0.1, avg_d_kpitch = 0, real_pitch = 0;
-  std::string pgtfile, kfile;
   for (int32 i = 1; i < 11; i++) {
     std::string wavefile;
     std::string num;
@@ -185,11 +184,11 @@ static void UnitTestComputeGPE() {
       num = "m" + ConvertIntToString(i-5) + "nw0000";
     }
     Matrix<BaseFloat> gross_pitch;
-    pgtfile = "keele/keele-true-lags/"+num+".pev";
-    std::ifstream pgt(pgtfile.c_str());
-    gross_pitch.Read(pgt, false);
+    std::string pitchfile = "keele/keele-true-lags/"+num+".txt";
+    std::ifstream pitch(pitchfile.c_str());
+    gross_pitch.Read(pitch, false);
     Matrix<BaseFloat> kaldi_pitch;
-    kfile = "keele/"+num+"-kaldi.txt";
+    std::string kfile = "keele/tmp/+"+num+"-kaldi.txt";
     std::ifstream kpitch(kfile.c_str());
     kaldi_pitch.Read(kpitch, false);
     num_frames = std::min(kaldi_pitch.NumRows(),gross_pitch.NumRows());
@@ -206,7 +205,7 @@ static void UnitTestComputeGPE() {
     }
   }
   BaseFloat GPE = 1.0 * wrong_pitch / tot_voiced;
-  KALDI_LOG << " Gross Pitch Error with Rel.Error " << tol << " is " << GPE ;
+  KALDI_LOG << " Gross Pitch Error with Rel.Error " << tol << " is " << GPE;
   KALDI_LOG << "Average Kaldi delta_pitch for unvoiced regions " << avg_d_kpitch/tot_unvoiced;
 }
 
@@ -236,7 +235,7 @@ static void UnitTestKeele() {
     // compute pitch.
     Matrix<BaseFloat> m;
     ComputeKaldiPitch(op, waveform, &m);
-    std::string outfile = "keele/"+num+"-kaldi.txt";
+    std::string outfile = "keele/tmp/+"+num+"-kaldi.txt";
     std::ofstream os(outfile.c_str());
     m.Write(os, false);
   }
@@ -269,7 +268,7 @@ static void UnitTestPenaltyFactor() {
       Matrix<BaseFloat> m;
       ComputeKaldiPitch(op, waveform, &m);
       std::string penaltyfactor = ConvertIntToString(k);
-      std::string outfile = "keele/"+num+"-kaldi-penalty-"+penaltyfactor+".txt";
+      std::string outfile = "keele/tmp/+"+num+"-kaldi-penalty-"+penaltyfactor+".txt";
       std::ofstream os(outfile.c_str());
       m.Write(os, false);
     }
@@ -302,7 +301,7 @@ static void UnitTestKeeleNccfBallast() {
       Matrix<BaseFloat> m;
       ComputeKaldiPitch(op, waveform, &m);
       std::string nccfballast = ConvertIntToString(op.nccf_ballast);
-      std::string outfile = "keele/"+num
+      std::string outfile = "keele/tmp/+"+num
         +"-kaldi-nccf-ballast-"+nccfballast+".txt";
       std::ofstream os(outfile.c_str());
       m.Write(os, false);
@@ -368,7 +367,7 @@ static void UnitTestPitchExtractorCompareKeele() {
     // compute pitch.
     Matrix<BaseFloat> m;
     ComputeKaldiPitch(op, waveform, &m);
-    std::string outfile = "keele/"+num+"-speedup-kaldi1.txt";
+    std::string outfile = "keele/tmp/+"+num+"-speedup-kaldi1.txt";
     std::ofstream os(outfile.c_str());
     m.Write(os, false);
   }
@@ -401,7 +400,7 @@ void UnitTestDiffSampleRate() {
     SubVector<BaseFloat> waveform(wave.Data(), 0);
     Matrix<BaseFloat> m;
     ComputeKaldiPitch(op, waveform, &m);
-    std::string outfile = "keele/"+num+"-kaldi-samp-freq-"+samp_rate+"kHz.txt";
+    std::string outfile = "keele/tmp/+"+num+"-kaldi-samp-freq-"+samp_rate+"kHz.txt";
     std::ofstream os(outfile.c_str());
     m.Write(os, false);
   }
@@ -435,7 +434,7 @@ void UnitTestProcess() {
     postprop_op.delta_pitch_noise_stddev = 0.0;
     ProcessPitch(postprop_op, m, &m2);
 
-    std::string outfile = "keele/"+num+"-processed-kaldi.txt";
+    std::string outfile = "keele/tmp/+"+num+"-processed-kaldi.txt";
     std::ofstream os(outfile.c_str());
     m2.Write(os, false);
   }
@@ -470,13 +469,18 @@ int main() {
     if (DirExist("keele/16kHz")) {
       UnitTestFeatWithKeele();
     } else {
-      KALDI_LOG << "Not running tests that require the Keele database, "
-        << "please ask g.meyer@liverpool.ac.uk for the database if you need it.\n"
-        << " you need to change sampling frequency for keele wave file.\n"
-        << " i.e. sox f1nw0000.wav -r 16000 f1nw0000.wav and put them in keele/16kHz directory\n"
-        << " copy all *.pev files to keele/keele-true-lags and run following command in this directory to prepare data for computing GPE\n"
-        << " for f in *; do echo ' [' > tmp ; len=`cat $f | wc -l` ; head -n $(($len-1)) $f | tail -n $(($len-14)) >> tmp ; echo -n ] >> tmp ; mv tmp $f; done"
-        << " The GPE reported in paper is computed using pseudo-ground-truth pitch by voting among mentioned pitch trackers in paper\n";
+      KALDI_LOG
+          << "Not running tests that require the Keele database, "
+          << "please ask g.meyer@liverpool.ac.uk for the database if you need it.\n"
+          << "Once you have the keele/ subdirectory, containing *.{pel,pet,pev,raw,wav}, do this:\n"
+          << "cd keele; mkdir -p 16kHz; mkdir -p tmp; for x in *.wav; do \n"
+          << "sox $x -r 16000 16kHz/$x; done  \n"
+          << "mkdir -p keele-true-lags; for f in *.pev; do \n"
+          << "out_f=keele-true-lags/$(echo $f | sed s:pev:txt:); ( echo ' ['; len=`cat $f | wc -l`; \n"
+          << "head -n $(($len-1)) $f | tail -n $(($len-14)) ; echo -n ']') >$out_f; done \n"
+          << "\n"
+          << "Note: the GPE reported in paper is computed using pseudo-ground-truth pitch obtained\n"
+          << "by voting among the pitch trackers mentioned in the paper.\n";
     }
     KALDI_LOG << "Tests succeeded.\n";
     return 0;
@@ -485,5 +489,4 @@ int main() {
     return 1;
   }
 }
-
 
