@@ -61,7 +61,7 @@ if [ ! -d $s1 ]; then
 else 
   need_to_split=false
   for f in utt2spk spk2utt feats.scp text wav.scp cmvn.scp spk2gender \
-    vad.scp segments reco2file_and_channel; do
+    vad.scp segments reco2file_and_channel utt2lang; do
     if [[ -f $data/$f && ( ! -f $s1/$f || $s1/$f -ot $data/$f ) ]]; then
       need_to_split=true
     fi
@@ -78,6 +78,7 @@ for n in `seq $numsplit`; do
    vads="$vads $data/split$numsplit/$n/vad.scp"
    texts="$texts $data/split$numsplit/$n/text"
    utt2spks="$utt2spks $data/split$numsplit/$n/utt2spk"
+   utt2langs="$utt2langs $data/split$numsplit/$n/utt2lang"
 done
 
 if $split_per_spk; then
@@ -93,6 +94,8 @@ utils/split_scp.pl $utt2spk_opt $data/feats.scp $feats || exit 1
 [ -f $data/text ] && utils/split_scp.pl $utt2spk_opt $data/text $texts
 
 [ -f $data/vad.scp ] && utils/split_scp.pl $utt2spk_opt $data/vad.scp $vads
+
+[ -f $data/utt2lang ] && utils/split_scp.pl $utt2spk_opt $data/utt2lang $utt2langs
 
 # If lockfile is not installed, just don't lock it.  It's not a big deal.
 which lockfile >&/dev/null && lockfile -l 60 $data/.split_lock 
