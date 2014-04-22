@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     BaseFloat min_segment_length = 0.1, // Minimum segment length in seconds.
-        max_overshoot = 0.0;  // max time by which last segment can overshoot
+        max_overshoot = 0.5;  // max time by which last segment can overshoot
     po.Register("min-segment-length", &min_segment_length,
                 "Minimum segment length in seconds (reject shorter segments)");
     po.Register("max-overshoot", &max_overshoot,

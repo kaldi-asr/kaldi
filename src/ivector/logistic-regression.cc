@@ -287,7 +287,6 @@ void LogisticRegression::SetWeights(const Matrix<BaseFloat> &weights,
 }
 
 void LogisticRegression::ScalePriors(const Vector<BaseFloat> &scales) {
-  int32 num_classes = scales.Dim();
   Vector<BaseFloat> log_scales(scales);
   log_scales.ApplyLog();
 

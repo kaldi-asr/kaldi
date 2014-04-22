@@ -66,13 +66,13 @@ echo $nj >$dir/num_jobs
 echo "$splice_opts" >$dir/splice_opts # keep track of frame-splicing options
            # so that later stages of system building can know what they were.
 
-echo $norm_vars > $dir/norm_vars # keep track of feature normalization type
-           # so that later stages of system building can know what they were.
+$norm_vars && cmvn_opts="--norm-vars=true $cmvn_opts"
+echo $cmvn_opts  > $dir/cmvn_opts # keep track of options to CMVN.
 
 sdata=$data/split$nj;
 split_data.sh $data $nj || exit 1;
 
-splicedfeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
+splicedfeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
 # Note: $feats gets overwritten later in the script.
 feats="$splicedfeats transform-feats $dir/0.mat ark:- ark:- |"
 

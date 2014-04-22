@@ -21,7 +21,7 @@ for x in `seq 3`; do
 done
 
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] data-dir"
+  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] <data-dir>"
   echo "e.g.: $0 data/train"
 fi
 
