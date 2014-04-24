@@ -9,21 +9,22 @@
 
 # Download the corpus and prepare parallel lists of sound files and text files
 # Divide the corpus into train, dev and test sets
-local/sprak_data_prep.sh  || exit 1;
+#local/sprak_data_prep.sh  || exit 1;
 
 
 # Perform text normalisation of the training set, prepare transcriptions
 # Put everything in data/local/dict
-local/sprak_prepare_dict.sh || exit 1;
-
+#local/sprak_prepare_dict.sh || exit 1;
+local/dict_prep.sh || exit 1;
 
 # Repeat text preparation on test set, but do not add to dictionary
-python3 local/normalize_transcript.py data/test/text1 data/test/text2 
-local/norm_dk/format_text.sh am data/test/text2 > data/test/text
+test=data/test
+python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $test/text1 $test/onlyids $test/transcripts.am 
+local/norm_dk/format_text.sh am $test/transcripts.am > $test/onlytext
+paste $test/onlyids $test/onlytext > $test/text
 
 
 utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1;
-exit
 
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
@@ -38,8 +39,8 @@ utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
 # p was added to the rspecifier (scp,p:$logdir/wav.JOB.scp) in make_mfcc.sh because some 
 # wave files are corrupt 
 # Will return a warning message because of the corrupt wave files, but compute them anyway
-steps/make_mfcc.sh --nj 50 --cmd $train_cmd data/train exp/make_mfcc/train mfcc 
-steps/make_mfcc.sh --nj 50 --cmd $train_cmd data/test exp/make_mfcc/test mfcc 
+steps/make_mfcc.sh --nj 24 --cmd $train_cmd data/train exp/make_mfcc/train mfcc 
+steps/make_mfcc.sh --nj 24 --cmd $train_cmd data/test exp/make_mfcc/test mfcc 
 
 
 # Compute cepstral mean and variance normalisation
@@ -55,7 +56,7 @@ utils/fix_data_dir.sh data/train && utils/fix_data_dir.sh data/test
 #local/sprak_train_lm.sh &> data/local/cmuclmtk/lm.log
 
 # Train LM with irstlm
-local/train_irstlm.sh data/local/dict/transcripts.txt b3 "b3g" data/lang data/local/trainb3_lm &> data/local/b3g.log &
+local/train_irstlm.sh data/local/dict/transcripts.txt 3 "b3g" data/lang data/local/trainb3_lm &> data/local/b3g.log &
 local/train_irstlm.sh data/local/dict/transcripts.uniq 3 "3g" data/lang data/local/train3_lm &> data/local/3g.log &
 #local/train_irstlm.sh data/local/dict/transcripts.txt b4 "b4g" data/lang data/local/trainb4_lm &> data/local/b4g.log &
 #local/train_irstlm.sh data/local/dict/transcripts.uniq 4 "4g" data/lang data/local/train4_lm &> data/local/4g.log &
@@ -68,7 +69,7 @@ utils/subset_data_dir.sh --per-spk data/test 140 data/test1k &
 utils/subset_data_dir.sh --shortest data/train 120000 data/train_120kshort || exit 1;
 
 # Train monophone model on short utterances
-steps/train_mono.sh --nj 50 --cmd "$train_cmd" \
+steps/train_mono.sh --nj 24 --cmd "$train_cmd" \
   data/train_120kshort data/lang exp/mono0a || exit 1;
 
 # Ensure that LMs are created
@@ -94,7 +95,7 @@ steps/decode.sh --nj 7 --cmd "$decode_cmd" \
 
 
 # steps/align_si.sh --boost-silence 1.25 --nj 42 --cmd "$train_cmd" \
-steps/align_si.sh --nj 50 --cmd "$train_cmd" \
+steps/align_si.sh --nj 24 --cmd "$train_cmd" \
    data/train data/lang exp/mono0a exp/mono0a_ali || exit 1;
 
 # steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
@@ -102,6 +103,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
     2000 10000 data/train data/lang exp/mono0a_ali exp/tri1 || exit 1;
 
 wait
+exit
 
 utils/mkgraph.sh data/lang_test_3g exp/tri1 exp/tri1/graph_3g &
 utils/mkgraph.sh data/lang_test_b3g exp/tri1 exp/tri1/graph_b3g || exit 1;#
@@ -177,10 +179,11 @@ steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 7 \
 # To build RNNLMs uncomment this code
 
 # Repeat text preparation on dev set, but do not add to dictionary
-# python3 local/normalize_transcript.py data/dev/text1 data/dev/text2 
-# local/norm_dk/format_text.sh lm data/dev/text2 > data/dev/transcripts.txt
-# sort -u data/dev/transcripts.txt > data/dev/transcripts.uniq
-# sprak_train_rnnlms.sh data/local/dict data/dev/transcripts.uniq data/local/rnnlms/g_c380_d1k_h100_v130k
+$dev=data/dev
+# python3 local/normalize_transcript.py $dev/text1 $dev/text2 
+# local/norm_dk/format_text.sh lm $dev/text2 > $dev/transcripts.txt
+# sort -u $dev/transcripts.txt > $dev/transcripts.uniq
+# sprak_train_rnnlms.sh data/local/dict $dev/transcripts.uniq data/local/rnnlms/g_c380_d1k_h100_v130k
 # local/sprak_run_rnnlms_tri3b.sh lang_test_3g data/local/rnnlms/g_c380_d1k_h100_v130k
 
 # The following two steps, which are a kind of side-branch, try mixing up

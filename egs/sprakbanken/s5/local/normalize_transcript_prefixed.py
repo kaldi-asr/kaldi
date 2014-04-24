@@ -55,7 +55,7 @@ for line in textin:
         normtext3 = writenumbers.normNumber(normtext2, numtable)
 
         fid.write(utt_id + "\n")
-        outtext.write(normtext3 + "\n")
+        outtext.write(normtext3)
 
 textin.close()
 outtext.close()

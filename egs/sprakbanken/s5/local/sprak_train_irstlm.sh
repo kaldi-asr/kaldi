@@ -9,7 +9,7 @@
 # data/train_si284, data/train_si84, etc.
 
 . ./path.sh || exit 1;
-irstbin=$KALDI_ROOT/tools/irstlm/bin
+export PATH=$KALDI_ROOT/tools/irstlm/bin:$PATH
 
 srcdict=$1
 newtext=$2

@@ -17,19 +17,22 @@
 
 #dir=norm_dk
 
-dos2unix $2
+#dos2unix $2
 
 mode=$1
 
 dir=$(pwd)/local/norm_dk
 
+src=$dir/src.tmp
 abbr=$dir/anot.tmp
 rem=$dir/rem.tmp
 line=$dir/line.tmp
 num=$dir/num.tmp
 nonum=$dir/nonum.tmp
 
-$dir/expand_abbr_medical.sh $2 > $abbr;
+cat $2 | tr -d '\r' > $src
+
+$dir/expand_abbr_medical.sh $src > $abbr;
 $dir/remove_annotation.sh $abbr > $rem;
 if [ $mode != "am" ]; then
     $dir/sent_split.sh $rem > $line;
