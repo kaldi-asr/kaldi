@@ -2804,7 +2804,41 @@ template<typename Real> static void UnitTestAddMat2() {
 }
 
 
+template<typename Real> static void UnitTestSymAddMat2() {
+  for (int32 i = 0; i < 5; i++) {
+    int32 dimM = 10 + rand() % 200, dimN = 10 + rand() % 30;                                                            
+    KALDI_LOG << "dimM = " << dimM << ", dimN = " << dimN;
 
+    Matrix<Real> M(dimM, dimM); // square matrix..                                                                            
+    Matrix<Real> N(dimM, dimN);
+    M.SetRandn();
+    N.SetRandn();
+    //MatrixTransposeType trans = (i % 2 == 0 ? kTrans : kNoTrans),                                                          
+    MatrixTransposeType trans = kTrans,
+        other_trans = (trans == kTrans ? kNoTrans : kTrans);
+    if (trans == kTrans) N.Transpose();
+    KALDI_LOG << "N sum is " << N.Sum();
+    Matrix<Real> M2(M);
+    KALDI_LOG << "M sum is " << M.Sum();
+
+    Real alpha = 0.2 * (rand() % 6),
+        beta = 0.2 * (rand() % 6);
+    //Real alpha = 0.3, beta = 1.75432;
+    M.SymAddMat2(alpha, N, trans, beta);
+
+    KALDI_LOG << "M(0, 0) is " << M(0, 0);
+    KALDI_LOG << "M sum2 is " << M.Sum();
+
+    M2.AddMatMat(alpha, N, trans, N, other_trans, beta);
+
+    TpMatrix<Real> T1(M.NumRows()), T2(M2.NumRows());
+    T1.CopyFromMat(M);
+    T2.CopyFromMat(M2);
+    Matrix<Real> X1(T1), X2(T2); // so we can test equality.                                                                  
+    AssertEqual(X1, X2);
+    KALDI_ASSERT(dimM == 0 || X1.Trace() != 0);
+  }
+}
 
 
 template<typename Real> static void UnitTestSolve() {
@@ -4157,6 +4191,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   KALDI_LOG << " Point I";
   UnitTestSolve<Real>();
   UnitTestAddMat2<Real>();
+  UnitTestSymAddMat2<Real>();
   UnitTestAddMatSelf<Real>();
   UnitTestMaxMin<Real>();
   UnitTestInnerProd<Real>();
