@@ -155,8 +155,8 @@ mkdir -p $dir/log
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 cp $alidir/final.mat $dir 2>/dev/null
 cp $alidir/splice_opts $dir 2>/dev/null
-norm_vars=`cat $alidir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
-ccp $alidir/norm_vars $dir 2>/dev/null
+cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
+cp $alidir/cmvn_opts $dir 2>/dev/null
 cp $alidir/tree $dir
 
 truncate_comp_num=$[2*$num_hidden_layers+1]

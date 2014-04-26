@@ -30,12 +30,17 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Computes relative difference between two sets of features\n"
         "Can be used to figure out how different two sets of features are.\n"
-        "Inputs must have same dimension\n"
+        "Inputs must have same dimension.  Prints to stdout a similarity\n"
+        "metric that is 1.0 if the features identical, and <1.0 otherwise.\n"
         "\n"
-        "Usage: compare-feats [options] <in-rspecifier1> <in-rspecifier1>\n"
+        "Usage: compare-feats [options] <in-rspecifier1> <in-rspecifier2>\n"
         "e.g.: compare-feats ark:1.ark ark:2.ark\n";
 
     ParseOptions po(usage);
+
+    BaseFloat threshold = 0.99;
+    po.Register("threshold", &threshold, "Similarity threshold, affects "
+                "return status");
     
     po.Read(argc, argv);
 
@@ -96,13 +101,27 @@ int main(int argc, char *argv[]) {
               << ", self-product of 2nd features was " << prod2
               << ", cross-product was " << cross_prod;
 
-    double similarity_metric = cross_prod / sqrt(prod1 * prod2);
+    double similarity_metric = cross_prod / (0.5*prod1 + 0.5*prod2);
     KALDI_LOG << "Similarity metric is " << similarity_metric
               << " (1.0 means identical, the smaller the more different)";
     
     KALDI_LOG << "Processed " << num_done << " feature files, "
               << num_err << " had errors.";
-    return (num_done != 0 ? 0 : 1);
+    bool similar = (similarity_metric >= threshold);
+
+    if (num_done > 0) {
+      if (similar) {
+        KALDI_LOG << "Features are considered similar since "
+                  << similarity_metric << " >= " << threshold;
+      } else {
+        KALDI_LOG << "Features are considered dissimilar since "
+                  << similarity_metric << " < " << threshold;
+      }
+    }
+
+    std::cout << similarity_metric << std::endl;
+    
+    return (num_done > 0 && similar) ? 0 : 1;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

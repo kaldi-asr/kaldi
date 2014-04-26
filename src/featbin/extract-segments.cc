@@ -44,11 +44,12 @@ int main(int argc, char *argv[]) {
         " e.g.: spkabc_seg1 spkabc_recording1 1.10 2.36 1\n"
         " If channel is not provided as last element, expects mono.\n"
         " end_time of -1 means the segment runs till the end of the WAV file.\n"
-        "See also extract-rows, which does the same thing but to feature files\n";
+        "See also: extract-rows, which does the same thing but to feature files,\n"
+        " wav-copy, wav-to-duration\n";
 
     ParseOptions po(usage);
     BaseFloat min_segment_length = 0.1, // Minimum segment length in seconds.
-        max_overshoot = 0.0;  // max time by which last segment can overshoot
+        max_overshoot = 0.5;  // max time by which last segment can overshoot
     po.Register("min-segment-length", &min_segment_length,
                 "Minimum segment length in seconds (reject shorter segments)");
     po.Register("max-overshoot", &max_overshoot,

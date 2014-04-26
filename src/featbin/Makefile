@@ -13,7 +13,7 @@ BINFILES = compute-mfcc-feats compute-plp-feats compute-fbank-feats \
     interpolate-pitch copy-feats-to-htk copy-feats-to-sphinx extract-rows \
     apply-cmvn-sliding compute-cmvn-stats-two-channel compute-kaldi-pitch-feats \
     process-kaldi-pitch-feats compare-feats wav-to-duration add-deltas-sdc \
-    compute-and-process-kaldi-pitch-feats modify-cmvn-stats
+    compute-and-process-kaldi-pitch-feats modify-cmvn-stats wav-copy
 
 OBJFILES = 
 
