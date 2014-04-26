@@ -56,20 +56,25 @@ utils/validate_data_dir.sh --no-text --no-feats $data || exit 1;
 # syntax" where we can get rid of the $ for variable names, and omit spaces.
 # The "for" loop in this style is a special construct.
 
+if [ -f $data/spk2warp ]; then
+  echo "$0 [info]: using VTLN warp factors from $data/spk2warp"
+  vtln_opts="--vtln-map=ark:$data/spk2warp --utt2spk=ark:$data/utt2spk"
+fi
 
 if [ -f $data/segments ]; then
   echo "$0 [info]: segments file exists: using that."
+
   split_segments=""
   for ((n=1; n<=nj; n++)); do
     split_segments="$split_segments $logdir/segments.$n"
   done
-
+ 
   utils/split_scp.pl $data/segments $split_segments || exit 1;
   rm $logdir/.error 2>/dev/null
 
   $cmd JOB=1:$nj $logdir/make_mfcc_${name}.JOB.log \
     extract-segments scp:$scp $logdir/segments.JOB ark:- \| \
-    compute-mfcc-feats --verbose=2 --config=$mfcc_config ark:- ark:- \| \
+    compute-mfcc-feats $vtln_opts --verbose=2 --config=$mfcc_config ark:- ark:- \| \
     copy-feats --compress=$compress ark:- \
       ark,scp:$mfccdir/raw_mfcc_$name.JOB.ark,$mfccdir/raw_mfcc_$name.JOB.scp \
      || exit 1;
@@ -84,11 +89,11 @@ else
   utils/split_scp.pl $scp $split_scps || exit 1;
 
   $cmd JOB=1:$nj $logdir/make_mfcc_${name}.JOB.log \
-    compute-mfcc-feats  --verbose=2 --config=$mfcc_config scp:$logdir/wav_${name}.JOB.scp ark:- \| \
+    compute-mfcc-feats  $vtln_opts --verbose=2 --config=$mfcc_config \
+     scp:$logdir/wav_${name}.JOB.scp ark:- \| \
       copy-feats --compress=$compress ark:- \
       ark,scp:$mfccdir/raw_mfcc_$name.JOB.ark,$mfccdir/raw_mfcc_$name.JOB.scp \
       || exit 1;
-
 fi
 
 
