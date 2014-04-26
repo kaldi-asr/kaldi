@@ -145,8 +145,8 @@ bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin latbin ivect
  base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm \
  lm decoder lat cudamatrix nnet nnet2 ivector
 
-bin fstbin gmmbin fgmmbin tiedbin sgmmbin sgmm2bin featbin nnetbin nnet2bin latbin ivectorbin: \
- base matrix util feat tree optimization thread gmm tied transform sgmm sgmm2 fstext hmm \
+bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin latbin ivectorbin: \
+ base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm \
  lm decoder lat cudamatrix nnet nnet2 ivector
 
 #2)The libraries have inter-dependencies
