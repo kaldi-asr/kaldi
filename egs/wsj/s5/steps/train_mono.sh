@@ -20,7 +20,7 @@ config= # name of config file.
 stage=-4
 power=0.25 # exponent to determine number of gaussians from occurrence counts
 feat_dim=-1 # This option is now ignored but retained for compatibility.
-norm_vars=false # false : cmn, true : cmvn
+norm_vars=false # deprecated, prefer --cmvn-opts "--norm-vars=false"
 cmvn_opts=  # can be used to add extra options to cmvn.
 # End configuration section.
 

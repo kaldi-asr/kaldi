@@ -37,8 +37,9 @@ int main(int argc, char *argv[]) {
         "Copy lattices (e.g. useful for changing to text mode or changing\n"
         "format to standard from compact lattice.)\n"
         "Usage: lattice-copy [options] lattice-rspecifier lattice-wspecifier\n"
-        " e.g.: lattice-copy --write-compact=false ark:1.lats ark,t:text.lats\n";
-      
+        " e.g.: lattice-copy --write-compact=false ark:1.lats ark,t:text.lats\n"
+        "See also: lattice-to-fst, and the script egs/wsj/s5/utils/convert_slf.pl\n";
+    
     ParseOptions po(usage);
     bool write_compact = true;
     po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");

@@ -26,9 +26,8 @@ retry_beam=40
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 power=0.25 # Exponent for number of gaussians according to occurrence counts
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
-norm_vars=false # false : cmn, true : cmvn.  To turn off CMN completely,
-                # supply the --fake option to compute_cmvn_stats.sh
-
+cmvn_opts=  # you can supply e.g. --cmvn-opts "--norm-vars=true" to turn on variance
+            # normalization, but only if base system is the delta type, not LDA.
 lvtln_iters="2 4 6 8 10 12 14 16 20"; # iters on which to recompute LVTLN transform"
 num_utt_lvtln_init=200; # number of utterances (subset) to initialize
                         # LVTLN transform.  Not too critical.
@@ -81,11 +80,17 @@ echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
 split_data.sh $data $nj || exit 1;
 
-echo $norm_vars > $dir/norm_vars # keep track of feature normalization type for decoding, alignment
+
+cp $alidir/splice_opts $dir 2>/dev/null
+
 
 if [ ! -f $alidir/final.mat ]; then
+  [ $(cat $alidir/cmvn_opts 2>/dev/null | wc -c) -gt 1 ] && [ -z "$cmvn_opts" ] && \
+    echo "$0: warning: ignoring CMVN options from $alidir.";
+  echo $cmvn_opts > $dir/cmvn_opts
+
   echo "$0: Using delta+delta-delta features since $alidir/final.mat does not exist"
-  sifeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
+  sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
   feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
   # for the subsets of features that we use to estimate the linear transforms, we don't
   # bother with CMVN.  This will give us wrong offsets on the transforms, but it will end
@@ -95,8 +100,10 @@ if [ ! -f $alidir/final.mat ]; then
   featsub_unwarped="ark:add-deltas ark:$dir/feats.$default_class.ark ark:- |"
 else
   echo "$0: Using LDA features"
-  cp $alidir/final.mat $alidir/full.mat $alidir/splice_opts $dir 2>/dev/null 
-  sifeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+  [ ! -z "$cmvn_opts" ] && echo  "$0: you cannot supply --cmvn-opts if base system is LDA."
+  cp $alidir/final.mat $alidir/full.mat $alidir/splice_opts $alidir/cmvn_opts $dir 2>/dev/null 
+  cmvn_opts=`cat $dir/cmvn_opts 2>/dev/null`
+  sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
   feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
   featsub_warped="ark:splice-feats $splice_opts ark:$dir/feats.CLASS.ark ark:- | transform-feats $dir/final.mat ark:- ark:- |" # you need to define CLASS when invoking $cmd.
   featsub_unwarped="ark:splice-feats $splice_opts ark:$dir/feats.$default_class.ark ark:- | transform-feats $dir/final.mat ark:- ark:- |"  
@@ -111,7 +118,6 @@ fi
 # utils/shuffle_list.pl is deterministic, unlike sort -R.
 cat $data/utt2spk | awk '{print $1}' | utils/shuffle_list.pl | \
   head -n $num_utt_lvtln_init > $dir/utt_subset
-
 
 all_warps="";
 for c in $(seq 0 $[$num_classes-1]); do

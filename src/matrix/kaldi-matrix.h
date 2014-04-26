@@ -22,7 +22,7 @@
 #ifndef KALDI_MATRIX_KALDI_MATRIX_H_
 #define KALDI_MATRIX_KALDI_MATRIX_H_ 1
 
-#include "matrix-common.h"
+#include "matrix/matrix-common.h"
 
 namespace kaldi {
 
