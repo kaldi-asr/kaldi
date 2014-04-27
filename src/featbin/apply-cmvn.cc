@@ -1,6 +1,7 @@
 // featbin/apply-cmvn.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2014  Johns Hopkins University
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -35,11 +36,15 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     std::string utt2spk_rspecifier;
     bool norm_vars = false;
+    bool norm_means = true;
     po.Register("utt2spk", &utt2spk_rspecifier, "rspecifier for utterance to speaker map");
     po.Register("norm-vars", &norm_vars, "If true, normalize variances.  Note: "
                 "to turn off mean normalization also, it's generally easiest to "
                 "compute 'fake' CMVN stats with zero/one mean/variance."
                 "See the --fake option to compute_cmvn_stats.sh");
+    po.Register("norm-means", &norm_means, "You can set this to false to turn off mean "
+                "normalization, or to compute 'fake' CMVN stats; "
+                "see the --fake option to compute_cmvn_stats.sh");
     
     po.Read(argc, argv);
 
@@ -47,6 +52,8 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+    if (norm_vars && !norm_means)
+      KALDI_ERR << "You cannot normalize the variance but not the mean.";
 
     kaldi::int32 num_done = 0, num_err = 0;
     
@@ -63,28 +70,31 @@ int main(int argc, char *argv[]) {
 
       RandomAccessDoubleMatrixReaderMapped cmvn_reader(cmvn_rspecifier,
                                                        utt2spk_rspecifier);
-
-      for (;!feat_reader.Done(); feat_reader.Next()) {
+      
+      for (; !feat_reader.Done(); feat_reader.Next()) {
         std::string utt = feat_reader.Key();
         Matrix<BaseFloat> feat(feat_reader.Value());
+        if (norm_means) {
+          if (!cmvn_reader.HasKey(utt)) {
+            KALDI_WARN << "No normalization statistics available for key "
+                       << utt << ", producing no output for this utterance";
+            num_err++;
+            continue;
+          }
+          const Matrix<double> &cmvn_stats = cmvn_reader.Value(utt);
 
-        if (!cmvn_reader.HasKey(utt)) {
-          KALDI_WARN << "No normalization statistics available for key "
-                     << utt << ", producing no output for this utterance";
-          num_err++;
-          continue;
+          ApplyCmvn(cmvn_stats, norm_vars, &feat);
+        
+          feat_writer.Write(utt, feat);
+        } else {
+          feat_writer.Write(utt, feat);
         }
-        const Matrix<double> &cmvn_stats = cmvn_reader.Value(utt);
-
-        ApplyCmvn(cmvn_stats, norm_vars, &feat);
-
-        feat_writer.Write(utt, feat);
         num_done++;
       }
     } else {
       if (utt2spk_rspecifier != "")
         KALDI_ERR << "--utt2spk option not compatible with rxfilename as input "
-                   << "(did you forget ark:?)";
+                  << "(did you forget ark:?)";
       std::string cmvn_rxfilename = cmvn_rspecifier_or_rxfilename;
       bool binary;
       Input ki(cmvn_rxfilename, &binary);
@@ -94,7 +104,8 @@ int main(int argc, char *argv[]) {
       for (;!feat_reader.Done(); feat_reader.Next()) {
         std::string utt = feat_reader.Key();
         Matrix<BaseFloat> feat(feat_reader.Value());
-        ApplyCmvn(cmvn_stats, norm_vars, &feat);
+        if (norm_means)
+          ApplyCmvn(cmvn_stats, norm_vars, &feat);
         feat_writer.Write(utt, feat);
         num_done++;
       }

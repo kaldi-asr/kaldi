@@ -58,7 +58,7 @@ randprune=4.0 # speeds up LDA.
 alpha=4.0
 max_change=10.0
 mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
-        # specified.)
+         # specified.)
 num_threads=16
 parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" # by default we use 16 threads; this lets the queue know.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
@@ -152,7 +152,7 @@ utils/split_data.sh $data $nj
 mkdir -p $dir/log
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 cp $alidir/splice_opts $dir 2>/dev/null
-cp $alidir/norm_vars $dir 2>/dev/null
+cp $alidir/cmvn_opts $dir 2>/dev/null
 cp $alidir/tree $dir
 
 

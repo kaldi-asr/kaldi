@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Problem opening transforms with rspecifier "
                   << '"' << transform_rspecifier_or_rxfilename << '"'
                   << " and utt2spk rspecifier "
-                  << '"' << utt2spk_rspecifier;
+                  << '"' << utt2spk_rspecifier << '"';
       }
     }
 

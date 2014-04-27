@@ -21,7 +21,7 @@ for x in `seq 3`; do
 done
 
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] data-dir"
+  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] <data-dir>"
   echo "e.g.: $0 data/train"
 fi
 
@@ -224,6 +224,20 @@ if [ -f $data/spk2gender ]; then
     echo "$0: Error: in $data, speaker lists extracted from spk2utt and spk2gender"
     echo "$0: differ, partial diff is:"
     partial_diff $tmpdir/speakers{,.spk2gender}
+    exit 1;
+  fi
+fi
+
+if [ -f $data/spk2warp ]; then
+  check_sorted_and_uniq $data/spk2warp
+  ! cat $data/spk2warp | awk '{if (!((NF == 2 && ($2 > 0.5 && $2 < 1.5)))){ print; exit 1; }}' && \
+     echo "Mal-formed spk2warp file" && exit 1;
+  cat $data/spk2warp | awk '{print $1}' > $tmpdir/speakers.spk2warp
+  cat $data/spk2utt | awk '{print $1}' > $tmpdir/speakers
+  if ! cmp -s $tmpdir/speakers{,.spk2warp}; then
+    echo "$0: Error: in $data, speaker lists extracted from spk2utt and spk2warp"
+    echo "$0: differ, partial diff is:"
+    partial_diff $tmpdir/speakers{,.spk2warp}
     exit 1;
   fi
 fi
