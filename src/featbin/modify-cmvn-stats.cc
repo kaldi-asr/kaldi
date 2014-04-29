@@ -20,6 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "matrix/kaldi-matrix.h"
+#include "transform/cmvn.h"
 
 
 int main(int argc, char *argv[]) {
@@ -38,7 +39,7 @@ int main(int argc, char *argv[]) {
     
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
@@ -46,12 +47,12 @@ int main(int argc, char *argv[]) {
     int32 num_done = 0;
 
     std::string
-        fake_dims_str = po.GetArg(1),
+        skip_dims_str = po.GetArg(1),
         rspecifier = po.GetArg(2),
         wspecifier = po.GetArg(3);
 
-    std::vector<int32> fake_dims;
-    if (!SplitStringToIntegers(fake_dims_str, ":", false, &fake_dims)) {
+    std::vector<int32> skip_dims;
+    if (!SplitStringToIntegers(skip_dims_str, ":", false, &skip_dims)) {
       KALDI_ERR << "Bad first argument (should be colon-separated list of "
                 <<  "integers)";
     }
@@ -67,8 +68,8 @@ int main(int argc, char *argv[]) {
 
       int32 dim = mat.NumCols() - 1;
       double count = mat(0, dim);
-      for (size_t i = 0; i < fake_dims.size(); i++) {
-        int32 d = fake_dims[i];
+      for (size_t i = 0; i < skip_dims.size(); i++) {
+        int32 d = skip_dims[i];
         if (!(d >= 0 && d < dim))
           KALDI_ERR << "Bad entry " << d << " in list of fake dims; "
                     << "feature dim is " << dim;

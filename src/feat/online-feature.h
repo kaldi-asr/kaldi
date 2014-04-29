@@ -152,7 +152,9 @@ struct OnlineCmvnOptions {
                   // time-efficient but less memory-efficient.  Must be >= 1.
   int32 ring_buffer_size;  // not configurable from command line; size of ring
                            // buffer used for caching CMVN stats.
-
+  std::string skip_dims; // Colon-separated list of dimensions to skip normalization
+                         // of, e.g. 13:14:15.
+  
   OnlineCmvnOptions():
       cmn_window(600),
       speaker_frames(600),
@@ -160,8 +162,9 @@ struct OnlineCmvnOptions {
       normalize_mean(true),
       normalize_variance(false),
       modulus(20),
-      ring_buffer_size(20) { }
-
+      ring_buffer_size(20),
+      skip_dims("") { }
+  
   void Check() {
     KALDI_ASSERT(speaker_frames <= cmn_window && global_frames <= speaker_frames
                  && modulus > 0);
@@ -183,7 +186,8 @@ struct OnlineCmvnOptions {
                  "normalization ");
     po->Register("norm-mean", &normalize_mean, "If true, do mean normalization "
                  "(note: you cannot normalize the variance but not the mean)");
-  }
+    po->Register("skip-dims", &skip_dims, "Dimensions to skip normalization of "
+                 "(colon-separated list of integers)");}
 };
 
 
@@ -245,8 +249,7 @@ class OnlineCmvn: public OnlineFeatureInterface {
   /// Initializer that sets the cmvn state.
   OnlineCmvn(const OnlineCmvnOptions &opts,
              const OnlineCmvnState &cmvn_state,
-             OnlineFeatureInterface *src):
-      opts_(opts), src_(src) { SetState(cmvn_state); }
+             OnlineFeatureInterface *src);
 
   /// Initializer that does not set the cmvn state:
   /// after calling this, you should call SetState().
@@ -311,6 +314,7 @@ class OnlineCmvn: public OnlineFeatureInterface {
 
 
   OnlineCmvnOptions opts_;
+  std::vector<int32> skip_dims_; // Skip CMVN for these dimensions.  Derived from opts_.
   OnlineCmvnState orig_state_;   // reflects the state before we saw this
                                  // utterance.
   Matrix<double> frozen_state_;  // If the user called Freeze(), this variable

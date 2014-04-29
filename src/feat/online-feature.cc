@@ -98,6 +98,25 @@ void OnlineMfccOrPlp<C>::AcceptWaveform(BaseFloat sampling_rate,
 template class OnlineMfccOrPlp<Mfcc>;
 template class OnlineMfccOrPlp<Plp>;
 
+
+OnlineCmvn::OnlineCmvn(const OnlineCmvnOptions &opts,
+                       const OnlineCmvnState &cmvn_state,
+                       OnlineFeatureInterface *src):
+    opts_(opts), src_(src) {
+  SetState(cmvn_state);
+  if (!SplitStringToIntegers(opts.skip_dims, ":", false, &skip_dims_))
+    KALDI_ERR << "Bad --skip-dims option (should be colon-separated list of "
+              <<  "integers)";
+}
+
+OnlineCmvn::OnlineCmvn(const OnlineCmvnOptions &opts,
+                       OnlineFeatureInterface *src): opts_(opts), src_(src) {
+  if (!SplitStringToIntegers(opts.skip_dims, ":", false, &skip_dims_))
+    KALDI_ERR << "Bad --skip-dims option (should be colon-separated list of "
+              <<  "integers)";
+}
+
+
 void OnlineCmvn::GetMostRecentCachedFrame(int32 frame,
                                           int32 *cached_frame,
                                           Matrix<double> *stats) {
@@ -264,6 +283,9 @@ void OnlineCmvn::GetFrame(int32 frame,
                           &stats);
   }
 
+  if (!skip_dims_.empty())
+    FakeStatsForSomeDims(skip_dims_, &stats);
+  
   // call the function ApplyCmvn declared in ../transform/cmvn.h, which
   // requires a matrix.
   Matrix<BaseFloat> feat_mat(1, dim);
@@ -414,7 +436,6 @@ void OnlineDeltaFeature::GetFrame(int32 frame,
 OnlineDeltaFeature::OnlineDeltaFeature(const DeltaFeaturesOptions &opts,
                                        OnlineFeatureInterface *src):
     src_(src), opts_(opts), delta_features_(opts) { }
-
 
 void OnlineCacheFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
   KALDI_ASSERT(frame >= 0);

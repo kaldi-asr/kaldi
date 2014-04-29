@@ -37,7 +37,10 @@ int main(int argc, char *argv[]) {
     std::string utt2spk_rspecifier;
     bool norm_vars = false;
     bool norm_means = true;
-    po.Register("utt2spk", &utt2spk_rspecifier, "rspecifier for utterance to speaker map");
+    std::string skip_dims_str;
+    
+    po.Register("utt2spk", &utt2spk_rspecifier,
+                "rspecifier for utterance to speaker map");
     po.Register("norm-vars", &norm_vars, "If true, normalize variances.  Note: "
                 "to turn off mean normalization also, it's generally easiest to "
                 "compute 'fake' CMVN stats with zero/one mean/variance."
@@ -45,6 +48,8 @@ int main(int argc, char *argv[]) {
     po.Register("norm-means", &norm_means, "You can set this to false to turn off mean "
                 "normalization, or to compute 'fake' CMVN stats; "
                 "see the --fake option to compute_cmvn_stats.sh");
+    po.Register("skip-dims", &skip_dims_str, "Dimensions for which to skip "
+                "normalization: colon-separated list of integers, e.g. 13:14:15)");
     
     po.Read(argc, argv);
 
@@ -55,12 +60,21 @@ int main(int argc, char *argv[]) {
     if (norm_vars && !norm_means)
       KALDI_ERR << "You cannot normalize the variance but not the mean.";
 
+    std::vector<int32> skip_dims;  // optionally use "fake"
+                                   // (zero-mean/unit-variance) stats for some
+                                   // dims to disable normalization.
+    if (!SplitStringToIntegers(skip_dims_str, ":", false, &skip_dims)) {
+      KALDI_ERR << "Bad --skip-dims option (should be colon-separated list of "
+                <<  "integers)";
+    }
+    
+    
     kaldi::int32 num_done = 0, num_err = 0;
     
     std::string cmvn_rspecifier_or_rxfilename = po.GetArg(1);
     std::string feat_rspecifier = po.GetArg(2);
     std::string feat_wspecifier = po.GetArg(3);
-
+    
     SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
     BaseFloatMatrixWriter feat_writer(feat_wspecifier);
     
@@ -81,8 +95,10 @@ int main(int argc, char *argv[]) {
             num_err++;
             continue;
           }
-          const Matrix<double> &cmvn_stats = cmvn_reader.Value(utt);
-
+          Matrix<double> cmvn_stats = cmvn_reader.Value(utt);
+          if (!skip_dims.empty())
+            FakeStatsForSomeDims(skip_dims, &cmvn_stats);
+          
           ApplyCmvn(cmvn_stats, norm_vars, &feat);
         
           feat_writer.Write(utt, feat);
@@ -100,6 +116,8 @@ int main(int argc, char *argv[]) {
       Input ki(cmvn_rxfilename, &binary);
       Matrix<double> cmvn_stats;
       cmvn_stats.Read(ki.Stream(), binary);
+      if (!skip_dims.empty())
+        FakeStatsForSomeDims(skip_dims, &cmvn_stats);
       
       for (;!feat_reader.Done(); feat_reader.Next()) {
         std::string utt = feat_reader.Key();

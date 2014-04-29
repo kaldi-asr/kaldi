@@ -31,7 +31,7 @@ featdir=mfcc
 for x in test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92 train; do
   steps/make_mfcc_pitch.sh --nj 8 --cmd "run.pl" data/$x exp/make_feat/$x $featdir
   # steps/make_plp_pitch.sh --nj 8 --cmd "run.pl" data/$x exp/make_feat/$x $featdir
-  steps/compute_cmvn_stats.sh data/$x exp/make_feat/$x $featdir
+  steps/compute_cmvn_stats.sh --fake-dims 13:14:15 data/$x exp/make_feat/$x $featdir
 done
 
 # Make a combined data dir where the data from all the test sets goes-- we do
@@ -49,9 +49,7 @@ steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono
 #show-transitions data/lang/phones.txt exp/tri2a/final.mdl  exp/tri2a/final.occs | perl -e 'while(<>) { if (m/ sil /) { $l = <>; $l =~ m/pdf = (\d+)/|| die "bad line $l";  $tot += $1; }} print "Total silence count $tot\n";'
 
 
-
 utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
-
 
 
 
@@ -159,6 +157,15 @@ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_mmi/decode2
 
+w## MMI on top of tri3b (i.e. LDA+MLLT+SAT+MMI)
+steps/make_denlats.sh --config conf/decode.config \
+   --nj 8 --cmd "$train_cmd" --transform-dir exp/tri3b_ali \
+  data/train data/lang exp/tri3b exp/tri3b_denlats
+steps/train_mmi.sh data/train data/lang exp/tri3b_ali exp/tri3b_denlats exp/tri3b_mmi
+
+steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+  --alignment-model exp/tri3b/final.alimdl --adapt-model exp/tri3b/final.mdl \
+   exp/tri3b/graph data/test exp/tri3b_mmi/decode
 # demonstration script for online decoding.
 #local/run_online_decoding_pitch.sh
 

@@ -52,6 +52,14 @@ void ApplyCmvn(const MatrixBase<double> &stats,
                bool norm_vars,
                MatrixBase<BaseFloat> *feats);
 
+/// Modify the stats so that for some dimensions (specified in "dims"), we
+/// replace them with "fake" stats that have zero mean and unit variance; this
+/// is done to disable CMVN for those dimensions.
+void FakeStatsForSomeDims(const std::vector<int32> &dims,
+                          MatrixBase<double> *stats);
+                          
+
+
 }  // namespace kaldi
 
 #endif  // KALDI_TRANSFORM_CMVN_H_

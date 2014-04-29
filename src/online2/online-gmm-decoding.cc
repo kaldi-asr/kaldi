@@ -186,6 +186,12 @@ void SingleUtteranceGmmDecoder::EstimateFmllr(bool end_of_utterance) {
     KALDI_WARN << "You have decoded no data so cannot estimate fMLLR.";
   }
 
+  if (GetVerboseLevel() >= 2) {
+    Matrix<BaseFloat> feats;
+    feature_pipeline_->GetAsMatrix(&feats);
+    KALDI_VLOG(2) << "Features are " << feats;
+  }
+  
 
   GaussPost gpost;
   GetGaussianPosteriors(end_of_utterance, &gpost);

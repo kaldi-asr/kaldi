@@ -70,9 +70,9 @@ mkdir -p $dir/log
 echo $nj >$dir/num_jobs || exit 1;
 
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` 
-norm_vars=`cat $srcdir/norm_vars 2>/dev/null` || norm_vars=false 
+cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null` 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
-cp $srcdir/splice_opts $srcdir/norm_vars $srcdir/final.mat $srcdir/final.mdl $dir/ 2>/dev/null
+cp $srcdir/splice_opts $srcdir/cmvn_opts $srcdir/final.mat $srcdir/final.mdl $dir/ 2>/dev/null
 
 cp $mmi_model $dir/final.rescore_mdl
 
@@ -91,12 +91,16 @@ if ! matrix-sum --binary=false scp:$data/cmvn.scp - >$dir/global_cmvn.stats 2>/d
   exit 1
 fi
 
+if $add_pitch; then
+  skip_opt="--skip-dims=13:14:15" # should make this more general.
+fi
+
 echo "$0: feature type is $feat_type";
 case $feat_type in
-  delta) sifeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
-        online_sifeats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config $dir/global_cmvn.stats $online_cmvn_spk2utt_opt scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) sifeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-       online_sifeats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config $online_cmvn_spk2utt_opt $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |";;
+  delta) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
+        online_sifeats="ark,s,cs:apply-cmvn-online $skip_opt --config=$online_cmvn_config $dir/global_cmvn.stats $online_cmvn_spk2utt_opt scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
+  lda) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+       online_sifeats="ark,s,cs:apply-cmvn-online $skip_opt --config=$online_cmvn_config $online_cmvn_spk2utt_opt $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |";;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
 
@@ -223,9 +227,9 @@ if [ $stage -le 3 ]; then
       echo "$0: Did you append pitch features?"
       exit 1;
     fi
-    offset=$(sed -n '2,2p' $dir/global_cmvn.stats | \
-      perl -e '$_ = <>; s/^\s+|\s+$//g; ($t, $c) = (split)[13, 16]; print -$t/$c;');
-    echo "--pov-offset=$offset" >>$dir/conf/pitch_process.conf
+    #offset=$(sed -n '2,2p' $dir/global_cmvn.stats | \
+    #  perl -e '$_ = <>; s/^\s+|\s+$//g; ($t, $c) = (split)[13, 16]; print -$t/$c;');
+    #echo "--pov-offset=$offset" >>$dir/conf/pitch_process.conf
   fi
   
   echo "--fmllr-basis=$dir/fmllr.basis" >>$conf

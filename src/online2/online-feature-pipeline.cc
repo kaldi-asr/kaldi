@@ -239,7 +239,7 @@ int32 OnlineFeaturePipeline::NumFramesReady() const {
 }
 
 void OnlineFeaturePipeline::GetFrame(int32 frame,
-                                        VectorBase<BaseFloat> *feat) {
+                                     VectorBase<BaseFloat> *feat) {
   AdaptedFeature()->GetFrame(frame, feat);
 }
 
@@ -284,5 +284,14 @@ BaseFloat OnlineFeaturePipelineConfig::FrameShiftInSeconds() const {
   }
 }
 
+void OnlineFeaturePipeline::GetAsMatrix(Matrix<BaseFloat> *feats) {
+  if (pitch_) {
+    feats->Resize(NumFramesReady(), pitch_feature_->Dim());
+    for (int32 i = 0; i < NumFramesReady(); i++) {
+      SubVector<BaseFloat> row(*feats, i);
+      pitch_feature_->GetFrame(i, &row);
+    }
+  }
+}
 
 }  // namespace kaldi
