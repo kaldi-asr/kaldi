@@ -29,7 +29,7 @@ segmentation_opts="--isolated-resegmentation \
   --min-inter-utt-silence-length 1.0"
 use_vtln=true
 tri5_only=false
-logdet_scale=0.5
+logdet_scale=0.0
 
 echo "run-4-test.sh $@"
 
@@ -40,6 +40,9 @@ if [ $# -ne 0 ]; then
   exit 1
 fi
 
+if $tri5_only; then
+  fast_path=false
+fi
 #This seems to be the only functioning way how to ensure the comple
 #set of scripts will exit when sourcing several of them together
 #Otherwise, the CTRL-C just terminates the deepest sourced script ?
@@ -56,8 +59,6 @@ dataset_type=${dir%%.*}
 if [ -z ${kind} ] ; then
   if [ "$dataset_type" == "dev2h" ] || [ "$dataset_type" == "dev10h" ] ; then
     dataset_kind=supervised
-  elif [ "$dataset_type" == "shadow" ] ; then
-    dataset_kind=shadow
   else
     dataset_kind=unsupervised
   fi
@@ -149,55 +150,34 @@ function check_variables_are_set {
   fi
 }
 
-if  [ "$dataset_kind" == "shadow" ] ; then
-  # we expect that the ${dev2shadow} as well as ${eval2shadow} already exist
-  if [ ! -f data/${dev2shadow}/.done ]; then
-    echo "Error: data/${dev2shadow}/.done does not exist."
-    echo "Create the directory data/${dev2shadow} first"
-    echo "e.g. by calling $0 --type $dev2shadow --dataonly"
-    exit 1
-  fi
-  if [ ! -f data/${eval2shadow}/.done ]; then
-    echo "Error: data/${eval2shadow}/.done does not exist."
-    echo "Create the directory data/${eval2shadow} first."
-    echo "e.g. by calling $0 --type $eval2shadow --dataonly"
-    exit 1
-  fi
-  
-  local/create_shadow_dataset.sh ${dataset_dir} \
-    data/${dev2shadow} data/${eval2shadow}
-  utils/fix_data_dir.sh ${datadir}
-  nj_max=`cat $dataset_dir/wav.scp | wc -l`
-  my_nj=64
-else
-  if [ ! -f data/raw_${dataset_type}_data/.done ]; then
-    echo ---------------------------------------------------------------------
-    echo "Subsetting the ${dataset_type} set"
-    echo ---------------------------------------------------------------------
-   
-    l1=${#my_data_dir[*]}
-    l2=${#my_data_list[*]}
-    if [ "$l1" -ne "$l2" ]; then
-      echo "Error, the number of source files lists is not the same as the number of source dirs!"
-      exit 1
-    fi
-    
-    resource_string=""
-    if [ "$dataset_kind" == "unsupervised" ]; then
-      resource_string+=" --ignore-missing-txt true"
-    fi
+if [ ! -f data/raw_${dataset_type}_data/.done ]; then
+  echo ---------------------------------------------------------------------
+  echo "Subsetting the ${dataset_type} set"
+  echo ---------------------------------------------------------------------
 
-    for i in `seq 0 $(($l1 - 1))`; do
-      resource_string+=" ${my_data_dir[$i]} "
-      resource_string+=" ${my_data_list[$i]} "
-    done
-    local/make_corpus_subset.sh $resource_string ./data/raw_${dataset_type}_data
-    touch data/raw_${dataset_type}_data/.done
+  l1=${#my_data_dir[*]}
+  l2=${#my_data_list[*]}
+  if [ "$l1" -ne "$l2" ]; then
+    echo "Error, the number of source files lists is not the same as the number of source dirs!"
+    exit 1
   fi
-  my_data_dir=`readlink -f ./data/raw_${dataset_type}_data`
-  [ -f $my_data_dir/filelist.list ] && my_data_list=$my_data_dir/filelist.list
-  nj_max=`cat $my_data_list | wc -l` || nj_max=`ls $my_data_dir/audio | wc -l`
+
+  resource_string=""
+  if [ "$dataset_kind" == "unsupervised" ]; then
+    resource_string+=" --ignore-missing-txt true"
+  fi
+
+  for i in `seq 0 $(($l1 - 1))`; do
+    resource_string+=" ${my_data_dir[$i]} "
+    resource_string+=" ${my_data_list[$i]} "
+  done
+  local/make_corpus_subset.sh $resource_string ./data/raw_${dataset_type}_data
+  touch data/raw_${dataset_type}_data/.done
 fi
+my_data_dir=`readlink -f ./data/raw_${dataset_type}_data`
+[ -f $my_data_dir/filelist.list ] && my_data_list=$my_data_dir/filelist.list
+nj_max=`cat $my_data_list | wc -l` || nj_max=`ls $my_data_dir/audio | wc -l`
+
 if [ "$nj_max" -lt "$my_nj" ] ; then
   echo "Number of jobs ($my_nj) is too big!"
   echo "The maximum reasonable number of jobs is $nj_max"
@@ -249,10 +229,6 @@ if [ ! -f  $dataset_dir/.done ] ; then
       echo "Valid dataset types are: seg, uem, pem";
       exit 1
     fi
-  elif  [ "$dataset_kind" == "shadow" ] ; then
-    #We don't actually have to do anything here
-    #The shadow dir is already set...
-    true  
   else
     echo "Unknown kind of the dataset: \"$dataset_kind\"!";
     echo "Valid dataset kinds are: supervised, unsupervised, shadow";
