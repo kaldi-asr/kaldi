@@ -254,7 +254,7 @@ class OnlineCmvn: public OnlineFeatureInterface {
   /// Initializer that does not set the cmvn state:
   /// after calling this, you should call SetState().
   OnlineCmvn(const OnlineCmvnOptions &opts,
-             OnlineFeatureInterface *src): opts_(opts), src_(src) { }
+             OnlineFeatureInterface *src);
 
   // Outputs any state information from this utterance to "cmvn_state".
   // The value of "cmvn_state" before the call does not matter: the output
