@@ -40,8 +40,6 @@ uppercased=false
 train_dir=train
 test_dir=test
 if [ -d $*/TRAIN ]; then
-  [ -d $*/train -o -d $*/test ] \
-    && echo "Error: Found both upper- & lower-cased directories" && exit 1;
   uppercased=true
   train_dir=TRAIN
   test_dir=TEST
