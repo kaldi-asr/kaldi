@@ -34,8 +34,6 @@ num_utt_lvtln_init=200; # number of utterances (subset) to initialize
 min_warp=0.85
 max_warp=1.25
 warp_step=0.01
-num_classes=$(perl -e "print int(1.5 + ($max_warp - $min_warp) / $warp_step);") || exit 1;
-default_class=$(perl -e "print int(0.5 + (1.0 - $min_warp) / $warp_step);") || exit 1;
 base_feat_type=mfcc # or could be PLP.
 logdet_scale=0.0
 
@@ -45,6 +43,9 @@ echo "$0 $@"  # Print the command line for logging
 
 [ -f path.sh ] && . ./path.sh;
 . parse_options.sh || exit 1;
+
+num_classes=$(perl -e "print int(1.5 + ($max_warp - $min_warp) / $warp_step);") || exit 1;
+default_class=$(perl -e "print int(0.5 + (1.0 - $min_warp) / $warp_step);") || exit 1;
 
 if [ $# != 6 ]; then
    echo "Usage: $0 <num-leaves> <tot-gauss> <data-dir> <lang-dir> <alignment-dir> <exp-dir>"
@@ -118,13 +119,6 @@ fi
 # utils/shuffle_list.pl is deterministic, unlike sort -R.
 cat $data/utt2spk | awk '{print $1}' | utils/shuffle_list.pl | \
   head -n $num_utt_lvtln_init > $dir/utt_subset
-
-all_warps="";
-for c in $(seq 0 $[$num_classes-1]); do
-  this_warp=$(perl -e "print ($min_warp + ($c*$warp_step));")
-  all_warps="$all_warps $this_warp";
-done
-
 
 if [ $stage -le -6 ]; then
   echo "$0: computing warped subset of features"
