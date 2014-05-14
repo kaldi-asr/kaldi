@@ -69,8 +69,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage:  fstdeterminizestar [in.fst [out.fst] ]\n"
         "\n"
-        "See also: fstdeterminizelog, lattice-determinize\n"
-
+        "See also: fstdeterminizelog, lattice-determinize\n";
 
     float delta = kDelta;
     int max_states = -1;
