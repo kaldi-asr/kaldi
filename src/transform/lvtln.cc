@@ -105,6 +105,7 @@ void LinearVtln::ComputeTransform(const FmllrDiagGmmAccs &accs,
     if (logdet_out) *logdet_out = logdets_[default_class_];
     if (objf_impr) *objf_impr = 0;
     if (count) *count = 0;
+    return;
   }
   
   Matrix<BaseFloat> best_transform(dim, dim+1);

@@ -69,6 +69,10 @@ fi
 # syntax" where we can get rid of the $ for variable names, and omit spaces.
 # The "for" loop in this style is a special construct.
 
+if [ -f $data/spk2warp ]; then
+  echo "$0 [info]: using VTLN warp factors from $data/spk2warp"
+  vtln_opts="--vtln-map=ark:$data/spk2warp --utt2spk=ark:$data/utt2spk"
+fi
 
 if [ -f $data/segments ]; then
   echo "$0 [info]: segments file exists: using that."
@@ -80,7 +84,7 @@ if [ -f $data/segments ]; then
   utils/split_scp.pl $data/segments $split_segments || exit 1;
   rm $logdir/.error 2>/dev/null
    
-  plp_feats="ark:extract-segments scp:$scp $logdir/segments.JOB ark:- | compute-plp-feats --verbose=2 --config=$plp_config ark:- ark:- |"
+  plp_feats="ark:extract-segments scp:$scp $logdir/segments.JOB ark:- | compute-plp-feats $vtln_opts --verbose=2 --config=$plp_config ark:- ark:- |"
   pitch_feats="ark,s,cs:extract-segments scp:$scp $logdir/segments.JOB ark:- | compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
 
   $cmd JOB=1:$nj $logdir/make_plp_pitch_${name}.JOB.log \
@@ -98,7 +102,8 @@ else
 
   utils/split_scp.pl $scp $split_scps || exit 1;
   
-  plp_feats="ark:compute-plp-feats --verbose=2 --config=$plp_config scp:$logdir/wav_${name}.JOB.scp ark:- |"
+
+  plp_feats="ark:compute-plp-feats $vtln_opts --verbose=2 --config=$plp_config scp:$logdir/wav_${name}.JOB.scp ark:- |"
   pitch_feats="ark,s,cs:compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config scp:$logdir/wav_${name}.JOB.scp ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
  
   $cmd JOB=1:$nj $logdir/make_plp_pitch_${name}.JOB.log \

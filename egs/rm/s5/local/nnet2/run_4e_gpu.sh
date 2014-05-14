@@ -16,8 +16,8 @@ dir=exp/nnet4e_gpu
      --cmd "$decode_cmd" \
      --pnorm-input-dim 1000 \
      --pnorm-output-dim 200 \
-     --combine-regularizer 1.0e-12 \    
-     --ensemble-size 4 --initial-beta 0.1 --final-beta 5 --beta-rule "linear" \
+     --combine-regularizer 1.0e-12 \
+     --ensemble-size 4 --initial-beta 0.1 --final-beta 5 \
      data/train data/lang exp/tri3b_ali $dir 
 
    steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \

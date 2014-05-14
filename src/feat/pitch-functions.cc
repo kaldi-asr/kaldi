@@ -1303,7 +1303,7 @@ void ComputeKaldiPitch(const PitchExtractionOptions &opts,
 
   This doesn't necessarily mean that we actually have a latency of >= 1 second 31% of
   the time when using these features, since by using the --max-frames-latency option
-  (default: 20 frames), it will limit the latency to, say, 0.2 seconds, and trace back
+  (default: 30 frames), it will limit the latency to, say, 0.3 seconds, and trace back
   from the best current pitch.  Most of the time this will probably cause no change in
   the pitch traceback since the best current pitch is probably the "right" point to
   trace back from.  And anyway, in the online-decoding, we will most likely rescore

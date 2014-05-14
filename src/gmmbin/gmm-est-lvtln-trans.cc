@@ -32,7 +32,6 @@ using std::vector;
 namespace kaldi {
 void AccumulateForUtterance(const Matrix<BaseFloat> &feats,
                             const GaussPost &gpost,
-                            const TransitionModel &trans_model,
                             const AmDiagGmm &am_gmm,
                             FmllrDiagGmmAccs *spk_stats) {
   for (size_t i = 0; i < gpost.size(); i++) {
@@ -82,11 +81,11 @@ int main(int argc, char *argv[]) {
         trans_wspecifier = po.GetArg(5),
         warp_wspecifier = po.GetOptArg(6);
 
-    TransitionModel trans_model;
     AmDiagGmm am_gmm;
     {
       bool binary;
       Input ki(model_rxfilename, &binary);
+      TransitionModel trans_model;
       trans_model.Read(ki.Stream(), binary);
       am_gmm.Read(ki.Stream(), binary);
     }
@@ -132,7 +131,7 @@ int main(int argc, char *argv[]) {
             continue;
           }
 
-          AccumulateForUtterance(feats, gpost, trans_model, am_gmm, &spk_stats);
+          AccumulateForUtterance(feats, gpost, am_gmm, &spk_stats);
 
           num_done++;
         }  // end looping over all utterances of the current speaker
@@ -182,7 +181,7 @@ int main(int argc, char *argv[]) {
 
         FmllrDiagGmmAccs spk_stats(lvtln.Dim());
 
-        AccumulateForUtterance(feats, gpost, trans_model, am_gmm,
+        AccumulateForUtterance(feats, gpost, am_gmm,
                                &spk_stats);
         BaseFloat impr, utt_tot_t = spk_stats.beta_;
         {  // Compute the transform and write it out.
