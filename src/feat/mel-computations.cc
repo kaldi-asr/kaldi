@@ -51,12 +51,13 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
   else
     high_freq = nyquist + opts.high_freq;
 
-  if (low_freq < 0.0 || low_freq >= sample_freq
-     || high_freq <= 0.0 || high_freq > sample_freq
-     || high_freq <= low_freq)
+  if (low_freq < 0.0 || low_freq >= nyquist
+      || high_freq <= 0.0 || high_freq > nyquist
+      || high_freq <= low_freq)
     KALDI_ERR << "Bad values in options: low-freq " << low_freq
-              << " and high-freq " << high_freq;
-
+              << " and high-freq " << high_freq << " vs. nyquist "
+              << nyquist;
+  
   BaseFloat fft_bin_width = sample_freq / window_length_padded;
   // fft-bin width [think of it as Nyquist-freq / half-window-length]
 
@@ -107,20 +108,21 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
     for (int32 i = 0; i < num_fft_bins; i++) {
       BaseFloat freq = (fft_bin_width * i);  // center freq of this fft bin.
       BaseFloat mel = MelScale(freq);
-      if (mel > left_mel && mel <= center_mel) {
-        BaseFloat weight = (mel - left_mel) / (center_mel - left_mel);
+      if (mel > left_mel && mel < right_mel) {
+        BaseFloat weight;
+        if (mel <= center_mel)
+          weight = (mel - left_mel) / (center_mel - left_mel);
+        else
+         weight = (right_mel-mel) / (right_mel-center_mel);
         this_bin(i) = weight;
         if (first_index == -1)
           first_index = i;
-        last_index = i; // this statement only needed to handle
-        // very short bins that arise in pathological cases.
-      } else if (mel > center_mel && mel < right_mel) {
-        BaseFloat weight = (right_mel-mel) / (right_mel-center_mel);
-        this_bin(i) = weight;
         last_index = i;
       }
     }
-    KALDI_ASSERT(first_index != -1 && last_index >= first_index);
+    KALDI_ASSERT(first_index != -1 && last_index >= first_index
+                 && "You may have set --num-mel-bins too large.");
+                 
     bins_[bin].first = first_index;
     int32 size = last_index + 1 - first_index;
     bins_[bin].second.Resize(size);

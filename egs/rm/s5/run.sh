@@ -135,13 +135,6 @@ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 )
 
 
-#TEMP:
-local/run_raw_fmllr.sh
-local/nnet2/run_4a.sh
-#TEMP:
-exit 0; 
-
-
 # Align all data with LDA+MLLT+SAT system (tri3b)
 steps/align_fmllr.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
   data/train data/lang exp/tri3b exp/tri3b_ali
@@ -196,6 +189,7 @@ done
 
 # Demo of "raw fMLLR"
 # local/run_raw_fmllr.sh
+
 
 # You don't have to run all 3 of the below, e.g. you can just run the run_sgmm2.sh
 #local/run_sgmm.sh
