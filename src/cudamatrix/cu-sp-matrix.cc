@@ -47,7 +47,6 @@ void CuSpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
           dim3 dimGrid(D, n_blocks(D, CU1DBLOCK));
           cuda_take_lower(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
           CU_SAFE_CALL(cudaGetLastError());
-          cudaThreadSynchronize();
         }
         break;
       case kTakeUpper:
