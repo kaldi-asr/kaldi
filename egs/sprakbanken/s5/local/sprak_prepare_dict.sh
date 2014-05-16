@@ -111,9 +111,9 @@ paste $dir/wlist.txt $dir/plist3.txt > $dir/lexicon1.txt
 grep -P  "^.+\t.+$" $dir/lexicon1.txt > $dir/lexicon2.txt
 
 # Create nonsilence_phones.txt and put in in data/local/dict
-#cat $dir/plist3.txt | tr [:blank:] '\n' | sort -u > $dir/nonsilence_phones1.txt
-#grep -v "^$" $dir/nonsilence_phones1.txt > $dir/nonsilence_phones1.txt
-cp $exproot/nonsilence_phones.txt $dir/nonsilence_phones.txt
+cat $dir/plist3.txt | tr [:blank:] '\n' | sort -u > $dir/nonsilence_phones1.txt
+grep -v "^$" $dir/nonsilence_phones1.txt > $dir/nonsilence_phones.txt
+#cp $exproot/nonsilence_phones.txt $dir/nonsilence_phones.txt
 
 
 

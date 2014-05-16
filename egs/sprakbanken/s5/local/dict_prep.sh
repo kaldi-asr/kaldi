@@ -101,10 +101,10 @@ rm -f $dir/Wtemp_*
 #cat $dir/plist.txt | tr '^%,=:_|#$12;-?!' ' ' | tr "'" " " | perl -pe 's/\(..\)|\-|\~//g' | perl -pe 's// /g' | perl -pe 's/^ +| +$//g' | tr -s ' ' > $dir/plist2.txt
 
 #New filtering attempt
-cat $dir/plist.txt | perl -pe 's/\([[a-z]{2}\)//g' | perl -pe 's// /g' | perl -pe 's/ a I / aI /g' | perl -pe 's/ d Z / dZ /g' | perl -pe "s/ (\'\??) / \1/g" | perl -pe "s/(\'\?) / \1/g" | perl -pe 's/(\?) / \1/g' | perl -pe 's/ ([\#]) /\+ /g' | perl -pe 's/([\@n3]) \- /\1\- /g' | perl -pe "s/[\_\:\!\'\,\|2]//g" | perl -pe 's/ \- / /g' | tr -s ' ' | perl -pe 's/^ +| +$//g' > $dir/plist2.txt
+cat $dir/plist.txt | perl -pe 's/\([[a-z]{2}\)//g' | perl -pe 's// /g' | perl -pe 's/ a I / aI /g' | perl -pe 's/ d Z / dZ /g' | perl -pe 's/ \? / /g' | perl -pe 's/ ([\#]) /\+ /g' | perl -pe 's/([\@n3]) \- /\1\- /g' | perl -pe "s/[\_\:\!\'\,\|2]//g" | perl -pe 's/ \- / /g' | tr -s ' ' | perl -pe 's/^ +| +$//g' > $dir/plist2.txt
 
 #Some question marks are not caught above
-perl -pe 's/ \? / \?/g' $dir/plist2.txt > $dir/plist3.txt
+perl -pe 's/ \? / /g' $dir/plist2.txt > $dir/plist3.txt
 
 # Map phones with few occurences (Y, L, J, z, U, T, "Z" and x) to 
 # phones with many occurences (y, l, y, s, w, t, dZ and dZ respectively)
@@ -129,7 +129,7 @@ cat $dir/lexicon2.txt >> $dir/lex_first
 mv $dir/lex_first $dir/lexicon.txt
 
 # silence phones, one per line.
-(echo SIL; echo SPN) > $dir/silence_phones.txt
+echo SIL > $dir/silence_phones.txt
 echo SIL > $dir/optional_silence.txt
 
 touch $dir/extra_questions.txt

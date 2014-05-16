@@ -5,3 +5,4 @@ rm -rf data/local/data/*files
 rm -rf data/local/data/corpus/training/
 rm -rf data/local/data/corpus/test06
 rm -rf data/local/data/corpus/dev03
+rm -f data/local/data/lmsents

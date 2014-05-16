@@ -29,7 +29,7 @@ for line in transcript:
     normtext1 = line.translate(t_table)
     normtext2 = re.sub(r'  +', ' ', normtext1.strip())
     normtext3 = writenumbers.normNumber(normtext2, numtable)
-    outtext.write(normtext3.upper())
+    outtext.write(normtext3)
 
 transcript.close()
 outtext.close()

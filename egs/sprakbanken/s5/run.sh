@@ -9,13 +9,13 @@
 
 # Download the corpus and prepare parallel lists of sound files and text files
 # Divide the corpus into train, dev and test sets
-#local/sprak_data_prep.sh  || exit 1;
+local/sprak_data_prep.sh  || exit 1;
 
 
 # Perform text normalisation of the training set, prepare transcriptions
 # Put everything in data/local/dict
-#local/sprak_prepare_dict.sh || exit 1;
-local/dict_prep.sh || exit 1;
+local/sprak_prepare_dict.sh || exit 1;
+#local/dict_prep.sh || exit 1;
 
 # Repeat text preparation on test set, but do not add to dictionary
 test=data/test
@@ -24,7 +24,7 @@ local/norm_dk/format_text.sh am $test/transcripts.am > $test/onlytext
 paste $test/onlyids $test/onlytext > $test/text
 
 
-utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1;
+utils/prepare_lang.sh --share-silence-phones true data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1;
 
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
@@ -103,7 +103,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
     2000 10000 data/train data/lang exp/mono0a_ali exp/tri1 || exit 1;
 
 wait
-exit
+
 
 utils/mkgraph.sh data/lang_test_3g exp/tri1 exp/tri1/graph_3g &
 utils/mkgraph.sh data/lang_test_b3g exp/tri1 exp/tri1/graph_b3g || exit 1;#
@@ -174,7 +174,7 @@ utils/mkgraph.sh data/lang_test_4g exp/tri3b exp/tri3b/graph_4g || exit 1;
 
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 7 \
   exp/tri3b/graph_4g data/test1k exp/tri3b/decode_4g_test1k || exit 1;
-
+exit 
 
 # To build RNNLMs uncomment this code
 
