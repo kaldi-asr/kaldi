@@ -157,7 +157,7 @@ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_mmi/decode2
 
-w## MMI on top of tri3b (i.e. LDA+MLLT+SAT+MMI)
+## MMI on top of tri3b (i.e. LDA+MLLT+SAT+MMI)
 steps/make_denlats.sh --config conf/decode.config \
    --nj 8 --cmd "$train_cmd" --transform-dir exp/tri3b_ali \
   data/train data/lang exp/tri3b exp/tri3b_denlats

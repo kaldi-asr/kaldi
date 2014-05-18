@@ -890,7 +890,7 @@ void OnlinePitchFeatureImpl::InputFinished() {
   // will return a slightly larger number.
   AcceptWaveform(opts_.samp_freq, Vector<BaseFloat>());
   int32 num_frames = static_cast<size_t>(frame_info_.size() - 1);
-  if (num_frames < opts_.recompute_frame)
+  if (num_frames < opts_.recompute_frame && !opts_.nccf_ballast_online)
     RecomputeBacktraces();
   frames_latency_ = 0;
   KALDI_VLOG(3) << "Pitch-tracking Viterbi cost is "
@@ -901,6 +901,7 @@ void OnlinePitchFeatureImpl::InputFinished() {
 // see comment with declaration.  This is only relevant for online
 // operation (it gets called for non-online mode, but is a no-op).
 void OnlinePitchFeatureImpl::RecomputeBacktraces() {
+  KALDI_ASSERT(!opts_.nccf_ballast_online);
   int32 num_frames = static_cast<int32>(frame_info_.size()) - 1;
   
   // The assertion reflects how we believe this function will be called.
@@ -1132,7 +1133,7 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
     if (frame < opts_.recompute_frame)
       nccf_info_[frame]->nccf_pitch_resampled =
           nccf_pitch_resampled.Row(frame_idx);
-    if (frame == opts_.recompute_frame - 1)
+    if (frame == opts_.recompute_frame - 1 && !opts_.nccf_ballast_online)
       RecomputeBacktraces();
   }
   

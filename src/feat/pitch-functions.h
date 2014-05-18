@@ -157,6 +157,9 @@ struct PitchExtractionOptions {
                  "measures");
     po->Register("nccf-ballast", &nccf_ballast,
                  "Increasing this factor reduces NCCF for quiet frames");
+    po->Register("nccf-ballast-online", &nccf_ballast_online,
+                 "This is useful mainly for debug; it affects how the NCCF "
+                 "ballast is computed.");
     po->Register("lowpass-filter-width", &lowpass_filter_width,
                  "Integer that determines filter width of "
                  "lowpass filter, more gives sharper filter");
