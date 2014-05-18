@@ -12,7 +12,7 @@ nj=4
 cmd=run.pl
 maxactive=7000
 beam=13.0
-latbeam=6.0
+lattice_beam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 ngselect=2; # Just use the 2 top Gaussians for fMMI/fMPE.  Should match train.
 transform_dir=
@@ -99,7 +99,7 @@ fi
   
 if [ $stage -le 2 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
-    gmm-latgen-faster$thread_string --max-active=$maxactive --beam=$beam --lattice-beam=$latbeam \
+    gmm-latgen-faster$thread_string --max-active=$maxactive --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $model $graphdir/HCLG.fst "$fmpefeats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi

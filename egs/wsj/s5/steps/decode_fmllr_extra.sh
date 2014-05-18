@@ -34,7 +34,7 @@
 # Begin configuration section
 first_beam=10.0 # Beam used in initial, speaker-indep. pass
 first_max_active=2000 # max-active used in first two passes.
-first_latbeam=4.0 # lattice pruning beam for si decode and first-pass fMLLR decode.
+first_lattice_beam=4.0 # lattice pruning beam for si decode and first-pass fMLLR decode.
                 # the different spelling from lattice_beam is unfortunate; these scripts
                 # have a history.
 alignment_model=
@@ -170,7 +170,7 @@ pass1feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/t
 if [ $stage -le 2 ]; then
   echo "$0: doing first adapted lattice generation phase"
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode1.JOB.log\
-    gmm-latgen-faster$thread_string --max-active=$first_max_active --max-mem=$max_mem --beam=$first_beam --lattice-beam=$first_latbeam \
+    gmm-latgen-faster$thread_string --max-active=$first_max_active --max-mem=$max_mem --beam=$first_beam --lattice-beam=$first_lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $adapt_model $graphdir/HCLG.fst "$pass1feats" "ark:|gzip -c > $dir/lat1.JOB.gz" \
     || exit 1;
