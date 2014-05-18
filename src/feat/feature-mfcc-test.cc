@@ -94,6 +94,7 @@ static void UnitTestSimple() {
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
   op.mel_opts.low_freq = 0.0;
+  op.mel_opts.htk_mode = true;
   op.htk_compat = true;
 
   Mfcc mfcc(op);
@@ -134,6 +135,7 @@ static void UnitTestHTKCompare1() {
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
   op.mel_opts.low_freq = 0.0;
+  op.mel_opts.htk_mode = true;
   op.htk_compat = true;
   op.use_energy = false;  // C0 not energy.
 
@@ -170,7 +172,7 @@ static void UnitTestHTKCompare1() {
         std::cout << "[" << i << ", " << j << "]";
         passed = false;
   }}}
-  if (!passed) KALDI_WARN << "Test failed";
+  if (!passed) KALDI_ERR << "Test failed";
 
   // write the htk features for later inspection
   HtkHeader header = {
@@ -215,6 +217,7 @@ static void UnitTestHTKCompare2() {
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
   op.mel_opts.low_freq = 0.0;
+  op.mel_opts.htk_mode = true;
   op.htk_compat = true;
   op.use_energy = true;  // Use energy.
 
@@ -251,7 +254,7 @@ static void UnitTestHTKCompare2() {
         std::cout << "[" << i << ", " << j << "]";
         passed = false;
   }}}
-  if (!passed) KALDI_WARN << "Test failed";
+  if (!passed) KALDI_ERR << "Test failed";
 
   // write the htk features for later inspection
   HtkHeader header = {
@@ -297,7 +300,9 @@ static void UnitTestHTKCompare3() {
   op.frame_opts.round_to_power_of_two = true;
   op.htk_compat = true;
   op.use_energy = true;  // Use energy.
-  op.mel_opts.debug_mel = true;
+  op.mel_opts.low_freq = 20.0;
+  //op.mel_opts.debug_mel = true;
+  op.mel_opts.htk_mode = true;
 
   Mfcc mfcc(op);
 
@@ -332,7 +337,7 @@ static void UnitTestHTKCompare3() {
         std::cout << "[" << i << ", " << j << "]";
         passed = false;
   }}}
-  if (!passed) KALDI_WARN << "Test failed";
+  if (!passed) KALDI_ERR << "Test failed";
 
   // write the htk features for later inspection
   HtkHeader header = {
@@ -375,8 +380,10 @@ static void UnitTestHTKCompare4() {
   op.frame_opts.window_type = "hamming";
   op.frame_opts.remove_dc_offset = false;
   op.frame_opts.round_to_power_of_two = true;
+  op.mel_opts.low_freq = 0.0;
   op.htk_compat = true;
   op.use_energy = true;  // Use energy.
+  op.mel_opts.htk_mode = true;
 
   Mfcc mfcc(op);
 
@@ -411,7 +418,7 @@ static void UnitTestHTKCompare4() {
         std::cout << "[" << i << ", " << j << "]";
         passed = false;
   }}}
-  if (!passed) KALDI_WARN << "Test failed";
+  if (!passed) KALDI_ERR << "Test failed";
 
   // write the htk features for later inspection
   HtkHeader header = {
@@ -456,10 +463,13 @@ static void UnitTestHTKCompare5() {
   op.frame_opts.round_to_power_of_two = true;
   op.htk_compat = true;
   op.use_energy = true;  // Use energy.
+  op.mel_opts.low_freq = 0.0;
   op.mel_opts.vtln_low = 100.0;
-  // op.mel_opts.vtln_high = 7500.0;
   op.mel_opts.vtln_high = 7500.0;
-  BaseFloat vtln_warp = 0.9;
+  op.mel_opts.htk_mode = true;
+
+  BaseFloat vtln_warp = 1.1; // our approach identical to htk for warp factor >1,
+  // differs slightly for higher mel bins if warp_factor <0.9
 
   Mfcc mfcc(op);
 
@@ -494,7 +504,7 @@ static void UnitTestHTKCompare5() {
         std::cout << "[" << i << ", " << j << "]";
         passed = false;
   }}}
-  if (!passed) KALDI_WARN << "Test failed";
+  if (!passed) KALDI_ERR << "Test failed";
 
   // write the htk features for later inspection
   HtkHeader header = {
@@ -577,7 +587,7 @@ static void UnitTestHTKCompare6() {
         std::cout << "[" << i << ", " << j << "]";
         passed = false;
   }}}
-  if (!passed) KALDI_WARN << "Test failed";
+  if (!passed) KALDI_ERR << "Test failed";
 
   // write the htk features for later inspection
   HtkHeader header = {

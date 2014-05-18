@@ -45,7 +45,7 @@ if [ "$nspk_test" -ge "$nspk_all" ]; then
   exit 1;
 fi
 
-shuf -n $nspk_test < $loctmp/speakers_all.txt | sort -u > $loctmp/speakers_test.txt
+utils/shuffle_list.pl <$loctmp/speakers_all.txt | head -n $nspk_test | sort -u >$loctmp/speakers_test.txt
 
 gawk 'NR==FNR{spk[$0]; next} !($0 in spk)' \
     $loctmp/speakers_test.txt $loctmp/speakers_all.txt |\
@@ -82,10 +82,10 @@ for s in test train; do
     echo "No README file for $d - skipping this directory ..."
     continue
   fi
-  spkgender=`sed -e 's:.*Gender\:[^[:alpha:]]\+\(.\).*:\U\1:gi;tx;d;:x' <$rdm`
-  if [ $spkgender != "F" -a $spkgender != "M" ]; then
-    echo "Illegal or empty gender ($spkgender) for \"$d\" - assuming M(ale) ..."
-    spkgender="M"
+  spkgender=`sed -e 's:.*Gender\:[^[:alpha:]]\+\(.\).*:\L\1:gi;tx;d;:x' <$rdm`
+  if [ $spkgender != "f" -a $spkgender != "m" ]; then
+    echo "Illegal or empty gender ($spkgender) for \"$d\" - assuming m(ale) ..."
+    spkgender="m"
   fi
   echo "$spkname $spkgender" >> $locdata/spk2gender.tmp
   

@@ -21,7 +21,7 @@ for x in `seq 3`; do
 done
 
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] data-dir"
+  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] <data-dir>"
   echo "e.g.: $0 data/train"
 fi
 
@@ -116,7 +116,7 @@ if [ -f $data/wav.scp ]; then
     check_sorted_and_uniq $data/segments
     # We have a segments file -> interpret wav file as "recording-ids" not utterance-ids.
     ! cat $data/segments | \
-      awk '{if (NF != 4 || !($4 > $3)) { print "Bad line in segments file", $0; exit(1); }}' && \
+      awk '{if (NF != 4 || ($4 <= $3 && $4 != -1)) { print "Bad line in segments file", $0; exit(1); }}' && \
       echo "$0: badly formatted segments file" && exit 1;
     
     segments_len=`cat $data/segments | wc -l`
@@ -228,12 +228,30 @@ if [ -f $data/spk2gender ]; then
   fi
 fi
 
-if [ -f $data/vad.scp ]; then
-  check_sorted_and_uniq $data/vad.scp
-  if ! cmp -s <( awk '{print $1}' $data/utt2spk ) \
-    <( awk '{print $1}' $data/vad.scp ); then
-    echo "$0: error: in $data, vad.scp and utt2spk do not have identical utterance-id list"
+if [ -f $data/spk2warp ]; then
+  check_sorted_and_uniq $data/spk2warp
+  ! cat $data/spk2warp | awk '{if (!((NF == 2 && ($2 > 0.5 && $2 < 1.5)))){ print; exit 1; }}' && \
+     echo "Mal-formed spk2warp file" && exit 1;
+  cat $data/spk2warp | awk '{print $1}' > $tmpdir/speakers.spk2warp
+  cat $data/spk2utt | awk '{print $1}' > $tmpdir/speakers
+  if ! cmp -s $tmpdir/speakers{,.spk2warp}; then
+    echo "$0: Error: in $data, speaker lists extracted from spk2utt and spk2warp"
+    echo "$0: differ, partial diff is:"
+    partial_diff $tmpdir/speakers{,.spk2warp}
+    exit 1;
   fi
 fi
+
+# check some optionally-required things
+for f in vad.scp utt2lang; do
+  if [ -f $data/$f ]; then
+    check_sorted_and_uniq $data/$f
+    if ! cmp -s <( awk '{print $1}' $data/utt2spk ) \
+      <( awk '{print $1}' $data/$f ); then
+      echo "$0: error: in $data, $f and utt2spk do not have identical utterance-id list"
+      exit 1;
+    fi
+  fi
+done
 
 echo "Successfully validated data-directory $data"

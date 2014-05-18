@@ -131,6 +131,9 @@ int main(int argc, char *argv[]) {
         posteriors_rspecifier = po.GetArg(3),
         ivectors_wspecifier = po.GetArg(4);
 
+    // g_num_threads affects how ComputeDerivedVars is called when we read the
+    // extractor.
+    g_num_threads = sequencer_config.num_threads; 
     IvectorExtractor extractor;
     ReadKaldiObject(ivector_extractor_rxfilename, &extractor);
 

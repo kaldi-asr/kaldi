@@ -70,11 +70,11 @@ class Component {
   
   /// Number of left-context frames the component sees for each output frame;
   /// nonzero only for splicing layers.
-  virtual int32 LeftContext() { return 0; }
+  virtual int32 LeftContext() const { return 0; }
 
   /// Number of right-context frames the component sees for each output frame;
   /// nonzero only for splicing layers.
-  virtual int32 RightContext() { return 0; }
+  virtual int32 RightContext() const { return 0; }
 
   /// Perform forward pass propagation Input->Output.  Each row is
   /// one frame or training example.  Interpreted as "num_chunks"
@@ -1063,8 +1063,8 @@ class SpliceComponent: public Component {
   virtual void InitFromString(std::string args);
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const;
-  virtual int32 LeftContext() { return left_context_; }
-  virtual int32 RightContext() { return right_context_; }
+  virtual int32 LeftContext() const { return left_context_; }
+  virtual int32 RightContext() const { return right_context_; }
   virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
                          int32 num_chunks,
                          CuMatrix<BaseFloat> *out) const;
@@ -1101,8 +1101,8 @@ class SpliceMaxComponent: public Component {
   virtual void InitFromString(std::string args);
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
-  virtual int32 LeftContext() { return left_context_; }
-  virtual int32 RightContext() { return right_context_; }
+  virtual int32 LeftContext() const { return left_context_; }
+  virtual int32 RightContext() const { return right_context_; }
   virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
                          int32 num_chunks,
                          CuMatrix<BaseFloat> *out) const;

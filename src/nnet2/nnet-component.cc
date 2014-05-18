@@ -554,7 +554,7 @@ void MaxoutComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
         CuMatrix<BaseFloat> mask;
         in_i.EqualElementMask(out_j, &mask);
         out_deriv_j.MulElements(mask);
-        in_deriv_i.AddMat(1.0, out_deriv_j, 1.0); 
+        in_deriv_i.AddMat(1.0, out_deriv_j); 
     }
   }
 }
@@ -2469,8 +2469,6 @@ void BlockAffineComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                                      int32, // num_chunks
                                      CuMatrix<BaseFloat> *out) const {
   out->Resize(in.NumRows(), bias_params_.Dim());
-  out->CopyRowsFromVec(bias_params_); // copies bias_params_ to each row
-  // of *out.
 
   // The matrix has a block structure where each matrix has input dim
   // (#rows) equal to input_block_dim.  The blocks are stored in linear_params_

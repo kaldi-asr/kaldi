@@ -336,7 +336,7 @@ class Convolutional2DComponent : public UpdatableComponent {
 	    }
 	    CuSubMatrix<BaseFloat> src(feature_patch_diffs_[out_fmap_cnt].ColRange(i*filt_y_len_*num_input_fmaps+j,1)); // from which col 
 	    CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c,1)); // to which col?
-	    tgt.AddMat(1.0, src, 1.0);
+	    tgt.AddMat(1.0, src);
 	    // add 1.0 
 	    in_diff_summands_.Range(c,1).Add(1.0);
 	  }

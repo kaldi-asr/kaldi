@@ -72,7 +72,6 @@ egs_opts=
 initial_beta=0.1
 final_beta=6
 ensemble_size=2
-
 # End configuration section.
 
 
@@ -291,12 +290,9 @@ while [ $x -lt $num_iters ]; do
       nnets_ensemble_in="$nnets_ensemble_in '${mdl[$i]}'"
       nnets_ensemble_out="${nnets_ensemble_out} $dir/$[$x+1].JOB.$i.mdl "
     done
-  #  for n in `seq 1 $num_jobs_nnet`; do
-  #    cat ${nnets_ensemble_out[$n]} > $dir/nnets_ensemble_out.$n
-  #  done
 
+    beta=`perl -e '($x,$n,$i,$f)=@ARGV; print ($i+$x*($f-$i)/$n);' $[$x+1] $num_iters $initial_beta $final_beta`; 
 
-    beta=`perl -e '($x,$n,$i,$f)=@ARGV; print ($x >= $n ? $f : -$f*exp(-$x*log($f/$i)/$n)+$i+$f);' $[$x+1] $num_iters_reduce $initial_beta $final_beta`;
     $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
       nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
       ark:$egs_dir/egs.JOB.$[$x%$iters_per_epoch].ark ark:- \| \
@@ -342,54 +338,57 @@ done
 
 # Now do combination.
 # At the end, final.mdl will be a combination of the last e.g. 10 models.
-nnets_list=()
-if [ $num_iters_final -gt $num_iters_extra ]; then
-  echo "Setting num_iters_final=$num_iters_extra"
-fi
-start=$[$num_iters-$num_iters_final+1]
-for x in `seq $start $num_iters`; do
-  idx=$[$x-$start]
-  if [ $x -gt $mix_up_iter ]; then
-    nnets_list[$idx]=$dir/$x.1.mdl # "nnet-am-copy --remove-dropout=true $dir/$x.mdl - |"
+
+for i in `seq 1 $ensemble_size`; do 
+  nnets_list=()
+  if [ $num_iters_final -gt $num_iters_extra ]; then
+    echo "Setting num_iters_final=$num_iters_extra"
   fi
+  start=$[$num_iters-$num_iters_final+1]
+  for x in `seq $start $num_iters`; do
+    idx=$[$x-$start]
+    if [ $x -gt $mix_up_iter ]; then
+      nnets_list[$idx]=$dir/$x.$i.mdl # "nnet-am-copy --remove-dropout=true $dir/$x.mdl - |"
+    fi
+  done
+  
+  if [ $stage -le $num_iters ]; then
+    # Below, use --use-gpu=no to disable nnet-combine-fast from using a GPU, as
+    # if there are many models it can give out-of-memory error; set num-threads to 8
+    # to speed it up (this isn't ideal...)
+    this_num_threads=$num_threads
+    [ $this_num_threads -lt 8 ] && this_num_threads=8
+    num_egs=`nnet-copy-egs ark:$egs_dir/combine.egs ark:/dev/null 2>&1 | tail -n 1 | awk '{print $NF}'`
+    mb=$[($num_egs+$this_num_threads-1)/$this_num_threads]
+    [ $mb -gt 512 ] && mb=512
+    # Setting --initial-model to a large value makes it initialize the combination
+    # with the average of all the models.  It's important not to start with a
+    # single model, or, due to the invariance to scaling that these nonlinearities
+    # give us, we get zero diagonal entries in the fisher matrix that
+    # nnet-combine-fast uses for scaling, which after flooring and inversion, has
+    # the effect that the initial model chosen gets much higher learning rates
+    # than the others.  This prevents the optimization from working well.
+    $cmd $parallel_opts $dir/log/combine.$i.log \
+      nnet-combine-fast --initial-model=100000 --num-lbfgs-iters=40 --use-gpu=no \
+        --num-threads=$this_num_threads --regularizer=$combine_regularizer \
+        --initial-model=100000 --num-lbfgs-iters=40 \
+        --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
+        $dir/final.$i.mdl || exit 1;
+  
+    # Normalize stddev for affine or block affine layers that are followed by a
+    # pnorm layer and then a normalize layer.
+    $cmd $parallel_opts $dir/log/normalize.$i.log \
+      nnet-normalize-stddev $dir/final.$i.mdl $dir/final.$i.mdl || exit 1;
+  fi
+  # Compute the probability of the final, combined model with
+  # the same subset we used for the previous compute_probs, as the
+  # different subsets will lead to different probs.
+  $cmd $dir/log/compute_prob_valid.final.$i.log \
+    nnet-compute-prob $dir/final.$i.mdl ark:$egs_dir/valid_diagnostic.egs &
+  $cmd $dir/log/compute_prob_train.final.$i.log \
+    nnet-compute-prob $dir/final.$i.mdl ark:$egs_dir/train_diagnostic.egs &
 done
-
-if [ $stage -le $num_iters ]; then
-  # Below, use --use-gpu=no to disable nnet-combine-fast from using a GPU, as
-  # if there are many models it can give out-of-memory error; set num-threads to 8
-  # to speed it up (this isn't ideal...)
-  this_num_threads=$num_threads
-  [ $this_num_threads -lt 8 ] && this_num_threads=8
-  num_egs=`nnet-copy-egs ark:$egs_dir/combine.egs ark:/dev/null 2>&1 | tail -n 1 | awk '{print $NF}'`
-  mb=$[($num_egs+$this_num_threads-1)/$this_num_threads]
-  [ $mb -gt 512 ] && mb=512
-  # Setting --initial-model to a large value makes it initialize the combination
-  # with the average of all the models.  It's important not to start with a
-  # single model, or, due to the invariance to scaling that these nonlinearities
-  # give us, we get zero diagonal entries in the fisher matrix that
-  # nnet-combine-fast uses for scaling, which after flooring and inversion, has
-  # the effect that the initial model chosen gets much higher learning rates
-  # than the others.  This prevents the optimization from working well.
-  $cmd $parallel_opts $dir/log/combine.log \
-    nnet-combine-fast --initial-model=100000 --num-lbfgs-iters=40 --use-gpu=no \
-      --num-threads=$this_num_threads --regularizer=$combine_regularizer \
-      --initial-model=100000 --num-lbfgs-iters=40 \
-      --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
-      $dir/final.mdl || exit 1;
-
-  # Normalize stddev for affine or block affine layers that are followed by a
-  # pnorm layer and then a normalize layer.
-  $cmd $parallel_opts $dir/log/normalize.log \
-    nnet-normalize-stddev $dir/final.mdl $dir/final.mdl || exit 1;
-fi
-
-# Compute the probability of the final, combined model with
-# the same subset we used for the previous compute_probs, as the
-# different subsets will lead to different probs.
-$cmd $dir/log/compute_prob_valid.final.log \
-  nnet-compute-prob $dir/final.mdl ark:$egs_dir/valid_diagnostic.egs &
-$cmd $dir/log/compute_prob_train.final.log \
-  nnet-compute-prob $dir/final.mdl ark:$egs_dir/train_diagnostic.egs &
+cp $dir/final.1.mdl $dir/final.mdl
 
 sleep 2
 

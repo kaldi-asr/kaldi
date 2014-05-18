@@ -27,13 +27,15 @@
 // that you have some range of integers, e.g. A ... B-1 (with B > A), and some
 // function call that takes a range of integers, and you partition these up into
 // a number of blocks.
+// Also see kaldi-task-sequence.h which is suitable for parallelizing the processing
+// of tasks coming in sequentially from somewhere.
 
 // TODO: if needed, provide a workaround for Windows and other
 // non-POSIX-compliant systems, possibly one that does not actually do
 // multi-threading.
 
 
-// Description of MultiThreadPool and it's usage:
+// Description of MultiThreadPool and its usage:
 //
 // Usage of the RunMultiThreadedPersistent is the same as the usage of
 // RunMultiThreaded, except that the object provided ust inherit MultiThreadable

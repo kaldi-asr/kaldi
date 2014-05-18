@@ -7,7 +7,7 @@ include ../kaldi.mk
 BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-decode-faster gmm-decode-simple gmm-decode-nbest gmm-align-compiled \
            gmm-sum-accs gmm-init-trans gmm-est-regtree-fmllr gmm-acc-stats-twofeats \
-           gmm-acc-stats\
+           gmm-acc-stats gmm-init-lvtln gmm-est-lvtln-trans gmm-train-lvtln-special \
            gmm-acc-mllt gmm-mixup gmm-init-model \
            gmm-acc-hlda gmm-est-hlda gmm-transform-means \
            gmm-make-regtree gmm-decode-faster-regtree-fmllr gmm-post-to-gpost \
@@ -26,7 +26,8 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-est-map gmm-adapt-map gmm-latgen-map gmm-basis-fmllr-accs-gpost \
            gmm-est-basis-fmllr-gpost gmm-latgen-tracking gmm-latgen-faster-parallel \
            gmm-est-fmllr-raw gmm-est-fmllr-raw-gpost gmm-global-init-from-feats \
-           gmm-global-info gmm-latgen-faster-regtree-fmllr
+           gmm-global-info gmm-latgen-faster-regtree-fmllr gmm-est-fmllr-global \
+           gmm-acc-mllt-global gmm-transform-means-global
 
 OBJFILES =
 

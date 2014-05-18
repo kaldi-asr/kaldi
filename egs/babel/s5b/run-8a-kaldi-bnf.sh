@@ -29,7 +29,7 @@ if [ ! -f exp_bnf/tri6_bnf/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting training the bottleneck network"
   echo ---------------------------------------------------------------------
-  local/nnet2/train_tanh_bottleneck.sh \
+  steps/nnet2/train_tanh_bottleneck.sh \
     --stage $bnf_train_stage --num-jobs-nnet $bnf_num_jobs \
     --num-threads $bnf_num_threads --mix-up $bnf_mixup \
     --minibatch-size $bnf_minibatch_size \
@@ -46,7 +46,7 @@ fi
 if [ ! -f data_bnf/train_bnf/.done ]; then
   mkdir -p data_bnf
   # put the archives in plp/.
-  local/nnet2/dump_bottleneck_features.sh --nj $train_nj --cmd "$train_cmd" \
+  steps/nnet2/dump_bottleneck_features.sh --nj $train_nj --cmd "$train_cmd" \
     --transform-dir exp/tri5 data/train data_bnf/train_bnf exp_bnf/tri6_bnf param_bnf exp_bnf/dump_bnf
   touch data_bnf/train_bnf/.done
 fi 

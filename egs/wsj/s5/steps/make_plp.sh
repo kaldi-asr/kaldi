@@ -56,6 +56,10 @@ utils/validate_data_dir.sh --no-text --no-feats $data || exit 1;
 # syntax" where we can get rid of the $ for variable names, and omit spaces.
 # The "for" loop in this style is a special construct.
 
+if [ -f $data/spk2warp ]; then
+  echo "$0 [info]: using VTLN warp factors from $data/spk2warp"
+  vtln_opts="--vtln-map=ark:$data/spk2warp --utt2spk=ark:$data/utt2spk"
+fi
 
 if [ -f $data/segments ]; then
   echo "$0 [info]: segments file exists: using that."
@@ -69,7 +73,7 @@ if [ -f $data/segments ]; then
 
   $cmd JOB=1:$nj $logdir/make_plp_${name}.JOB.log \
     extract-segments scp:$scp $logdir/segments.JOB ark:- \| \
-    compute-plp-feats --verbose=2 --config=$plp_config ark:- ark:- \| \
+    compute-plp-feats $vtln_opts --verbose=2 --config=$plp_config ark:- ark:- \| \
     copy-feats --compress=$compress ark:- \
       ark,scp:$plpdir/raw_plp_$name.JOB.ark,$plpdir/raw_plp_$name.JOB.scp \
      || exit 1;
@@ -78,13 +82,13 @@ else
   echo "$0: [info]: no segments file exists: assuming wav.scp indexed by utterance."
   split_scps=""
   for ((n=1; n<=nj; n++)); do
-    split_scps="$split_scps $logdir/wav.$n.scp"
+    split_scps="$split_scps $logdir/wav_${name}.$n.scp"
   done
 
   utils/split_scp.pl $scp $split_scps || exit 1;
  
   $cmd JOB=1:$nj $logdir/make_plp_${name}.JOB.log \
-    compute-plp-feats  --verbose=2 --config=$plp_config scp:$logdir/wav.JOB.scp ark:- \| \
+    compute-plp-feats  $vtln_opts --verbose=2 --config=$plp_config scp:$logdir/wav_${name}.JOB.scp ark:- \| \
     copy-feats --compress=$compress ark:- \
       ark,scp:$plpdir/raw_plp_$name.JOB.ark,$plpdir/raw_plp_$name.JOB.scp \
       || exit 1;
@@ -103,7 +107,7 @@ for ((n=1; n<=nj; n++)); do
   cat $plpdir/raw_plp_$name.$n.scp || exit 1;
 done > $data/feats.scp
 
-rm $logdir/wav.*.scp  $logdir/segments.* 2>/dev/null
+rm $logdir/wav_${name}.*.scp  $logdir/segments.* 2>/dev/null
 
 nf=`cat $data/feats.scp | wc -l` 
 nu=`cat $data/utt2spk | wc -l` 

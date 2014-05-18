@@ -52,8 +52,13 @@ public class KaldiASR {
 			if (header == null)
 				throw new RuntimeException("Error parsing header #1");
 
-			if (!header.startsWith("RESULT:"))
+			if (!header.startsWith("RESULT:")) {
+				if (header.startsWith("PARTIAL:")) {
+					Main.log(header.substring(8));
+					continue;
+				}
 				throw new RuntimeException("Error parsing header #2");
+			}
 
 			if (header.substring(7).equals("DONE"))
 				break;
@@ -74,7 +79,7 @@ public class KaldiASR {
 				else if (ptok[0].equals("INPUT-DUR"))
 					input_dur = Float.parseFloat(ptok[1]);
 				else if (ptok[0].equals("FORMAT")) {
-					if (ptok[1].equals("WSE"))
+					if (ptok[1].equals("WSEC"))
 						format = OutputFormat.WORDS_ALIGNED;
 					else if (ptok[1].equals("W"))
 						format = OutputFormat.WORDS;
@@ -91,11 +96,11 @@ public class KaldiASR {
 					String word[] = line.split(",");
 					if (output_process != null)
 						output_process.addWord(new OutputProcess.Word(word[0], Float.parseFloat(word[1]), Float
-								.parseFloat(word[2])));
+								.parseFloat(word[2]), Float.parseFloat(word[3])));
 					reco_words += " " + word[0];
 				} else if (format == OutputFormat.WORDS) {
 					if (output_process != null)
-						output_process.addWord(new OutputProcess.Word(line, 0, 0));
+						output_process.addWord(new OutputProcess.Word(line, 0, 0, 1));
 					reco_words += " " + line;
 				}
 			}

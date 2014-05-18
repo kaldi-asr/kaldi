@@ -48,7 +48,7 @@ param_bnf_dir=param_bnf${unsup_string}
 # Semi-supervised BNF training
 #
 ###############################################################################
-[ ! -d $data_dir ] && echo "Error: $datadir is not available!" && exit 1;
+[ ! -d $datadir ] && echo "Error: $datadir is not available!" && exit 1;
 mkdir -p $exp_dir/tri6_bnf  
 if $semisupervised ; then
   echo "$0: Generate examples using unsupervised data in $exp_dir/tri6_nnet"
@@ -67,7 +67,7 @@ fi
 
 if [ ! -f $exp_dir/tri6_bnf/.done ]; then    
  echo "$0: Train Bottleneck network"
-  local/nnet2/train_tanh_bottleneck.sh \
+  steps/nnet2/train_tanh_bottleneck.sh \
     --stage $bnf_train_stage --num-jobs-nnet $bnf_num_jobs \
     --num-threads $bnf_num_threads --mix-up $bnf_mixup \
     --minibatch-size $bnf_minibatch_size \
@@ -86,7 +86,7 @@ fi
 if [ ! -f $data_bnf_dir/train_bnf/.done ]; then
   mkdir -p $data_bnf_dir
   # put the archives in ${param_bnf_dir}/.
-  local/nnet2/dump_bottleneck_features.sh --nj $train_nj --cmd "$train_cmd" \
+  steps/nnet2/dump_bottleneck_features.sh --nj $train_nj --cmd "$train_cmd" \
     --transform-dir exp/tri5 data/train $data_bnf_dir/train_bnf \
     $exp_dir/tri6_bnf $param_bnf_dir $exp_dir/dump_bnf
   touch $data_bnf_dir/train_bnf/.done
@@ -95,7 +95,7 @@ fi
 if [ ! $data_bnf_dir/train/.done -nt $data_bnf_dir/train_bnf/.done ]; then
   steps/nnet/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
     --nj $train_nj --transform-dir exp/tri5_ali  $data_bnf_dir/train_sat data/train \
-    exp/tri5_ali $exp_dir/make_fmllr_feats/log $param_bnf_dir / 
+    exp/tri5_ali $exp_dir/make_fmllr_feats/log $param_bnf_dir/ 
 
   steps/append_feats.sh --cmd "$train_cmd" --nj 4 \
     $data_bnf_dir/train_bnf $data_bnf_dir/train_sat $data_bnf_dir/train \

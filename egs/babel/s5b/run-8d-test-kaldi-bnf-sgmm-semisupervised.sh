@@ -61,7 +61,7 @@ my_nj=`cat exp/tri5/decode_${dirid}/num_jobs` || exit 1;
 if [ ! $data_bnf_dir/${dirid}_bnf/.done -nt exp/tri5/decode_${dirid}/.done ] || \
    [ ! $data_bnf_dir/${dirid}_bnf/.done -nt $exp_dir/tri6_bnf/.done ]; then
   # put the archives in $param_bnf_dir/.
-  local/nnet2/dump_bottleneck_features.sh --nj $my_nj --cmd "$train_cmd" \
+  steps/nnet2/dump_bottleneck_features.sh --nj $my_nj --cmd "$train_cmd" \
     --transform-dir exp/tri5/decode_${dirid} data/${dirid} $data_bnf_dir/${dirid}_bnf $exp_dir/tri6_bnf $param_bnf_dir $exp_dir/dump_bnf
   touch $data_bnf_dir/${dirid}_bnf/.done
 fi

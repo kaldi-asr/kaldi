@@ -9,13 +9,13 @@ SUBDIRS = base matrix util feat tree thread gmm transform sgmm \
           fstext hmm lm decoder lat cudamatrix nnet \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet2 nnet2bin kwsbin \
-          ivectorbin
+          ivector ivectorbin
 
 MEMTESTDIRS = base matrix util feat tree thread gmm transform sgmm \
           fstext hmm lm decoder lat nnet \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
           nnetbin latbin sgmm2 nnet2 nnet2bin sgmm2bin kwsbin \
-          ivectorbin
+          ivector ivectorbin
 
 CUDAMEMTESTDIR = cudamatrix
 
@@ -140,6 +140,10 @@ $(EXT_SUBDIRS) : mklibdir
 ### Dependency list ###
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
+
+bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin latbin ivectorbin: \
+ base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm \
+ lm decoder lat cudamatrix nnet nnet2 ivector
 
 bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin latbin ivectorbin: \
  base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm \

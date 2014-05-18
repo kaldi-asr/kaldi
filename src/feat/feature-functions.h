@@ -41,11 +41,15 @@ struct MelBanksOptions {
   // ->added to the Nyquist frequency to get the cutoff.
   BaseFloat vtln_low;  // vtln lower cutoff of warping function.
   BaseFloat vtln_high;  // vtln upper cutoff of warping function: if negative, added
-  // to the Nyquist frequency to get the cutoff.
+                        // to the Nyquist frequency to get the cutoff.
   bool debug_mel;
+  // htk_mode is a "hidden" config, it does not show up on command line.
+  // Enables more exact compatibibility with HTK, for testing purposes.  Affects
+  // mel-energy flooring and reproduces a bug in HTK.
+  bool htk_mode;
   explicit MelBanksOptions(int num_bins = 25)
-      : num_bins(num_bins), low_freq(20), high_freq(0), vtln_low(400),
-        vtln_high(-400), debug_mel(false) {}
+      : num_bins(num_bins), low_freq(20), high_freq(0), vtln_low(100),
+        vtln_high(-500), debug_mel(false), htk_mode(false) {}
 
   void Register(OptionsItf *po) {
     po->Register("num-mel-bins", &num_bins,
@@ -310,7 +314,7 @@ struct SlidingWindowCmnOptions {
   void Register(OptionsItf *po) {
     po->Register("cmn-window", &cmn_window, "Window in frames for running "
                  "average CMN computation");
-    po->Register("min-cmn-window", &min_window, "Minumum CMN window "
+    po->Register("min-cmn-window", &min_window, "Minimum CMN window "
                  "used at start of decoding (adds latency only at start). "
                  "Only applicable if center == false, ignored if center==true");
     po->Register("norm-vars", &normalize_variance, "If true, normalize "

@@ -67,7 +67,9 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Removes epsilons and determinizes in one step\n"
         "\n"
-        "Usage:  fstdeterminizestar [in.fst [out.fst] ]\n";
+        "Usage:  fstdeterminizestar [in.fst [out.fst] ]\n"
+        "\n"
+        "See also: fstdeterminizelog, lattice-determinize\n";
 
     float delta = kDelta;
     int max_states = -1;

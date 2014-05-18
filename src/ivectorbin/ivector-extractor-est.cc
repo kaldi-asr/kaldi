@@ -19,7 +19,7 @@
 
 #include "util/common-utils.h"
 #include "ivector/ivector-extractor.h"
-
+#include "thread/kaldi-thread.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -36,6 +36,9 @@ int main(int argc, char *argv[]) {
     
     kaldi::ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
+    po.Register("num-threads", &g_num_threads,
+                "Number of threads used in update");
+    
     update_opts.Register(&po);
     
     po.Read(argc, argv);
