@@ -65,14 +65,15 @@ if hash espeak 2>/dev/null;
     echo 'eSpeak installed'
   else
     cd $KALDI_ROOT/tools || exit 1; 
-    extras/install_portaudio.sh || exit 1;
     wget http://sourceforge.net/projects/espeak/files/espeak/espeak-1.48/${espeakdir}.zip
     wait
-    unzip $espeakdir.zip
+    unzip -q $espeakdir.zip
     cd $espeakdir/src
+    # Remove dependency to portaudio - we only need the text-to-phoneme system
+    perl -pi.back -e 's/^(AUDIO = portaudio)$/\#\1/' Makefile
     make || exit 1;
     echo 'Installed eSpeak'
-    cd exproot || exit 1;
+    cd $exproot || exit 1;
 fi
 
 
