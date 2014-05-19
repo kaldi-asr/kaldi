@@ -65,13 +65,14 @@ if hash espeak 2>/dev/null;
     echo 'eSpeak installed'
   else
     cd $KALDI_ROOT/tools || exit 1; 
-    wget http://sourceforge.net/projects/espeak/files/espeak/espeak-1.48/${espeakdir}.zip
-    wait
-    unzip $espeakdir.zip
+    if [ ! -d $espeakdir ]; then
+      wget http://sourceforge.net/projects/espeak/files/espeak/espeak-1.48/${espeakdir}.zip
+      unzip $espeakdir.zip
+    fi
     cd $espeakdir/src
     make || exit 1;
     echo 'Installed eSpeak'
-    cd exproot || exit 1;
+    cd $exproot || exit 1;
 fi
 
 

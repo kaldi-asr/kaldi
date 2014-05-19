@@ -1,11 +1,14 @@
 #!/bin/bash
 
 if hash python3 2> /dev/null; then
-    echo 'python3 is installed.';
+    echo 'python3 is already installed.';
     exit 0;
 fi
 
-cd $KALDI_ROOT/tools
+if [ $(basename $(pwd)) != "tools" ]; then
+  echo "$0: expected to be run from the tools directory."
+  exit 1;
+fi
 
 py3dir="Python-3.3.5"
 
@@ -21,12 +24,13 @@ fi
 # Exit if something went wrong to prevent calling make on other tools
 cd $py3dir || exit 1;
 
-./configure --prefix=$KALDI_ROOT/tools
+./configure --prefix=$(pwd)
 
 make
 
 # Use altinstall as target so current python installations remain unchanged
 make altinstall
 
+cd ..
 # link the python installation to somewhere in PATH, currently in utils/
-ln -s $KALDI_ROOT/tools/$py3dir/python $KALDI_ROOT/egs/sprakbanken/s5/utils/python3
+ln -s $(pwd)/$py3dir/python ../egs/sprakbanken/s5/utils/python3

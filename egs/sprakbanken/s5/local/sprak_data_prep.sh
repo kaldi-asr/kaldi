@@ -19,7 +19,12 @@ utils=`pwd`/utils
 # This recipe currently relies on version 3 because python3 uses utf8 as internal 
 # representation string representation
 
-$KALDI_ROOT/extras/install_python3.sh
+if ! which python3 >&/dev/null; then
+  echo "Installing python3 since not on your path."
+  pushd $KALDI_ROOT/tools || exit 1;
+  extras/install_python3.sh || exit 1;
+  popd
+fi
 
 if [ ! -d $dir/corpus ]; then
 
