@@ -65,6 +65,7 @@ if hash espeak 2>/dev/null;
     echo 'eSpeak installed'
   else
     cd $KALDI_ROOT/tools || exit 1; 
+    extras/install_portaudio.sh || exit 1;
     wget http://sourceforge.net/projects/espeak/files/espeak/espeak-1.48/${espeakdir}.zip
     wait
     unzip $espeakdir.zip
@@ -96,19 +97,11 @@ rm -f $dir/Wtemp_*
 # Filter transcription
 # Remove diacritics, language annotation ((da), (en), (fr) etc.), insert space between symbols, remove 
 # initial and trailing spaces and collapse 2 or more spaces to one space
-# This could also be handled in non_silence.txt but this filtering is from earlier work
 
-#cat $dir/plist.txt | tr '^%,=:_|#$12;-?!' ' ' | tr "'" " " | perl -pe 's/\(..\)|\-|\~//g' | perl -pe 's// /g' | perl -pe 's/^ +| +$//g' | tr -s ' ' > $dir/plist2.txt
-
-#New filtering attempt
 cat $dir/plist.txt | perl -pe 's/\([[a-z]{2}\)//g' | perl -pe 's// /g' | perl -pe 's/ a I / aI /g' | perl -pe 's/ d Z / dZ /g' | perl -pe 's/ \? / /g' | perl -pe 's/ ([\#]) /\+ /g' | perl -pe 's/([\@n3]) \- /\1\- /g' | perl -pe "s/[\_\:\!\'\,\|2]//g" | perl -pe 's/ \- / /g' | tr -s ' ' | perl -pe 's/^ +| +$//g' > $dir/plist2.txt
 
 #Some question marks are not caught above
 perl -pe 's/ \? / /g' $dir/plist2.txt > $dir/plist3.txt
-
-# Map phones with few occurences (Y, L, J, z, U, T, "Z" and x) to 
-# phones with many occurences (y, l, y, s, w, t, dZ and dZ respectively)
-#cat $dir/plist2.txt | tr 'BYLJzUT*Q' 'bylyswtRg' | perl -pe 's/d Z/dZ/g' | perl -pe 's/a I/aI/g' | perl -pe 's/ ?x ?| Z ?|Z / dZ /g' > $dir/plist3.txt
 
 # Create lexicon.txt and put it in data/local/dict
 paste $dir/wlist.txt $dir/plist3.txt > $dir/lexicon1.txt
@@ -116,10 +109,8 @@ paste $dir/wlist.txt $dir/plist3.txt > $dir/lexicon1.txt
 # Remove entries without transcription
 grep -P  "^.+\t.+$" $dir/lexicon1.txt > $dir/lexicon2.txt
 
-# Create nonsilence_phones.txt and put in in data/local/dict
-#cat $dir/plist3.txt | tr [:blank:] '\n' | sort -u > $dir/nonsilence_phones1.txt
-#grep -v "^$" $dir/nonsilence_phones1.txt > $dir/nonsilence_phones1.txt
-cp $exproot/complexphones.txt $dir/nonsilence_phones.txt
+# Copy pre-made phone table with
+cp local/dictsrc/complexphones.txt $dir/nonsilence_phones.txt
 
 
 # Add "!SIL SIL" to lexicon.txt

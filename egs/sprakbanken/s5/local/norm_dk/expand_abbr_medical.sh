@@ -37,8 +37,8 @@ perl -pe 's/[R|r]tg\./\1øntgen/g' | \
 perl -pe 's/([S|s])v\.t\./\1varende til/g' | \
 perl -pe 's/([S|s]t\.p\.) et c./\1_et_c\./g' | \
 perl -pe 's/([S|s]tet) p et c/\1 p_et_c\./g' | \
-perl -pe 's/BS([\.|:|,| ])/Blodsukker\1/g' | \
-perl -pe 's/UE([\.|:| ])/Underekstremitet\1/g' | \
+perl -pe 's/ BS([\.|:|,| ])/Blodsukker\1/g' | \
+perl -pe 's/ UE([\.|:| ])/Underekstremitet\1/g' | \
 perl -pe 's/ AF([\.|:|,])/ Atrieflagren\1/g' | \
 perl -pe 's/ AS([\.|:|,| ])/ Aortastenose\1/g' | \
 perl -pe 's/ UL([\.|:|,| ])/ Ultralyd\1/g' | \

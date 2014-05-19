@@ -7,7 +7,7 @@ uid=$1
 # Test set id
 test=$2
 
-steps/make_denlats.sh --nj 50 --sub-split 24 --cmd "$train_cmd" \
+steps/make_denlats.sh --nj 30 --sub-split 24 --cmd "$train_cmd" \
   --transform-dir exp/tri4b_ali \
   data/train data/lang exp/tri4b exp/tri4b_denlats || exit 1;
 

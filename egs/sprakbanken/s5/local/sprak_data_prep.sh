@@ -15,6 +15,12 @@ local=`pwd`/local
 utils=`pwd`/utils
 
 
+# Checks if python3 is available on the system and install python3 in userspace if not
+# This recipe currently relies on version 3 because python3 uses utf8 as internal 
+# representation string representation
+
+$KALDI_ROOT/extras/install_python3.sh
+
 if [ ! -d $dir/corpus ]; then
 
     mkdir -p $dir/corpus/0565-1 $dir/corpus/0565-2

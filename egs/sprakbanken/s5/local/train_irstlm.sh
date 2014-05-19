@@ -25,12 +25,13 @@ lm_suffix=$3
 mkdir -p $lmdir
 mkdir -p $tmpdir
 
-IRSTBIN=$KALDI_ROOT/tools/irstlm/bin
+irstbin=$KALDI_ROOT/tools/irstlm/bin
 
-#echo $IRSTBIN
+#grep -P -v '^[\s?|\.|\!]*$' $lexicon | grep -v '^ *$' | \
+#awk '{if(NF>=4){ printf("%s\n",$0); }}' > $lmdir/text.filt
 
 # Envelop LM training data in context cues
-$IRSTBIN/add-start-end.sh < $lexicon > $lmdir/lm_input
+$irstbin/add-start-end.sh < $lexicon | awk '{if(NF>=3){ printf("%s\n",$0); }}' > $lmdir/lm_input
 wait
 
 # Next, for each type of language model, create the corresponding FST
@@ -39,10 +40,10 @@ wait
 echo "Preparing language models for test"
 
 # Create Ngram table
-ngt -i=$lmdir/lm_input -n=$ngram -o=$lmdir/train${ngram}.ngt -b=yes
+$irstbin/ngt -i=$lmdir/lm_input -n=$ngram -o=$lmdir/train${ngram}.ngt -b=yes
 wait
 # Estimate trigram and quadrigram models in ARPA format
-tlm -tr=$lmdir/train${ngram}.ngt -n=$ngram -lm=wb -o=$lmdir/train${ngram}.arpa
+$irstbin/tlm -tr=$lmdir/train${ngram}.ngt -n=$ngram -lm=wb -o=$lmdir/train${ngram}.arpa
 wait
 
 

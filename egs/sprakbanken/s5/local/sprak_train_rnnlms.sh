@@ -54,7 +54,7 @@ export PATH=$KALDI_ROOT/tools/$rnnlm_ver:$PATH
 ) || exit 1;
 
 
-if [ ! -f $srcdir/transcripts.uniq -o ! || -f $srcdir/lexicon.txt ]; then
+if [ ! -f $srcdir/transcripts.uniq ] || [ ! -f $srcdir/lexicon.txt ]; then
   echo "Expecting $srcdir/transcripts.uniq and $srcdir/lexicon.txt to exist";
   exit 1;
 fi

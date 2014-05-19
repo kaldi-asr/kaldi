@@ -39,8 +39,8 @@ utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
 # p was added to the rspecifier (scp,p:$logdir/wav.JOB.scp) in make_mfcc.sh because some 
 # wave files are corrupt 
 # Will return a warning message because of the corrupt wave files, but compute them anyway
-steps/make_mfcc.sh --nj 24 --cmd $train_cmd data/train exp/make_mfcc/train mfcc 
-steps/make_mfcc.sh --nj 24 --cmd $train_cmd data/test exp/make_mfcc/test mfcc 
+steps/make_mfcc.sh --nj 30 --cmd $train_cmd data/train exp/make_mfcc/train mfcc 
+steps/make_mfcc.sh --nj 30 --cmd $train_cmd data/test exp/make_mfcc/test mfcc 
 
 
 # Compute cepstral mean and variance normalisation
@@ -69,7 +69,7 @@ utils/subset_data_dir.sh --per-spk data/test 140 data/test1k &
 utils/subset_data_dir.sh --shortest data/train 120000 data/train_120kshort || exit 1;
 
 # Train monophone model on short utterances
-steps/train_mono.sh --nj 24 --cmd "$train_cmd" \
+steps/train_mono.sh --nj 30 --cmd "$train_cmd" \
   data/train_120kshort data/lang exp/mono0a || exit 1;
 
 # Ensure that LMs are created
@@ -95,7 +95,7 @@ steps/decode.sh --nj 7 --cmd "$decode_cmd" \
 
 
 # steps/align_si.sh --boost-silence 1.25 --nj 42 --cmd "$train_cmd" \
-steps/align_si.sh --nj 24 --cmd "$train_cmd" \
+steps/align_si.sh --nj 30 --cmd "$train_cmd" \
    data/train data/lang exp/mono0a exp/mono0a_ali || exit 1;
 
 # steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
@@ -113,12 +113,14 @@ utils/mkgraph.sh data/lang_test_b3g exp/tri1 exp/tri1/graph_b3g || exit 1;#
 #  exp/tri1/graph_4g data/test1k exp/tri1/decode_4g_test1k || exit 1;
 #) &
 
+(
 steps/decode.sh --nj 7 --cmd "$decode_cmd" \
   exp/tri1/graph_3g data/test1k exp/tri1/decode_3g_test1k || exit 1;
+) &
 steps/decode.sh --nj 7 --cmd "$decode_cmd" \
   exp/tri1/graph_b3g data/test1k exp/tri1/decode_b3g_test1k || exit 1;
 
-steps/align_si.sh --nj 50 --cmd "$train_cmd" \
+steps/align_si.sh --nj 30 --cmd "$train_cmd" \
   data/train data/lang exp/tri1 exp/tri1_ali || exit 1;
 
 
@@ -155,7 +157,7 @@ steps/decode_fromlats.sh --cmd "$decode_cmd" \
 
 
 # Align tri2b system with si84 data.
-steps/align_si.sh  --nj 50 --cmd "$train_cmd" \
+steps/align_si.sh  --nj 30 --cmd "$train_cmd" \
   --use-graphs true data/train data/lang exp/tri2b exp/tri2b_ali  || exit 1;
 
 wait
@@ -170,6 +172,7 @@ steps/decode_fmllr.sh --nj 7 --cmd "$decode_cmd" \
 
 
 # Trying 4-gram language model
+local/train_irstlm.sh data/local/dict/transcripts.uniq 4 "4g" data/lang data/local/train4_lm &> data/local/4g.log
 utils/mkgraph.sh data/lang_test_4g exp/tri3b exp/tri3b/graph_4g || exit 1;
 
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 7 \
@@ -179,12 +182,14 @@ exit
 # To build RNNLMs uncomment this code
 
 # Repeat text preparation on dev set, but do not add to dictionary
-$dev=data/dev
-# python3 local/normalize_transcript.py $dev/text1 $dev/text2 
-# local/norm_dk/format_text.sh lm $dev/text2 > $dev/transcripts.txt
-# sort -u $dev/transcripts.txt > $dev/transcripts.uniq
-# sprak_train_rnnlms.sh data/local/dict $dev/transcripts.uniq data/local/rnnlms/g_c380_d1k_h100_v130k
-# local/sprak_run_rnnlms_tri3b.sh lang_test_3g data/local/rnnlms/g_c380_d1k_h100_v130k
+dev=data/dev
+python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $dev/text1 $dev/onlyids $dev/onlytext
+local/norm_dk/format_text.sh lm $dev/onlytext > $dev/transcripts.txt
+sort -u $dev/transcripts.txt > $dev/transcripts.uniq
+local/sprak_train_rnnlms.sh data/local/dict $dev/transcripts.uniq data/local/rnnlms/g_c380_d1k_h100_v130k
+
+# Consumes a lot of memory! Do not run in parallel
+local/sprak_run_rnnlms_tri3b.sh data/lang_test_3g data/local/rnnlms/g_c380_d1k_h100_v130k data/test1k exp/tri3b/decode_3g_test1k
 
 # The following two steps, which are a kind of side-branch, try mixing up
 # from the 3b system.  This is to demonstrate that script.
@@ -194,22 +199,21 @@ $dev=data/dev
    exp/tri3b/graph_3g data/test1k exp/tri3b_20k/decode_3g_test1k || exit 1;
 
 
-
 # From 3b system
-steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
+steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train data/lang exp/tri3b exp/tri3b_ali || exit 1;
 
 # From 3b system, train another SAT system (tri4a) with all the si284 data.
 
 steps/train_sat.sh  --cmd "$train_cmd" \
   4200 40000 data/train data/lang exp/tri3b_ali exp/tri4a || exit 1;
-(
+
  utils/mkgraph.sh data/lang_test_3g exp/tri4a exp/tri4a/graph_3g || exit 1;
  steps/decode_fmllr.sh --nj 7 --cmd "$decode_cmd" \
    exp/tri4a/graph_3g data/test1k exp/tri4a/decode_3g_test1k || exit 1;
 # steps/decode_fmllr.sh --nj 7 --cmd "$decode_cmd" \
 #   exp/tri4a/graph_tgpr data/test_eval92 exp/tri4a/decode_tgpr_eval92 || exit 1;
-) & 
+
 
 
 steps/train_quick.sh --cmd "$train_cmd" \
@@ -230,16 +234,16 @@ wait
 
 # Train and test MMI, and boosted MMI, on tri4b (LDA+MLLT+SAT on
 # all the data).  Use 30 jobs.
-steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
+steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train data/lang exp/tri4b exp/tri4b_ali || exit 1;
 
 ## TODO: make sure it runs properly
 local/sprak_run_mmi_tri4b.sh 3g test1k
 
 ## Works
-local/run_nnet_cpu.sh
+local/sprak_run_nnet_cpu.sh 3g test1k 
 
-## TODO: debug why it fails
+## Works
 local/sprak_run_sgmm2.sh test1k
 
 # You probably want to run the hybrid recipe as it is complementary:

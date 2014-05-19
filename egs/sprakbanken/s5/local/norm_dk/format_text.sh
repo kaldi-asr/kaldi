@@ -44,8 +44,10 @@ $dir/expand_dates.sh $line |\
 $dir/format_punct.sh  >  $num;
 #python3 $dir/writenumbers.py $dir/numbersUp.tbl $num $nonum;
 cat $num | $dir/write_punct.sh | \
-perl -pi -e "s/^\n//" | PERLIO=:utf8 perl -pe '$_=uc'
+perl -pi -e "s/^\n//" | \
+perl -pe 's/ (.{4}.*?)\./ \1/g' | \
+PERLIO=:utf8 perl -pe '$_=uc'
 
 # Comment this line for debugging
 wait
-#rm -f $abbr $rem $line $num
+rm -f $abbr $rem $line 
