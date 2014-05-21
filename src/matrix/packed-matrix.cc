@@ -420,7 +420,7 @@ void PackedMatrix<Real>::Read(std::istream& is, bool binary, bool add) {
     } 
   }
 bad:
-  KALDI_ERR << "Failed to read packed matrix from stream. " << specific_error
+  KALDI_ERR << "Failed to read packed matrix from stream. " << specific_error.str()
             << " File position at start is "
             << pos_at_start << ", currently " << is.tellg();
 }

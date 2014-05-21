@@ -146,7 +146,8 @@ void OnlineCmnInput::OutputFrame(VectorBase<BaseFloat> *output) {
   }
   t_out_++;
 }
-  
+
+#if !defined(_MSC_VER)
 
 OnlineUdpInput::OnlineUdpInput(int32 port, int32 feature_dim):
     feature_dim_(feature_dim) {
@@ -183,6 +184,8 @@ bool OnlineUdpInput::Compute(Matrix<BaseFloat> *output) {
   output->Read(ss, true);
   return true;
 }
+
+#endif
 
 
 OnlineLdaInput::OnlineLdaInput(OnlineFeatInputItf *input,

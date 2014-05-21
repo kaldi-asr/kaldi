@@ -21,6 +21,8 @@
 // (*) incorporates, with permission, FFT code from his book
 // "Signal Processing with Lapped Transforms", Artech, 1992.
 
+#include <algorithm>
+
 #include "matrix/optimization.h"
 
 namespace kaldi {

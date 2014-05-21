@@ -21,6 +21,12 @@
 #ifndef KALDI_THREAD_KALDI_THREAD_H_
 #define KALDI_THREAD_KALDI_THREAD_H_ 1
 
+#if defined(_MSC_VER)
+# define KALDI_PTHREAD_PTR(thread) (thread.p)
+#else
+# define KALDI_PTHREAD_PTR(thread) (thread)
+#endif
+
 #include <pthread.h>
 #include "thread/kaldi-barrier.h"
 // This header provides a convenient mechanism for parallelization.  The idea is
@@ -126,7 +132,7 @@ class MultiThreader {
       // This is a special case with num_threads == 0, which behaves like with
       // num_threads == 1 but without creating extra threads.  This can be
       // useful in GPU computations where threads cannot be used.
-      threads_[0] = 0;
+      KALDI_PTHREAD_PTR(threads_[0]) = 0;
       cvec_[0].thread_id_ = 0;
       cvec_[0].num_threads_ = 1;
       (cvec_[0])();
@@ -148,7 +154,7 @@ class MultiThreader {
   }
   ~MultiThreader() {
     for (size_t thread = 0; thread < cvec_.size(); thread++)
-      if (threads_[thread] != 0)
+      if (KALDI_PTHREAD_PTR(threads_[thread]) != 0)
         if (pthread_join(threads_[thread], NULL))
           KALDI_ERR << "Error rejoining thread.";
     delete [] threads_;

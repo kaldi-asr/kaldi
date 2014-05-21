@@ -21,7 +21,7 @@
 
 #if defined(_MSC_VER) || defined(MINGW)
 
-# include <windows.h>
+# include "base/kaldi-utils.h"
 
 namespace kaldi
 {
