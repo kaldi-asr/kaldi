@@ -50,6 +50,17 @@ if [ ! -f $extdict/transcripts.uniq ];
 fi
 
 
+# Checks if espeak is available on the system. espeak is necessary to extend
+# the setup because the original transcriptions were created with espeak and 
+# filtered 
+
+if ! which espeak >&/dev/null; then
+  echo "espeak is not available on your system. You must install espeak before proceeding."
+  exit 0;
+fi
+
+
+
 if [ ! -f $extdict/lexicon.txt ];
   then
   # Extend lexicon with pronunciations from espeak
@@ -72,20 +83,21 @@ if [ ! -f $extdict/lexicon.txt ];
   cat $extdict/Wtemp_*.pho > $extdict/plist.txt
   rm -f $extdict/Wtemp_*
 
+
   # Filter transcription
   # Remove diacritics, language annotation ((da), (en), (fr) etc.), insert space between symbols, remove 
   # initial and trailing spaces and collapse 2 or more spaces to one space
-  cat $extdict/plist.txt | tr '^%,=:_|#$12;-?!' ' ' | tr "'" " " | perl -pe 's/\(..\)|\-|\~//g' | perl -pe 's// /g' | perl -pe 's/^ +| +$//g' | tr -s ' ' > $extdict/plist2.txt
 
-  # Map phones with few occurences (Y, L, J, z, U, T, "Z" and x) to 
-  # phones with many occurences (y, l, y, s, w, t, dZ and dZ respectively)
-  cat $extdict/plist2.txt | tr 'BYLJzUT*Q' 'bylyswtRg' | perl -pe 's/d Z/dZ/g' | perl -pe 's/ ?x ?| Z ?|Z / dZ /g' > $extdict/plist3.txt
+  cat $dir/plist.txt | perl -pe 's/\([[a-z]{2}\)//g' | perl -pe 's// /g' | perl -pe 's/ a I / aI /g' | perl -pe 's/ d Z / dZ /g' | perl -pe 's/ \? / /g' | perl -pe 's/ ([\#]) /\+ /g' | perl -pe 's/([\@n3]) \- /\1\- /g' | perl -pe "s/[\_\:\!\'\,\|2]//g" | perl -pe 's/ \- / /g' | tr -s ' ' | perl -pe 's/^ +| +$//g' > $dir/plist2.txt
+
+  #Some question marks are not caught above
+  perl -pe 's/ \? / /g' $dir/plist2.txt > $dir/plist3.txt
 
   # Create lexicon.txt and put it in data/local/dict
-  paste $extdict/wlist.txt $extdict/plist3.txt > $extdict/lexicon1.txt
+  paste $dir/wlist.txt $dir/plist3.txt > $dir/lexicon1.txt
 
   # Remove entries without transcription
-  grep -P  "^.+\t.+$" $extdict/lexicon1.txt > $extdict/newlexicon.txt
+  grep -P  "^.+\t.+$" $dir/lexicon1.txt > $dir/lexicon2.txt
 
   echo "Combining lexicons"
   # Combine lexicons

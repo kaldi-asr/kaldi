@@ -19,7 +19,7 @@
 KALDI_ROOT=$(pwd)/../../..
 
 exproot=$(pwd)
-dir=data/local/dict
+dir=data/local/dict2
 espeakdir='espeak-1.48.04-source'
 mkdir -p $dir
 
@@ -57,68 +57,12 @@ cat $dir/transcripts.am | tr [:blank:] '\n' | sort -u > $dir/wlist.txt &
 local/norm_dk/format_text.sh lm $dir/lmsents.norm > $dir/transcripts.txt
 sort -u $dir/transcripts.txt > $dir/transcripts.uniq
 
-
-# Install eSpeak if it is not installed already
-
-if hash espeak 2>/dev/null;
-  then
-    echo 'eSpeak installed'
-  else
-    cd $KALDI_ROOT/tools || exit 1; 
-    wget http://sourceforge.net/projects/espeak/files/espeak/espeak-1.48/${espeakdir}.zip
-    wait
-    unzip -q $espeakdir.zip
-    cd $espeakdir/src
-    # Remove dependency to portaudio - we only need the text-to-phoneme system
-    perl -pi.back -e 's/^(AUDIO = portaudio)$/\#\1/' -e 's/^\#(AUDIO = portaudio2)$/\#\1/' Makefile
-    make || exit 1;
-    echo 'Installed eSpeak'
-    cd $exproot || exit 1;
-fi
-
-
-
-# Wait for the wordlist to be fully created
-wait 
-
-
-# Run wordlist through espeak to get phonetics
-# improvised parallelisation - simple call because 'split' often has different versions
-split -l 10000 $dir/wlist.txt $dir/Wtemp_
-for w in $dir/Wtemp_*; do
-  (cat $w | espeak -q -vda -x > $w.pho) &
-done
-
-wait
-
-cat $dir/Wtemp_*.pho > $dir/plist.txt
-rm -f $dir/Wtemp_*
-
-
-# Filter transcription
-# Remove diacritics, language annotation ((da), (en), (fr) etc.), insert space between symbols, remove 
-# initial and trailing spaces and collapse 2 or more spaces to one space
-
-cat $dir/plist.txt | perl -pe 's/\([[a-z]{2}\)//g' | perl -pe 's// /g' | perl -pe 's/ a I / aI /g' | perl -pe 's/ d Z / dZ /g' | perl -pe 's/ \? / /g' | perl -pe 's/ ([\#]) /\+ /g' | perl -pe 's/([\@n3]) \- /\1\- /g' | perl -pe "s/[\_\:\!\'\,\|2]//g" | perl -pe 's/ \- / /g' | tr -s ' ' | perl -pe 's/^ +| +$//g' > $dir/plist2.txt
-
-#Some question marks are not caught above
-perl -pe 's/ \? / /g' $dir/plist2.txt > $dir/plist3.txt
-
-# Create lexicon.txt and put it in data/local/dict
-paste $dir/wlist.txt $dir/plist3.txt > $dir/lexicon1.txt
-
-# Remove entries without transcription
-grep -P  "^.+\t.+$" $dir/lexicon1.txt > $dir/lexicon2.txt
-
-# Copy pre-made phone table with
+# Copy pre-made phone table 
 cp local/dictsrc/complexphones.txt $dir/nonsilence_phones.txt
 
+# Copy pre-made lexicon
+cp local/dictsrc/lexicon.txt $dir/lexicon.txt
 
-# Add "!SIL SIL" to lexicon.txt
-echo -e '!SIL\tSIL' > $dir/lex_first
-echo -e '<UNK>\tSPN' >> $dir/lex_first
-cat $dir/lexicon2.txt >> $dir/lex_first
-mv $dir/lex_first $dir/lexicon.txt
 
 # silence phones, one per line.
 echo SIL > $dir/silence_phones.txt

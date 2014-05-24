@@ -14,8 +14,9 @@ local/sprak_data_prep.sh  || exit 1;
 
 # Perform text normalisation of the training set, prepare transcriptions
 # Put everything in data/local/dict
-local/sprak_prepare_dict.sh || exit 1;
+#local/sprak_prepare_dict.sh || exit 1;
 #local/dict_prep.sh || exit 1;
+local/copy_dict.sh || exit 1;
 
 # Repeat text preparation on test set, but do not add to dictionary
 test=data/test
