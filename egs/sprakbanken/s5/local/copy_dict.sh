@@ -19,8 +19,7 @@
 KALDI_ROOT=$(pwd)/../../..
 
 exproot=$(pwd)
-dir=data/local/dict2
-espeakdir='espeak-1.48.04-source'
+dir=data/local/dict
 mkdir -p $dir
 
 
