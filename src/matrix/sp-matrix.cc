@@ -801,7 +801,7 @@ SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
   Vector<Real> l(cols);
   Q.SymPosSemiDefEig(&l, &U);  // does svd Q = U L V^T and checks that Q == U L U^T to within a tolerance.
   // floor l.
-  Real f = std::max(static_cast<Real>(opts.eps), l.Max() / opts.K);
+  Real f = std::max<Real>(static_cast<Real>(opts.eps), l.Max() / opts.K);
   MatrixIndexT nfloored = 0;
   for (MatrixIndexT i = 0; i < cols; i++) {  // floor l.
     if (l(i) < f) { nfloored++; l(i) = f; }

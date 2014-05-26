@@ -431,10 +431,10 @@ void SlidingWindowCmnOptions::Check() const {
   // else ignored so value doesn't matter.
 }
 
-
-void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
-                      const MatrixBase<double> &input,
-                      MatrixBase<double> *output) {
+// Internal version of SlidingWindowCmn with double-precision arguments.
+void SlidingWindowCmnInternal(const SlidingWindowCmnOptions &opts,
+                              const MatrixBase<double> &input,
+                              MatrixBase<double> *output) {
   opts.Check();
   int32 num_frames = input.NumRows(), dim = input.NumCols();
 
@@ -519,14 +519,13 @@ void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
 }
 
 
-
 void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
                       const MatrixBase<BaseFloat> &input,
                       MatrixBase<BaseFloat> *output) {
   KALDI_ASSERT(SameDim(input, *output) && input.NumRows() > 0);
   Matrix<double> input_dbl(input), output_dbl(input.NumRows(), input.NumCols());
   // calll double-precision version
-  SlidingWindowCmn(opts, input_dbl, &output_dbl);
+  SlidingWindowCmnInternal(opts, input_dbl, &output_dbl);
   output->CopyFromMat(output_dbl);
 }
 

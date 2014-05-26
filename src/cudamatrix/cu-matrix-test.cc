@@ -1832,7 +1832,7 @@ static void UnitTestCuMatrixAddElements() {
     for (int32 j = 0; j < 100 + rand() % 10; j++) {
       MatrixIndexT r = rand() % dimM;
       MatrixIndexT c = rand() % dimN;
-      BaseFloat offset = -1 + (0.33 * (rand() % 5));
+      Real offset = -1 + (0.33 * (rand() % 5));
       M(r, c) += scale * offset;
       MatrixElement<Real> t = {r, c, offset};
       input.push_back(t);
