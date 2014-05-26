@@ -67,7 +67,7 @@ if [ $stage -le 2 ]; then
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.08333 \
     $gmmdir/graph_sw1_fsh_tgpr $data_fmllr/eval2000 $dir/decode_eval2000_sw1_fsh_tgpr || exit 1;
   # Rescore using unpruned trigram sw1_fsh
-  steps/lmrescore.sh --mode 3 --cmd "$decodebig_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
+  steps/lmrescore.sh --mode 3 --cmd "$decode_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
     $dir/decode_eval2000_sw1_fsh_tgpr $dir/decode_eval2000_sw1_fsh_tg.3 || exit 1 
 fi
 
@@ -97,7 +97,7 @@ if [ $stage -le 4 ]; then
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph_sw1_fsh_tgpr $data_fmllr/eval2000 $dir/decode_eval2000_sw1_fsh_tgpr || exit 1;
     # Rescore using unpruned trigram sw1_fsh
-    steps/lmrescore.sh --mode 3 --cmd "$decodebig_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
+    steps/lmrescore.sh --mode 3 --cmd "$decode_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
       $dir/decode_eval2000_sw1_fsh_tgpr $dir/decode_eval2000_sw1_fsh_tg.3 || exit 1 
   done 
 fi
@@ -125,7 +125,7 @@ if [ $stage -le 6 ]; then
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph_sw1_fsh_tgpr $data_fmllr/eval2000 $dir/decode_eval2000_sw1_fsh_tgpr || exit 1;
     # Rescore using unpruned trigram sw1_fsh
-    steps/lmrescore.sh --mode 3 --cmd "$decodebig_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
+    steps/lmrescore.sh --mode 3 --cmd "$decode_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
       $dir/decode_eval2000_sw1_fsh_tgpr $dir/decode_eval2000_sw1_fsh_tg.3 || exit 1 
   done 
 fi
