@@ -25,7 +25,7 @@ local/norm_dk/format_text.sh am $test/transcripts.am > $test/onlytext
 paste $test/onlyids $test/onlytext > $test/text
 
 
-utils/prepare_lang.sh --share-silence-phones true data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1;
+utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1;
 
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you

@@ -26,36 +26,36 @@ if ! which python3 >&/dev/null; then
   popd
 fi
 
-if [ ! -d $dir/corpus ]; then
+if [ ! -d $dir/download ]; then
 
-    mkdir -p $dir/corpus/0565-1 $dir/corpus/0565-2
+    mkdir -p $dir/download/0565-1 $dir/download/0565-2
 fi 
 
-echo "Downloading and unpacking sprakbanken to $dir/corpus. This will take a while."
+echo "Downloading and unpacking sprakbanken to $dir/corpus_processed. This will take a while."
 
-if [ ! -f $dir/corpus/da.16kHz.0565-1.tar.gz ]; then 
-    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-1.tar.gz --directory-prefix=$dir/corpus ) &
+if [ ! -f $dir/download/da.16kHz.0565-1.tar.gz ]; then 
+    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-1.tar.gz --directory-prefix=$dir/download ) &
 fi
 
-if [ ! -f $dir/corpus/da.16kHz.0565-2.tar.gz ]; then 
-    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-2.tar.gz --directory-prefix=$dir/corpus ) &
+if [ ! -f $dir/download/da.16kHz.0565-2.tar.gz ]; then 
+    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0565-2.tar.gz --directory-prefix=$dir/download ) &
 fi
 
-if [ ! -f $dir/corpus/da.16kHz.0565-1.tar.gz ]; then 
-    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0611.tar.gz --directory-prefix=$dir/corpus ) &
+if [ ! -f $dir/download/da.16kHz.0565-1.tar.gz ]; then 
+    ( wget http://www.nb.no/sbfil/talegjenkjenning/16kHz/da.16kHz.0611.tar.gz --directory-prefix=$dir/download ) &
 fi    
 wait
 
 echo "Corpus files downloaded."
 
-if [ ! -d $dir/corpus/0611 ]; then
+if [ ! -d $dir/download/0611 ]; then
     echo "Unpacking files."
-    tar -xzf $dir/corpus/da.16kHz.0565-1.tar.gz -C $dir/corpus/0565-1 &
-    tar -xzf $dir/corpus/da.16kHz.0565-2.tar.gz -C $dir/corpus/0565-2 &
-    tar -xzf $dir/corpus/da.16kHz.0611.tar.gz -C $dir/corpus    
+    tar -xzf $dir/download/da.16kHz.0565-1.tar.gz -C $dir/download/0565-1 &
+    tar -xzf $dir/download/da.16kHz.0565-2.tar.gz -C $dir/download/0565-2 &
+    tar -xzf $dir/download/da.16kHz.0611.tar.gz -C $dir/download    
 
     # Note: rename "da 0611 test" to "da_0611_test" for this to work
-    mv $dir/corpus/"da 0611 test" $dir/corpus/0611
+    mv $dir/download/"da 0611 test" $dir/download/0611
     wait     
     echo "Corpus unpacked succesfully."
 fi
@@ -68,46 +68,56 @@ if [ ! -x $sph2pipe ]; then
 fi
 
 
-echo "Converting corpus files to a format consumable by Kaldi scripts."
+echo "Converting downloaded files to a format consumable by Kaldi scripts."
 
-mkdir -p $dir/corpus/training/0565-1 $dir/corpus/training/0565-2
+rm -rf $dir/corpus_processed 
+mkdir -p $dir/corpus_processed/training/0565-1 $dir/corpus_processed/training/0565-2 $dir/corpus_processed/training/0611_Stasjon05
 
 
-# Create parallel file lists and text files, but keep sound files in the same location
+# Create parallel file lists and text files, but keep sound files in the same location to save disk space
 # Writes the lists to data/local/data (~ 310h)
-python3 $local/sprak2kaldi.py $dir/corpus/0565-1 $dir/corpus/training/0565-1 & # ~130h
-python3 $local/sprak2kaldi.py $dir/corpus/0565-2 $dir/corpus/training/0565-2 & # ~115h
-python3 $local/sprak2kaldi.py $dir/corpus/0611/Stasjon05 $dir/corpus/training/0611_Stasjon05 & # ~51h
+python3 $local/sprak2kaldi.py $dir/download/0565-1 $dir/corpus_processed/training/0565-1 &  # ~130h
+python3 $local/sprak2kaldi.py $dir/download/0565-2 $dir/corpus_processed/training/0565-2 &  # ~115h
+python3 $local/sprak2kaldi.py $dir/download/0611/Stasjon05 $dir/corpus_processed/training/0611_Stasjon05 & # ~51h 
 
 # Ditto dev set (~ 16h)
-python3 $local/sprak2kaldi.py $dir/corpus/0611/Stasjon03 $dir/corpus/dev03 & 
+rm -rf $dir/corpus_processed/dev03 
+mkdir -p $dir/corpus_processed/dev03 
+python3 $local/sprak2kaldi.py $dir/download/0611/Stasjon03 $dir/corpus_processed/dev03 &
 
 # Ditto test set (about 9 hours)
-python3 $local/sprak2kaldi.py $dir/corpus/0611/Stasjon06 $dir/corpus/test06 &
+rm -rf $dir/corpus_processed/test06 
+mkdir -p $dir/corpus_processed/test06 
+python3 $local/sprak2kaldi.py $dir/download/0611/Stasjon06 $dir/corpus_processed/test06 || exit 1;
 
 wait
 
 # Combine training file lists
-cat $dir/corpus/training/0565-1/txtlist $dir/corpus/training/0565-2/txtlist $dir/corpus/training/0611_Stasjon05/txtlist > $dir/traintxtfiles
-cat $dir/corpus/training/0565-1/sndlist $dir/corpus/training/0565-2/sndlist $dir/corpus/training/0611_Stasjon05/sndlist > $dir/trainsndfiles
+echo "Combine file lists."
+cat $dir/corpus_processed/training/0565-1/txtlist $dir/corpus_processed/training/0565-2/txtlist $dir/corpus_processed/training/0611_Stasjon05/txtlist > $dir/traintxtfiles
+cat $dir/corpus_processed/training/0565-1/sndlist $dir/corpus_processed/training/0565-2/sndlist $dir/corpus_processed/training/0611_Stasjon05/sndlist > $dir/trainsndfiles
 
 # LM training files (test data is disjoint from training data)
-cat $dir/corpus/training/0565-1/txtlist $dir/corpus/training/0565-2/txtlist > $dir/lmtxtfiles
+echo "Write file list with LM text files. (This will take a while)"
+cat $dir/corpus_processed/training/0565-1/txtlist $dir/corpus_processed/training/0565-2/txtlist > $dir/lmtxtfiles
+cat $dir/lmtxtfiles | while read l; do cat $l; done > $dir/lmsents &
 
 # Move test file lists to the right location
-mv $dir/corpus/dev03/txtlist $dir/devtxtfiles
-mv $dir/corpus/dev03/sndlist $dir/devsndfiles
+mv $dir/corpus_processed/dev03/txtlist $dir/devtxtfiles
+mv $dir/corpus_processed/dev03/sndlist $dir/devsndfiles
 
 
 # Move test file lists to the right location
-mv $dir/corpus/test06/txtlist $dir/testtxtfiles
-mv $dir/corpus/test06/sndlist $dir/testsndfiles
+mv $dir/corpus_processed/test06/txtlist $dir/testtxtfiles
+mv $dir/corpus_processed/test06/sndlist $dir/testsndfiles
 
-python3 $local/sprak_data_prep.py $dir/traintxtfiles $traindir $dir/trainsndfiles $sph2pipe &
-python3 $local/sprak_data_prep.py $dir/testtxtfiles $testdir $dir/testsndfiles $sph2pipe &
-python3 $local/sprak_data_prep.py $dir/devtxtfiles $devdir $dir/devsndfiles $sph2pipe &
+# Write wav.scp, utt2spk and text1 for train, test and dev sets with
+# Use sph2pipe because the wav files are actuallt sph files
+echo "Creating wav.scp, utt2spk and text1 for train, test and dev dirs." 
+python3 $local/data_prep.py $dir/traintxtfiles $traindir $dir/trainsndfiles $sph2pipe &
+python3 $local/data_prep.py $dir/testtxtfiles $testdir $dir/testsndfiles $sph2pipe &
+python3 $local/data_prep.py $dir/devtxtfiles $devdir $dir/devsndfiles $sph2pipe &
 
-cat $dir/lmtxtfiles | while read l; do cat $l; done > $dir/lmsents
 
 wait
 
