@@ -1,6 +1,7 @@
 // feat/feature-functions.h
 
 // Copyright 2009-2011  Karel Vesely;  Petr Motlicek;  Microsoft Corporation
+//                2014  IMSL, PKU-HKUST (author: Wei Shi)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -78,6 +79,7 @@ struct FrameExtractionOptions {
   bool remove_dc_offset;  // Subtract mean of wave before FFT.
   std::string window_type;  // e.g. Hamming window
   bool round_to_power_of_two;
+  bool snip_edges;
   // Maybe "hamming", "rectangular", "povey", "hanning"
   // "povey" is a window I made to be similar to Hamming but to go to zero at the
   // edges, it's pow((0.5 - 0.5*cos(n/N*2*pi)), 0.85)
@@ -90,7 +92,8 @@ struct FrameExtractionOptions {
       preemph_coeff(0.97),
       remove_dc_offset(true),
       window_type("povey"),
-      round_to_power_of_two(true) { }
+      round_to_power_of_two(true),
+      snip_edges(true){ }
 
   void Register(OptionsItf *po) {
     po->Register("sample-frequency", &samp_freq,
@@ -107,6 +110,11 @@ struct FrameExtractionOptions {
                  "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\")");
     po->Register("round-to-power-of-two", &round_to_power_of_two,
                  "If true, round window size to power of two.");
+    po->Register("snip-edges", &snip_edges,
+                 "If true, end effects will be handled by outputting only frames that "
+                 "completely fit in the file, and the number of frames depends on the "
+                 "frame-length.  If false, the number of frames depends only on the "
+                 "frame-shift, and we reflect the data at the ends.");
   }
   int32 WindowShift() const {
     return static_cast<int32>(samp_freq * 0.001 * frame_shift_ms);
@@ -220,7 +228,7 @@ class DeltaFeatures {
 
 struct ShiftedDeltaFeaturesOptions {
   int32 window,           // The time delay and advance
-        num_blocks,       
+        num_blocks,
         block_shift;      // Distance between consecutive blocks
 
   ShiftedDeltaFeaturesOptions():
@@ -249,7 +257,7 @@ class ShiftedDeltaFeatures {
  private:
   ShiftedDeltaFeaturesOptions opts_;
   Vector<BaseFloat> scales_;  // a scaling window for each
-  
+
 };
 
 // ComputeDeltas is a convenience function that computes deltas on a feature
@@ -305,7 +313,7 @@ struct SlidingWindowCmnOptions {
   int32 min_window;
   bool normalize_variance;
   bool center;
-  
+
   SlidingWindowCmnOptions():
       cmn_window(600),
       min_window(100),

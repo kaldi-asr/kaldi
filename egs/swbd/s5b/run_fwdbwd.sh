@@ -5,11 +5,11 @@ utils/reverse_lm_test.sh data/lang_test data/lang_test.reverse
 
 # normal forward decoding
 utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
-steps/decode_fwdbwd.sh --beam 11.0 --latbeam 4.0 --nj 30 --cmd "$decode_cmd" exp/tri2/graph data/eval2000 exp/tri2/decode_eval2000_11
+steps/decode_fwdbwd.sh --beam 11.0 --lattice-beam 4.0 --nj 30 --cmd "$decode_cmd" exp/tri2/graph data/eval2000 exp/tri2/decode_eval2000_11
 
 # backwards decoding
 utils/mkgraph.sh --reverse data/lang_test.reverse exp/tri2 exp/tri2/graph_r
-steps/decode_fwdbwd.sh --beam 11.0 --latbeam 4.0 --reverse true --nj 30 --cmd "$decode_cmd" \
+steps/decode_fwdbwd.sh --beam 11.0 --lattice-beam 4.0 --reverse true --nj 30 --cmd "$decode_cmd" \
   exp/tri2/graph_r data/eval2000 exp/tri2/decode_eval2000_reverse11
 
 # pingpong decoding

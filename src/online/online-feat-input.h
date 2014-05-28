@@ -22,10 +22,12 @@
 #ifndef KALDI_ONLINE_ONLINE_FEAT_INPUT_H_
 #define KALDI_ONLINE_ONLINE_FEAT_INPUT_H_
 
+#if !defined(_MSC_VER)
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#endif
 
 #include "online-audio-source.h"
 #include "feat/feature-functions.h"
@@ -149,6 +151,7 @@ class OnlineCacheInput : public OnlineFeatInputItf {
 };
 
 
+#if !defined(_MSC_VER)
 
 // Accepts features over an UDP socket
 // The current implementation doesn't support the "timeout" -
@@ -172,6 +175,8 @@ class OnlineUdpInput : public OnlineFeatInputItf {
   sockaddr_in server_addr_;
   sockaddr_in client_addr_;
 };
+
+#endif
 
 
 // Splices the input features and applies a transformation matrix.

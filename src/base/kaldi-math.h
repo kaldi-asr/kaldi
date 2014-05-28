@@ -83,10 +83,7 @@ namespace kaldi {
 // -infinity
 const float kLogZeroFloat = -std::numeric_limits<float>::infinity();
 const double kLogZeroDouble = -std::numeric_limits<double>::infinity();
-const BaseFloat kBaseLogZero = -std::numeric_limits<BaseFloat>::infinity();
-
-// Big numbers
-const BaseFloat kBaseFloatMax = std::numeric_limits<BaseFloat>::max();
+const BaseFloat kLogZeroBaseFloat = -std::numeric_limits<BaseFloat>::infinity();
 
 // Returns a random integer between min and max inclusive.
 int32 RandInt(int32 min, int32 max);

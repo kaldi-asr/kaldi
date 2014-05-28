@@ -50,12 +50,12 @@ void CuTpMatrix<Real>::Invert() {
     int dim = this->NumRows();
     Real alpha = 1.0;
     cuda_set_diag(dimGrid, dimBlock, tmp.Data(), alpha, tmp.Dim());
-    //Matrix<Real> A(dim,dim);
-    //tmp.CopyToMat(&A);
+    CU_SAFE_CALL(cudaGetLastError());        
     CuMatrix<Real> tmp2(dim, dim);
     tmp2.CopyFromTp(*this);
     cublas_trsm(dim, dim, alpha, tmp2.Data(), tmp2.Dim().stride, 
       tmp.Data(), tmp.Dim().stride);
+    CU_SAFE_CALL(cudaGetLastError());        
     this->CopyFromMat(tmp, kNoTrans);
   } else
 #endif
@@ -78,11 +78,10 @@ void CuTpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
     dim3 dimGrid(n_blocks(num_rows, CU2DBLOCK), n_blocks(num_rows, CU2DBLOCK));
     if (Trans == kNoTrans) {
       cuda_take_lower(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
-      cudaThreadSynchronize();
     } else {
       cuda_take_upper(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
-      cudaThreadSynchronize();
-    }      
+    }
+    CU_SAFE_CALL(cudaGetLastError());        
   } else
 #endif
   {

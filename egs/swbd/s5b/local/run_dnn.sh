@@ -67,7 +67,7 @@ if [ $stage -le 2 ]; then
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.08333 \
     $gmmdir/graph_sw1_fsh_tgpr $data_fmllr/eval2000 $dir/decode_eval2000_sw1_fsh_tgpr || exit 1;
   # Rescore using unpruned trigram sw1_fsh
-  steps/lmrescore.sh --mode 3 --cmd "$decodebig_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
+  steps/lmrescore.sh --mode 3 --cmd "$mkgraph_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
     $dir/decode_eval2000_sw1_fsh_tgpr $dir/decode_eval2000_sw1_fsh_tg.3 || exit 1 
 fi
 
@@ -77,7 +77,7 @@ fi
 # Lattices are re-generated after 1st epoch, to get faster convergence.
 dir=exp/dnn5b_pretrain-dbn_dnn_smbr
 srcdir=exp/dnn5b_pretrain-dbn_dnn
-acwt=0.08333
+acwt=0.0909
 
 if [ $stage -le 3 ]; then
   # First we generate lattices and alignments:
@@ -97,7 +97,7 @@ if [ $stage -le 4 ]; then
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph_sw1_fsh_tgpr $data_fmllr/eval2000 $dir/decode_eval2000_sw1_fsh_tgpr || exit 1;
     # Rescore using unpruned trigram sw1_fsh
-    steps/lmrescore.sh --mode 3 --cmd "$decodebig_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
+    steps/lmrescore.sh --mode 3 --cmd "$mkgraph_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
       $dir/decode_eval2000_sw1_fsh_tgpr $dir/decode_eval2000_sw1_fsh_tg.3 || exit 1 
   done 
 fi
@@ -105,7 +105,7 @@ fi
 # Re-generate lattices, run 4 more sMBR iterations
 dir=exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats
 srcdir=exp/dnn5b_pretrain-dbn_dnn_smbr
-acwt=0.08333
+acwt=0.0909
 
 if [ $stage -le 5 ]; then
   # First we generate lattices and alignments:
@@ -125,7 +125,7 @@ if [ $stage -le 6 ]; then
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph_sw1_fsh_tgpr $data_fmllr/eval2000 $dir/decode_eval2000_sw1_fsh_tgpr || exit 1;
     # Rescore using unpruned trigram sw1_fsh
-    steps/lmrescore.sh --mode 3 --cmd "$decodebig_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
+    steps/lmrescore.sh --mode 3 --cmd "$mkgraph_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
       $dir/decode_eval2000_sw1_fsh_tgpr $dir/decode_eval2000_sw1_fsh_tg.3 || exit 1 
   done 
 fi

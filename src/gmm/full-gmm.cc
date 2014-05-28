@@ -22,6 +22,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <functional>
 #include <limits>
 #include <string>
 #include <queue>

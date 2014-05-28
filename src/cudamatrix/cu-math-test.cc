@@ -116,18 +116,19 @@ static void UnitTestCuMathSplice() {
   frame_offsets.CopyFromVec(frame_offsets_vec);
   cu::Splice(src, frame_offsets, &tgt);
 
+  Matrix<Real> src_copy(src), tgt_copy(tgt);
   for (int32 i = 0; i < n_rows; i++) {
     for (int32 k = 0; k < n_frame_offsets; k++) {
       for (int32 j = 0; j < n_columns; j++) {
         Real src_val; 
         if (i + frame_offsets_vec.at(k) >= n_rows) {
-          src_val = src(n_rows-1, j);
+          src_val = src_copy(n_rows-1, j);
         } else if (i + frame_offsets_vec.at(k) <= 0) {
-          src_val = src(0, j);
+          src_val = src_copy(0, j);
         } else {
-          src_val = src(i + frame_offsets_vec.at(k), j); 
+          src_val = src_copy(i + frame_offsets_vec.at(k), j); 
         }
-        Real tgt_val = tgt(i, k * n_columns + j);
+        Real tgt_val = tgt_copy(i, k * n_columns + j);
         AssertEqual(src_val, tgt_val);
       }
     }

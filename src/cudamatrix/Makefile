@@ -43,7 +43,11 @@ ifeq ($(CUDA), true)
   ifeq ($(CUDA_VER_GT_5_0), true)
     CUDA_ARCH += -gencode arch=compute_35,code=sm_35
   endif
-
+  #For toolkit 6.0 or newer, add the compute capability 5.0
+  CUDA_VER_GT_6_0 := $(shell [ $(CUDA_VERSION) -ge 60 ] && echo true)
+  ifeq ($(CUDA_VER_GT_6_0), true)
+    CUDA_ARCH += -gencode arch=compute_50,code=sm_50
+  endif
 endif
 
 

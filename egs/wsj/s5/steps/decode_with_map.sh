@@ -13,7 +13,7 @@ nj=4
 cmd=run.pl
 max_active=7000
 beam=13.0
-latbeam=6.0
+lattice_beam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 mean_tau=20
 weight_tau=10
@@ -99,7 +99,7 @@ if [ $stage -le 2 ]; then
   gmm-adapt-map --mean-tau=$mean_tau --weight-tau=$weight_tau \
        --update-flags=$flags --spk2utt=ark:$sdata/JOB/spk2utt \
      $model "$feats" ark:- ark:- \| \
-  gmm-latgen-map --lattice-beam=$latbeam --acoustic-scale=$acwt \
+  gmm-latgen-map --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
    --utt2spk=ark:$sdata/JOB/utt2spk --max-active=$max_active --beam=$beam \
    --allow-partial=true --word-symbol-table=$graphdir/words.txt \
    $model ark,s,cs:- $graphdir/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz"

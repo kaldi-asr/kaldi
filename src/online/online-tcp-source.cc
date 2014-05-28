@@ -17,6 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#if !defined(_MSC_VER)
+
 #include "online-tcp-source.h"
 #include <unistd.h>
 
@@ -151,3 +153,5 @@ bool OnlineTcpVectorSource::IsConnected() {
 }
 
 }  // namespace kaldi
+
+#endif // !defined(_MSC_VER)

@@ -19,7 +19,7 @@
 cmd=run.pl
 maxactive=7000
 beam=20.0
-latbeam=7.0
+lattice_beam=7.0
 acwt=0.083333
 batch_size=75 # Limits memory blowup in compile-train-graphs-fsts
 scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
@@ -80,7 +80,7 @@ $cmd JOB=1:$nj $dir/log/decode_lats.JOB.log \
   fstdeterminizestar ark:- ark:- \| \
   compile-train-graphs-fsts --read-disambig-syms=$lang/phones/disambig.int \
     --batch-size=$batch_size $scale_opts $srcdir/tree $srcdir/final.mdl $lang/L_disambig.fst ark:- ark:- \|  \
-  gmm-latgen-faster --max-active=$maxactive --beam=$beam --lattice-beam=$latbeam --acoustic-scale=$acwt \
+  gmm-latgen-faster --max-active=$maxactive --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
     --allow-partial=true --word-symbol-table=$lang/words.txt \
     $srcdir/final.mdl ark:- "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
