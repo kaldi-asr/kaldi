@@ -1144,11 +1144,11 @@ bool RescoreLattice(DecodableInterface *decodable,
   KALDI_ASSERT(num_states == state_times.size());
   for (size_t state = 0; state < num_states; state++) {
     int32 t = state_times[state];
-    KALDI_ASSERT(t >= 0 && t <= utt_len);
-    if (t < utt_len)
+    // Don't check t >= 0 because non-accessible states could have t = -1.
+    KALDI_ASSERT(t <= utt_len);  
+    if (t >= 0 && t < utt_len)
       time_to_state[t].push_back(state);
   }
-
 
   for (int32 t = 0; t < utt_len; t++) {
     if ((t < utt_len - 1) == decodable->IsLastFrame(t)) {
