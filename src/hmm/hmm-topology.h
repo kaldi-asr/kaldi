@@ -146,22 +146,22 @@ class HmmTopology {
 
   HmmTopology() {}
 
-  /// Copy constructor
-  explicit HmmTopology(const HmmTopology &other): phones_(other.phones_),
-                                                  phone2idx_(other.phone2idx_),
-                                                  entries_(other.entries_) { }
-
   bool operator == (const HmmTopology &other) const {
     return phones_ == other.phones_ && phone2idx_ == other.phone2idx_
         && entries_ == other.entries_;
   }
+  // Allow default assignment operator and copy constructor.
  private:
   std::vector<int32> phones_;  // list of all phones we have topology for.  Sorted, uniq.  no epsilon (zero) phone.
   std::vector<int32> phone2idx_;  // map from phones to indexes into the entries vector (or -1 for not present).
   std::vector<TopologyEntry> entries_;
-  HmmTopology &operator =(const HmmTopology &other);  // Disallow assignment.
-
 };
+
+
+/// This function returns a HmmTopology object giving a normal 3-state topology,
+/// covering all phones in the list "phones".  This is mainly of use in testing
+/// code.
+HmmTopology GetDefaultTopology(const std::vector<int32> &phones);
 
 /// @} end "addtogroup hmm_group"
 

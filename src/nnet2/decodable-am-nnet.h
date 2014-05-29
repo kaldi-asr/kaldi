@@ -21,7 +21,6 @@
 #define KALDI_NNET2_DECODABLE_AM_NNET_H_
 
 #include <vector>
-
 #include "base/kaldi-common.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
@@ -73,14 +72,14 @@ class DecodableAmNnet: public DecodableInterface {
                       trans_model_.TransitionIdToPdf(transition_id));
   }
 
-  int32 NumFrames() const { return log_probs_.NumRows(); }
+  virtual int32 NumFramesReady() const { return log_probs_.NumRows(); }
   
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
   
   virtual bool IsLastFrame(int32 frame) const {
-    KALDI_ASSERT(frame < NumFrames());
-    return (frame == NumFrames() - 1);
+    KALDI_ASSERT(frame < NumFramesReady());
+    return (frame == NumFramesReady() - 1);
   }
 
  protected:

@@ -336,6 +336,7 @@ bool GetPhonesForPdfs(const TransitionModel &trans_model,
                       std::vector<int32> *phones);
 /// @}
 
+
 } // end namespace kaldi
 
 

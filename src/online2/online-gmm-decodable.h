@@ -55,7 +55,7 @@ class DecodableDiagGmmScaledOnline : public DecodableInterface {
   const AmDiagGmm &ac_model_;
   BaseFloat ac_scale_;
   const TransitionModel &trans_model_;
-  const int32 feat_dim_; // dimensionality of the input features
+  const int32 feat_dim_;  // dimensionality of the input features
   Vector<BaseFloat> cur_feats_;
   int32 cur_frame_;
   std::vector<std::pair<int32, BaseFloat> > cache_;

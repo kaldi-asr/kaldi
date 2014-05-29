@@ -118,7 +118,7 @@ class OnlineMatrixFeature: public OnlineFeatureInterface {
   virtual int32 Dim() const { return mat_.NumCols(); }
 
   virtual int32 NumFramesReady() const { return mat_.NumRows(); }
-
+  
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
     feat->CopyFromVec(mat_.Row(frame));
   }

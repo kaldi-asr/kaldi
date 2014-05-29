@@ -60,7 +60,7 @@ void TestHmmTopology() {
 
   std::istringstream iss(input_str);
   topo.Read(iss, false);
-
+  
   std::ostringstream oss;
   topo.Write(oss, binary);
 
@@ -74,6 +74,13 @@ void TestHmmTopology() {
     topo.Write(oss1, false);
     topo2.Write(oss2, false);
     KALDI_ASSERT(oss1.str() == oss2.str());
+  }
+
+  {  // make sure GetDefaultTopology does not crash.
+    std::vector<int32> phones;
+    phones.push_back(1);
+    phones.push_back(2);
+    GetDefaultTopology(phones);
   }
 }
 
