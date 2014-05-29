@@ -168,8 +168,8 @@ class CuVectorBase {
     return CuValue<Real>(data_ + i);
   }
 
-  Real Norm(BaseFloat p); // Only works for p = 1 and p = 2.
-            
+  Real Norm(Real p); // Only works for p = 1 and p = 2.
+  
   inline Real operator() (MatrixIndexT i) const {
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                           static_cast<UnsignedMatrixIndexT>(dim_));

@@ -14,6 +14,7 @@ mkdir -p $dir $lmdir $traindir $testdir $devdir
 local=`pwd`/local
 utils=`pwd`/utils
 
+. ./path.sh
 
 # Checks if python3 is available on the system and install python3 in userspace if not
 # This recipe currently relies on version 3 because python3 uses utf8 as internal 
@@ -27,7 +28,6 @@ if ! which python3 >&/dev/null; then
 fi
 
 if [ ! -d $dir/download ]; then
-
     mkdir -p $dir/download/0565-1 $dir/download/0565-2
 fi 
 

@@ -148,7 +148,7 @@ void CuVectorBase<Real>::CopyRowsFromMat(const CuMatrixBase<Real> &mat) {
 }
 
 template<typename Real>
-Real CuVectorBase<Real>::Norm(BaseFloat p) {
+Real CuVectorBase<Real>::Norm(Real p) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;

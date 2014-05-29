@@ -2,6 +2,7 @@
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
+. ./path.sh # so python3 is on the path if not on the system (we made a link to utils/).a
 
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
@@ -179,8 +180,6 @@ utils/mkgraph.sh data/lang_test_4g exp/tri3b exp/tri3b/graph_4g || exit 1;
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 7 \
   exp/tri3b/graph_4g data/test1k exp/tri3b/decode_4g_test1k || exit 1;
 exit 
-
-# To build RNNLMs uncomment this code
 
 # Repeat text preparation on dev set, but do not add to dictionary
 dev=data/dev

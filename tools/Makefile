@@ -61,10 +61,14 @@ openfst_compiled: openfst-1.3.4/Makefile
 openfst-1.3.4/lib: | openfst-1.3.4/Makefile
 	-cd openfst-1.3.4 && [ -d lib64 ] && [ ! -d lib ] && ln -s lib64 lib
 
+# Disable shared-library creation on cygwin as it leads to compilation error "file too big"
+# with openfst-1.3.4.
 openfst-1.3.4/Makefile: openfst-1.3.4/.patched
-	cd openfst-1.3.4/; \
-	./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
-
+ifeq ($(OSTYPE),cygwin)
+	cd openfst-1.3.4/; ./configure --prefix=`pwd` --enable-static --disable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
+else
+	cd openfst-1.3.4/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
+endif
 
 # patches for openfst. openfst_gcc41up.patch is a patch for openfst to \
 # support multi-threads when compile with g++ (gcc) version above 4.1

@@ -33,4 +33,4 @@ make altinstall
 
 cd ..
 # link the python installation to somewhere in PATH, currently in utils/
-ln -s $(pwd)/$py3dir/python ../egs/sprakbanken/s5/utils/python3
+ln -s -f $(pwd)/$py3dir/python ../egs/sprakbanken/s5/utils/python3

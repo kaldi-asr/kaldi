@@ -12,7 +12,7 @@ nj=4
 cmd=run.pl
 max_active=7000
 beam=13.0
-latbeam=6.0
+lattice_beam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # If you supply num-threads, you should supply this too.
@@ -95,7 +95,7 @@ fi
 
 if [ $stage -le 0 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
-    gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
+    gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi

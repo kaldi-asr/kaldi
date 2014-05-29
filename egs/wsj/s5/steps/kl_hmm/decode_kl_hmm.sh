@@ -16,7 +16,7 @@ cmd=run.pl
 max_active=7000 # maximum of active tokens
 max_mem=50000000 # limit the fst-size to 50MB (larger fsts are minimized)
 beam=13.0 # GMM:13.0
-latbeam=8.0 # GMM:6.0
+lattice_beam=8.0 # GMM:6.0
 acwt=0.1 # GMM:0.0833, note: only really affects pruning (scoring is on lattices).
 scoring_opts="--min-lmwt 1 --max-lmwt 12"
 skip_scoring=false
@@ -106,7 +106,7 @@ fi
 if [ $stage -le 0 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
     nnet-forward --feature-transform=$feature_transform --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
-    latgen-faster-mapped --max-active=$max_active --max-mem=$max_mem --beam=$beam --lattice-beam=$latbeam \
+    latgen-faster-mapped --max-active=$max_active --max-mem=$max_mem --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $model $graphdir/HCLG.fst ark:- "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
