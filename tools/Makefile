@@ -116,22 +116,15 @@ irstlm_compiled: irstlm/Makefile
 	cd irstlm/; \
 	make; $(MAKE) install	
 
-irstlm/Makefile: irstlm/.patched
+irstlm/Makefile: irstlm
 	cd irstlm; \
 	    automake --version | grep 1.13.1 >/dev/null && \
          sed s:AM_CONFIG_HEADER:AC_CONFIG_HEADERS: <configure.in >configure.ac; \
 	(./regenerate-makefiles.sh || ./regenerate-makefiles.sh) && \
 	./configure --prefix `pwd` 
 
-
-irstlm/.patched: | irstlm
-	-cd irstlm;\
-	patch --verbose -N -p0 < ../interpolatedwrite-5.60.02.patch; \
-	patch --verbose -N -p0 < ../irstlm.patch; \
-	touch .patched	
-
 irstlm:
-	svn -r 398 co --non-interactive --trust-server-cert https://svn.code.sf.net/p/irstlm/code/trunk irstlm
+	svn -r 618 co --non-interactive --trust-server-cert https://svn.code.sf.net/p/irstlm/code/trunk irstlm
 
 atlas: ATLAS/include/cblas.h
 
