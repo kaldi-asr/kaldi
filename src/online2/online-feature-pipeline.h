@@ -147,6 +147,9 @@ struct OnlineFeaturePipelineConfig {
 /// generic.
 class OnlineFeaturePipeline: public OnlineFeatureInterface {
  public:
+  /// The copy constructor is important as it's how we generate a fresh copy of
+  /// the feature-processing pipeline for when we want to process a new
+  /// utterance.
   explicit OnlineFeaturePipeline(const OnlineFeaturePipelineConfig &cfg);
 
   /// Member functions from OnlineFeatureInterface:

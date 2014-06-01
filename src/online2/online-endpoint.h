@@ -34,6 +34,7 @@
 #include "itf/online-feature-itf.h"
 #include "lat/kaldi-lattice.h"
 #include "hmm/transition-model.h"
+#include "decoder/lattice-faster-online-decoder.h"
 
 namespace kaldi {
 /// @addtogroup  onlinedecoding OnlineDecoding
@@ -180,6 +181,8 @@ bool EndpointDetected(const OnlineEndpointConfig &config,
                       BaseFloat frame_shift_in_seconds,
                       BaseFloat final_relative_cost);
 
+
+
 class LatticeFasterOnlineDecoder;
 
 /// returns the number of frames of trailing silence in the best-path traceback
@@ -191,6 +194,14 @@ int32 TrailingSilenceLength(const TransitionModel &tmodel,
                             const std::string &silence_phones,
                             const LatticeFasterOnlineDecoder &decoder);
 
+
+/// This is a higher-level convenience function that works out the
+/// arguments to the EndpointDetected function above, from the decoder.
+bool EndpointDetected(
+    const OnlineEndpointConfig &config,
+    const TransitionModel &tmodel,
+    BaseFloat frame_shift_in_seconds,
+    const LatticeFasterOnlineDecoder &decoder);
 
   
 

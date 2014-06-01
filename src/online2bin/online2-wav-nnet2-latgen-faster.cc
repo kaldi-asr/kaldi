@@ -1,4 +1,4 @@
-// onlinebin/online2-wav-gmm-latgen-faster.cc
+// onlinebin/online2-wav-nnet2-decode-faster.cc
 
 // Copyright 2014  Johns Hopkins University (author: Daniel Povey)
 
@@ -19,11 +19,11 @@
 
 #include "feat/wave-reader.h"
 #include "online2/online-feature-pipeline.h"
-#include "online2/online-gmm-decoding.h"
 #include "online2/onlinebin-util.h"
 #include "online2/online-timing.h"
 #include "online2/online-endpoint.h"
 #include "fstext/fstext-lib.h"
+#include "nnet2/online-nnet2-decodable.h"
 #include "lat/lattice-functions.h"
 
 namespace kaldi {
@@ -80,13 +80,12 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
     
     const char *usage =
-        "Reads in wav file(s) and simulates online decoding, including\n"
-        "basis-fMLLR adaptation and endpointing.  Writes lattices.\n"
-        "Models are specified via options.\n"
+        "Reads in wav file(s) and simulates online decoding with neural nets\n"
+        "(nnet2 setup), without speaker adaptation and with optional endpointing.\n"
         "\n"
-        "Usage: online2-wav-gmm-latgen-faster [options] <fst-in> "
-        "<spk2utt-rspecifier> <wav-rspecifier> <lattice-wspecifier>\n"
-        "Run ^/egs/rm/s5/local/run_online_decoding.sh for example\n";
+        "Usage: online2-wav-nnet2-latgen-faster [options] <nnet2-in> <fst-in> "
+        "<wav-rspecifier> <lattice-wspecifier>\n"
+        "Run ^/egs/rm/s5/local/run_online_decoding_nnet2.sh for example\n";
     
     ParseOptions po(usage);
     
@@ -94,11 +93,15 @@ int main(int argc, char *argv[]) {
     
     OnlineEndpointConfig endpoint_config;
     OnlineFeaturePipelineCommandLineConfig feature_cmdline_config;
-    OnlineGmmDecodingConfig decode_config;
+
+    // Options for the decoder, including --beam and --lattice-beam.
+    LatticeFasterDecoderConfig faster_decoder_opts;
     
+    // Options for the Decodable object, including --acoustic-scale
+    nnet2::DecodableNnet2OnlineOptions decodable_opts;
+
     BaseFloat chunk_length_secs = 0.05;
     bool do_endpointing = false;
-    std::string use_gpu = "no";
     
     po.Register("chunk-length", &chunk_length_secs,
                 "Length of chunk size in seconds, that we process.");
@@ -106,34 +109,35 @@ int main(int argc, char *argv[]) {
                 "Symbol table for words [for debug output]");
     po.Register("do-endpointing", &do_endpointing,
                 "If true, apply endpoint detection");
-    po.Register("use-gpu", &use_gpu,
-                "yes|no|optional, only has effect if compiled with CUDA");     
     
     feature_cmdline_config.Register(&po);
-    decode_config.Register(&po);
+    faster_decoder_opts.Register(&po);
+    decodable_opts.Register(&po);
     endpoint_config.Register(&po);
     
-#if HAVE_CUDA==1
-    CuDevice::Instantiate().SelectGpuId(use_gpu);
-#endif
-
     po.Read(argc, argv);
     
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() != 5) {
       po.PrintUsage();
       return 1;
     }
     
-    std::string fst_rxfilename = po.GetArg(1),
-        spk2utt_rspecifier = po.GetArg(2),
+    std::string nnet2_rxfilename = po.GetArg(1),
+        fst_rxfilename = po.GetArg(2),
         wav_rspecifier = po.GetArg(3),
         clat_wspecifier = po.GetArg(4);
     
     OnlineFeaturePipelineConfig feature_config(feature_cmdline_config);
     OnlineFeaturePipeline pipeline_prototype(feature_config);
-    // The following object initializes the models we use in decoding.
-    OnlineGmmDecodingModels gmm_models(decode_config);
-    
+
+    TransitionModel trans_model;
+    nnet2::AmNnet nnet;
+    {
+      bool binary;
+      Input ki(nnet2_rxfilename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      nnet.Read(ki.Stream(), binary);
+    }
     
     fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
     
@@ -147,89 +151,85 @@ int main(int argc, char *argv[]) {
     double tot_like = 0.0;
     int64 num_frames = 0;
     
-    SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
-    RandomAccessTableReader<WaveHolder> wav_reader(wav_rspecifier);
+    SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
     CompactLatticeWriter clat_writer(clat_wspecifier);
     
     OnlineTimingStats timing_stats;
     
-    for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
-      std::string spk = spk2utt_reader.Key();
-      const std::vector<std::string> &uttlist = spk2utt_reader.Value();
-      SpeakerAdaptationState adaptation_state;
-      for (size_t i = 0; i < uttlist.size(); i++) {
-        std::string utt = uttlist[i];
-        if (!wav_reader.HasKey(utt)) {
-          KALDI_WARN << "Did not find features for utterance " << utt;
-          num_err++;
-          continue;
+    for (; !wav_reader.Done(); wav_reader.Next()) {
+      std::string utt = wav_reader.Key();
+      const WaveData &wave_data = wav_reader.Value();
+      // get the data for channel zero (if the signal is not mono, we only
+      // take the first channel).
+      SubVector<BaseFloat> data(wave_data.Data(), 0);
+
+      OnlineFeaturePipeline pipeline(pipeline_prototype);
+
+      nnet2::DecodableNnet2Online decodable(nnet, trans_model,
+                                            decodable_opts,
+                                            &pipeline);
+
+      LatticeFasterOnlineDecoder decoder(*decode_fst, faster_decoder_opts);
+      
+      OnlineTimer decoding_timer(utt);
+        
+      BaseFloat samp_freq = wave_data.SampFreq();
+      int32 chunk_length = int32(samp_freq * chunk_length_secs);
+      if (chunk_length == 0) chunk_length = 1;
+      
+      int32 samp_offset = 0;
+      while (samp_offset < data.Dim()) {
+        int32 samp_remaining = data.Dim() - samp_offset;
+        int32 num_samp = chunk_length < samp_remaining ? chunk_length
+            : samp_remaining;
+        
+        SubVector<BaseFloat> wave_part(data, samp_offset, num_samp);
+        pipeline.AcceptWaveform(samp_freq, wave_part);
+        
+        samp_offset += num_samp;
+        decoding_timer.WaitUntil(samp_offset / samp_freq);
+        if (samp_offset == data.Dim()) {
+          // no more input. flush out last frames
+          pipeline.InputFinished();
         }
-        const WaveData &wave_data = wav_reader.Value(utt);
-        // get the data for channel zero (if the signal is not mono, we only
-        // take the first channel).
-        SubVector<BaseFloat> data(wave_data.Data(), 0);
+        decoder.AdvanceDecoding(&decodable);
         
-        SingleUtteranceGmmDecoder decoder(decode_config,
-                                          gmm_models,
-                                          pipeline_prototype,
-                                          *decode_fst,
-                                          adaptation_state);
-        
-        OnlineTimer decoding_timer(utt);
-        
-        BaseFloat samp_freq = wave_data.SampFreq();
-        int32 chunk_length = int32(samp_freq * chunk_length_secs);
-        if (chunk_length == 0) chunk_length = 1;
-        
-        int32 samp_offset = 0;
-        while (samp_offset < data.Dim()) {
-          int32 samp_remaining = data.Dim() - samp_offset;
-          int32 num_samp = chunk_length < samp_remaining ? chunk_length
-                                                         : samp_remaining;
-          
-          SubVector<BaseFloat> wave_part(data, samp_offset, num_samp);
-          decoder.FeaturePipeline().AcceptWaveform(samp_freq, wave_part);
-          
-          samp_offset += num_samp;
-          decoding_timer.WaitUntil(samp_offset / samp_freq);
-          if (samp_offset == data.Dim()) {
-            // no more input. flush out last frames
-            decoder.FeaturePipeline().InputFinished();
-          }
-          decoder.AdvanceDecoding();
-          
-          if (do_endpointing && decoder.EndpointDetected(endpoint_config))
+        if (do_endpointing && EndpointDetected(endpoint_config, trans_model,
+                                               pipeline.FrameShiftInSeconds(),
+                                               decoder)) {
             break;
         }
-        bool end_of_utterance = true;
-        decoder.EstimateFmllr(end_of_utterance);
-        CompactLattice clat;
-        bool rescore_if_needed = true;
-        decoder.GetLattice(rescore_if_needed, end_of_utterance, &clat);
-        
-        GetDiagnosticsAndPrintOutput(utt, word_syms, clat,
-                                     &num_frames, &tot_like);
-        
-        decoding_timer.OutputStats(&timing_stats);
-        
-        // In an application you might avoid updating the adaptation state if
-        // you felt the utterance had low confidence.  See lat/confidence.h
-        decoder.GetAdaptationState(&adaptation_state);
-        
-        // we want to output the lattice with un-scaled acoustics.
-        if (decode_config.acoustic_scale != 0.0) {
-          BaseFloat inv_acoustic_scale = 1.0 / decode_config.acoustic_scale;
-          ScaleLattice(AcousticLatticeScale(inv_acoustic_scale), &clat);
-        }
-        clat_writer.Write(utt, clat);
-        KALDI_LOG << "Decoded utterance " << utt;
-        num_done++;
       }
+
+      Lattice lat;
+      decoder.GetRawLattice(&lat);
+      CompactLattice clat;
+      if (!DeterminizeLatticePhonePrunedWrapper(
+              trans_model,
+              &lat,
+              faster_decoder_opts.lattice_beam,
+              &clat,
+              faster_decoder_opts.det_opts)) {
+        KALDI_WARN << "Determinization finished earlier than the beam for "
+                   << "utterance " << utt;
+      }
+
+      decoding_timer.OutputStats(&timing_stats);
+      
+      GetDiagnosticsAndPrintOutput(utt, word_syms, clat,
+                                   &num_frames, &tot_like);
+      
+      KALDI_ASSERT(decodable_opts.acoustic_scale != 0.0);
+      // We'll write the lattice without acoustic scaling.
+      BaseFloat inv_scale = 1.0 / decodable_opts.acoustic_scale;
+      fst::ScaleLattice(fst::AcousticLatticeScale(inv_scale), &clat);
+      
+      clat_writer.Write(utt, clat);
+      
+      KALDI_LOG << "Decoded utterance " << utt;
+      num_done++;
     }
-#if HAVE_CUDA==1
-    CuDevice::Instantiate().PrintProfile();
-#endif
-    timing_stats.Print();    
+    timing_stats.Print();
     KALDI_LOG << "Decoded " << num_done << " utterances, "
               << num_err << " with errors.";
     KALDI_LOG << "Average likelihood per frame was " << (tot_like / num_frames)

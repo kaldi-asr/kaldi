@@ -243,11 +243,12 @@ class SingleUtteranceGmmDecoder {
   void GetAdaptationState(SpeakerAdaptationState *adaptation_state) const;
 
   /// Gets the lattice.  If rescore_if_needed is true, and if there is any point
-  /// in rescoring the state-level lattice (see RescoringIsNeeded()).  The
-  /// output lattice has any acoustic scaling in it (which will typically be
-  /// desirable in an online-decoding context); if you want an un-scaled
-  /// lattice, scale it using ScaleLattice() with the inverse of the acoustic weight.
-  /// "end_of_utterance" will be true if you want the final-probs to be included.
+  /// in rescoring the state-level lattice (see RescoringIsNeeded()), it will
+  /// rescore the lattice.  The output lattice has any acoustic scaling in it
+  /// (which will typically be desirable in an online-decoding context); if you
+  /// want an un-scaled lattice, scale it using ScaleLattice() with the inverse
+  /// of the acoustic weight.  "end_of_utterance" will be true if you want the
+  /// final-probs to be included.
   void GetLattice(bool rescore_if_needed,
                   bool end_of_utterance,
                   CompactLattice *clat) const;

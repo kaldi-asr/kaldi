@@ -1,4 +1,4 @@
-// online2/online-endpoing.cc
+// online2/online-endpoint.cc
 
 // Copyright    2014  Johns Hopkins University (author: Daniel Povey)
 
@@ -105,6 +105,23 @@ int32 TrailingSilenceLength(const TransitionModel &tmodel,
   return num_silence_frames;
 }
 
+bool EndpointDetected(
+    const OnlineEndpointConfig &config,
+    const TransitionModel &tmodel,    
+    BaseFloat frame_shift_in_seconds,
+    const LatticeFasterOnlineDecoder &decoder) {
+  if (decoder.NumFramesDecoded() == 0) return false;
+
+  BaseFloat final_relative_cost = decoder.FinalRelativeCost();
+
+  int32 num_frames_decoded = decoder.NumFramesDecoded(),
+      trailing_silence_frames = TrailingSilenceLength(tmodel,
+                                                      config.silence_phones,
+                                                      decoder);
+
+  return EndpointDetected(config, num_frames_decoded, trailing_silence_frames,
+                          frame_shift_in_seconds, final_relative_cost);  
+}
 
 
 }  // namespace kaldi

@@ -283,37 +283,12 @@ SingleUtteranceGmmDecoder::~SingleUtteranceGmmDecoder() {
 }
 
 
-/**
-   There is a potential efficiency bottleneck here: each time we process a chunk
-   of data we call EndpointDetected(), which calls GetBestPath().  This makes
-   the whole decodinng algorithm quadratic in the length of the utterance
-   (typically for dialog-type applications we'll limit the maximum length we
-   process somehow, so this might not be a huge problem).  If this turns out to
-   be a problem in practice, we can reorganize this code a bit, so that it uses
-   only a fixed-length trailing piece of the best path, e.g. the last second or
-   so.  It would be possible to modify the GetBestPath function of the decoder
-   to support this efficiently.
- */
 bool SingleUtteranceGmmDecoder::EndpointDetected(
     const OnlineEndpointConfig &config) {
-  Lattice best_path;
-  if (decoder_.NumFramesDecoded() == 0) return false;
-
-  BaseFloat frame_shift = feature_pipeline_->FrameShiftInSeconds(),
-      final_relative_cost = decoder_.FinalRelativeCost();
-
   const TransitionModel &tmodel = models_.GetTransitionModel();
-
-  int32 num_frames_decoded = decoder_.NumFramesDecoded(),
-      silence_frames = TrailingSilenceLength(tmodel,
-                                             config.silence_phones,
-                                             decoder_);
-
-  //if (rand() % 50 == 0)
-  //  decoder_.TestGetBestPath(rand() % 2 == 0);
-  
-  return kaldi::EndpointDetected(config, num_frames_decoded, silence_frames, 
-                                 frame_shift, final_relative_cost);
+  return kaldi::EndpointDetected(config, tmodel,
+                                 feature_pipeline_->FrameShiftInSeconds(),
+                                 decoder_);
 }
 
 void SingleUtteranceGmmDecoder::GetLattice(bool rescore_if_needed,

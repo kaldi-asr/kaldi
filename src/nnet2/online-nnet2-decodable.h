@@ -36,7 +36,7 @@ struct DecodableNnet2OnlineOptions {
   int32 max_nnet_batch_size;
   
   DecodableNnet2OnlineOptions():
-      acoustic_scale(1.0),
+      acoustic_scale(0.1),
       pad_input(true),
       max_nnet_batch_size(256) { }
 
