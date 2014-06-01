@@ -4,6 +4,7 @@
 //              2014  IMSL, PKU-HKUST (author: Wei Shi)
 //              2014  Yanqing Sun, Junjie Wang,
 //                    Daniel Povey, Korbinian Riedhammer
+//                    Xin Lei
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,13 +21,14 @@
 
 
 #include <iostream>
-#include "feat/pitch-functions.h"
-#include "feat/feature-plp.h"
+
 #include "base/kaldi-math.h"
+#include "feat/feature-plp.h"
+#include "feat/pitch-functions.h"
 #include "feat/wave-reader.h"
-#include "util/timer.h"
 #include "sys/stat.h"
 #include "sys/types.h"
+#include "util/timer.h"
 
 
 namespace kaldi {
@@ -48,17 +50,16 @@ bool DirExist(const std::string &dirname) {
 static void UnitTestSimple() {
   KALDI_LOG << "=== UnitTestSimple() ===\n";
   Vector<BaseFloat> v(1000);
-  Matrix<BaseFloat> m;
+  Matrix<BaseFloat> m1, m2;
   // init with noise
   for (int32 i = 0; i < v.Dim(); i++) {
     v(i) = (abs(i * 433024253) % 65535) - (65535 / 2);
   }
   KALDI_LOG << "<<<=== Just make sure it runs... Nothing is compared\n";
-  // the parametrization object
-  PitchExtractionOptions op;
-  // trying to have same opts as baseline.
-  // compute pitch.
-  ComputeKaldiPitch(op, v, &m);
+  // trying to compute and process pitch with same opts as baseline.
+  PitchExtractionOptions op1;
+  ProcessPitchOptions op2;
+  ComputeAndProcessKaldiPitch(op1, op2, v, &m1);
   KALDI_LOG << "Test passed :)\n";
 }
 
@@ -69,11 +70,11 @@ static void UnitTestPieces() {
   KALDI_LOG << "=== UnitTestPieces() ===\n";
   for (int32 n = 0; n < 10; n++) {
     // the parametrization object
-    PitchExtractionOptions op;
+    PitchExtractionOptions op1;
     ProcessPitchOptions op2;
     op2.delta_pitch_noise_stddev = 0.0;  // to avoid mismatch of delta_log_pitch
                                          // brought by rand noise.
-    op.nccf_ballast_online = true;  // this is necessary for the computation
+    op1.nccf_ballast_online = true;  // this is necessary for the computation
     // to be identical regardless how many pieces we break the signal into.
 
     int32 size = 10000 + rand() % 50000;
@@ -88,26 +89,25 @@ static void UnitTestPieces() {
       cur_freq += RandGauss();  // let the frequency wander a little.
       if (cur_freq < 100.0) cur_freq = 100.0;
       if (cur_freq > 300.0) cur_freq = 300.0;
-      normalized_time += cur_freq / op.samp_freq;
+      normalized_time += cur_freq / op1.samp_freq;
     }
 
     Matrix<BaseFloat> m1, m1p;
 
     // trying to have same opts as baseline.
-    // compute pitch.
-    ComputeKaldiPitch(op, v, &m1);
+    ComputeKaldiPitch(op1, v, &m1);
     ProcessPitch(op2, m1, &m1p);
 
     Matrix<BaseFloat> m2, m2p;
 
     { // compute it online with multiple pieces.
-      OnlinePitchFeature pitch_extractor(op);
+      OnlinePitchFeature pitch_extractor(op1);
       OnlineProcessPitch process_pitch(op2, &pitch_extractor);
       int32 start_samp = 0;
       while (start_samp < v.Dim()) {
         int32 num_samp = rand() % (v.Dim() + 1 - start_samp);
         SubVector<BaseFloat> v_part(v, start_samp, num_samp);
-        pitch_extractor.AcceptWaveform(op.samp_freq, v_part);
+        pitch_extractor.AcceptWaveform(op1.samp_freq, v_part);
         start_samp += num_samp;
       }
       pitch_extractor.InputFinished();
@@ -455,10 +455,9 @@ static void UnitTestFeatWithKeele() {
   UnitTestPitchExtractionSpeed();
   UnitTestPitchExtractorCompareKeele();
   UnitTestDiffSampleRate();
-
 }
 
-}
+}  // namespace kaldi
 
 int main() {
   using namespace kaldi;
@@ -489,4 +488,3 @@ int main() {
     return 1;
   }
 }
-

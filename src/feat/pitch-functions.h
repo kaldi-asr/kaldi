@@ -4,6 +4,7 @@
 //               2014  IMSL, PKU-HKUST (author: Wei Shi)
 //               2014  Yanqing Sun, Junjie Wang,
 //                     Daniel Povey, Korbinian Riedhammer
+//                     Xin Lei
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +19,6 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
 #ifndef KALDI_FEAT_PITCH_FUNCTIONS_H_
 #define KALDI_FEAT_PITCH_FUNCTIONS_H_
 
@@ -27,12 +27,11 @@
 #include <string>
 #include <vector>
 
-
-#include "matrix/matrix-lib.h"
-#include "util/common-utils.h"
 #include "base/kaldi-error.h"
 #include "feat/mel-computations.h"
 #include "itf/online-feature-itf.h"
+#include "matrix/matrix-lib.h"
+#include "util/common-utils.h"
 
 namespace kaldi {
 /// @addtogroup  feat FeatureExtraction
@@ -68,7 +67,7 @@ struct PitchExtractionOptions {
   // to introduce, for online operation. If you set this to a large value,
   // there would be no inaccuracy from the Viterbi traceback (but it might make
   // you wait to see the pitch). This is not very relevant for the online
-  // operation: normalization-right-context-first-pass is more relevant, you
+  // operation: normalization-right-context is more relevant, you
   // can just leave this value at zero.
   int32 max_frames_latency;
 
@@ -109,7 +108,7 @@ struct PitchExtractionOptions {
   // chunking, which is useful for testing purposes.
   bool nccf_ballast_online;
 
-  explicit PitchExtractionOptions():
+  PitchExtractionOptions():
       samp_freq(16000),
       frame_shift_ms(10.0),
       frame_length_ms(25.0),
@@ -171,7 +170,7 @@ struct PitchExtractionOptions {
                  "better feature compatibility with online decoding (affects "
                  "energy normalization in the algorithm)");
     po->Register("simulate-first-pass-online", &simulate_first_pass_online,
-                 "If true, this compute-kaldi-pitch-feats will output features "
+                 "If true, compute-kaldi-pitch-feats will output features "
                  "that correspond to what an online decoder would see in the "
                  "first pass of decoding-- not the final version of the "
                  "features, which is the default.  Relevant if "
@@ -211,11 +210,8 @@ struct ProcessPitchOptions {
   BaseFloat delta_pitch_noise_stddev;  // stddev of noise we add to delta-pitch
   int32 normalization_left_context;    // left-context used for sliding-window
                                        // normalization
-  int32 normalization_right_context; 
-
-  // The next two configs are only relevant for online pitch extraction.
-  int32 normalization_left_context_first_pass;
-  int32 normalization_right_context_first_pass;
+  int32 normalization_right_context;   // this should be reduced in online
+                                       // decoding to reduce latency
 
   int32 delta_window;
   
@@ -224,7 +220,7 @@ struct ProcessPitchOptions {
   bool add_delta_pitch;
   bool add_raw_log_pitch;
   
-  explicit ProcessPitchOptions() :
+  ProcessPitchOptions() :
       pitch_scale(2.0),
       pov_scale(2.0),
       pov_offset(0.0),
@@ -232,8 +228,6 @@ struct ProcessPitchOptions {
       delta_pitch_noise_stddev(0.005),
       normalization_left_context(75),
       normalization_right_context(75),
-      normalization_left_context_first_pass(75),
-      normalization_right_context_first_pass(30),
       delta_window(2),
       add_pov_feature(true),
       add_normalized_log_pitch(true),
@@ -252,7 +246,7 @@ struct ProcessPitchOptions {
                  "Intended for use in online decoding as a substitute for "
                  " CMN.");
     po->Register("delta-pitch-scale", &delta_pitch_scale,
-                 "Term to scale the final delta log-pitch");
+                 "Term to scale the final delta log-pitch feature");
     po->Register("delta-pitch-noise-stddev", &delta_pitch_noise_stddev,
                  "Standard deviation for noise we add to the delta log-pitch "
                  "(before scaling); should be about the same as delta-pitch "
@@ -263,14 +257,6 @@ struct ProcessPitchOptions {
                  "Left-context (in frames) for moving window normalization");
     po->Register("normalization-right-context", &normalization_right_context,
                  "Right-context (in frames) for moving window normalization");
-    po->Register("normalization-left-context-first-pass",
-                 &normalization_left_context_first_pass,
-                 "Left-context (in frames) for moving window normalization, "
-                 "applied in approximate first pass of online decoding");
-    po->Register("normalization-right-context-first-pass",
-                 &normalization_right_context_first_pass,
-                 "Right-context (in frames) for moving window normalization, "
-                 "applied in approximate first pass of online decoding");
     po->Register("delta-window", &delta_window,
                  "Number of frames on each side of central frame, to use for "
                  "delta window.");
@@ -299,7 +285,7 @@ class OnlinePitchFeature: public OnlineBaseFeature {
  public:
   explicit OnlinePitchFeature(const PitchExtractionOptions &opts);
 
-  virtual int32 Dim() const { return 2; }
+  virtual int32 Dim() const { return 2; /* (pitch, NCCF) */ }
 
   virtual int32 NumFramesReady() const;
 
@@ -315,6 +301,7 @@ class OnlinePitchFeature: public OnlineBaseFeature {
   virtual void InputFinished();
 
   virtual ~OnlinePitchFeature();
+
  private:
   OnlinePitchFeatureImpl *impl_;
 };
@@ -429,7 +416,6 @@ void ComputeAndProcessKaldiPitch(const PitchExtractionOptions &pitch_opts,
                                  const ProcessPitchOptions &process_opts,
                                  const VectorBase<BaseFloat> &wave,
                                  Matrix<BaseFloat> *output);
-
 
 
 /// @} End of "addtogroup feat"

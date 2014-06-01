@@ -4,6 +4,7 @@
 //              2014  IMSL, PKU-HKUST (author: Wei Shi)
 //              2014  Yanqing Sun, Junjie Wang,
 //                    Daniel Povey, Korbinian Riedhammer
+//                    Xin Lei
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,15 +21,15 @@
 
 #include <algorithm>
 #include <limits>
+
 #include "feat/feature-functions.h"
-#include "matrix/matrix-functions.h"
-#include "feat/pitch-functions.h"
-#include "feat/resample.h"
 #include "feat/mel-computations.h"
 #include "feat/online-feature.h"
+#include "feat/pitch-functions.h"
+#include "feat/resample.h"
+#include "matrix/matrix-functions.h"
 
 namespace kaldi {
-
 
 /**
    This function processes the NCCF n to a POV feature f by applying the formula
@@ -1441,10 +1442,8 @@ void OnlineProcessPitch::GetNormalizationWindow(int32 t,
                                                 bool input_finished,
                                                 int32 *window_begin,
                                                 int32 *window_end) const {
-  int32 left_context = (input_finished ? opts_.normalization_left_context :
-                        opts_.normalization_left_context_first_pass);
-  int32 right_context = (input_finished ? opts_.normalization_right_context :
-                        opts_.normalization_right_context_first_pass);
+  int32 left_context = opts_.normalization_left_context;
+  int32 right_context = opts_.normalization_right_context;
   *window_begin = std::max(0, t - left_context);
   *window_end = std::min(t + right_context + 1, src_frames_ready);
 }
@@ -1527,14 +1526,13 @@ int32 OnlineProcessPitch::NumFramesReady() const {
   else if (src_->IsLastFrame(src_frames_ready - 1)) {
     return src_frames_ready;
   } else {
-    return std::max(0, src_frames_ready -
-                    opts_.normalization_right_context_first_pass);
+    return std::max(0, src_frames_ready - opts_.normalization_right_context);
   }
 }
 
 void ProcessPitch(const ProcessPitchOptions &opts,
-                      const MatrixBase<BaseFloat> &input,
-                      Matrix<BaseFloat> *output) {
+                  const MatrixBase<BaseFloat> &input,
+                  Matrix<BaseFloat> *output) {
   OnlineMatrixFeature pitch_feat(input);
   
   OnlineProcessPitch online_process_pitch(opts, &pitch_feat);
@@ -1554,13 +1552,13 @@ void ComputeAndProcessKaldiPitch(
     const VectorBase<BaseFloat> &wave,
     Matrix<BaseFloat> *output) {
   
-  
   OnlinePitchFeature pitch_extractor(pitch_opts);
 
-  if (pitch_opts.simulate_first_pass_online)
+  if (pitch_opts.simulate_first_pass_online) {
     KALDI_ASSERT(pitch_opts.frames_per_chunk > 0 &&
                  "--simulate-first-pass-online option does not make sense "
                  "unless you specify --frames-per-chunk");
+  }
 
   OnlineProcessPitch post_process(process_opts, &pitch_extractor);
 
@@ -1570,7 +1568,6 @@ void ComputeAndProcessKaldiPitch(
   int32 cur_offset = 0, cur_frame = 0,
       samp_per_chunk = pitch_opts.frames_per_chunk *
       pitch_opts.samp_freq * 1.0e-03 * pitch_opts.frame_shift_ms;
-
 
   // We request the first-pass features as soon as they are available,
   // regardless of whether opts.simulate_first_pass_online == true.  If
@@ -1589,6 +1586,7 @@ void ComputeAndProcessKaldiPitch(
     cur_offset += num_samp;
     if (cur_offset == wave.Dim())
       pitch_extractor.InputFinished();
+
     // Get each frame as soon as it is ready.
     for (; cur_frame < post_process.NumFramesReady(); cur_frame++) {
       if (cur_frame >= cur_rows) {
@@ -1608,7 +1606,7 @@ void ComputeAndProcessKaldiPitch(
       *output = feats.RowRange(0, cur_frame);
     }
   } else {
-    // want the "final" features, so get them again.
+    // want the "final" features for second pass, so get them again.
     output->Resize(post_process.NumFramesReady(), post_process.Dim());
     for (int32 frame = 0; frame < post_process.NumFramesReady(); frame++) {
       SubVector<BaseFloat> row(*output, frame);
@@ -1618,4 +1616,4 @@ void ComputeAndProcessKaldiPitch(
 }
 
 
-}  // namespace kald
+}  // namespace kaldi
