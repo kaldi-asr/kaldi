@@ -127,7 +127,8 @@ void Randomize(const CuMatrixBase<Real> &src,
 
 
 template<typename Real>
-void Splice(const CuMatrix<Real> &src, const CuArray<int32> &frame_offsets, CuMatrix<Real> *tgt) {
+void Splice(const CuMatrix<Real> &src, const CuArray<int32> &frame_offsets,
+            CuMatrix<Real> *tgt) {
 
   KALDI_ASSERT(src.NumCols()*frame_offsets.Dim() == tgt->NumCols());
   KALDI_ASSERT(src.NumRows() == tgt->NumRows());

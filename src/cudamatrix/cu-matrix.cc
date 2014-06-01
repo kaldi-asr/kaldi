@@ -1811,6 +1811,7 @@ void CuMatrixBase<Real>::CopyLowerToUpper() {
     dim3 dimGrid(n_blocks(this->num_rows_, CU2DBLOCK),
                  n_blocks(this->num_cols_, CU2DBLOCK));
     cuda_copy_low_upp(dimGrid, dimBlock, data_, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -1830,6 +1831,7 @@ void CuMatrixBase<Real>::CopyUpperToLower() {
     dim3 dimGrid(n_blocks(this->num_rows_, CU2DBLOCK),
                  n_blocks(this->num_cols_, CU2DBLOCK));
     cuda_copy_upp_low(dimGrid, dimBlock, data_, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
@@ -1857,6 +1859,7 @@ Real CuMatrixBase<Real>::Trace(bool check_square) const {
     int dimBlock(CU1DBLOCK);
     int dimGrid = 1;// only 1 block here. we have loops in each thread  //(n_blocks(dim_, CU1DBLOCK));
     cuda_vec_sum(dimGrid, dimBlock, data_, tmp.Data(), dim, Stride() + 1);
+    CU_SAFE_CALL(cudaGetLastError());    
     CuDevice::Instantiate().AccuProfile("CuVectorBase::Sum", tim.Elapsed());    
     return tmp(0);
   } else 
@@ -1956,6 +1959,7 @@ void CuMatrix<Real>::Transpose() {
     dim3 dimGrid(n_blocks(this->num_rows_, CU2DBLOCK),
                  n_blocks(this->num_cols_, CU2DBLOCK));
     cuda_transpose_matrix(dimGrid, dimBlock, this->data_, this->Dim());
+    CU_SAFE_CALL(cudaGetLastError());    
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif

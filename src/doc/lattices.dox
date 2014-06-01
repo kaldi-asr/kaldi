@@ -564,7 +564,7 @@ to the LatticeWeight weight type.
  a lexicon to convert back to words, for example:
 \verbatim
  lattice-to-phone-lattice final.mdl ark:1.lats ark:- | \
-   lattice-compose ark:- ark:Ldet.fst ark:words.lats
+   lattice-compose ark:- Ldet.fst ark:words.lats
 \endverbatim
  This is a simplified example; you'd do further processing
  to remove the original "graph scores" from the lattices and

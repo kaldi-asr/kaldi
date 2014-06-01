@@ -43,10 +43,12 @@ steps/compute_cmvn_stats.sh data/test_vtln exp/make_mfcc/test_vtln $featdir
 )
 
 # Baseline with no VTLN:
-#%WER 2.06 [ 258 / 12533, 37 ins, 47 del, 174 sub ] exp/tri3b/decode/wer_4
-#%WER 10.17 [ 1275 / 12533, 123 ins, 191 del, 961 sub ] exp/tri3b/decode_ug/wer_13
+#%WER 1.84 [ 231 / 12533, 30 ins, 46 del, 155 sub ] exp/tri3b/decode/wer_4
+#%WER 10.27 [ 1287 / 12533, 126 ins, 204 del, 957 sub ] exp/tri3b/decode_ug/wer_13
 
 # With VTLN:
-#%WER 1.99 [ 250 / 12533, 18 ins, 70 del, 162 sub ] exp/tri5d/decode/wer_10
-#%WER 9.89 [ 1239 / 12533, 119 ins, 203 del, 917 sub ] exp/tri5d/decode_ug/wer_13
+#%WER 2.03 [ 255 / 12533, 30 ins, 49 del, 176 sub ] exp/tri5d/decode/wer_4
+#%WER 10.38 [ 1301 / 12533, 128 ins, 214 del, 959 sub ] exp/tri5d/decode_ug/wer_13
 
+# :-( seems a bit worse.  Last time it was better.  Anyway this setup
+# is too small to be really sure.

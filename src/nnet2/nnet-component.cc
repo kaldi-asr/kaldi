@@ -2469,8 +2469,6 @@ void BlockAffineComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                                      int32, // num_chunks
                                      CuMatrix<BaseFloat> *out) const {
   out->Resize(in.NumRows(), bias_params_.Dim());
-  out->CopyRowsFromVec(bias_params_); // copies bias_params_ to each row
-  // of *out.
 
   // The matrix has a block structure where each matrix has input dim
   // (#rows) equal to input_block_dim.  The blocks are stored in linear_params_

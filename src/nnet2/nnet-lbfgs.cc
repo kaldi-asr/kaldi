@@ -77,7 +77,7 @@ void NnetLbfgsTrainer::Initialize(Nnet *nnet_in) {
   opts.first_step_impr = config_.initial_impr;
   opts.minimize = false; // We're maximizing.
   
-  lbfgs_ = new OptimizeLbfgs<float>(params_, opts);
+  lbfgs_ = new OptimizeLbfgs<BaseFloat>(params_, opts);
 }
 
 

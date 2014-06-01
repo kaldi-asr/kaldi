@@ -160,10 +160,10 @@ int main(int argc, char *argv[]) {
           num_done++;
         }
       }
-      Matrix<float> fstats(stats);
-      Output ko(wxfilename, binary);
-      fstats.Write(ko.Stream(), binary);
-      num_done++;
+      Matrix<float> stats_float(stats);
+      WriteKaldiObject(stats_float, wxfilename, binary);
+      KALDI_LOG << "Wrote global CMVN stats to "
+                << PrintableWxfilename(wxfilename);
     }
     KALDI_LOG << "Done accumulating CMVN stats for " << num_done
               << " utterances; " << num_err << " had errors.";

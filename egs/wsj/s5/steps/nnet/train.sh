@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012/2013  Brno University of Technology (Author: Karel Vesely)
+# Copyright 2012/2014  Brno University of Technology (Author: Karel Vesely)
 # Apache 2.0
 
 # Begin configuration.
@@ -62,9 +62,29 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 6 ]; then
    echo "Usage: $0 <data-train> <data-dev> <lang-dir> <ali-train> <ali-dev> <exp-dir>"
-   echo " e.g.: $0 data/train data/cv data/lang exp/mono_ali exp/mono_ali_cv exp/mono_nnet"
+   echo " e.g.: $0 data/train data/cv data/lang exp/mono_ali_train exp/mono_ali_cv exp/mono_nnet"
+   echo ""
+   echo " Training data : <data-train>,<ali-train> (for optimizing cross-entropy)"
+   echo " Held-out data : <data-dev>,<ali-dev> (for learn-rate/model selection based on cross-entopy)"
+   echo " note.: <ali-train>,<ali-dev> can point to same directory, or 2 separate directories."
+   echo ""
    echo "main options (for others, see top of script file)"
-   echo "  --config <config-file>  # config containing options"
+   echo "  --config <config-file>   # config containing options"
+   echo ""
+   echo "  --apply-cmvn <bool>      # apply CMN"
+   echo "  --norm-vars <bool>       # add CVN if CMN already active"
+   echo "  --splice <N>             # concatenate input features"
+   echo "  --feat-type <type>       # select type of input features"
+   echo ""
+   echo "  --mlp-proto <file>       # use this NN prototype"
+   echo "  --feature-transform <file> # re-use this input feature transform"
+   echo "  --hid-layers <N>         # number of hidden layers"
+   echo "  --hid-dim <N>            # width of hidden layers"
+   echo "  --bn-dim <N>             # make bottle-neck network with bn-with N"
+   echo ""
+   echo "  --learn-rate <float>     # initial leaning-rate"
+   echo "  --copy-feats <bool>      # copy input features to /tmp (it's faster)"
+   echo ""
    exit 1;
 fi
 

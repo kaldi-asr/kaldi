@@ -1502,5 +1502,7 @@ def main():
     global_analysis_final.write_length_stats()
 
 if __name__ == '__main__':
-  main()
+  with Timer() as t:
+    main()
+  sys.stderr.write("\nSegmentation done!\nTook %f sec\n" % t.interval)
 

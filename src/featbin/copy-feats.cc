@@ -32,8 +32,8 @@ int main(int argc, char *argv[]) {
         "Usage: copy-feats [options] (<in-rspecifier> <out-wspecifier> | <in-rxfilename> <out-wxfilename>)\n"
         "e.g.: copy-feats ark:- ark,scp:foo.ark,foo.scp\n"
         " or: copy-feats ark:foo.ark ark,t:txt.ark\n"
-        "See also: copy-matrix, copy-feats-to-htk, copy-feats-to-sphinx, select-feats, extract-rows,\n"
-        " subset-feats, subsample-feats, splice-feats\n";
+        "See also: copy-matrix, copy-feats-to-htk, copy-feats-to-sphinx, select-feats,\n"
+        "extract-rows, subset-feats, subsample-feats, splice-feats, append-feats\n";
 
     ParseOptions po(usage);
     bool binary = true;
