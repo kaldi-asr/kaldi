@@ -285,7 +285,7 @@ class OnlinePitchFeature: public OnlineBaseFeature {
  public:
   explicit OnlinePitchFeature(const PitchExtractionOptions &opts);
 
-  virtual int32 Dim() const { return 2; /* (pitch, NCCF) */ }
+  virtual int32 Dim() const { return 2; /* (NCCF, pitch) */ }
 
   virtual int32 NumFramesReady() const;
 
@@ -308,7 +308,7 @@ class OnlinePitchFeature: public OnlineBaseFeature {
 
 
 /// This online-feature class implements post processing of pitch features.
-/// Inputs are original 2 dims (pov, pitch).  It can produce various
+/// Inputs are original 2 dims (nccf, pitch).  It can produce various
 /// kinds of outputs, using the default options it will be (pov-feature,
 /// normalized-log-pitch, delta-log-pitch).
 class OnlineProcessPitch: public OnlineFeatureInterface {
@@ -329,10 +329,10 @@ class OnlineProcessPitch: public OnlineFeatureInterface {
                      OnlineFeatureInterface *src);
 
  private:
+  static const int32 kRawFeatureDim = 2;  // input: (nccf, pitch)
+
   ProcessPitchOptions opts_;
-
   OnlineFeatureInterface *src_;
-
   int32 dim_;  // Output feature dimension, set in initializer.
 
   struct NormalizationStats {
@@ -345,7 +345,6 @@ class OnlineProcessPitch: public OnlineFeatureInterface {
 
     NormalizationStats(): cur_num_frames(-1), input_finished(false),
                           sum_pov(0.0), sum_log_pitch_pov(0.0) { }
-
   };
 
   std::vector<BaseFloat> delta_feature_noise_;
@@ -368,16 +367,15 @@ class OnlineProcessPitch: public OnlineFeatureInterface {
   /// Called from GetFrame().
   inline BaseFloat GetNormalizedLogPitchFeature(int32 frame);
 
-
+  /// Computes the normalization window sizes.
   inline void GetNormalizationWindow(int32 frame,
                                      int32 src_frames_ready,
-                                     bool input_finished,
                                      int32 *window_begin,
                                      int32 *window_end) const;
 
   /// Makes sure the entry in normalization_stats_ for this frame is up to date;
   /// called from GetNormalizedLogPitchFeature.
-  inline void UpdateFrame(int32 frame);
+  inline void UpdateNormalizationStats(int32 frame);
 };
 
 
