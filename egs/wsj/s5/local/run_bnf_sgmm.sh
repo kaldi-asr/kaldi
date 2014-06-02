@@ -17,6 +17,11 @@ align_dir=exp/tri4b_ali_si284
 bnf_decode_acwt=0.0357
 sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=7G,ram_free=2.3G" --cmd "queue.pl -l arch=*64 -l mem_free=2.0G,ram_free=2.0G") 
 
+if [ ! -d exp_bnf ]; then
+  echo "$0: before running this script, please run local/run_bnf.sh"
+  exit 1;
+fi
+
 echo ---------------------------------------------------------------------
 echo "Starting exp_bnf/tri5 on" `date`
 echo ---------------------------------------------------------------------
