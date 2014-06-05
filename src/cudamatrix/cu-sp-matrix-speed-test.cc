@@ -103,45 +103,6 @@ static void UnitTestCuSpMatrixCopyFromMat(int32 dim, SpCopyType copy_type) {
 
 
 
-template<typename Real>
-static void UnitTestCuMatrixApproxInvert(int32 dim) {
-  BaseFloat time_in_secs = 0.5;
-  int32 iter = 0;
-
-  // Get random orthogonal matrix.
-  Matrix<Real> Q_cpu(dim, dim);
-
-  Q_cpu.SetRandn();
-  for (int32 r = 0; r < dim; r++) {
-    for (int32 s = 0; s < r; s++)
-      Q_cpu.Row(r).AddVec(-1.0 * VecVec(Q_cpu.Row(r), Q_cpu.Row(s)), Q_cpu.Row(s));
-    Q_cpu.Row(r).Scale(1.0 / Q_cpu.Row(r).Norm(2.0));
-  }
-  CuMatrix<Real> Q(Q_cpu);
-  
-  CuVector<Real> s(dim);
-  Real eig_range = 50.0; // factor of 50 on eigenvalues.. this affects the speed.
-  Real first_eig = 0.001 + RandUniform() * 5.0;
-  for (int32 r = 0; r < dim; r++)
-    s(r) = first_eig * exp(r * log(eig_range) / dim);
-
-  s.ApplyPow(0.5);
-  Q.MulColsVec(s);
-  CuSpMatrix<Real> A(dim);
-  A.AddMat2(1.0, Q, kNoTrans, 0.0);
-
-
-  Timer tim;
-  
-  for (;tim.Elapsed() < time_in_secs; iter++) {  
-    CuSpMatrix<Real> Atmp(A);
-    Atmp.InvertPosDefApprox(0.1);
-  }
-  BaseFloat fdim = dim;
-  BaseFloat gflops = (fdim * fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
-  KALDI_LOG << "For CuSpMatrix::InvertPosDefApprox" << NameOf<Real>() << ", for dim = "
-            << dim << ", speed was " << gflops << " gigaflops.";
-}  
 
 template<typename Real> void CuSpMatrixSpeedTest() {
   std::vector<int32> sizes;
@@ -153,7 +114,6 @@ template<typename Real> void CuSpMatrixSpeedTest() {
 
   for (int32 s = 0; s < ns; s++) {
     UnitTestCuSpMatrixInvert<Real>(sizes[s]);
-    UnitTestCuMatrixApproxInvert<Real>(sizes[s]);
     UnitTestCuSpMatrixCopyFromMat<Real>(sizes[s], kTakeLower);
     UnitTestCuSpMatrixCopyFromMat<Real>(sizes[s], kTakeUpper);
     UnitTestCuSpMatrixCopyFromMat<Real>(sizes[s], kTakeMean);

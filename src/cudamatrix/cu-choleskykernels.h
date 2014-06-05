@@ -34,26 +34,19 @@
 namespace kaldi {
 
 /*********************************************************
-* base templates
-*/
-template<typename Real> inline void cuda_factorize_diagonal_block(Real* A, int block_offset, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
-template<typename Real> inline void cuda_strip_update(Real* A, int block_offset, int n_remaining_blocks, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
-template<typename Real> inline void cuda_diag_update(Real* A, int block_offset, int n_remaining_blocks, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
-template<typename Real> inline void cuda_lo_update(Real* A, int block_offset, int n_blocks, int n_remaining_blocks, MatrixDim d) { KALDI_ERR << __func__ << " Not implemented!"; }
-/*********************************************************
 * float specialization
 */
-template<> inline void cuda_factorize_diagonal_block<float>(float* A, int block_offset, MatrixDim d) { cudaF_factorize_diagonal_block(A,block_offset,d); }
-template<> inline void cuda_strip_update<float>(float* A, int block_offset, int n_remaining_blocks, MatrixDim d) { cudaF_strip_update(A,block_offset,n_remaining_blocks,d); }
-template<> inline void cuda_diag_update<float>(float* A, int block_offset, int n_remaining_blocks, MatrixDim d) { cudaF_diag_update(A,block_offset,n_remaining_blocks,d); }
-template<> inline void cuda_lo_update<float>(float* A, int block_offset, int n_blocks, int n_remaining_blocks, MatrixDim d) { cudaF_lo_update(A,block_offset,n_blocks,n_remaining_blocks,d); }
+inline void cuda_factorize_diagonal_block(float* A, int block_offset, MatrixDim d) { cudaF_factorize_diagonal_block(A,block_offset,d); }
+inline void cuda_strip_update(float* A, int block_offset, int n_remaining_blocks, MatrixDim d) { cudaF_strip_update(A,block_offset,n_remaining_blocks,d); }
+inline void cuda_diag_update(float* A, int block_offset, int n_remaining_blocks, MatrixDim d) { cudaF_diag_update(A,block_offset,n_remaining_blocks,d); }
+inline void cuda_lo_update(float* A, int block_offset, int n_blocks, int n_remaining_blocks, MatrixDim d) { cudaF_lo_update(A,block_offset,n_blocks,n_remaining_blocks,d); }
 /*********************************************************
 * double specialization
 */
-template<> inline void cuda_factorize_diagonal_block<double>(double* A, int block_offset, MatrixDim d) { cudaD_factorize_diagonal_block(A,block_offset,d); }
-template<> inline void cuda_strip_update<double>(double* A, int block_offset, int n_remaining_blocks, MatrixDim d) { cudaD_strip_update(A,block_offset,n_remaining_blocks,d); }
-template<> inline void cuda_diag_update<double>(double* A, int block_offset, int n_remaining_blocks, MatrixDim d) { cudaD_diag_update(A,block_offset,n_remaining_blocks,d); }
-template<> inline void cuda_lo_update<double>(double* A, int block_offset, int n_blocks, int n_remaining_blocks, MatrixDim d) { cudaD_lo_update(A,block_offset,n_blocks,n_remaining_blocks,d); }
+inline void cuda_factorize_diagonal_block(double* A, int block_offset, MatrixDim d) { cudaD_factorize_diagonal_block(A,block_offset,d); }
+inline void cuda_strip_update(double* A, int block_offset, int n_remaining_blocks, MatrixDim d) { cudaD_strip_update(A,block_offset,n_remaining_blocks,d); }
+inline void cuda_diag_update(double* A, int block_offset, int n_remaining_blocks, MatrixDim d) { cudaD_diag_update(A,block_offset,n_remaining_blocks,d); }
+inline void cuda_lo_update(double* A, int block_offset, int n_blocks, int n_remaining_blocks, MatrixDim d) { cudaD_lo_update(A,block_offset,n_blocks,n_remaining_blocks,d); }
 
 } // namespace
 

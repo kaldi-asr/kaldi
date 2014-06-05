@@ -92,7 +92,7 @@ class EventMap {
   virtual bool Map(const EventType &event, EventAnswerType *ans) const = 0;
 
   // MultiMap maps a partially specified set of events to the set of answers it might
-  // map to.  (counting kUndef as not an answer). It appends these to "ans".  "ans" is
+  // map to.  It appends these to "ans".  "ans" is
   // **not guaranteed unique at output** if the
   // tree contains duplicate answers at leaves -- you should sort & uniq afterwards.
   // e.g.: SortAndUniq(ans).
