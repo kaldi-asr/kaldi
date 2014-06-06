@@ -1,4 +1,8 @@
 #!/usr/bin/python
+#
+# Copyright  2014 Nickolay V. Shmyrev 
+# Apache 2.0
+
 
 import sys
 
