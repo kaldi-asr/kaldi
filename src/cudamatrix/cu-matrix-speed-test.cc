@@ -27,6 +27,8 @@
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-math.h"
+#include "cudamatrix/cu-tp-matrix.h"
+#include "cudamatrix/cu-sp-matrix.h"
 
 using namespace kaldi;
 
@@ -52,6 +54,27 @@ template<typename Real> void TestCuMatrixMatMat(int32 dim) {
   BaseFloat fdim = dim;
   BaseFloat gflops = (fdim * fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuMatrix::AddMatMat" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+template<typename Real> void TestSymInvertPosDef(int32 dim) {
+  BaseFloat time_in_secs = 0.05;
+  CuMatrix<Real> M(dim, dim * 2), N(dim, dim);
+  M.SetRandn();
+  N.SymAddMat2(1.0, M, kNoTrans, 0.0);
+  CuMatrix<Real> Ncopy(N);
+  
+  int iter = 0;
+  Timer tim;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    Ncopy.CopyFromMat(N);
+    Ncopy.SymInvertPosDef();
+  }
+  
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::TestCuInvertPosDef" << NameOf<Real>() << ", for dim = "
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
@@ -111,6 +134,42 @@ template<typename Real> void TestCuMatrixTraceMatMat(int32 dim) {
   }
 }
 
+
+template<typename Real> void TestCuMatrixCholeskyOld(int32 dim) {
+  BaseFloat time_in_secs = 0.08;
+  
+  CuMatrix<Real> M(dim, dim);
+  M.AddToDiag(100.0);
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++)
+    M.CholeskyOld();
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::CholeskyOld" << NameOf<Real>() 
+            << ", for dim = " << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+template<typename Real> void TestCuMatrixCholesky(int32 dim) {
+  BaseFloat time_in_secs = 0.08;
+  
+  CuMatrix<Real> M(dim, dim);
+  M.AddToDiag(100.0);  
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++)
+    M.Cholesky();
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::Cholesky" << NameOf<Real>() 
+            << ", for dim = " << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+
 template<typename Real> void TestCuMatrixCopyLowerToUpper(int32 dim) {
   BaseFloat time_in_secs = 0.05;
   CuMatrix<Real> M(dim, dim);
@@ -129,8 +188,56 @@ template<typename Real> void TestCuMatrixCopyLowerToUpper(int32 dim) {
 }
 
 
+template<typename Real> void TestCuMatrixCopyFromTp(int32 dim, MatrixTransposeType trans) {
+  BaseFloat time_in_secs = 0.025;
+  CuTpMatrix<Real> T(dim);
+  T.SetRandn();
+  CuMatrix<Real> M(dim, dim);
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.CopyFromTp(T, trans);
+  }
+  TpMatrix<Real> T_cpu(T);
+  Matrix<Real> M_cpu(T_cpu, trans);
+  Matrix<Real> M2_cpu(M);
+  AssertEqual(M_cpu, M2_cpu);
+  
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::CopyFromTp" << (trans == kNoTrans ? "[NoTrans]":"[Trans]")
+            << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+template<typename Real> void TestCuMatrixCopyFromSp(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuSpMatrix<Real> S(dim);
+  S.SetRandn();
+  CuMatrix<Real> M(dim, dim);
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.CopyFromSp(S);
+  }
+  SpMatrix<Real> S_cpu(S);
+  Matrix<Real> M_cpu(S_cpu);
+  Matrix<Real> M2_cpu(M);
+  AssertEqual(M_cpu, M2_cpu);
+  
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::CopyFromSp" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+
 template<typename Real> void TestCuMatrixCopyUpperToLower(int32 dim) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(dim, dim);
   M.SetRandn();
   Timer tim;
@@ -147,15 +254,39 @@ template<typename Real> void TestCuMatrixCopyUpperToLower(int32 dim) {
 }
 
 
+template<typename Real> void TestCuMatrixSetZeroAboveDiag(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++)
+    M.SetZeroAboveDiag();
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::SetZeroAboveDiag" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
 template<typename Real> void CudaMatrixSpeedTest() {
   std::vector<int32> sizes;
   sizes.push_back(16);
+  sizes.push_back(32);
+  sizes.push_back(64);
   sizes.push_back(128);
   sizes.push_back(256);
+  sizes.push_back(512);
   sizes.push_back(1024);
   int32 ns = sizes.size();
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixMatMat<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestSymInvertPosDef<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixCholeskyOld<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixCholesky<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSigmoid<Real>(sizes[s]);
 
@@ -166,7 +297,15 @@ template<typename Real> void CudaMatrixSpeedTest() {
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixCopyLowerToUpper<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
+    TestCuMatrixCopyFromTp<Real>(sizes[s], kNoTrans);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixCopyFromTp<Real>(sizes[s], kTrans);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixCopyFromSp<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
     TestCuMatrixCopyUpperToLower<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixSetZeroAboveDiag<Real>(sizes[s]);
 }
 
 
@@ -174,21 +313,25 @@ template<typename Real> void CudaMatrixSpeedTest() {
 
 
 int main() {
-    //Select the GPU
+  for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
-    CuDevice::Instantiate().SelectGpuId("yes"); //-2 .. automatic selection
+    if (loop == 0)
+      CuDevice::Instantiate().SelectGpuId("no");
+    else
+      CuDevice::Instantiate().SelectGpuId("yes");
 #endif
 
     kaldi::CudaMatrixSpeedTest<float>();
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().DoublePrecisionSupported()) {
-    kaldi::CudaMatrixSpeedTest<double>();
-  } else {
-    KALDI_WARN << "Double precision not supported";
-  }
+    if (CuDevice::Instantiate().DoublePrecisionSupported()) {
+      kaldi::CudaMatrixSpeedTest<double>();
+    } else {
+      KALDI_WARN << "Double precision not supported";
+    }
 #else
-  kaldi::CudaMatrixSpeedTest<double>();
+    kaldi::CudaMatrixSpeedTest<double>();
 #endif
+  }
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().PrintProfile();
 #endif

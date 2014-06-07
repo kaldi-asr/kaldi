@@ -43,8 +43,9 @@ void CuSpMatrix<Real>::CopyFromMat(const CuMatrixBase<Real> &M,
         break;
       case kTakeLower:
         {
-          dim3 dimBlock(1, CU1DBLOCK);
-          dim3 dimGrid(D, n_blocks(D, CU1DBLOCK));
+          int32 block_size = std::min(CU1DBLOCK, this->num_rows_);
+          dim3 dimBlock(1, block_size);
+          dim3 dimGrid(D, n_blocks(D, block_size));
           cuda_take_lower(dimGrid, dimBlock, M.Data(), this->data_, M.Dim());
           CU_SAFE_CALL(cudaGetLastError());
         }

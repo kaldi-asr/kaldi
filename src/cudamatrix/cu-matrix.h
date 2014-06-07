@@ -220,10 +220,17 @@ class CuMatrixBase {
   void DiffXent(const CuArray<int32> &tgt,
                 CuVector<Real> *log_post_tgt);  
 
-  /// This method may be only called for symmetric matrices (it accesses the
-  /// upper as well as lower triangle).  The result is put in the lower
-  /// triangle, and the upper triangle zeroed.
-  void Cholesky();
+  /// This function does sets *this to the Cholesky factor of *this (i.e.  the C
+  /// satisfying *this = C C^T), and sets "inv_cholesky" (if supplied) to its
+  /// inverse.  *this is treated as a symmetric matrix but only the lower triangle
+  /// is accessed.
+  void Cholesky(CuMatrixBase<Real> *inv_cholesky = NULL);
+
+
+  /// We're keeping around the old implementation of Cholesky for at least
+  /// one commit, so we have a version that can be used to compare their speeds.
+  void CholeskyOld();
+  
   
   void SymInvertPosDef(); ///< Inversion for positive definite symmetric matrices.
                           ///< Requires that the input is symmetric (we do not check this).
@@ -255,7 +262,8 @@ class CuMatrixBase {
   void SetZero();
   void Set(Real value);
   void Add(Real value);
-  void SetZeroUpperDiag();
+  /// Zeroes all elements for which col > row.
+  void SetZeroAboveDiag();
   void Scale(Real value);
   void ApplyLog();
   
@@ -284,6 +292,7 @@ class CuMatrixBase {
                  const CuMatrixBase<Real> &B, MatrixTransposeType transB, Real beta);
   /// *this = a * b / c (by element; when c = 0, *this = a)
   void AddMatMatDivMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C);
+
   /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only
   /// updates the lower triangle of *this.  It will leave the matrix asymmetric;
   /// if you need it symmetric as a regular matrix, do CopyLowerToUpper().
@@ -310,7 +319,7 @@ class CuMatrixBase {
     CuMatrix<Real> M(B);
     return AddMatMat(alpha, A, transA, M, kNoTrans, beta);
   }
-
+  
   /// this <-- beta*this + alpha*SpA*B
   void AddSpMat(const Real alpha,
                 const CuSpMatrix<Real> &A,

@@ -118,7 +118,52 @@ static void UnitTestCuMatrixTraceMatMat() {
     }
   }
 }
-      
+
+
+template<typename Real> 
+static void UnitTestCuCholeskyOld() {
+  for (int32 i = 0; i < 2; i++) {
+    int32 M = 1 + rand() % 10, N = M + 5;
+    
+    CuMatrix<Real> A(M, N);
+    A.SetRandn();
+    CuMatrix<Real> S(M, M);
+    // SymAddMat2 only copies lower triangle.
+    // it's OK- Cholesky only reads the lower triangle.
+    S.SymAddMat2(1.0, A, kNoTrans, 0.0);
+
+    CuMatrix<Real> C(S);
+    C.CholeskyOld();
+
+    CuMatrix<Real> S2(M, M);
+    S2.AddMatMat(1.0, C, kNoTrans, C, kTrans, 0.0);
+    S.CopyLowerToUpper();
+    KALDI_ASSERT(S.ApproxEqual(S2));
+  }
+}
+
+template<typename Real> 
+static void UnitTestCuCholesky() {
+  for (int32 i = 0; i < 2; i++) {
+    int32 M = 1 + rand() % 10, N = M + 5;
+    
+    CuMatrix<Real> A(M, N);
+    A.SetRandn();
+    CuMatrix<Real> S(M, M);
+    // SymAddMat2 only copies lower triangle.
+    // it's OK- Cholesky only reads the lower triangle.
+    S.SymAddMat2(1.0, A, kNoTrans, 0.0);
+
+    CuMatrix<Real> C(S);
+    C.Cholesky();
+
+    CuMatrix<Real> S2(M, M);
+    S2.AddMatMat(1.0, C, kNoTrans, C, kTrans, 0.0);
+    S.CopyLowerToUpper();
+    KALDI_ASSERT(S.ApproxEqual(S2));
+  }
+}
+
 
 
 
@@ -1744,6 +1789,26 @@ static void UnitTestCuMatrixCopyLowerToUpper() {
 }
 
 template<typename Real>
+static void UnitTestCuMatrixSetZeroAboveDiag() {
+  for (int i = 1; i < 2; ++i) {
+    MatrixIndexT dim = 10 * i + rand() % 4 + (i == 9 ? 255 : 0);
+    if (i == 8) dim = 0;
+    CuMatrix<Real> A(dim, dim);
+    A.SetRandn();
+    Matrix<Real> A_orig(A);
+    A.SetZeroAboveDiag();
+    Matrix<Real> A_copy(A);
+        
+    for (int32 i = 0; i < dim;  i++) {
+      for (int32 j = 0; j < dim; j++) {
+        Real aval = A_copy(i, j), aorigval = A_orig(i, j);
+        KALDI_ASSERT(aval == (j > i ? 0.0 : aorigval));
+      }
+    }
+  }
+}
+
+template<typename Real>
 static void UnitTestCuMatrixCopyUpperToLower() {
   for (int i = 1; i < 10; ++i) {
     MatrixIndexT dim = 10 * i + rand() % 4 + (i == 9 ? 255 : 0);
@@ -1935,6 +2000,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixTranspose<Real>();
   UnitTestCuMatrixCopyUpperToLower<Real>();
   UnitTestCuMatrixCopyLowerToUpper<Real>();
+  UnitTestCuMatrixSetZeroAboveDiag<Real>();
   UnitTestCuMatrixAddElements<Real>();
   UnitTestCuMatrixLookup<Real>();
   UnitTestCuMatrixEqualElementMask<Real>(); 
@@ -1970,6 +2036,8 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestSwapCu2M<Real>();
   UnitTestCuMatrixAddDiagVecMat<Real>();
   UnitTestCuTanh<Real>();
+  UnitTestCuCholeskyOld<Real>();  
+  UnitTestCuCholesky<Real>();
   UnitTestCuDiffTanh<Real>();
   UnitTestCuVectorAddTpVec<Real>();
   UnitTestCuVectorMulTp<Real>();

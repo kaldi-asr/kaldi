@@ -107,8 +107,11 @@ static void UnitTestCuSpMatrixCopyFromMat(int32 dim, SpCopyType copy_type) {
 template<typename Real> void CuSpMatrixSpeedTest() {
   std::vector<int32> sizes;
   sizes.push_back(16);
+  sizes.push_back(32);
+  sizes.push_back(64);
   sizes.push_back(128);
   sizes.push_back(256);
+  sizes.push_back(512);
   sizes.push_back(1024);
   int32 ns = sizes.size();
 
