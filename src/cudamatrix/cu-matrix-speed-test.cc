@@ -135,23 +135,6 @@ template<typename Real> void TestCuMatrixTraceMatMat(int32 dim) {
 }
 
 
-template<typename Real> void TestCuMatrixCholeskyOld(int32 dim) {
-  BaseFloat time_in_secs = 0.08;
-  
-  CuMatrix<Real> M(dim, dim);
-  M.AddToDiag(100.0);
-  Timer tim;
-  int32 iter = 0;
-  for (;tim.Elapsed() < time_in_secs; iter++)
-    M.CholeskyOld();
-
-  BaseFloat fdim = dim;
-  BaseFloat gflops = (fdim * fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
-  KALDI_LOG << "For CuMatrix::CholeskyOld" << NameOf<Real>() 
-            << ", for dim = " << dim << ", speed was " << gflops << " gigaflops.";
-}
-
-
 template<typename Real> void TestCuMatrixCholesky(int32 dim) {
   BaseFloat time_in_secs = 0.08;
   
@@ -284,12 +267,9 @@ template<typename Real> void CudaMatrixSpeedTest() {
   for (int32 s = 0; s < ns; s++)
     TestSymInvertPosDef<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
-    TestCuMatrixCholeskyOld<Real>(sizes[s]);
-  for (int32 s = 0; s < ns; s++)
     TestCuMatrixCholesky<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSigmoid<Real>(sizes[s]);
-
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSoftmax<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)

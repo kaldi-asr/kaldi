@@ -227,11 +227,6 @@ class CuMatrixBase {
   void Cholesky(CuMatrixBase<Real> *inv_cholesky = NULL);
 
 
-  /// We're keeping around the old implementation of Cholesky for at least
-  /// one commit, so we have a version that can be used to compare their speeds.
-  void CholeskyOld();
-  
-  
   void SymInvertPosDef(); ///< Inversion for positive definite symmetric matrices.
                           ///< Requires that the input is symmetric (we do not check this).
                           ///< The output is symmetric.

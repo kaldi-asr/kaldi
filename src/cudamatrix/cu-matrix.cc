@@ -34,7 +34,6 @@
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-kernels.h"
 #include "cudamatrix/cu-randkernels.h"
-#include "cudamatrix/cu-choleskykernels.h"
 #include "cudamatrix/cu-array.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-sp-matrix.h"
@@ -1327,59 +1326,6 @@ void CuMatrixBase<Real>::DiffXent(const CuArray<int32> &tgt,
     }
   }
 }
-
-/// This method may be only called for symmetric matrices.
-template<typename Real>
-void CuMatrixBase<Real>::CholeskyOld() {
-  KALDI_ASSERT(this->NumRows() == this->NumCols());
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    int TILE_SIZE = 16;
-    int n_blocks = (num_rows_ + TILE_SIZE - 1) / TILE_SIZE;
-
-    dim3 threads(TILE_SIZE,TILE_SIZE);
-    dim3 logrid;
-     
-    for (int i = n_blocks; i > 2; i--) {
-      cuda_factorize_diagonal_block(data_, n_blocks-i, Dim());
-
-      cuda_strip_update(data_, n_blocks-i, i, Dim());
-      
-      cuda_diag_update(data_, n_blocks-i, i, Dim());
-      
-      cuda_lo_update(data_, n_blocks-i, n_blocks, i, Dim());
-    }
-    
-    if (n_blocks > 1) {
-      cuda_factorize_diagonal_block(data_, n_blocks-2, Dim());
-      
-      cuda_strip_update(data_, n_blocks-2, 2, Dim());
-      
-      cuda_diag_update(data_, n_blocks-2, 2, Dim());
-    }
-    
-    cuda_factorize_diagonal_block(data_, n_blocks-1, Dim());
-
-    CU_SAFE_CALL(cudaGetLastError());
-    
-    // set the upper diagonal equal to zero
-    this->SetZeroAboveDiag();
-
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-    
-  } else
-#endif
-  {
-    SpMatrix<Real> sp(this->NumRows(), kUndefined);
-    sp.CopyFromMat(this->Mat(), kTakeLower);
-    TpMatrix<Real> tp(this->NumRows());
-    tp.Cholesky(sp);
-    this->Mat().CopyFromTp(tp);
-  }
-}
-
-
 
 
 template<typename Real>

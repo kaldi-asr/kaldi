@@ -121,28 +121,6 @@ static void UnitTestCuMatrixTraceMatMat() {
 
 
 template<typename Real> 
-static void UnitTestCuCholeskyOld() {
-  for (int32 i = 0; i < 2; i++) {
-    int32 M = 1 + rand() % 10, N = M + 5;
-    
-    CuMatrix<Real> A(M, N);
-    A.SetRandn();
-    CuMatrix<Real> S(M, M);
-    // SymAddMat2 only copies lower triangle.
-    // it's OK- Cholesky only reads the lower triangle.
-    S.SymAddMat2(1.0, A, kNoTrans, 0.0);
-
-    CuMatrix<Real> C(S);
-    C.CholeskyOld();
-
-    CuMatrix<Real> S2(M, M);
-    S2.AddMatMat(1.0, C, kNoTrans, C, kTrans, 0.0);
-    S.CopyLowerToUpper();
-    KALDI_ASSERT(S.ApproxEqual(S2));
-  }
-}
-
-template<typename Real> 
 static void UnitTestCuCholesky() {
   for (int32 i = 0; i < 2; i++) {
     int32 M = 1 + rand() % 10, N = M + 5;
@@ -2036,7 +2014,6 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestSwapCu2M<Real>();
   UnitTestCuMatrixAddDiagVecMat<Real>();
   UnitTestCuTanh<Real>();
-  UnitTestCuCholeskyOld<Real>();  
   UnitTestCuCholesky<Real>();
   UnitTestCuDiffTanh<Real>();
   UnitTestCuVectorAddTpVec<Real>();
