@@ -321,8 +321,18 @@ local/run_mmi_tri4b.sh
 # You probably want to run the sgmm2 recipe as it's generally a bit better:
 local/run_sgmm2.sh
 
-# You probably wany to run the hybrid recipe as it is complementary:
+# We demonstrate MAP adaptation of GMMs to gender-dependent systems here.  This also serves
+# as a generic way to demonstrate MAP adaptation to different domains.
+# local/run_gender_dep.sh
+
+# You probably want to run the hybrid recipe as it is complementary:
 local/run_dnn.sh
+
+# The next two commands show how to train a bottleneck network based on the nnet2 setup,
+# and build an SGMM system on top of it.
+#local/run_bnf.sh
+#local/run_bnf_sgmm.sh
+
 
 # You probably want to try KL-HMM 
 #local/run_kl_hmm.sh

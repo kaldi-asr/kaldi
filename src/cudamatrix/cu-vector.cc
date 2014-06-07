@@ -244,7 +244,7 @@ Real CuVectorBase<Real>::Sum() const {
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     int max_threads = 2048;
-    // This is the smallest block oc consecutive vector elements, which
+    // This is the smallest block of consecutive vector elements, which
     // its sum will save at the partial vector.
     int block_size = (dim_ + max_threads - 1) / max_threads;
     if (block_size > 3) {

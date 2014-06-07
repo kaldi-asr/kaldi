@@ -40,15 +40,15 @@ class TpMatrix : public PackedMatrix<Real> {
   TpMatrix() : PackedMatrix<Real>() {}
   explicit TpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)
       : PackedMatrix<Real>(r, resize_type) {}
-  TpMatrix(const TpMatrix<Real>& Orig) : PackedMatrix<Real>(Orig) {}
+  TpMatrix(const TpMatrix<Real>& orig) : PackedMatrix<Real>(orig) {}
 
   /// Copy constructor from CUDA TpMatrix
   /// This is defined in ../cudamatrix/cu-tp-matrix.cc
   explicit TpMatrix(const CuTpMatrix<Real> &cu);
   
   
-  template<typename OtherReal> explicit TpMatrix(const TpMatrix<OtherReal>& Orig)
-      : PackedMatrix<Real>(Orig) {}
+  template<typename OtherReal> explicit TpMatrix(const TpMatrix<OtherReal>& orig)
+      : PackedMatrix<Real>(orig) {}
   
   Real operator() (MatrixIndexT r, MatrixIndexT c) const {
     if (static_cast<UnsignedMatrixIndexT>(c) >
@@ -75,9 +75,10 @@ class TpMatrix : public PackedMatrix<Real> {
     // Duplicating code from PackedMatrix.h
   }
   // Note: Cholesky may throw std::runtime_error
-  void Cholesky(const SpMatrix<Real>& Orig);
+  void Cholesky(const SpMatrix<Real>& orig);
   
   void Invert();
+
   // Inverts in double precision.
   void InvertDouble() {
     TpMatrix<double> dmat(*this);

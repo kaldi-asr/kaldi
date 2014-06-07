@@ -91,12 +91,6 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
     // casted to Real.
   }
 
-  /// Approximate inversion of positive definite matrices, using repeated
-  /// multiplication.  Limits the error by ensuring that
-  /// || I - A Ainv ||^2 <= max_error, using Frobenius norm (so guarantees
-  // that (I - A Ainv).IsUnit(max_error) == true).
-  void InvertPosDefApprox(BaseFloat max_error = 0.1);
-  
   /// Note: the CuMatrix version of the Invert() function will only work for
   /// positive definite matrices; it is based on Cholesky.
   void Invert();

@@ -77,6 +77,19 @@ lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/train_10k \
 lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/train \
   exp/full_ubm_2048_10k exp/full_ubm_2048
 
+# Alternatively, a diagonal UBM can replace the full UBM used above.
+# The preceding calls to train_diag_ubm.sh and train_full_ubm.sh
+# can be commented out and replaced with the following lines.
+# 
+# This results in a slight degradation but could improve error rate when
+# there is less training data than used in this example.
+#
+#lid/train_diag_ubm.sh --nj 30 --cmd "$train_cmd" data/train 2048 \
+#  exp/diag_ubm_2048
+#
+#gmm-global-to-fgmm exp/diag_ubm_2048/final.dubm \
+#  exp/full_ubm_2048/final.ubm
+
 lid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \
   --num-iters 5 exp/full_ubm_2048/final.ubm data/train \
   exp/extractor_2048
