@@ -724,7 +724,8 @@ void CuMatrixBase<Real>::MulRowsGroupMat(const CuMatrixBase<Real> &src) {
     Timer tim;
     int group_size = this->NumCols() / src.NumCols();
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
+                 n_blocks(NumRows(), CU2DBLOCK));
 
     cuda_mul_rows_group_mat(dimGrid, dimBlock, this->data_, src.data_,
                             this->Dim(), src.Stride(), group_size);
@@ -1034,7 +1035,7 @@ void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
-
+    
     cuda_sigmoid(dimGrid, dimBlock, this->data_, src.data_, this->Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     
@@ -1332,19 +1333,25 @@ template<typename Real>
 void CuMatrixBase<Real>::Cholesky(CuMatrixBase<Real> *inv_cholesky) {
   KALDI_ASSERT(this->NumRows() == this->NumCols());
   const int32 block_size = 64;  // We can tune this.
-
+#if HAVE_CUDA == 1
+  bool have_gpu = CuDevice::Instantiate().Enabled();
+#else
+  bool have_gpu = false;
+#endif
   if (this->NumRows() == 0) {
     return;
   }
-  if (inv_cholesky == NULL && this->NumRows() >= block_size * 2) {
-    // Even if the user did not request the inverse Cholesky, for very large
-    // sizes of matrix it will probably be more efficient to do the recursion
-    // (even though we don't need the output) than to do the Cholesky directly.
+  if (inv_cholesky == NULL && this->NumRows() >= block_size * 2 && have_gpu) {
+    // Even if the user did not request the inverse Cholesky, for large enough
+    // matrices (on GPUs) it's going to be more efficient to compute it anyway
+    // as the recursion depends on it.
     CuMatrix<Real> inv(this->NumRows(), this->NumCols());
     Cholesky(&inv);
     return;
   }
-  if (this->NumRows() <= block_size || inv_cholesky == NULL) {
+  if (this->NumRows() <= block_size || inv_cholesky == NULL || !have_gpu) {
+    // Don't recurse: compute the Cholesky (and inverse Cholesky, if requested)
+    // directly, on the CPu.
     int32 dim = this->NumRows();
     CuSpMatrix<Real> this_sp(dim, kUndefined);
     this_sp.CopyFromMat(*this, kTakeLower);
@@ -1468,7 +1475,6 @@ void CuMatrixBase<Real>::SymInvertPosDef() {
     // was previously just: CuSpMatrix::Invert().
   }
 }
-
 
 template<typename Real>
 bool CuMatrixBase<Real>::ApproxEqual(const CuMatrixBase<Real> &other,

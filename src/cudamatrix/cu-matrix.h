@@ -227,10 +227,11 @@ class CuMatrixBase {
   void Cholesky(CuMatrixBase<Real> *inv_cholesky = NULL);
 
 
-  void SymInvertPosDef(); ///< Inversion for positive definite symmetric matrices.
-                          ///< Requires that the input is symmetric (we do not check this).
-                          ///< The output is symmetric.
-  
+  /// Inversion for positive definite symmetric matrices.
+  /// Treats the input as symmetric but only reads the lower triangle.
+  /// The output is symmetric.
+  void SymInvertPosDef(); 
+
   void ApplyPow(Real power);
   void ApplyHeaviside(); ///< For each element, sets x = (x > 0 ? 1.0 : 0.0)
   void ApplyFloor(Real floor_val);

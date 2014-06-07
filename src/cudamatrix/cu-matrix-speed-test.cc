@@ -41,7 +41,7 @@ std::string NameOf() {
 }
     
 template<typename Real> void TestCuMatrixMatMat(int32 dim) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(dim, dim), N(dim, dim), O(dim, dim);
   M.SetRandn();
   N.SetRandn();
@@ -59,7 +59,7 @@ template<typename Real> void TestCuMatrixMatMat(int32 dim) {
 
 
 template<typename Real> void TestSymInvertPosDef(int32 dim) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(dim, dim * 2), N(dim, dim);
   M.SetRandn();
   N.SymAddMat2(1.0, M, kNoTrans, 0.0);
@@ -79,7 +79,7 @@ template<typename Real> void TestSymInvertPosDef(int32 dim) {
 }
 
 template<typename Real> void TestCuMatrixSigmoid(int32 dim) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(dim, dim), N(dim, dim);
   M.SetRandn();
   N.SetRandn();
@@ -96,8 +96,28 @@ template<typename Real> void TestCuMatrixSigmoid(int32 dim) {
 }
 
 
+template<typename Real> void TestCuMatrixMulRowsGroupMat(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+
+  int32 group_size = 5;
+  CuMatrix<Real> M(dim, dim * group_size), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    M.MulRowsGroupMat(N);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * group_size * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::MulRowsGroupMat" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
 template<typename Real> void TestCuMatrixSoftmax(int32 dim) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(256, dim), N(256, dim);
   M.SetRandn();
   N.SetRandn();
@@ -154,7 +174,7 @@ template<typename Real> void TestCuMatrixCholesky(int32 dim) {
 
 
 template<typename Real> void TestCuMatrixCopyLowerToUpper(int32 dim) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(dim, dim);
   M.SetRandn();
   Timer tim;
@@ -271,6 +291,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSigmoid<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
+    TestCuMatrixMulRowsGroupMat<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
     TestCuMatrixSoftmax<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixTraceMatMat<Real>(sizes[s]);
@@ -293,7 +315,7 @@ template<typename Real> void CudaMatrixSpeedTest() {
 
 
 int main() {
-  for (int32 loop = 0; loop < 2; loop++) {
+  for (int32 loop = 1; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
