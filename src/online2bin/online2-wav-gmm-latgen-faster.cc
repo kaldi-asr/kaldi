@@ -106,17 +106,11 @@ int main(int argc, char *argv[]) {
                 "Symbol table for words [for debug output]");
     po.Register("do-endpointing", &do_endpointing,
                 "If true, apply endpoint detection");
-    po.Register("use-gpu", &use_gpu,
-                "yes|no|optional, only has effect if compiled with CUDA");     
     
     feature_cmdline_config.Register(&po);
     decode_config.Register(&po);
     endpoint_config.Register(&po);
     
-#if HAVE_CUDA==1
-    CuDevice::Instantiate().SelectGpuId(use_gpu);
-#endif
-
     po.Read(argc, argv);
     
     if (po.NumArgs() != 4) {
@@ -226,9 +220,6 @@ int main(int argc, char *argv[]) {
         num_done++;
       }
     }
-#if HAVE_CUDA==1
-    CuDevice::Instantiate().PrintProfile();
-#endif
     timing_stats.Print();    
     KALDI_LOG << "Decoded " << num_done << " utterances, "
               << num_err << " with errors.";

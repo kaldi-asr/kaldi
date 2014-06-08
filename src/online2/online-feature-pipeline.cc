@@ -153,6 +153,8 @@ void OnlineFeaturePipeline::Init() {
     base_feature_ = new OnlineMfcc(config_.mfcc_opts);
   } else if (config_.feature_type == "plp") {
     base_feature_ = new OnlinePlp(config_.plp_opts);
+  } else if (config_.feature_type == "fbank") {
+    base_feature_ = new OnlineFbank(config_.fbank_opts);
   } else {
     KALDI_ERR << "Code error: invalid feature type " << config_.feature_type;
   }

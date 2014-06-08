@@ -31,14 +31,14 @@ namespace nnet2 {
 
 
 /**
-   It will help to first try to understand ./nnet-precondition.h before
-   reading this comment and trying to understand what's going on here.  The motivation
+   It will help to first try to understand ./nnet-precondition.h before reading
+   this comment and trying to understand what's going on here.  The motivation
    for this method was that the code in nnet-precondition.h was too slow when
-   implemented on CUDA cards, it was taking well over half the time.  The problem
-   is that algorithms like Cholesky decomposition and triangular solvers, that
-   were used in that method, are not as parallelizable as matrix multiplication.
-   The method in nnet-precondition.h involved inverting symmetric matrices whose
-   dimension was the number of frames in a minibatch.  
+   implemented on CUDA cards, it was taking well over half the time.  The
+   problem is that algorithms like Cholesky decomposition and triangular
+   solvers, that were used in that method, are not as parallelizable as matrix
+   multiplication.  The method in nnet-precondition.h involved inverting
+   symmetric matrices whose dimension was the number of frames in a minibatch.
 
    Our method here aims to reduce the dimension in which we have to do things
    like inversion.  (In fact, for CUDA implementation we'll deal with small matrices
@@ -264,7 +264,7 @@ Do Cholesky Y_i = C_i C_i^T.
    each time and which controls the preconditioning.  M is a (B x D) matrix
    where B is the batch size and D is the dimension of the problem (e.g.
    a hidden-layer dimension or a hidden-layer dimension plus on for the input).
-   R (the #rows of N) is the rank ofthe Fisher matrix, which is an important
+   R (the #rows of N) is the rank of the Fisher matrix, which is an important
    parameter.  lambda controls how fast we update M.  A suitable value is,
    say, 0.25.  The algorithm should not be too sensitive to this.
 

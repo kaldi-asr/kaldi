@@ -26,24 +26,26 @@ namespace kaldi {
 
 
 template<class C>
-void OnlineMfccOrPlp<C>::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
+void OnlineGenericBaseFeature<C>::GetFrame(int32 frame,
+                                           VectorBase<BaseFloat> *feat) {
   KALDI_ASSERT(frame >= 0 && frame < num_frames_);
   KALDI_ASSERT(feat->Dim() == Dim());
   feat->CopyFromVec(features_.Row(frame));
 };
 
 template<class C>
-bool OnlineMfccOrPlp<C>::IsLastFrame(int32 frame) const {
+bool OnlineGenericBaseFeature<C>::IsLastFrame(int32 frame) const {
   return (frame == num_frames_ - 1 && input_finished_);
 }
 
 template<class C>
-OnlineMfccOrPlp<C>::OnlineMfccOrPlp(const typename C::Options &opts)
+OnlineGenericBaseFeature<C>::OnlineGenericBaseFeature(
+    const typename C::Options &opts)
     :mfcc_or_plp_(opts), input_finished_(false), num_frames_(0),
     sampling_frequency_(opts.frame_opts.samp_freq) { }
 
 template<class C>
-void OnlineMfccOrPlp<C>::AcceptWaveform(BaseFloat sampling_rate,
+void OnlineGenericBaseFeature<C>::AcceptWaveform(BaseFloat sampling_rate,
                                         const VectorBase<BaseFloat> &waveform) {
   if (waveform.Dim() == 0) {
     return;  // Nothing to do.
@@ -94,9 +96,10 @@ void OnlineMfccOrPlp<C>::AcceptWaveform(BaseFloat sampling_rate,
   num_frames_ = new_num_frames;
 }
 
-// instantiate the templates defined here for MFCC and PLP classes.
-template class OnlineMfccOrPlp<Mfcc>;
-template class OnlineMfccOrPlp<Plp>;
+// instantiate the templates defined here for MFCC, PLP and filterbank classes.
+template class OnlineGenericBaseFeature<Mfcc>;
+template class OnlineGenericBaseFeature<Plp>;
+template class OnlineGenericBaseFeature<Fbank>;
 
 
 OnlineCmvn::OnlineCmvn(const OnlineCmvnOptions &opts,

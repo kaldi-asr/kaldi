@@ -79,7 +79,8 @@ int32 DecodableNnet2Online::NumFramesReady() const {
 }
 
 void DecodableNnet2Online::ComputeForFrame(int32 frame) {
-  int32 features_ready = features_->NumFramesReady();  
+  int32 features_ready = features_->NumFramesReady();
+  bool input_finished = features_->IsLastFrame(features_ready - 1);  
   KALDI_ASSERT(frame >= 0);
   if (frame >= begin_frame_ &&
       frame < begin_frame_ + scaled_loglikes_.NumRows())
@@ -91,7 +92,10 @@ void DecodableNnet2Online::ComputeForFrame(int32 frame) {
     input_frame_begin = frame - left_context_;
   else
     input_frame_begin = frame;
-  int32 input_frame_end = std::min<int32>(features_ready,
+  int32 max_possible_input_frame_end = features_ready;
+  if (input_finished && opts_.pad_input)
+    max_possible_input_frame_end += right_context_;
+  int32 input_frame_end = std::min<int32>(max_possible_input_frame_end,
                                           input_frame_begin +
                                           left_context_ + right_context_ +
                                           opts_.max_nnet_batch_size);

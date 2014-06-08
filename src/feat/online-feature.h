@@ -33,6 +33,7 @@
 #include "feat/feature-functions.h"
 #include "feat/feature-mfcc.h"
 #include "feat/feature-plp.h"
+#include "feat/feature-fbank.h"
 #include "itf/online-feature-itf.h"
 
 namespace kaldi {
@@ -42,7 +43,7 @@ namespace kaldi {
 
 
 template<class C>
-class OnlineMfccOrPlp: public OnlineBaseFeature {
+class OnlineGenericBaseFeature: public OnlineBaseFeature {
  public:
   //
   // First, functions that are present in the interface:
@@ -60,7 +61,7 @@ class OnlineMfccOrPlp: public OnlineBaseFeature {
   //
   // Next, functions that are not in the interface.
   //
-  explicit OnlineMfccOrPlp(const typename C::Options &opts);
+  explicit OnlineGenericBaseFeature(const typename C::Options &opts);
 
   // This would be called from the application, when you get
   // more wave data.  Note: the sampling_rate is only provided so
@@ -79,7 +80,7 @@ class OnlineMfccOrPlp: public OnlineBaseFeature {
  private:
   C mfcc_or_plp_;  // class that does the MFCC or PLP computation
 
-  // features_ is the MFCC or PLP features that we have already computed.
+  // features_ is the Mfcc or Plp or Fbank features that we have already computed.
   Matrix<BaseFloat> features_;
 
   // True if the user has called "InputFinished()"
@@ -101,8 +102,9 @@ class OnlineMfccOrPlp: public OnlineBaseFeature {
   Vector<BaseFloat> waveform_remainder_;
 };
 
-typedef OnlineMfccOrPlp<Mfcc> OnlineMfcc;
-typedef OnlineMfccOrPlp<Plp> OnlinePlp;
+typedef OnlineGenericBaseFeature<Mfcc> OnlineMfcc;
+typedef OnlineGenericBaseFeature<Plp> OnlinePlp;
+typedef OnlineGenericBaseFeature<Fbank> OnlineFbank;
 
 
 /// This class takes a Matrix<BaseFloat> and wraps it as an

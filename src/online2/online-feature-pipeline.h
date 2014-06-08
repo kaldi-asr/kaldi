@@ -46,6 +46,7 @@ struct OnlineFeaturePipelineCommandLineConfig {
   std::string feature_type;
   std::string mfcc_config;
   std::string plp_config;
+  std::string fbank_config;
   bool add_pitch;
   std::string pitch_config;
   std::string pitch_process_config;
@@ -63,11 +64,13 @@ struct OnlineFeaturePipelineCommandLineConfig {
 
   void Register(OptionsItf *po) {
     po->Register("feature-type", &feature_type,
-                 "Base feature type [mfcc, plp]");
+                 "Base feature type [mfcc, plp, fbank]");
     po->Register("mfcc-config", &mfcc_config, "Configuration class file for "
                  "MFCC features (e.g. conf/mfcc.conf)");
     po->Register("plp-config", &plp_config, "Configuration class file for "
                  "PLP features (e.g. conf/plp.conf)");
+    po->Register("fbank-config", &fbank_config, "Configuration class file for "
+                 "filterbank features (e.g. conf/fbank.conf)");
     po->Register("add-pitch", &add_pitch, "Append pitch features to raw "
                  "MFCC/PLP features.");
     po->Register("pitch-config", &pitch_config, "Configuration class file for "
@@ -117,6 +120,8 @@ struct OnlineFeaturePipelineConfig {
   MfccOptions mfcc_opts;  // options for MFCC computation,
                           // if feature_type == "mfcc"
   PlpOptions plp_opts;  // Options for PLP computation, if feature_type == "plp"
+  FbankOptions fbank_opts;  // Options for filterbank computation, if
+                            // feature_type == "fbank"
 
   bool add_pitch;
   PitchExtractionOptions pitch_opts;  // Options for pitch extraction, if done.
