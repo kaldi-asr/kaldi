@@ -279,23 +279,6 @@ template void CuMatrixBase<double>::CopyFromTp(const CuTpMatrix<float> &M,
 template void CuMatrixBase<double>::CopyFromTp(const CuTpMatrix<double> &M,
                                               MatrixTransposeType Trans);
 
-/*
-// template instantiations.
-template
-void CuMatrixBase<float>::CopyFromMat(const CuMatrixBase<double> & M,
-                                      MatrixTransposeType Trans);
-template
-void CuMatrixBase<double>::CopyFromMat(const CuMatrixBase<float> & M,
-                                       MatrixTransposeType Trans);
-
-template
-void CuMatrixBase<float>::CopyFromMat(const CuMatrixBase<float> & M,
-                                      MatrixTransposeType Trans);
-template
-void CuMatrixBase<double>::CopyFromMat(const CuMatrixBase<double> & M,
-MatrixTransposeType Trans);
-*/
-
 template<typename Real>
 void CuMatrixBase<Real>::CopyFromMat(const MatrixBase<Real> &src,
                                      MatrixTransposeType trans) {
