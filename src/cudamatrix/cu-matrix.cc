@@ -1094,7 +1094,7 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
     }
   }
   
- # if HAVE_CUDA == 1
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     if (sv_labels.empty()) {
       KALDI_WARN << "Empty supervision labels";
@@ -1119,6 +1119,8 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
   } else
 #endif
   {
+    *tot_objf = 0.0;
+    *tot_weight = 0.0;
     for(int32 i = 0; i<sv_labels.size(); i++) {
       int32 m = sv_labels[i].row, label = sv_labels[i].column;
       Real weight = sv_labels[i].weight;
