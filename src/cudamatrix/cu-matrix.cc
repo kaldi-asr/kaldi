@@ -279,23 +279,6 @@ template void CuMatrixBase<double>::CopyFromTp(const CuTpMatrix<float> &M,
 template void CuMatrixBase<double>::CopyFromTp(const CuTpMatrix<double> &M,
                                               MatrixTransposeType Trans);
 
-/*
-// template instantiations.
-template
-void CuMatrixBase<float>::CopyFromMat(const CuMatrixBase<double> & M,
-                                      MatrixTransposeType Trans);
-template
-void CuMatrixBase<double>::CopyFromMat(const CuMatrixBase<float> & M,
-                                       MatrixTransposeType Trans);
-
-template
-void CuMatrixBase<float>::CopyFromMat(const CuMatrixBase<float> & M,
-                                      MatrixTransposeType Trans);
-template
-void CuMatrixBase<double>::CopyFromMat(const CuMatrixBase<double> & M,
-MatrixTransposeType Trans);
-*/
-
 template<typename Real>
 void CuMatrixBase<Real>::CopyFromMat(const MatrixBase<Real> &src,
                                      MatrixTransposeType trans) {
@@ -1087,14 +1070,16 @@ void CuMatrixBase<Real>::GroupPnorm(const CuMatrixBase<Real> &src, Real power) {
     Mat().GroupPnorm(src.Mat(), power);
   }
 }
+
 /*
-Think of sv_labels as a Matrix, denoting the "correct" label of each frame to each phone-state; it's very likely to contain a LOT of zeros
+Think of sv_labels as a Matrix, denoting the "correct" label of each frame to
+each phone-state; it's very likely to contain a LOT of zeros
 
 tot_weight = the sum of ALL element in matrix sv_labels
-tot_objf = the sum of the product of (each element in matrix sv_labels) and (the log of its counterpart in matrix output)
+tot_objf = the sum of the product of (each element in matrix sv_labels) and (the
+           log of its counterpart in matrix output)
 
 an element in "this" matrix = (the element in matrix sv_labels) divided by (the element in matrix output)
-
 */
 template<typename Real>
 void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& sv_labels,
@@ -1105,11 +1090,11 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
     MatrixIndexT num_rows = this->num_rows_, num_cols = this->num_cols_;
     for (Iter iter = sv_labels.begin(); iter != sv_labels.end(); ++iter) {
       KALDI_ASSERT(iter->row < num_rows && iter->row >= 0 &&
-                     iter->column < num_cols && iter->column >= 0);
+                   iter->column < num_cols && iter->column >= 0);
     }
   }
   
- # if HAVE_CUDA == 1
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     if (sv_labels.empty()) {
       KALDI_WARN << "Empty supervision labels";
@@ -1121,18 +1106,21 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
     CU_SAFE_CALL(cudaMemcpy(addr, sv_labels.data(), sv_labels.size() * sizeof(MatrixElement<Real>), cudaMemcpyHostToDevice));
     Timer tim;
     CuVector<Real> tmp(2, kUndefined);
-    //tmp(0) = 0; tmp(1) = 0;
     int dimBlock(CU1DBLOCK);
-    int dimGrid = 1;// only 1 block here. we have loops in each thread  //(n_blocks(dim_, CU1DBLOCK));
-    cuda_comp_obj_deriv(dimGrid, dimBlock, (MatrixElement<Real>*)addr, sv_labels.size(), output.Data(), output.Dim(), this->Data(), this->Dim(), tmp.Data());
+    int dimGrid = 1; // only 1 block here. we have loops in each thread.
+    cuda_comp_obj_deriv(dimGrid, dimBlock, (MatrixElement<Real>*)addr,
+                        sv_labels.size(), output.Data(), output.Dim(),
+                        this->Data(), this->Dim(), tmp.Data());
     Vector<Real> tmp_cpu(tmp);
     *tot_objf = tmp_cpu(0);
     *tot_weight = tmp_cpu(1);
     CuDevice::Instantiate().Free(addr);
-    CuDevice::Instantiate().AccuProfile("Comp_Obj_Deriv", tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
+    *tot_objf = 0.0;
+    *tot_weight = 0.0;
     for(int32 i = 0; i<sv_labels.size(); i++) {
       int32 m = sv_labels[i].row, label = sv_labels[i].column;
       Real weight = sv_labels[i].weight;
@@ -1250,13 +1238,13 @@ void CuMatrixBase<Real>::FindRowMaxId(CuArray<int32> *id) const {
     id->Resize(num_rows_);
     id->Set(-1);
 
-    MatrixDim d=Dim();// only stride will be used!
+    MatrixDim d=Dim(); // only stride will be used!
    
     // process per 256 column blocks 
-    for(int32 block=0; (block+1)*256 <= num_cols_; block++) {
-      dim3 dimBlock(256, 1);
+    for (int32 block = 0; (block+1)*256 <= num_cols_; block++) {
+      dim3 dimBlock(CU1DBLOCK, 1);
       dim3 dimGrid(1, num_rows_);
-      int32 offset=block*256;
+      int32 offset = block*CU1DBLOCK;
 
       cuda_find_row_max_id(dimGrid, dimBlock, data_ + offset,
                            max.data_, id->Data(), offset, d);

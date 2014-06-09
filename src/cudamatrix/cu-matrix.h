@@ -556,6 +556,9 @@ class CuMatrix: public CuMatrixBase<Real> {
     return *(reinterpret_cast<Matrix<Real>* >(this));
   }
 
+  /// Here, A is interpreted as a matrix of probabilities, and "elements" as a list
+  /// of posteriors (possibly zero-one), and "*this" as a matrix of derivatives
+  /// w.r.t. the log-probs.
   /// This function does: for each element { row, column, weight } indexed i in
   /// the vector "elements", let x(i) = A(row(i), column(i)); then it does
   /// (*this)(row(i), column(i)) += weight(i) / x(i), and

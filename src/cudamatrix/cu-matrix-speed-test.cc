@@ -78,6 +78,110 @@ template<typename Real> void TestSymInvertPosDef(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+
+template<typename Real> 
+static void TestCuMatrixCompObjfAndDeriv(int32 dim) {
+  BaseFloat time_in_secs = 0.025;  
+  // Previously tested for larger dims, but test was slow.
+
+  int32 n_r = dim, n_c = dim + rand() % 5;
+
+  CuMatrix<Real> A(n_r, n_c), B(n_r, n_c);
+  B.SetRandn();
+  B.Add(1.0);
+  B.ApplyFloor(1.0e-10);
+  
+  std::vector<MatrixElement<Real> > labels;
+  for(int i = 0; i < n_r; i++) {
+    for(int j = 0; j < n_c; j++) {
+      // have approximately one weight per row of the matrix.
+      if (rand() % n_c == 0) {
+        A(i, j) = RandUniform();
+        MatrixElement<Real> t = {i, j, A(i, j)};
+        labels.push_back(t);
+      }
+    }
+  }
+  CuMatrix<Real> C(n_r, n_c);
+
+  int iter = 0;
+  Timer tim;
+  Real a = 0.0, b = 0.0;
+  for (;tim.Elapsed() < time_in_secs; iter++)
+    C.CompObjfAndDeriv(labels, B, &a, &b);
+
+  BaseFloat gflops = (n_r * n_c * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::CompObjfAndDeriv" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+
+  
+  // do it one more time for correctness test.
+  C.SetZero();
+  C.CompObjfAndDeriv(labels, B, &a, &b);
+
+  KALDI_ASSERT(ApproxEqual(b, A.Sum()));
+
+  // repeat the real test.
+  Real sum2;  // sum(i, j) A(i, j) log(B(i, j));
+  { 
+    CuMatrix<Real> Bcopy(B);
+    Bcopy.ApplyLog();
+    sum2 = TraceMatMat(Bcopy, A, kTrans);
+  }
+  
+  KALDI_ASSERT(ApproxEqual(a, sum2));
+
+  B.InvertElements();
+  A.MulElements(B);  // each element of A is now A(i, j) / B(i, j);
+  KALDI_ASSERT(ApproxEqual(A, C));
+  
+
+}
+
+
+template<typename Real> 
+static void TestCuFindRowMaxId(int32 dim) {
+
+  int32 dimM = dim, dimN = dimM + rand() % 5;
+
+  Matrix<Real> Hi(dimM, dimN);
+  Hi.SetRandn();
+  
+  CuMatrix<Real> Di(dimM, dimN);
+  Di.CopyFromMat(Hi);
+
+  std::vector<int32> Hmax(dimM);
+  CuArray<int32> Dmax(dimN);
+
+  BaseFloat time_in_secs = 0.025;
+  int iter = 0;
+  Timer tim;
+  for (;tim.Elapsed() < time_in_secs; iter++)
+    Di.FindRowMaxId(&Dmax);
+
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::FindRowMaxId" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+
+  
+  // on cpu
+  for(MatrixIndexT r=0; r<Hi.NumRows(); r++) {
+    Real max=-1.0e+20; int32 idx=-1;
+    for(MatrixIndexT c=0; c<Hi.NumCols(); c++) {
+      if(Hi(r,c) > max) { idx=c; max=Hi(r,c); }
+    }
+    Hmax[r] = idx;
+  }
+  std::vector<int32> Hmax2(dimM);
+  Dmax.CopyToVec(&Hmax2);
+
+  KALDI_ASSERT(Hmax == Hmax2);
+}
+
+
+
 template<typename Real> void TestCuMatrixSigmoid(int32 dim) {
   BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(dim, dim), N(dim, dim);
@@ -290,6 +394,10 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixCholesky<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSigmoid<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuFindRowMaxId<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixCompObjfAndDeriv<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixMulRowsGroupMat<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
