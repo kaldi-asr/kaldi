@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 # Copyright 2013  Guoguo Chen
+#           2014  Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0.
 #
 # This script distributes data onto different file systems by making symbolic
@@ -98,7 +99,7 @@ foreach my $x (@filename_numbers) {
 my $dir_index = $total % $num_storage + 1;
 
 # Make the symbolic link.
-if (-l $fullpath) {
+if (-e $fullpath) {
   unlink($fullpath);
 }
 my $ret = symlink("storage/$dir_index/$basename", $fullpath);

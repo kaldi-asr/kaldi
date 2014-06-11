@@ -29,6 +29,8 @@ Usage: utils/create_split_dir.pl <actual_storage_dirs> <pseudo_storage_dir>
 Allowed options:
   --suffix    : Common suffix to <actual_storage_dirs>    (string, default = "")
 
+See also create_data_link.pl, which is intended to work with the resulting
+directory structure.
 EOU
 
 my $suffix="";

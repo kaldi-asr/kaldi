@@ -25,8 +25,13 @@
 # Last modified by JHU & HKUST @2013
 
 
+$quiet = 0;
 $first = 0;
 $last = 0;
+if ($ARGV[0] eq "--quiet") {
+  shift;
+  $quiet = 1;
+}
 if ($ARGV[0] eq "--first") {
   shift;
   $first = 1;
@@ -37,7 +42,9 @@ if ($ARGV[0] eq "--last") {
 }
 
 if(@ARGV < 2 ) {
-    die "Usage: subset_scp.pl [--first|--last] N in.scp ";
+    die "Usage: subset_scp.pl [--quiet][--first|--last] N in.scp\n" .
+        " --quiet  causes it to not die if N < num lines in scp.\n" .
+        " --first and --last make it equivalent to head or tail.\n";
 }
 
 $N = shift @ARGV;
@@ -53,7 +60,11 @@ while(<I>) {
 }
 $numlines = @F;
 if($N > $numlines) {
+  if ($quiet) {
+    $N = $numlines;
+  } else {
     die "You requested from subset_scp.pl more elements than available: $N > $numlines";
+  }
 }
 
 sub select_n {

@@ -163,6 +163,8 @@ for x in `seq 1 $num_jobs_nnet`; do
   done
 done
 
+remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
+
 nnet_context_opts="--left-context=$splice_width --right-context=$splice_width"
 mkdir -p $dir/egs
 
@@ -243,7 +245,7 @@ if [ $stage -le 4 ]; then
     echo "$0: Since iters-per-epoch == 1, just concatenating the data."
     for n in `seq 1 $num_jobs_nnet`; do
       cat $dir/egs/egs_orig.$n.*.ark > $dir/egs/egs_tmp.$n.0.ark || exit 1;
-      rm $dir/egs/egs_orig.$n.*.ark  # don't "|| exit 1", due to NFS bugs...
+      remove $dir/egs/egs_orig.$n.*.ark 
     done
   else # We'll have to split it up using nnet-copy-egs.
     egs_list=
@@ -254,8 +256,8 @@ if [ $stage -le 4 ]; then
     # we encountered running this script with Debian-7, NFS-v4.
     $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/split_egs.JOB.log \
       nnet-copy-egs --random=$random_copy --srand=JOB \
-        "ark:cat $dir/egs/egs_orig.JOB.*.ark|" $egs_list '&&' \
-        '(' rm $dir/egs/egs_orig.JOB.*.ark '||' true ')' || exit 1;
+        "ark:cat $dir/egs/egs_orig.JOB.*.ark|" $egs_list || exit 1;
+    remove $dir/egs/egs_orig.$n.*.ark  2>/dev/null
   fi
 fi
 
@@ -271,8 +273,8 @@ if [ $stage -le 5 ]; then
   for n in `seq 0 $[$iters_per_epoch-1]`; do
     $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/shuffle.$n.JOB.log \
       nnet-shuffle-egs "--srand=\$[JOB+($num_jobs_nnet*$n)]" \
-      ark:$dir/egs/egs_tmp.JOB.$n.ark ark:$dir/egs/egs.JOB.$n.ark '&&' \
-      '(' rm $dir/egs/egs_tmp.JOB.$n.ark '||' true ')' || exit 1;
+      ark:$dir/egs/egs_tmp.JOB.$n.ark ark:$dir/egs/egs.JOB.$n.ark 
+    remove $dir/egs/egs_tmp.*.$n.ark
   done
 fi
 

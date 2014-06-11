@@ -165,6 +165,7 @@ function filter_utts {
 filter_recordings
 filter_speakers
 filter_utts
+filter_speakers
 filter_recordings
 
 

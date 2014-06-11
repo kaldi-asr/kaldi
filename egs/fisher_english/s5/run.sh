@@ -158,3 +158,5 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 
 # local/run_for_spkid.sh
 
+# we don't have to results for the step below yet.
+# local/run_nnet2.sh

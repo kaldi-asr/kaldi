@@ -1446,11 +1446,13 @@ void CuMatrixBase<Real>::SymInvertPosDef() {
   if (num_rows_ == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;    
     CuMatrix<Real> inv_cholesky(num_rows_, num_rows_);
     this->Cholesky(&inv_cholesky);
     // note: SymAddMat2 only updates lower part of *this.
     this->SymAddMat2(1.0, inv_cholesky, kTrans, 0.0);
     this->CopyLowerToUpper();
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
   } else
 #endif
   {
