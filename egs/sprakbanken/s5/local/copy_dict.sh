@@ -25,18 +25,20 @@ mkdir -p $dir
 
 # Dictionary preparation:
 
-
 # Normalise transcripts and create a transcript file
 # Removes '.,:;?' and removes '\' before '\Komma' (dictated ',') 
 # outputs a normalised transcript without utterance ids and a list of utterance ids 
-echo "Normalising "
-python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl data/train/text1 data/train/onlyids $dir/transcripts.tmp
+echo "Normalising"
+trainsrc=data/local/trainsrc
+mkdir $trainsrc
+mv data/train/text1 $trainsrc/text1
+python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $trainsrc/text1 $trainsrc/onlyids $dir/transcripts.tmp
 
 # Additional normalisation, uppercasing, writing numbers etc.
 # and recombine with 
 local/norm_dk/format_text.sh am $dir/transcripts.tmp > $dir/transcripts.am
-cp $dir/transcripts.am data/train/onlytext
-paste data/train/onlyids data/train/onlytext > data/train/text 
+cp $dir/transcripts.am $trainsrc/onlytext
+paste -d ' ' $trainsrc/onlyids $trainsrc/onlytext > data/train/text 
 
 
 # lmsents is output by sprak_data_prep.sh and contains
@@ -68,6 +70,25 @@ echo SIL > $dir/silence_phones.txt
 echo SIL > $dir/optional_silence.txt
 
 touch $dir/extra_questions.txt
+
+# Repeat text preparation on test set, but do not add to dictionary
+testsrc=data/local/testsrc
+mkdir $testsrc
+mv data/test/text1 $testsrc/text1
+python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $testsrc/text1 $testsrc/onlyids $testsrc/transcripts.am 
+local/norm_dk/format_text.sh am $testsrc/transcripts.am > $testsrc/onlytext
+paste -d ' ' $testsrc/onlyids $testsrc/onlytext > data/test/text
+
+
+# Repeat text preparation on dev set, but do not add to dictionary
+devsrc=data/local/devsrc
+mkdir $devsrc
+mv data/dev/text1 $devsrc/text1
+python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $devsrc/text1 $devsrc/onlyids $devsrc/transcripts.tmp
+local/norm_dk/format_text.sh lm $devsrc/transcripts.tmp > data/dev/transcripts.txt
+sort -u data/dev/transcripts.txt > data/dev/transcripts.uniq &
+local/norm_dk/format_text.sh am $devsrc/transcripts.tmp > $devsrc/onlytext
+paste -d ' ' $devsrc/onlyids $devsrc/onlytext > data/dev/text
 
 
 ## TODO: add cleanup commands

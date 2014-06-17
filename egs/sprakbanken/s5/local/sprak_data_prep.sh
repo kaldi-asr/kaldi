@@ -112,14 +112,25 @@ mv $dir/corpus_processed/test06/txtlist $dir/testtxtfiles
 mv $dir/corpus_processed/test06/sndlist $dir/testsndfiles
 
 # Write wav.scp, utt2spk and text1 for train, test and dev sets with
-# Use sph2pipe because the wav files are actuallt sph files
+# Use sph2pipe because the wav files are actually sph files
 echo "Creating wav.scp, utt2spk and text1 for train, test and dev dirs." 
 python3 $local/data_prep.py $dir/traintxtfiles $traindir $dir/trainsndfiles $sph2pipe &
 python3 $local/data_prep.py $dir/testtxtfiles $testdir $dir/testsndfiles $sph2pipe &
 python3 $local/data_prep.py $dir/devtxtfiles $devdir $dir/devsndfiles $sph2pipe &
 
+wait
+
+# Create spk2utt file
+utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt &
+utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt &
+utils/utt2spk_to_spk2utt.pl data/dev/utt2spk > data/dev/spk2utt
 
 wait
+
+for d in train test dev; do
+    utils/validate_data_dir.sh --no-feats --no-text  data/$d || exit 1;
+done
+
 
 ## TODO
 
