@@ -71,7 +71,7 @@ cat $dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ", $_))
     > $srcdir/lm_train.txt
   build-lm.sh -i $srcdir/lm_train.txt -n 2 -o $tmpdir/lm_phone_bg.ilm.gz
 
-  compile-lm $tmpdir/lm_phone_bg.ilm.gz --text yes /dev/stdout | \
+  compile-lm $tmpdir/lm_phone_bg.ilm.gz -t=yes /dev/stdout | \
   grep -v unk | gzip -c > $lmdir/lm_phone_bg.arpa.gz 
 
 echo "Dictionary & language model preparation succeeded"
