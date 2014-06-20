@@ -107,7 +107,7 @@ struct PitchExtractionOptions {
   // current chunk of signal. This makes the output insensitive to the
   // chunking, which is useful for testing purposes.
   bool nccf_ballast_online;
-
+  bool snip_edges;
   PitchExtractionOptions():
       samp_freq(16000),
       frame_shift_ms(10.0),
@@ -127,7 +127,8 @@ struct PitchExtractionOptions {
       frames_per_chunk(0),
       simulate_first_pass_online(false),
       recompute_frame(500),
-      nccf_ballast_online(false) { }
+      nccf_ballast_online(false),
+      snip_edges(true) { }
 
   void Register(OptionsItf *po) {
     po->Register("sample-frequency", &samp_freq,
@@ -186,6 +187,12 @@ struct PitchExtractionOptions {
                  "introduce into the feature processing (affects output only "
                  "if --frames-per-chunk > 0 and "
                  "--simulate-first-pass-online=true");
+    po->Register("snip-edges", &snip_edges, "If this is set to false, the "
+                 "incomplete frames near the ending edge won't be snipped, so "
+                 "that the number of frames is the file size divided by the "
+                 "frame-shift. This makes different types of features give the"
+                 "same number of frames.");
+
   }
   /// Returns the window-size in samples, after resampling.  This is the
   /// "basic window size", not the full window size after extending by max-lag.

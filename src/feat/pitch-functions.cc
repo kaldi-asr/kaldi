@@ -597,7 +597,7 @@ class OnlinePitchFeatureImpl {
   /// old pitch code gave.
   /// Note: the number this returns depends on whether input_finished_ == true;
   /// if it is, it will "force out" a final frame or two.
-  int32 NumFramesAvailable(int64 num_downsampled_samples) const;
+  int32 NumFramesAvailable(int64 num_downsampled_samples, bool snip_edges) const;
   
   /// This function extracts from the signal the samples numbered from
   /// "sample_index" (numbered in the full downsampled signal, not just this
@@ -758,7 +758,7 @@ OnlinePitchFeatureImpl::OnlinePitchFeatureImpl(
 
 
 int32 OnlinePitchFeatureImpl::NumFramesAvailable(
-    int64 num_downsampled_samples) const {
+    int64 num_downsampled_samples, bool snip_edges) const {
   int32 frame_shift = opts_.NccfWindowShift(),
       frame_length = opts_.NccfWindowSize();
   // Use the "full frame length" to compute the number
@@ -767,7 +767,11 @@ int32 OnlinePitchFeatureImpl::NumFramesAvailable(
     frame_length += nccf_last_lag_;
   if (num_downsampled_samples < frame_length) return 0;
   else
-    return ((num_downsampled_samples - frame_length) / frame_shift) + 1;
+    if (input_finished_ && !snip_edges) {
+      return (int32)(num_downsampled_samples * 1.0f / frame_shift + 0.5f);
+    }
+    else
+      return ((num_downsampled_samples - frame_length) / frame_shift) + 1;
 }
 
 void OnlinePitchFeatureImpl::UpdateRemainder(
@@ -1028,7 +1032,7 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
   // end_frame is the total number of frames we can now process, including
   // previously processed ones.
   int32 end_frame = NumFramesAvailable(
-      downsampled_samples_processed_ + downsampled_wave.Dim());
+      downsampled_samples_processed_ + downsampled_wave.Dim(), opts_.snip_edges);
   // "start_frame" is the first frame-index we process
   int32 start_frame = frame_info_.size() - 1,
       num_new_frames = end_frame - start_frame;
@@ -1583,7 +1587,7 @@ void ComputeAndProcessKaldiPitch(
     cur_offset += num_samp;
     if (cur_offset == wave.Dim())
       pitch_extractor.InputFinished();
-
+    
     // Get each frame as soon as it is ready.
     for (; cur_frame < post_process.NumFramesReady(); cur_frame++) {
       if (cur_frame >= cur_rows) {
