@@ -85,6 +85,7 @@ inline void cuda_copy_from_mat_trans(dim3 Gr, dim3 Bl, double* mat_out, const fl
 inline void cuda_copy_col_from_vec(int Gr, int Bl, float* mat, const float* v, int col, MatrixDim d) { cudaF_copy_col_from_vec(Gr,Bl,mat,v,col,d); }
 inline void cuda_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) { cudaF_apply_exp(Gr,Bl,mat,d); }
 inline void cuda_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim dim) { cudaF_apply_pow(Gr,Bl,mat,power,dim); }
+inline void cuda_apply_pow_abs(dim3 Gr, dim3 Bl, float* mat, float power, bool include_sign, MatrixDim dim) { cudaF_apply_pow_abs(Gr,Bl,mat,power,include_sign, dim); }
 inline void cuda_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim dim) { cudaF_apply_heaviside(Gr,Bl,mat,dim); }
 inline void cuda_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim dim) { cudaF_apply_floor(Gr,Bl,mat,floor_val,dim); }
 inline void cuda_apply_ceiling(dim3 Gr, dim3 Bl, float* mat, float ceiling_val, MatrixDim dim) { cudaF_apply_ceiling(Gr,Bl,mat,ceiling_val,dim); }
@@ -254,6 +255,7 @@ inline void cuda_copy_from_tp(dim3 Gr, dim3 Bl, double* A, const float* B, Matri
 inline void cuda_copy_col_from_vec(int Gr, int Bl, double* mat, const double* v, int col, MatrixDim d) { cudaD_copy_col_from_vec(Gr,Bl,mat,v,col,d); }
 inline void cuda_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) { cudaD_apply_exp(Gr,Bl,mat,d); }
 inline void cuda_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim dim) { cudaD_apply_pow(Gr,Bl,mat,power,dim); }
+inline void cuda_apply_pow_abs(dim3 Gr, dim3 Bl, double* mat, double power, bool include_sign, MatrixDim dim) { cudaD_apply_pow_abs(Gr,Bl,mat,power,include_sign,dim); }
 inline void cuda_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim dim) { cudaD_apply_heaviside(Gr,Bl,mat,dim); }
 inline void cuda_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim dim) { cudaD_apply_floor(Gr,Bl,mat,floor_val,dim); }
 inline void cuda_apply_ceiling(dim3 Gr, dim3 Bl, double* mat, double ceiling_val, MatrixDim dim) { cudaD_apply_ceiling(Gr,Bl,mat,ceiling_val,dim); }

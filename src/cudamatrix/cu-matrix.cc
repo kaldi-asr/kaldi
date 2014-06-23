@@ -602,8 +602,6 @@ void CuMatrixBase<Real>::ApplyLog() {
   }
 }
 
-
-
 template<typename Real>
 void CuMatrixBase<Real>::MulElements(const CuMatrixBase<Real>& A) {
   #if HAVE_CUDA == 1
@@ -1629,6 +1627,25 @@ void CuMatrixBase<Real>::ApplyPow(Real power) {
 #endif
   {
     Mat().ApplyPow(power);
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::ApplyPowAbs(Real power, bool include_sign) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+    
+    cuda_apply_pow_abs(dimGrid, dimBlock, data_, power, include_sign, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().ApplyPowAbs(power, include_sign);
   }
 }
 

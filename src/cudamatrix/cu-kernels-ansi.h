@@ -58,6 +58,7 @@ void cudaFD_copy_from_tp(dim3 Gr, dim3 Bl, float* A, const double* B, MatrixDim 
 void cudaF_copy_col_from_vec(int Gr, int Bl, float* mat, const float* v, int col, MatrixDim d);
 void cudaF_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
 void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d);
+void cudaF_apply_pow_abs(dim3 Gr, dim3 Bl, float* mat, float power, bool include_sign,  MatrixDim d);
 void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);  
 void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim d);
 void cudaF_copy_cols(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride);
@@ -187,6 +188,7 @@ void cudaDF_copy_from_tp(dim3 Gr, dim3 Bl, double* A, const float* B, MatrixDim 
 void cudaD_copy_col_from_vec(int Gr, int Bl, double* mat, const double* v, int col, MatrixDim d);
 void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
 void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d);
+void cudaD_apply_pow_abs(dim3 Gr, dim3 Bl, double* mat, double power, bool include_sign, MatrixDim d);
 void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);  
 void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim d);
 void cudaD_copy_cols(dim3 Gr, dim3 Bl, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride);

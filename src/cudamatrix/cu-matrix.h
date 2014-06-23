@@ -233,6 +233,13 @@ class CuMatrixBase {
   void SymInvertPosDef(); 
 
   void ApplyPow(Real power);
+  ///< Apply power to the absolute value of each element. 
+  ///< If inlude_sign is true, the result will be multiplied with 
+  ///< the sign of the input value.
+  ///< If the power is negative and the input to the power is zero,
+  ///< The output will be set zero. If include_sign is true, it will
+  ///< multiply the result by the sign of the input.
+  void ApplyPowAbs(Real power, bool include_sign=false);
   void ApplyHeaviside(); ///< For each element, sets x = (x > 0 ? 1.0 : 0.0)
   void ApplyFloor(Real floor_val);
   void ApplyCeiling(Real ceiling_val);

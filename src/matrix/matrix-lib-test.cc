@@ -612,6 +612,7 @@ static void UnitTestVectorMin() {
 
 template<typename Real>  
 static void UnitTestReplaceValue(){
+  // for vector
   MatrixIndexT dim = 10 + rand() % 2;
   Real orig = 0.1 * (rand() % 100), changed = 0.1 * (rand() % 50);
   Vector<Real> V(dim);
@@ -946,6 +947,23 @@ template<typename Real> static void UnitTestPower() {
     AssertEqual(V1, V2);
   }
 }
+
+template<typename Real> static void UnitTestPowerAbs() {
+  for (MatrixIndexT iter = 0;iter < 5;iter++) {
+    MatrixIndexT dimV = 10 + rand() % 10;
+    Vector<Real> V(dimV), V1(dimV), V2(dimV);
+    InitRand(&V);
+    V1.AddVecVec(1.0, V, V, 0.0);  // V1:=V.*V.
+    V2.CopyFromVec(V1);
+    KALDI_LOG << V1;
+    V2.ApplyPowAbs(0.5);
+    KALDI_LOG << V2;
+    V2.ApplyPowAbs(2.0);
+    KALDI_LOG << V2;
+    AssertEqual(V1, V2);
+  }
+}
+
 
 template<typename Real> static void UnitTestHeaviside() {
   for (MatrixIndexT iter = 0;iter < 5;iter++) {
@@ -4149,6 +4167,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestDotprod<Real>();
   // UnitTestSvdVariants<Real>();
   UnitTestPower<Real>();
+  UnitTestPowerAbs<Real>();
   UnitTestHeaviside<Real>();
   UnitTestCopySp<Real>();
   UnitTestDeterminant<Real>();
@@ -4209,7 +4228,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestTp2<Real>();
   UnitTestAddDiagMat2<Real>();
   UnitTestAddDiagMatMat<Real>();
-  UnitTestOrthogonalizeRows<Real>();
+ //  UnitTestOrthogonalizeRows<Real>();
   UnitTestTopEigs<Real>();
   UnitTestRandCategorical<Real>();
   UnitTestTridiag<Real>();

@@ -801,6 +801,7 @@ int main() {
     for (int32 i = 0; i < 3; i++) {
       UnitTestGenericComponent<SigmoidComponent>();
       UnitTestGenericComponent<TanhComponent>();
+      UnitTestGenericComponent<PowerComponent>("power=1.5");
       UnitTestGenericComponent<PermuteComponent>();
       UnitTestGenericComponent<SoftmaxComponent>();
       UnitTestGenericComponent<RectifiedLinearComponent>();

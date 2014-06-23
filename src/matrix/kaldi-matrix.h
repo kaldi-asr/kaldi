@@ -298,6 +298,12 @@ class MatrixBase {
   /// Applies power to all matrix elements
   void ApplyPow(Real power);
 
+  /// Apply power to the absolute value of each element. 
+  /// Include the sign of the input element if include_sign == true.
+  /// If the power is negative and the input to the power is zero,
+  /// The output will be set zero.
+  void ApplyPowAbs(Real power, bool include_sign=false);
+  
   /// Applies the Heaviside step function (x > 0 ? 1 : 0) to all matrix elements
   /// Note: in general you can make different choices for x = 0, but for now
   /// please leave it as it (i.e. returning zero) because it affects the

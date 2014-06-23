@@ -466,6 +466,44 @@ class TanhComponent: public NonlinearComponent {
   TanhComponent &operator = (const TanhComponent &other); // Disallow.
 };
 
+/// Take the absoute values of an input vector to a power.
+/// The derivative for zero input will be treated as zero.
+class PowerComponent: public NonlinearComponent {
+ public:
+  void Init(int32 dim, BaseFloat power = 2);
+  explicit PowerComponent(int32 dim, BaseFloat power = 2) {
+    Init(dim, power);
+  }
+  PowerComponent(): dim_(0), power_(2) { }
+  virtual std::string Type() const { return "PowerComponent"; }
+  virtual void InitFromString(std::string args); 
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         CuMatrix<BaseFloat> *out) const;
+  virtual void Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        CuMatrix<BaseFloat> *in_deriv) const;
+  virtual bool BackpropNeedsInput() const { return true; }
+  virtual bool BackpropNeedsOutput() const { return true; }
+  virtual Component* Copy() const { return new PowerComponent(dim_, power_); }
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+  
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual std::string Info() const;
+
+ private:
+  int32 dim_;
+  BaseFloat power_;
+};
+
 class RectifiedLinearComponent: public NonlinearComponent {
  public:
   explicit RectifiedLinearComponent(int32 dim): NonlinearComponent(dim) { }

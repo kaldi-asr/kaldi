@@ -50,6 +50,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new SigmoidComponent();
   } else if (component_type == "TanhComponent") {
     ans = new TanhComponent();
+  } else if (component_type == "PowerComponent") {
+    ans = new PowerComponent();
   } else if (component_type == "SoftmaxComponent") {
     ans = new SoftmaxComponent();
   } else if (component_type == "RectifiedLinearComponent") {
@@ -787,6 +789,78 @@ void TanhComponent::Backprop(const CuMatrixBase<BaseFloat> &, // in_value
                                                               in_deriv);
   in_deriv->MulElements(out_deriv);
 }  
+
+void PowerComponent::Init(int32 dim, BaseFloat power) {
+  dim_ = dim;
+  power_ = power;
+  KALDI_ASSERT(dim > 0 && power >= 0);
+}
+
+void PowerComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  int32 dim;
+  BaseFloat power = 2.0;
+  ParseFromString("power", &args, &power); // Optional.
+  // Accept either "dim" or "input-dim" to specify the input dim.
+  // "input-dim" is the canonical one; "dim" simplifies the testing code.
+  bool ok = (ParseFromString("dim", &args, &dim) ||
+             ParseFromString("input-dim", &args, &dim));
+  if (!ok || !args.empty() || dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+  Init(dim, power);
+}
+
+void PowerComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                              int32, // num_chunks
+                              CuMatrix<BaseFloat> *out) const {
+  // Apply power operation to each element of the input...
+  out->Resize(in.NumRows(), in.NumCols(), kUndefined);
+  out->CopyFromMat(in);
+  out->ApplyPowAbs(power_);
+}
+
+void PowerComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                             const CuMatrixBase<BaseFloat> &out_value,
+                             const CuMatrixBase<BaseFloat> &out_deriv,
+                             int32, // num_chunks
+                             Component *to_update,
+                             CuMatrix<BaseFloat> *in_deriv) const {
+  in_deriv->Resize(in_value.NumRows(), in_value.NumCols());
+  // in scalar terms: in_deriv += p * in_value^(p-1) * out_deriv
+  in_deriv->CopyFromMat(in_value); 
+  in_deriv->ApplyPowAbs(power_ - 1.0, true);
+  in_deriv->Scale(power_);
+  in_deriv->MulElements(out_deriv);
+}
+
+void PowerComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<PowerComponent>", "<InputDim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<OutputDim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<Power>");
+  ReadBasicType(is, binary, &power_);
+  ExpectToken(is, binary, "</PowerComponent>");
+}
+
+void PowerComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<PowerComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<OutputDim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<Power>");
+  WriteBasicType(os, binary, power_);
+  WriteToken(os, binary, "</PowerComponent>");
+}
+
+std::string PowerComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", dim = " << dim_
+	 << ", power = " << power_;
+  return stream.str();
+}
 
 void RectifiedLinearComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                               int32, // num_chunks

@@ -387,7 +387,6 @@ static void _apply_log(Real* mat, MatrixDim d) {
     mat[index] = log(mat[index]);
 }
 
-
 template<typename Real>
 __global__
 static void _mul_elements(Real* mat, const Real* A, MatrixDim dst_d, int src_stride) {
@@ -1157,6 +1156,40 @@ static void _apply_pow(Real* mat, Real power, MatrixDim d) {
       mat[index] = sqrt(mat[index]);
     } else {
       mat[index] = pow(mat[index], power);
+    }
+  }
+}
+
+template<typename Real>
+__global__
+static void _apply_pow_abs(Real* mat, Real power, bool include_sign, MatrixDim d) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int index = i * d.stride + j;
+
+  if (i < d.rows && j < d.cols) {
+    if (include_sign == true && mat[index] < 0) {
+      if (power == 1.0) 
+        mat[index] = -std::abs(mat[index]);
+      if (power == 2.0) {
+        mat[index] = -mat[index] * mat[index];
+      } else if (power == 0.5) {
+        mat[index] = -sqrt(std::abs(mat[index]));
+      } else {
+        mat[index] = -pow(std::abs(mat[index]), power);
+      }
+    } else {
+      if (power == 1.0) 
+        mat[index] = std::abs(mat[index]);
+      if (power == 2.0) {
+        mat[index] = mat[index] * mat[index];
+      } else if (power == 0.5) {
+        mat[index] = sqrt(std::abs(mat[index]));
+      } else if (power < 0.0 && mat[index] == 0.0) {
+        mat[index] = 0.0;
+      } else {
+        mat[index] = pow(std::abs(mat[index]), power);
+      }
     }
   }
 }
@@ -1953,6 +1986,10 @@ void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d) {
   _apply_pow<<<Gr,Bl>>>(mat, power, d);
 }
 
+void cudaF_apply_pow_abs(dim3 Gr, dim3 Bl, float* mat, float power, bool include_sign, MatrixDim d) {
+  _apply_pow_abs<<<Gr,Bl>>>(mat, power, include_sign, d);
+}
+
 void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _apply_heaviside<<<Gr,Bl>>>(mat, d);
 
@@ -2370,6 +2407,10 @@ void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
 
 void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d) {
   _apply_pow<<<Gr,Bl>>>(mat, power, d);
+}
+
+void cudaD_apply_pow_abs(dim3 Gr, dim3 Bl, double* mat, double power, bool include_sign, MatrixDim d) {
+  _apply_pow_abs<<<Gr,Bl>>>(mat, power, include_sign, d);
 }
 
 void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
