@@ -4,14 +4,19 @@
 . ./path.sh
 
 #MDM - Multiple Distant Microphones
-mic=$1
 
-#AMI_DIR=/exports/work/inf_hcrc_cstr_nst/meetings/ami_corpus_wav/
-AMI_DIR=/exports/work/inf_hcrc_cstr_nst/pawel/ami/bmf_wavs/$mic
+nmics=8
+mic=mdm$nmics
+AMI_DIR=
+AMI_DIR=/gpfs/scratch/s1136550/ami/amicorpus
 
+local/ami_beamform.sh --nj 16 $nmics $AMI_DIR /disk/data1/ami
+
+exit 1;
 #PREPARE DATA STARTING FROM RT09 SEGMENTATIONS
 
-#local/ami_${mic}_data_prep_edin.sh $AMI_DIR data/local/ami_train_v1_x.segs $mic
+local/ami_text_prep.sh
+local/ami_mdm_data_prep.sh $AMI_DIR
 
 # We will keep the dict and lang the same as in IHM case
 # local/ami_prepare_dict.sh

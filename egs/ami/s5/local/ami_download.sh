@@ -11,45 +11,61 @@ fi
 mic=$1
 adir=$2
 amiurl=http://groups.inf.ed.ac.uk/ami
+annotver=ami_public_manual_1.6.1.zip
+wdir=data/local/downloads
 
-mkdir -p $adir/amicorpus
+if [[ ! "$mic" =~ ^(ihm|sdm|mdm)$ ]]; then
+  echo "$0. Wrong <mic> option." 
+  exit 1;
+fi
+
+mics="1 2 3 4 5 6 7 8"
+if [ "$mic" == "sdm" ]; then
+  mics=1
+fi
+
+mkdir -p $adir
+mkdir -p $wdir/log
 
 #download annotations
-annot="$adir/ami_public_manual_1.6.zip"
+
+annot="$adir/$annotver"
 if [[ ! -d $adir/annotations || ! -f "$annot" ]]; then
   echo "Downloading annotiations..."
-  wget -O $annot $amiurl/AMICorpusAnnotations/ami_public_manual_1.6.zip
+  wget -O $annot $amiurl/AMICorpusAnnotations/$annotver &> $wdir/log/download_ami_annot.log
   mkdir $adir/annotations
   unzip -d $adir/annotations $annot &> /dev/null
 fi
 [ ! -f "$adir/annotations/AMI-metadata.xml" ] && echo "$0: File AMI-Metadata.xml not found under $adir/annotations." && exit 1;
 
 #download waves
-ihm_template="wget -P amicorpus/IB4011/audio http://groups.inf.ed.ac.uk/ami/AMICorpusMirror//amicorpus/IB4011/audio/IB4011.Headset-3.wav"
-license="wget http://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-04237-Sun-Jun-15-2014.manifest.txt
-wget http://groups.inf.ed.ac.uk/ami/download/temp/Creative-Commons-Attribution-NonCommercial-ShareAlike-2.5.txt"
 
-wgetfile=$adir/wget_$mic.sh
+cat local/split_train.orig local/split_eval.orig local/split_dev.orig > $wdir/ami_meet_ids.flist
+
+wgetfile=$wdir/wget_$mic.sh
+manifest="wget -O $adir/MANIFEST.TXT http://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-04237-Sun-Jun-15-2014.manifest.txt"
+license="wget -O $adir/LICENCE.TXT http://groups.inf.ed.ac.uk/ami/download/temp/Creative-Commons-Attribution-NonCommercial-ShareAlike-2.5.txt"
 
 echo "#!/bin/bash" > $wgetfile
+echo $manifest >> $wgetfile
 echo $license >> $wgetfile
-
-cat local/split_train.orig local/split_eval.orig local/split_dev.orig > $adir/ami_file_ids.flist
-
-if [ "$mic" == "ihm" ]; then
-  while read line; do
-     for hid in 0 1 2 3; do
-       echo "wget -P $adir/$line/audio $amiurl/AMICorpusMirror/amicorpus/$line/audio/$line.Headset-$hid.wav" >> $wgetfile
+while read line; do
+   if [ "$mic" == "ihm" ]; then
+     for m in 0 1 2 3; do
+       echo "wget -c -P $adir/$line/audio $amiurl/AMICorpusMirror/amicorpus/$line/audio/$line.Headset-$m.wav" >> $wgetfile
      done
-  done < $adir/ami_file_ids.flist
-elif [ "$mic" == "sdm" ]; then
+   else
+     for m in $mics; do
+       echo "wget -c -P $adir/$line/audio $amiurl/AMICorpusMirror/amicorpus/$line/audio/$line.Array1-0$m.wav" >> $wgetfile
+     done
+   fi
+done < $wdir/ami_meet_ids.flist
 
-elif [ "$mic" == "mdm" ]; then
+chmod +x $wgetfile
+echo "Downloading audio files for $mic scenario."
+echo "Look at $wdir/log/download_ami_$mic.log for download progress"
 
-else
-  exit 1;
-fi
+$wgetfile &> $wdir/log/download_ami_$mic.log
 
-#chmod +x $wgetfile
-#. $wgetfile &> $adir/log/download$mic.log
+echo "Downloads of AMI corpus completed succesfully. License can be found under $adir/LICENSE.TXT"
 

@@ -24,7 +24,7 @@ if [ ! -f $wdir/transcripts0 ]; then
   echo "Parsing XML files (can take several minutes)..."
   nxtlib=$wdir/nxt/lib
   java -cp $nxtlib/nxt.jar:$nxtlib/xmlParserAPIs.jar:$nxtlib/xalan.jar:$nxtlib \
-     FunctionQuery -c $adir/annotations/AMI-metadata.xml -q '($s segment)' -atts obs who \
+     FunctionQuery -c $adir/annotations/AMI-metadata.xml -q '($s segment)(exists $w1 w):$s^$w1' -atts obs who \
      '@extract(($sp speaker)($m meeting):$m@observation=$s@obs && $m^$sp & $s@who==$sp@nxt_agent,global_name, 0)'\
      '@extract(($sp speaker)($m meeting):$m@observation=$s@obs && $m^$sp & $s@who==$sp@nxt_agent, channel, 0)' \
      transcriber_start transcriber_end starttime endtime '$s' '@extract(($w w):$s^$w & $w@punc="true", starttime,0,0)' \

@@ -1,20 +1,16 @@
 #!/bin/bash
 
-# Switchboard-1 training data preparation customized for Edinburgh
-# Author:  Arnab Ghoshal (Jan 2013)
+# Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
+# AMI Corpus training data preparation 
+# Apache 2.0
 
 # To be run from one directory above this script.
-
-## The input is some directory containing the switchboard-1 release 2
-## corpus (LDC97S62).  Note: we don't make many assumptions about how
-## you unpacked this.  We are just doing a "find" command to locate
-## the .sph files.
 
 . path.sh
 
 #check existing directories
 if [ $# != 2 ]; then
-  echo "Usage: ami_data_prep_edin.sh /path/to/SWBD"
+  echo "Usage: ami_data_prep_edin.sh /path/to/AMI"
   exit 1; 
 fi 
 

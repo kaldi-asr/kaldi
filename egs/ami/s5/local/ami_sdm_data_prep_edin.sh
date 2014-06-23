@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# Switchboard-1 training data preparation customized for Edinburgh
-# Author:  Arnab Ghoshal (Jan 2013)
-# To be run from one directory above this script.
+# Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
+# AMI Corpus dev/eval data preparation 
 
 . path.sh
 

@@ -2,7 +2,7 @@
 
 # Copyright 2014  University of Edinburgh (Author: Pawel Swietojanski)
 
-# The script splits too long AMI segments based on punctuation signs
+# The script - based on punctuation times - splits segments longer than #words (input parameter)
 # and produces bit more more normalised form of transcripts, as follows
 # MeetID Channel Spkr stime etime transcripts 
 
@@ -72,8 +72,6 @@ sub split_on_comma {
    }   
 
    print "Splitting $text on $skey at time $otime (stime is $stime)\n";  
-
-   my %transcripts = ();
    my @utts1 = split(/$skey\s+/, $text);
    for (my $i=0; $i<=$#utts1; $i++) {
      my $st = $btime;
@@ -102,13 +100,14 @@ sub split_transcripts {
   my ($text, $btime, $etime, $max_words_per_seg) = @_;
   my (@transcript) = @$text;
 
-  my (@punct_indices) = grep { $transcript[$_] =~ /^[\.,\?]$/ } 0..$#transcript;
+  my (@punct_indices) = grep { $transcript[$_] =~ /^[\.,\?\!\:]$/ } 0..$#transcript;
   my (@time_indices) = grep { $transcript[$_] =~ /^[0-9]+\.[0-9]*/ } 0..$#transcript;
   my (@puncts_times) = delete @transcript[@time_indices]; 
   my (@puncts) = @transcript[@punct_indices];
 
   if ($#puncts_times != $#puncts) {
-     die 'Ooops, different number of punctuation signs and timestamps!';
+     print 'Ooops, different number of punctuation signs and timestamps! Skipping.';
+     return ();
   }
  
   #first split on full stops
@@ -156,13 +155,12 @@ sub normalise_transcripts {
 
    #DO SOME ROUGH AND OBVIOUS PRELIMINARY NORMALISATION, AS FOLLOWS
    #remove the remaining punctation labels e.g. some text ,0 some text ,1
-   $text =~ s/[\.\,\?][0-9]+//g;
+   $text =~ s/[\.\,\?\!\:][0-9]+//g;
    #there are some extra spurious puncations without spaces, e.g. UM,I, replace with space
    $text =~ s/[A-Z']+,[A-Z']+/ /g;
-   #normalise the standalone '-' signs, e.g. IS THERE D - to IS THERE D-
-   #some extra steps will be required to agree transcripts with dict as '-'
-   #also denotes not finished sentence and may be added to the fully pronounced words
-   $text =~ s/(.*)([A-Z])\s+(\-)(.*)/$1$2$3$4/g;
+   #split words combination, ie. ANTI-TRUST to ANTI TRUST (None of them appears in cmudict anyway)
+   #$text =~ s/(.*)([A-Z])\s+(\-)(.*)/$1$2$3$4/g;
+   $text =~ s/\-/ /g;
    #substitute X_M_L with X. M. L. etc.
    $text =~ s/\_/. /g;
    #normalise and trim spaces
@@ -170,40 +168,44 @@ sub normalise_transcripts {
    $text =~ s/\s*$//g;
    $text =~ s/\s+/ /g;
    #some transcripts are empty with -, nullify (and ignore) them
-   $text =~ s/^\-$//;
+   $text =~ s/^\-$//g;
+   $text =~ s/\s+\-$//;
 
    return $text;
 }
 
 if (@ARGV != 2) {
-  print STDERR "Usage: ami_prepare_meeting.pl <meet-file> <out-file>\n";
+  print STDERR "Usage: ami_split_segments.pl <meet-file> <out-file>\n";
   exit(1);
 }
 
-my $meet_file=shift @ARGV;
-my $out_file=shift @ARGV; 
+my $meet_file = shift @ARGV;
+my $out_file = shift @ARGV; 
 my %transcripts = ();
 
 open(W, ">$out_file") || die "opening output file $out_file";
 open(S, "<$meet_file") || die "opening meeting file $meet_file";
+
 while(<S>) {
+
   my @A = split(" ", $_);
-  @A > 8 || next; 
-  my ($meet_id, $channel, $spk, $channel2, $btime, $etime, $btime2, $etime2) = @A[0..7];
+  if (@A < 9) { print "Skipping line @A"; next; }
+  
+  my ($meet_id, $channel, $spk, $channel2, $trans_btime, $trans_etime, $aut_btime, $aut_etime) = @A[0..7];
   my @transcript = @A[8..$#A];
-  my %transcript = split_transcripts(\@transcript, $btime, $etime, 25); 
+  my %transcript = split_transcripts(\@transcript, $trans_btime, $trans_etime, 30); 
+
   for my $key (keys %transcript) {
     my $value = $transcript{$key};
-    my $seg_name = "AMI_${meet_id}_H0${channel2}_${spk}_${key}"; 
-    my $text = normalise_transcripts($value); 
+    my $segment = normalise_transcripts($value); 
     my @times = split(/\_/, $key);
-    if (length($text)>0) {
-       $transcripts{$seg_name}=$text;
-       print W join " ", $seg_name, $times[0]/100.0, $times[1]/100.0, $transcripts{$seg_name}, "\n";
+    if (length($segment)>0) {
+       print W join " ", $meet_id, "H0${channel2}", $spk, $times[0]/100.0, $times[1]/100.0, $segment, "\n";
     }
   }
+
 }
 close(S);
 close(W);
 
-
+print STDERR "Finished."
