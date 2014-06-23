@@ -114,6 +114,11 @@ class Nnet {
   /// Replace any components of type AffineComponentPreconditioned with
   /// components of type AffineComponent.
   void RemovePreconditioning();
+
+  /// Replaces any components of type AffineComponentPreconditioned
+  /// with components of type AffineComponentPreconditionedOnline.
+  /// E.g. rank = 40, eta = 0.25, alpha = 4.0
+  void SwitchToOnlinePreconditioning(int32 rank, BaseFloat eta, BaseFloat alpha);
   
   /// For each updatatable component, adds to it
   /// the corresponding element of "other" times the

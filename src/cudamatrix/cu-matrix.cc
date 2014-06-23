@@ -988,13 +988,13 @@ void CuMatrixBase<Real>::AddDiagVecMat(
 
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    // Caution, this dimGrid is not the same way around as much of the other
-    // code: going forward, I want to use the (rows, cols) order.
-    dim3 dimGrid(n_blocks(num_rows_, CU2DBLOCK), n_blocks(num_cols_, CU2DBLOCK));
+
+    dim3 dimGrid(n_blocks(num_cols_, CU2DBLOCK),
+                 n_blocks(num_rows_, CU2DBLOCK));
 
     MatrixIndexT M_row_stride = M.Stride(), M_col_stride = 1;
-    if (transM == kTrans) std::swap(M_row_stride, M_col_stride);
-
+    if (transM == kTrans)
+      std::swap(M_row_stride, M_col_stride);
     cuda_add_diag_vec_mat(dimGrid, dimBlock, alpha, data_, Dim(),
                           v.Data(), M.Data(), M_row_stride, M_col_stride, beta);
     CU_SAFE_CALL(cudaGetLastError());

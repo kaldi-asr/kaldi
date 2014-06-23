@@ -472,22 +472,14 @@ void CuVectorBase<Real>::AddDiagMat2(Real alpha, const CuMatrixBase<Real> &M,
                                      MatrixTransposeType trans, Real beta) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    int dimBlock(CU1DBLOCK);
-    int dimGrid(n_blocks(dim_,CU2DBLOCK));
-    
-    if (trans == kNoTrans) {
-      cuda_add_diag_mat(dimGrid, dimBlock, alpha, data_, M.Data(), beta, M.Dim(), dim_);
-    } else {
-      cuda_add_diag_mat_trans(dimGrid, dimBlock, alpha, data_, M.Data(), beta, M.Dim(), dim_);
-    }
-    CU_SAFE_CALL(cudaGetLastError());    
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    MatrixTransposeType other_trans = (trans == kTrans ? kNoTrans : kTrans);
+    this->AddDiagMatMat(alpha, M, trans,
+                        M, other_trans, beta);
   } else
 #endif
   {
     Vec().AddDiagMat2(alpha, M.Mat(), trans, beta);
-  }  
+  }      
 }
 
 template<typename Real>
@@ -507,16 +499,22 @@ void CuVectorBase<Real>::AddDiagMatMat(
     if (transM == kTrans) std::swap(M_row_stride, M_col_stride);
     MatrixIndexT N_row_stride = N.Stride(), N_col_stride = 1;
     if (transN == kTrans) std::swap(N_row_stride, N_col_stride);
-
+    
 
     // This kernel can take a variable grid dimension, it makes use
     // of the extra threads by partitioning each vector-vector dot
     // product into multiple pieces.
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim,CU1DBLOCK));
-
     int threads_per_element = 1;
-    while (M_col_dim > 10 * threads_per_element && dimGrid < 32 && threads_per_element < 256) {
+    // dimGridLimit may be any power of two between 1 and 256 inclusive; it was
+    // determined empirically based on speed tests.
+    int dimGridLimit = (transM == kNoTrans && transN == kTrans ? 64 :
+                        (transM == kTrans && transN == kNoTrans ? 16 : 32));
+
+    
+    while (M_col_dim > 10 * threads_per_element &&
+           dimGrid < dimGridLimit && threads_per_element < 256) {
       threads_per_element *= 2;
       dimGrid = n_blocks(dim * threads_per_element, CU1DBLOCK);
     }

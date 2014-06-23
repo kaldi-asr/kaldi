@@ -368,9 +368,9 @@ class IvectorStats {
                 IvectorExtractor *extractor) const;
 
   double AuxfPerFrame() { return tot_auxf_ / gamma_.Sum(); }
-  
-  // Note: we allow the default assignment and copy operators
-  // because they do what we want.
+
+  // Copy constructor.
+  explicit IvectorStats (const IvectorStats &other);
  protected:
   friend class IvectorExtractorUpdateProjectionClass;
   friend class IvectorExtractorUpdateWeightClass;
@@ -525,6 +525,9 @@ class IvectorStats {
 
   /// Second-order stats for the iVectors.  Needed for prior re-estimation.
   SpMatrix<double> ivector_scatter_;
+
+ private:
+  IvectorStats &operator = (const IvectorStats &other);  // Disallow.
 };
 
 

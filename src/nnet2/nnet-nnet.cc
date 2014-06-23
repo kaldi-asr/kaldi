@@ -438,6 +438,28 @@ void Nnet::RemovePreconditioning() {
   Check();
 }
 
+
+void Nnet::SwitchToOnlinePreconditioning(int32 rank, BaseFloat eta, BaseFloat alpha) {
+  int32 switched = 0;
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (dynamic_cast<AffineComponentPreconditioned*>(components_[i]) != NULL) {
+      AffineComponentPreconditionedOnline *ac =
+          new AffineComponentPreconditionedOnline(
+              *(dynamic_cast<AffineComponentPreconditioned*>(components_[i])),
+              rank, eta, alpha);
+      delete components_[i];
+      components_[i] = ac;
+      switched++;
+    }
+  }
+  KALDI_LOG << "Switched " << switched << " components to use online "
+            << "preconditioning, with rank = " << rank << " and eta = "
+            << eta;
+  SetIndexes();
+  Check();
+}
+
+
 void Nnet::AddNnet(const VectorBase<BaseFloat> &scale_params,
                    const Nnet &other) {
   KALDI_ASSERT(scale_params.Dim() == this->NumUpdatableComponents());

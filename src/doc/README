@@ -34,3 +34,17 @@ ssh danielpovey,kaldi@shell.sourceforge.net create
 echo 'cd /home/project-web/kaldi/htdocs/; rm -rf html;
      tar -xzf html.tar.gz; for x in html/*; do mv $x .; done ' \
    | ssh danielpovey,kaldi@shell.sourceforge.net bash
+
+
+# You could uncomment and run the lines below as an example of how to figure out
+# the amount of posts to the Kaldi forums on Sourceforge, per month.
+#curl 'http://sourceforge.net/p/kaldi/discussion/stats_data?forum=&begin=2011-04-14&end=2014-06-13'  > foo
+#cat foo |  perl -ane ' s/.*://; @A = split("]"); 
+#   foreach $a(@A){ $a =~ s/[,\[]//g; print "$a\n"; }' | \
+# perl -e 'while(<>) { @A = split; if (@A == 2) { ($date, $count) = @A;  $date /= 1000; 
+#  @date_array = gmtime $date; $month = $date_array[4]; $year = 1900 + $date_array[5]; $count{$year. " " .sprintf("%02d", $month+1)} +=  $count; }}
+#  foreach $k (sort keys %count) { print "$k $count{$k}\n"; } '
+
+# I added figures that I manually excerpted from https://sourceforge.net/p/kaldi/mailman/kaldi-users/?viewmonth=201203
+# and https://sourceforge.net/p/kaldi/mailman/kaldi-developers/?viewmonth=201203
+# this is june 13, 2014, 6:11pm, check my email.

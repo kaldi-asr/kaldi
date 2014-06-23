@@ -246,7 +246,7 @@ template<typename Real> static void UnitTestAddSp() {
 }
 
 template<typename Real, typename OtherReal>
-static void UnitTestSpAddVec() {
+static void UnitTestSpAddDiagVec() {
   for (MatrixIndexT i = 0;i< 10;i++) {
     BaseFloat alpha = (i<5 ? 1.0 : 0.5);
     MatrixIndexT dimM = 10+rand()%10;
@@ -255,7 +255,7 @@ static void UnitTestSpAddVec() {
     SpMatrix<Real> T(S);
     Vector<OtherReal> v(dimM);
     InitRand(&v);
-    S.AddVec(alpha, v);
+    S.AddDiagVec(alpha, v);
     for (MatrixIndexT i = 0; i < dimM; i++)
       T(i, i) += alpha * v(i);
     AssertEqual(S, T);
@@ -1514,19 +1514,35 @@ static void UnitTestTridiagonalize() {
   }
   for (MatrixIndexT i = 0; i < 4; i++) {
     MatrixIndexT dim = 40 + rand() % 4;
+    // We happened to find out that a 16x16 matrix of 27's causes problems for
+    // Tridiagonalize.
+    if (i == 0 || i == 1)
+      dim = 16;
     SpMatrix<Real> S(dim), S2(dim), R(dim), S3(dim);
     Matrix<Real> Q(dim, dim);
     InitRand(&S);
+    if (i == 0 || i == 1) {
+      Matrix<Real> temp(dim, dim);
+      if (i == 0)
+        temp.Set(27.0);
+      else
+        temp.Set(-1.61558713e-27);
+      S.CopyFromMat(temp);
+    }
     SpMatrix<Real> T(S);
     T.Tridiagonalize(&Q);
     KALDI_LOG << "S trace " << S.Trace() << ", T trace " << T.Trace();
-    //KALDI_LOG << S << "\n" << T;
+    // KALDI_LOG << S << "\n" << T;
     AssertEqual(S.Trace(), T.Trace());
     // Also test Trace().
     Real ans = 0.0;
     for (MatrixIndexT j = 0; j < dim; j++) ans += T(j, j);
     AssertEqual(ans, T.Trace());
-    AssertEqual(T.LogDet(), S.LogDet());
+    if (S.LogDet() > -50.0) {
+      // don't check logdet equality if original logdet is very negative- could
+      // be singular.
+      AssertEqual(T.LogDet(), S.LogDet());
+    }
     R.AddMat2(1.0, Q, kNoTrans, 0.0);
     KALDI_LOG << "Non-unit-ness of R is " << NonUnitness(R);
     KALDI_ASSERT(R.IsUnit(0.01)); // Check Q is orthogonal.
@@ -2854,7 +2870,7 @@ template<typename Real> static void UnitTestSymAddMat2() {
     T2.CopyFromMat(M2);
     Matrix<Real> X1(T1), X2(T2); // so we can test equality.                                                                  
     AssertEqual(X1, X2);
-    KALDI_ASSERT(dimM == 0 || X1.Trace() != 0);
+    KALDI_ASSERT(dimM == 0 || X1.Trace() != 0 || (alpha == 0 && beta == 0));
   }
 }
 
@@ -4110,6 +4126,8 @@ static void UnitTestTopEigs() {
 }
 
 template<typename Real> static void MatrixUnitTest(bool full_test) {
+  UnitTestTridiagonalize<Real>();
+  UnitTestTridiagonalizeAndQr<Real>();  
   UnitTestAddMatSmat<Real>();
   UnitTestFloorChol<Real>();
   UnitTestFloorUnit<Real>();
@@ -4126,8 +4144,6 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestComplexPower<Real>();
   UnitTestEig<Real>();
   UnitTestEigSp<Real>();
-  UnitTestTridiagonalize<Real>();
-  UnitTestTridiagonalizeAndQr<Real>();  
   // commenting these out for now-- they test the speed, but take a while.
   // UnitTestSplitRadixRealFftSpeed<Real>();
   // UnitTestRealFftSpeed<Real>();   // won't exit!/
@@ -4144,8 +4160,8 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestSvd<Real>();
   UnitTestSvdNodestroy<Real>();
   UnitTestSvdJustvec<Real>();
-  UnitTestSpAddVec<Real, float>();
-  UnitTestSpAddVec<Real, double>();
+  UnitTestSpAddDiagVec<Real, float>();
+  UnitTestSpAddDiagVec<Real, double>();
   UnitTestSpAddVecVec<Real>();
   UnitTestSpInvert<Real>();
   KALDI_LOG << " Point D";
@@ -4256,8 +4272,8 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
 int main() {
   using namespace kaldi;
   bool full_test = false;
-  kaldi::MatrixUnitTest<double>(full_test);
   kaldi::MatrixUnitTest<float>(full_test);
+  kaldi::MatrixUnitTest<double>(full_test);
   KALDI_LOG << "Tests succeeded.\n";
 
 }

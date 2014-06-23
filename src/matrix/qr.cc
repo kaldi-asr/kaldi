@@ -95,33 +95,36 @@ void HouseBackward(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
   // doesn't dominate the O(N) performance of the algorithm.
   Real s; // s is a scale on x.
   {
-    Real max_x = 0.0;
-    for (MatrixIndexT i = 1; i < dim; i++)
+    Real max_x = std::numeric_limits<Real>::min();
+    for (MatrixIndexT i = 0; i < dim; i++)
       max_x = std::max(max_x, (x[i] < 0 ? -x[i] : x[i]));
-    if (max_x == 0.0) max_x = 1.0;
     s = 1.0 / max_x;
   }
   Real sigma = 0.0;
   v[dim-1] = 1.0;
   for (MatrixIndexT i = 0; i + 1  < dim; i++) {
-    sigma += (x[i]*s) * (x[i]*s);
-    v[i] = x[i]*s;
+    sigma += (x[i] * s) * (x[i] * s);
+    v[i] = x[i] * s;
   }
-  KALDI_ASSERT(!KALDI_ISNAN(sigma) &&
+  KALDI_ASSERT(KALDI_ISFINITE(sigma) &&
                "Tridiagonalizing matrix that is too large or has NaNs.");
   if (sigma == 0.0) *beta = 0.0;
   else {
-    Real x1 = x[dim-1]*s, mu = std::sqrt(x1*x1 + sigma);
+    Real x1 = x[dim-1] * s, mu = std::sqrt(x1 * x1 + sigma);
     if (x1 <= 0) {
       v[dim-1] = x1 - mu;
     } else {
       v[dim-1] = -sigma / (x1 + mu);
+      KALDI_ASSERT(KALDI_ISFINITE(v[dim-1]));
     }
     Real v1 = v[dim-1];
     Real v1sq = v1 * v1;
     *beta = 2 * v1sq / (sigma + v1sq);
     Real inv_v1 = 1.0 / v1;
     for (MatrixIndexT i = 0; i < dim; i++) v[i] *= inv_v1;
+    if (!KALDI_ISFINITE(inv_v1) || !KALDI_ISFINITE(x1)) {
+      KALDI_ERR << "NaN or inf encountered in HouseBackward";
+    }
   }
 }
 
@@ -282,8 +285,8 @@ void QrStep(MatrixIndexT n,
        // two off the diagonal, and not been touched yet.  Therefore
       // we eliminate it in expressions below, commenting it out.
       // If we didn't do this we should set it to zero first.
-      elem_kp2_k =  - s*elem_kp2_kp1; // + c*elem_kp2_k
-      elem_kp2_kp1 =  c*elem_kp2_kp1; // + s*elem_kp2_k (original value).
+      elem_kp2_k =  - s * elem_kp2_kp1; // + c*elem_kp2_k
+      elem_kp2_kp1 =  c * elem_kp2_kp1; // + s*elem_kp2_k (original value).
       // The next part is from the algorithm they describe: x = t_{k+1,k}
       x = off_diag[k];
     }
@@ -304,7 +307,7 @@ void QrInternal(MatrixIndexT n,
 
   MatrixIndexT counter = 0, max_iters = 500 + 4*n, // Should never take this many iters.
       large_iters = 100 + 2*n;
-  Real epsilon = (pow(2.0, sizeof(Real) == 4 ? -23.0 : -52.0));
+  Real epsilon = (pow(2.0, sizeof(Real) == 4 ? -22.0 : -51.0));
   
   for (; counter < max_iters; counter++) { // this takes the place of "until
                                            // q=n"... we'll break out of the
@@ -425,10 +428,16 @@ void SpMatrix<Real>::TopEigs(VectorBase<Real> *s, MatrixBase<Real> *P,
   if (lanczos_dim <= 0)
     lanczos_dim = std::max(eig_dim + 50, eig_dim + eig_dim/2);
   MatrixIndexT dim = this->NumRows();
-  if (lanczos_dim > dim) {
-    KALDI_WARN << "Limiting lanczos dim from " << lanczos_dim << " to "
-               << dim << " (you will get no speed advantage from TopEigs())";
-    lanczos_dim = dim;
+  if (lanczos_dim >= dim) {
+    // There would be no speed advantage in using this method, so just
+    // use the regular approach.
+    Vector<Real> s_tmp(dim);
+    Matrix<Real> P_tmp(dim, dim);
+    this->Eig(&s_tmp, &P_tmp);
+    SortSvd(&s_tmp, &P_tmp);
+    s->CopyFromVec(s_tmp.Range(0, eig_dim));
+    P->CopyFromMat(P_tmp.Range(0, dim, 0, eig_dim));
+    return;
   }
   KALDI_ASSERT(eig_dim <= dim && eig_dim > 0);
   KALDI_ASSERT(P->NumRows() == dim && P->NumCols() == eig_dim); // each column
