@@ -1862,8 +1862,17 @@ void AffineComponentPreconditionedOnline::Read(std::istream &is, bool binary) {
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
-  ExpectToken(is, binary, "<Rank>");
-  ReadBasicType(is, binary, &rank_);
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<Rank>") {  // back-compatibility (temporary)
+    ReadBasicType(is, binary, &rank_in_);
+    rank_out_ = rank_in_;
+  } else {
+    KALDI_ASSERT(tok == "<RankIn>");
+    ReadBasicType(is, binary, &rank_in_);
+    ExpectToken(is, binary, "<RankOut>");
+    ReadBasicType(is, binary, &rank_out_);    
+  }
   ExpectToken(is, binary, "<NumSamplesHistory>");
   ReadBasicType(is, binary, &num_samples_history_);
   ExpectToken(is, binary, "<Alpha>");
@@ -1881,15 +1890,17 @@ void AffineComponentPreconditionedOnline::InitFromString(std::string args) {
   BaseFloat learning_rate = learning_rate_;
   BaseFloat num_samples_history = 2000.0, alpha = 4.0,
       max_change_per_sample = 0.1;
-  int32 input_dim = -1, output_dim = -1, rank = 40;
+  int32 input_dim = -1, output_dim = -1, rank_in = 30, rank_out = 80;
   ParseFromString("learning-rate", &args, &learning_rate); // optional.
   ParseFromString("num-samples-history", &args, &num_samples_history);
   ParseFromString("alpha", &args, &alpha);
   ParseFromString("max-change-per-sample", &args, &max_change_per_sample);
-  ParseFromString("rank", &args, &rank);
+  ParseFromString("rank-in", &args, &rank_in);
+  ParseFromString("rank-out", &args, &rank_out);
 
   if (ParseFromString("matrix", &args, &matrix_filename)) {
-    Init(learning_rate, rank, num_samples_history, alpha, max_change_per_sample,
+    Init(learning_rate, rank_in, rank_out,
+         num_samples_history, alpha, max_change_per_sample,
          matrix_filename);
     if (ParseFromString("input-dim", &args, &input_dim))
       KALDI_ASSERT(input_dim == InputDim() &&
@@ -1905,7 +1916,8 @@ void AffineComponentPreconditionedOnline::InitFromString(std::string args) {
     ParseFromString("param-stddev", &args, &param_stddev);
     ParseFromString("bias-stddev", &args, &bias_stddev);
     Init(learning_rate, input_dim, output_dim, param_stddev,
-         bias_stddev, rank, num_samples_history, alpha, max_change_per_sample);
+         bias_stddev, rank_in, rank_out,
+         num_samples_history, alpha, max_change_per_sample);
   }
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: "
@@ -1915,21 +1927,22 @@ void AffineComponentPreconditionedOnline::InitFromString(std::string args) {
 }
 
 void AffineComponentPreconditionedOnline::SetPreconditionerConfigs() {
-  preconditioner_in_.SetRank(rank_);
+  preconditioner_in_.SetRank(rank_in_);
   preconditioner_in_.SetNumSamplesHistory(num_samples_history_);
   preconditioner_in_.SetAlpha(alpha_);
-  preconditioner_out_.SetRank(rank_);
+  preconditioner_out_.SetRank(rank_out_);
   preconditioner_out_.SetNumSamplesHistory(num_samples_history_);
   preconditioner_out_.SetAlpha(alpha_);
 }
 
 void AffineComponentPreconditionedOnline::Init(
-    BaseFloat learning_rate, int32 rank,
+    BaseFloat learning_rate, int32 rank_in, int32 rank_out,
     BaseFloat num_samples_history, BaseFloat alpha,
     BaseFloat max_change_per_sample,
     std::string matrix_filename) {
   UpdatableComponent::Init(learning_rate);
-  rank_ = rank;
+  rank_in_ = rank_in;
+  rank_out_ = rank_out;
   num_samples_history_ = num_samples_history;
   alpha_ = alpha;
   SetPreconditionerConfigs();
@@ -1947,13 +1960,15 @@ void AffineComponentPreconditionedOnline::Init(
 
 AffineComponentPreconditionedOnline::AffineComponentPreconditionedOnline(
     const AffineComponentPreconditioned &orig,
-    int32 rank, BaseFloat num_samples_history, BaseFloat alpha):
+    int32 rank_in, int32 rank_out,
+    BaseFloat num_samples_history, BaseFloat alpha):
     max_change_per_sample_(0.1) {
   this->linear_params_ = orig.linear_params_;
   this->bias_params_ = orig.bias_params_;
   this->learning_rate_ = orig.learning_rate_;
   this->is_gradient_ = orig.is_gradient_;
-  this->rank_ = rank;
+  this->rank_in_ = rank_in;
+  this->rank_out_ = rank_out;
   this->num_samples_history_ = num_samples_history;
   this->alpha_ = alpha;
   SetPreconditionerConfigs();
@@ -1963,8 +1978,8 @@ void AffineComponentPreconditionedOnline::Init(
     BaseFloat learning_rate, 
     int32 input_dim, int32 output_dim,
     BaseFloat param_stddev, BaseFloat bias_stddev,
-    int32 rank, BaseFloat num_samples_history, BaseFloat alpha,
-    BaseFloat max_change_per_sample) {
+    int32 rank_in, int32 rank_out, BaseFloat num_samples_history,
+    BaseFloat alpha, BaseFloat max_change_per_sample) {
   UpdatableComponent::Init(learning_rate);
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
@@ -1974,7 +1989,8 @@ void AffineComponentPreconditionedOnline::Init(
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
   bias_params_.Scale(bias_stddev);
-  rank_ = rank;
+  rank_in_ = rank_in;
+  rank_out_ = rank_out;
   num_samples_history_ = num_samples_history;
   alpha_ = alpha;
   SetPreconditionerConfigs();
@@ -1994,8 +2010,10 @@ void AffineComponentPreconditionedOnline::Write(std::ostream &os, bool binary) c
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
-  WriteToken(os, binary, "<Rank>");
-  WriteBasicType(os, binary, rank_);
+  WriteToken(os, binary, "<RankIn>");
+  WriteBasicType(os, binary, rank_in_);
+  WriteToken(os, binary, "<RankOut>");
+  WriteBasicType(os, binary, rank_out_);
   WriteToken(os, binary, "<NumSamplesHistory>");
   WriteBasicType(os, binary, num_samples_history_);
   WriteToken(os, binary, "<Alpha>");
@@ -2019,7 +2037,8 @@ std::string AffineComponentPreconditionedOnline::Info() const {
          << ", linear-params-stddev=" << linear_stddev
          << ", bias-params-stddev=" << bias_stddev
          << ", learning-rate=" << LearningRate()
-         << ", rank=" << rank_
+         << ", rank-in=" << rank_in_
+         << ", rank-out=" << rank_out_
          << ", num_samples_history=" << num_samples_history_
          << ", alpha=" << alpha_
          << ", max-change-per-sample=" << max_change_per_sample_;
@@ -2029,7 +2048,8 @@ std::string AffineComponentPreconditionedOnline::Info() const {
 Component* AffineComponentPreconditionedOnline::Copy() const {
   AffineComponentPreconditionedOnline *ans = new AffineComponentPreconditionedOnline();
   ans->learning_rate_ = learning_rate_;
-  ans->rank_ = rank_;
+  ans->rank_in_ = rank_in_;
+  ans->rank_out_ = rank_out_;
   ans->num_samples_history_ = num_samples_history_;
   ans->alpha_ = alpha_;
   ans->linear_params_ = linear_params_;

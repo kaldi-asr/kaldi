@@ -39,18 +39,20 @@ int main(int argc, char *argv[]) {
         "e.g.:\n"
         " nnet-am-switch-preconditioning --binary=false 1.mdl text.mdl\n";
 
-    int32 rank = 40;
-    BaseFloat eta = 0.25;
+    int32 rank_in = 20, rank_out = 80;
+    BaseFloat num_samples_history = 2000.0;
     BaseFloat alpha = 4.0;
     bool binary_write = true;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("rank", &rank,
-                "Rank used in online-preconditioning");
-    po.Register("eta", &eta,
-                "Parameter that affects speed of update of subspace in "
-                "online preconditioning (larger -> slower).");
+    po.Register("rank-in", &rank_in,
+                "Rank used in online-preconditioning on input side of each layer");
+    po.Register("rank-out", &rank_out,
+                "Rank used in online-preconditioning on output side of each layer");
+    po.Register("num-samples-history", &num_samples_history,
+                "Number of samples of history to use in online preconditioning "
+                "(affects speed vs accuracy of update of Fisher matrix)");
     po.Register("alpha", &alpha,
                 "Parameter that affects amount of smoothing with unit matrix "
                 "in online preconditioning (larger -> more smoothing)");
@@ -74,7 +76,8 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary);
     }
 
-    am_nnet.GetNnet().SwitchToOnlinePreconditioning(rank, eta, alpha);
+    am_nnet.GetNnet().SwitchToOnlinePreconditioning(rank_in, rank_out,
+                                                    num_samples_history, alpha);
     
     {
       Output ko(nnet_wxfilename, binary_write);

@@ -178,13 +178,14 @@ fi
 if [ $stage -le 2 ]; then
   echo "Getting validation and training subset examples."
   rm $dir/.error 2>/dev/null
+  all_ids=$(seq -s, $nj)  # e.g. 1,2,...39,40
   $cmd $dir/log/create_valid_subset.log \
     nnet-get-egs $nnet_context_opts "${spk_vecs_opt[@]}" "$valid_feats" \
-     "ark,cs:gunzip -c $alidir/ali.*.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
+     "ark,s,cs:gunzip -c $alidir/ali.{$all_ids}.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/egs/valid_all.egs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     nnet-get-egs $nnet_context_opts "${spk_vecs_opt[@]}" "$train_subset_feats" \
-     "ark,cs:gunzip -c $alidir/ali.*.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
+     "ark,s,cs:gunzip -c $alidir/ali.{$all_ids}.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/egs/train_subset_all.egs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && exit 1;

@@ -855,9 +855,11 @@ class AffineComponentPreconditionedOnline: public AffineComponent {
   void Init(BaseFloat learning_rate,
             int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev,
-            int32 rank, BaseFloat eta, BaseFloat alpha,
+            int32 rank_in, int32 rank_out,
+            BaseFloat num_samples_history, BaseFloat alpha,
             BaseFloat max_change_per_sample);
-  void Init(BaseFloat learning_rate, int32 rank, BaseFloat eta,
+  void Init(BaseFloat learning_rate, int32 rank_in,
+            int32 rank_out, BaseFloat num_samples_history,
             BaseFloat alpha, BaseFloat max_change_per_sample,
             std::string matrix_filename);
 
@@ -865,7 +867,8 @@ class AffineComponentPreconditionedOnline: public AffineComponent {
   // through training, from AffineComponentPreconditioned to
   // AffineComponentPreconditionedOnline.
   AffineComponentPreconditionedOnline(const AffineComponentPreconditioned &orig,
-                                      int32 rank, BaseFloat eta, BaseFloat alpha);
+                                      int32 rank_in, int32 rank_out,
+                                      BaseFloat eta, BaseFloat alpha);
   
   virtual void InitFromString(std::string args);
   virtual std::string Info() const;
@@ -876,8 +879,10 @@ class AffineComponentPreconditionedOnline: public AffineComponent {
   KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponentPreconditionedOnline);
 
 
-  // Configs for preconditioner:
-  int32 rank_;
+  // Configs for preconditioner.  The input side tends to be better conditioned ->
+  // smaller rank needed, so make them separately configurable.
+  int32 rank_in_;
+  int32 rank_out_;
   BaseFloat num_samples_history_;
   BaseFloat alpha_;
   

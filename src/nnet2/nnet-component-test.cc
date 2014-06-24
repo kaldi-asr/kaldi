@@ -424,13 +424,13 @@ void UnitTestAffineComponentPreconditionedOnline() {
       param_stddev = 0.1, bias_stddev = 1.0, num_samples_history = 2000.0, alpha = 4.0,
       max_change_per_sample = 0.1;
   int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10,
-      rank = 1 + rand() % 4;
+      rank_in = 1 + rand() % 5, rank_out = 1 + rand() % 5;
   {
     AffineComponentPreconditionedOnline component;
     if (rand() % 2 == 0) {
       component.Init(learning_rate, input_dim, output_dim,
                      param_stddev, bias_stddev,
-                     rank, num_samples_history, alpha,
+                     rank_in, rank_out, num_samples_history, alpha,
                      max_change_per_sample);
     } else {
       Matrix<BaseFloat> mat(output_dim + 1, input_dim);
@@ -438,13 +438,14 @@ void UnitTestAffineComponentPreconditionedOnline() {
       mat.Scale(param_stddev);
       WriteKaldiObject(mat, "tmpf", true);
       sleep(1);
-      component.Init(learning_rate, rank, num_samples_history, alpha,
+      component.Init(learning_rate, rank_in, rank_out,
+                     num_samples_history, alpha,
                      max_change_per_sample, "tmpf");
     }
     UnitTestGenericComponentInternal(component);
   }
   {
-    const char *str = "learning-rate=0.01 input-dim=16 output-dim=15 param-stddev=0.1 num-samples-history=3000 alpha=2.0 rank=5";
+    const char *str = "learning-rate=0.01 input-dim=16 output-dim=15 param-stddev=0.1 num-samples-history=3000 alpha=2.0 rank-in=5 rank-out=6";
     AffineComponentPreconditionedOnline component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);
