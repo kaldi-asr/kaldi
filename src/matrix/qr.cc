@@ -227,10 +227,18 @@ void QrStep(MatrixIndexT n,
             Real *off_diag,
             MatrixBase<Real> *Q) {
   KALDI_ASSERT(n >= 2);
+  // below, "scale" could be any number; we introduce it to keep the
+  // floating point quantities within a good range.
   Real   d = (diag[n-2] - diag[n-1]) / 2.0,
-      t2_n_n1 = off_diag[n-2]*off_diag[n-2],
-      sgn_d = (d > 0.0 ? 1.0 : (d < 0.0 ? -1.0 : 0.0)),
-      mu = diag[n-1] - t2_n_n1 / (d + sgn_d*std::sqrt(d*d + t2_n_n1)),
+      t = off_diag[n-2],
+      inv_scale = std::max(std::abs(d), std::abs(t)),
+      scale = 1.0 / inv_scale,
+      d_scaled = d * scale,
+      off_diag_n2_scaled = off_diag[n-2] * scale,
+      t2_n_n1_scaled = off_diag_n2_scaled * off_diag_n2_scaled,
+      sgn_d = (d > 0.0 ? 1.0 : -1.0),
+      mu = diag[n-1] - inv_scale * t2_n_n1_scaled /
+      (d_scaled + sgn_d * std::sqrt(d_scaled * d_scaled + t2_n_n1_scaled)),
       x = diag[0] - mu,
       z = off_diag[0];
   Real *Qdata = (Q == NULL ? NULL : Q->Data());
@@ -307,7 +315,7 @@ void QrInternal(MatrixIndexT n,
 
   MatrixIndexT counter = 0, max_iters = 500 + 4*n, // Should never take this many iters.
       large_iters = 100 + 2*n;
-  Real epsilon = (pow(2.0, sizeof(Real) == 4 ? -22.0 : -51.0));
+  Real epsilon = (pow(2.0, sizeof(Real) == 4 ? -23.0 : -52.0));
   
   for (; counter < max_iters; counter++) { // this takes the place of "until
                                            // q=n"... we'll break out of the

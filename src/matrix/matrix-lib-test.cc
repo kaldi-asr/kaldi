@@ -553,7 +553,6 @@ static void UnitTestSimpleForVec() {  // testing some simple operaters on vector
     Real b = V.ApplySoftMax();
     AssertEqual(V1, V);
     AssertEqual(a, b);
-    KALDI_LOG << "a = " << a << ", b = " << b;
   }
 
   for (MatrixIndexT i = 0; i < 5; i++) {
@@ -687,9 +686,6 @@ static void UnitTestCopyRows() {
         if (reorder[i] < 0) O(i, j) = 0;
         else O(i, j) = M(reorder[i], j);
     
-    KALDI_LOG << "M is " << M;
-    KALDI_LOG << "N is " << N;
-    KALDI_LOG << "O is " << O;
     AssertEqual(N, O);
   }
 }
@@ -714,9 +710,6 @@ static void UnitTestCopyCols() {
       for (int32 j = 0; j < num_cols2; j++)
         if (reorder[j] < 0) O(i, j) = 0;
         else O(i, j) = M(i, reorder[j]);
-    KALDI_LOG << "M is " << M;
-    KALDI_LOG << "N is " << N;
-    KALDI_LOG << "O is " << O;
     AssertEqual(N, O);
   }
 }
@@ -781,9 +774,6 @@ static void UnitTestSimpleForMat() {  // test some simple operates on all kinds 
   y.SetZero();
   y.Cholesky(x);
 
-  KALDI_LOG << "Matrix y is a lower triangular Cholesky decomposition of x:"
-            << '\n';
-  KALDI_LOG << y << '\n';
 
   // test sp-matrix's LogPosDefDet() function
   Matrix<Real> B(x);
@@ -1521,6 +1511,12 @@ static void UnitTestTridiagonalize() {
     SpMatrix<Real> S(dim), S2(dim), R(dim), S3(dim);
     Matrix<Real> Q(dim, dim);
     InitRand(&S);
+    // Very small or large scaling is challenging to qr due to squares that
+    // could go out of range.
+    if (rand() % 3 == 0)
+      S.Scale(1.0e-15); 
+    else if (rand() % 2 == 0)
+      S.Scale(1.0e+15);
     if (i == 0 || i == 1) {
       Matrix<Real> temp(dim, dim);
       if (i == 0)
