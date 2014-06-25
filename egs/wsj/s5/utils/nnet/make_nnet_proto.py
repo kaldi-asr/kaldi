@@ -116,7 +116,7 @@ for i in range(num_hid_layers-1):
 if o.bottleneck_dim != 0:
   assert(o.bottleneck_dim > 0)
   # 25% smaller stddev -> small bottleneck range, 10x smaller learning rate
-  print "<AffineTransformNobias> <InputDim> %d <OutputDim> %d <ParamStddev> %f <LearnRateCoef> %f" % \
+  print "<LinearTransform> <InputDim> %d <OutputDim> %d <ParamStddev> %f <LearnRateCoef> %f" % \
    (num_hid_neurons, o.bottleneck_dim, \
     (o.param_stddev_factor * Glorot(num_hid_neurons, o.bottleneck_dim) * 0.75 ), 0.1)
   # 25% smaller stddev -> smaller gradient in prev. layer, 10x smaller learning rate for weigts & biases

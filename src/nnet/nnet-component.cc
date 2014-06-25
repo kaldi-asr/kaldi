@@ -23,7 +23,7 @@
 #include "nnet/nnet-activation.h"
 #include "nnet/nnet-kl-hmm.h"
 #include "nnet/nnet-affine-transform.h"
-#include "nnet/nnet-affine-transform-nobias.h"
+#include "nnet/nnet-linear-transform.h"
 #include "nnet/nnet-rbm.h"
 #include "nnet/nnet-various.h"
 #include "nnet/nnet-kl-hmm.h"
@@ -46,7 +46,7 @@ namespace nnet1 {
 
 const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kAffineTransform,"<AffineTransform>" },
-  { Component::kAffineTransformNobias,"<AffineTransformNobias>" },
+  { Component::kLinearTransform,"<LinearTransform>" },
   { Component::kConvolutionalComponent,"<ConvolutionalComponent>"},
   { Component::kConvolutional2DComponent,"<Convolutional2DComponent>"},
   { Component::kSoftmax,"<Softmax>" },
@@ -99,8 +99,8 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
     case Component::kAffineTransform :
       ans = new AffineTransform(input_dim, output_dim); 
       break;
-    case Component::kAffineTransformNobias :
-      ans = new AffineTransformNobias(input_dim, output_dim); 
+    case Component::kLinearTransform :
+      ans = new LinearTransform(input_dim, output_dim); 
       break;
     case Component::kConvolutionalComponent :
       ans = new ConvolutionalComponent(input_dim, output_dim);
