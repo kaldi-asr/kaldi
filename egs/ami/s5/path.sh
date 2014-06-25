@@ -10,7 +10,7 @@ KALDIBIN=$KALDIBIN:$KALDISRC/sgmmbin:$KALDISRC/tiedbin
 
 FSTBIN=$KALDI_ROOT/tools/openfst/bin
 LMBIN=$KALDI_ROOT/tools/irstlm/bin
-BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt-3.5
+BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt-3.51
 
 [ -d $PWD/local ] || { echo "Error: 'local' subdirectory not found."; }
 [ -d $PWD/utils ] || { echo "Error: 'utils' subdirectory not found."; }

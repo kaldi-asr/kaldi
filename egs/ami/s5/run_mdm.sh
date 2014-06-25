@@ -8,9 +8,10 @@
 nmics=8
 mic=mdm$nmics
 AMI_DIR=
-AMI_DIR=/gpfs/scratch/s1136550/ami/amicorpus
+#AMI_DIR=/gpfs/scratch/s1136550/ami/amicorpus
+AMI_DIR=/disk/data2/amicorpus
 
-local/ami_beamform.sh --nj 16 $nmics $AMI_DIR /disk/data1/ami
+local/ami_beamform.sh --nj 12 $nmics $AMI_DIR /disk/data1/ami
 
 exit 1;
 #PREPARE DATA STARTING FROM RT09 SEGMENTATIONS

@@ -6,19 +6,17 @@
 . path.sh
 
 #check existing directories
-if [ $# != 3 ]; then
-  echo "Usage: scoring_data_prep_edin.sh /path/to/SWBD rt09-seg-file set-name"
+if [ $# != 2 ]; then
+  echo "Usage: ami_*_scoring_data_prep_edin.sh /path/to/AMI  set-name"
   exit 1; 
 fi 
 
 AMI_DIR=$1
-RT09_SEGS=$2 #assuming here all normalisation stuff was done
-SET=$3
+SET=$2
+SEGS=data/local/annotations/$SET.txt
 
-tmpdir=data/local/ihm/$SET
-dir=data/ihm/$SET
-
-mkdir -p $tmpdir
+dir=data/local/ihm/$SET
+mkdir -p $dir
 
 # Audio data directory check
 if [ ! -d $AMI_DIR ]; then
@@ -26,39 +24,47 @@ if [ ! -d $AMI_DIR ]; then
   exit 1; 
 fi  
 
+# And transcripts check
+if [ ! -f $SEGS ]; then
+  echo "Error: File $SEGS no found (run ami_text_prep.sh)."
+  exit 1;
+fi
+
 # find headset wav audio files only, here we again get all
 # the files in the corpora and filter only specific sessions
 # while building segments
 
-find $AMI_DIR -iname '*.Headset-*.wav' | sort > $tmpdir/wav.flist
-n=`cat $tmpdir/wav.flist | wc -l`
+find $AMI_DIR -iname '*.Headset-*.wav' | sort > $dir/wav.flist
+n=`cat $dir/wav.flist | wc -l`
 echo "In total, $n headset files were found."
+[ $n -ne 684 ] && \
+  echo "Warning: expected 684 (171 meetings x 4 headsets) data files, found $n"
 
 # (1a) Transcriptions preparation
-# here we start with rt09 transcriptions, hence not much to do
+# here we start with normalised transcriptions, the utt ids follow the convention
+# AMI_MEETING_CHAN_SPK_STIME_ETIME
+# AMI_ES2011a_H00_FEE041_0003415_0003484
 
-cut -d" " -f1,4- $RT09_SEGS | sort > $tmpdir/text
+awk '{meeting=$1; channel=$2; speaker=$3; stime=$4; etime=$5;
+ printf("AMI_%s_%s_%s_%07.0f_%07.0f", meeting, channel, speaker, int(100*stime+0.5), int(100*etime+0.5));
+ for(i=6;i<=NF;i++) printf(" %s", $i); printf "\n"}' $SEGS | sort  > $dir/text
 
 # (1c) Make segment files from transcript
 #segments file format is: utt-id side-id start-time end-time, e.g.:
-#AMI_ES2011a_H00_FEE041_0003415_0003484
+
 awk '{ 
        segment=$1;
        split(segment,S,"[_]");
        audioname=S[1]"_"S[2]"_"S[3]; startf=S[5]; endf=S[6];
        print segment " " audioname " " startf*10/1000 " " endf*10/1000 " " 0
-}' < $tmpdir/text > $tmpdir/segments
+}' < $dir/text > $dir/segments
 
-#EN2001a.Headset-0.wav
-#sed -e 's?.*/??' -e 's?.sph??' $dir/wav.flist | paste - $dir/wav.flist \
-#  > $dir/wav.scp
-
-sed -e 's?.*/??' -e 's?.wav??' $tmpdir/wav.flist | \
+sed -e 's?.*/??' -e 's?.wav??' $dir/wav.flist | \
  perl -ne 'split; $_ =~ m/(.*)\..*\-([0-9])/; print "AMI_$1_H0$2\n"' | \
-  paste - $tmpdir/wav.flist > $tmpdir/wav.scp
+  paste - $dir/wav.flist > $dir/wav.scp
 
 #Keep only devset part of waves
-awk '{print $2}' $tmpdir/segments | sort -u | join - $tmpdir/wav.scp | sort -o $tmpdir/wav.scp
+awk '{print $2}' $dir/segments | sort -u | join - $dir/wav.scp | sort -o $dir/wav.scp
 
 # this file reco2file_and_channel maps recording-id (e.g. sw02001-A)
 # to the file name sw02001 and the A, e.g.
@@ -66,29 +72,28 @@ awk '{print $2}' $tmpdir/segments | sort -u | join - $tmpdir/wav.scp | sort -o $
 # In this case it's trivial, but in other corpora the information might
 # be less obvious.  Later it will be needed for ctm scoring.
 
-awk '{print $1 $2}' $tmpdir/wav.scp | \
+awk '{print $1 $2}' $dir/wav.scp | \
   perl -ane '$_ =~ m:^(\S+H0[0-4]).*\/([IETB].*)\.wav$: || die "bad label $_"; 
        print "$1 $2 0\n"; '\
-  > $tmpdir/reco2file_and_channel || exit 1;
+  > $dir/reco2file_and_channel || exit 1;
 
-awk '{print $1}' $tmpdir/segments | \
+awk '{print $1}' $dir/segments | \
   perl -ane '$_ =~ m:^(\S+)([FM][A-Z]{0,2}[0-9]{3}[A-Z]*)(\S+)$: || die "bad label $_"; 
           print "$1$2$3 $1$2\n";'  \
-    > $tmpdir/utt2spk || exit 1;
+    > $dir/utt2spk || exit 1;
 
-sort -k 2 $tmpdir/utt2spk | utils/utt2spk_to_spk2utt.pl > $tmpdir/spk2utt || exit 1;
+sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 
-# We assume each conversation side is a separate speaker. 
-
-# Copy stuff into its final locations [this has been moved from the format_data
-# script]
-mkdir -p $dir
+# Copy stuff into its final locations
+fdir=data/ihm/$SET
+mkdir -p $fdir
 for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel; do
-  cp $tmpdir/$f $dir/$f || exit 1;
+  cp $dir/$f $fdir/$f || exit 1;
 done
 
-utils/convert2stm.pl $dir > $dir/stm
-cp local/english.glm $dir/glm
+#Produce STMs for sclite scoring
+local/convert2stm.pl $dir > $fdir/stm
+cp local/english.glm $fdir/glm
 
 echo AMI $SET set data preparation succeeded.
 

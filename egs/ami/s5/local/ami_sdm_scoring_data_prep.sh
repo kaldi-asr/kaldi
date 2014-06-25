@@ -1,4 +1,4 @@
-#!/bin/bash
+!/bin/bash
 
 # Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
 # AMI Corpus dev/eval data preparation 
@@ -6,19 +6,19 @@
 . path.sh
 
 #check existing directories
-if [ $# != 4 ]; then
-  echo "Usage: ami_sdm_scoring_data_prep_edin.sh /path/to/AMI rt09-seg-file set-name"
+if [ $# != 3 ]; then
+  echo "Usage: ami_sdm_scoring_data_prep.sh <path/to/AMI> <mic-id> <set-name>"
   exit 1; 
 fi 
 
 AMI_DIR=$1
-SEGS=$2 #assuming here all normalisation stuff was done
+MICNUM=$2
 SET=$3
-MICNUM=$4
-MICID="m$MICNUM"
+DSET="sdm$MICNUM"
 
-tmpdir=data/local/sdm/$MICID/$SET
-dir=data/sdm/$MICID/$SET
+SEGS=data/local/annotations/$SET.txt
+tmpdir=data/local/$DSET/$SET
+dir=data/$DSET/$SET
 
 mkdir -p $tmpdir
 
@@ -27,6 +27,12 @@ if [ ! -d $AMI_DIR ]; then
   echo "Error: run.sh requires a directory argument"
   exit 1; 
 fi  
+
+# And transcripts check
+if [ ! -f $SEGS ]; then
+  echo "Error: File $SEGS no found (run ami_text_prep.sh)."
+  exit 1;
+fi
 
 # find headset wav audio files only, here we again get all
 # the files in the corpora and filter only specific sessions
@@ -65,12 +71,7 @@ sed -e 's?.*/??' -e 's?.wav??' $tmpdir/wav.flist | \
 #Keep only devset part of waves
 awk '{print $2}' $tmpdir/segments | sort -u | join - $tmpdir/wav.scp | sort -o $tmpdir/wav.scp
 
-# this file reco2file_and_channel maps recording-id (e.g. sw02001-A)
-# to the file name sw02001 and the A, e.g.
-# sw02001-A  sw02001 A
-# In this case it's trivial, but in other corpora the information might
-# be less obvious.  Later it will be needed for ctm scoring.
-
+#prep reco2file_and_channel
 awk '{print $1 $2}' $tmpdir/wav.scp | \
   perl -ane '$_ =~ m:^(\S+SDM).*\/([IETB].*)\.wav$: || die "bad label $_"; 
        print "$1 $2 0\n"; '\
@@ -91,9 +92,6 @@ awk '{print $1}' $tmpdir/segments | \
           print "$1$2$3 $1$2\n";'  \
     > $tmpdir/utt2spk_stm || exit 1;
 
-
-# We assume each conversation side is a separate speaker. 
-
 # Copy stuff into its final locations [this has been moved from the format_data
 # script]
 mkdir -p $dir
@@ -104,5 +102,5 @@ done
 utils/convert2stm.pl $dir utt2spk_stm > $dir/stm
 cp local/english.glm $dir/glm
 
-echo AMI $SET set data preparation succeeded.
+echo AMI $DSET scenario and $SET set data preparation succeeded.
 

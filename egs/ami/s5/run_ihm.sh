@@ -5,10 +5,14 @@
 
 #PREPARE DATA STARTING FROM RT09 SEGMENTATIONS
 mic=ihm
-AMI_DIR=/exports/work/inf_hcrc_cstr_nst/meetings/ami_corpus_wav/
+AMI_DIR=/disk/data2/amicorpus/
 norm_vars=false
 
-local/ami_ihm_data_prep_edin.sh $AMI_DIR data/local/ami_train_v1.segs
+#local/ami_ihm_data_prep.sh $AMI_DIR
+local/ami_ihm_scoring_data_prep.sh $AMI_DIR dev
+local/ami_ihm_scoring_data_prep.sh $AMI_DIR eval
+
+exit 0;
 local/ami_prepare_dict.sh
 
 exit;

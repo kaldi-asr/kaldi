@@ -64,7 +64,7 @@ done < $meetings
 
 echo -e "Beamforming\n"
 
-$cmd JOB=1:$nj $wdir/log/beamform.JOB.log \
+$cmd JOB=0:$nj $wdir/log/beamform.JOB.log \
      local/beamformit.sh $nj JOB $numch $meetings $sdir $odir
 
 : << "C"

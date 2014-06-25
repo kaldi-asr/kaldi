@@ -16,11 +16,11 @@ utils/split_scp.pl -j $nj $job $meetings $meetings.$job
 
 while read line; do
 
-#                        --config_file=`pwd`/conf/beamformit.cfg \
   BeamformIt -s $line -c $wdir/channels_$numch \
-                        --source_dir=$sdir \
-                        --result_dir=$odir/temp_dir \
-                        --do_compute_reference=1
+                        --config_file `pwd`/conf/ami.cfg \
+                        --source_dir $sdir \
+                        --result_dir $odir/temp_dir
+
   mkdir -p $odir/$line
   mv $odir/temp_dir/$line/${line}_seg.del  $odir/$line/${line}_MDM$numch.del
   mv $odir/temp_dir/$line/${line}_seg.del2 $odir/$line/${line}_MDM$numch.del2

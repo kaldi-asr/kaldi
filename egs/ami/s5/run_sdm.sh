@@ -4,8 +4,17 @@
 . ./path.sh
 
 #SDM - Signle Distant Microphone 
-mic=sdm
-AMI_DIR=/exports/work/inf_hcrc_cstr_nst/meetings/ami_corpus_wav/
+
+micid=1 #which mic from array should be used?
+mic=sdm$micid
+AMI_DIR=/disk/data2/amicorpus/
+norm_vars=false
+
+local/ami_sdm_data_prep.sh $AMI_DIR $micid
+local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid dev
+local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid eval
+
+exit;
 
 #PREPARE DATA STARTING FROM RT09 SEGMENTATIONS
 

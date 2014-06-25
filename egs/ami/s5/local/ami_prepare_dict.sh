@@ -10,20 +10,23 @@
 #check existing directories
 [ $# != 0 ] && echo "Usage: local/ami_ihm_data_prep_edin.sh" && exit 1;
 
-srcdir=data/local/train  # This is where we downloaded some stuff..
-dir=data/local/dict
-mkdir -p $dir
+sdir=data/local/annotations
+wdir=data/local/dict
+cmuurl=http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/
+cmuver=cmudict.0.7a
 
-rt09_train=data/local/rt09.ami.ihmtrain09.v3.dct
+req="$sdir/transcripts2 local/wordlist.50k"
+[ ! -f "$sdir/transcripts2" ] && echo "No such file $sdir/transcripts2 (need to run ami_text_prep.sh first)" && exit 1;
 
-#as rt09_train is a superset of rt09_test, including some words 
-#fitting training transcription, we will use the training dict 
-#in Kaldi both for decoding and decoding
+mkdir -p $wdir
 
-# assume swbd_p1_data_prep.sh was done already.
-#[ ! -f "$srcdict" ] && echo "No such file $srcdict" && exit 1;
+if [ ! -f $wdir/$cmuver ]; then
+  wget -O $wdir/$cmuver svn $cmuurl/$cmuver
+  wget -O $wdir/$cmuver.phones svn $cmuurl/$cmuver.phones
+  wget -O $wdir/$cmuver.symbols svn $cmuurl/$cmuver.symbols
+fi
 
-cat $rt09_train | sort > $dir/lexicon1.txt
+grep -e "^;;;" -v $wdir/$cmuver | sort  > $dir/lexicon1.txt
 
 cat $dir/lexicon1.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' | \
   grep -v sil > $dir/nonsilence_phones.txt  || exit 1;
@@ -41,41 +44,7 @@ echo -n >$dir/extra_questions.txt
   echo '[laughter] lau'; echo '<unk> spn' ) \
   | cat - $dir/lexicon1.txt  > $dir/lexicon2.txt || exit 1;
 
-# Map the words in the lexicon.  That is-- for each word in the lexicon, we map it
-# to a new written form.  The transformations we do are:
-# remove laughter markings, e.g.
-# [LAUGHTER-STORY] -> STORY
-# Remove partial-words, e.g.
-# -[40]1K W AH N K EY
-# becomes -1K
-# and
-# -[AN]Y IY
-# becomes
-# -Y
-# -[A]B[OUT]- B
-# becomes
-# -B-
-# Also, curly braces, which appear to be used for "nonstandard"
-# words or non-words, are removed, e.g. 
-# {WOLMANIZED} W OW L M AX N AY Z D
-# -> WOLMANIZED
-# Also, mispronounced words, e.g.
-#  [YEAM/YEAH] Y AE M
-# are changed to just e.g. YEAM, i.e. the orthography
-# of the mispronounced version.
-# Note-- this is only really to be used in training.  The main practical
-# reason is to avoid having tons of disambiguation symbols, which
-# we otherwise would get because there are many partial words with
-# the same phone sequences (most problematic: S).
-# Also, map
-# THEM_1 EH M -> THEM
-# so that multiple pronunciations just have alternate entries
-# in the lexicon.
-
-#local/swbd1_map_words.pl -f 1 $dir/lexicon2.txt | sort -u \
-#  > $dir/lexicon3.txt || exit 1;
-
-pushd $dir >&/dev/null
+pushd $wdir >&/dev/null
 ln -sf lexicon2.txt lexicon.txt # This is the final lexicon.
 popd >&/dev/null
 

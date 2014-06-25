@@ -170,6 +170,10 @@ sub normalise_transcripts {
    #some transcripts are empty with -, nullify (and ignore) them
    $text =~ s/^\-$//g;
    $text =~ s/\s+\-$//;
+   # apply few exception for dashed phrases, Mm-Hmm, Uh-Huh, etc. those are frequent in AMI
+   # and will be added to dictionary
+   $text =~ s/MM HMM/MM\-HMM/g;
+   $text =~ s/UH HUH/UH\-HUH/g;
 
    return $text;
 }
