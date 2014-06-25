@@ -64,8 +64,9 @@ static void CheckOrthogonal(CuMatrixBase<BaseFloat> *N,
 }
 
 OnlinePreconditioner::OnlinePreconditioner():
-    rank_(40), num_samples_history_(2000.0), alpha_(4.0),
-    epsilon_(1.0e-10), delta_(1.0e-05), t_(-1), self_debug_(false) { }
+    rank_(40), update_period_(1), num_samples_history_(2000.0), alpha_(4.0),
+    epsilon_(1.0e-10), delta_(1.0e-05), t_(-1),
+    num_updates_skipped_(0), self_debug_(false) { }
 
 void OnlinePreconditioner::Init(const CuMatrixBase<BaseFloat> &R0) {
   int32 D = R0.NumCols(), N = R0.NumRows();
@@ -226,19 +227,26 @@ void OnlinePreconditioner::PreconditionDirectionsInternal(
       LK_t(*WJKL_t, 0, 2 * R, D, R);
   
   H_t.AddMatMat(1.0, *R_t, kNoTrans, W_t, kTrans, 0.0);  // H_t = R_t W_t^T
-
+  
   bool locked = update_mutex_.TryLock();
-  if (locked && t_ > t) {
-    // We got the lock but we were already beaten to it by another thread, so
-    // release the lock.
-    update_mutex_.Unlock();
-    locked = false;
+  if (locked) {
+    // Just hard-code it here that we do 10 updates before skipping any.
+    const int num_initial_updates = 10;
+    if (t_ > t || (num_updates_skipped_ < update_period_ - 1 &&
+                   t_ >= num_initial_updates)) {
+      update_mutex_.Unlock();
+      // We got the lock but we were already beaten to it by another thread, or
+      // we don't want to update yet due to update_period_ > 1 (this saves
+      // compute), so release the lock.
+      locked = false;
+    }
   }
 
   if (!locked) {
-    // Another thread is working on updating the parameters (X_t and so on), or
-    // already did so, so we don't bother updating them.  We just
-    // apply the preconditioning and return.
+    // We're not updating the parameters, either because another thread is
+    // working on updating them, or because another thread already did so from
+    // the same or later starting point (making our update stale), or because
+    // update_period_ > 1.  We just apply the preconditioning and return.
     BaseFloat tr_Rt_RtT = TraceMatMat(*R_t, *R_t, kTrans);
     // P_t = R_t - H_t W_t
     R_t->AddMatMat(-1.0, H_t, kNoTrans, W_t, kNoTrans, 1.0); 
@@ -250,6 +258,11 @@ void OnlinePreconditioner::PreconditionDirectionsInternal(
     BaseFloat gamma_t = (tr_Pt_PtT == 0.0 ? 1.0 :
                          sqrt(tr_Rt_RtT / tr_Pt_PtT));
     *scale = gamma_t;
+    // note: we don't bother with any locks before incrementing
+    // num_updates_skipped_ below, because the worst that could happen is that,
+    // on very rare occasions, we could skip one or two more updates than we
+    // intended.
+    num_updates_skipped_++;
     return;
   }
   J_t.AddMatMat(1.0, H_t, kTrans, *R_t, kNoTrans, 0.0);  // J_t = H_t^T R_t
@@ -360,6 +373,7 @@ void OnlinePreconditioner::PreconditionDirectionsInternal(
   read_write_mutex_.Lock();
   KALDI_ASSERT(t_ == t);  // we already ensured this.
   t_ = t + 1;
+  num_updates_skipped_ = 0;
   W_t_.Swap(&W_t1);
   d_t_.CopyFromVec(d_t1);
   rho_t_ = rho_t1;
@@ -589,9 +603,11 @@ void ApproxEigsOfProduct(const CuMatrixBase<BaseFloat> &M,
 }
 
 OnlinePreconditioner::OnlinePreconditioner(const OnlinePreconditioner &other):
-    rank_(other.rank_), num_samples_history_(other.num_samples_history_),
+    rank_(other.rank_), update_period_(other.update_period_),
+    num_samples_history_(other.num_samples_history_),
     alpha_(other.alpha_), epsilon_(other.epsilon_), delta_(other.delta_),
-    t_(other.t_), self_debug_(other.self_debug_), W_t_(other.W_t_),
+    t_(other.t_), num_updates_skipped_(other.num_updates_skipped_),
+    self_debug_(other.self_debug_), W_t_(other.W_t_),
     rho_t_(other.rho_t_), d_t_(other.d_t_) {
   // use default constructor for the mutextes.
 }
@@ -599,6 +615,7 @@ OnlinePreconditioner::OnlinePreconditioner(const OnlinePreconditioner &other):
 OnlinePreconditioner& OnlinePreconditioner::operator = (
     const OnlinePreconditioner &other) {
   rank_ = other.rank_;
+  update_period_ = other.update_period_;
   num_samples_history_ = other.num_samples_history_;
   alpha_ = other.alpha_;
   epsilon_ = other.epsilon_;
@@ -613,6 +630,10 @@ OnlinePreconditioner& OnlinePreconditioner::operator = (
 void OnlinePreconditioner::SetRank(int32 rank) {
   KALDI_ASSERT(rank > 0);
   rank_ = rank;  
+}
+void OnlinePreconditioner::SetUpdatePeriod(int32 update_period) {
+  KALDI_ASSERT(update_period > 0);
+  update_period_ = update_period;
 }
 void OnlinePreconditioner::SetNumSamplesHistory(BaseFloat num_samples_history) {
   KALDI_ASSERT(num_samples_history > 0.0 &&

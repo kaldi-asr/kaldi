@@ -121,7 +121,13 @@ void HouseBackward(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
     Real v1sq = v1 * v1;
     *beta = 2 * v1sq / (sigma + v1sq);
     Real inv_v1 = 1.0 / v1;
-    for (MatrixIndexT i = 0; i < dim; i++) v[i] *= inv_v1;
+    if (KALDI_ISINF(inv_v1)) {
+      // can happen if v1 is denormal.
+      KALDI_ASSERT(v1 == v1 && v1 != 0.0);
+      for (MatrixIndexT i = 0; i < dim; i++) v[i] /= v1;
+    } else {
+      cblas_Xscal(dim, inv_v1, v, 1);
+    }
     if (!KALDI_ISFINITE(inv_v1) || !KALDI_ISFINITE(x1)) {
       KALDI_ERR << "NaN or inf encountered in HouseBackward";
     }

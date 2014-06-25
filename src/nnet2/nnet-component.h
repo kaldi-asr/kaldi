@@ -855,11 +855,12 @@ class AffineComponentPreconditionedOnline: public AffineComponent {
   void Init(BaseFloat learning_rate,
             int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev,
-            int32 rank_in, int32 rank_out,
+            int32 rank_in, int32 rank_out, int32 update_period,
             BaseFloat num_samples_history, BaseFloat alpha,
             BaseFloat max_change_per_sample);
   void Init(BaseFloat learning_rate, int32 rank_in,
-            int32 rank_out, BaseFloat num_samples_history,
+            int32 rank_out, int32 update_period,
+            BaseFloat num_samples_history,
             BaseFloat alpha, BaseFloat max_change_per_sample,
             std::string matrix_filename);
 
@@ -868,6 +869,7 @@ class AffineComponentPreconditionedOnline: public AffineComponent {
   // AffineComponentPreconditionedOnline.
   AffineComponentPreconditionedOnline(const AffineComponentPreconditioned &orig,
                                       int32 rank_in, int32 rank_out,
+                                      int32 update_period,
                                       BaseFloat eta, BaseFloat alpha);
   
   virtual void InitFromString(std::string args);
@@ -883,6 +885,7 @@ class AffineComponentPreconditionedOnline: public AffineComponent {
   // smaller rank needed, so make them separately configurable.
   int32 rank_in_;
   int32 rank_out_;
+  int32 update_period_;
   BaseFloat num_samples_history_;
   BaseFloat alpha_;
   

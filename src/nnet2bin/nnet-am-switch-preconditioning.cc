@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
         "e.g.:\n"
         " nnet-am-switch-preconditioning --binary=false 1.mdl text.mdl\n";
 
-    int32 rank_in = 20, rank_out = 80;
+    int32 rank_in = 20, rank_out = 80, update_period = 1;
     BaseFloat num_samples_history = 2000.0;
     BaseFloat alpha = 4.0;
     bool binary_write = true;
@@ -50,6 +50,9 @@ int main(int argc, char *argv[]) {
                 "Rank used in online-preconditioning on input side of each layer");
     po.Register("rank-out", &rank_out,
                 "Rank used in online-preconditioning on output side of each layer");
+    po.Register("update-period", &update_period,
+                "Affects how frequently we update the Fisher-matrix estimate (every "
+                "this-many minibatches).");
     po.Register("num-samples-history", &num_samples_history,
                 "Number of samples of history to use in online preconditioning "
                 "(affects speed vs accuracy of update of Fisher matrix)");
@@ -76,7 +79,7 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary);
     }
 
-    am_nnet.GetNnet().SwitchToOnlinePreconditioning(rank_in, rank_out,
+    am_nnet.GetNnet().SwitchToOnlinePreconditioning(rank_in, rank_out, update_period,
                                                     num_samples_history, alpha);
     
     {

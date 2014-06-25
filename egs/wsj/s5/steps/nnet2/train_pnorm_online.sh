@@ -59,6 +59,7 @@ io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one t
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 randprune=4.0 # speeds up LDA.
 alpha=4.0 # relates to preconditioning.
+update_period=4 # relates to preconditioning: says how often we update the subspace.
 num_samples_history=2000 # relates to online preconditioning
 max_change_per_sample=0.1
 mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
@@ -216,7 +217,7 @@ if [ $stage -le -2 ]; then
     ext_feat_dim=$feat_dim
   fi
 
-  online_preconditioning_opts="alpha=$alpha num-samples-history=$num_samples_history rank-in=$precondition_rank_in rank-out=$precondition_rank_out max-change-per-sample=$max_change_per_sample"
+  online_preconditioning_opts="alpha=$alpha num-samples-history=$num_samples_history update-period=$update_period rank-in=$precondition_rank_in rank-out=$precondition_rank_out max-change-per-sample=$max_change_per_sample"
 
   stddev=`perl -e "print 1.0/sqrt($pnorm_input_dim);"`
   cat >$dir/nnet.config <<EOF

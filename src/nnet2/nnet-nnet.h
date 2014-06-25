@@ -120,7 +120,9 @@ class Nnet {
   /// E.g. rank_in = 20, rank_out = 80, num_samples_history = 2000.0,
   /// alpha = 4.0
   void SwitchToOnlinePreconditioning(int32 rank_in, int32 rank_out,
-                                     BaseFloat num_samples_history, BaseFloat alpha);
+                                     int32 update_period,
+                                     BaseFloat num_samples_history,
+                                     BaseFloat alpha);
   
   /// For each updatatable component, adds to it
   /// the corresponding element of "other" times the

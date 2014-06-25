@@ -440,13 +440,14 @@ class OnlinePreconditioner {
   OnlinePreconditioner();
 
   void SetRank(int32 rank);
+  void SetUpdatePeriod(int32 update_period);
   // num_samples_history is a time-constant (in samples) that determines eta.
   void SetNumSamplesHistory(BaseFloat num_samples_history);
   void SetAlpha(BaseFloat alpha);
   void TurnOnDebug() { self_debug_ = true; }
   BaseFloat GetNumSamplesHistory() const { return num_samples_history_; }
   BaseFloat GetAlpha() const { return alpha_; }
-  BaseFloat GetRank() const { return alpha_; }
+  int32 GetRank() const { return rank_; }
   
   
   // The "R" pointer is both the input (R in the comment) and the output (P in
@@ -513,12 +514,6 @@ class OnlinePreconditioner {
                           CuMatrixBase<BaseFloat> *temp_O);
 
   void Init(const CuMatrixBase<BaseFloat> &R0);
-  
-  // Configuration values:
-
-  // The rank of the correction to the unit matrix (e.g. 20).
-  int32 rank_;
-  
 
   // Returns the learning rate eta as the function of the number of samples
   // (actually, N is the number of vectors we're preconditioning, which due to
@@ -526,6 +521,17 @@ class OnlinePreconditioner {
   // value returned depends on num_samples_history_.
   BaseFloat Eta(int32 N) const;
 
+  
+  // Configuration values:
+
+  // The rank of the correction to the unit matrix (e.g. 20).
+  int32 rank_;
+
+  // After a few initial iterations of updating whenever we can, we start only
+  // updating the Fisher-matrix parameters every "update_period_" minibatches;
+  // this saves time.
+  int32 update_period_;
+  
   // num_samples_history_ determines the value of eta, which in turn affects how
   // fast we update our estimate of the covariance matrix.  We've done it this
   // way in order to make it easy to have a single configuration value that
@@ -549,6 +555,12 @@ class OnlinePreconditioner {
   
   // t is a counter that measures how many updates we've done.
   int32 t_;
+
+  // This keeps track of how many minibatches we've skipped updating the parameters,
+  // since the most recent update; it's used in enforcing "update_period_", which
+  // is a mechanism to avoid spending too much time updating the subspace (which can
+  // be wasteful).
+  int32 num_updates_skipped_;
   
   // If true, activates certain checks.
   bool self_debug_;
