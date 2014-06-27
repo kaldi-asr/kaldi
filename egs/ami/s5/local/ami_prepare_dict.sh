@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Formatting the Mississippi State dictionary for use in Edinburgh. Differs 
-# from the one in Kaldi s5 recipe in that it uses lower-case --Arnab (Jan 2013)
+#Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
 
+# Formatting the CMUDict for the use AMI recipe
 # To be run from one directory above this script.
 
 . path.sh
@@ -39,13 +39,19 @@ echo sil > $dir/optional_silence.txt
 # have stress or tone.
 echo -n >$dir/extra_questions.txt
 
+# Add to the lexicon selected backchannels
+( echo 'MM-HMM m'; \
+  #echo 'UM-HUH spn'; \ <-this one is already in CMUDict
+  echo 'HMM eh m'; \
+  echo 'MM m'; )  | cat - $dir/lexicon1.txt  > $dir/lexicon2.txt || exit 1;
+
 # Add to the lexicon the silences, noises etc.
 ( echo '!sil sil'; echo '[vocalized-noise] spn'; echo '[noise] nsn'; \
   echo '[laughter] lau'; echo '<unk> spn' ) \
-  | cat - $dir/lexicon1.txt  > $dir/lexicon2.txt || exit 1;
+  | cat - $dir/lexicon2.txt  > $dir/lexicon3.txt || exit 1;
 
 pushd $wdir >&/dev/null
-ln -sf lexicon2.txt lexicon.txt # This is the final lexicon.
+ln -sf lexicon3.txt lexicon.txt # This is the final lexicon.
 popd >&/dev/null
 
 echo Prepared input dictionary and phone-sets for AMI phase 1.

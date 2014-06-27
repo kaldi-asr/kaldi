@@ -10,14 +10,18 @@ mic=mdm$nmics
 AMI_DIR=
 #AMI_DIR=/gpfs/scratch/s1136550/ami/amicorpus
 AMI_DIR=/disk/data2/amicorpus
+MDM_DIR=/disk/data1/s1136550/ami/mdm
 
-local/ami_beamform.sh --nj 12 $nmics $AMI_DIR /disk/data1/ami
+#local/ami_beamform.sh --nj 12 $nmics $AMI_DIR /disk/data1/s1136550/ami/mdm
 
-exit 1;
 #PREPARE DATA STARTING FROM RT09 SEGMENTATIONS
 
-local/ami_text_prep.sh
-local/ami_mdm_data_prep.sh $AMI_DIR
+#local/ami_text_prep.sh
+local/ami_mdm_data_prep.sh $MDM_DIR $mic
+local/ami_mdm_scoring_data_prep.sh $MDM_DIR $mic dev
+local/ami_mdm_scoring_data_prep.sh $MDM_DIR $mic eval
+
+exit 1;
 
 # We will keep the dict and lang the same as in IHM case
 # local/ami_prepare_dict.sh

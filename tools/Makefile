@@ -163,15 +163,14 @@ openblas_compiled:
 	-git clone git://github.com/xianyi/OpenBLAS
 	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
 
+beamformit: beamformit-3.51
 
-beamformit: beamformit-3.5
+.PHONY: beamformit-3.51
 
-.PHONY: beamformit-3.5
+beamformit-3.51: beamformit-3.51.tgz
+        tar -xozf BeamformIt-3.51.tgz; \
+        cd BeamformIt-3.51; cmake . ; make
 
-beamformit-3.5: beamformit-3.5.tgz
-
-beamformit-3.5.tgz:
-    wget http://www.xavieranguera.com/beamformit/releases/BeamformIt-3.5.tgz
-
-
+beamformit-3.51.tgz:
+	wget -c -T 10 http://www.xavieranguera.com/beamformit/releases/BeamformIt-3.51.tgz
 

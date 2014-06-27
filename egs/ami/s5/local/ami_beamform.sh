@@ -58,40 +58,17 @@ do
   echo $channels >> $wdir/channels_$numch
 done < $meetings
 
-######
+#do noise cancellation
+
+if [ $wiener_filtering == "true" ]; then
+  echo "Wiener filtering not yet implemented."
+  exit 1;
+fi
+
 #do beamforming
-######
 
 echo -e "Beamforming\n"
 
 $cmd JOB=0:$nj $wdir/log/beamform.JOB.log \
      local/beamformit.sh $nj JOB $numch $meetings $sdir $odir
-
-: << "C"
-(
-
-  utils/split_scp.pl -j $nj JOB $meetings $meetings.JOB
-
-  while read line; do
-    BeamformIt -s $line -c $wdir/channels_$numch \
-                        --config_file=conf/beamformit.cfg \
-                        --source_dir=$sdir \
-                        --result_dir=$odir/temp_dir \
-                        --do_compute_reference=1
-
-    mkdir -p $odir/$line 
-    mv $odir/temp_dir/$line/${line}_seg.del  $odir/$line/${line}_MDM$numch.del
-    mv $odir/temp_dir/$line/${line}_seg.del2 $odir/$line/${line}_MDM$numch.del2
-    mv $odir/temp_dir/$line/${line}_seg.info $odir/$line/${line}_MDM$numch.info
-    mv $odir/temp_dir/$line/${line}_seg.ovl  $odir/$line/${line}_MDM$numch.ovl
-    mv $odir/temp_dir/$line/${line}_seg.weat $odir/$line/${line}_MDM$numch.weat
-    mv $odir/temp_dir/$line/${line}_seg.wa*  $odir/$line/${line}_MDM$numch.wav
-    mv $odir/temp_dir/$line/${line}_seg2.wa* $odir/$line/${line}_MDM${numch}_seg2.wav
-   
-    rm -r $odir/temp_dir  
-  done < $meetings.JOB
-
-)
-C
-
 
