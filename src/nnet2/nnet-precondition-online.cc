@@ -241,12 +241,19 @@ void OnlinePreconditioner::PreconditionDirectionsInternal(
       locked = false;
     }
   }
-
+  
   if (!locked) {
     // We're not updating the parameters, either because another thread is
     // working on updating them, or because another thread already did so from
     // the same or later starting point (making our update stale), or because
     // update_period_ > 1.  We just apply the preconditioning and return.
+
+    // note: we don't bother with any locks before incrementing
+    // num_updates_skipped_ below, because the worst that could happen is that,
+    // on very rare occasions, we could skip one or two more updates than we
+    // intended.
+    num_updates_skipped_++;
+    
     BaseFloat tr_Rt_RtT = TraceMatMat(*R_t, *R_t, kTrans);
     // P_t = R_t - H_t W_t
     R_t->AddMatMat(-1.0, H_t, kNoTrans, W_t, kNoTrans, 1.0); 
@@ -258,11 +265,6 @@ void OnlinePreconditioner::PreconditionDirectionsInternal(
     BaseFloat gamma_t = (tr_Pt_PtT == 0.0 ? 1.0 :
                          sqrt(tr_Rt_RtT / tr_Pt_PtT));
     *scale = gamma_t;
-    // note: we don't bother with any locks before incrementing
-    // num_updates_skipped_ below, because the worst that could happen is that,
-    // on very rare occasions, we could skip one or two more updates than we
-    // intended.
-    num_updates_skipped_++;
     return;
   }
   J_t.AddMatMat(1.0, H_t, kTrans, *R_t, kNoTrans, 0.0);  // J_t = H_t^T R_t
@@ -295,6 +297,7 @@ void OnlinePreconditioner::PreconditionDirectionsInternal(
   BaseFloat beta_t = rho_t * (1.0 + alpha_) + alpha_ * d_t.Sum() / D;
   Vector<BaseFloat> e_t(R), sqrt_e_t(R), inv_sqrt_e_t(R);
   ComputeEt(d_t, beta_t, &e_t, &sqrt_e_t, &inv_sqrt_e_t);
+  KALDI_VLOG(5) << "e_t = " << e_t;
   
   SpMatrix<BaseFloat> Z_t(R);
   ComputeZt(N, rho_t, d_t, inv_sqrt_e_t, K_t_cpu, L_t_cpu, &Z_t);
@@ -494,7 +497,6 @@ void OnlinePreconditioner::ComputeEt(const VectorBase<BaseFloat> &d_t,
   BaseFloat *e = e_t->Data();
   for (int32 i = 0; i < D; i++)
     e[i] = 1.0 / (beta_t / d[i]  +  1);
-  KALDI_VLOG(5) << "e_t = " << *e_t;
   sqrt_e_t->CopyFromVec(*e_t);
   sqrt_e_t->ApplyPow(0.5);
   inv_sqrt_e_t->CopyFromVec(*sqrt_e_t);

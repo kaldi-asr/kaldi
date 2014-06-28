@@ -67,10 +67,10 @@ void NnetUpdater::Propagate() {
         (c>0 && nnet_.GetComponent(c-1).BackpropNeedsOutput()) ||
         component.BackpropNeedsInput();
     if (g_kaldi_verbose_level >= 3 && num_times_printed < 100) {
-      KALDI_LOG << "Stddev of data for component " << c
-                << " for this minibatch is "
-                << (TraceMatMat(forward_data_[c], forward_data_[c], kTrans) /
-                    (forward_data_[c].NumRows() * forward_data_[c].NumCols()));
+      KALDI_VLOG(3) << "Stddev of data for component " << c
+                    << " for this minibatch is "
+                    << (TraceMatMat(forward_data_[c], forward_data_[c], kTrans) /
+                        (forward_data_[c].NumRows() * forward_data_[c].NumCols()));
       num_times_printed++;
     }
     if (!need_last_output)
