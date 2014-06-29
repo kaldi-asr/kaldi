@@ -40,6 +40,12 @@ name=`basename $data`
 mkdir -p $plpdir || exit 1;
 mkdir -p $logdir || exit 1;
 
+if [ -f $data/feats.scp ]; then
+  mkdir -p $data/.backup
+  echo "$0: moving $data/feats.scp to $data/.backup"
+  mv $data/feats.scp $data/.backup
+fi
+
 scp=$data/wav.scp
 
 required="$scp $plp_config"
@@ -72,7 +78,7 @@ if [ -f $data/segments ]; then
   rm $logdir/.error 2>/dev/null
 
   $cmd JOB=1:$nj $logdir/make_plp_${name}.JOB.log \
-    extract-segments scp:$scp $logdir/segments.JOB ark:- \| \
+    extract-segments scp,p:$scp $logdir/segments.JOB ark:- \| \
     compute-plp-feats $vtln_opts --verbose=2 --config=$plp_config ark:- ark:- \| \
     copy-feats --compress=$compress ark:- \
       ark,scp:$plpdir/raw_plp_$name.JOB.ark,$plpdir/raw_plp_$name.JOB.scp \
@@ -88,7 +94,7 @@ else
   utils/split_scp.pl $scp $split_scps || exit 1;
  
   $cmd JOB=1:$nj $logdir/make_plp_${name}.JOB.log \
-    compute-plp-feats  $vtln_opts --verbose=2 --config=$plp_config scp:$logdir/wav_${name}.JOB.scp ark:- \| \
+    compute-plp-feats  $vtln_opts --verbose=2 --config=$plp_config scp,p:$logdir/wav_${name}.JOB.scp ark:- \| \
     copy-feats --compress=$compress ark:- \
       ark,scp:$plpdir/raw_plp_$name.JOB.ark,$plpdir/raw_plp_$name.JOB.scp \
       || exit 1;

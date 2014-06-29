@@ -21,7 +21,7 @@
 namespace kaldi {
 
 /**
-  \page dnn2 Deep Neural Networks in Kaldi (Dan's setup)
+  \page dnn2 Dan's DNN implementation
 
   \section dnn2_intro Introduction
 
@@ -31,7 +31,6 @@ namespace kaldi {
  
  This (rather hastily prepared) introduction to the DNN setup includes \ref
  dnn2_toplevel, \ref dnn2_gpu, \ref dnn2_tuning and \ref dnn2_preconditioning.
-
 
   \section dnn2_toplevel Looking at the scripts
 
@@ -47,8 +46,8 @@ namespace kaldi {
 
   \subsection dnn2_train_pnorm Top-level training script
 
-  You will see that the top-level training script that is called is steps/nnet2/train_pnorm.sh,
-  in the p-norm case (or just steps/nnet2/train.sh, in the default tanh case).
+  Note: the previous top-level training script, which used to be steps/nnet2/train_pnorm.sh,
+ has now been deprecated and you should use steps/nnet2/train_pnorm_fast.sh. 
   This script is going to parallelize the training over multiple nodes, in a way 
   we'll explain below.  
 
@@ -128,27 +127,25 @@ namespace kaldi {
 
   We initialize the neural net with a single hidden layer; we will increase the number
   of hidden layers later in training, to a configurable number (usually in the range 2 to 5).  
-  The script creates a configuration file named something like exp/nnet5d/nnet.config. 
+  The script creates a configuration file named something like exp/nnet4d/nnet.config. 
   This is passed to a program called nnet-am-init which creates the initial model.  An example
-  configuration file from the p-norm setup for Resource Management looks like this:
+  configuration file from the p-norm setup for Resource Management looks like this
 \verbatim
 SpliceComponent input-dim=40 left-context=4 right-context=4 const-component-dim=0
 FixedAffineComponent matrix=exp/nnet4d/lda.mat
-AffineComponentPreconditioned input-dim=360 output-dim=1000 alpha=4.0 max-change=10.0 \
-    learning-rate=0.02 param-stddev=0.0316227766016838 bias-stddev=0.5
+AffineComponentPreconditionedOnline input-dim=360 output-dim=1000 alpha=4.0 num-samples-history=2000 update-period=4 rank-in=20 rank-out=80 max-change-per-sample=0.075 learning-rate=0.02 param-stddev=0.0316227766016838 bias-stddev=0.5
 PnormComponent input-dim=1000 output-dim=200 p=2
 NormalizeComponent dim=200
-AffineComponentPreconditioned input-dim=200 output-dim=1483 alpha=4.0 max-change=10.0 \
-   learning-rate=0.02 param-stddev=0 bias-stddev=0
-SoftmaxComponent dim=1483
+AffineComponentPreconditionedOnline input-dim=200 output-dim=1475 alpha=4.0 num-samples-history=2000 update-period=4 rank-in=20 rank-out=80 max-change-per-sample=0.075 learning-rate=0.02 param-stddev=0 bias-stddev=0
+SoftmaxComponent dim=1475
 \endverbatim
   The FixedAffineComponent is the LDA-like decorrelating transform that we mentioned earlier.
-  The AffineComponentPreconditioned is a refinement of AffineComponent.  An AffineComponent
+  The AffineComponentPreconditionedOnline is a refinement of AffineComponent.  An AffineComponent
   would consist of the standard (weight matrix plus bias term) that appears in neural networks,
-  trained with standard stochastic gradient descent.  AffineComponentPreconditioned is
+  trained with standard stochastic gradient descent.  AffineComponentPreconditionedOnline is
   as AffineComponent, but the training procedure uses not just a single global learning rate
   but a matrix-valued learning rate to precondition the gradient descent. 
-  We'll describe more about this below (see \ref dnn2_preconditioning).
+  We aim to describe more about this below (see \ref dnn2_preconditioning).
  The PnormComponent is the nonlinearity; for a more conventional neural network this
  would be TanhComponent instead.  The NormalizeComponent is something we add to stabilize
  the training of p-norm networks.  It is also a fixed, non-trainable nonlinearity, but it acts
@@ -159,8 +156,7 @@ SoftmaxComponent dim=1483
  The script also produces a file called hidden.config which corresponds to what we add when
  we introduce a new hidden layer; in this example it looks like this:
 \verbatim
-AffineComponentPreconditioned input-dim=200 output-dim=1000 alpha=4.0 max-change=10.0 \
-   learning-rate=0.02 param-stddev=0.0316227766016838 bias-stddev=0.5
+AffineComponentPreconditionedOnline input-dim=200 output-dim=1000 alpha=4.0 num-samples-history=2000 update-period=4 rank-in=20 rank-out=80 max-change-per-sample=0.075 learning-rate=0.02 param-stddev=0.0316227766016838 bias-stddev=0.5
 PnormComponent input-dim=1000 output-dim=200 p=2
 NormalizeComponent dim=200
 \endverbatim
@@ -197,12 +193,12 @@ HMM framework than raw posteriors.
 
  Below is an example of looking at these diagnostics in one particular directory:
 \verbatim
-grep LOG exp/nnet4a2/log/compute_prob_*.10.log 
-<snip>/log/compute_prob_train.10.log:LOG <snip> Saw 4000 examples, average probability is -1.2407 with total weight 4000
-<snip>/log/compute_prob_valid.10.log:LOG <snip> Saw 4000 examples, average probability is -1.47747 with total weight 4000
+grep LOG exp/nnet4d/log/compute_prob_*.10.log 
+exp/nnet4d/log/compute_prob_train.10.log:LOG<snip> Saw 4000 examples, average probability is -0.894922 and accuracy is 0.729 with total weight 4000
+exp/nnet4d/log/compute_prob_valid.10.log:LOG<snip> Saw 4000 examples, average probability is -1.16311 and accuracy is 0.6585 with total weight 4000
 \endverbatim
- You can see that the training set objective function is better, at -1.24, than the validation set
- objective function, at -1.47.  This is a cross-entropy, also known as the average log-probability 
+ You can see that the training set objective function is better, at -0.89, than the validation set
+ objective function, at -1.16.  This is a cross-entropy, also known as the average log-probability 
  per frame of the correct class.  It's normal for the training and validation objective functions to 
  differ quite a lot because neural networks have a high learning capacity: for well-tuned systems on 
  only a few hours of data, they can differ by as much as a factor of two (but much less when you have
@@ -221,8 +217,7 @@ LOG <snip> Relative parameter differences per layer are  [ 0.016644 0.0175719 0.
 \endverbatim
  The top line regarding "Total diff per component" breaks down the change in training-set
  objective function by the contribution of different layers, and the other lines say 
- how large the parameter change was for the different layers.
-
+ how large the parameter change was for the different layers. 
 
  The logs of the main training job can be found (for example) in exp/nnet5a/log/train.*.*.log.
  The first index is the iteration number and the second index is the one of, say, 4 or 16
@@ -259,11 +254,15 @@ LOG (nnet-train-parallel:main():nnet-train-parallel.cc:104) Finished training, p
  The basic parallelization method is to train with Stochastic Gradient Descent for a few hundred
  thousand samples, using different data in different jobs and then to average the models.
  Since the objective function is not convex in the parameters, it may seem surprising that this
- works, but empirically convexity does not seem to be an issue here.  Note: it may be
+ works, but empirically convexity does not seem to be an issue here.  Note: it seems to be
  important that we are doing the "preconditioned update" which we describe below; we have
  experiments that indicate this is important for the success of our parallization method.
+ Also note that in the more recent training scripts (train_norm_fast.sh and train_tanh_fast.sh),
+ we don't do the parallelization and averaging on iterations where we've either just initialized
+ the model or just added a new layer.  This is because we found that under those circumstances,
+ sometimes the averaging can fail to be helpful due to lack of convexity (i.e., the objective function
+ given the averaged model is worse than the average of the individual objective functions).
  
-
  \subsection dnn2_train_combine Final model combination
 
  If you look in, for example, exp/nnet4d/log/combine.log, you will see how the final neural
@@ -278,7 +277,9 @@ LOG (nnet-train-parallel:main():nnet-train-parallel.cc:104) Finished training, p
  function is the normal objective function (log-probability) on that subset, and the optimization
  method is L-BFGS, with a special preconditioning method that we won't go into here. 
  There are separate weights for each component and each iteration, so in this case 
- we are learning (20 * 3 = 60) weights.
+ we are learning (20 * 3 = 60) weights.  In the original version of this method, we used validation
+ data to estimate the paraemters, but we found that it works best when using a random subset of
+ training data for this purpose.
 
 \verbatim
 #> cat exp/nnet4d/log/combine.log
@@ -783,10 +784,31 @@ LOG <snip> Limiting step size to 40 using scaling factor 0.188353, for component
 
 \section dnn2_algorithms_preconditioning Preconditioned Stochastic Gradient Descent
 
- We mentioned above that rather than using plain vanilla Stochastic Gradient Descent (SGD),
- we use a special preconditioned form of SGD.
- We plan to document this soon, in this section.
+ We mentioned above that rather than using plain vanilla Stochastic Gradient
+ Descent (SGD), we use a special preconditioned form of SGD.  Basically this
+ means that, instead of using a scalar learning rate, we use a matrix-valued
+ learning rate.  This matrix has a special structure, so in effect we have a
+ matrix at the input dimension of each affine component, and one at the output
+ dimension.  If you want to view this as a single large matrix, it would have a
+ block-diagonal structure where each block is a Kronecker product of two
+ matrices (one for the input-dimension and one for the output-dimension of the
+ corresponding affine component).  In addition, this matrix is estimated per
+ minibatch.  The basic idea is to reduce the learning rate in dimensions where
+ the derivatives have a high variance; this will tend to control instability and
+ stop the parameters moving too fast in any one direction. 
 
+ We don't have time
+ at the moment to produce a detailed summary on this page, but see the comments
+ in the source files \ref nnet2/nnet-precondition.h and \ref
+ nnet2/nnet-precondition-online.h where this method is explained in detail.  We
+ should mention that \ref nnet2/nnet-precondition.h contains the original, older
+ version of this method, where the preconditioning matrix is estimated for each
+ minibatch, and \ref nnet2/nnet-precondition-online.h contains a newer version
+ of this method, where the preconditioning matrix has a special low-rank plus
+ unit-matrix structure and is estimated online; this is much more efficient for
+ GPU implementation because the old method relied on symmetric matrix inversion
+ that had to be done in relatively high dimension (e.g. 512), which is hard to
+ do efficiently on a GPU and was becoming a bottleneck.
 
 */
 

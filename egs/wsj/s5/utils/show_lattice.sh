@@ -17,7 +17,7 @@ uttid=$1
 lat=$2
 words=$3
 
-tmpdir=$(mktemp -d); # trap "rm -r $tmpdir" EXIT # cleanup
+tmpdir=$(mktemp -d kaldi.XXXX); # trap "rm -r $tmpdir" EXIT # cleanup
 
 gunzip -c $lat | lattice-to-fst ark:- ark,scp:$tmpdir/fst.ark,$tmpdir/fst.scp || exit 1
 ! grep "^$uttid " $tmpdir/fst.scp && echo "ERROR : Missing utterance '$uttid' from gzipped lattice ark '$lat'" && exit 1

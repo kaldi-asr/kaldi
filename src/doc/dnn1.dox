@@ -21,7 +21,7 @@
 namespace kaldi {
 namespace nnet1 {
 /**
-  \page dnn1 Karel's DNN training implementation
+  \page dnn1 Karel's DNN implementation
 
   \section dnn1_nnet Overview
 

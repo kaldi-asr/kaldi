@@ -1,12 +1,37 @@
 #!/bin/bash
 
-for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+filter_regexp=.
+[ $# -ge 1 ] && filter_regexp=$1
+
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+  for x in exp/{mono,tri,sgmm,nnet,dnn}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null | grep $filter_regexp
 exit 0
 
+# Results from Nikolay, using kaldi scoring:
+# %WER 35.17 [ 9677 / 27512, 1267 ins, 1681 del, 6729 sub ] exp/tri1/decode/wer_13
+# %WER 30.03 [ 8262 / 27512, 1255 ins, 1367 del, 5640 sub ] exp/tri2/decode/wer_15
+# %WER 24.99 [ 6876 / 27512, 1314 ins, 1015 del, 4547 sub ] exp/tri3/decode/wer_14
+# %WER 30.10 [ 8281 / 27512, 1257 ins, 1368 del, 5656 sub ] exp/tri3/decode.si/wer_16
+# %WER 21.31 [ 5863 / 27512, 1121 ins, 875 del, 3867 sub ] exp/tri3_mmi_b0.1/decode_it4/wer_12
 
-%WER 35.17 [ 9677 / 27512, 1267 ins, 1681 del, 6729 sub ] exp/tri1/decode/wer_13
-%WER 30.03 [ 8262 / 27512, 1255 ins, 1367 del, 5640 sub ] exp/tri2/decode/wer_15
-%WER 24.99 [ 6876 / 27512, 1314 ins, 1015 del, 4547 sub ] exp/tri3/decode/wer_14
-%WER 30.10 [ 8281 / 27512, 1257 ins, 1368 del, 5656 sub ] exp/tri3/decode.si/wer_16
-%WER 21.31 [ 5863 / 27512, 1121 ins, 875 del, 3867 sub ] exp/tri3_mmi_b0.1/decode_it4/wer_12
+# DEV SPEAKERS:
+# GMMs
+%WER 36.0 | 507 17792 | 69.7 23.3 7.0 5.7 36.0 98.2 | 0.009 | exp/tri1/decode_dev/score_12/ctm.filt.filt.sys
+%WER 32.1 | 507 17792 | 73.8 20.1 6.1 6.0 32.1 97.2 | -0.092 | exp/tri2/decode_dev/score_15/ctm.filt.filt.sys
+%WER 27.4 | 507 17792 | 78.3 16.7 5.0 5.7 27.4 96.4 | -0.232 | exp/tri3/decode_dev/score_16/ctm.filt.filt.sys
+%WER 24.0 | 507 17792 | 80.6 14.7 4.7 4.6 24.0 94.1 | -0.098 | exp/tri3_mmi_b0.1/decode_dev_it4/score_15/ctm.filt.filt.sys
+# Karel's DNN
+%WER 21.7 | 507 17792 | 83.3 13.1 3.7 5.0 21.7 93.5 | -0.175 | exp/dnn4_pretrain-dbn_dnn/decode_dev/score_11/ctm.filt.filt.sys
+%WER 20.0 | 507 17792 | 84.7 12.1 3.1 4.7 20.0 92.5 | -0.202 | exp/dnn4_pretrain-dbn_dnn_smbr/decode_dev/score_12/ctm.filt.filt.sys
+%WER 19.4 | 507 17792 | 85.2 12.0 2.8 4.6 19.4 91.9 | -0.223 | exp/dnn4_pretrain-dbn_dnn_smbr_i1lats/decode_dev/score_13/ctm.filt.filt.sys
 
+# TEST SPEAKERS:
+# GMMs
+%WER 34.7 | 1155 27512 | 69.9 23.7 6.4 4.6 34.7 97.3 | 0.080 | exp/tri1/decode_test/score_13/ctm.filt.filt.sys
+%WER 29.8 | 1155 27512 | 74.8 20.2 5.0 4.6 29.8 95.9 | -0.015 | exp/tri2/decode_test/score_14/ctm.filt.filt.sys
+%WER 24.6 | 1155 27512 | 79.6 16.3 4.1 4.2 24.6 93.6 | -0.050 | exp/tri3/decode_test/score_16/ctm.filt.filt.sys
+%WER 21.6 | 1155 27512 | 82.3 14.2 3.5 3.9 21.6 91.9 | 0.043 | exp/tri3_mmi_b0.1/decode_test_it4/score_13/ctm.filt.filt.sys
+# Karel's DNN
+%WER 19.1 | 1155 27512 | 84.4 12.1 3.5 3.5 19.1 90.0 | -0.025 | exp/dnn4_pretrain-dbn_dnn/decode_test/score_12/ctm.filt.filt.sys
+%WER 17.7 | 1155 27512 | 85.8 11.3 2.9 3.5 17.7 88.7 | -0.049 | exp/dnn4_pretrain-dbn_dnn_smbr/decode_test/score_13/ctm.filt.filt.sys
+%WER 17.2 | 1155 27512 | 86.2 11.0 2.7 3.4 17.2 87.9 | -0.063 | exp/dnn4_pretrain-dbn_dnn_smbr_i1lats/decode_test/score_14/ctm.filt.filt.sys

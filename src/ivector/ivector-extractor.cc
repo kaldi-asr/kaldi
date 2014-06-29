@@ -1373,6 +1373,15 @@ double IvectorStats::UpdatePrior(
   return ans;
 }
 
+IvectorStats::IvectorStats (const IvectorStats &other):
+    config_(other.config_), tot_auxf_(other.tot_auxf_), gamma_(other.gamma_),
+    Y_(other.Y_), R_(other.R_), R_num_cached_(other.R_num_cached_),
+    R_gamma_cache_(other.R_gamma_cache_),
+    R_ivec_scatter_cache_(other.R_ivec_scatter_cache_),
+    Q_(other.Q_), G_(other.G_), S_(other.S_), num_ivectors_(other.num_ivectors_),
+    ivector_sum_(other.ivector_sum_), ivector_scatter_(other.ivector_scatter_) {
+}
+
 
 } // namespace kaldi
 

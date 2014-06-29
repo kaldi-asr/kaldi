@@ -172,8 +172,8 @@ class SpMatrix : public PackedMatrix<Real> {
   /// by SVD within a smaller dimension ("lanczos_dim").
   ///
   /// If *this is m by m, s should be of dimension n and P should be of
-  /// dimension m by n, with n <= m.  The columns of P are the approximate
-  /// eigenvalues; P * diag(s) * P^T would be a low-rank reconstruction of
+  /// dimension m by n, with n <= m.  The *columns* of P are the approximate
+  /// eigenvectors; P * diag(s) * P^T would be a low-rank reconstruction of
   /// *this.  The columns of P will be orthogonal, and the elements of s will be
   /// the eigenvalues of *this projected into that subspace, but beyond that
   /// there are no exact guarantees.  (This is because the convergence of this
@@ -199,9 +199,7 @@ class SpMatrix : public PackedMatrix<Real> {
 
 
   // Takes exponential of the matrix (equivalent to doing eigenvalue
-  // decomposition then taking exp of eigenvalues and reconstructing;
-  // actually not done that way as we don't have symmetric eigenvalue
-  // code).
+  // decomposition then taking exp of eigenvalues and reconstructing).
   void Exp();
 
   /// Returns the maximum of the absolute values of any of the
@@ -242,7 +240,7 @@ class SpMatrix : public PackedMatrix<Real> {
   
   /// diagonal update, this <-- this + diag(v)
   template<typename OtherReal>
-  void AddVec(const Real alpha, const VectorBase<OtherReal> &v);
+  void AddDiagVec(const Real alpha, const VectorBase<OtherReal> &v);
 
   /// rank-N update:
   /// if (transM == kNoTrans)

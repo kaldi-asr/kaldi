@@ -86,7 +86,4 @@ steps/compute_cmvn_stats.sh --fake data_bnf/dev93 exp_bnf/make_fmllr_feats param
 rm -r data_bnf/eval92_sat
 rm -r data_bnf/dev93_sat
 
-# you can run sgmm2 on this bottleneck features
-local/run_bnf_sgmm.sh
-
 exit 0;

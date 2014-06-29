@@ -51,6 +51,7 @@ class Mutex {
 
  private:
   pthread_mutex_t mutex_;
+  KALDI_DISALLOW_COPY_AND_ASSIGN(Mutex);  
 };
 
 } // namespace kaldi

@@ -96,23 +96,50 @@ template<typename Real> void TestCuVectorVecVecOne(int32 dim) {
 
 
 
-template<typename Real> void TestCuVectorAddDiagMatMat(int32 dim) {
+template<typename Real> void TestCuVectorAddDiagMatMat(int32 dim,
+                                                       MatrixTransposeType transN,
+                                                       MatrixTransposeType transO) {
   BaseFloat time_in_secs = 0.05;
   CuVector<Real> v(dim);
   v.SetRandn();
   CuMatrix<Real> N(dim, dim), O(dim, dim);
-  N.SetRandn(); O.SetRandn();
+  N.SetRandn();
+  O.SetRandn();
 
   Timer tim;
   int32 iter = 0;
   
   for (;tim.Elapsed() < time_in_secs; iter++) {
-    v.AddDiagMatMat(1.0, N, kNoTrans, O, kNoTrans, 1.0);
+    v.AddDiagMatMat(1.0, N, transN, O, transO, 1.0);
   }
 
   BaseFloat fdim = dim;
   BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
-  KALDI_LOG << "For CuVector::AddDiagMatMat" << NameOf<Real>() << ", for dim = "
+  KALDI_LOG << "For CuVector::AddDiagMatMat" << NameOf<Real>()
+            << (transN == kNoTrans ? "[no-trans],":"[trans],")
+            << (transO == kNoTrans ? "[no-trans],":"[trans],")
+            << " for dim = "<< dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+template<typename Real> void TestCuVectorAddDiagMat2(int32 dim, MatrixTransposeType trans) {
+  BaseFloat time_in_secs = 0.05;
+  CuVector<Real> v(dim);
+  v.SetRandn();
+  CuMatrix<Real> N(dim, dim);
+  N.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    v.AddDiagMat2(1.0, N, trans, 0.0);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::AddDiagMat2" << NameOf<Real>()
+            << (trans == kTrans ? "[trans]" : "[no-trans]") << ", for dim = "
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
@@ -121,25 +148,27 @@ template<typename Real> void TestCuVectorAddDiagMatMat(int32 dim) {
 template<typename Real> void CudaVectorSpeedTest() {
   std::vector<int32> sizes;
   sizes.push_back(16);
+  sizes.push_back(32);
+  sizes.push_back(64);
   sizes.push_back(128);
   sizes.push_back(256);
   sizes.push_back(1024);
   int32 ns = sizes.size();
+  for (int32 s = 0; s < ns; s++)
+    TestCuVectorSoftmax<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuVectorSum<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuVectorVecVecOne<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++) {
-	  TestCuVectorSoftmax<Real>(sizes[s]);
+    TestCuVectorAddDiagMatMat<Real>(sizes[s], kNoTrans, kNoTrans);
+    TestCuVectorAddDiagMatMat<Real>(sizes[s], kNoTrans, kTrans);
+    TestCuVectorAddDiagMatMat<Real>(sizes[s], kTrans, kNoTrans);
+    TestCuVectorAddDiagMatMat<Real>(sizes[s], kTrans, kTrans);
   }
-
-
-  for (int32 s = 0; s < ns; s++) {
-          TestCuVectorSum<Real>(sizes[s]);
-  }
-
-  for (int32 s = 0; s < ns; s++) {
-          TestCuVectorVecVecOne<Real>(sizes[s]);
-  }
-
-  for (int32 s = 0; s < ns; s++) {
-    TestCuVectorAddDiagMatMat<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++) { 
+    TestCuVectorAddDiagMat2<Real>(sizes[s], kNoTrans);
+    TestCuVectorAddDiagMat2<Real>(sizes[s], kTrans);
   }
   
 }

@@ -119,6 +119,8 @@ class CuMatrixBase {
                                 const CuMatrixBase<Real> &B,
                                 MatrixTransposeType trans);
 
+  /// Adds "value" to the diagonal elements of the matrix.  The matrix
+  /// *this does not have to be square.
   void AddToDiag(Real value);
   
   /// Dimensions
@@ -183,6 +185,8 @@ class CuMatrixBase {
 
   /// Apply the function y(i) = (sum_{j = i*G}^{(i+1)*G-1} x_j ^ (power)) ^ (1 / p)
   /// where G = x.NumCols() / y.NumCols() must be an integer.
+  /// [note: y corresponds to *this and x to src, so
+  ///  src.NumCols() / this->NumCols() must be an integer.
   void GroupPnorm(const CuMatrixBase<Real> &src, Real pow);
 
   /// Calculate derivatives for the GroupPnorm function above...
@@ -220,16 +224,26 @@ class CuMatrixBase {
   void DiffXent(const CuArray<int32> &tgt,
                 CuVector<Real> *log_post_tgt);  
 
-  /// This method may be only called for symmetric matrices (it accesses the
-  /// upper as well as lower triangle).  The result is put in the lower
-  /// triangle, and the upper triangle zeroed.
-  void Cholesky();
-  
-  void SymInvertPosDef(); ///< Inversion for positive definite symmetric matrices.
-                          ///< Requires that the input is symmetric (we do not check this).
-                          ///< The output is symmetric.
-  
+  /// This function does sets *this to the Cholesky factor of *this (i.e.  the C
+  /// satisfying *this = C C^T), and sets "inv_cholesky" (if supplied) to its
+  /// inverse.  *this is treated as a symmetric matrix but only the lower triangle
+  /// is accessed.
+  void Cholesky(CuMatrixBase<Real> *inv_cholesky = NULL);
+
+
+  /// Inversion for positive definite symmetric matrices.
+  /// Treats the input as symmetric but only reads the lower triangle.
+  /// The output is symmetric.
+  void SymInvertPosDef(); 
+
   void ApplyPow(Real power);
+  ///< Apply power to the absolute value of each element. 
+  ///< If inlude_sign is true, the result will be multiplied with 
+  ///< the sign of the input value.
+  ///< If the power is negative and the input to the power is zero,
+  ///< The output will be set zero. If include_sign is true, it will
+  ///< multiply the result by the sign of the input.
+  void ApplyPowAbs(Real power, bool include_sign=false);
   void ApplyHeaviside(); ///< For each element, sets x = (x > 0 ? 1.0 : 0.0)
   void ApplyFloor(Real floor_val);
   void ApplyCeiling(Real ceiling_val);
@@ -255,7 +269,8 @@ class CuMatrixBase {
   void SetZero();
   void Set(Real value);
   void Add(Real value);
-  void SetZeroUpperDiag();
+  /// Zeroes all elements for which col > row.
+  void SetZeroAboveDiag();
   void Scale(Real value);
   void ApplyLog();
   
@@ -284,6 +299,7 @@ class CuMatrixBase {
                  const CuMatrixBase<Real> &B, MatrixTransposeType transB, Real beta);
   /// *this = a * b / c (by element; when c = 0, *this = a)
   void AddMatMatDivMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C);
+
   /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only
   /// updates the lower triangle of *this.  It will leave the matrix asymmetric;
   /// if you need it symmetric as a regular matrix, do CopyLowerToUpper().
@@ -310,7 +326,7 @@ class CuMatrixBase {
     CuMatrix<Real> M(B);
     return AddMatMat(alpha, A, transA, M, kNoTrans, beta);
   }
-
+  
   /// this <-- beta*this + alpha*SpA*B
   void AddSpMat(const Real alpha,
                 const CuSpMatrix<Real> &A,
@@ -551,6 +567,9 @@ class CuMatrix: public CuMatrixBase<Real> {
     return *(reinterpret_cast<Matrix<Real>* >(this));
   }
 
+  /// Here, A is interpreted as a matrix of probabilities, and "elements" as a list
+  /// of posteriors (possibly zero-one), and "*this" as a matrix of derivatives
+  /// w.r.t. the log-probs.
   /// This function does: for each element { row, column, weight } indexed i in
   /// the vector "elements", let x(i) = A(row(i), column(i)); then it does
   /// (*this)(row(i), column(i)) += weight(i) / x(i), and

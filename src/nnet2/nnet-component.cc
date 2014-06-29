@@ -50,6 +50,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new SigmoidComponent();
   } else if (component_type == "TanhComponent") {
     ans = new TanhComponent();
+  } else if (component_type == "PowerComponent") {
+    ans = new PowerComponent();
   } else if (component_type == "SoftmaxComponent") {
     ans = new SoftmaxComponent();
   } else if (component_type == "RectifiedLinearComponent") {
@@ -787,6 +789,78 @@ void TanhComponent::Backprop(const CuMatrixBase<BaseFloat> &, // in_value
                                                               in_deriv);
   in_deriv->MulElements(out_deriv);
 }  
+
+void PowerComponent::Init(int32 dim, BaseFloat power) {
+  dim_ = dim;
+  power_ = power;
+  KALDI_ASSERT(dim > 0 && power >= 0);
+}
+
+void PowerComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  int32 dim;
+  BaseFloat power = 2.0;
+  ParseFromString("power", &args, &power); // Optional.
+  // Accept either "dim" or "input-dim" to specify the input dim.
+  // "input-dim" is the canonical one; "dim" simplifies the testing code.
+  bool ok = (ParseFromString("dim", &args, &dim) ||
+             ParseFromString("input-dim", &args, &dim));
+  if (!ok || !args.empty() || dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+  Init(dim, power);
+}
+
+void PowerComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                              int32, // num_chunks
+                              CuMatrix<BaseFloat> *out) const {
+  // Apply power operation to each element of the input...
+  out->Resize(in.NumRows(), in.NumCols(), kUndefined);
+  out->CopyFromMat(in);
+  out->ApplyPowAbs(power_);
+}
+
+void PowerComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                             const CuMatrixBase<BaseFloat> &out_value,
+                             const CuMatrixBase<BaseFloat> &out_deriv,
+                             int32, // num_chunks
+                             Component *to_update,
+                             CuMatrix<BaseFloat> *in_deriv) const {
+  in_deriv->Resize(in_value.NumRows(), in_value.NumCols());
+  // in scalar terms: in_deriv += p * in_value^(p-1) * out_deriv
+  in_deriv->CopyFromMat(in_value); 
+  in_deriv->ApplyPowAbs(power_ - 1.0, true);
+  in_deriv->Scale(power_);
+  in_deriv->MulElements(out_deriv);
+}
+
+void PowerComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<PowerComponent>", "<InputDim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<OutputDim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<Power>");
+  ReadBasicType(is, binary, &power_);
+  ExpectToken(is, binary, "</PowerComponent>");
+}
+
+void PowerComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<PowerComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<OutputDim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<Power>");
+  WriteBasicType(os, binary, power_);
+  WriteToken(os, binary, "</PowerComponent>");
+}
+
+std::string PowerComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", dim = " << dim_
+	 << ", power = " << power_;
+  return stream.str();
+}
 
 void RectifiedLinearComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                               int32, // num_chunks
@@ -1735,16 +1809,15 @@ void AffineComponentPreconditioned::Update(
   
   in_value_temp.Resize(in_value.NumRows(),
                        in_value.NumCols() + 1, kUndefined);
-  in_value_temp.Range(0, in_value.NumRows(), 0, in_value.NumCols()).CopyFromMat(
-      in_value);
+  in_value_temp.Range(0, in_value.NumRows(),
+                      0, in_value.NumCols()).CopyFromMat(in_value);
 
-  // Add the 1.0 at the end of each row "in_value_temp"
-  CuVector<BaseFloat> ones(in_value.NumRows(), kUndefined);
-  ones.Set(1.0);
-  in_value_temp.CopyColFromVec(ones, in_value.NumCols());
+  // Add the 1.0 at the end of each row "in_value_temp"  
+  in_value_temp.Range(0, in_value.NumRows(),
+                      in_value.NumCols(), 1).Set(1.0);
   
   CuMatrix<BaseFloat> in_value_precon(in_value_temp.NumRows(),
-                                    in_value_temp.NumCols(), kUndefined),
+                                      in_value_temp.NumCols(), kUndefined),
       out_deriv_precon(out_deriv.NumRows(),
                        out_deriv.NumCols(), kUndefined);
   // each row of in_value_precon will be that same row of
@@ -1789,16 +1862,32 @@ void AffineComponentPreconditionedOnline::Read(std::istream &is, bool binary) {
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
-  ExpectToken(is, binary, "<Rank>");
-  ReadBasicType(is, binary, &rank_);
-  ExpectToken(is, binary, "<Eta>");
-  ReadBasicType(is, binary, &eta_);
-  ExpectToken(is, binary, "<MaxChange>");
-  ReadBasicType(is, binary, &max_change_);
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<Rank>") {  // back-compatibility (temporary)
+    ReadBasicType(is, binary, &rank_in_);
+    rank_out_ = rank_in_;
+  } else {
+    KALDI_ASSERT(tok == "<RankIn>");
+    ReadBasicType(is, binary, &rank_in_);
+    ExpectToken(is, binary, "<RankOut>");
+    ReadBasicType(is, binary, &rank_out_);    
+  }
+  ReadToken(is, binary, &tok);
+  if (tok == "<UpdatePeriod>") {
+    ReadBasicType(is, binary, &update_period_);
+    ExpectToken(is, binary, "<NumSamplesHistory>");
+  } else {
+    update_period_ = 1;
+    KALDI_ASSERT(tok == "<NumSamplesHistory>");
+  }
+  ReadBasicType(is, binary, &num_samples_history_);
+  ExpectToken(is, binary, "<Alpha>");
+  ReadBasicType(is, binary, &alpha_);
+  ExpectToken(is, binary, "<MaxChangePerSample>");
+  ReadBasicType(is, binary, &max_change_per_sample_);
   ExpectToken(is, binary, ostr_end.str());
-
-  N_input_.Resize(0, 0);
-  N_output_.Resize(0, 0);
+  SetPreconditionerConfigs();
 }
 
 void AffineComponentPreconditionedOnline::InitFromString(std::string args) {
@@ -1806,15 +1895,22 @@ void AffineComponentPreconditionedOnline::InitFromString(std::string args) {
   bool ok = true;
   std::string matrix_filename;
   BaseFloat learning_rate = learning_rate_;
-  BaseFloat eta = 1.0, max_change = 0.0;
-  int32 input_dim = -1, output_dim = -1, rank = 10;
+  BaseFloat num_samples_history = 2000.0, alpha = 4.0,
+      max_change_per_sample = 0.1;
+  int32 input_dim = -1, output_dim = -1, rank_in = 30, rank_out = 80,
+      update_period = 1;
   ParseFromString("learning-rate", &args, &learning_rate); // optional.
-  ParseFromString("eta", &args, &eta);
-  ParseFromString("max-change", &args, &max_change);
-  ParseFromString("rank", &args, &rank);
+  ParseFromString("num-samples-history", &args, &num_samples_history);
+  ParseFromString("alpha", &args, &alpha);
+  ParseFromString("max-change-per-sample", &args, &max_change_per_sample);
+  ParseFromString("rank-in", &args, &rank_in);
+  ParseFromString("rank-out", &args, &rank_out);
+  ParseFromString("update-period", &args, &update_period);
 
   if (ParseFromString("matrix", &args, &matrix_filename)) {
-    Init(learning_rate, rank, eta, max_change, matrix_filename);
+    Init(learning_rate, rank_in, rank_out, update_period,
+         num_samples_history, alpha, max_change_per_sample,
+         matrix_filename);
     if (ParseFromString("input-dim", &args, &input_dim))
       KALDI_ASSERT(input_dim == InputDim() &&
                    "input-dim mismatch vs. matrix.");
@@ -1829,7 +1925,8 @@ void AffineComponentPreconditionedOnline::InitFromString(std::string args) {
     ParseFromString("param-stddev", &args, &param_stddev);
     ParseFromString("bias-stddev", &args, &bias_stddev);
     Init(learning_rate, input_dim, output_dim, param_stddev,
-         bias_stddev, rank, eta, max_change);
+         bias_stddev, rank_in, rank_out, update_period,
+         num_samples_history, alpha, max_change_per_sample);
   }
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: "
@@ -1838,14 +1935,31 @@ void AffineComponentPreconditionedOnline::InitFromString(std::string args) {
     KALDI_ERR << "Bad initializer " << orig_args;
 }
 
+void AffineComponentPreconditionedOnline::SetPreconditionerConfigs() {
+  preconditioner_in_.SetRank(rank_in_);
+  preconditioner_in_.SetNumSamplesHistory(num_samples_history_);
+  preconditioner_in_.SetAlpha(alpha_);
+  preconditioner_in_.SetUpdatePeriod(update_period_);
+  preconditioner_out_.SetRank(rank_out_);
+  preconditioner_out_.SetNumSamplesHistory(num_samples_history_);
+  preconditioner_out_.SetAlpha(alpha_);
+  preconditioner_out_.SetUpdatePeriod(update_period_);
+}
+
 void AffineComponentPreconditionedOnline::Init(
-    BaseFloat learning_rate, int32 rank,
-    BaseFloat eta, BaseFloat max_change,
+    BaseFloat learning_rate, int32 rank_in, int32 rank_out,
+    int32 update_period, BaseFloat num_samples_history, BaseFloat alpha,
+    BaseFloat max_change_per_sample,
     std::string matrix_filename) {
   UpdatableComponent::Init(learning_rate);
-  rank_ = rank;
-  eta_ = eta;
-  max_change_ = max_change;
+  rank_in_ = rank_in;
+  rank_out_ = rank_out;
+  update_period_ = update_period;
+  num_samples_history_ = num_samples_history;
+  alpha_ = alpha;
+  SetPreconditionerConfigs();
+  KALDI_ASSERT(max_change_per_sample >= 0.0);
+  max_change_per_sample_ = max_change_per_sample;
   CuMatrix<BaseFloat> mat;
   ReadKaldiObject(matrix_filename, &mat); // will abort on failure.
   KALDI_ASSERT(mat.NumCols() >= 2);
@@ -1856,11 +1970,30 @@ void AffineComponentPreconditionedOnline::Init(
   bias_params_.CopyColFromMat(mat, input_dim);
 }
 
+AffineComponentPreconditionedOnline::AffineComponentPreconditionedOnline(
+    const AffineComponentPreconditioned &orig,
+    int32 rank_in, int32 rank_out, int32 update_period,
+    BaseFloat num_samples_history, BaseFloat alpha):
+    max_change_per_sample_(0.1) {
+  this->linear_params_ = orig.linear_params_;
+  this->bias_params_ = orig.bias_params_;
+  this->learning_rate_ = orig.learning_rate_;
+  this->is_gradient_ = orig.is_gradient_;
+  this->rank_in_ = rank_in;
+  this->rank_out_ = rank_out;
+  this->update_period_ = update_period;
+  this->num_samples_history_ = num_samples_history;
+  this->alpha_ = alpha;
+  SetPreconditionerConfigs();
+}
+
 void AffineComponentPreconditionedOnline::Init(
     BaseFloat learning_rate, 
     int32 input_dim, int32 output_dim,
     BaseFloat param_stddev, BaseFloat bias_stddev,
-    int32 rank, BaseFloat eta, BaseFloat max_change) {
+    int32 rank_in, int32 rank_out, int32 update_period,
+    BaseFloat num_samples_history, BaseFloat alpha,
+    BaseFloat max_change_per_sample) {
   UpdatableComponent::Init(learning_rate);
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
@@ -1870,12 +2003,14 @@ void AffineComponentPreconditionedOnline::Init(
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
   bias_params_.Scale(bias_stddev);
-  rank_ = rank;
-  eta_ = eta;
-  KALDI_ASSERT(eta_ > 0.0); // this helps ensure invertibility of certain quantities
-                            // that get inverted in the update.
-  KALDI_ASSERT(max_change >= 0.0);
-  max_change_ = max_change;
+  rank_in_ = rank_in;
+  rank_out_ = rank_out;
+  update_period_ = update_period;
+  num_samples_history_ = num_samples_history;
+  alpha_ = alpha;
+  SetPreconditionerConfigs();
+  KALDI_ASSERT(max_change_per_sample >= 0.0);
+  max_change_per_sample_ = max_change_per_sample;
 }
 
 
@@ -1890,12 +2025,18 @@ void AffineComponentPreconditionedOnline::Write(std::ostream &os, bool binary) c
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
-  WriteToken(os, binary, "<Rank>");
-  WriteBasicType(os, binary, rank_);
-  WriteToken(os, binary, "<Eta>");
-  WriteBasicType(os, binary, eta_);
-  WriteToken(os, binary, "<MaxChange>");
-  WriteBasicType(os, binary, max_change_);
+  WriteToken(os, binary, "<RankIn>");
+  WriteBasicType(os, binary, rank_in_);
+  WriteToken(os, binary, "<RankOut>");
+  WriteBasicType(os, binary, rank_out_);
+  WriteToken(os, binary, "<UpdatePeriod>");
+  WriteBasicType(os, binary, update_period_);
+  WriteToken(os, binary, "<NumSamplesHistory>");
+  WriteBasicType(os, binary, num_samples_history_);
+  WriteToken(os, binary, "<Alpha>");
+  WriteBasicType(os, binary, alpha_);
+  WriteToken(os, binary, "<MaxChangePerSample>");
+  WriteBasicType(os, binary, max_change_per_sample_);
   WriteToken(os, binary, ostr_end.str());
 }
 
@@ -1913,56 +2054,59 @@ std::string AffineComponentPreconditionedOnline::Info() const {
          << ", linear-params-stddev=" << linear_stddev
          << ", bias-params-stddev=" << bias_stddev
          << ", learning-rate=" << LearningRate()
-         << ", rank=" << rank_
-         << ", eta=" << eta_
-         << ", max-change=" << max_change_;
+         << ", rank-in=" << rank_in_
+         << ", rank-out=" << rank_out_
+         << ", num_samples_history=" << num_samples_history_
+         << ", alpha=" << alpha_
+         << ", max-change-per-sample=" << max_change_per_sample_;
   return stream.str();
 }
 
 Component* AffineComponentPreconditionedOnline::Copy() const {
   AffineComponentPreconditionedOnline *ans = new AffineComponentPreconditionedOnline();
   ans->learning_rate_ = learning_rate_;
+  ans->rank_in_ = rank_in_;
+  ans->rank_out_ = rank_out_;
+  ans->update_period_ = update_period_;
+  ans->num_samples_history_ = num_samples_history_;
+  ans->alpha_ = alpha_;
   ans->linear_params_ = linear_params_;
   ans->bias_params_ = bias_params_;
-  ans->rank_ = rank_;
-  ans->eta_ = eta_;
-  ans->max_change_ = max_change_;
+  ans->preconditioner_in_ = preconditioner_in_;
+  ans->preconditioner_out_ = preconditioner_out_;
+  ans->max_change_per_sample_ = max_change_per_sample_;
   ans->is_gradient_ = is_gradient_;
-  ans->N_input_ = N_input_;
-  ans->N_output_ = N_output_;
+  ans->SetPreconditionerConfigs();
   return ans;
 }
 
 
-BaseFloat AffineComponentPreconditionedOnline::GetScalingFactor(
-    const CuMatrix<BaseFloat> &in_value_precon,
-    const CuMatrix<BaseFloat> &out_deriv_precon) {
-  static int scaling_factor_printed = 0;
 
-  KALDI_ASSERT(in_value_precon.NumRows() == out_deriv_precon.NumRows());
-  CuVector<BaseFloat> in_norm(in_value_precon.NumRows()),
-      out_deriv_norm(in_value_precon.NumRows());
-  in_norm.AddDiagMat2(1.0, in_value_precon, kNoTrans, 0.0);
-  out_deriv_norm.AddDiagMat2(1.0, out_deriv_precon, kNoTrans, 0.0);
-  // Get the actual l2 norms, not the squared l2 norm.
-  in_norm.ApplyPow(0.5);
-  out_deriv_norm.ApplyPow(0.5);
-  BaseFloat sum = learning_rate_ * VecVec(in_norm, out_deriv_norm);
-  // sum is the product of norms that we are trying to limit
+BaseFloat AffineComponentPreconditionedOnline::GetScalingFactor(
+    const CuVectorBase<BaseFloat> &in_products,
+    BaseFloat learning_rate_scale,
+    CuVectorBase<BaseFloat> *out_products) {
+  static int scaling_factor_printed = 0;
+  int32 minibatch_size = in_products.Dim();
+
+  out_products->MulElements(in_products);
+  out_products->ApplyPow(0.5);
+  BaseFloat prod_sum = out_products->Sum();
+  BaseFloat tot_objf_change = learning_rate_scale * learning_rate_ * prod_sum,
+      max_objf_change = max_change_per_sample_ * minibatch_size;
+  // tot_objf_change is the product of norms that we are trying to limit
   // to max_value_.
-  KALDI_ASSERT(sum == sum && sum - sum == 0.0 &&
-               "NaN in backprop");
-  KALDI_ASSERT(sum >= 0.0);
-  if (sum <= max_change_) return 1.0;
+  KALDI_ASSERT(tot_objf_change - tot_objf_change == 0.0 && "NaN in backprop");
+  KALDI_ASSERT(tot_objf_change >= 0.0);
+  if (tot_objf_change <= max_objf_change) return 1.0;
   else {
-    BaseFloat ans = max_change_ / sum;
+    BaseFloat factor = max_objf_change / tot_objf_change;
     if (scaling_factor_printed < 10) {
-      KALDI_LOG << "Limiting step size to " << max_change_
-                << " using scaling factor " << ans << ", for component index "
-                << Index();
+      KALDI_LOG << "Limiting step size using scaling factor "
+                << factor << ", for component index " << Index();
       scaling_factor_printed++;
     }
-    return ans;
+    return factor;
   }
 }
 
@@ -1973,40 +2117,38 @@ void AffineComponentPreconditionedOnline::Update(
   
   in_value_temp.Resize(in_value.NumRows(),
                        in_value.NumCols() + 1, kUndefined);
-  in_value_temp.Range(0, in_value.NumRows(), 0, in_value.NumCols()).CopyFromMat(
-      in_value);
+  in_value_temp.Range(0, in_value.NumRows(),
+                      0, in_value.NumCols()).CopyFromMat(in_value);
 
   // Add the 1.0 at the end of each row "in_value_temp"
-  CuVector<BaseFloat> ones(in_value.NumRows(), kUndefined);
-  ones.Set(1.0);
-  in_value_temp.CopyColFromVec(ones, in_value.NumCols());
+  in_value_temp.Range(0, in_value.NumRows(),
+                      in_value.NumCols(), 1).Set(1.0);
   
   CuMatrix<BaseFloat> out_deriv_temp(out_deriv);
-  
-  N_mutex_.Lock();
-  CuMatrix<BaseFloat> N_input(N_input_); // temporary copy.
-  CuMatrix<BaseFloat> N_output(N_output_); // temporary copy.
-  N_mutex_.Unlock();
 
-  bool first_time = false;
-  if (N_input.NumRows() == 0) {
-    N_input.Resize(rank_, InputDim() + 1);
-    N_output.Resize(rank_, OutputDim());
-    first_time = true;
-  }
+  CuMatrix<BaseFloat> row_products(2,
+                                   in_value.NumRows());
+  CuSubVector<BaseFloat> in_row_products(row_products, 0),
+      out_row_products(row_products, 1);
+
+  // These "scale" values get will get multiplied into the learning rate (faster
+  // than having the matrices scaled inside the preconditioning code).
+  BaseFloat in_scale, out_scale;
   
-  PreconditionDirectionsOnline(eta_, first_time, &N_input, &in_value_temp);
-  PreconditionDirectionsOnline(eta_, first_time, &N_output, &out_deriv_temp);
-  
-  N_mutex_.Lock();
-  N_input_.Swap(&N_input);
-  N_output_.Swap(&N_output);
-  N_mutex_.Unlock();
-  
+  preconditioner_in_.PreconditionDirections(&in_value_temp, &in_row_products,
+                                            &in_scale);
+  preconditioner_out_.PreconditionDirections(&out_deriv_temp, &out_row_products,
+                                             &out_scale);
+
+  // "scale" is a scaling factor coming from the PreconditionDirections calls
+  // (it's faster to have them output a scaling factor than to have them scale
+  // their outputs).
+  BaseFloat scale = in_scale * out_scale;
   BaseFloat minibatch_scale = 1.0;
   
-  if (max_change_ > 0.0)
-    minibatch_scale = GetScalingFactor(in_value_temp, out_deriv_temp);
+  if (max_change_per_sample_ > 0.0)
+    minibatch_scale = GetScalingFactor(in_row_products, scale,
+                                       &out_row_products);
   
   CuSubMatrix<BaseFloat> in_value_precon_part(in_value_temp,
                                               0, in_value_temp.NumRows(),
@@ -2017,7 +2159,7 @@ void AffineComponentPreconditionedOnline::Update(
   
   precon_ones.CopyColFromMat(in_value_temp, in_value_temp.NumCols() - 1);
   
-  BaseFloat local_lrate = minibatch_scale * learning_rate_;
+  BaseFloat local_lrate = scale * minibatch_scale * learning_rate_;
   bias_params_.AddMatVec(local_lrate, out_deriv_temp, kTrans,
                          precon_ones, 1.0);
   linear_params_.AddMatMat(local_lrate, out_deriv_temp, kTrans,

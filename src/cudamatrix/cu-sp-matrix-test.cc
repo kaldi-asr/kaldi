@@ -149,39 +149,6 @@ static void UnitTestCuSpMatrixCopyFromMat() {
 }
 
 template<typename Real>
-static void UnitTestCuSpMatrixApproxInvert(int32 dim) {
-  // Get random orthogonal matrix.
-  CuMatrix<Real> Q(dim, dim);
-
-  Q.SetRandn();
-  for (int32 r = 0; r < dim; r++) {
-    for (int32 s = 0; s < r; s++)
-      Q.Row(r).AddVec(-1.0 * VecVec(Q.Row(r), Q.Row(s)), Q.Row(s));
-    Q.Row(r).Scale(1.0 / Q.Row(r).Norm(2.0));
-  }
-  
-  CuVector<Real> s(dim); // factor of 10 on eigenvalues, evenly spaced in log.
-  Real eig_range = 50.0;
-  Real first_eig = 0.001 + RandUniform() * 5.0;
-  for (int32 r = 0; r < dim; r++)
-    s(r) = first_eig * exp(r * log(eig_range) / dim);
-
-  s.ApplyPow(0.5);
-  Q.MulColsVec(s);
-  CuSpMatrix<Real> A(dim);
-  A.AddMat2(1.0, Q, kNoTrans, 0.0);
-  CuMatrix<Real> A_orig(A);
-
-  BaseFloat max_error = 0.1;
-  A.InvertPosDefApprox(max_error);
-
-
-  CuMatrix<Real> prod(dim, dim);
-  prod.AddSpMat(1.0, A, A_orig, kNoTrans, 0.0);
-  KALDI_ASSERT(prod.IsUnit(max_error));  
-}  
-
-template<typename Real>
 static void UnitTestCuSpMatrixInvert() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 10*i + rand() % 5;
@@ -378,9 +345,6 @@ template<typename Real> void CudaSpMatrixUnitTest() {
   UnitTestCuSpMatrixOperator<Real>();
   UnitTestCuSpMatrixApproxEqual<Real>();
   UnitTestCuSpMatrixInvert<Real>();
-  UnitTestCuSpMatrixApproxInvert<Real>(300);
-  UnitTestCuSpMatrixApproxInvert<Real>(100);
-  UnitTestCuSpMatrixApproxInvert<Real>(10);
   UnitTestCuSpMatrixCopyFromMat<Real>();
   UnitTestCuSpMatrixAddVec2<Real>();
   UnitTestCuSpMatrixAddMat2<Real>();

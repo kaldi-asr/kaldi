@@ -26,13 +26,11 @@ public class OutputProcess {
 		public String word;
 		public float start;
 		public float end;
-		public float confidence;
 
-		public Word(String word, float start, float end, float confidence) {
+		public Word(String word, float start, float end) {
 			this.word = word;
 			this.start = start;
 			this.end = end;
-			this.confidence = confidence;
 		}
 	}
 
@@ -63,7 +61,6 @@ public class OutputProcess {
 
 			for (Word word : words) {
 				textgrid.addSegment(0, word.start, word.end, word.word);
-				textgrid.addSegment(1, word.start, word.end, "" + word.confidence);
 			}
 
 			textgrid.tiers.get(0).name = "KALDI";
@@ -87,7 +84,7 @@ public class OutputProcess {
 				int s = (int) (word.start * 10000000);
 				int e = (int) (word.end * 10000000);
 
-				htk.println(s + " " + e + " " + word.word + " " + word.confidence);
+				htk.println(s + " " + e + " " + word.word);
 			}
 			htk.close();
 		}

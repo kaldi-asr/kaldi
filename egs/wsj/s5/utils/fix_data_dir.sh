@@ -18,7 +18,7 @@ mkdir -p $data/.backup
 
 [ ! -f $data/utt2spk ] && echo "$0: no such file $data/utt2spk" && exit 1;
 
-tmpdir=$(mktemp -d);
+tmpdir=$(mktemp -d kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT HUP INT PIPE TERM
 
 export LC_ALL=C
@@ -165,6 +165,7 @@ function filter_utts {
 filter_recordings
 filter_speakers
 filter_utts
+filter_speakers
 filter_recordings
 
 

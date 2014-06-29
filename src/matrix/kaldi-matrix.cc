@@ -1848,6 +1848,13 @@ void MatrixBase<Real>::ApplyPow(Real power) {
 }
 
 template<typename Real>
+void MatrixBase<Real>::ApplyPowAbs(Real power, bool include_sign) {
+  for (MatrixIndexT i = 0; i < num_rows_; i++) {
+    Row(i).ApplyPowAbs(power, include_sign);
+  }
+}
+
+template<typename Real>
 void MatrixBase<Real>::ApplyHeaviside() {
   MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
   for (MatrixIndexT i = 0; i < num_rows; i++) {

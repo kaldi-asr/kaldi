@@ -43,7 +43,7 @@ SplitRadixComplexFft<Real>::SplitRadixComplexFft(MatrixIndexT N) {
     logm_ ++;
   }
   ComputeTables();
-  temp_buffer = NULL;
+  temp_buffer_ = NULL;
 }
 
 template<typename Real>
@@ -55,21 +55,21 @@ void SplitRadixComplexFft<Real>::ComputeTables() {
 
   lg2 = logm_ >> 1;
   if (logm_ & 1) lg2++;
-  brseed = new MatrixIndexT[1 << lg2];
-  brseed[0] = 0;
-  brseed[1] = 1;
+  brseed_ = new MatrixIndexT[1 << lg2];
+  brseed_[0] = 0;
+  brseed_[1] = 1;
   for (j = 2; j <= lg2; j++) {
     imax = 1 << (j - 1);
     for (i = 0; i < imax; i++) {
-      brseed[i] <<= 1;
-      brseed[i + imax] = brseed[i] + 1;
+      brseed_[i] <<= 1;
+      brseed_[i + imax] = brseed_[i] + 1;
     }
   }
 
   if (logm_ < 4) {
-    tab = NULL;
+    tab_ = NULL;
   } else {
-    tab = new Real* [logm_-3];
+    tab_ = new Real* [logm_-3];
     for (i = logm_; i>=4 ; i--) {
       /* Compute a few constants */
       m = 1 << i; m2 = m / 2; m4 = m2 / 2; m8 = m4 /2;
@@ -77,10 +77,10 @@ void SplitRadixComplexFft<Real>::ComputeTables() {
       /* Allocate memory for tables */
       nel = m4 - 2;
 
-      tab[i-4] = new Real[6*nel];
+      tab_[i-4] = new Real[6*nel];
 
       /* Initialize pointers */
-      cn = tab[i-4]; spcn  = cn + nel;  smcn  = spcn + nel;
+      cn = tab_[i-4]; spcn  = cn + nel;  smcn  = spcn + nel;
       c3n = smcn + nel;  spc3n = c3n + nel; smc3n = spc3n + nel;
 
       /* Compute tables */
@@ -99,14 +99,14 @@ void SplitRadixComplexFft<Real>::ComputeTables() {
 
 template<typename Real>
 SplitRadixComplexFft<Real>::~SplitRadixComplexFft() {
-  delete [] brseed;
-  if (tab != NULL) {
+  delete [] brseed_;
+  if (tab_ != NULL) {
     for (MatrixIndexT i = 0; i < logm_-3; i++)
-      delete [] tab[i];
-    delete [] tab;
+      delete [] tab_[i];
+    delete [] tab_;
   }
-  if (temp_buffer != NULL)
-    delete [] temp_buffer;
+  // "delete" only does something if it's a non-NULL pointer.
+  delete [] temp_buffer_;
 }
 
 template<typename Real>
@@ -125,29 +125,29 @@ void SplitRadixComplexFft<Real>::Compute(Real *xr, Real *xi, bool forward) const
 
 template<typename Real>
 void SplitRadixComplexFft<Real>::Compute(Real *x, bool forward) {
-  if (temp_buffer == NULL)
-    temp_buffer = new Real[N_];
+  if (temp_buffer_== NULL)
+    temp_buffer_ = new Real[N_];
   for (MatrixIndexT i = 0; i < N_; i++) {
     x[i] = x[i*2];  // put the real part in the first half of x.
-    temp_buffer[i] = x[i*2 + 1];  // put the imaginary part in temp_buffer.
+    temp_buffer_[i] = x[i*2 + 1];  // put the imaginary part in temp_buffer.
   }
   // copy the imaginary part back to the second half of x.
-  memcpy(static_cast<void*>(x+N_),
-         static_cast<void*>(temp_buffer),
+  memcpy(static_cast<void*>(x + N_),
+         static_cast<void*>(temp_buffer_),
          sizeof(Real) * N_);
 
-  Compute(x, x+N_, forward);
+  Compute(x, x + N_, forward);
   // Now change the format back to interleaved.
-  memcpy(static_cast<void*>(temp_buffer),
-         static_cast<void*>(x+N_),
+  memcpy(static_cast<void*>(temp_buffer_),
+         static_cast<void*>(x + N_),
          sizeof(Real) * N_);
   for (MatrixIndexT i = N_-1; i > 0; i--) {  // don't include 0,
     // in case MatrixIndexT is unsigned, the loop would not terminate.
     // Treat it as a special case.
     x[i*2] = x[i];
-    x[i*2 + 1] = temp_buffer[i];
+    x[i*2 + 1] = temp_buffer_[i];
   }
-  x[1] = temp_buffer[0];  // special case of i = 0.
+  x[1] = temp_buffer_[0];  // special case of i = 0.
 }
 
 template<typename Real>
@@ -162,11 +162,11 @@ void SplitRadixComplexFft<Real>::BitReversePermute(Real *x, MatrixIndexT logm) c
 
   /* Unshuffling loop */
   for (off = 1; off < n; off++) {
-    fj = n * brseed[off]; i = off; j = fj;
+    fj = n * brseed_[off]; i = off; j = fj;
     tmp = x[i]; x[i] = x[j]; x[j] = tmp;
     xp = &x[i];
-    brp = &(brseed[1]);
-    for (gno = 1; gno < brseed[off]; gno++) {
+    brp = &(brseed_[1]);
+    for (gno = 1; gno < brseed_[off]; gno++) {
       xp += n;
       j = fj + *brp++;
       xq = x + j;
@@ -281,7 +281,7 @@ void SplitRadixComplexFft<Real>::ComputeRecursive(Real *xr, Real *xi, MatrixInde
   xi1 = xi + m2; xi2 = xi1 + m4;
   if (logm >= 4) {
     nel = m4 - 2;
-    cn  = tab[logm-4]; spcn  = cn + nel;  smcn  = spcn + nel;
+    cn  = tab_[logm-4]; spcn  = cn + nel;  smcn  = spcn + nel;
     c3n = smcn + nel;  spc3n = c3n + nel; smc3n = spc3n + nel;
   }
   xr1++; xr2++; xi1++; xi2++;

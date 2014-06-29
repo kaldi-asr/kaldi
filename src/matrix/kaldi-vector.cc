@@ -451,6 +451,40 @@ void VectorBase<Real>::ApplyPow(Real power) {
 }
 #endif
 
+// takes absolute value of the elements to a power.
+// Throws exception if could not (but only for power != 1 and power != 2).
+template<typename Real>
+void VectorBase<Real>::ApplyPowAbs(Real power, bool include_sign) {
+  if (power == 1.0) 
+    for (MatrixIndexT i = 0; i < dim_; i++)
+      data_[i] = (include_sign && data_[i] < 0 ? -1 : 1) * std::abs(data_[i]);
+  if (power == 2.0) {
+    for (MatrixIndexT i = 0; i < dim_; i++)
+      data_[i] = (include_sign && data_[i] < 0 ? -1 : 1) * data_[i] * data_[i];
+  } else if (power == 0.5) {
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      data_[i] = (include_sign && data_[i] < 0 ? -1 : 1) * std::sqrt(std::abs(data_[i]));
+    }
+  } else if (power < 0.0) {
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      data_[i] = (data_[i] == 0.0 ? 0.0 : pow(std::abs(data_[i]), power));
+      data_[i] *= (include_sign && data_[i] < 0 ? -1 : 1);
+      if (data_[i] == HUGE_VAL) {  // HUGE_VAL is what errno returns on error.
+        KALDI_ERR << "Could not raise element "  << i << "to power "
+                  << power << ": returned value = " << data_[i];
+      }
+    }
+  } else {
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      data_[i] = (include_sign && data_[i] < 0 ? -1 : 1) * pow(std::abs(data_[i]), power);
+      if (data_[i] == HUGE_VAL) {  // HUGE_VAL is what errno returns on error.
+        KALDI_ERR << "Could not raise element "  << i << "to power "
+                  << power << ": returned value = " << data_[i];
+      }
+    }
+  }
+}
+
 // Computes the p-th norm. Throws exception if could not.
 template<typename Real>
 Real VectorBase<Real>::Norm(Real p) const {

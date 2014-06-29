@@ -179,9 +179,13 @@ to the names of actual speakers-- they simply need to represent a reasonable gue
 In this case we assume each conversation side (each side of the telephone conversation)
 corresponds to a single speaker.  This is not entirely true -- sometimes one person
 may hand the phone to another person, or the same person may be speaking in multiple
-calls -- but it's good enough for our purposes.  If you have no information at all about
-the speaker identities, you can just make the speaker-ids the same as the utterance-ids,
+calls -- but it's good enough for our purposes.  <b> If you have no information at all about
+the speaker identities, you can just make the speaker-ids the same as the utterance-ids </b>,
 so the format of the file would be just <DFN>\<utterance-id\> \<utterance-id\></DFN>.
+We have made the previous sentence bold because we have encountered people creating
+a "global" speaker-id.  This is a bad idea because it makes cepstral mean normalization
+ineffective in traning (since it's applied globally), and because it will create problems
+when you use utils/split_data_dir.sh to split your data into pieces.
 
 There is another file that exists in some setups; it is used only occasionally and
 not in the Kaldi system build.  We show what it looks like in the Resource Management

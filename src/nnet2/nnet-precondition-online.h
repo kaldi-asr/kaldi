@@ -23,6 +23,7 @@
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix-lib.h"
+#include "thread/kaldi-mutex.h"
 
 #include <iostream>
 
@@ -38,13 +39,13 @@ namespace nnet2 {
    is that algorithms like Cholesky decomposition and triangular solvers, that
    were used in that method, are not as parallelizable as matrix multiplication.
    The method in nnet-precondition.h involved inverting symmetric matrices whose
-   dimension was the number of frames in a minibatch.  
+   dimension was the number of frames in a minibatch.
 
    Our method here aims to reduce the dimension in which we have to do things
    like inversion.  (In fact, for CUDA implementation we'll deal with small matrices
    like 10x10 for which it's faster to move them to the CPU and invert them there,
    and then move them back).
-
+   
    Firstly, for each affine layer, we treat it for purposes of this code as
    a linear layer on an input that has been extended by a 1.  This code does not
    even see the bias as a separate thing.
@@ -59,225 +60,546 @@ namespace nnet2 {
    smoothing estimates of the Fisher matrix, and putting in an overall scaling
    factor so we still have a reasonable learning rate.
 
-   In the previous code (nnet-precondition.h), we got the Fisher matrix on the
-   input side from the scatter of inputs and on the output side from the scatter
-   of derivatives of the output.  We didn't have to invert matrices of dimension
-   like 2048 (a typical hidden-layer dim) because via the use of various matrix
-   equalities we did operations on the dim of (minibatch size), based on the
-   cross-products of gradients.
+   In the previous code (nnet-precondition.h), we got the Fisher matrix from
+   the current minibatch.  In this case we estimate a low-rank plus scaled-identity
+   approximation to the Fisher matrix, in an iterative approach where we update
+   it on each minibatch.  This is more efficient, particularly with CUDA, where
+   the relatively high-dimensional symmetric matrix inversion we previously did
+   was becoming a bottleneck.
+*/
 
-   Below, assume just for the sake of exposition that the matrix we're training
-   goes from (hidden-layer-dim + 1) to (hidden-layer-dim), and
-   (hidden-layer-dim) is 2048, and the minibatch-size is 255.  In fact this is a
-   special case as the input and output dims of the affind component don't have
-   to be equal, we'll gloss over those details.  Let's consider the
-   preconditioning of the input values (the 2049-dimensional input vectors); the
-   preconditioning of the output derivatives happens in the same way.
-
-   We choose a rank, say R = 10, and we have a 10 x 2049 dimensional matrix.
-   Call this N, but it changes on each minibatch, so we'll call it N_i, where
-   i is the iteration number. (later we'll come to how we implement this for
-   multi-core).  On each iteration, let the matrix of input-values be M_i,
-   which is a 256 x 2049 dimensional matrix.  
-   
-   We'll update N_i on each iteration by doing:
-
-          O_i =  N_i (M_i^T M_i)
-          P_i = O_i + \eta_i N_i 
-      N_{i+1} = orthogonalize(P_i)
-
-   where "orthogonalize" means orthogonalizing the rows of the matrix they have unit
-   norm and are orthogonal to each other; if P_i is not full rank (which should
-   be very rare), we can just use random values.  So the N_i will always have
-   orthonormal rows.  We choose the \eta_i with:
-      \eta_i = \eta sqrt( tr(O_i O_i^T) / tr(N_i N_i^T) ) = \eta sqrt( tr(O_i O_i^T) / 10),
-   for a globally chosen \eta >= 0 (e.g. something like 2) which the larger it is, the
-   more "inertia" the N_i have (they'll change more slowly)
-   
-   Now, the N_i is in some sense an arbitrary orthogonal matrix but what is
-   important is that it is "enriched" in the directions in which the Fisher
-   matrix has large eigenvalues; in fact, we can show for large \eta (and
-   assuming the parameters are constant) that it will approach the top
-   eigenvalues of the Fisher matrix.
-   
-   To discuss the preconditioning method, first imagine we have an orthogonal
-   matrix Q_i of dimension 2049 x 2049, which is formed from N_i by choosing
-   arbitrary extra rows orthogonal to the first rows and to each other.
-   Project the gradients M_i with Q_i, forming
-        M'_i = M_i Q_i^T.
-   [for each vector, it would be m'_i = Q_i m_i, but the m_i are the rows of
-    M_i so we have to transpose the equation].
-
-   The preconditioner acts in this transformed space, and is of the form
-     diag(G_i, I) where G is of dimension 10 x 10 and I is the
-   identity matrix of dimension (2049 - 10).  So it only "does something"
-   to the first 10 dimensions.  In fact, the eigenvalues of G_i will almost
-   certainly all be less than one, so the transform will make those dimensions
-   smaller.
-
-   Now we describe what G_i is.  First, let F_i be the Fisher matrix,
-   limited to those ten dimensions, and estimated from the current
-   minibatch.  We'll have
-      G_i = \beta_i F_i^{-1}
-   and we'll work out the constant \beta_i.  We want to choose 
-   \beta_id in such a way that the identity matrix (I) that we apply
-   to the "remaining dimensions" will be a reasonable approximation to beta_i
-   times the inverse Fisher on those dimensions.  Thus, we're applying
-   a matrix \beta_i diag(F_i^{-1}, 1/\beta_i I), where the matrix
-   in the diag( ... ) expression is an approximation to the inverse
-   Fisher matrix, and the \beta_i can just be viewed as part of the learning
-   rate.  We could of course remove the factor \beta_i, but this could lead
-   to problems early on in training when some parameters are zero.
-
-   We have a unit-matrix approximation to the "remaining" dimensions
-   of F_i.  That is: we compute the trace of (the fisher from dimension
-   11 to 2049) and divide by (2049 - 10), and that be \beta_i.  So
-   we approximate full-fisher(i) = diag(F_i, \beta_i I).
-   Then the inverse-Fisher will be diag(F_i^{-1}, 1/\beta_i I).
-   Then we (quite arbitrarily) multiply by \beta_i so the matrix we use
-   as a preconditioner is diag(\beta_i F_i^{-1}, I).
-
-   Now, as to the actual computation... it's important to never explicitly
-   construct Q_i.  
-
-  Input: we have N_i (orthogonal) and M_i.
-
-  L_i will be M_i multiplied by the preconditioner.  This will be:
-
-   L_i = M_i Q_i^T diag(\beta_i F_i^{-1}, I) Q_i
-
-      =  M_i Q_i^T (I + diag(I - \beta_i F_i^{-1}, 0)) Q_i
-      =  M_i - M_i N_i^T (I - \beta_i F_i^{-1}) N_i
-
- First: what is F_i ?  
-       F_i = (1/256) N_i M_i^T M_i N_i^T
-  This is the Fisher matrix projected with the basis N_i.  The 1/256 is dividing
-  by the minibatch size.  And let
-     \beta_i = (1/(2049 - 10)) (1/256) (tr(M_i^T M) - tr(F_i) )
-  (So \beta_i is the average diagonal element of (M_i^T M projected to
-   the remaining dimensions of Q_i), i.e. the average diagonal of
-   the remaining dimensions of the Fisher).
-
-  Now, as to the computation of the "next" F_i...
-  Note: above, while computing F_i, we computed the following expression, which
-  we'll give a name here:
-     O_i = N_i M_i^T M_i
-  Define
-     X_i = O_i O_i^T.
-  We can compute \eta_i  = \eta sqrt( tr(O_i O_i^T) / 10 ) = \eta sqrt(trace(X_i) / 10).
-  Then we can compute P_i = O_i + \eta_i N_i.
-  We need to orthogonalize P_i.  We can do this as follows.  We can compute the matrix
-  of inner products of its rows:
-    Y_i =(def) P_i P_i^T.
-  Now, Y_i = (O_i + \eta_i N_i) (\eta_i O_i + N_i)^T.
-           =  X_i + \eta_i^2 I + \eta_i O_i N_i^T + \eta_i N_i O_i^T
-           =  X_i + \eta_i^2 I + (2 * \eta_i * 256) F_i
- (using the fact that F_i = (1/256) N_i M_i^T M_i N_i = (1/256) O_i N_i^T, and 
-   that F_i is symmetric).
-
-  Note: if N_i has full row rank rank (which it is, by induction) then P_i also
-  will have full row rank.  The basic proof would be that P_i equals N_i times a
-  strictly positive definite matrix, namely (\eta_i I + M_i^T M_i).  We could
-  probably even get a bound on the condition of P_i.  
-
-  OK, we have Y_i, so we need any matrix that makes Y_i unit.  If we do the
-  Cholesky decomposition
-    Y_i = C_i C_i^T, then (C_i^{-1} Y_i C_i^{-T}) = I, so (C_i^{-1} P_i P_i^T C_i^{-T}) = I,
-  so (C_i^{-1} P_i) is orthogonal.  So to get N_{i+1} we simply do
-
-     N_{i+1} = C_i^{-1} P_i
-
-     *****************
-  OK, we'll now describe, compactly, one iteration of the algorithm in which we
-  "precondition" a minibatch of vectors
-     M_i \in Re^{B \times D},
-  where B is the minibatch size and D is the dimension of the vectors (e.g. 2049).
-  N_i is an input and we output N_{i+1}.  (We assume that N_i has already been
-  initialized to the correct dimension, randomly if necessary).
-
-  Let R be the "rank of the correction", so
-     N_i \in \Re^{R \times D}.
-
-  If B < 2 * R, return without doing anything and print a warning (maybe a partial
-    minibatch, at the end).
-
- Let    NMT_i = N_i M_i^T             # dimension R by B.
- Let      O_i = NMT_i   M_i.          # note: O_i has same dimension as N_i: R by D.
- Let      F_i = (1/B) O_i N_i^T       # F_i \in Re^{R, R} is the low-dimension Fisher matrix: F_i = (1/B) N_i M_i^T M_i N_i
- Let      t_f = Trace(F_i) 
- Let      t_m = Trace(M_i^T M)        # i.e. sumsq of elements of M_i
- Let  \beta_i = (t_m - B t_f) / ((D - R) * B)     # \beta_i is the average diagonal element of
-                                                  # the "rejected dimensions" of the Fisher matrix,
-                                                  # i.e. not in the chosen subspace.
- Let F_i_inv = (F_i + (\epsilon t_f/R + \delta) I)^{-1}
-                                                # e.g. with \epsilon = 1.0e-4, \delta = 1.0e-10.  The epsilon and delta
-                                                # are really there
-                                                # just to prevent crashes if the matrix is nearly singular, or exactly zero.
-
-                                                # A note on the next line: we expect \beta_i F_i_inv to have
-                                                # eigenvalues less than one.
- Let      L_i = M_i  + NMT_i^T (\beta_i F_i_inv - I) N_i  # L is the "preconditioned" version of M_i; it's an output.
-
- Let        X_i = O_i O_i^T
- Let     \eta_i = max( \eta sqrt(Trace(O_i O_i^T) / R), \delta)  # e.g. delta = 1.0e-10.
- Let        Y_i = X_i + \eta_i^2 I + (2 * \eta_i * B) F_i
-    # Note: it's almost inconceivable that the Cholesky below or the inversion should fail; it
-    # would be a kind of perverse coincidence.  (Y_i must be +ve semidefinite but
-    # will almost surely be +ve definite).  If it happens we could just leave N_i at
-    # the same value it had previously.
-Do Cholesky Y_i = C_i C_i^T.
- Let        P_i = O_i + \eta_i N_i.
- Let    C_i_inv = C_i^{-1} 
- Let    N_{i+1} = C_i_inv P_i
-   # check: N_{i+1} is orthogonal?
-
-     *****************
-     */
 
 /*
-   The following describes compactly how the function's behavior is defined
-   (ignoring small terms that are introduced to ensure invertibility of certain
-   quantities); this description is supplied for testing purposes, it doesn't
-   correspond to how the computation is done.
-   
-   Inputs: N_i \in \Re^{R times D}, M \in \Re^{B \times D}.  Require N_i N_i^T = I.
+  We consider the problem of doing online estimation of a (scaled-identity plus low-rank)
+  approximation of a Fisher matrix... since the Fisher matrix is a scatter of vector-valued derivatives
+  and we will be given the derivatives (or at least terms in a factorization of the derivatives
+  which need not concern us right now), we can just think of the present task as being
+  the online accumulation of a (low-rank plus scaled-identity) approximation to a variance
+  of a distribution with mean zero.
+  
+  Later on we'll think about how to get easy access to the inverse of this approximate
+  variance, which is what we really need.
 
-   Let T_i \in \Re^{(D - R) times D} be chosen such that T_i T_i^T = I and T_i N_i^T = 0,
-     i.e. a matrix such that Q_i = [ N_i
-                                     T_i ] is orthogonal.
-   
-   Let F_i = (N_i M^T M N_i).
-   Let \beta_i = (trace(T_i M^T M T_i)) / ((D - R) * B).
-   Let Finv = diag( \beta_i F_i^{-1} , I ), where I is in dimension (D - R).  Finv is
-       our Fisher-inverse approximation in the space projected by Q_i.
-   Output: M <-- M Q_i^T Finv Q_i
-   Next we update N_i:
-      O_i <-- N_i M_i^T M_i  # this is proportional to N_i times the Fisher matrix.
-   \eta_i = \eta sqrt(tr(O_i O_i^T) / tr(N_i N_i^T) )
-      P_i = O_i + \eta_i N_i
-# now orthogonalize P_i: let Y_i = P_i P_i^T, do Cholesky Y_i = C C^T, then do      
-  N_{i+1} = C^{-1} P_i.  
-*/
-   
+  Our approximation to the Fisher matrix (the scatter of derivatives) will be of the following form
+  (and just think of this as an approximate variance matrix of some arbitrary quantities).
 
-/** In this function, N is the orthogonal (R x D) matrix which is updated
-   each time and which controls the preconditioning.  M is a (B x D) matrix
-   where B is the batch size and D is the dimension of the problem (e.g.
-   a hidden-layer dimension or a hidden-layer dimension plus on for the input).
-   R (the #rows of N) is the rank ofthe Fisher matrix, which is an important
-   parameter.  lambda controls how fast we update M.  A suitable value is,
-   say, 0.25.  The algorithm should not be too sensitive to this.
+     F_t =(def) X_t^T D_t X_t + \rho_t I
 
-   If the "first_time" option is true, the function will first initialize N to a
-   random matrix with orthonormal rows, and will then call itself once with a
-   small eta (e.g. 0.001, just nonzero enough to handle zero M without making a
-   singular N), and discard the resulting M, in order to get a more reasonable
-   value for N.  */
-void PreconditionDirectionsOnline(BaseFloat eta,
-                                  bool first_time,
-                                  CuMatrixBase<BaseFloat> *N,
-                                  CuMatrixBase<BaseFloat> *M);
-                            
+  (t is the minibatch index), where X_t is an R by D matrix with orthonormal
+  rows (1 <= R < D is our chosen rank), D_t is a positive-definite diagonal matrix, and
+  \rho_t > 0.  Suppose the dimension of F_t is D.  Let the vectors whose variance
+  we are approximating be provided in minibatches of size M (M can vary from
+  iteration to iteration, but it won't vary in the normal case, so we omit the
+  subscript t).  The batch of gradients is given as R_t \in Re^{M \times D},
+  i.e. each row is one of the vectors whose scatter we're estimating.  On the
+  t'th iteration, define the scatter S_t of the input vectors R_t as:
+
+     S_t =(def) 1/N R_t^T R_t           (eqn:St)
+     
+  (where N is the minibatch size).  Be careful not to confuse the rank R with
+  with input R_t (we would typeface R_t in bold if this were not plain text, to
+  make the distinction clearer).  We want F_t to approach some kind of
+  time-weighted average of the S_t quantities, to the extent permitted by the
+  limitation of the rank R.  We want the F_t quantities to stay "fresh" (since
+  we'll be doing this in a SGD context and the parameters will be slowly
+  changing).  We use a constant 0 < \eta < 1 to control the updating rate.  Our
+  update for X_t is based on the power method.  Define the smoothed scatter
+
+   T_t =(def) \eta S_t + (1-\eta) F_t
+
+  we'll use this in place of the observed scatter S_t, to slow down the update.
+  Defining
+  
+   Y_t =(def) X_t T_t
+
+  which can be expanded as follows:
+       Y_t = X_t ( \eta S_t + (1-\eta) F_t )
+           = X_t ( \eta S_t + (1-\eta) (X_t^T D_t X_t + \rho_t I) )
+           = X_t ( \eta S_t + (1-\eta) (X_t^T D_t X_t + \rho_t I) )
+           = \eta X_t S_t + (1-\eta) (D_t + \rho_t I) X_t
+
+  It is useful to think of Y_t as having each of the top eigenvectors of the
+  scatter scaled by the corresponding eigenvalue \lambda_i. 
+  We compute the following R by R matrix:
+    Z_t =(def) Y_t Y_t^T
+  and do the symmetric eigenvalue decomposition
+    Z_t = U_t C_t U_tT^
+  where C_t is diagonal and U_t orthogonal; the diagonal elements of C_t will be
+  positive (since \rho_t > 0, T_t is positive definite; since X_t has full row rank
+  and T_t is positive definite, Y_t has full row rank; hence Z_t is positive definite).
+  The diagonal elements of C_t can be thought of as corresponding to the squares of
+  our current estimate of the top eigenvalues of the scatter matrix.
+  [we should check that no element of C_t is <= 0.]
+  
+  It is easy to show that C_t^{-0.5} U_t^T Z_t U_t C_t^{-0.5} = I, so
+     (C_t^{-0.5} U_t^T Y_t) (Y_t^T U_t C_t^{-0.5}) = I.  Define
+    X_{t+1} =(def) C_t^{-0.5} U_t^T Y_t
+
+  and it's clear that X_{t+1} X_{t+1}^T = I. 
+  We will set
+     D_{t+1} =(def) C_t^{0.5} - \rho_{t+1} I             (eqn:dt1)
+
+  which ensures that for each row x of X_{t+1}, the variance of our scatter
+  matrix F_{t+1} will be the square root of the corresponding diagonal element
+  of C_t.  This makes sense because, as we have pointed out, the diagonal
+  elements of C_t can be thought of as corresponding to squared eigenvalues.
+  But a proper treatment of this would require convergence analysis that would
+  get quite complicated.  We will choose \rho_{t+1} in order to ensure that
+  tr(F_{t+1}) = tr(T_t).
+  
+  For any t,
+     tr(F_t) = D \rho_t + tr(D_t)
+     tr(T_t) = \eta tr(S_t) + (1-\eta) tr(F_t)
+             = \eta tr(S_t) + (1-\eta) (D \rho_t + tr(D_t))
+  Expanding out D_{t+1} from (eqn:dt1) in the expression for tr(F_{t+1}) below:
+      tr(F_{t+1})  = D \rho_{t+1} +  tr(D_{t+1}) 
+      tr(F_{t+1})  = D \rho_{t+1} +  tr(C_t^{0.5} - \rho_{t+1} I)
+                   = (D - R) \rho_{t+1} + tr(C_t^{0.5})
+   and equating tr(F_{t+1}) with T_t (since F_{t+1} is supposed to be a low-rank
+   approximation to T_t), we have
+                          tr(F_{t+1}) = tr(T_t)
+  (D - R) \rho_{t+1} + tr(C_t^{0.5})  = \eta tr(S_t) + (1-\eta) (D \rho_t + tr(D_t))
+
+  Solving for \rho_{t+1},
+       \rho_{t+1} = 1/(D - R) (\eta tr(S_t) + (1-\eta)(D \rho_t + tr(D_t)) - tr(C_t^{0.5})).   (eqn:rhot1)
+
+  Note that it is technically possible that diagonal elements of
+  of D_{t+1} may be negative, but we can stfill show that F_{t+1} is strictly
+  positive definite if F_t was strictly positive definite.
+
+  If the quantities for which we are computing the Fisher matrix are all zero
+  for some, reason, the sequence of F_t will geometrically approach zero, which
+  would cause problems with inversion; to prevent this happening, after setting
+  D_{t+1} and \rho_{t+1} as above, we floor \rho_{t+1} to a small value (like
+  1.0e-10).
+
+  OK, we have described the updating of X_t, D_t and \rho_t.  Next, we need to
+  figure out how to efficiently multiply by the inverse of F_t.  Our experience
+  from working with the old preconditioning method was that it's best not to use
+  the inverse of the Fisher matrix itself, but a version of the Fisher matrix
+  that's smoothed with some constant times the identity.  Below, (\alpha is a
+  configuration value, e.g. 4.0 seemed to work well).  The following formula is
+  designed to ensure that the smoothing varies proportionally with the scale of F_t:
+
+        G_t =(def) F_t +  \alpha/D tr(F_t) I
+            =     X_t^T D_t X_t + (\rho_t + \alpha/D tr(F_t)) I
+            =     X_t^T D_t X_t + \beta_t I
+  where            
+    \beta_t =(def) \rho_t + \alpha/D tr(F_t)
+            =      \rho_t(1+\alpha) + \alpha/D tr(D_t)       (eqn:betat2)
+
+  Define
+     P_t =(def)  \beta_t R_t G_t^{-1}.
+  the factor of \beta_t is inserted arbitrarily as it just happens to be convenient
+  to put unit scale on R_t in the formula for P_t; it will anyway be canceled out
+  in the next step.  Then our final preconditioned minibatch of vectors is:
+     Q_t = \gamma_t P_t
+  where
+     \gamma_t = sqrt(tr(R_t R_t^T)  / tr(P_t P_t^T).
+  The factor of \gamma ensures that Q_t is scaled to have the same overall
+  2-norm as the input R_t.  We found in previous versions of this method that this
+  rescaling was helpful, as otherwise there are certain situations (e.g. at the
+  start of training) where the preconditioned derivatives can get very large.  Note
+  that this rescaling introduces a small bias into the training, because now the
+  scale applied to a given sample depends on that sample itself, albeit in an
+  increasingly diluted way as the minibatch size gets large.
+
+  To efficiently compute G_t^{-1}, we will use the Woodbury matrix identity.
+  Writing the Woodbury formula for the symmetric case,
+    (A + U D U^T)^{-1} = A^{-1} - A^{-1} U (D^{-1} + U^T A^{-1} U)^{-1} U^T A^{-1}
+  Substituting A = \beta_t I, D = D_t and U = X_t^T, this becomes
+       G_t^{-1} = 1/\beta_t I - 1/\beta_t^2 X_t^T (D_t^{-1} + 1/\beta_t I)^{-1} X_t
+                = 1/\beta_t (I - X_t^T E_t X_t)
+  where
+        E_t =(def)  1/\beta_t (D_t^{-1} + 1/\beta_t I)^{-1},         (eqn:etdef)
+  so       
+    e_{tii} =   1/\beta_t * 1/(1/d_{tii} + 1/\beta_t)                (eqn:tii)
+            =   1/(\beta_t/d_{tii} + 1)
+
+  We would like an efficient-to-compute expression for P_t, without too many separate
+  invocations of kernels on the GPU.
+     P_t = \beta_t R_t G_t^{-1}
+         = R_t - R_t X_t^T E_t X_t
+  For efficient operation on the GPU, we want to reduce the number of high-dimensional
+  operations that we do (defining "high-dimension" as anything involving D or M, but not
+  R, since R is likely small, such as 20).  We define
+     W_t =(def)  E_t^{0.5} X_t.
+  We will actually be storing W_t on the GPU rather than X_t, in order to reduce the
+  number of operations on the GPU.  We can now write:
+
+        P_t = R_t - R_t W_t^T W_t       (eqn:pt2)
+  
+  The following, which we'll compute on the GPU, are going to be useful in computing
+  quantities like Z_t:
+  
+     H_t =(def) R_t W_t^T     (dim is N by R)
+     J_t =(def) H_t^T R_t     (dim is R by D)
+         =      W_t R_t^T R_t
+     K_t =(def) J_t J_t^T     (dim is R by R, symmetric).. transfer this to CPU.
+     L_t =(def) H_t^T H_t     (dim is R by R, symmetric).. transfer this to CPU.
+         =      W_t R_t^T R_t W_t^T
+     Note: L_t may also be computed as
+     L_t = J_t W_t^T
+     which may be more efficient if D < N.
+
+  Note: after we have computed H_t we can directly compute
+     P_t = R_t - H_t W_t
+
+  We need to determine how Y_t and Z_t relate to the quantities we just defined.
+  First, we'll expand out H_t, J_t, K_t and L_t in terms of the more fundamental quantities.
+     H_t = R_t X_t^T E_t^{0.5}
+     J_t = E_t^{0.5} X_t R_t^T R_t
+     K_t = E_t^{0.5} X_t R_t^T R_t R_t^T R_t X_t^T E_t^{0.5}
+     L_t = E_t^{0.5} X_t R_t^T R_t X_t^T E_t^{0.5}
+
+  we wrote above that
+      Y_t = \eta X_t S_t + (1-\eta) (D_t + \rho_t I) X_t
+  so      
+      Y_t = \eta/N X_t R_t^T R_t + (1-\eta) (D_t + \rho_t I) X_t
+          = \eta/N E_t^{-0.5} J_t  + (1-\eta) (D_t + \rho_t I) X_t     (eqn:yt)
+  We will expand Z_t using the expression for Y_t in the line above:
+      Z_t = Y_t Y_t^T
+          =  (\eta/N)^2 E_t^{-0.5} J_t J_t^T E_t^{-0.5}
+            +(\eta/N)(1-\eta) E_t^{-0.5} J_t X_t^T (D_t + \rho_t I)
+            +(\eta/N)(1-\eta) (D_t + \rho_t I) X_t J_t^T E_t^{-0.5}
+            +(1-\eta)^2 (D_t + \rho_t I)^2
+          = (\eta/N)^2 E_t^{-0.5} K_t E_t^{-0.5}
+           +(\eta/N)(1-\eta) E_t^{-0.5} L_t E_t^{-0.5} (D_t + \rho_t I)
+           +(\eta/N)(1-\eta) (D_t + \rho_t I) E_t^{-0.5} L_t E_t^{-0.5}
+           +(1-\eta)^2 (D_t + \rho_t I)^2                              (eqn:Zt)
+  We compute Z_t on the CPU using the expression above, and then do the symmetric
+  eigenvalue decomposition (also on the CPU):
+      Z_t = U_t C_t U_t^T.
+  and we make sure the eigenvalues are sorted from largest to smallest, for
+  reasons that will be mentioned later.
+
+  Mathematically, no diagonal element of C_t can be less than (1-\eta)^2
+  \rho_t^2, and since negative or zero elements of C_t would cause us a problem
+  later, we floor C_t to this value.  (see below regarding how we ensure X_{t+1}
+  has orthonormal rows).
+  
+  We will continue the discussion below regarding what we do with C_t and U_t.
+  Next, we need to digress briefly and describe how to compute
+  tr(P_t P_t^T) and tr(R_t R_t^2), since these appear in expressions for
+  \gamma_t (needed to produce the output Q_t), and for \rho_{t+1}.  It happens
+  that we need, for purposes of appying "max_change" in the neural net code, the
+  squared 2-norm of each row of the output Q_t.  In order to be able to compute
+  \gamma_t, it's most convenient to compute this squared row-norm for each row
+  of P_t, as a vector, to compute tr(P_t P_t^2) from this vector as its sum, and
+  to then work back to compute tr(R_t R_t^2) from the relation between P_t and
+  R_t.  We can then scale the row-norms we computed for P_t, so they apply to
+  Q_t.
+
+  For current purposes, you can imagine that we computed tr(P_t P_t^T) directly.
+  Using (from eqn:pt2)
+      P_t = R_t - R_t W_t^T W_t,
+  we can expand tr(P_t P_t^T) as:
+   tr(P_t P_t^T) = tr(R_t R_t^T) + tr(R_t W_t^T W_t W_t^T W_t R_t^T)
+                  - 2 tr(R_t W_t^T W_t R_t^T)
+                 = tr(R_t R_t^T) + tr(W_t R_t^T R_t W_t^T W_t W_t^T)
+                  - 2 tr(W_t R_t^T R_t W_t^T)
+                 = tr(R_t R_t^T) + tr(L_t W_t W_t^T) - 2 tr(L_t)
+                 = tr(R_t R_t^T) + tr(L_t E_t) - 2 tr(L_t)
+  and all quantities have already been computed (or are quick to compute, such as
+  the small traces on the right), except tr(R_t R_t^T), so we can write
+
+    tr(R_t R_t^T) = tr(P_t P_t^T) - tr(L_t E_t) + 2 tr(L_t)
+  and the above expression can be used to obtain tr(R_t R_t^2).
+  We can then do
+     \gamma_t <-- sqrt(tr(R_t R_t^T)  / tr(P_t P_t^T)).
+  (or one if the denominator is zero), and then
+      Q_t <-- \gamma_t P_t
+  We can then output the per-row squared-l2-norms of Q by scaling those we
+  computed from P by \gamma_t^2.
+
+  OK, the digression on how to compute \gamma_t and tr(R_t R_t^T) is over.
+  We now return to the computation of X_{t+1}, W_{t+1}, \rho_{t+1}, D_{t+1} and E_{t+1}.
+
+  We found above in (eqn:rhot1)
+     \rho_{t+1} = 1/(D - R) (\eta tr(S_t) + (1-\eta)(D \rho_t + tr(D_t)) - tr(C_t^{0.5})).
+  Expanding out S_t from its definition in (eqn:St),
+     \rho_{t+1} = 1/(D - R) (\eta/N tr(R_t R_t^T) + (1-\eta)(D \rho_t + tr(D_t)) - tr(C_t^{0.5})).  
+  We can compute this directly as all the quantities involved are already known
+  or easy to compute.
+  Next, from (eqn:dt1), we compute
+     D_{t+1} = C_t^{0.5} - \rho_{t+1} I
+  At this point if \rho_{t+1} is smaller than some small value \epsilon, e.g. 1.0e-10, we
+  set it to \epsilon; as mentioned, we do this to stop F_t approaching zero if all inputs
+  are zero.  Next, if any diagonal element D_{t+1,i,i} has absolute value less than \epsilon,
+  we set it to +\epsilon.  This is to ensure that diagonal elements of E are never zero, which
+  would cause problems.
+  
+  Next, we compute (from eqn:betat2, eqn:etdef, eqn:tii),
+        \beta_{t+1} = \rho_{t+1} (1+\alpha) + \alpha/D tr(D_{t+1})
+            E_{t+1} = 1/\beta_{t+1} (D_{t+1}^{-1} + 1/\beta_{t+1} I)^{-1},
+ i.e.:      e_{tii} = 1/(\beta_{t+1}/d_{t+1,ii} + 1)
+
+ We'll want to store D_{t+1}.  We next want to compute W_{t+1}.
+
+  Before computing W_{t+1}, we need to find an expression for
+     X_{t+1} = C_t^{-0.5} U_t^T Y_t
+   Expanding out Y_t using the expression in (eqn:yt),
+     X_{t+1} = C_t^{-0.5} U_t^T  (\eta/N E_t^{-0.5} J_t  + (1-\eta) (D_t + \rho_t I) X_t)
+             =  (\eta/N C_t^{-0.5} U_t^T E_t^{-0.5})  J_t
+               +((1-\eta) C_t^{-0.5} U_t^T (D_t + \rho_t I) E_t^{-0.5}) W_t
+
+   What we actually want is W_{t+1} = E_{t+1}^{0.5} X_{t+1}:
+     W_{t+1} = (\eta/N E_{t+1}^{0.5} C_t^{-0.5} U_t^T E_t^{-0.5}) J_t
+              +((1-\eta) E_{t+1}^{0.5} C_t^{-0.5} U_t^T (D_t + \rho_t I) E_t^{-0.5}) W_t
+   and to minimize the number of matrix-matrix multiplies we can factorize this as:
+     W_{t+1} = A_t B_t
+        A_t = (\eta/N) E_{t+1}^{0.5} C_t^{-0.5} U_t^T E_t^{-0.5}
+        B_t = J_t + (1-\eta)/(\eta/N) (D_t + \rho_t I) W_t
+   [note: we use the fact that (D_t + \rho_t I) and E_t^{-0.5} commute because
+    they are diagonal].
+               
+   The R by R matrix-valued expressions in the parentheses above would be
+   computed on the CPU and transferred from there to the GPU, and the
+   multiplications with J_t and W_t would be done on the GPU.
+
+   * Keeping X_t orthogonal *
+   
+   Our method requires the X_t matrices to be orthogonal (which we define to
+   mean that X_t X_t^T = I).  If roundoff error causes this equality to be
+   significantly violated, it could cause a problem for the stability of our
+   method.  We now address our method for making sure that the X_t values stay
+   orthogonal.  We do this in the algorithm described above, after creating
+   W_{t+1}.  This extra step is only executed if the condition number of C_t
+   (i.e. the ratio of its largest to smallest diagonal element) exceeds a
+   specified threshold, such as 1.0e+06 [this is tested before applying the
+   floor to C_t].  The threshold was determined empirically by finding the
+   largest value needed to ensure a certain level of orthogonality in X_{t+1}.
+   For purposes of the present discussion, since X_{t+1} is not actually stored,
+   define it as E_{t+1}^{-0.5} W_{t+1}.  Define the following (and we will
+   just use t instead of t+1 below, as all quantities have the same subscript):
+
+      O_t =(def) X_t X_t^T
+          =  E_t^{-0.5} W_t W_t^T E_t^{-0.5}
+
+   (and we would compute this by computing W_t W_t^T on the GPU, transferring
+   it to the CPU, and doing the rest there).  If O_t is not sufficiently close
+   to the unit matrix, we can re-orthogonalize as follows:
+   Do the Cholesky decomposition
+      O_t = C C^T
+   Clearly C^{-1} O_t C^{-T} = I, so if we correct X_t with:
+      X_t <-- C^{-1} X_t
+   we can ensure orthogonality.  If X_t's first k rows are orthogonal, this
+   transform will not affect them, because of its lower-triangular
+   structure... this is good because (thanks to the eigenvalue sorting), the
+   larger eigenvectors are first and it is more critical to keep them pointing
+   in the same direction.  Any loss of orthogonality will be dealt with by
+   modifying the smaller eigenvectors.
+   As a modification to W_t, this would be:
+      W_t <-- (E_t^{0.5} C^{-1} E_t^{-0.5}) W_t,
+   and the matrix in parentheses is computed on the CPU, transferred to the
+   GPU, and the multiplication is done there.
+ 
+
+   * Initialization *  
+
+   Now, a note on what we do on time t = 0, i.e. for the first minibatch.  We
+   initialize X_0 to the top R eigenvectors of 1/N R_0 R_0^T, where N is the
+   minibatch size (num-rows of R0).  If L is the corresponding RxR diagonal
+   matrix of eigenvalues, then we will set D_0 = L - \rho_0 I.  We set \rho_0
+   to ensure that
+                      tr(F_0) = 1/N tr(R_0 R_0^T),
+           tr(D_0) - \rho_0 D = 1/N tr(R_0 R_0^T),
+  tr(L) + \rho_0 R - \rho_0 D = 1/N tr(R_0 R_0^T)
+                       \rho_0 = (1/N tr(R_0 R_0^T) - tr(L)) / (D - R)
+
+   We then floor \rho_0 to \epsilon (e.g. 1.0e-10) and also floor the
+   diagonal elements of D_0 to \epsilon; this ensures that we won't
+   crash for zero inputs.
+
+   A note on multi-threading.  This technique was really designed for use
+   with a GPU, where we won't have multi-threading, but we want it to work
+   also on a CPU, where we may have multiple worker threads.
+   Our approach is as follows (we do this when we're about to start updating
+   the parameters X_t, D_t, \rho_t and derived quantities):
+
+    For time t > 0 (where the matrices are already initialized), before starting
+    the part of the computation that updates the parameters (X_t, D_t, \rho_t and
+    derived quantities), we try to lock a mutex that guards the OnlinePreconditioner.
+    If we can lock it right away, we go ahead and do the update, but if not,
+    we just abandon the attempt to update those quantities.
+
+    We will have another mutex to ensure that when we access quantities like
+    W_t, \rho_t they are all "in sync" (and we don't access them while they are
+    being written by another thread).  This mutex will only be locked for short
+    periods of time.
+
+   Note: it might be a good idea to make sure that the X_t still retain orthonormal
+   rows even in the presence of roundoff, without errors accumulating.  My instinct
+   is that this isn't going to be a problem.
+ */
+
+
+
+class OnlinePreconditioner {
+ public:
+  OnlinePreconditioner();
+
+  void SetRank(int32 rank);
+  void SetUpdatePeriod(int32 update_period);
+  // num_samples_history is a time-constant (in samples) that determines eta.
+  void SetNumSamplesHistory(BaseFloat num_samples_history);
+  void SetAlpha(BaseFloat alpha);
+  void TurnOnDebug() { self_debug_ = true; }
+  BaseFloat GetNumSamplesHistory() const { return num_samples_history_; }
+  BaseFloat GetAlpha() const { return alpha_; }
+  int32 GetRank() const { return rank_; }
+  
+  
+  // The "R" pointer is both the input (R in the comment) and the output (P in
+  // the comment; equal to the preconditioned directions before scaling by
+  // gamma).  If the pointer "rprod" is supplied, it's set to the inner product
+  // of each row of the preconditioned directions P, at output, with itself.
+  // You would need to apply "scale" to R and "scale * scale" to row_prod, to
+  // get the preconditioned directions; we don't do this ourselves, in order to
+  // save CUDA calls.
+  void PreconditionDirections(CuMatrixBase<BaseFloat> *R,
+                              CuVectorBase<BaseFloat> *row_prod,
+                              BaseFloat *scale);
+
+  // Copy constructor.
+  explicit OnlinePreconditioner(const OnlinePreconditioner &other);
+  // Assignent operator
+  OnlinePreconditioner &operator = (const OnlinePreconditioner &other);
+ private:
+
+  // This does the work of PreconditionDirections (the top-level
+  // function handles some multithreading issues and then calls this function).
+  // Note: WJKL_t (dimension 2*R by D + R) is [ W_t L_t; J_t K_t ].
+  void PreconditionDirectionsInternal(const int32 t,
+                                      const BaseFloat rho_t,
+                                      const Vector<BaseFloat> &d_t,
+                                      CuMatrixBase<BaseFloat> *WJKL_t,
+                                      CuMatrixBase<BaseFloat> *R_t,
+                                      CuVectorBase<BaseFloat> *row_prod,
+                                      BaseFloat *scale);
+
+  void ComputeEt(const VectorBase<BaseFloat> &d_t,
+                 BaseFloat beta_t,
+                 VectorBase<BaseFloat> *e_t,
+                 VectorBase<BaseFloat> *sqrt_e_t,
+                 VectorBase<BaseFloat> *inv_sqrt_e_t) const;
+
+  void ComputeZt(int32 N,
+                 BaseFloat rho_t,
+                 const VectorBase<BaseFloat> &d_t,
+                 const VectorBase<BaseFloat> &inv_sqrt_e_t,
+                 const MatrixBase<BaseFloat> &K_t,
+                 const MatrixBase<BaseFloat> &L_t,
+                 SpMatrix<BaseFloat> *Z_t) const;
+  // Computes W_{t+1}.  Overwrites J_t.
+  void ComputeWt1(int32 N,
+                  const VectorBase<BaseFloat> &d_t,
+                  const VectorBase<BaseFloat> &d_t1,
+                  BaseFloat rho_t,
+                  BaseFloat rho_t1,
+                  const MatrixBase<BaseFloat> &U_t,
+                  const VectorBase<BaseFloat> &sqrt_c_t,
+                  const VectorBase<BaseFloat> &inv_sqrt_e_t,                                      
+                  const CuMatrixBase<BaseFloat> &W_t,
+                  CuMatrixBase<BaseFloat> *J_t,
+                  CuMatrixBase<BaseFloat> *W_t1) const;
+
+  // This function is called if C_t has high condition number; it makes sure
+  // that X_{t+1} is orthogonal.  See the section in the extended comment above
+  // on "keeping X_t orthogonal".
+  void ReorthogonalizeXt1(const VectorBase<BaseFloat> &d_t1,
+                          BaseFloat rho_t1,
+                          CuMatrixBase<BaseFloat> *W_t1,
+                          CuMatrixBase<BaseFloat> *temp_W,
+                          CuMatrixBase<BaseFloat> *temp_O);
+
+  void Init(const CuMatrixBase<BaseFloat> &R0);
+
+  // Returns the learning rate eta as the function of the number of samples
+  // (actually, N is the number of vectors we're preconditioning, which due to
+  // context is not always exactly the same as the number of samples).  The
+  // value returned depends on num_samples_history_.
+  BaseFloat Eta(int32 N) const;
+
+  
+  // Configuration values:
+
+  // The rank of the correction to the unit matrix (e.g. 20).
+  int32 rank_;
+
+  // After a few initial iterations of updating whenever we can, we start only
+  // updating the Fisher-matrix parameters every "update_period_" minibatches;
+  // this saves time.
+  int32 update_period_;
+  
+  // num_samples_history_ determines the value of eta, which in turn affects how
+  // fast we update our estimate of the covariance matrix.  We've done it this
+  // way in order to make it easy to have a single configuration value that
+  // doesn't have to be changed when we change the minibatch size.
+  BaseFloat num_samples_history_;
+  
+  // alpha controls how much we smooth the Fisher matrix with the unit matrix.
+  // e.g. alpha = 4.0.
+  BaseFloat alpha_;
+
+  // epsilon is an absolute floor on the unit-matrix scaling factor rho_t in our
+  // Fisher estimate, which we set to 1.0e-10.  We don't actually make this
+  // configurable from the command line.  It's needed to avoid crashes on
+  // all-zero inputs.
+  BaseFloat epsilon_;
+
+  // delta is a relative floor on the unit-matrix scaling factor rho_t in our
+  // Fisher estimate, which we set to 1.0e-05: this is relative to the largest
+  // value of D_t.  It's needed to control roundoff error.
+  BaseFloat delta_;
+  
+  // t is a counter that measures how many updates we've done.
+  int32 t_;
+
+  // This keeps track of how many minibatches we've skipped updating the parameters,
+  // since the most recent update; it's used in enforcing "update_period_", which
+  // is a mechanism to avoid spending too much time updating the subspace (which can
+  // be wasteful).
+  int32 num_updates_skipped_;
+  
+  // If true, activates certain checks.
+  bool self_debug_;
+
+  CuMatrix<BaseFloat> W_t_;
+  BaseFloat rho_t_;
+  Vector<BaseFloat> d_t_;
+ 
+  
+  // Used to prevent parameters being read or written in an inconsistent state.
+  Mutex read_write_mutex_;
+
+  // This mutex is used to control which thread gets to update the
+  // parameters, in multi-threaded code.
+  Mutex update_mutex_;
+  
+
+};
+
+
+/*
+  This function finds the approximate top eigenvectors and eigenvalues of S = beta M
+  M^T (if trans == kNoTrans) or S = beta M^T M (if trans == kTrans).
+  Each row p of P will be set to an approximate
+  eigenvector of M, and the corresponding value in s will exactly equal p^T S p.
+  (note: it will actually be those with the largest absolute value that we return,
+  which makes a difference only if S has negative eigenvalues).
+  We do the eigenvalue computation on the CPU, mainly to avoid the hassle of
+  coding a version of it for CUDA.
+  Caution: most of the other eigenvalue or SVD code puts the eigenvalues in the
+  columns, not the rows.
+  This function is used by class OnlinePreconditioner; we declare it separately
+  for ease of testing.   
+ */
+void ApproxEigsOfProduct(const CuMatrixBase<BaseFloat> &M,
+                         MatrixTransposeType trans,
+                         CuMatrixBase<BaseFloat> *P,
+                         CuVectorBase<BaseFloat> *s);
+
 
 
 } // namespace nnet2

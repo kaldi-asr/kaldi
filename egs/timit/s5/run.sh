@@ -160,7 +160,7 @@ steps/make_denlats_sgmm2.sh --nj "$train_nj" --sub-split "$train_nj" --cmd "$dec
  exp/sgmm2_4_denlats
 
 steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" \
- --transform-dir exp/tri3_ali --boost 0.1 --zero-if-disjoint true \
+ --transform-dir exp/tri3_ali --boost 0.1 --drop-frames true \
  data/train data/lang exp/sgmm2_4_ali exp/sgmm2_4_denlats \
  exp/sgmm2_4_mmi_b0.1
 
@@ -182,17 +182,19 @@ echo ===========================================================================
 dnn_mem_reqs="mem_free=1.0G,ram_free=0.2G"
 dnn_extra_opts="--num_epochs 20 --num-epochs-extra 10 --add-layers-period 1 --shrink-interval 3"
 
-steps/train_nnet_cpu.sh --mix-up 5000 --initial-learning-rate 0.015 \
-  --final-learning-rate 0.002 --num-hidden-layers 2 --num-parameters 1500000 \
+steps/nnet2/train_tanh.sh --mix-up 5000 --initial-learning-rate 0.015 \
+  --final-learning-rate 0.002 --num-hidden-layers 2  \
   --num-jobs-nnet "$train_nj" --cmd "$train_cmd" "${dnn_train_extra_opts[@]}" \
   data/train data/lang exp/tri3_ali exp/tri4_nnet
 
+[ ! -d exp/tri4_nnet/decode_dev ] && mkdir -p exp/tri4_nnet/decode_dev
 decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G")
-steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj "$decode_nj" "${decode_extra_opts[@]}" \
+steps/nnet2/decode.sh --cmd "$decode_cmd" --nj "$decode_nj" "${decode_extra_opts[@]}" \
   --transform-dir exp/tri3/decode_dev exp/tri3/graph data/dev \
   exp/tri4_nnet/decode_dev | tee exp/tri4_nnet/decode_dev/decode.log
 
-steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj "$decode_nj" "${decode_extra_opts[@]}" \
+[ ! -d exp/tri4_nnet/decode_test ] && mkdir -p exp/tri4_nnet/decode_test
+steps/nnet2/decode.sh --cmd "$decode_cmd" --nj "$decode_nj" "${decode_extra_opts[@]}" \
   --transform-dir exp/tri3/decode_test exp/tri3/graph data/test \
   exp/tri4_nnet/decode_test | tee exp/tri4_nnet/decode_test/decode.log
 

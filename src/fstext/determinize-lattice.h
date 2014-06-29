@@ -107,16 +107,15 @@ struct DeterminizeLatticeOptions {
 };
 
 /**
-    This function implements the normal version of DeterminizeLattice, in which the
-    output strings are represented using sequences of arcs, where all but the
-    first one has an epsilon on the input side.  The debug_ptr argument is an
-    optional pointer to a bool that, if it becomes true while the algorithm is
-    executing, the algorithm will print a traceback and terminate (used in
-    fstdeterminizestar.cc debug non-terminating determinization).
-    More efficient if ifst is arc-sorted on input label.
-    If the #arcs gets more than max_states, it will throw std::runtime_error (otherwise
-    this code does not use exceptions).  This is mainly useful for debug.
-*/
+    This function implements the normal version of DeterminizeLattice, in which
+    the output strings are represented using sequences of arcs, where all but
+    the first one has an epsilon on the input side.  The debug_ptr argument is
+    an optional pointer to a bool that, if it becomes true while the algorithm
+    is executing, the algorithm will print a traceback and terminate (used in
+    fstdeterminizestar.cc debug non-terminating determinization).  More
+    efficient if ifst is arc-sorted on input label.  If the number of arcs gets
+    more than max_states, it will throw std::runtime_error (otherwise this code
+    does not use exceptions).  This is mainly useful for debug.  */
 template<class Weight, class IntType>
 bool DeterminizeLattice(
     const Fst<ArcTpl<Weight> > &ifst,

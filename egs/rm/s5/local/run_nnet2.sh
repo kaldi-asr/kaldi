@@ -7,7 +7,7 @@
 use_gpu=true  
 
 if $use_gpu; then
-  # This example runs on top of "raw-fMLLR" features:
+  # This example runs on top of "raw-fMLLR" features.
   # We don't have a GPU version of this script.
   #local/nnet2/run_4a_gpu.sh
 
@@ -15,11 +15,11 @@ if $use_gpu; then
   local/nnet2/run_4b_gpu.sh
 
   # This one is on top of 40-dim + fMLLR features
-  local/nnet2/run_4c_gpu.sh
+  local/nnet2/run_4c.sh --use-gpu true
 
   # This one is for training pnorm nnets on top of 40-dim + fMLLR features
   # **THIS IS THE PRIMARY RECIPE**
-  local/nnet2/run_4d_gpu.sh
+  local/nnet2/run_4d.sh --use-gpu true
   
   # This is discriminative training on top of 4c.
   local/nnet2/run_5c_gpu.sh
@@ -34,11 +34,12 @@ else
   # This one is on top of filter-bank features, with only CMN.
   local/nnet2/run_4b.sh
 
-  # This one is on top of 40-dim + fMLLR features
-  local/nnet2/run_4c.sh
+  # This one is on top of 40-dim + fMLLR features, it's a fairly
+  # normal tanh system.
+  local/nnet2/run_4c.sh --use-gpu false
 
-  # **THIS IS THE PRIMARY RECIPE**
-  local/nnet2/run_4d.sh
+  # **THIS IS THE PRIMARY RECIPE (40-dim + fMLLR + p-norm neural net)**
+  local/nnet2/run_4d.sh --use-gpu false
 
   # This is discriminative training on top of 4c.
   local/nnet2/run_5c.sh

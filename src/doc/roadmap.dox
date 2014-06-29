@@ -1,0 +1,121 @@
+// doc/roadmap.dox
+
+// Copyright 2014  Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+/**
+   \page roadmap  Plans for Kaldi development
+
+  This page describes the features we are currently working on or have recently
+  completed, and how we aim to develop Kaldi in the future.
+
+ \section roadmap_current  Features we are currently working on
+
+   \subsection roadmap_current_online Online decoding
+
+  By online decoding, we mean decoding that can take in audio data frame by frame and
+  output a result with minimal latency.  Currently, in ^/sandbox/online (see src/online2
+  and egs/rm/s5/local/run_online_decoding.sh), we are working on an improved framework
+  for online decoding.  This is already functional in terms of GMM-based decoding.
+  The things that are currently preventing the setup from being merged back to trunk are:
+
+     - Issues with online pitch feature generation.  We need to verify that the modified
+       pitch-feature extraction code does not cause a degradation for our existing offline 
+       recipes
+     - We need to finalize the neural net version of the example scripts.  Dan was hoping to
+       have finished this by now, but got involved with something else (speeding up the
+       neural network training).  Also, he is undecided on whether to first work on an
+       improved version of the neural network recipe that works well without fMLLR adaptation
+       (e.g. using online-estimated iVectors)
+
+   It's currently not clear how long it will take to merge it back to trunk; it
+  could be a couple of weeks to a couple of months, but anyone is free to use
+  the sandbox/online version and they should be confident that this will
+  eventually be merged back to trunk.
+
+  \subsection roadmap_current_nnet Neural network related changes
+
+  There are various things that are being worked on by both Dan and Karel but are not
+  likely to be finalized soon.  Some of this work relates to convolutional networks.
+
+  Dan has recently (June 2014) improved the speed of his neural network training
+  setup (see \ref dnn2) by improving the way the preconditioning was applied.
+  Also relating to Dan's neural setup, Samuel Zhang recently added an option
+  --first-component-power to train_pnorm_fast.sh; setting this to 0.5 seems to
+  give improvement if there is a reasonable amount of data (this takes the
+  output of the first p-norm component and raises it the the power 0.5).
+
+
+  \subsection roadmap_current_server  Accessing Kaldi over the internet
+
+  A couple of people are working on ways to access Kaldi over the Internet
+  (e.g. a REST API).  Although it may not make sense to make these part of
+  Kaldi's repository, we hope to at least point to an external project that
+  makes it easy to do this.  Note, we're not talking about setting up a public
+  server at this point, just showing others how to do so.
+  We're also interested in more telephone-oriented protocols such as MRCP, and
+  if anyone wants to work on that, we would welcome it.
+
+ \section roadmap_like Features we would like to work on, if we had the time
+
+   \subsection roadmap_like_faster Faster decoders
+
+  An outstanding issue is, we'd like the decoding to be faster.  The question is
+  how to do this in a way that's not too specific to one type of model.  One way
+  this could be done is to convert the OpenFst decoding graph into some other,
+  more optimized data-structure.
+
+   \subsection roadmap_like_examples More example scripts
+
+  We are constantly adding new example scripts for new databases, and many of these are added by
+  new contributors to the Kaldi project.  We welcome such contributions.
+
+
+
+ \section roadmap_wont Features we do not currently plan to work on
+
+   \subsection roadmap_wont_scripting A scripting layer (Python etc.).
+
+    Our approach is that if you need something that's not supported in the
+    current command-line programs, you just add a new command-line program.
+    This works well for us.  Maintaining a parallel set of, say, Python-wrapped
+    example scripts would be too much work.  However, people have created
+    examples of calling Kaldi code from other languages (Python, Perl, Java) for
+    various specific purposes.  Ask us for details.
+
+  \subsection roadmap_wont_nlp  Natural language processing, language model estimation, etc.
+
+   We don't think it makes sense for Kaldi to try to be everything, and NLP and
+   language model estimation are two examples of things that we probably don't
+   plan to do in the near future.  (However, new facilities for using externally
+   generated language models are definitely on the table).  Kaldi is primarily a
+   speech recognition project, and we plan to keep it that way, although we did
+   create code and example scripts for speaker identification and language
+   identification (see egs/sre08/ and egs/lre/), since these technologies have a
+   lot in common with speech recognition.  We are also dabbling in some
+   computer-vision (there is an MNIST example in ^/sandbox/convnets):
+   for now this is mostly just a convenient way to test our ideas related to
+   convolutional networks on vision tasks, rather than a major pivot towards
+   computer vision.
+
+
+   
+  
+
+
+*/

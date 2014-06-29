@@ -77,18 +77,18 @@ every time the decoder recognizes the end of an utterance (which may or may not 
 
  The header "RESULT:DONE" is sent when there are no more results that can be returned by the server. In this case, the server simply waits for either more data by the client, or for a disconnect.
   
- The data underneath the header consists of exactly NUM lines of words formatted in the way determined by the FORMAT parameter. In the case of WSEC format, this is simply a comma separated list
-containing 4 tokens: the word (as present in the dictionary), start time and end time (as floating point values in seconds) and confidence (also floating point in range 0-1). Beware that the words 
+ The data underneath the header consists of exactly NUM lines of words formatted in the way determined by the FORMAT parameter. In the case of WSE format, this is simply a comma separated list
+containing 4 tokens: the word (as present in the dictionary), start time and end time (as floating point values in seconds). Beware that the words 
 are going to be encoded exactly as they are in the dictionary provided to the server and therefore, the client must make sure to perform the appropriate character conversion if necessary. The 
 online-audio-client, for example, doesn't perform any character conversion while generating WebVTT files (which require UTF8), so you need to convert the resulting files to UTF8 using iconv (or 
 a similar program).
  
  An example of the results of the server is as follows:
  \verbatim
- RESULT:NUM=3,FORMAT=WSEC,RECO_DUR=1.7,INPUT_DUR=3.22
- one,0.4,1.2,1
- two,1.4,1.9,1
- three,2.2,3.4,0.4
+ RESULT:NUM=3,FORMAT=WSE,RECO_DUR=1.7,INPUT_DUR=3.22
+ one,0.4,1.2
+ two,1.4,1.9
+ three,2.2,3.4
  RESULT:DONE 
 \endverbatim
 
@@ -97,7 +97,7 @@ a similar program).
 Command line to start the server:
 \verbatim
 online-audio-server-decode-faster --verbose=1 --rt-min=0.5 --rt-max=3.0 --max-active=6000 --beam=72.0 --acoustic-scale=0.0769 
-final.mdl graph/HCLG.fst graph/words.txt '1:2:3:4:5' 5010 graph/word_boundary_phones.int final.mat
+final.mdl graph/HCLG.fst graph/words.txt '1:2:3:4:5' graph/word_boundary.int 5010 final.mat
 \endverbatim
 
 Arguments are as follow:
@@ -106,7 +106,7 @@ Arguments are as follow:
   - words.txt - word dictionary (mapping word ids to their textual representation)
   - '1:2:3:4:5' - list of silence phoneme ids
   - 5010 - port the server is listening on
-  - word_boundary_phones.int - a list of phoneme boundary information required for word alignemnt
+  - word_boundary.int - a list of phoneme boundary information required for word alignemnt
   - final.mat - feature LDA matrix
   
  Command line to start the client:

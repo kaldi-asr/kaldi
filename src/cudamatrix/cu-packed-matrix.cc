@@ -184,7 +184,7 @@ void CuPackedMatrix<Real>::CopyToPacked(PackedMatrix<Real> *dst) const {
     
     CU_SAFE_CALL(cudaMemcpy(dst->data_, data_, num_bytes,
                             cudaMemcpyDeviceToHost));
-    CuDevice::Instantiate().AccuProfile("CuPackedMatrixMatrix::CopyToPackedD2H",tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile("CuPackedMatrix::CopyToPackedD2H",tim.Elapsed());
   } else
 #endif
   {

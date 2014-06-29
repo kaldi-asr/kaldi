@@ -74,7 +74,7 @@ int OnlineTcpVectorSource::GetNextPack() {
     return 0;
 
   if (size % 2 != 0) {
-    KALDI_ERR<<"TCPVectorSource: Pack size must be even!";
+    KALDI_ERR << "TCPVectorSource: Pack size must be even!";
     return 0;
   }
 

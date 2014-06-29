@@ -40,11 +40,14 @@ namespace kaldi {
 // permission, optimized by Go Vivace Inc., and converted into C++ by
 // Microsoft Corporation
 // This is a more efficient way of doing the complex FFT than ComplexFft
-// above, but it only works for powers of 2.
+// (declared in matrix-functios.h), but it only works for powers of 2.
+// Note: in multi-threaded code, you would need to have one of these objects per
+// thread, because multiple calls to Compute in parallel would not work.
 template<typename Real>
 class SplitRadixComplexFft {
  public:
   typedef MatrixIndexT Integer;
+
   // N is the number of complex points (must be a power of two, or this
   // will crash).  Note that the constructor does some work so it's best to
   // initialize the object once and do the computation many times.
@@ -73,12 +76,12 @@ class SplitRadixComplexFft {
   Integer logm_;  // log(N) [a slight mismatch in notation which we have not
   // bothered to fix].
 
-  Integer *brseed;
+  Integer *brseed_;
   // brseed is Evans' seed table, ref:  (Ref: D. M. W.
   // Evans, "An improved digit-reversal permutation algorithm ...",
   // IEEE Trans. ASSP, Aug. 1987, pp. 1120-1125).
-  Real **tab;       // Tables of butterfly coefficients.
-  Real *temp_buffer;  // Allocated only if someone calls Compute with only
+  Real **tab_;       // Tables of butterfly coefficients.
+  Real *temp_buffer_;  // Allocated only if someone calls Compute with only
   // one argument and we need a temporary buffer while creating interleaved
   // data.
 };

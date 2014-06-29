@@ -713,7 +713,8 @@ BaseFloat LatticeForwardBackwardMpeVariants(
   }
   // First Pass Forward-Backward Check
   double tot_backward_prob = beta[0];
-  if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-8)) {
+  // may loose the condition somehow here 1e-6 (was 1e-8)
+  if (!ApproxEqual(tot_forward_prob, tot_backward_prob, 1e-6)) {
     KALDI_ERR << "Total forward probability over lattice = " << tot_forward_prob
               << ", while total backward probability = " << tot_backward_prob;
   }

@@ -30,10 +30,9 @@ while(<>){
         $seen_spk{$s} = 1;
         push @spklist, $s;
     }
-    $uttlist{$s} = $uttlist{$s} . "$u ";
+    push (@{$spk_hash{$s}}, "$u");
 }
 foreach $s (@spklist) {
-    $l = $uttlist{$s};
-    $l =~ s: $::; # remove trailing space.
+    $l = join(' ',@{$spk_hash{$s}});
     print "$s $l\n";
 }
