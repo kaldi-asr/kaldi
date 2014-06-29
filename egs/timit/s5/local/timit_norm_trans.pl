@@ -83,7 +83,8 @@ while (<T>) {
 
   print $utt_id;
   for my $phone (split(/\s+/, $trans)) {
-    print " $phonemap{$phone}"
+    if(exists $phonemap{$phone}) { print " $phonemap{$phone}"; }
+    if(not exists $phonemap{$phone}) { print " $phone"; }
   }
   print "\n";
 }

@@ -79,7 +79,7 @@ public class KaldiASR {
 				else if (ptok[0].equals("INPUT-DUR"))
 					input_dur = Float.parseFloat(ptok[1]);
 				else if (ptok[0].equals("FORMAT")) {
-					if (ptok[1].equals("WSEC"))
+					if (ptok[1].equals("WSE"))
 						format = OutputFormat.WORDS_ALIGNED;
 					else if (ptok[1].equals("W"))
 						format = OutputFormat.WORDS;
@@ -96,11 +96,11 @@ public class KaldiASR {
 					String word[] = line.split(",");
 					if (output_process != null)
 						output_process.addWord(new OutputProcess.Word(word[0], Float.parseFloat(word[1]), Float
-								.parseFloat(word[2]), Float.parseFloat(word[3])));
+								.parseFloat(word[2])));
 					reco_words += " " + word[0];
 				} else if (format == OutputFormat.WORDS) {
 					if (output_process != null)
-						output_process.addWord(new OutputProcess.Word(line, 0, 0, 1));
+						output_process.addWord(new OutputProcess.Word(line, 0, 0));
 					reco_words += " " + line;
 				}
 			}

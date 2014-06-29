@@ -57,6 +57,26 @@ template<typename Real> void TestCuMatrixMatMat(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real> void TestCuMatrixAddDiagVecMat(int32 dim, MatrixTransposeType trans) {
+  BaseFloat time_in_secs = 0.015;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  CuVector<Real> v(dim);
+  M.SetRandn();
+  v.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++)
+    N.AddDiagVecMat(1.0, v, M, trans, 0.0);
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::AddDiagVecMat" << NameOf<Real>()
+            << (trans == kTrans ? "[trans]" : "[no-trans]")
+            << ", for dim = " << dim << ", speed was "
+            << gflops << " gigaflops.";
+}
+
+
 
 template<typename Real> void TestSymInvertPosDef(int32 dim) {
   BaseFloat time_in_secs = 0.025;
@@ -222,7 +242,7 @@ template<typename Real> void TestCuMatrixMulRowsGroupMat(int32 dim) {
 
 template<typename Real> void TestCuMatrixSoftmax(int32 dim) {
   BaseFloat time_in_secs = 0.025;
-  CuMatrix<Real> M(256, dim), N(256, dim);
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
   M.SetRandn();
   N.SetRandn();
   Timer tim;
@@ -236,6 +256,42 @@ template<typename Real> void TestCuMatrixSoftmax(int32 dim) {
   KALDI_LOG << "For CuMatrix::Softmax" << NameOf<Real>() << ", for dim = "
             << dim << ", speed was " << gflops << " gigaflops.";
 }
+
+
+template<typename Real> void TestCuMatrixGroupPnorm(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  int32 group_size = 4;
+  CuMatrix<Real> M(dim, dim), N(dim, dim / group_size);
+  M.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++)
+    N.GroupPnorm(M, 2.0);
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::GroupPnorm" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixGroupPnormDeriv(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  int32 group_size = 4;
+  CuMatrix<Real> M(dim, dim), N(dim, dim / group_size), O(dim, dim);
+  M.SetRandn();
+  N.GroupPnorm(M, 2.0);  
+  Timer tim;
+  int32 iter = 0;
+
+  for (;tim.Elapsed() < time_in_secs; iter++)
+    O.GroupPnormDeriv(M, N, 2.0);
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::GroupPnormDeriv" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
 
 template<typename Real> void TestCuMatrixTraceMatMat(int32 dim) {
   for (int32 n = 0; n < 2; n++) {
@@ -388,6 +444,10 @@ template<typename Real> void CudaMatrixSpeedTest() {
   int32 ns = sizes.size();
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixMatMat<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++) {
+    TestCuMatrixAddDiagVecMat<Real>(sizes[s], kNoTrans);
+    TestCuMatrixAddDiagVecMat<Real>(sizes[s], kTrans);
+  }
   for (int32 s = 0; s < ns; s++)
     TestSymInvertPosDef<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
@@ -402,6 +462,10 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixMulRowsGroupMat<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSoftmax<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixGroupPnorm<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixGroupPnormDeriv<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixTraceMatMat<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)

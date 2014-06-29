@@ -30,8 +30,11 @@
 
 namespace kaldi {
 
-// the same as FasterDecoderOptions for now.
-typedef FasterDecoderOptions BiglmFasterDecoderOptions;
+struct BiglmFasterDecoderOptions: public FasterDecoderOptions {
+  BiglmFasterDecoderOptions() {
+    min_active = 200;
+  }
+};
 
 /** This is as FasterDecoder, but does online composition between
     HCLG and the "difference language model", which is a deterministic

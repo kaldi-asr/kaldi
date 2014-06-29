@@ -305,6 +305,27 @@ static void UnitTestCuMatrixApplyPow() {
   }
 }
 
+template<typename Real> 
+static void UnitTestCuMatrixApplyPowAbs() {
+
+  for (int32 i = 0; i < 2; i++) {
+    BaseFloat pow = 0.5 * (rand() % 6);
+    
+    Matrix<Real> H(10 + rand() % 60, 10 + rand() % 20);
+    H.SetRandn();
+    H.Row(0).Set(0.0);
+    if (i == 2) { Matrix<Real> tmp(H, kTrans); H = tmp; }
+    
+    CuMatrix<Real> cH(H);
+
+    cH.ApplyPowAbs(pow, true);
+
+    H.ApplyPowAbs(pow, true);
+    Matrix<Real> H2(cH);
+    AssertEqual(H, H2);
+  }
+}
+
 
 template<typename Real>
 static void UnitTestCuMatrixCopyRowsFromVec() {
@@ -507,7 +528,6 @@ static void UnitTestCuMatrixApplyHeaviside() {
     AssertEqual(H, H2);
   }
 }
-
 
 
 template<typename Real> 
@@ -1923,6 +1943,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixSigmoid<Real>();
   UnitTestCuMatrixSoftHinge<Real>();
   UnitTestCuMatrixApplyPow<Real>(); 
+  UnitTestCuMatrixApplyPowAbs<Real>(); 
   UnitTestCuMatrixSet<Real>();
   UnitTestCuMatrixAdd<Real>();
   UnitTestCuMatrixApplyFloor<Real>();

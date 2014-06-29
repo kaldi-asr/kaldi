@@ -279,7 +279,7 @@ is_set $OPENBLASROOT && echo "Force-configuring KALDI to use OPENBLAS"&& export 
 function linux_configure_cuda {
   #check for CUDA toolkit in the system
   if [ ! $CUDATKDIR ]; then
-    for base in /usr/local/share/cuda /usr/local/cuda /pkgs_local/cuda-3.2/ /opt/nvidia_cuda/cuda-5.0/ /usr/; do
+    for base in /Developer/NVIDIA/CUDA-6.0 /usr/local/share/cuda /usr/local/cuda /pkgs_local/cuda-3.2/ /opt/nvidia_cuda/cuda-6.0/ /usr/; do
       if [ -f $base/bin/nvcc ]; then
         CUDATKDIR=$base
       fi
@@ -588,6 +588,7 @@ echo "Doing OS specific configurations ..."
 # which crashes on Darwin. Also the linear algebra libraries on Macs are 
 # used differently (through the Accelerate framework) than on Linux.
 if [ "`uname`" == "Darwin"  ]; then
+ $use_cuda && linux_configure_cuda
   echo "On Darwin: checking for Accelerate framework ..."
   if [ ! -e /System/Library/Frameworks/Accelerate.framework ]; then
     failure "Need the Accelerate.framework to compile on Darwin."

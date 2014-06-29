@@ -19,11 +19,13 @@ mkdir -p $tmpdir
 for x in train dev test; do 
   mkdir -p data/$x
   cp $srcdir/${x}_wav.scp data/$x/wav.scp || exit 1;
-  cp $srcdir/$x.txt data/$x/text || exit 1;
+  cp $srcdir/$x.text data/$x/text || exit 1;
   cp $srcdir/$x.spk2utt data/$x/spk2utt || exit 1;
   cp $srcdir/$x.utt2spk data/$x/utt2spk || exit 1;
   utils/filter_scp.pl data/$x/spk2utt $srcdir/$x.spk2gender > data/$x/spk2gender || exit 1;
-  utils/validate_data_dir.sh data/$x
+  cp $srcdir/${x}.stm data/$x/stm
+  cp $srcdir/${x}.glm data/$x/glm
+  utils/validate_data_dir.sh --no-feats data/$x || exit 1
 done
 
 # Next, for each type of language model, create the corresponding FST
@@ -34,10 +36,7 @@ echo Preparing language models for test
 for lm_suffix in bg; do
   test=data/lang_test_${lm_suffix}
   mkdir -p $test
-  for f in phones.txt words.txt phones.txt L.fst L_disambig.fst \
-     phones/; do
-    cp -r data/lang/$f $test
-  done
+  cp -r data/lang/* $test
   
   gunzip -c $lmdir/lm_phone_${lm_suffix}.arpa.gz | \
     egrep -v '<s> <s>|</s> <s>|</s> </s>' | \
@@ -67,7 +66,7 @@ for lm_suffix in bg; do
   rm -r $tmpdir/g
 done
 
-utils/validate_lang.pl data/lang_test_bg
+utils/validate_lang.pl data/lang_test_bg || exit 1
 
 echo "Succeeded in formatting data."
 rm -r $tmpdir

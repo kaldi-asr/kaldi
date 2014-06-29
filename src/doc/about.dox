@@ -1,6 +1,7 @@
 // doc/about.dox
 
 // Copyright 2009-2011 Microsoft Corporation
+//           2013-2014 Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -134,13 +135,13 @@
  major releases of Kaldi ("v1" and so on), we realized that these type of
  releases do not mesh well with the natural style of development, which is very
  continuous.  Currently we maintain two major versions of Kaldi: the "trunk"
- version and the "stable" version.  The "trunk" version is the one most people
- commit to, and contains the most up-to-date features but may also contain
- partially finished features.  The "stable" version is mostly a subset of
- "trunk" that slightly lags in time, and has more thorough testing.  We also
- maintain several "sandbox" versions that are for projects that are in earlier
- stages of development.  All these versions are available from our subversion
- repository on Sourceforge; see \ref install for more details.
+ version, and the "complete" version (which maintains some little-used features
+ that were deleted from trunk).  We also maintain various sandboxes for feature
+ development; these are merged back into trunk when the feature is complete.
+ For most purposes, the "trunk" is the version you should use, and you should 
+ frequently do "svn up" to keep it up to date; see \ref install for more details.
+
+ See \ref roadmap for details of features we are currently working on.
 
   @section about_reference Referencing Kaldi in papers
 

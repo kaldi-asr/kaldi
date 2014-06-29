@@ -45,6 +45,12 @@ name=`basename $data`
 mkdir -p $pitchdir || exit 1;
 mkdir -p $logdir || exit 1;
 
+if [ -f $data/feats.scp ]; then
+  mkdir -p $data/.backup
+  echo "$0: moving $data/feats.scp to $data/.backup"
+  mv $data/feats.scp $data/.backup
+fi
+
 scp=$data/wav.scp
 
 required="$scp $pitch_config"
@@ -78,7 +84,7 @@ if [ -f $data/segments ]; then
   fi
 
   $cmd JOB=1:$nj $logdir/make_pitch.JOB.log \
-    extract-segments scp:$scp $logdir/segments.JOB ark:- \| \
+    extract-segments scp,p:$scp $logdir/segments.JOB ark:- \| \
     compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- ark:- \| \
     process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- \| \
     copy-feats --compress=$compress ark:- \
@@ -95,7 +101,7 @@ else
   utils/split_scp.pl $scp $split_scps || exit 1;
  
   $cmd JOB=1:$nj $logdir/make_pitch.JOB.log \
-    compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config scp:$logdir/wav_${name}.JOB.scp ark:- \| \
+    compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config scp,p:$logdir/wav_${name}.JOB.scp ark:- \| \
     process-kaldi-pitch-feats $postprocess_config_opt ark:- \
       ark,scp:$pitchdir/pitch_$name.JOB.ark,$pitchdir/pitch_$name.JOB.scp \
       || exit 1;

@@ -129,9 +129,9 @@ int main(int argc, char *argv[]) {
         new_dotprod.Scale(1.0 / num_examples);
         diff.AddVec(1.0/ num_segments, new_dotprod);
         diff.AddVec(-1.0 / num_segments, old_dotprod);
-        KALDI_VLOG(1) << "By segment " << s << ", diff is " << diff;
+        KALDI_VLOG(1) << "By segment " << s << ", objf change is " << diff;
       }
-      KALDI_LOG << "Total diff per component is " << diff;
+      KALDI_LOG << "Total objf change per component is " << diff;
       if (num_examples == 0) ret = 1;
     }
    

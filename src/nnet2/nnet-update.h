@@ -54,8 +54,11 @@ class NnetUpdater {
   NnetUpdater(const Nnet &nnet,
               Nnet *nnet_to_update);
   
-  double ComputeForMinibatch(const std::vector<NnetExample> &data);
-  // returns average objective function over this minibatch.
+  // Does the entire forward and backward computation for this minbatch.
+  // Returns total objective function over this minibatch.  If tot_accuracy != NULL,
+  // outputs to that pointer the total accuracy.
+  double ComputeForMinibatch(const std::vector<NnetExample> &data,
+                             double *tot_accuracy);
   
   void GetOutput(CuMatrix<BaseFloat> *output);
  protected:
@@ -63,24 +66,33 @@ class NnetUpdater {
   /// takes the input and formats as a single matrix, in forward_data_[0].
   void FormatInput(const std::vector<NnetExample> &data);
   
-  // Possibly splices input together from forward_data_[component].
-  //   MatrixBase<BaseFloat> &GetSplicedInput(int32 component, Matrix<BaseFloat> *temp_matrix);
-
   void Propagate();
 
-  /// Computes objective function and derivative at output layer.
+  /// Computes objective function and derivative at output layer, but does not
+  /// do the backprop [for that, see Backprop()].  Returns objf summed over all
+  /// samples (with their weights).
+  /// If tot_accuracy != NULL, it will output to tot_accuracy the sum over all labels
+  /// of all examples, of (correctly classified ? 0 : 1) * weight-of-label.  This
+  /// involves extra computation.
   double ComputeObjfAndDeriv(const std::vector<NnetExample> &data,
-                             CuMatrix<BaseFloat> *deriv) const;
+                             CuMatrix<BaseFloat> *deriv,
+                             double *tot_accuracy = NULL) const;
   
-  /// Returns objf summed (and weighted) over samples.
-  /// Note: "deriv" will contain, at input, the derivative w.r.t. the
-  /// output layer but will be used as a temporary variable by
-  /// this function.
+
+  /// Backprop must be called after ComputeObjfAndDeriv.  Does the
+  /// backpropagation; "nnet_to_update_" is updated.  Note: "deriv" will
+  /// contain, at input, the derivative w.r.t. the output layer (as computed by
+  /// ComputeObjfAndDeriv), but will be used as a temporary variable by this
+  /// function.
   void Backprop(const std::vector<NnetExample> &data,
-                CuMatrix<BaseFloat> *deriv);
+                CuMatrix<BaseFloat> *deriv) const;
 
   friend class NnetEnsembleTrainer;
  private:
+  // Must be called after Propagate().
+  double ComputeTotAccuracy(const std::vector<NnetExample> &data) const;
+
+  
   const Nnet &nnet_;
   Nnet *nnet_to_update_;
   int32 num_chunks_; // same as the minibatch size.
@@ -101,10 +113,12 @@ class NnetUpdater {
 /// a class NnetUpdater that's defined in nnet-update.cc, but we
 /// don't want to expose that complexity at this level.
 /// All these examples will be treated as one minibatch.
-
+/// If tot_accuracy != NULL, it outputs to that pointer the total (weighted)
+/// accuracy.
 double DoBackprop(const Nnet &nnet,
                   const std::vector<NnetExample> &examples,
-                  Nnet *nnet_to_update);
+                  Nnet *nnet_to_update,
+                  double *tot_accuracy = NULL);
 
 /// Returns the total weight summed over all the examples... just a simple
 /// utility function.
@@ -112,15 +126,21 @@ BaseFloat TotalNnetTrainingWeight(const std::vector<NnetExample> &egs);
 
 /// Computes objective function over a minibatch.  Returns the *total* weighted
 /// objective function over the minibatch.
+/// If tot_accuracy != NULL, it outputs to that pointer the total (weighted)
+/// accuracy.
 double ComputeNnetObjf(const Nnet &nnet,
-                       const std::vector<NnetExample> &examples);
+                       const std::vector<NnetExample> &examples,
+                       double *tot_accuracy= NULL);
 
 /// This version of ComputeNnetObjf breaks up the examples into
 /// multiple minibatches to do the computation.
 /// Returns the *total* (weighted) objective function.
+/// If tot_accuracy != NULL, it outputs to that pointer the total (weighted)
+/// accuracy.
 double ComputeNnetObjf(const Nnet &nnet,                          
                        const std::vector<NnetExample> &examples,
-                       int32 minibatch_size);
+                       int32 minibatch_size,
+                       double *tot_accuracy= NULL);
 
 
 /// ComputeNnetGradient is mostly used to compute gradients on validation sets;

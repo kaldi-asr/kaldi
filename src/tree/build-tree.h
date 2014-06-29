@@ -71,7 +71,7 @@ namespace kaldi {
  *                  if thresh != 0; otherwise, zero will mean no clustering is done,
  *                  or a negative value (e.g. -1) sets it to the smallest likelihood
  *                  change seen during the splitting algorithm; this typically causes
- *                  about a 20% reduction in #leaves.
+ *                  about a 20% reduction in the number of leaves.
  
  * @param P [in] The central position of the phone context window, e.g. 1 for a
  *                triphone system.
@@ -132,7 +132,7 @@ EventMap *BuildTree(Questions &qopts,
  *                  in the second level of decision-tree split; if false, we don't.
  *                  The threshold for post-clustering is the log-like change of the last
  *                  decision-tree split; this typically causes about a 20% reduction in
- *                  #leaves.
+ *                  the number of leaves.
  * @param P [in]   The central position of the phone context window, e.g. 1 for a
  *                 triphone system.
  * @param leaf_map [out]  Will be set to be a mapping from the leaves of the

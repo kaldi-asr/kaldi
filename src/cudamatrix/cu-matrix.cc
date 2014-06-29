@@ -602,8 +602,6 @@ void CuMatrixBase<Real>::ApplyLog() {
   }
 }
 
-
-
 template<typename Real>
 void CuMatrixBase<Real>::MulElements(const CuMatrixBase<Real>& A) {
   #if HAVE_CUDA == 1
@@ -990,13 +988,13 @@ void CuMatrixBase<Real>::AddDiagVecMat(
 
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    // Caution, this dimGrid is not the same way around as much of the other
-    // code: going forward, I want to use the (rows, cols) order.
-    dim3 dimGrid(n_blocks(num_rows_, CU2DBLOCK), n_blocks(num_cols_, CU2DBLOCK));
+
+    dim3 dimGrid(n_blocks(num_cols_, CU2DBLOCK),
+                 n_blocks(num_rows_, CU2DBLOCK));
 
     MatrixIndexT M_row_stride = M.Stride(), M_col_stride = 1;
-    if (transM == kTrans) std::swap(M_row_stride, M_col_stride);
-
+    if (transM == kTrans)
+      std::swap(M_row_stride, M_col_stride);
     cuda_add_diag_vec_mat(dimGrid, dimBlock, alpha, data_, Dim(),
                           v.Data(), M.Data(), M_row_stride, M_col_stride, beta);
     CU_SAFE_CALL(cudaGetLastError());
@@ -1446,11 +1444,13 @@ void CuMatrixBase<Real>::SymInvertPosDef() {
   if (num_rows_ == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;    
     CuMatrix<Real> inv_cholesky(num_rows_, num_rows_);
     this->Cholesky(&inv_cholesky);
     // note: SymAddMat2 only updates lower part of *this.
     this->SymAddMat2(1.0, inv_cholesky, kTrans, 0.0);
     this->CopyLowerToUpper();
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
   } else
 #endif
   {
@@ -1627,6 +1627,25 @@ void CuMatrixBase<Real>::ApplyPow(Real power) {
 #endif
   {
     Mat().ApplyPow(power);
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::ApplyPowAbs(Real power, bool include_sign) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+    
+    cuda_apply_pow_abs(dimGrid, dimBlock, data_, power, include_sign, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().ApplyPowAbs(power, include_sign);
   }
 }
 

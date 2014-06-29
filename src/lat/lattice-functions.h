@@ -35,11 +35,11 @@
 
 namespace kaldi {
 
-/// This function iterates over the states of a topologically sorted lattice
-/// and counts the time instance corresponding to each state. The times are
-/// returned in a vector of integers 'times' which is resized to have a size
-/// equal to the number of states in the lattice. The function also returns
-/// the maximum time in the lattice (this will equal the #frames in the file).
+/// This function iterates over the states of a topologically sorted lattice and
+/// counts the time instance corresponding to each state. The times are returned
+/// in a vector of integers 'times' which is resized to have a size equal to the
+/// number of states in the lattice. The function also returns the maximum time
+/// in the lattice (this will equal the number of frames in the file).
 int32 LatticeStateTimes(const Lattice &lat, std::vector<int32> *times);
 
 /// As LatticeStateTimes, but in the CompactLattice format.  Note: must
@@ -125,8 +125,8 @@ bool PruneLattice(BaseFloat beam, LatticeType *lat);
 void ConvertCompactLatticeToPhones(const TransitionModel &trans_model,
                                    CompactLattice *clat);
 
-/// Boosts LM probabilities by b * [#frame errors]; equivalently, adds
-/// -b*[#frame errors] to the graph-component of the cost of each arc/path.
+/// Boosts LM probabilities by b * [number of frame errors]; equivalently, adds
+/// -b*[number of frame errors] to the graph-component of the cost of each arc/path.
 /// There is a frame error if a particular transition-id on a particular frame
 /// corresponds to a phone not matching transcription's alignment for that frame.
 /// This is used in "margin-inspired" discriminative training, esp. Boosted MMI.

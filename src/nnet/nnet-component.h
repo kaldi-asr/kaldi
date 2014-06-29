@@ -50,7 +50,7 @@ class Component {
      
     kUpdatableComponent = 0x0100, 
     kAffineTransform,
-    kAffineTransformNobias,
+    kLinearTransform,
     kConvolutionalComponent,
     kConvolutional2DComponent,
 

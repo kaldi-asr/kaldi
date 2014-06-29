@@ -18,8 +18,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_NNET_NNET_AFFINE_TRANSFORM_NOBIAS_H_
-#define KALDI_NNET_NNET_AFFINE_TRANSFORM_NOBIAS_H_
+#ifndef KALDI_NNET_NNET_LINEAR_TRANSFORM_H_
+#define KALDI_NNET_NNET_LINEAR_TRANSFORM_H_
 
 
 #include "nnet/nnet-component.h"
@@ -29,17 +29,17 @@
 namespace kaldi {
 namespace nnet1 {
 
-class AffineTransformNobias : public UpdatableComponent {
+class LinearTransform : public UpdatableComponent {
  public:
-  AffineTransformNobias(int32 dim_in, int32 dim_out) 
+  LinearTransform(int32 dim_in, int32 dim_out) 
     : UpdatableComponent(dim_in, dim_out), 
       linearity_(dim_out, dim_in), linearity_corr_(dim_out, dim_in), learn_rate_coef_(1.0)
   { }
-  ~AffineTransformNobias()
+  ~LinearTransform()
   { }
 
-  Component* Copy() const { return new AffineTransformNobias(*this); }
-  ComponentType GetType() const { return kAffineTransformNobias; }
+  Component* Copy() const { return new LinearTransform(*this); }
+  ComponentType GetType() const { return kLinearTransform; }
   
   void InitData(std::istream &is) {
     // define options

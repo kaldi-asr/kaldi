@@ -119,6 +119,8 @@ class CuMatrixBase {
                                 const CuMatrixBase<Real> &B,
                                 MatrixTransposeType trans);
 
+  /// Adds "value" to the diagonal elements of the matrix.  The matrix
+  /// *this does not have to be square.
   void AddToDiag(Real value);
   
   /// Dimensions
@@ -183,6 +185,8 @@ class CuMatrixBase {
 
   /// Apply the function y(i) = (sum_{j = i*G}^{(i+1)*G-1} x_j ^ (power)) ^ (1 / p)
   /// where G = x.NumCols() / y.NumCols() must be an integer.
+  /// [note: y corresponds to *this and x to src, so
+  ///  src.NumCols() / this->NumCols() must be an integer.
   void GroupPnorm(const CuMatrixBase<Real> &src, Real pow);
 
   /// Calculate derivatives for the GroupPnorm function above...
@@ -233,6 +237,13 @@ class CuMatrixBase {
   void SymInvertPosDef(); 
 
   void ApplyPow(Real power);
+  ///< Apply power to the absolute value of each element. 
+  ///< If inlude_sign is true, the result will be multiplied with 
+  ///< the sign of the input value.
+  ///< If the power is negative and the input to the power is zero,
+  ///< The output will be set zero. If include_sign is true, it will
+  ///< multiply the result by the sign of the input.
+  void ApplyPowAbs(Real power, bool include_sign=false);
   void ApplyHeaviside(); ///< For each element, sets x = (x > 0 ? 1.0 : 0.0)
   void ApplyFloor(Real floor_val);
   void ApplyCeiling(Real ceiling_val);

@@ -81,7 +81,10 @@ class NnetSimpleTrainer {
   std::vector<NnetExample> buffer_;
 
   double logprob_this_phase_; // Needed for accumulating train log-prob on each phase.
-  double count_this_phase_; // count corresponding to the above.
+  double weight_this_phase_; // count corresponding to the above.
+  
+  double logprob_total_;
+  double weight_total_;
 };
 
 

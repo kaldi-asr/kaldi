@@ -41,7 +41,7 @@ std::string NameOf() {
 
 template<typename Real>
 static void UnitTestCuSpMatrixInvert(int32 dim) {
-  BaseFloat time_in_secs = 0.5;
+  BaseFloat time_in_secs = 0.01;
   int32 iter = 0;
   Timer tim;
   CuSpMatrix<Real> A(dim);
@@ -82,7 +82,7 @@ static void UnitTestCuSpMatrixInvert(int32 dim) {
 
 template<typename Real>
 static void UnitTestCuSpMatrixCopyFromMat(int32 dim, SpCopyType copy_type) {
-  BaseFloat time_in_secs = 0.1;
+  BaseFloat time_in_secs = 0.05;
   int32 iter = 0;
   Timer tim;
   CuMatrix<Real> A(dim, dim);

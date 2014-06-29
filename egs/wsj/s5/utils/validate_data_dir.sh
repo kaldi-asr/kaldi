@@ -46,7 +46,7 @@ done
 ! cat $data/utt2spk | awk '{if (NF != 2) exit(1); }' && \
   echo "$0: $data/utt2spk has wrong format." && exit;
 
-tmpdir=$(mktemp -d);
+tmpdir=$(mktemp -d kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT HUP INT PIPE TERM
 
 export LC_ALL=C

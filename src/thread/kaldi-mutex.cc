@@ -28,19 +28,19 @@ namespace kaldi {
   
 
 Mutex::Mutex() {
-  if(0 != pthread_mutex_init(&mutex_,NULL)) 
+  if (pthread_mutex_init(&mutex_, NULL) != 0)
     KALDI_ERR << "Cannot initialize pthread mutex";
 }
 
 
 Mutex::~Mutex() {
-  if(0 != pthread_mutex_destroy(&mutex_)) 
+  if (pthread_mutex_destroy(&mutex_) != 0) 
     KALDI_ERR << "Cannot destroy pthread mutex";
 }
 
 
 void Mutex::Lock() {
-  if(0 != pthread_mutex_lock(&mutex_))
+  if (pthread_mutex_lock(&mutex_) != 0)
     KALDI_ERR << "Error on locking pthread mutex";
 }
 
@@ -49,16 +49,16 @@ bool Mutex::TryLock() {
   int32 ret = pthread_mutex_trylock(&mutex_);
   bool lock_succeeded = false;
   switch (ret) {
-    case 0: lock_succeeded = true;
-    case EBUSY: lock_succeeded = false;
-    default: KALDI_ERR << "Error on try-locking pthred mutex";
+    case 0: lock_succeeded = true; break;
+    case EBUSY: lock_succeeded = false; break;
+    default: KALDI_ERR << "Error on try-locking pthread mutex";
   }
   return lock_succeeded;
 }
 
 
 void Mutex::Unlock() {
-  if(0 != pthread_mutex_unlock(&mutex_))
+  if (pthread_mutex_unlock(&mutex_) != 0)
     KALDI_ERR << "Error on unlocking pthread mutex";
 }
 

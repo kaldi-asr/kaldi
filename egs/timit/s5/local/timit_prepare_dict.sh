@@ -49,7 +49,7 @@ echo sil > $dir/optional_silence.txt
 # really to the same base phone.
 
 # Create the lexicon, which is just an identity mapping
-cut -d' ' -f2- $srcdir/train.txt | tr ' ' '\n' | sort -u > $dir/phones.txt
+cut -d' ' -f2- $srcdir/train.text | tr ' ' '\n' | sort -u > $dir/phones.txt
 paste $dir/phones.txt $dir/phones.txt > $dir/lexicon.txt || exit 1;
 grep -v -F -f $dir/silence_phones.txt $dir/phones.txt > $dir/nonsilence_phones.txt 
 
@@ -67,11 +67,11 @@ cat $dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ", $_))
     echo "IRSTLM does not seem to be installed (build-lm.sh not on your path): " && \
     echo "go to <kaldi-root>/tools and try 'make irstlm_tgt'" && exit 1;
 
-  cut -d' ' -f2- $srcdir/train.txt | sed -e 's:^:<s> :' -e 's:$: </s>:' \
-    > $srcdir/lm_train.txt
-  build-lm.sh -i $srcdir/lm_train.txt -n 2 -o $tmpdir/lm_phone_bg.ilm.gz
+  cut -d' ' -f2- $srcdir/train.text | sed -e 's:^:<s> :' -e 's:$: </s>:' \
+    > $srcdir/lm_train.text
+  build-lm.sh -i $srcdir/lm_train.text -n 2 -o $tmpdir/lm_phone_bg.ilm.gz
 
-  compile-lm $tmpdir/lm_phone_bg.ilm.gz --text yes /dev/stdout | \
+  compile-lm $tmpdir/lm_phone_bg.ilm.gz -t=yes /dev/stdout | \
   grep -v unk | gzip -c > $lmdir/lm_phone_bg.arpa.gz 
 
 echo "Dictionary & language model preparation succeeded"

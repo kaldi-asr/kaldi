@@ -207,8 +207,23 @@ if (! $sync) { # We're not submitting with -sync y, so we
     }
   }
   # We will need the sge_job_id, to check that job still exists
-  $sge_job_id=`grep "Your job" $queue_logfile | awk '{ print \$3 }' | sed 's|\\\..*||'`;
-  chomp($sge_job_id);
+  { # Get the SGE job-id from the log file in q/
+    open(L, "<$queue_logfile") || die "Error opening log file $queue_logfile";
+    undef $sge_job_id;
+    while (<L>) {
+      if (m/Your job\S* (\d+)[. ].+ has been submitted/) {
+        if (defined $sge_job_id) {
+          die "Error: your job was submitted more than once (see $queue_logfile)";
+        } else {
+          $sge_job_id = $1;
+        }
+      }
+    }
+    close(L);
+    if (!defined $sge_job_id) {
+      die "Error: log file $queue_logfile does not specify the SGE job-id.";
+    }
+  }
   $check_sge_job_ctr=1;
   #
   $wait = 0.1;

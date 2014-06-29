@@ -58,6 +58,9 @@ namespace kaldi {
    back to where you started from.  We don't do this because
    in some contexts, the transform is made symmetric by multiplying
    by sqrt(N) in both passes.   The user can do this by themselves.
+
+   See also SplitRadixComplexFft, declared in srfft.h, which is more efficient
+   but only works if the length of the input is a power of 2.
  */
 template<typename Real> void ComplexFft (VectorBase<Real> *v, bool forward, Vector<Real> *tmp_work = NULL);
 

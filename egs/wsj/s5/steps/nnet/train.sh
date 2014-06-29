@@ -153,7 +153,7 @@ wc -l $dir/train.scp $dir/cv.scp
 
 # re-save the shuffled features, so they are stored sequentially on the disk in /tmp/
 if [ "$copy_feats" == "true" ]; then
-  tmpdir=$(mktemp -d); mv $dir/train.scp $dir/train.scp_non_local
+  tmpdir=$(mktemp -d kaldi.XXXX); mv $dir/train.scp $dir/train.scp_non_local
   utils/nnet/copy_feats.sh $dir/train.scp_non_local $tmpdir $dir/train.scp
   #remove data on exit...
   trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT

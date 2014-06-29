@@ -1,6 +1,6 @@
 // nnet2/nnet-component-test.cc
 
-// Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
+// Copyright 2012-2014  Johns Hopkins University (author:  Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -421,28 +421,32 @@ void UnitTestAffineComponentPreconditioned() {
 
 void UnitTestAffineComponentPreconditionedOnline() {
   BaseFloat learning_rate = 0.01,
-      param_stddev = 0.1, bias_stddev = 1.0, eta = 2.0,
-      max_change = 10.0;
+      param_stddev = 0.1, bias_stddev = 1.0, num_samples_history = 2000.0, alpha = 4.0,
+      max_change_per_sample = 0.1, update_period = 1;
   int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10,
-      rank = 1 + rand() % 4;
+      rank_in = 1 + rand() % 5, rank_out = 1 + rand() % 5;
   {
     AffineComponentPreconditionedOnline component;
     if (rand() % 2 == 0) {
       component.Init(learning_rate, input_dim, output_dim,
                      param_stddev, bias_stddev,
-                     rank, eta, max_change);
+                     rank_in, rank_out, update_period,
+                     num_samples_history, alpha,
+                     max_change_per_sample);
     } else {
       Matrix<BaseFloat> mat(output_dim + 1, input_dim);
       mat.SetRandn();
       mat.Scale(param_stddev);
       WriteKaldiObject(mat, "tmpf", true);
       sleep(1);
-      component.Init(learning_rate, rank, eta, max_change, "tmpf");
+      component.Init(learning_rate, rank_in, rank_out,
+                     update_period, num_samples_history, alpha,
+                     max_change_per_sample, "tmpf");
     }
     UnitTestGenericComponentInternal(component);
   }
   {
-    const char *str = "learning-rate=0.01 input-dim=16 output-dim=15 param-stddev=0.1 eta=2.0 rank=5";
+    const char *str = "learning-rate=0.01 input-dim=16 output-dim=15 param-stddev=0.1 num-samples-history=3000 alpha=2.0 update-period=1 rank-in=5 rank-out=6";
     AffineComponentPreconditionedOnline component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);
@@ -794,13 +798,13 @@ int main() {
       CuDevice::Instantiate().SelectGpuId("optional"); // -2 .. automatic selection
 #endif
     
-
-    
     BasicDebugTestForSplice(true);
     BasicDebugTestForSpliceMax(true);
     for (int32 i = 0; i < 3; i++) {
       UnitTestGenericComponent<SigmoidComponent>();
       UnitTestGenericComponent<TanhComponent>();
+      UnitTestGenericComponent<PowerComponent>("power=1.5");
+      UnitTestGenericComponent<PowerComponent>("power=1.0");
       UnitTestGenericComponent<PermuteComponent>();
       UnitTestGenericComponent<SoftmaxComponent>();
       UnitTestGenericComponent<RectifiedLinearComponent>();

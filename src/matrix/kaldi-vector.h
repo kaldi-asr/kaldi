@@ -151,6 +151,11 @@ class VectorBase {
   /// Take all  elements of vector to a power.
   void ApplyPow(Real power);
 
+  /// Take the absolute value of all elements of a vector to a power.
+  /// Include the sign of the input element if include_sign == true.
+  /// If power is negative and the input value is zero, the output is set zero.
+  void ApplyPowAbs(Real power, bool include_sign=false);
+  
   /// Compute the p-th norm of the vector.
   Real Norm(Real p) const;
   

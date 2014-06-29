@@ -48,6 +48,7 @@ class Barrier {
   int32                 counter_;   ///< number of threads we wait for
   int32                 cycle_;     ///< cycle flag to keep synchronized
 
+  KALDI_DISALLOW_COPY_AND_ASSIGN(Barrier);
 };
 
 } // namespace kaldi

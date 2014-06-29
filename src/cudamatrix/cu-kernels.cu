@@ -178,8 +178,8 @@ static void _add_diag_vec_mat(Real alpha, Real *mat, MatrixDim mat_dim,
   // Note from Dan: in this kernel, we make the x dimension correspond to the
   // row index and y to the column index.  That was not always the case for
   // earlier kernels written by others.
-  int i = blockIdx.x * blockDim.x + threadIdx.x; // row index
-  int j = blockIdx.y * blockDim.y + threadIdx.y; // column index
+  int i = blockIdx.y * blockDim.y + threadIdx.y; // row index
+  int j = blockIdx.x * blockDim.x + threadIdx.x; // column index
   
   int index = i * mat_dim.stride + j,
       index2 = i * mat2_row_stride + j * mat2_col_stride;
@@ -386,7 +386,6 @@ static void _apply_log(Real* mat, MatrixDim d) {
   if (i < d.cols && j < d.rows)
     mat[index] = log(mat[index]);
 }
-
 
 template<typename Real>
 __global__
@@ -810,47 +809,13 @@ static void _trace_mat_mat_trans(const Real* A, const Real* B, MatrixDim dA, int
 }
 
 
-template<typename Real>
-__global__
-static void _add_diag_mat(Real alpha, Real* v, const Real* mat, Real beta, MatrixDim dmat, int dim) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-
-  if (i < dim) {
-    Real sum = 0.0;
-    for (int32_cuda j = 0; j < dmat.cols; j++) {
-      int32_cuda index = j + i * dmat.stride;
-      sum += mat[index] * mat[index];
-    }
-    v[i] = beta * v[i] + alpha * sum;
-  }
-}
-
-
-template<typename Real>
-__global__
-static void _add_diag_mat_trans(Real alpha, Real* v, const Real* mat, Real beta, MatrixDim dmat, int dim) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  //  if (blockIdx.y > 0)    return;
-
-  if (i < dim) {
-    Real sum = 0.0;
-    for (int32_cuda j = 0; j < dmat.rows; j++) {
-      int32_cuda index = i + j * dmat.stride;
-      sum += mat[index] * mat[index];
-    }
-    v[i] = beta * v[i] + alpha * sum;
-  } 
-}
-
 // Adds diag(M N) to v, where M and N are matrices.  We supply row_stride and
 // col_stride arguments for M and N, and swapping them allows us to transpose
 // those matrices.  Note: we imagine row-major indexing here, just like Kaldi 
 // and CBLAS (but unlike CUBLAS).
 // This kernel expects the blockDim to be (CU1DBLOCK, 1) and the
-// gridDim times CU1DBLOCK to be at least num-rows-of-v, but if the gridDim
-// times CU1DBLOCK is larger than that, it will make good use of the
-// extra threads.  Note: for best efficiency, the gridDim should be approximately
-// (num-rows-of-v / CU1DBLOCK) times a power of 2.
+// gridDim times CU1DBLOCK to be at least num-rows-of-v * threads_per_element.
+// threads_per_element should be a power of 2.
 template<typename Real>
 __global__
 static void _add_diag_mat_mat(
@@ -863,7 +828,7 @@ static void _add_diag_mat_mat(
   __shared__ Real temp_data[CU1DBLOCK];
 
   int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int v_idx = i / threads_per_element,   // v_ids is the index into v that we are supposed to
+  int v_idx = i / threads_per_element,   // v_idx is the index into v that we are supposed to
       sub_idx = i % threads_per_element; // add to; 0 <= sub_idx < threads_per_element tells 
                                          // us which block of elements we sum up.
   if (v_idx >= v_dim) return;
@@ -1157,6 +1122,40 @@ static void _apply_pow(Real* mat, Real power, MatrixDim d) {
       mat[index] = sqrt(mat[index]);
     } else {
       mat[index] = pow(mat[index], power);
+    }
+  }
+}
+
+template<typename Real>
+__global__
+static void _apply_pow_abs(Real* mat, Real power, bool include_sign, MatrixDim d) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int index = i * d.stride + j;
+
+  if (i < d.rows && j < d.cols) {
+    if (include_sign == true && mat[index] < 0) {
+      if (power == 1.0) 
+        mat[index] = -std::abs(mat[index]);
+      if (power == 2.0) {
+        mat[index] = -mat[index] * mat[index];
+      } else if (power == 0.5) {
+        mat[index] = -sqrt(std::abs(mat[index]));
+      } else {
+        mat[index] = -pow(std::abs(mat[index]), power);
+      }
+    } else {
+      if (power == 1.0) 
+        mat[index] = std::abs(mat[index]);
+      if (power == 2.0) {
+        mat[index] = mat[index] * mat[index];
+      } else if (power == 0.5) {
+        mat[index] = sqrt(std::abs(mat[index]));
+      } else if (power < 0.0 && mat[index] == 0.0) {
+        mat[index] = 0.0;
+      } else {
+        mat[index] = pow(std::abs(mat[index]), power);
+      }
     }
   }
 }
@@ -1953,6 +1952,10 @@ void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d) {
   _apply_pow<<<Gr,Bl>>>(mat, power, d);
 }
 
+void cudaF_apply_pow_abs(dim3 Gr, dim3 Bl, float* mat, float power, bool include_sign, MatrixDim d) {
+  _apply_pow_abs<<<Gr,Bl>>>(mat, power, include_sign, d);
+}
+
 void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _apply_heaviside<<<Gr,Bl>>>(mat, d);
 
@@ -2113,13 +2116,6 @@ void cudaF_trace_mat_mat(const float* A, const float* B, MatrixDim dA, int B_str
   _trace_mat_mat<float,2> <<<2,CU1DBLOCK>>>(A,B,dA,B_stride,value);
 }
 
-void cudaF_add_diag_mat_trans(int Gr, int Bl, float alpha, float* v, const float* mat, float beta,  MatrixDim dmat, int dim) {
-  _add_diag_mat_trans<<<Gr,Bl>>>(alpha,v,mat,beta,dmat,dim);
-}
-
-void cudaF_add_diag_mat(int Gr, int Bl, float alpha, float* v, const float* mat, float beta,  MatrixDim dmat, int dim) {
-  _add_diag_mat<<<Gr,Bl>>>(alpha,v,mat,beta,dmat,dim);
-}
 
 void cudaF_add_diag_mat_mat(int Gr, int Bl, float alpha, float* v, int v_dim, const float* M, 
      int M_cols, int M_row_stride, int M_col_stride, const float *N, int N_row_stride, 
@@ -2372,6 +2368,10 @@ void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d) {
   _apply_pow<<<Gr,Bl>>>(mat, power, d);
 }
 
+void cudaD_apply_pow_abs(dim3 Gr, dim3 Bl, double* mat, double power, bool include_sign, MatrixDim d) {
+  _apply_pow_abs<<<Gr,Bl>>>(mat, power, include_sign, d);
+}
+
 void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
   _apply_heaviside<<<Gr,Bl>>>(mat, d);
 }
@@ -2528,14 +2528,6 @@ void cudaD_trace_mat_mat_trans(const double* A, const double* B, MatrixDim dA, i
 
 void cudaD_trace_mat_mat(const double* A, const double* B, MatrixDim dA, int B_stride, double* value) {
   _trace_mat_mat<double,2> <<<2,CU1DBLOCK>>>(A,B,dA,B_stride,value);
-}
-
-void cudaD_add_diag_mat_trans(int Gr, int Bl, double alpha, double* v, const double* mat, double beta,  MatrixDim dmat, int dim) {
-  _add_diag_mat_trans<<<Gr,Bl>>>(alpha,v,mat,beta,dmat,dim);
-}
-
-void cudaD_add_diag_mat(int Gr, int Bl, double alpha, double* v, const double* mat, double beta,  MatrixDim dmat, int dim) {
-  _add_diag_mat<<<Gr,Bl>>>(alpha,v,mat,beta,dmat,dim);
 }
 
 void cudaD_add_diag_mat_mat(int Gr, int Bl, double alpha, double* v, int v_dim, const double* M, 

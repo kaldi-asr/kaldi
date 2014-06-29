@@ -161,6 +161,8 @@ steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 # Note: for online decoding with pitch, look at local/run_pitch.sh, 
 # which calls local/run_online_decoding_pitch.sh
 
+#
+#local/run_online_decoding_nnet2.sh
 
 
 #first, train UBM for fMMI experiments.

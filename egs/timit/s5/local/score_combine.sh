@@ -72,8 +72,9 @@ done
 
 mkdir -p $odir/scoring/log
 
-cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' \
-  > $odir/scoring/test_filt.txt
+
+# Map reference to 39 phone classes:
+cat $data/text | local/timit_norm_trans.pl -i - -m $phonemap -from 48 -to 39 > $odir/scoring/test_filt.txt
 
 if [ -z "$lat_weights" ]; then
   $cmd LMWT=$min_lmwt:$max_lmwt $odir/log/combine_lats.LMWT.log \
@@ -92,7 +93,7 @@ $cmd LMWT=$min_lmwt:$max_lmwt $odir/scoring/log/score.LMWT.log \
   cat $odir/scoring/LMWT.tra \| \
   utils/int2sym.pl -f 2- $symtab \| sed 's:\<UNK\>::g' \| \
   local/timit_norm_trans.pl -i - -m $phonemap -from 48 -to 39 \| \
-  compute-wer --text --mode=present \
+  compute-wer --text --mode=all \
   ark:$odir/scoring/test_filt.txt  ark,p:- ">&" $odir/wer_LMWT || exit 1;
 
 exit 0

@@ -1,10 +1,17 @@
- for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+#!/bin/bash
+for x in exp/*/decode*; do [ -d $x ] && echo $x | grep "${1:-.*}" >/dev/null && grep WER $x/wer_* | utils/best_wer.sh; done
+for x in exp/*/decode*; do [ -d $x ] && echo $x | grep "${1:-.*}" >/dev/null && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done
+exit 0
 
 # Use caution when comparing these results with other published results.
 Training Set   : 3696 sentences 4620 sentences
 Dev Set        : 400 sentences
-Test Set       : 192 sentences Timit test set (1680 sentences)
+Test Set       : 192 sentences Core Test Set (different from Full 1680 sent. set)
 Language Model : Bigram phoneme language model which is extracted from training set
+Phone mapping  : Training with 48 phonemes, for testing mapped to 39 phonemes
+
+# TODO: Need to re-run, as scoring has changed!
+#       The lines below are outdated.
 
 # monophone, deltas.
 ---------------------------------Dev Set------------------------------------------
