@@ -18,7 +18,6 @@
 // limitations under the License.
 
 #include "base/kaldi-common.h"
-#include "cudamatrix/cu-device.h"
 
 int main(int argc, char *argv[]) {
   const char *usage = "This program returns exit status 0 (success) if the code\n"
