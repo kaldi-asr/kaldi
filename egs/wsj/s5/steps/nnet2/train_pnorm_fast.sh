@@ -71,6 +71,7 @@ mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
 num_threads=16
 parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" # by default we use 16 threads; this lets the queue know.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
+combine_num_threads=8
 combine_parallel_opts="-pe smp 8"  # queue options for the "combine" stage.
 cleanup=true
 egs_dir=
@@ -389,7 +390,6 @@ if [ $stage -le $num_iters ]; then
   # if there are many models it can give out-of-memory error; set num-threads to 8
   # to speed it up (this isn't ideal...)
   num_egs=`nnet-copy-egs ark:$egs_dir/combine.egs ark:/dev/null 2>&1 | tail -n 1 | awk '{print $NF}'`
-  combine_num_threads=8
   mb=$[($num_egs+$combine_num_threads-1)/$combine_num_threads]
   [ $mb -gt 512 ] && mb=512
   # Setting --initial-model to a large value makes it initialize the combination

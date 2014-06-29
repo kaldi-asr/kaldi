@@ -232,7 +232,7 @@ namespace kaldi {
        by speaker id.
 
   We will deal with these types of tables in more detail on the page
-  \ref table_examples; here we just explain the general principles and the
+  \subpage table_examples; here we just explain the general principles and the
   internal mechanisms.  
   A Table can exist on disk (or indeed, in a pipe) in two possible formats: a script
   file, or an archive (see below, \ref io_sec_scp and \ref io_sec_archive).

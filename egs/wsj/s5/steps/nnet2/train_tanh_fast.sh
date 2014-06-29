@@ -41,7 +41,7 @@ minibatch_size=128 # by default use a smallish minibatch size for neural net
 
 samples_per_iter=200000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh.
-num_jobs_nnet=16   # Number of neural net jobs to run in parallel.  This option
+num_jobs_nnet=8    # Number of neural net jobs to run in parallel.  This option
                    # is passed to get_egs.sh.
 get_egs_stage=0
 spk_vecs_dir=
@@ -75,6 +75,7 @@ num_threads=16
 parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" # by default we use 16 threads; this lets the queue know.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
 combine_parallel_opts="-pe smp 8"  # queue options for the "combine" stage.
+combine_num_threads=8
 cleanup=true
 egs_dir=
 lda_opts=
@@ -350,10 +351,11 @@ while [ $x -lt $num_iters ]; do
 
     if $shrink && [ $[$x % $shrink_interval] -eq 0 ]; then
       mb=$[($num_frames_shrink+$num_threads-1)/$num_threads]
-      $cmd $parallel_opts $dir/log/shrink.$x.log \
+      $cmd $combine_parallel_opts $dir/log/shrink.$x.log \
         nnet-subset-egs --n=$num_frames_shrink --randomize-order=true --srand=$x \
           ark:$egs_dir/train_diagnostic.egs ark:-  \| \
-        nnet-combine-fast --use-gpu=no --num-threads=$num_threads --verbose=3 --minibatch-size=$mb \
+        nnet-combine-fast --use-gpu=no --num-threads=$combine_num_threads \
+          --verbose=3 --minibatch-size=$mb \
           $dir/$[$x+1].mdl ark:- $dir/$[$x+1].mdl || exit 1;
     else
       # On other iters, do nnet-am-fix which is much faster and has roughly
@@ -393,7 +395,6 @@ if [ $stage -le $num_iters ]; then
   # there are many models it can give out-of-memory error on the GPU; set
   # num-threads to 8 to speed it up (this isn't ideal...)
   num_egs=`nnet-copy-egs ark:$egs_dir/combine.egs ark:/dev/null 2>&1 | tail -n 1 | awk '{print $NF}'`
-  combine_num_threads=8
   mb=$[($num_egs+$combine_num_threads-1)/$combine_num_threads]
   [ $mb -gt 512 ] && mb=512
   $cmd $combine_parallel_opts $dir/log/combine.log \

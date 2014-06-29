@@ -64,8 +64,8 @@ namespace kaldi {
   few epochs of training.  Most other details of the training (nonlinearity types, learning
   rate schedules, etc.) also differ.
 
-  Documentation for Karel's version is available at \ref nnet1 and 
-  documentation for Dan's version is available at \ref nnet2.
+  Documentation for Karel's version is available at \subpage dnn1 and 
+  documentation for Dan's version is available at \subpage dnn2.
 
 */
 

@@ -22,11 +22,13 @@ EOF
   fi
   parallel_opts="-l gpu=1" 
   num_threads=1
+  minibatch_size=512
   dir=exp/nnet4d_gpu
 else
   # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
   # almost the same, but this may be a little bit slow.
   num_threads=16
+  minibatch_size=128
   parallel_opts="-pe smp $num_threads" 
   dir=exp/nnet4d
 fi
@@ -35,7 +37,9 @@ fi
 
 if [ ! -f $dir/final.mdl ]; then
   steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
-     --num-threads $num_threads --parallel-opts "$parallel_opts" \
+     --num-threads "$num_threads" \
+     --minibatch-size "$minibatch_size" \
+     --parallel-opts "$parallel_opts" \
      --num-jobs-nnet 4 \
      --num-epochs-extra 10 --add-layers-period 1 \
      --num-hidden-layers 2 \

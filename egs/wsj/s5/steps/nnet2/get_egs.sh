@@ -258,7 +258,7 @@ if [ $stage -le 4 ]; then
     $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/split_egs.JOB.log \
       nnet-copy-egs --random=$random_copy --srand=JOB \
         "ark:cat $dir/egs/egs_orig.JOB.*.ark|" $egs_list || exit 1;
-    remove $dir/egs/egs_orig.$n.*.ark  2>/dev/null
+    remove $dir/egs/egs_orig.*.*.ark  2>/dev/null
   fi
 fi
 
