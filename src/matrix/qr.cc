@@ -34,9 +34,12 @@ namespace kaldi {
 
 /* This is from Golub and Van Loan 3rd ed., sec. 5.1.3,
    p210.
-   x is the input of dimensino dim, v is the output of dimension
+   x is the input of dimenson 'dim', v is the output of dimension
    dim, and beta is a scalar. Note: we use zero-based
    not one-based indexing. */
+/*
+// We are commenting out the function below ("House") because it's not
+// needed, but we keep it just to show how we came up with HouseBackward.
 template<typename Real>
 void House(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
   KALDI_ASSERT(dim > 0);
@@ -48,8 +51,8 @@ void House(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
   // doesn't dominate the O(N) performance of the algorithm.
   Real s; // s is a scale on x.
   {
-    Real max_x = 0.0;
-    for (MatrixIndexT i = 1; i < dim; i++)
+    Real max_x = std::numeric_limits<Real>::min();
+    for (MatrixIndexT i = 0; i < dim; i++)
       max_x = std::max(max_x, (x[i] < 0 ? -x[i] : x[i]));
     if (max_x == 0.0) max_x = 1.0;
     s = 1.0 / max_x;
@@ -70,14 +73,25 @@ void House(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
       v[0] = x1 - mu;
     } else {
       v[0] = -sigma / (x1 + mu);
+      KALDI_ASSERT(KALDI_ISFINITE(v[dim-1]));      
     }
     Real v1 = v[0];
     Real v1sq = v1 * v1;
     *beta = 2 * v1sq / (sigma + v1sq);
     Real inv_v1 = 1.0 / v1;
-    for (MatrixIndexT i = 0; i < dim; i++) v[i] *= inv_v1;
+    if (KALDI_ISINF(inv_v1)) {
+      // can happen if v1 is denormal.
+      KALDI_ASSERT(v1 == v1 && v1 != 0.0);
+      for (MatrixIndexT i = 0; i < dim; i++) v[i] /= v1;
+    } else {
+      cblas_Xscal(dim, inv_v1, v, 1);
+    }
+    if (!KALDI_ISFINITE(inv_v1) || !KALDI_ISFINITE(x1)) {
+      KALDI_ERR << "NaN or inf encountered in HouseBackward";
+    }
   }
 }
+*/
 
 // This is a backward version of the "House" routine above:
 // backward because it's the last index, not the first index of
@@ -237,7 +251,8 @@ void QrStep(MatrixIndexT n,
   // floating point quantities within a good range.
   Real   d = (diag[n-2] - diag[n-1]) / 2.0,
       t = off_diag[n-2],
-      inv_scale = std::max(std::abs(d), std::abs(t)),
+      inv_scale = std::max(std::max(std::abs(d), std::abs(t)),
+                           std::numeric_limits<Real>::min()),
       scale = 1.0 / inv_scale,
       d_scaled = d * scale,
       off_diag_n2_scaled = off_diag[n-2] * scale,
@@ -247,6 +262,7 @@ void QrStep(MatrixIndexT n,
       (d_scaled + sgn_d * std::sqrt(d_scaled * d_scaled + t2_n_n1_scaled)),
       x = diag[0] - mu,
       z = off_diag[0];
+  KALDI_ASSERT(KALDI_ISFINITE(x));
   Real *Qdata = (Q == NULL ? NULL : Q->Data());
   MatrixIndexT Qstride = (Q == NULL ? 0 : Q->Stride()),
       Qcols = (Q == NULL ? 0 : Q->NumCols());
