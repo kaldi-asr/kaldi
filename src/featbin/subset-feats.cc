@@ -16,7 +16,7 @@
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
-#include <climits>
+
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "matrix/kaldi-matrix.h"
@@ -29,36 +29,24 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Copy a subset of features (the first n feature files)\n"
         "Usually used where only a small amount of data is needed\n"
+        "Note: if you want a specific subset, it's usually best to\n"
+        "filter the original .scp file with utils/filter_scp.pl\n"
+        "(possibly with the --exclude option)\n"
         "Usage: subset-feats [options] in-rspecifier out-wspecifier\n"
         "See also extract-rows, select-feats, subsample-feats\n";
-
+    
     ParseOptions po(usage);
     
     int32 n = 10;
-    std::string include_rspecifier = "";
-    bool include = false;
-    std::string exclude_rspecifier = "";
-    bool exclude = false;
     po.Register("n", &n, "If nonnegative, copy the first n feature files.");
-    po.Register("include", &include_rspecifier,
-                "only output features whose file names are included in the utt2spk list, --n is disabled");
-    po.Register("exclude", &exclude_rspecifier, 
-                 "only ouput features whose file names are excluded from the utt2spk list, --n is disabled");
-
+    
     po.Read(argc, argv);
- 
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
-    if (!include_rspecifier.empty()) {
-      include = true; 
-      n = INT_MAX;   
-    }
-    if (! exclude_rspecifier.empty()) {
-      exclude = true; 
-      n = INT_MAX;
-    }
+
     std::string rspecifier = po.GetArg(1);
     std::string wspecifier = po.GetArg(2);
 
@@ -66,27 +54,10 @@ int main(int argc, char *argv[]) {
     
     BaseFloatMatrixWriter kaldi_writer(wspecifier);
     SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
-
-    RandomAccessTokenVectorReader include_reader, exclude_reader;
-    if (include) {
-      include_reader.Open(include_rspecifier);
-    }
-    if (exclude) {
-      exclude_reader.Open(exclude_rspecifier);
-    }
     int32 k = 0;
-    for (; !kaldi_reader.Done() && k < n; kaldi_reader.Next(), k++) {
-      std::string utt = kaldi_reader.Key();
-      if (include) {
-        if (!include_reader.HasKey(utt))
-          continue;
-      }
-      if (exclude) {
-        if (exclude_reader.HasKey(utt))
-          continue;
-      }
-      kaldi_writer.Write(utt, kaldi_reader.Value());
-    }
+    for (; !kaldi_reader.Done() && k < n; kaldi_reader.Next(), k++)
+      kaldi_writer.Write(kaldi_reader.Key(), kaldi_reader.Value());
+
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
