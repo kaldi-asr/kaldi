@@ -77,10 +77,16 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then  
-  $cmd LMWT=$min_lmwt:$max_lmwt $dir/ascoring/log/score.LMWT.log \
-    cp $data/stm $dir/ascore_LMWT/ '&&' \
-    $hubscr -G -v -m 1:2 -o4 -a -C -B 8192 -p $hubdir -V -l english \
+  if [ "$asclite" == "true" ]; then
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/ascoring/log/score.LMWT.log \
+      cp $data/stm $dir/ascore_LMWT/ '&&' \
+      $hubscr -G -v -m 1:2 -o4 -a -C -B 8192 -p $hubdir -V -l english \
          -h rt-stt -g $data/glm -r $dir/ascore_LMWT/stm $dir/ascore_LMWT/${name}.ctm || exit 1;
+  else
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/ascoring/log/score.LMWT.log \
+      cp $data/stm $dir/ascore_LMWT/ '&&' \
+      $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/ascore_LMWT/stm $dir/ascore_LMWT/${name}.ctm || exit 1
+  fi
 fi
 
 exit 0

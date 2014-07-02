@@ -35,13 +35,7 @@ fi
 data=$1
 
 if [ -f $data/stm ]; then # use sclite scoring.
-  if $asclite; then
-    echo "$data/stm exists and asclite is $asclite: using local/score_asclite.sh"
-    eval local/score_asclite.sh $orig_args
-  else
-    echo "$data/stm exists: using local/score_sclite.sh"
-    eval local/score_sclite.sh $orig_args
-  fi
+  eval local/score_asclite.sh $orig_args
 else
   echo "$data/stm does not exist: using local/score_basic.sh"
   eval local/score_basic.sh $orig_args

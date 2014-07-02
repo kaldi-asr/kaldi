@@ -116,8 +116,10 @@ if [ -f $data/wav.scp ]; then
     check_sorted_and_uniq $data/segments
     # We have a segments file -> interpret wav file as "recording-ids" not utterance-ids.
     ! cat $data/segments | \
-      awk '{if (NF != 4 || ($4 <= $3 && $4 != -1)) { print "Bad line in segments file", $0; exit(1); }}' && \
+      awk '{if ( (NF != 4 && NF != 5) || ($4 <= $3 && $4 != -1)) { print "Bad line in segments file", $0; exit(1); }}' && \
       echo "$0: badly formatted segments file" && exit 1;
+    # Changed condition to support optional 5th channel segment field. A must for AMI corpus as
+    # some waves have two channels (2nd is empty) (Pawel Swietojanski)
     
     segments_len=`cat $data/segments | wc -l`
     if [ -f $data/text ]; then

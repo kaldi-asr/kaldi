@@ -37,8 +37,8 @@ fi
 find $AMI_DIR -iname '*.Headset-*.wav' | sort > $dir/wav.flist
 n=`cat $dir/wav.flist | wc -l`
 echo "In total, $n headset files were found."
-[ $n -ne 684 ] && \
-  echo "Warning: expected 684 (171 meetings x 4 headsets) data files, found $n"
+[ $n -ne 687 ] && \
+  echo "Warning: expected 687 (168 mtgs x 4 mics + 3 mtgs x 5 mics) data files, found $n"
 
 # (1a) Transcriptions preparation
 # here we start with normalised transcriptions, the utt ids follow the convention
@@ -47,7 +47,7 @@ echo "In total, $n headset files were found."
 
 awk '{meeting=$1; channel=$2; speaker=$3; stime=$4; etime=$5;
  printf("AMI_%s_%s_%s_%07.0f_%07.0f", meeting, channel, speaker, int(100*stime+0.5), int(100*etime+0.5));
- for(i=6;i<=NF;i++) printf(" %s", $i); printf "\n"}' $SEGS | sort  > $dir/text
+ for(i=6;i<=NF;i++) printf(" %s", $i); printf "\n"}' $SEGS | sort | uniq > $dir/text
 
 # (1c) Make segment files from transcript
 #segments file format is: utt-id side-id start-time end-time, e.g.:
@@ -66,21 +66,16 @@ sed -e 's?.*/??' -e 's?.wav??' $dir/wav.flist | \
 #Keep only devset part of waves
 awk '{print $2}' $dir/segments | sort -u | join - $dir/wav.scp | sort -o $dir/wav.scp
 
-# this file reco2file_and_channel maps recording-id (e.g. sw02001-A)
-# to the file name sw02001 and the A, e.g.
-# sw02001-A  sw02001 A
-# In this case it's trivial, but in other corpora the information might
-# be less obvious.  Later it will be needed for ctm scoring.
+# this file reco2file_and_channel maps recording-id
 
 awk '{print $1 $2}' $dir/wav.scp | \
   perl -ane '$_ =~ m:^(\S+H0[0-4]).*\/([IETB].*)\.wav$: || die "bad label $_"; 
-       print "$1 $2 0\n"; '\
+       print "$1 $2 A\n"; '\
   > $dir/reco2file_and_channel || exit 1;
 
 awk '{print $1}' $dir/segments | \
   perl -ane '$_ =~ m:^(\S+)([FM][A-Z]{0,2}[0-9]{3}[A-Z]*)(\S+)$: || die "bad label $_"; 
-          print "$1$2$3 $1$2\n";'  \
-    > $dir/utt2spk || exit 1;
+          print "$1$2$3 $1$2\n";' > $dir/utt2spk || exit 1;
 
 sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 
@@ -94,6 +89,8 @@ done
 #Produce STMs for sclite scoring
 local/convert2stm.pl $dir > $fdir/stm
 cp local/english.glm $fdir/glm
+
+utils/validate_data_dir.sh --no-feats $fdir || exit 1;
 
 echo AMI $SET set data preparation succeeded.
 

@@ -197,12 +197,15 @@ while(<S>) {
   
   my ($meet_id, $channel, $spk, $channel2, $trans_btime, $trans_etime, $aut_btime, $aut_etime) = @A[0..7];
   my @transcript = @A[8..$#A];
-  my %transcript = split_transcripts(\@transcript, $trans_btime, $trans_etime, 30); 
+  my %transcript = split_transcripts(\@transcript, $aut_btime, $aut_etime, 30); 
 
   for my $key (keys %transcript) {
     my $value = $transcript{$key};
     my $segment = normalise_transcripts($value); 
     my @times = split(/\_/, $key);
+    if ($times[0] >= $times[1]) {
+       print "Warning, $meet_id, $spk, $times[0] > $times[1]. Skipping. \n"; next;
+    }
     if (length($segment)>0) {
        print W join " ", $meet_id, "H0${channel2}", $spk, $times[0]/100.0, $times[1]/100.0, $segment, "\n";
     }

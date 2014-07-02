@@ -3,20 +3,22 @@
 # Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
 # AMI Corpus dev/eval data preparation 
 
+# To be run from one directory above this script.
+
 . path.sh
 
 #check existing directories
 if [ $# != 2 ]; then
-  echo "Usage: ami_sdm_data_prep.sh <path/to/AMI> <dist-mic-num>"
+  echo "Usage: ami_data_prep.sh </path/to/AMI-MDM> <mic>"
   exit 1; 
 fi 
 
 AMI_DIR=$1
-MICNUM=$2
-DSET="sdm$MICNUM"
+mic=$2
 
 SEGS=data/local/annotations/train.txt
-dir=data/local/$DSET/train
+dir=data/local/$mic/train
+odir=data/$mic/train
 mkdir -p $dir
 
 # Audio data directory check
@@ -31,21 +33,18 @@ if [ ! -f $SEGS ]; then
   exit 1;
 fi
 
-# as the sdm we treat first mic from the array
-find $AMI_DIR -iname "*.Array1-0$MICNUM.wav" | sort > $dir/wav.flist
+# find MDM mics
+find $AMI_DIR -iname "*${mic}.wav" | sort > $dir/wav.flist
 
 n=`cat $dir/wav.flist | wc -l`
-
-echo "In total, $n files were found."
+echo "In total, $n headset files were found."
 [ $n -ne 169 ] && \
   echo Warning: expected 169 data data files, found $n
 
 # (1a) Transcriptions preparation
-# here we start with already normalised transcripts, just make the ids
-# Note, we set here SDM rather than, for example, SDM1 as we want to easily use
-# the same alignments across different mics
+# here we start with rt09 transcriptions, hence not much to do
 
-awk '{meeting=$1; channel="SDM"; speaker=$3; stime=$4; etime=$5;
+awk '{meeting=$1; channel="MDM"; speaker=$3; stime=$4; etime=$5;
  printf("AMI_%s_%s_%s_%07.0f_%07.0f", meeting, channel, speaker, int(100*stime+0.5), int(100*etime+0.5));
  for(i=6;i<=NF;i++) printf(" %s", $i); printf "\n"}' $SEGS | sort | uniq > $dir/text
 
@@ -60,9 +59,11 @@ awk '{
 }' < $dir/text > $dir/segments
 
 #EN2001a.Array1-01.wav
+#sed -e 's?.*/??' -e 's?.sph??' $dir/wav.flist | paste - $dir/wav.flist \
+#  > $dir/wav.scp
 
 sed -e 's?.*/??' -e 's?.wav??' $dir/wav.flist | \
- perl -ne 'split; $_ =~ m/(.*)\..*/; print "AMI_$1_SDM\n"' | \
+ perl -ne 'split; $_ =~ m/(.*)\_.*/; print "AMI_$1_MDM\n"' | \
   paste - $dir/wav.flist > $dir/wav.scp
 
 #Keep only training part of waves
@@ -73,25 +74,26 @@ awk '{print $1}' $dir/wav.scp | join -2 2 - $dir/segments | \
 #...and text with segments
 awk '{print $1}' $dir/segments | join - $dir/text > $dir/t; mv $dir/t $dir/text
 
-# this file reco2file_and_channel maps recording-id
+#prepare reco2file_and_channel
 awk '{print $1 $2}' $dir/wav.scp | \
-  perl -ane '$_ =~ m:^(\S+SDM).*\/([IETB].*)\.wav$: || die "bad label $_"; 
-       print "$1 $2 A\n"; ' > $dir/reco2file_and_channel || exit 1;
+  perl -ane '$_ =~ m:^(\S+MDM).*\/([IETB].*)\.wav$: || die "bad label $_"; 
+       print "$1 $2 0\n"; ' > $dir/reco2file_and_channel || exit 1;
 
-# Assumtion, for sdm we adapt to the session only
+# we assume we adapt to the session only
 awk '{print $1}' $dir/segments | \
   perl -ane '$_ =~ m:^(\S+)([FM][A-Z]{0,2}[0-9]{3}[A-Z]*)(\S+)$: || die "bad label $_"; 
-          print "$1$2$3 $1\n";' | sort > $dir/utt2spk || exit 1;
+          print "$1$2$3 $1\n";'  \
+    > $dir/utt2spk || exit 1;
 
 sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 
 # Copy stuff into its final locations
-mkdir -p data/$DSET/train
+mkdir -p $odir
 for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel; do
-  cp $dir/$f data/$DSET/train/$f || exit 1;
+  cp $dir/$f $odir/$f | exit 1;
 done
 
-utils/validate_data_dir.sh --no-feats data/$DSET/train
+utils/validate_data_dir.sh --no-feats $odir
 
-echo AMI $DSET data preparation succeeded.
+echo AMI MDM data preparation succeeded.
 

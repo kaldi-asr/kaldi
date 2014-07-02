@@ -46,17 +46,22 @@ wgetfile=$wdir/wget_$mic.sh
 manifest="wget -O $adir/MANIFEST.TXT http://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-04237-Sun-Jun-15-2014.manifest.txt"
 license="wget -O $adir/LICENCE.TXT http://groups.inf.ed.ac.uk/ami/download/temp/Creative-Commons-Attribution-NonCommercial-ShareAlike-2.5.txt"
 
+extra_headset= #EN2001{a,d,e} have 5 sepakers
 echo "#!/bin/bash" > $wgetfile
 echo $manifest >> $wgetfile
 echo $license >> $wgetfile
 while read line; do
    if [ "$mic" == "ihm" ]; then
-     for m in 0 1 2 3; do
-       echo "wget -c -P $adir/$line/audio $amiurl/AMICorpusMirror/amicorpus/$line/audio/$line.Headset-$m.wav" >> $wgetfile
+     extra_headset= #some meetings have 5 sepakers
+     for mtg in EN2001a EN2001d EN2001e; do
+       [ "$mtg" == "$line" ] && extra_headset=4;
+     done
+     for m in 0 1 2 3 $extra_headset; do
+       echo "wget -nv -c -P $adir/$line/audio $amiurl/AMICorpusMirror/amicorpus/$line/audio/$line.Headset-$m.wav" >> $wgetfile
      done
    else
      for m in $mics; do
-       echo "wget -c -P $adir/$line/audio $amiurl/AMICorpusMirror/amicorpus/$line/audio/$line.Array1-0$m.wav" >> $wgetfile
+       echo "wget -nv -c -P $adir/$line/audio $amiurl/AMICorpusMirror/amicorpus/$line/audio/$line.Array1-0$m.wav" >> $wgetfile
      done
    fi
 done < $wdir/ami_meet_ids.flist
@@ -64,8 +69,16 @@ done < $wdir/ami_meet_ids.flist
 chmod +x $wgetfile
 echo "Downloading audio files for $mic scenario."
 echo "Look at $wdir/log/download_ami_$mic.log for download progress"
-
 $wgetfile &> $wdir/log/download_ami_$mic.log
 
-echo "Downloads of AMI corpus completed succesfully. License can be found under $adir/LICENSE.TXT"
+num_files=`find $adir -iname *Headset*`
+if [ $num_files -ne 174 ]; then
+  echo "Warning: Downloaded $num_files headset wavs but expected 687. Check $wdir/log/download_ami_$mic.log for details."
+  exit 1;
+fi
+
+echo "Downloads of AMI corpus completed succesfully. License can be found under $adir/LICENCE.TXT"
+exit 0;
+
+
 

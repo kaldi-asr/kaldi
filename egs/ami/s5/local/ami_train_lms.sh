@@ -1,4 +1,4 @@
-#!/bin/bash -v
+#!/bin/bash
 
 # Copyright 2013  Arnab Ghoshal, Pawel Swietojanski
 
@@ -45,9 +45,9 @@ if [ $# -ne 4 ]; then
   exit 1;
 fi
 
-train=$1    # data/local/train/text
-dev=$2      # data/local/dev/text
-lexicon=$3  # data/local/dict/lexicon.txt
+train=$1    # data/ihm/train/text
+dev=$2      # data/ihm/dev/text
+lexicon=$3  # data/ihm/dict/lexicon.txt
 dir=$4      # data/local/lm
 
 for f in "$text" "$lexicon"; do
@@ -72,7 +72,7 @@ ngram -unk -lm $dir/ami.o${order}g.kn.gz -ppl $dir/dev.gz
 ngram -unk -lm $dir/ami.o${order}g.kn.gz -ppl $dir/dev.gz -debug 2 >& $dir/ppl2
 mix_ppl="$dir/ppl2"
 mix_tag="ami"
-mix_lms=( "$dir/swbd/ami.o${order}g.kn.gz" )
+mix_lms=( "$dir/ami.o${order}g.kn.gz" )
 num_lms=1
 
 if [ ! -z "$swbd" ]; then
@@ -97,7 +97,7 @@ if [ ! -z "$swbd" ]; then
 fi
 
 if [ ! -z "$fisher" ]; then
-  [ ! -d "$fisher/data/trans" ] \
+  [ ! -d "$fisher/part1/data/trans" ] \
     && echo "Cannot find transcripts in Fisher directory: '$fisher'" \
     && exit 1;
   mkdir -p $dir/fisher
@@ -106,17 +106,17 @@ if [ ! -z "$fisher" ]; then
     | cut -d' ' -f4- | gzip -c > $dir/fisher/text0.gz
   gunzip -c $dir/fisher/text0.gz | fisher_map_words.pl \
     | gzip -c > $dir/fisher/text1.gz
-  ngram-count -text $dir/fisher/text1.gz -order $order -limit-vocab \
+  ngram-count -debug 0 -text $dir/fisher/text1.gz -order $order -limit-vocab \
     -vocab $dir/wordlist -unk -map-unk "<unk>" -kndiscount -interpolate \
     -lm $dir/fisher/fisher.o${order}g.kn.gz
   echo "PPL for Fisher LM:"
   ngram -unk -lm $dir/fisher/fisher.o${order}g.kn.gz -ppl $dir/dev.gz
   ngram -unk -lm $dir/fisher/fisher.o${order}g.kn.gz -ppl $dir/dev.gz -debug 2 \
-    >& $dir/fisher/ppl2
+   >& $dir/fisher/ppl2
 
   mix_ppl="$mix_ppl $dir/fisher/ppl2"
   mix_tag="${mix_tag}_fsh"
-  mix_lms=("${mix_lms[@]}" "$dir/swbd/fisher.o${order}g.kn.gz")
+  mix_lms=("${mix_lms[@]}" "$dir/fisher/fisher.o${order}g.kn.gz")
   num_lms=$[ num_lms + 1 ]
 fi
 
@@ -138,20 +138,24 @@ if [ ! -z "$web_mtg" ]; then
   echo "Interpolating web-LM not implemented yet"
 fi
 
-echo "Computing interpolation weights from: $mix_ppl"
-compute-best-mix $best_mix_ppl >& $dir/mix.log
-grep 'best lambda' $dir/sw1_fsh_mix.log \
-  | perl -e '$_=<>; s/.*\(//; s/\).*//; @A = split; for $i (@A) {print "$i\n";}' \
-  > $dir/mix.weights
-weights=( `cat $dir/mix.weights` )
-cmd="ngram -lm ${mix_lms[0]} -lambda ${weights[0]} -mix-lm ${mix_lms[1]}"
-for i in `seq 2 $num_lms`; do
-  cmd="$cmd -mix-lm${i} ${mix_lms[$i]} -mix-lambda${i} ${weights[$i]}"
-done
-cmd="$cmd -unk -write-lm $dir/${mix_tag}.o${order}g.kn.gz"
-echo "Interpolating LMs with command: \"$cmd\""
-$cmd
-echo "PPL for the interolated LM:"
-ngram -unk -lm $dir/${mix_tag}.o${order}g.kn.gz -ppl $dir/dev.gz
+if [ $num_lms -gt 1  ]; then
+  echo "Computing interpolation weights from: $mix_ppl"
+  compute-best-mix $mix_ppl >& $dir/mix.log
+  grep 'best lambda' $dir/mix.log \
+    | perl -e '$_=<>; s/.*\(//; s/\).*//; @A = split; for $i (@A) {print "$i\n";}' \
+    > $dir/mix.weights
+  weights=( `cat $dir/mix.weights` )
+  cmd="ngram -lm ${mix_lms[0]} -lambda 0.715759 -mix-lm ${mix_lms[1]}"
+  for i in `seq 2 $((num_lms-1))`; do
+    cmd="$cmd -mix-lm${i} ${mix_lms[$i]} -mix-lambda${i} ${weights[$i]}"
+  done
+  cmd="$cmd -unk -write-lm $dir/${mix_tag}.o${order}g.kn.gz"
+  echo "Interpolating LMs with command: \"$cmd\""
+  $cmd
+  echo "PPL for the interolated LM:"
+  ngram -unk -lm $dir/${mix_tag}.o${order}g.kn.gz -ppl $dir/dev.gz
+fi
 
+#save the lm name for furher use
+echo "${mix_tag}.o${order}g.kn" > $dir/final_lm
 

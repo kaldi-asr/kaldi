@@ -22,7 +22,7 @@ $utt2spk_file = "$dir/$utt2spk_file";
 open(S, "<$segments") || die "opening segments file $segments";
 while(<S>) {
   @A = split(" ", $_);
-  @A > 4 || die "Bad line in segments file: $_";
+  @A > 3 || die "convert2stm: Bad line in segments file: $_";
   ($utt, $recording_id, $begin_time, $end_time) = @A[0..3];
   $utt2reco{$utt} = $recording_id;
   $begin{$utt} = $begin_time;
@@ -33,7 +33,7 @@ close(S);
 open(R, "<$reco2file_and_channel") || die "open reco2file_and_channel file $reco2file_and_channel";
 while(<R>) {
   @A = split(" ", $_);
-  @A == 3 || die "Bad line in reco2file_and_channel file: $_";
+  @A == 3 || die "convert2stm: Bad line in reco2file_and_channel file: $_";
   ($recording_id, $file, $channel) = @A;
   $reco2file{$recording_id} = $file;
   $reco2channel{$recording_id} = $channel;
@@ -51,7 +51,7 @@ close(T);
 open(U, "<$utt2spk_file") || die "open utt2spk file $utt2spk_file";
 while(<U>) {
   @A = split(" ", $_);
-  @A == 2 || die "Bad line in utt2spk file: $_";
+  @A == 2 || die "convert2stm: Bad line in utt2spk file: $_";
   ($utt, $spk) = @A;
   $utt2spk{$utt} = $spk;
 }
@@ -67,14 +67,14 @@ foreach $utt (sort keys(%utt2reco)) {
   $file = $reco2file{$recording_id};
   $channel = $reco2channel{$recording_id};
   if (!defined $file || !defined $channel) { 
-    die "Recording-id $recording_id not defined in reco2file_and_channel file $reco2file_and_channel"; 
+    die "convert2stm: Recording-id $recording_id not defined in reco2file_and_channel file $reco2file_and_channel"; 
   }
  
   $speaker = $utt2spk{$utt};
   $transcripts = $utt2text{$utt};  
   
-  if (!defined $speaker) { die "Speaker-id for utterance $utt not defined in utt2spk file $utt2spk_file"; }
-  if (!defined $transcripts) { die "Transcript for $utt not defined in text file $text"; }
+  if (!defined $speaker) { die "convert2stm: Speaker-id for utterance $utt not defined in utt2spk file $utt2spk_file"; }
+  if (!defined $transcripts) { die "convert2stm: Transcript for $utt not defined in text file $text"; }
 
   $b = $begin{$utt};
   $e = $end{$utt};

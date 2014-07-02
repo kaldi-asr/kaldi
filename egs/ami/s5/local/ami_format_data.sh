@@ -3,9 +3,14 @@
 
 if [ -f path.sh ]; then . path.sh; fi
 
-silprob=0.5
+if [ $# -ne 1 ]; then
+  echo 'Usage: $0 <arpa-lm>'
+  exit
+fi
 
-arpa_lm=data/local/lm/rt09.3g.3g-int.p09.pr1-7.arpa.gz
+silprob=0.5
+arpa_lm=$1
+
 [ ! -f $arpa_lm ] && echo No such file $arpa_lm && exit 1;
 
 cp -r data/lang data/lang_test

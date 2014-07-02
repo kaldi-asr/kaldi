@@ -80,5 +80,4 @@ fstinfo $out_dir/tmpdir.g/empty_words.fst | grep cyclic | grep -w 'y' \
 
 rm -r $out_dir/tmpdir.g
 
-
 echo "Succeeded in formatting LM: '$lm'"
