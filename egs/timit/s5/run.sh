@@ -30,7 +30,6 @@ numGaussSGMM=9000
 decode_nj=5
 train_nj=30
 
-
 echo ============================================================================
 echo "                Data & Lexicon & Language Preparation                     "
 echo ============================================================================
@@ -167,17 +166,17 @@ echo "                    MMI + SGMM2 Training & Decoding                       
 echo ============================================================================
 
 steps/align_sgmm2.sh --nj "$train_nj" --cmd "$train_cmd" \
- --transform-dir exp/tri3_ali --use-graphs true --use-gselect true data/train \
- data/lang exp/sgmm2_4 exp/sgmm2_4_ali
+ --transform-dir exp/tri3_ali --use-graphs true --use-gselect true \
+ data/train data/lang exp/sgmm2_4 exp/sgmm2_4_ali
 
-steps/make_denlats_sgmm2.sh --nj "$train_nj" --sub-split "$train_nj" --cmd "$decode_cmd"\
- --transform-dir exp/tri3_ali data/train data/lang exp/sgmm2_4_ali \
- exp/sgmm2_4_denlats
+steps/make_denlats_sgmm2.sh --nj "$train_nj" --sub-split "$train_nj" \
+ --acwt 0.2 --lattice-beam 10.0 --beam 18.0 \
+ --cmd "$decode_cmd" --transform-dir exp/tri3_ali \
+ data/train data/lang exp/sgmm2_4_ali exp/sgmm2_4_denlats
 
-steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" \
+steps/train_mmi_sgmm2.sh --acwt 0.2 --cmd "$decode_cmd" \
  --transform-dir exp/tri3_ali --boost 0.1 --drop-frames true \
- data/train data/lang exp/sgmm2_4_ali exp/sgmm2_4_denlats \
- exp/sgmm2_4_mmi_b0.1
+ data/train data/lang exp/sgmm2_4_ali exp/sgmm2_4_denlats exp/sgmm2_4_mmi_b0.1
 
 for iter in 1 2 3 4; do
   steps/decode_sgmm2_rescore.sh --cmd "$decode_cmd" --iter $iter \
@@ -212,7 +211,6 @@ steps/nnet2/decode.sh --cmd "$decode_cmd" --nj "$decode_nj" "${decode_extra_opts
 steps/nnet2/decode.sh --cmd "$decode_cmd" --nj "$decode_nj" "${decode_extra_opts[@]}" \
   --transform-dir exp/tri3/decode_test exp/tri3/graph data/test \
   exp/tri4_nnet/decode_test | tee exp/tri4_nnet/decode_test/decode.log
-
 
 echo ============================================================================
 echo "                    System Combination (DNN+SGMM)                         "

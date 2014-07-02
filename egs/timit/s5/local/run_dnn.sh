@@ -87,12 +87,14 @@ if [ $stage -le 3 ]; then
   steps/nnet/align.sh --nj 20 --cmd "$train_cmd" \
     $data_fmllr/train data/lang $srcdir ${srcdir}_ali || exit 1;
   steps/nnet/make_denlats.sh --nj 20 --cmd "$decode_cmd" --acwt $acwt \
+    --lattice-beam 10.0 --beam 18.0 \
     $data_fmllr/train data/lang $srcdir ${srcdir}_denlats || exit 1;
 fi
 
 if [ $stage -le 4 ]; then
   # Re-train the DNN by 6 iterations of sMBR 
-  steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 6 --acwt $acwt --do-smbr true \
+  steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 6 --acwt $acwt \
+    --do-smbr true --use-silphones true \
     $data_fmllr/train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
   # Decode
   for ITER in 1 6; do
