@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     bool compute_objf_change = true;
-    IvectorStatsOptions stats_opts;
+    IvectorExtractorStatsOptions stats_opts;
     TaskSequencerConfig sequencer_config;
     po.Register("compute-objf-change", &compute_objf_change,
                 "If true, compute the change in objective function from using "

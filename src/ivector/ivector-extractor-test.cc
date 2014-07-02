@@ -34,24 +34,24 @@ void TestIvectorExtractorIO(const IvectorExtractor &extractor) {
   extractor2.Write(ostr2, binary);
   KALDI_ASSERT(ostr.str() == ostr2.str());
 }
-void TestIvectorStatsIO(IvectorStats &stats) {
+void TestIvectorExtractorStatsIO(IvectorExtractorStats &stats) {
   std::ostringstream ostr;
   bool binary = (rand() % 2 == 0);
   stats.Write(ostr, binary);
   std::istringstream istr(ostr.str());
-  IvectorStats stats2;
+  IvectorExtractorStats stats2;
   stats2.Read(istr, binary);
   std::ostringstream ostr2;
   stats2.Write(ostr2, binary);
   KALDI_ASSERT(ostr.str() == ostr2.str());
 
-  { // Test I/O of IvectorStats and that it works identically with the "add"
+  { // Test I/O of IvectorExtractorStats and that it works identically with the "add"
     // mechanism.  We only test this with binary == true; otherwise it's not
     // identical due to limited precision.
     std::ostringstream ostr;
     bool binary = true;
     stats.Write(ostr, binary);
-    IvectorStats stats2;
+    IvectorExtractorStats stats2;
     {
       std::istringstream istr(ostr.str());
       stats2.Read(istr, binary);
@@ -60,7 +60,7 @@ void TestIvectorStatsIO(IvectorStats &stats) {
       std::istringstream istr(ostr.str());
       stats2.Read(istr, binary, true); // add to existing.
     }
-    IvectorStats stats3(stats);
+    IvectorExtractorStats stats3(stats);
     stats3.Add(stats);
     
     std::ostringstream ostr2;
@@ -91,7 +91,7 @@ void UnitTestIvectorExtractor() {
   IvectorExtractor extractor(ivector_opts, fgmm);
   TestIvectorExtractorIO(extractor);
 
-  IvectorStatsOptions stats_opts;
+  IvectorExtractorStatsOptions stats_opts;
   if (rand() % 2 == 0) stats_opts.update_variances = false;
   stats_opts.num_samples_for_weights = 100; // Improve accuracy
   // of estimation, since we do it with relatively few utterances,
@@ -111,13 +111,13 @@ void UnitTestIvectorExtractor() {
   int32 num_iters = 4;
   double last_auxf_impr = 0.0, last_auxf = 0.0;
   for (int32 iter = 0; iter < num_iters; iter++) {
-    IvectorStats stats(extractor, stats_opts);
+    IvectorExtractorStats stats(extractor, stats_opts);
       
     for (int32 utt = 0; utt < num_utts; utt++) {
       Matrix<BaseFloat> &feats = all_feats[utt];
       stats.AccStatsForUtterance(extractor, feats, fgmm);
     }
-    TestIvectorStatsIO(stats);
+    TestIvectorExtractorStatsIO(stats);
     
     IvectorExtractorEstimationOptions estimation_opts;
     estimation_opts.gaussian_min_count = dim + 5;

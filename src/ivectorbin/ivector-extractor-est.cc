@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(model_rxfilename, &extractor);
 
     KALDI_LOG << "Reading statistics";
-    IvectorStats stats;
+    IvectorExtractorStats stats;
     ReadKaldiObject(stats_rxfilename, &stats);
 
     stats.Update(update_opts, &extractor);

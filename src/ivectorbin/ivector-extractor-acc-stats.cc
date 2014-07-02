@@ -35,7 +35,7 @@ class IvectorTask {
   IvectorTask(const IvectorExtractor &extractor,
               const Matrix<BaseFloat> &features,
               const Posterior &posterior,
-              IvectorStats *stats): extractor_(extractor),
+              IvectorExtractorStats *stats): extractor_(extractor),
                                     features_(features),
                                     posterior_(posterior),
                                     stats_(stats) { }
@@ -50,7 +50,7 @@ class IvectorTask {
                                // Table and the reference we get from that is
                                // not valid long-term.
   Posterior posterior_;  // as above.
-  IvectorStats *stats_;
+  IvectorExtractorStats *stats_;
 };
 
 
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     bool binary = true;
-    IvectorStatsOptions stats_opts;
+    IvectorExtractorStatsOptions stats_opts;
     TaskSequencerConfig sequencer_opts;
     po.Register("binary", &binary, "Write output in binary mode");
     stats_opts.Register(&po);
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
     IvectorExtractor extractor;
     ReadKaldiObject(ivector_extractor_rxfilename, &extractor);
     
-    IvectorStats stats(extractor, stats_opts);
+    IvectorExtractorStats stats(extractor, stats_opts);
     
     
     int64 tot_t = 0;

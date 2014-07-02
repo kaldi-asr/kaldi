@@ -29,14 +29,17 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Copy a subset of features (the first n feature files)\n"
         "Usually used where only a small amount of data is needed\n"
+        "Note: if you want a specific subset, it's usually best to\n"
+        "filter the original .scp file with utils/filter_scp.pl\n"
+        "(possibly with the --exclude option)\n"
         "Usage: subset-feats [options] in-rspecifier out-wspecifier\n"
         "See also extract-rows, select-feats, subsample-feats\n";
-
+    
     ParseOptions po(usage);
     
     int32 n = 10;
     po.Register("n", &n, "If nonnegative, copy the first n feature files.");
-
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
