@@ -110,7 +110,7 @@ struct IvectorExtractorOptions {
 
 class IvectorExtractor {
  public:
-  friend class IvectorStats;
+  friend class IvectorExtractorStats;
 
   IvectorExtractor(): ivector_offset_(0.0) { }
   
@@ -285,15 +285,15 @@ class IvectorExtractor {
 };
 
 
-/// Options for IvectorStats, which is used to update the parameters of
+/// Options for IvectorExtractorStats, which is used to update the parameters of
 /// IvectorExtractor.
-struct IvectorStatsOptions {
+struct IvectorExtractorStatsOptions {
   bool update_variances;
   bool compute_auxf;
   int32 num_samples_for_weights;
   int cache_size;
 
-  IvectorStatsOptions(): update_variances(true),
+  IvectorExtractorStatsOptions(): update_variances(true),
                          compute_auxf(true),
                          num_samples_for_weights(10),
                          cache_size(100) { }
@@ -332,17 +332,18 @@ struct IvectorExtractorEstimationOptions {
 class IvectorExtractorUpdateProjectionClass;
 class IvectorExtractorUpdateWeightClass;
 
-/// IvectorStats is a class used to update the parameters of the ivector estimator.
-class IvectorStats {
+/// IvectorExtractorStats is a class used to update the parameters of the
+/// ivector extractor
+class IvectorExtractorStats {
  public:
   friend class IvectorExtractor;
 
-  IvectorStats(): tot_auxf_(0.0), R_num_cached_(0), num_ivectors_(0) { }
+  IvectorExtractorStats(): tot_auxf_(0.0), R_num_cached_(0), num_ivectors_(0) { }
   
-  IvectorStats(const IvectorExtractor &extractor,
-               const IvectorStatsOptions &stats_opts);
+  IvectorExtractorStats(const IvectorExtractor &extractor,
+               const IvectorExtractorStatsOptions &stats_opts);
   
-  void Add(const IvectorStats &other);
+  void Add(const IvectorExtractorStats &other);
   
   void AccStatsForUtterance(const IvectorExtractor &extractor,
                             const MatrixBase<BaseFloat> &feats,
@@ -370,7 +371,7 @@ class IvectorStats {
   double AuxfPerFrame() { return tot_auxf_ / gamma_.Sum(); }
 
   // Copy constructor.
-  explicit IvectorStats (const IvectorStats &other);
+  explicit IvectorExtractorStats (const IvectorExtractorStats &other);
  protected:
   friend class IvectorExtractorUpdateProjectionClass;
   friend class IvectorExtractorUpdateWeightClass;
@@ -450,7 +451,7 @@ class IvectorStats {
   
   void CheckDims(const IvectorExtractor &extractor) const;
 
-  IvectorStatsOptions config_; /// Caution: if we read from disk, this
+  IvectorExtractorStatsOptions config_; /// Caution: if we read from disk, this
                                /// is not recovered.  Options will not be
                                /// used during the update phase anyway,
                                /// so this should not matter.
@@ -527,7 +528,7 @@ class IvectorStats {
   SpMatrix<double> ivector_scatter_;
 
  private:
-  IvectorStats &operator = (const IvectorStats &other);  // Disallow.
+  IvectorExtractorStats &operator = (const IvectorExtractorStats &other);  // Disallow.
 };
 
 

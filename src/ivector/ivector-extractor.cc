@@ -594,8 +594,9 @@ void IvectorExtractor::Read(std::istream &is, bool binary) {
 }
 
 
-IvectorStats::IvectorStats(const IvectorExtractor &extractor,
-                           const IvectorStatsOptions &stats_opts):
+IvectorExtractorStats::IvectorExtractorStats(
+    const IvectorExtractor &extractor,
+    const IvectorExtractorStatsOptions &stats_opts):
     config_(stats_opts) {
   int32 S = extractor.IvectorDim(), D = extractor.FeatDim(),
       I = extractor.NumGauss();
@@ -628,7 +629,7 @@ IvectorStats::IvectorStats(const IvectorExtractor &extractor,
 }
 
 
-void IvectorStats::CommitStatsForM(
+void IvectorExtractorStats::CommitStatsForM(
     const IvectorExtractor &extractor,
     const IvectorExtractorUtteranceStats &utt_stats,
     const VectorBase<double> &ivec_mean,
@@ -665,10 +666,10 @@ void IvectorStats::CommitStatsForM(
   R_cache_lock_.Unlock();
 }
 
-void IvectorStats::FlushCache() {
+void IvectorExtractorStats::FlushCache() {
   R_cache_lock_.Lock();
   if (R_num_cached_ > 0) {
-    KALDI_VLOG(1) << "Flushing cache for IvectorStats";
+    KALDI_VLOG(1) << "Flushing cache for IvectorExtractorStats";
     // Store these quantities as copies in memory so other threads can use the
     // cache while we update R_ from the cache.
     Matrix<double> R_gamma_cache(
@@ -690,7 +691,7 @@ void IvectorStats::FlushCache() {
 }
 
 
-void IvectorStats::CommitStatsForSigma(
+void IvectorExtractorStats::CommitStatsForSigma(
     const IvectorExtractor &extractor,
     const IvectorExtractorUtteranceStats &utt_stats) {
   variance_stats_lock_.Lock();
@@ -705,7 +706,7 @@ void IvectorStats::CommitStatsForSigma(
 
 // This function commits stats for a single sample of the ivector,
 // to update the weight projection w_.
-void IvectorStats::CommitStatsForWPoint(
+void IvectorExtractorStats::CommitStatsForWPoint(
     const IvectorExtractor &extractor,
     const IvectorExtractorUtteranceStats &utt_stats,
     const VectorBase<double> &ivector,
@@ -741,7 +742,7 @@ void IvectorStats::CommitStatsForWPoint(
 }
 
 
-void IvectorStats::CommitStatsForW(
+void IvectorExtractorStats::CommitStatsForW(
     const IvectorExtractor &extractor,
     const IvectorExtractorUtteranceStats &utt_stats,
     const VectorBase<double> &ivec_mean,
@@ -770,8 +771,9 @@ void IvectorStats::CommitStatsForW(
                          1.0 / config_.num_samples_for_weights);
 }
 
-void IvectorStats::CommitStatsForPrior(const VectorBase<double> &ivec_mean,
-                                       const SpMatrix<double> &ivec_var) {
+void IvectorExtractorStats::CommitStatsForPrior(
+    const VectorBase<double> &ivec_mean,
+    const SpMatrix<double> &ivec_var) {
   SpMatrix<double> ivec_scatter(ivec_var);
   ivec_scatter.AddVec2(1.0, ivec_mean);
   prior_stats_lock_.Lock();
@@ -782,7 +784,7 @@ void IvectorStats::CommitStatsForPrior(const VectorBase<double> &ivec_mean,
 }
 
 
-void IvectorStats::CommitStatsForUtterance(
+void IvectorExtractorStats::CommitStatsForUtterance(
     const IvectorExtractor &extractor,
     const IvectorExtractorUtteranceStats &utt_stats) {
   
@@ -806,7 +808,7 @@ void IvectorStats::CommitStatsForUtterance(
 }
 
 
-void IvectorStats::CheckDims(const IvectorExtractor &extractor) const {
+void IvectorExtractorStats::CheckDims(const IvectorExtractor &extractor) const {
   int32 S = extractor.IvectorDim(), D = extractor.FeatDim(),
       I = extractor.NumGauss();
   KALDI_ASSERT(config_.num_samples_for_weights > 0);
@@ -835,7 +837,7 @@ void IvectorStats::CheckDims(const IvectorExtractor &extractor) const {
 }
 
 
-void IvectorStats::AccStatsForUtterance(
+void IvectorExtractorStats::AccStatsForUtterance(
     const IvectorExtractor &extractor,
     const MatrixBase<BaseFloat> &feats,
     const Posterior &post) {
@@ -862,7 +864,7 @@ void IvectorStats::AccStatsForUtterance(
   CommitStatsForUtterance(extractor, utt_stats);
 }
 
-double IvectorStats::AccStatsForUtterance(
+double IvectorExtractorStats::AccStatsForUtterance(
     const IvectorExtractor &extractor,
     const MatrixBase<BaseFloat> &feats,
     const FullGmm &fgmm) {
@@ -881,7 +883,7 @@ double IvectorStats::AccStatsForUtterance(
   return tot_log_like;
 }
 
-void IvectorStats::Add(const IvectorStats &other) {
+void IvectorExtractorStats::Add(const IvectorExtractorStats &other) {
   KALDI_ASSERT(config_.num_samples_for_weights ==
                other.config_.num_samples_for_weights);
   double weight = 1.0; // will later make this configurable if needed.
@@ -902,15 +904,15 @@ void IvectorStats::Add(const IvectorStats &other) {
 }
 
 
-void IvectorStats::Write(std::ostream &os, bool binary) {
+void IvectorExtractorStats::Write(std::ostream &os, bool binary) {
   FlushCache(); // for R stats.
-  ((const IvectorStats&)(*this)).Write(os, binary); // call const version.
+  ((const IvectorExtractorStats&)(*this)).Write(os, binary); // call const version.
 }
 
 
-void IvectorStats::Write(std::ostream &os, bool binary) const {
+void IvectorExtractorStats::Write(std::ostream &os, bool binary) const {
   KALDI_ASSERT(R_num_cached_ == 0 && "Please use the non-const Write().");
-  WriteToken(os, binary, "<IvectorStats>");
+  WriteToken(os, binary, "<IvectorExtractorStats>");
   WriteToken(os, binary, "<TotAuxf>");
   WriteBasicType(os, binary, tot_auxf_);
   WriteToken(os, binary, "<gamma>");
@@ -939,12 +941,12 @@ void IvectorStats::Write(std::ostream &os, bool binary) const {
   ivector_sum_.Write(os, binary);
   WriteToken(os, binary, "<IvectorScatter>");
   ivector_scatter_.Write(os, binary);
-  WriteToken(os, binary, "</IvectorStats>");
+  WriteToken(os, binary, "</IvectorExtractorStats>");
 }
 
 
-void IvectorStats::Read(std::istream &is, bool binary, bool add) {
-  ExpectToken(is, binary, "<IvectorStats>");
+void IvectorExtractorStats::Read(std::istream &is, bool binary, bool add) {
+  ExpectToken(is, binary, "<IvectorExtractorStats>");
   ExpectToken(is, binary, "<TotAuxf>");
   ReadBasicType(is, binary, &tot_auxf_, add);
   ExpectToken(is, binary, "<gamma>");
@@ -972,11 +974,12 @@ void IvectorStats::Read(std::istream &is, bool binary, bool add) {
   ivector_sum_.Read(is, binary, add);
   ExpectToken(is, binary, "<IvectorScatter>");
   ivector_scatter_.Read(is, binary, add);
-  ExpectToken(is, binary, "</IvectorStats>");
+  ExpectToken(is, binary, "</IvectorExtractorStats>");
 }
 
-double IvectorStats::Update(const IvectorExtractorEstimationOptions &opts,
-                               IvectorExtractor *extractor) const {
+double IvectorExtractorStats::Update(
+    const IvectorExtractorEstimationOptions &opts,
+    IvectorExtractor *extractor) const {
   CheckDims(*extractor);
   if (tot_auxf_ != 0.0) {
     KALDI_LOG << "Overall auxf/frame on training data was "
@@ -999,7 +1002,7 @@ double IvectorStats::Update(const IvectorExtractorEstimationOptions &opts,
   return ans;
 }
 
-double IvectorStats::UpdateProjection(
+double IvectorExtractorStats::UpdateProjection(
     const IvectorExtractorEstimationOptions &opts,
     int32 i,
     IvectorExtractor *extractor) const {
@@ -1035,7 +1038,7 @@ double IvectorStats::UpdateProjection(
 
 class IvectorExtractorUpdateProjectionClass {
  public:
-  IvectorExtractorUpdateProjectionClass(const IvectorStats &stats,
+  IvectorExtractorUpdateProjectionClass(const IvectorExtractorStats &stats,
                         const IvectorExtractorEstimationOptions &opts,
                         int32 i,
                         IvectorExtractor *extractor,
@@ -1047,7 +1050,7 @@ class IvectorExtractorUpdateProjectionClass {
   }
   ~IvectorExtractorUpdateProjectionClass() { *tot_impr_ += impr_; }
  private:
-  const IvectorStats &stats_;
+  const IvectorExtractorStats &stats_;
   const IvectorExtractorEstimationOptions &opts_;
   int32 i_;
   IvectorExtractor *extractor_;
@@ -1055,7 +1058,7 @@ class IvectorExtractorUpdateProjectionClass {
   double impr_;
 };
 
-double IvectorStats::UpdateProjections(
+double IvectorExtractorStats::UpdateProjections(
     const IvectorExtractorEstimationOptions &opts,
     IvectorExtractor *extractor) const {
   int32 I = extractor->NumGauss();
@@ -1076,7 +1079,7 @@ double IvectorStats::UpdateProjections(
   return tot_impr / count;
 }
 
-double IvectorStats::UpdateVariances(
+double IvectorExtractorStats::UpdateVariances(
     const IvectorExtractorEstimationOptions &opts,
     IvectorExtractor *extractor) const {
   int32 num_gauss = extractor->NumGauss(),
@@ -1168,7 +1171,7 @@ double IvectorStats::UpdateVariances(
   return tot_objf_impr / gamma_.Sum();
 }
 
-double IvectorStats::UpdateWeight(
+double IvectorExtractorStats::UpdateWeight(
     const IvectorExtractorEstimationOptions &opts,
     int32 i,
     IvectorExtractor *extractor) const {
@@ -1197,7 +1200,7 @@ double IvectorStats::UpdateWeight(
 
 class IvectorExtractorUpdateWeightClass {
  public:
-  IvectorExtractorUpdateWeightClass(const IvectorStats &stats,
+  IvectorExtractorUpdateWeightClass(const IvectorExtractorStats &stats,
                                     const IvectorExtractorEstimationOptions &opts,
                                     int32 i,
                                     IvectorExtractor *extractor,
@@ -1209,7 +1212,7 @@ class IvectorExtractorUpdateWeightClass {
   }
   ~IvectorExtractorUpdateWeightClass() { *tot_impr_ += impr_; }
  private:
-  const IvectorStats &stats_;
+  const IvectorExtractorStats &stats_;
   const IvectorExtractorEstimationOptions &opts_;
   int32 i_;
   IvectorExtractor *extractor_;
@@ -1217,7 +1220,7 @@ class IvectorExtractorUpdateWeightClass {
   double impr_;
 };
 
-double IvectorStats::UpdateWeights(
+double IvectorExtractorStats::UpdateWeights(
     const IvectorExtractorEstimationOptions &opts,
     IvectorExtractor *extractor) const {
   
@@ -1241,7 +1244,7 @@ double IvectorStats::UpdateWeights(
 }
 
 
-double IvectorStats::PriorDiagnostics(double old_ivector_offset) const {
+double IvectorExtractorStats::PriorDiagnostics(double old_ivector_offset) const {
   // The iVectors had a centered covariance "covar"; we want to figure out
   // the objective-function change from rescaling.  It's as if we were
   // formerly modeling "covar" with the unit matrix, and we're now modeling
@@ -1278,7 +1281,7 @@ double IvectorStats::PriorDiagnostics(double old_ivector_offset) const {
                                 // quantities.
 }
 
-double IvectorStats::UpdatePrior(
+double IvectorExtractorStats::UpdatePrior(
     const IvectorExtractorEstimationOptions &opts,
     IvectorExtractor *extractor) const {
 
@@ -1373,7 +1376,8 @@ double IvectorStats::UpdatePrior(
   return ans;
 }
 
-IvectorStats::IvectorStats (const IvectorStats &other):
+IvectorExtractorStats::IvectorExtractorStats (
+    const IvectorExtractorStats &other):
     config_(other.config_), tot_auxf_(other.tot_auxf_), gamma_(other.gamma_),
     Y_(other.Y_), R_(other.R_), R_num_cached_(other.R_num_cached_),
     R_gamma_cache_(other.R_gamma_cache_),
