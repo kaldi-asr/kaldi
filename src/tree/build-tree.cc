@@ -461,7 +461,7 @@ void ReadSymbolTableAsIntegers(std::string filename,
 /// and all the non-leaf-level clusters.
 static void ObtainSetsOfPhones(const std::vector<std::vector<int32> > &phone_sets,  // the original phone sets, may
                                // just be individual phones.
-                               const std::vector<int32> &assignments,  // phones->clusters
+                               const std::vector<int32> &assignments,  // phone-sets->clusters
                                const std::vector<int32> &clust_assignments,  // clust->parent
                                int32 num_leaves,  // number of clusters present..
                                std::vector<std::vector<int32> > *sets_out) {
@@ -577,8 +577,10 @@ void AutomaticallyObtainQuestions(BuildTreeStatsType &stats,
       summed_stats_per_set[i]->Add(*(summed_stats[this_set[j]]));
   }
 
+  int32 num_no_data = 0;
   for (size_t i = 0; i < summed_stats_per_set.size(); i++) {  // A check.
     if (summed_stats_per_set[i]->Normalizer() == 0.0) {
+      num_no_data++;
       std::ostringstream ss;
       ss << "AutomaticallyObtainQuestions: no stats available for phone set: ";
       for (size_t j = 0; j < phone_sets[i].size(); j++)
@@ -586,6 +588,17 @@ void AutomaticallyObtainQuestions(BuildTreeStatsType &stats,
       KALDI_WARN  << ss.str();
     }
   }
+  if (num_no_data + 1 >= summed_stats_per_set.size()) {
+    std::ostringstream ss;
+    for (size_t i = 0; i < all_pdf_classes.size(); i++)
+      ss << all_pdf_classes[i] << ' ';
+    KALDI_WARN << "All or all but one of your classes of phones had no data. "
+               << "Note that we only consider data where pdf-class is in the "
+               << "set ( " << ss.str() << ").  If you have an unusual HMM "
+               << "topology this may not be what you want; use the "
+               << "--pdf-class-list option to change this if needed.";
+  }
+  
 
   TreeClusterOptions topts;
   topts.kmeans_cfg.num_tries = 10;  // This is a slow-but-accurate setting,
