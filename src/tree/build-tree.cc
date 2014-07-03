@@ -544,6 +544,21 @@ void AutomaticallyObtainQuestions(BuildTreeStatsType &stats,
                    true,  // retain only the listed positions
                    &retained_stats);
 
+  if (retained_stats.size() * 10 < stats.size()) {
+    std::ostringstream ss;
+    for (size_t i = 0; i < all_pdf_classes.size(); i++)
+      ss << all_pdf_classes[i] << ' ';
+    KALDI_WARN << "After filtering the tree statistics to retain only stats where "
+               << "pdf-class is in the set { " << ss.str() << "}, most of your "
+               << "stats disappeared: the size changed from " << stats.size()
+               << " to " << retained_stats.size() << ".  You might be using "
+               << "a nonstandard topology but forgot to modify the "
+               << "--pdf-class-list option (it defaults to { 1 } which is "
+               << "the central state in a 3-state left-to-right topology)."
+               << " E.g. a 1-state HMM topology would require the option "
+               << "--pdf-class-list=0.";
+  }
+
 
   std::vector<BuildTreeStatsType> split_stats;  // split by phone.
   SplitStatsByKey(retained_stats, P, &split_stats);
@@ -596,7 +611,8 @@ void AutomaticallyObtainQuestions(BuildTreeStatsType &stats,
                << "Note that we only consider data where pdf-class is in the "
                << "set ( " << ss.str() << ").  If you have an unusual HMM "
                << "topology this may not be what you want; use the "
-               << "--pdf-class-list option to change this if needed.";
+               << "--pdf-class-list option to change this if needed. See "
+               << "also any warnings above.";
   }
   
 
