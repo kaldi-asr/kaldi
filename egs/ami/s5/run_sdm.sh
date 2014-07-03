@@ -12,11 +12,11 @@ norm_vars=false
 
 #1) Prepare sdm data directories
 
-local/ami_sdm_data_prep.sh $AMI_DIR $micid
+#local/ami_sdm_data_prep.sh $AMI_DIR $micid
 local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid dev
-local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid eval
+#local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid eval
 
-#exit;
+exit;
 
 #use the final LM
 final_lm=`cat data/local/lm/final_lm`
@@ -29,7 +29,7 @@ echo $DEV_SPK $EVAL_SPK
 nj=16
 
 #GENERATE FEATS
- 
+<< "C" 
 mfccdir=mfcc_$mic
 (
 steps/make_mfcc.sh --nj 5  --cmd "$train_cmd" data/$mic/eval exp/$mic/make_mfcc/eval $mfccdir || exit 1;
@@ -46,6 +46,9 @@ steps/compute_cmvn_stats.sh data/$mic/train exp/$mic/make_mfcc/train $mfccdir ||
 
 wait;
 exit;
+
+
+for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
 
 # TRAIN THE MODELS
  mkdir -p exp/$mic/mono
@@ -88,7 +91,7 @@ exit;
 mkdir -p exp/$mic/tri2a_ali
 steps/align_si.sh --nj $nj --cmd "$train_cmd" \
   data/$mic/train data/lang exp/$mic/tri2a exp/$mic/tri2_ali || exit 1;
-
+C
 # Train tri3a, which is LDA+MLLT
 mkdir -p exp/$mic/tri3a
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
@@ -142,7 +145,7 @@ done
 exit;
 
 # Train tri4a, which is LDA+MLLT+SAT
-steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
+steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
   data/$mic/train data/lang exp/$mic/tri3a exp/$mic/tri3a_ali || exit 1;
 
 mkdir -p exp/$mic/tri4a
@@ -150,25 +153,27 @@ steps/train_sat.sh  --cmd "$train_cmd" \
   5000 80000 data/$mic/train data/lang exp/$mic/tri3a_ali \
   exp/$mic/tri4a >& exp/$mic/tri4a/train.log || exit 1;
 
-for lm_suffix in rt09_tgpr; do
+for lm_suffix in $LM; do
   (
     graph_dir=exp/$mic/tri4a/graph_${lm_suffix}
     $highmem_cmd $graph_dir/mkgraph.log \
       utils/mkgraph.sh data/lang_${lm_suffix} exp/$mic/tri4a $graph_dir
 
     steps/decode_fmllr.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.config \
-      $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${lm_suffix} &
+      $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${lm_suffix} 
 
     steps/decode_fmllr.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.config \
-      $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${lm_suffix} &
-  ) &
+      $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${lm_suffix} 
+  ) 
 done
 
+exit ;
+
 # MMI training starting from the LDA+MLLT+SAT systems
-steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
+steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
   data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_ali || exit 1
 
-steps/make_denlats.sh --nj 50 --cmd "$highmem_cmd" --config conf/decode.config \
+steps/make_denlats.sh --nj $nj --cmd "$highmem_cmd" --config conf/decode.config \
   --transform-dir exp/$mic/tri4a_ali \
   data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_denlats  || exit 1;
 

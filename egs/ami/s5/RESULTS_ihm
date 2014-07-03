@@ -3,6 +3,8 @@
 dev
 exp/ihm/tri2a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev.ctm.filt.dtl:Percent Total Error       =   38.0%   (35925)
 exp/ihm/tri3a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_14/dev.ctm.filt.dtl:Percent Total Error       =   35.3%   (33329)
+exp/ihm/tri4a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev.ctm.filt.dtl:Percent Total Error       =   32.1%   (30364)
+
 
 eval
 exp/ihm/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval.ctm.filt.dtl:Percent Total Error       =   43.7%   (39330)

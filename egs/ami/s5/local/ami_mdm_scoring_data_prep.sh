@@ -86,6 +86,27 @@ awk '{print $1}' $tmpdir/segments | \
   perl -ane '$_ =~ m:^(\S+)([FM][A-Z]{0,2}[0-9]{3}[A-Z]*)(\S+)$: || die "bad label $_"; 
           print "$1$2$3 $1$2\n";' > $tmpdir/utt2spk_stm || exit 1;
 
+#check and correct case when segment timings for a given speaker overlap themself
+#(important for simulatenous asclite scoring to proceed).
+#There is actually only one such case for devset and automatic segmentetions
+join $tmpdir/utt2spk_stm $tmpdir/segments | \
+   perl -ne '{BEGIN{$pu=""; $pt=0.0; $pl=""} split;
+           if ($pu eq $_[1] && $pt > $_[3]) {
+             print "$pl > $_[0] $_[2] $pt $_[4] $_[5]\n"
+           }
+           $pu=$_[1]; $pt=$_[4];
+           $pl="$_[0] $_[2] $_[3] $_[4] $_[5]";
+         }' > $tmpdir/segments_to_fix
+if [ `cat $tmpdir/segments_to_fix | wc -l` -gt 0 ]; then
+  echo "$0. Applying following fixes to segments"
+  cat $tmpdir/segments_to_fix
+  while read line; do
+     p1=`echo $line | awk -F'>' '{print $1}'`
+     p2=`echo $line | awk -F'>' '{print $2}'`
+     sed -ir "s!$p1!$p2!" $tmpdir/segments
+  done < $tmpdir/segments_to_fix
+fi
+
 # Copy stuff into its final locations [this has been moved from the format_data
 # script]
 mkdir -p $dir

@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
+# 2014, University of Edinburgh, (Author: Pawel Swietojanski)
 
 # begin configuration section.
 cmd=run.pl
@@ -8,6 +9,7 @@ min_lmwt=9
 max_lmwt=20
 reverse=false
 asclite=false
+overlap_spk=4
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -78,10 +80,13 @@ fi
 
 if [ $stage -le 2 ]; then  
   if [ "$asclite" == "true" ]; then
+    oname=$name
+    [ ! -z $overlap_spk ] && oname=${name}_o$overlap_spk
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/ascoring/log/score.LMWT.log \
       cp $data/stm $dir/ascore_LMWT/ '&&' \
-      $hubscr -G -v -m 1:2 -o4 -a -C -B 8192 -p $hubdir -V -l english \
-         -h rt-stt -g $data/glm -r $dir/ascore_LMWT/stm $dir/ascore_LMWT/${name}.ctm || exit 1;
+      cp $dir/ascore_LMWT/${name}.ctm $dir/ascore_LMWT/${oname}.ctm '&&' \
+      $hubscr -G -v -m 1:2 -o$overlap_spk -a -C -B 8192 -p $hubdir -V -l english \
+         -h rt-stt -g $data/glm -r $dir/ascore_LMWT/stm $dir/ascore_LMWT/${oname}.ctm || exit 1;
   else
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/ascoring/log/score.LMWT.log \
       cp $data/stm $dir/ascore_LMWT/ '&&' \

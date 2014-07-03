@@ -25,6 +25,8 @@ local/ami_mdm_data_prep.sh $MDM_DIR $mic || exit 1;
 local/ami_mdm_scoring_data_prep.sh $MDM_DIR $mic dev || exit 1;
 local/ami_mdm_scoring_data_prep.sh $MDM_DIR $mic eval || exit 1;
 
+
+exit;
 DEV_SPK=`cut -d" " -f2 data/$mic/dev/utt2spk | sort | uniq -c | wc -l`
 EVAL_SPK=`cut -d" " -f2 data/$mic/eval/utt2spk | sort | uniq -c | wc -l`
 nj=16

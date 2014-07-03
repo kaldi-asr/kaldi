@@ -71,10 +71,22 @@ echo "Downloading audio files for $mic scenario."
 echo "Look at $wdir/log/download_ami_$mic.log for download progress"
 $wgetfile &> $wdir/log/download_ami_$mic.log
 
-num_files=`find $adir -iname *Headset*`
-if [ $num_files -ne 174 ]; then
-  echo "Warning: Downloaded $num_files headset wavs but expected 687. Check $wdir/log/download_ami_$mic.log for details."
-  exit 1;
+#do rough check if #wavs is as expected, it will fail anyway in data prep stage if it isn't
+if [ "$mic" == "ihm" ]; then
+  num_files=`find $adir -iname *Headset*`
+  if [ $num_files -ne 687 ]; then
+    echo "Warning: Found $num_files headset wavs but expected 687. Check $wdir/log/download_ami_$mic.log for details."
+    exit 1;
+  fi
+else
+  num_files=`find $adir -iname *Array1*`
+  if [[ $num_files -lt 1352 && "$mic" == "mdm" ]]; then
+    echo "Warning: Found $num_files distant Array1 waves but expected 1352 for mdm. Check $wdir/log/download_ami_$mic.log for details."
+    exit 1;
+  elif [[ $num_files -lt 169 && "$mic" == "sdm" ]]; then
+    echo "Warning: Found $num_files distant Array1 waves but expected 169 for sdm. Check $wdir/log/download_ami_$mic.log for details."
+    exit 1;
+  fi
 fi
 
 echo "Downloads of AMI corpus completed succesfully. License can be found under $adir/LICENCE.TXT"
