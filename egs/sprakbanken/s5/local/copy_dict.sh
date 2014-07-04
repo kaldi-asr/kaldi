@@ -30,6 +30,7 @@ mkdir -p $dir
 # outputs a normalised transcript without utterance ids and a list of utterance ids 
 echo "Normalising"
 trainsrc=data/local/trainsrc
+rm -rf $trainsrc
 mkdir $trainsrc
 mv data/train/text1 $trainsrc/text1
 python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $trainsrc/text1 $trainsrc/onlyids $dir/transcripts.tmp
@@ -39,7 +40,7 @@ python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $trai
 local/norm_dk/format_text.sh am $dir/transcripts.tmp > $dir/transcripts.am
 cp $dir/transcripts.am $trainsrc/onlytext
 paste -d ' ' $trainsrc/onlyids $trainsrc/onlytext > data/train/text 
-
+utils/validate_data_dir.sh --no-feat data/train || exit 1;
 
 # lmsents is output by sprak_data_prep.sh and contains
 # sentences that are disjoint from the test and dev set 
@@ -73,22 +74,28 @@ touch $dir/extra_questions.txt
 
 # Repeat text preparation on test set, but do not add to dictionary
 testsrc=data/local/testsrc
+rm -rf $testsrc
 mkdir $testsrc
 mv data/test/text1 $testsrc/text1
 python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $testsrc/text1 $testsrc/onlyids $testsrc/transcripts.am 
 local/norm_dk/format_text.sh am $testsrc/transcripts.am > $testsrc/onlytext
 paste -d ' ' $testsrc/onlyids $testsrc/onlytext > data/test/text
-
+utils/validate_data_dir.sh --no-feat data/test || exit 1;
 
 # Repeat text preparation on dev set, but do not add to dictionary
 devsrc=data/local/devsrc
+rm -rf $devsrc
 mkdir $devsrc
 mv data/dev/text1 $devsrc/text1
 python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $devsrc/text1 $devsrc/onlyids $devsrc/transcripts.tmp
-local/norm_dk/format_text.sh lm $devsrc/transcripts.tmp > data/dev/transcripts.txt
-sort -u data/dev/transcripts.txt > data/dev/transcripts.uniq &
 local/norm_dk/format_text.sh am $devsrc/transcripts.tmp > $devsrc/onlytext
 paste -d ' ' $devsrc/onlyids $devsrc/onlytext > data/dev/text
+
+# Also create a file that can be used for reranking using LMs
+local/norm_dk/format_text.sh lm $devsrc/transcripts.tmp > data/dev/transcripts.txt
+sort -u data/dev/transcripts.txt > data/dev/transcripts.uniq
+
+utils/validate_data_dir.sh --no-feat data/dev || exit 1;
 
 
 ## TODO: add cleanup commands

@@ -34,6 +34,7 @@ echo "Normalising"
 
 # Create dir to hold lm files and other non-standard files, useful for debugging
 trainsrc=data/local/trainsrc
+rm -rf $trainsrc
 mkdir $trainsrc
 mv data/train/text1 $trainsrc/text1
 python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $trainsrc/text1 $trainsrc/onlyids $dir/transcripts.tmp
@@ -133,6 +134,7 @@ touch $dir/extra_questions.txt
 # Repeat text preparation on test set, but do not add to dictionary
 # Create dir to hold lm files and other non-standard files 
 testsrc=data/local/testsrc
+rm -rf $testsrc
 mkdir $testsrc
 mv data/test/text1 $testsrc/text1
 python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $testsrc/text1 $testsrc/onlyids $testsrc/transcripts.am 
@@ -143,13 +145,18 @@ utils/validate_data_dir.sh --no-feat data/test || exit 1;
 # Repeat text preparation on dev set, but do not add to dictionary
 # Create dir to hold lm files and other non-standard files 
 devsrc=data/local/devsrc
+rm -rf $devsrc
 mkdir $devsrc
 mv data/dev/text1 $devsrc/text1
 python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $devsrc/text1 $devsrc/onlyids $devsrc/transcripts.tmp
-local/norm_dk/format_text.sh lm $devsrc/transcripts.tmp > data/dev/transcripts.txt
-sort -u data/dev/transcripts.txt > data/dev/transcripts.uniq &
 local/norm_dk/format_text.sh am $devsrc/transcripts.tmp > $devsrc/onlytext
-paste $devsrc/onlyids $devsrc/onlytext > data/dev/text
+paste $devsrc/onlyids $devsrc/onlytext > data/dev/text &
+
+# Also create a file that can be used for reranking using text features
+local/norm_dk/format_text.sh lm $devsrc/transcripts.tmp > data/dev/transcripts.txt
+sort -u data/dev/transcripts.txt > data/dev/transcripts.uniq
+
+
 utils/validate_data_dir.sh --no-feat data/dev || exit 1;
 
 
