@@ -284,9 +284,10 @@ if (! $sync) { # We're not submitting with -sync y, so we
             # time elapsed between file modification and the start of this
             # program], then we assume the program really finished OK,
             # and maybe something is up with the file system.
-            print STDERR "**queue.pl: syncfile was not created but job seems to have\n" .
-              "**completed OK.  Probably your file-system has problems.\n" .
+            print STDERR "**queue.pl: syncfile $f was not created but job seems\n" .
+              "**to have finished OK.  Probably your file-system has problems.\n" .
               "**This is just a warning.\n";
+            last;
           } else {
             chop $last_line;
             print STDERR "queue.pl: Error, unfinished job no " .

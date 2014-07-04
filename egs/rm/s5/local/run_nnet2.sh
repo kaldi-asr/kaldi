@@ -11,7 +11,8 @@ if $use_gpu; then
   # We don't have a GPU version of this script.
   #local/nnet2/run_4a_gpu.sh
 
-  # This one is on top of filter-bank features, with only CMN.
+  # This one is on top of filter-bank features (VTLN-perturbed), 
+  # with only CMN.
   local/nnet2/run_4b_gpu.sh
 
   # This one is on top of 40-dim + fMLLR features
