@@ -1,13 +1,14 @@
 #!/bin/bash
 
+
 # this (local/nnet2/run_6c_gpu.sh) trains a p-norm neural network on top of
 # the SAT system in 5a.
-# It uses the _fast.sh version of the script, which is faster than the old
-# one, and also the --first-component-power 0.5 option, which we believe 
-# improves results (we're waiting for the numbers though).
+# It uses the online preconditioning, which is more efficient than the
+# old preconditioning.
+# this script uses 8 GPUs.  
+# there is no non-GPU version as it would take way too long.
 
-
-dir=nnet6c5_gpu
+dir=nnet6c_gpu
 train_stage=-10
 
 . ./cmd.sh
@@ -30,9 +31,7 @@ parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely
 
   if [ ! -f exp/$dir/final.mdl ]; then
 
-    steps/nnet2/train_pnorm_fast.sh --stage $train_stage --num-epochs 8  \
-      --first-component-power 0.5 \
-      --egs-dir exp/nnet6c3_gpu/egs \
+    steps/nnet2/train_pnorm_fast.sh --stage $train_stage --num-epochs 8 \
       --num-epochs-extra 4 \
       --samples-per-iter 400000 \
       --io-opts "-tc 10" \

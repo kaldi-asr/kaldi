@@ -43,7 +43,7 @@ if [ ! -f $dir/final.mdl ]; then
     --num-jobs-nnet 8 \
     --samples-per-iter 400000 \
     --mix-up 8000 \
-    --initial-learning-rate 0.005 --final-learning-rate 0.0005 \
+    --initial-learning-rate 0.01 --final-learning-rate 0.001 \
     --num-hidden-layers 4 --hidden-layer-dim 1024 \
     --cmd "$decode_cmd" \
      data/train_si284 data/lang exp/tri4b_ali_si284 $dir || exit 1

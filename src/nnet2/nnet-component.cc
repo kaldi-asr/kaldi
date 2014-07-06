@@ -2057,6 +2057,7 @@ std::string AffineComponentPreconditionedOnline::Info() const {
          << ", rank-in=" << rank_in_
          << ", rank-out=" << rank_out_
          << ", num_samples_history=" << num_samples_history_
+         << ", update_period=" << update_period_
          << ", alpha=" << alpha_
          << ", max-change-per-sample=" << max_change_per_sample_;
   return stream.str();

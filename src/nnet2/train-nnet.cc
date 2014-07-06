@@ -84,6 +84,8 @@ NnetSimpleTrainer::~NnetSimpleTrainer() {
     KALDI_LOG << "Did backprop on " << weight_total_
               << " examples, average log-prob per frame is "
               << (logprob_total_ / weight_total_);
+    KALDI_LOG << "[this line is to be parsed by a script:] log-prob-per-frame="
+              << (logprob_total_ / weight_total_);
   }
 }
 

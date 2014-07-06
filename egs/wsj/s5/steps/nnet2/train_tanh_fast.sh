@@ -311,13 +311,13 @@ while [ $x -lt $num_iters ]; do
       # function), and the smaller minibatch size will help to keep
       # the update stable.
       this_minibatch_size=$[$minibatch_size/2];
-      this_num_jobs_nnet=1
+      do_average=false
     else
       this_minibatch_size=$minibatch_size
-      this_num_jobs_nnet=$num_jobs_nnet
+      do_average=true
     fi
 
-    $cmd $parallel_opts JOB=1:$this_num_jobs_nnet $dir/log/train.$x.JOB.log \
+    $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
       nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
       ark:$egs_dir/egs.JOB.$[$x%$iters_per_epoch].ark ark:- \| \
       nnet-train$train_suffix \
@@ -326,7 +326,7 @@ while [ $x -lt $num_iters ]; do
       || exit 1;
 
     nnets_list=
-    for n in `seq 1 $this_num_jobs_nnet`; do
+    for n in `seq 1 $num_jobs_nnet`; do
       nnets_list="$nnets_list $dir/$[$x+1].$n.mdl"
     done
 
@@ -344,10 +344,21 @@ while [ $x -lt $num_iters ]; do
       else lr=$learning_rate; fi
       lr_string="$lr_string:$lr"
     done
-    
-    $cmd $dir/log/average.$x.log \
-      nnet-am-average $nnets_list - \| \
-      nnet-am-copy --learning-rates=$lr_string - $dir/$[$x+1].mdl || exit 1;
+
+    if $do_average; then    
+      $cmd $dir/log/average.$x.log \
+        nnet-am-average $nnets_list - \| \
+        nnet-am-copy --learning-rates=$lr_string - $dir/$[$x+1].mdl || exit 1;
+    else
+      n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
+          $fn = sprintf($pat,$n); open(F, "<$fn") || die "Error opening log file $fn";
+          undef $logprob; while (<F>) { if (m/log-prob-per-frame=(\S+)/) { $logprob=$1; } }
+          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob; 
+          $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
+      [ -z "$n" ] && echo "Error getting best model" && exit 1;
+      $cmd $dir/log/select.$x.log \
+        nnet-am-copy --learning-rates=$lr_string $dir/$[$x+1].$n.mdl $dir/$[$x+1].mdl || exit 1;
+    fi
 
     if $shrink && [ $[$x % $shrink_interval] -eq 0 ]; then
       mb=$[($num_frames_shrink+$num_threads-1)/$num_threads]
