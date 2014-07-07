@@ -72,7 +72,50 @@ void TestIvectorExtractorStatsIO(IvectorExtractorStats &stats) {
     // It's OK.  Disabling it.
     // KALDI_ASSERT(ostr2.str() == ostr3.str());
   }
+}
+
+void TestIvectorExtraction(const IvectorExtractor &extractor,
+                           const MatrixBase<BaseFloat> &feats,
+                           const FullGmm &fgmm) {
+  if (extractor.IvectorDependentWeights())
+    return;  // Nothing to do as online iVector estimator does not work in this
+             // case.
+  int32 num_frames = feats.NumRows(),
+      feat_dim = feats.NumCols(),
+      num_gauss = extractor.NumGauss(),
+      ivector_dim = extractor.IvectorDim();
+  Posterior post(num_frames);
+
+  double tot_log_like = 0.0;
+  for (int32 t = 0; t < num_frames; t++) {
+    SubVector<BaseFloat> frame(feats, t);
+    Vector<BaseFloat> posterior(fgmm.NumGauss(), kUndefined);
+    tot_log_like += fgmm.ComponentPosteriors(frame, &posterior);
+    for (int32 i = 0; i < posterior.Dim(); i++)
+      post[t].push_back(std::make_pair(i, posterior(i)));
+  }
+    
+  // The zeroth and 1st-order stats are in "utt_stats".
+  IvectorExtractorUtteranceStats utt_stats(num_gauss, feat_dim,
+                                           false);
+  utt_stats.AccStats(feats, post);
+
+  OnlineIvectorEstimationStats online_stats(extractor.IvectorDim(),
+                                            extractor.PriorOffset());
+
+  for (int32 t = 0; t < num_frames; t++) {
+    online_stats.AddToStats(extractor,
+                            feats.Row(t),
+                            post[t]);
+  }
   
+  Vector<double> ivector1(ivector_dim), ivector2(ivector_dim);
+
+  extractor.GetIvectorDistribution(utt_stats, &ivector1, NULL);
+
+  online_stats.GetIvector(&ivector2);
+
+  KALDI_ASSERT(ivector1.ApproxEqual(ivector2));
 }
   
 
@@ -116,6 +159,7 @@ void UnitTestIvectorExtractor() {
     for (int32 utt = 0; utt < num_utts; utt++) {
       Matrix<BaseFloat> &feats = all_feats[utt];
       stats.AccStatsForUtterance(extractor, feats, fgmm);
+      TestIvectorExtraction(extractor, feats, fgmm);
     }
     TestIvectorExtractorStatsIO(stats);
     

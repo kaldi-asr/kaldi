@@ -47,7 +47,7 @@ class IvectorExtractTask {
                                              extractor_.FeatDim(),
                                              need_2nd_order_stats);
       
-    extractor_.GetStats(feats_, posterior_, &utt_stats);
+    utt_stats.AccStats(feats_, posterior_);
 
     ivector_.Resize(extractor_.IvectorDim());
     ivector_(0) = extractor_.PriorOffset();

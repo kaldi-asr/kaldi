@@ -63,25 +63,30 @@ class IvectorExtractorComputeDerivedVarsClass;
 /// for estimating an iVector (if need_2nd_order_stats == true, we can also
 /// estimate the variance of the model; these 2nd order stats are not needed if
 /// we just need the iVector.
-struct IvectorExtractorUtteranceStats {
+class IvectorExtractorUtteranceStats {
+ public:
   IvectorExtractorUtteranceStats(int32 num_gauss, int32 feat_dim,
                                  bool need_2nd_order_stats):
-      gamma(num_gauss), X(num_gauss, feat_dim) {
+      gamma_(num_gauss), X_(num_gauss, feat_dim) {
     if (need_2nd_order_stats) {
-      S.resize(num_gauss);
-      for (int32 i = 0; i < num_gauss; i++) S[i].Resize(feat_dim);
+      S_.resize(num_gauss);
+      for (int32 i = 0; i < num_gauss; i++)
+        S_[i].Resize(feat_dim);
     }
   }
 
-  void Scale(double scale) { // Used to apply acoustic scale.
-    gamma.Scale(scale);
-    X.Scale(scale);
-    for (size_t i = 0; i < S.size(); i++) S[i].Scale(scale);
-  }
-  Vector<double> gamma; // zeroth-order stats (summed posteriors), dimension [I]
-  Matrix<double> X; // first-order stats, dimension [I][D]
-  std::vector<SpMatrix<double> > S; // 2nd-order stats, dimension [I][D][D], if
-                                    // required.
+  void AccStats(const MatrixBase<BaseFloat> &feats,
+                const Posterior &post);
+  
+  void Scale(double scale); // Used to apply acoustic scale.
+
+ protected:
+  friend class IvectorExtractor;
+  friend class IvectorExtractorStats;
+  Vector<double> gamma_; // zeroth-order stats (summed posteriors), dimension [I]
+  Matrix<double> X_; // first-order stats, dimension [I][D]
+  std::vector<SpMatrix<double> > S_; // 2nd-order stats, dimension [I][D][D], if
+                                     // required.
 };
 
 
@@ -101,18 +106,24 @@ struct IvectorExtractorOptions {
 };
 
 
-// Caution: the IvectorExtractor is not the only thing required
-// to get an ivector.  We also need to get posteriors from a
-// FullGmm.  Typically these will be obtained in a process that involves
-// using a DiagGmm for Gaussian selection, followed by getting
-// posteriors from the FullGmm.  To keep track of these, we keep
-// them all in the same directory, e.g. final.{ubm,dubm,ie}
+// Forward declaration.  This class is used together with IvectorExtractor to
+// compute iVectors in an online way, so we can update the estimate efficiently
+// as we add frames.
+class OnlineIvectorEstimationStats;
+
+// Caution: the IvectorExtractor is not the only thing required to get an
+// ivector.  We also need to get posteriors from a GMM, typically a FullGmm.
+// Typically these will be obtained in a process that involves using a DiagGmm
+// for Gaussian selection, followed by getting posteriors from the FullGmm.  To
+// keep track of these, we keep them all in the same directory,
+// e.g. final.{ubm,dubm,ie}.
 
 class IvectorExtractor {
  public:
   friend class IvectorExtractorStats;
+  friend class OnlineIvectorEstimationStats;
 
-  IvectorExtractor(): ivector_offset_(0.0) { }
+  IvectorExtractor(): prior_offset_(0.0) { }
   
   IvectorExtractor(
       const IvectorExtractorOptions &opts,
@@ -130,7 +141,7 @@ class IvectorExtractor {
   /// The distribution over iVectors, in our formulation, is not centered at
   /// zero; its first dimension has a nonzero offset.  This function returns
   /// that offset.
-  double PriorOffset() const { return ivector_offset_; }
+  double PriorOffset() const { return prior_offset_; }
   
   /// Returns the log-likelihood objective function, summed over frames,
   /// for this distribution of iVectors (a point distribution, if var == NULL).
@@ -208,15 +219,11 @@ class IvectorExtractor {
       const VectorBase<double> &mean,
       VectorBase<double> *linear,
       SpMatrix<double> *quadratic) const;
-  
 
-  
-  /// Adds to "stats", which are the zeroth and 1st-order
-  /// stats (they must be the correct size).
-  void GetStats(const MatrixBase<BaseFloat> &feats,
-                const Posterior &post,
-                IvectorExtractorUtteranceStats *stats) const;
 
+  // Note: the function GetStats no longer exists due to code refactoring.
+  // Instead of this->GetStats(feats, posterior, &utt_stats), call
+  // utt_stats.AccStats(feats, posterior).  
 
   int32 FeatDim() const;
   int32 IvectorDim() const;
@@ -237,7 +244,7 @@ class IvectorExtractor {
   // where necessary to keep the model equivalent.  Used to keep unit variance
   // (like prior re-estimation).
   void TransformIvectors(const MatrixBase<double> &T,
-                         double new_ivector_offset);
+                         double new_prior_offset);
   
   
   /// Weight projection vectors, if used.  Dimension is [I][S]
@@ -253,7 +260,7 @@ class IvectorExtractor {
   /// The I'th matrix projects from ivector-space to Gaussian mean.
   /// There is no mean offset to add-- we deal with it by having
   /// a prior with a nonzero mean.
-  std::vector<Matrix<double> > M_;
+  std::vector<Matrix<double> > M_; 
 
   /// Inverse variances of speaker-adapted model, dimension [I][D][D].
   std::vector<SpMatrix<double> > Sigma_inv_;
@@ -261,7 +268,7 @@ class IvectorExtractor {
   /// 1st dim of the prior over the ivector has an offset, so it is not zero.
   /// This is used to handle the global offset of the speaker-adapted means in a
   /// simple way.
-  double ivector_offset_;
+  double prior_offset_;
 
   // Below are *derived variables* that can be computed from the
   // variables above.
@@ -276,12 +283,66 @@ class IvectorExtractor {
   /// in the rows of a matrix, which gives us an efficiency 
   /// improvement (we can use matrix-multiplies).
   Matrix<double> U_;
+
+  /// The product of Sigma_inv_[i] with M_[i].
+  std::vector<Matrix<double> > Sigma_inv_M_;
  private:
   // var <-- quadratic_term^{-1}, but done carefully, first flooring eigenvalues
   // of quadratic_term to 1.0, which mathematically is the least they can be,
   // due to the prior term.
   static void InvertWithFlooring(const SpMatrix<double> &quadratic_term,
                                  SpMatrix<double> *var);  
+};
+
+/**
+   This class helps us to efficiently estimate iVectors in situations where the
+   data is coming in frame by frame.  Note: because this is intended to be used
+   in neural network adaptation for online decoding and we believe that it's not
+   important to have a very high-dimensional iVector, we don't bother with
+   special tricks like the Woodbury formula to avoid the need
+   
+   
+ */
+class OnlineIvectorEstimationStats {
+ public:
+  OnlineIvectorEstimationStats(int32 ivector_dim,
+                               BaseFloat prior_offset);
+  int32 IvectorDim() const { return linear_term_.Dim(); }
+
+  /// This function gets the current estimate of the iVector.  Internally
+  /// it does some work to compute it (currently matrix inversion, but
+  /// we are doing to use Conjugate Gradient which will increase the speed).
+  /// At entry, "ivector" must be a pointer to a vector dimension
+  /// IvectorDim(), and free of NaN's.  Note: you'll probably want to
+  /// subtract IvectorOffset() from dimension zero before you use this
+  /// as [for example] a feature.
+  void GetIvector(VectorBase<double> *ivector) const;
+
+  double NumFrames() const { return num_frames_; }
+
+  double PriorOffset() const { return prior_offset_; }
+
+  /// This function updates *stats with info this frame; this is intended for
+  /// iVector estimation where data is coming in and we want to be able to
+  /// efficiently update our estimate of the iVector.
+  void AddToStats(const IvectorExtractor &extractor,
+                  const VectorBase<BaseFloat> &feature,
+                  const std::vector<std::pair<int32, BaseFloat> > &gauss_post);
+  
+ protected:
+  /// Returns objective function per frame, at this iVector value.
+  double Objf(const VectorBase<double> &ivector) const;
+
+  /// Returns objective function evaluated at the point
+  /// [ prior_offset_, 0, 0, 0, ... ]... this is used in diagnostics.
+  double DefaultObjf() const;
+  
+  double prior_offset_;
+  double num_frames_;  // num frames (weighted, if applicable).
+  SpMatrix<double> quadratic_term_;
+  Vector<double> linear_term_;
+  
+  
 };
 
 
@@ -446,7 +507,7 @@ class IvectorExtractorStats {
 
   // Called from UpdatePrior, separating out some code that
   // computes likelihood changes.
-  double PriorDiagnostics(double old_ivector_offset) const;
+  double PriorDiagnostics(double old_prior_offset) const;
   
   
   void CheckDims(const IvectorExtractor &extractor) const;
