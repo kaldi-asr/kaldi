@@ -4122,20 +4122,30 @@ static void UnitTestTopEigs() {
 }
 
 template<typename Real> static void UnitTestTriVecSolver() {
-  for (MatrixIndexT iter = 0; iter < 10; iter++) {
-    int32 dim = 1 + rand() % 30;
-    Vector<Real> v(dim);
-    v.SetRandn();
-    TpMatrix<Real> M(dim);
-    M.SetRandn();
+  for (MatrixIndexT iter = 0; iter < 100; iter++) {
+    int32 dim = 1 + rand() % 20;
+    Vector<Real> b(dim);
+    b.SetRandn();
+    TpMatrix<Real> T(dim);
+    T.SetRandn();
+
+    bool bad = false;
+    for (int32 i = 0; i < dim; i++) {
+      if (fabs(T(i, i)) < 0.1)
+        bad = true;
+    }
+    if (bad) {
+      // Test may fail due to almost-singular matrix.
+      continue;
+    }
     
-    Vector<Real> v2(v);
+    Vector<Real> x(b);
     MatrixTransposeType trans = (iter % 2 == 0 ? kTrans : kNoTrans);
-    v.Solve(M, trans);
-    Vector<Real> v3(v);
-    v.AddTpVec((Real)1.0, M, trans, v3, (Real)0.0);
-    // KALDI_LOG << "v is " << v << ", v2 is " << v2;
-    AssertEqual(v3, v2, 2); // use a larger tolerance if the test fail
+    x.Solve(T, trans);  // solve for T x = b
+    Vector<Real> b2(dim);
+    b2.AddTpVec((Real)1.0, T, trans, x, (Real)0.0);
+    KALDI_LOG << "b is " << b << ", b2 is " << b2;
+    AssertEqual(b, b2, 0.01);
   }
 }
 
