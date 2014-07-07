@@ -4,7 +4,7 @@
 //                       Ondrej Glembek;  Saarland University (Author: Arnab Ghoshal);
 //                       Go Vivace Inc.;  Yanmin Qian;  Jan Silovsky;
 //                       Johns Hopkins University (Author: Daniel Povey);
-//                       Haihua Xu
+//                       Haihua Xu; Wei Shi
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -4121,6 +4121,24 @@ static void UnitTestTopEigs() {
   }
 }
 
+template<typename Real> static void UnitTestTriVecSolver() {
+  for (MatrixIndexT iter = 0; iter < 10; iter++) {
+    int32 dim = 1 + rand() % 30;
+    Vector<Real> v(dim);
+    v.SetRandn();
+    TpMatrix<Real> M(dim);
+    M.SetRandn();
+    
+    Vector<Real> v2(v);
+    MatrixTransposeType trans = (iter % 2 == 0 ? kTrans : kNoTrans);
+    v.Solve(M, trans);
+    Vector<Real> v3(v);
+    v.AddTpVec((Real)1.0, M, trans, v3, (Real)0.0);
+    // KALDI_LOG << "v is " << v << ", v2 is " << v2;
+    AssertEqual(v3, v2, 2); // use a larger tolerance if the test fail
+  }
+}
+
 template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestTridiagonalize<Real>();
   UnitTestTridiagonalizeAndQr<Real>();  
@@ -4258,6 +4276,8 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   // The next one is slow.  The upshot is that Eig is up to ten times faster
   // than SVD. 
   // UnitTestSvdSpeed<Real>();
+  KALDI_LOG << " Point K";
+  UnitTestTriVecSolver<Real>();
 }
 
 
