@@ -56,7 +56,7 @@ awk '{
        segment=$1;
        split(segment,S,"[_]");
        audioname=S[1]"_"S[2]"_"S[3]; startf=S[5]; endf=S[6];
-       print segment " " audioname " " startf*10/1000 " " endf*10/1000 " " 0
+       print segment " " audioname " " startf*10/1000 " " endf*10/1000 " "
 }' < $dir/text > $dir/segments
 
 #prepare wav.scp
