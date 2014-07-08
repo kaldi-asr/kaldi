@@ -77,7 +77,7 @@ awk '{print $1}' $dir/segments | join - $dir/text > $dir/t; mv $dir/t $dir/text
 #prepare reco2file_and_channel
 awk '{print $1 $2}' $dir/wav.scp | \
   perl -ane '$_ =~ m:^(\S+MDM).*\/([IETB].*)\.wav$: || die "bad label $_"; 
-       print "$1 $2 0\n"; ' > $dir/reco2file_and_channel || exit 1;
+       print "$1 $2 A\n"; ' > $dir/reco2file_and_channel || exit 1;
 
 # we assume we adapt to the session only
 awk '{print $1}' $dir/segments | \

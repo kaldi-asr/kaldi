@@ -56,17 +56,20 @@ awk '{
        segment=$1;
        split(segment,S,"[_]");
        audioname=S[1]"_"S[2]"_"S[3]; startf=S[5]; endf=S[6];
-       print segment " " audioname " " startf*10/1000 " " endf*10/1000 " " 0
+       print segment " " audioname " " startf*10/1000 " " endf*10/1000 " "
 }' < $dir/text > $dir/segments
 
 # (1c) Make wav.scp file.
 
 sed -e 's?.*/??' -e 's?.wav??' $dir/wav.flist | \
  perl -ne 'split; $_ =~ m/(.*)\..*\-([0-9])/; print "AMI_$1_H0$2\n"' | \
-  paste - $dir/wav.flist > $dir/wav.scp
+  paste - $dir/wav.flist > $dir/wav1.scp
 
 #Keep only  train part of waves
-awk '{print $2}' $dir/segments | sort -u | join - $dir/wav.scp | sort -o $dir/wav.scp
+awk '{print $2}' $dir/segments | sort -u | join - $dir/wav1.scp >  $dir/wav2.scp
+
+#replace path with an appropriate sox command that select single channel only
+awk '{print $1" sox -c 1 -t wavpcm -s "$2" -t wavpcm - |"}' $dir/wav2.scp > $dir/wav.scp
 
 # (1d) reco2file_and_channel
 

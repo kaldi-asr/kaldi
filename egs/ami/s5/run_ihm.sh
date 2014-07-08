@@ -3,6 +3,10 @@
 . ./cmd.sh
 . ./path.sh
 
+#INITIAL COMMENTS
+#To run the whole recipe you're gonna to need
+# 1) SRILM 
+# 2) 
 
 #1) some setings
 #do not change this, it's for ctr-c ctr-v of training commands between ihm, sdm and mdm
@@ -18,7 +22,7 @@ norm_vars=false
 #1)
 
 #in case you want download AMI corpus, uncomment this line
-#you need arount 130GB of free space to get whole corpus ihm+mdm
+#you need arount 130GB of free space to get whole data ihm+mdm
 local/ami_download.sh ihm $AMI_DIR || exit 1;
 
 #2) Data preparation
@@ -65,9 +69,9 @@ mfccdir=mfcc_$mic
  steps/compute_cmvn_stats.sh data/$mic/train exp/$mic/make_mfcc/train $mfccdir || exit 1
 )&
 
-for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
-
 wait;
+
+for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
 
 # 4) Train systems
  nj=16
@@ -157,8 +161,6 @@ for lm_suffix in $LM; do
   ) 
 done
 
-exit;
-
 # MMI training starting from the LDA+MLLT+SAT systems
 steps/align_fmllr.sh --nj $nj --cmd "$train_fmllr_cmd" \
   data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_ali || exit 1
@@ -175,24 +177,23 @@ steps/train_mmi.sh --cmd "$train_fmllr_cmd" --boost 0.1 --num-iters $num_mmi_ite
   data/$mic/train data/lang exp/$mic/tri4a_ali exp/$mic/tri4a_denlats \
   exp/$mic/tri4a_mmi_b0.1 || exit 1;
 
-
 for lm_suffix in $LM; do
   (
     graph_dir=exp/$mic/tri4a/graph_${lm_suffix}
     
-    for i in `seq 3 3`; do
+    for i in `seq 1 4`; do
          decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_dev_${i}.mdl_${lm_suffix}
       steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
         --transform-dir exp/$mic/tri4a/decode_dev_${lm_suffix} --iter $i \
-        $graph_dir data/$mic/dev $decode_dir &
+        $graph_dir data/$mic/dev $decode_dir 
     done
     
     i=3 #simply assummed
     decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_eval_${i}.mdl_${lm_suffix}
     steps/decode.sh --nj $nj --cmd "$decode_cmd" --norm-vars $norm_vars --config conf/decode.config \
       --transform-dir exp/$mic/tri4a/decode_eval_${lm_suffix} --iter $i \
-      $graph_dir data/$mic/eval $decode_dir &
-  )&
+      $graph_dir data/$mic/eval $decode_dir 
+  )
 done
 
 # here goes hybrid stuff, in the ASRU paper we used different python nnet code, so someone needs to copy&adjust switchboard  pieces

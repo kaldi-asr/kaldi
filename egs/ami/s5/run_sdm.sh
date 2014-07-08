@@ -13,10 +13,10 @@ norm_vars=false
 #1) Prepare sdm data directories
 
 #local/ami_sdm_data_prep.sh $AMI_DIR $micid
-local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid dev
+#local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid dev
 #local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid eval
 
-exit;
+#exit;
 
 #use the final LM
 final_lm=`cat data/local/lm/final_lm`
@@ -91,7 +91,7 @@ for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
 mkdir -p exp/$mic/tri2a_ali
 steps/align_si.sh --nj $nj --cmd "$train_cmd" \
   data/$mic/train data/lang exp/$mic/tri2a exp/$mic/tri2_ali || exit 1;
-C
+
 # Train tri3a, which is LDA+MLLT
 mkdir -p exp/$mic/tri3a
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
@@ -116,12 +116,17 @@ done
 # skip SAT, and build MMI models
 steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.config \
     data/$mic/train data/lang exp/$mic/tri3a exp/$mic/tri3a_denlats  || exit 1;
+C
+
+mkdir -p exp/$mic/tri3a_ali
+steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+  data/$mic/train data/lang exp/$mic/tri3a exp/$mic/tri3a_ali || exit 1;
 
 # 4 iterations of MMI seems to work well overall. The number of iterations is
 # used as an explicit argument even though train_mmi.sh will use 4 iterations by
 # default.
 num_mmi_iters=4
-steps/train_mmi.sh --cmd "$train_fmllr_cmd" --boost 0.1 --num-iters $num_mmi_iters \
+steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 --num-iters $num_mmi_iters \
   data/$mic/train data/lang exp/$mic/tri3a_ali exp/$mic/tri3a_denlats \
   exp/$mic/tri3a_mmi_b0.1 || exit 1;
 
@@ -131,13 +136,13 @@ for lm_suffix in $LM; do
 
     for i in `seq 1 4`; do
       decode_dir=exp/$mic/tri3a_mmi_b0.1/decode_dev_${i}.mdl_${lm_suffix}
-      steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.config \
+      steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --iter $i --config conf/decode.config \
         $graph_dir data/$mic/dev $decode_dir
     done
 
     i=3 #simply assummed
     decode_dir=exp/$mic/tri3a_mmi_b0.1/decode_eval_${i}.mdl_${lm_suffix}
-    steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.config \
+    steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --iter $i --config conf/decode.config \
       $graph_dir data/$mic/eval $decode_dir
   )
 done

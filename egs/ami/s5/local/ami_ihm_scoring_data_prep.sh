@@ -59,22 +59,24 @@ awk '{
        print segment " " audioname " " startf*10/1000 " " endf*10/1000 " " 0
 }' < $dir/text > $dir/segments
 
+#prepare wav.scp
 sed -e 's?.*/??' -e 's?.wav??' $dir/wav.flist | \
  perl -ne 'split; $_ =~ m/(.*)\..*\-([0-9])/; print "AMI_$1_H0$2\n"' | \
-  paste - $dir/wav.flist > $dir/wav.scp
+  paste - $dir/wav.flist > $dir/wav1.scp
 
-#Keep only devset part of waves
-awk '{print $2}' $dir/segments | sort -u | join - $dir/wav.scp | sort -o $dir/wav.scp
+#Keep only  train part of waves
+awk '{print $2}' $dir/segments | sort -u | join - $dir/wav1.scp >  $dir/wav2.scp
 
-# this file reco2file_and_channel maps recording-id
+#replace path with an appropriate sox command that select single channel only
+awk '{print $1" sox -c 1 -t wavpcm -s "$2" -t wavpcm - |"}' $dir/wav2.scp > $dir/wav.scp
 
-awk '{print $1 $2}' $dir/wav.scp | \
-  perl -ane '$_ =~ m:^(\S+H0[0-4]).*\/([IETB].*)\.wav$: || die "bad label $_"; 
-       print "$1 $2 A\n"; '\
-  > $dir/reco2file_and_channel || exit 1;
+# (1d) reco2file_and_channel
+awk '{print $1}' $dir/wav.scp \
+ | perl -ane '$_ =~ m:^(\S+)(H0[0-4])$: || die "bad label $_"; 
+              print "$1$2 $1$2 A\n"; ' > $dir/reco2file_and_channel || exit 1;
 
 awk '{print $1}' $dir/segments | \
-  perl -ane '$_ =~ m:^(\S+)([FM][A-Z]{0,2}[0-9]{3}[A-Z]*)(\S+)$: || die "bad label $_"; 
+  perl -ane '$_ =~ m:^(\S+)([FM][A-Z]{0,2}[0-9]{3}[A-Z]*)(\S+)$: || die "segments: bad label $_"; 
           print "$1$2$3 $1$2\n";' > $dir/utt2spk || exit 1;
 
 sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;

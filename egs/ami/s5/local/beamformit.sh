@@ -12,7 +12,7 @@ sdir=$5
 odir=$6
 wdir=data/local/beamforming
 
-utils/split_scp.pl -j $nj $job $meetings $meetings.$job
+utils/split_scp.pl -j $nj $((job-1)) $meetings $meetings.$job
 
 while read line; do
 

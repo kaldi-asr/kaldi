@@ -5,4 +5,6 @@ dev
 
 eval
 exp/sdm1/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:Percent Total Error       =   71.8%   (64577)
+exp/sdm1/tri3a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.dtl:Percent Total Error       =   69.5%   (62576)
+exp/sdm1/tri3a_mmi_b0.1/decode_eval_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_10/eval_o4.ctm.filt.dtl:Percent Total Error       =   67.2%   (60447)
 

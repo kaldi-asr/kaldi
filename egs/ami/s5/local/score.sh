@@ -14,7 +14,7 @@ stage=0
 min_lmwt=9
 max_lmwt=20
 reverse=false
-asclite=false
+asclite=true
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -35,7 +35,7 @@ fi
 data=$1
 
 if [ -f $data/stm ]; then # use sclite scoring.
-  eval local/score_asclite.sh $orig_args
+  eval local/score_asclite.sh --asclite $asclite $orig_args
 else
   echo "$data/stm does not exist: using local/score_basic.sh"
   eval local/score_basic.sh $orig_args

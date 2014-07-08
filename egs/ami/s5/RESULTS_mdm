@@ -1,0 +1,12 @@
+
+
+#Beamforming of 8 microphones
+
+dev
+
+
+eval
+exp/mdm8/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:Percent Total Error       =   64.4%   (57916)
+exp/mdm8/tri3a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:Percent Total Error       =   61.9%   (55738)
+
+

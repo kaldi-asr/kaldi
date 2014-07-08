@@ -8,7 +8,7 @@ stage=0
 min_lmwt=9
 max_lmwt=20
 reverse=false
-asclite=false
+asclite=true
 overlap_spk=4
 #end configuration section.
 

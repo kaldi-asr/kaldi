@@ -1,8 +1,8 @@
 
 export LC_ALL=C  # For expected sorting and joining behaviour
 
-#KALDI_ROOT=/gpfs/scratch/s1136550/kaldi-code
-KALDI_ROOT=/disk/data1/software/kaldi-trunk-atlas
+KALDI_ROOT=/gpfs/scratch/s1136550/kaldi-code
+#KALDI_ROOT=/disk/data1/software/kaldi-trunk-atlas
 #KALDI_ROOT=/disk/data1/pbell1/software/kaldi-trunk-mkl/
 
 
@@ -14,8 +14,8 @@ KALDIBIN=$KALDIBIN:$KALDISRC/sgmmbin:$KALDISRC/tiedbin
 FSTBIN=$KALDI_ROOT/tools/openfst/bin
 LMBIN=$KALDI_ROOT/tools/irstlm/bin
 SRILM=$KALDI_ROOT/tools/srilm/bin/i686-m64
-BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt-3.51
-#BEAMFORMIT=/disk/data1/s1136550/BeamformIt-3.51
+#BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt-3.51
+BEAMFORMIT=/disk/data1/s1136550/BeamformIt-3.51
 
 [ -d $PWD/local ] || { echo "Error: 'local' subdirectory not found."; }
 [ -d $PWD/utils ] || { echo "Error: 'utils' subdirectory not found."; }
