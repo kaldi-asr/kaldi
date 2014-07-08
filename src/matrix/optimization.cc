@@ -451,47 +451,38 @@ OptimizeLbfgs<Real>::GetValue(Real *objf_value) const {
 
 template<class Real>
 void LinearCgd(const SpMatrix<Real> &A, const VectorBase<Real> &b,
-                        VectorBase<Real> *x, Real max_error)  {
-
-  KALDI_ASSERT(A.IsPosDef());
+               VectorBase<Real> *x, Real max_error)  {
   // Initialize the variables
   //
   int M = A.NumCols();
   
   Vector<Real> r_cur(M), p_cur(M), x_cur(M), // Vectors at current iteration
-                   r_next(M), p_next(M), x_next(M); // Vectors at next iteration
-
-  Real alpha_cur  = 0,
-       beta_next  = 0,
-       r_cur_norm = 0,
-       r_next_norm  = 0,
-       r_0_norm = 0;
-
+      r_next(M), p_next(M), x_next(M); // Vectors at next iteration
+  
   x_cur.CopyFromVec(*x); 
   r_cur.AddSpVec(1.0, A, x_cur, 0.0);
   r_cur.AddVec(-1.0, b);
   p_cur.CopyFromVec(r_cur);
   p_cur.Scale(-1.0);
 
-  r_cur_norm = VecVec(r_cur, r_cur);
-  r_0_norm = r_cur_norm;
-
+  BaseFloat r_cur_norm = VecVec(r_cur, r_cur);
+  
   for (int i = 0; i < M; i++) {
-    alpha_cur = r_cur_norm/VecSpVec(p_cur,A,p_cur);
+    // Note: we'll break from this loop if we converge sooner.
+    BaseFloat alpha = r_cur_norm / VecSpVec(p_cur, A, p_cur);
     KALDI_LOG << " r_norm @ " << i << " : " << r_cur_norm;
-    KALDI_LOG << " alpha_cur @ " << i << " : " << alpha_cur;
+    KALDI_LOG << " alpha @ " << i << " : " << alpha;
     x_next.CopyFromVec(x_cur);
-    x_next.AddVec(alpha_cur, p_cur);
+    x_next.AddVec(alpha, p_cur);
     
     r_next.CopyFromVec(r_cur);
-    r_next.AddSpVec(alpha_cur, A, p_cur, 1.0);
-    r_next_norm = VecVec(r_next, r_next);
+    r_next.AddSpVec(alpha, A, p_cur, 1.0);
+    BaseFloat r_next_norm = VecVec(r_next, r_next);
     // Check if converged
-    //if r_next_norm < 10e-8*max(1, r_0_norm);
     if (r_next_norm < max_error)
       break;
  
-    beta_next = r_next_norm/r_cur_norm;
+    BaseFloat beta_next = r_next_norm / r_cur_norm;
     p_next.CopyFromVec(r_next);
     p_next.Scale(-1.0);
     p_next.AddVec(beta_next, p_cur);

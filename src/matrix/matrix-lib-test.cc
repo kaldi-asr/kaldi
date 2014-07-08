@@ -3086,12 +3086,12 @@ template<typename Real> static void UnitTestLbfgs() {
 template<typename Real> static void UnitTestLinearCgd() {
  
   for (int i = 0; i < 20 ; i++) {
-    MatrixIndexT M = 1 + rand() % 10;
-
+    MatrixIndexT M = 1 + rand() % 20;
+    
     SpMatrix<Real> A(M);
     RandPosdefSpMatrix(M, &A);
-    Vector<Real> x(M), b(M);
-
+    Vector<Real> x(M), b(M), b2(M);
+    
     x.SetRandn();
     
     b.AddSpVec(1.0, A, x, 0.0);
@@ -3099,13 +3099,10 @@ template<typename Real> static void UnitTestLinearCgd() {
     x_e.SetRandn();
     Real max_error = 10e-8;
     LinearCgd(A, b, &x_e, max_error);
-    x.Write(std::cout, false);
-    x_e.Write(std::cout, false);
 
-    
-    AssertEqual(x,x_e);
+    b2.AddSpVec(1.0, A, x_e, 0.0);
+    AssertEqual(b, b2);
   }
-
 }
 
 
