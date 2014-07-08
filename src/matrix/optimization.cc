@@ -24,6 +24,7 @@
 #include <algorithm>
 
 #include "matrix/optimization.h"
+#include "matrix/sp-matrix.h"
 
 namespace kaldi {
 
@@ -418,10 +419,107 @@ OptimizeLbfgs<Real>::GetValue(Real *objf_value) const {
 }
 
 
+// Notation based on Sec. 5.1 of Nocedal and Wright
+// Computation based on Alg. 5.2 of Nocedal and Wright (Pg. 112)
+// Notation (replicated for convenience):
+//  To solve Ax=b for x
+//  k : current iteration
+//  x_k : estimate of x (at iteration k)
+//  r_k : residual
+//  \alpha_k : step size
+//  p_k : A-conjugate direction
+//  \beta_k  : coefficient used in A-conjuagate direction computation for next
+//  iteration
+//  
+//  Algo.  LinearCG(A,b,x_0)
+//  ========================
+//  r_0 = Ax_0 - b
+//  p_0 = -r_0
+//  k = 0
+//
+//  while r_k != 0
+//    \alpha_k = (r_k^T  r_k)/(p_k^T  A  p_k)
+//    x_{k+1} = x_k + \alpha_k  p_k;
+//    r_{k+1} = r_k + \alpha_k  A  p_k
+//    \beta_{k+1} = \frac{r_{k+1}^T  r_{k+1}}{r_k^T r_K}
+//    p_{k+1} = -r_{k+1} + \beta_{k+1} p_k
+//    k = k+1
+//  end
+//
+//  
+//
+
+template<class Real>
+void LinearCgd(const SpMatrix<Real> &A, const VectorBase<Real> &b,
+                        VectorBase<Real> *x, Real max_error)  {
+
+  KALDI_ASSERT(A.IsPosDef());
+  // Initialize the variables
+  //
+  int M = A.NumCols();
+  
+  Vector<Real> r_cur(M), p_cur(M), x_cur(M), // Vectors at current iteration
+                   r_next(M), p_next(M), x_next(M); // Vectors at next iteration
+
+  Real alpha_cur  = 0,
+       beta_next  = 0,
+       r_cur_norm = 0,
+       r_next_norm  = 0,
+       r_0_norm = 0;
+
+  x_cur.CopyFromVec(*x); 
+  r_cur.AddSpVec(1.0, A, x_cur, 0.0);
+  r_cur.AddVec(-1.0, b);
+  p_cur.CopyFromVec(r_cur);
+  p_cur.Scale(-1.0);
+
+  r_cur_norm = VecVec(r_cur, r_cur);
+  r_0_norm = r_cur_norm;
+
+  for (int i = 0; i < M; i++) {
+    alpha_cur = r_cur_norm/VecSpVec(p_cur,A,p_cur);
+    KALDI_LOG << " r_norm @ " << i << " : " << r_cur_norm;
+    KALDI_LOG << " alpha_cur @ " << i << " : " << alpha_cur;
+    x_next.CopyFromVec(x_cur);
+    x_next.AddVec(alpha_cur, p_cur);
+    
+    r_next.CopyFromVec(r_cur);
+    r_next.AddSpVec(alpha_cur, A, p_cur, 1.0);
+    r_next_norm = VecVec(r_next, r_next);
+    // Check if converged
+    //if r_next_norm < 10e-8*max(1, r_0_norm);
+    if (r_next_norm < max_error)
+      break;
+ 
+    beta_next = r_next_norm/r_cur_norm;
+    p_next.CopyFromVec(r_next);
+    p_next.Scale(-1.0);
+    p_next.AddVec(beta_next, p_cur);
+
+    p_cur = p_next;
+    x_cur = x_next;
+    r_cur = r_next;
+    r_cur_norm = r_next_norm;
+
+  }
+  
+  x->CopyFromVec(x_next); 
+
+} 
+    
 // Instantiate the class for float and double.
 template
 class OptimizeLbfgs<float>;
 template
 class OptimizeLbfgs<double>;
+
+
+template
+void LinearCgd<float>(const SpMatrix<float> &A, const VectorBase<float> &b,
+                        VectorBase<float> *x, float max_error);
+
+template
+void LinearCgd<double>(const SpMatrix<double> &A, const VectorBase<double> &b,
+                        VectorBase<double> *x, double max_error);
 
 } // end namespace kaldi

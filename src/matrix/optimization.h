@@ -34,6 +34,21 @@ namespace kaldi {
 /// @addtogroup matrix_optimization
 /// @{
 
+/*
+  This function uses linear conjugate gradient descent to approximately
+  solve the system A x = b.  The value of x at entry corresponds to the
+  "initial" guess of X.   The algorithm continues until the number of iterations
+   equals b.Dim(), or until the 2-norm of (A x - b) is <= max_error, whichever
+   happens sooner.  It is a requirement that A be positive definite.
+*/
+template<typename Real>
+void LinearCgd(const SpMatrix<Real> &A, const VectorBase<Real> &b,
+               VectorBase<Real> *x, Real max_error);
+
+
+
+
+
 
 /**
    This is an implementation of L-BFGS.  It pushes responsibility for
@@ -203,11 +218,6 @@ class OptimizeLbfgs {
 
 };
   
-
-
-
-
-
 /// @} 
 
 

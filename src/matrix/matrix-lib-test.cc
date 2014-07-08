@@ -3083,6 +3083,32 @@ template<typename Real> static void UnitTestLbfgs() {
 }
 
 
+template<typename Real> static void UnitTestLinearCgd() {
+ 
+  for (int i = 0; i < 20 ; i++) {
+    MatrixIndexT M = 1 + rand() % 10;
+
+    SpMatrix<Real> A(M);
+    RandPosdefSpMatrix(M, &A);
+    Vector<Real> x(M), b(M);
+
+    x.SetRandn();
+    
+    b.AddSpVec(1.0, A, x, 0.0);
+    Vector<Real> x_e(M);
+    x_e.SetRandn();
+    Real max_error = 10e-8;
+    LinearCgd(A, b, &x_e, max_error);
+    x.Write(std::cout, false);
+    x_e.Write(std::cout, false);
+
+    
+    AssertEqual(x,x_e);
+  }
+
+}
+
+
 template<typename Real> static void UnitTestMaxMin() {
 
   MatrixIndexT M = 1 + rand() % 10, N = 1 + rand() % 10;
@@ -4129,6 +4155,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestFloorUnit<Real>();
   UnitTestAddMat2Sp<Real>();
   UnitTestLbfgs<Real>();
+  UnitTestLinearCgd<Real>();
   // UnitTestSvdBad<Real>(); // test bug in Jama SVD code.
   UnitTestCompressedMatrix<Real>();
   UnitTestResize<Real>();
