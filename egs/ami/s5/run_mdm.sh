@@ -19,7 +19,7 @@ local/ami_download.sh mdm $AMI_DIR
 
 local/ami_beamform.sh --nj 12 $nmics $AMI_DIR $MDM_DIR
 
-#3) PREPARE DATA STARTING FROM RT09 SEGMENTATIONS
+#3) Prepare mdm data directories
 
 local/ami_mdm_data_prep.sh $MDM_DIR $mic || exit 1;
 local/ami_mdm_scoring_data_prep.sh $MDM_DIR $mic dev || exit 1;
@@ -82,8 +82,8 @@ for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
     $highmem_cmd $graph_dir/mkgraph.log \
       utils/mkgraph.sh data/lang_${lm_suffix} exp/$mic/tri2a $graph_dir
 
-    #steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.config \
-    #  $graph_dir data/$mic/dev exp/$mic/tri2a/decode_dev_${lm_suffix}
+    steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.config \
+      $graph_dir data/$mic/dev exp/$mic/tri2a/decode_dev_${lm_suffix}
 
     steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.config \
       $graph_dir data/$mic/eval exp/$mic/tri2a/decode_eval_${lm_suffix}
@@ -108,8 +108,8 @@ for lm_suffix in $LM; do
     $highmem_cmd $graph_dir/mkgraph.log \
       utils/mkgraph.sh data/lang_${lm_suffix} exp/$mic/tri3a $graph_dir
 
-    #steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.config \
-    #  $graph_dir data/$mic/dev exp/$mic/tri3a/decode_dev_${lm_suffix}
+    steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.config \
+      $graph_dir data/$mic/dev exp/$mic/tri3a/decode_dev_${lm_suffix}
 
     steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.config \
       $graph_dir data/$mic/eval exp/$mic/tri3a/decode_eval_${lm_suffix}
@@ -125,7 +125,7 @@ steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.config \
 # used as an explicit argument even though train_mmi.sh will use 4 iterations by
 # default.
 num_mmi_iters=4
-steps/train_mmi.sh --cmd "$train_fmllr_cmd" --boost 0.1 --num-iters $num_mmi_iters \
+steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 --num-iters $num_mmi_iters \
   data/$mic/train data/lang exp/$mic/tri3a_ali exp/$mic/tri3a_denlats \
   exp/$mic/tri3a_mmi_b0.1 || exit 1;
 

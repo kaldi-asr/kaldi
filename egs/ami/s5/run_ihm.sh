@@ -20,7 +20,7 @@ FISHER_TRANS=`pwd`/eddie_data/lm/data/fisher
 norm_vars=false
 
 #1)
-
+<<"C"
 #in case you want download AMI corpus, uncomment this line
 #you need arount 130GB of free space to get whole data ihm+mdm
 local/ami_download.sh ihm $AMI_DIR || exit 1;
@@ -40,10 +40,10 @@ local/ami_prepare_dict.sh
 utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
 local/ami_train_lms.sh --fisher $FISHER_TRANS data/ihm/train/text data/ihm/dev/text data/local/dict/lexicon.txt data/local/lm
-
+C
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
-
+<<"C"
 prune-lm --threshold=1e-7 data/local/lm/$final_lm.gz /dev/stdout | \
    gzip -c > data/local/lm/$LM.gz
 
@@ -160,9 +160,9 @@ for lm_suffix in $LM; do
       $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${lm_suffix} 
   ) 
 done
-
+C
 # MMI training starting from the LDA+MLLT+SAT systems
-steps/align_fmllr.sh --nj $nj --cmd "$train_fmllr_cmd" \
+steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
   data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_ali || exit 1
 
 steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
@@ -173,7 +173,7 @@ steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
 # used as an explicit argument even though train_mmi.sh will use 4 iterations by
 # default.
 num_mmi_iters=4
-steps/train_mmi.sh --cmd "$train_fmllr_cmd" --boost 0.1 --num-iters $num_mmi_iters \
+steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 --num-iters $num_mmi_iters \
   data/$mic/train data/lang exp/$mic/tri4a_ali exp/$mic/tri4a_denlats \
   exp/$mic/tri4a_mmi_b0.1 || exit 1;
 

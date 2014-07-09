@@ -25,7 +25,7 @@ local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid eval
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
-##jobs for SDM/MDM decodes - one per meeting on 16core local machine
+#jobs for SDM/MDM decodes - one per meeting on 16core local machine
 DEV_SPK=$((`cut -d" " -f2 data/$mic/dev/utt2spk | sort | uniq -c | wc -l`))
 EVAL_SPK=$((`cut -d" " -f2 data/$mic/eval/utt2spk | sort | uniq -c | wc -l`))
 echo $DEV_SPK $EVAL_SPK
@@ -177,7 +177,7 @@ exit ;
 steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
   data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_ali || exit 1
 
-steps/make_denlats.sh --nj $nj --cmd "$highmem_cmd" --config conf/decode.config \
+steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.config \
   --transform-dir exp/$mic/tri4a_ali \
   data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_denlats  || exit 1;
 
@@ -185,7 +185,7 @@ steps/make_denlats.sh --nj $nj --cmd "$highmem_cmd" --config conf/decode.config 
 # used as an explicit argument even though train_mmi.sh will use 4 iterations by
 # default.
 num_mmi_iters=4
-steps/train_mmi.sh --cmd "$decode_cmd" --boost 0.1 --num-iters $num_mmi_iters \
+steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 --num-iters $num_mmi_iters \
   data/$mic/train data/lang exp/$mic/tri4a_ali exp/$mic/tri4a_denlats \
   exp/$mic/tri4a_mmi_b0.1 || exit 1;
 
