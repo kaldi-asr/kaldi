@@ -1,7 +1,11 @@
 
 
-dev
+#the below are WER scores with up to 4 overlapping speakers
 
+dev
+exp/sdm1/tri2a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.dtl:Percent Total Error       =   66.9%   (63190)
+exp/sdm1/tri3a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.dtl:Percent Total Error       =   64.5%   (60963)
+exp/sdm1/tri3a_mmi_b0.1/decode_dev_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_10/dev_o4.ctm.filt.dtl:Percent Total Error       =   62.2%   (58772)
 
 eval
 exp/sdm1/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:Percent Total Error       =   71.8%   (64577)

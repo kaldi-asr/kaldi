@@ -48,7 +48,7 @@ echo "In total, $n files were found."
 
 awk '{meeting=$1; channel="SDM"; speaker=$3; stime=$4; etime=$5;
  printf("AMI_%s_%s_%s_%07.0f_%07.0f", meeting, channel, speaker, int(100*stime+0.5), int(100*etime+0.5));
- for(i=6;i<=NF;i++) printf(" %s", $i); printf "\n"}' $SEGS | sort  > $tmpdir/text
+ for(i=6;i<=NF;i++) printf(" %s", $i); printf "\n"}' $SEGS | sort | uniq > $tmpdir/text
 
 # (1c) Make segment files from transcript
 #segments file format is: utt-id side-id start-time end-time, e.g.:
@@ -57,7 +57,7 @@ awk '{
        segment=$1;
        split(segment,S,"[_]");
        audioname=S[1]"_"S[2]"_"S[3]; startf=S[5]; endf=S[6];
-       print segment " " audioname " " startf/100 " " endf/100 " " 0
+       print segment " " audioname " " startf/100 " " endf/100 " "
 }' < $tmpdir/text > $tmpdir/segments
 
 #EN2001a.Array1-01.wav
@@ -66,14 +66,17 @@ awk '{
 
 sed -e 's?.*/??' -e 's?.wav??' $tmpdir/wav.flist | \
  perl -ne 'split; $_ =~ m/(.*)\..*/; print "AMI_$1_SDM\n"' | \
-  paste - $tmpdir/wav.flist > $tmpdir/wav.scp
+  paste - $tmpdir/wav.flist > $tmpdir/wav1.scp
 
 #Keep only devset part of waves
-awk '{print $2}' $tmpdir/segments | sort -u | join - $tmpdir/wav.scp | sort -o $tmpdir/wav.scp
+awk '{print $2}' $tmpdir/segments | sort -u | join - $tmpdir/wav1.scp > $tmpdir/wav2.scp
+
+#replace path with an appropriate sox command that select single channel only
+awk '{print $1" sox -c 1 -t wavpcm -s "$2" -t wavpcm - |"}' $tmpdir/wav2.scp > $tmpdir/wav.scp
 
 #prep reco2file_and_channel
-awk '{print $1 $2}' $tmpdir/wav.scp | \
-  perl -ane '$_ =~ m:^(\S+SDM).*\/([IETB].*)\.wav$: || die "bad label $_"; 
+cat $tmpdir/wav.scp | \
+  perl -ane '$_ =~ m:^(\S+SDM).*\/([IETB].*)\.wav.*$: || die "bad label $_"; 
        print "$1 $2 A\n"; '\
   > $tmpdir/reco2file_and_channel || exit 1;
 
@@ -96,12 +99,11 @@ awk '{print $1}' $tmpdir/segments | \
 #(important for simulatenous asclite scoring to proceed).
 #There is actually only one such case for devset and automatic segmentetions
 join $tmpdir/utt2spk_stm $tmpdir/segments | \
-   perl -ne '{BEGIN{$pu=""; $pt=0.0; $pl=""} split;
+   perl -ne '{BEGIN{$pu=""; $pt=0.0;} split;
            if ($pu eq $_[1] && $pt > $_[3]) {
-             print "$pl > $_[0] $_[2] $pt $_[4] $_[5]\n"
+             print "$_[0] $_[2] $_[3] $_[4]>$_[0] $_[2] $pt $_[4]\n"
            }
            $pu=$_[1]; $pt=$_[4]; 
-           $pl="$_[0] $_[2] $_[3] $_[4] $_[5]";
          }' > $tmpdir/segments_to_fix
 if [ `cat $tmpdir/segments_to_fix | wc -l` -gt 0 ]; then
   echo "$0. Applying following fixes to segments"

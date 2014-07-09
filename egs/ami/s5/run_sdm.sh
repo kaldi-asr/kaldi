@@ -4,19 +4,22 @@
 . ./path.sh
 
 #SDM - Signle Distant Microphone 
+#Assuming initial transcrips, dict, lang and LM were build in run_ihm.sh
 
 micid=1 #which mic from array should be used?
 mic=sdm$micid
 AMI_DIR=/disk/data2/amicorpus/
 norm_vars=false
 
-#1) Prepare sdm data directories
+#1) Download AMI (single distant channel)
 
-#local/ami_sdm_data_prep.sh $AMI_DIR $micid
-#local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid dev
-#local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid eval
+local/ami_download.sh sdm $AMI_DIR
 
-#exit;
+#2) Prepare sdm data directories
+
+local/ami_sdm_data_prep.sh $AMI_DIR $micid
+local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid dev
+local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid eval
 
 #use the final LM
 final_lm=`cat data/local/lm/final_lm`
@@ -29,7 +32,6 @@ echo $DEV_SPK $EVAL_SPK
 nj=16
 
 #GENERATE FEATS
-<< "C" 
 mfccdir=mfcc_$mic
 (
 steps/make_mfcc.sh --nj 5  --cmd "$train_cmd" data/$mic/eval exp/$mic/make_mfcc/eval $mfccdir || exit 1;
@@ -45,9 +47,6 @@ steps/compute_cmvn_stats.sh data/$mic/train exp/$mic/make_mfcc/train $mfccdir ||
 )&
 
 wait;
-exit;
-
-
 for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
 
 # TRAIN THE MODELS

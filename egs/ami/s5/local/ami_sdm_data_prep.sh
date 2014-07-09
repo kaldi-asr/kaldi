@@ -56,26 +56,29 @@ awk '{
        segment=$1;
        split(segment,S,"[_]");
        audioname=S[1]"_"S[2]"_"S[3]; startf=S[5]; endf=S[6];
-       print segment " " audioname " " startf/100 " " endf/100 " " 0
+       print segment " " audioname " " startf/100 " " endf/100 " "
 }' < $dir/text > $dir/segments
 
 #EN2001a.Array1-01.wav
 
 sed -e 's?.*/??' -e 's?.wav??' $dir/wav.flist | \
  perl -ne 'split; $_ =~ m/(.*)\..*/; print "AMI_$1_SDM\n"' | \
-  paste - $dir/wav.flist > $dir/wav.scp
+  paste - $dir/wav.flist > $dir/wav1.scp
 
 #Keep only training part of waves
-awk '{print $2}' $dir/segments | sort -u | join - $dir/wav.scp | sort -o $dir/wav.scp
+awk '{print $2}' $dir/segments | sort -u | join - $dir/wav1.scp | sort -o $dir/wav2.scp
 #Two distant recordings are missing, agree segments with wav.scp
-awk '{print $1}' $dir/wav.scp | join -2 2 - $dir/segments | \
+awk '{print $1}' $dir/wav2.scp | join -2 2 - $dir/segments | \
     awk '{print $2" "$1" "$3" "$4" "$5}' > $dir/s; mv $dir/s $dir/segments
 #...and text with segments
 awk '{print $1}' $dir/segments | join - $dir/text > $dir/t; mv $dir/t $dir/text
 
+#replace path with an appropriate sox command that select a single channel only
+awk '{print $1" sox -c 1 -t wavpcm -s "$2" -t wavpcm - |"}' $dir/wav2.scp > $dir/wav.scp
+
 # this file reco2file_and_channel maps recording-id
-awk '{print $1 $2}' $dir/wav.scp | \
-  perl -ane '$_ =~ m:^(\S+SDM).*\/([IETB].*)\.wav$: || die "bad label $_"; 
+cat $dir/wav.scp | \
+  perl -ane '$_ =~ m:^(\S+SDM)\s+.*\/([IETB].*)\.wav.*$: || die "bad label $_"; 
        print "$1 $2 A\n"; ' > $dir/reco2file_and_channel || exit 1;
 
 # Assumtion, for sdm we adapt to the session only

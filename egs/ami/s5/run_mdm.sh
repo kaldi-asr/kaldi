@@ -13,17 +13,17 @@ MDM_DIR=/disk/data1/s1136550/ami/mdm
 
 #1) Download AMI (distant channels)
 
-#local/ami_download.sh mdm $AMI_DIR
+local/ami_download.sh mdm $AMI_DIR
 
 #2) Beamform 
 
-#local/ami_beamform.sh --nj 12 $nmics $AMI_DIR $MDM_DIR
-#exit 1;
+local/ami_beamform.sh --nj 12 $nmics $AMI_DIR $MDM_DIR
+
 #3) PREPARE DATA STARTING FROM RT09 SEGMENTATIONS
 
-#local/ami_mdm_data_prep.sh $MDM_DIR $mic || exit 1;
-#local/ami_mdm_scoring_data_prep.sh $MDM_DIR $mic dev || exit 1;
-#local/ami_mdm_scoring_data_prep.sh $MDM_DIR $mic eval || exit 1;
+local/ami_mdm_data_prep.sh $MDM_DIR $mic || exit 1;
+local/ami_mdm_scoring_data_prep.sh $MDM_DIR $mic dev || exit 1;
+local/ami_mdm_scoring_data_prep.sh $MDM_DIR $mic eval || exit 1;
 
 #use the final LM
 final_lm=`cat data/local/lm/final_lm`
@@ -34,7 +34,6 @@ EVAL_SPK=`cut -d" " -f2 data/$mic/eval/utt2spk | sort | uniq -c | wc -l`
 nj=16
 
 #GENERATE FEATS
-<<"C"
 mfccdir=mfcc_$mic
 (
 steps/make_mfcc.sh --nj 5  --cmd "$train_cmd" data/$mic/eval exp/$mic/make_mfcc/eval $mfccdir || exit 1;
@@ -51,8 +50,6 @@ steps/make_mfcc.sh --nj 16 --cmd "$train_cmd" data/$mic/train exp/$mic/make_mfcc
 
 wait;
 for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
-wait;
-exit;
 
 # Build the systems
 
@@ -78,7 +75,7 @@ exit;
  steps/train_deltas.sh --cmd "$train_cmd" \
   5000 80000 data/$mic/train data/lang exp/$mic/tri1_ali exp/$mic/tri2a \
   >& exp/$mic/tri2a/train.log || exit 1;
-C
+
  for lm_suffix in $LM; do
   (
     graph_dir=exp/$mic/tri2a/graph_${lm_suffix}

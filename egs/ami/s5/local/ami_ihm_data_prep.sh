@@ -72,10 +72,10 @@ awk '{print $2}' $dir/segments | sort -u | join - $dir/wav1.scp >  $dir/wav2.scp
 awk '{print $1" sox -c 1 -t wavpcm -s "$2" -t wavpcm - |"}' $dir/wav2.scp > $dir/wav.scp
 
 # (1d) reco2file_and_channel
+cat $dir/wav.scp \
+ | perl -ane '$_ =~ m:^(\S+)(H0[0-4])\s+.*\/([IETB].*)\.wav.*$: || die "bad label $_"; 
+              print "$1$2 $3 A\n"; ' > $dir/reco2file_and_channel || exit 1;
 
-awk '{print $1}' $dir/wav.scp \
- | perl -ane '$_ =~ m:^(\S+)(H0[0-4])$: || die "bad label $_"; 
-              print "$1$2 $1$2 A\n"; ' > $dir/reco2file_and_channel || exit 1;
 
 awk '{print $1}' $dir/segments | \
   perl -ane '$_ =~ m:^(\S+)([FM][A-Z]{0,2}[0-9]{3}[A-Z]*)(\S+)$: || die "bad label $_"; 
