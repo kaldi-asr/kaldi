@@ -255,6 +255,8 @@ double DoBackpropParallel(const Nnet &nnet,
   }
   KALDI_LOG << "Did backprop on " << *tot_weight << " examples, average log-prob "
             << "per frame is " << (tot_log_prob / *tot_weight);
+  KALDI_LOG << "[this line is to be parsed by a script:] log-prob-per-frame="
+            << (tot_log_prob / *tot_weight);
   return tot_log_prob;
 }
 

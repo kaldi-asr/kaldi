@@ -1009,9 +1009,9 @@ void CuMatrixBase<Real>::AddDiagVecMat(
 
 template<typename Real>
 void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {
-  //KALDI_ASSERT(SameDimAndStride(*this, src));
+  KALDI_ASSERT(SameDim(*this, src));
 #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -1030,7 +1030,7 @@ void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {
 
 template<typename Real>
 void CuMatrixBase<Real>::SoftHinge(const CuMatrixBase<Real> &src) {
-  //KALDI_ASSERT(SameDimAndStride(*this, src));
+  KALDI_ASSERT(SameDim(*this, src));
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -1135,7 +1135,7 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
 
 template<typename Real> // Y->this, X->src
 void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
-  //KALDI_ASSERT(SameDimAndStride(*this, src));
+  KALDI_ASSERT(SameDim(*this, src));
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -1160,7 +1160,7 @@ void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
 template<typename Real> // Eout -> *this, Ein -> diff, Y -> value
 void CuMatrixBase<Real>::DiffSigmoid(const CuMatrixBase<Real> &value,
                                      const CuMatrixBase<Real> &diff) {
-  //KALDI_ASSERT(SameDimAndStride(*this, value) && SameDimAndStride(*this, diff));
+  KALDI_ASSERT(SameDim(*this, value) && SameDim(*this, diff));
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
@@ -1182,7 +1182,7 @@ void CuMatrixBase<Real>::DiffSigmoid(const CuMatrixBase<Real> &value,
   
 template<typename Real>
 void CuMatrixBase<Real>::Tanh(const CuMatrixBase<Real> &src) {
-  //KALDI_ASSERT(SameDimAndStride(*this, src));
+  KALDI_ASSERT(SameDim(*this, src));
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;

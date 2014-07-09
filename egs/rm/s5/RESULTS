@@ -118,11 +118,11 @@ exit 0
 %WER 1.73 [ 217 / 12533, 27 ins, 50 del, 140 sub ] exp/nnet4c/decode/wer_5
 %WER 8.76 [ 1098 / 12533, 76 ins, 185 del, 837 sub ] exp/nnet4c/decode_ug/wer_11
 
-%WER 1.60 [ 201 / 12533, 28 ins, 43 del, 130 sub ] exp/nnet4d/decode/wer_4
-%WER 8.24 [ 1033 / 12533, 83 ins, 166 del, 784 sub ] exp/nnet4d/decode_ug/wer_11
+%WER 1.61 [ 202 / 12533, 25 ins, 47 del, 130 sub ] exp/nnet4d/decode/wer_5
+%WER 8.17 [ 1024 / 12533, 83 ins, 179 del, 762 sub ] exp/nnet4d/decode_ug/wer_11
 
-%WER 1.76 [ 221 / 12533, 38 ins, 40 del, 143 sub ] exp/nnet4d_gpu/decode/wer_3
-%WER 8.11 [ 1017 / 12533, 71 ins, 174 del, 772 sub ] exp/nnet4d_gpu/decode_ug/wer_11
+%WER 1.63 [ 204 / 12533, 29 ins, 42 del, 133 sub ] exp/nnet4d_gpu/decode/wer_4
+%WER 8.11 [ 1016 / 12533, 80 ins, 168 del, 768 sub ] exp/nnet4d_gpu/decode_ug/wer_10
 
 %WER 1.37 [ 172 / 12533, 14 ins, 36 del, 122 sub ] exp/nnet4e_gpu/decode/wer_3
 %WER 8.03 [ 1006 / 12533, 61 ins, 179 del, 766 sub ] exp/nnet4e_gpu/decode_ug/wer_8

@@ -818,7 +818,6 @@ void LatticeFasterDecoder::ProcessNonemitting() {
 
 void LatticeFasterDecoder::DeleteElems(Elem *list) {
   for (Elem *e = list, *e_tail; e != NULL; e = e_tail) {
-    // Token::TokenDelete(e->val);
     e_tail = e->tail;
     toks_.Delete(e);
   }

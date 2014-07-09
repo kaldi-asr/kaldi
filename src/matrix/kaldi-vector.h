@@ -4,6 +4,7 @@
 //                       Saarland University (Author: Arnab Ghoshal);
 //                       Ariya Rastrow;  Petr Schwarz;  Yanmin Qian;
 //                       Karel Vesely;  Go Vivace Inc.;  Arnab Ghoshal
+//                       Wei Shi;
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -235,6 +236,13 @@ class VectorBase {
 
   /// Multiplies this vector by lower-triangular marix:  *this <-- *this *M
   void MulTp(const TpMatrix<Real> &M, const MatrixTransposeType trans);
+
+  /// If trans == kNoTrans, solves M x = b, where b is the value of *this at input
+  /// and x is the value of *this at output.
+  /// If trans == kTrans, solves M' x = b.
+  /// Does not test for M being singular or near-singular, so test it before
+  /// calling this routine.
+  void Solve(const TpMatrix<Real> &M, const MatrixTransposeType trans);
 
   /// Performs a row stack of the matrix M
   void CopyRowsFromMat(const MatrixBase<Real> &M);

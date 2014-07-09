@@ -45,6 +45,8 @@ if [ ! -f $dir/final.mdl ]; then
 
   steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
    --samples-per-iter 400000 \
+   --parallel-opts "$parallel_opts" \
+   --num-threads "$num_threads" \
    --minibatch-size "$minibatch_size" \
    --num-jobs-nnet 8  --mix-up 8000 \
    --initial-learning-rate 0.02 --final-learning-rate 0.004 \

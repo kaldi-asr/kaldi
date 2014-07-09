@@ -47,7 +47,7 @@ if [ $stage -le 2 ]; then
   steps/nnet2/train_block.sh --stage "$train_stage" \
      --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
      --bias-stddev 0.5 --splice-width 7 --egs-opts "--feat-type raw" \
-     --softmax-learning-rate-factor 0.5 --cleanup false \
+     --softmax-learning-rate-factor 0.5 \
      --initial-learning-rate 0.04 --final-learning-rate 0.004 \
      --num-epochs-extra 10 --add-layers-period 3 --mix-up 4000 \
      --cmd "$decode_cmd" --hidden-layer-dim 450 \

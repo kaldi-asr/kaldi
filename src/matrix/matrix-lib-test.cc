@@ -4,7 +4,7 @@
 //                       Ondrej Glembek;  Saarland University (Author: Arnab Ghoshal);
 //                       Go Vivace Inc.;  Yanmin Qian;  Jan Silovsky;
 //                       Johns Hopkins University (Author: Daniel Povey);
-//                       Haihua Xu
+//                       Haihua Xu; Wei Shi
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -4144,6 +4144,34 @@ static void UnitTestTopEigs() {
   }
 }
 
+template<typename Real> static void UnitTestTriVecSolver() {
+  for (MatrixIndexT iter = 0; iter < 100; iter++) {
+    int32 dim = 1 + rand() % 20;
+    Vector<Real> b(dim);
+    b.SetRandn();
+    TpMatrix<Real> T(dim);
+    T.SetRandn();
+
+    bool bad = false;
+    for (int32 i = 0; i < dim; i++) {
+      if (fabs(T(i, i)) < 0.1)
+        bad = true;
+    }
+    if (bad) {
+      // Test may fail due to almost-singular matrix.
+      continue;
+    }
+    
+    Vector<Real> x(b);
+    MatrixTransposeType trans = (iter % 2 == 0 ? kTrans : kNoTrans);
+    x.Solve(T, trans);  // solve for T x = b
+    Vector<Real> b2(dim);
+    b2.AddTpVec((Real)1.0, T, trans, x, (Real)0.0);
+    KALDI_LOG << "b is " << b << ", b2 is " << b2;
+    AssertEqual(b, b2, 0.01);
+  }
+}
+
 template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestTridiagonalize<Real>();
   UnitTestTridiagonalizeAndQr<Real>();  
@@ -4282,6 +4310,8 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   // The next one is slow.  The upshot is that Eig is up to ten times faster
   // than SVD. 
   // UnitTestSvdSpeed<Real>();
+  KALDI_LOG << " Point K";
+  UnitTestTriVecSolver<Real>();
 }
 
 

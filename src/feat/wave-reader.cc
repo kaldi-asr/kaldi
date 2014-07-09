@@ -172,11 +172,13 @@ void WaveData::Read(std::istream &is) {
   Read4ByteTag(is, next_chunk_name);
   riff_chunk_read += 4;
 
-  if (!strncmp(next_chunk_name, "fact", 4)) {
-    // will just ignore the "fact" chunk.  for non-compressed data
-    // (which we don't support anyway), it doesn't contain useful information.
+  // Skip any subchunks between "fmt" and "data".  Usually there will
+  // be a single "fact" subchunk, but on Windows there can also be a
+  // "list" subchunk.
+  while (strncmp(next_chunk_name, "data", 4) != 0) {
+    // We will just ignore the data in these chunks.  
     uint32 chunk_sz = ReadUint32(is, swap);
-    if (chunk_sz != 4)
+    if (chunk_sz != 4 && strncmp(next_chunk_name, "fact", 4) == 0)
       KALDI_WARN << "Expected fact chunk to be 4 bytes long.";
     for (uint32 i = 0; i < chunk_sz; i++)
       is.get();

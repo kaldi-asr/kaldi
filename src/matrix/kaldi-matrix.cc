@@ -66,6 +66,10 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
     } else {
       if (log_det) *log_det = -std::numeric_limits<Real>::infinity();
       if (det_sign) *det_sign = 0;
+      if(pivot) {
+        delete[] pivot;
+        pivot = NULL;
+      }
       return;
     }
   }

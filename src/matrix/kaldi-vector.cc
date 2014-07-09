@@ -3,7 +3,7 @@
 // Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University;   Go Vivace Inc.;  Ariya Rastrow;
 //                      Petr Schwarz;  Yanmin Qian;  Jan Silovsky;
-//                      Haihua Xu
+//                      Haihua Xu; Wei Shi
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -151,6 +151,14 @@ void VectorBase<Real>::MulTp(const TpMatrix<Real> &M,
   KALDI_ASSERT(M.NumRows() == dim_);
   cblas_Xtpmv(trans,M.Data(),M.NumRows(),data_,1);
 }
+
+template<typename Real>
+void VectorBase<Real>::Solve(const TpMatrix<Real> &M,
+                        const MatrixTransposeType trans) {
+  KALDI_ASSERT(M.NumRows() == dim_);
+  cblas_Xtpsv(trans, M.Data(), M.NumRows(), data_, 1);
+}
+
 
 template<typename Real>
 inline void Vector<Real>::Init(const MatrixIndexT dim) {

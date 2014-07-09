@@ -8,7 +8,8 @@
 # Begin configuration section.
 nj=4
 cmd=run.pl
-remove_last_layers=4 # remove N last components from the nnet
+remove_last_components=4 # remove N last components from the nnet
+htk_save=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -53,8 +54,7 @@ mkdir -p $logdir || exit 1;
 srcscp=$srcdata/feats.scp
 scp=$data/feats.scp
 
-required="$srcscp $nndir/final.nnet"
-
+required="$srcscp $nndir/final.nnet $nndir/final.feature_transform"
 for f in $required; do
   if [ ! -f $f ]; then
     echo "$0: no such file $f"
@@ -66,13 +66,9 @@ if [ ! -d $srcdata/split$nj -o $srcdata/split$nj -ot $srcdata/feats.scp ]; then
   utils/split_data.sh $srcdata $nj
 fi
 
-
-#cut the MLP
+# Concat feature transform with trimmed MLP:
 nnet=$bnfeadir/feature_extractor.nnet
-nnet-copy --remove-last-layers=$remove_last_layers --binary=false $nndir/final.nnet $nnet 2>$logdir/feature_extractor.log
-
-#get the feature transform
-feature_transform=$nndir/final.feature_transform
+nnet-concat $nndir/final.feature_transform "nnet-copy --remove-last-layers=$remove_last_components $nndir/final.nnet - |" $nnet 2>$logdir/feature_extractor.log || exit 1
 
 echo "Creating bn-feats into $data"
 
@@ -92,26 +88,33 @@ fi
 ###
 ###
 
-#Run the forward pass
+# Run the forward pass
 $cmd JOB=1:$nj $logdir/make_bnfeats.JOB.log \
-  nnet-forward --feature-transform=$feature_transform $nnet "$feats" \
+  nnet-forward $nnet "$feats" \
   ark,scp:$bnfeadir/raw_bnfea_$name.JOB.ark,$bnfeadir/raw_bnfea_$name.JOB.scp \
   || exit 1;
 
-
+# check that the sentence counts match
 N0=$(cat $srcdata/feats.scp | wc -l) 
 N1=$(cat $bnfeadir/raw_bnfea_$name.*.scp | wc -l)
 if [[ "$N0" != "$N1" ]]; then
-  echo "Error producing bnfea features for $name:"
-  echo "Original feats : $N0  Bottleneck feats : $N1"
+  echo "Error producing features for $name:"
+  echo "Original sentences : $N0  Bottleneck sentences : $N1"
   exit 1;
 fi
 
-# concatenate the .scp files together.
+# concatenate the .scp files
 for ((n=1; n<=nj; n++)); do
   cat $bnfeadir/raw_bnfea_$name.$n.scp >> $data/feats.scp
 done
 
-
 echo "Succeeded creating MLP-BN features for $name ($data)"
 
+# optionally resave in as HTK features:
+if [ $htk_save ]; then
+  echo -n "Resaving as HTK features into $bnfeadir/htk ... "
+  mkdir -p $bnfeadir/htk
+  $cmd JOB=1:$nj $logdir/htk_copy_bnfeats.JOB.log \
+    copy-feats-to-htk --output-dir=$bnfeadir/htk --output-ext=fea scp:$data/feats.scp || exit 1
+  echo "DONE!"
+fi

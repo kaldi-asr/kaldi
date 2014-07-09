@@ -34,40 +34,6 @@ int32 IvectorExtractor::NumGauss() const {
   return static_cast<int32>(M_.size());
 }
 
-void IvectorExtractor::GetStats(
-    const MatrixBase<BaseFloat> &feats,
-    const Posterior &post,
-    IvectorExtractorUtteranceStats *stats) const {
-  typedef std::vector<std::pair<int32, BaseFloat> > VecType;
-
-  int32 num_frames = feats.NumRows(), num_gauss = NumGauss(),
-      feat_dim = FeatDim();
-  KALDI_ASSERT(feats.NumCols() == feat_dim);
-  KALDI_ASSERT(stats->gamma.Dim() == num_gauss &&
-               stats->X.NumCols() == feat_dim);
-  bool update_variance = (!stats->S.empty());
-  
-  for (int32 t = 0; t < num_frames; t++) {
-    SubVector<BaseFloat> frame(feats, t);
-    const VecType &this_post(post[t]);
-    SpMatrix<double> outer_prod;
-    if (update_variance) {
-      outer_prod.Resize(feat_dim);
-      outer_prod.AddVec2(1.0, frame);
-    }
-    for (VecType::const_iterator iter = this_post.begin();
-         iter != this_post.end(); ++iter) {
-      int32 i = iter->first; // Gaussian index.
-      KALDI_ASSERT(i >= 0 && i < num_gauss &&
-                   "Out-of-range Gaussian (mismatched posteriors?)");
-      double weight = iter->second;
-      stats->gamma(i) += weight;
-      stats->X.Row(i).AddVec(weight, frame);
-      if (update_variance)
-        stats->S[i].AddSp(weight, outer_prod);
-    }
-  }
-}
 
 // This function basically inverts the input and puts it in the output, but it's
 // smart numerically.  It uses the prior knowledge that the "inverse_floor" can
@@ -179,8 +145,8 @@ IvectorExtractor::IvectorExtractor(
   int32 feature_dim = Sigma_inv_[0].NumRows(),
       num_gauss = Sigma_inv_.size();
 
-  ivector_offset_ = 100.0; // hardwired for now.  Must be nonzero.
-  gmm_means.Scale(1.0 / ivector_offset_);
+  prior_offset_ = 100.0; // hardwired for now.  Must be nonzero.
+  gmm_means.Scale(1.0 / prior_offset_);
   
   M_.resize(num_gauss);
   for (int32 i = 0; i < num_gauss; i++) {
@@ -217,6 +183,7 @@ void IvectorExtractor::ComputeDerivedVars() {
     // the gconsts don't contain any weight-related terms.
   }
   U_.Resize(NumGauss(), IvectorDim() * (IvectorDim() + 1) / 2);
+  Sigma_inv_M_.resize(NumGauss());
 
   // Note, we could have used RunMultiThreaded for this and similar tasks we
   // have here, but we found that we don't get as complete CPU utilization as we
@@ -240,7 +207,9 @@ void IvectorExtractor::ComputeDerivedVars(int32 i) {
   SubVector<double> temp_U_vec(temp_U.Data(),
                                IvectorDim() * (IvectorDim() + 1) / 2);
   U_.Row(i).CopyFromVec(temp_U_vec);
-  
+
+  Sigma_inv_M_[i].Resize(FeatDim(), IvectorDim());
+  Sigma_inv_M_[i].AddSpMat(1.0, Sigma_inv_[i], M_[i], kNoTrans, 0.0);
 }
 
 
@@ -266,9 +235,9 @@ void IvectorExtractor::GetIvectorDistWeight(
   // here \v_{jm} corresponds to the iVector.  Ignore the j,m indices.
   Vector<double> linear_coeff(NumGauss());
   Vector<double> quadratic_coeff(NumGauss());
-  double gamma = utt_stats.gamma.Sum();
+  double gamma = utt_stats.gamma_.Sum();
   for (int32 i = 0; i < NumGauss(); i++) {
-    double gamma_i = utt_stats.gamma(i);
+    double gamma_i = utt_stats.gamma_(i);
     double max_term = std::max(gamma_i, gamma * w(i));
     linear_coeff(i) = gamma_i - gamma * w(i) + max_term * logw_unnorm(i);
     quadratic_coeff(i) = max_term;
@@ -284,20 +253,17 @@ void IvectorExtractor::GetIvectorDistMean(
     const IvectorExtractorUtteranceStats &utt_stats,
     VectorBase<double> *linear,
     SpMatrix<double> *quadratic) const {
-  Vector<double> temp(FeatDim());
   int32 I = NumGauss();
   for (int32 i = 0; i < I; i++) {
-    double gamma = utt_stats.gamma(i);
+    double gamma = utt_stats.gamma_(i);
     if (gamma != 0.0) {
-      Vector<double> x(utt_stats.X.Row(i)); // == \gamma(i) \m_i
-      temp.AddSpVec(1.0 / gamma, Sigma_inv_[i], x, 0.0);
-      // now temp = Sigma_i^{-1} \m_i.
+      Vector<double> x(utt_stats.X_.Row(i)); // == \gamma(i) \m_i
       // next line: a += \gamma_i \M_i^T \Sigma_i^{-1} \m_i
-      linear->AddMatVec(gamma, M_[i], kTrans, temp, 1.0); 
+      linear->AddMatVec(1.0, Sigma_inv_M_[i], kTrans, x, 1.0); 
     }
   }
   SubVector<double> q_vec(quadratic->Data(), IvectorDim()*(IvectorDim()+1)/2);
-  q_vec.AddMatVec(1.0, U_, kTrans, Vector<double>(utt_stats.gamma), 1.0);
+  q_vec.AddMatVec(1.0, U_, kTrans, Vector<double>(utt_stats.gamma_), 1.0);
 }
 
 void IvectorExtractor::GetIvectorDistPrior(
@@ -305,10 +271,9 @@ void IvectorExtractor::GetIvectorDistPrior(
     VectorBase<double> *linear,
     SpMatrix<double> *quadratic) const {
 
-  (*linear)(0) += ivector_offset_; // the zero'th dimension has an offset mean.
+  (*linear)(0) += prior_offset_; // the zero'th dimension has an offset mean.
   /// The inverse-variance for the prior is the unit matrix.
-  for (int32 d = 0; d < IvectorDim(); d++)
-    (*quadratic)(d, d) += 1.0;
+  quadratic->AddToDiag(1.0);
 }
 
 
@@ -319,7 +284,7 @@ double IvectorExtractor::GetAcousticAuxfWeight(
   if (!IvectorDependentWeights()) { // Not using the weight-projection matrices.
     Vector<double> log_w_vec(w_vec_);
     log_w_vec.ApplyLog();
-    return VecVec(log_w_vec, utt_stats.gamma);
+    return VecVec(log_w_vec, utt_stats.gamma_);
   } else {
     Vector<double> w(NumGauss());
     w.AddMatVec(1.0, w_, kNoTrans, mean, 0.0);  // now w is unnormalized
@@ -331,7 +296,7 @@ double IvectorExtractor::GetAcousticAuxfWeight(
     // "ans" below is the point-value of the weight auxf, without
     // considering the variance.  At the moment, "w" contains
     // the normalized log weights.
-    double ans = VecVec(w, utt_stats.gamma);
+    double ans = VecVec(w, utt_stats.gamma_);
     
     w.ApplyExp(); // now w is the weights.
 
@@ -349,7 +314,7 @@ double IvectorExtractor::GetAcousticAuxfWeight(
 
       // the matrix S is the negated 2nd derivative of the objf w.r.t. the iVector \x.
       SpMatrix<double> S(IvectorDim());
-      S.AddMat2Vec(1.0, Jacobian, kTrans, Vector<double>(utt_stats.gamma), 0.0);
+      S.AddMat2Vec(1.0, Jacobian, kTrans, Vector<double>(utt_stats.gamma_), 0.0);
       ans += -0.5 * TraceSpSp(S, *var);
       return ans;
     }
@@ -363,7 +328,7 @@ double IvectorExtractor::GetAuxf(const IvectorExtractorUtteranceStats &utt_stats
                                  const SpMatrix<double> *var) const {
 
   double acoustic_auxf = GetAcousticAuxf(utt_stats, mean, var),
-      prior_auxf = GetPriorAuxf(mean, var), num_frames = utt_stats.gamma.Sum();
+      prior_auxf = GetPriorAuxf(mean, var), num_frames = utt_stats.gamma_.Sum();
   KALDI_VLOG(3) << "Acoustic auxf is " << (acoustic_auxf/num_frames) << "/frame over "
                 << num_frames << " frames, prior auxf is " << prior_auxf
                 << " = " << (prior_auxf/num_frames) << " per frame.";
@@ -398,7 +363,7 @@ double IvectorExtractor::GetPriorAuxf(
   KALDI_ASSERT(mean.Dim() == IvectorDim());
 
   Vector<double> offset(mean);
-  offset(0) -= ivector_offset_; // The mean of the prior distribution
+  offset(0) -= prior_offset_; // The mean of the prior distribution
   // may only be nonzero in the first dimension.  Now, "offset" is the
   // offset of ivector from the prior's mean.
 
@@ -439,7 +404,7 @@ double IvectorExtractor::GetAcousticAuxf(
       gconst_auxf = GetAcousticAuxfGconst(utt_stats),
       mean_auxf = GetAcousticAuxfMean(utt_stats, mean, var),
       var_auxf = GetAcousticAuxfVariance(utt_stats),
-      T = utt_stats.gamma.Sum();
+      T = utt_stats.gamma_.Sum();
   KALDI_VLOG(3) << "Per frame, auxf is: weight " << (weight_auxf/T) << ", gconst "
                 << (gconst_auxf/T) << ", mean " << (mean_auxf/T) << ", var "
                 << (var_auxf/T) << ", over " << T << " frames.";
@@ -481,9 +446,9 @@ double IvectorExtractor::GetAcousticAuxfMean(
   
   int32 I = NumGauss();
   for (int32 i = 0; i < I; i++) {
-    double gamma = utt_stats.gamma(i);
+    double gamma = utt_stats.gamma_(i);
     if (gamma != 0.0) {
-      Vector<double> x(utt_stats.X.Row(i)); // == \gamma(i) \m_i
+      Vector<double> x(utt_stats.X_.Row(i)); // == \gamma(i) \m_i
       temp.AddSpVec(1.0 / gamma, Sigma_inv_[i], x, 0.0);
       // now temp = Sigma_i^{-1} \m_i.
       // next line: K += -0.5 \gamma_i \m_i^T \Sigma_i^{-1} \m_i
@@ -494,7 +459,7 @@ double IvectorExtractor::GetAcousticAuxfMean(
   }
   SpMatrix<double> B(IvectorDim());
   SubVector<double> B_vec(B.Data(), IvectorDim()*(IvectorDim()+1)/2);
-  B_vec.AddMatVec(1.0, U_, kTrans, Vector<double>(utt_stats.gamma), 0.0);
+  B_vec.AddMatVec(1.0, U_, kTrans, Vector<double>(utt_stats.gamma_), 0.0);
   
   double ans = K + VecVec(mean, a) - 0.5 * VecSpVec(mean, B, mean);
   if (var != NULL)
@@ -504,28 +469,28 @@ double IvectorExtractor::GetAcousticAuxfMean(
 
 double IvectorExtractor::GetAcousticAuxfGconst(
     const IvectorExtractorUtteranceStats &utt_stats) const {
-  return VecVec(Vector<double>(utt_stats.gamma),
+  return VecVec(Vector<double>(utt_stats.gamma_),
                 gconsts_);
 }
 
 
 double IvectorExtractor::GetAcousticAuxfVariance(
     const IvectorExtractorUtteranceStats &utt_stats) const {
-  if (utt_stats.S.empty()) {
+  if (utt_stats.S_.empty()) {
     // we did not store the variance, so assume it's as predicted
     // by the model itself.
     // for each Gaussian i, we have a term -0.5 * gamma(i) * trace(Sigma[i] * Sigma[i]^{-1})
     //   = -0.5 * gamma(i) * FeatDim().
-    return -0.5 * utt_stats.gamma.Sum() * FeatDim();
+    return -0.5 * utt_stats.gamma_.Sum() * FeatDim();
   } else {
     int32 I = NumGauss();
     double ans = 0.0;
     for (int32 i = 0; i < I; i++) {
-      double gamma = utt_stats.gamma(i);
+      double gamma = utt_stats.gamma_(i);
       if (gamma != 0.0) {
-        SpMatrix<double> var(utt_stats.S[i]);
+        SpMatrix<double> var(utt_stats.S_[i]);
         var.Scale(1.0 / gamma);
-        Vector<double> mean(utt_stats.X.Row(i));
+        Vector<double> mean(utt_stats.X_.Row(i));
         mean.Scale(1.0 / gamma);
         var.AddVec2(-1.0, mean); // get centered covariance..
         ans += -0.5 * gamma * TraceSpSp(var, Sigma_inv_[i]);
@@ -536,7 +501,7 @@ double IvectorExtractor::GetAcousticAuxfVariance(
 }
 
 void IvectorExtractor::TransformIvectors(const MatrixBase<double> &T,
-                                         double new_ivector_offset) {
+                                         double new_prior_offset) {
   Matrix<double> Tinv(T);
   Tinv.Invert();
   // w <-- w Tinv.  (construct temporary copy with Matrix<double>(w))
@@ -545,9 +510,40 @@ void IvectorExtractor::TransformIvectors(const MatrixBase<double> &T,
   // next: M_i <-- M_i Tinv.  (construct temporary copy with Matrix<double>(M_[i]))
   for (int32 i = 0; i < NumGauss(); i++)
     M_[i].AddMatMat(1.0, Matrix<double>(M_[i]), kNoTrans, Tinv, kNoTrans, 0.0);
-  KALDI_LOG << "Setting iVector prior offset to " << new_ivector_offset;
-  ivector_offset_ = new_ivector_offset;
+  KALDI_LOG << "Setting iVector prior offset to " << new_prior_offset;
+  prior_offset_ = new_prior_offset;
 }
+
+void OnlineIvectorEstimationStats::AddToStats(
+    const IvectorExtractor &extractor,
+    const VectorBase<BaseFloat> &feature,
+    const std::vector<std::pair<int32, BaseFloat> > &gauss_post) {
+  KALDI_ASSERT(extractor.IvectorDim() == this->IvectorDim());
+  KALDI_ASSERT(!extractor.IvectorDependentWeights());
+
+  Vector<double> feature_dbl(feature);
+  double tot_weight = 0.0;
+  int32 ivector_dim = this->IvectorDim(),
+      quadratic_term_dim = (ivector_dim * (ivector_dim + 1)) / 2;
+  SubVector<double> quadratic_term_vec(quadratic_term_.Data(),
+                                       quadratic_term_dim);
+  
+  for (size_t idx = 0; idx < gauss_post.size(); idx++) {
+    int32 g = gauss_post[idx].first;
+    double weight = gauss_post[idx].second;
+    KALDI_ASSERT(weight >= 0.0);
+    if (weight == 0.0)
+      continue;
+    linear_term_.AddMatVec(weight, extractor.Sigma_inv_M_[g], kTrans,
+                           feature_dbl, 1.0);
+    SubVector<double> U_g(extractor.U_, g);
+    quadratic_term_vec.AddVec(weight, U_g);
+    tot_weight += weight;
+  }
+  num_frames_ += tot_weight;
+}
+
+
 
 void IvectorExtractor::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<IvectorExtractor>");
@@ -565,7 +561,7 @@ void IvectorExtractor::Write(std::ostream &os, bool binary) const {
   for (int32 i = 0; i < size; i++)
     Sigma_inv_[i].Write(os, binary);
   WriteToken(os, binary, "<IvectorOffset>");
-  WriteBasicType(os, binary, ivector_offset_);
+  WriteBasicType(os, binary, prior_offset_);
   WriteToken(os, binary, "</IvectorExtractor>");
 }
 
@@ -588,9 +584,42 @@ void IvectorExtractor::Read(std::istream &is, bool binary) {
   for (int32 i = 0; i < size; i++)
     Sigma_inv_[i].Read(is, binary);
   ExpectToken(is, binary, "<IvectorOffset>");
-  ReadBasicType(is, binary, &ivector_offset_);
+  ReadBasicType(is, binary, &prior_offset_);
   ExpectToken(is, binary, "</IvectorExtractor>");
   ComputeDerivedVars();
+}
+
+
+void IvectorExtractorUtteranceStats::AccStats(
+    const MatrixBase<BaseFloat> &feats,
+    const Posterior &post) {
+  typedef std::vector<std::pair<int32, BaseFloat> > VecType;  
+  int32 num_frames = feats.NumRows(),
+      num_gauss = X_.NumRows(),
+      feat_dim = feats.NumCols();
+  KALDI_ASSERT(X_.NumCols() == feat_dim);
+  KALDI_ASSERT(feats.NumRows() == static_cast<int32>(post.size()));
+  bool update_variance = (!S_.empty());
+  SpMatrix<double> outer_prod(feat_dim);
+  for (int32 t = 0; t < num_frames; t++) {
+    SubVector<BaseFloat> frame(feats, t);
+    const VecType &this_post(post[t]);
+    if (update_variance) {
+      outer_prod.SetZero();
+      outer_prod.AddVec2(1.0, frame);
+    }
+    for (VecType::const_iterator iter = this_post.begin();
+         iter != this_post.end(); ++iter) {
+      int32 i = iter->first; // Gaussian index.
+      KALDI_ASSERT(i >= 0 && i < num_gauss &&
+                   "Out-of-range Gaussian (mismatched posteriors?)");
+      double weight = iter->second;
+      gamma_(i) += weight;
+      X_.Row(i).AddVec(weight, frame);
+      if (update_variance)
+        S_[i].AddSp(weight, outer_prod);
+    }
+  }
 }
 
 
@@ -638,11 +667,11 @@ void IvectorExtractorStats::CommitStatsForM(
   gamma_Y_lock_.Lock();
 
   // We do the occupation stats here also.
-  gamma_.AddVec(1.0, utt_stats.gamma);
+  gamma_.AddVec(1.0, utt_stats.gamma_);
   
   // Stats for the linear term in M:
   for  (int32 i = 0; i < extractor.NumGauss(); i++) {
-    Y_[i].AddVecVec(1.0, utt_stats.X.Row(i),
+    Y_[i].AddVecVec(1.0, utt_stats.X_.Row(i),
                     Vector<double>(ivec_mean));
   }
   gamma_Y_lock_.Unlock();
@@ -657,7 +686,7 @@ void IvectorExtractorStats::CommitStatsForM(
     FlushCache();
     R_cache_lock_.Lock();    
   }
-  R_gamma_cache_.Row(R_num_cached_).CopyFromVec(utt_stats.gamma);
+  R_gamma_cache_.Row(R_num_cached_).CopyFromVec(utt_stats.gamma_);
   int32 ivector_dim = ivec_mean.Dim();
   SubVector<double> ivec_scatter_vec(ivec_scatter.Data(),
                                      ivector_dim * (ivector_dim + 1) / 2);
@@ -699,7 +728,7 @@ void IvectorExtractorStats::CommitStatsForSigma(
   // take into account some other terms relating to the model means and their
   // correlation with the data.
   for (int32 i = 0; i < extractor.NumGauss(); i++)
-    S_[i].AddSp(1.0, utt_stats.S[i]);
+    S_[i].AddSp(1.0, utt_stats.S_[i]);
   variance_stats_lock_.Unlock();
 }
 
@@ -722,9 +751,9 @@ void IvectorExtractorStats::CommitStatsForWPoint(
   
   Vector<double> linear_coeff(num_gauss);
   Vector<double> quadratic_coeff(num_gauss);
-  double gamma = utt_stats.gamma.Sum();
+  double gamma = utt_stats.gamma_.Sum();
   for (int32 i = 0; i < num_gauss; i++) {
-    double gamma_i = utt_stats.gamma(i);
+    double gamma_i = utt_stats.gamma_(i);
     double max_term = std::max(gamma_i, gamma * w(i));
     linear_coeff(i) = gamma_i - gamma * w(i) + max_term * logw_unnorm(i);
     quadratic_coeff(i) = max_term;
@@ -740,7 +769,6 @@ void IvectorExtractorStats::CommitStatsForWPoint(
   Q_.AddVecVec(weight, quadratic_coeff, outer_prod_vec);
   weight_stats_lock_.Unlock();
 }
-
 
 void IvectorExtractorStats::CommitStatsForW(
     const IvectorExtractor &extractor,
@@ -859,7 +887,7 @@ void IvectorExtractorStats::AccStatsForUtterance(
   IvectorExtractorUtteranceStats utt_stats(num_gauss, feat_dim,
                                            update_variance);
 
-  extractor.GetStats(feats, post, &utt_stats);
+  utt_stats.AccStats(feats, post);
   
   CommitStatsForUtterance(extractor, utt_stats);
 }
@@ -1244,7 +1272,7 @@ double IvectorExtractorStats::UpdateWeights(
 }
 
 
-double IvectorExtractorStats::PriorDiagnostics(double old_ivector_offset) const {
+double IvectorExtractorStats::PriorDiagnostics(double old_prior_offset) const {
   // The iVectors had a centered covariance "covar"; we want to figure out
   // the objective-function change from rescaling.  It's as if we were
   // formerly modeling "covar" with the unit matrix, and we're now modeling
@@ -1262,7 +1290,7 @@ double IvectorExtractorStats::PriorDiagnostics(double old_ivector_offset) const 
   
   // Now work out the offset from the old prior's mean.
   Vector<double> mean_offset(sum);
-  mean_offset(0) -= old_ivector_offset;
+  mean_offset(0) -= old_prior_offset;
 
   SpMatrix<double> old_covar(covar); // the covariance around the old mean.
   old_covar.AddVec2(1.0, mean_offset);
@@ -1276,10 +1304,12 @@ double IvectorExtractorStats::PriorDiagnostics(double old_ivector_offset) const 
       like_change_per_frame = like_change * num_ivectors_ / gamma_.Sum();
 
   KALDI_LOG << "Overall auxf improvement from prior is " << like_change_per_frame
-            << ", or " << like_change << " per iVector.";
+            << " per frame, or " << like_change << " per iVector.";
   return like_change_per_frame; // we'll be adding this to other per-frame
                                 // quantities.
 }
+
+
 
 double IvectorExtractorStats::UpdatePrior(
     const IvectorExtractorEstimationOptions &opts,
@@ -1369,7 +1399,7 @@ double IvectorExtractorStats::UpdatePrior(
   // (the x > 0 part isn't really necessary, it's just nice to know.)
   KALDI_ASSERT(ApproxEqual(sum_vproj(0), sum_vproj.Norm(2.0)));
 
-  double ans = PriorDiagnostics(extractor->ivector_offset_);
+  double ans = PriorDiagnostics(extractor->prior_offset_);
   
   extractor->TransformIvectors(V, sum_vproj(0));
 
@@ -1385,6 +1415,59 @@ IvectorExtractorStats::IvectorExtractorStats (
     Q_(other.Q_), G_(other.G_), S_(other.S_), num_ivectors_(other.num_ivectors_),
     ivector_sum_(other.ivector_sum_), ivector_scatter_(other.ivector_scatter_) {
 }
+
+
+OnlineIvectorEstimationStats::OnlineIvectorEstimationStats(int32 ivector_dim,
+                                                           BaseFloat prior_offset):
+    prior_offset_(prior_offset), num_frames_(0.0),
+    quadratic_term_(ivector_dim), linear_term_(ivector_dim) {
+  linear_term_(0) += prior_offset;
+  
+  quadratic_term_.AddToDiag(1.0);
+}
+
+void OnlineIvectorEstimationStats::GetIvector(
+    VectorBase<double> *ivector) const {
+  KALDI_ASSERT(ivector != NULL && ivector->Dim() ==
+               this->IvectorDim());
+  
+  if (num_frames_ > 0.0) {
+    // For now we invert the SpMatrix; later we'll replace this with more
+    // efficient code.
+    SpMatrix<double> quadratic_inv(quadratic_term_);
+    quadratic_inv.Invert();
+    ivector->AddSpVec(1.0, quadratic_inv, linear_term_, 0.0);
+  } else {
+    // Use 'default' value.
+    ivector->SetZero();
+    (*ivector)(0) = prior_offset_;
+  }  
+  KALDI_VLOG(3) << "Objective function improvement from estimating the "
+                << "iVector (vs. default value) is "
+                << (Objf(*ivector) - DefaultObjf());
+}
+
+double OnlineIvectorEstimationStats::Objf(
+    const VectorBase<double> &ivector) const {
+  if (num_frames_ == 0.0) {
+    return 0.0;
+  } else {
+    return (1.0 / num_frames_) * (-0.5 * VecSpVec(ivector, quadratic_term_, 
+                                                  ivector)
+                                  + VecVec(ivector, linear_term_));
+  }
+}
+
+double OnlineIvectorEstimationStats::DefaultObjf() const {
+  if (num_frames_ == 0.0) {
+    return 0.0;
+  } else {
+    double x = prior_offset_;
+    return (1.0 / num_frames_) * (-0.5 * quadratic_term_(0, 0) * x * x
+                                  + x * linear_term_(0));
+  }
+}
+
 
 
 } // namespace kaldi
