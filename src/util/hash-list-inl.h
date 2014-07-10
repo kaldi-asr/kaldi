@@ -113,7 +113,9 @@ HashList<I, T>::~HashList() {
   }
   if (num_in_list != num_allocated) {
     KALDI_WARN << "Possible memory leak: " << num_in_list
-               << " != " << num_allocated;
+               << " != " << num_allocated
+               << ": you might have forgotten to call Delete on "
+               << "some Elems";
   }
 }
 

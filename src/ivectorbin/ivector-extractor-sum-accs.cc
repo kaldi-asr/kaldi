@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 
     std::string stats_wxfilename = po.GetArg(po.NumArgs());
 
-    IvectorStats stats;
+    IvectorExtractorStats stats;
 
     if (parallel) {
       std::vector<kaldi::Input*> inputs(po.NumArgs() - 1);

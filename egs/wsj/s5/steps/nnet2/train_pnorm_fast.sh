@@ -26,8 +26,6 @@ num_iters_final=20 # Maximum number of final iterations to give to the
 initial_learning_rate=0.04
 final_learning_rate=0.004
 bias_stddev=0.5
-softmax_learning_rate_factor=1.0 # In the default setting keep the same learning
-                                 # rate for the final layer.
 pnorm_input_dim=3000 
 pnorm_output_dim=300
 first_component_power=1.0  # could set this to 0.5, sometimes seems to improve results.
@@ -316,13 +314,13 @@ while [ $x -lt $num_iters ]; do
       # function), and the smaller minibatch size will help to keep
       # the update stable.
       this_minibatch_size=$[$minibatch_size/2];
-      this_num_jobs_nnet=1
+      do_average=false
     else
       this_minibatch_size=$minibatch_size
-      this_num_jobs_nnet=$num_jobs_nnet
+      do_average=true
     fi
     
-    $cmd $parallel_opts JOB=1:$this_num_jobs_nnet $dir/log/train.$x.JOB.log \
+    $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
       nnet-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x \
       ark:$egs_dir/egs.JOB.$[$x%$iters_per_epoch].ark ark:- \| \
        nnet-train$train_suffix \
@@ -331,27 +329,26 @@ while [ $x -lt $num_iters ]; do
       || exit 1;
 
     nnets_list=
-    for n in `seq 1 $this_num_jobs_nnet`; do
+    for n in `seq 1 $num_jobs_nnet`; do
       nnets_list="$nnets_list $dir/$[$x+1].$n.mdl"
     done
 
     learning_rate=`perl -e '($x,$n,$i,$f)=@ARGV; print ($x >= $n ? $f : $i*exp($x*log($f/$i)/$n));' $[$x+1] $num_iters_reduce $initial_learning_rate $final_learning_rate`;
-    softmax_learning_rate=`perl -e "print $learning_rate * $softmax_learning_rate_factor;"`;
-    nnet-am-info $dir/$[$x+1].1.mdl > $dir/foo  2>/dev/null || exit 1
-    nu=`cat $dir/foo | grep num-updatable-components | awk '{print $2}'`
-    na=`cat $dir/foo | grep -v Fixed | grep AffineComponent | wc -l` 
-    # na is number of last updatable AffineComponent layer [one-based, counting only
-    # updatable components.]
-    lr_string="$learning_rate"
-    for n in `seq 2 $nu`; do 
-      if [ $n -eq $na ] || [ $n -eq $[$na-1] ]; then lr=$softmax_learning_rate;
-      else lr=$learning_rate; fi
-      lr_string="$lr_string:$lr"
-    done
 
-    $cmd $dir/log/average.$x.log \
-      nnet-am-average $nnets_list - \| \
-      nnet-am-copy --learning-rates=$lr_string - $dir/$[$x+1].mdl || exit 1;
+    if $do_average; then
+      $cmd $dir/log/average.$x.log \
+        nnet-am-average $nnets_list - \| \
+        nnet-am-copy --learning-rate=$learning_rate - $dir/$[$x+1].mdl || exit 1;
+    else
+      n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
+          $fn = sprintf($pat,$n); open(F, "<$fn") || die "Error opening log file $fn";
+          undef $logprob; while (<F>) { if (m/log-prob-per-frame=(\S+)/) { $logprob=$1; } }
+          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob; 
+          $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
+      [ -z "$n" ] && echo "Error getting best model" && exit 1;
+      $cmd $dir/log/select.$x.log \
+        nnet-am-copy --learning-rate=$learning_rate $dir/$[$x+1].$n.mdl $dir/$[$x+1].mdl || exit 1;
+    fi
 
     if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
       # mix up.

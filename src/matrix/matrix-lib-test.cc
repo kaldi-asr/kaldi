@@ -4,7 +4,7 @@
 //                       Ondrej Glembek;  Saarland University (Author: Arnab Ghoshal);
 //                       Go Vivace Inc.;  Yanmin Qian;  Jan Silovsky;
 //                       Johns Hopkins University (Author: Daniel Povey);
-//                       Haihua Xu
+//                       Haihua Xu; Wei Shi
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -3264,6 +3264,7 @@ template<typename Real> static void UnitTestSplitRadixComplexFft() {
     MatrixIndexT N = 1 << logn;
 
     MatrixIndexT twoN = 2*N;
+    std::vector<Real> temp_buffer;
     SplitRadixComplexFft<Real> srfft(N);
     for (MatrixIndexT p = 0; p < 3; p++) {
       Vector<Real> v(twoN), w_base(twoN), w_alg(twoN), x_base(twoN), x_alg(twoN);
@@ -3272,7 +3273,11 @@ template<typename Real> static void UnitTestSplitRadixComplexFft() {
 
       if (N< 100) ComplexFt(v, &w_base, true);
       w_alg.CopyFromVec(v);
-      srfft.Compute(w_alg.Data(), true);
+
+      if (rand() % 2 == 0)
+        srfft.Compute(w_alg.Data(), true);
+      else
+        srfft.Compute(w_alg.Data(), true, &temp_buffer);
 
       if (N< 100) AssertEqual(w_base, w_alg, 0.01*N);
 
@@ -3432,13 +3437,18 @@ template<typename Real> static void UnitTestSplitRadixRealFft() {
         N = 1 << logn;
 
     SplitRadixRealFft<Real> srfft(N);
+    std::vector<Real> temp_buffer;    
     for (MatrixIndexT q = 0; q < 3; q++) {
       Vector<Real> v(N), w(N), x(N), y(N);
       InitRand(&v);
       w.CopyFromVec(v);
       RealFftInefficient(&w, true);
       y.CopyFromVec(v);
-      srfft.Compute(y.Data(), true);  // test efficient one.
+      if (rand() % 2 == 0)
+        srfft.Compute(y.Data(), true);
+      else
+        srfft.Compute(y.Data(), true, &temp_buffer);
+      
       // KALDI_LOG <<"v = "<<v;
       // KALDI_LOG << "Inefficient real fft of v is: "<< w;
       // KALDI_LOG << "Efficient real fft of v is: "<< y;
@@ -4121,6 +4131,34 @@ static void UnitTestTopEigs() {
   }
 }
 
+template<typename Real> static void UnitTestTriVecSolver() {
+  for (MatrixIndexT iter = 0; iter < 100; iter++) {
+    int32 dim = 1 + rand() % 20;
+    Vector<Real> b(dim);
+    b.SetRandn();
+    TpMatrix<Real> T(dim);
+    T.SetRandn();
+
+    bool bad = false;
+    for (int32 i = 0; i < dim; i++) {
+      if (fabs(T(i, i)) < 0.2)
+        bad = true;
+    }
+    if (bad) {
+      // Test may fail due to almost-singular matrix.
+      continue;
+    }
+    
+    Vector<Real> x(b);
+    MatrixTransposeType trans = (iter % 2 == 0 ? kTrans : kNoTrans);
+    x.Solve(T, trans);  // solve for T x = b
+    Vector<Real> b2(dim);
+    b2.AddTpVec((Real)1.0, T, trans, x, (Real)0.0);
+    KALDI_LOG << "b is " << b << ", b2 is " << b2;
+    AssertEqual(b, b2, 0.01);
+  }
+}
+
 template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestTridiagonalize<Real>();
   UnitTestTridiagonalizeAndQr<Real>();  
@@ -4258,6 +4296,8 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   // The next one is slow.  The upshot is that Eig is up to ten times faster
   // than SVD. 
   // UnitTestSvdSpeed<Real>();
+  KALDI_LOG << " Point K";
+  UnitTestTriVecSolver<Real>();
 }
 
 

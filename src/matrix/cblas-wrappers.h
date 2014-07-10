@@ -1,7 +1,7 @@
 // matrix/cblas-wrappers.h
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey);
-//                 Haihua Xu
+//                 Haihua Xu; Wei Shi
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -104,6 +104,18 @@ inline void cblas_Xtpmv(MatrixTransposeType trans, const float *Mdata,
 inline void cblas_Xtpmv(MatrixTransposeType trans, const double *Mdata,
                         const int num_rows, double *y, const int y_inc) {
   cblas_dtpmv(CblasRowMajor, CblasLower, static_cast<CBLAS_TRANSPOSE>(trans),
+              CblasNonUnit, num_rows, Mdata, y, y_inc);
+}
+
+
+inline void cblas_Xtpsv(MatrixTransposeType trans, const float *Mdata,
+                        const int num_rows, float *y, const int y_inc) {
+  cblas_stpsv(CblasRowMajor, CblasLower, static_cast<CBLAS_TRANSPOSE>(trans),
+              CblasNonUnit, num_rows, Mdata, y, y_inc);
+}
+inline void cblas_Xtpsv(MatrixTransposeType trans, const double *Mdata,
+                        const int num_rows, double *y, const int y_inc) {
+  cblas_dtpsv(CblasRowMajor, CblasLower, static_cast<CBLAS_TRANSPOSE>(trans),
               CblasNonUnit, num_rows, Mdata, y, y_inc);
 }
 

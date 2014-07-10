@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2013   (Authors: Bagher BabaAli, Daniel Povey, Arnab Ghoshal)
+#           2014   Brno University of Technology (Author: Karel Vesely)
 # Apache 2.0.
 
 if [ $# -ne 1 ]; then
@@ -66,7 +67,6 @@ for x in train dev test; do
   # First, find the list of audio files (use only si & sx utterances).
   # Note: train & test sets are under different directories, but doing find on 
   # both and grepping for the speakers will work correctly.
-
   find $*/{$train_dir,$test_dir} -not \( -iname 'SA*' \) -iname '*.WAV' \
     | grep -f $tmpdir/${x}_spk > ${x}_sph.flist
 
@@ -91,17 +91,38 @@ for x in train dev test; do
   paste $tmpdir/${x}_phn.uttids $tmpdir/${x}_phn.trans \
     | sort -k1,1 > ${x}.trans
 
-# Do normalization steps. 
-  cat ${x}.trans | $local/timit_norm_trans.pl -i - -m $conf/phones.60-48-39.map -to 39 | sort > $x.txt || exit 1;
+  # Do normalization steps. 
+  cat ${x}.trans | $local/timit_norm_trans.pl -i - -m $conf/phones.60-48-39.map -to 48 | sort > $x.text || exit 1;
 
+  # Create wav.scp
   awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' < ${x}_sph.scp > ${x}_wav.scp
 
-# Make the utt2spk and spk2utt files.
-
+  # Make the utt2spk and spk2utt files.
   cut -f1 -d'_'  $x.uttids | paste -d' ' $x.uttids - > $x.utt2spk 
   cat $x.utt2spk | $utils/utt2spk_to_spk2utt.pl > $x.spk2utt || exit 1;
 
+  # Prepare gender mapping
   cat $x.spk2utt | awk '{print $1}' | perl -ane 'chop; m:^.:; $g = lc($&); print "$_ $g\n";' > $x.spk2gender
+
+  # Prepare STM file for sclite:
+  wav-to-duration scp:${x}_wav.scp ark,t:${x}_dur.ark || exit 1
+  awk -v dur=${x}_dur.ark \
+  'BEGIN{ 
+     while(getline < dur) { durH[$1]=$2; } 
+     print ";; LABEL \"O\" \"Overall\" \"Overall\"";
+     print ";; LABEL \"F\" \"Female\" \"Female speakers\"";
+     print ";; LABEL \"M\" \"Male\" \"Male speakers\""; 
+   } 
+   { wav=$1; spk=gensub(/_.*/,"",1,wav); $1=""; ref=$0;
+     gender=(substr(spk,0,1) == "f" ? "F" : "M");
+     printf("%s 1 %s 0.0 %f <O,%s> %s\n", wav, spk, durH[wav], gender, ref);
+   }
+  ' ${x}.text >${x}.stm || exit 1
+
+  # Create dummy GLM file for sclite:
+  echo ';; empty.glm
+  [FAKE]     =>  %HESITATION     / [ ] __ [ ] ;; hesitation token
+  ' > ${x}.glm
 done
 
 echo "Data preparation succeeded"

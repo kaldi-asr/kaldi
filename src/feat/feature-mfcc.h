@@ -93,15 +93,29 @@ class Mfcc {
   /// waveform that it would be necessary to include in the next call to Compute
   /// for the same utterance.  It is not exactly the un-processed part (it may
   /// have been partly processed), it's the start of the next window that we
-  /// have not already processed.  Will throw exception on failure (e.g. if file
-  /// too short for even one frame).
+  /// have not already processed.
   void Compute(const VectorBase<BaseFloat> &wave,
                BaseFloat vtln_warp,
                Matrix<BaseFloat> *output,
                Vector<BaseFloat> *wave_remainder = NULL);
 
+  /// Const version of Compute()
+  void Compute(const VectorBase<BaseFloat> &wave,
+               BaseFloat vtln_warp,
+               Matrix<BaseFloat> *output,
+               Vector<BaseFloat> *wave_remainder = NULL) const;
+  
  private:
+  void ComputeInternal(const VectorBase<BaseFloat> &wave,
+                       const MelBanks &mel_banks,
+                       Matrix<BaseFloat> *output,
+                       Vector<BaseFloat> *wave_remainder = NULL) const;
+  
   const MelBanks *GetMelBanks(BaseFloat vtln_warp);
+
+  const MelBanks *GetMelBanks(BaseFloat vtln_warp,
+                              bool *must_delete) const;
+  
   MfccOptions opts_;
   Vector<BaseFloat> lifter_coeffs_;
   Matrix<BaseFloat> dct_matrix_;  // matrix we left-multiply by to perform DCT.

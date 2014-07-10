@@ -1,6 +1,16 @@
 #!/bin/bash
 
-# Copyright 2013  Bagher BabaAli
+#
+# Copyright 2013 Bagher BabaAli,
+#           2014 Brno University of Technology (Author: Karel Vesely)
+#
+# TIMIT, description of the database:
+# http://perso.limsi.fr/lamel/TIMIT_NISTIR4930.pdf
+#
+# Hon and Lee paper on TIMIT, 1988, introduces mapping to 48 training phonemes, 
+# then re-mapping to 39 phonemes for scoring:
+# http://repository.cmu.edu/cgi/viewcontent.cgi?article=2768&context=compsci
+#
 
 . ./cmd.sh 
 [ -f path.sh ] && . ./path.sh
@@ -24,9 +34,10 @@ echo ===========================================================================
 echo "                Data & Lexicon & Language Preparation                     "
 echo ============================================================================
 
-timit=/export/corpora5/LDC/LDC93S1/timit/TIMIT
+#timit=/export/corpora5/LDC/LDC93S1/timit/TIMIT # @JHU
+timit=/mnt/matylda2/data/TIMIT/timit # @BUT
 
-local/timit_data_prep.sh $timit
+local/timit_data_prep.sh $timit || exit 1
 
 local/timit_prepare_dict.sh
 
@@ -34,6 +45,7 @@ local/timit_prepare_dict.sh
 # default, but this is probably not appropriate for this setup, since silence
 # appears also as a word in the dictionary and is scored.  We could stop this
 # by using the option --sil-prob 0.0, but apparently this makes results worse.
+# (-> In sclite scoring the deletions of 'sil' are not scored as errors)
 utils/prepare_lang.sh --position-dependent-phones false --num-sil-states 3 \
  data/local/dict "sil" data/local/lang_tmp data/lang
 
@@ -131,6 +143,8 @@ echo ===========================================================================
 steps/align_fmllr.sh --nj "$train_nj" --cmd "$train_cmd" \
  data/train data/lang exp/tri3 exp/tri3_ali
 
+#exit 0 # From this point you can run DNN : local/run_dnn.sh
+
 steps/train_ubm.sh --cmd "$train_cmd" \
  $numGaussUBM data/train data/lang exp/tri3_ali exp/ubm4
 
@@ -152,17 +166,17 @@ echo "                    MMI + SGMM2 Training & Decoding                       
 echo ============================================================================
 
 steps/align_sgmm2.sh --nj "$train_nj" --cmd "$train_cmd" \
- --transform-dir exp/tri3_ali --use-graphs true --use-gselect true data/train \
- data/lang exp/sgmm2_4 exp/sgmm2_4_ali
+ --transform-dir exp/tri3_ali --use-graphs true --use-gselect true \
+ data/train data/lang exp/sgmm2_4 exp/sgmm2_4_ali
 
-steps/make_denlats_sgmm2.sh --nj "$train_nj" --sub-split "$train_nj" --cmd "$decode_cmd"\
- --transform-dir exp/tri3_ali data/train data/lang exp/sgmm2_4_ali \
- exp/sgmm2_4_denlats
+steps/make_denlats_sgmm2.sh --nj "$train_nj" --sub-split "$train_nj" \
+ --acwt 0.2 --lattice-beam 10.0 --beam 18.0 \
+ --cmd "$decode_cmd" --transform-dir exp/tri3_ali \
+ data/train data/lang exp/sgmm2_4_ali exp/sgmm2_4_denlats
 
-steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" \
+steps/train_mmi_sgmm2.sh --acwt 0.2 --cmd "$decode_cmd" \
  --transform-dir exp/tri3_ali --boost 0.1 --drop-frames true \
- data/train data/lang exp/sgmm2_4_ali exp/sgmm2_4_denlats \
- exp/sgmm2_4_mmi_b0.1
+ data/train data/lang exp/sgmm2_4_ali exp/sgmm2_4_denlats exp/sgmm2_4_mmi_b0.1
 
 for iter in 1 2 3 4; do
   steps/decode_sgmm2_rescore.sh --cmd "$decode_cmd" --iter $iter \
@@ -212,14 +226,18 @@ for iter in 1 2 3 4; do
    exp/sgmm2_4_mmi_b0.1/decode_test_it$iter exp/combine_2/decode_test_it$iter
 done
 
+echo ============================================================================
+echo "               DNN Hybrid Training & Decoding (Karel's recipe)            "
+echo ============================================================================
+
+local/run_dnn.sh
 
 echo ============================================================================
 echo "                    Getting Results [see RESULTS file]                    "
 echo ============================================================================
 
-for x in exp/*/decode*; do
-  [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh
-done 
+bash RESULTS dev
+bash RESULTS test
 
 echo ============================================================================
 echo "Finished successfully on" `date`
