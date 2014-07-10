@@ -81,6 +81,26 @@ awk '{print $1}' $dir/segments | \
 
 sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 
+#check and correct the case when segment timings for given speaker overlap themself 
+#(important for simulatenous asclite scoring to proceed).
+#There is actually only one such case for devset and automatic segmentetions
+join $dir/utt2spkm $dir/segments | \
+   perl -ne '{BEGIN{$pu=""; $pt=0.0;} split;
+           if ($pu eq $_[1] && $pt > $_[3]) {
+             print "$_[0] $_[2] $_[3] $_[4]>$_[0] $_[2] $pt $_[4]\n"
+           }
+           $pu=$_[1]; $pt=$_[4]; 
+         }' > $dir/segments_to_fix
+if [ `cat $dir/segments_to_fix | wc -l` -gt 0 ]; then
+  echo "$0. Applying following fixes to segments"
+  cat $dir/segments_to_fix
+  while read line; do
+     p1=`echo $line | awk -F'>' '{print $1}'`
+     p2=`echo $line | awk -F'>' '{print $2}'`
+     sed -ir "s!$p1!$p2!" $dir/segments
+  done < $dir/segments_to_fix
+fi
+
 # Copy stuff into its final locations
 fdir=data/ihm/$SET
 mkdir -p $fdir

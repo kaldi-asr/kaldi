@@ -20,7 +20,7 @@ FISHER_TRANS=`pwd`/eddie_data/lm/data/fisher
 norm_vars=false
 
 #1)
-<<"C"
+
 #in case you want download AMI corpus, uncomment this line
 #you need arount 130GB of free space to get whole data ihm+mdm
 local/ami_download.sh ihm $AMI_DIR || exit 1;
@@ -40,10 +40,11 @@ local/ami_prepare_dict.sh
 utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
 local/ami_train_lms.sh --fisher $FISHER_TRANS data/ihm/train/text data/ihm/dev/text data/local/dict/lexicon.txt data/local/lm
-C
+
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
-<<"C"
+nj=16
+
 prune-lm --threshold=1e-7 data/local/lm/$final_lm.gz /dev/stdout | \
    gzip -c > data/local/lm/$LM.gz
 
@@ -156,11 +157,11 @@ for lm_suffix in $LM; do
     steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
       $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${lm_suffix} 
 
-    steps/decode_fmllr.sh --nj $nj --cmd "$decode_fmllr_cmd" --config conf/decode.conf \
+    steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
       $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${lm_suffix} 
   ) 
 done
-C
+exit;
 # MMI training starting from the LDA+MLLT+SAT systems
 steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
   data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_ali || exit 1
@@ -190,7 +191,7 @@ for lm_suffix in $LM; do
     
     i=3 #simply assummed
     decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_eval_${i}.mdl_${lm_suffix}
-    steps/decode.sh --nj $nj --cmd "$decode_cmd" --norm-vars $norm_vars --config conf/decode.config \
+    steps/decode.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.config \
       --transform-dir exp/$mic/tri4a/decode_eval_${lm_suffix} --iter $i \
       $graph_dir data/$mic/eval $decode_dir 
   )

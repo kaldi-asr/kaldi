@@ -1,6 +1,6 @@
 
 
-#Beamforming of 8 microphones
+#Beamforming of 8 microphones, WER scores with up to 4 overlapping speakers
 
 dev
 exp/mdm8/tri2a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.dtl:Percent Total Error       =   58.8%   (55568)
