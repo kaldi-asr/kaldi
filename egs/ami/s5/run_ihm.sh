@@ -191,7 +191,7 @@ for lm_suffix in $LM; do
     
     i=3 #simply assummed
     decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_eval_${i}.mdl_${lm_suffix}
-    steps/decode.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.config \
+    steps/decode.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
       --transform-dir exp/$mic/tri4a/decode_eval_${lm_suffix} --iter $i \
       $graph_dir data/$mic/eval $decode_dir 
   )
