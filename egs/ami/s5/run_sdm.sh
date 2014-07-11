@@ -78,10 +78,10 @@ for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
     $highmem_cmd $graph_dir/mkgraph.log \
       utils/mkgraph.sh data/lang_${lm_suffix} exp/$mic/tri2a $graph_dir
    
-    steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.config \
+    steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.conf \
       $graph_dir data/$mic/dev exp/$mic/tri2a/decode_dev_${lm_suffix} 
    
-    steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.config \
+    steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.conf \
       $graph_dir data/$mic/eval exp/$mic/tri2a/decode_eval_${lm_suffix} 
   ) 
  done
@@ -104,10 +104,10 @@ for lm_suffix in $LM; do
     $highmem_cmd $graph_dir/mkgraph.log \
       utils/mkgraph.sh data/lang_${lm_suffix} exp/$mic/tri3a $graph_dir
 
-    steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.config \
+    steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.conf \
       $graph_dir data/$mic/dev exp/$mic/tri3a/decode_dev_${lm_suffix} 
 
-    steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.config \
+    steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.conf \
       $graph_dir data/$mic/eval exp/$mic/tri3a/decode_eval_${lm_suffix} 
   ) 
 done
@@ -135,13 +135,13 @@ for lm_suffix in $LM; do
 
     for i in `seq 1 4`; do
       decode_dir=exp/$mic/tri3a_mmi_b0.1/decode_dev_${i}.mdl_${lm_suffix}
-      steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --iter $i --config conf/decode.config \
+      steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --iter $i --config conf/decode.conf \
         $graph_dir data/$mic/dev $decode_dir
     done
 
     i=3 #simply assummed
     decode_dir=exp/$mic/tri3a_mmi_b0.1/decode_eval_${i}.mdl_${lm_suffix}
-    steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --iter $i --config conf/decode.config \
+    steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --iter $i --config conf/decode.conf \
       $graph_dir data/$mic/eval $decode_dir
   )
 done
@@ -163,10 +163,10 @@ for lm_suffix in $LM; do
     $highmem_cmd $graph_dir/mkgraph.log \
       utils/mkgraph.sh data/lang_${lm_suffix} exp/$mic/tri4a $graph_dir
 
-    steps/decode_fmllr.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.config \
+    steps/decode_fmllr.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.conf \
       $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${lm_suffix} 
 
-    steps/decode_fmllr.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.config \
+    steps/decode_fmllr.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.conf \
       $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${lm_suffix} 
   ) 
 done
@@ -177,7 +177,7 @@ exit ;
 steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
   data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_ali || exit 1
 
-steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.config \
+steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
   --transform-dir exp/$mic/tri4a_ali \
   data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_denlats  || exit 1;
 
@@ -195,7 +195,7 @@ for lm_suffix in rt09_tgpr; do
     
     for i in `seq 1 4`; do
       decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_dev_${i}.mdl_${lm_suffix}
-      steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.config \
+      steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.conf \
         --transform-dir exp/$mic/tri4a/decode_dev_${lm_suffix} \
         $graph_dir data/$mic/dev $decode_dir &
     done
@@ -203,7 +203,7 @@ for lm_suffix in rt09_tgpr; do
     wait;
     i=3 #simply assummed
     decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_eval_${i}.mdl_${lm_suffix}
-    steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.config \
+    steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.conf \
       --transform-dir exp/$mic/tri4a/decode_eval_${lm_suffix} \
       $graph_dir data/$mic/eval $decode_dir &
   )&
