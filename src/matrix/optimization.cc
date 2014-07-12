@@ -438,64 +438,58 @@ OptimizeLbfgs<Real>::GetValue(Real *objf_value) const {
 //  k = 0
 //
 //  while r_k != 0
-//    \alpha_k = (r_k^T  r_k)/(p_k^T  A  p_k)
+//    \alpha_k = (r_k^T  r_k) / (p_k^T  A  p_k)
 //    x_{k+1} = x_k + \alpha_k  p_k;
 //    r_{k+1} = r_k + \alpha_k  A  p_k
-//    \beta_{k+1} = \frac{r_{k+1}^T  r_{k+1}}{r_k^T r_K}
+//    \beta_{k+1} = \frac{r_{k+1}^T r_{k+1}}{r_k^T r_K}
 //    p_{k+1} = -r_{k+1} + \beta_{k+1} p_k
 //    k = k+1
 //  end
-//
-//  
-//
 
 template<class Real>
-void LinearCgd(const SpMatrix<Real> &A, const VectorBase<Real> &b,
-               VectorBase<Real> *x, Real max_error)  {
+int32 LinearCgd(const LinearCgdOptions &opts,
+                const SpMatrix<Real> &A,
+                const VectorBase<Real> &b,
+                VectorBase<Real> *x) {
   // Initialize the variables
   //
-  int M = A.NumCols();
-  
-  Vector<Real> r_cur(M), p_cur(M), x_cur(M), // Vectors at current iteration
-      r_next(M), p_next(M), x_next(M); // Vectors at next iteration
-  
-  x_cur.CopyFromVec(*x); 
-  r_cur.AddSpVec(1.0, A, x_cur, 0.0);
-  r_cur.AddVec(-1.0, b);
-  p_cur.CopyFromVec(r_cur);
-  p_cur.Scale(-1.0);
+  int32 M = A.NumCols();
+  Real max_error_sq = opts.max_error * opts.max_error;
 
-  BaseFloat r_cur_norm = VecVec(r_cur, r_cur);
+
+  Matrix<Real> storage(3, M);
+  SubVector<Real> r(storage, 0), p(storage, 1), Ap(storage, 2);
+  p.CopyFromVec(b);  
+  p.AddSpVec(-1.0, A, *x, 1.0);  // p_0 = b - A x_0
+  r.AddVec(-1.0, p);  // r_0 = - p_0
   
-  for (int i = 0; i < M; i++) {
-    // Note: we'll break from this loop if we converge sooner.
-    BaseFloat alpha = r_cur_norm / VecSpVec(p_cur, A, p_cur);
-    KALDI_LOG << " r_norm @ " << i << " : " << r_cur_norm;
-    KALDI_LOG << " alpha @ " << i << " : " << alpha;
-    x_next.CopyFromVec(x_cur);
-    x_next.AddVec(alpha, p_cur);
-    
-    r_next.CopyFromVec(r_cur);
-    r_next.AddSpVec(alpha, A, p_cur, 1.0);
-    BaseFloat r_next_norm = VecVec(r_next, r_next);
+  Real r_cur_norm_sq = VecVec(r, r);
+
+  int32 k = 0;
+  for (; k < M && k != opts.max_iters; k++) {
+    // Note: we'll break from this loop if we converge sooner due to
+    // max_error.
+    Ap.AddSpVec(1.0, A, p, 0.0);  // Ap = A p
+    // next line: \alpha_k = (r_k^T  r_k) / (p_k^T  A  p_k)
+    Real alpha = r_cur_norm_sq / VecVec(p, Ap);
+    // next line: x_{k+1} = x_k + \alpha_k  p_k;
+    x->AddVec(alpha, p);
+    // next line: r_{k+1} = r_k + \alpha_k  A  p_k
+    r.AddVec(alpha, Ap);
+    BaseFloat r_next_norm_sq = VecVec(r, r);
+
     // Check if converged
-    if (r_next_norm < max_error)
+    if (r_next_norm_sq < max_error_sq)
       break;
- 
-    BaseFloat beta_next = r_next_norm / r_cur_norm;
-    p_next.CopyFromVec(r_next);
-    p_next.Scale(-1.0);
-    p_next.AddVec(beta_next, p_cur);
 
-    p_cur = p_next;
-    x_cur = x_next;
-    r_cur = r_next;
-    r_cur_norm = r_next_norm;
-
+    // next line: \beta_{k+1} = \frac{r_{k+1}^T r_{k+1}}{r_k^T r_K}
+    Real beta_next = r_next_norm_sq / r_cur_norm_sq;
+    // next lines: p_{k+1} = -r_{k+1} + \beta_{k+1} p_k
+    p.Scale(beta_next);
+    p.AddVec(-1.0, r);
+    r_cur_norm_sq = r_next_norm_sq;
   }
-  
-  x->CopyFromVec(x_next); 
-
+  return k;
 } 
     
 // Instantiate the class for float and double.
@@ -506,11 +500,13 @@ class OptimizeLbfgs<double>;
 
 
 template
-void LinearCgd<float>(const SpMatrix<float> &A, const VectorBase<float> &b,
-                        VectorBase<float> *x, float max_error);
+int32 LinearCgd<float>(const LinearCgdOptions &opts,
+                      const SpMatrix<float> &A, const VectorBase<float> &b,
+                      VectorBase<float> *x);
 
 template
-void LinearCgd<double>(const SpMatrix<double> &A, const VectorBase<double> &b,
-                        VectorBase<double> *x, double max_error);
+int32 LinearCgd<double>(const LinearCgdOptions &opts,
+                       const SpMatrix<double> &A, const VectorBase<double> &b,
+                       VectorBase<double> *x);
 
 } // end namespace kaldi

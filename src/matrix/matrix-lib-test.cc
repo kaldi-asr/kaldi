@@ -3084,24 +3084,48 @@ template<typename Real> static void UnitTestLbfgs() {
 
 
 template<typename Real> static void UnitTestLinearCgd() {
- 
   for (int i = 0; i < 20 ; i++) {
     MatrixIndexT M = 1 + rand() % 20;
     
     SpMatrix<Real> A(M);
     RandPosdefSpMatrix(M, &A);
     Vector<Real> x(M), b(M), b2(M);
+
+    LinearCgdOptions opts;
+    if (rand() % 2 == 0)
+      opts.max_iters = 1 + rand() % 10;
+    if (rand() % 2 == 0)
+      opts.max_error = 1.0;  // note: an absolute, not relative, error.
     
     x.SetRandn();
     
     b.AddSpVec(1.0, A, x, 0.0);
-    Vector<Real> x_e(M);
+    Vector<Real> x_e(M);  // x_e means x_estimated.
     x_e.SetRandn();
-    Real max_error = 10e-8;
-    LinearCgd(A, b, &x_e, max_error);
-
+    
+    int32 iters = LinearCgd(opts, A, b, &x_e);
+    
     b2.AddSpVec(1.0, A, x_e, 0.0);
-    AssertEqual(b, b2);
+
+    Vector<Real> residual_error(b);
+    residual_error.AddVec(-1.0, b2);
+
+    BaseFloat error = residual_error.Norm(2.0);
+
+    if (iters == M) {
+      // should have converged fully.
+      KALDI_ASSERT(error < 0.01 * b.Norm(2.0));
+    } else {
+      BaseFloat wiggle_room = 1.1;
+      if (opts.max_iters >= 0) {
+        KALDI_ASSERT(iters <= opts.max_iters);
+        if (iters < opts.max_iters) {
+          KALDI_ASSERT(error <= wiggle_room * opts.max_error);
+        }
+      } else {
+        KALDI_ASSERT(error <= wiggle_room * opts.max_error);        
+      }
+    }
   }
 }
 

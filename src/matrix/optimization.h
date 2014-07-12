@@ -34,16 +34,28 @@ namespace kaldi {
 /// @addtogroup matrix_optimization
 /// @{
 
+struct LinearCgdOptions {
+  int32 max_iters;  //  Maximum number of iters (if >= 0).
+  BaseFloat max_error;  // Maximum 2-norm of the residual A x - b (convergence
+                        // test)
+
+  LinearCgdOptions(): max_iters(-1), max_error(0.0) { }
+};
+  
 /*
-  This function uses linear conjugate gradient descent to approximately
-  solve the system A x = b.  The value of x at entry corresponds to the
-  "initial" guess of X.   The algorithm continues until the number of iterations
-   equals b.Dim(), or until the 2-norm of (A x - b) is <= max_error, whichever
-   happens sooner.  It is a requirement that A be positive definite.
+  This function uses linear conjugate gradient descent to approximately solve
+  the system A x = b.  The value of x at entry corresponds to the initial guess
+  of x.  The algorithm continues until the number of iterations equals b.Dim(),
+  or until the 2-norm of (A x - b) is <= max_error, or until the number of
+  iterations equals max_iter, whichever happens sooner.  It is a requirement
+  that A be positive definite.
+  It returns the number of iterations that were actually executed (this is
+  useful for testing purposes).
 */
 template<typename Real>
-void LinearCgd(const SpMatrix<Real> &A, const VectorBase<Real> &b,
-               VectorBase<Real> *x, Real max_error);
+int32 LinearCgd(const LinearCgdOptions &opts,
+                const SpMatrix<Real> &A, const VectorBase<Real> &b,
+                VectorBase<Real> *x);
 
 
 
