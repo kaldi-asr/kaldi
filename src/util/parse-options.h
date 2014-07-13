@@ -65,7 +65,7 @@ class ParseOptions : public OptionsItf {
     The options will now get registered as, e.g., --mfcc.frame-shift=10.0
     instead of just --frame-shift=10.0
    */
-  ParseOptions(const std::string &prefix, ParseOptions *other);
+  ParseOptions(const std::string &prefix, OptionsItf *other);
 
   ~ParseOptions() {}
 
@@ -225,7 +225,7 @@ class ParseOptions : public OptionsItf {
   /// These members are not normally used. They are only used when the object
   /// is constructed with a prefix
   std::string prefix_;
-  ParseOptions *other_parser_;
+  OptionsItf *other_parser_;
 };
 
 /// This template is provided for convenience in reading config classes from
@@ -235,7 +235,10 @@ class ParseOptions : public OptionsItf {
 /// ParseOptions object.
 template<class C> void ReadConfigFromFile(const std::string config_filename,
                                           C *c) {
-  ParseOptions po("");
+  std::ostringstream usage_str;
+  usage_str << "Parsing config from "
+            << "from '" << config_filename << "'";
+  ParseOptions po(usage_str.str().c_str());
   c->Register(&po);
   po.ReadConfigFile(config_filename);
 }
