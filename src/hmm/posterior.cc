@@ -212,6 +212,18 @@ void ScalePosterior(BaseFloat scale, Posterior *post) {
   }
 }
 
+BaseFloat TotalPosterior(const Posterior &post) {
+  double sum =  0.0;
+  size_t T = post.size();
+  for (size_t t = 0; t < T; t++) {
+    size_t I = post[t].size();
+    for (size_t i = 0; i < I; i++) {
+      sum += post[t][i].second;
+    }
+  }
+  return sum;
+}
+
 bool PosteriorEntriesAreDisjoint(
     const std::vector<std::pair<int32,BaseFloat> > &post_elem1,
     const std::vector<std::pair<int32,BaseFloat> > &post_elem2) {

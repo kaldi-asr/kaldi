@@ -1,6 +1,6 @@
-// ivectorbin/ivector-extract.cc
+// ivectorbin/ivector-extract-online.cc
 
-// Copyright 2013  Daniel Povey
+// Copyright 2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -48,7 +48,7 @@ class IvectorExtractTask {
                                              need_2nd_order_stats);
       
     utt_stats.AccStats(feats_, posterior_);
-    
+
     ivector_.Resize(extractor_.IvectorDim());
     ivector_(0) = extractor_.PriorOffset();
 
@@ -101,24 +101,34 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Extract iVectors for utterances, using a trained iVector extractor,\n"
-        "and features and Gaussian-level posteriors\n"
-        "Usage:  ivector-extract [options] <model-in> <feature-rspecifier>"
+        "and features and Gaussian-level posteriors.  This version extracts an\n"
+        "iVector every n frames (see the --ivector-period option), by including\n"
+        "all frames up to that point in the utterance.  This is designed to\n"
+        "correspond with what will happen in a streaming decoding scenario;\n"
+        "the iVectors would be used in neural net training.  The iVectors are\n"
+        "output as an archive of matrices, indexed by utterance-id; each row\n"
+        "corresponds to an iVector.\n"
+        "\n"
+        "Usage:  ivector-extract-online [options] <model-in> <feature-rspecifier>"
         "<posteriors-rspecifier> <ivector-wspecifier>\n"
         "e.g.: \n"
-        " fgmm-global-gselect-to-post 1.ubm '$feats' 'ark:gunzip -c gselect.1.gz|' ark:- | \\\n"
-        "  ivector-extract final.ie '$feats' ark,s,cs:- ark,t:ivectors.1.ark\n";
+        " gmm-global-get-post 1.dubm '$feats' ark:- | \\\n"
+        "  ivector-extract-online --ivector-period=10 final.ie '$feats' ark,s,cs:- ark,t:ivectors.1.ark\n";
 
     ParseOptions po(usage);
-    bool compute_objf_change = true;
-    IvectorExtractorStatsOptions stats_opts;
-    TaskSequencerConfig sequencer_config;
-    po.Register("compute-objf-change", &compute_objf_change,
-                "If true, compute the change in objective function from using "
-                "nonzero iVector (a potentially useful diagnostic).  Combine "
-                "with --verbose=2 for per-utterance information");
-    stats_opts.Register(&po);
-    sequencer_config.Register(&po);
-    
+    int32 num_cg_iters = 15;
+    int32 ivector_period = 10;
+    g_num_threads = 8;
+
+    po.Register("num-cg-iters", &num_cg_iters,
+                "Number of iterations of conjugate gradient descent to perform "
+                "each time we re-estimate the iVector.");
+    po.Register("ivector-period", &ivector_period,
+                "Controls how frequently we re-estimate the iVector as we get "
+                "more data.");
+    po.Register("num-threads", &g_num_threads,
+                "Number of threads to use for computing derived variables "
+                "of iVector extractor, at process start-up.");
     po.Read(argc, argv);
     
     if (po.NumArgs() != 4) {
@@ -130,59 +140,66 @@ int main(int argc, char *argv[]) {
         feature_rspecifier = po.GetArg(2),
         posteriors_rspecifier = po.GetArg(3),
         ivectors_wspecifier = po.GetArg(4);
-
-    // g_num_threads affects how ComputeDerivedVars is called when we read the
-    // extractor.
-    g_num_threads = sequencer_config.num_threads; 
+    
     IvectorExtractor extractor;
     ReadKaldiObject(ivector_extractor_rxfilename, &extractor);
-
-    double tot_auxf_change = 0.0;
-    int64 tot_t = 0;
+    
+    double tot_objf_impr = 0.0, tot_t = 0.0;
     int32 num_done = 0, num_err = 0;
     
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
-    BaseFloatVectorWriter ivector_writer(ivectors_wspecifier);
+    BaseFloatMatrixWriter ivector_writer(ivectors_wspecifier);
+    
 
-    {
-      TaskSequencer<IvectorExtractTask> sequencer(sequencer_config);
-      for (; !feature_reader.Done(); feature_reader.Next()) {
-        std::string key = feature_reader.Key();
-        if (!posteriors_reader.HasKey(key)) {
-          KALDI_WARN << "No posteriors for utterance " << key;
-          num_err++;
-          continue;
-        }
-        const Matrix<BaseFloat> &mat = feature_reader.Value();
-        const Posterior &posterior = posteriors_reader.Value(key);
-
-        if (static_cast<int32>(posterior.size()) != mat.NumRows()) {
-          KALDI_WARN << "Size mismatch between posterior " << posterior.size()
-                     << " and features " << mat.NumRows() << " for utterance "
-                     << key;
-          num_err++;
-          continue;
-        }
-
-        double *auxf_ptr = (compute_objf_change ? &tot_auxf_change : NULL );
-
-        sequencer.Run(new IvectorExtractTask(extractor, key, mat, posterior,
-                                             &ivector_writer, auxf_ptr));
-                      
-        tot_t += posterior.size();
-        num_done++;
+    for (; !feature_reader.Done(); feature_reader.Next()) {
+      std::string utt = feature_reader.Key();
+      if (!posteriors_reader.HasKey(utt)) {
+        KALDI_WARN << "No posteriors for utterance " << utt;
+        num_err++;
+        continue;
       }
-      // Destructor of "sequencer" will wait for any remaining tasks.
+      const Matrix<BaseFloat> &feats = feature_reader.Value();
+      const Posterior &posterior = posteriors_reader.Value(utt);
+      
+      if (static_cast<int32>(posterior.size()) != feats.NumRows()) {
+        KALDI_WARN << "Size mismatch between posterior " << posterior.size()
+                   << " and features " << feats.NumRows() << " for utterance "
+                   << utt;
+        num_err++;
+        continue;
+      }
+
+
+      Matrix<BaseFloat> ivectors;      
+      double objf_impr_per_frame;
+      objf_impr_per_frame = EstimateIvectorsOnline(feats, posterior, extractor,
+                                                   ivector_period, num_cg_iters,
+                                                   &ivectors);
+      
+      BaseFloat offset = extractor.PriorOffset();
+      for (int32 i = 0 ; i < ivectors.NumRows(); i++)
+        ivectors(i, 0) -= offset;
+      
+      double tot_post = TotalPosterior(posterior);
+
+      KALDI_VLOG(2) << "For utterance " << utt << " objf impr/frame is "
+                    << objf_impr_per_frame << " per frame, over "
+                    << tot_post << " frames (weighted).";
+
+      ivector_writer.Write(utt, ivectors);
+      
+      tot_t += tot_post;
+      tot_objf_impr += objf_impr_per_frame * tot_post;
+
+      num_done++;
     }
 
-    KALDI_LOG << "Done " << num_done << " files, " << num_err
-              << " with errors.  Total frames " << tot_t;
-
-    if (compute_objf_change)
-      KALDI_LOG << "Overall average objective-function change from estimating "
-                << "ivector was " << (tot_auxf_change / tot_t) << " per frame "
-                << " over " << tot_t << " frames.";
+    KALDI_LOG << "Estimated iVectors for " << num_done << " files, " << num_err
+              << " with errors.";
+    KALDI_LOG << "Average objective-function improvement was "
+              << (tot_objf_impr / tot_t) << " per frame, over "
+              << tot_t << " frames (weighted).";
 
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {

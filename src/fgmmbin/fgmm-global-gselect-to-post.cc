@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
         "a full-covariance GMM, output per-frame posteriors for the selected\n"
         "indices.  Also supports pruning the posteriors if they are below\n"
         "a stated threshold, (and renormalizing the rest to sum to one)\n"
+        "See also: gmm-gselect, fgmm-gselect, gmm-global-gest-post\n"
         "\n"
         "Usage:  fgmm-global-gselect-to-post [options] <model-in> <feature-rspecifier> "
         "<gselect-rspecifier> <post-wspecifier>\n"

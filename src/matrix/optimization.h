@@ -38,8 +38,15 @@ struct LinearCgdOptions {
   int32 max_iters;  //  Maximum number of iters (if >= 0).
   BaseFloat max_error;  // Maximum 2-norm of the residual A x - b (convergence
                         // test)
-
-  LinearCgdOptions(): max_iters(-1), max_error(0.0) { }
+  // Every time the residual 2-norm decreases by this recompute_residual_factor
+  // since the last time it was computed from scratch, recompute it from
+  // scratch.  This helps to keep the computed residual accurate even in the
+  // presence of roundoff.
+  BaseFloat recompute_residual_factor;   
+  
+  LinearCgdOptions(): max_iters(-1),
+                      max_error(0.0),
+                      recompute_residual_factor(0.01) { }
 };
   
 /*

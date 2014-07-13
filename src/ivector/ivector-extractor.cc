@@ -514,6 +514,7 @@ void IvectorExtractor::TransformIvectors(const MatrixBase<double> &T,
   prior_offset_ = new_prior_offset;
 }
 
+
 void OnlineIvectorEstimationStats::AddToStats(
     const IvectorExtractor &extractor,
     const VectorBase<BaseFloat> &feature,
@@ -542,7 +543,6 @@ void OnlineIvectorEstimationStats::AddToStats(
   }
   num_frames_ += tot_weight;
 }
-
 
 
 void IvectorExtractor::Write(std::ostream &os, bool binary) const {
@@ -863,7 +863,6 @@ void IvectorExtractorStats::CheckDims(const IvectorExtractor &extractor) const {
   KALDI_ASSERT(ivector_sum_.Dim() == S);
   KALDI_ASSERT(ivector_scatter_.NumRows() == S);
 }
-
 
 void IvectorExtractorStats::AccStatsForUtterance(
     const IvectorExtractor &extractor,
@@ -1417,26 +1416,22 @@ IvectorExtractorStats::IvectorExtractorStats (
 }
 
 
-OnlineIvectorEstimationStats::OnlineIvectorEstimationStats(int32 ivector_dim,
-                                                           BaseFloat prior_offset):
-    prior_offset_(prior_offset), num_frames_(0.0),
-    quadratic_term_(ivector_dim), linear_term_(ivector_dim) {
-  linear_term_(0) += prior_offset;
-  
-  quadratic_term_.AddToDiag(1.0);
-}
-
 void OnlineIvectorEstimationStats::GetIvector(
+    int32 num_cg_iters,
     VectorBase<double> *ivector) const {
   KALDI_ASSERT(ivector != NULL && ivector->Dim() ==
                this->IvectorDim());
   
   if (num_frames_ > 0.0) {
-    // For now we invert the SpMatrix; later we'll replace this with more
-    // efficient code.
-    SpMatrix<double> quadratic_inv(quadratic_term_);
-    quadratic_inv.Invert();
-    ivector->AddSpVec(1.0, quadratic_inv, linear_term_, 0.0);
+    // could be done exactly as follows:
+    // SpMatrix<double> quadratic_inv(quadratic_term_);
+    // quadratic_inv.Invert();
+    // ivector->AddSpVec(1.0, quadratic_inv, linear_term_, 0.0);
+    if ((*ivector)(0) == 0.0)
+      (*ivector)(0) = prior_offset_;  // better initial guess.
+    LinearCgdOptions opts;
+    opts.max_iters = num_cg_iters;
+    LinearCgd(opts, quadratic_term_, linear_term_, ivector);
   } else {
     // Use 'default' value.
     ivector->SetZero();
@@ -1444,7 +1439,12 @@ void OnlineIvectorEstimationStats::GetIvector(
   }  
   KALDI_VLOG(3) << "Objective function improvement from estimating the "
                 << "iVector (vs. default value) is "
-                << (Objf(*ivector) - DefaultObjf());
+                << ObjfChange(*ivector);
+}
+
+double OnlineIvectorEstimationStats::ObjfChange(
+    const VectorBase<double> &ivector) const {
+  return Objf(ivector) - DefaultObjf();
 }
 
 double OnlineIvectorEstimationStats::Objf(
@@ -1468,7 +1468,52 @@ double OnlineIvectorEstimationStats::DefaultObjf() const {
   }
 }
 
+double EstimateIvectorsOnline(
+    const Matrix<BaseFloat> &feats,
+    const Posterior &post,
+    const IvectorExtractor &extractor,
+    int32 ivector_period,
+    int32 num_cg_iters,
+    Matrix<BaseFloat> *ivectors) {
+  
+  KALDI_ASSERT(ivector_period > 0);
+  KALDI_ASSERT(static_cast<int32>(post.size()) == feats.NumRows());
+  int32 num_frames = feats.NumRows(),
+      num_ivectors = (num_frames + ivector_period - 1) / ivector_period;
+  
+  ivectors->Resize(num_ivectors, extractor.IvectorDim());
 
+  OnlineIvectorEstimationStats online_stats(extractor.IvectorDim(),
+                                            extractor.PriorOffset());
+
+  double ans = 0.0;
+  
+  Vector<double> cur_ivector(extractor.IvectorDim());
+  cur_ivector(0) = extractor.PriorOffset();
+  for (int32 frame = 0; frame < num_frames; frame++) {
+    if (frame % ivector_period == 0) {
+      online_stats.GetIvector(num_cg_iters, &cur_ivector);
+      int32 ivector_index = frame / ivector_period;
+      ivectors->Row(ivector_index).CopyFromVec(cur_ivector);
+      if (ivector_index == num_ivectors - 1)  // last iVector
+        ans = online_stats.ObjfChange(cur_ivector);
+    }
+    online_stats.AddToStats(extractor,
+                            feats.Row(frame),
+                            post[frame]);
+  }
+  return ans;
+}
+
+
+OnlineIvectorEstimationStats::OnlineIvectorEstimationStats(int32 ivector_dim,
+                                                           BaseFloat prior_offset):
+    prior_offset_(prior_offset), num_frames_(0.0),
+    quadratic_term_(ivector_dim), linear_term_(ivector_dim) {
+  linear_term_(0) += prior_offset;
+  
+  quadratic_term_.AddToDiag(1.0);
+}
 
 } // namespace kaldi
 

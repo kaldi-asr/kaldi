@@ -34,11 +34,13 @@ int main(int argc, char *argv[]) {
         " (e.g. in training UBMs, SGMMs, tied-mixture systems)\n"
         " For each frame, gives a list of the n best Gaussian indices,\n"
         " sorted from best to worst.\n"
+        "See also: gmm-global-get-post, fgmm-global-gselect-to-post,\n"
+        "copy-gselect, fgmm-gselect\n"
         "Usage: \n"
         " gmm-gselect [options] <model-in> <feature-rspecifier> <gselect-wspecifier>\n"
         "The --gselect option (which takes an rspecifier) limits selection to a subset\n"
         "of indices:\n"
-        "e.g.: gmm-gselect \"--gselect=ark:gunzip -c bigger.gselect.gz|\" --n=20 1.gmm \"ark:feature-command |\" \"ark,t:|gzip -c >1.gselect.gz\"\n";
+        "e.g.: gmm-gselect \"--gselect=ark:gunzip -c bigger.gselect.gz|\" --n=20 1.gmm \"ark:feature-command |\" \"ark,t:|gzip -c >gselect.1.gz\"\n";
     
     ParseOptions po(usage);
     int32 num_gselect = 50;
@@ -64,7 +66,6 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(model_filename, &gmm);
     KALDI_ASSERT(num_gselect > 0);
     int32 num_gauss = gmm.NumGauss();
-    KALDI_ASSERT(num_gauss);
     if (num_gselect > num_gauss) {
       KALDI_WARN << "You asked for " << num_gselect << " Gaussians but GMM "
                  << "only has " << num_gauss << ", returning this many. "

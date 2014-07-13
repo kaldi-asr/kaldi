@@ -126,6 +126,8 @@ typedef RandomAccessTableReader<GaussPostHolder> RandomAccessGaussPostReader;
 /// Scales the BaseFloat (weight) element in the posterior entries.
 void ScalePosterior(BaseFloat scale, Posterior *post);
 
+/// Returns the total of all the weights in "post".
+BaseFloat TotalPosterior(const Posterior &post);
 
 /// Returns true if the two lists of pairs have no common .first element.
 bool PosteriorEntriesAreDisjoint(
@@ -155,6 +157,7 @@ void AlignmentToPosterior(const std::vector<int32> &ali,
 /// each other.
 void SortPosteriorByPdfs(const TransitionModel &tmodel,
                          Posterior *post);
+
 
 /// Converts a posterior over transition-ids to be a posterior
 /// over pdf-ids.

@@ -443,7 +443,7 @@ OptimizeLbfgs<Real>::GetValue(Real *objf_value) const {
 //    r_{k+1} = r_k + \alpha_k  A  p_k
 //    \beta_{k+1} = \frac{r_{k+1}^T r_{k+1}}{r_k^T r_K}
 //    p_{k+1} = -r_{k+1} + \beta_{k+1} p_k
-//    k = k+1
+//    k = k + 1
 //  end
 
 template<class Real>
@@ -454,37 +454,57 @@ int32 LinearCgd(const LinearCgdOptions &opts,
   // Initialize the variables
   //
   int32 M = A.NumCols();
-  Real max_error_sq = opts.max_error * opts.max_error;
-
 
   Matrix<Real> storage(3, M);
   SubVector<Real> r(storage, 0), p(storage, 1), Ap(storage, 2);
-  p.CopyFromVec(b);  
+  p.CopyFromVec(b);
   p.AddSpVec(-1.0, A, *x, 1.0);  // p_0 = b - A x_0
   r.AddVec(-1.0, p);  // r_0 = - p_0
   
-  Real r_cur_norm_sq = VecVec(r, r);
+  Real r_cur_norm_sq = VecVec(r, r),
+      r_recompute_norm_sq = r_cur_norm_sq;
 
+  Real max_error_sq = std::max<Real>(opts.max_error * opts.max_error,
+                                     std::numeric_limits<Real>::min()),
+      residual_factor = opts.recompute_residual_factor *
+                        opts.recompute_residual_factor;
+  
+  // Note: although from a mathematical point of view the method should
+  // converge after M iterations, in practice it does not always converge
+  // to good precision after that many iterations so we let the maximum
+  // be 1.5 * M instead.
   int32 k = 0;
-  for (; k < M && k != opts.max_iters; k++) {
+  for (; k < M + M / 2 && k != opts.max_iters; k++) {
     // Note: we'll break from this loop if we converge sooner due to
     // max_error.
     Ap.AddSpVec(1.0, A, p, 0.0);  // Ap = A p
-    // next line: \alpha_k = (r_k^T  r_k) / (p_k^T  A  p_k)
+    // next line: \alpha_k = (r_k^T r_k) / (p_k^T A p_k)
     Real alpha = r_cur_norm_sq / VecVec(p, Ap);
-    // next line: x_{k+1} = x_k + \alpha_k  p_k;
+    // next line: x_{k+1} = x_k + \alpha_k p_k;
     x->AddVec(alpha, p);
-    // next line: r_{k+1} = r_k + \alpha_k  A  p_k
+    // next line: r_{k+1} = r_k + \alpha_k A p_k
     r.AddVec(alpha, Ap);
-    BaseFloat r_next_norm_sq = VecVec(r, r);
-
-    // Check if converged
-    if (r_next_norm_sq < max_error_sq)
+    Real r_next_norm_sq = VecVec(r, r);
+    
+    if (r_next_norm_sq < residual_factor * r_recompute_norm_sq) {
+      // Recompute the residual from scratch if the residual norm has decreased
+      // a lot; this costs an extra matrix-vector multiply, but helps keep the
+      // residual accurate.
+      
+      // r_{k+1} = A x_{k+1} - b
+      r.AddSpVec(1.0, A, *x, 0.0);
+      r.AddVec(-1.0, b);
+      r_next_norm_sq = VecVec(r, r);
+      r_recompute_norm_sq = r_next_norm_sq;
+    }
+    // Check if converged.
+    if (r_next_norm_sq <= max_error_sq)
       break;
-
+    
     // next line: \beta_{k+1} = \frac{r_{k+1}^T r_{k+1}}{r_k^T r_K}
     Real beta_next = r_next_norm_sq / r_cur_norm_sq;
     // next lines: p_{k+1} = -r_{k+1} + \beta_{k+1} p_k
+    Vector<Real> p_old(p);
     p.Scale(beta_next);
     p.AddVec(-1.0, r);
     r_cur_norm_sq = r_next_norm_sq;
