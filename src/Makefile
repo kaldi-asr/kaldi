@@ -92,7 +92,7 @@ ext: test_dependencies ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
 # delete or comment out the lines below.
 OPENFST_VER = $(shell grep 'PACKAGE_VERSION' ../tools/openfst/Makefile | sed -e 's:.*= ::')
 test_dependencies:
-	@[ "$(OPENFST_VER)" == '1.2.10' ] || [ "$(OPENFST_VER)" == '1.3.2' ] || [ "$(OPENFST_VER)" == '1.3.4' ] || { echo "You now need openfst-1.2.10.  Do: cd ../tools; svn update; ./install.sh; cd ../src; make depend; make"; exit 1; };
+	[ "$(OPENFST_VER)" == '1.3.2' ] || [ "$(OPENFST_VER)" == '1.3.3' ] || [ "$(OPENFST_VER)" == '1.3.4' ] || { echo "You now need openfst-1.3.2 or later. cd ../tools; svn update; ./install.sh; cd ../src; make depend; make"; exit 1; };
 
 check_portaudio:
 	@[ -d ../tools/portaudio ] || ( cd ../tools;  ./install_portaudio.sh )

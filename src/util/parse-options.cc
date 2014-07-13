@@ -35,6 +35,24 @@
 
 namespace kaldi {
 
+
+ParseOptions::ParseOptions(const std::string &prefix,
+                           OptionsItf *other):
+    print_args_(false), help_(false), usage_(""), argc_(0), argv_(NULL) {
+  ParseOptions *po = dynamic_cast<ParseOptions*>(other);
+  if (po != NULL && po->other_parser_ != NULL) {
+    // we get here if this constructor is used twice, recursively.
+    other_parser_ = po->other_parser_;
+  } else {
+    other_parser_ = other;
+  }
+  if (po != NULL && po->prefix_ != "") {
+    prefix_ = prefix + std::string(".") + po->prefix_;
+  } else {
+    prefix_ = prefix;
+  }
+}
+
 void ParseOptions::Register(const std::string &name,
                             bool *ptr, const std::string &doc) {
   RegisterTmpl(name, ptr, doc);

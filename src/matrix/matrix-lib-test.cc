@@ -3311,6 +3311,7 @@ template<typename Real> static void UnitTestSplitRadixComplexFft() {
     MatrixIndexT N = 1 << logn;
 
     MatrixIndexT twoN = 2*N;
+    std::vector<Real> temp_buffer;
     SplitRadixComplexFft<Real> srfft(N);
     for (MatrixIndexT p = 0; p < 3; p++) {
       Vector<Real> v(twoN), w_base(twoN), w_alg(twoN), x_base(twoN), x_alg(twoN);
@@ -3319,7 +3320,11 @@ template<typename Real> static void UnitTestSplitRadixComplexFft() {
 
       if (N< 100) ComplexFt(v, &w_base, true);
       w_alg.CopyFromVec(v);
-      srfft.Compute(w_alg.Data(), true);
+
+      if (rand() % 2 == 0)
+        srfft.Compute(w_alg.Data(), true);
+      else
+        srfft.Compute(w_alg.Data(), true, &temp_buffer);
 
       if (N< 100) AssertEqual(w_base, w_alg, 0.01*N);
 
@@ -3479,13 +3484,18 @@ template<typename Real> static void UnitTestSplitRadixRealFft() {
         N = 1 << logn;
 
     SplitRadixRealFft<Real> srfft(N);
+    std::vector<Real> temp_buffer;    
     for (MatrixIndexT q = 0; q < 3; q++) {
       Vector<Real> v(N), w(N), x(N), y(N);
       InitRand(&v);
       w.CopyFromVec(v);
       RealFftInefficient(&w, true);
       y.CopyFromVec(v);
-      srfft.Compute(y.Data(), true);  // test efficient one.
+      if (rand() % 2 == 0)
+        srfft.Compute(y.Data(), true);
+      else
+        srfft.Compute(y.Data(), true, &temp_buffer);
+      
       // KALDI_LOG <<"v = "<<v;
       // KALDI_LOG << "Inefficient real fft of v is: "<< w;
       // KALDI_LOG << "Efficient real fft of v is: "<< y;
@@ -4178,7 +4188,7 @@ template<typename Real> static void UnitTestTriVecSolver() {
 
     bool bad = false;
     for (int32 i = 0; i < dim; i++) {
-      if (fabs(T(i, i)) < 0.1)
+      if (fabs(T(i, i)) < 0.2)
         bad = true;
     }
     if (bad) {
