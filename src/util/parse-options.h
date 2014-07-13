@@ -65,9 +65,7 @@ class ParseOptions : public OptionsItf {
     The options will now get registered as, e.g., --mfcc.frame-shift=10.0
     instead of just --frame-shift=10.0
    */
-  ParseOptions(const std::string &prefix, ParseOptions *other) :
-    print_args_(false), help_(false), usage_(""), argc_(0), argv_(NULL),
-    prefix_(prefix), other_parser_(other) {}
+  ParseOptions(const std::string &prefix, ParseOptions *other);
 
   ~ParseOptions() {}
 
@@ -222,11 +220,11 @@ class ParseOptions : public OptionsItf {
   std::vector<std::string> positional_args_;
   const char *usage_;
   int argc_;
-  const char*const *argv_;
+  const char *const *argv_;
 
   /// These members are not normally used. They are only used when the object
   /// is constructed with a prefix
-  const std::string prefix_;
+  std::string prefix_;
   ParseOptions *other_parser_;
 };
 
