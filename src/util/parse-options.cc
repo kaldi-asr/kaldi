@@ -47,7 +47,7 @@ ParseOptions::ParseOptions(const std::string &prefix,
     other_parser_ = other;
   }
   if (po != NULL && po->prefix_ != "") {
-    prefix_ = prefix + std::string(".") + po->prefix_;
+    prefix_ = po->prefix_ + std::string(".") + prefix;
   } else {
     prefix_ = prefix;
   }
