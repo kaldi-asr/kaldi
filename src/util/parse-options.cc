@@ -65,6 +65,22 @@ void ParseOptions::Register(const std::string &name,
   RegisterTmpl(name, ptr, doc);
 }
 
+ParseOptions::ParseOptions(const std::string &prefix,
+                           ParseOptions *other):
+    print_args_(false), help_(false), usage_(""), argc_(0), argv_(NULL) {
+  if (other->other_parser_ != NULL) { 
+    // we get here if this constructor is used twice, recursively.
+    other_parser_ = other->other_parser_;
+  } else {
+    other_parser_ = other;
+  }
+  if (other->prefix_ != "") {
+    prefix_ = prefix + std::string(".") + other->prefix_;
+  } else {
+    prefix_ = prefix;
+  }
+}
+
 // old-style, used for registering application-specific parameters
 template<typename T>
 void ParseOptions::RegisterTmpl(const std::string &name, T *ptr,
