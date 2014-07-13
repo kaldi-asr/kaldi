@@ -93,7 +93,7 @@ void UnitTestParseOptions() {
   const char *argv3[10] = {
     "program_name", "--prefix.unum=5", "--num=3",
     "--prefix.str=foo", "--str=bar", "--prefix.my-bool=false",
-    "--prefix.my-str=baz", "--prefix2.prefix.unum=42", "a", "b" };
+    "--prefix.my-str=baz", "--prefix.prefix2.unum=42", "a", "b" };
   
   dummy_opts.Register(&ro3);
   po3.PrintUsage(false);
