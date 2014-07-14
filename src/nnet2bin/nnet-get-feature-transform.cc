@@ -28,6 +28,9 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Get feature-projection transform using stats obtained with acc-lda.\n"
+        "See comments in the code of nnet2/get-feature-transform.h for more\n"
+        "information.\n"
+        "\n"
         "Usage:  nnet-get-feature-transform [options] <matrix-out> <lda-acc-1> <lda-acc-2> ...\n";
 
     bool binary = true;
