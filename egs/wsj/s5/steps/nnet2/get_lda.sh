@@ -18,6 +18,7 @@ transform_dir=     # If supplied, overrides alidir
 num_feats=10000 # maximum number of feature files to use.  Beyond a certain point it just
                 # gets silly to use more data.
 lda_dim=  # This defaults to no dimension reduction.
+online_ivector_dir=
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -38,7 +39,8 @@ if [ $# != 4 ]; then
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --stage <stage|0>                                # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
-  
+  echo "  --online-vector-dir <dir|none>                   # Directory produced by"
+  echo "                                                   # steps/online/nnet2/extract_ivectors_online.sh"
   exit 1;
 fi
 
@@ -47,8 +49,12 @@ lang=$2
 alidir=$3
 dir=$4
 
+
+[ ! -z "$online_ivector_dir" ] && \
+  extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
+
 # Check some files.
-for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $alidir/tree; do
+for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $alidir/tree $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -97,6 +103,7 @@ case $feat_type in
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
+
 if [ -f $transform_dir/trans.1 ] && [ $feat_type != "raw" ]; then
   echo "$0: using transforms from $transform_dir"
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
@@ -109,15 +116,22 @@ fi
 
 feats_one="$(echo "$feats" | sed s:JOB:1:g)"
 feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
-# by default: oo dim reduction.
+# by default: no dim reduction.
 [ -z "$lda_dim" ] && lda_dim=$[$feat_dim*(1+2*($splice_width))]; 
+
+spliced_feats="$feats splice-feats --left-context=$splice_width --right-context=$splice_width ark:- ark:- |"
+
+if [ ! -z "$online_ivector_dir" ]; then
+  ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
+  spliced_feats="$spliced_feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivectors.scp | ' ark:- |"
+fi
 
 if [ $stage -le 0 ]; then
   echo "$0: Accumulating LDA statistics."
   $cmd JOB=1:$nj $dir/log/lda_acc.JOB.log \
     ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- \| \
-      acc-lda --rand-prune=$rand_prune $alidir/final.mdl "$feats splice-feats --left-context=$splice_width --right-context=$splice_width ark:- ark:- |" ark,s,cs:- \
+      acc-lda --rand-prune=$rand_prune $alidir/final.mdl "$spliced_feats" ark,s,cs:- \
        $dir/lda.JOB.acc || exit 1;
 fi
 

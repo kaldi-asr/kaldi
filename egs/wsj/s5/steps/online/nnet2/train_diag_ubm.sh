@@ -4,13 +4,21 @@
 #             2013  Daniel Povey
 # Apache 2.0.
 
-# This is a modified version of steps/train_diag_ubm.sh, specialized for
-# speaker-id, that does not require to start with a trained model, that applies
-# sliding-window CMVN, and that expects voice activity detection (vad.scp) in
-# the data directory.  We initialize the GMM using gmm-global-init-from-feats,
-# which sets the means to random data points and then does some iterations of
-# E-M in memory.  After the in-memory initialization we train for a few
-# iterations in parallel.
+# This script trains a diagonal UBM that we'll use in online iVector estimation,
+# where the online-estimated iVector will be used as a secondary input to a deep
+# neural net for single-pass DNN-based decoding.
+
+# This script was modified from ../../sre08/v1/sid/train_diag_ubm.sh.  It trains
+# a diagonal UBM on top of features processed with apply-cmvn-online and then
+# transformed with an LDA+MLLT matrix (obtained from the source directory).
+# This script does not use the trained model from the source directory to
+# initialize the diagonal GMM; instead, we initialize the GMM using
+# gmm-global-init-from-feats, which sets the means to random data points and
+# then does some iterations of E-M in memory.  After the in-memory
+# initialization we train for a few iterations in parallel.
+# Note that there is a slight mismatch in that the source LDA+MLLT matrix
+# (final.mat) will have been estimated using standard CMVN, and we're using
+# online CMVN.  We don't think this will have much effect.
 
 
 # Begin configuration section.
@@ -23,12 +31,13 @@ num_gselect=30 # Number of Gaussian-selection indices to use while training
 num_frames=500000 # number of frames to keep in memory for initialization
 num_iters_init=20
 initial_gauss_proportion=0.5 # Start with half the target number of Gaussians
-subsample=5 # subsample all features with this periodicity, in the main E-M phase.
+subsample=2 # subsample all features with this periodicity, in the main E-M phase.
 cleanup=true
 min_gaussian_weight=0.0001
 remove_low_count_gaussians=true # set this to false if you need #gauss to stay fixed.
 num_threads=32
 parallel_opts="-pe smp 32"
+online_cmvn_config=conf/online_cmvn.conf
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -37,9 +46,10 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 
-if [ $# != 3 ]; then
-  echo "Usage: $0  <data> <num-gauss> <output-dir>"
-  echo " e.g.: $0 data/train 1024 exp/diag_ubm"
+if [ $# != 4 ]; then
+  echo "Usage: $0  <data> <num-gauss> <srcdir> <output-dir>"
+  echo " e.g.: $0 data/train 1024 exp/tri3b/ exp/diag_ubm"
+  echo "(in srcdir we find splice_opts and final.mat)"
   echo "Options: "
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --nj <num-jobs|4>                                # number of parallel jobs to run."
@@ -68,7 +78,8 @@ fi
 
 data=$1
 num_gauss=$2
-dir=$3
+srcdir=$3
+dir=$4
 
 ! [ $num_gauss -gt 0 ] && echo "Bad num-gauss $num_gauss" && exit 1;
 
@@ -76,15 +87,25 @@ sdata=$data/split$nj
 mkdir -p $dir/log
 utils/split_data.sh $data $nj || exit 1;
 
-for f in $data/feats.scp $data/vad.scp; do
-   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1
+for f in $data/feats.scp "$online_cmvn_config" $srcdir/splice_opts $srcdir/final.mat; do
+   [ ! -f "$f" ] && echo "$0: expecting file $f to exist" && exit 1
 done
 
+splice_opts=$(cat $srcdir/splice_opts)
+cp $srcdir/splice_opts $dir/ || exit 1;
+cp $srcdir/final.mat $dir/ || exit 1;
+cp $online_cmvn_config $dir/online_cmvn.conf || exit 1;
+
+# create global_cmvn.stats
+if ! matrix-sum --binary=false scp:$data/cmvn.scp - >$dir/global_cmvn.stats 2>/dev/null; then
+  echo "$0: Error summing cmvn stats"
+  exit 1
+fi
 
 # Note: there is no point subsampling all_feats, because gmm-global-init-from-feats
 # effectively does subsampling itself (it keeps a random subset of the features).
-all_feats="ark,s,cs:add-deltas scp:$data/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$data/vad.scp ark:- |"
-feats="ark,s,cs:add-deltas scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- | subsample-feats --n=$subsample ark:- ark:- |"
+all_feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config $dir/global_cmvn.stats scp:$data/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 
 num_gauss_init=$(perl -e "print int($initial_gauss_proportion * $num_gauss); ");
 ! [ $num_gauss_init -gt 0 ] && echo "Invalid num-gauss-init $num_gauss_init" && exit 1;
@@ -103,7 +124,7 @@ fi
 
 # Store Gaussian selection indices on disk-- this speeds up the training passes.
 if [ $stage -le -1 ]; then
-  echo Getting Gaussian-selection info
+  echo "Getting Gaussian-selection info"
   $cmd JOB=1:$nj $dir/log/gselect.JOB.log \
     gmm-gselect --n=$num_gselect $dir/0.dubm "$feats" \
       "ark:|gzip -c >$dir/gselect.JOB.gz" || exit 1;

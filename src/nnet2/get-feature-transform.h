@@ -28,9 +28,13 @@
 
 namespace kaldi {
 
-// This file is modified from transform/lda-estimate.h
-// It contains a class intended to be used in preconditioning
-// data for neural network training.
+/**
+   @file
+   This file is modified from transform/lda-estimate.h
+   It contains a class intended to be used in preconditioning
+   data for neural network training.  See the documentation for class
+   FeatureTransformEstimate for more details.
+*/
 
 struct FeatureTransformEstimateOptions {
   bool remove_offset;
@@ -55,11 +59,79 @@ struct FeatureTransformEstimateOptions {
   }    
 };
 
-/** Class for computing a feature transform used in neural-networks.
+/**
+     Class for computing a feature transform used for preconditioning of the
+     training data in neural-networks.
+
+     By preconditioning here, all we really mean is an affine transform of the
+     input data-- say if we set up the classification as going from vectors x_i
+     to labels y_i, then this would be a linear transform on X, so we replace
+     x_i with x'_i = A x_i + b.  The statistics we use to obtain this transform
+     are the within-class and between class variance statistics, and the global
+     data mean, that we would use to estimate LDA.  When designing this, we had
+     a few principles in mind:
+        - We want to remove the global mean of the input features (this is
+          well established, I think there is a paper by LeCun explaining why
+          this is a good thing).
+        - We would like the transform to make the training process roughly
+          invariant to linear transformations of the input features, meaning
+          that whatever linear transformation you apply prior to this transform,
+          it should 'undo' it.
+        - We want directions in which there is a lot of between-class variance
+          to be given a higher variance than directions that have mostly
+          within-class variance-- it has been our experience that these
+          'nuisance directions' will interfere with the training if they are
+          given too large a scaling.
+     It is essential to our method that the number of classes is higher than
+     the dimension of the input feature space, which is normal for speech
+     recognition tasks (~5000 > ~250).
+
+     Basically our method is as follows:
+
+       - First subtract the mean.
+       - Get the within-class and between-class stats, as for LDA.
+       - Normalize the space as for LDA, so that the within-class covariance
+         matrix is unit and the between-class covariance matrix is diagonalized
+       - At this stage, if the user asked for dimension reduction then
+         reduce the dimension by taking out dimensions with least between-class
+         variance [note: the current scripts do not do this by default]
+       - Apply a transform that reduces the variance of dimensions
+         with low between-class variance, as we'll describe below.
+       - Finally, do an SVD of the resulting transform, A = U S V^T, apply a
+         maximum to the diagonal elements of the matrix S (e.g. 5.0), and
+         reconstruct A' = U S' V^T; this is the final transform.  The point of
+         this stage is to stop the transform from 'blowing up' any dimensions of
+         the space excessively; this stage was introduced in response to a
+         problem we encountered at one point, and I think normally not very many
+         dimensions of S end up getting floored.
+
+      We need to explain the step that applies the dimension-specific scaling,
+      which we described above as, "Apply a transform that reduces the variance
+      of dimensions with low between-class variance".  For a particular
+      dimension, let the between-class diagonal covariance element be \lambda_i,
+      and the within-class diagonal covariance is 1 at this point (since we
+      have normalized the within-class covariance to unity); hence, the total
+      variance is \lambda_i + 1.
+      Below, "within-class-factor" is a constant that we set by default to
+      0.001.  We scale the i'th dimension of the features by:
+      
+         \f$  sqrt( (within-class-factor + \lambda_i) / (1 + \lambda_i) ) \f$
+           
+      If \lambda_i >> 1, this scaling factor approaches 1 (we don't need to
+      scale up dimensions with high between-class variance as they already
+      naturally have a higher variance than other dimensions.  As \lambda_i
+      becomes small, this scaling factor approaches sqrt(within-class-factor),
+      so dimensions with very small between-class variance get assigned a small
+      variance equal to within-class-factor, and for dimensions with
+      intermediate between-class variance, they end up with a variance roughly
+      equal to \lambda_i: consider that the variance was originally (1 +
+      \lambda_i), so by scaling the features by approximately sqrt((\lambda_i) /
+      (1 + \lambda_i)), the variance becomes approximately \lambda_i [this is
+      clear after noting that the variance gets scaled by the square of the
+      feature scale].      
  */
 class FeatureTransformEstimate: public LdaEstimate {
  public:
-
   /// Estimates the LDA transform matrix m.  If Mfull != NULL, it also outputs
   /// the full matrix (without dimensionality reduction), which is useful for
   /// some purposes.  If opts.remove_offset == true, it will output both matrices
