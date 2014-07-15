@@ -34,7 +34,10 @@ if [ "$JAVA_VER" -ge 15 ]; then
       1> $wdir/transcripts0 2> $wdir/log/nxt_export.log
   fi
 else
-  cp $adir/ami_manual_1.6.1_export.txt $wdir/transcripts0
+  echo "$0. Java not found. Will download exported version of transcripts."
+  annots=ami_manual_annotations_v1.6.1_export
+  wget -O $wdir/$annots.gzip http://groups.inf.ed.ac.uk/ami/AMICorpusAnnotations/$annots.gzip
+  gunzip -c $adir/${annots}.gzip > $adir/transcripts0
 fi
 
 #remove NXT logs dumped to stdio

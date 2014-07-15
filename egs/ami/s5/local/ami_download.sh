@@ -32,11 +32,9 @@ mkdir -p $wdir/log
 annot="$adir/$annotver"
 if [[ ! -d $adir/annotations || ! -f "$annot" ]]; then
   echo "Downloading annotiations..."
-  wget -O $annot.zip $amiurl/AMICorpusAnnotations/$annotver.zip &> $wdir/log/download_ami_annot.log
-  wget -O ${annot}_export.gzip $amiurl/AMICorpusAnnotations/${annotver}_export.gzip #this one is just an extract in case java is not installed
-  mkdir $adir/annotations
-  unzip -d $adir/annotations $annot.zip &> /dev/null
-  gunzip -c $adir/${annotver}_export.gzip > $adir/${annotver}_export.txt
+  wget -nv -O $annot.zip $amiurl/AMICorpusAnnotations/$annotver.zip &> $wdir/log/download_ami_annot.log
+  mkdir -p $adir/annotations
+  unzip -o -d $adir/annotations $annot.zip &> /dev/null
 fi
 [ ! -f "$adir/annotations/AMI-metadata.xml" ] && echo "$0: File AMI-Metadata.xml not found under $adir/annotations." && exit 1;
 
