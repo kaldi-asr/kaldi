@@ -1,0 +1,129 @@
+#!/usr/bin/env python
+
+# Extracts one best output for a set of files
+# What do you need?
+# Location of the timing files
+# The list of files in the conversations for which 1 best output has to be extracted
+# words.txt 
+
+import os
+import sys
+import subprocess
+
+tmpdir = 'data/local/data/tmp/lattmp'
+if not os.path.exists(tmpdir):
+	os.makedirs(tmpdir)
+invalidplfdir = 'data/local/data/tmp/invalidplf'
+if not os.path.exists(invalidplfdir):
+	os.makedirs(invalidplfdir)
+else:
+	os.system("rm " + invalidplfdir + "/*")
+
+def latticeConcatenate(lat1, lat2):
+	'''
+	Concatenates lattices, writes temporary results to tmpdir
+	'''
+	if lat1 == "":
+		return lat2
+		os.system('rm ' + tmpdir + '/tmp.lat')
+	else:
+		proc = subprocess.Popen(['fstconcat', lat1, lat2, (tmpdir + '/tmp.lat')])
+		proc.wait()
+		#proc = subprocess.Popen(['fstrmepsilon', (tmpdir + '/tmp2.lat'), (tmpdir + '/tmp3.lat')])
+		#proc.wait()
+		#proc = subprocess.Popen(['fstpush', '--push_weights', '--remove_total_weight', (tmpdir + '/tmp3.lat'), (tmpdir + '/tmp4.lat')])
+		#proc.wait()
+		#if os.path.isfile(tmpdir + '/tmp.lat'):
+		#	os.system('rm ' + tmpdir + '/tmp.lat')
+		#os.system('rm ' + tmpdir + '/tmp2.lat')
+		#os.system('rm ' + tmpdir + '/tmp3.lat')
+		#os.system('mv ' + tmpdir + '/tmp4.lat' + ' ' + tmpdir + '/tmp.lat')
+		return tmpdir + '/tmp.lat'
+
+
+def findLattice(timeDetail):
+	'''
+	Finds the lattice corresponding to a time segment
+	'''
+	if os.path.isfile('/export/a04/gkumar/kaldi-trunk/egs/fishcall_es/s5/latjosh/lattices-min/' + timeDetail + '.lat'):
+		return '/export/a04/gkumar/kaldi-trunk/egs/fishcall_es/s5/latjosh/lattices-min/' + timeDetail + '.lat'
+	else:
+		return -1
+
+
+# Now read list of files in conversations
+fileList = []
+conversationList = open('/export/a04/gkumar/corpora/fishcall/joshkal-splits/provisional_dev')
+for line in conversationList: 
+	fileList.append(line.strip())
+
+# IN what order were the conversations added to the spanish files?
+# TODO: Make sure they match the order in which these english files are being written
+
+# Now get timing information to concatenate the ASR outputs
+
+provFile = open('/export/a04/gkumar/corpora/fishcall/fisher_provisional_dev-SR.lat', 'w+')
+lineNo = 1
+invalidPLF = open('/export/a04/gkumar/corpora/fishcall/invalidPLF', 'w+')
+blankPLF = open('/export/a04/gkumar/corpora/fishcall/blankPLF', 'w+')
+rmLines = open('/export/a04/gkumar/corpora/fishcall/removeLines', 'w+')
+#concatLineFile = open('/export/a04/gkumar/corpora/fishcall/fisher_concat', 'w+')
+#mulFinalState = open('/export/a04/gkumar/corpora/fishcall/fisher_mul', 'w+')
+for item in fileList:
+	timingFile = open('/export/a04/gkumar/corpora/fishcall/fisher/tim/' + item + '.es')
+	for line in timingFile:
+		timeInfo = line.split()
+		#if len(timeInfo) != 1:
+		#	concatLineFile.write(str(lineNo) + "\n")
+
+		# For utterances that are concatenated in the translation file, 
+		# the corresponding FSTs have to be translated as well
+		mergedTranslation = ""
+		for timeDetail in timeInfo:
+			tmp = findLattice(timeDetail)
+			if tmp != -1:
+				# Concatenate lattices
+				mergedTranslation = latticeConcatenate(mergedTranslation, tmp)
+
+		#tmp = findLattice(timeInfo[len(timeInfo) - 1])
+		#if tmp == -1:
+		#	tmp = findLattice(timeInfo[len(timeInfo) - 2])
+		if mergedTranslation != "":
+			#proc = subprocess.Popen("fstinfo " +  tmp + " | awk -F '  +' '{if ($1 == \"# of final states\"){print $2;}}'", stdout=subprocess.PIPE, shell=True)
+			#line = proc.stdout.readline()
+			#print int(line.strip()) != 1
+			#if int(line.strip()) != 1:
+			#	mulFinalState.write(str(lineNo) + "\n")
+			#	print lineNo
+			
+			# Sanjeev's Recipe : Remove epsilons and topo sort
+			finalFST = tmpdir + "/final.fst"
+			os.system("fstrmepsilon " + mergedTranslation + " | fsttopsort - " + finalFST)
+		
+			# now check if this is a valid PLF, if not write it's ID in a 
+			# file so it can be checked later
+			proc = subprocess.Popen("/export/a04/gkumar/moses/mosesdecoder/checkplf < " + finalFST + " 2>&1 | awk 'FNR == 2 {print}'", stdout=subprocess.PIPE, shell=True)
+			line = proc.stdout.readline()
+			if line.strip() != "PLF format appears to be correct.":
+				#mulFinalState.write(str(lineNo) + "\n")
+				os.system("cp " + finalFST + " " + invalidplfdir + "/" + timeInfo[0])
+				invalidPLF.write(invalidplfdir + "/" + timeInfo[0] + "\n")
+				rmLines.write(str(lineNo) + "\n")
+				#print lineNo
+			else:
+				proc = subprocess.Popen('/export/a04/gkumar/corpora/fishcall/bin/fsm2plf.sh ' + finalFST, stdout=subprocess.PIPE, shell=True)
+				line = proc.stdout.readline()
+				provFile.write(line)
+		else:
+			#mulfinalstate.write(str(lineno) + "\n")
+			blankPLF.write(timeInfo[0] + "\n")
+			rmLines.write(str(lineNo) + "\n")
+		# Now convert to PLF
+		lineNo += 1
+
+provFile.close()
+#concatLineFile.close()
+#mulFinalState.close()
+invalidPLF.close()
+blankPLF.close()
+rmLines.close()

@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+
+. path.sh
+
+stage=3
+
+if [ -d exp/tri5a/decode_dev ]
+then
+	mkdir -p latjosh
+	mkdir -p latjosh/lattices
+	mkdir -p latjosh/lattices-bin
+	mkdir -p latjosh/lattices-min
+	mkdir -p latjosh/lattices-word
+
+	for l in exp/tri5a/decode_dev/lat.*.gz
+	do	
+		(
+		# Extract file name and unzip the file first
+		bname=${l##*/}
+		bname="latjosh/${bname%.gz}"
+		gunzip -c $l > "$bname.bin"
+		
+		if [ $stage -le 0 ]; then
+			
+			# Now copy into ark format
+			$KALDI_ROOT/src/latbin/lattice-copy ark:$bname.bin ark,t:- > "$bname.raw"
+
+			# Remove bin files, they are no longer needed
+			#rm latjosh/*.bin
+
+			# Print the first few lines of a lattice just to make sure
+			# we have the right thing
+			# cat latjosh/lat.1.raw | utils/int2sym.pl -f 3 exp/tri5a/graph/words.txt | head
+			
+		 	$KALDI_ROOT/src/latbin/lattice-to-fst --lm-scale=1.0 --acoustic-scale=0.077 ark:$bname.raw ark,t:$bname.words	
+		
+		fi
+		
+		if [ $stage -le 1 ]; then
+			fileName=""
+			fileLine=0
+
+			while read line; do
+				if [ $fileLine = 0 ]; then
+					fileName="$line"
+					fileLine=1
+					#echo "$fileName"
+					continue
+				fi
+				if [ -z "$line" ]; then
+					fileLine=0
+					continue
+				fi
+				# Replace laugh, unk, oov, noise with eps
+				echo "$line" | awk '{if ($3 == 2 || $3 == 2 || $3 == 3 || $3 == 5 ) {$3 = 0; $4 = 0} print}' >> "latjosh/lattices/$fileName.lat"
+			done < $bname.words
+			echo "Done isolating lattices"
+		fi
+		) &	
+	done
+	wait
+	rm latjosh/*.bin
+
+	if [ $stage -le 2 ]; then
+		#Compile lattices
+		for l in latjosh/lattices/*.lat
+		do
+			(
+			#echo "${l##*/}"
+			bname=${l##*/}
+			fstcompile --arc_type=log latjosh/lattices/$bname latjosh/lattices-bin/$bname
+			) &
+		done
+		wait
+		echo "Done compiling lattices."
+	fi
+
+	if [ $stage -le 3 ]; then
+		#Sanjeev's Recipe for creating valid PLF compatible FSTs"
+		# Create a dummy FST with one state and no arcs first
+		minDir="lattices-new-min"
+		mkdir -p latjosh/$minDir
+		echo 0 | fstcompile --arc_type=log - latjosh/$minDir/dummy.fst
+		# Push Lattice weights towards initial state
+		for l in latjosh/lattices-bin/*.lat
+		do
+			(
+			bname=${l##*/}
+			fstrmepsilon latjosh/lattices-bin/$bname | \
+			fstpush --push_weights --remove_total_weight - | \
+			# Do not topo sort here, do it before converting into PLF
+			# Sanjeev's Recipe : Concatenate with dummy FST
+			fstconcat - latjosh/$minDir/dummy.fst | \
+			fstreverse - | \
+			fstrmepsilon - | \
+			fstreverse - latjosh/$minDir/$bname
+			) &
+		done
+		wait
+		# Let's take a moment to thank the dummy FST for playing its
+		# part in this process. However, it has to go now. 
+		rm latjosh/$minDir/dummy.fst
+		echo "Done performing fst push (initial state)"
+	fi
+else
+	echo "Complete training and decoding first"
+fi
