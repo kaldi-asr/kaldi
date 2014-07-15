@@ -11,42 +11,42 @@ import subprocess
 import os
 
 decode_directories = ['exp/tri5a/decode_dev',
-                        'exp/tri5a/decode_test',
-                        'exp/tri5a/decode_dev2',
-                        'exp/sgmm2x_6a/decode_dev_fmllr',
-                        'exp/sgmm2x_6a/decode_test_fmllr',
-                        'exp/sgmm2x_6a/decode_dev2_fmllr',
-                        'exp/sgmm2x_6a_mmi_b0.2/decode_dev_it1',
-                        'exp/sgmm2x_6a_mmi_b0.2/decode_dev_it2',
-                        'exp/sgmm2x_6a_mmi_b0.2/decode_dev_it3',
-                        'exp/sgmm2x_6a_mmi_b0.2/decode_dev_it4',
-                        'exp/sgmm2x_6a_mmi_b0.2/decode_dev2_it1',
-                        'exp/sgmm2x_6a_mmi_b0.2/decode_dev2_it2',
-                        'exp/sgmm2x_6a_mmi_b0.2/decode_dev2_it3',
-                        'exp/sgmm2x_6a_mmi_b0.2/decode_dev2_it4',
-                        'exp/sgmm2x_6a_mmi_b0.2/decode_test_it1',
-                        'exp/sgmm2x_6a_mmi_b0.2/decode_test_it2',
-                        'exp/sgmm2x_6a_mmi_b0.2/decode_test_it3',
-                        'exp/sgmm2x_6a_mmi_b0.2/decode_test_it4'
-                        ]
+    'exp/tri5a/decode_test',
+    'exp/tri5a/decode_dev2',
+    'exp/sgmm2x_6a/decode_dev_fmllr',
+    'exp/sgmm2x_6a/decode_test_fmllr',
+    'exp/sgmm2x_6a/decode_dev2_fmllr',
+    'exp/sgmm2x_6a_mmi_b0.2/decode_dev_it1',
+    'exp/sgmm2x_6a_mmi_b0.2/decode_dev_it2',
+    'exp/sgmm2x_6a_mmi_b0.2/decode_dev_it3',
+    'exp/sgmm2x_6a_mmi_b0.2/decode_dev_it4',
+    'exp/sgmm2x_6a_mmi_b0.2/decode_dev2_it1',
+    'exp/sgmm2x_6a_mmi_b0.2/decode_dev2_it2',
+    'exp/sgmm2x_6a_mmi_b0.2/decode_dev2_it3',
+    'exp/sgmm2x_6a_mmi_b0.2/decode_dev2_it4',
+    'exp/sgmm2x_6a_mmi_b0.2/decode_test_it1',
+    'exp/sgmm2x_6a_mmi_b0.2/decode_test_it2',
+    'exp/sgmm2x_6a_mmi_b0.2/decode_test_it3',
+    'exp/sgmm2x_6a_mmi_b0.2/decode_test_it4'
+    ]
 
 def get_best_wer(decode_dir):
-    best_iteration = 0
+  best_iteration = 0
     best_wer = 100.0
     for i in range(16):
-        if os.path.isfile(decode_dir + "/wer_" + str(i)):
-            result = subprocess.check_output("tail -n 3 " + decode_dir + "/wer_" + str(i), shell=True)
+      if os.path.isfile(decode_dir + "/wer_" + str(i)):
+        result = subprocess.check_output("tail -n 3 " + decode_dir + "/wer_" + str(i), shell=True)
             wer_string = result.split("\n")[0]
             wer_details = wer_string.split(' ')
             # Get max WER
             wer = float(wer_details[1])
             if wer < best_wer:
-                best_wer = wer
+              best_wer = wer
                 best_iteration = i
     return best_iteration, best_wer
 
 for decode_dir in decode_directories[:6]:
-    print decode_dir
+  print decode_dir
     print get_best_wer(decode_dir)
 
 # Separate processing for bMMI stuff
@@ -55,9 +55,9 @@ best_dir = ""
 best_iteration = 0
 
 for decode_dir in decode_directories[6:10]:
-    iteration, wer = get_best_wer(decode_dir)
+  iteration, wer = get_best_wer(decode_dir)
     if wer < best_wer:
-        best_wer = wer
+      best_wer = wer
         best_dir = decode_dir
         best_iteration = iteration
 
@@ -69,9 +69,9 @@ best_dir = ""
 best_iteration = 0
 
 for decode_dir in decode_directories[10:14]:
-    iteration, wer = get_best_wer(decode_dir)
+  iteration, wer = get_best_wer(decode_dir)
     if wer < best_wer:
-        best_wer = wer
+      best_wer = wer
         best_dir = decode_dir
         best_iteration = iteration
 
@@ -83,9 +83,9 @@ best_dir = ""
 best_iteration = 0
 
 for decode_dir in decode_directories[14:]:
-    iteration, wer = get_best_wer(decode_dir)
+  iteration, wer = get_best_wer(decode_dir)
     if wer < best_wer:
-        best_wer = wer
+      best_wer = wer
         best_dir = decode_dir
         best_iteration = iteration
 

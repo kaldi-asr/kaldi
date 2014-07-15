@@ -4,7 +4,7 @@
 
 #First get the list of unique words from our text file
 if [ $# -lt 1 ]; then
-  echo 'Usage fsp_prepare_dict.sh lexicon'
+  echo 'Usage callhome_prepare_dict.sh lexicon'
   exit 1;
 fi
 
@@ -19,7 +19,7 @@ tmpdir=`pwd`/data/local/tmp
 lexicon=$1
 
 #TODO: Move this file somewhere else!!
-cat ldc_arabic_phones.txt | grep -e "^$" -v | awk '{print $1}' > $tmpdir/phones
+cat data/ldc_arabic_phones.txt | grep -e "^$" -v | awk '{print $1}' > $tmpdir/phones
 
 if [ ! -d "$lexicon/callhome_arabic_lexicon_991012" ]; then
     echo "Could not find folder callhome_arabic_lexicon_991012 in the lexicon folder"
