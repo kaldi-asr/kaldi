@@ -115,7 +115,7 @@ done
 # skip SAT, and build MMI models
 steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.config \
     data/$mic/train data/lang exp/$mic/tri3a exp/$mic/tri3a_denlats  || exit 1;
-C
+
 
 mkdir -p exp/$mic/tri3a_ali
 steps/align_si.sh --nj $nj --cmd "$train_cmd" \
@@ -146,6 +146,8 @@ for lm_suffix in $LM; do
   )
 done
 
+#By default we do no build systems adapted to sessions for AMI in distant scnearios as this does not help a lot (around 1%)
+#But one can do this by running below code
 exit;
 
 # Train tri4a, which is LDA+MLLT+SAT
@@ -171,8 +173,6 @@ for lm_suffix in $LM; do
   ) 
 done
 
-exit ;
-
 # MMI training starting from the LDA+MLLT+SAT systems
 steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
   data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_ali || exit 1
@@ -189,7 +189,7 @@ steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 --num-iters $num_mmi_iters \
   data/$mic/train data/lang exp/$mic/tri4a_ali exp/$mic/tri4a_denlats \
   exp/$mic/tri4a_mmi_b0.1 || exit 1;
 
-for lm_suffix in rt09_tgpr; do
+for lm_suffix in $LM; do
   (
     graph_dir=exp/$mic/tri4a/graph_${lm_suffix}
     
@@ -197,7 +197,7 @@ for lm_suffix in rt09_tgpr; do
       decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_dev_${i}.mdl_${lm_suffix}
       steps/decode.sh --nj $DEV_SPK --cmd "$decode_cmd" --config conf/decode.conf \
         --transform-dir exp/$mic/tri4a/decode_dev_${lm_suffix} \
-        $graph_dir data/$mic/dev $decode_dir &
+        $graph_dir data/$mic/dev $decode_dir 
     done
     
     wait;
@@ -205,8 +205,10 @@ for lm_suffix in rt09_tgpr; do
     decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_eval_${i}.mdl_${lm_suffix}
     steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.conf \
       --transform-dir exp/$mic/tri4a/decode_eval_${lm_suffix} \
-      $graph_dir data/$mic/eval $decode_dir &
+      $graph_dir data/$mic/eval $decode_dir 
   )&
 done
 
-# here goes hybrid stuff
+# here goes hybrid stuf
+# in the ASRU paper we used different python nnet code, so someone needs to copy&adjust nnet or nnet2 switchboard commands
+

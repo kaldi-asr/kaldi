@@ -197,7 +197,8 @@ for lm_suffix in $LM; do
   )
 done
 
-# here goes hybrid stuff, in the ASRU paper we used different python nnet code, so someone needs to copy&adjust switchboard  pieces
+# here goes hybrid stuf
+# in the ASRU paper we used different python nnet code, so someone needs to copy&adjust nnet or nnet2 switchboard commands
 
 
 

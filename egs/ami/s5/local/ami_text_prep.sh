@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski), 2014, Apache 2.0
+
 if [ $# -ne 1 ]; then
   echo "Usage: $0 <ami-dir>"
   exit 1;
@@ -16,13 +18,11 @@ local/ami_xml2text.sh $amidir
 echo "Preprocessing transcripts..."
 local/ami_split_segments.pl $wdir/transcripts1 $wdir/transcripts2 &> $wdir/log/split_segments.log
 
-#HMM
-#MM HMM
-#MM UHM
-
-grep -f local/split_train.orig $wdir/transcripts2 > $wdir/train.txt
-grep -f local/split_dev.orig $wdir/transcripts2 > $wdir/dev.txt
-grep -f local/split_eval.orig $wdir/transcripts2 > $wdir/eval.txt
+#make final train/dev/eval splits
+for dset in train eval dev; do
+  [ ! -f local/split_$dset.final  ] &&  cp local/split_$dset.orig local/split_$dset.final
+  grep -f local/split_$dset.final $wdir/transcripts2 > $wdir/$dset.txt
+done
 
 
 

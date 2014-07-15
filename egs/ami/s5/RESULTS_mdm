@@ -5,9 +5,11 @@
 dev
 exp/mdm8/tri2a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.dtl:Percent Total Error       =   58.8%   (55568)
 exp/mdm8/tri3a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.dtl:Percent Total Error       =   57.0%   (53855)
+exp/mdm8/tri3a_mmi_b0.1/decode_dev_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_10/dev_o4.ctm.filt.dtl:Percent Total Error       =   54.9%   (51926)
 
 eval
 exp/mdm8/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:Percent Total Error       =   64.4%   (57916)
 exp/mdm8/tri3a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:Percent Total Error       =   61.9%   (55738)
+exp/mdm8/tri3a_mmi_b0.1/decode_eval_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_10/eval_o4.ctm.filt.dtl:Percent Total Error       =   59.3%   (53370)
 
 

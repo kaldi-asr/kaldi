@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
+# Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski, Jonathan Kilgour)
 
 if [ $# -ne 2 ]; then
   echo "Usage: $0 <mic> <ami-dir>"
@@ -11,7 +11,7 @@ fi
 mic=$1
 adir=$2
 amiurl=http://groups.inf.ed.ac.uk/ami
-annotver=ami_public_manual_1.6.1.zip
+annotver=ami_public_manual_1.6.1
 wdir=data/local/downloads
 
 if [[ ! "$mic" =~ ^(ihm|sdm|mdm)$ ]]; then
@@ -32,9 +32,11 @@ mkdir -p $wdir/log
 annot="$adir/$annotver"
 if [[ ! -d $adir/annotations || ! -f "$annot" ]]; then
   echo "Downloading annotiations..."
-  wget -O $annot $amiurl/AMICorpusAnnotations/$annotver &> $wdir/log/download_ami_annot.log
+  wget -O $annot.zip $amiurl/AMICorpusAnnotations/$annotver.zip &> $wdir/log/download_ami_annot.log
+  wget -O ${annot}_export.gzip $amiurl/AMICorpusAnnotations/${annotver}_export.gzip #this one is just an extract in case java is not installed
   mkdir $adir/annotations
-  unzip -d $adir/annotations $annot &> /dev/null
+  unzip -d $adir/annotations $annot.zip &> /dev/null
+  gunzip -c $adir/${annotver}_export.gzip > $adir/${annotver}_export.txt
 fi
 [ ! -f "$adir/annotations/AMI-metadata.xml" ] && echo "$0: File AMI-Metadata.xml not found under $adir/annotations." && exit 1;
 
@@ -46,13 +48,12 @@ wgetfile=$wdir/wget_$mic.sh
 manifest="wget -O $adir/MANIFEST.TXT http://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-04237-Sun-Jun-15-2014.manifest.txt"
 license="wget -O $adir/LICENCE.TXT http://groups.inf.ed.ac.uk/ami/download/temp/Creative-Commons-Attribution-NonCommercial-ShareAlike-2.5.txt"
 
-extra_headset= #EN2001{a,d,e} have 5 sepakers
 echo "#!/bin/bash" > $wgetfile
 echo $manifest >> $wgetfile
 echo $license >> $wgetfile
 while read line; do
    if [ "$mic" == "ihm" ]; then
-     extra_headset= #some meetings have 5 sepakers
+     extra_headset= #some meetings have 5 sepakers (headsets)
      for mtg in EN2001a EN2001d EN2001e; do
        [ "$mtg" == "$line" ] && extra_headset=4;
      done
@@ -68,7 +69,7 @@ done < $wdir/ami_meet_ids.flist
 
 chmod +x $wgetfile
 echo "Downloading audio files for $mic scenario."
-echo "Look at $wdir/log/download_ami_$mic.log for download progress"
+echo "Look at $wdir/log/download_ami_$mic.log for progress"
 $wgetfile &> $wdir/log/download_ami_$mic.log
 
 #do rough check if #wavs is as expected, it will fail anyway in data prep stage if it isn't
