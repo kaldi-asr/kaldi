@@ -8,23 +8,23 @@
 
 nmics=8 #we use all 8 channels, possible other options are 2 and 4
 mic=mdm$nmics #subdir name under data/
-AMI_DIR=/disk/data2/amicorpus 
-MDM_DIR=/disk/data1/s1136550/ami/mdm
+AMI_DIR=/disk/data2/amicorpus #root of AMI corpus
+MDM_DIR=/disk/data1/s1136550/ami/mdm #directory for beamformed waves
 
 #1) Download AMI (distant channels)
-<<"C"
+
 local/ami_download.sh mdm $AMI_DIR
 
 #2) Beamform 
 
-local/ami_beamform.sh --nj 12 $nmics $AMI_DIR $MDM_DIR
+local/ami_beamform.sh --nj 16 $nmics $AMI_DIR $MDM_DIR
 
 #3) Prepare mdm data directories
 
 local/ami_mdm_data_prep.sh $MDM_DIR $mic || exit 1;
 local/ami_mdm_scoring_data_prep.sh $MDM_DIR $mic dev || exit 1;
 local/ami_mdm_scoring_data_prep.sh $MDM_DIR $mic eval || exit 1;
-C
+
 #use the final LM
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
@@ -32,7 +32,7 @@ LM=$final_lm.pr1-7
 DEV_SPK=`cut -d" " -f2 data/$mic/dev/utt2spk | sort | uniq -c | wc -l`
 EVAL_SPK=`cut -d" " -f2 data/$mic/eval/utt2spk | sort | uniq -c | wc -l`
 nj=16
-<<"C"
+
 #GENERATE FEATS
 mfccdir=mfcc_$mic
 (
@@ -120,7 +120,7 @@ done
 # skip SAT, and build MMI models
 steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.config \
     data/$mic/train data/lang exp/$mic/tri3a exp/$mic/tri3a_denlats  || exit 1;
-C
+
 
 mkdir -p exp/$mic/tri3a_ali
 steps/align_si.sh --nj $nj --cmd "$train_cmd" \

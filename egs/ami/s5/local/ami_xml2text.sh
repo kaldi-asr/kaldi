@@ -37,7 +37,7 @@ else
   echo "$0. Java not found. Will download exported version of transcripts."
   annots=ami_manual_annotations_v1.6.1_export
   wget -O $wdir/$annots.gzip http://groups.inf.ed.ac.uk/ami/AMICorpusAnnotations/$annots.gzip
-  gunzip -c $adir/${annots}.gzip > $adir/transcripts0
+  gunzip -c $adir/${annots}.gzip > $wdir/transcripts0
 fi
 
 #remove NXT logs dumped to stdio
