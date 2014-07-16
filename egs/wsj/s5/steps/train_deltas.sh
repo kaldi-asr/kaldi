@@ -90,9 +90,16 @@ if [ $stage -le -2 ]; then
     --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
     $dir/questions.qst $lang/topo $dir/tree || exit 1;
 
-  gmm-init-model  --write-occs=$dir/1.occs  \
-    $dir/tree $dir/treeacc $lang/topo $dir/1.mdl 2> $dir/log/init_model.log || exit 1;
-  grep 'no stats' $dir/log/init_model.log && echo "This is a bad warning.";
+  $cmd $dir/log/init_model.log \
+    gmm-init-model  --write-occs=$dir/1.occs  \
+      $dir/tree $dir/treeacc $lang/topo $dir/1.mdl || exit 1;
+  if grep 'no stats' $dir/log/init_model.log; then
+     echo "** The warnings above about 'no stats' generally mean you have phones **"
+     echo "** (or groups of phones) in your phone set that had no corresponding data. **"
+     echo "** You should probably figure out whether something went wrong, **"
+     echo "** or whether your data just doesn't happen to have examples of those **"
+     echo "** phones. **"
+  fi
 
   gmm-mixup --mix-up=$numgauss $dir/1.mdl $dir/1.occs $dir/1.mdl 2>$dir/log/mixup.log || exit 1;
   rm $dir/treeacc
