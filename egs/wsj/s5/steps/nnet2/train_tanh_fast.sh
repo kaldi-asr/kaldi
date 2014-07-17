@@ -169,17 +169,17 @@ utils/split_data.sh $data $nj
 mkdir -p $dir/log
 cp $alidir/tree $dir
 
-extra_opts=
-[ ! -z "$cmvn_opts" ] && extra_opts="$extra_opts --cmvn-opts $cmvn_opts"
-[ ! -z "$feat_type" ] && extra_opts="$extra_opts --feat-type $feat_type"
-[ ! -z "$online_vector_dir" ] && extra_opts="$extra_opts --online-ivector-dir $online_ivector_dir"
+extra_opts=()
+[ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
+[ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
+[ ! -z "$online_vector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
 [ -z "$transform_dir" ] && transform_dir=$alidir
-extra_opts="$extra_opts --transform-dir $transform_dir"
-extra_opts="$extra_opts --splice-width $splice_width"
+extra_opts+=(--transform-dir $transform_dir)
+extra_opts+=(--splice-width $splice_width)
 
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
-  steps/nnet2/get_lda.sh $lda_opts $extra_opts --cmd "$cmd" $data $lang $alidir $dir || exit 1;
+  steps/nnet2/get_lda.sh $lda_opts "${extra_opts[@]}" --cmd "$cmd" $data $lang $alidir $dir || exit 1;
 fi
 
 # these files will have been written by get_lda.sh
@@ -189,7 +189,7 @@ lda_dim=`cat $dir/lda_dim` || exit 1;
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
   [ ! -z $spk_vecs_dir ] && egs_opts="$egs_opts --spk-vecs-dir $spk_vecs_dir";
-  steps/nnet2/get_egs.sh $egs_opts $extra_opts \
+  steps/nnet2/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --samples-per-iter $samples_per_iter \
       --num-jobs-nnet $num_jobs_nnet --stage $get_egs_stage \
       --cmd "$cmd" $egs_opts --io-opts "$io_opts" \
