@@ -1,6 +1,6 @@
 // featbin/subsample-feats.cc
 
-// Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2012-2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -44,7 +44,8 @@ int main(int argc, char *argv[]) {
     
     int32 n = 1, offset = 0;
 
-    po.Register("n", &n, "Take every n'th feature, for this value of n");
+    po.Register("n", &n, "Take every n'th feature, for this value of n"
+                "(with negative value, repeats each feature n times)");
     po.Register("offset", &offset, "Start with the feature with this offset, "
                 "then take every n'th feature.");
 

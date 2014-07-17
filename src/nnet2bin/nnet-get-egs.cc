@@ -44,18 +44,33 @@ int32 GetCount(double expected_count) {
 
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const Posterior &pdf_post,
-                        const Vector<BaseFloat> &spk_info,
+                        const Vector<BaseFloat> &spk_vec,
                         int32 left_context,
                         int32 right_context,
+                        int32 const_feat_dim,
                         BaseFloat keep_proportion,
                         int64 *num_frames_written,
                         NnetExampleWriter *example_writer) {
   KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
+  int32 feat_dim = feats.NumCols();
+  KALDI_ASSERT(const_feat_dim < feat_dim);
+  int32 normal_feat_dim = feat_dim - const_feat_dim,
+      spk_info_dim = spk_vec.Dim() + const_feat_dim;
+  // Note: normally we won't have both spk_vec.Dim() and
+  // const_feat_dim being nonzero, they represent alternative methods
+  // of getting speaker information into the training example.
+  // const_feat_dim will be set when we have online-estimated
+  // iVectors.
   NnetExample eg;
   Matrix<BaseFloat> input_frames(left_context + 1 + right_context,
-                                 feats.NumCols());
+                                 normal_feat_dim);
   eg.left_context = left_context;
-  eg.spk_info = spk_info;
+  eg.spk_info.Resize(spk_info_dim);
+  if (spk_vec.Dim() != 0) {
+    // we'll normally reach here if we have iVectors (or similar) estimated
+    // for the whole utterance or speaker, not online.
+    eg.spk_info.Range(0, spk_vec.Dim()).CopyFromVec(spk_vec);
+  }
   for (int32 i = 0; i < feats.NumRows(); i++) {
     int32 count = GetCount(keep_proportion); // number of times
     // we'll write this out (1 by default).
@@ -65,12 +80,19 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
         int32 j2 = j + i;
         if (j2 < 0) j2 = 0;
         if (j2 >= feats.NumRows()) j2 = feats.NumRows() - 1;
-        SubVector<BaseFloat> src(feats, j2), dest(input_frames,
-                                                  j + left_context);
+        SubVector<BaseFloat> src(feats.Row(j2), 0, normal_feat_dim),
+            dest(input_frames, j + left_context);
         dest.CopyFromVec(src);
       }
       eg.labels = pdf_post[i];
       eg.input_frames = input_frames;
+      if (const_feat_dim > 0) {
+        // we'll normally reach here if we're using online-estimated iVectors.
+        SubVector<BaseFloat> const_part(feats.Row(i),
+                                        normal_feat_dim, const_feat_dim);
+        eg.spk_info.Range(spk_vec.Dim(), const_feat_dim).CopyFromVec(
+            const_part);
+      }
       std::ostringstream os;
       os << ((*num_frames_written)++);
       std::string key = os.str(); // key in the archive is the number of the
@@ -113,7 +135,7 @@ int main(int argc, char *argv[]) {
         "the output of nnet-info.";
         
     
-    int32 left_context = 0, right_context = 0;
+    int32 left_context = 0, right_context = 0, const_feat_dim = 0;
     int32 srand_seed = 0;
     BaseFloat keep_proportion = 1.0;
     
@@ -127,6 +149,9 @@ int main(int argc, char *argv[]) {
                 "the neural net requires.");
     po.Register("right-context", &right_context, "Number of frames of right context "
                 "the neural net requires.");
+    po.Register("const-feat-dim", &const_feat_dim, "If specified, the last "
+                "const-feat-dim dimensions of the feature input are treated as "
+                "constant over the context window (so are not spliced)");
     po.Register("keep-proportion", &keep_proportion, "If <1.0, this program will "
                 "randomly keep this proportion of the input samples.  If >1.0, it will "
                 "in expectation copy a sample this many times.  It will copy it a number "
@@ -192,8 +217,8 @@ int main(int argc, char *argv[]) {
           }
         }
         ProcessFile(feats, pdf_post, spk_info,
-                    left_context, right_context, keep_proportion,
-                    &num_frames_written, &example_writer);
+                    left_context, right_context, const_feat_dim,
+                    keep_proportion, &num_frames_written, &example_writer);
         num_done++;
       }
     }
