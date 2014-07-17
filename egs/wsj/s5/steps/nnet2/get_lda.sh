@@ -131,7 +131,7 @@ spliced_feats="$feats splice-feats --left-context=$splice_width --right-context=
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
   # note: subsample-feats, with negative value of n, repeats each feature n times.
-  spliced_feats="$spliced_feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period ark:- ark:- |' ark:- |"
+  spliced_feats="$spliced_feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
 else
   ivector_dim=0

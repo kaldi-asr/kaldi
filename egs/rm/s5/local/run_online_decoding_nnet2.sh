@@ -22,24 +22,16 @@ EOF
   parallel_opts="-l gpu=1" 
   num_threads=1
   minibatch_size=512
-  dir=exp/nnet4d_gpu
+  dir=exp/nnet2_online/nnet_gpu
 else
   # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
   parallel_opts="-pe smp $num_threads" 
-  dir=exp/nnet4d
+  dir=exp/nnet2_online/nnet
 fi
 
-if [ -f exp/nnet4b/final.mdl ]; then
-  srcdir=exp/nnet4b_gpu
-elif [ -f exp/nnet4b_gpu/final.mdl ]; then
-  srcdir=exp/nnet4b
-else
-  echo "$0: before running this script, please run local/nnet2/run_4b.sh or local/nnet2/run_4b_gpu.sh"
-fi
-  
 
 if [ $stage -le 1 ]; then
   mkdir -p exp/nnet2_online
@@ -61,6 +53,7 @@ fi
 
 if [ $stage -le 4 ]; then
   steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
+    --splice-width 7 \
     --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors \
     --cmvn-opts "--norm-means=false --norm-vars=false" \

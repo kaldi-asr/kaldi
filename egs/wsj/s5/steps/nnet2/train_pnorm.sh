@@ -162,7 +162,7 @@ cp $alidir/tree $dir
 extra_opts=()
 [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
 [ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
-[ ! -z "$online_vector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
+[ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
 [ -z "$transform_dir" ] && transform_dir=$alidir
 extra_opts+=(--transform-dir $transform_dir)
 extra_opts+=(--splice-width $splice_width)
