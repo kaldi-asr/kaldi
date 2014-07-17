@@ -165,5 +165,3 @@ if [ $stage -le 4 ]; then
 fi
 
 echo "CALLHOME ECA Data preparation succeeded."
-
-exit 1

@@ -12,12 +12,9 @@ set -e
 # Specify the location of the speech files, the transcripts and the lexicon
 # These are passed off to other scripts in including the one for data and lexicon prep
 
-eca_speech=/export/a04/gkumar/corpora/LDC97S45
-eca_transcripts=/export/a04/gkumar/corpora/LDC97T19
-eca_lexicon=/export/a04/gkumar/corpora/LDC99L22
-
-# TODO: The splits need to be created
-split=/export/a04/gkumar/corpora/egyptian-arabic-splits
+eca_speech=/export/corpora/LDC/LDC97S45
+eca_transcripts=/export/corpora/LDC/LDC97T19
+eca_lexicon=/export/corpora/LDC/LDC99L22
 
 local/callhome_data_prep.sh $eca_speech $eca_transcripts
 
