@@ -114,10 +114,10 @@ else
   spk_vecs_opt=()
 fi
 
-if [ ! -z "online_ivector_dir" ]; then
+if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
   # note: subsample-feats, with negative n, will repeat each feature -n times.
-  feats="$feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period ark:- ark:- |' ark:- |"
+  feats="$feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
 fi
 
 if [ $stage -le 1 ]; then

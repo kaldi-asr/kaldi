@@ -1,11 +1,14 @@
 #!/bin/bash
 
+
+# this is a baseline for run_online_decoding_nnet2.sh, without
+# the iVectors, to see whether they make a difference.
+
 . cmd.sh
 
 
 stage=1
 train_stage=-10
-dir=exp/nnet2_online/nnet
 use_gpu=true
 . cmd.sh
 . ./path.sh
@@ -22,40 +25,21 @@ EOF
   parallel_opts="-l gpu=1" 
   num_threads=1
   minibatch_size=512
-  dir=exp/nnet2_online/nnet_gpu
+  dir=exp/nnet2_online/nnet_gpu_baseline
 else
   # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
   parallel_opts="-pe smp $num_threads" 
-  dir=exp/nnet2_online/nnet
+  dir=exp/nnet2_online/nnet_baseline
 fi
 
 
 if [ $stage -le 1 ]; then
-  mkdir -p exp/nnet2_online
-
-  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 10 --num-frames 200000 \
-    data/train 512 exp/tri3b exp/nnet2_online/diag_ubm
-fi
-
-if [ $stage -le 2 ]; then
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 4 \
-    data/train exp/nnet2_online/diag_ubm exp/nnet2_online/extractor
-fi
-
-if [ $stage -le 3 ]; then
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
-    data/train exp/nnet2_online/extractor exp/nnet2_online/ivectors
-fi
-
-
-if [ $stage -le 4 ]; then
   steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
     --splice-width 7 \
     --feat-type raw \
-    --online-ivector-dir exp/nnet2_online/ivectors \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
@@ -68,6 +52,16 @@ if [ $stage -le 4 ]; then
     --cmd "$decode_cmd" \
     --pnorm-input-dim 1000 \
     --pnorm-output-dim 200 \
-    data/train data/lang exp/tri3b_ali $dir  
+    data/train data/lang exp/tri3b_ali $dir  || exit 1;
+fi
+
+if [ $stage -le 2 ]; then
+  steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+    exp/tri3b/graph data/test $dir/decode  &
+
+  steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+    exp/tri3b/graph_ug data/test $dir/decode_ug || exit 1;
+
+  wait
 fi
 
