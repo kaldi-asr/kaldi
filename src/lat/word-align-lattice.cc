@@ -665,6 +665,11 @@ WordBoundaryInfo::WordBoundaryInfo(const WordBoundaryInfoOpts &opts) {
   partial_word_label = opts.partial_word_label;
 }
 
+WordBoundaryInfo::WordBoundaryInfo(const WordBoundaryInfoNewOpts &opts) {
+  reorder = opts.reorder;
+  silence_label = opts.silence_label;
+  partial_word_label = opts.partial_word_label;
+}
 
 WordBoundaryInfo::WordBoundaryInfo(const WordBoundaryInfoNewOpts &opts,
                                    std::string word_boundary_file) {
@@ -674,11 +679,15 @@ WordBoundaryInfo::WordBoundaryInfo(const WordBoundaryInfoNewOpts &opts,
   bool binary_in;
   Input ki(word_boundary_file, &binary_in);
   KALDI_ASSERT(!binary_in && "Not expecting binary word-boundary file.");
+  Init(ki.Stream());
+}
+
+void WordBoundaryInfo::Init(std::istream &stream) {
   std::string line;
-  while (std::getline(ki.Stream(), line)) {
+  while (std::getline(stream, line)) {
     std::vector<std::string> split_line;  
     SplitStringToVector(line, " \t\r", true, &split_line);// split the line by space or tab
-    int32 p;
+    int32 p = 0;
     if (split_line.size() != 2 ||
         !ConvertStringToInteger(split_line[0], &p))
       KALDI_ERR << "Invalid line in word-boundary file: " << line;
@@ -695,9 +704,8 @@ WordBoundaryInfo::WordBoundaryInfo(const WordBoundaryInfoNewOpts &opts,
       KALDI_ERR << "Invalid line in word-boundary file: " << line;
   }
   if (phone_to_type.empty())
-    KALDI_ERR << "Empty word-boundary file " << word_boundary_file;
+    KALDI_ERR << "Empty word-boundary file";
 }
-
   
 bool WordAlignLattice(const CompactLattice &lat,
                       const TransitionModel &tmodel,

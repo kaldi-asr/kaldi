@@ -109,7 +109,7 @@ fi
 
 feats_one="$(echo "$feats" | sed s:JOB:1:g)"
 feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
-# by default: oo dim reduction.
+# by default: no dim reduction.
 [ -z "$lda_dim" ] && lda_dim=$[$feat_dim*(1+2*($splice_width))]; 
 
 if [ $stage -le 0 ]; then

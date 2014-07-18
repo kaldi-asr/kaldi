@@ -252,8 +252,10 @@ template<typename Real>
 template<typename OtherReal>
 void VectorBase<Real>::CopyFromVec(const VectorBase<OtherReal> &other) {
   KALDI_ASSERT(dim_ == other.Dim());
-  const OtherReal *other_ptr = other.Data();
-  for (MatrixIndexT i = 0; i < dim_; i++) { data_[i] = other_ptr[i]; }
+  Real * __restrict__  ptr = data_;
+  const OtherReal * __restrict__ other_ptr = other.Data();
+  for (MatrixIndexT i = 0; i < dim_; i++)
+    ptr[i] = other_ptr[i];
 }
 
 template void VectorBase<float>::CopyFromVec(const VectorBase<double> &other);
@@ -819,13 +821,12 @@ MatrixIndexT VectorBase<Real>::ApplyFloor(const VectorBase<Real> &floor_vec) {
 
 template<typename Real>
 Real VectorBase<Real>::ApplySoftMax() {
-Real max = this->Max(), sum = 0.0;
+  Real max = this->Max(), sum = 0.0;
   for (MatrixIndexT i = 0; i < dim_; i++) {
     sum += (data_[i] = Exp(data_[i] - max));
   }
   this->Scale(1.0 / sum);
   return max + Log(sum);
-
 }
 
 #ifdef HAVE_MKL

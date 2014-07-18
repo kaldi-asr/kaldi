@@ -34,6 +34,7 @@ hubscr=$KALDI_ROOT/tools/sctk-2.4.0/bin/hubscr.pl
 hubdir=`dirname $hubscr`
 
 phonemap="conf/phones.60-48-39.map"
+nj=$(cat $dir/num_jobs)
 
 symtab=$lang_or_graph/words.txt
 
@@ -50,9 +51,13 @@ cp $data/glm $dir/scoring/glm_39phn
 
 if [ $stage -le 0 ]; then
   # Get the phone-sequence on the best-path:
-  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
-    lattice-align-phones $model "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-    lattice-to-ctm-conf --inv-acoustic-scale=LMWT ark:- $dir/scoring/LMWT.ctm || exit 1;
+  for LMWT in $(seq $min_lmwt $max_lmwt); do
+    $cmd JOB=1:$nj $dir/scoring/log/best_path.$LMWT.JOB.log \
+      lattice-align-phones $model "ark:gunzip -c $dir/lat.JOB.gz|" ark:- \| \
+      lattice-to-ctm-conf --inv-acoustic-scale=$LMWT ark:- $dir/scoring/$LMWT.JOB.ctm || exit 1;
+    cat $dir/scoring/$LMWT.*.ctm | sort > $dir/scoring/$LMWT.ctm
+    rm $dir/scoring/$LMWT.*.ctm
+  done
 fi
 
 if [ $stage -le 1 ]; then

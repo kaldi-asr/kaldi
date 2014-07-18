@@ -1,6 +1,7 @@
 // doc/install.dox
 
 // Copyright 2009-2011 Microsoft Corporation
+//           2013-2014 Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -40,14 +41,10 @@
   \verbatim
     svn co https://svn.code.sf.net/p/kaldi/code/trunk kaldi-trunk
   \endverbatim
-
-  You can check out the "stable" branch of Kaldi, which is mostly a subset of the
-  "trunk" with more stringent quality control, as follows (but note: right now, it is
-  a few months behind the trunk):
-  \verbatim
-    svn co https://svn.code.sf.net/p/kaldi/code/stable kaldi-stable
-  \endverbatim
-   If you want to get updates and bug fixes you can go to some checked-out
+ We used to maintain a "stable" branch of Kaldi, but found that this
+ was too much additional work; currently, we always recommend people to use
+ the latest version of trunk, and we do our best to make sure that it always works.
+ If you want to get updates and bug fixes you can go to some checked-out
  directory, and type
   \verbatim
     svn update

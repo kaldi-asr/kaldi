@@ -113,11 +113,11 @@ void TestIvectorExtraction(const IvectorExtractor &extractor,
 
   extractor.GetIvectorDistribution(utt_stats, &ivector1, NULL);
 
-  online_stats.GetIvector(&ivector2);
+  online_stats.GetIvector(-1, &ivector2);
 
   KALDI_ASSERT(ivector1.ApproxEqual(ivector2));
 }
-  
+
 
 void UnitTestIvectorExtractor() {
   FullGmm fgmm;

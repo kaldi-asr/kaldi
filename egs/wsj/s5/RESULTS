@@ -219,11 +219,11 @@ exp/nnet5c1/decode_bd_tgpr_eval92/wer_14:%WER 4.39 [ 248 / 5643, 32 ins, 17 del,
  %WER 6.45 [ 364 / 5643, 81 ins, 19 del, 264 sub ] exp/nnet5d/decode_tgpr_eval92/wer_14
 
 # 5d_gpu is the pnorm recipe with GPU;
-%WER 7.23 [ 595 / 8234, 74 ins, 94 del, 427 sub ] exp/nnet5d_gpu/decode_bd_tgpr_dev93/wer_13
-%WER 4.00 [ 226 / 5643, 34 ins, 15 del, 177 sub ] exp/nnet5d_gpu/decode_bd_tgpr_eval92/wer
+%WER 7.07 [ 582 / 8234, 62 ins, 94 del, 426 sub ] exp/nnet5d_gpu/decode_bd_tgpr_dev93/wer_13
+%WER 4.06 [ 229 / 5643, 31 ins, 13 del, 185 sub ] exp/nnet5d_gpu/decode_bd_tgpr_eval92/wer_12
  (the same without the big dictionary)_13
-%WER 9.66 [ 795 / 8234, 157 ins, 88 del, 550 sub ] exp/nnet5d_gpu/decode_tgpr_dev93/wer_14
-%WER 6.50 [ 367 / 5643, 91 ins, 14 del, 262 sub ] exp/nnet5d_gpu/decode_tgpr_eval92/wer_12
+%WER 9.35 [ 770 / 8234, 161 ins, 78 del, 531 sub ] exp/nnet5d_gpu/decode_tgpr_dev93/wer_12
+%WER 6.59 [ 372 / 5643, 91 ins, 15 del, 266 sub ] exp/nnet5d_gpu/decode_tgpr_eval92/wer_12
 
 
 %WER 7.13 [ 587 / 8234, 72 ins, 93 del, 422 sub ] exp/nnet5d_gpu/decode_bd_tgpr_dev93/wer_13
