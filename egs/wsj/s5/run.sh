@@ -169,6 +169,11 @@ steps/decode.sh --nj 10 --cmd "$decode_cmd" \
 steps/decode.sh --nj 8 --cmd "$decode_cmd" \
   exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b/decode_tgpr_eval92 || exit 1;
 
+# At this point, you could run the example scripts that show how VTLN works.
+# We haven't included this in the default recipes yet.
+# local/run_vtln.sh
+# local/run_vtln2.sh
+
 # Now, with dev93, compare lattice rescoring with biglm decoding,
 # going from tgpr to tg.  Note: results are not the same, even though they should
 # be, and I believe this is due to the beams not being wide enough.  The pruning
