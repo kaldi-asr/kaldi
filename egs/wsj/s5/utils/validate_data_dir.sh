@@ -242,6 +242,20 @@ if [ -f $data/spk2warp ]; then
   fi
 fi
 
+if [ -f $data/utt2warp ]; then
+  check_sorted_and_uniq $data/utt2warp
+  ! cat $data/utt2warp | awk '{if (!((NF == 2 && ($2 > 0.5 && $2 < 1.5)))){ print; exit 1; }}' && \
+     echo "Mal-formed spk2warp file" && exit 1;
+  cat $data/utt2warp | awk '{print $1}' > $tmpdir/utts.utt2warp
+  cat $data/utt2spk | awk '{print $1}' > $tmpdir/utts
+  if ! cmp -s $tmpdir/utts{,.utt2warp}; then
+    echo "$0: Error: in $data, utterance lists extracted from utt2spk and utt2warp"
+    echo "$0: differ, partial diff is:"
+    partial_diff $tmpdir/utts{,.utt2warp}
+    exit 1;
+  fi
+fi
+
 # check some optionally-required things
 for f in vad.scp utt2lang; do
   if [ -f $data/$f ]; then

@@ -97,11 +97,13 @@ void LinearVtln::ComputeTransform(const FmllrDiagGmmAccs &accs,
   
   if (accs.beta_ == 0.0) {
     KALDI_WARN << "no stats, returning default transform";
-    *class_idx = default_class_;
     int32 dim = Dim();
-    KALDI_ASSERT(Ws != NULL && Ws->NumRows() == dim && Ws->NumCols() == dim+1);
-    Ws->Range(0, dim, 0, dim).CopyFromMat(A_[default_class_]);
-    Ws->Range(0, dim, dim, 1).SetZero();  // Set last column to zero.
+    if (Ws) {
+      KALDI_ASSERT(Ws->NumRows() == dim && Ws->NumCols() == dim+1);
+      Ws->Range(0, dim, 0, dim).CopyFromMat(A_[default_class_]);
+      Ws->Range(0, dim, dim, 1).SetZero();  // Set last column to zero.
+    }
+    if (class_idx) *class_idx = default_class_;
     if (logdet_out) *logdet_out = logdets_[default_class_];
     if (objf_impr) *objf_impr = 0;
     if (count) *count = 0;

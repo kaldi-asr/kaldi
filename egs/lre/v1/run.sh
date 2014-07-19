@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright  2014   David Snyder
+#            2014   Daniel Povey
 # Apache 2.0.
 #
 # An incomplete run.sh for this example.
@@ -58,7 +59,7 @@ use_vtln=true
 if $use_vtln; then
   for t in train lre07; do
     cp -rt data/${t} data/${t}_novtln
-    rm -r data/${t}_novtln/{split,.backup} 2>/dev/null
+    rm -r data/${t}_novtln/{split,.backup,spk2warp} 2>/dev/null || true
     steps/make_mfcc.sh --mfcc-config conf/mfcc_vtln.conf --nj 100 --cmd "$train_cmd" \
        data/${t}_novtln exp/make_mfcc $mfccdir 
     lid/compute_vad_decision.sh data/${t}_novtln exp/make_mfcc $mfccdir

@@ -65,6 +65,9 @@ utils/validate_data_dir.sh --no-text --no-feats $data || exit 1;
 if [ -f $data/spk2warp ]; then
   echo "$0 [info]: using VTLN warp factors from $data/spk2warp"
   vtln_opts="--vtln-map=ark:$data/spk2warp --utt2spk=ark:$data/utt2spk"
+elif [ -f $data/utt2warp ]; then
+  echo "$0 [info]: using VTLN warp factors from $data/utt2warp"
+  vtln_opts="--vtln-map=ark:$data/utt2warp"
 fi
 
 if [ -f $data/segments ]; then
