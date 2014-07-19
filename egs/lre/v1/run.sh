@@ -82,13 +82,11 @@ if $use_vtln; then
   lid/train_lvtln_model.sh --mfcc-config conf/mfcc_vtln.conf --nj 30 --cmd "$train_cmd" \
      data/train_5k_novtln exp/diag_ubm_vtln exp/vtln
 
-  for t in train lre07; do
-    lid/get_vtln_warps.sh --nj 30 --cmd "$train_cmd" \
+  for t in lre07 train; do
+    lid/get_vtln_warps.sh --nj 100 --cmd "$train_cmd" \
        data/${t}_novtln exp/vtln exp/${t}_warps
-    cp exp/${t}_warps/spk2warp ${t}/
+    cp exp/${t}_warps/utt2warp $data/$t/
   done
-  lid/get_vtln_warps.sh --nj 30 --cmd "$train_cmd" \
-     data/lre07 exp/vtln exp/train_warps
 fi
 
 steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 100 --cmd "$train_cmd" \
