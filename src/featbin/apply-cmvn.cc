@@ -38,12 +38,9 @@ int main(int argc, char *argv[]) {
     bool norm_vars = false;
     bool norm_means = true;
     po.Register("utt2spk", &utt2spk_rspecifier, "rspecifier for utterance to speaker map");
-    po.Register("norm-vars", &norm_vars, "If true, normalize variances.  Note: "
-                "to turn off mean normalization also, it's generally easiest to "
-                "compute 'fake' CMVN stats with zero/one mean/variance."
-                "See the --fake option to compute_cmvn_stats.sh");
+    po.Register("norm-vars", &norm_vars, "If true, normalize variances.");
     po.Register("norm-means", &norm_means, "You can set this to false to turn off mean "
-                "normalization, or to compute 'fake' CMVN stats; "
+                "normalization.  Note, the same can be achieved by using 'fake' CMVN stats; "
                 "see the --fake option to compute_cmvn_stats.sh");
     
     po.Read(argc, argv);
