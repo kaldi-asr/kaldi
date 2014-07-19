@@ -172,8 +172,6 @@ if [ $stage -le -3 ]; then
       exit 1;
     fi
   done  
-  rm $dir/final.lvtln 2>/dev/null
-  ln -s 0.lvtln $dir/final.lvtln
 fi
 
 cp $ubmdir/final.dubm $dir/0.dubm
