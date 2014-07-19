@@ -57,7 +57,18 @@ void LinearVtln::Read(std::istream &is, bool binary) {
     ExpectToken(is, binary, "<warp>");
     ReadBasicType(is, binary, &(warps_[i]));
   }
-  ExpectToken(is, binary, "</LinearVtln>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "</LinearVtln>") {
+    // the older code had a bug in that it wasn't writing or reading
+    // default_class_.  The following guess at its value is likely to be
+    // correct.
+    default_class_ = (sz + 1) / 2;
+  } else {
+    KALDI_ASSERT(token == "<DefaultClass>");
+    ReadBasicType(is, binary, &default_class_);
+    ExpectToken(is, binary, "</LinearVtln>");
+  }
 }
 
 void LinearVtln::Write(std::ostream &os, bool binary) const {
@@ -76,6 +87,8 @@ void LinearVtln::Write(std::ostream &os, bool binary) const {
     WriteBasicType(os, binary, warps_[i]);
     if(!binary) os << "\n";
   }
+  WriteToken(os, binary, "<DefaultClass>");
+  WriteBasicType(os, binary, default_class_);
   WriteToken(os, binary, "</LinearVtln>");
 }
 
