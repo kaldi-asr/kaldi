@@ -1,7 +1,7 @@
-// gmmbin/gmm-est-lvtln-trans.cc
+// gmmbin/gmm-global-est-lvtln-trans.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University
-//                2014  Johns Hopkins University (author: Daniel Povey)
+//                2014  Daniel Povey
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -32,16 +32,22 @@ using std::vector;
 
 namespace kaldi {
 void AccumulateForUtterance(const Matrix<BaseFloat> &feats,
-                            const GaussPost &gpost,
-                            const AmDiagGmm &am_gmm,
+                            const Posterior &post,
+                            const DiagGmm &gmm,
                             FmllrDiagGmmAccs *spk_stats) {
-  for (size_t i = 0; i < gpost.size(); i++) {
-    for (size_t j = 0; j < gpost[i].size(); j++) {
-      int32 pdf_id = gpost[i][j].first;
-      const Vector<BaseFloat> &posterior(gpost[i][j].second);
-      spk_stats->AccumulateFromPosteriors(am_gmm.GetPdf(pdf_id),
-                                          feats.Row(i), posterior);
+  KALDI_ASSERT(static_cast<int32>(post.size()) == feats.NumRows());
+  for (size_t i = 0; i < post.size(); i++) {
+    std::vector<int32> gselect(post[i].size());
+    Vector<BaseFloat> this_post(post[i].size());
+    for (size_t j = 0; j < post[i].size(); j++) {
+      int32 g = post[i][j].first;
+      BaseFloat weight = post[i][j].second;
+      gselect[j] = g;
+      this_post(j) = weight;
     }
+    spk_stats->AccumulateFromPosteriorsPreselect(gmm, gselect,
+                                                 feats.Row(i),
+                                                 this_post);
   }
 }
 
@@ -54,10 +60,16 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     const char *usage =
         "Estimate linear-VTLN transforms, either per utterance or for "
-        "the supplied set of speakers (spk2utt option).  Reads posteriors. \n"
-        "Usage: gmm-est-lvtln-trans [options] <model-in> <lvtln-in> "
-        "<feature-rspecifier> <gpost-rspecifier> <lvtln-trans-wspecifier> [<warp-wspecifier>]\n";
-
+        "the supplied set of speakers (spk2utt option); this version\n"
+        "is for a global diagonal GMM (also known as a UBM).  Reads posteriors\n"
+        "indicating Gaussian indexes in the UBM.\n"
+        "\n"
+        "Usage: gmm-global-est-lvtln-trans [options] <gmm-in> <lvtln-in> "
+        "<feature-rspecifier> <gpost-rspecifier> <lvtln-trans-wspecifier> [<warp-wspecifier>]\n"
+        "e.g.: gmm-global-est-lvtln-trans 0.ubm 0.lvtln '$feats' ark,s,cs:- ark:1.trans ark:1.warp\n"
+        "(where the <gpost-rspecifier> will likely come from gmm-global-get-post or\n"
+        "gmm-global-gselect-to-post\n";
+    
     ParseOptions po(usage);
     string spk2utt_rspecifier;
     BaseFloat logdet_scale = 1.0;
@@ -78,23 +90,17 @@ int main(int argc, char *argv[]) {
         model_rxfilename = po.GetArg(1),
         lvtln_rxfilename = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
-        gpost_rspecifier = po.GetArg(4),
+        post_rspecifier = po.GetArg(4),
         trans_wspecifier = po.GetArg(5),
         warp_wspecifier = po.GetOptArg(6);
 
-    AmDiagGmm am_gmm;
-    {
-      bool binary;
-      Input ki(model_rxfilename, &binary);
-      TransitionModel trans_model;
-      trans_model.Read(ki.Stream(), binary);
-      am_gmm.Read(ki.Stream(), binary);
-    }
+    DiagGmm gmm;
+    ReadKaldiObject(model_rxfilename, &gmm);
     LinearVtln lvtln;
     ReadKaldiObject(lvtln_rxfilename, &lvtln);
 
 
-    RandomAccessGaussPostReader gpost_reader(gpost_rspecifier);
+    RandomAccessPosteriorReader post_reader(post_rspecifier);
 
     double tot_lvtln_impr = 0.0, tot_t = 0.0;
 
@@ -103,7 +109,7 @@ int main(int argc, char *argv[]) {
     BaseFloatWriter warp_writer(warp_wspecifier);
 
     std::vector<int32> class_counts(lvtln.NumClasses(), 0);
-    int32 num_done = 0, num_no_gpost = 0, num_other_error = 0;
+    int32 num_done = 0, num_no_post = 0, num_other_error = 0;
     if (spk2utt_rspecifier != "") {  // per-speaker adaptation
       SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
       RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
@@ -118,21 +124,21 @@ int main(int argc, char *argv[]) {
             KALDI_WARN << "Did not find features for utterance " << utt;
             continue;
           }
-          if (!gpost_reader.HasKey(utt)) {
+          if (!post_reader.HasKey(utt)) {
             KALDI_WARN << "Did not find posteriors for utterance " << utt;
-            num_no_gpost++;
+            num_no_post++;
             continue;
           }
           const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
-          const GaussPost &gpost = gpost_reader.Value(utt);
-          if (static_cast<int32>(gpost.size()) != feats.NumRows()) {
-            KALDI_WARN << "GauPost vector has wrong size " << gpost.size()
+          const Posterior &post = post_reader.Value(utt);
+          if (static_cast<int32>(post.size()) != feats.NumRows()) {
+            KALDI_WARN << "Posterior vector has wrong size " << post.size()
                        << " vs. " << feats.NumRows();
             num_other_error++;
             continue;
           }
 
-          AccumulateForUtterance(feats, gpost, am_gmm, &spk_stats);
+          AccumulateForUtterance(feats, post, gmm, &spk_stats);
 
           num_done++;
         }  // end looping over all utterances of the current speaker
@@ -163,17 +169,17 @@ int main(int argc, char *argv[]) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       for (; !feature_reader.Done(); feature_reader.Next()) {
         string utt = feature_reader.Key();
-        if (!gpost_reader.HasKey(utt)) {
-          KALDI_WARN << "Did not find gposts for utterance "
+        if (!post_reader.HasKey(utt)) {
+          KALDI_WARN << "Did not find posterior for utterance "
                      << utt;
-          num_no_gpost++;
+          num_no_post++;
           continue;
         }
         const Matrix<BaseFloat> &feats = feature_reader.Value();
-        const GaussPost &gpost = gpost_reader.Value(utt);
+        const Posterior &post = post_reader.Value(utt);
 
-        if (static_cast<int32>(gpost.size()) != feats.NumRows()) {
-          KALDI_WARN << "GauPost has wrong size " << gpost.size()
+        if (static_cast<int32>(post.size()) != feats.NumRows()) {
+          KALDI_WARN << "Posterior has wrong size " << post.size()
               << " vs. " << feats.NumRows();
           num_other_error++;
           continue;
@@ -182,7 +188,7 @@ int main(int argc, char *argv[]) {
 
         FmllrDiagGmmAccs spk_stats(lvtln.Dim());
 
-        AccumulateForUtterance(feats, gpost, am_gmm,
+        AccumulateForUtterance(feats, post, gmm,
                                &spk_stats);
         BaseFloat impr, utt_tot_t = spk_stats.beta_;
         {  // Compute the transform and write it out.
@@ -216,8 +222,8 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Distribution of classes is: " << s.str();
     }
 
-    KALDI_LOG << "Done " << num_done << " files, " << num_no_gpost
-              << " with no gposts, " << num_other_error << " with other errors.";
+    KALDI_LOG << "Done " << num_done << " files, " << num_no_post
+              << " with no posteriors, " << num_other_error << " with other errors.";
     KALDI_LOG << "Overall LVTLN auxf impr per frame is "
               << (tot_lvtln_impr / tot_t) << " over " << tot_t << " frames.";
     return 0;

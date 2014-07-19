@@ -54,6 +54,26 @@ local/split_long_utts.sh --max-utt-len 120 data/train_unsplit data/train
 # max_voiced=3000 
 # local/vad_split_utts.sh --max-voiced $max_voiced data/train_unsplit $mfccdir data/train
 
+ # Vtln-related things:
+ # We'll use a subset of utterances to train the GMM we'll use for VTLN
+ # warping.
+ utils/subset_data_dir.sh data/train 5000 data/train_5k_novtln
+
+  # for the features we use to estimate VTLN warp factors, we use more cepstra
+  # (13 instead of just 7); this needs to be tuned.
+  steps/make_mfcc.sh --mfcc-config conf/mfcc_vtln.conf --nj 50 --cmd "$train_cmd" \
+    data/train_5k_novtln exp/make_mfcc $mfccdir
+  lid/compute_vad_decision.sh data/train_5k_novtln exp/make_mfcc $mfccdir
+  # note, we're using the speaker-id version of the train_diag_ubm.sh script, which
+  # uses double-delta instead of SDC features.  We train a 256-Gaussian UBM; this
+  # has to be tuned.
+  sid/train_diag_ubm.sh --nj 30 --cmd "$train_cmd" data/train_5k_novtln 256 \
+    exp/diag_ubm_vtln
+  lid/train_lvtln_model.sh --mfcc-config conf/mfcc_vtln.conf --nj 30 --cmd "$train_cmd" \
+     data/train_5k_novtln exp/diag_ubm_vtln exp/vtln
+
+)
+
 steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 100 --cmd "$train_cmd" \
   data/train exp/make_mfcc $mfccdir
 steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
