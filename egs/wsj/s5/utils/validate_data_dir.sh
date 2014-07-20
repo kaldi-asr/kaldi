@@ -6,15 +6,15 @@ no_wav=false
 no_text=false
 
 for x in `seq 3`; do
-  if [ $1 == "--no-feats" ]; then
+  if [ "$1" == "--no-feats" ]; then
     no_feats=true
     shift;
   fi
-  if [ $1 == "--no-text" ]; then
+  if [ "$1" == "--no-text" ]; then
     no_text=true
     shift;
   fi
-  if [ $1 == "--no-wav" ]; then
+  if [ "$1" == "--no-wav" ]; then
     no_wav=true
     shift;
   fi
@@ -238,6 +238,20 @@ if [ -f $data/spk2warp ]; then
     echo "$0: Error: in $data, speaker lists extracted from spk2utt and spk2warp"
     echo "$0: differ, partial diff is:"
     partial_diff $tmpdir/speakers{,.spk2warp}
+    exit 1;
+  fi
+fi
+
+if [ -f $data/utt2warp ]; then
+  check_sorted_and_uniq $data/utt2warp
+  ! cat $data/utt2warp | awk '{if (!((NF == 2 && ($2 > 0.5 && $2 < 1.5)))){ print; exit 1; }}' && \
+     echo "Mal-formed spk2warp file" && exit 1;
+  cat $data/utt2warp | awk '{print $1}' > $tmpdir/utts.utt2warp
+  cat $data/utt2spk | awk '{print $1}' > $tmpdir/utts
+  if ! cmp -s $tmpdir/utts{,.utt2warp}; then
+    echo "$0: Error: in $data, utterance lists extracted from utt2spk and utt2warp"
+    echo "$0: differ, partial diff is:"
+    partial_diff $tmpdir/utts{,.utt2warp}
     exit 1;
   fi
 fi

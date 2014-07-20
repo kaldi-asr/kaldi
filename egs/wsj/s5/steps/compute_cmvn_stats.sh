@@ -23,11 +23,11 @@ echo "$0 $@"  # Print the command line for logging
 fake=false
 two_channel=false
 
-if [ $1 == "--fake" ]; then
+if [ "$1" == "--fake" ]; then
   fake=true
   shift
 fi
-if [ $1 == "--two-channel" ]; then
+if [ "$1" == "--two-channel" ]; then
   two_channel=true
   shift
 fi

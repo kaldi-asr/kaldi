@@ -100,7 +100,7 @@ class FmllrDiagGmmAccs: public AffineXformStats {
                                 const VectorBase<BaseFloat> &posteriors);
 
   /// Accumulate stats for a GMM, given supplied posteriors.  The "posteriors"
-  /// vector should be have the same size as "gselect".n
+  /// vector should be have the same size as "gselect".
   void AccumulateFromPosteriorsPreselect(
       const DiagGmm &gmm,
       const std::vector<int32> &gselect,

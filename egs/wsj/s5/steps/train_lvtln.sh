@@ -5,7 +5,7 @@
 # This training script trains linear-VTLN models starting from an existing
 # system based on either LDA+MLLT or delta+delta-delta features.
 # Works with either mfcc or plp features, but you need to set the 
-# --base-feature-type option.
+# --base-feat-type option.
 # The resulting system can be used with align_lvtln.sh and/or decode_lvtln.sh
 # to get VTLN warping factors for data, for warped data extraction, or (for
 # the training data) you can use the warping factors this script outputs
@@ -65,7 +65,7 @@ alidir=$5
 dir=$6
 
 for f in $alidir/final.mdl $alidir/ali.1.gz $data/feats.scp $lang/phones.txt $data/wav.scp; do
-  [ ! -f $f ] && echo "train_deltas.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
 numgauss=$numleaves
@@ -111,7 +111,7 @@ else
 fi
 
 if [ -f $data/utt2warp ]; then
-  echo "$0: source directory appears to already have VTLN.";
+  echo "$0: source data directory $data appears to already have VTLN.";
   exit 1;
 fi
 
