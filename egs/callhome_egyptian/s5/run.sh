@@ -15,7 +15,7 @@ set -e
 eca_speech=/export/corpora/LDC/LDC97S45
 eca_transcripts=/export/corpora/LDC/LDC97T19
 eca_lexicon=/export/corpora/LDC/LDC99L22
-split=data/splits
+split=local/splits
 
 local/callhome_data_prep.sh $eca_speech $eca_transcripts
 
