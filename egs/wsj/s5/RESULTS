@@ -236,3 +236,6 @@ exp/nnet5c1/decode_bd_tgpr_eval92/wer_14:%WER 4.39 [ 248 / 5643, 32 ins, 17 del,
  # decoded with tgpr LM.
  %WER 9.55 [ 786 / 8234, 163 ins, 83 del, 540 sub ] exp/nnet5d_gpu/decode_tgpr_dev93/wer_13
  %WER 6.50 [ 367 / 5643, 95 ins, 16 del, 256 sub ] exp/nnet5d_gpu/decode_tgpr_eval92/wer_14
+
+# for results with VTLN, see for example local/run_vtln2.sh, they are at the end.
+

@@ -61,3 +61,22 @@ steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
 steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
   exp/tri3c/graph_tgpr data/test_eval92_vtln exp/tri3c/decode_tgpr_eval92 || exit 1;
 ) &
+
+
+# Below shows the results we got with this script.
+# Actually we only have improvement on dev93 and the others get worse.
+# With VTLN:
+# for x in exp/tri3c/decode_tgpr_{dev,eval}{92,93}; do grep WER $x/wer_* | utils/best_wer.sh ; done
+# %WER 13.86 [ 1141 / 8234, 235 ins, 123 del, 783 sub ] exp/tri3c/decode_tgpr_dev93/wer_17
+# %WER 9.23 [ 521 / 5643, 131 ins, 31 del, 359 sub ] exp/tri3c/decode_tgpr_eval92/wer_16
+# %WER 12.47 [ 430 / 3448, 67 ins, 43 del, 320 sub ] exp/tri3c/decode_tgpr_eval93/wer_14
+
+# Baseline:
+#(note, I had to run the following extra decoding to get this)
+#steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" exp/tri3b/graph_tgpr data/test_eval93_vtln exp/tri3b/decode_tgpr_eval93
+#
+# a04:s5: for x in exp/tri3b/decode_tgpr_{dev,eval}{92,93}; do grep WER $x/wer_* | utils/best_wer.sh ; done
+# %WER 14.37 [ 1183 / 8234, 228 ins, 122 del, 833 sub ] exp/tri3b/decode_tgpr_dev93/wer_19
+# %WER 8.98 [ 507 / 5643, 129 ins, 28 del, 350 sub ] exp/tri3b/decode_tgpr_eval92/wer_14
+# %WER 12.21 [ 421 / 3448, 68 ins, 39 del, 314 sub ] exp/tri3b/decode_tgpr_eval93/wer_14
+

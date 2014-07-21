@@ -218,4 +218,109 @@ BaseFloat GaussClusterable::Objf() const {
 }
 
 
+// ============================================================================
+// Implementation of VectorClusterable class.
+// ============================================================================
+
+void VectorClusterable::Add(const Clusterable &other_in) {
+  KALDI_ASSERT(other_in.Type() == "vector");
+  const VectorClusterable *other =
+      static_cast<const VectorClusterable*>(&other_in);
+  weight_ += other->weight_;
+  stats_.AddVec(1.0, other->stats_);
+  sumsq_ += other->sumsq_;
+}
+
+void VectorClusterable::Sub(const Clusterable &other_in) {
+  KALDI_ASSERT(other_in.Type() == "vector");
+  const VectorClusterable *other =
+      static_cast<const VectorClusterable*>(&other_in);
+  weight_ -= other->weight_;
+  sumsq_ -= other->sumsq_;
+  stats_.AddVec(-1.0, other->stats_);
+  if (weight_ < 0.0) {
+    if (weight_ < -0.1 && weight_ < -0.0001 * fabs(other->weight_)) {
+      // a negative weight may indicate an algorithmic error if it is
+      // encountered.
+      KALDI_WARN << "Negative weight encountered " << weight_;
+    }
+    weight_ = 0.0;
+  }
+  if (weight_ == 0.0) {
+    sumsq_ = 0.0;
+    stats_.Set(0.0);
+  }
+}
+
+Clusterable* VectorClusterable::Copy() const {
+  VectorClusterable *ans = new VectorClusterable();
+  ans->weight_ = weight_;
+  ans->sumsq_ = sumsq_;
+  ans->stats_ = stats_;
+  return ans;
+}
+
+void VectorClusterable::Scale(BaseFloat f) {
+  KALDI_ASSERT(f >= 0.0);
+  weight_ *= f;
+  stats_.Scale(f);
+  sumsq_ *= f;
+}
+
+void VectorClusterable::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "VCL");  // magic string.
+  WriteToken(os, binary, "<Weight>");
+  WriteBasicType(os, binary, weight_);
+  WriteToken(os, binary, "<Sumsq>");  
+  WriteBasicType(os, binary, sumsq_);
+  WriteToken(os, binary, "<Stats>");    
+  stats_.Write(os, binary);
+}
+
+Clusterable* VectorClusterable::ReadNew(std::istream &is, bool binary) const {
+  VectorClusterable *vc = new VectorClusterable();
+  vc->Read(is, binary);
+  return vc;
+}
+
+void VectorClusterable::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "VCL");  // magic string.
+  ExpectToken(is, binary, "<Weight>");
+  ReadBasicType(is, binary, &weight_);
+  ExpectToken(is, binary, "<Sumsq>");  
+  ReadBasicType(is, binary, &sumsq_);
+  ExpectToken(is, binary, "<Stats>");    
+  stats_.Read(is, binary);
+}
+
+VectorClusterable::VectorClusterable(const Vector<BaseFloat> &vector,
+                                     BaseFloat weight):
+    weight_(weight), stats_(vector), sumsq_(0.0) {
+  stats_.Scale(weight);
+  KALDI_ASSERT(weight >= 0.0);
+  sumsq_ = VecVec(vector, vector) * weight;
+}    
+
+
+BaseFloat VectorClusterable::Objf() const {
+  double direct_sumsq;
+  if (weight_ > std::numeric_limits<BaseFloat>::min()) {
+    direct_sumsq = VecVec(stats_, stats_) / weight_;
+  } else {
+    direct_sumsq = 0.0;
+  }
+  // ans is a negated weighted sum of squared distances; it should not be
+  // positive.
+  double ans = -(sumsq_ - direct_sumsq); 
+  if (ans > 0.0) {
+    if (ans > 1.0) {
+      KALDI_WARN << "Positive objective function encountered (treating as zero): "
+                 << ans;
+    }
+    ans = 0.0;
+  }
+  return ans;
+}
+
+
 }  // end namespace kaldi.
