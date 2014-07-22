@@ -15,6 +15,7 @@ set -e
 eca_speech=/export/corpora/LDC/LDC97S45
 eca_transcripts=/export/corpora/LDC/LDC97T19
 eca_lexicon=/export/corpora/LDC/LDC99L22
+split=local/splits
 
 local/callhome_data_prep.sh $eca_speech $eca_transcripts
 
@@ -27,8 +28,8 @@ utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 # Make sure that you do not use your test and your dev sets to train the LM
 # Some form of cross validation is possible where you decode your dev/set based on an 
 # LM that is trained on  everything but that that conversation
-local/fsp_train_lms.sh $split
-local/fsp_create_test_lang.sh
+local/callhome_train_lms.sh $split
+local/callhome_create_test_lang.sh
 
 utils/fix_data_dir.sh data/local/data/train_all
 

@@ -40,8 +40,8 @@ Spectrogram::~Spectrogram() {
 }
 
 void Spectrogram::Compute(const VectorBase<BaseFloat> &wave,
-                   Matrix<BaseFloat> *output,
-                   Vector<BaseFloat> *wave_remainder) {
+                          Matrix<BaseFloat> *output,
+                          Vector<BaseFloat> *wave_remainder) {
   KALDI_ASSERT(output != NULL);
 
   // Get dimensions of output features
@@ -68,8 +68,9 @@ void Spectrogram::Compute(const VectorBase<BaseFloat> &wave,
 
     // Compute energy after window function (not the raw one)
     if (!opts_.raw_energy)
-      log_energy = log(VecVec(window, window));
-
+      log_energy = log(std::max(VecVec(window, window),
+                                std::numeric_limits<BaseFloat>::min()));
+    
     if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
       srfft_->Compute(window.Data(), true);
     else  // An alternative algorithm that works for non-powers-of-two
@@ -79,7 +80,8 @@ void Spectrogram::Compute(const VectorBase<BaseFloat> &wave,
     ComputePowerSpectrum(&window);
     SubVector<BaseFloat> power_spectrum(window, 0, window.Dim()/2 + 1);
 
-    power_spectrum.ApplyLog();  // take the log.
+    power_spectrum.ApplyFloor(std::numeric_limits<BaseFloat>::min());
+    power_spectrum.ApplyLog();
 
     // Output buffers
     SubVector<BaseFloat> this_output(output->Row(r));

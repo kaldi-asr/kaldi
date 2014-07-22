@@ -151,6 +151,23 @@ function check_exists {
   if [ ! -f $1 ]; then failure "$1 not found."; fi
 }
 
+function check_for_bad_gcc {
+  if which gcc >&/dev/null; then  # gcc is on the path
+    gcc_version=$(gcc -dumpspecs 2>&1 | grep -A1 -F '*version:' | grep -v version)
+    if [ "$gcc_version" == "4.8.2" ]; then
+      echo "*** WARNING: your version of gcc seems to be 4.8.2. ***"
+      echo "*** This version of gcc has a bug in nth_element ***"
+      echo "*** in its implementation of the standard library ***"
+      echo "*** This will cause Kaldi to crash (make test   ***"
+      echo "*** should fail). Please either upgrade or downgrade gcc. ***"
+    fi
+  fi
+}
+
+function exit_success {
+  check_for_bad_gcc;
+  exit 0;
+}
 
 
 function linux_configure_mkllibdir {
@@ -367,7 +384,7 @@ function linux_configure_debian_ubuntu {
   fix_cxx_flag
   echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && linux_configure_cuda
-  exit 0;
+  exit_success;
 }
 
 function linux_configure_debian7 {
@@ -384,7 +401,7 @@ function linux_configure_debian7 {
   fix_cxx_flag
   echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && linux_configure_cuda
-  exit 0;
+  exit_success;
 }
 
 
@@ -437,7 +454,7 @@ function linux_configure_static {
   fix_cxx_flag
   $use_cuda && linux_configure_cuda
   echo "Successfully configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
-  exit 0;
+  exit_success;
 }
 
 function linux_check_dynamic {
@@ -505,7 +522,7 @@ function linux_configure_dynamic {
   fix_cxx_flag
   $use_cuda && linux_configure_cuda
   echo "Successfully configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  exit 0;
+  exit_success;
 }
 
 echo "Configuring ..."
@@ -513,6 +530,7 @@ echo "Configuring ..."
 if [ ! -f makefiles/common.mk ]; then
     failure makefiles/common.mk not found
 fi
+
 
 echo "Checking OpenFST library in $FSTROOT ..."
 if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
@@ -580,7 +598,7 @@ if [ "`uname`" == "Darwin"  ]; then
     failure "OS X version '$osx_ver' not supported"
   fi
   echo "Configuration succeeded for platform Darwin."
-  exit 0
+  exit_success;
 fi
 
 if [ "`uname -o`" == "Cygwin"  ]; then
@@ -594,7 +612,7 @@ if [ "`uname -o`" == "Cygwin"  ]; then
     echo FSTROOT = $FSTROOT >> kaldi.mk
     cat makefiles/cygwin.mk >> kaldi.mk
     echo "Configuration succeeded for platform cygwin"
-    exit 0
+    exit_success;
 fi
 
 if [ "`uname`" == "Linux" ]; then
@@ -708,7 +726,7 @@ if [ "`uname`" == "Linux" ]; then
 
     $use_cuda && linux_configure_cuda
     echo "Successfully configured for Linux with MKL libs from $MKLROOT"
-    exit 0;
+    exit_success;
 
   elif [ "$MATHLIB" == "CLAPACK" ]; then
     if [ -z "$CLAPACKROOT" ]; then
@@ -730,7 +748,7 @@ if [ "`uname`" == "Linux" ]; then
     echo "Warning (CLAPACK): this part of the configure process is not properly tested and will not work."
     $use_cuda && linux_configure_cuda
     echo "Successfully configured for Linux with CLAPACK libs from $CLAPACKROOT"
-    exit 0
+    exit_success;
   elif [ "$MATHLIB" == "OPENBLAS" ]; then
     OPENBLASROOT=`rel2abs "$OPENBLASROOT"`
     if [ -z "$OPENBLASROOT" ]; then
@@ -754,7 +772,7 @@ if [ "`uname`" == "Linux" ]; then
     echo "Warning (OPENBLAS): this part of the configure process is not properly tested and will not work."
     $use_cuda && linux_configure_cuda
     echo "Successfully configured OpenBLAS from $OPENBLASROOT."
-    exit 0;
+    exit_success;
   else 
     failure "Unsupported linear algebra library '$MATHLIB'"
   fi

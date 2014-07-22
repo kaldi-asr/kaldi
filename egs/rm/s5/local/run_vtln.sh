@@ -6,6 +6,7 @@
 
 . cmd.sh
 featdir=mfcc
+set -e
 
 # train linear vtln
 steps/train_lvtln.sh --cmd "$train_cmd" 1800 9000 \
