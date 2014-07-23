@@ -36,10 +36,10 @@ mkdir -p $loctmp
 # The ";tx;d;:x" part of the expression is to filter out the directories,
 # not matched by the expression
 find $DATA/* -maxdepth 0 |\
- sed -Ee 's:.*/((.+)\-[0-9]{8,10}[a-z]*([_\-].*)?):\2:;tx;d;:x' |\
+ perl -ane ' s:./((.+)-[0-9]{8,10}[a-z]([_-].)?):$2: && print; ' | \
  sort -u > $loctmp/speakers_all.txt
 
-nspk_all=`wc -l $loctmp/speakers_all.txt | cut -f1 -d' '`
+nspk_all=$(wc -l <$loctmp/speakers_all.txt)
 if [ "$nspk_test" -ge "$nspk_all" ]; then
   echo "${nspk_test} test speakers requested, but there are only ${nspk_all} speakers in total!"
   exit 1;
