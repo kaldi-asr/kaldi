@@ -121,3 +121,35 @@ if [ $stage -le 9 ]; then
     exp/tri3b/graph_ug data/test ${dir}_online/decode_ug_per_utt || exit 1;
   wait
 fi
+
+
+
+# the experiment (no GPU)
+#for x in exp/nnet2_online/nnet/decode*; do grep WER $x/wer_* | utils/best_wer.sh; done
+%WER 2.75 [ 345 / 12533, 43 ins, 81 del, 221 sub ] exp/nnet2_online/nnet/decode/wer_7
+%WER 10.94 [ 1371 / 12533, 133 ins, 220 del, 1018 sub ] exp/nnet2_online/nnet/decode_ug/wer_11
+
+# for x in exp/nnet2_online/nnet_baseline/decode*; do grep WER $x/wer_* | utils/best_wer.sh; done
+# This is the baseline with spliced non-CMVN cepstra and no iVector input.  This
+# baseline was actually better than the experiment itself, due to severe
+# overtraining in this RM setup (overtraining is something the Google paper
+# noted too), but in larger setups it seems to actually help (Haihua Xu tested
+# it on WSJ).  Soon I'll create larger-scale test setups, and look into
+# mitigating the overtraining on RM.
+%WER 2.30 [ 288 / 12533, 44 ins, 51 del, 193 sub ] exp/nnet2_online/nnet_baseline/decode/wer_4
+%WER 10.70 [ 1341 / 12533, 122 ins, 221 del, 998 sub ] exp/nnet2_online/nnet_baseline/decode_ug/wer_10
+
+# This is the online decoding.
+#for x in exp/nnet2_online/nnet_online/decode*; do grep WER $x/wer_* | utils/best_wer.sh; done
+# The per-utterance decoding gives essentially the same WER as the offline decoding, which is
+# as we expect as the features and decoding parameters are the same.
+%WER 2.73 [ 342 / 12533, 48 ins, 64 del, 230 sub ] exp/nnet2_online/nnet_online/decode_per_utt/wer_6
+%WER 10.99 [ 1377 / 12533, 122 ins, 221 del, 1034 sub ] exp/nnet2_online/nnet_online/decode_ug_per_utt/wer_12
+
+# The following are online decoding, as above, but using previous utterances of
+# the same speaker to refine the adaptation state.  This setup is probably too
+# small to really know whether this is helpful.  If it's not helpful to use
+# previous utterances of the same speaker, it probably means we need to do
+# matched training.
+%WER 2.61 [ 327 / 12533, 41 ins, 73 del, 213 sub ] exp/nnet2_online/nnet_online/decode/wer_7
+%WER 11.18 [ 1401 / 12533, 137 ins, 213 del, 1051 sub ] exp/nnet2_online/nnet_online/decode_ug/wer_12
