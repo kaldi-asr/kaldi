@@ -138,10 +138,10 @@ void LogisticRegression::TrainParameters(const Matrix<BaseFloat> &xs,
 }
 
 void LogisticRegression::GetLogPosteriors(const Matrix<BaseFloat> &xs,
-                                       Matrix<BaseFloat> *log_posteriors) {
+                                          Matrix<BaseFloat> *log_posteriors) {
   int32 xs_num_rows = xs.NumRows(),
-        xs_num_cols = xs.NumCols(),
-        num_mixes = weights_.NumRows();
+      xs_num_cols = xs.NumCols(),
+      num_mixes = weights_.NumRows();
   
   int32 num_classes = *std::max_element(class_.begin(), class_.end()) + 1;
   
@@ -156,27 +156,26 @@ void LogisticRegression::GetLogPosteriors(const Matrix<BaseFloat> &xs,
     xs_with_prior(i, xs_num_cols) = 1.0;
   }
   xw.AddMatMat(1.0, xs_with_prior, kNoTrans, weights_, 
-                        kTrans, 0.0);
+               kTrans, 0.0);
+  
+  log_posteriors->Set(-std::numeric_limits<BaseFloat>::infinity());
 
-  // training example i
+  // i is the training example
   for (int32 i = 0; i < xs_num_rows; i++) {
     for (int32 j = 0; j < num_mixes; j++) {
-      // The actual classes k
-      for (int32 k = 0; k < num_classes; k++) {
-        if (k == class_[j]) {
-          (*log_posteriors)(i,k) += std::exp(xw(i,j));
-        }
-      }
+      int32 k = class_[j];
+      (*log_posteriors)(i,k) = LogAdd((*log_posteriors)(i,k), xw(i, j));
     }
-    log_posteriors->Row(i).ApplyLog();
+    // Normalize the row.
     log_posteriors->Row(i).Add(-xw.Row(i).LogSumExp());
   }
 }
 
 void LogisticRegression::GetLogPosteriors(const Vector<BaseFloat> &x,
-                                       Vector<BaseFloat> *log_posteriors) {
+                                          Vector<BaseFloat> *log_posteriors) {
   int32 x_dim = x.Dim();
-  int32 num_classes = *std::max_element(class_.begin(), class_.end()) + 1;
+  int32 num_classes = *std::max_element(class_.begin(), class_.end()) + 1,
+      num_mixes = weights_.NumRows();
   log_posteriors->Resize(num_classes);
   Vector<BaseFloat> xw(weights_.NumRows());
 
@@ -187,15 +186,14 @@ void LogisticRegression::GetLogPosteriors(const Vector<BaseFloat> &x,
   x_with_prior(x_dim) = 1.0;
   
   xw.AddMatVec(1.0, weights_, kNoTrans, x_with_prior, kNoTrans);
-  for (int32 i = 0; i < xw.Dim(); i++) {
-    for (int j = 0; j < num_classes; j++) {
-      if (j == class_[i]) {
-        (*log_posteriors)(j) += std::exp(xw(i));
-      }
-    }
+
+  log_posteriors->Set(-std::numeric_limits<BaseFloat>::infinity());
+  
+  for (int32 i = 0; i < num_mixes; i++) {
+    int32 j = class_[i];
+    (*log_posteriors)(j) = LogAdd((*log_posteriors)(j), xw(i));
   }
-  log_posteriors->ApplyLog();
-  log_posteriors->Add(-xw.LogSumExp());
+  log_posteriors->Add(-log_posteriors->LogSumExp());
 }
 
 BaseFloat LogisticRegression::DoStep(const Matrix<BaseFloat> &xs,

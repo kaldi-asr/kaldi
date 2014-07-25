@@ -133,7 +133,8 @@ void Fbank::ComputeInternal(const VectorBase<BaseFloat> &wave,
 
     // Compute energy after window function (not the raw one)
     if (opts_.use_energy && !opts_.raw_energy)
-      log_energy = log(VecVec(window, window));
+      log_energy = log(std::max(VecVec(window, window),
+                                std::numeric_limits<BaseFloat>::min()));
 
     if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
       srfft_->Compute(window.Data(), true, &temp_buffer);
@@ -146,8 +147,11 @@ void Fbank::ComputeInternal(const VectorBase<BaseFloat> &wave,
 
     // Sum with MelFiterbank over power spectrum
     mel_banks.Compute(power_spectrum, &mel_energies);
-    if (opts_.use_log_fbank)
+    if (opts_.use_log_fbank) {
+      // avoid log of zero (which should be prevented anyway by dithering).
+      mel_energies.ApplyFloor(std::numeric_limits<BaseFloat>::min());
       mel_energies.ApplyLog();  // take the log.
+    }
 
     // Output buffers
     SubVector<BaseFloat> this_output(output->Row(r));

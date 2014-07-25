@@ -18,8 +18,7 @@ utils=`pwd`/utils
 tmpdir=`pwd`/data/local/tmp
 lexicon=$1
 
-#TODO: Move this file somewhere else!!
-cat data/ldc_arabic_phones.txt | grep -e "^$" -v | awk '{print $1}' > $tmpdir/phones
+cat local/ldc_arabic_phones.txt | grep -e "^$" -v | awk '{print $1}' > $tmpdir/phones
 
 if [ ! -d "$lexicon/callhome_arabic_lexicon_991012" ]; then
     echo "Could not find folder callhome_arabic_lexicon_991012 in the lexicon folder"

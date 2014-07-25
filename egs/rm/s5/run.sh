@@ -96,6 +96,10 @@ utils/mkgraph.sh data/lang exp/tri2b exp/tri2b/graph
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b/decode
 
+# you could run these scripts at this point, that use VTLN.
+# local/run_vtln.sh
+# local/run_vtln2.sh
+
 # Align all data with LDA+MLLT system (tri2b)
 steps/align_si.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
    data/train data/lang exp/tri2b exp/tri2b_ali

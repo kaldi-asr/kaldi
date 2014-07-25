@@ -57,7 +57,18 @@ void LinearVtln::Read(std::istream &is, bool binary) {
     ExpectToken(is, binary, "<warp>");
     ReadBasicType(is, binary, &(warps_[i]));
   }
-  ExpectToken(is, binary, "</LinearVtln>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "</LinearVtln>") {
+    // the older code had a bug in that it wasn't writing or reading
+    // default_class_.  The following guess at its value is likely to be
+    // correct.
+    default_class_ = (sz + 1) / 2;
+  } else {
+    KALDI_ASSERT(token == "<DefaultClass>");
+    ReadBasicType(is, binary, &default_class_);
+    ExpectToken(is, binary, "</LinearVtln>");
+  }
 }
 
 void LinearVtln::Write(std::ostream &os, bool binary) const {
@@ -76,6 +87,8 @@ void LinearVtln::Write(std::ostream &os, bool binary) const {
     WriteBasicType(os, binary, warps_[i]);
     if(!binary) os << "\n";
   }
+  WriteToken(os, binary, "<DefaultClass>");
+  WriteBasicType(os, binary, default_class_);
   WriteToken(os, binary, "</LinearVtln>");
 }
 
@@ -97,11 +110,13 @@ void LinearVtln::ComputeTransform(const FmllrDiagGmmAccs &accs,
   
   if (accs.beta_ == 0.0) {
     KALDI_WARN << "no stats, returning default transform";
-    *class_idx = default_class_;
     int32 dim = Dim();
-    KALDI_ASSERT(Ws != NULL && Ws->NumRows() == dim && Ws->NumCols() == dim+1);
-    Ws->Range(0, dim, 0, dim).CopyFromMat(A_[default_class_]);
-    Ws->Range(0, dim, dim, 1).SetZero();  // Set last column to zero.
+    if (Ws) {
+      KALDI_ASSERT(Ws->NumRows() == dim && Ws->NumCols() == dim+1);
+      Ws->Range(0, dim, 0, dim).CopyFromMat(A_[default_class_]);
+      Ws->Range(0, dim, dim, 1).SetZero();  // Set last column to zero.
+    }
+    if (class_idx) *class_idx = default_class_;
     if (logdet_out) *logdet_out = logdets_[default_class_];
     if (objf_impr) *objf_impr = 0;
     if (count) *count = 0;

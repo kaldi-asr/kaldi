@@ -25,7 +25,6 @@ fake_dims=       # If specified, can generate 'fake' stats (that won't normalize
                  # from a specified dimension.
 two_channel=false
 
-
 if [ "$1" == "--fake" ]; then
   fake=true
   shift

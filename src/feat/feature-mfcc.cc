@@ -138,7 +138,8 @@ void Mfcc::ComputeInternal(const VectorBase<BaseFloat> &wave,
                   (opts_.use_energy && opts_.raw_energy ? &log_energy : NULL));
 
     if (opts_.use_energy && !opts_.raw_energy)
-      log_energy = log(VecVec(window, window));
+      log_energy = log(std::max(VecVec(window, window),
+                                std::numeric_limits<BaseFloat>::min()));
 
     if (srfft_ != NULL)  // Compute FFT using the split-radix algorithm.
       srfft_->Compute(window.Data(), true, &temp_buffer);
@@ -150,7 +151,9 @@ void Mfcc::ComputeInternal(const VectorBase<BaseFloat> &wave,
     SubVector<BaseFloat> power_spectrum(window, 0, window.Dim()/2 + 1);
 
     mel_banks.Compute(power_spectrum, &mel_energies);
-    
+
+    // avoid log of zero (which should be prevented anyway by dithering).
+    mel_energies.ApplyFloor(std::numeric_limits<BaseFloat>::min());
     mel_energies.ApplyLog();  // take the log.
 
     SubVector<BaseFloat> this_mfcc(output->Row(r));

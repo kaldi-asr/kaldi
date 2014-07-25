@@ -1,4 +1,4 @@
-// fgmmbin/fgmm-global-gselect-to-post.cc
+// gmmbin/gmm-global-gselect-to-post.cc
 
 // Copyright   2013       Johns Hopkins University (author: Daniel Povey)
 
@@ -20,7 +20,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "gmm/full-gmm.h"
+#include "gmm/diag-gmm.h"
 #include "hmm/posterior.h"
 
 
@@ -32,15 +32,15 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Given features and Gaussian-selection (gselect) information for\n"
-        "a full-covariance GMM, output per-frame posteriors for the selected\n"
+        "a diagonal-covariance GMM, output per-frame posteriors for the selected\n"
         "indices.  Also supports pruning the posteriors if they are below\n"
         "a stated threshold, (and renormalizing the rest to sum to one)\n"
         "See also: gmm-gselect, fgmm-gselect, gmm-global-get-post,\n"
-        " gmm-global-gselect-to-post\n"
+        " fgmm-global-gselect-to-post\n"
         "\n"
-        "Usage:  fgmm-global-gselect-to-post [options] <model-in> <feature-rspecifier> "
+        "Usage:  gmm-global-gselect-to-post [options] <model-in> <feature-rspecifier> "
         "<gselect-rspecifier> <post-wspecifier>\n"
-        "e.g.: fgmm-global-gselect-to-post 1.ubm ark:- 'ark:gunzip -c 1.gselect|' ark:-\n";
+        "e.g.: gmm-global-gselect-to-post 1.dubm ark:- 'ark:gunzip -c 1.gselect|' ark:-\n";
         
     ParseOptions po(usage);
 
@@ -61,8 +61,8 @@ int main(int argc, char *argv[]) {
         gselect_rspecifier = po.GetArg(3),
         post_wspecifier = po.GetArg(4);
     
-    FullGmm fgmm;
-    ReadKaldiObject(model_rxfilename, &fgmm);
+    DiagGmm gmm;
+    ReadKaldiObject(model_rxfilename, &gmm);
     
     double tot_loglike = 0.0, tot_frames = 0.0;
     int64 tot_posts = 0;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
         const std::vector<int32> &this_gselect = gselect[t];
         KALDI_ASSERT(!gselect[t].empty());
         Vector<BaseFloat> loglikes;
-        fgmm.LogLikelihoodsPreselect(frame, this_gselect, &loglikes);
+        gmm.LogLikelihoodsPreselect(frame, this_gselect, &loglikes);
         this_tot_loglike += loglikes.ApplySoftMax();
         // now "loglikes" contains posteriors.
         if (fabs(loglikes.Sum() - 1.0) > 0.01) {

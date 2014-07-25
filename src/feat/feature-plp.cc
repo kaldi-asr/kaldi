@@ -193,7 +193,8 @@ void Plp::ComputeInternal(const VectorBase<BaseFloat> &wave,
                   (opts_.use_energy && opts_.raw_energy ? &log_energy : NULL));
 
     if (opts_.use_energy && !opts_.raw_energy)
-      log_energy = log(VecVec(window, window));
+      log_energy = log(std::max(VecVec(window, window),
+                                std::numeric_limits<BaseFloat>::min()));
 
     if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
       srfft_->Compute(window.Data(), true, &temp_buffer);
@@ -210,7 +211,7 @@ void Plp::ComputeInternal(const VectorBase<BaseFloat> &wave,
     mel_energies.MulElements(equal_loudness);
     
     mel_energies.ApplyPow(opts_.compress_factor);
-
+    
     // duplicate first and last elements.
     {
       SubVector<BaseFloat> v(mel_energies_duplicated, 1, num_mel_bins);
@@ -221,9 +222,12 @@ void Plp::ComputeInternal(const VectorBase<BaseFloat> &wave,
 
     autocorr_coeffs.AddMatVec(1.0, idft_bases_, kNoTrans,
                               mel_energies_duplicated,  0.0);
-
+    
     BaseFloat energy = ComputeLpc(autocorr_coeffs, &lpc_coeffs);
 
+    energy = std::max(energy,
+                      std::numeric_limits<BaseFloat>::min());
+    
     Lpc2Cepstrum(opts_.lpc_order, lpc_coeffs.Data(), raw_cepstrum.Data());
     {
       SubVector<BaseFloat> dst(final_cepstrum, 1, opts_.num_ceps-1);
