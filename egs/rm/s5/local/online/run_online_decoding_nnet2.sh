@@ -104,6 +104,20 @@ fi
 if [ $stage -le 8 ]; then
   # do the actual online decoding with iVectors.
   steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
-    exp/tri3b/graph_ug data/test ${dir}_online/decode_ug || exit 1;  
+    exp/tri3b/graph data/test ${dir}_online/decode &
+  steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+    exp/tri3b/graph_ug data/test ${dir}_online/decode_ug || exit 1;
+  wait
 fi
 
+if [ $stage -le 9 ]; then
+  # this version of the decoding treats each utterance separately
+  # without carrying forward speaker information.
+  steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+    --per-utt true \
+    exp/tri3b/graph data/test ${dir}_online/decode_per_utt &
+  steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+    --per-utt true \
+    exp/tri3b/graph_ug data/test ${dir}_online/decode_ug_per_utt || exit 1;
+  wait
+fi

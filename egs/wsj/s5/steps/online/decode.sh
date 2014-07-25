@@ -9,7 +9,7 @@ nj=4
 cmd=run.pl
 max_active=7000
 beam=13.0
-latbeam=6.0
+lattice_beam=6.0
 acwt=0.083333 # note: only really affects adaptation and pruning (scoring is on
               # lattices).
 per_utt=false
@@ -89,7 +89,7 @@ if [ $stage -le 0 ]; then
   $cmd JOB=1:$nj $dir/log/decode.JOB.log \
     online2-wav-gmm-latgen-faster --do-endpointing=$do_endpointing \
      --config=$srcdir/conf/online_decoding.conf \
-     --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
+     --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
      --acoustic-scale=$acwt --word-symbol-table=$graphdir/words.txt \
      $graphdir/HCLG.fst $spk2utt_rspecifier "$wav_rspecifier" \
       "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
