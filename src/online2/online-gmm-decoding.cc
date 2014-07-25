@@ -29,7 +29,7 @@ SingleUtteranceGmmDecoder::SingleUtteranceGmmDecoder(
     const OnlineGmmDecodingModels &models,                            
     const OnlineFeaturePipeline &feature_prototype,
     const fst::Fst<fst::StdArc> &fst,
-    const SpeakerAdaptationState &adaptation_state):
+    const OnlineGmmAdaptationState &adaptation_state):
     config_(config), models_(models),
     feature_pipeline_(feature_prototype.New()),
     orig_adaptation_state_(adaptation_state),
@@ -261,7 +261,7 @@ bool SingleUtteranceGmmDecoder::HaveTransform() const {
 }
 
 void SingleUtteranceGmmDecoder::GetAdaptationState(
-    SpeakerAdaptationState *adaptation_state) const {
+    OnlineGmmAdaptationState *adaptation_state) const {
   *adaptation_state = adaptation_state_;
   feature_pipeline_->GetCmvnState(&adaptation_state->cmvn_state);
 }

@@ -472,9 +472,9 @@ int32 LinearCgd(const LinearCgdOptions &opts,
   // Note: although from a mathematical point of view the method should
   // converge after M iterations, in practice it does not always converge
   // to good precision after that many iterations so we let the maximum
-  // be 1.5 * M instead.
+  // be 1.5 * M + 5 instead.
   int32 k = 0;
-  for (; k < M + M / 2 && k != opts.max_iters; k++) {
+  for (; k < M + M / 2 + 5 && k != opts.max_iters; k++) {
     // Note: we'll break from this loop if we converge sooner due to
     // max_error.
     Ap.AddSpVec(1.0, A, p, 0.0);  // Ap = A p
@@ -497,6 +497,7 @@ int32 LinearCgd(const LinearCgdOptions &opts,
       r_next_norm_sq = VecVec(r, r);
       r_recompute_norm_sq = r_next_norm_sq;
     }
+    KALDI_VLOG(5) << "In linear CG: r_next_norm_sq = " << r_next_norm_sq;
     // Check if converged.
     if (r_next_norm_sq <= max_error_sq)
       break;
@@ -526,7 +527,7 @@ int32 LinearCgd<float>(const LinearCgdOptions &opts,
 
 template
 int32 LinearCgd<double>(const LinearCgdOptions &opts,
-                       const SpMatrix<double> &A, const VectorBase<double> &b,
-                       VectorBase<double> *x);
+                        const SpMatrix<double> &A, const VectorBase<double> &b,
+                        VectorBase<double> *x);
 
 } // end namespace kaldi

@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: online2-wav-gmm-latgen-faster [options] <fst-in> "
         "<spk2utt-rspecifier> <wav-rspecifier> <lattice-wspecifier>\n"
-        "Run ^/egs/rm/s5/local/run_online_decoding.sh for example\n";
+        "Run egs/rm/s5/local/run_online_decoding.sh for example\n";
     
     ParseOptions po(usage);
     
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
-      SpeakerAdaptationState adaptation_state;
+      OnlineGmmAdaptationState adaptation_state;
       for (size_t i = 0; i < uttlist.size(); i++) {
         std::string utt = uttlist[i];
         if (!wav_reader.HasKey(utt)) {

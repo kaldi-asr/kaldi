@@ -102,6 +102,11 @@ template class OnlineGenericBaseFeature<Plp>;
 template class OnlineGenericBaseFeature<Fbank>;
 
 
+OnlineCmvnState::OnlineCmvnState(const OnlineCmvnState &other):
+    speaker_cmvn_stats(other.speaker_cmvn_stats),
+    global_cmvn_stats(other.global_cmvn_stats),
+    frozen_state(other.frozen_state) { }
+
 OnlineCmvn::OnlineCmvn(const OnlineCmvnOptions &opts,
                        const OnlineCmvnState &cmvn_state,
                        OnlineFeatureInterface *src):
@@ -472,5 +477,6 @@ void OnlineAppendFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
   src1_->GetFrame(frame, &feat1);
   src2_->GetFrame(frame, &feat2);
 };
+
 
 }  // namespace kaldi

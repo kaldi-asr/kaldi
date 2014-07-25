@@ -24,23 +24,6 @@
 #include "gmm/diag-gmm.h"
 #include "hmm/posterior.h"
 
-namespace kaldi {
-
-// comparator object that can be used to sort from greatest to
-// least posterior.
-struct CompareReverseSecond {
-  // view this as an "<" operator used for sorting, except it behaves like
-  // a ">" operator on the .second field of the pair because we want the
-  // sort to be in reverse order (greatest to least) on posterior.
-  bool operator() (const std::pair<int32, BaseFloat> &a,
-                   const std::pair<int32, BaseFloat> &b) {
-    return (a.second > b.second);
-  }
-};
-
-
-}
-
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -117,34 +100,9 @@ int main(int argc, char *argv[]) {
 
       double log_like_this_file = 0.0;
       for (int32 t = 0; t < T; t++) {
-        SubVector<BaseFloat> loglikes_row(loglikes, t);
-        log_like_this_file += loglikes_row.ApplySoftMax();
-        std::vector<std::pair<int32, BaseFloat> > temp_post(num_gauss);
-        for (int32 g = 0; g < num_gauss; g++)
-          temp_post[g] = std::pair<int32, BaseFloat>(g, loglikes_row(g));
-        CompareReverseSecond compare;
-        // sort in decreasing order on posterior.  actually, for efficiency we
-        // first do nth_element and then sort, as we only need the part we're
-        // going to output, to be sorted.
-        std::nth_element(temp_post.begin(),
-                         temp_post.begin() + num_post, temp_post.end(),
-                         compare);
-        std::sort(temp_post.begin(), temp_post.begin() + num_post,
-                  compare);
-
-        std::vector<std::pair<int32, BaseFloat> > *output_post = &(post[t]);
-        output_post->insert(output_post->end(),
-                            temp_post.begin(), temp_post.begin() + num_post);
-        while (output_post->size() > 1 && output_post->back().second < min_post)
-          post[t].pop_back();
-        // Now renormalize.
-        BaseFloat tot = 0.0;
-        size_t size = output_post->size();
-        for (size_t i = 0; i < size; i++)
-          tot += (*output_post)[i].second;
-        BaseFloat inv_tot = 1.0 / tot;
-        for (size_t i = 0; i < size; i++)
-          (*output_post)[i].second *= inv_tot;
+        log_like_this_file +=
+            VectorToPosteriorEntry(loglikes.Row(t), num_post,
+                                   min_post, &(post[t]));
       }
       KALDI_VLOG(1) << "Processed utterance " << utt << ", average likelihood "
                     << (log_like_this_file / T) << " over " << T << " frames";

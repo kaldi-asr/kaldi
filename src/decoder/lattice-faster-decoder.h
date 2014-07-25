@@ -116,7 +116,7 @@ class LatticeFasterDecoder {
     config_ = config;
   }
 
-  LatticeFasterDecoderConfig GetOptions() {
+  const LatticeFasterDecoderConfig &GetOptions() const {
     return config_;
   }
   

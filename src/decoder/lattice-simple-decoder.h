@@ -92,7 +92,7 @@ class LatticeSimpleDecoder {
   
   ~LatticeSimpleDecoder() { ClearActiveTokens(); }
 
-  LatticeSimpleDecoderConfig GetOptions() {
+  const LatticeSimpleDecoderConfig &GetOptions() const {
     return config_;
   }
 

@@ -40,8 +40,9 @@ namespace kaldi {
 
 
 
-/** LatticeFasterOnlineDecoder is as LatticeFasterDecoder but also supports
-    an efficient way to get the best path, which is useful in endpointing.
+/** LatticeFasterOnlineDecoder is as LatticeFasterDecoder but also supports an
+    efficient way to get the best path (see the function BestPathEnd()), which
+    is useful in endpointing.
  */
 class LatticeFasterOnlineDecoder {
  public:
@@ -70,7 +71,7 @@ class LatticeFasterOnlineDecoder {
     config_ = config;
   }
 
-  LatticeFasterDecoderConfig GetOptions() {
+  const LatticeFasterDecoderConfig &GetOptions() const {
     return config_;
   }
   
@@ -135,6 +136,9 @@ class LatticeFasterOnlineDecoder {
 
   /// Behaves the same like GetRawLattice but only processes tokens whose
   /// extra_cost is smaller than the best-cost plus the specified beam.
+  /// It is only worthwhile to call this function if beam is less than
+  /// the lattice_beam specified in the config; otherwise, it would
+  /// return essentially the same thing as GetRawLattice, but more slowly.
   bool GetRawLatticePruned(Lattice *ofst,
                            bool use_final_probs,
                            BaseFloat beam) const;

@@ -1,6 +1,6 @@
 // online2/online-feature-pipeline.h
 
-// Copyright 2013   Johns Hopkins University (author: Daniel Povey)
+// Copyright 2013-2014   Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -35,6 +35,10 @@ namespace kaldi {
 /// @addtogroup  onlinefeat OnlineFeatureExtraction
 /// @{
 
+/// @file
+/// This file contains a class OnlineFeaturePipeline for online feature
+/// extraction, which puts together various pieces into something that
+/// has a convenient interface.
 
 /// This configuration class is to set up OnlineFeaturePipelineConfig, which
 /// in turn is the configuration class for OnlineFeaturePipeline.
@@ -65,18 +69,18 @@ struct OnlineFeaturePipelineCommandLineConfig {
   void Register(OptionsItf *po) {
     po->Register("feature-type", &feature_type,
                  "Base feature type [mfcc, plp, fbank]");
-    po->Register("mfcc-config", &mfcc_config, "Configuration class file for "
+    po->Register("mfcc-config", &mfcc_config, "Configuration file for "
                  "MFCC features (e.g. conf/mfcc.conf)");
-    po->Register("plp-config", &plp_config, "Configuration class file for "
+    po->Register("plp-config", &plp_config, "Configuration file for "
                  "PLP features (e.g. conf/plp.conf)");
-    po->Register("fbank-config", &fbank_config, "Configuration class file for "
+    po->Register("fbank-config", &fbank_config, "Configuration file for "
                  "filterbank features (e.g. conf/fbank.conf)");
     po->Register("add-pitch", &add_pitch, "Append pitch features to raw "
                  "MFCC/PLP features.");
-    po->Register("pitch-config", &pitch_config, "Configuration class file for "
+    po->Register("pitch-config", &pitch_config, "Configuration file for "
                  "pitch features (e.g. conf/pitch.conf)");
     po->Register("pitch-process-config", &pitch_process_config,
-                 "Configuration class file for post-processing pitch features "
+                 "Configuration file for post-processing pitch features "
                  "(e.g. conf/pitch_process.conf)");
     po->Register("cmvn-config", &cmvn_config, "Configuration class "
                  "file for online CMVN features (e.g. conf/online_cmvn.conf)");
@@ -85,12 +89,12 @@ struct OnlineFeaturePipelineCommandLineConfig {
                  "from 'matrix-sum scp:data/train/cmvn.scp -'");
     po->Register("add-deltas", &add_deltas,
                  "Append delta features.");
-    po->Register("delta-config", &delta_config, "Configuration class file for "
+    po->Register("delta-config", &delta_config, "Configuration file for "
                  "delta feature computation (if not supplied, will not apply "
                  "delta features; supply empty config to use defaults.)");
     po->Register("splice-feats", &splice_feats, "Splice features with left and "
                  "right context.");
-    po->Register("splice-config", &splice_config, "Configuration class file "
+    po->Register("splice-config", &splice_config, "Configuration file "
                  "for frame splicing, if done (e.g. prior to LDA)");
     po->Register("lda-matrix", &lda_rxfilename, "Filename of LDA matrix (if "
                  "using LDA), e.g. exp/foo/final.mat");
@@ -115,7 +119,7 @@ struct OnlineFeaturePipelineConfig {
 
   BaseFloat FrameShiftInSeconds() const;
 
-  std::string feature_type;  // "mfcc" or "plp", for now.
+  std::string feature_type;  // "mfcc" or "plp" or "fbank"
 
   MfccOptions mfcc_opts;  // options for MFCC computation,
                           // if feature_type == "mfcc"
@@ -152,9 +156,6 @@ struct OnlineFeaturePipelineConfig {
 /// generic.
 class OnlineFeaturePipeline: public OnlineFeatureInterface {
  public:
-  /// The copy constructor is important as it's how we generate a fresh copy of
-  /// the feature-processing pipeline for when we want to process a new
-  /// utterance.
   explicit OnlineFeaturePipeline(const OnlineFeaturePipelineConfig &cfg);
 
   /// Member functions from OnlineFeatureInterface:
@@ -233,6 +234,7 @@ class OnlineFeaturePipeline: public OnlineFeatureInterface {
   OnlineCmvn *cmvn_;
   OnlineFeatureInterface *splice_or_delta_;  // This may be NULL if we're not
                                              // doing splicing or deltas.
+
   OnlineFeatureInterface *lda_;  // If non-NULL, the LDA or LDA+MLLT transform.
 
   /// returns lda_ if it exists, else splice_or_delta_, else cmvn_.  If this

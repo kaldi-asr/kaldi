@@ -19,6 +19,14 @@ stage=0
 num_gselect=5 # Gaussian-selection using diagonal model: number of Gaussians to select
 min_post=0.025 # Minimum posterior to use (posteriors below this are pruned out)
 ivector_period=10
+posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
+                    # inter-frame correlations.  Making this small during iVector
+                    # extraction is equivalent to scaling up the prior, and will
+                    # will tend to produce smaller iVectors where data-counts are
+                    # small.  It's not so important that this match the value
+                    # used when training the iVector extractor, but more important
+                    # that this match the value used when you do real online decoding
+                    # with the neural nets trained with these iVectors.
 
 # End configuration section.
 
@@ -64,7 +72,6 @@ echo $ivector_period > $dir/ivector_period || exit 1;
 splice_opts=$(cat $srcdir/splice_opts)
 
 
-
 ## Set up features.  $gmm_feats is the version of the features with online CMVN, that we use
 ## to get the Gaussian posteriors, $feats is the version of the features with no CMN.
 gmm_feats="ark,s,cs:apply-cmvn-online --config=$srcdir/online_cmvn.conf $srcdir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
@@ -77,7 +84,7 @@ if [ $stage -le 0 ]; then
 
   $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
     gmm-global-get-post --n=$num_gselect --min-post=$min_post $srcdir/final.dubm \
-      "$gmm_feats" ark:- \| \
+      "$gmm_feats" ark:- \| scale-post ark:- $posterior_scale ark:- \| \
     ivector-extract-online --ivector-period=$ivector_period $srcdir/final.ie "$feats" ark,s,cs:- \
       ark,scp,t:$dir/ivector_online.JOB.ark,$dir/ivector_online.JOB.scp || exit 1;
 fi

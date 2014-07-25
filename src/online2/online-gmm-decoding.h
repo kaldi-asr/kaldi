@@ -92,9 +92,6 @@ struct OnlineGmmDecodingAdaptationPolicyConfig {
 };
 
 
-
-
-
 struct OnlineGmmDecodingConfig {
   BaseFloat fmllr_lattice_beam;
   
@@ -199,7 +196,7 @@ class OnlineGmmDecodingModels {
 };
 
 
-struct SpeakerAdaptationState {
+struct OnlineGmmAdaptationState {
   OnlineCmvnState cmvn_state;
   FmllrDiagGmmAccs spk_stats;
   Matrix<BaseFloat> transform;
@@ -213,11 +210,11 @@ struct SpeakerAdaptationState {
 class SingleUtteranceGmmDecoder {
  public:
   SingleUtteranceGmmDecoder(const OnlineGmmDecodingConfig &config,
-                            const OnlineGmmDecodingModels &models,                            
+                            const OnlineGmmDecodingModels &models,
                             const OnlineFeaturePipeline &feature_prototype,
                             const fst::Fst<fst::StdArc> &fst,
-                            const SpeakerAdaptationState &adaptation_state);
-
+                            const OnlineGmmAdaptationState &adaptation_state);
+  
   OnlineFeaturePipeline &FeaturePipeline() { return *feature_pipeline_; }
 
   /// advance the decoding as far as we can.  May also estimate fMLLR after
@@ -240,7 +237,7 @@ class SingleUtteranceGmmDecoder {
   /// the end of the grammar, and false otherwise.
   void EstimateFmllr(bool end_of_utterance);
   
-  void GetAdaptationState(SpeakerAdaptationState *adaptation_state) const;
+  void GetAdaptationState(OnlineGmmAdaptationState *adaptation_state) const;
 
   /// Gets the lattice.  If rescore_if_needed is true, and if there is any point
   /// in rescoring the state-level lattice (see RescoringIsNeeded()), it will
@@ -280,13 +277,13 @@ class SingleUtteranceGmmDecoder {
   std::vector<int32> silence_phones_; // sorted, unique list of silence phones,
                                       // derived from config_
   const OnlineGmmDecodingModels &models_;
-  OnlineFeaturePipeline *feature_pipeline_;
-  const SpeakerAdaptationState &orig_adaptation_state_;
+  OnlineFeaturePipeline *feature_pipeline_;  // owned here.
+  const OnlineGmmAdaptationState &orig_adaptation_state_;
   // adaptation_state_ generally reflects the "current" state of the
   // adaptation. Note: adaptation_state_.cmvn_state is just copied from
   // orig_adaptation_state, the function GetAdaptationState() gets the CMVN
   // state.
-  SpeakerAdaptationState adaptation_state_;
+  OnlineGmmAdaptationState adaptation_state_;
   LatticeFasterOnlineDecoder decoder_;
 };
 

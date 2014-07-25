@@ -40,9 +40,11 @@ num_threads=4
 num_processes=4 # each job runs this many processes, each with --num-threads threads
 cmd="run.pl"
 stage=-4
-num_gselect=5 # Gaussian-selection using diagonal model: number of Gaussians to select
 ivector_dim=100 # dimension of the extracted i-vector
 num_iters=10
+num_gselect=5 # Gaussian-selection using diagonal model: number of Gaussians to select
+posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
+                    # inter-frame correlations.
 min_post=0.025 # Minimum posterior to use (posteriors below this are pruned out)
                # caution: you should use the same value in the online-estimation
                # code.
@@ -117,12 +119,16 @@ fi
 
 # Do Gaussian selection and posterior extracion
 
+# if we subsample frame, modify the posterior-scale; this is likely
+# to make the original posterior-scale (before subsampling) suitable.
+modified_posterior_scale=$(perl -e "print $posterior_scale * $subsample;");
+
 if [ $stage -le -1 ]; then
   echo $nj_full > $dir/num_jobs
   echo "$0: doing Gaussian selection and posterior computation"
   $cmd JOB=1:$nj_full $dir/log/post.JOB.log \
-    gmm-global-get-post --n=$num_gselect --min-post=$min_post $dir/final.dubm "$gmm_feats" \
-      "ark:|gzip -c >$dir/post.JOB.gz" || exit 1;
+    gmm-global-get-post --n=$num_gselect --min-post=$min_post $dir/final.dubm "$gmm_feats" \| \
+    scale-post ark:- $modified_posterior_scale "ark:|gzip -c >$dir/post.JOB.gz" || exit 1;
 else
   # make sure we at least have the right number of post.*.gz files.
   if ! [ $nj_full -eq $(cat $dir/num_jobs) ]; then
@@ -173,3 +179,4 @@ while [ $x -lt $num_iters ]; do
 done
 
 ln -s $x.ie $dir/final.ie
+

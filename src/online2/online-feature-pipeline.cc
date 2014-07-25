@@ -25,7 +25,8 @@ namespace kaldi {
 
 OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
     const OnlineFeaturePipelineCommandLineConfig &config) {
-  if (config.feature_type == "mfcc" || config.feature_type == "plp") {
+  if (config.feature_type == "mfcc" || config.feature_type == "plp" ||
+      config.feature_type == "fbank") {
     feature_type = config.feature_type;
   } else {
     KALDI_ERR << "Invalid feature type: " << config.feature_type << ". "
@@ -46,6 +47,13 @@ OnlineFeaturePipelineConfig::OnlineFeaturePipelineConfig(
                  << "since feature type is set to " << feature_type << ".";
   }  // else use the defaults.
 
+  if (config.fbank_config != "") {
+    ReadConfigFromFile(config.plp_config, &fbank_opts);
+    if (feature_type != "fbank")
+      KALDI_WARN << "--fbank-config option has no effect "
+                 << "since feature type is set to " << feature_type << ".";
+  }  // else use the defaults.
+  
   add_pitch = config.add_pitch;
   if (config.pitch_config != "") {
     ReadConfigFromFile(config.pitch_config, &pitch_opts);

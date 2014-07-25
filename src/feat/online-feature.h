@@ -223,6 +223,11 @@ struct OnlineCmvnState {
 
   explicit OnlineCmvnState(const Matrix<double> &global_stats):
       global_cmvn_stats(global_stats) { }
+
+  // Copy constructor
+  OnlineCmvnState(const OnlineCmvnState &other); 
+  
+  // Use the default assignment operator.
 };
 
 
