@@ -51,14 +51,12 @@ struct OnlineNnet2DecodingConfig {
   
   LatticeFasterDecoderConfig faster_decoder_opts;
   nnet2::DecodableNnet2OnlineOptions decodable_opts;
-  fst::DeterminizeLatticePhonePrunedOptions lattice_determinize_opts;
   
   OnlineNnet2DecodingConfig() {  decodable_opts.acoustic_scale = 0.1; }
   
   void Register(OptionsItf *po) {
     faster_decoder_opts.Register(po);
     decodable_opts.Register(po);
-    lattice_determinize_opts.Register(po);
   }
 };
 

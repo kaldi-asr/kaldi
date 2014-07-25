@@ -114,7 +114,7 @@ void DecodableNnet2Online::ComputeForFrame(int32 frame) {
   }
   CuMatrix<BaseFloat> cu_features; 
   cu_features.Swap(&features);  // Copy to GPU, if we're using one.
-
+  
 
   int32 num_frames_out = input_frame_end - input_frame_begin -
       left_context_ - right_context_;

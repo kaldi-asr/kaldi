@@ -41,7 +41,7 @@ void TestVectorToPosteriorEntry() {
   KALDI_ASSERT(post_entry[0].first == max_elem);
 
   KALDI_ASSERT(post_entry.back().second >= min_post);
-  KALDI_ASSERT(post_entry.back().second >= post_entry.front().second);
+  KALDI_ASSERT(post_entry.back().second <= post_entry.front().second);
 
   BaseFloat sum = 0.0;
   for (size_t i = 0; i < post_entry.size(); i++)

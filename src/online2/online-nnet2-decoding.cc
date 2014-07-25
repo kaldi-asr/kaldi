@@ -34,6 +34,7 @@ SingleUtteranceNnet2Decoder::SingleUtteranceNnet2Decoder(
     tmodel_(tmodel),
     decodable_(model, tmodel, config.decodable_opts, feature_pipeline),
     decoder_(fst, config.faster_decoder_opts) {
+  decoder_.InitDecoding();
 }
 
 void SingleUtteranceNnet2Decoder::AdvanceDecoding() {
@@ -53,9 +54,8 @@ void SingleUtteranceNnet2Decoder::GetLattice(bool end_of_utterance,
 
   if (config_.faster_decoder_opts.determinize_lattice) {
     BaseFloat lat_beam = config_.faster_decoder_opts.lattice_beam;
-    DeterminizeLatticePhonePruned(tmodel_, raw_lat, lat_beam,
-                                  clat, config_.lattice_determinize_opts);
-
+    DeterminizeLatticePhonePrunedWrapper(
+        tmodel_, &raw_lat, lat_beam, clat, config_.faster_decoder_opts.det_opts);
   }
 }
 

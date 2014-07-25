@@ -1,4 +1,4 @@
-// online2/online-ivecctor-feature.cc
+// online2/online-ivector-feature.cc
 
 // Copyright 2014  Daniel Povey
 
@@ -176,11 +176,15 @@ void OnlineIvectorFeature::GetFrame(int32 frame,
     // use the most recent iVector we have, even if 'frame' is significantly in
     // the past.
     feat->CopyFromVec(current_ivector_);
+    // Subtract the prior-mean from the first dimension of the output feature so
+    // it's approximately zero-mean.
+    (*feat)(0) -= info_.extractor.PriorOffset();
   } else {
     int32 i = frame / info_.ivector_period;  // rounds down.
     // if the following fails, UpdateStatsUntilFrame would have a bug.
     KALDI_ASSERT(static_cast<size_t>(i) <  ivectors_history_.size());
     feat->CopyFromVec(*(ivectors_history_[i]));
+    (*feat)(0) -= info_.extractor.PriorOffset();
   }
 }
 

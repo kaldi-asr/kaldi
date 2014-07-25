@@ -54,72 +54,74 @@ srcdir=$3
 dir=$4
 
 
-for f in $lang/phones.txt $srcdir/final.mdl $ivector_extractor_dir/final.{mat,ie,dubm} \
-     $ivector_extractor_dir/{splice_opts,global_cmvn.stats,online_cmvn.conf}; do
-  [ ! -f $f ] && echo "train_deltas.sh: no such file $f" && exit 1;
+for f in $lang/phones.txt $srcdir/final.mdl $iedir/final.{mat,ie,dubm} \
+     $iedir/{splice_opts,global_cmvn.stats,online_cmvn.conf}; do
+  [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
 mkdir -p $dir/conf
 
 
-cp $srcdir/final.mdl $srcdir/final.mdl $dir/ || exit 1;
+cp $srcdir/final.mdl $dir/ || exit 1;
 mkdir -p $dir/ivector_extractor/
-cp $ivector_extractor_dir/final.{mat,ie,dubm} $ivector_extractor_dir/global_cmvn.stats \
-   $dir/ivector_extractor/ || exit 1;
+cp $iedir/final.{mat,ie,dubm} $iedir/global_cmvn.stats $dir/ivector_extractor/ || exit 1;
 
 
 mkdir -p $dir/conf
 rm $dir/{plp,mfcc,fbank}.conf 2>/dev/null
 echo "$0: preparing configuration files in $dir/conf"
+
 if [ -f $dir/conf/online_nnet2_decoding.conf ]; then
   echo "$0: moving $dir/conf/online_nnet2_decoding.conf to $dir/conf/online_nnet2_decoding.conf.bak"
   mv $dir/conf/online_nnet2_decoding.conf $dir/conf/online_nnet2_decoding.conf.bak
-  fi
-  conf=$dir/conf/online_nnet2_decoding.conf
-  ieconf=$dir/conf/ivector_extractor.conf
-  echo -n >$conf
-  echo -n >$ieconf
-
-  echo "--ivector-extraction-config=$ieconf" >>$conf
-  echo "--feature-type=$feature_type" >>$conf
-
-  case "$feature_type" in
-    mfcc)
-      echo "--mfcc-config=$dir/conf/mfcc.conf" >>$conf
-      cp $mfcc_config $dir/conf/mfcc.conf || exit 1;
-    plp)
-      echo "--plp-config=$dir/conf/plp.conf" >>$conf
-      cp $plp_config $dir/conf/plp.conf || exit 1;
-    fbank)
-      echo "--fbank-config=$dir/conf/fbank.conf" >>$conf
-      cp $fbank_config $dir/conf/fbank.conf || exit 1;
-    *)
-      echo "Unknown feature type $feature_type"
-  esac
-  cp $iedir/online_cmvn.conf $dir/conf/online_cmvn.conf || exit 1;
-  for x in $(cat $iedir/splice_opts); do echo "$x"; done > $dir/conf/splice.conf
-  echo "--splice-config=$dir/conf/splice.conf" >>$ieconf
-  echo "--cmvn-config=$dir/conf/online_cmvn.conf" >>$ieconf
-  echo "--lda-matrix=$dir/ivector_extractor/final.mat" >>$ieconf
-  echo "--global-cmvn-stats=$dir/ivector_extractor/global_cmvn.stats" >>$ieconf
-  echo "--diag-ubm=$dir/ivector_extractor/final.dubm" >>$ieconf
-  echo "--ivector-extractor=$dir/ivector_extractor/final.ie" >>$ieconf
-  echo "--num-gselect=5"
-  echo "--min-post=0.025"
-  echo "--posterior-scale=0.1" >>$ieconf # this is currently the default in the scripts.
-  echo "--use-most-recent-ivector=true" >>$ieconf # probably makes very little difference.
-  echo "--max-remembered-frames=1000" >>$ieconf # the default
-
-  if $add_pitch; then
-    echo "$0: enabling pitch features (note: this has not been tested)"
-    echo "--add-pitch=true" >>$conf
-    echo "$0: creating $dir/conf/pitch.conf"
-    echo "--pitch-config=$dir/conf/pitch.conf" >>$conf
-    cp $pitch_config $dir/conf/pitch.conf || exit 1;
-    echo "--pitch-process-config=$dir/conf/pitch_process.conf" >>$conf
-    cp $pitch_process_config $dir/conf/pitch_process.conf || exit 1;
-  fi
-  silphonelist=`cat $lang/phones/silence.csl` || exit 1;
-  echo "--endpoint.silence-phones=$silphonelist" >>$conf
-  echo "$0: created config file $conf"
 fi
+
+conf=$dir/conf/online_nnet2_decoding.conf
+ieconf=$dir/conf/ivector_extractor.conf
+echo -n >$conf
+echo -n >$ieconf
+
+echo "--ivector-extraction-config=$ieconf" >>$conf
+echo "--feature-type=$feature_type" >>$conf
+
+case "$feature_type" in
+  mfcc)
+    echo "--mfcc-config=$dir/conf/mfcc.conf" >>$conf
+    cp $mfcc_config $dir/conf/mfcc.conf || exit 1;;
+  plp)
+    echo "--plp-config=$dir/conf/plp.conf" >>$conf
+    cp $plp_config $dir/conf/plp.conf || exit 1;;
+  fbank)
+    echo "--fbank-config=$dir/conf/fbank.conf" >>$conf
+    cp $fbank_config $dir/conf/fbank.conf || exit 1;;
+  *)
+    echo "Unknown feature type $feature_type"
+esac
+cp $iedir/online_cmvn.conf $dir/conf/online_cmvn.conf || exit 1;
+for x in $(cat $iedir/splice_opts); do echo "$x"; done > $dir/conf/splice.conf
+echo "--splice-config=$dir/conf/splice.conf" >>$ieconf
+echo "--cmvn-config=$dir/conf/online_cmvn.conf" >>$ieconf
+echo "--lda-matrix=$dir/ivector_extractor/final.mat" >>$ieconf
+echo "--global-cmvn-stats=$dir/ivector_extractor/global_cmvn.stats" >>$ieconf
+echo "--diag-ubm=$dir/ivector_extractor/final.dubm" >>$ieconf
+echo "--ivector-extractor=$dir/ivector_extractor/final.ie" >>$ieconf
+echo "--num-gselect=5"  >>$ieconf
+echo "--min-post=0.025" >>$ieconf
+echo "--posterior-scale=0.1" >>$ieconf # this is currently the default in the scripts.
+echo "--use-most-recent-ivector=true" >>$ieconf # probably makes very little difference.
+echo "--max-remembered-frames=1000" >>$ieconf # the default
+
+if $add_pitch; then
+  echo "$0: enabling pitch features (note: this has not been tested)"
+  echo "--add-pitch=true" >>$conf
+  echo "$0: creating $dir/conf/pitch.conf"
+  echo "--pitch-config=$dir/conf/pitch.conf" >>$conf
+  cp $pitch_config $dir/conf/pitch.conf || exit 1;
+  echo "--pitch-process-config=$dir/conf/pitch_process.conf" >>$conf
+  cp $pitch_process_config $dir/conf/pitch_process.conf || exit 1;
+fi
+silphonelist=`cat $lang/phones/silence.csl` || exit 1;
+echo "--endpoint.silence-phones=$silphonelist" >>$conf
+echo "$0: created config file $conf"
+
+

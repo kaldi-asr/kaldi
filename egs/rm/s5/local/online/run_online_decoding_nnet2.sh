@@ -15,7 +15,7 @@ if $use_gpu; then
     cat <<EOF && exit 1 
 This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
-where "nvcc" is installed.
+where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
   parallel_opts="-l gpu=1" 
@@ -77,6 +77,12 @@ fi
 
 
 if [ $stage -le 6 ]; then
+  # Note: comparing the results of this with run_online_decoding_nnet2_baseline.sh,
+  # it's a bit worse, meaning the iVectors seem to hurt at this amount of data.
+  # However, experiments by Haihua Xu (not checked in yet) on WSJ, show it helping
+  # nicely.  This setup seems to have too little data for it to work, but it suffices
+  # to demonstrate the scripts.   We will likely modify it to add noise to the
+  # iVectors in training, which will tend to mitigate the over-training.
   steps/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
     --online-ivector-dir exp/nnet2_online/ivectors_test \
     exp/tri3b/graph data/test $dir/decode  &
@@ -86,5 +92,18 @@ if [ $stage -le 6 ]; then
     exp/tri3b/graph_ug data/test $dir/decode_ug || exit 1;
 
   wait
+fi
+
+if [ $stage -le 7 ]; then
+  # If this setup used PLP features, we'd have to give the option --feature-type plp
+  # to the script below.
+  steps/online/nnet2/prepare_online_decoding.sh data/lang exp/nnet2_online/extractor \
+    "$dir" ${dir}_online || exit 1;
+fi
+
+if [ $stage -le 8 ]; then
+  # do the actual online decoding with iVectors.
+  steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+    exp/tri3b/graph_ug data/test ${dir}_online/decode_ug || exit 1;  
 fi
 
