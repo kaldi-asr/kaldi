@@ -111,9 +111,9 @@ esac
 
 
 if [ ! -z "$iedir" ]; then
+  ieconf=$dir/conf/ivector_extractor.conf
   echo -n >$ieconf
   echo "--ivector-extraction-config=$ieconf" >>$conf
-  ieconf=$dir/conf/ivector_extractor.conf
   cp $iedir/online_cmvn.conf $dir/conf/online_cmvn.conf || exit 1;
   for x in $(cat $iedir/splice_opts); do echo "$x"; done > $dir/conf/splice.conf
   echo "--splice-config=$dir/conf/splice.conf" >>$ieconf
