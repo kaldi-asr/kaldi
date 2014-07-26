@@ -102,7 +102,7 @@ if [ $stage -le 6 ]; then
     # use already-built graphs.
     for data in eval2000 train_dev; do
       steps/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-          --online-ivector-dir exp/nnet2_online/ivectors_${data}
+          --online-ivector-dir exp/nnet2_online/ivectors_${data} \
          $graph_dir data/${data} $dir/decode_${data}_sw1_${lm_suffix} || exit 1;
     done
   done

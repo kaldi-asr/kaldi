@@ -72,18 +72,16 @@ else
   spk2utt_rspecifier="ark:$dir/per_utt/utt2spk.JOB"
 fi
 
-if $do_endpointing; then
-  if $do_speex_compressing; then
-    wav_rspecifier="ark:compress-uncompress-speex scp:$sdata/JOB/wav.scp ark:-|extend-wav-with-silence ark:- ark:-|"
-  else
-    wav_rspecifier="ark:extend-wav-with-silence scp:$sdata/JOB/wav.scp ark:-|"
-  fi
+if [ -f $data/segments ]; then
+  wav_rspecifier="ark,s,cs:extract-segments scp,p:$sdata/JOB/wav.scp $sdata/JOB/segments ark:- |"
 else
-  if $do_speex_compressing; then
-  	wav_rspecifier="ark:compress-uncompress-speex scp:$sdata/JOB/wav.scp ark:-|"
-  else
-    wav_rspecifier=scp:$sdata/JOB/wav.scp
-  fi
+  wav_rspecifier="ark,s,cs:wav-copy scp,p:$sdata/JOB/wav.scp ark:- |"
+fi
+if $do_speex_compressing; then
+  wav_rspecifier="$wav_rspecifier compress-uncompress-speex ark:- ark:- |"
+fi
+if $do_endpointing; then
+  wav_rspecifier="$wav_rspecifier extend-wav-with-silence ark:- ark:- |"  
 fi
 
 if [ $stage -le 0 ]; then

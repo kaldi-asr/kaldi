@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
       for (size_t i = 0; i < uttlist.size(); i++) {
         std::string utt = uttlist[i];
         if (!wav_reader.HasKey(utt)) {
-          KALDI_WARN << "Did not find features for utterance " << utt;
+          KALDI_WARN << "Did not find audio for utterance " << utt;
           num_err++;
           continue;
         }
