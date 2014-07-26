@@ -337,6 +337,9 @@ done
 # # rather than just running the whole thing.
 # local/run_nnet2.sh
 
+# # Dan's nnet recipe with online decoding.
+# local/online/run_online_decoding_nnet2.sh
+# local/online/run_online_decoding_nnet2_baseline.sh
 
 
 # # getting results (see RESULTS file)

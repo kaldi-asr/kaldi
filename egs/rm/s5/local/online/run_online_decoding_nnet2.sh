@@ -34,13 +34,15 @@ fi
 
 if [ $stage -le 1 ]; then
   mkdir -p exp/nnet2_online
-
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 10 --num-frames 200000 \
-    data/train 512 exp/tri3b exp/nnet2_online/diag_ubm
+    data/train 256 exp/tri3b exp/nnet2_online/diag_ubm
 fi
 
 if [ $stage -le 2 ]; then
+  # use a smaller iVector dim (50) than the default (100) because RM has a very
+  # small amount of data.
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 4 \
+    --ivector-dim 50 \
    data/train exp/nnet2_online/diag_ubm exp/nnet2_online/extractor || exit 1;
 fi
 
@@ -122,6 +124,7 @@ if [ $stage -le 9 ]; then
   wait
 fi
 
+exit 0;
 
 
 # the experiment (no GPU)

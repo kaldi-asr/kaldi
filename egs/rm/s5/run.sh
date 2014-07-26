@@ -167,7 +167,9 @@ steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 # which calls local/run_online_decoding_pitch.sh
 
 #
-#local/run_online_decoding_nnet2.sh
+# local/run_online_decoding_nnet2.sh
+# local/online/run_online_decoding_nnet2_baseline.sh
+
 
 
 #first, train UBM for fMMI experiments.
@@ -215,3 +217,4 @@ local/run_sgmm2.sh
 # The following script depends on local/run_raw_fmllr.sh having been run.
 #
 # local/run_nnet2.sh
+

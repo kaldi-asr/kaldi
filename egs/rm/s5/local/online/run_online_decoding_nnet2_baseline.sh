@@ -64,3 +64,21 @@ if [ $stage -le 2 ]; then
 
   wait
 fi
+
+if [ $stage -le 3 ]; then
+  # If this setup used PLP features, we'd have to give the option --feature-type plp
+  # to the script below.
+  steps/online/nnet2/prepare_online_decoding.sh data/lang "$dir" ${dir}_online || exit 1;
+fi
+
+
+if [ $stage -le 4 ]; then
+  # Doing the real online decoding.  The --per-utt true option actually
+  # makes no difference to the output as there is no adaptation at all.
+  steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+    --per-utt true exp/tri3b/graph data/test ${dir}_online/decode &
+  steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+    --per-utt true exp/tri3b/graph_ug data/test ${dir}_online/decode_ug || exit 1;
+  wait
+fi
+
