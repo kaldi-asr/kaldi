@@ -127,7 +127,7 @@ if [ $stage -le -1 ]; then
   echo $nj_full > $dir/num_jobs
   echo "$0: doing Gaussian selection and posterior computation"
   $cmd JOB=1:$nj_full $dir/log/post.JOB.log \
-    gmm-global-get-post --n=$num_gselect --min-post=$min_post $dir/final.dubm "$gmm_feats" \| \
+    gmm-global-get-post --n=$num_gselect --min-post=$min_post $dir/final.dubm "$gmm_feats" ark:- \| \
     scale-post ark:- $modified_posterior_scale "ark:|gzip -c >$dir/post.JOB.gz" || exit 1;
 else
   # make sure we at least have the right number of post.*.gz files.

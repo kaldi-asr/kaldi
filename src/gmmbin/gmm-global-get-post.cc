@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
         " For each frame, gives a list of the n best Gaussian indices,\n"
         " sorted from best to worst.\n"
         "Usage: \n"
-        " gmm-global-get-post [options] <model-in> <feature-rspecifier> <gselect-wspecifier>\n"
+        " gmm-global-get-post [options] <model-in> <feature-rspecifier> <post-wspecifier>\n"
         "e.g.: gmm-global-get-post --n=20 1.gmm \"ark:feature-command |\" \"ark,t:|gzip -c >post.1.gz\"\n";
     
     ParseOptions po(usage);
