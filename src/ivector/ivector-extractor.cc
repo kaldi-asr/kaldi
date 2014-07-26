@@ -26,10 +26,12 @@ int32 IvectorExtractor::FeatDim() const {
   KALDI_ASSERT(!M_.empty());
   return M_[0].NumRows();
 }
+
 int32 IvectorExtractor::IvectorDim() const {
-  KALDI_ASSERT(!M_.empty());
-  return M_[0].NumCols();
+  if (M_.empty()) { return 0.0; }
+  else { return M_[0].NumCols(); }
 }
+
 int32 IvectorExtractor::NumGauss() const {
   return static_cast<int32>(M_.size());
 }
@@ -614,8 +616,10 @@ OnlineIvectorEstimationStats::OnlineIvectorEstimationStats(int32 ivector_dim,
                                                            BaseFloat prior_offset):
     prior_offset_(prior_offset), num_frames_(0.0),
     quadratic_term_(ivector_dim), linear_term_(ivector_dim) {
-  linear_term_(0) += prior_offset;
-  quadratic_term_.AddToDiag(1.0);
+  if (ivector_dim != 0) {
+    linear_term_(0) += prior_offset;
+    quadratic_term_.AddToDiag(1.0);
+  }
 }
 
 OnlineIvectorEstimationStats::OnlineIvectorEstimationStats(

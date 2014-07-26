@@ -140,6 +140,9 @@ struct OnlineNnet2FeaturePipelineInfo {
   // anticipate running this setup without iVectors.
   bool use_ivectors;
   OnlineIvectorExtractionInfo ivector_extractor_info;
+
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineNnet2FeaturePipelineInfo);
 };
 
 
@@ -213,7 +216,7 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   virtual ~OnlineNnet2FeaturePipeline();
  private:
 
-  OnlineNnet2FeaturePipelineInfo info_;
+  const OnlineNnet2FeaturePipelineInfo &info_;
 
   OnlineBaseFeature *base_feature_;        // MFCC/PLP/filterbank
   

@@ -163,6 +163,8 @@ struct OnlineIvectorExtractionInfo {
   OnlineIvectorExtractionInfo();
 
   void Check() const;
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineIvectorExtractionInfo);
 };
 
 /// This class stores the adaptation state from the online iVector extractor,
