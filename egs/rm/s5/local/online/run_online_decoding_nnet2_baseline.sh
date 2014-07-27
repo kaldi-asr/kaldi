@@ -82,3 +82,4 @@ if [ $stage -le 4 ]; then
   wait
 fi
 
+# for results, see the end of ./run_online_decoding_nnet2.sh

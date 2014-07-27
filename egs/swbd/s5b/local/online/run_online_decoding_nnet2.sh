@@ -128,14 +128,57 @@ if [ $stage -le 8 ]; then
   done
 fi
 
-if [ $stage -le 8 ]; then
+[ $stage -eq 8 ] && exit 1;  ## This is temporary.
+
+if [ $stage -le 9 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
   for lm_suffix in tg fsh_tgpr; do
     graph_dir=exp/tri4b/graph_sw1_${lm_suffix}
     for data in eval2000 train_dev; do
       steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
+        --per-utt true \
         "$graph_dir" data/${data} ${dir}_online/decode_${data}_sw1_${lm_suffix}_per_utt || exit 1;
     done
   done
 fi
+
+
+exit 0;
+
+
+
+# get results on Dev with this command:
+for x in exp/nnet2_online/nnet_a_gpu/decode_train_dev_sw1_*; do grep WER $x/wer_* | utils/best_wer.sh; done
+# and results on eval2000 with this command:
+for x in exp/nnet2_online/nnet_a_gpu/decode_eval2000_*; do grep Sum $x/score_*/*sys  | utils/best_wer.sh; done
+
+# for a baseline (although not the very best baseline we could do), here is a GMM-based
+# system trained on all the training data.
+%WER 29.10 [ 14382 / 49427, 1963 ins, 3394 del, 9025 sub ] exp/tri4b/decode_train_dev_sw1_fsh_tgpr/wer_15
+%WER 29.53 [ 14598 / 49427, 1885 ins, 3538 del, 9175 sub ] exp/tri4b/decode_train_dev_sw1_tg/wer_16
+%WER 21.8 | 1831 21395 | 80.5 13.7 5.8 2.3 21.8 59.3 | exp/tri4b/decode_eval2000_sw1_fsh_tgpr/score_15/eval2000.ctm.swbd.filt.sys
+%WER 22.4 | 1831 21395 | 80.0 13.9 6.1 2.4 22.4 60.0 | exp/tri4b/decode_eval2000_sw1_tg/score_16/eval2000.ctm.swbd.filt.sys
+
+
+
+# our neural net trained with iVector input, tested in batch mode.
+%WER 22.32 [ 11033 / 49427, 1198 ins, 3121 del, 6714 sub ] exp/nnet2_online/nnet_a_gpu/decode_train_dev_sw1_tg/wer_12
+%WER 21.75 [ 10751 / 49427, 1176 ins, 3135 del, 6440 sub ] exp/nnet2_online/nnet_a_gpu/decode_train_dev_sw1_fsh_tgpr/wer_12
+%WER 18.1 | 1831 21395 | 83.7 10.8 5.5 1.8 18.1 56.3 | exp/nnet2_online/nnet_a_gpu/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
+%WER 18.5 | 1831 21395 | 83.4 11.2 5.4 1.9 18.5 57.2 | exp/nnet2_online/nnet_a_gpu/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+
+
+# the same thing tested using truly-online decoding, tested separately per
+# utterance (which should in principle give the same results as the batch-mode
+# test, which also was per-utterance); I'm not sure what the reason for the slight improvement 
+# is.
+%WER 22.05 [ 10897 / 49427, 1355 ins, 2849 del, 6693 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_train_dev_sw1_tg_per_utt/wer_11
+%WER 21.53 [ 10641 / 49427, 1316 ins, 2848 del, 6477 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_train_dev_sw1_fsh_tgpr_per_utt/wer_11
+
+
+# truly-online decoding, but thuis time carrying forward the adaptation state (the iVector
+# and associated CMVN) from one utterance to the next within the same speaker.
+%WER 21.43 [ 10593 / 49427, 1231 ins, 2827 del, 6535 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_train_dev_sw1_tg/wer_11
+%WER 21.23 [ 10494 / 49427, 1240 ins, 2827 del, 6427 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_train_dev_sw1_fsh_tgpr/wer_11
+

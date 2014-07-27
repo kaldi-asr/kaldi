@@ -223,7 +223,7 @@ int main(int argc, char *argv[]) {
     timing_stats.Print();    
     KALDI_LOG << "Decoded " << num_done << " utterances, "
               << num_err << " with errors.";
-    KALDI_LOG << "Average likelihood per frame was " << (tot_like / num_frames)
+    KALDI_LOG << "Overall likelihood per frame was " << (tot_like / num_frames)
               << " per frame over " << num_frames << " frames.";
     delete decode_fst;
     delete word_syms; // will delete if non-NULL.

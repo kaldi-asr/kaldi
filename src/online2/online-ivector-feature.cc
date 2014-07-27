@@ -198,7 +198,9 @@ void OnlineIvectorFeature::PrintDiagnostics() const {
                   << " frames.";
     KALDI_VLOG(3) << "By the end of the utterance, objf change/frame "
                   << "from estimating iVector (vs. default) was "
-                  << ivector_stats_.ObjfChange(current_ivector_);
+                  << ivector_stats_.ObjfChange(current_ivector_)
+                  << " and iVector length was "
+                  << current_ivector_.Norm(2.0);
   }
 }
 

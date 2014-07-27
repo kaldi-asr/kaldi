@@ -144,7 +144,8 @@ int main(int argc, char *argv[]) {
     IvectorExtractor extractor;
     ReadKaldiObject(ivector_extractor_rxfilename, &extractor);
     
-    double tot_objf_impr = 0.0, tot_t = 0.0;
+    double tot_objf_impr = 0.0, tot_t = 0.0, tot_length = 0.0,
+        tot_length_utt_end = 0.0;
     int32 num_done = 0, num_err = 0;
     
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
@@ -191,6 +192,10 @@ int main(int argc, char *argv[]) {
       
       tot_t += tot_post;
       tot_objf_impr += objf_impr_per_frame * tot_post;
+      tot_length_utt_end += ivectors.Row(ivectors.NumRows() - 1).Norm(2.0) *
+          tot_post;
+      for (int32 i = 0; i < ivectors.NumRows(); i++)
+        tot_length += ivectors.Row(i).Norm(2.0) * tot_post / ivectors.NumRows();
 
       num_done++;
     }
@@ -200,6 +205,10 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Average objective-function improvement was "
               << (tot_objf_impr / tot_t) << " per frame, over "
               << tot_t << " frames (weighted).";
+    KALDI_LOG << "Average iVector length was " << (tot_length / tot_t)
+              << " and at utterance-end was " << (tot_length_utt_end / tot_t)
+              << ", over " << tot_t << " frames (weighted); "
+              << " expected length is " << sqrt(extractor.IvectorDim());
 
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
