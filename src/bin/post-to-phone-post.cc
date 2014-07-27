@@ -30,6 +30,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Convert posteriors to phone-level posteriors\n"
+        "See also: post-to-pdf-post, post-to-weights, get-post-on-ali\n"
         "\n"
         "Usage: post-to-phone-post [options] <model> <post-rspecifier> <phone-post-wspecifier>\n"
         " e.g.: post-to-phone-post --binary=false 1.mdl \"ark:ali-to-post 1.ali|\" ark,t:-\n";

@@ -1,6 +1,7 @@
 // bin/get-post-on-ali.cc
 
 // Copyright 2013  Brno University of Technology (Author: Karel Vesely)
+//           2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -31,18 +32,24 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "This program extracts a vector of per-frame posteriors that are selected\n"
-        "by an alignment (ie. posteriors that are under the alignment path).\n"
-        "This can be used as a per-frame confidence measure.\n"
+        "Given input posteriors, e.g. derived from lattice-to-post, and an alignment\n"
+        "typically derived from the best path of a lattice, outputs the probability in\n"
+        "the posterior of the corresponding index in the alignment, or zero if it was\n"
+        "not there.  These are output as a vector of weights, one per utterance.\n"
+        "While, by default, lattice-to-post (as a source of posteriors) and sources of\n"
+        "alignments such as lattice-best-path will output transition-ids as the index,\n"
+        "it will generally make sense to either convert these to pdf-ids using\n"
+        "post-to-pdf-post and ali-to-pdf respectively, or to phones using post-to-phone-post\n"
+        "and (ali-to-phones --per-frame=true).  Since this program only sees the integer\n"
+        "indexes, it does not care what they represent-- but of course they should match\n"
+        "(e.g. don't input posteriors with transition-ids and alignments with pdf-ids).\n"
+        "See http://kaldi.sourceforge.net/hmm.html#transition_model_identifiers for an\n"
+        "explanation of these types of indexes.\n"
         "\n"
-        "By intuition, it is better to use pdf-posteriors and pdf-alignments,\n"
-        "because the posteriors of competing hypothesis that are in the same frame\n"
-        "at same 'pdf-state' are summed up, which is in some sense similar\n"
-        "to what is done by C-max which sums the posteriors of overlapping words.\n"
-        "The difference here is that the granularity is per-frame.\n"
+        "See also: weight-post, post-to-weights, reverse-weights\n"
         "\n"
-        "Usage:  get-post-on-ali [options] <posteriors-rspecifier> <ali-rspecifier> <conf-wspecifier>\n"
-        "e.g.: get-post-on-ali ark:post.ark ark:ali.ark ark:conf.ark\n";
+        "Usage:  get-post-on-ali [options] <posteriors-rspecifier> <ali-rspecifier> <weights-wspecifier>\n"
+        "e.g.: get-post-on-ali ark:post.ark ark,s,cs:ali.ark ark:weights.ark\n";
 
     ParseOptions po(usage);
 

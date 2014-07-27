@@ -32,6 +32,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "This program turns per-frame posteriors, which have transition-ids as\n"
         "the integers, into pdf-level posteriors\n"
+        "See also: post-to-phone-post, post-to-weights, get-post-on-ali\n"
         "\n"
         "Usage:  post-to-pdf-post [options] <model-file> <posteriors-rspecifier> <posteriors-wspecifier>\n"
         "e.g.: post-to-pdf-post 1.mdl ark:- ark:-\n";
