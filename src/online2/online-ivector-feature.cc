@@ -264,5 +264,14 @@ void OnlineIvectorFeature::SetAdaptationState(
   cmvn_->SetState(adaptation_state.cmvn_state);
 }
 
+BaseFloat OnlineIvectorFeature::UbmLogLikePerFrame() const {
+  if (num_frames_stats_ == 0) return 0;
+  else return tot_ubm_loglike_ / num_frames_stats_;
+}
+
+BaseFloat OnlineIvectorFeature::ObjfImprPerFrame() const {
+  return ivector_stats_.ObjfChange(current_ivector_);
+}
+
 
 }  // namespace kaldi

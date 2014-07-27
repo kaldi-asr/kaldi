@@ -24,76 +24,6 @@
 #include "ivector/ivector-extractor.h"
 #include "thread/kaldi-task-sequence.h"
 
-namespace kaldi {
-
-// This class will be used to parallelize over multiple threads the job
-// that this program does.  The work happens in the operator (), the
-// output happens in the destructor.
-class IvectorExtractTask {
- public:
-  IvectorExtractTask(const IvectorExtractor &extractor,
-                     std::string utt,
-                     const Matrix<BaseFloat> &feats,
-                     const Posterior &posterior,
-                     BaseFloatVectorWriter *writer,
-                     double *tot_auxf_change):
-      extractor_(extractor), utt_(utt), feats_(feats), posterior_(posterior),
-      writer_(writer), tot_auxf_change_(tot_auxf_change) { }
-
-  void operator () () {
-    bool need_2nd_order_stats = false;
-    
-    IvectorExtractorUtteranceStats utt_stats(extractor_.NumGauss(),
-                                             extractor_.FeatDim(),
-                                             need_2nd_order_stats);
-      
-    utt_stats.AccStats(feats_, posterior_);
-
-    ivector_.Resize(extractor_.IvectorDim());
-    ivector_(0) = extractor_.PriorOffset();
-
-    if (tot_auxf_change_ != NULL) {
-      double old_auxf = extractor_.GetAuxf(utt_stats, ivector_);
-      extractor_.GetIvectorDistribution(utt_stats, &ivector_, NULL);
-      double new_auxf = extractor_.GetAuxf(utt_stats, ivector_);
-      auxf_change_ = new_auxf - old_auxf;
-    } else {
-      extractor_.GetIvectorDistribution(utt_stats, &ivector_, NULL);
-    }
-  }
-  ~IvectorExtractTask() {
-    if (tot_auxf_change_ != NULL) {
-      int32 T = posterior_.size();
-      *tot_auxf_change_ += auxf_change_;
-      KALDI_VLOG(2) << "Auxf change for utterance " << utt_ << " was "
-                    << (auxf_change_ / T) << " per frame over " << T
-                    << " frames.";
-    }
-    // We actually write out the offset of the iVector's from the mean of the
-    // prior distribution; this is the form we'll need it in for scoring.  (most
-    // formulations of iVectors have zero-mean priors so this is not normally an
-    // issue).
-    ivector_(0) -= extractor_.PriorOffset();
-    KALDI_VLOG(2) << "Ivector norm for utterance " << utt_
-                  << " was " << ivector_.Norm(2.0);
-    writer_->Write(utt_, Vector<BaseFloat>(ivector_));
-  }
- private:
-  const IvectorExtractor &extractor_;
-  std::string utt_;
-  Matrix<BaseFloat> feats_;
-  Posterior posterior_;
-  BaseFloatVectorWriter *writer_;
-  double *tot_auxf_change_; // if non-NULL we need the auxf change.
-  Vector<double> ivector_;
-  double auxf_change_;
-};
-
-
-
-}
-
-
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
@@ -108,6 +38,7 @@ int main(int argc, char *argv[]) {
         "the iVectors would be used in neural net training.  The iVectors are\n"
         "output as an archive of matrices, indexed by utterance-id; each row\n"
         "corresponds to an iVector.\n"
+        "See also ivector-extract-online2\n"
         "\n"
         "Usage:  ivector-extract-online [options] <model-in> <feature-rspecifier>"
         "<posteriors-rspecifier> <ivector-wspecifier>\n"

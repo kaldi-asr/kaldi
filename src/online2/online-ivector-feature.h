@@ -243,8 +243,15 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
   /// later utterances of this speaker.
   void GetAdaptationState(
       OnlineIvectorExtractorAdaptationState *adaptation_state) const;
-  
+
   virtual ~OnlineIvectorFeature();
+
+  // Some diagnostics (not present in generic interface):
+  // UBM log-like per frame:
+  BaseFloat UbmLogLikePerFrame() const;
+  // Objective improvement per frame from iVector estimation, versus default iVector
+  // value, measured at utterance end.
+  BaseFloat ObjfImprPerFrame() const;
   
  private:
   virtual void UpdateStatsUntilFrame(int32 frame);
