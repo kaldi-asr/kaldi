@@ -56,14 +56,14 @@ steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir
 # ones (mostly uh-huh).  So take the 100k shortest ones, and then take 10k random
 # utterances from those.
 
-steps/train_mono.sh --nj 10 --cmd "$train_cmd" \                                 
+steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
   data/train data/lang exp/mono0a    
 
-steps/align_si.sh --nj 30 --cmd "$train_cmd" \                                   
-   data/train data/lang exp/mono0a exp/mono0a_ali || exit 1;                 
-                                                                                 
-steps/train_deltas.sh --cmd "$train_cmd" \                                       
-    1000 10000 data/train data/lang exp/mono0a_ali exp/tri1 || exit 1;  
+steps/align_si.sh --nj 30 --cmd "$train_cmd" \
+   data/train data/lang exp/mono0a exp/mono0a_ali || exit 1;
+
+steps/train_deltas.sh --cmd "$train_cmd" \
+    1000 10000 data/train data/lang exp/mono0a_ali exp/tri1 || exit 1;
 
 
 (utils/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph
