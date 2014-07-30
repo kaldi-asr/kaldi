@@ -27,8 +27,9 @@ numGaussUBM=400
 numLeavesSGMM=7000
 numGaussSGMM=9000
 
-decode_nj=5
+feats_nj=10
 train_nj=30
+decode_nj=5
 
 echo ============================================================================
 echo "                Data & Lexicon & Language Preparation                     "
@@ -60,7 +61,7 @@ mfccdir=mfcc
 
 
 for x in train dev test; do 
-  steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 data/$x exp/make_mfcc/$x $mfccdir
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj $feats_nj data/$x exp/make_mfcc/$x $mfccdir
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
 done
 
