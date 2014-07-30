@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "indices.  Also supports pruning the posteriors if they are below\n"
         "a stated threshold, (and renormalizing the rest to sum to one)\n"
         "See also: gmm-gselect, fgmm-gselect, gmm-global-get-post,\n"
-        " fgmm-global-gselect-to-post\n"
+        " gmm-global-gselect-to-post\n"
         "\n"
         "Usage:  fgmm-global-gselect-to-post [options] <model-in> <feature-rspecifier> "
         "<gselect-rspecifier> <post-wspecifier>\n"
