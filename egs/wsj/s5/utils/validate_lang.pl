@@ -580,7 +580,7 @@ if (-e "$lang/G.fst" && -e "$lang/L_disambig.fst") {
 if ($exit == 1) { print "--> ERROR (see error messages above)\n"; exit 1;}
 else {
   if ($warning == 1) { print "--> WARNING (check output above for warnings)\n"; exit 0; }
-  else { print "--> SUCCESS\n"; exit 0; }
+  else { print "--> SUCCESS [validating lang directory $lang]\n"; exit 0; }
 }
 
 

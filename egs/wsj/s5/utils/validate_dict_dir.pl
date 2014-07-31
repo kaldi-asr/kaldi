@@ -12,6 +12,7 @@ if(@ARGV != 1) {
 }
 
 $dict = shift @ARGV;
+$dict =~ s:/$::;
 
 $exit = 0;
 # Checking silence_phones.txt -------------------------------
@@ -20,21 +21,26 @@ if(-z "$dict/silence_phones.txt") {print "--> ERROR: $dict/silence_phones.txt is
 if(!open(S, "<$dict/silence_phones.txt")) {print "--> ERROR: fail to open $dict/silence_phones.txt\n"; exit 1;}
 $idx = 1;
 %silence = ();
-$success = 1;
+
 print "--> reading $dict/silence_phones.txt\n";
 while(<S>) {
   if (! s/\n$//) {
-    die "Last line '$_' of $dict/silence_phones.txt does not end in newline.\n";
+    print "--> ERROR: last line '$_' of $dict/silence_phones.txt does not end in newline.\n";
+    $exit = 1;
   }
   my @col = split(" ", $_);
+  if (@col == 0) {
+    $exit = 1; 
+    print "--> ERROR: empty line in $dict/silence_phones.txt (line $idx)\n"; 
+  }
   foreach(0 .. @col-1) {
     my $p = $col[$_];
-    if($silence{$p}) {$exit = 1; print "--> ERROR: phone \"$p\" duplicates in $dict/silence_phones.txt (line $idx)\n"; $success = 0;}
+    if($silence{$p}) {$exit = 1; print "--> ERROR: phone \"$p\" duplicates in $dict/silence_phones.txt (line $idx)\n"; }
     else {$silence{$p} = 1;}
     if ($p =~ m/_$/ || $p =~ m/#/ || $p =~ m/_[BESI]$/){
       $exit = 1;
       print "--> ERROR: phone \"$p\" has disallowed written form";
-      $success = 0;
+      
     }
   }
   $idx ++;
@@ -54,9 +60,9 @@ while(<OS>) {
   chomp;
   my @col = split(" ", $_);
   if ($idx > 1 or @col > 1) {
-    $exit = 1; print "--> ERROR: only 1 phone expected in $dict/optional_silence.txt\n"; $success = 0;
+    $exit = 1; print "--> ERROR: only 1 phone expected in $dict/optional_silence.txt\n"; 
   } elsif (!$silence{$col[0]}) {
-    $exit = 1; print "--> ERROR: phone $col[0] not found in $dict/silence_phones.txt\n"; $success = 0;
+    $exit = 1; print "--> ERROR: phone $col[0] not found in $dict/silence_phones.txt\n"; 
   }
   $idx ++;
 }
@@ -74,23 +80,28 @@ $success = 1;
 print "--> reading $dict/nonsilence_phones.txt\n";
 while(<NS>) {
   if (! s/\n$//) {
-    die "Last line '$_' of $dict/nonsilence_phones.txt does not end in newline.\n";
+    print "--> ERROR: last line '$_' of $dict/nonsilence_phones.txt does not end in newline.\n";
+    $exit = 1;
   }
   my @col = split(" ", $_);
+  if (@col == 0) {
+    $exit = 1; 
+    print "--> ERROR: empty line in $dict/nonsilence_phones.txt (line $idx)\n"; 
+  }
   foreach(0 .. @col-1) {
     my $p = $col[$_];
-    if($nonsilence{$p}) {$exit = 1; print "--> ERROR: phone \"$p\" duplicates in $dict/nonsilence_phones.txt (line $idx)\n"; $success = 0;}
+    if($nonsilence{$p}) {$exit = 1; print "--> ERROR: phone \"$p\" duplicates in $dict/nonsilence_phones.txt (line $idx)\n"; }
     else {$nonsilence{$p} = 1;}
     if ($p =~ m/_$/ || $p =~ m/#/ || $p =~ m/_[BESI]$/){
       $exit = 1;
       print "--> ERROR: phone \"$p\" has disallowed written form";
-      $success = 0;
+      
     }
   }
   $idx ++;
 }
 close(NS);
-$success == 0 || print "--> $dict/silence_phones.txt is OK\n";
+$success == 0 || print "--> $dict/nonsilence_phones.txt is OK\n";
 print "\n";
 
 # Checking disjoint -------------------------------
@@ -128,19 +139,16 @@ sub check_lexicon {
     $word = shift @col;
     if (!defined $word) {
       $exit = 1; print "--> ERROR: empty lexicon line in $lexfn\n"; 
-      $success = 0;
     }
     if ($pron_probs) {
       $prob = shift @col;
       if (!($prob > 0.0 && $prob <= 1.0)) { 
         $exit = 1; print "--> ERROR: bad pron-prob in lexicon-line '$_', in $lexfn\n";
-        $success = 0;
       }
     }
     foreach (0 .. @col-1) {
       if (!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
         $exit = 1; print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx)\n"; 
-        $success = 0;
       }
     }
     $idx ++;
@@ -165,8 +173,18 @@ if ( (-f "$dict/lexicon.txt") && (-f "$dict/lexiconp.txt")) {
     die "Error opening lexicon.txt and/or lexiconp.txt"; # already checked, so would be code error.
   }
   while(<L>) {
+    if (! s/\n$//) {
+      print "--> ERROR: last line '$_' of $dict/lexicon.txt does not end in newline.\n";
+      $exit = 1;
+      last;
+    }
     @A = split;
     $x = <P>;
+    if ($x !~ s/\n$//) {
+      print "--> ERROR: last line '$x' of $dict/lexiconp.txt does not end in newline.\n";
+      $exit = 1;
+      last;
+    }
     if (!defined $x) {
       print "--> ERROR: lexicon.txt and lexiconp.txt have different numbers of lines (mismatch); delete one.\n";
       $exit = 1;
@@ -210,7 +228,6 @@ if (-s "$dict/extra_questions.txt") {
     foreach(0 .. @col-1) {
       if(!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
         $exit = 1; print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx, block ", $_+1, ")\n"; 
-        $success = 0;
       }
     }
     $idx ++;
@@ -219,6 +236,7 @@ if (-s "$dict/extra_questions.txt") {
   $success == 0 || print "--> $dict/extra_questions.txt is OK\n";
 } else { print "--> $dict/extra_questions.txt is empty (this is OK)\n";}
 
-if($exit == 1) { print " [Error detected ]\n"; exit 1;}
+if ($exit == 1) { print " [Error detected ]\n"; exit 1;}
+else { print "--> SUCCESS [validating dictionary directory $dict]\n"; }
 
 exit 0;
