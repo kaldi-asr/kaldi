@@ -23,7 +23,9 @@ $idx = 1;
 $success = 1;
 print "--> reading $dict/silence_phones.txt\n";
 while(<S>) {
-  chomp;
+  if (! s/\n$//) {
+    die "Last line '$_' of $dict/silence_phones.txt does not end in newline.\n";
+  }
   my @col = split(" ", $_);
   foreach(0 .. @col-1) {
     my $p = $col[$_];
@@ -71,7 +73,9 @@ $idx = 1;
 $success = 1;
 print "--> reading $dict/nonsilence_phones.txt\n";
 while(<NS>) {
-  chomp;
+  if (! s/\n$//) {
+    die "Last line '$_' of $dict/nonsilence_phones.txt does not end in newline.\n";
+  }
   my @col = split(" ", $_);
   foreach(0 .. @col-1) {
     my $p = $col[$_];

@@ -272,6 +272,8 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 ) & 
 
 
+# This step is just to demonstrate the train_quick.sh script, in which we
+# initialize the GMMs from the old system's GMMs.
 steps/train_quick.sh --cmd "$train_cmd" \
    4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b || exit 1;
 
