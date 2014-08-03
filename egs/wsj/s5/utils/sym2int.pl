@@ -28,7 +28,7 @@ for($x = 0; $x < 2; $x++) {
     }
   }
   if ($ARGV[0] eq "-f") {
-    shift @ARGV; 
+    shift @ARGV;
     $field_spec = shift @ARGV; 
     if ($field_spec =~ m/^\d+$/) {
       $field_begin = $field_spec - 1; $field_end = $field_spec - 1;

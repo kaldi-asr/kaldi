@@ -4,7 +4,8 @@
 # Apache 2.0
 
 # Begin configuration section.  
-transform_dir=
+transform_dir=   # this option won't normally be used, but it can be used if you want to 
+                 # supply existing fMLLR transforms when decoding.
 iter=
 model= # You can specify the model to use (e.g. if you want to use the .alimdl)
 stage=0

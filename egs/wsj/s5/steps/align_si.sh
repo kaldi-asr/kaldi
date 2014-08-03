@@ -42,6 +42,11 @@ lang=$2
 srcdir=$3
 dir=$4
 
+
+for f in $data/text $lang/oov.int $srcdir/tree $srcdir/final.mdl; do
+  [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1;
+done
+
 oov=`cat $lang/oov.int` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
@@ -55,6 +60,7 @@ cp $srcdir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
 
 cp $srcdir/{tree,final.mdl} $dir || exit 1;
 cp $srcdir/final.occs $dir;
+
 
 
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi

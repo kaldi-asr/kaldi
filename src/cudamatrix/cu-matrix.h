@@ -580,7 +580,7 @@ class CuMatrix: public CuMatrixBase<Real> {
   void CompObjfAndDeriv(const std::vector<MatrixElement<Real> > &elements,
                         const CuMatrix<Real> &A,
                         Real *tot_objf,
-                        Real* tot_weight);
+                        Real *tot_weight);
 
  private:
   void Destroy();

@@ -21,12 +21,15 @@ if $use_gpu; then
   # This one is for training pnorm nnets on top of 40-dim + fMLLR features
   # **THIS IS THE PRIMARY RECIPE**
   local/nnet2/run_4d.sh --use-gpu true
+
+  # as above with 'perturbed training'.  A bit better results, a bit slower.
+  local/nnet2/run_4d2.sh --use-gpu true
   
-  # This is discriminative training on top of 4c.
+  # This is discriminative training on top of 4c.  (hardly helps)
   local/nnet2/run_5c_gpu.sh
   
   # This is discriminative training on top of 4d.
-  local/nnet2/run_5d_gpu.sh
+  local/nnet2/run_5d.sh --use-gpu true
 else
   # This example runs on top of "raw-fMLLR" features;
   # you have to run local/run_raw_fmllr.sh first.
@@ -42,8 +45,14 @@ else
   # **THIS IS THE PRIMARY RECIPE (40-dim + fMLLR + p-norm neural net)**
   local/nnet2/run_4d.sh --use-gpu false
 
+  # as above with 'perturbed training'.  A bit better results, a bit slower.
+  local/nnet2/run_4d2.sh --use-gpu false
+
   # This is discriminative training on top of 4c.
   local/nnet2/run_5c.sh
+
+  # This is discriminative training on top of 4d.
+  local/nnet2/run_5d.sh --use-gpu false
 
   # This is p-norm on top of raw-fMLLR.
   #local/nnet2/run_4e.sh

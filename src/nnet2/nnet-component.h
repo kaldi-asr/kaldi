@@ -1595,6 +1595,9 @@ class FixedAffineComponent: public Component {
   virtual Component* Copy() const;
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
+
+  // Function to provide access to linear_params_.
+  const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
  protected:
   friend class AffineComponent;
   CuMatrix<BaseFloat> linear_params_;

@@ -432,6 +432,12 @@ void Nnet::RemovePreconditioning() {
           *(dynamic_cast<AffineComponent*>(components_[i])));
       delete components_[i];
       components_[i] = ac;
+    } else if (dynamic_cast<AffineComponentPreconditionedOnline*>(
+        components_[i]) != NULL) {
+      AffineComponent *ac = new AffineComponent(
+          *(dynamic_cast<AffineComponent*>(components_[i])));
+      delete components_[i];
+      components_[i] = ac;
     }
   }
   SetIndexes();

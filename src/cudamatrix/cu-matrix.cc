@@ -1128,7 +1128,6 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
       *tot_objf += weight * log(this_prob);
       *tot_weight += weight;
       (*this)(m, label) += weight / this_prob; 
-
     }
   }
 }
