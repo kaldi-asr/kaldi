@@ -19,7 +19,8 @@ OBJFILES = nnet-component.o nnet-nnet.o train-nnet.o train-nnet-ensemble.o nnet-
      nnet-fix.o nnet-stats.o rescale-nnet.o nnet-limit-rank.o nnet-example.o \
      get-feature-transform.o widen-nnet.o nnet-precondition-online.o \
      nnet-example-functions.o nnet-compute-discriminative.o \
-     nnet-compute-discriminative-parallel.o online-nnet2-decodable.o
+     nnet-compute-discriminative-parallel.o online-nnet2-decodable.o \
+     train-nnet-perturbed.o
 
 LIBNAME = kaldi-nnet2
 

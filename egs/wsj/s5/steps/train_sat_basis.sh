@@ -12,7 +12,6 @@
 
 # Begin configuration section.
 stage=-5
-fmllr_update_type=full
 cmd=run.pl
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 beam=10
@@ -197,9 +196,9 @@ while [ $x -lt $num_iters ]; do
 
   if echo $fmllr_iters | grep -w $x >/dev/null; then
     if [ $stage -le $x ]; then
-      echo Estimating fMLLR transforms
-      # We estimate a transform that's additional to the previous transform;
-      # we'll compose them.
+      # Note: it's not really necessary to re-estimate the basis each time
+      # but this is the way the script does it right now.
+      echo Estimating basis and fMLLR transforms
       $cmd JOB=1:$nj $dir/log/fmllr_est.$x.JOB.log \
           ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \
           weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
@@ -209,7 +208,7 @@ while [ $x -lt $num_iters ]; do
 
       # Compute the basis matrices.
       $cmd $dir/log/basis_training.log \
-	  gmm-basis-fmllr-training $dir/$x.mdl $dir/fmllr.basis $dir/basis.acc.* || exit 1;
+ 	    gmm-basis-fmllr-training $dir/$x.mdl $dir/fmllr.basis $dir/basis.acc.* || exit 1;
 
       $cmd JOB=1:$nj $dir/log/fmllr_app.$x.JOB.log \
           ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \

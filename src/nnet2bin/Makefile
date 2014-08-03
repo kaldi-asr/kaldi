@@ -25,7 +25,8 @@ BINFILES = nnet-randomize-frames nnet-am-info nnet-init \
    nnet-train-discriminative-simple nnet-train-discriminative-parallel \
    nnet-modify-learning-rates nnet-normalize-stddev nnet-perturb-egs \
    nnet-perturb-egs-fmllr nnet-get-weighted-egs nnet-adjust-priors \
-   cuda-compiled nnet-replace-last-layers nnet-am-switch-preconditioning
+   cuda-compiled nnet-replace-last-layers nnet-am-switch-preconditioning \
+   nnet-train-simple-perturbed nnet-train-parallel-perturbed
 
 OBJFILES =
 

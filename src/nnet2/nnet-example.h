@@ -23,6 +23,7 @@
 #include "nnet2/nnet-nnet.h"
 #include "util/table-types.h"
 #include "lat/kaldi-lattice.h"
+#include "thread/kaldi-semaphore.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -62,6 +63,35 @@ struct NnetExample {
 typedef TableWriter<KaldiObjectHolder<NnetExample > > NnetExampleWriter;
 typedef SequentialTableReader<KaldiObjectHolder<NnetExample > > SequentialNnetExampleReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<NnetExample > > RandomAccessNnetExampleReader;
+
+
+/** This class stores neural net training examples to be used in
+    multi-threaded training.  */
+class ExamplesRepository {
+ public:
+  /// The following function is called by the code that reads in the examples,
+  /// with a batch of examples.  [It will empty the vector "examples").
+  void AcceptExamples(std::vector<NnetExample> *examples);
+
+  /// The following function is called by the code that reads in the examples,
+  /// when we're done reading examples.
+  void ExamplesDone();
+  
+  /// This function is called by the code that does the training.  It gets the
+  /// training examples, and if they are available, puts them in "examples" and
+  /// returns true.  It returns false when there are no examples left and
+  /// ExamplesDone() has been called.
+  bool ProvideExamples(std::vector<NnetExample> *examples);
+  
+  ExamplesRepository(): empty_semaphore_(1), done_(false) { }
+ private:
+  Semaphore full_semaphore_;
+  Semaphore empty_semaphore_;
+
+  std::vector<NnetExample> examples_;
+  bool done_;
+  KALDI_DISALLOW_COPY_AND_ASSIGN(ExamplesRepository);
+};
 
 
 /**
@@ -116,7 +146,7 @@ struct DiscriminativeNnetExample {
   void Read(std::istream &is, bool binary);
 };
 
-// Tes, the length of typenames is getting out of hand.
+// Yes, the length of typenames is getting out of hand.
 typedef TableWriter<KaldiObjectHolder<DiscriminativeNnetExample > >
    DiscriminativeNnetExampleWriter;
 typedef SequentialTableReader<KaldiObjectHolder<DiscriminativeNnetExample > >

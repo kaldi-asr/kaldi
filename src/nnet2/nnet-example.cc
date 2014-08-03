@@ -67,6 +67,40 @@ void NnetExample::Read(std::istream &is, bool binary) {
 }
 
 
+
+void ExamplesRepository::AcceptExamples(
+    std::vector<NnetExample> *examples) {
+  KALDI_ASSERT(!examples->empty());
+  empty_semaphore_.Wait();
+  KALDI_ASSERT(examples_.empty());
+  examples_.swap(*examples);
+  full_semaphore_.Signal();
+}
+
+void ExamplesRepository::ExamplesDone() {
+  empty_semaphore_.Wait();
+  KALDI_ASSERT(examples_.empty());
+  done_ = true;
+  full_semaphore_.Signal();
+}
+
+bool ExamplesRepository::ProvideExamples(
+    std::vector<NnetExample> *examples) {
+  full_semaphore_.Wait();
+  if (done_) {
+    KALDI_ASSERT(examples_.empty());
+    full_semaphore_.Signal(); // Increment the semaphore so
+    // the call by the next thread will not block.
+    return false; // no examples to return-- all finished.
+  } else {
+    KALDI_ASSERT(!examples_.empty() && examples->empty());
+    examples->swap(examples_);
+    empty_semaphore_.Signal();
+    return true;
+  }
+}
+
+
 void DiscriminativeNnetExample::Write(std::ostream &os,
                                               bool binary) const {
   // Note: weight, num_ali, den_lat, input_frames, left_context and spk_info are

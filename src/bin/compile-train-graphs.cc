@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Creates training graphs (without transition-probabilities, by default)\n"
         "\n"
-        "Usage:   compile-train-graphs [options] tree-in model-in lexicon-fst-in transcriptions-rspecifier graphs-wspecifier\n"
+        "Usage:   compile-train-graphs [options] <tree-in> <model-in> <lexicon-fst-in> <transcriptions-rspecifier> <graphs-wspecifier>\n"
         "e.g.: \n"
         " compile-train-graphs tree 1.mdl lex.fst ark:train.tra ark:graphs.fsts\n";
     ParseOptions po(usage);

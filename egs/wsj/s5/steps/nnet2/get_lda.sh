@@ -145,6 +145,7 @@ fi
 
 if [ $stage -le 0 ]; then
   echo "$0: Accumulating LDA statistics."
+  rm $dir/lda.*.acc 2>/dev/null # in case any left over from before.
   $cmd JOB=1:$nj $dir/log/lda_acc.JOB.log \
     ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- \| \
@@ -157,11 +158,19 @@ echo $lda_dim > $dir/lda_dim
 echo $ivector_dim > $dir/ivector_dim
 
 if [ $stage -le 1 ]; then
-  nnet-get-feature-transform --write-cholesky=$dir/cholesky.tpmat \
-     --within-class-factor=$within_class_factor --dim=$lda_dim \
-      $dir/lda.mat $dir/lda.*.acc \
-      2>$dir/log/lda_est.log || exit 1;
+  sum-lda-accs $dir/lda.acc $dir/lda.*.acc 2>$dir/log/lda_sum.log || exit 1;
   rm $dir/lda.*.acc
+fi
+
+if [ $stage -le 2 ]; then
+  # There are various things that we sometimes (but not always) need
+  # the within-class covariance and its Cholesky factor for, and we
+  # write these to disk just in case.
+  nnet-get-feature-transform --write-cholesky=$dir/cholesky.tpmat \
+     --write-within-covar=$dir/within_covar.spmat \
+     --within-class-factor=$within_class_factor --dim=$lda_dim \
+      $dir/lda.mat $dir/lda.acc \
+      2>$dir/log/lda_est.log || exit 1;
 fi
 
 echo "$0: Finished estimating LDA"

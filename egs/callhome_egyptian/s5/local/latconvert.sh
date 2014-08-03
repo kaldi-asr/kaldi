@@ -10,7 +10,8 @@ if [ $# -lt 3 ]; then
   exit 1
 fi
 
-prunebeam=2
+prunebeam=50
+maxProcesses=10
 
 latdir=$1
 decode_dir=$2
@@ -33,6 +34,7 @@ then
   mkdir -p $latdir/$compiledLatDir
   mkdir -p $latdir/$preplfLatDir
 
+  runningProcesses=0
   for l in $decode_dir/lat.*.gz
   do	
     (
@@ -69,11 +71,19 @@ then
           continue
         fi
         # Replace laugh, unk, oov, noise with eps
-        echo "$line" | awk '{if ($3 == 2038 || $3 == 2039 || $3 == 2040) {$3 = 0; $4 = 0} print}' >> "$latdir/$rawLatDir/$fileName.lat"
+        echo "$line" | awk '{if ($3 == 1157 || $3 == 5327 || $3 == 5328 || $3 == 5329 || $3 ==5326) {$3 = 0; $4 = 0} print}' >> "$latdir/$rawLatDir/$fileName.lat"
       done < $bname.ark.fst
       echo "Done isolating lattices"
     fi
     ) &	
+    runningProcesses=$((runningProcesses+1))
+    echo "#### Processes running = " $runningProcesses " ####"
+    if [ $runningProcesses -eq $maxProcesses ]; then
+      echo "#### Waiting for slot ####"
+      wait
+      runningProcesses=0
+      echo "#### Done waiting ####"
+    fi
   done
   wait
   rm $latdir/*.bin
@@ -82,6 +92,7 @@ then
 
   if [ $stage -le 2 ]; then
     #Compile lattices
+    runningProcesses=0
     for l in $latdir/$rawLatDir/*.lat
     do
       (
@@ -89,6 +100,14 @@ then
       bname=${l##*/}
       fstcompile --arc_type=log $latdir/$rawLatDir/$bname $latdir/$compiledLatDir/$bname
       ) &
+    runningProcesses=$((runningProcesses+1))
+    echo "#### Processes running = " $runningProcesses " ####"
+    if [ $runningProcesses -eq $maxProcesses ]; then
+      echo "#### Waiting for slot ####"
+      wait
+      runningProcesses=0
+      echo "#### Done waiting ####"
+    fi
     done
     wait
     echo "Done compiling lattices."
@@ -99,6 +118,7 @@ then
     # Create a dummy FST with one state and no arcs first
     echo 0 | fstcompile --arc_type=log - $latdir/$preplfLatDir/dummy.fst
     # Push Lattice weights towards initial state
+    runningProcesses=0
     for l in $latdir/$compiledLatDir/*.lat
     do
       (
@@ -112,6 +132,14 @@ then
         fstrmepsilon - | \
         fstreverse - $latdir/$preplfLatDir/$bname
       ) &
+    runningProcesses=$((runningProcesses+1))
+    echo "#### Processes running = " $runningProcesses " ####"
+    if [ $runningProcesses -eq $maxProcesses ]; then
+      echo "#### Waiting for slot ####"
+      wait
+      runningProcesses=0
+      echo "#### Done waiting ####"
+    fi
     done
     wait
     # Let's take a moment to thank the dummy FST for playing its

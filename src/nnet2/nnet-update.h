@@ -29,22 +29,20 @@
 namespace kaldi {
 namespace nnet2 {
 
-/* This header provides functionality for sample-by-sample stochastic
+/** @file
+   This header provides functionality for sample-by-sample stochastic
    gradient descent and gradient computation with a neural net.
-   See also nnet-compute.h which is the same thing but for
+   See also \ref nnet-compute.h which is the same thing but for
    whole utterances.
-   This is the inner part of the training code; see nnet-train.h
-   which contains a wrapper for this, with functionality for
-   automatically keeping the learning rates for each layer updated
-   using a heuristic involving validation-set gradients.
 */
+
+class NnetEnsembleTrainer;
 
 // This class NnetUpdater contains functions for updating the neural net or
 // computing its gradient, given a set of NnetExamples. We
 // define it in the header file becaused it's needed by the ensemble training.
 // But in normal cases its functionality should be used by calling DoBackprop(),
 // and by ComputeNnetObjf()
-class NnetEnsembleTrainer;
 class NnetUpdater {
  public:
   // Note: in the case of training with SGD, "nnet" and "nnet_to_update" will
@@ -84,8 +82,7 @@ class NnetUpdater {
   /// contain, at input, the derivative w.r.t. the output layer (as computed by
   /// ComputeObjfAndDeriv), but will be used as a temporary variable by this
   /// function.
-  void Backprop(const std::vector<NnetExample> &data,
-                CuMatrix<BaseFloat> *deriv) const;
+  void Backprop(CuMatrix<BaseFloat> *deriv) const;
 
   friend class NnetEnsembleTrainer;
  private:
@@ -100,10 +97,6 @@ class NnetUpdater {
   std::vector<CuMatrix<BaseFloat> > forward_data_; // The forward data
   // for the outputs of each of the components.
 
-  // These weights are one per parameter; they equal to the "weight"
-  // member variables in the NnetExample structures.  These
-  // will typically be about one on average.
-  CuVector<BaseFloat> chunk_weights_;
 };
 
 /// This function computes the objective function and either updates the model

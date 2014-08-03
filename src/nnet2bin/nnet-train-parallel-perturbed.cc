@@ -1,6 +1,6 @@
-// nnet2bin/nnet-train-parallel.cc
+// nnet2bin/nnet-train-parallel-perturbed.cc
 
-// Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2012-2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -20,10 +20,9 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
-#include "nnet2/nnet-randomize.h"
-#include "nnet2/nnet-update-parallel.h"
+#include "nnet2/train-nnet-perturbed.h"
 #include "nnet2/am-nnet.h"
-
+#include "thread/kaldi-thread.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -35,21 +34,27 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Train the neural network parameters with backprop and stochastic\n"
         "gradient descent using minibatches.  The training frames and labels\n"
-        "are read via a pipe from nnet-randomize-frames.  This is like nnet-train-simple,\n"
-        "but uses multiple threads in a Hogwild type of update.\n"
+        "are read via a pipe from nnet-randomize-frames.  This is like nnet-train-parallel,\n"
+        "using multiple threads in a Hogwild type of update, but also adding\n"
+        "perturbed training (see src/nnet2/train-nnet-perturbed.h for info)\n"
         "\n"
-        "Usage:  nnet-train-parallel [options] <model-in> <training-examples-in> <model-out>\n"
+        "Usage:  nnet-train-parallel-perturbed [options] <model-in> <training-examples-in> <model-out>\n"
         "\n"
         "e.g.:\n"
-        "nnet-randomize-frames [args] | nnet-train-parallel --num-threads=8 1.nnet ark:- 2.nnet\n";
+        "nnet-randomize-frames [args] | nnet-train-parallel-pertured \\\n"
+        " --within-covar=within.spmat --num-threads=8 --target-objf-change=0.2 1.nnet ark:- 2.nnet\n";
     
     bool binary_write = true;
     bool zero_stats = true;
-    int32 minibatch_size = 1024;
     int32 srand_seed = 0;
+    std::string within_covar_rxfilename;
+    NnetPerturbedTrainerConfig train_config;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
+    po.Register("within-covar", &within_covar_rxfilename,
+                "rxfilename of within-class covariance-matrix, written as "
+                "SpMatrix.  Must be specified.");
     po.Register("zero-stats", &zero_stats, "If true, zero stats "
                 "stored with the neural net (only affects mixing up).");
     po.Register("srand", &srand_seed,
@@ -57,8 +62,7 @@ int main(int argc, char *argv[]) {
     po.Register("num-threads", &g_num_threads, "Number of training threads to use "
                 "in the parallel update. [Note: if you use a parallel "
                 "implementation of BLAS, the actual number of threads may be larger.]");
-    po.Register("minibatch-size", &minibatch_size, "Number of examples to use for "
-                "each minibatch during training.");
+    train_config.Register(&po);
     
     po.Read(argc, argv);
     srand(srand_seed);
@@ -72,6 +76,10 @@ int main(int argc, char *argv[]) {
         examples_rspecifier = po.GetArg(2),
         nnet_wxfilename = po.GetArg(3);
 
+    if (within_covar_rxfilename == "") {
+      KALDI_ERR << "The option --within-covar is required.";
+    }
+    
     TransitionModel trans_model;
     AmNnet am_nnet;
     {
@@ -81,30 +89,35 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary_read);
     }
 
-    KALDI_ASSERT(minibatch_size > 0);
+    KALDI_ASSERT(train_config.minibatch_size > 0);
 
+    SpMatrix<BaseFloat> within_covar;
+    ReadKaldiObject(within_covar_rxfilename, &within_covar);
+    
     if (zero_stats) am_nnet.GetNnet().ZeroStats();
 
-    double num_examples = 0;
     SequentialNnetExampleReader example_reader(examples_rspecifier);
     
-
-    DoBackpropParallel(am_nnet.GetNnet(),
-                       minibatch_size,
-                       &example_reader,
-                       &num_examples,
-                       &(am_nnet.GetNnet()));
     
+    double tot_objf_orig, tot_objf_perturbed, tot_weight;
+    // logging info will be printed from within the next call.
+    DoBackpropPerturbedParallel(train_config,
+                                within_covar,
+                                &example_reader,
+                                &tot_objf_orig,
+                                &tot_objf_perturbed,
+                                &tot_weight,
+                                &(am_nnet.GetNnet()));
     {
       Output ko(nnet_wxfilename, binary_write);
       trans_model.Write(ko.Stream(), binary_write);
       am_nnet.Write(ko.Stream(), binary_write);
     }
     
-    KALDI_LOG << "Finished training, processed " << num_examples
+    KALDI_LOG << "Finished training, processed " << tot_weight
               << " training examples (weighted).  Wrote model to "
               << nnet_wxfilename;
-    return (num_examples == 0 ? 1 : 0);
+    return (tot_weight == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;

@@ -469,9 +469,9 @@ int32 LinearCgd(const LinearCgdOptions &opts,
       residual_factor = opts.recompute_residual_factor *
                         opts.recompute_residual_factor;
   
-  // Note: although from a mathematical point of view the method should
-  // converge after M iterations, in practice it does not always converge
-  // to good precision after that many iterations so we let the maximum
+  // Note: although from a mathematical point of view the method should converge
+  // after M iterations, in practice (due to roundoff) it does not always
+  // converge to good precision after that many iterations so we let the maximum
   // be 1.5 * M + 5 instead.
   int32 k = 0;
   for (; k < M + M / 2 + 5 && k != opts.max_iters; k++) {

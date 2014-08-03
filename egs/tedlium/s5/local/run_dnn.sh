@@ -20,6 +20,9 @@
 
 . ./path.sh ## Source the tools/utils (import the queue.pl)
 
+nj=80
+decode_nj=8
+
 # Config:
 gmmdir=exp/tri3
 data_fmllr=data-fmllr-tri3
@@ -69,10 +72,10 @@ if [ $stage -le 2 ]; then
     steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
     $data_fmllr/train_tr90 $data_fmllr/train_cv10 data/lang $ali $ali $dir || exit 1;
   # Decode (reuse HCLG graph)
-  steps/nnet/decode.sh --nj 8 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
+  steps/nnet/decode.sh --nj $decode_nj --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     --num-threads 3 --parallel-opts "-pe smp 4" \
     $gmmdir/graph $data_fmllr/dev $dir/decode_dev || exit 1;
-  steps/nnet/decode.sh --nj 11 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
+  steps/nnet/decode.sh --nj $decode_nj --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     --num-threads 3 --parallel-opts "-pe smp 4" \
     $gmmdir/graph $data_fmllr/test $dir/decode_test || exit 1;
 fi
@@ -87,9 +90,9 @@ acwt=0.1
 
 if [ $stage -le 3 ]; then
   # First we generate lattices and alignments:
-  steps/nnet/align.sh --nj 80 --cmd "$train_cmd" \
+  steps/nnet/align.sh --nj $nj --cmd "$train_cmd" \
     $data_fmllr/train data/lang $srcdir ${srcdir}_ali || exit 1;
-  steps/nnet/make_denlats.sh --nj 3 --sub-split 100 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+  steps/nnet/make_denlats.sh --nj 6 --sub-split $nj --cmd "$decode_cmd" --config conf/decode_dnn.config \
     --acwt $acwt $data_fmllr/train data/lang $srcdir ${srcdir}_denlats || exit 1;
 fi
 
@@ -99,11 +102,11 @@ if [ $stage -le 4 ]; then
     $data_fmllr/train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
   # Decode (reuse HCLG graph)
   for ITER in 1; do
-    steps/nnet/decode.sh --nj 8 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+    steps/nnet/decode.sh --nj $decode_nj --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --num-threads 3 --parallel-opts "-pe smp 4" \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph $data_fmllr/dev $dir/decode_dev || exit 1;
-    steps/nnet/decode.sh --nj 11 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+    steps/nnet/decode.sh --nj $decode_nj --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --num-threads 3 --parallel-opts "-pe smp 4" \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph $data_fmllr/test $dir/decode_test || exit 1;
@@ -117,9 +120,9 @@ acwt=0.1
 
 if [ $stage -le 5 ]; then
   # First we generate lattices and alignments:
-  steps/nnet/align.sh --nj 80 --cmd "$train_cmd" \
+  steps/nnet/align.sh --nj $nj --cmd "$train_cmd" \
     $data_fmllr/train data/lang $srcdir ${srcdir}_ali || exit 1;
-  steps/nnet/make_denlats.sh --nj 3 --sub-split 100 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+  steps/nnet/make_denlats.sh --nj 6 --sub-split $nj --cmd "$decode_cmd" --config conf/decode_dnn.config \
     --acwt $acwt $data_fmllr/train data/lang $srcdir ${srcdir}_denlats || exit 1;
 fi
 
@@ -129,11 +132,11 @@ if [ $stage -le 6 ]; then
     $data_fmllr/train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
   # Decode (reuse HCLG graph)
   for ITER in 1 2 3 4; do
-    steps/nnet/decode.sh --nj 8 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+    steps/nnet/decode.sh --nj $decode_nj --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --num-threads 3 --parallel-opts "-pe smp 4" \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph $data_fmllr/dev $dir/decode_dev || exit 1;
-    steps/nnet/decode.sh --nj 11 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+    steps/nnet/decode.sh --nj $decode_nj --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --num-threads 3 --parallel-opts "-pe smp 4" \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph $data_fmllr/test $dir/decode_test || exit 1;
