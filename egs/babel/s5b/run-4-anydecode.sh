@@ -46,8 +46,6 @@ dataset_type=${dir%%.*}
 if [ -z ${kind} ] ; then
   if [ "$dataset_type" == "dev2h" ] || [ "$dataset_type" == "dev10h" ] ; then
     dataset_kind=supervised
-  elif [ "$dataset_type" == "shadow" ] ; then
-    dataset_kind=shadow
   else
     dataset_kind=unsupervised
   fi
@@ -139,55 +137,33 @@ function check_variables_are_set {
   fi
 }
 
-if  [ "$dataset_kind" == "shadow" ] ; then
-  # we expect that the ${dev2shadow} as well as ${eval2shadow} already exist
-  if [ ! -f data/${dev2shadow}/.done ]; then
-    echo "Error: data/${dev2shadow}/.done does not exist."
-    echo "Create the directory data/${dev2shadow} first"
-    echo "e.g. by calling $0 --type $dev2shadow --dataonly"
-    exit 1
-  fi
-  if [ ! -f data/${eval2shadow}/.done ]; then
-    echo "Error: data/${eval2shadow}/.done does not exist."
-    echo "Create the directory data/${eval2shadow} first."
-    echo "e.g. by calling $0 --type $eval2shadow --dataonly"
+if [ ! -f data/raw_${dataset_type}_data/.done ]; then
+  echo ---------------------------------------------------------------------
+  echo "Subsetting the ${dataset_type} set"
+  echo ---------------------------------------------------------------------
+ 
+  l1=${#my_data_dir[*]}
+  l2=${#my_data_list[*]}
+  if [ "$l1" -ne "$l2" ]; then
+    echo "Error, the number of source files lists is not the same as the number of source dirs!"
     exit 1
   fi
   
-  local/create_shadow_dataset.sh ${dataset_dir} \
-    data/${dev2shadow} data/${eval2shadow}
-  utils/fix_data_dir.sh ${datadir}
-  nj_max=`cat $dataset_dir/wav.scp | wc -l`
-  my_nj=64
-else
-  if [ ! -f data/raw_${dataset_type}_data/.done ]; then
-    echo ---------------------------------------------------------------------
-    echo "Subsetting the ${dataset_type} set"
-    echo ---------------------------------------------------------------------
-   
-    l1=${#my_data_dir[*]}
-    l2=${#my_data_list[*]}
-    if [ "$l1" -ne "$l2" ]; then
-      echo "Error, the number of source files lists is not the same as the number of source dirs!"
-      exit 1
-    fi
-    
-    resource_string=""
-    if [ "$dataset_kind" == "unsupervised" ]; then
-      resource_string+=" --ignore-missing-txt true"
-    fi
-
-    for i in `seq 0 $(($l1 - 1))`; do
-      resource_string+=" ${my_data_dir[$i]} "
-      resource_string+=" ${my_data_list[$i]} "
-    done
-    local/make_corpus_subset.sh $resource_string ./data/raw_${dataset_type}_data
-    touch data/raw_${dataset_type}_data/.done
+  resource_string=""
+  if [ "$dataset_kind" == "unsupervised" ]; then
+    resource_string+=" --ignore-missing-txt true"
   fi
-  my_data_dir=`readlink -f ./data/raw_${dataset_type}_data`
-  [ -f $my_data_dir/filelist.list ] && my_data_list=$my_data_dir/filelist.list
-  nj_max=`cat $my_data_list | wc -l` || nj_max=`ls $my_data_dir/audio | wc -l`
+
+  for i in `seq 0 $(($l1 - 1))`; do
+    resource_string+=" ${my_data_dir[$i]} "
+    resource_string+=" ${my_data_list[$i]} "
+  done
+  local/make_corpus_subset.sh $resource_string ./data/raw_${dataset_type}_data
+  touch data/raw_${dataset_type}_data/.done
 fi
+my_data_dir=`readlink -f ./data/raw_${dataset_type}_data`
+[ -f $my_data_dir/filelist.list ] && my_data_list=$my_data_dir/filelist.list
+nj_max=`cat $my_data_list | wc -l` || nj_max=`ls $my_data_dir/audio | wc -l`
 if [ "$nj_max" -lt "$my_nj" ] ; then
   echo "Number of jobs ($my_nj) is too big!"
   echo "The maximum reasonable number of jobs is $nj_max"
@@ -234,10 +210,6 @@ if [ ! -f  $dataset_dir/.done ] ; then
       echo "Valid dataset types are: seg, uem, pem";
       exit 1
     fi
-  elif  [ "$dataset_kind" == "shadow" ] ; then
-    #We don't actually have to do anything here
-    #The shadow dir is already set...
-    true  
   else
     echo "Unknown kind of the dataset: \"$dataset_kind\"!";
     echo "Valid dataset kinds are: supervised, unsupervised, shadow";
@@ -435,6 +407,31 @@ fi
 ####################################################################
 if [ -f exp/tri6b_nnet/.done ]; then
   decode=exp/tri6b_nnet/decode_${dataset_id}
+  if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
+    steps/nnet2/decode.sh \
+      --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
+      --beam $dnn_beam --lat-beam $dnn_lat_beam \
+      --skip-scoring true "${decode_extra_opts[@]}" \
+      --transform-dir exp/tri5/decode_${dataset_id} \
+      exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
+
+    touch $decode/.done
+  fi
+
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+    ${dataset_dir} data/lang $decode
+fi
+####################################################################
+##
+## DNN (ensemble) decoding
+##
+####################################################################
+if [ -f exp/tri6c_nnet/.done ]; then
+  decode=exp/tri6c_nnet/decode_${dataset_id}
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
     steps/nnet2/decode.sh \

@@ -86,7 +86,7 @@ fi
 if [ ! -f $data_bnf_dir/train_bnf/.done ]; then
   mkdir -p $data_bnf_dir
   # put the archives in ${param_bnf_dir}/.
-  steps/nnet2/dump_bottleneck_features.sh --nj $train_nj --cmd "$train_cmd" \
+  steps/nnet/make_bn_feats.sh --nj $train_nj --cmd "$train_cmd" \
     --transform-dir exp/tri5 data/train $data_bnf_dir/train_bnf \
     $exp_dir/tri6_bnf $param_bnf_dir $exp_dir/dump_bnf
   touch $data_bnf_dir/train_bnf/.done
