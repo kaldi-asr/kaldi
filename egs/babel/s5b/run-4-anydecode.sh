@@ -176,12 +176,12 @@ echo ---------------------------------------------------------------------
 echo "Preparing ${dataset_kind} data files in ${dataset_dir} on" `date`
 echo ---------------------------------------------------------------------
 if [ ! -f  $dataset_dir/.done ] ; then
-  if [ "$dataset_kind" == "supervised" ]  ; then
-    if [ "$dataset_segments" == "seg" ] ; then
+  if [ "$dataset_kind" == "supervised" ]; then
+    if [ "$dataset_segments" == "seg" ]; then
       . ./local/datasets/supervised_seg.sh
-    elif [ "$dataset_segments" == "uem" ] ; then
+    elif [ "$dataset_segments" == "uem" ]; then
       . ./local/datasets/supervised_uem.sh
-    elif [ "$dataset_segments" == "pem" ] ; then
+    elif [ "$dataset_segments" == "pem" ]; then
       . ./local/datasets/supervised_pem.sh
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";
@@ -420,6 +420,31 @@ if [ -f exp/tri6b_nnet/.done ]; then
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
+    ${dataset_dir} data/lang $decode
+fi
+####################################################################
+##
+## DNN (ensemble) decoding
+##
+####################################################################
+if [ -f exp/tri6c_nnet/.done ]; then
+  decode=exp/tri6c_nnet/decode_${dataset_id}
+  if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
+    steps/nnet2/decode.sh \
+      --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
+      --beam $dnn_beam --lat-beam $dnn_lat_beam \
+      --skip-scoring true "${decode_extra_opts[@]}" \
+      --transform-dir exp/tri5/decode_${dataset_id} \
+      exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
+
+    touch $decode/.done
+  fi
+
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/lang $decode
 fi
 ####################################################################

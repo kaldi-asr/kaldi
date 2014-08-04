@@ -4,6 +4,7 @@
 //                       Saarland University (Author: Arnab Ghoshal);
 //                       Ariya Rastrow;  Petr Schwarz;  Yanmin Qian;
 //                       Karel Vesely;  Go Vivace Inc.;  Arnab Ghoshal
+//                       Wei Shi;
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -126,7 +127,7 @@ class VectorBase {
   void ApplyExp();
 
   /// Take absolute value of each of the elements
-  void Abs();
+  void ApplyAbs();
 
   /// Applies floor to all elements. Returns number of elements floored.
   MatrixIndexT ApplyFloor(Real floor_val);
@@ -151,6 +152,11 @@ class VectorBase {
   /// Take all  elements of vector to a power.
   void ApplyPow(Real power);
 
+  /// Take the absolute value of all elements of a vector to a power.
+  /// Include the sign of the input element if include_sign == true.
+  /// If power is negative and the input value is zero, the output is set zero.
+  void ApplyPowAbs(Real power, bool include_sign=false);
+  
   /// Compute the p-th norm of the vector.
   Real Norm(Real p) const;
   
@@ -230,6 +236,13 @@ class VectorBase {
 
   /// Multiplies this vector by lower-triangular marix:  *this <-- *this *M
   void MulTp(const TpMatrix<Real> &M, const MatrixTransposeType trans);
+
+  /// If trans == kNoTrans, solves M x = b, where b is the value of *this at input
+  /// and x is the value of *this at output.
+  /// If trans == kTrans, solves M' x = b.
+  /// Does not test for M being singular or near-singular, so test it before
+  /// calling this routine.
+  void Solve(const TpMatrix<Real> &M, const MatrixTransposeType trans);
 
   /// Performs a row stack of the matrix M
   void CopyRowsFromMat(const MatrixBase<Real> &M);

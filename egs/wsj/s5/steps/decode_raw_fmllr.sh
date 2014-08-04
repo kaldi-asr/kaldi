@@ -91,7 +91,9 @@ mkdir -p $dir/log
 split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
-norm_vars=`cat $srcdir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
+cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
+raw_dim=$(feat-to-dim scp:$data/feats.scp -) || exit 1;
+! [ "$raw_dim" -gt 0 ] && echo "raw feature dim not set" && exit 1;
 
 silphonelist=`cat $graphdir/phones/silence.csl` || exit 1;
 
@@ -136,7 +138,7 @@ if [[ ! -f $srcdir/final.mat || ! -f $srcdir/full.mat ]]; then
   echo "$0: we require final.mat and full.mat in the source directory $srcdir"
 fi
 
-splicedfeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
+splicedfeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
 sifeats="$splicedfeats transform-feats $srcdir/final.mat ark:- ark:- |"
 
 full_lda_mat="get-full-lda-mat --print-args=false $srcdir/final.mat $srcdir/full.mat -|"
@@ -151,12 +153,12 @@ if [ $stage -le 1 ]; then
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
     weight-silence-post $silence_weight $silphonelist $alignment_model ark:- ark:- \| \
     gmm-post-to-gpost $alignment_model "$sifeats" ark:- ark:- \| \
-    gmm-est-fmllr-raw-gpost --spk2utt=ark:$sdata/JOB/spk2utt $adapt_model "$full_lda_mat" \
+    gmm-est-fmllr-raw-gpost --raw-feat-dim=$raw_dim --spk2utt=ark:$sdata/JOB/spk2utt $adapt_model "$full_lda_mat" \
       "$splicedfeats" ark,s,cs:- ark:$dir/pre_trans.JOB || exit 1;
 fi
 ##
 
-pass1splicedfeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/pre_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- |"
+pass1splicedfeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/pre_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- |"
 pass1feats="$pass1splicedfeats transform-feats $srcdir/final.mat ark:- ark:- |"
 
 ## Do the main lattice generation pass.  Note: we don't determinize the lattices at
@@ -183,14 +185,14 @@ if [ $stage -le 3 ]; then
     "ark:gunzip -c $dir/lat.tmp.JOB.gz|" ark:- \| \
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
     weight-silence-post $silence_weight $silphonelist $adapt_model ark:- ark:- \| \
-    gmm-est-fmllr-raw --spk2utt=ark:$sdata/JOB/spk2utt \
+    gmm-est-fmllr-raw --raw-feat-dim=$raw_dim --spk2utt=ark:$sdata/JOB/spk2utt \
      $adapt_model "$full_lda_mat" "$pass1splicedfeats" ark,s,cs:- ark:$dir/trans_tmp.JOB '&&' \
     compose-transforms --b-is-affine=true ark:$dir/trans_tmp.JOB ark:$dir/pre_trans.JOB \
     ark:$dir/raw_trans.JOB  || exit 1;
 fi
 ##
 
-feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 if [ $stage -le 4 ] && $use_normal_fmllr; then
   echo "$0: estimating normal fMLLR transforms"

@@ -8,9 +8,15 @@ train_stage=-100
 # factor to artificially expand the amount of data.
 
 
-. cmd.sh
+. ./cmd.sh
+. ./path.sh
+! cuda-compiled && cat <<EOF && exit 1 
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+If you want to use GPUs (and have them), go to src/, and configure and make on a machine
+where "nvcc" is installed.
+EOF
 
-parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely have to change it.
 
 . utils/parse_options.sh  # to parse the --stage option, if given
 
@@ -41,7 +47,7 @@ if [ $stage -le 2 ]; then
   steps/nnet2/train_block.sh --stage "$train_stage" \
      --num-jobs-nnet 4 --num-threads 1 --parallel-opts "$parallel_opts" \
      --bias-stddev 0.5 --splice-width 7 --egs-opts "--feat-type raw" \
-     --softmax-learning-rate-factor 0.5 --cleanup false \
+     --softmax-learning-rate-factor 0.5 \
      --initial-learning-rate 0.04 --final-learning-rate 0.004 \
      --num-epochs-extra 10 --add-layers-period 3 --mix-up 4000 \
      --cmd "$decode_cmd" --hidden-layer-dim 450 \

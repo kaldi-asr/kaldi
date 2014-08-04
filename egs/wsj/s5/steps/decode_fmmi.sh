@@ -12,7 +12,7 @@ nj=4
 cmd=run.pl
 maxactive=7000
 beam=13.0
-latbeam=6.0
+lattice_beam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 ngselect=2; # Just use the 2 top Gaussians for fMMI/fMPE.  Should match train.
 transform_dir=
@@ -57,7 +57,7 @@ dir=$3
 srcdir=`dirname $dir`; # The model directory is one level up from decoding directory.
 sdata=$data/split$nj;
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
-norm_vars=`cat $srcdir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
+cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
 
@@ -75,8 +75,8 @@ if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "decode_fmmi.sh: feature type is $feat_type";
 
 case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |";;
+  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
+  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |";;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
 
@@ -99,7 +99,7 @@ fi
   
 if [ $stage -le 2 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
-    gmm-latgen-faster$thread_string --max-active=$maxactive --beam=$beam --lattice-beam=$latbeam \
+    gmm-latgen-faster$thread_string --max-active=$maxactive --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $model $graphdir/HCLG.fst "$fmpefeats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi

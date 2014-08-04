@@ -18,7 +18,7 @@ mkdir -p $data/.backup
 
 [ ! -f $data/utt2spk ] && echo "$0: no such file $data/utt2spk" && exit 1;
 
-tmpdir=$(mktemp -d);
+tmpdir=$(mktemp -d kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT HUP INT PIPE TERM
 
 export LC_ALL=C
@@ -35,7 +35,7 @@ function check_sorted {
   fi
 }
 
-for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp reco2file_and_channel spk2gender; do
+for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp reco2file_and_channel spk2gender utt2lang; do
   if [ -f $data/$x ]; then
     cp $data/$x $data/.backup/$x
     check_sorted $data/$x
@@ -98,8 +98,7 @@ function filter_speakers {
   for s in cmvn.scp spk2gender; do
     f=$data/$s
     if [ -f $f ]; then
-      utils/filter_scp.pl $f $tmpdir/speakers > $tmpdir/speakers.tmp
-      mv $tmpdir/speakers.tmp $tmpdir/speakers
+      filter_file $f $tmpdir/speakers
     fi
   done
 
@@ -132,7 +131,7 @@ function filter_utts {
 
   maybe_wav=
   [ ! -f $data/segments ] && maybe_wav=wav.scp  # wav indexed by utts only if segments does not exist.
-  for x in feats.scp text segments $maybe_wav; do
+  for x in feats.scp text segments utt2lang $maybe_wav; do
     if [ -f $data/$x ]; then
       utils/filter_scp.pl $data/$x $tmpdir/utts > $tmpdir/utts.tmp
       mv $tmpdir/utts.tmp $tmpdir/utts
@@ -141,20 +140,18 @@ function filter_utts {
   [ ! -s $tmpdir/utts ] && echo "fix_data_dir.sh: no utterances remained: not proceeding further." && \
     rm $tmpdir/utts && exit 1;
 
-  nutts=`cat $tmpdir/utts | wc -l`
-  if [ -f $data/feats.scp ]; then
-    nfeats=`cat $data/feats.scp | wc -l`
-  else
-    nfeats=0
-  fi
-  ntext=`cat $data/text 2>/dev/null | wc -l`
-  if [ "$nutts" -ne "$nfeats" -o "$nutts" -ne "$ntext" ]; then
-    echo "fix_data_dir.sh: kept $nutts utterances, vs. $nfeats features and $ntext transcriptions."
-  else
-    echo "fix_data_dir.sh: kept all $nutts utterances."
+
+  if [ -f $data/utt2spk ]; then
+    new_nutts=$(cat $tmpdir/utts | wc -l)
+    old_nutts=$(cat $data/utt2spk | wc -l)
+    if [ $new_nutts -ne $old_nutts ]; then
+      echo "fix_data_dir.sh: kept $new_nutts utterances out of $old_nutts"
+    else
+      echo "fix_data_dir.sh: kept all $old_nutts utterances."
+    fi
   fi
 
-  for x in utt2spk feats.scp text segments $maybe_wav; do
+  for x in utt2spk feats.scp text segments utt2lang $maybe_wav; do
     if [ -f $data/$x ]; then
       cp $data/$x $data/.backup/$x
       if ! cmp -s $data/$x <( utils/filter_scp.pl $tmpdir/utts $data/$x ) ; then
@@ -168,6 +165,7 @@ function filter_utts {
 filter_recordings
 filter_speakers
 filter_utts
+filter_speakers
 filter_recordings
 
 

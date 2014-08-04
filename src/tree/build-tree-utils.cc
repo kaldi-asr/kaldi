@@ -496,7 +496,7 @@ class DecisionTreeSplitter {
       KALDI_WARN << "DecisionTreeSplitter::FindBestSplit(), no keys available to split on (maybe no key covered all of your events, or there was a problem with your questions configuration?)";
     }
     best_split_impr_ = 0;
-    for (size_t i = 0;i < all_keys.size();i++) {
+    for (size_t i = 0; i < all_keys.size(); i++) {
       if (q_opts_.HasQuestionsForKey(all_keys[i])) {
         std::vector<EventValueType> temp_yes_set;
         BaseFloat split_improvement = FindBestSplitForKey(stats_, q_opts_, all_keys[i], &temp_yes_set);
@@ -560,7 +560,8 @@ EventMap *SplitDecisionTree(const EventMap &input_map,
     std::priority_queue<std::pair<BaseFloat, size_t> > queue;  // use size_t because logically these
     // are just indexes into the array, not leaf-ids (after splitting they are no longer leaf id's).
     // Initialize queue.
-    for (size_t i = 0;i<builders.size();i++) queue.push(std::make_pair(builders[i]->BestSplit(), i));
+    for (size_t i = 0; i < builders.size(); i++)
+      queue.push(std::make_pair(builders[i]->BestSplit(), i));
     // Note-- queue's size never changes from now.  All the alternatives leaves to split are
     // inside the "DecisionTreeSplitter*" objects, in a tree structure.
     while (queue.top().first > thresh
@@ -583,9 +584,9 @@ EventMap *SplitDecisionTree(const EventMap &input_map,
 
   {  // Create the output EventMap.
     std::vector<EventMap*> sub_trees(builders.size());
-    for (size_t i = 0;i<sub_trees.size();i++) sub_trees[i] = builders[i]->GetMap();
+    for (size_t i = 0; i < sub_trees.size();i++) sub_trees[i] = builders[i]->GetMap();
     answer = input_map.Copy(sub_trees);
-    for (size_t i = 0;i < sub_trees.size();i++) delete sub_trees[i];
+    for (size_t i = 0; i < sub_trees.size();i++) delete sub_trees[i];
   }
   // Free up memory.
   for (size_t i = 0;i < builders.size();i++) delete builders[i];

@@ -18,7 +18,7 @@ TESTFILES = cu-vector-test cu-matrix-test cu-math-test cu-test cu-sp-matrix-test
 OBJFILES = cu-device.o cu-math.o cu-matrix.o cu-packed-matrix.o cu-sp-matrix.o \
            cu-vector.o cu-common.o cu-tp-matrix.o cu-rand.o cu-block-matrix.o
 ifeq ($(CUDA), true)
-  OBJFILES += cu-kernels.o cu-randkernels.o cu-choleskykernels.o
+  OBJFILES += cu-kernels.o cu-randkernels.o
 endif
 
 LIBNAME = kaldi-cudamatrix
@@ -43,7 +43,11 @@ ifeq ($(CUDA), true)
   ifeq ($(CUDA_VER_GT_5_0), true)
     CUDA_ARCH += -gencode arch=compute_35,code=sm_35
   endif
-
+  #For toolkit 6.0 or newer, add the compute capability 5.0
+  CUDA_VER_GT_6_0 := $(shell [ $(CUDA_VERSION) -ge 60 ] && echo true)
+  ifeq ($(CUDA_VER_GT_6_0), true)
+    CUDA_ARCH += -gencode arch=compute_50,code=sm_50
+  endif
 endif
 
 

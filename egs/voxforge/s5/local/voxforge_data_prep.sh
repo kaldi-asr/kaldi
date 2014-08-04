@@ -35,17 +35,17 @@ mkdir -p $loctmp
 # names don't follow the "speaker-YYYYMMDD-<random_3letter_suffix>" convention.
 # The ";tx;d;:x" part of the expression is to filter out the directories,
 # not matched by the expression
-find $DATA/* -maxdepth 0 |\
- sed -Ee 's:.*/((.+)\-[0-9]{8,10}[a-z]*([_\-].*)?):\2:;tx;d;:x' |\
+find $DATA/ -mindepth 1 -maxdepth 1 |\
+ perl -ane ' s:.*/((.+)\-[0-9]{8,10}[a-z]*([_\-].*)?):$2: && print; ' | \
  sort -u > $loctmp/speakers_all.txt
 
-nspk_all=`wc -l $loctmp/speakers_all.txt | cut -f1 -d' '`
+nspk_all=$(wc -l <$loctmp/speakers_all.txt)
 if [ "$nspk_test" -ge "$nspk_all" ]; then
   echo "${nspk_test} test speakers requested, but there are only ${nspk_all} speakers in total!"
   exit 1;
 fi
 
-shuf -n $nspk_test < $loctmp/speakers_all.txt | sort -u > $loctmp/speakers_test.txt
+utils/shuffle_list.pl <$loctmp/speakers_all.txt | head -n $nspk_test | sort -u >$loctmp/speakers_test.txt
 
 gawk 'NR==FNR{spk[$0]; next} !($0 in spk)' \
     $loctmp/speakers_test.txt $loctmp/speakers_all.txt |\
@@ -82,10 +82,10 @@ for s in test train; do
     echo "No README file for $d - skipping this directory ..."
     continue
   fi
-  spkgender=`sed -e 's:.*Gender\:[^[:alpha:]]\+\(.\).*:\U\1:gi;tx;d;:x' <$rdm`
-  if [ $spkgender != "F" -a $spkgender != "M" ]; then
-    echo "Illegal or empty gender ($spkgender) for \"$d\" - assuming M(ale) ..."
-    spkgender="M"
+  spkgender=$(perl -ane ' s/.*gender\:\W*(.).*/lc($1)/ei && print; ' <$rdm)
+  if [ "$spkgender" != "f" -a "$spkgender" != "m" ]; then
+    echo "Illegal or empty gender ($spkgender) for \"$d\" - assuming m(ale) ..."
+    spkgender="m"
   fi
   echo "$spkname $spkgender" >> $locdata/spk2gender.tmp
   
@@ -147,7 +147,7 @@ for s in test train; do
         END {for (k in names) {print k, names[k];}}' | sort -k1 > $locdata/${s}.spk2utt
 done;
 
-trans_err=`wc -l ${logdir}/make_trans.log | cut -f1 -d" "`
+trans_err=$(wc -l <${logdir}/make_trans.log)
 if [ "${trans_err}" -ge 1 ]; then
   echo -n "$trans_err errors detected in the transcripts."
   echo " Check ${logdir}/make_trans.log for details!" 

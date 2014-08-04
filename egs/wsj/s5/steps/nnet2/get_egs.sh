@@ -13,7 +13,7 @@ num_utts_subset=300    # number of utterances in validation and training
 num_valid_frames_combine=0 # #valid frames for combination weights at the very end.
 num_train_frames_combine=10000 # # train frames for the above.
 num_frames_diagnostic=4000 # number of frames for "compute_prob" jobs
-samples_per_iter=400000 # each iteration of training, see this many samples
+samples_per_iter=200000 # each iteration of training, see this many samples
                         # per job.  This is just a guideline; it will pick a number
                         # that divides the number of samples in the entire data.
 transform_dir=     # If supplied, overrides alidir
@@ -76,7 +76,6 @@ sdata=$data/split$nj
 utils/split_data.sh $data $nj
 
 mkdir -p $dir/log
-echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
 
 
@@ -99,8 +98,8 @@ awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlis
      head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
-norm_vars=`cat $alidir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
-cp $alidir/norm_vars $dir 2>/dev/null
+cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
+cp $alidir/cmvn_opts $dir 2>/dev/null
 
 ## Set up features. 
 if [ -z $feat_type ]; then
@@ -109,17 +108,17 @@ fi
 echo "$0: feature type is $feat_type"
 
 case $feat_type in
-  raw) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
-    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+  raw) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
+    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
    ;;
   lda) 
     splice_opts=`cat $alidir/splice_opts 2>/dev/null`
     cp $alidir/splice_opts $dir 2>/dev/null
     cp $alidir/final.mat $dir    
-    feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-      valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-      train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+    feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+      valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+      train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
@@ -152,7 +151,8 @@ samples_per_iter_real=$[$num_frames/($num_jobs_nnet*$iters_per_epoch)]
 echo "$0: Every epoch, splitting the data up into $iters_per_epoch iterations,"
 echo "$0: giving samples-per-iteration of $samples_per_iter_real (you requested $samples_per_iter)."
 
-# Making soft links to storage directories.
+# Making soft links to storage directories.  This is a no-up unless
+# the subdirectory $dir/egs/storage/ exists.
 for x in `seq 1 $num_jobs_nnet`; do
   for y in `seq 0 $[$iters_per_epoch-1]`; do
     utils/create_data_link.pl $dir/egs/egs.$x.$y.ark
@@ -162,6 +162,8 @@ for x in `seq 1 $num_jobs_nnet`; do
     utils/create_data_link.pl $dir/egs/egs_orig.$x.$y.ark
   done
 done
+
+remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
 
 nnet_context_opts="--left-context=$splice_width --right-context=$splice_width"
 mkdir -p $dir/egs
@@ -176,13 +178,14 @@ fi
 if [ $stage -le 2 ]; then
   echo "Getting validation and training subset examples."
   rm $dir/.error 2>/dev/null
+  all_ids=$(seq -s, $nj)  # e.g. 1,2,...39,40
   $cmd $dir/log/create_valid_subset.log \
     nnet-get-egs $nnet_context_opts "${spk_vecs_opt[@]}" "$valid_feats" \
-     "ark,cs:gunzip -c $alidir/ali.*.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
+     "ark,s,cs:gunzip -c $alidir/ali.{$all_ids}.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/egs/valid_all.egs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     nnet-get-egs $nnet_context_opts "${spk_vecs_opt[@]}" "$train_subset_feats" \
-     "ark,cs:gunzip -c $alidir/ali.*.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
+     "ark,s,cs:gunzip -c $alidir/ali.{$all_ids}.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/egs/train_subset_all.egs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && exit 1;
@@ -243,7 +246,7 @@ if [ $stage -le 4 ]; then
     echo "$0: Since iters-per-epoch == 1, just concatenating the data."
     for n in `seq 1 $num_jobs_nnet`; do
       cat $dir/egs/egs_orig.$n.*.ark > $dir/egs/egs_tmp.$n.0.ark || exit 1;
-      rm $dir/egs/egs_orig.$n.*.ark  # don't "|| exit 1", due to NFS bugs...
+      remove $dir/egs/egs_orig.$n.*.ark 
     done
   else # We'll have to split it up using nnet-copy-egs.
     egs_list=
@@ -254,8 +257,8 @@ if [ $stage -le 4 ]; then
     # we encountered running this script with Debian-7, NFS-v4.
     $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/split_egs.JOB.log \
       nnet-copy-egs --random=$random_copy --srand=JOB \
-        "ark:cat $dir/egs/egs_orig.JOB.*.ark|" $egs_list '&&' \
-        '(' rm $dir/egs/egs_orig.JOB.*.ark '||' true ')' || exit 1;
+        "ark:cat $dir/egs/egs_orig.JOB.*.ark|" $egs_list || exit 1;
+    remove $dir/egs/egs_orig.*.*.ark  2>/dev/null
   fi
 fi
 
@@ -271,8 +274,8 @@ if [ $stage -le 5 ]; then
   for n in `seq 0 $[$iters_per_epoch-1]`; do
     $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/shuffle.$n.JOB.log \
       nnet-shuffle-egs "--srand=\$[JOB+($num_jobs_nnet*$n)]" \
-      ark:$dir/egs/egs_tmp.JOB.$n.ark ark:$dir/egs/egs.JOB.$n.ark '&&' \
-      '(' rm $dir/egs/egs_tmp.JOB.$n.ark '||' true ')' || exit 1;
+      ark:$dir/egs/egs_tmp.JOB.$n.ark ark:$dir/egs/egs.JOB.$n.ark 
+    remove $dir/egs/egs_tmp.*.$n.ark
   done
 fi
 

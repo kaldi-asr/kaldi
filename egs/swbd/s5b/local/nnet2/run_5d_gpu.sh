@@ -8,11 +8,17 @@ dir=nnet5d_gpu
 temp_dir=
 train_stage=-10
 
-. cmd.sh
+. ./cmd.sh
+. ./path.sh
+! cuda-compiled && cat <<EOF && exit 1 
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+If you want to use GPUs (and have them), go to src/, and configure and make on a machine
+where "nvcc" is installed.
+EOF
 
 
 . utils/parse_options.sh
-parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely have to change it.
 
 ( 
   if [ ! -f exp/$dir/final.mdl ]; then
@@ -26,10 +32,10 @@ parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network, y
       --num-jobs-nnet 8 --num-threads 1 --max-change 40.0 \
       --minibatch-size 512 --parallel-opts "$parallel_opts" \
       --mix-up 8000 \
-      --initial-learning-rate 0.02 --final-learning-rate 0.002 \
-      --num-hidden-layers 4 \
+      --initial-learning-rate 0.08 --final-learning-rate 0.008 \
+      --num-hidden-layers 5 \
       --pnorm-input-dim 3000 \
-      --pnorm-output-dim 600 \
+      --pnorm-output-dim 300 \
       --cmd "$decode_cmd" \
       data/train_100k_nodup data/lang exp/tri4a exp/$dir || exit 1;
   fi

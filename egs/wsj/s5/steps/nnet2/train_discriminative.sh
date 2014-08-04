@@ -22,7 +22,7 @@ num_jobs_nnet=4    # Number of neural net jobs to run in parallel.  Note: this
 samples_per_iter=400000 # measured in frames, not in "examples"
 
 spk_vecs_dir=
-modify_learning_rates=false
+modify_learning_rates=true
 last_layer_factor=1.0  # relates to modify-learning-rates
 first_layer_factor=1.0 # relates to modify-learning-rates
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
@@ -117,9 +117,9 @@ utils/split_data.sh $data $nj
 
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
-norm_vars=`cat $alidir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
+cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
 cp $alidir/splice_opts $dir 2>/dev/null
-cp $alidir/norm_vars $dir 2>/dev/null
+cp $alidir/cmvn_opts $dir 2>/dev/null
 cp $alidir/tree $dir
 
 ## Set up features.
@@ -130,27 +130,48 @@ fi
 echo "$0: feature type is $feat_type"
 
 case $feat_type in
-  raw) feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
+  raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
    ;;
   lda) 
     splice_opts=`cat $alidir/splice_opts 2>/dev/null`
     cp $alidir/final.mat $dir    
-    feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+    feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
 
-[ -z "$transform_dir" ] && transform_dir=$alidir
+if [ -z "$transform_dir" ]; then
+  if [ -f $transform_dir/trans.1 ] || [ -f $transform_dir/raw_trans.1 ]; then
+    transform_dir=$alidir
+  fi
+fi
 
-if [ -f $transform_dir/trans.1 ] && [ $feat_type != "raw" ]; then
+if [ ! -z "$transform_dir" ]; then
   echo "$0: using transforms from $transform_dir"
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
+  [ ! -s $transform_dir/num_jobs ] && \
+    echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
+  nj_orig=$(cat $transform_dir/num_jobs)
+  
+  if [ $feat_type == "raw" ]; then trans=raw_trans;
+  else trans=trans; fi
+  if [ $feat_type == "lda" ] && ! cmp $transform_dir/final.mat $alidir/final.mat; then
+    echo "$0: LDA transforms differ between $alidir and $transform_dir"
+    exit 1;
+  fi
+  if [ ! -f $transform_dir/$trans.1 ]; then
+    echo "$0: expected $transform_dir/$trans.1 to exist (--transform-dir option)"
+    exit 1;
+  fi
+  if [ $nj -ne $nj_orig ]; then
+    # Copy the transforms into an archive with an index.
+    for n in $(seq $nj_orig); do cat $transform_dir/$trans.$n; done | \
+       copy-feats ark:- ark,scp:$dir/$trans.ark,$dir/$trans.scp || exit 1;
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
+  else
+    # number of jobs matches with alignment dir.
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
+  fi
 fi
-if [ -f $transform_dir/raw_trans.1 ] && [ $feat_type == "raw" ]; then
-  echo "$0: using raw-fMLLR transforms from $transform_dir"
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/raw_trans.JOB ark:- ark:- |"
-fi
-
 
 if [ -z "$degs_dir" ]; then
   if [ $stage -le -8 ]; then

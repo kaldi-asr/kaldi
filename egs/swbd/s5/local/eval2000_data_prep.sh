@@ -109,3 +109,4 @@ done
 echo Data preparation and formatting completed for Eval 2000
 echo "(but not MFCC extraction)"
 
+utils/fix_data_dir.sh $dest

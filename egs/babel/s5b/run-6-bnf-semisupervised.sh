@@ -83,7 +83,7 @@ if [ ! -f $exp_dir/tri6_bnf/.done ]; then
   fi  
 
  echo "$0: Train Bottleneck network"
-  local/nnet2/train_tanh_bottleneck.sh \
+  steps/nnet2/train_tanh_bottleneck.sh \
     --stage $bnf_train_stage --num-jobs-nnet $bnf_num_jobs \
     --num-threads $bnf_num_threads --mix-up $bnf_mixup \
     --minibatch-size $bnf_minibatch_size \
@@ -102,7 +102,7 @@ fi
 if [ ! -f $data_bnf_dir/train_bnf/.done ]; then
   mkdir -p $data_bnf_dir
   # put the archives in ${param_bnf_dir}/.
-  local/nnet2/dump_bottleneck_features.sh --nj $train_nj --cmd "$train_cmd" \
+  steps/nnet/make_bn_feats.sh --nj $train_nj --cmd "$train_cmd" \
     --transform-dir exp/tri5 data/train $data_bnf_dir/train_bnf \
     $exp_dir/tri6_bnf $param_bnf_dir $exp_dir/dump_bnf
   touch $data_bnf_dir/train_bnf/.done

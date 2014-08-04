@@ -11,7 +11,7 @@ nj=4
 cmd=run.pl
 max_active=7000
 beam=13.0
-latbeam=6.0
+lattice_beam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 min_lmwt=9
 max_lmwt=20
@@ -132,7 +132,7 @@ if [ ! -z "$transform_dir" ]; then # add transforms to features...
 fi
 
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
- gmm-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$latbeam \
+ gmm-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 

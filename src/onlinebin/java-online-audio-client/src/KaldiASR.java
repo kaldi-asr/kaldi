@@ -52,8 +52,13 @@ public class KaldiASR {
 			if (header == null)
 				throw new RuntimeException("Error parsing header #1");
 
-			if (!header.startsWith("RESULT:"))
+			if (!header.startsWith("RESULT:")) {
+				if (header.startsWith("PARTIAL:")) {
+					Main.log(header.substring(8));
+					continue;
+				}
 				throw new RuntimeException("Error parsing header #2");
+			}
 
 			if (header.substring(7).equals("DONE"))
 				break;

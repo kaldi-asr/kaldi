@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
       n_states_in += nstates;
       CompactLattice pruned_clat(clat);
       if (!PruneLattice(beam, &pruned_clat)) {
-        KALDI_WARN << "Error pruning latice for utterance " << key;
+        KALDI_WARN << "Error pruning lattice for utterance " << key;
         n_err++;
       }
       int64 pruned_narcs = NumArcs(pruned_clat),          

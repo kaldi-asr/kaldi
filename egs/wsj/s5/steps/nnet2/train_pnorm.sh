@@ -27,6 +27,7 @@ softmax_learning_rate_factor=1.0 # In the default setting keep the same learning
 combine_regularizer=1.0e-14 # Small regularizer so that parameters won't go crazy.
 pnorm_input_dim=3000 
 pnorm_output_dim=300
+first_component_power=1.0  # could set this to 0.5, sometimes seems to improve results.
 p=2
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
@@ -68,6 +69,8 @@ lda_opts=
 lda_dim=
 egs_opts=
 transform_dir=     # If supplied, overrides alidir
+prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
+                        # more than enough.
 # End configuration section.
 
 
@@ -119,8 +122,8 @@ if [ $# != 4 ]; then
   echo "  --num-utts-subset <#utts|300>                    # Number of utterances in subsets used for validation and diagnostics"
   echo "                                                   # (the validation subset is held out from training)"
   echo "  --num-frames-diagnostic <#frames|4000>           # Number of frames used in computing (train,valid) diagnostics"
-  echo "  --num-valid-frames-combine <#frames|10000>       # Number of frames used in getting combination weights at the"
-  echo "                                                   # very end."
+  echo "  --first-component-power <power|1.0>              # Power applied to output of first p-norm layer... setting this to"
+  echo "                                                   # 0.5 seems to help under some circumstances."
   echo "  --stage <stage|-9>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
   
@@ -173,7 +176,6 @@ if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
       $data $lang $alidir $dir || exit 1;
 fi
 
-echo $egs_dir
 if [ -z $egs_dir ]; then
   egs_dir=$dir/egs
 fi
@@ -214,6 +216,11 @@ SpliceComponent input-dim=$ext_feat_dim left-context=$splice_width right-context
 FixedAffineComponent matrix=$lda_mat
 AffineComponentPreconditioned input-dim=$ext_lda_dim output-dim=$pnorm_input_dim alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
 PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim p=$p
+EOF
+  if [ $first_component_power != 1.0 ]; then
+    echo "PowerComponent dim=$pnorm_output_dim power=$first_component_power" >> $dir/nnet.config
+  fi
+  cat >>$dir/nnet.config <<EOF
 NormalizeComponent dim=$pnorm_output_dim
 AffineComponentPreconditioned input-dim=$pnorm_output_dim output-dim=$num_leaves alpha=$alpha max-change=$max_change learning-rate=$initial_learning_rate param-stddev=0 bias-stddev=0
 SoftmaxComponent dim=$num_leaves
@@ -254,6 +261,11 @@ mix_up_iter=$[($num_iters + $finish_add_layers_iter)/2]
 if [ $num_threads -eq 1 ]; then
   train_suffix="-simple" # this enables us to use GPU code if
                          # we have just one thread.
+  if ! cuda-compiled; then
+    echo "$0: WARNING: you are running with one thread but you have not compiled"
+    echo "   for CUDA.  You may be running a setup optimized for GPUs.  If you have"
+    echo "   GPUs and have nvcc installed, go to src/ and do ./configure; make"
+  fi
 else
   train_suffix="-parallel --num-threads=$num_threads"
 fi
@@ -340,6 +352,7 @@ for x in `seq $start $num_iters`; do
 done
 
 if [ $stage -le $num_iters ]; then
+  echo "Doing final combination to produce final.mdl"
   # Below, use --use-gpu=no to disable nnet-combine-fast from using a GPU, as
   # if there are many models it can give out-of-memory error; set num-threads to 8
   # to speed it up (this isn't ideal...)
@@ -365,15 +378,37 @@ if [ $stage -le $num_iters ]; then
   # pnorm layer and then a normalize layer.
   $cmd $parallel_opts $dir/log/normalize.log \
     nnet-normalize-stddev $dir/final.mdl $dir/final.mdl || exit 1;
+
+  # Compute the probability of the final, combined model with
+  # the same subset we used for the previous compute_probs, as the
+  # different subsets will lead to different probs.
+  $cmd $dir/log/compute_prob_valid.final.log \
+    nnet-compute-prob $dir/final.mdl ark:$egs_dir/valid_diagnostic.egs &
+  $cmd $dir/log/compute_prob_train.final.log \
+    nnet-compute-prob $dir/final.mdl ark:$egs_dir/train_diagnostic.egs &
 fi
 
-# Compute the probability of the final, combined model with
-# the same subset we used for the previous compute_probs, as the
-# different subsets will lead to different probs.
-$cmd $dir/log/compute_prob_valid.final.log \
-  nnet-compute-prob $dir/final.mdl ark:$egs_dir/valid_diagnostic.egs &
-$cmd $dir/log/compute_prob_train.final.log \
-  nnet-compute-prob $dir/final.mdl ark:$egs_dir/train_diagnostic.egs &
+if [ $stage -le $[$num_iters+1] ]; then
+  echo "Getting average posterior for purposes of adjusting the priors."
+  # Note: this just uses CPUs, using a smallish subset of data.
+  rm $dir/post.*.vec 2>/dev/null
+  $cmd JOB=1:$num_jobs_nnet $dir/log/get_post.JOB.log \
+    nnet-subset-egs --n=$prior_subset_size ark:$egs_dir/egs.JOB.0.ark ark:- \| \
+    nnet-compute-from-egs "nnet-to-raw-nnet $dir/final.mdl -|" ark:- ark:- \| \
+    matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.JOB.vec || exit 1;
+
+  sleep 3;  # make sure there is time for $dir/post.*.vec to appear.
+
+  $cmd $dir/log/vector_sum.log \
+   vector-sum $dir/post.*.vec $dir/post.vec || exit 1;
+
+  rm $dir/post.*.vec;
+
+  echo "Re-adjusting priors based on computed posteriors"
+  $cmd $dir/log/adjust_priors.log \
+    nnet-adjust-priors $dir/final.mdl $dir/post.vec $dir/final.mdl || exit 1;
+fi
+
 
 sleep 2
 
@@ -387,8 +422,8 @@ if $cleanup; then
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
-    if [ $[$x%10] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then 
-       # delete all but every 10th model; don't delete the ones which combine to form the final model.
+    if [ $[$x%100] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then 
+       # delete all but every 100th model; don't delete the ones which combine to form the final model.
       rm $dir/$x.mdl
     fi
   done

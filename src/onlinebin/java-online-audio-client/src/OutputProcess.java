@@ -81,10 +81,10 @@ public class OutputProcess {
 		if (htk_file != null) {
 			PrintWriter htk = new PrintWriter(htk_file, Options.KALDI_ENCODING);
 			for (Word word : words) {
-				int s = (int) (word.start * Options.AUDIO_SAMPLING_FREQUENCY);
-				int e = (int) (word.end * Options.AUDIO_SAMPLING_FREQUENCY);
+				int s = (int) (word.start * 10000000);
+				int e = (int) (word.end * 10000000);
 
-				htk.println(s + " " + e + " " + word.word + " 0.0");
+				htk.println(s + " " + e + " " + word.word);
 			}
 			htk.close();
 		}

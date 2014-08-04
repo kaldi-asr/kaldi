@@ -20,6 +20,8 @@
 #ifndef KALDI_ONLINE_ONLINE_TCP_SOURCE_H_
 #define KALDI_ONLINE_ONLINE_TCP_SOURCE_H_
 
+#if !defined(_MSC_VER)
+
 #include "online-audio-source.h"
 #include "matrix/kaldi-vector.h"
 
@@ -68,5 +70,7 @@ class OnlineTcpVectorSource : public OnlineAudioSourceItf {
 };
 
 }  // namespace kaldi
+
+#endif // !defined(_MSC_VER)
 
 #endif // KALDI_ONLINE_ONLINE_TCP_SOURCE_H_

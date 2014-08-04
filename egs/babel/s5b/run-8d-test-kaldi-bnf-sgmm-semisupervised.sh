@@ -38,7 +38,7 @@ else
   unsup_string=""  #" ": supervised training, _semi_supervised: unsupervised BNF training
 fi
 
-if ! echo {dev10h,dev2h,eval,unsup,shadow,shadow2}{,.uem,.seg} | grep -w "$type" >/dev/null; then
+if ! echo {dev10h,dev2h,eval,unsup,shadow}{,.uem,.seg} | grep -w "$type" >/dev/null; then
   # note: echo dev10.uem | grep -w dev10h will produce a match, but this
   # doesn't matter because dev10h is also a valid value.
   echo "Invalid variable type=${type}, valid values are " {dev10h,dev2h,eval,unsup}{,.uem,.seg}
@@ -61,7 +61,7 @@ my_nj=`cat exp/tri5/decode_${dirid}/num_jobs` || exit 1;
 if [ ! $data_bnf_dir/${dirid}_bnf/.done -nt exp/tri5/decode_${dirid}/.done ] || \
    [ ! $data_bnf_dir/${dirid}_bnf/.done -nt $exp_dir/tri6_bnf/.done ]; then
   # put the archives in $param_bnf_dir/.
-  local/nnet2/dump_bottleneck_features.sh --nj $my_nj --cmd "$train_cmd" \
+  steps/nnet/make_bn_feats.sh --nj $my_nj --cmd "$train_cmd" \
     --transform-dir exp/tri5/decode_${dirid} data/${dirid} $data_bnf_dir/${dirid}_bnf $exp_dir/tri6_bnf $param_bnf_dir $exp_dir/dump_bnf
   touch $data_bnf_dir/${dirid}_bnf/.done
 fi

@@ -76,7 +76,7 @@ mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
-norm_vars=`cat $srcdir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
+cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
@@ -85,8 +85,8 @@ if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type"
 
 case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
+  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
@@ -97,7 +97,7 @@ if [ ! -z "$transform_dir" ]; then
     echo "$0: using transforms from $transform_dir"
     feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/trans.JOB ark:- ark:- |"
   elif [ -f $transform_dir/raw_trans.1 ]; then
-    feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"    
+    feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"    
   else
     echo "$0: no such file $transform_dir/trans.1 or $transform_dir/raw_trans.1, invalid --transform-dir option?"
     exit 1;
@@ -118,13 +118,21 @@ if [ $stage -le 1 ]; then
     "$feats" "ark:|gzip -c >$dir/gselect.JOB.gz" || exit 1;
 fi
 
+## Work out name of alignment model. ##
+if [ -z "$alignment_model" ]; then
+  if [ -f "$srcdir/final.alimdl" ]; then alignment_model=$srcdir/final.alimdl;
+  else alignment_model=$srcdir/final.mdl; fi
+fi
+[ ! -f "$alignment_model" ] && echo "$0: no alignment model $alignment_model " && exit 1;
+
+
 # Generate state-level lattice which we can rescore.  This is done with the alignment
 # model and no speaker-vectors.
 if [ $stage -le 2 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode_pass1.JOB.log \
     sgmm2-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --determinize-lattice=false --allow-partial=true \
-    --word-symbol-table=$graphdir/words.txt --max-mem=${max_mem} "$gselect_opt_1stpass" $srcdir/final.alimdl \
+    --word-symbol-table=$graphdir/words.txt --max-mem=$max_mem "$gselect_opt_1stpass" $alignment_model \
     $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/pre_lat.JOB.gz" || exit 1;
 fi
 
@@ -139,8 +147,8 @@ if [ $stage -le 3 ]; then
     lattice-prune --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
     lattice-determinize-pruned --acoustic-scale=$acwt --beam=$vecs_beam ark:- ark:- \| \
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
-    weight-silence-post 0.0 $silphonelist $srcdir/final.alimdl ark:- ark:- \| \
-    sgmm2-post-to-gpost "$gselect_opt" $srcdir/final.alimdl "$feats" ark:- ark:- \| \
+    weight-silence-post 0.0 $silphonelist $alignment_model ark:- ark:- \| \
+    sgmm2-post-to-gpost "$gselect_opt" $alignment_model "$feats" ark:- ark:- \| \
     sgmm2-est-spkvecs-gpost --spk2utt=ark:$sdata/JOB/spk2utt \
      $srcdir/final.mdl "$feats" ark,s,cs:- "ark:$dir/pre_vecs.JOB" || exit 1;
 fi

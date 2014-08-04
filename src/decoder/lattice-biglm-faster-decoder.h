@@ -68,6 +68,7 @@ class LatticeBiglmFasterDecoder {
   void SetOptions(const LatticeBiglmFasterDecoderConfig &config) { config_ = config; } 
   LatticeBiglmFasterDecoderConfig GetOptions() { return config_; } 
   ~LatticeBiglmFasterDecoder() {
+    DeleteElems(toks_.Clear());    
     ClearActiveTokens();
   }
 
@@ -75,7 +76,7 @@ class LatticeBiglmFasterDecoder {
   // a final state).
   bool Decode(DecodableInterface *decodable) {
     // clean up from last time:
-    ClearToks(toks_.Clear());
+    DeleteElems(toks_.Clear());
     ClearActiveTokens();
     warned_ = false;
     final_active_ = false;
@@ -431,7 +432,7 @@ class LatticeBiglmFasterDecoder {
         best_cost_nofinal = infinity;
     unordered_map<Token*, BaseFloat> tok_to_final_cost;
     Elem *cur_toks = toks_.Clear(); // swapping prev_toks_ / cur_toks_
-    for (Elem *e = cur_toks; e != NULL;  e = e->tail) {
+    for (Elem *e = cur_toks, *e_tail; e != NULL;  e = e_tail) {
       PairId state_pair = e->key;
       StateId state = PairToState(state_pair),
           lm_state = PairToLmState(state_pair);
@@ -441,6 +442,8 @@ class LatticeBiglmFasterDecoder {
       tok_to_final_cost[tok] = final_cost;
       best_cost_final = std::min(best_cost_final, tok->tot_cost + final_cost);
       best_cost_nofinal = std::min(best_cost_nofinal, tok->tot_cost);
+      e_tail = e->tail;
+      toks_.Delete(e);
     }
     final_active_ = (best_cost_final != infinity);
     
@@ -837,15 +840,14 @@ class LatticeBiglmFasterDecoder {
   std::map<Token*, BaseFloat> final_costs_; // A cache of final-costs
   // of tokens on the last frame-- it's just convenient to store it this way.
   
-  // It might seem unclear why we call ClearToks(toks_.Clear()).
+  // It might seem unclear why we call DeleteElems(toks_.Clear()).
   // There are two separate cleanup tasks we need to do at when we start a new file.
   // one is to delete the Token objects in the list; the other is to delete
   // the Elem objects.  toks_.Clear() just clears them from the hash and gives ownership
   // to the caller, who then has to call toks_.Delete(e) for each one.  It was designed
   // this way for convenience in propagating tokens from one frame to the next.
-  void ClearToks(Elem *list) {
+  void DeleteElems(Elem *list) {
     for (Elem *e = list, *e_tail; e != NULL; e = e_tail) {
-      // Token::TokenDelete(e->val);
       e_tail = e->tail;
       toks_.Delete(e);
     }

@@ -27,7 +27,7 @@ first_pass_gselect=3 # Use a smaller number of Gaussian-selection indices in
             # the 1st pass of decoding (lattice generation).
 max_active=7000
 
-#WARNING: This option is renamed lat_beam (it was renamed to follow the naming 
+#WARNING: This option is renamed lattice_beam (it was renamed to follow the naming 
 #         in the other scripts
 lattice_beam=8.0 # Beam we use in lattice generation.
 vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for 
@@ -73,7 +73,7 @@ nj=`cat $olddir/num_jobs` || exit 1;
 sdata=$data/split$nj;
 silphonelist=`cat $lang/phones/silence.csl` || exit 1
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
-norm_vars=`cat $srcdir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
+cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 gselect_opt="--gselect=ark,s,cs:gunzip -c $dir/gselect.JOB.gz|"
 gselect_opt_1stpass="$gselect_opt copy-gselect --n=$first_pass_gselect ark:- ark:- |"
 
@@ -91,8 +91,8 @@ if [ -z "$transform_dir" ] && [ -f $olddir/trans.1 ]; then
 fi
 
 case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
+  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac

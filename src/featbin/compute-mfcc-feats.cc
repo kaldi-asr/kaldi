@@ -46,18 +46,21 @@ int main(int argc, char *argv[]) {
     mfcc_opts.Register(&po);
 
     // Register the options
-    po.Register("output-format", &output_format, "Format of the output files [kaldi, htk]");
-    po.Register("subtract-mean", &subtract_mean, "Subtract mean of each feature file [CMS]; not recommended to do it this way. ");
-    po.Register("vtln-warp", &vtln_warp, "Vtln warp factor (only applicable if vtln-map not specified)");
-    po.Register("vtln-map", &vtln_map_rspecifier, "Map from utterance or speaker-id to vtln warp factor (rspecifier)");
-    po.Register("utt2spk", &utt2spk_rspecifier, "Utterance to speaker-id map (if doing VTLN and you have warps per speaker)");
-    po.Register("channel", &channel, "Channel to extract (-1 -> expect mono, 0 -> left, 1 -> right)");
-    po.Register("min-duration", &min_duration, "Minimum duration of segments to process (in seconds).");
+    po.Register("output-format", &output_format, "Format of the output "
+                "files [kaldi, htk]");
+    po.Register("subtract-mean", &subtract_mean, "Subtract mean of each "
+                "feature file [CMS]; not recommended to do it this way. ");
+    po.Register("vtln-warp", &vtln_warp, "Vtln warp factor (only applicable "
+                "if vtln-map not specified)");
+    po.Register("vtln-map", &vtln_map_rspecifier, "Map from utterance or "
+                "speaker-id to vtln warp factor (rspecifier)");
+    po.Register("utt2spk", &utt2spk_rspecifier, "Utterance to speaker-id map "
+                "rspecifier (if doing VTLN and you have warps per speaker)");
+    po.Register("channel", &channel, "Channel to extract (-1 -> expect mono, "
+                "0 -> left, 1 -> right)");
+    po.Register("min-duration", &min_duration, "Minimum duration of segments "
+                "to process (in seconds).");
 
-    // OPTION PARSING ..........................................................
-    //
-
-    // parse options (+filling the registered variables)
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -135,7 +138,8 @@ int main(int argc, char *argv[]) {
       if (mfcc_opts.frame_opts.samp_freq != wave_data.SampFreq())
         KALDI_ERR << "Sample frequency mismatch: you specified "
                   << mfcc_opts.frame_opts.samp_freq << " but data has "
-                  << wave_data.SampFreq() << " (use --sample-frequency option)";
+                  << wave_data.SampFreq() << " (use --sample-frequency "
+                  << "option).  Utterance is " << utt;
 
       SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
       Matrix<BaseFloat> features;

@@ -34,9 +34,12 @@ namespace kaldi {
 
 /* This is from Golub and Van Loan 3rd ed., sec. 5.1.3,
    p210.
-   x is the input of dimensino dim, v is the output of dimension
+   x is the input of dimenson 'dim', v is the output of dimension
    dim, and beta is a scalar. Note: we use zero-based
    not one-based indexing. */
+/*
+// We are commenting out the function below ("House") because it's not
+// needed, but we keep it just to show how we came up with HouseBackward.
 template<typename Real>
 void House(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
   KALDI_ASSERT(dim > 0);
@@ -48,8 +51,8 @@ void House(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
   // doesn't dominate the O(N) performance of the algorithm.
   Real s; // s is a scale on x.
   {
-    Real max_x = 0.0;
-    for (MatrixIndexT i = 1; i < dim; i++)
+    Real max_x = std::numeric_limits<Real>::min();
+    for (MatrixIndexT i = 0; i < dim; i++)
       max_x = std::max(max_x, (x[i] < 0 ? -x[i] : x[i]));
     if (max_x == 0.0) max_x = 1.0;
     s = 1.0 / max_x;
@@ -70,14 +73,25 @@ void House(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
       v[0] = x1 - mu;
     } else {
       v[0] = -sigma / (x1 + mu);
+      KALDI_ASSERT(KALDI_ISFINITE(v[dim-1]));      
     }
     Real v1 = v[0];
     Real v1sq = v1 * v1;
     *beta = 2 * v1sq / (sigma + v1sq);
     Real inv_v1 = 1.0 / v1;
-    for (MatrixIndexT i = 0; i < dim; i++) v[i] *= inv_v1;
+    if (KALDI_ISINF(inv_v1)) {
+      // can happen if v1 is denormal.
+      KALDI_ASSERT(v1 == v1 && v1 != 0.0);
+      for (MatrixIndexT i = 0; i < dim; i++) v[i] /= v1;
+    } else {
+      cblas_Xscal(dim, inv_v1, v, 1);
+    }
+    if (KALDI_ISNAN(inv_v1)) {
+      KALDI_ERR << "NaN encountered in HouseBackward";
+    }
   }
 }
+*/
 
 // This is a backward version of the "House" routine above:
 // backward because it's the last index, not the first index of
@@ -95,33 +109,42 @@ void HouseBackward(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
   // doesn't dominate the O(N) performance of the algorithm.
   Real s; // s is a scale on x.
   {
-    Real max_x = 0.0;
-    for (MatrixIndexT i = 1; i < dim; i++)
+    Real max_x = std::numeric_limits<Real>::min();
+    for (MatrixIndexT i = 0; i < dim; i++)
       max_x = std::max(max_x, (x[i] < 0 ? -x[i] : x[i]));
-    if (max_x == 0.0) max_x = 1.0;
     s = 1.0 / max_x;
   }
   Real sigma = 0.0;
   v[dim-1] = 1.0;
   for (MatrixIndexT i = 0; i + 1  < dim; i++) {
-    sigma += (x[i]*s) * (x[i]*s);
-    v[i] = x[i]*s;
+    sigma += (x[i] * s) * (x[i] * s);
+    v[i] = x[i] * s;
   }
-  KALDI_ASSERT(!KALDI_ISNAN(sigma) &&
+  KALDI_ASSERT(KALDI_ISFINITE(sigma) &&
                "Tridiagonalizing matrix that is too large or has NaNs.");
   if (sigma == 0.0) *beta = 0.0;
   else {
-    Real x1 = x[dim-1]*s, mu = std::sqrt(x1*x1 + sigma);
+    Real x1 = x[dim-1] * s, mu = std::sqrt(x1 * x1 + sigma);
     if (x1 <= 0) {
       v[dim-1] = x1 - mu;
     } else {
       v[dim-1] = -sigma / (x1 + mu);
+      KALDI_ASSERT(KALDI_ISFINITE(v[dim-1]));
     }
     Real v1 = v[dim-1];
     Real v1sq = v1 * v1;
     *beta = 2 * v1sq / (sigma + v1sq);
     Real inv_v1 = 1.0 / v1;
-    for (MatrixIndexT i = 0; i < dim; i++) v[i] *= inv_v1;
+    if (KALDI_ISINF(inv_v1)) {
+      // can happen if v1 is denormal.
+      KALDI_ASSERT(v1 == v1 && v1 != 0.0);
+      for (MatrixIndexT i = 0; i < dim; i++) v[i] /= v1;
+    } else {
+      cblas_Xscal(dim, inv_v1, v, 1);
+    }
+    if (KALDI_ISNAN(inv_v1)) {
+      KALDI_ERR << "NaN encountered in HouseBackward";
+    }
   }
 }
 
@@ -224,12 +247,22 @@ void QrStep(MatrixIndexT n,
             Real *off_diag,
             MatrixBase<Real> *Q) {
   KALDI_ASSERT(n >= 2);
+  // below, "scale" could be any number; we introduce it to keep the
+  // floating point quantities within a good range.
   Real   d = (diag[n-2] - diag[n-1]) / 2.0,
-      t2_n_n1 = off_diag[n-2]*off_diag[n-2],
-      sgn_d = (d > 0.0 ? 1.0 : (d < 0.0 ? -1.0 : 0.0)),
-      mu = diag[n-1] - t2_n_n1 / (d + sgn_d*std::sqrt(d*d + t2_n_n1)),
+      t = off_diag[n-2],
+      inv_scale = std::max(std::max(std::abs(d), std::abs(t)),
+                           std::numeric_limits<Real>::min()),
+      scale = 1.0 / inv_scale,
+      d_scaled = d * scale,
+      off_diag_n2_scaled = off_diag[n-2] * scale,
+      t2_n_n1_scaled = off_diag_n2_scaled * off_diag_n2_scaled,
+      sgn_d = (d > 0.0 ? 1.0 : -1.0),
+      mu = diag[n-1] - inv_scale * t2_n_n1_scaled /
+      (d_scaled + sgn_d * std::sqrt(d_scaled * d_scaled + t2_n_n1_scaled)),
       x = diag[0] - mu,
       z = off_diag[0];
+  KALDI_ASSERT(KALDI_ISFINITE(x));
   Real *Qdata = (Q == NULL ? NULL : Q->Data());
   MatrixIndexT Qstride = (Q == NULL ? 0 : Q->Stride()),
       Qcols = (Q == NULL ? 0 : Q->NumCols());
@@ -282,8 +315,8 @@ void QrStep(MatrixIndexT n,
        // two off the diagonal, and not been touched yet.  Therefore
       // we eliminate it in expressions below, commenting it out.
       // If we didn't do this we should set it to zero first.
-      elem_kp2_k =  - s*elem_kp2_kp1; // + c*elem_kp2_k
-      elem_kp2_kp1 =  c*elem_kp2_kp1; // + s*elem_kp2_k (original value).
+      elem_kp2_k =  - s * elem_kp2_kp1; // + c*elem_kp2_k
+      elem_kp2_kp1 =  c * elem_kp2_kp1; // + s*elem_kp2_k (original value).
       // The next part is from the algorithm they describe: x = t_{k+1,k}
       x = off_diag[k];
     }
@@ -425,10 +458,16 @@ void SpMatrix<Real>::TopEigs(VectorBase<Real> *s, MatrixBase<Real> *P,
   if (lanczos_dim <= 0)
     lanczos_dim = std::max(eig_dim + 50, eig_dim + eig_dim/2);
   MatrixIndexT dim = this->NumRows();
-  if (lanczos_dim > dim) {
-    KALDI_WARN << "Limiting lanczos dim from " << lanczos_dim << " to "
-               << dim << " (you will get no speed advantage from TopEigs())";
-    lanczos_dim = dim;
+  if (lanczos_dim >= dim) {
+    // There would be no speed advantage in using this method, so just
+    // use the regular approach.
+    Vector<Real> s_tmp(dim);
+    Matrix<Real> P_tmp(dim, dim);
+    this->Eig(&s_tmp, &P_tmp);
+    SortSvd(&s_tmp, &P_tmp);
+    s->CopyFromVec(s_tmp.Range(0, eig_dim));
+    P->CopyFromMat(P_tmp.Range(0, dim, 0, eig_dim));
+    return;
   }
   KALDI_ASSERT(eig_dim <= dim && eig_dim > 0);
   KALDI_ASSERT(P->NumRows() == dim && P->NumCols() == eig_dim); // each column

@@ -39,14 +39,14 @@ static void InitRand(VectorBase<Real> *v) {
 }
 
 template<typename Real>
-static void UnitTestSetZeroUpperDiag() {
+static void UnitTestSetZeroAboveDiag() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixIndexT dim = 10 * i;
     Matrix<Real> A(dim,dim);
     A.SetRandn();
     CuMatrix<Real> B(A);
 
-    B.SetZeroUpperDiag();
+    B.SetZeroAboveDiag();
 
     Real sum = 0.0;
     for (MatrixIndexT i = 0; i < dim; i++) {
@@ -551,31 +551,35 @@ static void CuMatrixUnitTest() {
   UnitTestVector<Real>();
   UnitTestMulTp<Real>();
   UnitTestMatrix<Real>();
-  UnitTestSetZeroUpperDiag<Real>();
+  UnitTestSetZeroAboveDiag<Real>();
 }
 } //namespace
 
 int main() {
   using namespace kaldi;
+
+  for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
-  kaldi::CuDevice::Instantiate().SelectGpuId("yes");
+    if (loop == 0)
+      CuDevice::Instantiate().SelectGpuId("no");
+    else
+      CuDevice::Instantiate().SelectGpuId("yes");
 #endif
-  
-  kaldi::CuMatrixUnitTest<float>();
+    kaldi::CuMatrixUnitTest<float>();
 
 #if HAVE_CUDA == 1
-  if (!kaldi::CuDevice::Instantiate().DoublePrecisionSupported()) {
-    KALDI_WARN << "Double precision not supported, not testing that code";
-  } else
+    if (!kaldi::CuDevice::Instantiate().DoublePrecisionSupported()) {
+      KALDI_WARN << "Double precision not supported, not testing that code";
+    } else
 #endif
-  {
-    kaldi::CuMatrixUnitTest<double>();
+    {
+      kaldi::CuMatrixUnitTest<double>();
+    }
   }
 
 #if HAVE_CUDA == 1
   kaldi::CuDevice::Instantiate().PrintProfile();
 #endif
-
   
   KALDI_LOG << "Tests succeeded.\n";
   return 0;

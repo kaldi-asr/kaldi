@@ -47,7 +47,7 @@ class IvectorExtractTask {
                                              extractor_.FeatDim(),
                                              need_2nd_order_stats);
       
-    extractor_.GetStats(feats_, posterior_, &utt_stats);
+    utt_stats.AccStats(feats_, posterior_);
 
     ivector_.Resize(extractor_.IvectorDim());
     ivector_(0) = extractor_.PriorOffset();
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     bool compute_objf_change = true;
-    IvectorStatsOptions stats_opts;
+    IvectorExtractorStatsOptions stats_opts;
     TaskSequencerConfig sequencer_config;
     po.Register("compute-objf-change", &compute_objf_change,
                 "If true, compute the change in objective function from using "
@@ -131,6 +131,9 @@ int main(int argc, char *argv[]) {
         posteriors_rspecifier = po.GetArg(3),
         ivectors_wspecifier = po.GetArg(4);
 
+    // g_num_threads affects how ComputeDerivedVars is called when we read the
+    // extractor.
+    g_num_threads = sequencer_config.num_threads; 
     IvectorExtractor extractor;
     ReadKaldiObject(ivector_extractor_rxfilename, &extractor);
 

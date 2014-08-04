@@ -15,7 +15,7 @@
 . path.sh
 set -e # exit on error
 
-local/swbd1_data_prep.sh /home/dpovey/data/LDC97S62
+local/swbd1_data_prep.sh /export/corpora3/LDC/LDC97S62
 # local/swbd1_data_prep.sh /home/dpovey/data/LDC97S62
 # local/swbd1_data_prep.sh /data/corpora0/LDC97S62
 # local/swbd1_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2
@@ -208,7 +208,7 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
 
 
 steps/train_sat.sh  --cmd "$train_cmd" \
-  11500 200000 data/train_nodup data/lang exp/tri3b_ali_nodup exp/tri4b 
+  11500 200000 data/train_nodup data/lang exp/tri3b_ali_nodup exp/tri4b
 
 for lm_suffix in tg fsh_tgpr; do
   (
@@ -323,6 +323,9 @@ done
 
 
 # local/run_sgmm2.sh
+
+# demonstration script for raw-fMLLR.  You should probably ignore this.
+# local/run_raw_fmllr.sh
 
 
 # # Karel's DNN recipe on top of fMLLR features

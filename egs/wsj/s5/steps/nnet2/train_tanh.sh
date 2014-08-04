@@ -58,7 +58,7 @@ randprune=4.0 # speeds up LDA.
 alpha=4.0
 max_change=10.0
 mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
-        # specified.)
+         # specified.)
 num_threads=16
 parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" # by default we use 16 threads; this lets the queue know.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
@@ -67,6 +67,8 @@ egs_dir=
 lda_opts=
 egs_opts=
 transform_dir=
+prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
+                        # more than enough.
 # End configuration section.
 
 
@@ -150,13 +152,15 @@ utils/split_data.sh $data $nj
 mkdir -p $dir/log
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 cp $alidir/splice_opts $dir 2>/dev/null
-cp $alidir/norm_vars $dir 2>/dev/null
+cp $alidir/cmvn_opts $dir 2>/dev/null
 cp $alidir/tree $dir
 
 
+[ -z "$transform_dir" ] && transform_dir=$alidir
+
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
-  steps/nnet2/get_lda.sh $lda_opts --splice-width $splice_width --cmd "$cmd" $data $lang $alidir $dir || exit 1;
+  steps/nnet2/get_lda.sh $lda_opts --transform-dir $transform_dir --splice-width $splice_width --cmd "$cmd" $data $lang $alidir $dir || exit 1;
 fi
 
 # these files will have been written by get_lda.sh
@@ -166,8 +170,7 @@ lda_dim=`cat $dir/lda_dim` || exit 1;
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
   [ ! -z $spk_vecs_dir ] && spk_vecs_opt="--spk-vecs-dir $spk_vecs_dir";
-  [ ! -z $transform_dir ] && $transform_dir_opt="--transform-dir $transform_dir";
-  steps/nnet2/get_egs.sh $spk_vecs_opt $transform_dir_opt --samples-per-iter $samples_per_iter \
+  steps/nnet2/get_egs.sh $spk_vecs_opt --transform-dir $transform_dir --samples-per-iter $samples_per_iter \
       --num-jobs-nnet $num_jobs_nnet --splice-width $splice_width --stage $get_egs_stage \
       --cmd "$cmd" $egs_opts --io-opts "$io_opts" \
       $data $lang $alidir $dir || exit 1;
@@ -251,6 +254,11 @@ mix_up_iter=$[($num_iters + $finish_add_layers_iter)/2]
 if [ $num_threads -eq 1 ]; then
   train_suffix="-simple" # this enables us to use GPU code if
                          # we have just one thread.
+  if ! cuda-compiled; then
+    echo "$0: WARNING: you are running with one thread but you have not compiled"
+    echo "   for CUDA.  You may be running a setup optimized for GPUs.  If you have"
+    echo "   GPUs and have nvcc installed, go to src/ and do ./configure; make"
+  fi
 else
   train_suffix="-parallel --num-threads=$num_threads"
 fi
@@ -371,15 +379,36 @@ if [ $stage -le $num_iters ]; then
     nnet-combine-fast --use-gpu=no --num-threads=$this_num_threads \
       --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$egs_dir/combine.egs \
       $dir/final.mdl || exit 1;
+
+  # Compute the probability of the final, combined model with
+  # the same subset we used for the previous compute_probs, as the
+  # different subsets will lead to different probs.
+  $cmd $dir/log/compute_prob_valid.final.log \
+    nnet-compute-prob $dir/final.mdl ark:$egs_dir/valid_diagnostic.egs &
+  $cmd $dir/log/compute_prob_train.final.log \
+    nnet-compute-prob $dir/final.mdl ark:$egs_dir/train_diagnostic.egs &
 fi
 
-# Compute the probability of the final, combined model with
-# the same subset we used for the previous compute_probs, as the
-# different subsets will lead to different probs.
-$cmd $dir/log/compute_prob_valid.final.log \
-  nnet-compute-prob $dir/final.mdl ark:$egs_dir/valid_diagnostic.egs &
-$cmd $dir/log/compute_prob_train.final.log \
-  nnet-compute-prob $dir/final.mdl ark:$egs_dir/train_diagnostic.egs &
+if [ $stage -le $[$num_iters+1] ]; then
+  echo "Getting average posterior for purposes of adjusting the priors."
+  # Note: this just uses CPUs, using a smallish subset of data.
+  rm $dir/post.*.vec 2>/dev/null
+  $cmd JOB=1:$num_jobs_nnet $dir/log/get_post.JOB.log \
+    nnet-subset-egs --n=$prior_subset_size ark:$egs_dir/egs.JOB.0.ark ark:- \| \
+    nnet-compute-from-egs "nnet-to-raw-nnet $dir/final.mdl -|" ark:- ark:- \| \
+    matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.JOB.vec || exit 1;
+
+  sleep 3;  # make sure there is time for $dir/post.*.vec to appear.
+
+  $cmd $dir/log/vector_sum.log \
+   vector-sum $dir/post.*.vec $dir/post.vec || exit 1;
+
+  rm $dir/post.*.vec;
+
+  echo "Re-adjusting priors based on computed posteriors"
+  $cmd $dir/log/adjust_priors.log \
+    nnet-adjust-priors $dir/final.mdl $dir/post.vec $dir/final.mdl || exit 1;
+fi
 
 sleep 2
 
@@ -393,7 +422,7 @@ if $cleanup; then
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
-    if [ $[$x%10] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then 
+    if [ $[$x%100] -ne 0 ] && [ $x -lt $[$num_iters-$num_iters_final+1] ]; then 
        # delete all but every 10th model; don't delete the ones which combine to form the final model.
       rm $dir/$x.mdl
     fi

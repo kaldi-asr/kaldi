@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
         "Concatenate two 'raw' neural nets, e.g. as output by nnet-init or\n"
         "nnet-to-raw-nnet\n"
         "\n"
-        "Usage:  raw-nnet-concat [options] <raw-nnet1-in> <raw-nnet2-in> <raw-nnet-out>\n"
+        "Usage:  raw-nnet-concat [options] <raw-nnet-in1> <raw-nnet-in2> <raw-nnet-out>\n"
         "e.g.:\n"
         " raw-nnet-concat nnet1 nnet2 nnet_concat\n";
     

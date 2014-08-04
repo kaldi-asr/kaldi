@@ -22,21 +22,23 @@ function register_extraid {
 }
 
 function setup_oov_search {
-  local nbest=500
-  local beam=5
-  local phone_nbest=-1
-  local phone_beam=-1
+  #Basic lexicon
+  #local phone_beam=-1
+  #local phone_nbest=-1
+  #local beam=5
+  #local nbest=500
 
-  #local nbest=-1
-  #local beam=-1
-  #local phone_nbest=300
-  #local phone_beam=5
+  #Extended lexicon
+  local nbest=-1
+  local beam=-1
+  local phone_nbest=300
+  local phone_beam=5
 
   local phone_cutoff=5
 
   local g2p_nbest=10
   local g2p_mass=0.95
-  #local phone_nbest=150
+
 
   local data_dir=$1
   local source_dir=$2
@@ -45,7 +47,7 @@ function setup_oov_search {
   local kwsdatadir=$data_dir/${extraid}_kws
 
   mkdir -p $kwsdatadir
-  
+
   if [ "${dataset_kind}" == "supervised" ] ; then
     for file in $source_dir/rttm ; do
       cp -f $file $kwsdatadir
@@ -86,7 +88,7 @@ function setup_oov_search {
 
   L1_lex=data/local/lexiconp.txt
   local/kws_data_prep_proxy.sh \
-    --cmd "$decode_cmd " --nj $my_nj \
+    --cmd "$decode_cmd" --nj $my_nj \
     --case-insensitive true \
     --confusion-matrix $confusion \
     --phone-cutoff $phone_cutoff \

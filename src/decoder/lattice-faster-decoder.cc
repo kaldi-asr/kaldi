@@ -706,7 +706,6 @@ void LatticeFasterDecoder::ProcessNonemitting(int32 frame) {
 
 void LatticeFasterDecoder::DeleteElems(Elem *list) {
   for (Elem *e = list, *e_tail; e != NULL; e = e_tail) {
-    // Token::TokenDelete(e->val);
     e_tail = e->tail;
     toks_.Delete(e);
   }
@@ -945,7 +944,7 @@ bool DecodeUtteranceLatticeFaster(
       for (size_t i = 0; i < words.size(); i++) {
         std::string s = word_syms->Find(words[i]);
         if (s == "")
-          KALDI_ERR << "Word-id " << words[i] <<" not in symbol table.";
+          KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
         std::cerr << s << ' ';
       }
       std::cerr << '\n';

@@ -31,6 +31,11 @@ Fbank::Fbank(const FbankOptions &opts)
   int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
   if ((padded_window_size & (padded_window_size-1)) == 0)  // Is a power of two...
     srfft_ = new SplitRadixRealFft<BaseFloat>(padded_window_size);
+
+  // We'll definitely need the filterbanks info for VTLN warping factor 1.0.
+  // [note: this call caches it.]  The reason we call this here is to
+  // improve the efficiency of the "const" version of Compute().
+  GetMelBanks(1.0);
 }
 
 Fbank::~Fbank() {
@@ -56,10 +61,50 @@ const MelBanks *Fbank::GetMelBanks(BaseFloat vtln_warp) {
   return this_mel_banks;
 }
 
+const MelBanks *Fbank::GetMelBanks(BaseFloat vtln_warp,
+                                   bool *must_delete) const {
+  MelBanks *this_mel_banks = NULL;
+  std::map<BaseFloat, MelBanks*>::const_iterator iter =
+      mel_banks_.find(vtln_warp);
+  if (iter == mel_banks_.end()) {
+    this_mel_banks = new MelBanks(opts_.mel_opts,
+                                  opts_.frame_opts,
+                                  vtln_warp);
+    *must_delete = true;
+  } else {
+    this_mel_banks = iter->second;
+    *must_delete = false;
+  }
+  return this_mel_banks;
+}
+
 void Fbank::Compute(const VectorBase<BaseFloat> &wave,
-                   BaseFloat vtln_warp,
-                   Matrix<BaseFloat> *output,
-                   Vector<BaseFloat> *wave_remainder) {
+                    BaseFloat vtln_warp,
+                    Matrix<BaseFloat> *output,
+                    Vector<BaseFloat> *wave_remainder) {
+  const MelBanks *this_mel_banks = GetMelBanks(vtln_warp);
+  ComputeInternal(wave, *this_mel_banks, output, wave_remainder);  
+}
+
+void Fbank::Compute(const VectorBase<BaseFloat> &wave,
+                    BaseFloat vtln_warp,
+                    Matrix<BaseFloat> *output,
+                    Vector<BaseFloat> *wave_remainder) const {
+  bool must_delete_mel_banks;
+  const MelBanks *mel_banks = GetMelBanks(vtln_warp,
+                                          &must_delete_mel_banks);
+  
+  ComputeInternal(wave, *mel_banks, output, wave_remainder);
+  
+  if (must_delete_mel_banks)
+    delete mel_banks;
+}
+
+
+void Fbank::ComputeInternal(const VectorBase<BaseFloat> &wave,
+                            const MelBanks &mel_banks,
+                            Matrix<BaseFloat> *output,
+                            Vector<BaseFloat> *wave_remainder) const {
   KALDI_ASSERT(output != NULL);
 
   // Get dimensions of output features
@@ -77,6 +122,7 @@ void Fbank::Compute(const VectorBase<BaseFloat> &wave,
   // Buffers
   Vector<BaseFloat> window;  // windowed waveform.
   Vector<BaseFloat> mel_energies;
+  std::vector<BaseFloat> temp_buffer;  // used by srfft.  
   BaseFloat log_energy;
 
   // Compute all the freames, r is frame index..
@@ -87,10 +133,11 @@ void Fbank::Compute(const VectorBase<BaseFloat> &wave,
 
     // Compute energy after window function (not the raw one)
     if (opts_.use_energy && !opts_.raw_energy)
-      log_energy = log(VecVec(window, window));
+      log_energy = log(std::max(VecVec(window, window),
+                                std::numeric_limits<BaseFloat>::min()));
 
     if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
-      srfft_->Compute(window.Data(), true);
+      srfft_->Compute(window.Data(), true, &temp_buffer);
     else  // An alternative algorithm that works for non-powers-of-two.
       RealFft(&window, true);
 
@@ -98,11 +145,13 @@ void Fbank::Compute(const VectorBase<BaseFloat> &wave,
     ComputePowerSpectrum(&window);
     SubVector<BaseFloat> power_spectrum(window, 0, window.Dim()/2 + 1);
 
-    // Integrate with MelFiterbank over power spectrum
-    const MelBanks *this_mel_banks = GetMelBanks(vtln_warp);
-    this_mel_banks->Compute(power_spectrum, &mel_energies);
-    if (opts_.use_log_fbank)
+    // Sum with MelFiterbank over power spectrum
+    mel_banks.Compute(power_spectrum, &mel_energies);
+    if (opts_.use_log_fbank) {
+      // avoid log of zero (which should be prevented anyway by dithering).
+      mel_energies.ApplyFloor(std::numeric_limits<BaseFloat>::min());
       mel_energies.ApplyLog();  // take the log.
+    }
 
     // Output buffers
     SubVector<BaseFloat> this_output(output->Row(r));

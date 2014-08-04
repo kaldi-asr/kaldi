@@ -26,68 +26,6 @@
 namespace kaldi {
 namespace nnet2 {
 
-/** This struct stores neural net training examples to be used in
-    multi-threaded training.  */
-class ExamplesRepository {
- public:
-  /// The following function is called by the code that reads in the examples,
-  /// with a batch of examples.  [It will empty the vector "examples").
-  void AcceptExamples(std::vector<NnetExample> *examples);
-
-  /// The following function is called by the code that reads in the examples,
-  /// when we're done reading examples.
-  void ExamplesDone();
-  
-  /// This function is called by the code that does the training.  It gets the
-  /// training examples, and if they are available, puts them in "examples" and
-  /// returns true.  It returns false when there are no examples left and
-  /// ExamplesDone() has been called.
-  bool ProvideExamples(std::vector<NnetExample> *examples);
-  
-  ExamplesRepository(): empty_semaphore_(1), done_(false) { }
- private:
-  Semaphore full_semaphore_;
-  Semaphore empty_semaphore_;
-
-  std::vector<NnetExample> examples_;
-  bool done_;
-  KALDI_DISALLOW_COPY_AND_ASSIGN(ExamplesRepository);
-};
-
-
-void ExamplesRepository::AcceptExamples(
-    std::vector<NnetExample> *examples) {
-  KALDI_ASSERT(!examples->empty());
-  empty_semaphore_.Wait();
-  KALDI_ASSERT(examples_.empty());
-  examples_.swap(*examples);
-  full_semaphore_.Signal();
-}
-
-void ExamplesRepository::ExamplesDone() {
-  empty_semaphore_.Wait();
-  KALDI_ASSERT(examples_.empty());
-  done_ = true;
-  full_semaphore_.Signal();
-}
-
-bool ExamplesRepository::ProvideExamples(
-    std::vector<NnetExample> *examples) {
-  full_semaphore_.Wait();
-  if (done_) {
-    KALDI_ASSERT(examples_.empty());
-    full_semaphore_.Signal(); // Increment the semaphore so
-    // the call by the next thread will not block.
-    return false; // no examples to return-- all finished.
-  } else {
-    KALDI_ASSERT(!examples_.empty() && examples->empty());
-    examples->swap(examples_);
-    empty_semaphore_.Signal();
-    return true;
-  }
-}
-
-
 
 class DoBackpropParallelClass: public MultiThreadable {
  public:
@@ -255,6 +193,8 @@ double DoBackpropParallel(const Nnet &nnet,
   }
   KALDI_LOG << "Did backprop on " << *tot_weight << " examples, average log-prob "
             << "per frame is " << (tot_log_prob / *tot_weight);
+  KALDI_LOG << "[this line is to be parsed by a script:] log-prob-per-frame="
+            << (tot_log_prob / *tot_weight);
   return tot_log_prob;
 }
 

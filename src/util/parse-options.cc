@@ -35,6 +35,24 @@
 
 namespace kaldi {
 
+
+ParseOptions::ParseOptions(const std::string &prefix,
+                           OptionsItf *other):
+    print_args_(false), help_(false), usage_(""), argc_(0), argv_(NULL) {
+  ParseOptions *po = dynamic_cast<ParseOptions*>(other);
+  if (po != NULL && po->other_parser_ != NULL) {
+    // we get here if this constructor is used twice, recursively.
+    other_parser_ = po->other_parser_;
+  } else {
+    other_parser_ = other;
+  }
+  if (po != NULL && po->prefix_ != "") {
+    prefix_ = po->prefix_ + std::string(".") + prefix;
+  } else {
+    prefix_ = prefix;
+  }
+}
+
 void ParseOptions::Register(const std::string &name,
                             bool *ptr, const std::string &doc) {
   RegisterTmpl(name, ptr, doc);
@@ -75,7 +93,7 @@ void ParseOptions::RegisterTmpl(const std::string &name, T *ptr,
     KALDI_ASSERT(prefix_ != "" &&
                  "Cannot use empty prefix when registering with prefix.");
     std::string new_name = prefix_ + '.' + name;  // --name becomes --prefix.name
-    other_parser_->RegisterCommon(new_name, ptr, doc, false);
+    other_parser_->Register(new_name, ptr, doc);
   }
 }
 
@@ -177,11 +195,11 @@ void ParseOptions::DisableOption(const std::string &name) {
 }
 
 
-int ParseOptions::NumArgs() {
+int ParseOptions::NumArgs() const {
   return positional_args_.size();
 }
 
-std::string ParseOptions::GetArg(int i) {
+std::string ParseOptions::GetArg(int i) const {
   if (i < 1 || i > static_cast<int>(positional_args_.size()))
     KALDI_ERR << "ParseOptions::GetArg, invalid index " << i;  // code error
   // so use KALDI_ERR
@@ -460,7 +478,9 @@ void ParseOptions::ReadConfigFile(const std::string &filename) {
   }
 
   std::string line, key, value;
+  int32 line_number = 0;
   while (std::getline(is, line)) {
+    line_number++;
     // trim out the comments
     size_t pos;
     if ((pos = line.find_first_of('#')) != std::string::npos) {
@@ -470,6 +490,14 @@ void ParseOptions::ReadConfigFile(const std::string &filename) {
     Trim(&line);
     if (line.length() == 0) continue;
 
+    if (line.substr(0, 2) != "--") {
+      KALDI_ERR << "Reading config file " << filename
+                << ": line " << line_number << " does not look like a line "
+                << "from a Kaldi command-line program's config file: should "
+                << "be of the form --x=y.  Note: config files intended to "
+                << "be sourced by shell scripts lack the '--'.";
+    }
+    
     // parse option
     bool has_equal_sign;
     SplitLongArg(line, &key, &value, &has_equal_sign);

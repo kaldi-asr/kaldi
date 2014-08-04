@@ -11,7 +11,13 @@ gpu_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network,
                                       # you'll likely have to change it.  we'll
                                       # use it later on, in the training (it's
                                       # not used in denlat creation)
-. cmd.sh
+. ./cmd.sh
+. ./path.sh
+! cuda-compiled && cat <<EOF && exit 1 
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+If you want to use GPUs (and have them), go to src/, and configure and make on a machine
+where "nvcc" is installed.
+EOF
 
 # The denominator lattice creation currently doesn't use GPUs.
 

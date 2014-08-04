@@ -1,0 +1,163 @@
+// doc/dnn1.dox
+
+
+// Copyright 2012 Karel Vesely
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+namespace nnet1 {
+/**
+  \page dnn1 Karel's DNN implementation
+
+  \section dnn1_nnet Overview
+
+  The implementation of DNNs from Karel Vesely uses following techniques:
+  - layer-wise pre-training based on RBMs (Restricted Boltzmann Machines)
+  - per-frame cross-entropy training
+  - sequence-discriminative training, using lattice framework, optimizing sMBR criterion (State Minimum Bayes Risk)
+
+  The systems are built on top of LDA-MLLT-fMLLR features obtained from auxiliary GMM models.
+  Whole DNN training is running in a single GPU using CUDA, however cudamatrix library is designed
+  to also run on machines without a GPU, but this tends to be more than 10x slower.
+
+  We have run and tested this implementation with CUDA (4.2, 5.0, 5.5) release versions.
+
+  The recipes for standard databases (rm/wsj/swbd) are located at :
+  egs/{rm,wsj}/s5/local/run_dnn.sh egs/swbd/s5b/local/run_dnn.sh
+
+  \section dnn1_phases DNN training phases
+  \subsection dnn1_pretrain Pre-training
+  The implementation of layer-wise RBM pre-training is following http://www.cs.toronto.edu/~hinton/absps/guideTR.pdf.
+  The first RBM uses Gaussian-Bernoulli units due to Gaussian features on DNN input, it uses lower learning rate and more epochs,
+  following RBMs have Bernoulli-Bernoulli units. We use Contrastive-Divergence algorithm with one step of 
+  Markov-chain Monte Carlo sampling (CD-1). During the experiments it was crucial to tune the learning rates,
+  however to do this it is necessary to do many fine-tuning experiments. In the recipe we use L2 regularization
+  to increase mixing rate of the RBM training, also momentum is used with gradual linear increases from 0.5 to 0.9
+  on the first 50 hours of the data. To keep the effective learning rate constant, this is accompanied with decrease 
+  of learning rate by a factor (1-mmt).
+  
+  The number of iterations in the original experiments with TIMIT was 50, which approximately corresponds to 200h of data. 
+  Therefore with switchboard dataset we use single epoch per layer. Based on discussions with people from Toronto, 
+  the more training data we have, the less crucial RBM pre-training becomes. But still it allows us to initialize
+  well large and deep networks, so that backpropagation algorithm has better initial point.
+
+  In the RBM training we sentence-level and frame-level shuffling to simulate drawing samples from distribution of the training data,
+  the updates are done per mini-batches. When training the Gaussian-Bernoulli units, the RBM are sensitive to weight explosion,
+  especially with larger learning rates and a lot of hidden units. To avoid this we compare variances of training data and reconstructions
+  within minibatch. If they differ a lot, the weights are re-scaled and learning rate is temporarily reduced.
+
+  \subsection dnn1_frame Frame-level cross-entropy training
+  In this phase we train a DNN which classifies frames into triphone-states.
+  This is done by mini-batch Stochastic Gradient Descent, by default the learning rate is 0.008,
+  size of minibatch 256; we use no momentum or regularization. 
+  
+  The learning-rate is scheduled constant in the several initial epochs, 
+  when the network stops improving we use per-epoch learning rate halving
+  until it again stops improving.
+
+  Just like in case of RBMs we use sentence-level and frame-level shuffling 
+  to simulate drawing samples from distribution of the training data,
+  frame level shuffling is done within the training tools in the GPU memory.
+
+  In general all the training tools accept option --feature-transform, 
+  this can be a \ref Nnet which does on-the-fly feature transformation, 
+  this is done within a GPU. In the recipe it is used to splice and normalize data,
+  but it can be used to more complex transforms like bottleneck-feature extraction.
+
+  \subsection dnn1_sequence Sequence-discriminative training (sMBR)
+  In this phase, the neural networks is trained to classify correctly the whole sentences,
+  which is closer to the general ASR objective than frame-level training.
+  The objective of sMBR is to maximize the expected accuracy of state labels derived from
+  reference transcriptions, we use lattice framework to represent competing hypothesis.
+
+  The training is done by Stochastic Gradient Descent with per-utterance updates,
+  we use low learning rate 1e-5 which is kept constant and we run 3-5 epochs.
+  We have observed faster convergence when re-generating lattices after 1st epoch.
+
+  We support MMI, BMMI, MPE and sMBR training. All the techniques perform very similar,
+  only sMBR was a little better. In sMBR optimization we exclude silence frames from 
+  accumulating approximate accuracies. More detailed description is at http://www.danielpovey.com/files/2013_interspeech_dnn.pdf
+
+  \section dnn1_code The code
+  The DNN code is located at src/nnet, the tools are at src/nnetbin. 
+  Because all the computation is done in a GPU, the code is built upon library src/cudamatrix.
+
+  \subsection dnn1_design Neural network representation
+
+  The neural network \ref Nnet is implemented as a vector of \ref Component.  A \ref Component
+  does not exactly correspond to a "layer" of a neural network as for each layer there are separate Components
+  for the affine transform and for the nonlinearity.
+  The most important methods of \ref Nnet are :
+    - \ref Nnet::Propagate : propagates input to output.
+    - \ref Nnet::Backpropagate : back-propagates the objective function derivatives through the network
+    - \ref Nnet::Feedforward : propagates input to output, uses two flipping buffers to save memory
+    - \ref Nnet::SetTrainOptions : sets training hyper-parameters, learning rate, momentum, L1,L2-cost
+   The Components and buffers are accessible via const references.
+
+  Keeping in mind that the DNNs have to be extensible, we defined the two interfaces :
+   - \ref Component : interface for a ``layer'' of neural network, which does not necessarily contain trainable parameters 
+     (the nonlinearities and weights have separate Components).
+   - \ref UpdatableComponent : extends \ref Component by adding support of trainable parameters
+  The most important virtual methods of \ref Component and \ref UpdatableComponent are :
+   - \ref Component::PropagateFnc : this method computes data transform during forward-propagation  
+   - \ref Component::BackpropagateFnc : transforms the derivatives during back-propagation  
+   - \ref UpdatableComponent::Update : computes gradient from derivatives and inputs, performs update
+
+  The interface \ref Component is implemented by :
+   - \ref Sigmoid : computes the logistic sigmoid transform and its derivative
+   - \ref Softmax : computes the softmax transform, assumes the derivatives are already wrt. activations (BackpropagateFnc does a copy of the original derivative)
+  The interface \ref UpdatableComponent is implemented by : 
+   - \ref AffineTransform : contains linear transform and a bias
+   - \ref Rbm : corresponds to Restricted Boltzmann Machine, including its parameters and unit types 
+     (when added to DBN it is converted to \ref AffineTransform and \ref Sigmoid)
+
+  \subsection dnn1_loss Objective function representation
+
+  Per-frame objective functions are enclosed in classes \ref Mse (Mean Square Error), \ref Xent (Cross Entropy).
+  The derivatives are computed in methods \ref Mse::Eval, \ref Xent::Eval and \ref Xent::EvalVec,
+  also the statistics of objective values over epoch are accumulated.
+
+  \subsection dnn1_shuff Frame-level shuffling
+  The frame-level shuffling is done by \ref Cache and \ref CacheTgtMat. 
+  In \ref Cache we assume targets encoded as vectors of indexes, in \ref CacheTgtMat targets are matrices.
+
+  \section dnn1_extending Extending network by a new component
+  Extending the NN framework by a new component is easy,
+  all has to be done is : 
+   - 1) define new entry to \ref Component::ComponentType
+   - 2) define new line in table \ref Component::kMarkerMap
+   - 3) add dynamic constructor call to factory-like function \ref Component::Read
+   - 4) implement the the interface \ref Component:: or \ref UpdatableComponent::
+
+  \section dnn1_nnetbin Binary tools
+
+  The training tools are located in src/nnetbin, the most important tools are : 
+   - \ref nnet-train-xent-hardlab-frmshuff.cc : this tool does frame-level training, it minimizes cross-entropy between posteriors and targets
+     (force-aligned hard-labels with one-hot encoding); to allow splicing over time the frame-level shuffling is done after the feature transform; 
+     performs one epoch of the training. The learning rate scheduling (ie. halving) is done on the bash-script level.
+   - \ref nnet-forward.cc : this tool propagates the input features through the neural network, it can remove softmax on the fly and divide by priors based on triphone-state counts.
+     This tool is often used in the decoding pipeline of feature extraction pipeline.
+     If it runs on a machine without GPU, a CPU is used instead.
+   - \ref rbm-train-cd1-frmshuff.cc : trains RBM, can perform several iterations with gradual linear increase of momentum 
+   - \ref nnet-train-mmi-sequential.cc : can be used for MMI/bMMI training
+   - \ref nnet-train-mpe-sequential.cc : is used for MPE / sMBR training
+
+
+*/
+}
+}
+

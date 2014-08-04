@@ -30,10 +30,10 @@ namespace kaldi {
 Barrier::Barrier(int32 threshold)
  : threshold_(threshold), counter_(threshold), cycle_(0) {
 
-  if(0 != pthread_mutex_init(&mutex_, NULL))
+  if (pthread_mutex_init(&mutex_, NULL) != 0)
     KALDI_ERR << "Cannot initialize pthread mutex";
   
-  if(0 != pthread_cond_init(&cv_, NULL)) {
+  if (pthread_cond_init(&cv_, NULL) != 0) {
     pthread_mutex_destroy(&mutex_);
     KALDI_ERR << "Cannot initialize pthread condv";
   }
@@ -42,31 +42,32 @@ Barrier::Barrier(int32 threshold)
 
 
 Barrier::~Barrier() {
-  if(0 != pthread_mutex_lock(&mutex_))
+  if (pthread_mutex_lock(&mutex_) != 0)
     KALDI_ERR << "Cannot lock pthread mutex";
 
-  if(counter_ != threshold_) {
+  if (counter_ != threshold_) {
     pthread_mutex_unlock (&mutex_);
     KALDI_ERR << "Cannot destroy barrier with waiting thread(s)";
   }
 
-  if(0 != pthread_mutex_unlock(&mutex_))
+  if (pthread_mutex_unlock(&mutex_) != 0)
     KALDI_ERR << "Cannot unlock pthread mutex";
 
-  if(0 != pthread_mutex_destroy(&mutex_))
+  if (pthread_mutex_destroy(&mutex_) != 0)
     KALDI_ERR << "Cannot destroy pthread mutex";
 
-  if(0 != pthread_cond_destroy(&cv_)) 
+  if (pthread_cond_destroy(&cv_) != 0) 
     KALDI_ERR << "Cannot destroy pthread condv";
 }
 
 
 
 void Barrier::SetThreshold(int32 thr) {
-  if(counter_ != threshold_) {
+  if (counter_ != threshold_) {
     KALDI_ERR << "Cannot set threshold, while some thread(s) are waiting";
   }
-  threshold_ = thr; counter_ = thr;
+  threshold_ = thr;
+  counter_ = thr;
 }
 
 
@@ -77,20 +78,20 @@ void Barrier::SetThreshold(int32 thr) {
  * The last incoming thread returns -1, the others 0.
  */
 int32 Barrier::Wait() {
-  if(threshold_ == 0)
+  if (threshold_ == 0)
     KALDI_ERR << "Cannot wait when ``threshold'' value was not set";
 
-  if(0 != pthread_mutex_lock(&mutex_)) 
+  if (pthread_mutex_lock(&mutex_) != 0) 
     KALDI_ERR << "Cannot lock pthread mutex";
 
   int32 cycle = cycle_;   // memorize which cycle we're in 
 
   int32 ret;
-  if(--counter_ == 0) { ///<< THIS IS LAST THREAD
+  if (--counter_ == 0) { //  this is the last thread
     cycle_ = !cycle_;
     counter_ = threshold_;
-    // WAKE-UP!!!!!!!!!!!!!!!!!!
-    if(0 != pthread_cond_broadcast(&cv_)) { 
+    // wake up.
+    if (pthread_cond_broadcast(&cv_) != 0) { 
       KALDI_ERR << "Error on pthred_cond_broadcast";
     }
     /*
@@ -111,15 +112,14 @@ int32 Barrier::Wait() {
      * that the last thread arrived and a brodcast was sent.
      */
     while (cycle == cycle_) {
-      // GO-SLEEP, zzzzzzzzzzz...
-      if(0 != pthread_cond_wait(&cv_, &mutex_)) {
+      // go to sleep
+      if (pthread_cond_wait(&cv_, &mutex_) != 0) {
         KALDI_ERR << "Error on pthread_cond_wait";
       }
     }
  
-    /*
-     * Restore the threads' cancel state
-     */
+    // Restore the thread's cancel state
+    
     pthread_setcancelstate(cancel, &tmp);
  
     /*
@@ -128,7 +128,7 @@ int32 Barrier::Wait() {
     ret = 0; 
   }
 
-  if(0 != pthread_mutex_unlock (&mutex_)) {
+  if (pthread_mutex_unlock (&mutex_) != 0) {
     KALDI_ERR << "Error unlcoking pthread mutex";
   }
 

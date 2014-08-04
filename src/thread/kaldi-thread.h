@@ -21,19 +21,27 @@
 #ifndef KALDI_THREAD_KALDI_THREAD_H_
 #define KALDI_THREAD_KALDI_THREAD_H_ 1
 
+#if defined(_MSC_VER)
+# define KALDI_PTHREAD_PTR(thread) (thread.p)
+#else
+# define KALDI_PTHREAD_PTR(thread) (thread)
+#endif
+
 #include <pthread.h>
 #include "thread/kaldi-barrier.h"
 // This header provides a convenient mechanism for parallelization.  The idea is
 // that you have some range of integers, e.g. A ... B-1 (with B > A), and some
 // function call that takes a range of integers, and you partition these up into
 // a number of blocks.
+// Also see kaldi-task-sequence.h which is suitable for parallelizing the processing
+// of tasks coming in sequentially from somewhere.
 
 // TODO: if needed, provide a workaround for Windows and other
 // non-POSIX-compliant systems, possibly one that does not actually do
 // multi-threading.
 
 
-// Description of MultiThreadPool and it's usage:
+// Description of MultiThreadPool and its usage:
 //
 // Usage of the RunMultiThreadedPersistent is the same as the usage of
 // RunMultiThreaded, except that the object provided ust inherit MultiThreadable
@@ -124,7 +132,7 @@ class MultiThreader {
       // This is a special case with num_threads == 0, which behaves like with
       // num_threads == 1 but without creating extra threads.  This can be
       // useful in GPU computations where threads cannot be used.
-      threads_[0] = 0;
+      KALDI_PTHREAD_PTR(threads_[0]) = 0;
       cvec_[0].thread_id_ = 0;
       cvec_[0].num_threads_ = 1;
       (cvec_[0])();
@@ -146,7 +154,7 @@ class MultiThreader {
   }
   ~MultiThreader() {
     for (size_t thread = 0; thread < cvec_.size(); thread++)
-      if (threads_[thread] != 0)
+      if (KALDI_PTHREAD_PTR(threads_[thread]) != 0)
         if (pthread_join(threads_[thread], NULL))
           KALDI_ERR << "Error rejoining thread.";
     delete [] threads_;

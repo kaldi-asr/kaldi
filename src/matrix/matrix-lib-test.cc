@@ -4,7 +4,7 @@
 //                       Ondrej Glembek;  Saarland University (Author: Arnab Ghoshal);
 //                       Go Vivace Inc.;  Yanmin Qian;  Jan Silovsky;
 //                       Johns Hopkins University (Author: Daniel Povey);
-//                       Haihua Xu
+//                       Haihua Xu; Wei Shi
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -246,7 +246,7 @@ template<typename Real> static void UnitTestAddSp() {
 }
 
 template<typename Real, typename OtherReal>
-static void UnitTestSpAddVec() {
+static void UnitTestSpAddDiagVec() {
   for (MatrixIndexT i = 0;i< 10;i++) {
     BaseFloat alpha = (i<5 ? 1.0 : 0.5);
     MatrixIndexT dimM = 10+rand()%10;
@@ -255,7 +255,7 @@ static void UnitTestSpAddVec() {
     SpMatrix<Real> T(S);
     Vector<OtherReal> v(dimM);
     InitRand(&v);
-    S.AddVec(alpha, v);
+    S.AddDiagVec(alpha, v);
     for (MatrixIndexT i = 0; i < dimM; i++)
       T(i, i) += alpha * v(i);
     AssertEqual(S, T);
@@ -553,7 +553,6 @@ static void UnitTestSimpleForVec() {  // testing some simple operaters on vector
     Real b = V.ApplySoftMax();
     AssertEqual(V1, V);
     AssertEqual(a, b);
-    KALDI_LOG << "a = " << a << ", b = " << b;
   }
 
   for (MatrixIndexT i = 0; i < 5; i++) {
@@ -612,6 +611,7 @@ static void UnitTestVectorMin() {
 
 template<typename Real>  
 static void UnitTestReplaceValue(){
+  // for vector
   MatrixIndexT dim = 10 + rand() % 2;
   Real orig = 0.1 * (rand() % 100), changed = 0.1 * (rand() % 50);
   Vector<Real> V(dim);
@@ -686,9 +686,6 @@ static void UnitTestCopyRows() {
         if (reorder[i] < 0) O(i, j) = 0;
         else O(i, j) = M(reorder[i], j);
     
-    KALDI_LOG << "M is " << M;
-    KALDI_LOG << "N is " << N;
-    KALDI_LOG << "O is " << O;
     AssertEqual(N, O);
   }
 }
@@ -713,9 +710,6 @@ static void UnitTestCopyCols() {
       for (int32 j = 0; j < num_cols2; j++)
         if (reorder[j] < 0) O(i, j) = 0;
         else O(i, j) = M(i, reorder[j]);
-    KALDI_LOG << "M is " << M;
-    KALDI_LOG << "N is " << N;
-    KALDI_LOG << "O is " << O;
     AssertEqual(N, O);
   }
 }
@@ -780,9 +774,6 @@ static void UnitTestSimpleForMat() {  // test some simple operates on all kinds 
   y.SetZero();
   y.Cholesky(x);
 
-  KALDI_LOG << "Matrix y is a lower triangular Cholesky decomposition of x:"
-            << '\n';
-  KALDI_LOG << y << '\n';
 
   // test sp-matrix's LogPosDefDet() function
   Matrix<Real> B(x);
@@ -946,6 +937,23 @@ template<typename Real> static void UnitTestPower() {
     AssertEqual(V1, V2);
   }
 }
+
+template<typename Real> static void UnitTestPowerAbs() {
+  for (MatrixIndexT iter = 0;iter < 5;iter++) {
+    MatrixIndexT dimV = 10 + rand() % 10;
+    Vector<Real> V(dimV), V1(dimV), V2(dimV);
+    InitRand(&V);
+    V1.AddVecVec(1.0, V, V, 0.0);  // V1:=V.*V.
+    V2.CopyFromVec(V1);
+    KALDI_LOG << V1;
+    V2.ApplyPowAbs(0.5);
+    KALDI_LOG << V2;
+    V2.ApplyPowAbs(2.0);
+    KALDI_LOG << V2;
+    AssertEqual(V1, V2);
+  }
+}
+
 
 template<typename Real> static void UnitTestHeaviside() {
   for (MatrixIndexT iter = 0;iter < 5;iter++) {
@@ -1496,19 +1504,41 @@ static void UnitTestTridiagonalize() {
   }
   for (MatrixIndexT i = 0; i < 4; i++) {
     MatrixIndexT dim = 40 + rand() % 4;
+    // We happened to find out that a 16x16 matrix of 27's causes problems for
+    // Tridiagonalize.
+    if (i == 0 || i == 1)
+      dim = 16;
     SpMatrix<Real> S(dim), S2(dim), R(dim), S3(dim);
     Matrix<Real> Q(dim, dim);
     InitRand(&S);
+    // Very small or large scaling is challenging to qr due to squares that
+    // could go out of range.
+    if (rand() % 3 == 0)
+      S.Scale(1.0e-15); 
+    else if (rand() % 2 == 0)
+      S.Scale(1.0e+15);
+    if (i == 0 || i == 1) {
+      Matrix<Real> temp(dim, dim);
+      if (i == 0)
+        temp.Set(27.0);
+      else
+        temp.Set(-1.61558713e-27);
+      S.CopyFromMat(temp);
+    }
     SpMatrix<Real> T(S);
     T.Tridiagonalize(&Q);
     KALDI_LOG << "S trace " << S.Trace() << ", T trace " << T.Trace();
-    //KALDI_LOG << S << "\n" << T;
+    // KALDI_LOG << S << "\n" << T;
     AssertEqual(S.Trace(), T.Trace());
     // Also test Trace().
     Real ans = 0.0;
     for (MatrixIndexT j = 0; j < dim; j++) ans += T(j, j);
     AssertEqual(ans, T.Trace());
-    AssertEqual(T.LogDet(), S.LogDet());
+    if (S.LogDet() > -50.0) {
+      // don't check logdet equality if original logdet is very negative- could
+      // be singular.
+      AssertEqual(T.LogDet(), S.LogDet());
+    }
     R.AddMat2(1.0, Q, kNoTrans, 0.0);
     KALDI_LOG << "Non-unit-ness of R is " << NonUnitness(R);
     KALDI_ASSERT(R.IsUnit(0.01)); // Check Q is orthogonal.
@@ -2804,7 +2834,41 @@ template<typename Real> static void UnitTestAddMat2() {
 }
 
 
+template<typename Real> static void UnitTestSymAddMat2() {
+  for (int32 i = 0; i < 5; i++) {
+    int32 dimM = 10 + rand() % 200, dimN = 10 + rand() % 30;                                                            
+    KALDI_LOG << "dimM = " << dimM << ", dimN = " << dimN;
 
+    Matrix<Real> M(dimM, dimM); // square matrix..                                                                            
+    Matrix<Real> N(dimM, dimN);
+    M.SetRandn();
+    N.SetRandn();
+    //MatrixTransposeType trans = (i % 2 == 0 ? kTrans : kNoTrans),                                                          
+    MatrixTransposeType trans = kTrans,
+        other_trans = (trans == kTrans ? kNoTrans : kTrans);
+    if (trans == kTrans) N.Transpose();
+    KALDI_LOG << "N sum is " << N.Sum();
+    Matrix<Real> M2(M);
+    KALDI_LOG << "M sum is " << M.Sum();
+
+    Real alpha = 0.2 * (rand() % 6),
+        beta = 0.2 * (rand() % 6);
+    //Real alpha = 0.3, beta = 1.75432;
+    M.SymAddMat2(alpha, N, trans, beta);
+
+    KALDI_LOG << "M(0, 0) is " << M(0, 0);
+    KALDI_LOG << "M sum2 is " << M.Sum();
+
+    M2.AddMatMat(alpha, N, trans, N, other_trans, beta);
+
+    TpMatrix<Real> T1(M.NumRows()), T2(M2.NumRows());
+    T1.CopyFromMat(M);
+    T2.CopyFromMat(M2);
+    Matrix<Real> X1(T1), X2(T2); // so we can test equality.                                                                  
+    AssertEqual(X1, X2);
+    KALDI_ASSERT(dimM == 0 || X1.Trace() != 0 || (alpha == 0 && beta == 0));
+  }
+}
 
 
 template<typename Real> static void UnitTestSolve() {
@@ -3019,6 +3083,53 @@ template<typename Real> static void UnitTestLbfgs() {
 }
 
 
+template<typename Real> static void UnitTestLinearCgd() {
+  for (int i = 0; i < 20 ; i++) {
+    MatrixIndexT M = 1 + rand() % 20;
+    
+    SpMatrix<Real> A(M);
+    RandPosdefSpMatrix(M, &A);
+    Vector<Real> x(M), b(M), b2(M);
+
+    LinearCgdOptions opts;
+    if (rand() % 2 == 0)
+      opts.max_iters = 1 + rand() % 10;
+    if (rand() % 2 == 0)
+      opts.max_error = 1.0;  // note: an absolute, not relative, error.
+    
+    x.SetRandn();
+    
+    b.AddSpVec(1.0, A, x, 0.0);
+    Vector<Real> x_e(M);  // x_e means x_estimated.
+    x_e.SetRandn();
+    
+    int32 iters = LinearCgd(opts, A, b, &x_e);
+    
+    b2.AddSpVec(1.0, A, x_e, 0.0);
+
+    Vector<Real> residual_error(b);
+    residual_error.AddVec(-1.0, b2);
+
+    BaseFloat error = residual_error.Norm(2.0);
+
+    if (iters >= M) {
+      // should have converged fully.
+      KALDI_ASSERT(error < 1.0e-05 * b.Norm(2.0));
+    } else {
+      BaseFloat wiggle_room = 1.1;
+      if (opts.max_iters >= 0) {
+        KALDI_ASSERT(iters <= opts.max_iters);
+        if (iters < opts.max_iters) {
+          KALDI_ASSERT(error <= wiggle_room * opts.max_error);
+        }
+      } else {
+        KALDI_ASSERT(error <= wiggle_room * opts.max_error);        
+      }
+    }
+  }
+}
+
+
 template<typename Real> static void UnitTestMaxMin() {
 
   MatrixIndexT M = 1 + rand() % 10, N = 1 + rand() % 10;
@@ -3200,6 +3311,7 @@ template<typename Real> static void UnitTestSplitRadixComplexFft() {
     MatrixIndexT N = 1 << logn;
 
     MatrixIndexT twoN = 2*N;
+    std::vector<Real> temp_buffer;
     SplitRadixComplexFft<Real> srfft(N);
     for (MatrixIndexT p = 0; p < 3; p++) {
       Vector<Real> v(twoN), w_base(twoN), w_alg(twoN), x_base(twoN), x_alg(twoN);
@@ -3208,7 +3320,11 @@ template<typename Real> static void UnitTestSplitRadixComplexFft() {
 
       if (N< 100) ComplexFt(v, &w_base, true);
       w_alg.CopyFromVec(v);
-      srfft.Compute(w_alg.Data(), true);
+
+      if (rand() % 2 == 0)
+        srfft.Compute(w_alg.Data(), true);
+      else
+        srfft.Compute(w_alg.Data(), true, &temp_buffer);
 
       if (N< 100) AssertEqual(w_base, w_alg, 0.01*N);
 
@@ -3368,13 +3484,18 @@ template<typename Real> static void UnitTestSplitRadixRealFft() {
         N = 1 << logn;
 
     SplitRadixRealFft<Real> srfft(N);
+    std::vector<Real> temp_buffer;    
     for (MatrixIndexT q = 0; q < 3; q++) {
       Vector<Real> v(N), w(N), x(N), y(N);
       InitRand(&v);
       w.CopyFromVec(v);
       RealFftInefficient(&w, true);
       y.CopyFromVec(v);
-      srfft.Compute(y.Data(), true);  // test efficient one.
+      if (rand() % 2 == 0)
+        srfft.Compute(y.Data(), true);
+      else
+        srfft.Compute(y.Data(), true, &temp_buffer);
+      
       // KALDI_LOG <<"v = "<<v;
       // KALDI_LOG << "Inefficient real fft of v is: "<< w;
       // KALDI_LOG << "Efficient real fft of v is: "<< y;
@@ -4045,24 +4166,55 @@ static void UnitTestTopEigs() {
       mat.Eig(&fulls, &fullP);
       KALDI_LOG << "Approximate eigs are " << s;
       // find sum of largest-abs-value eigs.
-      fulls.Abs();
+      fulls.ApplyAbs();
       std::sort(fulls.Data(), fulls.Data() + dim);
       SubVector<Real> tmp(fulls, dim - num_eigs, num_eigs);
       KALDI_LOG << "abs(real eigs) are " << tmp;
       BaseFloat real_sum = tmp.Sum();
-      s.Abs();
+      s.ApplyAbs();
       BaseFloat approx_sum = s.Sum();
       KALDI_LOG << "real sum is " << real_sum << ", approx_sum = " << approx_sum;
     }
   }
 }
 
+template<typename Real> static void UnitTestTriVecSolver() {
+  for (MatrixIndexT iter = 0; iter < 100; iter++) {
+    int32 dim = 1 + rand() % 20;
+    Vector<Real> b(dim);
+    b.SetRandn();
+    TpMatrix<Real> T(dim);
+    T.SetRandn();
+
+    bool bad = false;
+    for (int32 i = 0; i < dim; i++) {
+      if (fabs(T(i, i)) < 0.2)
+        bad = true;
+    }
+    if (bad) {
+      // Test may fail due to almost-singular matrix.
+      continue;
+    }
+    
+    Vector<Real> x(b);
+    MatrixTransposeType trans = (iter % 2 == 0 ? kTrans : kNoTrans);
+    x.Solve(T, trans);  // solve for T x = b
+    Vector<Real> b2(dim);
+    b2.AddTpVec((Real)1.0, T, trans, x, (Real)0.0);
+    KALDI_LOG << "b is " << b << ", b2 is " << b2;
+    AssertEqual(b, b2, 0.01);
+  }
+}
+
 template<typename Real> static void MatrixUnitTest(bool full_test) {
+  UnitTestTridiagonalize<Real>();
+  UnitTestTridiagonalizeAndQr<Real>();  
   UnitTestAddMatSmat<Real>();
   UnitTestFloorChol<Real>();
   UnitTestFloorUnit<Real>();
   UnitTestAddMat2Sp<Real>();
   UnitTestLbfgs<Real>();
+  UnitTestLinearCgd<Real>();
   // UnitTestSvdBad<Real>(); // test bug in Jama SVD code.
   UnitTestCompressedMatrix<Real>();
   UnitTestResize<Real>();
@@ -4074,8 +4226,6 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestComplexPower<Real>();
   UnitTestEig<Real>();
   UnitTestEigSp<Real>();
-  UnitTestTridiagonalize<Real>();
-  UnitTestTridiagonalizeAndQr<Real>();  
   // commenting these out for now-- they test the speed, but take a while.
   // UnitTestSplitRadixRealFftSpeed<Real>();
   // UnitTestRealFftSpeed<Real>();   // won't exit!/
@@ -4092,8 +4242,8 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestSvd<Real>();
   UnitTestSvdNodestroy<Real>();
   UnitTestSvdJustvec<Real>();
-  UnitTestSpAddVec<Real, float>();
-  UnitTestSpAddVec<Real, double>();
+  UnitTestSpAddDiagVec<Real, float>();
+  UnitTestSpAddDiagVec<Real, double>();
   UnitTestSpAddVecVec<Real>();
   UnitTestSpInvert<Real>();
   KALDI_LOG << " Point D";
@@ -4115,6 +4265,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestDotprod<Real>();
   // UnitTestSvdVariants<Real>();
   UnitTestPower<Real>();
+  UnitTestPowerAbs<Real>();
   UnitTestHeaviside<Real>();
   UnitTestCopySp<Real>();
   UnitTestDeterminant<Real>();
@@ -4157,6 +4308,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   KALDI_LOG << " Point I";
   UnitTestSolve<Real>();
   UnitTestAddMat2<Real>();
+  UnitTestSymAddMat2<Real>();
   UnitTestAddMatSelf<Real>();
   UnitTestMaxMin<Real>();
   UnitTestInnerProd<Real>();
@@ -4174,7 +4326,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestTp2<Real>();
   UnitTestAddDiagMat2<Real>();
   UnitTestAddDiagMatMat<Real>();
-  UnitTestOrthogonalizeRows<Real>();
+ //  UnitTestOrthogonalizeRows<Real>();
   UnitTestTopEigs<Real>();
   UnitTestRandCategorical<Real>();
   UnitTestTridiag<Real>();
@@ -4192,6 +4344,8 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   // The next one is slow.  The upshot is that Eig is up to ten times faster
   // than SVD. 
   // UnitTestSvdSpeed<Real>();
+  KALDI_LOG << " Point K";
+  UnitTestTriVecSolver<Real>();
 }
 
 
@@ -4202,8 +4356,8 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
 int main() {
   using namespace kaldi;
   bool full_test = false;
-  kaldi::MatrixUnitTest<double>(full_test);
   kaldi::MatrixUnitTest<float>(full_test);
+  kaldi::MatrixUnitTest<double>(full_test);
   KALDI_LOG << "Tests succeeded.\n";
 
 }

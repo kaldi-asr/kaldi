@@ -73,10 +73,9 @@ mkdir -p $dir/scoring/log
 if [ $stage -le 0 ] ; then
   $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
     set -e';' set -o pipefail';' \
-    cp $data/stm $dir/score_LMWT/stm.unsorted '&&' \
-    cp $dir/score_LMWT/${name}.ctm $dir/score_LMWT/${name}.ctm.unsorted '&&'\
+    cp -f $data/stm $dir/score_LMWT/stm.unsorted '&&' \
+    cp -f $dir/score_LMWT/${name}.ctm $dir/score_LMWT/${name}.ctm.unsorted '&&'\
     $SortingProgram sortSTM \<$dir/score_LMWT/stm.unsorted          \>$dir/score_LMWT/stm.sorted '&&' \
-    utils/fix_ctm.sh $dir/score_LMWT/stm.sorted $dir/score_LMWT/${name}.ctm.unsorted '&&' \
     $SortingProgram sortCTM \<$dir/score_LMWT/${name}.ctm.unsorted  \>$dir/score_LMWT/${name}.ctm.sorted '&&' \
     paste -d ' ' \<\(cut -f 1-5 -d ' ' $dir/score_LMWT/stm.sorted \) \
                  \<\(cut -f 6- -d ' ' $dir/score_LMWT/stm.sorted \| uconv -f utf8 -t utf8 -x "$icu_transform" \) \
@@ -84,6 +83,7 @@ if [ $stage -le 0 ] ; then
     paste -d ' ' \<\(cut -f 1-4 -d ' ' $dir/score_LMWT/${name}.ctm.sorted \) \
                  \<\(cut -f 5-  -d ' ' $dir/score_LMWT/${name}.ctm.sorted \| uconv -f utf8 -t utf8 -x "$icu_transform" \) \
         \> $dir/score_LMWT/${name}.ctm '&&' \
+    utils/fix_ctm.sh $dir/score_LMWT/stm $dir/score_LMWT/${name}.ctm '&&' \
     $ScoringProgram -s -r $dir/score_LMWT/stm  stm -h $dir/score_LMWT/${name}.ctm ctm \
       -n "$name.ctm" -f 0 -D -F  -o  sum rsum prf dtl sgml -e utf-8 || exit 1
 fi

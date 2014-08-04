@@ -142,7 +142,7 @@ class MaxPoolingComponent : public Component {
         CuMatrix<BaseFloat> mask;
         in_p.EqualElementMask(out_q, &mask);
         src.MulElements(mask);
-        tgt.AddMat(1.0, src, 1.0);
+        tgt.AddMat(1.0, src);
 
         patch_summands[p] += 1;
       }

@@ -55,5 +55,24 @@ void InsertComponents(const Nnet &src_nnet,
 }
 
 
+void ReplaceLastComponents(const Nnet &src_nnet,
+                           int32 num_to_remove,
+                           Nnet *dest_nnet) {
+  KALDI_ASSERT(num_to_remove >= 0 && num_to_remove <= dest_nnet->NumComponents());
+  int32 c_orig = dest_nnet->NumComponents() - num_to_remove;
+
+  std::vector<Component*> components;
+  for (int32 c = 0; c < c_orig; c++)
+    components.push_back(dest_nnet->GetComponent(c).Copy());
+  for (int32 c = 0; c < src_nnet.NumComponents(); c++)
+    components.push_back(src_nnet.GetComponent(c).Copy());
+
+  // Re-initialize "dest_nnet" from the resulting list of components.
+  // The Init method will take ownership of the pointers in the vector:
+  dest_nnet->Init(&components);
+}
+
+
+
 } // namespace nnet2
 } // namespace kaldi

@@ -31,7 +31,7 @@ if [ ! -f "tools/mitlm-svn/bin/estimate-ngram" ]; then
   mkdir -p tools
   command -v svn >/dev/null 2>&1 ||\
     { echo "SVN client is needed but not found" ; exit 1; }
-  svn checkout http://mitlm.googlecode.com/svn/trunk/ tools/mitlm-svn
+  svn checkout -r103 http://mitlm.googlecode.com/svn/trunk/ tools/mitlm-svn
   cd tools/mitlm-svn/
   F77=gfortran ./autogen.sh
   ./configure --prefix=`pwd`

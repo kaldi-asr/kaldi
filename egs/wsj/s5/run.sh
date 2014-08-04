@@ -26,7 +26,7 @@ local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?  || exit 1;
 #
 # corpus=/exports/work/inf_hcrc_cstr_general/corpora/wsj
 # local/cstr_wsj_data_prep.sh $corpus
-#
+# rm data/local/dict/lexiconp.txt
 # $corpus must contain a 'wsj0' and a 'wsj1' subdirectory for this to work.
 
 local/wsj_prepare_dict.sh || exit 1;
@@ -169,6 +169,11 @@ steps/decode.sh --nj 10 --cmd "$decode_cmd" \
 steps/decode.sh --nj 8 --cmd "$decode_cmd" \
   exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b/decode_tgpr_eval92 || exit 1;
 
+# At this point, you could run the example scripts that show how VTLN works.
+# We haven't included this in the default recipes yet.
+# local/run_vtln.sh
+# local/run_vtln2.sh
+
 # Now, with dev93, compare lattice rescoring with biglm decoding,
 # going from tgpr to tg.  Note: results are not the same, even though they should
 # be, and I believe this is due to the beams not being wide enough.  The pruning
@@ -267,6 +272,8 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 ) & 
 
 
+# This step is just to demonstrate the train_quick.sh script, in which we
+# initialize the GMMs from the old system's GMMs.
 steps/train_quick.sh --cmd "$train_cmd" \
    4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b || exit 1;
 
@@ -321,8 +328,18 @@ local/run_mmi_tri4b.sh
 # You probably want to run the sgmm2 recipe as it's generally a bit better:
 local/run_sgmm2.sh
 
-# You probably wany to run the hybrid recipe as it is complementary:
+# We demonstrate MAP adaptation of GMMs to gender-dependent systems here.  This also serves
+# as a generic way to demonstrate MAP adaptation to different domains.
+# local/run_gender_dep.sh
+
+# You probably want to run the hybrid recipe as it is complementary:
 local/run_dnn.sh
+
+# The next two commands show how to train a bottleneck network based on the nnet2 setup,
+# and build an SGMM system on top of it.
+#local/run_bnf.sh
+#local/run_bnf_sgmm.sh
+
 
 # You probably want to try KL-HMM 
 #local/run_kl_hmm.sh

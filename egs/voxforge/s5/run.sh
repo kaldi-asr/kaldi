@@ -215,4 +215,4 @@ for iter in 3 4 5 6 7 8; do
    --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_fmmi_d/decode_it$iter &
 done
 
-local/run_sgmm2.sh
+local/run_sgmm2.sh --nj $njobs

@@ -40,7 +40,8 @@ int main(int argc, char *argv[]) {
     bool binary = true;
     BaseFloat rand_prune = 0.25;
     po.Register("binary", &binary, "Write output in binary mode");
-    po.Register("rand-prune", &rand_prune, "Randomized pruning parameter to speed up accumulation");
+    po.Register("rand-prune", &rand_prune, "Randomized pruning parameter to speed up "
+                "accumulation (larger -> more pruning.  May exceed one).");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -106,7 +107,7 @@ int main(int argc, char *argv[]) {
         }
         KALDI_LOG << "Average like for this file is "
                   << (tot_like_this_file/tot_weight) << " over "
-                  << tot_weight <<" frames.";
+                  << tot_weight << " frames.";
         tot_like += tot_like_this_file;
         tot_t += tot_weight;
         if (num_done % 10 == 0)
@@ -124,8 +125,7 @@ int main(int argc, char *argv[]) {
 
     WriteKaldiObject(mllt_accs, accs_wxfilename, binary);
     KALDI_LOG << "Written accs.";
-    if (num_done != 0) return 0;
-    else return 1;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

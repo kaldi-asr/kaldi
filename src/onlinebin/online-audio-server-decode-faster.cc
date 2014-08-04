@@ -31,6 +31,8 @@
 #include "matrix/kaldi-vector.h"
 #include "lat/word-align-lattice.h"
 #include "lat/lattice-functions.h"
+#include "lat/sausages.h"
+#include "lat/determinize-lattice-pruned.h"
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -45,9 +47,9 @@ namespace kaldi {
 class TcpServer {
  public:
   TcpServer();
-  ~TcpServer(); 
+  ~TcpServer();
 
-  bool Listen(int32 port);  //start listening on a given port  
+  bool Listen(int32 port);  //start listening on a given port
   int32 Accept();  //accept a client and return its descriptor
 
  private:
@@ -60,12 +62,12 @@ bool WriteLine(int32 socket, std::string line);
 
 //constant allowing to convert frame count to time
 const float kFramesPerSecond = 100.0f;
-} // namespace kaldi
+}  // namespace kaldi
 
 int32 main(int argc, char *argv[]) {
   using namespace kaldi;
   using namespace fst;
-  
+
   try {
     typedef kaldi::int32 int32;
     typedef OnlineFeInput<Mfcc> FeInput;
@@ -77,17 +79,17 @@ int32 main(int argc, char *argv[]) {
     const char *usage =
         "Starts a TCP server that receives RAW audio and outputs aligned words.\n"
             "A sample client can be found in: onlinebin/online-audio-client\n\n"
-            "Usage: ./online-audio-server-decode-faster [options] model-in"
-            "fst-in word-symbol-table silence-phones tcp-port word-boundary-file lda-matrix-in\n\n"
-            "word-boundary file is a file that maps phoneme ids to one of (nonword|begin|end|internal|single)\n\n"
+            "Usage: ./online-audio-server-decode-faster [options] model-in "
+            "fst-in word-symbol-table silence-phones word_boundary_file tcp-port [lda-matrix-in]\n\n"
             "example: online-audio-server-decode-faster --verbose=1 --rt-min=0.5 --rt-max=3.0 --max-active=6000\n"
-            "--beam=72.0 --acoustic-scale=0.0769 final.mdl graph/HCLG.fst graph/words.txt '1:2:3:4:5' 5010\n"
-            "graph/word_boundary_phones.txt final.mat\n\n";
+            "--beam=72.0 --acoustic-scale=0.0769 final.mdl graph/HCLG.fst graph/words.txt '1:2:3:4:5'\n"
+            "graph/word_boundary.int 5000 final.mat\n\n";
 
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 0.1;
     int32 cmn_window = 600, min_cmn_window = 100;  // adds 1 second latency, only at utterance start.
     int32 right_context = 4, left_context = 4;
+    BaseFloat frame_shift = 0.01;
 
     OnlineFasterDecoderOpts decoder_opts;
     decoder_opts.Register(&po, true);
@@ -106,35 +108,39 @@ int32 main(int argc, char *argv[]) {
     po.Register("min-cmn-window", &min_cmn_window,
                 "Minumum CMN window used at start of decoding (adds "
                 "latency only at start)");
+    po.Register("frame-shift", &frame_shift,
+                "Time in seconds between frames.\n");
 
     WordBoundaryInfoNewOpts opts;
     opts.Register(&po);
 
     po.Read(argc, argv);
-    if (po.NumArgs() != 7) {
+    if (po.NumArgs() < 6 || po.NumArgs() > 7) {
       po.PrintUsage();
       return 1;
     }
 
     std::string model_rspecifier = po.GetArg(1), fst_rspecifier = po.GetArg(2),
         word_syms_filename = po.GetArg(3), silence_phones_str = po.GetArg(4),
-        word_boundary_filename = po.GetOptArg(6), lda_mat_rspecifier = po
-            .GetOptArg(7);
+        word_boundary_file = po.GetArg(5), lda_mat_rspecifier = "";
 
-    int32 port = strtol(po.GetArg(5).c_str(), 0, 10);
+    if (po.NumArgs() == 7)
+      lda_mat_rspecifier = po.GetOptArg(7);
+
+    int32 port = strtol(po.GetArg(6).c_str(), 0, 10);
 
     std::vector<int32> silence_phones;
     if (!SplitStringToIntegers(silence_phones_str, ":", false, &silence_phones))
-      KALDI_ERR<< "Invalid silence-phones string " << silence_phones_str;
+      KALDI_ERR << "Invalid silence-phones string " << silence_phones_str;
     if (silence_phones.empty())
-      KALDI_ERR<< "No silence phones given!";
+      KALDI_ERR << "No silence phones given!";
 
     if (!tcp_server.Listen(port))
       return 0;
 
     std::cout << "Reading LDA matrix: " << lda_mat_rspecifier << "..."
-              << std::endl;
-    Matrix<BaseFloat> lda_transform;
+        << std::endl;
+    Matrix < BaseFloat > lda_transform;
     if (lda_mat_rspecifier != "") {
       bool binary_in;
       Input ki(lda_mat_rspecifier, &binary_in);
@@ -142,7 +148,7 @@ int32 main(int argc, char *argv[]) {
     }
 
     std::cout << "Reading acoustic model: " << model_rspecifier << "..."
-              << std::endl;
+        << std::endl;
     TransitionModel trans_model;
     AmDiagGmm am_gmm;
     {
@@ -153,15 +159,15 @@ int32 main(int argc, char *argv[]) {
     }
 
     std::cout << "Reading word list: " << word_syms_filename << "..."
-              << std::endl;
+        << std::endl;
     fst::SymbolTable *word_syms = NULL;
     if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
-      KALDI_ERR<< "Could not read symbol table from file "
-      << word_syms_filename;
+      KALDI_ERR << "Could not read symbol table from file "
+          << word_syms_filename;
 
-    std::cout << "Reading word boundary file: " << word_boundary_filename
-              << "..." << std::endl;
-    WordBoundaryInfo info(opts, word_boundary_filename);
+    std::cout << "Reading word boundary file: " << word_boundary_file << "..."
+        << std::endl;
+    WordBoundaryInfo info(opts, word_boundary_file);
 
     std::cout << "Reading FST: " << fst_rspecifier << "..." << std::endl;
     fst::Fst < fst::StdArc > *decode_fst = ReadDecodeGraph(fst_rspecifier);
@@ -172,13 +178,18 @@ int32 main(int argc, char *argv[]) {
     MfccOptions mfcc_opts;
     mfcc_opts.use_energy = false;
     int32 frame_length = mfcc_opts.frame_opts.frame_length_ms = 25;
-    int32 frame_shift = mfcc_opts.frame_opts.frame_shift_ms = 10;
+    int32 mfcc_frame_shift = mfcc_opts.frame_opts.frame_shift_ms = 10;
 
     int32 window_size = right_context + left_context + 1;
     decoder_opts.batch_size = std::max(decoder_opts.batch_size, window_size);
 
-    VectorFst<LatticeArc> out_fst;
-    CompactLattice out_lat, aligned_lat;
+    DeterminizeLatticePrunedOptions det_opts;
+    det_opts.max_mem = 50000000;
+    det_opts.max_loop = 0;
+
+    VectorFst < LatticeArc > out_fst;
+    Lattice out_lat;
+    CompactLattice det_lat, aligned_lat;
     OnlineTcpVectorSource* au_src = NULL;
     int32 client_socket = -1;
 
@@ -198,7 +209,7 @@ int32 main(int argc, char *argv[]) {
 
       Mfcc mfcc(mfcc_opts);
       FeInput fe_input(au_src, &mfcc, frame_length * (16000 / 1000),
-                       frame_shift * (16000 / 1000));  //we always assume 16 kHz Fs on input
+                       mfcc_frame_shift * (16000 / 1000));  //we always assume 16 kHz Fs on input
       OnlineCmnInput cmn_input(&fe_input, cmn_window, min_cmn_window);
       OnlineFeatInputItf *feat_transform = 0;
       if (lda_mat_rspecifier != "") {
@@ -237,7 +248,13 @@ int32 main(int argc, char *argv[]) {
 
           ConvertLattice(out_fst, &out_lat);
 
-          WordAlignLattice(out_lat, trans_model, info, 0, &aligned_lat);
+          Invert(&out_lat);
+          //TopSort(&out_lat);
+          //ArcSort(&out_lat, ILabelCompare<LatticeArc>());
+
+          DeterminizeLatticePruned(out_lat, 10.0f, &det_lat, det_opts);
+
+          WordAlignLattice(det_lat, trans_model, info, 0, &aligned_lat);
 
           CompactLatticeToWordAlignment(aligned_lat, &word_ids, &times,
                                         &lengths);
@@ -258,7 +275,7 @@ int32 main(int argc, char *argv[]) {
 
             std::stringstream sstr;
             sstr << "RESULT:NUM=" << words_num << ",FORMAT=WSE,RECO-DUR=" << dur
-                                               << ",INPUT-DUR=" << input_dur;
+                << ",INPUT-DUR=" << input_dur;
 
             WriteLine(client_socket, sstr.str());
 
@@ -286,6 +303,19 @@ int32 main(int argc, char *argv[]) {
           }
 
           decoder_offset = decoder.frame();
+        } else {
+          std::vector<int32> word_ids;
+          if (decoder.PartialTraceback(&out_fst)) {
+            GetLinearSymbolSequence(out_fst, static_cast<vector<int32> *>(0),
+                                    &word_ids,
+                                    static_cast<LatticeArc::Weight*>(0));
+            for (size_t i = 0; i < word_ids.size(); i++) {
+              if (word_ids[i] != 0) {
+                WriteLine(client_socket,
+                          "PARTIAL:" + word_syms->Find(word_ids[i]));
+              }
+            }
+          }
         }
       }
       if (feat_transform)
@@ -320,17 +350,17 @@ bool TcpServer::Listen(int32 port) {
   server_desc_ = socket(AF_INET, SOCK_STREAM, 0);
 
   if (server_desc_ == -1) {
-    KALDI_ERR<< "Cannot create TCP socket!";
+    KALDI_ERR << "Cannot create TCP socket!";
     return false;
   }
 
   if (bind(server_desc_, (struct sockaddr*) &h_addr_, sizeof(h_addr_)) == -1) {
-    KALDI_ERR<< "Cannot bind to port: "<<port<<" (is it taken?)";
+    KALDI_ERR << "Cannot bind to port: " << port << " (is it taken?)";
     return false;
   }
 
   if (listen(server_desc_, 1) == -1) {
-    KALDI_ERR<< "Cannot listen on port!";
+    KALDI_ERR << "Cannot listen on port!";
     return false;
   }
 
@@ -347,7 +377,7 @@ TcpServer::~TcpServer() {
 
 int32 TcpServer::Accept() {
   std::cout << "Waiting for client..." << std::endl;
-  
+
   socklen_t len;
 
   int32 client_desc = accept(server_desc_, (struct sockaddr*) &h_addr_, &len);
@@ -383,4 +413,4 @@ bool WriteLine(int32 socket, std::string line) {
 
   return true;
 }
-} // namespace kaldi
+}  // namespace kaldi

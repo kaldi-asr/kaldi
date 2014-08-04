@@ -37,31 +37,35 @@ namespace kaldi {
 
   We currently have two separate codebases for deep neural nets in Kaldi.  One
   is located in code subdirectories nnet/ and nnetbin/, and is primiarly maintained
-  by Karel Vesely.  The other is located in code subdirectories nnet-cpu/ and nnet-cpubin/,
+  by Karel Vesely.  The other is located in code subdirectories nnet2/ and nnet2bin/,
   and is primarily maintained by Daniel Povey (this code was originally based on an
-  earlier version of Karel's code, but has been extensively rewritten).  Neither codebase
-  is more ``official'' than the other.  Both are still being developed and we cannot
-  predict the long-term future, but in the immediate future our aim is to both have
-  the freedom to work on our respective codebases, and to borrow ideas from each other.
+  earlier version of Karel's code, but it has been extensively rewritten).  Neither codebase
+  is more ``official'' than the other.  Both are still being developed in parallel.
 
   In the example directories such as egs/wsj/s5/, egs/rm/s5, egs/swbd/s5 and egs/hkust/s5b, neural
   net example scripts can be found.  Karel's example scripts can be found in local/run_dnn.sh
-  or local/run_nnet.sh, and Dan's example scripts can be found in local/run_nnet_cpu.sh.
+  or local/run_nnet.sh, and Dan's example scripts can be found in local/run_nnet2.sh.
   Before running those scripts, the first stages of ``run.sh'' in those directories must
   be run in order to build the systems used for alignment.
 
-  We will soon have detailed documentation pages on the two neural net setups.
-  For now, we summarize some of the most important differences:
+  Regarding which of the two setups you should use:
+  - Karel's setup (nnet1) generally gives somewhat better results but
+    it only supports training on a single GPU card, or on a single CPU which
+    is very slow.
+  - Dan's setup generally gives slightly worse results but is more flexible in how
+    you can train: it supports using multiple GPUs, or multiple CPU's each with 
+    multiple threads.  Multiple GPU's is the recommended setup.  They don't have to
+    all be on the same machine.
 
-    - Karel's code was written for single-threaded SGD training accelerated with a GPU;
-      Dan's code uses multiple CPUs each with multiple threads.
+  The reasons for the performance difference is unclear, as there are many differences
+  in the recipes used.  For example, Karel's setup uses pre-training 
+  but Dan's setup does not; Karel's setup uses early stopping using a validation set but
+  Dan's setup uses a fixed number of epochs and averages the parameters over the last
+  few epochs of training.  Most other details of the training (nonlinearity types, learning
+  rate schedules, etc.) also differ.
 
-    - Karel's code already supports discriminative training; Dan's code does not yet.
- 
-  Aside from this, there are many minor differences in architecture.
-
-  We hope to soon add more documentation for these libraries.
-  Karel's version of the code has some slightly out-of-date documentation available at \ref nnet1.
+  Documentation for Karel's version is available at \subpage dnn1 and 
+  documentation for Dan's version is available at \subpage dnn2.
 
 */
 

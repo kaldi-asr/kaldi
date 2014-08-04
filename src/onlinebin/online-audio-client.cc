@@ -34,7 +34,6 @@
 #include "feat/wave-reader.h"
 #include "online/online-audio-source.h"
 
-
 namespace kaldi {
 
 bool WriteFull(int32 desc, char* data, int32 size);
@@ -51,7 +50,7 @@ struct RecognizedWord {
 int main(int argc, char** argv) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
-  
+
   try {
 
     const char *usage =
@@ -115,11 +114,11 @@ int main(int argc, char** argv) {
     }
 
     KALDI_VLOG(2) << "Connected to KALDI server at host " << server_addr_str
-                  << " port " << server_port << std::endl;
+        << " port " << server_port << std::endl;
 
     char* pack_buffer = new char[packet_size];
 
-    SequentialTableReader<WaveHolder> reader(wav_rspecifier);
+    SequentialTableReader < WaveHolder > reader(wav_rspecifier);
     for (; !reader.Done(); reader.Next()) {
       std::string wav_key = reader.Key();
 
@@ -128,32 +127,29 @@ int main(int argc, char** argv) {
       const WaveData &wav_data = reader.Value();
 
       if (wav_data.SampFreq() != 16000)
-        KALDI_ERR<< "Sampling rates other than 16kHz are not supported!";
+        KALDI_ERR << "Sampling rates other than 16kHz are not supported!";
 
       int32 num_chan = wav_data.Data().NumRows(), this_chan = channel;
-      {  // This block works out the channel (0=left, 1=right...)
+      {   // This block works out the channel (0=left, 1=right...)
         KALDI_ASSERT(num_chan > 0);  // should have been caught in
         // reading code if no channels.
         if (channel == -1) {
           this_chan = 0;
           if (num_chan != 1)
-            KALDI_WARN<< "Channel not specified but you have data with "
-            << num_chan << " channels; defaulting to zero";
-          }
-          else
-          {
-            if (this_chan >= num_chan)
-            {
-              KALDI_WARN << "File with id " << wav_key << " has "
-              << num_chan << " channels but you specified channel "
-              << channel << ", producing no output.";
-              continue;
-            }
+            KALDI_WARN << "Channel not specified but you have data with "
+                << num_chan << " channels; defaulting to zero";
+        } else {
+          if (this_chan >= num_chan) {
+            KALDI_WARN << "File with id " << wav_key << " has " << num_chan
+                << " channels but you specified channel " << channel
+                << ", producing no output.";
+            continue;
           }
         }
+      }
 
       OnlineVectorSource au_src(wav_data.Data().Row(this_chan));
-      Vector<BaseFloat> data(packet_size / 2);
+      Vector < BaseFloat > data(packet_size / 2);
       while (au_src.Read(&data)) {
         for (int32 i = 0; i < data.Dim(); i++) {
           short sample = (short) data(i);
@@ -177,10 +173,17 @@ int main(int argc, char** argv) {
       while (true) {
         std::string line;
         if (!ReadLine(client_desc, &line))
-          KALDI_ERR<<"Server disconnected!";
+          KALDI_ERR << "Server disconnected!";
 
-        if (line.substr(0, 7) != "RESULT:")
-          KALDI_ERR<<"Header parse error: "<<line;
+        if (line.substr(0, 7) != "RESULT:") {
+          if (line.substr(0, 8) == "PARTIAL:") {
+            std::cout << line.substr(8) << " " << std::flush;
+            continue;
+          }
+          KALDI_ERR << "Header parse error: " << line;
+        }
+
+        std::cout << std::endl;
 
         if (line == "RESULT:DONE")
           break;
@@ -198,7 +201,7 @@ int main(int argc, char** argv) {
           beg = end + 1;
           eq = tok.find_first_of('=');
           if (eq == std::string::npos || eq >= tok.size() - 1) {
-            KALDI_WARN<<"Error parsing header token "<<tok;
+            KALDI_WARN << "Error parsing header token " << tok;
             continue;
           }
 
@@ -209,20 +212,14 @@ int main(int argc, char** argv) {
             res_num = strtol(val.c_str(), 0, 10);
           } else if (key == "FORMAT") {
             if (val != "WSE") {
-              KALDI_ERR<<"Only WSE format supported by this program!";
+              KALDI_ERR << "Only WSE format supported by this program!";
             }
-          }
-          else if(key=="RECO-DUR")
-          {
-            reco_dur = strtof(val.c_str(),0);
-          }
-          else if(key=="INPUT-DUR")
-          {
-            input_dur = strtof(val.c_str(),0);
-          }
-          else
-          {
-            KALDI_WARN<<"Unknown header key: "<<key;
+          } else if (key == "RECO-DUR") {
+            reco_dur = strtof(val.c_str(), 0);
+          } else if (key == "INPUT-DUR") {
+            input_dur = strtof(val.c_str(), 0);
+          } else {
+            KALDI_WARN << "Unknown header key: " << key;
           }
         } while (end != std::string::npos);
 
@@ -232,7 +229,7 @@ int main(int argc, char** argv) {
         for (int32 i = 0; i < res_num; i++) {
           std::string line;
           if (!ReadLine(client_desc, &line))
-            KALDI_ERR<<"Server disconnected!";
+            KALDI_ERR << "Server disconnected!";
 
           std::string word_str, start_str, end_str;
 
@@ -242,7 +239,8 @@ int main(int argc, char** argv) {
           end = line.find_first_of(',', beg);
           start_str = line.substr(beg, end - beg);
           beg = end + 1;
-          end_str = line.substr(beg);
+          end = line.find_first_of(',', beg);
+          end_str = line.substr(beg, end - beg);
 
           RecognizedWord word;
           word.word = word_str;
@@ -258,16 +256,15 @@ int main(int argc, char** argv) {
       {
         float speed = total_input_dur / total_reco_dur;
         KALDI_VLOG(2) << "Recognized (" << speed << "xRT): " << reco_output
-                      << std::endl;
+            << std::endl;
       }
 
       if (htk) {
         std::string name = wav_key + ".lab";
         std::ofstream htk_file(name.c_str());
         for (size_t i = 0; i < results.size(); i++)
-          htk_file << results[i].start * 16000.0f << " "
-                   << results[i].end * 16000.0f << " " << results[i].word
-                   << std::endl;
+          htk_file << (int) (results[i].start * 10000000) << " "
+              << (int) (results[i].end * 10000000) << " " << results[i].word << std::endl;
         htk_file.close();
       }
 
@@ -314,8 +311,8 @@ int main(int argc, char** argv) {
 
         for (size_t i = 0; i < subtitles.size(); i++)
           vtt_file << (i + 1) << std::endl << TimeToTimecode(subtitles[i].start)
-                   << " --> " << TimeToTimecode(subtitles[i].end) << std::endl
-                   << subtitles[i].word << std::endl << std::endl;
+              << " --> " << TimeToTimecode(subtitles[i].end) << std::endl
+              << subtitles[i].word << std::endl << std::endl;
 
         vtt_file.close();
       }
@@ -403,7 +400,7 @@ std::string TimeToTimecode(float time) {
 
   int32 h, m, s, ms;
   s = (int32) time;
-  ms = (int32) ((time - (float) s) * 1000.0f);
+  ms = (int32)((time - (float) s) * 1000.0f);
   m = s / 60;
   s %= 60;
   h = m / 60;

@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Karel Vesely;  Petr Motlicek;  Microsoft Corporation
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//                2014  IMSL, PKU-HKUST (author: Wei Shi)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -30,14 +31,20 @@ int32 NumFrames(int32 nsamp,
   int32 frame_shift = opts.WindowShift();
   int32 frame_length = opts.WindowSize();
   KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
-  if (static_cast<int32>(nsamp) < frame_length)
-    return 0;
-  else
-    return (1 + ((nsamp - frame_length) / frame_shift));
-  // view the expression above as: nsamp-frame_length is how much room we have
-  // to shift the frame within the waveform; frame_shift is how much we shift
-  // it each time and the ratio is how many times we can shift it (integer
-  // arithmetic rounds down).
+  if (opts.snip_edges) {
+    if (static_cast<int32>(nsamp) < frame_length)
+      return 0;
+    else
+      return (1 + ((nsamp - frame_length) / frame_shift));
+      // view the expression above as: nsamp-frame_length is how much room we
+      // have to shift the frame within the waveform; frame_shift is how much
+      // we shift it each time and the ratio is how many times we can shift
+      // it (integer arithmetic rounds down).
+  } else {
+    return (int32)(nsamp * 1.0f / frame_shift + 0.5f);
+    // if --snip-edges=false, the number of frames would be determined by
+    // rounding the (file-length / frame-shift) to the nearest integer
+  }
 }
 
 
@@ -91,14 +98,49 @@ void ExtractWindow(const VectorBase<BaseFloat> &wave,
   int32 frame_length = opts.WindowSize();
   KALDI_ASSERT(window_function.window.Dim() == frame_length);
   KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
-  int32 start = frame_shift*f, end = start + frame_length;
-  KALDI_ASSERT(start >= 0 && end <= wave.Dim());
+
+  Vector<BaseFloat> wave_part(frame_length);
+  if (opts.snip_edges) {
+    int32 start = frame_shift*f, end = start + frame_length;
+    KALDI_ASSERT(start >= 0 && end <= wave.Dim());
+    wave_part.CopyFromVec(wave.Range(start, frame_length));
+  } else {
+    // If opts.snip_edges = false, we allow the frames to go slightly over the
+    // edges of the file; we'll extend the data by reflection.
+    int32 mid = frame_shift * (f + 0.5),
+        begin = mid - frame_length / 2,
+        end = begin + frame_length,
+        begin_limited = std::max<int32>(0, begin),
+        end_limited = std::min(end, wave.Dim()),
+        length_limited = end_limited - begin_limited;
+
+    // Copy the main part.  Usually this will be the entire window.
+    wave_part.Range(begin_limited - begin, length_limited).
+        CopyFromVec(wave.Range(begin_limited, length_limited));
+    
+    // Deal with any end effects by reflection, if needed.  This code will
+    // rarely be reached, so we don't concern ourselves with efficiency.
+    for (int32 f = begin; f < 0; f++) {
+      int32 reflected_f = -f;
+      // The next statement will only have an effect in the case of files
+      // shorter than a single frame, it's to avoid a crash in those cases.
+      reflected_f = reflected_f % wave.Dim(); 
+      wave_part(f - begin) = wave(reflected_f);
+    }
+    for (int32 f = wave.Dim(); f < end; f++) {
+      int32 distance_to_end = f - wave.Dim();
+      // The next statement will only have an effect in the case of files
+      // shorter than a single frame, it's to avoid a crash in those cases.
+      distance_to_end = distance_to_end % wave.Dim();
+      int32 reflected_f = wave.Dim() - 1 - distance_to_end;
+      wave_part(f - begin) = wave(reflected_f);
+    }
+  }
   KALDI_ASSERT(window != NULL);
   int32 frame_length_padded = opts.PaddedWindowSize();
 
   if (window->Dim() != frame_length_padded)
     window->Resize(frame_length_padded);
-  SubVector<BaseFloat> wave_part(wave, start, frame_length);
 
   SubVector<BaseFloat> window_part(*window, 0, frame_length);
   window_part.CopyFromVec(wave_part);
@@ -109,7 +151,8 @@ void ExtractWindow(const VectorBase<BaseFloat> &wave,
     window_part.Add(-window_part.Sum() / frame_length);
 
   if (log_energy_pre_window != NULL) {
-    BaseFloat energy = VecVec(window_part, window_part);
+    BaseFloat energy = std::max(VecVec(window_part, window_part),
+                                std::numeric_limits<BaseFloat>::min());
     *log_energy_pre_window = log(energy);
   }
 
@@ -245,16 +288,16 @@ void ShiftedDeltaFeatures::Process(const MatrixBase<BaseFloat> &input_feats,
   KALDI_ASSERT(frame < input_feats.NumRows());
   int32 num_frames = input_feats.NumRows(),
       feat_dim = input_feats.NumCols();
-  KALDI_ASSERT(static_cast<int32>(output_frame->Dim()) 
+  KALDI_ASSERT(static_cast<int32>(output_frame->Dim())
                == feat_dim * (opts_.num_blocks + 1));
   output_frame->SetZero();
 
-  // The original features  
+  // The original features
   SubVector<BaseFloat> output(*output_frame, 0, feat_dim);
   output.AddVec(1.0, input_feats.Row(frame));
 
-  // Concatenate the delta-blocks. Each block is block_shift 
-  // (usually 3) frames apart. 
+  // Concatenate the delta-blocks. Each block is block_shift
+  // (usually 3) frames apart.
   for (int32 i = 0; i < opts_.num_blocks; i++) {
     int32 max_offset = (scales_.Dim() - 1) / 2;
     SubVector<BaseFloat> output(*output_frame, (i + 1) * feat_dim, feat_dim);
@@ -290,7 +333,7 @@ void ComputeShiftedDeltas(const ShiftedDeltaFeaturesOptions &delta_opts,
                           input_features.NumCols()
                           * (delta_opts.num_blocks + 1));
   ShiftedDeltaFeatures delta(delta_opts);
-  
+
   for (int32 r = 0; r < static_cast<int32>(input_features.NumRows()); r++) {
     SubVector<BaseFloat> row(*output_features, r);
     delta.Process(input_features, r, &row);
@@ -389,16 +432,16 @@ void SlidingWindowCmnOptions::Check() const {
   // else ignored so value doesn't matter.
 }
 
-
-void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
-                      const MatrixBase<double> &input,
-                      MatrixBase<double> *output) {  
+// Internal version of SlidingWindowCmn with double-precision arguments.
+void SlidingWindowCmnInternal(const SlidingWindowCmnOptions &opts,
+                              const MatrixBase<double> &input,
+                              MatrixBase<double> *output) {
   opts.Check();
   int32 num_frames = input.NumRows(), dim = input.NumCols();
 
   int32 last_window_start = -1, last_window_end = -1;
   Vector<double> cur_sum(dim), cur_sumsq(dim);
-    
+
   for (int32 t = 0; t < num_frames; t++) {
     int32 window_start, window_end; // note: window_end will be one
     // past the end of the window we use for normalization.
@@ -423,7 +466,7 @@ void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
       if (window_start < 0) window_start = 0;
     }
     if (last_window_start == -1) {
-      SubMatrix<double> input_part(input, 
+      SubMatrix<double> input_part(input,
                                       window_start, window_end - window_start,
                                       0, dim);
       cur_sum.AddRowSumMat(1.0, input_part , 0.0);
@@ -449,7 +492,7 @@ void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
     last_window_start = window_start;
     last_window_end = window_end;
 
-    KALDI_ASSERT(window_frames > 0); 
+    KALDI_ASSERT(window_frames > 0);
     SubVector<double> input_frame(input, t),
         output_frame(*output, t);
     output_frame.CopyFromVec(input_frame);
@@ -477,17 +520,16 @@ void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
 }
 
 
-
 void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
                       const MatrixBase<BaseFloat> &input,
                       MatrixBase<BaseFloat> *output) {
   KALDI_ASSERT(SameDim(input, *output) && input.NumRows() > 0);
   Matrix<double> input_dbl(input), output_dbl(input.NumRows(), input.NumCols());
   // calll double-precision version
-  SlidingWindowCmn(opts, input_dbl, &output_dbl);
+  SlidingWindowCmnInternal(opts, input_dbl, &output_dbl);
   output->CopyFromMat(output_dbl);
 }
-  
+
 
 
 }  // namespace kaldi

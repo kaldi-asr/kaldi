@@ -60,8 +60,8 @@ if [ ! -d $s1 ]; then
   need_to_split=true
 else 
   need_to_split=false
-  for f in utt2spk spk2utt feats.scp text wav.scp cmvn.scp spk2gender \
-    vad.scp segments reco2file_and_channel; do
+  for f in utt2spk spk2utt spk2warp feats.scp text wav.scp cmvn.scp spk2gender \
+    vad.scp segments reco2file_and_channel utt2lang; do
     if [[ -f $data/$f && ( ! -f $s1/$f || $s1/$f -ot $data/$f ) ]]; then
       need_to_split=true
     fi
@@ -78,6 +78,7 @@ for n in `seq $numsplit`; do
    vads="$vads $data/split$numsplit/$n/vad.scp"
    texts="$texts $data/split$numsplit/$n/text"
    utt2spks="$utt2spks $data/split$numsplit/$n/utt2spk"
+   utt2langs="$utt2langs $data/split$numsplit/$n/utt2lang"
 done
 
 if $split_per_spk; then
@@ -94,17 +95,18 @@ utils/split_scp.pl $utt2spk_opt $data/feats.scp $feats || exit 1
 
 [ -f $data/vad.scp ] && utils/split_scp.pl $utt2spk_opt $data/vad.scp $vads
 
+[ -f $data/utt2lang ] && utils/split_scp.pl $utt2spk_opt $data/utt2lang $utt2langs
+
 # If lockfile is not installed, just don't lock it.  It's not a big deal.
 which lockfile >&/dev/null && lockfile -l 60 $data/.split_lock 
 
 for n in `seq $numsplit`; do
    dsn=$data/split$numsplit/$n
    utils/utt2spk_to_spk2utt.pl $dsn/utt2spk > $dsn/spk2utt || exit 1;
-   # for completeness, also split the spk2gender file
-   [ -f $data/spk2gender ] && \
-     utils/filter_scp.pl $dsn/spk2utt $data/spk2gender > $dsn/spk2gender 
-   [ -f $data/cmvn.scp ] && \
-     utils/filter_scp.pl $dsn/spk2utt $data/cmvn.scp > $dsn/cmvn.scp 
+   for f in spk2gender spk2warp cmvn.scp; do
+     [ -f $data/$f ] && \
+       utils/filter_scp.pl $dsn/spk2utt $data/$f > $dsn/$f
+   done
    if [ -f $data/segments ]; then
      utils/filter_scp.pl $dsn/utt2spk $data/segments > $dsn/segments
       awk '{print $2;}' $dsn/segments |sort|uniq > $data/tmp.reco # recording-ids.

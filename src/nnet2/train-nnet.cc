@@ -26,7 +26,8 @@ namespace nnet2 {
 NnetSimpleTrainer::NnetSimpleTrainer(
     const NnetSimpleTrainerConfig &config,
     Nnet *nnet):
-    config_(config), nnet_(nnet) {
+    config_(config), nnet_(nnet), logprob_this_phase_(0.0),
+    weight_this_phase_(0.0), logprob_total_(0.0), weight_total_(0.0) {
   num_phases_ = 0;
   bool first_time = true;
   BeginNewPhase(first_time);
@@ -44,7 +45,7 @@ void NnetSimpleTrainer::TrainOneMinibatch() {
   logprob_this_phase_ += DoBackprop(*nnet_,
                                     buffer_,
                                     nnet_);
-  count_this_phase_ += buffer_.size();
+  weight_this_phase_ += TotalNnetTrainingWeight(buffer_);
   buffer_.clear();
   minibatches_seen_this_phase_++;
   if (minibatches_seen_this_phase_ == config_.minibatches_per_phase) {
@@ -56,10 +57,12 @@ void NnetSimpleTrainer::TrainOneMinibatch() {
 void NnetSimpleTrainer::BeginNewPhase(bool first_time) {
   if (!first_time)
     KALDI_LOG << "Training objective function (this phase) is "
-              << (logprob_this_phase_/count_this_phase_) << " over "
-              << count_this_phase_ << " frames.";
+              << (logprob_this_phase_/weight_this_phase_) << " over "
+              << weight_this_phase_ << " frames.";
+  logprob_total_ += logprob_this_phase_;
+  weight_total_ += weight_this_phase_;
   logprob_this_phase_ = 0.0;
-  count_this_phase_ = 0.0;
+  weight_this_phase_ = 0.0;
   minibatches_seen_this_phase_ = 0;
   num_phases_++;
 }
@@ -74,6 +77,15 @@ NnetSimpleTrainer::~NnetSimpleTrainer() {
       bool first_time = false;
       BeginNewPhase(first_time);
     }
+  }
+  if (weight_total_ == 0.0) {
+    KALDI_WARN << "No data seen.";
+  } else {
+    KALDI_LOG << "Did backprop on " << weight_total_
+              << " examples, average log-prob per frame is "
+              << (logprob_total_ / weight_total_);
+    KALDI_LOG << "[this line is to be parsed by a script:] log-prob-per-frame="
+              << (logprob_total_ / weight_total_);
   }
 }
 

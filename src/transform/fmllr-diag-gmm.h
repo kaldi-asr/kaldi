@@ -87,11 +87,27 @@ class FmllrDiagGmmAccs: public AffineXformStats {
                              const VectorBase<BaseFloat> &data,
                              BaseFloat weight);
 
+  /// This is like AccumulateForGmm but when you have gselect
+  /// (Gaussian selection) information
+  BaseFloat AccumulateForGmmPreselect(const DiagGmm &gmm,
+                                      const std::vector<int32> &gselect,
+                                      const VectorBase<BaseFloat> &data,
+                                      BaseFloat weight);
+  
   /// Accumulate stats for a GMM, given supplied posteriors.
   void AccumulateFromPosteriors(const DiagGmm &gmm,
                                 const VectorBase<BaseFloat> &data,
                                 const VectorBase<BaseFloat> &posteriors);
 
+  /// Accumulate stats for a GMM, given supplied posteriors.  The "posteriors"
+  /// vector should be have the same size as "gselect".
+  void AccumulateFromPosteriorsPreselect(
+      const DiagGmm &gmm,
+      const std::vector<int32> &gselect,
+      const VectorBase<BaseFloat> &data,
+      const VectorBase<BaseFloat> &posteriors);
+
+  
   /// Update
   void Update(const FmllrOptions &opts,
               MatrixBase<BaseFloat> *fmllr_mat,

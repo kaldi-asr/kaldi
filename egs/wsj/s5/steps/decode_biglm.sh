@@ -8,7 +8,7 @@ nj=4
 cmd=run.pl
 maxactive=7000
 beam=13.0
-latbeam=6.0
+lattice_beam=6.0
 acwt=0.083333
 # End configuration.
 
@@ -43,7 +43,7 @@ dir=$5
 srcdir=`dirname $dir`; # The model directory is one level up from decoding directory.
 sdata=$data/split$nj;
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
-norm_vars=`cat $srcdir/norm_vars 2>/dev/null` || norm_vars=false # cmn/cmvn option, default false.
+cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
@@ -59,8 +59,8 @@ if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "decode_si.sh: feature type is $feat_type"
 
 case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |";;
+  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
+  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |";;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
 
@@ -75,7 +75,7 @@ oldlm_cmd="fstproject --project_output=true $oldlm_fst | fstarcsort --sort_type=
 newlm_cmd="fstproject --project_output=true $newlm_fst | fstarcsort --sort_type=ilabel |"
 
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
- gmm-latgen-biglm-faster --max-active=$maxactive --beam=$beam --lattice-beam=$latbeam \
+ gmm-latgen-biglm-faster --max-active=$maxactive --beam=$beam --lattice-beam=$lattice_beam \
    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $srcdir/final.mdl $graphdir/HCLG.fst "$oldlm_cmd" "$newlm_cmd" "$feats" \
   "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;

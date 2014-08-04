@@ -90,16 +90,17 @@ for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep WER $x/wer_* | 
 %WER 19.4 | 1831 21395 | 82.4 11.6 5.9 1.8 19.4 56.2 | exp/nnet5a/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
 %WER 18.0 | 1831 21395 | 83.7 10.7 5.5 1.7 18.0 55.5 | exp/nnet5a_gpu/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
 %WER 18.6 | 1831 21395 | 83.4 11.2 5.4 2.0 18.6 56.6 | exp/nnet5a_gpu/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
-%WER 18.3 | 1831 21395 | 83.4 11.0 5.6 1.7 18.3 56.6 | exp/nnet5b.old/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
-%WER 18.7 | 1831 21395 | 83.1 11.3 5.6 1.9 18.7 56.7 | exp/nnet5b.old/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
-%WER 18.0 | 1831 21395 | 83.7 10.7 5.5 1.7 18.0 55.5 | exp/nnet5b2.old/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
-%WER 18.6 | 1831 21395 | 83.4 11.2 5.4 2.0 18.6 56.6 | exp/nnet5b2.old/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
+
 %WER 15.3 | 1831 21395 | 86.5 9.0 4.5 1.8 15.3 53.0 | exp/nnet5c_gpu/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
 %WER 15.7 | 1831 21395 | 86.1 9.3 4.5 1.9 15.7 53.3 | exp/nnet5c_gpu/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 18.1 | 1831 21395 | 83.8 10.8 5.4 1.9 18.1 56.0 | exp/nnet5d_gpu/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys 
+%WER 17.5 | 1831 21395 | 84.1 10.4 5.4 1.7 17.5 54.9 | exp/nnet5d_gpu/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
 %WER 17.9 | 1831 21395 | 83.8 10.8 5.5 1.7 17.9 55.8 | exp/nnet6a_gpu/decode_eval2000_sw1_fsh_tgpr/score_13/eval2000.ctm.swbd.filt.sys
 %WER 18.4 | 1831 21395 | 83.6 11.4 5.0 2.1 18.4 56.1 | exp/nnet6a_gpu/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
+%WER 15.2 | 1831 21935 | 86.4  8.7 4.9 1.6 15.2 52.5 | exp/nnet5f_gpu/decode_eval2000_sw1_fsh_tgpr/score_14/eval2000.ctm.swbd.filt.sys
+$WER 15.6 | 1831 21395 | 86.2  9.2 4.5 1.9 15.6 53.0 | exp/nnet5f_gpu/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
 
-# Discriminative training on top of 5c (14.6 still not as Good as Karel's 14.1 number with this LM, but getting closer).
+# Discriminative training on top of 5c (14.6 still not as good as Karel's 14.1 number with this LM, but getting closer).
 %WER 15.0 | 1831 21395 | 87.3 9.0 3.7 2.3 15.0 52.2 | exp/nnet6c_mpe_gpu/decode_eval2000_sw1_fsh_tgpr_epoch1/score_15/eval2000.ctm.swbd.filt.sys
 %WER 14.8 | 1831 21395 | 87.3 8.9 3.8 2.2 14.8 51.9 | exp/nnet6c_mpe_gpu/decode_eval2000_sw1_fsh_tgpr_epoch2/score_16/eval2000.ctm.swbd.filt.sys
 %WER 14.7 | 1831 21395 | 87.5 8.9 3.6 2.2 14.7 51.7 | exp/nnet6c_mpe_gpu/decode_eval2000_sw1_fsh_tgpr_epoch3/score_16/eval2000.ctm.swbd.filt.sys

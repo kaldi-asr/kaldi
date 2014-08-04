@@ -1,6 +1,7 @@
 // feat/feature-functions.h
 
 // Copyright 2009-2011  Karel Vesely;  Petr Motlicek;  Microsoft Corporation
+//                2014  IMSL, PKU-HKUST (author: Wei Shi)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -41,11 +42,15 @@ struct MelBanksOptions {
   // ->added to the Nyquist frequency to get the cutoff.
   BaseFloat vtln_low;  // vtln lower cutoff of warping function.
   BaseFloat vtln_high;  // vtln upper cutoff of warping function: if negative, added
-  // to the Nyquist frequency to get the cutoff.
+                        // to the Nyquist frequency to get the cutoff.
   bool debug_mel;
+  // htk_mode is a "hidden" config, it does not show up on command line.
+  // Enables more exact compatibibility with HTK, for testing purposes.  Affects
+  // mel-energy flooring and reproduces a bug in HTK.
+  bool htk_mode;
   explicit MelBanksOptions(int num_bins = 25)
-      : num_bins(num_bins), low_freq(20), high_freq(0), vtln_low(400),
-        vtln_high(-400), debug_mel(false) {}
+      : num_bins(num_bins), low_freq(20), high_freq(0), vtln_low(100),
+        vtln_high(-500), debug_mel(false), htk_mode(false) {}
 
   void Register(OptionsItf *po) {
     po->Register("num-mel-bins", &num_bins,
@@ -74,6 +79,7 @@ struct FrameExtractionOptions {
   bool remove_dc_offset;  // Subtract mean of wave before FFT.
   std::string window_type;  // e.g. Hamming window
   bool round_to_power_of_two;
+  bool snip_edges;
   // Maybe "hamming", "rectangular", "povey", "hanning"
   // "povey" is a window I made to be similar to Hamming but to go to zero at the
   // edges, it's pow((0.5 - 0.5*cos(n/N*2*pi)), 0.85)
@@ -86,7 +92,8 @@ struct FrameExtractionOptions {
       preemph_coeff(0.97),
       remove_dc_offset(true),
       window_type("povey"),
-      round_to_power_of_two(true) { }
+      round_to_power_of_two(true),
+      snip_edges(true){ }
 
   void Register(OptionsItf *po) {
     po->Register("sample-frequency", &samp_freq,
@@ -103,6 +110,11 @@ struct FrameExtractionOptions {
                  "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\")");
     po->Register("round-to-power-of-two", &round_to_power_of_two,
                  "If true, round window size to power of two.");
+    po->Register("snip-edges", &snip_edges,
+                 "If true, end effects will be handled by outputting only frames that "
+                 "completely fit in the file, and the number of frames depends on the "
+                 "frame-length.  If false, the number of frames depends only on the "
+                 "frame-shift, and we reflect the data at the ends.");
   }
   int32 WindowShift() const {
     return static_cast<int32>(samp_freq * 0.001 * frame_shift_ms);
@@ -216,7 +228,7 @@ class DeltaFeatures {
 
 struct ShiftedDeltaFeaturesOptions {
   int32 window,           // The time delay and advance
-        num_blocks,       
+        num_blocks,
         block_shift;      // Distance between consecutive blocks
 
   ShiftedDeltaFeaturesOptions():
@@ -245,7 +257,7 @@ class ShiftedDeltaFeatures {
  private:
   ShiftedDeltaFeaturesOptions opts_;
   Vector<BaseFloat> scales_;  // a scaling window for each
-  
+
 };
 
 // ComputeDeltas is a convenience function that computes deltas on a feature
@@ -300,7 +312,7 @@ struct SlidingWindowCmnOptions {
   int min_window;
   bool normalize_variance;
   bool center;
-  
+
   SlidingWindowCmnOptions():
       cmn_window(600),
       min_window(100),
@@ -310,7 +322,7 @@ struct SlidingWindowCmnOptions {
   void Register(OptionsItf *po) {
     po->Register("cmn-window", &cmn_window, "Window in frames for running "
                  "average CMN computation");
-    po->Register("min-cmn-window", &min_window, "Minumum CMN window "
+    po->Register("min-cmn-window", &min_window, "Minimum CMN window "
                  "used at start of decoding (adds latency only at start). "
                  "Only applicable if center == false, ignored if center==true");
     po->Register("norm-vars", &normalize_variance, "If true, normalize "

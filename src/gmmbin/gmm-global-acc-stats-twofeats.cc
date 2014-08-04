@@ -1,6 +1,7 @@
 // gmmbin/gmm-global-acc-stats-twofeats.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University
+//                2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -32,6 +33,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Accumulate stats for training a diagonal-covariance GMM, two-feature version\n"
+        "First features are used to get posteriors, second to accumulate stats\n"
         "Usage:  gmm-global-acc-stats-twofeats [options] <model-in> "
         "<feature1-rspecifier> <feature2-rspecifier> <stats-out>\n"
         "e.g.: gmm-global-acc-stats-twofeats 1.mdl scp:train.scp scp:train2.scp 1.acc\n";

@@ -34,7 +34,8 @@ class AffineTransform : public UpdatableComponent {
   AffineTransform(int32 dim_in, int32 dim_out) 
     : UpdatableComponent(dim_in, dim_out), 
       linearity_(dim_out, dim_in), bias_(dim_out),
-      linearity_corr_(dim_out, dim_in), bias_corr_(dim_out) 
+      linearity_corr_(dim_out, dim_in), bias_corr_(dim_out),
+      learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0) 
   { }
   ~AffineTransform()
   { }
@@ -45,15 +46,18 @@ class AffineTransform : public UpdatableComponent {
   void InitData(std::istream &is) {
     // define options
     float bias_mean = -2.0, bias_range = 2.0, param_stddev = 0.1;
+    float learn_rate_coef = 1.0, bias_learn_rate_coef = 1.0;
     // parse config
     std::string token; 
     while (!is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<BiasMean>")    ReadBasicType(is, false, &bias_mean);
-      else if (token == "<BiasRange>")    ReadBasicType(is, false, &bias_range);
+      else if (token == "<BiasRange>")   ReadBasicType(is, false, &bias_range);
+      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
+      else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
-                     << " (ParamStddev|BiasMean|BiasRange)";
+                     << " (ParamStddev|BiasMean|BiasRange|LearnRateCoef|BiasLearnRateCoef)";
       is >> std::ws; // eat-up whitespace
     }
 
@@ -75,9 +79,20 @@ class AffineTransform : public UpdatableComponent {
     }
     bias_ = vec;
     //
+    learn_rate_coef_ = learn_rate_coef;
+    bias_learn_rate_coef_ = bias_learn_rate_coef;
+    //
   }
 
   void ReadData(std::istream &is, bool binary) {
+    // optional learning-rate coefs
+    if ('<' == Peek(is, binary)) {
+      ExpectToken(is, binary, "<LearnRateCoef>");
+      ReadBasicType(is, binary, &learn_rate_coef_);
+      ExpectToken(is, binary, "<BiasLearnRateCoef>");
+      ReadBasicType(is, binary, &bias_learn_rate_coef_);
+    }
+    // weights
     linearity_.Read(is, binary);
     bias_.Read(is, binary);
 
@@ -87,6 +102,11 @@ class AffineTransform : public UpdatableComponent {
   }
 
   void WriteData(std::ostream &os, bool binary) const {
+    WriteToken(os, binary, "<LearnRateCoef>");
+    WriteBasicType(os, binary, learn_rate_coef_);
+    WriteToken(os, binary, "<BiasLearnRateCoef>");
+    WriteBasicType(os, binary, bias_learn_rate_coef_);
+    // weights
     linearity_.Write(os, binary);
     bias_.Write(os, binary);
   }
@@ -105,8 +125,10 @@ class AffineTransform : public UpdatableComponent {
            "\n  bias" + MomentStatistics(bias_);
   }
   std::string InfoGradient() const {
-    return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) +
-           "\n  bias_grad" + MomentStatistics(bias_corr_);
+    return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) + 
+           ", lr-coef " + ToString(learn_rate_coef_) +
+           "\n  bias_grad" + MomentStatistics(bias_corr_) + 
+           ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
 
 
@@ -144,12 +166,12 @@ class AffineTransform : public UpdatableComponent {
       cu::RegularizeL1(&linearity_, &linearity_corr_, lr*l1*num_frames, lr);
     }
     // update
-    linearity_.AddMat(-lr, linearity_corr_);
-    bias_.AddVec(-lr, bias_corr_);
+    linearity_.AddMat(-lr*learn_rate_coef_, linearity_corr_);
+    bias_.AddVec(-lr*bias_learn_rate_coef_, bias_corr_);
   }
 
   /// Accessors to the component parameters
-  const CuVector<BaseFloat>& GetBias() {
+  const CuVector<BaseFloat>& GetBias() const {
     return bias_;
   }
 
@@ -158,7 +180,7 @@ class AffineTransform : public UpdatableComponent {
     bias_.CopyFromVec(bias);
   }
 
-  const CuMatrix<BaseFloat>& GetLinearity() {
+  const CuMatrix<BaseFloat>& GetLinearity() const {
     return linearity_;
   }
 
@@ -168,11 +190,11 @@ class AffineTransform : public UpdatableComponent {
     linearity_.CopyFromMat(linearity);
   }
 
-  const CuVector<BaseFloat>& GetBiasCorr() {
+  const CuVector<BaseFloat>& GetBiasCorr() const {
     return bias_corr_;
   }
 
-  const CuMatrix<BaseFloat>& GetLinearityCorr() {
+  const CuMatrix<BaseFloat>& GetLinearityCorr() const {
     return linearity_corr_;
   }
 
@@ -183,6 +205,9 @@ class AffineTransform : public UpdatableComponent {
 
   CuMatrix<BaseFloat> linearity_corr_;
   CuVector<BaseFloat> bias_corr_;
+
+  BaseFloat learn_rate_coef_;
+  BaseFloat bias_learn_rate_coef_;
 };
 
 } // namespace nnet1

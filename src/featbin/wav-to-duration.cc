@@ -28,7 +28,9 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Read wav files and output an archive consisting of a single float:\n"
         "the duration of each one in seconds.\n"
-        "Usage:  wav-to-duration [options...] <wav-rspecifier> <duration-wspecifier>\n";
+        "Usage:  wav-to-duration [options...] <wav-rspecifier> <duration-wspecifier>\n"
+        "E.g.: wav-to-duration scp:wav.scp ark,t:-\n"
+        "See also: wav-copy extract-segments feat-to-len\n";
 
     ParseOptions po(usage);
 

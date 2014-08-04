@@ -36,7 +36,8 @@ int main(int argc, char *argv[]) {
         "Select certain dimensions of the feature file;  think of it as the unix\n"
         "command cut -f ...\n"
         "Usage: select-feats selection in-rspecifier out-wspecifier\n"
-        "  e.g. select-feats 0,24-22,3-12 scp:feats.scp ark,scp:feat-red.ark,feat-red.scp\n";
+        "  e.g. select-feats 0,24-22,3-12 scp:feats.scp ark,scp:feat-red.ark,feat-red.scp\n"
+        "See also copy-feats, extract-rows, subset-feats, subsample-feats\n";
     
     ParseOptions po(usage);
     

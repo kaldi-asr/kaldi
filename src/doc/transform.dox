@@ -49,8 +49,6 @@ namespace kaldi {
 
   We next discuss regression class trees and transforms that use them:
     - \ref transform_regtree
-    - \ref transform_regtree_cmllr
-    - \ref transform_regtree_mllr
     
     
   \section transform_apply Applying global linear or affine feature transforms
@@ -737,11 +735,9 @@ any recipes, we have not done so yet.
 
 \section transform_regtree Building regression trees for adaptation
 
-  Kaldi supports regression-tree MLLR and CMLLR/fMLLR.  For
+  Kaldi supports regression-tree MLLR and CMLLR (also known as fMLLR).  For
   an overview of regression trees, see "The generation and use of regression class trees for MLLR
-  adaptation" by M. J. F. Gales, CUED technical report, 1996.  [Arnab work on this section?]
-
-
+  adaptation" by M. J. F. Gales, CUED technical report, 1996.
 
 
 

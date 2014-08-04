@@ -90,6 +90,12 @@ class MlltAccs {
                               const VectorBase<BaseFloat> &data,
                               BaseFloat weight);  // e.g. weight = 1.0
 
+  BaseFloat AccumulateFromGmmPreselect(const DiagGmm &gmm,
+                                       const std::vector<int32> &gselect,
+                                       const VectorBase<BaseFloat> &data,
+                                       BaseFloat weight);  // e.g. weight = 1.0
+
+  
   // premultiplies the means of the model by M.  typically called
   // after update.
   // removed since we now do this using different code.

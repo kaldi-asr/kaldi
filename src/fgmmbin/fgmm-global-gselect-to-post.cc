@@ -35,10 +35,12 @@ int main(int argc, char *argv[]) {
         "a full-covariance GMM, output per-frame posteriors for the selected\n"
         "indices.  Also supports pruning the posteriors if they are below\n"
         "a stated threshold, (and renormalizing the rest to sum to one)\n"
+        "See also: gmm-gselect, fgmm-gselect, gmm-global-get-post,\n"
+        " gmm-global-gselect-to-post\n"
         "\n"
         "Usage:  fgmm-global-gselect-to-post [options] <model-in> <feature-rspecifier> "
         "<gselect-rspecifier> <post-wspecifier>\n"
-        "e.g.: fgmm-global-gselect-to-post 1.mdl ark:- 'ark:gunzip -c 1.gselect|' ark:-\n";
+        "e.g.: fgmm-global-gselect-to-post 1.ubm ark:- 'ark:gunzip -c 1.gselect|' ark:-\n";
         
     ParseOptions po(usage);
 

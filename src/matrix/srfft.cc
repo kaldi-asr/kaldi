@@ -37,13 +37,12 @@ SplitRadixComplexFft<Real>::SplitRadixComplexFft(MatrixIndexT N) {
     KALDI_ERR << "SplitRadixComplexFft called with invalid number of points "
               << N;
   N_ = N;
-  logm_ = 0;
+  logn_ = 0;
   while (N > 1) {
     N >>= 1;
-    logm_ ++;
+    logn_ ++;
   }
   ComputeTables();
-  temp_buffer = NULL;
 }
 
 template<typename Real>
@@ -53,34 +52,34 @@ void SplitRadixComplexFft<Real>::ComputeTables() {
   Real    *cn, *spcn, *smcn, *c3n, *spc3n, *smc3n;
   Real    ang, c, s;
 
-  lg2 = logm_ >> 1;
-  if (logm_ & 1) lg2++;
-  brseed = new MatrixIndexT[1 << lg2];
-  brseed[0] = 0;
-  brseed[1] = 1;
+  lg2 = logn_ >> 1;
+  if (logn_ & 1) lg2++;
+  brseed_ = new MatrixIndexT[1 << lg2];
+  brseed_[0] = 0;
+  brseed_[1] = 1;
   for (j = 2; j <= lg2; j++) {
     imax = 1 << (j - 1);
     for (i = 0; i < imax; i++) {
-      brseed[i] <<= 1;
-      brseed[i + imax] = brseed[i] + 1;
+      brseed_[i] <<= 1;
+      brseed_[i + imax] = brseed_[i] + 1;
     }
   }
 
-  if (logm_ < 4) {
-    tab = NULL;
+  if (logn_ < 4) {
+    tab_ = NULL;
   } else {
-    tab = new Real* [logm_-3];
-    for (i = logm_; i>=4 ; i--) {
+    tab_ = new Real* [logn_-3];
+    for (i = logn_; i>=4 ; i--) {
       /* Compute a few constants */
       m = 1 << i; m2 = m / 2; m4 = m2 / 2; m8 = m4 /2;
 
       /* Allocate memory for tables */
       nel = m4 - 2;
 
-      tab[i-4] = new Real[6*nel];
+      tab_[i-4] = new Real[6*nel];
 
       /* Initialize pointers */
-      cn = tab[i-4]; spcn  = cn + nel;  smcn  = spcn + nel;
+      cn = tab_[i-4]; spcn  = cn + nel;  smcn  = spcn + nel;
       c3n = smcn + nel;  spc3n = c3n + nel; smc3n = spc3n + nel;
 
       /* Compute tables */
@@ -99,14 +98,12 @@ void SplitRadixComplexFft<Real>::ComputeTables() {
 
 template<typename Real>
 SplitRadixComplexFft<Real>::~SplitRadixComplexFft() {
-  delete [] brseed;
-  if (tab != NULL) {
-    for (MatrixIndexT i = 0; i < logm_-3; i++)
-      delete [] tab[i];
-    delete [] tab;
+  delete [] brseed_;
+  if (tab_ != NULL) {
+    for (MatrixIndexT i = 0; i < logn_-3; i++)
+      delete [] tab_[i];
+    delete [] tab_;
   }
-  if (temp_buffer != NULL)
-    delete [] temp_buffer;
 }
 
 template<typename Real>
@@ -116,57 +113,65 @@ void SplitRadixComplexFft<Real>::Compute(Real *xr, Real *xi, bool forward) const
     xr = xi;
     xi = tmp;
   }
-  ComputeRecursive(xr, xi, logm_);
-  if (logm_ > 1) {
-    BitReversePermute(xr, logm_);
-    BitReversePermute(xi, logm_);
+  ComputeRecursive(xr, xi, logn_);
+  if (logn_ > 1) {
+    BitReversePermute(xr, logn_);
+    BitReversePermute(xi, logn_);
   }
 }
 
 template<typename Real>
-void SplitRadixComplexFft<Real>::Compute(Real *x, bool forward) {
-  if (temp_buffer == NULL)
-    temp_buffer = new Real[N_];
+void SplitRadixComplexFft<Real>::Compute(Real *x, bool forward,
+                                         std::vector<Real> *temp_buffer) const {
+  KALDI_ASSERT(temp_buffer != NULL);
+  if (temp_buffer->size() != N_)
+    temp_buffer->resize(N_);
+  Real *temp_ptr = &((*temp_buffer)[0]);
   for (MatrixIndexT i = 0; i < N_; i++) {
-    x[i] = x[i*2];  // put the real part in the first half of x.
-    temp_buffer[i] = x[i*2 + 1];  // put the imaginary part in temp_buffer.
+    x[i] = x[i * 2];  // put the real part in the first half of x.
+    temp_ptr[i] = x[i * 2 + 1];  // put the imaginary part in temp_buffer.
   }
   // copy the imaginary part back to the second half of x.
-  memcpy(static_cast<void*>(x+N_),
-         static_cast<void*>(temp_buffer),
+  memcpy(static_cast<void*>(x + N_),
+         static_cast<void*>(temp_ptr),
          sizeof(Real) * N_);
 
-  Compute(x, x+N_, forward);
+  Compute(x, x + N_, forward);
   // Now change the format back to interleaved.
-  memcpy(static_cast<void*>(temp_buffer),
-         static_cast<void*>(x+N_),
+  memcpy(static_cast<void*>(temp_ptr),
+         static_cast<void*>(x + N_),
          sizeof(Real) * N_);
   for (MatrixIndexT i = N_-1; i > 0; i--) {  // don't include 0,
     // in case MatrixIndexT is unsigned, the loop would not terminate.
     // Treat it as a special case.
     x[i*2] = x[i];
-    x[i*2 + 1] = temp_buffer[i];
+    x[i*2 + 1] = temp_ptr[i];
   }
-  x[1] = temp_buffer[0];  // special case of i = 0.
+  x[1] = temp_ptr[0];  // special case of i = 0.
 }
 
 template<typename Real>
-void SplitRadixComplexFft<Real>::BitReversePermute(Real *x, MatrixIndexT logm) const {
+void SplitRadixComplexFft<Real>::Compute(Real *x, bool forward) {
+  this->Compute(x, forward, &temp_buffer_);
+}
+
+template<typename Real>
+void SplitRadixComplexFft<Real>::BitReversePermute(Real *x, MatrixIndexT logn) const {
   MatrixIndexT      i, j, lg2, n;
   MatrixIndexT      off, fj, gno, *brp;
   Real    tmp, *xp, *xq;
 
-  lg2 = logm >> 1;
+  lg2 = logn >> 1;
   n = 1 << lg2;
-  if (logm & 1) lg2++;
+  if (logn & 1) lg2++;
 
   /* Unshuffling loop */
   for (off = 1; off < n; off++) {
-    fj = n * brseed[off]; i = off; j = fj;
+    fj = n * brseed_[off]; i = off; j = fj;
     tmp = x[i]; x[i] = x[j]; x[j] = tmp;
     xp = &x[i];
-    brp = &(brseed[1]);
-    for (gno = 1; gno < brseed[off]; gno++) {
+    brp = &(brseed_[1]);
+    for (gno = 1; gno < brseed_[off]; gno++) {
       xp += n;
       j = fj + *brp++;
       xq = x + j;
@@ -177,7 +182,7 @@ void SplitRadixComplexFft<Real>::BitReversePermute(Real *x, MatrixIndexT logm) c
 
 
 template<typename Real>
-void SplitRadixComplexFft<Real>::ComputeRecursive(Real *xr, Real *xi, MatrixIndexT logm) const {
+void SplitRadixComplexFft<Real>::ComputeRecursive(Real *xr, Real *xi, MatrixIndexT logn) const {
 
   MatrixIndexT    m, m2, m4, m8, nel, n;
   Real    *xr1, *xr2, *xi1, *xi2;
@@ -185,13 +190,13 @@ void SplitRadixComplexFft<Real>::ComputeRecursive(Real *xr, Real *xi, MatrixInde
   Real    tmp1, tmp2;
   Real   sqhalf = M_SQRT1_2;
 
-  /* Check range of logm */
-  if (logm < 0)
-    KALDI_ERR << "Error: logm is out of bounds in SRFFT";
+  /* Check range of logn */
+  if (logn < 0)
+    KALDI_ERR << "Error: logn is out of bounds in SRFFT";
 
   /* Compute trivial cases */
-  if (logm < 3) {
-    if (logm == 2) {  /* length m = 4 */
+  if (logn < 3) {
+    if (logn == 2) {  /* length m = 4 */
       xr2  = xr + 2;
       xi2  = xi + 2;
       tmp1 = *xr + *xr2;
@@ -230,7 +235,7 @@ void SplitRadixComplexFft<Real>::ComputeRecursive(Real *xr, Real *xi, MatrixInde
       *xi2 = tmp2;
       return;
     }
-    else if (logm == 1) {   /* length m = 2 */
+    else if (logn == 1) {   /* length m = 2 */
       xr2  = xr + 1;
       xi2  = xi + 1;
       tmp1 = *xr + *xr2;
@@ -241,11 +246,11 @@ void SplitRadixComplexFft<Real>::ComputeRecursive(Real *xr, Real *xi, MatrixInde
       *xi  = tmp1;
       return;
     }
-    else if (logm == 0) return;   /* length m = 1 */
+    else if (logn == 0) return;   /* length m = 1 */
   }
 
   /* Compute a few constants */
-  m = 1 << logm; m2 = m / 2; m4 = m2 / 2; m8 = m4 /2;
+  m = 1 << logn; m2 = m / 2; m4 = m2 / 2; m8 = m4 /2;
 
 
   /* Step 1 */
@@ -279,9 +284,9 @@ void SplitRadixComplexFft<Real>::ComputeRecursive(Real *xr, Real *xi, MatrixInde
   /* Steps 3 & 4 */
   xr1 = xr + m2; xr2 = xr1 + m4;
   xi1 = xi + m2; xi2 = xi1 + m4;
-  if (logm >= 4) {
+  if (logn >= 4) {
     nel = m4 - 2;
-    cn  = tab[logm-4]; spcn  = cn + nel;  smcn  = spcn + nel;
+    cn  = tab_[logn-4]; spcn  = cn + nel;  smcn  = spcn + nel;
     c3n = smcn + nel;  spc3n = c3n + nel; smc3n = spc3n + nel;
   }
   xr1++; xr2++; xi1++; xi2++;
@@ -308,25 +313,33 @@ void SplitRadixComplexFft<Real>::ComputeRecursive(Real *xr, Real *xi, MatrixInde
   }
 
   /* Call ssrec again with half DFT length */
-  ComputeRecursive(xr, xi, logm-1);
+  ComputeRecursive(xr, xi, logn-1);
 
   /* Call ssrec again twice with one quarter DFT length.
      Constants have to be recomputed, because they are static! */
-  // m = 1 << logm; m2 = m / 2;
-  ComputeRecursive(xr + m2, xi + m2, logm-2);
-  // m = 1 << logm;
+  // m = 1 << logn; m2 = m / 2;
+  ComputeRecursive(xr + m2, xi + m2, logn - 2);
+  // m = 1 << logn;
   m4 = 3 * (m / 4);
-  ComputeRecursive(xr + m4, xi + m4, logm-2);
+  ComputeRecursive(xr + m4, xi + m4, logn - 2);
 }
+
+
+template<typename Real>
+void SplitRadixRealFft<Real>::Compute(Real *data, bool forward) {
+  Compute(data, forward, &this->temp_buffer_);
+}
+
 
 // This code is mostly the same as the RealFft function.  It would be
 // possible to replace it with more efficient code from Rico's book.
 template<typename Real>
-void SplitRadixRealFft<Real>::Compute(Real *data, bool forward) {
+void SplitRadixRealFft<Real>::Compute(Real *data, bool forward,
+                                      std::vector<Real> *temp_buffer) const {
   MatrixIndexT N = N_, N2 = N/2;
   KALDI_ASSERT(N%2 == 0);
   if (forward) // call to base class
-    SplitRadixComplexFft<Real>::Compute(data, true);
+    SplitRadixComplexFft<Real>::Compute(data, true, temp_buffer);
 
   Real rootN_re, rootN_im;  // exp(-2pi/N), forward; exp(2pi/N), backward
   int forward_sign = forward ? -1 : 1;
@@ -382,7 +395,7 @@ void SplitRadixRealFft<Real>::Compute(Real *data, bool forward) {
     }
   }
   if (!forward) {  // call to base class
-    SplitRadixComplexFft<Real>::Compute(data, false);
+    SplitRadixComplexFft<Real>::Compute(data, false, temp_buffer);
     for (MatrixIndexT i = 0; i < N; i++)
       data[i] *= 2.0;
     // This is so we get a factor of N increase, rather than N/2 which we would

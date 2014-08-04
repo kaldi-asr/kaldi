@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     std::string full_matrix_wxfilename;
     LdaEstimateOptions opts;
     ParseOptions po(usage);
-    po.Register("binary", &binary, "Write accumulators in binary mode.");
+    po.Register("binary", &binary, "Write matrix in binary mode.");
     po.Register("write-full-matrix", &full_matrix_wxfilename,
                 "Write full LDA matrix to this location.");
     opts.Register(&po);

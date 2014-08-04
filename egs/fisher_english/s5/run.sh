@@ -153,8 +153,15 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 (
   utils/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   exp/tri5a/graph data/dev exp/tri5a/decode_dev
+    exp/tri5a/graph data/dev exp/tri5a/decode_dev
 )&
+
+#
+# steps/cleanup/find_bad_utts.sh --nj 200 --cmd "$train_cmd" data/train data/lang \
+#   exp/tri5a exp/tri5a_cleanup
+
 
 # local/run_for_spkid.sh
 
+# we don't have to results for the step below yet.
+# local/run_nnet2.sh

@@ -10,12 +10,18 @@
 temp_dir=
 train_stage=-10
 
-. cmd.sh
+. ./cmd.sh
+. ./path.sh
+! cuda-compiled && cat <<EOF && exit 1 
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+If you want to use GPUs (and have them), go to src/, and configure and make on a machine
+where "nvcc" is installed.
+EOF
 
 
 . utils/parse_options.sh
 
-parallel_opts="-l gpu=1,hostname=g*"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely have to change it.
 
 alidir=exp/nnet5a_ali_100k_nodup
 if [ ! -f $alidir/.done ]; then

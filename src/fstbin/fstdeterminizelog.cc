@@ -34,8 +34,10 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Determinizes in the log semiring\n"
         "\n"
-        "Usage:  fstdeterminizelog [in.fst [out.fst] ]\n";
-
+        "Usage:  fstdeterminizelog [in.fst [out.fst] ]\n"
+        "\n"
+        "See also fstdeterminizestar\n";
+    
     ParseOptions po(usage);
     po.Read(argc, argv);
 

@@ -85,6 +85,7 @@ fi
 mkdir -p $kwsdatadir
 
 if [ -z $subset_ecf ] ; then
+  test -f $kwsdatadir/ecf.xml && rm -f $kwsdatadir/ecf.xml 
   cp "$ecf_file" $kwsdatadir/ecf.xml || exit 1
 else
   local/make_ecf_subset.sh $subset_ecf $ecf_file > $kwsdatadir/ecf.xml
@@ -107,10 +108,12 @@ if $kwlist_wordlist ; then
  echo '</kwlist>'
 ) > $kwsdatadir/kwlist.xml || exit 1
 else
+  test -f $kwsdatadir/kwlist.xml && rm -f $kwsdatadir/kwlist.xml
   cp "$kwlist_file" $kwsdatadir/kwlist.xml || exit 1
 fi
 
 if [ ! -z $rttm_file ] ; then
+  test -f $kwsdatadir/rttm && rm -f $kwsdatadir/rttm
   cp "$rttm_file" $kwsdatadir/rttm || exit 1
 fi
 

@@ -21,9 +21,8 @@ randprune=4.0 # This is approximately the ratio by which we will speed up the
               # LDA and MLLT calculations via randomized pruning.
 splice_opts=
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
-norm_vars=false # false : cmn, true : cmvn
-                # To turn off CMN completely, supply the --fake option to
-                # compute_cmvn.sh.
+norm_vars=false # deprecated.  Prefer --cmvn-opts "--norm-vars=false"
+cmvn_opts=
 # End configuration.
 train_tree=true  # if false, don't actually train the tree.
 use_lda_mat=  # If supplied, use this LDA[+MLLT] matrix.
@@ -66,13 +65,16 @@ echo $nj >$dir/num_jobs
 echo "$splice_opts" >$dir/splice_opts # keep track of frame-splicing options
            # so that later stages of system building can know what they were.
 
-echo $norm_vars > $dir/norm_vars # keep track of feature normalization type
-           # so that later stages of system building can know what they were.
+
+[ $(cat $alidir/cmvn_opts 2>/dev/null | wc -c) -gt 1 ] && [ -z "$cmvn_opts" ] && \
+  echo "$0: warning: ignoring CMVN options from source directory $alidir"
+$norm_vars && cmvn_opts="--norm-vars=true $cmvn_opts"
+echo $cmvn_opts > $dir/cmvn_opts # keep track of options to CMVN.
 
 sdata=$data/split$nj;
 split_data.sh $data $nj || exit 1;
 
-splicedfeats="ark,s,cs:apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
+splicedfeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- |"
 # Note: $feats gets overwritten later in the script.
 feats="$splicedfeats transform-feats $dir/0.mat ark:- ark:- |"
 

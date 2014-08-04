@@ -26,9 +26,21 @@
 #include "util/text-utils.h"
 
 #include <algorithm>
+#include <sstream>
 
 namespace kaldi {
 namespace nnet1 {
+
+
+/**
+ * Convert basic type to string (try not to overuse as ostringstream creation is slow)
+ */
+template <typename T> 
+std::string ToString(const T& t) { 
+  std::ostringstream os; 
+  os << t; 
+  return os.str(); 
+}
 
 
 /**
@@ -39,24 +51,25 @@ template <typename Real>
 std::string MomentStatistics(const Vector<Real> &vec) {
   // we use an auxiliary vector for the higher order powers
   Vector<Real> vec_aux(vec);
+  Vector<Real> vec_no_mean(vec); // vec with mean subtracted
   // mean
   Real mean = vec.Sum() / vec.Dim();
   // variance
-  vec_aux.Add(-mean);
-  vec_aux.MulElements(vec); // (vec-mean)^2
+  vec_aux.Add(-mean); vec_no_mean = vec_aux;
+  vec_aux.MulElements(vec_no_mean); // (vec-mean)^2
   Real variance = vec_aux.Sum() / vec.Dim();
   // skewness 
   // - negative : left tail is longer, 
   // - positive : right tail is longer, 
   // - zero : symmetric
-  vec_aux.MulElements(vec); // (vec-mean)^3
+  vec_aux.MulElements(vec_no_mean); // (vec-mean)^3
   Real skewness = vec_aux.Sum() / pow(variance, 3.0/2.0) / vec.Dim();
   // kurtosis (peakedness)
   // - makes sense for symmetric distributions (skewness is zero)
   // - positive : 'sharper peak' than Normal distribution
   // - negative : 'heavier tails' than Normal distribution
   // - zero : same peakedness as the Normal distribution
-  vec_aux.MulElements(vec); // (vec-mean)^4
+  vec_aux.MulElements(vec_no_mean); // (vec-mean)^4
   Real kurtosis = vec_aux.Sum() / (variance * variance) / vec.Dim() - 3.0;
   // send the statistics to stream,
   std::ostringstream ostr;
