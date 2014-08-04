@@ -72,7 +72,7 @@ while(<>) {
     $line = "$file $channel $wbegin_r $wlen $w\n"; 
   }
   if ($wbegin_r + $wlen > $e + 0.01) {
-    print STDERR "Warning: word appears to be past end of recording; line is $line";
+    print STDERR "Warning: word appears to be past end of recording ($e secs); line is $line";
   }
   print $line; # goes to stdout.
 }

@@ -77,4 +77,5 @@ fi
 dev10h_nj=60
 unsup_nj=120
 shadow_nj=60
-eval_nj=60
+shadow2_nj=120
+eval_nj=120

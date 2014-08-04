@@ -6,7 +6,7 @@
 # Begin configuration section.  
 cmd=run.pl
 nbest=-1
-strict=true
+strict=false
 indices_dir=
 # End configuration section.
 
