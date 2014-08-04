@@ -14,8 +14,9 @@ use_graphs=false
 # Begin configuration.
 scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
 acoustic_scale=0.1
-beam=20.0
-lattice_beam=10.0
+beam=15.0
+lattice_beam=8.0
+max_active=750
 transform_dir=  # directory to find fMLLR transforms in.
 top_n_words=100 # Number of common words that we compile into each graph (most frequent
                 # in $lang/text.
@@ -116,7 +117,8 @@ if [ $stage -le 0 ]; then
     compile-train-graphs-fsts $scale_opts --read-disambig-syms=$lang/phones/disambig.int \
      $dir/tree $dir/final.mdl $lang/L_disambig.fst ark:- ark:- \| \
     gmm-latgen-faster --acoustic-scale=$acoustic_scale --beam=$beam \
-     --lattice-beam=$lattice_beam --word-symbol-table=$lang/words.txt \
+      --max-active=$max_active --lattice-beam=$lattice_beam \
+      --word-symbol-table=$lang/words.txt \
      $dir/final.mdl ark:- "$feats" ark:- \| \
     lattice-oracle ark:- "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|" \
       ark,t:- ark,t:$dir/edits.JOB.txt \| \
@@ -157,9 +159,9 @@ if [ $stage -le 1 ]; then
       <(awk '{$1="";print;}' <$dir/text) > $dir/all_info.txt
 
   sort -nr -k2 $dir/all_info.txt > $dir/all_info.sorted.txt
-
-  if $cleanup; then
-    rm $dir/edits.*.txt $dir/aligned_ref.*.txt
-  fi
+  # TEMP, will uncomment this later.
+  #if $cleanup; then
+  #  rm $dir/edits.*.txt $dir/aligned_ref.*.txt
+  #fi
 fi
 

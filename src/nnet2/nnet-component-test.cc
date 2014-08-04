@@ -506,7 +506,7 @@ void UnitTestAffinePreconInputComponent() {
 
 void UnitTestBlockAffineComponent() {
   BaseFloat learning_rate = 0.01,
-      param_stddev = 0.1, bias_stddev = 1.0;
+      param_stddev = 0.1, bias_stddev = 0.1;
   int32 num_blocks = 1 + rand() % 3,
          input_dim = num_blocks * (2 + rand() % 4),
         output_dim = num_blocks * (2 + rand() % 4);
@@ -651,6 +651,28 @@ void UnitTestFixedAffineComponent() {
     mat.SetRandn();
     FixedAffineComponent component;
     component.Init(mat);
+    UnitTestGenericComponentInternal(component);
+  }
+}
+
+void UnitTestFixedScaleComponent() {
+  int32 m = 1 + rand() % 20;
+  {
+    CuVector<BaseFloat> vec(m);
+    vec.SetRandn();
+    FixedScaleComponent component;
+    component.Init(vec);
+    UnitTestGenericComponentInternal(component);
+  }
+}
+
+void UnitTestFixedBiasComponent() {
+  int32 m = 1 + rand() % 20;
+  {
+    CuVector<BaseFloat> vec(m);
+    vec.SetRandn();
+    FixedBiasComponent component;
+    component.Init(vec);
     UnitTestGenericComponentInternal(component);
   }
 }
@@ -825,6 +847,8 @@ int main() {
       UnitTestDctComponent();
       UnitTestFixedLinearComponent();
       UnitTestFixedAffineComponent();
+      UnitTestFixedScaleComponent();
+      UnitTestFixedBiasComponent();
       UnitTestAffineComponentPreconditioned();
       UnitTestAffineComponentPreconditionedOnline();
       UnitTestAffineComponentModified();

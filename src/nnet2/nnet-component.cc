@@ -98,6 +98,10 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new FixedLinearComponent();
   } else if (component_type == "FixedAffineComponent") {
     ans = new FixedAffineComponent();
+  } else if (component_type == "FixedScaleComponent") {
+    ans = new FixedScaleComponent();
+  } else if (component_type == "FixedBiasComponent") {
+    ans = new FixedBiasComponent();
   } else if (component_type == "SpliceComponent") {
     ans = new SpliceComponent();
   } else if (component_type == "SpliceMaxComponent") {
@@ -1070,6 +1074,18 @@ AffineComponent::AffineComponent(const AffineComponent &component):
     linear_params_(component.linear_params_),
     bias_params_(component.bias_params_),
     is_gradient_(component.is_gradient_) { }
+
+AffineComponent::AffineComponent(const CuMatrix<BaseFloat> &linear_params,
+                                 const CuVector<BaseFloat> &bias_params,
+                                 BaseFloat learning_rate):
+    UpdatableComponent(learning_rate),
+    linear_params_(linear_params),
+    bias_params_(bias_params) {
+  KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim()&&
+               bias_params.Dim() != 0);
+}
+
+
 
 void AffineComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
@@ -4156,6 +4172,142 @@ void FixedAffineComponent::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);  
   ExpectToken(is, binary, "</FixedAffineComponent>");
+}
+
+
+void FixedScaleComponent::Init(const CuVectorBase<BaseFloat> &scales) {
+  KALDI_ASSERT(scales.Dim() != 0);
+  scales_ = scales;
+}
+
+void FixedScaleComponent::InitFromString(std::string args) {
+  std::string orig_args = args;
+  std::string filename;
+  bool ok = ParseFromString("scales", &args, &filename);
+
+  if (!ok || !args.empty()) 
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+
+  CuVector<BaseFloat> vec;
+  ReadKaldiObject(filename, &vec);
+  Init(vec);
+}
+
+
+std::string FixedScaleComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat scales_size = static_cast<BaseFloat>(scales_.Dim()),
+      scales_mean = scales_.Sum() / scales_size,
+      scales_stddev = std::sqrt(VecVec(scales_, scales_) / scales_size)
+       - (scales_mean * scales_mean);
+  stream << Component::Info() << ", scales-mean=" << scales_mean
+         << ", scales-stddev=" << scales_stddev;
+  return stream.str();
+}
+
+void FixedScaleComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                                     int32 num_chunks,
+                                     CuMatrix<BaseFloat> *out) const {
+  *out = in;
+  out->MulColsVec(scales_);
+}
+
+void FixedScaleComponent::Backprop(const CuMatrixBase<BaseFloat> &, // in_value
+                                    const CuMatrixBase<BaseFloat> &, // out_value
+                                    const CuMatrixBase<BaseFloat> &out_deriv,
+                                    int32, // num_chunks
+                                    Component *, // to_update
+                                    CuMatrix<BaseFloat> *in_deriv) const {
+  *in_deriv = out_deriv;
+  in_deriv->MulColsVec(scales_);
+}
+
+Component* FixedScaleComponent::Copy() const {
+  FixedScaleComponent *ans = new FixedScaleComponent();
+  ans->scales_ = scales_;
+  return ans;
+}
+
+
+void FixedScaleComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<FixedScaleComponent>");
+  WriteToken(os, binary, "<Scales>");
+  scales_.Write(os, binary);
+  WriteToken(os, binary, "</FixedScaleComponent>");  
+}
+
+void FixedScaleComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<FixedScaleComponent>", "<Scales>");
+  scales_.Read(is, binary);
+  ExpectToken(is, binary, "</FixedScaleComponent>");
+}
+
+void FixedBiasComponent::Init(const CuVectorBase<BaseFloat> &bias) {
+  KALDI_ASSERT(bias.Dim() != 0);
+  bias_ = bias;
+}
+
+void FixedBiasComponent::InitFromString(std::string args) {
+  std::string orig_args = args;
+  std::string filename;
+  bool ok = ParseFromString("bias", &args, &filename);
+
+  if (!ok || !args.empty()) 
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+
+  CuVector<BaseFloat> vec;
+  ReadKaldiObject(filename, &vec);
+  Init(vec);
+}
+
+
+std::string FixedBiasComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat bias_size = static_cast<BaseFloat>(bias_.Dim()),
+      bias_mean = bias_.Sum() / bias_size,
+      bias_stddev = std::sqrt(VecVec(bias_, bias_) / bias_size)
+       - (bias_mean * bias_mean);
+  stream << Component::Info() << ", bias-mean=" << bias_mean
+         << ", bias-stddev=" << bias_stddev;
+  return stream.str();
+}
+
+void FixedBiasComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
+                                     int32 num_chunks,
+                                     CuMatrix<BaseFloat> *out) const {
+  *out = in;
+  out->AddVecToRows(1.0, bias_, 1.0);
+}
+
+void FixedBiasComponent::Backprop(const CuMatrixBase<BaseFloat> &, // in_value
+                                    const CuMatrixBase<BaseFloat> &, // out_value
+                                    const CuMatrixBase<BaseFloat> &out_deriv,
+                                    int32, // num_chunks
+                                    Component *, // to_update
+                                    CuMatrix<BaseFloat> *in_deriv) const {
+  *in_deriv = out_deriv;
+}
+
+Component* FixedBiasComponent::Copy() const {
+  FixedBiasComponent *ans = new FixedBiasComponent();
+  ans->bias_ = bias_;
+  return ans;
+}
+
+
+void FixedBiasComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<FixedBiasComponent>");
+  WriteToken(os, binary, "<Bias>");
+  bias_.Write(os, binary);
+  WriteToken(os, binary, "</FixedBiasComponent>");  
+}
+
+void FixedBiasComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<FixedBiasComponent>", "<Bias>");
+  bias_.Read(is, binary);
+  ExpectToken(is, binary, "</FixedBiasComponent>");
 }
 
 

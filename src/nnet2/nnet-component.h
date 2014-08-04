@@ -638,6 +638,11 @@ class AffineComponent: public UpdatableComponent {
   friend class SoftmaxComponent; // Friend declaration relates to mixing up.
  public:
   explicit AffineComponent(const AffineComponent &other);
+  // The next constructor is used in converting from nnet1.
+  AffineComponent(const CuMatrix<BaseFloat> &linear_params,
+                  const CuVector<BaseFloat> &bias_params,
+                  BaseFloat learning_rate);
+  
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
   void Init(BaseFloat learning_rate,
@@ -1604,6 +1609,81 @@ class FixedAffineComponent: public Component {
   CuVector<BaseFloat> bias_params_;
   
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedAffineComponent);
+};
+
+
+/// FixedScaleComponent applies a fixed per-element scale; it's similar
+/// to the Rescale component in the nnet1 setup (and only needed for nnet1
+/// model conversion.
+class FixedScaleComponent: public Component {
+ public:
+  FixedScaleComponent() { } 
+  virtual std::string Type() const { return "FixedScaleComponent"; }
+  virtual std::string Info() const;
+  
+  void Init(const CuVectorBase<BaseFloat> &scales); 
+  
+  // InitFromString takes only the option scales=<string>,
+  // where the string is the filename of a Kaldi-format matrix to read.
+  virtual void InitFromString(std::string args);
+  
+  virtual int32 InputDim() const { return scales_.Dim(); }
+  virtual int32 OutputDim() const { return scales_.Dim(); }
+  virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         CuMatrix<BaseFloat> *out) const;
+  virtual void Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        CuMatrix<BaseFloat> *in_deriv) const;
+  virtual bool BackpropNeedsInput() const { return false; }
+  virtual bool BackpropNeedsOutput() const { return false; }
+  virtual Component* Copy() const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+ protected:
+  CuVector<BaseFloat> scales_;  
+  KALDI_DISALLOW_COPY_AND_ASSIGN(FixedScaleComponent);
+};
+
+/// FixedBiasComponent applies a fixed per-element bias; it's similar
+/// to the AddShift component in the nnet1 setup (and only needed for nnet1
+/// model conversion.
+class FixedBiasComponent: public Component {
+ public:
+  FixedBiasComponent() { } 
+  virtual std::string Type() const { return "FixedBiasComponent"; }
+  virtual std::string Info() const;
+  
+  void Init(const CuVectorBase<BaseFloat> &scales); 
+  
+  // InitFromString takes only the option bias=<string>,
+  // where the string is the filename of a Kaldi-format matrix to read.
+  virtual void InitFromString(std::string args);
+  
+  virtual int32 InputDim() const { return bias_.Dim(); }
+  virtual int32 OutputDim() const { return bias_.Dim(); }
+  virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         CuMatrix<BaseFloat> *out) const;
+  virtual void Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        CuMatrix<BaseFloat> *in_deriv) const;
+  virtual bool BackpropNeedsInput() const { return false; }
+  virtual bool BackpropNeedsOutput() const { return false; }
+  virtual Component* Copy() const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+ protected:
+  CuVector<BaseFloat> bias_;  
+  KALDI_DISALLOW_COPY_AND_ASSIGN(FixedBiasComponent);
 };
 
 
