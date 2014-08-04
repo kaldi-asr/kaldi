@@ -59,6 +59,7 @@ if [ ! data_bnf/${dirid}/.done -nt data_bnf/${dirid}_bnf/.done ]; then
   touch data_bnf/${dirid}/.done
 fi
 
+decode=exp_bnf/tri7_nnet/decode_${dirid}
 if [ ! exp_bnf/tri7_nnet/decode_${dirid}/.done -nt data_bnf/${dirid}_bnf/.done ] || \
    [ ! exp_bnf/tri7_nnet/decode_${dirid}/.done -nt exp_bnf/tri7_nnet/.done ]; then
   
@@ -70,7 +71,6 @@ if [ ! exp_bnf/tri7_nnet/decode_${dirid}/.done -nt data_bnf/${dirid}_bnf/.done ]
   utils/mkgraph.sh \
     data/lang exp_bnf/tri6 exp_bnf/tri6/graph |tee exp_bnf/tri6/mkgraph.log
 
-  decode=exp_bnf/tri7_nnet/decode_${dirid}
   if [ ! -f $decode/.done ]; then
     mkdir -p $decode
     steps/nnet2/decode.sh \
@@ -84,11 +84,11 @@ if [ ! exp_bnf/tri7_nnet/decode_${dirid}/.done -nt data_bnf/${dirid}_bnf/.done ]
     touch $decode/.done
   fi
 
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
-    "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
-    ${datadir} data/lang $decode
 fi
+local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+  --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
+  "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
+  ${datadir} data/lang $decode
 
 echo "$0: Everything looking good...." 
 exit 0

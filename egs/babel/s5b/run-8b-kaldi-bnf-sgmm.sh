@@ -26,8 +26,8 @@ if [ ! exp_bnf/sgmm7/.done -nt exp_bnf/ubm7/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting exp_bnf/sgmm7 on" `date`
   echo ---------------------------------------------------------------------
-  steps/train_sgmm2_group.sh \
-    --cmd "$train_cmd" "${sgmm_group_extra_opts[@]}"\
+  steps/train_sgmm2.sh \
+    --cmd "$train_cmd" \
     $numLeavesSGMM $bnf_num_gauss_sgmm data_bnf/train data/lang \
     exp_bnf/tri6 exp_bnf/ubm7/final.ubm exp_bnf/sgmm7 
   touch exp_bnf/sgmm7/.done

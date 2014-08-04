@@ -7,8 +7,6 @@ set -o pipefail
 
 
 dir=dev10h.pem
-dev2shadow=dev10h.uem
-eval2shadow=eval.uem
 kind=
 data_only=false
 fast_path=true
@@ -19,7 +17,6 @@ max_states=150000
 extra_kws=true
 vocab_kws=false
 wip=0.5
-shadow_set_extra_opts=( --wip $wip )
 
 echo "run-4-test.sh $@"
 
@@ -275,13 +272,13 @@ if ! $fast_path ; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt \
-    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    "${lmwt_plp_extra_opts[@]}" \
     ${dataset_dir} data/lang ${decode}
 
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    "${lmwt_plp_extra_opts[@]}" \
     ${dataset_dir} data/lang ${decode}.si
 fi
 
@@ -309,7 +306,7 @@ if [ -f exp/sgmm5/.done ]; then
       local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
         --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-        "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+        "${lmwt_plp_extra_opts[@]}" \
         ${dataset_dir} data/lang  exp/sgmm5/decode_fmllr_${dataset_id}
     fi
   fi
@@ -343,7 +340,7 @@ if [ -f exp/sgmm5/.done ]; then
       local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
         --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-      "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+      "${lmwt_plp_extra_opts[@]}" \
       ${dataset_dir} data/lang $decode
   done
 fi
@@ -369,7 +366,7 @@ if [ -f exp/tri6_nnet/.done ]; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+    "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/lang $decode
 fi
 
@@ -395,7 +392,7 @@ if [ -f exp/tri6a_nnet/.done ]; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+    "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/lang $decode
 fi
 
@@ -422,7 +419,7 @@ if [ -f exp/tri6b_nnet/.done ]; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+    "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/lang $decode
 fi
 ####################################################################
@@ -473,7 +470,7 @@ if [ -f exp/tri6_nnet_mpe/.done ]; then
     local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
       --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
       --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-      "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+      "${lmwt_dnn_extra_opts[@]}" \
       ${dataset_dir} data/lang $decode
   done
 fi
@@ -502,7 +499,7 @@ for dnn in tri6_nnet_semi_supervised tri6_nnet_semi_supervised2 \
     local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
       --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
       --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-      "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+      "${lmwt_dnn_extra_opts[@]}" \
       ${dataset_dir} data/lang $decode
   fi
 done

@@ -31,8 +31,6 @@ skip_scoring=false
 extra_kws=false
 cmd=run.pl
 max_states=150000
-dev2shadow=
-eval2shadow=
 wip=0.5 #Word insertion penalty
 #End of options
 
@@ -53,16 +51,6 @@ data_dir=$1;
 lang_dir=$2;
 decode_dir=$3; 
 
-type=normal
-if [ ! -z ${dev2shadow}  ] && [ ! -z ${eval2shadow} ] ; then
-  type=shadow
-elif [ -z ${dev2shadow}  ] && [ -z ${eval2shadow} ] ; then
-  type=normal
-else
-  echo "Switches --dev2shadow and --eval2shadow must be used simultaneously" > /dev/stderr
-  exit 1
-fi
-
 ##NB: The first ".done" files are used for backward compatibility only
 ##NB: should be removed in a near future...
 if  [ ! -f $decode_dir/.score.done ] && [ ! -f $decode_dir/.done.score ]; then 
@@ -70,11 +58,7 @@ if  [ ! -f $decode_dir/.score.done ] && [ ! -f $decode_dir/.done.score ]; then
     --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
     $data_dir $lang_dir $decode_dir
 
-  if [[ "$type" == shadow* ]]; then
-    local/split_ctms.sh --cmd "$cmd" --cer $cer \
-      --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
-      $data_dir $decode_dir ${dev2shadow} ${eval2shadow}
-  elif ! $skip_scoring ; then
+  if ! $skip_scoring ; then
     local/score_stm.sh --cmd "$cmd"  --cer $cer \
       --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
       $data_dir $lang_dir $decode_dir
@@ -84,15 +68,9 @@ fi
 
 if ! $skip_kws ; then
   if [ ! -f $decode_dir/.kws.done ] && [ ! -f $decode_dir/.done.kws ]; then 
-    if [[ "$type" == shadow* ]]; then
-      local/shadow_set_kws_search.sh --cmd "$cmd" --max-states ${max_states} \
-        --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
-        $data_dir $lang_dir $decode_dir ${dev2shadow} ${eval2shadow}
-    else
-      local/kws_search.sh --cmd "$cmd" --max-states ${max_states} \
-        --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} --skip-scoring $skip_scoring\
-        --indices-dir $decode_dir/kws_indices $lang_dir $data_dir $decode_dir
-    fi
+    local/kws_search.sh --cmd "$cmd" --max-states ${max_states} \
+      --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} --skip-scoring $skip_scoring\
+      --indices-dir $decode_dir/kws_indices $lang_dir $data_dir $decode_dir
     touch $decode_dir/.done.kws
   fi
   if $extra_kws && [ -f $data_dir/extra_kws_tasks ]; then

@@ -38,7 +38,7 @@ else
   unsup_string=""  #" ": supervised training, _semi_supervised: unsupervised BNF training
 fi
 
-if ! echo {dev10h,dev2h,eval,unsup}{,.pem,.uem,.seg} | grep -w "$type" >/dev/null; then
+if ! echo {dev10h,dev2h,eval,unsup,shadow}{,.uem,.seg} | grep -w "$type" >/dev/null; then
   # note: echo dev10.uem | grep -w dev10h will produce a match, but this
   # doesn't matter because dev10h is also a valid value.
   echo "Invalid variable type=${type}, valid values are " {dev10h,dev2h,eval,unsup}{,.uem,.seg}
@@ -77,10 +77,14 @@ if [ ! $data_bnf_dir/${dirid}/.done -nt $data_bnf_dir/${dirid}_bnf/.done ]; then
   steps/compute_cmvn_stats.sh --fake $data_bnf_dir/${dirid} $exp_dir/make_fmllr_feats $param_bnf_dir
   rm -r $data_bnf_dir/${dirid}_sat
   if ! $skip_kws ; then
-    cp -r data/${dirid}/kws* $data_bnf_dir/${dirid}/
+    cp -r data/${dirid}/*kws* $data_bnf_dir/${dirid}/ || true
   fi
   touch $data_bnf_dir/${dirid}/.done
 fi
+if ! $skip_kws ; then
+  cp -r data/${dirid}/*kws* $data_bnf_dir/${dirid}/ || true
+fi
+
 
 if $data_only ; then
   echo "Exiting, as data-only was requested... "
@@ -178,6 +182,8 @@ for iter in 1 2 3 4; do
     "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
     ${datadir} data/lang $decode
 done
+
+exit 0
 
 if [ ! exp_bnf/tri7_nnet/decode_${dirid}/.done -nt data_bnf/${dirid}_bnf/.done ] || \
    [ ! exp_bnf/tri7_nnet/decode_${dirid}/.done -nt exp_bnf/tri7_nnet/.done ]; then

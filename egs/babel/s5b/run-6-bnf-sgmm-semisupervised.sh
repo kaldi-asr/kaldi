@@ -25,7 +25,7 @@ if [ $babel_type == "full" ] && $semisupervised; then
 fi
 
 if $semisupervised ; then
-  unsup_string="_semi_supervised"
+  unsup_string="_semisup"
 else
   unsup_string=""  #" ": supervised training, _semi_supervised: unsupervised BNF training
 fi
@@ -45,8 +45,9 @@ if [ ! $exp_dir/sgmm7/.done -nt $exp_dir/ubm7/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting $exp_dir/sgmm7 on" `date`
   echo ---------------------------------------------------------------------
-  steps/train_sgmm2_group.sh \
-    --cmd "$train_cmd" "${sgmm_group_extra_opts[@]}"\
+  #steps/train_sgmm2_group.sh \
+  steps/train_sgmm2.sh \
+    --cmd "$train_cmd" "${sgmm_train_extra_opts[@]}"\
     $numLeavesSGMM $bnf_num_gauss_sgmm $data_bnf_dir/train data/lang \
     $exp_dir/tri6 $exp_dir/ubm7/final.ubm $exp_dir/sgmm7 
   touch $exp_dir/sgmm7/.done

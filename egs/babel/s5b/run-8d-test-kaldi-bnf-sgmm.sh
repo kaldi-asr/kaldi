@@ -39,6 +39,7 @@ datadir=data_bnf/${dirid}
 my_nj=`cat exp/tri5/decode_${dirid}/num_jobs` || exit 1;
 
 test -d param_bnf || mkdir -p param_bnf
+mkdir -p param_bnf
 if [ ! data_bnf/${dirid}_bnf/.done -nt exp/tri5/decode_${dirid}/.done ] || \
    [ ! data_bnf/${dirid}_bnf/.done -nt exp_bnf/tri6_bnf/.done ]; then
   # put the archives in param_bnf/.
@@ -164,6 +165,9 @@ for iter in 1 2 3 4; do
     "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
     ${datadir} data/lang $decode
 done
+
+echo "$0: Everything looking good...." 
+exit 0
 
 if [ ! exp_bnf/tri7_nnet/decode_${dirid}/.done -nt data_bnf/${dirid}_bnf/.done ] || \
    [ ! exp_bnf/tri7_nnet/decode_${dirid}/.done -nt exp_bnf/tri7_nnet/.done ]; then

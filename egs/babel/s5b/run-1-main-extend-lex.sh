@@ -177,6 +177,11 @@ if [ ! -f data/train/.plp.done ]; then
   touch data/train/.plp.done
 fi
 
+echo -------------------------------------------------------------------------
+echo "Extended lexicon finished on" `date`. Now run the script run-1-main.sh
+echo -------------------------------------------------------------------------
+exit 0
+
 mkdir -p exp
 
 if [ ! -f data/train_sub3/.done ]; then
