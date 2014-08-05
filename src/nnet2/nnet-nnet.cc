@@ -661,6 +661,16 @@ void Nnet::Collapse(bool match_updatableness) {
   KALDI_LOG << "Collapsed " << num_collapsed << " components.";
 }
 
+int32 Nnet::LastUpdatableComponent() const {
+  int32 last_updatable_component = NumComponents();
+  for (int32 i = NumComponents() - 1; i >= 0; i--)
+    if (dynamic_cast<UpdatableComponent*>(components_[i]) != NULL)
+      last_updatable_component = i;
+  return last_updatable_component;
+}
+
+
+
 } // namespace nnet2
 } // namespace kaldi
 

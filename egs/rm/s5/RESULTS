@@ -161,6 +161,8 @@ exit 0
 # last time I created this.
 # Per-frame cross-entropy training
 %WER 1.66 [ 208 / 12533, 27 ins, 49 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_3
+%WER 7.80 [ 978 / 12533, 83 ins, 151 del, 744 sub ] exp/dnn4b_pretrain-dbn_dnn/decode_ug/wer_6
+
 # Sequence-based sMBR training
 %WER 1.64 [ 206 / 12533, 24 ins, 49 del, 133 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it1/wer_4
 %WER 1.62 [ 203 / 12533, 25 ins, 46 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it2/wer_4

@@ -1158,6 +1158,7 @@ class SpliceComponent: public Component {
 };
 
 
+
 /// This is as SpliceComponent but outputs the max of
 /// any of the inputs (taking the max across time).
 class SpliceMaxComponent: public Component {
@@ -1447,12 +1448,16 @@ private:
 };
 
 
-/// PermuteComponent does a random permutation of the dimensions.  Useful in
-/// conjunction with block-diagonal transforms.
+/// PermuteComponent does a permutation of the dimensions (by default, a fixed
+/// random permutation, but it may be specified).  Useful in conjunction with
+/// block-diagonal transforms.
 class PermuteComponent: public Component {
  public:
   void Init(int32 dim);
+  void Init(const std::vector<int32> &reorder);
   PermuteComponent(int32 dim) { Init(dim); }
+  PermuteComponent(const std::vector<int32> &reorder) { Init(reorder); }
+
   PermuteComponent() { } // e.g. prior to Read() or Init()
   
   virtual int32 InputDim() const { return reorder_.size(); }
@@ -1468,17 +1473,17 @@ class PermuteComponent: public Component {
   virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
                          int32 num_chunks,
                          CuMatrix<BaseFloat> *out) const; 
-  virtual void Backprop(const CuMatrixBase<BaseFloat> &in_value, // dummy
-                        const CuMatrixBase<BaseFloat> &out_value, // dummy
+  virtual void Backprop(const CuMatrixBase<BaseFloat> &,
+                        const CuMatrixBase<BaseFloat> &,
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         int32 num_chunks,
-                        Component *to_update, // dummy
+                        Component *,
                         CuMatrix<BaseFloat> *in_deriv) const;
   
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(PermuteComponent);
   std::vector<int32> reorder_; // This class sends input dimension i to
-  // output dimension reorder_[i].
+                               // output dimension reorder_[i].
 };
 
 

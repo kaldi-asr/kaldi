@@ -37,7 +37,7 @@ nnet2::Component *ConvertAffineTransformComponent(
   // --learning-rates option to nnet-am-copy to change it if you need.
   BaseFloat learning_rate = 1.0e-05; 
   return new nnet2::AffineComponent(affine->GetLinearity(),
-                                    affine->GetBiasCorr(),
+                                    affine->GetBias(),
                                     learning_rate);
 }
 
@@ -54,7 +54,7 @@ nnet2::Component *ConvertSigmoidComponent(
   const nnet1::Sigmoid *sigmoid =
       dynamic_cast<const nnet1::Sigmoid*>(&nnet1_component);
   KALDI_ASSERT(sigmoid != NULL);
-  return new nnet2::SoftmaxComponent(sigmoid->InputDim());
+  return new nnet2::SigmoidComponent(sigmoid->InputDim());
 }
 
 nnet2::Component *ConvertSpliceComponent(

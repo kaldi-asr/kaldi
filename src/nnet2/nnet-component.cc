@@ -294,6 +294,15 @@ Component *PermuteComponent::Copy() const {
   ans->reorder_ = reorder_;
   return ans;
 }
+void PermuteComponent::Init(const std::vector<int32> &reorder) {
+  reorder_ = reorder;
+  KALDI_ASSERT(!reorder.empty());
+  std::vector<int32> indexes(reorder);
+  std::sort(indexes.begin(), indexes.end());
+  for (int32 i = 0; i < static_cast<int32>(indexes.size()); i++)
+    KALDI_ASSERT(i == indexes[i] && "Not a permutation");
+}
+
 
 std::string Component::Info() const {
   std::stringstream stream;
@@ -1083,6 +1092,7 @@ AffineComponent::AffineComponent(const CuMatrix<BaseFloat> &linear_params,
     bias_params_(bias_params) {
   KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim()&&
                bias_params.Dim() != 0);
+  is_gradient_ = false;
 }
 
 
@@ -1209,11 +1219,16 @@ void AffineComponent::InitFromString(std::string args) {
 void AffineComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                                 int32, // num_chunks
                                 CuMatrix<BaseFloat> *out) const {
+  KALDI_LOG << "First element of input is " << in(0, 0);
+  KALDI_LOG << "Input sum is " << in.Sum();
   // No need for asserts as they'll happen within the matrix operations.
   out->Resize(in.NumRows(), linear_params_.NumRows());
   out->CopyRowsFromVec(bias_params_); // copies bias_params_ to each row
   // of *out.
+  KALDI_LOG << "First element of output is " << (*out)(0, 0);
+  KALDI_LOG << "Linearity sum is " << linear_params_.Sum();
   out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
+  KALDI_LOG << "First element of output is " << (*out)(0, 0);  
 }
 
 void AffineComponent::UpdateSimple(const CuMatrixBase<BaseFloat> &in_value,
@@ -3451,86 +3466,50 @@ void SpliceComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
               << "Probably a code error.";
   out->Resize(num_chunks * output_chunk_size, output_dim);
 
-  if (0) { // rand() % 2 == 0) { // Occasionally do the older code,
-    // this will flag any inconsistency in the tests.
-  
-    for (int32 chunk = 0; chunk < num_chunks; chunk++) {
-      CuSubMatrix<BaseFloat> input_chunk(in,
-                                         chunk * input_chunk_size, input_chunk_size,
-                                         0, input_dim),
-          output_chunk(*out,
-                       chunk * output_chunk_size, output_chunk_size,
-                       0, output_dim);
+  // 'indexes' is, for each index from 0 to (left_context_+right_context_+1)-1,
+  // then for each row of "out", the corresponding row of "in" that we copy from.
+  int32 num_splice = left_context_ + right_context_ + 1,
+      const_dim = const_component_dim_;
+  std::vector<std::vector<int32> > indexes(num_splice);
+  // const_component_dim_ != 0, "const_indexes" will be used to determine which
+  // row of "in" we copy the last part of each row of "out" from (this part is
+  // not subject to splicing, it's assumed constant for each frame of "input".
+  std::vector<int32> const_indexes(const_dim == 0 ? 0 : out->NumRows());
 
-      for (int32 c = 0; c < left_context_ + right_context_ + 1; c++) {
-        CuSubMatrix<BaseFloat> input_part(input_chunk, 
-                                          c, output_chunk_size,
-                                          0, input_dim - const_component_dim_),
-            output_part(output_chunk, 
-                        0, output_chunk_size,
-                        (input_dim - const_component_dim_) * c,
-                        input_dim - const_component_dim_);
-        output_part.CopyFromMat(input_part);
-      }
-      //Append the constant component at the end of the output vector
-      if (const_component_dim_ != 0) {
-        CuSubMatrix<BaseFloat> input_part(input_chunk, 
-                                          0, output_chunk_size,
-                                          InputDim() - const_component_dim_,
-                                          const_component_dim_),
-            output_part(output_chunk, 
-                        0, output_chunk_size,
-                        OutputDim() - const_component_dim_,
-                        const_component_dim_);
-        output_part.CopyFromMat(input_part);
-      }
-    }
-  } else {
-    // 'indexes' is, for each index from 0 to (left_context_+right_context_+1)-1,
-    // then for each row of "out", the corresponding row of "in" that we copy from.
-    int32 num_splice = left_context_ + right_context_ + 1,
-        const_dim = const_component_dim_;
-    std::vector<std::vector<int32> > indexes(num_splice);
-    // const_component_dim_ != 0, "const_indexes" will be used to determine which
-    // row of "in" we copy the last part of each row of "out" from (this part is
-    // not subject to splicing, it's assumed constant for each frame of "input".
-    std::vector<int32> const_indexes(const_dim == 0 ? 0 : out->NumRows());
+  for (int32 c = 0; c < num_splice; c++) 
+    indexes[c].resize(out->NumRows());
 
-    for (int32 c = 0; c < num_splice; c++) 
-      indexes[c].resize(out->NumRows());
-
-    for (int32 chunk = 0; chunk < num_chunks; chunk++) {
-      for (int32 c = 0; c < num_splice; c++) {
-        for (int32 offset = 0; offset < output_chunk_size; offset++) {
-          indexes[c][chunk * output_chunk_size + offset] =
-              chunk * input_chunk_size + c + offset;
-        }
-      }
-      if (const_dim != 0) {
-        for (int32 offset = 0; offset < output_chunk_size; offset++)
-          const_indexes[chunk * output_chunk_size + offset] =
-              chunk * input_chunk_size + offset; // there is
-          // an arbitrariness here; since we assume the const_component
-          // is constant within a chunk, it doesn't matter from where we copy.
-      }
-    }
+  for (int32 chunk = 0; chunk < num_chunks; chunk++) {
     for (int32 c = 0; c < num_splice; c++) {
-      int32 dim = input_dim - const_dim; // dimension we
-      // are splicing
-      CuSubMatrix<BaseFloat> in_part(in, 0, in.NumRows(),
-                                   0, dim),
-          out_part(*out, 0, out->NumRows(),
-                   c * dim, dim);
-      out_part.CopyRows(in_part, indexes[c]);
+      for (int32 offset = 0; offset < output_chunk_size; offset++) {
+        indexes[c][chunk * output_chunk_size + offset] =
+            chunk * input_chunk_size + c + offset;
+      }
     }
     if (const_dim != 0) {
-      CuSubMatrix<BaseFloat> in_part(in, 0, in.NumRows(),
-                                   in.NumCols() - const_dim, const_dim),
-          out_part(*out, 0, out->NumRows(),
-                   out->NumCols() - const_dim, const_dim);
-      out_part.CopyRows(in_part, const_indexes);
+      for (int32 offset = 0; offset < output_chunk_size; offset++)
+        const_indexes[chunk * output_chunk_size + offset] =
+            chunk * input_chunk_size + offset; // there is
+      // an arbitrariness here; since we assume the const_component
+      // is constant within a chunk, it doesn't matter from where we copy.
     }
-  }  
+  }
+  for (int32 c = 0; c < num_splice; c++) {
+    int32 dim = input_dim - const_dim; // dimension we
+    // are splicing
+    CuSubMatrix<BaseFloat> in_part(in, 0, in.NumRows(),
+                                   0, dim),
+        out_part(*out, 0, out->NumRows(),
+                 c * dim, dim);
+    out_part.CopyRows(in_part, indexes[c]);
+  }
+  if (const_dim != 0) {
+    CuSubMatrix<BaseFloat> in_part(in, 0, in.NumRows(),
+                                   in.NumCols() - const_dim, const_dim),
+        out_part(*out, 0, out->NumRows(),
+                 out->NumCols() - const_dim, const_dim);
+    out_part.CopyRows(in_part, const_indexes);
+  }
 }
 
 void SpliceComponent::Backprop(const CuMatrixBase<BaseFloat> &, // in_value
@@ -3553,110 +3532,68 @@ void SpliceComponent::Backprop(const CuMatrixBase<BaseFloat> &, // in_value
  
   KALDI_ASSERT( OutputDim() == output_dim );
 
-  if (0) { // old code
-    in_deriv->Resize(num_chunks * input_chunk_size, input_dim); // Will zero it.
-    for (int32 chunk = 0; chunk < num_chunks; chunk++) {
-      CuSubMatrix<BaseFloat> in_deriv_chunk(*in_deriv, 
-                                            chunk * input_chunk_size, input_chunk_size, 
-                                            0, input_dim),
-          out_deriv_chunk(out_deriv,
-                          chunk * output_chunk_size, output_chunk_size,
-                          0, output_dim);
+  in_deriv->Resize(num_chunks * input_chunk_size, input_dim, kUndefined);
 
-
-      for (int32 c = 0; c < left_context_ + right_context_ + 1; c++) {
-        CuSubMatrix<BaseFloat> in_deriv_part(in_deriv_chunk, 
-                                             c, output_chunk_size,
-                                             0, input_dim - const_component_dim_),
-            out_deriv_part(out_deriv_chunk, 
-                           0, output_chunk_size,
-                           c * (input_dim - const_component_dim_),
-                           input_dim - const_component_dim_);
-        in_deriv_part.AddMat(1.0, out_deriv_part);
-      }
-
-      if (const_component_dim_ > 0) {
-        CuSubMatrix<BaseFloat> out_deriv_const_part(out_deriv_chunk,
-                                                    0, output_chunk_size,
-                                                    output_dim - const_component_dim_,
-                                                    const_component_dim_);
-        // Because we assume the "constant part" of the input is the same for all
-        // input rows, it's not clear how to propagate the derivative back.  We
-        // propagate the same value to all copies of it, but you should only take
-        // one of them, not sum them up.  In practice this is only used at the
-        // start of the network and the derivative probably won't ever be used.
-        for (int32 c = 0; c < in_deriv_chunk.NumRows(); c++) {
-          CuSubMatrix<BaseFloat> in_deriv_part(in_deriv_chunk, c, 1,
-                                               input_dim - const_component_dim_,
-                                               const_component_dim_);
-          in_deriv_part.Row(0).AddRowSumMat(1.0, out_deriv_const_part);
-        } 
-      }
-    }
-  } else {
-    in_deriv->Resize(num_chunks * input_chunk_size, input_dim, kUndefined);
-
-    int32 num_splice = left_context_ + right_context_ + 1,
-        const_dim = const_component_dim_;
-    // 'indexes' is, for each index from 0 to num_splice - 1,
-    // then for each row of "in_deriv", the corresponding row of "out_deriv" that
-    // we add, or -1 if.
+  int32 num_splice = left_context_ + right_context_ + 1,
+      const_dim = const_component_dim_;
+  // 'indexes' is, for each index from 0 to num_splice - 1,
+  // then for each row of "in_deriv", the corresponding row of "out_deriv" that
+  // we add, or -1 if.
     
-    std::vector<std::vector<int32> > indexes(num_splice);
-    // const_dim != 0, "const_indexes" will be used to determine which
-    // row of "in" we copy the last part of each row of "out" from (this part is
-    // not subject to splicing, it's assumed constant for each frame of "input".
-    std::vector<int32> const_indexes(const_dim == 0 ? 0 : in_deriv->NumRows(),
-                                     -1);
+  std::vector<std::vector<int32> > indexes(num_splice);
+  // const_dim != 0, "const_indexes" will be used to determine which
+  // row of "in" we copy the last part of each row of "out" from (this part is
+  // not subject to splicing, it's assumed constant for each frame of "input".
+  std::vector<int32> const_indexes(const_dim == 0 ? 0 : in_deriv->NumRows(),
+                                   -1);
 
-    for (int32 c = 0; c < indexes.size(); c++) 
-      indexes[c].resize(in_deriv->NumRows(), -1); // set to -1 by default,
-    // this gets interpreted by the CopyRows() code as a signal to zero the output...
+  for (int32 c = 0; c < indexes.size(); c++) 
+    indexes[c].resize(in_deriv->NumRows(), -1); // set to -1 by default,
+  // this gets interpreted by the CopyRows() code as a signal to zero the output...
 
-    int32 dim = input_dim - const_dim; // dimension we are splicing
+  int32 dim = input_dim - const_dim; // dimension we are splicing
 
-    for (int32 chunk = 0; chunk < num_chunks; chunk++) {
-      for (int32 c = 0; c < num_splice; c++)
-        for (int32 offset = 0; offset < output_chunk_size; offset++)
-          indexes[c][chunk * input_chunk_size + c + offset] =
-              chunk * output_chunk_size + offset;
+  for (int32 chunk = 0; chunk < num_chunks; chunk++) {
+    for (int32 c = 0; c < num_splice; c++)
+      for (int32 offset = 0; offset < output_chunk_size; offset++)
+        indexes[c][chunk * input_chunk_size + c + offset] =
+            chunk * output_chunk_size + offset;
 
-      // Note: when changing over to the CUDA code, we also changed
-      // how the derivatives are propagated through the splicing layer
-      // for the const-component-dim.  The code was never being used,
-      // so it doesn't matter.  The way we now do it probably makes more
-      // sense (to get the derivative, you'd have to sum over time, not
-      // pick an arbitrary time)
-      if (const_dim != 0)
-        for (int32 offset = 0; offset < output_chunk_size; offset++)
-          const_indexes[chunk * input_chunk_size + offset] =
-              chunk * output_chunk_size + offset;
-    }
+    // Note: when changing over to the CUDA code, we also changed
+    // how the derivatives are propagated through the splicing layer
+    // for the const-component-dim.  The code was never being used,
+    // so it doesn't matter.  The way we now do it probably makes more
+    // sense (to get the derivative, you'd have to sum over time, not
+    // pick an arbitrary time)
+    if (const_dim != 0)
+      for (int32 offset = 0; offset < output_chunk_size; offset++)
+        const_indexes[chunk * input_chunk_size + offset] =
+            chunk * output_chunk_size + offset;
+  }
     
-    CuMatrix<BaseFloat> temp_mat(in_deriv->NumRows(), dim, kUndefined);
+  CuMatrix<BaseFloat> temp_mat(in_deriv->NumRows(), dim, kUndefined);
     
-    for (int32 c = 0; c < num_splice; c++) {
-      int32 dim = input_dim - const_dim; // dimension we
-      // are splicing
-      CuSubMatrix<BaseFloat> out_deriv_part(out_deriv, 0, out_deriv.NumRows(),
-                                            c * dim, dim),
-          in_deriv_part(*in_deriv, 0, in_deriv->NumRows(),
-                        0, dim);
-      if (c == 0)
-        in_deriv_part.CopyRows(out_deriv_part, indexes[c]);
-      else {
-        temp_mat.CopyRows(out_deriv_part, indexes[c]);
-        in_deriv_part.AddMat(1.0, temp_mat);
-      }
+  for (int32 c = 0; c < num_splice; c++) {
+    int32 dim = input_dim - const_dim; // dimension we
+    // are splicing
+    CuSubMatrix<BaseFloat> out_deriv_part(out_deriv, 0, out_deriv.NumRows(),
+                                          c * dim, dim),
+        in_deriv_part(*in_deriv, 0, in_deriv->NumRows(),
+                      0, dim);
+    if (c == 0)
+      in_deriv_part.CopyRows(out_deriv_part, indexes[c]);
+    else {
+      temp_mat.CopyRows(out_deriv_part, indexes[c]);
+      in_deriv_part.AddMat(1.0, temp_mat);
     }
-    if (const_dim != 0) {
-      CuSubMatrix<BaseFloat> out_deriv_part(out_deriv, 0, out_deriv.NumRows(),
-                                            out_deriv.NumCols() - const_dim,
-                                            const_dim),
-          in_deriv_part(*in_deriv, 0, in_deriv->NumRows(),
-                        in_deriv->NumCols() - const_dim, const_dim);
-      in_deriv_part.CopyRows(out_deriv_part, const_indexes);
-    }
+  }
+  if (const_dim != 0) {
+    CuSubMatrix<BaseFloat> out_deriv_part(out_deriv, 0, out_deriv.NumRows(),
+                                          out_deriv.NumCols() - const_dim,
+                                          const_dim),
+        in_deriv_part(*in_deriv, 0, in_deriv->NumRows(),
+                      in_deriv->NumCols() - const_dim, const_dim);
+    in_deriv_part.CopyRows(out_deriv_part, const_indexes);
   }
 }
 

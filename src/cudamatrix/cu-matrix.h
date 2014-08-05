@@ -78,10 +78,10 @@ class CuMatrixBase {
                                      CuMatrixBase<Real> *grad, Real l1, Real lr);
   friend void cu::Splice<Real>(const CuMatrix<Real> &src,
                                const CuArray<int32> &frame_offsets,
-                               CuMatrix<Real> *tgt);
+                               CuMatrixBase<Real> *tgt);
   friend void cu::Copy<Real>(const CuMatrix<Real> &src,
                              const CuArray<int32> &copy_from_indices,
-                             CuMatrix<Real> *tgt);
+                             CuMatrixBase<Real> *tgt);
   friend void cu::Randomize<Real>(const CuMatrixBase<Real> &src,
                                   const CuArray<int32> &copy_from_idx,
                                   CuMatrixBase<Real> *tgt);

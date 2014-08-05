@@ -59,7 +59,7 @@ class CuVectorBase {
                           const CuVectorBase<OtherReal> &v2);
   friend void cu::Splice<Real>(const CuMatrix<Real> &src,
                                const CuArray<int32> &frame_offsets,
-                               CuMatrix<Real> *tgt);
+                               CuMatrixBase<Real> *tgt);
   friend class CuRand<Real>;
   
   /// Dimensions

@@ -48,16 +48,20 @@ BaseFloat KlDivergence(const Vector<BaseFloat> &p,
 
 void PrintPriorDiagnostics(const Vector<BaseFloat> &old_priors,
                            const Vector<BaseFloat> &new_priors) {
-  Vector<BaseFloat> diff_prior(new_priors);
-  diff_prior.AddVec(-1.0, old_priors);
-  diff_prior.ApplyAbs();
-  int32 max_index;
-  diff_prior.Max(&max_index);
-  KALDI_LOG << "Adjusting priors: largest absolute difference was for "
-            << "pdf " << max_index << ", " << old_priors(max_index)
-            << " -> " << new_priors(max_index);
-  KALDI_LOG << "Adjusting priors: K-L divergence from old to new is "
-            << KlDivergence(old_priors, new_priors);
+  if (old_priors.Dim() == 0) {
+    KALDI_LOG << "Model did not previously have priors attached.";
+  } else {
+    Vector<BaseFloat> diff_prior(new_priors);
+    diff_prior.AddVec(-1.0, old_priors);
+    diff_prior.ApplyAbs();
+    int32 max_index;
+    diff_prior.Max(&max_index);
+    KALDI_LOG << "Adjusting priors: largest absolute difference was for "
+              << "pdf " << max_index << ", " << old_priors(max_index)
+              << " -> " << new_priors(max_index);
+    KALDI_LOG << "Adjusting priors: K-L divergence from old to new is "
+              << KlDivergence(old_priors, new_priors);
+  }
 }
 
 
