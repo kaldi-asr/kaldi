@@ -10,11 +10,18 @@
 ## you unpacked this.  We are just doing a "find" command to locate
 ## the .sph files.
 
+## The second input is optional, which should point to a directory containing
+## Switchboard transcriptions/documentations (specifically, the conv.tab file).
+## If specified, the script will try to use the actual speaker PINs provided 
+## with the corpus instead of the conversation side ID (Kaldi default). We 
+## will be using "find" to locate this file so we don't make any assumptions
+## on the directory structure. (Peng Qi, Aug 2014)
+
 . path.sh
 
 #check existing directories
-if [ $# != 1 ]; then
-  echo "Usage: swbd1_data_prep_edin.sh /path/to/SWBD"
+if [ $# != 1 -a $# != 2 ]; then
+  echo "Usage: swbd1_data_prep_edin.sh /path/to/SWBD [/path/to/SWBD_DOC]"
   exit 1; 
 fi 
 
@@ -144,6 +151,17 @@ for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel; do
   cp data/local/train/$f data/train/$f || exit 1;
 done
 
+if [ $# == 2 ]; then # fix speaker IDs
+  find $2 -name conv.tab > $dir/conv.tab
+  local/swbd1_fix_speakerid.pl `cat $dir/conv.tab` data/train
+  utils/utt2spk_to_spk2utt.pl data/train/utt2spk.new > data/train/spk2utt.new
+  # patch files
+  for f in spk2utt utt2spk text segments; do
+    cp data/train/$f data/train/$f.old || exit 1;
+    cp data/train/$f.new data/train/$f || exit 1;
+  done
+  rm $dir/conv.tab
+fi 
 
 echo Switchboard-1 data preparation succeeded.
 
