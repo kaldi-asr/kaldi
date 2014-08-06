@@ -28,7 +28,7 @@ while (my $line = <$conv_tab>) {
   my @fields = split "," , $line;
   #$fields[0] = trim($fields[0]);
   $fields[5] = trim($fields[5]);
-  $fields[10] = trim($fields103]);
+  $fields[10] = trim($fields[10]);
   $conv_to_spk{'fe_03_' . $fields[0] . '-A'} = $fields[5];
   $conv_to_spk{'fe_03_' . $fields[0] . '-B'} = $fields[10];
 }
@@ -72,7 +72,7 @@ foreach my $conv (keys %missingconv) {
 # fix spk2gender
 
 if (open(my $spk2gender, '<', $dir . '/spk2gender')) {
-  open(my $spk2gender_new, '>', $dir . '/spk2gender.new')
+  open(my $spk2gender_new, '>', $dir . '/spk2gender.new');
 
   while (my $line = <$spk2gender>) {
     chomp $line;
