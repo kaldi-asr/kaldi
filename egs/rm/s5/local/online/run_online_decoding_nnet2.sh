@@ -47,7 +47,7 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
+  steps/online/nnet2/extract_ivectors_online2.sh --cmd "$train_cmd" --nj 4 \
     data/train exp/nnet2_online/extractor exp/nnet2_online/ivectors || exit 1;
 fi
 
@@ -128,13 +128,11 @@ exit 0;
 
 
 # the experiment (with GPU)
-# note: the worse results we previously showed were with larger iVector dim (100, vs. 50) and
-# more UBM Gaussians (512, vs. 256)
 #for x in exp/nnet2_online/nnet_gpu/decode*; do grep WER $x/wer_* | utils/best_wer.sh; done
-%WER 2.38 [ 298 / 12533, 32 ins, 66 del, 200 sub ] exp/nnet2_online/nnet_gpu/decode/wer_6
-%WER 10.12 [ 1268 / 12533, 118 ins, 222 del, 928 sub ] exp/nnet2_online/nnet_gpu/decode_ug/wer_12
+%WER 2.27 [ 285 / 12533, 43 ins, 50 del, 192 sub ] exp/nnet2_online/nnet_gpu/decode/wer_4
+%WER 10.40 [ 1303 / 12533, 133 ins, 200 del, 970 sub ] exp/nnet2_online/nnet_gpu/decode_ug/wer_11
 
-# for x in exp/nnet2_online/nnet_baseline/decode*; do grep WER $x/wer_* | utils/best_wer.sh; done
+
 # This is the baseline with spliced non-CMVN cepstra and no iVector input. 
 # The difference is pretty small on RM; I expect it to be more clear-cut on larger corpora.
 %WER 2.30 [ 288 / 12533, 35 ins, 57 del, 196 sub ] exp/nnet2_online/nnet_gpu_baseline/decode/wer_5
@@ -146,14 +144,14 @@ exit 0;
 
 
 # This is the online decoding.
-#for x in exp/nnet2_online/nnet_gpu_online/decode*; do grep WER $x/wer_* | utils/best_wer.sh; done
-# truly-online per-utterance decoding gives essentially the same WER as the offline decoding, which is
+# This truly-online per-utterance decoding gives essentially the same WER as the offline decoding, which is
 # as we expect as the features and decoding parameters are the same.
-%WER 2.33 [ 292 / 12533, 31 ins, 63 del, 198 sub ] exp/nnet2_online/nnet_gpu_online/decode_per_utt/wer_6
-%WER 10.09 [ 1264 / 12533, 120 ins, 221 del, 923 sub ] exp/nnet2_online/nnet_gpu_online/decode_ug_per_utt/wer_12
+# for x in exp/nnet2_online/nnet_gpu_online/decode*utt; do grep WER $x/wer_* | utils/best_wer.sh; done
+%WER 2.21 [ 277 / 12533, 45 ins, 48 del, 184 sub ] exp/nnet2_online/nnet_gpu_online/decode_per_utt/wer_4
+%WER 10.27 [ 1287 / 12533, 142 ins, 186 del, 959 sub ] exp/nnet2_online/nnet_gpu_online/decode_ug_per_utt/wer_10
 
 # The following are online decoding, as above, but using previous utterances of
-# the same speaker to refine the adaptation state.  It seems to hurt on this setup..
-# this probably means we need to do matched training.  I'll be looking into this.
-%WER 2.39 [ 300 / 12533, 48 ins, 52 del, 200 sub ] exp/nnet2_online/nnet_gpu_online/decode/wer_4
-%WER 10.47 [ 1312 / 12533, 115 ins, 230 del, 967 sub ] exp/nnet2_online/nnet_gpu_online/decode_ug/wer_12
+# the same speaker to refine the adaptation state.  It doesn't make much difference.
+# for x in exp/nnet2_online/nnet_gpu_online/decode*; do grep WER $x/wer_* | utils/best_wer.sh; done | grep -v utt
+%WER 2.20 [ 276 / 12533, 25 ins, 69 del, 182 sub ] exp/nnet2_online/nnet_gpu_online/decode/wer_8
+%WER 10.14 [ 1271 / 12533, 127 ins, 198 del, 946 sub ] exp/nnet2_online/nnet_gpu_online/decode_ug/wer_11

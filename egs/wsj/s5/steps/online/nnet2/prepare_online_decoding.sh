@@ -70,6 +70,10 @@ if [ ! -z "$iedir" ]; then
   done
 fi
 
+
+dir=$(readlink -f $dir) # Convert $dir to an absolute pathname, so that the
+                        # configuration files we write will contain absolute
+                        # pathnames.
 mkdir -p $dir/conf
 
 

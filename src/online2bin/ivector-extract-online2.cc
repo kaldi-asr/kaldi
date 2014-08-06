@@ -45,8 +45,8 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage:  ivector-extract-online2 [options] <spk2utt-rspecifier> <feature-rspecifier> <ivector-wspecifier>\n"
         "e.g.: \n"
-        "  ivector-extract-online2 exp/nnet2_online/nnet_online/conf/ivector_extractor.conf \\\n"
-        "   --ivector-period=10 ark:data/train/spk2utt scp:data/train/feats.scp ark,t:ivectors.1.ark\n";
+        "  ivector-extract-online2 --config=exp/nnet2_online/nnet_online/conf/ivector_extractor.conf \\\n"
+        "    ark:data/train/spk2utt scp:data/train/feats.scp ark,t:ivectors.1.ark\n";
     
     ParseOptions po(usage);
     
@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
 
         tot_ubm_loglike += T * ivector_feature.UbmLogLikePerFrame();
         tot_objf_impr += T * ivector_feature.ObjfImprPerFrame();
-        tot_length_utt_end += T * ivectors.Row(n-1).Norm(2.0);
+        tot_length_utt_end += T * ivectors.Row(num_ivectors - 1).Norm(2.0);
         for (int32 i = 0; i < num_ivectors; i++)
           tot_length += T * ivectors.Row(i).Norm(2.0) / num_ivectors;
         tot_t += T;
@@ -133,7 +133,8 @@ int main(int argc, char *argv[]) {
                       << ivectors.Row(n-1).Norm(2.0)
                       << ", objf improvement from iVector estimation was "
                       << tot_objf_impr;
-        
+
+        ivector_feature.GetAdaptationState(&adaptation_state);
         ivector_writer.Write(utt, ivectors);
         num_done++;
       }

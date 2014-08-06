@@ -8,7 +8,7 @@ stage=0
 nj=4
 cmd=run.pl
 max_active=7000
-beam=13.0
+beam=15.0
 lattice_beam=6.0
 acwt=0.1   # note: only really affects adaptation and pruning (scoring is on
            # lattices).

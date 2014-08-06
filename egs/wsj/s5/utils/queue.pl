@@ -94,7 +94,7 @@ $cmd = "";
 foreach $x (@ARGV) { 
   if ($x =~ m/^\S+$/) { $cmd .= $x . " "; } # If string contains no spaces, take
                                             # as-is.
-  elsif ($x =~ m:\":) { $cmd .= "'\''$x'\'' "; } # else if no dbl-quotes, use single
+  elsif ($x =~ m:\":) { $cmd .= "'$x' "; } # else if no dbl-quotes, use single
   else { $cmd .= "\"$x\" "; }  # else use double.
 }
 
