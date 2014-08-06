@@ -14,12 +14,13 @@ use_graphs=false
 # Begin configuration.
 scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
 acoustic_scale=0.1
-beam=20.0
-lattice_beam=10.0
+beam=15.0
+lattice_beam=8.0
+max_active=750
 transform_dir=  # directory to find fMLLR transforms in.
 top_n_words=100 # Number of common words that we compile into each graph (most frequent
                 # in $lang/text.
-stage=0
+stage=-1
 cleanup=true
 # End configuration options.
 
@@ -64,14 +65,16 @@ cp $srcdir/{tree,final.mdl} $dir || exit 1;
 cp $srcdir/final.occs $dir;
 
 
-utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt <$data/text | \
-  awk '{for(x=2;x<=NF;x++) print $x;}' | sort | uniq -c | \
-   sort -rn > $dir/word_counts.int || exit 1;
-num_words=$(awk '{x+=$1} END{print x}' < $dir/word_counts.int) || exit 1;
-# print top-n words with their unigram probabilities.
+if [ $stage -le 0 ]; then
+  utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt <$data/text | \
+    awk '{for(x=2;x<=NF;x++) print $x;}' | sort | uniq -c | \
+    sort -rn > $dir/word_counts.int || exit 1;
+  num_words=$(awk '{x+=$1} END{print x}' < $dir/word_counts.int) || exit 1;
+  # print top-n words with their unigram probabilities.
 
-head -n $top_n_words $dir/word_counts.int | awk -v tot=$num_words '{print $1/tot, $2;}' >$dir/top_words.int
-utils/int2sym.pl -f 2 $lang/words.txt <$dir/top_words.int >$dir/top_words.txt
+  head -n $top_n_words $dir/word_counts.int | awk -v tot=$num_words '{print $1/tot, $2;}' >$dir/top_words.int
+  utils/int2sym.pl -f 2 $lang/words.txt <$dir/top_words.int >$dir/top_words.txt
+fi
 
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type"
@@ -105,9 +108,9 @@ elif [ -f $srcdir/final.alimdl ]; then
 fi
 
 
-echo "$0: decoding $data using utterance-specific decoding graphs using model from $srcdir, output in $dir"
+if [ $stage -le 1 ]; then
+  echo "$0: decoding $data using utterance-specific decoding graphs using model from $srcdir, output in $dir"
 
-if [ $stage -le 0 ]; then
   rm $dir/edits.*.txt $dir/aligned_ref.*.txt 2>/dev/null
 
   $cmd JOB=1:$nj $dir/log/decode.JOB.log \
@@ -116,7 +119,8 @@ if [ $stage -le 0 ]; then
     compile-train-graphs-fsts $scale_opts --read-disambig-syms=$lang/phones/disambig.int \
      $dir/tree $dir/final.mdl $lang/L_disambig.fst ark:- ark:- \| \
     gmm-latgen-faster --acoustic-scale=$acoustic_scale --beam=$beam \
-     --lattice-beam=$lattice_beam --word-symbol-table=$lang/words.txt \
+      --max-active=$max_active --lattice-beam=$lattice_beam \
+      --word-symbol-table=$lang/words.txt \
      $dir/final.mdl ark:- "$feats" ark:- \| \
     lattice-oracle ark:- "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|" \
       ark,t:- ark,t:$dir/edits.JOB.txt \| \
@@ -124,15 +128,16 @@ if [ $stage -le 0 ]; then
 fi
 
 
-if [ $stage -le 1 ]; then
+if [ $stage -le 2 ]; then
   if [ -f $dir/edits.1.txt ]; then
-    for x in $(seq $nj); do cat $dir/edits.$x.txt; done > $dir/edits.txt
-    for x in $(seq $nj); do cat $dir/aligned_ref.$x.txt; done > $dir/aligned_ref.txt
+    # the awk commands below are to ensure that partially-written files don't confuse us.
+    for x in $(seq $nj); do cat $dir/edits.$x.txt; done | awk '{if(NF==2){print;}}' > $dir/edits.txt
+    for x in $(seq $nj); do cat $dir/aligned_ref.$x.txt; done | awk '{if(NF>=1){print;}}' > $dir/aligned_ref.txt
   else
     echo "$0: warning: no file $dir/edits.1.txt, using previously concatenated file if present."
   fi
 
-  # in case any utterances failed to align, get filtered copy of $data/text that's filtered.
+  # in case any utterances failed to align, get filtered copy of $data/text
   utils/filter_scp.pl $dir/edits.txt < $data/text  > $dir/text
   cat $dir/text | awk '{print $1, (NF-1);}' > $dir/length.txt
 
@@ -162,4 +167,3 @@ if [ $stage -le 1 ]; then
     rm $dir/edits.*.txt $dir/aligned_ref.*.txt
   fi
 fi
-

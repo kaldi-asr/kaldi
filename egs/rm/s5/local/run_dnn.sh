@@ -66,6 +66,8 @@ if [ $stage -le 2 ]; then
   # Decode (reuse HCLG graph)
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmmdir/graph $data_fmllr/test $dir/decode || exit 1;
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
+    $gmmdir/graph_ug $data_fmllr/test $dir/decode_ug || exit 1;
 fi
 
 
@@ -92,6 +94,9 @@ if [ $stage -le 4 ]; then
     steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph $data_fmllr/test $dir/decode_it${ITER} || exit 1
+    steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+      --nnet $dir/${ITER}.nnet --acwt $acwt \
+      $gmmdir/graph_ug $data_fmllr/test $dir/decode_ug_it${ITER} || exit 1
   done 
 fi
 
@@ -100,3 +105,16 @@ exit 0
 
 # Getting results [see RESULTS file]
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+# Showing how model conversion to nnet2 works; note, we use the expanded variable
+# names here so be careful in case the script changes.
+# steps/nnet2/convert_nnet1_to_nnet2.sh exp/dnn4b_pretrain-dbn_dnn exp/dnn4b_nnet2
+# cp exp/tri3b/splice_opts exp/tri3b/cmvn_opts exp/tri3b/final.mat exp/dnn4b_nnet2/
+# 
+#  steps/nnet2/decode.sh --nj 10 --cmd "$decode_cmd" --transform-dir exp/tri3b/decode \
+#    --config conf/decode.config exp/tri3b/graph data/test exp/dnn4b_nnet2/decode
+
+# decoding results are essentially the same (any small difference is probably because
+# decode.config != decode_dnn.config).
+# %WER 1.58 [ 198 / 12533, 22 ins, 45 del, 131 sub ] exp/dnn4b_nnet2/decode/wer_3
+# %WER 1.59 [ 199 / 12533, 23 ins, 45 del, 131 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_3

@@ -98,6 +98,12 @@ class Nnet {
   /// this neural net, leaving everything else fixed.
   void CopyStatsFrom(const Nnet &nnet);
 
+
+  /// Returns the index of the last component which is updatable,
+  /// or NumComponents() if none are updatable.
+  int32 LastUpdatableComponent() const;
+
+  /// Returns the number of updatable components.
   int32 NumUpdatableComponents() const;
   
   /// Scales the parameters of each of the updatable components.
@@ -192,9 +198,10 @@ class Nnet {
   /// AffineComponent learning-rate=0.01 l2-penalty=0.001 input-dim=10 output-dim=15 param-stddev=0.1
   void Init(std::istream &is);
 
-  /// This Init method works from a vector of components.  It will take ownership
-  /// of the pointers and resize the vector to zero to avoid a chance of the
-  /// caller deallocating them.
+  /// This Init method works from a vector of components.  It will take
+  /// ownership of the pointers and will resize the vector to zero to avoid a
+  /// chance of the caller deallocating them (but the vector itself is not
+  /// deleted).
   void Init(std::vector<Component*> *components);
 
   /// Appends this component to the components already in the neural net.

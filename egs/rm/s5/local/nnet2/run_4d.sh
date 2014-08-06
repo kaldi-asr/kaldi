@@ -41,7 +41,7 @@ if [ ! -f $dir/final.mdl ]; then
      --minibatch-size "$minibatch_size" \
      --parallel-opts "$parallel_opts" \
      --num-jobs-nnet 4 \
-     --num-epochs-extra 10 --add-layers-period 1 \
+     --num-epochs 8 --num-epochs-extra 5 --add-layers-period 1 \
      --num-hidden-layers 2 \
      --mix-up 4000 \
      --initial-learning-rate 0.02 --final-learning-rate 0.004 \

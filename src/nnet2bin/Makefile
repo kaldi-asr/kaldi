@@ -26,15 +26,18 @@ BINFILES = nnet-randomize-frames nnet-am-info nnet-init \
    nnet-modify-learning-rates nnet-normalize-stddev nnet-perturb-egs \
    nnet-perturb-egs-fmllr nnet-get-weighted-egs nnet-adjust-priors \
    cuda-compiled nnet-replace-last-layers nnet-am-switch-preconditioning \
-   nnet-train-simple-perturbed nnet-train-parallel-perturbed
+   nnet-train-simple-perturbed nnet-train-parallel-perturbed \
+   nnet1-to-raw-nnet
 
 OBJFILES =
 
+# Add this dependency to force cuda-compiled.o to be rebuilt when we reconfigure.
+cuda-compiled.o: ../kaldi.mk
 
 
 TESTFILES =
 
-ADDLIBS = ../nnet2/kaldi-nnet2.a ../gmm/kaldi-gmm.a \
+ADDLIBS = ../nnet2/kaldi-nnet2.a ../nnet/kaldi-nnet.a ../gmm/kaldi-gmm.a \
          ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a  \
          ../transform/kaldi-transform.a ../tree/kaldi-tree.a ../thread/kaldi-thread.a \
          ../cudamatrix/kaldi-cudamatrix.a ../matrix/kaldi-matrix.a \

@@ -17,7 +17,7 @@ skip_scoring=false
 max_states=150000
 wip=0.5
 
-echo "$0 $@"
+echo "run-5-test.sh $@"
 
 . utils/parse_options.sh
 
@@ -314,32 +314,34 @@ fi
 ##
 ####################################################################
 
-for iter in 1 2 3 4; do
+decode=exp/sgmm5/decode_fmllr_${dirid}
+if [ ! -f $decode/.done ]; then
+  for iter in 1 2 3 4; do
     # Decode SGMM+MMI (via rescoring).
-  decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dirid}_it$iter
-  if [ ! -f $decode/.done ]; then
+    decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dirid}_it$iter
+    if [ ! -f $decode/.done ]; then
 
-    mkdir -p $decode
-    steps/decode_sgmm2_rescore.sh  --skip-scoring true \
-      --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_${dirid} \
-      data/lang ${datadir} exp/sgmm5/decode_fmllr_${dirid} $decode | tee ${decode}/decode.log
+      mkdir -p $decode
+      steps/decode_sgmm2_rescore.sh  --skip-scoring true \
+        --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_${dirid} \
+        data/lang ${datadir} exp/sgmm5/decode_fmllr_${dirid} $decode | tee ${decode}/decode.log
 
-    touch $decode/.done
-  fi
-done
+      touch $decode/.done
+    fi
+  done
 
   #We are done -- all lattices has been generated. We have to
   #a)Run MBR decoding
   #b)Run KW search
-for iter in 1 2 3 4; do
+  for iter in 1 2 3 4; do
     # Decode SGMM+MMI (via rescoring).
-  decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dirid}_it$iter
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
+    decode=exp/sgmm5_mmi_b0.1/decode_fmllr_${dirid}_it$iter
+    local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
       --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --wip $wip \
-    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
-    ${datadir} data/lang $decode
-done
-
+      "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+      ${datadir} data/lang $decode
+  done
+fi
 
 ####################################################################
 ##

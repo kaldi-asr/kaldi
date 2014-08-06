@@ -1,4 +1,6 @@
 #!/bin/bash
+dir=exp/tri6_nnet
+train_stage=-10
 
 . conf/common_vars.sh
 . ./lang.conf
@@ -17,7 +19,7 @@ echo "Waiting till exp/tri5_ali/.done exists...."
 while [ ! -f exp/tri5_ali/.done ]; do sleep 30; done
 echo "...done waiting for exp/tri5_ali/.done"
 
-if [ ! -f exp/tri6_nnet/.done ]; then
+if [ ! -f $dir/.done ]; then
   steps/nnet2/train_pnorm.sh \
     --stage $train_stage --mix-up $dnn_mixup \
     --initial-learning-rate $dnn_init_learning_rate \
@@ -27,8 +29,8 @@ if [ ! -f exp/tri6_nnet/.done ]; then
     --pnorm-output-dim $dnn_output_dim \
     --cmd "$train_cmd" \
     "${dnn_gpu_parallel_opts[@]}" \
-    data/train data/lang exp/tri5_ali exp/tri6_nnet || exit 1
+    data/train data/lang exp/tri5_ali $dir || exit 1
 
-  touch exp/tri6_nnet/.done
+  touch $dir/.done
 fi
 

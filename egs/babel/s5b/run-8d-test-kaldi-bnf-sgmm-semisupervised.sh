@@ -33,12 +33,12 @@ if [ $babel_type == "full" ] && $semisupervised; then
 fi
 
 if $semisupervised ; then
-  unsup_string="_semi_supervised"
+  unsup_string="_semisup"
 else
   unsup_string=""  #" ": supervised training, _semi_supervised: unsupervised BNF training
 fi
 
-if ! echo {dev10h,dev2h,eval,unsup}{,.uem,.seg} | grep -w "$type" >/dev/null; then
+if ! echo {dev10h,dev2h,eval,unsup,shadow}{,.uem,.seg} | grep -w "$type" >/dev/null; then
   # note: echo dev10.uem | grep -w dev10h will produce a match, but this
   # doesn't matter because dev10h is also a valid value.
   echo "Invalid variable type=${type}, valid values are " {dev10h,dev2h,eval,unsup}{,.uem,.seg}
@@ -61,7 +61,7 @@ my_nj=`cat exp/tri5/decode_${dirid}/num_jobs` || exit 1;
 if [ ! $data_bnf_dir/${dirid}_bnf/.done -nt exp/tri5/decode_${dirid}/.done ] || \
    [ ! $data_bnf_dir/${dirid}_bnf/.done -nt $exp_dir/tri6_bnf/.done ]; then
   # put the archives in $param_bnf_dir/.
-  steps/nnet2/dump_bottleneck_features.sh --nj $my_nj --cmd "$train_cmd" \
+  steps/nnet/make_bn_feats.sh --nj $my_nj --cmd "$train_cmd" \
     --transform-dir exp/tri5/decode_${dirid} data/${dirid} $data_bnf_dir/${dirid}_bnf $exp_dir/tri6_bnf $param_bnf_dir $exp_dir/dump_bnf
   touch $data_bnf_dir/${dirid}_bnf/.done
 fi
@@ -77,10 +77,14 @@ if [ ! $data_bnf_dir/${dirid}/.done -nt $data_bnf_dir/${dirid}_bnf/.done ]; then
   steps/compute_cmvn_stats.sh --fake $data_bnf_dir/${dirid} $exp_dir/make_fmllr_feats $param_bnf_dir
   rm -r $data_bnf_dir/${dirid}_sat
   if ! $skip_kws ; then
-    cp -r data/${dirid}/kws* $data_bnf_dir/${dirid}/
+    cp -r data/${dirid}/*kws* $data_bnf_dir/${dirid}/ || true
   fi
   touch $data_bnf_dir/${dirid}/.done
 fi
+if ! $skip_kws ; then
+  cp -r data/${dirid}/*kws* $data_bnf_dir/${dirid}/ || true
+fi
+
 
 if $data_only ; then
   echo "Exiting, as data-only was requested... "
@@ -178,6 +182,8 @@ for iter in 1 2 3 4; do
     "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
     ${datadir} data/lang $decode
 done
+
+exit 0
 
 if [ ! exp_bnf/tri7_nnet/decode_${dirid}/.done -nt data_bnf/${dirid}_bnf/.done ] || \
    [ ! exp_bnf/tri7_nnet/decode_${dirid}/.done -nt exp_bnf/tri7_nnet/.done ]; then

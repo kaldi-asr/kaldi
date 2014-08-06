@@ -38,6 +38,8 @@ if [ $# -ne 2 ]; then
   exit 1
 fi
 
+set -u
+
 unsup_datadir=$1
 unsup_postdir=$2
 unsup_dirid=`basename $unsup_datadir`
@@ -57,12 +59,12 @@ fi
 if [ ! -f $ali_dir/.done ]; then
   echo "$0: Aligning supervised training data in exp/tri6_nnet_ali"
   [ ! -f exp/tri6_nnet/final.mdl ] && echo "exp/tri6_nnet/final.mdl not found!\nRun run-6-nnet.sh first!" && exit 1
-  steps/nnet2/align.sh  --cmd "$decode_cmd" \
+  steps/nnet2/align.sh  --cmd "$train_cmd" \
     --use-gpu no --transform-dir exp/tri5_ali --nj $train_nj \
     data/train data/lang exp/tri6_nnet $ali_dir || exit 1
   touch $ali_dir/.done
 fi
-
+exit 0
 echo "$0: Using supervised data alignments from $ali_dir"
 
 ###############################################################################
@@ -85,11 +87,10 @@ done
 mkdir -p exp/tri6_nnet_semi_supervised
 
 if [ ! -f exp/tri6_nnet_semi_supervised/.egs.done ] ; then
-  local/nnet2/get_egs_semi_supervised.sh $spk_vecs_opt \
-    "${egs_gpu_opts[@]}" --io-opts "$egs_io_opts" \
+  local/nnet2/get_egs_semi_supervised.sh --cmd "$train_cmd" \
+    "${dnn_update_egs_opts[@]}" \
     --transform-dir-sup exp/tri5_ali \
-    --transform-dir-unsup exp/tri5/decode_${dirid} \
-    --weight-threshold $weight_threshold \
+    --transform-dir-unsup exp/tri5/decode_${unsup_dirid} \
     data/train $unsup_datadir data/lang \
     $ali_dir $unsup_postdir exp/tri6_nnet_semi_supervised || exit 1;
 

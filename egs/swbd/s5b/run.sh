@@ -15,6 +15,15 @@
 . path.sh
 set -e # exit on error
 
+# Prepare Switchboard data. This command can also take a second optional argument
+# which specifies the directory to Switchboard documentations. Specifically, if
+# this argument is given, the script will look for the conv.tab file and correct
+# speaker IDs to the actual speaker personal identification numbers released in
+# the documentations. The documentations can be found here: 
+# https://catalog.ldc.upenn.edu/docs/LDC97S62/
+# Note: if you are using this link, make sure you rename conv_tab.csv to conv.tab
+# after downloading.
+# Usage: local/swbd1_data_prep.sh /path/to/SWBD [/path/to/SWBD_docs]
 local/swbd1_data_prep.sh /export/corpora3/LDC/LDC97S62
 # local/swbd1_data_prep.sh /home/dpovey/data/LDC97S62
 # local/swbd1_data_prep.sh /data/corpora0/LDC97S62

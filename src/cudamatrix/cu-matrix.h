@@ -78,10 +78,10 @@ class CuMatrixBase {
                                      CuMatrixBase<Real> *grad, Real l1, Real lr);
   friend void cu::Splice<Real>(const CuMatrix<Real> &src,
                                const CuArray<int32> &frame_offsets,
-                               CuMatrix<Real> *tgt);
+                               CuMatrixBase<Real> *tgt);
   friend void cu::Copy<Real>(const CuMatrix<Real> &src,
                              const CuArray<int32> &copy_from_indices,
-                             CuMatrix<Real> *tgt);
+                             CuMatrixBase<Real> *tgt);
   friend void cu::Randomize<Real>(const CuMatrixBase<Real> &src,
                                   const CuArray<int32> &copy_from_idx,
                                   CuMatrixBase<Real> *tgt);
@@ -290,9 +290,9 @@ class CuMatrixBase {
   void InvertElements();
   /// B = alpha * A
   void AddMat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA = kNoTrans);
-  /// B = alpha * row + beta * B
+  /// (for each column c of *this), c = alpha * col + beta * c
   void AddVecToCols(Real alpha, const CuVectorBase<Real> &col, Real beta = 1.0);
-  /// B = alpha * row + beta * B
+  /// (for each row r of *this), r = alpha * row + beta * r
   void AddVecToRows(Real alpha, const CuVectorBase<Real> &row, Real beta = 1.0);
   /// C = alpha * A(^T)*B(^T) + beta * C
   void AddMatMat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,

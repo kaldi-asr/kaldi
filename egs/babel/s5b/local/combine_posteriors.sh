@@ -73,13 +73,10 @@ mkdir -p $out_decode
 
 if [ $stage -lt -1 ]; then
   mkdir -p $out_decode/log
-  if [ ! -f $out_decode/.best_path.done ]; then
-    $cmd JOB=1:$nj $out_decode/log/best_path.JOB.log \
-      lattice-best-path --acoustic-scale=0.1 \
-      "ark,s,cs:gunzip -c $decode_dir/lat.JOB.gz |" \
-      ark:/dev/null "ark:| gzip -c > $out_decode/best_path_ali.JOB.gz" || exit 1
-    touch $out_decode/.best_path.done
-  fi
+  $cmd JOB=1:$nj $out_decode/log/best_path.JOB.log \
+    lattice-best-path --acoustic-scale=0.1 \
+    "ark,s,cs:gunzip -c $decode_dir/lat.JOB.gz |" \
+    ark:/dev/null "ark:| gzip -c > $out_decode/best_path_ali.JOB.gz" || exit 1
 fi
 
 weights_sum=0.0

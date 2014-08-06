@@ -46,13 +46,13 @@ fi
 if [ ! -f data_bnf/train_bnf/.done ]; then
   mkdir -p data_bnf
   # put the archives in plp/.
-  steps/nnet2/dump_bottleneck_features.sh --nj $train_nj --cmd "$train_cmd" \
+  steps/nnet/make_bn_feats.sh --nj $train_nj --cmd "$train_cmd" \
     --transform-dir exp/tri5 data/train data_bnf/train_bnf exp_bnf/tri6_bnf param_bnf exp_bnf/dump_bnf
   touch data_bnf/train_bnf/.done
 fi 
 
 if [ ! data_bnf/train/.done -nt data_bnf/train_bnf/.done ]; then
-  steps/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
+  steps/nnet/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
     --nj $train_nj --transform-dir exp/tri5_ali  data_bnf/train_sat data/train \
     exp/tri5_ali exp_bnf/make_fmllr_feats/log param_bnf/ 
 

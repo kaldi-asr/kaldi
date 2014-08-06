@@ -135,7 +135,8 @@ double NnetUpdater::ComputeTotAccuracy(
 
 void NnetUpdater::Backprop(CuMatrix<BaseFloat> *deriv) const {
   // We assume ComputeObjfAndDeriv has already been called.
-  for (int32 c = nnet_.NumComponents() - 1; c >= 0; c--) {
+  for (int32 c = nnet_.NumComponents() - 1;
+       c >= nnet_.LastUpdatableComponent(); c--) {
     const Component &component = nnet_.GetComponent(c);
     Component *component_to_update = (nnet_to_update_ == NULL ? NULL :
                                       &(nnet_to_update_->GetComponent(c)));

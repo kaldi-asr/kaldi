@@ -119,7 +119,7 @@ std::string MomentStatistics(const CuMatrix<Real> &mat) {
  * in N, out k*N, FrameOffset o_1,o_2,...,o_k
  * FrameOffset example 11frames: -5 -4 -3 -2 -1 0 1 2 3 4 5
  */
-class Splice : public Component {
+class Splice: public Component {
  public:
   Splice(int32 dim_in, int32 dim_out)
     : Component(dim_in, dim_out)

@@ -27,7 +27,7 @@ if [ ! exp_bnf/tri6_ali_50/.done -nt exp_bnf/tri6/.done ]; then
   echo "Aligning fMLLR system with 50 jobs"
   echo ---------------------------------------------------------------------
   steps/align_fmllr.sh \
-    --boost-silence $boost_sil --nj 50 --cmd "$train_cmd" \
+    --boost-silence $boost_sil --nj $train_nj --cmd "$train_cmd" \
     data_bnf/train_app data/lang exp_bnf/tri6 exp_bnf/tri6_ali_50
   touch exp_bnf/tri6_ali_50/.done
 fi

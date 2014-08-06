@@ -61,7 +61,7 @@ void Randomize(const CuMatrixBase<Real> &src,
 template<typename Real>
 void Splice(const CuMatrix<Real> &src,
             const CuArray<int32> &frame_offsets,
-            CuMatrix<Real> *tgt);
+            CuMatrixBase<Real> *tgt);
 
 /// Copies elements from src into tgt as given by copy_from_indices.
 /// The matrices src and tgt must have the same dimensions and
@@ -71,7 +71,7 @@ void Splice(const CuMatrix<Real> &src,
 template<typename Real>
 void Copy(const CuMatrix<Real> &src,
           const CuArray<int32> &copy_from_indices,
-          CuMatrix<Real> *tgt);
+          CuMatrixBase<Real> *tgt);
 
 
 } // namespace cu

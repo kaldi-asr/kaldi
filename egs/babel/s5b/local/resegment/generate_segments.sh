@@ -61,7 +61,7 @@ total_time=0
 t1=$(date +%s)
 
 if [ $stage -le 0 ] ; then
-  steps/decode_nolats.sh $decoder_extra_opts --write-words false --write-alignments true \
+  steps/decode_nolats.sh ${decode_extra_opts+} --write-words false --write-alignments true \
     --cmd "$cmd" --nj $nj --beam $beam --max-active $max_active \
     $model_dir/phone_graph $datadir $model_dir/decode_${dirid} || exit 1
 fi
@@ -122,7 +122,7 @@ mkdir -p $output_dir
 mkdir -p $temp_dir/log
 
 local/resegment/segmentation.py --verbose 2 $segmentation_opts \
-  $temp_dir/pred $temp_dir/phone_map.txt 2> $temp_dir/log/resegment.log | \
+  $temp_dir/pred $temp_dir/phone_map.txt 2>$temp_dir/log/resegment.log | \
   sort > $output_dir/segments || exit 1
 
 if [ ! -s $output_dir/segments ] ; then

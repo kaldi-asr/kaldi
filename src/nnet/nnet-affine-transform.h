@@ -171,7 +171,7 @@ class AffineTransform : public UpdatableComponent {
   }
 
   /// Accessors to the component parameters
-  const CuVector<BaseFloat>& GetBias() {
+  const CuVector<BaseFloat>& GetBias() const {
     return bias_;
   }
 
@@ -180,7 +180,7 @@ class AffineTransform : public UpdatableComponent {
     bias_.CopyFromVec(bias);
   }
 
-  const CuMatrix<BaseFloat>& GetLinearity() {
+  const CuMatrix<BaseFloat>& GetLinearity() const {
     return linearity_;
   }
 
@@ -190,11 +190,11 @@ class AffineTransform : public UpdatableComponent {
     linearity_.CopyFromMat(linearity);
   }
 
-  const CuVector<BaseFloat>& GetBiasCorr() {
+  const CuVector<BaseFloat>& GetBiasCorr() const {
     return bias_corr_;
   }
 
-  const CuMatrix<BaseFloat>& GetLinearityCorr() {
+  const CuMatrix<BaseFloat>& GetLinearityCorr() const {
     return linearity_corr_;
   }
 
