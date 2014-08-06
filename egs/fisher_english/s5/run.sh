@@ -10,6 +10,12 @@ set -e
 # the next command produces the data in local/train_all
 local/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
    /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
+# You could also try specifying the --calldata argument to this command as below.
+# If specified, the script will use actual speaker personal identification 
+# numbers released with the dataset, i.e. real speaker IDs. Note: --calldata has
+# to be the first argument of this script.
+# local/fisher_data_prep.sh --calldata /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
+#    /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
 
 # at BUT:
 # local/fisher_data_prep.sh /mnt/matylda6/jhu09/qpovey/FISHER/LDC2005T19 /mnt/matylda2/data/FISHER/
@@ -153,8 +159,15 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 (
   utils/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   exp/tri5a/graph data/dev exp/tri5a/decode_dev
+    exp/tri5a/graph data/dev exp/tri5a/decode_dev
 )&
+
+
+
+# The step below won't run by default; it demonstrates a data-cleaning method.
+# It doesn't seem to help in this setup; maybe the data was clean enough already.
+# local/run_data_cleaning.sh
 
 # local/run_for_spkid.sh
 
+# local/run_nnet2.sh

@@ -28,17 +28,24 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Get feature-projection transform using stats obtained with acc-lda.\n"
+        "See comments in the code of nnet2/get-feature-transform.h for more\n"
+        "information.\n"
+        "\n"
         "Usage:  nnet-get-feature-transform [options] <matrix-out> <lda-acc-1> <lda-acc-2> ...\n";
 
     bool binary = true;
     FeatureTransformEstimateOptions opts;
     std::string write_cholesky;
+    std::string write_within_covar;
     ParseOptions po(usage);
-    po.Register("binary", &binary, "Write accumulators in binary mode.");
+    po.Register("binary", &binary, "Write outputs in binary mode.");
     po.Register("write-cholesky", &write_cholesky, "If supplied, write to this "
-                "wxfilename the Cholesky factor of the within-class covariance."
+                "wxfilename the Cholesky factor of the within-class covariance. "
                 "Can be used for perturbing features.  E.g. "
                 "--write-cholesky=exp/nnet5/cholesky.tpmat");
+    po.Register("write-within-covar", &write_within_covar, "If supplied, write "
+                "to this wxfilename the within-class covariance (as a symmetric "
+                "matrix). E.g. --write-within-covar=exp/nnet5/within_covar.mat");
     opts.Register(&po);
     po.Read(argc, argv);
 
@@ -58,10 +65,18 @@ int main(int argc, char *argv[]) {
 
     Matrix<BaseFloat> mat;
     TpMatrix<BaseFloat> cholesky;
-    fte.Estimate(opts, &mat, write_cholesky != "" ? &cholesky : NULL);
+    fte.Estimate(opts, &mat,
+                 (write_cholesky != "" || write_within_covar != "" ?
+                  &cholesky : NULL));
     WriteKaldiObject(mat, projection_wxfilename, binary);
-    if (write_cholesky != "")
+    if (write_cholesky != "") {
       WriteKaldiObject(cholesky, write_cholesky, binary);
+    }
+    if (write_within_covar != "") {
+      SpMatrix<BaseFloat> within_var(cholesky.NumRows());
+      within_var.AddTp2(1.0, cholesky, kNoTrans, 0.0);
+      WriteKaldiObject(within_var, write_within_covar, binary);
+    }
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();

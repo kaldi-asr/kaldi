@@ -172,7 +172,7 @@ void BasisFmllrEstimate::ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
         G_hat[d].AddVec2(alpha, extend_mean);
         // add vector to the diagonal elements of the matrix
         // not work for full covariance matrices
-        G_hat[d].AddVec(alpha, extend_var);
+        G_hat[d].AddDiagVec(alpha, extend_var);
       } // loop over dimension
 	} //  loop over Gaussians
   }  // loop over states

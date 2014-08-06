@@ -122,6 +122,6 @@ if [ $nlex -ne $nwlist ] ; then
   echo "WARNING:   Lexicon : $nlex words"
   echo "WARNING:Diff example: "
   diff <(cut -f 1 $output_lex | sort -u ) \
-       <(cut -f 1 $output/wordlist.orig.txt | sort -u )
+       <(cut -f 1 $output/wordlist.orig.txt | sort -u ) || true
 fi
 exit 0

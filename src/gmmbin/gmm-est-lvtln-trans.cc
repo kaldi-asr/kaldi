@@ -1,6 +1,7 @@
 // gmmbin/gmm-est-lvtln-trans.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University
+//                2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -125,8 +126,8 @@ int main(int argc, char *argv[]) {
           const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
           const GaussPost &gpost = gpost_reader.Value(utt);
           if (static_cast<int32>(gpost.size()) != feats.NumRows()) {
-            KALDI_WARN << "GauPost vector has wrong size " << (gpost.size())
-                       << " vs. " << (feats.NumRows());
+            KALDI_WARN << "GauPost vector has wrong size " << gpost.size()
+                       << " vs. " << feats.NumRows();
             num_other_error++;
             continue;
           }
@@ -172,8 +173,8 @@ int main(int argc, char *argv[]) {
         const GaussPost &gpost = gpost_reader.Value(utt);
 
         if (static_cast<int32>(gpost.size()) != feats.NumRows()) {
-          KALDI_WARN << "GauPost has wrong size " << (gpost.size())
-              << " vs. " << (feats.NumRows());
+          KALDI_WARN << "GauPost has wrong size " << gpost.size()
+              << " vs. " << feats.NumRows();
           num_other_error++;
           continue;
         }
@@ -219,7 +220,7 @@ int main(int argc, char *argv[]) {
               << " with no gposts, " << num_other_error << " with other errors.";
     KALDI_LOG << "Overall LVTLN auxf impr per frame is "
               << (tot_lvtln_impr / tot_t) << " over " << tot_t << " frames.";
-    return 0;
+    return (num_done == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

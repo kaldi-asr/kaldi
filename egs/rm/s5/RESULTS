@@ -105,14 +105,23 @@ exit 0
 %WER 1.72 [ 216 / 12533, 25 ins, 38 del, 153 sub ] exp/nnet4b_gpu/decode/wer_4
 %WER 8.34 [ 1045 / 12533, 94 ins, 146 del, 805 sub ] exp/nnet4b_gpu/decode_ug/wer_10
 
-%WER 1.75 [ 219 / 12533, 23 ins, 54 del, 142 sub ] exp/nnet4c/decode/wer_4
-%WER 8.83 [ 1107 / 12533, 70 ins, 206 del, 831 sub ] exp/nnet4c/decode_ug/wer_10
+%WER 1.80 [ 226 / 12533, 29 ins, 44 del, 153 sub ] exp/nnet4c/decode/wer_4
+%WER 8.49 [ 1064 / 12533, 80 ins, 175 del, 809 sub ] exp/nnet4c/decode_ug/wer_11
 
-%WER 1.76 [ 220 / 12533, 16 ins, 60 del, 144 sub ] exp/nnet4c_gpu/decode/wer_6
-%WER 8.82 [ 1106 / 12533, 90 ins, 173 del, 843 sub ] exp/nnet4c_gpu/decode_ug/wer_11
+%WER 1.80 [ 226 / 12533, 23 ins, 52 del, 151 sub ] exp/nnet4c_gpu/decode/wer_5
+%WER 8.64 [ 1083 / 12533, 93 ins, 169 del, 821 sub ] exp/nnet4c_gpu/decode_ug/wer_10
 
-%WER 1.61 [ 202 / 12533, 29 ins, 34 del, 139 sub ] exp/nnet4d_gpu/decode/wer_2
-%WER 8.48 [ 1063 / 12533, 76 ins, 176 del, 811 sub ] exp/nnet4d_gpu/decode_ug/wer_10
+%WER 1.68 [ 211 / 12533, 29 ins, 39 del, 143 sub ] exp/nnet4d/decode/wer_4
+%WER 8.40 [ 1053 / 12533, 101 ins, 153 del, 799 sub ] exp/nnet4d/decode_ug/wer_10
+
+%WER 1.74 [ 218 / 12533, 25 ins, 48 del, 145 sub ] exp/nnet4d_gpu/decode/wer_6
+%WER 8.39 [ 1051 / 12533, 106 ins, 149 del, 796 sub ] exp/nnet4d_gpu/decode_ug/wer_10
+
+%WER 1.53 [ 192 / 12533, 22 ins, 42 del, 128 sub ] exp/nnet4d2/decode/wer_3
+%WER 8.06 [ 1010 / 12533, 79 ins, 152 del, 779 sub ] exp/nnet4d2/decode_ug/wer_8
+
+%WER 1.51 [ 189 / 12533, 25 ins, 34 del, 130 sub ] exp/nnet4d2_gpu/decode/wer_3
+%WER 7.97 [ 999 / 12533, 78 ins, 152 del, 769 sub ] exp/nnet4d2_gpu/decode_ug/wer_8
 
 %WER 1.37 [ 172 / 12533, 14 ins, 36 del, 122 sub ] exp/nnet4e_gpu/decode/wer_3
 %WER 8.03 [ 1006 / 12533, 61 ins, 179 del, 766 sub ] exp/nnet4e_gpu/decode_ug/wer_8
@@ -140,8 +149,8 @@ exit 0
 
 
 # Discriminatively trained system (using p-norm rather than tanh nonlinearities, using SMBR, on GPU)
-%WER 1.56 [ 195 / 12533, 28 ins, 31 del, 136 sub ] exp/nnet5d_mpe_gpu/decode_epoch2/wer_2
-%WER 8.35 [ 1047 / 12533, 77 ins, 171 del, 799 sub ] exp/nnet5d_mpe_gpu/decode_ug_epoch4/wer_10
+%WER 1.74 [ 218 / 12533, 25 ins, 48 del, 145 sub ] exp/nnet5d_mpe_gpu/decode_epoch1/wer_6
+%WER 8.40 [ 1053 / 12533, 108 ins, 148 del, 797 sub ] exp/nnet5d_mpe_gpu/decode_ug_epoch1/wer_10
 
 # Discriminatively trained system on top of ensemble trained p-norm network (using SMBR, on GPU)
 %WER 1.36 [ 170 / 12533, 15 ins, 34 del, 121 sub ] exp/nnet5e_mpe_gpu/decode_epoch2/wer_3
@@ -152,6 +161,8 @@ exit 0
 # last time I created this.
 # Per-frame cross-entropy training
 %WER 1.66 [ 208 / 12533, 27 ins, 49 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_3
+%WER 7.80 [ 978 / 12533, 83 ins, 151 del, 744 sub ] exp/dnn4b_pretrain-dbn_dnn/decode_ug/wer_6
+
 # Sequence-based sMBR training
 %WER 1.64 [ 206 / 12533, 24 ins, 49 del, 133 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it1/wer_4
 %WER 1.62 [ 203 / 12533, 25 ins, 46 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it2/wer_4

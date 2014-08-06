@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
         "the feature dimension of the first feature file; if second argument is\n"
         "wspecifier, writes an archive of the feature dimension, indexed by utterance\n"
         "id.\n"
-        "Usage: feat-to-dim [options] feat-rspecifier (dim-wspecifier|dim-wxfilename)\n"
+        "Usage: feat-to-dim [options] <feat-rspecifier> (<dim-wspecifier>|<dim-wxfilename>)\n"
         "e.g.: feat-to-dim scp:feats.scp -\n";
     
     ParseOptions po(usage);

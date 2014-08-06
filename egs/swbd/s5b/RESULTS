@@ -97,6 +97,8 @@ for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep WER $x/wer_* | 
 %WER 17.5 | 1831 21395 | 84.1 10.4 5.4 1.7 17.5 54.9 | exp/nnet5d_gpu/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
 %WER 17.9 | 1831 21395 | 83.8 10.8 5.5 1.7 17.9 55.8 | exp/nnet6a_gpu/decode_eval2000_sw1_fsh_tgpr/score_13/eval2000.ctm.swbd.filt.sys
 %WER 18.4 | 1831 21395 | 83.6 11.4 5.0 2.1 18.4 56.1 | exp/nnet6a_gpu/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
+%WER 15.2 | 1831 21935 | 86.4  8.7 4.9 1.6 15.2 52.5 | exp/nnet5f_gpu/decode_eval2000_sw1_fsh_tgpr/score_14/eval2000.ctm.swbd.filt.sys
+$WER 15.6 | 1831 21395 | 86.2  9.2 4.5 1.9 15.6 53.0 | exp/nnet5f_gpu/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
 
 # Discriminative training on top of 5c (14.6 still not as good as Karel's 14.1 number with this LM, but getting closer).
 %WER 15.0 | 1831 21395 | 87.3 9.0 3.7 2.3 15.0 52.2 | exp/nnet6c_mpe_gpu/decode_eval2000_sw1_fsh_tgpr_epoch1/score_15/eval2000.ctm.swbd.filt.sys

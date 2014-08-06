@@ -79,16 +79,22 @@ void UnitTestParseOptions() {
 
   ParseOptions po3("now checking options with prefix");
   ParseOptions ro3("prefix", &po3);  // to register with prefix
+  ParseOptions so3("prefix2", &ro3);  // to register with prefix, recursively.
   DummyOptions dummy_opts;
-  int argc3 = 9;
-  const char *argv3[9] = { "program_name", "--prefix.unum=5", "--num=3",
-      "--prefix.str=foo", "--str=bar", "--prefix.my-bool=false",
-      "--prefix.my-str=baz", "a", "b" };
   po3.Register("str", &str, "My string variable");
   po3.Register("num", &num, "My int32 variable");
   // Now register with prefix
   ro3.Register("unum", &unum, "My uint32 variable");
   ro3.Register("str", &str2, "My other string variable");
+  uint32 unum2 = 0;
+  so3.Register("unum", &unum2, "Another uint32 variable");
+
+  int argc3 = 10;
+  const char *argv3[10] = {
+    "program_name", "--prefix.unum=5", "--num=3",
+    "--prefix.str=foo", "--str=bar", "--prefix.my-bool=false",
+    "--prefix.my-str=baz", "--prefix.prefix2.unum=42", "a", "b" };
+  
   dummy_opts.Register(&ro3);
   po3.PrintUsage(false);
 
@@ -97,6 +103,7 @@ void UnitTestParseOptions() {
   KALDI_ASSERT(po3.GetArg(1) == "a");
   KALDI_ASSERT(po3.GetArg(2) == "b");
   KALDI_ASSERT(unum == 5);
+  KALDI_ASSERT(unum2 == 42);
   KALDI_ASSERT(num == 3);
   KALDI_ASSERT(str2 == "foo");
   KALDI_ASSERT(str == "bar");

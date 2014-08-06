@@ -4,9 +4,9 @@
 featdir=mfcc
 
 # train linear vtln
+set -e
 
-
-steps/train_lvtln.sh --stage 1000 --cmd "$train_cmd" 1800 9000 \
+steps/train_lvtln.sh --cmd "$train_cmd" 1800 9000 \
    data/train data/lang exp/tri2b exp/tri3e
 
 cp -rT data/train data/train_vtln
@@ -41,7 +41,20 @@ steps/compute_cmvn_stats.sh data/test_vtln exp/make_mfcc/test_vtln $featdir
    exp/tri5e/graph_ug data/test_vtln exp/tri5e/decode_ug
 )
 
-# Baseline with no VTLN:
-#%WER 2.06 [ 258 / 12533, 37 ins, 47 del, 174 sub ] exp/tri3b/decode/wer_4
-#%WER 10.17 [ 1275 / 12533, 123 ins, 191 del, 961 sub ] exp/tri3b/decode_ug/wer_13
 
+# Below is the results we got from running this script.  5e is  with
+# VTLN, and 3b is the baseline.  VTLN helps at the speaker independent
+# pass, but there is essentially no difference after adaptation (except
+# for a small improvement on the _ug decode, from 10.36 to 10.14).
+#
+# a04:s5: for x in exp/tri5e/decode*; do grep WER $x/wer_* | utils/best_wer.sh; done
+# %WER 1.95 [ 245 / 12533, 31 ins, 60 del, 154 sub ] exp/tri5e/decode/wer_6
+# %WER 2.46 [ 308 / 12533, 38 ins, 67 del, 203 sub ] exp/tri5e/decode.si/wer_6
+# %WER 10.14 [ 1271 / 12533, 120 ins, 204 del, 947 sub ] exp/tri5e/decode_ug/wer_13
+# %WER 11.59 [ 1453 / 12533, 132 ins, 253 del, 1068 sub ] exp/tri5e/decode_ug.si/wer_13
+# a04:s5: for x in exp/tri3b/decode*; do grep WER $x/wer_* | utils/best_wer.sh; done
+# %WER 1.95 [ 245 / 12533, 21 ins, 63 del, 161 sub ] exp/tri3b/decode/wer_7
+# %WER 3.13 [ 392 / 12533, 59 ins, 64 del, 269 sub ] exp/tri3b/decode.si/wer_3
+# %WER 10.36 [ 1298 / 12533, 147 ins, 192 del, 959 sub ] exp/tri3b/decode_ug/wer_12
+# %WER 13.48 [ 1689 / 12533, 159 ins, 277 del, 1253 sub ] exp/tri3b/decode_ug.si/wer_13
+# a04:s5: 

@@ -61,6 +61,7 @@ done
 
 sdata=$data/split$nj;
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
+cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
 
@@ -75,7 +76,6 @@ if [ -z "$feat_type" ]; then
   echo "$0: feature type is $feat_type"
 fi
 
-cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 
 case $feat_type in
   raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |";;
@@ -85,16 +85,30 @@ case $feat_type in
 esac
 if [ ! -z "$transform_dir" ]; then
   echo "$0: using transforms from $transform_dir"
-  if [ "$feat_type" == "lda" ]; then
-    [ ! -f $transform_dir/trans.1 ] && echo "$0: no such file $transform_dir/trans.1" && exit 1;
-    [ "$nj" -ne "`cat $transform_dir/num_jobs`" ] \
-      && echo "$0: #jobs mismatch with transform-dir." && exit 1;
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/trans.JOB ark:- ark:- |"
+  [ ! -s $transform_dir/num_jobs ] && \
+    echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
+  nj_orig=$(cat $transform_dir/num_jobs)
+  
+  if [ $feat_type == "raw" ]; then trans=raw_trans;
+  else trans=trans; fi
+  if [ $feat_type == "lda" ] && \
+    ! cmp $transform_dir/../final.mat $srcdir/final.mat && \
+    ! cmp $transform_dir/final.mat $srcdir/final.mat; then
+    echo "$0: LDA transforms differ between $srcdir and $transform_dir"
+    exit 1;
+  fi
+  if [ ! -f $transform_dir/$trans.1 ]; then
+    echo "$0: expected $transform_dir/$trans.1 to exist (--transform-dir option)"
+    exit 1;
+  fi
+  if [ $nj -ne $nj_orig ]; then
+    # Copy the transforms into an archive with an index.
+    for n in $(seq $nj_orig); do cat $transform_dir/$trans.$n; done | \
+       copy-feats ark:- ark,scp:$dir/$trans.ark,$dir/$trans.scp || exit 1;
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
   else
-    [ ! -f $transform_dir/raw_trans.1 ] && echo "$0: no such file $transform_dir/raw_trans.1" && exit 1;
-    [ "$nj" -ne "`cat $transform_dir/num_jobs`" ] \
-      && echo "$0: #jobs mismatch with transform-dir." && exit 1;
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/raw_trans.JOB ark:- ark:- |"
+    # number of jobs matches with alignment dir.
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
   fi
 elif grep 'transform-feats --utt2spk' $srcdir/log/train.1.log >&/dev/null; then
   echo "$0: **WARNING**: you seem to be using a neural net system trained with transforms,"

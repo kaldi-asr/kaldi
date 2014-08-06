@@ -813,7 +813,7 @@ or:
  we want an actual linear structure, e.g. just a sequence of words.  For this,
  we can use the following program:
 \verbatim
- nbest-to-linear ark:1.nbest ark:1.words ark:1.ali ark:1.acscore ark:1.lmscore
+ nbest-to-linear ark:1.nbest ark:1.ali ark:1.words ark:1.lmscore ark:1.acscore
 \endverbatim
  This program reads in an archive of lattices, which must each be a linear FST,
  and outputs 4 archives, corresponding to the input symbol sequences, the output 

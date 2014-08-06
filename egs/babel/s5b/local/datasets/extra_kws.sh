@@ -22,13 +22,23 @@ function register_extraid {
 }
 
 function setup_oov_search {
-  local nbest=500
+  #Basic lexicon
+  #local phone_beam=-1
+  #local phone_nbest=-1
+  #local beam=5
+  #local nbest=500
+
+  #Extended lexicon
+  local nbest=-1
+  local beam=-1
+  local phone_nbest=300
+  local phone_beam=5
+
+  local phone_cutoff=5
+
   local g2p_nbest=10
   local g2p_mass=0.95
-  local beam=5
-  local phone_beam=4
-  local phone_nbest=-1
-  local phone_cutoff=5
+
 
   local data_dir=$1
   local source_dir=$2
@@ -37,10 +47,15 @@ function setup_oov_search {
   local kwsdatadir=$data_dir/${extraid}_kws
 
   mkdir -p $kwsdatadir
-  cp $source_dir/kwlist*.xml $kwsdatadir
-  cp $source_dir/ecf.xml $kwsdatadir
-  cp $source_dir/utter_* $kwsdatadir
-  [ -f $source_dir/rttm ] && cp $source_dir/rttm $kwsdatadir
+
+  if [ "${dataset_kind}" == "supervised" ] ; then
+    for file in $source_dir/rttm ; do
+      cp -f $file $kwsdatadir
+    done
+  fi
+  for file in $source_dir/utter_* $source_dir/kwlist*.xml $source_dir/ecf.xml ; do
+    cp -f $file $kwsdatadir
+  done
 
   kwlist=$source_dir/kwlist_outvocab.xml
   #Get the KW list
@@ -84,55 +99,50 @@ function setup_oov_search {
 }
 
 
-if [ "$dataset_kind" == "shadow" ]; then
-  true #we do not support multiple kw lists for shadow set system
-   
-else # This will work for both supervised and unsupervised dataset kinds
-  kws_flags=( --use-icu true )
-  if [  "${dataset_kind}" == "supervised"  ] ; then
-    #The presence of the file had been already verified, so just 
-    #add the correct switches
-    kws_flags+=(--rttm-file $my_rttm_file )
-  fi
-  if $my_subset_ecf ; then
-    kws_flags+=(--subset-ecf $my_data_list)
-  fi
+kws_flags=( --use-icu true )
+if [  "${dataset_kind}" == "supervised"  ] ; then
+  #The presence of the file had been already verified, so just 
+  #add the correct switches
+  kws_flags+=(--rttm-file $my_rttm_file )
+fi
+if $my_subset_ecf ; then
+  kws_flags+=(--subset-ecf $my_data_list)
+fi
 
-  if [ ! -f $dataset_dir/.done.kws.oov ] ; then
-    setup_oov_search $dataset_dir $dataset_dir/kws oov
-    register_extraid $dataset_dir oov
-    touch $dataset_dir/.done.kws.oov
-  fi
-  if [ ${#my_more_kwlists[@]} -ne 0  ] ; then
-    
-    touch $dataset_dir/extra_kws_tasks
-    
-    for extraid in "${!my_more_kwlists[@]}" ; do
-      #The next line will help us in running only one. We don't really
-      #know in which directory the KWS setup will reside in, so we will 
-      #place  the .done file directly into the data directory
-      [ -f $dataset_dir/.done.kws.$extraid ] && continue;
-      kwlist=${my_more_kwlists[$extraid]}
+if [ ! -f $dataset_dir/.done.kws.oov ] ; then
+  setup_oov_search $dataset_dir $dataset_dir/kws oov || exit 1
+  register_extraid $dataset_dir oov
+  touch $dataset_dir/.done.kws.oov
+fi
+if [ ${#my_more_kwlists[@]} -ne 0  ] ; then
+  
+  touch $dataset_dir/extra_kws_tasks
+  
+  for extraid in "${!my_more_kwlists[@]}" ; do
+    #The next line will help us in running only one. We don't really
+    #know in which directory the KWS setup will reside in, so we will 
+    #place  the .done file directly into the data directory
+    [ -f $dataset_dir/.done.kws.$extraid ] && continue;
+    kwlist=${my_more_kwlists[$extraid]}
 
-      local/kws_setup.sh  --extraid $extraid --case_insensitive $case_insensitive \
-        "${kws_flags[@]}" "${icu_opt[@]}" \
-        $my_ecf_file $kwlist data/lang ${dataset_dir} || exit 1
-      
-      #Register the dataset for default running...
-      #We can do it without any problem here -- the kws_stt_tasks will not
-      #run it, unless called with --run-extra-tasks true switch
-      register_extraid $dataset_dir $extraid
-      touch $dataset_dir/.done.kws.$extraid
-    done
-    for extraid in "${!my_more_kwlists[@]}" ; do
-      #The next line will help us in running only one. We don't really
-      #know in which directory the KWS setup will reside in, so we will 
-      #place  the .done file directly into the data directory
-      [ -f $dataset_dir/.done.kws.${extraid}_oov ] && continue;
-      setup_oov_search $dataset_dir $dataset_dir/${extraid}_kws ${extraid}_oov
-      register_extraid $dataset_dir ${extraid}_oov
-      touch $dataset_dir/.done.kws.${extraid}_oov
-    done
-  fi
+    local/kws_setup.sh  --extraid $extraid --case_insensitive $case_insensitive \
+      "${kws_flags[@]}" "${icu_opt[@]}" \
+      $my_ecf_file $kwlist data/lang ${dataset_dir} || exit 1
+    
+    #Register the dataset for default running...
+    #We can do it without any problem here -- the kws_stt_tasks will not
+    #run it, unless called with --run-extra-tasks true switch
+    register_extraid $dataset_dir $extraid
+    touch $dataset_dir/.done.kws.$extraid
+  done
+  for extraid in "${!my_more_kwlists[@]}" ; do
+    #The next line will help us in running only one. We don't really
+    #know in which directory the KWS setup will reside in, so we will 
+    #place  the .done file directly into the data directory
+    [ -f $dataset_dir/.done.kws.${extraid}_oov ] && continue;
+    setup_oov_search $dataset_dir $dataset_dir/${extraid}_kws ${extraid}_oov
+    register_extraid $dataset_dir ${extraid}_oov
+    touch $dataset_dir/.done.kws.${extraid}_oov
+  done
 fi
 

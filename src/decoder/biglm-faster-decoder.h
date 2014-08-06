@@ -30,8 +30,11 @@
 
 namespace kaldi {
 
-// the same as FasterDecoderOptions for now.
-typedef FasterDecoderOptions BiglmFasterDecoderOptions;
+struct BiglmFasterDecoderOptions: public FasterDecoderOptions {
+  BiglmFasterDecoderOptions() {
+    min_active = 200;
+  }
+};
 
 /** This is as FasterDecoder, but does online composition between
     HCLG and the "difference language model", which is a deterministic
@@ -368,20 +371,16 @@ class BiglmFasterDecoder {
       }
     }
 
-    // int32 n = 0, np = 0;
-
     // the tokens are now owned here, in last_toks, and the hash is empty.
-    // 'owned' is a complex thing here; the point is we need to call TokenDelete
+    // 'owned' is a complex thing here; the point is we need to call toks_.Delete(e)
     // on each elem 'e' to let toks_ know we're done with them.
     for (Elem *e = last_toks, *e_tail; e != NULL; e = e_tail) {  // loop this way
-      // n++;
       // because we delete "e" as we go.
       PairId state_pair = e->key;
       StateId state = PairToState(state_pair),
           lm_state = PairToLmState(state_pair);
       Token *tok = e->val;
       if (tok->weight_.Value() < weight_cutoff) {  // not pruned.
-        // np++;
         KALDI_ASSERT(state == tok->arc_.nextstate);
         for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
             !aiter.Done();

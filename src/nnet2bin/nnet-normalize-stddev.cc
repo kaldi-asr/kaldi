@@ -71,25 +71,38 @@ int main(int argc, char *argv[]) {
     vector<int32> identified_components;
     for (int32 c = 0; c < am_nnet.GetNnet().NumComponents() - 2; c++) {
       // Checks if the current layer is an affine layer or block affine layer.
+      // Also includes PreconditionedAffineComponent and
+      // PreconditionedAffineComponentOnline, since they are child classes of
+      // AffineComponent.
       Component *component = &(am_nnet.GetNnet().GetComponent(c));
       AffineComponent *ac = dynamic_cast<AffineComponent*>(component);
       BlockAffineComponent *bac =
         dynamic_cast<BlockAffineComponent*>(component);
       if (ac == NULL && bac == NULL)
         continue;
-
+      
       // Checks if the next layer is a pnorm layer.
       component = &(am_nnet.GetNnet().GetComponent(c + 1));
       PnormComponent *pc = dynamic_cast<PnormComponent*>(component);
       if (pc == NULL)
         continue;
 
-      // Checks if the layer behind the pnorm layer is a normalize layer.
+      // Checks if the layer after the pnorm layer is a NormalizeComponent
+      // or a PowerComponent followed by a NormalizeComponent
       component = &(am_nnet.GetNnet().GetComponent(c + 2));
       NormalizeComponent *nc = dynamic_cast<NormalizeComponent*>(component);
-      if (nc == NULL)
+      PowerComponent *pwc = dynamic_cast<PowerComponent*>(component);          
+      if (nc == NULL && pwc == NULL)
         continue;
-
+      if (pwc != NULL) {  // verify it's PowerComponent followed by
+                         // NormalizeComponent.
+        if (c + 3 >= am_nnet.GetNnet().NumComponents())
+          continue;
+        component = &(am_nnet.GetNnet().GetComponent(c + 3));
+        nc = dynamic_cast<NormalizeComponent*>(component);
+        if (nc == NULL)
+          continue;
+      }
       // This is the layer that we would like to normalize.
       identified_components.push_back(c);
     }
@@ -109,7 +122,7 @@ int main(int argc, char *argv[]) {
           / static_cast<BaseFloat>(params.Dim()));
       if (params_stddev > 0.0) {
         uc->Scale(1.0 / params_stddev);
-        KALDI_LOG << "Normalizd component " << identified_components[c];
+        KALDI_LOG << "Normalized component " << identified_components[c];
       }
     }
 

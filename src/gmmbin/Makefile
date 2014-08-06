@@ -27,7 +27,8 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-est-basis-fmllr-gpost gmm-latgen-tracking gmm-latgen-faster-parallel \
            gmm-est-fmllr-raw gmm-est-fmllr-raw-gpost gmm-global-init-from-feats \
            gmm-global-info gmm-latgen-faster-regtree-fmllr gmm-est-fmllr-global \
-           gmm-acc-mllt-global gmm-transform-means-global
+           gmm-acc-mllt-global gmm-transform-means-global gmm-global-gselect-to-post \
+           gmm-global-est-lvtln-trans
 
 OBJFILES =
 

@@ -28,28 +28,39 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Reads an archive of features and writes a corresponding archive\n"
-        "that maps utterance-id to utterance length in frames.\n"
-        "Usage: feat-to-len [options] in-rspecifier out-wspecifier\n"
-        "e.g.: feat-to-len scp:feats.scp ark,t:feats.lengths\n";
+        "that maps utterance-id to utterance length in frames, or (with\n"
+        "one argument) print to stdout the total number of frames in the\n"
+        "input archive.\n"
+        "Usage: feat-to-len [options] <in-rspecifier> [<out-wspecifier>]\n"
+        "e.g.: feat-to-len scp:feats.scp ark,t:feats.lengths\n"
+        "or: feat-to-len scp:feats.scp\n";
     
     ParseOptions po(usage);
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 1 && po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string rspecifier = po.GetArg(1);
-    std::string wspecifier = po.GetArg(2);
+    if (po.NumArgs() == 2) {
+      std::string rspecifier = po.GetArg(1);
+      std::string wspecifier = po.GetArg(2);
 
-    Int32Writer length_writer(wspecifier);
+      Int32Writer length_writer(wspecifier);
 
-    SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
-    for (; !kaldi_reader.Done(); kaldi_reader.Next())
-      length_writer.Write(kaldi_reader.Key(), kaldi_reader.Value().NumRows());
-    
+      SequentialBaseFloatMatrixReader matrix_reader(rspecifier);
+      for (; !matrix_reader.Done(); matrix_reader.Next())
+        length_writer.Write(matrix_reader.Key(), matrix_reader.Value().NumRows());
+    } else {
+      int64 tot = 0;
+      std::string rspecifier = po.GetArg(1);
+      SequentialBaseFloatMatrixReader matrix_reader(rspecifier);
+      for (; !matrix_reader.Done(); matrix_reader.Next())
+        tot += matrix_reader.Value().NumRows();
+      std::cout << tot << std::endl;
+    }
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();

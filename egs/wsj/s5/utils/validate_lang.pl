@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 
-# Guoguo Chen (guoguo@jhu.edu)
+# Apache 2.0.
+# Copyright  2012   Guoguo Chen
+#            2014   Neil Nelson
 #
 # Validation script for data/lang
 
@@ -132,7 +134,7 @@ sub check_txt_int_csl {
 }
 
 sub check_txt_int {
-  my ($cat, $symtab) = @_;
+  my ($cat, $symtab, $sym_check) = @_;
   print "Checking $cat.\{txt, int\} ...\n";
   if (-z "$cat.txt") {$exit = 1; return print "--> ERROR: $cat.txt is empty or does not exist\n";}
   if (-z "$cat.int") {$exit = 1; return print "--> ERROR: $cat.int is empty or does not exist\n";}
@@ -154,6 +156,7 @@ sub check_txt_int {
   close(TXT); $idx1 --;
   print "--> $idx1 entry/entries in $cat.txt\n";
 
+	my %used_syms = ();
   $idx2 = 1;
   while(<INT>) {
     chomp;
@@ -168,6 +171,8 @@ sub check_txt_int {
     if (@set != @col) {$exit = 1; return print "--> ERROR: $cat.int doesn't correspond to $cat.txt (break at line $idx2)\n";}
     foreach(0 .. @set-1) {
       if ($symtab->{@set[$_]} ne @col[$_]) {$exit = 1; return print "--> ERROR: $cat.int doesn't correspond to $cat.txt (break at line $idx2, block " ,$_+1, ")\n";}
+			if ($sym_check && defined $used_syms{@set[$_]}) {$exit = 1; return print "--> ERROR: $cat.txt and $cat.int contain duplicate symbols (break at line $idx2, block " ,$_+1, ")\n";}
+			$used_syms{@set[$_]} = 1;
     }
     $idx2 ++;
   }
@@ -175,31 +180,16 @@ sub check_txt_int {
   if ($idx1 != $idx2) {$exit = 1; return print "--> ERROR: $cat.int doesn't correspond to $cat.txt (break at line ", $idx2+1, ")\n";}
   print "--> $cat.int corresponds to $cat.txt\n";
 
-  return print "--> $cat.\{txt, int\} are OK\n";
-}
+	if ($sym_check) {
+		while ( my ($key, $value) = each(%silence) ) {
+			if (!defined $used_syms{$key}) {$exit = 1; return print "--> ERROR: $cat.txt and $cat.int do not contain all silence phones\n";}
+		}
+		while ( my ($key, $value) = each(%nonsilence) ) {
+			if (!defined $used_syms{$key}) {$exit = 1; return print "--> ERROR: $cat.txt and $cat.int do not contain all non-silence phones\n";}
+		}
+	}
 
-@list1 = ("context_indep", "disambig", "nonsilence", "silence", "optional_silence");
-@list2 = ("roots", "sets");
-foreach(@list1) {
-  check_txt_int_csl("$lang/phones/$_", \%psymtab); print "\n";
-}
-foreach(@list2) {
-  check_txt_int("$lang/phones/$_", \%psymtab); print "\n";
-}
-if ((-s "$lang/phones/extra_questions.txt") || (-s "$lang/phones/extra_questions.int")) {
-  check_txt_int("$lang/phones/extra_questions", \%psymtab); print "\n";
-} else {
-  print "Checking $lang/phones/extra_questions.\{txt, int\} ...\n";
-  if ((-f "$lang/phones/extra_questions.txt") && (-f "$lang/phones/extra_questions.int")) {
-    print "--> WARNING: the optional $lang/phones/extra_questions.\{txt, int\} are empty!\n\n";
-    $warning = 1;
-  } else {
-    print "--> ERROR: $lang/phones/extra_questions.\{txt, int\} do not exist (they may be empty, but should be present)\n\n";
-    $exit = 1;
-  }
-} 
-if (-e "$lang/phones/word_boundary.txt") {
-  check_txt_int("$lang/phones/word_boundary", \%psymtab); print "\n";
+  return print "--> $cat.\{txt, int\} are OK\n";
 }
 
 # Check disjoint and summation -------------------------------
@@ -217,7 +207,7 @@ sub intersect {
 }
 
 sub check_disjoint {
-  print "Checking disjoint: silence.txt, nosilenct.txt, disambig.txt ...\n";
+  print "Checking disjoint: silence.txt, nonsilence.txt, disambig.txt ...\n";
   if (!open(S, "<$lang/phones/silence.txt"))    {$exit = 1; return print "--> ERROR: fail to open $lang/phones/silence.txt\n";}
   if (!open(N, "<$lang/phones/nonsilence.txt")) {$exit = 1; return print "--> ERROR: fail to open $lang/phones/nonsilence.txt\n";}
   if (!open(D, "<$lang/phones/disambig.txt"))   {$exit = 1; return print "--> ERROR: fail to open $lang/phones/disambig.txt\n";}
@@ -335,6 +325,30 @@ sub check_summation {
 %disambig = ();
 check_disjoint; print "\n";
 check_summation; print "\n";
+
+@list1 = ("context_indep", "disambig", "nonsilence", "silence", "optional_silence");
+@list2 = ("roots", "sets");
+foreach(@list1) {
+  check_txt_int_csl("$lang/phones/$_", \%psymtab); print "\n";
+}
+foreach(@list2) {
+  check_txt_int("$lang/phones/$_", \%psymtab, 1); print "\n";
+}
+if ((-s "$lang/phones/extra_questions.txt") || (-s "$lang/phones/extra_questions.int")) {
+  check_txt_int("$lang/phones/extra_questions", \%psymtab, 0); print "\n";
+} else {
+  print "Checking $lang/phones/extra_questions.\{txt, int\} ...\n";
+  if ((-f "$lang/phones/extra_questions.txt") && (-f "$lang/phones/extra_questions.int")) {
+    print "--> WARNING: the optional $lang/phones/extra_questions.\{txt, int\} are empty!\n\n";
+    $warning = 1;
+  } else {
+    print "--> ERROR: $lang/phones/extra_questions.\{txt, int\} do not exist (they may be empty, but should be present)\n\n";
+    $exit = 1;
+  }
+} 
+if (-e "$lang/phones/word_boundary.txt") {
+  check_txt_int("$lang/phones/word_boundary", \%psymtab, 0); print "\n";
+}
 
 # Checking optional_silence.txt -------------------------------
 print "Checking optional_silence.txt ...\n";
@@ -550,7 +564,7 @@ if (-s "$lang/phones/word_boundary.int") {
 }
 
 # Check oov -------------------------------
-check_txt_int("$lang/oov", \%wsymtab); print "\n";
+check_txt_int("$lang/oov", \%wsymtab, 0); print "\n";
 
 
 # Check determinizability of G.fst
@@ -580,7 +594,6 @@ if (-e "$lang/G.fst" && -e "$lang/L_disambig.fst") {
 if ($exit == 1) { print "--> ERROR (see error messages above)\n"; exit 1;}
 else {
   if ($warning == 1) { print "--> WARNING (check output above for warnings)\n"; exit 0; }
-  else { print "--> SUCCESS\n"; exit 0; }
+  else { print "--> SUCCESS [validating lang directory $lang]\n"; exit 0; }
 }
-
 

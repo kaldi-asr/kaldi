@@ -234,8 +234,8 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Finds the path having the smallest edit-distance between two lattices.\n"
         "For efficiency put the smallest lattices first (for example reference strings).\n"
-        "Usage: lattice-oracle [options] test-lattice-rspecifier reference-rspecifier "
-        "transcriptions-wspecifier [edit-distance-wspecifier]\n"
+        "Usage: lattice-oracle [options] <test-lattice-rspecifier> <reference-rspecifier> "
+        "<transcriptions-wspecifier> [<edit-distance-wspecifier>]\n"
         " e.g.: lattice-oracle ark:lat.1 'ark:sym2int.pl -f 2- data/lang/words.txt <data/test/text' ark,t:-\n";
         
     ParseOptions po(usage);
@@ -260,20 +260,21 @@ int main(int argc, char *argv[]) {
     
     po.Read(argc, argv);
  
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() != 3 && po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string lats_rspecifier = po.GetArg(1),
         reference_rspecifier = po.GetArg(2),
-        transcriptions_wspecifier = po.GetArg(3);
-
+        transcriptions_wspecifier = po.GetArg(3),
+        edit_distance_wspecifier = po.GetOptArg(4);
+    
     // will read input as  lattices
     SequentialLatticeReader lattice_reader(lats_rspecifier);
     RandomAccessInt32VectorReader reference_reader(reference_rspecifier);
-
     Int32VectorWriter transcriptions_writer(transcriptions_wspecifier);
+    Int32Writer edit_distance_writer(edit_distance_wspecifier);
     
     // Guoguo Chen added the implementation for option "write-lattices".
     CompactLatticeWriter lats_writer(lats_wspecifier);
@@ -360,8 +361,10 @@ int main(int argc, char *argv[]) {
         // count errors
         int32 correct, substitutions, insertions, deletions, num_words;
         CountErrors(best_path, &correct, &substitutions, &insertions, &deletions, &num_words);
-        int32 toterrs = substitutions + insertions + deletions;
-        KALDI_LOG << "%WER " << (100.*toterrs) / num_words << " [ " << toterrs
+        int32 tot_errs = substitutions + insertions + deletions;
+        if (edit_distance_wspecifier != "")
+          edit_distance_writer.Write(key, tot_errs);
+        KALDI_LOG << "%WER " << (100.*tot_errs) / num_words << " [ " << tot_errs
                   << " / " << num_words << ", " << insertions << " insertions, " << deletions
                   << " deletions, " << substitutions << " sub ]";
         tot_correct += correct;
@@ -397,7 +400,7 @@ int main(int argc, char *argv[]) {
         }
 
         // Guoguo Chen added the implementation for option "write-lattices".
-        // Currently it's just a naive implementation: traversal the original
+        // Currently it's just a naive implementation: traverse the original
         // lattice and get the path corresponding to the oracle word sequence.
         // Note that this new lattice has the alignment information.
         if (lats_wspecifier != "") {

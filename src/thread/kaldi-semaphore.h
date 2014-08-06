@@ -47,7 +47,7 @@ class Semaphore {
   
   pthread_mutex_t mutex_;
   pthread_cond_t cond_;
-
+  KALDI_DISALLOW_COPY_AND_ASSIGN(Semaphore);
 };
 
 

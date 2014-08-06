@@ -561,7 +561,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       *remaining_weight = elem.weight;
       *common_prefix = elem.string;
       if (elem.weight == Weight::Zero())
-        std::cerr << "Zero weight!\n"; // TEMP
+        KALDI_WARN << "Zero weight!\n";
       return elem.state;
     }
     // else no matching subset-- have to work it out.
@@ -789,8 +789,8 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
                        Weight *tot_weight,
                        StringId *common_str) {
     if(elems->empty()) { // just set common_str, tot_weight
-      std::cerr << "[empty subset]\n"; // TEMP 
       // to defaults and return...
+      KALDI_WARN << "empty subset\n";
       *common_str = repository_.EmptyString();
       *tot_weight = Weight::Zero();
       return;
@@ -1044,7 +1044,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     
     double best_cost = backward_costs_[ifst_->Start()];
     if (best_cost == numeric_limits<double>::infinity())
-      KALDI_WARN << "Total weight of input latice is zero.";
+      KALDI_WARN << "Total weight of input lattice is zero.";
     cutoff_ = best_cost + beam_;
   }
   
@@ -1093,7 +1093,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       ProcessFinal(initial_state_id);
       ProcessTransitions(initial_state_id); // this will add tasks to
       // the queue, which we'll start processing in Determinize().
-    }     
+    }
   }
   
   DISALLOW_COPY_AND_ASSIGN(LatticeDeterminizerPruned);

@@ -93,6 +93,10 @@ utils/mkgraph.sh data/lang exp/tri2b exp/tri2b/graph
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
    exp/tri2b/graph data/test exp/tri2b/decode
 
+# you could run these scripts at this point, that use VTLN.
+# local/run_vtln.sh
+# local/run_vtln2.sh
+
 # Align all data with LDA+MLLT system (tri2b)
 steps/align_si.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
    data/train data/lang exp/tri2b exp/tri2b_ali
@@ -138,6 +142,15 @@ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 # Align all data with LDA+MLLT+SAT system (tri3b)
 steps/align_fmllr.sh --nj 8 --cmd "$train_cmd" --use-graphs true \
   data/train data/lang exp/tri3b exp/tri3b_ali
+
+
+# # We have now added a script that will help you find portions of your data that
+# # has bad transcripts, so you can filter it out.  Below we demonstrate how to
+# # run this script.
+# steps/cleanup/find_bad_utts.sh --nj 20 --cmd "$train_cmd" data/train data/lang \
+#   exp/tri3b_ali exp/tri3b_cleanup 
+# # The following command will show you some of the hardest-to-align utterances in the data.
+# head  exp/tri3b_cleanup/all_info.sorted.txt 
 
 ## MMI on top of tri3b (i.e. LDA+MLLT+SAT+MMI)
 steps/make_denlats.sh --config conf/decode.config \

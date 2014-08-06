@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//                2014  Mobvoi Inc. (author: Minhua Wu)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -21,6 +22,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "matrix/kaldi-matrix.h"
+#include "matrix/kaldi-vector.h"
 
 
 int main(int argc, char *argv[]) {
@@ -29,11 +31,13 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Computes relative difference between two sets of features\n"
+        "per dimension and an average difference\n"
         "Can be used to figure out how different two sets of features are.\n"
         "Inputs must have same dimension.  Prints to stdout a similarity\n"
-        "metric that is 1.0 if the features identical, and <1.0 otherwise.\n"
+        "metric vector that is 1.0 per dimension if the features identical,\n"
+        "and <1.0 otherwise, and an average overall similarity value.\n"
         "\n"
-        "Usage: compare-feats [options] <in-rspecifier1> <in-rspecifier2>\n"
+	"Usage: compare-feats [options] <in-rspecifier1> <in-rspecifier2>\n"
         "e.g.: compare-feats ark:1.ark ark:2.ark\n";
 
     ParseOptions po(usage);
@@ -51,15 +55,17 @@ int main(int argc, char *argv[]) {
 
     std::string rspecifier1 = po.GetArg(1), rspecifier2 = po.GetArg(2);
     
-    int32 num_done = 0, num_err = 0;
-    double prod1 = 0.0, prod2 = 0.0, cross_prod = 0.0;
-    
+    int32 num_done = 0, num_err = 0, Dim = 0;
+    Vector<double> prod1, prod2, cross_prod, similarity_metric;
+    double overall_similarity = 0;
+
     SequentialBaseFloatMatrixReader feat_reader1(rspecifier1);
     RandomAccessBaseFloatMatrixReader feat_reader2(rspecifier2);
 
     for (; !feat_reader1.Done(); feat_reader1.Next()) {
       std::string utt = feat_reader1.Key();
       const Matrix<BaseFloat> &feat1 = feat_reader1.Value();
+
       if (!feat_reader2.HasKey(utt)) {
         KALDI_WARN << "Second table has no feature for utterance "
                    << utt;
@@ -75,36 +81,55 @@ int main(int argc, char *argv[]) {
         num_err++;
         continue;
       }
-      prod1 += TraceMatMat(feat1, feat1, kTrans);
-      prod2 += TraceMatMat(feat2, feat2, kTrans);
-      cross_prod += TraceMatMat(feat1, feat2, kTrans);
+      
+      if (num_done == 0){
+        Dim=feat1.NumCols();
+        prod1.Resize(Dim);
+        prod2.Resize(Dim);
+        cross_prod.Resize(Dim);
+        similarity_metric.Resize(Dim);
+      }
+      
+      Vector<BaseFloat> feat1_col(feat1.NumRows()), feat2_col(feat2.NumRows());
+      for (MatrixIndexT i = 0; i < feat1.NumCols(); i++){
+        feat1_col.CopyColFromMat(feat1, i);
+        feat2_col.CopyColFromMat(feat2, i);
+        prod1(i) += VecVec(feat1_col, feat1_col);
+        prod2(i) += VecVec(feat2_col, feat2_col);
+        cross_prod(i) += VecVec(feat1_col, feat2_col);
+      }
       num_done++;
     }
 
-    KALDI_LOG << "Self-product of 1st features was " << prod1
-              << ", self-product of 2nd features was " << prod2
-              << ", cross-product was " << cross_prod;
+    KALDI_LOG << "self-product of 1st features for each column dimension: " << prod1;
+    KALDI_LOG << "self-product of 2nd features for each column dimension: " << prod2;
+    KALDI_LOG << "cross-product for each column dimension: " << cross_prod;
 
-    double similarity_metric = cross_prod / (0.5*prod1 + 0.5*prod2);
-    KALDI_LOG << "Similarity metric is " << similarity_metric
+    prod1.AddVec(1.0, prod2);
+    similarity_metric.AddVecDivVec(2.0, cross_prod, prod1, 0.0);
+    KALDI_LOG << "Similarity metric for each dimension " << similarity_metric
               << " (1.0 means identical, the smaller the more different)";
-    
+
+    overall_similarity = similarity_metric.Sum() / static_cast<double>(Dim);
+
+    KALDI_LOG << "Overall similarity for the two feats is:" << overall_similarity
+              << " (1.0 means identical, the smaller the more different)";
+
     KALDI_LOG << "Processed " << num_done << " feature files, "
               << num_err << " had errors.";
-    bool similar = (similarity_metric >= threshold);
+
+    bool similar = (overall_similarity >= threshold);
 
     if (num_done > 0) {
       if (similar) {
         KALDI_LOG << "Features are considered similar since "
-                  << similarity_metric << " >= " << threshold;
+                  << overall_similarity << " >= " << threshold;
       } else {
         KALDI_LOG << "Features are considered dissimilar since "
-                  << similarity_metric << " < " << threshold;
+                  << overall_similarity << " < " << threshold;
       }
     }
 
-    std::cout << similarity_metric << std::endl;
-    
     return (num_done > 0 && similar) ? 0 : 1;
   } catch(const std::exception &e) {
     std::cerr << e.what();
@@ -115,5 +140,5 @@ int main(int argc, char *argv[]) {
 
 /*
   tested with:
- compare-feats 'ark:echo foo [ 1.0 2.0 ]|' 'ark:echo foo [ 1.0 2.0 ]|'
+compare-feats 'ark:echo foo [ 1.0 2.0 ]|' 'ark:echo foo [ 1.0 2.0 ]|'
 */

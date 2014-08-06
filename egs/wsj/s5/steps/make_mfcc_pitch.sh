@@ -47,6 +47,12 @@ name=`basename $data`
 mkdir -p $mfcc_pitch_dir || exit 1;
 mkdir -p $logdir || exit 1;
 
+if [ -f $data/feats.scp ]; then
+  mkdir -p $data/.backup
+  echo "$0: moving $data/feats.scp to $data/.backup"
+  mv $data/feats.scp $data/.backup
+fi
+
 scp=$data/wav.scp
 
 required="$scp $mfcc_config $pitch_config"
@@ -65,14 +71,21 @@ else
 	postprocess_config_opt=
 fi
 
-# note: in general, the double-parenthesis construct in bash "((" is "C-style
-# syntax" where we can get rid of the $ for variable names, and omit spaces.
-# The "for" loop in this style is a special construct.
+if [ -f $data/spk2warp ]; then
+  echo "$0 [info]: using VTLN warp factors from $data/spk2warp"
+  vtln_opts="--vtln-map=ark:$data/spk2warp --utt2spk=ark:$data/utt2spk"
+elif [ -f $data/utt2warp ]; then
+  echo "$0 [info]: using VTLN warp factors from $data/utt2warp"
+  vtln_opts="--vtln-map=ark:$data/utt2warp"
+fi
 
 
 if [ -f $data/segments ]; then
   echo "$0 [info]: segments file exists: using that."
   split_segments=""
+  # note: in general, the double-parenthesis construct in bash "((" is "C-style
+  # syntax" where we can get rid of the $ for variable names, and omit spaces.
+  # The "for" loop in this style is a special construct.
   for ((n=1; n<=nj; n++)); do
     split_segments="$split_segments $logdir/segments.$n"
   done
@@ -80,8 +93,8 @@ if [ -f $data/segments ]; then
   utils/split_scp.pl $data/segments $split_segments || exit 1;
   rm $logdir/.error 2>/dev/null
    
-  mfcc_feats="ark:extract-segments scp:$scp $logdir/segments.JOB ark:- | compute-mfcc-feats --verbose=2 --config=$mfcc_config ark:- ark:- |"
-  pitch_feats="ark,s,cs:extract-segments scp:$scp $logdir/segments.JOB ark:- | compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
+  mfcc_feats="ark:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | compute-mfcc-feats $vtln_opts --verbose=2 --config=$mfcc_config ark:- ark:- |"
+  pitch_feats="ark,s,cs:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
 
   $cmd JOB=1:$nj $logdir/make_mfcc_pitch_${name}.JOB.log \
     paste-feats --length-tolerance=$paste_length_tolerance "$mfcc_feats" "$pitch_feats" ark:- \| \
@@ -98,8 +111,8 @@ else
 
   utils/split_scp.pl $scp $split_scps || exit 1;
   
-  mfcc_feats="ark:compute-mfcc-feats --verbose=2 --config=$mfcc_config scp:$logdir/wav_${name}.JOB.scp ark:- |"
-  pitch_feats="ark,s,cs:compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config scp:$logdir/wav_${name}.JOB.scp ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
+  mfcc_feats="ark:compute-mfcc-feats $vtln_opts --verbose=2 --config=$mfcc_config scp,p:$logdir/wav_${name}.JOB.scp ark:- |"
+  pitch_feats="ark,s,cs:compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config scp,p:$logdir/wav_${name}.JOB.scp ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
  
   $cmd JOB=1:$nj $logdir/make_mfcc_pitch_${name}.JOB.log \
     paste-feats --length-tolerance=$paste_length_tolerance "$mfcc_feats" "$pitch_feats" ark:- \| \

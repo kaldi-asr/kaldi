@@ -89,7 +89,15 @@ if [ ! -z "$oov_prob_file" ]; then
   lmfile=$destdir/lm_tmp.gz
 fi
 
-gunzip -c $lmfile | \
+if [[ $lmfile == *.bz2 ]] ; then
+  decompress="bunzip2 -c $lmfile"
+elif [[ $lmfile == *.gz ]] ; then
+  decompress="gunzip -c $lmfile"
+else
+  decompress="cat $lmfile"
+fi
+ 
+$decompress | \
   grep -v '<s> <s>' | grep -v '</s> <s>' |  grep -v '</s> </s>' | \
   arpa2fst - | \
   fstprint | \
@@ -97,7 +105,7 @@ gunzip -c $lmfile | \
   utils/s2eps.pl | \
   fstcompile --isymbols=$langdir/words.txt \
   --osymbols=$langdir/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-  fstrmepsilon > $destdir/G.fst || exit 1
+  fstrmepsilon | fstarcsort --sort_type=olabel > $destdir/G.fst || exit 1
 fstisstochastic $destdir/G.fst || true;
 
 if $cleanup; then

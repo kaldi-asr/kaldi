@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet-train-parallel [options] <model-in> <training-examples-in> <model-out>\n"
         "\n"
         "e.g.:\n"
-        "nnet-randomize-frames [args] | nnet-train-simple 1.nnet ark:- 2.nnet\n";
+        "nnet-randomize-frames [args] | nnet-train-parallel --num-threads=8 1.nnet ark:- 2.nnet\n";
     
     bool binary_write = true;
     bool zero_stats = true;

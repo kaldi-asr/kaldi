@@ -200,16 +200,32 @@ exp/nnet5c1/decode_bd_tgpr_eval92/wer_14:%WER 4.39 [ 248 / 5643, 32 ins, 17 del,
 %WER 7.24 [ 596 / 8234, 62 ins, 98 del, 436 sub ] exp/nnet5b_gpu/decode_bd_tgpr_dev93/wer_15
 %WER 3.95 [ 223 / 5643, 30 ins, 18 del, 175 sub ] exp/nnet5b_gpu/decode_bd_tgpr_eval92/wer_16
 
-# 5c2 is GPU tanh recipe with 8 jobs, lr = 0.075 to 0.0075
-%WER 7.38 [ 608 / 8234, 79 ins, 90 del, 439 sub ] exp/nnet5c2_gpu/decode_bd_tgpr_dev93/wer_12
-%WER 4.08 [ 230 / 5643, 32 ins, 14 del, 184 sub ] exp/nnet5c2_gpu/decode_bd_tgpr_eval92/wer_11
+# 5c is GPU tanh recipe
+%WER 7.08 [ 583 / 8234, 64 ins, 94 del, 425 sub ] exp/nnet5c/decode_bd_tgpr_dev93/wer_14
+%WER 4.02 [ 227 / 5643, 32 ins, 16 del, 179 sub ] exp/nnet5c/decode_bd_tgpr_eval92/wer_13
 
-# 5c is GPU tanh recipe with 4 jobs, lr = 0.05 to 0.005
-# This is the same recipe run on a GPU.. probably better due to the reduced number of jobs (4 vs. 16).
-%WER 7.04 [ 580 / 8234, 68 ins, 93 del, 419 sub ] exp/nnet5c_gpu/decode_bd_tgpr_dev93/wer_13
-%WER 3.86 [ 218 / 5643, 28 ins, 13 del, 177 sub ] exp/nnet5c_gpu/decode_bd_tgpr_eval92/wer_14
+# 5c_gpu (the same, run on GPU)
+# note, for 5c and 5c_gpu, we could get better results by using only 4
+# GPU jobs and half the learning rate, but of course it would take twice longer.
+%WER 7.29 [ 600 / 8234, 60 ins, 99 del, 441 sub ] exp/nnet5c_gpu/decode_bd_tgpr_dev93/wer_14
+%WER 4.08 [ 230 / 5643, 34 ins, 15 del, 181 sub ] exp/nnet5c_gpu/decode_bd_tgpr_eval92/wer_13
 
-# 5d is GPU version of pnorm recipe, with 4 jobs; compare with nnet5c.
+
+# 5d is the pnorm recipe, with 4 jobs; compare with nnet5c.
+%WER 6.97 [ 574 / 8234, 72 ins, 84 del, 418 sub ] exp/nnet5d/decode_bd_tgpr_dev93/wer_12
+%WER 3.86 [ 218 / 5643, 27 ins, 12 del, 179 sub ] exp/nnet5d/decode_bd_tgpr_eval92/wer_13
+ (the same without the big dictionary)
+ %WER 9.40 [ 774 / 8234, 164 ins, 71 del, 539 sub ] exp/nnet5d/decode_tgpr_dev93/wer_12
+ %WER 6.45 [ 364 / 5643, 81 ins, 19 del, 264 sub ] exp/nnet5d/decode_tgpr_eval92/wer_14
+
+# 5d_gpu is the pnorm recipe with GPU;
+%WER 7.07 [ 582 / 8234, 62 ins, 94 del, 426 sub ] exp/nnet5d_gpu/decode_bd_tgpr_dev93/wer_13
+%WER 4.06 [ 229 / 5643, 31 ins, 13 del, 185 sub ] exp/nnet5d_gpu/decode_bd_tgpr_eval92/wer_12
+ (the same without the big dictionary)_13
+%WER 9.35 [ 770 / 8234, 161 ins, 78 del, 531 sub ] exp/nnet5d_gpu/decode_tgpr_dev93/wer_12
+%WER 6.59 [ 372 / 5643, 91 ins, 15 del, 266 sub ] exp/nnet5d_gpu/decode_tgpr_eval92/wer_12
+
+
 %WER 7.13 [ 587 / 8234, 72 ins, 93 del, 422 sub ] exp/nnet5d_gpu/decode_bd_tgpr_dev93/wer_13
 %WER 4.06 [ 229 / 5643, 31 ins, 16 del, 182 sub ] exp/nnet5d_gpu/decode_bd_tgpr_eval92/wer_14
 
@@ -220,3 +236,6 @@ exp/nnet5c1/decode_bd_tgpr_eval92/wer_14:%WER 4.39 [ 248 / 5643, 32 ins, 17 del,
  # decoded with tgpr LM.
  %WER 9.55 [ 786 / 8234, 163 ins, 83 del, 540 sub ] exp/nnet5d_gpu/decode_tgpr_dev93/wer_13
  %WER 6.50 [ 367 / 5643, 95 ins, 16 del, 256 sub ] exp/nnet5d_gpu/decode_tgpr_eval92/wer_14
+
+# for results with VTLN, see for example local/run_vtln2.sh, they are at the end.
+

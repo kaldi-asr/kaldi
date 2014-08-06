@@ -40,6 +40,12 @@ name=`basename $data`
 mkdir -p $mfccdir || exit 1;
 mkdir -p $logdir || exit 1;
 
+if [ -f $data/feats.scp ]; then
+  mkdir -p $data/.backup
+  echo "$0: moving $data/feats.scp to $data/.backup"
+  mv $data/feats.scp $data/.backup
+fi
+
 scp=$data/wav.scp
 
 required="$scp $mfcc_config"
@@ -59,6 +65,9 @@ utils/validate_data_dir.sh --no-text --no-feats $data || exit 1;
 if [ -f $data/spk2warp ]; then
   echo "$0 [info]: using VTLN warp factors from $data/spk2warp"
   vtln_opts="--vtln-map=ark:$data/spk2warp --utt2spk=ark:$data/utt2spk"
+elif [ -f $data/utt2warp ]; then
+  echo "$0 [info]: using VTLN warp factors from $data/utt2warp"
+  vtln_opts="--vtln-map=ark:$data/utt2warp"
 fi
 
 if [ -f $data/segments ]; then
@@ -73,7 +82,7 @@ if [ -f $data/segments ]; then
   rm $logdir/.error 2>/dev/null
 
   $cmd JOB=1:$nj $logdir/make_mfcc_${name}.JOB.log \
-    extract-segments scp:$scp $logdir/segments.JOB ark:- \| \
+    extract-segments scp,p:$scp $logdir/segments.JOB ark:- \| \
     compute-mfcc-feats $vtln_opts --verbose=2 --config=$mfcc_config ark:- ark:- \| \
     copy-feats --compress=$compress ark:- \
       ark,scp:$mfccdir/raw_mfcc_$name.JOB.ark,$mfccdir/raw_mfcc_$name.JOB.scp \
@@ -87,9 +96,13 @@ else
   done
 
   utils/split_scp.pl $scp $split_scps || exit 1;
+
+  # add ,p to the input rspecifier so that we can just skip over
+  # utterances that have bad wave data.
+
   $cmd JOB=1:$nj $logdir/make_mfcc_${name}.JOB.log \
     compute-mfcc-feats  $vtln_opts --verbose=2 --config=$mfcc_config \
-     scp:$logdir/wav_${name}.JOB.scp ark:- \| \
+     scp,p:$logdir/wav_${name}.JOB.scp ark:- \| \
       copy-feats --compress=$compress ark:- \
       ark,scp:$mfccdir/raw_mfcc_$name.JOB.ark,$mfccdir/raw_mfcc_$name.JOB.scp \
       || exit 1;

@@ -3,49 +3,76 @@
 # This is pnorm neural net training on top of adapted 40-dimensional features.
 
 
-train_stage=-100
-temp_dir=  # e.g. --temp-dir /export/m1-02/dpovey/kaldi-dan2/egs/wsj/s5/
-dir=exp/nnet5d
 
-# we derived this from run_5d.  Since cpu is slower than gpu, we increased the
-# num-jobs from 4 to 8.  We doubled the final learning rate because we doubled
-# the num-jobs, but we didn't double the initial learning rate as we were
-# concerned it might become unstable.  [this is a bit of a black art].
+train_stage=-10
+use_gpu=true
+
+. cmd.sh
+. ./path.sh
+. utils/parse_options.sh
+
+
+if $use_gpu; then
+  if ! cuda-compiled; then
+    cat <<EOF && exit 1 
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+If you want to use GPUs (and have them), go to src/, and configure and make on a machine
+where "nvcc" is installed.
+EOF
+  fi
+  parallel_opts="-l gpu=1" 
+  num_threads=1
+  minibatch_size=512
+  dir=exp/nnet5d_gpu
+else
+  # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
+  # almost the same, but this may be a little bit slow.
+  num_threads=16
+  parallel_opts="-pe smp $num_threads" 
+  minibatch_size=128
+  dir=exp/nnet5d
+fi
 
 . ./cmd.sh
 . utils/parse_options.sh
 
-( 
-
-  if [ ! -z "$temp_dir" ] && [ ! -e $dir/egs ]; then
-    mkdir -p $dir
-    mkdir -p $temp_dir/$dir/egs
-    ln -s $temp_dir/$dir/egs $dir/
+if [ ! -f $dir/final.mdl ]; then
+  if [ "$USER" == dpovey ]; then
+     # spread the egs over various machines.  will help reduce overload of any
+     # one machine.
+     utils/create_split_dir.pl /export/b0{1,2,3,4}/dpovey/kaldi-pure/egs/wsj/s5/$dir/egs $dir/egs/storage
   fi
 
-  steps/nnet2/train_pnorm.sh --stage $train_stage \
-   --num-jobs-nnet 8 \
-   --mix-up 8000 \
+  steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
+   --samples-per-iter 400000 \
+   --parallel-opts "$parallel_opts" \
+   --num-threads "$num_threads" \
+   --minibatch-size "$minibatch_size" \
+   --num-jobs-nnet 8  --mix-up 8000 \
    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
    --num-hidden-layers 4 \
    --pnorm-input-dim 2000 --pnorm-output-dim 400 \
    --cmd "$decode_cmd" \
-   --p 2 \
     data/train_si284 data/lang exp/tri4b_ali_si284 $dir || exit 1
+fi
 
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 10 \
-    --transform-dir exp/tri4b/decode_tgpr_dev93 \
-     exp/tri4b/graph_tgpr data/test_dev93 $dir/decode_tgpr_dev93
 
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 8 \
-    --transform-dir exp/tri4b/decode_tgpr_eval92 \
-     exp/tri4b/graph_tgpr data/test_eval92 $dir/decode_tgpr_eval92
+steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 10 \
+   --transform-dir exp/tri4b/decode_tgpr_dev93 \
+    exp/tri4b/graph_tgpr data/test_dev93 $dir/decode_tgpr_dev93 &
 
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 10 \
-    --transform-dir exp/tri4b/decode_bd_tgpr_dev93 \
-     exp/tri4b/graph_bd_tgpr data/test_dev93 $dir/decode_bd_tgpr_dev93
+steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 8 \
+  --transform-dir exp/tri4b/decode_tgpr_eval92 \
+    exp/tri4b/graph_tgpr data/test_eval92 $dir/decode_tgpr_eval92 &
 
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 8 \
-    --transform-dir exp/tri4b/decode_bd_tgpr_eval92 \
-     exp/tri4b/graph_bd_tgpr data/test_eval92 $dir/decode_bd_tgpr_eval92
-)
+steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 10 \
+   --transform-dir exp/tri4b/decode_bd_tgpr_dev93 \
+    exp/tri4b/graph_bd_tgpr data/test_dev93 $dir/decode_bd_tgpr_dev93 &
+
+steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 8 \
+  --transform-dir exp/tri4b/decode_bd_tgpr_eval92 \
+    exp/tri4b/graph_bd_tgpr data/test_eval92 $dir/decode_bd_tgpr_eval92
+
+
+wait;
+

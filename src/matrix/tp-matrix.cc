@@ -45,14 +45,12 @@ void TpMatrix<Real>::Invert() {
   }
 }
 #else
-  
 template<typename Real>
 void TpMatrix<Real>::Invert() {
   // ATLAS doesn't implement triangular matrix inversion in packed
   // format, so we temporarily put in non-packed format.
   Matrix<Real> tmp(*this);
   int rows = static_cast<int>(this->num_rows_);
-
   
   // ATLAS call.  It's really row-major ordering and a lower triangular matrix,
   // but there is some weirdness with Fortran-style indexing that we need to
@@ -67,16 +65,6 @@ void TpMatrix<Real>::Invert() {
   }
   (*this).CopyFromMat(tmp);
 }
-
-/*
-template<typename Real>
-void TpMatrix<Real>::Invert() {
-  Matrix<Real> tmp(*this);
-  tmp.Invert();
-  (*this).CopyFromMat(tmp);
-}
-*/
-
 #endif
 
 template<typename Real>

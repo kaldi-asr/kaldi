@@ -126,8 +126,11 @@ struct WordBoundaryInfo {
   // silence phones behave in this way.
 
   // This initializer is to be used in future.
+  WordBoundaryInfo(const WordBoundaryInfoNewOpts &opts);
   WordBoundaryInfo(const WordBoundaryInfoNewOpts &opts,
                    std::string word_boundary_file);
+
+  void Init(std::istream &stream);
 
   enum PhoneType {
     kNoPhone = 0,

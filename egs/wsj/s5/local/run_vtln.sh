@@ -4,11 +4,11 @@
 featdir=mfcc_vtln
 num_leaves=2500
 num_gauss=15000
-logdet_scale=0.0
 
+
+if false; then #TEMP
 # train linear vtln
-steps/train_lvtln.sh --cmd "$train_cmd" \
-  --logdet-scale $logdet_scale $num_leaves $num_gauss \
+steps/train_lvtln.sh --cmd "$train_cmd" $num_leaves $num_gauss \
   data/train_si84 data/lang exp/tri2a exp/tri2c || exit 1
 cp -rT data/train_si84 data/train_si84_vtln || exit 1
 cp exp/tri2c/final.warp data/train_si84_vtln/spk2warp || exit 1
@@ -16,20 +16,16 @@ cp exp/tri2c/final.warp data/train_si84_vtln/spk2warp || exit 1
 utils/mkgraph.sh data/lang_test_bg_5k exp/tri2c exp/tri2c/graph_bg_5k || exit 1;
 utils/mkgraph.sh data/lang_test_tgpr exp/tri2c exp/tri2c/graph_tgpr || exit 1;
 
-for t in eval93 dev93; do 
-  steps/decode_lvtln.sh --nj 10 --cmd "$decode_cmd" \
-    --logdet-scale $logdet_scale \
+fi #TEMP
+
+for t in eval93 dev93 eval92; do 
+  nj=10
+  [ $t == eval92 ] && nj=8
+  steps/decode_lvtln.sh --nj $nj --cmd "$decode_cmd" \
     exp/tri2c/graph_bg_5k data/test_$t exp/tri2c/decode_${t}_bg_5k || exit 1
   cp -rT data/test_$t data/test_${t}_vtln || exit 1
   cp exp/tri2c/decode_${t}_bg_5k/final.warp data/test_${t}_vtln/spk2warp || exit 1
 done
- 
-t=eval92
-steps/decode_lvtln.sh --nj 8 --cmd "$decode_cmd" \
-  --logdet-scale $logdet_scale \
-  exp/tri2c/graph_bg_5k data/test_$t exp/tri2c/decode_${t}_bg_5k || exit 1
-cp -rT data/test_$t data/test_${t}_vtln || exit 1
-cp exp/tri2c/decode_${t}_bg_5k/final.warp data/test_${t}_vtln/spk2warp || exit 1
 
 for x in test_eval92 test_eval93 test_dev93 train_si84; do
   steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" data/${x}_vtln exp/make_mfcc/${x}_vtln ${featdir} || exit 1

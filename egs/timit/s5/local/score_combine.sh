@@ -27,6 +27,7 @@ cmd=run.pl
 min_lmwt=1
 max_lmwt=10
 lat_weights=
+stage=0
 #end configuration section.
 
 help_message="Usage: "$(basename $0)" [options] <data-dir> <graph-dir|lang-dir> <decode-dir1> <decode-dir2> [decode-dir3 ... ] <out-dir>
@@ -53,6 +54,12 @@ decode_dirs=( $@ )  # read the remaining arguments into an array
 unset decode_dirs[${#decode_dirs[@]}-1]  # 'pop' the last argument which is odir
 num_sys=${#decode_dirs[@]}  # number of systems to combine
 
+model=${decode_dirs[0]}/../final.mdl # assume model one level up from decoding dir.
+
+hubscr=$KALDI_ROOT/tools/sctk-2.4.0/bin/hubscr.pl 
+[ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
+hubdir=`dirname $hubscr`
+
 phonemap="conf/phones.60-48-39.map"
 
 symtab=$graphdir/words.txt
@@ -67,32 +74,43 @@ for i in `seq 0 $[num_sys-1]`; do
   for f in $model ${decode_dirs[$i]}/lat.1.gz ; do
     [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
   done
-  lats[$i]="\"ark:gunzip -c ${decode_dirs[$i]}/lat.*.gz |\""
+  #lats[$i]="\"ark:gunzip -c ${decode_dirs[$i]}/lat.*.gz |\""
+  lats[$i]="'ark:gunzip -c ${decode_dirs[$i]}/lat.*.gz |'"
 done
 
 mkdir -p $odir/scoring/log
 
-cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' \
-  > $odir/scoring/test_filt.txt
+# Map reference to 39 phone classes, the silence is optional (.):
+local/timit_norm_trans.pl -i $data/stm -m $phonemap -from 48 -to 39 | \
+ sed 's: sil: (sil):g' > $odir/scoring/stm_39phn
+cp $data/glm $odir/scoring/glm_39phn
 
-if [ -z "$lat_weights" ]; then
-  $cmd LMWT=$min_lmwt:$max_lmwt $odir/log/combine_lats.LMWT.log \
-    lattice-combine --inv-acoustic-scale=LMWT ${lats[@]} ark:- \| \
-    lattice-mbr-decode --word-symbol-table=$symtab ark:- \
-    ark,t:$odir/scoring/LMWT.tra || exit 1;
-else
-  $cmd LMWT=$min_lmwt:$max_lmwt $odir/log/combine_lats.LMWT.log \
-    lattice-combine --inv-acoustic-scale=LMWT --lat-weights=$lat_weights \
-    ${lats[@]} ark:- \| \
-    lattice-mbr-decode --word-symbol-table=$symtab ark:- \
-    ark,t:$odir/scoring/LMWT.tra || exit 1;
+if [ $stage -le 0 ]; then
+  if [ -z "$lat_weights" ]; then
+    $cmd LMWT=$min_lmwt:$max_lmwt $odir/log/combine_lats.LMWT.log \
+      lattice-combine --inv-acoustic-scale=LMWT ${lats[@]} ark:- \| \
+      lattice-to-ctm-conf ark:- - \| \
+      utils/int2sym.pl -f 5 $symtab '>' $odir/scoring/LMWT.ctm || exit 1;
+  else
+    $cmd LMWT=$min_lmwt:$max_lmwt $odir/log/combine_lats.LMWT.log \
+      lattice-combine --inv-acoustic-scale=LMWT --lat-weights=$lat_weights \
+      ${lats[@]} ark:- \| \
+      lattice-to-ctm-conf ark:- - \| \
+      utils/int2sym.pl -f 5 $symtab '>' $odir/scoring/LMWT.ctm || exit 1;
+  fi
 fi
 
+if [ $stage -le 1 ]; then
+  $cmd LMWT=$min_lmwt:$max_lmwt $odir/scoring/log/ctm_convert.LMWT.log \
+    local/timit_norm_trans.pl -i $odir/scoring/LMWT.ctm -m $phonemap -from 48 -to 39 \
+    '>' $odir/scoring/LMWT.ctm_39phn || exit 1;
+fi
+
+# Score the set...
 $cmd LMWT=$min_lmwt:$max_lmwt $odir/scoring/log/score.LMWT.log \
-  cat $odir/scoring/LMWT.tra \| \
-  utils/int2sym.pl -f 2- $symtab \| sed 's:\<UNK\>::g' \| \
-  local/timit_norm_trans.pl -i - -m $phonemap -from 48 -to 39 \| \
-  compute-wer --text --mode=present \
-  ark:$odir/scoring/test_filt.txt  ark,p:- ">&" $odir/wer_LMWT || exit 1;
+  mkdir $odir/score_LMWT ';' \
+  cp $odir/scoring/stm_39phn $odir/score_LMWT/ '&&' cp $odir/scoring/LMWT.ctm_39phn $odir/score_LMWT/ctm_39phn '&&' \
+  $hubscr -p $hubdir -V -l english -h hub5 -g $odir/scoring/glm_39phn -r $odir/score_LMWT/stm_39phn $odir/score_LMWT/ctm_39phn || exit 1;
+
 
 exit 0

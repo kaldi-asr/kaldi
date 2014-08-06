@@ -48,7 +48,7 @@ struct NnetSimpleTrainerConfig {
 // Class NnetSimpleTrainer doesn't do much apart from batching up the
 // input into minibatches and giving it to the neural net code 
 // to call Update(), which will typically do stochastic gradient
-// descent.  It also reports training-set
+// descent.  It also reports training-set objective-function values.
 // It takes in the training examples through the call
 // "TrainOnExample()".
 class NnetSimpleTrainer {
@@ -66,8 +66,9 @@ class NnetSimpleTrainer {
   
   void TrainOneMinibatch();
   
-  // The following function is called by TrainOneMinibatch()
-  // when we enter a new phase.
+  // The following function is called by TrainOneMinibatch() when we enter a new
+  // phase.  A phase is just a certain number of epochs, and now matters only
+  // for diagnostics (originally it meant something more).
   void BeginNewPhase(bool first_time);
   
   // Things we were given in the initializer:
@@ -81,7 +82,10 @@ class NnetSimpleTrainer {
   std::vector<NnetExample> buffer_;
 
   double logprob_this_phase_; // Needed for accumulating train log-prob on each phase.
-  double count_this_phase_; // count corresponding to the above.
+  double weight_this_phase_; // count corresponding to the above.
+  
+  double logprob_total_;
+  double weight_total_;
 };
 
 

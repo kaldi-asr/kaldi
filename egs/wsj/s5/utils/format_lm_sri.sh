@@ -61,7 +61,7 @@ if [ -z $loc ]; then
 fi
 
 echo "Converting '$lm' to FST"
-tmpdir=$(mktemp -d);
+tmpdir=$(mktemp -d kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT
 
 for f in phones.txt words.txt L.fst L_disambig.fst phones/; do

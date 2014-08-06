@@ -17,6 +17,7 @@ bnf_num_gauss_sgmm=50000 # use fewer SGMM sub-states than the
                          # non-bottleneck system (which has 80000).
 bnf_decode_acwt=0.066666
 
+
 # DNN hybrid system training parameters
 dnn_num_hidden_layers=4
 dnn_input_dim=4000
@@ -48,9 +49,16 @@ if [[ `hostname` == *.tacc.utexas.edu ]] ; then
   sgmm_train_extra_opts=( )
   sgmm_group_extra_opts=( --num_iters 25 ) 
   sgmm_denlats_extra_opts=( --num-threads 2 )
+  sgmm_mmi_extra_opts=(--cmd "local/lonestar.py -pe smp 2")
   dnn_denlats_extra_opts=( --num-threads 2 )
-  dnn_parallel_opts="-l gpu=1"
+
+  dnn_cpu_parallel_opts=(--minibatch-size 128 --max-change 10 --num-jobs-nnet 8 --num-threads 16 \
+                         --parallel-opts "-pe smp 16" )
+  dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 8 --num-threads 1)
+
   dnn_gpu_mpe_parallel_opts=(--num-jobs-nnet 8 --num-threads 1)
+  dnn_gpu_mpe_parallel_opts=(--num-jobs-nnet 8 --num-threads 1)
+  dnn_parallel_opts="-l gpu=1"
 else
   decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G")
   sgmm_train_extra_opts=( --num-iters 25 )

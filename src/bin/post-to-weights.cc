@@ -31,7 +31,9 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Turn posteriors into per-frame weights (typically most useful after\n"
         "weight-silence-post, to get silence weights)\n"
-        "Usage: post-to-weights post-rspecifier weights-wspecifier\n";
+        "See also: weight-silence-post, post-to-pdf-post, post-to-phone-post\n"
+        "get-post-on-ali\n"
+        "Usage: post-to-weights <post-rspecifier> <weights-wspecifier>\n";
     
     ParseOptions po(usage); 
     po.Read(argc, argv);

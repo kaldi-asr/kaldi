@@ -31,7 +31,8 @@ classes="ark:lid/remove_dialect.pl data/train/utt2lang \
 # Create priors to rebalance the model. The following script rebalances
 # the languages as count(lang_test) / (count(lang_test) + count(lang_train)).
 lid/balance_priors_to_test.pl \
-    <(lid/remove_dialect.pl data/train/utt2lang) \
+    <(lid/remove_dialect.pl <(utils/filter_scp.pl -f 0 \
+        exp/ivectors_train/ivector.scp data/train/utt2lang)) \
     <(lid/remove_dialect.pl data/lre07/utt2lang) \
     exp/ivectors_train/languages.txt \
     exp/ivectors_train/priors.vec
@@ -66,8 +67,8 @@ cat exp/ivectors_train/posteriors | \
 compute-wer --mode=present --text ark:<(lid/remove_dialect.pl data/train/utt2lang) \
   ark:exp/ivectors_train/output
 
-# %WER 4.19 [ 3000 / 71668, 0 ins, 0 del, 3000 sub ] [PARTIAL]
-# %SER 4.19 [ 3000 / 71668 ]
+# %WER 4.73 [ 3389 / 71668, 0 ins, 0 del, 3389 sub ] [PARTIAL]
+# %SER 4.73 [ 3389 / 71668 ]
 # Scored 71668 sentences, 16 not present in hyp.
 logistic-regression-eval $model_rebalanced \
   'ark:ivector-normalize-length scp:exp/ivectors_lre07/ivector.scp ark:- |' ark,t:- | \
@@ -78,7 +79,13 @@ logistic-regression-eval $model_rebalanced \
 
 compute-wer --text ark:<(lid/remove_dialect.pl data/lre07/utt2lang) \
   ark:exp/ivectors_lre07/output
-# %WER 32.58 [ 2452 / 7527, 0 ins, 0 del, 2452 sub ]
-# %SER 32.58 [ 2452 / 7527 ]
+
+# %WER 33.04 [ 2487 / 7527, 0 ins, 0 del, 2487 sub ]
+# %SER 33.04 [ 2487 / 7527 ]
 # Scored 7527 sentences, 0 not present in hyp.
 
+# General LR closed-set eval.
+local/lre07_logistic_regression_eval.sh $model_rebalanced
+#Duration (sec):    avg      3     10     30
+#        ER (%):  33.04  53.21  29.55  16.37
+#     C_avg (%):  17.65  29.53  15.64   7.79

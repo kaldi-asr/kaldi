@@ -47,7 +47,7 @@ class IvectorExtractTask {
                                              extractor_.FeatDim(),
                                              need_2nd_order_stats);
       
-    extractor_.GetStats(feats_, posterior_, &utt_stats);
+    utt_stats.AccStats(feats_, posterior_);
 
     ivector_.Resize(extractor_.IvectorDim());
     ivector_(0) = extractor_.PriorOffset();
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     bool compute_objf_change = true;
-    IvectorStatsOptions stats_opts;
+    IvectorExtractorStatsOptions stats_opts;
     TaskSequencerConfig sequencer_config;
     po.Register("compute-objf-change", &compute_objf_change,
                 "If true, compute the change in objective function from using "

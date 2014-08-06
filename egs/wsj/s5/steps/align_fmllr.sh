@@ -56,6 +56,7 @@ echo $nj > $dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 cp $srcdir/{tree,final.mdl} $dir || exit 1;
+cp $srcdir/final.alimdl $dir 2>/dev/null
 cp $srcdir/final.occs $dir;
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
 cp $srcdir/splice_opts $dir 2>/dev/null # frame-splicing options.

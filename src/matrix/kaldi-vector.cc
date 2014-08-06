@@ -3,7 +3,7 @@
 // Copyright 2009-2011  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University;   Go Vivace Inc.;  Ariya Rastrow;
 //                      Petr Schwarz;  Yanmin Qian;  Jan Silovsky;
-//                      Haihua Xu
+//                      Haihua Xu; Wei Shi
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -153,6 +153,14 @@ void VectorBase<Real>::MulTp(const TpMatrix<Real> &M,
 }
 
 template<typename Real>
+void VectorBase<Real>::Solve(const TpMatrix<Real> &M,
+                        const MatrixTransposeType trans) {
+  KALDI_ASSERT(M.NumRows() == dim_);
+  cblas_Xtpsv(trans, M.Data(), M.NumRows(), data_, 1);
+}
+
+
+template<typename Real>
 inline void Vector<Real>::Init(const MatrixIndexT dim) {
   if (dim == 0) {
     this->dim_ = 0;
@@ -244,8 +252,10 @@ template<typename Real>
 template<typename OtherReal>
 void VectorBase<Real>::CopyFromVec(const VectorBase<OtherReal> &other) {
   KALDI_ASSERT(dim_ == other.Dim());
-  const OtherReal *other_ptr = other.Data();
-  for (MatrixIndexT i = 0; i < dim_; i++) { data_[i] = other_ptr[i]; }
+  Real * __restrict__  ptr = data_;
+  const OtherReal * __restrict__ other_ptr = other.Data();
+  for (MatrixIndexT i = 0; i < dim_; i++)
+    ptr[i] = other_ptr[i];
 }
 
 template void VectorBase<float>::CopyFromVec(const VectorBase<double> &other);
@@ -450,6 +460,40 @@ void VectorBase<Real>::ApplyPow(Real power) {
   }
 }
 #endif
+
+// takes absolute value of the elements to a power.
+// Throws exception if could not (but only for power != 1 and power != 2).
+template<typename Real>
+void VectorBase<Real>::ApplyPowAbs(Real power, bool include_sign) {
+  if (power == 1.0) 
+    for (MatrixIndexT i = 0; i < dim_; i++)
+      data_[i] = (include_sign && data_[i] < 0 ? -1 : 1) * std::abs(data_[i]);
+  if (power == 2.0) {
+    for (MatrixIndexT i = 0; i < dim_; i++)
+      data_[i] = (include_sign && data_[i] < 0 ? -1 : 1) * data_[i] * data_[i];
+  } else if (power == 0.5) {
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      data_[i] = (include_sign && data_[i] < 0 ? -1 : 1) * std::sqrt(std::abs(data_[i]));
+    }
+  } else if (power < 0.0) {
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      data_[i] = (data_[i] == 0.0 ? 0.0 : pow(std::abs(data_[i]), power));
+      data_[i] *= (include_sign && data_[i] < 0 ? -1 : 1);
+      if (data_[i] == HUGE_VAL) {  // HUGE_VAL is what errno returns on error.
+        KALDI_ERR << "Could not raise element "  << i << "to power "
+                  << power << ": returned value = " << data_[i];
+      }
+    }
+  } else {
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      data_[i] = (include_sign && data_[i] < 0 ? -1 : 1) * pow(std::abs(data_[i]), power);
+      if (data_[i] == HUGE_VAL) {  // HUGE_VAL is what errno returns on error.
+        KALDI_ERR << "Could not raise element "  << i << "to power "
+                  << power << ": returned value = " << data_[i];
+      }
+    }
+  }
+}
 
 // Computes the p-th norm. Throws exception if could not.
 template<typename Real>
@@ -777,13 +821,12 @@ MatrixIndexT VectorBase<Real>::ApplyFloor(const VectorBase<Real> &floor_vec) {
 
 template<typename Real>
 Real VectorBase<Real>::ApplySoftMax() {
-Real max = this->Max(), sum = 0.0;
+  Real max = this->Max(), sum = 0.0;
   for (MatrixIndexT i = 0; i < dim_; i++) {
     sum += (data_[i] = Exp(data_[i] - max));
   }
   this->Scale(1.0 / sum);
   return max + Log(sum);
-
 }
 
 #ifdef HAVE_MKL

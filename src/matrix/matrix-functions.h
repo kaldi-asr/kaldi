@@ -58,6 +58,9 @@ namespace kaldi {
    back to where you started from.  We don't do this because
    in some contexts, the transform is made symmetric by multiplying
    by sqrt(N) in both passes.   The user can do this by themselves.
+
+   See also SplitRadixComplexFft, declared in srfft.h, which is more efficient
+   but only works if the length of the input is a power of 2.
  */
 template<typename Real> void ComplexFft (VectorBase<Real> *v, bool forward, Vector<Real> *tmp_work = NULL);
 
@@ -76,6 +79,9 @@ template<typename Real> void ComplexFt (const VectorBase<Real> &in,
 /// The interpretation of the complex-FFT data is as follows: the array
 /// is a sequence of complex numbers C_n of length N/2 with (real, im) format,
 /// i.e. [real0, real_{N/2}, real1, im1, real2, im2, real3, im3, ...].
+/// See also SplitRadixRealFft, declared in srfft.h, which is more efficient
+/// but only works if the length of the input is a power of 2.
+
 template<typename Real> void RealFft (VectorBase<Real> *v, bool forward);
 
 

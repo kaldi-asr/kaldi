@@ -215,7 +215,7 @@ future-proofing the setup in case someone does something weird in future.
 
 We do the initial phases of Gaussian mixing up using the alignments from
 the previous (e.g. monophone) build; the alignments are converted from one
-tree to another using the program \ref convert-alignments.cc "convert-alignments".
+tree to another using the program \ref convert-ali.cc "convert-ali".
 
 \section pdf_id PDF identifiers
 
@@ -390,7 +390,7 @@ on its input side that represent context-dependent phones (as well as
 disambiguation symbols and possibly epsilon symbols).  In the graph, as always,
 these are represented by integer labels.  We use an object that, in code
 and in filenames, is generally called ilabel_info.  The ilabel_info object
-has a strong connection to the \ref fst::ContextFst "ContextFst" objects, see \ref graph_context.
+4has a strong connection to the \ref fst::ContextFst "ContextFst" objects, see \ref graph_context.
 As with many other Kaldi types, ilabel_info is a generic (STL) type but 
 we use a consistent variable name 
 to make it identifiable.  It is of the following type:
@@ -447,7 +447,7 @@ this is mainly of use for debugging and diagnostics.
 
 As you can see, the ilabel_info object is not very pleasant as it relates to
 disambiguation symbols, but there are not many parts of the code that interact
-closely with it: only the \ref ContextFst class (and related things; see \ref
+closely with it: only the \ref fst::ContextFst class (and related things; see \ref
 context_fst_group), the program fstmakecontextsyms.cc, and some functions listed
 in \ref hmm_group_graph).  The ContextDependency object, in particular, only sees
 valid sequences of length N that represent phone context windows.

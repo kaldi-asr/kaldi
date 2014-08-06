@@ -5,5 +5,6 @@ for x in exp/*/decode_dev; do grep WER $x/wer_* | utils/best_wer.sh; done
 %WER 41.86 [ 16384 / 39141, 1735 ins, 4152 del, 10497 sub ] exp/tri3a/decode_dev/wer_13
 %WER 34.73 [ 13593 / 39141, 1719 ins, 3365 del, 8509 sub ] exp/tri4a/decode_dev/wer_14
 %WER 31.07 [ 12163 / 39141, 1869 ins, 2705 del, 7589 sub ] exp/tri5a/decode_dev/wer_13
+%WER 31.13 [ 12184 / 39141, 1939 ins, 2584 del, 7661 sub ] exp/tri5a_0.1/decode_dev/wer_12
 
-
+%WER 23.66 [ 9259 / 39141, 1495 ins, 2432 del, 5332 sub ] exp/nnet6c4_gpu/decode_dev/wer_11
