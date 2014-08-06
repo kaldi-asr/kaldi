@@ -85,13 +85,16 @@ foreach $utt (sort keys(%utt2reco)) {
 
 __END__
 
-# Test example [also test it without the 0.5's]
-echo utt reco 10.0 20.0 > segments
-echo reco file A > reco2file_and_channel
-echo utt 1 8.0 1.0 word 0.5 > ctm_in
-echo file A 18.00 1.00 word 0.5 > ctm_out
-utils/convert_ctm.pl segments reco2file_and_channel ctm_in | cmp - ctm_out || echo error
-rm segments reco2file_and_channel ctm_in ctm_out
+# Test example
+# ES2011a.Headset-0 A AMI_ES2011a_H00_FEE041 34.27 37.14 HERE WE GO
+mkdir tmpdir
+echo utt reco 10.0 20.0 > tmpdir/segments
+echo utt word > tmpdir/text
+echo reco file A > tmpdir/reco2file_and_channel
+echo utt spk > tmpdir/utt2spk
+echo file A spk 10.0 20.00 word > stm_tst
+utils/convert2stm.pl tmpdir | cmp - stm_tst || echo error
+rm -r tmpdir stm_tst
 
 
 
