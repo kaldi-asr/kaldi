@@ -13,6 +13,7 @@
 local/sprak_data_prep.sh  || exit 1;
 
 # Perform text normalisation, prepare dict folder and LM data transcriptions
+# This setup uses previsously prepared data. eSpeak must be installed and in PATH to use dict_prep.sh
 #local/dict_prep.sh || exit 1;
 local/copy_dict.sh || exit 1;
 
@@ -29,33 +30,40 @@ mfccdir=mfcc
 # p was added to the rspecifier (scp,p:$logdir/wav.JOB.scp) in make_mfcc.sh because some 
 # wave files are corrupt 
 # Will return a warning message because of the corrupt audio files, but compute them anyway
-steps/make_mfcc.sh --nj 30 --cmd $train_cmd data/train exp/make_mfcc/train mfcc 
-steps/make_mfcc.sh --nj 30 --cmd $train_cmd data/test exp/make_mfcc/test mfcc 
+# If this step fails and prints a partial diff, rerun from sprak_data_prep.sh
 
+steps/make_mfcc.sh --nj 10 --cmd $train_cmd data/test exp/make_mfcc/test mfcc &
+steps/make_mfcc.sh --nj 10 --cmd $train_cmd data/dev exp/make_mfcc/dev mfcc &
+steps/make_mfcc.sh --nj 10 --cmd $train_cmd data/train exp/make_mfcc/train mfcc || exit 1;
+wait
 
 # Compute cepstral mean and variance normalisation
-steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train mfcc && \
-steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test mfcc
+steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test mfcc &
+steps/compute_cmvn_stats.sh data/dev exp/make_mfcc/dev mfcc &
+steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train mfcc 
 
+wait
 
 # Repair data set (remove corrupt data points with corrupt audio)
-utils/fix_data_dir.sh data/train && utils/fix_data_dir.sh data/test
-utils/fix_data_dir.sh data/dev
+
+utils/fix_data_dir.sh data/test &
+utils/fix_data_dir.sh data/dev &
+utils/fix_data_dir.sh data/train 
+wait
 
 # Train LM with CMUCLMTK
+# This setup uses IRSTLM
 #local/sprak_train_lm.sh &> data/local/cmuclmtk/lm.log
 
 # Train LM with irstlm
-local/train_irstlm.sh data/local/dict/transcripts.txt 3 "b3g" data/lang data/local/trainb3_lm &> data/local/b3g.log &
-local/train_irstlm.sh data/local/dict/transcripts.uniq 3 "3g" data/lang data/local/train3_lm &> data/local/3g.log &
-#local/train_irstlm.sh data/local/dict/transcripts.txt b4 "b4g" data/lang data/local/trainb4_lm &> data/local/b4g.log &
-#local/train_irstlm.sh data/local/dict/transcripts.uniq 4 "4g" data/lang data/local/train4_lm &> data/local/4g.log &
+local/train_irstlm.sh data/local/transcript_lm/transcripts.uniq 3 "3g" data/lang data/local/train3_lm &> data/local/3g.log &
+local/train_irstlm.sh data/local/transcript_lm/transcripts.uniq 4 "4g" data/lang data/local/train4_lm &> data/local/4g.log 
 
 # Make subset with 1k utterances for rapid testing
 # Randomly selects 980 utterances from 7 speakers
 utils/subset_data_dir.sh --per-spk data/test 140 data/test1k &
 
-# Now make subset with the shortest 120k utterances. 
+# Now make subset of the training data with the shortest 120k utterances. 
 utils/subset_data_dir.sh --shortest data/train 120000 data/train_120kshort || exit 1;
 
 # Train monophone model on short utterances
@@ -66,23 +74,13 @@ steps/train_mono.sh --nj 30 --cmd "$train_cmd" \
 wait
 
 utils/mkgraph.sh --mono data/lang_test_3g exp/mono0a exp/mono0a/graph_3g &
-#utils/mkgraph.sh --mono data/lang_test_b3g exp/mono0a exp/mono0a/graph_b3g &
-#utils/mkgraph.sh --mono data/lang_test_4g exp/mono0a exp/mono0a/graph_4g &
-#utils/mkgraph.sh --mono data/lang_test_b4g exp/mono0a exp/mono0a/graph_b4g 
+utils/mkgraph.sh --mono data/lang_test_4g exp/mono0a exp/mono0a/graph_4g &
 
 # Ensure that all graphs are constructed
 wait 
 
-
-
-#(
-#steps/decode.sh --nj 7 --cmd "$decode_cmd" \
-#      exp/mono0a/graph_b3g data/test1k exp/mono0a/decode_b3g_test1k
-#) &
 steps/decode.sh --nj 7 --cmd "$decode_cmd" \
       exp/mono0a/graph_3g data/test1k exp/mono0a/decode_3g_test1k
-
-exit 0;
 
 # steps/align_si.sh --boost-silence 1.25 --nj 42 --cmd "$train_cmd" \
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
@@ -96,19 +94,19 @@ wait
 
 
 utils/mkgraph.sh data/lang_test_3g exp/tri1 exp/tri1/graph_3g &
-utils/mkgraph.sh data/lang_test_b3g exp/tri1 exp/tri1/graph_b3g || exit 1;#
+utils/mkgraph.sh data/lang_test_4g exp/tri1 exp/tri1/graph_4g || exit 1;
  
-#(
-#steps/decode.sh --nj 7 --cmd "$decode_cmd" \
-#  exp/tri1/graph_4g data/test1k exp/tri1/decode_4g_test1k || exit 1;
-#) &
+(
+steps/decode.sh --nj 7 --cmd "$decode_cmd" \
+  exp/tri1/graph_4g data/test1k exp/tri1/decode_4g_test1k || exit 1;
+) &
 
 (
 steps/decode.sh --nj 7 --cmd "$decode_cmd" \
   exp/tri1/graph_3g data/test1k exp/tri1/decode_3g_test1k || exit 1;
 ) &
-steps/decode.sh --nj 7 --cmd "$decode_cmd" \
-  exp/tri1/graph_b3g data/test1k exp/tri1/decode_b3g_test1k || exit 1;
+
+wait
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
   data/train data/lang exp/tri1 exp/tri1_ali || exit 1;
@@ -120,14 +118,12 @@ steps/train_deltas.sh --cmd "$train_cmd" \
 
 utils/mkgraph.sh data/lang_test_3g exp/tri2a exp/tri2a/graph_3g || exit 1;
 
-#steps/decode.sh --nj 7 --cmd "$decode_cmd" \
-#  exp/tri2a/graph_b3g data/test1k exp/tri2a/decode_b3g_test1k || exit 1;
 steps/decode.sh --nj 7 --cmd "$decode_cmd" \
   exp/tri2a/graph_3g data/test1k exp/tri2a/decode_3g_test1k || exit 1;
 
 
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
-   --splice-opts "--left-context=3 --right-context=3" \
+   --splice-opts "--left-context=5 --right-context=5" \
    2500 15000 data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
 
 utils/mkgraph.sh data/lang_test_3g exp/tri2b exp/tri2b/graph_3g || exit 1;
@@ -135,7 +131,6 @@ steps/decode.sh --nj 7 --cmd "$decode_cmd" \
   exp/tri2b/graph_3g data/test1k exp/tri2b/decode_3g_test1k || exit 1;
 
 
-# Align tri2b system with si84 data.
 steps/align_si.sh  --nj 30 --cmd "$train_cmd" \
   --use-graphs true data/train data/lang exp/tri2b exp/tri2b_ali  || exit 1;
 
@@ -151,17 +146,16 @@ steps/decode_fmllr.sh --nj 7 --cmd "$decode_cmd" \
 
 
 # Trying 4-gram language model
-local/train_irstlm.sh data/local/dict/transcripts.uniq 4 "4g" data/lang data/local/train4_lm &> data/local/4g.log
 utils/mkgraph.sh data/lang_test_4g exp/tri3b exp/tri3b/graph_4g || exit 1;
 
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 7 \
   exp/tri3b/graph_4g data/test1k exp/tri3b/decode_4g_test1k || exit 1;
 
-
 # Train RNN for reranking
 local/sprak_train_rnnlms.sh data/local/dict data/dev/transcripts.uniq data/local/rnnlms/g_c380_d1k_h100_v130k
 # Consumes a lot of memory! Do not run in parallel
 local/sprak_run_rnnlms_tri3b.sh data/lang_test_3g data/local/rnnlms/g_c380_d1k_h100_v130k data/test1k exp/tri3b/decode_3g_test1k
+
 
 # From 3b system
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
@@ -175,9 +169,6 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 utils/mkgraph.sh data/lang_test_3g exp/tri4a exp/tri4a/graph_3g || exit 1;
 steps/decode_fmllr.sh --nj 7 --cmd "$decode_cmd" \
    exp/tri4a/graph_3g data/test1k exp/tri4a/decode_3g_test1k || exit 1;
-# steps/decode_fmllr.sh --nj 7 --cmd "$decode_cmd" \
-#   exp/tri4a/graph_tgpr data/test_eval92 exp/tri4a/decode_tgpr_eval92 || exit 1;
-
 
 
 steps/train_quick.sh --cmd "$train_cmd" \
@@ -195,9 +186,7 @@ steps/train_quick.sh --cmd "$train_cmd" \
 
 wait
 
-
-# Train and test MMI, and boosted MMI, on tri4b (LDA+MLLT+SAT on
-# all the data).  Use 30 jobs.
+# alignment used to train nnets and sgmms
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train data/lang exp/tri4b exp/tri4b_ali || exit 1;
 
@@ -206,9 +195,6 @@ local/sprak_run_nnet_cpu.sh 3g test1k
 
 ## Works
 local/sprak_run_sgmm2.sh test1k
-
-# You probably want to run the hybrid recipe as it is complementary:
-#local/run_hybrid.sh
 
 
 # Getting results [see RESULTS file]

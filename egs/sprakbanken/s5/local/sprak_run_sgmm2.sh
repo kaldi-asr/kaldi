@@ -8,15 +8,13 @@
 # Note: you might want to try to give the option --spk-dep-weights=false to train_sgmm2.sh;
 # this takes out the "symmetric SGMM" part which is not always helpful.
 
-# SGMM system on si84 data [sgmm5a].  Note: the system we aligned from used the si284 data for
-# training, but this shouldn't have much effect.
 
 test=$1
 
-
-  steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
+if [ ! -d xxp/tri4b_ali ]; then
+  steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
     data/train data/lang exp/tri4b exp/tri4b_ali || exit 1;
-
+fi
   steps/train_ubm.sh --cmd "$train_cmd" \
     400 data/train data/lang exp/tri4b_ali exp/ubm5a || exit 1;
 
@@ -30,9 +28,9 @@ test=$1
       exp/sgmm2_5a/graph_3g data/${test} exp/sgmm2_5a/decode_3g_${test}
   ) &
 
-  steps/align_sgmm2.sh --nj 50 --cmd "$train_cmd" --transform-dir exp/tri4b_ali \
+  steps/align_sgmm2.sh --nj 30 --cmd "$train_cmd" --transform-dir exp/tri4b_ali \
     --use-graphs true --use-gselect true data/train data/lang exp/sgmm2_5a exp/sgmm2_5a_ali || exit 1;
-  steps/make_denlats_sgmm2.sh --nj 50 --sub-split 2 --cmd "$decode_cmd" --transform-dir exp/tri4b_ali \
+  steps/make_denlats_sgmm2.sh --nj 30 --sub-split 2 --cmd "$decode_cmd" --transform-dir exp/tri4b_ali \
     data/train data/lang exp/sgmm2_5a_ali exp/sgmm2_5a_denlats
 
   wait
@@ -104,10 +102,10 @@ test=$1
 
 wait
 
-  steps/align_sgmm2.sh --nj 50 --cmd "$train_cmd" --transform-dir exp/tri4b_ali \
+  steps/align_sgmm2.sh --nj 30 --cmd "$train_cmd" --transform-dir exp/tri4b_ali \
     --use-graphs true --use-gselect true data/train data/lang exp/sgmm2_5b exp/sgmm2_5b_ali 
 
-  steps/make_denlats_sgmm2.sh --nj 50 --sub-split 2 --cmd "$decode_cmd" --transform-dir exp/tri4b_ali \
+  steps/make_denlats_sgmm2.sh --nj 30 --sub-split 2 --cmd "$decode_cmd" --transform-dir exp/tri4b_ali \
     data/train data/lang exp/sgmm2_5b_ali exp/sgmm2_5b_denlats
 
   wait
@@ -136,8 +134,6 @@ wait
      done
   done
 
-
-
 wait
 
 # Examples of combining some of the best decodings: SGMM+MMI with
@@ -149,14 +145,3 @@ local/score_combine.sh data/${test} \
    exp/sgmm2_5b_mmi_b0.1/decode_4g_${test}_it3 \
    exp/combine_tri4b_fmmi_a_sgmm2_5b_mmi_b0.1/decode_4g_${test}_it8_3
 
-
-# %WER 4.43 [ 250 / 5643, 41 ins, 12 del, 197 sub ] exp/tri4b_fmmi_a/decode_tgpr_eval92_it8/wer_11
-# %WER 3.85 [ 217 / 5643, 35 ins, 11 del, 171 sub ] exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3/wer_10
-# combined to:
-# %WER 3.76 [ 212 / 5643, 32 ins, 12 del, 168 sub ] exp/combine_tri4b_fmmi_a_sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it8_3/wer_12
-
-# Checking MBR decode of baseline:
-cp -r -T exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3{,.mbr}
-local/score_mbr.sh data/test_eval92 data/lang_test_bd_tgpr exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3.mbr
-# MBR decoding did not seem to help (baseline was 3.85).  I think this is normal at such low WERs.
-%WER 3.86 [ 218 / 5643, 35 ins, 11 del, 172 sub ] exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3.mbr/wer_10

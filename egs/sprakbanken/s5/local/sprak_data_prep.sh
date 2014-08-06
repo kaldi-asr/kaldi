@@ -6,10 +6,11 @@
 
 
 dir=`pwd`/data/local/data
-lmdir=`pwd`/data/local/arpa_lm
-traindir=`pwd`/data/train
-testdir=`pwd`/data/test
-devdir=`pwd`/data/dev
+lmdir=`pwd`/data/local/transcript_lm
+traindir=`pwd`/data/local/trainsrc
+testdir=`pwd`/data/local/testsrc
+devdir=`pwd`/data/local/devsrc
+rm -rf $lmdir $traindir $testdir $devdir
 mkdir -p $dir $lmdir $traindir $testdir $devdir
 local=`pwd`/local
 utils=`pwd`/utils
@@ -18,7 +19,7 @@ utils=`pwd`/utils
 
 # Checks if python3 is available on the system and install python3 in userspace if not
 # This recipe currently relies on version 3 because python3 uses utf8 as internal 
-# representation string representation
+# string representation
 
 if ! which python3 >&/dev/null; then
   echo "Installing python3 since not on your path."
@@ -60,7 +61,7 @@ if [ ! -d $dir/download/0611 ]; then
     echo "Corpus unpacked succesfully."
 fi
 
-. ./path.sh # Needed for KALDI_ROOT
+
 sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 if [ ! -x $sph2pipe ]; then
    echo "Could not find (or execute) the sph2pipe program at $sph2pipe";
@@ -76,61 +77,72 @@ mkdir -p $dir/corpus_processed/training/0565-1 $dir/corpus_processed/training/05
 
 # Create parallel file lists and text files, but keep sound files in the same location to save disk space
 # Writes the lists to data/local/data (~ 310h)
+echo "Creating parallel data for training data."
 python3 $local/sprak2kaldi.py $dir/download/0565-1 $dir/corpus_processed/training/0565-1 &  # ~130h
 python3 $local/sprak2kaldi.py $dir/download/0565-2 $dir/corpus_processed/training/0565-2 &  # ~115h
 python3 $local/sprak2kaldi.py $dir/download/0611/Stasjon05 $dir/corpus_processed/training/0611_Stasjon05 & # ~51h 
 
+(
 # Ditto dev set (~ 16h)
-rm -rf $dir/corpus_processed/dev03 
-mkdir -p $dir/corpus_processed/dev03 
-python3 $local/sprak2kaldi.py $dir/download/0611/Stasjon03 $dir/corpus_processed/dev03 &
+    echo "Creating parallel data for test data."
+    rm -rf $dir/corpus_processed/dev03 
+    mkdir -p $dir/corpus_processed/dev03 
+    python3 $local/sprak2kaldi.py $dir/download/0611/Stasjon03 $dir/corpus_processed/dev03 &
+) &
 
+(
 # Ditto test set (about 9 hours)
-rm -rf $dir/corpus_processed/test06 
-mkdir -p $dir/corpus_processed/test06 
-python3 $local/sprak2kaldi.py $dir/download/0611/Stasjon06 $dir/corpus_processed/test06 || exit 1;
+    echo "Creating parallel data for development data."
+    rm -rf $dir/corpus_processed/test06 
+    mkdir -p $dir/corpus_processed/test06 
+    python3 $local/sprak2kaldi.py $dir/download/0611/Stasjon06 $dir/corpus_processed/test06 || exit 1;
+) &
 
 wait
+
+# Create the LM training data 
+# Test and dev data is disjoint from training data, so we use those transcripts)
+
+# Because training data is read aloud, there are many occurences of the same
+# sentence and bias towards the domain. Make a version where  
+# the sentences are unique to reduce bias.
+
+(
+    echo "Writing the LM text to file and normalising."
+    cat $dir/corpus_processed/training/0565-1/txtlist $dir/corpus_processed/training/0565-2/txtlist | while read l; do cat $l; done > $lmdir/lmsents
+    python3 local/normalize_transcript.py local/norm_dk/numbersUp.tbl $lmdir/lmsents $lmdir/lmsents.norm
+    local/norm_dk/format_text.sh lm $lmdir/lmsents.norm > $lmdir/transcripts.txt
+    sort -u $lmdir/transcripts.txt > $lmdir/transcripts.uniq
+) &
 
 # Combine training file lists
 echo "Combine file lists."
 cat $dir/corpus_processed/training/0565-1/txtlist $dir/corpus_processed/training/0565-2/txtlist $dir/corpus_processed/training/0611_Stasjon05/txtlist > $dir/traintxtfiles
 cat $dir/corpus_processed/training/0565-1/sndlist $dir/corpus_processed/training/0565-2/sndlist $dir/corpus_processed/training/0611_Stasjon05/sndlist > $dir/trainsndfiles
 
-# LM training files (test data is disjoint from training data)
-echo "Write file list with LM text files. (This will take a while)"
-cat $dir/corpus_processed/training/0565-1/txtlist $dir/corpus_processed/training/0565-2/txtlist > $dir/lmtxtfiles
-cat $dir/lmtxtfiles | while read l; do cat $l; done > $dir/lmsents &
+# Move test file lists to the right location
+cp $dir/corpus_processed/dev03/txtlist $dir/devtxtfiles
+cp $dir/corpus_processed/dev03/sndlist $dir/devsndfiles
 
 # Move test file lists to the right location
-mv $dir/corpus_processed/dev03/txtlist $dir/devtxtfiles
-mv $dir/corpus_processed/dev03/sndlist $dir/devsndfiles
+cp $dir/corpus_processed/test06/txtlist $dir/testtxtfiles
+cp $dir/corpus_processed/test06/sndlist $dir/testsndfiles
 
-
-# Move test file lists to the right location
-mv $dir/corpus_processed/test06/txtlist $dir/testtxtfiles
-mv $dir/corpus_processed/test06/sndlist $dir/testsndfiles
-
-# Write wav.scp, utt2spk and text1 for train, test and dev sets with
+# Write wav.scp, utt2spk and text.unnormalised for train, test and dev sets with
 # Use sph2pipe because the wav files are actually sph files
-echo "Creating wav.scp, utt2spk and text1 for train, test and dev dirs." 
+echo "Creating wav.scp, utt2spk and text.unnormalised for train, test and dev" 
 python3 $local/data_prep.py $dir/traintxtfiles $traindir $dir/trainsndfiles $sph2pipe &
 python3 $local/data_prep.py $dir/testtxtfiles $testdir $dir/testsndfiles $sph2pipe &
 python3 $local/data_prep.py $dir/devtxtfiles $devdir $dir/devsndfiles $sph2pipe &
 
 wait
 
-# Create spk2utt file
-utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt &
-utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt &
-utils/utt2spk_to_spk2utt.pl data/dev/utt2spk > data/dev/spk2utt
+# Create the main data sets
+local/create_datasets.sh $testdir data/test &
+local/create_datasets.sh $devdir data/dev &
+local/create_datasets.sh $traindir data/train &
 
 wait
-
-for d in train test dev; do
-    utils/validate_data_dir.sh --no-feats --no-text  data/$d || exit 1;
-done
-
 
 ## TODO
 

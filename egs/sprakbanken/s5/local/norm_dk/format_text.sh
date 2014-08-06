@@ -21,14 +21,16 @@
 
 mode=$1
 
+tmp="$(mktemp -d)"
+
 dir=$(pwd)/local/norm_dk
 
-src=$dir/src.tmp
-abbr=$dir/anot.tmp
-rem=$dir/rem.tmp
-line=$dir/line.tmp
-num=$dir/num.tmp
-nonum=$dir/nonum.tmp
+src=$tmp/src.tmp
+abbr=$tmp/anot.tmp
+rem=$tmp/rem.tmp
+line=$tmp/line.tmp
+num=$tmp/num.tmp
+nonum=$tmp/nonum.tmp
 
 cat $2 | tr -d '\r' > $src
 
@@ -50,4 +52,4 @@ PERLIO=:utf8 perl -pe '$_=uc'
 
 # Comment this line for debugging
 wait
-rm -f $abbr $rem $line 
+rm -rf $tmp

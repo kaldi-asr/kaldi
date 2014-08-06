@@ -131,7 +131,7 @@ if __name__ == '__main__':
     else:
         traindata = create_parallel_kaldi(flist, "")
 
-    textout = codecs.open(os.path.join(outpath, "text1"), "w", "utf8")
+    textout = codecs.open(os.path.join(outpath, "text.unnormalised"), "w", "utf8")
     wavout = codecs.open(os.path.join(outpath, "wav.scp"), "w")
     utt2spkout = codecs.open(os.path.join(outpath, "utt2spk"), "w")
     textout.writelines(traindata[0])

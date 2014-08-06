@@ -22,48 +22,16 @@ exproot=$(pwd)
 dir=data/local/dict
 mkdir -p $dir
 
-
 # Dictionary preparation:
-
-# Normalise transcripts and create a transcript file
-# Removes '.,:;?' and removes '\' before '\Komma' (dictated ',') 
-# outputs a normalised transcript without utterance ids and a list of utterance ids 
-echo "Normalising"
-trainsrc=data/local/trainsrc
-rm -rf $trainsrc
-mkdir $trainsrc
-mv data/train/text1 $trainsrc/text1
-python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $trainsrc/text1 $trainsrc/onlyids $dir/transcripts.tmp
-
-# Additional normalisation, uppercasing, writing numbers etc.
-# and recombine with 
-local/norm_dk/format_text.sh am $dir/transcripts.tmp > $dir/transcripts.am
-cp $dir/transcripts.am $trainsrc/onlytext
-paste -d ' ' $trainsrc/onlyids $trainsrc/onlytext > data/train/text 
-utils/validate_data_dir.sh --no-feat data/train || exit 1;
-
-# lmsents is output by sprak_data_prep.sh and contains
-# sentences that are disjoint from the test and dev set 
-python3 local/normalize_transcript.py local/norm_dk/numbersUp.tbl data/local/data/lmsents $dir/lmsents.norm
-wait
-
-# Create wordlist from the AM transcripts
-cat $dir/transcripts.am | tr [:blank:] '\n' | sort -u > $dir/wlist.txt &
-
-
-
-
-# Because training data is read aloud, there are many occurences of the same
-# sentence and bias towards the domain. Make a version where  
-# the sentences are unique to reduce bias.
-local/norm_dk/format_text.sh lm $dir/lmsents.norm > $dir/transcripts.txt
-sort -u $dir/transcripts.txt > $dir/transcripts.uniq
+# This lexicon was created using eSpeak. 
+# To extend the setup, see local/dict_prep.sh
 
 # Copy pre-made phone table 
 cp local/dictsrc/complexphones.txt $dir/nonsilence_phones.txt
 
 # Copy pre-made lexicon
-cp local/dictsrc/lexicon.txt $dir/lexicon.txt
+wget http://www.openslr.org/resources/8/lexicon-da.tar.gz --directory-prefix=data/local/data/download
+tar -xzf data/local/data/download/lexicon-da.tar.gz -C $dir
 
 
 # silence phones, one per line.
@@ -72,30 +40,7 @@ echo SIL > $dir/optional_silence.txt
 
 touch $dir/extra_questions.txt
 
-# Repeat text preparation on test set, but do not add to dictionary
-testsrc=data/local/testsrc
-rm -rf $testsrc
-mkdir $testsrc
-mv data/test/text1 $testsrc/text1
-python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $testsrc/text1 $testsrc/onlyids $testsrc/transcripts.am 
-local/norm_dk/format_text.sh am $testsrc/transcripts.am > $testsrc/onlytext
-paste -d ' ' $testsrc/onlyids $testsrc/onlytext > data/test/text
-utils/validate_data_dir.sh --no-feat data/test || exit 1;
-
-# Repeat text preparation on dev set, but do not add to dictionary
-devsrc=data/local/devsrc
-rm -rf $devsrc
-mkdir $devsrc
-mv data/dev/text1 $devsrc/text1
-python3 local/normalize_transcript_prefixed.py local/norm_dk/numbersUp.tbl $devsrc/text1 $devsrc/onlyids $devsrc/transcripts.tmp
-local/norm_dk/format_text.sh am $devsrc/transcripts.tmp > $devsrc/onlytext
-paste -d ' ' $devsrc/onlyids $devsrc/onlytext > data/dev/text
-
-# Also create a file that can be used for reranking using LMs
-local/norm_dk/format_text.sh lm $devsrc/transcripts.tmp > data/dev/transcripts.txt
-sort -u data/dev/transcripts.txt > data/dev/transcripts.uniq
-
-utils/validate_data_dir.sh --no-feat data/dev || exit 1;
+wait
 
 
 ## TODO: add cleanup commands
