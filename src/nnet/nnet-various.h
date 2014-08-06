@@ -112,6 +112,32 @@ std::string MomentStatistics(const CuMatrix<Real> &mat) {
   return MomentStatistics(mat_host);
 }
 
+/**
+ * Check that matrix contains no nan or inf
+ */
+template <typename Real>
+void CheckNanInf(const CuMatrix<Real> &mat, const char *msg = "") {
+  Real sum = mat.Sum();
+  if(KALDI_ISINF(sum)) { KALDI_ERR << "'inf' in " << msg; }
+  if(KALDI_ISNAN(sum)) { KALDI_ERR << "'nan' in " << msg; }
+}
+
+/**
+ * Get the standard deviation of values in the matrix
+ */
+template <typename Real>
+Real ComputeStdDev(const CuMatrix<Real> &mat) {
+  int32 N = mat.NumRows() * mat.NumCols();
+  Real mean = mat.Sum() / N;
+  CuMatrix<Real> pow_2(mat);
+  pow_2.MulElements(mat);
+  Real var = pow_2.Sum() / N - mean * mean;
+  if (var < 0.0) {
+    KALDI_WARN << "Forcing the variance to be non-negative! " << var << "->0.0";
+    var = 0.0;
+  }
+  return sqrt(var);
+}
 
 
 /**
