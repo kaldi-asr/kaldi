@@ -25,8 +25,9 @@ grep -v ';;;' $dir/cmudict/cmudict.0.7a | \
 #cat eddie_data/rt09.ami.ihmtrain09.v3.dct | sort > $dir/lexicon1_raw_nosil.txt
 
 # limit the vocabulary to the predefined 50k words
-gunzip local/wordlist.50k.gz
-join $dir/lexicon1_raw_nosil.txt local/wordlist.50k > $dir/lexicon1_raw_nosil_50k.txt
+wget -nv -O $dir/wordlist.50k.gz http://www.openslr.org/resources/9/wordlist.50k.gz
+gunzip -c $dir/wordlist.50k.gz > $dir/wordlist.50k
+join $dir/lexicon1_raw_nosil.txt $dir/wordlist.50k > $dir/lexicon1_raw_nosil_50k.txt
 
 # Add prons for laughter, noise, oov
 for w in `grep -v sil $dir/silence_phones.txt`; do
