@@ -203,7 +203,7 @@ class ConvolutionalComponent : public UpdatableComponent {
            "\n  bias_grad" + MomentStatistics(bias_grad_);
   }
 
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_splice = input_dim_ / patch_stride_;
     int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
@@ -253,8 +253,8 @@ class ConvolutionalComponent : public UpdatableComponent {
   }
 
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_splice = input_dim_ / patch_stride_;
     int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
@@ -287,7 +287,7 @@ class ConvolutionalComponent : public UpdatableComponent {
   }
 
 
-  void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
     // useful dims
     int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
     int32 num_filters = filters_.NumRows();

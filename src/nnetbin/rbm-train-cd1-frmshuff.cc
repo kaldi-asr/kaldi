@@ -198,7 +198,7 @@ int main(int argc, char *argv[]) {
       // train with data from randomizer (using mini-batches)
       for( ; !feature_randomizer.Done(); feature_randomizer.Next()) {
         // get block of feature/target pairs
-        const CuMatrix<BaseFloat>& pos_vis = feature_randomizer.Value();
+        const CuMatrixBase<BaseFloat>& pos_vis = feature_randomizer.Value();
         // get the dims 
         int32 num_frames = pos_vis.NumRows(),
               dim_hid = rbm.OutputDim();

@@ -57,7 +57,7 @@ class CuVectorBase {
   template <typename OtherReal>
   friend OtherReal VecVec(const CuVectorBase<OtherReal> &v1,
                           const CuVectorBase<OtherReal> &v2);
-  friend void cu::Splice<Real>(const CuMatrix<Real> &src,
+  friend void cu::Splice<Real>(const CuMatrixBase<Real> &src,
                                const CuArray<int32> &frame_offsets,
                                CuMatrixBase<Real> *tgt);
   friend class CuRand<Real>;

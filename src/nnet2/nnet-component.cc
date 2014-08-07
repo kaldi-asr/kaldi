@@ -1084,8 +1084,8 @@ AffineComponent::AffineComponent(const AffineComponent &component):
     bias_params_(component.bias_params_),
     is_gradient_(component.is_gradient_) { }
 
-AffineComponent::AffineComponent(const CuMatrix<BaseFloat> &linear_params,
-                                 const CuVector<BaseFloat> &bias_params,
+AffineComponent::AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
+                                 const CuVectorBase<BaseFloat> &bias_params,
                                  BaseFloat learning_rate):
     UpdatableComponent(learning_rate),
     linear_params_(linear_params),

@@ -37,13 +37,13 @@ class Xent {
   ~Xent() { }
 
   /// Evaluate cross entropy from hard labels
-  void Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &target,
+  void Eval(const CuMatrixBase<BaseFloat> &net_out, const CuMatrixBase<BaseFloat> &target,
             CuMatrix<BaseFloat> *diff);
   /// Evaluate cross entropy from posteriors
-  void Eval(const CuMatrix<BaseFloat> &net_out, const Posterior &target,
+  void Eval(const CuMatrixBase<BaseFloat> &net_out, const Posterior &target,
             CuMatrix<BaseFloat> *diff);
   /// Evaluate cross entropy from soft labels
-  void EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<int32> &target,
+  void EvalVec(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> &target,
             CuMatrix<BaseFloat> *diff);
   
   /// Generate string with error report
@@ -85,9 +85,9 @@ class Mse {
   ~Mse() { }
 
   /// Evaluate mean square error from target values
-  void Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& target,
+  void Eval(const CuMatrixBase<BaseFloat>& net_out, const CuMatrixBase<BaseFloat>& target,
             CuMatrix<BaseFloat>* diff);
-  void Eval(const CuMatrix<BaseFloat>& net_out, const Posterior& target,
+  void Eval(const CuMatrixBase<BaseFloat>& net_out, const Posterior& target,
             CuMatrix<BaseFloat>* diff);
   
   /// Generate string with error report

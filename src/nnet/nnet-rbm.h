@@ -46,14 +46,14 @@ class RbmBase : public Component {
   // virtual void PropagateFnc(...) = 0
 
   virtual void Reconstruct(
-    const CuMatrix<BaseFloat> &hid_state, 
+    const CuMatrixBase<BaseFloat> &hid_state, 
     CuMatrix<BaseFloat> *vis_probs
   ) = 0;
   virtual void RbmUpdate(
-    const CuMatrix<BaseFloat> &pos_vis, 
-    const CuMatrix<BaseFloat> &pos_hid, 
-    const CuMatrix<BaseFloat> &neg_vis, 
-    const CuMatrix<BaseFloat> &neg_hid
+    const CuMatrixBase<BaseFloat> &pos_vis, 
+    const CuMatrixBase<BaseFloat> &pos_hid, 
+    const CuMatrixBase<BaseFloat> &neg_vis, 
+    const CuMatrixBase<BaseFloat> &neg_hid
   ) = 0;
 
   virtual RbmNodeType VisType() const = 0;
@@ -76,10 +76,10 @@ class RbmBase : public Component {
  private:
   //// Make inherited methods inaccessible,
   //   as for RBMs we use Reconstruct(.)
-  void Backpropagate(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                     const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) { }
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) { }
+  void Backpropagate(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                     const CuMatrixBase<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) { }
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) { }
   ////
 };
 
@@ -218,7 +218,7 @@ class Rbm : public RbmBase {
 
 
   // Component API
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     // pre-fill with bias
     out->AddVecToRows(1.0, hid_bias_, 0.0);
     // multiply by weights^t
@@ -230,7 +230,7 @@ class Rbm : public RbmBase {
   }
 
   // RBM training API
-  void Reconstruct(const CuMatrix<BaseFloat> &hid_state, CuMatrix<BaseFloat> *vis_probs) {
+  void Reconstruct(const CuMatrixBase<BaseFloat> &hid_state, CuMatrix<BaseFloat> *vis_probs) {
     // check the dim
     if (output_dim_ != hid_state.NumCols()) {
       KALDI_ERR << "Nonmatching dims, component:" << output_dim_ << " data:" << hid_state.NumCols();
@@ -250,7 +250,7 @@ class Rbm : public RbmBase {
     }
   }
   
-  void RbmUpdate(const CuMatrix<BaseFloat> &pos_vis, const CuMatrix<BaseFloat> &pos_hid, const CuMatrix<BaseFloat> &neg_vis, const CuMatrix<BaseFloat> &neg_hid) {
+  void RbmUpdate(const CuMatrixBase<BaseFloat> &pos_vis, const CuMatrixBase<BaseFloat> &pos_hid, const CuMatrixBase<BaseFloat> &neg_vis, const CuMatrixBase<BaseFloat> &neg_hid) {
     // dims
     KALDI_ASSERT(pos_vis.NumRows() == pos_hid.NumRows() &&
            pos_vis.NumRows() == neg_vis.NumRows() &&

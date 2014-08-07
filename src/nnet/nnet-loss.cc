@@ -30,7 +30,7 @@ namespace nnet1 {
 
 /* Xent */
 
-void Xent::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &target, CuMatrix<BaseFloat> *diff) {
+void Xent::Eval(const CuMatrixBase<BaseFloat> &net_out, const CuMatrixBase<BaseFloat> &target, CuMatrix<BaseFloat> *diff) {
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
   diff->Resize(net_out.NumRows(), net_out.NumCols());
@@ -71,7 +71,7 @@ void Xent::Eval(const CuMatrix<BaseFloat> &net_out, const CuMatrix<BaseFloat> &t
 }
 
 
-void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const Posterior& post, CuMatrix<BaseFloat>* diff) {
+void Xent::Eval(const CuMatrixBase<BaseFloat>& net_out, const Posterior& post, CuMatrix<BaseFloat>* diff) {
   int32 num_frames = net_out.NumRows(),
     num_pdf = net_out.NumCols();
   KALDI_ASSERT(num_frames == post.size());
@@ -155,7 +155,7 @@ void Xent::Eval(const CuMatrix<BaseFloat>& net_out, const Posterior& post, CuMat
 }
 
 
-void Xent::EvalVec(const CuMatrix<BaseFloat> &net_out, const std::vector<int32> &target, CuMatrix<BaseFloat> *diff) {
+void Xent::EvalVec(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> &target, CuMatrix<BaseFloat> *diff) {
   // evaluate the frame-level classification
   int32 correct=0;
   net_out.FindRowMaxId(&max_id_out_);
@@ -213,7 +213,7 @@ std::string Xent::Report() {
 
 /* Mse */
 
-void Mse::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& target, CuMatrix<BaseFloat>* diff) {
+void Mse::Eval(const CuMatrixBase<BaseFloat>& net_out, const CuMatrixBase<BaseFloat>& target, CuMatrix<BaseFloat>* diff) {
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
   int32 num_frames = net_out.NumRows();
@@ -253,7 +253,7 @@ void Mse::Eval(const CuMatrix<BaseFloat>& net_out, const CuMatrix<BaseFloat>& ta
 }
 
 
-void Mse::Eval(const CuMatrix<BaseFloat>& net_out, const Posterior& post, CuMatrix<BaseFloat>* diff) {
+void Mse::Eval(const CuMatrixBase<BaseFloat>& net_out, const Posterior& post, CuMatrix<BaseFloat>* diff) {
   int32 num_frames = net_out.NumRows(),
     num_pdf = net_out.NumCols();
   KALDI_ASSERT(num_frames == post.size());

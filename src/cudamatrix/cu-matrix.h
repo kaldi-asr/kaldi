@@ -76,10 +76,10 @@ class CuMatrixBase {
   friend class CuBlockMatrix<Real>;
   friend void cu::RegularizeL1<Real>(CuMatrixBase<Real> *weight,
                                      CuMatrixBase<Real> *grad, Real l1, Real lr);
-  friend void cu::Splice<Real>(const CuMatrix<Real> &src,
+  friend void cu::Splice<Real>(const CuMatrixBase<Real> &src,
                                const CuArray<int32> &frame_offsets,
                                CuMatrixBase<Real> *tgt);
-  friend void cu::Copy<Real>(const CuMatrix<Real> &src,
+  friend void cu::Copy<Real>(const CuMatrixBase<Real> &src,
                              const CuArray<int32> &copy_from_indices,
                              CuMatrixBase<Real> *tgt);
   friend void cu::Randomize<Real>(const CuMatrixBase<Real> &src,
