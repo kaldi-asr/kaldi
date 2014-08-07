@@ -1219,16 +1219,11 @@ void AffineComponent::InitFromString(std::string args) {
 void AffineComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
                                 int32, // num_chunks
                                 CuMatrix<BaseFloat> *out) const {
-  KALDI_LOG << "First element of input is " << in(0, 0);
-  KALDI_LOG << "Input sum is " << in.Sum();
   // No need for asserts as they'll happen within the matrix operations.
   out->Resize(in.NumRows(), linear_params_.NumRows());
   out->CopyRowsFromVec(bias_params_); // copies bias_params_ to each row
   // of *out.
-  KALDI_LOG << "First element of output is " << (*out)(0, 0);
-  KALDI_LOG << "Linearity sum is " << linear_params_.Sum();
   out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
-  KALDI_LOG << "First element of output is " << (*out)(0, 0);  
 }
 
 void AffineComponent::UpdateSimple(const CuMatrixBase<BaseFloat> &in_value,

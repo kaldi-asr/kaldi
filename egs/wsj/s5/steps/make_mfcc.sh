@@ -18,7 +18,8 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
-   echo "usage: make_mfcc.sh [options] <data-dir> <log-dir> <path-to-mfccdir>";
+   echo "Usage: $0 [options] <data-dir> <log-dir> <path-to-mfccdir>";
+   echo "e.g.: $0 data/train exp/make_mfcc/train mfcc"
    echo "options: "
    echo "  --mfcc-config <config-file>                      # config passed to compute-mfcc-feats "
    echo "  --nj <nj>                                        # number of parallel jobs"

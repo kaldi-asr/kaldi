@@ -43,9 +43,7 @@ if [ $# != 3 ]; then
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --num-iters <#iters|10>                          # Number of iterations of E-M"
   echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
-  echo "  --num-threads <n|8>                              # Number of threads for each process"
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --num-gselect <n|5>                              # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
@@ -114,8 +112,8 @@ for job in $(seq $nj); do
    # create fake spk2utt files with reduced number of utterances per speaker,
    # so the network is well adapted to using iVectors from small amounts of
    # training data.
-   awk -v max=$utts_per_spk_max '{ n=2; count=0; while(n<NF) { 
-      nmax=n+max; count++; printf("%s-%06x", $1, count); for (;n<nmax&&n<NF; n++) printf(" %s", $n); print "";} }' \
+   awk -v max=$utts_per_spk_max '{ n=2; count=0; while(n<=NF) { 
+      nmax=n+max; count++; printf("%s-%06x", $1, count); for (;n<nmax&&n<=NF; n++) printf(" %s", $n); print "";} }' \
     <$sdata/$job/spk2utt >$dir/spk2utt_fake/spk2utt.$job
 done
 

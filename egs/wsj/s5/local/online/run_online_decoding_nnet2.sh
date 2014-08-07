@@ -174,9 +174,21 @@ for x in exp/nnet2_online/nnet_a_gpu/decode_*; do grep WER $x/wer_* | utils/best
 %WER 9.91 [ 816 / 8234, 164 ins, 90 del, 562 sub ] exp/nnet2_online/nnet_a_gpu/decode_tgpr_dev93/wer_12
 %WER 7.12 [ 402 / 5643, 91 ins, 22 del, 289 sub ] exp/nnet2_online/nnet_a_gpu/decode_tgpr_eval92/wer_13
 
-# The results below are not quite as good as above, but I believe the difference is that in
-# this setup we're not using config files, and the default beams/lattice-beams in the scripts are slightly
-# different: 15.0/8.0 above, and 13.0/6.0 below.
+ # Here is the version of the above without iVectors, as done by
+ # ./run_online_decoding_nnet2_baseline.sh.  It's about 0.5% absolute worse.
+ # There is also an _online version of that decode directory, which is
+ # essentially the same (we don't show the results here, as it's not really interesting).
+ for x in exp/nnet2_online/nnet_a_gpu_baseline/decode_*; do grep WER $x/wer_* | utils/best_wer.sh; done
+ %WER 8.03 [ 661 / 8234, 80 ins, 105 del, 476 sub ] exp/nnet2_online/nnet_a_gpu_baseline/decode_bd_tgpr_dev93/wer_11
+ %WER 5.10 [ 288 / 5643, 43 ins, 22 del, 223 sub ] exp/nnet2_online/nnet_a_gpu_baseline/decode_bd_tgpr_eval92/wer_11
+ %WER 10.51 [ 865 / 8234, 177 ins, 95 del, 593 sub ] exp/nnet2_online/nnet_a_gpu_baseline/decode_tgpr_dev93/wer_11
+ %WER 7.34 [ 414 / 5643, 88 ins, 25 del, 301 sub ] exp/nnet2_online/nnet_a_gpu_baseline/decode_tgpr_eval92/wer_13
+
+# Next, truly-online decoding.
+# The results below are not quite as good as those in nnet_a_gpu, but I believe
+# the difference is that in this setup we're not using config files, and the
+# default beams/lattice-beams in the scripts are slightly different: 15.0/8.0
+# above, and 13.0/6.0 below.
 for x in exp/nnet2_online/nnet_a_gpu_online/decode_*; do grep WER $x/wer_* | utils/best_wer.sh; done | grep -v utt
 %WER 7.53 [ 620 / 8234, 74 ins, 97 del, 449 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_bd_tgpr_dev93/wer_11
 %WER 4.45 [ 251 / 5643, 35 ins, 19 del, 197 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_bd_tgpr_eval92/wer_12

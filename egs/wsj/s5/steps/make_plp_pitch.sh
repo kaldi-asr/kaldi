@@ -22,7 +22,8 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
-   echo "usage: make_plp_pitch.sh [options] <data-dir> <log-dir> <path-to-plp-pitch-dir>";
+   echo "Usage: $0 [options] <data-dir> <log-dir> <path-to-plp-pitch-dir>";
+   echo "e.g.: $0 data/train exp/make_plp/train plp"
    echo "options: "
    echo "  --plp-config               <config-file>             # config passed to compute-plp-feats "
    echo "  --pitch_config             <pitch-config-file>       # config passed to compute-kaldi-pitch-feats "

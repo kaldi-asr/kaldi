@@ -40,7 +40,8 @@ if [ "$1" == "--two-channel" ]; then
 fi
 
 if [ $# != 3 ]; then
-   echo "usage: compute_cmvn_stats.sh [options] <data-dir> <log-dir> <path-to-cmvn-dir>";
+   echo "Usage: $0 [options] <data-dir> <log-dir> <path-to-cmvn-dir>";
+   echo "e.g.: $0 data/train exp/make_mfcc/train mfcc"
    echo "Options:"
    echo " --fake          gives you fake cmvn stats that do no normalization."
    echo " --two-channel   is for two-channel telephone data, there must be no segments "

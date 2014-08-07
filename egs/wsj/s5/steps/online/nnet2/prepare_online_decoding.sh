@@ -12,8 +12,6 @@ plp_config=conf/plp.conf
 fbank_config=conf/fbank.conf 
 pitch_config=conf/pitch.conf
 pitch_process_config=conf/pitch_process.conf
-per_utt_cmvn=false # If true, apply online CMVN normalization per utterance
-                   # rather than per speaker.
 
 # Below are some options that affect the iVectors, and should probably
 # match those used in extract_ivectors_online.sh.
@@ -39,8 +37,6 @@ if [ $# -ne 4 ] && [ $# -ne 3 ]; then
    echo "                                                   # configs in <output-dir>/conf/"
    echo "  --add-pitch <true|false>                         # Append pitch features to cmvn"
    echo "                                                   # (default: false)"
-   echo "  --per-utt-cmvn <true|false>                      # Apply online CMVN per utt, not"
-   echo "                                                   # per speaker (default: false)"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    echo "  --config <config-file>                           # config containing options"
    echo "  --stage <stage>                                  # stage to do partial re-run from."
