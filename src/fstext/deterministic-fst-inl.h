@@ -1,6 +1,7 @@
 // fstext/deterministic-fst-inl.h
 
 // Copyright 2011-2012 Gilles Boulianne  Johns Hopkins University (author: Daniel Povey)
+//                2014 Telepoint Global Hosting Service, LLC. (Author: David Snyder)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -81,6 +82,53 @@ bool BackoffDeterministicOnDemandFst<Arc>::GetArc(
     oarc->weight = Times(oarc->weight, backoff_w);
     return true;
   }
+}
+
+template<class Arc>
+UnweightedNgramFst<Arc>::UnweightedNgramFst(int n): n_(n) {
+  // Starting state is an empty vector
+  std::vector<Label> start_state;
+  state_vec_.push_back(start_state);
+  start_state_ = 0;
+  state_map_[start_state] = 0;
+}
+
+template<class Arc>
+bool UnweightedNgramFst<Arc>::GetArc(
+  StateId s, Label ilabel, Arc *oarc) {
+
+  // The state ids increment with each state we encounter.
+  // if the assert fails, then we are trying to access 
+  // unseen states that are not immediately traversable. 
+  KALDI_ASSERT(static_cast<size_t>(s) < state_vec_.size());
+  std::vector<Label> seq = state_vec_[s];
+  // Update state info.
+  seq.push_back(ilabel);
+  if (seq.size() > n_-1) {
+    // Remove oldest word in the history.
+    seq.erase(seq.begin());
+  }
+  std::pair<const std::vector<Label>, StateId> new_state(
+    seq,
+    static_cast<Label>(state_vec_.size()));
+  // Now get state id for destination state.
+  typedef typename MapType::iterator IterType;  
+  std::pair<IterType, bool> result = state_map_.insert(new_state);
+  if (result.second == true) {
+    state_vec_.push_back(seq);
+  }
+  oarc->weight = Weight::One(); // Because the FST is unweightd.
+  oarc->ilabel = ilabel;
+  oarc->olabel = ilabel;
+  oarc->nextstate = result.first->second; // The next state id.
+  // All arcs can be matched.
+  return true;
+}
+
+template<class Arc>
+typename Arc::Weight UnweightedNgramFst<Arc>::Final(StateId state) {
+  KALDI_ASSERT(state < static_cast<StateId>(state_vec_.size()));
+  return Weight::One();
 }
 
 template<class Arc>
