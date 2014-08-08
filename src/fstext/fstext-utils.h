@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation
 // Copyright 2012-2013  Johns Hopkins University (Authors: Guoguo Chen, Daniel Povey)
+//                2014  Telepoint Global Hosting Service, LLC. (Author: David Snyder)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -27,6 +28,7 @@
 #include <fst/fstlib.h>
 #include <fst/fst-decl.h>
 #include "fstext/determinize-star.h"
+#include "fstext/deterministic-fst.h"
 #include "fstext/remove-eps-local.h"
 #include "../base/kaldi-common.h" // for error reporting macros.
 #include "../util/text-utils.h" // for SplitStringToVector
@@ -576,6 +578,14 @@ void PhiCompose(const Fst<Arc> &fst1,
                 typename Arc::Label phi_label,
                 MutableFst<Arc> *fst);
 
+// Compose a left hand FST or lattice with a right hand
+// DeterministicOnDemandFst and store the result in fst_composed.
+// This is mainly used for expanding lattice n-gram histories, where
+// fst1 is a lattice and fst2 is an UnweightedNgramFst.
+template<class Arc>
+void ComposeDeterministicOnDemand(const Fst<Arc> &fst1,
+                                  DeterministicOnDemandFst<Arc> *fst2,
+                                  MutableFst<Arc> *fst_composed);
 
 // PropagateFinal propagates final-probs through
 // "phi" transitions (note that here, phi_label may

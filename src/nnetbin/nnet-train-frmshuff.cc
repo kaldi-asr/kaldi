@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
                                           targets_randomizer.Next(),
                                           weights_randomizer.Next()) {
         // get block of feature/target pairs
-        const CuMatrix<BaseFloat>& nnet_in = feature_randomizer.Value();
+        const CuMatrixBase<BaseFloat>& nnet_in = feature_randomizer.Value();
         const Posterior& nnet_tgt = targets_randomizer.Value();
         const Vector<BaseFloat>& frm_weights = weights_randomizer.Value();
 

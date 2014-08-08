@@ -615,7 +615,7 @@ int ClusterEventMapGetMapping(const EventMap &e_in, const BuildTreeStatsType &st
     }
   }
   if (summed_stats_contiguous.empty()) {
-    KALDI_WARN << "ClusterBottomUp: nothing to cluster.\n";
+    KALDI_WARN << "ClusterBottomUp: nothing to cluster.";
     return 0;  // nothing merged.
   }
 

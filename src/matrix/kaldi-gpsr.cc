@@ -403,7 +403,7 @@ double GpsrBB(const GpsrConfig &opts, const SpMatrix<double> &H,
     double lambda = -(VecVec(delta_u, grad_u) + VecVec(delta_v, grad_v))
                 / (dx_H_dx + DBL_EPSILON);  // step length
     if (lambda < 0)
-      KALDI_WARN << "lambda is less than zero\n";
+      KALDI_WARN << "lambda is less than zero";
     if (lambda > 1.0) lambda = 1.0;
 
     //update alpha

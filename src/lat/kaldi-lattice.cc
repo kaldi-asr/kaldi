@@ -80,7 +80,7 @@ bool WriteCompactLattice(std::ostream &os, bool binary,
                                                NULL, acceptor, write_one);
     printer.Print(&os, "<unknown>");
     if (os.fail())
-      KALDI_WARN << "Stream failure detected.\n";
+      KALDI_WARN << "Stream failure detected.";
     // Write another newline as a terminating character.  The read routine will
     // detect this [this is a Kaldi mechanism, not somethig in the original
     // OpenFst code].
@@ -405,7 +405,7 @@ bool WriteLattice(std::ostream &os, bool binary, const Lattice &t) {
                                         NULL, acceptor, write_one);
     printer.Print(&os, "<unknown>");
     if (os.fail())
-      KALDI_WARN << "Stream failure detected.\n";
+      KALDI_WARN << "Stream failure detected.";
     // Write another newline as a terminating character.  The read routine will
     // detect this [this is a Kaldi mechanism, not somethig in the original
     // OpenFst code].

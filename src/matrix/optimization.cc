@@ -455,13 +455,15 @@ int32 LinearCgd(const LinearCgdOptions &opts,
   //
   int32 M = A.NumCols();
 
-  Matrix<Real> storage(3, M);
-  SubVector<Real> r(storage, 0), p(storage, 1), Ap(storage, 2);
+  Matrix<Real> storage(4, M);
+  SubVector<Real> r(storage, 0), p(storage, 1), Ap(storage, 2), x_orig(storage, 3);
   p.CopyFromVec(b);
   p.AddSpVec(-1.0, A, *x, 1.0);  // p_0 = b - A x_0
   r.AddVec(-1.0, p);  // r_0 = - p_0
+  x_orig.CopyFromVec(*x);  // in case of failure.
   
   Real r_cur_norm_sq = VecVec(r, r),
+      r_initial_norm_sq = r_cur_norm_sq,
       r_recompute_norm_sq = r_cur_norm_sq;
 
   Real max_error_sq = std::max<Real>(opts.max_error * opts.max_error,
@@ -509,6 +511,15 @@ int32 LinearCgd(const LinearCgdOptions &opts,
     p.Scale(beta_next);
     p.AddVec(-1.0, r);
     r_cur_norm_sq = r_next_norm_sq;
+  }
+  if (r_cur_norm_sq > r_initial_norm_sq) {
+    KALDI_WARN << "Doing linear CGD in dimension " << A.NumRows() << ", after " << k
+              << " iterations the squared residual has got worse, "
+               << r_cur_norm_sq << " > " << r_initial_norm_sq
+               << ".  Will do an exact optimization.";
+    SolverOptions opts("called-from-linearCGD");
+    x->CopyFromVec(x_orig);
+    SolveQuadraticProblem(A, b, opts, x);
   }
   return k;
 } 

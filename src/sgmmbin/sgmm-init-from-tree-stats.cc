@@ -132,7 +132,7 @@ int main(int argc, char *argv[]) {
       Input ki(tree_stats_filename, &binary_in);
       ReadBuildTreeStats(ki.Stream(), binary_in, sc, &stats);
     }
-    KALDI_LOG << "Number of separate statistics is " << stats.size() << '\n';
+    KALDI_LOG << "Number of separate statistics is " << stats.size();
     
     InitAndOutputSgmm(topo, am_sgmm, ctx_dep, H, stats,
                       sgmm_out_filename, binary);

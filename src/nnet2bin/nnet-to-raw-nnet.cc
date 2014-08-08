@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (truncate >= 0) {
-      KALDI_LOG << "Truncating neural net to " << truncate << " layers.\n";
+      KALDI_LOG << "Truncating neural net to " << truncate << " layers.";
       am_nnet.GetNnet().Resize(truncate);
     }
 

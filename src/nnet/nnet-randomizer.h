@@ -71,7 +71,7 @@ class MatrixRandomizer {
   void Init(const NnetDataRandomizerOptions& conf) { conf_ = conf; }
 
   /// Add data to randomization buffer
-  void AddData(const CuMatrix<BaseFloat>& m);
+  void AddData(const CuMatrixBase<BaseFloat>& m);
   /// Returns true, when capacity is full
   bool IsFull() { return ((data_begin_ == 0) && (data_end_ > conf_.randomizer_size )); }
   /// Number of frames stored inside the Randomizer
@@ -84,7 +84,7 @@ class MatrixRandomizer {
   /// Sets cursor to next mini-batch
   void Next();
   /// Returns matrix-window with next mini-batch
-  const CuMatrix<BaseFloat>& Value();
+  const CuMatrixBase<BaseFloat>& Value();
 
  private:
   CuMatrix<BaseFloat> data_; // can be larger than 'randomizer_size'

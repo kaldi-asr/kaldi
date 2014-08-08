@@ -95,7 +95,7 @@ class MaxPoolingComponent : public Component {
     WriteBasicType(os, binary, pool_stride_);
   }
 
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_patches = input_dim_ / pool_stride_;
     int32 num_pools = 1 + (num_patches - pool_size_) / pool_step_;
@@ -112,8 +112,8 @@ class MaxPoolingComponent : public Component {
     }
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_patches = input_dim_ / pool_stride_;
     int32 num_pools = 1 + (num_patches - pool_size_) / pool_step_;

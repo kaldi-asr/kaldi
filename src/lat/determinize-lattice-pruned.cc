@@ -561,7 +561,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       *remaining_weight = elem.weight;
       *common_prefix = elem.string;
       if (elem.weight == Weight::Zero())
-        KALDI_WARN << "Zero weight!\n";
+        KALDI_WARN << "Zero weight!";
       return elem.state;
     }
     // else no matching subset-- have to work it out.
@@ -584,7 +584,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     *remaining_weight = elem.weight;
     *common_prefix = elem.string;
     if (elem.weight == Weight::Zero())
-      KALDI_WARN << "Zero weight!\n";
+      KALDI_WARN << "Zero weight!";
     
     // Before returning "ans", add the initial subset to the hash,
     // so that we can bypass the epsilon-closure etc., next time
@@ -790,7 +790,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
                        StringId *common_str) {
     if(elems->empty()) { // just set common_str, tot_weight
       // to defaults and return...
-      KALDI_WARN << "empty subset\n";
+      KALDI_WARN << "empty subset";
       *common_str = repository_.EmptyString();
       *tot_weight = Weight::Zero();
       return;

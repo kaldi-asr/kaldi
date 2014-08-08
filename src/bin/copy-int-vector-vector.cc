@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
         archive_out = (ClassifyRspecifier(out_fn, NULL, NULL) != kNoRspecifier);
     
     if (archive_in != archive_out)
-      KALDI_ERR << "Cannot mix Tables/archives and non-Trables.\n";
+      KALDI_ERR << "Cannot mix Tables/archives and non-Trables.";
     
     if (archive_in) {
       int num_done = 0;

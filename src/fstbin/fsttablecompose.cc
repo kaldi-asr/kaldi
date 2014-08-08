@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     } else if (match_side == "right") {
       opts.table_match_type = MATCH_INPUT;
     } else {
-      KALDI_ERR << "Invalid match-side option: " << match_side << '\n';
+      KALDI_ERR << "Invalid match-side option: " << match_side;
     }
 
     if (compose_filter == "alt_sequence") {
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
     } else  if (compose_filter == "sequence") {
       opts.filter_type = SEQUENCE_FILTER;
     } else {
-      KALDI_ERR << "Invalid compose-filter option: " << compose_filter << '\n';
+      KALDI_ERR << "Invalid compose-filter option: " << compose_filter;
     }
 
     if (po.NumArgs() < 2 || po.NumArgs() > 3) {

@@ -187,7 +187,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
     if (token == "\\data\\" && ss.eof()) break;
   }
   if (istrm.eof()) {
-    KALDI_ERR << "\\data\\ token not found in arpa file.\n";
+    KALDI_ERR << "\\data\\ token not found in arpa file.";
   }
 
   while (getline(istrm, inpline) && !istrm.eof()) {

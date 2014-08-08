@@ -106,15 +106,5 @@ exit 0
 # Getting results [see RESULTS file]
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
 
-# Showing how model conversion to nnet2 works; note, we use the expanded variable
-# names here so be careful in case the script changes.
-# steps/nnet2/convert_nnet1_to_nnet2.sh exp/dnn4b_pretrain-dbn_dnn exp/dnn4b_nnet2
-# cp exp/tri3b/splice_opts exp/tri3b/cmvn_opts exp/tri3b/final.mat exp/dnn4b_nnet2/
-# 
-#  steps/nnet2/decode.sh --nj 10 --cmd "$decode_cmd" --transform-dir exp/tri3b/decode \
-#    --config conf/decode.config exp/tri3b/graph data/test exp/dnn4b_nnet2/decode
+# to see how model conversion to nnet2 works, run run_dnn_convert_nnet2.sh at this point.
 
-# decoding results are essentially the same (any small difference is probably because
-# decode.config != decode_dnn.config).
-# %WER 1.58 [ 198 / 12533, 22 ins, 45 del, 131 sub ] exp/dnn4b_nnet2/decode/wer_3
-# %WER 1.59 [ 199 / 12533, 23 ins, 45 del, 131 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_3

@@ -72,7 +72,7 @@ bool PosteriorHolder::Read(std::istream &is) {
 
   bool is_binary;
   if (!InitKaldiInputStream(is, &is_binary)) {
-    KALDI_WARN << "Reading Table object, failed reading binary header\n";
+    KALDI_WARN << "Reading Table object, failed reading binary header";
     return false;
   }
   try {
@@ -80,13 +80,13 @@ bool PosteriorHolder::Read(std::istream &is) {
       int32 sz;
       ReadBasicType(is, true, &sz);
       if (sz < 0)
-        KALDI_ERR << "Reading posteriors: got negative size\n";
+        KALDI_ERR << "Reading posteriors: got negative size";
       t_.resize(sz);
       for (Posterior::iterator iter = t_.begin(); iter != t_.end(); ++iter) {
         int32 sz2;
         ReadBasicType(is, true, &sz2);
         if (sz2 < 0)
-          KALDI_ERR << "Reading posteriors: got negative size\n";
+          KALDI_ERR << "Reading posteriors: got negative size";
         iter->resize(sz2);
         for (std::vector<std::pair<int32, BaseFloat> >::iterator iter2=iter->begin();
              iter2 != iter->end();
@@ -167,20 +167,20 @@ bool GaussPostHolder::Read(std::istream &is) {
 
   bool is_binary;
   if (!InitKaldiInputStream(is, &is_binary)) {
-    KALDI_WARN << "Reading Table object, failed reading binary header\n";
+    KALDI_WARN << "Reading Table object, failed reading binary header";
     return false;
   }
   try {
     int32 sz;
     ReadBasicType(is, is_binary, &sz);
     if (sz < 0)
-      KALDI_ERR << "Reading posteriors: got negative size\n";
+      KALDI_ERR << "Reading posteriors: got negative size";
     t_.resize(sz);
     for (GaussPost::iterator iter = t_.begin(); iter != t_.end(); ++iter) {
       int32 sz2;
       ReadBasicType(is, is_binary, &sz2);
       if (sz2 < 0)
-        KALDI_ERR << "Reading posteriors: got negative size\n";
+        KALDI_ERR << "Reading posteriors: got negative size";
       iter->resize(sz2);
       for (std::vector<std::pair<int32, Vector<BaseFloat> > >::iterator
                iter2=iter->begin();

@@ -132,21 +132,21 @@ class AffineTransform : public UpdatableComponent {
   }
 
 
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     // precopy bias
     out->AddVecToRows(1.0, bias_, 0.0);
     // multiply by weights^t
     out->AddMatMat(1.0, in, kNoTrans, linearity_, kTrans, 1.0);
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     // multiply error derivative by weights
     in_diff->AddMatMat(1.0, out_diff, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
 
-  void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
     // we use following hyperparameters from the option class
     const BaseFloat lr = opts_.learn_rate;
     const BaseFloat mmt = opts_.momentum;
@@ -171,30 +171,30 @@ class AffineTransform : public UpdatableComponent {
   }
 
   /// Accessors to the component parameters
-  const CuVector<BaseFloat>& GetBias() const {
+  const CuVectorBase<BaseFloat>& GetBias() const {
     return bias_;
   }
 
-  void SetBias(const CuVector<BaseFloat>& bias) {
+  void SetBias(const CuVectorBase<BaseFloat>& bias) {
     KALDI_ASSERT(bias.Dim() == bias_.Dim());
     bias_.CopyFromVec(bias);
   }
 
-  const CuMatrix<BaseFloat>& GetLinearity() const {
+  const CuMatrixBase<BaseFloat>& GetLinearity() const {
     return linearity_;
   }
 
-  void SetLinearity(const CuMatrix<BaseFloat>& linearity) {
+  void SetLinearity(const CuMatrixBase<BaseFloat>& linearity) {
     KALDI_ASSERT(linearity.NumRows() == linearity_.NumRows());
     KALDI_ASSERT(linearity.NumCols() == linearity_.NumCols());
     linearity_.CopyFromMat(linearity);
   }
 
-  const CuVector<BaseFloat>& GetBiasCorr() const {
+  const CuVectorBase<BaseFloat>& GetBiasCorr() const {
     return bias_corr_;
   }
 
-  const CuMatrix<BaseFloat>& GetLinearityCorr() const {
+  const CuMatrixBase<BaseFloat>& GetLinearityCorr() const {
     return linearity_corr_;
   }
 

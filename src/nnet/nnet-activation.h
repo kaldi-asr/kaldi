@@ -39,13 +39,13 @@ class Softmax : public Component {
   Component* Copy() const { return new Softmax(*this); }
   ComponentType GetType() const { return kSoftmax; }
 
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     // y = e^x_j/sum_j(e^x_j)
     out->ApplySoftMaxPerRow(in);
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     // simply copy the error derivative
     // (ie. assume crossentropy error function, 
     // while in_diff contains (net_output-target) :
@@ -68,13 +68,13 @@ class Sigmoid : public Component {
   Component* Copy() const { return new Sigmoid(*this); }
   ComponentType GetType() const { return kSigmoid; }
 
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     // y = 1/(1+e^-x)
     out->Sigmoid(in);
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     // ey = y(1-y)ex
     in_diff->DiffSigmoid(out, out_diff);
   }
@@ -93,13 +93,13 @@ class Tanh : public Component {
   Component* Copy() const { return new Tanh(*this); }
   ComponentType GetType() const { return kTanh; }
 
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     // y = (e^x - e^(-x)) / (e^x + e^(-x))
     out->Tanh(in);
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     // ey = (1 - y^2)ex
     in_diff->DiffTanh(out, out_diff);
   }
@@ -118,7 +118,7 @@ class Dropout : public Component {
   Component* Copy() const { return new Dropout(*this); }
   ComponentType GetType() const { return kDropout; }
 
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     out->CopyFromMat(in);
     // switch off 50% of the inputs...
     dropout_mask_.Resize(out->NumRows(),out->NumCols());
@@ -127,8 +127,8 @@ class Dropout : public Component {
     out->MulElements(dropout_mask_);
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     in_diff->CopyFromMat(out_diff);
     // use same mask on the error derivatives...
     in_diff->MulElements(dropout_mask_);

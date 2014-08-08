@@ -100,7 +100,7 @@ void ApplyCmvn(const MatrixBase<double> &stats,
       }
       scale = 1.0 / sqrt(var);
       if (scale != scale || 1/scale == 0.0)
-        KALDI_ERR << "NaN or infinity in cepstral mean/variance computation\n";
+        KALDI_ERR << "NaN or infinity in cepstral mean/variance computation";
       offset = -(mean*scale);
     }
     norm(0, d) = offset;

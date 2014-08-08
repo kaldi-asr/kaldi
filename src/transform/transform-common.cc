@@ -133,7 +133,7 @@ bool ComposeTransforms(const Matrix<BaseFloat> &a, const Matrix<BaseFloat> &b,
                        bool b_is_affine,
                        Matrix<BaseFloat> *c) {
   if (b.NumRows() == 0 || a.NumCols() == 0) {
-    KALDI_WARN  << "Empty matrix in ComposeTransforms\n";
+    KALDI_WARN  << "Empty matrix in ComposeTransforms";
     return false;
   }
   if (a.NumCols() == b.NumRows()) {

@@ -353,7 +353,7 @@ void LatticeFasterDecoder::PruneForwardLinksFinal() {
   int32 frame_plus_one = active_toks_.size() - 1;
 
   if (active_toks_[frame_plus_one].toks == NULL )  // empty list; should not happen.
-    KALDI_WARN << "No tokens alive at end of file\n";
+    KALDI_WARN << "No tokens alive at end of file";
 
   typedef unordered_map<Token*, BaseFloat>::const_iterator IterType;
   ComputeFinalCosts(&final_costs_, &final_relative_cost_, &final_best_cost_);
@@ -454,7 +454,7 @@ void LatticeFasterDecoder::PruneTokensForFrame(int32 frame_plus_one) {
   KALDI_ASSERT(frame_plus_one >= 0 && frame_plus_one < active_toks_.size());
   Token *&toks = active_toks_[frame_plus_one].toks;
   if (toks == NULL)
-    KALDI_WARN << "No tokens alive [doing pruning]\n";
+    KALDI_WARN << "No tokens alive [doing pruning]";
   Token *tok, *next_tok, *prev_tok = NULL;
   for (tok = toks; tok != NULL; tok = next_tok) {
     next_tok = tok->next;

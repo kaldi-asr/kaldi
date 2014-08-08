@@ -272,7 +272,7 @@ void MleAmSgmmAccs::Check(const AmSgmm &model,
   }
 
   if (show_properties)
-    KALDI_LOG << "Subspace GMM model properties: " << debug_str.str() << '\n';
+    KALDI_LOG << "Subspace GMM model properties: " << debug_str.str();
 }
 
 void MleAmSgmmAccs::ResizeAccumulators(const AmSgmm &model,
@@ -884,7 +884,7 @@ double MleAmSgmmUpdater::UpdatePhoneVectorsChecked(const MleAmSgmmAccs &accs,
       tot_objf_impr += objf_impr;
       tot_auxf_impr += auxf_impr;
       if (backtrack_iter == max_backtrack) {
-        KALDI_WARN << "Backtracked " << max_backtrack << " times [not updating]\n";
+        KALDI_WARN << "Backtracked " << max_backtrack << " times [not updating]";
       } else {
         model->v_[j].Row(m).CopyFromVec(v_jm);
       }
@@ -1073,7 +1073,7 @@ void MleAmSgmmUpdater::UpdatePhoneVectorsCheckedFromClusterableInternal(
     tot_objf_impr += objf_impr;
     tot_auxf_impr += auxf_impr;
     if (backtrack_iter == max_backtrack) {
-      KALDI_WARN << "Backtracked " << max_backtrack << " times [not updating]\n";
+      KALDI_WARN << "Backtracked " << max_backtrack << " times [not updating]";
     } else {
       model->v_[j].Row(m).CopyFromVec(v_jm);
     }

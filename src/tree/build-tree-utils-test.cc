@@ -592,7 +592,7 @@ void TestShareEventMapLeaves() {
   std::cout << "TestShareEventMapLeaves: after building decision tree, " <<nleaves<<'\n';
 
   if (special_keys.size() == 0) {
-    KALDI_WARN << "TestShareEventMapLeaves(): could not test since key not always defined.\n";
+    KALDI_WARN << "TestShareEventMapLeaves(): could not test since key not always defined.";
     delete split_tree;
     delete trivial_map;
     delete table_split_map;

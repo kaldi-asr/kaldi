@@ -1084,8 +1084,8 @@ AffineComponent::AffineComponent(const AffineComponent &component):
     bias_params_(component.bias_params_),
     is_gradient_(component.is_gradient_) { }
 
-AffineComponent::AffineComponent(const CuMatrix<BaseFloat> &linear_params,
-                                 const CuVector<BaseFloat> &bias_params,
+AffineComponent::AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
+                                 const CuVectorBase<BaseFloat> &bias_params,
                                  BaseFloat learning_rate):
     UpdatableComponent(learning_rate),
     linear_params_(linear_params),
@@ -1677,7 +1677,6 @@ void AffineComponentPreconditioned::Read(std::istream &is, bool binary) {
 
 void AffineComponentPreconditioned::InitFromString(std::string args) {
   std::string orig_args(args);
-  bool ok = true;
   std::string matrix_filename;
   BaseFloat learning_rate = learning_rate_;
   BaseFloat alpha = 0.1, max_change = 0.0;
@@ -1695,20 +1694,21 @@ void AffineComponentPreconditioned::InitFromString(std::string args) {
       KALDI_ASSERT(output_dim == OutputDim() &&
                    "output-dim mismatch vs. matrix.");
   } else {
+    bool ok = true;
     ok = ok && ParseFromString("input-dim", &args, &input_dim);
     ok = ok && ParseFromString("output-dim", &args, &output_dim);
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
         bias_stddev = 1.0;
     ParseFromString("param-stddev", &args, &param_stddev);
     ParseFromString("bias-stddev", &args, &bias_stddev);
+    if (!ok)
+      KALDI_ERR << "Bad initializer " << orig_args;
     Init(learning_rate, input_dim, output_dim, param_stddev,
          bias_stddev, alpha, max_change);
   }
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: "
               << args;
-  if (!ok)
-    KALDI_ERR << "Bad initializer " << orig_args;
 }
 
 void AffineComponentPreconditioned::Init(BaseFloat learning_rate,
@@ -1733,6 +1733,7 @@ void AffineComponentPreconditioned::Init(
     BaseFloat param_stddev, BaseFloat bias_stddev,
     BaseFloat alpha, BaseFloat max_change) {
   UpdatableComponent::Init(learning_rate);
+  KALDI_ASSERT(input_dim > 0 && output_dim > 0);
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
   KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);

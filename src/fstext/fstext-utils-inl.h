@@ -1,6 +1,7 @@
 // fstext/fstext-utils-inl.h
 
 // Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+//                2014  Telepoint Global Hosting Service, LLC. (Author: David Snyder)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -1097,6 +1098,94 @@ void PhiCompose(const Fst<Arc> &fst1,
   impl_opts.matcher2 = phi_matcher;
   *ofst = ComposeFst<Arc>(fst1, fst2, impl_opts);
   Connect(ofst);
+}
+
+template<class Arc>
+void ComposeDeterministicOnDemand(const Fst<Arc> &fst1,
+                                  DeterministicOnDemandFst<Arc> *fst2,
+                                  MutableFst<Arc> *fst_composed) {
+  typedef typename Arc::Weight Weight;
+  typedef typename Arc::StateId StateId;
+  typedef std::pair<StateId, StateId> StatePair;
+  typedef unordered_map<StatePair, StateId, 
+    kaldi::PairHasher<StateId> > MapType;
+  typedef typename MapType::iterator IterType;
+
+  fst_composed->DeleteStates();
+
+  MapType state_map;
+  std::queue<StatePair> state_queue;
+
+  // Set start state in fst_composed.
+  StateId s1 = fst1.Start(),
+          s2 = fst2->Start(),
+          start_state = fst_composed->AddState();
+  StatePair start_pair(s1, s2);
+  state_queue.push(start_pair);
+  fst_composed->SetStart(start_state);
+  // A mapping between pairs of states in fst1 and fst2 and the corresponding
+  // state in fst_composed.
+  std::pair<const StatePair, StateId> start_map(start_pair, start_state);
+  std::pair<IterType, bool> result = state_map.insert(start_map);
+  KALDI_ASSERT(result.second == true);
+   
+  while (!state_queue.empty()) {
+    StatePair q = state_queue.front();
+    StateId q1 = q.first,
+            q2 = q.second;
+    state_queue.pop();
+    // If the product of the final weights of the two fsts is non-zero then 
+    // we can create a final state in fst_composed.
+    Weight final_weight = Times(fst1.Final(q1), fst2->Final(q2));
+    if (final_weight != Weight::Zero()) {
+      KALDI_ASSERT(state_map.find(q) != state_map.end());
+      fst_composed->SetFinal(state_map[q], final_weight); 
+    }
+
+    // for each pair of edges from fst1 and fst2 at q1 and q2.
+    for (ArcIterator<Fst<Arc> > aiter(fst1, q1); !aiter.Done(); aiter.Next()) {
+      const Arc &arc1 = aiter.Value();
+      Arc arc2;
+      StatePair next_pair;
+      StateId next_state1 = arc1.nextstate,
+              next_state2,
+              next_state;
+      // If there is an epsilon on the arc of fst1 we transition to the next 
+      // state but keep fst2 at the current state. 
+      if (arc1.olabel == 0) {
+        next_state2 = q2;
+      } else {
+        bool match = fst2->GetArc(q2, arc1.olabel, &arc2);
+        // This should always find a match.
+        KALDI_ASSERT(match == true);
+        next_state2 = arc2.nextstate;
+      }
+      next_pair = StatePair(next_state1, next_state2);
+      IterType sitr = state_map.find(next_pair);
+      // If sitr == state_map.end() then the state isn't in fst_composed yet.
+      if (sitr == state_map.end()) {
+        next_state = fst_composed->AddState();
+        std::pair<const StatePair, StateId> new_state(
+          next_pair, next_state);
+        std::pair<IterType, bool> result = state_map.insert(new_state);
+        // Since we already checked if state_map contained new_state,
+        // it should always be added if we reach here.
+        KALDI_ASSERT(result.second == true);
+        state_queue.push(next_pair);
+      // If sitr != state_map.end() then the next state is already in
+      // the state_map.
+      } else {
+        next_state = sitr->second;
+      }
+      if (arc1.olabel == 0) {
+        fst_composed->AddArc(state_map[q], Arc(0, 0, arc1.weight, 
+          next_state));
+      } else {
+        fst_composed->AddArc(state_map[q], Arc(arc1.ilabel, arc2.olabel, 
+          Times(arc1.weight, arc2.weight), next_state));
+      }
+    }
+  }
 }
 
 template<class Arc>

@@ -3,12 +3,13 @@
 
 . path.sh
 
-if [ $# != 1 ]; then
-   echo "Usage: hkust_data_prep.sh /path/to/HKUST"
+if [ $# != 2 ]; then
+   echo "Usage: hkust_data_prep.sh AUDIO_PATH TEXT_PATH"
    exit 1;
 fi
 
-HKUST_DIR=$1
+HKUST_AUDIO_DIR=$1
+HKUST_TEXT_DIR=$2
 
 train_dir=data/local/train
 dev_dir=data/local/dev
@@ -23,14 +24,14 @@ mkdir -p $train_dir
 mkdir -p $dev_dir
 
 #data directory check
-if [ ! -d $HKUST_DIR ]; then
-  echo "Error: run.sh requires a directory argument"
+if [ ! -d $HKUST_AUDIO_DIR ] || [ ! -d $HKUST_TEXT_DIR ]; then
+  echo "Error: run.sh requires two directory arguments"
   exit 1;
 fi
 
 #find sph audio file for train dev resp.
-find $HKUST_DIR -iname "*.sph" | grep -i "audio/train" > $train_dir/sph.flist
-find $HKUST_DIR -iname "*.sph" | grep -i "audio/dev" > $dev_dir/sph.flist
+find $HKUST_AUDIO_DIR -iname "*.sph" | grep -i "audio/train" > $train_dir/sph.flist
+find $HKUST_AUDIO_DIR -iname "*.sph" | grep -i "audio/dev" > $dev_dir/sph.flist
 
 n=`cat $train_dir/sph.flist $dev_dir/sph.flist | wc -l`
 [ $n -ne 897 ] && \
@@ -40,7 +41,7 @@ n=`cat $train_dir/sph.flist $dev_dir/sph.flist | wc -l`
 #Transcriptions preparation
 
 #collect all trans, convert encodings to utf-8,
-find $HKUST_DIR -iname "*.txt" | grep -i "trans/train" | xargs cat |\
+find $HKUST_TEXT_DIR -iname "*.txt" | grep -i "trans/train" | xargs cat |\
   iconv -f GBK -t utf-8 - | perl -e '
     while (<STDIN>) {
       @A = split(" ", $_);
@@ -55,7 +56,7 @@ find $HKUST_DIR -iname "*.txt" | grep -i "trans/train" | xargs cat |\
     }
   ' | sort -k1 > $train_dir/transcripts.txt 
 
-find $HKUST_DIR -iname "*.txt" | grep -i "trans/dev" | xargs cat |\
+find $HKUST_TEXT_DIR -iname "*.txt" | grep -i "trans/dev" | xargs cat |\
   iconv -f GBK -t utf-8 - | perl -e '
     while (<STDIN>) {
       @A = split(" ", $_);
@@ -110,6 +111,10 @@ cat $dev_dir/transcripts.txt |\
   local/hkust_normalize.pl |\
   python local/hkust_segment.py |\
   awk '{if (NF > 1) print $0;}' > $dev_dir/text
+
+# some data is corrupted. Delete them
+cat $train_dir/text | grep -v 20040527_210939_A901153_B901154-A-035691-035691 | egrep -v "A:|B:" > tmp
+mv tmp $train_dir/text
 
 #Make segment files from transcript
 #segments file format is: utt-id side-id start-time end-time, e.g.:

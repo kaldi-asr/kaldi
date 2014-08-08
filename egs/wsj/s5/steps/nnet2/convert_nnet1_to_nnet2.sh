@@ -19,7 +19,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# -ne 2 ]; then
   echo "Usage: $0 [options] <src-nnet1-dir> <dest-nnet2-dir>"
-  echo "e.g.: $0 exp/dnn4b_pretrain-dbn_dnn_smbr exp/dnn4b_smbr_nnet2"
+  echo "e.g.: $0 exp/dnn4b_pretrain-dbn_dnn exp/dnn4b_nnet2"
   exit 1;
 fi
 

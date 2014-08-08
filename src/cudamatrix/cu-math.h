@@ -59,7 +59,7 @@ void Randomize(const CuMatrixBase<Real> &src,
 /// is replaced by src(src.NumRows()-1, j) or src(0, j) respectively, to avoid
 /// an index out of bounds.
 template<typename Real>
-void Splice(const CuMatrix<Real> &src,
+void Splice(const CuMatrixBase<Real> &src,
             const CuArray<int32> &frame_offsets,
             CuMatrixBase<Real> *tgt);
 
@@ -69,7 +69,7 @@ void Splice(const CuMatrix<Real> &src,
 /// in the src matrix. As a result, tgt(i, j) == src(i, copy_from_indices[j]).
 /// Also see CuMatrix::CopyCols(), which is more general.
 template<typename Real>
-void Copy(const CuMatrix<Real> &src,
+void Copy(const CuMatrixBase<Real> &src,
           const CuArray<int32> &copy_from_indices,
           CuMatrixBase<Real> *tgt);
 

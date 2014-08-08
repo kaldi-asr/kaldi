@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
                 << kaldi::PrintableRxfilename(disambig_out_rxfilename);
 
     if (disambig_in.size() != disambig_out.size())
-      KALDI_ERR << "fstaddselfloops: mismatch in size of disambiguation symbols\n";
+      KALDI_ERR << "fstaddselfloops: mismatch in size of disambiguation symbols";
 
     AddSelfLoops(fst, disambig_in, disambig_out);
 
