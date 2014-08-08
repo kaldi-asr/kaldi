@@ -6,7 +6,12 @@
 
 
 steps/nnet2/convert_nnet1_to_nnet2.sh exp/dnn4b_pretrain-dbn_dnn exp/dnn4b_nnet2
-cp exp/tri3b/splice_opts exp/tri3b/cmvn_opts exp/tri3b/final.mat exp/dnn4b_nnet2/
+cp exp/tri3b/splice_opts exp/tri3b/final.mat exp/dnn4b_nnet2
+if [ -f exp/tri3b/cmvn_opts  ]; then
+  cp exp/tri3b/cmvn_opts exp/dnn4b_nnet2
+else
+  echo -n >exp/dnn4b_nnet2/cmvn_opts
+fi
  
 steps/nnet2/decode.sh --nj 10 --cmd "$decode_cmd" --transform-dir exp/tri3b/decode \
    --config conf/decode.config exp/tri3b/graph data/test exp/dnn4b_nnet2/decode
@@ -17,6 +22,7 @@ steps/nnet2/decode.sh --nj 10 --cmd "$decode_cmd" --transform-dir exp/tri3b/deco
 # %WER 1.59 [ 199 / 12533, 23 ins, 45 del, 131 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_3
 
 
+# This example puts the LDA in the model, but not the CMVN.
 steps/nnet2/convert_lda_to_raw.sh exp/dnn4b_nnet2 exp/dnn4b_nnet2_raw
 steps/nnet2/decode.sh --nj 10 --cmd "$decode_cmd" \
     --feat-type raw --config conf/decode.config exp/tri3b/graph data/test exp/dnn4b_nnet2_raw/decode
@@ -36,3 +42,11 @@ steps/nnet2/decode.sh --nj 10 --cmd "$decode_cmd" \
 # %WER 5.31 [ 666 / 12533, 76 ins, 163 del, 427 sub ] exp/dnn4b_nnet2_raw_no_cmvn/decode/wer_7
 
 
+steps/online/nnet2/prepare_online_decoding.sh data/lang \
+   exp/dnn4b_nnet2_raw_no_cmvn exp/dnn4b_nnet2_raw_no_cmvn_online
+
+steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+    exp/tri3b/graph data/test exp/dnn4b_nnet2_raw_no_cmvn_online/decode
+
+# Note: I don't have results from this yet as I have to build the baseline DNN system
+# in the online sandbox, but I think it's working.
