@@ -33,7 +33,7 @@ cat $dict_dir/vocab-full.txt | grep -v '[a-zA-Z]' > $dict_dir/vocab-ch.txt
 # produce pronunciations for english 
 if [ ! -f $dict_dir/cmudict/cmudict.0.7a ]; then
   echo "--- Downloading CMU dictionary ..."
-  svn co https://cmusphinx.svn.sourceforge.net/svnroot/cmusphinx/trunk/cmudict  \
+  svn co https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict \
     $dict_dir/cmudict || exit 1;
 fi
 
