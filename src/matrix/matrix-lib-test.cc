@@ -1180,7 +1180,7 @@ template<typename Real> static void UnitTestTraceProduct() {
 	Matrix<Real> Nt(N, kTrans);
 	Real a = TraceMatMat(M, Nt), b = TraceMatMat(M, N, kTrans);
 	printf("m = %d, n = %d\n", dimM, dimN);
-	KALDI_LOG << a << " " << b << '\n';
+	KALDI_LOG << a << " " << b;
 	KALDI_ASSERT(std::abs(a-b) < 0.1);
   }
 }
@@ -2007,9 +2007,9 @@ static void UnitTestTransposeScatter() {
     Op.AddMat2Sp(1.0, M, kNoTrans, Ap, 0.0);
 
 
-    //    KALDI_LOG << "A" << '\n' << Af << '\n';
-    //    KALDI_LOG << "M" << '\n' << M << '\n';
-    //    KALDI_LOG << "Op" << '\n' << Op << '\n';
+    //    KALDI_LOG << "A" << '\n' << Af;
+    //    KALDI_LOG << "M" << '\n' << M;
+    //    KALDI_LOG << "Op" << '\n' << Op;
 
     for (MatrixIndexT i = 0; i < dimO; i++) {
 	  for (MatrixIndexT j = 0; j<=i; j++) {
@@ -2022,8 +2022,8 @@ static void UnitTestTransposeScatter() {
     Af.AddMatMat(1.0, M, kTrans, A_MT, kNoTrans, 1.0);
     Ap.AddMat2Sp(1.0, M, kTrans, Op, 1.0);
 
-    //    KALDI_LOG << "Ap" << '\n' << Ap << '\n';
-    //    KALDI_LOG << "Af" << '\n' << Af << '\n';
+    //    KALDI_LOG << "Ap" << '\n' << Ap;
+    //    KALDI_LOG << "Af" << '\n' << Af;
 
     for (MatrixIndexT i = 0; i < dimA; i++) {
 	  for (MatrixIndexT j = 0; j<=i; j++) {
@@ -3520,7 +3520,7 @@ template<typename Real> static void UnitTestRealFftSpeed() {
   KALDI_LOG << "starting. ";
   MatrixIndexT sz = 512;  // fairly typical size.
   for (MatrixIndexT i = 0; i < 3000; i++) {
-    if (i % 1000 == 0) KALDI_LOG << "done 1000 [ == ten seconds of speech]\n";
+    if (i % 1000 == 0) KALDI_LOG << "done 1000 [ == ten seconds of speech]";
     Vector<Real> v(sz);
     RealFft(&v, true);
   }
@@ -3532,7 +3532,7 @@ template<typename Real> static void UnitTestSplitRadixRealFftSpeed() {
   SplitRadixRealFft<Real> srfft(sz);
   for (MatrixIndexT i = 0; i < 6000; i++) {
     if (i % 1000 == 0)
-      KALDI_LOG << "done 1000 [ == ten seconds of speech, split-radix]\n";
+      KALDI_LOG << "done 1000 [ == ten seconds of speech, split-radix]";
     Vector<Real> v(sz);
     srfft.Compute(v.Data(), true);
   }
@@ -3627,26 +3627,26 @@ void UnitTestNonsymmetricPower() {
 
     Matrix<Real> MM2(M);
     if (!MM2.Power(2.0)) {  // possibly had negative eigenvalues
-      KALDI_LOG << "Could not take matrix to power (not an error)\n";
+      KALDI_LOG << "Could not take matrix to power (not an error)";
     } else {
       AssertEqual(MM2, MM);
     }
     Matrix<Real> MMMM2(M);
     if (!MMMM2.Power(4.0)) {  // possibly had negative eigenvalues
-      KALDI_LOG << "Could not take matrix to power (not an error)\n";
+      KALDI_LOG << "Could not take matrix to power (not an error)";
     } else {
       AssertEqual(MMMM2, MMMM);
     }
     Matrix<Real> MMMM3(MM);
     if (!MMMM3.Power(2.0)) {
-      KALDI_ERR << "Could not take matrix to power (should have been able to)\n";
+      KALDI_ERR << "Could not take matrix to power (should have been able to)";
     } else {
       AssertEqual(MMMM3, MMMM);
     }
 
     Matrix<Real> MM4(MM);
     if (!MM4.Power(-1.0))
-      KALDI_ERR << "Could not take matrix to power (should have been able to)\n";
+      KALDI_ERR << "Could not take matrix to power (should have been able to)";
     MM4.Invert();
     AssertEqual(MM4, MM);
   }
@@ -3765,8 +3765,8 @@ static void UnitTestMatrixExponentialBackprop() {
 
     double f_diff = f_after - f_before;  // computed using method of differnces
     double f_diff2 = TraceMatMat(Mdash, delta, kTrans);  // computed "analytically"
-    KALDI_LOG << "f_diff = " << f_diff << "\n";
-    KALDI_LOG << "f_diff2 = " << f_diff2 << "\n";
+    KALDI_LOG << "f_diff = " << f_diff;
+    KALDI_LOG << "f_diff2 = " << f_diff2;
 
     AssertEqual(f_diff, f_diff2);
   }
@@ -4358,7 +4358,7 @@ int main() {
   bool full_test = false;
   kaldi::MatrixUnitTest<float>(full_test);
   kaldi::MatrixUnitTest<double>(full_test);
-  KALDI_LOG << "Tests succeeded.\n";
+  KALDI_LOG << "Tests succeeded.";
 
 }
 

@@ -580,6 +580,7 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
     this->data_ = NULL;
     return;
   }
+  KALDI_ASSERT(rows > 0 && cols > 0);
   // initialize some helping vars
   MatrixIndexT skip;
   MatrixIndexT real_cols;
@@ -2271,7 +2272,7 @@ void CreateEigenvalueMatrix(const VectorBase<Real> &re, const VectorBase<Real> &
     } else {  // First of a complex pair
       KALDI_ASSERT(j+1 < n && ApproxEqual(im(j+1), -im(j))
                    && ApproxEqual(re(j+1), re(j)));
-      /// if (im(j) < 0.0) KALDI_WARN << "Negative first im part of pair\n";  // TEMP
+      /// if (im(j) < 0.0) KALDI_WARN << "Negative first im part of pair";  // TEMP
       Real lambda = re(j), mu = im(j);
       // create 2x2 block [lambda, mu; -mu, lambda]
       (*D)(j, j) = lambda;

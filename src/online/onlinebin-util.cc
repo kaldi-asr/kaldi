@@ -35,7 +35,7 @@ fst::Fst<fst::StdArc> *ReadDecodeGraph(std::string filename) {
     KALDI_ERR << "Reading FST: error reading FST header.";
   }
   if (hdr.ArcType() != fst::StdArc::Type()) {
-    KALDI_ERR << "FST with arc type " << hdr.ArcType() << " not supported.\n";
+    KALDI_ERR << "FST with arc type " << hdr.ArcType() << " not supported.";
   }
   fst::FstReadOptions ropts("<unspecified>", &hdr);
 

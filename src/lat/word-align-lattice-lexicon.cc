@@ -1038,7 +1038,7 @@ bool ReadLexiconForWordAlign (std::istream &is,
     std::vector<int32> this_entry;
     if (!SplitStringToIntegers(line, " \t", false, &this_entry) ||
         this_entry.size() < 2) {
-      KALDI_WARN << "Lexicon line '" << line  << "' is invalid\n";
+      KALDI_WARN << "Lexicon line '" << line  << "' is invalid";
       return false;
     }
     lexicon->push_back(this_entry);

@@ -115,6 +115,8 @@ void TestIvectorExtraction(const IvectorExtractor &extractor,
 
   online_stats.GetIvector(-1, &ivector2);
 
+  KALDI_LOG << "ivector1 = " << ivector1;
+  KALDI_LOG << "ivector2 = " << ivector2;
   KALDI_ASSERT(ivector1.ApproxEqual(ivector2));
 }
 
@@ -192,7 +194,7 @@ void UnitTestIvectorExtractor() {
 
 int main() {
   using namespace kaldi;
-  SetVerboseLevel(3);
+  SetVerboseLevel(4);
   for (int i = 0; i < 10; i++)
     UnitTestIvectorExtractor();
   std::cout << "Test OK.\n";

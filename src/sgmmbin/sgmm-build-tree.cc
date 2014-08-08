@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
       Input ki(stats_filename, &binary_in);
       ReadBuildTreeStats(ki.Stream(), binary_in, sc, &stats);
     }
-    KALDI_LOG << "Number of separate statistics is " << stats.size() << '\n';
+    KALDI_LOG << "Number of separate statistics is " << stats.size();
 
     Questions qo;
     {
@@ -191,7 +191,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    KALDI_LOG << "Wrote tree\n";
+    KALDI_LOG << "Wrote tree";
 
     DeleteBuildTreeStats(&stats);
   } catch(const std::exception &e) {

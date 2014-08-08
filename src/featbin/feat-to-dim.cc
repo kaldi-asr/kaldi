@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
         dim_writer.Write(kaldi_reader.Key(), kaldi_reader.Value().NumCols());
     } else {
       if (kaldi_reader.Done())
-        KALDI_ERR << "Could not read any features (empty archive?)\n";
+        KALDI_ERR << "Could not read any features (empty archive?)";
       Output ko(wspecifier_or_wxfilename, false); // text mode.
       ko.Stream() << kaldi_reader.Value().NumCols() << "\n";
     }

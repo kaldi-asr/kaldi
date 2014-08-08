@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Copy a (cpu-based) neural net and its associated transition model,\n"
+        "Copy a (nnet2) neural net and its associated transition model,\n"
         "possibly changing the binary mode\n"
         "Also supports multiplying all the learning rates by a factor\n"
         "(the --learning-rate-factor option) and setting them all to a given\n"

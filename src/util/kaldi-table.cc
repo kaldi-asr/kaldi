@@ -80,7 +80,7 @@ bool ReadScriptFile(std::istream &is,
 bool WriteScriptFile(std::ostream &os,
                      const std::vector<std::pair<std::string, std::string> > &script) {
   if (!os.good()) {
-    KALDI_WARN << "WriteScriptFile: attempting to write to invalid stream.\n";
+    KALDI_WARN << "WriteScriptFile: attempting to write to invalid stream.";
     return false;
   }
   std::vector<std::pair<std::string, std::string> >::const_iterator iter;
@@ -99,7 +99,7 @@ bool WriteScriptFile(std::ostream &os,
     os << iter->first << ' ' << iter->second << '\n';
   }
   if (!os.good()) {
-    KALDI_WARN << "WriteScriptFile: stream in error state.\n";
+    KALDI_WARN << "WriteScriptFile: stream in error state.";
     return false;
   }
   return true;

@@ -1567,7 +1567,7 @@ template<typename Real> void UnitTestCheck() {
   Di.CopyFromMat(Hi);
 
   CuMatrix<Real> Dj(Di);
-  KALDI_LOG << Dj.NumRows() << '\n';
+  KALDI_LOG << Dj.NumRows();
  
 
 }
@@ -2040,9 +2040,9 @@ int main() {
 #endif
 
     if (loop == 0)
-      KALDI_LOG << "Tests without GPU use succeeded.\n";
+      KALDI_LOG << "Tests without GPU use succeeded.";
     else
-      KALDI_LOG << "Tests with GPU use (if available) succeeded.\n";
+      KALDI_LOG << "Tests with GPU use (if available) succeeded.";
   }
   SetVerboseLevel(4);
 #if HAVE_CUDA == 1

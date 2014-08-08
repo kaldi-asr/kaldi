@@ -208,7 +208,7 @@ BaseFloat GaussClusterable::Objf() const {
     }
     objf_per_frame += -0.5 * (vars.SumLog() + M_LOG_2PI * dim);
     if (KALDI_ISNAN(objf_per_frame)) {
-      KALDI_WARN << "GaussClusterable::Objf(), objf is NaN\n";
+      KALDI_WARN << "GaussClusterable::Objf(), objf is NaN";
       return 0.0;
     }
     // KALDI_VLOG(2) << "count = " << count_ << ", objf_per_frame = "<< objf_per_frame

@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
          != kNoWspecifier);
 
     if (in_is_rspecifier != out_is_wspecifier)
-      KALDI_ERR << "Cannot mix archives with regular files (copying vectors)\n";
+      KALDI_ERR << "Cannot mix archives with regular files (copying vectors)";
     
     if (!in_is_rspecifier) {
       std::vector<int32> vec;
