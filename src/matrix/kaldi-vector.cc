@@ -162,6 +162,7 @@ void VectorBase<Real>::Solve(const TpMatrix<Real> &M,
 
 template<typename Real>
 inline void Vector<Real>::Init(const MatrixIndexT dim) {
+  KALDI_ASSERT(dim >= 0);
   if (dim == 0) {
     this->dim_ = 0;
     this->data_ = NULL;

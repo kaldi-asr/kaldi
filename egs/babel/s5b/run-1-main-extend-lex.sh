@@ -100,7 +100,7 @@ if [[ ! -f $lexicon || $lexicon -ot "$lexicon_file" ]]; then
     # Extend the original lexicon.
     # Will creates the files data/local/extend/{lexiconp.txt,oov2prob}.
     mv data/local/lexicon.txt  data/local/lexicon_orig.txt
-    local/extend_lexicon.sh --cmd "$train_cmd" \
+    local/extend_lexicon.sh --cmd "$train_cmd" --cleanup false \
       --num-sent-gen $num_sent_gen --num-prons $num_prons \
       data/local/lexicon_orig.txt data/local/extend data/dev2h/text
     cp data/local/extend/lexiconp.txt data/local/
@@ -153,7 +153,7 @@ if [[ ! -f data/lang/G.fst || data/lang/G.fst -ot data/srilm/lm.gz ||\
     [ -f data/local/extend/original_oov_rates ] || exit 1;
     unk_fraction=`cat data/local/extend/original_oov_rates |\
       grep "token" | awk -v x=$unk_fraction_boost '{print $NF/100.0*x}'`
-    extend_lexicon_param=(--unk-fraction $unk_fraction \
+    extend_lexicon_param=(--cleanup false --unk-fraction $unk_fraction \
       --oov-prob-file data/local/extend/oov2prob)
   fi
   local/arpa2G.sh ${extend_lexicon_param[@]} \
@@ -177,6 +177,11 @@ if [ ! -f data/train/.plp.done ]; then
   touch data/train/.plp.done
 fi
 
+echo -------------------------------------------------------------------------
+echo "Extended lexicon finished on" `date`. Now run the script run-1-main.sh
+echo -------------------------------------------------------------------------
+exit 0
+
 mkdir -p exp
 
 if [ ! -f data/train_sub3/.done ]; then
@@ -198,6 +203,11 @@ if [ ! -f data/train_sub3/.done ]; then
 
   touch data/train_sub3/.done
 fi
+
+echo "------------------------------------------------------------------"
+echo "Now run the script run-1-main.sh"
+echo "------------------------------------------------------------------"
+exit 0
 
 if [ ! -f exp/mono/.done ]; then
   echo ---------------------------------------------------------------------

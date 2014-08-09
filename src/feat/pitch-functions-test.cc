@@ -42,7 +42,7 @@ bool DirExist(const std::string &dirname) {
 }
 
 static void UnitTestSimple() {
-  KALDI_LOG << "=== UnitTestSimple() ===\n";
+  KALDI_LOG << "=== UnitTestSimple() ===";
   Vector<BaseFloat> v(1000);
   Vector<BaseFloat> out;
   Matrix<BaseFloat> m;
@@ -50,17 +50,17 @@ static void UnitTestSimple() {
   for (int32 i = 0; i < v.Dim(); i++) {
     v(i) = (abs(i * 433024253) % 65535) - (65535 / 2);
   }
-  KALDI_LOG << "<<<=== Just make sure it runs... Nothing is compared\n";
+  KALDI_LOG << "<<<=== Just make sure it runs... Nothing is compared";
   // the parametrization object
   PitchExtractionOptions op;
   // trying to have same opts as baseline.
   // compute pitch.
   Compute(op, v, &m);
-  KALDI_LOG << "Test passed :)\n";
+  KALDI_LOG << "Test passed :)";
 }
 // Compare pitch using Kaldi pitch tracker on KEELE corpora
 static void UnitTestKeele() {
-  KALDI_LOG << "=== UnitTestKeele() ===\n";
+  KALDI_LOG << "=== UnitTestKeele() ===";
   for (int32 i = 1; i < 11; i++) {
     std::string wavefile;
     std::string num;
@@ -71,7 +71,7 @@ static void UnitTestKeele() {
       num = "m" + ConvertIntToString(i-5) + "nw0000";
       wavefile = "keele/16kHz/"+num+".wav";
     }
-    KALDI_LOG << "--- " << wavefile << " ---\n";
+    KALDI_LOG << "--- " << wavefile << " ---";
     std::ifstream is(wavefile.c_str());
     WaveData wave;
     wave.Read(is);
@@ -90,7 +90,7 @@ static void UnitTestKeele() {
 }
 /* change freq_weight to investigate the results */
 static void UnitTestPenaltyFactor() {
-  KALDI_LOG << "=== UnitTestPenaltyFactor() ===\n";
+  KALDI_LOG << "=== UnitTestPenaltyFactor() ===";
   for (int32 k = 1; k < 5; k++) {
     for (int32 i = 1; i < 4; i++) {
       std::string wavefile;
@@ -102,7 +102,7 @@ static void UnitTestPenaltyFactor() {
         num = "m"+ConvertIntToString(i-5)+"nw0000";
         wavefile = "keele/16kHz/"+num+".wav";
       }
-      KALDI_LOG << "--- " << wavefile << " ---\n";
+      KALDI_LOG << "--- " << wavefile << " ---";
       std::ifstream is(wavefile.c_str());
       WaveData wave;
       wave.Read(is);
@@ -123,7 +123,7 @@ static void UnitTestPenaltyFactor() {
   }
 }
 static void UnitTestKeeleNccfBallast() {
-  KALDI_LOG << "=== UnitTestKeeleNccfBallast() ===\n";
+  KALDI_LOG << "=== UnitTestKeeleNccfBallast() ===";
   for (int32 k = 1; k < 10; k++) {
     for (int32 i = 1; i < 2; i++) {
       std::string wavefile;
@@ -135,7 +135,7 @@ static void UnitTestKeeleNccfBallast() {
         num = "m"+ConvertIntToString(i-5)+"nw0000";
         wavefile = "keele/16kHz/"+num+".wav";
       }
-      KALDI_LOG << "--- " << wavefile << " ---\n";
+      KALDI_LOG << "--- " << wavefile << " ---";
       std::ifstream is(wavefile.c_str());
       WaveData wave;
       wave.Read(is);
@@ -157,7 +157,7 @@ static void UnitTestKeeleNccfBallast() {
   }
 }
 static void UnitTestWeightedMwn() {
-  KALDI_LOG << "=== UnitTestWeightedMwn1() ===\n";
+  KALDI_LOG << "=== UnitTestWeightedMwn1() ===";
   // compare the results of WeightedMwn1 and Sliding CMN with uniform weights.
   for (int32 i = 0; i < 1000; i++) {
     int32 num_frames = 1 + (rand()%10 * 10);
@@ -235,7 +235,7 @@ static void UnitTestTakeLogOfPitch() {
   }
 }
 static void UnitTestPitchExtractionSpeed() {
-  KALDI_LOG << "=== UnitTestPitchExtractionSpeed() ===\n";
+  KALDI_LOG << "=== UnitTestPitchExtractionSpeed() ===";
   // use pitch code with default configuration..
   PitchExtractionOptions op;
   op.nccf_ballast = 0.1;
@@ -250,7 +250,7 @@ static void UnitTestPitchExtractionSpeed() {
       num = "m"+ConvertIntToString(i-5)+"nw0000";
       wavefile = "keele/16kHz/"+num+".wav";
     }
-    KALDI_LOG << "--- " << wavefile << " ---\n";
+    KALDI_LOG << "--- " << wavefile << " ---";
     std::ifstream is(wavefile.c_str());
     WaveData wave;
     wave.Read(is);
@@ -276,7 +276,7 @@ static void UnitTestPitchExtractionSpeed() {
   }
 }
 static void UnitTestPitchExtractorCompareKeele() {
-  KALDI_LOG << "=== UnitTestPitchExtractorCompareKeele() ===\n";
+  KALDI_LOG << "=== UnitTestPitchExtractorCompareKeele() ===";
   // use pitch code with default configuration..
   PitchExtractionOptions op;
   op.nccf_ballast = 0.1;
@@ -290,7 +290,7 @@ static void UnitTestPitchExtractorCompareKeele() {
       num = "m"+ConvertIntToString(i-5)+"nw0000";
       wavefile = "keele/16kHz/"+num+".wav";
     }
-    KALDI_LOG << "--- " << wavefile << " ---\n";
+    KALDI_LOG << "--- " << wavefile << " ---";
     std::ifstream is(wavefile.c_str());
     WaveData wave;
     wave.Read(is);
@@ -324,7 +324,7 @@ void UnitTestDiffSampleRate() {
       num = "m"+ConvertIntToString(i-5)+"nw0000";
       wavefile = "keele/"+samp_rate+"kHz/"+num+".wav";
     }
-    KALDI_LOG << "--- " << wavefile << " ---\n";
+    KALDI_LOG << "--- " << wavefile << " ---";
     std::ifstream is(wavefile.c_str());
     WaveData wave;
     wave.Read(is);
@@ -348,7 +348,7 @@ void UnitTestPostProcess() {
       num = "m"+ConvertIntToString(i-5)+"nw0000";
       wavefile = "keele/16kHz/"+num+".wav";
     }
-    KALDI_LOG << "--- " << wavefile << " ---\n";
+    KALDI_LOG << "--- " << wavefile << " ---";
     std::ifstream is(wavefile.c_str());
     WaveData wave;
     wave.Read(is);
@@ -369,7 +369,7 @@ void UnitTestPostProcess() {
   }
 }
 void UnitTestDeltaPitch() {
-  KALDI_LOG << "=== UnitTestDeltaPitch() ===\n";
+  KALDI_LOG << "=== UnitTestDeltaPitch() ===";
   for (int32 i = 0; i < 1; i++) {
     int32 num_frames = 1 + (rand()%10 * 1000);
     Vector<BaseFloat> feat(num_frames),
@@ -391,7 +391,7 @@ void UnitTestDeltaPitch() {
   }
 }
 void UnitTestResample() {
-  KALDI_LOG << "=== UnitTestResample() ===\n";
+  KALDI_LOG << "=== UnitTestResample() ===";
   // Resample the sine wave
   double sample_freq = 2000;
   double resample_freq = 1000;
@@ -463,7 +463,7 @@ int main() {
         << "please ask g.meyer@somewhere.edu for the database if you need it.\n"
         << " you need to put keele wave file in keele/16kHz directory";
     }
-    KALDI_LOG << "Tests succeeded.\n";
+    KALDI_LOG << "Tests succeeded.";
     return 0;
   } catch(const std::exception &e) {
     KALDI_ERR << e.what();

@@ -90,12 +90,13 @@ void NnetEnsembleTrainer::TrainOneMinibatch() {
     post_mat[i].ApplyLog();
     std::vector<BaseFloat> log_post_correct;
     post_mat[i].Lookup(sv_labels_ind, &log_post_correct);
-    BaseFloat log_prob_this_net = std::accumulate(log_post_correct.begin(), log_post_correct.end(), static_cast<BaseFloat>(0));
-    
+    BaseFloat log_prob_this_net = std::accumulate(log_post_correct.begin(),
+                                                  log_post_correct.end(),
+                                                  static_cast<BaseFloat>(0));
     avg_logprob_this_phase_ += log_prob_this_net;
     tmp_deriv.InvertElements();
     tmp_deriv.MulElements(post_avg);
-    updater_ensemble_[i]->Backprop(buffer_, &tmp_deriv);
+    updater_ensemble_[i]->Backprop(&tmp_deriv);
   }
   count_this_phase_ += buffer_.size();
   buffer_.clear();

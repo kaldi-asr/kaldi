@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
         Input ki(po.GetArg(1), &binary_in);
         ReadBuildTreeStats(ki.Stream(), binary_in, gc, &stats);
       }
-      KALDI_LOG << "Number of separate statistics is " << stats.size() << '\n';
+      KALDI_LOG << "Number of separate statistics is " << stats.size();
       
       // typedef std::vector<std::pair<EventKeyType,EventValueType> > EventType
       

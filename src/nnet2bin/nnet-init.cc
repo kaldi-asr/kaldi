@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         "Initialize the neural network from a config file with a line for each\n"
         "component.  Note, this only outputs the neural net itself, not the associated\n"
         "information such as the transition-model; you'll probably want to pipe\n"
-        "the output into something like am-nnet-init.\n"
+        "the output into something like nnet-am-init.\n"
         "\n"
         "Usage:  nnet-init [options] <config-in> <raw-nnet-out>\n"
         "e.g.:\n"

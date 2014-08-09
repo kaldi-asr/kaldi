@@ -77,20 +77,31 @@ case $feat_type in
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
+
 if [ ! -z "$transform_dir" ]; then
-  if ! [ $nj -eq `cat $transform_dir/num_jobs` ]; then
-    echo "$0: Number of jobs mismatch with transform-dir: $nj versus `cat $transform_dir/num_jobs`";
+  echo "$0: using transforms from $transform_dir"
+  [ ! -s $transform_dir/num_jobs ] && \
+    echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
+  nj_orig=$(cat $transform_dir/num_jobs)
+  
+  if [ $feat_type == "raw" ]; then trans=raw_trans;
+  else trans=trans; fi
+  if [ $feat_type == "lda" ] && ! cmp $transform_dir/final.mat $srcdir/final.mat; then
+    echo "$0: LDA transforms differ between $srcdir and $transform_dir"
     exit 1;
   fi
-  if [ $feat_type == "lda" ]; then
-    [ ! -f $transform_dir/trans.1 ] && echo "No such file $transform_dir/raw_trans.1" && exit 1;
-    echo "$0: using transforms from $transform_dir"
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
+  if [ ! -f $transform_dir/$trans.1 ]; then
+    echo "$0: expected $transform_dir/$trans.1 to exist (--transform-dir option)"
+    exit 1;
   fi
-  if [ $feat_type == "raw" ]; then
-    [ ! -f $transform_dir/raw_trans.1 ] && echo "No such file $transform_dir/raw_trans.1" && exit 1;
-    echo "$0: using raw-fMLLR transforms from $transform_dir"
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/raw_trans.JOB ark:- ark:- |"
+  if [ $nj -ne $nj_orig ]; then
+    # Copy the transforms into an archive with an index.
+    for n in $(seq $nj_orig); do cat $transform_dir/$trans.$n; done | \
+       copy-feats ark:- ark,scp:$dir/$trans.ark,$dir/$trans.scp || exit 1;
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
+  else
+    # number of jobs matches with alignment dir.
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
   fi
 fi
 

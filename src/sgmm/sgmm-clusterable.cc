@@ -210,7 +210,7 @@ bool AccumulateSgmmTreeStats(const TransitionModel &trans_model,
   std::vector<std::vector<int32> > split_alignment;
   bool ans = SplitToPhones(trans_model, alignment, &split_alignment);
   if (!ans) {
-    KALDI_WARN << "AccumulateTreeStats: bad alignment.\n";
+    KALDI_WARN << "AccumulateTreeStats: bad alignment.";
     return false;
   }
   int t = 0;

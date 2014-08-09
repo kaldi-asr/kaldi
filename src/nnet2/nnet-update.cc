@@ -39,8 +39,8 @@ double NnetUpdater::ComputeForMinibatch(
   CuMatrix<BaseFloat> tmp_deriv;
   double ans = ComputeObjfAndDeriv(data, &tmp_deriv, tot_accuracy);
   if (nnet_to_update_ != NULL)
-    Backprop(data, &tmp_deriv); // this is summed (after weighting), not
-                                // averaged.
+    Backprop(&tmp_deriv); // this is summed (after weighting), not
+                          // averaged.
   return ans;
 }
 
@@ -133,11 +133,10 @@ double NnetUpdater::ComputeTotAccuracy(
 }
 
 
-void NnetUpdater::Backprop(const std::vector<NnetExample> &data,
-                           CuMatrix<BaseFloat> *deriv) const {
-  int32 num_chunks = data.size();
+void NnetUpdater::Backprop(CuMatrix<BaseFloat> *deriv) const {
   // We assume ComputeObjfAndDeriv has already been called.
-  for (int32 c = nnet_.NumComponents() - 1; c >= 0; c--) {
+  for (int32 c = nnet_.NumComponents() - 1;
+       c >= nnet_.LastUpdatableComponent(); c--) {
     const Component &component = nnet_.GetComponent(c);
     Component *component_to_update = (nnet_to_update_ == NULL ? NULL :
                                       &(nnet_to_update_->GetComponent(c)));
@@ -146,7 +145,7 @@ void NnetUpdater::Backprop(const std::vector<NnetExample> &data,
     CuMatrix<BaseFloat> input_deriv(input.NumRows(), input.NumCols());
     const CuMatrix<BaseFloat> &output_deriv(*deriv);
 
-    component.Backprop(input, output, output_deriv, num_chunks,
+    component.Backprop(input, output, output_deriv, num_chunks_,
                        component_to_update, &input_deriv);
     input_deriv.Swap(deriv);
   }

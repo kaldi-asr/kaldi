@@ -42,7 +42,7 @@ const std::vector<int32>& RandomizerMask::Generate(int32 mask_size) {
 
 /* MatrixRandomizer:: */
 
-void MatrixRandomizer::AddData(const CuMatrix<BaseFloat>& m) {
+void MatrixRandomizer::AddData(const CuMatrixBase<BaseFloat>& m) {
   // pre-allocate before 1st use
   if(data_.NumCols() == 0) {
     data_.Resize(conf_.randomizer_size,m.NumCols());
@@ -61,7 +61,7 @@ void MatrixRandomizer::AddData(const CuMatrix<BaseFloat>& m) {
   // extend the buffer if necessary
   if(data_.NumRows() < data_end_ + m.NumRows()) {
     CuMatrix<BaseFloat> data_aux(data_);
-    data_.Resize(data_end_ + m.NumRows() + 1000, data_.NumCols()); // +1000 row surplus
+    data_.Resize(data_end_ + m.NumRows() + 1000, data_.NumCols()); // +1000 row extra
     data_.RowRange(0,data_aux.NumRows()).CopyFromMat(data_aux);
   }
   // copy the data
@@ -90,7 +90,7 @@ void MatrixRandomizer::Next() {
   data_begin_ += conf_.minibatch_size;
 }
 
-const CuMatrix<BaseFloat>& MatrixRandomizer::Value() {
+const CuMatrixBase<BaseFloat>& MatrixRandomizer::Value() {
   KALDI_ASSERT(data_end_ - data_begin_ >= conf_.minibatch_size); // have data for minibatch
   minibatch_.Resize(conf_.minibatch_size, data_.NumCols(),kUndefined);
   minibatch_.CopyFromMat(data_.RowRange(data_begin_,conf_.minibatch_size));

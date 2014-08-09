@@ -43,7 +43,7 @@ class KlHmm : public Component {
     return kKlHmm;
   }
 
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     if (kl_inv_q_.NumRows() == 0) {
       // Copy the CudaMatrix to a Matrix
       Matrix<BaseFloat> in_tmp(in.NumRows(), in.NumCols());
@@ -97,8 +97,8 @@ class KlHmm : public Component {
     out->Scale(-1);
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     KALDI_ERR << "Unimplemented";
   }
  

@@ -62,7 +62,7 @@ Nnet::~Nnet() {
 }
 
 
-void Nnet::Propagate(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+void Nnet::Propagate(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
   KALDI_ASSERT(NULL != out);
 
   if (NumComponents() == 0) {
@@ -79,14 +79,12 @@ void Nnet::Propagate(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
   for(int32 i=0; i<(int32)components_.size(); i++) {
     components_[i]->Propagate(propagate_buf_[i], &propagate_buf_[i+1]);
   }
-
-  CuMatrix<BaseFloat> &mat = propagate_buf_[components_.size()];
-  out->Resize(mat.NumRows(), mat.NumCols());
-  out->CopyFromMat(mat);
+  
+  (*out) = propagate_buf_[components_.size()];
 }
 
 
-void Nnet::Backpropagate(const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+void Nnet::Backpropagate(const CuMatrixBase<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
 
   //////////////////////////////////////
   // Backpropagation
@@ -149,7 +147,7 @@ void Nnet::Backpropagate(const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat
 }
 
 
-void Nnet::Feedforward(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+void Nnet::Feedforward(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
   KALDI_ASSERT(NULL != out);
 
   if (NumComponents() == 0) { 
@@ -227,12 +225,10 @@ void Nnet::RemoveComponent(int32 component) {
 }
 
 
-
-
 void Nnet::GetParams(Vector<BaseFloat>* wei_copy) const {
   wei_copy->Resize(NumParams());
   int32 pos = 0;
-  //copy the params
+  // copy the params
   for(int32 i=0; i<components_.size(); i++) {
     if(components_[i]->IsUpdatable()) {
       UpdatableComponent& c = dynamic_cast<UpdatableComponent&>(*components_[i]);
@@ -246,33 +242,21 @@ void Nnet::GetParams(Vector<BaseFloat>* wei_copy) const {
 }
 
 
-
-
-
-
 void Nnet::GetWeights(Vector<BaseFloat>* wei_copy) const {
   wei_copy->Resize(NumParams());
   int32 pos = 0;
-  //copy the params
+  // copy the params
   for(int32 n=0; n<components_.size(); n++) {
     if(components_[n]->IsUpdatable()) {
       switch(components_[n]->GetType()) {
         case Component::kAffineTransform : {
-          //get the weights from CuMatrix to Matrix
-          const CuMatrix<BaseFloat>& cu_mat = 
-            dynamic_cast<AffineTransform*>(components_[n])->GetLinearity();
-          Matrix<BaseFloat> mat(cu_mat.NumRows(),cu_mat.NumCols());
-          cu_mat.CopyToMat(&mat);
-          //copy the the matrix row-by-row to the vector
+          // copy weight matrix row-by-row to the vector
+          Matrix<BaseFloat> mat(dynamic_cast<AffineTransform*>(components_[n])->GetLinearity());
           int32 mat_size = mat.NumRows()*mat.NumCols();
           wei_copy->Range(pos,mat_size).CopyRowsFromMat(mat);
           pos += mat_size;
-          //get the biases from CuVector to Vector
-          const CuVector<BaseFloat>& cu_vec = 
-            dynamic_cast<AffineTransform*>(components_[n])->GetBias();
-          Vector<BaseFloat> vec(cu_vec.Dim());
-          cu_vec.CopyToVec(&vec);
-          //append biases to the supervector
+          // append biases
+          Vector<BaseFloat> vec(dynamic_cast<AffineTransform*>(components_[n])->GetBias());
           wei_copy->Range(pos,vec.Dim()).CopyFromVec(vec);
           pos += vec.Dim();
         } break;
@@ -294,31 +278,20 @@ void Nnet::SetWeights(const Vector<BaseFloat>& wei_src) {
     if(components_[n]->IsUpdatable()) {
       switch(components_[n]->GetType()) {
         case Component::kAffineTransform : {
-          //get the component
+          // get the component
           AffineTransform* aff_t = dynamic_cast<AffineTransform*>(components_[n]);
-          //we need weight matrix with original dimensions
-          const CuMatrix<BaseFloat>& cu_mat = aff_t->GetLinearity();
-          Matrix<BaseFloat> mat(cu_mat.NumRows(),cu_mat.NumCols());
-          int32 mat_size = mat.NumRows() * mat.NumCols();
+          // we need weight matrix with original dimensions
+          Matrix<BaseFloat> mat(aff_t->GetLinearity());
+          int32 mat_size = mat.NumRows()*mat.NumCols();
           mat.CopyRowsFromVec(wei_src.Range(pos,mat_size));
           pos += mat_size;
-          //get the bias vector
-          const CuVector<BaseFloat>& cu_vec = aff_t->GetBias();
-          Vector<BaseFloat> vec(cu_vec.Dim());
+          // get the bias vector
+          Vector<BaseFloat> vec(aff_t->GetBias());
           vec.CopyFromVec(wei_src.Range(pos,vec.Dim()));
           pos += vec.Dim();
-          
-          //copy the data to CuMatrix/CuVector and assign to the component
-          //weights
-          {
-            CuMatrix<BaseFloat> tmp(mat);
-            aff_t->SetLinearity(tmp);
-          }
-          //bias
-          {
-            CuVector<BaseFloat> tmp(vec);
-            aff_t->SetBias(tmp);
-          }
+          // assign to the component
+          aff_t->SetLinearity(CuMatrix<BaseFloat>(mat));
+          aff_t->SetBias(CuVector<BaseFloat>(vec));
         } break;
         default :
           KALDI_ERR << "Unimplemented access to parameters "
@@ -334,26 +307,26 @@ void Nnet::SetWeights(const Vector<BaseFloat>& wei_src) {
 void Nnet::GetGradient(Vector<BaseFloat>* grad_copy) const {
   grad_copy->Resize(NumParams());
   int32 pos = 0;
-  //copy the params
+  // copy the params
   for(int32 n=0; n<components_.size(); n++) {
     if(components_[n]->IsUpdatable()) {
       switch(components_[n]->GetType()) {
         case Component::kAffineTransform : {
-          //get the weights from CuMatrix to Matrix
-          const CuMatrix<BaseFloat>& cu_mat = 
+          // get the weights from CuMatrix to Matrix
+          const CuMatrixBase<BaseFloat>& cu_mat = 
             dynamic_cast<AffineTransform*>(components_[n])->GetLinearityCorr();
           Matrix<BaseFloat> mat(cu_mat.NumRows(),cu_mat.NumCols());
           cu_mat.CopyToMat(&mat);
-          //copy the the matrix row-by-row to the vector
+          // copy the the matrix row-by-row to the vector
           int32 mat_size = mat.NumRows()*mat.NumCols();
           grad_copy->Range(pos,mat_size).CopyRowsFromMat(mat);
           pos += mat_size;
-          //get the biases from CuVector to Vector
+          // get the biases from CuVector to Vector
           const CuVector<BaseFloat>& cu_vec = 
             dynamic_cast<AffineTransform*>(components_[n])->GetBiasCorr();
           Vector<BaseFloat> vec(cu_vec.Dim());
           cu_vec.CopyToVec(&vec);
-          //append biases to the supervector
+          // append biases to the supervector
           grad_copy->Range(pos,vec.Dim()).CopyFromVec(vec);
           pos += vec.Dim();
         } break;

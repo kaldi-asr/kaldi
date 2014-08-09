@@ -86,8 +86,8 @@ void House(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
     } else {
       cblas_Xscal(dim, inv_v1, v, 1);
     }
-    if (!KALDI_ISFINITE(inv_v1) || !KALDI_ISFINITE(x1)) {
-      KALDI_ERR << "NaN or inf encountered in HouseBackward";
+    if (KALDI_ISNAN(inv_v1)) {
+      KALDI_ERR << "NaN encountered in HouseBackward";
     }
   }
 }
@@ -142,8 +142,8 @@ void HouseBackward(MatrixIndexT dim, const Real *x, Real *v, Real *beta) {
     } else {
       cblas_Xscal(dim, inv_v1, v, 1);
     }
-    if (!KALDI_ISFINITE(inv_v1) || !KALDI_ISFINITE(x1)) {
-      KALDI_ERR << "NaN or inf encountered in HouseBackward";
+    if (KALDI_ISNAN(inv_v1)) {
+      KALDI_ERR << "NaN encountered in HouseBackward";
     }
   }
 }

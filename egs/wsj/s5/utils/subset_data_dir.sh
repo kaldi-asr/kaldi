@@ -36,6 +36,7 @@ perspk=false
 first_opt=""
 speakers=false
 spk_list_specified=false
+utt_list_specified=false
 
 if [ "$1" == "--per-spk" ]; then
   perspk=true;
@@ -55,6 +56,9 @@ elif [ "$1" == "--last" ]; then
 elif [ "$1" == "--spk-list" ]; then
   spk_list_specified=true
   shift;
+elif [ "$1" == "--utt-list" ]; then
+  utt_list_specified=true
+  shift;
 fi
 
 
@@ -64,6 +68,7 @@ if [ $# != 3 ]; then
   echo "Usage: "
   echo "  subset_data_dir.sh [--speakers|--shortest|--first|--last|--per-spk] <srcdir> <num-utt> <destdir>"
   echo "  subset_data_dir.sh [--spk-list <speaker-list-file>] <srcdir> <destdir>"
+  echo "  subset_data_dir.sh [--utt-list <utterance-list-file>] <srcdir> <destdir>"
   echo "By default, randomly selects <num-utt> utterances from the data directory."
   echo "With --speakers, randomly selects enough speakers that we have <num-utt> utterances"
   echo "With --per-spk, selects <num-utt> utterances per speaker, if available."
@@ -76,6 +81,10 @@ fi
 
 if $spk_list_specified; then
   spk_list=$1
+  srcdir=$2
+  destdir=$3
+elif $utt_list_specified; then
+  utt_list=$1
   srcdir=$2
   destdir=$3
 else
@@ -127,7 +136,13 @@ if $spk_list_specified; then
   utils/filter_scp.pl "$spk_list" $srcdir/spk2utt > $destdir/spk2utt || exit 1;
   utils/spk2utt_to_utt2spk.pl < $destdir/spk2utt > $destdir/utt2spk || exit 1;
   do_filtering; # bash function.
-  exit 0;  
+  exit 0;
+elif $utt_list_specified; then
+  mkdir -p $destdir
+  utils/filter_scp.pl "$utt_list" $srcdir/utt2spk > $destdir/utt2spk || exit 1;
+  utils/utt2spk_to_spk2utt.pl < $destdir/utt2spk > $destdir/spk2utt || exit 1;
+  do_filtering; # bash function.
+  exit 0;
 elif $speakers; then
   mkdir -p $destdir
   utils/shuffle_list.pl < $srcdir/spk2utt | awk -v numutt=$numutt '{ if (tot < numutt){ print; } tot += (NF-1); }' | \

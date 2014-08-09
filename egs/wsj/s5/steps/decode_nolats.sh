@@ -1,12 +1,21 @@
 #!/bin/bash
 
-# Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey)
+#                      Vimal Manohar
 # Apache 2.0
+
+##Changes
+# Vimal Manohar (Jan 2014):
+# Added options to boost silence probabilities in the model before
+# decoding. This can help in favoring the silence phones when 
+# some silence regions are wrongly decoded as speech phones like glottal stops
 
 # Begin configuration section.  
 transform_dir=
 iter=
 model= # You can specify the model to use (e.g. if you want to use the .alimdl)
+boost_silence=1.0         # Boost silence pdfs in the model by this factor before decoding
+silence_phones_list=      # List of silence phones that would be boosted before decoding
 stage=0
 nj=4
 cmd=run.pl
@@ -26,6 +35,8 @@ echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
+
+[ -z $silence_phones_list ] && boost_silence=1.0
 
 if [ $# != 3 ]; then
    echo "Usage: $0 [options] <graph-dir> <data-dir> <decode-dir>"
@@ -106,10 +117,13 @@ if [ $stage -le 0 ]; then
     words="ark:/dev/null"
   fi
 
+  [ ! -z "$silence_phones_list" ]  && \
+    model="gmm-boost-silence --boost=$boost_silence $silence_phones_list $model - |"
+
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
     gmm-decode-faster$thread_string --max-active=$max_active --beam=$beam  \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
-    $model $graphdir/HCLG.fst "$feats" "$words" "$ali" || exit 1;
+    "$model" $graphdir/HCLG.fst "$feats" "$words" "$ali" || exit 1;
 fi
 
 exit 0;

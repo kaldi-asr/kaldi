@@ -243,9 +243,9 @@ int main() {
     kaldi::CuBlockMatrixUnitTest<double>();
 #endif
     if (loop == 0)
-      KALDI_LOG << "Tests without GPU use succeeded.\n";
+      KALDI_LOG << "Tests without GPU use succeeded.";
     else
-      KALDI_LOG << "Tests with GPU use (if available) succeeded.\n";
+      KALDI_LOG << "Tests with GPU use (if available) succeeded.";
   }
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().PrintProfile();

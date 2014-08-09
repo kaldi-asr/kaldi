@@ -1,6 +1,7 @@
 // fstext/deterministic-fst.h
 
 // Copyright 2011-2012 Gilles Boulianne  Johns Hopkins University (author: Daniel Povey)
+//                2014 Telepoint Global Hosting Service, LLC. (Author: David Snyder)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -124,6 +125,40 @@ class BackoffDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
   inline StateId GetBackoffState(StateId s, Weight *w);
   
   const Fst<Arc> &fst_;
+};
+
+/**
+ The class UnweightedNgramFst is a DeterministicOnDemandFst whose states 
+ encode an n-gram history. Conceptually, for n-gram order n and k labels, 
+ the FST has k^(n-1) states. However, the FST is created on demand and doesn't
+ need the label vocabulary; GetArc matches on any input label. This class is 
+ primarily used by ComposeDeterministicOnDemand to expand the n-gram
+ history of lattices.
+ */
+template<class Arc>
+class UnweightedNgramFst: public DeterministicOnDemandFst<Arc> {
+ public:
+  typedef typename Arc::Weight Weight;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Label Label;
+  
+  UnweightedNgramFst(int n);
+  
+  StateId Start() { return start_state_; };
+
+  Weight Final(StateId s);
+
+  bool GetArc(StateId s, Label ilabel, Arc *oarc);
+  
+ private:
+  typedef unordered_map<std::vector<Label>, 
+    StateId, kaldi::VectorHasher<Label> > MapType;
+  // The order of the n-gram.
+  int n_;
+  MapType state_map_;
+  StateId start_state_;
+  // Map from history-state to pair.
+  std::vector<std::vector<Label> > state_vec_;
 };
 
 template<class Arc>

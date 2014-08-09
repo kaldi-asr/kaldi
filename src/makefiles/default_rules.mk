@@ -72,7 +72,7 @@ $(TESTFILES): $(LIBFILE) $(XDEPENDS)
 test_compile: $(TESTFILES)
   
 test: test_compile
-	@result=0; for x in $(TESTFILES); do printf "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
+	@result=0; for x in $(TESTFILES); do printf "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL $$x"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
 
 .valgrind: $(BINFILES) $(TESTFILES)
 

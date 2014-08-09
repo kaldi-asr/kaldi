@@ -47,7 +47,7 @@ void AccumulateTreeStats(const TransitionModel &trans_model,
   std::vector<std::vector<int32> > split_alignment;
   bool ans = SplitToPhones(trans_model, alignment, &split_alignment);
   if (!ans) {
-    KALDI_WARN << "AccumulateTreeStats: alignment appears to be bad, not using it\n";
+    KALDI_WARN << "AccumulateTreeStats: alignment appears to be bad, not using it";
     return;
   }
   int cur_pos = 0;

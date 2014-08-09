@@ -66,6 +66,8 @@ if [ $stage -le 2 ]; then
   # Decode (reuse HCLG graph)
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmmdir/graph $data_fmllr/test $dir/decode || exit 1;
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
+    $gmmdir/graph_ug $data_fmllr/test $dir/decode_ug || exit 1;
 fi
 
 
@@ -92,6 +94,9 @@ if [ $stage -le 4 ]; then
     steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph $data_fmllr/test $dir/decode_it${ITER} || exit 1
+    steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+      --nnet $dir/${ITER}.nnet --acwt $acwt \
+      $gmmdir/graph_ug $data_fmllr/test $dir/decode_ug_it${ITER} || exit 1
   done 
 fi
 
@@ -100,3 +105,6 @@ exit 0
 
 # Getting results [see RESULTS file]
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+# to see how model conversion to nnet2 works, run run_dnn_convert_nnet2.sh at this point.
+

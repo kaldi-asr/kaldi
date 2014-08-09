@@ -43,8 +43,8 @@ int main(int argc, char *argv[]) {
         "of disambiguation symbols.\n"
         "Warning: you probably want to set the --transition-scale and --self-loop-scale\n"
         "options; the defaults (zero) are probably not appropriate.\n"
-        "Usage:   compile-train-graphs-fsts [options] tree-in model-in lexicon-fst-in "
-        " graphs-rspecifier graphs-wspecifier\n"
+        "Usage:   compile-train-graphs-fsts [options] <tree-in> <model-in> <lexicon-fst-in> "
+        " <graphs-rspecifier> <graphs-wspecifier>\n"
         "e.g.: \n"
         " compile-train-graphs-fsts --read-disambig-syms=disambig.list\\\n"
         "   tree 1.mdl lex.fst ark:train.fsts ark:graphs.fsts\n";

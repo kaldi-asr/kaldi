@@ -49,14 +49,15 @@ dnn_update_egs_opts=(--weight-threshold 0.7 --splice-width 4 --samples-per-iter 
 
 if [[ `hostname` == *.tacc.utexas.edu ]] ; then
   decode_extra_opts=( --num-threads 4 --parallel-opts "-pe smp 4" )
-  sgmm_train_extra_opts=( )
+  sgmm_train_extra_opts=( --num-iters 25 )
   sgmm_group_extra_opts=( ) 
   sgmm_denlats_extra_opts=( --num-threads 1 )
   dnn_denlats_extra_opts=( --num-threads 1 )
 
   dnn_cpu_parallel_opts=(--minibatch-size 128 --num-jobs-nnet 8 --num-threads 16 \
                          --parallel-opts "-pe smp 16" )
-  dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 4 --num-threads 1)
+  dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 4 --num-threads 1
+                         --parallel-opts "-pe smp 16" )
 
   dnn_gpu_mpe_parallel_opts=(--num-jobs-nnet 4 --num-threads 1)
 

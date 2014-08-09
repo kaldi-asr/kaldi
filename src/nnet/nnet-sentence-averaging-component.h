@@ -78,7 +78,7 @@ class SentenceAveragingComponent : public UpdatableComponent {
   std::string Info() const { return std::string("nested_network {\n") + nnet_.Info() + "}\n"; }
   std::string InfoGradient() const { return std::string("nested_gradient {\n") + nnet_.InfoGradient() + "}\n"; }
 
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     // Get NN output
     CuMatrix<BaseFloat> out_nnet;
     nnet_.Propagate(in, &out_nnet);
@@ -95,14 +95,14 @@ class SentenceAveragingComponent : public UpdatableComponent {
     out->ColRange(nnet_outputs,num_inputs).CopyFromMat(in);
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     int32 num_inputs = in.NumCols(),
       nnet_outputs = nnet_.OutputDim();
     in_diff->CopyFromMat(out_diff.ColRange(nnet_outputs,num_inputs));
   }
 
-  void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
 
     int32 nnet_outputs = nnet_.OutputDim(),
       num_frames = diff.NumRows();

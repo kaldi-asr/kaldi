@@ -272,7 +272,7 @@ void LatticeSimpleDecoder::PruneForwardLinksFinal(int32 frame) {
   KALDI_ASSERT(static_cast<size_t>(frame+1) == active_toks_.size());
   if (active_toks_[frame].toks == NULL ) // empty list; this should
     // not happen.
-    KALDI_WARN << "No tokens alive at end of file\n";
+    KALDI_WARN << "No tokens alive at end of file";
 
   // First go through, working out the best token (do it in parallel
   // including final-probs and not including final-probs; we'll take
@@ -375,7 +375,7 @@ void LatticeSimpleDecoder::PruneTokensForFrame(int32 frame) {
   KALDI_ASSERT(frame >= 0 && frame < active_toks_.size());
   Token *&toks = active_toks_[frame].toks;
   if (toks == NULL)
-    KALDI_WARN << "No tokens alive [doing pruning]\n";
+    KALDI_WARN << "No tokens alive [doing pruning]";
   Token *tok, *next_tok, *prev_tok = NULL;
   for (tok = toks; tok != NULL; tok = next_tok) {
     next_tok = tok->next;

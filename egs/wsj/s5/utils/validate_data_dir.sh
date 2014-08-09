@@ -46,6 +46,14 @@ done
 ! cat $data/utt2spk | awk '{if (NF != 2) exit(1); }' && \
   echo "$0: $data/utt2spk has wrong format." && exit;
 
+ns=$(wc -l < $data/spk2utt)
+if [ "$ns" == 1 ]; then
+  echo "$0: WARNING: you have only one speaker.  This probably a bad idea."
+  echo "   Search for the word 'bold' in http://kaldi.sourceforge.net/data_prep.html"
+  echo "   for more information."
+fi
+
+
 tmpdir=$(mktemp -d kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT HUP INT PIPE TERM
 

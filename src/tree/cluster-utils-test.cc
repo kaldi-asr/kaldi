@@ -44,7 +44,7 @@ static void TestClusterUtils() {  // just some very basic tests of the GaussClus
     Clusterable *tmp = v[i]->Copy();
     tmp->Add( *(v[i+1]));
     BaseFloat like_after = tmp->Objf() / tmp->Normalizer();
-    KALDI_LOG << "Like_before = " << like_before <<", after = "<<like_after <<" over "<<tmp->Normalizer()<<" frames.\n";
+    KALDI_LOG << "Like_before = " << like_before <<", after = "<<like_after <<" over "<<tmp->Normalizer()<<" frames.";
     if (tmp->Normalizer() > 0.1)
       KALDI_ASSERT(like_after <= like_before);  // should get worse after combining stats.
     delete tmp;
@@ -82,7 +82,7 @@ static void TestClusterUtilsVector() {  // just some very basic tests of the Vec
     Clusterable *tmp = v[i]->Copy();
     tmp->Add( *(v[i+1]));
     BaseFloat like_after = tmp->Objf() / tmp->Normalizer();
-    KALDI_LOG << "Like_before = " << like_before <<", after = "<<like_after <<" over "<<tmp->Normalizer()<<" frames.\n";
+    KALDI_LOG << "Like_before = " << like_before <<", after = "<<like_after <<" over "<<tmp->Normalizer()<<" frames.";
     if (tmp->Normalizer() > 0.1)
       KALDI_ASSERT(like_after <= like_before);  // should get worse after combining stats.
     delete tmp;
@@ -258,7 +258,7 @@ static void TestClusterBottomUp() {
 
     if (0) {  // for debug if it breaks.
       for (size_t i = 0;i < points.size();i++) {
-        KALDI_LOG << "point " << i << ": " << ((ScalarClusterable*)points[i])->Info() << " -> " << assignments[i] << "\n";
+        KALDI_LOG << "point " << i << ": " << ((ScalarClusterable*)points[i])->Info() << " -> " << assignments[i];
       }
       for (size_t i = 0;i < clusters.size();i++) {
         KALDI_LOG << "clust " << i << ": " << ((ScalarClusterable*)clusters[i])->Info();
@@ -352,12 +352,12 @@ static void TestClusterKMeans() {
     KALDI_LOG << "TestClusterKmeans: objf after clustering is: "<<clust_objf<<", impr is: "<<ans<<'\n';
 
     if (clusters.size() != n_clust) {
-      KALDI_LOG << "Warning: unexpected number of clusters "<<clusters.size()<<" vs. "<<n_clust<<"\n";
+      KALDI_LOG << "Warning: unexpected number of clusters "<<clusters.size()<<" vs. "<<n_clust<<"";
     }
     KALDI_ASSERT(assignments.size() == points.size());
 
     if (clust_objf < -1.0 * points.size()) {  // a bit high...
-      KALDI_LOG << "Warning: ClusterKMeans did not work quite as well as expected\n";
+      KALDI_LOG << "Warning: ClusterKMeans did not work quite as well as expected";
     }
 
     int32 num_wrong = 0;
@@ -377,7 +377,7 @@ static void TestClusterKMeans() {
     DeletePointers(&points);
   }
   if (n_wrong_tot*4 > n_points_tot) {
-    KALDI_LOG << "Got too many wrong in k-means test [may not be fatal, but check it out.\n";
+    KALDI_LOG << "Got too many wrong in k-means test [may not be fatal, but check it out.";
     KALDI_ASSERT(0);
   }
 }
@@ -420,12 +420,12 @@ static void TestClusterKMeansVector() {
     KALDI_LOG << "TestClusterKmeans: objf after clustering is: "<<clust_objf<<", impr is: "<<ans<<'\n';
 
     if (clusters.size() != n_clust) {
-      KALDI_LOG << "Warning: unexpected number of clusters "<<clusters.size()<<" vs. "<<n_clust<<"\n";
+      KALDI_LOG << "Warning: unexpected number of clusters "<<clusters.size()<<" vs. "<<n_clust<<"";
     }
     KALDI_ASSERT(assignments.size() == points.size());
 
     if (clust_objf < -1.0 * points.size()) {  // a bit high...
-      KALDI_LOG << "Warning: ClusterKMeans did not work quite as well as expected\n";
+      KALDI_LOG << "Warning: ClusterKMeans did not work quite as well as expected";
     }
 
 
@@ -448,7 +448,7 @@ static void TestClusterKMeansVector() {
     DeletePointers(&points);
   }
   if (n_wrong_tot*4 > n_points_tot) {
-    KALDI_LOG << "Got too many wrong in k-means test [may not be fatal, but check it out.\n";
+    KALDI_LOG << "Got too many wrong in k-means test [may not be fatal, but check it out.";
     KALDI_ASSERT(0);
   }
 }
@@ -488,7 +488,7 @@ static void TestTreeCluster() {
       KALDI_LOG << "Num nodes is "<<clusters_ext.size() <<", leaves "<<num_leaves;
     for (int32 i = 0;i<static_cast<int32>(clusters_ext.size());i++) {
       if (n < 2) // avoid generating too much output.
-        KALDI_LOG << "Cluster "<<i<<": "<<((ScalarClusterable*)clusters_ext[i])->Info()<<", parent is: "<< clust_assignments[i]<<"\n";
+        KALDI_LOG << "Cluster "<<i<<": "<<((ScalarClusterable*)clusters_ext[i])->Info()<<", parent is: "<< clust_assignments[i]<<"";
       KALDI_ASSERT(clust_assignments[i]>i || (i+1 == static_cast<int32>(clusters_ext.size()) && clust_assignments[i] == i));
       if (i == static_cast<int32>(clusters_ext.size())-1)
         KALDI_ASSERT(clust_assignments[i] == i);  // top node.
@@ -497,7 +497,7 @@ static void TestTreeCluster() {
     DeletePointers(&points);
   }
   if (n_wrong_tot*4 > n_points_tot) {
-    KALDI_LOG << "Got too many wrong in k-means test [may not be fatal, but check it out.\n";
+    KALDI_LOG << "Got too many wrong in k-means test [may not be fatal, but check it out.";
     KALDI_ASSERT(0);
   }
 }
@@ -532,7 +532,7 @@ static void TestClusterTopDown() {
       KALDI_LOG << "Num nodes is "<<clusters.size()<<'\n';
     for (size_t i = 0;i < clusters.size();i++) {
       if (n<=2) {  // avoid generating too much output.
-        KALDI_LOG << "Cluster "<<i<<": "<<((ScalarClusterable*)clusters[i])->Info()<<", objf is: "<<clusters[i]->Objf()<<"\n";
+        KALDI_LOG << "Cluster "<<i<<": "<<((ScalarClusterable*)clusters[i])->Info()<<", objf is: "<<clusters[i]->Objf()<<"";
       }
     }
     KALDI_ASSERT(clusters.size() == n_clust);
@@ -540,7 +540,7 @@ static void TestClusterTopDown() {
     DeletePointers(&points);
   }
   if (n_wrong_tot*4 > n_points_tot) {
-    KALDI_LOG << "Got too many wrong in k-means test [may not be fatal, but check it out.\n";
+    KALDI_LOG << "Got too many wrong in k-means test [may not be fatal, but check it out.";
     KALDI_ASSERT(0);
   }
 }

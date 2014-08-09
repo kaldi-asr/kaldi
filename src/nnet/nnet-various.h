@@ -48,7 +48,7 @@ std::string ToString(const T& t) {
  * so we can print them easily.
  */
 template <typename Real>
-std::string MomentStatistics(const Vector<Real> &vec) {
+std::string MomentStatistics(const VectorBase<Real> &vec) {
   // we use an auxiliary vector for the higher order powers
   Vector<Real> vec_aux(vec);
   Vector<Real> vec_no_mean(vec); // vec with mean subtracted
@@ -83,20 +83,20 @@ std::string MomentStatistics(const Vector<Real> &vec) {
 }
 
 /**
- * Overload MomentStatistics to Matrix<Real>
+ * Overload MomentStatistics to MatrixBase<Real>
  */
 template <typename Real>
-std::string MomentStatistics(const Matrix<Real> &mat) {
+std::string MomentStatistics(const MatrixBase<Real> &mat) {
   Vector<Real> vec(mat.NumRows()*mat.NumCols());
   vec.CopyRowsFromMat(mat);
   return MomentStatistics(vec);
 }
 
 /**
- * Overload MomentStatistics to CuVector<Real>
+ * Overload MomentStatistics to CuVectorBase<Real>
  */
 template <typename Real>
-std::string MomentStatistics(const CuVector<Real> &vec) {
+std::string MomentStatistics(const CuVectorBase<Real> &vec) {
   Vector<Real> vec_host(vec.Dim());
   vec.CopyToVec(&vec_host);
   return MomentStatistics(vec_host);
@@ -106,12 +106,38 @@ std::string MomentStatistics(const CuVector<Real> &vec) {
  * Overload MomentStatistics to CuMatrix<Real>
  */
 template <typename Real>
-std::string MomentStatistics(const CuMatrix<Real> &mat) {
+std::string MomentStatistics(const CuMatrixBase<Real> &mat) {
   Matrix<Real> mat_host(mat.NumRows(),mat.NumCols());
   mat.CopyToMat(&mat_host);
   return MomentStatistics(mat_host);
 }
 
+/**
+ * Check that matrix contains no nan or inf
+ */
+template <typename Real>
+void CheckNanInf(const CuMatrixBase<Real> &mat, const char *msg = "") {
+  Real sum = mat.Sum();
+  if(KALDI_ISINF(sum)) { KALDI_ERR << "'inf' in " << msg; }
+  if(KALDI_ISNAN(sum)) { KALDI_ERR << "'nan' in " << msg; }
+}
+
+/**
+ * Get the standard deviation of values in the matrix
+ */
+template <typename Real>
+Real ComputeStdDev(const CuMatrixBase<Real> &mat) {
+  int32 N = mat.NumRows() * mat.NumCols();
+  Real mean = mat.Sum() / N;
+  CuMatrix<Real> pow_2(mat);
+  pow_2.MulElements(mat);
+  Real var = pow_2.Sum() / N - mean * mean;
+  if (var < 0.0) {
+    KALDI_WARN << "Forcing the variance to be non-negative! " << var << "->0.0";
+    var = 0.0;
+  }
+  return sqrt(var);
+}
 
 
 /**
@@ -119,7 +145,7 @@ std::string MomentStatistics(const CuMatrix<Real> &mat) {
  * in N, out k*N, FrameOffset o_1,o_2,...,o_k
  * FrameOffset example 11frames: -5 -4 -3 -2 -1 0 1 2 3 4 5
  */
-class Splice : public Component {
+class Splice: public Component {
  public:
   Splice(int32 dim_in, int32 dim_out)
     : Component(dim_in, dim_out)
@@ -215,12 +241,12 @@ class Splice : public Component {
     return str;
   }
 
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     cu::Splice(in, frame_offsets_, out); 
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     KALDI_ERR << __func__ << "Not implemented!";
   }
 
@@ -347,12 +373,12 @@ class CopyComponent: public Component {
     return "";
   }
   
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) { 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) { 
     cu::Copy(in,copy_from_indices_,out); 
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     static bool warning_displayed = false;
     if (!warning_displayed) {
       KALDI_WARN << __func__ << "Not implemented!";
@@ -428,19 +454,19 @@ class AddShift : public UpdatableComponent {
   }
 
 
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) { 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) { 
     out->CopyFromMat(in);
     //add the shift
     out->AddVecToRows(1.0, shift_data_, 1.0);
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     //derivative of additive constant is zero...
     in_diff->CopyFromMat(out_diff);
   }
 
-  void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
     // we use following hyperparameters from the option class
     const BaseFloat lr = opts_.learn_rate;
     // gradient
@@ -450,11 +476,11 @@ class AddShift : public UpdatableComponent {
     shift_data_.AddVec(-lr, shift_data_grad_);
   }
 
-  //Data accessors
-  const CuVector<BaseFloat>& GetShiftVec() {
+  // Data accessors
+  const CuVectorBase<BaseFloat>& GetShiftVec() {
     return shift_data_;
   }
-  void SetShiftVec(const CuVector<BaseFloat>& shift_data) {
+  void SetShiftVec(const CuVectorBase<BaseFloat>& shift_data) {
     KALDI_ASSERT(shift_data.Dim() == shift_data_.Dim());
     shift_data_.CopyFromVec(shift_data);
   }
@@ -523,20 +549,20 @@ class Rescale : public UpdatableComponent {
   }
   
   
-  void PropagateFnc(const CuMatrix<BaseFloat> &in, CuMatrix<BaseFloat> *out) { 
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) { 
     out->CopyFromMat(in);
     // rescale the data
     out->MulColsVec(scale_data_);
   }
 
-  void BackpropagateFnc(const CuMatrix<BaseFloat> &in, const CuMatrix<BaseFloat> &out,
-                        const CuMatrix<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
     in_diff->CopyFromMat(out_diff);
     // derivative gets also scaled by the scale_data_
     in_diff->MulColsVec(scale_data_);
   }
 
-  void Update(const CuMatrix<BaseFloat> &input, const CuMatrix<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
     // we use following hyperparameters from the option class
     const BaseFloat lr = opts_.learn_rate;
     // gradient
@@ -549,10 +575,10 @@ class Rescale : public UpdatableComponent {
   }
 
   // Data accessors
-  const CuVector<BaseFloat>& GetScaleVec() {
+  const CuVectorBase<BaseFloat>& GetScaleVec() {
     return scale_data_;
   }
-  void SetScaleVec(const CuVector<BaseFloat>& scale_data) {
+  void SetScaleVec(const CuVectorBase<BaseFloat>& scale_data) {
     KALDI_ASSERT(scale_data.Dim() == scale_data_.Dim());
     scale_data_.CopyFromVec(scale_data);
   }

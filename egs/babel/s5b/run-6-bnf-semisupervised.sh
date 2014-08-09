@@ -16,6 +16,7 @@ set -u           #Fail on an undefined variable
 skip_kws=true
 skip_stt=false
 semisupervised=true
+unsup_string="_semisup"
 bnf_train_stage=-100
 bnf_weight_threshold=0.35
 ali_dir=exp/tri6_nnet_ali
@@ -31,7 +32,6 @@ fi
 
 
 if $semisupervised ; then
-  unsup_string="_semi_supervised"
   egs_string="--egs-dir exp_bnf${unsup_string}/tri6_bnf/egs"
 else
   unsup_string=""  #" ": supervised training, _semi_supervised: unsupervised BNF training
@@ -43,6 +43,22 @@ datadir=data/${dirid}
 exp_dir=exp_bnf${unsup_string}
 data_bnf_dir=data_bnf${unsup_string}
 param_bnf_dir=param_bnf${unsup_string}
+
+if [ -z $ali_dir ] ; then
+  # If alignment directory is not done, use exp/tri6_nnet_ali as alignment 
+  # directory
+  ali_dir=exp/tri6_nnet_ali
+fi
+
+if [ ! -f $ali_dir/.done ]; then
+  echo "$0: Aligning supervised training data in exp/tri6_nnet_ali"
+  [ ! -f exp/tri6_nnet/final.mdl ] && echo "exp/tri6_nnet/final.mdl not found!\nRun run-6-nnet.sh first!" && exit 1
+  steps/nnet2/align.sh  --cmd "$train_cmd" \
+    --use-gpu no --transform-dir exp/tri5_ali --nj $train_nj \
+    data/train data/lang exp/tri6_nnet $ali_dir || exit 1
+  touch $ali_dir/.done
+fi
+
 ###############################################################################
 #
 # Semi-supervised BNF training
@@ -50,22 +66,22 @@ param_bnf_dir=param_bnf${unsup_string}
 ###############################################################################
 [ ! -d $datadir ] && echo "Error: $datadir is not available!" && exit 1;
 mkdir -p $exp_dir/tri6_bnf  
-if $semisupervised ; then
-  echo "$0: Generate examples using unsupervised data in $exp_dir/tri6_nnet"
-  if [ ! -f $exp_dir/tri6_bnf/egs/.done ]; then
-    local/nnet2/get_egs_semi_supervised.sh \
-      "${egs_cpu_opts[@]}" --io-opts "$egs_io_opts" \
-      --transform-dir-sup exp/tri5_ali \
-      --transform-dir-unsup exp/tri5/decode_${dirid} \
-      --weight-threshold $bnf_weight_threshold \
-      data/train $datadir data/lang \
-      $ali_dir $decode_dir $exp_dir/tri6_bnf || exit 1;
-    touch $exp_dir/tri6_bnf/egs/.done
-  fi
- 
-fi  
-
 if [ ! -f $exp_dir/tri6_bnf/.done ]; then    
+  if $semisupervised ; then
+    echo "$0: Generate examples using unsupervised data in $exp_dir/tri6_nnet"
+    if [ ! -f $exp_dir/tri6_bnf/egs/.done ]; then
+      local/nnet2/get_egs_semi_supervised.sh \
+        "${dnn_update_egs_opts[@]}" \
+        --transform-dir-sup exp/tri5_ali \
+        --transform-dir-unsup exp/tri5/decode_${dirid} \
+        --weight-threshold $bnf_weight_threshold \
+        data/train $datadir data/lang \
+        $ali_dir $decode_dir $exp_dir/tri6_bnf || exit 1;
+      touch $exp_dir/tri6_bnf/egs/.done
+    fi
+   
+  fi  
+
  echo "$0: Train Bottleneck network"
   steps/nnet2/train_tanh_bottleneck.sh \
     --stage $bnf_train_stage --num-jobs-nnet $bnf_num_jobs \
@@ -86,7 +102,7 @@ fi
 if [ ! -f $data_bnf_dir/train_bnf/.done ]; then
   mkdir -p $data_bnf_dir
   # put the archives in ${param_bnf_dir}/.
-  steps/nnet2/dump_bottleneck_features.sh --nj $train_nj --cmd "$train_cmd" \
+  steps/nnet/make_bn_feats.sh --nj $train_nj --cmd "$train_cmd" \
     --transform-dir exp/tri5 data/train $data_bnf_dir/train_bnf \
     $exp_dir/tri6_bnf $param_bnf_dir $exp_dir/dump_bnf
   touch $data_bnf_dir/train_bnf/.done
@@ -95,7 +111,7 @@ fi
 if [ ! $data_bnf_dir/train/.done -nt $data_bnf_dir/train_bnf/.done ]; then
   steps/nnet/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
     --nj $train_nj --transform-dir exp/tri5_ali  $data_bnf_dir/train_sat data/train \
-    exp/tri5_ali $exp_dir/make_fmllr_feats/log $param_bnf_dir/ 
+    exp/tri5_ali $exp_dir/make_fmllr_feats/log $param_bnf_dir  
 
   steps/append_feats.sh --cmd "$train_cmd" --nj 4 \
     $data_bnf_dir/train_bnf $data_bnf_dir/train_sat $data_bnf_dir/train \

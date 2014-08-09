@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
       wav_writer.Write(wav_reader.Key(), wav_reader.Value());
       num_done++;
     }
-    KALDI_LOG << "Copied " << num_done << " wave files\n";
+    KALDI_LOG << "Copied " << num_done << " wave files";
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

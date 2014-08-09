@@ -638,6 +638,11 @@ class AffineComponent: public UpdatableComponent {
   friend class SoftmaxComponent; // Friend declaration relates to mixing up.
  public:
   explicit AffineComponent(const AffineComponent &other);
+  // The next constructor is used in converting from nnet1.
+  AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
+                  const CuVectorBase<BaseFloat> &bias_params,
+                  BaseFloat learning_rate);
+  
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
   void Init(BaseFloat learning_rate,
@@ -1153,6 +1158,7 @@ class SpliceComponent: public Component {
 };
 
 
+
 /// This is as SpliceComponent but outputs the max of
 /// any of the inputs (taking the max across time).
 class SpliceMaxComponent: public Component {
@@ -1442,12 +1448,16 @@ private:
 };
 
 
-/// PermuteComponent does a random permutation of the dimensions.  Useful in
-/// conjunction with block-diagonal transforms.
+/// PermuteComponent does a permutation of the dimensions (by default, a fixed
+/// random permutation, but it may be specified).  Useful in conjunction with
+/// block-diagonal transforms.
 class PermuteComponent: public Component {
  public:
   void Init(int32 dim);
+  void Init(const std::vector<int32> &reorder);
   PermuteComponent(int32 dim) { Init(dim); }
+  PermuteComponent(const std::vector<int32> &reorder) { Init(reorder); }
+
   PermuteComponent() { } // e.g. prior to Read() or Init()
   
   virtual int32 InputDim() const { return reorder_.size(); }
@@ -1463,17 +1473,17 @@ class PermuteComponent: public Component {
   virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
                          int32 num_chunks,
                          CuMatrix<BaseFloat> *out) const; 
-  virtual void Backprop(const CuMatrixBase<BaseFloat> &in_value, // dummy
-                        const CuMatrixBase<BaseFloat> &out_value, // dummy
+  virtual void Backprop(const CuMatrixBase<BaseFloat> &,
+                        const CuMatrixBase<BaseFloat> &,
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         int32 num_chunks,
-                        Component *to_update, // dummy
+                        Component *,
                         CuMatrix<BaseFloat> *in_deriv) const;
   
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(PermuteComponent);
   std::vector<int32> reorder_; // This class sends input dimension i to
-  // output dimension reorder_[i].
+                               // output dimension reorder_[i].
 };
 
 
@@ -1595,12 +1605,90 @@ class FixedAffineComponent: public Component {
   virtual Component* Copy() const;
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
+
+  // Function to provide access to linear_params_.
+  const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
  protected:
   friend class AffineComponent;
   CuMatrix<BaseFloat> linear_params_;
   CuVector<BaseFloat> bias_params_;
   
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedAffineComponent);
+};
+
+
+/// FixedScaleComponent applies a fixed per-element scale; it's similar
+/// to the Rescale component in the nnet1 setup (and only needed for nnet1
+/// model conversion.
+class FixedScaleComponent: public Component {
+ public:
+  FixedScaleComponent() { } 
+  virtual std::string Type() const { return "FixedScaleComponent"; }
+  virtual std::string Info() const;
+  
+  void Init(const CuVectorBase<BaseFloat> &scales); 
+  
+  // InitFromString takes only the option scales=<string>,
+  // where the string is the filename of a Kaldi-format matrix to read.
+  virtual void InitFromString(std::string args);
+  
+  virtual int32 InputDim() const { return scales_.Dim(); }
+  virtual int32 OutputDim() const { return scales_.Dim(); }
+  virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         CuMatrix<BaseFloat> *out) const;
+  virtual void Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        CuMatrix<BaseFloat> *in_deriv) const;
+  virtual bool BackpropNeedsInput() const { return false; }
+  virtual bool BackpropNeedsOutput() const { return false; }
+  virtual Component* Copy() const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+ protected:
+  CuVector<BaseFloat> scales_;  
+  KALDI_DISALLOW_COPY_AND_ASSIGN(FixedScaleComponent);
+};
+
+/// FixedBiasComponent applies a fixed per-element bias; it's similar
+/// to the AddShift component in the nnet1 setup (and only needed for nnet1
+/// model conversion.
+class FixedBiasComponent: public Component {
+ public:
+  FixedBiasComponent() { } 
+  virtual std::string Type() const { return "FixedBiasComponent"; }
+  virtual std::string Info() const;
+  
+  void Init(const CuVectorBase<BaseFloat> &scales); 
+  
+  // InitFromString takes only the option bias=<string>,
+  // where the string is the filename of a Kaldi-format matrix to read.
+  virtual void InitFromString(std::string args);
+  
+  virtual int32 InputDim() const { return bias_.Dim(); }
+  virtual int32 OutputDim() const { return bias_.Dim(); }
+  virtual void Propagate(const CuMatrixBase<BaseFloat> &in,
+                         int32 num_chunks,
+                         CuMatrix<BaseFloat> *out) const;
+  virtual void Backprop(const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        int32 num_chunks,
+                        Component *to_update, // may be identical to "this".
+                        CuMatrix<BaseFloat> *in_deriv) const;
+  virtual bool BackpropNeedsInput() const { return false; }
+  virtual bool BackpropNeedsOutput() const { return false; }
+  virtual Component* Copy() const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+ protected:
+  CuVector<BaseFloat> bias_;  
+  KALDI_DISALLOW_COPY_AND_ASSIGN(FixedBiasComponent);
 };
 
 

@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
          != kNoWspecifier);
 
     if (in_is_rspecifier != out_is_wspecifier)
-      KALDI_ERR << "Cannot mix archives with regular files (copying matrices)\n";
+      KALDI_ERR << "Cannot mix archives with regular files (copying matrices)";
     
     if (!in_is_rspecifier) {
       Matrix<BaseFloat> mat;

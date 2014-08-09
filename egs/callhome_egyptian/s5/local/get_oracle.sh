@@ -24,8 +24,12 @@ fi
 
 mkdir -p $oracleDir
 
-cat $textFile | sed 's:\[laughter\]::g' | sed 's:\[noise\]::g' | \
-    utils/sym2int.pl -f 2- $symTable | \
+# Since the lexicon is built from the LDC lexicon, there are words in the dataset
+# that do not appear in the lexicon. These have to marked as OOV. 
+# Removing [hes] symbols as well. This is not consistent with the scoring scheme used
+# while scoring 1-best. 
+cat $textFile | sed 's:\[laughter\]::g' | sed 's:\[noise\]::g' | sed 's:\[hes\]::g' | \
+    utils/sym2int.pl --map-oov [oov] -f 2- $symTable | \
     $KALDI_ROOT/src/latbin/lattice-oracle --word-symbol-table=$symTable "ark:gunzip -c $latticeDir/lat.*.gz|" ark:- ark,t:$oracleDir/oracle.tra 2>$oracleDir/oracle.log
 
 sort -k1,1 -u $oracleDir/oracle.tra -o $oracleDir/oracle.tra

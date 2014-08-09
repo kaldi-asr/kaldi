@@ -240,8 +240,9 @@ class MatrixBase {
   /// each row by a scalar taken from that dimension of the vector.
   void MulRowsVec(const VectorBase<Real> &scale);
 
-  /// divide each row into src.NumCols() groups, 
-  /// and then scale i'th row's jth group of elements by src[i, j].   
+  /// Divide each row into src.NumCols() equal groups, and then scale i'th row's
+  /// j'th group of elements by src(i, j).  Requires src.NumRows() ==
+  /// this->NumRows() and this->NumCols() % src.NumCols() == 0.
   void MulRowsGroupMat(const MatrixBase<Real> &src);
     
   /// Returns logdet of matrix.
@@ -418,8 +419,8 @@ class MatrixBase {
   /// Set each element to y = log(1 + exp(x))
   void SoftHinge(const MatrixBase<Real> &src);
   
-  /// Apply the function y(i) = (sum_{j = i*G}^{(i+1)*G-1} x_j ^ (power)) ^ (1 / p)
-  /// where G = x.NumCols() / y.NumCols() must be an integer.
+  /// Apply the function y(i) = (sum_{j = i*G}^{(i+1)*G-1} x_j^(power))^(1 / p).
+  /// Requires src.NumRows() == this->NumRows() and  src.NumCols() % this->NumCols() == 0.
   void GroupPnorm(const MatrixBase<Real> &src, Real power);
 
 
