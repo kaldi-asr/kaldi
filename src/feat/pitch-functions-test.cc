@@ -129,6 +129,74 @@ static void UnitTestPieces() {
   }
 }
 
+// Make sure that the delayed output matches the non-delayed
+// version in the online scenario.
+static void UnitTestDelay() {
+  KALDI_LOG << "=== UnitTestDelay() ===\n";
+  for (int32 n = 0; n < 10; n++) {
+    // the parametrization object
+    PitchExtractionOptions ext_opt;
+    ProcessPitchOptions pro_opt1, pro_opt2;
+    pro_opt1.delta_pitch_noise_stddev = 0.0;  // to avoid mismatch of delta_log_pitch
+                                              // brought by rand noise.
+    pro_opt2.delta_pitch_noise_stddev = 0.0;  // to avoid mismatch of delta_log_pitch
+                                              // brought by rand noise.
+    pro_opt2.delay = rand() % 50;
+    ext_opt.nccf_ballast_online = true;  // this is necessary for the computation
+    // to be identical regardless how many pieces we break the signal into.
+
+    int32 size = 10000 + rand() % 50000;
+
+    Vector<BaseFloat> v(size);
+    // init with noise plus a sine-wave whose frequency is changing randomly.
+
+    double cur_freq = 200.0, normalized_time = 0.0;
+
+    for (int32 i = 0; i < size; i++) {
+      v(i) = RandGauss() + cos(normalized_time * M_2PI);
+      cur_freq += RandGauss();  // let the frequency wander a little.
+      if (cur_freq < 100.0) cur_freq = 100.0;
+      if (cur_freq > 300.0) cur_freq = 300.0;
+      normalized_time += cur_freq / ext_opt.samp_freq;
+    }
+
+    Matrix<BaseFloat> m1, m2;
+    // compute it online with multiple pieces.
+    OnlinePitchFeature pitch_extractor(ext_opt);
+    OnlineProcessPitch pitch_processor(pro_opt1, &pitch_extractor);
+    OnlineProcessPitch pitch_processor_delayed(pro_opt2, &pitch_extractor);
+    int32 start_samp = 0;
+    while (start_samp < v.Dim()) {
+      int32 num_samp = rand() % (v.Dim() + 1 - start_samp);
+      SubVector<BaseFloat> v_part(v, start_samp, num_samp);
+      pitch_extractor.AcceptWaveform(ext_opt.samp_freq, v_part);
+      start_samp += num_samp;
+    }
+    pitch_extractor.InputFinished();
+
+    int32 num_frames = pitch_processor.NumFramesReady();
+    m1.Resize(num_frames, pitch_processor.Dim());
+    for (int32 frame = 0; frame < num_frames; frame++) {
+      SubVector<BaseFloat> rowp(m1, frame);
+      pitch_processor.GetFrame(frame, &rowp);
+    }
+
+    int32 num_frames_delayed = pitch_processor_delayed.NumFramesReady();
+    m2.Resize(num_frames_delayed, pitch_processor_delayed.Dim());
+    for (int32 frame = 0; frame < num_frames_delayed; frame++) {
+      SubVector<BaseFloat> rowp(m2, frame);
+      pitch_processor_delayed.GetFrame(frame, &rowp);
+    }
+
+    KALDI_ASSERT(num_frames_delayed == num_frames + pro_opt2.delay);
+    SubMatrix<BaseFloat> m3(m2, pro_opt2.delay, num_frames, 0, m2.NumCols());
+    if (!ApproxEqual(m1, m3)) {
+      KALDI_ERR << "Post-processed pitch differs: " << m1 << " vs. " << m3;
+    }
+    KALDI_LOG << "Test passed :)\n";
+  }
+}
+
 extern bool pitch_use_naive_search; // was declared in pitch-functions.cc
 
 // Make sure that doing a calculation on the whole waveform gives
@@ -196,7 +264,7 @@ static void UnitTestComputeGPE() {
       if (gross_pitch(j,0) > 0.0) {
         tot_voiced++;
         real_pitch = 20000.0/gross_pitch(j,0);
-        if (fabs((real_pitch - kaldi_pitch(j,1))/real_pitch) > tol) 
+        if (fabs((real_pitch - kaldi_pitch(j,1))/real_pitch) > tol)
           wrong_pitch++;
       } else if (gross_pitch(j,0) == 0.0 && gross_pitch(j-1,0) == 0.0) {
         tot_unvoiced++;
@@ -443,6 +511,7 @@ void UnitTestProcess() {
 static void UnitTestFeatNoKeele() {
   UnitTestSimple();
   UnitTestPieces();
+  UnitTestDelay();
   UnitTestSearch();
 }
 
@@ -461,7 +530,7 @@ static void UnitTestFeatWithKeele() {
 
 int main() {
   using namespace kaldi;
-  
+
   SetVerboseLevel(3);
   try {
     UnitTestFeatNoKeele();

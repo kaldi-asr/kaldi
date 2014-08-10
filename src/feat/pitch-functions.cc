@@ -1368,17 +1368,18 @@ OnlineProcessPitch::OnlineProcessPitch(
 
 void OnlineProcessPitch::GetFrame(int32 frame,
                                   VectorBase<BaseFloat> *feat) {
+  int32 frame_delayed = frame < opts_.delay ? 0 : frame - opts_.delay;
   KALDI_ASSERT(feat->Dim() == dim_ &&
-               frame < NumFramesReady());
+               frame_delayed < NumFramesReady());
   int32 index = 0;
   if (opts_.add_pov_feature)
-    (*feat)(index++) = GetPovFeature(frame);
+    (*feat)(index++) = GetPovFeature(frame_delayed);
   if (opts_.add_normalized_log_pitch)
-    (*feat)(index++) = GetNormalizedLogPitchFeature(frame);
+    (*feat)(index++) = GetNormalizedLogPitchFeature(frame_delayed);
   if (opts_.add_delta_pitch)
-    (*feat)(index++) = GetDeltaPitchFeature(frame);
+    (*feat)(index++) = GetDeltaPitchFeature(frame_delayed);
   if (opts_.add_raw_log_pitch)
-    (*feat)(index++) = GetRawLogPitchFeature(frame);
+    (*feat)(index++) = GetRawLogPitchFeature(frame_delayed);
   KALDI_ASSERT(index == dim_);
 }
 
@@ -1525,9 +1526,10 @@ int32 OnlineProcessPitch::NumFramesReady() const {
   if (src_frames_ready == 0) {
     return 0;
   } else if (src_->IsLastFrame(src_frames_ready - 1)) {
-    return src_frames_ready;
+    return src_frames_ready + opts_.delay;
   } else {
-    return std::max(0, src_frames_ready - opts_.normalization_right_context);
+    return std::max(0, src_frames_ready - 
+      opts_.normalization_right_context + opts_.delay);
   }
 }
 

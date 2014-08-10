@@ -221,6 +221,7 @@ struct ProcessPitchOptions {
                                        // decoding to reduce latency
 
   int32 delta_window;
+  int32 delay;
   
   bool add_pov_feature;  
   bool add_normalized_log_pitch;  
@@ -236,6 +237,7 @@ struct ProcessPitchOptions {
       normalization_left_context(75),
       normalization_right_context(75),
       delta_window(2),
+      delay(0),
       add_pov_feature(true),
       add_normalized_log_pitch(true),
       add_delta_pitch(true),
@@ -267,6 +269,8 @@ struct ProcessPitchOptions {
     po->Register("delta-window", &delta_window,
                  "Number of frames on each side of central frame, to use for "
                  "delta window.");
+    po->Register("delay", &delay,
+                 "Number of frames by which the pitch information is delayed.");
     po->Register("add-pov-feature", &add_pov_feature,
                  "If true, the warped NCCF is added to output features");
     po->Register("add-normalized-log-pitch", &add_normalized_log_pitch,
@@ -323,7 +327,13 @@ class OnlineProcessPitch: public OnlineFeatureInterface {
   virtual int32 Dim() const { return dim_; }
 
   virtual bool IsLastFrame(int32 frame) const {
-    return src_->IsLastFrame(frame); }
+    if (frame <= -1)
+      return src_->IsLastFrame(-1);
+    else if (frame < opts_.delay) 
+      return src_->IsLastFrame(-1) == true ? false : src_->IsLastFrame(0);
+    else
+      return src_->IsLastFrame(frame - opts_.delay); 
+  }
 
   virtual int32 NumFramesReady() const;
 
