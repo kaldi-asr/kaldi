@@ -514,6 +514,133 @@ void PldaEstimator::GetOutput(Plda *plda) {
   plda->ComputeDerivedVars();
 }
 
+void PldaUnsupervisedAdaptor::AddStats(double weight,
+                                       const Vector<double> &ivector) {
+  if (mean_stats_.Dim() == 0) {
+    mean_stats_.Resize(ivector.Dim());
+    variance_stats_.Resize(ivector.Dim());
+  }
+  KALDI_ASSERT(weight >= 0.0);
+  tot_weight_ += weight;
+  mean_stats_.AddVec(weight, ivector);
+  variance_stats_.AddVec2(weight, ivector);
+}
+
+void PldaUnsupervisedAdaptor::AddStats(double weight,
+                                       const Vector<BaseFloat> &ivector) {
+  Vector<double> ivector_dbl(ivector);
+  this->AddStats(weight, ivector_dbl);
+}
+
+void PldaUnsupervisedAdaptor::UpdatePlda(const PldaUnsupervisedAdaptorConfig &config,
+                                         Plda *plda) const {
+  KALDI_ASSERT(tot_weight_ > 0.0);
+  int32 dim = mean_stats_.Dim();
+  KALDI_ASSERT(dim == plda->Dim());
+  Vector<double> mean(mean_stats_);
+  mean.Scale(1.0 / tot_weight_);
+  SpMatrix<double> variance(variance_stats_);
+  variance.Scale(1.0 / tot_weight_);
+  variance.AddVec2(-1.0, mean);  // Make it the uncentered variance.
+
+  // mean_diff of the adaptation data from the training data.  We optionally add
+  // this to our total covariance matrix
+  Vector<double> mean_diff(mean);
+  mean_diff.AddVec(-1.0, plda->mean_);
+  KALDI_ASSERT(config.mean_diff_scale >= 0.0);
+  variance.AddVec2(config.mean_diff_scale, mean_diff);
+
+  // update the plda's mean data-member with our adaptation-data mean.
+  plda->mean_.CopyFromVec(mean);
+
+
+  // transform_model_ is a row-scaled version of plda->transform_ that
+  // transforms into the space where the total covariance is 1.0.  Because
+  // plda->transform_ transforms into a space where the within-class covar is
+  // 1.0 and the the between-class covar is diag(plda->psi_), we need to scale
+  // each dimension i by 1.0 / sqrt(1.0 + plda->psi_(i))
+  
+  Matrix<double> transform_mod(plda->transform_);
+  for (int32 i = 0; i < dim; i++)
+    transform_mod.Row(i).Scale(1.0 / sqrt(1.0 + plda->psi_(i)));
+
+  // project the variance of the adaptation set into this space where
+  // the total covariance is unit.
+  SpMatrix<double> variance_proj(dim);
+  variance_proj.AddMat2Sp(1.0, transform_mod, kNoTrans,
+                          variance, 0.0);
+
+  // Do eigenvalue decomposition of variance_proj; this will tell us the
+  // directions in which the adaptation-data covariance is more than
+  // the training-data covariance.
+  Matrix<double> P(dim, dim);
+  Vector<double> s(dim);
+  variance_proj.Eig(&s, &P);
+  SortSvd(&s, &P);
+  KALDI_LOG << "Eigenvalues of adaptation-data total-covariance in space where "
+            << "training-data total-covariance is unit, is: " << s;
+
+  // W, B are the (within,between)-class covars in tye space transformed by
+  // transform_mod.
+  SpMatrix<double> W(dim), B(dim);
+  for (int32 i = 0; i < dim; i++) {
+    W(i, i) =           1.0 / (1.0 + plda->psi_(i)), 
+    B(i, i) = plda->psi_(i) / (1.0 + plda->psi_(i));
+  }
+  SpMatrix<double> W_mod(W), B_mod(B);
+  
+  Matrix<double> Pt(P, kTrans);
+  for (int32 i = 0; i < dim; i++) {
+    SubVector<double> direction_i(Pt, i);
+    // For this eigenvalue, compute the within-class covar projected with this direction,
+    // and the same for between.
+    BaseFloat within = VecSpVec(direction_i, W, direction_i),
+        between = VecSpVec(direction_i, B, direction_i);
+    KALDI_LOG << "For " << i << "'th eigenvalue, value is " << s(i)
+              << ", within-class covar in this direction is " << within
+              << ", between-class is " << between;
+    if (s(i) > 1.0) {
+      double excess_eig = s(i) - 1.0;
+      double excess_within_covar = excess_eig * config.within_covar_scale,
+          excess_between_covar = excess_eig * config.between_covar_scale;
+      W_mod.AddVec2(excess_within_covar, direction_i);
+      B_mod.AddVec2(excess_between_covar, direction_i);
+    }
+  }
+  TpMatrix<double> C(dim);
+  // Do Cholesky W_mod = C C^T.  Now if we use C^{-1} as a transform, we have
+  // C^{-1} W C^{-T} = I, so it makes the within-class covar unit.
+  C.Cholesky(W_mod);
+  TpMatrix<double> Cinv(C);
+  Cinv.Invert();
+  // B_mod_proj is B_mod projected by Cinv.
+  SpMatrix<double> B_mod_proj(dim);
+  B_mod_proj.AddTp2Sp(1.0, Cinv, kNoTrans, B_mod, 0.0);
+  Vector<double> psi_new(dim);
+  Matrix<double> Q(dim, dim);
+  // Do symmetric eigenvalue decomposition of B_mod_proj, so 
+  // B_mod_proj = Q diag(psi_new) Q^T
+  B_mod_proj.Eig(&psi_new, &Q);
+  SortSvd(&psi_new, &Q);
+  // This means that if we use Q^T as a transform, then Q^T B_mod_proj Q =
+  // diag(psi_new), hence Q^T diagonalizes B_mod_proj (while leaving the
+  // within-covar unit).
+  // The final transform we want, that projects from our original
+  // space to our newly normalized space, is:
+  // first transform_mod, then Cinv, then Q^T, i.e. the
+  // matrix Q^T Cinv transform_mod.
+  Matrix<double> Qt_Cinv(dim, dim);
+  Qt_Cinv.AddMatTp(1.0, Q, kTrans, Cinv, kNoTrans, 0.0);
+
+  Matrix<double> final_transform(dim, dim);
+  final_transform.AddMatMat(1.0, Qt_Cinv, kNoTrans,
+                            transform_mod, kNoTrans, 0.0);
+  KALDI_LOG << "Old diagonal of between-class covar was: "
+            << plda->psi_ << ", new diagonal is "
+            << psi_new;
+  plda->transform_.CopyFromMat(final_transform);
+  plda->psi_.CopyFromVec(psi_new);
+}
 
 } // namespace kaldi
 

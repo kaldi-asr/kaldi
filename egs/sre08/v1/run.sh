@@ -283,11 +283,21 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utt
    "ivector-copy-plda --smoothing=0.0 exp/ivectors_train_male/plda - |" \
    "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp ark:- |" \
    "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_test_short3_male/ivector.scp ark:- |" \
-   "cat '$trials' | awk '{print \$1, \$2}' |" foo
-
-local/score_sre08.sh $trials foo
+   "cat '$trials' | awk '{print \$1, \$2}' |" foo; local/score_sre08.sh $trials foo
 
 # Result for Male is below:
 # Scoring against data/sre08_trials/short2-short3-male.trials
 #   Condition:      0      1      2      3      4      5      6      7      8
 #         EER:  11.52   9.73   1.21   9.97   8.43   6.56   5.72   2.73   1.75
+
+
+# The next line is how you'd test the domain-adaptation stuff.
+# I haven't tested this yet in the up-to-date setup.
+
+cat exp/ivectors_sre08_train_short2_male/spk_ivector.scp exp/ivectors_sre08_test_short3_male/spk_ivector.scp > male.scp
+ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utts.ark \
+   "ivector-adapt-plda $adapt_opts exp/ivectors_train/plda scp:male.scp -|" \
+   scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp \
+   scp:exp/ivectors_sre08_test_short3_male/ivector.scp \
+   "cat '$trials' | awk '{print \$1, \$2}' |" foo local/score_sre08.sh $trials foo
+
