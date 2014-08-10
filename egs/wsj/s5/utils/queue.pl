@@ -167,7 +167,7 @@ print Q "ret=\$?\n";
 print Q "time2=\`date +\"%s\"\`\n";
 print Q "echo '#' Accounting: time=\$((\$time2-\$time1)) threads=$nof_threads >>$logfile\n";
 print Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
-print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137; 
+print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137;
   # let the script return with status 100 which will put it to E state; more easily rerunnable.
 if (!defined $jobname) { # not an array job
   print Q "touch $syncfile\n"; # so we know it's done.
