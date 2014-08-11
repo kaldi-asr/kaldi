@@ -580,7 +580,7 @@ void PldaUnsupervisedAdaptor::UpdatePlda(const PldaUnsupervisedAdaptorConfig &co
   KALDI_LOG << "Eigenvalues of adaptation-data total-covariance in space where "
             << "training-data total-covariance is unit, is: " << s;
 
-  // W, B are the (within,between)-class covars in tye space transformed by
+  // W, B are the (within,between)-class covars in the space transformed by
   // transform_mod.
   SpMatrix<double> W(dim), B(dim);
   for (int32 i = 0; i < dim; i++) {
@@ -643,4 +643,3 @@ void PldaUnsupervisedAdaptor::UpdatePlda(const PldaUnsupervisedAdaptorConfig &co
 }
 
 } // namespace kaldi
-
