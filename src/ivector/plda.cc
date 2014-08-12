@@ -587,15 +587,29 @@ void PldaUnsupervisedAdaptor::UpdatePlda(const PldaUnsupervisedAdaptorConfig &co
     W(i, i) =           1.0 / (1.0 + plda->psi_(i)), 
     B(i, i) = plda->psi_(i) / (1.0 + plda->psi_(i));
   }
-  SpMatrix<double> W_mod(W), B_mod(B);
+
+  // OK, so variance_proj (projected by transform_mod) is P diag(s) P^T.
+  // Suppose that after transform_mod we project by P^T.  Then the adaptation-data's
+  // variance would be P^T P diag(s) P^T P = diag(s), and the PLDA model's
+  // within class variance would be P^T W P and its between-class variance would be
+  // P^T B P.  We'd still have that W+B = I in this space.
+  // First let's compute these projected variances... we call the "proj2" because
+  // it's after the data has been projected twice (actually, transformed, as there is no
+  // dimension loss), by transform_mod and then P^T.
   
-  Matrix<double> Pt(P, kTrans);
+  SpMatrix<double> Wproj2(dim), Bproj2(dim);
+  Wproj2.AddMat2Sp(1.0, P, kTrans, W, 0.0);
+  Bproj2.AddMat2Sp(1.0, P, kTrans, B, 0.0);
+
+  Matrix<double> Ptrans(P, kTrans);
+
+  SpMatrix<double> Wproj2mod(Wproj2), Bproj2mod(Bproj2);
+  
   for (int32 i = 0; i < dim; i++) {
-    SubVector<double> direction_i(Pt, i);
     // For this eigenvalue, compute the within-class covar projected with this direction,
     // and the same for between.
-    BaseFloat within = VecSpVec(direction_i, W, direction_i),
-        between = VecSpVec(direction_i, B, direction_i);
+    BaseFloat within = Wproj2(i, i),
+        between = Bproj2(i, i);
     KALDI_LOG << "For " << i << "'th eigenvalue, value is " << s(i)
               << ", within-class covar in this direction is " << within
               << ", between-class is " << between;
@@ -603,38 +617,62 @@ void PldaUnsupervisedAdaptor::UpdatePlda(const PldaUnsupervisedAdaptorConfig &co
       double excess_eig = s(i) - 1.0;
       double excess_within_covar = excess_eig * config.within_covar_scale,
           excess_between_covar = excess_eig * config.between_covar_scale;
-      W_mod.AddVec2(excess_within_covar, direction_i);
-      B_mod.AddVec2(excess_between_covar, direction_i);
-    }
+      Wproj2mod(i, i) += excess_within_covar;
+      Bproj2mod(i, i) += excess_between_covar;
+    } /*
+        Below I was considering a method like below, to try to scale up
+        the dimensions that had less variance than expected in our sample..
+        this didn't help, and actually when I set that power to +0.2 instead
+        of -0.5 it gave me an improvement on sre08.  But I'm not sure
+        about this.. it just doesn't seem right.
+      else {
+      BaseFloat scale = pow(std::max(1.0e-10, s(i)), -0.5);
+      BaseFloat max_scale = 10.0;  // I'll make this configurable later.
+      scale = std::min(scale, max_scale);
+      Ptrans.Row(i).Scale(scale);
+      } */
   }
+
+  // combined transform "transform_mod" and then P^T that takes us to the space
+  // where {W,B}proj2{,mod} are.
+  Matrix<double> combined_trans(dim, dim);
+  combined_trans.AddMatMat(1.0, Ptrans, kNoTrans,
+                           transform_mod, kNoTrans, 0.0);
+  Matrix<double> combined_trans_inv(combined_trans);  // ... and its inverse.
+  combined_trans_inv.Invert();
+
+  // Wmod and Bmod are as Wproj2 and Bproj2 but taken back into the original
+  // iVector space.
+  SpMatrix<double> Wmod(dim), Bmod(dim);
+  Wmod.AddMat2Sp(1.0, combined_trans_inv, kNoTrans, Wproj2mod, 0.0);
+  Bmod.AddMat2Sp(1.0, combined_trans_inv, kNoTrans, Bproj2mod, 0.0);
+  
   TpMatrix<double> C(dim);
-  // Do Cholesky W_mod = C C^T.  Now if we use C^{-1} as a transform, we have
+  // Do Cholesky Wmod = C C^T.  Now if we use C^{-1} as a transform, we have
   // C^{-1} W C^{-T} = I, so it makes the within-class covar unit.
-  C.Cholesky(W_mod);
+  C.Cholesky(Wmod);
   TpMatrix<double> Cinv(C);
   Cinv.Invert();
-  // B_mod_proj is B_mod projected by Cinv.
-  SpMatrix<double> B_mod_proj(dim);
-  B_mod_proj.AddTp2Sp(1.0, Cinv, kNoTrans, B_mod, 0.0);
+  
+  // Bmod_proj is Bmod projected by Cinv.
+  SpMatrix<double> Bmod_proj(dim);
+  Bmod_proj.AddTp2Sp(1.0, Cinv, kNoTrans, Bmod, 0.0);
   Vector<double> psi_new(dim);
   Matrix<double> Q(dim, dim);
-  // Do symmetric eigenvalue decomposition of B_mod_proj, so 
-  // B_mod_proj = Q diag(psi_new) Q^T
-  B_mod_proj.Eig(&psi_new, &Q);
+  // Do symmetric eigenvalue decomposition of Bmod_proj, so 
+  // Bmod_proj = Q diag(psi_new) Q^T
+  Bmod_proj.Eig(&psi_new, &Q);
   SortSvd(&psi_new, &Q);
-  // This means that if we use Q^T as a transform, then Q^T B_mod_proj Q =
-  // diag(psi_new), hence Q^T diagonalizes B_mod_proj (while leaving the
+  // This means that if we use Q^T as a transform, then Q^T Bmod_proj Q =
+  // diag(psi_new), hence Q^T diagonalizes Bmod_proj (while leaving the
   // within-covar unit).
   // The final transform we want, that projects from our original
   // space to our newly normalized space, is:
-  // first transform_mod, then Cinv, then Q^T, i.e. the
-  // matrix Q^T Cinv transform_mod.
-  Matrix<double> Qt_Cinv(dim, dim);
-  Qt_Cinv.AddMatTp(1.0, Q, kTrans, Cinv, kNoTrans, 0.0);
-
+  // first Cinv, then Q^T, i.e. the
+  // matrix Q^T Cinv.
   Matrix<double> final_transform(dim, dim);
-  final_transform.AddMatMat(1.0, Qt_Cinv, kNoTrans,
-                            transform_mod, kNoTrans, 0.0);
+  final_transform.AddMatTp(1.0, Q, kTrans, Cinv, kNoTrans, 0.0);
+
   KALDI_LOG << "Old diagonal of between-class covar was: "
             << plda->psi_ << ", new diagonal is "
             << psi_new;
