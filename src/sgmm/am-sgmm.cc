@@ -29,6 +29,13 @@
 namespace kaldi {
 using std::vector;
 
+// This function needs to be added because std::generate is complaining
+// about RandGauss(), which takes an optional arguments.
+static inline float _RandGauss()
+{
+  return RandGauss();
+}
+
 void AmSgmm::Read(std::istream &in_stream, bool binary) {
   int32 num_states, feat_dim, num_gauss;
   std::string token;
@@ -537,7 +544,7 @@ void AmSgmm::SplitSubstates(const Vector<BaseFloat> &state_occupancies,
 
       // v_{jkm} := +/- split_perturb * H_k^{(sm)}^{-0.5} * rand_vec
       std::generate(rand_vec.Data(), rand_vec.Data() + rand_vec.Dim(),
-                    RandGauss);
+                    _RandGauss);
       v_shift.AddSpVec(perturb, sqrt_H_sm, rand_vec, 0.0);
       v_[j].Row(n_substates_j).CopyFromVec(v_[j].Row(split_substate));
       v_[j].Row(n_substates_j).AddVec(1.0, v_shift);

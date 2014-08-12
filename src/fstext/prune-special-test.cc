@@ -61,7 +61,7 @@ static void TestPruneSpecial() {
   }
 
   KALDI_ASSERT(RandEquivalent(ofst1, ofst2,
-                              5/*paths*/, 0.01/*delta*/, rand()/*seed*/,
+                              5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/,
                               100/*path length-- max?*/));
 
   delete ifst;

@@ -320,7 +320,7 @@ void UnitTestClassifyRspecifier() {
 }
 
 void UnitTestTableSequentialInt32(bool binary) {
-  int32 sz = rand() % 10;
+  int32 sz = Rand() % 10;
   std::vector<std::string> k;
   std::vector<int32> v;
 
@@ -328,7 +328,7 @@ void UnitTestTableSequentialInt32(bool binary) {
     k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
     if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( rand() );
+    v.push_back( Rand() );
   }
 
   bool ans;
@@ -352,7 +352,7 @@ void UnitTestTableSequentialInt32(bool binary) {
 }
 
 void UnitTestTableSequentialBool(bool binary) {
-  int32 sz = rand() % 10;
+  int32 sz = Rand() % 10;
   std::vector<std::string> k;
   std::vector<bool> v;
 
@@ -360,7 +360,7 @@ void UnitTestTableSequentialBool(bool binary) {
     k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
     if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( (rand()%2 == 0) );
+    v.push_back( (Rand()%2 == 0) );
   }
 
   bool ans;
@@ -385,7 +385,7 @@ void UnitTestTableSequentialBool(bool binary) {
 
 
 void UnitTestTableSequentialDouble(bool binary) {
-  int32 sz = rand() % 10;
+  int32 sz = Rand() % 10;
   std::vector<std::string> k;
   std::vector<double> v;
 
@@ -393,7 +393,7 @@ void UnitTestTableSequentialDouble(bool binary) {
     k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
     if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( (rand() / static_cast<double>(rand()) ));
+    v.push_back( (Rand() / static_cast<double>(Rand()) ));
   }
 
   bool ans;
@@ -425,7 +425,7 @@ void UnitTestTableSequentialDouble(bool binary) {
 
 // Writing as both and reading as archive.
 void UnitTestTableSequentialDoubleBoth(bool binary, bool read_scp) {
-  int32 sz = rand() % 10;
+  int32 sz = Rand() % 10;
   std::vector<std::string> k;
   std::vector<double> v;
 
@@ -433,7 +433,7 @@ void UnitTestTableSequentialDoubleBoth(bool binary, bool read_scp) {
     k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
     if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( (rand() / static_cast<double>(rand()) ));
+    v.push_back( (Rand() / static_cast<double>(Rand()) ));
   }
 
   bool ans;
@@ -465,7 +465,7 @@ void UnitTestTableSequentialDoubleBoth(bool binary, bool read_scp) {
 
 // Writing as both and reading as archive.
 void UnitTestTableSequentialInt32VectorBoth(bool binary, bool read_scp) {
-  int32 sz = rand() % 10;
+  int32 sz = Rand() % 10;
   std::vector<std::string> k;
   std::vector<std::vector<int32> > v;
 
@@ -474,9 +474,9 @@ void UnitTestTableSequentialInt32VectorBoth(bool binary, bool read_scp) {
     // some single quotes too but it doesn't really matter.
     if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
     v.push_back( std::vector<int32>() );
-    int32 sz2 = rand() % 5;
+    int32 sz2 = Rand() % 5;
     for (int32 j = 0; j  < sz2; j++)
-      v.back().push_back( rand() % 100);
+      v.back().push_back( Rand() % 100);
   }
 
   bool ans;
@@ -502,7 +502,7 @@ void UnitTestTableSequentialInt32VectorBoth(bool binary, bool read_scp) {
 
 // Writing as both and reading as archive.
 void UnitTestTableSequentialInt32PairVectorBoth(bool binary, bool read_scp) {
-  int32 sz = rand() % 10;
+  int32 sz = Rand() % 10;
   std::vector<std::string> k(sz);
   std::vector<std::vector<std::pair<int32, int32> > > v(sz);
 
@@ -510,9 +510,9 @@ void UnitTestTableSequentialInt32PairVectorBoth(bool binary, bool read_scp) {
     k[i] = CharToString( 'a' + static_cast<char>(i));  // This gives us
     // some single quotes too but it doesn't really matter.
     if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    int32 sz2 = rand() % 5;
+    int32 sz2 = Rand() % 5;
     for (int32 j = 0; j < sz2; j++) 
-      v[i].push_back(std::pair<int32, int32>(rand() % 10, rand() % 10));
+      v[i].push_back(std::pair<int32, int32>(Rand() % 10, Rand() % 10));
   }
   
   bool ans;
@@ -538,7 +538,7 @@ void UnitTestTableSequentialInt32PairVectorBoth(bool binary, bool read_scp) {
 
 // Writing as both and reading as archive.
 void UnitTestTableSequentialInt32VectorVectorBoth(bool binary, bool read_scp) {
-  int32 sz = rand() % 10;
+  int32 sz = Rand() % 10;
   std::vector<std::string> k;
   std::vector<std::vector<std::vector<int32> > > v;
 
@@ -547,12 +547,12 @@ void UnitTestTableSequentialInt32VectorVectorBoth(bool binary, bool read_scp) {
     // some single quotes too but it doesn't really matter.
     if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
     v.push_back( std::vector<std::vector<int32> >() );
-    int32 sz2 = rand() % 5;
+    int32 sz2 = Rand() % 5;
     for (int32 j = 0; j  < sz2; j++) {
       v.back().push_back(std::vector<int32>() );
-      int32 sz3 = rand() % 2;
+      int32 sz3 = Rand() % 2;
       for (int32 k = 0; k  < sz3; k++)
-        v.back().back().push_back( rand() % 100);
+        v.back().back().push_back( Rand() % 100);
     }
   }
 
@@ -578,7 +578,7 @@ void UnitTestTableSequentialInt32VectorVectorBoth(bool binary, bool read_scp) {
 
 
 void UnitTestTableSequentialInt32Script(bool binary) {
-  int32 sz = rand() % 10;
+  int32 sz = Rand() % 10;
   std::vector<std::pair<std::string, std::string> > script;
   std::vector<std::string> k;
   std::vector<int32> v;
@@ -590,7 +590,7 @@ void UnitTestTableSequentialInt32Script(bool binary) {
     buf[2] = '\0';
     k.push_back( std::string(buf));
     script.push_back( std::make_pair(std::string(buf), std::string(buf) + ".tmp"));
-    v.push_back( rand() );
+    v.push_back( Rand() );
   }
 
   WriteScriptFile("tmp.scp", script);
@@ -622,7 +622,7 @@ void UnitTestTableSequentialInt32Script(bool binary) {
 
 // Writing as both and reading as archive.
 void UnitTestTableSequentialDoubleMatrixBoth(bool binary, bool read_scp) {
-  int32 sz = rand() % 10;
+  int32 sz = Rand() % 10;
   std::vector<std::string> k;
   std::vector<Matrix<double>*> v;
 
@@ -630,7 +630,7 @@ void UnitTestTableSequentialDoubleMatrixBoth(bool binary, bool read_scp) {
     k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
     if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( new Matrix<double>(1 + rand()%4, 1 + rand() % 4));
+    v.push_back( new Matrix<double>(1 + Rand()%4, 1 + Rand() % 4));
     for (int32 i = 0; i < v.back()->NumRows(); i++)
       for (int32 j = 0; j < v.back()->NumCols(); j++)
         (*(v.back()))(i, j) = RandGauss();
@@ -670,7 +670,7 @@ void UnitTestTableSequentialDoubleMatrixBoth(bool binary, bool read_scp) {
 
 // Writing as both and reading as archive.
 void UnitTestTableSequentialBaseFloatVectorBoth(bool binary, bool read_scp) {
-  int32 sz = rand() % 10;
+  int32 sz = Rand() % 10;
   std::vector<std::string> k;
   std::vector<Vector<BaseFloat>*> v;
 
@@ -678,7 +678,7 @@ void UnitTestTableSequentialBaseFloatVectorBoth(bool binary, bool read_scp) {
     k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
     if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( new Vector<BaseFloat>(1 + rand()%4));
+    v.push_back( new Vector<BaseFloat>(1 + Rand()%4));
     for (int32 i = 0; i < v.back()->Dim(); i++)
       (*(v.back()))(i) = RandGauss();
   }
@@ -717,8 +717,8 @@ void UnitTestTableSequentialBaseFloatVectorBoth(bool binary, bool read_scp) {
 template<class T> void RandomizeVector(std::vector<T> *v) {
   if (v->size() > 1) {
     for (size_t i = 0; i < 10; i++) {
-      size_t j = rand() % v->size(),
-          k = rand() % v->size();
+      size_t j = Rand() % v->size(),
+          k = Rand() % v->size();
       if (j != k)
         std::swap((*v)[j], (*v)[k]);
     }
@@ -731,7 +731,7 @@ template<class T> void RandomizeVector(std::vector<T> *v) {
 void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
                                     bool sorted, bool called_sorted,
                                     bool once) {
-  int32 sz = rand() % 10;
+  int32 sz = Rand() % 10;
   std::vector<std::string> k;
   std::vector<double> v;
 
@@ -739,7 +739,7 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
     k.push_back( CharToString( 'a' + static_cast<char>(i)));  // This gives us
     // some single quotes too but it doesn't really matter.
     if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
-    v.push_back( (rand() / static_cast<double>(rand()) ));
+    v.push_back( (Rand() / static_cast<double>(Rand()) ));
   }
 
   if (!sorted)
@@ -758,20 +758,20 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
 
   std::string name;
   if (sorted) name += "s,";
-  else if (rand()%2 == 0) name += "ns,";
+  else if (Rand()%2 == 0) name += "ns,";
   if (called_sorted) name += "cs,";
-  else if (rand()%2 == 0) name += "ncs,";
+  else if (Rand()%2 == 0) name += "ncs,";
   if (once) name += "o,";
-  else if (rand()%2 == 0) name += "no,";
+  else if (Rand()%2 == 0) name += "no,";
   name += std::string(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
 
   RandomAccessDoubleReader sbr(name);
 
   if (sz != 0) {
     std::vector<std::string> read_keys;
-    int32 read_sz = rand() % 5;
+    int32 read_sz = Rand() % 5;
     for (int32 i = 0; i < read_sz; i++)
-      read_keys.push_back(k[rand() % k.size()]);
+      read_keys.push_back(k[Rand() % k.size()]);
     std::sort(read_keys.begin(), read_keys.end());
     if (once) Uniq(&read_keys);
     if (!called_sorted)
@@ -783,7 +783,7 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
       double value;
       for (size_t i = 0; i < k.size(); i++)
         if (cur_key == k[i]) value = v[i];
-      if (rand() % 2 == 0) {
+      if (Rand() % 2 == 0) {
         bool ans = sbr.HasKey(cur_key);
         KALDI_ASSERT(ans == true);
       }
@@ -800,7 +800,7 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
 void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
                                          bool sorted, bool called_sorted,
                                          bool once) {
-  int32 sz = rand() % 10;
+  int32 sz = Rand() % 10;
   std::vector<std::string> k;
   std::vector<Matrix<double> > v;
 
@@ -809,10 +809,10 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
     // some single quotes too but it doesn't really matter.
     if (i%2 == 0) k.back() = k.back() +  CharToString( 'a' + i);  // make them different lengths.
     v.resize(v.size()+1);
-    v.back().Resize(1 + rand()%3, 1 + rand()%3);
+    v.back().Resize(1 + Rand()%3, 1 + Rand()%3);
     for (int32 j = 0; j < v.back().NumRows(); j++)
       for (int32 k = 0; k < v.back().NumCols(); k++)
-        v.back()(j, k) =  (rand() % 100);
+        v.back()(j, k) =  (Rand() % 100);
   }
 
   if (!sorted)
@@ -831,20 +831,20 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
 
   std::string name;
   if (sorted) name += "s,";
-  else if (rand()%2 == 0) name += "ns,";
+  else if (Rand()%2 == 0) name += "ns,";
   if (called_sorted) name += "cs,";
-  else if (rand()%2 == 0) name += "ncs,";
+  else if (Rand()%2 == 0) name += "ncs,";
   if (once) name += "o,";
-  else if (rand()%2 == 0) name += "no,";
+  else if (Rand()%2 == 0) name += "no,";
   name += std::string(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
 
   RandomAccessDoubleMatrixReader sbr(name);
 
   if (sz != 0) {
     std::vector<std::string> read_keys;
-    int32 read_sz = rand() % 5;
+    int32 read_sz = Rand() % 5;
     for (int32 i = 0; i < read_sz; i++)
-      read_keys.push_back(k[rand() % k.size()]);
+      read_keys.push_back(k[Rand() % k.size()]);
     std::sort(read_keys.begin(), read_keys.end());
     if (once) Uniq(&read_keys);
     if (!called_sorted)
@@ -856,7 +856,7 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
       Matrix<double> *value_ptr = NULL;
       for (size_t i = 0; i < k.size(); i++)
         if (cur_key == k[i]) value_ptr = &(v[i]);
-      if (rand() % 2 == 0) {
+      if (Rand() % 2 == 0) {
         bool ans = sbr.HasKey(cur_key);
         KALDI_ASSERT(ans == true);
       }

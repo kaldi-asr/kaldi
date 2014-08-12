@@ -17,6 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include "base/kaldi-math.h"
 #include "util/stl-utils.h"
 #include "tree/build-tree-questions.h"
 #include "tree/build-tree-utils.h"

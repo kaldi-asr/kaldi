@@ -121,7 +121,7 @@ void UnitTestEstimateMmieDiagGmm() {
   EbwOptions ebw_opts;
   EbwWeightOptions ebw_weight_opts;
 
-  int r = rand() % 16;
+  int r = Rand() % 16;
   GmmFlagsType flags = (r%2 == 0 ? kGmmMeans : 0)
       + ((r/2)%2 == 0 ? kGmmVariances : 0)
       + ((r/4)%2 == 0 ? kGmmWeights : 0);

@@ -25,8 +25,8 @@
 namespace kaldi {
 
 void InitRandomGmm(DiagGmm *gmm_in) {
-  int32 num_gauss = 10 + rand() % 5;
-  int32 dim = 20 + rand() % 15;
+  int32 num_gauss = 10 + Rand() % 5;
+  int32 dim = 20 + Rand() % 15;
   DiagGmm &gmm(*gmm_in);
   gmm.Resize(num_gauss, dim);
   Matrix<BaseFloat> inv_vars(num_gauss, dim),

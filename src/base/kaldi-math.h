@@ -85,39 +85,54 @@ const float kLogZeroFloat = -std::numeric_limits<float>::infinity();
 const double kLogZeroDouble = -std::numeric_limits<double>::infinity();
 const BaseFloat kLogZeroBaseFloat = -std::numeric_limits<BaseFloat>::infinity();
 
-// Returns a random integer between min and max inclusive.
-int32 RandInt(int32 min, int32 max);
+// Returns a random integer between 0 and RAND_MAX, inclusive
+int Rand(struct RandomState* state=NULL);
 
-bool WithProb(BaseFloat prob); // Returns true with probability "prob",
+// State for thread-safe random number generator
+struct RandomState {
+  RandomState() {
+    seed = Rand();
+  }
+  unsigned seed;
+};
+
+// Returns a random integer between min and max inclusive.
+int32 RandInt(int32 min, int32 max, struct RandomState* state=NULL);
+
+bool WithProb(BaseFloat prob, struct RandomState* state=NULL); // Returns true with probability "prob",
 // with 0 <= prob <= 1 [we check this].
-// Internally calls rand().  This function is carefully implemented so
+// Internally calls Rand().  This function is carefully implemented so
 // that it should work even if prob is very small.
 
-inline float RandUniform() {  // random intended to be strictly between 0 and 1.
-  return static_cast<float>((rand() + 1.0) / (RAND_MAX+2.0));  
+inline float RandUniform(struct RandomState* state=NULL) {  // random intended to be strictly between 0 and 1.
+  return static_cast<float>((Rand(state) + 1.0) / (RAND_MAX+2.0));  
 }
 
-inline float RandGauss() {
-  return static_cast<float>(sqrt (-2 * std::log(RandUniform()))
-                            * cos(2*M_PI*RandUniform()));
+inline float RandGauss(struct RandomState* state=NULL) {
+  return static_cast<float>(sqrt (-2 * std::log(RandUniform(state)))
+                            * cos(2*M_PI*RandUniform(state)));
 }
 
 // Returns poisson-distributed random number.  Uses Knuth's algorithm.
 // Take care: this takes time proportinal
 // to lambda.  Faster algorithms exist but are more complex.
-int32 RandPoisson(float lambda);
+int32 RandPoisson(float lambda, struct RandomState* state=NULL);
+
+// Returns a pair of gaussian random numbers. Uses Box-Muller transform
+void RandGauss2(float *a, float *b, RandomState *state = NULL);
+void RandGauss2(double *a, double *b, RandomState *state = NULL);
 
 // Also see Vector<float,double>::RandCategorical().
 
 // This is a randomized pruning mechanism that preserves expectations,
 // that we typically use to prune posteriors.
 template<class Float>
-inline Float RandPrune(Float post, BaseFloat prune_thresh) {
+inline Float RandPrune(Float post, BaseFloat prune_thresh, struct RandomState* state=NULL) {
   KALDI_ASSERT(prune_thresh >= 0.0);
   if (post == 0.0 || std::abs(post) >= prune_thresh)
     return post;
   return (post >= 0 ? 1.0 : -1.0) *
-      (RandUniform() <= fabs(post)/prune_thresh ? prune_thresh : 0.0);
+      (RandUniform(state) <= fabs(post)/prune_thresh ? prune_thresh : 0.0);
 }
 
 static const double kMinLogDiffDouble = std::log(DBL_EPSILON);  // negative!

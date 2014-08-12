@@ -23,9 +23,9 @@
 namespace kaldi {
 
 void UnitTestPosteriors() {
-  int32 n_features = rand() % 600 + 10,
-        n_xs = rand() % 200 + 100,
-        n_labels = rand() % 20 + 10;
+  int32 n_features = Rand() % 600 + 10,
+        n_xs = Rand() % 200 + 100,
+        n_labels = Rand() % 20 + 10;
 
   LogisticRegressionConfig conf;
   conf.max_steps = 20;
@@ -66,16 +66,16 @@ void UnitTestPosteriors() {
 
 void UnitTestTrain() {
 
-  int32 n_features = rand() % 600 + 10,
-        n_xs = rand() % 200 + 100,
-        n_labels = rand() % 20 + 10;
+  int32 n_features = Rand() % 600 + 10,
+        n_xs = Rand() % 200 + 100,
+        n_labels = Rand() % 20 + 10;
   double normalizer = 0.01;
   Matrix<BaseFloat> xs(n_xs, n_features);
   xs.SetRandn();
 
   std::vector<int32> ys;
   for (int32 i = 0; i < n_xs; i++) {
-    ys.push_back(rand() % n_labels);
+    ys.push_back(Rand() % n_labels);
   }
 
   LogisticRegressionConfig conf;

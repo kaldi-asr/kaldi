@@ -979,7 +979,7 @@ class RandomComponent: public Component {
  public:
   // This function is required in testing code and in other places we need
   // consistency in the random number generation (e.g. when optimizing
-  // validation-set performance), but check where else we call srand().  You'll
+  // validation-set performance), but check where else we call sRand().  You'll
   // need to call srand as well as making this call.  
   void ResetGenerator() { random_generator_.SeedGpu(0); }
  protected:

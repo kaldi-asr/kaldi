@@ -160,8 +160,8 @@ static void UnitTestWeightedMwn() {
   KALDI_LOG << "=== UnitTestWeightedMwn1() ===";
   // compare the results of WeightedMwn1 and Sliding CMN with uniform weights.
   for (int32 i = 0; i < 1000; i++) {
-    int32 num_frames = 1 + (rand()%10 * 10);
-    int32 normalization_win_size = 5 + rand() % 50;
+    int32 num_frames = 1 + (Rand()%10 * 10);
+    int32 normalization_win_size = 5 + Rand() % 50;
     Matrix<BaseFloat> feat(num_frames, 2),
                       output_feat(num_frames, 2);
     feat.SetRandn();
@@ -181,7 +181,7 @@ static void UnitTestWeightedMwn() {
     SlidingWindowCmnOptions opts;
     opts.cmn_window = normalization_win_size;
     opts.center = true;
-    opts.min_window = 1 + rand() % 100;
+    opts.min_window = 1 + Rand() % 100;
     if (opts.min_window > opts.cmn_window)
       opts.min_window = opts.cmn_window;
     Matrix<BaseFloat> output_feat2(num_frames, 2);
@@ -201,12 +201,12 @@ static void UnitTestWeightedMwn() {
   }
   // Weighted Moving Window Normalization with non-uniform weights
   /*
-  int32 num_frames = 1 + (rand()%10 * 20);
-  int32 normalization_win_size = 5 + rand() % 50;
+  int32 num_frames = 1 + (Rand()%10 * 20);
+  int32 normalization_win_size = 5 + Rand() % 50;
   Matrix<BaseFloat> feat(num_frames, 2),
     output_feat(num_frames, 2);
   for (int32 j = 0; j < num_frames; j++) {
-    int32 r = rand() % 2;
+    int32 r = Rand() % 2;
     feat(j, 0) = RandUniform() / (1 + 1000.0 * r);
     feat(j, 1) = feat(j, 1) * feat(j, 0);
   }
@@ -216,7 +216,7 @@ static void UnitTestWeightedMwn() {
 }
 static void UnitTestTakeLogOfPitch() {
   for (int32 i = 0; i < 100; i++) {
-    int num_frame = 50 + (rand() % 200 * 200);
+    int num_frame = 50 + (Rand() % 200 * 200);
     Matrix<BaseFloat> input(num_frame, 2);
     input.SetRandn();
     input.Scale(100);
@@ -371,7 +371,7 @@ void UnitTestPostProcess() {
 void UnitTestDeltaPitch() {
   KALDI_LOG << "=== UnitTestDeltaPitch() ===";
   for (int32 i = 0; i < 1; i++) {
-    int32 num_frames = 1 + (rand()%10 * 1000);
+    int32 num_frames = 1 + (Rand()%10 * 1000);
     Vector<BaseFloat> feat(num_frames),
       output_feat(num_frames), output_feat2(num_frames);
     for (int32 j = 0; j < num_frames; j++)

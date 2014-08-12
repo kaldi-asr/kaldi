@@ -58,8 +58,8 @@ template<typename Real> static void InitRand(SpMatrix<Real> *M) {
 
 template<typename Real> static void UnitTestGpsr() {
   for (int32 i = 0; i < 5; i++) {
-    MatrixIndexT dim1 = (rand() % 10) + 10;
-    MatrixIndexT dim2 = (rand() % 10) + 10;
+    MatrixIndexT dim1 = (Rand() % 10) + 10;
+    MatrixIndexT dim2 = (Rand() % 10) + 10;
 
     Matrix<Real> M(dim1, dim2);
     InitRand(&M);
@@ -75,7 +75,7 @@ template<typename Real> static void UnitTestGpsr() {
     Vector<Real> g(dim2);
     InitRand(&g);
     GpsrConfig opts;
-    opts.debias = (rand()%2 == 0);
+    opts.debias = (Rand()%2 == 0);
     Real objf_old = 0.5* VecSpVec(x, H, x) - VecVec(x, g) +
         opts.gpsr_tau * x.Norm(1.0);
     GpsrBasic(opts, H, g, &x);

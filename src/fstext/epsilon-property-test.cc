@@ -42,7 +42,7 @@ void TestEnsureEpsilonProperty() {
       assert(!((c & kStateHasEpsilonArcsLeaving) != 0 &&
                (c & kStateHasNonEpsilonArcsLeaving) != 0));
     }
-    assert(RandEquivalent(fst2, *fst, 5, 0.01, rand(), 10));    
+    assert(RandEquivalent(fst2, *fst, 5, 0.01, kaldi::Rand(), 10));    
     delete fst;
   }
 }

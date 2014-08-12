@@ -28,7 +28,7 @@ namespace kaldi {
 
 void InitRandomGmm (DiagGmm *gmm_in) {
   int32 num_gauss = 5 + rand () % 4;
-  int32 dim = 6 + rand() % 5;
+  int32 dim = 6 + Rand() % 5;
   DiagGmm &gmm(*gmm_in);
   gmm.Resize(num_gauss, dim);
   Matrix<BaseFloat> inv_vars(num_gauss, dim),
@@ -53,8 +53,8 @@ void UnitTestFmllrRaw(bool use_offset) {
   InitRandomGmm(&gmm);
   int32 model_dim =  gmm.Dim();
 
-  int32 raw_dim = 10 + rand() % 5;
-  int32 num_splice = 1 + rand() % 5;
+  int32 raw_dim = 10 + Rand() % 5;
+  int32 num_splice = 1 + Rand() % 5;
   while (num_splice * raw_dim < model_dim) {
     num_splice++;
   }

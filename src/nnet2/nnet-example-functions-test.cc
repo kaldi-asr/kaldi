@@ -27,12 +27,12 @@ namespace nnet2 {
 // this is just to test the function to solve the packing problem.
 
 void UnitTestSolvePackingProblem() {
-  size_t size = rand() % 20;
+  size_t size = Rand() % 20;
   std::vector<BaseFloat> item_costs;
   for (size_t i = 0; i < size; i++) {
-    item_costs.push_back(0.5 * (rand() % 15));
+    item_costs.push_back(0.5 * (Rand() % 15));
   }
-  BaseFloat max_cost = 0.66 + rand() % 5;
+  BaseFloat max_cost = 0.66 + Rand() % 5;
 
   std::vector<std::vector<size_t> > groups;
   SolvePackingProblem(max_cost, item_costs, &groups);

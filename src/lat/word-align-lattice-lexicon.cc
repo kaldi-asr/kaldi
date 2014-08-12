@@ -954,7 +954,7 @@ bool TestWordAlignedLattice(const WordAlignLatticeLexiconInfo &lexicon_info,
   MapSymbols(lexicon_info, &aligned_clat);
   
   /// Check equivalence.
-  int32 num_paths = 5, seed = rand(), max_path_length = -1;
+  int32 num_paths = 5, seed = Rand(), max_path_length = -1;
   BaseFloat delta = 0.2; // some lattices have large costs -> use large delta.
 
   FLAGS_v = GetVerboseLevel(); // set the OpenFst verbose level to the Kaldi
@@ -1006,7 +1006,7 @@ bool WordAlignLatticeLexicon(const CompactLattice &lat,
   
   /*  if (ans && opts.test) {
     /// Check equivalence.
-    int32 num_paths = 5, seed = rand(), max_path_length = -1;
+    int32 num_paths = 5, seed = Rand(), max_path_length = -1;
     BaseFloat delta = 0.2; // some lattices have large costs -> use large delta.
     if (!RandEquivalent(lat, phone_aligned_lat, num_paths, delta, seed, max_path_length)) {
       KALDI_WARN << "Equivalence test failed during lattice alignment (phone-alignment stage)";

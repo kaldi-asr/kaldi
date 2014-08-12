@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
         continue;
       }
       const Lattice &lat2 = lattice_reader2.Value(key);
-      if (fst::RandEquivalent(lat1, lat2, num_paths, delta, rand())) {
+      if (fst::RandEquivalent(lat1, lat2, num_paths, delta, Rand())) {
         n_equivalent++;
         KALDI_LOG << "Lattices were equivalent for utterance " << key;
       } else {

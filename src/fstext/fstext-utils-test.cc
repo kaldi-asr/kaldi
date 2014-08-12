@@ -21,7 +21,7 @@
 #include "fstext/fstext-utils.h"
 #include "fstext/fst-test-utils.h"
 #include "util/stl-utils.h"
-
+#include "base/kaldi-math.h"
 
 namespace fst
 {
@@ -31,11 +31,11 @@ void TestMakeLinearAcceptor() {
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
-  int len = rand() % 10;
+  int len = kaldi::Rand() % 10;
   vector<I> vec;
   vector<I> vec_nozeros;
   for (int i = 0; i < len; i++) {
-    int j = rand() % len;
+    int j = kaldi::Rand() % len;
     vec.push_back(j);
     if (j != 0) vec_nozeros.push_back(j);
   }
@@ -68,10 +68,10 @@ void TestMakeLinearAcceptor() {
       NbestAsFsts(vfst, 1, &fstvec);
       KALDI_ASSERT(fstvec.size() == 1);
       assert(RandEquivalent(vfst, fstvec[0], 2/*paths*/, 0.01/*delta*/,
-                            rand()/*seed*/, 100/*path length-- max?*/));
+                            kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
     }
   }  
-  bool include_eps = (rand() % 2 == 0);
+  bool include_eps = (kaldi::Rand() % 2 == 0);
   if (!include_eps) vec = vec_nozeros;
   kaldi::SortAndUniq(&vec);
 
@@ -100,7 +100,7 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
   typedef typename Arc::Weight Weight;
 
   VectorFst<Arc> *fst = new VectorFst<Arc>();
-  int n_syms = 2 + rand() % 5, n_states = 3 + rand() % 10, n_arcs = 5 + rand() % 30, n_final = 1 + rand()%3;  // Up to 2 unique symbols.
+  int n_syms = 2 + kaldi::Rand() % 5, n_states = 3 + kaldi::Rand() % 10, n_arcs = 5 + kaldi::Rand() % 30, n_final = 1 + kaldi::Rand()%3;  // Up to 2 unique symbols.
   cout << "Testing pre-determinize with "<<n_syms<<" symbols, "<<n_states<<" states and "<<n_arcs<<" arcs and "<<n_final<<" final states.\n";
   SymbolTable *sptr = new SymbolTable("my-symbol-table");
 
@@ -125,19 +125,19 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
   }
   // Set final states.
   for (size_t j = 0;j < (size_t)n_final;j++) {
-    StateId id = all_states[rand() % n_states];
-    Weight weight = (Weight)(0.33*(rand() % 5) );
+    StateId id = all_states[kaldi::Rand() % n_states];
+    Weight weight = (Weight)(0.33*(kaldi::Rand() % 5) );
     printf("calling SetFinal with %d and %f\n", id, weight.Value());
     fst->SetFinal(id, weight);
   }
   // Create arcs.
   for (size_t i = 0;i < (size_t)n_arcs;i++) {
     Arc a;
-    a.nextstate = all_states[rand() % n_states];
-    a.ilabel = all_syms[rand() % n_syms];
-    a.olabel = all_syms[rand() % n_syms];  // same input+output vocab.
-    a.weight = (Weight) (0.33*(rand() % 2));
-    StateId start_state = all_states[rand() % n_states];
+    a.nextstate = all_states[kaldi::Rand() % n_states];
+    a.ilabel = all_syms[kaldi::Rand() % n_syms];
+    a.olabel = all_syms[kaldi::Rand() % n_syms];  // same input+output vocab.
+    a.weight = (Weight) (0.33*(kaldi::Rand() % 2));
+    StateId start_state = all_states[kaldi::Rand() % n_states];
     fst->AddArc(start_state, a);
   }
 
@@ -161,10 +161,10 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
 
   vector<Label> extra_syms;
   if (fst->Start() != kNoStateId) {  // "Connect" did not make it empty....
-    if (rand() % 2 == 0)
+    if (kaldi::Rand() % 2 == 0)
       SafeDeterminizeWrapper(fst_copy_orig, fst_det);
     else {
-      if (rand() % 2 == 0)
+      if (kaldi::Rand() % 2 == 0)
         SafeDeterminizeMinimizeWrapper(fst_copy_orig, fst_det);
       else
         SafeDeterminizeMinimizeWrapperInLog(fst_copy_orig, fst_det);
@@ -173,7 +173,7 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
     // no because does shortest-dist on weights even if not pushing on them.
     // PushInLog<REWEIGHT_TO_INITIAL>(fst_det, kPushLabels);  // will always succeed.
 	KALDI_LOG << "Num states [orig]: " << fst->NumStates() << "[det]" << fst_det->NumStates();
-    assert(RandEquivalent(*fst, *fst_det, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+    assert(RandEquivalent(*fst, *fst_det, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
   }
   delete fst;
   delete fst_copy_orig;
@@ -192,7 +192,7 @@ void TestPushInLog() {  // also tests SafeDeterminizeMinimizeWrapper().
   VectorFst<Arc> *fst = RandFst<Arc>();
   VectorFst<Arc> fst2(*fst);
   PushInLog<REWEIGHT_TO_INITIAL>(&fst2, kPushLabels|kPushWeights, 0.01);  // speed it up using large delta.
-  assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+  assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
 
   delete fst;
 }
@@ -212,7 +212,7 @@ template<class Arc>  void TestAcceptorMinimize() {
   VectorFst<Arc> fst2(*fst);
   AcceptorMinimize(&fst2);
 
-  assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+  assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
 
   delete fst;
 }
@@ -221,8 +221,8 @@ template<class Arc>  void TestAcceptorMinimize() {
 template<class Arc>  void TestMakeSymbolsSame() {
 
   VectorFst<Arc> *fst = RandFst<Arc>();
-  bool foll = (rand() % 2 == 0);
-  bool is_symbol = (rand() % 2 == 0);
+  bool foll = (kaldi::Rand() % 2 == 0);
+  bool is_symbol = (kaldi::Rand() % 2 == 0);
 
 
   VectorFst<Arc> fst2(*fst);
@@ -236,7 +236,7 @@ template<class Arc>  void TestMakeSymbolsSame() {
   }
 
 
-  assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+  assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
 
   delete fst;
 }
@@ -258,8 +258,8 @@ struct TestFunctor {
 template<class Arc>  void TestMakeSymbolsSameClass() {
 
   VectorFst<Arc> *fst = RandFst<Arc>();
-  bool foll = (rand() % 2 == 0);
-  bool is_symbol = (rand() % 2 == 0);
+  bool foll = (kaldi::Rand() % 2 == 0);
+  bool is_symbol = (kaldi::Rand() % 2 == 0);
 
 
   VectorFst<Arc> fst2(*fst);
@@ -273,7 +273,7 @@ template<class Arc>  void TestMakeSymbolsSameClass() {
     assert(PrecedingInputSymbolsAreSameClass(is_symbol, fst2, f));
   }
 
-  assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+  assert(RandEquivalent(*fst, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
 
   delete fst;
 }
@@ -308,10 +308,10 @@ VectorFst<Arc>* MakeLoopFstCompare(const vector<const ExpandedFst<Arc> *> &fsts)
 
 template<class Arc>  void TestMakeLoopFst() {
 
-  int num_fsts = rand() % 10;
+  int num_fsts = kaldi::Rand() % 10;
   vector<const ExpandedFst<Arc>* > fsts(num_fsts, (const ExpandedFst<Arc>*)NULL);
   for (int i = 0; i < num_fsts; i++) {
-    if (rand() % 2 == 0) {  // put an fst there.
+    if (kaldi::Rand() % 2 == 0) {  // put an fst there.
       VectorFst<Arc> *fst = RandFst<Arc>();
       Project(fst, PROJECT_INPUT);  // make input & output labels the same.
       fsts[i] = fst;
@@ -325,7 +325,7 @@ template<class Arc>  void TestMakeLoopFst() {
 
   assert(fst1->Properties(kOLabelSorted, kOLabelSorted) != 0);
       
-  assert(RandEquivalent(*fst1, *fst2, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+  assert(RandEquivalent(*fst1, *fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
   delete fst1;
   delete fst2;
   std::sort(fsts.begin(), fsts.end());
@@ -343,10 +343,10 @@ void TestEqualAlign() {
     RandFstOptions opts;
     opts.allow_empty = false;
     VectorFst<Arc> *fst = RandFst<Arc>();
-    int length = 10 + rand() % 20;
+    int length = 10 + kaldi::Rand() % 20;
 
     VectorFst<Arc> fst_path;
-    if (EqualAlign(*fst, length, rand(), &fst_path)) {
+    if (EqualAlign(*fst, length, kaldi::Rand(), &fst_path)) {
       std::cout << "EqualAlign succeeded\n";
       vector<int32> isymbol_seq, osymbol_seq;
       typename Arc::Weight weight;
@@ -409,7 +409,7 @@ void TestRemoveUselessArcs() {
     GetLinearSymbolSequence<Arc, int>(nouseless_bestpath, NULL, NULL, &wnouseless);
     assert(ApproxEqual(worig, wnouseless, kDelta));
 
-    // assert(RandEquivalent(orig_bestpath, nouseless_bestpath, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+    // assert(RandEquivalent(orig_bestpath, nouseless_bestpath, 5/*paths*/, 0.01/*delta*/, Rand()/*seed*/, 100/*path length-- max?*/));
     delete fst;
   }
 }

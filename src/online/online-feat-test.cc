@@ -48,7 +48,7 @@ class OnlineMatrixInput : public OnlineFeatInputItf {
     // frames we please.
 
     int32 num_frames_left = feats_.NumRows() - position_;
-    int32 num_frames_return = std::min((rand() % 5), num_frames_left);
+    int32 num_frames_return = std::min((Rand() % 5), num_frames_left);
     if (num_frames_return == 0) {
       output->Resize(0, 0);
     } else {
@@ -84,7 +84,7 @@ void GetOutput(OnlineFeatInputItf *a,
   OnlineCacheInput cache(a);
   while (true) {
     Matrix<BaseFloat> garbage;
-    int32 batch_size = 1 + rand() % 10;
+    int32 batch_size = 1 + Rand() % 10;
     garbage.Resize(batch_size, dim); // some random requested amount.
     if (!cache.Compute(&garbage)) // returns false when done.
       break;
@@ -94,8 +94,8 @@ void GetOutput(OnlineFeatInputItf *a,
 
 // test the MatrixInput and CacheInput classes.
 void TestOnlineMatrixInput() {
-  int32 dim = 2 + rand() % 5; // dimension of features.
-  int32 num_frames = 100 + rand() % 100;
+  int32 dim = 2 + Rand() % 5; // dimension of features.
+  int32 num_frames = 100 + Rand() % 100;
 
   Matrix<BaseFloat> input_feats(num_frames, dim);
   input_feats.SetRandn();
@@ -108,8 +108,8 @@ void TestOnlineMatrixInput() {
 }
 
 void TestOnlineFeatureMatrix() {
-  int32 dim = 2 + rand() % 5; // dimension of features.
-  int32 num_frames = 100 + rand() % 100;
+  int32 dim = 2 + Rand() % 5; // dimension of features.
+  int32 num_frames = 100 + Rand() % 100;
 
   Matrix<BaseFloat> input_feats(num_frames, dim);
   input_feats.SetRandn();
@@ -129,12 +129,12 @@ void TestOnlineFeatureMatrix() {
 
 
 void TestOnlineLdaInput() {
-  int32 dim = 2 + rand() % 5; // dimension of features.
-  int32 num_frames = 100 + rand() % 100;
-  int32 left_context = rand() % 3, right_context = rand() % 3;
-  bool have_offset = (rand() % 2 == 0);
+  int32 dim = 2 + Rand() % 5; // dimension of features.
+  int32 num_frames = 100 + Rand() % 100;
+  int32 left_context = Rand() % 3, right_context = Rand() % 3;
+  bool have_offset = (Rand() % 2 == 0);
   int32 lda_input_dim = (dim * (left_context + 1 + right_context)),
-      lda_output_dim = 1 + rand() % 5; // this can even be more than
+      lda_output_dim = 1 + Rand() % 5; // this can even be more than
        // the input dim, the class doesn't care.
   
   Matrix<BaseFloat> transform(lda_output_dim, lda_input_dim +
@@ -166,11 +166,11 @@ void TestOnlineLdaInput() {
 
 
 void TestOnlineDeltaInput() {
-  int32 dim = 2 + rand() % 5; // dimension of features.
-  int32 num_frames = 100 + rand() % 100;
+  int32 dim = 2 + Rand() % 5; // dimension of features.
+  int32 num_frames = 100 + Rand() % 100;
   DeltaFeaturesOptions opts;
-  opts.order = rand() % 3;
-  opts.window = 1 + rand() % 3;
+  opts.order = Rand() % 3;
+  opts.window = 1 + Rand() % 3;
 
   int32 output_dim = dim * (1 + opts.order);
   
@@ -191,16 +191,16 @@ void TestOnlineDeltaInput() {
 
 
 void TestOnlineCmnInput() { // We're also testing OnlineCacheInput here.
-  int32 dim = 2 + rand() % 5; // dimension of features.
-  int32 num_frames = 10 + rand() % 10;
+  int32 dim = 2 + Rand() % 5; // dimension of features.
+  int32 num_frames = 10 + Rand() % 10;
   
   Matrix<BaseFloat> input_feats(num_frames, dim);
   input_feats.SetRandn();
 
   OnlineMatrixInput matrix_input(input_feats);
-  int32 cmn_window = 10 + rand() % 20;
-  int32 min_window = 1 + rand() % (cmn_window - 1);
-  if (rand() % 3 == 0) min_window = cmn_window;
+  int32 cmn_window = 10 + Rand() % 20;
+  int32 min_window = 1 + Rand() % (cmn_window - 1);
+  if (Rand() % 3 == 0) min_window = cmn_window;
   
   OnlineCmnInput cmn_input(&matrix_input, cmn_window,
                            min_window);

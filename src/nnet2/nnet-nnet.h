@@ -292,7 +292,7 @@ class Nnet {
 
 
   void ResetGenerators(); // resets random-number generators for all
-  // random components.  You must also set srand() for this to be
+  // random components.  You must also set sRand() for this to be
   // effective.
 
   // The following three functions are used for vectorizing

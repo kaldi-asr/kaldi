@@ -34,12 +34,12 @@ void UnitTestGenericComponentInternal(const Component &component) {
   CuVector<BaseFloat> objf_vec(output_dim); // objective function is linear function of output.
   objf_vec.SetRandn(); // set to Gaussian noise.
   
-  int32 num_egs = 10 + rand() % 5;
+  int32 num_egs = 10 + Rand() % 5;
   CuMatrix<BaseFloat> input(num_egs, input_dim),
       output(num_egs, output_dim);
   input.SetRandn();
   
-  int32 rand_seed = rand();
+  int32 rand_seed = Rand();
 
   RandomComponent *rand_component =
       const_cast<RandomComponent*>(dynamic_cast<const RandomComponent*>(&component));
@@ -49,7 +49,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
   }
   component.Propagate(input, 1, &output);
   {
-    bool binary = (rand() % 2 == 0);
+    bool binary = (Rand() % 2 == 0);
     Output ko("tmpf", binary);
     component.Write(ko.Stream(), binary);
   }
@@ -217,7 +217,7 @@ void UnitTestSigmoidComponent() {
   // We're testing that the gradients are computed correctly:
   // the input gradients and the model gradients.
   
-  int32 input_dim = 10 + rand() % 50;
+  int32 input_dim = 10 + Rand() % 50;
   {
     SigmoidComponent sigmoid_component(input_dim);
     UnitTestGenericComponentInternal(sigmoid_component);
@@ -237,7 +237,7 @@ void UnitTestGenericComponent(std::string extra_str = "") {
   // We're testing that the gradients are computed correctly:
   // the input gradients and the model gradients.
   
-  int32 input_dim = 10 + rand() % 50;
+  int32 input_dim = 10 + Rand() % 50;
   {
     T component(input_dim);
     UnitTestGenericComponentInternal(component);
@@ -257,8 +257,8 @@ void UnitTestMaxoutComponent() {
   // the input gradients and the model gradients.
 
   for (int32 i = 0; i < 5; i++) {
-    int32 output_dim = 10 + rand() % 20,
-        group_size = 1 + rand() % 10,
+    int32 output_dim = 10 + Rand() % 20,
+        group_size = 1 + Rand() % 10,
         input_dim = output_dim * group_size;
     
     MaxoutComponent component(input_dim, output_dim);
@@ -280,10 +280,10 @@ void UnitTestPnormComponent() {
   // the input gradients and the model gradients.
 
   for (int32 i = 0; i < 5; i++) {
-    int32 output_dim = 10 + rand() % 20,
-        group_size = 1 + rand() % 10,
+    int32 output_dim = 10 + Rand() % 20,
+        group_size = 1 + Rand() % 10,
         input_dim = output_dim * group_size;
-    BaseFloat p = 0.8 + 0.1 * (rand() % 20);
+    BaseFloat p = 0.8 + 0.1 * (Rand() % 20);
     
     PnormComponent component(input_dim, output_dim, p);
     UnitTestGenericComponentInternal(component);
@@ -301,10 +301,10 @@ void UnitTestPnormComponent() {
 void UnitTestAffineComponent() {
   BaseFloat learning_rate = 0.01,
       param_stddev = 0.1, bias_stddev = 1.0;
-  int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10;
+  int32 input_dim = 5 + Rand() % 10, output_dim = 5 + Rand() % 10;
   {
     AffineComponent component;
-    if (rand() % 2 == 0) {
+    if (Rand() % 2 == 0) {
       component.Init(learning_rate, input_dim, output_dim,
                      param_stddev, bias_stddev);
     } else {
@@ -329,7 +329,7 @@ void UnitTestDropoutComponent() {
   // We're testing that the gradients are computed correctly:
   // the input gradients and the model gradients.
   
-  int32 input_dim = 10 + rand() % 50;
+  int32 input_dim = 10 + Rand() % 50;
   {
     DropoutComponent dropout_component(input_dim, 0.5, 0.3);
     UnitTestGenericComponentInternal(dropout_component);
@@ -346,7 +346,7 @@ void UnitTestAdditiveNoiseComponent() {
   // the input gradients and the model gradients.
   
   try {
-    int32 input_dim = 10 + rand() % 50;
+    int32 input_dim = 10 + Rand() % 50;
     {
       AdditiveNoiseComponent additive_noise_component(input_dim, 0.1);
       UnitTestGenericComponentInternal(additive_noise_component);
@@ -363,8 +363,8 @@ void UnitTestAdditiveNoiseComponent() {
 
 
 void UnitTestPiecewiseLinearComponent() {
-  BaseFloat learning_rate = 0.01, max_change = 0.1 * (rand() % 2);
-  int32 dim = 5 + rand() % 10, N = 3 + 2 * (rand() % 5);
+  BaseFloat learning_rate = 0.01, max_change = 0.1 * (Rand() % 2);
+  int32 dim = 5 + Rand() % 10, N = 3 + 2 * (Rand() % 5);
   {
     PiecewiseLinearComponent component;
     component.Init(dim, N, learning_rate, max_change);
@@ -381,11 +381,11 @@ void UnitTestPiecewiseLinearComponent() {
 
 
 void UnitTestScaleComponent() {
-  int32 dim = 1 + rand() % 10;
-  BaseFloat scale = 0.1 + rand() % 3;
+  int32 dim = 1 + Rand() % 10;
+  BaseFloat scale = 0.1 + Rand() % 3;
   {
     ScaleComponent component;
-    if (rand() % 2 == 0) {
+    if (Rand() % 2 == 0) {
       component.Init(dim, scale);
     } else {
       std::ostringstream str;
@@ -401,10 +401,10 @@ void UnitTestAffineComponentPreconditioned() {
   BaseFloat learning_rate = 0.01,
       param_stddev = 0.1, bias_stddev = 1.0, alpha = 0.01,
       max_change = 100.0;
-  int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10;
+  int32 input_dim = 5 + Rand() % 10, output_dim = 5 + Rand() % 10;
   {
     AffineComponentPreconditioned component;
-    if (rand() % 2 == 0) {
+    if (Rand() % 2 == 0) {
       component.Init(learning_rate, input_dim, output_dim,
                      param_stddev, bias_stddev,
                      alpha, max_change);
@@ -431,11 +431,11 @@ void UnitTestAffineComponentPreconditionedOnline() {
   BaseFloat learning_rate = 0.01,
       param_stddev = 0.1, bias_stddev = 1.0, num_samples_history = 2000.0, alpha = 4.0,
       max_change_per_sample = 0.1, update_period = 1;
-  int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10,
-      rank_in = 1 + rand() % 5, rank_out = 1 + rand() % 5;
+  int32 input_dim = 5 + Rand() % 10, output_dim = 5 + Rand() % 10,
+      rank_in = 1 + Rand() % 5, rank_out = 1 + Rand() % 5;
   {
     AffineComponentPreconditionedOnline component;
-    if (rand() % 2 == 0) {
+    if (Rand() % 2 == 0) {
       component.Init(learning_rate, input_dim, output_dim,
                      param_stddev, bias_stddev,
                      rank_in, rank_out, update_period,
@@ -466,10 +466,10 @@ void UnitTestAffineComponentModified() {
   BaseFloat learning_rate = 0.01,
       param_stddev = 0.1, bias_stddev = 1.0, length_cutoff = 10.0,
       max_change = 0.1;
-  int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10;
+  int32 input_dim = 5 + Rand() % 10, output_dim = 5 + Rand() % 10;
   {
     AffineComponentModified component;
-    if (rand() % 2 == 0) {
+    if (Rand() % 2 == 0) {
       component.Init(learning_rate, input_dim, output_dim,
                      param_stddev, bias_stddev,
                      length_cutoff, max_change);
@@ -496,7 +496,7 @@ void UnitTestAffinePreconInputComponent() {
   BaseFloat learning_rate = 0.01,
       param_stddev = 0.1, bias_stddev = 1.0,
       avg_samples = 100.0;
-  int32 input_dim = 5 + rand() % 10, output_dim = 5 + rand() % 10;
+  int32 input_dim = 5 + Rand() % 10, output_dim = 5 + Rand() % 10;
 
   {
     AffinePreconInputComponent component;
@@ -515,9 +515,9 @@ void UnitTestAffinePreconInputComponent() {
 void UnitTestBlockAffineComponent() {
   BaseFloat learning_rate = 0.01,
       param_stddev = 0.1, bias_stddev = 0.1;
-  int32 num_blocks = 1 + rand() % 3,
-         input_dim = num_blocks * (2 + rand() % 4),
-        output_dim = num_blocks * (2 + rand() % 4);
+  int32 num_blocks = 1 + Rand() % 3,
+         input_dim = num_blocks * (2 + Rand() % 4),
+        output_dim = num_blocks * (2 + Rand() % 4);
   
   {
     BlockAffineComponent component;
@@ -536,9 +536,9 @@ void UnitTestBlockAffineComponent() {
 void UnitTestBlockAffineComponentPreconditioned() {
   BaseFloat learning_rate = 0.01,
       param_stddev = 0.1, bias_stddev = 1.0, alpha = 3.0;
-  int32 num_blocks = 1 + rand() % 3,
-         input_dim = num_blocks * (2 + rand() % 4),
-        output_dim = num_blocks * (2 + rand() % 4);
+  int32 num_blocks = 1 + Rand() % 3,
+         input_dim = num_blocks * (2 + Rand() % 4),
+        output_dim = num_blocks * (2 + Rand() % 4);
   
   {
     BlockAffineComponentPreconditioned component;
@@ -558,9 +558,9 @@ void UnitTestMixtureProbComponent() {
   BaseFloat learning_rate = 0.01,
       diag_element = 0.8;
   std::vector<int32> sizes;
-  int32 num_sizes = 1 + rand() % 5; // allow 
+  int32 num_sizes = 1 + Rand() % 5; // allow 
   for (int32 i = 0; i < num_sizes; i++)
-    sizes.push_back(2 + rand() % 5); // TODO: change to 1 + rand() % 5
+    sizes.push_back(2 + Rand() % 5); // TODO: change to 1 + Rand() % 5
   // and fix test errors.  May be issue in the code itself.
   
   
@@ -580,9 +580,9 @@ void UnitTestMixtureProbComponent() {
 
 void UnitTestSumGroupComponent() {
   std::vector<int32> sizes;
-  int32 num_sizes = 1 + rand() % 5;
+  int32 num_sizes = 1 + Rand() % 5;
   for (int32 i = 0; i < num_sizes; i++)
-    sizes.push_back(1 + rand() % 5); 
+    sizes.push_back(1 + Rand() % 5); 
   
   {
     SumGroupComponent component;
@@ -599,9 +599,9 @@ void UnitTestSumGroupComponent() {
 
 
 void UnitTestDctComponent() {
-  int32 m = 1 + rand() % 4, n = 1 + rand() % 4,
+  int32 m = 1 + Rand() % 4, n = 1 + Rand() % 4,
   dct_dim = m, dim = m * n;
-  bool reorder = (rand() % 2 == 0);
+  bool reorder = (Rand() % 2 == 0);
   {
     DctComponent component;
     component.Init(dim, dct_dim, reorder);
@@ -641,7 +641,7 @@ void UnitTestDctComponent() {
 
 
 void UnitTestFixedLinearComponent() {
-  int32 m = 1 + rand() % 4, n = 1 + rand() % 4;
+  int32 m = 1 + Rand() % 4, n = 1 + Rand() % 4;
   {
     CuMatrix<BaseFloat> mat(m, n);
     mat.SetRandn();
@@ -653,7 +653,7 @@ void UnitTestFixedLinearComponent() {
 
 
 void UnitTestFixedAffineComponent() {
-  int32 m = 1 + rand() % 4, n = 2 + rand() % 4;
+  int32 m = 1 + Rand() % 4, n = 2 + Rand() % 4;
   {
     CuMatrix<BaseFloat> mat(m, n);
     mat.SetRandn();
@@ -664,7 +664,7 @@ void UnitTestFixedAffineComponent() {
 }
 
 void UnitTestFixedScaleComponent() {
-  int32 m = 1 + rand() % 20;
+  int32 m = 1 + Rand() % 20;
   {
     CuVector<BaseFloat> vec(m);
     vec.SetRandn();
@@ -675,7 +675,7 @@ void UnitTestFixedScaleComponent() {
 }
 
 void UnitTestFixedBiasComponent() {
-  int32 m = 1 + rand() % 20;
+  int32 m = 1 + Rand() % 20;
   {
     CuVector<BaseFloat> vec(m);
     vec.SetRandn();

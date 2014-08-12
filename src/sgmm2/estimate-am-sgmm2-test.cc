@@ -55,7 +55,7 @@ void TestSgmm2AccsIO(const AmSgmm2 &sgmm,
   accs.CommitStatsForSpk(sgmm, empty);
 
   kaldi::MleAmSgmm2Options update_opts;
-  update_opts.check_v = (rand()%2 == 0);
+  update_opts.check_v = (Rand()%2 == 0);
   AmSgmm2 *sgmm1 = new AmSgmm2();
   sgmm1->CopyFromSgmm2(sgmm, false, false);
   kaldi::MleAmSgmm2Updater updater(update_opts);

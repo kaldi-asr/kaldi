@@ -125,11 +125,11 @@ void TestSplitStatsByKey() {
     BuildTreeStatsType stats;
     for(int32 i = 0; i < 100; i++) {
       EventType evec;
-      if (rand() % 2)
-        evec.push_back(std::make_pair(12, rand() % 10));
-      evec.push_back(std::make_pair(10, rand() % 10));
-      if (rand() % 2)
-        evec.push_back(std::make_pair(8, rand() % 10));
+      if (Rand() % 2)
+        evec.push_back(std::make_pair(12, Rand() % 10));
+      evec.push_back(std::make_pair(10, Rand() % 10));
+      if (Rand() % 2)
+        evec.push_back(std::make_pair(8, Rand() % 10));
       std::sort(evec.begin(), evec.end());
       stats.push_back(std::make_pair(evec, static_cast<Clusterable*>(NULL)));
     }
@@ -260,7 +260,7 @@ void TestClusterEventMapGetMappingAndRenumberEventMap() {
     EventValueType cur_value = 0;
     int32 num_clust = 10;
     for (int32 i = 0;i < num_clust;i++) {  // this will correspond to the "cluster".
-      size_t n = 1 + rand() % 3;
+      size_t n = 1 + Rand() % 3;
       for (size_t j = 0;j < n;j++) {
         BaseFloat scalar = static_cast<BaseFloat>(i) + RandUniform()*0.001;
         EventType evec;
@@ -320,13 +320,13 @@ void TestClusterEventMapGetMappingAndRenumberEventMap2() {
     EventValueType cur_value = 0;
     int32 num_clust = 10;
     for (int32 i = 0;i < num_clust;i++) {  // this will correspond to the "cluster".
-      size_t n = 1 + rand() % 3;
+      size_t n = 1 + Rand() % 3;
       for (size_t j = 0;j < n;j++) {
         BaseFloat scalar = static_cast<BaseFloat>(i) + RandUniform()*0.001;
         EventType evec;
         evec.push_back(std::make_pair(key, cur_value++));
         stats.push_back(std::make_pair(evec, static_cast<Clusterable*>(new ScalarClusterable(scalar))));
-        if (rand() % 10 < 5) stats_reduced.push_back(stats.back());
+        if (Rand() % 10 < 5) stats_reduced.push_back(stats.back());
       }
     }
 
@@ -385,7 +385,7 @@ void TestClusterEventMap() {
     EventValueType cur_value = 0;
     int32 num_clust = 10;
     for (int32 i = 0;i < num_clust;i++) {  // this will correspond to the "cluster".
-      size_t n = 1 + rand() % 3;
+      size_t n = 1 + Rand() % 3;
       for (size_t j = 0;j < n;j++) {
         BaseFloat scalar = static_cast<BaseFloat>(i) + RandUniform()*0.001;
         EventType evec;
@@ -401,7 +401,7 @@ void TestClusterEventMap() {
     KALDI_ASSERT(nleaves == cur_value);
 
     std::set<EventValueType> exclude_leaves;
-    for (size_t i = 0;i < 4;i++) exclude_leaves.insert(rand() % num_clust);
+    for (size_t i = 0;i < 4;i++) exclude_leaves.insert(Rand() % num_clust);
     BuildTreeStatsType stats_excluded;
     BuildTreeStatsType stats_included;
     for (size_t i = 0;i < stats.size();i++) {
@@ -439,29 +439,29 @@ void TestClusterEventMapRestricted() {
   // TestClusterEventMapRestricted() tests that ClusterEventMapRestricted()
   // does not combine leaves that we were trying to keep separate.
 
-  bool test_by_key = (rand()%2 == 0);
+  bool test_by_key = (Rand()%2 == 0);
 
-  int32 num_keys = 1 + rand() % 4;
+  int32 num_keys = 1 + Rand() % 4;
   std::vector<EventKeyType> keys;
 
   {  // randomly choose keys.  Will always define all of them.
     std::set<EventKeyType> keys_set;
     while (keys_set.size() < (size_t)num_keys)
-      keys_set.insert(  (rand() % (num_keys + 10)) - 3 );
+      keys_set.insert(  (Rand() % (num_keys + 10)) - 3 );
     CopySetToVector(keys_set, &keys);
   }
 
 
   BuildTreeStatsType stats;
 
-  int32 n_stats = 1 + (rand() % 10);
+  int32 n_stats = 1 + (Rand() % 10);
   n_stats *= n_stats;  // up to 81 stats.
 
   for (size_t i = 0; i < (size_t)n_stats; i++) {
     EventType evec;
 
     for (size_t j = 0; j < keys.size(); j++) {
-      EventValueType val = rand() % 100;
+      EventValueType val = Rand() % 100;
       evec.push_back(std::make_pair(keys[j], val));
     }
     stats.push_back(std::make_pair(evec, static_cast<Clusterable*>(new ScalarClusterable(RandGauss()))));
@@ -484,7 +484,7 @@ void TestClusterEventMapRestricted() {
   // We now do decision tree split.
 
   Questions qo;  // all default.
-  int32 num_quest = rand() % 10, num_iters = rand () % 5;
+  int32 num_quest = Rand() % 10, num_iters = rand () % 5;
   qo.InitRand(stats, num_quest, num_iters, kAllKeysInsistIdentical);
   float thresh = 0.001;
   int32 max_leaves = 50;
@@ -536,27 +536,27 @@ void TestShareEventMapLeaves() {
   // this is modified from TestClusterEventMapRestricted() [rather arbitrarily].
 
 
-  int32 num_keys = 1 + rand() % 4;
+  int32 num_keys = 1 + Rand() % 4;
   std::vector<EventKeyType> keys;
 
   {  // randomly choose keys.  Will always define all of them.
     std::set<EventKeyType> keys_set;
     while (keys_set.size() < (size_t)num_keys)
-      keys_set.insert(  (rand() % (num_keys + 10)) - 3 );
+      keys_set.insert(  (Rand() % (num_keys + 10)) - 3 );
     CopySetToVector(keys_set, &keys);
   }
 
 
   BuildTreeStatsType stats;
 
-  int32 n_stats = 1 + (rand() % 10);
+  int32 n_stats = 1 + (Rand() % 10);
   n_stats *= n_stats;  // up to 81 stats.
 
   for (size_t i = 0; i < (size_t)n_stats; i++) {
     EventType evec;
 
     for (size_t j = 0; j < keys.size(); j++) {
-      EventValueType val = rand() % 100;
+      EventValueType val = Rand() % 100;
       evec.push_back(std::make_pair(keys[j], val));
     }
     stats.push_back(std::make_pair(evec, static_cast<Clusterable*>(new ScalarClusterable(RandGauss()))));
@@ -579,7 +579,7 @@ void TestShareEventMapLeaves() {
   // We now do decision tree split.
   int nleaves_after_table_split = nleaves;
   Questions qo;  // all default.
-  int32 num_quest = rand() % 10, num_iters = rand () % 5;
+  int32 num_quest = Rand() % 10, num_iters = rand () % 5;
   qo.InitRand(stats, num_quest, num_iters, kAllKeysInsistIdentical);
   float thresh = 0.001;
   int32 max_leaves = 100;
@@ -599,13 +599,13 @@ void TestShareEventMapLeaves() {
     DeleteBuildTreeStats(&stats);
     return;
   }
-  EventKeyType key = special_keys[rand() % special_keys.size()];
+  EventKeyType key = special_keys[Rand() % special_keys.size()];
   std::vector<EventValueType> values;
   bool always_defined = PossibleValues(key, stats, &values);
   KALDI_ASSERT(always_defined);
 
   std::set<EventValueType> to_share;
-  for (size_t i = 0; i < 3; i++) to_share.insert(values[rand() % values.size()]);
+  for (size_t i = 0; i < 3; i++) to_share.insert(values[Rand() % values.size()]);
 
   std::vector<std::vector<EventValueType> > share_value;
   for (std::set<EventValueType>::iterator iter = to_share.begin();
@@ -643,10 +643,10 @@ void TestQuestionsInitRand() {
     std::vector<EventKeyType>  keys_all, keys_some;
     {
       std::set<EventKeyType> keys_all_set, keys_some_set;
-      int32 num_all = rand() % 3, num_some = rand() % 3;
-      for (int32 i = 0;i < num_all;i++) keys_all_set.insert(rand() % 10);
+      int32 num_all = Rand() % 3, num_some = Rand() % 3;
+      for (int32 i = 0;i < num_all;i++) keys_all_set.insert(Rand() % 10);
       for (int32 i = 0;i < num_some;i++) {
-        int32 k = rand() % 10;
+        int32 k = Rand() % 10;
         if (keys_all_set.count(k) == 0) keys_some_set.insert(k);
       }
       CopySetToVector(keys_all_set, &keys_all);
@@ -656,7 +656,7 @@ void TestQuestionsInitRand() {
     // Now we have two distinct sets of keys keys_all and keys_some.
     // We now create the Clusterable* stuff.
     BuildTreeStatsType dummy_stats;  // dummy because the Clusterable *pointers are actually NULL.
-    size_t n_stats = rand() % 100;
+    size_t n_stats = Rand() % 100;
     // make sure we sometimes have empty or just one stats: may find extra bugs.
     if (n_stats > 90) n_stats = 0;
     if (n_stats > 80) n_stats = 1;
@@ -664,12 +664,12 @@ void TestQuestionsInitRand() {
     for (size_t i = 0;i < n_stats;i++) {  // Create stats...
       EventType evec;
       for (size_t j = 0;j < keys_all.size();j++) {
-        evec.push_back(std::make_pair( keys_all[j], (EventValueType)(rand() % 10)));
+        evec.push_back(std::make_pair( keys_all[j], (EventValueType)(Rand() % 10)));
         keys_all_saw_set.insert(keys_all[j]);
       }
       for (size_t j = 0;j < keys_some.size();j++)
-        if (rand() % 2 == 0) {  // randomly w.p. 1/2
-          evec.push_back(std::make_pair( keys_some[j], (EventValueType)(rand() % 10)));
+        if (Rand() % 2 == 0) {  // randomly w.p. 1/2
+          evec.push_back(std::make_pair( keys_some[j], (EventValueType)(Rand() % 10)));
           keys_all_saw_set.insert(keys_some[j]);
         }
       std::sort(evec.begin(), evec.end());  // sorts on keys.
@@ -678,7 +678,7 @@ void TestQuestionsInitRand() {
     }
     Questions qo;  // all default.
     bool intersection = (p%2 == 0);
-    int32 num_quest = rand() % 10, num_iters = rand () % 5;
+    int32 num_quest = Rand() % 10, num_iters = rand () % 5;
     qo.InitRand(dummy_stats, num_quest, num_iters, intersection ? kAllKeysIntersection : kAllKeysUnion);
 
     for (int i = 0; i < 2; i++) {
@@ -733,10 +733,10 @@ void TestSplitDecisionTree() {
     std::vector<EventKeyType>  keys_all, keys_some;
     {
       std::set<EventKeyType> keys_all_set, keys_some_set;
-      int32 num_all = rand() % 3, num_some = rand() % 3;
-      for (int32 i = 0;i < num_all;i++) keys_all_set.insert(rand() % 10);
+      int32 num_all = Rand() % 3, num_some = Rand() % 3;
+      for (int32 i = 0;i < num_all;i++) keys_all_set.insert(Rand() % 10);
       for (int32 i = 0;i < num_some;i++) {
-        int32 k = rand() % 10;
+        int32 k = Rand() % 10;
         if (keys_all_set.count(k) == 0) keys_some_set.insert(k);
       }
       CopySetToVector(keys_all_set, &keys_all);
@@ -746,7 +746,7 @@ void TestSplitDecisionTree() {
     // Now we have two distinct sets of keys keys_all and keys_some.
     // We now create the Clusterable* stuff.
     BuildTreeStatsType stats;  // dummy because the Clusterable *pointers are actually NULL.
-    size_t n_stats = rand() % 100;
+    size_t n_stats = Rand() % 100;
     // make sure we sometimes have empty or just one stats: may find extra bugs.
     if (n_stats > 90) n_stats = 0;
     if (n_stats > 80) n_stats = 1;
@@ -754,12 +754,12 @@ void TestSplitDecisionTree() {
     for (size_t i = 0;i < n_stats;i++) {  // Create stats...
       EventType evec;
       for (size_t j = 0;j < keys_all.size();j++) {
-        evec.push_back(std::make_pair( keys_all[j], (EventValueType)(rand() % 10)));
+        evec.push_back(std::make_pair( keys_all[j], (EventValueType)(Rand() % 10)));
         keys_all_saw_set.insert(keys_all[j]);
       }
       for (size_t j = 0;j < keys_some.size();j++)
-        if (rand() % 2 == 0) {  // randomly w.p. 1/2
-          evec.push_back(std::make_pair( keys_some[j], (EventValueType)(rand() % 10)));
+        if (Rand() % 2 == 0) {  // randomly w.p. 1/2
+          evec.push_back(std::make_pair( keys_some[j], (EventValueType)(Rand() % 10)));
           keys_all_saw_set.insert(keys_some[j]);
         }
       std::sort(evec.begin(), evec.end());  // sorts on keys.
@@ -772,7 +772,7 @@ void TestSplitDecisionTree() {
 
     bool intersection = true;  // keep borrowed code later on happy.
 
-    int32 num_quest = rand() % 10, num_iters = rand () % 5;
+    int32 num_quest = Rand() % 10, num_iters = rand () % 5;
     qo.InitRand(stats, num_quest, num_iters, kAllKeysIntersection);
 
     if (n_stats > 0) {
@@ -837,13 +837,13 @@ void TestSplitDecisionTree() {
 }
 void TestBuildTreeStatsIo(bool binary) {
   for (int32 p = 0; p < 10; p++) {
-    size_t num_stats = rand() % 20;
+    size_t num_stats = Rand() % 20;
     BuildTreeStatsType stats;
     for (size_t i = 0; i < num_stats; i++) {
       EventType ev;
-      int32 ev_sz = rand() % 5;
+      int32 ev_sz = Rand() % 5;
       for (int32 i = 0; i < ev_sz; i++) {
-        EventKeyType key = (i == 0 ? 0 : ev[i-1].first) + rand() % 2, value = rand() % 10;
+        EventKeyType key = (i == 0 ? 0 : ev[i-1].first) + Rand() % 2, value = Rand() % 10;
         ev.push_back(std::make_pair(key, value));
       }
       stats.push_back(std::make_pair(ev, (Clusterable*) NULL));

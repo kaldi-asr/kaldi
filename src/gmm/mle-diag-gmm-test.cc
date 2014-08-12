@@ -380,7 +380,7 @@ UnitTestEstimateDiagGmm() {
 
     Vector<BaseFloat> weights(counter);
     for (size_t i = 0; i < counter; i++)
-      weights(i) = 0.5 + 0.1 * (rand() % 10);
+      weights(i) = 0.5 + 0.1 * (Rand() % 10);
 
     
     float loglike = 0.0;
