@@ -77,6 +77,16 @@ void UnitTestRand() {
         if (std::abs(sum) < 0.5*sqrt((double)j)) break;
       }
     }
+    {  // test RandGauss.
+      float sum = RandGauss();
+      for (int j = 0; ; j++) {
+        float a, b;
+        RandGauss2(&a, &b);
+        if (i % 2 == 0) sum += a;
+        else sum += b;
+        if (std::abs(sum) < 0.5*sqrt((double)j)) break;
+      }
+    }
     {  // test poisson_Rand().
       KALDI_ASSERT(RandPoisson(3.0) >= 0);
       KALDI_ASSERT(RandPoisson(0.0) == 0);

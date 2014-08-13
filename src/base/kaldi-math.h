@@ -104,13 +104,14 @@ bool WithProb(BaseFloat prob, struct RandomState* state=NULL); // Returns true w
 // Internally calls Rand().  This function is carefully implemented so
 // that it should work even if prob is very small.
 
-inline float RandUniform(struct RandomState* state=NULL) {  // random intended to be strictly between 0 and 1.
-  return static_cast<float>((Rand(state) + 1.0) / (RAND_MAX+2.0));  
+/// Returns a random number strictly between 0 and 1.
+inline float RandUniform(struct RandomState* state = NULL) {
+  return static_cast<float>((Rand(state) + 1.0) / (RAND_MAX+2.0));
 }
 
-inline float RandGauss(struct RandomState* state=NULL) {
-  return static_cast<float>(sqrt (-2 * std::log(RandUniform(state)))
-                            * cos(2*M_PI*RandUniform(state)));
+inline float RandGauss(struct RandomState* state = NULL) {
+  return static_cast<float>(sqrtf (-2 * logf(RandUniform(state)))
+                            * cosf(2*M_PI*RandUniform(state)));
 }
 
 // Returns poisson-distributed random number.  Uses Knuth's algorithm.
@@ -137,7 +138,6 @@ inline Float RandPrune(Float post, BaseFloat prune_thresh, struct RandomState* s
 
 static const double kMinLogDiffDouble = std::log(DBL_EPSILON);  // negative!
 static const float kMinLogDiffFloat = std::log(FLT_EPSILON);  // negative!
-
 
 inline double LogAdd(double x, double y) {
   double diff;

@@ -134,22 +134,21 @@ void RandGauss2(float *a, float *b, RandomState *state)
   KALDI_ASSERT(b);
   float u1 = RandUniform(state);
   float u2 = RandUniform(state);
-  u1 = std::sqrt(-2.0f * std::log(u1));
+  u1 = sqrtf(-2.0f * logf(u1));
   u2 =  2.0f * M_PI * u2;
-  *a = u1 * std::cos(u2);
-  *b = u1 * std::sin(u2);
+  *a = u1 * cosf(u2);
+  *b = u1 * sinf(u2);
 }
 
 void RandGauss2(double *a, double *b, RandomState *state)
 {
   KALDI_ASSERT(a);
   KALDI_ASSERT(b);
-  double u1 = RandUniform(state);
-  double u2 = RandUniform(state);
-  u1 = std::sqrt(-2.0 * std::log(u1));
-  u2 =  2.0 * M_PI * u2;
-  *a = u1 * std::cos(u2);
-  *b = u1 * std::sin(u2);
+  float a_float, b_float;
+  // Just because we're using doubles doesn't mean we need super-high-quality
+  // random numbers, so we just use the floating-point version internally.
+  RandGauss2(&a_float, &b_float);
+  *a = a_float; *b = b_float;
 }
 
 
