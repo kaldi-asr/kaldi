@@ -328,37 +328,55 @@ void UnitTestAffineComponent() {
 void UnitTestDropoutComponent() {
   // We're testing that the gradients are computed correctly:
   // the input gradients and the model gradients.
-  
-  int32 input_dim = 10 + Rand() % 50;
-  {
-    DropoutComponent dropout_component(input_dim, 0.5, 0.3);
-    UnitTestGenericComponentInternal(dropout_component);
+
+  int32 num_fail = 0, num_tries = 4;
+  for (int32 i = 0; i < num_tries; i++) {
+    try {
+      int32 input_dim = 10 + Rand() % 50;
+      {
+        DropoutComponent dropout_component(input_dim, 0.5, 0.3);
+        UnitTestGenericComponentInternal(dropout_component);
+      }
+      {
+        DropoutComponent dropout_component;
+        dropout_component.InitFromString("dim=15 dropout-proportion=0.6 dropout-scale=0.1");
+        UnitTestGenericComponentInternal(dropout_component);
+      }
+    } catch (...) {
+      KALDI_WARN << "Ignoring test failure in UnitTestDropoutComponent().";
+      num_fail++;
+    }
   }
-  {
-    DropoutComponent dropout_component;
-    dropout_component.InitFromString("dim=15 dropout-proportion=0.6 dropout-scale=0.1");
-    UnitTestGenericComponentInternal(dropout_component);
+  if (num_fail >= num_tries/2) {
+    KALDI_ERR << "Too many test failures.";
   }
 }
 
 void UnitTestAdditiveNoiseComponent() {
   // We're testing that the gradients are computed correctly:
   // the input gradients and the model gradients.
-  
-  try {
-    int32 input_dim = 10 + Rand() % 50;
-    {
-      AdditiveNoiseComponent additive_noise_component(input_dim, 0.1);
-      UnitTestGenericComponentInternal(additive_noise_component);
+
+  int32 num_fail = 0, num_tries = 4;
+  for (int32 i = 0; i < num_tries; i++) {
+    try {
+      int32 input_dim = 10 + Rand() % 50;
+      {
+        AdditiveNoiseComponent additive_noise_component(input_dim, 0.1);
+        UnitTestGenericComponentInternal(additive_noise_component);
+      }
+      {
+        AdditiveNoiseComponent additive_noise_component;
+        additive_noise_component.InitFromString("dim=15 stddev=0.2");
+        UnitTestGenericComponentInternal(additive_noise_component);
+      }
+    } catch (...) {
+      KALDI_WARN << "Ignoring failure in AdditiveNoiseComponent test";
+      num_fail++;
     }
-    {
-      AdditiveNoiseComponent additive_noise_component;
-      additive_noise_component.InitFromString("dim=15 stddev=0.2");
-      UnitTestGenericComponentInternal(additive_noise_component);
-    }
-  } catch (...) {
-    KALDI_LOG << "Ignoring failure in AdditiveNoiseComponent test, I believe it's benign.";
   }
+  if (num_fail >= num_tries/2) {
+    KALDI_ERR << "Too many test failures.";
+  }  
 }
 
 
