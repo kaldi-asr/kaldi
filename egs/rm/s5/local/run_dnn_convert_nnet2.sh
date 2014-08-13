@@ -39,7 +39,7 @@ steps/nnet2/decode.sh --nj 10 --cmd "$decode_cmd" \
     --feat-type raw --config conf/decode.config exp/tri3b/graph data/test exp/dnn4b_nnet2_raw_no_cmvn/decode
 # Even worse results, but this is expected due to the mismatch.
 # grep WER exp/dnn4b_nnet2_raw_no_cmvn/decode/wer_* | utils/best_wer.sh 
-# %WER 5.31 [ 666 / 12533, 76 ins, 163 del, 427 sub ] exp/dnn4b_nnet2_raw_no_cmvn/decode/wer_7
+# %WER 5.13 [ 643 / 12533, 82 ins, 144 del, 417 sub ] exp/dnn4b_nnet2_raw_no_cmvn/decode/wer_6
 
 
 steps/online/nnet2/prepare_online_decoding.sh data/lang \
@@ -48,5 +48,9 @@ steps/online/nnet2/prepare_online_decoding.sh data/lang \
 steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
     exp/tri3b/graph data/test exp/dnn4b_nnet2_raw_no_cmvn_online/decode
 
-# Note: I don't have results from this yet as I have to build the baseline DNN system
-# in the online sandbox, but I think it's working.
+# The following is decoding with the online-decoding code.
+# grep WER exp/dnn4b_nnet2_raw_no_cmvn_online/decode/wer_* | utils/best_wer.sh 
+# %WER 5.05 [ 633 / 12533, 79 ins, 141 del, 413 sub ] exp/dnn4b_nnet2_raw_no_cmvn_online/decode/wer_6
+# It's slightly better than the offline decoding and I'm not sure why, as all the decoding
+# parameters seem to be the same.  It may be some slight difference in how the lattices
+# are determinized.

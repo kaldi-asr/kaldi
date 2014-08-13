@@ -175,7 +175,7 @@ for x in exp/nnet2_online/nnet_a_gpu/decode_*; do grep WER $x/wer_* | utils/best
 %WER 7.12 [ 402 / 5643, 91 ins, 22 del, 289 sub ] exp/nnet2_online/nnet_a_gpu/decode_tgpr_eval92/wer_13
 
  # Here is the version of the above without iVectors, as done by
- # ./run_online_decoding_nnet2_baseline.sh.  It's about 0.5% absolute worse.
+ # ./run_nnet2_baseline.sh.  It's about 0.5% absolute worse.
  # There is also an _online version of that decode directory, which is
  # essentially the same (we don't show the results here, as it's not really interesting).
  for x in exp/nnet2_online/nnet_a_gpu_baseline/decode_*; do grep WER $x/wer_* | utils/best_wer.sh; done

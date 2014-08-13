@@ -77,12 +77,27 @@ if [ $stage -le 3 ]; then
   wait
 fi
 
+if [ $stage -le 4 ]; then
+  # do online per-utterance decoding with the combined model.
+  steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+     --per-utt true \
+    exp/tri3b/graph data/test ${dir}_online/decode_utt &
+  steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \
+     --per-utt true \
+    exp/tri3b/graph_ug data/test ${dir}_online/decode_ug_utt || exit 1;
+  wait
+fi
+
 
 # Here are the results:
 # grep WER exp/nnet2_online_wsj/nnet_gpu_online/decode/wer_* | utils/best_wer.sh 
 #%WER 1.61 [ 202 / 12533, 22 ins, 46 del, 134 sub ] exp/nnet2_online_wsj/nnet_gpu_online/decode/wer_3
 #a11:s5: grep WER exp/nnet2_online_wsj/nnet_gpu_online/decode_ug/wer_* | utils/best_wer.sh 
 #%WER 7.99 [ 1002 / 12533, 74 ins, 153 del, 775 sub ] exp/nnet2_online_wsj/nnet_gpu_online/decode_ug/wer_6
+
+# and with per-utterance decoding:
+# %WER 1.72 [ 216 / 12533, 26 ins, 45 del, 145 sub ] exp/nnet2_online_wsj/nnet_gpu_online/decode_utt/wer_3
+# %WER 8.40 [ 1053 / 12533, 85 ins, 158 del, 810 sub ] exp/nnet2_online_wsj/nnet_gpu_online/decode_ug_utt/wer_6
 
 # And this is a suitable baseline: a system trained on RM only.
 #a11:s5: grep WER exp/nnet2_online/nnet_gpu_online/decode/wer_* | utils/best_wer.sh 

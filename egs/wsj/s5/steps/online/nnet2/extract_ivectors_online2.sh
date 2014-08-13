@@ -27,7 +27,12 @@ posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
                     # used when training the iVector extractor, but more important
                     # that this match the value used when you do real online decoding
                     # with the neural nets trained with these iVectors.
-utts_per_spk_max=2 # maximum 2 utterances per "fake-speaker."
+utts_per_spk_max=2  # maximum 2 utterances per "fake-speaker."  Note: this does
+                    # not have to be an integer; if it's noninteger, it will be
+                    # rounded in a randomized way to one of the two integers it's
+                    # close to.  This is useful in the "perturbed-feature" recipe
+                    # to encourage that different perturbed versions of the same
+                    # speaker get split into fake-speakers differently.
 
 # End configuration section.
 
@@ -112,11 +117,21 @@ for job in $(seq $nj); do
    # create fake spk2utt files with reduced number of utterances per speaker,
    # so the network is well adapted to using iVectors from small amounts of
    # training data.
-   awk -v max=$utts_per_spk_max '{ n=2; count=0; while(n<=NF) { 
-      nmax=n+max; count++; printf("%s-%06x", $1, count); for (;n<nmax&&n<=NF; n++) printf(" %s", $n); print "";} }' \
+   # the if (rand() % 2 == 0)
+   awk -v max=$utts_per_spk_max '{ n=2; count=0;
+      while(n<=NF) {
+        int_max=int(max)+ (rand() < (max-int(max))?1:0); print int_max; 
+        nmax=n+int_max; count++; printf("%s-%06x", $1, count); 
+        for (;n<nmax&&n<=NF; n++) printf(" %s", $n); print "";} }' \
     <$sdata/$job/spk2utt >$dir/spk2utt_fake/spk2utt.$job
 done
 
+
+for n in $(seq $nj); do
+  # This will do nothing unless the directorys $dir/storage exists;
+  # it can be used to distribute the data among multiple machines.
+  utils/create_data_link.pl $dir/ivector_online.$n.ark
+done
 
 if [ $stage -le 0 ]; then
   echo "$0: extracting iVectors"

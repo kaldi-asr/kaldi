@@ -54,7 +54,7 @@ done
 
 # Set various variables.
 mkdir -p $dir/log
-
+echo $nj >$dir/num_jobs
 sdata=$data/split$nj;
 utils/split_data.sh $data $nj || exit 1;
 

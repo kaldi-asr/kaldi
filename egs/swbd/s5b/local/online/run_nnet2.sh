@@ -44,16 +44,17 @@ if [ $stage -le 2 ]; then
   # iVector extractors can be sensitive to the amount of data, but this one has a
   # fairly small dim (defaults to 100) so we don't use all of it, we use just the
   # 100k subset (just under half the data).
-  # even though $nj is just 10, each job uses multiple processes and threads.
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
     data/train_100k_nodup exp/nnet2_online/diag_ubm exp/nnet2_online/extractor || exit 1;
 fi
 
 if [ $stage -le 3 ]; then
   # We extract iVectors on all the train_nodup data, which will be what we
-  # train the system on.
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/train_nodup exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_nodup || exit 1;
+  # train the system on.  This version of the iVector-extraction script
+  # pairs the utterances into twos (by default, see --utts-per-spk-max option) 
+  # and treats each as one speaker.
+  steps/online/nnet2/extract_ivectors_online2.sh --cmd "$train_cmd" --nj 30 \
+    data/train_nodup exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_nodup2 || exit 1;
 fi
 
 
@@ -72,7 +73,7 @@ if [ $stage -le 4 ]; then
   steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
     --num-epochs 5 --num-epochs-extra 2 \
     --splice-width 7 --feat-type raw \
-    --online-ivector-dir exp/nnet2_online/ivectors_train_nodup \
+    --online-ivector-dir exp/nnet2_online/ivectors_train_nodup2 \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
@@ -129,6 +130,8 @@ if [ $stage -le 8 ]; then
   done
 fi
 
+[ $stage -eq 8 ] && exit 1;  ## This is temporary.
+
 if [ $stage -le 9 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
@@ -161,33 +164,29 @@ for x in exp/nnet2_online/nnet_a_gpu/decode_eval2000_*; do grep Sum $x/score_*/*
 %WER 22.4 | 1831 21395 | 80.0 13.9 6.1 2.4 22.4 60.0 | exp/tri4b/decode_eval2000_sw1_tg/score_16/eval2000.ctm.swbd.filt.sys
 
 
-
 # our neural net trained with iVector input, tested in batch mode.
-%WER 22.32 [ 11033 / 49427, 1198 ins, 3121 del, 6714 sub ] exp/nnet2_online/nnet_a_gpu/decode_train_dev_sw1_tg/wer_12
-%WER 21.75 [ 10751 / 49427, 1176 ins, 3135 del, 6440 sub ] exp/nnet2_online/nnet_a_gpu/decode_train_dev_sw1_fsh_tgpr/wer_12
-%WER 18.1 | 1831 21395 | 83.7 10.8 5.5 1.8 18.1 56.3 | exp/nnet2_online/nnet_a_gpu/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
-%WER 18.5 | 1831 21395 | 83.4 11.2 5.4 1.9 18.5 57.2 | exp/nnet2_online/nnet_a_gpu/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
-
+%WER 21.79 [ 10769 / 49427, 1310 ins, 2902 del, 6557 sub ] exp/nnet2_online/nnet_a_gpu/decode_train_dev_sw1_fsh_tgpr/wer_11
+%WER 22.25 [ 10998 / 49427, 1236 ins, 3075 del, 6687 sub ] exp/nnet2_online/nnet_a_gpu/decode_train_dev_sw1_tg/wer_12
+%WER 18.0 | 1831 21395 | 83.7 10.7 5.5 1.8 18.0 57.3 | exp/nnet2_online/nnet_a_gpu/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
+%WER 18.6 | 1831 21395 | 83.3 11.1 5.6 1.9 18.6 58.3 | exp/nnet2_online/nnet_a_gpu/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
 
 
 # the experiment tested using truly-online decoding, tested separately per
 # utterance (which should in principle give the same results as the batch-mode
 # test, which also was per-utterance); I'm not sure what the reason for the slight improvement 
 # is.
-%WER 22.05 [ 10897 / 49427, 1355 ins, 2849 del, 6693 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_train_dev_sw1_tg_per_utt/wer_11
-%WER 21.53 [ 10641 / 49427, 1316 ins, 2848 del, 6477 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_train_dev_sw1_fsh_tgpr_per_utt/wer_11
-%WER 17.7 | 1831 21395 | 84.2 10.7 5.2 1.9 17.7 55.6 | exp/nnet2_online/nnet_a_gpu_online/decode_eval2000_sw1_fsh_tgpr_per_utt/score_11/eval2000.ctm.swbd.filt.sys
-%WER 18.1 | 1831 21395 | 83.8 11.0 5.3 1.9 18.1 56.3 | exp/nnet2_online/nnet_a_gpu_online/decode_eval2000_sw1_tg_per_utt/score_12/eval2000.ctm.swbd.filt.sys
+%WER 21.43 [ 10594 / 49427, 1219 ins, 3005 del, 6370 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_train_dev_sw1_fsh_tgpr_per_utt/wer_12
+%WER 21.88 [ 10817 / 49427, 1247 ins, 2969 del, 6601 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_train_dev_sw1_tg_per_utt/wer_12
+%WER 17.8 | 1831 21395 | 84.0 10.6 5.4 1.8 17.8 56.0 | exp/nnet2_online/nnet_a_gpu_online/decode_eval2000_sw1_fsh_tgpr_per_utt/score_12/eval2000.ctm.swbd.filt.sys
+%WER 18.2 | 1831 21395 | 83.8 11.0 5.2 2.0 18.2 57.5 | exp/nnet2_online/nnet_a_gpu_online/decode_eval2000_sw1_tg_per_utt/score_11/eval2000.ctm.swbd.filt.sys
 
-# truly-online decoding, but thuis time carrying forward the adaptation state (the iVector
-# and associated CMVN) from one utterance to the next within the same speaker.  It seems marginally
-# better than without carrying forward the adaptation state.
-%WER 21.43 [ 10593 / 49427, 1231 ins, 2827 del, 6535 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_train_dev_sw1_tg/wer_11
-%WER 21.23 [ 10494 / 49427, 1240 ins, 2827 del, 6427 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_train_dev_sw1_fsh_tgpr/wer_11
-
-%WER 17.6 | 1831 21395 | 84.1 10.2 5.7 1.7 17.6 56.4 | exp/nnet2_online/nnet_a_gpu_online/decode_eval2000_sw1_fsh_tgpr/score_13/eval2000.ctm.swbd.filt.sys
-%WER 18.1 | 1831 21395 | 84.0 10.9 5.1 2.1 18.1 57.8 | exp/nnet2_online/nnet_a_gpu_online/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
-
+# truly-online decoding, but this time carrying forward the adaptation state (the iVector
+# and associated CMVN) from one utterance to the next within the same speaker.  It is
+# definitely better than without carrying forward the adaptation state.
+%WER 20.24 [ 10002 / 49427, 1252 ins, 2706 del, 6044 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_train_dev_sw1_fsh_tgpr/wer_11
+%WER 20.46 [ 10115 / 49427, 1131 ins, 2867 del, 6117 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_train_dev_sw1_tg/wer_12
+%WER 16.6 | 1831 21395 | 85.1 9.7 5.2 1.7 16.6 53.9 | exp/nnet2_online/nnet_a_gpu_online/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
+%WER 17.1 | 1831 21395 | 84.9 10.2 5.0 1.9 17.1 55.3 | exp/nnet2_online/nnet_a_gpu_online/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
 
 
  # Here is the baseline experiment with no iVectors and no CMVN, also tested in batch mode.

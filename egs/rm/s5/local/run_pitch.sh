@@ -167,7 +167,7 @@ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --alignment-model exp/tri3b/final.alimdl --adapt-model exp/tri3b/final.mdl \
    exp/tri3b/graph data/test exp/tri3b_mmi/decode
 # demonstration script for online decoding.
-#local/run_online_decoding_pitch.sh
+#local/online/run_gmm_pitch.sh
 
 
 

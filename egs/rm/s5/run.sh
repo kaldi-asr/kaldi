@@ -169,15 +169,16 @@ steps/decode_fmllr.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --transform-dir exp/tri3b/decode  exp/tri3b/graph data/test exp/tri3b_mmi/decode2
 
-# demonstration script for online decoding.
-# local/online/run_online_decoding.sh
-# local/online/run_online_decoding_baseline.sh
+# demonstration scripts for online decoding.
+# local/online/run_gmm.sh
+# local/online/run_nnet2.sh
+# local/online/run_baseline.sh
 # Note: for online decoding with pitch, look at local/run_pitch.sh, 
-# which calls local/run_online_decoding_pitch.sh
+# which calls local/online/run_gmm_pitch.sh
 
 #
-# local/run_online_decoding_nnet2.sh
-# local/online/run_online_decoding_nnet2_baseline.sh
+# local/run_nnet2.sh
+# local/online/run_nnet2_baseline.sh
 
 
 
