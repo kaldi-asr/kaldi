@@ -736,7 +736,7 @@ void DiscriminativeExampleSplitter::SelfTest() {
     
   } else {
     if (!(RandEquivalent(*(split_lats[0]), lat_, 5, 0.01,
-         rand(), 100))) {
+         Rand(), 100))) {
       KALDI_WARN << "Lattices were not equivalent (self-test failed).";
       KALDI_LOG << "Original lattice was: ";
       WriteLattice(std::cerr, false, lat_);

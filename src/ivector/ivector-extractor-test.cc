@@ -25,7 +25,7 @@ namespace kaldi {
 
 void TestIvectorExtractorIO(const IvectorExtractor &extractor) {
   std::ostringstream ostr;
-  bool binary = (rand() % 2 == 0);
+  bool binary = (Rand() % 2 == 0);
   extractor.Write(ostr, binary);
   std::istringstream istr(ostr.str());
   IvectorExtractor extractor2;
@@ -36,7 +36,7 @@ void TestIvectorExtractorIO(const IvectorExtractor &extractor) {
 }
 void TestIvectorExtractorStatsIO(IvectorExtractorStats &stats) {
   std::ostringstream ostr;
-  bool binary = (rand() % 2 == 0);
+  bool binary = (Rand() % 2 == 0);
   stats.Write(ostr, binary);
   std::istringstream istr(ostr.str());
   IvectorExtractorStats stats2;
@@ -126,31 +126,31 @@ void TestIvectorExtraction(const IvectorExtractor &extractor,
 
 void UnitTestIvectorExtractor() {
   FullGmm fgmm;
-  int32 dim = 5 + rand() % 5, num_comp = 1 + rand() % 5;
+  int32 dim = 5 + Rand() % 5, num_comp = 1 + Rand() % 5;
   KALDI_LOG << "Num Gauss = " << num_comp;
   unittest::InitRandFullGmm(dim, num_comp, &fgmm);
   FullGmmNormal fgmm_normal(fgmm);
 
   IvectorExtractorOptions ivector_opts;
   ivector_opts.ivector_dim = dim + 5;
-  ivector_opts.use_weights = (rand() % 2 == 0);
+  ivector_opts.use_weights = (Rand() % 2 == 0);
   KALDI_LOG << "Feature dim is " << dim
             << ", ivector dim is " << ivector_opts.ivector_dim;
   IvectorExtractor extractor(ivector_opts, fgmm);
   TestIvectorExtractorIO(extractor);
 
   IvectorExtractorStatsOptions stats_opts;
-  if (rand() % 2 == 0) stats_opts.update_variances = false;
+  if (Rand() % 2 == 0) stats_opts.update_variances = false;
   stats_opts.num_samples_for_weights = 100; // Improve accuracy
   // of estimation, since we do it with relatively few utterances,
   // and we're testing the convergence.
 
-  int32 num_utts = 1 + rand() % 5;
+  int32 num_utts = 1 + Rand() % 5;
   std::vector<Matrix<BaseFloat> > all_feats(num_utts);
   for (int32 utt = 0; utt < num_utts; utt++) {
-    int32 num_frames = 100 + rand() % 200;
-    if (rand() % 2 == 0) num_frames *= 10;
-    if (rand() % 2 == 0) num_frames /= 1.0;
+    int32 num_frames = 100 + Rand() % 200;
+    if (Rand() % 2 == 0) num_frames *= 10;
+    if (Rand() % 2 == 0) num_frames /= 1.0;
     Matrix<BaseFloat> feats(num_frames, dim);
     fgmm_normal.Rand(&feats);
     feats.Swap(&all_feats[utt]);

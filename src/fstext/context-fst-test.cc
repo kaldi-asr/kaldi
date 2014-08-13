@@ -21,6 +21,7 @@
 #include "fstext/fst-test-utils.h"
 #include "tree/context-dep.h"
 #include "util/kaldi-io.h"
+#include "base/kaldi-math.h"
 
 namespace fst
 {
@@ -36,8 +37,8 @@ static VectorFst<Arc> *GenAcceptorFromSequence(const vector<typename Arc::Label>
   vector<float> split_cost(symbols.size()+1, 0.0);  // for #-arcs + end-state.
   {  // compute split_cost.  it must sum to "cost".
     std::set<int32> indices;
-    size_t num_indices = 1 + (rand() % split_cost.size());
-    while (indices.size() < num_indices) indices.insert(rand() % split_cost.size());
+    size_t num_indices = 1 + (kaldi::Rand() % split_cost.size());
+    while (indices.size() < num_indices) indices.insert(kaldi::Rand() % split_cost.size());
     for (std::set<int32>::iterator iter = indices.begin(); iter != indices.end(); ++iter) {
       split_cost[*iter] = cost / num_indices;
     }
@@ -131,21 +132,21 @@ static VectorFst<Arc> *GenRandPhoneSeq(vector<typename Arc::Label> &phone_syms,
   // with "num_subseq_syms" subsequential symbols.  It will
   // have disambiguation symbols randomly interspersed throughout.
   // The number of phones is random (possibly zero).
-  size_t len = (rand() % 4) * (rand() % 3);  // up to 3*2=6 phones.
+  size_t len = (kaldi::Rand() % 4) * (kaldi::Rand() % 3);  // up to 3*2=6 phones.
   float disambig_prob = 0.33;
   phoneseq_out->clear();
   vector<Label> syms;  // the phones
   for (size_t i = 0; i < len; i++) {
-    while (kaldi::RandUniform() < disambig_prob) syms.push_back(disambig_syms[rand() % disambig_syms.size()]);
-    Label phone_id = phone_syms[rand() % phone_syms.size()];
+    while (kaldi::RandUniform() < disambig_prob) syms.push_back(disambig_syms[kaldi::Rand() % disambig_syms.size()]);
+    Label phone_id = phone_syms[kaldi::Rand() % phone_syms.size()];
     phoneseq_out->push_back(phone_id);  // record in output the underlying phone sequence.
     syms.push_back(phone_id);
   }
   for (size_t i = 0; static_cast<int32>(i) < num_subseq_syms; i++) {
-    while (kaldi::RandUniform() < disambig_prob) syms.push_back(disambig_syms[rand() % disambig_syms.size()]);
+    while (kaldi::RandUniform() < disambig_prob) syms.push_back(disambig_syms[kaldi::Rand() % disambig_syms.size()]);
     syms.push_back(subsequential_symbol);
   }
-  while (kaldi::RandUniform() < disambig_prob) syms.push_back(disambig_syms[rand() % disambig_syms.size()]);
+  while (kaldi::RandUniform() < disambig_prob) syms.push_back(disambig_syms[kaldi::Rand() % disambig_syms.size()]);
 
   // OK, now have the symbols of the FST as a vector.
   return GenAcceptorFromSequence<Arc>(syms, seq_prob);
@@ -159,14 +160,14 @@ template<class Arc> static void TestContextFst(bool verbose, bool use_matcher) {
   typedef typename Arc::Weight Weight;
 
   // Generate a random set of phones.
-  size_t num_phones = 1 + rand() % 10;
+  size_t num_phones = 1 + kaldi::Rand() % 10;
   std::set<int32> phones_set;
-  while (phones_set.size() < num_phones) phones_set.insert(1 + rand() % (num_phones + 5));  // don't use 0 [== epsilon]
+  while (phones_set.size() < num_phones) phones_set.insert(1 + kaldi::Rand() % (num_phones + 5));  // don't use 0 [== epsilon]
   vector<int32> phones;
   kaldi::CopySetToVector(phones_set, &phones);
 
-  int N = 1 + rand() % 4;  // Context size, in range 1..4.
-  int P = rand() % N;  // 1.. N-1.
+  int N = 1 + kaldi::Rand() % 4;  // Context size, in range 1..4.
+  int P = kaldi::Rand() % N;  // 1.. N-1.
   if (verbose) std::cout << "N = "<< N << ", P = "<<P<<'\n';
 
   Label subsequential_symbol = 1000;
@@ -182,7 +183,7 @@ template<class Arc> static void TestContextFst(bool verbose, bool use_matcher) {
                        phones, disambig_syms,
                        N, P);
 
-  bool test_vec = (rand() % 2 == 0);
+  bool test_vec = (kaldi::Rand() % 2 == 0);
   VectorFst<Arc> *cfst_vec = NULL;
   if (test_vec) {
     cfst_vec = new VectorFst<Arc>(cfst);  // fully expand it.
@@ -219,13 +220,13 @@ template<class Arc> static void TestContextFst(bool verbose, bool use_matcher) {
 
     if (test_vec) {
       Compose(*cfst_vec, *f, &fst_composed_vec);
-      assert(RandEquivalent(fst_composed, fst_composed_vec, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+      assert(RandEquivalent(fst_composed, fst_composed_vec, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
       // delete cfst_vec;
     }
 
     // Testing WriteILabelInfo and ReadILabelInfo.
     {
-      bool binary = (rand() % 2 == 0);
+      bool binary = (kaldi::Rand() % 2 == 0);
       WriteILabelInfo(kaldi::Output("tmpf", binary).Stream(),
                       binary, cfst.ILabelInfo());
 

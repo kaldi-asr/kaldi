@@ -34,11 +34,11 @@ typedef CompactLatticeWeightCommonDivisorTpl<LatticeWeight, int32>
 
 
 LatticeWeight RandomLatticeWeight() {
-  if (rand() % 3 == 0) {
+  if (kaldi::Rand() % 3 == 0) {
     return LatticeWeight::Zero();
-  } else if (rand() % 3 ==  0) {
+  } else if (kaldi::Rand() % 3 ==  0) {
     return LatticeWeight( 1, 2);  // sometimes return special values..
-  } else if (rand() % 3 ==  0) {
+  } else if (kaldi::Rand() % 3 ==  0) {
     return LatticeWeight( 2, 1);  // this tests more thoroughly certain properties...
   } else {
     return LatticeWeight( 100 * kaldi::RandGauss(), 100 * kaldi::RandGauss());
@@ -50,10 +50,10 @@ CompactLatticeWeight RandomCompactLatticeWeight() {
   if (w == LatticeWeight::Zero()) {
     return CompactLatticeWeight(w, vector<int32>());
   } else {
-    int32 len = rand() % 4;
+    int32 len = kaldi::Rand() % 4;
     vector<int32> str;
     for(int32 i = 0; i < len; i++)
-      str.push_back(rand() % 10 + 1);
+      str.push_back(kaldi::Rand() % 10 + 1);
     return CompactLatticeWeight(w, str);
   }
 }

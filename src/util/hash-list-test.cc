@@ -33,8 +33,8 @@ template<class Int, class T> void TestHashList() {
   hash.SetSize(200);  // must be called before use.
   std::map<Int, T> m1;
   for (size_t j = 0; j < 50; j++) {
-    Int key = rand() % 200;
-    T val = rand() % 50;
+    Int key = Rand() % 200;
+    T val = Rand() % 50;
     m1[key] = val;
     Elem *e = hash.Find(key);
     if (e) e->val = val;
@@ -56,7 +56,7 @@ template<class Int, class T> void TestHashList() {
 
     Elem *h = hash.Clear(), *tmp;
 
-    hash.SetSize(100 + rand() % 100);  // note, SetSize is relatively cheap operation as long
+    hash.SetSize(100 + Rand() % 100);  // note, SetSize is relatively cheap operation as long
     // as we are not increasing the size more than it's ever previously been increased to.
 
     for (; h != NULL; h = tmp) {
@@ -73,7 +73,7 @@ template<class Int, class T> void TestHashList() {
     }
 
     for (size_t j = 0; j < 10; j++) {
-      Int key = rand() % 200;
+      Int key = Rand() % 200;
       bool found_m1 = (m1.find(key) != m1.end());
       if (found_m1) m1[key];
       Elem *e = hash.Find(key);

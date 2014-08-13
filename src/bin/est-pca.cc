@@ -1,6 +1,6 @@
 // bin/est-pca.cc
 
-// Copyright      2014  Johns Hopkins University
+// Copyright      2014  Johns Hopkins University  (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -35,19 +35,26 @@ int main(int argc, char *argv[]) {
         "data to estimate robustly, we don't support separate accumulator files;\n"
         "this program reads in the features directly.  For large datasets you may\n"
         "want to subset the features (see example below)\n"
+        "By default the program reads in matrices (e.g. features), but with\n"
+        "--read-vectors=true, can read in vectors (e.g. iVectors).\n"
         "\n"
-        "Usage:  est-pca [options] <feature-rspecifier> <pca-matrix-out>\n"
+        "Usage:  est-pca [options] (<feature-rspecifier>|<vector-rspecifier>) <pca-matrix-out>\n"
         "e.g.:\n"
         "utils/shuffle_list.pl data/train/feats.scp | head -n 5000 | sort | \\\n"
         "  est-pca --dim=50 scp:- some/dir/0.mat\n";
 
     bool binary = true;
+    bool read_vectors = false;
     bool normalize_variance = false;
     bool normalize_mean = false;
-    int32 dim = 0;
+    int32 dim = -1;
     std::string full_matrix_wxfilename;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write accumulators in binary mode.");
+    po.Register("dim", &dim, "Feature dimension requested (if <= 0, uses full "
+                "feature dimension");
+    po.Register("read-vectors", &read_vectors, "If true, read in single vectors "
+                "instead of feature matrices");
     po.Register("normalize-variance", &normalize_variance, "If true, make a "
                 "transform that normalizes variance to one.");
     po.Register("normalize-mean", &normalize_mean, "If true, output an affine "
@@ -62,41 +69,70 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string feats_rspecifier = po.GetArg(1),
+    std::string rspecifier = po.GetArg(1),
         pca_mat_wxfilename = po.GetArg(2);
 
     int32 num_done = 0, num_err = 0;
     int64 count = 0;
     Vector<double> sum;
     SpMatrix<double> sumsq;
-    
-    SequentialBaseFloatMatrixReader feat_reader(feats_rspecifier);
-    
-    for (; !feat_reader.Done(); feat_reader.Next()) {
-      Matrix<double> mat(feat_reader.Value());
-      if (mat.NumRows() == 0) {
-        KALDI_WARN << "Empty feature matrix";
-        num_err++;
-        continue;
-      }
-      if (sum.Dim() == 0) {
-        sum.Resize(mat.NumCols());
-        sumsq.Resize(mat.NumCols());
-      }
-      if (sum.Dim() != mat.NumCols()) {
-        KALDI_WARN << "Feature dimension mismatch " << sum.Dim() << " vs. "
-                   << mat.NumCols();
-        num_err++;
-        continue;
-      }
-      sum.AddRowSumMat(1.0, mat);
-      sumsq.AddMat2(1.0, mat, kTrans, 1.0);
-      count += mat.NumRows();
-      num_done++;
-    }
 
-    KALDI_LOG << "Accumulated stats from " << num_done << " feature files, "
-              << num_err << " with errors; " << count << " frames.";
+    if (!read_vectors) {
+      SequentialBaseFloatMatrixReader feat_reader(rspecifier);
+    
+      for (; !feat_reader.Done(); feat_reader.Next()) {
+        Matrix<double> mat(feat_reader.Value());
+        if (mat.NumRows() == 0) {
+          KALDI_WARN << "Empty feature matrix";
+          num_err++;
+          continue;
+        }
+        if (sum.Dim() == 0) {
+          sum.Resize(mat.NumCols());
+          sumsq.Resize(mat.NumCols());
+        }
+        if (sum.Dim() != mat.NumCols()) {
+          KALDI_WARN << "Feature dimension mismatch " << sum.Dim() << " vs. "
+                     << mat.NumCols();
+          num_err++;
+          continue;
+        }
+        sum.AddRowSumMat(1.0, mat);
+        sumsq.AddMat2(1.0, mat, kTrans, 1.0);
+        count += mat.NumRows();
+        num_done++;
+      }
+      KALDI_LOG << "Accumulated stats from " << num_done << " feature files, "
+                << num_err << " with errors; " << count << " frames.";      
+    } else {
+      // read in vectors, not matrices
+      SequentialBaseFloatVectorReader vec_reader(rspecifier);
+    
+      for (; !vec_reader.Done(); vec_reader.Next()) {
+        Vector<double> vec(vec_reader.Value());
+        if (vec.Dim() == 0) {
+          KALDI_WARN << "Empty input vector";
+          num_err++;
+          continue;
+        }
+        if (sum.Dim() == 0) {
+          sum.Resize(vec.Dim());
+          sumsq.Resize(vec.Dim());
+        }
+        if (sum.Dim() != vec.Dim()) {
+          KALDI_WARN << "Feature dimension mismatch " << sum.Dim() << " vs. "
+                     << vec.Dim();
+          num_err++;
+          continue;
+        }
+        sum.AddVec(1.0, vec);
+        sumsq.AddVec2(1.0, vec);
+        count += 1.0;
+        num_done++;
+      }
+      KALDI_LOG << "Accumulated stats from " << num_done << " vectors, "
+                << num_err << " with errors.";
+    }
     if (num_done == 0)
       KALDI_ERR << "No data accumulated.";
     sum.Scale(1.0 / count);

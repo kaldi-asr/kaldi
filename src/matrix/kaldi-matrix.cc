@@ -1092,20 +1092,24 @@ void MatrixBase<Real>::SetUnit() {
 
 template<typename Real>
 void MatrixBase<Real>::SetRandn() {
+  kaldi::RandomState rstate;
   for (MatrixIndexT row = 0; row < num_rows_; row++) {
     Real *row_data = this->RowData(row);
-    for (MatrixIndexT col = 0; col < num_cols_; col++, row_data++) {
-      *row_data = static_cast<Real>(kaldi::RandGauss());
+    MatrixIndexT nc = (num_cols_ % 2 == 1) ? num_cols_ - 1 : num_cols_;
+    for (MatrixIndexT col = 0; col < nc; col += 2) {
+      kaldi::RandGauss2(row_data + col, row_data + col + 1, &rstate);
     }
+    if (nc != num_cols_) row_data[nc] = static_cast<Real>(kaldi::RandGauss(&rstate));
   }
 }
 
 template<typename Real>
 void MatrixBase<Real>::SetRandUniform() {
+  kaldi::RandomState rstate;
   for (MatrixIndexT row = 0; row < num_rows_; row++) {
     Real *row_data = this->RowData(row);
     for (MatrixIndexT col = 0; col < num_cols_; col++, row_data++) {
-      *row_data = static_cast<Real>(kaldi::RandUniform());
+      *row_data = static_cast<Real>(kaldi::RandUniform(&rstate));
     }
   }
 }

@@ -23,7 +23,7 @@ namespace kaldi {
 
 
 void TestHmmTopology() {
-  bool binary = (rand()%2 == 0);
+  bool binary = (Rand()%2 == 0);
 
   std::string input_str = "<Topology>\n"
       "<TopologyEntry>\n"

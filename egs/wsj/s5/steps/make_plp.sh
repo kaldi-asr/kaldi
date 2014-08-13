@@ -59,10 +59,6 @@ for f in $required; do
 done
 utils/validate_data_dir.sh --no-text --no-feats $data || exit 1;
 
-# note: in general, the double-parenthesis construct in bash "((" is "C-style
-# syntax" where we can get rid of the $ for variable names, and omit spaces.
-# The "for" loop in this style is a special construct.
-
 if [ -f $data/spk2warp ]; then
   echo "$0 [info]: using VTLN warp factors from $data/spk2warp"
   vtln_opts="--vtln-map=ark:$data/spk2warp --utt2spk=ark:$data/utt2spk"
@@ -71,10 +67,16 @@ elif [ -f $data/utt2warp ]; then
   vtln_opts="--vtln-map=ark:$data/utt2warp"
 fi
 
+for n in $(seq $nj); do
+  # the next command does nothing unless $plpdir/storage/ exists, see
+  # utils/create_data_link.pl for more info.
+  utils/create_data_link.pl $plpdir/raw_plp_$name.$n.ark  
+done
+
 if [ -f $data/segments ]; then
   echo "$0 [info]: segments file exists: using that."
   split_segments=""
-  for ((n=1; n<=nj; n++)); do
+  for n in $(seq $nj); do
     split_segments="$split_segments $logdir/segments.$n"
   done
 
@@ -91,7 +93,7 @@ if [ -f $data/segments ]; then
 else
   echo "$0: [info]: no segments file exists: assuming wav.scp indexed by utterance."
   split_scps=""
-  for ((n=1; n<=nj; n++)); do
+  for n in $(seq $nj); do
     split_scps="$split_scps $logdir/wav_${name}.$n.scp"
   done
 
@@ -113,7 +115,7 @@ if [ -f $logdir/.error.$name ]; then
 fi
 
 # concatenate the .scp files together.
-for ((n=1; n<=nj; n++)); do
+for n in $(seq $nj); do
   cat $plpdir/raw_plp_$name.$n.scp || exit 1;
 done > $data/feats.scp
 

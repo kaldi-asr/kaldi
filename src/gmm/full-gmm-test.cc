@@ -80,7 +80,7 @@ void init_rand_diag_gmm(DiagGmm *gmm) {
 
 void UnitTestFullGmmEst() {
   FullGmm fgmm;
-  int32 dim = 10 + rand() % 10, num_comp = 1 + rand() % 10;
+  int32 dim = 10 + Rand() % 10, num_comp = 1 + Rand() % 10;
   unittest::InitRandFullGmm(dim, num_comp, &fgmm);
   int32 num_frames = 5000;
   Matrix<BaseFloat> feats(num_frames, dim);

@@ -24,15 +24,15 @@
 namespace kaldi {
 
 char GetRandChar() {
-  return static_cast<char>(32 + rand() % 95);  // between ' ' and '~'
+  return static_cast<char>(32 + Rand() % 95);  // between ' ' and '~'
 }
 
 const char *ws_delim = " \t\n\r";
 char GetRandDelim() {
-  if (rand() % 2 == 0)
-    return static_cast<char>(33 + rand() % 94);  // between '!' and '~';
+  if (Rand() % 2 == 0)
+    return static_cast<char>(33 + Rand() % 94);  // between '!' and '~';
   else
-    return ws_delim[rand() % 4];
+    return ws_delim[Rand() % 4];
 }
 
 
@@ -51,14 +51,14 @@ void TestSplitStringToVector() {
   }
   for (int j = 0; j < 100; j++) {
     std::vector<std::string> str_vec;
-    int sz = rand() % 73;
+    int sz = Rand() % 73;
     std::string full;
     for (int i = 0; i < sz-1; i++) {
-      full.push_back( (rand() % 7 == 0)? GetRandDelim() : GetRandChar());
+      full.push_back( (Rand() % 7 == 0)? GetRandDelim() : GetRandChar());
     }
     std::string delim;
     delim.push_back(GetRandDelim());
-    bool omit_empty_strings = (rand() %2 == 0)? true : false;
+    bool omit_empty_strings = (Rand() %2 == 0)? true : false;
     SplitStringToVector(full, delim.c_str(), omit_empty_strings, &str_vec);
     std::string new_full;
     for (size_t i = 0; i < str_vec.size(); i++) {

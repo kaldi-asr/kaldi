@@ -885,7 +885,7 @@ class WordAlignedLatticeTester {
       Project(&aligned_lat, fst::PROJECT_INPUT);
     }
 
-    if (!RandEquivalent(lat_, aligned_lat, 5/*paths*/, 1.0e+10/*delta*/, rand()/*seed*/,
+    if (!RandEquivalent(lat_, aligned_lat, 5/*paths*/, 1.0e+10/*delta*/, Rand()/*seed*/,
                         200/*path length (max?)*/))
       KALDI_ERR << "Equivalence test failed (testing word-alignment of lattices.) "
                 << "Make sure your model and lattices match!";

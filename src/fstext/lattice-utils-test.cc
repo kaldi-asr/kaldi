@@ -19,7 +19,7 @@
 
 #include "fstext/lattice-utils.h"
 #include "fstext/fst-test-utils.h"
-
+#include "base/kaldi-math.h"
 
 namespace fst {
 
@@ -49,7 +49,7 @@ template<class Weight, class Int> void TestConvert(bool invert) {
       fstprinter.Print(&std::cout, "standard output");
     }
     
-    assert(RandEquivalent(*fst, origfst, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+    assert(RandEquivalent(*fst, origfst, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
     delete fst;
   }
 }
@@ -125,7 +125,7 @@ template<class Int> void TestConvert2() {
       ConvertLattice(*fst1, &fst2);
       ConvertLattice(fst2, &fst3);
 
-      assert(RandEquivalent(*fst1, fst3, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));      
+      assert(RandEquivalent(*fst1, fst3, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));      
       delete fst1;
     }
 
@@ -136,7 +136,7 @@ template<class Int> void TestConvert2() {
       VectorFst<CArcD> cfst2;
       ConvertLattice(cfst1, &cfst2);
       ConvertLattice(cfst2, &cfst3);
-      assert(RandEquivalent(cfst1, cfst3, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));            
+      assert(RandEquivalent(cfst1, cfst3, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));            
       delete fst1;
     }
 
@@ -147,7 +147,7 @@ template<class Int> void TestConvert2() {
       VectorFst<CArcF> cfst2;
       ConvertLattice(cfst1, &cfst2);
       ConvertLattice(cfst2, &cfst3);
-      assert(RandEquivalent(cfst1, cfst3, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+      assert(RandEquivalent(cfst1, cfst3, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
       delete fst1;
     }
 
@@ -158,7 +158,7 @@ template<class Int> void TestConvert2() {
       VectorFst<CArcF> cfst2;
       ConvertLattice(cfst1, &cfst2);
       ConvertLattice(cfst2, &cfst3);
-      assert(RandEquivalent(cfst1, cfst3, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+      assert(RandEquivalent(cfst1, cfst3, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
       delete fst1;
     }
 
@@ -168,7 +168,7 @@ template<class Int> void TestConvert2() {
       ConvertLattice(*fst1, &cfst1);
       VectorFst<ArcD> fst2;
       ConvertLattice(cfst1, &fst2);
-      assert(RandEquivalent(*fst1, fst2, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+      assert(RandEquivalent(*fst1, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
       delete fst1;
     }
 
@@ -178,7 +178,7 @@ template<class Int> void TestConvert2() {
       ConvertLattice(*fst1, &cfst1);
       VectorFst<ArcF> fst2;
       ConvertLattice(cfst1, &fst2);
-      assert(RandEquivalent(*fst1, fst2, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+      assert(RandEquivalent(*fst1, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
       delete fst1;
     }
     
@@ -188,7 +188,7 @@ template<class Int> void TestConvert2() {
       ConvertLattice(*fst1, &cfst1);
       VectorFst<ArcD> fst2;
       ConvertLattice(cfst1, &fst2);
-      assert(RandEquivalent(*fst1, fst2, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));      
+      assert(RandEquivalent(*fst1, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));      
       delete fst1;
     }
   }
@@ -223,7 +223,7 @@ template<class Weight, class Int> void TestConvertPair(bool invert) {
       fstprinter.Print(&std::cout, "standard output");
       }*/
 
-    assert(RandEquivalent(*fst, origfst, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));    
+    assert(RandEquivalent(*fst, origfst, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));    
     delete fst;
   }
 }
@@ -238,16 +238,16 @@ template<class Weight, class Int> void TestScalePair(bool invert) {
   // exact floating-point comparisons are used in LatticeWeight, and
   // this exactness is being tested here.. this test will fail for
   // other types of number.
-  if (rand() % 4 == 0) {
+  if (kaldi::Rand() % 4 == 0) {
     scale1[0][0] = 2.0;
     scale2[0][0] = 0.5;
     scale1[1][1] = 4.0;
     scale2[1][1] = 0.25;
-  } else if (rand() % 3 == 0) {
+  } else if (kaldi::Rand() % 3 == 0) {
     // use that [1 0.25; 0 1] [ 1 -0.25; 0 1] is the unit matrix.
     scale1[0][1] = 0.25;
     scale2[0][1] = -0.25;
-  } else if (rand() % 2 == 0) {
+  } else if (kaldi::Rand() % 2 == 0) {
     scale1[1][0] = 0.25;
     scale2[1][0] = -0.25;
   }
@@ -280,7 +280,7 @@ template<class Weight, class Int> void TestScalePair(bool invert) {
       }*/
     // If RandEquivalent doesn't work, it could be due to a nasty issue related to the use
     // of exact floating-point comparisons in the Plus function of LatticeWeight.
-    if (!RandEquivalent(*fst, origfst, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/)) {
+    if (!RandEquivalent(*fst, origfst, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/)) {
       std::cerr << "Warn, randequivalent returned false.  Checking equivalence another way.\n";
       assert(Equal(*fst, origfst));
     }

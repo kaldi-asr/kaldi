@@ -152,7 +152,7 @@ fi
 
 if [ $stage -le 0 ]; then
   echo "$0: working out number of frames of training data"
-  num_frames=`feat-to-len scp:$data/feats.scp ark,t:- | awk '{x += $2;} END{print x;}'` || exit 1;
+  num_frames=$(steps/nnet2/get_num_frames.sh $data)
   echo $num_frames > $dir/num_frames
 else
   num_frames=`cat $dir/num_frames` || exit 1;

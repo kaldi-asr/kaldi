@@ -25,6 +25,7 @@
 #include "lat/lattice-functions.h"
 #include "hmm/transition-model.h"
 #include "util/stl-utils.h"
+#include "base/kaldi-math.h"
 
 namespace kaldi {
 using std::map;

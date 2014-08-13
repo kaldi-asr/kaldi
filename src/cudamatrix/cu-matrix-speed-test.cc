@@ -104,7 +104,7 @@ static void TestCuMatrixCompObjfAndDeriv(int32 dim) {
   BaseFloat time_in_secs = 0.025;  
   // Previously tested for larger dims, but test was slow.
 
-  int32 n_r = dim, n_c = dim + rand() % 5;
+  int32 n_r = dim, n_c = dim + Rand() % 5;
 
   CuMatrix<Real> A(n_r, n_c), B(n_r, n_c);
   B.SetRandn();
@@ -115,7 +115,7 @@ static void TestCuMatrixCompObjfAndDeriv(int32 dim) {
   for(int i = 0; i < n_r; i++) {
     for(int j = 0; j < n_c; j++) {
       // have approximately one weight per row of the matrix.
-      if (rand() % n_c == 0) {
+      if (Rand() % n_c == 0) {
         A(i, j) = RandUniform();
         MatrixElement<Real> t = {i, j, A(i, j)};
         labels.push_back(t);
@@ -162,7 +162,7 @@ static void TestCuMatrixCompObjfAndDeriv(int32 dim) {
 template<typename Real> 
 static void TestCuFindRowMaxId(int32 dim) {
 
-  int32 dimM = dim, dimN = dimM + rand() % 5;
+  int32 dimM = dim, dimN = dimM + Rand() % 5;
 
   Matrix<Real> Hi(dimM, dimN);
   Hi.SetRandn();

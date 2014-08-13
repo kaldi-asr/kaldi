@@ -176,7 +176,7 @@ fi
 if [ -z "$degs_dir" ]; then
   if [ $stage -le -8 ]; then
     echo "$0: working out number of frames of training data"
-    num_frames=`feat-to-len scp:$data/feats.scp ark,t:- | awk '{x += $2;} END{print x;}'` || exit 1;
+    num_frames=$(steps/nnet2/get_num_frames.sh $data)
     echo $num_frames > $dir/num_frames
     # Working out number of iterations per epoch.
     iters_per_epoch=`perl -e "print int($num_frames/($samples_per_iter * $num_jobs_nnet) + 0.5);"` || exit 1;

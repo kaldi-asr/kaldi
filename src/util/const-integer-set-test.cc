@@ -29,10 +29,10 @@ namespace kaldi {
 
 template<class Int> void TestSetOfNumbers(bool binary) {
   std::set<Int> baseline_set;
-  size_t n_in_set = (rand() % 3) * 50 + (rand() % 4);  // may be less than this.
-  size_t max = (Int) (rand() % 100) + 1;
+  size_t n_in_set = (Rand() % 3) * 50 + (Rand() % 4);  // may be less than this.
+  size_t max = (Int) (Rand() % 100) + 1;
   for (size_t i = 0; i < n_in_set; i++) {
-    Int to_add  ((Int) (rand() % max));
+    Int to_add  ((Int) (Rand() % max));
     baseline_set.insert(to_add);
   }
 
@@ -42,7 +42,7 @@ template<class Int> void TestSetOfNumbers(bool binary) {
     vector_set.push_back(*iter);
   if (vector_set.size() != 0) {
     for (size_t i = 0;i < 10;i++) // randomize order.
-      std::swap(vector_set[rand()%vector_set.size()],  vector_set[rand()%vector_set.size()]);
+      std::swap(vector_set[Rand()%vector_set.size()],  vector_set[Rand()%vector_set.size()]);
   }
 
   ConstIntegerSet<Int> my_set1(baseline_set);
@@ -75,9 +75,9 @@ template<class Int> void TestSetOfNumbers(bool binary) {
   for (size_t i = 0;i < 100;i++) {
     Int some_int;
     if (i%2 == 0 && vector_set.size() != 0)
-      some_int = vector_set[rand()%vector_set.size()];
+      some_int = vector_set[Rand()%vector_set.size()];
     else
-      some_int = rand() % max;
+      some_int = Rand() % max;
     bool in_baseline = (baseline_set.count(some_int) != 0);
     bool in_my_set1 = (my_set1.count(some_int) != 0);
     bool in_my_set2 = (my_set2.count(some_int) != 0);
@@ -132,12 +132,12 @@ template<class Int> void TestSetOfNumbers(bool binary) {
 int main() {
   using namespace kaldi;
   for (size_t i = 0;i < 10;i++) {
-    TestSetOfNumbers<int>(rand()%2);
-    TestSetOfNumbers<unsigned int>(rand()%2);
-    TestSetOfNumbers<short int>(rand()%2);
-    TestSetOfNumbers<short unsigned int>(rand()%2);
-    TestSetOfNumbers<char>(rand()%2);
-    TestSetOfNumbers<unsigned char>(rand()%2);
+    TestSetOfNumbers<int>(Rand()%2);
+    TestSetOfNumbers<unsigned int>(Rand()%2);
+    TestSetOfNumbers<short int>(Rand()%2);
+    TestSetOfNumbers<short unsigned int>(Rand()%2);
+    TestSetOfNumbers<char>(Rand()%2);
+    TestSetOfNumbers<unsigned char>(Rand()%2);
   }
   std::cout << "Test OK.\n";
 }

@@ -54,7 +54,7 @@ void TestUpdateAndAccsIO(const AmSgmm &sgmm,
   accs.CommitStatsForSpk(sgmm, empty_spk);
 
   kaldi::MleAmSgmmOptions update_opts;
-  update_opts.check_v = (rand()%2 == 0);
+  update_opts.check_v = (Rand()%2 == 0);
   AmSgmm *sgmm1 = new AmSgmm();
   sgmm1->CopyFromSgmm(sgmm, false);
   kaldi::MleAmSgmmUpdater updater(update_opts);

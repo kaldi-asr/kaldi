@@ -79,12 +79,12 @@ void TestEventMap() {
 
   // Test different initializer  for TableEventMap where input maps ints to ints.
   for (size_t i = 0;i < 100;i++) {
-    size_t nElems = rand() % 10;  // num of value->answer pairs.
+    size_t nElems = Rand() % 10;  // num of value->answer pairs.
     std::map<ValueType, AnswerType> init_map;
     for (size_t i = 0;i < nElems;i++) {
-      init_map[rand() % 10] = rand() % 5;
+      init_map[Rand() % 10] = Rand() % 5;
     }
-    EventKeyType key = rand() % 10;
+    EventKeyType key = Rand() % 10;
     TableEventMap T3(key, init_map);
     for (size_t i = 0; i < 10; i++) {
       EventType vec;
@@ -110,11 +110,11 @@ void TestEventMap() {
 void TestEventTypeIo(bool binary) {
   for (size_t p = 0; p < 20; p++) {
     EventType event_vec;
-    size_t size = rand() % 20;
+    size_t size = Rand() % 20;
     event_vec.resize(size);
     for (size_t i = 0;i < size;i++) {
-      event_vec[i].first = rand() % 10 + (i > 0 ? event_vec[i-1].first : 0);
-      event_vec[i].second = rand() % 20;
+      event_vec[i].first = Rand() % 10 + (i > 0 ? event_vec[i-1].first : 0);
+      event_vec[i].second = Rand() % 20;
     }
 
 
@@ -147,13 +147,13 @@ EventMap *RandomEventMap(const std::vector<EventKeyType> &keys) {
   KALDI_ASSERT(keys.size() != 0);
   float f = RandUniform();
   if (f < 0.333) {  // w.p. 0.333, return ConstantEventMap.
-    return new ConstantEventMap(rand() % max_val);
+    return new ConstantEventMap(Rand() % max_val);
   } else if (f < 0.666) {  // w.p. 0.333, return TableEventMap.
     float nonnull_prob = 0.3;  // prob of a non-NULL pointer.
     float expected_table_size = 3.0;
     int32 table_size = RandPoisson(expected_table_size);
     // fertility from this branch is 0.333 * 3.0 * 0.2333 = 0.3.
-    EventKeyType key = keys[rand() % keys.size()];
+    EventKeyType key = keys[Rand() % keys.size()];
     std::vector<EventMap*> table(table_size);
     for (size_t t = 0; t < (size_t)table_size; t++) {
       if (RandUniform() < nonnull_prob) table[t] = RandomEventMap(keys);
@@ -162,9 +162,9 @@ EventMap *RandomEventMap(const std::vector<EventKeyType> &keys) {
     return new TableEventMap(key, table);
   } else {  // w.p. 0.333, return SplitEventMap.
     // Fertility of this stage is 0.333 * 2 = 0.666.
-    EventKeyType key = keys[rand() % keys.size()];
+    EventKeyType key = keys[Rand() % keys.size()];
     std::set<EventValueType> yes_set;
-    for (size_t i = 0; i < 5; i++) yes_set.insert(rand() % max_val);
+    for (size_t i = 0; i < 5; i++) yes_set.insert(Rand() % max_val);
     std::vector<EventValueType> yes_vec;
     CopySetToVector(yes_set, &yes_vec);
     EventMap *yes = RandomEventMap(keys), *no = RandomEventMap(keys);
@@ -176,10 +176,10 @@ EventMap *RandomEventMap(const std::vector<EventKeyType> &keys) {
 void TestEventMapIo(bool binary) {
   for (size_t p = 0; p < 20; p++) {
     int32 max_key = 10;
-    int32 num_keys = 1 + (rand() % (max_key - 1));
+    int32 num_keys = 1 + (Rand() % (max_key - 1));
     std::set<EventKeyType> key_set;
     // - 5 to allow negative keys.  These are allowed.
-    while (key_set.size() < (size_t)num_keys) key_set.insert( (rand() % (2*max_key)) - 5);
+    while (key_set.size() < (size_t)num_keys) key_set.insert( (Rand() % (2*max_key)) - 5);
     std::vector<EventKeyType> key_vec;
     CopySetToVector(key_set, &key_vec);
     EventMap *rand_map = RandomEventMap(key_vec);
@@ -223,8 +223,8 @@ void TestEventMapPrune() {
     new_leaves.resize(ans + 1, NULL);
     mapping.resize(ans + 1, no_ans);
     EventAnswerType map_to;
-    if (rand() % 2 == 0) map_to = -1;
-    else map_to = rand() % 20;
+    if (Rand() % 2 == 0) map_to = -1;
+    else map_to = Rand() % 20;
     new_leaves[ans] = new ConstantEventMap(map_to);
     mapping[ans] = map_to;
   }
@@ -235,8 +235,8 @@ void TestEventMapPrune() {
   for (int32 i = 0; i < 10; i++) {
     EventType event;
     for (int32 key = 1; key <= 2; key++) {
-      if (rand() % 2 == 0) {
-        EventValueType value = rand() % 20;
+      if (Rand() % 2 == 0) {
+        EventValueType value = Rand() % 20;
         event.push_back(std::make_pair(key, value));
       }
     }
@@ -274,10 +274,10 @@ void TestEventMapMapValues() {
 
   unordered_set<EventKeyType> mapped_keys;
   unordered_map<EventKeyType,EventKeyType> value_map;
-  if (rand() % 2 == 0) mapped_keys.insert(1);
-  if (rand() % 2 == 0) mapped_keys.insert(2);
+  if (Rand() % 2 == 0) mapped_keys.insert(1);
+  if (Rand() % 2 == 0) mapped_keys.insert(2);
 
-  EventValueType v_offset = rand() % kMaxVal;
+  EventValueType v_offset = Rand() % kMaxVal;
   for (EventValueType v = 0; v < kMaxVal; v++)
     value_map[v] = (v + v_offset) % kMaxVal;
     
@@ -286,8 +286,8 @@ void TestEventMapMapValues() {
   for (int32 i = 0; i < 10; i++) {
     EventType event, mapped_event;
     for (int32 key = 1; key <= 2; key++) {
-      if (rand() % 2 == 0) {
-        EventValueType value = rand() % kMaxVal;
+      if (Rand() % 2 == 0) {
+        EventValueType value = Rand() % kMaxVal;
         event.push_back(std::make_pair(key, value));
         EventValueType mapped_value;
         if (mapped_keys.count(key) == 0) mapped_value = value;

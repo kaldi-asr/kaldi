@@ -24,8 +24,8 @@ namespace kaldi {
 namespace nnet2 {
 
 void UnitTestPreconditionDirections() {
-  MatrixIndexT N = 2 + rand() % 30,
-               D = 1 + rand() % 20;
+  MatrixIndexT N = 2 + Rand() % 30,
+               D = 1 + Rand() % 20;
   BaseFloat lambda = 0.1;
   CuMatrix<BaseFloat> R(N, D), P(N, D);
   R.SetRandn();

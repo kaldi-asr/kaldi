@@ -115,12 +115,13 @@ class Plda {
  protected:
   void ComputeDerivedVars(); // computes offset_.
   friend class PldaEstimator;
+  friend class PldaUnsupervisedAdaptor;
   
   Vector<double> mean_;  // mean of samples in original space.
-  Matrix<double> transform_; // of dimension FeatureDim() by FeatureDim();
+  Matrix<double> transform_; // of dimension Dim() by Dim();
                              // this transform makes within-class covar unit
                              // and diagonalizes the between-class covar.
-  Vector<double> psi_; // of dimension FeatureDim().  The between-class
+  Vector<double> psi_; // of dimension Dim().  The between-class
                        // (diagonal) covariance elements, in decreasing order.
 
   Vector<double> offset_;  // derived variable: -1.0 * transform_ * mean_
@@ -203,7 +204,6 @@ struct PldaEstimationConfig {
   }
 };
 
-
 class PldaEstimator {
  public:
   PldaEstimator(const PldaStats &stats);
@@ -257,6 +257,55 @@ private:
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(PldaEstimator);
 };
+
+
+
+struct PldaUnsupervisedAdaptorConfig {
+  BaseFloat mean_diff_scale;
+  BaseFloat within_covar_scale;
+  BaseFloat between_covar_scale;
+  
+  PldaUnsupervisedAdaptorConfig():
+      mean_diff_scale(1.0),
+      within_covar_scale(0.3),
+      between_covar_scale(0.7) { }
+
+  void Register(OptionsItf *po) {
+    po->Register("mean-diff-scale", &mean_diff_scale,
+                 "Scale with which to add to the total data variance, the outer "
+                 "product of the difference between the original mean and the "
+                 "adaptation-data mean");
+    po->Register("within-covar-scale", &within_covar_scale,
+                 "Scale that determines how much of excess variance in a "
+                 "particular direction gets attributed to within-class covar.");
+    po->Register("between-covar-scale", &between_covar_scale,
+                 "Scale that determines how much of excess variance in a "
+                 "particular direction gets attributed to between-class covar.");
+
+  }
+};
+
+/**
+  This class takes unlabeled iVectors from the domain of interest and uses their
+  mean and variance to adapt your PLDA matrices to a new domain.  This class
+  also stores stats for this form of adaptation.  */
+class PldaUnsupervisedAdaptor {
+ public:
+  PldaUnsupervisedAdaptor(): tot_weight_(0.0) { }
+  // Add stats to this class.  Normally the weight will be 1.0.
+  void AddStats(double weight, const Vector<double> &ivector);
+  void AddStats(double weight, const Vector<BaseFloat> &ivector);
+  
+
+  void UpdatePlda(const PldaUnsupervisedAdaptorConfig &config,
+                  Plda *plda) const;
+ private:
+
+  double tot_weight_;
+  Vector<double> mean_stats_;
+  SpMatrix<double> variance_stats_;    
+};
+
 
 
 }  // namespace kaldi

@@ -37,14 +37,14 @@ This script distributes data onto different file systems by making symbolic
 links. It is supposed to use together with utils/create_split_dir.pl, which
 creates a "storage" directory that links to different file systems.
 
-If a sub-directory egs/storage does not exist, it does nothing. If it exists,
-then it selects pseudo-randomly a number from those available in egs/storage/*
+If a sub-directory foo/storage does not exist, it does nothing. If it exists,
+then it selects pseudo-randomly a number from those available in foo/storage/*
 creates a link such as
 
-  egs/egs.3.4.ark -> storage/4/egs.3.4.ark
+  foo/egs.3.4.ark -> storage/4/egs.3.4.ark
 
 Usage: utils/create_data_link.pl <data-archive>
- e.g.: utils/create_data_link.pl nnet5b/egs/egs.3.4.ark
+ e.g.: utils/create_data_link.pl foo/bar/egs.3.4.ark
 
 EOU
 

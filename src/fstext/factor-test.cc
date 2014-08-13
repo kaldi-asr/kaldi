@@ -21,7 +21,7 @@
 #include "fstext/factor.h"
 #include "fstext/fstext-utils.h"
 #include "fstext/fst-test-utils.h"
-
+#include "base/kaldi-math.h"
 
 
 namespace fst
@@ -35,7 +35,7 @@ template<class Arc> static void TestFactor() {
   typedef typename Arc::Weight Weight;
 
   VectorFst<Arc> fst;
-  int n_syms = 2 + rand() % 5, n_arcs = 5 + rand() % 30, n_final = 1 + rand()%10;
+  int n_syms = 2 + kaldi::Rand() % 5, n_arcs = 5 + kaldi::Rand() % 30, n_final = 1 + kaldi::Rand()%10;
 
   SymbolTable symtab("my-symbol-table"), *sptr = &symtab;
 
@@ -54,27 +54,27 @@ template<class Arc> static void TestFactor() {
   fst.AddState();
   int cur_num_states = 1;
   for (int i = 0; i < n_arcs; i++) {
-    StateId src_state = rand() % cur_num_states;
+    StateId src_state = kaldi::Rand() % cur_num_states;
     StateId dst_state;
-    if (kaldi::RandUniform() < 0.1) dst_state = rand() % cur_num_states;
+    if (kaldi::RandUniform() < 0.1) dst_state = kaldi::Rand() % cur_num_states;
     else {
       dst_state = cur_num_states++; fst.AddState();
     }
     Arc arc;
-    if (kaldi::RandUniform() < 0.5) arc.ilabel = all_syms[rand()%all_syms.size()];
+    if (kaldi::RandUniform() < 0.5) arc.ilabel = all_syms[kaldi::Rand()%all_syms.size()];
     else arc.ilabel = 0;
-    if (kaldi::RandUniform() < 0.5) arc.olabel = all_syms[rand()%all_syms.size()];
+    if (kaldi::RandUniform() < 0.5) arc.olabel = all_syms[kaldi::Rand()%all_syms.size()];
     else arc.olabel = 0;
-    arc.weight = (Weight) (0 + 0.1*(rand() % 5));
+    arc.weight = (Weight) (0 + 0.1*(kaldi::Rand() % 5));
     arc.nextstate = dst_state;
     fst.AddArc(src_state, arc);
   }
   for (int i = 0; i < n_final; i++) {
-    fst.SetFinal(rand() % cur_num_states,  (Weight) (0 + 0.1*(rand() % 5)));
+    fst.SetFinal(kaldi::Rand() % cur_num_states,  (Weight) (0 + 0.1*(kaldi::Rand() % 5)));
   }
 
   if (kaldi::RandUniform() < 0.8)   fst.SetStart(0);  // usually leads to nicer examples.
-  else fst.SetStart(rand() % cur_num_states);
+  else fst.SetStart(kaldi::Rand() % cur_num_states);
 
   std::cout <<" printing before trimming\n";
   {
@@ -126,11 +126,11 @@ template<class Arc> static void TestFactor() {
 
   ExpandInputSequences(symbols_pushed, &fst_factored_pushed);
 
-  assert(RandEquivalent(fst, fst_factored_unfactored, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+  assert(RandEquivalent(fst, fst_factored_unfactored, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
 
-  assert(RandEquivalent(fst, fst_factored_unfactored2, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+  assert(RandEquivalent(fst, fst_factored_unfactored2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
 
-  assert(RandEquivalent(fst, fst_factored_pushed, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+  assert(RandEquivalent(fst, fst_factored_pushed, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
 
   {  // Have tested for equivalence; now do another test: that FactorFst actually finds all
     // the factors.  Do this by inserting factors using ExpandInputSequences and making sure it gets
@@ -138,8 +138,8 @@ template<class Arc> static void TestFactor() {
     Label max_label = *(std::max_element(all_syms.begin(), all_syms.end()));
     vector<vector<Label> > new_labels(max_label+1);
     for (Label l = 1; l < static_cast<Label>(new_labels.size()); l++) {
-      int n = rand() % 5;
-      for (int i = 0; i < n; i++) new_labels[l].push_back(rand() % 100);
+      int n = kaldi::Rand() % 5;
+      for (int i = 0; i < n; i++) new_labels[l].push_back(kaldi::Rand() % 100);
     }
     VectorFst<Arc> fst_expanded(fst);
     ExpandInputSequences(new_labels, &fst_expanded);
@@ -158,7 +158,7 @@ template<class Arc> static void TestFactor() {
     for (Label i = 1; i < static_cast<Label>(symbols.size()); i++) {
       Label new_i;
       do {
-        new_i = rand() % (symbols.size() + 20);
+        new_i = kaldi::Rand() % (symbols.size() + 20);
       } while (symbols_reverse_map.count(new_i) == 1);
       symbols_reverse_map[new_i] = i;
     }
@@ -174,7 +174,7 @@ template<class Arc> static void TestFactor() {
     MapInputSymbols(symbol_map, &fst_factored_copy);
     ExpandInputSequences(symbols_new, &fst_factored_copy);
     assert(RandEquivalent(fst, fst_factored_copy,
-                          5/*paths*/, 0.01/*delta*/, rand()/*seed*/,
+                          5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/,
                           100/*path length-- max?*/));
   }
 

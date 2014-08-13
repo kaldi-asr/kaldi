@@ -27,45 +27,45 @@ void UnitTestIo(bool binary) {
     std::ofstream outfile(filename, std::ios_base::out | std::ios_base::binary);
     InitKaldiOutputStream(outfile, binary);
     if (!binary) outfile << "\t";
-    int64 i1 = rand() % 10000;
+    int64 i1 = Rand() % 10000;
     WriteBasicType(outfile, binary, i1);
-    uint16 i2 = rand() % 10000;
+    uint16 i2 = Rand() % 10000;
     WriteBasicType(outfile, binary, i2);
     if (!binary) outfile << "\t";
-    char c = rand();
+    char c = Rand();
     WriteBasicType(outfile, binary, c);
-    if (!binary && rand()%2 == 0) outfile << " \n";
+    if (!binary && Rand()%2 == 0) outfile << " \n";
     std::vector<int32> vec1;
     WriteIntegerVector(outfile, binary, vec1);
-    if (!binary && rand()%2 == 0) outfile << " \n";
+    if (!binary && Rand()%2 == 0) outfile << " \n";
     std::vector<uint16> vec2;
-    for (size_t i = 0; i < 10; i++) vec2.push_back(rand()%100 - 10);
+    for (size_t i = 0; i < 10; i++) vec2.push_back(Rand()%100 - 10);
     WriteIntegerVector(outfile, binary, vec2);
     if (!binary) outfile << " \n";
     std::vector<char> vec3;
-    for (size_t i = 0; i < 10; i++) vec3.push_back(rand()%100);
+    for (size_t i = 0; i < 10; i++) vec3.push_back(Rand()%100);
     WriteIntegerVector(outfile, binary, vec3);
-    if (!binary && rand()%2 == 0) outfile << " \n";
+    if (!binary && Rand()%2 == 0) outfile << " \n";
     const char *token1 = "Hi";
     WriteToken(outfile, binary, token1);
     if (!binary) outfile << " \n";
     std::string token2 = "There.";
     WriteToken(outfile, binary, token2);
-    if (!binary && rand()%2 == 0) outfile << " \n";
+    if (!binary && Rand()%2 == 0) outfile << " \n";
     std::string token3 = "You.";
     WriteToken(outfile, binary, token3);
-    if (!binary && rand()%2 == 0) outfile << " ";
+    if (!binary && Rand()%2 == 0) outfile << " ";
     float f1 = RandUniform();
     WriteBasicType(outfile, binary, f1);
-    if (!binary && rand()%2 == 0) outfile << "\t";
+    if (!binary && Rand()%2 == 0) outfile << "\t";
     float f2 = RandUniform();
     WriteBasicType(outfile, binary, f2);
     double d1 = RandUniform();
     WriteBasicType(outfile, binary, d1);
-    if (!binary && rand()%2 == 0) outfile << "\t";
+    if (!binary && Rand()%2 == 0) outfile << "\t";
     double d2 = RandUniform();
     WriteBasicType(outfile, binary, d2);
-    if (!binary && rand()%2 == 0) outfile << "\t";
+    if (!binary && Rand()%2 == 0) outfile << "\t";
     outfile.close();
 
     {
@@ -99,7 +99,7 @@ void UnitTestIo(bool binary) {
       KALDI_ASSERT(token1_in == std::string(token1));
       ReadToken(infile, binary_in, &token2_in);
       KALDI_ASSERT(token2_in == std::string(token2));
-      if (rand() % 2 == 0)
+      if (Rand() % 2 == 0)
         ExpectToken(infile, binary_in, token3.c_str());
       else
         ExpectToken(infile, binary_in, token3);

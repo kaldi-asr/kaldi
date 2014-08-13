@@ -40,7 +40,7 @@ void TestPushCompactLatticeStrings() {
   CompactLattice *clat = RandCompactLattice();
   CompactLattice clat2(*clat);
   PushCompactLatticeStrings(&clat2);
-  KALDI_ASSERT(fst::RandEquivalent(*clat, clat2, 5, 0.001, rand(), 10));
+  KALDI_ASSERT(fst::RandEquivalent(*clat, clat2, 5, 0.001, Rand(), 10));
   for (CompactLatticeArc::StateId s = 0; s < clat2.NumStates(); s++) {
     if (s == 0)
       continue; // We don't check state zero, as the "leftover string" stays
@@ -78,7 +78,7 @@ void TestPushCompactLatticeWeights() {
   CompactLattice *clat = RandCompactLattice();
   CompactLattice clat2(*clat);
   PushCompactLatticeWeights(&clat2);
-  KALDI_ASSERT(fst::RandEquivalent(*clat, clat2, 5, 0.001, rand(), 10));
+  KALDI_ASSERT(fst::RandEquivalent(*clat, clat2, 5, 0.001, Rand(), 10));
   for (CompactLatticeArc::StateId s = 0; s < clat2.NumStates(); s++) {
     if (s == 0)
       continue; // We don't check state zero, as the "leftover string" stays

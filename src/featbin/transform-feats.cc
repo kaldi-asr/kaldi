@@ -33,8 +33,9 @@ int main(int argc, char *argv[]) {
         "transform-num-cols == feature-dim+1 (->append 1.0 to features)\n"
         "Per-utterance by default, or per-speaker if utt2spk option provided\n"
         "Global if transform-rxfilename provided.\n"
-        "Usage: transform-feats [options] (transform-rspecifier|transform-rxfilename) feats-rspecifier feats-wspecifier\n";
-
+        "Usage: transform-feats [options] (<transform-rspecifier>|<transform-rxfilename>) <feats-rspecifier> <feats-wspecifier>\n"
+        "See also: transform-vec, copy-feats, compose-transforms\n";
+        
     ParseOptions po(usage);
     std::string utt2spk_rspecifier;
     po.Register("utt2spk", &utt2spk_rspecifier, "rspecifier for utterance to speaker map");
@@ -60,9 +61,7 @@ int main(int argc, char *argv[]) {
        == kNoRspecifier) {
       // not an rspecifier -> interpret as rxfilename....
       use_global_transform = true;
-      bool binary_in;
-      Input ki(transform_rspecifier_or_rxfilename, &binary_in);
-      global_transform.Read(ki.Stream(), binary_in);
+      ReadKaldiObject(transform_rspecifier_or_rxfilename, &global_transform);
     } else {  // an rspecifier -> not a global transform.
       use_global_transform = false;
       if (!transform_reader.Open(transform_rspecifier_or_rxfilename,

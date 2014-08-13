@@ -1,6 +1,7 @@
 // bin/copy-vector.cc
 
-// Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2009-2012  Microsoft Corporation
+//           2012-2014  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -30,7 +31,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Copy vectors, or archives of vectors (e.g. transition-accs; speaker vectors)\n"
         "\n"
-        "Usage: copy-vector [options] (vector-in-rspecifier|vector-in-rxfilename) (vector-out-wspecifier|vector-out-wxfilename)\n"
+        "Usage: copy-vector [options] (<vector-in-rspecifier>|<vector-in-rxfilename>) (<vector-out-wspecifier>|<vector-out-wxfilename>)\n"
         " e.g.: copy-vector --binary=false 1.mat -\n"
         "   copy-vector ark:2.trans ark,t:-\n";
     

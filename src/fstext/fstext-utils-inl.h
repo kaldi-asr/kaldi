@@ -905,9 +905,9 @@ bool EqualAlign(const Fst<Arc> &ifst,
     size_t num_arcs = ifst.NumArcs(s);
     size_t num_arcs_tot = num_arcs;
     if (ifst.Final(s) != Weight::Zero()) num_arcs_tot++;
-    // kaldi::RandInt is a bit like rand(), but gets around situations
+    // kaldi::RandInt is a bit like Rand(), but gets around situations
     // where RAND_MAX is very small.
-    // Change this to rand() % num_arcs_tot if compile issues arise
+    // Change this to Rand() % num_arcs_tot if compile issues arise
     size_t arc_offset = static_cast<size_t>(kaldi::RandInt(0, num_arcs_tot-1));
 
     if (arc_offset < num_arcs) {  // an actual arc.

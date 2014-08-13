@@ -148,15 +148,15 @@ void TestEditDistance2() {
   // randomized test
   size_t num = 0;
   for (; num < 1000; num ++) {
-    int32  hyp_len = rand()%11;
-    int32  ref_len = rand()%3;
+    int32  hyp_len = Rand()%11;
+    int32  ref_len = Rand()%3;
     hyp.resize(hyp_len);  ref.resize(ref_len);
 
     int32 index = 0;
     for (; index < hyp_len; index ++)
-      hyp[index] = rand()%4;
+      hyp[index] = Rand()%4;
     for (index = 0; index < ref_len; index ++)
-      ref[index] = rand()%4;
+      ref[index] = Rand()%4;
     // current version
     total_cost = LevenshteinEditDistance(ref, hyp, &ins, &del, &sub);
     // previous version
@@ -206,15 +206,15 @@ void TestEditDistance2String() {
   // randomized test
   size_t num = 0;
   for (; num < 1000; num ++) {
-    int32  hyp_len = rand()%11;
-    int32  ref_len = rand()%3;
+    int32  hyp_len = Rand()%11;
+    int32  ref_len = Rand()%3;
     hyp.resize(hyp_len);  ref.resize(ref_len);
 
     int32 index = 0;
     for (; index < hyp_len; index ++)
-      hyp[index] = rand()%4;
+      hyp[index] = Rand()%4;
     for (index = 0; index < ref_len; index ++)
-      ref[index] = rand()%4;
+      ref[index] = Rand()%4;
     // current version
     total_cost = LevenshteinEditDistance(ref, hyp, &ins, &del, &sub);
     // previous version
@@ -230,10 +230,10 @@ void TestEditDistance2String() {
 
 void TestLevenshteinAlignment() {
   for (size_t i = 0; i < 100; i++) {
-    size_t a_sz = rand() % 5, b_sz = rand() % 5;
+    size_t a_sz = Rand() % 5, b_sz = Rand() % 5;
     std::vector<int32> a, b;
-    for (size_t j = 0; j < a_sz; j++) a.push_back(rand() % 10);
-    for (size_t j = 0; j < b_sz; j++) b.push_back(rand() % 10);
+    for (size_t j = 0; j < a_sz; j++) a.push_back(Rand() % 10);
+    for (size_t j = 0; j < b_sz; j++) b.push_back(Rand() % 10);
     int32 eps_sym = -1;
     std::vector<std::pair<int32, int32> > ans;
 

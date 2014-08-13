@@ -29,6 +29,13 @@
 namespace kaldi {
 using std::vector;
 
+// This function needs to be added because std::generate is complaining
+// about RandGauss(), which takes an optional arguments.
+static inline float _RandGauss()
+{
+  return RandGauss();
+}
+
 void Sgmm2LikelihoodCache::NextFrame() {
   t++;
   if (t == 0) {
@@ -518,7 +525,7 @@ BaseFloat AmSgmm2::LogLikelihood(const Sgmm2PerFrameDerivedVars &per_frame_vars,
   Sgmm2LikelihoodCache::PdfCacheElement &pdf_cache =
       cache->pdf_cache[j2];
 #ifdef KALDI_PARANOID
-  bool random_test = (rand() % 1000 == 1); // to check that the user is
+  bool random_test = (Rand() % 1000 == 1); // to check that the user is
   // calling Next() on the cache, as they should.
 #else
   bool random_test = false; // compiler will ignore test branches.
@@ -631,7 +638,7 @@ void AmSgmm2::SplitSubstatesInGroup(const Vector<BaseFloat> &pdf_occupancies,
     }
     // v_{jkm} := +/- split_perturb * H_k^{(sm)}^{-0.5} * rand_vec
     std::generate(rand_vec.Data(), rand_vec.Data() + rand_vec.Dim(),
-                  RandGauss);
+                  _RandGauss);
     v_shift.AddSpVec(opts.perturb_factor, sqrt_H_sm, rand_vec, 0.0);
     v_[j1].Row(cur_M).CopyFromVec(v_[j1].Row(split_m));
     v_[j1].Row(cur_M).AddVec(1.0, v_shift);

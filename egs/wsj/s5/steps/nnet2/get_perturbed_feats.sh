@@ -4,8 +4,9 @@
 # begin configuration section
 
 cmd="run.pl"
-pairs="1.1-1.0 1.05-1.2 1.0-0.8 0.95-1.1 0.9-0.9" # Pairs of (VTLN warp factor, time-warp factor)
+num_copies=5  # support 3, 4 or 5 perturbed copies of the data.
 stage=0
+nj=8
 cleanup=true
 feature_type=fbank
 # end configuration section
@@ -15,14 +16,14 @@ set -e
 
 if [ $# -ne 5 ]; then
   echo "Usage: $0 [options] <baseline-feature-config> <feature-storage-dir> <log-location> <input-data-dir> <output-data-dir> "
-  echo "e.g.: $0 mfcc conf/fbank_40.conf exp/perturbed_fbank_train data/train data/train_perturbed_fbank"
+  echo "e.g.: $0 conf/fbank_40.conf mfcc exp/perturbed_fbank_train data/train data/train_perturbed_fbank"
   echo "Supported options: "
-  echo "--feature-type (fbank|mfcc|plp)  # Type of features we are making"
+  echo "--feature-type (fbank|mfcc|plp)  # Type of features we are making, default fbank"
   echo "--cmd 'command-program'      # Mechanism to run jobs, e.g. run.pl"
-  echo "--pairs <pairs>              # Pairs of (vtln-warp, time-warp) factors, "
-  echo "                             # default $pairs"
+  echo "--num-copies <n>             # Number of perturbed copies of the data (support 3, 4 or 5), default 5"
   echo "--stage <stage>              # Use for partial re-run"
   echo "--cleanup (true|false)       # If false, do not clean up temp files (default: true)"
+  echo "--nj <num-jobs>              # How many jobs to use for feature extraction (default: 8)"
   exit 1;
 fi
 
@@ -31,6 +32,18 @@ featdir=$2
 dir=$3 # dir/log* will contain log-files
 inputdata=$4
 data=$5
+
+# Set pairs of (VTLN warp factor, time-warp factor)
+# Aim to put these roughly in a circle centered at 1.0-1.0
+if [ $num_copies -eq 5 ]; then
+  pairs="1.1-1.0 1.05-1.2 1.0-0.8 0.95-1.1 0.9-0.9" 
+elif [ $num_copies -eq 4 ]; then
+  pairs="1.1-1.0 1.0-0.8 1.0-1.2 0.9-1.0"
+elif [ $num_copies -eq 3 ]; then
+  pairs="1.1-1.1 1.0-0.8 0.9-1.1"
+else
+  echo "$0: unsupported --num-copies value: $num_copies (support 3, 4 or 5)"
+fi
 
 for f in $base_config $inputdata/wav.scp; do 
   if [ ! -f $f ]; then
@@ -65,7 +78,7 @@ for pair in $pairs; do
   all_feature_dirs="$all_feature_dirs $feature_data"
 
   utils/copy_data_dir.sh --spk-prefix ${pair}- --utt-prefix ${pair}- $inputdata $feature_data
-  steps/make_${feature_type}.sh --${feature_type}-config $conf --nj 8 --cmd "$cmd" $feature_data $this_dir $featdir
+  steps/make_${feature_type}.sh --${feature_type}-config $conf --nj "$nj" --cmd "$cmd" $feature_data $this_dir $featdir
 
   steps/compute_cmvn_stats.sh $feature_data $this_dir $featdir
 done

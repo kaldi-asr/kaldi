@@ -1,4 +1,4 @@
-// ivectorbin/ivector-mean.cc
+// ivectorbin/ivector-compute-plda.cc
 
 // Copyright 2013  Daniel Povey
 

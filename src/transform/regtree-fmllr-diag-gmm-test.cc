@@ -139,7 +139,7 @@ generate_features(cova_type covariance_type,
 
 void UnitTestRegtreeFmllrDiagGmm(cova_type feature_type, size_t max_bclass) {
   // dimension of the feature space
-  size_t dim = 5 + rand() % 3;
+  size_t dim = 5 + Rand() % 3;
 
   // number of components in the data
   size_t n_gaussians = 8;
@@ -227,7 +227,7 @@ void UnitTestRegtreeFmllrDiagGmm(cova_type feature_type, size_t max_bclass) {
   RegressionTree regtree;
 
   RegtreeFmllrOptions xform_opts;
-  xform_opts.min_count = 100 * (1 + rand() % 10);
+  xform_opts.min_count = 100 * (1 + Rand() % 10);
   xform_opts.use_regtree = (RandUniform() < 0.5)? false : true;
 
   size_t num_pdfs = 1;

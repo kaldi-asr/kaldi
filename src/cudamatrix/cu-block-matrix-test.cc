@@ -88,10 +88,10 @@ static bool ApproxEqual(const CuBlockMatrix<Real> &A,
 template<class Real>
 static void UnitTestCuBlockMatrixIO() {
   for (int32 i = 0; i < 10; i++) {
-    int32 num_blocks = rand() % 5;
+    int32 num_blocks = Rand() % 5;
     std::vector<CuMatrix<Real> > data(num_blocks);
     for (int32 b = 0; b < num_blocks; b++) {
-      int32 dimM = 100 + rand() % 255, dimN = 10 + rand() % 20;
+      int32 dimM = 100 + Rand() % 255, dimN = 10 + Rand() % 20;
       if (b % 2 == 0) std::swap(dimM, dimN);
       data[b].Resize(dimM, dimN);
       data[b].SetRandn();
@@ -118,10 +118,10 @@ static void UnitTestCuBlockMatrixIO() {
 template<class Real>
 static void UnitTestCuBlockMatrixAddMatBlock() {
   for (int32 i = 0; i < 20; i++) {
-    int32 num_blocks = rand() % 5;
+    int32 num_blocks = Rand() % 5;
     std::vector<CuMatrix<Real> > data(num_blocks);
     for (int32 b = 0; b < num_blocks; b++) {
-      int32 dimM = 100 + rand() % 255, dimN = 10 + rand() % 20;
+      int32 dimM = 100 + Rand() % 255, dimN = 10 + Rand() % 20;
       // early failures will have small dim for easier eyeballing.
       if (b % 2 == 0) std::swap(dimM, dimN);
       data[b].Resize(dimM, dimN);
@@ -135,7 +135,7 @@ static void UnitTestCuBlockMatrixAddMatBlock() {
         transA = (i % 3 == 1 ? kTrans : kNoTrans);
     if (transB == kTrans) std::swap(B_num_rows, B_num_cols);
     
-    int32 X_num_rows = 100 + rand() % 255, X_num_cols = B_num_cols,
+    int32 X_num_rows = 100 + Rand() % 255, X_num_cols = B_num_cols,
         A_num_rows = X_num_rows, A_num_cols = B_num_rows;
     if (data.size() == 0) { X_num_rows = 0; A_num_rows = 0; }
     if (transA == kTrans) std::swap(A_num_rows, A_num_cols);
@@ -158,10 +158,10 @@ static void UnitTestCuBlockMatrixAddMatBlock() {
 template<class Real>
 static void UnitTestCuBlockMatrixAddMatMat() {
   for (int32 i = 0; i < 20; i++) {
-    int32 num_blocks = rand() % 5;
+    int32 num_blocks = Rand() % 5;
     std::vector<CuMatrix<Real> > data(num_blocks);
     for (int32 b = 0; b < num_blocks; b++) {
-      int32 dimM = 100 + rand() % 255, dimN = 10 + rand() % 20;
+      int32 dimM = 100 + Rand() % 255, dimN = 10 + Rand() % 20;
       if (i == 0) { dimM = 1; dimN = 1; }
       // early failures will have small dim for easier eyeballing.
       if (b % 2 == 0) std::swap(dimM, dimN);
@@ -173,7 +173,7 @@ static void UnitTestCuBlockMatrixAddMatMat() {
     int32 B_num_rows = B.NumRows(), B_num_cols = B.NumCols();
     // will do B += C D
 
-    int32 C_num_rows = B_num_rows, C_num_cols = 100 + rand() % 255;
+    int32 C_num_rows = B_num_rows, C_num_cols = 100 + Rand() % 255;
     if (C_num_rows == 0) C_num_cols = 0;
     int32 D_num_rows = C_num_cols, D_num_cols = B_num_cols;
 

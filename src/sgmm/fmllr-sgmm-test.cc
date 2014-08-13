@@ -218,6 +218,7 @@ void TestSgmmFmllr() {
 }
 
 int main() {
+  std::srand(1000);
   kaldi::g_kaldi_verbose_level = 5;
   for (int i = 0; i < 10; i++)
     TestSgmmFmllr();

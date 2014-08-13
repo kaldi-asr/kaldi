@@ -147,7 +147,7 @@ static void UnitTestCuPackedMatrixCopy() {
 template<typename Real>
 static void UnitTestCuPackedMatrixTrace() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+    MatrixIndexT dim = 5 * i + Rand() % 10;
     
     PackedMatrix<Real> A(dim);
     A.SetRandn();
@@ -160,7 +160,7 @@ static void UnitTestCuPackedMatrixTrace() {
 template<typename Real>
 static void UnitTestCuPackedMatrixScale() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+    MatrixIndexT dim = 5 * i + Rand() % 10;
     
     PackedMatrix<Real> A(dim);
     A.SetRandn();
@@ -176,7 +176,7 @@ static void UnitTestCuPackedMatrixScale() {
 template<typename Real>
 static void UnitTestCuPackedMatrixScaleDiag() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+    MatrixIndexT dim = 5 * i + Rand() % 10;
     
     PackedMatrix<Real> A(dim);
     A.SetRandn();
@@ -194,13 +194,13 @@ static void UnitTestCuPackedMatrixScaleDiag() {
 template<typename Real>
 static void UnitTestCuPackedMatrixAddToDiag() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+    MatrixIndexT dim = 5 * i + Rand() % 10;
     
     PackedMatrix<Real> A(dim);
     A.SetRandn();
     CuPackedMatrix<Real> B(A);
 
-    Real value = rand() % 50;
+    Real value = Rand() % 50;
     B.AddToDiag(value); 
     
     AssertDiagEqual(A, B, value);
@@ -210,7 +210,7 @@ static void UnitTestCuPackedMatrixAddToDiag() {
 template<typename Real>
 static void UnitTestCuPackedMatrixSetUnit() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+    MatrixIndexT dim = 5 * i + Rand() % 10;
     
     CuPackedMatrix<Real> A(dim);
     A.SetUnit();

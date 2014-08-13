@@ -68,7 +68,7 @@ static void UnitTestSetZeroAboveDiag() {
 
 template<typename Real> static void UnitTestCholesky() {
   for (MatrixIndexT iter = 0; iter < 3; iter++) {
-    MatrixIndexT dim = 300 + rand() %  200;
+    MatrixIndexT dim = 300 + Rand() %  200;
     // set dimension
     // computing the matrix for cholesky input
     // CuMatrix is cuda matrix class while Matrix is cpu matrix class
@@ -77,7 +77,7 @@ template<typename Real> static void UnitTestCholesky() {
     Vector<Real> C(dim);
     for (MatrixIndexT i = 0; i < dim; i++) {
       B(i, i) = 1;
-      C(i) = 1 + rand() % 4;
+      C(i) = 1 + Rand() % 4;
     }
     B.AddVecVec(1.0, C, C);
     // copy the matrix to cudamatrix object
@@ -112,7 +112,7 @@ template<typename Real> static void UnitTestTrace() {
   Vector<Real> tim(100);
   Vector<Real> d(100);
   for (MatrixIndexT iter = 0; iter < 100; iter++) {
-    MatrixIndexT dim = 10000 + rand() % 400;
+    MatrixIndexT dim = 10000 + Rand() % 400;
     Matrix<Real> A(dim,dim);
     A.SetRandn();
     CuMatrix<Real> B(A);
@@ -131,7 +131,7 @@ template<typename Real> static void UnitTestTrace() {
 }
 
 template<typename Real> static void UnitInvert() {
-  //MatrixIndexT dim = 15 + rand() %  40;;
+  //MatrixIndexT dim = 15 + Rand() %  40;;
   MatrixIndexT dim = 8;
   CuMatrix<Real> A(dim,dim);
   Matrix<Real> B(dim,dim);
@@ -166,7 +166,7 @@ template<typename Real> static void UnitInvert() {
 
 template<typename Real> static void UnitTestInvert() {
   for (MatrixIndexT iter = 0; iter < 3; iter++) {
-    MatrixIndexT dim = 500 + rand() % 400;
+    MatrixIndexT dim = 500 + Rand() % 400;
     
     KALDI_LOG << "dim is : ";
     KALDI_LOG << dim;
@@ -225,7 +225,7 @@ template<typename Real> static void UnitTestCopySp() {
   // Checking that the various versions of copying                                 
   // matrix to SpMatrix work the same in the symmetric case.                         
   for (MatrixIndexT iter = 0;iter < 5;iter++) {
-    int32 dim = 5 + rand() %  10;
+    int32 dim = 5 + Rand() %  10;
     SpMatrix<Real> A(dim), B(dim);
     A.SetRandn();
     Matrix<Real> C(A);
@@ -320,8 +320,8 @@ template<typename Real> static void UnitTestCopyFromMat() {
 template<typename Real> static void UnitTestMatrix() {
   //operator()
   for (MatrixIndexT iter = 0; iter < 2; iter++) {
-    int32 dim1 = 6 + rand() % 10;
-    int32 dim2 = 8 + rand() % 10;
+    int32 dim1 = 6 + Rand() % 10;
+    int32 dim2 = 8 + Rand() % 10;
     Matrix<Real> A(dim1,dim2);
     A.SetRandn();
     CuMatrix<Real> B(A);
@@ -334,7 +334,7 @@ template<typename Real> static void UnitTestMatrix() {
     CuSpMatrix<Real> Bs(As);
     KALDI_ASSERT(As(3, 4) == Bs(3, 4));
     Bs(3, 4) = 2.0;
-    if (rand() % 2 == 0)
+    if (Rand() % 2 == 0)
       As(3, 4) = Bs(3, 4);
     else
       As(3, 4) = (const_cast<const CuSpMatrix<Real>&>(Bs))(3, 4);
@@ -351,8 +351,8 @@ template<typename Real> static void UnitTestMatrix() {
 
   //SetRandn
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
-    int32 dim1 = 15 + rand() % 10;
-    int32 dim2 = dim1;//10 + rand() % 14;
+    int32 dim1 = 15 + Rand() % 10;
+    int32 dim2 = dim1;//10 + Rand() % 14;
     //KALDI_LOG << "dimension is " << dim1
     //          << " " << dim2 << '\n';
     CuMatrix<Real> A(dim1,dim2);
@@ -366,7 +366,7 @@ template<typename Real> static void UnitTestMatrix() {
 
 template<typename Real> static void UnitTestMulTp() {
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
-    int32 dim = 1 + rand() % 30;
+    int32 dim = 1 + Rand() % 30;
     Vector<Real> v(dim);
     v.SetRandn();
     TpMatrix<Real> M(dim);
@@ -388,7 +388,7 @@ template<typename Real> static void UnitTestMulTp() {
 template<typename Real> static void UnitTestVector() {
   // Scale
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
-    int32 dim = 24 + rand() % 10;
+    int32 dim = 24 + Rand() % 10;
     Vector<Real> A(dim);
     A.SetRandn();
     CuVector<Real> B(A);
@@ -404,7 +404,7 @@ template<typename Real> static void UnitTestVector() {
   }
   
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
-    int32 dim = 15 + rand() % 10;
+    int32 dim = 15 + Rand() % 10;
     CuVector<Real> A(dim);
     CuVector<Real> B(dim);
     Vector<Real> A1(dim);
@@ -436,7 +436,7 @@ template<typename Real> static void UnitTestVector() {
   }
 
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
-    int32 dim = 15 + rand() % 10;
+    int32 dim = 15 + Rand() % 10;
     CuVector<Real> A(dim);
     A.SetRandn();
     Vector<Real> A1(dim);
@@ -446,7 +446,7 @@ template<typename Real> static void UnitTestVector() {
   }
 
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
-    int32 dim = 15 + rand() % 10;
+    int32 dim = 15 + Rand() % 10;
     CuVector<Real> A(dim);
     A.SetRandn();
     Vector<Real> A1(dim);
@@ -469,8 +469,8 @@ template<typename Real> static void UnitTestVector() {
   }
   
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
-    int32 dim1 = 15 + rand() % 10;
-    int32 dim2 = 10 + rand() % 10;
+    int32 dim1 = 15 + Rand() % 10;
+    int32 dim2 = 10 + Rand() % 10;
     Matrix<Real> A(dim1,dim2);
     for (MatrixIndexT i = 0; i < dim1; i++) {
       for (MatrixIndexT j = 0; j < dim2; j++)
@@ -494,8 +494,8 @@ template<typename Real> static void UnitTestVector() {
   }
 
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
-    int32 dim1 = 15 + rand() % 10;
-    int32 dim2 = 10 + rand() % 10;
+    int32 dim1 = 15 + Rand() % 10;
+    int32 dim2 = 10 + Rand() % 10;
     Matrix<Real> A(dim1,dim2);
     for (MatrixIndexT i = 0; i < dim1; i++) {
       for (MatrixIndexT j = 0; j < dim2; j++)
@@ -511,7 +511,7 @@ template<typename Real> static void UnitTestVector() {
   }
 
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
-    int32 dim = 15 + rand() % 10;
+    int32 dim = 15 + Rand() % 10;
     CuVector<Real> A(dim);
     A.SetRandn();
     Vector<Real> A1(dim);
@@ -527,7 +527,7 @@ template<typename Real> static void UnitTestVector() {
   }
 
   for (MatrixIndexT iter = 0; iter < 10; iter++) {
-    int32 dim = 15 + rand() % 10;
+    int32 dim = 15 + Rand() % 10;
     CuVector<Real> A(dim);
     Vector<Real> A1(dim);
     for (MatrixIndexT i = 0; i < dim; i++)
