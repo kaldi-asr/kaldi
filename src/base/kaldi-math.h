@@ -90,9 +90,7 @@ int Rand(struct RandomState* state=NULL);
 
 // State for thread-safe random number generator
 struct RandomState {
-  RandomState() {
-    seed = Rand();
-  }
+  RandomState() {  seed = Rand(); }
   unsigned seed;
 };
 

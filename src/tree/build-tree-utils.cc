@@ -596,7 +596,10 @@ EventMap *SplitDecisionTree(const EventMap &input_map,
 }
 
 
-int ClusterEventMapGetMapping(const EventMap &e_in, const BuildTreeStatsType &stats, BaseFloat thresh, std::vector<EventMap*> *mapping) {
+int ClusterEventMapGetMapping(const EventMap &e_in,
+                              const BuildTreeStatsType &stats,
+                              BaseFloat thresh,
+                              std::vector<EventMap*> *mapping) {
   // First map stats
   KALDI_ASSERT(stats.size() != 0);
   std::vector<BuildTreeStatsType> split_stats;
@@ -634,7 +637,10 @@ int ClusterEventMapGetMapping(const EventMap &e_in, const BuildTreeStatsType &st
   int32 num_combined = summed_stats_contiguous.size() - num_clust;
   KALDI_ASSERT(num_combined >= 0);
 
-  KALDI_VLOG(2) <<  "ClusterBottomUp combined "<< num_combined << " leaves and gave a likelihood change of " << change << ", normalized = " << (change/normalizer) << ", normalizer = " << normalizer;
+  KALDI_VLOG(2) <<  "ClusterBottomUp combined "<< num_combined
+                << " leaves and gave a likelihood change of " << change
+                << ", normalized = " << (change/normalizer)
+                << ", normalizer = " << normalizer;
   KALDI_ASSERT(change < 0.0001);  // should be negative or zero.
 
   KALDI_ASSERT(mapping != NULL);
@@ -643,8 +649,11 @@ int ClusterEventMapGetMapping(const EventMap &e_in, const BuildTreeStatsType &st
   for (size_t i = 0;i < summed_stats_contiguous.size();i++) {
     size_t index = indexes[i];
     size_t new_index = indexes[assignments[i]];  // index assigned by clusterig-- map to existing indices in the map,
-    // that we clustered from, so we don't conflict with indices in other parts of the tree.
-    KALDI_ASSERT((*mapping)[index] == NULL || "Error: Cluster seems to have been called for different parts of the tree with overlapping sets of indices.");
+    // that we clustered from, so we don't conflict with indices in other parts
+    // of the tree.
+    KALDI_ASSERT((*mapping)[index] == NULL || "Error: Cluster seems to have been "
+                 "called for different parts of the tree with overlapping sets of "
+                 "indices.");
     (*mapping)[index] = new ConstantEventMap(new_index);
   }
   DeletePointers(&summed_stats);

@@ -137,8 +137,10 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0, num_no_tgt_mat = 0, num_other_error = 0;
     while (!feature_reader.Done()) {
+#if HAVE_CUDA==1
       // check the GPU is not overheated
       CuDevice::Instantiate().CheckGpuHealth();
+#endif
       // fill the randomizer
       for ( ; !feature_reader.Done(); feature_reader.Next()) {
         std::string utt = feature_reader.Key();
