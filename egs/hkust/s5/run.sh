@@ -144,13 +144,6 @@ steps/train_mpe.sh  --cmd "$train_cmd" data/train data/lang exp/tri5a_ali exp/tr
 steps/decode.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
   --transform-dir exp/tri5a/decode \
   exp/tri5a/graph data/dev exp/tri5a_mpe/decode || exit 1 ;
-# Do MCE.
-
-steps/train_mce.sh --cmd "$train_cmd" data/train data/lang exp/tri5a_ali exp/tri5a_denlats exp/tri5a_mce || exit 1;
-
-steps/decode.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
-  --transform-dir exp/tri5a/decode \
-  exp/tri5a/graph data/dev exp/tri5a_mce/decode || exit 1 ;
 
 # getting results (see RESULTS file)
 for x in exp/*/decode; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
