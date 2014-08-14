@@ -845,13 +845,12 @@ void ExampleToPdfPost(
     Posterior *post) {
   KALDI_ASSERT(criterion == "mpfe" || criterion == "smbr" || criterion == "mmi");
   
-  bool success = true;
   Lattice lat;
   ConvertLattice(eg.den_lat, &lat);
   TopSort(&lat);
   if (criterion == "mpfe" || criterion == "smbr") {
     Posterior tid_post;
-    LatticeForwardBackwardMpeVariants(success, tmodel, silence_phones, lat, eg.num_ali,
+    LatticeForwardBackwardMpeVariants(tmodel, silence_phones, lat, eg.num_ali,
                                       criterion, &tid_post);
     
     ConvertPosteriorToPdfs(tmodel, tid_post, post);
