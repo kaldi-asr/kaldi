@@ -324,7 +324,8 @@ double NnetDiscriminativeUpdater::GetDiscriminativePosteriors(Posterior *post) {
   if (opts_.criterion == "mpfe" || opts_.criterion == "smbr") {
     Posterior tid_post;
     double ans;
-    ans = LatticeForwardBackwardMpeVariants(tmodel_, silence_phones_, lat_,
+    bool success = true;
+    ans = LatticeForwardBackwardMpeVariants(success, tmodel_, silence_phones_, lat_,
                                             eg_.num_ali, opts_.criterion,
                                             &tid_post) * eg_.weight;
     ConvertPosteriorToPdfs(tmodel_, tid_post, post);
