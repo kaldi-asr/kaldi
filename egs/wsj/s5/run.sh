@@ -66,6 +66,18 @@ local/wsj_format_data.sh || exit 1;
  #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=16G" \
  #      --hidden 300 --nwords 40000 --class 400 --direct 2000 data/local/rnnlm.h300.voc40k &
  #   )
+   false && \ # Comment this out to train RNNLM-HS
+   (
+       num_threads_rnnlm=8
+       local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
+	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 30  --nwords 10000 --direct 0 data/local/rnnlm-hs.h30.voc10k  
+       local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
+	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 100 --nwords 20000 --direct 0 data/local/rnnlm-hs.h100.voc20k 
+       local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
+	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 300 --nwords 30000 --direct 0 data/local/rnnlm-hs.h300.voc30k 
+       local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
+	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 400 --nwords 40000 --direct 0 data/local/rnnlm-hs.h400.voc40k 
+   )
   ) &
 
 
@@ -245,6 +257,10 @@ steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_
 # The command below is commented out as we commented out the steps above
 # that build the RNNLMs, so it would fail.
 # local/run_rnnlms_tri3b.sh
+
+# The command below is commented out as we commented out the steps above
+# that build the RNNLMs (HS version), so it would fail.
+# wait; local/run_rnnlm-hs_tri3b.sh
 
 # The following two steps, which are a kind of side-branch, try mixing up
 ( # from the 3b system.  This is to demonstrate that script.
