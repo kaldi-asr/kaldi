@@ -872,7 +872,7 @@ bool ApproxEqual(const MatrixBase<Real> &A,
 }
 
 template<typename Real>
-inline void AssertEqual(MatrixBase<Real> &A, MatrixBase<Real> &B,
+inline void AssertEqual(const MatrixBase<Real> &A, const MatrixBase<Real> &B,
                         float tol = 0.01) {
   KALDI_ASSERT(A.ApproxEqual(B, tol));
 }

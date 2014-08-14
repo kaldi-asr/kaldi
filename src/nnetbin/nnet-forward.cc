@@ -102,6 +102,9 @@ int main(int argc, char *argv[]) {
                 << "--no-softmax or --apply-log";
     }
 
+    // disable dropout
+    nnet_transf.SetDropoutRetention(1.0);
+    nnet.SetDropoutRetention(1.0);
 
     kaldi::int64 tot_t = 0;
 

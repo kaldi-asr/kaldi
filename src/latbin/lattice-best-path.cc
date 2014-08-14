@@ -98,7 +98,8 @@ int main(int argc, char *argv[]) {
         GetLinearSymbolSequence(best_path, &alignment, &words, &weight);
         KALDI_LOG << "For utterance " << key << ", best cost "
                   << weight.Value1() << " + " << weight.Value2() << " = "
-                  << (weight.Value1() + weight.Value2());
+                  << (weight.Value1() + weight.Value2()) 
+                  << " over " << alignment.size() << " frames.";
         if (transcriptions_wspecifier != "")
           transcriptions_writer.Write(key, words);
         if (alignments_wspecifier != "")

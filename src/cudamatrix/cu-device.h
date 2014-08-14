@@ -95,6 +95,10 @@ class CuDevice {
   std::string GetFreeMemory(int64* free = NULL, int64* total = NULL) const;
   /// Get the name of the GPU
   void DeviceGetName(char* name, int32 len, int32 dev); 
+
+  /// Check if GPU is in good condition by multiplying small matrices on GPU+CPU.
+  /// Overheated GPUs may give inaccurate results, which we want to detect.
+  void CheckGpuHealth();
   
  private:
   CuDevice();

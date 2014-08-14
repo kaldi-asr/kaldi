@@ -99,6 +99,8 @@ int main(int argc, char *argv[]) {
                     << (frame_shift * (times[i].second-times[i].first)) << ' '
                     << words[i] << ' ' << conf[i] << '\n';
       }
+      KALDI_LOG << "For utterance " << key << ", Bayes Risk " << mbr.GetBayesRisk()
+                << " and per word, " << mbr.GetBayesRisk()/mbr.GetOneBest().size();
       n_done++;
       n_words += mbr.GetOneBest().size();
       tot_bayes_risk += mbr.GetBayesRisk();

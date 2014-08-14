@@ -95,7 +95,9 @@ class Nnet {
   void SetWeights(const Vector<BaseFloat>& wei_src);
   /// Get the gradient stored in the network
   void GetGradient(Vector<BaseFloat>* grad_copy) const;
-  
+  /// Set the dropout rate 
+  void SetDropoutRetention(BaseFloat r);
+
   /// Initialize MLP from config
   void Init(const std::string &config_file);
   /// Read the MLP from file (can add layers to exisiting instance of Nnet)
