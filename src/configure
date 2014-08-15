@@ -327,7 +327,7 @@ function fix_cxx_flag {
   CXXCOMPILER=`grep "CXX = " kaldi.mk | awk '{print $3}'`
   if [ $CXXCOMPILER=="g++" ]; then
     $CXXCOMPILER -dumpversion | \
-    awk '{if(NR==1 && $$1<"4.8") print "sed \"s/-Wno-unused-local-typedefs/-Wall/g\" \
+    awk '{if(NR==1 && $1<"4.4") print "sed \"s/-Wno-unused-local-typedefs//g\" \
     kaldi.mk > tmpf; mv tmpf kaldi.mk; "}' | sh -
   fi
 }
