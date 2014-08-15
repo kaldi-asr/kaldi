@@ -31,48 +31,6 @@ using namespace kaldi;
 
 namespace kaldi {
 
-/*
- * ASSERTS
- */
-template<typename Real> 
-static void AssertEqual(const MatrixBase<Real> &A,
-                        const MatrixBase<Real> &B,
-                        float tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows()&&A.NumCols() == B.NumCols());
-  for (MatrixIndexT i = 0;i < A.NumRows();i++) {
-    for (MatrixIndexT j = 0;j < A.NumCols();j++) {
-      KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) <= tol*std::max(1.0, (double) (std::abs(A(i, j))+std::abs(B(i, j)))));
-    }
-  }
-}
-
-
-template<typename Real> 
-static void AssertEqual(const CuMatrixBase<Real> &A,
-                        const CuMatrixBase<Real> &B,
-                        float tol = 0.001) {
-  Real Anorm = A.FrobeniusNorm(), Bnorm = B.FrobeniusNorm();
-  CuMatrix<Real> diff(A);
-  diff.AddMat(-1.0, B);
-  Real diff_norm = diff.FrobeniusNorm();
-  if (diff_norm > tol * 0.5 * (Anorm + Bnorm)) {
-    KALDI_LOG << "A = " << A;
-    KALDI_LOG << "B = " << B;
-    KALDI_ERR << "Matrices differ, " << diff_norm << " > " << tol << " * 0.5 *  ( "
-              << Anorm << " + " << Bnorm << " ). ";
-  }
-}
-
-
-template<typename Real> 
-static void AssertEqual(const CuBlockMatrix<Real> &A,
-                        const CuBlockMatrix<Real> &B,
-                        float tol = 0.001) {
-  CuMatrix<Real> Acopy(A), Bcopy(B);
-  AssertEqual(Acopy, Bcopy, tol);
-}
-
-
 template<typename Real> 
 static bool ApproxEqual(const CuBlockMatrix<Real> &A,
                         const CuBlockMatrix<Real> &B,
@@ -80,7 +38,6 @@ static bool ApproxEqual(const CuBlockMatrix<Real> &A,
   CuMatrix<Real> Acopy(A), Bcopy(B);
   return Acopy.ApproxEqual(Bcopy, tol);
 }
-
 
 
 

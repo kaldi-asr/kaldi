@@ -231,6 +231,10 @@ int main(int argc, char *argv[]) {
         KALDI_VLOG(1) << "After " << num_done << " utterances: time elapsed = "
                       << time_now/60 << " min; processed " << total_frames/time_now
                       << " frames per second.";
+#if HAVE_CUDA==1
+        // check the GPU is not overheated
+        CuDevice::Instantiate().CheckGpuHealth();
+#endif
       }
     }
       

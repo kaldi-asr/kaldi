@@ -63,7 +63,11 @@ int main(int argc, char *argv[]) {
     po.Register("frame-weights", &frame_weights, "Per-frame weights to scale gradients (frame selection/weighting).");
 
     std::string use_gpu="yes";
-    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA");
+    
+    double dropout_retention = 0.0;
+    po.Register("dropout-retention", &dropout_retention, "number between 0..1, saying how many neurons to preserve (0.0 will keep original value");
+     
     
     po.Read(argc, argv);
 
@@ -100,6 +104,15 @@ int main(int argc, char *argv[]) {
     nnet.Read(model_filename);
     nnet.SetTrainOptions(trn_opts);
 
+    if (dropout_retention > 0.0) {
+      nnet_transf.SetDropoutRetention(dropout_retention);
+      nnet.SetDropoutRetention(dropout_retention);
+    }
+    if (crossvalidate) {
+      nnet_transf.SetDropoutRetention(1.0);
+      nnet.SetDropoutRetention(1.0);
+    }
+
     kaldi::int64 total_frames = 0;
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
@@ -124,6 +137,10 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0, num_no_tgt_mat = 0, num_other_error = 0;
     while (!feature_reader.Done()) {
+#if HAVE_CUDA==1
+      // check the GPU is not overheated
+      CuDevice::Instantiate().CheckGpuHealth();
+#endif
       // fill the randomizer
       for ( ; !feature_reader.Done(); feature_reader.Next()) {
         std::string utt = feature_reader.Key();

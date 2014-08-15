@@ -35,6 +35,7 @@
 
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-device.h"
+#include "cudamatrix/cu-matrix.h"
 #include "base/kaldi-error.h"
 #include "util/common-utils.h"
 
@@ -405,6 +406,27 @@ void CuDevice::DeviceGetName(char* name, int32 len, int32 dev) {
     //close the library
     dlclose(libcuda);
   }
+}
+
+
+void CuDevice::CheckGpuHealth() {
+  if(!Enabled()) return;
+  Timer t;
+  // prepare small matrices for a quick test
+  Matrix<BaseFloat> a(50, 100);
+  Matrix<BaseFloat> b(100 ,50);
+  a.SetRandn();
+  b.SetRandUniform();
+  // multiply 2 small matrices in CPU:
+  Matrix<BaseFloat> c(50, 50);
+  c.AddMatMat(1.0, a, kNoTrans, b, kNoTrans, 0.0);
+  // multiply same matrices in GPU:
+  CuMatrix<BaseFloat> c1(50, 50);
+  c1.AddMatMat(1.0, CuMatrix<BaseFloat>(a), kNoTrans, CuMatrix<BaseFloat>(b), kNoTrans, 0.0);
+  // check that relative differnence is <1%
+  AssertEqual(c, Matrix<BaseFloat>(c1), 0.01);
+  // measure time spent in this check
+  AccuProfile(__func__, t.Elapsed());
 }
 
 

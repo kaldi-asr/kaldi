@@ -32,14 +32,15 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Copy a (cpu-based) neural net and its associated transition model,\n"
-        "and switch it to online preconditioning, i.e. change components from\n"
-        "AffineComponentPreconditioned to AffineComponentPreconditionedOnline.\n"
+        "and switch it to online preconditioning, i.e. change any components\n"
+        "derived from AffineComponent to components of type\n"
+        "AffineComponentPreconditionedOnline.\n"
         "\n"
         "Usage:  nnet-am-switch-preconditioning [options] <nnet-in> <nnet-out>\n"
         "e.g.:\n"
         " nnet-am-switch-preconditioning --binary=false 1.mdl text.mdl\n";
 
-    int32 rank_in = 20, rank_out = 80, update_period = 1;
+    int32 rank_in = 20, rank_out = 80, update_period = 4;
     BaseFloat num_samples_history = 2000.0;
     BaseFloat alpha = 4.0;
     bool binary_write = true;

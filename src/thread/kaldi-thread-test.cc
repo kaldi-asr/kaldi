@@ -21,6 +21,7 @@
 
 #include "base/kaldi-common.h"
 #include "thread/kaldi-thread.h"
+#include "thread/kaldi-mutex.h"
 
 namespace kaldi {
 
@@ -80,11 +81,29 @@ void TestThreads() {
   }
 }
 
+void TestMutex() {
+  for (int32 i = 0; i < 4; i++) {
+    Mutex mut;
+    for (int32 i = 0; i < 100; i++) {
+      if (rand() % 2 == 0) {
+        mut.Lock();
+        KALDI_ASSERT(!mut.TryLock());
+        mut.Unlock();
+      } else {
+        KALDI_ASSERT(mut.TryLock());
+        mut.Unlock();
+      }
+    }
+  }
+}
+
+
 
 }  // end namespace kaldi.
 
 int main() {
   using namespace kaldi;
   TestThreads();
+  TestMutex();
 }
 

@@ -671,7 +671,7 @@ void UnitTestFixedLinearComponent() {
 
 
 void UnitTestFixedAffineComponent() {
-  int32 m = 1 + Rand() % 4, n = 2 + Rand() % 4;
+  int32 m = 15 + Rand() % 4, n = 15 + Rand() % 4;
   {
     CuMatrix<BaseFloat> mat(m, n);
     mat.SetRandn();
