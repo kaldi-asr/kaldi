@@ -17,6 +17,7 @@ do_endpointing=false
 do_speex_compressing=false
 scoring_opts=
 skip_scoring=false
+iter=final
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -40,6 +41,7 @@ if [ $# != 3 ]; then
    echo "                                                   # carrying forward adaptation info from previous"
    echo "                                                   # utterances of each speaker."
    echo "  --scoring-opts <string>                          # options to local/score.sh"
+   echo "  --iter <iter>                                    # Iteration of model to decode; default is final."
    exit 1;
 fi
 
@@ -54,7 +56,7 @@ mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
-for f in $srcdir/conf/online_nnet2_decoding.conf $srcdir/final.mdl \
+for f in $srcdir/conf/online_nnet2_decoding.conf $srcdir/${iter}.mdl \
     $graphdir/HCLG.fst $graphdir/words.txt $data/wav.scp; do
   if [ ! -f $f ]; then
     echo "$0: no such file $f"
@@ -90,7 +92,7 @@ if [ $stage -le 0 ]; then
      --config=$srcdir/conf/online_nnet2_decoding.conf \
      --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
      --acoustic-scale=$acwt --word-symbol-table=$graphdir/words.txt \
-     $srcdir/final.mdl $graphdir/HCLG.fst $spk2utt_rspecifier "$wav_rspecifier" \
+     $srcdir/${iter}.mdl $graphdir/HCLG.fst $spk2utt_rspecifier "$wav_rspecifier" \
       "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
 
