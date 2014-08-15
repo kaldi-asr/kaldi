@@ -63,20 +63,6 @@ static void AssertEqual(RandomAccessIterator begin1, RandomAccessIterator end1,
 }
 
 
-template<class Real> 
-static void AssertEqual(const MatrixBase<Real> &A,
-                        const MatrixBase<Real> &B,
-                        float tol = 0.001) {
-  KALDI_ASSERT(A.NumRows() == B.NumRows()&&A.NumCols() == B.NumCols());
-  for (MatrixIndexT i = 0;i < A.NumRows();i++) {
-    for (MatrixIndexT j = 0;j < A.NumCols();j++) {
-      KALDI_ASSERT(std::abs(A(i, j)-B(i, j)) < tol*std::max(1.0, (double) (std::abs(A(i, j))+std::abs(B(i, j)))));
-    }
-  }
-}
-
-
-
 //////////////////////////////////////////////////
 
 void UnitTestRandomizerMask() {
