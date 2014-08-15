@@ -162,7 +162,7 @@ class VectorBase {
   
   /// Returns true if ((*this)-other).Norm(2.0) <= tol * (*this).Norm(2.0).
   bool ApproxEqual(const VectorBase<Real> &other, float tol = 0.01) const;
-
+  
   /// Invert all elements.
   void InvertElements();
 

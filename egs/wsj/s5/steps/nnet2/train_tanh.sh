@@ -117,13 +117,8 @@ if [ $# != 4 ]; then
   echo "  --splice-width <width|4>                         # Number of frames on each side to append for feature input"
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --lda-dim <dim|250>                              # Dimension to reduce spliced features to with LDA"
-  echo "  --num-iters-final <#iters|10>                    # Number of final iterations to give to nnet-combine-fast to "
+  echo "  --num-iters-final <#iters|20>                    # Number of final iterations to give to nnet-combine-fast to "
   echo "                                                   # interpolate parameters (the weights are learned with a validation set)"
-  echo "  --num-utts-subset <#utts|300>                    # Number of utterances in subsets used for validation and diagnostics"
-  echo "                                                   # (the validation subset is held out from training)"
-  echo "  --num-frames-diagnostic <#frames|4000>           # Number of frames used in computing (train,valid) diagnostics"
-  echo "  --num-valid-frames-combine <#frames|10000>       # Number of frames used in getting combination weights at the"
-  echo "                                                   # very end."
   echo "  --stage <stage|-9>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
   
@@ -417,8 +412,7 @@ echo Done
 if $cleanup; then
   echo Cleaning up data
   if [ $egs_dir == "$dir/egs" ]; then
-    echo Removing training examples
-    rm $dir/egs/egs*
+    steps/nnet2/remove_egs.sh $dir/egs
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do

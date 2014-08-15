@@ -1,6 +1,7 @@
 // nnet2bin/nnet-normalize-stddev.cc
 
 // Copyright 2013  Guoguo Chen
+//           2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -36,6 +37,9 @@ int main(int argc, char *argv[]) {
         "This program first identifies any affine or block affine layers that\n"
         "are followed by pnorm and then renormalize layers. Then it rescales\n"
         "those layers such that the parameter stddev is 1.0 after scaling.\n"
+        "If you supply the option --stddev-from=<model-filename>, it rescales\n"
+        "those layers to match the standard deviation of those in the specified\n"
+        "model.\n"
         "\n"
         "Usage: nnet-normalize-stddev [options] <model-in> <model-out>\n"
         " e.g.: nnet-normalize-stddev final.mdl final.mdl\n";

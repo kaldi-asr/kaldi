@@ -449,10 +449,10 @@ void Nnet::SwitchToOnlinePreconditioning(int32 rank_in, int32 rank_out, int32 up
                                          BaseFloat num_samples_history, BaseFloat alpha) {
   int32 switched = 0;
   for (size_t i = 0; i < components_.size(); i++) {
-    if (dynamic_cast<AffineComponentPreconditioned*>(components_[i]) != NULL) {
+    if (dynamic_cast<AffineComponent*>(components_[i]) != NULL) {
       AffineComponentPreconditionedOnline *ac =
           new AffineComponentPreconditionedOnline(
-              *(dynamic_cast<AffineComponentPreconditioned*>(components_[i])),
+              *(dynamic_cast<AffineComponent*>(components_[i])),
               rank_in, rank_out, update_period, num_samples_history, alpha);
       delete components_[i];
       components_[i] = ac;

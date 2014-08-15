@@ -66,6 +66,8 @@ if [ -f path.sh ]; then . ./path.sh; fi
 if [ $# != 5 ]; then
   echo "Usage: $0 [opts] <data> <lang> <ali-dir> <model-dir> <exp-dir>"
   echo " e.g.: $0 data/train data/lang exp/tri3_ali exp/tri4_nnet exp/tri4b_nnet"
+  echo "See also the more recent script train_more.sh which requires the egs"
+  echo "directory."
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"
@@ -140,12 +142,10 @@ if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
       $data $lang $alidir $dir || exit 1;
 fi
 
-echo $egs_dir
 if [ -z $egs_dir ]; then
   egs_dir=$dir/egs
 fi
 
-echo $egs_dir
 iters_per_epoch=`cat $egs_dir/iters_per_epoch`  || exit 1;
 ! [ $num_jobs_nnet -eq `cat $egs_dir/num_jobs_nnet` ] && \
   echo "$0: Warning: using --num-jobs-nnet=`cat $egs_dir/num_jobs_nnet` from $egs_dir"
@@ -263,7 +263,7 @@ if $cleanup; then
   echo Cleaning up data
   if [ $egs_dir == "$dir/egs" ]; then
     echo Removing training examples
-    rm $dir/egs/egs*
+    steps/nnet2/remove_egs.sh $dir/egs
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do

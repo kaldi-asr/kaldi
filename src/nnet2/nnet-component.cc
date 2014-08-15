@@ -1556,7 +1556,6 @@ void PiecewiseLinearComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
   PiecewiseLinearComponent *to_update =
       dynamic_cast<PiecewiseLinearComponent*>(to_update_in);
 
-  in_deriv->Resize(out_deriv.NumRows(), InputDim());  
   KALDI_ASSERT(in_value.NumRows() == out_deriv.NumRows() &&
                in_value.NumCols() == InputDim());
   
@@ -1998,7 +1997,7 @@ void AffineComponentPreconditionedOnline::Init(
 }
 
 AffineComponentPreconditionedOnline::AffineComponentPreconditionedOnline(
-    const AffineComponentPreconditioned &orig,
+    const AffineComponent &orig,
     int32 rank_in, int32 rank_out, int32 update_period,
     BaseFloat num_samples_history, BaseFloat alpha):
     max_change_per_sample_(0.1) {
