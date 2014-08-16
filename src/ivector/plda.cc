@@ -70,12 +70,12 @@ void Plda::ComputeDerivedVars() {
      P(u^p) = N(u^p | 0, I + \Psi)
    i.e. it's distributed with zero mean and covarance (within + between).
    The likelihood ratio we want is:
-      N(u^p | \frac{n \Psi}{n \Psi + I} \bar{u}^g, I + \frac{\Psi}{n \Psi + I})
+      N(u^p | \frac{n \Psi}{n \Psi + I} \bar{u}^g, I + \frac{\Psi}{n \Psi + I}) /
       N(u^p | 0, I + \Psi)
    where \bar{u}^g is the mean of the "gallery examples"; and we can expand the
    log likelihood ratio as
-     - 0.5 (u^p - m) (I + n \Psi/(n \Psi + I))^{-1} (u^p - m)
-     + 0.5 u^p (I + \Psi) u^p
+     - 0.5 [ (u^p - m) (I + \Psi/(n \Psi + I))^{-1} (u^p - m)  +  logdet(I + \Psi/(n \Psi + I)) ]
+     + 0.5 [u^p (I + \Psi) u^p  +  logdet(I + \Psi) ]
    where m = (n \Psi)/(n \Psi + I) \bar{u}^g.
 
  */
@@ -90,7 +90,7 @@ double Plda::GetNormalizationFactor(
   Vector<double> transformed_ivector_sq(transformed_ivector);
   transformed_ivector_sq.ApplyPow(2.0);
   // inv_covar will equal 1.0 / (\Psi + I/num_examples).
-  Vector<double> inv_covar(psi_); 
+  Vector<double> inv_covar(psi_);
   inv_covar.Add(1.0 / num_examples);
   inv_covar.InvertElements();
   // "transformed_ivector" should have covariance (\Psi + I/num_examples), i.e.

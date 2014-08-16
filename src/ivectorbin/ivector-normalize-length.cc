@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Normalize length of iVectors to equal sqrt(feature-dimension)\n"
         "\n"
-        "Usage:  ivector-normalize-length [options] <ivector-rspecifier>"
+        "Usage:  ivector-normalize-length [options] <ivector-rspecifier> "
         "<ivector-wspecifier>\n"
         "e.g.: \n"
         " ivector-normalize-length ark:ivectors.ark ark:normalized_ivectors.ark\n";

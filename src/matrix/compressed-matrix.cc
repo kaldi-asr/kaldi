@@ -297,7 +297,8 @@ void CompressedMatrix::Write(std::ostream &os, bool binary) const {
     this->CopyToMat(&temp_mat);
     temp_mat.Write(os, binary);
 #else
-    // Text-mode writing.  Only really useful for debug, but we'll implement it.
+    // Text-mode writing out of the raw data.  Only really useful for debug, but
+    // we'll implement it.
     if (data_ == NULL) {
       os << 0.0 << ' ' << 0.0 << ' ' << 0 << ' ' << 0 << '\n';
     } else {

@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "and expects a single transform matrix rather than possibly a table of matrices\n"
         "\n"
         "Usage: transform-vec [options] <transform-rxfilename> <feats-rspecifier> <feats-wspecifier>\n"
-        "See also: transform-vec, est-pca\n";
+        "See also: transform-feats, est-pca\n";
     
     ParseOptions po(usage);
 

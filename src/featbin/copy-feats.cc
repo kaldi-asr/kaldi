@@ -29,7 +29,8 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Copy features [and possibly change format]\n"
-        "Usage: copy-feats [options] (<in-rspecifier> <out-wspecifier> | <in-rxfilename> <out-wxfilename>)\n"
+        "Usage: copy-feats [options] <feature-rspecifier> <feature-wspecifier>\n"
+        "or:   copy-feats [options] <feats-rxfilename> <feats-wxfilename>\n"
         "e.g.: copy-feats ark:- ark,scp:foo.ark,foo.scp\n"
         " or: copy-feats ark:foo.ark ark,t:txt.ark\n"
         "See also: copy-matrix, copy-feats-to-htk, copy-feats-to-sphinx, select-feats,\n"

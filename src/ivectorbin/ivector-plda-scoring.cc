@@ -44,8 +44,9 @@ int main(int argc, char *argv[]) {
         "Usage: ivector-plda-scoring <plda> <train-ivector-rspecifier> <test-ivector-rspecifier>\n"
         " <trials-rxfilename> <scores-wxfilename>\n"
         "\n"
-        "e.g.: ivector-plda-scoring --num-utts=exp/train/num_utts.ark plda "
-        "exp/train/spk_ivectors.ark exp/test/ivectors.ark - -\n";
+        "e.g.: ivector-plda-scoring --num-utts=ark:exp/train/num_utts.ark plda "
+        "ark:exp/train/spk_ivectors.ark ark:exp/test/ivectors.ark trials scores\n"
+        "See also: ivector-compute-dot-products, ivector-compute-plda\n";
     
     ParseOptions po(usage);
 
@@ -166,12 +167,12 @@ int main(int argc, char *argv[]) {
       }
       std::string key1 = fields[0], key2 = fields[1];
       if (train_ivectors.count(key1) == 0) {
-        KALDI_WARN << "Key " << key1 << " not present in training iectors.";
+        KALDI_WARN << "Key " << key1 << " not present in training iVectors.";
         num_trials_err++;
         continue;
       }
       if (test_ivectors.count(key2) == 0) {
-        KALDI_WARN << "Key " << key2 << " not present in test ivectors.";
+        KALDI_WARN << "Key " << key2 << " not present in test iVectors.";
         num_trials_err++;
         continue;
       }

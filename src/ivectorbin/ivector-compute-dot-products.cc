@@ -42,7 +42,8 @@ int main(int argc, char *argv[]) {
         "Usage:  ivector-compute-dot-products [options] <trials-in> "
         "<ivector1-rspecifier> <ivector2-rspecifier> <scores-out>\n"
         "e.g.: \n"
-        " ivector-compute-dot-products trials ark:train_ivectors.scp ark:test_ivectors.scp trials.scored\n";
+        " ivector-compute-dot-products trials ark:train_ivectors.scp ark:test_ivectors.scp trials.scored\n"
+        "See also: ivector-plda-scoring\n";
     
     ParseOptions po(usage);
     
