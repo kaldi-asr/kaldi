@@ -125,6 +125,8 @@ if [ $# != 4 ]; then
   echo "                                                   # interpolate parameters (the weights are learned with a validation set)"
   echo "  --first-component-power <power|1.0>              # Power applied to output of first p-norm layer... setting this to"
   echo "                                                   # 0.5 seems to help under some circumstances."
+  echo "  --egs-opts <opts>                                # Extra options to pass to get_egs.sh"
+  echo "  --lda-opts <opts>                                # Extra options to pass to get_lda.sh"
   echo "  --stage <stage|-9>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
   

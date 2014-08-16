@@ -253,7 +253,7 @@ void TestSgmm2PreXform(const AmSgmm2 &sgmm) {
   kaldi::Vector<BaseFloat> res_vec(dim, kaldi::kSetZero);
   res_vec.AddMatVec(1.0, a_inv, kaldi::kNoTrans, b_pre, 0.0);
   res_vec.AddVec(1.0, b_inv);
-  KALDI_ASSERT(res_vec.IsZero(1.0e-6));
+  KALDI_ASSERT(res_vec.IsZero(1.0e-5));
 }
 
 void UnitTestSgmm2() {
