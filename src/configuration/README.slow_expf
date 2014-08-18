@@ -1,0 +1,25 @@
+On some machines, expf() turns out to be very slow: much slower than its double precision counterpart exp().
+Probably this is concerned with the version of glibc.
+
+Here are a couple of examples:
+
+Normal behaviour:
+
+configuration$ ldd --version | head -1 | awk '{print $NF}'
+2.15
+
+configuration$ ./exp-test
+exp() time: 0.00249362
+expf() time: 0.0017401
+
+Slow behaviour:
+
+configuration$ ldd --version | head -1 | awk '{print $NF}'
+2.11.1
+
+configuration$ ./exp-test
+exp() time: 0.0028439
+expf() time: 0.00713329
+
+If slow behaviour is detected, then KALDI_NO_EXPF macro will be used, and the Exp() wrapper in base/kaldi-math.h will use exp() even for single precision floats.
+The behaviour of expf() is considered to be slow if it is slower than exp() by at least 10%.

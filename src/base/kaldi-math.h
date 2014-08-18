@@ -313,7 +313,11 @@ inline float Log1p(float x) {  return log1pf(x); }
 
 inline double Exp(double x) { return exp(x); }
 
+#ifndef KALDI_NO_EXPF
 inline float Exp(float x) { return expf(x); }
+#else
+inline float Exp(float x) { return exp(x); }
+#endif
 
 inline double Log(double x) { return log(x); }
 

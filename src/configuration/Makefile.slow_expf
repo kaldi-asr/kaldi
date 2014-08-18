@@ -1,0 +1,7 @@
+
+all:
+include ../kaldi.mk
+
+BINFILES = exp-test
+
+include ../makefiles/default_rules.mk

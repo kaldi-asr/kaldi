@@ -164,8 +164,21 @@ function check_for_bad_gcc {
   fi
 }
 
+function check_for_slow_expf {
+  cd configuration
+  make -f Makefile.slow_expf
+  ./exp-test
+  if [ $? -eq 1 ]; then
+      echo "*** WARNING: expf() seems to be slower than exp() on your machine. This is a known bug in old versions of glibc. Please consider updating glibc. ***"
+      echo "*** Kaldi will be configured to use exp() instead of expf() in base/kaldi-math.h Exp() routine for single-precision floats. ***"
+      echo "CXXFLAGS += -DKALDI_NO_EXPF" >> ../kaldi.mk
+  fi
+  cd ..    
+}
+
 function exit_success {
   check_for_bad_gcc;
+  check_for_slow_expf;
   exit 0;
 }
 
