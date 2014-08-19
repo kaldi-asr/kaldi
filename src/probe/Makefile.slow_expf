@@ -2,6 +2,8 @@
 all:
 include ../kaldi.mk
 
+CXXFLAGS += -O0
+
 BINFILES = exp-test
 
 include ../makefiles/default_rules.mk

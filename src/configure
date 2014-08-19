@@ -166,6 +166,7 @@ function check_for_bad_gcc {
 
 function check_for_slow_expf {
   cd probe
+  rm -f exp-test
   make -f Makefile.slow_expf 1>/dev/null
   ./exp-test
   if [ $? -eq 1 ]; then
