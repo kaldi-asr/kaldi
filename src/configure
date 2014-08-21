@@ -418,6 +418,24 @@ function linux_configure_debian7 {
   exit_success;
 }
 
+function linux_configure_redhat {
+  m=$1  # 64 or empty.
+  ATLASLIBS="/usr/lib$m/atlas/libatlas.so.3 /usr/lib$m/atlas/libf77blas.so.3 /usr/lib$m/atlas/libcblas.so.3 /usr/lib$m/atlas/libclapack.so.3"
+  for f in $ATLASLIBS; do 
+    [ ! -f $f ] && return 1;
+  done
+  libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
+  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_redhat" && exit 1;
+  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
+  echo 
+  cat makefiles/linux_atlas.mk >> kaldi.mk
+  fix_cxx_flag
+  echo "Successfully configured for red hat [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
+  $use_cuda && linux_configure_cuda
+  exit_success;
+}
+
 
 function linux_configure_static {
   if $threaded_atlas; then pt=pt; else pt=""; fi
@@ -670,6 +688,8 @@ if [ "`uname`" == "Linux" ]; then
         linux_configure_debian_ubuntu 64 || \
         linux_configure_debian_ubuntu || \
         linux_configure_debian7 || \
+        linux_configure_redhat 64 || \
+        linux_configure_redhat || \
         linux_atlas_failure "Failed to configure ATLAS lbiraries";
     else
       # Prefer dynamic to static math.
@@ -678,6 +698,8 @@ if [ "`uname`" == "Linux" ]; then
         linux_configure_debian_ubuntu 64 || \
         linux_configure_debian_ubuntu || \
         linux_configure_debian7 || \
+        linux_configure_redhat 64 || \
+        linux_configure_redhat || \
         linux_atlas_failure "Failed to configure ATLAS lbiraries";
     fi
 

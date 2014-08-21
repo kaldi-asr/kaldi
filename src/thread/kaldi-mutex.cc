@@ -66,8 +66,10 @@ bool Mutex::TryLock() {
 
 
 void Mutex::Unlock() {
-  if (pthread_mutex_unlock(&mutex_) != 0)
-    KALDI_ERR << "Error on unlocking pthread mutex";
+  int ret;
+  if ((ret = pthread_mutex_unlock(&mutex_)) != 0)
+    KALDI_ERR << "Error on unlocking pthread mutex, error is: "
+              << strerror(ret);
 }
 
 
