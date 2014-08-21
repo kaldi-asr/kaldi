@@ -20,6 +20,7 @@ feature_transform=
 # learn rate scheduling
 max_iters=20
 min_iters=
+keep_lr_iters=0
 #start_halving_inc=0.5
 #end_halving_inc=0.1
 start_halving_impr=0.01
@@ -123,9 +124,10 @@ for iter in $(seq -w $max_iters); do
 
   # accept or reject new parameters (based on objective function)
   loss_prev=$loss
-  if [ "1" == "$(awk "BEGIN{print($loss_new<$loss);}")" ]; then
+  if [ 1 == $(bc <<< "$loss_new < $loss") -o $iter -le $keep_lr_iters ]; then
     loss=$loss_new
     mlp_best=$dir/nnet/${mlp_base}_iter${iter}_learnrate${learn_rate}_tr$(printf "%.4f" $tr_loss)_cv$(printf "%.4f" $loss_new)
+    [ $iter -le $keep_lr_iters ] && mlp_best=${mlp_best}_keep-lr-iters-$keep_lr_iters
     mv $mlp_next $mlp_best
     echo "nnet accepted ($(basename $mlp_best))"
     echo $mlp_best > $dir/.mlp_best 
@@ -137,27 +139,31 @@ for iter in $(seq -w $max_iters); do
 
   # create .done file as a mark that iteration is over
   touch $dir/.done_iter$iter
+  
+  # no learn-rate halving yet, if keep_lr_iters set accordingly
+  [ $iter -le $keep_lr_iters ] && continue 
 
   # stopping criterion
-  if [[ "1" == "$halving" && "1" == "$(awk "BEGIN{print(($loss_prev-$loss)/$loss_prev < $end_halving_impr)}")" ]]; then
+  rel_impr=$(bc <<< "scale=10; ($loss_prev-$loss)/$loss_prev")
+  if [ 1 == $halving -a 1 == $(bc <<< "$rel_impr < $end_halving_impr") ]; then
     if [[ "$min_iters" != "" ]]; then
       if [ $min_iters -gt $iter ]; then
-        echo we were supposed to finish, but we continue, min_iters : $min_iters
+        echo we were supposed to finish, but we continue as min_iters : $min_iters
         continue
       fi
     fi
-    echo finished, too small rel. improvement $(awk "BEGIN{print(($loss_prev-$loss)/$loss_prev)}")
+    echo finished, too small rel. improvement $rel_impr
     break
   fi
 
   # start annealing when improvement is low
-  if [ "1" == "$(awk "BEGIN{print(($loss_prev-$loss)/$loss_prev < $start_halving_impr)}")" ]; then
+  if [ 1 == $(bc <<< "$rel_impr < $start_halving_impr") ]; then
     halving=1
     echo $halving >$dir/.halving
   fi
   
   # do annealing
-  if [ "1" == "$halving" ]; then
+  if [ 1 == $halving ]; then
     learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
     echo $learn_rate >$dir/.learn_rate
   fi

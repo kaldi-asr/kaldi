@@ -20,7 +20,7 @@
 
 #include <pthread.h>
 #include <cerrno>
-
+#include <string.h>
 #include "base/kaldi-error.h"
 #include "thread/kaldi-mutex.h"
 
@@ -28,20 +28,27 @@ namespace kaldi {
   
 
 Mutex::Mutex() {
-  if (pthread_mutex_init(&mutex_, NULL) != 0)
-    KALDI_ERR << "Cannot initialize pthread mutex";
+  int ret;
+  if ((ret = pthread_mutex_init(&mutex_, NULL)) != 0)
+    KALDI_ERR << "Cannot initialize pthread mutex, error is: "
+              << strerror(ret);
 }
 
 
 Mutex::~Mutex() {
-  if (pthread_mutex_destroy(&mutex_) != 0) 
-    KALDI_ERR << "Cannot destroy pthread mutex";
+  int ret;
+  if ( (ret = pthread_mutex_destroy(&mutex_)) != 0) {
+    KALDI_ERR << "Cannot destroy pthread mutex, error is: "
+              << strerror(ret);
+  }
 }
 
 
 void Mutex::Lock() {
-  if (pthread_mutex_lock(&mutex_) != 0)
-    KALDI_ERR << "Error on locking pthread mutex";
+  int ret;
+  if ((ret = pthread_mutex_lock(&mutex_)) != 0)
+    KALDI_ERR << "Error on locking pthread mutex, error is: "
+              << strerror(ret);
 }
 
  
@@ -51,15 +58,18 @@ bool Mutex::TryLock() {
   switch (ret) {
     case 0: lock_succeeded = true; break;
     case EBUSY: lock_succeeded = false; break;
-    default: KALDI_ERR << "Error on try-locking pthread mutex";
+    default: KALDI_ERR << "Error on try-locking pthread mutex, error is: "
+                       << strerror(ret);
   }
   return lock_succeeded;
 }
 
 
 void Mutex::Unlock() {
-  if (pthread_mutex_unlock(&mutex_) != 0)
-    KALDI_ERR << "Error on unlocking pthread mutex";
+  int ret;
+  if ((ret = pthread_mutex_unlock(&mutex_)) != 0)
+    KALDI_ERR << "Error on unlocking pthread mutex, error is: "
+              << strerror(ret);
 }
 
 

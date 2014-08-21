@@ -8,6 +8,7 @@ cmd=run.pl
 stage=0
 min_lmwt=1
 max_lmwt=10
+mbr_scale=1.0
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -54,7 +55,7 @@ if [ $stage -le 0 ]; then
   for LMWT in $(seq $min_lmwt $max_lmwt); do
     $cmd JOB=1:$nj $dir/scoring/log/best_path.$LMWT.JOB.log \
       lattice-align-phones $model "ark:gunzip -c $dir/lat.JOB.gz|" ark:- \| \
-      lattice-to-ctm-conf --inv-acoustic-scale=$LMWT ark:- $dir/scoring/$LMWT.JOB.ctm || exit 1;
+      lattice-to-ctm-conf --acoustic-scale=$(bc <<<"scale=8; 1/$LMWT*$mbr_scale") --lm-scale=$mbr_scale ark:- $dir/scoring/$LMWT.JOB.ctm || exit 1;
     cat $dir/scoring/$LMWT.*.ctm | sort > $dir/scoring/$LMWT.ctm
     rm $dir/scoring/$LMWT.*.ctm
   done
@@ -72,7 +73,7 @@ fi
 
 # Score the set...
 $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
-  cp $dir/scoring/stm_39phn $dir/score_LMWT '&&' cp $dir/scoring/LMWT.ctm_39phn $dir/score_LMWT/ctm_39phn '&&' \
+  cp $dir/scoring/stm_39phn $dir/score_LMWT/stm_39phn '&&' cp $dir/scoring/LMWT.ctm_39phn $dir/score_LMWT/ctm_39phn '&&' \
    $hubscr -p $hubdir -V -l english -h hub5 -g $dir/scoring/glm_39phn -r $dir/score_LMWT/stm_39phn $dir/score_LMWT/ctm_39phn || exit 1;
 
 exit 0;
