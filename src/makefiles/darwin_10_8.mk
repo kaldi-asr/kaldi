@@ -5,7 +5,7 @@ $(error FSTROOT not defined.)
 endif
 
 CXXFLAGS = -msse -msse2 -Wall -I.. \
-	  -fPIC \
+	   -pthread \
       -DKALDI_DOUBLEPRECISION=0 -DHAVE_POSIX_MEMALIGN \
       -Wno-sign-compare -Winit-self \
       -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -rdynamic \
@@ -13,6 +13,11 @@ CXXFLAGS = -msse -msse2 -Wall -I.. \
       -I$(FSTROOT)/include \
       $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID
+
+
+ifeq ($(KALDI_FLAVOR), dynamic)
+CXXFLAGS += -fPIC
+endif
 
 LDFLAGS = -g -rdynamic
 LDLIBS = $(EXTRA_LDLIBS) $(FSTROOT)/lib/libfst.a -ldl -lm -lpthread -framework Accelerate

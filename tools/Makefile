@@ -15,15 +15,7 @@ all: check_required_programs sph2pipe atlas irstlm_tgt sclite openfst
 
 
 check_required_programs:
-	which aclocal
-	which automake
-	which autoconf
-	which libtoolize || which glibtoolize
-	which svn
-	which gcc
-	which $(CXX)
-	which patch
-	which tar
+	extras/check_dependencies.sh
 
 clean: openfst_cleaned sclite_cleaned  irstlm_cleaned
 
