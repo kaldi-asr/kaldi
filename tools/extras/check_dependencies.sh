@@ -18,7 +18,7 @@ if ! echo "#include <zlib.h>" | gcc -E - >&/dev/null; then
   add_packages zlib-devel zlib1g-dev
 fi
 
-for f in make automake libtool autoconf patch awk grep; do
+for f in make automake libtool autoconf patch awk grep bzip2 gzip; do
   if ! which $f >&/dev/null; then
     echo "$0: $f is not installed."
     add_packages $f $f
@@ -56,7 +56,7 @@ if which apt-get >&/dev/null; then
   if [ $(readlink /bin/sh) == "dash" ]; then
     echo "/bin/sh is linked to dash, and currently some of the scripts will not run"
     echo "properly.  We recommend to run:"
-    echo " sudo ln -s -f dash /bin/sh"
+    echo " sudo ln -s -f bash /bin/sh"
     printed=true
   fi
 fi
