@@ -68,7 +68,7 @@ if which yum >&/dev/null; then
     printed=true
     status=1
   fi
-  if ! dpkg -l | grep atlas >/dev/null; then
+  if ! rpm -qa|  grep atlas >/dev/null; then
     echo "You should probably do something like: "
     echo "sudo yum install atlas.x86_64"
     printed=true
