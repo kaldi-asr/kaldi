@@ -45,11 +45,16 @@ for f in $online_src/conf/online_nnet2_decoding.conf $nnet_src/final.mdl; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
+
 origdir=$dir
 dir=$(readlink -f $dir) # Convert $dir to an absolute pathname, so that the
                         # configuration files we write will contain absolute
                         # pathnames.
 mkdir -p $dir/conf $dir/log
+
+
+cp $nnet_src/tree $dir/ || exit 1;
+
 
 # There are a bunch of files that we will need to copy from $online_src, because
 # we're aiming to have one self-contained directory that has everything in it.

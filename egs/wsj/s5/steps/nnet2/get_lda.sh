@@ -19,6 +19,8 @@ num_feats=10000 # maximum number of feature files to use.  Beyond a certain poin
                 # gets silly to use more data.
 lda_dim=  # This defaults to no dimension reduction.
 online_ivector_dir=
+ivector_randomize_prob=0.0 # if >0.0, randomizes iVectors during training with
+                           # this prob per iVector.
 ivector_dir=
 cmvn_opts=  # allows you to specify options for CMVN, if feature type is not lda.
 
@@ -131,7 +133,7 @@ spliced_feats="$feats splice-feats --left-context=$splice_width --right-context=
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
   # note: subsample-feats, with negative value of n, repeats each feature n times.
-  spliced_feats="$spliced_feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
+  spliced_feats="$spliced_feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- | ivector-randomize --randomize-prob=$ivector_randomize_prob ark:- ark:- |' ark:- |"
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
 else
   ivector_dim=0
