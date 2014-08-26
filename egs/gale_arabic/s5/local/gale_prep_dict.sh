@@ -12,6 +12,7 @@ mkdir -p $dir
 # (1) Get QCRI dictionary
 wget http://alt.qcri.org//resources/speech/dictionary/ar-ar_lexicon_2014-03-17.txt.bz2  || exit 1;
 bzcat ar-ar_lexicon_2014-03-17.txt.bz2 | sed '1,3d'  >  $dir/lexicon.txt 
+rm -fr ar-ar_lexicon_2014-03-17.txt.bz2
 
 #(2) Dictionary preparation:
 
