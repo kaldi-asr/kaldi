@@ -11,11 +11,31 @@ a) Preparation: you need to make sure the BABEL data and the F4DE scoring softwa
 
 b) If you plan to work on one or more languages, the following approach is advised.
     aa) create empty directory somewhere according to your choice
-    ab) symlink all the directories here to that directory
-    ac) copy cmd.sh and path.sh (you will probably need to do some changes in these)
+        (
+          mkdir 206-zulu-llp; cd 206-zulu-llp
+        )
+
+    ab) copy cmd.sh and path.sh (you will probably need to do some changes in these)
+        especially pay attention to KALDI_ROOT in path.sh and possibly switch to using
+        run.pl in cmd.sh
+        (
+          cp /path/to/kaldi/egs/babel/s5b/{cmd.sh,path.sh} .
+        )
+
+    ac) symlink all the directories here to that directory
+        (
+          ln -s /path/to/kaldi/egs/babel/s5b/{conf,steps,utils,local} .
+        )
     ad) link the necessary scripts ( see below )
+        {
+          ln -s /path/to/kaldi/egs/babel/s5b/run-1-main.sh .
+        }
     ae) link the appropriate language-specific config file to lang.conf in
         each directory.
+        (
+          206-zulu-llp$ ln -s conf/lang/206-zulu-limitedLP.official.conf lang.conf
+        )
+
 
 Running the training scripts
 ===================================================
@@ -41,4 +61,22 @@ determine the path inside the test.uem dataset.
   conf/languages/106-tagalog-fullLP.official.conf /export/babel/data/releases
 
 
+
+
+
+./run-1-main.sh
+./run-2a-nnet-ensemble-gpu.sh
+./run-2b-bnf.sh --semisupervised false --ali-dir exp/tri5_ali/
+./run-3b-bnf-sgmm.sh --semisupervised false
+./run-3b-bnf-nnet.sh --semisupervised false
+
+./run-2-segmentation.sh
+
+./run-4-anydecode.sh --dir dev2h.seg
+./run-4b-anydecode-bnf.sh --dir dev2h.seg --semisupervised false --extra-kws true
+
+
+
+./run-4-anydecode.sh --dir unsup.seg --skip-kws true --skip-stt true
+./run-4b-anydecode-bnf.sh --dir unsup.seg --skip-kws true --skip-stt true --semisupervised false  
 

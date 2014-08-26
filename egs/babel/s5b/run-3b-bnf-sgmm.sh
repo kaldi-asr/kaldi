@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Copyright 2014  Pegah Ghahremani
+#           2014  Johns Hopkins (Yenda Trmal)
+
 # Apache 2.0
 
 # This script builds the SGMM system on top of the kaldi internal bottleneck features.
@@ -15,22 +17,25 @@ set -e
 set -o pipefail
 set -u
 semisupervised=true
+unsup_string=
 
- ./utils/parse_options.sh
-echo  "--semisupervised<true>  #set to false to skip unsupervised training."
+. ./utils/parse_options.sh
 
 if [ $babel_type == "full" ] && $semisupervised; then
   echo "Error: Using unsupervised training for fullLP is meaningless, use semisupervised=false "
   exit 1
 fi
 
-if $semisupervised ; then
-  unsup_string="_semisup"
-else
-  unsup_string=""  #" ": supervised training, _semi_supervised: unsupervised BNF training
+if [ -z "$unsup_string" ]; then
+  if $semisupervised ; then
+    unsup_string="_semisup"
+  else
+    unsup_string=""  #" ": supervised training, _semi_supervised: unsupervised BNF training
+  fi
 fi
 exp_dir=exp_bnf${unsup_string}
 data_bnf_dir=data_bnf${unsup_string}
+param_bnf_dir=param_bnf${unsup_string}
 
 echo ---------------------------------------------------------------------
 echo "Starting $exp_dir/ubm7 on" `date`
@@ -86,6 +91,7 @@ fi
 
 echo ---------------------------------------------------------------------
 echo "Finished successfully on" `date`
+echo "To decode a data-set, use run-4b-anydecode-bnf.sh"
 echo ---------------------------------------------------------------------
 
 exit 0

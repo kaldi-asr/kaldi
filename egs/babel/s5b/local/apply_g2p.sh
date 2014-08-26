@@ -45,7 +45,7 @@ output=$3
 mkdir -p $output/log
 
 model=$modeldir/g2p.model.final
-[ ! -f $model ] && echo "File $model not found in the directory $data." && exit 1
+[ ! -f ${model:-} ] && echo "File $model not found in the directory $modeldir." && exit 1
 #[ ! -x $wordlist ] && echo "File $wordlist not found!" && exit 1
 
 cp $wordlist $output/wordlist.orig.txt

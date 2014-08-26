@@ -12,8 +12,6 @@ set -o pipefail
 
 
 dir=dev10h.pem
-dev2shadow=dev10h.uem
-eval2shadow=eval.uem
 kind=
 data_only=false
 fast_path=true
@@ -24,9 +22,7 @@ max_states=150000
 extra_kws=true
 vocab_kws=false
 wip=0.5
-shadow_set_extra_opts=( --wip $wip )
-segmentation_opts="--isolated-resegmentation \
-  --min-inter-utt-silence-length 1.0"
+segmentation_opts="--isolated-resegmentation --min-inter-utt-silence-length 1.0"
 use_vtln=true
 tri5_only=false
 logdet_scale=0.0
@@ -325,13 +321,13 @@ if $tri5_only || ! $fast_path ; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt \
-    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    "${lmwt_plp_extra_opts[@]}" \
     ${dataset_dir} data/lang ${decode}
 
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-    "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+    "${lmwt_plp_extra_opts[@]}" \
     ${dataset_dir} data/lang ${decode}.si
 fi
 
@@ -364,7 +360,7 @@ if [ -f exp/sgmm5/.done ]; then
       local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
         --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-        "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+        "${lmwt_plp_extra_opts[@]}" \
         ${dataset_dir} data/lang  exp/sgmm5/decode_fmllr_${dataset_id}
     fi
   fi
@@ -398,7 +394,7 @@ if [ -f exp/sgmm5/.done ]; then
       local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
         --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-      "${shadow_set_extra_opts[@]}" "${lmwt_plp_extra_opts[@]}" \
+      "${lmwt_plp_extra_opts[@]}" \
       ${dataset_dir} data/lang $decode
   done
 fi
@@ -424,38 +420,40 @@ if [ -f exp/tri6_nnet/.done ]; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+    "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/lang $decode
 fi
 
-####################################################################
-##
-## DNN ("lowrank") decoding
-##
-####################################################################
-if [ -f exp/tri6_nnet2/.done ]; then
-  decode=exp/tri6_nnet2/decode_${dataset_id}
 
-  utils/mkgraph.sh \
-    data/lang exp/tri6_nnet2 exp/tri6_nnet2/graph |tee exp/tri6_nnet2/mkgraph.log || exit 1 
+  ####################################################################
+  ##
+  ## DNN ("lowrank") decoding
+  ##
+  ####################################################################
+  if [ -f exp/tri6_nnet2/.done ]; then
+    decode=exp/tri6_nnet2/decode_${dataset_id}
 
-  if [ ! -f $decode/.done ]; then
-    mkdir -p $decode
-    steps/nnet2/decode.sh \
-      --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
-      --beam $dnn_beam --lat-beam $dnn_lat_beam \
-      --skip-scoring true "${decode_extra_opts[@]}" \
-      --transform-dir exp/tri5/decode_${dataset_id} \
-      exp/tri6_nnet2/graph ${dataset_dir} $decode | tee $decode/decode.log
+    utils/mkgraph.sh \
+      data/lang exp/tri6_nnet2 exp/tri6_nnet2/graph |tee exp/tri6_nnet2/mkgraph.log || exit 1 
 
-    touch $decode/.done
+    if [ ! -f $decode/.done ]; then
+      mkdir -p $decode
+      steps/nnet2/decode.sh \
+        --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
+        --beam $dnn_beam --lat-beam $dnn_lat_beam \
+        --skip-scoring true "${decode_extra_opts[@]}" \
+        --transform-dir exp/tri5/decode_${dataset_id} \
+        exp/tri6_nnet2/graph ${dataset_dir} $decode | tee $decode/decode.log
+
+      touch $decode/.done
+    fi
+    local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+      --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+      --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+      "${lmwt_dnn_extra_opts[@]}" \
+      ${dataset_dir} data/lang $decode
   fi
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
-    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/lang $decode
-fi
+
 
 ####################################################################
 ##
@@ -475,10 +473,11 @@ if [ -f exp/tri6a_nnet/.done ]; then
 
     touch $decode/.done
   fi
+
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+    "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/lang $decode
 fi
 
@@ -505,7 +504,7 @@ if [ -f exp/tri6b_nnet/.done ]; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+    "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/lang $decode
 fi
 ####################################################################
@@ -531,7 +530,7 @@ if [ -f exp/tri6_nnet_mpe/.done ]; then
     local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
       --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
       --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-      "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+      "${lmwt_dnn_extra_opts[@]}" \
       ${dataset_dir} data/lang $decode
   done
 fi
@@ -560,7 +559,7 @@ for dnn in tri6_nnet_semi_supervised tri6_nnet_semi_supervised2 \
     local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
       --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
       --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-      "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
+      "${lmwt_dnn_extra_opts[@]}" \
       ${dataset_dir} data/lang $decode
   fi
 done

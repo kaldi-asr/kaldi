@@ -16,6 +16,7 @@ skip_scoring=false
 max_states=150000
 extra_kws=true
 vocab_kws=false
+tri5_only=false
 wip=0.5
 
 echo "run-4-test.sh $@"
@@ -81,7 +82,7 @@ eval my_nj=\$${dataset_type}_nj  #for shadow, this will be re-set when appropria
 my_subset_ecf=false
 eval ind=\${${dataset_type}_subset_ecf+x}
 if [ "$ind" == "x" ] ; then
-  my_subset_ecf=\$${dataset_type}_subset_ecf
+  eval my_subset_ecf=\$${dataset_type}_subset_ecf
 fi
 
 declare -A my_more_kwlists
@@ -138,14 +139,14 @@ if [ ! -f data/raw_${dataset_type}_data/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Subsetting the ${dataset_type} set"
   echo ---------------------------------------------------------------------
- 
+
   l1=${#my_data_dir[*]}
   l2=${#my_data_list[*]}
   if [ "$l1" -ne "$l2" ]; then
     echo "Error, the number of source files lists is not the same as the number of source dirs!"
     exit 1
   fi
-  
+
   resource_string=""
   if [ "$dataset_kind" == "unsupervised" ]; then
     resource_string+=" --ignore-missing-txt true"
@@ -161,6 +162,7 @@ fi
 my_data_dir=`readlink -f ./data/raw_${dataset_type}_data`
 [ -f $my_data_dir/filelist.list ] && my_data_list=$my_data_dir/filelist.list
 nj_max=`cat $my_data_list | wc -l` || nj_max=`ls $my_data_dir/audio | wc -l`
+
 if [ "$nj_max" -lt "$my_nj" ] ; then
   echo "Number of jobs ($my_nj) is too big!"
   echo "The maximum reasonable number of jobs is $nj_max"
@@ -245,7 +247,6 @@ if $data_only ; then
   exit 0;
 fi
 
-
 ####################################################################
 ##
 ## FMLLR decoding 
@@ -280,6 +281,11 @@ if ! $fast_path ; then
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_plp_extra_opts[@]}" \
     ${dataset_dir} data/lang ${decode}.si
+fi
+
+if $tri5_only; then
+  echo "--tri5-only is true. So exiting."
+  exit 0
 fi
 
 ####################################################################
@@ -356,7 +362,7 @@ if [ -f exp/tri6_nnet/.done ]; then
     mkdir -p $decode
     steps/nnet2/decode.sh \
       --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
-      --beam $dnn_beam --lat-beam $dnn_lat_beam \
+      --beam $dnn_beam --lattice-beam $dnn_lat_beam \
       --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${dataset_id} \
       exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
@@ -382,13 +388,14 @@ if [ -f exp/tri6a_nnet/.done ]; then
     mkdir -p $decode
     steps/nnet2/decode.sh \
       --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
-      --beam $dnn_beam --lat-beam $dnn_lat_beam \
+      --beam $dnn_beam --lattice-beam $dnn_lat_beam \
       --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${dataset_id} \
       exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
 
     touch $decode/.done
   fi
+
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
@@ -408,7 +415,7 @@ if [ -f exp/tri6b_nnet/.done ]; then
     mkdir -p $decode
     steps/nnet2/decode.sh \
       --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
-      --beam $dnn_beam --lat-beam $dnn_lat_beam \
+      --beam $dnn_beam --lattice-beam $dnn_lat_beam \
       --skip-scoring true "${decode_extra_opts[@]}" \
       --transform-dir exp/tri5/decode_${dataset_id} \
       exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
@@ -424,31 +431,6 @@ if [ -f exp/tri6b_nnet/.done ]; then
 fi
 ####################################################################
 ##
-## DNN (ensemble) decoding
-##
-####################################################################
-if [ -f exp/tri6c_nnet/.done ]; then
-  decode=exp/tri6c_nnet/decode_${dataset_id}
-  if [ ! -f $decode/.done ]; then
-    mkdir -p $decode
-    steps/nnet2/decode.sh \
-      --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
-      --beam $dnn_beam --lat-beam $dnn_lat_beam \
-      --skip-scoring true "${decode_extra_opts[@]}" \
-      --transform-dir exp/tri5/decode_${dataset_id} \
-      exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
-
-    touch $decode/.done
-  fi
-
-  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
-    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
-    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
-    "${shadow_set_extra_opts[@]}" "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/lang $decode
-fi
-####################################################################
-##
 ## DNN_MPE decoding
 ##
 ####################################################################
@@ -459,7 +441,7 @@ if [ -f exp/tri6_nnet_mpe/.done ]; then
       mkdir -p $decode
       steps/nnet2/decode.sh --minimize $minimize \
         --cmd "$decode_cmd" --nj $my_nj --iter epoch$epoch \
-        --beam $dnn_beam --lat-beam $dnn_lat_beam \
+        --beam $dnn_beam --lattice-beam $dnn_lat_beam \
         --skip-scoring true "${decode_extra_opts[@]}" \
         --transform-dir exp/tri5/decode_${dataset_id} \
         exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
@@ -488,7 +470,7 @@ for dnn in tri6_nnet_semi_supervised tri6_nnet_semi_supervised2 \
       mkdir -p $decode
       steps/nnet2/decode.sh \
         --minimize $minimize --cmd "$decode_cmd" --nj $my_nj \
-        --beam $dnn_beam --lat-beam $dnn_lat_beam \
+        --beam $dnn_beam --lattice-beam $dnn_lat_beam \
         --skip-scoring true "${decode_extra_opts[@]}" \
         --transform-dir exp/tri5/decode_${dataset_id} \
         exp/tri5/graph ${dataset_dir} $decode | tee $decode/decode.log
