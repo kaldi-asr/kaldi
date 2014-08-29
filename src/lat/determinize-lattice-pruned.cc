@@ -1387,14 +1387,14 @@ bool DeterminizeLatticePhonePrunedFirstPass(
   // First, insert the phones.
   typename ArcTpl<Weight>::Label first_phone_label =
       DeterminizeLatticeInsertPhones(trans_model, fst);
-  KALDI_ASSERT(TopSort(fst));
+  TopSort(fst);
   
   // Second, do determinization with phone inserted.
   bool ans = DeterminizeLatticePruned<Weight, IntType>(*fst, beam, fst, opts);
 
   // Finally, remove the inserted phones.
   DeterminizeLatticeDeletePhones(first_phone_label, fst);
-  KALDI_ASSERT(TopSort(fst));
+  TopSort(fst);
 
   return ans;
 }
