@@ -83,15 +83,20 @@ openfst-1.3.4.tar.gz:
 sclite: sclite_compiled
 
 .PHONY: sclite_compiled
-sclite_compiled: sctk_configured
+sclite_compiled: sctk/.patched sctk_configured
 	cd sctk; \
 	$(MAKE) all && $(MAKE) install && $(MAKE) doc
 
-sctk_configured:sctk/.configured
+sctk_configured: sctk/.patched sctk/.configured
 
-sctk/.configured:sctk
+sctk/.configured: sctk
 	cd sctk; $(MAKE) config
 	touch sctk/.configured
+
+sctk/.patched: sctk
+	cd sctk; patch -N -p0 < ../extras/sctk-2.4.8.patch
+	touch sctk/.patched
+
 
 .PHONY: sctk
 sctk: sctk-2.4.8-20130429-2145.tar.bz2
@@ -99,11 +104,8 @@ sctk: sctk-2.4.8-20130429-2145.tar.bz2
 	rm -rf sctk && ln -s sctk-2.4.8 sctk
 
 sctk-2.4.8-20130429-2145.tar.bz2:
-	wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.8-20130429-2145.tar.bz2
-
-sctk-2.4.0-20091110-0958.tar.bz2:
-	wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.0-20091110-0958.tar.bz2 || \
-	wget --no-check-certificate -T 10 http://www.openslr.org/resources/4/sctk-2.4.0-20091110-0958.tar.bz2
+	wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.8-20130429-2145.tar.bz2 || \
+    wget --no-check-certificate -T 10 http://www.openslr.org/resources/4/sctk-2.4.8-20130429-2145.tar.bz2
 
 irstlm_tgt: irstlm_compiled
 
