@@ -212,3 +212,7 @@ local/run_sgmm2.sh
 # The following script depends on local/run_raw_fmllr.sh having been run.
 #
 # local/run_nnet2.sh
+
+# Karel's neural net recipe.                                                                                                                                        
+# local/run_dnn.sh                                                                                                                                                  
+
