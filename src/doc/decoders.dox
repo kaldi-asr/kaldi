@@ -53,6 +53,7 @@ namespace kaldi {
  The DecodableInterface object has only three functions:
 \verbatim
   virtual BaseFloat LogLikelihood(int32 frame, int32 index);
+  virtual int32 NumFramesReady() const;
   virtual bool IsLastFrame(int32 frame);
   virtual int32 NumIndices();
 \endverbatim
@@ -67,13 +68,16 @@ namespace kaldi {
  the minimum that the decoder "needs to know", and it does not need to know
  about the probability scales.
 
- In order to make all the core decoding code applicable to data that is
- obtained in real time, we don't put a NumFames() function in the interface,
- but just an \ref DecodableInterface::IsLastFrame() "IsLastFrame()" function 
- that roughly means "are we done yet?".  
-
-
-
+ The \ref DecodableInterface::NumFramesReady() "NumFramesReady()" function
+ returns the number of frames currently available.  In an offline, batch-mode setting
+ this will equal the number of frames in the file.  In an online setting this will
+ be the number of frames we have already captured and processed into features, 
+ and it will likely increase with time.  
+ The \ref DecodableInterface::IsLastFrame() "IsLastFrame()" function is an older
+ mechanism for online decoding; it returns true if the given frame is the last one
+ (in the old online-decoding mechanism, which is still supported for back compatibility,
+ the call to the IsLastFrame() function would block if it was not the last frame
+ but the data was not yet available.
 
  \section decoders_simple SimpleDecoder: the simplest possible decoder
 
@@ -105,16 +109,12 @@ acoustic_scale (type: float).
 
 After calling this, we can get the traceback with the following call:
 \verbatim
-  bool GetOutput(bool is_final, fst::MutableFst<fst::StdArc> *fst_out);
+  bool GetBestPath(Lattice *fst_out);
 \endverbatim
-It returns a boolean success value.  If we call this function with
-is_final==true, it only considers tokens that are at a final state; the normal
-procedure is to first call it with is_final==true, and if this returns false (no
-tokens reached a final state), call it with is_final==false as a backup strategy.
-On success, this function puts its output into the FST object "fst_out".  It creates a
-linear acceptor whose input and output labels are whatever labels were on the FST
-(typically transition-ids and words, respectively), and whose weights contain the
-acoustic, language model and transition weights.
+The output is formatted as a lattice but contains only one path.
+The lattice is a finite-state transducer whose input and output labels are whatever
+labels were on the FST (typically transition-ids and words, respectively), and
+whose weights contain the acoustic, language model and transition weights.
 
  \subsection decoders_simple_workings How SimpleDecoder works
  
