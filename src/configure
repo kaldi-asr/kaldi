@@ -337,6 +337,41 @@ function linux_configure_cuda {
   fi
 }
 
+function linux_configure_speex {
+  #check whether the user has called tools/extras/install_speex.sh or not
+  SPEEXROOT=`pwd`/../tools/speex
+  static_speex=$1
+  if [ "foo"$static_speex == "foo" ]; then
+    static_speex=false
+  fi
+  
+  if $static_speex; then
+    spx_type=a
+  else
+    spx_type=so
+  fi
+  if [ ! -f "$SPEEXROOT/lib/libspeex.${spx_type}" ];then
+    echo "Static=[$static_speex] Speex library not found: You can still build Kaldi without Speex."
+    return
+  fi
+  
+  if [ -f $SPEEXROOT/include/speex/speex.h ]; then
+    echo >> kaldi.mk
+    echo CXXFLAGS += -DHAVE_SPEEX -I${SPEEXROOT}/include >> kaldi.mk
+    
+    if $static_speex; then
+      echo LDLIBS += $SPEEXROOT/lib/libspeex.a
+    else
+      echo LDLIBS += -L${SPEEXROOT}/lib -lspeex >> kaldi.mk
+      echo LDFLAGS += -Wl,-rpath=${SPEEXROOT}/lib >> kaldi.mk
+    fi
+    
+    echo "Successfully configured with Speex at $SPEEXROOT, (static=[$static_speex])"
+  else
+    echo "Speex will not be used. If you want to use it, run tools/extras/install_speex.sh first."
+  fi
+}
+
 function fix_cxx_flag {
   CXXCOMPILER=`grep "CXX = " kaldi.mk | awk '{print $3}'`
   if [ $CXXCOMPILER=="g++" ]; then
@@ -398,6 +433,7 @@ function linux_configure_debian_ubuntu {
   fix_cxx_flag
   echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && linux_configure_cuda
+  linux_configure_speex
   exit_success;
 }
 
@@ -415,6 +451,7 @@ function linux_configure_debian7 {
   fix_cxx_flag
   echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && linux_configure_cuda
+  linux_configure_speex
   exit_success;
 }
 
@@ -485,6 +522,7 @@ function linux_configure_static {
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
   $use_cuda && linux_configure_cuda
+  linux_configure_speex
   echo "Successfully configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
   exit_success;
 }
@@ -553,6 +591,7 @@ function linux_configure_dynamic {
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
   $use_cuda && linux_configure_cuda
+  linux_configure_speex
   echo "Successfully configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   exit_success;
 }
@@ -761,6 +800,7 @@ if [ "`uname`" == "Linux" ]; then
     echo "MKLFLAGS = ${MKL_LINK_LINE} ${OMP_LINK_LINE} " >> kaldi.mk
 
     $use_cuda && linux_configure_cuda
+    linux_configure_speex
     echo "Successfully configured for Linux with MKL libs from $MKLROOT"
     exit_success;
 
@@ -783,6 +823,7 @@ if [ "`uname`" == "Linux" ]; then
     fix_cxx_flag
     echo "Warning (CLAPACK): this part of the configure process is not properly tested and will not work."
     $use_cuda && linux_configure_cuda
+    linux_configure_speex
     echo "Successfully configured for Linux with CLAPACK libs from $CLAPACKROOT"
     exit_success;
   elif [ "$MATHLIB" == "OPENBLAS" ]; then
@@ -807,6 +848,7 @@ if [ "`uname`" == "Linux" ]; then
     echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
     echo "Warning (OPENBLAS): this part of the configure process is not properly tested and will not work."
     $use_cuda && linux_configure_cuda
+    linux_configure_speex
     echo "Successfully configured OpenBLAS from $OPENBLASROOT."
     exit_success;
   else 

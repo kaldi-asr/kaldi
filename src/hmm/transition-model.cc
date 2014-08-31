@@ -738,4 +738,10 @@ bool GetPhonesForPdfs(const TransitionModel &trans_model,
   return true;
 }
 
+bool TransitionModel::Compatible(const TransitionModel &other) const {
+  return (topo_ == other.topo_ && triples_ == other.triples_ &&
+          state2id_ == other.state2id_ && id2state_ == other.id2state_
+          && num_pdfs_ == other.num_pdfs_);
+}
+
 } // End namespace kaldi

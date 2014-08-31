@@ -2925,7 +2925,7 @@ void BlockAffineComponentPreconditioned::Update(
       in_value_precon(num_frames, input_block_dim + 1, kUndefined);
   in_value_temp.Set(1.0); // so last row will have value 1.0.
   CuSubMatrix<BaseFloat> in_value_temp_part(in_value_temp, 0, num_frames,
-                                          0, input_block_dim); // all but last 1.0
+                                            0, input_block_dim); // all but last 1.0
   CuSubMatrix<BaseFloat> in_value_precon_part(in_value_precon, 0, num_frames,
                                             0, input_block_dim);
   CuVector<BaseFloat> precon_ones(num_frames);

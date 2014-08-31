@@ -24,7 +24,7 @@
 #ifndef KALDI_ONLINE_ONLINE_DECODABLE_H_
 #define KALDI_ONLINE_ONLINE_DECODABLE_H_
 
-#include "online-feat-input.h"
+#include "online/online-feat-input.h"
 #include "gmm/decodable-am-diag-gmm.h"
 
 namespace kaldi {
@@ -43,10 +43,10 @@ class OnlineDecodableDiagGmmScaled : public DecodableInterface {
   /// Returns the log likelihood, which will be negated in the decoder.
   virtual BaseFloat LogLikelihood(int32 frame, int32 index);
   
-  virtual bool IsLastFrame(int32 frame);
+  virtual bool IsLastFrame(int32 frame) const;
   
   /// Indices are one-based!  This is for compatibility with OpenFst.
-  virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
+  virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
 
  private:
   void CacheFrame(int32 frame);

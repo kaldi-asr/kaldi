@@ -162,7 +162,7 @@ class LatticeWordAligner {
       StateId output_state = lat_out_->AddState();
       map_[tuple] = output_state;
       if (add_to_queue)
-        queue_.push_back(std::make_pair(tuple, output_state));
+        queue_.push_front(std::make_pair(tuple, output_state));
       return output_state;
     } else {
       return iter->second;
@@ -334,7 +334,9 @@ class LatticeWordAligner {
   int32 max_states_;
   CompactLattice *lat_out_;
 
-  std::vector<std::pair<Tuple, StateId> > queue_;
+  std::deque<std::pair<Tuple, StateId> > queue_;
+  
+  
   
   MapType map_; // map from tuples to StateId.
   bool error_;

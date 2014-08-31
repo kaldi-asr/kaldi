@@ -499,6 +499,7 @@ int32 LinearCgd(const LinearCgdOptions &opts,
       r_next_norm_sq = VecVec(r, r);
       r_recompute_norm_sq = r_next_norm_sq;
     }
+    KALDI_VLOG(5) << "In linear CG: r_next_norm_sq = " << r_next_norm_sq;
     // Check if converged.
     if (r_next_norm_sq <= max_error_sq)
       break;
@@ -537,7 +538,7 @@ int32 LinearCgd<float>(const LinearCgdOptions &opts,
 
 template
 int32 LinearCgd<double>(const LinearCgdOptions &opts,
-                       const SpMatrix<double> &A, const VectorBase<double> &b,
-                       VectorBase<double> *x);
+                        const SpMatrix<double> &A, const VectorBase<double> &b,
+                        VectorBase<double> *x);
 
 } // end namespace kaldi

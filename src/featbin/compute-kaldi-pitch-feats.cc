@@ -1,7 +1,7 @@
 // featbin/compute-kaldi-pitch-feats.cc
 
-// Copyright 2013   Pegah Ghahremani
-//                  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2013        Pegah Ghahremani
+//           2013-2014   Johns Hopkins University (author: Daniel Povey)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "feat/pitch-functions.cc"
+#include "feat/pitch-functions.h"
 #include "feat/wave-reader.h"
 
 
@@ -32,7 +32,9 @@ int main(int argc, char *argv[]) {
         "process-kaldi-pitch-feats.\n"
         "Usage: compute-kaldi-pitch-feats [options...] <wav-rspecifier> <feats-wspecifier>\n"
         "e.g.\n"
-        "compute-kaldi-pitch-feats --sample-frequency=8000 scp:wav.scp ark:- \n";
+        "compute-kaldi-pitch-feats --sample-frequency=8000 scp:wav.scp ark:- \n"
+        "\n"
+        "See also: process-kaldi-pitch-feats, compute-and-process-kaldi-pitch-feats\n";
     
     
     ParseOptions po(usage);
@@ -91,18 +93,12 @@ int main(int argc, char *argv[]) {
       SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
       Matrix<BaseFloat> features;
       try {
-        Compute(pitch_opts, waveform, &features);
+        ComputeKaldiPitch(pitch_opts, waveform, &features);
       } catch (...) {
         KALDI_WARN << "Failed to compute pitch for utterance "
                    << utt;
+        num_err++;        
         continue;
-      }
-
-      double tot = features.Sum();
-      if (features.NumCols() != 2 || KALDI_ISINF(tot) || KALDI_ISNAN(tot)) {
-        KALDI_WARN << "Pitch extraction failed for utterance " << utt
-                   << ", num-rows is " << features.NumRows() << ", total is "
-                   << tot;
       }
       
       feat_writer.Write(utt, features);

@@ -70,6 +70,8 @@ int main(int argc, char *argv[]) {
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       kaldi::Lattice lat = lattice_reader.Value();
+      // FreeCurrent() is an optimization that prevents the lattice from being
+      // copied unnecessarily (OpenFst does copy-on-write).
       lattice_reader.FreeCurrent();
       if (acoustic_scale != 1.0 || lm_scale != 1.0)
         fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &lat);

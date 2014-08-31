@@ -4,6 +4,7 @@
 //              2014  IMSL, PKU-HKUST (author: Wei Shi)
 //              2014  Yanqing Sun, Junjie Wang,
 //                    Daniel Povey, Korbinian Riedhammer
+//                    Xin Lei
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,667 +19,710 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include <algorithm>
 #include <limits>
+
 #include "feat/feature-functions.h"
-#include "matrix/matrix-functions.h"
-#include "feat/pitch-functions.h"
 #include "feat/mel-computations.h"
+#include "feat/online-feature.h"
+#include "feat/pitch-functions.h"
+#include "feat/resample.h"
+#include "matrix/matrix-functions.h"
 
 namespace kaldi {
 
-// This Round function is just a temporary patch to help Windows compilation; we
-// should not have been using the "round" function at all, and the version
-// of this code in "sandbox/online" that will eventually be merged here will
-// get rid of calls to round (or Round).
-inline int32 Round(BaseFloat x) {
-  return static_cast<int32>(x + 0.5);
+/**
+   This function processes the NCCF n to a POV feature f by applying the formula
+     f = (1.0001 - n)^0.15  - 1.0
+   This is a nonlinear function designed to make the output reasonably Gaussian
+   distributed.  Before doing this, the NCCF distribution is in the range [-1,
+   1] but has a strong peak just before 1.0, which this function smooths out.
+*/
+
+BaseFloat NccfToPovFeature(BaseFloat n) {
+  if (n > 1.0) {
+    n = 1.0;
+  } else if (n < -1.0) {
+    n = -1.0;
+  }
+  BaseFloat f = pow((1.0001 - n), 0.15) - 1.0;
+  KALDI_ASSERT(f - f == 0);  // check for NaN,inf.
+  return f;
 }
 
+/**
+   This function processes the NCCF n to a reasonably accurate probability
+   of voicing p by applying the formula:
 
-// compute the Weighted Moving Window normalization
-// Subtract the weighted-moving average over a largish window
-// The weight is equal to probability of voicing per frame.
-void WeightedMwn(int32 normalization_window_size,
-                 const VectorBase<BaseFloat> &pov,
-                 const VectorBase<BaseFloat> &raw_log_pitch,
-                 Vector<BaseFloat> *mean_subtracted_log_pitch) {
-  int32 num_frames = pov.Dim();
-  KALDI_ASSERT(num_frames == raw_log_pitch.Dim());
-  int32 last_window_start = -1, last_window_end = -1;
-  double weighted_sum = 0.0, pov_sum = 0.0;
+      n' = fabs(n)
+      r = -5.2 + 5.4 * exp(7.5 * (n' - 1.0)) +
+           4.8 * n' - 2.0 * exp(-10.0 * n') + 4.2 * exp(20.0 * (n' - 1.0));
+      p = 1.0 / (1 + exp(-1.0 * r));
 
-  for (int32 t = 0; t < num_frames; t++) {
-    int32 window_start, window_end;
-    window_start = t - (normalization_window_size/2);
-    window_end = window_start + normalization_window_size;
+   How did we get this formula?  We plotted the empirical log-prob-ratio of voicing
+    r = log( p[voiced] / p[not-voiced] )
+   [on the Keele database where voicing is marked], as a function of the NCCF at
+   the delay picked by our algorithm.  This was done on intervals of the NCCF, so
+   we had enough statistics to get that ratio.  The NCCF covers [-1, 1]; almost
+   all of the probability mass is on [0, 1] but the empirical POV seems fairly
+   symmetric with a minimum near zero, so we chose to make it a function of n' = fabs(n).
+   
+   Then we manually tuned a function (the one you see above) that approximated
+   the log-prob-ratio of voicing fairly well as a function of the absolute-value
+   NCCF n'; however, wasn't a very exact match since we were also trying to make
+   the transformed NCCF fairly Gaussian distributed, with a view to using it as
+   a feature-- an idea we later abandoned after a simpler formula worked better.
+ */
+BaseFloat NccfToPov(BaseFloat n) {
+  BaseFloat ndash = fabs(n);
+  if (ndash > 1.0) ndash = 1.0;  // just in case it was slightly outside [-1, 1]
 
-    if (window_start < 0) {
-      window_end -= window_start;
-      window_start = 0;
-    }
-
-    if (window_end > num_frames) {
-      window_start -= (window_end - num_frames);
-      window_end = num_frames;
-      if (window_start < 0) window_start = 0;
-    }
-    if (last_window_start == -1) {
-      SubVector<BaseFloat> pitch_part(raw_log_pitch, window_start,
-                                      window_end - window_start);
-      SubVector<BaseFloat> pov_part(pov, window_start,
-                                    window_end - window_start);
-      // weighted sum of pitch
-      weighted_sum += VecVec(pitch_part, pov_part);
-
-      // sum of pov
-      pov_sum = pov_part.Sum();
-    } else {
-      if (window_start > last_window_start) {
-        KALDI_ASSERT(window_start == last_window_start + 1);
-        pov_sum -= pov(last_window_start);
-        weighted_sum -= pov(last_window_start)*raw_log_pitch(last_window_start);
-      }
-      if (window_end > last_window_end) {
-        KALDI_ASSERT(window_end == last_window_end + 1);
-        pov_sum += pov(last_window_end);
-        weighted_sum += pov(last_window_end) * raw_log_pitch(last_window_end);
-      }
-    }
-
-    KALDI_ASSERT(window_end - window_start > 0);
-    last_window_start = window_start;
-    last_window_end = window_end;
-    (*mean_subtracted_log_pitch)(t) = raw_log_pitch(t) -
-                                      weighted_sum / pov_sum;
-    KALDI_ASSERT((*mean_subtracted_log_pitch)(t) -
-                 (*mean_subtracted_log_pitch)(t) == 0);
-  }
+  BaseFloat r = -5.2 + 5.4 * exp(7.5 * (ndash - 1.0)) + 4.8 * ndash -
+                2.0 * exp(-10.0 * ndash) + 4.2 * exp(20.0 * (ndash - 1.0));
+  // r is the approximate log-prob-ratio of voicing, log(p/(1-p)).
+  BaseFloat p = 1.0 / (1 + exp(-1.0 * r));
+  KALDI_ASSERT(p - p == 0);  // Check for NaN/inf
+  return p;
 }
 
-// it would process the raw pov using some nonlinearity
-// if apply_sigmoid, it would map the pov to [0, 1] using sigmoid function
-// nonlin 1 : power function as nonlineariy
-//        2 : new nonlinearty for pov (coeffs trained by keele)
-// apply_sigmoid to map the pov to [0, 1] using sigmoid function
-void ProcessPovFeatures(Vector<BaseFloat> *pov,
-                        int nonlin,
-                        bool apply_sigmoid) {
-  if (nonlin != 1 && nonlin != 2) KALDI_ERR << " nonlin should be 1 or 2";
-  int32 num_frames = pov->Dim();
-  if (nonlin == 1) {
-    for (int32 i = 0; i < num_frames; i++) {
-      BaseFloat p = (*pov)(i);
-      // p should always be in [-1, 1], but make extra sure of this.
-      if (p > 1.0) {
-        p = 1.0;
-      } else if (p < -1.0) {
-        p = -1.0;
-      }
-      (*pov)(i) = pow((1.0001 - p), 0.15) - 1.0;
-      KALDI_ASSERT((*pov)(i) - (*pov)(i) == 0);
-    }
-  } else if (nonlin == 2) {
-    for (int32 i = 0; i < num_frames; i++) {
-      BaseFloat p = fabs((*pov)(i));
-      if (p > 1.0)
-        p = 1.0;  // should never happen, but just confirm this.
-      // The following formula was manually constructed to roughly approximate
-      // log(POV / (1-POV)) as a function of fabs(NCCF), on the Keele data,
-      // although we also aimed that it should produce a not-too-peaky
-      // distribution when used to warp the NCCF, so we made some small
-      // compromises.  Note: choosing fabs(NCCF) as an input seemed reasonable
-      // because the POV did seem to have a minimum around NCCF=0 and was very
-      // roughly symmetric on the range [-0.5, 0.5]...  NCCF more negative than
-      // -0.5 was quite rare.
-      p = -5.2 + 5.4 * exp(7.5 * (p - 1.0)) +
-          4.8 * p - 2.0 * exp(-10.0 * p) + 4.2 * exp(20.0 * (p - 1.0));
-      if (apply_sigmoid)
-        p = 1.0 / (1 + exp(-1.0 * p));
-      (*pov)(i) = p;
-      KALDI_ASSERT((*pov)(i) - (*pov)(i) == 0);
-    }
-  }
-}
-
-void TakeLogOfPitch(Matrix<BaseFloat> *input) {
-  int32 num_frames = input->NumRows();
-  for (int32 i = 0; i < num_frames; i++) {
-    BaseFloat p = (*input)(i, 1);
-    KALDI_ASSERT((*input)(i, 1) > 0.0);
-    (*input)(i, 1) = log(p);
-  }
-}
-
-
-int32 PitchNumFrames(int32 nsamp,
-                     const PitchExtractionOptions &opts) {
-  int32 frame_shift = opts.NccfWindowShift();
-  int32 frame_length = opts.NccfWindowSize();
-  KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
-  if (static_cast<int32>(nsamp) < frame_length)
-    return 0;
-  else
-    return (1 + ((nsamp - frame_length) / frame_shift));
-}
-void PreemphasizeFrame(VectorBase<double> *waveform, double preemph_coeff) {
-  if (preemph_coeff == 0.0) return;
-  KALDI_ASSERT(preemph_coeff >= 0.0 && preemph_coeff <= 1.0);
-  for (int32 i = waveform->Dim()-1; i > 0; i--)
-    (*waveform)(i) -= preemph_coeff * (*waveform)(i-1);
-  (*waveform)(0) -= preemph_coeff * (*waveform)(0);
-}
-
-void ExtractFrame(const VectorBase<double> &wave,
-                  int32 frame_num,
-                  const PitchExtractionOptions &opts,
-                  Vector<double> *window) {
-  int32 frame_shift = opts.NccfWindowShift();
-  int32 frame_length = opts.NccfWindowSize();
-  int32 outer_max_lag = Round(opts.resample_freq / opts.min_f0) +
-      Round(opts.lowpass_filter_width/2);
-
-  KALDI_ASSERT(frame_shift != 0 && frame_length != 0);
-  int32 start = frame_shift * frame_num;
-  int32 end = start + outer_max_lag  + frame_length;
-  int32 frame_length_new = frame_length + outer_max_lag;
-
-  if (window->Dim() != frame_length_new)
-    window->Resize(frame_length_new);
-
-  SubVector<double> wave_part(wave, start,
-                              std::min(frame_length_new, wave.Dim()-start));
-
-  SubVector<double>  window_part(*window, 0,
-                                 std::min(frame_length_new, wave.Dim()-start));
-  window_part.CopyFromVec(wave_part);
-
-  if (opts.preemph_coeff != 0.0)
-    PreemphasizeFrame(&window_part, opts.preemph_coeff);
-
-  if (end > wave.Dim())
-    SubVector<double>(*window, frame_length_new-end+wave.Dim(),
-                      end-wave.Dim()).SetZero();
-}
-
-// A special case of ArbitraryResample, when resample point is linear (which
-// is the most commonly used). Provided by Yanqing Sun & Junjie Wang, and
-// could generates exactly the same results as ArbitraryResample. The benefits
-// are to get rid of num_samples, to save calculation and also could be used
-// on-line. Thanks Dan for providing the algorithm. The key is to work out the
-// smallest number of input samples and output sample periods that give the
-// exact same time.
-class LinearResample {
- public:
-     LinearResample(double samp_rate_in,
-                    double samp_rate_out,
-                    double filter_cutoff,
-                    int32 num_zeros_upsample):
-      samp_rate_in_(samp_rate_in),
-      samp_rate_out_(samp_rate_out),
-      filter_cutoff_(filter_cutoff),
-      num_zeros_upsample_(num_zeros_upsample) {
-    KALDI_ASSERT(samp_rate_in > 0.0 &&
-                 samp_rate_out > 0.0 && samp_rate_in != samp_rate_out &&
-                 filter_cutoff > 0.0 &&
-                 filter_cutoff * 2.0 <= samp_rate_in
-                 && num_zeros_upsample > 0);
-    // pre-set some parameters, set up weights_ and indices_.
-    PreSet();
-    SetIndex();
-    SetWeights();
-  }
-
-  void Upsample(const VectorBase<double> &input,
-                VectorBase<double> *output) {
-    // each row of "input" corresponds to the data to resample;
-    // the corresponding row of "output" is the resampled data.
-    int32 num_samples_in_ = input.Dim();
-    int32 resampled_len = 1 + static_cast<int>(num_samples_in_ / frame_shift_);
-    if (output->Dim() != resampled_len) resampled_len = output->Dim();
-
-    for (int32 i = 0; i < resampled_len; i++) {
-      int32 inner_i = i % num_weights_;  // the index of weight to be used
-      int32 offset = (i - inner_i) * frame_shift_;
-      int32 fake_first_index = indexes_[inner_i].first_index + offset,
-            fake_last_index = indexes_[inner_i].last_index + offset;
-      int32 first_index = std::max(0, fake_first_index),
-            last_index = std::min((num_samples_in_ - 1), fake_last_index);
-      int32 num_indices = last_index - first_index + 1;
-      SubVector<double> input_part(input, first_index, num_indices);
-      Vector<double> &weights = weights_[inner_i];
-      if (num_indices == weights.Dim())
-        (*output)(i) = VecVec(input_part, weights);
-      else if (fake_first_index >= 0) {
-        SubVector<double> weight_vec(weights, 0, num_indices);
-        (*output)(i) = VecVec(input_part, weight_vec);
-      } else if (fake_first_index < 0) {
-        SubVector<double> weight_vec(weights, -fake_first_index, num_indices);
-        (*output)(i) = VecVec(input_part, weight_vec);
-      }
-    }
-    output->Scale(1.0/samp_rate_in_);
-  }
- private:
-  void PreSet() {
-    int32 samp_rate_gcd = Gcd(static_cast<int>(samp_rate_in_),
-        static_cast<int>(samp_rate_out_));
-    num_weights_ = static_cast<int>(samp_rate_out_) / samp_rate_gcd;
-    half_frame_length_ = samp_rate_in_ *
-        num_zeros_upsample_ / (2.0 * filter_cutoff_);
-    frame_shift_ = samp_rate_in_ / samp_rate_out_;
-  }
-  void SetIndex() {
-    indexes_.resize(num_weights_);
-    for (int32 i = 0; i < num_weights_; i++) {
-      indexes_[i].first_index =
-        static_cast<int>(ceil(i*frame_shift_ - half_frame_length_));
-      indexes_[i].last_index =
-        static_cast<int>(floor(i*frame_shift_ + half_frame_length_) + 1);
-      indexes_[i].num_indices =
-        indexes_[i].last_index - indexes_[i].first_index + 1;
-    }
-  }
-  void SetWeights() {
-    weights_.resize(num_weights_);
-    double t, j_double, tn;
-    for (int32 i = 0; i < num_weights_; i++) {
-      int32 first_index = indexes_[i].first_index;
-      int32 num_indices = indexes_[i].num_indices;
-      weights_[i].Resize(num_indices);
-      for (int32 j = 0; j < num_indices; j++) {
-        j_double = static_cast<double>(j);
-        t = i / samp_rate_out_ - (j_double + first_index) / samp_rate_in_;
-        tn = FilterFunc(t);
-        weights_[i](j) = tn;
-      }
-    }
-  }
-  double FilterFunc(const double &t) {
-    double f_t = 0,  win = 0;
-
-    if (fabs(t) < num_zeros_upsample_ /(2.0 * filter_cutoff_))
-      win = 0.5 * (1 + cos(M_2PI * filter_cutoff_ / num_zeros_upsample_ * t));
-    if (t != 0)
-      f_t = sin(M_2PI * filter_cutoff_ * t) / (M_PI * t) * win;
-    else
-      f_t = 2 * filter_cutoff_ * win;
-    return f_t;
-  }
-  double samp_rate_in_;
-  double samp_rate_out_;
-  double filter_cutoff_;
-  int32 num_zeros_upsample_;
-  int32 num_weights_;   // minimal number of weights
-  double half_frame_length_;
-  double frame_shift_;  // or called 'dt'
-  struct IndexInfo {
-    // These infos are just theoretical and relative values, ignoring
-    // boundaries and offsets. Will be modified in 'Upsample'.
-    int32 first_index;  // The first input-sample index that we sum
-                        // over, for this output-sample index.
-    int32 last_index;   // The last input-sample index that we sum
-                        // over, for this output-sample index.
-    int32 num_indices;  // The number of indices that we sum over.
-  };
-  // both indexes_.size() and weights_.size() equal num_weights_.
-  std::vector<IndexInfo> indexes_;
-  std::vector<Vector<double> > weights_;
-};
-
-class ArbitraryResample {
- public:
-  ArbitraryResample(int32 num_samples_in, double samp_rate_in,
-                    double filter_cutoff,
-                    const std::vector<double> &sample_points,
-                    int32 num_zeros_upsample):
-      num_samples_in_(num_samples_in),
-      samp_rate_in_(samp_rate_in),
-      filter_cutoff_(filter_cutoff),
-      num_zeros_upsample_(num_zeros_upsample) {
-    KALDI_ASSERT(num_samples_in > 0 && samp_rate_in > 0.0 &&
-                 filter_cutoff > 0.0 &&
-                 filter_cutoff * 2.0 <= samp_rate_in
-                 && num_zeros_upsample > 0);
-    // set up weights_ and indices_.  Please try to keep all functions short and
-    SetIndex(sample_points);
-    SetWeights(sample_points);
-  }
-
-  int32 NumSamplesIn() const { return num_samples_in_; }
-  int32 NumSamplesOut() const { return indexes_.size(); }
-
-  void Upsample(const MatrixBase<double> &input,
-                MatrixBase<double> *output) {
-    // each row of "input" corresponds to the data to resample;
-    // the corresponding row of "output" is the resampled data.
-
-    KALDI_ASSERT(input.NumRows() == output->NumRows() &&
-                 input.NumCols() == num_samples_in_ &&
-                 output->NumCols() == indexes_.size());
-
-    Vector<double> output_col(output->NumRows());
-    for (int32 i = 0; i < NumSamplesOut(); i++) {
-      SubMatrix<double> input_part(input, 0, input.NumRows(),
-                                   indexes_[i].first_index,
-                                   indexes_[i].num_indices);
-      const Vector<double> &weight_vec(weights_[i]);
-      output_col.AddMatVec(1.0/samp_rate_in_, input_part,
-                           kNoTrans, weight_vec, 0.0);
-      output->CopyColFromVec(output_col, i);
-    }
-  }
- private:
-  void SetIndex(const std::vector<double> &sample_points) {
-    int32 last_ind, num_sample = sample_points.size();
-    indexes_.resize(num_sample);
-    for (int32  i = 0; i < num_sample; i++) {
-      indexes_[i].first_index = std::max(0,
-        static_cast<int>(ceil(samp_rate_in_ * (sample_points[i]
-        - num_zeros_upsample_/(2.0 * filter_cutoff_)))));
-      last_ind = std::min((num_samples_in_ - 1),
-        static_cast<int>(floor(samp_rate_in_ *
-        (sample_points[i] + num_zeros_upsample_ / (2.0 * filter_cutoff_)))
-        + 1));
-      indexes_[i].num_indices = last_ind - indexes_[i].first_index + 1;
-    }
-  }
-
-  void SetWeights(const std::vector<double> &sample_points) {
-    int32 num_samples_out = NumSamplesOut();
-    weights_.resize(num_samples_out);
-    double t, j_double, tn;
-    for (int32 i = 0; i < num_samples_out; i++) {
-      weights_[i].Resize(indexes_[i].num_indices);
-      for (int32 j = 0 ; j < indexes_[i].num_indices; j++) {
-        j_double = static_cast<double>(j);
-        t = sample_points[i]
-          - (j_double + indexes_[i].first_index) / samp_rate_in_;
-        tn = FilterFunc(t);
-        weights_[i](j) = tn;
-      }
-    }
-  }
-  double FilterFunc(const double &t) {
-    double f_t = 0,  win = 0;
-
-    if (fabs(t) < num_zeros_upsample_ /(2.0 * filter_cutoff_))
-      win = 0.5 * (1 + cos(M_2PI * filter_cutoff_ / num_zeros_upsample_ * t));
-    if (t != 0)
-      f_t = sin(M_2PI * filter_cutoff_ * t) / (M_PI * t) * win;
-    else
-      f_t = 2 * filter_cutoff_ * win;
-    return f_t;
-  }
-  int32 num_samples_in_;
-  double samp_rate_in_;
-  double filter_cutoff_;
-  int32 num_zeros_upsample_;
-  struct IndexInfo {
-    int32 first_index;  // The first input-sample index that we sum
-                        // over, for this output-sample index.
-    int32 num_indices;  // The number of indices that we sum over.
-  };
-  // both indexes_.size() weights_.size() equal sample_points.size().
-  std::vector<IndexInfo> indexes_;
-  std::vector<Vector<double> > weights_;
-};
-
-
-void PreProcess(const PitchExtractionOptions opts,
-                const Vector<double> &wave,
-                Vector<double> *processed_wave) {
-  KALDI_ASSERT(processed_wave != NULL);
-  // down-sample and Low-Pass filtering the input wave
-  int32 num_samples_in = wave.Dim();
-  double dt = opts.samp_freq / opts.resample_freq;
-  int32 resampled_len = 1 + static_cast<int>(num_samples_in / dt);
-  processed_wave->Resize(resampled_len);  // filtered wave
-  LinearResample resample(opts.samp_freq, opts.resample_freq,
-                          opts.lowpass_cutoff,
-                          opts.lowpass_filter_width);
-  resample.Upsample(wave, processed_wave);
-
-  // Normalize input signal using rms
-  double rms = pow(VecVec((*processed_wave), (*processed_wave))
-    / processed_wave->Dim(), 0.5);
-  if (rms != 0.0)
-    (*processed_wave).Scale(1.0 / rms);
-}
-
-void Nccf(const Vector<double> &wave,
-          int32 start, int32 end,
-          int32 nccf_window_size,
-          Vector<double> *inner_prod,
-          Vector<double> *norm_prod) {
-  Vector<double> zero_mean_wave(wave);
-  SubVector<double> wave_part(wave, 0, nccf_window_size);
+/**
+   This function computes some dot products that are required
+   while computing the NCCF.
+   For each integer lag from start to end-1, this function
+   outputs to (*inner_prod)(lag - start), the dot-product
+   of a window starting at 0 with a window starting at
+   lag.  All windows are of length nccf_window_size.  It
+   outputs to (*norm_prod)(lag - start), e1 * e2, where
+   e1 is the dot-product of the un-shifted window with itself,
+   and d2 is the dot-product of the window shifted by "lag"
+   with itself.
+ */
+void ComputeCorrelation(const VectorBase<BaseFloat> &wave,
+                        int32 first_lag, int32 last_lag,
+                        int32 nccf_window_size,
+                        VectorBase<BaseFloat> *inner_prod,
+                        VectorBase<BaseFloat> *norm_prod) {
+  Vector<BaseFloat> zero_mean_wave(wave);
+  // TODO: possibly fix this, the mean normalization is done in a strange way.
+  SubVector<BaseFloat> wave_part(wave, 0, nccf_window_size);
   // subtract mean-frame from wave
   zero_mean_wave.Add(-wave_part.Sum() / nccf_window_size);
-  double e1, e2, sum;
-  SubVector<double> sub_vec1(zero_mean_wave, 0, nccf_window_size);
+  BaseFloat e1, e2, sum;
+  SubVector<BaseFloat> sub_vec1(zero_mean_wave, 0, nccf_window_size);
   e1 = VecVec(sub_vec1, sub_vec1);
-  for (int32 lag = start; lag < end; lag++) {
-    SubVector<double> sub_vec2(zero_mean_wave, lag, nccf_window_size);
+  for (int32 lag = first_lag; lag <= last_lag; lag++) {
+    SubVector<BaseFloat> sub_vec2(zero_mean_wave, lag, nccf_window_size);
     e2 = VecVec(sub_vec2, sub_vec2);
     sum = VecVec(sub_vec1, sub_vec2);
-    (*inner_prod)(lag-start) = sum;
-    (*norm_prod)(lag-start) = e1 * e2;
+    (*inner_prod)(lag - first_lag) = sum;
+    (*norm_prod)(lag - first_lag) = e1 * e2;
   }
 }
 
-void ProcessNccf(const Vector<double> &inner_prod,
-                 const Vector<double> &norm_prod,
-                 const double &a_fact,
-                 int32 start, int32 end,
-                 SubVector<double> *autocorr) {
-  for (int32 lag = start; lag < end; lag++) {
-    if (norm_prod(lag-start) != 0.0)
-      (*autocorr)(lag) =
-        inner_prod(lag-start) / pow(norm_prod(lag-start) + a_fact, 0.5);
-    KALDI_ASSERT((*autocorr)(lag) < 1.01 && (*autocorr)(lag) > -1.01);
+/**
+   Computes the NCCF as a fraction of the numerator term (a dot product between
+   two vectors) and a denominator term which equals sqrt(e1*e2 + nccf_ballast)
+   where e1 and e2 are both dot-products of bits of the wave with themselves,
+   and e1*e2 is supplied as "norm_prod".  These quantities are computed by
+   "ComputeCorrelation".
+*/
+void ComputeNccf(const VectorBase<BaseFloat> &inner_prod,
+                 const VectorBase<BaseFloat> &norm_prod,
+                 BaseFloat nccf_ballast,
+                 VectorBase<BaseFloat> *nccf_vec) {
+  KALDI_ASSERT(inner_prod.Dim() == norm_prod.Dim() &&
+               inner_prod.Dim() == nccf_vec->Dim());
+  for (int32 lag = 0; lag < inner_prod.Dim(); lag++) {
+    BaseFloat numerator = inner_prod(lag),
+        denominator = pow(norm_prod(lag) + nccf_ballast, 0.5),
+        nccf;
+    if (denominator != 0.0) {
+      nccf = numerator / denominator;
+    } else {
+      KALDI_ASSERT(numerator == 0.0);
+      nccf = 0.0;
+    }
+    KALDI_ASSERT(nccf < 1.01 && nccf > -1.01);
+    (*nccf_vec)(lag) = nccf;
   }
 }
 
-void SelectLag(const PitchExtractionOptions &opts,
-               int32 *state_num,
-               Vector<double> *lags) {
+/**
+   This function selects the lags at which we measure the NCCF: we need
+   to select lags from 1/max_f0 to 1/min_f0, in a geometric progression
+   with ratio 1 + d.
+ */
+void SelectLags(const PitchExtractionOptions &opts,
+                Vector<BaseFloat> *lags) {
   // choose lags relative to acceptable pitch tolerance
-  double min_lag = 1.0 / (1.0 * opts.max_f0),
-      max_lag = 1.0 / (1.0 * opts.min_f0);
-  double delta_lag = opts.upsample_filter_width/(2.0 * opts.resample_freq);
+  BaseFloat min_lag = 1.0 / opts.max_f0, max_lag = 1.0 / opts.min_f0;
 
-  int32 lag_size = 1 + Round(log((max_lag + delta_lag) / (min_lag - delta_lag))
-      / log(1.0 + opts.delta_pitch));
-  lags->Resize(lag_size);
-
-  // we choose sequence of lags which leads to delta_pitch difference in
-  // pitch_space.
-  double lag = min_lag;
-  int32 count = 0;
-  while (lag <= max_lag) {
-    (*lags)(count) = lag;
-    count++;
-    lag = lag * (1 + opts.delta_pitch);
-  }
-  lags->Resize(count, kCopyData);
-  (*state_num) = count;
+  std::vector<BaseFloat> tmp_lags;
+  for (BaseFloat lag = min_lag; lag <= max_lag; lag *= 1.0 + opts.delta_pitch)
+    tmp_lags.push_back(lag);
+  lags->Resize(tmp_lags.size());
+  std::copy(tmp_lags.begin(), tmp_lags.end(), lags->Data());
 }
 
-class PitchExtractor {
+
+/**
+   This function computes the local-cost for the Viterbi computation,
+   see eq. (5) in the paper.
+   @param  opts         The options as provided by the user
+   @param  nccf_pitch   The nccf as computed for the pitch computation (with ballast).
+   @param  lags         The log-spaced lags at which nccf_pitch is sampled.
+   @param  local_cost   We output the local-cost to here.
+*/
+void ComputeLocalCost(const VectorBase<BaseFloat> &nccf_pitch,
+                      const VectorBase<BaseFloat> &lags,
+                      const PitchExtractionOptions &opts,
+                      VectorBase<BaseFloat> *local_cost) {
+  // from the paper, eq. 5, local_cost = 1 - Phi(t,i)(1 - soft_min_f0 L_i)
+  // nccf is the nccf on this frame measured at the lags in "lags".
+  KALDI_ASSERT(nccf_pitch.Dim() == local_cost->Dim() &&
+               nccf_pitch.Dim() == lags.Dim());
+  local_cost->Set(1.0);
+  // add the term -Phi(t,i):
+  local_cost->AddVec(-1.0, nccf_pitch);
+  // add the term soft_min_f0 Phi(t,i) L_i
+  local_cost->AddVecVec(opts.soft_min_f0, lags, nccf_pitch, 1.0);
+}
+
+
+
+// class PitchFrameInfo is used inside class OnlinePitchFeatureImpl.
+// It stores the information we need to keep around for a single frame
+// of the pitch computation.
+class PitchFrameInfo {
  public:
-  explicit PitchExtractor(const PitchExtractionOptions &opts,
-                          const Vector<double> lags,
-                          int32 state_num,
-                          int32 num_frames) :
-      opts_(opts),
-      state_num_(state_num),
-      num_frames_(num_frames),
-      lags_(lags) {
-    frames_.resize(num_frames_+1);
-    for (int32 i = 0; i < num_frames_+1; i++) {
-      frames_[i].local_cost.Resize(state_num_);
-      frames_[i].obj_func.Resize(state_num_);
-      frames_[i].back_pointers.Resize(state_num_);
-    }
-  }
-  ~PitchExtractor() {}
+  /// This function resizes the arrays for this object and updates the reference
+  /// counts for the previous object (by decrementing those reference counts
+  /// when we destroy a StateInfo object).  A StateInfo object is considered to
+  /// be destroyed when we delete it, not when its reference counts goes to
+  /// zero.
+  void Cleanup(PitchFrameInfo *prev_frame);
 
-  void ComputeLocalCost(const Matrix<double> &autocorrelation) {
-    Vector<double> correl(state_num_);
+  /// This function may be called for the last (most recent) PitchFrameInfo
+  /// object with the best state (obtained from the externally held
+  /// forward-costs). It traces back as far as needed to set the
+  /// cur_best_state_, and as it's going it sets the lag-index and pov_nccf in
+  /// pitch_pov_iter, which when it's called is an iterator to where to put the
+  /// info for the final state; the iterator will be decremented inside this
+  /// function. 
+  void SetBestState(int32 best_state,
+      std::vector<std::pair<int32, BaseFloat> >::iterator lag_nccf_iter);
 
-    for (int32 i = 1; i < num_frames_ + 1; i++) {
-      SubVector<double> frame(autocorrelation.Row(i-1));
-      Vector<double> local_cost(state_num_);
-      for (int32 j = 0; j < state_num_; j++)
-        correl(j) = frame(j);
-      // compute the local cost
-      frames_[i].local_cost.Add(1.0);
-      frames_[i].local_cost.AddVec(-1.0, correl);
-      Vector<double> corr_lag_cost(state_num_);
-      corr_lag_cost.AddVecVec(opts_.soft_min_f0, correl, lags_, 0);
-      frames_[i].local_cost.AddVec(1.0, corr_lag_cost);
-    }  // end of loop over frames
-  }
-  void FastViterbi(const Matrix<double> &correl) {
-    ComputeLocalCost(correl);
-    double intercost, min_c, this_c;
-    int best_b, min_i, max_i;
-    BaseFloat delta_pitch_sq = log(1 + opts_.delta_pitch)
-      * log(1 + opts_.delta_pitch);
-    // loop over frames
-    for (int32 t = 1; t < num_frames_ + 1; t++) {
-      // Forward Pass
-      for (int32 i = 0; i < state_num_; i++) {
-        if ( i == 0 )
-          min_i = 0;
-        else
-          min_i = frames_[t].back_pointers(i-1);
-        min_c = std::numeric_limits<double>::infinity();
-        best_b = -1;
+  /// This function may be called on the last (most recent) PitchFrameInfo
+  /// object; it computes how many frames of latency there is because the
+  /// traceback has not yet settled on a single value for frames in the past.
+  /// It actually returns the minimum of max_latency and the actual latency,
+  /// which is an optimization because we won't care about latency past
+  /// a user-specified maximum latency.
+  int32 ComputeLatency(int32 max_latency);
 
-        for (int32 k = min_i; k <= i; k++) {
-          intercost = (i-k) * (i-k) * delta_pitch_sq;
-          this_c = frames_[t-1].obj_func(k)+ opts_.penalty_factor * intercost;
-          if (this_c < min_c) {
-            min_c = this_c;
-            best_b = k;
-          }
-        }
-        frames_[t].back_pointers(i) = best_b;
-        frames_[t].obj_func(i) = min_c + frames_[t].local_cost(i);
-      }
-      // Backward Pass
-      for (int32 i = state_num_-1; i >= 0; i--) {
-        if (i == state_num_-1)
-          max_i = state_num_-1;
-        else
-          max_i = frames_[t].back_pointers(i+1);
-        min_c = frames_[t].obj_func(i) - frames_[t].local_cost(i);
-        best_b = frames_[t].back_pointers(i);
+  /// This function updates
+  bool UpdatePreviousBestState(PitchFrameInfo *prev_frame);
 
-        for (int32 k = i+1 ; k <= max_i; k++) {
-          intercost = (i-k) * (i-k) * delta_pitch_sq;
-          this_c = frames_[t-1].obj_func(k)+ opts_.penalty_factor *intercost;
-          if (this_c < min_c) {
-            min_c = this_c;
-            best_b = k;
-          }
-        }
-        frames_[t].back_pointers(i) = best_b;
-        frames_[t].obj_func(i) = min_c + frames_[t].local_cost(i);
-      }
-    }
-    // FindBestPath(resampled_nccf_pov);
-  }
+  /// This constructor is used for frame -1; it sets the costs to be all zeros
+  /// the pov_nccf's to zero and the backpointers to -1.
+  explicit PitchFrameInfo(int32 num_states);
 
-  void FindBestPath(const Matrix<double> &correlation) {
-    // Find the Best path using backpointers
-    int32 i = num_frames_;
-    int32 best;
-    double l_opt;
-    frames_[i].obj_func.Min(&best);
-    while (i > 0) {
-      l_opt = lags_(best);
-      frames_[i].truepitch = 1.0 / l_opt;
-      frames_[i].pov = correlation(i-1, best);
-      best = frames_[i].back_pointers(best);
-      i--;
-    }
-  }
-  void GetPitch(Matrix<BaseFloat> *output) {
-    output->Resize(num_frames_, 2);
-    for (int32 frm = 0; frm < num_frames_; frm++) {
-      (*output)(frm, 0) = static_cast<BaseFloat>(frames_[frm + 1].pov);
-      (*output)(frm, 1) = static_cast<BaseFloat>(frames_[frm + 1].truepitch);
-    }
-  }
+  /// This constructor is used for subsequent frames (not -1).
+  PitchFrameInfo(PitchFrameInfo *prev);
+
+  /// Record the nccf_pov value.
+  ///  @param  nccf_pov     The nccf as computed for the POV computation (without ballast).
+  void SetNccfPov(const VectorBase<BaseFloat> &nccf_pov);
+
+  /// This constructor is used for frames apart from frame -1; the bulk of
+  /// the Viterbi computation takes place inside this constructor.
+  ///  @param  opts         The options as provided by the user
+  ///  @param  nccf_pitch   The nccf as computed for the pitch computation
+  ///                       (with ballast).
+  ///  @param  nccf_pov     The nccf as computed for the POV computation
+  ///                       (without ballast).
+  ///  @param  lags         The log-spaced lags at which nccf_pitch and
+  ///                       nccf_pov are sampled.
+  ///  @param  prev_frame_forward_cost   The forward-cost vector for the
+  ///                       previous frame.
+  ///  @param  index_info   A pointer to a temporary vector used by this function
+  ///  @param  this_forward_cost   The forward-cost vector for this frame
+  ///                       (to be computed).
+  void ComputeBacktraces(const PitchExtractionOptions &opts,
+                         const VectorBase<BaseFloat> &nccf_pitch, 
+                         const VectorBase<BaseFloat> &lags,
+                         const VectorBase<BaseFloat> &prev_forward_cost,
+                         std::vector<std::pair<int32, int32> > *index_info,
+                         VectorBase<BaseFloat> *this_forward_cost);
  private:
-  PitchExtractionOptions opts_;
-  int32 state_num_;      // number of states in Viterbi Computation
-  int32 num_frames_;     // number of frames in input wave
-  Vector<double> lags_;    // all lags used in viterbi
-  struct PitchFrame {
-    Vector<double> local_cost;
-    Vector<double> obj_func;      // optimal objective function for frame i
-    Vector<double> back_pointers;
-    double truepitch;             // True pitch
-    double pov;                   // probability of voicing
-    explicit PitchFrame() {}
+  // struct StateInfo is the information we keep for a single one of the
+  // log-spaced lags, for a single frame.  This is a state in the Viterbi
+  // computation.
+  struct StateInfo {
+    /// The state index on the previous frame that is the best preceding state
+    /// for this state.
+    int32 backpointer;
+    /// the version of the NCCF we keep for the POV computation (without the
+    /// ballast term).
+    BaseFloat pov_nccf;
+    StateInfo(): backpointer(0), pov_nccf(0.0) { }
   };
-  std::vector< PitchFrame > frames_;
+  std::vector<StateInfo> state_info_;
+  /// the state index of the first entry in "state_info"; this will initially be
+  /// zero, but after cleanup might be nonzero.
+  int32 state_offset_;
+
+  /// The current best state in the backtrace from the end.
+  int32 cur_best_state_;
+
+  /// The structure for the previous frame.
+  PitchFrameInfo *prev_info_;
 };
 
-void Compute(const PitchExtractionOptions &opts,
-             const VectorBase<BaseFloat> &wave,
-             Matrix<BaseFloat> *output) {
-  KALDI_ASSERT(output != NULL);
-  Vector<double> wave2(wave);
 
-  // Preprocess the wave
-  Vector<double> processed_wave(wave2.Dim());
-  PreProcess(opts, wave2, &processed_wave);
-  int32 num_states, rows_out = PitchNumFrames(processed_wave.Dim(), opts);
-  if (rows_out == 0)
-    KALDI_ERR << "No frames fit in file (#samples is "
-      << processed_wave.Dim() << ")";
-  Vector<double> window;       // windowed waveform.
-  double outer_min_lag = 1.0 / (1.0 * opts.max_f0) -
-      (opts.upsample_filter_width/(2.0 * opts.resample_freq));
-  double outer_max_lag = 1.0 / (1.0 * opts.min_f0) +
-      (opts.upsample_filter_width/(2.0 * opts.resample_freq));
-  int32 num_max_lag = Round(outer_max_lag * opts.resample_freq) + 1;
-  int32 num_lags = Round(opts.resample_freq * outer_max_lag) -
-      Round(opts.resample_freq *  outer_min_lag) + 1;
-  int32 start = Round(opts.resample_freq  * outer_min_lag),
-      end = Round(opts.resample_freq / opts.min_f0) +
-      Round(opts.lowpass_filter_width / 2);
-  
-  Vector<double> lags;
-  SelectLag(opts, &num_states, &lags);
-  double a_fact_pitch = pow(opts.NccfWindowSize(), 4) * opts.nccf_ballast,
-    a_fact_pov = pow(10, -9);
-  Matrix<double> nccf_pitch(rows_out, num_max_lag + 1),
-      nccf_pov(rows_out, num_max_lag + 1);
-  for (int32 r = 0; r < rows_out; r++) {  // r is frame index.
-    ExtractFrame(processed_wave, r, opts, &window);
-    // compute nccf for pitch extraction
-    Vector<double> inner_prod(num_lags), norm_prod(num_lags);
-    Nccf(window, start, end, opts.NccfWindowSize(),
-         &inner_prod, &norm_prod);
-    SubVector<double> nccf_pitch_vec(nccf_pitch.Row(r));
-    ProcessNccf(inner_prod, norm_prod, a_fact_pitch,
-        start, end, &(nccf_pitch_vec));
-    // compute the Nccf for Probability of voicing estimation
-    SubVector<double> nccf_pov_vec(nccf_pov.Row(r));
-    ProcessNccf(inner_prod, norm_prod, a_fact_pov,
-        start, end, &(nccf_pov_vec));
-  }
-  std::vector<double> lag_vec(num_states);
+// This constructor is used for frame -1; it sets the costs to be all zeros
+// the pov_nccf's to zero and the backpointers to -1.
+PitchFrameInfo::PitchFrameInfo(int32 num_states)
+    :state_info_(num_states), state_offset_(0),
+    cur_best_state_(-1), prev_info_(NULL) { }
+
+
+bool pitch_use_naive_search = false;  // This is used in unit-tests.
+
+
+PitchFrameInfo::PitchFrameInfo(PitchFrameInfo *prev_info):
+    state_info_(prev_info->state_info_.size()), state_offset_(0),
+    cur_best_state_(-1), prev_info_(prev_info) { }
+
+void PitchFrameInfo::SetNccfPov(const VectorBase<BaseFloat> &nccf_pov) {
+  int32 num_states = nccf_pov.Dim();
+  KALDI_ASSERT(num_states == state_info_.size());
   for (int32 i = 0; i < num_states; i++)
-    lag_vec[i] = static_cast<double>(lags(i));
-  // upsample the nccf to have better pitch and pov estimation
+    state_info_[i].pov_nccf = nccf_pov(i);
+}
+
+void PitchFrameInfo::ComputeBacktraces(
+    const PitchExtractionOptions &opts,
+    const VectorBase<BaseFloat> &nccf_pitch, 
+    const VectorBase<BaseFloat> &lags,
+    const VectorBase<BaseFloat> &prev_forward_cost_vec,
+    std::vector<std::pair<int32, int32> > *index_info,
+    VectorBase<BaseFloat> *this_forward_cost_vec) {
+  int32 num_states = nccf_pitch.Dim();
+
+  Vector<BaseFloat> local_cost(num_states, kUndefined);
+  ComputeLocalCost(nccf_pitch, lags, opts, &local_cost);
+
+  const BaseFloat delta_pitch_sq = pow(log(1.0 + opts.delta_pitch), 2.0),
+      inter_frame_factor = delta_pitch_sq * opts.penalty_factor;
+
+  // index local_cost, prev_forward_cost and this_forward_cost using raw pointer
+  // indexing not operator (), since this is the very inner loop and a lot of
+  // time is taken here.
+  const BaseFloat *prev_forward_cost = prev_forward_cost_vec.Data();
+  BaseFloat *this_forward_cost = this_forward_cost_vec->Data();
+
+  if (index_info->empty())
+    index_info->resize(num_states);
+
+  // make it a reference for more concise indexing.
+  std::vector<std::pair<int32, int32> > &bounds = *index_info;
+
+  /* bounds[i].first will be a lower bound on the backpointer for state i,
+     bounds[i].second will be an upper bound on it.  We progressively tighten
+     these bounds till we know the backpointers exactly.
+  */
+
+  if (pitch_use_naive_search) {
+    // This branch is only taken in unit-testing code.
+    for (int32 i = 0; i < num_states; i++) {
+      BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
+      int32 best_j = -1;
+      for (int32 j = 0; j < num_states; j++) {
+        BaseFloat this_cost = (j - i) * (j - i) * inter_frame_factor
+            + prev_forward_cost[j];
+        if (this_cost < best_cost) {
+          best_cost = this_cost;
+          best_j = j;
+        }
+      }
+      this_forward_cost[i] = best_cost;
+      state_info_[i].backpointer = best_j;
+    }
+  } else {
+    int32 last_backpointer = 0;
+    for (int32 i = 0; i < num_states; i++) {
+      int32 start_j = last_backpointer;
+      BaseFloat best_cost = (start_j - i) * (start_j - i) * inter_frame_factor
+          + prev_forward_cost[start_j];
+      int32 best_j = start_j;
+
+      for (int32 j = start_j + 1; j < num_states; j++) {
+        BaseFloat this_cost = (j - i) * (j - i) * inter_frame_factor
+            + prev_forward_cost[j];
+        if (this_cost < best_cost) {
+          best_cost = this_cost;
+          best_j = j;
+        } else {  // as soon as the costs stop improving, we stop searching.
+          break;  // this is a loose lower bound we're getting.
+        }
+      }
+      state_info_[i].backpointer = best_j;
+      this_forward_cost[i] = best_cost;
+      bounds[i].first = best_j;  // this is now a lower bound on the
+                                 // backpointer.
+      bounds[i].second = num_states - 1;  // we have no meaningful upper bound
+                                          // yet.
+      last_backpointer = best_j;
+    }
+
+    // We iterate, progressively refining the upper and lower bounds until they
+    // meet and we know that the resulting backtraces are optimal.  Each
+    // iteration takes time linear in num_states.  We won't normally iterate as
+    // far as num_states; normally we only do two iterations; when printing out
+    // the number of iterations, it's rarely more than that (once I saw seven
+    // iterations).  Anyway, this part of the computation does not dominate.
+    for (int32 iter = 0; iter < num_states; iter++) {
+      bool changed = false;
+      if (iter % 2 == 0) {  // go backwards through the states
+        last_backpointer = num_states - 1;
+        for (int32 i = num_states - 1; i >= 0; i--) {
+          int32 lower_bound = bounds[i].first,
+              upper_bound = std::min(last_backpointer, bounds[i].second);
+          if (upper_bound == lower_bound) {
+            last_backpointer = lower_bound;
+            continue;
+          }
+          BaseFloat best_cost = this_forward_cost[i];
+          int32 best_j = state_info_[i].backpointer, initial_best_j = best_j;
+
+          if (best_j == upper_bound) {
+            // if best_j already equals upper bound, don't bother tightening the
+            // upper bound, we'll tighten the lower bound when the time comes.
+            last_backpointer = best_j;
+            continue;
+          }
+          // Below, we have j > lower_bound + 1 because we know we've already
+          // evaluated lower_bound and lower_bound + 1 [via knowledge of
+          // this algorithm.]
+          for (int32 j = upper_bound; j > lower_bound + 1; j--) {
+            BaseFloat this_cost = (j - i) * (j - i) * inter_frame_factor
+                + prev_forward_cost[j];
+            if (this_cost < best_cost) {
+              best_cost = this_cost;
+              best_j = j;
+            } else {  // as soon as the costs stop improving, we stop searching,
+              // unless the best j is still lower than j, in which case
+              // we obviously need to keep moving.
+              if (best_j > j)
+                break;  // this is a loose lower bound we're getting.
+            }
+          }
+          // our "best_j" is now an upper bound on the backpointer.
+          bounds[i].second = best_j;
+          if (best_j != initial_best_j) {
+            this_forward_cost[i] = best_cost;
+            state_info_[i].backpointer = best_j;
+            changed = true;
+          }
+          last_backpointer = best_j;
+        }
+      } else {  // go forwards through the states.
+        last_backpointer = 0;
+        for (int32 i = 0; i < num_states; i++) {
+          int32 lower_bound = std::max(last_backpointer, bounds[i].first),
+              upper_bound = bounds[i].second;
+          if (upper_bound == lower_bound) {
+            last_backpointer = lower_bound;
+            continue;
+          }
+          BaseFloat best_cost = this_forward_cost[i];
+          int32 best_j = state_info_[i].backpointer, initial_best_j = best_j;
+
+          if (best_j == lower_bound) {
+            // if best_j already equals lower bound, we don't bother tightening
+            // the lower bound, we'll tighten the upper bound when the time
+            // comes.
+            last_backpointer = best_j;
+            continue;
+          }
+          // Below, we have j < upper_bound because we know we've already
+          // evaluated that point.
+          for (int32 j = lower_bound; j < upper_bound - 1; j++) {
+            BaseFloat this_cost = (j - i) * (j - i) * inter_frame_factor
+                + prev_forward_cost[j];
+            if (this_cost < best_cost) {
+              best_cost = this_cost;
+              best_j = j;
+            } else {  // as soon as the costs stop improving, we stop searching,
+              // unless the best j is still higher than j, in which case
+              // we obviously need to keep moving.
+              if (best_j < j)
+                break;  // this is a loose lower bound we're getting.
+            }
+          }
+          // our "best_j" is now a lower bound on the backpointer.
+          bounds[i].first = best_j;
+          if (best_j != initial_best_j) {
+            this_forward_cost[i] = best_cost;
+            state_info_[i].backpointer = best_j;
+            changed = true;
+          }
+          last_backpointer = best_j;
+        }
+      }
+      if (!changed)
+        break;
+    }
+  }
+  // The next statement is needed due to RecomputeBacktraces: we have to
+  // invalidate the previously computed best-state info.
+  cur_best_state_ = -1;  
+  this_forward_cost_vec->AddVec(1.0, local_cost);
+}
+
+void PitchFrameInfo::SetBestState(
+    int32 best_state,
+    std::vector<std::pair<int32, BaseFloat> >::iterator iter) {
+  // This function would naturally be recursive, but we have coded this to avoid
+  // recursion, which would otherwise eat up the stack.  Think of it as a static
+  // member function, except we do use "this" right at the beginning.
+  PitchFrameInfo *this_info = this;  // it will change in the loop.
+  while (this_info != NULL) {
+    PitchFrameInfo *prev_info = this_info->prev_info_;
+    if (best_state == this_info->cur_best_state_)
+      return;  // no change
+    if (prev_info != NULL)  // don't write anything for frame -1.
+      iter->first = best_state;
+    size_t state_info_index = best_state - this_info->state_offset_;
+    KALDI_ASSERT(state_info_index < this_info->state_info_.size());
+    this_info->cur_best_state_ = best_state;
+    best_state = this_info->state_info_[state_info_index].backpointer;
+    if (prev_info != NULL)  // don't write anything for frame -1.
+      iter->second = this_info->state_info_[state_info_index].pov_nccf;
+    this_info = prev_info;
+    iter--;
+  }
+}
+
+int32 PitchFrameInfo::ComputeLatency(int32 max_latency) {
+  if (max_latency <= 0) return 0;
+
+  int32 latency = 0;
+
+  // This function would naturally be recursive, but we have coded this to avoid
+  // recursion, which would otherwise eat up the stack.  Think of it as a static
+  // member function, except we do use "this" right at the beginning.
+  // This function is called only on the most recent PitchFrameInfo object.
+  int32 num_states = state_info_.size();
+  int32 min_living_state = 0, max_living_state = num_states - 1;
+  PitchFrameInfo *this_info = this;  // it will change in the loop.
+
+
+  for (; this_info != NULL && latency < max_latency;) {
+    int32 offset = this_info->state_offset_;
+    KALDI_ASSERT(min_living_state >= offset &&
+                 max_living_state - offset < this_info->state_info_.size());
+    min_living_state =
+        this_info->state_info_[min_living_state - offset].backpointer;
+    max_living_state =
+        this_info->state_info_[max_living_state - offset].backpointer;
+    if (min_living_state == max_living_state) {
+      return latency;
+    }
+    this_info = this_info->prev_info_;
+    if (this_info != NULL)  // avoid incrementing latency for frame -1,
+      latency++;            // as it's not a real frame.
+  }
+  return latency;
+}
+
+void PitchFrameInfo::Cleanup(PitchFrameInfo *prev_frame) {
+  KALDI_ERR << "Cleanup not implemented.";
+}
+
+
+// struct NccfInfo is used to cache certain quantities that we need for online
+// operation, for the first "recompute_frame" frames of the file (e.g. 300);
+// after that many frames, or after the user calls InputFinished(), we redo the
+// initial backtraces, as we'll then have a better estimate of the average signal
+// energy.
+struct NccfInfo {
+
+  Vector<BaseFloat> nccf_pitch_resampled;  // resampled nccf_pitch
+  BaseFloat avg_norm_prod; // average value of e1 * e2.
+  BaseFloat mean_square_energy;  // mean_square energy we used when computing the
+                                 // original ballast term for
+                                 // "nccf_pitch_resampled".
+  
+  NccfInfo(BaseFloat avg_norm_prod,
+           BaseFloat mean_square_energy):
+      avg_norm_prod(avg_norm_prod),
+      mean_square_energy(mean_square_energy) { }
+};
+
+
+
+// We could inherit from OnlineBaseFeature as we have the same interface,
+// but this will unnecessary force a lot of our functions to be virtual.
+class OnlinePitchFeatureImpl {
+ public:
+  explicit OnlinePitchFeatureImpl(const PitchExtractionOptions &opts);
+
+  int32 Dim() const { return 2; }
+
+  int32 NumFramesReady() const;
+
+  bool IsLastFrame(int32 frame) const;
+
+  void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
+
+  void AcceptWaveform(BaseFloat sampling_rate,
+                      const VectorBase<BaseFloat> &waveform);
+
+  void InputFinished();
+
+  ~OnlinePitchFeatureImpl();
+
+
+  // Copy-constructor, can be used to obtain a new copy of this object,
+  // any state from this utterance.
+  OnlinePitchFeatureImpl(const OnlinePitchFeatureImpl &other);
+
+ private:
+
+  /// This function works out from the signal how many frames are currently
+  /// available to process (this is called from inside AcceptWaveform()).
+  /// Note: the number of frames differs slightly from the number the
+  /// old pitch code gave.
+  /// Note: the number this returns depends on whether input_finished_ == true;
+  /// if it is, it will "force out" a final frame or two.
+  int32 NumFramesAvailable(int64 num_downsampled_samples, bool snip_edges) const;
+  
+  /// This function extracts from the signal the samples numbered from
+  /// "sample_index" (numbered in the full downsampled signal, not just this
+  /// part), and of length equal to window->Dim().  It uses the data members
+  /// downsampled_samples_discarded_ and downsampled_signal_remainder_, as well
+  /// as the more recent part of the downsampled wave "downsampled_wave_part"
+  /// which is provided.
+  ///
+  /// @param downsampled_wave_part  One chunk of the downsampled wave,
+  ///                      starting from sample-index downsampled_samples_discarded_.
+  /// @param sample_index  The desired starting sample index (measured from
+  ///                      the start of the whole signal, not just this part).
+  /// @param window  The part of the signal is output to here.
+  void ExtractFrame(const VectorBase<BaseFloat> &downsampled_wave_part,
+                    int64 frame_index,
+                    VectorBase<BaseFloat> *window);
+
+
+  /// This function is called after we reach frame "recompute_frame", or when
+  /// InputFinished() is called, whichever comes sooner.  It recomputes the
+  /// backtraces for frames zero through recompute_frame, if needed because the
+  /// average energy of the signal has changed, affecting the nccf ballast term.
+  /// It works out the average signal energy from
+  /// downsampled_samples_processed_, signal_sum_ and signal_sumsq_ (which, if
+  /// you see the calling code, might include more frames than just
+  /// "recompute_frame", it might include up to the end of the current chunk).
+  void RecomputeBacktraces();
+
+  
+  /// This function updates downsampled_signal_remainder_,
+  /// downsampled_samples_processed_, signal_sum_ and signal_sumsq_; it's called
+  /// from AcceptWaveform().
+  void UpdateRemainder(const VectorBase<BaseFloat> &downsampled_wave_part);
+
+
+  // The following variables don't change throughout the lifetime
+  // of this object.
+  PitchExtractionOptions opts_;
+
+  // the first lag of the downsampled signal at which we measure NCCF
+  int32 nccf_first_lag_;
+  // the last lag of the downsampled signal at which we measure NCCF
+  int32 nccf_last_lag_;
+
+  // The log-spaced lags at which we will resample the NCCF
+  Vector<BaseFloat> lags_;
+
+  // This object is used to resample from evenly spaced to log-evenly-spaced
+  // nccf values.  It's a pointer for convenience of initialization, so we don't
+  // have to use the initializer from the constructor.
+  ArbitraryResample *nccf_resampler_;
+
+  // The following objects may change during the lifetime of this object.
+
+  // This object is used to resample the signal.
+  LinearResample *signal_resampler_;
+
+  // frame_info_ is indexed by [frame-index + 1].  frame_info_[0] is an object
+  // that corresponds to frame -1, which is not a real frame.
+  std::vector<PitchFrameInfo*> frame_info_;
+
+
+  // nccf_info_ is indexed by frame-index, from frame 0 to at most
+  // opts_.recompute_frame - 1.  It contains some information we'll
+  // need to recompute the tracebacks after getting a better estimate
+  // of the average energy of the signal.
+  std::vector<NccfInfo*> nccf_info_;  
+
+  // Current number of frames which we can't output because Viterbi has not
+  // converged for them, or opts_.max_frames_latency if we have reached that
+  // limit.
+  int32 frames_latency_;
+
+  // The forward-cost at the current frame (the last frame in frame_info_);
+  // this has the same dimension as lags_.  We normalize each time so
+  // the lowest cost is zero, for numerical accuracy and so we can use float.
+  Vector<BaseFloat> forward_cost_;
+
+  // stores the constant part of forward_cost_.
+  double forward_cost_remainder_;
+
+  // The resampled-lag index and the NCCF (as computed for POV, without ballast
+  // term) for each frame, as determined by Viterbi traceback from the best
+  // final state.
+  std::vector<std::pair<int32, BaseFloat> > lag_nccf_;
+
+  bool input_finished_;
+
+  /// sum-squared of previously processed parts of signal; used to get NCCF
+  /// ballast term.  Denominator is downsampled_samples_processed_.
+  double signal_sumsq_;
+
+  /// sum of previously processed parts of signal; used to do mean-subtraction
+  /// when getting sum-squared, along with signal_sumsq_.
+  double signal_sum_;
+
+  /// downsampled_samples_processed is the number of samples (after
+  /// downsampling) that we got in previous calls to AcceptWaveform().
+  int64 downsampled_samples_processed_;
+  /// This is a small remainder of the previous downsampled signal;
+  /// it's used by ExtractFrame for frames near the boundary of two
+  /// waveforms supplied to AcceptWaveform().
+  Vector<BaseFloat> downsampled_signal_remainder_;
+};
+
+
+OnlinePitchFeatureImpl::OnlinePitchFeatureImpl(
+    const PitchExtractionOptions &opts):
+    opts_(opts), forward_cost_remainder_(0.0), input_finished_(false),
+    signal_sumsq_(0.0), signal_sum_(0.0), downsampled_samples_processed_(0) {
+  signal_resampler_ = new LinearResample(opts.samp_freq, opts.resample_freq,
+                                         opts.lowpass_cutoff,
+                                         opts.lowpass_filter_width);
+
+  double outer_min_lag = 1.0 / opts.max_f0 -
+      (opts.upsample_filter_width/(2.0 * opts.resample_freq));
+  double outer_max_lag = 1.0 / opts.min_f0 +
+      (opts.upsample_filter_width/(2.0 * opts.resample_freq));
+  nccf_first_lag_ = ceil(opts.resample_freq * outer_min_lag);
+  nccf_last_lag_ = floor(opts.resample_freq * outer_max_lag);
+
+  frames_latency_ = 0;  // will be set in AcceptWaveform()
+
+  // Choose the lags at which we resample the NCCF.
+  SelectLags(opts, &lags_);
 
   // upsample_cutoff is the filter cutoff for upsampling the NCCF, which is the
   // Nyquist of the resampling frequency.  The NCCF is (almost completely)
@@ -689,101 +733,888 @@ void Compute(const PitchExtractionOptions &opts,
   // half the Nyquist (2000 by default) is sufficient to get only the first
   // repetition.
   BaseFloat upsample_cutoff = opts.resample_freq * 0.5;
-  ArbitraryResample resample(num_max_lag + 1, opts.resample_freq,
-                             upsample_cutoff,
-                             lag_vec, opts.upsample_filter_width);
-  Matrix<double> resampled_nccf_pitch(rows_out, num_states);
-  resample.Upsample(nccf_pitch, &resampled_nccf_pitch);
-  Matrix<double> resampled_nccf_pov(rows_out, num_states);
-  resample.Upsample(nccf_pov, &resampled_nccf_pov);
 
-  PitchExtractor pitch(opts, lags, num_states, rows_out);
-  pitch.FastViterbi(resampled_nccf_pitch);
-  pitch.FindBestPath(resampled_nccf_pov);
-  output->Resize(rows_out, 2);  // (pov, pitch)
-  pitch.GetPitch(output);
+
+  Vector<BaseFloat> lags_offset(lags_);
+  // lags_offset equals lags_ (which are the log-spaced lag values we want to
+  // measure the NCCF at) with nccf_first_lag_ / opts.resample_freq subtracted
+  // from each element, so we can treat the measured NCCF values as as starting
+  // from sample zero in a signal that starts at the point start /
+  // opts.resample_freq.  This is necessary because the ArbitraryResample code
+  // assumes that the input signal starts from sample zero.
+  lags_offset.Add(-nccf_first_lag_ / opts.resample_freq);
+
+  int32 num_measured_lags = nccf_last_lag_ + 1 - nccf_first_lag_;
+
+  nccf_resampler_ = new ArbitraryResample(num_measured_lags, opts.resample_freq,
+                                          upsample_cutoff, lags_offset,
+                                          opts.upsample_filter_width);
+
+  // add a PitchInfo object for frame -1 (not a real frame).
+  frame_info_.push_back(new PitchFrameInfo(lags_.Dim()));
+  // zeroes forward_cost_; this is what we want for the fake frame -1.
+  forward_cost_.Resize(lags_.Dim());
 }
 
-void ExtractDeltaPitch(const PostProcessPitchOptions &opts,
-                       const Vector<BaseFloat> &input,
-                       Vector<BaseFloat> *output) {
-  int32 num_frames = input.Dim();
+
+int32 OnlinePitchFeatureImpl::NumFramesAvailable(
+    int64 num_downsampled_samples, bool snip_edges) const {
+  int32 frame_shift = opts_.NccfWindowShift(),
+      frame_length = opts_.NccfWindowSize();
+  // Use the "full frame length" to compute the number
+  // of frames only if the input is not finished.
+  if (!input_finished_)
+    frame_length += nccf_last_lag_;
+  if (num_downsampled_samples < frame_length) return 0;
+  else
+    if (input_finished_ && !snip_edges) {
+      return (int32)(num_downsampled_samples * 1.0f / frame_shift + 0.5f);
+    }
+    else
+      return ((num_downsampled_samples - frame_length) / frame_shift) + 1;
+}
+
+void OnlinePitchFeatureImpl::UpdateRemainder(
+    const VectorBase<BaseFloat> &downsampled_wave_part) {
+  // frame_info_ has an extra element at frame-1, so subtract
+  // one from the length.
+  int64 num_frames = static_cast<int64>(frame_info_.size()) - 1,
+      next_frame = num_frames,
+      frame_shift = opts_.NccfWindowShift(),
+      next_frame_sample = frame_shift * next_frame;
+
+  signal_sumsq_ += VecVec(downsampled_wave_part, downsampled_wave_part);
+  signal_sum_ += downsampled_wave_part.Sum();
+
+  // next_frame_sample is the first sample index we'll need for the
+  // next frame.
+  int64 next_downsampled_samples_processed =
+      downsampled_samples_processed_ + downsampled_wave_part.Dim();
+
+  if (next_frame_sample > next_downsampled_samples_processed) {
+    // this could only happen in the weird situation that the full frame length
+    // is less than the frame shift.
+    int32 full_frame_length = opts_.NccfWindowSize() + nccf_last_lag_;
+    KALDI_ASSERT(full_frame_length < frame_shift && "Code error");
+    downsampled_signal_remainder_.Resize(0);
+  } else {
+    Vector<BaseFloat> new_remainder(next_downsampled_samples_processed -
+                                    next_frame_sample);
+    // note: next_frame_sample is the index into the entire signal, of
+    // new_remainder(0).
+    // i is the absolute index of the signal.
+    for (int64 i = next_frame_sample;
+         i < next_downsampled_samples_processed; i++) {
+      if (i >= downsampled_samples_processed_) {  // in current signal.
+        new_remainder(i - next_frame_sample) =
+            downsampled_wave_part(i - downsampled_samples_processed_);
+      } else {  // in old remainder; only reach here if waveform supplied is
+        new_remainder(i - next_frame_sample) =                      //  tiny.
+            downsampled_signal_remainder_(i - downsampled_samples_processed_ +
+                                          downsampled_signal_remainder_.Dim());
+      }
+    }
+    downsampled_signal_remainder_.Swap(&new_remainder);
+  }
+  downsampled_samples_processed_ = next_downsampled_samples_processed;
+}
+
+void OnlinePitchFeatureImpl::ExtractFrame(
+    const VectorBase<BaseFloat> &downsampled_wave_part,
+    int64 sample_index,
+    VectorBase<BaseFloat> *window) {
+  int32 full_frame_length = window->Dim();
+  int32 offset = static_cast<int32>(sample_index -
+                                    downsampled_samples_processed_);
+
+  if (offset + full_frame_length > downsampled_wave_part.Dim()) {
+    // Requested frame is past end of the signal.  This should only happen if
+    // input_finished_ == true, when we're flushing out the last couple of
+    // frames of signal.  In this case we pad with zeros.
+    KALDI_ASSERT(input_finished_);
+    int32 new_full_frame_length = downsampled_wave_part.Dim() - offset;
+    KALDI_ASSERT(new_full_frame_length > 0);
+    window->SetZero();
+    SubVector<BaseFloat> sub_window(*window, 0, new_full_frame_length);
+    ExtractFrame(downsampled_wave_part, sample_index, &sub_window);
+    return;
+  }
+  
+  // "offset" is the offset of the start of the frame, into this
+  // signal.
+  if (offset >= 0) {
+    // frame is full inside the new part of the signal.
+    window->CopyFromVec(downsampled_wave_part.Range(offset, full_frame_length));
+  } else {
+    // frame is partly in the remainder and partly in the new part.
+    int32 remainder_offset = downsampled_signal_remainder_.Dim() + offset;
+    KALDI_ASSERT(remainder_offset >= 0);  // or we didn't keep enough remainder.
+    KALDI_ASSERT(offset + full_frame_length > 0);  // or we should have
+                                                   // processed this frame last
+                                                   // time.
+
+    int32 old_length = -offset, new_length = offset + full_frame_length;
+    window->Range(0, old_length).CopyFromVec(
+        downsampled_signal_remainder_.Range(remainder_offset, old_length));
+    window->Range(old_length, new_length).CopyFromVec(
+        downsampled_wave_part.Range(0, new_length));
+  }
+  if (opts_.preemph_coeff != 0.0) {
+    BaseFloat preemph_coeff = opts_.preemph_coeff;
+    for (int32 i = window->Dim() - 1; i > 0; i--)
+      (*window)(i) -= preemph_coeff * (*window)(i-1);
+    (*window)(0) *= (1.0 - preemph_coeff);
+  }
+}
+
+bool OnlinePitchFeatureImpl::IsLastFrame(int32 frame) const {
+  int32 T = NumFramesReady();
+  KALDI_ASSERT(frame < T);
+  return (input_finished_ && frame + 1 == T);
+}
+
+int32 OnlinePitchFeatureImpl::NumFramesReady() const {
+  int32 num_frames = lag_nccf_.size(),
+      latency = frames_latency_;
+  KALDI_ASSERT(latency <= num_frames);
+  return num_frames - latency;
+}
+
+
+void OnlinePitchFeatureImpl::GetFrame(int32 frame,
+                                      VectorBase<BaseFloat> *feat) {
+  KALDI_ASSERT(frame < NumFramesReady() && feat->Dim() == 2);
+  (*feat)(0) = lag_nccf_[frame].second;
+  (*feat)(1) = 1.0 / lags_(lag_nccf_[frame].first);
+}
+
+void OnlinePitchFeatureImpl::InputFinished() {
+  input_finished_ = true;
+  // Process an empty waveform; this has an effect because
+  // after setting input_finished_ to true, NumFramesAvailable()
+  // will return a slightly larger number.
+  AcceptWaveform(opts_.samp_freq, Vector<BaseFloat>());
+  int32 num_frames = static_cast<size_t>(frame_info_.size() - 1);
+  if (num_frames < opts_.recompute_frame && !opts_.nccf_ballast_online)
+    RecomputeBacktraces();
+  frames_latency_ = 0;
+  KALDI_VLOG(3) << "Pitch-tracking Viterbi cost is "
+                << (forward_cost_remainder_ / num_frames)
+                << " per frame, over " << num_frames << " frames.";
+}
+
+// see comment with declaration.  This is only relevant for online
+// operation (it gets called for non-online mode, but is a no-op).
+void OnlinePitchFeatureImpl::RecomputeBacktraces() {
+  KALDI_ASSERT(!opts_.nccf_ballast_online);
+  int32 num_frames = static_cast<int32>(frame_info_.size()) - 1;
+  
+  // The assertion reflects how we believe this function will be called.
+  KALDI_ASSERT(num_frames <= opts_.recompute_frame);
+  KALDI_ASSERT(nccf_info_.size() == static_cast<size_t>(num_frames));
+  if (num_frames == 0)
+    return;
+  double num_samp = downsampled_samples_processed_, sum = signal_sum_,
+      sumsq = signal_sumsq_, mean = sum / num_samp;
+  BaseFloat mean_square = sumsq / num_samp - mean * mean;
+  
+  bool must_recompute = false;
+  BaseFloat threshold = 0.1;
+  for (int32 frame = 0; frame < num_frames; frame++)
+    if (!ApproxEqual(nccf_info_[frame]->mean_square_energy,
+                     mean_square), threshold)
+      must_recompute = true;
+  
+  if (!must_recompute) {
+    // Nothing to do.  We'll reach here, for instance, if everything was in one
+    // chunk and opts_.nccf_ballast_online == false.  This is the case for
+    // offline processing.
+    for (size_t i = 0; i < nccf_info_.size(); i++)
+      delete nccf_info_[i];
+    nccf_info_.clear();
+    return;
+  }
+  
+  int32 num_states = forward_cost_.Dim(),
+      basic_frame_length = opts_.NccfWindowSize();
+  
+  BaseFloat new_nccf_ballast = pow(mean_square * basic_frame_length, 2) *
+      opts_.nccf_ballast;
+  
+  double forward_cost_remainder = 0.0;
+  Vector<BaseFloat> forward_cost(num_states),  // start off at zero.
+      next_forward_cost(forward_cost);
+  std::vector<std::pair<int32, int32 > > index_info;
+  
+  for (int32 frame = 0; frame < num_frames; frame++) {
+    NccfInfo &nccf_info = *nccf_info_[frame];
+    BaseFloat old_mean_square = nccf_info_[frame]->mean_square_energy,
+        avg_norm_prod = nccf_info_[frame]->avg_norm_prod,
+        old_nccf_ballast = pow(old_mean_square * basic_frame_length, 2) *
+            opts_.nccf_ballast,
+        nccf_scale = pow((old_nccf_ballast + avg_norm_prod) /
+                         (new_nccf_ballast + avg_norm_prod),
+                         static_cast<BaseFloat>(0.5));
+    // The "nccf_scale" is an estimate of the scaling factor by which the NCCF
+    // would change on this frame, on average, by changing the ballast term from
+    // "old_nccf_ballast" to "new_nccf_ballast".  It's not exact because the
+    // "avg_norm_prod" is just an average of the product e1 * e2 of frame
+    // energies of the (frame, shifted-frame), but these won't change that much
+    // within a frame, and even if they do, the inaccuracy of the scaled NCCF
+    // will still be very small if the ballast term didn't change much, or if
+    // it's much larger or smaller than e1*e2.  By doing it as a simple scaling,
+    // we save the overhead of the NCCF resampling, which is a considerable part
+    // of the whole computation.
+    nccf_info.nccf_pitch_resampled.Scale(nccf_scale);
+    
+    frame_info_[frame + 1]->ComputeBacktraces(
+        opts_, nccf_info.nccf_pitch_resampled, lags_,
+        forward_cost, &index_info, &next_forward_cost);
+
+    forward_cost.Swap(&next_forward_cost);
+    BaseFloat remainder = forward_cost.Min();
+    forward_cost_remainder += remainder;
+    forward_cost.Add(-remainder);
+  }
+  KALDI_VLOG(3) << "Forward-cost per frame changed from "
+                << (forward_cost_remainder_ / num_frames) << " to "
+                << (forward_cost_remainder / num_frames);
+
+  forward_cost_remainder_ = forward_cost_remainder;
+  forward_cost_.Swap(&forward_cost);
+  
+  int32 best_final_state;
+  forward_cost_.Min(&best_final_state);
+  
+  if (lag_nccf_.size() != static_cast<size_t>(num_frames))
+    lag_nccf_.resize(num_frames);
+  
+  std::vector<std::pair<int32, BaseFloat> >::iterator last_iter =
+      lag_nccf_.end() - 1;
+  frame_info_.back()->SetBestState(best_final_state, last_iter);  
+  frames_latency_ =
+      frame_info_.back()->ComputeLatency(opts_.max_frames_latency);
+  for (size_t i = 0; i < nccf_info_.size(); i++)
+    delete nccf_info_[i];
+  nccf_info_.clear();  
+}
+
+OnlinePitchFeatureImpl::~OnlinePitchFeatureImpl() {
+  delete nccf_resampler_;
+  delete signal_resampler_;
+  for (size_t i = 0; i < frame_info_.size(); i++)
+    delete frame_info_[i];
+  for (size_t i = 0; i < nccf_info_.size(); i++)
+    delete nccf_info_[i];
+}
+
+void OnlinePitchFeatureImpl::AcceptWaveform(
+    BaseFloat sampling_rate,
+    const VectorBase<BaseFloat> &wave) {
+  // flush out the last few samples of input waveform only if input_finished_ ==
+  // true.
+  const bool flush = input_finished_;
+  
+  Vector<BaseFloat> downsampled_wave;
+  signal_resampler_->Resample(wave, flush, &downsampled_wave);
+
+  // these variables will be used to compute the root-mean-square value of the
+  // signal for the ballast term.
+  double cur_sumsq = signal_sumsq_, cur_sum = signal_sum_;
+  int64 cur_num_samp = downsampled_samples_processed_,
+      prev_frame_end_sample = 0;
+  if (!opts_.nccf_ballast_online) {
+    cur_sumsq += VecVec(downsampled_wave, downsampled_wave);
+    cur_sum += downsampled_wave.Sum();
+    cur_num_samp += downsampled_wave.Dim();
+  }
+
+  // end_frame is the total number of frames we can now process, including
+  // previously processed ones.
+  int32 end_frame = NumFramesAvailable(
+      downsampled_samples_processed_ + downsampled_wave.Dim(), opts_.snip_edges);
+  // "start_frame" is the first frame-index we process
+  int32 start_frame = frame_info_.size() - 1,
+      num_new_frames = end_frame - start_frame;
+
+  if (num_new_frames == 0) {
+    UpdateRemainder(downsampled_wave);
+    return;
+    // continuing to the rest of the code would generate
+    // an error when sizing matrices with zero rows, and
+    // anyway is a waste of time.
+  }
+
+  int32 num_measured_lags = nccf_last_lag_ + 1 - nccf_first_lag_,
+      num_resampled_lags = lags_.Dim(),
+      frame_shift = opts_.NccfWindowShift(),
+      basic_frame_length = opts_.NccfWindowSize(),
+      full_frame_length = basic_frame_length + nccf_last_lag_;
+
+  Vector<BaseFloat> window(full_frame_length),
+      inner_prod(num_measured_lags),
+      norm_prod(num_measured_lags);
+  Matrix<BaseFloat> nccf_pitch(num_new_frames, num_measured_lags),
+      nccf_pov(num_new_frames, num_measured_lags);
+
+  Vector<BaseFloat> cur_forward_cost(num_resampled_lags);
+
+
+  // Because the resampling of the NCCF is more efficient when grouped together,
+  // we first compute the NCCF for all frames, then resample as a matrix, then
+  // do the Viterbi [that happens inside the constructor of PitchFrameInfo].
+
+  for (int32 frame = start_frame; frame < end_frame; frame++) {
+    // start_sample is index into the whole wave, not just this part.
+    int64 start_sample = static_cast<int64>(frame) * frame_shift;
+    ExtractFrame(downsampled_wave, start_sample, &window);
+    if (opts_.nccf_ballast_online) {
+      // use only up to end of current frame to compute root-mean-square value.
+      // end_sample will be the sample-index into "downsampled_wave", so
+      // not really comparable to start_sample.
+      int64 end_sample = start_sample + full_frame_length -
+          downsampled_samples_processed_;
+      KALDI_ASSERT(end_sample > 0);  // or should have processed this frame last
+                                     // time.  Note: end_sample is one past last
+                                     // sample.
+      if (end_sample > downsampled_wave.Dim()) {
+        KALDI_ASSERT(input_finished_);
+        end_sample = downsampled_wave.Dim();
+      }
+      SubVector<BaseFloat> new_part(downsampled_wave, prev_frame_end_sample,
+                                    end_sample - prev_frame_end_sample);
+      cur_num_samp += new_part.Dim();
+      cur_sumsq += VecVec(new_part, new_part);
+      cur_sum += new_part.Sum();
+      prev_frame_end_sample = end_sample;
+    }
+    double mean_square = cur_sumsq / cur_num_samp -
+        pow(cur_sum / cur_num_samp, 2.0);
+
+    ComputeCorrelation(window, nccf_first_lag_, nccf_last_lag_,
+                       basic_frame_length, &inner_prod, &norm_prod);
+    double nccf_ballast_pov = 0.0,
+        nccf_ballast_pitch = pow(mean_square * basic_frame_length, 2) *
+             opts_.nccf_ballast,
+        avg_norm_prod = norm_prod.Sum() / norm_prod.Dim();
+    SubVector<BaseFloat> nccf_pitch_row(nccf_pitch, frame - start_frame);
+    ComputeNccf(inner_prod, norm_prod, nccf_ballast_pitch,
+                &nccf_pitch_row);
+    SubVector<BaseFloat> nccf_pov_row(nccf_pov, frame - start_frame);
+    ComputeNccf(inner_prod, norm_prod, nccf_ballast_pov,
+                &nccf_pov_row);
+    if (frame < opts_.recompute_frame)
+      nccf_info_.push_back(new NccfInfo(avg_norm_prod, mean_square));
+  }
+
+  Matrix<BaseFloat> nccf_pitch_resampled(num_new_frames, num_resampled_lags);
+  nccf_resampler_->Resample(nccf_pitch, &nccf_pitch_resampled);
+  nccf_pitch.Resize(0, 0);  // no longer needed.
+  Matrix<BaseFloat> nccf_pov_resampled(num_new_frames, num_resampled_lags);
+  nccf_resampler_->Resample(nccf_pov, &nccf_pov_resampled);
+  nccf_pov.Resize(0, 0);  // no longer needed.
+
+  // We've finished dealing with the waveform so we can call UpdateRemainder
+  // now; we need to call it before we possibly call RecomputeBacktraces()
+  // below, which is why we don't do it at the very end.
+  UpdateRemainder(downsampled_wave);
+
+  std::vector<std::pair<int32, int32 > > index_info;
+  
+  for (int32 frame = start_frame; frame < end_frame; frame++) {
+    int32 frame_idx = frame - start_frame;
+    PitchFrameInfo *prev_info = frame_info_.back(),
+        *cur_info = new PitchFrameInfo(prev_info);
+    cur_info->SetNccfPov(nccf_pov_resampled.Row(frame_idx));
+    cur_info->ComputeBacktraces(opts_, nccf_pitch_resampled.Row(frame_idx),
+                                lags_, forward_cost_, &index_info,
+                                &cur_forward_cost);
+    forward_cost_.Swap(&cur_forward_cost);
+    // Renormalize forward_cost so smallest element is zero.
+    BaseFloat remainder = forward_cost_.Min();
+    forward_cost_remainder_ += remainder;
+    forward_cost_.Add(-remainder);
+    frame_info_.push_back(cur_info);
+    if (frame < opts_.recompute_frame)
+      nccf_info_[frame]->nccf_pitch_resampled =
+          nccf_pitch_resampled.Row(frame_idx);
+    if (frame == opts_.recompute_frame - 1 && !opts_.nccf_ballast_online)
+      RecomputeBacktraces();
+  }
+  
+  // Trace back the best-path.
+  int32 best_final_state;
+  forward_cost_.Min(&best_final_state);
+  lag_nccf_.resize(frame_info_.size() - 1);  // will keep any existing data.
+  std::vector<std::pair<int32, BaseFloat> >::iterator last_iter =
+      lag_nccf_.end() - 1;
+  frame_info_.back()->SetBestState(best_final_state, last_iter);
+  frames_latency_ =
+      frame_info_.back()->ComputeLatency(opts_.max_frames_latency);
+  KALDI_VLOG(4) << "Latency is " << frames_latency_;
+}
+
+
+
+// Some functions that forward from OnlinePitchFeature to
+// OnlinePitchFeatureImpl.
+int32 OnlinePitchFeature::NumFramesReady() const {
+  return impl_->NumFramesReady();
+}
+
+OnlinePitchFeature::OnlinePitchFeature(const PitchExtractionOptions &opts)
+    :impl_(new OnlinePitchFeatureImpl(opts)) { }
+
+bool OnlinePitchFeature::IsLastFrame(int32 frame) const {
+  return impl_->IsLastFrame(frame);
+}
+
+void OnlinePitchFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
+  impl_->GetFrame(frame, feat);
+}
+
+void OnlinePitchFeature::AcceptWaveform(
+    BaseFloat sampling_rate,
+    const VectorBase<BaseFloat> &waveform) {
+  impl_->AcceptWaveform(sampling_rate, waveform);
+}
+
+void OnlinePitchFeature::InputFinished() {
+  impl_->InputFinished();
+}
+
+OnlinePitchFeature::~OnlinePitchFeature() {
+  delete impl_;
+}
+
+
+/**
+   This function is called from ComputeKaldiPitch when the user
+   specifies opts.simulate_first_pass_online == true.  It gives
+   the "first-pass" version of the features, which you would get
+   on the first decoding pass in an online setting.  These may
+   differ slightly from the final features due to both the
+   way the Viterbi traceback works (this is affected by
+   opts.max_frames_latency), and the online way we compute
+   the average signal energy.
+*/
+void ComputeKaldiPitchFirstPass(
+    const PitchExtractionOptions &opts,
+    const VectorBase<BaseFloat> &wave,
+    Matrix<BaseFloat> *output) {
+
+  int32 cur_rows = 100;
+  Matrix<BaseFloat> feats(cur_rows, 2);
+  
+  OnlinePitchFeature pitch_extractor(opts);
+  KALDI_ASSERT(opts.frames_per_chunk > 0 &&
+               "--simulate-first-pass-online option does not make sense "
+               "unless you specify --frames-per-chunk");
+
+  int32 cur_offset = 0, cur_frame = 0, samp_per_chunk =
+      opts.frames_per_chunk * opts.samp_freq * 1.0e-03 * opts.frame_shift_ms;
+  
+  while (cur_offset < wave.Dim()) {
+    int32 num_samp = std::min(samp_per_chunk, wave.Dim() - cur_offset);
+    SubVector<BaseFloat> wave_chunk(wave, cur_offset, num_samp);
+    pitch_extractor.AcceptWaveform(opts.samp_freq, wave_chunk);
+    cur_offset += num_samp;
+    if (cur_offset == wave.Dim())
+      pitch_extractor.InputFinished();
+    // Get each frame as soon as it is ready.
+    for (; cur_frame < pitch_extractor.NumFramesReady(); cur_frame++) {
+      if (cur_frame >= cur_rows) {
+        cur_rows *= 2;
+        feats.Resize(cur_rows, 2, kCopyData);
+      }
+      SubVector<BaseFloat> row(feats, cur_frame);
+      pitch_extractor.GetFrame(cur_frame, &row);
+    }
+  }
+  if (cur_frame  == 0) {
+    KALDI_WARN << "No features output since wave file too short";
+    output->Resize(0, 0);
+  } else {
+    *output = feats.RowRange(0, cur_frame);
+  }
+}
+
+
+
+void ComputeKaldiPitch(const PitchExtractionOptions &opts,
+                       const VectorBase<BaseFloat> &wave,
+                       Matrix<BaseFloat> *output) {
+  if (opts.simulate_first_pass_online) {
+    ComputeKaldiPitchFirstPass(opts, wave, output);
+    return;
+  }
+  OnlinePitchFeature pitch_extractor(opts);
+
+  if (opts.frames_per_chunk == 0) {
+    pitch_extractor.AcceptWaveform(opts.samp_freq, wave);
+  } else {
+    // the user may set opts.frames_per_chunk for better compatibility with
+    // online operation.
+    KALDI_ASSERT(opts.frames_per_chunk > 0);
+    int32 cur_offset = 0, samp_per_chunk =
+        opts.frames_per_chunk * opts.samp_freq * 1.0e-03 * opts.frame_shift_ms;
+    while (cur_offset < wave.Dim()) {
+      int32 num_samp = std::min(samp_per_chunk, wave.Dim() - cur_offset);
+      SubVector<BaseFloat> wave_chunk(wave, cur_offset, num_samp);
+      pitch_extractor.AcceptWaveform(opts.samp_freq, wave_chunk);
+      cur_offset += num_samp;
+    }
+  }
+  pitch_extractor.InputFinished();
+  int32 num_frames = pitch_extractor.NumFramesReady();
+  if (num_frames == 0) {
+    KALDI_WARN << "No frames output in pitch extraction";
+    output->Resize(0, 0);
+    return;
+  }
+  output->Resize(num_frames, 2);
+  for (int32 frame = 0; frame < num_frames; frame++) {
+    SubVector<BaseFloat> row(*output, frame);
+    pitch_extractor.GetFrame(frame, &row);
+  }
+}
+
+
+/*
+  This comment describes our invesigation of how much latency the
+  online-processing algorithm introduces, i.e. how many frames you would
+  typically have to wait until the traceback converges, if you were to set the
+  --max-frames-latency to a very large value.
+  
+  This was done on a couple of files of language-id data.
+  
+  /home/dpovey/kaldi-online/src/featbin/compute-kaldi-pitch-feats --frames-per-chunk=10 --max-frames-latency=100 --verbose=4 --sample-frequency=8000 --resample-frequency=2600 "scp:head -n 2 data/train/wav.scp |" ark:/dev/null 2>&1   | grep Latency | wc
+   4871   24355  443991
+ /home/dpovey/kaldi-online/src/featbin/compute-kaldi-pitch-feats --frames-per-chunk=10 --max-frames-latency=100 --verbose=4 --sample-frequency=8000 --resample-frequency=2600 "scp:head -n 2 data/train/wav.scp |" ark:/dev/null 2>&1  | grep Latency | grep 100 | wc
+   1534    7670  141128
+
+# as above, but with 50 instead of 10 in the --max-frames-latency and grep statements.
+   2070   10350  188370
+# as above, but with 10 instead of 50.
+   4067   20335  370097
+
+   This says that out of 4871 selected frames [we measured the latency every 10
+   frames, since --frames-per-chunk=10], in 1534 frames (31%), the latency was
+    >= 100 frames, i.e. >= 1 second.  Including the other numbers, we can see
+    that
+
+    31% of frames had latency >= 1 second
+    42% of frames had latency >= 0.5 second
+    83% of frames had latency >= 0.1 second.
+
+  This doesn't necessarily mean that we actually have a latency of >= 1 second 31% of
+  the time when using these features, since by using the --max-frames-latency option
+  (default: 30 frames), it will limit the latency to, say, 0.3 seconds, and trace back
+  from the best current pitch.  Most of the time this will probably cause no change in
+  the pitch traceback since the best current pitch is probably the "right" point to
+  trace back from.  And anyway, in the online-decoding, we will most likely rescore
+  the features at the end anyway, and the traceback gets recomputed, so there will
+  be no inaccuracy (assuming the first-pass lattice had everything we needed).
+
+  Probably the greater source of inaccuracy due to the online algorithm is the
+  online energy-normalization, which affects the NCCF-ballast term, and which,
+  for reasons of efficiency, we don't attempt to "correct" in a later rescoring
+  pass.  This will make the most difference in the first few frames of the file,
+  before the first voicing, where it will tend to produce more pitch movement
+  than the offline version of the algorithm.  
+*/
+   
+
+// Function to do data accumulation for on-line usage
+template<typename Real>
+inline void AppendVector(const VectorBase<Real> &src, Vector<Real> *dst) {
+  if (src.Dim() == 0) return;
+  dst->Resize(dst->Dim() + src.Dim(), kCopyData);
+  dst->Range(dst->Dim() - src.Dim(), src.Dim()).CopyFromVec(src);
+}
+
+const int32 OnlineProcessPitch::kRawFeatureDim;
+
+/**
+   Note on the implementation of OnlineProcessPitch: the
+   OnlineFeatureInterface allows random access to features (i.e. not necessarily
+   sequential order), so we need to support that.  But we don't need to support
+   it very efficiently, and our implementation is most efficient if frames are
+   accessed in sequential order.
+   
+   Also note: we have to be a bit careful in this implementation because
+   the input features may change.  That is: if we call
+   src_->GetFrame(t, &vec) from GetFrame(), we can't guarantee that a later
+   call to src_->GetFrame(t, &vec) from another GetFrame() will return the
+   same value.  In fact, while designing this class we used some knowledge
+   of how the OnlinePitchFeature class works to minimize the amount of
+   re-querying we had to do.
+*/
+OnlineProcessPitch::OnlineProcessPitch(
+    const ProcessPitchOptions &opts,
+    OnlineFeatureInterface *src):
+    opts_(opts), src_(src),
+    dim_ ((opts.add_pov_feature ? 1 : 0)
+          + (opts.add_normalized_log_pitch ? 1 : 0)
+          + (opts.add_delta_pitch ? 1 : 0)
+          + (opts.add_raw_log_pitch ? 1 : 0)) {
+  KALDI_ASSERT(dim_ > 0 && 
+               " At least one of the pitch features should be chosen. "
+               "Check your post-process-pitch options.");
+  KALDI_ASSERT(src->Dim() == kRawFeatureDim &&
+               "Input feature must be pitch feature (should have dimension 2)");
+}
+
+
+void OnlineProcessPitch::GetFrame(int32 frame,
+                                  VectorBase<BaseFloat> *feat) {
+  int32 frame_delayed = frame < opts_.delay ? 0 : frame - opts_.delay;
+  KALDI_ASSERT(feat->Dim() == dim_ &&
+               frame_delayed < NumFramesReady());
+  int32 index = 0;
+  if (opts_.add_pov_feature)
+    (*feat)(index++) = GetPovFeature(frame_delayed);
+  if (opts_.add_normalized_log_pitch)
+    (*feat)(index++) = GetNormalizedLogPitchFeature(frame_delayed);
+  if (opts_.add_delta_pitch)
+    (*feat)(index++) = GetDeltaPitchFeature(frame_delayed);
+  if (opts_.add_raw_log_pitch)
+    (*feat)(index++) = GetRawLogPitchFeature(frame_delayed);
+  KALDI_ASSERT(index == dim_);
+}
+
+BaseFloat OnlineProcessPitch::GetPovFeature(int32 frame) const {
+  Vector<BaseFloat> tmp(kRawFeatureDim);
+  src_->GetFrame(frame, &tmp);  // (NCCF, pitch) from pitch extractor
+  BaseFloat nccf = tmp(0);
+  return opts_.pov_scale * NccfToPovFeature(nccf)
+      + opts_.pov_offset;
+}
+
+BaseFloat OnlineProcessPitch::GetDeltaPitchFeature(int32 frame) {
+  // Rather than computing the delta pitch directly in code here,
+  // which might seem easier, we accumulate a small window of features
+  // and call ComputeDeltas.  This might seem like overkill; the reason
+  // we do it this way is to ensure that the end effects (at file
+  // beginning and end) are handled in a consistent way.
+  int32 context = opts_.delta_window;
+  int32 start_frame = std::max(0, frame - context),
+      end_frame = std::min(frame + context + 1, src_->NumFramesReady()),
+      frames_in_window = end_frame - start_frame;
+  Matrix<BaseFloat> feats(frames_in_window, 1),
+      delta_feats;
+  
+  for (int32 f = start_frame; f < end_frame; f++)
+    feats(f - start_frame, 0) = GetRawLogPitchFeature(f);
+
   DeltaFeaturesOptions delta_opts;
   delta_opts.order = 1;
-  delta_opts.window = opts.delta_window;
-  Matrix<BaseFloat> matrix_input(num_frames, 1),
-      matrix_output;
-  matrix_input.CopyColFromVec(input, 0);
-  ComputeDeltas(delta_opts, matrix_input, &matrix_output);
-  KALDI_ASSERT(matrix_output.NumRows() == matrix_input.NumRows() &&
-               matrix_output.NumCols() == 2);
-  output->Resize(num_frames);
-  output->CopyColFromMat(matrix_output, 1);
+  delta_opts.window = opts_.delta_window;  
+  ComputeDeltas(delta_opts, feats, &delta_feats);
+  while (delta_feature_noise_.size() <= static_cast<size_t>(frame)) {
+    delta_feature_noise_.push_back(RandGauss() *
+                                   opts_.delta_pitch_noise_stddev);
+  }
+  // note: delta_feats will have two columns, second contains deltas.
+  return (delta_feats(frame - start_frame, 1) + delta_feature_noise_[frame]) *
+      opts_.delta_pitch_scale;
+}
 
-  // Add a small amount of noise to the delta-pitch.. this is to stop peaks
-  // appearing in the distribution of delta pitch, that correspond to the
-  // discretization interval for log-pitch.
-  Vector<BaseFloat> noise(num_frames);
-  noise.SetRandn();
-  output->AddVec(opts.delta_pitch_noise_stddev, noise);
+BaseFloat OnlineProcessPitch::GetRawLogPitchFeature(int32 frame) const {
+  Vector<BaseFloat> tmp(kRawFeatureDim);
+  src_->GetFrame(frame, &tmp);
+  BaseFloat pitch = tmp(1);
+  KALDI_ASSERT(pitch > 0);
+  return log(pitch);
+}
+
+BaseFloat OnlineProcessPitch::GetNormalizedLogPitchFeature(int32 frame) {
+  UpdateNormalizationStats(frame);
+  BaseFloat log_pitch = GetRawLogPitchFeature(frame),
+      avg_log_pitch = normalization_stats_[frame].sum_log_pitch_pov /
+        normalization_stats_[frame].sum_pov,
+      normalized_log_pitch = log_pitch - avg_log_pitch;
+  return normalized_log_pitch * opts_.pitch_scale;
 }
 
 
-void PostProcessPitch(const PostProcessPitchOptions &opts,
-                      const Matrix<BaseFloat> &input,
-                      Matrix<BaseFloat> *output) {
-  Vector<BaseFloat> pov(input.NumRows()),
-                    pitch(input.NumRows()),
-                    delta_pitch(input.NumRows()),
-                    log_pitch(input.NumRows());
-  Vector<BaseFloat> pov_tmp(input.NumRows());
-  bool apply_sigmoid = true;
-  int32 nonlinearity = 2;  // use the more complex nonlinearity to
-                           // get the POV between zero and one for
-                           // purposes of POV-weighted mean subtraction.
+// inline
+void OnlineProcessPitch::GetNormalizationWindow(int32 t,
+                                                int32 src_frames_ready,
+                                                int32 *window_begin,
+                                                int32 *window_end) const {
+  int32 left_context = opts_.normalization_left_context;
+  int32 right_context = opts_.normalization_right_context;
+  *window_begin = std::max(0, t - left_context);
+  *window_end = std::min(t + right_context + 1, src_frames_ready);
+}
 
-  pov.CopyColFromMat(input, 0);
-  pitch.CopyColFromMat(input, 1);
-  pov_tmp = pov;
-  ProcessPovFeatures(&pov_tmp, nonlinearity, apply_sigmoid);
-  pitch.ApplyLog();
-  log_pitch = pitch;
-  WeightedMwn(opts.normalization_window_size,
-              pov_tmp, log_pitch, &pitch);
-  pitch.Scale(opts.pitch_scale);
 
-  apply_sigmoid = false;
-  ProcessPovFeatures(&pov, opts.pov_nonlinearity, apply_sigmoid);
-  pov.Scale(opts.pov_scale);
+// Makes sure the entry in normalization_stats_ for this frame is up to date;
+// called from GetNormalizedLogPitchFeature.
+// the cur_num_frames and input_finished variables are needed because the
+// pitch features for a given frame may change as we see more data.
+void OnlineProcessPitch::UpdateNormalizationStats(int32 frame) {
+  KALDI_ASSERT(frame >= 0);
+  if (normalization_stats_.size() <= frame)
+    normalization_stats_.resize(frame + 1);
+  int32 cur_num_frames = src_->NumFramesReady();
+  bool input_finished = src_->IsLastFrame(cur_num_frames - 1);
 
-  ExtractDeltaPitch(opts, log_pitch, &delta_pitch);
-  delta_pitch.Scale(opts.delta_pitch_scale);
+  NormalizationStats &this_stats = normalization_stats_[frame];
+  if (this_stats.cur_num_frames == cur_num_frames &&
+      this_stats.input_finished == input_finished) {
+    // Stats are fully up-to-date.
+    return;
+  }
+  int32 this_window_begin, this_window_end;  
+  GetNormalizationWindow(frame, cur_num_frames,
+                         &this_window_begin, &this_window_end);
+  
+  if (frame > 0) {
+    const NormalizationStats &prev_stats = normalization_stats_[frame - 1];
+    if (prev_stats.cur_num_frames == cur_num_frames &&
+        prev_stats.input_finished == input_finished) {
+      // we'll derive this_stats efficiently from prev_stats.
+      // Checking that cur_num_frames and input_finished have not changed
+      // ensures that the underlying features will not have changed.
+      this_stats = prev_stats;
+      int32 prev_window_begin, prev_window_end;
+      GetNormalizationWindow(frame - 1, cur_num_frames,
+                             &prev_window_begin, &prev_window_end);
+      if (this_window_begin != prev_window_begin) {
+        KALDI_ASSERT(this_window_begin == prev_window_begin + 1);
+        Vector<BaseFloat> tmp(kRawFeatureDim);
+        src_->GetFrame(prev_window_begin, &tmp);
+        BaseFloat accurate_pov = NccfToPov(tmp(0)),
+            log_pitch = log(tmp(1));
+        this_stats.sum_pov -= accurate_pov;
+        this_stats.sum_log_pitch_pov -= accurate_pov * log_pitch;
+      }
+      if (this_window_end != prev_window_end) {
+        KALDI_ASSERT(this_window_end == prev_window_end + 1);
+        Vector<BaseFloat> tmp(kRawFeatureDim);
+        src_->GetFrame(prev_window_end, &tmp);
+        BaseFloat accurate_pov = NccfToPov(tmp(0)),
+            log_pitch = log(tmp(1));
+        this_stats.sum_pov += accurate_pov;
+        this_stats.sum_log_pitch_pov += accurate_pov * log_pitch;
+      }
+      return;      
+    }
+  }
+  // The way we do it here is not the most efficient way to do it;
+  // we'll see if it becomes a problem.  The issue is we have to redo
+  // this computation from scratch each time we process a new chunk, which
+  // may be a little inefficient if the chunk-size is very small.
+  this_stats.cur_num_frames = cur_num_frames;
+  this_stats.input_finished = input_finished;
+  this_stats.sum_pov = 0.0;
+  this_stats.sum_log_pitch_pov = 0.0;
+  Vector<BaseFloat> tmp(kRawFeatureDim);
+  for (int32 f = this_window_begin; f < this_window_end; f++) {
+    src_->GetFrame(f, &tmp);
+    BaseFloat accurate_pov = NccfToPov(tmp(0)),
+        log_pitch = log(tmp(1));    
+    this_stats.sum_pov += accurate_pov;
+    this_stats.sum_log_pitch_pov += accurate_pov * log_pitch;
+  }
+}
 
-  int32 output_ncols = 0;
-  if (opts.add_pov_feature) {
-    output->Resize(input.NumRows(), output_ncols + 1, kCopyData);
-    output->CopyColFromVec(pov, output_ncols);
-    output_ncols++;
+int32 OnlineProcessPitch::NumFramesReady() const {
+  int32 src_frames_ready = src_->NumFramesReady();
+  if (src_frames_ready == 0) {
+    return 0;
+  } else if (src_->IsLastFrame(src_frames_ready - 1)) {
+    return src_frames_ready + opts_.delay;
+  } else {
+    return std::max(0, src_frames_ready - 
+      opts_.normalization_right_context + opts_.delay);
   }
-  if (opts.add_normalized_log_pitch) {
-    output->Resize(input.NumRows(), output_ncols + 1, kCopyData);
-    output->CopyColFromVec(pitch, output_ncols);
-    output_ncols++;
+}
+
+void ProcessPitch(const ProcessPitchOptions &opts,
+                  const MatrixBase<BaseFloat> &input,
+                  Matrix<BaseFloat> *output) {
+  OnlineMatrixFeature pitch_feat(input);
+  
+  OnlineProcessPitch online_process_pitch(opts, &pitch_feat);
+
+  output->Resize(online_process_pitch.NumFramesReady(),
+                 online_process_pitch.Dim());
+  for (int32 t = 0; t < online_process_pitch.NumFramesReady(); t++) {
+    SubVector<BaseFloat> row(*output, t);
+    online_process_pitch.GetFrame(t, &row);
   }
-  if (opts.add_delta_pitch) {
-    output->Resize(input.NumRows(), output_ncols + 1, kCopyData);
-    output->CopyColFromVec(delta_pitch, output_ncols);
-    output_ncols++;
+}
+
+
+void ComputeAndProcessKaldiPitch(
+    const PitchExtractionOptions &pitch_opts,
+    const ProcessPitchOptions &process_opts,    
+    const VectorBase<BaseFloat> &wave,
+    Matrix<BaseFloat> *output) {
+  
+  OnlinePitchFeature pitch_extractor(pitch_opts);
+
+  if (pitch_opts.simulate_first_pass_online) {
+    KALDI_ASSERT(pitch_opts.frames_per_chunk > 0 &&
+                 "--simulate-first-pass-online option does not make sense "
+                 "unless you specify --frames-per-chunk");
   }
-  if (opts.add_raw_log_pitch) {
-    output->Resize(input.NumRows(), output_ncols + 1, kCopyData);
-    output->CopyColFromVec(log_pitch, output_ncols);
-    output_ncols++;
+
+  OnlineProcessPitch post_process(process_opts, &pitch_extractor);
+
+  int32 cur_rows = 100;
+  Matrix<BaseFloat> feats(cur_rows, post_process.Dim());
+  
+  int32 cur_offset = 0, cur_frame = 0,
+      samp_per_chunk = pitch_opts.frames_per_chunk *
+      pitch_opts.samp_freq * 1.0e-03 * pitch_opts.frame_shift_ms;
+
+  // We request the first-pass features as soon as they are available,
+  // regardless of whether opts.simulate_first_pass_online == true.  If
+  // opts.simulate_first_pass_online == true this should
+  // not affect the features generated, but it helps us to test the code
+  // in a way that's closer to what online decoding would see.
+  
+  while (cur_offset < wave.Dim()) {
+    int32 num_samp;
+    if (samp_per_chunk > 0)
+      num_samp = std::min(samp_per_chunk, wave.Dim() - cur_offset);
+    else  // user left opts.frames_per_chunk at zero.
+      num_samp = wave.Dim();
+    SubVector<BaseFloat> wave_chunk(wave, cur_offset, num_samp);
+    pitch_extractor.AcceptWaveform(pitch_opts.samp_freq, wave_chunk);
+    cur_offset += num_samp;
+    if (cur_offset == wave.Dim())
+      pitch_extractor.InputFinished();
+    
+    // Get each frame as soon as it is ready.
+    for (; cur_frame < post_process.NumFramesReady(); cur_frame++) {
+      if (cur_frame >= cur_rows) {
+        cur_rows *= 2;
+        feats.Resize(cur_rows, post_process.Dim(), kCopyData);
+      }
+      SubVector<BaseFloat> row(feats, cur_frame);
+      post_process.GetFrame(cur_frame, &row);
+    }
   }
-  // If none of the features are chosen, select pov-feature by default
-  if (output_ncols == 0) {
-    KALDI_ERR << " At least one of the pitch features should be chosen. "
-      << "Check your post-process pitch options.";
+  
+  if (pitch_opts.simulate_first_pass_online) {
+    if (cur_frame == 0) {
+      KALDI_WARN << "No features output since wave file too short";
+      output->Resize(0, 0);
+    } else {
+      *output = feats.RowRange(0, cur_frame);
+    }
+  } else {
+    // want the "final" features for second pass, so get them again.
+    output->Resize(post_process.NumFramesReady(), post_process.Dim());
+    for (int32 frame = 0; frame < post_process.NumFramesReady(); frame++) {
+      SubVector<BaseFloat> row(*output, frame);
+      post_process.GetFrame(frame, &row);
+    }
   }
 }
 

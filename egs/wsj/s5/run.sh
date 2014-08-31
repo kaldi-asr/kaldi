@@ -275,6 +275,11 @@ steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_
 steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284 || exit 1;
 
+# These demonstrate how to build a sytem usable for online-decoding with the nnet2 setup.
+# (see local/run_nnet2.sh for other, non-online nnet2 setups).
+# local/online/run_nnet2.sh
+# local/online/run_nnet2_baseline.sh
+
 # From 3b system, train another SAT system (tri4a) with all the si284 data.
 
 steps/train_sat.sh  --cmd "$train_cmd" \

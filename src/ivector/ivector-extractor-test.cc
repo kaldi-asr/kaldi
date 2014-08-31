@@ -43,8 +43,13 @@ void TestIvectorExtractorStatsIO(IvectorExtractorStats &stats) {
   stats2.Read(istr, binary);
   std::ostringstream ostr2;
   stats2.Write(ostr2, binary);
-  KALDI_ASSERT(ostr.str() == ostr2.str());
-
+  
+  if (binary) {
+    // this was failing in text mode, due to differences like
+    // 8.2244e+06 vs  8.22440e+06
+    KALDI_ASSERT(ostr.str() == ostr2.str());
+  }
+  
   { // Test I/O of IvectorExtractorStats and that it works identically with the "add"
     // mechanism.  We only test this with binary == true; otherwise it's not
     // identical due to limited precision.
@@ -68,9 +73,10 @@ void TestIvectorExtractorStatsIO(IvectorExtractorStats &stats) {
 
     std::ostringstream ostr3;
     stats3.Write(ostr3, false);
-    // This test stopped working after we made the stats single precision.
-    // It's OK.  Disabling it.
-    // KALDI_ASSERT(ostr2.str() == ostr3.str());
+
+    //if (binary) {
+    //  KALDI_ASSERT(ostr2.str() == ostr3.str());
+    //}
   }
 }
 
@@ -104,9 +110,7 @@ void TestIvectorExtraction(const IvectorExtractor &extractor,
                                             extractor.PriorOffset());
 
   for (int32 t = 0; t < num_frames; t++) {
-    online_stats.AddToStats(extractor,
-                            feats.Row(t),
-                            post[t]);
+    online_stats.AccStats(extractor, feats.Row(t), post[t]);
   }
   
   Vector<double> ivector1(ivector_dim), ivector2(ivector_dim);

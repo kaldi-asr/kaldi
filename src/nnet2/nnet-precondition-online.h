@@ -32,8 +32,8 @@ namespace nnet2 {
 
 
 /**
-   It will help to first try to understand ./nnet-precondition.h before
-   reading this comment and trying to understand what's going on here.  The motivation
+   It will help to first try to understand ./nnet-precondition.h before reading
+   this comment and trying to understand what's going on here.  The motivation
    for this method was that the code in nnet-precondition.h was too slow when
    implemented on CUDA cards, it was taking well over half the time.  The problem
    is that algorithms like Cholesky decomposition and triangular solvers, that

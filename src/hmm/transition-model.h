@@ -237,6 +237,10 @@ class TransitionModel {
     // to design changes than doing it manually.
   }
 
+  /// returns true if all the integer class members are identical (but does not
+  /// compare the transition probabilities.
+  bool Compatible(const TransitionModel &other) const;
+  
  private:
   void MleUpdateShared(const Vector<double> &stats,
                        const MleTransitionUpdateConfig &cfg,
@@ -277,7 +281,7 @@ class TransitionModel {
   /// the triples are in sorted order which allows us to do the reverse mapping from
   /// triple to transition state
   std::vector<Triple> triples_;
-
+  
   /// Gives the first transition_id of each transition-state; indexed by
   /// the transition-state.  Array indexed 1..num-transition-states+1 (the last one
   /// is needed so we can know the num-transitions of the last transition-state.
@@ -331,6 +335,7 @@ bool GetPhonesForPdfs(const TransitionModel &trans_model,
                       const std::vector<int32> &pdfs,
                       std::vector<int32> *phones);
 /// @}
+
 
 } // end namespace kaldi
 

@@ -64,7 +64,8 @@ int main(int argc, char *argv[]) {
 
     for (; !feat_reader1.Done(); feat_reader1.Next()) {
       std::string utt = feat_reader1.Key();
-      const Matrix<BaseFloat> &feat1 = feat_reader1.Value();
+      Matrix<BaseFloat> feat1 (feat_reader1.Value());
+
 
       if (!feat_reader2.HasKey(utt)) {
         KALDI_WARN << "Second table has no feature for utterance "
@@ -72,12 +73,12 @@ int main(int argc, char *argv[]) {
         num_err++;
         continue;
       }
-      const Matrix<BaseFloat> &feat2 = feat_reader2.Value(utt);
-      if (!SameDim(feat1, feat2)) {
+      Matrix<BaseFloat> feat2 (feat_reader2.Value(utt));
+      if (feat1.NumCols() != feat2.NumCols()) {
         KALDI_WARN << "Feature dimensions differ for utterance "
-                   << utt << ", " << feat1.NumRows() << " by "
-                   << feat1.NumCols() << " vs. " << feat2.NumRows()
-                   << " by " << feat2.NumCols();
+                   << utt << ", " << feat1.NumCols() << " vs. "
+                   << feat2.NumCols() << ", skipping  utterance."
+                   << utt;
         num_err++;
         continue;
       }

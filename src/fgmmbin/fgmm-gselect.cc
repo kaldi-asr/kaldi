@@ -33,6 +33,7 @@ int main(int argc, char *argv[]) {
         " (e.g. in training UBMs, SGMMs, tied-mixture systems)\n"
         " For each frame, gives a list of the n best Gaussian indices,\n"
         " sorted from best to worst.\n"
+        "See also: gmm-gselect, copy-gselect, fgmm-gselect-to-post\n"
         "Usage: \n"
         " fgmm-gselect [options] <model-in> <feature-rspecifier> <gselect-wspecifier>\n"
         "The --gselect option (which takes an rspecifier) limits selection to a subset\n"

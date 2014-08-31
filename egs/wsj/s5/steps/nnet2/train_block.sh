@@ -150,8 +150,6 @@ utils/split_data.sh $data $nj
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
-cp $alidir/splice_opts $dir 2>/dev/null
-cp $alidir/cmvn_opts $dir 2>/dev/null
 cp $alidir/tree $dir
 
 

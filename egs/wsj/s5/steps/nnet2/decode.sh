@@ -23,6 +23,7 @@ scoring_opts=
 skip_scoring=false
 feat_type=
 spk_vecs_dir=
+online_ivector_dir=
 minimize=false
 # End configuration section.
 
@@ -55,12 +56,15 @@ dir=$3
 srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
 model=$srcdir/$iter.mdl
 
-for f in $graphdir/HCLG.fst $data/feats.scp $model; do
+
+[ ! -z "$online_ivector_dir" ] && \
+  extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
+
+for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
 sdata=$data/split$nj;
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
@@ -76,6 +80,7 @@ if [ -z "$feat_type" ]; then
   echo "$0: feature type is $feat_type"
 fi
 
+splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 
 case $feat_type in
   raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |";;
@@ -121,6 +126,12 @@ if [ ! -z $spk_vecs_dir ]; then
   spk_vecs_opt=("--spk-vecs=ark:cat $spk_vecs_dir/vecs.*|" "--utt2spk=ark:$data/utt2spk")
 else
   spk_vecs_opt=()
+fi
+
+if [ ! -z "$online_ivector_dir" ]; then
+  ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
+  # note: subsample-feats, with negative n, will repeat each feature -n times.
+  feats="$feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
 fi
 
 if [ $stage -le 1 ]; then

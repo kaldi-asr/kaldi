@@ -41,7 +41,8 @@ class ParseOptions : public OptionsItf {
 #ifndef _MSC_VER  // This is just a convenient place to set the stderr to line
     setlinebuf(stderr);  // buffering mode, since it's called at program start.
 #endif  // This helps ensure different programs' output is not mixed up.
-    RegisterStandard("config", &config_, "Configuration file with options");
+    RegisterStandard("config", &config_, "Configuration file to read (this "
+                     "option may be repeated)");
     RegisterStandard("print-args", &print_args_,
                      "Print the command line arguments (to stderr)");
     RegisterStandard("help", &help_, "Print out usage message");

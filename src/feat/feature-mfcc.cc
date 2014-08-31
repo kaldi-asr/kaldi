@@ -121,8 +121,11 @@ void Mfcc::ComputeInternal(const VectorBase<BaseFloat> &wave,
   KALDI_ASSERT(output != NULL);
   int32 rows_out = NumFrames(wave.Dim(), opts_.frame_opts),
       cols_out = opts_.num_ceps;
-  if (rows_out == 0)
-    KALDI_ERR << "No frames fit in file (#samples is " << wave.Dim() << ")";
+  if (rows_out == 0) {
+    output->Resize(0, 0);
+    *wave_remainder = wave;
+    return;
+  }
   output->Resize(rows_out, cols_out);
   if (wave_remainder != NULL)
     ExtractWaveformRemainder(wave, opts_.frame_opts, wave_remainder);

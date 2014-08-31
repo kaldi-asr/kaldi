@@ -75,9 +75,9 @@ class DecodableSum: public DecodableInterface {
     return sum;
   }
 
-  virtual int32 NumIndices() { return decodables_[0].first->NumIndices(); }
+  virtual int32 NumIndices() const { return decodables_[0].first->NumIndices(); }
 
-  virtual bool IsLastFrame(int32 frame) {
+  virtual bool IsLastFrame(int32 frame) const {
     // We require all the decodables have the same #frames.  We don't check this though.
     return decodables_[0].first->IsLastFrame(frame);
   }

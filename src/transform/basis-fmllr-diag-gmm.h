@@ -1,6 +1,8 @@
 // transform/basis-fmllr-diag-gmm.h
 
 // Copyright 2012  Carnegie Mellon University (author: Yajie Miao)
+//           2014  Johns Hopkins University (author: Daniel Povey)
+//           2014  IMSL, PKU-HKUST (Author: Wei Shi)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -105,14 +107,15 @@ class BasisFmllrAccus {
 class BasisFmllrEstimate {
 
  public:
-  BasisFmllrEstimate() { }
+  BasisFmllrEstimate(): dim_(0), basis_size_(0) { }
   explicit BasisFmllrEstimate(int32 dim) {
 	  dim_ = dim; basis_size_ = dim * (dim + 1);
   }
 
-  /// Routines for reading and writing fMLLR base matrices
-  void WriteBasis(std::ostream &out_stream, bool binary) const;
-  void ReadBasis(std::istream &in_stream, bool binary, bool add = false);
+  /// Routines for reading and writing fMLLR basis matrices
+  void Write(std::ostream &out_stream, bool binary) const;
+  void Read(std::istream &in_stream, bool binary);
+
 
   /// Estimate the base matrices efficiently in a Maximum Likelihood manner.
   /// It takes diagonal GMM as argument, which will be used for preconditioner
@@ -131,38 +134,35 @@ class BasisFmllrEstimate {
   void ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
                             SpMatrix<double> *pre_cond);
 
+  int32 Dim() const { return dim_; }
+
+  int32 BasisSize() const { return basis_size_; }
+
   /// This function performs speaker adaptation, computing the fMLLR matrix
   /// based on speaker statistics. It takes fMLLR stats as argument.
   /// The basis weights (d_{1}, d_{2}, ..., d_{N}) are also optimized
   /// explicitly. Finally, it returns objective function improvement over
-  /// all the iterations.
+  /// all the iterations, compared with the value at the initial value of
+  /// "out_xform" (or the unit transform if not provided).
+  /// The coefficients are output to "coefficients" only if the vector is
+  /// provided.
   /// See section 5.3 of the paper for more details.
   double ComputeTransform(const AffineXformStats &spk_stats,
                           Matrix<BaseFloat> *out_xform,
                           Vector<BaseFloat> *coefficients,
-                          BasisFmllrOptions options);
+                          BasisFmllrOptions options) const;
+
+ private:
 
   /// Basis matrices. Dim is [T] [D] [D+1]
   /// T is the number of bases
-  vector< Matrix<BaseFloat> > fmllr_basis_;
+  std::vector< Matrix<BaseFloat> > fmllr_basis_;
   /// Feature dimension
   int32 dim_;
   /// Number of bases D*(D+1)
   int32 basis_size_;
-
 };
 
-
-/// This function takes the step direction (delta) of fMLLR matrix as argument,
-/// and optimize step size using Newton's method. This is an iterative method,
-/// where each iteration should not decrease the auxiliary function. Note that
-/// the resulting step size \k should be close to 1. If \k <<1 or >>1, there
-/// maybe problems with preconditioning or the speaker stats.
-double CalBasisFmllrStepSize(const AffineXformStats &spk_stats,
-                             const Matrix<double> &delta,
-                             const Matrix<double> &A,
-                             const Matrix<double> &S,
-                             int32 max_iters);
 
 } // namespace kaldi
 

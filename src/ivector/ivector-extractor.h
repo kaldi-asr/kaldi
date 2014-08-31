@@ -302,9 +302,12 @@ class OnlineIvectorEstimationStats {
   OnlineIvectorEstimationStats(int32 ivector_dim,
                                BaseFloat prior_offset);
 
-  void AddToStats(const IvectorExtractor &extractor,
-                  const VectorBase<BaseFloat> &feature,
-                  const std::vector<std::pair<int32, BaseFloat> > &gauss_post);
+  OnlineIvectorEstimationStats(const OnlineIvectorEstimationStats &other);
+
+  
+  void AccStats(const IvectorExtractor &extractor,
+                const VectorBase<BaseFloat> &feature,
+                const std::vector<std::pair<int32, BaseFloat> > &gauss_post);
   
   int32 IvectorDim() const { return linear_term_.Dim(); }
 
@@ -333,6 +336,15 @@ class OnlineIvectorEstimationStats {
   /// using the provided value; should be >= 0, if "ivector" is
   /// a value we estimated.  This is for diagnostics.
   double ObjfChange(const VectorBase<double> &ivector) const;
+
+  double Count() const { return num_frames_; }
+
+  /// Scales the number of frames of stats by 0 <= scale <= 1, to make it
+  /// as if we had fewer frames of adaptation data.  Note: it does not
+  /// apply the scaling to the prior term.
+  void Scale(double scale);
+
+  // Use the default assignment operator
  protected:
   /// Returns objective function per frame, at this iVector value.
   double Objf(const VectorBase<double> &ivector) const;
@@ -426,7 +438,7 @@ class IvectorExtractorStats {
   IvectorExtractorStats(): tot_auxf_(0.0), R_num_cached_(0), num_ivectors_(0) { }
   
   IvectorExtractorStats(const IvectorExtractor &extractor,
-               const IvectorExtractorStatsOptions &stats_opts);
+                        const IvectorExtractorStatsOptions &stats_opts);
   
   void Add(const IvectorExtractorStats &other);
   

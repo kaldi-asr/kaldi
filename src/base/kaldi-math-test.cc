@@ -19,7 +19,7 @@
 
 namespace kaldi {
 
-template<class I> void UnitTestGcdTpl() {
+template<class I> void UnitTestGcdLcmTpl() {
   for (I a = 1; a < 15; a++) {  // a is min gcd.
     I b = (I)(Rand() % 10);
     I c = (I)(Rand() % 10);
@@ -30,6 +30,12 @@ template<class I> void UnitTestGcdTpl() {
     KALDI_ASSERT(g >= a);
     KALDI_ASSERT((b*a) % g == 0);
     KALDI_ASSERT((c*a) % g == 0);
+
+    // test least common multiple
+    if (b <= 0 || c <= 0) continue; // lcm not defined unless both positive.
+    I h = Lcm(b*a, c*a);
+    KALDI_ASSERT(h != 0 && (h % (b*a)) == 0 &&
+                 (h % (c*a)) == 0);
   }
 }
 
@@ -46,11 +52,10 @@ void UnitTestRoundUpToNearestPowerOfTwo() {
   KALDI_ASSERT(RoundUpToNearestPowerOfTwo(1073700000) == 1073741824  );
 }
 
-void UnitTestGcd() {
-  UnitTestGcdTpl<int>();
-  UnitTestGcdTpl<char>();
-  UnitTestGcdTpl<size_t>();
-  UnitTestGcdTpl<unsigned short>();
+void UnitTestGcdLcm() {
+  UnitTestGcdLcmTpl<int>();
+  UnitTestGcdLcmTpl<size_t>();
+  UnitTestGcdLcmTpl<unsigned short>();
 }
 
 void UnitTestRand() {
@@ -257,7 +262,7 @@ void UnitTestApproxEqual() {
 int main() {
   using namespace kaldi;
   UnitTestApproxEqual();
-  UnitTestGcd();
+  UnitTestGcdLcm();
   UnitTestFactorize();
   UnitTestDefines();
   UnitTestLogAddSub();

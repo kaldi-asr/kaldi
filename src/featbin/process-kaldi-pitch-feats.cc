@@ -19,7 +19,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "feat/pitch-functions.cc"
+#include "feat/pitch-functions.h"
 #include "feat/wave-reader.h"
 
 
@@ -38,14 +38,18 @@ int main(int argc, char *argv[]) {
         "order, by setting the boolean options (--add-pov-feature, \n"
         "--add-normalized-log-pitch, --add-delta-pitch and --add-raw-log-pitch)\n"
         "\n"
-        "Usage: process-kaldi-pitch-feats [options...] <feat-rspecifier> <feats-wspecifier>\n";
+        "Usage: process-kaldi-pitch-feats [options...] <feat-rspecifier> <feats-wspecifier>\n"
+        "\n"
+        "e.g.: compute-kaldi-pitch-feats [args] ark:- | process-kaldi-pitch-feats ark:- ark:feats.ark\n"
+        "\n"
+        "See also: compute-kaldi-pitch-feats, compute-and-process-kaldi-pitch-feats\n";
 
     ParseOptions po(usage);
 
     int32 srand_seed = 0;
     
-    PostProcessPitchOptions postprocess_opts;
-    postprocess_opts.Register(&po);
+    ProcessPitchOptions process_opts;
+    process_opts.Register(&po);
 
     po.Register("srand", &srand_seed, "Seed for random number generator, used to "
                 "add noise to delta-log-pitch features");
@@ -71,7 +75,7 @@ int main(int argc, char *argv[]) {
       const Matrix<BaseFloat> &features = feat_reader.Value();
 
       Matrix<BaseFloat> processed_feats(features);
-      PostProcessPitch(postprocess_opts, features, &processed_feats);
+      ProcessPitch(process_opts, features, &processed_feats);
 
       feat_writer.Write(utt, processed_feats);
       num_done++;

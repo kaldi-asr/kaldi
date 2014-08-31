@@ -1,7 +1,7 @@
 // nnet2/nnet-nnet.cc
 
 // Copyright 2011-2012  Karel Vesely
-//                      Johns Hopkins University (author: Daniel Povey)
+//           2012-2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -661,6 +661,55 @@ void Nnet::Collapse(bool match_updatableness) {
   KALDI_LOG << "Collapsed " << num_collapsed << " components.";
 }
 
+Nnet *GenRandomNnet(int32 input_dim,
+                    int32 output_dim) {
+
+  std::vector<Component*> components;
+  int32 cur_dim = input_dim;
+  // have up to 4 layers before the final one.
+  for (size_t i = 0; i < 4; i++) {
+    if (rand() % 2 == 0) {
+      // add an affine component.
+      int32 next_dim = 50 + rand() % 100;
+      BaseFloat learning_rate = 0.0001, param_stddev = 0.001,
+          bias_stddev = 0.1;
+      AffineComponent *component = new AffineComponent();
+      component->Init(learning_rate, cur_dim, next_dim,
+                      param_stddev, bias_stddev);
+      components.push_back(component);
+      cur_dim = next_dim;
+    } else if (rand() % 2 == 0) {
+      components.push_back(new SigmoidComponent(cur_dim));
+    } else if (rand() % 2 == 0 && cur_dim < 200) {
+      int32 left_context = rand() % 3, right_context = rand() % 3;
+      SpliceComponent *component = new SpliceComponent();
+      component->Init(cur_dim, left_context, right_context);
+      components.push_back(component);
+      cur_dim = cur_dim * (1 + left_context + right_context);
+    } else {
+      break;
+    }
+  }
+
+  {
+    AffineComponent *component = new AffineComponent();
+    BaseFloat learning_rate = 0.0001, param_stddev = 0.001,
+        bias_stddev = 0.1;
+    component->Init(learning_rate, cur_dim, output_dim,
+                    param_stddev, bias_stddev);
+    components.push_back(component);
+    cur_dim = output_dim;
+  }
+
+  components.push_back(new SoftmaxComponent(cur_dim));
+
+  Nnet *ans = new Nnet();
+  ans->Init(&components);
+  return ans;
+}
+
+
+
 int32 Nnet::LastUpdatableComponent() const {
   int32 last_updatable_component = NumComponents();
   for (int32 i = NumComponents() - 1; i >= 0; i--)
@@ -668,8 +717,6 @@ int32 Nnet::LastUpdatableComponent() const {
       last_updatable_component = i;
   return last_updatable_component;
 }
-
-
 
 } // namespace nnet2
 } // namespace kaldi

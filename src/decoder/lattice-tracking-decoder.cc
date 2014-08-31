@@ -77,9 +77,11 @@ bool LatticeTrackingDecoder::Decode(DecodableInterface *decodable,
 
 // Outputs an FST corresponding to the single best path
 // through the lattice.
-bool LatticeTrackingDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst) const {
+bool LatticeTrackingDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst,
+                                         bool use_final_probs) const {
   fst::VectorFst<LatticeArc> fst;
-  if (!GetRawLattice(&fst)) return false;
+  GetRawLattice(&fst, use_final_probs);
+  if (fst.NumStates() == 0) return false;
   // std::cout << "Raw lattice is:\n";
   // fst::FstPrinter<LatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
   // fstprinter.Print(&std::cout, "standard output");
@@ -89,7 +91,8 @@ bool LatticeTrackingDecoder::GetBestPath(fst::MutableFst<LatticeArc> *ofst) cons
 
 // Outputs an FST corresponding to the raw, state-level
 // tracebacks.
-bool LatticeTrackingDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) const {
+bool LatticeTrackingDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst,
+                                           bool use_final_probs) const {
   typedef LatticeArc Arc;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
@@ -143,10 +146,14 @@ bool LatticeTrackingDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) co
         ofst->AddArc(cur_state, arc);
       }
       if (f == num_frames) {
-        std::map<Token*, BaseFloat>::const_iterator iter =
-            final_costs_.find(tok);
-        if (iter != final_costs_.end())
-          ofst->SetFinal(cur_state, LatticeWeight(iter->second, 0));
+        if (use_final_probs && !final_costs_.empty()) {
+          std::map<Token*, BaseFloat>::const_iterator iter =
+              final_costs_.find(tok);
+          if (iter != final_costs_.end())
+            ofst->SetFinal(cur_state, LatticeWeight(iter->second, 0));
+        } else {
+          ofst->SetFinal(cur_state, LatticeWeight::One());
+        }
       }
     }
   }
@@ -158,9 +165,11 @@ bool LatticeTrackingDecoder::GetRawLattice(fst::MutableFst<LatticeArc> *ofst) co
 // the LatticeTrackingDecoder class.
 // Outputs an FST corresponding to the lattice-determinized
 // lattice (one path per word sequence).
-bool LatticeTrackingDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst) const {
+bool LatticeTrackingDecoder::GetLattice(fst::MutableFst<CompactLatticeArc> *ofst,
+                                        bool use_final_probs) const {
   Lattice raw_fst;
-  if (!GetRawLattice(&raw_fst)) return false;
+  GetRawLattice(&raw_fst, use_final_probs);
+  if (raw_fst.NumStates() == 0) return false;
   Invert(&raw_fst); // make it so word labels are on the input.
   if (!TopSort(&raw_fst)) // topological sort makes lattice-determinization more efficient
     KALDI_WARN << "Topological sorting of state-level lattice failed "
@@ -740,7 +749,7 @@ void LatticeTrackingDecoder::ProcessNonemitting(int32 frame) {
   KALDI_ASSERT(queue_.empty());
   BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
   BaseFloat worst_tracked = -std::numeric_limits<BaseFloat>::infinity();
-  for (Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
+  for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
     queue_.push_back(e->key);
     // for pruning with current best token
     best_cost = std::min(best_cost, static_cast<BaseFloat>(e->val->tot_cost));
@@ -886,7 +895,9 @@ bool DecodeUtteranceLatticeTracking(
     double *like_ptr) { // puts utterance's like in like_ptr on success.
   using fst::VectorFst;
 
-  if (!decoder.Decode(&decodable, arc_graph)) {
+
+  decoder.Decode(&decodable, arc_graph);
+  if (arc_graph.NumStates() == 0) {
     KALDI_WARN << "Failed to decode file " << utt;
     return false;
   }
@@ -934,7 +945,8 @@ bool DecodeUtteranceLatticeTracking(
 
   // Get lattice, and do determinization if requested.
   Lattice lat;
-  if (!decoder.GetRawLattice(&lat))
+  decoder.GetRawLattice(&lat);
+  if (lat.NumStates() == 0)
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
   fst::Connect(&lat);
   if (determinize) {
@@ -952,7 +964,7 @@ bool DecodeUtteranceLatticeTracking(
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
     compact_lattice_writer->Write(utt, clat);
   } else {
-    // We'll write the lattice without acoustic scaling.
+    // We'll write the lattice without acoustic scaling
     if (acoustic_scale != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &lat);
     lattice_writer->Write(utt, lat);

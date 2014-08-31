@@ -31,6 +31,7 @@
 #include "util/timer.h"
 
 
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;

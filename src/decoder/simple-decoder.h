@@ -25,15 +25,8 @@
 
 #include "util/stl-utils.h"
 #include "fst/fstlib.h"
+#include "lat/kaldi-lattice.h"
 #include "itf/decodable-itf.h"
-
-#include <algorithm>
-#ifdef _MSC_VER
-#include <unordered_map>
-#else
-#include <tr1/unordered_map>
-#endif
-using std::tr1::unordered_map;
 
 namespace kaldi {
 
@@ -43,122 +36,84 @@ namespace kaldi {
  */
 class SimpleDecoder {
  public:
-  typedef fst::StdArc Arc;
-  typedef Arc::Label Label;
-  typedef Arc::StateId StateId;
-  typedef Arc::Weight Weight;
+  typedef fst::StdArc StdArc;
+  typedef StdArc::Weight StdWeight;
+  typedef StdArc::Label Label;
+  typedef StdArc::StateId StateId;
   
   SimpleDecoder(const fst::Fst<fst::StdArc> &fst, BaseFloat beam): fst_(fst), beam_(beam) { }
 
-  ~SimpleDecoder() {
-    ClearToks(cur_toks_);
-    ClearToks(prev_toks_);
-  }
+  ~SimpleDecoder();
 
-  // Returns true if any tokens reached the end of the file (regardless of
-  // whether they are in a final state); query ReachedFinal() after Decode()
-  // to see whether we reached a final state.
-  bool Decode(DecodableInterface *decodable) {
-    // clean up from last time:
-    ClearToks(cur_toks_);
-    ClearToks(prev_toks_);
-    StateId start_state = fst_.Start();
-    KALDI_ASSERT(start_state != fst::kNoStateId);
-    Arc dummy_arc(0, 0, Weight::One(), start_state);
-    cur_toks_[start_state] = new Token(dummy_arc, NULL);
-    ProcessNonemitting();
-    for (int32 frame = 0; !decodable->IsLastFrame(frame-1); frame++) {
-      ClearToks(prev_toks_);
-      cur_toks_.swap(prev_toks_);
-      ProcessEmitting(decodable, frame);
-      ProcessNonemitting();
-      PruneToks(beam_, &cur_toks_);
-    }
-    return (!cur_toks_.empty());
-  }
+  /// Decode this utterance.
+  /// Returns true if any tokens reached the end of the file (regardless of
+  /// whether they are in a final state); query ReachedFinal() after Decode()
+  /// to see whether we reached a final state.
+  bool Decode(DecodableInterface *decodable);
 
-  bool ReachedFinal() {
-    for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
-         iter != cur_toks_.end();
-         ++iter) {
-      Weight this_weight = Times(iter->second->weight_, fst_.Final(iter->first));
-      if (this_weight != Weight::Zero())
-        return true;
-    }
-    return false;
-  }
+  bool ReachedFinal() const;
 
-  // GetBestPath gets the decoding traceback.  If we reached a final state,
-  // it limits itself to final states;
+  // GetBestPath gets the decoding traceback. If "use_final_probs" is true
+  // AND we reached a final state, it limits itself to final states;
   // otherwise it gets the most likely token not taking into account final-probs.
-  // fst_out will be empty (Start() == kNoStateId) if nothing was available.
+  // fst_out will be empty (Start() == kNoStateId) if nothing was available due to
+  // search error.
   // If Decode() returned true, it is safe to assume GetBestPath will return true.
-  bool GetBestPath(fst::MutableFst<fst::StdArc> *fst_out) {
-    fst_out->DeleteStates();
-    Token *best_tok = NULL;
-    bool is_final = ReachedFinal();
-    if (!is_final) {
-      for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
-          iter != cur_toks_.end();
-          ++iter)
-        if (best_tok == NULL || *best_tok < *(iter->second) )
-          best_tok = iter->second;
-    } else {
-      Weight best_weight = Weight::Zero();
-      for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
-           iter != cur_toks_.end();
-           ++iter) {
-        Weight this_weight = Times(iter->second->weight_, fst_.Final(iter->first));
-        if (this_weight != Weight::Zero() &&
-           this_weight.Value() < best_weight.Value()) {
-          best_weight = this_weight;
-          best_tok = iter->second;
-        }
-      }
-    }
-    if (best_tok == NULL) return false;  // No output.
+  // It returns true if the output lattice was nonempty (i.e. had states in it);
+  // using the return value is deprecated.
+  bool GetBestPath(Lattice *fst_out, bool use_final_probs = true) const;
+  
+  /// *** The next functions are from the "new interface". ***
+  
+  /// FinalRelativeCost() serves the same function as ReachedFinal(), but gives
+  /// more information.  It returns the difference between the best (final-cost plus
+  /// cost) of any token on the final frame, and the best cost of any token
+  /// on the final frame.  If it is infinity it means no final-states were present
+  /// on the final frame.  It will usually be nonnegative.
+  BaseFloat FinalRelativeCost() const;
 
-    std::vector<Arc> arcs_reverse;  // arcs in reverse order.
-    for (Token *tok = best_tok; tok != NULL; tok = tok->prev_)
-      arcs_reverse.push_back(tok->arc_);
-    KALDI_ASSERT(arcs_reverse.back().nextstate == fst_.Start());
-    arcs_reverse.pop_back();  // that was a "fake" token... gives no info.
+  /// InitDecoding initializes the decoding, and should only be used if you
+  /// intend to call AdvanceDecoding().  If you call Decode(), you don't need
+  /// to call this.  You can call InitDecoding if you have already decoded an
+  /// utterance and want to start with a new utterance. 
+  void InitDecoding();  
 
-    StateId cur_state = fst_out->AddState();
-    fst_out->SetStart(cur_state);
-    for (ssize_t i = static_cast<ssize_t>(arcs_reverse.size())-1; i >= 0; i--) {
-      Arc arc = arcs_reverse[i];
-      arc.nextstate = fst_out->AddState();
-      fst_out->AddArc(cur_state, arc);
-      cur_state = arc.nextstate;
-    }
-    if (is_final)
-      fst_out->SetFinal(cur_state, fst_.Final(best_tok->arc_.nextstate));
-    else
-      fst_out->SetFinal(cur_state, Weight::One());
-    RemoveEpsLocal(fst_out);
-    return true;
-  }
+  /// This will decode until there are no more frames ready in the decodable
+  /// object, but if max_num_frames is >= 0 it will decode no more than
+  /// that many frames.  If it returns false, then no tokens are alive,
+  /// which is a kind of error state.
+  void AdvanceDecoding(DecodableInterface *decodable,
+                         int32 max_num_frames = -1);
+  
+  /// Returns the number of frames already decoded.  
+  int32 NumFramesDecoded() const { return num_frames_decoded_; }
 
  private:
 
   class Token {
    public:
-    Arc arc_;
+    LatticeArc arc_; // We use LatticeArc so that we can separately
+                     // store the acoustic and graph cost, in case
+                     // we need to produce lattice-formatted output.
     Token *prev_;
     int32 ref_count_;
-    Weight weight_; // accumulated weight up to this point.
-    Token(const Arc &arc, Token *prev): arc_(arc), prev_(prev), ref_count_(1) {
+    double cost_; // accumulated total cost up to this point.
+    Token(const StdArc &arc,
+          BaseFloat acoustic_cost,
+          Token *prev): prev_(prev), ref_count_(1) {
+      arc_.ilabel = arc.ilabel;
+      arc_.olabel = arc.olabel;
+      arc_.weight = LatticeWeight(arc.weight.Value(), acoustic_cost);
+      arc_.nextstate = arc.nextstate;
       if (prev) {
         prev->ref_count_++;
-        weight_ = Times(prev->weight_, arc.weight);
+        cost_ = prev->cost_ + (arc.weight.Value() + acoustic_cost);
       } else {
-        weight_ = arc.weight;
+        cost_ = arc.weight.Value() + acoustic_cost;
       }
     }
     bool operator < (const Token &other) {
-      return weight_.Value() > other.weight_.Value();
-      // This makes sense for log + tropical semiring.
+      return cost_ > other.cost_;
     }
 
     static void TokenDelete(Token *tok) {
@@ -174,134 +129,23 @@ class SimpleDecoder {
     }
   };
 
-  void ProcessEmitting(DecodableInterface *decodable, int frame) {
-    // Processes emitting arcs for one frame.  Propagates from
-    // prev_toks_ to cur_toks_.
-    BaseFloat cutoff = std::numeric_limits<BaseFloat>::infinity();
-    for (unordered_map<StateId, Token*>::iterator iter = prev_toks_.begin();
-        iter != prev_toks_.end();
-        ++iter) {
-      StateId state = iter->first;
-      Token *tok = iter->second;
-      KALDI_ASSERT(state == tok->arc_.nextstate);
-      for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
-          !aiter.Done();
-          aiter.Next()) {
-        Arc arc = aiter.Value();
-        if (arc.ilabel != 0) {  // propagate..
-          arc.weight = Times(arc.weight,
-                             Weight(-decodable->LogLikelihood(frame, arc.ilabel)));
-          BaseFloat tot_weight = arc.weight.Value() + tok->weight_.Value();
-          if (tot_weight > cutoff) continue;
-          if (tot_weight + beam_  < cutoff)
-            cutoff = tot_weight + beam_;
-          Token *new_tok = new Token(arc, tok);
-          unordered_map<StateId, Token*>::iterator find_iter
-              = cur_toks_.find(arc.nextstate);
-          if (find_iter == cur_toks_.end()) {
-            cur_toks_[arc.nextstate] = new_tok;
-          } else {
-            if ( *(find_iter->second) < *new_tok ) {
-              Token::TokenDelete(find_iter->second);
-              find_iter->second = new_tok;
-            } else {
-              Token::TokenDelete(new_tok);
-            }
-          }
-        }
-      }
-    }
-  }
+  // ProcessEmitting decodes the frame num_frames_decoded_ of the
+  // decodable object, then increments num_frames_decoded_.
+  void ProcessEmitting(DecodableInterface *decodable);
 
-  void ProcessNonemitting() {
-    // Processes nonemitting arcs for one frame.  Propagates within
-    // cur_toks_.
-    std::vector<StateId> queue_;
-    float best_weight = 1.0e+10;
-    for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
-        iter != cur_toks_.end();
-         ++iter) {
-      queue_.push_back(iter->first);
-      best_weight = std::min(best_weight, iter->second->weight_.Value());
-    }
-    BaseFloat cutoff = best_weight + beam_;
-
-    while (!queue_.empty()) {
-      StateId state = queue_.back();
-      queue_.pop_back();
-      Token *tok = cur_toks_[state];
-      KALDI_ASSERT(tok != NULL && state == tok->arc_.nextstate);
-      for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
-          !aiter.Done();
-          aiter.Next()) {
-        const Arc &arc = aiter.Value();
-        if (arc.ilabel == 0) {  // propagate nonemitting only...
-          Token *new_tok = new Token(arc, tok);
-          if (new_tok->weight_.Value() > cutoff) {
-            Token::TokenDelete(new_tok);
-          } else {
-            unordered_map<StateId, Token*>::iterator find_iter
-                = cur_toks_.find(arc.nextstate);
-            if (find_iter == cur_toks_.end()) {
-              cur_toks_[arc.nextstate] = new_tok;
-              queue_.push_back(arc.nextstate);
-            } else {
-              if ( *(find_iter->second) < *new_tok ) {
-                Token::TokenDelete(find_iter->second);
-                find_iter->second = new_tok;
-                queue_.push_back(arc.nextstate);
-              } else {
-                Token::TokenDelete(new_tok);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
+  void ProcessNonemitting();
+  
   unordered_map<StateId, Token*> cur_toks_;
   unordered_map<StateId, Token*> prev_toks_;
   const fst::Fst<fst::StdArc> &fst_;
   BaseFloat beam_;
+  // Keep track of the number of frames decoded in the current file.
+  int32 num_frames_decoded_;
+  
+  static void ClearToks(unordered_map<StateId, Token*> &toks);
 
-  static void ClearToks(unordered_map<StateId, Token*> &toks) {
-    for (unordered_map<StateId, Token*>::iterator iter = toks.begin();
-        iter != toks.end(); ++iter) {
-      Token::TokenDelete(iter->second);
-    }
-    toks.clear();
-  }
-
-
-  static void PruneToks(BaseFloat beam, unordered_map<StateId, Token*> *toks) {
-    if (toks->empty()) {
-      KALDI_VLOG(2) <<  "No tokens to prune.\n";
-      return;
-    }
-    BaseFloat best_weight = 1.0e+10;  // positive == high cost == bad.
-    for (unordered_map<StateId, Token*>::iterator iter = toks->begin();
-        iter != toks->end(); ++iter) {
-      best_weight =
-          std::min(best_weight,
-                   static_cast<BaseFloat>(iter->second->weight_.Value()));
-    }
-    std::vector<StateId> retained;
-    BaseFloat cutoff = best_weight + beam;
-    for (unordered_map<StateId, Token*>::iterator iter = toks->begin();
-        iter != toks->end(); ++iter) {
-      if (iter->second->weight_.Value() < cutoff)
-        retained.push_back(iter->first);
-      else
-        Token::TokenDelete(iter->second);
-    }
-    unordered_map<StateId, Token*> tmp;
-    for (size_t i = 0; i < retained.size(); i++) {
-      tmp[retained[i]] = (*toks)[retained[i]];
-    }
-    KALDI_VLOG(2) <<  "Pruned to " << (retained.size()) << " toks.\n";
-    tmp.swap(*toks);
-  }
+  static void PruneToks(BaseFloat beam, unordered_map<StateId, Token*> *toks);
+  
   KALDI_DISALLOW_COPY_AND_ASSIGN(SimpleDecoder);
 };
 

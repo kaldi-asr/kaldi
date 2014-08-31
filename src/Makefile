@@ -9,13 +9,13 @@ SUBDIRS = base matrix util feat tree thread gmm transform sgmm \
           fstext hmm lm decoder lat cudamatrix nnet \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet2 nnet2bin kwsbin \
-          ivector ivectorbin
+          ivector ivectorbin online2 online2bin
 
 MEMTESTDIRS = base matrix util feat tree thread gmm transform sgmm \
           fstext hmm lm decoder lat nnet \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
           nnetbin latbin sgmm2 nnet2 nnet2bin sgmm2bin kwsbin \
-          ivector ivectorbin
+          ivector ivectorbin online2 online2bin
 
 CUDAMEMTESTDIR = cudamatrix
 
@@ -172,6 +172,8 @@ nnet2: base util matrix thread lat
 ivector: base util matrix thread transform tree gmm 
 #3)Dependencies for optional parts of Kaldi
 onlinebin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online
+online2bin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online2
 # python-kaldi-decoding: base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
 online: decoder
+online2: decoder
 kwsbin: fstext lat base util

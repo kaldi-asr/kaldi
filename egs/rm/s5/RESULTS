@@ -102,14 +102,21 @@ exit 0
 %WER 1.68 [ 211 / 12533, 20 ins, 53 del, 138 sub ] exp/nnet4b/decode/wer_5
 %WER 8.96 [ 1123 / 12533, 97 ins, 166 del, 860 sub ] exp/nnet4b/decode_ug/wer_8
 
-%WER 1.72 [ 216 / 12533, 25 ins, 38 del, 153 sub ] exp/nnet4b_gpu/decode/wer_4
-%WER 8.34 [ 1045 / 12533, 94 ins, 146 del, 805 sub ] exp/nnet4b_gpu/decode_ug/wer_10
+
+%WER 1.91 [ 240 / 12533, 20 ins, 59 del, 161 sub ] exp/nnet4b_gpu/decode/wer_7
+%WER 8.41 [ 1054 / 12533, 80 ins, 166 del, 808 sub ] exp/nnet4b_gpu/decode_ug/wer_10
+ # when I ran this before I got this:
+ # prob. just random.
+ # %WER 1.72 [ 216 / 12533, 25 ins, 38 del, 153 sub ] exp/nnet4b_gpu/decode/wer_4
+ # %WER 8.34 [ 1045 / 12533, 94 ins, 146 del, 805 sub ] exp/nnet4b_gpu/decode_ug/wer_10
+
+# this another unadapted setup:
+%WER 1.93 [ 242 / 12533, 40 ins, 44 del, 158 sub ] exp/nnet4b2_gpu/decode/wer_3
+%WER 9.08 [ 1138 / 12533, 89 ins, 182 del, 867 sub ] exp/nnet4b2_gpu/decode_ug/wer_9
+
 
 %WER 1.80 [ 226 / 12533, 29 ins, 44 del, 153 sub ] exp/nnet4c/decode/wer_4
 %WER 8.49 [ 1064 / 12533, 80 ins, 175 del, 809 sub ] exp/nnet4c/decode_ug/wer_11
-
-%WER 1.80 [ 226 / 12533, 23 ins, 52 del, 151 sub ] exp/nnet4c_gpu/decode/wer_5
-%WER 8.64 [ 1083 / 12533, 93 ins, 169 del, 821 sub ] exp/nnet4c_gpu/decode_ug/wer_10
 
 %WER 1.68 [ 211 / 12533, 29 ins, 39 del, 143 sub ] exp/nnet4d/decode/wer_4
 %WER 8.40 [ 1053 / 12533, 101 ins, 153 del, 799 sub ] exp/nnet4d/decode_ug/wer_10
@@ -177,4 +184,20 @@ exit 0
 %WER 1.56 [ 196 / 12533, 27 ins, 32 del, 137 sub ] exp/combine_sgmm2_4a_3b/decode/wer_2
 %WER 1.53 [ 192 / 12533, 23 ins, 30 del, 139 sub ] exp/combine_sgmm2_4a_3b_fmmic5/decode/wer_4
 %WER 1.47 [ 184 / 12533, 23 ins, 27 del, 134 sub ] exp/combine_sgmm2_4a_mmi_3b_fmmic5/decode/wer_4
+
+
+# Some things relating to nnet2 online decoding.
+
+for x in exp/nnet2_online/nnet*/decode*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 2.75 [ 345 / 12533, 43 ins, 81 del, 221 sub ] exp/nnet2_online/nnet/decode/wer_7
+%WER 10.94 [ 1371 / 12533, 133 ins, 220 del, 1018 sub ] exp/nnet2_online/nnet/decode_ug/wer_11
+ # script is not checked in for this, it's pnorm with 800/160 instead of 1000/200.
+ %WER 2.58 [ 323 / 12533, 38 ins, 81 del, 204 sub ] exp/nnet2_online/nnet2b/decode/wer_6
+ %WER 10.72 [ 1344 / 12533, 124 ins, 234 del, 986 sub ] exp/nnet2_online/nnet2b/decode_ug/wer_10
+# This is the baseline for the nnet+ivector decoding, with no iVector.  This is 
+# better than with the iVector, i.e. the iVector is not working.  I assume this
+# is due to overtraining.  I plan to try this on a larger setup.
+%WER 2.30 [ 288 / 12533, 44 ins, 51 del, 193 sub ] exp/nnet2_online/nnet_baseline/decode/wer_4
+%WER 10.70 [ 1341 / 12533, 122 ins, 221 del, 998 sub ] exp/nnet2_online/nnet_baseline/decode_ug/wer_10
+
 

@@ -795,7 +795,7 @@ class PiecewiseLinearComponent: public UpdatableComponent {
 // This is an idea Dan is trying out, a little bit like
 // preconditioning the update with the Fisher matrix, but the
 // Fisher matrix has a special structure.
-// [note: it is currently used in the standard receipe].
+// [note: it is currently used in the standard recipe].
 class AffineComponentPreconditioned: public AffineComponent {
  public:
   virtual std::string Type() const { return "AffineComponentPreconditioned"; }

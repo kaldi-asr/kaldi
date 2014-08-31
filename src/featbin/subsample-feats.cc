@@ -1,6 +1,6 @@
 // featbin/subsample-feats.cc
 
-// Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2012-2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -33,18 +33,26 @@ int main(int argc, char *argv[]) {
     using namespace std;
     
     const char *usage =
-        "Sub-samples features by taking every n'th frame"
+        "Sub-samples features by taking every n'th frame."
+        "With negative values of n, will repeat each frame n times\n"
+        "(e.g. --n=-2 will repeat each frame twice)\n"
         "\n"
-        "Usage: subsample-feats [options] in-rspecifier out-wspecifier\n"
+        "Usage: subsample-feats [options] <in-rspecifier> <out-wspecifier>\n"
         "  e.g. subsample-feats --n=2 ark:- ark:-\n";
     
     ParseOptions po(usage);
-
+    
     int32 n = 1, offset = 0;
 
-    po.Register("n", &n, "Take every n'th feature, for this value of n");
+    po.Register("n", &n, "Take every n'th feature, for this value of n"
+                "(with negative value, repeats each feature n times)");
     po.Register("offset", &offset, "Start with the feature with this offset, "
                 "then take every n'th feature.");
+
+    KALDI_ASSERT(n != 0);
+    if (n < 0)
+      KALDI_ASSERT(offset == 0 &&
+                   "--offset option cannot be used with negative n.");
     
     po.Read(argc, argv);
     
@@ -67,34 +75,47 @@ int main(int argc, char *argv[]) {
       std::string utt = feat_reader.Key();
       const Matrix<BaseFloat> feats(feat_reader.Value());
 
-      // This code could, of course, be much more efficient; I'm just
-      // keeping it simple.
-      int32 num_indexes = 0;
-      for (int32 k = offset; k < feats.NumRows(); k += n)
-        num_indexes++; // k is the index.
 
-      frames_in += feats.NumRows();
-      frames_out += num_indexes;
+      if (n > 0) {
+        // This code could, of course, be much more efficient; I'm just
+        // keeping it simple.
+        int32 num_indexes = 0;
+        for (int32 k = offset; k < feats.NumRows(); k += n)
+          num_indexes++; // k is the index.
+
+        frames_in += feats.NumRows();
+        frames_out += num_indexes;
       
-      if (num_indexes == 0) {
-        KALDI_WARN << "For utterance " << utt << ", output would have no rows, "
-                   << "producing no output.";
-        num_err++;
-        continue;
+        if (num_indexes == 0) {
+          KALDI_WARN << "For utterance " << utt << ", output would have no rows, "
+                     << "producing no output.";
+          num_err++;
+          continue;
+        }
+        Matrix<BaseFloat> output(num_indexes, feats.NumCols());
+        int32 i = 0;
+        for (int32 k = offset; k < feats.NumRows(); k += n, i++) {
+          SubVector<BaseFloat> src(feats, k), dest(output, i);
+          dest.CopyFromVec(src);
+        }
+        KALDI_ASSERT(i == num_indexes);
+        feat_writer.Write(utt, output);
+        num_done++;
+      } else {
+        int32 repeat = -n;
+        Matrix<BaseFloat> output(feats.NumRows() * repeat, feats.NumCols());
+        for (int32 i = 0; i < output.NumRows(); i++)
+          output.Row(i).CopyFromVec(feats.Row(i / repeat));
+        frames_in += feats.NumRows();
+        frames_out += feats.NumRows() * repeat;
+        feat_writer.Write(utt, output);        
+        num_done++;
       }
-      Matrix<BaseFloat> output(num_indexes, feats.NumCols());
-      int32 i = 0;
-      for (int32 k = offset; k < feats.NumRows(); k += n, i++) {
-        SubVector<BaseFloat> src(feats, k), dest(output, i);
-        dest.CopyFromVec(src);
-      }
-      KALDI_ASSERT(i == num_indexes);
-      feat_writer.Write(utt, output);
-      num_done++;
     }
-    KALDI_LOG << "Sub-sampled " << num_done << " feature matrices; " << num_err
+    KALDI_LOG << "Processed " << num_done << " feature matrices; " << num_err
               << " with errors.";
-    KALDI_LOG << "Reduced " << frames_in << " frames to " << frames_out;
+    KALDI_LOG << "Processed " << frames_in << " input frames and "
+              << frames_out << " output frames.";
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

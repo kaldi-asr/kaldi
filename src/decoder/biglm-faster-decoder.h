@@ -99,7 +99,7 @@ class BiglmFasterDecoder {
   }
 
   bool ReachedFinal() {
-    for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
+    for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
       PairId state_pair = e->key;
       StateId state = PairToState(state_pair),
           lm_state = PairToLmState(state_pair);
@@ -112,9 +112,11 @@ class BiglmFasterDecoder {
     return false;
   }
 
-  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out) {
-    // GetBestPath gets the decoding output.  If is_final == true, it limits itself
-    // to final states; otherwise it gets the most likely token not taking into
+  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out,
+                   bool use_final_probs = true) {
+    // GetBestPath gets the decoding output.  If "use_final_probs" is true
+    // AND we reached a final state, it limits itself to final states;
+    // otherwise it gets the most likely token not taking into
     // account final-probs.  fst_out will be empty (Start() == kNoStateId) if
     // nothing was available.  It returns true if it got output (thus, fst_out
     // will be nonempty).
@@ -124,12 +126,12 @@ class BiglmFasterDecoder {
     // to the best final token (i.e. the one with best weight best_weight, below).
     bool is_final = ReachedFinal();
     if (!is_final) {
-      for (Elem *e = toks_.GetList(); e != NULL; e = e->tail)
+      for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail)
         if (best_tok == NULL || *best_tok < *(e->val) )
           best_tok = e->val;
     } else {
       Weight best_weight = Weight::Zero();
-      for (Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
+      for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
         Weight fst_final = fst_.Final(PairToState(e->key)),
             lm_final = lm_diff_fst_->Final(PairToLmState(e->key)),
             final = Times(fst_final, lm_final);
@@ -168,7 +170,7 @@ class BiglmFasterDecoder {
       fst_out->AddArc(cur_state, arc);
       cur_state = arc.nextstate;
     }
-    if (is_final) {
+    if (is_final && use_final_probs) {
       fst_out->SetFinal(cur_state, LatticeWeight(best_final.Value(), 0.0));
     } else {
       fst_out->SetFinal(cur_state, LatticeWeight::One());
@@ -422,7 +424,7 @@ class BiglmFasterDecoder {
   void ProcessNonemitting(BaseFloat cutoff) {
     // Processes nonemitting arcs for one frame. 
     KALDI_ASSERT(queue_.empty());
-    for (Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
+    for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
       queue_.push_back(e->key);
     while (!queue_.empty()) {
       PairId state_pair = queue_.back();

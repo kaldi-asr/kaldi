@@ -1,7 +1,7 @@
 // nnet2/nnet-nnet.h
 
 // Copyright 2011-2012  Karel Vesely
-//                      Johns Hopkins University (author: Daniel Povey)
+//           2012-2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -211,29 +211,6 @@ class Nnet {
 
   std::string Info() const; // some human-readable summary info.
 
-
-  /*
-  std::string LrateInfo() const; // some info on the learning rates,
-  // in human-readable form.
-
-  // the same, broken down by sets.
-  std::string LrateInfo(const std::vector<std::vector<int32> > &final_sets)
-      const;
-
-  // the same, broken down by sets, for shrinkage rates.
-  std::string SrateInfo(const std::vector<std::vector<int32> > &final_sets)
-      const;
-  // Mix up by increasing the dimension of the output of softmax layer (and the
-  // input of the linear layer).  This is exactly analogous to mixing up
-  // Gaussians in a GMM-HMM system, and we use a similar power rule to allocate
-  // new ones [so a "category" gets an allocation of indices/Gaussians allocated
-  // proportional to a power "power" of its total occupancy.
-  void MixUp(int32 target_tot_neurons,
-             BaseFloat power, // e.g. 0.2.
-             BaseFloat perturb_stddev);
-             
-  void Init(const Nnet1InitInfo &init_info);
-*/
   void Destroy();
   
   void Write(std::ostream &os, bool binary) const;
@@ -305,6 +282,14 @@ class Nnet {
  private:
   std::vector<Component*> components_;
 };
+
+
+/// This function generates a random neural net, for testing purposes.
+/// It will contain a random number of SigmoidComponent, AffineComponent
+/// and SpliceComponent, followed by a final AffineComponent and
+/// SoftmaxComponent.  The parameters will all be randomly initialized.
+Nnet *GenRandomNnet(int32 input_dim,
+                    int32 output_dim);
 
 
 

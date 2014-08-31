@@ -274,6 +274,15 @@ template<class I> I  Gcd(I m, I n) {
   }
 }
 
+/// Returns the least common multiple of two integers.  Will
+/// crash unless the inputs are positive.
+template<class I> I  Lcm(I m, I n) {
+  KALDI_ASSERT(m > 0 && n > 0);
+  I gcd = Gcd(m, n);
+  return gcd * (m/gcd) * (n/gcd);
+}
+
+
 template<class I> void Factorize(I m, std::vector<I> *factors) {
   // Splits a number into its prime factors, in sorted order from
   // least to greatest,  with duplication.  A very inefficient

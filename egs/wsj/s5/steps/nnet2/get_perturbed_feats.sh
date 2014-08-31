@@ -34,7 +34,9 @@ inputdata=$4
 data=$5
 
 # Set pairs of (VTLN warp factor, time-warp factor)
-# Aim to put these roughly in a circle centered at 1.0-1.0
+# Aim to put these roughly in a circle centered at 1.0-1.0; the
+# dynamic range of the VTLN warp factor will be 0.9 to 1.1 and
+# of the time-warping factor will be 0.8 to 1.2.
 if [ $num_copies -eq 5 ]; then
   pairs="1.1-1.0 1.05-1.2 1.0-0.8 0.95-1.1 0.9-0.9" 
 elif [ $num_copies -eq 4 ]; then

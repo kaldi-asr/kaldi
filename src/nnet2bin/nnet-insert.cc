@@ -1,6 +1,6 @@
 // nnet2bin/nnet-insert.cc
 
-// Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
+// Copyright 2012-2014  Johns Hopkins University (author:  Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -37,10 +37,10 @@ int main(int argc, char *argv[]) {
         "You can either specify the option --insert-at=n (specifying the index of\n"
         "the component after which you want your neural network inserted), or by\n"
         "default this program will insert it just before the component before the\n"
-        "softmax component.  It will also randomize the parameters of the component before\n"
-        "the softmax (typically AffineComponent), with stddev equal to the\n"
-        "--stddev-factor option (default 0.1), times the inverse square root of the\n"
-        "number of inputs to that component.\n"
+        "softmax component.  CAUTION: It will also randomize the parameters of the\n"
+        "component before the softmax (typically AffineComponent), with stddev equal\n"
+        "to the --stddev-factor option (default 0.1), times the inverse square root\n"
+        "of the number of inputs to that component.\n"
         "Set --randomize-next-component=false to turn this off.\n"
         "\n"
         "Usage:  nnet-insert [options] <nnet-in> <raw-nnet-to-insert-in> <nnet-out>\n"

@@ -117,5 +117,19 @@ void ApplyCmvn(const MatrixBase<double> &stats,
   }
 }
 
+void FakeStatsForSomeDims(const std::vector<int32> &dims,
+                          MatrixBase<double> *stats) {
+  KALDI_ASSERT(stats->NumRows() == 2 && stats->NumCols() > 1);
+  int32 dim = stats->NumCols() - 1;
+  double count = (*stats)(0, dim);
+  for (size_t i = 0; i < dims.size(); i++) {
+    int32 d = dims[i];
+    KALDI_ASSERT(d >= 0 && d < dim);
+    (*stats)(0, d) = 0.0;
+    (*stats)(1, d) = count;
+  }
+}
+
+
 
 }  // namespace kaldi

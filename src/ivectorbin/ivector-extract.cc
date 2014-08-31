@@ -48,7 +48,7 @@ class IvectorExtractTask {
                                              need_2nd_order_stats);
       
     utt_stats.AccStats(feats_, posterior_);
-
+    
     ivector_.Resize(extractor_.IvectorDim());
     ivector_(0) = extractor_.PriorOffset();
 
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
         "Usage:  ivector-extract [options] <model-in> <feature-rspecifier>"
         "<posteriors-rspecifier> <ivector-wspecifier>\n"
         "e.g.: \n"
-        " fgmm-global-gselect-to-post 1.fgmm '$feats' 'ark:gunzip -c gselect.1.gz|' ark:- | \\\n"
+        " fgmm-global-gselect-to-post 1.ubm '$feats' 'ark:gunzip -c gselect.1.gz|' ark:- | \\\n"
         "  ivector-extract final.ie '$feats' ark,s,cs:- ark,t:ivectors.1.ark\n";
 
     ParseOptions po(usage);
@@ -158,8 +158,8 @@ int main(int argc, char *argv[]) {
         const Posterior &posterior = posteriors_reader.Value(key);
 
         if (static_cast<int32>(posterior.size()) != mat.NumRows()) {
-          KALDI_WARN << "Size mismatch between posterior " << (posterior.size())
-                     << " and features " << (mat.NumRows()) << " for utterance "
+          KALDI_WARN << "Size mismatch between posterior " << posterior.size()
+                     << " and features " << mat.NumRows() << " for utterance "
                      << key;
           num_err++;
           continue;

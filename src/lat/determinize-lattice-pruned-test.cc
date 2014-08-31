@@ -71,7 +71,7 @@ template<class Arc> void TestDeterminizeLatticePruned() {
       lat_opts.max_mem = ((kaldi::Rand() % 2 == 0) ? 100 : 1000);
       lat_opts.max_states = ((kaldi::Rand() % 2 == 0) ? -1 : 20);
       lat_opts.max_arcs = ((kaldi::Rand() % 2 == 0) ? -1 : 30);
-      bool ans = DeterminizeLatticePruned<Weight, Int>(*fst, 10.0, &det_fst, lat_opts);
+      bool ans = DeterminizeLatticePruned<Weight>(*fst, 10.0, &det_fst, lat_opts);
 
       std::cout << "FST after lattice-determinizing is:\n";
       {
@@ -126,7 +126,7 @@ template<class Arc> void TestDeterminizeLatticePruned2() {
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> ofst;
-    DeterminizeLatticePruned<Weight, int32>(*fst, 10.0, &ofst);
+    DeterminizeLatticePruned<Weight>(*fst, 10.0, &ofst);
     std::cout << "FST after lattice-determinizing is:\n";
     {
       FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true);

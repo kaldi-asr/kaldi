@@ -10,7 +10,7 @@
 # the data directory.  We initialize the GMM using gmm-global-init-from-feats,
 # which sets the means to random data points and then does some iterations of
 # E-M in memory.  After the in-memory initialization we train for a few
-# iteration in parallel.
+# iterations in parallel.
 
 
 # Begin configuration section.
@@ -20,7 +20,7 @@ num_iters=4
 stage=-2
 num_gselect=30 # Number of Gaussian-selection indices to use while training
                # the model.
-num_frames=500000 # number of frames to keep in memory
+num_frames=500000 # number of frames to keep in memory for initialization
 num_iters_init=20
 initial_gauss_proportion=0.5 # Start with half the target number of Gaussians
 subsample=5 # subsample all features with this periodicity, in the main E-M phase.

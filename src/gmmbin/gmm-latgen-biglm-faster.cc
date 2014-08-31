@@ -69,7 +69,8 @@ bool DecodeUtterance(LatticeBiglmFasterDecoder &decoder, // not const but is rea
   int32 num_frames;
   { // First do some stuff with word-level traceback...
     VectorFst<LatticeArc> decoded;
-    if (!decoder.GetBestPath(&decoded)) 
+    decoder.GetBestPath(&decoded);
+    if (decoded.NumStates() == 0)
       // Shouldn't really reach this point as already checked success.
       KALDI_ERR << "Failed to get traceback for utterance " << utt;
 
@@ -96,7 +97,8 @@ bool DecodeUtterance(LatticeBiglmFasterDecoder &decoder, // not const but is rea
 
   // Get lattice, and do determinization if requested.
   Lattice lat;
-  if (!decoder.GetRawLattice(&lat))
+  decoder.GetRawLattice(&lat);
+  if (lat.NumStates() == 0)
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
   fst::Connect(&lat);
   if (determinize) {
@@ -114,10 +116,16 @@ bool DecodeUtterance(LatticeBiglmFasterDecoder &decoder, // not const but is rea
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
     compact_lattice_writer->Write(utt, clat);
   } else {
-    // We'll write the lattice without acoustic scaling.
-    if (acoustic_scale != 0.0)
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &lat);
-    lattice_writer->Write(utt, lat);
+    Lattice fst;
+    decoder.GetRawLattice(&fst);
+    if (!fst.NumStates() == 0)
+      KALDI_ERR << "Unexpected problem getting lattice for utterance "
+                << utt;
+    fst::Connect(&fst); // Will get rid of this later... shouldn't have any
+    // disconnected states there, but we seem to.
+    if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst); 
+    lattice_writer->Write(utt, fst);
   }
   KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
             << (likelihood / num_frames) << " over "
