@@ -190,7 +190,7 @@ struct PitchExtractionOptions {
     po->Register("snip-edges", &snip_edges, "If this is set to false, the "
                  "incomplete frames near the ending edge won't be snipped, so "
                  "that the number of frames is the file size divided by the "
-                 "frame-shift. This makes different types of features give the"
+                 "frame-shift. This makes different types of features give the "
                  "same number of frames.");
 
   }

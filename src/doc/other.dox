@@ -36,9 +36,14 @@
  The <a href=https://sourceforge.net/projects/kaldi/forums> Kaldi forums on Sourceforge </a> are
  a good place to ask questions.
 
-  For the slides for a short series of Kaldi lectures that were delivered in 2012, 
-  see <a href=https://sites.google.com/site/dpovey/kaldi-lectures> here </a>.
+ The site <a href=kaldi-asr.org> kaldi-asr.org </a> was created in August 2014 to host the Kaldi model-build
+ directories that were built with the example scripts.  This will be useful as a reference for
+ debugging and for those who want access to the built models.  With time it will contain an increasingly
+ large fraction of the outputs of the example scripts in the repository.
 
+  For the slides for a short series of Kaldi lectures that were delivered in 2012, 
+  see <a href=https://sites.google.com/site/dpovey/kaldi-lectures> here </a>.  Note: 
+  these are increasingly out of date.
 
    <p>
    The slides for the presentation that was made at the ICASSP meeting in Prague in 2011 are here:

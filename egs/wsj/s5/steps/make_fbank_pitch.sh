@@ -25,9 +25,9 @@ if [ $# != 3 ]; then
    echo "usage: make_fbank_pitch.sh [options] <data-dir> <log-dir> <path-to-fbank-pitch-dir>";
    echo "options: "
    echo "  --fbank-config             <config-file>             # config passed to compute-fbank-feats "
-   echo "  --pitch_config             <pitch-config-file>       # config passed to compute-kaldi-pitch-feats "
-   echo "  --pitch_postprocess_config <postprocess-config-file> # config passed to process-kaldi-pitch-feats "
-   echo "  --paste_length_tolerance   <tolerance>               # length tolerance passed to paste-feats"
+   echo "  --pitch-config             <pitch-config-file>       # config passed to compute-kaldi-pitch-feats "
+   echo "  --pitch-postprocess-config <postprocess-config-file> # config passed to process-kaldi-pitch-feats "
+   echo "  --paste-length-tolerance   <tolerance>               # length tolerance passed to paste-feats"
    echo "  --nj                       <nj>                      # number of parallel jobs"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>)     # how to run jobs."
    exit 1;

@@ -2,16 +2,16 @@
 
 # Copyright 2013 The Shenzhen Key Laboratory of Intelligent Media and Speech,
 #                PKU-HKUST Shenzhen Hong Kong Institution (Author: Wei Shi)
+#           2014  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
-# Combine MFCC and pitch features together 
-# Note: This file is based on make_mfcc.sh and make_pitch_kaldi.sh
+# Combine MFCC and online-pitch features together 
+# Note: This file is based on make_mfcc_pitch.sh
 
 # Begin configuration section.
 nj=4
 cmd=run.pl
 mfcc_config=conf/mfcc.conf
-pitch_config=conf/pitch.conf
-pitch_postprocess_config=
+online_pitch_config=conf/online_pitch.conf
 paste_length_tolerance=2
 compress=true
 # End configuration section.
@@ -24,9 +24,10 @@ if [ -f path.sh ]; then . ./path.sh; fi
 if [ $# != 3 ]; then
    echo "usage: make_mfcc_pitch.sh [options] <data-dir> <log-dir> <path-to-mfcc-pitch-dir>";
    echo "options: "
-   echo "  --mfcc-config              <mfcc-config-file>        # config passed to compute-mfcc-feats "
-   echo "  --pitch-config             <pitch-config-file>       # config passed to compute-kaldi-pitch-feats "
-   echo "  --pitch-postprocess-config <postprocess-config-file>	# config passed to process-kaldi-pitch-feats "
+   echo "  --mfcc-config              <mfcc-config-file>        # config passed to compute-mfcc-feats, default "
+   echo "                                                       # is conf/mfcc.conf"
+   echo "  --online-pitch-config <online-pitch-config-file>     # config passed to compute-and-process-kaldi-pitch-feats, "
+   echo "                                                       # default is conf/online_pitch.conf"
    echo "  --paste-length-tolerance   <tolerance>               # length tolerance passed to paste-feats"
    echo "  --nj                       <nj>                      # number of parallel jobs"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>)     # how to run jobs."
@@ -55,7 +56,7 @@ fi
 
 scp=$data/wav.scp
 
-required="$scp $mfcc_config $pitch_config"
+required="$scp $mfcc_config $online_pitch_config"
 
 for f in $required; do
   if [ ! -f $f ]; then
@@ -64,12 +65,6 @@ for f in $required; do
   fi
 done
 utils/validate_data_dir.sh --no-text --no-feats $data || exit 1;
-
-if [ ! -z "$pitch_postprocess_config" ]; then
-	postprocess_config_opt="--config=$pitch_postprocess_config";
-else
-	postprocess_config_opt=
-fi
 
 if [ -f $data/spk2warp ]; then
   echo "$0 [info]: using VTLN warp factors from $data/spk2warp"
@@ -82,7 +77,7 @@ fi
 for n in $(seq $nj); do
   # the next command does nothing unless $mfcc_pitch_dir/storage/ exists, see
   # utils/create_data_link.pl for more info.
-  utils/create_data_link.pl $mfcc_pitch_dir/raw_mfcc_pitch_$name.$n.ark  
+  utils/create_data_link.pl $mfcc_pitch_dir/raw_mfcc_online_pitch_$name.$n.ark  
 done
 
 if [ -f $data/segments ]; then
@@ -96,12 +91,12 @@ if [ -f $data/segments ]; then
   rm $logdir/.error 2>/dev/null
    
   mfcc_feats="ark:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | compute-mfcc-feats $vtln_opts --verbose=2 --config=$mfcc_config ark:- ark:- |"
-  pitch_feats="ark,s,cs:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config ark:- ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
+  pitch_feats="ark,s,cs:extract-segments scp,p:$scp $logdir/segments.JOB ark:- | compute-and-process-kaldi-pitch-feats --verbose=2 --config=$online_pitch_config ark:- ark:- |"
 
   $cmd JOB=1:$nj $logdir/make_mfcc_pitch_${name}.JOB.log \
     paste-feats --length-tolerance=$paste_length_tolerance "$mfcc_feats" "$pitch_feats" ark:- \| \
     copy-feats --compress=$compress ark:- \
-      ark,scp:$mfcc_pitch_dir/raw_mfcc_pitch_$name.JOB.ark,$mfcc_pitch_dir/raw_mfcc_pitch_$name.JOB.scp \
+      ark,scp:$mfcc_pitch_dir/raw_mfcc_online_pitch_$name.JOB.ark,$mfcc_pitch_dir/raw_mfcc_online_pitch_$name.JOB.scp \
      || exit 1;
 
 else
@@ -114,14 +109,13 @@ else
   utils/split_scp.pl $scp $split_scps || exit 1;
   
   mfcc_feats="ark:compute-mfcc-feats $vtln_opts --verbose=2 --config=$mfcc_config scp,p:$logdir/wav_${name}.JOB.scp ark:- |"
-  pitch_feats="ark,s,cs:compute-kaldi-pitch-feats --verbose=2 --config=$pitch_config scp,p:$logdir/wav_${name}.JOB.scp ark:- | process-kaldi-pitch-feats $postprocess_config_opt ark:- ark:- |"
+  pitch_feats="ark,s,cs:compute-and-process-kaldi-pitch-feats --verbose=2 --config=$online_pitch_config scp,p:$logdir/wav_${name}.JOB.scp ark:- |"
  
   $cmd JOB=1:$nj $logdir/make_mfcc_pitch_${name}.JOB.log \
     paste-feats --length-tolerance=$paste_length_tolerance "$mfcc_feats" "$pitch_feats" ark:- \| \
     copy-feats --compress=$compress ark:- \
-      ark,scp:$mfcc_pitch_dir/raw_mfcc_pitch_$name.JOB.ark,$mfcc_pitch_dir/raw_mfcc_pitch_$name.JOB.scp \
+      ark,scp:$mfcc_pitch_dir/raw_mfcc_online_pitch_$name.JOB.ark,$mfcc_pitch_dir/raw_mfcc_online_pitch_$name.JOB.scp \
       || exit 1;
-
 fi
 
 
@@ -133,7 +127,7 @@ fi
 
 # concatenate the .scp files together.
 for n in $(seq $nj); do
-  cat $mfcc_pitch_dir/raw_mfcc_pitch_$name.$n.scp || exit 1;
+  cat $mfcc_pitch_dir/raw_mfcc_online_pitch_$name.$n.scp || exit 1;
 done > $data/feats.scp
 
 rm $logdir/wav_${name}.*.scp  $logdir/segments.* 2>/dev/null
@@ -150,4 +144,4 @@ if [ $nf -lt $[$nu - ($nu/20)] ]; then
   exit 1;
 fi
 
-echo "Succeeded creating MFCC & Pitch features for $name"
+echo "Succeeded creating MFCC & online-pitch features for $name"
