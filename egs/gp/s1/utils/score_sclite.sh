@@ -22,7 +22,7 @@ if [ $# != 2 ]; then
    exit 1;
 fi
 
-sclite=../../../tools/sctk-2.4.0/bin/sclite
+sclite=../../../tools/sctk/bin/sclite
 
 if [ ! -f $sclite  ]; then
    echo "The sclite program is not there.  Follow the INSTALL instructions in ../../../tools";

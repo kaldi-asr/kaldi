@@ -38,8 +38,15 @@ Mutex::Mutex() {
 Mutex::~Mutex() {
   int ret;
   if ( (ret = pthread_mutex_destroy(&mutex_)) != 0) {
-    KALDI_ERR << "Cannot destroy pthread mutex, error is: "
-              << strerror(ret);
+    if (ret != 16) {
+      KALDI_ERR << "Cannot destroy pthread mutex, error is: "
+               << strerror(ret);
+    } else {
+      KALDI_WARN << "Error destroying pthread mutex; ignoring it as it could be "
+                << "a known issue that affects Haswell processors, see "
+                << "http://lists.opensuse.org/opensuse-bugs/2014-03/msg00137.html "
+                << "If your processor is not Haswell, this is a bug.";
+    }
   }
 }
 

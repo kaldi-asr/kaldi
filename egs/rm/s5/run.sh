@@ -228,3 +228,6 @@ local/run_sgmm2.sh
 #
 # local/run_nnet2.sh
 
+# Karel's neural net recipe.                                                                                                                                        
+# local/run_dnn.sh                                                                                                                                                  
+

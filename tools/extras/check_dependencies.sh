@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# at some point we could try to add packages for Cywgin or macports(?) to this
+# script.
 redhat_packages=
 debian_packages=
 
@@ -75,8 +77,16 @@ if which yum >&/dev/null; then
   fi
 fi
 
+if [ ! -z "$debian_packages" ]; then
+  # If the list of packages to be installed is nonempty,
+  # we'll exit with error status.  Check this outside of
+  # hecking for yum or apt-get, as we want it to exit with
+  # error even if we're not on Debian or red hat.
+  status=1
+fi
 
-if ! $printed; then
+
+if ! $printed && [ $status -eq 0 ]; then
   echo "$0: all OK."
 fi
 exit $status

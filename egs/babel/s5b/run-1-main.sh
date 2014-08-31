@@ -3,6 +3,7 @@
 # This is not necessarily the top-level run.sh as it is in other directories.   see README.txt first.
 tri5_only=false
 sgmm5_only=false
+data_only=false
 
 [ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
 [ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1
@@ -165,6 +166,10 @@ if [ ! -f data/train_sub3/.done ]; then
   fi
 
   touch data/train_sub3/.done
+fi
+
+if $data_only; then
+  echo "--data-only is true" && exit 0
 fi
 
 if [ ! -f exp/mono/.done ]; then

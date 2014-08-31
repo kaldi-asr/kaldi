@@ -72,13 +72,13 @@ function setup_oov_search {
   #instead of search collection dependent
   if [ ! -f exp/conf_matrix/.done ] ; then
     local/generate_confusion_matrix.sh --cmd "$decode_cmd" --nj $my_nj  \
-      exp/sgmm5/graph exp/sgmm5 exp/sgmm5_ali exp/sgmm5_denlats  exp/conf_matrix
+      exp/sgmm5_denlats/dengraph  exp/sgmm5 exp/sgmm5_ali exp/sgmm5_denlats  exp/conf_matrix
     touch exp/conf_matrix/.done 
   fi
   confusion=exp/conf_matrix/confusions.txt
 
   if [ ! -f exp/g2p/.done ] ; then
-    local/train_g2p.sh  data/local exp/g2p
+    local/train_g2p.sh  data/local exp/g2p || return 1;
     touch exp/g2p/.done
   fi
   local/apply_g2p.sh --nj $my_nj --cmd "$decode_cmd" \

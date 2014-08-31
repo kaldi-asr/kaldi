@@ -35,7 +35,7 @@ if [ -z "$model" ] ; then
 fi
 
 
-ScoringProgram=$KALDI_ROOT/tools/sctk-2.4.0/bin/sclite
+ScoringProgram=$KALDI_ROOT/tools/sctk/bin/sclite
 [ ! -f $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
 
 for f in $data/char.stm $data/stm $data/glm $lang/words.txt $lang/phones/word_boundary.int \

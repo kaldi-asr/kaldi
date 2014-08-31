@@ -133,6 +133,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
     KALDI_LOG << "Succeeded for " << num_ok << " out of " << num_tries
               << " tries.";
     if (num_ok <= num_bad) {
+      delete component_copy;
       KALDI_ERR << "Feature-derivative check failed";
     }
   }
@@ -206,6 +207,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
       delete gradient_ucomponent;
     }
     if (num_ok < num_bad) {
+      delete component_copy;
       KALDI_ERR << "model-derivative check failed";
     }
   }

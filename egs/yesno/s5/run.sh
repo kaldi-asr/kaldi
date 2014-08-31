@@ -4,7 +4,9 @@ train_cmd="utils/run.pl"
 decode_cmd="utils/run.pl"
 
 if [ ! -d waves_yesno ]; then
-  wget http://sourceforge.net/projects/kaldi/files/waves_yesno.tar.gz || exit 1;
+  wget http://www.openslr.org/resources/1/waves_yesno.tar.gz || exit 1;
+  # was:
+  # wget http://sourceforge.net/projects/kaldi/files/waves_yesno.tar.gz || exit 1;
   tar -xvzf waves_yesno.tar.gz || exit 1;
 fi
 

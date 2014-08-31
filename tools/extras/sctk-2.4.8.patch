@@ -1,0 +1,33 @@
+Index: src/acomp/acomp.pl
+45,47c45,51
+< require "getopts.pl";
+< require "flush.pl";
+< &Getopts('l:m:tsi:f');
+---
+> 
+> $| = 1; # This will cause stdout to be flushed whenever we print to it.
+> 
+> use Getopts::Long;
+> 
+> getopts('i:s:t');
+> 
+309,310c313
+< 	    print "." if ($db);
+< 	    &flush(STDOUT);
+---
+> 	    print "." if ($db);  
+Index: src/def_art/def_art.pl
+40,42c40,43
+< require "getopts.pl";
+< require "flush.pl";
+< &Getopts('i:s:t');
+---
+> use Getopt::Std;
+> 
+> getopts("i:s:t");
+> 
+Index: src/acomp/acomp.pl
+48c48
+< use Getopts::Long;
+---
+> use Getopt::Std;

@@ -76,7 +76,7 @@ if [ $stage -le 4 ]; then
   # (5) of jobs dumping the egs to disk; this is OK since we're splitting our
   # data across four filesystems for speed.
 
-  steps/nnet2/train_pnorm_fast.sh --stage $train_stage --cleanup false \
+  steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
     --num-epochs 3 --num-epochs-extra 1 \
     --splice-width 7 --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors_train \
