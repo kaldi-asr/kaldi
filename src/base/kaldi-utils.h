@@ -121,6 +121,12 @@ template<> class KaldiCompileTimeAssert<true> {
   KaldiCompileTimeAssert<std::numeric_limits<F>::is_specialized \
                 && !std::numeric_limits<F>::is_integer>::Check()
 
+#ifdef _MSC_VER
+#define unlink _unlink
+#else
+#include <unistd.h>
+#endif
+
 
 #ifdef _MSC_VER
 #define KALDI_STRCASECMP _stricmp
