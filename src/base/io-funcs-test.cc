@@ -118,6 +118,7 @@ void UnitTestIo(bool binary) {
       KALDI_ASSERT(Peek(infile, binary_in) == -1);
       KALDI_ASSERT(PeekToken(infile, binary_in) == -1);
     }
+    unlink(filename);
   }
 }
 

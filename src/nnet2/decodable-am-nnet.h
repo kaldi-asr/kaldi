@@ -41,13 +41,21 @@ class DecodableAmNnet: public DecodableInterface {
                   const CuMatrixBase<BaseFloat> &feats,
                   const CuVectorBase<BaseFloat> &spk_info,
                   bool pad_input = true, // if !pad_input, the NumIndices()
-                  // will be < feats.NumRows().
+                                         // will be < feats.NumRows().
                   BaseFloat prob_scale = 1.0):
       trans_model_(trans_model) {
     // Note: we could make this more memory-efficient by doing the
     // computation in smaller chunks than the whole utterance, and not
     // storing the whole thing.  We'll leave this for later.
-    CuMatrix<BaseFloat> log_probs(feats.NumRows(), trans_model.NumPdfs());
+    int32 num_rows = feats.NumRows() -
+        (pad_input ? 0 : am_nnet.GetNnet().LeftContext() +
+                         am_nnet.GetNnet().RightContext());
+    if (num_rows <= 0) {
+      KALDI_WARN << "Input with " << feats.NumRows()  << " rows will produce "
+                 << "empty output.";
+      return;
+    }
+    CuMatrix<BaseFloat> log_probs(num_rows, trans_model.NumPdfs());
     // the following function is declared in nnet-compute.h
     NnetComputation(am_nnet.GetNnet(), feats, spk_info, pad_input, &log_probs);
     log_probs.ApplyFloor(1.0e-20); // Avoid log of zero which leads to NaN.

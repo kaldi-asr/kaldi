@@ -55,17 +55,12 @@ OnlineNnet2FeaturePipelineInfo::OnlineNnet2FeaturePipelineInfo(
   
   add_pitch = config.add_pitch;
   
-  if (config.pitch_config != "") {
-    ReadConfigFromFile(config.pitch_config, &pitch_opts);
+  if (config.online_pitch_config != "") {
+    ReadConfigsFromFile(config.online_pitch_config,
+                        &pitch_opts,
+                        &pitch_process_opts);
     if (!add_pitch)
-      KALDI_WARN << "--pitch-config option has no effect "
-                 << "since you did not supply --add-pitch option.";
-  }  // else use the defaults.
-
-  if (config.pitch_process_config != "") {
-    ReadConfigFromFile(config.pitch_process_config, &pitch_process_opts);
-    if (!add_pitch)
-      KALDI_WARN << "--pitch-process-config option has no effect "
+      KALDI_WARN << "--online-pitch-config option has no effect "
                  << "since you did not supply --add-pitch option.";
   }  // else use the defaults.
 

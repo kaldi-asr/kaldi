@@ -10,8 +10,10 @@ add_pitch=false
 mfcc_config=conf/mfcc.conf # you can override any of these you need to override.
 plp_config=conf/plp.conf
 fbank_config=conf/fbank.conf 
-pitch_config=conf/pitch.conf
-pitch_process_config=conf/pitch_process.conf
+# online_pitch_config is the config file for both pitch extraction and
+# post-processing; we combine them into one because during training this
+# is given to the program compute-and-process-kaldi-pitch-feats.
+online_pitch_config=conf/online_pitch.conf
 
 # Below are some options that affect the iVectors, and should probably
 # match those used in extract_ivectors_online.sh.
@@ -132,12 +134,15 @@ fi
 if $add_pitch; then
   echo "$0: enabling pitch features (note: this has not been tested)"
   echo "--add-pitch=true" >>$conf
-  echo "$0: creating $dir/conf/pitch.conf"
-  echo "--pitch-config=$dir/conf/pitch.conf" >>$conf
-  cp $pitch_config $dir/conf/pitch.conf || exit 1;
-  echo "--pitch-process-config=$dir/conf/pitch_process.conf" >>$conf
-  cp $pitch_process_config $dir/conf/pitch_process.conf || exit 1;
+  echo "$0: creating $dir/conf/online_pitch.conf"
+  if [ ! -f $online_pitch_config ]; then
+    echo "$0: expected file '$online_pitch_config' to exist.";
+    exit 1;
+  fi
+  cp $online_pitch_config $dir/conf/online_pitch.conf || exit 1;
+  echo "--online-pitch-config=$dir/conf/online_pitch.conf" >>$conf
 fi
+
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 echo "--endpoint.silence-phones=$silphonelist" >>$conf
 echo "$0: created config file $conf"

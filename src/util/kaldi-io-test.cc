@@ -154,6 +154,7 @@ void UnitTestIoNew(bool binary) {
       AssertEqual(d2_in, d2);
       KALDI_ASSERT(Peek(infile, binary_in) == -1);
     }
+    unlink(filename);
   }
 }
 
@@ -266,6 +267,8 @@ void UnitTestIoPipe(bool binary) {
       KALDI_ASSERT(Peek(infile, binary_in) == -1);
     }
   }
+  unlink("tmpf.txt");
+  unlink("tmpf.gz");
 }
 
 void UnitTestIoStandard() {

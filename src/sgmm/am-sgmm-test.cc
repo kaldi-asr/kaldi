@@ -145,6 +145,9 @@ void TestSgmmIO(const AmSgmm &sgmm) {
   BaseFloat loglike2 = sgmm2->LogLikelihood(per_frame, 0);
   kaldi::AssertEqual(loglike, loglike2, 1e-4);
   delete sgmm2;
+
+  unlink("tmpf");
+  unlink("tmpfb");
 }
 
 void TestSgmmSubstates(const AmSgmm &sgmm) {

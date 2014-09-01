@@ -86,6 +86,7 @@ void UnitTestReadScriptFile() {
     ans = ReadScriptFile("gunzip -c tmpf.gz |", false, &script);
     KALDI_ASSERT(!ans);
   }
+  unlink("tmpf.gz");
 #endif
 }
 
@@ -460,6 +461,8 @@ void UnitTestTableSequentialDoubleBoth(bool binary, bool read_scp) {
     for (size_t i = 0; i < v2.size(); i++)
       KALDI_ASSERT(ApproxEqual(v[i], v2[i]));
   }
+  unlink("tmpf.scp");
+  unlink("tmpf");
 }
 
 
@@ -616,6 +619,11 @@ void UnitTestTableSequentialInt32Script(bool binary) {
     v2.push_back(sbr.Value());
   }
   KALDI_ASSERT(sbr.Close());
+
+  unlink("tmp.scp");
+  for (size_t i = 0; i < script.size(); i++) {
+    unlink(script[i].second.c_str());
+  }
   KALDI_ASSERT(k2 == k);
   KALDI_ASSERT(v2 == v);
 }
@@ -665,6 +673,8 @@ void UnitTestTableSequentialDoubleMatrixBoth(bool binary, bool read_scp) {
     delete v[i];
     delete v2[i];
   }
+  unlink("tmpf");
+  unlink("tmpf.scp");
 }
 
 
@@ -837,7 +847,7 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
   if (once) name += "o,";
   else if (Rand()%2 == 0) name += "no,";
   name += std::string(read_scp ? "scp:tmpf.scp" : "ark:tmpf");
-
+  
   RandomAccessDoubleMatrixReader sbr(name);
 
   if (sz != 0) {
@@ -867,6 +877,8 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
       }
     }
   }
+  unlink("tmpf");
+  unlink("tmpf.scp");
 }
 
 

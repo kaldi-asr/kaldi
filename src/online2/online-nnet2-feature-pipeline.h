@@ -70,8 +70,10 @@ struct OnlineNnet2FeaturePipelineConfig {
   // the iVector will be particularly helpful in normalizing the pitch features,
   // and we wanted to avoid complications with things like online CMVN.
   bool add_pitch;
-  std::string pitch_config;
-  std::string pitch_process_config;
+
+  // the following contains the type of options that you could give to
+  // compute-and-process-kaldi-pitch-feats.
+  std::string online_pitch_config;
 
   // The configuration variables in ivector_extraction_config relate to the
   // iVector extractor and options related to it, see type
@@ -93,11 +95,9 @@ struct OnlineNnet2FeaturePipelineConfig {
                  "filterbank features (e.g. conf/fbank.conf)");
     po->Register("add-pitch", &add_pitch, "Append pitch features to raw "
                  "MFCC/PLP/filterbank features [but not for iVector extraction]");
-    po->Register("pitch-config", &pitch_config, "Configuration file for "
-                 "pitch features, if --add-pitch=true (e.g. conf/pitch.conf)");
-    po->Register("pitch-process-config", &pitch_process_config,
-                 "Configuration file for post-processing pitch features, "
-                 "if --add-pitch=true (e.g. conf/pitch_process.conf)");
+    po->Register("online-pitch-config", &online_pitch_config, "Configuration "
+                 "file for online pitch features, if --add-pitch=true (e.g. "
+                 "conf/online_pitch.conf)");
     po->Register("ivector-extraction-config", &ivector_extraction_config,
                  "Configuration file for online iVector extraction, "
                  "see class OnlineIvectorExtractionConfig in the code");
@@ -132,7 +132,7 @@ struct OnlineNnet2FeaturePipelineInfo {
 
   bool add_pitch;
   PitchExtractionOptions pitch_opts;  // Options for pitch extraction, if done.
-  ProcessPitchOptions pitch_process_opts;  // Options for pitch processing
+  ProcessPitchOptions pitch_process_opts;  // Options for pitch post-processing
 
 
   // If the user specified --ivector-extraction-config, we assume we're using
