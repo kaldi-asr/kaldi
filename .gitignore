@@ -836,4 +836,16 @@
 /src/thread/kaldi-thread-test
 /src/transform/fmllr-raw-test
 /src/util/simple-options-test
-
+/src/feat/resample-test
+/src/feat/online-feature-test
+/src/probe/exp-test
+/src/fstext/prune-special-test
+/src/fstext/epsilon-property-test
+/src/hmm/posterior-test
+/src/hmm/transition-model-test
+/src/nnet2/online-nnet2-decodable-test
+/src/nnet2/nnet-nnet-test
+/src/nnet2/am-nnet-test
+/src/online2bin/.depend.mk
+/src/online2/.depend.mk
+/src/ivector/.depend.mk
