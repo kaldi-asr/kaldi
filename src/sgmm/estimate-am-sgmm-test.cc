@@ -110,6 +110,9 @@ void TestUpdateAndAccsIO(const AmSgmm &sgmm,
   delete accs2;
   delete sgmm2;
   delete sgmm3;
+
+  unlink("tmpf");
+  unlink("tmpfb");
 }
 
 void UnitTestEstimateSgmm() {

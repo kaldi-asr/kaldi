@@ -252,6 +252,8 @@ test_io(const FullGmm &gmm, const AccumFullGmm &est_gmm, bool binary,
   }
 
   AssertEqual(loglike1, loglike2, 0.01);
+  
+  unlink("tmp_stats");
 }
 
 void

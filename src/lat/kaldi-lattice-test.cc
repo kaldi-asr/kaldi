@@ -168,4 +168,6 @@ int main() {
     TestLatticeTableCross(binary);
   }
   std::cout << "Test OK\n";
+  
+  unlink("tmpf");
 }

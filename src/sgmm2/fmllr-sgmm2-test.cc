@@ -141,6 +141,9 @@ void TestSgmm2FmllrAccsIO(const AmSgmm2 &sgmm,
   std::cout << "LL1 = " << loglike1 << ", LL3 = " << loglike3 << std::endl;
   kaldi::AssertEqual(loglike1, loglike3, 1e-4);
   delete accs2;
+  
+  unlink("tmpf");
+  unlink("tmpfb");
   KALDI_LOG << "Test IO end.";
 }
 

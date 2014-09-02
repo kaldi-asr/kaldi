@@ -161,6 +161,8 @@ void TestFmpe() {
             << delta << ", change computed directly is "
             << delta2;
   KALDI_ASSERT(fabs(delta-delta2) < 0.15 * fabs(delta+delta2));
+  
+  unlink("tmpf");
 }
 
 }

@@ -2520,6 +2520,7 @@ template<typename Real> static void UnitTestHtkIo() {
     KALDI_ASSERT(hdr.mSampleKind == hdr2.mSampleKind);
   }
 
+  unlink("tmpf");
 }
 
 
@@ -4095,6 +4096,8 @@ template<typename Real> static void UnitTestCompressedMatrix() {
   }
   if (num_failure > 1)
     KALDI_ERR << "Too many failures in compressed matrix test.";
+
+  unlink("tmpf");
 }
   
 

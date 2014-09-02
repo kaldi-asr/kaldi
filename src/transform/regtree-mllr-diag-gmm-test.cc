@@ -95,6 +95,9 @@ void TestMllrAccsIO(const kaldi::AmDiagGmm &am_gmm,
   BaseFloat loglike3 = am3.LogLikelihood(0, data);
 //  KALDI_LOG << "LL1 = " << loglike1 << "; LL3 = " << loglike3;
   kaldi::AssertEqual(loglike1, loglike3, 1e-6);
+  
+  unlink("tmpf");
+  unlink("tmpfb");
 }
 
 void TestXformMean(const kaldi::AmDiagGmm &am_gmm,

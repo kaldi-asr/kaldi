@@ -42,6 +42,8 @@ test_io(const RegressionTree &regtree,
   regtree.Write(s1, false);
   regtree2.Write(s2, false);
   KALDI_ASSERT(s1.str() == s2.str());
+  
+  unlink("tmp_regtree");
 }
 
 // void

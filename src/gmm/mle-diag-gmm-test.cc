@@ -194,6 +194,8 @@ test_io(const DiagGmm &gmm, const AccumDiagGmm &est_gmm, bool binary,
   }
 
   AssertEqual(loglike1, loglike2, 1.0e-6);
+  
+  unlink("tmp_stats");
 }
 
 void
@@ -398,6 +400,8 @@ UnitTestEstimateDiagGmm() {
 
   
   delete gmm;
+  
+  unlink("tmp_stats");
 }
 
 int main() {

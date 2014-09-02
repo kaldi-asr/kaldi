@@ -147,6 +147,8 @@ static void UnitTestHTKCompare1() {
   }
 
   std::cout << "Test passed :)\n\n";
+  
+  unlink("tmp.test.wav.plp_kaldi.1");
 }
 
 
