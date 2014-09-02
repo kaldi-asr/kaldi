@@ -87,13 +87,13 @@ while(<NS>) {
     print "--> ERROR: last line '$_' of $dict/nonsilence_phones.txt does not end in newline.\n";
     set_to_fail();
   }
-  my @col = split(" ", $_);
-  if (@col == 0) {
+  my @row = split(" ", $_);
+  if (@row == 0) {
     set_to_fail(); 
     print "--> ERROR: empty line in $dict/nonsilence_phones.txt (line $idx)\n"; 
   }
-  foreach(0 .. @col-1) {
-    my $p = $col[$_];
+  foreach(0 .. @row-1) {
+    my $p = $row[$_];
     if($nonsilence{$p}) {set_to_fail(); print "--> ERROR: phone \"$p\" duplicates in $dict/nonsilence_phones.txt (line $idx)\n"; }
     else {$nonsilence{$p} = 1;}
     if ($p =~ m/_$/ || $p =~ m/#/ || $p =~ m/_[BESI]$/){
@@ -142,20 +142,20 @@ sub check_lexicon {
       print "--> ERROR: last line '$_' of $lexfn does not end in newline.\n";
       set_to_fail();
     }
-    my @col = split(" ", $_);
-    $word = shift @col;
+    my @row = split(" ", $_);
+    $word = shift @row;
     if (!defined $word) {
       set_to_fail(); print "--> ERROR: empty lexicon line in $lexfn\n"; 
     }
     if ($pron_probs) {
-      $prob = shift @col;
+      $prob = shift @row;
       if (!($prob > 0.0 && $prob <= 1.0)) { 
         set_to_fail(); print "--> ERROR: bad pron-prob in lexicon-line '$_', in $lexfn\n";
       }
     }
-    foreach (0 .. @col-1) {
-      if (!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
-        set_to_fail(); print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx)\n"; 
+    foreach (0 .. @row-1) {
+      if (!$silence{@row[$_]} and !$nonsilence{@row[$_]}) {
+        set_to_fail(); print "--> ERROR: phone \"@row[$_]\" is not in {, non}silence.txt (line $idx)\n"; 
       }
     }
     $idx ++;
@@ -223,6 +223,18 @@ if ( (-f "$dict/lexicon.txt") && (-f "$dict/lexiconp.txt")) {
 }
 
 # Checking extra_questions.txt -------------------------------
+%distinguished = (); # Keep track of all phone-pairs including nonsilence that
+                     # are distinguished (split apart) by extra_questions.txt,
+                     # as $distinguished{$p1,$p2} = 1.  This will be used to
+                     # make sure that we don't have pairs of phones on the same
+                     # line in nonsilence_phones.txt that can never be
+                     # distinguished from each other by questions.  (If any two
+                     # phones appear on the same line in nonsilence_phones.txt,
+                     # they share a tree root, and since the automatic
+                     # question-building treats all phones that appear on the
+                     # same line of nonsilence_phones.txt as being in the same
+                     # group, we can never distinguish them without resorting to
+                     # questions in extra_questions.txt.
 print "Checking $dict/extra_questions.txt ...\n";
 if (-s "$dict/extra_questions.txt") {
   if (!open(EX, "<$dict/extra_questions.txt")) {
@@ -236,20 +248,66 @@ if (-s "$dict/extra_questions.txt") {
       print "--> ERROR: last line '$_' of $dict/extra_questions.txt does not end in newline.\n";
       set_to_fail();
     }
-    my @col = split(" ", $_);
-    if (@col == 0) {
+    my @row = split(" ", $_);
+    if (@row == 0) {
       set_to_fail();  print "--> ERROR: empty line in $dict/extra_questions.txt\n";
     }
-  }
-  foreach(0 .. @col-1) {
-    if(!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
-      set_to_fail();  print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx, block ", $_+1, ")\n"; 
+    foreach (0 .. @row-1) {
+      if(!$silence{@row[$_]} and !$nonsilence{@row[$_]}) {
+        set_to_fail();  print "--> ERROR: phone \"@row[$_]\" is not in {, non}silence.txt (line $idx, block ", $_+1, ")\n"; 
+      }
+      $idx ++;
     }
-    $idx ++;
+    %row_hash = ();
+    foreach $p (@row) { $row_hash{$p} = 1; }
+    foreach $p1 (@row) {
+      # Update %distinguished hash.
+      foreach $p2 (keys %nonsilence) {
+        if (!defined $row_hash{$p2}) { # for each p1 in this question and p2 not
+                                       # in this question (and in nonsilence
+                                       # phones)... mark p1,p2 as being split apart
+          $distinguished{$p1,$p2} = 1;
+          $distinguished{$p2,$p1} = 1;
+        }
+      }
+    }
   }
   close(EX);
   $success == 0 || print "--> $dict/extra_questions.txt is OK\n";
 } else { print "--> $dict/extra_questions.txt is empty (this is OK)\n";}
+
+
+# check nonsilence_phones.txt again for phone-pairs that are never
+# distnguishable.  (note: this situation is normal and expected for silence
+# phones, so we don't check it.)
+if(!open(NS, "<$dict/nonsilence_phones.txt")) {
+  print "--> ERROR: fail to open $dict/nonsilence_phones.txt the second time\n"; exit 1;
+}
+
+$num_warn_nosplit = 0;
+$num_warn_nosplit_limit = 10;
+while(<NS>) {
+  my @row = split(" ", $_);
+  foreach $p1 (@row) { 
+    foreach $p2 (@row) {
+      if ($p1 ne $p2 && ! $distinguished{$p1,$p2}) {
+        set_to_fail();
+        if ($num_warn_nosplit <= $num_warn_nosplit_limit) {
+          print "--> ERROR: phones $p1 and $p2 share a tree root but can never be distinguished by extra_questions.txt.\n";
+        }
+        if ($num_warn_nosplit == $num_warn_nosplit_limit) {
+          print "... Not warning any more times about this issue.\n";
+        }
+        if ($num_warn_nosplit == 0) {
+          print "    (note: we started checking for this only recently.  You can still build a system but\n";
+          print "     phones $p1 and $p2 will be acoustically indistinguishable).\n";
+        }
+        $num_warn_nosplit++;
+      }
+    }
+  }
+}
+
 
 if ($exit == 1) { print "--> ERROR validating dictionary directory $dict (see detailed error messages above)\n"; exit 1;}
 else { print "--> SUCCESS [validating dictionary directory $dict]\n"; }

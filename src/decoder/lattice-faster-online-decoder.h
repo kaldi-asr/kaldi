@@ -91,6 +91,9 @@ class LatticeFasterOnlineDecoder {
   }
 
   /// Outputs an FST corresponding to the single best path through the lattice.
+  /// This is quite efficient because it doesn't get the entire raw lattice and find
+  /// the best path through it; insterad, it uses the BestPathEnd and BestPathIterator
+  /// so it basically traces it back through the lattice.
   /// Returns true if result is nonempty (using the return status is deprecated,
   /// it will become void).  If "use_final_probs" is true AND we reached the
   /// final-state of the graph then it will include those as final-probs, else
