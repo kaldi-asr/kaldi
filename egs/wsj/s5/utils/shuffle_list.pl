@@ -26,7 +26,7 @@ if ($ARGV[0] eq "--srand") {
   srand(0); # Gives inconsistent behavior if we don't seed.
 }
 
-if (@ARGV > 1 || $ARGV[0] =~ m/-.+/) { # >1 args, or an option we 
+if (@ARGV > 1 || $ARGV[0] =~ m/^-.+/) { # >1 args, or an option we 
   # don't understand.
   print "Usage: shuffle_list.pl [--srand N] [input file]  > output\n";
   print "randomizes the order of lines of input.\n";
