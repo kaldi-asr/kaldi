@@ -21,7 +21,7 @@
 #include <assert.h>
 
 #define MAX_STRING 100
-#define MAX_SENTENCE_LENGTH 1000
+#define MAX_SENTENCE_LENGTH 10000
 #define MAX_CODE_LENGTH 40
 
 const int vocab_hash_size = 30000000;  // Maximum 30 * 0.7 = 21M words in the vocabulary
@@ -444,7 +444,7 @@ void *TrainModelThread(void *id) {
     sen[0] = 0; // <s> token -- beginning of sentence
     int good = 1;
     sentence_length = 1;
-    while(sentence_length <= MAX_SENTENCE_LENGTH) {
+    while(sentence_length < MAX_SENTENCE_LENGTH) {
       word = ReadWordIndex(fi);
       ++word_count;
       sen[sentence_length] = word;
@@ -483,9 +483,9 @@ void *TrainModelThread(void *id) {
       word = sen[target];
       long long feature_hashes[MAX_NGRAM_ORDER] = {0};
       if(maxent_order) {
-	for(int order = 0; order < maxent_order && target - order >= 1; ++order) {
+	for(int order = 0; order < maxent_order && target - order >= 0; ++order) {
 	  feature_hashes[order] = PRIMES[0]*PRIMES[1];    	    
-	  for (int b = 1; b <= order; ++b) feature_hashes[order] += PRIMES[(order*PRIMES[b]+b) % PRIMES_SIZE]*(unsigned long long)(sen[target-1-b]+1);
+	  for (int b = 1; b <= order; ++b) feature_hashes[order] += PRIMES[(order*PRIMES[b]+b) % PRIMES_SIZE]*(unsigned long long)(sen[target-b]+1);
 	  feature_hashes[order] = feature_hashes[order] % (maxent_hash_size - vocab_size);
 	}
       }
@@ -496,7 +496,7 @@ void *TrainModelThread(void *id) {
 	for(int c = 0; c < layer1_size; ++c) {
 	  f += neu1[layer1_size*(target - 1) + c] * nnet.syn1[l2 + c];
 	}
-	for(int order = 0; order < maxent_order && target - order >= 1; ++order) {
+	for(int order = 0; order < maxent_order && target - order >= 0; ++order) {
 	  f += nnet.synMaxent[feature_hashes[order] + vocab[word].point[d]];
 	}
 #ifdef DEBUG
@@ -518,7 +518,7 @@ void *TrainModelThread(void *id) {
 	for(int c = 0; c < layer1_size; ++c) {
 	  nnet.syn1[l2 + c] += g_alpha * neu1[layer1_size*(target - 1) + c] - beta * nnet.syn1[l2 + c];
         }
-	for(int order = 0; order < maxent_order && target - order >= 1; ++order) {
+	for(int order = 0; order < maxent_order && target - order >= 0; ++order) {
           nnet.synMaxent[feature_hashes[order] + vocab[word].point[d]] += g_maxentalpha - maxent_beta * nnet.synMaxent[feature_hashes[order] + vocab[word].point[d]];
         }
       }
@@ -590,7 +590,7 @@ real EvaluateModel(char* filename, int printLoglikes) {
     sen[0] = 0;
     int good = 1;
     sentence_length = 1;
-    while(sentence_length <= MAX_SENTENCE_LENGTH) {
+    while(sentence_length < MAX_SENTENCE_LENGTH) {
       word = ReadWordIndex(fi);
       sen[sentence_length] = word;
       if (feof(fi) || word == 0) break;
@@ -625,9 +625,9 @@ real EvaluateModel(char* filename, int printLoglikes) {
       word = sen[target];
       long long feature_hashes[MAX_NGRAM_ORDER] = {0};
       if(maxent_order) {
-	for(int order = 0; order < maxent_order && target - order >= 1; ++order) {
+	for(int order = 0; order < maxent_order && target - order >= 0; ++order) {
 	  feature_hashes[order] = PRIMES[0]*PRIMES[1];    	    
-	  for (int b = 1; b <= order; ++b) feature_hashes[order] += PRIMES[(order*PRIMES[b]+b) % PRIMES_SIZE]*(unsigned long long)(sen[target-1-b]+1);
+	  for (int b = 1; b <= order; ++b) feature_hashes[order] += PRIMES[(order*PRIMES[b]+b) % PRIMES_SIZE]*(unsigned long long)(sen[target-b]+1);
 	  feature_hashes[order] = feature_hashes[order] % (maxent_hash_size - vocab_size);
 	}
       }
@@ -639,7 +639,7 @@ real EvaluateModel(char* filename, int printLoglikes) {
 	for(int c = 0; c < layer1_size; ++c) {
 	  f += neu1[layer1_size*(target - 1) + c] * nnet.syn1[l2 + c];
 	}
-	for(int order = 0; order < maxent_order && target - order >= 1; ++order) {
+	for(int order = 0; order < maxent_order && target - order >= 0; ++order) {
 	  f += nnet.synMaxent[feature_hashes[order] + vocab[word].point[d]];
 	}
 	logprob += log10(1+(vocab[word].code[d] == 1 ? exp(f) : exp(-f)));	
@@ -939,7 +939,7 @@ int main(int argc, char **argv) {
     printf("\t\tStop training iff N retries with halving learning rate have failed (default 2)\n");
     printf("\t-debug <int>\n");
     printf("\t\tSet the debug mode (default = 2 = more info during training)\n");
-    printf("\t-direct-size <int>\n");
+    printf("\t-direct <int>\n");
     printf("\t\tSet the size of hash for maxent parameters, in millions (default 0 = maxent off)\n");
     printf("\t-direct-order <int>\n");
     printf("\t\tSet the order of n-gram features to be used in maxent (default 3)\n");
@@ -974,7 +974,7 @@ int main(int argc, char **argv) {
   }
   if ((i = ArgPos((char *)"-threads", argc, argv)) > 0) num_threads = atoi(argv[i + 1]);
   if ((i = ArgPos((char *)"-min-count", argc, argv)) > 0) min_count = atoi(argv[i + 1]);
-  if ((i = ArgPos((char *)"-direct-size", argc, argv)) > 0) maxent_hash_size = atoi(argv[i + 1]);
+  if ((i = ArgPos((char *)"-direct", argc, argv)) > 0) maxent_hash_size = atoi(argv[i + 1]);
   if ((i = ArgPos((char *)"-direct-order", argc, argv)) > 0) maxent_order = atoi(argv[i + 1]);
   if ((i = ArgPos((char *)"-beta1", argc, argv)) > 0) beta = atof(argv[i + 1]);
   if ((i = ArgPos((char *)"-beta2", argc, argv)) > 0) maxent_beta = atof(argv[i + 1]);

@@ -92,17 +92,18 @@ exit 0
 # this section demonstrates RNNLM-HS rescoring (commented out by default)
 # the exact results might differ insignificantly due to hogwild in RNNLM-HS training that introduces indeterminism
 %WER 5.92 [ 334 / 5643, 58 ins, 32 del, 244 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg/wer_14 # baseline (no rescoring)
-%WER 5.42 [ 306 / 5643, 50 ins, 34 del, 222 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs100_0.3/wer_16
-%WER 5.49 [ 310 / 5643, 47 ins, 36 del, 227 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs300_0.3/wer_18
-%WER 5.90 [ 333 / 5643, 54 ins, 37 del, 242 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs30_0.15/wer_15
-%WER 5.49 [ 310 / 5643, 45 ins, 38 del, 227 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.15/wer_18
-%WER 5.49 [ 310 / 5643, 45 ins, 38 del, 227 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.15_N1000/wer_18
-%WER 5.33 [ 301 / 5643, 41 ins, 41 del, 219 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.3/wer_20
-%WER 5.40 [ 305 / 5643, 41 ins, 41 del, 223 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.3_N10/wer_20
-%WER 5.33 [ 301 / 5643, 41 ins, 41 del, 219 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.3_N1000/wer_20
-%WER 5.26 [ 297 / 5643, 44 ins, 36 del, 217 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.4/wer_18
-%WER 5.25 [ 296 / 5643, 44 ins, 36 del, 216 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.4_N1000/wer_18
-%WER 5.26 [ 297 / 5643, 42 ins, 39 del, 216 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.5_N1000/wer_20
+%WER 5.26 [ 297 / 5643, 47 ins, 29 del, 221 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs100_0.3/wer_15
+%WER 5.17 [ 292 / 5643, 46 ins, 30 del, 216 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs300_0.3/wer_16
+%WER 5.64 [ 318 / 5643, 50 ins, 34 del, 234 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs30_0.15/wer_16
+%WER 5.55 [ 313 / 5643, 51 ins, 32 del, 230 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.15/wer_16
+%WER 5.55 [ 313 / 5643, 51 ins, 32 del, 230 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.15_N1000/wer_16
+%WER 5.39 [ 304 / 5643, 50 ins, 30 del, 224 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.3/wer_15
+%WER 5.42 [ 306 / 5643, 50 ins, 30 del, 226 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.3_N10/wer_15
+%WER 5.39 [ 304 / 5643, 50 ins, 30 del, 224 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.3_N1000/wer_15
+%WER 5.37 [ 303 / 5643, 49 ins, 29 del, 225 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.4/wer_14
+%WER 5.37 [ 303 / 5643, 49 ins, 29 del, 225 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.4_N1000/wer_14
+%WER 5.26 [ 297 / 5643, 45 ins, 32 del, 220 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.5_N1000/wer_15
+%WER 5.14 [ 290 / 5643, 43 ins, 32 del, 215 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.75_N1000/wer_18
 
 %WER 14.17 [ 1167 / 8234, 222 ins, 123 del, 822 sub ] exp/tri3b/decode_tgpr_dev93/wer_17
 %WER 19.37 [ 1595 / 8234, 315 ins, 153 del, 1127 sub ] exp/tri3b/decode_tgpr_dev93.si/wer_15
