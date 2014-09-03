@@ -59,6 +59,11 @@ void SingleUtteranceNnet2Decoder::GetLattice(bool end_of_utterance,
   }
 }
 
+void SingleUtteranceNnet2Decoder::GetBestPath(bool end_of_utterance,
+                                              Lattice *best_path) const {
+  decoder_.GetBestPath(best_path, end_of_utterance);
+}
+
 bool SingleUtteranceNnet2Decoder::EndpointDetected(
     const OnlineEndpointConfig &config) {
   return kaldi::EndpointDetected(config, tmodel_,

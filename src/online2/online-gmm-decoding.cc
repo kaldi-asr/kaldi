@@ -314,6 +314,11 @@ void SingleUtteranceGmmDecoder::GetLattice(bool rescore_if_needed,
   
 }
 
+void SingleUtteranceGmmDecoder::GetBestPath(bool end_of_utterance,
+                                            Lattice *best_path) const {
+  decoder_.GetBestPath(best_path, end_of_utterance);
+}
+
 OnlineGmmDecodingModels::OnlineGmmDecodingModels(
     const OnlineGmmDecodingConfig &config) {
   KALDI_ASSERT(!config.model_rxfilename.empty() &&
