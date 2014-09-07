@@ -36,7 +36,7 @@
  The <a href=https://sourceforge.net/projects/kaldi/forums> Kaldi forums on Sourceforge </a> are
  a good place to ask questions.
 
- The site <a href=kaldi-asr.org> kaldi-asr.org </a> was created in August 2014 to host the Kaldi model-build
+ The site <a href="http://kaldi-asr.org"> kaldi-asr.org </a> was created in August 2014 to host the Kaldi model-build
  directories that were built with the example scripts.  This will be useful as a reference for
  debugging and for those who want access to the built models.  With time it will contain an increasingly
  large fraction of the outputs of the example scripts in the repository.

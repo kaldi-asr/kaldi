@@ -27,7 +27,7 @@
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-faster-decoder.h"
 #include "nnet2/decodable-am-nnet.h"
-#include "util/timer.h"
+#include "base/timer.h"
 
 
 int main(int argc, char *argv[]) {

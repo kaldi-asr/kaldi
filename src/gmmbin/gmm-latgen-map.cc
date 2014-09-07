@@ -31,7 +31,7 @@
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-faster-decoder.h"
 #include "gmm/decodable-am-diag-gmm.h"
-#include "util/timer.h"
+#include "base/timer.h"
 #include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 
 

@@ -26,7 +26,7 @@
 #include "fstext/fstext-lib.h"
 #include "decoder/nbest-decoder.h"
 #include "gmm/decodable-am-diag-gmm.h"
-#include "util/timer.h"
+#include "base/timer.h"
 #include "lat/kaldi-lattice.h" // for CompactLatticeArc
 #include "fstext/lattice-utils.h" // for ConvertLattice
 

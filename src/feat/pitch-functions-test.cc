@@ -28,7 +28,7 @@
 #include "feat/wave-reader.h"
 #include "sys/stat.h"
 #include "sys/types.h"
-#include "util/timer.h"
+#include "base/timer.h"
 
 
 namespace kaldi {

@@ -29,7 +29,7 @@
 #include "decoder/lattice-tracking-decoder.h"
 //#include "decoder/decodable-am-diag-gmm.h"
 #include "decoder/decodable-matrix.h"
-#include "util/timer.h"
+#include "base/timer.h"
 
 int main(int argc, char *argv[]) {
   try {

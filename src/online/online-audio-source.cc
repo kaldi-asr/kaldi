@@ -24,7 +24,7 @@
 #include <cmath>
 #include <vector>
 
-#include "util/timer.h"
+#include "base/timer.h"
 #include "online-audio-source.h"
 
 namespace kaldi {

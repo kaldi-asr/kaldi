@@ -25,7 +25,7 @@
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-array.h"
 #include "cudamatrix/cu-device.h"
-#include "util/timer.h"
+#include "base/timer.h"
 
 namespace kaldi {
   

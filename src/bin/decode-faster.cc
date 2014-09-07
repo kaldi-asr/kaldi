@@ -26,7 +26,7 @@
 #include "fstext/fstext-lib.h"
 #include "decoder/faster-decoder.h"
 #include "decoder/decodable-matrix.h"
-#include "util/timer.h"
+#include "base/timer.h"
 #include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
 
 int main(int argc, char *argv[]) {

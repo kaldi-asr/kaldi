@@ -24,7 +24,7 @@
 #include "nnet/nnet-randomizer.h"
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "util/timer.h"
+#include "base/timer.h"
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-rand.h"
 

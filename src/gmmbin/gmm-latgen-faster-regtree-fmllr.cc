@@ -26,7 +26,7 @@
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-faster-decoder.h"
 #include "gmm/decodable-am-diag-gmm.h"
-#include "util/timer.h"
+#include "base/timer.h"
 #include "transform/regression-tree.h"
 #include "transform/regtree-fmllr-diag-gmm.h"
 #include "transform/decodable-am-diag-gmm-regtree.h"

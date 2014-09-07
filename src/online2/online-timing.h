@@ -25,7 +25,7 @@
 #include <vector>
 #include <deque>
 
-#include "util/timer.h"
+#include "base/timer.h"
 #include "base/kaldi-error.h"
 
 namespace kaldi {
