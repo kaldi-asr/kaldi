@@ -34,9 +34,9 @@
   ( echo "<eps> 0"; echo "a 1"; echo "b 2"; echo "c 3" ) > phones.txt
   fstmakecontextsyms phones.txt ilabels.sym > context.txt
   fstprint --isymbols=context.txt --osymbols=phones.txt tmp.fst
-#  0	1	<eps>/<eps>/a	a
-#  1	2	<eps>/a/b	b
-#  2	3	a/b/c	c
+#  0    1    <eps>/<eps>/a    a
+#  1    2    <eps>/a/b    b
+#  2    3    a/b/c    c
 #  3
 
 
@@ -49,11 +49,11 @@
   cp phones.txt phones_disambig.txt;  ( echo "#0 4"; echo "#1 5" ) >> phones_disambig.txt
   fstprint --isymbols=context.txt --osymbols=phones_disambig.txt tmp.fst
 
-#  0	1	<eps>/<eps>/a	a
-#  1	2	<eps>/a/b	b
-#  2	3	#0	#0
-#  3	4	a/b/c	c
-#  4	5	#1	#1
+#  0    1    <eps>/<eps>/a    a
+#  1    2    <eps>/a/b    b
+#  2    3    #0    #0
+#  3    4    a/b/c    c
+#  4    5    #1    #1
 #  5
 
 */

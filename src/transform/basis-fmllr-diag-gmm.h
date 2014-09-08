@@ -75,9 +75,9 @@ class BasisFmllrAccus {
  public:
   BasisFmllrAccus() { }
   explicit BasisFmllrAccus(int32 dim) {
-	  dim_ = dim;
-	  beta_ = 0;
-	  ResizeAccus(dim);
+      dim_ = dim;
+      beta_ = 0;
+      ResizeAccus(dim);
   }
 
   void ResizeAccus(int32 dim);
@@ -109,7 +109,7 @@ class BasisFmllrEstimate {
  public:
   BasisFmllrEstimate(): dim_(0), basis_size_(0) { }
   explicit BasisFmllrEstimate(int32 dim) {
-	  dim_ = dim; basis_size_ = dim * (dim + 1);
+      dim_ = dim; basis_size_ = dim * (dim + 1);
   }
 
   /// Routines for reading and writing fMLLR basis matrices

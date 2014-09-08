@@ -31,7 +31,7 @@ using namespace kaldi::nnet1;
 template<class Real> 
 static void InitRand(VectorBase<Real> *v) {
   for (MatrixIndexT i = 0;i < v->Dim();i++)
-	(*v)(i) = RandGauss();
+    (*v)(i) = RandGauss();
 }
 
 template<class Real> 

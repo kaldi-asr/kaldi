@@ -31,13 +31,13 @@
  A test example:
  ( echo "0 1 1 0"; echo "1 2 0 2"; echo "2 0"; ) | fstcompile | fstrmepslocal | fstprint
 # prints:
-# 0	 1	1	2
+# 0     1    1    2
 # 1
  ( echo "0 1 0 0"; echo "0 0"; echo "1 0" ) | fstcompile | fstrmepslocal | fstprint
 # 0
   ( echo "0 1 0 0"; echo "0 0"; echo "1 0" ) | fstcompile | fstrmepslocal | fstprint
   ( echo "0 1 0 0"; echo "0 0"; echo "1 0" ) | fstcompile | fstrmepslocal --use-log=true | fstprint
-#  0	-0.693147182
+#  0    -0.693147182
 
 */
 

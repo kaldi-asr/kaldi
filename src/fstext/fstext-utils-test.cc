@@ -172,7 +172,7 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
 
     // no because does shortest-dist on weights even if not pushing on them.
     // PushInLog<REWEIGHT_TO_INITIAL>(fst_det, kPushLabels);  // will always succeed.
-	KALDI_LOG << "Num states [orig]: " << fst->NumStates() << "[det]" << fst_det->NumStates();
+    KALDI_LOG << "Num states [orig]: " << fst->NumStates() << "[det]" << fst_det->NumStates();
     assert(RandEquivalent(*fst, *fst_det, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
   }
   delete fst;

@@ -133,8 +133,8 @@ int main(int argc, char *argv[]) {
           const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
           const GaussPost &gpost = gpost_reader.Value(utt);
           if (static_cast<int32>(gpost.size()) != feats.NumRows()) {
-        	KALDI_WARN << "GaussPost has wrong size " << (gpost.size())
-        	           << " vs. " << (feats.NumRows());
+            KALDI_WARN << "GaussPost has wrong size " << (gpost.size())
+                       << " vs. " << (feats.NumRows());
             num_other_error++;
             continue;
           }
@@ -156,7 +156,7 @@ int main(int argc, char *argv[]) {
           transform_writer.Write(spk, transform);
           // Optionally write out the base weights
           if (!weights_out_filename.empty() && weights.Dim() > 0)
-        	  weights_writer.Write(spk, weights);
+              weights_writer.Write(spk, weights);
         }
 
         KALDI_LOG << "For speaker " << spk << ", auxf-impr from Basis fMLLR is "

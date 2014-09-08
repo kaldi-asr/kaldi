@@ -235,10 +235,10 @@ int main(int argc, char *argv[]) {
         continue;
       }
       if (mat.NumRows() > max_frames) {
-	KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
-	  " frames, which is more than " << max_frames << ".";
-	num_other_error++;
-	continue;
+    KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
+      " frames, which is more than " << max_frames << ".";
+    num_other_error++;
+    continue;
       }
       
       // 2) get the denominator lattice, preprocess

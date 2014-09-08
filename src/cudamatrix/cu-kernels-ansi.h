@@ -2,9 +2,9 @@
 
 // Copyright 2009-2012  Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)
-//                2013  Hainan Xu	
+//                2013  Hainan Xu    
 //                2013  Xiaohui Zhang
-//                2013	Johns Hopkins University (author: Guoguo Chen)
+//                2013    Johns Hopkins University (author: Guoguo Chen)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

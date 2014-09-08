@@ -25,7 +25,7 @@ static void InitRand(SpMatrix<Real> *M) {
   do {
     for (MatrixIndexT i = 0; i < M->NumRows(); i++) {
       for (MatrixIndexT j = 0; j <= i; j++ ) {
-	(*M)(i,j) = RandGauss();
+    (*M)(i,j) = RandGauss();
       }
     }
   } while (M->NumRows() != 0 && M->Cond() > 100);

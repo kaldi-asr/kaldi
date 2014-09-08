@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
                                    &phone_sets_out);
     } else if (mode == "k-means") {
       if (num_classes <= 1 ||
-		 static_cast<size_t>(num_classes) > phone_sets.size())
+         static_cast<size_t>(num_classes) > phone_sets.size())
         KALDI_ERR << "num-classes invalid: num_classes is " << num_classes
                   << ", number of phone sets is " << phone_sets.size();
       KMeansClusterPhones(stats,

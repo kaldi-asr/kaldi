@@ -134,20 +134,20 @@ class AveragePooling2DComponent : public Component {
     int out_fmap_cnt=0;
     for (int32 m=0; m < fmap_x_len_-pool_x_len_+1;m=m+pool_x_step_){
       for (int32 n=0; n< fmap_y_len_-pool_y_len_+1; n=n+pool_y_step_){
-	int32 st=0;
-	st=(m*fmap_y_len_+n)*num_input_fmaps;	  
-	CuSubMatrix<BaseFloat> pool(out->ColRange(out_fmap_cnt*num_input_fmaps, num_input_fmaps));
-	pool.SetZero(); // reset
-	for (int32 i=0; i< pool_x_len_; i++){
-	  for (int32 j=0; j< pool_y_len_; j++){
-	    int32 c=0;
-	    c=st+i*(num_input_fmaps*fmap_y_len_)+j*num_input_fmaps;
-	    pool.AddMat(1.0, in.ColRange(c, num_input_fmaps));
-	    }
-	  }
-	pool.Scale(1.0/(pool_x_len_*pool_y_len_));
-	out_fmap_cnt++;
-	}
+    int32 st=0;
+    st=(m*fmap_y_len_+n)*num_input_fmaps;      
+    CuSubMatrix<BaseFloat> pool(out->ColRange(out_fmap_cnt*num_input_fmaps, num_input_fmaps));
+    pool.SetZero(); // reset
+    for (int32 i=0; i< pool_x_len_; i++){
+      for (int32 j=0; j< pool_y_len_; j++){
+        int32 c=0;
+        c=st+i*(num_input_fmaps*fmap_y_len_)+j*num_input_fmaps;
+        pool.AddMat(1.0, in.ColRange(c, num_input_fmaps));
+        }
+      }
+    pool.Scale(1.0/(pool_x_len_*pool_y_len_));
+    out_fmap_cnt++;
+    }
       }
   }
 
@@ -175,20 +175,20 @@ class AveragePooling2DComponent : public Component {
     int out_fmap_cnt=0;
     for (int32 m=0; m < fmap_x_len_-pool_x_len_+1;m=m+pool_x_step_){
       for (int32 n=0; n< fmap_y_len_-pool_y_len_+1; n=n+pool_y_step_){
-	int32 st=0;
-	st=(m*fmap_y_len_+n)*num_input_fmaps;	  
-	CuSubMatrix<BaseFloat> src(out_diff.ColRange(out_fmap_cnt*num_input_fmaps, num_input_fmaps));
-	for (int32 i=0; i< pool_x_len_; i++){
-	  for (int32 j=0; j< pool_y_len_; j++){
-	    int32 c=0;
-	    c=st+i*(num_input_fmaps*fmap_y_len_)+j*num_input_fmaps;
-	    CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c, num_input_fmaps));
-	    tgt.AddMat(1.0, src);
-	    patch_summands[c/num_input_fmaps] += 1;
-	    }
-	  }
-	out_fmap_cnt++;
-	}
+    int32 st=0;
+    st=(m*fmap_y_len_+n)*num_input_fmaps;      
+    CuSubMatrix<BaseFloat> src(out_diff.ColRange(out_fmap_cnt*num_input_fmaps, num_input_fmaps));
+    for (int32 i=0; i< pool_x_len_; i++){
+      for (int32 j=0; j< pool_y_len_; j++){
+        int32 c=0;
+        c=st+i*(num_input_fmaps*fmap_y_len_)+j*num_input_fmaps;
+        CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c, num_input_fmaps));
+        tgt.AddMat(1.0, src);
+        patch_summands[c/num_input_fmaps] += 1;
+        }
+      }
+    out_fmap_cnt++;
+    }
       }
     
     // divide diff by average-pooling-dim (derivative of averaging)
@@ -197,10 +197,10 @@ class AveragePooling2DComponent : public Component {
     // divide diff by #summands (compensate for patches used in more pools)
     for (int i=0; i<fmap_x_len_; i++){
       for (int32 j=0; j<fmap_y_len_; j++){
-	int32 c=i*fmap_y_len_+j;
-	CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c*num_input_fmaps, num_input_fmaps));
-	KALDI_ASSERT(patch_summands[c] > 0); // patch at least in one pool
-	tgt.Scale(1.0/patch_summands[c]);
+    int32 c=i*fmap_y_len_+j;
+    CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c*num_input_fmaps, num_input_fmaps));
+    KALDI_ASSERT(patch_summands[c] > 0); // patch at least in one pool
+    tgt.Scale(1.0/patch_summands[c]);
       }
     }
   }

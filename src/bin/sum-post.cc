@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "Sum two sets of posteriors for each utterance, e.g. useful in fMMI.\n"
         "To take the difference of posteriors, use e.g. --scale2=-1.0\n"
         "\n"
-        "Usage: sum-post post-rspecifier1 post-rspecifier2 post-wspecifier\n";
+        "Usage: sum-post <post-rspecifier1> <post-rspecifier2> <post-wspecifier>\n";
 
     BaseFloat scale1 = 1.0, scale2 = 1.0;
     bool merge = true;

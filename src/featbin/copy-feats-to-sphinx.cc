@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
       Matrix<BaseFloat> output(num_frames, dim, kUndefined);
       std::stringstream ss;
       ss << dir_out << "/" << utt << "." << ext_out; 
-      output.Range(0, num_frames, 0, dim).CopyFromMat(feats.Range(0, num_frames, 0, dim));	
+      output.Range(0, num_frames, 0, dim).CopyFromMat(feats.Range(0, num_frames, 0, dim));    
       std::ofstream os(ss.str().c_str(), std::ios::out|std::ios::binary);
       WriteSphinx(os, output);
       num_done++;    

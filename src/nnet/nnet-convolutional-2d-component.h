@@ -258,29 +258,29 @@ class Convolutional2DComponent : public UpdatableComponent {
     int32 out_fmap_cnt=0;
     for (int32 m=0; m < fmap_x_len_-filt_x_len_+1;m=m+filt_x_step_){
       for (int32 n=0; n< fmap_y_len_-filt_y_len_+1; n=n+filt_y_step_){
-	std::vector<int32> column_mask;
-	int32 st=0;
-	if (connect_fmap_ == 1){
-	  st=(m*fmap_y_len_+n)*num_input_fmaps;	  
-	}
-	else{
-	  st=m*fmap_y_len_*num_input_fmaps + n;
-	}
+    std::vector<int32> column_mask;
+    int32 st=0;
+    if (connect_fmap_ == 1){
+      st=(m*fmap_y_len_+n)*num_input_fmaps;      
+    }
+    else{
+      st=m*fmap_y_len_*num_input_fmaps + n;
+    }
 
-	for (int32 i=0; i< filt_x_len_; i++){
-	  for (int32 j=0; j< filt_y_len_*num_input_fmaps; j++){
-	    int32 c=0;
-	    if (connect_fmap_ == 1){	    
-	      c=st+i*(num_input_fmaps*fmap_y_len_)+j;
-	    }
-	    else{
-	      c=st+i*(num_input_fmaps*fmap_y_len_)+(j/num_input_fmaps)+(j%num_input_fmaps)*fmap_y_len_;
-	    }
-	    column_mask.push_back(c);
-	  }
-	}
-	vectorized_feature_patches_[out_fmap_cnt].CopyCols(in, column_mask);
-	out_fmap_cnt++;
+    for (int32 i=0; i< filt_x_len_; i++){
+      for (int32 j=0; j< filt_y_len_*num_input_fmaps; j++){
+        int32 c=0;
+        if (connect_fmap_ == 1){        
+          c=st+i*(num_input_fmaps*fmap_y_len_)+j;
+        }
+        else{
+          c=st+i*(num_input_fmaps*fmap_y_len_)+(j/num_input_fmaps)+(j%num_input_fmaps)*fmap_y_len_;
+        }
+        column_mask.push_back(c);
+      }
+    }
+    vectorized_feature_patches_[out_fmap_cnt].CopyCols(in, column_mask);
+    out_fmap_cnt++;
       }
     }
 
@@ -317,31 +317,31 @@ class Convolutional2DComponent : public UpdatableComponent {
     in_diff_summands_.Resize(in_diff->NumCols(), kSetZero);
     for (int32 m=0; m < fmap_x_len_-filt_x_len_+1;m=m+filt_x_step_){
       for (int32 n=0; n< fmap_y_len_-filt_y_len_+1; n=n+filt_y_step_){
-	int32 st=0;
-	if (connect_fmap_ == 1){
-	  st=(m*fmap_y_len_+n)*num_input_fmaps;	  
-	}
-	else{
-	  st=m*fmap_y_len_*num_input_fmaps + n;
-	}
+    int32 st=0;
+    if (connect_fmap_ == 1){
+      st=(m*fmap_y_len_+n)*num_input_fmaps;      
+    }
+    else{
+      st=m*fmap_y_len_*num_input_fmaps + n;
+    }
 
-	for (int32 i=0; i< filt_x_len_; i++){
-	  for (int32 j=0; j< filt_y_len_*num_input_fmaps; j++){
-	    int32 c=0;
-	    if (connect_fmap_ == 1){	    
-	      c=st+i*(num_input_fmaps*fmap_y_len_)+j;
-	    }
-	    else{
-	      c=st+i*(num_input_fmaps*fmap_y_len_)+(j/num_input_fmaps)+(j%num_input_fmaps)*fmap_y_len_;
-	    }
-	    CuSubMatrix<BaseFloat> src(feature_patch_diffs_[out_fmap_cnt].ColRange(i*filt_y_len_*num_input_fmaps+j,1)); // from which col 
-	    CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c,1)); // to which col?
-	    tgt.AddMat(1.0, src);
-	    // add 1.0 
-	    in_diff_summands_.Range(c,1).Add(1.0);
-	  }
-	}
-	out_fmap_cnt++;
+    for (int32 i=0; i< filt_x_len_; i++){
+      for (int32 j=0; j< filt_y_len_*num_input_fmaps; j++){
+        int32 c=0;
+        if (connect_fmap_ == 1){        
+          c=st+i*(num_input_fmaps*fmap_y_len_)+j;
+        }
+        else{
+          c=st+i*(num_input_fmaps*fmap_y_len_)+(j/num_input_fmaps)+(j%num_input_fmaps)*fmap_y_len_;
+        }
+        CuSubMatrix<BaseFloat> src(feature_patch_diffs_[out_fmap_cnt].ColRange(i*filt_y_len_*num_input_fmaps+j,1)); // from which col 
+        CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c,1)); // to which col?
+        tgt.AddMat(1.0, src);
+        // add 1.0 
+        in_diff_summands_.Range(c,1).Add(1.0);
+      }
+    }
+    out_fmap_cnt++;
       }
     }
     // compensate for summands

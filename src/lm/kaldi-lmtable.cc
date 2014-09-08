@@ -104,21 +104,21 @@ void LmFstConverter::AddArcsForNgramProb(
     // General case works from N down to 2-grams
     src = AddStateFromSymb(ngs,   ilev,   2, fst, newSrc);
     if (ilev != maxlev) {
-	  // add all intermediate levels from 2 to current
-	  // last ones will be current backoff source and destination
-	  for (int iilev=2; iilev <= ilev; iilev++) {
-		dst = AddStateFromSymb(ngs, iilev,   1, fst, newDst);
-		dbo = AddStateFromSymb(ngs, iilev-1, 1, fst, newDbo);
-		bkState_[dst] = dbo;
-	  }
+      // add all intermediate levels from 2 to current
+      // last ones will be current backoff source and destination
+      for (int iilev=2; iilev <= ilev; iilev++) {
+        dst = AddStateFromSymb(ngs, iilev,   1, fst, newDst);
+        dbo = AddStateFromSymb(ngs, iilev-1, 1, fst, newDbo);
+        bkState_[dst] = dbo;
+      }
     } else {
-	  // add all intermediate levels from 2 to current
-	  // last ones will be current backoff source and destination
-	  for (int iilev=2; iilev <= ilev; iilev++) {
-		dst = AddStateFromSymb(ngs, iilev-1, 1, fst, newDst);
-		dbo = AddStateFromSymb(ngs, iilev-2, 1, fst, newDbo);
-		bkState_[dst] = dbo;
-	  }
+      // add all intermediate levels from 2 to current
+      // last ones will be current backoff source and destination
+      for (int iilev=2; iilev <= ilev; iilev++) {
+        dst = AddStateFromSymb(ngs, iilev-1, 1, fst, newDst);
+        dbo = AddStateFromSymb(ngs, iilev-2, 1, fst, newDbo);
+        bkState_[dst] = dbo;
+      }
     }
   } else {
     // special case for 1-grams: start from 0-gram

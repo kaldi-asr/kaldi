@@ -3,7 +3,7 @@
 // Copyright 2010  Karel Vesely
 //           2013  Lucas Ondel
 //           2013  Johns Hopkins University (author: Daniel Povey)
-//           2013  Hainan Xu	
+//           2013  Hainan Xu    
 //           2013  Xiaohui Zhang
 //           2013  Johns Hopkins University (author: Guoguo Chen)
 
@@ -42,7 +42,7 @@ namespace kaldi {
 template<typename Real> 
 static void InitRand(VectorBase<Real> *v) {
   for (MatrixIndexT i = 0; i < v->Dim(); i++)
-	(*v)(i) = RandGauss();
+    (*v)(i) = RandGauss();
 }
 
 

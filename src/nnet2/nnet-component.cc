@@ -2,7 +2,7 @@
 
 // Copyright 2011-2012  Karel Vesely
 //           2013-2014  Johns Hopkins University (author: Daniel Povey)
-//	              2013  Xiaohui Zhang	
+//                  2013  Xiaohui Zhang    
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -666,7 +666,7 @@ std::string PnormComponent::Info() const {
   std::stringstream stream;
   stream << Type() << ", input-dim = " << input_dim_
          << ", output-dim = " << output_dim_
-	 << ", p = " << p_;
+     << ", p = " << p_;
   return stream.str();
 }
 
@@ -871,7 +871,7 @@ void PowerComponent::Write(std::ostream &os, bool binary) const {
 std::string PowerComponent::Info() const {
   std::stringstream stream;
   stream << Type() << ", dim = " << dim_
-	 << ", power = " << power_;
+     << ", power = " << power_;
   return stream.str();
 }
 
@@ -4298,8 +4298,8 @@ void DropoutComponent::Init(int32 dim,
 }
   
 void DropoutComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
-    				 int32 num_chunks,
-    				 CuMatrix<BaseFloat> *out) const {
+                     int32 num_chunks,
+                     CuMatrix<BaseFloat> *out) const {
   KALDI_ASSERT(in.NumCols() == this->InputDim());
   out->Resize(in.NumRows(), in.NumCols());
 

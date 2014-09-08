@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
         "metric vector that is 1.0 per dimension if the features identical,\n"
         "and <1.0 otherwise, and an average overall similarity value.\n"
         "\n"
-	"Usage: compare-feats [options] <in-rspecifier1> <in-rspecifier2>\n"
+    "Usage: compare-feats [options] <in-rspecifier1> <in-rspecifier2>\n"
         "e.g.: compare-feats ark:1.ark ark:2.ark\n";
 
     ParseOptions po(usage);

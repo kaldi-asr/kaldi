@@ -176,8 +176,8 @@ void MatrixBase<Real>::AddMatMat(const Real alpha,
 
 template<typename Real>
 void MatrixBase<Real>::AddMatMatDivMat(const MatrixBase<Real>& A,
-             	     		       const MatrixBase<Real>& B,
-                    		       const MatrixBase<Real>& C) {
+                                     const MatrixBase<Real>& B,
+                                   const MatrixBase<Real>& C) {
   KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
   KALDI_ASSERT(A.NumRows() == C.NumRows() && A.NumCols() == C.NumCols());
   for (int32 r = 0; r < A.NumRows(); r++) { // each frame...
@@ -1047,7 +1047,7 @@ void MatrixBase<Real>::GroupPnormDeriv(const MatrixBase<Real> &input,
         if (output_val == 0) 
           (*this)(i, j) = 0;
          else
-      	  (*this)(i, j) = pow(std::abs(input_val), power - 1) * 
+            (*this)(i, j) = pow(std::abs(input_val), power - 1) * 
               pow(output_val, 1 - power) * (input_val >= 0 ? 1 : -1) ;
       }
     }

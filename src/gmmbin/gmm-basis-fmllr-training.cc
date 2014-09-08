@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Summed " << num_accs << " gradient scatter stats";
     KALDI_LOG << "Generate " << basis_est.BasisSize() << " bases, written to "
-    		  << basis_wspecifier;
+              << basis_wspecifier;
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

@@ -43,12 +43,12 @@ cat <<EOF | fstcompile > g.fst
 EOF
 fstcompose a.fst g.fst | fstprint
 # gives, as expected:
-# 0	1	10	10	2
+# 0    1    10    10    2
 # 1
 fstphicompose 100 a.fst g.fst | fstprint
 # gives, again correctly:
-#0	1	10	10	2
-#0	1	11	11	7.5999999
+#0    1    10    10    2
+#0    1    11    11    7.5999999
 #1
  
 Next, test that it's working as desired for final-probs,
@@ -70,10 +70,10 @@ cat <<EOF | fstcompile > g.fst
 EOF
 fstphicompose 100 a.fst g.fst | fstprint
 # output is:
-#0	1	10	10	2
-#0	2	11	11	2
-#1	6.5999999
-#2	10
+#0    1    10    10    2
+#0    2    11    11    2
+#1    6.5999999
+#2    10
 
 */
 

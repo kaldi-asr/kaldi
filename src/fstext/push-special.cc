@@ -258,10 +258,10 @@ void PushSpecial(VectorFst<StdArc> *fst, float delta) {
 /*
   Note: in testing an earlier, simpler
   version of this method (without the 0.1 * old_occ) we had a problem with the following FST.
-0	2	3	3	0
-1	3	1	4	0.5
-2	1	0	0	0.5
-3	0.25
+0    2    3    3    0
+1    3    1    4    0.5
+2    1    0    0    0.5
+3    0.25
 
  Corresponds to the following matrix [or maybe its transpose, doesn't matter
  probably]

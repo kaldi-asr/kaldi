@@ -417,7 +417,7 @@ class NBestDecoder {
             return false;
           } else {
             DeleteTok(tok);
-	        e->val = new_tok;
+            e->val = new_tok;
             return true;
           }
         }
@@ -440,7 +440,7 @@ class NBestDecoder {
     }
     inline Token* Advance(Token *source, Arc &arc, int32 frame,
                           BaseFloat cutoff) {
-      // compute new weight	
+      // compute new weight    
       Weight w = Times(source->c, arc.weight);
       Weight amscore = Weight::One();
       if (arc.ilabel > 0) { // emitting arc

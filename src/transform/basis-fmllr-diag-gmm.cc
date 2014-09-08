@@ -72,7 +72,7 @@ void BasisFmllrAccus::Read(std::istream &is, bool binary,
   if (add) {
     beta_ += tmp_beta;
   } else {
-	beta_ = tmp_beta;
+    beta_ = tmp_beta;
   }
   ExpectToken(is, binary, "<GRADSCATTER>");
   grad_scatter_.Read(is, binary, add);
@@ -89,7 +89,7 @@ void BasisFmllrAccus::ResizeAccus(int32 dim) {
 }
 
 void BasisFmllrAccus::AccuGradientScatter(
-		              const AffineXformStats &spk_stats) {
+                      const AffineXformStats &spk_stats) {
 
   // Gradient of auxf w.r.t. xform_spk
   // Eq. (33)
@@ -98,8 +98,8 @@ void BasisFmllrAccus::AccuGradientScatter(
   grad_mat.Scale(spk_stats.beta_);
   grad_mat.AddMat(1.0, spk_stats.K_);
   for (int d = 0; d < dim_; ++d) {
-  	Matrix<double> G_d_mat(spk_stats.G_[d]);
-   	grad_mat.Row(d).AddVec(-1.0, G_d_mat.Row(d));
+      Matrix<double> G_d_mat(spk_stats.G_[d]);
+       grad_mat.Row(d).AddVec(-1.0, G_d_mat.Row(d));
   }
   // Row stack of gradient matrix
   Vector<BaseFloat> grad_vec((dim_+1) * dim_);
@@ -108,7 +108,7 @@ void BasisFmllrAccus::AccuGradientScatter(
   // when silence-weight is set to be 0 and we are using the
   // per-utt mode.
   if (spk_stats.beta_ > 0) {
-	beta_ += spk_stats.beta_;
+    beta_ += spk_stats.beta_;
     grad_scatter_.AddVec2(BaseFloat(1.0 / spk_stats.beta_), grad_vec);
   }
 }
@@ -123,9 +123,9 @@ void BasisFmllrEstimate::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, tmp_uint32);
   if (fmllr_basis_.size() != 0) {
     WriteToken(os, binary, "<BASIS>");
-	for (int32 n = 0; n < basis_size_; ++n) {
+    for (int32 n = 0; n < basis_size_; ++n) {
       fmllr_basis_[n].Write(os, binary);
-	}
+    }
   }
   WriteToken(os, binary, "</BASISFMLLRPARAM>");
 }
@@ -164,7 +164,7 @@ void BasisFmllrEstimate::ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
   // expected values of fMLLR G statistics
   vector< SpMatrix<double> > G_hat(dim_);
   for (int32 d = 0; d < dim_; ++d)
-	   G_hat[d].Resize(dim_ + 1, kSetZero);
+       G_hat[d].Resize(dim_ + 1, kSetZero);
 
   // extend mean vectors with 1  [mule_jm 1]
   Vector<double> extend_mean(dim_ + 1);
@@ -174,12 +174,12 @@ void BasisFmllrEstimate::ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
     const DiagGmm &diag_gmm = am_gmm.GetPdf(j);
     int32 num_comp = diag_gmm.NumGauss();
     // means, covariance and mixture weights for this diagonal GMM
-	Matrix<double> means(num_comp, dim_);
-	Matrix<double> vars(num_comp, dim_);
-	diag_gmm.GetMeans(&means); diag_gmm.GetVars(&vars);
-	Vector<BaseFloat> weights(diag_gmm.weights());
+    Matrix<double> means(num_comp, dim_);
+    Matrix<double> vars(num_comp, dim_);
+    diag_gmm.GetMeans(&means); diag_gmm.GetVars(&vars);
+    Vector<BaseFloat> weights(diag_gmm.weights());
 
-	for (int32 m = 0; m < num_comp; ++m) {
+    for (int32 m = 0; m < num_comp; ++m) {
       extend_mean.Range(0, dim_).CopyFromVec(means.Row(m));
       extend_mean(dim_) = 1.0;
       extend_var.Range(0, dim_).CopyFromVec(vars.Row(m));
@@ -195,21 +195,21 @@ void BasisFmllrEstimate::ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
         // not work for full covariance matrices
         G_hat[d].AddDiagVec(alpha, extend_var);
       } // loop over dimension
-	} //  loop over Gaussians
+    } //  loop over Gaussians
   }  // loop over states
 
   // fill H_ with G_hat[i]; build the block diagonal structure
   // Eq. (31)
   for (int32 d = 0; d < dim_; d++) {
     H_mat.Range(d * (dim_ + 1), (dim_ + 1), d * (dim_ + 1), (dim_ + 1))
-    		  .CopyFromSp(G_hat[d]);
+              .CopyFromSp(G_hat[d]);
   }
 
   // add the extra H(1) elements
   // Eq. (30) and Footnote 1 (0-based index)
   for (int32 i = 0; i < dim_; ++i)
-	for (int32 j = 0; j < dim_; ++j)
-	  H_mat(i * (dim_ + 1) + j, j * (dim_ + 1) + i) += 1;
+    for (int32 j = 0; j < dim_; ++j)
+      H_mat(i * (dim_ + 1) + j, j * (dim_ + 1) + i) += 1;
   // the final H should be symmetric
   if (!H_mat.IsSymmetric())
     KALDI_ERR << "Preconditioner matrix H = H(1) + H(2) is not symmetric";
@@ -217,8 +217,8 @@ void BasisFmllrEstimate::ComputeAmDiagPrecond(const AmDiagGmm &am_gmm,
 }
 
 void BasisFmllrEstimate::EstimateFmllrBasis(
-		                      const AmDiagGmm &am_gmm,
-		                      const BasisFmllrAccus &basis_accus) {
+                              const AmDiagGmm &am_gmm,
+                              const BasisFmllrAccus &basis_accus) {
   // Compute the preconditioner
   SpMatrix<double> precond_mat((dim_ + 1) * dim_);
   ComputeAmDiagPrecond(am_gmm, &precond_mat);
@@ -264,7 +264,7 @@ void BasisFmllrEstimate::EstimateFmllrBasis(
   /// The sum of the [per-frame] eigenvalues is roughly equal to
   /// the improvement of log-likelihood of the training data.
   KALDI_LOG << "Sum of the [per-frame] eigenvalues, that is"
-		  " the log-likelihood improvement, is " << Lvec_scaled.Sum();
+          " the log-likelihood improvement, is " << Lvec_scaled.Sum();
 }
 
 double BasisFmllrEstimate::ComputeTransform(
@@ -305,64 +305,64 @@ double BasisFmllrEstimate::ComputeTransform(
     // Number of bases for this speaker, according to the available
     // adaptation data
     int32 basis_size = int32 (std::min( double(basis_size_),
-	    	                   options.size_scale * spk_stats.beta_));
+                               options.size_scale * spk_stats.beta_));
 
     coefficient->Resize(basis_size, kSetZero);
 
     BaseFloat impr_spk = 0;
     for (int32 iter = 1; iter <= options.num_iters; ++iter) {
-	  // Auxf computation based on FmllrAuxFuncDiagGmm from fmllr-diag-gmm.cc
-	  BaseFloat start_obj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
+      // Auxf computation based on FmllrAuxFuncDiagGmm from fmllr-diag-gmm.cc
+      BaseFloat start_obj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
 
-	  // Contribution of quadratic terms to derivative
-	  // Eq. (37)  s_{d} = G_{d} w_{d}
-	  Matrix<BaseFloat> S(dim_, dim_ + 1);
-	  for (int32 d = 0; d < dim_; ++d)
-		S.Row(d).AddSpVec(1.0, stats_tmp_G[d], W_mat.Row(d), 0.0);
+      // Contribution of quadratic terms to derivative
+      // Eq. (37)  s_{d} = G_{d} w_{d}
+      Matrix<BaseFloat> S(dim_, dim_ + 1);
+      for (int32 d = 0; d < dim_; ++d)
+        S.Row(d).AddSpVec(1.0, stats_tmp_G[d], W_mat.Row(d), 0.0);
 
 
-	  // W_mat = [A; b]
-	  Matrix<BaseFloat> A(dim_, dim_);
-	  A.CopyFromMat(W_mat.Range(0, dim_, 0, dim_));
-	  Matrix<BaseFloat> A_inv(A);
-	  A_inv.InvertDouble();
-	  Matrix<BaseFloat> A_inv_trans(A_inv);
-	  A_inv_trans.Transpose();
-	  // Compute gradient of auxf w.r.t. W_mat
-	  // Eq. (38)  P = beta [A^{-T}; 0] + K - S
-	  Matrix<BaseFloat> P(dim_, dim_ + 1);
-	  P.SetZero();
-	  P.Range(0, dim_, 0, dim_).CopyFromMat(A_inv_trans);
-	  P.Scale(spk_stats.beta_);
-	  P.AddMat(1.0, stats_tmp_K);
-	  P.AddMat(-1.0, S);
+      // W_mat = [A; b]
+      Matrix<BaseFloat> A(dim_, dim_);
+      A.CopyFromMat(W_mat.Range(0, dim_, 0, dim_));
+      Matrix<BaseFloat> A_inv(A);
+      A_inv.InvertDouble();
+      Matrix<BaseFloat> A_inv_trans(A_inv);
+      A_inv_trans.Transpose();
+      // Compute gradient of auxf w.r.t. W_mat
+      // Eq. (38)  P = beta [A^{-T}; 0] + K - S
+      Matrix<BaseFloat> P(dim_, dim_ + 1);
+      P.SetZero();
+      P.Range(0, dim_, 0, dim_).CopyFromMat(A_inv_trans);
+      P.Scale(spk_stats.beta_);
+      P.AddMat(1.0, stats_tmp_K);
+      P.AddMat(-1.0, S);
 
       // Compute directional gradient restricted by bases. Here we only use
       // the simple gradient method, rather than conjugate gradient. Finding
-	  // the optimal transformation W_mat is equivalent to optimizing weights
-	  // d_{1,2,...,N}.
-	  // Eq. (39)  delta(W) = \sum_n tr(\fmllr_basis_{n}^T \P) \fmllr_basis_{n}
-	  // delta(d_{n}) = tr(\fmllr_basis_{n}^T \P)
-	  Matrix<BaseFloat> delta_W(dim_, dim_ + 1);
-	  Vector<BaseFloat> delta_d(basis_size);
-	  for (int32 n = 0; n < basis_size; ++n) {
-	    delta_d(n) = TraceMatMat(fmllr_basis_[n], P, kTrans);
-	    delta_W.AddMat(delta_d(n), fmllr_basis_[n]);
-	  }
+      // the optimal transformation W_mat is equivalent to optimizing weights
+      // d_{1,2,...,N}.
+      // Eq. (39)  delta(W) = \sum_n tr(\fmllr_basis_{n}^T \P) \fmllr_basis_{n}
+      // delta(d_{n}) = tr(\fmllr_basis_{n}^T \P)
+      Matrix<BaseFloat> delta_W(dim_, dim_ + 1);
+      Vector<BaseFloat> delta_d(basis_size);
+      for (int32 n = 0; n < basis_size; ++n) {
+        delta_d(n) = TraceMatMat(fmllr_basis_[n], P, kTrans);
+        delta_W.AddMat(delta_d(n), fmllr_basis_[n]);
+      }
 
-	  BaseFloat step_size = CalBasisFmllrStepSize(spk_stats, stats_tmp_K,
+      BaseFloat step_size = CalBasisFmllrStepSize(spk_stats, stats_tmp_K,
         stats_tmp_G, delta_W, A, S, options.step_size_iters);
-	  W_mat.AddMat(step_size, delta_W, kNoTrans);
-	  coefficient->AddVec(step_size, delta_d);
-	  // Check auxiliary function
-	  BaseFloat end_obj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
+      W_mat.AddMat(step_size, delta_W, kNoTrans);
+      coefficient->AddVec(step_size, delta_d);
+      // Check auxiliary function
+      BaseFloat end_obj = FmllrAuxFuncDiagGmm(W_mat, spk_stats);
 
       KALDI_VLOG(4) << "Objective function (iter=" << iter << "): "
                     << start_obj / spk_stats.beta_  << " -> "
                     << (end_obj / spk_stats.beta_) << " over "
                     << spk_stats.beta_ << " frames";
 
-	  impr_spk += (end_obj - start_obj);
+      impr_spk += (end_obj - start_obj);
     }  // loop over iters
 
     out_xform->CopyFromMat(W_mat, kNoTrans);

@@ -574,7 +574,7 @@ template<typename Real>
 static void CuVectorUnitTestAddDiagMatMat() {
   for (MatrixIndexT iter = 0; iter < 4; iter++) {
     BaseFloat alpha = 0.432 + Rand() % 5, beta = 0.043 + Rand() % 2;
-	MatrixIndexT dimM = 10 + Rand() % 300,
+    MatrixIndexT dimM = 10 + Rand() % 300,
                  dimN = 5 + Rand() % 300;
     CuVector<Real> v(dimM);
     CuMatrix<Real> M_orig(dimM, dimN), N_orig(dimN, dimM);
