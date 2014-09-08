@@ -11,6 +11,7 @@ set -u
 # Set my_nj; typically 64.   
 numLeaves=2500
 numGauss=15000
+numLeavesSGMM=10000
 bnf_num_gauss_ubm=600
 bnf_num_gauss_sgmm=7000
 align_dir=exp/tri4b_ali_si284
@@ -90,11 +91,11 @@ decode2=exp_bnf/sgmm7/decode_bd_tgpr_dev93
   mkdir -p $decode1 $decode2
   steps/decode_sgmm2.sh --skip-scoring false --use-fmllr true \
     --acwt $bnf_decode_acwt --scoring-opts "--min-lmwt 20 --max-lmwt 40"  --cmd "$decode_cmd" \
-    --transform-dir exp_bnf/tri6/decode_eval92 \
+    --transform-dir exp_bnf/tri6/decode_bd_tgpr_eval92 \
     exp_bnf/sgmm7/graph_bd_tgpr data_bnf/eval92 $decode1 |tee $decode1/decode.log
   steps/decode_sgmm2.sh --skip-scoring false --use-fmllr true \
     --acwt $bnf_decode_acwt --scoring-opts "--min-lmwt 20 --max-lmwt 40"  --cmd "$decode_cmd" \
-    --transform-dir exp_bnf/tri6/decode_dev93 \
+    --transform-dir exp_bnf/tri6/decode_bd_tgpr_dev93 \
     exp_bnf/sgmm7/graph_bd_tgpr data_bnf/dev93 $decode2 |tee $decode2/decode.log
 
 if [ ! exp_bnf/sgmm7_ali/.done -nt exp_bnf/sgmm7/.done ]; then
