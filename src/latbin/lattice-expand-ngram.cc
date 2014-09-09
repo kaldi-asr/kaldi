@@ -33,8 +33,8 @@ int main(int argc, char *argv[]) {
     const char *usage =
       "Expand lattices so that each arc has a unique n-label history, for\n"
       "a specified n (defaults to 3).\n"
-      "Usage: lattice-expand-ngram [options] lattice-rspecifier "
-      "lattice-wspecifier\n"
+      "Usage: lattice-expand-ngram [options] <lattice-rspecifier> "
+      "<lattice-wspecifier>\n"
       "e.g.: lattice-expand-ngram --n=3 ark:lat ark:expanded_lat\n";
       
     ParseOptions po(usage);

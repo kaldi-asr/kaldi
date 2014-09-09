@@ -2,7 +2,10 @@
 
 // Copyright 2009-2012   Saarland University (author: Arnab Ghoshal)
 //           2012-2013   Johns Hopkins University (Author: Daniel Povey);
-//                       Bagher BabaAli
+//                       Bagher BabaAli;
+//                2014   Telepoint Global Hosting Service, LLC. (Author:
+//                       David Snyder)
+
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -257,6 +260,19 @@ bool RescoreCompactLatticeSpeedup(
 bool RescoreLattice(DecodableInterface *decodable,
                     Lattice *lat);
 
+/// For a specified n, this function computes soft n-gram counts from
+/// the arc labels of the input lattice lat. The input lattice needs to be
+/// expanded for order n. For any state in lat all paths to that state must
+/// have the same last n labels preceding the state. The binary 
+/// lattice-expand-ngram should be used to expand lattices for a given n.
+/// The soft n-gram counts are returned in soft_counts as n-gram, probability
+/// pairs and instances of the same n-gram probability are stored as separate
+/// entries; these need to be summed over to get the final soft-count for a
+/// given n-gram. 
+void ComputeSoftNgramCounts(const CompactLattice &lat, int32 n,
+  CompactLattice::Arc::Label eos_symbol,
+  std::vector<std::pair<std::vector<CompactLattice::Arc::Label>, 
+    double> > *soft_counts);
 
 }  // namespace kaldi
 

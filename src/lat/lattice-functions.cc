@@ -4,7 +4,9 @@
 //           2012-2013  Johns Hopkins University (Author: Daniel Povey);  Chao Weng;
 //                      Bagher BabaAli
 //                2013  Cisco Systems (author: Neha Agrawal) [code modified
-//                      from original code in ../gmmbin/gmm-rescore-lattice.cc]
+//                      from original code in ../gmmbin/gmm-rescore-lattice.cc];
+//                2014  Telepoint Global Hosting Service, LLC. (Author: 
+//                      David Snyder)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -1211,6 +1213,136 @@ BaseFloat LatticeForwardBackwardMmi(
   return ans;
 }
 
+void ComputeSoftNgramCounts(const CompactLattice &lat, int32 n,
+  CompactLattice::Arc::Label eos_symbol, 
+  std::vector<std::pair<std::vector<CompactLattice::Arc::Label>,
+    double> > *soft_counts ) {
+  kaldi::uint64 props = lat.Properties(fst::kFstProperties, false);
+  if (!(props & fst::kTopSorted))
+    KALDI_ERR << "Input lattice must be topologically sorted.";
+  typedef CompactLattice::Arc Arc;
+  typedef CompactLattice::StateId StateId;
+  typedef CompactLattice::Weight Weight;
+  unordered_map<StateId, std::vector<Arc> > ngram_history;
+  std::vector<StateId> discovered(lat.NumStates(), 0);
+
+  StateId start_state = lat.Start(),
+          super_final_offset = lat.NumStates();
+  std::vector<Arc> start_history;
+  std::pair<const StateId, std::vector<Arc> > new_pair(start_state,
+    start_history);
+  ngram_history.insert(new_pair);
+
+  std::vector<double> alpha, 
+                      beta; 
+
+  double tot_like = kaldi::ComputeLatticeAlphasAndBetas(lat, false,
+    &alpha, &beta);
+  
+  for (StateId state = 0; state < lat.NumStates(); state++) {
+    for (fst::ArcIterator<CompactLattice > aiter(lat, state);
+      !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      StateId next_state = arc.nextstate;
+      // When the ngram history reaches n-1, drop the oldest
+      // arc in the history when copying. However, we don't want to do this
+      // if the current transition is an epsilon.
+      std::vector<Arc> arc_history;
+      
+      // General case where the state is not a final state.
+      if (n > 1) {
+        // If the state has full n-gram history.
+        if (ngram_history[state].size() == n-1 && arc.olabel != 0)
+          arc_history = std::vector<Arc>(ngram_history[state].begin() + 1, 
+            ngram_history[state].end());
+        //  Else the n-gram history is truncated.
+        else 
+          arc_history = std::vector<Arc>(ngram_history[state]);
+        // Epsilons aren't part of the ngram history.
+        if (arc.olabel != 0) 
+          arc_history.push_back(arc);
+      }
+
+      std::pair<const StateId, std::vector<Arc> > new_pair(next_state, 
+        arc_history);
+      // We need unique histories. So if we've already added a history
+      // for this state, it needs to be the same history that we're about
+      // to add.
+      if (ngram_history.find(next_state) != ngram_history.end()) {
+        KALDI_ASSERT(ngram_history[next_state].size() 
+          == arc_history.size());
+        for (int32 i = 0; i < arc_history.size(); i++)
+          KALDI_ASSERT(arc_history[i].olabel 
+            == ngram_history[next_state][i].olabel);
+      } else {
+        ngram_history.insert(new_pair);
+      }
+
+      // Retrieve probability for this instance of the n-gram. 
+      if (arc.olabel != 0) {
+        std::vector<Arc::Label> ngram;
+        for (int32 i = 0; i < ngram_history[state].size(); i++)
+          ngram.push_back(ngram_history[state][i].olabel);
+        ngram.push_back(arc.olabel);
+        double prob = exp(alpha[state] - 
+          ConvertToCost(arc.weight) + beta[next_state] - tot_like);
+        std::pair<std::vector<Arc::Label>, 
+          double> ngram_and_prob(ngram, prob);
+        soft_counts->push_back(ngram_and_prob);
+      }
+    }
+
+    // Handle the case where the state is a final state.
+    Weight final_weight = lat.Final(state);
+    if (final_weight != Weight::Zero()) {
+      // Each final state gets its own super_final state. This is needed to 
+      // statisfy the requirement that every state has a unique history up
+      // to the order of n because we associate a EOS symbol with the final
+      // state. This super_final state is not added to the lattice.
+      StateId super_final = state + super_final_offset;
+      // This arc points to an imaginary "super-final" state.
+      Arc arc;
+      arc.weight = final_weight;
+      arc.ilabel = eos_symbol;
+      arc.olabel = eos_symbol;
+      arc.nextstate = super_final;
+      std::vector<Arc> arc_history;
+      if (n > 1) {
+        if (ngram_history[state].size() == n-1)
+          arc_history = std::vector<Arc>(ngram_history[state].begin() + 1, 
+            ngram_history[state].end());
+        else
+          arc_history = std::vector<Arc>(ngram_history[state]);
+        // If n == 1 then there is no transition history. 
+        arc_history.push_back(arc);
+      }
+
+      std::pair<const StateId, std::vector<Arc> > new_pair(super_final, 
+        arc_history);
+      if (ngram_history.find(super_final) != ngram_history.end()) {
+        KALDI_ASSERT(ngram_history[super_final].size() 
+          == arc_history.size());
+        for (int32 i = 0; i < arc_history.size(); i++)
+          KALDI_ASSERT(arc_history[i].olabel 
+            == ngram_history[super_final][i].olabel);
+      } else {
+        ngram_history.insert(new_pair);
+      }
+
+      std::vector<Arc::Label> ngram;
+      for (int32 i = 0; i < ngram_history[state].size(); i++)
+        ngram.push_back(ngram_history[state][i].olabel);
+      ngram.push_back(arc.olabel);
+      // Retrieve probability of this instance of the n-gram. 
+      // Note that beta[super_final] == 0.
+      double prob = exp(alpha[state] - ConvertToCost(final_weight)
+        - tot_like);
+      std::pair<std::vector<Arc::Label>, 
+        double> ngram_and_prob(ngram, prob);
+      soft_counts->push_back(ngram_and_prob);
+    }
+  }
+}
 
 int32 LongestSentenceLength(const Lattice &lat) {
   typedef Lattice::Arc Arc;
@@ -1287,7 +1419,5 @@ int32 LongestSentenceLength(const CompactLattice &clat) {
   }
   return lattice_max_length;
 }
-
-
 
 }  // namespace kaldi

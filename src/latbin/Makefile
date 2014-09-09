@@ -19,7 +19,8 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-add-penalty lattice-align-words-lexicon lattice-push \
            lattice-minimize lattice-limit-depth lattice-depth-per-frame \
            lattice-confidence lattice-determinize-phone-pruned \
-           lattice-determinize-phone-pruned-parallel lattice-expand-ngram
+           lattice-determinize-phone-pruned-parallel lattice-expand-ngram \
+           lattice-to-ngram-counts
 
 OBJFILES =
 
