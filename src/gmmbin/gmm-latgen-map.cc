@@ -31,8 +31,9 @@
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-faster-decoder.h"
 #include "gmm/decodable-am-diag-gmm.h"
-#include "util/timer.h"
+#include "base/timer.h"
 #include "lat/kaldi-lattice.h" // for {Compact}LatticeArc
+
 
 int main(int argc, char *argv[]) {
   try {
@@ -163,7 +164,7 @@ int main(int argc, char *argv[]) {
           num_success++;
         } else num_fail++;
       }  // end looping over all utterances
-    }else{
+    } else {
       RandomAccessTableReader<fst::VectorFstHolder> fst_reader(fst_in_filename);
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       for (; !feature_reader.Done(); feature_reader.Next()) {

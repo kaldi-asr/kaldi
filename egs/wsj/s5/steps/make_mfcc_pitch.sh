@@ -24,10 +24,10 @@ if [ -f path.sh ]; then . ./path.sh; fi
 if [ $# != 3 ]; then
    echo "usage: make_mfcc_pitch.sh [options] <data-dir> <log-dir> <path-to-mfcc-pitch-dir>";
    echo "options: "
-   echo "  --mfcc_config              <mfcc-config-file>        # config passed to compute-mfcc-feats "
-   echo "  --pitch_config             <pitch-config-file>       # config passed to compute-kaldi-pitch-feats "
-   echo "  --pitch_postprocess_config <postprocess-config-file>	# config passed to process-kaldi-pitch-feats "
-   echo "  --paste_length_tolerance   <tolerance>               # length tolerance passed to paste-feats"
+   echo "  --mfcc-config              <mfcc-config-file>        # config passed to compute-mfcc-feats "
+   echo "  --pitch-config             <pitch-config-file>       # config passed to compute-kaldi-pitch-feats "
+   echo "  --pitch-postprocess-config <postprocess-config-file>	# config passed to process-kaldi-pitch-feats "
+   echo "  --paste-length-tolerance   <tolerance>               # length tolerance passed to paste-feats"
    echo "  --nj                       <nj>                      # number of parallel jobs"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>)     # how to run jobs."
    exit 1;
@@ -79,14 +79,16 @@ elif [ -f $data/utt2warp ]; then
   vtln_opts="--vtln-map=ark:$data/utt2warp"
 fi
 
+for n in $(seq $nj); do
+  # the next command does nothing unless $mfcc_pitch_dir/storage/ exists, see
+  # utils/create_data_link.pl for more info.
+  utils/create_data_link.pl $mfcc_pitch_dir/raw_mfcc_pitch_$name.$n.ark  
+done
 
 if [ -f $data/segments ]; then
   echo "$0 [info]: segments file exists: using that."
   split_segments=""
-  # note: in general, the double-parenthesis construct in bash "((" is "C-style
-  # syntax" where we can get rid of the $ for variable names, and omit spaces.
-  # The "for" loop in this style is a special construct.
-  for ((n=1; n<=nj; n++)); do
+  for n in $(seq $nj); do
     split_segments="$split_segments $logdir/segments.$n"
   done
 
@@ -105,7 +107,7 @@ if [ -f $data/segments ]; then
 else
   echo "$0: [info]: no segments file exists: assuming wav.scp indexed by utterance."
   split_scps=""
-  for ((n=1; n<=nj; n++)); do
+  for n in $(seq $nj); do
     split_scps="$split_scps $logdir/wav_${name}.$n.scp"
   done
 
@@ -130,7 +132,7 @@ if [ -f $logdir/.error.$name ]; then
 fi
 
 # concatenate the .scp files together.
-for ((n=1; n<=nj; n++)); do
+for n in $(seq $nj); do
   cat $mfcc_pitch_dir/raw_mfcc_pitch_$name.$n.scp || exit 1;
 done > $data/feats.scp
 

@@ -2,7 +2,7 @@
 
 // Copyright 2011-2012  Karel Vesely
 //           2013-2014  Johns Hopkins University (author: Daniel Povey)
-//	              2013  Xiaohui Zhang	
+//                  2013  Xiaohui Zhang    
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -666,7 +666,7 @@ std::string PnormComponent::Info() const {
   std::stringstream stream;
   stream << Type() << ", input-dim = " << input_dim_
          << ", output-dim = " << output_dim_
-	 << ", p = " << p_;
+     << ", p = " << p_;
   return stream.str();
 }
 
@@ -871,7 +871,7 @@ void PowerComponent::Write(std::ostream &os, bool binary) const {
 std::string PowerComponent::Info() const {
   std::stringstream stream;
   stream << Type() << ", dim = " << dim_
-	 << ", power = " << power_;
+     << ", power = " << power_;
   return stream.str();
 }
 
@@ -1556,7 +1556,6 @@ void PiecewiseLinearComponent::Backprop(const CuMatrixBase<BaseFloat> &in_value,
   PiecewiseLinearComponent *to_update =
       dynamic_cast<PiecewiseLinearComponent*>(to_update_in);
 
-  in_deriv->Resize(out_deriv.NumRows(), InputDim());  
   KALDI_ASSERT(in_value.NumRows() == out_deriv.NumRows() &&
                in_value.NumCols() == InputDim());
   
@@ -1998,7 +1997,7 @@ void AffineComponentPreconditionedOnline::Init(
 }
 
 AffineComponentPreconditionedOnline::AffineComponentPreconditionedOnline(
-    const AffineComponentPreconditioned &orig,
+    const AffineComponent &orig,
     int32 rank_in, int32 rank_out, int32 update_period,
     BaseFloat num_samples_history, BaseFloat alpha):
     max_change_per_sample_(0.1) {
@@ -2926,7 +2925,7 @@ void BlockAffineComponentPreconditioned::Update(
       in_value_precon(num_frames, input_block_dim + 1, kUndefined);
   in_value_temp.Set(1.0); // so last row will have value 1.0.
   CuSubMatrix<BaseFloat> in_value_temp_part(in_value_temp, 0, num_frames,
-                                          0, input_block_dim); // all but last 1.0
+                                            0, input_block_dim); // all but last 1.0
   CuSubMatrix<BaseFloat> in_value_precon_part(in_value_precon, 0, num_frames,
                                             0, input_block_dim);
   CuVector<BaseFloat> precon_ones(num_frames);
@@ -4299,8 +4298,8 @@ void DropoutComponent::Init(int32 dim,
 }
   
 void DropoutComponent::Propagate(const CuMatrixBase<BaseFloat> &in,
-    				 int32 num_chunks,
-    				 CuMatrix<BaseFloat> *out) const {
+                     int32 num_chunks,
+                     CuMatrix<BaseFloat> *out) const {
   KALDI_ASSERT(in.NumCols() == this->InputDim());
   out->Resize(in.NumRows(), in.NumCols());
 

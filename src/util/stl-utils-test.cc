@@ -26,9 +26,9 @@ namespace kaldi {
 static void TestIsSorted() {
   for (int i = 0;i < 100;i++) {
     std::vector<int> vec, vec2;
-    int len = rand()%5;
+    int len = Rand()%5;
     for (int i = 0;i < len;i++)
-      vec.push_back(rand() % 10);
+      vec.push_back(Rand() % 10);
     vec2 = vec;
     std::sort(vec2.begin(), vec2.end());
     KALDI_ASSERT(IsSorted(vec) == (vec == vec2));
@@ -38,9 +38,9 @@ static void TestIsSorted() {
 static void TestIsSortedAndUniq() {
   for (int i = 0;i < 100;i++) {
     std::vector<int> vec, vec2;
-    int len = rand()%5;
+    int len = Rand()%5;
     for (int i = 0;i < len;i++)
-      vec.push_back(rand() % 10);
+      vec.push_back(Rand() % 10);
 
     if (! IsSortedAndUniq(vec)) {
       bool ok = false;
@@ -60,14 +60,14 @@ static void TestUniq() {
     std::vector<int>  vec;
 
     int cur = 1;  //  sorted order.
-    int len = rand()%5;
+    int len = Rand()%5;
     for (int i = 0;i < len;i++) {
-      cur += 1 + (rand() % 100);
+      cur += 1 + (Rand() % 100);
       vec.push_back(cur);
     }
     std::vector<int> vec2;
     for (int i = 0;i < len;i++) {
-      int count = 1 + rand()%5;
+      int count = 1 + Rand()%5;
       for (int j = 0;j < count;j++) vec2.push_back(vec[i]);
     }
     Uniq(&vec2);
@@ -80,19 +80,19 @@ static void TestSortAndUniq() {
   for (int i = 0;i < 100;i++) {
     std::vector<int>  vec;
 
-    int len = rand()%5;
+    int len = Rand()%5;
     for (int i = 0;i < len;i++) {
-      int n = rand() % 100;
+      int n = Rand() % 100;
       bool ok = true;
       for (size_t j = 0;j < vec.size();j++) if (vec[j] == n) ok = false;
       if (ok)  vec.push_back(n);
     }
     // don't sort.
     std::vector<int> vec2(vec);  // make sure all things in "vec" represented in vec2.
-    int len2 = rand()%10;
+    int len2 = Rand()%10;
     if (vec.size() > 0) // add more, randomly.
       for (int i = 0;i < len2;i++)
-        vec2.push_back(vec[rand()%vec.size()]);
+        vec2.push_back(vec[Rand()%vec.size()]);
     SortAndUniq(&vec2);
     std::sort(vec.begin(), vec.end());
     KALDI_ASSERT(vec == vec2);
@@ -102,8 +102,8 @@ static void TestSortAndUniq() {
 void TestCopySetToVector() {
   for (int p = 0; p < 100; p++) {
     std::set<int> st;
-    int sz = rand() % 20;
-    for (int i = 0;i < sz;i++) st.insert(rand() % 10);
+    int sz = Rand() % 20;
+    for (int i = 0;i < sz;i++) st.insert(Rand() % 10);
     std::vector<int> v;
     CopySetToVector(st, &v);
     KALDI_ASSERT(st.size() == v.size());
@@ -115,8 +115,8 @@ void TestCopySetToVector() {
 void TestCopyMapToVector() {
   for (int p = 0; p < 100; p++) {
     std::map<int, int> mp;
-    int sz = rand() % 20;
-    for (int i = 0;i < sz;i++) mp[rand() % 10] = rand() % 20;
+    int sz = Rand() % 20;
+    for (int i = 0;i < sz;i++) mp[Rand() % 10] = Rand() % 20;
     std::vector<std::pair<int, int> > v;
     CopyMapToVector(mp, &v);
     KALDI_ASSERT(mp.size() == v.size());
@@ -128,8 +128,8 @@ void TestCopyMapToVector() {
 void TestCopyMapKeysToVector() {
   for (int p = 0; p < 100; p++) {
     std::map<int, int> mp;
-    int sz = rand() % 20;
-    for (int i = 0;i < sz;i++) mp[rand() % 10] = rand() % 20;
+    int sz = Rand() % 20;
+    for (int i = 0;i < sz;i++) mp[Rand() % 10] = Rand() % 20;
     std::vector<int> v;
     CopyMapKeysToVector(mp, &v);
     KALDI_ASSERT(mp.size() == v.size());
@@ -140,8 +140,8 @@ void TestCopyMapKeysToVector() {
 void TestCopyMapValuesToVector() {
   for (int p = 0; p < 100; p++) {
     std::map<int, int> mp;
-    int sz = rand() % 20;
-    for (int i = 0;i < sz;i++) mp[rand() % 10] = rand() % 20;
+    int sz = Rand() % 20;
+    for (int i = 0;i < sz;i++) mp[Rand() % 10] = Rand() % 20;
     std::vector<int> v;
     CopyMapValuesToVector(mp, &v);
     KALDI_ASSERT(mp.size() == v.size());
@@ -155,8 +155,8 @@ void TestCopyMapValuesToVector() {
 void TestCopyMapKeysToSet() {
   for (int p = 0; p < 100; p++) {
     std::map<int, int> mp;
-    int sz = rand() % 20;
-    for (int i = 0;i < sz;i++) mp[rand() % 10] = rand() % 20;
+    int sz = Rand() % 20;
+    for (int i = 0;i < sz;i++) mp[Rand() % 10] = Rand() % 20;
     std::vector<int> v;
     std::set<int> s;
     CopyMapKeysToVector(mp, &v);
@@ -171,8 +171,8 @@ void TestCopyMapKeysToSet() {
 void TestCopyMapValuesToSet() {
   for (int p = 0; p < 100; p++) {
     std::map<int, int> mp;
-    int sz = rand() % 20;
-    for (int i = 0;i < sz;i++) mp[rand() % 10] = rand() % 20;
+    int sz = Rand() % 20;
+    for (int i = 0;i < sz;i++) mp[Rand() % 10] = Rand() % 20;
     std::vector<int> v;
     std::set<int> s;
     CopyMapValuesToVector(mp, &v);
@@ -187,9 +187,9 @@ void TestCopyMapValuesToSet() {
 void TestContainsNullPointers() {
   for (int p = 0; p < 100; p++) {
     std::vector<char*> vec;
-    int sz = rand() % 3;
+    int sz = Rand() % 3;
     bool is_null = false;
-    for (int i = 0;i < sz;i++) { vec.push_back( reinterpret_cast<char*>(static_cast<intptr_t>(rand() % 2))); if (vec.back() == NULL) is_null = true; }
+    for (int i = 0;i < sz;i++) { vec.push_back( reinterpret_cast<char*>(static_cast<intptr_t>(Rand() % 2))); if (vec.back() == NULL) is_null = true; }
     KALDI_ASSERT(is_null == ContainsNullPointers(vec));
   }
 }
@@ -197,9 +197,9 @@ void TestContainsNullPointers() {
 void TestReverseVector() {
   for (int p = 0; p < 100; p++) {
     std::vector<int> vec;
-    int sz = rand() % 5;
+    int sz = Rand() % 5;
     for (int i = 0;i < sz;i++)
-      vec.push_back( rand() % 4) ;
+      vec.push_back( Rand() % 4) ;
     std::vector<int> vec2(vec), vec3(vec);
     ReverseVector(&vec2);
     ReverseVector(&vec2);
@@ -214,10 +214,10 @@ void TestMergePairVectorSumming() {
   for (int p = 0; p < 100; p++) {
     std::vector<std::pair<int32, int16> > v;
     std::map<int32, int16> m;
-    int sz = rand() % 10;
+    int sz = Rand() % 10;
     for (size_t i = 0; i < sz; i++) {
-      int32 key = rand() % 10;
-      int16 val = (rand() % 5) - 2;
+      int32 key = Rand() % 10;
+      int16 val = (Rand() % 5) - 2;
       v.push_back(std::make_pair(key, val));
       if (m.count(key) == 0) m[key] = val;
       else m[key] += val;

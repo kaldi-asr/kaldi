@@ -1,6 +1,7 @@
 // doc/history.dox
 
-// Copyright 2009-2011 Microsoft Corporation
+// Copyright 2009-2011  Microsoft Corporation
+//           2012-2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -21,18 +22,18 @@
 /**
  \page history History of the Kaldi project
 
- Kaldi began its existence in the 2009 Johns Hopkins University workshop cumbersomely
- titled "Low Development Cost, High Quality Speech Recognition for New Languages and
- Domains" (see \ref history_ack).  The focus of that project was 
- Subspace Gaussian Mixture Model (SGMM) based
- modeling and some investigations into lexicon learning.  The software which is now
- Kaldi began to be developed there, but the recipe we developed at that time was
- still dependent on HTK.  A list of participants in that workshop, official and 
+ Kaldi began its existence in the 2009 Johns Hopkins University workshop
+ cumbersomely titled "Low Development Cost, High Quality Speech Recognition for
+ New Languages and Domains" (see \ref history_ack).  The focus of that project
+ was Subspace Gaussian Mixture Model (SGMM) based modeling and some
+ investigations into lexicon learning.  The software which is now Kaldi began to
+ be developed there, but the recipe we developed at that time was still
+ dependent on HTK.  A list of participants in that workshop, official and
  unofficial, is (alphabetically by last name):
 
- Mohit Agarwal, Pinar Akyazi, Lukas Burget, Arnab Ghoshal, Ondrej Glembek, Nagendra Goel,
+<small> Mohit Agarwal, Pinar Akyazi, Lukas Burget, Arnab Ghoshal, Ondrej Glembek, Nagendra Goel,
  Martin Karafiat, Feng Kai, Daniel Povey, Ariya Rastrow, Richard C. Rose, Petr Schwarz,
- Samuel Thomas.
+ Samuel Thomas. </small>
 
  Some of the participants of that workshop agreed to meet again in the summer of
  2010 in Brno, Czech Republic (hosted by the Brno University of Technology).  The
@@ -45,9 +46,9 @@
  speech-recognition community.  During August of 2010 the following group of
  people met in Brno to work on this (again alphabetically):
 
- Pinar Akyazi, Lukas Burget, Gilles Boullianne, Ondrej Glembek, Arnab Ghoshal,
+<small> Pinar Akyazi, Lukas Burget, Gilles Boullianne, Ondrej Glembek, Arnab Ghoshal,
  Nagendra Goel, Mirko Hannemann, Petr Motlicek, Daniel Povey, Yanmin Qian, Petr
- Schwarz, Jan Silowsky, Georg Stemmer, and Karel Vesely.
+ Schwarz, Jan Silowsky, Georg Stemmer, and Karel Vesely. </small>
 
  We also had some remote help around this time and shortly afterward, from
  Sandeep Boda, Sandeep Reddy and Haihua Xu (who helped with coding, code cleanup
@@ -62,6 +63,16 @@
  complete working system.  Some of the participants of the 2010 workshop
  continued working to complete the toolkit and get a working set of training scripts.  
  The code was released on May 14th, 2011.
+
+ Since the initial release, Kaldi has been maintained and developed to a large
+ extent by Daniel Povey, working at Microsoft Research until early 2012 and
+ since then at Johns Hopkins University; but also with major contributions by
+ others: notably Karel Vesely, who developed the neural-net training framework,
+ and Arnab Ghoshal, who co-ordinated the acoustic modeling work early on; but
+ also other major contributors whom we do not name here because it is too hard
+ to determine where to cut off the list; and a long tail of minor contributors;
+ the total number of people who have contributed code or scripts or patches is
+ about 70 so far.
 
  \section history_ack Acknowledgements
 
@@ -84,7 +95,15 @@
  for his help in organizing the JHU'09 workshop and with the Wall Street
  Journal recipe.  We would also like to acknowledge the help
  of faculty and staff at Johns Hopkins University's Center for Language and
- Speech Processing during the JHU'09 workshop: particularly Desiree Cleves,
- Sanjeev Khudanpur and the late Fred Jelinek.
+ Speech Processing during the JHU'09 workshop: particularly 
+ Sanjeev Khudanpur, Desiree Cleves and the late Fred Jelinek.
+
+ Sanjeev Khudanpur deserves special mention for creating the conditions for the
+ Kaldi project to succeed, first at the JHU'09 workshop where in his role as
+ workshop organizer he was instrumental in putting the team together
+ (e.g. suggesting to add Lukas Burget, without whom none of this would have
+ happened); and since 2012 by making it possible for Daniel Povey to work at
+ Johns Hopkins University in a position which allows him to devote much of his
+ time to Kaldi development.
 
 */

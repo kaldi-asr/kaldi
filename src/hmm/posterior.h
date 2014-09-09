@@ -126,6 +126,8 @@ typedef RandomAccessTableReader<GaussPostHolder> RandomAccessGaussPostReader;
 /// Scales the BaseFloat (weight) element in the posterior entries.
 void ScalePosterior(BaseFloat scale, Posterior *post);
 
+/// Returns the total of all the weights in "post".
+BaseFloat TotalPosterior(const Posterior &post);
 
 /// Returns true if the two lists of pairs have no common .first element.
 bool PosteriorEntriesAreDisjoint(
@@ -146,6 +148,20 @@ int32 MergePosteriors(const Posterior &post1,
                       bool drop_frames,
                       Posterior *post);
 
+/// Given a vector of log-likelihoods (typically of Gaussians in a GMM
+/// but could be of pdf-ids), a number gselect >= 1 and a minimum posterior
+/// 0 <= min_post < 1, it gets the posterior for each element of log-likes
+/// by applying Softmax(), then prunes the posteriors using "gselect" and
+/// "min_post" (keeping at least one), and outputs the result into
+/// "post_entry", sorted from greatest to least posterior.
+/// Returns the total log-likelihood (the output of calling ApplySoftMax()
+/// on a copy of log_likes).
+BaseFloat VectorToPosteriorEntry(
+    const VectorBase<BaseFloat> &log_likes,
+    int32 num_gselect,
+    BaseFloat min_post,
+    std::vector<std::pair<int32, BaseFloat> > *post_entry);
+
 /// Convert an alignment to a posterior (with a scale of 1.0 on
 /// each entry).
 void AlignmentToPosterior(const std::vector<int32> &ali,
@@ -155,6 +171,7 @@ void AlignmentToPosterior(const std::vector<int32> &ali,
 /// each other.
 void SortPosteriorByPdfs(const TransitionModel &tmodel,
                          Posterior *post);
+
 
 /// Converts a posterior over transition-ids to be a posterior
 /// over pdf-ids.

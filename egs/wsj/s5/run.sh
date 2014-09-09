@@ -66,6 +66,18 @@ local/wsj_format_data.sh || exit 1;
  #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=16G" \
  #      --hidden 300 --nwords 40000 --class 400 --direct 2000 data/local/rnnlm.h300.voc40k &
  #   )
+   false && \ # Comment this out to train RNNLM-HS
+   (
+       num_threads_rnnlm=8
+       local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
+	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 30  --nwords 10000 --direct 1000 data/local/rnnlm-hs.h30.voc10k  
+       local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
+	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 100 --nwords 20000 --direct 1500 data/local/rnnlm-hs.h100.voc20k 
+       local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
+	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 300 --nwords 30000 --direct 1500 data/local/rnnlm-hs.h300.voc30k 
+       local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
+	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 400 --nwords 40000 --direct 2000 data/local/rnnlm-hs.h400.voc40k 
+   )
   ) &
 
 
@@ -246,6 +258,10 @@ steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_
 # that build the RNNLMs, so it would fail.
 # local/run_rnnlms_tri3b.sh
 
+# The command below is commented out as we commented out the steps above
+# that build the RNNLMs (HS version), so it would fail.
+# wait; local/run_rnnlm-hs_tri3b.sh
+
 # The following two steps, which are a kind of side-branch, try mixing up
 ( # from the 3b system.  This is to demonstrate that script.
  steps/mixup.sh --cmd "$train_cmd" \
@@ -258,6 +274,11 @@ steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_
 # From 3b system, align all si284 data.
 steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284 || exit 1;
+
+# These demonstrate how to build a sytem usable for online-decoding with the nnet2 setup.
+# (see local/run_nnet2.sh for other, non-online nnet2 setups).
+# local/online/run_nnet2.sh
+# local/online/run_nnet2_baseline.sh
 
 # From 3b system, train another SAT system (tri4a) with all the si284 data.
 

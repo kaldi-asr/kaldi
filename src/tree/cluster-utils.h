@@ -173,8 +173,8 @@ struct ClusterKMeansOptions {
  *  multiple iterations and picks the result with the best objective function.
  *
  *
- *  ClusterKMeans implicitly uses rand(). It will not necessarily return
- *  the same value on different calls.  Use srand() if you want consistent
+ *  ClusterKMeans implicitly uses Rand(). It will not necessarily return
+ *  the same value on different calls.  Use sRand() if you want consistent
  *  results.
  *  The algorithm used in ClusterKMeans is a "k-means-like" algorithm that tries
  *  to be as efficient as possible.  Firstly, since the algorithm it uses

@@ -162,7 +162,7 @@ class LatticeWordAligner {
       StateId output_state = lat_out_->AddState();
       map_[tuple] = output_state;
       if (add_to_queue)
-        queue_.push_back(std::make_pair(tuple, output_state));
+        queue_.push_front(std::make_pair(tuple, output_state));
       return output_state;
     } else {
       return iter->second;
@@ -334,7 +334,9 @@ class LatticeWordAligner {
   int32 max_states_;
   CompactLattice *lat_out_;
 
-  std::vector<std::pair<Tuple, StateId> > queue_;
+  std::deque<std::pair<Tuple, StateId> > queue_;
+  
+  
   
   MapType map_; // map from tuples to StateId.
   bool error_;
@@ -884,7 +886,7 @@ class WordAlignedLatticeTester {
       Project(&aligned_lat, fst::PROJECT_INPUT);
     }
 
-    if (!RandEquivalent(lat_, aligned_lat, 5/*paths*/, 1.0e+10/*delta*/, rand()/*seed*/,
+    if (!RandEquivalent(lat_, aligned_lat, 5/*paths*/, 1.0e+10/*delta*/, Rand()/*seed*/,
                         200/*path length (max?)*/))
       KALDI_ERR << "Equivalence test failed (testing word-alignment of lattices.) "
                 << "Make sure your model and lattices match!";

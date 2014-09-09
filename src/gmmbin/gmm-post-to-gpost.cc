@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
             int32 pdf_id = pdf_posterior[i][j].first;
             BaseFloat weight = pdf_posterior[i][j].second;
             const DiagGmm &gmm = am_gmm.GetPdf(pdf_id);
-            Vector<BaseFloat> this_post_vec;           
+            Vector<BaseFloat> this_post_vec;
             BaseFloat like =
                 gmm.ComponentPosteriors(mat.Row(i), &this_post_vec);
             this_post_vec.Scale(weight);

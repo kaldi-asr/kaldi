@@ -27,7 +27,7 @@
 #include "fstext/fstext-lib.h"
 #include "decoder/lattice-faster-decoder.h"
 #include "decoder/decodable-matrix.h"
-#include "util/timer.h"
+#include "base/timer.h"
 
 
 int main(int argc, char *argv[]) {

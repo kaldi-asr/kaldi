@@ -931,14 +931,14 @@ BaseFloat ClusterKMeansOnce(const std::vector<Clusterable*> &points,
   assignments_out->resize(num_points);
 
   {  // This block assigns points to clusters.
-    // This is done pseudo-randomly using rand() so that
+    // This is done pseudo-randomly using Rand() so that
     // if we call ClusterKMeans multiple times we get different answers (so we can choose
     // the best if we want).
     int32 skip;  // randomly choose a "skip" that's coprime to num_points.
     if (num_points == 1) {
       skip = 1;
     } else {
-      skip = 1 + (rand() % (num_points-1));  // a number between 1 and num_points-1.
+      skip = 1 + (Rand() % (num_points-1));  // a number between 1 and num_points-1.
       while (Gcd(skip, num_points) != 1) {  // while skip is not coprime to num_points...
         if (skip == num_points-1) skip = 0;
         skip++;  // skip is now still betweeen 1 and num_points-1.  will cycle through

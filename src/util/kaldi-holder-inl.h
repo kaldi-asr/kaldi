@@ -76,7 +76,7 @@ template<class KaldiType> class KaldiObjectHolder {
       return true;
     } catch (std::exception &e) {
       KALDI_WARN << "Exception caught reading Table object ";
-	  if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+      if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       delete t_;
       t_ = NULL;
       return false;

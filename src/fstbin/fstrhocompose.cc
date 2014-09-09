@@ -46,7 +46,7 @@ fstcompose a.fst g.fst | fstprint
 
 fstrhocompose 100 a.fst g.fst | fstprint
 # gives, again correctly:
-#0	1	10	10	1
+#0    1    10    10    1
 #1
  
 

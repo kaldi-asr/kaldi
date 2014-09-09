@@ -77,8 +77,8 @@ BaseFloat GetGmmLike(const DiagGmm &gmm,
 }
 
 void TestFmpe() {
-  int32 dim = 10 + (rand() % 10);
-  int32 num_comp = 10 + (rand() % 10);
+  int32 dim = 10 + (Rand() % 10);
+  int32 num_comp = 10 + (Rand() % 10);
   DiagGmm gmm;
   unittest::InitRandDiagGmm(dim, num_comp, &gmm);
   
@@ -93,7 +93,7 @@ void TestFmpe() {
   {
     Fmpe fmpe(gmm, opts);
     {
-      bool binary = (rand() % 2 == 1);
+      bool binary = (Rand() % 2 == 1);
       Output ko("tmpf", binary);
       fmpe.Write(ko.Stream(), binary);
     }
@@ -161,6 +161,8 @@ void TestFmpe() {
             << delta << ", change computed directly is "
             << delta2;
   KALDI_ASSERT(fabs(delta-delta2) < 0.15 * fabs(delta+delta2));
+  
+  unlink("tmpf");
 }
 
 }

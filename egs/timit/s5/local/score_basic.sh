@@ -27,6 +27,7 @@ lang_or_graph=$2
 dir=$3
 
 phonemap="conf/phones.60-48-39.map"
+nj=$(cat $dir/num_jobs)
 
 symtab=$lang_or_graph/words.txt
 
@@ -40,16 +41,20 @@ mkdir -p $dir/scoring/log
 cat $data/text | local/timit_norm_trans.pl -i - -m $phonemap -from 48 -to 39 > $dir/scoring/test_filt.txt
 
 # Get the phone-sequence on the best-path:
-$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
-  lattice-best-path --lm-scale=LMWT --word-symbol-table=$symtab \
-    "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/scoring/LMWT.tra || exit 1;
+for LMWT in $(seq $min_lmwt $max_lmwt); do
+  $cmd JOB=1:$nj $dir/scoring/log/best_path_basic.$LMWT.JOB.log \
+    lattice-best-path --lm-scale=$LMWT --word-symbol-table=$symtab --verbose=2 \
+      "ark:gunzip -c $dir/lat.JOB.gz|" ark,t:$dir/scoring/$LMWT.JOB.tra || exit 1;
+  cat $dir/scoring/$LMWT.*.tra | sort > $dir/scoring/$LMWT.tra
+  rm $dir/scoring/$LMWT.*.tra
+done
 
 # Map hypothesis to 39 phone classes:
-$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
+$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score_basic.LMWT.log \
    cat $dir/scoring/LMWT.tra \| \
     utils/int2sym.pl -f 2- $symtab \| \
     local/timit_norm_trans.pl -i - -m $phonemap -from 48 -to 39 \| \
     compute-wer --text --mode=all \
-     ark:$dir/scoring/test_filt.txt ark,p:- $dir/scoring/stats_LMWT ">&" $dir/wer_LMWT || exit 1;
+     ark:$dir/scoring/test_filt.txt ark,p:- $dir/scoring/wer_stats_LMWT ">&" $dir/wer_LMWT || exit 1;
 
 exit 0;

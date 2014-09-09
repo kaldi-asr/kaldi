@@ -66,6 +66,9 @@ void TestAmDiagGmmIO(const AmDiagGmm &am_gmm) {
     loglike2 += am_gmm2->LogLikelihood(i, feat);
   kaldi::AssertEqual(loglike, loglike2, 1e-4);
   delete am_gmm2;
+  
+  unlink("tmpf");
+  unlink("tmpfb");
 }
 
 void TestSplitStates(const AmDiagGmm &am_gmm) {

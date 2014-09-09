@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
         // Accumulate the statistics
         kl_hmm.Accumulate(mat, alignment);  
         // log
-	KALDI_VLOG(2) << "utt " << utt << ", frames " << alignment.size();
+    KALDI_VLOG(2) << "utt " << utt << ", frames " << alignment.size();
         total_frames += mat.NumRows();
       } 
       num_done++;

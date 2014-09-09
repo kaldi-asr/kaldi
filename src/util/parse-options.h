@@ -41,7 +41,8 @@ class ParseOptions : public OptionsItf {
 #ifndef _MSC_VER  // This is just a convenient place to set the stderr to line
     setlinebuf(stderr);  // buffering mode, since it's called at program start.
 #endif  // This helps ensure different programs' output is not mixed up.
-    RegisterStandard("config", &config_, "Configuration file with options");
+    RegisterStandard("config", &config_, "Configuration file to read (this "
+                     "option may be repeated)");
     RegisterStandard("print-args", &print_args_,
                      "Print the command line arguments (to stderr)");
     RegisterStandard("help", &help_, "Print out usage message");
@@ -240,6 +241,19 @@ template<class C> void ReadConfigFromFile(const std::string config_filename,
             << "from '" << config_filename << "'";
   ParseOptions po(usage_str.str().c_str());
   c->Register(&po);
+  po.ReadConfigFile(config_filename);
+}
+
+/// This variant of the template ReadConfigFromFile is for if you need to read
+/// two config classes from the same file.
+template<class C1, class C2> void ReadConfigsFromFile(const std::string config_filename,
+                                                      C1 *c1, C2 *c2) {
+  std::ostringstream usage_str;
+  usage_str << "Parsing config from "
+            << "from '" << config_filename << "'";
+  ParseOptions po(usage_str.str().c_str());
+  c1->Register(&po);
+  c2->Register(&po);
   po.ReadConfigFile(config_filename);
 }
 

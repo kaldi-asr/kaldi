@@ -42,7 +42,7 @@ struct LinearCgdOptions {
   // since the last time it was computed from scratch, recompute it from
   // scratch.  This helps to keep the computed residual accurate even in the
   // presence of roundoff.
-  BaseFloat recompute_residual_factor;   
+  BaseFloat recompute_residual_factor;
   
   LinearCgdOptions(): max_iters(-1),
                       max_error(0.0),

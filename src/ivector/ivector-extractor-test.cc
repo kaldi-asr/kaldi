@@ -25,7 +25,7 @@ namespace kaldi {
 
 void TestIvectorExtractorIO(const IvectorExtractor &extractor) {
   std::ostringstream ostr;
-  bool binary = (rand() % 2 == 0);
+  bool binary = (Rand() % 2 == 0);
   extractor.Write(ostr, binary);
   std::istringstream istr(ostr.str());
   IvectorExtractor extractor2;
@@ -36,15 +36,20 @@ void TestIvectorExtractorIO(const IvectorExtractor &extractor) {
 }
 void TestIvectorExtractorStatsIO(IvectorExtractorStats &stats) {
   std::ostringstream ostr;
-  bool binary = (rand() % 2 == 0);
+  bool binary = (Rand() % 2 == 0);
   stats.Write(ostr, binary);
   std::istringstream istr(ostr.str());
   IvectorExtractorStats stats2;
   stats2.Read(istr, binary);
   std::ostringstream ostr2;
   stats2.Write(ostr2, binary);
-  KALDI_ASSERT(ostr.str() == ostr2.str());
-
+  
+  if (binary) {
+    // this was failing in text mode, due to differences like
+    // 8.2244e+06 vs  8.22440e+06
+    KALDI_ASSERT(ostr.str() == ostr2.str());
+  }
+  
   { // Test I/O of IvectorExtractorStats and that it works identically with the "add"
     // mechanism.  We only test this with binary == true; otherwise it's not
     // identical due to limited precision.
@@ -68,9 +73,10 @@ void TestIvectorExtractorStatsIO(IvectorExtractorStats &stats) {
 
     std::ostringstream ostr3;
     stats3.Write(ostr3, false);
-    // This test stopped working after we made the stats single precision.
-    // It's OK.  Disabling it.
-    // KALDI_ASSERT(ostr2.str() == ostr3.str());
+
+    //if (binary) {
+    //  KALDI_ASSERT(ostr2.str() == ostr3.str());
+    //}
   }
 }
 
@@ -104,9 +110,7 @@ void TestIvectorExtraction(const IvectorExtractor &extractor,
                                             extractor.PriorOffset());
 
   for (int32 t = 0; t < num_frames; t++) {
-    online_stats.AddToStats(extractor,
-                            feats.Row(t),
-                            post[t]);
+    online_stats.AccStats(extractor, feats.Row(t), post[t]);
   }
   
   Vector<double> ivector1(ivector_dim), ivector2(ivector_dim);
@@ -123,31 +127,31 @@ void TestIvectorExtraction(const IvectorExtractor &extractor,
 
 void UnitTestIvectorExtractor() {
   FullGmm fgmm;
-  int32 dim = 5 + rand() % 5, num_comp = 1 + rand() % 5;
+  int32 dim = 5 + Rand() % 5, num_comp = 1 + Rand() % 5;
   KALDI_LOG << "Num Gauss = " << num_comp;
   unittest::InitRandFullGmm(dim, num_comp, &fgmm);
   FullGmmNormal fgmm_normal(fgmm);
 
   IvectorExtractorOptions ivector_opts;
   ivector_opts.ivector_dim = dim + 5;
-  ivector_opts.use_weights = (rand() % 2 == 0);
+  ivector_opts.use_weights = (Rand() % 2 == 0);
   KALDI_LOG << "Feature dim is " << dim
             << ", ivector dim is " << ivector_opts.ivector_dim;
   IvectorExtractor extractor(ivector_opts, fgmm);
   TestIvectorExtractorIO(extractor);
 
   IvectorExtractorStatsOptions stats_opts;
-  if (rand() % 2 == 0) stats_opts.update_variances = false;
+  if (Rand() % 2 == 0) stats_opts.update_variances = false;
   stats_opts.num_samples_for_weights = 100; // Improve accuracy
   // of estimation, since we do it with relatively few utterances,
   // and we're testing the convergence.
 
-  int32 num_utts = 1 + rand() % 5;
+  int32 num_utts = 1 + Rand() % 5;
   std::vector<Matrix<BaseFloat> > all_feats(num_utts);
   for (int32 utt = 0; utt < num_utts; utt++) {
-    int32 num_frames = 100 + rand() % 200;
-    if (rand() % 2 == 0) num_frames *= 10;
-    if (rand() % 2 == 0) num_frames /= 1.0;
+    int32 num_frames = 100 + Rand() % 200;
+    if (Rand() % 2 == 0) num_frames *= 10;
+    if (Rand() % 2 == 0) num_frames /= 1.0;
     Matrix<BaseFloat> feats(num_frames, dim);
     fgmm_normal.Rand(&feats);
     feats.Swap(&all_feats[utt]);

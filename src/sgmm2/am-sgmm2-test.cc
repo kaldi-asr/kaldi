@@ -145,6 +145,8 @@ void TestSgmm2IO(const AmSgmm2 &sgmm) {
   BaseFloat loglike2 = sgmm2->LogLikelihood(per_frame, 0, &sgmm_cache, &empty);
   kaldi::AssertEqual(loglike, loglike2, 1e-4);
   delete sgmm2;
+  unlink("tmpf");
+  unlink("tmpfb");
 }
 
 void TestSgmm2Substates(const AmSgmm2 &sgmm) {
@@ -253,7 +255,7 @@ void TestSgmm2PreXform(const AmSgmm2 &sgmm) {
   kaldi::Vector<BaseFloat> res_vec(dim, kaldi::kSetZero);
   res_vec.AddMatVec(1.0, a_inv, kaldi::kNoTrans, b_pre, 0.0);
   res_vec.AddVec(1.0, b_inv);
-  KALDI_ASSERT(res_vec.IsZero(1.0e-6));
+  KALDI_ASSERT(res_vec.IsZero(1.0e-5));
 }
 
 void UnitTestSgmm2() {

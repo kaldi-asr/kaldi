@@ -28,7 +28,7 @@
 #include <cublas.h>
 #endif
 
-#include "util/timer.h"
+#include "base/timer.h"
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-device.h"
@@ -818,7 +818,7 @@ void CuMatrixBase<Real>::AddMat(Real alpha, const CuMatrixBase<Real>& A,
 
 template<typename Real>
 void CuMatrixBase<Real>::AddMatMatDivMat(const CuMatrixBase<Real> &A, 
-					const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C) {
+                    const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -2131,7 +2131,7 @@ void CuMatrixBase<Real>::AddElements(Real alpha,
   if (CuDevice::Instantiate().Enabled()) {
     void *addr = CuDevice::Instantiate().Malloc(input.size() * sizeof(MatrixElement<Real>));
     CU_SAFE_CALL(cudaMemcpy(addr, input.data(),
-	                    input.size() * sizeof(MatrixElement<Real>),
+                        input.size() * sizeof(MatrixElement<Real>),
                             cudaMemcpyHostToDevice));
 
     Timer tim;

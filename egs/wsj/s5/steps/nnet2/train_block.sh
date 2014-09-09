@@ -150,8 +150,6 @@ utils/split_data.sh $data $nj
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
-cp $alidir/splice_opts $dir 2>/dev/null
-cp $alidir/cmvn_opts $dir 2>/dev/null
 cp $alidir/tree $dir
 
 
@@ -379,8 +377,7 @@ echo Done
 if $cleanup; then
   echo Cleaning up data
   if [ $egs_dir == "$dir/egs" ]; then
-    echo Removing training examples
-    rm $dir/egs/egs*
+    steps/nnet2/remove_egs.sh $dir/egs
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do

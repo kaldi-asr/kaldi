@@ -1049,6 +1049,11 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
   }
   
   void InitializeDeterminization() {
+    // We insist that the input lattice be topologically sorted.  This is not a
+    // fundamental limitation of the algorithm (which in principle should be
+    // applicable to even cyclic FSTs), but it helps us more efficiently
+    // compute the backward_costs_ array.  There may be some other reason we
+    // require this, that escapes me at the moment.
     KALDI_ASSERT(ifst_->Properties(kTopSorted, true) != 0);
     ComputeBackwardWeight();
 #if !(__GNUC__ == 4 && __GNUC_MINOR__ == 0)
@@ -1204,6 +1209,10 @@ bool DeterminizeLatticePruned(
     DeterminizeLatticePrunedOptions opts) {
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
+  if (ifst.NumStates() == 0) {
+    ofst->DeleteStates();
+    return true;
+  }
   KALDI_ASSERT(opts.retry_cutoff >= 0.0 && opts.retry_cutoff < 1.0);
   int32 max_num_iters = 10;  // avoid the potential for infinite loops if
                              // retrying.
@@ -1214,10 +1223,11 @@ bool DeterminizeLatticePruned(
                                                    beam, opts);
     double effective_beam;
     bool ans = det.Determinize(&effective_beam);
-    // if it returns false it will typically still
-    // produce reasonable output, just with a
-    // narrower beam than "beam".
+    // if it returns false it will typically still produce reasonable output,
+    // just with a narrower beam than "beam".  If the user specifies an infinite
+    // beam we don't do this beam-narrowing.
     if (effective_beam >= beam * opts.retry_cutoff ||
+        beam == std::numeric_limits<double>::infinity() ||
         iter + 1 == max_num_iters) {
       det.Output(ofst);
       return ans;
@@ -1243,14 +1253,19 @@ bool DeterminizeLatticePruned(
 // or possibly TropicalWeightTpl<float>, and IntType would be int32.
 // Caution: there are two versions of the function DeterminizeLatticePruned,
 // with identical code but different output FST types.
-template<class Weight, class IntType>
+template<class Weight>
 bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
                               double beam,
                               MutableFst<ArcTpl<Weight> > *ofst,
                               DeterminizeLatticePrunedOptions opts) {
+  typedef int32 IntType;
   ofst->SetInputSymbols(ifst.InputSymbols());
   ofst->SetOutputSymbols(ifst.OutputSymbols());
   KALDI_ASSERT(opts.retry_cutoff >= 0.0 && opts.retry_cutoff < 1.0);
+  if (ifst.NumStates() == 0) {
+    ofst->DeleteStates();
+    return true;
+  }
   int32 max_num_iters = 10;  // avoid the potential for infinite loops if
                              // retrying.
   VectorFst<ArcTpl<Weight> > temp_fst;
@@ -1387,14 +1402,14 @@ bool DeterminizeLatticePhonePrunedFirstPass(
   // First, insert the phones.
   typename ArcTpl<Weight>::Label first_phone_label =
       DeterminizeLatticeInsertPhones(trans_model, fst);
-  KALDI_ASSERT(TopSort(fst));
+  TopSort(fst);
   
   // Second, do determinization with phone inserted.
-  bool ans = DeterminizeLatticePruned<Weight, IntType>(*fst, beam, fst, opts);
+  bool ans = DeterminizeLatticePruned<Weight>(*fst, beam, fst, opts);
 
   // Finally, remove the inserted phones.
   DeterminizeLatticeDeletePhones(first_phone_label, fst);
-  KALDI_ASSERT(TopSort(fst));
+  TopSort(fst);
 
   return ans;
 }
@@ -1502,14 +1517,14 @@ bool DeterminizeLatticePhonePrunedWrapper(
 // Note: there are actually four templates, each of which
 // we instantiate for a single type.
 template
-bool DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
+bool DeterminizeLatticePruned<kaldi::LatticeWeight>(
     const ExpandedFst<kaldi::LatticeArc> &ifst,
     double prune,
     MutableFst<kaldi::CompactLatticeArc> *ofst, 
     DeterminizeLatticePrunedOptions opts);
 
 template
-bool DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
+bool DeterminizeLatticePruned<kaldi::LatticeWeight>(
     const ExpandedFst<kaldi::LatticeArc> &ifst,
     double prune,
     MutableFst<kaldi::LatticeArc> *ofst, 

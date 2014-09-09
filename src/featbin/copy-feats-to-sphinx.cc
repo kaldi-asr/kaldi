@@ -22,7 +22,13 @@
 #include "matrix/matrix-lib.h"
 
 #include <sys/stat.h>
+
+#if defined(_MSC_VER)
+#include <direct.h>
+#else
 #include <unistd.h>
+#endif
+
 #include <stdio.h>
 
 
@@ -56,7 +62,11 @@ int main(int argc, char *argv[]) {
     // check or create output dir:
     const char * c = dir_out.c_str();
    if ( access( c, 0 ) != 0 ){
+#if defined(_MSC_VER)
+    if (_mkdir(c) != 0)
+#else
     if (mkdir(c, S_IRWXU|S_IRGRP|S_IXGRP) != 0)
+#endif
        KALDI_ERR << "Could not create output directory: " << dir_out;
     }
     
@@ -71,7 +81,7 @@ int main(int argc, char *argv[]) {
       Matrix<BaseFloat> output(num_frames, dim, kUndefined);
       std::stringstream ss;
       ss << dir_out << "/" << utt << "." << ext_out; 
-      output.Range(0, num_frames, 0, dim).CopyFromMat(feats.Range(0, num_frames, 0, dim));	
+      output.Range(0, num_frames, 0, dim).CopyFromMat(feats.Range(0, num_frames, 0, dim));    
       std::ofstream os(ss.str().c_str(), std::ios::out|std::ios::binary);
       WriteSphinx(os, output);
       num_done++;    

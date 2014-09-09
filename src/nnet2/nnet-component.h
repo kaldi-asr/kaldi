@@ -2,7 +2,7 @@
 
 // Copyright 2011-2013  Karel Vesely
 //                      Johns Hopkins University (author: Daniel Povey)
-//	          2013  Xiaohui Zhang	
+//              2013  Xiaohui Zhang    
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -706,6 +706,7 @@ class AffineComponent: public UpdatableComponent {
                                                   // element.
              AffineComponent *c3);
  protected:
+  friend class AffineComponentPreconditionedOnline;
   friend class AffineComponentA;
   // This function Update() is for extensibility; child classes may override this.
   virtual void Update(
@@ -794,7 +795,7 @@ class PiecewiseLinearComponent: public UpdatableComponent {
 // This is an idea Dan is trying out, a little bit like
 // preconditioning the update with the Fisher matrix, but the
 // Fisher matrix has a special structure.
-// [note: it is currently used in the standard receipe].
+// [note: it is currently used in the standard recipe].
 class AffineComponentPreconditioned: public AffineComponent {
  public:
   virtual std::string Type() const { return "AffineComponentPreconditioned"; }
@@ -814,7 +815,6 @@ class AffineComponentPreconditioned: public AffineComponent {
   AffineComponentPreconditioned(): alpha_(1.0), max_change_(0.0) { }
   void SetMaxChange(BaseFloat max_change) { max_change_ = max_change; }
  protected:
-  friend class AffineComponentPreconditionedOnline;
   KALDI_DISALLOW_COPY_AND_ASSIGN(AffineComponentPreconditioned);
   BaseFloat alpha_;
   BaseFloat max_change_; // If > 0, this is the maximum amount of parameter change (in L2 norm)
@@ -869,10 +869,10 @@ class AffineComponentPreconditionedOnline: public AffineComponent {
             BaseFloat alpha, BaseFloat max_change_per_sample,
             std::string matrix_filename);
 
-  // This constructor is used when converting neural networks partway
-  // through training, from AffineComponentPreconditioned to
+  // This constructor is used when converting neural networks partway through
+  // training, from AffineComponent or AffineComponentPreconditioned to
   // AffineComponentPreconditionedOnline.
-  AffineComponentPreconditionedOnline(const AffineComponentPreconditioned &orig,
+  AffineComponentPreconditionedOnline(const AffineComponent &orig,
                                       int32 rank_in, int32 rank_out,
                                       int32 update_period,
                                       BaseFloat eta, BaseFloat alpha);
@@ -979,7 +979,7 @@ class RandomComponent: public Component {
  public:
   // This function is required in testing code and in other places we need
   // consistency in the random number generation (e.g. when optimizing
-  // validation-set performance), but check where else we call srand().  You'll
+  // validation-set performance), but check where else we call sRand().  You'll
   // need to call srand as well as making this call.  
   void ResetGenerator() { random_generator_.SeedGpu(0); }
  protected:

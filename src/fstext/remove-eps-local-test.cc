@@ -21,7 +21,7 @@
 #include "fstext/remove-eps-local.h"
 #include "fstext/fstext-utils.h"
 #include "fstext/fst-test-utils.h"
-
+#include "base/kaldi-math.h"
 
 
 namespace fst
@@ -36,7 +36,7 @@ template<class Arc> static void TestRemoveEpsLocal() {
   typedef typename Arc::Weight Weight;
 
   VectorFst<Arc> fst;
-  int n_syms = 2 + rand() % 5, n_arcs = 5 + rand() % 30, n_final = 1 + rand()%10;
+  int n_syms = 2 + kaldi::Rand() % 5, n_arcs = 5 + kaldi::Rand() % 30, n_final = 1 + kaldi::Rand()%10;
 
   SymbolTable symtab("my-symbol-table"), *sptr = &symtab;
 
@@ -55,27 +55,27 @@ template<class Arc> static void TestRemoveEpsLocal() {
   fst.AddState();
   int cur_num_states = 1;
   for (int i = 0; i < n_arcs; i++) {
-    StateId src_state = rand() % cur_num_states;
+    StateId src_state = kaldi::Rand() % cur_num_states;
     StateId dst_state;
-    if (kaldi::RandUniform() < 0.1) dst_state = rand() % cur_num_states;
+    if (kaldi::RandUniform() < 0.1) dst_state = kaldi::Rand() % cur_num_states;
     else {
       dst_state = cur_num_states++; fst.AddState();
     }
     Arc arc;
-    if (kaldi::RandUniform() < 0.3) arc.ilabel = all_syms[rand()%all_syms.size()];
+    if (kaldi::RandUniform() < 0.3) arc.ilabel = all_syms[kaldi::Rand()%all_syms.size()];
     else arc.ilabel = 0;
-    if (kaldi::RandUniform() < 0.3) arc.olabel = all_syms[rand()%all_syms.size()];
+    if (kaldi::RandUniform() < 0.3) arc.olabel = all_syms[kaldi::Rand()%all_syms.size()];
     else arc.olabel = 0;
-    arc.weight = (Weight) (0 + 0.1*(rand() % 5));
+    arc.weight = (Weight) (0 + 0.1*(kaldi::Rand() % 5));
     arc.nextstate = dst_state;
     fst.AddArc(src_state, arc);
   }
   for (int i = 0; i < n_final; i++) {
-    fst.SetFinal(rand() % cur_num_states,  (Weight) (0 + 0.1*(rand() % 5)));
+    fst.SetFinal(kaldi::Rand() % cur_num_states,  (Weight) (0 + 0.1*(kaldi::Rand() % 5)));
   }
 
   if (kaldi::RandUniform() < 0.8)   fst.SetStart(0);  // usually leads to nicer examples.
-  else fst.SetStart(rand() % cur_num_states);
+  else fst.SetStart(kaldi::Rand() % cur_num_states);
 
   Connect(&fst);
   if (fst.Start() == kNoStateId) return;  // "Connect" made it empty.
@@ -106,7 +106,7 @@ template<class Arc> static void TestRemoveEpsLocal() {
 
   std::cout << "Number of states 0 = "<<num_states_0<<", 1 = "<<num_states_1<<'\n';
 
-  assert(RandEquivalent(fst, fst_copy1, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+  assert(RandEquivalent(fst, fst_copy1, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
 }
 
 
@@ -149,7 +149,7 @@ static void TestRemoveEpsLocalSpecial() {
   VectorFst<StdArc> fst_copy(fst);
   RemoveEpsLocalSpecial(&fst);  // removes eps in std-arc but keep stochastic in log-arc
   // make sure equivalent.
-  assert(RandEquivalent(fst, fst_copy, 5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+  assert(RandEquivalent(fst, fst_copy, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
   VectorFst<LogArc> logfst2;
   Cast(fst, &logfst2);
 

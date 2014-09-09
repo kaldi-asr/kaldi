@@ -233,16 +233,16 @@ void OnlinePreconditionerSimple::PreconditionDirectionsCpu(
 
 
 void UnitTestPreconditionDirectionsOnline() {
-  MatrixIndexT R = 1 + rand() % 5,  // rank of correction
-      N = (2 * R) + rand() % 30,  // batch size
-      D = R + 1 + rand() % 20; // problem dimension.  Must be > R.
+  MatrixIndexT R = 1 + Rand() % 5,  // rank of correction
+      N = (2 * R) + Rand() % 30,  // batch size
+      D = R + 1 + Rand() % 20; // problem dimension.  Must be > R.
 
   // Test sometimes with features that are all-zero or all-one; this will
   // help to make sure low-rank or zero input doesn't crash the code.
   bool zero = false;
   bool one = false;
-  if (rand() % 3 == 0) zero = true;
-  else if (rand() % 2 == 0) one = true;
+  if (Rand() % 3 == 0) zero = true;
+  else if (Rand() % 2 == 0) one = true;
   
   CuVector<BaseFloat> row_prod1(N), row_prod2(N);
   BaseFloat gamma1, gamma2;
@@ -291,18 +291,18 @@ void ExactEigsOfProduct(const CuMatrixBase<BaseFloat> &M,
   
 
 void UnitTestApproxEigsOfProduct() {
-  int32 dimM = 10 + rand() % 50,
-      dimN = 10 + rand() % 50;
-  MatrixTransposeType trans = (rand() % 2 == 0 ? kTrans : kNoTrans);
+  int32 dimM = 10 + Rand() % 50,
+      dimN = 10 + Rand() % 50;
+  MatrixTransposeType trans = (Rand() % 2 == 0 ? kTrans : kNoTrans);
   int32 product_dim = (trans == kTrans ? dimN : dimM),
       other_dim = (trans == kTrans ? dimM : dimN);
   
   CuMatrix<BaseFloat> M(dimM, dimN);
-  if (rand() % 4 == 0) {
+  if (Rand() % 4 == 0) {
     M.SetRandn();
-  } else if (rand() % 3 == 0) {
+  } else if (Rand() % 3 == 0) {
     M.Row(2).SetRandn();
-  } else if (rand() % 2 == 0) {
+  } else if (Rand() % 2 == 0) {
     M.Row(2).SetRandn();
     M.Row(4).SetRandn();
   }
@@ -310,7 +310,7 @@ void UnitTestApproxEigsOfProduct() {
   // full-rank M as well as zero, one or two eigenvalues
   // being nonzero.
 
-  int32 rank = 1 + rand() % (product_dim - 1);
+  int32 rank = 1 + Rand() % (product_dim - 1);
 
   CuMatrix<BaseFloat> P_approx(rank, product_dim),
       P_exact(rank, product_dim);

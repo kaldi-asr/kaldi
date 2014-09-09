@@ -176,8 +176,8 @@ void MatrixBase<Real>::AddMatMat(const Real alpha,
 
 template<typename Real>
 void MatrixBase<Real>::AddMatMatDivMat(const MatrixBase<Real>& A,
-             	     		       const MatrixBase<Real>& B,
-                    		       const MatrixBase<Real>& C) {
+                                     const MatrixBase<Real>& B,
+                                   const MatrixBase<Real>& C) {
   KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
   KALDI_ASSERT(A.NumRows() == C.NumRows() && A.NumCols() == C.NumCols());
   for (int32 r = 0; r < A.NumRows(); r++) { // each frame...
@@ -1047,7 +1047,7 @@ void MatrixBase<Real>::GroupPnormDeriv(const MatrixBase<Real> &input,
         if (output_val == 0) 
           (*this)(i, j) = 0;
          else
-      	  (*this)(i, j) = pow(std::abs(input_val), power - 1) * 
+            (*this)(i, j) = pow(std::abs(input_val), power - 1) * 
               pow(output_val, 1 - power) * (input_val >= 0 ? 1 : -1) ;
       }
     }
@@ -1092,20 +1092,24 @@ void MatrixBase<Real>::SetUnit() {
 
 template<typename Real>
 void MatrixBase<Real>::SetRandn() {
+  kaldi::RandomState rstate;
   for (MatrixIndexT row = 0; row < num_rows_; row++) {
     Real *row_data = this->RowData(row);
-    for (MatrixIndexT col = 0; col < num_cols_; col++, row_data++) {
-      *row_data = static_cast<Real>(kaldi::RandGauss());
+    MatrixIndexT nc = (num_cols_ % 2 == 1) ? num_cols_ - 1 : num_cols_;
+    for (MatrixIndexT col = 0; col < nc; col += 2) {
+      kaldi::RandGauss2(row_data + col, row_data + col + 1, &rstate);
     }
+    if (nc != num_cols_) row_data[nc] = static_cast<Real>(kaldi::RandGauss(&rstate));
   }
 }
 
 template<typename Real>
 void MatrixBase<Real>::SetRandUniform() {
+  kaldi::RandomState rstate;
   for (MatrixIndexT row = 0; row < num_rows_; row++) {
     Real *row_data = this->RowData(row);
     for (MatrixIndexT col = 0; col < num_cols_; col++, row_data++) {
-      *row_data = static_cast<Real>(kaldi::RandUniform());
+      *row_data = static_cast<Real>(kaldi::RandUniform(&rstate));
     }
   }
 }

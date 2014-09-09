@@ -27,7 +27,7 @@ $jobend=1;
 $qsub_opts=""; # These will be ignored.
 
 # First parse an option like JOB=1:4, and any
-# options that would normally be given to 
+# options that would normally be given to
 # queue.pl, which we will just discard.
 
 if (@ARGV > 0) {
@@ -40,7 +40,7 @@ if (@ARGV > 0) {
       $option = shift @ARGV;
       if ($switch eq "-sync" && $option =~ m/^[yY]/) {
         $qsub_opts .= "-sync "; # Note: in the
-        # corresponding coce in queue.pl it says instead, just "$sync = 1;".
+        # corresponding code in queue.pl it says instead, just "$sync = 1;".
       }
       $qsub_opts .= "$switch $option ";
       if ($switch eq "-pe") { # e.g. -pe smp 5
@@ -55,7 +55,7 @@ if (@ARGV > 0) {
     $jobend = $3;
     shift;
     if ($jobstart > $jobend) {
-      die "queue.pl: invalid job range $ARGV[0]";
+      die "run.pl: invalid job range $ARGV[0]";
     }
   } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)$/) { # e.g. JOB=1.
     $jobname = $1;
@@ -63,7 +63,7 @@ if (@ARGV > 0) {
     $jobend = $2;
     shift;
   } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
-    print STDERR "Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
+    print STDERR "Warning: suspicious first argument to run.pl: $ARGV[0]\n";
   }
 }
 
@@ -140,7 +140,7 @@ if ($ret != 0) {
     }
     print STDERR "run.pl: job failed, log is in $logfile\n";
     if ($logfile =~ m/JOB/) {
-      print STDERR "queue.pl: probably you forgot to put JOB=1:\$nj in your script.";
+      print STDERR "run.pl: probably you forgot to put JOB=1:\$nj in your script.";
     }
   }
   else {

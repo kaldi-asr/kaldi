@@ -185,6 +185,8 @@ static void UnitTestHTKCompare1() {
   }
 
   std::cout << "Test passed :)\n\n";
+  
+  unlink("tmp.test.wav.fbank_kaldi.1");
 }
 
 
@@ -264,6 +266,8 @@ static void UnitTestHTKCompare2() {
   }
 
   std::cout << "Test passed :)\n\n";
+  
+  unlink("tmp.test.wav.fbank_kaldi.1");
 }
 
 static void UnitTestHTKCompare3() {
@@ -347,6 +351,8 @@ static void UnitTestHTKCompare3() {
   }
 
   std::cout << "Test passed :)\n\n";
+  
+  unlink("tmp.test.wav.fbank_kaldi.1");
 }
 
 
@@ -430,6 +436,8 @@ static void UnitTestHTKCompare4() {
   }
 
   std::cout << "Test passed :)\n\n";
+  
+  unlink("tmp.test.wav.fbank_kaldi.1");
 }
 
 

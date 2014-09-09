@@ -1,6 +1,7 @@
 // decoder/faster-decoder.h
 
-// Copyright 2009-2011 Microsoft Corporation
+// Copyright 2009-2011  Microsoft Corporation
+//                2013  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -80,41 +81,64 @@ class FasterDecoder {
 
   void Decode(DecodableInterface *decodable);
 
+  /// Returns true if a final state was active on the last frame.
   bool ReachedFinal();
 
-  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out);
+  /// GetBestPath gets the decoding traceback. If "use_final_probs" is true
+  /// AND we reached a final state, it limits itself to final states;
+  /// otherwise it gets the most likely token not taking into account
+  /// final-probs. Returns true if the output best path was not the empty
+  /// FST (will only return false in unusual circumstances where
+  /// no tokens survived).
+  bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out, 
+                   bool use_final_probs = true);
 
+  /// As a new alternative to Decode(), you can call InitDecoding
+  /// and then (possibly multiple times) AdvanceDecoding().
+  void InitDecoding();
+  
+
+  /// This will decode until there are no more frames ready in the decodable
+  /// object, but if max_num_frames is >= 0 it will decode no more than
+  /// that many frames.
+  void AdvanceDecoding(DecodableInterface *decodable,
+                         int32 max_num_frames = -1);
+
+  /// Returns the number of frames already decoded.  
+  int32 NumFramesDecoded() const { return num_frames_decoded_; }
+  
  protected:
 
   class Token {
    public:
     Arc arc_; // contains only the graph part of the cost;
     // we can work out the acoustic part from difference between
-    // "weight_" and prev->weight_.
+    // "cost_" and prev->cost_.
     Token *prev_;
     int32 ref_count_;
-    Weight weight_; // weight up to current point.
-    inline Token(const Arc &arc, Weight &ac_weight, Token *prev):
+    // if you are looking for weight_ here, it was removed and now we just have
+    // cost_, which corresponds to ConvertToCost(weight_).
+    double cost_;
+    inline Token(const Arc &arc, BaseFloat ac_cost, Token *prev):
         arc_(arc), prev_(prev), ref_count_(1) {
       if (prev) {
         prev->ref_count_++;
-        weight_ = Times(Times(prev->weight_, arc.weight), ac_weight);
+        cost_ = prev->cost_ + arc.weight.Value() + ac_cost;
       } else {
-        weight_ = Times(arc.weight, ac_weight);
+        cost_ = arc.weight.Value() + ac_cost;
       }
     }
     inline Token(const Arc &arc, Token *prev):
         arc_(arc), prev_(prev), ref_count_(1) {
       if (prev) {
         prev->ref_count_++;
-        weight_ = Times(prev->weight_, arc.weight);
+        cost_ = prev->cost_ + arc.weight.Value();
       } else {
-        weight_ = arc.weight;
+        cost_ = arc.weight.Value();
       }
     }
     inline bool operator < (const Token &other) {
-      return weight_.Value() > other.weight_.Value();
-      // This makes sense for log + tropical semiring.
+      return cost_ > other.cost_;
     }
 
     inline static void TokenDelete(Token *tok) {
@@ -133,16 +157,18 @@ class FasterDecoder {
 
 
   /// Gets the weight cutoff.  Also counts the active tokens.
-  BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
-                      BaseFloat *adaptive_beam, Elem **best_elem);
+  double GetCutoff(Elem *list_head, size_t *tok_count,
+                   BaseFloat *adaptive_beam, Elem **best_elem);
 
   void PossiblyResizeHash(size_t num_toks);
 
   // ProcessEmitting returns the likelihood cutoff used.
-  BaseFloat ProcessEmitting(DecodableInterface *decodable, int frame);
+  // It decodes the frame num_frames_decoded_ of the decodable object
+  // and then increments num_frames_decoded_
+  double ProcessEmitting(DecodableInterface *decodable);
 
   // TODO: first time we go through this, could avoid using the queue.
-  void ProcessNonemitting(BaseFloat cutoff);
+  void ProcessNonemitting(double cutoff);
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of
@@ -153,6 +179,9 @@ class FasterDecoder {
   std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
   // make it class member to avoid internal new/delete.
+
+  // Keep track of the number of frames decoded in the current file.
+  int32 num_frames_decoded_;
 
   // It might seem unclear why we call ClearToks(toks_.Clear()).
   // There are two separate cleanup tasks we need to do at when we start a new file.

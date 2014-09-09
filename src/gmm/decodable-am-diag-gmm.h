@@ -62,12 +62,12 @@ class DecodableAmDiagGmmUnmapped : public DecodableInterface {
   virtual BaseFloat LogLikelihood(int32 frame, int32 state_index) {
     return LogLikelihoodZeroBased(frame, state_index - 1);
   }
-  int32 NumFrames() { return feature_matrix_.NumRows(); }
+  int32 NumFrames() const { return feature_matrix_.NumRows(); }
   
   // Indices are one-based!  This is for compatibility with OpenFst.
-  virtual int32 NumIndices() { return acoustic_model_.NumPdfs(); }
+  virtual int32 NumIndices() const { return acoustic_model_.NumPdfs(); }
 
-  virtual bool IsLastFrame(int32 frame) {
+  virtual bool IsLastFrame(int32 frame) const {
     KALDI_ASSERT(frame < NumFrames());
     return (frame == NumFrames() - 1);
   }
@@ -110,7 +110,7 @@ class DecodableAmDiagGmm: public DecodableAmDiagGmmUnmapped {
                                   trans_model_.TransitionIdToPdf(tid));
   }
   // Indices are one-based!  This is for compatibility with OpenFst.
-  virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
+  virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
 
   const TransitionModel *TransModel() { return &trans_model_; }
  private: // want to access public to have pdf id information

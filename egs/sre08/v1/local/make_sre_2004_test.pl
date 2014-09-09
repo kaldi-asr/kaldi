@@ -3,9 +3,11 @@
 # Copyright 2014  David Snyder
 # Apache 2.0.
 
-`wget -P local/ \\
-  http://www.itl.nist.gov/iad/894.01/tests/sre/2006/sre04_key.tgz`;
-`tar -C local -zxvf local/sre04_key.tgz`;
+if (! -f "data/local/sre04_key-v2.txt") {
+  `mkdir -p data/local/`;
+  `wget -P data/local/ http://www.openslr.org/resources/10/sre04_key-v2.txt.gz`;
+  `gunzip data/local/sre04_key-v2.txt.gz`;
+}
 
 if (@ARGV != 2) {
   print STDERR "Usage: $0 <path-to-LDC2011S09> <path-to-output>\n";
@@ -19,13 +21,13 @@ if (system("mkdir -p $out_dir")) {
   die "Error making directory $out_dir";
 }
 
-open(TRIALS, "<local/sre04_key/keys/sre04_key-v2.txt") 
-  or die "Could not open local/sre04/key/keys/sre04_key-v2.txt";
-open(GNDR,">", "$out_dir/spk2gender") 
+open(TRIALS, "<data/local/sre04_key-v2.txt")
+  or die "Could not open data/local/sre04_key-v2.txt";
+open(GNDR,">", "$out_dir/spk2gender")
   or die "Could not open the output file $out_dir/spk2gender";
-open(SPKR,">", "$out_dir/utt2spk") 
+open(SPKR,">", "$out_dir/utt2spk")
   or die "Could not open the output file $out_dir/utt2spk";
-open(WAV,">", "$out_dir/wav.scp") 
+open(WAV,">", "$out_dir/wav.scp")
   or die "Could not open the output file $out_dir/wav.scp";
 
 $data_src_suffix = `dirname $db_base`;
@@ -63,9 +65,6 @@ close(GNDR) || die;
 close(SPKR) || die;
 close(WAV) || die;
 close(TRIALS) || die;
-
-`rm local/sre04_key.tgz`;
-`rm -r local/sre04_key`;
 
 if (system(
   "utils/utt2spk_to_spk2utt.pl $out_dir/utt2spk >$out_dir/spk2utt") != 0) {

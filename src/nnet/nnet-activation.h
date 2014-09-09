@@ -110,7 +110,7 @@ class Tanh : public Component {
 class Dropout : public Component {
  public:
   Dropout(int32 dim_in, int32 dim_out):
-      Component(dim_in, dim_out)
+      Component(dim_in, dim_out), dropout_retention_(0.5)
   { }
   ~Dropout()
   { }
@@ -118,13 +118,41 @@ class Dropout : public Component {
   Component* Copy() const { return new Dropout(*this); }
   ComponentType GetType() const { return kDropout; }
 
+  void InitData(std::istream &is) {
+    is >> std::ws; // eat-up whitespace
+    // parse config
+    std::string token; 
+    while (!is.eof()) {
+      ReadToken(is, false, &token); 
+      /**/ if (token == "<DropoutRetention>") ReadBasicType(is, false, &dropout_retention_);
+      else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
+                     << " (DropoutRetention)";
+    }
+    KALDI_ASSERT(dropout_retention_ > 0.0 && dropout_retention_ <= 1.0);
+  }
+
+  void ReadData(std::istream &is, bool binary) {
+    if ('<' == Peek(is, binary)) {
+      ExpectToken(is, binary, "<DropoutRetention>");
+      ReadBasicType(is, binary, &dropout_retention_);
+    }
+    KALDI_ASSERT(dropout_retention_ > 0.0 && dropout_retention_ <= 1.0);
+  }
+
+  void WriteData(std::ostream &os, bool binary) const {
+    WriteToken(os, binary, "<DropoutRetention>");
+    WriteBasicType(os, binary, dropout_retention_);
+  }
+
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
     out->CopyFromMat(in);
     // switch off 50% of the inputs...
     dropout_mask_.Resize(out->NumRows(),out->NumCols());
-    rand_.RandUniform(&dropout_mask_);
+    dropout_mask_.Set(dropout_retention_);
     rand_.BinarizeProbs(dropout_mask_,&dropout_mask_);
     out->MulElements(dropout_mask_);
+    // rescale to keep same dynamic range as w/o dropout
+    out->Scale(1.0/dropout_retention_);
   }
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
@@ -132,12 +160,23 @@ class Dropout : public Component {
     in_diff->CopyFromMat(out_diff);
     // use same mask on the error derivatives...
     in_diff->MulElements(dropout_mask_);
+    // enlarge output to fit dynamic range w/o dropout
+    in_diff->Scale(1.0/dropout_retention_);
+  }
+  
+  BaseFloat GetDropoutRetention() {
+    return dropout_retention_;
+  }
+
+  void SetDropoutRetention(BaseFloat dr) {
+    dropout_retention_ = dr;
+    KALDI_ASSERT(dropout_retention_ > 0.0 && dropout_retention_ <= 1.0);
   }
 
  private:
   CuRand<BaseFloat> rand_;
   CuMatrix<BaseFloat> dropout_mask_;
-
+  BaseFloat dropout_retention_;
 };
 
 

@@ -73,7 +73,7 @@ template<typename Real>
 static void UnitTestCuSpMatrixApproxEqual() {
 
   for (int32 i = 0; i < 10; i++) {
-    int32 dim = 1 + rand() % 10;
+    int32 dim = 1 + Rand() % 10;
     SpMatrix<Real> A(dim), B(dim);
     A.SetRandn();
     B.SetRandn();
@@ -133,7 +133,7 @@ static void UnitTestCuSpMatrixCopyFromMat() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     SpCopyType copy_type = (i % 3 == 0 ? kTakeMean :
                             (i % 3 == 1 ? kTakeLower : kTakeUpper));
-    MatrixIndexT dim = 10 * i + rand() % 5;
+    MatrixIndexT dim = 10 * i + Rand() % 5;
     CuMatrix<Real> A(dim, dim);
     A.SetRandn();
     Matrix<Real> A2(A);
@@ -151,7 +151,7 @@ static void UnitTestCuSpMatrixCopyFromMat() {
 template<typename Real>
 static void UnitTestCuSpMatrixInvert() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 10*i + rand() % 5;
+    MatrixIndexT dim = 10*i + Rand() % 5;
     CuSpMatrix<Real> A(dim);
     A.SetRandn();
     KALDI_ASSERT(A.Trace() != 0.0); // true with probability 1...
@@ -182,7 +182,7 @@ static void UnitTestCuSpMatrixInvert() {
 template<typename Real>
 static void UnitTestCuSpMatrixAddVec2() {
   for (int32 i = 0; i < 50; i++) {
-    MatrixIndexT dim = 1 + rand() % 200;
+    MatrixIndexT dim = 1 + Rand() % 200;
     SpMatrix<Real> A(dim);
     A.SetRandn();
     CuSpMatrix<Real> B(A);
@@ -205,8 +205,8 @@ static void UnitTestCuSpMatrixAddVec2() {
 template<typename Real>
 static void UnitTestCuSpMatrixAddMat2() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim_row = 15 * i + rand() % 10;
-    MatrixIndexT dim_col = 7 *i + rand() % 10;
+    MatrixIndexT dim_row = 15 * i + Rand() % 10;
+    MatrixIndexT dim_col = 7 *i + Rand() % 10;
     Matrix<Real> A(dim_row, dim_col);
     A.SetRandn();
     CuMatrix<Real> B(A);
@@ -231,7 +231,7 @@ static void UnitTestCuSpMatrixAddMat2() {
 template<typename Real>
 static void UnitTestCuSpMatrixAddSp() {
   for (MatrixIndexT i = 1; i < 50; i++) {
-    MatrixIndexT dim = 7 * i + rand() % 10;
+    MatrixIndexT dim = 7 * i + Rand() % 10;
     
     SpMatrix<Real> A(dim);
     A.SetRandn();
@@ -256,7 +256,7 @@ static void UnitTestCuSpMatrixAddSp() {
 template<typename Real, typename OtherReal>
 static void UnitTestCuSpMatrixTraceSpSp() {
   for (MatrixIndexT i = 1; i < 2; i++) {
-    MatrixIndexT dim = 100 + rand() % 255;
+    MatrixIndexT dim = 100 + Rand() % 255;
     
     SpMatrix<Real> A(dim);
     A.SetRandn();
@@ -274,7 +274,7 @@ static void UnitTestCuSpMatrixTraceSpSp() {
 template<typename Real>
 void UnitTestCuSpMatrixSetUnit() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 100 * i + rand() % 255;
+    MatrixIndexT dim = 100 * i + Rand() % 255;
     if (i % 5 == 0) dim = 0;
     CuSpMatrix<Real> S1(dim), S2(dim), S4(dim);
     S1.SetRandn();
@@ -301,7 +301,7 @@ void UnitTestCuSpMatrixSetUnit() {
 template<class Real>
 static void UnitTestCuSpMatrixIO() {
   for (int32 i = 0; i < 10; i++) {
-    int32 dimM = rand() % 255;
+    int32 dimM = Rand() % 255;
     if (i % 5 == 0) { dimM = 0; }
     CuSpMatrix<Real> mat(dimM);
     mat.SetRandn();
@@ -322,7 +322,7 @@ static void UnitTestCuSpMatrixIO() {
 template<typename Real, typename OtherReal>
 static void UnitTestCuSpMatrixAddSp() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 100 * i + rand() % 255;
+    MatrixIndexT dim = 100 * i + Rand() % 255;
     
     SpMatrix<Real> A(dim);
     A.SetRandn();

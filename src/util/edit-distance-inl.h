@@ -75,17 +75,17 @@ struct error_stats{
 
 template<class T>
 int32 LevenshteinEditDistance(const std::vector<T> &ref,
-						      const std::vector<T> &hyp,
-						      int32 *ins, int32 *del, int32 *sub) {
+                              const std::vector<T> &hyp,
+                              int32 *ins, int32 *del, int32 *sub) {
   // temp sequence to remember error type and stats.
   std::vector<error_stats> e(ref.size()+1);
   std::vector<error_stats> cur_e(ref.size()+1);
   // initialize the first hypothesis aligned to the reference at each
   // position:[hyp_index =0][ref_index]
   for (size_t i =0; i < e.size(); i ++) {
-	e[i].ins_num = 0;
+    e[i].ins_num = 0;
     e[i].sub_num = 0;
-	e[i].del_num = i;
+    e[i].del_num = i;
     e[i].total_cost = i;
   }
 
@@ -97,16 +97,16 @@ int32 LevenshteinEditDistance(const std::vector<T> &ref,
    for (size_t ref_index = 1; ref_index <= ref.size(); ref_index ++) {
 
      int32 ins_err = e[ref_index].total_cost + 1;
-	 int32 del_err = cur_e[ref_index-1].total_cost + 1;
+     int32 del_err = cur_e[ref_index-1].total_cost + 1;
      int32 sub_err = e[ref_index-1].total_cost;
- 	 if (hyp[hyp_index-1] != ref[ref_index-1])
+      if (hyp[hyp_index-1] != ref[ref_index-1])
        sub_err ++;
 
      if (sub_err < ins_err && sub_err < del_err) {
-	    cur_e[ref_index] =e[ref_index-1];
+        cur_e[ref_index] =e[ref_index-1];
         if (hyp[hyp_index-1] != ref[ref_index-1])
           cur_e[ref_index].sub_num ++;   // substitution error should be increased
-		cur_e[ref_index].total_cost = sub_err;
+        cur_e[ref_index].total_cost = sub_err;
      }else if (del_err < ins_err ) {
         cur_e[ref_index] = cur_e[ref_index-1];
         cur_e[ref_index].total_cost = del_err;
@@ -114,7 +114,7 @@ int32 LevenshteinEditDistance(const std::vector<T> &ref,
      }else{
         cur_e[ref_index] = e[ref_index];
         cur_e[ref_index].total_cost = ins_err;
-		cur_e[ref_index].ins_num ++;    // insertion number is increased.
+        cur_e[ref_index].ins_num ++;    // insertion number is increased.
      }
    }
    e = cur_e;  // alternate for the next recursion.

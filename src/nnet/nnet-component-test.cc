@@ -75,7 +75,7 @@ namespace nnet1 {
     std::getline(infile, dim_str);
     
     std::stringstream stream(dim_str);    
-	
+    
     std::vector<int> dims;
     int n;
     while(stream >> n){
@@ -122,7 +122,7 @@ namespace nnet1 {
     std::getline(infile, dim_str);
     
     std::stringstream stream(dim_str);    
-	
+    
     std::vector<int> dims;
     int n;
     while(stream >> n){
@@ -204,7 +204,7 @@ namespace nnet1 {
     std::getline(infile, dim_str);
     
     std::stringstream stream(dim_str);    
-	
+    
     std::vector<int> dims;
     int n;
     while(stream >> n){

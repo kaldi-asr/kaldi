@@ -3,9 +3,8 @@ These instructions are valid for UNIX-like systems (these steps have
 been run on various Linux distributions; Darwin; Cygwin).  For native Windows
 compilation, see ../windows/INSTALL.
 
-You must first have completed the installation steps in ../tools/INSTALL or by
-running ../tools/install.sh (compiling OpenFst; getting ATLAS and CLAPACK
-headers).
+You must first have completed the installation steps in ../tools/INSTALL
+(compiling OpenFst; getting ATLAS and CLAPACK headers).
 
 The installation instructions are:
 ./configure

@@ -42,6 +42,8 @@ test_io(const RegressionTree &regtree,
   regtree.Write(s1, false);
   regtree2.Write(s2, false);
   KALDI_ASSERT(s1.str() == s2.str());
+  
+  unlink("tmp_regtree");
 }
 
 // void
@@ -132,8 +134,8 @@ UnitTestRegressionTree() {
 
   RegressionTree regtree;
   std::vector<int32> sil_pdfs;
-  if (rand() % 2 == 0)
-    sil_pdfs.push_back(rand() % 2);
+  if (Rand() % 2 == 0)
+    sil_pdfs.push_back(Rand() % 2);
   regtree.BuildTree(occs, sil_pdfs, acmodel, 2);
 
   // test I/O

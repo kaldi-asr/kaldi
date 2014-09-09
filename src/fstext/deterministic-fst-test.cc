@@ -121,19 +121,19 @@ Weight WalkSinglePath(StdVectorFst *ifst, DeterministicOnDemandFst<StdArc> *dfst
   Weight totalCost = Weight::One();
   
   while (ifst->Final(isrc) == Weight::Zero()) { // while not final
-	fst::ArcIterator<StdVectorFst> aiter(*ifst, isrc);
-	const StdArc &iarc = aiter.Value();
-	if (dfst->GetArc(dsrc, iarc.olabel, &oarc)) {
-	  Weight cost = Times(iarc.weight, oarc.weight);
-	  // cout << "  Matched label "<<iarc.olabel<<" at summed cost "<<cost<<endl;	  
-	  totalCost = Times(totalCost, cost);
-	} else {
-	  cout << "  Can't match arc ["<<iarc.ilabel<<","<<iarc.olabel<<","<<iarc.weight<<"] from "<<isrc<<endl;
-	  exit(1);
-	}
-	isrc = iarc.nextstate;
+    fst::ArcIterator<StdVectorFst> aiter(*ifst, isrc);
+    const StdArc &iarc = aiter.Value();
+    if (dfst->GetArc(dsrc, iarc.olabel, &oarc)) {
+      Weight cost = Times(iarc.weight, oarc.weight);
+      // cout << "  Matched label "<<iarc.olabel<<" at summed cost "<<cost<<endl;      
+      totalCost = Times(totalCost, cost);
+    } else {
+      cout << "  Can't match arc ["<<iarc.ilabel<<","<<iarc.olabel<<","<<iarc.weight<<"] from "<<isrc<<endl;
+      exit(1);
+    }
+    isrc = iarc.nextstate;
     KALDI_LOG << "Setting dsrc = " << oarc.nextstate;
-	dsrc = oarc.nextstate;
+    dsrc = oarc.nextstate;
   }
   totalCost = Times(totalCost, dfst->Final(dsrc));
                     
@@ -155,23 +155,23 @@ void TestBackoffAndCache() {
   
   // Compare all arcs in dfst1 with expected result
   for (StateIterator<StdVectorFst> riter(*rfst); !riter.Done(); riter.Next()) {
-	StateId rsrc = riter.Value();
-	// verify that states have same weight (or final status)
-	assert(ApproxEqual(rfst->Final(rsrc), dfst1.Final(rsrc)));
-	for (ArcIterator<StdVectorFst> aiter(*rfst, rsrc); !aiter.Done(); aiter.Next()) {
-	  StdArc rarc = aiter.Value();
-	  StdArc darc;
-	  if (dfst1.GetArc(rsrc, rarc.ilabel, &darc)) {
-		assert(ApproxEqual(rarc.weight, darc.weight, 0.001));
-		assert(rarc.ilabel==darc.ilabel);
+    StateId rsrc = riter.Value();
+    // verify that states have same weight (or final status)
+    assert(ApproxEqual(rfst->Final(rsrc), dfst1.Final(rsrc)));
+    for (ArcIterator<StdVectorFst> aiter(*rfst, rsrc); !aiter.Done(); aiter.Next()) {
+      StdArc rarc = aiter.Value();
+      StdArc darc;
+      if (dfst1.GetArc(rsrc, rarc.ilabel, &darc)) {
+        assert(ApproxEqual(rarc.weight, darc.weight, 0.001));
+        assert(rarc.ilabel==darc.ilabel);
         assert(rarc.olabel==darc.olabel);
-		assert(rarc.nextstate == darc.nextstate);
-		cerr << "  Got same arc at state "<<rsrc<<": "<<rarc.ilabel<<" "<<darc.ilabel<<endl;
-	  } else {
-		cerr << "Couldn't find arc "<<rarc.ilabel<<" for state "<<rsrc<<endl;
-		exit(1);
-	  }
-	}
+        assert(rarc.nextstate == darc.nextstate);
+        cerr << "  Got same arc at state "<<rsrc<<": "<<rarc.ilabel<<" "<<darc.ilabel<<endl;
+      } else {
+        cerr << "Couldn't find arc "<<rarc.ilabel<<" for state "<<rsrc<<endl;
+        exit(1);
+      }
+    }
   }
   delete nfst;
   delete rfst;

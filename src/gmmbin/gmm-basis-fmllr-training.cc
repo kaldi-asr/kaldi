@@ -75,13 +75,11 @@ int main(int argc, char *argv[]) {
     // Estimate the basis matrices
     BasisFmllrEstimate basis_est(am_gmm.Dim());
     basis_est.EstimateFmllrBasis(am_gmm, basis_accs);
-    {
-      Output ko(basis_wspecifier, binary_write);
-      basis_est.WriteBasis(ko.Stream(), binary_write);
-    }
+    WriteKaldiObject(basis_est, basis_wspecifier, binary_write);
+
     KALDI_LOG << "Summed " << num_accs << " gradient scatter stats";
-    KALDI_LOG << "Generate " << basis_est.basis_size_ << " bases, written to "
-    		  << basis_wspecifier;
+    KALDI_LOG << "Generate " << basis_est.BasisSize() << " bases, written to "
+              << basis_wspecifier;
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

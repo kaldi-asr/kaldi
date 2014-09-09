@@ -65,7 +65,7 @@ void GenRandStats(int32 dim, int32 num_stats, int32 N, int32 P,
   for (int32 i = 0;i < num_stats || (ensure_all_phones_covered && !all_covered);i++) {
     // decide randomly on a phone-in-context.
     std::vector<int32> phone_vec(N);
-    for (size_t i = 0;i < (size_t)N;i++) phone_vec[i] = phone_ids[(rand() % num_phones)];
+    for (size_t i = 0;i < (size_t)N;i++) phone_vec[i] = phone_ids[(Rand() % num_phones)];
 
     int32 hmm_length = phone2hmm_length[phone_vec[P]];
     KALDI_ASSERT(hmm_length > 0);
@@ -105,7 +105,7 @@ void GenRandStats(int32 dim, int32 num_stats, int32 N, int32 P,
         for (int32 k = 0; k < N; k++)
           mean.AddVec(weights(k), phone_vecs.Row(phone_vec[k]));
         BaseFloat count;
-        if (rand() % 2 == 0) count = 1000.0 * RandUniform();
+        if (Rand() % 2 == 0) count = 1000.0 * RandUniform();
         else count = 100.0 * RandUniform();
 
         int32 num_samples = 10;

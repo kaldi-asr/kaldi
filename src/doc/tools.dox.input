@@ -30,15 +30,15 @@ namespace kaldi  {
 	/**
 		\page tools Kaldi Tools
 
-           This page contains a list of all the Kaldi tools, with their
-           brief functions and usage messages.
+ This page contains a list of all the Kaldi tools, with their
+ brief functions and usage messages.
 
-			<table border="1" width="100%">
-				<tr>
-					<td width="20%" align="center"><h3>Tools</h3></td><td align="center"><h3>Description</h3></td>
-				</tr>
-          PUT_DATA_HERE
-			</table>
+<table border="1" width="100%">
+<tr>
+<td width="20%" align="center"><h3>Tools</h3></td><td align="center"><h3>Description</h3></td>
+</tr>
+PUT_DATA_HERE
+</table>
 	*/
 
 }

@@ -77,6 +77,8 @@ test_io(const LdaEstimate &lda_est, bool binary) {
   
   m1.AddMat(-1.0, m2, kNoTrans);
   KALDI_ASSERT(m1.IsZero(1.0e-02));
+
+  unlink("tmp_stats");
 }
 
 void

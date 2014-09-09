@@ -509,7 +509,7 @@ class MatrixBase {
  
   /// *this = a * b / c (by element; when c = 0, *this = a)
   void AddMatMatDivMat(const MatrixBase<Real>& A,
-             	       const MatrixBase<Real>& B,
+                        const MatrixBase<Real>& B,
                        const MatrixBase<Real>& C);
 
   /// A version of AddMatMat specialized for when the second argument
@@ -872,7 +872,7 @@ bool ApproxEqual(const MatrixBase<Real> &A,
 }
 
 template<typename Real>
-inline void AssertEqual(MatrixBase<Real> &A, MatrixBase<Real> &B,
+inline void AssertEqual(const MatrixBase<Real> &A, const MatrixBase<Real> &B,
                         float tol = 0.01) {
   KALDI_ASSERT(A.ApproxEqual(B, tol));
 }

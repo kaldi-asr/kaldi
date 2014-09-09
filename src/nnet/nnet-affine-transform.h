@@ -35,7 +35,7 @@ class AffineTransform : public UpdatableComponent {
     : UpdatableComponent(dim_in, dim_out), 
       linearity_(dim_out, dim_in), bias_(dim_out),
       linearity_corr_(dim_out, dim_in), bias_corr_(dim_out),
-      learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0) 
+      learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0), max_norm_(0.0) 
   { }
   ~AffineTransform()
   { }
@@ -47,6 +47,7 @@ class AffineTransform : public UpdatableComponent {
     // define options
     float bias_mean = -2.0, bias_range = 2.0, param_stddev = 0.1;
     float learn_rate_coef = 1.0, bias_learn_rate_coef = 1.0;
+    float max_norm = 0.0;
     // parse config
     std::string token; 
     while (!is.eof()) {
@@ -56,6 +57,7 @@ class AffineTransform : public UpdatableComponent {
       else if (token == "<BiasRange>")   ReadBasicType(is, false, &bias_range);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
       else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef);
+      else if (token == "<MaxNorm>") ReadBasicType(is, false, &max_norm);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|BiasMean|BiasRange|LearnRateCoef|BiasLearnRateCoef)";
       is >> std::ws; // eat-up whitespace
@@ -81,6 +83,7 @@ class AffineTransform : public UpdatableComponent {
     //
     learn_rate_coef_ = learn_rate_coef;
     bias_learn_rate_coef_ = bias_learn_rate_coef;
+    max_norm_ = max_norm;
     //
   }
 
@@ -91,6 +94,10 @@ class AffineTransform : public UpdatableComponent {
       ReadBasicType(is, binary, &learn_rate_coef_);
       ExpectToken(is, binary, "<BiasLearnRateCoef>");
       ReadBasicType(is, binary, &bias_learn_rate_coef_);
+    }
+    if ('<' == Peek(is, binary)) {
+      ExpectToken(is, binary, "<MaxNorm>");
+      ReadBasicType(is, binary, &max_norm_);
     }
     // weights
     linearity_.Read(is, binary);
@@ -106,6 +113,8 @@ class AffineTransform : public UpdatableComponent {
     WriteBasicType(os, binary, learn_rate_coef_);
     WriteToken(os, binary, "<BiasLearnRateCoef>");
     WriteBasicType(os, binary, bias_learn_rate_coef_);
+    WriteToken(os, binary, "<MaxNorm>");
+    WriteBasicType(os, binary, max_norm_);
     // weights
     linearity_.Write(os, binary);
     bias_.Write(os, binary);
@@ -127,8 +136,10 @@ class AffineTransform : public UpdatableComponent {
   std::string InfoGradient() const {
     return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) + 
            ", lr-coef " + ToString(learn_rate_coef_) +
+           ", max-norm " + ToString(max_norm_) +
            "\n  bias_grad" + MomentStatistics(bias_corr_) + 
            ", lr-coef " + ToString(bias_learn_rate_coef_);
+           
   }
 
 
@@ -168,6 +179,19 @@ class AffineTransform : public UpdatableComponent {
     // update
     linearity_.AddMat(-lr*learn_rate_coef_, linearity_corr_);
     bias_.AddVec(-lr*bias_learn_rate_coef_, bias_corr_);
+    // max-norm
+    if (max_norm_ > 0.0) {
+      CuMatrix<BaseFloat> lin_sqr(linearity_);
+      lin_sqr.MulElements(linearity_);
+      CuVector<BaseFloat> l2(OutputDim());
+      l2.AddColSumMat(1.0, lin_sqr, 0.0);
+      l2.ApplyPow(0.5); // have L2 norm
+      CuVector<BaseFloat> scl(l2);
+      scl.Scale(1.0/max_norm_);
+      scl.ApplyFloor(1.0);
+      scl.InvertElements();
+      linearity_.MulRowsVec(scl); // shink to sphere!
+    }
   }
 
   /// Accessors to the component parameters
@@ -208,6 +232,7 @@ class AffineTransform : public UpdatableComponent {
 
   BaseFloat learn_rate_coef_;
   BaseFloat bias_learn_rate_coef_;
+  BaseFloat max_norm_;
 };
 
 } // namespace nnet1

@@ -100,7 +100,7 @@ class Plp {
   explicit Plp(const PlpOptions &opts);
   ~Plp();
 
-  int32 Dim() { return opts_.num_ceps; }
+  int32 Dim() const { return opts_.num_ceps; }
 
   /// Will throw exception on failure (e.g. if file too short for even one
   /// frame).  The output "wave_remainder" is the last frame or two of the
@@ -114,7 +114,7 @@ class Plp {
                Matrix<BaseFloat> *output,
                Vector<BaseFloat> *wave_remainder = NULL);
 
-
+  typedef PlpOptions Options;
   /// Const version of Compute()
   void Compute(const VectorBase<BaseFloat> &wave,
                BaseFloat vtln_warp,

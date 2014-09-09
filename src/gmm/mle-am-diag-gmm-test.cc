@@ -86,6 +86,9 @@ void TestAmDiagGmmAccsIO(const AmDiagGmm &am_gmm,
   kaldi::AssertEqual(loglike1, loglike3, 1e-6);
   delete am_gmm3;
   delete accs2;
+
+  unlink("tmpf");
+  unlink("tmpfb");
 }
 
 void UnitTestMleAmDiagGmm() {

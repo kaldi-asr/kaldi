@@ -32,8 +32,7 @@ int main(int argc, char *argv[]) {
         "Apply sliding-window cepstral mean (and optionally variance)\n"
         "normalization per utterance.  If center == true, window is centered\n"
         "on frame being normalized; otherwise it precedes it in time.\n"
-        "Useful for speaker-id and for offline training of a system intended\n"
-        "for use with online feature normalization, as in src/online/.\n"
+        "Useful for speaker-id; see also apply-cmvn-online\n"
         "\n"
         "Usage: apply-cmvn-sliding [options] <feats-rspecifier> <feats-wspecifier>\n";
     

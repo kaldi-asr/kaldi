@@ -3,7 +3,7 @@ all:
 
 include ../kaldi.mk
 
-TESTFILES = hmm-topology-test hmm-utils-test
+TESTFILES = hmm-topology-test hmm-utils-test transition-model-test posterior-test
 
 OBJFILES = hmm-topology.o transition-model.o hmm-utils.o tree-accu.o posterior.o
 

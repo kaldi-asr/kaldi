@@ -30,7 +30,7 @@ using std::string;
 #include "decoder/lattice-faster-decoder.h"
 #include "sgmm2/decodable-am-sgmm2.h"
 #include "thread/kaldi-task-sequence.h"
-#include "util/timer.h"
+#include "base/timer.h"
 
 namespace kaldi {
 

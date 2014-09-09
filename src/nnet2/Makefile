@@ -9,7 +9,8 @@ LDLIBS += $(CUDA_LDLIBS)
 
 
 TESTFILES = nnet-component-test nnet-precondition-test \
-	nnet-precondition-online-test nnet-example-functions-test
+	nnet-precondition-online-test nnet-example-functions-test \
+    nnet-nnet-test am-nnet-test online-nnet2-decodable-test
 
 OBJFILES = nnet-component.o nnet-nnet.o train-nnet.o train-nnet-ensemble.o nnet-update.o \
      nnet-randomize.o nnet-compute.o am-nnet.o nnet-functions.o  \
@@ -18,7 +19,8 @@ OBJFILES = nnet-component.o nnet-nnet.o train-nnet.o train-nnet-ensemble.o nnet-
      nnet-fix.o nnet-stats.o rescale-nnet.o nnet-limit-rank.o nnet-example.o \
      get-feature-transform.o widen-nnet.o nnet-precondition-online.o \
      nnet-example-functions.o nnet-compute-discriminative.o \
-     nnet-compute-discriminative-parallel.o train-nnet-perturbed.o
+     nnet-compute-discriminative-parallel.o online-nnet2-decodable.o \
+     train-nnet-perturbed.o
 
 LIBNAME = kaldi-nnet2
 

@@ -184,8 +184,9 @@ struct DeterminizeLatticePhonePrunedOptions {
     Returns true on success, and false if it had to terminate the determinization
     earlier than specified by the "prune" beam-- that is, if it terminated because
     of the max_mem, max_loop or max_arcs constraints in the options.
+    CAUTION: you may want to use the version below which outputs to CompactLattice.
 */
-template<class Weight, class IntType>
+template<class Weight>
 bool DeterminizeLatticePruned(
     const ExpandedFst<ArcTpl<Weight> > &ifst,
     double prune,
@@ -201,6 +202,8 @@ bool DeterminizeLatticePruned(
     Returns true on success, and false if it had to terminate the determinization
     earlier than specified by the "prune" beam-- that is, if it terminated because
     of the max_mem, max_loop or max_arcs constraints in the options.
+    CAUTION: if Lattice is the input, you need to Invert() before calling this,
+    so words are on the input side.
 */
 template<class Weight, class IntType>
 bool DeterminizeLatticePruned(

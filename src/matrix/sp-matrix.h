@@ -180,7 +180,7 @@ class SpMatrix : public PackedMatrix<Real> {
   /// method is statistical).  Note: it only makes sense to use this
   /// method if you are in very high dimension and n is substantially smaller
   /// than m: for example, if you want the 100 top eigenvalues of a 10k by 10k
-  /// matrix.  This function calls rand() to initialize the lanczos
+  /// matrix.  This function calls Rand() to initialize the lanczos
   /// iterations and also for restarting.
   /// If lanczos_dim is zero, it will default to the greater of:
   /// s->Dim() + 50 or s->Dim() + s->Dim()/2, but not more than this->Dim().

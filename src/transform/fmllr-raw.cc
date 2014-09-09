@@ -372,6 +372,15 @@ void FmllrRawAccs::Update(const FmllrRawOptions &opts,
                        row,
                        &fmllr_mat);
     }
+    if (GetVerboseLevel() >= 2) {
+      double cur_auxf = GetAuxf(simple_linear_stats, simple_quadratic_stats,
+                                 fmllr_mat),
+          auxf_change = cur_auxf - auxf_orig;
+      KALDI_VLOG(2) << "Updating raw fMLLR: objf improvement per frame was "
+                    << (auxf_change / this->count_) << " over "
+                    << this->count_ << " frames, by the " << iter
+                    << "'th iteration";
+    }
   }
   double auxf_final = GetAuxf(simple_linear_stats, simple_quadratic_stats,
                               fmllr_mat),

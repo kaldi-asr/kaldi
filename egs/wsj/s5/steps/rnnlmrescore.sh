@@ -13,7 +13,9 @@ use_phi=false  # This is kind of an obscure option.  If true, we'll remove the o
   # difference (if any) to WER, it's more so we know we are doing the right thing.
 test=false # Activate a testing option.
 stage=1 # Stage of this script, for partial reruns.
+rnnlm_ver=rnnlm-0.3e
 # End configuration section.
+
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -151,7 +153,7 @@ fi
 if [ $stage -le 6 ]; then
   echo "$0: invoking rnnlm_compute_scores.sh which calls rnnlm, to get RNN LM scores."
   $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores.JOB.log \
-    utils/rnnlm_compute_scores.sh $rnndir $adir.JOB/temp $adir.JOB/words_text $adir.JOB/lmwt.rnn \
+    utils/rnnlm_compute_scores.sh --rnnlm_ver $rnnlm_ver $rnndir $adir.JOB/temp $adir.JOB/words_text $adir.JOB/lmwt.rnn \
     || exit 1;
 fi
 if [ $stage -le 7 ]; then

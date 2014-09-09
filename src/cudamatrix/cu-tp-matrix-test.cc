@@ -78,7 +78,7 @@ static void AssertEqual(const PackedMatrix<Real> &A,
 template<typename Real>
 static void UnitTestCuTpMatrixInvert() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+    MatrixIndexT dim = 5 * i + Rand() % 10;
     
     TpMatrix<Real> A(dim);
     A.SetRandn();
@@ -94,7 +94,7 @@ static void UnitTestCuTpMatrixInvert() {
 template<typename Real>
 static void UnitTestCuTpMatrixCopyFromTp() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+    MatrixIndexT dim = 5 * i + Rand() % 10;
     
     TpMatrix<Real> A(dim);
     A.SetRandn();
@@ -113,7 +113,7 @@ static void UnitTestCuTpMatrixCopyFromMat() {
   for (MatrixIndexT i = 1; i < 10; i++) {
     MatrixTransposeType trans = (i % 2 == 0 ? kNoTrans : kTrans);
 
-    MatrixIndexT dim = 10*i + rand() % 5;
+    MatrixIndexT dim = 10*i + Rand() % 5;
     CuMatrix<Real> A(dim, dim);
     A.SetRandn();
     Matrix<Real> A2(A);
@@ -133,9 +133,9 @@ static void UnitTestCuTpMatrixCopyFromMat() {
 template<typename Real>
 static void UnitTestCuTpMatrixCholesky() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 1 + rand() % 10;
+    MatrixIndexT dim = 1 + Rand() % 10;
     if (i > 4) {
-      dim += 32 * (rand() % 5);
+      dim += 32 * (Rand() % 5);
     }
 
     Matrix<Real> M(dim, dim + 2);
@@ -158,7 +158,7 @@ static void UnitTestCuTpMatrixCholesky() {
 template<class Real>
 static void UnitTestCuTpMatrixIO() {
   for (int32 i = 0; i < 3; i++) {
-    int32 dimM = rand() % 255 + 10;
+    int32 dimM = Rand() % 255 + 10;
     if (i % 5 == 0) { dimM = 0; }
     CuTpMatrix<Real> mat(dimM);
     mat.SetRandn();

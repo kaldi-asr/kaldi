@@ -46,7 +46,7 @@ namespace kaldi {
 template<class Real>
 static void UnitTestCuVectorIO() {
   for (int32 i = 0; i < 10; i++) {
-    int32 dimM = rand() % 255;
+    int32 dimM = Rand() % 255;
     if (i % 5 == 0) { dimM = 0; }
     CuVector<Real> vec(dimM);
     vec.SetRandn();
@@ -83,8 +83,8 @@ static void UnitTestCuVectorCopyFromVec() {
 template<typename Real> 
 static void UnitTestCuSubVector() {
   for (int32 iter = 0 ; iter < 10; iter++) {
-    int32 M1 = 1 + rand () % 10, M2 = 1 + rand() % 1, M3 = 1 + rand() % 10, M = M1 + M2 + M3,
-        m = rand() % M2;
+    int32 M1 = 1 + rand () % 10, M2 = 1 + Rand() % 1, M3 = 1 + Rand() % 10, M = M1 + M2 + M3,
+        m = Rand() % M2;
     CuVector<Real> vec(M);
     vec.SetRandn();
     CuSubVector<Real> subvec1(vec, M1, M2),
@@ -141,7 +141,7 @@ static void UnitTestCuVectorAddTp() {
 }
 
 template<typename Real> void CuVectorUnitTestVecVec() {
-  int32 M = 10 % rand() % 100;
+  int32 M = 10 % Rand() % 100;
   CuVector<Real> vec1(M), vec2(M);
   vec1.SetRandn();
   vec2.SetRandn();
@@ -152,7 +152,7 @@ template<typename Real> void CuVectorUnitTestVecVec() {
 }
 
 template<typename Real> void CuVectorUnitTestAddVec() {
-  int32 M = 10 % rand() % 100;
+  int32 M = 10 % Rand() % 100;
   CuVector<Real> vec1(M);
   CuVector<Real> vec2(M);
   vec1.SetRandn();
@@ -167,7 +167,7 @@ template<typename Real> void CuVectorUnitTestAddVec() {
 
 template<typename Real> void CuVectorUnitTestAddVecCross() {
   for (int32 i = 0; i < 4; i++) {
-    int32 M = 10 % rand() % 100;
+    int32 M = 10 % Rand() % 100;
     CuVector<float> vec1(M);
     CuVector<Real> vec2(M);
     vec1.SetRandn();
@@ -191,7 +191,7 @@ template<typename Real> void CuVectorUnitTestAddVecCross() {
 }
 
 template<typename Real> void CuVectorUnitTestAddVecExtra() {
-  int32 M = 10 % rand() % 100;
+  int32 M = 10 % Rand() % 100;
   CuVector<Real> vec1(M), vec2(M);
   vec1.SetRandn();
   vec2.SetRandn();
@@ -205,7 +205,7 @@ template<typename Real> void CuVectorUnitTestAddVecExtra() {
 
 
 template<typename Real> void CuVectorUnitTestAddRowSumMat() {
-  int32 M = 10 + rand() % 280, N = 10 + rand() % 20;
+  int32 M = 10 + Rand() % 280, N = 10 + Rand() % 20;
   BaseFloat alpha = 10.0143432, beta = 43.4321;
   CuMatrix<Real> mat(N, M);
   mat.SetRandn();
@@ -220,7 +220,7 @@ template<typename Real> void CuVectorUnitTestAddRowSumMat() {
 }
 
 template<typename Real> void CuVectorUnitTestAddColSumMat() {
-  int32 M = 10 + rand() % 280, N = 10 + rand() % 20;
+  int32 M = 10 + Rand() % 280, N = 10 + Rand() % 20;
   BaseFloat alpha = 10.0143432, beta = 43.4321;
   CuMatrix<Real> mat(M, N);
   mat.SetRandn();
@@ -236,7 +236,7 @@ template<typename Real> void CuVectorUnitTestAddColSumMat() {
 
 
 template<typename Real> void CuVectorUnitTestApproxEqual() {
-  int32 M = 10 + rand() % 100;
+  int32 M = 10 + Rand() % 100;
   CuVector<Real> vec1(M), vec2(M);
   vec1.SetRandn();
   vec2.SetRandn();
@@ -255,8 +255,8 @@ template<typename Real> void CuVectorUnitTestApproxEqual() {
 
 template<typename Real> static void UnitTestCuVectorReplaceValue() {
   for (int32 i = 0; i < 5; i++) {
-    int32 dim = 100 + rand() % 200;
-    Real orig = 0.1 * (rand() % 100), changed = 0.1 * (rand() % 50);
+    int32 dim = 100 + Rand() % 200;
+    Real orig = 0.1 * (Rand() % 100), changed = 0.1 * (Rand() % 50);
     Vector<Real> vec(dim);
     vec.SetRandn();
     vec(dim / 2) = orig;
@@ -270,7 +270,7 @@ template<typename Real> static void UnitTestCuVectorReplaceValue() {
 
 template<typename Real> void CuVectorUnitTestInvertElements() {
   // Also tests MulElements();
-  int32 M = 256 + rand() % 100;
+  int32 M = 256 + Rand() % 100;
   CuVector<Real> vec1(M);
   vec1.SetRandn();
   CuVector<Real> vec2(vec1);
@@ -284,7 +284,7 @@ template<typename Real> void CuVectorUnitTestInvertElements() {
 
 template<typename Real> void CuVectorUnitTestSum() {
   for (int32 i =1; i < 10; i++) {
-    MatrixIndexT dim = 2048 * i + 100 % rand();
+    MatrixIndexT dim = 2048 * i + 100 % Rand();
     CuVector<Real> A(dim), ones(dim);
     A.SetRandn();
     ones.Set(1.0);
@@ -295,7 +295,7 @@ template<typename Real> void CuVectorUnitTestSum() {
 
 template<typename Real> void CuVectorUnitTestScale() {
   for (int32 i = 0; i < 4; i++) {
-    int32 dim = 100 + 400 % rand();
+    int32 dim = 100 + 400 % Rand();
     CuVector<Real> cu_vec(dim);
     cu_vec.SetRandn();
     Vector<Real> vec(cu_vec);
@@ -308,7 +308,7 @@ template<typename Real> void CuVectorUnitTestScale() {
 }
 
 template<typename Real> void CuVectorUnitTestCopyFromMat() {
-  int32 M = 100 + rand() % 255, N = 100 + rand() % 255;
+  int32 M = 100 + Rand() % 255, N = 100 + Rand() % 255;
   CuMatrix<Real> cu_matrix(M, N);
   cu_matrix.SetRandn();
   for(int32 i = 0; i < N; i++) {
@@ -331,7 +331,7 @@ template<typename Real> void CuVectorUnitTestCopyFromMat() {
                                          
   
   for(int32 j = 0; j < M*N; j++) {
-    if (rand() % 500 == 0) { // random small subset (it was slow)
+    if (Rand() % 500 == 0) { // random small subset (it was slow)
       KALDI_ASSERT(vector(j) == cu_matrix(j/N, j%N));
       KALDI_ASSERT(vector2(j) == cu_matrix(j/N, j%N));
       KALDI_ASSERT(vector2(j) == matrix2(j/N, j%N));
@@ -343,7 +343,7 @@ template<typename Real> void CuVectorUnitTestCopyFromMat() {
 
 template<typename Real> void CuVectorUnitTestCopyDiagFromPacked() {
   for (int32 i = 0; i < 5; i++) {
-    int32 N = 100 + rand() % 255;
+    int32 N = 100 + Rand() % 255;
     CuSpMatrix<Real> S(N);
     S.SetRandn();
     CuVector<Real> V(N, kUndefined);
@@ -358,8 +358,8 @@ template<typename Real> void CuVectorUnitTestCopyDiagFromPacked() {
 
 template<typename Real> void CuVectorUnitTestCopyCross() {
   for (int32 i = 0; i < 10; i++) {
-    int32 M = 100 + rand() % 255;
-    if (rand() % 3 == 0) M = 0;
+    int32 M = 100 + Rand() % 255;
+    if (Rand() % 3 == 0) M = 0;
     CuVector<Real> v1(M);
     v1.SetRandn();
     CuVector<float> v2(M);
@@ -372,8 +372,8 @@ template<typename Real> void CuVectorUnitTestCopyCross() {
 
 template<typename Real> void CuVectorUnitTestCopyCross2() {
   for (int32 i = 0; i < 10; i++) {
-    int32 M = 100 + rand() % 255;
-    if (rand() % 3 == 0) M = 0;
+    int32 M = 100 + Rand() % 255;
+    if (Rand() % 3 == 0) M = 0;
     CuVector<Real> v1(M);
     v1.SetRandn();
     Vector<float> v2(M);
@@ -386,7 +386,7 @@ template<typename Real> void CuVectorUnitTestCopyCross2() {
 
 template<typename Real> void CuVectorUnitTestCopyDiagFromMat() {
   for (int32 i = 0; i < 5; i++) {
-    int32 M = 100 + rand() % 255, N = M + rand() % 2;
+    int32 M = 100 + Rand() % 255, N = M + Rand() % 2;
     Matrix<Real> matrix(M, N);
     if (i % 2 == 0) matrix.Transpose();
     matrix.SetRandn();
@@ -416,7 +416,7 @@ template<typename Real> void CuVectorUnitTestNorm() {
 
 template<typename Real> void CuVectorUnitTestMin() {
   for (int32 p = 0; p < 5; p++) {
-    int32 dim = 100 + rand() % 500;
+    int32 dim = 100 + Rand() % 500;
     CuVector<Real> cu_vector(dim);
     cu_vector.SetRandn();
     Vector<Real> vector(cu_vector);
@@ -428,7 +428,7 @@ template<typename Real> void CuVectorUnitTestMin() {
 
 template<typename Real> void CuVectorUnitTestMax() {
   for (int32 p = 0; p < 5; p++) {
-    int32 dim = 100 + rand() % 500;
+    int32 dim = 100 + Rand() % 500;
     CuVector<Real> cu_vector(dim);
     cu_vector.SetRandn();
     Vector<Real> vector(cu_vector);
@@ -440,7 +440,7 @@ template<typename Real> void CuVectorUnitTestMax() {
 
 template<typename Real> void CuVectorUnitTestApplySoftMax() {
   for (int32 i = 0; i < 10; i++) {
-    int32 dim = 100 + rand() % 300;
+    int32 dim = 100 + Rand() % 300;
     //int32 dim = 1024;
     CuVector<Real> cu_vector(dim);
     cu_vector.SetRandn();
@@ -488,12 +488,12 @@ template<typename Real> void CuVectorUnitTestApplyLog() {
 
 template<typename Real> void CuVectorUnitTestApplyFloor() {
   for (int32 l = 0; l < 10; l++) {
-    int32 dim = 100 + rand() % 700;
+    int32 dim = 100 + Rand() % 700;
     CuVector<Real> cu_vector(dim);
     cu_vector.SetRandn();
 
     Vector<Real> vector(cu_vector);
-    BaseFloat floor = 0.33 * (-5 + rand() % 10);
+    BaseFloat floor = 0.33 * (-5 + Rand() % 10);
     int32 i = cu_vector.ApplyFloor(floor);
     int32 j = vector.ApplyFloor(floor);
   
@@ -509,14 +509,14 @@ template<typename Real> void CuVectorUnitTestApplyFloor() {
 
 template<typename Real> void CuVectorUnitTestApplyPow() {
   for (int32 l = 0; l < 10; l++) {
-    int32 dim = 100 + rand() % 700;
+    int32 dim = 100 + Rand() % 700;
 
     CuVector<Real> cu_vector(dim);
     cu_vector.SetRandn();
 
     Vector<Real> vector(cu_vector);
 
-    BaseFloat pow = -2 + (rand() % 5);
+    BaseFloat pow = -2 + (Rand() % 5);
     cu_vector.ApplyPow(pow);
     vector.ApplyPow(pow);
   
@@ -532,8 +532,8 @@ template<typename Real> void CuVectorUnitTestAddVecVec() {
   cu_vector.SetRandn();
   Vector<Real> vector(cu_vector);
 
-  Real beta = rand();
-  Real alpha = rand();
+  Real beta = Rand();
+  Real alpha = Rand();
   Vector<Real> v(dim), r(dim);
   v.SetRandn(); r.SetRandn();
   CuVector<Real> cuV(v), cuR(r);
@@ -549,8 +549,8 @@ template<typename Real> void CuVectorUnitTestAddVecVec() {
 
 template<typename Real> void CuVectorUnitTestAddDiagMat2() {
   for (int p = 0; p < 4; p++) {
-    int32 M = 230 + rand() % 100, N = 230 + rand() % 100;
-    BaseFloat alpha = 0.2 + rand() % 3, beta = 0.3 + rand() % 2;
+    int32 M = 230 + Rand() % 100, N = 230 + Rand() % 100;
+    BaseFloat alpha = 0.2 + Rand() % 3, beta = 0.3 + Rand() % 2;
     CuVector<Real> cu_vector(M);
     cu_vector.SetRandn();
 
@@ -573,9 +573,9 @@ template<typename Real> void CuVectorUnitTestAddDiagMat2() {
 template<typename Real>
 static void CuVectorUnitTestAddDiagMatMat() {
   for (MatrixIndexT iter = 0; iter < 4; iter++) {
-    BaseFloat alpha = 0.432 + rand() % 5, beta = 0.043 + rand() % 2;
-	MatrixIndexT dimM = 10 + rand() % 300,
-                 dimN = 5 + rand() % 300;
+    BaseFloat alpha = 0.432 + Rand() % 5, beta = 0.043 + Rand() % 2;
+    MatrixIndexT dimM = 10 + Rand() % 300,
+                 dimN = 5 + Rand() % 300;
     CuVector<Real> v(dimM);
     CuMatrix<Real> M_orig(dimM, dimN), N_orig(dimN, dimM);
     M_orig.SetRandn();
@@ -606,7 +606,7 @@ static void CuVectorUnitTestAddDiagMatMat() {
 
 template<typename Real> void CuVectorUnitTestAddMatVec() {
   for (int32 i = 0; i < 10; i++) {
-    int32 M = 10 + rand() % 500, N = 10 + rand() % 400;
+    int32 M = 10 + Rand() % 500, N = 10 + Rand() % 400;
 
     bool transpose = (i % 2 == 0);
 
@@ -622,7 +622,7 @@ template<typename Real> void CuVectorUnitTestAddMatVec() {
     mat_cu.SetRandn();
     Matrix<Real> mat(mat_cu);
 
-    BaseFloat alpha = 0.5 * (rand() % 10), beta = 0.5 * (rand() % 10);
+    BaseFloat alpha = 0.5 * (Rand() % 10), beta = 0.5 * (Rand() % 10);
     dst_cu.AddMatVec(alpha, mat_cu, transpose ? kTrans : kNoTrans,
                      src_cu, beta);
     dst.AddMatVec(alpha, mat, transpose ? kTrans : kNoTrans,
@@ -635,7 +635,7 @@ template<typename Real> void CuVectorUnitTestAddMatVec() {
 
 template<typename Real> void CuVectorUnitTestAddSpVec() {
   for (int32 i = 0; i < 5; i++) {
-    int32 M = 100 + rand() % 256;
+    int32 M = 100 + Rand() % 256;
 
     CuVector<Real> src_cu(M);
     src_cu.SetRandn();
@@ -649,7 +649,7 @@ template<typename Real> void CuVectorUnitTestAddSpVec() {
     mat_cu.SetRandn();
     SpMatrix<Real> mat(mat_cu);
     
-    BaseFloat alpha = 0.5 * (rand() % 5), beta = 0.5 * (rand() % 5);
+    BaseFloat alpha = 0.5 * (Rand() % 5), beta = 0.5 * (Rand() % 5);
     dst_cu.AddSpVec(alpha, mat_cu, src_cu, beta);
     dst.AddSpVec(alpha, mat, src, beta);
     Vector<Real> dst2(dst_cu);

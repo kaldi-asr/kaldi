@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Fisher + Switchboard combined recipe, adapted from respective Fisher and Switchboard
+# recipes by Peng Qi (pengqi@cs.stanford.edu).
+# (Aug 2014)
+
 # It's best to run the commands in this one by one.
 
 . cmd.sh
@@ -171,3 +175,5 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 # local/run_for_spkid.sh
 
 # local/run_nnet2.sh
+
+# local/online/run_nnet2.sh

@@ -218,7 +218,7 @@ class DeltaFeatures {
 
   void Process(const MatrixBase<BaseFloat> &input_feats,
                int32 frame,
-               SubVector<BaseFloat> *output_frame) const;
+               VectorBase<BaseFloat> *output_frame) const;
  private:
   DeltaFeaturesOptions opts_;
   std::vector<Vector<BaseFloat> > scales_;  // a scaling window for each
@@ -306,10 +306,11 @@ void InitIdftBases(int32 n_bases, int32 dimension, Matrix<BaseFloat> *mat_out);
 BaseFloat ComputeLpc(const VectorBase<BaseFloat> &autocorr_in,
                      Vector<BaseFloat> *lpc_out);
 
-
+// This is used for speaker-id.  Also see OnlineCmnOptions in ../online2/, which
+// is online CMN with no latency, for online speech recognition.
 struct SlidingWindowCmnOptions {
-  int cmn_window;
-  int min_window;
+  int32 cmn_window;
+  int32 min_window;
   bool normalize_variance;
   bool center;
 
@@ -328,7 +329,7 @@ struct SlidingWindowCmnOptions {
     po->Register("norm-vars", &normalize_variance, "If true, normalize "
                  "variance to one."); // naming this as in apply-cmvn.cc
     po->Register("center", &center, "If true, use a window centered on the "
-                 "current frame (to the extent possible, modulo end effects)."
+                 "current frame (to the extent possible, modulo end effects). "
                  "If false, window is to the left.");
   }
   void Check() const;

@@ -401,9 +401,9 @@ static bool GetTreeStructureInternal(
         if (static_cast<int32>(leaf_parents->size()) <= leaf)
           leaf_parents->resize(leaf+1, NULL);
         if ((*leaf_parents)[leaf] != NULL) {
-		  KALDI_WARN << "Repeated leaf! Did you suppress leaf clustering when building the tree?";
-		  return false; // repeated leaf.
-		}
+          KALDI_WARN << "Repeated leaf! Did you suppress leaf clustering when building the tree?";
+          return false; // repeated leaf.
+        }
         (*leaf_parents)[leaf] = parent;
       } else {
         nonleaf_nodes->push_back(child);
@@ -415,10 +415,10 @@ static bool GetTreeStructureInternal(
 
   for (size_t i = 0; i < leaf_parents->size(); i++) 
     if ((*leaf_parents)[i] == NULL) {
-	  KALDI_WARN << "non-consecutively numbered leaves";
-	  return false; 
-	}
-	// non-consecutively numbered leaves.
+      KALDI_WARN << "non-consecutively numbered leaves";
+      return false; 
+    }
+    // non-consecutively numbered leaves.
   
   KALDI_ASSERT(!leaf_parents->empty()); // or no leaves.
   

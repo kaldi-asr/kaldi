@@ -3,7 +3,6 @@
 # This is pnorm neural net training on top of adapted 40-dimensional features.
 
 
-
 train_stage=-10
 use_gpu=true
 

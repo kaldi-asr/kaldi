@@ -31,13 +31,13 @@ namespace kaldi {
 
 void UnitTestOnlineCmvn() {
   for (int32 i = 0; i < 1000; i++) {
-    int32 num_frames = 1 + (rand() % 10 * 10);
-    int32 dim = 1 + rand() % 10;
+    int32 num_frames = 1 + (Rand() % 10 * 10);
+    int32 dim = 1 + Rand() % 10;
     SlidingWindowCmnOptions opts;
-    opts.center = (rand() % 2 == 0);
-    opts.normalize_variance = (rand() % 2 == 0);
-    opts.cmn_window = 5 + rand() % 50;
-    opts.min_window = 1 + rand() % 100;
+    opts.center = (Rand() % 2 == 0);
+    opts.normalize_variance = (Rand() % 2 == 0);
+    opts.cmn_window = 5 + Rand() % 50;
+    opts.min_window = 1 + Rand() % 100;
     if (opts.min_window > opts.cmn_window)
       opts.min_window = opts.cmn_window;
 

@@ -176,12 +176,10 @@ if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
       $data $lang $alidir $dir || exit 1;
 fi
 
-echo $egs_dir
 if [ -z $egs_dir ]; then
   egs_dir=$dir/egs
 fi
 
-echo $egs_dir
 iters_per_epoch=`cat $egs_dir/iters_per_epoch`  || exit 1;
 ! [ $num_jobs_nnet -eq `cat $egs_dir/num_jobs_nnet` ] && \
   echo "$0: Warning: using --num-jobs-nnet=`cat $egs_dir/num_jobs_nnet` from $egs_dir"
@@ -397,8 +395,7 @@ echo Done
 if $cleanup; then
   echo Cleaning up data
   if [ $egs_dir == "$dir/egs" ]; then
-    echo Removing training examples
-    rm $dir/egs/egs*
+    steps/nnet2/remove_egs.sh $dir/egs
   fi
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do

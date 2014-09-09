@@ -34,6 +34,10 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Work out N-best paths in lattices and write out as FSTs\n"
+        "Note: only guarantees distinct word sequences if distinct paths in\n"
+        "input lattices had distinct word-sequences (this will not be true if\n"
+        "you produced lattices with --determinize-lattice=false, i.e. state-level\n"
+        "lattices).\n"
         "Usage: lattice-to-nbest [options] lattice-rspecifier lattice-wspecifier\n"
         " e.g.: lattice-to-nbest --acoustic-scale=0.1 --n=10 ark:1.lats ark:nbest.lats\n";
       
@@ -65,8 +69,7 @@ int main(int argc, char *argv[]) {
         lats_wspecifier = po.GetArg(2);
 
 
-    // Read as regular lattice-- this is the form we need it in for efficient
-    // pruning.
+    // Read as regular lattice.
     SequentialLatticeReader lattice_reader(lats_rspecifier);
     
     // Write as compact lattice.

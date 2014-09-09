@@ -21,7 +21,7 @@
 #include "nnet/nnet-randomizer.h"
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "util/timer.h"
+#include "base/timer.h"
 #include "cudamatrix/cu-device.h"
 
 int main(int argc, char *argv[]) {
@@ -231,6 +231,10 @@ int main(int argc, char *argv[]) {
         KALDI_VLOG(1) << "After " << num_done << " utterances: time elapsed = "
                       << time_now/60 << " min; processed " << total_frames/time_now
                       << " frames per second.";
+#if HAVE_CUDA==1
+        // check the GPU is not overheated
+        CuDevice::Instantiate().CheckGpuHealth();
+#endif
       }
     }
       

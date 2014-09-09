@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
     ko.Close();
     KALDI_LOG << "Converted " << num_done << " alignments to pfiles.";
     KALDI_LOG << num_no_ali << " utterances have no alignment; "
-    		  << num_other_error << " utterances have other errors.";
+              << num_other_error << " utterances have other errors.";
   } catch(const std::exception& e) {
     std::cerr << e.what();
     return -1;

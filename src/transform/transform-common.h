@@ -41,7 +41,7 @@ class AffineXformStats {
   std::vector< SpMatrix<double> > G_;
   /// dim_ is the feature dimension.
   int32 dim_;      
-  AffineXformStats() {}
+  AffineXformStats(): beta_(0.0), dim_(0.0) {}
   void Init(int32 dim, int32 num_gs);  // num_gs will equal dim for diagonal FMLLR.
   int32 Dim() const { return dim_; }
   void SetZero();

@@ -47,14 +47,14 @@ CompactLattice *RandDeterministicCompactLattice() {
 void TestMinimizeCompactLattice() {
   CompactLattice *clat = RandDeterministicCompactLattice();
   CompactLattice clat2(*clat);
-  BaseFloat delta = (rand() % 2 == 0 ? 1.0 : 1.0e-05);
+  BaseFloat delta = (Rand() % 2 == 0 ? 1.0 : 1.0e-05);
 
   // Minimization will only work well on determinized and pushed lattices.
   PushCompactLatticeStrings(&clat2);
   PushCompactLatticeWeights(&clat2);
   
   MinimizeCompactLattice(&clat2, delta);
-  KALDI_ASSERT(fst::RandEquivalent(*clat, clat2, 5, delta, rand(), 10));
+  KALDI_ASSERT(fst::RandEquivalent(*clat, clat2, 5, delta, Rand(), 10));
   
   delete clat;
 }

@@ -24,8 +24,9 @@ for d in *bin; do
       $msg =~ s/\\\t/\t/g; # Turn escaped tabs into tabs.
       $msg =~ s/\n\s*$//g; # Remove the final newline.
       $basef = basename($f);
-      $output = "<tr> <td> \\ref $f \"$basef\" </td><td> $msg </td> </tr>";
-      $output =~ s|\n|<br />|g; # make it so newlines are marked up.
+      $basef =~ s/.cc$//;
+      $output = "<tr> <td> \\ref $f \"$basef\" </td><td> <pre> $msg </pre> </td> </tr>";
+      # $output =~ s|\n|<br/>|g; # make it so newlines are marked up.
       print "$output\n";
      } ' $d/$binfile.cc
     done

@@ -6,6 +6,7 @@
 # use them in subsequent training stages.
 
 tri5_only=false
+sgmm5_only=false
 data_only=false
 
 [ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
@@ -276,6 +277,7 @@ if [ ! -f exp/tri5/.done ]; then
   touch exp/tri5/.done
 fi
 
+
 ################################################################################
 # Ready to start SGMM training
 ################################################################################
@@ -319,6 +321,11 @@ if [ ! -f exp/sgmm5/.done ]; then
   touch exp/sgmm5/.done
 fi
 
+if $sgmm5_only ; then
+  echo "Exiting after stage SGMM5, as requested. "
+  echo "Everything went fine. Done"
+  exit 0;
+fi
 ################################################################################
 # Ready to start discriminative SGMM training
 ################################################################################

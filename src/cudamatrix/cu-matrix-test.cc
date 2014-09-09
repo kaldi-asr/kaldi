@@ -3,7 +3,7 @@
 // Copyright 2010  Karel Vesely
 //           2013  Lucas Ondel
 //           2013  Johns Hopkins University (author: Daniel Povey)
-//           2013  Hainan Xu	
+//           2013  Hainan Xu    
 //           2013  Xiaohui Zhang
 //           2013  Johns Hopkins University (author: Guoguo Chen)
 
@@ -42,7 +42,7 @@ namespace kaldi {
 template<typename Real> 
 static void InitRand(VectorBase<Real> *v) {
   for (MatrixIndexT i = 0; i < v->Dim(); i++)
-	(*v)(i) = RandGauss();
+    (*v)(i) = RandGauss();
 }
 
 
@@ -73,7 +73,7 @@ static void RandZeroToOneMatrix(MatrixBase<Real>* mat) {
 template<typename Real> 
 static void UnitTestCuMatrixTraceMatMat() {
   for (int32 i = 0; i < 2; i++) {
-    int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+    int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
     CuMatrix<Real> A(M, N);
     A.SetRandn();
     if (i % 2 == 1) {
@@ -105,7 +105,7 @@ static void UnitTestCuMatrixTraceMatMat() {
 template<typename Real> 
 static void UnitTestCuCholesky() {
   for (int32 i = 0; i < 2; i++) {
-    int32 M = 1 + rand() % 10, N = M + 5;
+    int32 M = 1 + Rand() % 10, N = M + 5;
     
     CuMatrix<Real> A(M, N);
     A.SetRandn();
@@ -135,7 +135,7 @@ static void UnitTestCuCholesky() {
  */
 template<typename Real> 
 static void UnitTestCuMatrixApplyLog() {
-  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+  int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
   Matrix<Real> H(M, N);
   H.SetRandn();
   H.MulElements(H); // make numbers positive
@@ -156,7 +156,7 @@ static void UnitTestCuMatrixApplyLog() {
  */
 template<typename Real> 
 static void UnitTestCuMatrixApplyExp() {
-  int32 M = 10 + rand() % 20, N = 10 + rand() % 20;
+  int32 M = 10 + Rand() % 20, N = 10 + Rand() % 20;
   Matrix<Real> H(M, N);
   H.SetRandn();
   H.MulElements(H); // make numbers positive
@@ -176,7 +176,7 @@ static void UnitTestCuMatrixApplyExp() {
 template<typename Real> 
 static void UnitTestCuMatrixSigmoid() {
   for (int32 i = 0; i < 2; i++) {
-    int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+    int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
     Matrix<Real> H(M, N);
     H.SetRandn();
     H.MulElements(H); // make numbers positive
@@ -195,11 +195,11 @@ static void UnitTestCuMatrixSigmoid() {
 
 template<typename Real> 
 static void UnitTestCuMatrixScale() {
-  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+  int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
   Matrix<Real> H(M, N);
   H.SetRandn();
 
-  BaseFloat scale = -1 + (0.33 * (rand() % 5));
+  BaseFloat scale = -1 + (0.33 * (Rand() % 5));
   CuMatrix<Real> D(H);
   D.Scale(scale);
   H.Scale(scale);
@@ -210,11 +210,11 @@ static void UnitTestCuMatrixScale() {
 
 template<typename Real> 
 static void UnitTestCuMatrixAdd() {
-  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+  int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
   Matrix<Real> H(M, N);
   H.SetRandn();
 
-  BaseFloat offset = -1 + (0.33 * (rand() % 5));
+  BaseFloat offset = -1 + (0.33 * (Rand() % 5));
   CuMatrix<Real> D(H);
   D.Add(offset);
   H.Add(offset);
@@ -226,7 +226,7 @@ static void UnitTestCuMatrixAdd() {
 
 template<typename Real> 
 static void UnitTestCuMatrixSoftHinge() {
-  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+  int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
   Matrix<Real> H(M, N);
   H.SetRandn();
   H.MulElements(H); // make numbers positive
@@ -244,7 +244,7 @@ static void UnitTestCuMatrixSoftHinge() {
 
 template<typename Real> 
 static void UnitTestCuMatrixGroupPnorm() {
-  int32 M = 100 + rand() % 200, N = 100 + rand() % 200;
+  int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
   // M = 256; N = 256;
   for (int32 K = 5; K < 7; K++) {
     for (int32 q = 2; q < 4; q++) {
@@ -270,7 +270,7 @@ template<typename Real>
 static void UnitTestCuMatrixSet() {
   for (int32 i = 0; i < 2; i++) {
     BaseFloat value= 0.333;
-    int32 dimM = 10 + rand() % 600, dimN = 10 + rand() % 400;
+    int32 dimM = 10 + Rand() % 600, dimN = 10 + Rand() % 400;
     CuMatrix<Real> m1(dimM, dimN);
     Matrix<Real> m2(dimM, dimN);
     m1.Set(value);
@@ -285,9 +285,9 @@ template<typename Real>
 static void UnitTestCuMatrixApplyPow() {
 
   for (int32 i = 0; i < 2; i++) {
-    BaseFloat pow = 0.5 * (rand() % 6);
+    BaseFloat pow = 0.5 * (Rand() % 6);
     
-    Matrix<Real> H(10 + rand() % 60, 10 + rand() % 20);
+    Matrix<Real> H(10 + Rand() % 60, 10 + Rand() % 20);
     H.SetRandn();
     H.Row(0).Set(0.0);
     if (i == 2) { Matrix<Real> tmp(H, kTrans); H = tmp; }
@@ -309,9 +309,9 @@ template<typename Real>
 static void UnitTestCuMatrixApplyPowAbs() {
 
   for (int32 i = 0; i < 2; i++) {
-    BaseFloat pow = 0.5 * (rand() % 6);
+    BaseFloat pow = 0.5 * (Rand() % 6);
     
-    Matrix<Real> H(10 + rand() % 60, 10 + rand() % 20);
+    Matrix<Real> H(10 + Rand() % 60, 10 + Rand() % 20);
     H.SetRandn();
     H.Row(0).Set(0.0);
     if (i == 2) { Matrix<Real> tmp(H, kTrans); H = tmp; }
@@ -330,10 +330,10 @@ static void UnitTestCuMatrixApplyPowAbs() {
 template<typename Real>
 static void UnitTestCuMatrixCopyRowsFromVec() {
   for (MatrixIndexT p = 0; p < 2; p++) {
-    int32 num_rows = 100 + rand() % 255, num_cols;
+    int32 num_rows = 100 + Rand() % 255, num_cols;
     if (p <= 2) num_cols = 128;
     else if (p <= 4) num_cols = 256;
-    else num_cols = 100 + rand() % 200;
+    else num_cols = 100 + Rand() % 200;
 
     int32 vec_dim;
     if (p % 2 == 0) vec_dim = num_cols;
@@ -357,16 +357,16 @@ static void UnitTestCuMatrixCopyRowsFromVec() {
 template<typename Real>
 static void UnitTestCuMatrixCopyRows() {
   for (MatrixIndexT p = 0; p < 2; p++) {
-    MatrixIndexT num_rows1 = 10 + rand() % 10,
-        num_rows2 = 10 + rand() % 10,
-        num_cols = 10 + rand() % 10;
+    MatrixIndexT num_rows1 = 10 + Rand() % 10,
+        num_rows2 = 10 + Rand() % 10,
+        num_cols = 10 + Rand() % 10;
     CuMatrix<Real> M(num_rows1, num_cols);
     M.SetRandn();
     
     CuMatrix<Real> N(num_rows2, num_cols), O(num_rows2, num_cols);
     std::vector<int32> reorder(num_rows2);
     for (int32 i = 0; i < num_rows2; i++)
-      reorder[i] = -1 + (rand() % (num_rows1 + 1));
+      reorder[i] = -1 + (Rand() % (num_rows1 + 1));
     
     N.CopyRows(M, reorder);
 
@@ -383,8 +383,8 @@ static void UnitTestCuMatrixCopyRows() {
 template<typename Real>
 void UnitTestCuMatrixCopyCross() {
   for (int32 i = 0; i < 2; i++) {
-    int32 M = 100 + rand() % 255, N = 100 + rand() % 255;
-    if (rand() % 3 == 0) { M = 0; N = 0; }
+    int32 M = 100 + Rand() % 255, N = 100 + Rand() % 255;
+    if (Rand() % 3 == 0) { M = 0; N = 0; }
     CuMatrix<Real> mat1(M, N);
     mat1.SetRandn();
     if (i % 2 == 0) {
@@ -405,8 +405,8 @@ void UnitTestCuMatrixCopyCross() {
 
 template<typename Real> void UnitTestCuMatrixCopyCross2() {
   for (int32 i = 0; i < 2; i++) {
-    int32 M = 100 + rand() % 255, N = 100 + rand() % 255;
-    if (rand() % 3 == 0) { M = 0; N = 0; }
+    int32 M = 100 + Rand() % 255, N = 100 + Rand() % 255;
+    if (Rand() % 3 == 0) { M = 0; N = 0; }
     CuMatrix<Real> mat1(M, N);
     mat1.SetRandn();
     Matrix<float> mat2(M, N);
@@ -420,16 +420,16 @@ template<typename Real> void UnitTestCuMatrixCopyCross2() {
 template<typename Real>
 static void UnitTestCuMatrixSumColumnRanges() {
   for (MatrixIndexT p = 0; p < 2; p++) {
-    MatrixIndexT num_cols1 = 10 + rand() % 10,
-        num_cols2 = 10 + rand() % 10,
-        num_rows = 10 + rand() % 10;
+    MatrixIndexT num_cols1 = 10 + Rand() % 10,
+        num_cols2 = 10 + Rand() % 10,
+        num_rows = 10 + Rand() % 10;
     Matrix<Real> src(num_rows, num_cols1);
     Matrix<Real> dst(num_rows, num_cols2);
     std::vector<Int32Pair> indices(num_cols2);
     for (MatrixIndexT i = 0; i < num_cols2; i++) {
-      indices[i].first = rand() % num_cols1;
+      indices[i].first = Rand() % num_cols1;
       int32 headroom = num_cols1 - indices[i].first,
-        size = (rand() % headroom) + 1;
+        size = (Rand() % headroom) + 1;
       indices[i].second = indices[i].first + size;
       KALDI_ASSERT(indices[i].second >= indices[i].first &&
                    indices[i].second <= num_cols1 &&
@@ -461,18 +461,18 @@ static void UnitTestCuMatrixSumColumnRanges() {
 template<typename Real>
 static void UnitTestCuMatrixCopyCols() {
   for (MatrixIndexT p = 0; p < 2; p++) {
-    MatrixIndexT num_cols1 = 10 + rand() % 10,
-        num_cols2 = 10 + rand() % 10,
-        num_rows = 10 + rand() % 10;
+    MatrixIndexT num_cols1 = 10 + Rand() % 10,
+        num_cols2 = 10 + Rand() % 10,
+        num_rows = 10 + Rand() % 10;
     CuMatrix<Real> M(num_rows, num_cols1);
     M.SetRandn();
     
     CuMatrix<Real> N(num_rows, num_cols2), O(num_rows, num_cols2);
     std::vector<int32> reorder(num_cols2);
     for (int32 i = 0; i < num_cols2; i++)
-      reorder[i] = -1 + (rand() % (num_cols1 + 1));
+      reorder[i] = -1 + (Rand() % (num_cols1 + 1));
 
-    if (rand() % 2 == 0) {
+    if (Rand() % 2 == 0) {
       N.CopyCols(M, reorder);
     } else {
       CuArray<int32> cuda_reorder(reorder);
@@ -492,9 +492,9 @@ template<typename Real>
 static void UnitTestCuMatrixApplyFloor() {
 
   for (int32 i = 0; i < 3; i++) {
-    BaseFloat floor = 0.33 * (rand() % 6);
+    BaseFloat floor = 0.33 * (Rand() % 6);
     
-    Matrix<Real> H(10 + rand() % 600, 10 + rand() % 20);
+    Matrix<Real> H(10 + Rand() % 600, 10 + Rand() % 20);
     H.SetRandn();
     if (i == 2) { Matrix<Real> tmp(H, kTrans); H = tmp; }
     
@@ -514,7 +514,7 @@ template<typename Real>
 static void UnitTestCuMatrixApplyHeaviside() {
 
   for (int32 i = 0; i < 1; i++) {
-    Matrix<Real> H(10 + rand() % 60, 10 + rand() % 20);
+    Matrix<Real> H(10 + Rand() % 60, 10 + Rand() % 20);
     H.SetRandn();
     H.Row(0).Set(0.0);
     if (i == 2) { Matrix<Real> tmp(H, kTrans); H = tmp; }
@@ -533,7 +533,7 @@ static void UnitTestCuMatrixApplyHeaviside() {
 template<typename Real> 
 static void UnitTestCuMatrixMulElements() {
   for (int32 i = 0; i < 2; i++) {
-    MatrixIndexT dimM = 100 + rand() % 256, dimN = 100 + rand() % 256;
+    MatrixIndexT dimM = 100 + Rand() % 256, dimN = 100 + Rand() % 256;
   
     Matrix<Real> Ha(dimM, dimN);
     Matrix<Real> Hb(dimM, dimN);
@@ -604,7 +604,7 @@ static void UnitTestCuMatrixMulColsVec() {
 template<typename Real> 
 static void UnitTestCuMatrixMulRowsVec() {
   for (int32 i = 0; i < 2; i++) {
-    int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+    int32 dimM = 100 + Rand() % 200, dimN = 100 + Rand() % 200;
    // int32 dimM = 256, dimN = 256;
     Matrix<Real> Hm(dimM, dimN);
     Vector<Real> Hv(dimM);
@@ -629,8 +629,8 @@ static void UnitTestCuMatrixMulRowsVec() {
 template<typename Real> 
 static void UnitTestCuMatrixMulRowsGroupMat() {
   for (int32 i = 0; i < 2; i++) {
-    int32 dimM = 100 + rand() % 200, dimNs = 100 + rand() % 200;
-    int32 group_size = 1 + rand() % 10;
+    int32 dimM = 100 + Rand() % 200, dimNs = 100 + Rand() % 200;
+    int32 group_size = 1 + Rand() % 10;
     //int32 group_size = 1;
     int32 dimN = group_size * dimNs;
     Matrix<Real> Hm(dimM, dimN);
@@ -654,9 +654,9 @@ static void UnitTestCuMatrixMulRowsGroupMat() {
 
 template<typename Real> 
 static void UnitTestCuMatrixGroupPnormDeriv() {
-  int32 dimM = 100 + rand() % 200, dimNs = 100 + rand() % 200;
-  int32 group_size = 1 + rand() % 10;
-  BaseFloat power = 1.1 + 0.1 * (rand() % 10);
+  int32 dimM = 100 + Rand() % 200, dimNs = 100 + Rand() % 200;
+  int32 group_size = 1 + Rand() % 10;
+  BaseFloat power = 1.1 + 0.1 * (Rand() % 10);
   // int32 dimM = 256, dimNs = 2;
   // int32 group_size = 2;
   int32 dimN = group_size * dimNs;
@@ -688,8 +688,8 @@ static void UnitTestCuMatrixGroupPnormDeriv() {
 
 template<typename Real> static void UnitTestCuMatrixAddDiagVecMat() {
   for (int p = 0; p < 4; p++) {
-    MatrixIndexT dimM = 100 + rand() % 255, dimN = 100 + rand() % 255;
-    //MatrixIndexT dimM = 10 + rand() % 2, dimN = 10 + rand() % 2;
+    MatrixIndexT dimM = 100 + Rand() % 255, dimN = 100 + Rand() % 255;
+    //MatrixIndexT dimM = 10 + Rand() % 2, dimN = 10 + Rand() % 2;
     Real alpha = 0.43243, beta = 1.423;
     CuMatrix<Real> M(dimM, dimN), N(dimM, dimN);
     M.SetRandn();
@@ -775,7 +775,7 @@ static void UnitTestCuMatrixAddMat() {
   AssertEqual(mat1,mat2);
  
   for (int i = 0; i < 10; i++) {
-    int32 N = 5 * (10 + rand() % 10),  M = 100 + rand() % 50;  
+    int32 N = 5 * (10 + Rand() % 10),  M = 100 + Rand() % 50;  
     Matrix<Real> Hc(N,M);
     Matrix<Real> Hd(M,N);
     Hc.SetRandn();
@@ -805,7 +805,7 @@ static void UnitTestCuMatrixAddMat() {
 
 template<typename Real> 
 static void UnitTestCuMatrixSum() {
-  int32 M = 100 + rand() % 300, N = 100 + rand() % 300;
+  int32 M = 100 + Rand() % 300, N = 100 + Rand() % 300;
   CuMatrix<Real> A(M, N);
   A.SetRandn();
   Matrix<Real> mA(A);
@@ -861,7 +861,7 @@ static void UnitTestCuMatrixAddVecToRows() {
 template<typename Real> 
 static void UnitTestCuMatrixSymAddMat2() {
   for (int32 i = 0; i < 2; i++) {
-    int32 dimM = 10 + rand() % 200, dimN = 10 + rand() % 30;
+    int32 dimM = 10 + Rand() % 200, dimN = 10 + Rand() % 30;
     if (i == 8) {
       dimM = 0;
       dimN = 0;
@@ -891,7 +891,7 @@ static void UnitTestCuMatrixSymAddMat2() {
 template<typename Real> 
 static void UnitTestCuMatrixSymInvertPosDef() {
   for (int32 i = 0; i < 2; i++) {
-    int32 dimM = 10 + rand() % 200, dimN = dimM + 20;
+    int32 dimM = 10 + Rand() % 200, dimN = dimM + 20;
     // dimN > dimM, so will be PSD almost surely.
     if (i == 8) {
       dimM = 0;
@@ -969,7 +969,7 @@ static void UnitTestCuMatrixAddMatMat() {
 template<typename Real> 
 static void UnitTestCuMatrixAddToDiag() {
   for (int32 i = 0; i < 10; i++) {
-    int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+    int32 dimM = 100 + Rand() % 200, dimN = 100 + Rand() % 200;
     Matrix<Real> M(dimM, dimN);
     CuMatrix<Real> Mc(M);
     Real alpha = 5.5;
@@ -983,7 +983,7 @@ static void UnitTestCuMatrixAddToDiag() {
 template<typename Real> 
 static void UnitTestCuMatrixAdd2() {
   for (int32 i = 0; i < 10; i++) {
-    int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+    int32 dimM = 100 + Rand() % 200, dimN = 100 + Rand() % 200;
     Matrix<Real> M(dimM, dimN);
     CuMatrix<Real> Mc(M);
     Real alpha = 5.5;
@@ -998,7 +998,7 @@ static void UnitTestCuMatrixAdd2() {
 template<typename Real>
 static void UnitTestCuMatrixCopyFromMat() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+    MatrixIndexT dim = 5 * i + Rand() % 10;
     
     Matrix<Real> A(dim, dim);
     A.SetRandn();
@@ -1013,7 +1013,7 @@ static void UnitTestCuMatrixCopyFromMat() {
 template<typename Real>
 static void UnitTestCuMatrixCopyFromTp() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+    MatrixIndexT dim = 5 * i + Rand() % 10;
     TpMatrix<Real> A(dim);
     A.SetRandn();
     CuTpMatrix<Real> E(A);
@@ -1029,7 +1029,7 @@ static void UnitTestCuMatrixCopyFromTp() {
 template<typename Real>
 static void UnitTestCuMatrixAddMatTp() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+    MatrixIndexT dim = 5 * i + Rand() % 10;
     
     Matrix<Real> A(dim, dim);
     Matrix<Real> B(dim, dim);
@@ -1053,7 +1053,7 @@ static void UnitTestCuMatrixAddMatTp() {
 template<typename Real>
 static void UnitTestCuMatrixTranspose() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dimM = 5 * i + rand() % 10,
+    MatrixIndexT dimM = 5 * i + Rand() % 10,
         dimN = dimM;
     if (i % 2 == 0) dimN += 5;
     
@@ -1068,7 +1068,7 @@ static void UnitTestCuMatrixTranspose() {
 template<typename Real>
 static void UnitTestCuMatrixAddTpMat() {
   for (MatrixIndexT i = 1; i < 10; i++) {
-    MatrixIndexT dim = 5 * i + rand() % 10;
+    MatrixIndexT dim = 5 * i + Rand() % 10;
     
     Matrix<Real> A(dim, dim);
     Matrix<Real> B(dim, dim);
@@ -1206,9 +1206,9 @@ static void UnitTestCuVectorAddColSumMat() {
 template<typename Real> 
 static void UnitTestCuSubMatrix() {
   for (int32 iter = 0 ; iter < 10; iter++) {
-    int32 M1 = 1 + rand () % 10, M2 = 1 + rand() % 1, M3 = 1 + rand() % 10, M = M1 + M2 + M3,
-        N1 = 1 + rand () % 10, N2 = 1 + rand() % 1, N3 = 1 + rand() % 10, N = N1 + N2 + N3,
-        m = rand() % M2, n = rand() % N2;
+    int32 M1 = 1 + rand () % 10, M2 = 1 + Rand() % 1, M3 = 1 + Rand() % 10, M = M1 + M2 + M3,
+        N1 = 1 + rand () % 10, N2 = 1 + Rand() % 1, N3 = 1 + Rand() % 10, N = N1 + N2 + N3,
+        m = Rand() % M2, n = Rand() % N2;
     CuMatrix<Real> mat(M, N);
     mat.SetRandn();
     CuSubMatrix<Real> submat1(mat, M1, M2,
@@ -1288,7 +1288,7 @@ static void UnitTestCuMatrixInvertElements() {
 template<class Real>
 static void UnitTestCuMatrixIO() {
   for (int32 i = 0; i < 10; i++) {
-    int32 dimM = 100 + rand() % 255, dimN = 10 + rand() % 20;
+    int32 dimM = 100 + Rand() % 255, dimN = 10 + Rand() % 20;
     if (i % 2 == 0) std::swap(dimM, dimN);
     if (i % 5 == 0) { dimM = 0; dimN = 0; }
     CuMatrix<Real> mat(dimM, dimN);
@@ -1335,7 +1335,7 @@ template<typename Real>
 static void UnitTestCuApproxEqual() {
   Real tol = 0.1;
   for (int32 i = 0; i < 2; i++) {
-    int32 M = 1 + rand() % 10, N = 1 + rand() % 10;
+    int32 M = 1 + Rand() % 10, N = 1 + Rand() % 10;
     CuMatrix<Real> A(M, N), B(M, N);
     A.SetRandn();
     B.SetRandn();
@@ -1372,7 +1372,7 @@ static void UnitTestCuVectorMulTp() {
 template<typename Real, typename OtherReal> 
 static void UnitTestCuCopy() {
   for (int32 i = 0; i < 10; i++) {
-    int32 M = 1 + rand() % 10, N = 1 + rand() % 10;
+    int32 M = 1 + Rand() % 10, N = 1 + Rand() % 10;
     CuMatrix<Real> A(M, N);
     CuMatrix<OtherReal> B(A, kTrans);
     CuMatrix<Real> C(B, kTrans);
@@ -1460,8 +1460,8 @@ template<typename Real>
 static void UnitTestCuSoftmax() {
 
   for (int32 i = 0; i < 2; i++) {
-    int row = 10 + rand() % 40;
-    int col = 10 + rand() % 50;
+    int row = 10 + Rand() % 40;
+    int col = 10 + Rand() % 50;
 
     Matrix<Real> Hi(row,col);
     Matrix<Real> Ho(row,col);
@@ -1491,7 +1491,7 @@ static void UnitTestCuSoftmax() {
 template<typename Real> 
 static void UnitTestCuFindRowMaxId() {
   for (int32 i = 0; i < 2; i++) {
-    int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+    int32 dimM = 100 + Rand() % 200, dimN = 100 + Rand() % 200;
     Matrix<Real> Hi(dimM, dimN);
     Hi.SetRandn();
 
@@ -1533,7 +1533,7 @@ static void UnitTestCuDiffXent() {
   //target vector
   std::vector<int32> Htgt(X);
   for(int32 i=0; i<X; i++) {
-    Htgt[i] = rand()%Y;
+    Htgt[i] = Rand()%Y;
   }
   CuArray<int32> Dtgt(X);
   Dtgt.CopyFromVec(Htgt);
@@ -1670,7 +1670,7 @@ template <typename Real>
 static void UnitTestCuMatrixSetRandn() {
 
   { // First test consistency when called twice.
-    int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+    int32 dimM = 100 + Rand() % 200, dimN = 100 + Rand() % 200;
     Matrix<Real> M(dimM, dimN), N(dimM, dimN);
     srand(104);
     M.SetRandn();
@@ -1680,7 +1680,7 @@ static void UnitTestCuMatrixSetRandn() {
   }
     
   for (MatrixIndexT i = 0; i < 5; i++) {
-    MatrixIndexT rows = 100 + rand() % 50, cols = 100 + rand() % 50;
+    MatrixIndexT rows = 100 + Rand() % 50, cols = 100 + Rand() % 50;
     CuMatrix<Real> M(rows, cols);
     M.SetRandn();
 
@@ -1712,7 +1712,7 @@ static void UnitTestCuMatrixSetRandn() {
 template <typename Real>
 static void UnitTestCuMatrixSetRandUniform() {
   for (MatrixIndexT i = 0; i < 2; i++) {
-    MatrixIndexT rows = 180 + rand() % 200, cols = 200 + rand() % 200;
+    MatrixIndexT rows = 180 + Rand() % 200, cols = 200 + Rand() % 200;
     CuMatrix<Real> M(rows, cols);
     M.SetRandUniform();
 
@@ -1753,7 +1753,7 @@ static void UnitTestCuMatrixSetRandUniform() {
 template<typename Real>
 static void UnitTestCuMatrixCopyLowerToUpper() {
   for (int i = 1; i < 2; ++i) {
-    MatrixIndexT dim = 10 * i + rand() % 4 + (i == 9 ? 255 : 0);
+    MatrixIndexT dim = 10 * i + Rand() % 4 + (i == 9 ? 255 : 0);
     if (i == 8) dim = 0;
     CuMatrix<Real> A(dim, dim);
     A.SetRandn();
@@ -1773,7 +1773,7 @@ static void UnitTestCuMatrixCopyLowerToUpper() {
 template<typename Real>
 static void UnitTestCuMatrixSetZeroAboveDiag() {
   for (int i = 1; i < 2; ++i) {
-    MatrixIndexT dim = 10 * i + rand() % 4 + (i == 9 ? 255 : 0);
+    MatrixIndexT dim = 10 * i + Rand() % 4 + (i == 9 ? 255 : 0);
     if (i == 8) dim = 0;
     CuMatrix<Real> A(dim, dim);
     A.SetRandn();
@@ -1794,7 +1794,7 @@ static void UnitTestCuMatrixSetZeroAboveDiag() {
 template<typename Real>
 static void UnitTestCuMatrixCopyUpperToLower() {
   for (int i = 1; i < 10; ++i) {
-    MatrixIndexT dim = 10 * i + rand() % 4 + (i == 9 ? 255 : 0);
+    MatrixIndexT dim = 10 * i + Rand() % 4 + (i == 9 ? 255 : 0);
     if (i == 8) dim = 0;
     CuMatrix<Real> A(dim, dim);
     A.SetRandn();
@@ -1815,7 +1815,7 @@ static void UnitTestCuMatrixCopyUpperToLower() {
 
 template<typename Real> 
 static void UnitTestCuMatrixObjfDeriv() {
-  int32 n_r = 100 + rand() % 200, n_c = 20 + rand() % 30;
+  int32 n_r = 100 + Rand() % 200, n_c = 20 + Rand() % 30;
   CuMatrix<Real> A(n_r, n_c), B(n_r, n_c);
   B.SetRandn();
   B.Add(1.0);
@@ -1825,7 +1825,7 @@ static void UnitTestCuMatrixObjfDeriv() {
   for(int i = 0; i < n_r; i++) {
     for(int j = 0; j < n_c; j++) {
       // have approximately one weight per row of the matrix.
-      if (rand() % n_c == 0) {
+      if (Rand() % n_c == 0) {
         A(i, j) = RandUniform();
         MatrixElement<Real> t = {i, j, A(i, j)};
         labels.push_back(t);
@@ -1857,17 +1857,17 @@ static void UnitTestCuMatrixObjfDeriv() {
 template<typename Real> 
 static void UnitTestCuMatrixAddElements() {
   for (int32 i = 0; i < 2; i++) {
-    int32 dimM = 100 + rand() % 50, dimN = 100 + rand() % 50;
+    int32 dimM = 100 + Rand() % 50, dimN = 100 + Rand() % 50;
    // int32 dimM = 256, dimN = 256;
     CuMatrix<Real> H(dimM, dimN);
     H.SetRandn();
     CuMatrix<Real> M(H);
     std::vector<MatrixElement<Real> > input;
-    BaseFloat scale = -1 + (0.33 * (rand() % 5));
-    for (int32 j = 0; j < 100 + rand() % 10; j++) {
-      MatrixIndexT r = rand() % dimM;
-      MatrixIndexT c = rand() % dimN;
-      Real offset = -1 + (0.33 * (rand() % 5));
+    BaseFloat scale = -1 + (0.33 * (Rand() % 5));
+    for (int32 j = 0; j < 100 + Rand() % 10; j++) {
+      MatrixIndexT r = Rand() % dimM;
+      MatrixIndexT c = Rand() % dimN;
+      Real offset = -1 + (0.33 * (Rand() % 5));
       M(r, c) += scale * offset;
       MatrixElement<Real> t = {r, c, offset};
       input.push_back(t);
@@ -1881,7 +1881,7 @@ static void UnitTestCuMatrixAddElements() {
 template<typename Real> 
 static void UnitTestCuMatrixLookup() {
   for (int32 i = 0; i < 2; i++) {
-    int32 dimM = 100 + rand() % 200, dimN = 100 + rand() % 200;
+    int32 dimM = 100 + Rand() % 200, dimN = 100 + Rand() % 200;
     CuMatrix<Real> H(dimM, dimN);
     H.SetRandn();
 
@@ -1890,9 +1890,9 @@ static void UnitTestCuMatrixLookup() {
     std::vector<Real> output;
 
     // Generates the indices and the reference.
-    for (int32 j = 0; j < 10 + rand() % 10; j++) {
-      MatrixIndexT r = rand() % dimM;
-      MatrixIndexT c = rand() % dimN;
+    for (int32 j = 0; j < 10 + Rand() % 10; j++) {
+      MatrixIndexT r = Rand() % dimM;
+      MatrixIndexT c = Rand() % dimN;
 
       Int32Pair tmp_pair;
       tmp_pair.first = r;

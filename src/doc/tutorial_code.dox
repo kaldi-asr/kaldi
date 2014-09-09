@@ -87,7 +87,7 @@
 template<class Real>
 void UnitTestAddVec() {
   // note: Real will be float or double when instantiated.
-  int32 dim = 1 + rand() % 10;
+  int32 dim = 1 + Rand() % 10;
   Vector<Real> v(dim); w(dim); // two vectors the same size.
   InitRand(&v);
   InitRand(&w);

@@ -86,7 +86,8 @@ int main(int argc, char *argv[]) {
     int32 length_tolerance = 0;
     bool binary = true;
     po.Register("length-tolerance", &length_tolerance,
-                "If length is different, trim as shortest up to a frame difference of length-tolerance, otherwise exclude segment.");
+                "If length is different, trim as shortest up to a frame "
+                " difference of length-tolerance, otherwise exclude segment.");
     po.Register("binary", &binary, "If true, output files in binary "
                 "(only relevant for single-file operation, i.e. no tables)");
     

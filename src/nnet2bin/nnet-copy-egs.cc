@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       int32 count = GetCount(keep_proportion);
       for (int32 c = 0; c < count; c++) {
-        int32 index = (random ? rand() : num_written) % num_outputs;
+        int32 index = (random ? Rand() : num_written) % num_outputs;
         std::ostringstream ostr;
         ostr << num_written;
         example_writers[index]->Write(ostr.str(),

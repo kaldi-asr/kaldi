@@ -23,229 +23,249 @@ namespace kaldi {
 /**
   \page kws Keyword Search in Kaldi
 
- \section kws_intro Introduction
-This page describes the keyword search module in Kaldi. We will briefly describe the keyword search algorithm proposed in <a href=http://ieeexplore.ieee.org/xpl/login.jsp?tp=&arnumber=5752829&url=http%3A%2F%2Fieeexplore.ieee.org%2Fxpls%2Fabs_all.jsp%3Farnumber%3D5752829> "Lattice indexing for spoken term detection", D. Can, M. Saraclar, Audio, Speech, and Language Processing</a>, but will give emphasis to the implementation and some of our extensions.
+  \section kws_intro Introduction
+  This page describes the keyword search module in Kaldi. Our implementation
+  includes the following features:
 
- \section index_paper Lattice Indexing
-We will only briefly decsribe the algorithm here, readers may refer to the lattice indexing paper for more details.
+  - Lattice indexing for fast keyword retrieval.
+  - Proxy keywords to handle out-of-vocabulary (OOV) problem.
 
-\subsection semiring Related Semiring
-The indexing algorithm relies on a special designed semiring that can store the time information as well as the weight (confidence score). Readers are highly recommended to review the detailed definition of semiring, but in case you do not recall anything about it, here is a quick recap:
+  In the following document, we will focus on word level keyword search for
+  simplicity purpose, but our implementation naturally supports word level as
+  well as subword level keyword search -- both our LVCSR module and the KWS
+  module are implemented using weighted finite state transducer (WFST), and the
+  algorithm should work as long as the symbol table properly maps words/subwords
+  to integers.
 
-<EM><B>Definition1:</B></EM> A monoid is a triple \f$(\mathcal{K}, \otimes, \bar{1})\f$, where \f$\otimes\f$ is a closed associative binary operator on the set \f$\mathcal{K}\f$, and \f$\bar{1}\f$ is the identity element for \f$\otimes\f$. A monoid is commutative if \f$\otimes\f$ is commutative.
+  The rest of this document is organized as follows: in section \ref kws_system
+  "Typical Kaldi KWS system", we describe the basic components of a Kaldi KWS
+  system; in section \ref kws_proxy "Proxy keywords", we explain how we use
+  proxy keywords to handle the keywords that are not in the vocabulary; finally
+  in section \ref kws_scripts "Babel scripts", we walk through the KWS related
+  scripts we created for IARPA Babel project.
 
-<EM><B>Definition2:</B></EM> A semiring is a 5-tuple \f$(\mathcal{K}, \oplus, \otimes, \bar{0}, \bar{1})\f$, where \f$(\mathcal{K}, \oplus, \bar{0})\f$ is a commutative monoid, \f$(\mathcal{K}, \otimes, \bar{1})\f$ is a monoid, \f$\otimes\f$ distributes over \f$\oplus\f$, \f$\bar{0}\f$ is an annihilator for \f$\otimes\f$.
+  \section kws_system Typical Kaldi KWS system
+  An example of a Kaldi KWS system can be found in this paper <a href=
+  http://www.clsp.jhu.edu/~guoguo/papers/chen2013quantifying.pdf> "Quantifying
+  the Value of Pronunciation Lexicons for Keyword Search in Low Resource
+  Languages", G. Chen, S. Khudanpur, D. Povey, J. Trmal, D. Yarowsky and
+  O. Yilmaz</a>. Generally, a KWS system consists of two parts: a LVCSR module
+  that decodes the search collection and generates corresponding lattices, and a
+  KWS module that makes index for the lattices and searches the keywords from
+  the generated index.
 
-The following 5 semirings will be used in the algorithm:
+  Our basic LVCSR system is a SGMM + MMI system. We use standard PLP analysis to
+  extract 13 dimensional acoustic features, and follow a typical maximum
+  likelihood acoustic training recipe, beginning with a flat-start
+  initialization of context-independent phonetic HMMs, and ending with speaker
+  adaptive training (SAT) of state-clustered triphone HMMs with GMM output
+  densities. This is followed by the training of a universal background model
+  from speaker-transformed training data, which is then used to train a subspace
+  Gaussian mixture model (SGMM) for the HMM emission probabilities. Finally, all
+  the training speech is decoded using the SGMM system, and boosted maximum
+  mutual information (BMMI) training of the SGMM parameters is performed. More
+  details can be found in egs/babel/s5b/run-1-main.sh.
 
--# <EM><B>Log semiring:</B></EM> The log semiring is defined as \f$\mathcal{L} = (\mathcal{R} \cup \{-\infty, +\infty\}, \oplus_{log}, +, +\infty, 0)\f$, where \f$\forall a,b \in \mathcal{R} \cup \{-\infty, +\infty\}: a \oplus_{log} b = -log(e^{-a}+e^{-b})\f$, along with conventions \f$e^{-\infty} = 0\f$ and \f$-log(0) = \infty\f$.
--# <EM><B>Tropical semiring:</B></EM> The tropical semiring is defined as \f$\mathcal{T} = (\mathcal{R} \cup \{-\infty, +\infty\}, min, +, +\infty, 0)\f$, where the "min" operation (getting the minima value) is used for the tropical addition.
--# <EM><B>Arctic semiring:</B></EM> The arctic semiring is defined as \f$\mathcal{T} = (\mathcal{R} \cup \{-\infty, +\infty\}, max, +, -\infty, 0)\f$, where the "max" operation (getting the maxima) is used for the arctic addition. We came up with the name "arctic semiring" because it is opposite to the well known tropical semiring.
--# <EM><B>Product semiring:</B></EM> The product semiring of two partially ordered semirings \f$\mathcal{A} = (\mathcal{K_A}, \oplus_{\mathcal{K_A}}, \otimes_{\mathcal{K_A}}, \overline{0_{\mathcal{K_A}}}, \overline{1_{\mathcal{K_A}}})\f$ and \f$\mathcal{B} = (\mathcal{K_B}, \oplus_{\mathcal{K_B}}, \otimes_{\mathcal{K_B}}, \overline{0_{\mathcal{K_B}}}, \overline{1_{\mathcal{K_B}}})\f$ is defined as \f$\mathcal{A} \times \mathcal{B} = (\mathcal{K_A} \times \mathcal{K_B}, \oplus_\times, \otimes_\times, \overline{0_{\mathcal{K_A}}} \times \overline{0_{\mathcal{K_B}}}, \overline{1_{\mathcal{K_A}}} \times \overline{1_{\mathcal{K_B}}})\f$, where \f$\oplus_\times\f$ and \f$\otimes_\times\f$ are component-wise operators, e.g., \f$\forall a_1,a_2 \in \mathcal{K_A}, b_1,b_2 \in \mathcal{K_B}: (a_1,b_1) \oplus_\times (a_2,b_2) = (a_1 \oplus_{\mathcal{K_A}} a_2, b_1 \oplus_{\mathcal{K_B}} b_2)\f$. 
--# <EM><B>Lexicographic semiring:</B></EM> The lexicographic semiring of two partially ordered semirings \f$\mathcal{A} = (\mathcal{K_A}, \oplus_{\mathcal{K_A}}, \otimes_{\mathcal{K_A}}, \overline{0_{\mathcal{K_A}}}, \overline{1_{\mathcal{K_A}}})\f$ and \f$\mathcal{B} = (\mathcal{K_B}, \oplus_{\mathcal{K_B}}, \otimes_{\mathcal{K_B}}, \overline{0_{\mathcal{K_B}}}, \overline{1_{\mathcal{K_B}}})\f$ is defined as \f$\mathcal{A} \ast \mathcal{B} = (\mathcal{K_A} \times \mathcal{K_B}, \oplus_\ast, \otimes_\ast, \overline{0_{\mathcal{K_A}}} \times \overline{0_{\mathcal{K_B}}}, \overline{1_{\mathcal{K_A}}} \times \overline{1_{\mathcal{K_B}}})\f$, where \f$\oplus_\ast\f$ is a lexicographic priority operator, i.e., \f$\forall a_1,a_2 \in \mathcal{K_A}, b_1,b_2 \in \mathcal{K_B}, (a_1,b_1) \oplus (a_2,b_2)\f$ equals \f$(a_1, b_1 \oplus_{\mathcal{K_B}} b_2)\f$ if \f$a_1 = a_2\f$; equals \f$(a_1, b_1)\f$ if \f$a_1 = (a_1 \oplus_{\mathcal{K_A}} a_2) \neq a_2\f$; and equals \f$(a_2, b_2)\f$ if \f$a_1 \neq (a_1 \oplus_{\mathcal{K_A}} a_2) = a_2\f$.
+  We also build additional systems besides the basic SGMM + MMI system. For
+  example, a hybrid deep neural network (DNN) system, details in
+  egs/babel/s5b/run-2a-nnet-gpu.sh, a bottleneck feature system, details in
+  egs/babel/s5b/run-8a-kaldi-bnf.sh, etc. All those systems decode and generate
+  lattices for the same search collection, which will then be sent to the KWS
+  module for indexing and searching. We do system combination on the retrieved
+  results instend of lattices.
 
-\subsection algorithm Algorithm 
-The indexing algorithm converts the lattices from automatic speech recognition (ASR) system into a weighted factor transducer such that by composing the resulting transducer with properly designed keyword transducers (also includs key phrases, but we will use the term keywords in the rest of this documentation for simplicity), one may get the time information for the keywords as well as scores indicating the confidence. The resulting factor transducer (also known as the index) has the property that each path represents a partial path in the original lattices, and the time information together with the confidence score are encoded in the weight of that path. Note that the weight in the final index has to be "pushed" along the path. The weight of a separate arc may not make sense.
+  Lattices generated by the above LVCSR systems are processed using the lattice
+  indexing technique described in <a href=
+  https://wiki.inf.ed.ac.uk/twiki/pub/CSTR/ListenSemester2201314/taslp_2011.pdf>
+  "Lattice indexing for spoken term detection", D. Can, M. Saraclar, Audio,
+  Speech, and Language Processing</a>. The lattices of all the utterances in the
+  search collection are converted from individual weighted finite state
+  transducers (WFST) to a single generalized factor transducer structure in
+  which the start-time, end-time and lattice posterior probability of each word
+  token is stored as a 3-dimensional cost. This factor transducer is actually an
+  inverted index of all word sequences seen in the lattices. Given a keyword or
+  phrase, we then create a simple finite state machine that accepts the
+  keyword/phrase and composes it with the factor transducer to obtain all
+  occurrences of the keyword/phrase in the search collection, along with the
+  utterance ID, start-time and end-time and lattice posterior probability of
+  each occurrence. All those occurrences are sorted according to their posterior
+  probabilities and a YES/NO decision is assigned to each instance using the
+  method proposed in the paper "Rapid and Accurate Spoken Term Detection".
+  
+  \section kws_proxy Proxy keywords
+  Our proxy keyword generation process has been described in this paper <a href=
+  http://old-site.clsp.jhu.edu/~guoguo/papers/chen2013using.pdf> "Using Proxies
+  for OOV Keywords in the Keyword Search Task", G. Chen, O. Yilmaz, J. Trmal,
+  D. Povey, S. Khudanpur</a>. We originally proposed this method to solve the
+  OOV problem of the word lattices -- if a keyword is not in the vocabulary of
+  the LVCSR system, it will not appear in the search collection lattices, even
+  though the keyword is actually spoken in the search collection. This is a
+  known problem of LVCSR based keyword search systems, and there are ways to
+  handle this, for example, building a subword system. Our approach is to find
+  acoustically similar in-vocabulary (IV) words for the OOV keyword, and use
+  them as proxy keywords instead of the original OOV keyword. The advantage is
+  that we do not have to build additional subword systems. In a upcoming
+  Interspeech paper "Low-Resource Open Vocabulary Keyword Search Using Point
+  Process Models", C. Liu, A. Jansen, G. Chen, K. Kintzley, J. Trmal,
+  S. Khudanpur, we show that this technique is comparable and complementary to a
+  phonetic search method based on point process model. Proxy keyword is one of
+  the fuzzy search methods, and it should also improve IV keyword performance,
+  although we initially brought it up to handle OOV keywords.
 
-There are roughly 5 steps for creating such an index from the raw lattices:
+  The general proxy keyword generation process can be formulized as follows:
+  \f[
+  K^\prime = \mathrm{Project} \left(
+             \mathrm{ShortestPath} \left(
+             \mathrm{Prune} \left(
+             \mathrm{Prune} \left(K \circ L_2 \circ E^\prime \right)
+             \circ L_1^{-1} \right) \right) \right)
+  \f]
 
--# <EM><B>Weight Pushing and Clustering:</B></EM> This two steps sometimes are also known as preprocessing steps. The path weights in the raw lattices usually correspond to the joint probabilities assigned by the language and acoustic models, and the weight pushing converts these weights into the desired posterior probabilities given the lattices. The purpose of the clustering is to merge the arcs that bear the same word, and with overlapping time intervals. The clustering is done by "labeling": if several arcs belong to the same cluster (bearing same words, and with overlapping interval), then put a same output label for them (and the input label is simply the word). The actual merging of different clusters happens later when we do encoded determization on the transducer.
--# <EM><B>Factor Generation:</B></EM> As we mentioned earlier, each path in the final index represents a partial path in the original lattices, and this is done by applying the factor generation step. For each lattice, we add two more states, one as the new start state and the other as the new final state. Then from each state of the original lattice, we add a path from the new start state to that state, and we also add a path from that state to the new final state. After this step, each path in the new transducer should represents a partial path in the original lattices. We also change the semiring in this step, from the log semiring \f$\mathcal{L}\f$ to the semiring \f$\mathcal{L} \times \mathcal{T} \times \mathcal{T'}\f$, where \f$\mathcal{T}\f$ is the tropical semiring, \f$\mathcal{T'}\f$ is the arctic semiring, and \f$\times\f$ represents the product semiring. We put the confidence score to the log semiring \f$L\f$, the start time of that partial path to tropical semiring \f$T\f$, and the end time of that partial path to arctic semiring \f$T'\f$. Note that when adding the additional paths from the new start state and to the new final state, we ensure that the time information in the "pushed" weight represents the start and end time of that partial path.
--# <EM><B>Factor Merging:</B></EM> This step merges the clusters that we mentioned in the clustering step. It is done by applying an encoded determinization. After merging the clusters, the arctic semiring is no longer in need, and we can also change the product semiring to lexicographic semiring. In short, we change the semiring from \f$\mathcal{L} \times \mathcal{T} \times \mathcal{T'}\f$ to \f$\mathcal{T} \ast \mathcal{T} \ast \mathcal{T}\f$, and remove the clustering labels introduced in the clustering step.
--# <EM><B>Factor Disambiguation:</B></EM> Each arc that leads to the final state in the resulting transducer corresponds to a separate partial path in the original lattice, and we would like them to be separate in the following steps. The disambiguation symbols are introduced to achieve this in this step.
--# <EM><B>Optimization:</B></EM> This steps includes optimization operations such as epsilon removal, determinization and minimization.
+  where \f$K\f$ is the original keyword, \f$L_2\f$ is a lexicon that contains
+  the pronunciation of \f$K\f$. If \f$K\f$ is out of vocabulary, this lexicon
+  can be obtained by using G2P tools such as Sequitur. \f$E^\prime\f$ is the
+  edit distance transducer that contains the phone confusions collectioned from
+  training set, and \f$L_1\f$ is the original lexicon. \f$K^\prime\f$ is then a
+  WFST that contains several IV words that are acoustically similar to the
+  original keyword \f$K\f$. We plug it into the search pipeline "as if" it was
+  the original keyword.
 
-With the above several steps, we can convert each lattice into a small index. We then can take a union of all the small indices and make a big one. Further optimization may apply on top of the final index.
+  Note that the two pruning stages are essential, especially when you have a
+  very large vocabulary. We also implemented a lazy-composition algorithm that
+  only generates composed states as needed (i.e., does not generate states that
+  will be pruned away later). This avoids blowing up the memory when composing
+  \f$K \circ L_2 \circ E^\prime\f$ with \f$L_1^{-1}\f$.
 
- \section implementation Implementation Details
-The fact that Kaldi is an OpenFst based toolkit makes the implementation much more easier. We directly start from the Kaldi:CompactLattice, collect time information as well as the confidence score from there, and then compile it into a factor transducer. Generally we follow the algorithm described in the indexing paper, but there are some local convention as well as some modifications. We keep track of those changes in this section.
+  \section kws_scripts Babel scripts
 
-\subsection imp_semiring Semiring Definition
-We template most of the semirings on the existing OpenFst semirings, except the arctic one, where no existing semirings can be used directly. The templated semirings are as follows:
+  \subsection kws_scripts_highlevel A highlevel look
+  We have set up the "push-button" scripts for IARPA Babel project. If you are
+  working on Babel and want to use our scripts, you can build a SGMM + MMI
+  keyword search system in the following steps (assume you are in working
+  directory egs/babel/s5b/):
+  - Install F4DE and put it in your path.sh
+  - Modify your cmd.sh so that it can run on your cluster
+  - Link one of the config files in conf/languages to ./lang.conf, e.g., 
+    "ln -s conf/languages/105-turkish-limitedLP.official.conf lang.conf"
+  - Modify lang.conf to point to your files instead the ones on JHU cluster
+  - Run run-1-main.sh, which builds the LVCSR system
+  - Run run-2-segmentation.sh, which generates segmentation for eval data
+  - Run run-4-anydecode.sh, which decodes the eval data, makes the index and
+    searches the keywords
 
-\verbatim
-// The T*T*T semiring
-typedef fst::LexicographicWeight<TropicalWeight, TropicalWeight> StdLStdWeight;
-typedef fst::LexicographicWeight<TropicalWeight, StdLStdWeight> StdLStdLStdWeight;
-typedef fst::ArcTpl<StdLStdLStdWeight> StdLStdLStdArc;
+  Similarly, you can build DNN systems, BNF systems, Semi-supervised systems,
+  etc. The KWS stuff happens in run-4-anydecode.sh. We will have a detailed look
+  of how to do keyword search below, in case you want to do keyword search for
+  some other resources. We assume that you have decoded your search collection
+  and generated the corresponding lattices.
 
-// The LxTxT' semiring
-typedef fst::ProductWeight<TropicalWeight, ArcticWeight> StdXStdprimeWeight;
-typedef fst::ProductWeight<LogWeight, StdXStdprimeWeight> LogXStdXStdprimeWeight;
-typedef fst::ArcTpl<LogXStdXStdprimeWeight> LogXStdXStdprimeArc;
+  \subsection kws_scripts_dataprep Prepare KWS data
+  Typically, we generate KWS data directories under the search collection data
+  directory. For example, if you have a search collection called dev10h.uem, you
+  will have a data directory for it called data/dev10h.uem/. We create KWS data
+  directories under this directory, e.g., data/dev10h.uem/kws/. Before creating
+  KWS data directories, you have to get three files ready by hand: a ecf file
+  that contains the search collection information, a kwlist file that lists all
+  the keywords and a rttm file for scoring. Sometimes you may have to prepare
+  those files by yourself, for example, you can generate the rttm file by force
+  aligning the search collection with a trained model. Below we show the format
+  of those files.
 
-// Rename the weight and arc types to make them look more "friendly".
-typedef StdLStdLStdWeight KwsLexicographicWeight;
-typedef StdLStdLStdArc KwsLexicographicArc;
-typedef fst::VectorFst<KwsLexicographicArc> KwsLexicographicFst;
-typedef LogXStdXStdprimeWeight KwsProductWeight;
-typedef LogXStdXStdprimeArc KwsProductArc;
-typedef fst::VectorFst<KwsProductArc> KwsProductFst;
-\endverbatim
+  Example ECF file:
+  \verbatim
+  <ecf source_signal_duration="483.825" language="" version="Excluded noscore regions">
+    <excerpt audio_filename="YOUR_AUDIO_FILENAME" channel="1" tbeg="0.000" dur="483.825" source_type="splitcts"/>
+  </ecf>
+  \endverbatim
 
-where fst::ArcticWeight is defined in lat/arctic-weight.h.
+  Example KWLIST file:
+  \verbatim
+  <kwlist ecf_filename="ecf.xml" language="tamil" encoding="UTF-8" compareNormalize="" version="Example keywords">
+    <kw kwid="KW204-00001">
+      <kwtext>செய்றத</kwtext>
+    </kw>
+    <kw kwid="KW204-00002">
+      <kwtext>சொல்லுவியா</kwtext>
+    </kw>
+  </kwlist>
+  \endverbatim
 
-\subsection weight_pushing Weight Pushing
-In the original algorithm weight pushing is listed as one of the preprocessing steps, but we find it more efficient to include it in the factor generation step. We collect the forward probability alphas and the backward probability betas, and do the weight pushing manually. We move this step backwards so that the alphas and betas can be re-used when computing the shortest path, which is required by the factor generation step. For a given arc, suppose c is the cost, we modify the cost as follows
+  Example RTTM file:
+  \verbatim
+  SPEAKER YOUR_AUDIO_FILENAME 1 5.87 0.370 <NA> <NA> spkr1 <NA>
+  LEXEME YOUR_AUDIO_FILENAME 1 5.87 0.370 ஹலோ lex spkr1 0.5
+  SPEAKER YOUR_AUDIO_FILENAME 1 8.78 2.380 <NA> <NA> spkr1 <NA>
+  LEXEME YOUR_AUDIO_FILENAME 1 8.78 0.300 உம்ம் lex spkr1 0.5
+  LEXEME YOUR_AUDIO_FILENAME 1 9.08 0.480 அதான் lex spkr1 0.5
+  LEXEME YOUR_AUDIO_FILENAME 1 9.56 0.510 சரியான lex spkr1 0.5
+  LEXEME YOUR_AUDIO_FILENAME 1 10.07 0.560 மெசேஜ்டா lex spkr1 0.5
+  LEXEME YOUR_AUDIO_FILENAME 1 10.63 0.350 சான்ஸே lex spkr1 0.5
+  LEXEME YOUR_AUDIO_FILENAME 1 10.98 0.180 இல்லயே lex spkr1 0.5
+  \endverbatim 
 
-\verbatim
-non-final:
-c <-- c - beta[destination-state of arc] + beta[start-state of arc]
-final:
-c <-- c + beta[start-state of arc]
-\endverbatim
+  With the above three files ready, you can start preparing KWS data directory.
+  If you just want to do a basic keyword search, running the following should be
+  enough:
+  \verbatim
+  local/kws_setup.sh \
+    --case_insensitive $case_insensitive \
+    --rttm-file $my_rttm_file \
+    $my_ecf_file $my_kwlist_file data/lang $dataset_dir
+  \endverbatim 
 
-After modifying the cost, we set the betas to zero and modify the alphas as follows
-\verbatim
-alpha[s] <--- alpha[s] + beta[s] - beta[initial-state]
-\endverbatim
+  If you want to do fuzzy search for your OOV keywords, you can run the
+  following few commands, which first collects the phone confusions, and trains
+  a G2P model, and then creates the KWS data directory:
+  \verbatim
+  #Generate the confusion matrix
+  #NB, this has to be done only once, as it is training corpora dependent,
+  #instead of search collection dependent
+  if [ ! -f exp/conf_matrix/.done ] ; then
+    local/generate_confusion_matrix.sh --cmd "$decode_cmd" --nj $my_nj  \
+      exp/sgmm5/graph exp/sgmm5 exp/sgmm5_ali exp/sgmm5_denlats  exp/conf_matrix
+    touch exp/conf_matrix/.done
+  fi
+  confusion=exp/conf_matrix/confusions.txt
 
-Now it is "as if" we computed the alphas and betas from the pushed FST.
+  if [ ! -f exp/g2p/.done ] ; then
+    local/train_g2p.sh  data/local exp/g2p
+    touch exp/g2p/.done
+  fi
+  local/apply_g2p.sh --nj $my_nj --cmd "$decode_cmd" \
+    --var-counts $g2p_nbest --var-mass $g2p_mass \
+    $kwsdatadir/oov.txt exp/g2p $kwsdatadir/g2p
+  L2_lex=$kwsdatadir/g2p/lexicon.lex
 
-\subsection sil_removal Long Silence Removal
-The transducer from the factor generation step enables us to search for whatever partial paths that are in the original lattice, but only part of them are reasonable candidates. Some filtering techniques may be applied on top of the factor transducer. In our implementation we apply a filtering based on the silence length between words. If the silence between two words is too long (0.5 second as difined in the Babel project), the two words may not be successive and we may remove the path from the index. We remove that path by first pointing the nextstate of the long silence arc to some garbage state, and then run Connect() on the entire transducer, which removes the unsuccessful paths.
+  L1_lex=data/local/lexiconp.txt
+  local/kws_data_prep_proxy.sh \
+    --cmd "$decode_cmd" --nj $my_nj \
+    --case-insensitive true \
+    --confusion-matrix $confusion \
+    --phone-cutoff $phone_cutoff \
+    --pron-probs true --beam $beam --nbest $nbest \
+    --phone-beam $phone_beam --phone-nbest $phone_nbest \
+    data/lang  $data_dir $L1_lex $L2_lex $kwsdatadir
+  \endverbatim
 
-\subsection disambig_sym Disambiguation Symbol
-In Dogan and Murat's original paper, they remove the disambiguation symbols from the input label field after final optimization on the index, enabling the composition with keyword FST at search time. This however prevents further optimization on the search results (the resulting FST from composing the index and the keyword FST), as different instances from the same utterance may get combined. In our implementation we do not completely remove the disambiguation symbols. We encode the disambiguation symbol with the utterance ID, remove the original disambiguation symbol from the last arc, and replace the output label of the last arc with the encoded label. This allows us to run further optimization (such as determinization and minimization) on the resulting FST, as sometimes the resulting FST could be very large.
+  \subsection kws_scripts_index_and_search Indexing and searching
+  At this stage we assume you have decoded your search collection and generated
+  the corresponding lattices. Running the following script will take care of
+  indexing and searching:
+  \verbatim
+  local/kws_search.sh --cmd "$cmd" \
+    --max-states ${max_states} --min-lmwt ${min_lmwt} \
+    --max-lmwt ${max_lmwt} --skip-scoring $skip_scoring \
+    --indices-dir $decode_dir/kws_indices $lang_dir $data_dir $decode_dir
+  \endverbatim
 
-\section running_kws Running KWS in Kaldi
-There are two major binaries for running the KWS in Kaldi: lattice-to-kws-index and kws-search. As the names may explain themselves, lattice-to-kws-index reads in lattices and outputs index, and kws-search searches the keywords against the index.
-
-lattice-to-kws-index could be run on the command as follows:
-\verbatim
-lattice-to-kws-index ark:utter_id "ark:gzip -cdf lat.1.gz|" ark:1.index
-\endverbatim
-
-where lat.1.gz is the archive for Kaldi lattices, 1.index contains one index for each lattice in that archive, and utter_id is a symbol table for utterance ID's which looks like the following:
-\verbatim
-10713_A_20111024_220917_000665 1
-10713_A_20111024_220917_001321 2
-10713_A_20111024_220917_002097 3
-10713_A_20111024_220917_002550 4
-10713_A_20111024_220917_003311 5
-10713_A_20111024_220917_003903 6
-10713_A_20111024_220917_004616 7
-10713_A_20111024_220917_004976 8
-10713_A_20111024_220917_005656 9
-10713_A_20111024_220917_006296 10
-......
-\endverbatim
-
-Before indexing, lattices are usually aligned for more accurate time information, and sometimes penalty may be applied to certain word. After indexing, a union will be taken so that all the lattices in the original archive will form a single index. Some example script coule be:
-\verbatim
-lattice-add-penalty "ark:gzip -cdf lat.1.gz|" ark:- |\
-  lattice-align-words $word_boundary $model  ark:- ark:- |\
-  lattice-scale --acoustic-scale=$acwt --lm-scale=$lmwt ark:- ark:- |\
-  lattice-to-kws-index ark:utter_id ark:- ark:- |\
-  kws-index-union ark:- "ark:|gzip -c > index.1.gz"
-\endverbatim
-
-In order to search the keywords against the compiled index, the keywords have to be compiled into FST's, as follows:
-\verbatim
-transcripts-to-fsts ark:keywords.int ark:keywords.fsts
-\endverbatim
-
-where keywords.int is a list of <keyword id,keyword content> pairs that looks like:
-\verbatim
-KW101-0001 2669 4878
-KW101-0002 3419
-KW101-0003 6792
-KW101-0004 867 9757
-KW101-0005 2055 8016
-KW101-0007 5959 5450 16796
-KW101-0008 1560 867 9818
-KW101-0009 4213
-KW101-0010 4305
-......
-\endverbatim
-
-In the above file the words have been mapped into their corresponding integers and it's txt format is:
-\verbatim
-KW101-0001  冇 嗮
-KW101-0002  化疗
-KW101-0003  屋企人
-KW101-0004  个 时间
-KW101-0005  保障 成本
-KW101-0006  彭鱼
-KW101-0007  好 多 野
-KW101-0008  今 个 星期日
-KW101-0009  吃饭
-KW101-0010  后卫
-\endverbatim
-
-After compiling the keyword FST's, the search is just one command:
-\verbatim
-kws-search "ark:gzip -cdf index.1.gz|" ark:keywords.fsts \
-  "ark,t:|int2sym.pl -f 2 utter_id > result.1"
-\endverbatim
-
-We store the searching results in the file result.1, where each line has 5 fields and each line corresponds to a single search instance. The following shows the first few lines of the resulting file:
-\verbatim
-KW101-0001-A 10713_A_20111024_220917_026395 163 194 2.876953
-KW101-0001-A 10713_A_20111024_220917_008532 154 187 5.734375
-KW101-0003-A 10733_A_20111021_141006_001440 448 510 1.737305
-KW101-0010-A 10713_A_20111024_220917_028639 471 522 7.064453
-KW101-0010-A 10733_A_20111021_141006_043478 224 275 8.200195
-KW101-0012-A 10713_A_20111024_220917_026395 255 314 7.344727
-KW101-0016-A 10733_A_20111021_141006_028914 738 800 0.1992188
-KW101-0016-A 10733_A_20111021_141006_028914 738 803 4.556641
-KW101-0016-A 10713_A_20111024_220917_020531 224 258 4.624023
-KW101-0016-A 10733_A_20111021_141006_020971 233 273 8.793945
-\endverbatim
-
-where the first field is the keyword ID, the second field is the utterance ID, the third field is the keyword start frame index relative to the start of the utterance, and the fourth field corresponds to the keyword end field also relative to the start of the utterance, the final field is the "negated" log probability.
-
-All the above steps could be done with existing scripts. Examples could be found at egs/wsj/s5/run.sh.
-
-\section proxy_kw Proxy Keywords
-We use the idea of proxy keyword to handle the out of vocabulary (OOV) keyword problem within our KWS framework. By "proxy" we mean the candidates that have close pronunciation to the original OOV keywords. The proxy keyword generation could be formulized as follows:
-\f[
-K^\prime = \mathrm{Project} \left(\mathrm{ShortestPath} \left(K \circ L_2 \circ E^\prime \circ (L_1)^{-1} \right) \right)
-\f]
-
-where \f$K\f$ is the original keyword, \f$L_2\f$ is the OOV lexicon generated by G2P tools such as Sequitur, \f$E^\prime\f$ is the edit distance transducer that contains the phone confusion and \f$L_1\f$ is the original lexicon that may not contain the keywords. Assume the OOV lexicon \f$L_2\f$ could be generated by standard tool, and a phone confusion could be collected for each phone pair, the proxy keywords generation could be done in the following few steps.
-
-First, the edit distance transducer has to be created. Assume we have the phone_confusion, this could be done by running the follwoing from egs/babel/s5/
-\verbatim
-local/build_edit_distance_fst.pl \
-  --confusion-matrix phone_confusion phones.txt - |\
-  fstcompile --isymbols=phones.txt --osymbols=phones.txt - Edit.fst
-\endverbatim
-
-The phones.txt file is just a list of the phones used in the lexicon and phone_confusion file contains the "negated" log probability of the phone confusion for each phone pair, as follows
-\verbatim
-o oj 7.18083119904456
-v tS 4.35670882668959
-u ow 5.20766299827991
-dZ S 4.91998092582813
-h dZ 6.21460809842219
-z A 4.18965474202643
-iw U 3.93182563272433
-b uj 6.40025744530882
-j N 3.56751859710967
-D z 3.85014760171006
-\endverbatim
-
-The two lexicons also have to be compiled into FST's
-\verbatim
-cat oov.lex | utils/make_lexicon_fst.pl - |\
-  fstcompile --isymbols=phones.txt --osymbols=words.txt - |\
-  fstinvert | fstarcsort --sort_type=olabel > L2.fst
-cat original.lex | utils/make_lexicon_fst.pl - |\
-  fstcompile --isymbols=phones.txt --osymbols=words.txt - |\
-  fstarcsort --sort_type=ilabel > L1'.fst
-fstcompose L2.fst Edit.fst |\
-  fstarcsort --sort_type=olabel > L2xE.fst
-\endverbatim
-
-Finally a binary generate-proxy-keywords could be called from the command line to generate the proxy keywords
-\verbatim
-generate-proxy-keywords --verbose=1 \
-  --cost-threshold=$beam --nBest=$nbest \
-  L2xE.fst L1'.fst ark:oov_keywords.int ark:proxy.fsts
-\endverbatim
-
-All the above steps have been merged into a single script egs/babel/s5/local/generate_proxy_keywords.sh. After generating the proxy keywords, they can be used just as normal keywords to search against the original index. Hotever, the handling of the returned search instances could be different from the normal instances (e.g., they may require different thresholding), and may need fine-tuning.
-
+  If your KWS data directory has an extra ID, e.g., oov (this is useful when you
+  have different KWS setups, in this case, your directory will look something
+  like data/dev10h.uem/kws_oov), you have to run it with the extraid option:
+  \verbatim
+  local/kws_search.sh --cmd "$cmd" --extraid $extraid  \
+    --max-states ${max_states} --min-lmwt ${min_lmwt} \
+    --max-lmwt ${max_lmwt} --skip-scoring $skip_scoring \
+    --indices-dir $decode_dir/kws_indices $lang_dir $data_dir $decode_dir
+  \endverbatim
 */
 }

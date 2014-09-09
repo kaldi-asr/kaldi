@@ -23,7 +23,7 @@
 #include <cublas.h>
 #endif
 
-#include "util/timer.h"
+#include "base/timer.h"
 #include "cudamatrix/cu-block-matrix.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-device.h"

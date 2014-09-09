@@ -21,10 +21,17 @@
 echo "$0 $@"  # Print the command line for logging
 
 fake=false
+fake_dims=       # If specified, can generate 'fake' stats (that won't normalize)
+                 # from a specified dimension.
 two_channel=false
 
 if [ "$1" == "--fake" ]; then
   fake=true
+  shift
+fi
+if [ "$1" == "--fake-dims" ]; then
+  fake_dims=$2
+  shift
   shift
 fi
 if [ "$1" == "--two-channel" ]; then
@@ -33,12 +40,15 @@ if [ "$1" == "--two-channel" ]; then
 fi
 
 if [ $# != 3 ]; then
-   echo "usage: compute_cmvn_stats.sh [options] <data-dir> <log-dir> <path-to-cmvn-dir>";
+   echo "Usage: $0 [options] <data-dir> <log-dir> <path-to-cmvn-dir>";
+   echo "e.g.: $0 data/train exp/make_mfcc/train mfcc"
    echo "Options:"
    echo " --fake          gives you fake cmvn stats that do no normalization."
    echo " --two-channel   is for two-channel telephone data, there must be no segments "
    echo "                 file and reco2file_and_channel must be present.  It will take"
    echo "                 only frames that are louder than the other channel."
+   echo " --fake-dims <n1:n2>  Generate stats that won't cause normalization for these"
+   echo "                  dimensions (e.g. 13:14:15)"
    exit 1;
 fi
 
@@ -77,6 +87,10 @@ elif $two_channel; then
   ! compute-cmvn-stats-two-channel $data/reco2file_and_channel scp:$data/feats.scp \
        ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp \
     2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats (using two-channel method)" && exit 1;
+elif [ ! -z "$fake_dims" ]; then
+  ! compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark:- | \
+    modify-cmvn-stats "$fake_dims" ark:- ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp && \
+    echo "Error computing (partially fake) CMVN stats" && exit 1;
 else
   ! compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp \
     2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats" && exit 1;

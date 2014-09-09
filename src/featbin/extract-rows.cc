@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     float frame_shift = 0;
 
     po.Register("frame-shift", &frame_shift,
-    			"Frame shift in sec (e.g. 0.01), if segment files contains times "
+                "Frame shift in sec (e.g. 0.01), if segment files contains times "
                 "instead of frames");
 
     po.Read(argc, argv);

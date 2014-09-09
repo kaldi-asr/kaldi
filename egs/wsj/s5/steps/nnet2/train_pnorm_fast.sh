@@ -28,7 +28,6 @@ final_learning_rate=0.004
 bias_stddev=0.5
 pnorm_input_dim=3000 
 pnorm_output_dim=300
-first_component_power=1.0  # could set this to 0.5, sometimes seems to improve results.
 p=2
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
@@ -39,7 +38,7 @@ samples_per_iter=200000 # each iteration of training, see this many samples
 num_jobs_nnet=16   # Number of neural net jobs to run in parallel.  This option
                    # is passed to get_egs.sh.
 get_egs_stage=0
-spk_vecs_dir=
+online_ivector_dir=
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
                 # on each iter.  You could set it to 0 or to a large value for complete
@@ -81,6 +80,9 @@ lda_opts=
 lda_dim=
 egs_opts=
 transform_dir=     # If supplied, overrides alidir
+cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.  
+            # only relevant for "raw" features, not lda.
+feat_type=  # Can be used to force "raw" features.
 prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
                         # more than enough.
 # End configuration section.
@@ -129,11 +131,8 @@ if [ $# != 4 ]; then
   echo "  --splice-width <width|4>                         # Number of frames on each side to append for feature input"
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --lda-dim <dim|250>                              # Dimension to reduce spliced features to with LDA"
-  echo "  --num-iters-final <#iters|10>                    # Number of final iterations to give to nnet-combine-fast to "
+  echo "  --num-iters-final <#iters|20>                    # Number of final iterations to give to nnet-combine-fast to "
   echo "                                                   # interpolate parameters (the weights are learned with a validation set)"
-  echo "  --num-utts-subset <#utts|300>                    # Number of utterances in subsets used for validation and diagnostics"
-  echo "                                                   # (the validation subset is held out from training)"
-  echo "  --num-frames-diagnostic <#frames|4000>           # Number of frames used in computing (train,valid) diagnostics"
   echo "  --first-component-power <power|1.0>              # Power applied to output of first p-norm layer... setting this to"
   echo "                                                   # 0.5 seems to help under some circumstances."
   echo "  --stage <stage|-9>                               # Used to run a partially-completed training process from somewhere in"
@@ -166,26 +165,33 @@ utils/split_data.sh $data $nj
 
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
-splice_opts=`cat $alidir/splice_opts 2>/dev/null`
-cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/tree $dir
 
+extra_opts=()
+[ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
+[ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
+[ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
 [ -z "$transform_dir" ] && transform_dir=$alidir
+extra_opts+=(--transform-dir $transform_dir)
+extra_opts+=(--splice-width $splice_width)
 
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
-  steps/nnet2/get_lda.sh $lda_opts --splice-width $splice_width --cmd "$cmd" --transform-dir $transform_dir $data $lang $alidir $dir || exit 1;
+  steps/nnet2/get_lda.sh $lda_opts "${extra_opts[@]}" --cmd "$cmd" $data $lang $alidir $dir || exit 1;
 fi
 
 # these files will have been written by get_lda.sh
-feat_dim=`cat $dir/feat_dim` || exit 1;
-lda_dim=`cat $dir/lda_dim` || exit 1;
+feat_dim=$(cat $dir/feat_dim) || exit 1;
+ivector_dim=$(cat $dir/ivector_dim) || exit 1;
+lda_dim=$(cat $dir/lda_dim) || exit 1;
 
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
-  [ ! -z $spk_vecs_dir ] && spk_vecs_opt="--spk-vecs-dir $spk_vecs_dir";
-  steps/nnet2/get_egs.sh $spk_vecs_opt --samples-per-iter $samples_per_iter --num-jobs-nnet $num_jobs_nnet \
-      --splice-width $splice_width --stage $get_egs_stage --cmd "$cmd" $egs_opts --io-opts "$io_opts" --transform-dir $transform_dir \
+  [ ! -z $spk_vecs_dir ] && egs_opts="$egs_opts --spk-vecs-dir $spk_vecs_dir";
+  steps/nnet2/get_egs.sh $egs_opts "${extra_opts[@]}" \
+      --samples-per-iter $samples_per_iter \
+      --num-jobs-nnet $num_jobs_nnet --stage $get_egs_stage \
+      --cmd "$cmd" $egs_opts --io-opts "$io_opts" \
       $data $lang $alidir $dir || exit 1;
 fi
 
@@ -193,7 +199,6 @@ if [ -z $egs_dir ]; then
   egs_dir=$dir/egs
 fi
 
-echo $egs_dir
 iters_per_epoch=`cat $egs_dir/iters_per_epoch`  || exit 1;
 ! [ $num_jobs_nnet -eq `cat $egs_dir/num_jobs_nnet` ] && \
   echo "$0: Warning: using --num-jobs-nnet=`cat $egs_dir/num_jobs_nnet` from $egs_dir"
@@ -207,35 +212,17 @@ fi
 
 if [ $stage -le -2 ]; then
   echo "$0: initializing neural net";
-
-  # Get spk-vec dim (in case we're using them).
-  if [ ! -z "$spk_vecs_dir" ]; then
-    spk_vec_dim=$[$(copy-vector --print-args=false "ark:cat $spk_vecs_dir/vecs.1|" ark,t:- | head -n 1 | wc -w) - 3];
-    ! [ $spk_vec_dim -gt 0 ] && echo "Error getting spk-vec dim" && exit 1;
-    ext_lda_dim=$[$lda_dim + $spk_vec_dim]
-    extend-transform-dim --new-dimension=$ext_lda_dim $dir/lda.mat $dir/lda_ext.mat || exit 1;
-    lda_mat=$dir/lda_ext.mat
-    ext_feat_dim=$[$feat_dim + $spk_vec_dim]
-  else
-    spk_vec_dim=0
-    lda_mat=$dir/lda.mat
-    ext_lda_dim=$lda_dim
-    ext_feat_dim=$feat_dim
-  fi
+  lda_mat=$dir/lda.mat
+  tot_input_dim=$[$feat_dim+$ivector_dim]
 
   online_preconditioning_opts="alpha=$alpha num-samples-history=$num_samples_history update-period=$update_period rank-in=$precondition_rank_in rank-out=$precondition_rank_out max-change-per-sample=$max_change_per_sample"
 
   stddev=`perl -e "print 1.0/sqrt($pnorm_input_dim);"`
   cat >$dir/nnet.config <<EOF
-SpliceComponent input-dim=$ext_feat_dim left-context=$splice_width right-context=$splice_width const-component-dim=$spk_vec_dim
+SpliceComponent input-dim=$tot_input_dim left-context=$splice_width right-context=$splice_width const-component-dim=$ivector_dim
 FixedAffineComponent matrix=$lda_mat
-AffineComponentPreconditionedOnline input-dim=$ext_lda_dim output-dim=$pnorm_input_dim $online_preconditioning_opts learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
+AffineComponentPreconditionedOnline input-dim=$lda_dim output-dim=$pnorm_input_dim $online_preconditioning_opts learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
 PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim p=$p
-EOF
-  if [ $first_component_power != 1.0 ]; then
-    echo "PowerComponent dim=$pnorm_output_dim power=$first_component_power" >> $dir/nnet.config
-  fi
-  cat >>$dir/nnet.config <<EOF
 NormalizeComponent dim=$pnorm_output_dim
 AffineComponentPreconditionedOnline input-dim=$pnorm_output_dim output-dim=$num_leaves $online_preconditioning_opts learning-rate=$initial_learning_rate param-stddev=0 bias-stddev=0
 SoftmaxComponent dim=$num_leaves
@@ -482,7 +469,6 @@ echo Done
 if $cleanup; then
   echo Cleaning up data
   if [ $egs_dir == "$dir/egs" ]; then
-    echo Removing training examples
-    rm $dir/egs/egs*
+    steps/nnet2/remove_egs.sh $dir/egs
   fi
 fi

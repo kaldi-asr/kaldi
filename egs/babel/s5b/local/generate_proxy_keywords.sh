@@ -135,7 +135,7 @@ fi
 # Generates the proxy keywords
 mkdir -p $kwsdatadir/split/log
 $cmd JOB=1:$nj $kwsdatadir/split/log/proxy.JOB.log \
-  split -n l/JOB/$nj $keywords \| \
+  split -n r/JOB/$nj $keywords \| \
   generate-proxy-keywords --verbose=1 \
   --proxy-beam=$beam --proxy-nbest=$nbest \
   --phone-beam=$phone_beam --phone-nbest=$phone_nbest \

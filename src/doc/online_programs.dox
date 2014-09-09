@@ -1,4 +1,4 @@
-// doc/decoders.dox
+// doc/online_programs.dox
 
 
 // Copyright 2013 Polish-Japanese Institute of Information Technology (author: Danijel Korzinek)
@@ -44,15 +44,26 @@ recognized word as output. The plugin is based on  \ref OnlineFasterDecoder, as 
 
 \section audio_server Online Audio Server
 
-The main difference between the online-server-gmm-decode-faster and online-audio-server-decode-faster programs is the input: the former accepts feature vectors, while the latter accepts RAW audio.
-The advantage of the latter is that it can be deployed directly as a back-end for any client: whether it is another computer on the Internet or a mobile device. 
-Main thing here is that the client doesn't need to know anything about the feature set used to train the models and provided it can record standard audio at the predetermined sampling
-frequency and bit-depth, it will always be compatible with the server. An advantage of the server that accepts feature vectors, instead of audio, is a lower cost of data transfer between
-the client and the server, but this can be easily outperformed by simply using a state-of-the-art codec for audio (which is something that may be done in the future).
+The main difference between the online-server-gmm-decode-faster and
+online-audio-server-decode-faster programs is the input: the former accepts
+feature vectors, while the latter accepts RAW audio.  The advantage of the
+latter is that it can be deployed directly as a back-end for any client: whether
+it is another computer on the Internet or a mobile device.  Main thing here is
+that the client doesn't need to know anything about the feature set used to
+train the models and provided it can record standard audio at the predetermined
+sampling frequency and bit-depth, it will always be compatible with the
+server. An advantage of the server that accepts feature vectors, instead of
+audio, is a lower cost of data transfer between the client and the server, but
+this can be easily outperformed by simply using a state-of-the-art codec for
+audio (which is something that may be done in the future).
 
-The communication between the online-audio-client and online-audio-server-decode-faster consists of two phases: first the client sends packets of raw audio to the server, second the server
-replies with the output of the recognition. The two phases may happen asynchronously, meaning that the decoder can output results online, as fast as it is certain of their outcome and not
-wait for the end of the data to arrive. This opens up more possibilities for creating applications in the future.
+The communication between the online-audio-client and
+online-audio-server-decode-faster consists of two phases: first the client sends
+packets of raw audio to the server, second the server replies with the output of
+the recognition. The two phases may happen asynchronously, meaning that the
+decoder can output results online, as fast as it is certain of their outcome and
+not wait for the end of the data to arrive. This opens up more possibilities for
+creating applications in the future.
 
 \subsection audio_data Audio Data
 

@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Scale posteriors with either a global scale, or a different scale for "
         " each utterance.\n"
-        "Usage: scale-post post-rspecifier (scale-rspecifier|scale) post-wspecifier\n";
+        "Usage: scale-post <post-rspecifier> (<scale-rspecifier>|<scale>) <post-wspecifier>\n";
     
     ParseOptions po(usage); 
     po.Read(argc, argv);

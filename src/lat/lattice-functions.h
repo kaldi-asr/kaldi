@@ -199,8 +199,8 @@ bool CompactLatticeToWordAlignment(const CompactLattice &clat,
                                    std::vector<int32> *begin_times,
                                    std::vector<int32> *lengths);
 
-/// A form of the shortest-path algorithm that's specially coded for
-/// CompactLattice.   Requires that clat be acyclic.
+/// A form of the shortest-path/best-path algorithm that's specially coded for
+/// CompactLattice.  Requires that clat be acyclic.
 void CompactLatticeShortestPath(const CompactLattice &clat,
                                 CompactLattice *shortest_path);
 
@@ -215,6 +215,19 @@ void AddWordInsPenToCompactLattice(BaseFloat word_ins_penalty,
 /// true on success, false on error (typically some kind of mismatched inputs).
 bool RescoreCompactLattice(DecodableInterface *decodable,
                            CompactLattice *clat);
+
+
+/// This function returns the number of words in the longest sentence in a
+/// CompactLattice (i.e. the the maximum of any path, of the count of
+/// olabels on that path).
+int32 LongestSentenceLength(const Lattice &lat);
+
+/// This function returns the number of words in the longest sentence in a
+/// CompactLattice, i.e. the the maximum of any path, of the count of
+/// labels on that path... note, in CompactLattice, the ilabels and olabels
+/// are identical because it is an acceptor.
+int32 LongestSentenceLength(const CompactLattice &lat);
+
 
 /// This function is like RescoreCompactLattice, but it is modified to avoid
 /// computing probabilities on most frames where all the pdf-ids are the same.

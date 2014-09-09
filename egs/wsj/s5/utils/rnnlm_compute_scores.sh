@@ -17,9 +17,12 @@
 # words; unk.probs gives the probs for words given this class, and it
 # has, on each line, "word prob".
 
-. ./path.sh || exit 1;
+rnnlm_ver=rnnlm-0.3e
 
-rnnlm=$KALDI_ROOT/tools/rnnlm-0.3e/rnnlm
+. ./path.sh || exit 1;
+. utils/parse_options.sh
+
+rnnlm=$KALDI_ROOT/tools/$rnnlm_ver/rnnlm
 
 [ ! -f $rnnlm ] && echo No such program $rnnlm && exit 1;
 

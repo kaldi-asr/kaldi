@@ -1,4 +1,5 @@
 // base/kaldi-math-test.cc
+// 
 // Copyright 2009-2011  Microsoft Corporation;  Yanmin Qian;  Jan Silovsky
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -16,20 +17,27 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 #include "base/kaldi-math.h"
+#include "base/timer.h"
 
 namespace kaldi {
 
-template<class I> void UnitTestGcdTpl() {
+template<class I> void UnitTestGcdLcmTpl() {
   for (I a = 1; a < 15; a++) {  // a is min gcd.
-    I b = (I)(rand() % 10);
-    I c = (I)(rand() % 10);
-    if (rand()%2 == 0 && std::numeric_limits<I>::is_signed) b = -b;
-    if (rand()%2 == 0 && std::numeric_limits<I>::is_signed) c = -c;
+    I b = (I)(Rand() % 10);
+    I c = (I)(Rand() % 10);
+    if (Rand()%2 == 0 && std::numeric_limits<I>::is_signed) b = -b;
+    if (Rand()%2 == 0 && std::numeric_limits<I>::is_signed) c = -c;
     if (b == 0 && c == 0) continue;  // gcd not defined for such numbers.
     I g = Gcd(b*a, c*a);
     KALDI_ASSERT(g >= a);
     KALDI_ASSERT((b*a) % g == 0);
     KALDI_ASSERT((c*a) % g == 0);
+
+    // test least common multiple
+    if (b <= 0 || c <= 0) continue; // lcm not defined unless both positive.
+    I h = Lcm(b*a, c*a);
+    KALDI_ASSERT(h != 0 && (h % (b*a)) == 0 &&
+                 (h % (c*a)) == 0);
   }
 }
 
@@ -46,11 +54,10 @@ void UnitTestRoundUpToNearestPowerOfTwo() {
   KALDI_ASSERT(RoundUpToNearestPowerOfTwo(1073700000) == 1073741824  );
 }
 
-void UnitTestGcd() {
-  UnitTestGcdTpl<int>();
-  UnitTestGcdTpl<char>();
-  UnitTestGcdTpl<size_t>();
-  UnitTestGcdTpl<unsigned short>();
+void UnitTestGcdLcm() {
+  UnitTestGcdLcmTpl<int>();
+  UnitTestGcdLcmTpl<size_t>();
+  UnitTestGcdLcmTpl<unsigned short>();
 }
 
 void UnitTestRand() {
@@ -77,7 +84,17 @@ void UnitTestRand() {
         if (std::abs(sum) < 0.5*sqrt((double)j)) break;
       }
     }
-    {  // test poisson_rand().
+    {  // test RandGauss.
+      float sum = RandGauss();
+      for (int j = 0; ; j++) {
+        float a, b;
+        RandGauss2(&a, &b);
+        if (i % 2 == 0) sum += a;
+        else sum += b;
+        if (std::abs(sum) < 0.5*sqrt((double)j)) break;
+      }
+    }
+    {  // test poisson_Rand().
       KALDI_ASSERT(RandPoisson(3.0) >= 0);
       KALDI_ASSERT(RandPoisson(0.0) == 0);
       std::cout << "Test RandPoisson\n";
@@ -112,8 +129,8 @@ void UnitTestRand() {
       KALDI_ASSERT(RandInt(0, 3) >= 0 && RandInt(0, 3) <= 3);
 
       std::cout << "Test RandInt\n";
-      int minint = rand() % 200;
-      int maxint = minint + 1 + rand()  % 20;
+      int minint = Rand() % 200;
+      int maxint = minint + 1 + Rand()  % 20;
 
       float sum = RandInt(minint, maxint) +  0.5*(minint+maxint);
       for (int j = 0; ; j++) {
@@ -139,7 +156,7 @@ void UnitTestRand() {
 void UnitTestLogAddSub() {
   using namespace kaldi;
   for (int i = 0; i < 100; i++) {
-    double f1 = rand() % 10000, f2 = rand() % 20;
+    double f1 = Rand() % 10000, f2 = Rand() % 20;
     double add1 = exp(LogAdd(log(f1), log(f2)));
     double add2 = exp(LogAdd(log(f2), log(f1)));
     double add = f1 + f2, thresh = add*0.00001;
@@ -184,7 +201,7 @@ void UnitTestDefines() {  // Yes, we even unit-test the preprocessor statements.
 void UnitTestAssertFunc() {  // Testing Assert** *functions
   using namespace kaldi;
   for (int i = 1; i < 100; i++) {
-    float f1 = rand() % 10000 + 1, f2 = rand() % 20 + 1;
+    float f1 = Rand() % 10000 + 1, f2 = Rand() % 20 + 1;
     float tmp1 = f1 * f2;
     float tmp2 = (1/f1 + 1/f2);
     float tmp3 = (1/(f1 - 1.0) + 1/(f2 - 1.0));
@@ -200,7 +217,7 @@ void UnitTestAssertFunc() {  // Testing Assert** *functions
 
 template<class I> void UnitTestFactorizeTpl() {
   for (int p= 0; p < 100; p++) {
-    I m = rand() % 100000;
+    I m = Rand() % 100000;
     if (m >= 1) {
       std::vector<I> factors;
       Factorize(m, &factors);
@@ -238,8 +255,48 @@ void UnitTestApproxEqual() {
   KALDI_ASSERT(!ApproxEqual(-std::numeric_limits<float>::infinity(),
                             0));
   KALDI_ASSERT(!ApproxEqual(-std::numeric_limits<float>::infinity(),
-                            1));
-               
+                            1));               
+}
+
+template<class Real>
+void UnitTestExpSpeed() {
+  Real sum = 0.0;  // compute the sum to avoid optimizing it away.
+  Real time = 0.01;  // how long this should last.
+  int block_size = 10;
+  int num_ops = 0;
+  Timer tim;
+  while (tim.Elapsed() < time) {
+    for (int i = 0; i < block_size; i++) {
+      sum += Exp((Real)i);
+    }
+    num_ops += block_size;
+  }
+  KALDI_ASSERT(sum > 0.0);  // make it harder for the compiler to optimize Exp
+                            // away, as we have a conditional.
+  Real flops = 1.0e-06 * num_ops / tim.Elapsed();
+  KALDI_LOG << "Megaflops doing Exp(" << (sizeof(Real) == 4 ? "float" : "double")
+            << ") is " << flops;
+}
+
+
+template<class Real>
+void UnitTestLogSpeed() {
+  Real sum = 0.0;  // compute the sum to avoid optimizing it away.
+  Real time = 0.01;  // how long this should last.
+  int block_size = 10;
+  int num_ops = 0;
+  Timer tim;
+  while (tim.Elapsed() < time) {
+    for (int i = 0; i < block_size; i++) {
+      sum += Log((float)(i + 1));
+    }
+    num_ops += block_size;
+  }
+  KALDI_ASSERT(sum > 0.0);  // make it harder for the compiler to optimize Log
+                            // away, as we have a conditional.
+  Real flops = 1.0e-06 * num_ops / tim.Elapsed();
+  KALDI_LOG << "Megaflops doing Log(" << (sizeof(Real) == 4 ? "float" : "double")
+            << ") is " << flops;
 }
 
 }  // end namespace kaldi.
@@ -247,12 +304,16 @@ void UnitTestApproxEqual() {
 int main() {
   using namespace kaldi;
   UnitTestApproxEqual();
-  UnitTestGcd();
+  UnitTestGcdLcm();
   UnitTestFactorize();
   UnitTestDefines();
   UnitTestLogAddSub();
   UnitTestRand();
   UnitTestAssertFunc();
   UnitTestRoundUpToNearestPowerOfTwo();
+  UnitTestExpSpeed<float>();
+  UnitTestExpSpeed<double>();
+  UnitTestLogSpeed<float>();
+  UnitTestLogSpeed<double>();
 }
 

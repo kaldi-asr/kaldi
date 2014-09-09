@@ -96,13 +96,9 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary);
     }
 
-    BasisFmllrEstimate basis_est(am_gmm.Dim());
-    {
-      bool binary;
-      Input ki(basis_rspecifier, &binary);
-      basis_est.ReadBasis(ki.Stream(), binary, false);
-    }
-
+    BasisFmllrEstimate basis_est;
+    ReadKaldiObject(basis_rspecifier, &basis_est);
+    
     RandomAccessGaussPostReader gpost_reader(gpost_rspecifier);
 
     double tot_impr = 0.0, tot_t = 0.0;
@@ -137,8 +133,8 @@ int main(int argc, char *argv[]) {
           const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
           const GaussPost &gpost = gpost_reader.Value(utt);
           if (static_cast<int32>(gpost.size()) != feats.NumRows()) {
-        	KALDI_WARN << "GaussPost has wrong size " << (gpost.size())
-        	           << " vs. " << (feats.NumRows());
+            KALDI_WARN << "GaussPost has wrong size " << (gpost.size())
+                       << " vs. " << (feats.NumRows());
             num_other_error++;
             continue;
           }
@@ -152,7 +148,7 @@ int main(int argc, char *argv[]) {
           // Compute the transform and write it out.
           Matrix<BaseFloat> transform(am_gmm.Dim(), am_gmm.Dim() + 1);
           transform.SetUnit();
-          Vector<BaseFloat> weights(am_gmm.Dim() * (am_gmm.Dim() + 1)); // size will be adjusted
+          Vector<BaseFloat> weights;
           impr = basis_est.ComputeTransform(spk_stats, &transform,
                                             &weights, basis_fmllr_opts);
           spk_tot_t = spk_stats.beta_;
@@ -160,7 +156,7 @@ int main(int argc, char *argv[]) {
           transform_writer.Write(spk, transform);
           // Optionally write out the base weights
           if (!weights_out_filename.empty() && weights.Dim() > 0)
-        	  weights_writer.Write(spk, weights);
+              weights_writer.Write(spk, weights);
         }
 
         KALDI_LOG << "For speaker " << spk << ", auxf-impr from Basis fMLLR is "
@@ -196,7 +192,7 @@ int main(int argc, char *argv[]) {
         {  // Compute the transform and write it out.
           Matrix<BaseFloat> transform(am_gmm.Dim(), am_gmm.Dim()+1);
           transform.SetUnit();
-          Vector<BaseFloat> weights(am_gmm.Dim() * (am_gmm.Dim() + 1)); // size will be adjusted
+          Vector<BaseFloat> weights;
           impr = basis_est.ComputeTransform(spk_stats, &transform,
                                             &weights, basis_fmllr_opts);
           utt_tot_t = spk_stats.beta_;

@@ -24,10 +24,16 @@
 #include <cmath>
 #include <vector>
 
-#include "util/timer.h"
+
+#ifndef KALDI_NO_PORTAUDIO
+#include "base/timer.h"
+#endif //KALDI_NO_PORTAUDIO
+
 #include "online-audio-source.h"
 
 namespace kaldi {
+
+#ifndef KALDI_NO_PORTAUDIO
 
 // The actual PortAudio callback - delegates to OnlinePaSource->PaCallback()
 int PaCallback(const void *input, void *output,
@@ -149,6 +155,7 @@ int OnlinePaSource::Callback(const void *input, void *output,
   return paContinue;
 }
 
+#endif //KALDI_NO_PORTAUDIO
 
 bool OnlineVectorSource::Read(Vector<BaseFloat> *data) {
   KALDI_ASSERT(data->Dim() > 0);

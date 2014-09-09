@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Select certain dimensions of the feature file;  think of it as the unix\n"
         "command cut -f ...\n"
-        "Usage: select-feats selection in-rspecifier out-wspecifier\n"
+        "Usage: select-feats <selection> <in-rspecifier> <out-wspecifier>\n"
         "  e.g. select-feats 0,24-22,3-12 scp:feats.scp ark,scp:feat-red.ark,feat-red.scp\n"
         "See also copy-feats, extract-rows, subset-feats, subsample-feats\n";
     
@@ -60,8 +60,8 @@ int main(int argc, char *argv[]) {
       return 0;
     }
     
-    int32 dimIn = kaldi_reader.Value().NumCols();
-    int32 dimOut = 0;
+    int32 dim_in = kaldi_reader.Value().NumCols();
+    int32 dim_out = 0;
     
     // figure out the selected dimensions
     istringstream iss(sspecifier);
@@ -75,10 +75,10 @@ int main(int argc, char *argv[]) {
         istringstream(token.substr(0, token.length() - p - 1)) >> s;
         istringstream(token.substr(p+1)) >> e;
         
-        if (s < 0 || s > (dimIn-1)) {
+        if (s < 0 || s > (dim_in-1)) {
           KALDI_ERR << "Invalid range start: " << s;
           return 1;
-        } else if (e < 0 || e > (dimIn-1)) {
+        } else if (e < 0 || e > (dim_in-1)) {
           KALDI_ERR << "Invalid range end: " << e;
           return 1;
         }
@@ -87,26 +87,26 @@ int main(int argc, char *argv[]) {
         if (s > e) {
           for (int32 i = s; i >= e; --i) {
             ranges.push_back(pair<int32, int32>(i, i));
-            offsets.push_back(dimOut);
-            dimOut += 1;
+            offsets.push_back(dim_out);
+            dim_out += 1;
           }
         } else {
           ranges.push_back(pair<int32, int32>(s, e));
-          offsets.push_back(dimOut);
-          dimOut += (e - s + 1);
+          offsets.push_back(dim_out);
+          dim_out += (e - s + 1);
         }
       } else {
         int i;
         istringstream(token) >> i;
         
-        if (i < 0 || i > (dimIn-1)) {
+        if (i < 0 || i > (dim_in - 1)) {
           KALDI_ERR << "Invalid selection index: " << i;
           return 1;
         }
         
         ranges.push_back(pair<int32, int32>(i, i));
-        offsets.push_back(dimOut);
-        dimOut += 1;
+        offsets.push_back(dim_out);
+        dim_out += 1;
       }
     }
     
@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
 
     // process all keys
     for (; !kaldi_reader.Done(); kaldi_reader.Next()) {
-      Matrix<BaseFloat> feats(kaldi_reader.Value().NumRows(), dimOut);
+      Matrix<BaseFloat> feats(kaldi_reader.Value().NumRows(), dim_out);
       
       // extract the desired ranges
       for (int32 i = 0; i < ranges.size(); ++i) {

@@ -33,7 +33,7 @@
 #include "nnet/nnet-activation.h"
 #include "nnet/nnet-nnet.h"
 #include "nnet/nnet-pdf-prior.h"
-#include "util/timer.h"
+#include "base/timer.h"
 #include "cudamatrix/cu-device.h"
 
 #include <iomanip>
@@ -235,10 +235,10 @@ int main(int argc, char *argv[]) {
         continue;
       }
       if (mat.NumRows() > max_frames) {
-	KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
-	  " frames, which is more than " << max_frames << ".";
-	num_other_error++;
-	continue;
+    KALDI_WARN << "Utterance " << utt << ": Skipped because it has " << mat.NumRows() << 
+      " frames, which is more than " << max_frames << ".";
+    num_other_error++;
+    continue;
       }
       
       // 2) get the denominator lattice, preprocess
@@ -413,6 +413,10 @@ int main(int argc, char *argv[]) {
         KALDI_VLOG(1) << "After " << num_done << " utterances: time elapsed = "
                       << time_now/60 << " min; processed " << total_frames/time_now
                       << " frames per second.";
+#if HAVE_CUDA==1
+        // check the GPU is not overheated
+        CuDevice::Instantiate().CheckGpuHealth();
+#endif
       }
     }
        

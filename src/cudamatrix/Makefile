@@ -28,8 +28,7 @@ all:  $(LIBFILE)
 
 ifeq ($(CUDA), true)
   #Default compute capability architectures we compile with
-  CUDA_ARCH=-gencode arch=compute_10,code=sm_10 \
-	    -gencode arch=compute_13,code=sm_13 \
+  CUDA_ARCH=-gencode arch=compute_13,code=sm_13 \
 	    -gencode arch=compute_20,code=sm_20
   #Get the CUDA Toolkit version (remove decimal point char)
   CUDA_VERSION=$(shell $(CUDATKDIR)/bin/nvcc -V | grep release | sed -e 's|.*release ||' -e 's|,.*||' -e 's|\.||')
@@ -47,6 +46,11 @@ ifeq ($(CUDA), true)
   CUDA_VER_GT_6_0 := $(shell [ $(CUDA_VERSION) -ge 60 ] && echo true)
   ifeq ($(CUDA_VER_GT_6_0), true)
     CUDA_ARCH += -gencode arch=compute_50,code=sm_50
+  endif
+  #For toolkit older than 6.5, add the compute capability 1.0
+  CUDA_VER_GT_6_5 := $(shell [ $(CUDA_VERSION) -ge 65 ] && echo true)
+  ifneq ($(CUDA_VER_GT_6_5), true)
+    CUDA_ARCH += -gencode arch=compute_10,code=sm_10
   endif
 endif
 

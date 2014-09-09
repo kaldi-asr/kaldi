@@ -32,11 +32,9 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Copy a (cpu-based) neural net and its associated transition model,\n"
-        "possibly changing the binary mode\n"
-        "Also supports multiplying all the learning rates by a factor\n"
-        "(the --learning-rate-factor option) and setting them all to a given\n"
-        "value (the --learning-rate options)\n"
+        "Add mixture-components to a neural net (comparable to mixtures in a Gaussian\n"
+        "mixture model).  Number of mixture components must be greater than the number\n"
+        "of pdfs\n"
         "\n"
         "Usage:  nnet-am-mixup [options] <nnet-in> <nnet-out>\n"
         "e.g.:\n"

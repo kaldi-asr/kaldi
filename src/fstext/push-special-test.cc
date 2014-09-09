@@ -21,6 +21,7 @@
 #include "fstext/push-special.h"
 #include "fstext/rand-fst.h"
 #include "fstext/fstext-utils.h"
+#include "base/kaldi-math.h"
 
 namespace fst
 {
@@ -64,7 +65,7 @@ static void TestPushSpecial() {
   KALDI_ASSERT(std::abs(min.Value() - max.Value()) <=  1.2 * delta);
   
   KALDI_ASSERT(RandEquivalent(*fst, fst_copy,
-                              5/*paths*/, 0.01/*delta*/, rand()/*seed*/, 100/*path length-- max?*/));
+                              5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
   delete fst;
 }
 

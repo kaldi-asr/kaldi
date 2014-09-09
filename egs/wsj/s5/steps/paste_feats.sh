@@ -3,7 +3,7 @@
 # Copyright 2014  Brno University of Technology (Author: Karel Vesely)
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
-# This script appends the features in two data directories.
+# This script appends the features in two or more data directories.
 
 # To be run from .. (one directory up from here)
 # see ../run.sh for example
@@ -22,6 +22,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# -lt 5 ]; then
    echo "usage: $0 [options] <src-data-dir1> <src-data-dir2> [<src-data-dirN>] <dest-data-dir> <log-dir> <path-to-storage-dir>";
+   echo "e.g.: $0 data/train_mfcc data/train_bottleneck data/train_combined exp/append_mfcc_plp mfcc"
    echo "options: "
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    exit 1;
@@ -71,7 +72,7 @@ done > $data/feats.scp || exit 1;
 nf=`cat $data/feats.scp | wc -l` 
 nu=`cat $data/utt2spk | wc -l` 
 if [ $nf -ne $nu ]; then
-  echo "It seems not all of the feature files were successfully ($nf != $nu);"
+  echo "It seems not all of the feature files were successfully processed ($nf != $nu);"
   echo "consider using utils/fix_data_dir.sh $data"
 fi
 

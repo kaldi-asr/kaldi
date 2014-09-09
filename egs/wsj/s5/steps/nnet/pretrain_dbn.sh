@@ -35,7 +35,6 @@ param_stddev=0.1 #init parameters in other RBMs
 input_vis_type=gauss # type of visible nodes on DBN input
 # number of iterations
 rbm_iter=1            #number of pre-training epochs (Gaussian-Bernoulli RBM has 2x more)
-rbm_drop_data=0.0     #sample the training set, 1.0 drops all the data, 0.0 keeps all
 # pre-training opts
 rbm_lrate=0.4         #RBM learning rate
 rbm_lrate_low=0.01    #lower RBM learning rate (for Gaussian units)
@@ -224,7 +223,7 @@ for depth in $(seq 1 $nn_depth); do
     [ $input_vis_type == "bern" ] && rbm_lrate_low=$rbm_lrate # original lrate for Bernoulli input
     echo "Pretraining '$RBM' (input $input_vis_type, lrate $rbm_lrate_low, iters $num_iter)"
     rbm-train-cd1-frmshuff --learn-rate=$rbm_lrate_low --l2-penalty=$rbm_l2penalty \
-      --num-iters=$num_iter --drop-data=$rbm_drop_data --verbose=$verbose \
+      --num-iters=$num_iter --verbose=$verbose \
       --feature-transform=$feature_transform \
       $rbm_extra_opts \
       $RBM.init "$feats" $RBM 2>$dir/log/rbm.$depth.log || exit 1
@@ -252,7 +251,7 @@ for depth in $(seq 1 $nn_depth); do
     #pre-train
     echo "Pretraining '$RBM' (lrate $rbm_lrate, iters $rbm_iter)"
     rbm-train-cd1-frmshuff --learn-rate=$rbm_lrate --l2-penalty=$rbm_l2penalty \
-      --num-iters=$rbm_iter --drop-data=$rbm_drop_data --verbose=$verbose \
+      --num-iters=$rbm_iter --verbose=$verbose \
       --feature-transform="nnet-concat $feature_transform $dir/$((depth-1)).dbn - |" \
       $rbm_extra_opts \
       $RBM.init "$feats" $RBM 2>$dir/log/rbm.$depth.log || exit 1
