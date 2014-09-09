@@ -13,17 +13,20 @@ use FindBin qw($Bin);
 use lib "$Bin";
 
 my $root = "$Bin/..";
-my $solutionDir = "$root/kaldiwin_vs10_auto";
+my $solutionDir = "$root/kaldiwin_vs12_auto";
 my $projDir = "$solutionDir/kaldiwin";
-my $solutionFileName = "kaldiwin_vs10.sln";
+my $solutionFileName = "kaldiwin_vs12.sln";
 my $srcDir = "$root/src";
 
 # The following files are in the same dir (windows/) as the 
 # Perl script.
 my @propsFiles = (
   "$Bin/kaldiwin.props",
+  "$Bin/kaldiwin_win32.props",
   "$Bin/openfstwin_debug.props",
   "$Bin/openfstwin_release.props",
+  "$Bin/openfstwin_debug_win32.props",
+  "$Bin/openfstwin_release_win32.props",
 );
 
 # see http://www.mztools.com/Articles/2008/MZ2008017.aspx for list of GUIDs for VS solutions
@@ -170,35 +173,40 @@ sub parseMakefile {
   foreach my $line (@lines) {
     $line =~ s/(\n|\r\n)$//;
     
-    if (my ($type, $items) = $line =~ /^\s*(TESTFILES|LIBFILE|BINFILES)\s+=(.+?)$/) {
+    if (my ($type, $items) = $line =~ /^\s*(TESTFILES|LIBNAME|BINFILES)\s+=(.+?)$/) {
       #my @items = split /\s+/, $items;
       my @items = $items =~ /(\S+)/g;
       foreach my $item (@items) {
-        $item =~ s/\.a$//i;
+        # $item =~ s/\.a$//i;
         
         $list->{$type}->{$item} = 1;
         $list->{ALL}->{$item}->{'type'} = $type;
         $list->{ALL}->{$item}->{'path'} = $path;
 
-        if ($type =~ /LIBFILE/) {
+        if ($type =~ /LIBNAME/) {
           $alibs->{$item} = 1;
         }
       }
     }
 
-    if (my ($type, $items) = $line =~ /^\$\((TESTFILES|BINFILES\))[^:]*?:(.+?)$/) {
+    if (my ($items) = $line =~ /^ADDLIBS[^=]*?=(.+?)$/) {
       my @items = $items =~ /(\S+)/g;
+
+     my $firstTime = 1; 
       foreach my $item (@items) {
         $item =~ s/^.*[\\\/]//;
         $item =~ s/\.[^\.]*$//;
-        
-        if ($item =~ /\$\(LIBFILE\)/) {
-          foreach my $alib (keys %$alibs) {
-            $deps->{$path}->{$alib} = 1;
-          }
-        } else {
-          $deps->{$path}->{$item} = 1;
-        }
+      
+
+        if($firstTime)
+       {
+         foreach my $alib (keys %$alibs) {
+           $deps->{$path}->{$alib} = 1;
+           }
+           $firstTime = 0;
+       }
+       $deps->{$path}->{$item} = 1;
+     
       }
     }
 
@@ -244,7 +252,7 @@ sub writeSolutionFile {
   open(SLN, '>', &{$osPathConversion}($filename));
   print SLN 
 "Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual C++ Express 2010
+# Visual Studio 2012
 ";
   foreach my $projname (sort { $a cmp $b } keys %{$projlist->{ALL}}) {
     if (!exists $projguids->{$projname}) {
@@ -265,7 +273,9 @@ EndProject
 "Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
+        Debug|x64 = Debug|x64
 		Release|Win32 = Release|Win32
+        Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 ";
@@ -274,8 +284,12 @@ EndProject
     print SLN
 "		$guid.Debug|Win32.ActiveCfg = Debug|Win32
 		$guid.Debug|Win32.Build.0 = Debug|Win32
-		$guid.Release|Win32.ActiveCfg = Release|Win32
+		$guid.Debug|x64.ActiveCfg = Debug|x64
+        $guid.Debug|x64.Build.0 = Debug|x64
+        $guid.Release|Win32.ActiveCfg = Release|Win32
 		$guid.Release|Win32.Build.0 = Release|Win32
+        $guid.Release|x64.ActiveCfg = Release|x64
+        $guid.Release|x64.Build.0 = Release|x64
 ";
   }
   print SLN
@@ -305,7 +319,7 @@ sub writeProjectFiles {
   my $conftype = "";
   
   # set projtype-specific params and add .cc files
-  if ($projlist->{ALL}->{$projname}->{'type'} =~ /LIBFILE/) {
+  if ($projlist->{ALL}->{$projname}->{'type'} =~ /LIBNAME/) {
     $conftype = "StaticLibrary";
     
     foreach my $obj (keys %{$projlist->{ALL}->{$projname}->{'objs'}}) {
@@ -345,9 +359,17 @@ sub writeProjectFiles {
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include=\"Debug|x64\">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include=\"Release|Win32\">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include=\"Release|x64\">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label=\"Globals\">
@@ -357,17 +379,30 @@ sub writeProjectFiles {
   </PropertyGroup>
 ";
 
-  if ($projlist->{ALL}->{$projname}->{'type'} =~ /LIBFILE/) { # Microsoft.Cpp.Default.props - Library
+  if ($projlist->{ALL}->{$projname}->{'type'} =~ /LIBNAME/) { # Microsoft.Cpp.Default.props - Library
     print PROJ
 "  <Import Project=\"\$(VCTargetsPath)\\Microsoft.Cpp.Default.props\" />
   <PropertyGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|Win32'\" Label=\"Configuration\">
     <ConfigurationType>" . $conftype . "</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v110</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|x64'\" Label=\"Configuration\">
+    <ConfigurationType>" . $conftype . "</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v110</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|Win32'\" Label=\"Configuration\">
     <ConfigurationType>" . $conftype . "</ConfigurationType>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>Unicode</CharacterSeti>
+    <PlatformToolset>v110</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|x64'\" Label=\"Configuration\">
+     <ConfigurationType>" . $conftype . "</ConfigurationType>
+     <CharacterSet>Unicode</CharacterSet>
+     <PlatformToolset>v110</PlatformToolset>
+     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
 ";
   } else {  # Microsoft.Cpp.Default.props - Binfile
@@ -391,19 +426,29 @@ sub writeProjectFiles {
 "  <Import Project=\"\$(VCTargetsPath)\\Microsoft.Cpp.props\" />
   <ImportGroup Label=\"ExtensionSettings\">
   </ImportGroup>
-  <ImportGroup Label=\"PropertySheets\" Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|Win32'\">
+  <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|Win32'\"  Label=\"PropertySheets\">  
     <Import Project=\"\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props\" Condition=\"exists('\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />
+    <Import Project=\"..\\kaldiwin_win32.props\" />
+    <Import Project=\"..\\openfstwin_debug_win32.props\" />
+  </ImportGroup>
+  <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|x64'\" Label=\"PropertySheets\">
+    <Import Project=\"\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props\" Condition=\"exists('\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />^M
     <Import Project=\"..\\kaldiwin.props\" />
     <Import Project=\"..\\openfstwin_debug.props\" />
   </ImportGroup>
-  <ImportGroup Label=\"PropertySheets\" Condition=\"'\$(Configuration)|\$(Platform)'=='Release|Win32'\">
+  <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|Win32'\" Label=\"PropertySheets\">
+    <Import Project=\"\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props\" Condition=\"exists('\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />
+    <Import Project=\"..\\kaldiwin_win32.props\" />
+    <Import Project=\"..\\openfstwin_release_win32.props\" />
+  </ImportGroup>
+  <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|x64'\" Label=\"PropertySheets\">
     <Import Project=\"\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props\" Condition=\"exists('\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />
     <Import Project=\"..\\kaldiwin.props\" />
     <Import Project=\"..\\openfstwin_release.props\" />
   </ImportGroup>
 ";
 
-  if ($projlist->{ALL}->{$projname}->{'type'} =~ /LIBFILE/) { # UserMacros - Library
+  if ($projlist->{ALL}->{$projname}->{'type'} =~ /LINAME/) { # UserMacros - Library
     print PROJ
 "  <PropertyGroup Label=\"UserMacros\" />
   <PropertyGroup>
@@ -420,13 +465,19 @@ sub writeProjectFiles {
   <PropertyGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|Win32'\">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|x64'\">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|Win32'\">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|x64'\">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
 ";
   }
 
-  if ($projlist->{ALL}->{$projname}->{'type'} =~ /LIBFILE/) { # ItemDefinitionGroup Conditions - Library
+  if ($projlist->{ALL}->{$projname}->{'type'} =~ /LIBNAME/) { # ItemDefinitionGroup Conditions - Library
     print PROJ
 "  <ItemDefinitionGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|Win32'\">
     <ClCompile>
@@ -441,7 +492,33 @@ sub writeProjectFiles {
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|x64'\">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|Win32'\">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|x64'\">
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -470,7 +547,37 @@ sub writeProjectFiles {
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+   <ItemDefinitionGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|x64'\">
+     <ClCompile>
+       <PrecompiledHeader>
+       </PrecompiledHeader>
+       <WarningLevel>Level3</WarningLevel>
+       <Optimization>Disabled</Optimization>
+       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+     </ClCompile>
+     <Link>
+       <SubSystem>Console</SubSystem>
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+     </Link>
+   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|Win32'\">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|x64'\">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>
@@ -521,7 +628,7 @@ sub writeProjectFiles {
   }
   
   # refs
-  if (($projlist->{ALL}->{$projname}->{'type'} !~ /LIBFILE/) && 
+  if (($projlist->{ALL}->{$projname}->{'type'} !~ /LIBNAME/) && 
       (scalar keys %{$projdeps->{$projlist->{ALL}->{$projname}->{'path'}}} > 0)) {
     print PROJ
 "  <ItemGroup>
@@ -549,14 +656,14 @@ sub writeProjectFiles {
   close(PROJ);
   
   # create .user file
-  my $filename_userfile = $projFileName . '.user';
-  open(USER, '>', &{$osPathConversion}($filename_userfile));
-  print USER
-"<?xml version=\"1.0\" encoding=\"utf-8\"?>
-<Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">
-</Project>
-";
-  close(USER);
+  #   my $filename_userfile = $projFileName . '.user';
+    # open(USER, '>', &{$osPathConversion}($filename_userfile));
+    # print USER
+  # "<?xml version=\"1.0\" encoding=\"utf-8\"?>
+  # <Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">
+  # </Project>
+  # ";
+    # close(USER); 
   
   # create .filters file
   my $filename_filtersfile = $projFileName . '.filters';
@@ -617,6 +724,44 @@ sub writeProjectFiles {
   close(FLTS);  
 }
 
+
+sub ltrim { 
+   my $s = shift;
+    $s =~ s/^\s+//;      
+     return $s;
+}
+
+sub isEmptyLine{
+   my $line = shift;
+   
+   my $lineTrimmed  = ltrim($line);
+   
+   if($lineTrimmed eq "")
+   {
+       return 1;
+   }
+   else
+   {   
+       return 0;
+   }   
+}
+
+sub isValidProjectLine{
+   my $line = shift;
+
+   if(!( isEmptyLine($line) || $line =~ m:(EXT_SUBDIRS_LIB.*\n{0,1}): ) )
+   {
+       return 1;
+   }
+   else
+   {
+       return 0;
+   }   
+} 
+
+
+
+
 # ****************************************************
 # ****************************************************
 # ****************************************************
@@ -649,11 +794,14 @@ while(<M>) {
   # parsing the part of the top-level Makefile that's like:
   # SUBDIRS = base util matrix feat tree model fstext hmm optimization \
   #	    transform lm decoder bin fstbin gmmbin featbin
-  if (s/^SUBDIRS\s+=\s+//) {
+  if (s/^(SUBDIRS|EXT_SUBDIRS)\s+=\s+//) {
     # print STDERR "here\n";
-    while ($_ =~ m:\S:) { # till we get an empty line..
+    while ( isValidProjectLine($_) ) { # till we get an empty line or a line starting with EXT_SUBDIRS_LIB..
       s:\\::;
-      foreach my $f (split(" ", $_)) { 
+      foreach my $f (split(" ", $_)) {
+       if($f eq "#"){
+           last;
+       }
         push @makefiles, "$srcDir/$f/Makefile"; 
       }
       $_ = <M>;
@@ -664,7 +812,7 @@ while(<M>) {
 
 # was @$makefiles in the line below.
 foreach my $makefile (@makefiles) {
-  # print "INFO: parsing " . $makefile . "\n";
+  print "INFO: parsing " . $makefile . "\n";
   parseMakefile($makefile, $projlist, $projdeps, $projlibs);
 }
 

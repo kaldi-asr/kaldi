@@ -28,6 +28,10 @@
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-array.h"
 
+#if defined(_MSC_VER)
+#include <time.h>
+#endif
+
 using namespace kaldi;
 
 

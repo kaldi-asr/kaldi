@@ -19,7 +19,16 @@
 
 #include "nnet2/nnet-component.h"
 #include "util/common-utils.h"
+
+#ifdef _WIN32_WINNT_WIN8
+#include <Synchapi.h>
+#define sleep Sleep
+#elif _WIN32
+#include <Windows.h>
+#define sleep Sleep
+#else
 #include <unistd.h> // for sleep().
+#endif
 
 namespace kaldi {
 namespace nnet2 {

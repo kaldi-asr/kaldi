@@ -29,7 +29,8 @@
 
 
 int main(int argc, char *argv[]) {
-  try {
+#ifndef KALDI_NO_PORTAUDIO
+    try {
     using namespace kaldi;
     using namespace fst;
 
@@ -197,4 +198,5 @@ int main(int argc, char *argv[]) {
     std::cerr << e.what();
     return -1;
   }
+#endif
 } // main()

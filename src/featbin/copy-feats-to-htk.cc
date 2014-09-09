@@ -24,8 +24,15 @@
 #include "matrix/matrix-lib.h"
 
 #include <sys/stat.h>
+
+#if defined(_MSC_VER)
+#include <direct.h>
+#else
 #include <unistd.h>
+#endif
+
 #include <stdio.h>
+
 
 
 int main(int argc, char *argv[]) {
@@ -81,7 +88,11 @@ int main(int argc, char *argv[]) {
     // check or create output dir:
     const char * c = dir_out.c_str();
    if ( access( c, 0 ) != 0 ){
-    if (mkdir(c, S_IRWXU|S_IRGRP|S_IXGRP) != 0)
+#if defined(_MSC_VER)
+       if (_mkdir(c) != 0)
+#else
+       if (mkdir(c, S_IRWXU|S_IRGRP|S_IXGRP) != 0)
+#endif
        KALDI_ERR << "Could not create output directory: " << dir_out;
    /*
     else if (chdir(c) != 0)

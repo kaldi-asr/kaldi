@@ -316,9 +316,27 @@ inline double Hypot(double x, double y) {  return hypot(x, y); }
 
 inline float Hypot(float x, float y) {  return hypotf(x, y); }
 
+#if !defined(_MSC_VER) || (_MSC_VER >= 1800)
 inline double Log1p(double x) {  return log1p(x); }
 
 inline float Log1p(float x) {  return log1pf(x); }
+#else
+inline double Log1p(double x) {
+    const double cutoff = 1.0e-08;
+    if (x < cutoff)
+        return x - 2 * x * x;
+    else 
+        return log(1.0 + x);
+}
+
+inline float Log1p(float x) {
+    const float cutoff = 1.0e-07;
+    if (x < cutoff)
+        return x - 2 * x * x;
+    else 
+        return log(1.0 + x);
+}
+#endif
 
 inline double Exp(double x) { return exp(x); }
 
