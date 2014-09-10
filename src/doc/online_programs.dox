@@ -24,6 +24,9 @@ namespace kaldi {
 
 \page online_programs Online Recognizers
 
+Warning, this page is deprecated as it refers to the older online-decoding setup.
+The page for the new setup is \ref online_decoding.
+
 There are several programs in the Kaldi toolkit that can be used for online recognition. 
 They are all located in the src/onlinebin folder and require the files from
 the src/online folder to be compiled as well (you can currently compile these with

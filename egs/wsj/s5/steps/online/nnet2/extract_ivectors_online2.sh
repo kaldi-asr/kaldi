@@ -3,6 +3,18 @@
 # Copyright     2013  Daniel Povey
 # Apache 2.0.
 
+# This script is as ./extract_ivectors_online.sh but internally it uses a
+# different program, with code that corresponds more closely to the real online
+# decoding setup.  Rather than treating each utterance separately, as
+# extract_ivectors_online.sh, it carries forward information from one utterance
+# to the next, within the speaker.  However, take note of the option
+# "utts-per-spk-max", defaulting to 2, which splits speakers up into "fake
+# speakers" with at most two utterances in them.  This means that more iVectors
+# are estimated starting from an uninformative starting point, than if we used
+# the real speaker labels (which may have many utterances each); it's a
+# compromise between per-utterance and per-speaker iVector estimation.
+
+
 # This script is based on ^/egs/sre08/v1/sid/extract_ivectors.sh.  Instead of
 # extracting a single iVector per utterance, it extracts one every few frames
 # (controlled by the --ivector-period option, e.g. 10, which is to save compute).
@@ -33,6 +45,8 @@ utts_per_spk_max=2  # maximum 2 utterances per "fake-speaker."  Note: this does
                     # close to.  This is useful in the "perturbed-feature" recipe
                     # to encourage that different perturbed versions of the same
                     # speaker get split into fake-speakers differently.
+compress=true       # If true, compress the iVectors stored on disk (it's lossy
+                    # compression, as used for feature matrices).
 
 # End configuration section.
 
@@ -97,9 +111,6 @@ echo "--ivector-extractor=$srcdir/final.ie" >>$ieconf
 echo "--num-gselect=$num_gselect"  >>$ieconf
 echo "--min-post=$min_post" >>$ieconf
 echo "--posterior-scale=$posterior_scale" >>$ieconf
-# in the preparation for the actual online decoding we do
-# echo "--use-most-recent-ivector=true" >>$ieconf
-# but this would be ignored by the command-line program ivector-extract-online2
 echo "--max-remembered-frames=1000" >>$ieconf # the default
 
 
@@ -136,8 +147,9 @@ done
 if [ $stage -le 0 ]; then
   echo "$0: extracting iVectors"
   $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
-     ivector-extract-online2 --config=$ieconf ark:$dir/spk2utt_fake/spk2utt.JOB scp:$sdata/JOB/feats.scp \
-       ark,scp,t:$dir/ivector_online.JOB.ark,$dir/ivector_online.JOB.scp || exit 1;
+     ivector-extract-online2 --config=$ieconf ark:$dir/spk2utt_fake/spk2utt.JOB scp:$sdata/JOB/feats.scp ark:- \| \
+     copy-feats --compress=$compress ark:- \
+      ark,scp,t:$dir/ivector_online.JOB.ark,$dir/ivector_online.JOB.scp || exit 1;
 fi
 
 if [ $stage -le 1 ]; then

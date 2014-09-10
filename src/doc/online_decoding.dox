@@ -221,7 +221,6 @@ namespace kaldi {
   trained model for this purpose. 
 
   
-
  \section online_decoding_nnet2  Neural net based online decoding with iVectors
 
   Our best online-decoding setup, which we recommend should be used, is the neural
@@ -252,15 +251,15 @@ namespace kaldi {
 
  We are currently working on example scripts for discriminative training for this setup.
 
-  \subsection Example for using already-built online-nnet2 models
+  \subsection online_decoding_nnet2_example Example for using already-built online-nnet2 models
   
   In this section we will explain how to download already-build online-nnet2 models from www.kaldi-asr.org
- and evaluate them on your own data.
+  and evaluate them on your own data.
 
  The reader can download the models and other relating files from <b> 
  http://kaldi-asr.org/downloads/build/2/sandbox/online/egs/fisher_english/s5 </b>, 
- which are published by Dan, based on the fisher_english recipe. To use online-nnet2 models, the reader
- only need to download two directories: exp/tri5a/graph and exp/nnet2_online/nnet_a_gpu_online. Use the 
+ which are built using the fisher_english recipe. To use the online-nnet2 models, the reader
+ only needs to download two directories: exp/tri5a/graph and exp/nnet2_online/nnet_a_gpu_online. Use the 
  following commands to download the archives and extract them:
  
  \verbatim
@@ -272,29 +271,23 @@ namespace kaldi {
 
  Here the archieves are extracted to the local directory. Surely the reader can extract them to any other directories. 
  Next, some configuration files we just download should be modified, as they contain absolute pathes. Change directory
- to nnet_a_gpu_online/conf and then edit <b> ivector_extractor.conf </b> and <b> online_nnet2_decoding.conf </b>. Replace
+ to nnet_a_gpu_online/conf and then edit <code> ivector_extractor.conf </code> and <code> online_nnet2_decoding.conf </code>. Replace
  those absolute pathes with correct ones according to where you extract the archives. For example, in my case, I replaced
- 
  \verbatim
  /export/a09/dpovey/kaldi-clean/egs/fisher_english/s5/exp/nnet2_online
  \endverbatim 
- 
  with
- 
  \verbatim
  /disc1/kaldi-sandbox/online/egs/fisher_english/s5
  \endverbatim 
- 
  Next, choose a single wav file to decode. The reader can download a sample file by typing
- 
  \verbatim
  wget http://www.signalogic.com/melp/EngSamples/Orig/ENG_M.wav
  \endverbatim 
- 
- This is a 8kHz-sampled wav file. Then it can be decoded with the following commands:
- 
+ This is a 8kHz-sampled wav file that we found online. Then it can be decoded with the following commands:
  \verbatim
  online2-wav-nnet2-latgen-faster --do-endpointing=false \
+     --online=false \
      --config=nnet_a_gpu_online/conf/online_nnet2_decoding.conf \
      --max-active=7000 --beam=15.0 --lattice-beam=6.0 \
      --acoustic-scale=0.1 --word-symbol-table=graph/words.txt \
@@ -303,17 +296,17 @@ namespace kaldi {
  lattice-best-path --lm-scale=10.0 --word-symbol-table=graph/words.txt \
    ark:- ark,t:- 2>/dev/null | \
  utils/int2sym.pl -f 2- graph/words.txt - 2>/dev/null | cut -d" " -f2- | awk '{print "The result is:" ; print $0}'
- \endvertatim
- 
- The term "2>/dev/null" is added to avoid log messages. If those comands worked correctly, after maybe 1 minuete
- (mostly due to the time costed by loading models), you will get results like:
- 
+ \endverbatim
+ The term "2>/dev/null" is added to avoid log messages. 
+ We added the <code>--online=false</code> option because it tends to slightly improve results.
+ If those comands worked correctly, after maybe 1 minuete
+ (mostly due to the time cost by loading the models), you will get results as follows:
  \verbatim
  The result is:
  tom sue well underway fall races two miles and then in nineteen ninety two by so let's say ooh threesome all these 
  to commemorate columbus is drawn into the new world five hundred years ago i went to the moon is to promote the use 
  of so the sales in space exploration 
- \endvertatim
+ \endverbatim
 
 */
 

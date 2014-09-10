@@ -135,9 +135,10 @@ struct DiscriminativeNnetExample {
   int32 left_context;
   
 
-  /// The speaker-specific input, if any, or an empty vector if
-  /// we're not using this features.  We'll append this to each of the
-  /// input features, if used.
+  /// spk_info contains any component of the features that varies slowly or not
+  /// at all with time (and hence, we would lose little by averaging it over
+  /// time and storing the average).  We'll append this to each of the input
+  /// features, if used.
   Vector<BaseFloat> spk_info; 
 
   void Check() const; // will crash if invalid.

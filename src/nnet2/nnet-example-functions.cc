@@ -26,7 +26,6 @@ namespace nnet2 {
 
 bool LatticeToDiscriminativeExample(
     const std::vector<int32> &alignment,
-    const Vector<BaseFloat> &spk_vec,
     const Matrix<BaseFloat> &feats,
     const CompactLattice &clat,
     BaseFloat weight,
@@ -68,7 +67,6 @@ bool LatticeToDiscriminativeExample(
     eg->input_frames.Row(left_context + num_frames + t).CopyFromVec(
         feats.Row(num_frames - 1));
 
-  eg->spk_info = spk_vec;
   eg->left_context = left_context;
   eg->Check();
   return true;
@@ -894,8 +892,7 @@ void AppendDiscriminativeExamples(
   KALDI_ASSERT(!input.empty());
   const DiscriminativeNnetExample &eg0 = *(input[0]);
   
-  KALDI_ASSERT(eg0.spk_info.Dim() == 0);
-  int32 feat_dim = eg0.input_frames.NumCols(),
+  int32 dim = eg0.input_frames.NumCols() + eg0.spk_info.Dim(),
       left_context = eg0.left_context,
       num_frames = eg0.num_ali.size(),
       right_context = eg0.input_frames.NumRows() - num_frames - left_context;
@@ -905,7 +902,6 @@ void AppendDiscriminativeExamples(
   for (size_t i = 1; i < input.size(); i++)
     tot_frames += input[i]->input_frames.NumRows();
 
-
   int32 arbitrary_tid = 1;  // arbitrary transition-id that we use to pad the
                             // num_ali and den_lat members between segments
                             // (since they're both the same, and the den-lat in
@@ -914,9 +910,15 @@ void AppendDiscriminativeExamples(
   
   output->den_lat = eg0.den_lat;
   output->num_ali = eg0.num_ali;
-  output->input_frames.Resize(tot_frames, feat_dim, kUndefined);
+  output->input_frames.Resize(tot_frames, dim, kUndefined);
   output->input_frames.Range(0, eg0.input_frames.NumRows(),
-                             0, feat_dim).CopyFromMat(eg0.input_frames);
+                             0, eg0.input_frames.NumCols()).CopyFromMat(eg0.input_frames);
+  if (eg0.spk_info.Dim() != 0) {
+    output->input_frames.Range(0, eg0.input_frames.NumRows(),
+                               eg0.input_frames.NumCols(), eg0.spk_info.Dim()).
+        CopyRowsFromVec(eg0.spk_info);
+  }
+  
   output->num_ali.reserve(tot_frames - left_context - right_context);
   output->weight = eg0.weight;
   output->left_context = eg0.left_context;
@@ -939,7 +941,17 @@ void AppendDiscriminativeExamples(
     const DiscriminativeNnetExample &eg_i = *(input[i]);
         
     output->input_frames.Range(feat_offset, eg_i.input_frames.NumRows(),
-                               0, feat_dim).CopyFromMat(eg_i.input_frames);
+                               0, eg_i.input_frames.NumCols()).CopyFromMat(
+                                   eg_i.input_frames);
+    if (eg_i.spk_info.Dim() != 0) {
+      output->input_frames.Range(feat_offset, eg_i.input_frames.NumRows(),
+                                 eg_i.input_frames.NumCols(),
+                                 eg_i.spk_info.Dim()).CopyRowsFromVec(
+                                     eg_i.spk_info);
+      KALDI_ASSERT(eg_i.input_frames.NumCols() +
+                   eg_i.spk_info.Dim() == dim);
+    }
+    
     output->num_ali.insert(output->num_ali.end(),
                            inter_segment_ali.begin(), inter_segment_ali.end());
     output->num_ali.insert(output->num_ali.end(),
@@ -957,15 +969,7 @@ void CombineDiscriminativeExamples(
     int32 max_length,
     const std::vector<DiscriminativeNnetExample> &input,
     std::vector<DiscriminativeNnetExample> *output) {
-  if (!input.empty() && input[0].spk_info.Dim() != 0) {
-    // if we have non-empty spk_info we cannot combine the examples -> just
-    // return them as-is.
-    output->resize(input.size());
-    for (size_t i = 0; i < input.size(); i++)
-      (*output)[i] = input[i];
-    return;
-  }
-
+  
   std::vector<BaseFloat> costs(input.size());
   for (size_t i = 0; i < input.size(); i++)
     costs[i] = static_cast<BaseFloat>(input[i].input_frames.NumRows());

@@ -52,11 +52,12 @@ void SingleUtteranceNnet2Decoder::GetLattice(bool end_of_utterance,
   Lattice raw_lat;
   decoder_.GetRawLattice(&raw_lat, end_of_utterance);
 
-  if (config_.faster_decoder_opts.determinize_lattice) {
-    BaseFloat lat_beam = config_.faster_decoder_opts.lattice_beam;
-    DeterminizeLatticePhonePrunedWrapper(
-        tmodel_, &raw_lat, lat_beam, clat, config_.faster_decoder_opts.det_opts);
-  }
+  if (!config_.faster_decoder_opts.determinize_lattice)
+    KALDI_ERR << "--determinize-lattice=false option is not supported at the moment";
+
+  BaseFloat lat_beam = config_.faster_decoder_opts.lattice_beam;
+  DeterminizeLatticePhonePrunedWrapper(
+      tmodel_, &raw_lat, lat_beam, clat, config_.faster_decoder_opts.det_opts);
 }
 
 void SingleUtteranceNnet2Decoder::GetBestPath(bool end_of_utterance,

@@ -18,8 +18,12 @@ max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
 num_threads=1
+online_ivector_dir=
 parallel_opts=
+feat_type=  # you can set this in order to run on top of delta features, although we don't
+            # normally want to do this.
 # End configuration section.
+
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -27,22 +31,22 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
-   echo "Usage: steps/make_denlats.sh [options] <data-dir> <lang-dir> <src-dir> <exp-dir>"
-   echo "  e.g.: steps/make_denlats.sh data/train data/lang exp/tri1 exp/tri1_denlats"
-   echo "Works for (delta|lda) features, and (with --transform-dir option) such features"
-   echo " plus transforms."
-   echo ""
-   echo "Main options (for others, see top of script file)"
-   echo "  --config <config-file>                           # config containing options"
-   echo "  --nj <nj>                                        # number of parallel jobs"
-   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-   echo "  --sub-split <n-split>                            # e.g. 40; use this for "
-   echo "                           # large databases so your jobs will be smaller and"
-   echo "                           # will (individually) finish reasonably soon."
-   echo "  --transform-dir <transform-dir>   # directory to find fMLLR transforms."
-   echo "  --num-threads  <n>                # number of threads per decoding job"
-   echo "  --parallel-opts <string>          # if >1 thread, add this to 'cmd', e.g. -pe smp 6"
-   exit 1;
+  echo "Usage: steps/make_denlats.sh [options] <data-dir> <lang-dir> <src-dir> <exp-dir>"
+  echo "  e.g.: steps/make_denlats.sh data/train data/lang exp/tri1 exp/tri1_denlats"
+  echo "Works for (delta|lda) features, and (with --transform-dir option) such features"
+  echo " plus transforms."
+  echo ""
+  echo "Main options (for others, see top of script file)"
+  echo "  --config <config-file>                           # config containing options"
+  echo "  --nj <nj>                                        # number of parallel jobs"
+  echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+  echo "  --sub-split <n-split>                            # e.g. 40; use this for "
+  echo "                           # large databases so your jobs will be smaller and"
+  echo "                           # will (individually) finish reasonably soon."
+  echo "  --transform-dir <transform-dir>   # directory to find fMLLR transforms."
+  echo "  --num-threads  <n>                # number of threads per decoding job"
+  echo "  --parallel-opts <string>          # if >1 thread, add this to 'cmd', e.g. -pe smp 6"
+  exit 1;
 fi
 
 data=$1
@@ -50,7 +54,11 @@ lang=$2
 srcdir=$3
 dir=$4
 
-for f in $data/feats.scp $lang/L.fst $srcdir/final.mdl; do
+
+extra_files=
+[ ! -z "$online_ivector_dir" ] && \
+  extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
+for f in $data/feats.scp $lang/L.fst $srcdir/final.mdl $extra_files; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1;
 done
 
@@ -71,11 +79,6 @@ cp -r $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
 new_lang="$dir/"$(basename "$lang")
-echo "Making unigram grammar FST in $new_lang"
-cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
-  awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n"); }' | \
-  utils/make_unigram_grammar.pl | fstcompile > $new_lang/G.fst \
-   || exit 1;
 
 # mkgraph.sh expects a whole directory "lang", so put everything in one directory...
 # it gets L_disambig.fst and G.fst (among other things) from $dir/lang, and
@@ -83,15 +86,22 @@ cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
 
 echo "Compiling decoding graph in $dir/dengraph"
 if [ -s $dir/dengraph/HCLG.fst ] && [ $dir/dengraph/HCLG.fst -nt $srcdir/final.mdl ]; then
-   echo "Graph $dir/dengraph/HCLG.fst already exists: skipping graph creation."
+  echo "Graph $dir/dengraph/HCLG.fst already exists: skipping graph creation."
 else
+  echo "Making unigram grammar FST in $new_lang"
+  cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
+   awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n"); }' | \
+    utils/make_unigram_grammar.pl | fstcompile > $new_lang/G.fst \
+    || exit 1;
   utils/mkgraph.sh $new_lang $srcdir $dir/dengraph || exit 1;
 fi
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 cp $srcdir/cmvn_opts $dir 2>/dev/null
 
-if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "align_si.sh: feature type is $feat_type"
+if [ -z "$feat_type" ]; then
+  if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=raw; fi
+fi
+echo "$0: feature type is $feat_type"         
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
@@ -130,16 +140,42 @@ if [ ! -z "$transform_dir" ]; then
   fi
 fi
 
+
+if [ ! -z "$online_ivector_dir" ]; then
+  ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
+  # note: subsample-feats, with negative n, will repeat each feature -n times.
+  feats="$feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
+fi
+
+
+# if this job is interrupted by the user, we want any background jobs to be
+# killed too.
+cleanup() {
+  local pids=$(jobs -pr)
+  [ -n "$pids" ] && kill $pids
+}
+trap "cleanup" INT QUIT TERM EXIT
+
+
 if [ $sub_split -eq 1 ]; then 
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode_den.JOB.log \
    nnet-latgen-faster$thread_string --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
     --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
      $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 else
-  for n in `seq $nj`; do
-    if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $srcdir/final.mdl ]; then
+  # each job from 1 to $nj is split into multiple pieces (sub-split), and we aim
+  # to have at most two jobs running at each time.  The idea is that if we have stragglers 
+  # from one job, we can be processing another one at the same time.
+  rm $dir/.error 2>/dev/null
+
+  prev_pid=
+  for n in `seq $[nj+1]`; do
+    if [ $n -gt $nj ]; then
+      this_pid=
+    elif [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $srcdir/final.mdl ]; then
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
-    else 
+      this_pid=
+    else
       sdata2=$data/split$nj/$n/split$sub_split;
       if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata/$n/feats.scp ]; then
         split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
@@ -147,19 +183,27 @@ else
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
       feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
+
       $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         nnet-latgen-faster$thread_string --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
         --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
-          $dir/dengraph/HCLG.fst "$feats_subset" "ark:|gzip -c >$dir/lat.$n.JOB.gz" || exit 1;
-      echo Merging archives for data subset $n
-      rm $dir/.error 2>/dev/null;
-      for k in `seq $sub_split`; do
-        gunzip -c $dir/lat.$n.$k.gz || touch $dir/.error;
-      done | gzip -c > $dir/lat.$n.gz || touch $dir/.error;
-      [ -f $dir/.error ] && echo Merging lattices for subset $n failed && exit 1;
-      rm $dir/lat.$n.*.gz
-      touch $dir/.done.$n
+          $dir/dengraph/HCLG.fst "$feats_subset" "ark:|gzip -c >$dir/lat.$n.JOB.gz" || touch .error &
+      this_pid=$!
     fi
+    if [ ! -z "$prev_pid" ]; then  # Wait for the previous job; merge the previous set of lattices.
+      wait $prev_pid
+      [ -f $dir/.error ] && echo "$0: error generating denominator lattices" && exit 1;
+      rm $dir/.merge_error 2>/dev/null
+      echo Merging archives for data subset $prev_n
+      for k in `seq $sub_split`; do
+        gunzip -c $dir/lat.$prev_n.$k.gz || touch $dir/.merge_error;
+      done | gzip -c > $dir/lat.$prev_n.gz || touch $dir/.merge_error;
+      [ -f $dir/.merge_error ] && echo "$0: Merging lattices for subset $prev_n failed (or maybe some other error)" && exit 1;
+      rm $dir/lat.$prev_n.*.gz
+      touch $dir/.done.$prev_n
+    fi
+    prev_n=$n
+    prev_pid=$this_pid
   done
 fi
 

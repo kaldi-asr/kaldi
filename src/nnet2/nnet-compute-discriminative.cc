@@ -285,6 +285,7 @@ void NnetDiscriminativeUpdater::LatticeComputations() {
       lat_.SetFinal(s, final);
     }
   }
+  KALDI_ASSERT(index == answers.size());
   
   // Get the MPE or MMI posteriors.
   Posterior post;

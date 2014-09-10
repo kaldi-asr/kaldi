@@ -13,6 +13,7 @@ lattice_beam=6.0
 acwt=0.1   # note: only really affects adaptation and pruning (scoring is on
            # lattices).
 per_utt=false
+online=true
 do_endpointing=false
 do_speex_compressing=false
 scoring_opts=
@@ -39,7 +40,12 @@ if [ $# != 3 ]; then
    echo "  --acwt <float>                                   # acoustic scale used for lattice generation "
    echo "  --per-utt <true|false>                           # If true, decode per utterance without"
    echo "                                                   # carrying forward adaptation info from previous"
-   echo "                                                   # utterances of each speaker."
+   echo "                                                   # utterances of each speaker.  Default: false"
+   echo "  --online <true|false>                            # Set this to false if you don't really care about"
+   echo "                                                   # simulating online decoding and just want the best"
+   echo "                                                   # results.  This will use all the data within each"
+   echo "                                                   # utterance (plus any previous utterance, if not in"
+   echo "                                                   # per-utterance mode) to estimate the iVectors."
    echo "  --scoring-opts <string>                          # options to local/score.sh"
    echo "  --iter <iter>                                    # Iteration of model to decode; default is final."
    exit 1;
@@ -88,7 +94,7 @@ fi
 
 if [ $stage -le 0 ]; then
   $cmd JOB=1:$nj $dir/log/decode.JOB.log \
-    online2-wav-nnet2-latgen-faster --do-endpointing=$do_endpointing \
+    online2-wav-nnet2-latgen-faster --online=$online --do-endpointing=$do_endpointing \
      --config=$srcdir/conf/online_nnet2_decoding.conf \
      --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
      --acoustic-scale=$acwt --word-symbol-table=$graphdir/words.txt \

@@ -8,7 +8,7 @@
 # See http://kaldi.sourceforge.net/data_prep.html#data_prep_data
 # for what these directories contain.
 
-# Thsi script creates a subset of that data, consisting of some specified
+# This script creates a subset of that data, consisting of some specified
 # number of utterances.  (The selected utterances are distributed evenly
 # throughout the file, by the program ./subset_scp.pl).
 

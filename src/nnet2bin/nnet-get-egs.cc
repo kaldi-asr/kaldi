@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
-#include "nnet2/nnet-randomize.h"
+#include "nnet2/nnet-example-functions.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -44,7 +44,6 @@ int32 GetCount(double expected_count) {
 
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const Posterior &pdf_post,
-                        const Vector<BaseFloat> &spk_vec,
                         int32 left_context,
                         int32 right_context,
                         int32 const_feat_dim,
@@ -54,23 +53,14 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
   int32 feat_dim = feats.NumCols();
   KALDI_ASSERT(const_feat_dim < feat_dim);
-  int32 normal_feat_dim = feat_dim - const_feat_dim,
-      spk_info_dim = spk_vec.Dim() + const_feat_dim;
-  // Note: normally we won't have both spk_vec.Dim() and
-  // const_feat_dim being nonzero, they represent alternative methods
-  // of getting speaker information into the training example.
+  int32 basic_feat_dim = feat_dim - const_feat_dim;
   // const_feat_dim will be set when we have online-estimated
   // iVectors.
   NnetExample eg;
   Matrix<BaseFloat> input_frames(left_context + 1 + right_context,
-                                 normal_feat_dim);
+                                 basic_feat_dim);
   eg.left_context = left_context;
-  eg.spk_info.Resize(spk_info_dim);
-  if (spk_vec.Dim() != 0) {
-    // we'll normally reach here if we have iVectors (or similar) estimated
-    // for the whole utterance or speaker, not online.
-    eg.spk_info.Range(0, spk_vec.Dim()).CopyFromVec(spk_vec);
-  }
+  eg.spk_info.Resize(const_feat_dim);
   for (int32 i = 0; i < feats.NumRows(); i++) {
     int32 count = GetCount(keep_proportion); // number of times
     // we'll write this out (1 by default).
@@ -80,7 +70,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
         int32 j2 = j + i;
         if (j2 < 0) j2 = 0;
         if (j2 >= feats.NumRows()) j2 = feats.NumRows() - 1;
-        SubVector<BaseFloat> src(feats.Row(j2), 0, normal_feat_dim),
+        SubVector<BaseFloat> src(feats.Row(j2), 0, basic_feat_dim),
             dest(input_frames, j + left_context);
         dest.CopyFromVec(src);
       }
@@ -89,9 +79,8 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
       if (const_feat_dim > 0) {
         // we'll normally reach here if we're using online-estimated iVectors.
         SubVector<BaseFloat> const_part(feats.Row(i),
-                                        normal_feat_dim, const_feat_dim);
-        eg.spk_info.Range(spk_vec.Dim(), const_feat_dim).CopyFromVec(
-            const_part);
+                                        basic_feat_dim, const_feat_dim);
+        eg.spk_info.CopyFromVec(const_part);
       }
       std::ostringstream os;
       os << ((*num_frames_written)++);
@@ -121,8 +110,6 @@ int main(int argc, char *argv[]) {
         "into a special frame-by-frame format.  To split randomly into\n"
         "different subsets, do nnet-copy-egs with --random=true, but\n"
         "note that this does not randomize the order of frames.\n"
-        "Also see nnet-randomize-frames, which uses more memory but also\n"
-        "randomizes the order\n"
         "\n"
         "Usage:  nnet-get-egs [options] <features-rspecifier> "
         "<pdf-post-rspecifier> <training-examples-out>\n"
@@ -139,12 +126,7 @@ int main(int argc, char *argv[]) {
     int32 srand_seed = 0;
     BaseFloat keep_proportion = 1.0;
     
-    std::string spk_vecs_rspecifier, utt2spk_rspecifier;
-    
     ParseOptions po(usage);
-    po.Register("spk-vecs", &spk_vecs_rspecifier, "Rspecifier for speaker vectors");
-    po.Register("utt2spk", &utt2spk_rspecifier, "Rspecifier for "
-                "speaker-to-utterance map (relevant if --spk-vecs option used)");
     po.Register("left-context", &left_context, "Number of frames of left context "
                 "the neural net requires.");
     po.Register("right-context", &right_context, "Number of frames of right context "
@@ -175,12 +157,9 @@ int main(int argc, char *argv[]) {
     // Read in all the training files.
     SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
-    RandomAccessBaseFloatVectorReaderMapped vecs_reader(
-        spk_vecs_rspecifier, utt2spk_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     
     int32 num_done = 0, num_err = 0;
-    int32 spk_dim = -1;
     int64 num_frames_written = 0;
     
     for (; !feat_reader.Done(); feat_reader.Next()) {
@@ -197,26 +176,7 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-        Vector<BaseFloat> spk_info;
-        
-        if (spk_vecs_rspecifier != "") {
-          if (!vecs_reader.HasKey(key)) {
-            KALDI_WARN << "No speaker vector for key " << key;
-            num_err++;
-            continue;
-          } else {
-            spk_info = vecs_reader.Value(key);
-          }
-          if (spk_dim == -1) spk_dim = spk_info.Dim();
-          else if (spk_info.Dim() != spk_dim) {
-            KALDI_WARN << "Invalid dimension of speaker vector, "
-                << spk_info.Dim() << " (expected "
-                << spk_dim << " ).";
-            num_err++;
-            continue;
-          }
-        }
-        ProcessFile(feats, pdf_post, spk_info,
+        ProcessFile(feats, pdf_post,
                     left_context, right_context, const_feat_dim,
                     keep_proportion, &num_frames_written, &example_writer);
         num_done++;

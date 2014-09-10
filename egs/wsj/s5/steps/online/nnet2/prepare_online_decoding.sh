@@ -117,6 +117,7 @@ if [ ! -z "$iedir" ]; then
   echo -n >$ieconf
   echo "--ivector-extraction-config=$ieconf" >>$conf
   cp $iedir/online_cmvn.conf $dir/conf/online_cmvn.conf || exit 1;
+  # the next line puts each option from splice_opts on its own line in the config.
   for x in $(cat $iedir/splice_opts); do echo "$x"; done > $dir/conf/splice.conf
   echo "--splice-config=$dir/conf/splice.conf" >>$ieconf
   echo "--cmvn-config=$dir/conf/online_cmvn.conf" >>$ieconf
@@ -124,10 +125,9 @@ if [ ! -z "$iedir" ]; then
   echo "--global-cmvn-stats=$dir/ivector_extractor/global_cmvn.stats" >>$ieconf
   echo "--diag-ubm=$dir/ivector_extractor/final.dubm" >>$ieconf
   echo "--ivector-extractor=$dir/ivector_extractor/final.ie" >>$ieconf
-  echo "--num-gselect=5"  >>$ieconf
-  echo "--min-post=0.025" >>$ieconf
-  echo "--posterior-scale=0.1" >>$ieconf # this is currently the default in the scripts.
-  echo "--use-most-recent-ivector=true" >>$ieconf # probably makes very little difference.
+  echo "--num-gselect=$num_gselect"  >>$ieconf
+  echo "--min-post=$min_post" >>$ieconf
+  echo "--posterior-scale=$posterior_scale" >>$ieconf # this is currently the default in the scripts.
   echo "--max-remembered-frames=1000" >>$ieconf # the default
 fi
 
@@ -146,5 +146,3 @@ fi
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 echo "--endpoint.silence-phones=$silphonelist" >>$conf
 echo "$0: created config file $conf"
-
-

@@ -170,7 +170,7 @@ echo "$0: Every epoch, splitting the data up into $iters_per_epoch iterations,"
 echo "$0: giving samples-per-iteration of $samples_per_iter_real (you requested $samples_per_iter)."
 
 # Making soft links to storage directories.  This is a no-up unless
-# the subdirectory $dir/egs/storage/ exists.
+# the subdirectory $dir/egs/storage/ exists.  See utils/create_split_dir.pl
 for x in `seq 1 $num_jobs_nnet`; do
   for y in `seq 0 $[$iters_per_epoch-1]`; do
     utils/create_data_link.pl $dir/egs/egs.$x.$y.ark

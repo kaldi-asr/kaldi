@@ -49,9 +49,9 @@ bool AppendFeats(const std::vector<Matrix<BaseFloat> > &in,
     return false;
   }
   if (max_len - min_len > 0) {
-    KALDI_LOG << "Length mismatch " << max_len << " vs. " << min_len
-              << (utt.empty() ? "" : " for utt ") << utt 
-              << " within tolerance " << tolerance;
+    KALDI_VLOG(2) << "Length mismatch " << max_len << " vs. " << min_len
+                  << (utt.empty() ? "" : " for utt ") << utt 
+                  << " within tolerance " << tolerance;
   }
   out->Resize(min_len, tot_dim);
   int32 dim_offset = 0;

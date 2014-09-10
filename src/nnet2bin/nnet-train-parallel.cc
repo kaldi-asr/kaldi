@@ -20,7 +20,6 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
-#include "nnet2/nnet-randomize.h"
 #include "nnet2/nnet-update-parallel.h"
 #include "nnet2/am-nnet.h"
 
@@ -34,14 +33,13 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Train the neural network parameters with backprop and stochastic\n"
-        "gradient descent using minibatches.  The training frames and labels\n"
-        "are read via a pipe from nnet-randomize-frames.  This is like nnet-train-simple,\n"
-        "but uses multiple threads in a Hogwild type of update.\n"
+        "gradient descent using minibatches.  As nnet-train-simple, but\n"
+        "uses multiple threads in a Hogwild type of update (for CPU, not GPU).\n"
         "\n"
         "Usage:  nnet-train-parallel [options] <model-in> <training-examples-in> <model-out>\n"
         "\n"
         "e.g.:\n"
-        "nnet-randomize-frames [args] | nnet-train-parallel --num-threads=8 1.nnet ark:- 2.nnet\n";
+        "nnet-train-parallel --num-threads=8 1.nnet ark:1.1.egs 2.nnet\n";
     
     bool binary_write = true;
     bool zero_stats = true;

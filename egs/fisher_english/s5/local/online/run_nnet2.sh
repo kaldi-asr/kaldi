@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 . cmd.sh
 
 
@@ -104,9 +105,9 @@ fi
 
 if [ $stage -le 6 ]; then
   # this does offline decoding that should give about the same results as the
-  # real online decoding.
+  # real online decoding (the one with --per-utt true)
   steps/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-       --online-ivector-dir exp/nnet2_online/ivectors_${data} \
+       --online-ivector-dir exp/nnet2_online/ivectors_dev \
        exp/tri5a/graph data/dev $dir/decode_dev || exit 1;
 fi
 
@@ -133,6 +134,14 @@ if [ $stage -le 9 ]; then
       exp/tri5a/graph data/dev ${dir}_online/decode_dev_utt || exit 1;
 fi
 
+if [ $stage -le 10 ]; then
+  # this version of the decoding treats each utterance separately
+  # without carrying forward speaker information, but looks to the end
+  # of the utterance while computing the iVector.
+   steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
+     --per-utt true --online false \
+      exp/tri5a/graph data/dev ${dir}_online/decode_dev_utt_offline || exit 1;
+fi
 
 exit 0;
 
@@ -143,9 +152,16 @@ exit 0;
 # Baseline: p-norm system on top of fMLLR features.
 #%WER 23.66 [ 9259 / 39141, 1495 ins, 2432 del, 5332 sub ] exp/nnet6c4_gpu/decode_dev/wer_11
 
-# Our experiment, with per-utterance decoding:
-#%WER 25.12 [ 9832 / 39141, 1423 ins, 2471 del, 5938 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev_utt/wer_11
-
 # Our experiment, carrying forward the adaptation state between
 # utterances of each speaker.
 #%WER 23.79 [ 9311 / 39141, 1499 ins, 2277 del, 5535 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev/wer_11
+
+
+# Our experiment, with per-utterance decoding:
+%WER 24.84 [ 9721 / 39141, 1445 ins, 2410 del, 5866 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev_utt/wer_11
+
+
+ # below, with --max-chunks-at-once 3.  The WER is slightly worse but I expect in general it will
+ # be slightly better, to to more iVector right context; this is likely just noise.  The average
+ # latency was reduced vs the baseline,
+ #%WER 24.92 [ 9753 / 39141, 1423 ins, 2429 del, 5901 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev_utt_mc3/wer_11

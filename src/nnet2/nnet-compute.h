@@ -43,7 +43,6 @@ namespace nnet2 {
 */
 void NnetComputation(const Nnet &nnet,
                      const CuMatrixBase<BaseFloat> &input,  // features
-                     const CuVectorBase<BaseFloat> &spk_info,
                      bool pad_input,
                      CuMatrixBase<BaseFloat> *output); // posteriors.
 
@@ -59,7 +58,6 @@ void NnetComputation(const Nnet &nnet,
 */
 BaseFloat NnetGradientComputation(const Nnet &nnet,
                                   const MatrixBase<BaseFloat> &input,
-                                  const VectorBase<BaseFloat> &spk_info,
                                   bool pad_input,
                                   BaseFloat utterance_weight,
                                   const std::vector<int32> &labels,

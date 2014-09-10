@@ -49,7 +49,6 @@ int main(int argc, char *argv[]) {
     BaseFloat acoustic_scale = 0.1;
     LatticeFasterDecoderConfig config;
     TaskSequencerConfig sequencer_config; // has --num-threads option
-    std::string spkvecs_rspecifier, utt2spk_rspecifier;
     
     std::string word_syms_filename;
     sequencer_config.Register(&po);
@@ -57,10 +56,6 @@ int main(int argc, char *argv[]) {
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
     po.Register("allow-partial", &allow_partial, "If true, produce output even if end state was not reached.");
-    po.Register("spk-vecs", &spkvecs_rspecifier, "Rspecifier for a vector that describes each speaker; "
-                "only needed if the neural net was trained this way.");
-    po.Register("utt2spk", &utt2spk_rspecifier, "Rspecifier for map from utterance to speaker; only relevant "
-                "in conjunction with the --spk-vecs option.");
     
     po.Read(argc, argv);
     
@@ -105,8 +100,6 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
 
-    RandomAccessBaseFloatVectorReaderMapped spkvecs_reader(spkvecs_rspecifier,
-                                                           utt2spk_rspecifier);
     // We support reading in a vector to describe each speaker, if the neural
     // net requires this (i.e. it was trained with this).
     
@@ -129,21 +122,10 @@ int main(int argc, char *argv[]) {
             num_err++;
             continue;
           }
-          Vector<BaseFloat> spk_info;
-          if (spkvecs_reader.IsOpen()) {
-            if (spkvecs_reader.HasKey(utt)) {
-              spk_info = spkvecs_reader.Value(utt);
-            } else {
-              KALDI_WARN << "Cannot find speaker vector for " << utt
-                         << " (skipping this utterance).";
-              continue;
-            }
-          }
           bool pad_input = true;
           DecodableAmNnetParallel *nnet_decodable = new DecodableAmNnetParallel(
               trans_model, am_nnet,
               new CuMatrix<BaseFloat>(features),
-              new CuVector<BaseFloat>(spk_info),
               pad_input, acoustic_scale);
 
           LatticeFasterDecoder *decoder = new LatticeFasterDecoder(*decode_fst,
@@ -183,21 +165,10 @@ int main(int argc, char *argv[]) {
         LatticeFasterDecoder *decoder =
             new LatticeFasterDecoder(config, fst_reader.Value().Copy());
 
-        Vector<BaseFloat> spk_info;
-        if (spkvecs_reader.IsOpen()) {
-          if (spkvecs_reader.HasKey(utt)) {
-            spk_info = spkvecs_reader.Value(utt);
-          } else {
-            KALDI_WARN << "Cannot find speaker vector for " << utt
-                       << " (skipping this utterance).";
-            continue;
-          }
-        }
         bool pad_input = true;
         DecodableAmNnetParallel *nnet_decodable = new DecodableAmNnetParallel(
             trans_model, am_nnet,
             new CuMatrix<BaseFloat>(features),
-            new CuVector<BaseFloat>(spk_info),
             pad_input, acoustic_scale);
 
         DecodeUtteranceLatticeFasterClass *task =

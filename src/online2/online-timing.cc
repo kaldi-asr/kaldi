@@ -61,6 +61,10 @@ void OnlineTimer::WaitUntil(double cur_utterance_length) {
   utterance_length_ = cur_utterance_length;
 }
 
+double OnlineTimer::Elapsed() {
+  return timer_.Elapsed() + waited_;
+}
+
 void OnlineTimer::OutputStats(OnlineTimingStats *stats) {
   double processing_time = timer_.Elapsed() + waited_,
       wait_time = processing_time - utterance_length_;

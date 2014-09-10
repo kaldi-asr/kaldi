@@ -20,7 +20,6 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
-#include "nnet2/nnet-randomize.h"
 #include "nnet2/nnet-example-functions.h"
 
 int main(int argc, char *argv[]) {

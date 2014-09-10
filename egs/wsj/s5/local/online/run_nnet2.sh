@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# This is as the _a experiments but using the extract_ivectors_online2 script.
-#
+# This is our online neural net build.
+# After this you can do discriminative training with run_nnet2_discriminative.sh.
 
 . cmd.sh
 
@@ -149,6 +149,22 @@ if [ $stage -le 9 ]; then
     done
   done
 fi
+
+if [ $stage -le 10 ]; then
+  # this version of the decoding treats each utterance separately
+  # without carrying forward speaker information.  By setting --online false we
+  # let it estimate the iVector from the whole utterance; it's then given to all
+  # frames of the utterance.  So it's not really online.
+  for lm_suffix in tgpr bd_tgpr; do
+    graph_dir=exp/tri4b/graph_${lm_suffix}
+    for year in eval92 dev93; do
+      steps/online/nnet2/decode.sh --cmd "$decode_cmd" --nj 8 \
+        --per-utt true --online false \
+        "$graph_dir" data/test_${year} ${dir}_online/decode_${lm_suffix}_${year}_utt_offline || exit 1;
+    done
+  done
+fi
+
 
 
 exit 0;

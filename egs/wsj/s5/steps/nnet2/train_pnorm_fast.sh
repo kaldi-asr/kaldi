@@ -187,7 +187,6 @@ lda_dim=$(cat $dir/lda_dim) || exit 1;
 
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
-  [ ! -z $spk_vecs_dir ] && egs_opts="$egs_opts --spk-vecs-dir $spk_vecs_dir";
   steps/nnet2/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --samples-per-iter $samples_per_iter \
       --num-jobs-nnet $num_jobs_nnet --stage $get_egs_stage \

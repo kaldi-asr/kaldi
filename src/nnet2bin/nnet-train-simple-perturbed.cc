@@ -20,7 +20,6 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
-#include "nnet2/nnet-randomize.h"
 #include "nnet2/train-nnet-perturbed.h"
 #include "nnet2/am-nnet.h"
 
@@ -34,17 +33,16 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Train the neural network parameters with backprop and stochastic\n"
-        "gradient descent using minibatches.  The training frames and labels\n"
-        "are read via a pipe from nnet-randomize-frames.  This is as nnet-train-simple\n"
-        "but implements perturbed training (see src/nnet2/train-nnet-perturbed.h for\n"
-        "details)\n"
+        "gradient descent using minibatches.  As nnet-train-simple, but\n"
+        "perturbs the input features by going a certain distance down the\n"
+        "backprop-ed gradient.  Can be helpful for small datasets.\n"
         "\n"
         "Usage:  nnet-train-simple-perturbed [options] <model-in> <training-examples-in> <model-out>\n"
         "note: the option --within-covar=<file> is needed\n"
         "\n"
         "e.g.:\n"
-        "nnet-randomize-frames [args] | nnet-train-simple-perturbed \\\n"
-        " --within-covar=within.spmat --target-objf-change=0.2 1.nnet ark:- 2.nnet\n";
+        "nnet-train-simple-perturbed --within-covar=within.spmat --target-objf-change=0.2 \\\n"
+        "  1.nnet ark:1.1.egs 2.nnet\n";
     
     bool binary_write = true;
     bool zero_stats = true;

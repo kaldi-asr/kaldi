@@ -20,7 +20,6 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
-#include "nnet2/nnet-randomize.h"
 #include "nnet2/train-nnet.h"
 #include "nnet2/am-nnet.h"
 
@@ -67,17 +66,24 @@ int main(int argc, char *argv[]) {
 
     for (; !example_reader.Done(); example_reader.Next()) {
       const NnetExample &eg = example_reader.Value();
-      Matrix<BaseFloat> input_frames(eg.input_frames);
-      int32 start_dim = eg.left_context - left_context;
-      SubMatrix<BaseFloat> cpu_input_block(input_frames,
-                                           start_dim, context,
-                                           0, eg.input_frames.NumCols());
-      CuMatrix<BaseFloat> input_block(cpu_input_block);
-      CuMatrix<BaseFloat> output_block(1, nnet.OutputDim());
-      CuVector<BaseFloat> spk_info(eg.spk_info);
+      int32 start_offset = eg.left_context - left_context;
+      int32 basic_dim = eg.input_frames.NumCols(),
+          spk_dim = eg.spk_info.Dim(), dim = basic_dim + spk_dim;
+      Matrix<BaseFloat> input_frames(eg.input_frames),
+          input_block(context, dim);
+      input_block.Range(0, context, 0, basic_dim).CopyFromMat(
+          input_frames.Range(start_offset, context, 0, basic_dim));
+      if (spk_dim != 0) {
+        input_block.Range(0, context, basic_dim, spk_dim).CopyRowsFromVec(
+            eg.spk_info);
+      }
+      CuMatrix<BaseFloat> gpu_input_block;
+      gpu_input_block.Swap(&input_block);
+      CuMatrix<BaseFloat> gpu_output_block(1, nnet.OutputDim());
+      
       bool pad_input = false;
-      NnetComputation(nnet, input_block, spk_info, pad_input, &output_block);
-      writer.Write("global", Matrix<BaseFloat>(output_block));
+      NnetComputation(nnet, gpu_input_block, pad_input, &gpu_output_block);
+      writer.Write("global", Matrix<BaseFloat>(gpu_output_block));
       num_egs++;
     }
     

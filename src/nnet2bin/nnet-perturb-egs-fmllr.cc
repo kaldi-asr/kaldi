@@ -21,7 +21,7 @@
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
 #include "transform/transform-common.h"
-#include "nnet2/nnet-randomize.h"
+#include "nnet2/nnet-example-functions.h"
 
 namespace kaldi {
 namespace nnet2 {

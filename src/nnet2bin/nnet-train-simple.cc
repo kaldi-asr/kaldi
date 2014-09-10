@@ -20,7 +20,6 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
-#include "nnet2/nnet-randomize.h"
 #include "nnet2/train-nnet.h"
 #include "nnet2/am-nnet.h"
 
@@ -34,15 +33,13 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Train the neural network parameters with backprop and stochastic\n"
-        "gradient descent using minibatches.  The training frames and labels\n"
-        "are read via a pipe from nnet-randomize-frames.  This version of the\n"
-        "training program does not update the learning rate, but uses\n"
-        "the learning rates stored in the neural nets.\n"
+        "gradient descent using minibatches.  Training examples would be\n"
+        "produced by nnet-get-egs.\n"
         "\n"
         "Usage:  nnet-train-simple [options] <model-in> <training-examples-in> <model-out>\n"
         "\n"
         "e.g.:\n"
-        "nnet-randomize-frames [args] | nnet-train-simple 1.nnet ark:- 2.nnet\n";
+        "nnet-train-simple 1.nnet ark:1.egs 2.nnet\n";
     
     bool binary_write = true;
     bool zero_stats = true;

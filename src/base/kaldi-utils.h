@@ -122,6 +122,7 @@ template<> class KaldiCompileTimeAssert<true> {
                 && !std::numeric_limits<F>::is_integer>::Check()
 
 #ifdef _MSC_VER
+#include <stdio.h>
 #define unlink _unlink
 #else
 #include <unistd.h>

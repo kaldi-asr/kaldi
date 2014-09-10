@@ -27,6 +27,8 @@ posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
                     # used when training the iVector extractor, but more important
                     # that this match the value used when you do real online decoding
                     # with the neural nets trained with these iVectors.
+compress=true       # If true, compress the features on disk (lossy compression, as used
+                    # for feature files.)
 
 # End configuration section.
 
@@ -85,7 +87,8 @@ if [ $stage -le 0 ]; then
   $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
     gmm-global-get-post --n=$num_gselect --min-post=$min_post $srcdir/final.dubm \
       "$gmm_feats" ark:- \| scale-post ark:- $posterior_scale ark:- \| \
-    ivector-extract-online --ivector-period=$ivector_period $srcdir/final.ie "$feats" ark,s,cs:- \
+    ivector-extract-online --ivector-period=$ivector_period $srcdir/final.ie "$feats" ark,s,cs:- ark:- \| \
+    copy-feats --compress=$compress ark:- \
       ark,scp,t:$dir/ivector_online.JOB.ark,$dir/ivector_online.JOB.scp || exit 1;
 fi
 

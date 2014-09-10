@@ -79,7 +79,6 @@ void UnitTestNnetDecodable() {
 
   DecodableAmNnet offline_decodable(trans_model, am_nnet,
                                     CuMatrix<BaseFloat>(input_feats),
-                                    CuVector<BaseFloat>(),
                                     opts.pad_input,
                                     opts.acoustic_scale);
 

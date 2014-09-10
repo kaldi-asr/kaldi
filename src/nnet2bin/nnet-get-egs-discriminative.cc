@@ -20,7 +20,6 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
-#include "nnet2/nnet-randomize.h"
 #include "nnet2/nnet-example-functions.h"
 #include "nnet2/am-nnet.h"
 
@@ -45,17 +44,11 @@ int main(int argc, char *argv[]) {
         "nnet-get-egs-discriminative --acoustic-scale=0.1 \\\n"
         "  1.mdl '$feats' 'ark,s,cs:gunzip -c ali.1.gz|' 'ark,s,cs:gunzip -c lat.1.gz|' ark:1.degs\n";
     
-    std::string spk_vecs_rspecifier, utt2spk_rspecifier;
-    
     SplitDiscriminativeExampleConfig split_config;
     
     ParseOptions po(usage);
-    po.Register("spk-vecs", &spk_vecs_rspecifier, "Rspecifier for speaker vectors "
-                "(if used)");
-    po.Register("utt2spk", &utt2spk_rspecifier, "Rspecifier for "
-                "speaker-to-utterance map (relevant if --spk-vecs option used)");
     split_config.Register(&po);
-
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 5) {
@@ -81,17 +74,15 @@ int main(int argc, char *argv[]) {
 
     int32 left_context = am_nnet.GetNnet().LeftContext(),
         right_context = am_nnet.GetNnet().RightContext();
+
     
     // Read in all the training files.
     SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
     RandomAccessInt32VectorReader ali_reader(ali_rspecifier);
     RandomAccessCompactLatticeReader clat_reader(clat_rspecifier);
-    RandomAccessBaseFloatVectorReaderMapped vecs_reader(
-        spk_vecs_rspecifier, utt2spk_rspecifier);
     DiscriminativeNnetExampleWriter example_writer(examples_wspecifier);
     
     int32 num_done = 0, num_err = 0;
-    int32 spk_dim = -1;
     int64 examples_count = 0; // used in generating id's.
     
     SplitExampleStats stats; // diagnostic.
@@ -115,33 +106,11 @@ int main(int argc, char *argv[]) {
       if (clat.Properties(fst::kTopSorted, true) == 0) {
         TopSort(&clat);
       }      
-      
-      Vector<BaseFloat> spk_info;
-      
-      if (spk_vecs_rspecifier != "") {
-        if (!vecs_reader.HasKey(key)) {
-          KALDI_WARN << "No speaker vector for key " << key;
-          num_err++;
-          continue;
-        } else {
-          spk_info = vecs_reader.Value(key);
-        }
-        if (spk_dim == -1) spk_dim = spk_info.Dim();
-        else if (spk_info.Dim() != spk_dim) {
-          KALDI_WARN << "Invalid dimension of speaker vector, "
-                     << spk_info.Dim() << " (expected "
-                     << spk_dim << " ).";
-          num_err++;
-          continue;
-        }
-      }
-
 
       BaseFloat weight = 1.0;
       DiscriminativeNnetExample eg;
 
-      if (!LatticeToDiscriminativeExample(alignment, spk_info, feats,
-                                          clat, weight,
+      if (!LatticeToDiscriminativeExample(alignment, feats, clat, weight,
                                           left_context, right_context, &eg)) {
         KALDI_WARN << "Error converting lattice to example.";
         num_err++;
@@ -151,7 +120,7 @@ int main(int argc, char *argv[]) {
       std::vector<DiscriminativeNnetExample> egs;
       SplitDiscriminativeExample(split_config, trans_model, eg,
                                  &egs, &stats);
-
+      
       KALDI_VLOG(2) << "Split lattice " << key << " into "
                     << egs.size() << " pieces.";
       for (size_t i = 0; i < egs.size(); i++) {
