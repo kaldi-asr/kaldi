@@ -54,14 +54,17 @@ namespace kaldi {
   setup our only aim is to demonstrate the internal code, and for now
   we don't provide any example programs that you could hook up to actual
   real-time audio capture; you would have to do that yourself.
+
+  We have decoding programs for GMM-based models (see next section) and for
+  neural net models (see section \ref online_decoding_nnet2).
+
+  \section GMM-based online decoding
  
   The program online2-wav-gmm-latgen-faster.cc is currently the primary example program
-  for the online-decoding setup.  This program is for GMM-based models.  It does
-  not support SGMMs or neural nets, we will add separate programs for those later.
-  It reads in whole wave files but internally it processes them chunk by chunk with
-  no dependency on the future.  In the example script egs/rm/s5/local/run_online_decoding.sh
+  for the GMM-based online-decoding setup.  It reads in whole wave files but internally it processes them chunk by chunk with
+  no dependency on the future.  In the example script egs/rm/s5/local/online/run_gmm.sh
   you can see an example script for how you build models suitable for this program
-  to use, and evaluate it.  The main purpose of program is to apply the online-decoding
+  to use, and evaluate it.  The main purpose of program is to apply the GMM-based online-decoding
   procedure within a typical batch-processing framework, so that you can easily
   evaluate word error rates.  We plan to add similar programs for SGMMs and DNNs.
   In order to actually do online decoding, you would have to modify this program.
@@ -201,7 +204,7 @@ namespace kaldi {
  we estimate fMLLR for a speaker, which by default will be two seconds into the
  first utterance.  
 
- \section online_decoding_models  Use of multiple models in online decoding
+ \section online_decoding_models  Use of multiple models in GMM-based online decoding
 
    In the online decoding decode for GMMs in online-gmm-decoding.h, up to three 
   models can be supplied.  These are held in class OnlineGmmDecodingModels, which
@@ -216,6 +219,48 @@ namespace kaldi {
   than using a discriminatively trained model, although this probably makes little
   difference and you would lose little (and save some memory) by using the discriminatively
   trained model for this purpose. 
+
+  
+
+ \section online_decoding_nnet2  Neural net based online decoding with iVectors
+
+  Our best online-decoding setup, which we recommend should be used, is the neural
+ net based setup.  The adaptation philosphy is to give the neural net un-adapted
+ and non-mean-normalized features (MFCCs, in our example recipes), and also to give
+ it an iVector.  An iVector is a vector of dimension several hundred (one or two hundred,
+ in this particular context) which represents the speaker properties.  For more information
+ on this the reader can look at the speaker identification literature.  Our idea is that
+ the iVector gives the neural net as much as it needs to know about the speaker properties.
+ This has proved quite useful.  The iVector is estimated in a left-to-right way, meaning
+ that at a certain time t, it sees input from time zero to t.   It also sees information
+ from previous utterances of the current speaker, if available.  The iVector estimation is
+ Maximum Likelihood, involving Gaussian Mixture Models.
+
+ If pitch is used (e.g. for tonal languages), we don't include it in the features used for
+ iVector estimation, in order to simplify things; we just include it in the features given
+ to the neural network.  We don't yet have example scripts for the online-neural-net decoding
+ for tonal languages; it is still being debugged.
+
+ The neural nets in our example scripts for online decoding are p-norm neural networks, typically
+ trained in parallel on several GPUs.  We have these example scripts for several different
+ example setups, e.g. in egs/rm/s5, egs/wsj/s5, egs/swbd/s5b,  and egs/fisher_english/s5.
+ The top-level example script is always called local/online/run_nnet2.sh.  In the case of the
+ Resource Management recipe there is also a script local/online/run_nnet2_wsj.sh.  This demonstrates
+ how to take a larger neural net trained on out-of-domain speech with the same sampling rate (in 
+ this example, WSJ), and retrain it on in-domain data.  In this way we obtained our best-ever
+ results on RM.
+
+ We are currently working on example scripts for discriminative training for this setup.
+
+  \subsection Example for using already-built online-nnet2 models
+  
+ In this section we will explain how to download already-build online-nnet2 models from www.kaldi-asr.org
+ and evaluate them on your own data.
+
+ (todo)
+
+ <!-- Wei, put your content here!! -->
+ 
 
 
 */
