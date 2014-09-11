@@ -84,7 +84,41 @@ if [ $stage -le 4 ]; then
       graph_dir=exp/tri4b/graph_${lm_suffix}
       for year in eval92 dev93; do
         steps/online/nnet2/decode.sh --cmd "$decode_cmd" --nj 8 --iter smbr_epoch${epoch} \
-          "$graph_dir" data/test_${year} ${srcdir}_online/decode_${lm_suffix}_${year} || exit 1;
+          "$graph_dir" data/test_${year} ${srcdir}_online/decode_${lm_suffix}_${year}_smbr_epoch${epoch} || exit 1;
+      done
+    done
+  done
+fi
+
+if [ $stage -le 5 ]; then
+  if $use_gpu; then
+    steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" --learning-rate 0.00002 \
+      --use-preconditioning true \
+      --online-ivector-dir exp/nnet2_online/ivectors2_train_si284 \
+      --num-jobs-nnet 4  --num-threads $num_threads --parallel-opts "$gpu_opts" \
+        data/train_si284 data/lang \
+      ${srcdir}_ali ${srcdir}_denlats ${srcdir}/final.mdl ${srcdir}_smbr_precon
+  fi
+fi
+
+if [ $stage -le 6 ]; then
+  # we'll do the decoding as 'online' decoding by using the existing
+  # _online directory but with extra models copied to it.
+  for epoch in 1 2 3 4; do
+    cp ${srcdir}_smbr_precon/epoch${epoch}.mdl ${srcdir}_online/smbr_precon_epoch${epoch}.mdl
+  done
+
+
+  for epoch in 1 2 3 4; do
+    # do the actual online decoding with iVectors, carrying info forward from 
+    # previous utterances of the same speaker.
+    # We just do the bd_tgpr decodes; otherwise the number of combinations 
+    # starts to get very large.
+    for lm_suffix in bd_tgpr; do
+      graph_dir=exp/tri4b/graph_${lm_suffix}
+      for year in eval92 dev93; do
+        steps/online/nnet2/decode.sh --cmd "$decode_cmd" --nj 8 --iter smbr_precon_epoch${epoch} \
+          "$graph_dir" data/test_${year} ${srcdir}_online/decode_${lm_suffix}_${year}_epoch${epoch}_smbr_precon || exit 1;
       done
     done
   done
