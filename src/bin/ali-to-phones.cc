@@ -32,7 +32,8 @@ int main(int argc, char *argv[]) {
         "Convert model-level alignments to phone-sequences (in integer, not text, form)\n"
         "Usage:  ali-to-phones  [options] <model> <alignments-rspecifier> <phone-transcript-wspecifier>\n"
         "e.g.: \n"
-        " ali-to-phones 1.mdl ark:1.ali ark:phones.tra\n";
+        " ali-to-phones 1.mdl ark:1.ali ark:phones.tra\n"
+        "See also: show-alignments lattice-align-phones\n";
     ParseOptions po(usage);
     bool per_frame = false;
     bool write_lengths = false;
