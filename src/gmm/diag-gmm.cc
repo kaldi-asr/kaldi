@@ -4,7 +4,7 @@
 //                      Saarland University (Author: Arnab Ghoshal);
 //                      Georg Stemmer;  Jan Silovsky
 //           2012       Arnab Ghoshal
-//           2013       Johns Hopkins University (author: Daniel Povey)
+//           2013-2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -939,6 +939,30 @@ void DiagGmm::Generate(VectorBase<BaseFloat> *output) {
         mean = mean_invvar(d) / inv_var(d);
     (*output)(d) = mean + RandGauss() * stddev;
   }
+}
+
+DiagGmm::DiagGmm(const GaussClusterable &gc,
+                 BaseFloat var_floor): valid_gconsts_(false) {
+  Vector<BaseFloat> x (gc.x_stats());
+  Vector<BaseFloat> x2 (gc.x2_stats());
+  BaseFloat count =  gc.count();
+  KALDI_ASSERT(count > 0.0);
+  this->Resize(1, x.Dim());
+  x.Scale(1.0/count);
+  x2.Scale(1.0/count);
+  x2.AddVec2(-1.0, x);  // subtract mean^2.
+  x2.ApplyFloor(var_floor);
+  x2.InvertElements();  // get inv-var.
+  KALDI_ASSERT(x2.Min() > 0);
+  Matrix<BaseFloat> mean(1, x.Dim());
+  mean.Row(0).CopyFromVec(x);
+  Matrix<BaseFloat> inv_var(1, x.Dim());
+  inv_var.Row(0).CopyFromVec(x2);
+  this->SetInvVarsAndMeans(inv_var, mean);
+  Vector<BaseFloat> weights(1);
+  weights(0) = 1.0;
+  this->SetWeights(weights);
+  this->ComputeGconsts();
 }
 
 }  // End namespace kaldi

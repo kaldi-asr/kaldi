@@ -43,8 +43,12 @@ int main(int argc, char *argv[]) {
       
     ParseOptions po(usage);
     BaseFloat lm_scale = 1.0;
+    int32 num_states_cache = 50000;
     
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model costs; frequently 1.0 or -1.0");
+    po.Register("num-states-cache", &num_states_cache,
+                "Number of states we cache when mapping LM FST to lattice type. "
+                "More -> more memory but faster.");
     
     po.Read(argc, argv);
 
@@ -69,9 +73,10 @@ int main(int argc, char *argv[]) {
     // mapped_fst is the LM fst interpreted using the LatticeWeight semiring,
     // with all the cost on the first member of the pair (since it's a graph
     // weight).
+    fst::CacheOptions cache_opts(true, num_states_cache);    
     fst::StdToLatticeMapper<BaseFloat> mapper;
     fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
-        lm_fst(*std_lm_fst, mapper);
+        lm_fst(*std_lm_fst, mapper, cache_opts);
     delete std_lm_fst;
     
     // The next fifteen or so lines are a kind of optimization and
