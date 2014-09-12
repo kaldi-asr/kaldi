@@ -50,7 +50,6 @@ train_tool=        # optionally change the training tool
 frame_weights=     # per-frame weights for gradient weighting
 
 # OTHER
-use_gpu_id= # manually select GPU id to run on, (-1 disables GPU)
 seed=777    # seed value used for training data shuffling and initialization
 # End configuration.
 
@@ -97,10 +96,15 @@ alidir=$4
 alidir_cv=$5
 dir=$6
 
-silphonelist=`cat $lang/phones/silence.csl` || exit 1;
+# Using alidir for supervision (default)
+if [ -z "$labels" ]; then 
+  silphonelist=`cat $lang/phones/silence.csl` || exit 1;
+  for f in $alidir/final.mdl $alidir/ali.1.gz $alidir_cv/ali.1.gz; do
+    [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
+  done
+fi
 
-
-for f in $alidir/final.mdl $alidir/ali.1.gz $alidir_cv/ali.1.gz $data/feats.scp $data_cv/feats.scp; do
+for f in $data/feats.scp $data_cv/feats.scp; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
