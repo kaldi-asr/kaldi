@@ -1005,21 +1005,16 @@ static void _cuda_matrix_add_elements(Real *data, MatrixDim dim, Real alpha, Mat
   }
 }
 
-
 template<typename Real>
 __global__
 static void _matrix_lookup(const Real *data, MatrixDim dim,
                            const Int32Pair *indices,
                            int indices_size, Real *output) {
-  int row = blockIdx.x * blockDim.x + threadIdx.x;
-  int col = blockIdx.y * blockDim.y + threadIdx.y;
-  if (row >= dim.rows || col >= dim.cols)
-    return;
-  for (int i = 0; i < indices_size; ++i) {
-    if (row == indices[i].first && col == indices[i].second) {
-      output[i] = data[row * dim.stride + col];
-    }
-  }
+  int ind = blockIdx.x * blockDim.x + threadIdx.x;
+  if (ind >= indices_size) return;
+  int data_ind = indices[ind].first * dim.stride + indices[ind].second;
+  output[ind] = data[data_ind];
+
 }
 
 template<typename Real>
