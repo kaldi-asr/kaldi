@@ -68,7 +68,10 @@ if [ $stage -le 3 ]; then
   fi
   # decreasing the learning rate by a factor of 2, due to having so much data, 
   # and decreasing the number of epochs for the same reason.
+  # the io-opts option is to have more get_egs (and similar) jobs running at a time,
+  # since we're using 4 disks.
   steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" --learning-rate 0.00001 \
+    --io-opts "-pe smp 10" \
     --num-epochs 2 \
     --use-preconditioning $use_preconditioning \
     --online-ivector-dir exp/nnet2_online/ivectors_train \
@@ -81,16 +84,16 @@ if [ $stage -le 4 ]; then
   # we'll do the decoding as 'online' decoding by using the existing
   # _online directory but with extra models copied to it.
   for epoch in 1 2; do
-    cp ${srcdir}_smbr/${epoch}.mdl ${srcdir}_online/smbr_epoch${epoch}.mdl
+    cp ${srcdir}_smbr/epoch${epoch}.mdl ${srcdir}_online/smbr_epoch${epoch}.mdl
   done
 
   for epoch in 1 2; do
     # do the actual online decoding with iVectors, carrying info forward from 
     # previous utterances of the same speaker.
-    steps/online/nnet2/decode.sh --cmd "$decode_cmd" --nj 8 --iter smbr_epoch${epoch} \
-       exp/tri5a/graph data/dev ${dir}_online/decode_dev || exit 1;
-    done
+    steps/online/nnet2/decode.sh --cmd "$decode_cmd" --nj 30 --iter smbr_epoch${epoch} \
+       exp/tri5a/graph data/dev ${srcdir}_online/decode_dev_smbr_epoch${epoch} || exit 1;
   done
 fi
 
 
+# for results, see the end of run_nnet2.sh

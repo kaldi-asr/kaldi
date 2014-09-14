@@ -165,3 +165,10 @@ exit 0;
  # be slightly better, to to more iVector right context; this is likely just noise.  The average
  # latency was reduced vs the baseline,
  #%WER 24.92 [ 9753 / 39141, 1423 ins, 2429 del, 5901 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev_utt_mc3/wer_11
+
+
+# The following results (obtained after ./run_nnet2_discriminative.sh was run), show
+# the effect of discriminative training.  After 2 epochs, we reduce the WER from 23.58 to 22.07.
+%WER 23.58 [ 9229 / 39141, 1382 ins, 2400 del, 5447 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev/wer_12
+%WER 22.16 [ 8675 / 39141, 1522 ins, 1886 del, 5267 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev_smbr_epoch1/wer_13
+%WER 22.07 [ 8637 / 39141, 1540 ins, 1873 del, 5224 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev_smbr_epoch2/wer_13

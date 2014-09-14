@@ -131,7 +131,7 @@ for job in $(seq $nj); do
    # the if (rand() % 2 == 0)
    awk -v max=$utts_per_spk_max '{ n=2; count=0;
       while(n<=NF) {
-        int_max=int(max)+ (rand() < (max-int(max))?1:0); print int_max; 
+        int_max=int(max)+ (rand() < (max-int(max))?1:0);
         nmax=n+int_max; count++; printf("%s-%06x", $1, count); 
         for (;n<nmax&&n<=NF; n++) printf(" %s", $n); print "";} }' \
     <$sdata/$job/spk2utt >$dir/spk2utt_fake/spk2utt.$job

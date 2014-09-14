@@ -229,11 +229,11 @@ if [ -z "$degs_dir" ] && [ -d $dir/degs/storage ]; then
     # is created.
   for x in $(seq $num_jobs_nnet); do
     for y in $(seq $nj); do
-      utils/create_data_link.pl $dir/degs/degs_orig.$x.$y
+      utils/create_data_link.pl $dir/degs/degs_orig.$x.$y.ark
     done
     for z in $(seq 0 $[$iters_per_epoch-1]); do
-      utils/create_data_link.pl $dir/degs/degs_tmp.$x.$z
-      utils/create_data_link.pl $dir/degs/degs.$x.$z
+      utils/create_data_link.pl $dir/degs/degs_tmp.$x.$z.ark
+      utils/create_data_link.pl $dir/degs/degs.$x.$z.ark
     done
   done
 fi
