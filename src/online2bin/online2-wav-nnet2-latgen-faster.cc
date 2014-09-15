@@ -253,8 +253,8 @@ int main(int argc, char *argv[]) {
         num_done++;
       }
     }
-
-    timing_stats.Print();
+    timing_stats.Print(online);
+    
     KALDI_LOG << "Decoded " << num_done << " utterances, "
               << num_err << " with errors.";
     KALDI_LOG << "Overall likelihood per frame was " << (tot_like / num_frames)

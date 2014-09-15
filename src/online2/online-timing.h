@@ -41,7 +41,10 @@ class OnlineTimer;
 class OnlineTimingStats {
  public:
   OnlineTimingStats();
-  void Print();
+  /// Here, if "online == false" we take into account that the setup was used in
+  /// not-really-online mode where the chunk length was the whole file.  We need
+  /// to change the way we interpret the stats and print results, in this case.
+  void Print(bool online = true);
  protected:
   friend class OnlineTimer;
   int32 num_utts_;
