@@ -28,7 +28,7 @@ stage=-4 #  This allows restarting after partway, when something when wrong.
 config=
 cmd=run.pl
 num_iters=15    # Number of iterations of training.
-num_utt_lvtln_init=400; # number of utterances (subset) to initialize
+num_utt_lvtln_init=400 # number of utterances (subset) to initialize
                         # LVTLN transform.  Not too critical.
 min_warp=0.85
 max_warp=1.25
@@ -123,8 +123,12 @@ if [ $stage -le -4 ]; then
   rm $dir/.error 2>/dev/null
   for c in $(seq 0 $[$num_classes-1]); do
     this_warp=$(perl -e "print ($min_warp + ($c*$warp_step));")
-    config_name=${base_feat_type}_config # e.g. mfcc_config or plp_config
-    this_config=$(eval echo \$$config_name)  #  e.g. conf/mfcc.conf or conf/plp.conf by default.
+    this_config=""
+    if [ "$base_feat_type" = "mfcc" ]; then
+      this_config="$mfcc_config"
+    else
+      this_config="$plp_config"
+    fi 
     $cmd $dir/log/compute_warped_feats.$c.log \
       $subset_feats \| compute-${base_feat_type}-feats --verbose=2 \
       --config=$this_config --vtln-warp=$this_warp ark:- ark:- \| \
@@ -138,7 +142,7 @@ if [ $stage -le -4 ]; then
 fi
 
 if ! utils/filter_scp.pl $dir/utt_subset $data/feats.scp | \
-  compare-feats --threshold=0.98 scp:-  ark:$dir/feats.$default_class.ark >&/dev/null; then
+  compare-feats --threshold=0.95 scp:-  ark:$dir/feats.$default_class.ark >&/dev/null; then
   echo "$0: features stored on disk differ from those computed with no warping."
   echo "    Possibly your feature type is wrong (--base-feat-type option)"
   exit 1;
