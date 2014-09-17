@@ -53,7 +53,8 @@ if [ $stage -le 3 ]; then
   # train the system on.  This version of the iVector-extraction script
   # pairs the utterances into twos (by default, see --utts-per-spk-max option) 
   # and treats each as one speaker.
-  steps/online/nnet2/extract_ivectors_online2.sh --cmd "$train_cmd" --nj 30 \
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
+    --utts-per-spk-max 2 \
     data/train_nodup exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_nodup2 || exit 1;
 fi
 

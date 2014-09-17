@@ -45,14 +45,14 @@ if [ $stage -le 1 ]; then
   # run at one time.
   steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
       --nj $nj --sub-split 40 --num-threads 6 --parallel-opts "-pe smp 6" \
-      --online-ivector-dir exp/nnet2_online/ivectors2_train_si284 \
+      --online-ivector-dir exp/nnet2_online/ivectors_train_si284 \
       data/train_si284 data/lang $srcdir ${srcdir}_denlats
 fi
 
 if [ $stage -le 2 ]; then
   if $use_gpu; then gpu_opt=yes; else gpu_opt=no; fi
   steps/nnet2/align.sh  --cmd "$decode_cmd $gpu_opts" \
-      --online-ivector-dir exp/nnet2_online/ivectors2_train_si284 \
+      --online-ivector-dir exp/nnet2_online/ivectors_train_si284 \
       --use-gpu $gpu_opt \
       --nj $nj data/train_si284 data/lang ${srcdir} ${srcdir}_ali
 fi
@@ -60,7 +60,7 @@ fi
 if [ $stage -le 3 ]; then
   if $use_gpu; then
     steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" --learning-rate 0.00002 \
-      --online-ivector-dir exp/nnet2_online/ivectors2_train_si284 \
+      --online-ivector-dir exp/nnet2_online/ivectors_train_si284 \
       --num-jobs-nnet 4  --num-threads $num_threads --parallel-opts "$gpu_opts" \
         data/train_si284 data/lang \
       ${srcdir}_ali ${srcdir}_denlats ${srcdir}/final.mdl ${srcdir}_smbr
@@ -94,7 +94,7 @@ if [ $stage -le 5 ]; then
   if $use_gpu; then
     steps/nnet2/train_discriminative.sh --cmd "$decode_cmd" --learning-rate 0.00002 \
       --use-preconditioning true \
-      --online-ivector-dir exp/nnet2_online/ivectors2_train_si284 \
+      --online-ivector-dir exp/nnet2_online/ivectors_train_si284 \
       --num-jobs-nnet 4  --num-threads $num_threads --parallel-opts "$gpu_opts" \
         data/train_si284 data/lang \
       ${srcdir}_ali ${srcdir}_denlats ${srcdir}/final.mdl ${srcdir}_smbr_precon

@@ -61,7 +61,8 @@ if [ $stage -le 3 ]; then
   # pairs the utterances into twos (by default, see --utts-per-spk-max option) 
   # and treats each of these pairs as one speaker.
   # Note that these are extracted 'online'.
-  steps/online/nnet2/extract_ivectors_online2.sh --cmd "$train_cmd" --nj 60 \
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 60 \
+    --utts-per-spk-max 2 \
     data/train exp/nnet2_online/extractor $ivectordir || exit 1;
 fi
 

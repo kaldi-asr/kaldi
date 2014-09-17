@@ -109,7 +109,8 @@ fi
 
 # In order to train the combined model, we'll need to dump iVectors.
 if [ $stage -le 6 ]; then
-  steps/online/nnet2/extract_ivectors_online2.sh --cmd "$train_cmd" --nj 10 \
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 10 \
+    --utts-per-spk-max 2 \
     data/train $ivector_src exp/nnet2_online_wsj/ivectors || exit 1;
 fi
 
