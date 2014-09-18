@@ -1,6 +1,16 @@
 #!/usr/bin/perl -w
+# Copyright 2014 David Snyder
+# Apache 2.0.
+#
+# This script produces a vector used by logistic-regression-copy to 
+# rescale the logistic regression model which reduces bias due to unbalanced
+# classes. This script relies only on the distribution of the test data;
+# alternatively, a uniform prior can be used (see run_logistic_regression.sh). 
 
-my ($train_file, $test_file, $lang_file, $priors_file) = @ARGV;
+# The scale parameter controls how sensitive the priors are to the
+# distribution of the test data. Typically this ranges from 0.5
+# to 1.0. Smaller values are less reliant on the test data distribution.
+my ($train_file, $test_file, $lang_file, $scale, $priors_file) = @ARGV;
 open(UTT2LANG_TRAIN, "<$train_file") or die "no utt2lang training file";
 
 %train_count = ();
@@ -60,8 +70,8 @@ while(<LANGUAGES>) {
 
 $priors = " [ ";
 foreach $lang (@idx_to_lang) {
-  $ratio = (1.0*$test_count{$lang}) / $train_count{$lang};
-  $priors .= "$ratio ";
+ $ratio = ((1.0*$test_count{$lang}) / $train_count{$lang})**($scale);
+ $priors .= "$ratio ";
 }
 
 $priors .= " ]";

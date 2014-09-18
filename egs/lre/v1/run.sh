@@ -148,4 +148,15 @@ lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
 lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
    exp/extractor_2048 data/lre07 exp/ivectors_lre07
 
-run_logistic_regression.sh
+lid/run_logistic_regression.sh --config conf/logistic-regression.conf \
+  --prior-scale 0.75
+
+# Training error-rate
+# ER (%): 6.65
+
+# General LR 2007 closed-set eval
+local/lre07_logistic_regression_eval.sh \
+  exp/ivectors_train/logistic_regression_rebalanced
+# Duration (sec):    avg      3     10     30
+#        ER (%):  28.50  49.10  24.52  11.87
+#     C_avg (%):  15.16  27.96  12.86   4.65
