@@ -9,13 +9,14 @@
 . path.sh
 set -e
 
-config=conf/logistic-regression.conf
 train_dir=exp/ivectors_train
 test_dir=exp/ivectors_lre07
 model_dir=exp/ivectors_train
 train_utt2lang=data/train/utt2lang
 test_utt2lang=data/lre07/utt2lang
 prior_scale=1.0
+use_log_posteriors=true
+conf=conf/logistic-regression.conf
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
@@ -33,7 +34,6 @@ test_ivectors="ark:ivector-normalize-length \
          scp:$test_dir/ivector.scp ark:- |";
 classes="ark:lid/remove_dialect.pl $train_utt2lang \
          | utils/sym2int.pl -f 2 $model_dir/languages.txt - |"
-
 # A uniform prior.
 #utils/sym2int.pl -f 2 $model_dir/languages.txt \
 #  <(lid/remove_dialect.pl $train_utt2lang) | \
@@ -51,15 +51,15 @@ lid/balance_priors_to_test.pl \
     $prior_scale \
     $model_dir/priors.vec
 
-logistic-regression-train --config=$config "$train_ivectors" \
+logistic-regression-train --config=$conf "$train_ivectors" \
                           "$classes" $model \
    2>$model_dir/log/logistic_regression.log
 
 logistic-regression-copy --scale-priors=$model_dir/priors.vec \
    $model $model_rebalanced
 
-logistic-regression-eval $model "$train_ivectors" \
-  ark,t:$train_dir/posteriors
+logistic-regression-eval --use-log-posteriors=$use_log_posteriors $model \
+  "$train_ivectors" ark,t:$train_dir/posteriors
 
 cat $train_dir/posteriors | \
   awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) 
@@ -74,8 +74,8 @@ compute-wer --mode=present --text ark:<(lid/remove_dialect.pl $train_utt2lang) \
   ark:$train_dir/output
 
 # Evaluate on test data. Most likely a NIST LRE.
-logistic-regression-eval $model "$test_ivectors" \
-  ark,t:$test_dir/posteriors
+logistic-regression-eval --use-log-posteriors=$use_log_posteriors $model_rebalanced \
+  "$test_ivectors" ark,t:$test_dir/posteriors
 
 cat $test_dir/posteriors | \
   awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) 

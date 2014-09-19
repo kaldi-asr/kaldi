@@ -12,6 +12,7 @@ set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
+if [ 0 = 1 ]; then
 # Training data sources
 local/make_sre_2008_train.pl /export/corpora5/LDC/LDC2011S05 data
 local/make_callfriend.pl /export/corpora/LDC/LDC96S60 vietnamese data
@@ -148,9 +149,8 @@ lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
 lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
    exp/extractor_2048 data/lre07 exp/ivectors_lre07
 
-lid/run_logistic_regression.sh --config conf/logistic-regression.conf \
-  --prior-scale 0.75
-
+lid/run_logistic_regression.sh --prior-scale 0.75 \
+  --conf conf/logistic-regression.conf 
 # Training error-rate
 # ER (%): 6.65
 
