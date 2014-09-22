@@ -739,6 +739,7 @@ gst_online_gmm_decode_faster_loop(GstOnlineGmmDecodeFaster * filter) {
   GST_DEBUG_OBJECT(filter,  "starting decoding loop");
 
   bool partial_res = false;
+  filter->decoder_->InitDecoding();
   while (1) {
     OnlineFasterDecoder::DecodeState dstate = filter->decoder_->Decode(&decodable);
 
