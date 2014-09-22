@@ -1,0 +1,1462 @@
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/aprules2.c ./include/aprules2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/aprules2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/aprules2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -6,7 +6,7 @@
+ 
+ /*****************************************************************/
+ /*                                                               */
+-/*  char *apply_rules2(pb,pa,rset,perr)                          */
++/*  Char *apply_rules2(pb,pa,rset,perr)                          */
+ /*  Applies RULESET2 *rset to string pa, producing string pb.    */
+ /*  Returns pb.                                                  */
+ /*  If rset == NULL, just copies over the input string.          */
+@@ -14,9 +14,9 @@
+ /*     11 means "invalid rule format"                            */
+ /*                                                               */
+ /*****************************************************************/
+-char *apply_rules2(char *pb, char *pa, RULESET2 *rset, int *perr)
+- {char *proc = "apply_rules2";
+-  char *pi, *pbx;
++Char *apply_rules2(Char *pb, Char *pa, RULESET2 *rset, int *perr)
++ {Char *proc = "apply_rules2";
++  Char *pi, *pbx;
+   int irule, key_char, jrule;
+   boolean hit;
+ /* code: */
+@@ -76,7 +76,7 @@
+      if (!hit)
+        {if (rset->copy_no_hit)
+           {pbx = pb + strlen(pb);
+-           *pbx = *pi; /* copy char from pi to end of pb */
++           *pbx = *pi; /* copy Char from pi to end of pb */
+            *(++pbx) = '\0';
+           }
+         pi += 1;
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/atobool.c ./include/atobool.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/atobool.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/atobool.c	2014-09-19 14:01:52.000000000 -0400
+@@ -4,7 +4,7 @@
+ #include "stdcenvf.h" /* std compile environment for functions */
+ #endif
+ 
+- boolean atobool(char *s)
++ boolean atobool(Char *s)
+          
+  /*********************************************/
+  /*  Returns T if string s is "T" or "TRUE"   */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/boolpr1.c ./include/boolpr1.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/boolpr1.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/boolpr1.c	2014-09-19 14:01:52.000000000 -0400
+@@ -6,10 +6,10 @@
+ 
+  /**********************************************************************/
+  /*                                                                    */
+- /*   char *bool_print(x)                                              */
++ /*   Char *bool_print(x)                                              */
+  /*                                                                    */
+  /* Returns the printing equivalent of the boolean *x.                 */
+  /*                                                                    */
+  /**********************************************************************/
+ 
+- char *bool_print(boolean x) {if (x) return "T"; else return "F";}
++ Char *bool_print(boolean x) {if (x) return "T"; else return "F";}
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/calloc2.c ./include/calloc2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/calloc2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/calloc2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -4,11 +4,11 @@
+ #include "stdcenvf.h" /* std compile environment for functions */
+ #endif
+ 
+- void *calloc_safe(size_t nobj, size_t size, char *calling_proc)
++ void *calloc_safe(size_t nobj, size_t size, Char *calling_proc)
+  /*************************************************************/
+  /*  Like calloc(nobj,size) except fatal err if calloc fails. */
+  /*************************************************************/
+- {char *proc = "calloc_safe";
++ {Char *proc = "calloc_safe";
+   void *x;
+ if (db_level > 3) printf("%sdoing %s\n",pdb,proc);
+   x = calloc(nobj,size);
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/dbpkg1.c ./include/dbpkg1.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/dbpkg1.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/dbpkg1.c	2014-09-19 14:01:52.000000000 -0400
+@@ -17,7 +17,7 @@
+ /* is *proc, if <level> < <db_level>. Uses global  */
+ /* *pdb for header string.                         */
+ /***************************************************/
+- void db_enter_msg(char *proc, int level)
++ void db_enter_msg(Char *proc, int level)
+ {if (db_level > level) {
+    pdb = strcat(pdb,"  ");
+    printf("%sentering %s.\n",pdb,proc);
+@@ -30,7 +30,7 @@
+ /* is *proc, if <level> < <db_level>. Uses global  */
+ /* *pdb for header string.                         */
+ /***************************************************/
+- void db_leave_msg(char *proc, int level)
++ void db_leave_msg(Char *proc, int level)
+ {if (db_level > level) {
+    printf("%sleaving  %s.\n",pdb,proc);
+    pdb = strcutr(pdb,2);
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/del_eol.c ./include/del_eol.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/del_eol.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/del_eol.c	2014-09-19 14:01:52.000000000 -0400
+@@ -10,8 +10,8 @@
+  /* from the line *s.                           */
+  /*  returns s.                                 */
+  /***********************************************/
+- char *del_eol(char *ps)
+- {char *p1;
++ Char *del_eol(Char *ps)
++ {Char *p1;
+   p1 = ps + strlen(ps) - 1;
+   while ( (p1 >= ps) && (*p1 == '\n') ) {*p1 = '\0'; p1--;};
+   return ps;
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/expenv.c ./include/expenv.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/expenv.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/expenv.c	2014-09-19 14:01:52.000000000 -0400
+@@ -6,19 +6,19 @@
+ 
+   /*****************************************************************/
+   /*                                                               */
+-  /*  char *expenv(s,slength)                                      */
++  /*  Char *expenv(s,slength)                                      */
+   /*  Expands environment variables embedded in string *s.         */
+   /*  Doesn't expand beyond s[slength].                            */
+   /*  Uses local buffers of length LONG_LINE.                      */
+   /*  Returns pointer to s so you can use it like s = expenv(s,x); */
+   /*                                                               */
+   /*****************************************************************/
+-  char *expenv(char *s, int slength)
+-   {char *proc = "expenv";
+-    char *pa, *pb, *pend;
+-    char sxx[LONG_LINE], *sx = &sxx[0];
+-    char vxx[LONG_LINE], *vname = &vxx[0];
+-    char sex[LONG_LINE], *s_exp = &sex[0];
++  Char *expenv(Char *s, int slength)
++   {Char *proc = "expenv";
++    Char *pa, *pb, *pend;
++    Char sxx[LONG_LINE], *sx = &sxx[0];
++    Char vxx[LONG_LINE], *vname = &vxx[0];
++    Char sex[LONG_LINE], *s_exp = &sex[0];
+     boolean ok, no_problem;
+     SUBSTRING ssx_data, *ssx = &ssx_data;
+   /* instructions */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/fatalerr.c ./include/fatalerr.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/fatalerr.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/fatalerr.c	2014-09-19 14:01:52.000000000 -0400
+@@ -4,13 +4,13 @@
+ #include "stdcenvf.h" /* std compile environment for functions */
+ #endif
+ 
+- void fatal_error(char *reporting_procedure, char *msg, int error_level)
++ void fatal_error(Char *reporting_procedure, Char *msg, int error_level)
+ 
+                                                   
+ /**************************************************************************/
+ /* Reports fatal error and exits.                                         */
+ /**************************************************************************/
+- {char *proc = "fatal_error";
++ {Char *proc = "fatal_error";
+ /* code */
+  db_enter_msg(proc,1); /* debug only */
+   fprintf(stderr,"\n");
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/fcndcls.h ./include/fcndcls.h
+--- ../../../sctk-2.4.8/src/rfilter1/include/fcndcls.h	2004-09-07 12:09:11.000000000 -0400
++++ ./include/fcndcls.h	2014-09-19 14:01:52.000000000 -0400
+@@ -5,40 +5,40 @@
+ #ifndef FCNDCLS_HEADER
+ #define FCNDCLS_HEADER
+ 
+-extern char          *apply_rules2(char *pb, char *pa, RULESET2 *rset, int *perr);
+-extern boolean        atobool(char *s);
+-extern char          *bool_print(boolean x);
+-extern void          *calloc_safe(size_t nobj, size_t size, char *calling_proc);
+-extern void           db_enter_msg(char *proc, int level);
+-extern void           db_leave_msg(char *proc, int level);
+-extern char          *del_eol(char *ps);
++extern Char          *apply_rules2(Char *pb, Char *pa, RULESET2 *rset, int *perr);
++extern boolean        atobool(Char *s);
++extern Char          *bool_print(boolean x);
++extern void          *calloc_safe(size_t nobj, size_t size, Char *calling_proc);
++extern void           db_enter_msg(Char *proc, int level);
++extern void           db_leave_msg(Char *proc, int level);
++extern Char          *del_eol(Char *ps);
+ extern void           dump_rules2(RULESET2 *rset);
+ extern void           dump_rules3(RULESET2 *rset, FILE *fp);
+-extern char          *expenv(char *s, int slength);
+-extern void           fatal_error(char *reporting_procedure, char *msg, int error_level);
++extern Char          *expenv(Char *s, int slength);
++extern void           fatal_error(Char *reporting_procedure, Char *msg, int error_level);
+ extern void           free_rules2(RULESET2 *rset);
+-extern void           free_str(char *s);
+-extern void           get_comment_flag(char *s, char *comment_flag);
+-extern void           get_rules2(RULESET2 *rset, char *path, char *fname, int *perr);
+-extern char          *make_full_fname(char *sx, char *path, char *fname);
+-extern char          *make_upper(char *s);
+-extern char          *pltrim(char *s);
+-extern char          *pltrimf(char *s);
+-extern char          *prtrim(char *s);
+-extern char          *prtrim2(char *s);
+-extern char          *remove_comments(char *s, char *comment_flag);
+-extern SUBSTRING      sstok2(char *sx, char *delimiters);
+-extern boolean        string_equal(char *cs, char *ct, int ignore_case);
++extern void           free_str(Char *s);
++extern void           get_comment_flag(Char *s, Char *comment_flag);
++extern void           get_rules2(RULESET2 *rset, Char *path, Char *fname, int *perr);
++extern Char          *make_full_fname(Char *sx, Char *path, Char *fname);
++extern Char          *make_upper(Char *s);
++extern Char          *pltrim(Char *s);
++extern Char          *pltrimf(Char *s);
++extern Char          *prtrim(Char *s);
++extern Char          *prtrim2(Char *s);
++extern Char          *remove_comments(Char *s, Char *comment_flag);
++extern SUBSTRING      sstok2(Char *sx, Char *delimiters);
++extern boolean        string_equal(Char *cs, Char *ct, int ignore_case);
+ #ifdef NEED_STRCMP
+-extern int            strcmpi(char *ps1, char *ps2);  /* BCD 4.2; not TURBO C */
+-extern int            strncmpi(char *ps1, char *ps2, int n);  /* BCD 4.2; not TURBO C */
++extern int            strcmpi(Char *ps1, Char *ps2);  /* BCD 4.2; not TURBO C */
++extern int            strncmpi(Char *ps1, Char *ps2, int n);  /* BCD 4.2; not TURBO C */
+ #endif
+-extern char          *strdup_safe(char *ps, char *calling_proc);
++extern Char          *strdup_safe(Char *ps, Char *calling_proc);
+ extern int            substr_length(SUBSTRING *substr);
+-extern char          *substr_to_str(SUBSTRING *substr, char *str, int lmax);
+-extern char          *strcutr(char *ps, int n);
+-extern int            textlen(char *s);
+-extern boolean        valid_data_line(char *s, char *comment_flag);
++extern Char          *substr_to_str(SUBSTRING *substr, Char *str, int lmax);
++extern Char          *strcutr(Char *ps, int n);
++extern int            textlen(Char *s);
++extern boolean        valid_data_line(Char *s, Char *comment_flag);
+ 
+ #endif
+ /* end file fcndcls.h        */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/frstr1.c ./include/frstr1.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/frstr1.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/frstr1.c	2014-09-19 14:01:52.000000000 -0400
+@@ -4,10 +4,10 @@
+ #include "stdcenvf.h" /* std compile environment for functions */
+ #endif
+ 
+-void free_str(char *s)
+-{if ((s != NULL)&&(s != EMPTY_STRING)&&(s != (char*)EMPTY_INT_STRING))
++void free_str(Char *s)
++{if ((s != NULL)&&(s != EMPTY_STRING)&&(s != (Char*)EMPTY_INT_STRING))
+      {if (memory_trace) printf("*DB: FREE %x\n",(int)s);
+-      free((char*)s);
++      free((Char*)s);
+      }
+    return;
+  }
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/frules2.c ./include/frules2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/frules2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/frules2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -11,7 +11,7 @@
+   /* Frees memory allocated for rule set *rset.               */
+   /************************************************************/
+   void free_rules2(RULESET2 *rset)
+-   {char *proc = "free_rules2";
++   {Char *proc = "free_rules2";
+ /* data */
+     int i;
+ /* coding  */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/gcomflag.c ./include/gcomflag.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/gcomflag.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/gcomflag.c	2014-09-19 14:01:52.000000000 -0400
+@@ -9,8 +9,8 @@
+   /* get_comment_flag(s,comment_flag)                            */
+   /* Gets *comment_flag as first token in *s.                    */
+   /***************************************************************/
+-  void get_comment_flag(char *s, char *comment_flag)
+-  {char *px;
++  void get_comment_flag(Char *s, Char *comment_flag)
++  {Char *px;
+    comment_flag = strcpy(comment_flag,s);
+    for (px = comment_flag; isgraph(*px); px++);
+    *px = '\0';
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/gdatadef.h ./include/gdatadef.h
+--- ../../../sctk-2.4.8/src/rfilter1/include/gdatadef.h	2004-08-30 10:59:59.000000000 -0400
++++ ./include/gdatadef.h	2014-09-19 14:01:52.000000000 -0400
+@@ -5,10 +5,10 @@
+ 
+  int db_level = 0;
+  int detail_level = 0;
+- char db[272] = "*DB: ", *pdb = &db[0];
++ Char db[272] = "*DB: ", *pdb = &db[0];
+  boolean memory_trace = F;
+- char null_char_string[1] = "", *EMPTY_STRING = &null_char_string[0];
+- char *NIL_STRING = "(nil)";
++ Char null_char_string[1] = "", *EMPTY_STRING = &null_char_string[0];
++ Char *NIL_STRING = "(nil)";
+  int nstr_empty[1] = {0}, *EMPTY_INT_STRING = &nstr_empty[0];
+ 
+ #endif
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/grules2.c ./include/grules2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/grules2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/grules2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -16,10 +16,10 @@
+   /*   error codes: 3: bungled aux line                       */
+   /*   (Fatal error if memory allocation fails.)              */
+   /************************************************************/
+-  static void r_process_aux_line(RULESET2 *rset, char *pline, int *perr)
+-   {char *proc = "r_process_aux_line";
+-    char svx[LINE_LENGTH], *sval = &svx[0];
+-    char upx[LINE_LENGTH], *upr_pline = &upx[0];
++  static void r_process_aux_line(RULESET2 *rset, Char *pline, int *perr)
++   {Char *proc = "r_process_aux_line";
++    Char svx[LINE_LENGTH], *sval = &svx[0];
++    Char upx[LINE_LENGTH], *upr_pline = &upx[0];
+     SUBSTRING sspx, *ssp = &sspx;
+ /* coding */
+  db_enter_msg(proc,1); /* debug only */
+@@ -62,10 +62,10 @@
+   /*                  32: no arrow                            */
+   /*   (Fatal error if memory allocation fails.)              */
+   /************************************************************/
+-  static void r_process_data_line(RULESET2 *rset, char *pline, int *perr)
+-   {char *proc = "r_process_data_line";
+-    char *ieq, *icontext, *islot, *ilmark, *irmark;
+-    char sx_data[LINE_LENGTH], *sx = &sx_data[0];
++  static void r_process_data_line(RULESET2 *rset, Char *pline, int *perr)
++   {Char *proc = "r_process_data_line";
++    Char *ieq, *icontext, *islot, *ilmark, *irmark;
++    Char sx_data[LINE_LENGTH], *sx = &sx_data[0];
+     RULE2 x, *rx = &x;
+     SUBSTRING ssx_data, *ssx = &ssx_data;
+  db_enter_msg(proc,1); /* debug only */
+@@ -236,13 +236,13 @@
+   /* (Uses global parameter LINE_LENGTH.)                     */
+   /*                                                          */
+   /************************************************************/
+-  void get_rules2(RULESET2 *rset, char *path, char *fname, int *perr)
+-   {char *proc = "get_rules2";
++  void get_rules2(RULESET2 *rset, Char *path, Char *fname, int *perr)
++   {Char *proc = "get_rules2";
+ /* data */
+     FILE *fp;
+-    char line[LINE_LENGTH], *pline = &line[0];
+-    char fnxx[LONG_LINE], *full_fname = &fnxx[0];
+-    char cmx[LINE_LENGTH], *comment_flag = &cmx[0];
++    Char line[LINE_LENGTH], *pline = &line[0];
++    Char fnxx[LONG_LINE], *full_fname = &fnxx[0];
++    Char cmx[LINE_LENGTH], *comment_flag = &cmx[0];
+     boolean *indexed;
+     int n_data_lines_processed;
+     int nrules[257], key_char, key_char2, jind, i, i2;
+@@ -313,7 +313,7 @@
+   /* zero out value for each rule */
+     for (i=0; i <= rset->nrules; i++) rset->rule[i].val1 = 0;
+   /* make rule indexing tables */
+-    /* get rules aggregated by key char (first char of Source) */
++    /* get rules aggregated by key Char (first Char of Source) */
+     rset->rule_index = (int*)calloc_safe(rset->nrules+1,sizeof(int),proc);
+     rset->first_rule = (int*)calloc_safe(257,sizeof(int),proc);
+     rset->last_rule  = (int*)calloc_safe(257,sizeof(int),proc);
+@@ -334,13 +334,13 @@
+ if (db_level > 1) printf("%s processing rule %d, key_char = %d (%c)\n",
+  pdb,i,key_char,key_char);
+        if (nrules[key_char] == 0)
+-         {/* we haven't handled this key char yet */
++         {/* we haven't handled this key Char yet */
+           rset->rule_index[++jind] = i;
+           indexed[i] = T;
+           nrules[key_char] += 1;
+           rset->first_rule[key_char] = jind;
+           rset->last_rule[key_char] = jind;
+-         /* index all later rules with same key char */
++         /* index all later rules with same key Char */
+           for (i2 = i+1; i2 <= rset->nrules; i2++)
+             {if (!indexed[i2])
+                {key_char2 = (int)(rset->rule[i2].sin[0]);
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/hparstr1.h ./include/hparstr1.h
+--- ../../../sctk-2.4.8/src/rfilter1/include/hparstr1.h	2004-08-30 10:59:59.000000000 -0400
++++ ./include/hparstr1.h	2014-09-19 14:01:52.000000000 -0400
+@@ -4,7 +4,7 @@
+ #define HPARSTR1_HEADER
+ 
+  typedef struct
+-   {char *hfcn_name;
++   {Char *hfcn_name;
+     double recommended_load_factor;
+     int nparams;
+     int C[HFCN_NPARAMS_MAX];
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/mfname1.c ./include/mfname1.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/mfname1.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/mfname1.c	2014-09-19 14:01:52.000000000 -0400
+@@ -6,15 +6,15 @@
+ 
+   /************************************************************/
+   /*                                                          */
+-  /*  char *make_full_fname(sx,path,fname)                    */
++  /*  Char *make_full_fname(sx,path,fname)                    */
+   /* Makes a full file name by concatenating *path and *fname,*/
+   /* puts it in *sx and returns sx.                           */
+   /* Assumes length of sx and path is LINE_LENGTH.            */
+   /* Inserts '/' between path and fname if necessary.         */
+   /*                                                          */
+   /************************************************************/
+- char *make_full_fname(char *sx, char *path, char *fname)
+-{char *proc = "make_full_fname";
++ Char *make_full_fname(Char *sx, Char *path, Char *fname)
++{Char *proc = "make_full_fname";
+ /* prepare full pcode file name */
+   sx = strcpy(sx,path);
+   sx = pltrim(prtrim2(del_eol(sx)));
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/mupper.c ./include/mupper.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/mupper.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/mupper.c	2014-09-19 14:01:52.000000000 -0400
+@@ -9,11 +9,11 @@
+  /*  makes *s be all upper case               */
+  /*  returns pointer to *s                    */
+  /*********************************************/
+-  char *make_upper(char *s)
+-  {char *pi;
++  Char *make_upper(Char *s)
++  {Char *pi;
+    pi = s;
+    while (*pi != '\0')
+-      {*pi = (char)toupper((int)*pi);
++      {*pi = (Char)toupper((int)*pi);
+        pi += 1;
+       }
+    return s;
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/pltrim.c ./include/pltrim.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/pltrim.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/pltrim.c	2014-09-19 14:01:52.000000000 -0400
+@@ -12,8 +12,8 @@
+  /* *s is not dynamic memory later freed, see   */
+  /* pltrimf(s).                                 */
+  /***********************************************/
+-  char *pltrim(char *s)
+-  {char *from, *to;
++  Char *pltrim(Char *s)
++  {Char *from, *to;
+    /* skip leading blanks */
+    for (from = s; (*from != '\0') && isspace(*from); from++);
+    /* copy rest of string */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/pltrimf.c ./include/pltrimf.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/pltrimf.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/pltrimf.c	2014-09-19 14:01:52.000000000 -0400
+@@ -18,5 +18,5 @@
+  /*  function that can be used this way.        */
+  /*                                             */
+  /***********************************************/
+-  char *pltrimf(char *s)
+-{char *p1; p1 = s; while (isspace(*p1)) p1++; return p1;}
++  Char *pltrimf(Char *s)
++{Char *p1; p1 = s; while (isspace(*p1)) p1++; return p1;}
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/prtrim.c ./include/prtrim.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/prtrim.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/prtrim.c	2014-09-19 14:01:52.000000000 -0400
+@@ -9,8 +9,8 @@
+  /*  Returns a pointer to the last              */
+  /*  non-whitespace character in the string s,  */
+  /***********************************************/
+-  char *prtrim(char *s)
+-  {char *p1;
++  Char *prtrim(Char *s)
++  {Char *p1;
+    p1 = s + strlen(s) - 1;
+    while ((p1 >= s) && (isspace(*p1))) p1--;
+    return p1;
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/prtrim2.c ./include/prtrim2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/prtrim2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/prtrim2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -10,5 +10,5 @@
+  /*  ('\0') into the first charactor following the */
+  /*  last non-whitespace character in the string.  */
+  /**************************************************/
+-  char *prtrim2(char *s)
++  Char *prtrim2(Char *s)
+ {*(prtrim(s) + 1) = '\0'; return s;}
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/remcomm.c ./include/remcomm.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/remcomm.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/remcomm.c	2014-09-19 14:01:52.000000000 -0400
+@@ -14,8 +14,8 @@
+   /* the comments, in case s was dynamically allocated.          */
+   /* Changed 7/22/93 to do nothing if comment_flag is empty.     */
+   /***************************************************************/
+-  char *remove_comments(char *s, char *comment_flag)
+-  {char *px;
++  Char *remove_comments(Char *s, Char *comment_flag)
++  {Char *px;
+    if (strlen(comment_flag) > 0)
+      {px = strstr(s,comment_flag);
+       if (px != NULL) while (*px != '\0') *px++ = ' ';
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/rulestr2.h ./include/rulestr2.h
+--- ../../../sctk-2.4.8/src/rfilter1/include/rulestr2.h	2004-08-30 10:59:59.000000000 -0400
++++ ./include/rulestr2.h	2014-09-19 14:01:52.000000000 -0400
+@@ -4,18 +4,18 @@
+ #define RULESTR2_HEADER
+ 
+   typedef struct
+-   {char *lcontext; int lcontextl; /* left context, length */
+-    char *sin; int sinl;          /* string in, length */
+-    char *rcontext; int rcontextl; /* right context, length */
+-    char *sout; int soutl;        /* string out, lenght */
++   {Char *lcontext; int lcontextl; /* left context, length */
++    Char *sin; int sinl;          /* string in, length */
++    Char *rcontext; int rcontextl; /* right context, length */
++    Char *sout; int soutl;        /* string out, lenght */
+     int val1; /* general-purpose numerical value */
+    } RULE2;
+ 
+  typedef struct
+-   {char *name;
+-    char *directory;
+-    char *desc;
+-    char *format;
++   {Char *name;
++    Char *directory;
++    Char *desc;
++    Char *format;
+     boolean copy_no_hit; /* if no hit, copy over instead of delete */
+     boolean case_sensitive; /* iff on, match is case-sensitive     */
+     boolean indexed; /* uses key character index for speed */
+@@ -23,8 +23,8 @@
+     int max_nrules;
+     RULE2 *rule; /* RULE table, dynamically allocated */
+     int *rule_index; /* index to rules in aggregated order, dynamically allocated */
+-    int *first_rule; /* index to first rule for key char, dynamically allocated */
+-    int *last_rule; /* index to last rule for key char, dynamically allocated */
++    int *first_rule; /* index to first rule for key Char, dynamically allocated */
++    int *last_rule; /* index to last rule for key Char, dynamically allocated */
+    } RULESET2;
+ 
+ 
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/ss_to_s.c ./include/ss_to_s.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/ss_to_s.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/ss_to_s.c	2014-09-19 14:01:52.000000000 -0400
+@@ -6,7 +6,7 @@
+ 
+  /**********************************************************************/
+  /*                                                                    */
+- /*   char *substr_to_str(substr,str,lmax)                             */
++ /*   Char *substr_to_str(substr,str,lmax)                             */
+  /*                                                                    */
+  /* Converts the SUBSTRING *substr to the character string *str,       */
+  /* not putting more than *lmax characters in (including the new end-  */
+@@ -16,9 +16,9 @@
+  /* Returns pointer to str.                                            */
+  /*                                                                    */
+  /**********************************************************************/
+- char *substr_to_str(SUBSTRING *substr, char *str, int lmax)
+-{char *proc = "substr_to_str";
+-  char *pn1, *pn2;
++ Char *substr_to_str(SUBSTRING *substr, Char *str, int lmax)
++{Char *proc = "substr_to_str";
++  Char *pn1, *pn2;
+   int next_to_be_moved;
+   boolean ovf;
+   str = strcpy(str,"");
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/ssstr1.h ./include/ssstr1.h
+--- ../../../sctk-2.4.8/src/rfilter1/include/ssstr1.h	2004-08-30 10:59:59.000000000 -0400
++++ ./include/ssstr1.h	2014-09-19 14:01:52.000000000 -0400
+@@ -4,8 +4,8 @@
+ #define SSSTR1_HEADER
+ 
+   struct substring
+-    {char *start;
+-     char *end;
++    {Char *start;
++     Char *end;
+     };
+   typedef struct substring SUBSTRING;
+ 
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/sstok2.c ./include/sstok2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/sstok2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/sstok2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -7,18 +7,18 @@
+  /**********************************************************************/
+  /*                                                                    */
+  /*   SUBSTRING sstok2(sx,delimiters);                                 */
+- /*   char *sx, *delimiters;                                           */
++ /*   Char *sx, *delimiters;                                           */
+  /*                                                                    */
+- /*   Finds the next token in the char string *sx and returns it as a  */
++ /*   Finds the next token in the Char string *sx and returns it as a  */
+  /* SUBSTRING.  A token is a string of characters bounded on the left  */
+  /* and the right by a character in *delimiters.  (NOTE that the start */
+  /* and end of the string do NOT count as delimiters, as in sstok(),   */
+- /* and the input is a char string, not a SUBSTRING.)                  */
++ /* and the input is a Char string, not a SUBSTRING.)                  */
+  /*   If delimiters aren't found, returns a substring of length < 0    */
+  /**********************************************************************/
+ 
+- SUBSTRING sstok2(char *sx, char *delimiters)
+- {char *proc = "sstok2";
++ SUBSTRING sstok2(Char *sx, Char *delimiters)
++ {Char *proc = "sstok2";
+   SUBSTRING ssy_data, *ssy = &ssy_data;
+  /* code */
+   db_enter_msg(proc,9); /* debug only */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/stdcenvp.h ./include/stdcenvp.h
+--- ../../../sctk-2.4.8/src/rfilter1/include/stdcenvp.h	2004-08-30 10:59:59.000000000 -0400
++++ ./include/stdcenvp.h	2014-09-19 14:02:08.000000000 -0400
+@@ -22,9 +22,9 @@
+ #include "stdpars.h"
+ 
+ 
+-  /* JGF  Redefined tghe character type  to be unsigned so that mandarin and
++  /* JGF  Redefined the character type  to be unsigned so that mandarin and
+           japanese will parse correctly */
+-#define char unsigned char
++#define Char unsigned char
+ 
+ /* type definitions */
+ #include "booldef.h"
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/str_eq.c ./include/str_eq.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/str_eq.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/str_eq.c	2014-09-19 14:01:52.000000000 -0400
+@@ -9,6 +9,6 @@
+  /*  returns T is cs == ct, ignoring case iff */
+  /*  "ignore_case" is T.                      */
+  /*********************************************/
+- boolean string_equal(char *cs, char *ct, int ignore_case)
++ boolean string_equal(Char *cs, Char *ct, int ignore_case)
+  {if (ignore_case) return streqi(cs,ct); else return streq(cs,ct);
+  }
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/strcmpi.c ./include/strcmpi.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/strcmpi.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/strcmpi.c	2014-09-19 14:01:52.000000000 -0400
+@@ -16,9 +16,9 @@
+  /*           == 0 if *ps1 is the same as *ps2                    */
+  /*            > 0 if *ps1 is greater than *ps2                   */
+  /*****************************************************************/
+- int strcmpi(char *ps1, char *ps2)
++ int strcmpi(Char *ps1, Char *ps2)
+ {
+-  char *px1, *px2;
++  Char *px1, *px2;
+   int indicator;
+   px1 = ps1; px2 = ps2;
+   indicator = 9999;
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/strcutr.c ./include/strcutr.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/strcutr.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/strcutr.c	2014-09-19 14:01:52.000000000 -0400
+@@ -5,11 +5,11 @@
+ #endif
+ 
+  /***********************************************/
+- /*  char *strcutr(ps,n)                        */
++ /*  Char *strcutr(ps,n)                        */
+  /*  Cuts n characters from tail of *ps.        */
+  /***********************************************/
+-  char *strcutr(char *ps, int n)
+-{char *p1;
++  Char *strcutr(Char *ps, int n)
++{Char *p1;
+    p1 = ps + strlen(ps) - n;
+    if (p1 < ps)
+      {fprintf(stderr,"*ERR: strcutr results in string of negative length.\n");
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/strdup2.c ./include/strdup2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/strdup2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/strdup2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -8,11 +8,11 @@
+  /*  strdup_safe(ps,calling_proc)                      */
+  /*  Like strdup(ps) except fatal err if malloc fails. */
+  /******************************************************/
+- char *strdup_safe(char *ps, char *calling_proc)
+- {char *proc = "strdup_safe";
+-  char *pd;
++ Char *strdup_safe(Char *ps, Char *calling_proc)
++ {Char *proc = "strdup_safe";
++  Char *pd;
+ if (db_level > 3) printf("%sdoing %s\n",pdb,proc);
+-  pd = (char*)malloc((size_t)strlen(ps)+1);
++  pd = (Char*)malloc((size_t)strlen(ps)+1);
+   if (pd == NULL) fatal_error(calling_proc,"MEM ALLOC",-1);
+   else   pd = strcpy(pd,ps);
+   if (memory_trace) printf("%s MALLOC %x\n",pdb,(int)pd);
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/strncmpi.c ./include/strncmpi.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/strncmpi.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/strncmpi.c	2014-09-19 14:01:52.000000000 -0400
+@@ -18,9 +18,9 @@
+  /*            > 0 if *ps1 is greater than *ps2 (first n chars)   */
+  /*  Revised 11/5/96 by WMF to fix a bug when n == 0.             */
+  /*****************************************************************/
+- int strncmpi(char *ps1, char *ps2, int n)
+- {char *proc = "strncmpi";
+-  char *px1, *px2;
++ int strncmpi(Char *ps1, Char *ps2, int n)
++ {Char *proc = "strncmpi";
++  Char *px1, *px2;
+   int indicator, i=0;
+  db_enter_msg(proc,2); /* debug only */
+   px1 = ps1; px2 = ps2;
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/textlen.c ./include/textlen.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/textlen.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/textlen.c	2014-09-19 14:01:52.000000000 -0400
+@@ -12,4 +12,4 @@
+  /*  shift the data.)                         */
+  /*********************************************/
+ 
+-  int textlen(char *s) {return (int)(prtrim(s) - pltrimf(s) + 1);}
++  int textlen(Char *s) {return (int)(prtrim(s) - pltrimf(s) + 1);}
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/valdata.c ./include/valdata.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/valdata.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/valdata.c	2014-09-19 14:01:52.000000000 -0400
+@@ -10,9 +10,9 @@
+   /*  Indicates whether or not *s is a valid non-empty data line.*/
+   /*  Changed 7/22/93 to return "T" if comment_flag is empty.    */
+   /***************************************************************/
+-  boolean valid_data_line(char *s, char *comment_flag)
++  boolean valid_data_line(Char *s, Char *comment_flag)
+   {boolean ok;
+-   char *px, *py;
++   Char *px, *py;
+    if (strlen(s) < 1)
+      ok = F;
+    else
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/rfilter1.c ./rfilter1.c
+--- ../../../sctk-2.4.8/src/rfilter1/rfilter1.c	2004-09-07 12:09:11.000000000 -0400
++++ ./rfilter1.c	2014-09-19 14:02:39.000000000 -0400
+@@ -29,11 +29,11 @@
+ int main(int argc, char **argv)
+  {char *proc = "RFILTER1 Ver. 2.0";
+   time_t t_sec;
+-  char rxf[LONG_LINE], *fname_rules = &rxf[0];
++  Char rxf[LONG_LINE], *fname_rules = &rxf[0];
+ #define MAX_INPUT_REC 100000
+-  char pax[MAX_INPUT_REC], *pa = &pax[0];
+-  char pbx[MAX_INPUT_REC], *pb = &pbx[0];
+-  char *path = "";
++  Char pax[MAX_INPUT_REC], *pa = &pax[0];
++  Char pbx[MAX_INPUT_REC], *pb = &pbx[0];
++  Char *path = "";
+   int err; int *perr = &err;
+   RULESET2 rset_data, *rset = &rset_data;
+ /*   code   */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/aprules2.c ./include/aprules2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/aprules2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/aprules2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -6,7 +6,7 @@
+ 
+ /*****************************************************************/
+ /*                                                               */
+-/*  char *apply_rules2(pb,pa,rset,perr)                          */
++/*  Char *apply_rules2(pb,pa,rset,perr)                          */
+ /*  Applies RULESET2 *rset to string pa, producing string pb.    */
+ /*  Returns pb.                                                  */
+ /*  If rset == NULL, just copies over the input string.          */
+@@ -14,9 +14,9 @@
+ /*     11 means "invalid rule format"                            */
+ /*                                                               */
+ /*****************************************************************/
+-char *apply_rules2(char *pb, char *pa, RULESET2 *rset, int *perr)
+- {char *proc = "apply_rules2";
+-  char *pi, *pbx;
++Char *apply_rules2(Char *pb, Char *pa, RULESET2 *rset, int *perr)
++ {Char *proc = "apply_rules2";
++  Char *pi, *pbx;
+   int irule, key_char, jrule;
+   boolean hit;
+ /* code: */
+@@ -76,7 +76,7 @@
+      if (!hit)
+        {if (rset->copy_no_hit)
+           {pbx = pb + strlen(pb);
+-           *pbx = *pi; /* copy char from pi to end of pb */
++           *pbx = *pi; /* copy Char from pi to end of pb */
+            *(++pbx) = '\0';
+           }
+         pi += 1;
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/atobool.c ./include/atobool.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/atobool.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/atobool.c	2014-09-19 14:01:52.000000000 -0400
+@@ -4,7 +4,7 @@
+ #include "stdcenvf.h" /* std compile environment for functions */
+ #endif
+ 
+- boolean atobool(char *s)
++ boolean atobool(Char *s)
+          
+  /*********************************************/
+  /*  Returns T if string s is "T" or "TRUE"   */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/boolpr1.c ./include/boolpr1.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/boolpr1.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/boolpr1.c	2014-09-19 14:01:52.000000000 -0400
+@@ -6,10 +6,10 @@
+ 
+  /**********************************************************************/
+  /*                                                                    */
+- /*   char *bool_print(x)                                              */
++ /*   Char *bool_print(x)                                              */
+  /*                                                                    */
+  /* Returns the printing equivalent of the boolean *x.                 */
+  /*                                                                    */
+  /**********************************************************************/
+ 
+- char *bool_print(boolean x) {if (x) return "T"; else return "F";}
++ Char *bool_print(boolean x) {if (x) return "T"; else return "F";}
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/calloc2.c ./include/calloc2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/calloc2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/calloc2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -4,11 +4,11 @@
+ #include "stdcenvf.h" /* std compile environment for functions */
+ #endif
+ 
+- void *calloc_safe(size_t nobj, size_t size, char *calling_proc)
++ void *calloc_safe(size_t nobj, size_t size, Char *calling_proc)
+  /*************************************************************/
+  /*  Like calloc(nobj,size) except fatal err if calloc fails. */
+  /*************************************************************/
+- {char *proc = "calloc_safe";
++ {Char *proc = "calloc_safe";
+   void *x;
+ if (db_level > 3) printf("%sdoing %s\n",pdb,proc);
+   x = calloc(nobj,size);
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/dbpkg1.c ./include/dbpkg1.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/dbpkg1.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/dbpkg1.c	2014-09-19 14:01:52.000000000 -0400
+@@ -17,7 +17,7 @@
+ /* is *proc, if <level> < <db_level>. Uses global  */
+ /* *pdb for header string.                         */
+ /***************************************************/
+- void db_enter_msg(char *proc, int level)
++ void db_enter_msg(Char *proc, int level)
+ {if (db_level > level) {
+    pdb = strcat(pdb,"  ");
+    printf("%sentering %s.\n",pdb,proc);
+@@ -30,7 +30,7 @@
+ /* is *proc, if <level> < <db_level>. Uses global  */
+ /* *pdb for header string.                         */
+ /***************************************************/
+- void db_leave_msg(char *proc, int level)
++ void db_leave_msg(Char *proc, int level)
+ {if (db_level > level) {
+    printf("%sleaving  %s.\n",pdb,proc);
+    pdb = strcutr(pdb,2);
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/del_eol.c ./include/del_eol.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/del_eol.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/del_eol.c	2014-09-19 14:01:52.000000000 -0400
+@@ -10,8 +10,8 @@
+  /* from the line *s.                           */
+  /*  returns s.                                 */
+  /***********************************************/
+- char *del_eol(char *ps)
+- {char *p1;
++ Char *del_eol(Char *ps)
++ {Char *p1;
+   p1 = ps + strlen(ps) - 1;
+   while ( (p1 >= ps) && (*p1 == '\n') ) {*p1 = '\0'; p1--;};
+   return ps;
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/expenv.c ./include/expenv.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/expenv.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/expenv.c	2014-09-19 14:01:52.000000000 -0400
+@@ -6,19 +6,19 @@
+ 
+   /*****************************************************************/
+   /*                                                               */
+-  /*  char *expenv(s,slength)                                      */
++  /*  Char *expenv(s,slength)                                      */
+   /*  Expands environment variables embedded in string *s.         */
+   /*  Doesn't expand beyond s[slength].                            */
+   /*  Uses local buffers of length LONG_LINE.                      */
+   /*  Returns pointer to s so you can use it like s = expenv(s,x); */
+   /*                                                               */
+   /*****************************************************************/
+-  char *expenv(char *s, int slength)
+-   {char *proc = "expenv";
+-    char *pa, *pb, *pend;
+-    char sxx[LONG_LINE], *sx = &sxx[0];
+-    char vxx[LONG_LINE], *vname = &vxx[0];
+-    char sex[LONG_LINE], *s_exp = &sex[0];
++  Char *expenv(Char *s, int slength)
++   {Char *proc = "expenv";
++    Char *pa, *pb, *pend;
++    Char sxx[LONG_LINE], *sx = &sxx[0];
++    Char vxx[LONG_LINE], *vname = &vxx[0];
++    Char sex[LONG_LINE], *s_exp = &sex[0];
+     boolean ok, no_problem;
+     SUBSTRING ssx_data, *ssx = &ssx_data;
+   /* instructions */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/fatalerr.c ./include/fatalerr.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/fatalerr.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/fatalerr.c	2014-09-19 14:01:52.000000000 -0400
+@@ -4,13 +4,13 @@
+ #include "stdcenvf.h" /* std compile environment for functions */
+ #endif
+ 
+- void fatal_error(char *reporting_procedure, char *msg, int error_level)
++ void fatal_error(Char *reporting_procedure, Char *msg, int error_level)
+ 
+                                                   
+ /**************************************************************************/
+ /* Reports fatal error and exits.                                         */
+ /**************************************************************************/
+- {char *proc = "fatal_error";
++ {Char *proc = "fatal_error";
+ /* code */
+  db_enter_msg(proc,1); /* debug only */
+   fprintf(stderr,"\n");
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/fcndcls.h ./include/fcndcls.h
+--- ../../../sctk-2.4.8/src/rfilter1/include/fcndcls.h	2004-09-07 12:09:11.000000000 -0400
++++ ./include/fcndcls.h	2014-09-19 14:01:52.000000000 -0400
+@@ -5,40 +5,40 @@
+ #ifndef FCNDCLS_HEADER
+ #define FCNDCLS_HEADER
+ 
+-extern char          *apply_rules2(char *pb, char *pa, RULESET2 *rset, int *perr);
+-extern boolean        atobool(char *s);
+-extern char          *bool_print(boolean x);
+-extern void          *calloc_safe(size_t nobj, size_t size, char *calling_proc);
+-extern void           db_enter_msg(char *proc, int level);
+-extern void           db_leave_msg(char *proc, int level);
+-extern char          *del_eol(char *ps);
++extern Char          *apply_rules2(Char *pb, Char *pa, RULESET2 *rset, int *perr);
++extern boolean        atobool(Char *s);
++extern Char          *bool_print(boolean x);
++extern void          *calloc_safe(size_t nobj, size_t size, Char *calling_proc);
++extern void           db_enter_msg(Char *proc, int level);
++extern void           db_leave_msg(Char *proc, int level);
++extern Char          *del_eol(Char *ps);
+ extern void           dump_rules2(RULESET2 *rset);
+ extern void           dump_rules3(RULESET2 *rset, FILE *fp);
+-extern char          *expenv(char *s, int slength);
+-extern void           fatal_error(char *reporting_procedure, char *msg, int error_level);
++extern Char          *expenv(Char *s, int slength);
++extern void           fatal_error(Char *reporting_procedure, Char *msg, int error_level);
+ extern void           free_rules2(RULESET2 *rset);
+-extern void           free_str(char *s);
+-extern void           get_comment_flag(char *s, char *comment_flag);
+-extern void           get_rules2(RULESET2 *rset, char *path, char *fname, int *perr);
+-extern char          *make_full_fname(char *sx, char *path, char *fname);
+-extern char          *make_upper(char *s);
+-extern char          *pltrim(char *s);
+-extern char          *pltrimf(char *s);
+-extern char          *prtrim(char *s);
+-extern char          *prtrim2(char *s);
+-extern char          *remove_comments(char *s, char *comment_flag);
+-extern SUBSTRING      sstok2(char *sx, char *delimiters);
+-extern boolean        string_equal(char *cs, char *ct, int ignore_case);
++extern void           free_str(Char *s);
++extern void           get_comment_flag(Char *s, Char *comment_flag);
++extern void           get_rules2(RULESET2 *rset, Char *path, Char *fname, int *perr);
++extern Char          *make_full_fname(Char *sx, Char *path, Char *fname);
++extern Char          *make_upper(Char *s);
++extern Char          *pltrim(Char *s);
++extern Char          *pltrimf(Char *s);
++extern Char          *prtrim(Char *s);
++extern Char          *prtrim2(Char *s);
++extern Char          *remove_comments(Char *s, Char *comment_flag);
++extern SUBSTRING      sstok2(Char *sx, Char *delimiters);
++extern boolean        string_equal(Char *cs, Char *ct, int ignore_case);
+ #ifdef NEED_STRCMP
+-extern int            strcmpi(char *ps1, char *ps2);  /* BCD 4.2; not TURBO C */
+-extern int            strncmpi(char *ps1, char *ps2, int n);  /* BCD 4.2; not TURBO C */
++extern int            strcmpi(Char *ps1, Char *ps2);  /* BCD 4.2; not TURBO C */
++extern int            strncmpi(Char *ps1, Char *ps2, int n);  /* BCD 4.2; not TURBO C */
+ #endif
+-extern char          *strdup_safe(char *ps, char *calling_proc);
++extern Char          *strdup_safe(Char *ps, Char *calling_proc);
+ extern int            substr_length(SUBSTRING *substr);
+-extern char          *substr_to_str(SUBSTRING *substr, char *str, int lmax);
+-extern char          *strcutr(char *ps, int n);
+-extern int            textlen(char *s);
+-extern boolean        valid_data_line(char *s, char *comment_flag);
++extern Char          *substr_to_str(SUBSTRING *substr, Char *str, int lmax);
++extern Char          *strcutr(Char *ps, int n);
++extern int            textlen(Char *s);
++extern boolean        valid_data_line(Char *s, Char *comment_flag);
+ 
+ #endif
+ /* end file fcndcls.h        */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/frstr1.c ./include/frstr1.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/frstr1.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/frstr1.c	2014-09-19 14:01:52.000000000 -0400
+@@ -4,10 +4,10 @@
+ #include "stdcenvf.h" /* std compile environment for functions */
+ #endif
+ 
+-void free_str(char *s)
+-{if ((s != NULL)&&(s != EMPTY_STRING)&&(s != (char*)EMPTY_INT_STRING))
++void free_str(Char *s)
++{if ((s != NULL)&&(s != EMPTY_STRING)&&(s != (Char*)EMPTY_INT_STRING))
+      {if (memory_trace) printf("*DB: FREE %x\n",(int)s);
+-      free((char*)s);
++      free((Char*)s);
+      }
+    return;
+  }
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/frules2.c ./include/frules2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/frules2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/frules2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -11,7 +11,7 @@
+   /* Frees memory allocated for rule set *rset.               */
+   /************************************************************/
+   void free_rules2(RULESET2 *rset)
+-   {char *proc = "free_rules2";
++   {Char *proc = "free_rules2";
+ /* data */
+     int i;
+ /* coding  */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/gcomflag.c ./include/gcomflag.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/gcomflag.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/gcomflag.c	2014-09-19 14:01:52.000000000 -0400
+@@ -9,8 +9,8 @@
+   /* get_comment_flag(s,comment_flag)                            */
+   /* Gets *comment_flag as first token in *s.                    */
+   /***************************************************************/
+-  void get_comment_flag(char *s, char *comment_flag)
+-  {char *px;
++  void get_comment_flag(Char *s, Char *comment_flag)
++  {Char *px;
+    comment_flag = strcpy(comment_flag,s);
+    for (px = comment_flag; isgraph(*px); px++);
+    *px = '\0';
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/gdatadef.h ./include/gdatadef.h
+--- ../../../sctk-2.4.8/src/rfilter1/include/gdatadef.h	2004-08-30 10:59:59.000000000 -0400
++++ ./include/gdatadef.h	2014-09-19 14:01:52.000000000 -0400
+@@ -5,10 +5,10 @@
+ 
+  int db_level = 0;
+  int detail_level = 0;
+- char db[272] = "*DB: ", *pdb = &db[0];
++ Char db[272] = "*DB: ", *pdb = &db[0];
+  boolean memory_trace = F;
+- char null_char_string[1] = "", *EMPTY_STRING = &null_char_string[0];
+- char *NIL_STRING = "(nil)";
++ Char null_char_string[1] = "", *EMPTY_STRING = &null_char_string[0];
++ Char *NIL_STRING = "(nil)";
+  int nstr_empty[1] = {0}, *EMPTY_INT_STRING = &nstr_empty[0];
+ 
+ #endif
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/grules2.c ./include/grules2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/grules2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/grules2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -16,10 +16,10 @@
+   /*   error codes: 3: bungled aux line                       */
+   /*   (Fatal error if memory allocation fails.)              */
+   /************************************************************/
+-  static void r_process_aux_line(RULESET2 *rset, char *pline, int *perr)
+-   {char *proc = "r_process_aux_line";
+-    char svx[LINE_LENGTH], *sval = &svx[0];
+-    char upx[LINE_LENGTH], *upr_pline = &upx[0];
++  static void r_process_aux_line(RULESET2 *rset, Char *pline, int *perr)
++   {Char *proc = "r_process_aux_line";
++    Char svx[LINE_LENGTH], *sval = &svx[0];
++    Char upx[LINE_LENGTH], *upr_pline = &upx[0];
+     SUBSTRING sspx, *ssp = &sspx;
+ /* coding */
+  db_enter_msg(proc,1); /* debug only */
+@@ -62,10 +62,10 @@
+   /*                  32: no arrow                            */
+   /*   (Fatal error if memory allocation fails.)              */
+   /************************************************************/
+-  static void r_process_data_line(RULESET2 *rset, char *pline, int *perr)
+-   {char *proc = "r_process_data_line";
+-    char *ieq, *icontext, *islot, *ilmark, *irmark;
+-    char sx_data[LINE_LENGTH], *sx = &sx_data[0];
++  static void r_process_data_line(RULESET2 *rset, Char *pline, int *perr)
++   {Char *proc = "r_process_data_line";
++    Char *ieq, *icontext, *islot, *ilmark, *irmark;
++    Char sx_data[LINE_LENGTH], *sx = &sx_data[0];
+     RULE2 x, *rx = &x;
+     SUBSTRING ssx_data, *ssx = &ssx_data;
+  db_enter_msg(proc,1); /* debug only */
+@@ -236,13 +236,13 @@
+   /* (Uses global parameter LINE_LENGTH.)                     */
+   /*                                                          */
+   /************************************************************/
+-  void get_rules2(RULESET2 *rset, char *path, char *fname, int *perr)
+-   {char *proc = "get_rules2";
++  void get_rules2(RULESET2 *rset, Char *path, Char *fname, int *perr)
++   {Char *proc = "get_rules2";
+ /* data */
+     FILE *fp;
+-    char line[LINE_LENGTH], *pline = &line[0];
+-    char fnxx[LONG_LINE], *full_fname = &fnxx[0];
+-    char cmx[LINE_LENGTH], *comment_flag = &cmx[0];
++    Char line[LINE_LENGTH], *pline = &line[0];
++    Char fnxx[LONG_LINE], *full_fname = &fnxx[0];
++    Char cmx[LINE_LENGTH], *comment_flag = &cmx[0];
+     boolean *indexed;
+     int n_data_lines_processed;
+     int nrules[257], key_char, key_char2, jind, i, i2;
+@@ -313,7 +313,7 @@
+   /* zero out value for each rule */
+     for (i=0; i <= rset->nrules; i++) rset->rule[i].val1 = 0;
+   /* make rule indexing tables */
+-    /* get rules aggregated by key char (first char of Source) */
++    /* get rules aggregated by key Char (first Char of Source) */
+     rset->rule_index = (int*)calloc_safe(rset->nrules+1,sizeof(int),proc);
+     rset->first_rule = (int*)calloc_safe(257,sizeof(int),proc);
+     rset->last_rule  = (int*)calloc_safe(257,sizeof(int),proc);
+@@ -334,13 +334,13 @@
+ if (db_level > 1) printf("%s processing rule %d, key_char = %d (%c)\n",
+  pdb,i,key_char,key_char);
+        if (nrules[key_char] == 0)
+-         {/* we haven't handled this key char yet */
++         {/* we haven't handled this key Char yet */
+           rset->rule_index[++jind] = i;
+           indexed[i] = T;
+           nrules[key_char] += 1;
+           rset->first_rule[key_char] = jind;
+           rset->last_rule[key_char] = jind;
+-         /* index all later rules with same key char */
++         /* index all later rules with same key Char */
+           for (i2 = i+1; i2 <= rset->nrules; i2++)
+             {if (!indexed[i2])
+                {key_char2 = (int)(rset->rule[i2].sin[0]);
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/hparstr1.h ./include/hparstr1.h
+--- ../../../sctk-2.4.8/src/rfilter1/include/hparstr1.h	2004-08-30 10:59:59.000000000 -0400
++++ ./include/hparstr1.h	2014-09-19 14:01:52.000000000 -0400
+@@ -4,7 +4,7 @@
+ #define HPARSTR1_HEADER
+ 
+  typedef struct
+-   {char *hfcn_name;
++   {Char *hfcn_name;
+     double recommended_load_factor;
+     int nparams;
+     int C[HFCN_NPARAMS_MAX];
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/mfname1.c ./include/mfname1.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/mfname1.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/mfname1.c	2014-09-19 14:01:52.000000000 -0400
+@@ -6,15 +6,15 @@
+ 
+   /************************************************************/
+   /*                                                          */
+-  /*  char *make_full_fname(sx,path,fname)                    */
++  /*  Char *make_full_fname(sx,path,fname)                    */
+   /* Makes a full file name by concatenating *path and *fname,*/
+   /* puts it in *sx and returns sx.                           */
+   /* Assumes length of sx and path is LINE_LENGTH.            */
+   /* Inserts '/' between path and fname if necessary.         */
+   /*                                                          */
+   /************************************************************/
+- char *make_full_fname(char *sx, char *path, char *fname)
+-{char *proc = "make_full_fname";
++ Char *make_full_fname(Char *sx, Char *path, Char *fname)
++{Char *proc = "make_full_fname";
+ /* prepare full pcode file name */
+   sx = strcpy(sx,path);
+   sx = pltrim(prtrim2(del_eol(sx)));
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/mupper.c ./include/mupper.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/mupper.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/mupper.c	2014-09-19 14:01:52.000000000 -0400
+@@ -9,11 +9,11 @@
+  /*  makes *s be all upper case               */
+  /*  returns pointer to *s                    */
+  /*********************************************/
+-  char *make_upper(char *s)
+-  {char *pi;
++  Char *make_upper(Char *s)
++  {Char *pi;
+    pi = s;
+    while (*pi != '\0')
+-      {*pi = (char)toupper((int)*pi);
++      {*pi = (Char)toupper((int)*pi);
+        pi += 1;
+       }
+    return s;
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/pltrim.c ./include/pltrim.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/pltrim.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/pltrim.c	2014-09-19 14:01:52.000000000 -0400
+@@ -12,8 +12,8 @@
+  /* *s is not dynamic memory later freed, see   */
+  /* pltrimf(s).                                 */
+  /***********************************************/
+-  char *pltrim(char *s)
+-  {char *from, *to;
++  Char *pltrim(Char *s)
++  {Char *from, *to;
+    /* skip leading blanks */
+    for (from = s; (*from != '\0') && isspace(*from); from++);
+    /* copy rest of string */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/pltrimf.c ./include/pltrimf.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/pltrimf.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/pltrimf.c	2014-09-19 14:01:52.000000000 -0400
+@@ -18,5 +18,5 @@
+  /*  function that can be used this way.        */
+  /*                                             */
+  /***********************************************/
+-  char *pltrimf(char *s)
+-{char *p1; p1 = s; while (isspace(*p1)) p1++; return p1;}
++  Char *pltrimf(Char *s)
++{Char *p1; p1 = s; while (isspace(*p1)) p1++; return p1;}
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/prtrim.c ./include/prtrim.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/prtrim.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/prtrim.c	2014-09-19 14:01:52.000000000 -0400
+@@ -9,8 +9,8 @@
+  /*  Returns a pointer to the last              */
+  /*  non-whitespace character in the string s,  */
+  /***********************************************/
+-  char *prtrim(char *s)
+-  {char *p1;
++  Char *prtrim(Char *s)
++  {Char *p1;
+    p1 = s + strlen(s) - 1;
+    while ((p1 >= s) && (isspace(*p1))) p1--;
+    return p1;
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/prtrim2.c ./include/prtrim2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/prtrim2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/prtrim2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -10,5 +10,5 @@
+  /*  ('\0') into the first charactor following the */
+  /*  last non-whitespace character in the string.  */
+  /**************************************************/
+-  char *prtrim2(char *s)
++  Char *prtrim2(Char *s)
+ {*(prtrim(s) + 1) = '\0'; return s;}
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/remcomm.c ./include/remcomm.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/remcomm.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/remcomm.c	2014-09-19 14:01:52.000000000 -0400
+@@ -14,8 +14,8 @@
+   /* the comments, in case s was dynamically allocated.          */
+   /* Changed 7/22/93 to do nothing if comment_flag is empty.     */
+   /***************************************************************/
+-  char *remove_comments(char *s, char *comment_flag)
+-  {char *px;
++  Char *remove_comments(Char *s, Char *comment_flag)
++  {Char *px;
+    if (strlen(comment_flag) > 0)
+      {px = strstr(s,comment_flag);
+       if (px != NULL) while (*px != '\0') *px++ = ' ';
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/rulestr2.h ./include/rulestr2.h
+--- ../../../sctk-2.4.8/src/rfilter1/include/rulestr2.h	2004-08-30 10:59:59.000000000 -0400
++++ ./include/rulestr2.h	2014-09-19 14:01:52.000000000 -0400
+@@ -4,18 +4,18 @@
+ #define RULESTR2_HEADER
+ 
+   typedef struct
+-   {char *lcontext; int lcontextl; /* left context, length */
+-    char *sin; int sinl;          /* string in, length */
+-    char *rcontext; int rcontextl; /* right context, length */
+-    char *sout; int soutl;        /* string out, lenght */
++   {Char *lcontext; int lcontextl; /* left context, length */
++    Char *sin; int sinl;          /* string in, length */
++    Char *rcontext; int rcontextl; /* right context, length */
++    Char *sout; int soutl;        /* string out, lenght */
+     int val1; /* general-purpose numerical value */
+    } RULE2;
+ 
+  typedef struct
+-   {char *name;
+-    char *directory;
+-    char *desc;
+-    char *format;
++   {Char *name;
++    Char *directory;
++    Char *desc;
++    Char *format;
+     boolean copy_no_hit; /* if no hit, copy over instead of delete */
+     boolean case_sensitive; /* iff on, match is case-sensitive     */
+     boolean indexed; /* uses key character index for speed */
+@@ -23,8 +23,8 @@
+     int max_nrules;
+     RULE2 *rule; /* RULE table, dynamically allocated */
+     int *rule_index; /* index to rules in aggregated order, dynamically allocated */
+-    int *first_rule; /* index to first rule for key char, dynamically allocated */
+-    int *last_rule; /* index to last rule for key char, dynamically allocated */
++    int *first_rule; /* index to first rule for key Char, dynamically allocated */
++    int *last_rule; /* index to last rule for key Char, dynamically allocated */
+    } RULESET2;
+ 
+ 
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/ss_to_s.c ./include/ss_to_s.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/ss_to_s.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/ss_to_s.c	2014-09-19 14:01:52.000000000 -0400
+@@ -6,7 +6,7 @@
+ 
+  /**********************************************************************/
+  /*                                                                    */
+- /*   char *substr_to_str(substr,str,lmax)                             */
++ /*   Char *substr_to_str(substr,str,lmax)                             */
+  /*                                                                    */
+  /* Converts the SUBSTRING *substr to the character string *str,       */
+  /* not putting more than *lmax characters in (including the new end-  */
+@@ -16,9 +16,9 @@
+  /* Returns pointer to str.                                            */
+  /*                                                                    */
+  /**********************************************************************/
+- char *substr_to_str(SUBSTRING *substr, char *str, int lmax)
+-{char *proc = "substr_to_str";
+-  char *pn1, *pn2;
++ Char *substr_to_str(SUBSTRING *substr, Char *str, int lmax)
++{Char *proc = "substr_to_str";
++  Char *pn1, *pn2;
+   int next_to_be_moved;
+   boolean ovf;
+   str = strcpy(str,"");
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/ssstr1.h ./include/ssstr1.h
+--- ../../../sctk-2.4.8/src/rfilter1/include/ssstr1.h	2004-08-30 10:59:59.000000000 -0400
++++ ./include/ssstr1.h	2014-09-19 14:01:52.000000000 -0400
+@@ -4,8 +4,8 @@
+ #define SSSTR1_HEADER
+ 
+   struct substring
+-    {char *start;
+-     char *end;
++    {Char *start;
++     Char *end;
+     };
+   typedef struct substring SUBSTRING;
+ 
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/sstok2.c ./include/sstok2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/sstok2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/sstok2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -7,18 +7,18 @@
+  /**********************************************************************/
+  /*                                                                    */
+  /*   SUBSTRING sstok2(sx,delimiters);                                 */
+- /*   char *sx, *delimiters;                                           */
++ /*   Char *sx, *delimiters;                                           */
+  /*                                                                    */
+- /*   Finds the next token in the char string *sx and returns it as a  */
++ /*   Finds the next token in the Char string *sx and returns it as a  */
+  /* SUBSTRING.  A token is a string of characters bounded on the left  */
+  /* and the right by a character in *delimiters.  (NOTE that the start */
+  /* and end of the string do NOT count as delimiters, as in sstok(),   */
+- /* and the input is a char string, not a SUBSTRING.)                  */
++ /* and the input is a Char string, not a SUBSTRING.)                  */
+  /*   If delimiters aren't found, returns a substring of length < 0    */
+  /**********************************************************************/
+ 
+- SUBSTRING sstok2(char *sx, char *delimiters)
+- {char *proc = "sstok2";
++ SUBSTRING sstok2(Char *sx, Char *delimiters)
++ {Char *proc = "sstok2";
+   SUBSTRING ssy_data, *ssy = &ssy_data;
+  /* code */
+   db_enter_msg(proc,9); /* debug only */
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/stdcenvp.h ./include/stdcenvp.h
+--- ../../../sctk-2.4.8/src/rfilter1/include/stdcenvp.h	2004-08-30 10:59:59.000000000 -0400
++++ ./include/stdcenvp.h	2014-09-19 14:02:08.000000000 -0400
+@@ -22,9 +22,9 @@
+ #include "stdpars.h"
+ 
+ 
+-  /* JGF  Redefined tghe character type  to be unsigned so that mandarin and
++  /* JGF  Redefined the character type  to be unsigned so that mandarin and
+           japanese will parse correctly */
+-#define char unsigned char
++#define Char unsigned char
+ 
+ /* type definitions */
+ #include "booldef.h"
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/str_eq.c ./include/str_eq.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/str_eq.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/str_eq.c	2014-09-19 14:01:52.000000000 -0400
+@@ -9,6 +9,6 @@
+  /*  returns T is cs == ct, ignoring case iff */
+  /*  "ignore_case" is T.                      */
+  /*********************************************/
+- boolean string_equal(char *cs, char *ct, int ignore_case)
++ boolean string_equal(Char *cs, Char *ct, int ignore_case)
+  {if (ignore_case) return streqi(cs,ct); else return streq(cs,ct);
+  }
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/strcmpi.c ./include/strcmpi.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/strcmpi.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/strcmpi.c	2014-09-19 14:01:52.000000000 -0400
+@@ -16,9 +16,9 @@
+  /*           == 0 if *ps1 is the same as *ps2                    */
+  /*            > 0 if *ps1 is greater than *ps2                   */
+  /*****************************************************************/
+- int strcmpi(char *ps1, char *ps2)
++ int strcmpi(Char *ps1, Char *ps2)
+ {
+-  char *px1, *px2;
++  Char *px1, *px2;
+   int indicator;
+   px1 = ps1; px2 = ps2;
+   indicator = 9999;
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/strcutr.c ./include/strcutr.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/strcutr.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/strcutr.c	2014-09-19 14:01:52.000000000 -0400
+@@ -5,11 +5,11 @@
+ #endif
+ 
+  /***********************************************/
+- /*  char *strcutr(ps,n)                        */
++ /*  Char *strcutr(ps,n)                        */
+  /*  Cuts n characters from tail of *ps.        */
+  /***********************************************/
+-  char *strcutr(char *ps, int n)
+-{char *p1;
++  Char *strcutr(Char *ps, int n)
++{Char *p1;
+    p1 = ps + strlen(ps) - n;
+    if (p1 < ps)
+      {fprintf(stderr,"*ERR: strcutr results in string of negative length.\n");
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/strdup2.c ./include/strdup2.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/strdup2.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/strdup2.c	2014-09-19 14:01:52.000000000 -0400
+@@ -8,11 +8,11 @@
+  /*  strdup_safe(ps,calling_proc)                      */
+  /*  Like strdup(ps) except fatal err if malloc fails. */
+  /******************************************************/
+- char *strdup_safe(char *ps, char *calling_proc)
+- {char *proc = "strdup_safe";
+-  char *pd;
++ Char *strdup_safe(Char *ps, Char *calling_proc)
++ {Char *proc = "strdup_safe";
++  Char *pd;
+ if (db_level > 3) printf("%sdoing %s\n",pdb,proc);
+-  pd = (char*)malloc((size_t)strlen(ps)+1);
++  pd = (Char*)malloc((size_t)strlen(ps)+1);
+   if (pd == NULL) fatal_error(calling_proc,"MEM ALLOC",-1);
+   else   pd = strcpy(pd,ps);
+   if (memory_trace) printf("%s MALLOC %x\n",pdb,(int)pd);
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/strncmpi.c ./include/strncmpi.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/strncmpi.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/strncmpi.c	2014-09-19 14:01:52.000000000 -0400
+@@ -18,9 +18,9 @@
+  /*            > 0 if *ps1 is greater than *ps2 (first n chars)   */
+  /*  Revised 11/5/96 by WMF to fix a bug when n == 0.             */
+  /*****************************************************************/
+- int strncmpi(char *ps1, char *ps2, int n)
+- {char *proc = "strncmpi";
+-  char *px1, *px2;
++ int strncmpi(Char *ps1, Char *ps2, int n)
++ {Char *proc = "strncmpi";
++  Char *px1, *px2;
+   int indicator, i=0;
+  db_enter_msg(proc,2); /* debug only */
+   px1 = ps1; px2 = ps2;
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/textlen.c ./include/textlen.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/textlen.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/textlen.c	2014-09-19 14:01:52.000000000 -0400
+@@ -12,4 +12,4 @@
+  /*  shift the data.)                         */
+  /*********************************************/
+ 
+-  int textlen(char *s) {return (int)(prtrim(s) - pltrimf(s) + 1);}
++  int textlen(Char *s) {return (int)(prtrim(s) - pltrimf(s) + 1);}
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/include/valdata.c ./include/valdata.c
+--- ../../../sctk-2.4.8/src/rfilter1/include/valdata.c	2004-08-30 10:59:59.000000000 -0400
++++ ./include/valdata.c	2014-09-19 14:01:52.000000000 -0400
+@@ -10,9 +10,9 @@
+   /*  Indicates whether or not *s is a valid non-empty data line.*/
+   /*  Changed 7/22/93 to return "T" if comment_flag is empty.    */
+   /***************************************************************/
+-  boolean valid_data_line(char *s, char *comment_flag)
++  boolean valid_data_line(Char *s, Char *comment_flag)
+   {boolean ok;
+-   char *px, *py;
++   Char *px, *py;
+    if (strlen(s) < 1)
+      ok = F;
+    else
+diff -ruN ../../../sctk-2.4.8/src/rfilter1/rfilter1.c ./rfilter1.c
+--- ../../../sctk-2.4.8/src/rfilter1/rfilter1.c	2004-09-07 12:09:11.000000000 -0400
++++ ./rfilter1.c	2014-09-19 14:02:39.000000000 -0400
+@@ -29,11 +29,11 @@
+ int main(int argc, char **argv)
+  {char *proc = "RFILTER1 Ver. 2.0";
+   time_t t_sec;
+-  char rxf[LONG_LINE], *fname_rules = &rxf[0];
++  Char rxf[LONG_LINE], *fname_rules = &rxf[0];
+ #define MAX_INPUT_REC 100000
+-  char pax[MAX_INPUT_REC], *pa = &pax[0];
+-  char pbx[MAX_INPUT_REC], *pb = &pbx[0];
+-  char *path = "";
++  Char pax[MAX_INPUT_REC], *pa = &pax[0];
++  Char pbx[MAX_INPUT_REC], *pb = &pbx[0];
++  Char *path = "";
+   int err; int *perr = &err;
+   RULESET2 rset_data, *rset = &rset_data;
+ /*   code   */

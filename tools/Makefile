@@ -95,6 +95,7 @@ sctk/.configured: sctk
 
 sctk/.patched: sctk
 	cd sctk; patch -N -p0 < ../extras/sctk-2.4.8.patch
+	cd sctk/src/rfilter1/; patch -N -p0 < ../../../extras/sctk-2.4.8.patch2
 	touch sctk/.patched
 
 
