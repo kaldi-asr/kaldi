@@ -831,7 +831,7 @@ void CuMatrixBase<Real>::AddMatMatDivMat(const CuMatrixBase<Real> &A,
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
 
-    cuda_add_mat_mat_div_mat(dimGrid, dimBlock, A.data_, B.data_, C.data_, data_, Dim());
+    cuda_add_mat_mat_div_mat(dimGrid, dimBlock, A.data_, B.data_, C.data_, data_, Dim(), A.Stride(), B.Stride(), C.Stride());
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());

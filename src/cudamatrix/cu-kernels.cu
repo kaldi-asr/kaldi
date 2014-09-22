@@ -294,7 +294,7 @@ static void _apply_exp(Real* mat, MatrixDim d) {
 
 template<typename Real>
 __global__
-static void _scale_diag(Real* mat, Real value, int dim) {
+static void _scale_diag_packed(Real* mat, Real value, int dim) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda index = ((i+1)*(i+2)/2) - 1;
   if ( i < dim ) {
@@ -307,8 +307,8 @@ __global__
 static void _set_diag(Real* mat, Real value, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda index = i + i*d.stride;
-  if ( i < d.rows ) {
-    mat[index] = 1;
+  if ( i < d.rows && i < d.cols) {
+    mat[index] = value;
   }
 }
 
@@ -530,15 +530,19 @@ static void _add_mat_trans(Real alpha, const Real* src, Real* dst, MatrixDim d, 
 
 template<typename Real>
 __global__
-static void _add_mat_mat_div_mat(const Real* A, const Real* B, const Real* C, Real* dst, MatrixDim d) {
+static void _add_mat_mat_div_mat(const Real* A, const Real* B, const Real* C, Real* dst, MatrixDim d, int stride_a, 
+                                 int stride_b, int stride_c) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda index = i + j*d.stride;
+  int32_cuda index = i + j*d.stride,
+             a_index = i + j*stride_a,
+             b_index = i + j*stride_b,
+             c_index = i + j*stride_c;
   if (i < d.cols && j < d.rows)
-    if (C[index] == 0)
-      dst[index] = A[index];
+    if (C[c_index] == 0)
+      dst[index] = A[a_index];
     else
-      dst[index] = A[index] * B[index] / C[index];
+      dst[index] = A[a_index] * B[b_index] / C[c_index];
 }
 
 // Given a matrix input S (not packed!) and a lower-triangular matrix L,
@@ -1596,31 +1600,6 @@ static void _diff_tanh(Real*eout, const Real*e, const Real*y, MatrixDim d, int e
 
 template<typename Real>
 __global__
-static void _softmax(Real*y, const Real*x, MatrixDim d) {
-  int32_cuda j = blockIdx.x * blockDim.x + threadIdx.x;
-  if(j >= d.rows) return;
-
-  //copy to output and find max...
-  double max = -1e20;
-  double sum = 0.0;
-  for(int32_cuda i=0; i<d.cols; i++) {
-    if(max < x[i+j*d.stride]) max = x[i+j*d.stride];
-    y[i+j*d.stride] = x[i+j*d.stride];
-  }
-  //subtract max, apply exp, sum up...
-  for(int32_cuda i=0; i<d.cols; i++) {
-    y[i+j*d.stride] = exp(y[i+j*d.stride] - max);
-    sum += y[i+j*d.stride];
-  }
-  //normalize by sum...
-  for(int32_cuda i=0; i<d.cols; i++) {
-    y[i+j*d.stride] /= sum;
-  }
-}
-
-
-template<typename Real>
-__global__
 static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
   int j = blockIdx.x;
   int THREADS = blockDim.x;
@@ -1805,10 +1784,11 @@ static void _randomize(Real* y, const Real* x, const int32_cuda* copy_from, Matr
 
 template<typename Real>
 __global__
-static void _regularize_l1(Real* wei, Real* grad, Real l1, Real lr, MatrixDim d) {
+static void _regularize_l1(Real* wei, Real* grad, Real l1, Real lr, MatrixDim d, int stride_grad) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda index = i + j*d.stride;
+  int32_cuda index = i + j*d.stride,
+             grad_index = i + j*stride_grad;
   if (i < d.cols && j < d.rows) {
 
     if(wei[index]==0.0) return; //skip L1 if zero weight!
@@ -1818,10 +1798,10 @@ static void _regularize_l1(Real* wei, Real* grad, Real l1, Real lr, MatrixDim d)
       l1_signed = -l1;
 
     Real before = wei[index];
-    Real after = wei[index] -lr*grad[index] -l1_signed;//simulate update
+    Real after = wei[index] -lr*grad[grad_index] -l1_signed;//simulate update
     if((after > 0.0) ^ (before > 0.0)) { //sign changed?
       wei[index] = 0.0;
-      grad[index] = 0.0;
+      grad[grad_index] = 0.0;
     } else {
       wei[index] -= l1_signed;
     }
@@ -1878,18 +1858,6 @@ static void _diff_xent(const int32_cuda* vec_tgt, Real* mat_net_out, Real* vec_l
 }
 
 
-
-template<typename Real>
-__global__
-static void _softmax_part(const Real* X, const int32_cuda* vec_ids, Real* Y, MatrixDim d) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda index = i + j*d.stride;
-  if (i < d.cols && j < d.rows) {
-    Real tmp = X[index] - X[vec_ids[j] + j*d.stride];
-    Y[index] = exp(tmp);
-  }
-}
 
 /***********************************************************************
  * ANSI-C wrappers of CUDA kernels
@@ -2000,8 +1968,8 @@ void cudaF_add(dim3 Gr, dim3 Bl, float* mat, float value, MatrixDim d) {
   _add<<<Gr,Bl>>>(mat,value,d); 
 }
 
-void cudaF_scale_diag(int Gr, int Bl, float* mat, float value, int dim) {
-  _scale_diag<<<Gr,Bl>>>(mat,value,dim);
+void cudaF_scale_diag_packed(int Gr, int Bl, float* mat, float value, int dim) {
+  _scale_diag_packed<<<Gr,Bl>>>(mat,value,dim);
 }
 
 void cudaF_scale(dim3 Gr, dim3 Bl, float* mat, float value, MatrixDim d) {
@@ -2051,8 +2019,8 @@ void cudaF_add_mat(dim3 Gr, dim3 Bl, float alpha, const float* src, float* dst, 
   }
 }
 
-void cudaF_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B, const float *C, float *dst, MatrixDim d) {
-  _add_mat_mat_div_mat<<<Gr,Bl>>>(A,B,C,dst,d);
+void cudaF_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B, const float *C, float *dst, MatrixDim d, int stride_a, int stride_b, int stride_c) {
+  _add_mat_mat_div_mat<<<Gr,Bl>>>(A,B,C,dst,d, stride_a, stride_b, stride_c);
 }
 
 void cudaF_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const float* T, MatrixDim tdim,
@@ -2228,18 +2196,10 @@ void cudaF_diff_tanh (dim3 Gr, dim3 Bl, float* eout, const float* e, const float
   _diff_tanh<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
 }
 
-void cudaF_softmax (size_t Gr, size_t Bl, float* y, const float* x, MatrixDim d) { 
-  _softmax<<<Gr,Bl>>>(y, x, d); 
-}
-
 void cudaF_softmax_reduce (size_t Gr, size_t Bl, float* y, const float* x, MatrixDim d, int src_stride) {
   _softmax_reduce<<<Gr,Bl>>>(y, x, d, src_stride);
 }
 
-
-void cudaF_softmax_part(dim3 Gr, dim3 Bl, const float* X, const int32_cuda* vec_ids, float* Y, MatrixDim d) {
-  _softmax_part<<<Gr,Bl>>>(X,vec_ids,Y,d);
-}
 
 void cudaF_splice(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {
   _splice<<<Gr,Bl>>>(y,x,off,d_out,d_in); 
@@ -2274,8 +2234,8 @@ void cudaF_randomize(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cud
 }
 
 
-void cudaF_regularize_l1(dim3 Gr, dim3 Bl, float* wei, float* grad, float l1, float lr, MatrixDim d) {
-  _regularize_l1<<<Gr,Bl>>>(wei,grad,l1,lr,d); 
+void cudaF_regularize_l1(dim3 Gr, dim3 Bl, float* wei, float* grad, float l1, float lr, MatrixDim d, int stride_grad) {
+  _regularize_l1<<<Gr,Bl>>>(wei,grad,l1,lr,d,stride_grad); 
 }
 
 void cudaF_find_row_max_id(dim3 Gr, dim3 Bl, const float* mat, float* vec_val, int32_cuda* vec_id, int32_cuda voff, MatrixDim d) {
@@ -2415,8 +2375,8 @@ void cudaD_add(dim3 Gr, dim3 Bl, double* mat, double value, MatrixDim d) {
   _add<<<Gr,Bl>>>(mat,value,d); 
 }
 
-void cudaD_scale_diag(int Gr, int Bl, double* mat, double value, int dim) {
-  _scale_diag<<<Gr,Bl>>>(mat,value,dim);
+void cudaD_scale_diag_packed(int Gr, int Bl, double* mat, double value, int dim) {
+  _scale_diag_packed<<<Gr,Bl>>>(mat,value,dim);
 }
 
 void cudaD_scale(dim3 Gr, dim3 Bl, double* mat, double value, MatrixDim d) {
@@ -2466,8 +2426,8 @@ void cudaD_add_mat(dim3 Gr, dim3 Bl, double alpha, const double* src, double* ds
   }
 }
 
-void cudaD_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A, const double *B, const double *C, double *dst, MatrixDim d) {
-  _add_mat_mat_div_mat<<<Gr,Bl>>>(A,B,C,dst,d);
+void cudaD_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A, const double *B, const double *C, double *dst, MatrixDim d, int stride_a, int stride_b, int stride_c) {
+  _add_mat_mat_div_mat<<<Gr,Bl>>>(A,B,C,dst,d,stride_a,stride_b,stride_c);
 }
 
 void cudaD_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta, const double* T, MatrixDim tdim,
@@ -2644,17 +2604,8 @@ void cudaD_diff_tanh (dim3 Gr, dim3 Bl, double* eout, const double* e, const dou
   _diff_tanh<<<Gr,Bl>>>(eout, e, y, d, e_stride, y_stride);
 }
 
-
-void cudaD_softmax (size_t Gr, size_t Bl, double* y, const double* x, MatrixDim d) { 
-  _softmax<<<Gr,Bl>>>(y, x, d); 
-}
-
 void cudaD_softmax_reduce (size_t Gr, size_t Bl, double* y, const double* x, MatrixDim d, int src_stride) {
   _softmax_reduce<<<Gr,Bl>>>(y, x, d, src_stride);
-}
-
-void cudaD_softmax_part(dim3 Gr, dim3 Bl, const double* X, const int32_cuda* vec_ids, double* Y, MatrixDim d) {
-  _softmax_part<<<Gr,Bl>>>(X,vec_ids,Y,d);
 }
 
 void cudaD_splice(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {
@@ -2689,8 +2640,8 @@ void cudaD_randomize(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_c
   _randomize<<<Gr,Bl>>>(y,x,copy_from,d_out,d_in); 
 }
 
-void cudaD_regularize_l1(dim3 Gr, dim3 Bl, double* wei, double* grad, double l1, double lr, MatrixDim d) {
-  _regularize_l1<<<Gr,Bl>>>(wei,grad,l1,lr,d); 
+void cudaD_regularize_l1(dim3 Gr, dim3 Bl, double* wei, double* grad, double l1, double lr, MatrixDim d,int stride_grad) {
+  _regularize_l1<<<Gr,Bl>>>(wei,grad,l1,lr,d,stride_grad); 
 }
 
 void cudaD_find_row_max_id(dim3 Gr, dim3 Bl, const double* mat, double* vec_val, int32_cuda* vec_id, int32_cuda voff, MatrixDim d) {
