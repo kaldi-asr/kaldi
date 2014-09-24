@@ -12,17 +12,14 @@ set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
-local/make_lre11.pl /export/corpora5/NIST/LRE/LRE2011/MIT_LL data
-local/make_lre09.pl /export/corpora5/NIST/LRE/LRE2009/eval data
-local/make_lre96.pl /export/corpora/NIST/lid96e1 data
-local/make_lre07_train.pl /export/corpora5/LDC/LDC2009S05 data
+# Training data sources
+local/make_sre_2008_train.pl /export/corpora5/LDC/LDC2011S05 data
 local/make_callfriend.pl /export/corpora/LDC/LDC96S60 vietnamese data
 local/make_callfriend.pl /export/corpora/LDC/LDC96S59 tamil data
 local/make_callfriend.pl /export/corpora/LDC/LDC96S53 japanese data
 local/make_callfriend.pl /export/corpora/LDC/LDC96S52 hindi data
 local/make_callfriend.pl /export/corpora/LDC/LDC96S51 german data
 local/make_callfriend.pl /export/corpora/LDC/LDC96S50 farsi data
-local/make_sre_2008_train.pl /export/corpora5/LDC/LDC2011S05 data
 local/make_callfriend.pl /export/corpora5/LDC/LDC96S48 french data
 local/make_callfriend.pl /export/corpora5/LDC/LDC96S49 arabic.standard data
 local/make_callfriend.pl /export/corpora5/LDC/LDC96S54 korean data
@@ -30,9 +27,13 @@ local/make_callfriend.pl /export/corpora5/LDC/LDC96S55 chinese.mandarin.mainland
 local/make_callfriend.pl /export/corpora5/LDC/LDC96S56 chinese.mandarin.taiwan data
 local/make_callfriend.pl /export/corpora5/LDC/LDC96S57 spanish.caribbean data
 local/make_callfriend.pl /export/corpora5/LDC/LDC96S58 spanish.noncaribbean data
+local/make_lre96.pl /export/corpora/NIST/lid96e1 data
 local/make_lre03.pl /export/corpora4/LDC/LDC2006S31 data
 local/make_lre05.pl /export/corpora5/LDC/LDC2008S05 data
+local/make_lre07_train.pl /export/corpora5/LDC/LDC2009S05 data
+local/make_lre09.pl /export/corpora5/NIST/LRE/LRE2009/eval data
 
+# Evaluation data set
 local/make_lre07.pl /export/corpora5/LDC/LDC2009S04 data/lre07
 
 src_list="data/sre08_train_10sec_female \
@@ -41,7 +42,7 @@ src_list="data/sre08_train_10sec_female \
     data/sre08_train_8conv_male data/sre08_train_short2_male \
     data/sre08_train_short2_female data/ldc96* data/lid05d1 \
     data/lid05e1 data/lid96d1 data/lid96e1 data/lre03 \
-    data/ldc2009* data/lre09 data/lre11"
+    data/ldc2009* data/lre09"
 
 # Remove any spk2gender files that we have: since not all data
 # sources have this info, it will cause problems with combine_data.sh
@@ -156,15 +157,15 @@ rm -f data/lang/phones/word_boundary.txt 2>/dev/null
 utils/mkgraph.sh data/lang exp/tri5a exp/tri5a/graph || exit 1;
 
 # TODO: Might help to make this larger than 30k:
-steps/get_fmllr_basis.sh --cmd "$train_cmd" data/train_phonotactics_30k data/lang exp/tri5a
+steps/get_fmllr_basis.sh --cmd "$train_cmd" data/train_phonotactics_100k data/lang exp/tri5a
 
-local/decode_basis_fmllr_special.sh --nj 25 --acwt 0.075 --num-threads 8 --parallel-opts "-pe smp 8" --cmd "$decode_cmd" \
+local/decode_basis_fmllr.sh --nj 25 --acwt 0.075 --num-threads 8 --parallel-opts "-pe smp 8" --cmd "$decode_cmd" \
    --skip-scoring true --config conf/decode.config \
-   exp/tri5a/graph data/lre07 exp/tri5a/lre07_basis_fmllr_special
+   exp/tri5a/graph data/lre07 exp/tri5a/lre07_basis_fmllr
 
-local/decode_basis_fmllr_special.sh  --nj 50 --acwt 0.075 --num-threads 8 --parallel-opts "-pe smp 8" --cmd "$decode_cmd" \
+local/decode_basis_fmllr.sh  --nj 50 --acwt 0.075 --num-threads 8 --parallel-opts "-pe smp 8" --cmd "$decode_cmd" \
    --skip-scoring true --config conf/decode.config \
-   exp/tri5a/graph data/train exp/tri5a/train_basis_fmllr_special
+   exp/tri5a/graph data/train exp/tri5a/train_basis_fmllr
 
 local/make_softcount_feats.sh
 

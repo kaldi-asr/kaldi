@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-
+# Apache 2.0.
 # special-purpose script to make un-smoothed phone
 # bigram LM.  Input looks like:
 # 1 292 290 346 178 185 1 232 245 312 1 
