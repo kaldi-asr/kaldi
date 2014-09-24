@@ -180,21 +180,20 @@ lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
 
 # Train logistic regression model on the extracted I-Vectors and get
 # posteriors on LRE 2007 for the standard system
-lid/run_logistic_regression.sh --config conf/logistic-regression.conf \
-  --train_dir exp/ivectors_train --test_dir exp/ivectors_lre07 \
-  --model_dir exp/ivectors_train --prior-scale 0.75 \
+lid/run_logistic_regression.sh --prior-scale 0.75 \
+  --conf conf/logistic-regression.conf \
   --use-log-posteriors false
 
 # Train logistic regression model on the extracted I-Vectors and get
 # posteriors on LRE 2007 for the pitch system
-lid/run_logistic_regression.sh --config conf/logistic-regression-pitch.conf \
+lid/run_logistic_regression.sh --conf conf/logistic-regression-pitch.conf \
   --train_dir exp/ivectors_pitch_train --test_dir exp/ivectors_pitch_lre07 \
-  --model_dir exp/ivectors_pitch_train --prior-scale 0.75
+  --model_dir exp/ivectors_pitch_train --prior-scale 0.75 \
   --use-log-posteriors false
 
 # Combine posteriors from the standard and pitch systems
-vector-sum ark:"vector-scale --scale=0.5 ark:exp/ivectors_lre07/posteriors ark:- |" \
-  ark:"vector-scale --scale=0.5 ark:exp/ivectors_lre07/posteriors ark:- |" \
+vector-sum ark:"vector-scale --scale=0.5 ark:../v1/exp/ivectors_lre07/posteriors ark:- |" \
+  ark:"vector-scale --scale=0.5 ark:exp/ivectors_pitch_lre07/posteriors ark:- |" \
   ark,t:exp/ivectors_lre07/posteriors_combined
 
 cat exp/ivectors_lre07/posteriors_combined | \
