@@ -1,0 +1,1 @@
+run_kws_stt_task.sh
