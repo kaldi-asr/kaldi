@@ -34,10 +34,12 @@ int main(int argc, char *argv[]) {
     using kaldi::int32;
 
     const char *usage =
-        "Constructs a context FST with a specified context-width and context-position.  Outputs\n"
-        " the context FST, and a file in Kaldi format that describes what the input labels mean.\n"
+        "Constructs a context FST with a specified context-width and context-position.\n"
+        "Outputs the context FST, and a file in Kaldi format that describes what the\n"
+        "input labels mean.  Note: this is very inefficient if there are a lot of phones,\n"
+        "better to use fstcomposecontext instead\n"
         "\n"
-        "Usage:  fstmakecontextfst phones_symtab subseq_sym ilabels_output_file [out.fst]\n"
+        "Usage:  fstmakecontextfst <phones-symbol-table> <subsequential-symbol> <ilabels-output-file> [<out-fst>]\n"
         "E.g.:   fstmakecontextfst phones.txt 42 ilabels.sym > C.fst\n";
 
     bool binary = true;  // binary output to ilabels_output_file.

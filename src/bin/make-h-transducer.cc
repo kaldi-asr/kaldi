@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Make H transducer from transition-ids to context-dependent phones, \n"
         " without self-loops [use add-self-loops to add them]\n"
-        "Usage:   make-h-transducer ilabel-info-file tree-file transition-gmm/acoustic-model [H-fst-out]\n"
+        "Usage:   make-h-transducer <ilabel-info-file> <tree-file> <transition-gmm/acoustic-model> [<H-fst-out>]\n"
         "e.g.: \n"
         " make-h-transducer ilabel_info  1.tree 1.mdl > H.fst\n";
     ParseOptions po(usage);

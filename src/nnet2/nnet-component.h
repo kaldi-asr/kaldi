@@ -307,11 +307,13 @@ class NonlinearComponent: public Component {
   friend class RectifiedLinearComponent;
   friend class SoftHingeComponent;
   
+
   // This function updates the stats "value_sum_", "deriv_sum_", and
   // count_. (If deriv == NULL, it won't update "deriv_sum_").
   // It will be called from the Backprop function of child classes.
   void UpdateStats(const CuMatrixBase<BaseFloat> &out_value,
                    const CuMatrixBase<BaseFloat> *deriv = NULL);
+
   
   const NonlinearComponent &operator = (const NonlinearComponent &other); // Disallow.
   int32 dim_;
@@ -319,6 +321,8 @@ class NonlinearComponent: public Component {
   CuVector<double> deriv_sum_; // stats of the derivative of the nonlinearity (only
   // applicable to element-by-element nonlinearities, not Softmax.
   double count_;
+  // The mutex is used in UpdateStats, only for resizing vectors.
+  Mutex mutex_;
 };
 
 class MaxoutComponent: public Component {

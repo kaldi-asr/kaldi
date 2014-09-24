@@ -263,50 +263,49 @@ namespace kaldi {
  following commands to download the archives and extract them:
  
  \verbatim
- wget http://kaldi-asr.org/downloads/build/2/sandbox/online/egs/fisher_english/s5/exp/nnet2_online/nnet_a_gpu_online/archive.tar.gz -O nnet_a_gpu_online.tar.gz
- wget http://kaldi-asr.org/downloads/build/2/sandbox/online/egs/fisher_english/s5/exp/tri5a/graph/archive.tar.gz -O graph.tar.gz
- tar zxvf nnet_a_gpu_online.tar.gz -C nnet_a_gpu_online
- tar zxvf graph.tar.gz -C graph
+wget http://kaldi-asr.org/downloads/build/5/trunk/egs/fisher_english/s5/exp/nnet2_online/nnet_a_gpu_online/archive.tar.gz -O nnet_a_gpu_online.tar.gz
+wget http://kaldi-asr.org/downloads/build/2/sandbox/online/egs/fisher_english/s5/exp/tri5a/graph/archive.tar.gz -O graph.tar.gz
+mkdir -p nnet_a_gpu_online graph
+tar zxvf nnet_a_gpu_online.tar.gz -C nnet_a_gpu_online
+tar zxvf graph.tar.gz -C graph
  \endverbatim 
-
- Here the archieves are extracted to the local directory. Surely the reader can extract them to any other directories. 
- Next, some configuration files we just download should be modified, as they contain absolute pathes. Change directory
- to nnet_a_gpu_online/conf and then edit <code> ivector_extractor.conf </code> and <code> online_nnet2_decoding.conf </code>. Replace
- those absolute pathes with correct ones according to where you extract the archives. For example, in my case, I replaced
- \verbatim
- /export/a09/dpovey/kaldi-clean/egs/fisher_english/s5/exp/nnet2_online
- \endverbatim 
- with
- \verbatim
- /disc1/kaldi-sandbox/online/egs/fisher_english/s5
- \endverbatim 
+ Here the archives are extracted to the local directory.  We need to modify pathnames in the 
+ config files, which we can do as follows:
+\verbatim
+for x in nnet_a_gpu_online/conf/*conf; do
+  cp $x $x.orig
+  sed s:/export/a09/dpovey/kaldi-clean/egs/fisher_english/s5/exp/nnet2_online/:$(pwd)/: < $x.orig > $x
+done
+\endverbatim
  Next, choose a single wav file to decode. The reader can download a sample file by typing
  \verbatim
  wget http://www.signalogic.com/melp/EngSamples/Orig/ENG_M.wav
  \endverbatim 
- This is a 8kHz-sampled wav file that we found online. Then it can be decoded with the following commands:
+ This is a 8kHz-sampled wav file that we found online (unfortunately it is UK
+ English, so the accuracy is not very good).  It can be decoded with the following command:
  \verbatim
- online2-wav-nnet2-latgen-faster --do-endpointing=false \
-     --online=false \
-     --config=nnet_a_gpu_online/conf/online_nnet2_decoding.conf \
-     --max-active=7000 --beam=15.0 --lattice-beam=6.0 \
-     --acoustic-scale=0.1 --word-symbol-table=graph/words.txt \
-    nnet_a_gpu_online/final.mdl graph/HCLG.fst "ark:echo foo foo|" "scp:echo foo ENG_M.wav|" \
-    ark:- 2>/dev/null | \
- lattice-best-path --lm-scale=10.0 --word-symbol-table=graph/words.txt \
-   ark:- ark,t:- 2>/dev/null | \
- utils/int2sym.pl -f 2- graph/words.txt - 2>/dev/null | cut -d" " -f2- | awk '{print "The result is:" ; print $0}'
+~/kaldi-online/src/online2bin/online2-wav-nnet2-latgen-faster --do-endpointing=false \
+    --online=false \
+    --config=nnet_a_gpu_online/conf/online_nnet2_decoding.conf \
+    --max-active=7000 --beam=15.0 --lattice-beam=6.0 \
+    --acoustic-scale=0.1 --word-symbol-table=graph/words.txt \
+   nnet_a_gpu_online/smbr_epoch2.mdl graph/HCLG.fst "ark:echo utterance-id1 utterance-id1|" "scp:echo utterance-id1 ENG_M.wav|" \
+   ark:/dev/null
  \endverbatim
- The term "2>/dev/null" is added to avoid log messages. 
  We added the <code>--online=false</code> option because it tends to slightly improve results.
- If those comands worked correctly, after maybe 1 minuete
- (mostly due to the time cost by loading the models), you will get results as follows:
- \verbatim
- The result is:
- tom sue well underway fall races two miles and then in nineteen ninety two by so let's say ooh threesome all these 
- to commemorate columbus is drawn into the new world five hundred years ago i went to the moon is to promote the use 
- of so the sales in space exploration 
- \endverbatim
+ You can see the result in the logging output (although there are other ways to retrieve this).
+ For us, the logging output was as follows:
+\verbatim
+/home/dpovey/kaldi-online/src/online2bin/online2-wav-nnet2-latgen-faster --do-endpointing=false --online=false --config=nnet_a_gpu_online/conf/online_nnet2_decoding.conf --max-active=7000 --beam=15.0 --lattice-beam=6.0 --acoustic-scale=0.1 --word-symbol-table=graph/words.txt nnet_a_gpu_online/smbr_epoch2.mdl graph/HCLG.fst 'ark:echo utterance-id1 utterance-id1|' 'scp:echo utterance-id1 ENG_M.wav|' ark:/dev/null 
+LOG (online2-wav-nnet2-latgen-faster:ComputeDerivedVars():ivector-extractor.cc:180) Computing derived variables for iVector extractor
+LOG (online2-wav-nnet2-latgen-faster:ComputeDerivedVars():ivector-extractor.cc:201) Done.
+utterance-id1 tons of who was on the way for races two miles and then in nineteen ninety to buy sodas sale the rate them all these to commemorate columbus is drawn into the new world five hundred years ago on the one to the moon is to promote the use of so the sales in space exploration 
+LOG (online2-wav-nnet2-latgen-faster:main():online2-wav-nnet2-latgen-faster.cc:253) Decoded utterance utterance-id1
+LOG (online2-wav-nnet2-latgen-faster:Print():online-timing.cc:51) Timing stats: real-time factor for offline decoding was 1.62102 = 26.7482 seconds  / 16.5009 seconds.
+LOG (online2-wav-nnet2-latgen-faster:main():online2-wav-nnet2-latgen-faster.cc:259) Decoded 1 utterances, 0 with errors.
+LOG (online2-wav-nnet2-latgen-faster:main():online2-wav-nnet2-latgen-faster.cc:261) Overall likelihood per frame was 0.230575 per frame over 1648 frames.
+\endverbatim
+
 
 */
 

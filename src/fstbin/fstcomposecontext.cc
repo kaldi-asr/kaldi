@@ -84,9 +84,9 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Composes on the left with a dynamically created context FST\n"
         "\n"
-        "Usage:  fstcomposecontext ilabels-output-file   [in.fst [out.fst] ]\n"
+        "Usage:  fstcomposecontext <ilabels-output-file>  [<in.fst> [<out.fst>] ]\n"
         "E.g:  fstcomposecontext ilabels.sym < LG.fst > CLG.fst\n";
-
+    
 
     ParseOptions po(usage);
     bool binary = true;
