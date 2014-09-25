@@ -55,6 +55,7 @@ namespace nnet1 {
     Component* c = ReadComponentFromString("<ConvolutionalComponent> 5 5 \
       <PatchDim> 1 <PatchStep> 1 <PatchStride> 5 \
       <LearnRateCoef> 1.0 <BiasLearnRateCoef> 1.0 \
+      <MaxNorm> 0 \
       <Filters> [ 1 \
       ] <Bias> [ 0 ]"
     );
@@ -84,6 +85,7 @@ namespace nnet1 {
     Component* c = ReadComponentFromString("<ConvolutionalComponent> 9 15 \
       <PatchDim> 3 <PatchStep> 1 <PatchStride> 5 \
       <LearnRateCoef> 1.0 <BiasLearnRateCoef> 1.0 \
+      <MaxNorm> 0 \
       <Filters> [ -1 -2 -7   0 0 0   1 2 7 ; \
                   -1  0  1  -3 0 3  -2 2 0 ; \
                   -4  0  0  -3 0 3   4 0 0 ] \
