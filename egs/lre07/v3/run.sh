@@ -11,7 +11,6 @@ set -e
 
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
-if [ 0 = 1 ]; then
 # Training data sources
 local/make_sre_2008_train.pl /export/corpora5/LDC/LDC2011S05 data
 local/make_callfriend.pl /export/corpora/LDC/LDC96S60 vietnamese data
@@ -98,7 +97,6 @@ utils/validate_data_dir.sh data/train_phonotactics_500k
 
 utils/subset_data_dir.sh --shortest data/train_phonotactics_500k 100000 data/train_phonotactics_100kshort
 utils/subset_data_dir.sh data/train_phonotactics_100kshort 10000 data/train_phonotactics_10k
-fi
 local/remove_dup_utts.sh 100 data/train_phonotactics_10k data/train_phonotactics_10k_nodup
 utils/subset_data_dir.sh --speakers data/train_phonotactics_500k 30000 data/train_phonotactics_30k
 utils/subset_data_dir.sh --speakers data/train_phonotactics_500k 100000 data/train_phonotactics_100k
