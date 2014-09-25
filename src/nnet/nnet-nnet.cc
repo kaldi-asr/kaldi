@@ -175,22 +175,37 @@ void Nnet::SetComponent(int32 c, Component *component) {
 }
 
 void Nnet::AppendComponent(Component* dynamically_allocated_comp) {
+  // append,
   components_.push_back(dynamically_allocated_comp);
+  // create training buffers,
+  propagate_buf_.resize(NumComponents()+1);
+  backpropagate_buf_.resize(NumComponents()+1);
+  //
   Check();
 }
 
 void Nnet::AppendNnet(const Nnet& nnet_to_append) {
+  // append,
   for(int32 i=0; i<nnet_to_append.NumComponents(); i++) {
     AppendComponent(nnet_to_append.GetComponent(i).Copy());
   }
+  // create training buffers,
+  propagate_buf_.resize(NumComponents()+1);
+  backpropagate_buf_.resize(NumComponents()+1);
+  //
   Check();
 }
 
 void Nnet::RemoveComponent(int32 component) {
   KALDI_ASSERT(component < NumComponents());
+  // remove,
   Component* ptr = components_[component];
   components_.erase(components_.begin()+component);
   delete ptr;
+  // create training buffers,
+  propagate_buf_.resize(NumComponents()+1);
+  backpropagate_buf_.resize(NumComponents()+1);
+  // 
   Check();
 }
 
@@ -478,13 +493,17 @@ std::string Nnet::InfoBackPropagate() const {
 
 
 void Nnet::Check() const {
+  // check we have correct number of buffers,
+  KALDI_ASSERT(propagate_buf_.size() == NumComponents()+1)
+  KALDI_ASSERT(backpropagate_buf_.size() == NumComponents()+1)
+  // check dims,
   for (size_t i = 0; i + 1 < components_.size(); i++) {
     KALDI_ASSERT(components_[i] != NULL);
     int32 output_dim = components_[i]->OutputDim(),
       next_input_dim = components_[i+1]->InputDim();
     KALDI_ASSERT(output_dim == next_input_dim);
   }
-  // check for nan/inf in network weights
+  // check for nan/inf in network weights,
   Vector<BaseFloat> weights;
   GetParams(&weights);
   BaseFloat sum = weights.Sum();

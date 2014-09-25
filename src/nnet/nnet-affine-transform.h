@@ -185,7 +185,7 @@ class AffineTransform : public UpdatableComponent {
       lin_sqr.MulElements(linearity_);
       CuVector<BaseFloat> l2(OutputDim());
       l2.AddColSumMat(1.0, lin_sqr, 0.0);
-      l2.ApplyPow(0.5); // have L2 norm
+      l2.ApplyPow(0.5); // we have per-neuron L2 norms
       CuVector<BaseFloat> scl(l2);
       scl.Scale(1.0/max_norm_);
       scl.ApplyFloor(1.0);

@@ -21,7 +21,7 @@
 . ./path.sh ## Source the tools/utils (import the queue.pl)
 
 # Config:
-gmmdir=exp/tri3b
+gmm=exp/tri3b
 data_fmllr=data-fmllr-tri3b
 stage=0 # resume training with --stage=N
 # End of config.
@@ -33,13 +33,13 @@ if [ $stage -le 0 ]; then
   # test
   dir=$data_fmllr/test
   steps/nnet/make_fmllr_feats.sh --nj 10 --cmd "$train_cmd" \
-     --transform-dir $gmmdir/decode \
-     $dir data/test $gmmdir $dir/log $dir/data || exit 1
+     --transform-dir $gmm/decode \
+     $dir data/test $gmm $dir/log $dir/data || exit 1
   # train
   dir=$data_fmllr/train
   steps/nnet/make_fmllr_feats.sh --nj 10 --cmd "$train_cmd" \
-     --transform-dir ${gmmdir}_ali \
-     $dir data/train $gmmdir $dir/log $dir/data || exit 1
+     --transform-dir ${gmm}_ali \
+     $dir data/train $gmm $dir/log $dir/data || exit 1
   # split the data : 90% train 10% cross-validation (held-out)
   utils/subset_data_dir_tr_cv.sh $dir ${dir}_tr90 ${dir}_cv10 || exit 1
 fi
@@ -55,7 +55,7 @@ fi
 if [ $stage -le 2 ]; then
   # Train the DNN optimizing per-frame cross-entropy.
   dir=exp/dnn4b_pretrain-dbn_dnn
-  ali=${gmmdir}_ali
+  ali=${gmm}_ali
   feature_transform=exp/dnn4b_pretrain-dbn/final.feature_transform
   dbn=exp/dnn4b_pretrain-dbn/6.dbn
   (tail --pid=$$ -F $dir/log/train_nnet.log 2>/dev/null)& # forward log
@@ -64,18 +64,18 @@ if [ $stage -le 2 ]; then
     steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
     $data_fmllr/train_tr90 $data_fmllr/train_cv10 data/lang $ali $ali $dir || exit 1;
   # Decode (reuse HCLG graph)
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
-    $gmmdir/graph $data_fmllr/test $dir/decode || exit 1;
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
-    $gmmdir/graph_ug $data_fmllr/test $dir/decode_ug || exit 1;
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
+    $gmm/graph $data_fmllr/test $dir/decode || exit 1;
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
+    $gmm/graph_ug $data_fmllr/test $dir/decode_ug || exit 1;
 fi
 
 
 # Sequence training using sMBR criterion, we do Stochastic-GD 
-# with per-utterance updates. We use usually good acwt 0.1
+# with per-utterance updates. For RM good acwt is 0.2
 dir=exp/dnn4b_pretrain-dbn_dnn_smbr
 srcdir=exp/dnn4b_pretrain-dbn_dnn
-acwt=0.1
+acwt=0.2
 
 if [ $stage -le 3 ]; then
   # First we generate lattices and alignments:
@@ -93,10 +93,7 @@ if [ $stage -le 4 ]; then
   for ITER in 1 2 3 4 5 6; do
     steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
-      $gmmdir/graph $data_fmllr/test $dir/decode_it${ITER} || exit 1
-    steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config \
-      --nnet $dir/${ITER}.nnet --acwt $acwt \
-      $gmmdir/graph_ug $data_fmllr/test $dir/decode_ug_it${ITER} || exit 1
+      $gmm/graph $data_fmllr/test $dir/decode_it${ITER} || exit 1
   done 
 fi
 

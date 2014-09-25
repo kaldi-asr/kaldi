@@ -163,20 +163,21 @@ exit 0
 %WER 1.36 [ 170 / 12533, 15 ins, 34 del, 121 sub ] exp/nnet5e_mpe_gpu/decode_epoch2/wer_3
 %WER 7.73 [ 969 / 12533, 74 ins, 157 del, 738 sub ] exp/nnet5e_mpe_gpu/decode_ug_epoch4/wer_9
 
-# DNN systems (Karel)
-# note from Dan-- these are from an older RESULTS file as I did not rerun these
-# last time I created this.
-# Per-frame cross-entropy training
-%WER 1.66 [ 208 / 12533, 27 ins, 49 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_3
-%WER 7.80 [ 978 / 12533, 83 ins, 151 del, 744 sub ] exp/dnn4b_pretrain-dbn_dnn/decode_ug/wer_6
 
+# DNN systems (Karel - 25.9.2014)
+# Per-frame cross-entropy training
+%WER 1.63 [ 204 / 12533, 32 ins, 42 del, 130 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_3
+%WER 7.77 [ 974 / 12533, 81 ins, 158 del, 735 sub ] exp/dnn4b_pretrain-dbn_dnn/decode_ug/wer_7
 # Sequence-based sMBR training
-%WER 1.64 [ 206 / 12533, 24 ins, 49 del, 133 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it1/wer_4
-%WER 1.62 [ 203 / 12533, 25 ins, 46 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it2/wer_4
-%WER 1.59 [ 199 / 12533, 25 ins, 42 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it3/wer_4
-%WER 1.60 [ 201 / 12533, 35 ins, 33 del, 133 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it4/wer_3
-%WER 1.58 [ 198 / 12533, 31 ins, 37 del, 130 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it5/wer_4
-%WER 1.59 [ 199 / 12533, 31 ins, 37 del, 131 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it6/wer_4
+%WER 1.61 [ 202 / 12533, 32 ins, 42 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it1/wer_3
+%WER 1.62 [ 203 / 12533, 33 ins, 42 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it2/wer_3
+%WER 1.63 [ 204 / 12533, 32 ins, 42 del, 130 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it3/wer_3
+%WER 1.64 [ 206 / 12533, 32 ins, 42 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it4/wer_3
+%WER 1.63 [ 204 / 12533, 32 ins, 41 del, 131 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it5/wer_3
+%WER 1.64 [ 206 / 12533, 20 ins, 58 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it6/wer_5
+
+# CNN systems (Karel - 25.9.2014)
+%WER 1.89 [ 237 / 12533, 30 ins, 47 del, 160 sub ] exp/cnn4c/decode/wer_3 # per-frame training
 
 
 # Some system combination experiments.

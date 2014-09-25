@@ -1,5 +1,4 @@
 // nnet/nnet-component-test.cc
-
 // Copyright 2014  Brno University of Technology (author: Karel Vesely),
 //                 The Johns Hopkins University (author: Sri Harish Mallidi)
 
@@ -35,39 +34,159 @@
 namespace kaldi {
 namespace nnet1 {
 
-  void UnitTestConvolutionalComponent() {
+  /*
+   * Helper functions
+   */  
+  template<typename Real>
+  void ReadCuMatrixFromString(const std::string& s, CuMatrix<Real>* m) {
+    std::istringstream is(s + "\n");
+    m->Read(is, false); // false for ascii
+  }
 
-    ConvolutionalComponent* c = new ConvolutionalComponent(5,5);
+  Component* ReadComponentFromString(const std::string& s) {
+    std::istringstream is(s + "\n");
+    return Component::Read(is, false); // false for ascii
+  }
+  /*
+   */
 
-    std::string comp_data_str = "<PatchDim> 1 <PatchStep> 1 <PatchStride> 5 <Filters> [ 1 \n] <Bias> [ 0 ]\n";
-    std::istringstream is_comp_data(comp_data_str);
-    c->ReadData(is_comp_data, false);
-
-    std::string matrix_str = "[ 1 2 3 4 5 ] ";
-    std::istringstream is_matrix(matrix_str);
-    CuMatrix<BaseFloat> mat_in;
-    mat_in.Read(is_matrix, false);
+  void UnitTestConvolutionalComponentUnity() {
+    // make 'identity' convolutional component,
+    Component* c = ReadComponentFromString("<ConvolutionalComponent> 5 5 \
+      <PatchDim> 1 <PatchStep> 1 <PatchStride> 5 \
+      <LearnRateCoef> 1.0 <BiasLearnRateCoef> 1.0 \
+      <Filters> [ 1 \
+      ] <Bias> [ 0 ]"
+    );
     
-    // propagate 
+    // prepare input,
+    CuMatrix<BaseFloat> mat_in;
+    ReadCuMatrixFromString("[ 1 2 3 4 5 ] ", &mat_in);
+    
+    // propagate,
     CuMatrix<BaseFloat> mat_out;
     c->Propagate(mat_in,&mat_out);
     KALDI_LOG << "mat_in" << mat_in << "mat_out" << mat_out;
     AssertEqual(mat_in,mat_out);
 
-    // backpropagate
+    // backpropagate,
     CuMatrix<BaseFloat> mat_out_diff(mat_in), mat_in_diff;
     c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
     KALDI_LOG << "mat_out_diff " << mat_out_diff << " mat_in_diff " << mat_in_diff;
     AssertEqual(mat_out_diff,mat_in_diff);
     
-    // once again
+    // clean,
+    delete c;
+  }
+
+  void UnitTestConvolutionalComponent3x3() {
+    // make 3x3 convolutional component, design such weights and input so output is zero,
+    Component* c = ReadComponentFromString("<ConvolutionalComponent> 9 15 \
+      <PatchDim> 3 <PatchStep> 1 <PatchStride> 5 \
+      <LearnRateCoef> 1.0 <BiasLearnRateCoef> 1.0 \
+      <Filters> [ -1 -2 -7   0 0 0   1 2 7 ; \
+                  -1  0  1  -3 0 3  -2 2 0 ; \
+                  -4  0  0  -3 0 3   4 0 0 ] \
+      <Bias> [ -20 -20 -20 ]"
+    );
+    
+    // prepare input, reference output,
+    CuMatrix<BaseFloat> mat_in;
+    ReadCuMatrixFromString("[ 1 3 5 7 9  2 4 6 8 10  3 5 7 9 11 ]", &mat_in);
+    CuMatrix<BaseFloat> mat_out_ref;
+    ReadCuMatrixFromString("[ 0 0 0  0 0 0  0 0 0 ]", &mat_out_ref);
+    
+    // propagate,
+    CuMatrix<BaseFloat> mat_out;
+    c->Propagate(mat_in, &mat_out);
+    KALDI_LOG << "mat_in" << mat_in << "mat_out" << mat_out;
+    AssertEqual(mat_out, mat_out_ref);
+
+    // prepare mat_out_diff, mat_in_diff_ref,
+    CuMatrix<BaseFloat> mat_out_diff;
+    ReadCuMatrixFromString("[ 1 0 0  1 1 0  1 1 1 ]", &mat_out_diff);
+    CuMatrix<BaseFloat> mat_in_diff_ref; // hand-computed back-propagated values,
+    ReadCuMatrixFromString("[ -1 -4 -15 -8 -6   0 -3 -6 3 6   1 1 14 11 7 ]", &mat_in_diff_ref);
+
+    // backpropagate,
+    CuMatrix<BaseFloat> mat_in_diff;
     c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
-    KALDI_LOG << "mat_out_diff " << mat_out_diff << " mat_in_diff " << mat_in_diff;
-    AssertEqual(mat_out_diff,mat_in_diff);
+    KALDI_LOG << "mat_in_diff " << mat_in_diff << " mat_in_diff_ref " << mat_in_diff_ref;
+    AssertEqual(mat_in_diff, mat_in_diff_ref);
+    
+    // clean,
+    delete c;
+  }
+
+
+
+  void UnitTestMaxPoolingComponent() {
+    // make max-pooling component, assuming 4 conv. neurons, non-overlapping pool of size 3,
+    Component* c = Component::Init("<MaxPoolingComponent> <InputDim> 24 <OutputDim> 8 \
+                     <PoolSize> 3 <PoolStep> 3 <PoolStride> 4");
+
+    // input matrix,
+    CuMatrix<BaseFloat> mat_in;
+    ReadCuMatrixFromString("[ 3 8 2 9 \
+                              8 3 9 3 \
+                              2 4 9 6 \
+                              \
+                              2 4 2 0 \
+                              6 4 9 4 \
+                              7 3 0 3;\
+                              \
+                              5 4 7 8 \
+                              3 9 5 6 \
+                              3 4 8 9 \
+                              \
+                              5 4 5 6 \
+                              3 1 4 5 \
+                              8 2 1 7 ]", &mat_in);
+
+    // expected output (max values in columns),
+    CuMatrix<BaseFloat> mat_out_ref;
+    ReadCuMatrixFromString("[ 8 8 9 9 \
+                              7 4 9 4;\
+                              5 9 8 9 \
+                              8 4 5 7 ]", &mat_out_ref);
+    
+    // propagate,
+    CuMatrix<BaseFloat> mat_out;
+    c->Propagate(mat_in,&mat_out);
+    KALDI_LOG << "mat_out" << mat_out << "mat_out_ref" << mat_out_ref;
+    AssertEqual(mat_out, mat_out_ref);
+
+    // locations of max values will be shown,
+    CuMatrix<BaseFloat> mat_out_diff(mat_out);
+    mat_out_diff.Set(1);
+    // expected backpropagated values,
+    CuMatrix<BaseFloat> mat_in_diff_ref; // hand-computed back-propagated values,
+    ReadCuMatrixFromString("[ 0 1 0 1 \
+                              1 0 1 0 \
+                              0 0 1 0 \
+                              \
+                              0 1 0 0 \
+                              0 1 1 1 \
+                              1 0 0 0;\
+                              \
+                              1 0 0 0 \
+                              0 1 0 0 \
+                              0 0 1 1 \
+                              \
+                              0 1 1 0 \
+                              0 0 0 0 \
+                              1 0 0 1 ]", &mat_in_diff_ref);
+    // backpropagate,
+    CuMatrix<BaseFloat> mat_in_diff;
+    c->Backpropagate(mat_in, mat_out, mat_out_diff, &mat_in_diff);
+    KALDI_LOG << "mat_in_diff " << mat_in_diff << " mat_in_diff_ref " << mat_in_diff_ref;
+    AssertEqual(mat_in_diff, mat_in_diff_ref);
 
     delete c;
   }
 
+
+  /* TODO for Harish!
   void UnitTestMaxPooling2DComponent(){
     std::string dim_str;
 
@@ -112,9 +231,10 @@ namespace nnet1 {
     delete c;
 
   }
+  */
 
 
-
+  /* TODO for Harish:
   void UnitTestAveragePooling2DComponent(){
     std::string dim_str;
 
@@ -159,43 +279,10 @@ namespace nnet1 {
     delete c;
 
   }
-
-  void UnitTestMaxPoolingComponent() {
-    MaxPoolingComponent* m = new MaxPoolingComponent(9,7);
-    
-    std::string comp_data_str = "<PoolSize> 3 <PoolStep> 1 <PoolStride> 1 \n";
-    std::istringstream is_comp_data(comp_data_str);
-    m->ReadData(is_comp_data, false);
-
-    std::string matrix_str = "[ 1 2 1 1 2 1 1 2 1 ; 2 3 2 2 3 2 2 3 2 ; 2 2 2 1 2 1 1 2 1 ; 1 2 3 1 4 1 1 2 1 ] ";
-    std::istringstream is_matrix(matrix_str);
-
-    // expected output
-    std::string exp_out_str = "[ 2 2 2 ; 3 3 3 ] ";
-    std::istringstream is_exp_out_str(exp_out_str);
-    CuMatrix<BaseFloat> mat_exp;
-    mat_exp.Read(is_exp_out_str, false);
+  */
 
 
-    CuMatrix<BaseFloat> mat_in;
-    CuMatrix<BaseFloat> mat_out;
-    CuMatrix<BaseFloat> inp_diff;
-    mat_in.Read(is_matrix, false);
-    
-    KALDI_LOG << mat_in.ColRange(0, 2);
-    m->Propagate(mat_in,&mat_out);
- 
-   KALDI_LOG << "mat_in" << mat_in << "mat_out" << mat_out << "mat_exp" << mat_exp;
-   m->Backpropagate(mat_in, mat_out, mat_out, &inp_diff);
-   KALDI_LOG << inp_diff;
-    
-    // KALDI_LOG << "mat_in" << mat_in << "mat_out" << mat_out << "mat_exp" << mat_exp;
-    // AssertEqual(mat_out, mat_exp);
-
-    delete m;
-    
-  }
-
+  /* TODO for Harish:
   void UnitTestConvolutional2DComponent() {
 
     std::string dim_str;
@@ -244,76 +331,7 @@ namespace nnet1 {
     delete c;
     
   }
-
-  void UnitTestMatOperations(){
-    //    CuMatrix<BaseFloat> A;
-
-    Vector<BaseFloat> v(10), w(9);
-    CuVector<BaseFloat> b(9);
-    CuArray<int32> id;
-
-    for(int i=0; i < 9; i++) {
-      v(i) = i;
-      w(i) = i+1;
-    }
-    Matrix<BaseFloat> M(10,9);
-    Matrix<BaseFloat> W(10,9);
-    CuMatrix<BaseFloat> A, B(10,9);
-
-    M.AddVecVec(1.0, v, w);
-    A = M;
-    B.Set(-1e20);
-    B.Max(A);
-    A.FindRowMaxId(&id);
-    CuMatrix<BaseFloat> C(A);
-    C.Set(2);
-    KALDI_LOG << "C=" << C;
-    KALDI_LOG << "A=" << A;
-    // KALDI_LOG << "id=" << id;
-    
-    
-
-    // KALDI_LOG << "A " << B.Max(A);
-    // b.AddRowSumMat(1.0, A, 0.0);
-    // KALDI_LOG << b;
-    // b.AddRowSumMat(1.0, A, 0.0);
-    // KALDI_LOG << b;
-     // CuSubMatrix<BaseFloat> As(A.ColRange(0,1));    
-     // KALDI_LOG << "As " << As;
-
-     // std::vector<MatrixIndexT> id(2,4);
-     // CuMatrix<BaseFloat> B;
-     // B.Resize(A.NumRows(), 2, kSetZero);
-     // B.CopyCols(A, id);
-     // KALDI_LOG << "B " << B ;
-     // KALDI_LOG << "Sum="<< B.Sum();
-
-    // Matrix<BaseFloat> C(2,2), D(2,2), E(2,2);
-    // Vector<BaseFloat> c(2);
-    // c(0)=1;c(1)=2;
-    // C.AddVecVec(1.0,c,c);
-    // KALDI_LOG << "C " << C;
-
-    // D(1,1)=1;
-
-    // // KALDI_LOG << "D " <<D;
-
-    // // C.MulElements(D);
-    
-    // // KALDI_LOG << "C " << C;
-
-    // CuMatrix<BaseFloat> CuC, CuD;
-    // CuC = C;
-    // CuD = D;
-    
-    // KALDI_LOG << "CuC " << CuC;
-    // CuC.MulElements(CuD);
-    // KALDI_LOG << "CuC " << CuC;
-    // KALDI_LOG << "Sum=" << CuC.Sum();
-
-    
-    
-  }
+  */
 
 } // namespace nnet1
 } // namespace kaldi
@@ -330,10 +348,10 @@ int main() {
       CuDevice::Instantiate().SelectGpuId("optional"); // use GPU when available
 #endif
     // unit-tests :
-    UnitTestConvolutionalComponent();
+    UnitTestConvolutionalComponentUnity();
+    UnitTestConvolutionalComponent3x3();
     UnitTestMaxPoolingComponent();
     // UnitTestConvolutional2DComponent();
-    // UnitTestMatOperations();
     // UnitTestMaxPooling2DComponent();
     // UnitTestAveragePooling2DComponent();
     // end of unit-tests,

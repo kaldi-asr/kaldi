@@ -23,9 +23,12 @@ from optparse import OptionParser
 ###
 ### Parse options
 ###
-usage="%prog [options] <feat-dim> <num-leaves> <num-hidden-layers> <num-hidden-neurons>  >nnet-proto-file"
+usage="%prog [options] <feat-dim> >nnet-proto-file"
 parser = OptionParser(usage)
 
+parser.add_option('--no-proto-head', dest='with_proto_head', 
+                   help='Do not put <NnetProto> head-tag in the prototype [default: %default]', 
+                   default=True, action='store_false');
 parser.add_option('--no-softmax', dest='with_softmax', 
                    help='Do not put <SoftMax> in the prototype [default: %default]', 
                    default=True, action='store_false');
@@ -86,7 +89,7 @@ def Glorot(dim1, dim2):
 if num_hid_layers == 0 and o.bottleneck_dim != 0:
   assert(o.bottleneck_dim > 0)
   assert(num_hid_layers == 0)
-  print "<NnetProto>"
+  if o.with_proto_head : print "<NnetProto>"
   # 25% smaller stddev -> small bottleneck range, 10x smaller learning rate
   print "<LinearTransform> <InputDim> %d <OutputDim> %d <ParamStddev> %f <LearnRateCoef> %f" % \
    (feat_dim, o.bottleneck_dim, \
@@ -109,7 +112,7 @@ if num_hid_layers == 0 and o.bottleneck_dim != 0:
 
 # Add only last layer (logistic regression)
 if num_hid_layers == 0:
-  print "<NnetProto>"
+  if o.with_proto_head : print "<NnetProto>" 
   print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f" % \
         (feat_dim, num_leaves, 0.0, 0.0, (o.param_stddev_factor * Glorot(feat_dim, num_leaves)))
   if o.with_softmax:
@@ -122,7 +125,7 @@ if num_hid_layers == 0:
 assert(num_hid_layers > 0)
 
 # Begin the prototype
-print "<NnetProto>"
+if o.with_proto_head : print "<NnetProto>" 
 
 # First AffineTranform
 print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <MaxNorm> %f" % \

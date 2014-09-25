@@ -11,8 +11,8 @@ mlp_init=          # select initialized MLP (override initialization)
 mlp_proto=         # select network prototype (initialize it)
 proto_opts=        # non-default options for 'make_nnet_proto.py'
 feature_transform= # provide feature transform (=splice,rescaling,...) (don't build new one)
-prepend_cnn=false  # create nnet with convolutional layers
-cnn_init_opts=     # extra options for 'make_cnn_proto.py'
+prepend_cnn_type=none   # (none,cnn1d,cnn2d) create nnet with convolutional layers
+cnn_proto_opts=     # extra options for 'make_cnn_proto.py'
 #
 hid_layers=4       # nr. of hidden layers (prior to sotfmax or bottleneck)
 hid_dim=1024       # select hidden dimension
@@ -300,6 +300,7 @@ else
     ark:- 2>$dir/log/nnet-forward-cmvn.log |\
   compute-cmvn-stats ark:- - | cmvn-to-nnet - - |\
   nnet-concat --binary=false $feature_transform_old - $feature_transform
+  [ ! -f $feature_transform ] && cat $dir/log/nnet-forward-cmvn.log && echo "Error: Global CMVN failed, was the CUDA GPU okay?" && echo && exit 1
 fi
 
 
@@ -332,16 +333,28 @@ if [[ -z "$mlp_init" && -z "$mlp_proto" ]]; then
   # make network prototype
   mlp_proto=$dir/nnet.proto
   echo "Genrating network prototype $mlp_proto"
-  if [ $prepend_cnn == "false" ]; then
-    utils/nnet/make_nnet_proto.py $proto_opts \
-      ${bn_dim:+ --bottleneck-dim=$bn_dim} \
-      $num_fea $num_tgt $hid_layers $hid_dim >$mlp_proto || exit 1
-  else
-    utils/nnet/make_cnn_proto.py $cnn_init_opts \
-      --splice $splice --delta-order $delta_order --dir $dir \
-      ${bn_dim:+ --bottleneck-dim=$bn_dim} \
-      $num_fea $num_tgt $hid_layers $hid_dim >$mlp_proto || exit 1
-  fi
+  case "$prepend_cnn_type" in
+    none)
+      utils/nnet/make_nnet_proto.py $proto_opts \
+        ${bn_dim:+ --bottleneck-dim=$bn_dim} \
+        $num_fea $num_tgt $hid_layers $hid_dim >$mlp_proto || exit 1 
+      ;;
+    cnn1d)
+      utils/nnet/make_cnn_proto.py $cnn_proto_opts \
+        --splice $splice --delta-order $delta_order --dir $dir \
+        $num_fea >$mlp_proto || exit 1
+      cnn_fea=$(cat $mlp_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')
+      utils/nnet/make_nnet_proto.py $proto_opts \
+        --no-proto-head --no-smaller-input-weights \
+        ${bn_dim:+ --bottleneck-dim=$bn_dim} \
+        "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$mlp_proto || exit 1 
+      ;;
+    cnn2d) 
+      #TODO, to be filled by Vijay...
+      ;;
+    *) echo "Unknown 'prepend-cnn' value $prepend_cnn" && exit 1;
+  esac
+
   # initialize
   mlp_init=$dir/nnet.init; log=$dir/log/nnet_initialize.log
   echo "Initializing $mlp_proto -> $mlp_init"
