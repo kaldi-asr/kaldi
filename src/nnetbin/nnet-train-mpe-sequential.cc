@@ -309,7 +309,7 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      KALDI_VLOG(1) << "Processed lattice for utterance " << num_done + 1
+      KALDI_VLOG(1) << "Lattice #" << num_done + 1 << " processed"
                     << " (" << utt << "): found " << den_lat.NumStates()
                     << " states and " << fst::NumArcs(den_lat) << " arcs.";
 

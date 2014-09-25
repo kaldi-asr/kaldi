@@ -97,6 +97,7 @@ class SentenceAveragingComponent : public UpdatableComponent {
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
                         const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+    if (in_diff == NULL) return;
     int32 num_inputs = in.NumCols(),
       nnet_outputs = nnet_.OutputDim();
     in_diff->CopyFromMat(out_diff.ColRange(nnet_outputs,num_inputs));

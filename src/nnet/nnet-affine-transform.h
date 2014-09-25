@@ -159,7 +159,8 @@ class AffineTransform : public UpdatableComponent {
 
   void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
     // we use following hyperparameters from the option class
-    const BaseFloat lr = opts_.learn_rate;
+    const BaseFloat lr = opts_.learn_rate * learn_rate_coef_;
+    const BaseFloat lr_bias = opts_.learn_rate * bias_learn_rate_coef_;
     const BaseFloat mmt = opts_.momentum;
     const BaseFloat l2 = opts_.l2_penalty;
     const BaseFloat l1 = opts_.l1_penalty;
@@ -177,8 +178,8 @@ class AffineTransform : public UpdatableComponent {
       cu::RegularizeL1(&linearity_, &linearity_corr_, lr*l1*num_frames, lr);
     }
     // update
-    linearity_.AddMat(-lr*learn_rate_coef_, linearity_corr_);
-    bias_.AddVec(-lr*bias_learn_rate_coef_, bias_corr_);
+    linearity_.AddMat(-lr, linearity_corr_);
+    bias_.AddVec(-lr_bias, bias_corr_);
     // max-norm
     if (max_norm_ > 0.0) {
       CuMatrix<BaseFloat> lin_sqr(linearity_);

@@ -37,6 +37,7 @@
 #include "nnet/nnet-max-pooling-2d-component.h"
 
 #include "nnet/nnet-sentence-averaging-component.h"
+#include "nnet/nnet-frame-pooling-component.h"
 #include "nnet/nnet-parallel-component.h"
 
 #include <sstream>
@@ -50,6 +51,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kConvolutionalComponent,"<ConvolutionalComponent>"},
   { Component::kConvolutional2DComponent,"<Convolutional2DComponent>"},
   { Component::kSoftmax,"<Softmax>" },
+  { Component::kBlockSoftmax,"<BlockSoftmax>" },
   { Component::kSigmoid,"<Sigmoid>" },
   { Component::kTanh,"<Tanh>" },
   { Component::kDropout,"<Dropout>" },
@@ -64,6 +66,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kMaxPoolingComponent, "<MaxPoolingComponent>"},
   { Component::kMaxPooling2DComponent, "<MaxPooling2DComponent>"},
   { Component::kSentenceAveragingComponent,"<SentenceAveragingComponent>"},
+  { Component::kFramePoolingComponent, "<FramePoolingComponent>"},
   { Component::kParallelComponent, "<ParallelComponent>"},
 };
 
@@ -111,6 +114,9 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
     case Component::kSoftmax :
       ans = new Softmax(input_dim, output_dim);
       break;
+    case Component::kBlockSoftmax :
+      ans = new BlockSoftmax(input_dim, output_dim);
+      break;
     case Component::kSigmoid :
       ans = new Sigmoid(input_dim, output_dim);
       break;
@@ -152,6 +158,9 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kMaxPooling2DComponent :
       ans = new MaxPooling2DComponent(input_dim, output_dim);
+      break;
+    case Component::kFramePoolingComponent :
+      ans = new FramePoolingComponent(input_dim, output_dim);
       break;
     case Component::kParallelComponent :
       ans = new ParallelComponent(input_dim, output_dim);
