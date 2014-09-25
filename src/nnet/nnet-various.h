@@ -492,6 +492,9 @@ class AddShift : public UpdatableComponent {
     KALDI_ASSERT(shift_data.Dim() == shift_data_.Dim());
     shift_data_.CopyFromVec(shift_data);
   }
+  void SetLearnRateCoef(float c) {
+    learn_rate_coef_ = c;
+  }
 
  protected:
   CuVector<BaseFloat> shift_data_;
@@ -598,6 +601,9 @@ class Rescale : public UpdatableComponent {
   void SetScaleVec(const CuVectorBase<BaseFloat>& scale_data) {
     KALDI_ASSERT(scale_data.Dim() == scale_data_.Dim());
     scale_data_.CopyFromVec(scale_data);
+  }
+  void SetLearnRateCoef(float c) {
+    learn_rate_coef_ = c;
   }
 
  protected:
