@@ -191,17 +191,22 @@ lid/run_logistic_regression.sh --conf conf/logistic-regression-pitch.conf \
   --model_dir exp/ivectors_pitch_train --prior-scale 0.75 \
   --use-log-posteriors false
 
-# Combine posteriors from the standard and pitch systems
-vector-sum ark:"vector-scale --scale=0.5 ark:../v1/exp/ivectors_lre07/posteriors ark:- |" \
-  ark:"vector-scale --scale=0.5 ark:exp/ivectors_pitch_lre07/posteriors ark:- |" \
-  ark,t:exp/ivectors_lre07/posteriors_combined
+mkdir -p exp/ivectors_combined_lre07
 
-cat exp/ivectors_lre07/posteriors_combined | \
+# Combine posteriors from the standard and pitch systems
+vector-sum ark:"vector-scale --scale=0.5 ark:exp/ivectors_lre07/posteriors ark:- |" \
+  ark:"vector-scale --scale=0.5 ark:exp/ivectors_pitch_lre07/posteriors ark:- |" \
+  ark,t:exp/ivectors_combined_lre07/posteriors
+
+cat exp/ivectors_combined_lre07/posteriors | \
   awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) 
                           { max=$f; argmax=f; }}  
                           print $1, (argmax - 3); }' | \
   utils/int2sym.pl -f 2 exp/ivectors_train/languages.txt \
-    >exp/ivectors_lre07/output_combined
+    >exp/ivectors_combined_lre07/output
 
-compute-wer --text ark:<(lid/remove_dialect.pl data/lre07/utt2lang) \
-  ark:exp/ivectors_lre07/output_combined
+local/lre07_eval/lre07_eval.sh exp/ivectors_combined_lre07 \
+  exp/ivectors_train/languages.txt
+# Duration (sec):    avg      3     10     30
+#         ER (%):  27.75  47.63  23.25  12.39
+#      C_avg (%):  14.43  26.44  12.05   4.80
