@@ -4,7 +4,6 @@ team=RADICAL
 corpusid=
 partition=
 scase=BaEval  #BaDev|BaEval
-sysid=
 master=
 version=1
 sysid=
@@ -12,9 +11,9 @@ prim=c
 cer=0
 dryrun=true
 dir="exp/sgmm5_mmi_b0.1/"
-extrasys=""
 data=data/dev10h.seg
 master=dev10h
+extrasys=
 final=false
 
 #end of configuration
@@ -31,6 +30,17 @@ outputdir=$2
 
 set -e
 set -o pipefail
+
+function submit_to_google {
+  SYSPATH=$1
+  #curl 'https://docs.google.com/forms/d/1MV4gf-iVOX79ZEAekEiLIo7L_UVrJnoPjdtICK5F-nc/formResponse' \
+  #    --data 'entry.1721972547='$MTWV'&entry.485509816='$ATWV'&entry.694031153='$RESPATH'&entry.1851048707='$(whoami)'&submit=Submit' \
+  #    --compressed
+  curl -sS 'https://docs.google.com/forms/d/1MV4gf-iVOX79ZEAekEiLIo7L_UVrJnoPjdtICK5F-nc/formResponse' \
+    --data 'entry.1721972547='$MTWV'&entry.485509816='$ATWV'&entry.694031153='$SYSPATH'&entry.1851048707='$(whoami)'&entry.880350279='$STWV'&entry.60995624='$OTWV'&entry.1338769660='$LatticeRecall'&entry.1333349334='$THRESHOLD'&entry.1423358838='$(pwd)'&submit=Submit' --compressed |\
+  grep  --color "Your response has been recorded." || return 1
+  return 0
+}
 
 function export_file {
   #set -x
@@ -87,7 +97,7 @@ function export_kws_file {
 function find_best_kws_result {
   local dir=$1
   local mask=$2
-  local record=`(find $dir -name "sum.txt" -path "$mask" | xargs grep "^| *Occ")  | cut -f 1,13,17 -d '|' | sed 's/|//g'  | column -t | sort -r -n -k 3 | tail -n 1`
+  local record=`(find $dir -name "sum.txt" -path "$mask" -not -ipath "*rescored*" | xargs grep "^| *Occ")  | cut -f 1,13,17 -d '|' | sed 's/|//g'  | column -t | sort -r -n -k 3 | head -n 1`
   echo $record >&2
   local file=`echo $record | awk -F ":" '{print $1}'`
   #echo $file >&2
@@ -99,7 +109,7 @@ function find_best_kws_result {
 function find_best_stt_result {
   local dir=$1
   local mask=$2
-  local record=`(find $dir -name "*.ctm.sys" -path "$mask" | xargs grep Avg)  | sed 's/|//g' | column -t | sort -n -k 9 | head -n 1`
+  local record=`(find $dir -name "*.ctm.sys" -path "$mask" -not -ipath "*rescore*" | xargs grep Avg)  | sed 's/|//g' | column -t | sort -n -k 9 | head -n 1`
   
   echo $record >&2
   local file=`echo $record | awk -F ":" '{print $1}'`
@@ -111,7 +121,7 @@ function find_best_stt_result {
 
 function create_sysid {
   local best_one=$1
-  local extrasys=$2
+  local sysid=
   local taskid=`basename $best_one`
   local system_path=`dirname $best_one`
   if [[ $system_path =~ .*sgmm5.* ]] ; then
@@ -120,21 +130,25 @@ function create_sysid {
     sysid=DNN
   elif [[ $system_path =~ .*sgmm7.* ]] ; then
     sysid=BNF
+  elif [[ $system_path =~ .*4way.* ]] ; then
+    sysid=4way-comb
   else
     echo "Unknown system path ($system_path), cannot deduce the systemID" >&2
     exit 1
   fi
-  if [ ! -z $extrasys ]; then
-    sysid="${sysid}-${extrasys}"
-  fi
-  local kwsid=${taskid//kws_*/}
-  kwsid=${kwsid//_/}
-  if [ -z $kwsid ]; then
-    echo ${sysid}
+  if [[ $taskid == *kws_* ]] ; then
+    local kwsid=${taskid//kws_*/}
+    kwsid=${kwsid//_/}
+    if [ -z $kwsid ]; then
+      echo ${sysid}
+    else
+      echo ${sysid}-$kwsid
+    fi
   else
-    echo ${sysid}-$kwsid
+    echo ${sysid}
   fi
 }
+
 
 function get_ecf_name {
   local best_one=$1
@@ -159,8 +173,13 @@ function compose_expid {
   local task=$1
   local best_one=$2
   local extraid=$3
+  echo "TASK:     $task" >&2
+  echo "BEST ONE: $best_one" >&2
+  echo "EXTRA ID: $extraid" >&2
+
   [ ! -z $extraid ] && extraid="-$extraid"
-  local sysid=`create_sysid $best_one $extrasys`
+  local sysid=`create_sysid $best_one`
+  echo "SYS ID: $sysid" >&2
   if [ "$task" == "KWS" ]; then
     ext="kwslist.xml"
   elif [ "$task" == "STT" ]; then
@@ -169,6 +188,9 @@ function compose_expid {
     echo "Incorrect task ID ($task) given to compose_expid function!" >&2
     exit 1
   fi
+  echo "${corpusid}" >&2
+  echo "${partition}" >&2
+  echo "${scase}" >&2
   echo "KWS14_${team}_${corpusid}_${partition}_${scase}_${task}_${prim}-${sysid}${extraid}_$version.$ext"
   return 0
 }
@@ -179,17 +201,19 @@ function figure_out_scase {
     local basnam=${ecf%%.ecf.xml}
     local scase=`echo $basnam | awk -F _ '{print $2}'`
     
-    if [ "$scase" = "conv-dev" ]; then
+    if [[ $scase =~ conv-dev(\..*)? ]]; then
       echo "BaDev"
-    elif [ "$scase" = "conv-eval" ]; then
+    elif [[ $scase =~ conv-eval(\..*)? ]]; then
       echo "BaEval"
     else
       echo "WARNING: The ECF file  $ecf is probably not an official file" >&2
+      echo "WARNING: Does not contain conv-dev|conv-eval ($scase)" >&2
       echo "BaDev"
       return 1
     fi
   else 
     echo "WARNING: The ECF file  $ecf is probably not an official file" >&2
+    echo "WARNING: Does not match the mask IARPA-babel.*.ecf.xml" >&2
     echo "BaDev"
     return 1
   fi
@@ -202,9 +226,9 @@ function figure_out_partition {
     local basnam=${ecf%%.ecf.xml}
     local scase=`echo $basnam | awk -F _ '{print $2}'`
     
-    if [ "$scase" = "conv-dev" ]; then
+    if [[ $scase =~ conv-dev(\..*)? ]]; then
       echo "conv-dev"
-    elif [ "$scase" = "conv-eval" ]; then
+    elif [[ $scase =~ conv-eval(\..*)? ]]; then
       echo "conv-eval"
     else
       echo "WARNING: The ECF file  $ecf is probably not an official file" >&2
@@ -231,6 +255,12 @@ function figure_out_corpusid {
   echo $corpusid
 }
 
+mkdir -p $outputdir
+extrasys_unnorm="unnorm"
+if [ ! -z $extrasys ] ; then
+  extrasys_unnorm="${extrasys}-unnorm"
+fi
+
 #data=data/shadow.uem
 dirid=`basename $data`
 kws_tasks="kws "
@@ -241,31 +271,44 @@ if [ -z "$compounds" ] ; then
   for kws in $kws_tasks ; do
     echo $kws
     best_one=`find_best_kws_result "$dir/decode_*${dirid}*/${kws}_*" "*"`
-    sysid=`create_sysid $best_one $extrasys`
+    sysid=`create_sysid $best_one`
     ecf=`get_ecf_name $best_one`
     scase=`figure_out_scase $ecf` || break
     partition=`figure_out_partition $ecf` || break
     corpusid=`figure_out_corpusid $ecf`
-    echo -e "\tEXPORT as:" `compose_expid KWS $best_one`
+
+    expid=`compose_expid KWS $best_one "$extrasys"`
+    echo -e "\tEXPORT NORMALIZED as: $expid"
+    expid_unnormalized=`compose_expid KWS $best_one "$extrasys_unnorm"`
+    echo -e "\tEXPORT UNNORMALIZED as: $expid_unnormalized"
+
+    export_kws_file $best_one/kwslist.xml $best_one/kwslist.fixed.xml $data/$kws/kwlist.xml $outputdir/$expid
+    export_kws_file $best_one/kwslist.unnormalized.xml $best_one/kwslist.unnormalized.fixed.xml $data/$kws/kwlist.xml $outputdir/$expid_unnormalized
   done
 else
   [ -z $master ] && echo "You must choose the master compound (--master <compound>) for compound data set" && exit 1
   for kws in $kws_tasks ; do
     echo $kws
     best_one=`find_best_kws_result "$dir/decode_*${dirid}*/$master/${kws}_*" "*"`
+    (
+      eval "`cat $best_one/metrics.txt | sed  's/ *= */=/g' | sed 's/,/;/g' | sed 's/Lattice Recall/LatticeRecall/g' `"
+      submit_to_google $best_one $ATWV $MTWV
+    ) || echo "Submission failed!"
 
+    
     for compound in $compounds ; do
-      compound_best_one=`echo $best_one | sed ":$master/${kws}_:$compound/${kws}_:g"`
+      compound_best_one=`echo $best_one | sed "s:$master/${kws}_:$compound/${kws}_:g"`
+      echo "From ($kws) $best_one going to $compound_best_one"
       echo -e "\tPREPARE EXPORT: $compound_best_one"
-      sysid=`create_sysid $compound_best_one $extrasys`
+      sysid=`create_sysid $compound_best_one`
       #ecf=`get_ecf_name $best_one`
       ecf=`readlink -f $data/compounds/$compound/ecf.xml`
       scase=`figure_out_scase $ecf`
       partition=`figure_out_partition $ecf`
       corpusid=`figure_out_corpusid $ecf`
-      expid=`compose_expid KWS $compound_best_one`
+      expid=`compose_expid KWS $compound_best_one "$extrasys"`
       echo -e "\tEXPORT NORMALIZED as: $expid"
-      expid_unnormalized=`compose_expid KWS $compound_best_one "unnorm"`
+      expid_unnormalized=`compose_expid KWS $compound_best_one "$extrasys_unnorm"`
       echo -e "\tEXPORT UNNORMALIZED as: $expid_unnormalized"
 
       export_kws_file $compound_best_one/kwslist.xml $compound_best_one/kwslist.fixed.xml $data/$kws/kwlist.xml $outputdir/$expid
@@ -276,30 +319,32 @@ fi
 
 ##EXporting STT -- more straightforward, because there is only one task
 if [ -z "$compounds" ] ; then
-  best_one=`find_best_stt_result "$dir/decode_*${dirid}*/score_*" "*"`
+  #best_one=`find_best_stt_result "$dir/decode_*${dirid}*/score_*" "*"`
+  best_one=`find_best_stt_result "$dir/*${dirid}*/score_*" "*"`
   echo -e "\tERROR: I don't know how to do this, yet"
   ecf=`get_ecf_name kws`
-  sysid=`create_sysid $best_one $extrasys`
+  sysid=`create_sysid $best_one`
   scase=`figure_out_scase $ecf` || break
   partition=`figure_out_partition $ecf`
   corpusid=`figure_out_corpusid $ecf`
-  expid=`compose_expid STT $best_one`
+  expid=`compose_expid STT $best_one "$extrasys"`
   echo -e "\tEXPORT NORMALIZED as: $expid"
   export_file $best_one/${dirid}.ctm $outputdir/$expid
 else
   [ -z $master ] && echo "You must choose the master compound (--master <compound>) for compound data set" && exit 1
-  best_one=`find_best_stt_result "exp/sgmm5_mmi_b0.1/decode_*${dirid}*/$master/score_*" "*"`
+  #best_one=`find_best_stt_result "$dir/decode_*${dirid}*/$master/score_*" "*"`
+  best_one=`find_best_stt_result "$dir/*${dirid}*/$master/score_*" "*"`
 
   for compound in $compounds ; do
-    compound_best_one=`echo $best_one | sed ":$master/${kws}_:$compound/${kws}_:g"`
+    compound_best_one=`echo $best_one | sed "s:$master/score_:$compound/score_:g"`
     echo -e "\tPREPARE EXPORT: $compound_best_one"
-    sysid=`create_sysid $compound_best_one $extrasys`
+    sysid=`create_sysid $compound_best_one`
     #ecf=`get_ecf_name $best_one`
     ecf=`readlink -f $data/compounds/$compound/ecf.xml`
     scase=`figure_out_scase $ecf`
     partition=`figure_out_partition $ecf`
     corpusid=`figure_out_corpusid $ecf`
-    expid=`compose_expid STT $compound_best_one`
+    expid=`compose_expid STT $compound_best_one $extrasys`
     echo -e "\tEXPORT NORMALIZED as: $expid"
 
     export_file $compound_best_one/${compound}.ctm $outputdir/$expid

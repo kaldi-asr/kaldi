@@ -53,7 +53,7 @@ while(<STM>) {
   chop;
   (my $filename, my $line, my $aggregated, my $seg_start, my $seg_end, my $text) = split(/\s+/, $_, 6);
   #print "$filename, $seg_start, $seg_end, $text\n";
-  $line="A";
+  $line="1";
   if (( $prev_filename ne  $filename ) && ( ";;$prev_filename" ne  $filename)){
     my $_filename = $filename;
     $_filename =~ s/^;;//g;

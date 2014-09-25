@@ -1,3 +1,5 @@
+. ./path.sh
+
 min_lmwt=5
 max_lmwt=25
 cer=0
@@ -14,7 +16,7 @@ name=$1; shift
 set -e
 set -o pipefail
 
-[ ! -d $datadir/compounds/$name ] && echo "Component called $name does not exist" && exit 1
+[ ! -d $datadir/compounds/$name ] && echo "Component called $name does not exist in $datadir/compounds/" && exit 1
 ecf=$datadir/compounds/$name/ecf.xml
 cat $ecf | grep -P -o '(?<=audio_filename\=")[^"]*' > $datadir/compounds/$name/files.list
 filelist=$datadir/compounds/$name/files.list

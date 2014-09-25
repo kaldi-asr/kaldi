@@ -117,7 +117,7 @@ fi
 
 # 6. reco2file_and_channel
 echo "Creating the $datadir/reco2file_and_channel file"
-(for f in $( cut -f 1 -d ' '  $datadir/wav.scp ) ; do echo $f $f "A"; done) > $datadir/reco2file_and_channel
+(for f in $( cut -f 1 -d ' '  $datadir/wav.scp ) ; do echo $f $f "1"; done) > $datadir/reco2file_and_channel
 echo "Everything done"
 
 
