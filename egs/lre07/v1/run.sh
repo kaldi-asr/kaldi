@@ -12,7 +12,6 @@ set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
-if [ 0 = 1 ]; then
 # Training data sources
 local/make_sre_2008_train.pl /export/corpora5/LDC/LDC2011S05 data
 local/make_callfriend.pl /export/corpora/LDC/LDC96S60 vietnamese data
@@ -155,8 +154,8 @@ lid/run_logistic_regression.sh --prior-scale 0.75 \
 # ER (%): 6.65
 
 # General LR 2007 closed-set eval
-local/lre07_logistic_regression_eval.sh \
-  exp/ivectors_train/logistic_regression_rebalanced
+local/lre07_eval/lre07_eval.sh exp/ivectors_lre07 \
+  exp/ivectors_train/languages.txt
 # Duration (sec):    avg      3     10     30
 #        ER (%):  28.50  49.10  24.52  11.87
 #     C_avg (%):  15.16  27.96  12.86   4.65
