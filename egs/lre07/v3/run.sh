@@ -155,7 +155,6 @@ rm -f data/lang/phones/word_boundary.txt 2>/dev/null
 
 utils/mkgraph.sh data/lang exp/tri5a exp/tri5a/graph || exit 1;
 
-# TODO: Might help to make this larger than 30k:
 steps/get_fmllr_basis.sh --cmd "$train_cmd" data/train_phonotactics_100k data/lang exp/tri5a
 
 local/decode_basis_fmllr.sh --nj 25 --acwt 0.075 --num-threads 8 --parallel-opts "-pe smp 8" --cmd "$decode_cmd" \
