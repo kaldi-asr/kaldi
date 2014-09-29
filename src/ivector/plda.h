@@ -298,7 +298,7 @@ class PldaUnsupervisedAdaptor {
   PldaUnsupervisedAdaptor(): tot_weight_(0.0) { }
   // Add stats to this class.  Normally the weight will be 1.0.
   void AddStats(double weight, const Vector<double> &ivector);
-  void AddStats(double weight, const Vector<BaseFloat> &ivector);
+  void AddStats(double weight, const Vector<float> &ivector);
   
 
   void UpdatePlda(const PldaUnsupervisedAdaptorConfig &config,

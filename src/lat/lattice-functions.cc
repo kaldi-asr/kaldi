@@ -602,8 +602,11 @@ bool LatticeBoost(const TransitionModel &trans,
                   BaseFloat b,
                   BaseFloat max_silence_error,
                   Lattice *lat) {
-
   TopSortLatticeIfNeeded(lat);
+
+  // get all stored properties (test==false means don't test if not known).
+  uint64 props = lat->Properties(fst::kFstProperties,
+                                 false);
   
   KALDI_ASSERT(IsSortedAndUniq(silence_phones));
   KALDI_ASSERT(max_silence_error >= 0.0 && max_silence_error <= 1.0);
@@ -641,6 +644,12 @@ bool LatticeBoost(const TransitionModel &trans,
       }
     }
   }
+  // All we changed is the weights, so any properties that were
+  // known before, are still known, except for whether or not the
+  // lattice was weighted.
+  lat->SetProperties(props,
+                     ~(fst::kWeighted|fst::kUnweighted));
+      
   return true;
 }
 

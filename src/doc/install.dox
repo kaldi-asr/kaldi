@@ -74,7 +74,7 @@
  you should switch your repository over to an SSH-based link which
  will allow you to commit changes:
 \verbatim
-svn switch --relocate svn://svn.code.sf.net/p/kaldi/code svn+ssh://USERNAME@svn.code.sf.net/p/kaldi/code
+svn switch --relocate https://svn.code.sf.net/p/kaldi/code svn+ssh://USERNAME@svn.code.sf.net/p/kaldi/code
 \endverbatim
  where USERNAME is replaced by your Sourceforge username.  Do this while
  you are in the top level of your copy of the repository (e.g. in trunk/).  To avoid entering passwords
