@@ -42,7 +42,8 @@ int main(int argc, char *argv[]) {
         "Usage: online2-wav-dump-features [options] <spk2utt-rspecifier> <wav-rspecifier> <feature-wspecifier>\n"
         "The spk2utt-rspecifier can just be <utterance-id> <utterance-id> if\n"
         "you want to generate features utterance by utterance.\n"
-        "See steps/online/nnet2/dump_nnet_activations.sh for an example.\n";
+        "Alternate usage: online2-wav-dump-features [options] --print-ivector-dim=true\n"
+        "See steps/online/nnet2/{dump_nnet_activations,get_egs.sh} for examples.\n";
     
     ParseOptions po(usage);
     
@@ -50,24 +51,34 @@ int main(int argc, char *argv[]) {
     // as well as the basic features.
     OnlineNnet2FeaturePipelineConfig feature_config;  
     BaseFloat chunk_length_secs = 0.05;
+    bool print_ivector_dim = false;
     
     po.Register("chunk-length", &chunk_length_secs,
                 "Length of chunk size in seconds, that we process.");
+    po.Register("print-ivector-dim", &print_ivector_dim,
+                "If true, print iVector dimension (possibly zero) and exit.  This "
+                "version requires no arguments.");
     
     feature_config.Register(&po);
     
     po.Read(argc, argv);
     
-    if (po.NumArgs() != 3) {
+    if (!print_ivector_dim && po.NumArgs() != 3) {
       po.PrintUsage();
       return 1;
+    }
+
+    OnlineNnet2FeaturePipelineInfo feature_info(feature_config);
+
+    if (print_ivector_dim) {
+      std::cout << feature_info.IvectorDim() << std::endl;
+      exit(0);
     }
     
     std::string spk2utt_rspecifier = po.GetArg(1),
         wav_rspecifier = po.GetArg(2),
         feats_wspecifier = po.GetArg(3);
     
-    OnlineNnet2FeaturePipelineInfo feature_info(feature_config);
     
     int32 num_done = 0, num_err = 0;
     int64 num_frames_tot = 0;

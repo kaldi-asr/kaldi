@@ -141,6 +141,7 @@ struct OnlineNnet2FeaturePipelineInfo {
   bool use_ivectors;
   OnlineIvectorExtractionInfo ivector_extractor_info;
 
+  int32 IvectorDim() { return ivector_extractor_info.extractor.IvectorDim(); }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineNnet2FeaturePipelineInfo);
 };

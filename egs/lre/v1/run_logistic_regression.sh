@@ -31,7 +31,7 @@ classes="ark:lid/remove_dialect.pl data/train/utt2lang \
 # Create priors to rebalance the model. The following script rebalances
 # the languages as count(lang_test) / (count(lang_test) + count(lang_train)).
 lid/balance_priors_to_test.pl \
-    <(lid/remove_dialect.pl <(utils/filter_scp.pl -f 0 \
+    <(lid/remove_dialect.pl <(utils/filter_scp.pl \
         exp/ivectors_train/ivector.scp data/train/utt2lang)) \
     <(lid/remove_dialect.pl data/lre07/utt2lang) \
     exp/ivectors_train/languages.txt \

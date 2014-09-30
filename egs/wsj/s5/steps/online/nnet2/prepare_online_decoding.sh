@@ -79,6 +79,12 @@ cp $srcdir/final.mdl $dir/ || exit 1;
 if [ ! -z "$iedir" ]; then
   mkdir -p $dir/ivector_extractor/
   cp $iedir/final.{mat,ie,dubm} $iedir/global_cmvn.stats $dir/ivector_extractor/ || exit 1;
+
+  # The following things won't be needed directly by the online decoding, but
+  # will allow us to run prepare_online_decoding.sh again with
+  # $dir/ivector_extractor/ as the input directory (useful in certain
+  # cross-system training scenarios).
+  cp $iedir/splice_opts $iedir/online_cmvn.conf $dir/ivector_extractor/ || exit 1;
 fi
 
 

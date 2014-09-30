@@ -14,12 +14,8 @@
 # for online decoding.
 
 # Rather than treating each utterance separately, it carries forward
-# information from one utterance to the next, within the speaker.  However, 
-# take note of the option "utts-per-spk-max", which splits speakers up into 
-# "fake speakers" with at most two utterances in them.  This means that more 
-# iVectors  are estimated starting from an uninformative starting point, than 
-# if we used the real speaker labels (which may have many utterances each); 
-# it's a compromise between per-utterance and per-speaker iVector estimation.
+# information from one utterance to the next, within the speaker. 
+
 
 # Begin configuration section.
 nj=30
@@ -36,13 +32,9 @@ posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
                     # used when training the iVector extractor, but more important
                     # that this match the value used when you do real online decoding
                     # with the neural nets trained with these iVectors.
-utts_per_spk_max=-1 # Maximum utterances per "fake-speaker." With the default 
-                    # of -1 no fake-speakers are used.  Note: this does not have to 
-                    # be an integer; if it's noninteger, it will be rounded in a 
-                    # randomized way to one of the two integers it's close to.  
-                    # This is useful in the "perturbed-feature" recipe to encourage 
-                    # that different perturbed versions of the same speaker get 
-                    # split into fake-speakers differently.
+#utts_per_spk_max=-1 # This option is no longer supported, you should use
+                    # steps/online/nnet2/copy_data_dir.sh with the --utts-per-spk-max
+                    # option to make a copy of the data dir.
 compress=true       # If true, compress the iVectors stored on disk (it's lossy
                     # compression, as used for feature matrices).
 
@@ -112,7 +104,6 @@ echo "--posterior-scale=$posterior_scale" >>$ieconf
 echo "--max-remembered-frames=1000" >>$ieconf # the default
 
 
-
 ns=$(wc -l <$data/spk2utt)
 if [ "$ns" == 1 -a "$utts_per_spk_max" != 1 -a "$utts_per_spk_max" != -1 ]; then
   echo "$0: you seem to have just one speaker in your database.  This is probably not a good idea."
@@ -121,29 +112,10 @@ if [ "$ns" == 1 -a "$utts_per_spk_max" != 1 -a "$utts_per_spk_max" != -1 ]; then
   utts_per_spk_max=1
 fi
 
-spk2utt=""
-if [ "$utts_per_spk_max" != -1 ]; then
-  mkdir -p $dir/spk2utt_fake
-  for job in $(seq $nj); do 
-    # create fake spk2utt files with reduced number of utterances per speaker,
-    # so the network is well adapted to using iVectors from small amounts of
-    # training data.
-    # the if (rand() % 2 == 0)
-    awk -v max=$utts_per_spk_max '{ n=2; count=0;
-      while(n<=NF) {
-        int_max=int(max)+ (rand() < (max-int(max))?1:0);
-        nmax=n+int_max; count++; printf("%s-%06x", $1, count); 
-        for (;n<nmax&&n<=NF; n++) printf(" %s", $n); print "";} }' \
-    <$sdata/$job/spk2utt >$dir/spk2utt_fake/spk2utt.$job
-  done
-  spk2utt="ark:$dir/spk2utt_fake/spk2utt.JOB"
-else
-  spk2utt="ark:$sdata/JOB/spk2utt"
-fi
 
 
 for n in $(seq $nj); do
-  # This will do nothing unless the directorys $dir/storage exists;
+  # This will do nothing unless the directory $dir/storage exists;
   # it can be used to distribute the data among multiple machines.
   utils/create_data_link.pl $dir/ivector_online.$n.ark
 done
@@ -151,7 +123,7 @@ done
 if [ $stage -le 0 ]; then
   echo "$0: extracting iVectors"
   $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
-     ivector-extract-online2 --config=$ieconf "$spk2utt" scp:$sdata/JOB/feats.scp ark:- \| \
+     ivector-extract-online2 --config=$ieconf ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
      copy-feats --compress=$compress ark:- \
       ark,scp:$dir/ivector_online.JOB.ark,$dir/ivector_online.JOB.scp || exit 1;
 fi

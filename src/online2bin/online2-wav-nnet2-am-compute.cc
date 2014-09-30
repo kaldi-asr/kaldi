@@ -1,7 +1,7 @@
 // online2bin/online2-wav-nnet2-am-compute.cc
 
 // Copyright 2014  Johns Hopkins University (author: Daniel Povey)
-//                 David Snyder
+//           2014  David Snyder
 
 // See ../../COPYING for clarification regarding multiple authors
 //

@@ -45,7 +45,7 @@ if [ $stage -le 2 ]; then
 local/vad_split_utts_fix_data.pl $in_dir $dir;
 fi
 
-utils/filter_scp.pl -f 0 \
+utils/filter_scp.pl \
 <(echo "`awk < "$dir/segments" '{ print $2 }'`") $in_dir/wav.scp \
  > $dir/wav.scp
 

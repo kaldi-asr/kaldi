@@ -46,6 +46,7 @@ creates a link such as
 Usage: utils/create_data_link.pl <data-archive>
  e.g.: utils/create_data_link.pl foo/bar/egs.3.4.ark
 
+See also utils/remove_data_links.sh
 EOU
 
 GetOptions();

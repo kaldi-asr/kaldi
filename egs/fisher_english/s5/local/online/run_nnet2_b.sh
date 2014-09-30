@@ -60,14 +60,12 @@ if [ $stage -le 3 ]; then
     utils/create_split_dir.pl /export/b0{1,2,3,4}/dpovey/kaldi-online/egs/fisher_english/s5/$ivectordir $ivectordir/storage
   fi
 
-  # We extract iVectors on all the train data, which will be what we
-  # train the system on.  This version of the iVector-extraction script
-  # pairs the utterances into twos (by default, see --utts-per-spk-max option) 
-  # and treats each of these pairs as one speaker.
-  # Note that these are extracted 'online'.
+  # having a larger number of speakers is helpful for generalization, and to
+  # handle per-utterance decoding well (iVector starts at zero).
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train data/train_max2
+
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 60 \
-    --utts-per-spk-max 2 \
-    data/train exp/nnet2_online/extractor $ivectordir || exit 1;
+    data/train_max2 exp/nnet2_online/extractor $ivectordir || exit 1;
 fi
 
 
@@ -83,7 +81,8 @@ if [ $stage -le 4 ]; then
   # data across four filesystems for speed.
 
   steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
-    --num-epochs 3 --num-epochs-extra 1 \
+    --num-epochs 4 --num-epochs-extra 1 \
+    --samples-per-iter 400000 \
     --splice-width 7 --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors_train \
     --cmvn-opts "--norm-means=false --norm-vars=false" \

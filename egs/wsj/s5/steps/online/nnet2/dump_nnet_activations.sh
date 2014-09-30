@@ -98,6 +98,9 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: dumping neural net activations"
 
+  # The next line is a no-op unless $dir/feats/storage/ exists; see utils/create_split_dir.pl.
+  for j in $(seq $nj); do  utils/create_data_link.pl $dir/feats/feats.$j.ark; done
+
   if [ -f $data/segments ]; then
     wav_rspecifier="ark,s,cs:extract-segments scp,p:$sdata/JOB/wav.scp $sdata/JOB/segments ark:- |"
   else

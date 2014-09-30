@@ -50,12 +50,14 @@ fi
 
 if [ $stage -le 3 ]; then
   # We extract iVectors on all the train_nodup data, which will be what we
-  # train the system on.  This version of the iVector-extraction script
-  # pairs the utterances into twos (by default, see --utts-per-spk-max option) 
-  # and treats each as one speaker.
+  # train the system on.
+
+  # having a larger number of speakers is helpful for generalization, and to
+  # handle per-utterance decoding well (iVector starts at zero).
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train_nodup data/train_nodup_max2
+
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    --utts-per-spk-max 2 \
-    data/train_nodup exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_nodup2 || exit 1;
+    data/train_nodup_max2 exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_nodup2 || exit 1;
 fi
 
 

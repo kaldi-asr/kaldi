@@ -96,7 +96,7 @@ while (( "$#" )); do
     $cmd LMWT=$min_lmwt:$max_lmwt $targetdir/$kws/kws_filter.LMWT.log \
       set -e';' set -o pipefail';' \
       mkdir -p $targetdir/${kws}_LMWT';'\
-      cat $resultdir/${kws}_LMWT/'result.*' \| utils/filter_scp.pl -f 1 $filter \> $targetdir/${kws}_LMWT/result || exit -1
+      cat $resultdir/${kws}_LMWT/'result.*' \| utils/filter_scp.pl -f 2 $filter \> $targetdir/${kws}_LMWT/result || exit -1
 
 
     echo -e  "\tWrite normalized..."

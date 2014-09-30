@@ -55,9 +55,13 @@ fi
 if [ $stage -le 3 ]; then
   # We extract iVectors on all the train_si284 data, which will be what we
   # train the system on.
+
+  # having a larger number of speakers is helpful for generalization, and to
+  # handle per-utterance decoding well (iVector starts at zero).
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train_si284 data/train_si284_max2
+
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    --utts-per-spk-max 2 
-    data/train_si284 exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_si284 || exit 1;
+    data/train_si284_max2 exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_si284 || exit 1;
 fi
 
 
@@ -78,8 +82,8 @@ if [ $stage -le 4 ]; then
   # wouldn't be able to decode in real-time using a CPU.
   #
   # I copied the learning rates from ../nnet2/run_5d.sh
-  steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
-    --num-epochs 8 --num-epochs-extra 4 \
+  steps/nnet2/train_pnorm_simple.sh --stage $train_stage \
+    --num-epochs 12 \
     --splice-width 7 --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors_train_si284 \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
