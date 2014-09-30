@@ -65,8 +65,10 @@ NnetComputer::NnetComputer(const Nnet &nnet,
                            Nnet *nnet_to_update):
     nnet_(nnet), nnet_to_update_(nnet_to_update) {
   int32 dim = input_feats.NumCols();
-  KALDI_ASSERT(dim == nnet.InputDim());
-
+  if (dim != nnet.InputDim()) {
+    KALDI_ERR << "Feature dimension is " << dim << " but network expects "
+              << nnet.InputDim();
+  }
   forward_data_.resize(nnet.NumComponents() + 1);
 
   int32 left_context = (pad ? nnet_.LeftContext() : 0),
