@@ -189,6 +189,7 @@ int main(int argc, char *argv[]) {
                                              &feature_matrix);
       int32 start_frame = 0;
       bool partial_res = false;
+      decoder.InitDecoding();
       while (1) {
         OnlineFasterDecoder::DecodeState dstate = decoder.Decode(&decodable);
         if (dstate & (decoder.kEndFeats | decoder.kEndUtt)) {
