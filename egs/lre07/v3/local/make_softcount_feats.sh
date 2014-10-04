@@ -27,6 +27,7 @@ num_feats=5000
 mkdir -p $base/$order
 mkdir -p $base/log
 
+if [ 0 = 1 ]; then
 # Create soft n-gram counts for LRE07 and training data. 
 $cmd JOB=1:25 $base/log/test_ngram_counts.JOB.log \
   gunzip -c exp/tri5a/lre07_basis_fmllr/lat.JOB.gz \| \
@@ -51,6 +52,7 @@ rm $base/$order/train_counts.*
 # soft-counts for these selected n-grams. 
 local/sort_top_ngrams.pl <(gunzip -c $base/train_counts.gz) \
   | head -n $num_feats > $base/ngram_table
+fi
 
 # Decode the training and test (LRE07) datasets as the total counts of each
 # n-gram included in the ngram_table constructed above. 
