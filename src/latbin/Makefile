@@ -19,7 +19,8 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-add-penalty lattice-align-words-lexicon lattice-push \
            lattice-minimize lattice-limit-depth lattice-depth-per-frame \
            lattice-confidence lattice-determinize-phone-pruned \
-           lattice-determinize-phone-pruned-parallel lattice-expand-ngram
+           lattice-determinize-phone-pruned-parallel lattice-expand-ngram \
+           lattice-lmrescore-const-arpa
 
 OBJFILES =
 
@@ -27,9 +28,9 @@ OBJFILES =
 
 TESTFILES =
 
-ADDLIBS = ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a \
-          ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../thread/kaldi-thread.a \
-					../base/kaldi-base.a 
+ADDLIBS = ../lat/kaldi-lat.a ../lm/kaldi-lm.a ../hmm/kaldi-hmm.a \
+          ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+          ../thread/kaldi-thread.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk
 

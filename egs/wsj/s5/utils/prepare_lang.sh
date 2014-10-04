@@ -1,6 +1,7 @@
 #!/bin/bash
 # Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey);
 #                      Arnab Ghoshal
+#                2014  Guoguo Chen
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -243,9 +244,29 @@ else
 fi
 
 # Create word symbol table.
-cat $tmpdir/lexiconp.txt | awk '{print $1}' | sort | uniq  | \
- awk 'BEGIN{print "<eps> 0";} {printf("%s %d\n", $1, NR);} END{printf("#0 %d\n", NR+1);} ' \
-  > $dir/words.txt || exit 1;
+# <s> and </s> are only needed due to the need to rescore lattices with
+# ConstArpaLm format language model. They do not normally appear in G.fst or
+# L.fst.
+cat $tmpdir/lexiconp.txt | awk '{print $1}' | sort | uniq  | awk '
+  BEGIN {
+    print "<eps> 0";
+  } 
+  {
+    if ($1 == "<s>") {
+      print "<s> is in the vocabulary!" > "/dev/stderr"
+      exit 1;
+    }
+    if ($1 == "</s>") {
+      print "</s> is in the vocabulary!" > "/dev/stderr"
+      exit 1;
+    }
+    printf("%s %d\n", $1, NR);
+  }
+  END {
+    printf("#0 %d\n", NR+1);
+    printf("<s> %d\n", NR+2);
+    printf("</s> %d\n", NR+3);
+  }' > $dir/words.txt || exit 1;
 
 # format of $dir/words.txt:
 #<eps> 0

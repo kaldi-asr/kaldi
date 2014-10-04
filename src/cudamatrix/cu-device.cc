@@ -81,7 +81,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   // Check that we have a gpu available
   int32 n_gpu = 0;
   cudaGetDeviceCount(&n_gpu);
-  if(n_gpu == 0) {
+  if (n_gpu == 0) {
     if (use_gpu == "yes") {
       KALDI_ERR << "No CUDA GPU detected!";
     }

@@ -178,7 +178,6 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
   int ilev, maxlev = 0;
 
   // process \data\ section
-  cerr << "\\data\\" << endl;
 
   while (getline(istrm, inpline) && !istrm.eof()) {
     std::istringstream ss(inpline);
@@ -229,9 +228,10 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
     // process individual n-grams
     while (getline(istrm, inpline) && !istrm.eof()) {
       // break out of inner loop if another section is found
-      if (inpline.find("-grams:") != string::npos) break;
-      if (inpline.find("\\end\\") != string::npos) break;
-
+      if (!inpline.empty() && inpline[0] == '\\') {
+        if (inpline.find("-grams:") != string::npos) break;
+        if (inpline.find("\\end\\") != string::npos) break;
+      }
       // parse ngram line: first field = prob, other fields = words,
       // last field = backoff (optional)
       std::vector<string> ngramString;

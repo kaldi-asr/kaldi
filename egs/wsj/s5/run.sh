@@ -140,8 +140,8 @@ steps/decode.sh --nj 8 --cmd "$decode_cmd" \
 # test various modes of LM rescoring (4 is the default one).
 # This is just confirming they're equivalent.
 for mode in 1 2 3 4; do
-steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
-  data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg$mode  || exit 1;
+ steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
+   data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg$mode  || exit 1;
 done
 
 # demonstrate how to get lattices that are "word-aligned" (arcs coincide with

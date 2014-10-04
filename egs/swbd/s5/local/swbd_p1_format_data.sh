@@ -34,7 +34,7 @@ gunzip -c "$arpa_lm" | \
    utils/remove_oovs.pl /dev/null | \
    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=data/lang_test/words.txt \
      --osymbols=data/lang_test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-    fstrmepsilon > data/lang_test/G.fst
+    fstrmepsilon | fstarcsort --sort_type=ilabel > data/lang_test/G.fst
   fstisstochastic data/lang_test/G.fst
 
 

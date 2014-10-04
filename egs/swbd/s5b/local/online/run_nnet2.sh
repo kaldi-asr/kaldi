@@ -101,7 +101,7 @@ fi
 
 if [ $stage -le 6 ]; then
   # this does offline decoding that should give the same results as the real
-  # online decoding.
+  # online decoding (the one with --per-utt true)
   for lm_suffix in tg fsh_tgpr; do
     graph_dir=exp/tri4b/graph_sw1_${lm_suffix}
     # use already-built graphs.

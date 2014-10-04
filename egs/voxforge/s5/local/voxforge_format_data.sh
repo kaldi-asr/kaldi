@@ -48,7 +48,7 @@ cat $lmdir/lm.arpa | \
   utils/remove_oovs.pl $tmpdir/oovs.txt | \
   utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt \
     --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-  fstrmepsilon > $test/G.fst
+  fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
 fstisstochastic $test/G.fst
 # The output is like:
 # 9.14233e-05 -0.259833

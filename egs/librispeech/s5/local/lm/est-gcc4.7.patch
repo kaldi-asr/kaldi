@@ -1,0 +1,81 @@
+--- a/base_class/EST_TSimpleMatrix.cc
++++ b/base_class/EST_TSimpleMatrix.cc
+@@ -44,6 +44,7 @@
+ #include "EST_TVector.h"
+ #include <fstream>
+ #include <iostream>
++#include <cstring>
+ #include "EST_cutils.h"
+ 
+ template<class T> 
+@@ -98,7 +99,7 @@ void EST_TSimpleMatrix<T>::resize(int ne
+ 	{
+ 	  int copy_r = Lof(this->num_rows(), new_rows);
+ 
+-	  just_resize(new_rows, new_cols, &old_vals);
++	  this->just_resize(new_rows, new_cols, &old_vals);
+ 
+           for (q=0; q<(copy_r*new_cols*sizeof(T)); q++) /* memcpy */
+               ((char *)this->p_memory)[q] = ((char *)old_vals)[q];
+@@ -127,9 +128,9 @@ void EST_TSimpleMatrix<T>::resize(int ne
+ 	  int copy_r = Lof(this->num_rows(), new_rows);
+ 	  int copy_c = Lof(this->num_columns(), new_cols);
+ 	  
+-	  just_resize(new_rows, new_cols, &old_vals);
++	  this->just_resize(new_rows, new_cols, &old_vals);
+ 
+-	  set_values(old_vals,
++	  this->set_values(old_vals,
+ 		     old_row_step, old_column_step,
+ 		     0, copy_r,
+ 		     0, copy_c);
+--- a/base_class/EST_TSimpleVector.cc
++++ b/base_class/EST_TSimpleVector.cc
+@@ -43,6 +43,7 @@
+ #include "EST_TSimpleVector.h"
+ #include "EST_matrix_support.h"
+ #include <fstream>
++#include <cstring>
+ #include "EST_cutils.h"
+ 
+ template<class T> void EST_TSimpleVector<T>::copy(const EST_TSimpleVector<T> &a)
+@@ -70,7 +71,7 @@ template<class T> void EST_TSimpleVector
+   int old_offset = this->p_offset;
+   unsigned int q;
+ 
+-  just_resize(newn, &old_vals);
++  this->just_resize(newn, &old_vals);
+ 
+   if (set && old_vals)
+     {
+--- a/include/EST_TIterator.h
++++ b/include/EST_TIterator.h
+@@ -209,7 +209,7 @@ public:
+ 
+   /// Create an iterator ready to run over the given container.
+   EST_TStructIterator(const Container &over)
+-    { begin(over); }
++    { this->begin(over); }
+ 
+   const Entry *operator ->() const
+     {return &this->current();}
+@@ -289,7 +289,7 @@ public:
+ 
+   /// Create an iterator ready to run over the given container.
+   EST_TRwStructIterator(Container &over)
+-    { begin(over); }
++    { this->begin(over); }
+ 
+   Entry *operator ->() const
+     {return &this->current();}
+--- a/include/EST_TNamedEnum.h
++++ b/include/EST_TNamedEnum.h
+@@ -130,7 +130,7 @@ public:
+ 	{this->initialise((const void *)defs); };
+   EST_TNamedEnumI(EST_TValuedEnumDefinition<const char *,const char *,INFO> defs[], ENUM (*conv)(const char *))
+ 	{this->initialise((const void *)defs, conv); };
+-  const char *name(ENUM tok, int n=0) const {return value(tok,n); };
++  const char *name(ENUM tok, int n=0) const {return this->value(tok,n); };
+ 
+ };
+ 

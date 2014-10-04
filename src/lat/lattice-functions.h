@@ -3,6 +3,7 @@
 // Copyright 2009-2012   Saarland University (author: Arnab Ghoshal)
 //           2012-2013   Johns Hopkins University (Author: Daniel Povey);
 //                       Bagher BabaAli
+//                2014   Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -257,6 +258,17 @@ bool RescoreCompactLatticeSpeedup(
 bool RescoreLattice(DecodableInterface *decodable,
                     Lattice *lat);
 
+/// This function Composes a CompactLattice format lattice with a
+/// DeterministicOnDemandFst<fst::StdFst> format fst, and outputs another
+/// CompactLattice format lattice. The first element (the one that corresponds
+/// to LM weight) in CompactLatticeWeight is used for composition.
+///
+/// Note that the DeterministicOnDemandFst interface is not "const", therefore
+/// we cannot use "const" for <det_fst>.
+void ComposeCompactLatticeDeterministic(
+    const CompactLattice& clat,
+    fst::DeterministicOnDemandFst<fst::StdArc>* det_fst,
+    CompactLattice* composed_clat);
 
 }  // namespace kaldi
 
