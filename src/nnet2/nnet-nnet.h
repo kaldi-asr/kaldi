@@ -98,9 +98,12 @@ class Nnet {
   /// this neural net, leaving everything else fixed.
   void CopyStatsFrom(const Nnet &nnet);
 
-
-  /// Returns the index of the last component which is updatable,
-  /// or NumComponents() if none are updatable.
+  /// Returns the index of the lowest-numbered component which is updatable, or
+  /// NumComponents() if none are updatable.
+  int32 FirstUpdatableComponent() const;
+  
+  /// Returns the index of the highest-numbered component which is updatable, or
+  /// -1 if none are updatable.
   int32 LastUpdatableComponent() const;
 
   /// Returns the number of updatable components.
