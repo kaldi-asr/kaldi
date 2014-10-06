@@ -1303,12 +1303,12 @@ void ComposeCompactLatticeDeterministic(
     fst::DeterministicOnDemandFst<fst::StdArc>* det_fst,
     CompactLattice* composed_clat) {
   // StdFst::Arc and CompactLatticeArc has the same StateId type.
-  typedef typename fst::StdArc::StateId StateId;
-  typedef typename fst::StdArc::Weight Weight1;
-  typedef typename CompactLatticeArc::Weight Weight2;
+  typedef fst::StdArc::StateId StateId;
+  typedef fst::StdArc::Weight Weight1;
+  typedef CompactLatticeArc::Weight Weight2;
   typedef std::pair<StateId, StateId> StatePair;
   typedef unordered_map<StatePair, StateId, PairHasher<StateId> > MapType;
-  typedef typename MapType::iterator IterType;
+  typedef MapType::iterator IterType;
 
   // Empties the output FST.
   KALDI_ASSERT(composed_clat != NULL);
