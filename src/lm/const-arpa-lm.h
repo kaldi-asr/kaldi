@@ -202,9 +202,9 @@ class ConstArpaLm {
 class ConstArpaLmDeterministicFst :
     public fst::DeterministicOnDemandFst<fst::StdArc> {
  public:
-  typedef typename fst::StdArc::Weight Weight;
-  typedef typename fst::StdArc::StateId StateId;
-  typedef typename fst::StdArc::Label Label;
+  typedef fst::StdArc::Weight Weight;
+  typedef fst::StdArc::StateId StateId;
+  typedef fst::StdArc::Label Label;
 
   ConstArpaLmDeterministicFst(const ConstArpaLm& lm);
 

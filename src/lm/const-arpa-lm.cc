@@ -943,7 +943,7 @@ ConstArpaLmDeterministicFst::ConstArpaLmDeterministicFst(
   start_state_ = 0;
 }
 
-typename fst::StdArc::Weight ConstArpaLmDeterministicFst::Final(StateId s) {
+fst::StdArc::Weight ConstArpaLmDeterministicFst::Final(StateId s) {
   // At this point, we should have created the state.
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
   const std::vector<Label>& wseq = state_to_wseq_[s];
@@ -979,7 +979,7 @@ bool ConstArpaLmDeterministicFst::GetArc(StateId s,
 
   // Attemps to insert the current <wseq_state_pair>. If the pair already exists
   // then it returns false.
-  typedef typename MapType::iterator IterType;
+  typedef MapType::iterator IterType;
   std::pair<IterType, bool> result = wseq_to_state_.insert(wseq_state_pair);
 
   // If the pair was just inserted, then also add it to <state_to_wseq_>.
