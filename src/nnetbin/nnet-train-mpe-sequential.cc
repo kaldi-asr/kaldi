@@ -170,7 +170,8 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     nnet.Read(model_filename);
     // using activations directly: remove softmax, if present
-    if (nnet.GetComponent(nnet.NumComponents()-1).GetType() == Component::kSoftmax) {
+    if (nnet.GetComponent(nnet.NumComponents()-1).GetType() ==
+        kaldi::nnet1::Component::kSoftmax) {
       KALDI_LOG << "Removing softmax from the nnet " << model_filename;
       nnet.RemoveComponent(nnet.NumComponents()-1);
     } else {

@@ -588,12 +588,11 @@ void LatticeWordAligner::ComputationState::OutputArcForce(
     weight_ = LatticeWeight::One();
     word_labels_.clear();
   } else if (!transition_ids_.empty() && word_labels_.empty()) {
-    // Transition-ids but no word label-- either silence or
-    // partial word.
+    // Transition-ids but no word label-- either silence or partial word.
     int32 first_phone = tmodel.TransitionIdToPhone(transition_ids_[0]);
     if (info.TypeOfPhone(first_phone) == WordBoundaryInfo::kNonWordPhone) {
       // first phone is silence...
-      if (!first_phone == tmodel.TransitionIdToPhone(transition_ids_.back())
+      if (first_phone != tmodel.TransitionIdToPhone(transition_ids_.back())
           && ! *error) {
         *error = true;
         // Phone changed-- this is a code error, because the regular OutputArc
@@ -804,8 +803,8 @@ class WordAlignedLatticeTester {
           // rest of the transition ids are the self-loop of that same
           // transition-state.
           for(size_t j = i+1; j < tids.size(); j++) {
-            if (!(tmodel_.TransitionIdToTransitionState(tids[j]))
-                == tmodel_.TransitionIdToTransitionState(tids[i])) return false;
+            if (tmodel_.TransitionIdToTransitionState(tids[j])
+                != tmodel_.TransitionIdToTransitionState(tids[i])) return false;
           }
           return true;
         }

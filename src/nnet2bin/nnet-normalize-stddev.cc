@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
       // Also includes PreconditionedAffineComponent and
       // PreconditionedAffineComponentOnline, since they are child classes of
       // AffineComponent.
-      Component *component = &(am_nnet.GetNnet().GetComponent(c));
+      kaldi::nnet2::Component *component = &(am_nnet.GetNnet().GetComponent(c));
       AffineComponent *ac = dynamic_cast<AffineComponent*>(component);
       BlockAffineComponent *bac =
         dynamic_cast<BlockAffineComponent*>(component);
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
       // or a PowerComponent followed by a NormalizeComponent
       component = &(am_nnet.GetNnet().GetComponent(c + 2));
       NormalizeComponent *nc = dynamic_cast<NormalizeComponent*>(component);
-      PowerComponent *pwc = dynamic_cast<PowerComponent*>(component);          
+      PowerComponent *pwc = dynamic_cast<PowerComponent*>(component);
       if (nc == NULL && pwc == NULL)
         continue;
       if (pwc != NULL) {  // verify it's PowerComponent followed by
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
     for (int32 c = 0; c < identified_components.size(); c++) {
       ref_stddev = 0.0;
       if (!reference_model_filename.empty()) {
-        Component *component =
+        kaldi::nnet2::Component *component =
             &(am_nnet_ref.GetNnet().GetComponent(identified_components[c]));
         UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(component);
         KALDI_ASSERT(uc != NULL);
@@ -140,7 +140,7 @@ int main(int argc, char *argv[]) {
             / static_cast<BaseFloat>(params.Dim()));
       }
 
-      Component *component = 
+      kaldi::nnet2::Component *component =
           &(am_nnet.GetNnet().GetComponent(identified_components[c]));
       UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(component);
       KALDI_ASSERT(uc != NULL);

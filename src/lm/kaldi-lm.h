@@ -120,9 +120,9 @@ class LangModelFst: public fst::VectorFst<fst::StdArc> {
   fst::VectorFst<fst::StdArc>* GetFst() {return pfst_;}
 
   /// Writes language model FST to named output file, return false on error.
-  bool Write(std::string wxfilename) {
-    if (wxfilename == "") wxfilename = "-"; // interpret "" as stdout,
-    // for compatibility with OpenFst conventions.
+  bool Write(const std::string &filename) const {
+    // interpret "" as stdout for compatibility with OpenFst conventions.
+    std::string wxfilename(filename == "" ? "-" : filename.c_str());
     bool write_binary = true, write_header = false;
     kaldi::Output ko(wxfilename, write_binary, write_header);
     fst::FstWriteOptions wopts(kaldi::PrintableWxfilename(wxfilename));

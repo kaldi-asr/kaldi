@@ -111,12 +111,10 @@ void WaveData::Read(std::istream &is) {
   char tmp[5];
   tmp[4] = '\0';
   Read4ByteTag(is, &tmp[0]);
-  bool is_rifx;
-  if (!strcmp(tmp, "RIFF"))
-    is_rifx = false;
-  else if (!strcmp(tmp, "RIFX"))
+  bool is_rifx = false;
+  if (!strcmp(tmp, "RIFX"))
     is_rifx = true;
-  else
+  else if (strcmp(tmp, "RIFF"))
     KALDI_ERR << "WaveData: expected RIFF or RIFX, got " << tmp;
 
 #ifdef __BIG_ENDIAN__  

@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     nnet.Read(model_filename);
     KALDI_ASSERT(nnet.NumComponents()==1);
-    KALDI_ASSERT(nnet.GetComponent(0).GetType() == Component::kRbm);
+    KALDI_ASSERT(nnet.GetComponent(0).GetType() == kaldi::nnet1::Component::kRbm);
     RbmBase &rbm = dynamic_cast<RbmBase&>(nnet.GetComponent(0));
 
     // Configure the RBM,

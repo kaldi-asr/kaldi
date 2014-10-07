@@ -2390,14 +2390,12 @@ void SpliceComponent::Init(int32 input_dim, int32 left_context,
 // e.g. args == "input-dim=10 left-context=2 right-context=2
 void SpliceComponent::InitFromString(std::string args) {
   std::string orig_args(args);
-  int32 input_dim, left_context, right_context;
-  bool ok = ParseFromString("input-dim", &args, &input_dim) &&
-            ParseFromString("left-context", &args, &left_context) &&
-            ParseFromString("right-context", &args, &right_context);
-
-  int32 const_component_dim = 0;
+  int32 input_dim, left_context, right_context, const_component_dim = 0;
+  bool ok = ParseFromString("input-dim", &args, &input_dim);
+  ok = ParseFromString("left-context", &args, &left_context) && ok;
+  ok = ParseFromString("right-context", &args, &right_context) && ok;
   ParseFromString("const-component-dim", &args, &const_component_dim);
-  
+
   if (!ok || !args.empty() || input_dim <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << orig_args << "\"";
@@ -2612,9 +2610,9 @@ void SpliceMaxComponent::Init(int32 dim, int32 left_context,
 void SpliceMaxComponent::InitFromString(std::string args) {
   std::string orig_args(args);
   int32 dim, left_context, right_context;
-  bool ok = ParseFromString("dim", &args, &dim) &&
-            ParseFromString("left-context", &args, &left_context) &&
-            ParseFromString("right-context", &args, &right_context);
+  bool ok = ParseFromString("dim", &args, &dim);
+  ok = ParseFromString("left-context", &args, &left_context) && ok;
+  ok = ParseFromString("right-context", &args, &right_context) && ok;
   
   if (!ok || !args.empty() || dim <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
@@ -2761,13 +2759,12 @@ void DctComponent::Init(int32 dim, int32 dct_dim, bool reorder, int32 dct_keep_d
 
 void DctComponent::InitFromString(std::string args) {
   std::string orig_args(args);
-  int32 dim, dct_dim;
+  int32 dim, dct_dim, dct_keep_dim = 0;
   bool reorder = false;
-  int32 dct_keep_dim = 0;
 
-  bool ok = ParseFromString("dim", &args, &dim) &&
-            ParseFromString("dct-dim", &args, &dct_dim);
-  ParseFromString("reorder", &args, &reorder);
+  bool ok = ParseFromString("dim", &args, &dim);
+  ok = ParseFromString("dct-dim", &args, &dct_dim) && ok;
+  ok = ParseFromString("reorder", &args, &reorder) && ok;
   ParseFromString("dct-keep-dim", &args, &dct_keep_dim);
 
   if (!ok || !args.empty() || dim <= 0 || dct_dim <= 0 || dct_keep_dim < 0)
