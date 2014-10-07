@@ -29,7 +29,7 @@ local/download_lm.sh $lm_url data/local/lm || exit 1
 # format the data as Kaldi data directories
 for part in dev-clean test-clean dev-other test-other train-clean-100; do
   # use underscore-separated names in data directories.
-  local/data_prep.sh $data/LibriSpeech/$part data/$(echo $part | sed s/-/_/g)
+  local/data_prep.sh $data/LibriSpeech/$part data/$(echo $part | sed s/-/_/g) || exit 1
 done
 
 ## Optional text corpus normalization and LM training
@@ -44,9 +44,8 @@ done
 ## document our G2P model creation process
 #local/g2p/train_g2p.sh data/local/dict/cmudict data/local/lm
 
-# the inputs are created by Vassil but we need to include the scripts to create them.
 local/prepare_dict.sh --nj 30 --cmd "$train_cmd" \
-   data/local/lm data/local/lm data/local/dict
+   data/local/lm data/local/lm data/local/dict || exit 1
 
 utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/lang || exit 1;
 
@@ -186,7 +185,7 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
 
 # if you want at this point you can train and test NN model(s) on the 100 hour
 # subset
-local/nnet2/run_5c_clean_100.sh || exit 1
+local/nnet2/run_5a_clean_100.sh || exit 1
 
 local/download_and_untar.sh $data $data_url train-clean-360 || exit 1;
 

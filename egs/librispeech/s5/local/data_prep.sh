@@ -13,6 +13,12 @@ fi
 src=$1
 dst=$2
 
+# all utterances are FLAC compressed
+if ! which flac >&/dev/null; then
+   echo "Please install 'flac' on ALL worker nodes!"
+   exit 1
+fi
+
 spk_file=$src/../SPEAKERS.TXT
 
 mkdir -p $dst || exit 1;

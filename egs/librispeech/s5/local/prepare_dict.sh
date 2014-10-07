@@ -28,6 +28,21 @@ lm_dir=$1
 g2p_model_dir=$2
 dst_dir=$3
 
+# check if we have Sequitur G2P is installed
+if [ ! -f  "$sequitur" ]; then
+  if ! which swig >&/dev/null; then
+    echo "Please install 'swig' and then run $KALDI_ROOT/tools/extra/install_sequitur.sh"
+    exit 1
+  else
+    echo "Sequitur G2P not found- running $KALDI_ROOT/tools/extra/install_sequitur.sh"
+    pushd $KALDI_ROOT/tools
+    extra/install_sequitur.sh || exit 1
+    popd
+  fi
+fi
+
+[[ -f "$sequitur" ]] || { echo "Still can't find Sequitur G2P- check your path.sh"; exit 1; }
+
 vocab=$lm_dir/vocab.txt
 [ ! -f $vocab ] && echo "$0: vocabulary file not found at $vocab" && exit 1;
 
