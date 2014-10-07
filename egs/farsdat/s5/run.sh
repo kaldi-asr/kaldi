@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# Copyright 2014 Univercity of Tehran (Author: Bagher BabaAli)
+# Copyright 2014 University of Tehran (Author: Bagher BabaAli)
 #           2014 Brno University of Technology (Karel Vesely)
 #           2014 Johns Hopkins University (Daniel Povey)
 #
