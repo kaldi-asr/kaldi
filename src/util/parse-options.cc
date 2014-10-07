@@ -92,7 +92,7 @@ void ParseOptions::RegisterTmpl(const std::string &name, T *ptr,
   } else {
     KALDI_ASSERT(prefix_ != "" &&
                  "Cannot use empty prefix when registering with prefix.");
-    std::string new_name = prefix_ + '.' + name;  // --name becomes --prefix.name
+    std::string new_name = prefix_ + '.' + name;  // name becomes prefix.name
     other_parser_->Register(new_name, ptr, doc);
   }
 }
@@ -200,91 +200,87 @@ int ParseOptions::NumArgs() const {
 }
 
 std::string ParseOptions::GetArg(int i) const {
+  // use KALDI_ERR if code error
   if (i < 1 || i > static_cast<int>(positional_args_.size()))
-    KALDI_ERR << "ParseOptions::GetArg, invalid index " << i;  // code error
-  // so use KALDI_ERR
+    KALDI_ERR << "ParseOptions::GetArg, invalid index " << i;
   return positional_args_[i - 1];
 }
 
-enum ShellType { kBash = 0 };  // We currently do not support any
-// other options.
+// We currently do not support any other options.
+enum ShellType { kBash = 0 };
 
-static ShellType kShellType = kBash;  // This can be changed in the
-// code if it ever does need to be changed (as it's unlikely that one
-// compilation of this tool-set would use both shells).
+// This can be changed in the code if it ever does need to be changed (as it's
+// unlikely that one compilation of this tool-set would use both shells).
+static ShellType kShellType = kBash;
 
+// Returns true if we need to escape a string before putting it into
+// a shell (mainly thinking of bash shell, but should work for others)
+// This is for the convenience of the user so command-lines that are
+// printed out by ParseOptions::Read (with --print-args=true) are
+// paste-able into the shell and will run. If you use a different type of
+// shell, it might be necessary to change this function.
+// But it's mostly a cosmetic issue as it basically affects how
+// the program echoes its command-line arguments to the screen.
 static bool MustBeQuoted(const std::string &str, ShellType st) {
-  // returns true if we need to escape it before putting it into
-  // a shell (mainly thinking of bash shell, but should work for others)
-  // This is for the convenience of the user so command-lines that are
-  // printed out by ParseOptions::Read (with --print-args=true) are
-  // paste-able into the shell and will run.
-  // If you use a different type of shell, it might be necessary to
-  // change this function.
-  // But it's mostly a cosmetic issue as it basically affects how
-  // the program echoes its command-line arguments to the screen.
+  // Only Bash is supported (for the moment).
+  KALDI_ASSERT(st == kBash && "Invalid shell type.");
 
-  KALDI_ASSERT(st == kBash);  // Nothing else supported right now.
   const char *c = str.c_str();
-  if (*c == '\0') return true;  // Must quote empty string
-  else {
+  if (*c == '\0') {
+    return true;  // Must quote empty string
+  } else {
     const char *ok_chars[2];
-    ok_chars[kBash] = "[]~#^_-+=:.,/";  // these seem not to be interpreted as long
-    // as there are no other "bad" characters involved (e.g. "," would be interpreted
-    // as part of something like a{b,c}, but not on its own.
 
-    KALDI_ASSERT(!strchr(ok_chars[kBash], ' ')); // Just want to make sure that
-    // a space character doesn't get automatically inserted here via an automated
-    // style-checking script, like it did before.
-    
+    // These seem not to be interpreted as long as there are no other "bad"
+    // characters involved (e.g. "," would be interpreted as part of something
+    // like a{b,c}, but not on its own.
+    ok_chars[kBash] = "[]~#^_-+=:.,/";
+
+    // Just want to make sure that a space character doesn't get automatically
+    // inserted here via an automated style-checking script, like it did before.
+    KALDI_ASSERT(!strchr(ok_chars[kBash], ' '));
+
     for (; *c != '\0'; c++) {
-      if ( ! isalnum(*c) ) {
-        // For non-alphanumeric characters we have a list of
-        // characters which are OK.  All others are forbidden
-        // (this is easier since the shell interprets most non-alphanumeric
-        // characters).
+      // For non-alphanumeric characters we have a list of characters which
+      // are OK. All others are forbidden (this is easier since the shell
+      // interprets most non-alphanumeric characters).
+      if (!isalnum(*c)) {
         const char *d;
         for (d = ok_chars[st]; *d != '\0'; d++) if (*c == *d) break;
-        if (*d == '\0') return true;  // Was not alphanumeric, or
-        // one of the "ok_chars".  So must be escaped
+        // If not alphanumeric or one of the "ok_chars", it must be escaped.
+        if (*d == '\0') return true;
       }
     }
-    return false;  // The string was OK: no quoting or escaping.
+    return false;  // The string was OK. No quoting or escaping.
   }
 }
 
-// returns a quoted and escaped version of "str"
+// Returns a quoted and escaped version of "str"
 // which has previously been determined to need escaping.
 // Our aim is to print out the command line in such a way that if it's
 // pasted into a shell of ShellType "st" (only bash for now), it
-// will get passed to the program in the same way.  For now
-// we use the following rules:
-//  In the normal case, we quote with single-quote "'", and to escape
-// a single-quote we use the string: '\'' (interpreted as closing the
-// single-quote, putting an escaped single-quote from the shell, and
-// then reopening the single quote).
-//  If the string contains single-quotes that would need escaping this
-// way, and we determine that the string could be safely double-quoted
-// without requiring any escaping, then we double-quote the string.
-// This is the case if the characters "`$\ do not appear in the string.
-// e.g. see http://www.redhat.com/mirrors/LDP/LDP/abs/html/quotingvar.html
-
+// will get passed to the program in the same way.
 static std::string QuoteAndEscape(const std::string &str, ShellType st) {
-  char quote_char;
-  const char *escape_str;  // the sequence of characters we insert
-  // when we encounter a quote character.
+  // Only Bash is supported (for the moment).
+  KALDI_ASSERT(st == kBash && "Invalid shell type.");
 
-  if (st == kBash) {
-    const char *c_str = str.c_str();
-    if (strchr(c_str, '\'') && !strpbrk(c_str, "\"`$\\")) {
-      quote_char = '"';
-      escape_str = "\\\"";  // should never be accessed.
-    } else {
-      quote_char = '\'';
-      escape_str = "'\\''";  // e.g. echo 'a'\''b' returns a'b
-    }
-  } else {
-    KALDI_ERR << "Invalid shell type.";
+  // For now we use the following rules:
+  // In the normal case, we quote with single-quote "'", and to escape
+  // a single-quote we use the string: '\'' (interpreted as closing the
+  // single-quote, putting an escaped single-quote from the shell, and
+  // then reopening the single quote).
+  char quote_char = '\'';
+  const char *escape_str = "'\\''";  // e.g. echo 'a'\''b' returns a'b
+
+  // If the string contains single-quotes that would need escaping this
+  // way, and we determine that the string could be safely double-quoted
+  // without requiring any escaping, then we double-quote the string.
+  // This is the case if the characters "`$\ do not appear in the string.
+  // e.g. see http://www.redhat.com/mirrors/LDP/LDP/abs/html/quotingvar.html
+  const char *c_str = str.c_str();
+  if (strchr(c_str, '\'') && !strpbrk(c_str, "\"`$\\")) {
+    quote_char = '"';
+    escape_str = "\\\"";  // should never be accessed.
   }
 
   char buf[2];
@@ -308,11 +304,8 @@ static std::string QuoteAndEscape(const std::string &str, ShellType st) {
 
 // static function
 std::string ParseOptions::Escape(const std::string &str) {
-  if (!MustBeQuoted(str, kShellType)) return str;
-  else return QuoteAndEscape(str, kShellType);
+  return MustBeQuoted(str, kShellType) ? QuoteAndEscape(str, kShellType) : str;
 }
-
-
 
 
 int ParseOptions::Read(int argc, const char *const argv[]) {
@@ -331,8 +324,10 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
 #else
     const char *c = strrchr(argv[0], '/');
 #endif
-    if (c == NULL) c = argv[0];
-    else c++;
+    if (c == NULL)
+      c = argv[0];
+    else
+      c++;
     char *program_name = new char[strlen(c)+2];
     strcpy(program_name, c);
     strcat(program_name, ":");
@@ -383,7 +378,7 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
       break;
     }
   }
-  
+
   // process remaining arguments as positional
   for (; i < argc; i++) {
     if ((std::strcmp(argv[i], "--") == 0) && !double_dash_seen) {
@@ -393,7 +388,8 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
     }
   }
 
-  if (print_args_) {  // if the user did not suppress this with --print-args = false....
+  // if the user did not suppress this with --print-args = false....
+  if (print_args_) {
     std::ostringstream strm;
     for (int j = 0; j < argc; j++)
       strm << Escape(argv[j]) << " ";
@@ -410,7 +406,7 @@ void ParseOptions::PrintUsage(bool print_command_line) {
   // first we print application-specific options
   bool app_specific_header_printed = false;
   for (it = doc_map_.begin(); it != doc_map_.end(); ++it) {
-    if (it->second.is_standard_ == false) {  // we have application-specific option
+    if (it->second.is_standard_ == false) {  // application-specific option
       if (app_specific_header_printed == false) {  // header was not yet printed
         std::cerr << "Options:" << '\n';
         app_specific_header_printed = true;
@@ -443,8 +439,7 @@ void ParseOptions::PrintUsage(bool print_command_line) {
 }
 
 void ParseOptions::PrintConfig(std::ostream &os) {
-  os << '\n' << "[[ Configuration of UI-Registered options ]]"
-      << '\n';
+  os << '\n' << "[[ Configuration of UI-Registered options ]]" << '\n';
   std::string key;
   DocMapType::iterator it;
   for (it = doc_map_.begin(); it != doc_map_.end(); ++it) {
@@ -497,7 +492,7 @@ void ParseOptions::ReadConfigFile(const std::string &filename) {
                 << "be of the form --x=y.  Note: config files intended to "
                 << "be sourced by shell scripts lack the '--'.";
     }
-    
+
     // parse option
     bool has_equal_sign;
     SplitLongArg(line, &key, &value, &has_equal_sign);
@@ -539,8 +534,10 @@ void ParseOptions::NormalizeArgName(std::string *str) {
   std::string::iterator it;
 
   for (it = str->begin(); it != str->end(); ++it) {
-    if (*it == '_') out += '-';  // convert _ to -
-    else out += std::tolower(*it);
+    if (*it == '_')
+      out += '-';  // convert _ to -
+    else
+      out += std::tolower(*it);
   }
   *str = out;
 
