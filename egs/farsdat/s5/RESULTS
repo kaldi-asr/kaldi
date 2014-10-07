@@ -1,0 +1,69 @@
+#!/bin/bash
+for x in exp/*/decode*; do [ -d $x ] && echo $x | grep "${1:-.*}" >/dev/null && grep WER $x/wer_* 2>/dev/null | utils/best_wer.sh; done
+for x in exp/*/decode*; do [ -d $x ] && echo $x | grep "${1:-.*}" >/dev/null && grep Sum $x/score_*/*.sys 2>/dev/null | utils/best_wer.sh; done
+exit 0
+
+# Use caution when comparing these results with other published results.
+Training Set   : 3994 sentences 
+Dev Set        : 475 sentences
+Test Set       : 287 sentences
+Language Model : Bigram phoneme language model which is extracted from training set
+Phone mapping  : 29 phonemes
+
+
+# monophone, deltas.
+---------------------------------Dev Set------------------------------------------
+%WER 29.8 | 475 14206 | 73.5 12.4 14.1 3.3 29.8 100.0 | -1.495 | exp/mono/decode_dev/score_3/ctm.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 30.5 | 287 8624 | 72.4 13.2 14.4 2.9 30.5 100.0 | -1.487 | exp/mono/decode_test/score_3/ctm.filt.sys
+
+
+# tri1 : first triphone system  (delta+delta-delta features)
+---------------------------------Dev Set------------------------------------------
+%WER 25.8 | 475 14206 | 76.4 10.7 13.0 2.2 25.8 100.0 | -0.236 | exp/tri1/decode_dev/score_10/ctm.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 24.9 | 287 8624 | 77.1 10.5 12.4 2.0 24.9 100.0 | -0.373 | exp/tri1/decode_test/score_9/ctm.filt.sys
+
+# tri2 : an LDA+MLLT system
+---------------------------------Dev Set------------------------------------------
+%WER 24.4 | 475 14206 | 78.4 9.8 11.9 2.8 24.4 100.0 | -0.440 | exp/tri2/decode_dev/score_9/ctm.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 23.2 | 287 8624 | 79.3 9.4 11.3 2.5 23.2 100.0 | -0.693 | exp/tri2/decode_test/score_8/ctm.filt.sys
+
+# tri3 : Speaker Adaptive Training (SAT) system
+---------------------------------Dev Set------------------------------------------
+%WER 21.2 | 475 14206 | 80.4 7.3 12.3 1.6 21.2 99.6 | -0.772 | exp/tri3/decode_dev/score_10/ctm.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 21.4 | 287 8624 | 80.8 8.1 11.1 2.2 21.4 99.7 | -1.305 | exp/tri3/decode_test/score_7/ctm.filt.sys
+
+# SGMM2 Training :
+---------------------------------Dev Set------------------------------------------
+%WER 20.2 | 475 14206 | 82.3 6.9 10.8 2.5 20.2 99.6 | -0.715 | exp/sgmm2_4/decode_dev/score_6/ctm.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 19.8 | 287 8624 | 81.7 7.1 11.2 1.5 19.8 100.0 | -0.673 | exp/sgmm2_4/decode_test/score_7/ctm.filt.sys
+
+# SGMM2 + MMI Training :
+---------------------------------Dev Set------------------------------------------
+%WER 20.3 | 475 14206 | 82.0 6.7 11.3 2.3 20.3 99.8 | -0.480 | exp/sgmm2_4_mmi_b0.1/decode_dev_it1/score_7/ctm.filt.sys
+%WER 20.3 | 475 14206 | 81.9 6.7 11.4 2.2 20.3 99.6 | -0.493 | exp/sgmm2_4_mmi_b0.1/decode_dev_it2/score_7/ctm.filt.sys
+%WER 20.3 | 475 14206 | 82.1 6.7 11.2 2.4 20.3 99.6 | -0.525 | exp/sgmm2_4_mmi_b0.1/decode_dev_it3/score_7/ctm.filt.sys
+%WER 20.2 | 475 14206 | 82.0 6.6 11.3 2.3 20.2 99.6 | -0.503 | exp/sgmm2_4_mmi_b0.1/decode_dev_it4/score_7/ctm.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 19.8 | 287 8624 | 82.8 7.6 9.6 2.6 19.8 100.0 | -1.095 | exp/sgmm2_4_mmi_b0.1/decode_test_it1/score_5/ctm.filt.sys
+%WER 19.7 | 287 8624 | 82.7 7.5 9.8 2.4 19.7 100.0 | -1.143 | exp/sgmm2_4_mmi_b0.1/decode_test_it2/score_5/ctm.filt.sys
+%WER 19.7 | 287 8624 | 82.8 7.5 9.7 2.5 19.7 100.0 | -1.179 | exp/sgmm2_4_mmi_b0.1/decode_test_it3/score_5/ctm.filt.sys
+%WER 19.7 | 287 8624 | 82.7 7.5 9.8 2.4 19.7 100.0 | -1.158 | exp/sgmm2_4_mmi_b0.1/decode_test_it4/score_5/ctm.filt.sys
+
+# Hybrid System (Karel's DNN)
+---------------------------------Dev Set------------------------------------------
+%WER 20.5 | 475 14206 | 81.6 6.9 11.4 2.2 20.5 99.6 | -1.024 | exp/dnn4_pretrain-dbn_dnn/decode_dev/score_5/ctm.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 20.3 | 287 8624 | 81.7 7.7 10.6 1.9 20.3 100.0 | -1.262 | exp/dnn4_pretrain-dbn_dnn/decode_test/score_4/ctm.filt.sys
+
+# Hybrid System (Karel's DNN), sMBR training
+---------------------------------Dev Set------------------------------------------
+%WER 20.3 | 475 14206 | 82.0 7.1 11.0 2.3 20.3 99.6 | -1.022 | exp/dnn4_pretrain-dbn_dnn_smbr/decode_dev_it1/score_5/ctm.filt.sys
+%WER 20.1 | 475 14206 | 82.0 6.9 11.0 2.1 20.1 99.8 | -0.813 | exp/dnn4_pretrain-dbn_dnn_smbr/decode_dev_it6/score_6/ctm.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 19.8 | 287 8624 | 81.8 7.5 10.7 1.6 19.8 100.0 | -1.018 | exp/dnn4_pretrain-dbn_dnn_smbr/decode_test_it1/score_5/ctm.filt.sys
+%WER 19.8 | 287 8624 | 81.9 7.2 10.8 1.7 19.8 100.0 | -0.746 | exp/dnn4_pretrain-dbn_dnn_smbr/decode_test_it6/score_6/ctm.filt.sys
