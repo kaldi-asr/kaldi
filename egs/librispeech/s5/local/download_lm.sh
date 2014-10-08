@@ -24,7 +24,8 @@ sizes["4-gram.pruned.1e-7.arpa.gz"]="32174144"
 sizes["4-gram.pruned.3e-7.arpa.gz"]="11970993"
 sizes["g2p-model-5"]="19715845"
 sizes["librispeech-lm-corpus.tgz"]="1803499244"
-sizes["vocab.txt"]="1737588"
+sizes["librispeech-vocab.txt"]="1737588"
+sizes["librispeech-lexicon.txt"]="5627646"
 
 function check_and_download () {
   [[ $# -eq 1 ]] || { echo "check_and_download() expects exactly one argument!"; return 1; }
@@ -53,12 +54,14 @@ mkdir -p $dst_dir
 
 for f in 3-gram.arpa.gz 3-gram.pruned.1e-7.arpa.gz 3-gram.pruned.3e-7.arpa.gz\
          4-gram.arpa.gz 4-gram.pruned.1e-7.arpa.gz 4-gram.pruned.3e-7.arpa.gz\
-         g2p-model-5 librispeech-lm-corpus.tgz vocab.txt; do
+         g2p-model-5 librispeech-lm-corpus.tgz librispeech-vocab.txt librispeech-lexicon.txt; do
   check_and_download $f || exit 1
 done
 
-ln -s 3-gram.pruned.1e-7.arpa.gz $dst_dir/lm_tgmed.arpa.gz
-ln -s 3-gram.pruned.3e-7.arpa.gz $dst_dir/lm_tgsmall.arpa.gz
-ln -s 3-gram.arpa.gz $dst_dir/lm_tglarge.arpa.gz
+cd $dst_dir
+ln -s 3-gram.pruned.1e-7.arpa.gz lm_tgmed.arpa.gz
+ln -s 3-gram.pruned.3e-7.arpa.gz lm_tgsmall.arpa.gz
+ln -s 3-gram.arpa.gz lm_tglarge.arpa.gz
+ln -s 4-gram.arpa.gz lm_fglarge.arpa.gz
 
 exit 0

@@ -44,7 +44,9 @@ done
 ## document our G2P model creation process
 #local/g2p/train_g2p.sh data/local/dict/cmudict data/local/lm
 
-local/prepare_dict.sh --nj 30 --cmd "$train_cmd" \
+# when "--stage 3" option is used below we skip the G2P steps, and use the
+# lexicon we have already downloaded from openslr.org/11/
+local/prepare_dict.sh --stage 3 --nj 30 --cmd "$train_cmd" \
    data/local/lm data/local/lm data/local/dict || exit 1
 
 utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/lang || exit 1;

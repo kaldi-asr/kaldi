@@ -66,8 +66,8 @@ if [ "$stage" -le 2 ]; then
 fi
 
 word_counts=$lm_dir/word_counts.txt
-vocab=$lm_dir/vocab.txt
-full_corpus=$lm_dir/full_corpus.txt.gz
+vocab=$lm_dir/librispeech-vocab.txt
+full_corpus=$lm_dir/librispeech-lm-norm.txt.gz
 
 if [ "$stage" -le 3 ]; then
   echo "Selecting the vocabulary ($vocab_size words) ..."
@@ -118,6 +118,17 @@ if [ "$stage" -le 5 ]; then
   command -v ngram 1>/dev/null 2>&1 || { echo "Please install SRILM and set path.sh accordingly"; exit 1; }
   ngram -prune $prune_thresh_medium -lm $trigram_lm -write-lm $trigram_pruned_medium || exit 1
   du -h $trigram_pruned_medium
+fi
+
+fourgram_lm=$lm_dir/lm_fglarge.arpa.gz
+
+if [ "$stage" -le 4 ]; then
+  # This requires even more RAM than the 3-gram
+  echo "Training a 4-gram LM ..."
+  command -v ngram-count 1>/dev/null 2>&1 || { echo "Please install SRILM and set path.sh accordingly"; exit 1; }
+  ngram-count -order 4  -kndiscount -interpolate \
+    -unk -map-unk "<UNK>" -limit-vocab -vocab $vocab -text $full_corpus -lm $fourgram_lm || exit 1
+  du -h $fourgram_lm
 fi
 
 exit 0
