@@ -115,7 +115,8 @@ if [ $stage -le 3 ]; then
   echo SIL > $optional_silence
   # nonsilence phones; on each line is a list of phones that correspond
   # really to the same base phone.
-  awk '{for (i=2; i<=NF; ++i) { print $i; gsub(/[0-9]/, "", $i); print $i}}' $lexicon_raw_nosil |
+  awk '{for (i=2; i<=NF; ++i) { print $i; gsub(/[0-9]/, "", $i); print $i}}' $lexicon_raw_nosil |\
+    sort -u |\
     perl -e 'while(<>){
       chop; m:^([^\d]+)(\d*)$: || die "Bad phone $_";
       $phones_of{$1} .= "$_ "; }
