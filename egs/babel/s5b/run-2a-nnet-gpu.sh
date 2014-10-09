@@ -20,7 +20,7 @@ while [ ! -f exp/tri5_ali/.done ]; do sleep 30; done
 echo "...done waiting for exp/tri5_ali/.done"
 
 if [ ! -f $dir/.done ]; then
-  steps/nnet2/train_pnorm.sh \
+  steps/nnet2/train_pnorm_fast.sh \
     --stage $train_stage --mix-up $dnn_mixup \
     --initial-learning-rate $dnn_init_learning_rate \
     --final-learning-rate $dnn_final_learning_rate \

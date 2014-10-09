@@ -22,18 +22,6 @@ function register_extraid {
 }
 
 function setup_oov_search {
-  #Basic lexicon
-  #local phone_beam=-1
-  #local phone_nbest=-1
-  #local beam=5
-  #local nbest=500
-
-  #Extended lexicon
-  local nbest=-1
-  local beam=-1
-  local phone_nbest=300
-  local phone_beam=5
-
   local phone_cutoff=5
 
   local g2p_nbest=10
@@ -92,8 +80,8 @@ function setup_oov_search {
     --case-insensitive true \
     --confusion-matrix $confusion \
     --phone-cutoff $phone_cutoff \
-    --pron-probs true --beam $beam --nbest $nbest \
-    --phone-beam $phone_beam --phone-nbest $phone_nbest \
+    --pron-probs true --beam $proxy_beam --nbest $proxy_nbest \
+    --phone-beam $proxy_phone_beam --phone-nbest $proxy_phone_nbest \
     data/lang  $data_dir $L1_lex $L2_lex $kwsdatadir
 
 }

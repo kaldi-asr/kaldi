@@ -56,7 +56,7 @@ if [[ `hostname` == *.tacc.utexas.edu ]] ; then
 
   dnn_cpu_parallel_opts=(--minibatch-size 128 --num-jobs-nnet 8 --num-threads 16 \
                          --parallel-opts "-pe smp 16" )
-  dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 4 --num-threads 1
+  dnn_gpu_parallel_opts=(--minibatch-size 512 --num-jobs-nnet 4 --num-threads 1
                          --parallel-opts "-pe smp 16" )
 
   dnn_gpu_mpe_parallel_opts=(--num-jobs-nnet 4 --num-threads 1)
@@ -70,9 +70,9 @@ else
   sgmm_mmi_extra_opts=(--cmd "queue.pl -l arch=*64 -l mem_free=1.5G,ram_free=1.5G")
   dnn_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
 
-  dnn_cpu_parallel_opts=(--minibatch-size 128 --max-change 10 --num-jobs-nnet 8 --num-threads 16 \
+  dnn_cpu_parallel_opts=(--minibatch-size 128 --num-jobs-nnet 8 --num-threads 16 \
                          --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
-  dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 4 --num-threads 1 \
+  dnn_gpu_parallel_opts=(--minibatch-size 512 --num-jobs-nnet 4 --num-threads 1 \
                          --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
   dnn_parallel_opts="-l gpu=1"
   dnn_gpu_mpe_parallel_opts=(--num-jobs-nnet 4 --num-threads 1 \
@@ -91,11 +91,6 @@ wip=0.5
 
 phoneme_mapping=
 
-extend_lexicon=true
-unk_fraction_boost=1.0
-num_sent_gen=12000000
-num_prons=1000000
-
 minimize=true
 
 proxy_phone_beam=-1
@@ -103,7 +98,7 @@ proxy_phone_nbest=-1
 proxy_beam=5
 proxy_nbest=500
 
-proxy_extlex_phone_beam=-1
-proxy_extlex_phone_nbest=300
-proxy_extlex_beam=-1
-proxy_extlex_nbest=-1
+extlex_proxy_phone_beam=5
+extlex_proxy_phone_nbest=300
+extlex_proxy_beam=-1
+extlex_proxy_nbest=-1

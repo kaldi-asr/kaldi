@@ -35,6 +35,14 @@ fi
 set -o errtrace 
 trap "echo Exited!; exit;" SIGINT SIGTERM
 
+# Set proxy search parameters for the extended lexicon case.
+if [ -f data/.extlex ]; then
+  proxy_phone_beam=$extlex_proxy_phone_beam
+  proxy_phone_nbest=$extlex_proxy_phone_nbest
+  proxy_beam=$extlex_proxy_beam
+  proxy_nbest=$extlex_proxy_nbest
+fi
+
 dataset_segments=${dir##*.}
 dataset_dir=data/$dir
 dataset_id=$dir
