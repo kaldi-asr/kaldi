@@ -1,0 +1,162 @@
+# In the results below, "tgsmall" is the pruned 3-gram LM, which is used for lattice generation.
+# The following language models are then used for rescoring:
+# a) tgmed- slightly less pruned 3-gram LM  
+# b) tglarge- the full, non-pruned 3-gram LM
+# c) fglarge- non-pruned 4-gram LM
+#
+# The "dev-clean" and "test-clean" sets generally contain, relatively cleaner US English acccented speech,
+# whereas "dev-other" and "test-other" sets contain more challenging speech
+
+### SAT GMM model trained on the "train-clean-100" set (100 hours "clean" speech)
+%WER 8.19 [ 4453 / 54402, 632 ins, 480 del, 3341 sub ] exp/tri4b/decode_fglarge_dev_clean/wer_16
+%WER 8.62 [ 4689 / 54402, 632 ins, 525 del, 3532 sub ] exp/tri4b/decode_tglarge_dev_clean/wer_17
+%WER 10.62 [ 5778 / 54402, 659 ins, 752 del, 4367 sub ] exp/tri4b/decode_tgmed_dev_clean/wer_15
+%WER 12.11 [ 6590 / 54402, 689 ins, 964 del, 4937 sub ] exp/tri4b/decode_tgsmall_dev_clean/wer_15
+
+%WER 9.32 [ 4899 / 52576, 749 ins, 496 del, 3654 sub ] exp/tri4b/decode_fglarge_test_clean/wer_16
+%WER 9.60 [ 5047 / 52576, 731 ins, 540 del, 3776 sub ] exp/tri4b/decode_tglarge_test_clean/wer_17
+%WER 11.79 [ 6197 / 52576, 717 ins, 798 del, 4682 sub ] exp/tri4b/decode_tgmed_test_clean/wer_16
+%WER 13.18 [ 6927 / 52576, 718 ins, 998 del, 5211 sub ] exp/tri4b/decode_tgsmall_test_clean/wer_16
+
+%WER 29.31 [ 14934 / 50948, 1536 ins, 2215 del, 11183 sub ] exp/tri4b/decode_fglarge_dev_other/wer_18
+%WER 30.25 [ 15412 / 50948, 1655 ins, 2188 del, 11569 sub ] exp/tri4b/decode_tglarge_dev_other/wer_17
+%WER 33.01 [ 16817 / 50943, 1358 ins, 3023 del, 12436 sub ] [PARTIAL] exp/tri4b/decode_tgmed_dev_other/wer_19
+%WER 35.06 [ 17862 / 50948, 1378 ins, 3409 del, 13075 sub ] exp/tri4b/decode_tgsmall_dev_other/wer_18
+
+%WER 31.47 [ 16470 / 52343, 1637 ins, 2624 del, 12209 sub ] exp/tri4b/decode_fglarge_test_other/wer_17
+%WER 32.35 [ 16933 / 52343, 1792 ins, 2638 del, 12503 sub ] exp/tri4b/decode_tglarge_test_other/wer_17
+%WER 35.08 [ 18363 / 52343, 1469 ins, 3566 del, 13328 sub ] exp/tri4b/decode_tgmed_test_other/wer_18
+%WER 36.83 [ 19278 / 52343, 1350 ins, 3976 del, 13952 sub ] exp/tri4b/decode_tgsmall_test_other/wer_18
+
+
+### SAT GMM model trained on the combined "train-clean-100" + "train-clean-360" set (460 hours "clean" speech)
+%WER 7.26 [ 3949 / 54402, 543 ins, 420 del, 2986 sub ] exp/tri5b/decode_fglarge_dev_clean/wer_16
+%WER 7.65 [ 4162 / 54402, 592 ins, 436 del, 3134 sub ] exp/tri5b/decode_tglarge_dev_clean/wer_15
+%WER 9.61 [ 5227 / 54402, 591 ins, 684 del, 3952 sub ] exp/tri5b/decode_tgmed_dev_clean/wer_15
+%WER 10.87 [ 5914 / 54402, 584 ins, 863 del, 4467 sub ] exp/tri5b/decode_tgsmall_dev_clean/wer_15
+
+%WER 8.31 [ 4369 / 52576, 638 ins, 449 del, 3282 sub ] exp/tri5b/decode_fglarge_test_clean/wer_18
+%WER 8.55 [ 4496 / 52576, 673 ins, 444 del, 3379 sub ] exp/tri5b/decode_tglarge_test_clean/wer_16
+%WER 10.53 [ 5537 / 52576, 645 ins, 719 del, 4173 sub ] exp/tri5b/decode_tgmed_test_clean/wer_16
+%WER 11.71 [ 6159 / 52576, 638 ins, 869 del, 4652 sub ] exp/tri5b/decode_tgsmall_test_clean/wer_16
+
+%WER 26.27 [ 13384 / 50948, 1450 ins, 1839 del, 10095 sub ] exp/tri5b/decode_fglarge_dev_other/wer_17
+%WER 27.32 [ 13917 / 50948, 1605 ins, 1845 del, 10467 sub ] exp/tri5b/decode_tglarge_dev_other/wer_16
+%WER 30.19 [ 15378 / 50943, 1406 ins, 2423 del, 11549 sub ] [PARTIAL] exp/tri5b/decode_tgmed_dev_other/wer_16
+%WER 32.21 [ 16408 / 50948, 1311 ins, 2994 del, 12103 sub ] exp/tri5b/decode_tgsmall_dev_other/wer_17
+
+%WER 28.11 [ 14714 / 52343, 1524 ins, 2202 del, 10988 sub ] exp/tri5b/decode_fglarge_test_other/wer_16
+%WER 29.16 [ 15263 / 52343, 1616 ins, 2346 del, 11301 sub ] exp/tri5b/decode_tglarge_test_other/wer_17
+%WER 32.09 [ 16798 / 52343, 1342 ins, 3215 del, 12241 sub ] exp/tri5b/decode_tgmed_test_other/wer_18
+%WER 34.08 [ 17837 / 52343, 1412 ins, 3358 del, 13067 sub ] exp/tri5b/decode_tgsmall_test_other/wer_16
+
+
+### SAT GMM model trained on the combined "train-clean-100" + "train-clean-360" + "train-other-500" set (960 hours)
+%WER 7.08 [ 3853 / 54402, 591 ins, 373 del, 2889 sub ] exp/tri6b/decode_fglarge_dev_clean/wer_14
+%WER 7.52 [ 4091 / 54402, 638 ins, 397 del, 3056 sub ] exp/tri6b/decode_tglarge_dev_clean/wer_13
+%WER 9.47 [ 5151 / 54402, 656 ins, 613 del, 3882 sub ] exp/tri6b/decode_tgmed_dev_clean/wer_13
+%WER 10.88 [ 5919 / 54402, 626 ins, 813 del, 4480 sub ] exp/tri6b/decode_tgsmall_dev_clean/wer_14
+
+%WER 8.01 [ 4213 / 52576, 658 ins, 404 del, 3151 sub ] exp/tri6b/decode_fglarge_test_clean/wer_15
+%WER 8.26 [ 4342 / 52576, 661 ins, 449 del, 3232 sub ] exp/tri6b/decode_tglarge_test_clean/wer_15
+%WER 10.06 [ 5289 / 52576, 653 ins, 637 del, 3999 sub ] exp/tri6b/decode_tgmed_test_clean/wer_15
+%WER 11.24 [ 5907 / 52576, 704 ins, 756 del, 4447 sub ] exp/tri6b/decode_tgsmall_test_clean/wer_14
+
+%WER 21.14 [ 10770 / 50948, 1168 ins, 1493 del, 8109 sub ] exp/tri6b/decode_fglarge_dev_other/wer_17
+%WER 22.14 [ 11278 / 50948, 1342 ins, 1466 del, 8470 sub ] exp/tri6b/decode_tglarge_dev_other/wer_15
+%WER 25.16 [ 12821 / 50948, 1233 ins, 1953 del, 9635 sub ] exp/tri6b/decode_tgmed_dev_other/wer_15
+%WER 27.23 [ 13872 / 50948, 1109 ins, 2426 del, 10337 sub ] exp/tri6b/decode_tgsmall_dev_other/wer_16
+
+%WER 22.49 [ 11772 / 52343, 1289 ins, 1599 del, 8884 sub ] exp/tri6b/decode_fglarge_test_other/wer_15
+%WER 23.46 [ 12278 / 52343, 1341 ins, 1690 del, 9247 sub ] exp/tri6b/decode_tglarge_test_other/wer_16
+%WER 26.87 [ 14063 / 52343, 1334 ins, 2170 del, 10559 sub ] exp/tri6b/decode_tgmed_test_other/wer_14
+%WER 28.90 [ 15128 / 52343, 1239 ins, 2681 del, 11208 sub ] exp/tri6b/decode_tgsmall_test_other/wer_15
+
+
+### p-norm DNN trained on "train-clean-100"
+%WER 5.93 [ 3228 / 54402, 486 ins, 330 del, 2412 sub ] exp/nnet5a_clean_100_gpu/decode_fglarge_dev_clean/wer_13
+%WER 6.32 [ 3438 / 54402, 517 ins, 365 del, 2556 sub ] exp/nnet5a_clean_100_gpu/decode_tglarge_dev_clean/wer_12
+%WER 7.91 [ 4304 / 54402, 468 ins, 611 del, 3225 sub ] exp/nnet5a_clean_100_gpu/decode_tgmed_dev_clean/wer_13
+%WER 9.19 [ 4998 / 54402, 567 ins, 708 del, 3723 sub ] exp/nnet5a_clean_100_gpu/decode_tgsmall_dev_clean/wer_11
+
+%WER 6.59 [ 3464 / 52576, 525 ins, 362 del, 2577 sub ] exp/nnet5a_clean_100_gpu/decode_fglarge_test_clean/wer_13
+%WER 6.76 [ 3556 / 52576, 517 ins, 400 del, 2639 sub ] exp/nnet5a_clean_100_gpu/decode_tglarge_test_clean/wer_13
+%WER 8.56 [ 4503 / 52576, 524 ins, 624 del, 3355 sub ] exp/nnet5a_clean_100_gpu/decode_tgmed_test_clean/wer_13
+%WER 9.66 [ 5081 / 52576, 522 ins, 752 del, 3807 sub ] exp/nnet5a_clean_100_gpu/decode_tgsmall_test_clean/wer_13
+
+%WER 20.42 [ 10403 / 50948, 1167 ins, 1530 del, 7706 sub ] exp/nnet5a_clean_100_gpu/decode_fglarge_dev_other/wer_16
+%WER 21.48 [ 10945 / 50948, 1195 ins, 1670 del, 8080 sub ] exp/nnet5a_clean_100_gpu/decode_tglarge_dev_other/wer_17
+%WER 24.74 [ 12605 / 50948, 1008 ins, 2353 del, 9244 sub ] exp/nnet5a_clean_100_gpu/decode_tgmed_dev_other/wer_17
+%WER 26.68 [ 13591 / 50948, 1094 ins, 2533 del, 9964 sub ] exp/nnet5a_clean_100_gpu/decode_tgsmall_dev_other/wer_15
+
+%WER 22.47 [ 11762 / 52343, 1296 ins, 1690 del, 8776 sub ] exp/nnet5a_clean_100_gpu/decode_fglarge_test_other/wer_15
+%WER 23.44 [ 12269 / 52343, 1343 ins, 1809 del, 9117 sub ] exp/nnet5a_clean_100_gpu/decode_tglarge_test_other/wer_15
+%WER 26.59 [ 13919 / 52343, 1195 ins, 2493 del, 10231 sub ] exp/nnet5a_clean_100_gpu/decode_tgmed_test_other/wer_15
+%WER 28.64 [ 14989 / 52343, 1170 ins, 2873 del, 10946 sub ] exp/nnet5a_clean_100_gpu/decode_tgsmall_test_other/wer_15
+
+
+### p-norm DNN trained on "train-clean-100" + "train-clean-360"
+%WER 5.27 [ 2865 / 54402, 425 ins, 273 del, 2167 sub ] exp/nnet6a_clean_460_gpu/decode_fglarge_dev_clean/wer_11
+%WER 5.57 [ 3028 / 54402, 442 ins, 310 del, 2276 sub ] exp/nnet6a_clean_460_gpu/decode_tglarge_dev_clean/wer_11
+%WER 7.16 [ 3895 / 54402, 411 ins, 537 del, 2947 sub ] exp/nnet6a_clean_460_gpu/decode_tgmed_dev_clean/wer_12
+%WER 8.23 [ 4477 / 54402, 475 ins, 654 del, 3348 sub ] exp/nnet6a_clean_460_gpu/decode_tgsmall_dev_clean/wer_11
+
+%WER 5.78 [ 3038 / 52576, 483 ins, 293 del, 2262 sub ] exp/nnet6a_clean_460_gpu/decode_fglarge_test_clean/wer_11
+%WER 6.18 [ 3248 / 52576, 505 ins, 330 del, 2413 sub ] exp/nnet6a_clean_460_gpu/decode_tglarge_test_clean/wer_11
+%WER 7.74 [ 4067 / 52576, 450 ins, 599 del, 3018 sub ] exp/nnet6a_clean_460_gpu/decode_tgmed_test_clean/wer_13
+%WER 8.71 [ 4581 / 52576, 510 ins, 628 del, 3443 sub ] exp/nnet6a_clean_460_gpu/decode_tgsmall_test_clean/wer_11
+
+%WER 17.67 [ 9000 / 50948, 979 ins, 1217 del, 6804 sub ] exp/nnet6a_clean_460_gpu/decode_fglarge_dev_other/wer_14
+%WER 18.58 [ 9468 / 50948, 999 ins, 1410 del, 7059 sub ] exp/nnet6a_clean_460_gpu/decode_tglarge_dev_other/wer_15
+%WER 21.89 [ 11155 / 50948, 1016 ins, 1739 del, 8400 sub ] exp/nnet6a_clean_460_gpu/decode_tgmed_dev_other/wer_13
+%WER 23.75 [ 12098 / 50948, 983 ins, 2084 del, 9031 sub ] exp/nnet6a_clean_460_gpu/decode_tgsmall_dev_other/wer_13
+
+%WER 19.12 [ 10008 / 52343, 1062 ins, 1448 del, 7498 sub ] exp/nnet6a_clean_460_gpu/decode_fglarge_test_other/wer_14
+%WER 20.07 [ 10507 / 52343, 1114 ins, 1548 del, 7845 sub ] exp/nnet6a_clean_460_gpu/decode_tglarge_test_other/wer_14
+%WER 23.22 [ 12155 / 52343, 1037 ins, 2151 del, 8967 sub ] exp/nnet6a_clean_460_gpu/decode_tgmed_test_other/wer_14
+%WER 25.34 [ 13265 / 52343, 990 ins, 2567 del, 9708 sub ] exp/nnet6a_clean_460_gpu/decode_tgsmall_test_other/wer_14
+
+
+### p-norm DNN trained on "train-clean-100" + "train-clean-360" + "train-other-500"
+%WER 4.90 [ 2665 / 54402, 400 ins, 258 del, 2007 sub ] exp/nnet7a_960_gpu/decode_fglarge_dev_clean/wer_12
+%WER 5.14 [ 2795 / 54402, 404 ins, 286 del, 2105 sub ] exp/nnet7a_960_gpu/decode_tglarge_dev_clean/wer_12
+%WER 6.57 [ 3572 / 54402, 402 ins, 475 del, 2695 sub ] exp/nnet7a_960_gpu/decode_tgmed_dev_clean/wer_12
+%WER 7.54 [ 4103 / 54402, 425 ins, 598 del, 3080 sub ] exp/nnet7a_960_gpu/decode_tgsmall_dev_clean/wer_12
+
+%WER 5.49 [ 2886 / 52576, 452 ins, 292 del, 2142 sub ] exp/nnet7a_960_gpu/decode_fglarge_test_clean/wer_13
+%WER 5.74 [ 3017 / 52576, 468 ins, 317 del, 2232 sub ] exp/nnet7a_960_gpu/decode_tglarge_test_clean/wer_12
+%WER 7.21 [ 3789 / 52576, 481 ins, 478 del, 2830 sub ] exp/nnet7a_960_gpu/decode_tgmed_test_clean/wer_12
+%WER 8.01 [ 4213 / 52576, 503 ins, 543 del, 3167 sub ] exp/nnet7a_960_gpu/decode_tgsmall_test_clean/wer_11
+
+%WER 12.98 [ 6614 / 50948, 788 ins, 825 del, 5001 sub ] exp/nnet7a_960_gpu/decode_fglarge_dev_other/wer_13
+%WER 13.89 [ 7078 / 50948, 883 ins, 844 del, 5351 sub ] exp/nnet7a_960_gpu/decode_tglarge_dev_other/wer_12
+%WER 16.72 [ 8520 / 50948, 808 ins, 1299 del, 6413 sub ] exp/nnet7a_960_gpu/decode_tgmed_dev_other/wer_13
+%WER 18.51 [ 9433 / 50948, 806 ins, 1609 del, 7018 sub ] exp/nnet7a_960_gpu/decode_tgsmall_dev_other/wer_13
+
+%WER 13.97 [ 7311 / 52343, 858 ins, 958 del, 5495 sub ] exp/nnet7a_960_gpu/decode_fglarge_test_other/wer_13
+%WER 14.77 [ 7733 / 52343, 914 ins, 989 del, 5830 sub ] exp/nnet7a_960_gpu/decode_tglarge_test_other/wer_12
+%WER 17.58 [ 9204 / 52343, 867 ins, 1415 del, 6922 sub ] exp/nnet7a_960_gpu/decode_tgmed_test_other/wer_12
+%WER 19.41 [ 10158 / 52343, 888 ins, 1689 del, 7581 sub ] exp/nnet7a_960_gpu/decode_tgsmall_test_other/wer_12
+
+
+### online-nnet2 results with a model trained on all(960h) of the training data
+%WER 4.90 [ 2663 / 54402, 388 ins, 273 del, 2002 sub ] exp/nnet2_online/nnet_a_online/decode_dev_clean_fglarge/wer_13
+%WER 5.19 [ 2822 / 54402, 406 ins, 311 del, 2105 sub ] exp/nnet2_online/nnet_a_online/decode_dev_clean_tglarge/wer_13
+%WER 6.60 [ 3593 / 54402, 457 ins, 426 del, 2710 sub ] exp/nnet2_online/nnet_a_online/decode_dev_clean_tgmed/wer_11
+%WER 7.46 [ 4059 / 54402, 434 ins, 574 del, 3051 sub ] exp/nnet2_online/nnet_a_online/decode_dev_clean_tgsmall/wer_12
+
+%WER 5.52 [ 2900 / 52576, 456 ins, 279 del, 2165 sub ] exp/nnet2_online/nnet_a_online/decode_test_clean_fglarge/wer_12
+%WER 5.71 [ 3002 / 52576, 452 ins, 322 del, 2228 sub ] exp/nnet2_online/nnet_a_online/decode_test_clean_tglarge/wer_12
+%WER 7.17 [ 3770 / 52576, 486 ins, 444 del, 2840 sub ] exp/nnet2_online/nnet_a_online/decode_test_clean_tgmed/wer_11
+%WER 7.97 [ 4188 / 52576, 459 ins, 562 del, 3167 sub ] exp/nnet2_online/nnet_a_online/decode_test_clean_tgsmall/wer_12
+
+%WER 13.59 [ 6926 / 50948, 821 ins, 892 del, 5213 sub ] exp/nnet2_online/nnet_a_online/decode_dev_other_fglarge/wer_14
+%WER 14.06 [ 7165 / 50948, 865 ins, 911 del, 5389 sub ] exp/nnet2_online/nnet_a_online/decode_dev_other_tglarge/wer_13
+%WER 16.77 [ 8546 / 50948, 828 ins, 1299 del, 6419 sub ] exp/nnet2_online/nnet_a_online/decode_dev_other_tgmed/wer_13
+%WER 18.46 [ 9405 / 50948, 797 ins, 1580 del, 7028 sub ] exp/nnet2_online/nnet_a_online/decode_dev_other_tgsmall/wer_13
+
+%WER 13.79 [ 7217 / 52343, 866 ins, 894 del, 5457 sub ] exp/nnet2_online/nnet_a_online/decode_test_other_fglarge/wer_12
+%WER 14.39 [ 7532 / 52343, 895 ins, 959 del, 5678 sub ] exp/nnet2_online/nnet_a_online/decode_test_other_tglarge/wer_12
+%WER 17.16 [ 8982 / 52343, 855 ins, 1421 del, 6706 sub ] exp/nnet2_online/nnet_a_online/decode_test_other_tgmed/wer_12
+%WER 18.90 [ 9891 / 52343, 798 ins, 1786 del, 7307 sub ] exp/nnet2_online/nnet_a_online/decode_test_other_tgsmall/wer_13
+

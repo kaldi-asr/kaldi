@@ -55,7 +55,7 @@ local/format_lms.sh data/local/lm || exit 1
 
 # Create ConstArpaLm format language model for full trigram language model.
 utils/build_const_arpa_lm.sh \
-  data/local/lm/3-gram.arpa.gz data/lang data/lang_test_tglarge || exit 1;
+  data/local/lm/lm_tglarge.arpa.gz data/lang data/lang_test_tglarge || exit 1;
 
 mfccdir=mfcc
 # spread the mfccs over various machines, as this data-set is quite large.
