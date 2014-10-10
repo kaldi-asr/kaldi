@@ -78,7 +78,7 @@ echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
-if [ ! -z "$cmvn_opts" ]; then
+if [ -z "$cmvn_opts" ]; then
   cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
 fi
 echo $cmvn_opts >$dir/cmvn_opts 2>/dev/null
