@@ -74,7 +74,7 @@ mlp_base=${mlp_init##*/}; mlp_base=${mlp_base%.*}
 # cross-validation on original network
 log=$dir/log/iter00.initial.log; hostname>$log
 $train_tool --cross-validate=true \
- --minibatch-size=$minibatch_size --randomizer-size=$randomizer_size --verbose=$verbose \
+ --minibatch-size=$minibatch_size --randomizer-size=$randomizer_size --randomize=false --verbose=$verbose \
  ${feature_transform:+ --feature-transform=$feature_transform} \
  ${frame_weights:+ "--frame-weights=$frame_weights"} \
  "$feats_cv" "$labels_cv" $mlp_best \
@@ -113,7 +113,7 @@ for iter in $(seq -w $max_iters); do
   # cross-validation
   log=$dir/log/iter${iter}.cv.log; hostname>$log
   $train_tool --cross-validate=true \
-   --minibatch-size=$minibatch_size --randomizer-size=$randomizer_size --verbose=$verbose \
+   --minibatch-size=$minibatch_size --randomizer-size=$randomizer_size --randomize=false --verbose=$verbose \
    ${feature_transform:+ --feature-transform=$feature_transform} \
    ${frame_weights:+ "--frame-weights=$frame_weights"} \
    "$feats_cv" "$labels_cv" $mlp_next \

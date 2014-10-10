@@ -48,22 +48,14 @@ void Xent::Eval(const CuMatrixBase<BaseFloat> &net_out, const CuMatrixBase<BaseF
   xentropy_aux_ = net_out; // y
   xentropy_aux_.ApplyLog(); // log(y)
   xentropy_aux_.MulElements(tgt_mat_device_); // t*log(y)
-  log_post_tgt_.Resize(num_frames);
-  log_post_tgt_.AddColSumMat(1.0,xentropy_aux_,0.0); // sum over cols (pdfs)
-  log_post_tgt_host_.Resize(num_frames);
-  log_post_tgt_.CopyToVec(&log_post_tgt_host_);
-  double cross_entropy = -log_post_tgt_host_.Sum(); // sum over rows (frames)
+  double cross_entropy = -xentropy_aux_.Sum();
   
   // caluculate entropy (in GPU)
   xentropy_aux_ = target; // t
   xentropy_aux_.Add(1e-99); // avoid log(0)
   xentropy_aux_.ApplyLog(); // log(t)
   xentropy_aux_.MulElements(tgt_mat_device_); // t*log(t)
-  log_post_tgt_.Resize(num_frames);
-  log_post_tgt_.AddColSumMat(1.0,xentropy_aux_,0.0); // sum over cols (pdfs)
-  log_post_tgt_host_.Resize(num_frames);
-  log_post_tgt_.CopyToVec(&log_post_tgt_host_);
-  double entropy = -log_post_tgt_host_.Sum(); // sum over rows (frames)
+  double entropy = -xentropy_aux_.Sum();
 
   loss_ += cross_entropy;
   entropy_ += entropy;
@@ -106,19 +98,13 @@ void Xent::Eval(const CuMatrixBase<BaseFloat>& net_out, const Posterior& post, C
   for(int32 i=0; i<num_frames; i++) {
     if (max_id_tgt_host_[i] == max_id_out_host_[i]) correct++;
   }
-  // TODO calculate phone-level accuracy,
-  // need to get shuffled phone-ids externally ...
 
   // calculate cross_entropy (in GPU)
   xentropy_aux_ = net_out; // y
   xentropy_aux_.Add(1e-20); // avoid -inf
   xentropy_aux_.ApplyLog(); // log(y)
   xentropy_aux_.MulElements(tgt_mat_device_); // t*log(y)
-  log_post_tgt_.Resize(num_frames);
-  log_post_tgt_.AddColSumMat(1.0,xentropy_aux_,0.0); // sum over cols (pdfs)
-  log_post_tgt_host_.Resize(num_frames);
-  log_post_tgt_.CopyToVec(&log_post_tgt_host_);
-  double cross_entropy = -log_post_tgt_host_.Sum(); // sum over rows (frames)
+  double cross_entropy = -xentropy_aux_.Sum(); // sum the matrix
 
   // calculate entropy (from Posterior)
   double entropy = 0.0;
@@ -153,46 +139,6 @@ void Xent::Eval(const CuMatrixBase<BaseFloat>& net_out, const Posterior& post, C
     }
   }
 }
-
-
-void Xent::EvalVec(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> &target, CuMatrix<BaseFloat> *diff) {
-  // evaluate the frame-level classification
-  int32 correct=0;
-  net_out.FindRowMaxId(&max_id_out_);
-  max_id_out_.CopyToVec(&max_id_out_host_);
-  KALDI_ASSERT(max_id_out_host_.size() == target.size());
-  for(int32 i=0; i<static_cast<int32>(target.size()); i++) {
-    if (target[i] == max_id_out_host_[i]) correct++;
-  }
-  
-  // get the xentropy and global error 
-  target_device_.CopyFromVec(target);
-  if(&net_out != diff) { //<allow no-copy speedup
-    *diff = net_out;
-  }
-  diff->DiffXent(target_device_, &log_post_tgt_);
-  //
-  // Now we have derivative of Xentropy in diff,
-  // it's computed as dE/da = net_out - target_mat,
-  // E ... xentropy
-  // a ... activation, the input of softmax
-  // note that 'target_mat' is a sparse 1-of-M matrix 
-  // encoded by index vector 'target'
-  //
-  // The frame-level xentropy statistics are computed as:
-  // log(sum_row(net_out.*target_mat)))
-  // they now are stored in vector log_post_tgt_
-  //
-  log_post_tgt_host_.Resize(log_post_tgt_.Dim());
-  log_post_tgt_.CopyToVec(&log_post_tgt_host_);
-  loss_    -= log_post_tgt_host_.Sum();
-  
-  // accumulate error quantites
-  frames_  += net_out.NumRows();
-  correct_ += correct;
-   
-}
-
 
 std::string Xent::Report() {
   std::ostringstream oss;

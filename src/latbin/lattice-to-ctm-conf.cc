@@ -19,6 +19,7 @@
 
 #include "util/common-utils.h"
 #include "lat/sausages.h"
+#include <numeric>
 
 int main(int argc, char *argv[]) {
   try {
@@ -100,7 +101,8 @@ int main(int argc, char *argv[]) {
                     << words[i] << ' ' << conf[i] << '\n';
       }
       KALDI_LOG << "For utterance " << key << ", Bayes Risk " << mbr.GetBayesRisk()
-                << " and per word, " << mbr.GetBayesRisk()/mbr.GetOneBest().size();
+                << ", avg. confidence per-word " 
+                << std::accumulate(conf.begin(),conf.end(),0.0) / words.size();
       n_done++;
       n_words += mbr.GetOneBest().size();
       tot_bayes_risk += mbr.GetBayesRisk();

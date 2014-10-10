@@ -22,7 +22,8 @@ dbn=               # select DBN to prepend to the MLP initialization
 init_opts=         # options, passed to the initialization script
 
 # FEATURE PROCESSING
-copy_feats=true  # resave the train features in the re-shuffled order to tmpdir
+copy_feats=true # resave the train/cv features into /tmp (disabled by default)
+ copy_feats_tmproot= # tmproot for copy-feats (optional)
 # feature config (applies always)
 apply_cmvn=false # apply normalization to input features?
  norm_vars=false # use variance normalization?
@@ -157,17 +158,16 @@ cp $data_cv/feats.scp $dir/cv.scp
 # print the list sizes
 wc -l $dir/train.scp $dir/cv.scp
 
-# re-save the shuffled features, so they are stored sequentially on the disk in /tmp/
+# re-save the train/cv features to /tmp, reduces LAN traffic, avoids disk-seeks due to shuffled features
 if [ "$copy_feats" == "true" ]; then
-  tmpdir=$(mktemp -d kaldi.XXXX); mv $dir/train.scp $dir/train.scp_non_local
-  utils/nnet/copy_feats.sh $dir/train.scp_non_local $tmpdir $dir/train.scp
-  #remove data on exit...
-  trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; rm -r $tmpdir" EXIT
+  tmpdir=$(mktemp -d $copy_feats_tmproot); mv $dir/train.scp{,_non_local}; mv $dir/cv.scp{,_non_local}
+  copy-feats $dir/train.scp_non_local ark,scp:$tmpdir/train.ark,$dir/train.scp || exit 1
+  copy-feats $dir/cv.scp_non_local ark,scp:$tmpdir/cv.ark,$dir/cv.scp || exit 1
+  trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
 fi
 
 #create a 10k utt subset for global cmvn estimates
 head -n 10000 $dir/train.scp > $dir/train.scp.10k
-
 
 
 ###### PREPARE FEATURE PIPELINE ######
