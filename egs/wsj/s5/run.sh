@@ -245,6 +245,11 @@ steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 8 \
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 \
   exp/tri3b/graph_bd_tgpr data/test_dev93 exp/tri3b/decode_bd_tgpr_dev93 || exit 1;
 
+# Example of rescoring with ConstArpaLm.
+steps/lmrescore_const_arpa.sh \
+  --cmd "$decode_cmd" data/lang_test_bd_{tgpr,fgconst} \
+  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92{,_fgconst} || exit 1;
+
 steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_fg \
   data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_fg \
    || exit 1;
@@ -354,7 +359,7 @@ local/run_sgmm2.sh
 # local/run_gender_dep.sh
 
 # You probably want to run the hybrid recipe as it is complementary:
-local/run_dnn.sh
+#local/run_dnn.sh
 
 # The next two commands show how to train a bottleneck network based on the nnet2 setup,
 # and build an SGMM system on top of it.
