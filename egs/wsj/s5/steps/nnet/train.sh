@@ -161,8 +161,8 @@ wc -l $dir/train.scp $dir/cv.scp
 # re-save the train/cv features to /tmp, reduces LAN traffic, avoids disk-seeks due to shuffled features
 if [ "$copy_feats" == "true" ]; then
   tmpdir=$(mktemp -d $copy_feats_tmproot); mv $dir/train.scp{,_non_local}; mv $dir/cv.scp{,_non_local}
-  copy-feats $dir/train.scp_non_local ark,scp:$tmpdir/train.ark,$dir/train.scp || exit 1
-  copy-feats $dir/cv.scp_non_local ark,scp:$tmpdir/cv.ark,$dir/cv.scp || exit 1
+  copy-feats scp:$dir/train.scp_non_local ark,scp:$tmpdir/train.ark,$dir/train.scp || exit 1
+  copy-feats scp:$dir/cv.scp_non_local ark,scp:$tmpdir/cv.ark,$dir/cv.scp || exit 1
   trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
 fi
 

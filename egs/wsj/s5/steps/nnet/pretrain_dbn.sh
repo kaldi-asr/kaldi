@@ -112,7 +112,7 @@ wc -l $dir/train.scp
 # re-save the shuffled features, so they are stored sequentially on the disk in /tmp/
 if [ "$copy_feats" == "true" ]; then
   tmpdir=$(mktemp -d $copy_feats_tmproot); mv $dir/train.scp{,_non_local}
-  copy-feats $dir/train.scp_non_local ark,scp:$tmpdir/train.ark,$dir/train.scp || exit 1
+  copy-feats scp:$dir/train.scp_non_local ark,scp:$tmpdir/train.ark,$dir/train.scp || exit 1
   trap "echo \"Removing features tmpdir $tmpdir @ $(hostname)\"; ls $tmpdir; rm -r $tmpdir" EXIT
 fi
 
