@@ -41,7 +41,7 @@ online_src=$1
 nnet_src=$2
 dir=$3
 
-for f in $online_src/conf/online_nnet2_decoding.conf $nnet_src/final.mdl; do
+for f in $online_src/conf/online_nnet2_decoding.conf $nnet_src/final.mdl $nnet_src/tree; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -88,6 +88,8 @@ $cmd $dir/log/get_raw_nnet.log \
 $cmd $dir/log/append_nnet.log \
   nnet-insert --randomize-next-component=false --insert-at=0 \
   $nnet_src/final.mdl $dir/first_nnet.raw $dir/final.mdl || exit 1;
+
+cp $nnet_src/tree $dir/ || exit 1;
 
 $cleanup && rm $dir/first_nnet.raw
 

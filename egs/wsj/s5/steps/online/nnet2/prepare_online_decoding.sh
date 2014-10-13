@@ -59,7 +59,7 @@ else
   dir=$3
 fi
 
-for f in $lang/phones.txt $srcdir/final.mdl; do
+for f in $lang/phones.txt $srcdir/final.mdl $srcdir/tree; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 if [ ! -z "$iedir" ]; then
@@ -75,7 +75,7 @@ dir=$(readlink -f $dir) # Convert $dir to an absolute pathname, so that the
 mkdir -p $dir/conf
 
 
-cp $srcdir/final.mdl $dir/ || exit 1;
+cp $srcdir/final.mdl $srcdir/tree $dir/ || exit 1;
 if [ ! -z "$iedir" ]; then
   mkdir -p $dir/ivector_extractor/
   cp $iedir/final.{mat,ie,dubm} $iedir/global_cmvn.stats $dir/ivector_extractor/ || exit 1;
