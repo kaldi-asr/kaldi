@@ -121,7 +121,7 @@ class BlockSoftmax : public Component {
     for (int32 bl = 0; bl < block_dims.size(); bl++) {
       CuSubMatrix<BaseFloat> diff_bl = in_diff->ColRange(block_offset[bl], block_dims[bl]);
       CuVector<BaseFloat> row_sum(diff_bl.NumRows());
-      row_sum.AddRowSumMat(1.0, diff_bl, 0.0); // 0:keep, 1:zero-out
+      row_sum.AddColSumMat(1.0, diff_bl, 0.0); // 0:keep, 1:zero-out
       // we'll scale rows by 0/1 masks
       CuVector<BaseFloat> row_diff_mask(row_sum);
       row_diff_mask.Scale(-1.0); // 0:keep, -1:zero-out
