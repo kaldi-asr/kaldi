@@ -1,1 +1,0 @@
-supervised_seg.sh
