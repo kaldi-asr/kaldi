@@ -145,7 +145,7 @@ sub PrintKwslist {
     if (defined($kwentry->[8])) {$kwslist .= " raw_score=\"$kwentry->[8]\"";}
     $kwslist .= "/>\n";
   }
-  $kwslist .= "  </detected_kwlist>\n";
+  if ($prev_kw ne "") {$kwslist .= "  </detected_kwlist>\n";}
   $kwslist .= "</kwslist>\n";
 
   return $kwslist;
@@ -223,7 +223,7 @@ foreach my $key (keys %Ntrue) {
 if ($remove_dup eq "true") {
   my @tmp = sort {KwslistDupSort($a, $b, $duptime)} @KWS;
   @KWS = ();
-  push(@KWS, $tmp[0]);
+  if (@tmp >= 1) {push(@KWS, $tmp[0])};
   for (my $i = 1; $i < scalar(@tmp); $i ++) {
     my $prev = $KWS[-1];
     my $curr = $tmp[$i];
