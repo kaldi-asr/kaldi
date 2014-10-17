@@ -59,7 +59,8 @@ fi
 
 mkdir -p $wdir/log
 
-cat $data/phones.txt | sed "s/^\([^ _\t][^ _\t]*\)_[^ \t][^ \t]* /\1 /g" > $wdir/phones.txt
+cat $data/phones.txt | sed 's/_[B|E|I|S]//g' |\
+  sed 's/_[%|"]//g' | sed 's/_[0-9]\+//g' > $wdir/phones.txt
 
 echo "Converting alignments to phone sequences..."
 $cmd JOB=1:$nj $wdir/log/ali_to_phones.JOB.log \

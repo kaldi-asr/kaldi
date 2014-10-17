@@ -21,11 +21,11 @@ set -u
 set -e
 
 if [ $# != 2 ]; then
-   echo "Usage: $0 [options] <lexicon-path> <work-dir>"
-   echo "... where <lexicon-dir> is where you have the lexicon in the usuall "
-   echo "    format (one pronunciation per word per line) and <work-dir> is  "
-   echo "    directory where the models will be stored.                      "
-   echo "e.g.: train_g2p.sh data/local exp/g2p/"
+   echo "Usage: $0 [options] <lexicon-in> <work-dir>"
+   echo "    where <lexicon-in> is the training lexicon (one pronunciation per "
+   echo "    word per line) and <word-dir> is directory where the models will "
+   echo "    be stored"
+   echo "e.g.: train_g2p.sh data/local/lexicon.txt exp/g2p/"
    echo ""
    echo "main options (for others, see top of script file)"
    echo "  --iters <int>                                    # How many iterations. Relates to N-ngram order"
@@ -33,15 +33,13 @@ if [ $# != 2 ]; then
    exit 1;
 fi
 
-data=$1
+lexicon=$1
 wdir=$2
 
 
 mkdir -p $wdir/log
 
-lexicon=$data/lexicon.txt
-
-[ ! -f $lexicon ] && echo "File lexicon.txt not found in the data directory ($data)." && exit 1
+[ ! -f $lexicon ] && echo "$0: Training lexicon does not exist." && exit 1
 
 if $only_words ; then
   cat $lexicon | sed 's/^<.*>.*$//g' | sed 's/^#.*//g' > $wdir/lexicon_onlywords.txt
@@ -49,7 +47,8 @@ if $only_words ; then
 fi
 
 if $remove_tags ; then
-  cat $lexicon | sed "s/_[\"1-9]//g" > $wdir/lexicon_notags.txt
+  cat $lexicon |\
+    sed 's/_[%|"]//g' | sed 's/_[0-9]\+//g' > $wdir/lexicon_notags.txt
   lexicon=$wdir/lexicon_notags.txt
 fi
 

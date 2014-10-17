@@ -139,11 +139,11 @@ cat $kwsdatadir/keywords_proxy.txt |\
 # L1 since it is the lexicon used for the LVCSR training.
 cat $kwsdatadir/tmp/L1.tmp.lex | cut -d ' ' -f 1 |\
   paste -d ' ' - <(cat $kwsdatadir/tmp/L1.tmp.lex | cut -d ' ' -f 2-|\
-  sed 's/_[B|E|I|S]//g' | sed 's/_[%|"]//g') |\
+  sed 's/_[B|E|I|S]//g' | sed 's/_[%|"]//g' | sed 's/_[0-9]\+//g') |\
   awk '{if(NF>=2) {print $0}}' > $kwsdatadir/tmp/L1.lex
 cat $kwsdatadir/tmp/L2.tmp.lex | cut -d ' ' -f 1 |\
   paste -d ' ' - <(cat $kwsdatadir/tmp/L2.tmp.lex | cut -d ' ' -f 2-|\
-  sed 's/_[B|E|I|S]//g' | sed 's/_[%|"]//g') |\
+  sed 's/_[B|E|I|S]//g' | sed 's/_[%|"]//g' | sed 's/_[0-9]\+//g') |\
   awk '{if(NF>=2) {print $0}}' | perl -e '
   ($lex1, $words) = @ARGV;
   open(L, "<$lex1") || die "Fail to open $lex1.\n";

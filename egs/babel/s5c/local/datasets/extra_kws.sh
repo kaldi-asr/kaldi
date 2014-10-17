@@ -66,7 +66,11 @@ function setup_oov_search {
   confusion=exp/conf_matrix/confusions.txt
 
   if [ ! -f exp/g2p/.done ] ; then
-    local/train_g2p.sh  data/local exp/g2p || return 1;
+    if [ -f data/.extlex ]; then
+      local/train_g2p.sh  data/local/lexicon_orig.txt exp/g2p || return 1;
+    else
+      local/train_g2p.sh  data/local/lexicon.txt exp/g2p || return 1;
+    fi
     touch exp/g2p/.done
   fi
   local/apply_g2p.sh --nj $my_nj --cmd "$decode_cmd" \
