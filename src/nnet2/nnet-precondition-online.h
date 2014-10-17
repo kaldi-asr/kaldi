@@ -70,6 +70,13 @@ namespace nnet2 {
 
 
 /*
+  Note regarding AISTATS/arXiv paper: we have different notation there.  The following is
+  the mapping from our notation to the AISTATS/arXiv paper notation.
+     R_t -> X_t
+     P_t -> \hat{X}_t
+     Q_t -> \bar{X}_t
+     X_t -> V_t
+  
   We consider the problem of doing online estimation of a (scaled-identity plus low-rank)
   approximation of a Fisher matrix... since the Fisher matrix is a scatter of vector-valued derivatives
   and we will be given the derivatives (or at least terms in a factorization of the derivatives
@@ -123,7 +130,7 @@ namespace nnet2 {
   We compute the following R by R matrix:
     Z_t =(def) Y_t Y_t^T
   and do the symmetric eigenvalue decomposition
-    Z_t = U_t C_t U_tT^
+    Z_t = U_t C_t U_t^T
   where C_t is diagonal and U_t orthogonal; the diagonal elements of C_t will be
   positive (since \rho_t > 0, T_t is positive definite; since X_t has full row rank
   and T_t is positive definite, Y_t has full row rank; hence Z_t is positive definite).
@@ -164,7 +171,7 @@ namespace nnet2 {
        \rho_{t+1} = 1/(D - R) (\eta tr(S_t) + (1-\eta)(D \rho_t + tr(D_t)) - tr(C_t^{0.5})).   (eqn:rhot1)
 
   Note that it is technically possible that diagonal elements of
-  of D_{t+1} may be negative, but we can stfill show that F_{t+1} is strictly
+  of D_{t+1} may be negative, but we can still show that F_{t+1} is strictly
   positive definite if F_t was strictly positive definite.
 
   If the quantities for which we are computing the Fisher matrix are all zero
@@ -255,7 +262,7 @@ namespace nnet2 {
   we wrote above that
       Y_t = \eta X_t S_t + (1-\eta) (D_t + \rho_t I) X_t
   so      
-      Y_t = \eta/N X_t R_t^T R_t + (1-\eta) (D_t + \rho_t I) X_t
+      Y_t = \eta/N X_t R_t^T R_t   + (1-\eta) (D_t + \rho_t I) X_t
           = \eta/N E_t^{-0.5} J_t  + (1-\eta) (D_t + \rho_t I) X_t     (eqn:yt)
   We will expand Z_t using the expression for Y_t in the line above:
       Z_t = Y_t Y_t^T
@@ -353,9 +360,8 @@ namespace nnet2 {
    [note: we use the fact that (D_t + \rho_t I) and E_t^{-0.5} commute because
     they are diagonal].
                
-   The R by R matrix-valued expressions in the parentheses above would be
-   computed on the CPU and transferred from there to the GPU, and the
-   multiplications with J_t and W_t would be done on the GPU.
+  A_t is computed on the CPU and transferred from there to the GPU, B_t is
+  computed on the PGU, and the multiplication of A_t with B_t is done on the GPU.
 
    * Keeping X_t orthogonal *
    

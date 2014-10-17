@@ -30,9 +30,10 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Write to standard output various properties of GMM model\n"
         "This is for a single diagonal GMM, e.g. as used for a UBM.\n"
-        "Usage:  gmm-info [options] <gmm>\n"
+        "Usage:  gmm-global-info [options] <gmm>\n"
         "e.g.:\n"
-        " gmm-info 1.dubm\n";
+        " gmm-global-info 1.dubm\n"
+        "See also: gmm-info, am-info\n";
     
     ParseOptions po(usage);
     

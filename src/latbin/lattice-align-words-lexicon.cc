@@ -37,9 +37,12 @@ int main(int argc, char *argv[]) {
         " word-in word-out phone1 phone2 ... phoneN\n"
         "(note: word-in is word before alignment, word-out is after, e.g. for replacing\n"
         "<eps> with SIL or vice versa)\n"
+        "This may be more efficient if you first apply 'lattice-push'.\n"
         "Usage: lattice-align-words-lexicon [options] <lexicon-file> <model> <lattice-rspecifier> <lattice-wspecifier>\n"
         " e.g.: lattice-align-words-lexicon  --partial-word-label=4324 --max-expand 10.0 --test true \\\n"
-        "   data/lang/phones/align_lexicon.int final.mdl ark:1.lats ark:aligned.lats\n";
+        "   data/lang/phones/align_lexicon.int final.mdl ark:1.lats ark:aligned.lats\n"
+        "See also: lattice-align-words, which is only applicable if your phones have word-position\n"
+        "markers, i.e. each phone comes in 5 versions like AA_B, AA_I, AA_W, AA_S, AA.\n";
     
     ParseOptions po(usage);
     bool output_if_error = true;

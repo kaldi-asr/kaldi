@@ -220,6 +220,8 @@ void OnlinePreconditioner::PreconditionDirectionsInternal(
 
   CuMatrix<BaseFloat> H_t(N, R);
   const CuSubMatrix<BaseFloat> W_t(*WJKL_t, 0, R, 0, D);
+  // Below, WJ_t and LK_t are combinations of two matrices,
+  // which we define in order to combine two separate multiplications into one.
   CuSubMatrix<BaseFloat> J_t(*WJKL_t, R, R, 0, D),
       L_t(*WJKL_t, 0, R, D, R),
       K_t(*WJKL_t, R, R, D, R),

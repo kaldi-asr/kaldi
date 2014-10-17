@@ -31,7 +31,8 @@ int main(int argc, char *argv[]) {
         "Write to standard output various properties of GMM-based model\n"
         "Usage:  gmm-info [options] <model-in>\n"
         "e.g.:\n"
-        " gmm-info 1.mdl\n";
+        " gmm-info 1.mdl\n"
+        "See also: gmm-global-info, am-info\n";
     
     ParseOptions po(usage);
     

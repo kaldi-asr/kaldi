@@ -117,12 +117,14 @@ bool PruneLattice(BaseFloat beam, LatType *lat) {
       return false;
     }
   }
-  KALDI_ASSERT(lat->Start() == 0); // since top sorted.
+  // We assume states before "start" are not reachable, since
+  // the lattice is topologically sorted.
+  int32 start = lat->Start();
   int32 num_states = lat->NumStates();
   if (num_states == 0) return false;
   std::vector<double> forward_cost(num_states,
                                    std::numeric_limits<double>::infinity()); // viterbi forward.
-  forward_cost[0] = 0.0; // lattice can't have cycles so couldn't be
+  forward_cost[start] = 0.0; // lattice can't have cycles so couldn't be
   // less than this.
   double best_final_cost = std::numeric_limits<double>::infinity();
   // Update the forward probs.

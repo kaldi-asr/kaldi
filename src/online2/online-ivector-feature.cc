@@ -202,11 +202,15 @@ void OnlineIvectorFeature::PrintDiagnostics() const {
                   << (tot_ubm_loglike_ / num_frames_stats_)
                   << " per frame, over " << num_frames_stats_
                   << " frames.";
+
+    Vector<BaseFloat> temp_ivector(current_ivector_);
+    temp_ivector(0) -= info_.extractor.PriorOffset();
+    
     KALDI_VLOG(3) << "By the end of the utterance, objf change/frame "
                   << "from estimating iVector (vs. default) was "
                   << ivector_stats_.ObjfChange(current_ivector_)
                   << " and iVector length was "
-                  << current_ivector_.Norm(2.0);
+                  << temp_ivector.Norm(2.0);
   }
 }
 

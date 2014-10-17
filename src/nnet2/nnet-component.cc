@@ -1781,15 +1781,15 @@ BaseFloat AffineComponentPreconditionedOnline::GetScalingFactor(
   out_products->MulElements(in_products);
   out_products->ApplyPow(0.5);
   BaseFloat prod_sum = out_products->Sum();
-  BaseFloat tot_objf_change = learning_rate_scale * learning_rate_ * prod_sum,
-      max_objf_change = max_change_per_sample_ * minibatch_size;
-  // tot_objf_change is the product of norms that we are trying to limit
+  BaseFloat tot_change_norm = learning_rate_scale * learning_rate_ * prod_sum,
+      max_change_norm = max_change_per_sample_ * minibatch_size;
+  // tot_change_norm is the product of norms that we are trying to limit
   // to max_value_.
-  KALDI_ASSERT(tot_objf_change - tot_objf_change == 0.0 && "NaN in backprop");
-  KALDI_ASSERT(tot_objf_change >= 0.0);
-  if (tot_objf_change <= max_objf_change) return 1.0;
+  KALDI_ASSERT(tot_change_norm - tot_change_norm == 0.0 && "NaN in backprop");
+  KALDI_ASSERT(tot_change_norm >= 0.0);
+  if (tot_change_norm <= max_change_norm) return 1.0;
   else {
-    BaseFloat factor = max_objf_change / tot_objf_change;
+    BaseFloat factor = max_change_norm / tot_change_norm;
     if (scaling_factor_printed < 10) {
       KALDI_LOG << "Limiting step size using scaling factor "
                 << factor << ", for component index " << Index();

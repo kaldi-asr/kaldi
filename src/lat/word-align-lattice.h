@@ -71,7 +71,8 @@ struct WordBoundaryInfoOpts {
                  "single-phone words.");
     po->Register("silence-phones", &silence_phones, "Colon-separated list of "
                  "numeric ids of phones that are used for silence (and other "
-                 "non-word events such as noise)");
+                 "non-word events such as noise - anything that doesn't have "
+                 "a corresponding symbol in the lexicon.");
     po->Register("silence-label", &silence_label, "Numeric id of word symbol "
                  "that is to be used for silence arcs in the word-aligned "
                  "lattice (zero is OK)");
