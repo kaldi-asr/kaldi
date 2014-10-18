@@ -5,7 +5,7 @@
 
 remove_archive=false
 
-if [ "$0" == --remove-archive ]; then
+if [ "$1" == --remove-archive ]; then
   remove_archive=true
   shift
 fi
