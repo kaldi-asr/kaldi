@@ -658,7 +658,9 @@ void Nnet::Collapse(bool match_updatableness) {
   }
   this->SetIndexes();
   this->Check();
-  KALDI_LOG << "Collapsed " << num_collapsed << " components.";
+  KALDI_LOG << "Collapsed " << num_collapsed << " components."
+            << (num_collapsed == 0 && match_updatableness == true ?
+                "  Try --match-updatableness=false." : "");
 }
 
 Nnet *GenRandomNnet(int32 input_dim,

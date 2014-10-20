@@ -381,8 +381,10 @@ class MatrixBase {
   /// Returns true if matrix is Diagonal.
   bool IsDiagonal(Real cutoff = 1.0e-05) const;  // replace magic number
 
-  /// returns true if matrix is all zeros, but ones on diagonal
-  /// (not necessarily square).
+  /// Returns true if the matrix is all zeros, except for ones on diagonal.  (it
+  /// does not have to be square).  More specifically, this function returns
+  /// false if for any i, j, (*this)(i, j) differs by more than cutoff from the
+  /// expression (i == j ? 1 : 0).
   bool IsUnit(Real cutoff = 1.0e-05) const;     // replace magic number
 
   /// Returns true if matrix is all zeros.

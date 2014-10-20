@@ -1610,7 +1610,6 @@ void MatrixBase<Real>::TestUninitialized() const {
 template<typename Real>
 bool MatrixBase<Real>::IsUnit(Real cutoff) const {
   MatrixIndexT R = num_rows_, C = num_cols_;
-  // if (R != C) return false;
   Real bad_max = 0.0;
   for (MatrixIndexT i = 0; i < R;i++)
     for (MatrixIndexT j = 0; j < C;j++)

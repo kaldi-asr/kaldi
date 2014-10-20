@@ -68,6 +68,9 @@ for test in dev_clean dev_other; do
     exp/tri6b/graph_tgsmall data/$test $dir/decode_tgsmall_$test || exit 1;
   steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
     data/$test $dir/decode_{tgsmall,tgmed}_$test  || exit 1;
+  steps/lmrescore_const_arpa.sh \
+    --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
+    data/$test exp/tri6b/decode_{tgsmall,tglarge}_$test || exit 1;
 done
 
 exit 0;
