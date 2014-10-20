@@ -1,6 +1,7 @@
 // nnet2bin/nnet-shuffle-egs.cc
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
+// Copyright 2014  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -60,7 +61,7 @@ int main(int argc, char *argv[]) {
 
     int64 num_done = 0;
 
-    std::vector<NnetExample*> egs;
+    std::vector<std::pair<std::string, NnetExample*> > egs;
     SequentialNnetExampleReader example_reader(examples_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     if (buffer_size == 0) { // Do full randomization
@@ -68,31 +69,29 @@ int main(int argc, char *argv[]) {
       // computation and memory demands when we have to resize the vector.
     
       for (; !example_reader.Done(); example_reader.Next())
-        egs.push_back(new NnetExample(example_reader.Value()));
+        egs.push_back(std::make_pair(example_reader.Key(), 
+                                    new NnetExample(example_reader.Value())));
       
       std::random_shuffle(egs.begin(), egs.end());
     } else {
       KALDI_ASSERT(buffer_size > 0);
-      egs.resize(buffer_size, NULL);
+      egs.resize(buffer_size, std::pair<std::string, NnetExample*>("", NULL));
       for (; !example_reader.Done(); example_reader.Next()) {
         int32 index = RandInt(0, buffer_size - 1);
-        if (egs[index] == NULL) {
-          egs[index] = new NnetExample(example_reader.Value());
+        if (egs[index].second == NULL) {
+          egs[index] = std::make_pair(example_reader.Key(), 
+                                    new NnetExample(example_reader.Value()));
         } else {
-          std::ostringstream ostr;
-          ostr << num_done;
-          example_writer.Write(ostr.str(), *(egs[index]));
-          *(egs[index]) = example_reader.Value();
+          example_writer.Write(egs[index].first, *(egs[index].second));
+          *(egs[index].second) = example_reader.Value();
           num_done++;
         }
       }      
     }
     for (size_t i = 0; i < egs.size(); i++) {
-      std::ostringstream ostr;
-      ostr << num_done;
-      if (egs[i] != NULL) {
-        example_writer.Write(ostr.str(), *(egs[i]));
-        delete egs[i];
+      if (egs[i].second != NULL) {
+        example_writer.Write(egs[i].first, *(egs[i].second));
+        delete egs[i].second;
       }
       num_done++;
     }

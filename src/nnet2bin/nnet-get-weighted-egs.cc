@@ -44,6 +44,7 @@ int32 GetCount(double expected_count) {
 
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const Posterior &pdf_post,
+                        const std::string &utt_id,
                         const Vector<BaseFloat> &weights,
                         int32 left_context,
                         int32 right_context,
@@ -91,7 +92,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
         }
       }
       std::ostringstream os;
-      os << ((*num_frames_written)++);
+      os << utt_id << "-" << i;
       std::string key = os.str(); // key in the archive is the number of the example
 
       for (int32 c = 0; c < count; c++)
@@ -207,7 +208,7 @@ int main(int argc, char *argv[]) {
             num_err++;
             continue;
           }
-          ProcessFile(feats, pdf_post, weights, left_context, right_context,
+          ProcessFile(feats, pdf_post, key, weights, left_context, right_context,
                       const_feat_dim, keep_proportion, weight_threshold,
                       use_frame_selection, use_frame_weights,
                       &num_frames_written, &num_frames_skipped, &example_writer);

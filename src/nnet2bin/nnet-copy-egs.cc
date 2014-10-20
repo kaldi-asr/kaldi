@@ -1,6 +1,7 @@
 // nnet2bin/nnet-copy-egs.cc
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
+// Copyright 2014  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -99,9 +100,7 @@ int main(int argc, char *argv[]) {
       int32 count = GetCount(keep_proportion);
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
-        std::ostringstream ostr;
-        ostr << num_written;
-        example_writers[index]->Write(ostr.str(),
+        example_writers[index]->Write(example_reader.Key(),
                                       example_reader.Value());
         num_written++;
       }

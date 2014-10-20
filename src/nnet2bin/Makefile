@@ -27,7 +27,7 @@ BINFILES = nnet-am-info nnet-init \
    nnet-perturb-egs-fmllr nnet-get-weighted-egs nnet-adjust-priors \
    cuda-compiled nnet-replace-last-layers nnet-am-switch-preconditioning \
    nnet-train-simple-perturbed nnet-train-parallel-perturbed \
-   nnet1-to-raw-nnet raw-nnet-copy
+   nnet1-to-raw-nnet raw-nnet-copy nnet-relabel-egs
 
 OBJFILES =
 

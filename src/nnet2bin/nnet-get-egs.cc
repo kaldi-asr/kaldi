@@ -1,6 +1,7 @@
 // nnet2bin/nnet-get-egs.cc
 
 // Copyright 2012-2013  Johns Hopkins University (author:  Daniel Povey)
+// Copyright 2014  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -16,6 +17,8 @@
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
+
+#include <sstream>
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
@@ -44,6 +47,7 @@ int32 GetCount(double expected_count) {
 
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const Posterior &pdf_post,
+                        const std::string &utt_id,
                         int32 left_context,
                         int32 right_context,
                         int32 const_feat_dim,
@@ -83,9 +87,9 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
         eg.spk_info.CopyFromVec(const_part);
       }
       std::ostringstream os;
-      os << ((*num_frames_written)++);
-      std::string key = os.str(); // key in the archive is the number of the
-      // example.
+      os << utt_id << "-" << i;
+
+      std::string key = os.str(); // key is <utt_id>-<frame_id>
 
       for (int32 c = 0; c < count; c++)
         example_writer->Write(key, eg);
@@ -176,7 +180,7 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-        ProcessFile(feats, pdf_post,
+        ProcessFile(feats, pdf_post, key,
                     left_context, right_context, const_feat_dim,
                     keep_proportion, &num_frames_written, &example_writer);
         num_done++;

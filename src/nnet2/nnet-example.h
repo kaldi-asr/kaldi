@@ -1,6 +1,7 @@
 // nnet2/nnet-example.h
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2014  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -57,6 +58,13 @@ struct NnetExample {
   
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
+
+  /// Set the label of this example to the specified pdf_id 
+  /// with the specified weight.
+  void SetLabelSingle(int32 pdf_id, BaseFloat weight = 1.0);
+
+  /// Get the maximum weight label (pdf_id and weight) of this example. 
+  int32 GetLabelSingle(BaseFloat *weight = NULL);
 };
 
 
