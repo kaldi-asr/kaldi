@@ -30,14 +30,14 @@ sclite_cleaned:
 
 distclean:
 	rm -rf openfst-1.3.4/
-	rm -rf sctk-2.4.8/
+	rm -rf sctk-2.4.9/
 	rm -rf sctk
 	rm -rf ATLAS/
 	rm -rf irstlm/
 	rm -rf sph2pipe_v2.5/
 	rm -rf sph2pipe_v2.5.tar.gz
 	rm -rf atlas3.8.3.tar.gz
-	rm -rf sctk-2.4.8-20130429-2145.tar.bz2
+	rm -rf sctk-2.4.9-20141015-1634Z.tar.bz2
 	rm -rf openfst-1.3.4.tar.gz
 	rm -f openfst
 
@@ -83,30 +83,24 @@ openfst-1.3.4.tar.gz:
 sclite: sclite_compiled
 
 .PHONY: sclite_compiled
-sclite_compiled: sctk/.patched sctk_configured
+sclite_compiled: sctk sctk_configured
 	cd sctk; \
 	$(MAKE) all && $(MAKE) install && $(MAKE) doc
 
-sctk_configured: sctk/.patched sctk/.configured
+sctk_configured: sctk sctk/.configured
 
 sctk/.configured: sctk
 	cd sctk; $(MAKE) config
 	touch sctk/.configured
 
-sctk/.patched: sctk
-	cd sctk; patch -N -p0 < ../extras/sctk-2.4.8.patch
-	cd sctk/src/rfilter1/; patch -N -p0 < ../../../extras/sctk-2.4.8.patch2
-	touch sctk/.patched
-
-
 .PHONY: sctk
-sctk: sctk-2.4.8-20130429-2145.tar.bz2
-	tar xojf sctk-2.4.8-20130429-2145.tar.bz2
-	rm -rf sctk && ln -s sctk-2.4.8 sctk
+sctk: sctk-2.4.9-20141015-1634Z.tar.bz2
+	tar xojf sctk-2.4.9-20141015-1634Z.tar.bz2
+	rm -rf sctk && ln -s sctk-2.4.9 sctk
 
-sctk-2.4.8-20130429-2145.tar.bz2:
-	wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.8-20130429-2145.tar.bz2 || \
-    wget --no-check-certificate -T 10 http://www.openslr.org/resources/4/sctk-2.4.8-20130429-2145.tar.bz2
+sctk-2.4.9-20141015-1634Z.tar.bz2:
+	wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.9-20141015-1634Z.tar.bz2|| \
+    wget --no-check-certificate -T 10 http://www.openslr.org/resources/4/sctk-2.4.9-20141015-1634Z.tar.bz2
 
 irstlm_tgt: irstlm_compiled
 
