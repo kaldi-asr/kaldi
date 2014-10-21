@@ -140,7 +140,7 @@ if [ $stage -le 2 ]; then
   && echo "Error producing utt2spk file" && exit 1;
 
   cat $dir/train_all/text | perl -ane 'm:((\S+-[AB])-(\d+)-(\d+))\s: || die; $utt = $1; $reco = $2;
- $s = sprintf("%.2f", 0.01*$3); $e = sprintf("%.2f", 0.01*$4); print "$utt $reco $s $e\n"; ' >$dir/train_all/segments
+  $s = sprintf("%.2f", 0.01*$3); $e = sprintf("%.2f", 0.01*$4); if ($s != $e) {print "$utt $reco $s $e\n"}; ' >$dir/train_all/segments
 
   $utils/utt2spk_to_spk2utt.pl <$dir/train_all/utt2spk > $dir/train_all/spk2utt
 fi

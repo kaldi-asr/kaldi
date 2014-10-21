@@ -40,7 +40,7 @@ cd $dir
 
 # Make directory of links to the WSJ disks such as 11-13.1.  This relies on the command
 # line arguments being absolute pathnames.
-rm -r links/ 2>/dev/null
+#rm -r links/ 2>/dev/null
 mkdir links/
 ln -s $* links
 

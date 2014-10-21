@@ -1,16 +1,17 @@
 #!/usr/bin/perl
 
 # Oct 21, 2015 : Gaurav Kumar (Johns Hopkins University)
-# Apache 2.0
+# GNU General Public License, v3.0
 #
 # This script was modified under GPL and is being distributed with 
-# Kaldi under a new license. It requires the preference and rule files
+# Kaldi. It requires the preference and rule files
 # (under LDC copyright) from LDC96L16. The main changes were
 # - Outdated usage of perl conventions updated @_ => $_ or @A
 # - This script no longer needs the preference and rule files to 
 #   be in the same directory as this script.
 # - Accepts tokens from <STDIN> instead of <>
 
+# --- Retained previous version information ----------------------------
 # spron.pl Version 0.1 Jan. 11 1995 
 # Written by Zhibiao Wu, LDC, wzb@unagi.cis.upenn.edu
 # This program needs the basic_rules file to run. The rules must be sorted 
@@ -28,6 +29,7 @@
 #  - look for basic_rules and preferences in $PWD instead of ~wzb/...
 #  - use next to shortcut loop instead of if/else
 #  - added a bit of documentation, without really trying to decipher this thing
+# -----------------------------------------------------------------------
 
 $vfile = "";
 $preference_file = "";
