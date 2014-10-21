@@ -321,13 +321,21 @@ void CuDevice::PrintProfile() {
     os << "-----\n[cudevice profile]\n";
     std::map<std::string, double>::iterator it;
     std::vector<std::pair<double, std::string> > pairs;
-    for(it = profile_map_.begin(); it != profile_map_.end(); ++it)
-      pairs.push_back(std::make_pair(it->second, it->first));
+    double total_time = 0.0;
+    for(it = profile_map_.begin(); it != profile_map_.end(); ++it) {
+      std::string function_name = it->first;
+      double elapsed_time = it->second;
+      total_time += elapsed_time;
+      pairs.push_back(std::make_pair(elapsed_time, function_name));
+    }
+    // display from shortest to longest time, so tail will show the longest
+    // times at the end.
     std::sort(pairs.begin(), pairs.end());
     size_t max_print = 15, start_pos = (pairs.size() <= max_print ?
                                         0 : pairs.size() - max_print);
     for (size_t i = start_pos; i < pairs.size(); i++) 
       os << pairs[i].second << "\t" << pairs[i].first << "s\n";
+    os << "Total GPU time:\t" << total_time << "s (may involve some double-counting)\n";
     os << "-----";
     KALDI_LOG << os.str();
     PrintMemoryUsage();

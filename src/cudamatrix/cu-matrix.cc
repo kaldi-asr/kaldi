@@ -1482,21 +1482,36 @@ Real TraceMatMat(const CuMatrixBase<Real> &A,
   Real result = 0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    // the sizes of result_vec must match what we
-    // call the kernels with, in cu-kernels.cu
-    CuVector<Real> result_vec(trans == kTrans ? 4 : 2, kUndefined);
     if (trans == kNoTrans) {
       KALDI_ASSERT(A.NumRows() == B.NumCols() && A.NumCols() == B.NumRows());
-      cuda_trace_mat_mat(A.Data(), B.Data(), A.Dim(), B.Stride(), result_vec.Data());
     } else {
       KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
-      cuda_trace_mat_mat_trans(A.Data(), B.Data(), A.Dim(), B.Stride(), result_vec.Data());
     }
-    CU_SAFE_CALL(cudaGetLastError());
-    Vector<Real> result_cpu(result_vec); // copying from CUDA faster than summing in CUDA.
-    result = result_cpu.Sum();
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    if (A.NumRows() * A.NumCols() > 16384) {
+      // This version in which we don't use a special-purpose kernel, but
+      // do AddDiagMat on a temporary vector and returns its sum, seems to be
+      // faster for larger matrices.  The cutoff is approximate and
+      // we only looked at the time on square matrices, which
+      // is what we test in cu-matrix-speed-test.cc.
+      CuVector<Real> sum_vec(A.NumRows());
+      sum_vec.AddDiagMatMat(1.0, A, kNoTrans,
+                            B, trans, 0.0);
+      return sum_vec.Sum();
+    } else {
+      Timer tim;
+      // the sizes of result_vec must match what we
+      // call the kernels with, in cu-kernels.cu
+      CuVector<Real> result_vec(trans == kTrans ? 4 : 2, kUndefined);
+      if (trans == kNoTrans) {
+        cuda_trace_mat_mat(A.Data(), B.Data(), A.Dim(), B.Stride(), result_vec.Data());
+      } else {
+        cuda_trace_mat_mat_trans(A.Data(), B.Data(), A.Dim(), B.Stride(), result_vec.Data());
+      }
+      CU_SAFE_CALL(cudaGetLastError());
+      Vector<Real> result_cpu(result_vec); // copying from CUDA faster than summing in CUDA.
+      result = result_cpu.Sum();
+      CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    }
   } else
 #endif
   {
