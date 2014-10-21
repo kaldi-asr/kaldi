@@ -45,11 +45,12 @@ fi
 
 #Get pronunciation for each word using the spron.pl file in the lexicon folder
 if [ $stage -le 2 ]; then
-  cd $lexicon/callhome_spanish_lexicon_970908
+  #cd $lexicon/callhome_spanish_lexicon_970908
   # Replace all words for which no pronunciation was generated with an orthographic 
   # representation
-  cat $tmpdir/uniquewords | ./spron.pl | cut -f1 | sed -r 's:#\S+\s\S+\s\S+\s\S+\s(\S+):\1:g' \
-  > $tmpdir/lexicon_raw
+  cat $tmpdir/uniquewords | $local/spron.pl $lexicon/callhome_spanish_lexicon_970908/preferences $lexicon/callhome_spanish_lexicon_970908/basic_rules \
+    | cut -f1 | sed -r 's:#\S+\s\S+\s\S+\s\S+\s(\S+):\1:g' \
+    > $tmpdir/lexicon_raw
 fi
 
 #Break the pronunciation down according to the format required by Kaldi
