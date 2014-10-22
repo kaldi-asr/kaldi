@@ -1,6 +1,6 @@
 // latbin/lattice-to-ctm-conf.cc
 
-// Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -36,9 +36,10 @@ int main(int argc, char *argv[]) {
         "Note: the times will only be correct if you do lattice-align-words\n"
         "on the input\n"
         "\n"
-        "Usage: lattice-to-ctm-conf [options]  lattice-rspecifier ctm-wxfilename\n"
-        " e.g.: lattice-to-ctm-conf --acoustic-scale=0.1 ark:1.lats ark:1.tra "
-        "ark:/dev/null ark:1.sau\n";
+        "Usage: lattice-to-ctm-conf [options]  <lattice-rspecifier> <ctm-wxfilename>\n"
+        " e.g.: lattice-to-ctm-conf --acoustic-scale=0.1 ark:1.lats 1.ctm\n"
+        "See also: lattice-mbr-decode, and the scripts steps/get_ctm.sh and\n"
+        " steps/get_train_ctm.sh\n";
     
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0, inv_acoustic_scale = 1.0, lm_scale = 1.0;
