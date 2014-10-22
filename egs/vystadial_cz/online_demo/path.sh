@@ -29,7 +29,7 @@ SILENCE=models/silence.csl
 kaldisrc=`pwd`/../../../src
 openfst=`pwd`/../../../tools/openfst/
 
-export PATH=$kaldisrc/bin:$kaldisrc/fgmmbin:$kaldisrc/gmmbin:$kaldisrc/nnetbin:$kaldisrc/sgmm2bin:$kaldisrc/tiedbin:$kaldisrc/featbin:$kaldisrc/fstbin:$kaldisrc/latbin:$kaldisrc/onlinebin:$kaldisrc/sgmmbin:$kaldisrc/onl-rec:$openfst/bin:"$PATH"
+export PATH=$kaldisrc/bin:$kaldisrc/fgmmbin:$kaldisrc/gmmbin:$kaldisrc/nnetbin:$kaldisrc/sgmm2bin:$kaldisrc/featbin:$kaldisrc/fstbin:$kaldisrc/latbin:$kaldisrc/onlinebin:$kaldisrc/sgmmbin:$kaldisrc/onl-rec:$openfst/bin:"$PATH"
 export LD_LIBRARY_PATH=$kaldisrc/onl-rec:$kaldisrc/pykaldi/kaldi:$openfst/lib:$openfst/lib/fst:$LD_LIBRARY_PATH
 export PYTHONPATH=$kaldisrc/pykaldi:$kaldisrc/pykaldi/pyfst:$PYTHONPATH
 
