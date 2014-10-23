@@ -82,7 +82,8 @@ local/gale_format_data.sh
 # want to store MFCC features.
 mfccdir=mfcc
 
-for x in test train; do
+for x in train test ; do
+  utils/fix_data_dir.sh data/$x # some files fail to get mfcc for many reasons
   steps/make_mfcc.sh --cmd "$train_cmd" --nj $nJobs \
     data/$x exp/make_mfcc/$x $mfccdir
   utils/fix_data_dir.sh data/$x # some files fail to get mfcc for many reasons

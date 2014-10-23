@@ -46,13 +46,13 @@ done
 for w in `find $wavedir -name *.wav` ; do 
   base=`basename $w .wav`
   fullpath=`readlink -f $w`
-  echo "$base sox $fullpath -r 8000 -t wav - |"
+  echo "$base sox $fullpath -r 16000 -t wav - |"
 done
 
 for w in `find $wavedir -name *.flac` ; do 
   base=`basename $w .flac`
   fullpath=`readlink -f $w`
-  echo "$base sox $fullpath -r 8000 -t wav - |"
+  echo "$base sox $fullpath -r 16000 -t wav - |"
 done
 )  | sort -u > $galeData/wav.scp
 
