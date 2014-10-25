@@ -4,7 +4,7 @@ ifndef FSTROOT
 $(error FSTROOT not defined.)
 endif
 
-CXXFLAGS = -msse -msse2 -Wall -I.. \
+CXXFLAGS += -msse -msse2 -Wall -I.. \
 	  -pthread \
       -DKALDI_DOUBLEPRECISION=0  \
       -Wno-sign-compare -Winit-self \
