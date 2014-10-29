@@ -98,6 +98,9 @@ printf "\t Train-set : $data \n"
 
 [ -e $dir/${nn_depth}.dbn ] && echo "$0 Skipping, already have $dir/${nn_depth}.dbn" && exit 0
 
+# check if CUDA is compiled in,
+cuda-compiled || { echo 'CUDA was not compiled in, skipping! Check src/kaldi.mk and src/configure' && exit 1; }
+
 mkdir -p $dir/log
 
 ###### PREPARE FEATURES ######
