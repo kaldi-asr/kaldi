@@ -138,14 +138,14 @@ local/remove_dup_utts.sh 100 data/train_10k data/train_10k_nodup
 utils/subset_data_dir.sh --speakers data/train 30000 data/train_30k
 utils/subset_data_dir.sh --speakers data/train 90000 data/train_100k  
 
-steps/train_mono.sh --nj 10 --cmd "$train_cmd" \                                 
-  data/train_10k_nodup data/lang exp/mono0a    
+steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
+  data/train_10k_nodup data/lang exp/mono0a
 
-steps/align_si.sh --nj 30 --cmd "$train_cmd" \                                   
-   data/train_30k data/lang exp/mono0a exp/mono0a_ali || exit 1;                 
-                                                                                 
-steps/train_deltas.sh --cmd "$train_cmd" \                                       
-    2500 20000 data/train_30k data/lang exp/mono0a_ali exp/tri1 || exit 1;  
+steps/align_si.sh --nj 30 --cmd "$train_cmd" \
+   data/train_30k data/lang exp/mono0a exp/mono0a_ali || exit 1;
+
+steps/train_deltas.sh --cmd "$train_cmd" \
+    2500 20000 data/train_30k data/lang exp/mono0a_ali exp/tri1 || exit 1;
 
 
 (utils/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph
@@ -159,7 +159,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
     2500 20000 data/train_30k data/lang exp/tri1_ali exp/tri2 || exit 1;
 
 (
-  utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph || exit 1;             
+  utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    exp/tri2/graph data/dev exp/tri2/decode_dev || exit 1;
 )&
@@ -186,7 +186,7 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
 
 steps/train_sat.sh  --cmd "$train_cmd" \
   4000 60000 data/train_100k data/lang exp/tri3a_ali  exp/tri4a || exit 1;
-                                                                                 
+
 (
   utils/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
@@ -211,12 +211,14 @@ steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
 exp/tri5a/graph data/test exp/tri5a/decode_test
 
 # Decode CALLHOME
+(
 steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
 exp/tri5a/graph data/callhome_test exp/tri5a/decode_callhome_test
 steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
 exp/tri5a/graph data/callhome_dev exp/tri5a/decode_callhome_dev
 steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
 exp/tri5a/graph data/callhome_train exp/tri5a/decode_callhome_train
+) &
 
 steps/align_fmllr.sh \
   --boost-silence 0.5 --nj 32 --cmd "$train_cmd" \
@@ -263,9 +265,9 @@ utils/mkgraph.sh data/lang_test exp/sgmm5 exp/sgmm5/graph
 steps/decode_sgmm2.sh --nj 13 --cmd "$decode_cmd" --num-threads 5 --parallel-opts " -pe smp 5" \
   --config conf/decode.config  --scoring-opts "--min-lmwt 8 --max-lmwt 16" --transform-dir exp/tri5a/decode_dev \
  exp/sgmm5/graph data/dev exp/sgmm5/decode_dev
-for iter in 1 2 3 4; do                                                            
-  decode=exp/sgmm5_mmi_b0.1/decode_dev_it$iter                                  
-  mkdir -p $decode                                                                 
+for iter in 1 2 3 4; do
+  decode=exp/sgmm5_mmi_b0.1/decode_dev_it$iter
+  mkdir -p $decode
   steps/decode_sgmm2_rescore.sh  \
     --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5a/decode_dev \
     data/lang_test data/dev/  exp/sgmm5/decode_dev $decode
