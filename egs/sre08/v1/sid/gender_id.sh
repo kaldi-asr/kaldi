@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright    2013  Daniel Povey
+#              2014  David Snyder
 # Apache 2.0.
 
 # This script gets gender-id information for a set of utterances.
@@ -49,6 +50,12 @@ female_ubmdir=$3
 data=$4
 dir=$5
 
+delta_opts=`cat $ubmdir/delta_opts 2>/dev/null`
+if [ -f $ubmdir/delta_opts ]; then
+  cp $ubmdir/delta_opts $male_ubmdir/ 2>/dev/null
+  cp $ubmdir/delta_opts $female_ubmdir/ 2>/dev/null
+fi
+
 for f in $ubmdir/final.ubm $male_ubmdir/final.ubm $female_ubmdir/final.ubm $data/feats.scp $data/vad.scp; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
@@ -69,7 +76,7 @@ fi
 
 
 ## Set up features.
-feats="ark,s,cs:add-deltas scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
+feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
 
 if [ $stage -le -2 ]; then
   $cmd $dir/log/convert.log \

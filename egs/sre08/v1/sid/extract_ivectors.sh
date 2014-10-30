@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright     2013  Daniel Povey
+#               2014  David Snyder
 # Apache 2.0.
 
 # This script extracts iVectors for a set of utterances, given
@@ -51,9 +52,10 @@ mkdir -p $dir/log
 sdata=$data/split$nj;
 utils/split_data.sh $data $nj || exit 1;
 
+delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
 
 ## Set up features.
-feats="ark,s,cs:add-deltas scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
+feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
 
 
 if [ $stage -le 0 ]; then

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright   2013  Daniel Povey
+#             2014  David Snyder
 # Apache 2.0.
 
 # This script trains the i-vector extractor.  Note: there are 3 separate levels
@@ -72,6 +73,7 @@ fi
 fgmm_model=$1
 data=$2
 dir=$3
+srcdir=$(dirname $fgmm_model)
 
 for f in $fgmm_model $data/feats.scp ; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
@@ -83,9 +85,14 @@ nj_full=$[$nj*$num_processes]
 sdata=$data/split$nj_full;
 utils/split_data.sh $data $nj_full || exit 1;
 
+delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
+if [ -f $srcdir/delta_opts ]; then
+  cp $srcdir/delta_opts $dir/ 2>/dev/null
+fi
+
 parallel_opts="-pe smp $[$num_threads*$num_processes]"
 ## Set up features.
-feats="ark,s,cs:add-deltas scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
+feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
 
 # Initialize the i-vector extractor using the FGMM input
 if [ $stage -le -2 ]; then

@@ -54,15 +54,19 @@ for f in $data/feats.scp $data/vad.scp; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
 
-
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 sdata=$data/split$nj;
 utils/split_data.sh $data $nj || exit 1;
 
 
+delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
+if [ -f $srcdir/delta_opts ]; then
+  cp $srcdir/delta_opts $dir/ 2>/dev/null
+fi
+
 ## Set up features.
-feats="ark,s,cs:add-deltas scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- | subsample-feats --n=$subsample ark:- ark:- |"
+feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 
 
 if [ $stage -le -2 ]; then
