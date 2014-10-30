@@ -41,7 +41,7 @@ splice_after_transf=5
 lda_dim=300        # LDA dimension (applies to `lda` feat_type)
 
 # LABELS
-labels=            # use these labels to train (override deafault pdf alignments) 
+labels=            # use these labels to train (override deafault pdf alignments, has to be in 'Posterior' format, see ali-to-post) 
 num_tgt=           # force to use number of outputs in the MLP (default is autodetect)
 
 # TRAINING SCHEDULER
