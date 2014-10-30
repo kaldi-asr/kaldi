@@ -77,11 +77,13 @@ if [ $stage -le 5 ]; then
   fi
   # Below, setting --utts-per-spk-max to a noninteger helps to randomize the division
   # of speakers into "fake-speakers" with about 2 utterances each, by randomly making 
-  # some have 2 and some 3 utterances... this randomnes will be different in different
+  # some have 2 and some 3 utterances... this randomness will be different in different
   # copies of the data.
-  steps/online/nnet2/extract_ivectors_online2.sh --cmd "$train_cmd" --nj 30 \
-    --utts-per-spk-max 2.5 \
-    data/train_perturbed_mfcc exp/nnet2_online/extractor $ivectordir || exit 1;
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2.5 data/train_perturbed_mfcc \
+     data/train_perturbed_mfcc_max2.5
+
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
+    data/train_perturbed_mfcc_max2.5 exp/nnet2_online/extractor $ivectordir || exit 1;
 fi
 
 

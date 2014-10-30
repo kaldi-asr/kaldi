@@ -404,7 +404,7 @@ class CopyComponent: public Component {
 class AddShift : public UpdatableComponent {
  public:
   AddShift(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out), shift_data_(dim_in)
+    : UpdatableComponent(dim_in, dim_out), shift_data_(dim_in), learn_rate_coef_(1.0)
   { }
   ~AddShift()
   { }
@@ -420,6 +420,7 @@ class AddShift : public UpdatableComponent {
     while (!is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<InitParam>") ReadBasicType(is, false, &init_param);
+      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (InitParam)";
       is >> std::ws; // eat-up whitespace
@@ -430,11 +431,18 @@ class AddShift : public UpdatableComponent {
   }
 
   void ReadData(std::istream &is, bool binary) { 
-    //read the shift data
+    // optional learning-rate coef,
+    if ('<' == Peek(is, binary)) {
+      ExpectToken(is, binary, "<LearnRateCoef>");
+      ReadBasicType(is, binary, &learn_rate_coef_);
+    }
+    // read the shift data
     shift_data_.Read(is, binary);
   }
 
   void WriteData(std::ostream &os, bool binary) const { 
+    WriteToken(os, binary, "<LearnRateCoef>");
+    WriteBasicType(os, binary, learn_rate_coef_);
     shift_data_.Write(os, binary);
   }
   
@@ -450,9 +458,9 @@ class AddShift : public UpdatableComponent {
   }
 
   std::string InfoGradient() const {
-    return std::string("\n  shift_data_grad") + MomentStatistics(shift_data_grad_);
+    return std::string("\n  shift_data_grad") + MomentStatistics(shift_data_grad_) + 
+           ", lr-coef " + ToString(learn_rate_coef_);
   }
-
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) { 
     out->CopyFromMat(in);
@@ -473,7 +481,7 @@ class AddShift : public UpdatableComponent {
     shift_data_grad_.Resize(InputDim(), kSetZero); // reset
     shift_data_grad_.AddRowSumMat(1.0, diff, 0.0);
     // update
-    shift_data_.AddVec(-lr, shift_data_grad_);
+    shift_data_.AddVec(-lr*learn_rate_coef_, shift_data_grad_);
   }
 
   // Data accessors
@@ -484,10 +492,14 @@ class AddShift : public UpdatableComponent {
     KALDI_ASSERT(shift_data.Dim() == shift_data_.Dim());
     shift_data_.CopyFromVec(shift_data);
   }
+  void SetLearnRateCoef(float c) {
+    learn_rate_coef_ = c;
+  }
 
  protected:
   CuVector<BaseFloat> shift_data_;
   CuVector<BaseFloat> shift_data_grad_;
+  BaseFloat learn_rate_coef_;
 };
 
 
@@ -499,7 +511,7 @@ class AddShift : public UpdatableComponent {
 class Rescale : public UpdatableComponent {
  public:
   Rescale(int32 dim_in, int32 dim_out)
-    : UpdatableComponent(dim_in, dim_out), scale_data_(dim_in)
+    : UpdatableComponent(dim_in, dim_out), scale_data_(dim_in), learn_rate_coef_(1.0)
   { }
   ~Rescale()
   { }
@@ -515,6 +527,7 @@ class Rescale : public UpdatableComponent {
     while (!is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<InitParam>") ReadBasicType(is, false, &init_param);
+      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (InitParam)";
       is >> std::ws; // eat-up whitespace
@@ -524,12 +537,19 @@ class Rescale : public UpdatableComponent {
     scale_data_.Set(init_param);
   }
 
-  void ReadData(std::istream &is, bool binary) { 
+  void ReadData(std::istream &is, bool binary) {
+    // optional learning-rate coef,
+    if ('<' == Peek(is, binary)) {
+      ExpectToken(is, binary, "<LearnRateCoef>");
+      ReadBasicType(is, binary, &learn_rate_coef_);
+    }
     // read the shift data
     scale_data_.Read(is, binary);
   }
 
   void WriteData(std::ostream &os, bool binary) const { 
+    WriteToken(os, binary, "<LearnRateCoef>");
+    WriteBasicType(os, binary, learn_rate_coef_);
     scale_data_.Write(os, binary);
   }
 
@@ -545,9 +565,9 @@ class Rescale : public UpdatableComponent {
   }
   
   std::string InfoGradient() const {
-    return std::string("\n  scale_data_grad") + MomentStatistics(scale_data_grad_);
+    return std::string("\n  scale_data_grad") + MomentStatistics(scale_data_grad_) +
+           ", lr-coef " + ToString(learn_rate_coef_);
   }
-  
   
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) { 
     out->CopyFromMat(in);
@@ -571,7 +591,7 @@ class Rescale : public UpdatableComponent {
     gradient_aux.MulElements(input);
     scale_data_grad_.AddRowSumMat(1.0, gradient_aux, 0.0);
     // update
-    scale_data_.AddVec(-lr, scale_data_grad_);
+    scale_data_.AddVec(-lr*learn_rate_coef_, scale_data_grad_);
   }
 
   // Data accessors
@@ -582,10 +602,14 @@ class Rescale : public UpdatableComponent {
     KALDI_ASSERT(scale_data.Dim() == scale_data_.Dim());
     scale_data_.CopyFromVec(scale_data);
   }
+  void SetLearnRateCoef(float c) {
+    learn_rate_coef_ = c;
+  }
 
  protected:
   CuVector<BaseFloat> scale_data_;
   CuVector<BaseFloat> scale_data_grad_;
+  BaseFloat learn_rate_coef_;
 };
 
 

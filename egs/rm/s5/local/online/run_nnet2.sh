@@ -6,6 +6,9 @@
 stage=1
 train_stage=-10
 use_gpu=true
+dir=exp/nnet2_online/nnet_a
+
+
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -21,7 +24,6 @@ EOF
   parallel_opts="-l gpu=1" 
   num_threads=1
   minibatch_size=512
-  dir=exp/nnet2_online/nnet_gpu
 else
   # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
   # almost the same, but this may be a little bit slow.
@@ -47,13 +49,17 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  steps/online/nnet2/extract_ivectors_online2.sh --cmd "$train_cmd" --nj 4 \
-    data/train exp/nnet2_online/extractor exp/nnet2_online/ivectors || exit 1;
+  # having a larger number of speakers is helpful for generalization, and to
+  # handle per-utterance decoding well (iVector starts at zero).
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train data/train_max2
+
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
+    data/train_max2 exp/nnet2_online/extractor exp/nnet2_online/ivectors || exit 1;
 fi
 
 
 if [ $stage -le 4 ]; then
-  steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
+  steps/nnet2/train_pnorm_simple.sh --stage $train_stage \
     --splice-width 7 \
     --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors \
@@ -62,7 +68,8 @@ if [ $stage -le 4 ]; then
     --minibatch-size "$minibatch_size" \
     --parallel-opts "$parallel_opts" \
     --num-jobs-nnet 4 \
-    --num-epochs-extra 10 --add-layers-period 1 \
+    --num-epochs 25 \
+    --add-layers-period 1 \
     --num-hidden-layers 2 \
     --mix-up 4000 \
     --initial-learning-rate 0.02 --final-learning-rate 0.004 \

@@ -1,6 +1,7 @@
 // nnet/nnet-example.cc
 
 // Copyright 2012-2013  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2014       Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -43,6 +44,7 @@ void NnetExample::Write(std::ostream &os, bool binary) const {
   spk_info.Write(os, binary);
   WriteToken(os, binary, "</NnetExample>");
 }
+
 void NnetExample::Read(std::istream &is, bool binary) {
   // Note: weight, label, input_frames, left_context and spk_info are members.
   // This is a struct.
@@ -66,7 +68,23 @@ void NnetExample::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "</NnetExample>");
 }
 
+void NnetExample::SetLabelSingle(int32 pdf_id, BaseFloat weight) {
+  labels.clear();
+  labels.push_back(std::make_pair(pdf_id, weight));
+}
 
+int32 NnetExample::GetLabelSingle(BaseFloat *weight) {
+  BaseFloat max = -1.0;
+  int32 pdf_id = -1;
+  for (int32 i = 0; i < labels.size(); i++) {
+    if (labels[i].second > max) {
+      pdf_id = labels[i].first;
+      max = labels[i].second;
+    }
+  }
+  if (weight != NULL) *weight = max;
+  return pdf_id;
+}
 
 void ExamplesRepository::AcceptExamples(
     std::vector<NnetExample> *examples) {

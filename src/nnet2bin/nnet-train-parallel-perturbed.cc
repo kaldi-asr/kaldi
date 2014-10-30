@@ -33,16 +33,15 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Train the neural network parameters with backprop and stochastic\n"
-        "gradient descent using minibatches.  The training frames and labels\n"
-        "are read via a pipe from nnet-randomize-frames.  This is like nnet-train-parallel,\n"
-        "using multiple threads in a Hogwild type of update, but also adding\n"
-        "perturbed training (see src/nnet2/train-nnet-perturbed.h for info)\n"
+        "gradient descent using minibatches.  As nnet-train-parallel but\n"
+        "perturbs the input features by going a certain distance down the\n"
+        "gradient obtained by backprop (can help for small datasets)\n"
         "\n"
         "Usage:  nnet-train-parallel-perturbed [options] <model-in> <training-examples-in> <model-out>\n"
         "\n"
         "e.g.:\n"
-        "nnet-randomize-frames [args] | nnet-train-parallel-pertured \\\n"
-        " --within-covar=within.spmat --num-threads=8 --target-objf-change=0.2 1.nnet ark:- 2.nnet\n";
+        "nnet-train-parallel-pertured \\\n"
+        " --within-covar=within.spmat --num-threads=8 --target-objf-change=0.2 1.nnet ark:1.egs 2.nnet\n";
     
     bool binary_write = true;
     bool zero_stats = true;

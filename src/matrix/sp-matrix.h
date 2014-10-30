@@ -295,14 +295,14 @@ class SpMatrix : public PackedMatrix<Real> {
 
   ///  Floors this symmetric matrix to the matrix
   /// alpha * Floor, where the matrix Floor is positive
-  /// definite.  If is_psd = true, then the
-  /// matrix (*this) must be positive semidefinite.
+  /// definite.
   /// It is floored in the sense that after flooring,
   ///  x^T (*this) x  >= x^T (alpha*Floor) x.
   /// This is accomplished using an Svd.  It will crash
-  /// if Floor is not positive definite. returns #floored
+  /// if Floor is not positive definite. Returns the number of
+  /// elements that were floored.
   int ApplyFloor(const SpMatrix<Real> &Floor, Real alpha = 1.0,
-                 bool verbose = false, bool is_psd = true);
+                 bool verbose = false);
 
   /// Floor: Given a positive semidefinite matrix, floors the eigenvalues
   /// to the specified quantity.  A previous version of this function had

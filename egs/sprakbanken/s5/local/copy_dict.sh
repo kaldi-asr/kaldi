@@ -26,19 +26,22 @@ mkdir -p $dir
 # This lexicon was created using eSpeak. 
 # To extend the setup, see local/dict_prep.sh
 
-# Copy pre-made phone table 
+# Copy pre-made phone table and questions file
 cp local/dictsrc/complexphones.txt $dir/nonsilence_phones.txt
+cp local/dictsrc/extra_questions.txt $dir/extra_questions.txt
 
 # Copy pre-made lexicon
-wget http://www.openslr.org/resources/8/lexicon-da.tar.gz --directory-prefix=data/local/data/download
-tar -xzf data/local/data/download/lexicon-da.tar.gz -C $dir
+wget http://www.openslr.org/resources/8/lexicon-da.tgz --directory-prefix=data/local/data/download
+tar -xzf data/local/data/download/lexicon-da.tgz -C $dir
 
 
 # silence phones, one per line.
 echo SIL > $dir/silence_phones.txt
 echo SIL > $dir/optional_silence.txt
 
-touch $dir/extra_questions.txt
+
+
+
 
 wait
 

@@ -7,7 +7,7 @@ KALDI_ROOT=/homes/eva/q/qghoshal/src/kaldi/trunk
 KALDISRC=$KALDI_ROOT/src
 KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin  
 KALDIBIN=$KALDIBIN:$KALDISRC/gmmbin:$KALDISRC/latbin:$KALDISRC/nnetbin
-KALDIBIN=$KALDIBIN:$KALDISRC/sgmmbin:$KALDISRC/tiedbin:$KALDISRC/lm
+KALDIBIN=$KALDIBIN:$KALDISRC/sgmmbin:$KALDISRC/lm
 
 FSTBIN=$KALDI_ROOT/tools/openfst/bin
 LMBIN=$KALDI_ROOT/tools/irstlm/bin

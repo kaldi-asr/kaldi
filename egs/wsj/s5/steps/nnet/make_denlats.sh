@@ -110,6 +110,15 @@ fi
 feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet ark:- ark:- |"
 
 
+# if this job is interrupted by the user, we want any background jobs to be
+# killed too.
+cleanup() {
+  local pids=$(jobs -pr)
+  [ -n "$pids" ] && kill $pids
+}
+trap "cleanup" INT QUIT TERM EXIT
+
+
 echo "$0: generating denlats from data '$data', putting lattices in '$dir'"
 #1) Generate the denominator lattices
 if [ $sub_split -eq 1 ]; then
@@ -124,15 +133,25 @@ if [ $sub_split -eq 1 ]; then
       --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
       $dir/dengraph/HCLG.fst "$feats" "scp:$dir/lat.store_separately_as_gz.scp" || exit 1;
 else
-  for n in `seq $nj`; do
-    if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $srcdir/final.mdl ]; then
+  # each job from 1 to $nj is split into multiple pieces (sub-split), and we aim
+  # to have at most two jobs running at each time.  The idea is that if we have stragglers
+  # from one job, we can be processing another one at the same time.
+  rm $dir/.error 2>/dev/null
+
+  prev_pid=
+  for n in `seq $[nj+1]`; do
+    if [ $n -gt $nj ]; then
+      this_pid=
+    elif [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $srcdir/final.mdl ]; then
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
+      this_pid=
     else
       sdata2=$data/split$nj/$n/split$sub_split;
       if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata/$n/feats.scp ]; then
         split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
       fi
       mkdir -p $dir/log/$n
+      mkdir -p $dir/part
       feats_subset=$(echo $feats | sed s:JOB/:$n/split$sub_split/JOB/:g)
       # Prepare 'scp' for storing lattices separately and gzipped
       for k in `seq $sub_split`; do
@@ -143,9 +162,16 @@ else
       $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
           --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
-          $dir/dengraph/HCLG.fst "$feats_subset" scp:$dir/lat.$n.store_separately_as_gz.scp || exit 1;
-      touch $dir/.done.$n
+          $dir/dengraph/HCLG.fst "$feats_subset" scp:$dir/lat.$n.store_separately_as_gz.scp || touch .error &
+      this_pid=$!
     fi
+    if [ ! -z "$prev_pid" ]; then  # Wait for the previous job; merge the previous set of lattices.
+      wait $prev_pid
+      [ -f $dir/.error ] && echo "$0: error generating denominator lattices" && exit 1;
+      touch $dir/.done.$prev_n
+    fi
+    prev_n=$n
+    prev_pid=$this_pid
   done
 fi
 

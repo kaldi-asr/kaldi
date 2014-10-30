@@ -312,7 +312,8 @@ for the subsequential symbol, as follows:
  grep '#' data/phones_disambig.txt | awk '{print $2}' > $dir/disambig_phones.list
  subseq_sym=`tail -1 data/phones_disambig.txt | awk '{print $2+1;}'`
 \endverbatim
- We could then create C with the following command:
+ We could then create C with the following command (however, see below
+ regarding fstcomposecontext; we don't do this in practice as it is inefficient).
 \verbatim
  fstmakecontextfst --read-disambig-syms=$dir/disambig_phones.list \
  --write-disambig-syms=$dir/disambig_ilabels.list data/phones.txt $subseq_sym \

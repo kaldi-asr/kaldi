@@ -103,13 +103,24 @@ int main(int argc, char *argv[]) {
 
     BaseFloat chunk_length_secs = 0.05;
     bool do_endpointing = false;
+    bool online = true;
     
     po.Register("chunk-length", &chunk_length_secs,
-                "Length of chunk size in seconds, that we process.");
+                "Length of chunk size in seconds, that we process.  Set to <= 0 "
+                "to use all input in one chunk.");
     po.Register("word-symbol-table", &word_syms_rxfilename,
                 "Symbol table for words [for debug output]");
     po.Register("do-endpointing", &do_endpointing,
                 "If true, apply endpoint detection");
+    po.Register("online", &online,
+                "You can set this to false to disable online iVector estimation "
+                "and have all the data for each utterance used, even at "
+                "utterance start.  This is useful where you just want the best "
+                "results and don't care about online operation.  Setting this to "
+                "false has the same effect as setting "
+                "--use-most-recent-ivector=true and --greedy-ivector-extractor=true "
+                "in the file given to --ivector-extraction-config, and "
+                "--chunk-length=-1.");
     
     feature_config.Register(&po);
     nnet2_decoding_config.Register(&po);
@@ -129,6 +140,12 @@ int main(int argc, char *argv[]) {
         clat_wspecifier = po.GetArg(5);
     
     OnlineNnet2FeaturePipelineInfo feature_info(feature_config);
+
+    if (!online) {
+      feature_info.ivector_extractor_info.use_most_recent_ivector = true;
+      feature_info.ivector_extractor_info.greedy_ivector_extractor = true;
+      chunk_length_secs = -1.0;
+    }
     
     TransitionModel trans_model;
     nnet2::AmNnet nnet;
@@ -185,8 +202,13 @@ int main(int argc, char *argv[]) {
         OnlineTimer decoding_timer(utt);
         
         BaseFloat samp_freq = wave_data.SampFreq();
-        int32 chunk_length = int32(samp_freq * chunk_length_secs);
-        if (chunk_length == 0) chunk_length = 1;
+        int32 chunk_length;
+        if (chunk_length_secs > 0) {
+          chunk_length = int32(samp_freq * chunk_length_secs);
+          if (chunk_length == 0) chunk_length = 1;
+        } else {
+          chunk_length = std::numeric_limits<int32>::max();
+        }
         
         int32 samp_offset = 0;
         while (samp_offset < data.Dim()) {
@@ -231,8 +253,8 @@ int main(int argc, char *argv[]) {
         num_done++;
       }
     }
-
-    timing_stats.Print();
+    timing_stats.Print(online);
+    
     KALDI_LOG << "Decoded " << num_done << " utterances, "
               << num_err << " with errors.";
     KALDI_LOG << "Overall likelihood per frame was " << (tot_like / num_frames)

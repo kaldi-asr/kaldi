@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2013  Brno University of Technology (Author: Karel Vesely),
+# Copyright 2012-2014  Brno University of Technology (Author: Karel Vesely),
 #                 
 # Apache 2.0.
 #
@@ -11,6 +11,7 @@
 nj=4
 cmd=run.pl
 transform_dir=
+raw_transform_dir=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -47,43 +48,51 @@ cmvn_opts=`cat $gmmdir/cmvn_opts 2>/dev/null`
 mkdir -p $data $logdir $feadir
 [[ -d $sdata && $srcdata/feats.scp -ot $sdata ]] || split_data.sh $srcdata $nj || exit 1;
 
+# Check files exist,
 for f in $sdata/1/feats.scp $sdata/1/cmvn.scp; do
-  [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "$0: Missing file $f" && exit 1;
 done
+if [ ! -z "$transform_dir" ]; then
+  [ ! -f $transform_dir/trans.1 ] && "$0: Missing file $transform_dir/trans.1" && exit 1;
+fi
+if [ ! -z "$raw_transform_dir" ]; then
+  [ ! -f $raw_transform_dir/raw_trans.1 ] && "$0: Missing file $raw_transform_dir/raw_trans.1" && exit 1;
+fi
 
-if [ -f $gmmdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+# Figure-out the feature-type,
+feat_type=delta # Default
+[ -f $gmmdir/final.mat ] && feat_type=lda
+[ -f $gmmdir/final.mat -a ! -z "$transform_dir" ] && feat_type=lda_fmllr
+[ ! -z "$raw_transform_dir" ] && feat_type=raw_fmllr
+[ ! -z "$raw_transform_dir" -a -f $gmmdir/final.mat -a ! -z "$transform_dir" ] && feat_type=raw_fmllr_lda_fmllr
 echo "$0: feature type is $feat_type";
 
+# Hand-code the feature pipeline,
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $gmmdir/final.mat ark:- ark:- |";;
+  lda_fmllr) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $gmmdir/final.mat ark:- ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk \"ark:cat $transform_dir/trans.* |\" ark:- ark:- |";;
+  raw_fmllr) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$raw_transform_dir/raw_trans.JOB ark:- ark:- |";;
+  raw_fmllr_lda_fmllr) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$cur_trans_dir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $gmmdir/final.mat ark:- ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk \"ark:cat $transform_dir/trans.* |\" ark:- ark:- |";;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
 
-if [ ! -z "$transform_dir" ]; then # add transforms to features...
-  echo "Using fMLLR transforms from $transform_dir"
-  [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist." && exit 1
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk \"ark:cat $transform_dir/trans.* |\" ark:- ark:- |"
-fi
-
-# prepare the dir
+# Prepare the output dir,
 cp $srcdata/* $data 2>/dev/null; rm $data/{feats,cmvn}.scp;
-
-# make $bnfeadir an absolute pathname.
+# Make $bnfeadir an absolute pathname,
 feadir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $feadir ${PWD}`
 
+# Store the output-features,
 name=`basename $data`
-
-# forward the feats
 $cmd JOB=1:$nj $logdir/make_fmllr_feats.JOB.log \
   copy-feats "$feats" \
   ark,scp:$feadir/feats_fmllr_$name.JOB.ark,$feadir/feats_fmllr_$name.JOB.scp || exit 1;
    
-# merge the SCPs
+# Merge the scp,
 for n in $(seq 1 $nj); do
   cat $feadir/feats_fmllr_$name.$n.scp 
 done > $data/feats.scp
 
-echo "$0 finished... $srcdata -> $data ($gmmdir)"
+echo "$0: Done!, type $feat_type, $srcdata --> $data, using : raw-trans ${raw_transform_dir:-None}, gmm $gmmdir, trans ${transform_dir:-None}"
 
 exit 0;

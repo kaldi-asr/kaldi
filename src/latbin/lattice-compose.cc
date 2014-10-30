@@ -45,9 +45,13 @@ int main(int argc, char *argv[]) {
         " or: lattice-compose ark:1.lats G.fst ark:composed.lats\n";
     
     ParseOptions po(usage);
+
+    int32 num_states_cache = 50000;
     int32 phi_label = fst::kNoLabel; // == -1
     po.Register("phi-label", &phi_label, "If >0, the label on backoff arcs of the LM");
-    
+    po.Register("num-states-cache", &num_states_cache,
+                "Number of states we cache when mapping LM FST to lattice type. "
+                "More -> more memory but faster.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -80,10 +84,11 @@ int main(int argc, char *argv[]) {
       }
       if (phi_label > 0)
         PropagateFinal(phi_label, fst2);
-                       
+
+      fst::CacheOptions cache_opts(true, num_states_cache);
       fst::StdToLatticeMapper<BaseFloat> mapper;
       fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
-          mapped_fst2(*fst2, mapper);      
+          mapped_fst2(*fst2, mapper, cache_opts);
       for (; !lattice_reader1.Done(); lattice_reader1.Next()) {
         std::string key = lattice_reader1.Key();
         KALDI_VLOG(1) << "Processing lattice for key " << key;

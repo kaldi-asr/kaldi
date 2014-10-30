@@ -170,7 +170,8 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     nnet.Read(model_filename);
     // using activations directly: remove softmax, if present
-    if (nnet.GetComponent(nnet.NumComponents()-1).GetType() == Component::kSoftmax) {
+    if (nnet.GetComponent(nnet.NumComponents()-1).GetType() ==
+        kaldi::nnet1::Component::kSoftmax) {
       KALDI_LOG << "Removing softmax from the nnet " << model_filename;
       nnet.RemoveComponent(nnet.NumComponents()-1);
     } else {
@@ -309,7 +310,7 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      KALDI_VLOG(1) << "Processed lattice for utterance " << num_done + 1
+      KALDI_VLOG(1) << "Lattice #" << num_done + 1 << " processed"
                     << " (" << utt << "): found " << den_lat.NumStates()
                     << " states and " << fst::NumArcs(den_lat) << " arcs.";
 

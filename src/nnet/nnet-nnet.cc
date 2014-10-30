@@ -19,6 +19,7 @@
 
 #include "nnet/nnet-nnet.h"
 #include "nnet/nnet-component.h"
+#include "nnet/nnet-parallel-component.h"
 #include "nnet/nnet-activation.h"
 #include "nnet/nnet-affine-transform.h"
 #include "nnet/nnet-various.h"
@@ -35,7 +36,7 @@ Nnet::Nnet(const Nnet& other) {
   }
   // create empty buffers
   propagate_buf_.resize(NumComponents()+1);
-  backpropagate_buf_.resize(NumComponents()-1);
+  backpropagate_buf_.resize(NumComponents()+1);
   // copy train opts
   SetTrainOptions(other.opts_);
   Check(); 
@@ -49,7 +50,7 @@ Nnet & Nnet::operator = (const Nnet& other) {
   }
   // create empty buffers
   propagate_buf_.resize(NumComponents()+1);
-  backpropagate_buf_.resize(NumComponents()-1);
+  backpropagate_buf_.resize(NumComponents()+1);
   // copy train opts
   SetTrainOptions(other.opts_); 
   Check();
@@ -91,55 +92,24 @@ void Nnet::Backpropagate(const CuMatrixBase<BaseFloat> &out_diff, CuMatrix<BaseF
   //
 
   // 0 layers
-  if(NumComponents() == 0) { 
-    (*in_diff) = out_diff; //copy
-    return;
-  }
+  if (NumComponents() == 0) { (*in_diff) = out_diff; return; }
 
-  // we need at least L+1 input bufers
-  KALDI_ASSERT((int32)propagate_buf_.size() >= NumComponents()+1);
-  // we need at least L-1 error derivative bufers
-  KALDI_ASSERT((int32)backpropagate_buf_.size() >= NumComponents()-1);
+  KALDI_ASSERT((int32)propagate_buf_.size() == NumComponents()+1);
+  KALDI_ASSERT((int32)backpropagate_buf_.size() == NumComponents()+1);
 
-  // 1 layer
-  if(NumComponents() == 1) { 
-    components_[0]->Backpropagate(propagate_buf_[0], propagate_buf_[1], out_diff, in_diff);
-    if (components_[0]->IsUpdatable()) {
-      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[0]);
-      uc->Update(propagate_buf_[0], out_diff);
-    }
-    return;
-  }
-
-  // >1 layers
-  // we don't copy the out_diff to buffers, we use it as it is...
-  int32 i = components_.size()-1;
-  components_.back()->Backpropagate(propagate_buf_[i], propagate_buf_[i+1], 
-                              out_diff, &backpropagate_buf_[i-1]);
-  if (components_[i]->IsUpdatable()) {
-    UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[i]);
-    uc->Update(propagate_buf_[i], out_diff);
-  }
-
-  // backpropagate by using buffers
-  for (i--; i >= 1; i--) {
+  // copy out_diff to last buffer
+  backpropagate_buf_[NumComponents()] = out_diff;
+  // backpropagate using buffers
+  for (int32 i = NumComponents()-1; i >= 0; i--) {
     components_[i]->Backpropagate(propagate_buf_[i], propagate_buf_[i+1],
-                            backpropagate_buf_[i], &backpropagate_buf_[i-1]);
+                            backpropagate_buf_[i+1], &backpropagate_buf_[i]);
     if (components_[i]->IsUpdatable()) {
       UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[i]);
-      uc->Update(propagate_buf_[i], backpropagate_buf_[i]);
+      uc->Update(propagate_buf_[i], backpropagate_buf_[i+1]);
     }
   }
-
-  // now backpropagate through first layer, 
-  components_[0]->Backpropagate(propagate_buf_[0], propagate_buf_[1],
-                                backpropagate_buf_[0], in_diff);
-
-  // update the first layer 
-  if (components_[0]->IsUpdatable()) {
-    UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[0]);
-    uc->Update(propagate_buf_[0], backpropagate_buf_[0]);
-  }
+  // eventually export the derivative
+  if (NULL != in_diff) (*in_diff) = backpropagate_buf_[0];
 
   //
   // End of Backpropagation
@@ -205,22 +175,37 @@ void Nnet::SetComponent(int32 c, Component *component) {
 }
 
 void Nnet::AppendComponent(Component* dynamically_allocated_comp) {
+  // append,
   components_.push_back(dynamically_allocated_comp);
+  // create training buffers,
+  propagate_buf_.resize(NumComponents()+1);
+  backpropagate_buf_.resize(NumComponents()+1);
+  //
   Check();
 }
 
 void Nnet::AppendNnet(const Nnet& nnet_to_append) {
+  // append,
   for(int32 i=0; i<nnet_to_append.NumComponents(); i++) {
     AppendComponent(nnet_to_append.GetComponent(i).Copy());
   }
+  // create training buffers,
+  propagate_buf_.resize(NumComponents()+1);
+  backpropagate_buf_.resize(NumComponents()+1);
+  //
   Check();
 }
 
 void Nnet::RemoveComponent(int32 component) {
   KALDI_ASSERT(component < NumComponents());
+  // remove,
   Component* ptr = components_[component];
   components_.erase(components_.begin()+component);
   delete ptr;
+  // create training buffers,
+  propagate_buf_.resize(NumComponents()+1);
+  backpropagate_buf_.resize(NumComponents()+1);
+  // 
   Check();
 }
 
@@ -413,7 +398,7 @@ void Nnet::Read(std::istream &is, bool binary) {
   }
   // create empty buffers
   propagate_buf_.resize(NumComponents()+1);
-  backpropagate_buf_.resize(NumComponents()-1);
+  backpropagate_buf_.resize(NumComponents()+1);
   // reset learn rate
   opts_.learn_rate = 0.0;
   
@@ -475,10 +460,15 @@ std::string Nnet::InfoPropagate() const {
   std::ostringstream ostr;
   // forward-pass buffer stats
   ostr << "### Forward propagation buffer content :\n";
-  for (int32 i=0; i<propagate_buf_.size(); i++) {
+  ostr << "[0] output of <Input> " << MomentStatistics(propagate_buf_[0]) << std::endl;
+  for (int32 i=0; i<NumComponents(); i++) {
     ostr << "["<<1+i<< "] output of " 
-         << (i==0 ? "<Input>" : Component::TypeToMarker(components_[i-1]->GetType()))
-         << MomentStatistics(propagate_buf_[i]) << std::endl;
+         << Component::TypeToMarker(components_[i]->GetType())
+         << MomentStatistics(propagate_buf_[i+1]) << std::endl;
+    // nested networks too...
+    if (Component::kParallelComponent == components_[i]->GetType()) {
+      ostr << dynamic_cast<ParallelComponent*>(components_[i])->InfoPropagate();
+    }
   }
   return ostr.str();
 }
@@ -487,10 +477,15 @@ std::string Nnet::InfoBackPropagate() const {
   std::ostringstream ostr;
   // forward-pass buffer stats
   ostr << "### Backward propagation buffer content :\n";
-  for (int32 i=0; i<backpropagate_buf_.size(); i++) {
+  ostr << "[0] diff of <Input> " << MomentStatistics(backpropagate_buf_[0]) << std::endl;
+  for (int32 i=0; i<NumComponents(); i++) {
     ostr << "["<<1+i<< "] diff-output of " 
          << Component::TypeToMarker(components_[i]->GetType())
-         << MomentStatistics(backpropagate_buf_[i]) << std::endl;
+         << MomentStatistics(backpropagate_buf_[i+1]) << std::endl;
+    // nested networks too...
+    if (Component::kParallelComponent == components_[i]->GetType()) {
+      ostr << dynamic_cast<ParallelComponent*>(components_[i])->InfoBackPropagate();
+    }
   }
   return ostr.str();
 }
@@ -498,13 +493,17 @@ std::string Nnet::InfoBackPropagate() const {
 
 
 void Nnet::Check() const {
+  // check we have correct number of buffers,
+  KALDI_ASSERT(propagate_buf_.size() == NumComponents()+1)
+  KALDI_ASSERT(backpropagate_buf_.size() == NumComponents()+1)
+  // check dims,
   for (size_t i = 0; i + 1 < components_.size(); i++) {
     KALDI_ASSERT(components_[i] != NULL);
     int32 output_dim = components_[i]->OutputDim(),
       next_input_dim = components_[i+1]->InputDim();
     KALDI_ASSERT(output_dim == next_input_dim);
   }
-  // check for nan/inf in network weights
+  // check for nan/inf in network weights,
   Vector<BaseFloat> weights;
   GetParams(&weights);
   BaseFloat sum = weights.Sum();

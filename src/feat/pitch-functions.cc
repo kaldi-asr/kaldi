@@ -919,10 +919,10 @@ void OnlinePitchFeatureImpl::RecomputeBacktraces() {
   BaseFloat mean_square = sumsq / num_samp - mean * mean;
   
   bool must_recompute = false;
-  BaseFloat threshold = 0.1;
+  BaseFloat threshold = 0.01;
   for (int32 frame = 0; frame < num_frames; frame++)
     if (!ApproxEqual(nccf_info_[frame]->mean_square_energy,
-                     mean_square), threshold)
+                     mean_square, threshold))
       must_recompute = true;
   
   if (!must_recompute) {

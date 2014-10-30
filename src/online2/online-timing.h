@@ -41,7 +41,10 @@ class OnlineTimer;
 class OnlineTimingStats {
  public:
   OnlineTimingStats();
-  void Print();
+  /// Here, if "online == false" we take into account that the setup was used in
+  /// not-really-online mode where the chunk length was the whole file.  We need
+  /// to change the way we interpret the stats and print results, in this case.
+  void Print(bool online = true);
  protected:
   friend class OnlineTimer;
   int32 num_utts_;
@@ -90,7 +93,11 @@ class OnlineTimer {
   /// This call, which should be made after decoding is done,
   /// writes the stats to the object that accumulates them.
   void OutputStats(OnlineTimingStats *stats);
-      
+
+  /// Returns the simulated time elapsed in seconds since the timer was started;
+  /// this equals waited_ plus the real time elapsed.
+  double Elapsed();
+  
  private:
   std::string utterance_id_;
   Timer timer_;

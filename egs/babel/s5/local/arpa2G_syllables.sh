@@ -44,7 +44,7 @@ gunzip -c $lmfile | \
     fstcompile --isymbols=$langdir/words.txt \
     --osymbols=$langdir/words.txt  --keep_isymbols=false --keep_osymbols=false | \
     fstrhocompose "$rho" - $destdir/rho.fst | \
-    fstrmepsilon > $destdir/G.fst || exit 1
+    fstrmepsilon | fstarcsort --sort_type=ilabel > $destdir/G.fst || exit 1
 
 fstisstochastic $destdir/G.fst || true
 

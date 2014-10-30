@@ -88,7 +88,11 @@ utils/subset_data_dir.sh data/train 8000 data/train_8k
 utils/subset_data_dir.sh data/train_male 8000 data/train_male_8k
 utils/subset_data_dir.sh data/train_female 8000 data/train_female_8k
 
-
+# The recipe currently uses delta-window=3 and delta-order=2. However
+# the accuracy is almost as good using delta-window=4 and delta-order=1
+# and could be faster due to lower dimensional features.  Alternative
+# delta options (e.g., --delta-window 4 --delta-order 1) can be provided to
+# sid/train_diag_ubm.sh.  The options will be propagated to the other scripts.
 sid/train_diag_ubm.sh --nj 30 --cmd "$train_cmd" data/train_4k 2048 \
     exp/diag_ubm_2048
 
@@ -130,7 +134,7 @@ sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \
 # see exp/gender_id_fisher/error_rate where it is also printed.
 sid/gender_id.sh --cmd "$train_cmd" --nj 150 exp/full_ubm_2048{,_male,_female} \
   data/train exp/gender_id_train
-# Gender-id error rate is 3.69%
+# Gender-id error rate is 3.41%
 
 
 # Extract the iVectors for the Fisher data.
@@ -156,7 +160,6 @@ sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
    exp/extractor_2048_male data/sre08_test_short3_male \
    exp/ivectors_sre08_test_short3_male
 
-
 ### Demonstrate simple cosine-distance scoring:
 
 trials=data/sre08_trials/short2-short3-female.trials
@@ -170,7 +173,7 @@ local/score_sre08.sh $trials foo
 # Results for Female:
 # Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:  18.12  20.42   4.78  19.27  15.77  16.95  10.31   7.22   7.89
+#        EER:  12.64  19.72   4.78  18.56  15.32  16.71  10.42   7.22   8.42
 
 trials=data/sre08_trials/short2-short3-male.trials
 cat $trials | awk '{print $1, $2}' | \
@@ -183,7 +186,7 @@ local/score_sre08.sh $trials foo
 # Results for Male:
 # Scoring against data/sre08_trials/short2-short3-male.trials
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:  16.27  19.18   3.63  18.53  14.35  14.37   8.35   6.61   4.82
+#        EER:  11.05  18.55   3.23  17.84  14.58  14.22   8.58   6.61   4.82
 
 # The following shows a more direct way to get the scores.
 # condition=6
@@ -214,7 +217,7 @@ local/score_sre08.sh $trials foo
 # Results for Female:
 # Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:  11.84   9.91   2.09   9.38  10.66  12.02   8.76   6.46   7.89
+#        EER:   7.47   9.40   1.49   8.61   8.86  10.10   8.59   5.83   6.84
 
 ivector-compute-lda --dim=150 --total-covariance-factor=0.1 \
  'ark:ivector-normalize-length scp:exp/ivectors_train_male/ivector.scp ark:- |' \
@@ -232,7 +235,7 @@ local/score_sre08.sh $trials foo
 # Results for Male:
 # Scoring against data/sre08_trials/short2-short3-male.trials
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:  10.57   9.45   0.81   9.28   8.88   7.50   7.09   5.01   3.51
+#        EER:   6.29   8.32   1.61   8.23   9.11   7.66   7.32   5.01   3.07
 
 ### Demonstrate PLDA scoring:
 
@@ -253,7 +256,7 @@ local/score_sre08.sh $trials foo
 # Result for Female is below:
 # Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:  14.98  11.78   1.79  12.09  10.96  11.06   7.48   4.69   4.47
+#        EER:   7.58  11.01   1.19  11.23  10.21  10.22   7.48   4.82   4.47
 
 trials=data/sre08_trials/short2-short3-male.trials
 ivector-compute-plda ark:data/train_male/spk2utt \
@@ -268,11 +271,8 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utt
 # Result for Male is below:
 # Scoring against data/sre08_trials/short2-short3-male.trials
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:  11.36   9.22   1.21   9.56   7.97   7.19   5.72   3.19   2.19
+#        EER:   5.48   8.77   1.21   9.03   7.29   6.41   5.95   3.42   1.75
 
-
-# The next line is how you'd test the domain-adaptation stuff.
-# I haven't tested this yet in the up-to-date setup.
 
 # first, female.
 trials=data/sre08_trials/short2-short3-female.trials
@@ -283,12 +283,11 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_u
    scp:exp/ivectors_sre08_test_short3_female/ivector.scp \
    "cat '$trials' | awk '{print \$1, \$2}' |" foo; local/score_sre08.sh $trials foo
 # Results:
-  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:   9.05   7.89   1.49   8.12  10.51  10.46   6.76   4.82   4.74
- # Baseline (repeated from above):
- #  Condition:      0      1      2      3      4      5      6      7      8
- #        EER:  14.98  11.78   1.79  12.09  10.96  11.06   7.48   4.69   4.47
-
+#  Condition:      0      1      2      3      4      5      6      7      8
+#        EER:   6.34   7.00   1.19   7.19   9.76   9.38   6.76   4.69   4.74
+# Baseline (repeated from above):
+#  Condition:      0      1      2      3      4      5      6      7      8
+#        EER:   7.58  11.01   1.19  11.23  10.21  10.22   7.48   4.82   4.47
 
 
 # next, male.
@@ -300,8 +299,9 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utt
    scp:exp/ivectors_sre08_test_short3_male/ivector.scp \
    "cat '$trials' | awk '{print \$1, \$2}' |" foo; local/score_sre08.sh $trials foo
 
-#  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:   6.66   6.14   1.21   6.34   7.97   7.19   6.52   4.56   3.07
- # baseline is as follows, repeated from above.  Focus on condition 0 (= all).
- #  Condition:      0      1      2      3      4      5      6      7      8
- #        EER:  11.36   9.22   1.21   9.56   7.97   7.19   5.72   3.19   2.19
+# Results:
+#  Condition:        0      1      2      3      4      5      6      7      8
+#          EER:   5.12   5.92   1.21   6.06   7.74   6.41   6.41   4.56   2.63
+# Baseline is as follows, repeated from above.  Focus on condition 0 (= all).
+#  Condition:       0      1      2      3      4      5      6      7      8
+#         EER:   5.48   8.77   1.21   9.03   7.29   6.41   5.95   3.42   1.75

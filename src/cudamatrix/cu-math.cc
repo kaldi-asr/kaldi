@@ -43,7 +43,7 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(weight->NumCols(), CU2DBLOCK), n_blocks(weight->NumRows(), CU2DBLOCK));
 
-    cuda_regularize_l1(dimGrid, dimBlock, weight->data_, grad->data_, l1, lr, weight->Dim());
+    cuda_regularize_l1(dimGrid, dimBlock, weight->data_, grad->data_, l1, lr, weight->Dim(), grad->Stride());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());

@@ -22,7 +22,6 @@ parallel_opts=  # If you supply num-threads, you should supply this too.
 scoring_opts=
 skip_scoring=false
 feat_type=
-spk_vecs_dir=
 online_ivector_dir=
 minimize=false
 # End configuration section.
@@ -121,13 +120,6 @@ elif grep 'transform-feats --utt2spk' $srcdir/log/train.1.log >&/dev/null; then
 fi
 ##
 
-if [ ! -z $spk_vecs_dir ]; then
-  [ ! -f $spk_vecs_dir/vecs.1 ] && echo "No such file $spk_vecs_dir/vecs.1" && exit 1;
-  spk_vecs_opt=("--spk-vecs=ark:cat $spk_vecs_dir/vecs.*|" "--utt2spk=ark:$data/utt2spk")
-else
-  spk_vecs_opt=()
-fi
-
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
   # note: subsample-feats, with negative n, will repeat each feature -n times.
@@ -136,7 +128,7 @@ fi
 
 if [ $stage -le 1 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
-    nnet-latgen-faster$thread_string "${spk_vecs_opt[@]}" \
+    nnet-latgen-faster$thread_string \
      --minimize=$minimize --max-active=$max_active --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
      --word-symbol-table=$graphdir/words.txt "$model" \

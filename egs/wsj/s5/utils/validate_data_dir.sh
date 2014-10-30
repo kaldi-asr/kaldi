@@ -276,4 +276,4 @@ for f in vad.scp utt2lang; do
   fi
 done
 
-echo "Successfully validated data-directory $data"
+echo "$0: Successfully validated data-directory $data"

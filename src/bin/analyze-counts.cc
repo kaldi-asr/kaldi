@@ -33,8 +33,8 @@ int main(int argc, char *argv[]) {
   typedef kaldi::uint64 uint64;
   try {
     const char *usage =
-        "Counts element frequencies from integer vector table.\n"
-        "(eg. for example to get pdf-counts to estimate DNN-output priros, or data analysis)\n"
+        "Computes element counts from integer vector table.\n"
+        "(e.g. for example to get pdf-counts to estimate DNN-output priors, for data analysis)\n"
         "Verbosity : level 1 => print frequencies and histogram\n"
         "\n"
         "Usage:  analyze-counts  [options] <alignments-rspecifier> <counts-wxfilname>\n"
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
     for(size_t i = 0; i < counts.size(); i++) {
       if(counts_nozero[i] == 0) {
         KALDI_WARN << "Zero count for element " << i << ", force setting to one."
-                   << " This avoids divide-by-zero when used counts used in decoding.";
+                   << " This avoids divide-by-zero when we use the counts in decoding.";
         counts_nozero[i]++;
       }
     }

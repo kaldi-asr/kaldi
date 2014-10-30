@@ -162,7 +162,7 @@ class LatticeWordAligner {
       StateId output_state = lat_out_->AddState();
       map_[tuple] = output_state;
       if (add_to_queue)
-        queue_.push_front(std::make_pair(tuple, output_state));
+        queue_.push_back(std::make_pair(tuple, output_state));
       return output_state;
     } else {
       return iter->second;
@@ -334,7 +334,7 @@ class LatticeWordAligner {
   int32 max_states_;
   CompactLattice *lat_out_;
 
-  std::deque<std::pair<Tuple, StateId> > queue_;
+  std::vector<std::pair<Tuple, StateId> > queue_;
   
   
   
@@ -588,12 +588,11 @@ void LatticeWordAligner::ComputationState::OutputArcForce(
     weight_ = LatticeWeight::One();
     word_labels_.clear();
   } else if (!transition_ids_.empty() && word_labels_.empty()) {
-    // Transition-ids but no word label-- either silence or
-    // partial word.
+    // Transition-ids but no word label-- either silence or partial word.
     int32 first_phone = tmodel.TransitionIdToPhone(transition_ids_[0]);
     if (info.TypeOfPhone(first_phone) == WordBoundaryInfo::kNonWordPhone) {
       // first phone is silence...
-      if (!first_phone == tmodel.TransitionIdToPhone(transition_ids_.back())
+      if (first_phone != tmodel.TransitionIdToPhone(transition_ids_.back())
           && ! *error) {
         *error = true;
         // Phone changed-- this is a code error, because the regular OutputArc
@@ -804,8 +803,8 @@ class WordAlignedLatticeTester {
           // rest of the transition ids are the self-loop of that same
           // transition-state.
           for(size_t j = i+1; j < tids.size(); j++) {
-            if (!(tmodel_.TransitionIdToTransitionState(tids[j]))
-                == tmodel_.TransitionIdToTransitionState(tids[i])) return false;
+            if (tmodel_.TransitionIdToTransitionState(tids[j])
+                != tmodel_.TransitionIdToTransitionState(tids[i])) return false;
           }
           return true;
         }

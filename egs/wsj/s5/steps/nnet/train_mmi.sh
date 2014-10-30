@@ -52,18 +52,19 @@ srcdir=$3
 alidir=$4
 denlatdir=$5
 dir=$6
-mkdir -p $dir/log
 
 for f in $data/feats.scp $alidir/{tree,final.mdl,ali.1.gz} $denlatdir/lat.scp $srcdir/{final.nnet,final.feature_transform}; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
+
+# check if CUDA is compiled in,
+cuda-compiled || { echo 'CUDA was not compiled in, skipping! Check src/kaldi.mk and src/configure' && exit 1; }
 
 mkdir -p $dir/log
 
 cp $alidir/{final.mdl,tree} $dir
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
-
 
 
 #Get the files we will need

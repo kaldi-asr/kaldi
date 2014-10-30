@@ -10,8 +10,8 @@ for lm_suffix in tg; do
   rm -rf data/lang_test_${lm_suffix}
   cp -r data/lang data/lang_test_${lm_suffix}
 
-  cat input/task.arpabo | arpa2fst - | fstprint | utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt --keep_isymbols=false --keep_osymbols=false | fstrmepsilon > $test/G.fst
-  #cat input/G.txt | utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt --keep_isymbols=false --keep_osymbols=false | fstrmepsilon > $test/G.fst
+  cat input/task.arpabo | arpa2fst - | fstprint | utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt --keep_isymbols=false --keep_osymbols=false | fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
+  #cat input/G.txt | utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt --keep_isymbols=false --keep_osymbols=false | fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
   fstisstochastic $test/G.fst
       
  # The output is like:

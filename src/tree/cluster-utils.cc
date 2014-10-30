@@ -776,7 +776,6 @@ class RefineClusterer {
   void Iterate() {
     int32 iter, num_iters = cfg_.num_iters;
     for (iter = 0;iter < num_iters;iter++) {
-      // do not do more than 100 iterations-- this is not an exact algorithm anyway.
       int32 cur_t = t_;
       for (int32 point = 0;point < num_points_;point++) {
         if (t_+1 == 0) {

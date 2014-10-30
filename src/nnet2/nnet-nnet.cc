@@ -658,7 +658,9 @@ void Nnet::Collapse(bool match_updatableness) {
   }
   this->SetIndexes();
   this->Check();
-  KALDI_LOG << "Collapsed " << num_collapsed << " components.";
+  KALDI_LOG << "Collapsed " << num_collapsed << " components."
+            << (num_collapsed == 0 && match_updatableness == true ?
+                "  Try --match-updatableness=false." : "");
 }
 
 Nnet *GenRandomNnet(int32 input_dim,
@@ -708,14 +710,20 @@ Nnet *GenRandomNnet(int32 input_dim,
   return ans;
 }
 
+int32 Nnet::FirstUpdatableComponent() const {
+  for (int32 i = 0; i < NumComponents(); i++) {
+    if (dynamic_cast<UpdatableComponent*>(components_[i]) != NULL)
+      return i;
+  }
+  return NumComponents();
+}
 
 
 int32 Nnet::LastUpdatableComponent() const {
-  int32 last_updatable_component = NumComponents();
   for (int32 i = NumComponents() - 1; i >= 0; i--)
     if (dynamic_cast<UpdatableComponent*>(components_[i]) != NULL)
-      last_updatable_component = i;
-  return last_updatable_component;
+      return i;
+  return -1;
 }
 
 } // namespace nnet2

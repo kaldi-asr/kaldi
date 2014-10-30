@@ -34,11 +34,9 @@ int main(int argc, char *argv[]) {
         "Note: the model is only read in order to get the size of the vector\n"
         "\n"
         "Usage: post-to-tacc [options] <model> <post-rspecifier> <accs>\n"
-        " e.g.: post-to-tacc --binary=false 1.mdl \"ark:ali-to-post 1.ali|\" 1.tacc\n"
-        "Useful options include the --weights option\n";
+        " e.g.: post-to-tacc --binary=false 1.mdl \"ark:ali-to-post 1.ali|\" 1.tacc\n";
 
     bool binary = true;
-    std::string weights_rspecifier;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode.");
     po.Read(argc, argv);

@@ -26,20 +26,33 @@ OnlineTimingStats::OnlineTimingStats():
     total_time_waited_(0.0), max_delay_(0.0) {
 }
 
-void OnlineTimingStats::Print(){
-  double real_time_factor = total_time_taken_ / total_audio_,
-      average_wait = (total_time_taken_ - total_audio_) / num_utts_,
-      idle_proportion = total_time_waited_ / total_audio_,
-      idle_percent = 100.0 * idle_proportion;
+void OnlineTimingStats::Print(bool online){
+  if (online) {
+    double real_time_factor = total_time_taken_ / total_audio_,
+        average_wait = (total_time_taken_ - total_audio_) / num_utts_,
+        idle_proportion = total_time_waited_ / total_audio_,
+        idle_percent = 100.0 * idle_proportion;
 
-  KALDI_LOG << "Timing stats: real-time factor was " << real_time_factor
-            << " (note: this cannot be less than one.)";
-  KALDI_LOG << "Average delay was " << average_wait << " seconds.";
-  KALDI_LOG << "Percentage of time spent idling was " << idle_percent;
-  KALDI_LOG << "Longest delay was " << max_delay_ << " seconds for utterance "
-            << '\'' << max_delay_utt_ << '\'';
-
-  
+    KALDI_LOG << "Timing stats: real-time factor was " << real_time_factor
+              << " (note: this cannot be less than one.)";
+    KALDI_LOG << "Average delay was " << average_wait << " seconds.";
+    KALDI_LOG << "Percentage of time spent idling was " << idle_percent;
+    KALDI_LOG << "Longest delay was " << max_delay_ << " seconds for utterance "
+              << '\'' << max_delay_utt_ << '\'';
+  } else {
+    // we have processed each utterance in one chunk.
+    // the decoding code will have "pretended to wait" (using WaitUntil())
+    // till the end of the utterance before starting to decode it.
+    // We want to subtract this waiting time, which is not really
+    // of interest in an offline scenario, before printing the
+    // real-time factor.
+    double real_time_factor = (total_time_taken_ - total_time_waited_) /
+        total_audio_;
+    KALDI_LOG << "Timing stats: real-time factor for offline decoding was "
+              << real_time_factor << " = "
+              << (total_time_taken_ - total_time_waited_) << " seconds "
+              << " / " << total_audio_ << " seconds.";
+  }
 }
 
 OnlineTimer::OnlineTimer(const std::string &utterance_id):
@@ -59,6 +72,10 @@ void OnlineTimer::WaitUntil(double cur_utterance_length) {
     waited_ += to_wait;
 
   utterance_length_ = cur_utterance_length;
+}
+
+double OnlineTimer::Elapsed() {
+  return timer_.Elapsed() + waited_;
 }
 
 void OnlineTimer::OutputStats(OnlineTimingStats *stats) {

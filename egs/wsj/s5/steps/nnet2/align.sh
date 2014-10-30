@@ -20,6 +20,8 @@ retry_beam=40
 transform_dir=
 iter=final
 use_gpu=no
+online_ivector_dir=
+feat_type=  # you can set this to force it to use delta features.
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -48,7 +50,11 @@ echo $nj > $dir/num_jobs
 sdata=$data/split$nj
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
-for f in $srcdir/tree $srcdir/${iter}.mdl $data/feats.scp $lang/L.fst; do
+
+extra_files=
+[ ! -z "$online_ivector_dir" ] && \
+  extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
+for f in $srcdir/tree $srcdir/${iter}.mdl $data/feats.scp $lang/L.fst $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -105,6 +111,11 @@ if [ ! -z "$transform_dir" ]; then
   fi
 fi
 
+if [ ! -z "$online_ivector_dir" ]; then
+  ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
+  # note: subsample-feats, with negative n, will repeat each feature -n times.
+  feats="$feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
+fi
 
 echo "$0: aligning data in $data using model from $srcdir, putting alignments in $dir"
 

@@ -20,9 +20,9 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
-#include "nnet2/nnet-randomize.h"
 #include "nnet2/nnet-update-parallel.h"
 #include "nnet2/am-nnet.h"
+#include "nnet2/nnet-compute.h"
 #include "thread/kaldi-task-sequence.h"
 
 namespace kaldi {
@@ -33,14 +33,13 @@ struct NnetLogprobTask {
                   const CuVector<BaseFloat> &inv_priors,
                   const std::string &key,
                   const CuMatrix<BaseFloat> &feats,
-                  const CuVector<BaseFloat> &spk_vec,
                   BaseFloatCuMatrixWriter *logprob_writer):
       am_nnet_(am_nnet), inv_priors_(inv_priors), key_(key), feats_(feats),
-      spk_vec_(spk_vec), logprob_writer_(logprob_writer) { }
+      logprob_writer_(logprob_writer) { }
   void operator () () {
     log_probs_.Resize(feats_.NumRows(), am_nnet_.NumPdfs());
     bool pad_input = true;
-    NnetComputation(am_nnet_.GetNnet(), feats_, spk_vec_, pad_input,
+    NnetComputation(am_nnet_.GetNnet(), feats_, pad_input,
                     &log_probs_);
   }
 
@@ -68,7 +67,6 @@ struct NnetLogprobTask {
   const CuVector<BaseFloat> &inv_priors_;
   std::string key_;
   CuMatrix<BaseFloat> feats_;
-  CuVector<BaseFloat> spk_vec_;
   CuMatrix<BaseFloat> log_probs_;
   BaseFloatCuMatrixWriter *logprob_writer_;
 };
@@ -93,17 +91,10 @@ int main(int argc, char *argv[]) {
         "\n"
         "e.g.: nnet-logprob-parallel 1.nnet \"$feats\" ark:- | latgen-faster-mapped [args]\n";
     
-    std::string spk_vecs_rspecifier, utt2spk_rspecifier;
     TaskSequencerConfig thread_config;
     
     ParseOptions po(usage);
     
-    po.Register("spk-vecs", &spk_vecs_rspecifier, "Rspecifier for a vector that "
-                "describes each speaker; only needed if the neural net was "
-                "trained this way.");
-    po.Register("utt2spk", &utt2spk_rspecifier, "Rspecifier for map from "
-                "utterance to speaker; only relevant in conjunction with the "
-                "--spk-vecs option.");
     thread_config.Register(&po);
     
     po.Read(argc, argv);
@@ -128,15 +119,12 @@ int main(int argc, char *argv[]) {
 
     int64 num_done = 0, num_err = 0;
 
-    Vector<BaseFloat> inv_priors(am_nnet.Priors());
+    CuVector<BaseFloat> inv_priors(am_nnet.Priors());
     KALDI_ASSERT(inv_priors.Dim() == am_nnet.NumPdfs() &&
                  "Priors in neural network not set up.");
     inv_priors.ApplyPow(-1.0);
     
     SequentialBaseFloatCuMatrixReader feature_reader(feats_rspecifier);
-    // note: spk_vecs_rspecifier and utt2spk_rspecifier may be empty.
-    RandomAccessBaseFloatVectorReaderMapped vecs_reader(spk_vecs_rspecifier,
-                                                        utt2spk_rspecifier);
     BaseFloatCuMatrixWriter logprob_writer(logprob_wspecifier);
 
     {
@@ -145,18 +133,9 @@ int main(int argc, char *argv[]) {
       for (; !feature_reader.Done(); feature_reader.Next()) {
         std::string key = feature_reader.Key();
         const CuMatrix<BaseFloat> &feats = feature_reader.Value();
-        CuVector<BaseFloat> spk_vec;
-        if (!spk_vecs_rspecifier.empty()) {
-          if (!vecs_reader.HasKey(key)) {
-            KALDI_ERR << "No speaker vector available for key " << key;
-            num_err++;
-            continue;
-          }
-          spk_vec = vecs_reader.Value(key);
-        }
-
+        
         sequencer.Run(new NnetLogprobTask(am_nnet, inv_priors, key, feats,
-                                          spk_vec, &logprob_writer));
+                                          &logprob_writer));
         num_done++;
       }
     }

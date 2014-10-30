@@ -102,7 +102,7 @@ class FasterDecoder {
   /// object, but if max_num_frames is >= 0 it will decode no more than
   /// that many frames.
   void AdvanceDecoding(DecodableInterface *decodable,
-                         int32 max_num_frames = -1);
+                       int32 max_num_frames = -1);
 
   /// Returns the number of frames already decoded.  
   int32 NumFramesDecoded() const { return num_frames_decoded_; }

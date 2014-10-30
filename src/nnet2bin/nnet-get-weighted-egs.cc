@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
-#include "nnet2/nnet-randomize.h"
+#include "nnet2/nnet-example-functions.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -44,10 +44,11 @@ int32 GetCount(double expected_count) {
 
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const Posterior &pdf_post,
+                        const std::string &utt_id,
                         const Vector<BaseFloat> &weights,
-                        const Vector<BaseFloat> &spk_info,
                         int32 left_context,
                         int32 right_context,
+                        int32 const_feat_dim,
                         BaseFloat keep_proportion,
                         BaseFloat weight_threshold,
                         bool use_frame_selection,
@@ -56,11 +57,13 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         int64 *num_frames_skipped,
                         NnetExampleWriter *example_writer) {
   KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
+  int32 feat_dim = feats.NumCols();
+  KALDI_ASSERT(const_feat_dim < feat_dim);
+  int32 basic_feat_dim = feat_dim - const_feat_dim;
   NnetExample eg;
   Matrix<BaseFloat> input_frames(left_context + 1 + right_context,
-      feats.NumCols());
+                                 basic_feat_dim);
   eg.left_context = left_context;
-  eg.spk_info = spk_info;
   for (int32 i = 0; i < feats.NumRows(); i++) {
     int32 count = GetCount(keep_proportion); // number of times
     // we'll write this out (1 by default).
@@ -76,9 +79,12 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
       }
       eg.labels = pdf_post[i];
       eg.input_frames = input_frames;
-      //if (use_frame_weights) {
-      //  eg.weight = (weights == NULL) ? 1.0 : weights[i];
-      //}
+      if (const_feat_dim > 0) {
+        // we'll normally reach here if we're using online-estimated iVectors.
+        SubVector<BaseFloat> const_part(feats.Row(i),
+                                        basic_feat_dim, const_feat_dim);
+        eg.spk_info.CopyFromVec(const_part);
+      }
       if (use_frame_selection) {
         if (weights(i) < weight_threshold) {
           (*num_frames_skipped)++;
@@ -86,9 +92,8 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
         }
       }
       std::ostringstream os;
-      os << ((*num_frames_written)++);
-      std::string key = os.str(); // key in the archive is the number of the
-      // example.
+      os << utt_id << "-" << i;
+      std::string key = os.str(); // key in the archive is the number of the example
 
       for (int32 c = 0; c < count; c++)
         example_writer->Write(key, eg);
@@ -113,8 +118,6 @@ int main(int argc, char *argv[]) {
         "into a special frame-by-frame format.  To split randomly into\n"
         "different subsets, do nnet-copy-egs with --random=true, but\n"
         "note that this does not randomize the order of frames.\n"
-        "Also see nnet-randomize-frames, which uses more memory but also\n"
-        "randomizes the order\n"
         "\n"
         "Usage:  nnet-get-weighted-egs [options] <features-rspecifier> "
         "<pdf-post-rspecifier> <weights-rspecifier> <training-examples-out>\n"
@@ -127,21 +130,20 @@ int main(int argc, char *argv[]) {
         "the output of nnet-info.";
         
     
-    int32 left_context = 0, right_context = 0;
+    int32 left_context = 0, right_context = 0, const_feat_dim = 0;
     int32 srand_seed = 0;
     BaseFloat keep_proportion = 1.0;
     BaseFloat weight_threshold = 0.0;
     bool use_frame_selection = true, use_frame_weights=false;
-    std::string spk_vecs_rspecifier, utt2spk_rspecifier;
     
     ParseOptions po(usage);
-    po.Register("spk-vecs", &spk_vecs_rspecifier, "Rspecifier for speaker vectors");
-    po.Register("utt2spk", &utt2spk_rspecifier, "Rspecifier for "
-                "speaker-to-utterance map (relevant if --spk-vecs option used)");
     po.Register("left-context", &left_context, "Number of frames of left context "
                 "the neural net requires.");
     po.Register("right-context", &right_context, "Number of frames of right context "
                 "the neural net requires.");
+    po.Register("const-feat-dim", &const_feat_dim, "If specified, the last "
+                "const-feat-dim dimensions of the feature input are treated as "
+                "constant over the context window (so are not spliced)");
     po.Register("keep-proportion", &keep_proportion, "If <1.0, this program will "
                 "randomly keep this proportion of the input samples.  If >1.0, it will "
                 "in expectation copy a sample this many times.  It will copy it a number "
@@ -170,13 +172,10 @@ int main(int argc, char *argv[]) {
     // Read in all the training files.
     SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
-    RandomAccessBaseFloatVectorReaderMapped vecs_reader(
-        spk_vecs_rspecifier, utt2spk_rspecifier);
     RandomAccessBaseFloatVectorReader weights_reader(weights_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     
     int32 num_done = 0, num_err = 0;
-    int32 spk_dim = -1;
     int64 num_frames_written = 0;
     int64 num_frames_skipped = 0;
     
@@ -194,30 +193,10 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-        Vector<BaseFloat> spk_info;
-        
-        if (spk_vecs_rspecifier != "") {
-          if (!vecs_reader.HasKey(key)) {
-            KALDI_WARN << "No speaker vector for key " << key;
-            num_err++;
-            continue;
-          } else {
-            spk_info = vecs_reader.Value(key);
-          }
-          if (spk_dim == -1) spk_dim = spk_info.Dim();
-          else if (spk_info.Dim() != spk_dim) {
-            KALDI_WARN << "Invalid dimension of speaker vector, "
-                << spk_info.Dim() << " (expected "
-                << spk_dim << " ).";
-            num_err++;
-            continue;
-          }
-        }
-
         if (!weights_reader.HasKey(key)) {
           KALDI_ERR << "No weights for utterance " << key;
-          //ProcessFile(feats, pdf_post, NULL, spk_info,
-          //    left_context, right_context, keep_proportion,
+          //ProcessFile(feats, pdf_post, NULL,
+          //    left_context, right_context, const_feat_dim, keep_proportion,
           //    weight_threshold, false, false, &num_frames_written, 
           //    &num_frames_skipped, &example_writer);
         } else {
@@ -229,10 +208,10 @@ int main(int argc, char *argv[]) {
             num_err++;
             continue;
           }
-          ProcessFile(feats, pdf_post, weights, spk_info,
-              left_context, right_context, keep_proportion,
-              weight_threshold, use_frame_selection, use_frame_weights, 
-              &num_frames_written, &num_frames_skipped, &example_writer);
+          ProcessFile(feats, pdf_post, key, weights, left_context, right_context,
+                      const_feat_dim, keep_proportion, weight_threshold,
+                      use_frame_selection, use_frame_weights,
+                      &num_frames_written, &num_frames_skipped, &example_writer);
         }
         num_done++;
       }

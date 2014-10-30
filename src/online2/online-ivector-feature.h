@@ -74,10 +74,11 @@ struct OnlineIvectorExtractionConfig {
   // If use_most_recent_ivector is true, we always return the most recent
   // available iVector rather than the one for the current frame.  This means
   // that if audio is coming in faster than we can process it, we will return a
-  // more accurate iVector.  The only potential drawback of setting this to true
-  // is a potential mismatch with the training setup.  We set it false by
-  // default but you might find setting it to true is better.
+  // more accurate iVector. 
   bool use_most_recent_ivector;
+
+  // If true, always read ahead to NumFramesReady() when getting iVector stats.
+  bool greedy_ivector_extractor;
 
   // max_remembered_frames is the largest number of frames it will remember
   // between utterances of the same speaker; this affects the output of
@@ -90,7 +91,8 @@ struct OnlineIvectorExtractionConfig {
 
   OnlineIvectorExtractionConfig(): ivector_period(10), num_gselect(5),
                                    min_post(0.025), posterior_scale(0.1),
-                                   use_most_recent_ivector(false),
+                                   use_most_recent_ivector(true),
+                                   greedy_ivector_extractor(false),
                                    max_remembered_frames(1000) { }
   
   void Register(OptionsItf *po) {
@@ -122,7 +124,10 @@ struct OnlineIvectorExtractionConfig {
                  "iVector extraction (may be viewed as inverse of prior scale)");
     po->Register("use-most-recent-ivector", &use_most_recent_ivector, "If true, "
                  "always use most recent available iVector, rather than the "
-                 "one that we 'should' use for the requested frame.");
+                 "one for the designated frame.");
+    po->Register("greedy-ivector-extractor", &greedy_ivector_extractor, "If "
+                 "true, 'read ahead' as many frames as we currently have available "
+                 "when extracting the iVector.  May improve iVector quality.");
     po->Register("max-remembered-frames", &max_remembered_frames, "The maximum "
                  "number of frames of adaptation history that we carry through "
                  "to later utterances of the same speaker (having a finite "
@@ -152,6 +157,7 @@ struct OnlineIvectorExtractionInfo {
   BaseFloat min_post;
   BaseFloat posterior_scale;
   bool use_most_recent_ivector;
+  bool greedy_ivector_extractor;
   BaseFloat max_remembered_frames;
 
   OnlineIvectorExtractionInfo(const OnlineIvectorExtractionConfig &config);

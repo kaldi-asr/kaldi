@@ -29,12 +29,20 @@ for condition in $(seq 0 8); do
   printf '% 7d' $condition;
 done
 echo
+
+eers=()
+tot_eer=0.0
 printf '% 12s' 'EER:'
-eer=$(awk '{print $3}' $scores | paste - $trials | awk '{print $1, $4}' | compute-eer - 2>/dev/null)
-printf '% 7.2f' $eer
 for condition in $(seq 8); do
   eer=$(awk '{print $3}' $scores | paste - $trials | awk -v c=$condition '{n=4+c; if ($n == "Y") print $1, $4}' | compute-eer - 2>/dev/null)
-  printf '% 7.2f' $eer
+  tot_eer=$(echo "$tot_eer+$eer" | bc)
+  eers[$condition]=$eer
+done
+
+eers[0]=$(echo "$tot_eer/8" | bc -l)
+
+for i in $(seq 0 8); do
+  printf '% 7.2f' ${eers[$i]}
 done
 echo
 

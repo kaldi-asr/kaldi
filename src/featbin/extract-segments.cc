@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Extract segments from a large audio file in WAV format.\n"
         "Usage:  extract-segments [options] <wav-rspecifier> <segments-file> <wav-wspecifier>\n"
-        "e.g. extract-segments wav.scp segments ark:- | <some other program>\n"
+        "e.g. extract-segments scp:wav.scp segments ark:- | <some other program>\n"
         " segments-file format: segment_id wav_file_name start_time end_time [channel]\n"
         " e.g.: spkabc_seg1 spkabc_recording1 1.10 2.36 1\n"
         " If channel is not provided as last element, expects mono.\n"

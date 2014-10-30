@@ -144,9 +144,8 @@ int main(int argc, char *argv[]) {
           FasterDecoder decoder(decode_fst, decode_opts);
           // makes it a bit faster: 37 sec -> 26 sec on 1000 RM utterances @ beam 200.
 
-          CuVector<BaseFloat> empty_spk_info; // TODO: add support for speaker vectors.
           bool pad_input = true;
-          DecodableAmNnet nnet_decodable(trans_model, am_nnet, features, empty_spk_info,
+          DecodableAmNnet nnet_decodable(trans_model, am_nnet, features,
                                          pad_input, acoustic_scale);
           decoder.Decode(&nnet_decodable);
 

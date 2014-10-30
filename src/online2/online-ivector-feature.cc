@@ -33,6 +33,12 @@ void OnlineIvectorExtractionInfo::Init(
   min_post = config.min_post;
   posterior_scale = config.posterior_scale;
   use_most_recent_ivector = config.use_most_recent_ivector;
+  greedy_ivector_extractor = config.greedy_ivector_extractor;
+  if (greedy_ivector_extractor && !use_most_recent_ivector) {
+    KALDI_WARN << "--greedy-ivector-extractor=true implies "
+               << "--use-most-recent-ivector=true";
+    use_most_recent_ivector = true;
+  }
   max_remembered_frames = config.max_remembered_frames;
   
   std::string note = "(note: this may be needed "
@@ -80,7 +86,8 @@ void OnlineIvectorExtractionInfo::Check() const {
 // The class constructed in this way should never be used.
 OnlineIvectorExtractionInfo::OnlineIvectorExtractionInfo():
     ivector_period(0), num_gselect(0), min_post(0.0), posterior_scale(0.0),
-    use_most_recent_ivector(false), max_remembered_frames(0) { }
+    use_most_recent_ivector(true), greedy_ivector_extractor(false),
+    max_remembered_frames(0) { }
 
 OnlineIvectorExtractorAdaptationState::OnlineIvectorExtractorAdaptationState(
     const OnlineIvectorExtractorAdaptationState &other):
@@ -130,12 +137,7 @@ void OnlineIvectorFeature::UpdateStatsUntilFrame(int32 frame) {
 
   int32 feat_dim = lda_normalized_->Dim(),
       ivector_period = info_.ivector_period;
-  int32 needed_frame = ivector_period * (frame / ivector_period);
-  // needed_frame is the frame on which we'll estimate the iVector that
-  // we need to output, so we'll need this regardless of
-  // whether info_.use_most_recent_ivector == true.  This will end up
-  // in cur_ivector_.
-  
+
   int32 num_cg_iters = 15;  // I don't believe this is very important, so it's
                             // not configurable from the command line for now.
   
@@ -156,7 +158,7 @@ void OnlineIvectorFeature::UpdateStatsUntilFrame(int32 frame) {
     ivector_stats_.AccStats(info_.extractor, feat, posterior);
     
     if ((!info_.use_most_recent_ivector && t % ivector_period == 0) ||
-        (info_.use_most_recent_ivector && t == needed_frame)) {
+        (info_.use_most_recent_ivector && t == frame)) {
       ivector_stats_.GetIvector(num_cg_iters, &current_ivector_);
       if (!info_.use_most_recent_ivector) {  // need to cache iVectors.
         int32 ivec_index = t / ivector_period;
@@ -169,10 +171,14 @@ void OnlineIvectorFeature::UpdateStatsUntilFrame(int32 frame) {
 
 void OnlineIvectorFeature::GetFrame(int32 frame,
                                     VectorBase<BaseFloat> *feat) {
-  UpdateStatsUntilFrame(frame);
+  UpdateStatsUntilFrame(info_.greedy_ivector_extractor ?
+                        lda_->NumFramesReady() - 1 : frame);
   KALDI_ASSERT(feat->Dim() == this->Dim());
-
+  
   if (info_.use_most_recent_ivector) {
+    KALDI_VLOG(5) << "due to --use-most-recent-ivector=true, using iVector "
+                  << "from frame " << num_frames_stats_ << " for frame "
+                  << frame;
     // use the most recent iVector we have, even if 'frame' is significantly in
     // the past.
     feat->CopyFromVec(current_ivector_);
@@ -196,11 +202,15 @@ void OnlineIvectorFeature::PrintDiagnostics() const {
                   << (tot_ubm_loglike_ / num_frames_stats_)
                   << " per frame, over " << num_frames_stats_
                   << " frames.";
+
+    Vector<BaseFloat> temp_ivector(current_ivector_);
+    temp_ivector(0) -= info_.extractor.PriorOffset();
+    
     KALDI_VLOG(3) << "By the end of the utterance, objf change/frame "
                   << "from estimating iVector (vs. default) was "
                   << ivector_stats_.ObjfChange(current_ivector_)
                   << " and iVector length was "
-                  << current_ivector_.Norm(2.0);
+                  << temp_ivector.Norm(2.0);
   }
 }
 

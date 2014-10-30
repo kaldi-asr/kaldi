@@ -60,13 +60,12 @@ if [ $stage -le 3 ]; then
     utils/create_split_dir.pl /export/b0{1,2,3,4}/dpovey/kaldi-online/egs/fisher_english/s5/$ivectordir $ivectordir/storage
   fi
 
-  # We extract iVectors on all the train data, which will be what we
-  # train the system on.  This version of the iVector-extraction script
-  # pairs the utterances into twos (by default, see --utts-per-spk-max option) 
-  # and treats each of these pairs as one speaker.
-  # Note that these are extracted 'online'.
-  steps/online/nnet2/extract_ivectors_online2.sh --cmd "$train_cmd" --nj 60 \
-    data/train exp/nnet2_online/extractor $ivectordir || exit 1;
+  # having a larger number of speakers is helpful for generalization, and to
+  # handle per-utterance decoding well (iVector starts at zero).
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train data/train_max2
+
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 60 \
+    data/train_max2 exp/nnet2_online/extractor $ivectordir || exit 1;
 fi
 
 
@@ -82,7 +81,8 @@ if [ $stage -le 4 ]; then
   # data across four filesystems for speed.
 
   steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
-    --num-epochs 3 --num-epochs-extra 1 \
+    --num-epochs 4 --num-epochs-extra 1 \
+    --samples-per-iter 400000 \
     --splice-width 7 --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors_train \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
@@ -111,7 +111,7 @@ if [ $stage -le 6 ]; then
   # this does offline decoding that should give about the same results as the
   # real online decoding.
   steps/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-       --online-ivector-dir exp/nnet2_online/ivectors_${data} \
+       --online-ivector-dir exp/nnet2_online/ivectors_dev \
        exp/tri5a/graph data/dev $dir/decode_dev || exit 1;
 fi
 
@@ -138,6 +138,15 @@ if [ $stage -le 9 ]; then
       exp/tri5a/graph data/dev ${dir}_online/decode_dev_utt || exit 1;
 fi
 
+if [ $stage -le 10 ]; then
+  # this version of the decoding treats each utterance separately
+  # without carrying forward speaker information, but looks to the end
+  # of the utterance while computing the iVector.
+   steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
+     --per-utt true --online false \
+      exp/tri5a/graph data/dev ${dir}_online/decode_dev_utt_offline || exit 1;
+fi
+
 
 exit 0;
 
@@ -148,9 +157,25 @@ exit 0;
 # Baseline: p-norm system on top of fMLLR features.
 #%WER 23.66 [ 9259 / 39141, 1495 ins, 2432 del, 5332 sub ] exp/nnet6c4_gpu/decode_dev/wer_11
 
-# Our experiment, with per-utterance decoding:
+# Baseline: the "a" experiment (smaller nnet), with per-utterance decoding:
 #%WER 25.12 [ 9832 / 39141, 1423 ins, 2471 del, 5938 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev_utt/wer_11
+
+# The current "b" experiment, with per-utterance decoding.
+#grep WER exp/nnet2_online/nnet_b_gpu/decode_dev/wer_* | utils/best_wer.sh 
+#%WER 24.84 [ 9724 / 39141, 1446 ins, 2372 del, 5906 sub ] exp/nnet2_online/nnet_b_gpu/decode_dev/wer_10
+
+
+#The same with online decoding:
+#%WER 24.05 [ 9415 / 39141, 1413 ins, 2332 del, 5670 sub ] exp/nnet2_online/nnet_b_gpu_online/decode_dev_utt/wer_11
+grep WER exp/nnet2_online/nnet_a_gpu_online/decode_dev_utt/wer_* | utils/best_wer.sh 
+%WER 25.12 [ 9832 / 39141, 1423 ins, 2471 del, 5938 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev_utt/wer_11
+
+
+
+
 
 # Our experiment, carrying forward the adaptation state between
 # utterances of each speaker.
-#%WER 23.79 [ 9311 / 39141, 1499 ins, 2277 del, 5535 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev/wer_11
+#%WER 23.36 [ 9144 / 39141, 1365 ins, 2385 del, 5394 sub ] exp/nnet2_online/nnet_b_gpu_online/decode_dev/wer_12
+ # the same for "a"
+ #%WER 23.79 [ 9311 / 39141, 1499 ins, 2277 del, 5535 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev/wer_11

@@ -38,9 +38,14 @@ int main(int argc, char *argv[]) {
         "Convert the words or transition-ids into phones, which are worked out\n"
         "from the transition-ids.  If --replace-words=true (true by default),\n"
         "replaces the words with phones, otherwise replaces the transition-ids.\n"
+        "If --replace-words=false, it will preserve the alignment of transition-ids/phones\n"
+        "to words, so that if you do \n"
+        "lattice-align-words | lattice-to-phone-lattice --replace-words=false,\n"
+        "you can get the phones corresponding to each word in the lattice.\n"
         "\n"
         "Usage: lattice-to-phone-lattice [options] model lattice-rspecifier lattice-wspecifier\n"
-        " e.g.: lattice-to-phone-lattice 1.mdl ark:1.lats ark:phones.lats\n";
+        " e.g.: lattice-to-phone-lattice 1.mdl ark:1.lats ark:phones.lats\n"
+        "See also: lattice-align-words, lattice-align-phones\n";
       
     ParseOptions po(usage);
     bool replace_words = true;

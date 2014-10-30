@@ -59,7 +59,7 @@ else
   dir=$3
 fi
 
-for f in $lang/phones.txt $srcdir/final.mdl; do
+for f in $lang/phones.txt $srcdir/final.mdl $srcdir/tree; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 if [ ! -z "$iedir" ]; then
@@ -75,10 +75,16 @@ dir=$(readlink -f $dir) # Convert $dir to an absolute pathname, so that the
 mkdir -p $dir/conf
 
 
-cp $srcdir/final.mdl $dir/ || exit 1;
+cp $srcdir/final.mdl $srcdir/tree $dir/ || exit 1;
 if [ ! -z "$iedir" ]; then
   mkdir -p $dir/ivector_extractor/
   cp $iedir/final.{mat,ie,dubm} $iedir/global_cmvn.stats $dir/ivector_extractor/ || exit 1;
+
+  # The following things won't be needed directly by the online decoding, but
+  # will allow us to run prepare_online_decoding.sh again with
+  # $dir/ivector_extractor/ as the input directory (useful in certain
+  # cross-system training scenarios).
+  cp $iedir/splice_opts $iedir/online_cmvn.conf $dir/ivector_extractor/ || exit 1;
 fi
 
 
@@ -117,6 +123,7 @@ if [ ! -z "$iedir" ]; then
   echo -n >$ieconf
   echo "--ivector-extraction-config=$ieconf" >>$conf
   cp $iedir/online_cmvn.conf $dir/conf/online_cmvn.conf || exit 1;
+  # the next line puts each option from splice_opts on its own line in the config.
   for x in $(cat $iedir/splice_opts); do echo "$x"; done > $dir/conf/splice.conf
   echo "--splice-config=$dir/conf/splice.conf" >>$ieconf
   echo "--cmvn-config=$dir/conf/online_cmvn.conf" >>$ieconf
@@ -124,10 +131,9 @@ if [ ! -z "$iedir" ]; then
   echo "--global-cmvn-stats=$dir/ivector_extractor/global_cmvn.stats" >>$ieconf
   echo "--diag-ubm=$dir/ivector_extractor/final.dubm" >>$ieconf
   echo "--ivector-extractor=$dir/ivector_extractor/final.ie" >>$ieconf
-  echo "--num-gselect=5"  >>$ieconf
-  echo "--min-post=0.025" >>$ieconf
-  echo "--posterior-scale=0.1" >>$ieconf # this is currently the default in the scripts.
-  echo "--use-most-recent-ivector=true" >>$ieconf # probably makes very little difference.
+  echo "--num-gselect=$num_gselect"  >>$ieconf
+  echo "--min-post=$min_post" >>$ieconf
+  echo "--posterior-scale=$posterior_scale" >>$ieconf # this is currently the default in the scripts.
   echo "--max-remembered-frames=1000" >>$ieconf # the default
 fi
 
@@ -146,5 +152,3 @@ fi
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 echo "--endpoint.silence-phones=$silphonelist" >>$conf
 echo "$0: created config file $conf"
-
-

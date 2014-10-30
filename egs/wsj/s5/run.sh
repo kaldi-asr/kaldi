@@ -35,7 +35,6 @@ utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/
 
 local/wsj_format_data.sh || exit 1;
 
-
  # We suggest to run the next three commands in the background,
  # as they are not a precondition for the system building and
  # most of the tests: these commands build a dictionary
@@ -79,7 +78,6 @@ local/wsj_format_data.sh || exit 1;
 	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 400 --nwords 40000 --direct 2000 data/local/rnnlm-hs.h400.voc40k 
    )
   ) &
-
 
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
@@ -142,8 +140,8 @@ steps/decode.sh --nj 8 --cmd "$decode_cmd" \
 # test various modes of LM rescoring (4 is the default one).
 # This is just confirming they're equivalent.
 for mode in 1 2 3 4; do
-steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
-  data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg$mode  || exit 1;
+ steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
+   data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg$mode  || exit 1;
 done
 
 # demonstrate how to get lattices that are "word-aligned" (arcs coincide with
@@ -247,6 +245,11 @@ steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 8 \
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 \
   exp/tri3b/graph_bd_tgpr data/test_dev93 exp/tri3b/decode_bd_tgpr_dev93 || exit 1;
 
+# Example of rescoring with ConstArpaLm.
+steps/lmrescore_const_arpa.sh \
+  --cmd "$decode_cmd" data/lang_test_bd_{tgpr,fgconst} \
+  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92{,_fgconst} || exit 1;
+
 steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_fg \
   data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_fg \
    || exit 1;
@@ -275,10 +278,6 @@ steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_
 steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284 || exit 1;
 
-# These demonstrate how to build a sytem usable for online-decoding with the nnet2 setup.
-# (see local/run_nnet2.sh for other, non-online nnet2 setups).
-# local/online/run_nnet2.sh
-# local/online/run_nnet2_baseline.sh
 
 # From 3b system, train another SAT system (tri4a) with all the si284 data.
 
@@ -339,6 +338,12 @@ steps/train_quick.sh --cmd "$train_cmd" \
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284 || exit 1;
 
+# These demonstrate how to build a sytem usable for online-decoding with the nnet2 setup.
+# (see local/run_nnet2.sh for other, non-online nnet2 setups).
+local/online/run_nnet2.sh
+local/online/run_nnet2_baseline.sh
+local/online/run_nnet2_discriminative.sh
+
 local/run_mmi_tri4b.sh
 
 #local/run_nnet2.sh
@@ -395,4 +400,3 @@ local/run_dnn.sh
 # # forward-backward decoding example [way to speed up decoding by decoding forward
 # # and backward in time] 
 # local/run_fwdbwd.sh
-

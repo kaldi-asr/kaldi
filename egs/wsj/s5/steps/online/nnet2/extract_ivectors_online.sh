@@ -3,14 +3,19 @@
 # Copyright     2013  Daniel Povey
 # Apache 2.0.
 
-# This script is based on ^/egs/sre08/v1/sid/extract_ivectors.sh.  Instead of
+
+# This script extracts iVectors for a set of utterances, given
+# features and a trained iVector extractor.
+
+# The script is based on ^/egs/sre08/v1/sid/extract_ivectors.sh.  Instead of
 # extracting a single iVector per utterance, it extracts one every few frames
 # (controlled by the --ivector-period option, e.g. 10, which is to save compute).
 # This is used in training (and not-really-online testing) of neural networks
 # for online decoding.
 
-# This script extracts iVectors for a set of utterances, given
-# features and a trained iVector extractor.
+# Rather than treating each utterance separately, it carries forward
+# information from one utterance to the next, within the speaker. 
+
 
 # Begin configuration section.
 nj=30
@@ -27,6 +32,11 @@ posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
                     # used when training the iVector extractor, but more important
                     # that this match the value used when you do real online decoding
                     # with the neural nets trained with these iVectors.
+#utts_per_spk_max=-1 # This option is no longer supported, you should use
+                    # steps/online/nnet2/copy_data_dir.sh with the --utts-per-spk-max
+                    # option to make a copy of the data dir.
+compress=true       # If true, compress the iVectors stored on disk (it's lossy
+                    # compression, as used for feature matrices).
 
 # End configuration section.
 
@@ -42,14 +52,16 @@ if [ $# != 3 ]; then
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --num-iters <#iters|10>                          # Number of iterations of E-M"
   echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
-  echo "  --num-threads <n|8>                              # Number of threads for each process"
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --num-gselect <n|5>                              # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
   echo "  --min-post <float;default=0.025>                 # Pruning threshold for posteriors"
   echo "  --ivector-period <int;default=10>                # How often to extract an iVector (frames)"
+  echo "  --utts-per-spk-max <int;default=-1>   # Controls splitting into 'fake speakers'."
+  echo "                                        # Set to 1 if compatibility with utterance-by-utterance"
+  echo "                                        # decoding is the only factor, and to larger if you care "
+  echo "                                        # also about adaptation over several utterances."
   exit 1;
 fi
 
@@ -58,35 +70,62 @@ srcdir=$2
 dir=$3
 
 for f in $data/feats.scp $srcdir/final.ie $srcdir/final.dubm $srcdir/global_cmvn.stats $srcdir/splice_opts \
-     $srcdir/online_cmvn.conf; do
+     $srcdir/online_cmvn.conf $srcdir/final.mat; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
 
-
 # Set various variables.
-mkdir -p $dir/log
+mkdir -p $dir/log $dir/conf
+
 sdata=$data/split$nj;
 utils/split_data.sh $data $nj || exit 1;
 
 echo $ivector_period > $dir/ivector_period || exit 1;
 splice_opts=$(cat $srcdir/splice_opts)
 
+# the program ivector-extract-online2 does a bunch of stuff in memory and is
+# config-driven...  this was easier in this case because the same code is
+# involved in online decoding.  We need to create a config file for iVector
+# extration.
 
-## Set up features.  $gmm_feats is the version of the features with online CMVN, that we use
-## to get the Gaussian posteriors, $feats is the version of the features with no CMN.
-gmm_feats="ark,s,cs:apply-cmvn-online --config=$srcdir/online_cmvn.conf $srcdir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-feats="ark,s,cs:splice-feats $splice_opts scp:$sdata/JOB/feats.scp ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+ieconf=$dir/conf/ivector_extractor.conf
+echo -n >$ieconf
+cp $srcdir/online_cmvn.conf $dir/conf/ || exit 1;
+echo "--cmvn-config=$dir/conf/online_cmvn.conf" >>$ieconf
+for x in $(echo $splice_opts); do echo "$x"; done > $dir/conf/splice.conf
+echo "--splice-config=$dir/conf/splice.conf" >>$ieconf
+echo "--lda-matrix=$srcdir/final.mat" >>$ieconf
+echo "--global-cmvn-stats=$srcdir/global_cmvn.stats" >>$ieconf
+echo "--diag-ubm=$srcdir/final.dubm" >>$ieconf
+echo "--ivector-extractor=$srcdir/final.ie" >>$ieconf
+echo "--num-gselect=$num_gselect"  >>$ieconf
+echo "--min-post=$min_post" >>$ieconf
+echo "--posterior-scale=$posterior_scale" >>$ieconf
+echo "--max-remembered-frames=1000" >>$ieconf # the default
 
 
+ns=$(wc -l <$data/spk2utt)
+if [ "$ns" == 1 -a "$utts_per_spk_max" != 1 -a "$utts_per_spk_max" != -1 ]; then
+  echo "$0: you seem to have just one speaker in your database.  This is probably not a good idea."
+  echo "  see http://kaldi.sourceforge.net/data_prep.html (search for 'bold') for why"
+  echo "  Setting --utts-per-spk-max to 1."
+  utts_per_spk_max=1
+fi
+
+
+
+for n in $(seq $nj); do
+  # This will do nothing unless the directory $dir/storage exists;
+  # it can be used to distribute the data among multiple machines.
+  utils/create_data_link.pl $dir/ivector_online.$n.ark
+done
 
 if [ $stage -le 0 ]; then
   echo "$0: extracting iVectors"
-
   $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
-    gmm-global-get-post --n=$num_gselect --min-post=$min_post $srcdir/final.dubm \
-      "$gmm_feats" ark:- \| scale-post ark:- $posterior_scale ark:- \| \
-    ivector-extract-online --ivector-period=$ivector_period $srcdir/final.ie "$feats" ark,s,cs:- \
-      ark,scp,t:$dir/ivector_online.JOB.ark,$dir/ivector_online.JOB.scp || exit 1;
+     ivector-extract-online2 --config=$ieconf ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
+     copy-feats --compress=$compress ark:- \
+      ark,scp:$dir/ivector_online.JOB.ark,$dir/ivector_online.JOB.scp || exit 1;
 fi
 
 if [ $stage -le 1 ]; then

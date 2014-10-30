@@ -50,11 +50,14 @@ fi
 
 if [ $stage -le 3 ]; then
   # We extract iVectors on all the train_nodup data, which will be what we
-  # train the system on.  This version of the iVector-extraction script
-  # pairs the utterances into twos (by default, see --utts-per-spk-max option) 
-  # and treats each as one speaker.
-  steps/online/nnet2/extract_ivectors_online2.sh --cmd "$train_cmd" --nj 30 \
-    data/train_nodup exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_nodup2 || exit 1;
+  # train the system on.
+
+  # having a larger number of speakers is helpful for generalization, and to
+  # handle per-utterance decoding well (iVector starts at zero).
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train_nodup data/train_nodup_max2
+
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
+    data/train_nodup_max2 exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_nodup2 || exit 1;
 fi
 
 
@@ -98,7 +101,7 @@ fi
 
 if [ $stage -le 6 ]; then
   # this does offline decoding that should give the same results as the real
-  # online decoding.
+  # online decoding (the one with --per-utt true)
   for lm_suffix in tg fsh_tgpr; do
     graph_dir=exp/tri4b/graph_sw1_${lm_suffix}
     # use already-built graphs.

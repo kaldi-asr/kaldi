@@ -70,7 +70,10 @@ class Convolutional2DComponent : public UpdatableComponent {
  public:
   Convolutional2DComponent(int32 dim_in, int32 dim_out) 
     : UpdatableComponent(dim_in, dim_out),
-      fmap_x_len_(0),fmap_y_len_(0),filt_x_len_(0),filt_y_len_(0),filt_x_step_(0),filt_y_step_(0),connect_fmap_(0)  
+      fmap_x_len_(0),fmap_y_len_(0),
+      filt_x_len_(0),filt_y_len_(0),
+      filt_x_step_(0),filt_y_step_(0),
+      connect_fmap_(0), learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0)
   { }
   ~Convolutional2DComponent()
   { }
@@ -81,6 +84,7 @@ class Convolutional2DComponent : public UpdatableComponent {
   void InitData(std::istream &is) {
     // define options
     BaseFloat bias_mean = -2.0, bias_range = 2.0, param_stddev = 0.1;
+    BaseFloat learn_rate_coef = 1.0, bias_learn_rate_coef = 1.0;
     // parse config
     std::string token; 
     while (!is.eof()) {
@@ -95,8 +99,10 @@ class Convolutional2DComponent : public UpdatableComponent {
       else if (token == "<FiltXStep>")   ReadBasicType(is, false, &filt_x_step_);
       else if (token == "<FiltYStep>")   ReadBasicType(is, false, &filt_y_step_);
       else if (token == "<ConnectFmap>") ReadBasicType(is, false, &connect_fmap_);
+      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
+      else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
-                     << " (ParamStddev|BiasMean|BiasRange|FmapXLen|FmapYLen|FiltXLen|FiltYLen|FiltXStep|FiltYStep|ConnectFmap)";
+                     << " (ParamStddev|BiasMean|BiasRange|FmapXLen|FmapYLen|FiltXLen|FiltYLen|FiltXStep|FiltYStep|ConnectFmap|LearnRateCoef|BiasLearnRateCoef)";
       is >> std::ws; // eat-up whitespace
     }
 
@@ -139,9 +145,16 @@ class Convolutional2DComponent : public UpdatableComponent {
     }
     bias_ = vec;
     //
+    learn_rate_coef_ = learn_rate_coef;
+    bias_learn_rate_coef_ = bias_learn_rate_coef;
+    //
   }
 
   void ReadData(std::istream &is, bool binary) {
+    ExpectToken(is, binary, "<LearnRateCoef>");
+    ReadBasicType(is, binary, &learn_rate_coef_);
+    ExpectToken(is, binary, "<BiasLearnRateCoef>");
+    ReadBasicType(is, binary, &bias_learn_rate_coef_);
     // convolution hyperparameters
     ExpectToken(is, binary, "<FmapXLen>");
     ReadBasicType(is, binary, &fmap_x_len_);
@@ -188,6 +201,10 @@ class Convolutional2DComponent : public UpdatableComponent {
   }
 
   void WriteData(std::ostream &os, bool binary) const {
+    WriteToken(os, binary, "<LearnRateCoef>");
+    WriteBasicType(os, binary, learn_rate_coef_);
+    WriteToken(os, binary, "<BiasLearnRateCoef>");
+    WriteBasicType(os, binary, bias_learn_rate_coef_);
     // convolution hyperparameters
     WriteToken(os, binary, "<FmapXLen>");
     WriteBasicType(os, binary, fmap_x_len_);
@@ -228,7 +245,9 @@ class Convolutional2DComponent : public UpdatableComponent {
   }
   std::string InfoGradient() const {
     return std::string("\n  filters_grad") + MomentStatistics(filters_grad_) +
-           "\n  bias_grad" + MomentStatistics(bias_grad_);
+           ", lr-coef " + ToString(learn_rate_coef_) +
+           "\n  bias_grad" + MomentStatistics(bias_grad_) +
+           ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
@@ -392,8 +411,8 @@ class Convolutional2DComponent : public UpdatableComponent {
     //
     // update
     // 
-    filters_.AddMat(-lr, filters_grad_);
-    bias_.AddVec(-lr, bias_grad_);
+    filters_.AddMat(-lr*learn_rate_coef_, filters_grad_);
+    bias_.AddVec(-lr*bias_learn_rate_coef_, bias_grad_);
     //
 
   }
@@ -404,6 +423,9 @@ class Convolutional2DComponent : public UpdatableComponent {
     filt_x_step_, filt_y_step_,   ///< 2D shifts along temporal and spectral
     connect_fmap_; ///< if connect_fmap_ = 1, then each fmap has num_filt
 
+  BaseFloat learn_rate_coef_;
+  BaseFloat bias_learn_rate_coef_;
+  
   CuMatrix<BaseFloat> filters_; ///< row = vectorized rectangular filter
   CuVector<BaseFloat> bias_; ///< bias for each filter
 

@@ -12,12 +12,12 @@ include ../kaldi.mk
 
 TESTFILES = lm-lib-test
 
-OBJFILES = kaldi-lmtable.o kaldi-lm.o
+OBJFILES = const-arpa-lm.o kaldi-lmtable.o kaldi-lm.o
 
 TESTOUTPUTS = composed.fst output.fst output1.fst output2.fst
 
 LIBNAME = kaldi-lm
 
-ADDLIBS = ../util/kaldi-util.a ../base/kaldi-base.a
+ADDLIBS = ../base/kaldi-base.a ../fstext/kaldi-fstext.a ../util/kaldi-util.a
 
 include ../makefiles/default_rules.mk

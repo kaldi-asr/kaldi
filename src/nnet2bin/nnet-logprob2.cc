@@ -20,10 +20,9 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
-#include "nnet2/nnet-randomize.h"
 #include "nnet2/nnet-update-parallel.h"
 #include "nnet2/am-nnet.h"
-
+#include "nnet2/nnet-compute.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -45,17 +44,9 @@ int main(int argc, char *argv[]) {
         "e.g.: nnet-logprob2 1.nnet \"$feats\" ark:- \"ark:|logprob-to-post ark:- 1.post\" ark:- \\"
         "        | latgen-faster-mapped [args]\n";
     
-    std::string spk_vecs_rspecifier, utt2spk_rspecifier;
     bool pad_input = true; // This is not currently configurable.
     
     ParseOptions po(usage);
-    
-    po.Register("spk-vecs", &spk_vecs_rspecifier, "Rspecifier for a vector that "
-                "describes each speaker; only needed if the neural net was "
-                "trained this way.");
-    po.Register("utt2spk", &utt2spk_rspecifier, "Rspecifier for map from "
-                "utterance to speaker; only relevant in conjunction with the "
-                "--spk-vecs option.");
     
     po.Read(argc, argv);
     
@@ -86,9 +77,6 @@ int main(int argc, char *argv[]) {
     inv_priors.ApplyPow(-1.0);
     
     SequentialBaseFloatCuMatrixReader feature_reader(feats_rspecifier);
-    // note: spk_vecs_rspecifier and utt2spk_rspecifier may be empty.
-    RandomAccessBaseFloatVectorReaderMapped vecs_reader(spk_vecs_rspecifier,
-                                                        utt2spk_rspecifier);
     BaseFloatCuMatrixWriter prob_writer_nodiv(prob_wspecifier_nodiv);
     BaseFloatCuMatrixWriter logprob_writer_divided(logprob_wspecifier_divided);
 
@@ -96,18 +84,9 @@ int main(int argc, char *argv[]) {
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string key = feature_reader.Key();
       const CuMatrix<BaseFloat> &feats = feature_reader.Value();
-      CuVector<BaseFloat> spk_vec;
-      if (!spk_vecs_rspecifier.empty()) {
-        if (!vecs_reader.HasKey(key)) {
-          KALDI_ERR << "No speaker vector available for key " << key;
-          num_err++;
-          continue;
-        }
-        spk_vec = vecs_reader.Value(key);
-      }
       
       CuMatrix<BaseFloat> log_probs(feats.NumRows(), am_nnet.NumPdfs());
-      NnetComputation(am_nnet.GetNnet(), feats, spk_vec, pad_input, &log_probs);
+      NnetComputation(am_nnet.GetNnet(), feats, pad_input, &log_probs);
       // at this point "log_probs" contains actual probabilities, not logs.
 
       // at this point they are probabilities, not log-probs, without prior division.

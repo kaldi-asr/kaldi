@@ -45,10 +45,10 @@ namespace nnet1 {
  *
  * In order to have a fast implementations, the filters 
  * are represented in vectorized form, where each rectangular
- * filter corresponds to a row in a matrix, where all filters 
+ * filter corresponds to a row in a matrix, where all the filters 
  * are stored. The features are then re-shaped to a set of matrices, 
  * where one matrix corresponds to single patch-position, 
- * where the filters get applied.
+ * where all the filters get applied.
  * 
  * The type of convolution is controled by hyperparameters:
  * patch_dim_     ... frequency axis size of the patch
@@ -57,15 +57,16 @@ namespace nnet1 {
  *                    (i.e. frame length before splicing)
  *
  * Due to convolution same weights are used repeateadly, 
- * the final gradient is average of all position-specific 
- * gradients.
+ * the final gradient is a sum of all position-specific 
+ * gradients (the sum was found better than averaging).
  *
  */
 class ConvolutionalComponent : public UpdatableComponent {
  public:
   ConvolutionalComponent(int32 dim_in, int32 dim_out) 
     : UpdatableComponent(dim_in, dim_out),
-      patch_dim_(0), patch_step_(0), patch_stride_(0)  
+      patch_dim_(0), patch_step_(0), patch_stride_(0), 
+      learn_rate_coef_(1.0), bias_learn_rate_coef_(1.0), max_norm_(0.0)  
   { }
   ~ConvolutionalComponent()
   { }
@@ -86,6 +87,9 @@ class ConvolutionalComponent : public UpdatableComponent {
       else if (token == "<PatchDim>")    ReadBasicType(is, false, &patch_dim_);
       else if (token == "<PatchStep>")   ReadBasicType(is, false, &patch_step_);
       else if (token == "<PatchStride>") ReadBasicType(is, false, &patch_stride_);
+      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
+      else if (token == "<BiasLearnRateCoef>") ReadBasicType(is, false, &bias_learn_rate_coef_);
+      else if (token == "<MaxNorm>") ReadBasicType(is, false, &max_norm_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|BiasMean|BiasRange|PatchDim|PatchStep|PatchStride)";
       is >> std::ws; // eat-up whitespace
@@ -139,7 +143,17 @@ class ConvolutionalComponent : public UpdatableComponent {
     ReadBasicType(is, binary, &patch_step_);
     ExpectToken(is, binary, "<PatchStride>");
     ReadBasicType(is, binary, &patch_stride_);
- 
+
+    // re-scale learn rate
+    ExpectToken(is, binary, "<LearnRateCoef>");
+    ReadBasicType(is, binary, &learn_rate_coef_);
+    ExpectToken(is, binary, "<BiasLearnRateCoef>");
+    ReadBasicType(is, binary, &bias_learn_rate_coef_);
+    
+    // max-norm regualrization
+    ExpectToken(is, binary, "<MaxNorm>");
+    ReadBasicType(is, binary, &max_norm_);
+
     // trainable parameters
     ExpectToken(is, binary, "<Filters>");
     filters_.Read(is, binary);
@@ -175,7 +189,17 @@ class ConvolutionalComponent : public UpdatableComponent {
     WriteBasicType(os, binary, patch_step_);
     WriteToken(os, binary, "<PatchStride>");
     WriteBasicType(os, binary, patch_stride_);
- 
+
+    // re-scale learn rate
+    WriteToken(os, binary, "<LearnRateCoef>");
+    WriteBasicType(os, binary, learn_rate_coef_);
+    WriteToken(os, binary, "<BiasLearnRateCoef>");
+    WriteBasicType(os, binary, bias_learn_rate_coef_);
+
+    // max-norm regularization
+    WriteToken(os, binary, "<MaxNorm>");
+    WriteBasicType(os, binary, max_norm_);
+
     // trainable parameters
     WriteToken(os, binary, "<Filters>");
     filters_.Write(os, binary);
@@ -200,7 +224,10 @@ class ConvolutionalComponent : public UpdatableComponent {
   }
   std::string InfoGradient() const {
     return std::string("\n  filters_grad") + MomentStatistics(filters_grad_) +
-           "\n  bias_grad" + MomentStatistics(bias_grad_);
+           ", lr-coef " + ToString(learn_rate_coef_) +
+           ", max-norm " + ToString(max_norm_) +
+           "\n  bias_grad" + MomentStatistics(bias_grad_) +
+           ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
@@ -270,20 +297,13 @@ class ConvolutionalComponent : public UpdatableComponent {
     }
 
     // sum the derivatives into in_diff, we will compensate #summands
-    // TODO: rewrite to use : std::vector<int32>
-    in_diff_summands_.Resize(in_diff->NumCols(), kSetZero); // reset
     for (int32 p=0; p<num_patches; p++) {
       for (int32 s=0; s<num_splice; s++) {
         CuSubMatrix<BaseFloat> src(feature_patch_diffs_[p].ColRange(s * patch_dim_, patch_dim_));
         CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(p * patch_step_ + s * patch_stride_, patch_dim_));
         tgt.AddMat(1.0, src); // sum
-        // add 1.0 to keep track of target columns in the sum
-        in_diff_summands_.Range(p * patch_step_ + s * patch_stride_, patch_dim_).Add(1.0);
       }
     }
-    // compensate #summands
-    in_diff_summands_.InvertElements();
-    in_diff->MulColsVec(in_diff_summands_);
   }
 
 
@@ -295,11 +315,6 @@ class ConvolutionalComponent : public UpdatableComponent {
 
     // we use following hyperparameters from the option class
     const BaseFloat lr = opts_.learn_rate;
-    /* NOT NOW:
-    const BaseFloat mmt = opts_.momentum;
-    const BaseFloat l2 = opts_.l2_penalty;
-    const BaseFloat l1 = opts_.l1_penalty;
-    */
 
     //
     // calculate the gradient
@@ -312,17 +327,28 @@ class ConvolutionalComponent : public UpdatableComponent {
       filters_grad_.AddMatMat(1.0, diff_patch, kTrans, vectorized_feature_patches_[p], kNoTrans, 1.0);
       bias_grad_.AddRowSumMat(1.0, diff_patch, 1.0);
     }
-    // scale
-    filters_grad_.Scale(1.0/num_patches);
-    bias_grad_.Scale(1.0/num_patches);
-    //
 
     //
     // update
     // 
-    filters_.AddMat(-lr, filters_grad_);
-    bias_.AddVec(-lr, bias_grad_);
+    filters_.AddMat(-lr*learn_rate_coef_, filters_grad_);
+    bias_.AddVec(-lr*bias_learn_rate_coef_, bias_grad_);
     //
+
+    // max-norm
+    if (max_norm_ > 0.0) {
+      CuMatrix<BaseFloat> lin_sqr(filters_);
+      lin_sqr.MulElements(filters_);
+      CuVector<BaseFloat> l2(filters_.NumRows());
+      l2.AddColSumMat(1.0, lin_sqr, 0.0);
+      l2.ApplyPow(0.5); // we have per-neuron L2 norms
+      CuVector<BaseFloat> scl(l2);
+      scl.Scale(1.0/max_norm_);
+      scl.ApplyFloor(1.0);
+      scl.InvertElements();
+      filters_.MulRowsVec(scl); // shink to sphere!
+    }
+
   }
 
  private:
@@ -335,6 +361,10 @@ class ConvolutionalComponent : public UpdatableComponent {
 
   CuMatrix<BaseFloat> filters_grad_; ///< gradient of filters
   CuVector<BaseFloat> bias_grad_; ///< gradient of biases
+
+  BaseFloat learn_rate_coef_; ///< weight learn rate
+  BaseFloat bias_learn_rate_coef_; ///< bias learn rate
+  BaseFloat max_norm_; ///< limit L2 norm of a neuron weights to positive value
 
   /** Buffer of reshaped inputs:
    *  1row = vectorized rectangular feature patch,
@@ -350,9 +380,6 @@ class ConvolutionalComponent : public UpdatableComponent {
    *  std::vector-dim = patch-position
    */
   std::vector<CuMatrix<BaseFloat> > feature_patch_diffs_;
-
-  /// Auxiliary vector for compensating #summands when backpropagating
-  CuVector<BaseFloat> in_diff_summands_;
 };
 
 } // namespace nnet1

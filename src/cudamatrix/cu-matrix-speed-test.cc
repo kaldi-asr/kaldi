@@ -430,7 +430,37 @@ template<typename Real> void TestCuMatrixSetZeroAboveDiag(int32 dim) {
   KALDI_LOG << "For CuMatrix::SetZeroAboveDiag" << NameOf<Real>() << ", for dim = "
             << dim << ", speed was " << gflops << " gigaflops.";
 }
+template<typename Real> 
+void TestCuMatrixLookup(int32 dim) {
+  BaseFloat time_in_secs = 0.025; 
+  int32 dimM = dim, dimN = dim;
+  CuMatrix<Real> H(dimM, dimN);
+  H.SetRandn();
+  std::vector<Int32Pair> indices;
+  std::vector<Real> reference;
+  std::vector<Real> output;
+  // Generates the indices and the reference.
+  int32 num_index = dim * dim;
+  for (int32 j = 0; j < num_index; j++) {
+    MatrixIndexT r = Rand() % dimM;
+    MatrixIndexT c = Rand() % dimN;
 
+    Int32Pair tmp_pair;
+    tmp_pair.first = r;
+    tmp_pair.second = c;
+    indices.push_back(tmp_pair);
+    reference.push_back(H(r, c));
+  }
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed()< time_in_secs; iter++)
+    H.Lookup(indices, &output);
+
+  BaseFloat fdim = dim;    
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::Lookup" << NameOf<Real>() << ", for dim = " 
+            << dim << ", speed was " << gflops << " gigaflops.";  
+}
 
 template<typename Real> void CudaMatrixSpeedTest() {
   std::vector<int32> sizes;
@@ -480,6 +510,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixCopyUpperToLower<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSetZeroAboveDiag<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++) 
+    TestCuMatrixLookup<Real>(sizes[s]);
 }
 
 

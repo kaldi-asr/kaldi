@@ -120,11 +120,10 @@ void DecodableNnet2Online::ComputeForFrame(int32 frame) {
       left_context_ - right_context_;
   
   CuMatrix<BaseFloat> cu_posteriors(num_frames_out, num_pdfs_);
-  CuVector<BaseFloat> empty_speaker_info;
   
   // The "false" below tells it not to pad the input: we've already done
   // any padding that we needed to do.
-  NnetComputation(nnet_.GetNnet(), cu_features, empty_speaker_info,
+  NnetComputation(nnet_.GetNnet(), cu_features,
                   false, &cu_posteriors);
   
   cu_posteriors.ApplyFloor(1.0e-20); // Avoid log of zero which leads to NaN.

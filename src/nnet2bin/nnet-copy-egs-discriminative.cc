@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
-#include "nnet2/nnet-randomize.h"
+#include "nnet2/nnet-example-functions.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -39,6 +39,25 @@ int32 GetCount(double expected_count) {
     ans++;
   return ans;
 }
+void AverageConstPart(int32 const_feat_dim,
+                      DiscriminativeNnetExample *eg) {
+  if (eg->spk_info.Dim() != 0) {  // already has const part.
+    KALDI_ASSERT(eg->spk_info.Dim() == const_feat_dim);
+    // and nothing to do.
+  } else {
+    int32 dim = eg->input_frames.NumCols(),
+        basic_dim = dim - const_feat_dim;
+    KALDI_ASSERT(const_feat_dim < eg->input_frames.NumCols());
+    Matrix<BaseFloat> mat(eg->input_frames);  // copy to non-compressed matrix.
+    eg->input_frames = mat.Range(0, mat.NumRows(), 0, basic_dim);
+    eg->spk_info.Resize(const_feat_dim);
+    eg->spk_info.AddRowSumMat(1.0 / mat.NumRows(),
+                              mat.Range(0, mat.NumRows(),
+                                        basic_dim, const_feat_dim),
+                              0.0);
+  }
+}
+                      
 
 } // namespace nnet2
 } // namespace kaldi
@@ -65,6 +84,8 @@ int main(int argc, char *argv[]) {
     bool random = false;
     int32 srand_seed = 0;
     BaseFloat keep_proportion = 1.0;
+    int32 const_feat_dim = 0;
+
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
                 "archives randomly, not round-robin.");
@@ -74,6 +95,11 @@ int main(int argc, char *argv[]) {
                 "of times equal to floor(keep-proportion) or ceil(keep-proportion).");
     po.Register("srand", &srand_seed, "Seed for random number generator "
                 "(only relevant if --random=true or --keep-proportion != 1.0)");
+    po.Register("const-feat-dim", &const_feat_dim,
+                "Dimension of part of features (last dims) which varies little "
+                "or not at all with time, and which should be stored as a single "
+                "vector for each example rather than in the feature matrix."
+                "Useful in systems that use iVectors.  Helpful to save space.");
     
     po.Read(argc, argv);
 
@@ -103,8 +129,14 @@ int main(int argc, char *argv[]) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         std::ostringstream ostr;
         ostr << num_written;
-        example_writers[index]->Write(ostr.str(),
-                                      example_reader.Value());
+        if (const_feat_dim == 0) {
+          example_writers[index]->Write(ostr.str(),
+                                        example_reader.Value());
+        } else {
+          DiscriminativeNnetExample eg = example_reader.Value();
+          AverageConstPart(const_feat_dim, &eg);
+          example_writers[index]->Write(ostr.str(), eg);
+        }
         num_written++;
         num_frames_written +=
             static_cast<int64>(example_reader.Value().num_ali.size());

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# This is as the _a experiments but using the extract_ivectors_online2 script.
-#
+# This is our online neural net build.
+# After this you can do discriminative training with run_nnet2_discriminative.sh.
 
 . cmd.sh
 
@@ -55,8 +55,13 @@ fi
 if [ $stage -le 3 ]; then
   # We extract iVectors on all the train_si284 data, which will be what we
   # train the system on.
-  steps/online/nnet2/extract_ivectors_online2.sh --cmd "$train_cmd" --nj 30 \
-    data/train_si284 exp/nnet2_online/extractor exp/nnet2_online/ivectors2_train_si284 || exit 1;
+
+  # having a larger number of speakers is helpful for generalization, and to
+  # handle per-utterance decoding well (iVector starts at zero).
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train_si284 data/train_si284_max2
+
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
+    data/train_si284_max2 exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_si284 || exit 1;
 fi
 
 
@@ -77,10 +82,10 @@ if [ $stage -le 4 ]; then
   # wouldn't be able to decode in real-time using a CPU.
   #
   # I copied the learning rates from ../nnet2/run_5d.sh
-  steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
-    --num-epochs 8 --num-epochs-extra 4 \
+  steps/nnet2/train_pnorm_simple.sh --stage $train_stage \
+    --num-epochs 12 \
     --splice-width 7 --feat-type raw \
-    --online-ivector-dir exp/nnet2_online/ivectors2_train_si284 \
+    --online-ivector-dir exp/nnet2_online/ivectors_train_si284 \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
@@ -149,6 +154,22 @@ if [ $stage -le 9 ]; then
     done
   done
 fi
+
+if [ $stage -le 10 ]; then
+  # this version of the decoding treats each utterance separately
+  # without carrying forward speaker information.  By setting --online false we
+  # let it estimate the iVector from the whole utterance; it's then given to all
+  # frames of the utterance.  So it's not really online.
+  for lm_suffix in tgpr bd_tgpr; do
+    graph_dir=exp/tri4b/graph_${lm_suffix}
+    for year in eval92 dev93; do
+      steps/online/nnet2/decode.sh --cmd "$decode_cmd" --nj 8 \
+        --per-utt true --online false \
+        "$graph_dir" data/test_${year} ${dir}_online/decode_${lm_suffix}_${year}_utt_offline || exit 1;
+    done
+  done
+fi
+
 
 
 exit 0;

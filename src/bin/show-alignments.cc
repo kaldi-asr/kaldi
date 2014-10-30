@@ -32,7 +32,8 @@ int main(int argc, char *argv[]) {
         "Display alignments in human-readable form\n"
         "Usage:  show-alignments  [options] <phone-syms> <model> <alignments-rspecifier>\n"
         "e.g.: \n"
-        " show-alignments phones.txt 1.mdl ark:1.ali\n";
+        " show-alignments phones.txt 1.mdl ark:1.ali\n"
+        "See also: ali-to-phones\n";
     ParseOptions po(usage);
 
     po.Read(argc, argv);

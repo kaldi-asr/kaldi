@@ -39,7 +39,6 @@ class DecodableAmNnet: public DecodableInterface {
   DecodableAmNnet(const TransitionModel &trans_model,
                   const AmNnet &am_nnet,
                   const CuMatrixBase<BaseFloat> &feats,
-                  const CuVectorBase<BaseFloat> &spk_info,
                   bool pad_input = true, // if !pad_input, the NumIndices()
                                          // will be < feats.NumRows().
                   BaseFloat prob_scale = 1.0):
@@ -57,7 +56,7 @@ class DecodableAmNnet: public DecodableInterface {
     }
     CuMatrix<BaseFloat> log_probs(num_rows, trans_model.NumPdfs());
     // the following function is declared in nnet-compute.h
-    NnetComputation(am_nnet.GetNnet(), feats, spk_info, pad_input, &log_probs);
+    NnetComputation(am_nnet.GetNnet(), feats, pad_input, &log_probs);
     log_probs.ApplyFloor(1.0e-20); // Avoid log of zero which leads to NaN.
     log_probs.ApplyLog();
     CuVector<BaseFloat> priors(am_nnet.Priors());
@@ -109,19 +108,18 @@ class DecodableAmNnetParallel: public DecodableInterface {
       const TransitionModel &trans_model,
       const AmNnet &am_nnet,
       const CuMatrix<BaseFloat> *feats,
-      const CuVector<BaseFloat> *spk_info,
       bool pad_input = true,
       BaseFloat prob_scale = 1.0):
       trans_model_(trans_model), am_nnet_(am_nnet), feats_(feats),
-      spk_info_(spk_info), pad_input_(pad_input), prob_scale_(prob_scale) {
-    KALDI_ASSERT(feats_ != NULL && spk_info_ != NULL);
+      pad_input_(pad_input), prob_scale_(prob_scale) {
+    KALDI_ASSERT(feats_ != NULL);
   }
 
   void Compute() {
     log_probs_.Resize(feats_->NumRows(), trans_model_.NumPdfs());
     // the following function is declared in nnet-compute.h
     NnetComputation(am_nnet_.GetNnet(), *feats_,
-                    *spk_info_, pad_input_, &log_probs_);
+                    pad_input_, &log_probs_);
     log_probs_.ApplyFloor(1.0e-20); // Avoid log of zero which leads to NaN.
     log_probs_.ApplyLog();
     CuVector<BaseFloat> priors(am_nnet_.Priors());
@@ -134,8 +132,6 @@ class DecodableAmNnetParallel: public DecodableInterface {
     log_probs_.Scale(prob_scale_);
     delete feats_;
     feats_ = NULL;
-    delete spk_info_;
-    spk_info_ = NULL;
   }
 
   // Note, frames are numbered from zero.  But state_index is numbered
@@ -169,7 +165,6 @@ class DecodableAmNnetParallel: public DecodableInterface {
   }
   ~DecodableAmNnetParallel() {
     if (feats_) delete feats_;
-    if (spk_info_) delete spk_info_;
   }
  protected:
   const TransitionModel &trans_model_;
@@ -177,7 +172,6 @@ class DecodableAmNnetParallel: public DecodableInterface {
   CuMatrix<BaseFloat> log_probs_; // actually not really probabilities, since we divide
   // by the prior -> they won't sum to one.
   const CuMatrix<BaseFloat> *feats_;
-  const CuVector<BaseFloat> *spk_info_;
   bool pad_input_;
   BaseFloat prob_scale_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmNnetParallel);

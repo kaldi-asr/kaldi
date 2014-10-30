@@ -23,9 +23,12 @@ from optparse import OptionParser
 ###
 ### Parse options
 ###
-usage="%prog [options] <feat-dim> <num-leaves> <num-hidden-layers> <num-hidden-neurons>  >nnet-proto-file"
+usage="%prog [options] <feat-dim> >nnet-proto-file"
 parser = OptionParser(usage)
 
+parser.add_option('--no-proto-head', dest='with_proto_head', 
+                   help='Do not put <NnetProto> head-tag in the prototype [default: %default]', 
+                   default=True, action='store_false');
 parser.add_option('--no-softmax', dest='with_softmax', 
                    help='Do not put <SoftMax> in the prototype [default: %default]', 
                    default=True, action='store_false');
@@ -81,12 +84,13 @@ def Glorot(dim1, dim2):
 ### Print prototype of the network
 ###
 
+# NO HIDDEN LAYER, ADDING BOTTLENECK!
 # No hidden layer while adding bottleneck means:
 # - add bottleneck layer + hidden layer + output layer
 if num_hid_layers == 0 and o.bottleneck_dim != 0:
   assert(o.bottleneck_dim > 0)
   assert(num_hid_layers == 0)
-  print "<NnetProto>"
+  if o.with_proto_head : print "<NnetProto>"
   # 25% smaller stddev -> small bottleneck range, 10x smaller learning rate
   print "<LinearTransform> <InputDim> %d <OutputDim> %d <ParamStddev> %f <LearnRateCoef> %f" % \
    (feat_dim, o.bottleneck_dim, \
@@ -107,9 +111,10 @@ if num_hid_layers == 0 and o.bottleneck_dim != 0:
   # We are done!
   sys.exit(0)
 
+# NO HIDDEN LAYERS!
 # Add only last layer (logistic regression)
 if num_hid_layers == 0:
-  print "<NnetProto>"
+  if o.with_proto_head : print "<NnetProto>" 
   print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f" % \
         (feat_dim, num_leaves, 0.0, 0.0, (o.param_stddev_factor * Glorot(feat_dim, num_leaves)))
   if o.with_softmax:
@@ -118,29 +123,33 @@ if num_hid_layers == 0:
   # We are done!
   sys.exit(0)
 
-# Assuming we have >0 hidden layers
+
+# THE USUAL DNN PROTOTYPE STARTS HERE!
+# Assuming we have >0 hidden layers,
 assert(num_hid_layers > 0)
 
-# Begin the prototype
-print "<NnetProto>"
+# Begin the prototype,
+if o.with_proto_head : print "<NnetProto>" 
 
-# First AffineTranform
+# First AffineTranform,
 print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <MaxNorm> %f" % \
       (feat_dim, num_hid_neurons, o.hid_bias_mean, o.hid_bias_range, \
        (o.param_stddev_factor * Glorot(feat_dim, num_hid_neurons) * \
         (math.sqrt(1.0/12.0) if o.smaller_input_weights else 1.0)), o.max_norm) 
-      # stddev(U[0,1]) = sqrt(1/12); reducing stddev of weights, 
-      # the dynamic range of input data is larger than of a Sigmoid.
+      # Note.: compensating dynamic range mismatch between input features and Sigmoid-hidden layers,
+      # i.e. mapping the std-dev of N(0,1) (input features) to std-dev of U[0,1] (sigmoid-outputs).
+      # This is done by multiplying with stddev(U[0,1]) = sqrt(1/12).
+      # The stddev of weights is consequently reduced by 0.29x.
 print "%s <InputDim> %d <OutputDim> %d" % (o.activation_type, num_hid_neurons, num_hid_neurons)
 
-# Internal AffineTransforms
+# Internal AffineTransforms,
 for i in range(num_hid_layers-1):
   print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <MaxNorm> %f" % \
         (num_hid_neurons, num_hid_neurons, o.hid_bias_mean, o.hid_bias_range, \
          (o.param_stddev_factor * Glorot(num_hid_neurons, num_hid_neurons)), o.max_norm)
   print "%s <InputDim> %d <OutputDim> %d" % (o.activation_type, num_hid_neurons, num_hid_neurons)
 
-# Optionaly add bottleneck
+# Optionaly add bottleneck,
 if o.bottleneck_dim != 0:
   assert(o.bottleneck_dim > 0)
   # 25% smaller stddev -> small bottleneck range, 10x smaller learning rate

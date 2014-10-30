@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
 
     if (randomize_next_component) {
       int32 c = insert_at + src_nnet.NumComponents();
-      Component *component = &(am_nnet.GetNnet().GetComponent(c));
+      kaldi::nnet2::Component *component = &(am_nnet.GetNnet().GetComponent(c));
       UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(component);
       if (!uc)
         KALDI_ERR << "You have --randomize-next-component=true, but the "

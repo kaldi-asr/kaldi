@@ -555,10 +555,9 @@ double EbwAmSgmmUpdater::UpdateVars(const MleAmSgmmAccs &num_accs,
     SpMatrix<double> SigmaInv(SigmaStats); // before floor and ceiling.  Currently sigma,
     // not its inverse.
     bool verbose = false;
-    bool is_psd = false; // we cannot guarantee that Sigma Inv is positive semidefinite.
-    int n_floor = SigmaInv.ApplyFloor(SigmaOld, options_.cov_min_value, verbose, is_psd);
+    int n_floor = SigmaInv.ApplyFloor(SigmaOld, options_.cov_min_value, verbose);
     SigmaInv.Invert(); // make it inverse variance.
-    int n_ceiling = SigmaInv.ApplyFloor(SigmaInvOld, options_.cov_min_value, verbose, is_psd);
+    int n_ceiling = SigmaInv.ApplyFloor(SigmaInvOld, options_.cov_min_value, verbose);
     
     // this auxf_change.  
     double auxf_change = -0.5 * count *(TraceSpSp(SigmaInv, SigmaStats)

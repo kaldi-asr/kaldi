@@ -32,12 +32,15 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Convert lattices so that the arcs in the CompactLattice format correspond with\n"
-        "words (i.e. aligned with word boundaries).\n"
+        "words (i.e. aligned with word boundaries).  Note: it will generally be more\n"
+        "efficient if you apply 'lattice-push' before this program.\n"
         "Usage: lattice-align-words [options] <word-boundary-file> <model> <lattice-rspecifier> <lattice-wspecifier>\n"
         " e.g.: lattice-align-words  --silence-label=4320 --partial-word-label=4324 \\\n"
         "   data/lang/phones/word_boundary.int final.mdl ark:1.lats ark:aligned.lats\n"
         "Note: word-boundary file has format (on each line):\n"
-        "<integer-phone-id> [begin|end|singleton|internal|nonword]\n";
+        "<integer-phone-id> [begin|end|singleton|internal|nonword]\n"
+        "See also: lattice-align-words-lexicon, for use in cases where phones\n"
+        "don't have word-position information.\n";
     
     ParseOptions po(usage);
     BaseFloat max_expand = 0.0;

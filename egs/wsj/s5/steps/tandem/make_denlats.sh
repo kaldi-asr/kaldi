@@ -143,16 +143,34 @@ else
 fi
 
 
+# if this job is interrupted by the user, we want any background jobs to be
+# killed too.
+cleanup() {
+  local pids=$(jobs -pr)
+  [ -n "$pids" ] && kill $pids
+}
+trap "cleanup" INT QUIT TERM EXIT
+
+
 if [ $sub_split -eq 1 ]; then 
   $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
    gmm-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
     --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
      $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 else
-  for n in `seq $nj`; do
-    if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $srcdir/final.mdl ]; then
+  # each job from 1 to $nj is split into multiple pieces (sub-split), and we aim
+  # to have at most two jobs running at each time.  The idea is that if we have stragglers
+  # from one job, we can be processing another one at the same time.
+  rm $dir/.error 2>/dev/null
+
+  prev_pid=
+  for n in `seq $[nj+1]`; do
+    if [ $n -gt $nj ]; then
+      this_pid=
+    elif [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $srcdir/final.mdl ]; then
       echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
-    else 
+      this_pid=
+    else
       ssdata1=$data1/split$nj/$n/split$sub_split;
       if [ ! -d $ssdata1 ] || [ $ssdata1 -ot $sdata1/$n/feats.scp ]; then
         split_data.sh --per-utt $sdata1/$n $sub_split || exit 1;
@@ -164,19 +182,27 @@ else
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
       feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
-      $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
+
+      $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         gmm-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
         --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
-          $dir/dengraph/HCLG.fst "$feats_subset" "ark:|gzip -c >$dir/lat.$n.JOB.gz" || exit 1;
-      echo Merging archives for data subset $n
-      rm $dir/.error 2>/dev/null;
-      for k in `seq $sub_split`; do
-        gunzip -c $dir/lat.$n.$k.gz || touch $dir/.error;
-      done | gzip -c > $dir/lat.$n.gz || touch $dir/.error;
-      [ -f $dir/.error ] && echo Merging lattices for subset $n failed && exit 1;
-      rm $dir/lat.$n.*.gz
-      touch $dir/.done.$n
+          $dir/dengraph/HCLG.fst "$feats_subset" "ark:|gzip -c >$dir/lat.$n.JOB.gz" || touch .error &
+      this_pid=$!
     fi
+    if [ ! -z "$prev_pid" ]; then  # Wait for the previous job; merge the previous set of lattices.
+      wait $prev_pid
+      [ -f $dir/.error ] && echo "$0: error generating denominator lattices" && exit 1;
+      rm $dir/.merge_error 2>/dev/null
+      echo Merging archives for data subset $prev_n
+      for k in `seq $sub_split`; do
+        gunzip -c $dir/lat.$prev_n.$k.gz || touch $dir/.merge_error;
+      done | gzip -c > $dir/lat.$prev_n.gz || touch $dir/.merge_error;
+      [ -f $dir/.merge_error ] && echo "$0: Merging lattices for subset $prev_n failed (or maybe some other error)" && exit 1;
+      rm $dir/lat.$prev_n.*.gz
+      touch $dir/.done.$prev_n
+    fi
+    prev_n=$n
+    prev_pid=$this_pid
   done
 fi
 

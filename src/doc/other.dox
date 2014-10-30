@@ -41,9 +41,12 @@
  debugging and for those who want access to the built models.  With time it will contain an increasingly
  large fraction of the outputs of the example scripts in the repository.
 
-  For the slides for a short series of Kaldi lectures that were delivered in 2012, 
-  see <a href=https://sites.google.com/site/dpovey/kaldi-lectures> here </a>.  Note: 
-  these are increasingly out of date.
+ This <a href=http://www.danielpovey.com/jobs.html> job postings page </a> is not directly Kaldi-related
+ but may be useful to many of the same people.
+
+ For the slides for a short series of Kaldi lectures that were delivered in 2012, 
+ see <a href=https://sites.google.com/site/dpovey/kaldi-lectures> here </a>.  Note: 
+ these are increasingly out of date.
 
    <p>
    The slides for the presentation that was made at the ICASSP meeting in Prague in 2011 are here:

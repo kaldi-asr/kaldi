@@ -40,7 +40,7 @@ for lm in $LMs ; do
       utils/remove_oovs.pl $tmpdir/oovs.txt | \
       utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$tgt/words.txt \
         --osymbols=$tgt/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-      fstrmepsilon > $tgt/G.fst
+      fstrmepsilon | fstarcsort --sort_type=ilabel > $tgt/G.fst
     fstisstochastic $tgt/G.fst
     # The output is like:
     # 9.14233e-05 -0.259833

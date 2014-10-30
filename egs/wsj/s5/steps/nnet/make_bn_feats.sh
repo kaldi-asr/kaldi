@@ -111,7 +111,7 @@ done
 echo "Succeeded creating MLP-BN features for $name ($data)"
 
 # optionally resave in as HTK features:
-if [ $htk_save ]; then
+if [ $htk_save == true ]; then
   echo -n "Resaving as HTK features into $bnfeadir/htk ... "
   mkdir -p $bnfeadir/htk
   $cmd JOB=1:$nj $logdir/htk_copy_bnfeats.JOB.log \

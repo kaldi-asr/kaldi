@@ -32,7 +32,7 @@ src1=$1
 src2=$2
 dir=$3
 
-for f in $src1/final.mdl $src1/cmvn_opts $src2/tree $src2/final.mdl; do
+for f in $src1/final.mdl $src2/tree $src2/final.mdl; do
    [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1;
 done
 

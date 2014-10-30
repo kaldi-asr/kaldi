@@ -392,25 +392,6 @@ void UnitTestAdditiveNoiseComponent() {
   }  
 }
 
-
-void UnitTestPiecewiseLinearComponent() {
-  BaseFloat learning_rate = 0.01, max_change = 0.1 * (Rand() % 2);
-  int32 dim = 5 + Rand() % 10, N = 3 + 2 * (Rand() % 5);
-  {
-    PiecewiseLinearComponent component;
-    component.Init(dim, N, learning_rate, max_change);
-    UnitTestGenericComponentInternal(component);
-  }
-  {
-    const char *str = "learning-rate=0.01 dim=10 N=5 max-change=0.01";
-    PiecewiseLinearComponent component;
-    component.InitFromString(str);
-    UnitTestGenericComponentInternal(component);
-  }
-}
-
-
-
 void UnitTestScaleComponent() {
   int32 dim = 1 + Rand() % 10;
   BaseFloat scale = 0.1 + Rand() % 3;
@@ -494,58 +475,6 @@ void UnitTestAffineComponentPreconditionedOnline() {
   }
 }
 
-
-void UnitTestAffineComponentModified() {
-  BaseFloat learning_rate = 0.01,
-      param_stddev = 0.1, bias_stddev = 1.0, length_cutoff = 10.0,
-      max_change = 0.1;
-  int32 input_dim = 5 + Rand() % 10, output_dim = 5 + Rand() % 10;
-  {
-    AffineComponentModified component;
-    if (Rand() % 2 == 0) {
-      component.Init(learning_rate, input_dim, output_dim,
-                     param_stddev, bias_stddev,
-                     length_cutoff, max_change);
-    } else {
-      Matrix<BaseFloat> mat(output_dim + 1, input_dim);
-      mat.SetRandn();
-      mat.Scale(param_stddev);
-      WriteKaldiObject(mat, "tmpf", true);
-      sleep(1);
-      component.Init(learning_rate, length_cutoff, max_change, "tmpf");
-      unlink("tmpf");
-    }
-    UnitTestGenericComponentInternal(component);
-  }
-  {
-    const char *str = "learning-rate=0.01 input-dim=16 output-dim=15 param-stddev=0.1 cutoff-length=10.0 max-change=0.01";
-    AffineComponentModified component;
-    component.InitFromString(str);
-    UnitTestGenericComponentInternal(component);
-  }
-}
-
-
-void UnitTestAffinePreconInputComponent() {
-  BaseFloat learning_rate = 0.01,
-      param_stddev = 0.1, bias_stddev = 1.0,
-      avg_samples = 100.0;
-  int32 input_dim = 5 + Rand() % 10, output_dim = 5 + Rand() % 10;
-
-  {
-    AffinePreconInputComponent component;
-    component.Init(learning_rate, input_dim, output_dim,
-                   param_stddev, bias_stddev, avg_samples);
-    UnitTestGenericComponentInternal(component);
-  }
-  {
-    const char *str = "learning-rate=0.01 input-dim=10 output-dim=15 param-stddev=0.1 avg-samples=100";
-    AffinePreconInputComponent component;
-    component.InitFromString(str);
-    UnitTestGenericComponentInternal(component);
-  }
-}
-
 void UnitTestBlockAffineComponent() {
   BaseFloat learning_rate = 0.01,
       param_stddev = 0.1, bias_stddev = 0.1;
@@ -583,29 +512,6 @@ void UnitTestBlockAffineComponentPreconditioned() {
   {
     const char *str = "learning-rate=0.01 input-dim=10 output-dim=15 param-stddev=0.1 num-blocks=5 alpha=3.0";
     BlockAffineComponentPreconditioned component;
-    component.InitFromString(str);
-    UnitTestGenericComponentInternal(component);
-  }
-}
-
-void UnitTestMixtureProbComponent() {
-  BaseFloat learning_rate = 0.01,
-      diag_element = 0.8;
-  std::vector<int32> sizes;
-  int32 num_sizes = 1 + Rand() % 5; // allow 
-  for (int32 i = 0; i < num_sizes; i++)
-    sizes.push_back(2 + Rand() % 5); // TODO: change to 1 + Rand() % 5
-  // and fix test errors.  May be issue in the code itself.
-  
-  
-  {
-    MixtureProbComponent component;
-    component.Init(learning_rate, diag_element, sizes);
-    UnitTestGenericComponentInternal(component);
-  }
-  {
-    const char *str = "learning-rate=0.01 diag-element=0.9 dims=3:4:5";
-    MixtureProbComponent component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);
   }
@@ -873,18 +779,14 @@ int main() {
       UnitTestGenericComponent<SoftmaxComponent>();
       UnitTestGenericComponent<RectifiedLinearComponent>();
       UnitTestGenericComponent<SoftHingeComponent>();
-      UnitTestGenericComponent<PowerExpandComponent>("higher-power-scale=0.1");
       UnitTestMaxoutComponent(); 
       UnitTestPnormComponent(); 
       UnitTestGenericComponent<NormalizeComponent>();
       UnitTestSigmoidComponent();
       UnitTestAffineComponent();
-      UnitTestPiecewiseLinearComponent();
       UnitTestScaleComponent();
-      UnitTestAffinePreconInputComponent();
       UnitTestBlockAffineComponent();
       UnitTestBlockAffineComponentPreconditioned();
-      UnitTestMixtureProbComponent();
       UnitTestSumGroupComponent();
       UnitTestDctComponent();
       UnitTestFixedLinearComponent();
@@ -893,7 +795,6 @@ int main() {
       UnitTestFixedBiasComponent();
       UnitTestAffineComponentPreconditioned();
       UnitTestAffineComponentPreconditionedOnline();
-      UnitTestAffineComponentModified();
       UnitTestDropoutComponent();
       UnitTestAdditiveNoiseComponent();
       UnitTestParsing();

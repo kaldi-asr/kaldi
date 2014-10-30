@@ -86,7 +86,7 @@ class SingleUtteranceNnet2Decoder {
   /// final-probs to be included.
   void GetLattice(bool end_of_utterance,
                   CompactLattice *clat) const;
-
+  
   /// Outputs an FST corresponding to the single best path through the current
   /// lattice. If "use_final_probs" is true AND we reached the final-state of
   /// the graph then it will include those as final-probs, else it will treat

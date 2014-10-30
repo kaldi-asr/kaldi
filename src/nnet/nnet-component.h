@@ -56,6 +56,7 @@ class Component {
 
     kActivationFunction = 0x0200, 
     kSoftmax, 
+    kBlockSoftmax, 
     kSigmoid,
     kTanh,
     kDropout,
@@ -75,6 +76,7 @@ class Component {
     kAveragePooling2DComponent,
     kMaxPoolingComponent,
     kMaxPooling2DComponent,
+    kFramePoolingComponent, 
     kParallelComponent
   } ComponentType;
   /// A pair of type and marker 

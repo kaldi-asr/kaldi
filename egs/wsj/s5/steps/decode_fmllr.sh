@@ -175,7 +175,7 @@ fi
 if [ $stage -le 3 ]; then
   echo "$0: estimating fMLLR transforms a second time."
   $cmd JOB=1:$nj $dir/log/fmllr_pass2.JOB.log \
-    lattice-determinize-pruned --acoustic-scale=$acwt --beam=4.0 \
+    lattice-determinize-pruned$thread_string --acoustic-scale=$acwt --beam=4.0 \
     "ark:gunzip -c $dir/lat.tmp.JOB.gz|" ark:- \| \
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
     weight-silence-post $silence_weight $silphonelist $adapt_model ark:- ark:- \| \

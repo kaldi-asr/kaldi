@@ -4,7 +4,7 @@
 //                      Saarland University (Author: Arnab Ghoshal);
 //                      Georg Stemmer;  Jan Silovsky
 //           2012       Arnab Ghoshal
-//           2013       Johns Hopkins University (author: Daniel Povey)
+//           2013-2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -31,6 +31,7 @@
 #include "gmm/model-common.h"
 #include "matrix/matrix-lib.h"
 #include "tree/cluster-utils.h"
+#include "tree/clusterable-classes.h"
 
 namespace kaldi {
 
@@ -50,6 +51,10 @@ class DiagGmm {
   explicit DiagGmm(const DiagGmm &gmm): valid_gconsts_(false) {
     CopyFromDiagGmm(gmm);
   }
+
+  /// Initializer from GaussClusterable initializes the DiagGmm as
+  /// a single Gaussian from tree stats.
+  DiagGmm(const GaussClusterable &gc, BaseFloat var_floor);
 
   /// Copies from DiagGmmNormal; does not resize.
   void CopyFromNormal(const DiagGmmNormal &diag_gmm_normal);

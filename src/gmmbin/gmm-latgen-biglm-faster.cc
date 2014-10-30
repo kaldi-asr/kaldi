@@ -118,7 +118,7 @@ bool DecodeUtterance(LatticeBiglmFasterDecoder &decoder, // not const but is rea
   } else {
     Lattice fst;
     decoder.GetRawLattice(&fst);
-    if (!fst.NumStates() == 0)
+    if (fst.NumStates() == 0)
       KALDI_ERR << "Unexpected problem getting lattice for utterance "
                 << utt;
     fst::Connect(&fst); // Will get rid of this later... shouldn't have any

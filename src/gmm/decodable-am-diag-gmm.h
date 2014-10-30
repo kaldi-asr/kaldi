@@ -145,7 +145,7 @@ class DecodableAmDiagGmmScaled: public DecodableAmDiagGmmUnmapped {
                                          trans_model_.TransitionIdToPdf(tid));
   }
   // Indices are one-based!  This is for compatibility with OpenFst.
-  virtual int32 NumIndices() { return trans_model_.NumTransitionIds(); }
+  virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
 
   const TransitionModel *TransModel() { return &trans_model_; }
 

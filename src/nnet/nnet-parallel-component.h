@@ -159,13 +159,33 @@ class ParallelComponent : public UpdatableComponent {
     for (int32 i=0; i<nnet_.size(); i++) {
       os << "nested_network #" << i+1 << "{\n" << nnet_[i].Info() << "}\n";
     }
-    return os.str();
+    std::string s(os.str());
+    s.erase(s.end() -1); // removing last '\n'
+    return s;
   }
                        
   std::string InfoGradient() const {
     std::ostringstream os;
     for (int32 i=0; i<nnet_.size(); i++) {
       os << "nested_gradient #" << i+1 << "{\n" << nnet_[i].InfoGradient() << "}\n";
+    }
+    std::string s(os.str());
+    s.erase(s.end() -1); // removing last '\n'
+    return s;
+  }
+
+  std::string InfoPropagate() const {
+    std::ostringstream os;
+    for (int32 i=0; i<nnet_.size(); i++) {
+      os << "nested_propagate #" << i+1 << "{\n" << nnet_[i].InfoPropagate() << "}\n";
+    }
+    return os.str();
+  }
+
+  std::string InfoBackPropagate() const {
+    std::ostringstream os;
+    for (int32 i=0; i<nnet_.size(); i++) {
+      os << "nested_backpropagate #" << i+1 << "{\n" << nnet_[i].InfoBackPropagate() << "}\n";
     }
     return os.str();
   }

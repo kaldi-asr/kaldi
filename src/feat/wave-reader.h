@@ -90,6 +90,7 @@ class WaveData {
   }
 
  private:
+  static const uint32 kBlockSize = 1048576;  // 1024 * 1024, use 1M bytes
   Matrix<BaseFloat> data_;
   BaseFloat samp_freq_;
   static void Expect4ByteTag(std::istream &is, const char *expected);

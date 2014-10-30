@@ -37,7 +37,6 @@ samples_per_iter=200000 # each iteration of training, see this many samples
 num_jobs_nnet=16   # Number of neural net jobs to run in parallel.  This option
                    # is passed to get_egs.sh.
 get_egs_stage=0
-spk_vecs_dir=
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
                 # on each iter.  You could set it to 0 or to a large value for complete
@@ -173,8 +172,7 @@ num_blocks=`cat $dir/num_blocks` || exit 1;
 
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
-  [ ! -z $spk_vecs_dir ] && spk_vecs_opt="--spk-vecs-dir $spk_vecs_dir";
-  steps/nnet2/get_egs.sh --io-opts "$io_opts" $spk_vecs_opt --samples-per-iter $samples_per_iter \
+  steps/nnet2/get_egs.sh --io-opts "$io_opts" --samples-per-iter $samples_per_iter \
       --num-jobs-nnet $num_jobs_nnet \
       --splice-width $splice_width --stage $get_egs_stage --cmd "$cmd" $egs_opts --feat-type raw \
       $data $lang $alidir $dir || exit 1;

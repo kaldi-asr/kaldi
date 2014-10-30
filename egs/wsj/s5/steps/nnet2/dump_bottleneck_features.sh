@@ -4,7 +4,8 @@
 # Apache 2.0
 
 
-# Begin configuration section.  
+# Begin configuration section.
+feat_type=
 stage=1
 nj=4
 cmd=run.pl
@@ -59,10 +60,13 @@ splice_opts=`cat $nnetdir/splice_opts 2>/dev/null`
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 ## Set up input features of nnet
-if [ -f $nnetdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+if [ -z "$feat_type" ]; then
+  if [ -f $nnetdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+fi
 echo "$0: feature type is $feat_type"
 
 case $feat_type in
+  raw) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |";;
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $nnetdir/final.mat ark:- ark:- |"
    ;;
