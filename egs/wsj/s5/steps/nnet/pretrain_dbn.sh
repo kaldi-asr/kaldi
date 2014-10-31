@@ -214,7 +214,6 @@ for depth in $(seq 1 $nn_depth); do
   if [ "$depth" == "1" ]; then
     # This is usually Gaussian-Bernoulli RBM (not if CNN layers are part of input transform)
     # initialize
-    [ ! -z $cnn ] && vis_type=bern || vis_type=gauss
     echo "Initializing '$RBM.init'"
     echo "<NnetProto>
     <Rbm> <InputDim> $num_fea <OutputDim> $num_hid <VisibleType> $input_vis_type <HiddenType> bern <ParamStddev> $param_stddev_first

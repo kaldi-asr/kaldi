@@ -44,6 +44,7 @@ feadir=$5
 sdata=$srcdata/split$nj;
 splice_opts=`cat $gmmdir/splice_opts 2>/dev/null` # frame-splicing options.
 cmvn_opts=`cat $gmmdir/cmvn_opts 2>/dev/null`
+delta_opts=`cat $gmmdir/delta_opts 2>/dev/null`
 
 mkdir -p $data $logdir $feadir
 [[ -d $sdata && $srcdata/feats.scp -ot $sdata ]] || split_data.sh $srcdata $nj || exit 1;
@@ -61,6 +62,7 @@ fi
 
 # Figure-out the feature-type,
 feat_type=delta # Default
+[ ! -f $gmmdir/final.mat -a ! -z "$transform_dir" ] && feat_type=delta_fmllr
 [ -f $gmmdir/final.mat ] && feat_type=lda
 [ -f $gmmdir/final.mat -a ! -z "$transform_dir" ] && feat_type=lda_fmllr
 [ ! -z "$raw_transform_dir" ] && feat_type=raw_fmllr
@@ -69,7 +71,8 @@ echo "$0: feature type is $feat_type";
 
 # Hand-code the feature pipeline,
 case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
+  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
+  delta_fmllr) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk \"ark:cat $transform_dir/trans.* |\" ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $gmmdir/final.mat ark:- ark:- |";;
   lda_fmllr) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $gmmdir/final.mat ark:- ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk \"ark:cat $transform_dir/trans.* |\" ark:- ark:- |";;
   raw_fmllr) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$raw_transform_dir/raw_trans.JOB ark:- ark:- |";;

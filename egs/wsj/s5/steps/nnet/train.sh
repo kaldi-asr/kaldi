@@ -204,6 +204,8 @@ else
 fi
 
 # optionally add deltas
+delta_order_file=$(dirname $feature_transform)/delta_order
+[ -e $delta_order_file ] && delta_order=$(cat $delta_order_file)
 if [ "$delta_order" != "" ]; then
   feats_tr="$feats_tr add-deltas --delta-order=$delta_order ark:- ark:- |"
   feats_cv="$feats_cv add-deltas --delta-order=$delta_order ark:- ark:- |"

@@ -19,8 +19,8 @@ lmwt=1.0
 learn_rate=0.00001
 halving_factor=1.0 #ie. disable halving
 do_smbr=true
-use_silphones=false # exclude silphones from approximate accuracy computation
-unkphonelist= # exclude unkphones from approximate accuracy computation (overrides use_silphones)
+exclude_silphones=false # exclude silphones from approximate accuracy computation
+unkphonelist= # exclude unkphones from approximate accuracy computation (overrides exclude_silphones)
 verbose=1
 
 seed=777    # seed value used for training data shuffling
@@ -87,7 +87,7 @@ model=$dir/final.mdl
 
 #enable/disable silphones from MPE training
 mpe_silphones_arg= #empty
-$use_silphones && mpe_silphones_arg="--silence-phones=$silphonelist" # all silphones
+$exclude_silphones && mpe_silphones_arg="--silence-phones=$silphonelist" # all silphones
 [ ! -z $unkphonelist ] && mpe_silphones_arg="--silence-phones=$unkphonelist" # unk only
 
 
