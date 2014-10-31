@@ -158,9 +158,12 @@ static void TestRemoveEpsLocalSpecial() {
     FstPrinter<LogArc> fstprinter(logfst2, NULL, NULL, NULL, false, true);
     fstprinter.Print(&std::cout, "standard output");
   }
-#ifndef _MSC_VER
-  assert(IsStochasticFst(logfst2, kDelta*10));
-#endif
+  if (ApproxEqual(ShortestDistance(*logfst), ShortestDistance(logfst2))) {
+    // make sure we preserved stochasticity in cases where doing so was
+    // possible... if the log-semiring total weight changed, then it is
+    // not possible so don't assert this.
+    assert(IsStochasticFst(logfst2, kDelta*10));
+  }
   delete logfst;
 }
 
@@ -168,7 +171,7 @@ static void TestRemoveEpsLocalSpecial() {
 
 int main() {
   using namespace fst;
-  for (int i = 0;i < 10;i++) {
+  for (int i = 0; i < 10; i++) {
     TestRemoveEpsLocal<fst::StdArc>();
     TestRemoveEpsLocalSpecial();
   }

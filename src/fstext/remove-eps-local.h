@@ -1,6 +1,7 @@
 // fstext/remove-eps-local.h
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -35,11 +36,14 @@ namespace fst {
 /// into one.
 /// The algorithm preserves equivalence and stochasticity in the given semiring.
 /// If you want to preserve stochasticity in a different semiring (e.g. log),
-/// For that, use RemoveEpsLocalSpecial, which only words for StdArc but which
-/// preserves stochasticity in the LogArc sense.  The reason that we can't
+/// then use RemoveEpsLocalSpecial, which only words for StdArc but which
+/// preserves stochasticity, where possible (*) in the LogArc sense.  The reason that we can't
 /// just cast to a different semiring is that in that case we would no longer
 /// be able to guarantee equivalence in the original semiring (this arises from
 /// what happens when we combine identical arcs).
+/// (*) by "where possible".. there are situations where we wouldn't be able to
+/// preserve stochasticity in the LogArc sense while maintaining equivalence in
+/// the StdArc sense, so in these situations we maintain equivalence.
 
 template<class Arc>
 void RemoveEpsLocal(MutableFst<Arc> *fst);

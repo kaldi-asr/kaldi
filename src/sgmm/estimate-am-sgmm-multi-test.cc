@@ -89,7 +89,8 @@ void TestMultiSgmmEst(const std::vector<AmSgmm*> &models,
     }
   }
   KALDI_LOG << "LL = " << loglike << "; LL1 = " << loglike1;
-  AssertGeq(loglike1, loglike, 1e-6);
+
+  KALDI_ASSERT(loglike1 >= loglike - (std::abs(loglike1)+std::abs(loglike))*1.0e-06);
 
   DeletePointers(&accs);
   DeletePointers(&new_models);

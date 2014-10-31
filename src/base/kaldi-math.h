@@ -222,35 +222,24 @@ inline float LogSub(float x, float y) {
   return res;
 }
 
-// return (a == b)
+/// return abs(a - b) <= relative_tolerance * (abs(a)+abs(b)).
 static inline bool ApproxEqual(float a, float b,
                                float relative_tolerance = 0.001) {
   // a==b handles infinities.
   if (a==b) return true;
   float diff = std::abs(a-b);
   if (diff == std::numeric_limits<float>::infinity()
-      || diff!=diff) return false; // diff is +inf or nan.
+      || diff != diff) return false; // diff is +inf or nan.
   return (diff <= relative_tolerance*(std::abs(a)+std::abs(b))); 
 }
 
-// assert (a == b)
+/// assert abs(a - b) <= relative_tolerance * (abs(a)+abs(b))
 static inline void AssertEqual(float a, float b,
                                float relative_tolerance = 0.001) {
   // a==b handles infinities.
   KALDI_ASSERT(ApproxEqual(a, b, relative_tolerance));
 }
 
-// assert (a>=b)
-static inline void AssertGeq(float a, float b,
-                             float relative_tolerance = 0.001) {
-  KALDI_ASSERT(a-b >= -relative_tolerance * (std::abs(a)+std::abs(b)));
-}
-
-// assert (a<=b)
-static inline void AssertLeq(float a, float b,
-                             float relative_tolerance = 0.001) {
-  KALDI_ASSERT(a-b <= -relative_tolerance * (std::abs(a)+std::abs(b)));
-}
 
 // RoundUpToNearestPowerOfTwo does the obvious thing. It crashes if n <= 0.
 int32 RoundUpToNearestPowerOfTwo(int32 n);
