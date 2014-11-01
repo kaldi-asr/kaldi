@@ -80,8 +80,9 @@ svn switch --relocate https://svn.code.sf.net/p/kaldi/code svn+ssh://USERNAME@sv
  you are in the top level of your copy of the repository (e.g. in trunk/).  To avoid entering passwords
  every time you update, use ssh keys: see https://sourceforge.net/account/ssh.
  
-   \section git_svn Using Kaldi with Git version control system
- git-svn (see:http://git-scm.com/docs/git-svn) is a useful tool for bridging
+   \section git_svn Using Kaldi with git
+
+  <a href=http://git-scm.com/docs/git-svn>git-svn</a>  is a useful tool for bridging
  between git and svn. A local git repository of the trunk branch of
  kaldi can be created using
   \verbatim
@@ -104,7 +105,7 @@ svn switch --relocate https://svn.code.sf.net/p/kaldi/code svn+ssh://USERNAME@sv
  synced with the trunk branch of the SVN repository. The recommendations for
  linear history apply here as well. 
 
-    \section git_contributor Contributing from Git
+    \section git_contributor Contributing from git
   If you are a contributor, you would have to change the remote to an SSH-based
   link which allows you to commit changes:
 \verbatim
@@ -122,6 +123,6 @@ svn switch --relocate https://svn.code.sf.net/p/kaldi/code svn+ssh://USERNAME@sv
   git rebase -i master 
 \endverbatim
 and using the editor, choose to "squash" everything but "pick" only the oldest
-commit. You can then "git merge" the branch with master and commit it followed
-by "dcommitting" to SVN.
+commit. You can then "git merge" the branch with master and commit it afterward
+using "git svn dcommit".
 */
