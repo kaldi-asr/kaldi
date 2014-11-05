@@ -28,11 +28,11 @@ local/lre07_eval/score_lre07.v01d.pl -t $lre07_dir/targets -n $lre07_dir/nontarg
 # Compute the posterior probabilities for each duration, as well as
 # the target and nontarget files.
 for dur in "3" "10" "30"; do
-  utils/filter_scp.pl -f 0 data/lre07/"$dur"sec \
+  utils/filter_scp.pl -f 1 data/lre07/"$dur"sec \
     $posterior_dir/posteriors > \
     $posterior_dir/posteriors_"$dur"sec
   local/lre07_eval/lre07_targets.pl $posterior_dir/posteriors_"$dur"sec \
-    <(utils/filter_scp.pl -f 0 data/lre07/"$dur"sec data/lre07/utt2lang) \
+    <(utils/filter_scp.pl -f 1 data/lre07/"$dur"sec data/lre07/utt2lang) \
     $languages_file \
     "$lre07_dir"/targets_"$dur"sec "$lre07_dir"/nontargets_"$dur"sec>/dev/null
   local/lre07_eval/score_lre07.v01d.pl -t "$lre07_dir"/targets_"$dur"sec -n \
@@ -53,9 +53,9 @@ er=$(compute-wer --text ark:<(lid/remove_dialect.pl data/lre07/utt2lang) \
 printf '% 7.2f' $er
 
 for dur in "3" "10" "30"; do
-  er=$(compute-wer --text ark:<(utils/filter_scp.pl -f 0 \
+  er=$(compute-wer --text ark:<(utils/filter_scp.pl -f 1 \
     data/lre07/"$dur"sec data/lre07/utt2lang | lid/remove_dialect.pl -) \
-    ark:<(utils/filter_scp.pl -f 0 data/lre07/"$dur"sec \
+    ark:<(utils/filter_scp.pl -f 1 data/lre07/"$dur"sec \
       $posterior_dir/output) \
     2>/dev/null | grep "WER" | awk '{print $2 }')
     printf '% 7.2f' $er
