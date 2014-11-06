@@ -15,7 +15,7 @@ model_dir=exp/ivectors_train
 train_utt2lang=data/train_lr/utt2lang
 test_utt2lang=data/lre07/utt2lang
 prior_scale=1.0
-log_posterior_output=true # If true, the output of the binary
+apply_log=true # If true, the output of the binary
                           # logistitic-regression-eval are log-posteriors.
                           # Probabilities are the output if this is false.
 conf=conf/logistic-regression.conf
@@ -57,7 +57,7 @@ logistic-regression-train --config=$conf "$train_ivectors" \
 logistic-regression-copy --scale-priors=$model_dir/priors.vec \
    $model $model_rebalanced
 
-logistic-regression-eval --log-posterior-output=$log_posterior_output $model \
+logistic-regression-eval --apply-log=$apply_log $model \
   "$train_ivectors" ark,t:$train_dir/posteriors
 
 cat $train_dir/posteriors | \
@@ -73,7 +73,7 @@ compute-wer --mode=present --text ark:<(lid/remove_dialect.pl $train_utt2lang) \
   ark:$train_dir/output
 
 # Evaluate on test data. Most likely a NIST LRE.
-logistic-regression-eval --log-posterior-output=$log_posterior_output $model_rebalanced \
+logistic-regression-eval --apply-log=$apply_log $model_rebalanced \
   "$test_ivectors" ark,t:$test_dir/posteriors
 
 cat $test_dir/posteriors | \
