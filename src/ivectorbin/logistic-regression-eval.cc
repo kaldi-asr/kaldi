@@ -26,7 +26,7 @@ using namespace kaldi;
 
 int ComputeLogPosteriors(ParseOptions &po, 
   const LogisticRegressionConfig &config,
-  bool log_posterior_output) {
+  bool apply_log) {
   std::string model = po.GetArg(1),
       vector_rspecifier = po.GetArg(2),
       log_posteriors_wspecifier = po.GetArg(3);
@@ -45,7 +45,7 @@ int ComputeLogPosteriors(ParseOptions &po,
     const Vector<BaseFloat> &vector = vector_reader.Value();
     Vector<BaseFloat> log_posteriors;
     classifier.GetLogPosteriors(vector, &log_posteriors);
-    if (!log_posterior_output)
+    if (!apply_log)
       log_posteriors.ApplyExp();
     posterior_writer.Write(utt, log_posteriors);
     num_utt_done++;
@@ -55,7 +55,7 @@ int ComputeLogPosteriors(ParseOptions &po,
 }
 
 int32 ComputeScores(ParseOptions &po, const LogisticRegressionConfig &config,
-                    bool log_posterior_output) {
+                    bool apply_log) {
   std::string model_rspecifier = po.GetArg(1),
       trials_rspecifier = po.GetArg(2),
       vector_rspecifier = po.GetArg(3),
@@ -102,7 +102,7 @@ int32 ComputeScores(ParseOptions &po, const LogisticRegressionConfig &config,
   bool binary = false;
   Output ko(scores_out.c_str(), binary);
 
-  if (!log_posterior_output)
+  if (!apply_log)
     log_posteriors.ApplyExp();
   
   for (int i = 0; i < ys.size(); i++) {
@@ -128,8 +128,8 @@ int main(int argc, char *argv[]) {
     
   ParseOptions po(usage);
 
-  bool log_posterior_output = true;
-  po.Register("log-posterior-output", &log_posterior_output, 
+  bool apply_log = true;
+  po.Register("apply-log", &apply_log, 
               "If false, apply Exp to the log posteriors output. This is "
               "helpful when combining posteriors from multiple logistic "
               "regression models.");
@@ -143,8 +143,8 @@ int main(int argc, char *argv[]) {
   }
   
   return (po.NumArgs() == 4) ?
-      ComputeScores(po, config, log_posterior_output) :
-      ComputeLogPosteriors(po, config, log_posterior_output);
+      ComputeScores(po, config, apply_log) :
+      ComputeLogPosteriors(po, config, apply_log);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
