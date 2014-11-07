@@ -226,6 +226,9 @@ struct OnlineCmvnState {
 
   // Copy constructor
   OnlineCmvnState(const OnlineCmvnState &other); 
+
+  void Write(std::ostream &os, bool binary) const;
+  void Read(std::istream &is, bool binary);
   
   // Use the default assignment operator.
 };

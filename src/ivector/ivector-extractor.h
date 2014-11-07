@@ -344,6 +344,9 @@ class OnlineIvectorEstimationStats {
   /// apply the scaling to the prior term.
   void Scale(double scale);
 
+  void Write(std::ostream &os, bool binary) const;
+  void Read(std::istream &is, bool binary);
+
   // Use the default assignment operator
  protected:
   /// Returns objective function per frame, at this iVector value.
