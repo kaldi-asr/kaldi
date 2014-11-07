@@ -11,6 +11,8 @@ cmd=run.pl
 feat_type=
 stage=0
 splice_width=4 # meaning +- 4 frames on each side for second LDA
+left_context= # left context for second LDA
+right_context= # right context for second LDA
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 within_class_factor=0.0001 # This affects the scaling of the transform rows...
                            # sorry for no explanation, you'll have to see the code.
@@ -41,6 +43,8 @@ if [ $# != 4 ]; then
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --splice-width <width|4>                         # Number of frames on each side to append for feature input"
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
+  echo "  --left-context <width;4>                         # Number of frames on left side to append for feature input, overrides splice-width"
+  echo "  --right-context <width;4>                        # Number of frames on right side to append for feature input, overrides splice-width"
   echo "  --stage <stage|0>                                # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
   echo "  --online-vector-dir <dir|none>                   # Directory produced by"
@@ -53,6 +57,8 @@ lang=$2
 alidir=$3
 dir=$4
 
+[ -z "$left_context" ] && left_context=splice_width
+[ -z "$right_context" ] && right_context=splice_width
 
 [ ! -z "$online_ivector_dir" ] && \
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
@@ -128,7 +134,7 @@ feats_one="$(echo "$feats" | sed s:JOB:1:g)"
 feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
 # by default: no dim reduction.
 
-spliced_feats="$feats splice-feats --left-context=$splice_width --right-context=$splice_width ark:- ark:- |"
+spliced_feats="$feats splice-feats --left-context=$left_context --right-context=$right_context ark:- ark:- |"
 
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;

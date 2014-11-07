@@ -21,6 +21,8 @@ num_jobs_nnet=16    # Number of neural net jobs to run in parallel
 stage=0
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time. 
 splice_width=4 # meaning +- 4 frames on each side for second LDA
+left_context=
+right_context=
 random_copy=false
 online_ivector_dir=
 ivector_randomize_prob=0.0 # if >0.0, randomizes iVectors during training with
@@ -49,6 +51,8 @@ if [ $# != 4 ]; then
   echo "  --feat-type <lda|raw>                            # (by default it tries to guess).  The feature type you want"
   echo "                                                   # to use as input to the neural net."
   echo "  --splice-width <width;4>                         # Number of frames on each side to append for feature input"
+  echo "  --left-context <width;4>                         # Number of frames on left side to append for feature input, overrides splice-width"
+  echo "  --right-context <width;4>                        # Number of frames on right side to append for feature input, overrides splice-width"
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --num-frames-diagnostic <#frames;4000>           # Number of frames used in computing (train,valid) diagnostics"
   echo "  --num-valid-frames-combine <#frames;10000>       # Number of frames used in getting combination weights at the"
@@ -64,6 +68,8 @@ lang=$2  # kept for historical reasons, but never used.
 alidir=$3
 dir=$4
 
+[ -z "$left_context" ] && left_context=splice_width
+[ -z "$right_context" ] && right_context=splice_width
 
 
 # Check some files.
@@ -180,7 +186,7 @@ done
 
 remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
 
-nnet_context_opts="--left-context=$splice_width --right-context=$splice_width"
+nnet_context_opts="--left-context=$left_context --right-context=$right_context"
 mkdir -p $dir/egs
 
 if [ $stage -le 2 ]; then

@@ -18,6 +18,9 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
+#include <set>
+#include <string>
 #include "nnet2/nnet-nnet.h"
 #include "util/stl-utils.h"
 
@@ -39,17 +42,105 @@ int32 Nnet::InputDim() const {
 int32 Nnet::LeftContext() const {
   KALDI_ASSERT(!components_.empty());
   int32 ans = 0;
-  for (size_t i = 0; i < components_.size(); i++)
-    ans += components_[i]->LeftContext();
-  return ans;
+  for (size_t i = 0; i < components_.size(); i++) {
+    ans += components_[i]->Context().front();
+  }
+  return -1*ans;
+  // nnet-components return left context as a non-positive integer
+  // however the nnet-update, nnet-compute, train-nnet-perturbed expect a
+  // non-negative left context. In addition, the NnetExample also stores data
+  // left context as positive integer. To be compatible with these other classes
+  // Nnet::LeftContext() returns a non-negative left context.
+              
 }
 
 int32 Nnet::RightContext() const {
   KALDI_ASSERT(!components_.empty());
   int32 ans = 0;
-  for (size_t i = 0; i < components_.size(); i++)
-    ans += components_[i]->RightContext();
+  for (size_t i = 0; i < components_.size(); i++) {
+    ans += components_[i]->Context().back();
+  }
   return ans;
+}
+
+void Nnet::ComputeChunkInfo(int32 input_chunk_size,
+                      int32 num_chunks,
+                      std::vector<ChunkInfo> *chunk_info_out) const {
+  int32 total_context = RightContext() + LeftContext() + 1;
+  KALDI_ASSERT(total_context <= input_chunk_size);
+
+  // Computing the output-chunk indices for the last component in the network
+  // We add LeftContext() of the network to these values to ensure that the input-chunk indices
+  // for the first component in the network always start from zero
+  int32 output_chunk_size = input_chunk_size - total_context + 1;
+  std::vector<int32> current_output_inds;
+  for (int32 i = 0; i < output_chunk_size; i++)
+    current_output_inds.push_back(i + LeftContext());
+
+  (*chunk_info_out).resize(NumComponents() + 1);
+
+  // indexes for last component is empty, since the last component's chunk is
+  // always contiguous
+  // component's output is always contiguous
+  (*chunk_info_out)[NumComponents()] = ChunkInfo(
+      GetComponent(NumComponents() - 1).OutputDim(),
+      num_chunks, current_output_inds.front(),
+      current_output_inds.back());
+
+  std::vector<int32> current_input_inds;
+  for (int32 i = NumComponents() - 1; i >= 0; i--) {
+    std::vector<int32> current_context = GetComponent(i).Context();
+    std::set<int32> current_input_ind_set;
+    for (size_t j = 0; j < current_context.size(); j++) 
+      for (size_t k = 0; k < current_output_inds.size(); k++)
+        current_input_ind_set.insert(current_context[j] +
+                                     current_output_inds[k]);
+    current_output_inds.resize(current_input_ind_set.size());
+    std::copy(current_input_ind_set.begin(),
+              current_input_ind_set.end(),
+              current_output_inds.begin());
+
+    // checking if the vector has contiguous data
+    // assign indexes only if the data is not contiguous
+    if (current_output_inds.size() !=
+        current_output_inds.back() - current_output_inds.front() + 1) {
+      (*chunk_info_out)[i] = ChunkInfo(GetComponent(i).InputDim(),
+                                       num_chunks,
+                                       current_output_inds);
+    } else  {
+      (*chunk_info_out)[i] = ChunkInfo(GetComponent(i).InputDim(),
+                                       num_chunks,
+                                       current_output_inds.front(),
+                                       current_output_inds.back());
+    }
+  }
+
+  // TODO: Make a set of components which can deal with data rearrangement.
+  // Define this set in an appropriate place so that
+  // users adding new components can simply update the list.
+  const char *dinit[] = {"SpliceComponent", "SpliceMaxComponent"};
+  std::vector< std::string > data_rearrange_components(dinit, dinit + 2);
+
+  // Ensuring that all components until the first component capable of data
+  // rearrangement (e.g. SpliceComponent|SpliceMaxComponent) operate on
+  // contiguous chunks at the input
+  for (size_t i = 0 ; i < NumComponents() ; i++) {
+      (*chunk_info_out)[i].MakeOffsetsContiguous();
+      // Check if the current component is present in the set of components
+      // capable of data rearrangement.
+      if (std::find(data_rearrange_components.begin(),
+                    data_rearrange_components.end(),
+                    components_[i]->Type())
+          != data_rearrange_components.end())
+          break;
+  }
+
+  // sanity testing for chunk_info_out vector
+  for (size_t i = 0; i < chunk_info_out->size(); i++) {
+    (*chunk_info_out)[i].Check();
+    // (*chunk_info_out)[i].ToString();
+  }
+
 }
 
 const Component& Nnet::GetComponent(int32 component) const {
@@ -83,7 +174,7 @@ void Nnet::Write(std::ostream &os, bool binary) const {
     if (!binary) os << std::endl;
   }
   WriteToken(os, binary, "</Components>");
-  WriteToken(os, binary, "</Nnet>");  
+  WriteToken(os, binary, "</Nnet>");
 }
 
 void Nnet::Read(std::istream &is, bool binary) {
@@ -94,12 +185,12 @@ void Nnet::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &num_components);
   ExpectToken(is, binary, "<Components>");
   components_.resize(num_components);
-  for (int32 c = 0; c < num_components; c++) 
+  for (int32 c = 0; c < num_components; c++)
     components_[c] = Component::ReadNew(is, binary);
   ExpectToken(is, binary, "</Components>");
   ExpectToken(is, binary, "</Nnet>");
   SetIndexes();
-  Check();  
+  Check();
 }
 
 
@@ -108,7 +199,7 @@ void Nnet::ZeroStats() {
     NonlinearComponent *nonlinear_component =
         dynamic_cast<NonlinearComponent*>(components_[i]);
     if (nonlinear_component != NULL)
-      nonlinear_component->Scale(0.0); // Zero the stats this way.
+      nonlinear_component->Scale(0.0);  // Zero the stats this way.
   }
 }
 void Nnet::Destroy() {
@@ -132,7 +223,7 @@ void Nnet::ComponentDotProducts(
       (*dot_prod)(index) = uc1->DotProduct(*uc2);
       index++;
     }
-  }    
+  }
   KALDI_ASSERT(index == NumUpdatableComponents());
 }
 
@@ -177,7 +268,7 @@ std::string Nnet::Info() const {
   ostr << "input-dim " << InputDim() << std::endl;
   ostr << "output-dim " << OutputDim() << std::endl;
   ostr << "parameter-dim " << GetParameterDim() << std::endl;
-  for (int32 i = 0; i < NumComponents(); i++) 
+  for (int32 i = 0; i < NumComponents(); i++)
     ostr << "component " << i << " : " << components_[i]->Info() << std::endl;
   return ostr.str();
 }
@@ -199,18 +290,18 @@ void Nnet::Init(std::istream &is) {
      splicing for each layer, and after that is the info about the actual layer.
      Imagine the input dim is 13, and the speaker dim is 40, so (13 x 9) + 40 =  527.
      The config file might be as follows; the lines beginning with # are comments.
-     
+
      # layer-type layer-options
      AffineLayer 0.01 0.001 527 1000 0.04356
   */
   components_.clear();
   while (getline(is, line)) {
     std::istringstream line_is(line);
-    line_is >> std::ws; // Eat up whitespace.
-    if (line_is.peek() == '#' || line_is.eof()) continue; // Comment or empty.
+    line_is >> std::ws;  // Eat up whitespace.
+    if (line_is.peek() == '#' || line_is.eof()) continue;  // Comment or empty.
     Component *c = Component::NewFromString(line);
     KALDI_ASSERT(c != NULL);
-    components_.push_back(c);    
+    components_.push_back(c);
   }
   SetIndexes();
   Check();
@@ -228,7 +319,7 @@ void Nnet::ScaleLearningRates(BaseFloat factor) {
   std::ostringstream ostr;
   for (int32 c = 0; c < NumComponents(); c++) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[c]);
-    if (uc != NULL) { // Updatable component...
+    if (uc != NULL) {  // Updatable component...
       uc->SetLearningRate(uc->LearningRate() * factor);
       ostr << uc->LearningRate() << " ";
     }
@@ -241,7 +332,7 @@ void Nnet::ScaleLearningRates(BaseFloat factor) {
 void Nnet::SetLearningRates(BaseFloat learning_rate) {
   for (int32 c = 0; c < NumComponents(); c++) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[c]);
-    if (uc != NULL) { // Updatable component...
+    if (uc != NULL) {  // Updatable component...
       uc->SetLearningRate(learning_rate);
     }
   }
@@ -254,9 +345,10 @@ void Nnet::AdjustLearningRates(
     const VectorBase<BaseFloat> &new_model_old_gradient,
     const VectorBase<BaseFloat> &old_model_new_gradient,
     const VectorBase<BaseFloat> &new_model_new_gradient,
-    BaseFloat measure_at, // where to measure gradient, on line between old and new model;
-                          // 0.5 < measure_at <= 1.0.
-    BaseFloat ratio, // e.g. 1.1; ratio by  which we change learning rate.
+    BaseFloat measure_at,  // where to measure gradient,
+                           // on line between old and new model;
+                           // 0.5 < measure_at <= 1.0.
+    BaseFloat ratio,  // e.g. 1.1; ratio by  which we change learning rate.
     BaseFloat max_learning_rate) {
   std::vector<BaseFloat> new_lrates;
   KALDI_ASSERT(old_model_old_gradient.Dim() == NumUpdatableComponents() &&
@@ -271,9 +363,9 @@ void Nnet::AdjustLearningRates(
   int32 index = 0;
   for (int32 c = 0; c < NumComponents(); c++) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[c]);
-    if (uc == NULL) { // Non-updatable component.
+    if (uc == NULL) {  // Non-updatable component.
       KALDI_ASSERT(old_model_old_gradient(c) == 0.0);
-      continue; 
+      continue;
     } else {
       BaseFloat grad_dotprod_at_end =
           new_model_new_gradient(index) - old_model_new_gradient(index),
@@ -282,15 +374,18 @@ void Nnet::AdjustLearningRates(
           grad_dotprod_interp =
           measure_at * grad_dotprod_at_end +
           (1.0 - measure_at) * grad_dotprod_at_start;
-      // grad_dotprod_interp will be positive if we want more of the gradient term
+      // grad_dotprod_interp will be positive if we
+      // want more of the gradient term
       // -> faster learning rate for this component
 
       BaseFloat lrate = uc->LearningRate();
       lrate *= (grad_dotprod_interp > 0 ? ratio : inv_ratio);
-      changes_str = changes_str + (grad_dotprod_interp > 0 ? " increase" : " decrease");
-      dotprod_str = dotprod_str + (new_model_new_gradient(index) > 0 ? " positive" : " negative");
+      changes_str = changes_str +
+          (grad_dotprod_interp > 0 ? " increase" : " decrease");
+      dotprod_str = dotprod_str +
+          (new_model_new_gradient(index) > 0 ? " positive" : " negative");
       if (lrate > max_learning_rate) lrate = max_learning_rate;
-    
+
       new_lrates.push_back(lrate);
       uc->SetLearningRate(lrate);
       index++;
@@ -357,7 +452,7 @@ void Nnet::CopyStatsFrom(const Nnet &other) {
 
 void Nnet::SetLearningRates(const VectorBase<BaseFloat> &learning_rates) {
   KALDI_ASSERT(learning_rates.Dim() == this->NumUpdatableComponents());
-  KALDI_ASSERT(learning_rates.Min() >= 0.0); // we allow zero learning rate.
+  KALDI_ASSERT(learning_rates.Min() >= 0.0);  // we allow zero learning rate.
   int32 i = 0;
   for (int32 j = 0; j < NumComponents(); j++) {
     UpdatableComponent *uc =
@@ -422,7 +517,7 @@ void Nnet::SetDropoutScale(BaseFloat scale) {
   }
   KALDI_LOG << "Set dropout scale to " << scale
             << " for " << n_set << " components.";
-}      
+}
 
 
 void Nnet::RemovePreconditioning() {
@@ -445,8 +540,10 @@ void Nnet::RemovePreconditioning() {
 }
 
 
-void Nnet::SwitchToOnlinePreconditioning(int32 rank_in, int32 rank_out, int32 update_period,
-                                         BaseFloat num_samples_history, BaseFloat alpha) {
+void Nnet::SwitchToOnlinePreconditioning(int32 rank_in, int32 rank_out,
+                                         int32 update_period,
+                                         BaseFloat num_samples_history,
+                                         BaseFloat alpha) {
   int32 switched = 0;
   for (size_t i = 0; i < components_.size(); i++) {
     if (dynamic_cast<AffineComponent*>(components_[i]) != NULL) {
@@ -537,7 +634,7 @@ void Nnet::AddNnet(BaseFloat alpha,
 
 void Nnet::Append(Component *new_component) {
   components_.push_back(new_component);
-  SetIndexes();  
+  SetIndexes();
   Check();
 }
 
@@ -546,7 +643,7 @@ void Nnet::SetComponent(int32 c, Component *component) {
   delete components_[c];
   components_[c] = component;
   SetIndexes();
-  Check(); // Check that all the dimensions still match up.
+  Check();  // Check that all the dimensions still match up.
 }
 
 int32 Nnet::GetParameterDim() const {
@@ -665,7 +762,6 @@ void Nnet::Collapse(bool match_updatableness) {
 
 Nnet *GenRandomNnet(int32 input_dim,
                     int32 output_dim) {
-
   std::vector<Component*> components;
   int32 cur_dim = input_dim;
   // have up to 4 layers before the final one.
@@ -685,7 +781,10 @@ Nnet *GenRandomNnet(int32 input_dim,
     } else if (rand() % 2 == 0 && cur_dim < 200) {
       int32 left_context = rand() % 3, right_context = rand() % 3;
       SpliceComponent *component = new SpliceComponent();
-      component->Init(cur_dim, left_context, right_context);
+      std::vector<int32> context(right_context + left_context + 1);
+      for (int32 i = -1 * left_context ; i < right_context; i++ )
+        context[i + left_context] = i;
+      component->Init(cur_dim, context);
       components.push_back(component);
       cur_dim = cur_dim * (1 + left_context + right_context);
     } else {
@@ -726,6 +825,6 @@ int32 Nnet::LastUpdatableComponent() const {
   return -1;
 }
 
-} // namespace nnet2
-} // namespace kaldi
+}  // namespace nnet2
+}  // namespace kaldi
 

@@ -93,6 +93,7 @@ class NnetUpdater {
   const Nnet &nnet_;
   Nnet *nnet_to_update_;
   int32 num_chunks_; // same as the minibatch size.
+  std::vector<ChunkInfo> chunk_info_out_; 
   
   std::vector<CuMatrix<BaseFloat> > forward_data_; // The forward data
   // for the outputs of each of the components.

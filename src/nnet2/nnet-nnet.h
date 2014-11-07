@@ -75,12 +75,12 @@ class Nnet {
   /// and deleting the corresponding one that we own.
   void SetComponent(int32 c, Component *component);
   
-  /// Returns the LeftContext() summed over all the Components... this is the
-  /// entire left-context in frames that the network requires.
+  /// Returns the left-context summed over all the Components... this is the
+  /// entire left-context in frames, that the network requires.
   int32 LeftContext() const;
 
-  /// Returns the LeftContext() summed over all the Components... this is the
-  /// entire left-context in frames that the network requires.
+  /// Returns the right-context summed over all the Components... this is the
+  /// entire right-context in frames, that the network requires.
   int32 RightContext() const;
   
   /// The output dimension of the network -- typically
@@ -92,6 +92,14 @@ class Nnet {
   /// mechanism, where you provide chunks of features over time.
   int32 InputDim() const; 
   
+  /// Uses the output of the Context() functions of the network, to compute a
+  /// vector of size NumComponents() + 1 indexed by component-index c, of the
+  /// chunk-info at the input of each layer c, where the c+1'th element contains
+  /// the chunk-info at the output of that layer.  
+  void ComputeChunkInfo(int32 input_chunk_size,
+                        int32 num_chunks,
+                        std::vector<ChunkInfo> *chunk_info_out) const;
+
   void ZeroStats(); // zeroes the stats on the nonlinear layers.
 
   /// Copies only the statistics in layers of type NonlinearComponewnt, from

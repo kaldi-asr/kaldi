@@ -60,7 +60,7 @@ void NnetUpdater::Propagate() {
     CuMatrix<BaseFloat> &output = forward_data_[c+1];
     // Note: the Propagate function will automatically resize the
     // output.
-    component.Propagate(input, num_chunks_, &output);
+    component.Propagate(chunk_info_out_[c], chunk_info_out_[c+1], input, &output);
     // If we won't need the output of the previous layer for
     // backprop, delete it to save memory.
     bool need_last_output =
@@ -144,9 +144,9 @@ void NnetUpdater::Backprop(CuMatrix<BaseFloat> *deriv) const {
         &output = forward_data_[c+1];
     CuMatrix<BaseFloat> input_deriv(input.NumRows(), input.NumCols());
     const CuMatrix<BaseFloat> &output_deriv(*deriv);
-
-    component.Backprop(input, output, output_deriv, num_chunks_,
-                       component_to_update, &input_deriv);
+    component.Backprop(chunk_info_out_[c], chunk_info_out_[c+1], input, output,                       
+                       output_deriv, component_to_update,
+                       &input_deriv);
     input_deriv.Swap(deriv);
   }
 }
@@ -154,7 +154,7 @@ void NnetUpdater::Backprop(CuMatrix<BaseFloat> *deriv) const {
 
 void NnetUpdater::FormatInput(const std::vector<NnetExample> &data) {
   KALDI_ASSERT(data.size() > 0);
-  int32 num_splice = nnet_.LeftContext() + 1 + nnet_.RightContext();
+  int32 num_splice = 1 + nnet_.RightContext() + nnet_.LeftContext();
   KALDI_ASSERT(data[0].input_frames.NumRows() >= num_splice);
   
   int32 feat_dim = data[0].input_frames.NumCols(),
@@ -193,6 +193,8 @@ void NnetUpdater::FormatInput(const std::vector<NnetExample> &data) {
     }
   }
   forward_data_[0].Swap(&temp_forward_data); // Copy to GPU, if being used.
+
+  nnet_.ComputeChunkInfo(num_splice, num_chunks_, &chunk_info_out_);
 }
 
 BaseFloat TotalNnetTrainingWeight(const std::vector<NnetExample> &egs) {
