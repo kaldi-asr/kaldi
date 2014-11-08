@@ -1,16 +1,14 @@
 #!/bin/bash
 
-. cmd.sh
-
+. ./cmd.sh
 set -e 
 stage=1
 train_stage=-10
 use_gpu=true
 nnet2_online=nnet2_online_ms
-splice_inds="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-3:3"
+splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:-3:3"
 common_egs_dir=
 
-. cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -35,6 +33,7 @@ else
 fi
 
 dir=exp/$nnet2_online/nnet_a
+mkdir -p exp/$nnet2_online
 
 if [ $stage -le 1 ]; then
   mfccdir=mfcc_hires
@@ -67,6 +66,11 @@ if [ $stage -le 1 ]; then
   n=$[`cat data/train/segments | wc -l` - 4000]
   utils/subset_data_dir.sh --last data/train_hires $n data/train_hires_nodev ;
 
+  # Take the first 30k utterances (about 1/8th of the data) this will be used
+  # for the diagubm training
+  utils/subset_data_dir.sh --first data/train_nodev 30000 data/train_hires_30k
+  local/remove_dup_utts.sh 200 data/train_hires_30k data/train_hires_30k_nodup  # 33hr
+
   # create a 100k subset for the lda+mllt training
   utils/subset_data_dir.sh --first data/train_hires_nodev 100000 data/train_hires_100k;
   local/remove_dup_utts.sh 200 data/train_hires_100k data/train_hires_100k_nodup;
@@ -76,7 +80,6 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  mkdir -p exp/$nnet2_online
   # We need to build a small system just because we need the LDA+MLLT transform
   # to train the diag-UBM on top of.  We use --num-iters 13 because after we get
   # the transform (12th iter is the last), any further training is pointless.
@@ -126,7 +129,7 @@ if [ $stage -le 6 ]; then
   # want to demonstrate the capability of doing real-time decoding, and if the
   # network was too bug we wouldn't be able to decode in real-time using a CPU.
   steps/nnet2/train_pnorm_multisplice.sh --stage $train_stage \
-    --splice-indexes "$splice_inds" \
+    --splice-indexes "$splice_indexes" \
     --feat-type raw \
     --online-ivector-dir exp/$nnet2_online/ivectors_train_nodup2 \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
@@ -201,10 +204,7 @@ if [ $stage -le 11 ]; then
   done
 fi
 
-
 exit 0;
-
-
 
 # get results on Dev with this command:
 for x in exp/$nnet2_online/nnet_a/decode_train_dev_sw1_*; do grep WER $x/wer_* | utils/best_wer.sh; done

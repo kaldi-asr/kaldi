@@ -55,6 +55,7 @@ def parse_splice_string(splice_string):
   return [contexts, ' nnet_left_context={0};\n nnet_right_context={1}\n first_left_context={2};\n first_right_context={3}\n'.format(abs(max_left_context), abs(max_right_context), abs(first_left_context), abs(first_right_context) )]
 
 def create_config_files(output_dir, params):
+  pnorm_p = 2
   pnorm_input_dim = params.pnorm_input_dim
   pnorm_output_dim = params.pnorm_output_dim
   contexts, context_variables = parse_splice_string(params.splice_indexes)
@@ -74,7 +75,7 @@ def create_config_files(output_dir, params):
     nnet_config = ["SpliceComponent input-dim={0} context={1} const-component-dim={2}".format(params.total_input_dim, contexts[0], params.ivector_dim),
     "FixedAffineComponent matrix={0}".format(params.lda_mat),
     "AffineComponentPreconditionedOnline input-dim={0} output-dim={1} {2} learning-rate={3} param-stddev={4} bias-stddev={5}".format(params.lda_dim, pnorm_input_dim, params.online_preconditioning_opts, params.initial_learning_rate, stddev, params.bias_stddev),
-    "PnormComponent input-dim={0} output-dim={1} p={2}".format(pnorm_input_dim, pnorm_output_dim, params.pnorm_p),
+    "PnormComponent input-dim={0} output-dim={1} p={2}".format(pnorm_input_dim, pnorm_output_dim, pnorm_p),
     "NormalizeComponent dim={0}".format(pnorm_output_dim),
     "AffineComponentPreconditionedOnline input-dim={0} output-dim={1} {2} learning-rate={3} param-stddev=0 bias-stddev=0".format(pnorm_output_dim, params.num_targets, params.online_preconditioning_opts, params.initial_learning_rate),
     "SoftmaxComponent dim={0}".format(params.num_targets)]
@@ -95,7 +96,7 @@ def create_config_files(output_dir, params):
     # Add the hidden layer, which is a composition of an affine component, pnorm component and normalization component
     lines.append("AffineComponentPreconditionedOnline input-dim=%d output-dim=%d %s learning-rate=%f param-stddev=%f bias-stddev=%f" 
         % ( pnorm_output_dim*context_len, pnorm_input_dim, params.online_preconditioning_opts, params.initial_learning_rate, stddev, params.bias_stddev))
-    lines.append("PnormComponent input-dim=%d output-dim=%d p=%d" % (pnorm_input_dim, pnorm_output_dim, params.pnorm_p))
+    lines.append("PnormComponent input-dim=%d output-dim=%d p=%d" % (pnorm_input_dim, pnorm_output_dim, pnorm_p))
     lines.append("NormalizeComponent dim={0}".format(pnorm_output_dim))
     out_file = open("{0}/hidden_{1}.config".format(output_dir, i), 'w')
     out_file.write("\n".join(lines))
@@ -112,7 +113,6 @@ if __name__ == "__main__":
   parser.add_argument('--lda-dim', type=str, help='dimension of the lda output')
   parser.add_argument('--pnorm-input-dim', type=int, help='dimension of input to pnorm layer')
   parser.add_argument('--pnorm-output-dim', type=int, help='dimension of output of pnorm layer')
-  parser.add_argument('--pnorm-p', type=int, help='type of norm in the p-norm component')
   parser.add_argument('--online-preconditioning-opts', type=str, help='extra options for the AffineComponentPreconditionedOnline component')
   parser.add_argument('--initial-learning-rate', type=float, help='')
   parser.add_argument('--num-targets', type=int, help='#targets for the neural network ')

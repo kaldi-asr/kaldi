@@ -33,7 +33,6 @@ final_learning_rate=0.004
 bias_stddev=0.5
 pnorm_input_dim=3000 
 pnorm_output_dim=300
-p=2
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
                    # be a problem with multi-threaded update. 
@@ -255,7 +254,6 @@ if [ $stage -le -2 ]; then
     --lda-dim $lda_dim  \
     --pnorm-input-dim $pnorm_input_dim  \
     --pnorm-output-dim  $pnorm_output_dim \
-    --pnorm-p  $p \
     --online-preconditioning-opts "$online_preconditioning_opts"  \
     --initial-learning-rate $initial_learning_rate  \
     --bias-stddev  $bias_stddev  \
