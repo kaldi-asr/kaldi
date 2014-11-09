@@ -2620,8 +2620,7 @@ void SpliceComponent::Propagate(const ChunkInfo &in_info,
                                    0, dim),
         out_part(*out, 0, out->NumRows(),
                  c * dim, dim);
-    for (int i=0; i<indexes[c].size(); i++)
-      out_part.CopyRows(in_part, indexes[c]);
+    out_part.CopyRows(in_part, indexes[c]);
   }
   if (const_dim != 0) {
     CuSubMatrix<BaseFloat> in_part(in, 0, in.NumRows(),
@@ -2690,7 +2689,8 @@ void SpliceComponent::Backprop(const ChunkInfo &in_info,
         for (int32 c = 0; c < num_splice; c++)  {
           for (int32 offset = 0; offset < output_chunk_size; offset++)  {
             indexes[c][chunk * input_chunk_size + offset] = 
-                indexes[c][(chunk-1) * input_chunk_size + offset] + output_chunk_size;
+                indexes[c][(chunk-1) * input_chunk_size + offset] +
+                output_chunk_size;
           }
         }
       }
