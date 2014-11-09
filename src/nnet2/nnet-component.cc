@@ -2558,11 +2558,11 @@ void SpliceComponent::Propagate(const ChunkInfo &in_info,
   out->Resize(out_info.NumRows(), out_info.NumCols());
   KALDI_ASSERT(in_info.NumChunks() == out_info.NumChunks());
 
-  int32 input_chunk_size  = in_info.ChunkSize(),
-        output_chunk_size = out_info.ChunkSize(),
+  int32 in_chunk_size  = in_info.ChunkSize(),
+        out_chunk_size = out_info.ChunkSize(),
         input_dim = in_info.NumCols();
 
-  if (output_chunk_size <= 0)
+  if (out_chunk_size <= 0)
     KALDI_ERR << "Splicing features: output will have zero dimension. "
               << "Probably a code error.";
 
@@ -2583,30 +2583,26 @@ void SpliceComponent::Propagate(const ChunkInfo &in_info,
       // this branch could be used for all chunks in the matrix, 
       // but is restricted to chunk 0 for efficiency reasons
       for (int32 c = 0; c < num_splice; c++) {
-        // actual frame index in the context window
-        for (int32 offset = 0; offset < output_chunk_size; offset++) {
-          int32 out_chunk_ind  = offset;
-          int32 out_chunk_offset =
-              out_info.GetOffset(out_chunk_ind);
-          int32 input_chunk_ind
-              = in_info.GetIndex(out_chunk_offset + context_[c]);
-          indexes[c][chunk * output_chunk_size + offset] =
-              chunk * input_chunk_size + input_chunk_ind;
+        for (int32 out_index = 0; out_index < out_chunk_size; out_index++) {
+          int32 out_offset = out_info.GetOffset(out_index);
+          int32 in_index = in_info.GetIndex(out_offset + context_[c]);
+          indexes[c][chunk * out_chunk_size + out_index] =
+              chunk * in_chunk_size + in_index;
         }
       }
-    } else  {  // just copy the indices from the previous chunk
-               // and offset these by input chunk size
+    } else {  // just copy the indices from the previous chunk
+              // and offset these by input chunk size
      for (int32 c = 0; c < num_splice; c++) {
-      for (int32 offset = 0; offset < output_chunk_size; offset++) {
-        indexes[c][chunk * output_chunk_size + offset] =
-        indexes[c][chunk-1 * output_chunk_size + offset] + input_chunk_size;
-      }
+       for (int32 out_index = 0; out_index < out_chunk_size; out_index++) {       
+         indexes[c][chunk * out_chunk_size + out_index] =
+             indexes[c][(chunk-1) * out_chunk_size + out_index] + in_chunk_size;
+       }
      }
    }
     if (const_dim != 0) {
-      for (int32 offset = 0; offset < output_chunk_size; offset++)
-        const_indexes[chunk * output_chunk_size + offset] =
-            chunk * input_chunk_size + offset;  // there is
+      for (int32 out_index = 0; out_index < out_chunk_size; out_index++)
+        const_indexes[chunk * out_chunk_size + out_index] =
+            chunk * in_chunk_size + out_index;  // there is
       // an arbitrariness here; since we assume the const_component
       // is constant within a chunk, it doesn't matter from where we copy.
     }
@@ -2646,10 +2642,10 @@ void SpliceComponent::Backprop(const ChunkInfo &in_info,
   int32 num_chunks = in_info.NumChunks();
   // rewrite backpropagate
 
-  int32 output_chunk_size = out_deriv.NumRows() / num_chunks,
-      input_chunk_size = output_chunk_size + context_.size() - 1,
-      output_dim = out_deriv.NumCols(),
-      input_dim = InputDim();
+  int32 out_chunk_size = out_info.ChunkSize(),
+         in_chunk_size = in_info.ChunkSize(),
+               output_dim = out_deriv.NumCols(),
+                input_dim = InputDim();
 
   KALDI_ASSERT(OutputDim() == output_dim);
 
@@ -2663,9 +2659,8 @@ void SpliceComponent::Backprop(const ChunkInfo &in_info,
   // const_dim != 0, "const_indexes" will be used to determine which
   // row of "in" we copy the last part of each row of "out" from (this part is
   // not subject to splicing, it's assumed constant for each frame of "input".
-  std::vector<int32> const_indexes(const_dim == 0 ? 0 : in_deriv->NumRows(),
-                                   -1);
-
+  std::vector<int32> const_indexes(const_dim == 0 ? 0 : in_deriv->NumRows(), -1);
+  
   for (int32 c = 0; c < indexes.size(); c++)
     indexes[c].resize(in_deriv->NumRows(), -1);  // set to -1 by default,
   // this gets interpreted by the CopyRows() code
@@ -2673,37 +2668,30 @@ void SpliceComponent::Backprop(const ChunkInfo &in_info,
 
   int32 dim = input_dim - const_dim;  // dimension we are splicing
   for (int32 chunk = 0; chunk < num_chunks; chunk++) {
-      if (chunk==0) { // this branch can be taken for all chunks, but is not
-        // taken for efficiency reasons
-        for (int32 c = 0; c < num_splice; c++)  {
-          for (int32 offset = 0; offset < output_chunk_size; offset++)  {
-            int32 out_chunk_ind  = offset;
-            int32 out_chunk_offset = out_info.GetOffset(out_chunk_ind);
-            int32 input_chunk_ind = in_info.GetIndex(out_chunk_offset 
-                                                     + context_[c]);
-            indexes[c][chunk * input_chunk_size + input_chunk_ind] =
-                chunk * output_chunk_size + offset;
-          }
-        }
-      } else {  // just copy the indexes from the previous chunk
-        for (int32 c = 0; c < num_splice; c++)  {
-          for (int32 offset = 0; offset < output_chunk_size; offset++)  {
-            indexes[c][chunk * input_chunk_size + offset] = 
-                indexes[c][(chunk-1) * input_chunk_size + offset] +
-                output_chunk_size;
-          }
+    if (chunk == 0) { // this branch can be taken for all chunks, but is not
+                      // taken for efficiency reasons
+      for (int32 c = 0; c < num_splice; c++)  {
+        for (int32 out_index = 0; out_index < out_chunk_size; out_index++) {
+          int32 out_offset = out_info.GetOffset(out_index);
+          int32 in_index = in_info.GetIndex(out_offset + context_[c]);
+          indexes[c][chunk * in_chunk_size + in_index] =
+              chunk * out_chunk_size + out_index;
         }
       }
-    // Note: when changing over to the CUDA code, we also changed
-    // how the derivatives are propagated through the splicing layer
-    // for the const-component-dim.  The code was never being used,
-    // so it doesn't matter.  The way we now do it probably makes more
-    // sense (to get the derivative, you'd have to sum over time, not
-    // pick an arbitrary time)
+    } else {  // just copy the indexes from the previous chunk
+      for (int32 c = 0; c < num_splice; c++)  {
+        for (int32 in_index = 0; in_index < in_chunk_size; in_index++) {
+          indexes[c][chunk * in_chunk_size + in_index] = 
+              indexes[c][(chunk-1) * in_chunk_size + in_index] + out_chunk_size;
+        }
+      }
+    }
+    // this code corresponds to the way the forward propagation works; see
+    // comments there.
     if (const_dim != 0) {
-      for (int32 offset = 0; offset < output_chunk_size; offset++)  {
-        const_indexes[chunk * input_chunk_size + offset] =
-            chunk * output_chunk_size + offset;
+      for (int32 out_index = 0; out_index < out_chunk_size; out_index++)  {
+        const_indexes[chunk * in_chunk_size + out_index] =
+            chunk * out_chunk_size + out_index;
       }
     }
   }
@@ -2830,28 +2818,24 @@ void SpliceMaxComponent::Propagate(const ChunkInfo &in_info,
   in_info.CheckSize(in);
   out->Resize(out_info.NumRows(), out_info.NumCols());
   KALDI_ASSERT(in_info.NumChunks() == out_info.NumChunks());
-  int32 input_chunk_size  = in_info.ChunkSize(),
-        output_chunk_size = out_info.ChunkSize(),
+  int32 in_chunk_size  = in_info.ChunkSize(),
+        out_chunk_size = out_info.ChunkSize(),
         dim = in_info.NumCols();
 
-  if (output_chunk_size <= 0)
-    KALDI_ERR << "Splicing features: output will have zero dimension. "
-              << "Probably a code error.";
-
-  CuMatrix<BaseFloat> input_chunk_part(output_chunk_size, dim);
+  CuMatrix<BaseFloat> input_chunk_part(out_chunk_size, dim);
   for (int32 chunk = 0; chunk < in_info.NumChunks(); chunk++) {
     CuSubMatrix<BaseFloat> input_chunk(in,
-                                     chunk * input_chunk_size, input_chunk_size,
+                                     chunk * in_chunk_size, in_chunk_size,
                                      0, dim),
                         output_chunk(*out,
-                                     chunk * output_chunk_size,
-                                     output_chunk_size, 0, dim);
+                                     chunk * out_chunk_size,
+                                     out_chunk_size, 0, dim);
     for (int32 offset = 0; offset < context_.size(); offset++) {
       // computing the indices to copy into input_chunk_part from input_chunk
       // copy the rows of the input matrix which correspond to the current
       // context index
-      std::vector<int32> input_chunk_inds(output_chunk_size);
-      for (int32 i = 0; i < output_chunk_size; i++) {
+      std::vector<int32> input_chunk_inds(out_chunk_size);
+      for (int32 i = 0; i < out_chunk_size; i++) {
         int32 out_chunk_ind  = i;
         int32 out_chunk_offset =
             out_info.GetOffset(out_chunk_ind);
@@ -2882,24 +2866,24 @@ void SpliceMaxComponent::Backprop(const ChunkInfo &in_info,
   in_deriv->Resize(in_info.NumRows(), in_info.NumCols());
   KALDI_ASSERT(in_info.NumChunks() == out_info.NumChunks());
 
-  int32 output_chunk_size = out_info.ChunkSize(),
-         input_chunk_size = output_chunk_size +context_.size() - 1,
+  int32 out_chunk_size = out_info.ChunkSize(),
+         in_chunk_size = in_info.ChunkSize(),
                       dim = out_deriv.NumCols();
 
   KALDI_ASSERT(dim == InputDim());
 
   for (int32 chunk = 0; chunk < in_info.NumChunks(); chunk++) {
     CuSubMatrix<BaseFloat> in_deriv_chunk(*in_deriv,
-                                        chunk * input_chunk_size,
-                                        input_chunk_size,
+                                        chunk * in_chunk_size,
+                                        in_chunk_size,
                                         0, dim),
                          in_value_chunk(in_value,
-                                        chunk * input_chunk_size,
-                                        input_chunk_size,
+                                        chunk * in_chunk_size,
+                                        in_chunk_size,
                                         0, dim),
                         out_deriv_chunk(out_deriv,
-                                        chunk * output_chunk_size,
-                                        output_chunk_size,
+                                        chunk * out_chunk_size,
+                                        out_chunk_size,
                                         0, dim);
     for (int32 r = 0; r < out_deriv_chunk.NumRows(); r++) {
       int32 out_chunk_ind = r;

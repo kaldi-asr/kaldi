@@ -689,7 +689,7 @@ void BasicDebugTestForSplice(bool output=false) {
  
   SpliceComponent *c = new SpliceComponent();
   std::vector<int32> context(2 * context_len + 1);
-  for (int32 i = -1 * context_len; i <= context_len; i++)
+  for (int32 i = -context_len; i <= context_len; i++)
     context[i + context_len] = i;
   c->Init(C, context, K);
   ChunkInfo in_info = ChunkInfo(C, 1, 0, R - 1),
@@ -700,7 +700,7 @@ void BasicDebugTestForSplice(bool output=false) {
 
   in_info.Check();
   out_info.Check();
-   
+  
   in.SetRandn();
   if (output)
     KALDI_LOG << in;
@@ -715,6 +715,7 @@ void BasicDebugTestForSplice(bool output=false) {
   if (K > 0) {
     CuSubMatrix<BaseFloat> k(out, 0, out.NumRows(), c->OutputDim() - K, K);
     k.Set(-2);
+    out.Row(1).Scale(10.0);
   }
 
   if (output)

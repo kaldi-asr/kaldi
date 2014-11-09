@@ -109,7 +109,8 @@ class ChunkInfo {
   // contiguous chunk with the given first_offset and last_offset
   void MakeOffsetsContiguous () { offsets_.clear(); Check(); }
 
-  // Returns chunk size
+  // Returns chunk size, meaning the number of distinct frame-offsets we
+  // have for each chunk (they don't have to be contiguous).
   inline int32 ChunkSize() const { return NumRows() / num_chunks_; }
 
   // Returns number of chunks we expect the feature matrix to have
