@@ -57,8 +57,8 @@ lang=$2
 alidir=$3
 dir=$4
 
-[ -z "$left_context" ] && left_context=splice_width
-[ -z "$right_context" ] && right_context=splice_width
+[ -z "$left_context" ] && left_context=$splice_width
+[ -z "$right_context" ] && right_context=$splice_width
 
 [ ! -z "$online_ivector_dir" ] && \
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"

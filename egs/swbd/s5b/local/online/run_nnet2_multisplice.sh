@@ -68,7 +68,7 @@ if [ $stage -le 1 ]; then
 
   # Take the first 30k utterances (about 1/8th of the data) this will be used
   # for the diagubm training
-  utils/subset_data_dir.sh --first data/train_nodev 30000 data/train_hires_30k
+  utils/subset_data_dir.sh --first data/train_hires_nodev 30000 data/train_hires_30k
   local/remove_dup_utts.sh 200 data/train_hires_30k data/train_hires_30k_nodup  # 33hr
 
   # create a 100k subset for the lda+mllt training

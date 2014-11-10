@@ -68,8 +68,8 @@ lang=$2  # kept for historical reasons, but never used.
 alidir=$3
 dir=$4
 
-[ -z "$left_context" ] && left_context=splice_width
-[ -z "$right_context" ] && right_context=splice_width
+[ -z "$left_context" ] && left_context=$splice_width
+[ -z "$right_context" ] && right_context=$splice_width
 
 
 # Check some files.

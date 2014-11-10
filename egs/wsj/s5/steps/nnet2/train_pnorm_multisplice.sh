@@ -261,16 +261,17 @@ if [ $stage -le -2 ]; then
     --num-targets  $num_leaves  \
     configs  $dir || exit -1;
 
-  cur_num_hidden_layer=1  # counts the number of hidden layers in the network
-                      # this is different from the number of components in
-                      # in the network, each hidden layer is composed of 
-                      # affine comp. + pnorm comp. + normalization comp.
-                      # optionally a splice component is also added
-
   $cmd $dir/log/nnet_init.log \
     nnet-am-init $alidir/tree $lang/topo "nnet-init $dir/nnet.config -|" \
     $dir/0.mdl || exit 1;
 fi
+
+cur_num_hidden_layer=1  # counts the number of hidden layers in the network
+                        # this is different from the number of components in
+                        # in the network, each hidden layer is composed of 
+                        # affine comp. + pnorm comp. + normalization comp.
+                        # optionally a splice component is also added
+
 
 if [ $stage -le -1 ]; then
   echo "Training transition probabilities and setting priors"

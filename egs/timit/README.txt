@@ -12,6 +12,12 @@ About TIMIT:
    time-aligned orthographic, phonetic and word transcriptions as well as 
    a 16-bit, 16kHz speech waveform file for each utterance."
 
+   Note: please do not use this TIMIT setup as a generic example of how to run
+   Kaldi, as TIMIT has a very nonstandard structure.  Any of the other setups
+   would be better for this purpose: e.g. librispeech/s5 is quite nice, and is
+   free; yesno is very tiny and fast to run and is also free; and wsj/s5 has an
+   unusually complete set of example scripts which may however be confusing.
+
 Each subdirectory of this directory contains the scripts for a sequence
 of experiments.
 
