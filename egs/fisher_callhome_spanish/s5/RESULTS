@@ -94,4 +94,17 @@ exp/sgmm5/decode_dev/wer_15:%WER 33.71 [ 13880 / 41177, 1709 ins, 4962 del, 7209
 exp/sgmm5/decode_dev/wer_16:%WER 34.09 [ 14037 / 41177, 1602 ins, 5226 del, 7209 sub ]
 exp/sgmm5/decode_dev/wer_8:%WER 34.04 [ 14016 / 41177, 3118 ins, 3059 del, 7839 sub ]
 exp/sgmm5/decode_dev/wer_9:%WER 33.20 [ 13671 / 41177, 2807 ins, 3267 del, 7597 sub ]
+
+--------------------------------------------------------------------------------------
+pNorm-Ensemble DNN
+--------------------------------------------------------------------------------------
+exp/tri6a_dnn/decode_dev/wer_10:%WER 31.02 [ 12774 / 41177, 2762 ins, 3042 del, 6970 sub ]
+exp/tri6a_dnn/decode_dev/wer_11:%WER 30.49 [ 12556 / 41177, 2573 ins, 3236 del, 6747 sub ]
+exp/tri6a_dnn/decode_dev/wer_12:%WER 30.15 [ 12414 / 41177, 2384 ins, 3414 del, 6616 sub ]
+exp/tri6a_dnn/decode_dev/wer_13:%WER 29.93 [ 12324 / 41177, 2237 ins, 3593 del, 6494 sub ]
+exp/tri6a_dnn/decode_dev/wer_14:%WER 29.87 [ 12298 / 41177, 2093 ins, 3794 del, 6411 sub ]
+exp/tri6a_dnn/decode_dev/wer_15:%WER 29.80 [ 12269 / 41177, 1946 ins, 3967 del, 6356 sub ]
+exp/tri6a_dnn/decode_dev/wer_16:%WER 29.96 [ 12336 / 41177, 1869 ins, 4165 del, 6302 sub ]
+exp/tri6a_dnn/decode_dev/wer_8:%WER 32.81 [ 13511 / 41177, 3317 ins, 2733 del, 7461 sub ]
+exp/tri6a_dnn/decode_dev/wer_9:%WER 31.74 [ 13068 / 41177, 3017 ins, 2889 del, 7162 sub ]
 --------------------------------------------------------------------------------------
