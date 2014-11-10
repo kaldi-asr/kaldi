@@ -2593,9 +2593,10 @@ void SpliceComponent::Propagate(const ChunkInfo &in_info,
     } else {  // just copy the indices from the previous chunk
               // and offset these by input chunk size
      for (int32 c = 0; c < num_splice; c++) {
-       for (int32 out_index = 0; out_index < out_chunk_size; out_index++) {       
+       for (int32 out_index = 0; out_index < out_chunk_size; out_index++) {
+         int32 last_value = indexes[c][(chunk-1) * out_chunk_size + out_index];
          indexes[c][chunk * out_chunk_size + out_index] =
-             indexes[c][(chunk-1) * out_chunk_size + out_index] + in_chunk_size;
+             (last_value == -1 ? -1 : last_value + in_chunk_size);
        }
      }
    }
@@ -2644,8 +2645,8 @@ void SpliceComponent::Backprop(const ChunkInfo &in_info,
 
   int32 out_chunk_size = out_info.ChunkSize(),
          in_chunk_size = in_info.ChunkSize(),
-               output_dim = out_deriv.NumCols(),
-                input_dim = InputDim();
+            output_dim = out_deriv.NumCols(),
+             input_dim = InputDim();
 
   KALDI_ASSERT(OutputDim() == output_dim);
 
@@ -2681,8 +2682,9 @@ void SpliceComponent::Backprop(const ChunkInfo &in_info,
     } else {  // just copy the indexes from the previous chunk
       for (int32 c = 0; c < num_splice; c++)  {
         for (int32 in_index = 0; in_index < in_chunk_size; in_index++) {
+          int32 last_value = indexes[c][(chunk-1) * in_chunk_size + in_index];
           indexes[c][chunk * in_chunk_size + in_index] = 
-              indexes[c][(chunk-1) * in_chunk_size + in_index] + out_chunk_size;
+              (last_value == -1 ? -1 : last_value + out_chunk_size);
         }
       }
     }
