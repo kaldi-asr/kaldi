@@ -49,6 +49,22 @@ class CompressedMatrix {
   template<typename Real>
   CompressedMatrix(const MatrixBase<Real> &mat): data_(NULL) { CopyFromMat(mat); }
 
+  CompressedMatrix(const CompressedMatrix &mat,
+                   const MatrixIndexT row_offset,
+                   const MatrixIndexT num_rows,
+                   const MatrixIndexT col_offset,
+                   const MatrixIndexT num_cols): data_(NULL) {
+    ExtractFromCompressedMat(mat, row_offset, num_rows, col_offset, num_cols);
+  }
+
+  void *Data() const { return this->data_; }
+
+  void ExtractFromCompressedMat(
+    const CompressedMatrix &mat,
+    const MatrixIndexT row_offset,
+    const MatrixIndexT num_rows,
+    const MatrixIndexT col_offset,
+    const MatrixIndexT num_cols);
 
   /// This will resize *this and copy the contents of mat to *this.
   template<typename Real>

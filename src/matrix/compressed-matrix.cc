@@ -95,6 +95,56 @@ void CompressedMatrix::CopyFromMat(const MatrixBase<float> &mat);
 template
 void CompressedMatrix::CopyFromMat(const MatrixBase<double> &mat);
 
+void CompressedMatrix::ExtractFromCompressedMat(
+    const CompressedMatrix &mat,
+    const MatrixIndexT row_offset,
+    const MatrixIndexT num_rows,
+    const MatrixIndexT col_offset,
+    const MatrixIndexT num_cols) {
+  KALDI_PARANOID_ASSERT(row_offset < mat.NumRows());
+  KALDI_PARANOID_ASSERT(column_offset < mat.NumCols());
+  KALDI_PARANOID_ASSERT(row_offset >= 0);
+  KALDI_PARANOID_ASSERT(column_offset >= 0);
+  KALDI_ASSERT(row_offset+num_rows < mat.NumRows());
+  KALDI_ASSERT(col_offset+num_cols < mat.NumCols());
+  if (data_ != NULL) {
+    delete [] static_cast<float*>(data_);  // call delete [] because was allocated with new float[]
+    data_ = NULL;
+  }
+  if (mat.NumRows() == 0) { return; }  // Zero-size matrix stored as zero pointer.
+
+  GlobalHeader new_global_header;
+  KALDI_COMPILE_TIME_ASSERT(sizeof(new_global_header) == 16);
+
+  GlobalHeader *old_global_header = reinterpret_cast<GlobalHeader*>(mat.Data());
+  PerColHeader *old_per_col_header =
+    reinterpret_cast<PerColHeader*>(old_global_header+1);
+  unsigned char *old_byte_data =
+    reinterpret_cast<unsigned char*>(old_per_col_header +
+                                     old_global_header->num_cols);
+
+  memcpy(&new_global_header, old_global_header, sizeof(old_global_header));
+  new_global_header.num_cols = num_cols;
+  new_global_header.num_rows = num_rows;
+  data_ = AllocateData(DataSize(new_global_header));  // allocate memory
+  *(reinterpret_cast<GlobalHeader*>(data_)) = new_global_header;
+
+  PerColHeader *new_per_col_header =
+    reinterpret_cast<PerColHeader*>(reinterpret_cast<GlobalHeader*>(data_) + 1);
+  old_per_col_header += col_offset;
+  memcpy(new_per_col_header, old_per_col_header,
+         sizeof(PerColHeader) * num_cols);
+
+  unsigned char *new_byte_data =
+    reinterpret_cast<unsigned char*>(new_per_col_header + num_cols);
+  unsigned char *old_start_of_subcol = old_byte_data + row_offset,
+    *new_start_of_col = new_byte_data;
+  for (int32 i = 0; i < num_cols; i++) {
+    memcpy(new_start_of_col, old_start_of_subcol, num_rows);
+    new_start_of_col += num_rows;
+    old_start_of_subcol += num_rows;
+  }
+}
 
 template<typename Real>
 CompressedMatrix &CompressedMatrix::operator =(const MatrixBase<Real> &mat) {
