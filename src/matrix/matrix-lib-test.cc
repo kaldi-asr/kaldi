@@ -4102,6 +4102,41 @@ template<typename Real> static void UnitTestCompressedMatrix() {
   
 
 template<typename Real>
+static void UnitTestExtractCompressedMatrix() {
+  for (int32 i = 0; i < 30; i++) {
+    MatrixIndexT num_rows = Rand() % 99, num_cols = Rand() % 35;
+    if (num_rows * num_cols == 0) {
+      num_rows = 0;
+      num_cols = 0;
+    }
+    Matrix<Real> mat(num_rows, num_cols);
+    CompressedMatrix cmat(mat);
+
+    MatrixIndexT row_offset = Rand() % num_rows, col_offset = Rand() % num_cols;
+    MatrixIndexT sub_num_rows = Rand() % (num_rows - row_offset) + 1,
+      sub_num_cols = Rand() % (num_cols - col_offset) + 1;
+    KALDI_VLOG(3) << "Whole matrix size: " << num_rows << "," << num_cols;
+    KALDI_VLOG(4) << "Sub-matrix size: " << sub_num_rows << "," << sub_num_cols
+      << " with offsets " << row_offset << "," << col_offset;
+    CompressedMatrix cmat2(cmat, row_offset, sub_num_rows,  //take a subset of
+                           col_offset, sub_num_cols);  // the compressed matrix
+    Matrix<Real> mat2(sub_num_rows, sub_num_cols);
+    cmat2.CopyToMat(&mat2);  // uncompress the subset of the compressed matrix
+
+    Matrix<Real> mat3(cmat);  // uncompress the whole compressed matrix
+    SubMatrix<Real> sub_mat(mat3, row_offset, sub_num_rows, col_offset, sub_num_cols);
+    if(!sub_mat.ApproxEqual(mat2)) {
+      KALDI_LOG << "sub_mat is: ";
+      sub_mat.Write(std::cout, false);
+      KALDI_LOG << "mat2 is: ";
+      mat2.Write(std::cout, false);
+      KALDI_ERR << "Matrices differ " << sub_mat << " vs. " << mat2;
+    }
+  }
+}
+
+
+template<typename Real>
 static void UnitTestTridiag() {
   SpMatrix<Real> A(3);
   A(1,1) = 1.0;

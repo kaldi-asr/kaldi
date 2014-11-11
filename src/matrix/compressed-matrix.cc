@@ -1,7 +1,7 @@
 // matrix/compressed-matrix.cc
 
 // Copyright 2012    Johns Hopkins University (author: Daniel Povey)
-//                   Frantisek Skala
+//                   Frantisek Skala, Wei Shi
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -95,28 +95,27 @@ void CompressedMatrix::CopyFromMat(const MatrixBase<float> &mat);
 template
 void CompressedMatrix::CopyFromMat(const MatrixBase<double> &mat);
 
-void CompressedMatrix::ExtractFromCompressedMat(
-    const CompressedMatrix &mat,
+
+CompressedMatrix::CompressedMatrix(
+    const CompressedMatrix &cmat,
     const MatrixIndexT row_offset,
     const MatrixIndexT num_rows,
     const MatrixIndexT col_offset,
-    const MatrixIndexT num_cols) {
-  KALDI_PARANOID_ASSERT(row_offset < mat.NumRows());
-  KALDI_PARANOID_ASSERT(column_offset < mat.NumCols());
-  KALDI_PARANOID_ASSERT(row_offset >= 0);
-  KALDI_PARANOID_ASSERT(column_offset >= 0);
-  KALDI_ASSERT(row_offset+num_rows < mat.NumRows());
-  KALDI_ASSERT(col_offset+num_cols < mat.NumCols());
-  if (data_ != NULL) {
-    delete [] static_cast<float*>(data_);  // call delete [] because was allocated with new float[]
-    data_ = NULL;
-  }
-  if (mat.NumRows() == 0) { return; }  // Zero-size matrix stored as zero pointer.
+    const MatrixIndexT num_cols): data_(NULL) {
+  KALDI_ASSERT(row_offset < cmat.NumRows());
+  KALDI_ASSERT(col_offset < cmat.NumCols());
+  KALDI_ASSERT(row_offset >= 0);
+  KALDI_ASSERT(col_offset >= 0);
+  KALDI_ASSERT(row_offset+num_rows <= cmat.NumRows());
+  KALDI_ASSERT(col_offset+num_cols <= cmat.NumCols());
+
+  if (cmat.NumRows() == 0) { return; }  // Zero-size matrix stored as zero pointer.
+  if (num_rows == 0 || num_cols == 0) { return; }
 
   GlobalHeader new_global_header;
   KALDI_COMPILE_TIME_ASSERT(sizeof(new_global_header) == 16);
 
-  GlobalHeader *old_global_header = reinterpret_cast<GlobalHeader*>(mat.Data());
+  GlobalHeader *old_global_header = reinterpret_cast<GlobalHeader*>(cmat.Data());
   PerColHeader *old_per_col_header =
     reinterpret_cast<PerColHeader*>(old_global_header+1);
   unsigned char *old_byte_data =
@@ -142,9 +141,10 @@ void CompressedMatrix::ExtractFromCompressedMat(
   for (int32 i = 0; i < num_cols; i++) {
     memcpy(new_start_of_col, old_start_of_subcol, num_rows);
     new_start_of_col += num_rows;
-    old_start_of_subcol += num_rows;
+    old_start_of_subcol += cmat.NumRows();
   }
 }
+
 
 template<typename Real>
 CompressedMatrix &CompressedMatrix::operator =(const MatrixBase<Real> &mat) {

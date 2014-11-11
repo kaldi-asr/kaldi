@@ -1,7 +1,7 @@
 // matrix/compressed-matrix.h
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
-//                 Frantisek Skala
+//                 Frantisek Skala, Wei Shi
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -53,18 +53,9 @@ class CompressedMatrix {
                    const MatrixIndexT row_offset,
                    const MatrixIndexT num_rows,
                    const MatrixIndexT col_offset,
-                   const MatrixIndexT num_cols): data_(NULL) {
-    ExtractFromCompressedMat(mat, row_offset, num_rows, col_offset, num_cols);
-  }
+                   const MatrixIndexT num_cols);
 
   void *Data() const { return this->data_; }
-
-  void ExtractFromCompressedMat(
-    const CompressedMatrix &mat,
-    const MatrixIndexT row_offset,
-    const MatrixIndexT num_rows,
-    const MatrixIndexT col_offset,
-    const MatrixIndexT num_cols);
 
   /// This will resize *this and copy the contents of mat to *this.
   template<typename Real>
