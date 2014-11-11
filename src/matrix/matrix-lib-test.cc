@@ -4116,7 +4116,7 @@ static void UnitTestExtractCompressedMatrix() {
     MatrixIndexT sub_num_rows = Rand() % (num_rows - row_offset) + 1,
       sub_num_cols = Rand() % (num_cols - col_offset) + 1;
     KALDI_VLOG(3) << "Whole matrix size: " << num_rows << "," << num_cols;
-    KALDI_VLOG(4) << "Sub-matrix size: " << sub_num_rows << "," << sub_num_cols
+    KALDI_VLOG(3) << "Sub-matrix size: " << sub_num_rows << "," << sub_num_cols
       << " with offsets " << row_offset << "," << col_offset;
     CompressedMatrix cmat2(cmat, row_offset, sub_num_rows,  //take a subset of
                            col_offset, sub_num_cols);  // the compressed matrix

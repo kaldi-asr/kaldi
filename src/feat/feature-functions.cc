@@ -147,7 +147,7 @@ void ExtractWindow(const VectorBase<BaseFloat> &wave,
 
   if (opts.dither != 0.0) Dither(&window_part, opts.dither);
 
-  if (opts.remove_dc_offset != 0.0)
+  if (opts.remove_dc_offset)
     window_part.Add(-window_part.Sum() / frame_length);
 
   if (log_energy_pre_window != NULL) {
