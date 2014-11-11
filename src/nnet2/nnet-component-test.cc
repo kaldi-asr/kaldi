@@ -746,6 +746,7 @@ void UnitTestSpliceComponent() {
               out_info = ChunkInfo(feat_dim * splice_indexes.size() + const_dim,
                                    num_chunks, output_offset, output_offset);
     UnitTestGenericComponentInternal(*component, in_info, out_info);
+    delete component;
   }
 }
 
