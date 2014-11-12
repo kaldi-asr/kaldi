@@ -23,7 +23,7 @@ tmpdir=data/local/lm_tmp
 lexicon=data/local/lang_tmp/lexiconp.txt
 mkdir -p $tmpdir
 
-for lm_suffix in tgsmall tgmed; do
+for lm_suffix in tgsmall tgmed tglarge; do
   test=data/lang_test_${lm_suffix}
   mkdir -p $test
   for f in phones.txt words.txt phones.txt L.fst L_disambig.fst phones/; do

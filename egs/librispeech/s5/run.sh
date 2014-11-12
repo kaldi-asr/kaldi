@@ -258,6 +258,10 @@ steps/train_quick.sh --cmd "$train_cmd" \
   done
 )&
 
+# Perform RNNLM rescoring of tri6b
+# Attention: with default settings requires 4 GB of memory per rescoring job, so commenting this out by default
+# local/run_rnnlm.sh $data data/local/lm
+
 # train NN models on the entire dataset
 local/nnet2/run_7a_960.sh || exit 1
 

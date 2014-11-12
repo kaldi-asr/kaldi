@@ -632,6 +632,19 @@ real EvaluateModel(char* filename, int printLoglikes) {
 	}
       }
       real logprob = 0.0;
+
+      int maxent_present = maxent_order;
+      // Check if we should exclude some ME features that were probably not learned
+      for(int order = 0; order < maxent_order && target - order >= 0; ++order) {
+	for (d = 0; d < vocab[word].codelen; d++) {
+	  if (nnet.synMaxent[feature_hashes[order] + vocab[word].point[d]] == 0) { 
+	    // Make ME hash act a Bloom filter: if a weight is zero, it was probably never touched by training and this (an higher) ngrams should not be considered for this target.
+	    maxent_present = order;
+	    break;
+	  }
+	}
+      }      
+
       for (d = 0; d < vocab[word].codelen; d++) {
 	// Propagate hidden -> output
 	f = 0.0;
@@ -639,7 +652,7 @@ real EvaluateModel(char* filename, int printLoglikes) {
 	for(int c = 0; c < layer1_size; ++c) {
 	  f += neu1[layer1_size*(target - 1) + c] * nnet.syn1[l2 + c];
 	}
-	for(int order = 0; order < maxent_order && target - order >= 0; ++order) {
+	for(int order = 0; order < maxent_present && target - order >= 0; ++order) {
 	  f += nnet.synMaxent[feature_hashes[order] + vocab[word].point[d]];
 	}
 	logprob += log10(1+(vocab[word].code[d] == 1 ? exp(f) : exp(-f)));	
@@ -704,14 +717,15 @@ void Sample(int num_sentences, int interactive) {
       }
 
       long long feature_hashes[MAX_NGRAM_ORDER] = {0};
+
       if(maxent_order) {
-	for(int order = 0; order < maxent_order && input >= order; ++order) {
+	for(int order = 0; order < maxent_order && input + 1 >= order; ++order) {
 	  feature_hashes[order] = PRIMES[0]*PRIMES[1];    	    
-	  for (int b = 1; b <= order; ++b) feature_hashes[order] += PRIMES[(order*PRIMES[b]+b) % PRIMES_SIZE]*(unsigned long long)(sen[input-b]+1);
+	  for (int b = 1; b <= order; ++b) feature_hashes[order] += PRIMES[(order*PRIMES[b]+b) % PRIMES_SIZE]*(unsigned long long)(sen[input+1-b]+1);
 	  feature_hashes[order] = feature_hashes[order] % (maxent_hash_size - vocab_size);
 	}
       }
-     
+
       int node = vocab_size - 2;
       while(node > 0) {
 	// Propagate hidden -> output
@@ -720,7 +734,7 @@ void Sample(int num_sentences, int interactive) {
 	for(int c = 0; c < layer1_size; ++c) {
 	  f += neu1[input*layer1_size + c] * nnet.syn1[l2 + c];
 	}
-	for(int order = 0; order < maxent_order && input >= order; ++order) {
+	for(int order = 0; order < maxent_order && input + 1 >= order; ++order) {
 	  f += nnet.synMaxent[feature_hashes[order] + node];
 	}
 	f = exp(f)/(1+exp(f)); // sigmoid
