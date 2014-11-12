@@ -54,6 +54,7 @@ splice_step=1      # Stepsize of the splicing (1 is consecutive splice,
                    # value 2 would do [ -10 -8 -6 -4 -2 0 2 4 6 8 10 ] splicing)
 # misc.
 verbose=1 # enable per-cache reports
+skip_cuda_check=false
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -99,7 +100,9 @@ printf "\t Train-set : $data \n"
 [ -e $dir/${nn_depth}.dbn ] && echo "$0 Skipping, already have $dir/${nn_depth}.dbn" && exit 0
 
 # check if CUDA is compiled in,
-cuda-compiled || { echo 'CUDA was not compiled in, skipping! Check src/kaldi.mk and src/configure' && exit 1; }
+if ! $skip_cuda_check; then
+  cuda-compiled || { echo 'CUDA was not compiled in, skipping! Check src/kaldi.mk and src/configure' && exit 1; }
+fi
 
 mkdir -p $dir/log
 
