@@ -4126,10 +4126,6 @@ static void UnitTestExtractCompressedMatrix() {
     Matrix<Real> mat3(cmat);  // uncompress the whole compressed matrix
     SubMatrix<Real> sub_mat(mat3, row_offset, sub_num_rows, col_offset, sub_num_cols);
     if(!sub_mat.ApproxEqual(mat2)) {
-      KALDI_LOG << "sub_mat is: ";
-      sub_mat.Write(std::cout, false);
-      KALDI_LOG << "mat2 is: ";
-      mat2.Write(std::cout, false);
       KALDI_ERR << "Matrices differ " << sub_mat << " vs. " << mat2;
     }
   }
