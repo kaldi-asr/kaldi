@@ -231,7 +231,7 @@ for lm_suffix in tg fsh_tgpr; do
   ) &
 done
 wait
-steps/lmrescore.sh --mode 3 --cmd "$mkgraph_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
+steps/lmrescore.sh --mode 3 --cmd "$decode_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
   exp/tri4b/decode_eval2000_sw1_fsh_tgpr exp/tri4b/decode_eval2000_sw1_fsh_tg.3 || exit 1
 
 

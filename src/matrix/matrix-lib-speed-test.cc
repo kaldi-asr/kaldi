@@ -60,8 +60,8 @@ static void UnitTestSvdSpeed() {
   sizes.push_back(150);
   sizes.push_back(200);
   sizes.push_back(300);
-  sizes.push_back(500);
-  sizes.push_back(750);
+  // sizes.push_back(500);
+  // sizes.push_back(750);
   for (size_t i = 0; i < sizes.size(); i++) {
     MatrixIndexT size = sizes[i];
     {
@@ -110,7 +110,6 @@ static void UnitTestAddMatMatSpeed() {
   std::vector<MatrixIndexT> sizes;
   sizes.push_back(512);
   sizes.push_back(1024);
-  sizes.push_back(2048);
   for (size_t i = 0; i < sizes.size(); i++) {
     MatrixIndexT size = sizes[i];
     {
@@ -123,7 +122,7 @@ static void UnitTestAddMatMatSpeed() {
         C.AddMatMat(1.0, A, kTrans, B, kNoTrans, 0.0); 
         C.AddMatMat(1.0, A, kTrans, B, kTrans, 0.0); 
       }
-      KALDI_LOG << "For size " << size << ", AddMatMat (8x) took " << t1.Elapsed()
+      KALDI_LOG << "For size " << size << ", AddMatMat (2x) took " << t1.Elapsed()
                 << " seconds.";
     }
   }

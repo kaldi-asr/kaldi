@@ -4011,8 +4011,8 @@ template<typename Real> static void UnitTestCompressedMatrix() {
 
     //test of getting a submatrix
     if(num_rows != 0 && num_cols != 0){
-      MatrixIndexT sub_row_offset = (num_rows == 1 ? 0 : Rand() % (num_rows-1)),
-          sub_col_offset = (num_cols == 1 ? 0 : Rand() % (num_cols-1));
+      MatrixIndexT sub_row_offset = Rand() % num_rows,
+          sub_col_offset = Rand() % num_cols;
       // to make sure we don't mod by zero
       MatrixIndexT num_subrows = Rand() % (num_rows-sub_row_offset),
           num_subcols = Rand() % (num_cols-sub_col_offset);

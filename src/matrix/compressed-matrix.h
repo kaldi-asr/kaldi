@@ -49,6 +49,10 @@ class CompressedMatrix {
   template<typename Real>
   CompressedMatrix(const MatrixBase<Real> &mat): data_(NULL) { CopyFromMat(mat); }
 
+  /// Initializer that can be used to select part of an existing
+  /// CompressedMatrix without un-compressing and re-compressing (note: unlike
+  /// similar initializers for class Matrix, it doesn't point to the same memory
+  /// location).
   CompressedMatrix(const CompressedMatrix &mat,
                    const MatrixIndexT row_offset,
                    const MatrixIndexT num_rows,

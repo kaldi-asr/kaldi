@@ -562,7 +562,7 @@ if $cleanup; then
 
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
-    if [ $[$x%100] -ne 0 ] && [ $x -ne $num_iters ]; then
+    if [ $[$x%100] -ne 0 ] && [ $x -ne $num_iters ] && [ -f $dir/$x.mdl ]; then
        # delete all but every 100th model; don't delete the ones which combine to form the final model.
       rm $dir/$x.mdl
     fi
