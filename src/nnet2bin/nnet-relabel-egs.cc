@@ -135,24 +135,28 @@ int main(int argc, char *argv[]) {
           num_frames_missing++;
           continue;
         }
-        std::vector<int32> *alignment = utt_to_pdf_ali[utt_id];
+        const std::vector<int32> *alignment = utt_to_pdf_ali[utt_id];
 
-        if (eg.GetLabelSingle() != (*alignment)[frame_id]) {
-          num_frames_relabelled++; 
+        int32 num_frames_in_eg = eg.labels.size();
+        for (int32 t_offset = 0; t_offset < num_frames_in_eg; t_offset++) {
+          int32 t = frame_id + t_offset;
+          if (t >= static_cast<int32>(alignment->size())) {
+            KALDI_ERR << "Time index " << t << " out of range for alignment, "
+                      << "should be < " << alignment->size();
+          }
+          if (eg.GetLabelSingle(t_offset) != (*alignment)[t])
+            num_frames_relabelled++; 
+          eg.SetLabelSingle(t_offset, (*alignment)[t]);
         }
-
-        eg.SetLabelSingle((*alignment)[frame_id]);
-
         egs_writer.Write(key, eg);
       }
     }
 
-    unordered_map<std::string, std::vector<int32>*>::iterator it = utt_to_pdf_ali.begin();
-
-    for (; it != utt_to_pdf_ali.end(); it++) {
-      delete it->second;
-    }
-
+    unordered_map<std::string, std::vector<int32>*>::iterator iter;
+    
+    for (iter = utt_to_pdf_ali.begin(); iter != utt_to_pdf_ali.end(); iter++)
+      delete iter->second;
+    
     KALDI_LOG << "Read " << num_ali << " alignments containing a total of " 
               << num_frames_ali << " frames; labelled " 
               << num_frames_egs - num_frames_missing << " frames out of " 

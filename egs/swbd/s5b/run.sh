@@ -14,6 +14,10 @@
 . cmd.sh
 . path.sh
 set -e # exit on error
+# mfccdir should be some place with a largish disk where you
+# want to store MFCC features. 
+mfccdir=mfcc
+
 
 # Prepare Switchboard data. This command can also take a second optional argument
 # which specifies the directory to Switchboard documentations. Specifically, if
@@ -78,11 +82,7 @@ utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
 # local/eval2000_data_prep.sh /home/dpovey/data/LDC2002S09/hub5e_00 /home/dpovey/data/LDC2002T43
 local/eval2000_data_prep.sh /export/corpora2/LDC/LDC2002S09/hub5e_00 /export/corpora2/LDC/LDC2002T43
 
-# mfccdir should be some place with a largish disk where you
-# want to store MFCC features. 
-mfccdir=mfcc
-
-steps/make_mfcc.sh --compress true --nj 20 --cmd "$train_cmd" data/train exp/make_mfcc/train $mfccdir
+steps/make_mfcc.sh --nj 50 --cmd "$train_cmd" data/train exp/make_mfcc/train $mfccdir
 steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir 
 
 # Remove the small number of utterances that couldn't be extracted for some 
@@ -231,6 +231,7 @@ for lm_suffix in tg fsh_tgpr; do
   ) &
 done
 wait
+
 steps/lmrescore.sh --mode 3 --cmd "$decode_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
   exp/tri4b/decode_eval2000_sw1_fsh_tgpr exp/tri4b/decode_eval2000_sw1_fsh_tg.3 || exit 1
 

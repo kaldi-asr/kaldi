@@ -264,10 +264,12 @@ void NnetPerturbedUpdater::ComputeSupervisionLabels(
   sv_labels->clear();
   sv_labels->reserve(num_chunks_); // We must have at least this many labels.
   for (int32 m = 0; m < num_chunks_; m++) {
-    for (size_t i = 0; i < data[m].labels.size(); i++) {
-      MatrixElement<BaseFloat> 
-          tmp = {m, data[m].labels[i].first, data[m].labels[i].second};
-      sv_labels->push_back(tmp);
+    KALDI_ASSERT(data[m].labels.size() == 1 &&
+                 "Training code does not currently support multi-frame egs");
+    const std::vector<std::pair<int32,BaseFloat> > &labels = data[m].labels[0];
+    for (size_t i = 0; i < labels.size(); i++) {
+      MatrixElement<BaseFloat> elem = {m, labels[i].first, labels[i].second};
+      sv_labels->push_back(elem);
     }
   }  
 }

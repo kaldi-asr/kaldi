@@ -64,6 +64,8 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   Matrix<BaseFloat> input_frames(left_context + 1 + right_context,
                                  basic_feat_dim);
   eg.left_context = left_context;
+  // TODO: modify this code, and this binary itself, to support the --num-frames
+  // option to allow multiple frames per eg.
   for (int32 i = 0; i < feats.NumRows(); i++) {
     int32 count = GetCount(keep_proportion); // number of times
     // we'll write this out (1 by default).
@@ -77,7 +79,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                                                   j + left_context);
         dest.CopyFromVec(src);
       }
-      eg.labels = pdf_post[i];
+      eg.labels.push_back(pdf_post[i]);
       eg.input_frames = input_frames;
       if (const_feat_dim > 0) {
         // we'll normally reach here if we're using online-estimated iVectors.

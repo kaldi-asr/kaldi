@@ -3,6 +3,10 @@
 *.lo
 *.o
 
+# emacs saves
+[#]*[#]
+*~
+
 # Compiled Dynamic libraries
 *.so
 *.dylib
@@ -32,6 +36,8 @@
 /tools/sph2pipe_v2.5/
 /tools/kaldi_lm.tar.gz
 /tools/sctk-2.4.8-20130429-2145.tar.bz2
+/tools/sctk-2.4.9-20141015-1634Z.tar.bz2
+/tools/sctk-2.4.9/
 /tools/OpenBLAS
 /tools/sctk
 /tools/sctk-2.4.8
@@ -436,7 +442,8 @@
 /src/lm/lm-lib-test
 
 # /src/lmbin/
-src/lmbin/arpa-to-const-arpa
+/src/lmbin/arpa-to-const-arpa
+/src/lmbin/.depend.mk
 
 # /src/matrix/
 /src/matrix/.depend.mk

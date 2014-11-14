@@ -29,42 +29,63 @@
 namespace kaldi {
 namespace nnet2 {
 
-// NnetExample is the input data and corresponding labels (or labels)
-// for one frame of input, used for standard cross-entropy training of neural
-// nets.  In the normal case there will be just one label, with a weight of 1.0.
-// But, for example, in discriminative training there might be a mixture of
-// labels with different weights.  (note: we may not end up using
-// this for discriminative training after all.)
+/// NnetExample is the input data and corresponding labels (or labels) for one
+/// or more frames of input, used for standard cross-entropy training of neural
+/// nets (and possibly for other objective functions).  In the normal case there
+/// will be just one frame, and one label, with a weight of 1.0.
 struct NnetExample {
 
-  /// The label(s) for this frame; in the normal case, this will be a vector of
-  /// length one, containing (the pdf-id, 1.0)
-  std::vector<std::pair<int32, BaseFloat> > labels;  
-
-  /// The input data-- typically with NumRows() more than
-  /// labels.size(), it includes features to the left and
-  /// right as needed for the temporal context of the network.
-  /// (see the left_context variable).
+  /// The label(s) for each frame in a sequence of frames; in the normal case,
+  /// this will be just [ [ (pdf-id, 1.0) ] ], i.e. one frame with one label.
+  /// Top-level index is the frame index; then for each frame, a list of pdf-ids
+  /// each with its weight.
+  /// In some contexts, we will require that labels.size() == 1.
+  std::vector<std::vector<std::pair<int32, BaseFloat> > > labels;  
+  
+  /// The input data, with NumRows() >= labels.size() + left_context; it
+  /// includes features to the left and right as needed for the temporal context
+  /// of the network.  The features corresponding to labels[0] would be in
+  /// the row with index equal to left_context.
   CompressedMatrix input_frames; 
 
   /// The number of frames of left context (we can work out the #frames
   /// of right context from input_frames.NumRows(), labels.size(), and this).
   int32 left_context;
 
-
   /// The speaker-specific input, if any, or an empty vector if
-  /// we're not using this features.  We'll append this to each of the
+  /// we're not using this features.  We'll append this to the
+  /// features for each of the frames.
   Vector<BaseFloat> spk_info; 
   
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
 
-  /// Set the label of this example to the specified pdf_id 
-  /// with the specified weight.
-  void SetLabelSingle(int32 pdf_id, BaseFloat weight = 1.0);
+  NnetExample() { }
 
-  /// Get the maximum weight label (pdf_id and weight) of this example. 
-  int32 GetLabelSingle(BaseFloat *weight = NULL);
+  /// This constructor can be used to extract one or more frames from an example
+  /// that has multiple frames, and possibly truncate the context.  Most of its
+  /// behavior is obvious from the variable names, but note the following: if
+  /// left_context is -1, we use the left-context of the input; the same for
+  /// right_context.  If start_frame < 0 we start the labels from frame 0 of the
+  /// labeled frames of ,input; if num_frames == -1 we go to the end of the
+  /// labeled input from start_frame.  If start_frame + num_frames is greater
+  /// than the number of frames of labels of input, we output as much as we can
+  /// instead of crashing.  The same with left_context and right_context-- if we
+  /// can't provide the requested context we won't crash but will provide as
+  /// much as we can, although in this case we'll print a warning (once).
+  NnetExample(const NnetExample &input,
+              int32 start_frame,
+              int32 num_frames,
+              int32 left_context,
+              int32 right_context);
+  
+  /// Set the label of this frame of this example to the specified pdf_id with
+  /// the specified weight.
+  void SetLabelSingle(int32 frame, int32 pdf_id, BaseFloat weight = 1.0);
+
+  /// Get the maximum weight label (pdf_id and weight) of this frame of this
+  /// example.
+  int32 GetLabelSingle(int32 frame, BaseFloat *weight = NULL);
 };
 
 

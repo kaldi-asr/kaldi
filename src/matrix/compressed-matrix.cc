@@ -106,12 +106,12 @@ CompressedMatrix::CompressedMatrix(
   KALDI_ASSERT(col_offset < cmat.NumCols());
   KALDI_ASSERT(row_offset >= 0);
   KALDI_ASSERT(col_offset >= 0);
-  KALDI_ASSERT(row_offset+num_rows <= cmat.NumRows());
-  KALDI_ASSERT(col_offset+num_cols <= cmat.NumCols());
+  KALDI_ASSERT(row_offset + num_rows <= cmat.NumRows());
+  KALDI_ASSERT(col_offset + num_cols <= cmat.NumCols());
 
   if (cmat.NumRows() == 0) { return; }  // Zero-size matrix stored as zero pointer.
   if (num_rows == 0 || num_cols == 0) { return; }
-
+  
   GlobalHeader new_global_header;
   KALDI_COMPILE_TIME_ASSERT(sizeof(new_global_header) == 16);
 
@@ -604,6 +604,7 @@ CompressedMatrix &CompressedMatrix::operator = (const CompressedMatrix &mat) {
   }
   return *this;
 }
+
 
 }  // namespace kaldi
 

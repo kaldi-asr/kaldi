@@ -59,7 +59,7 @@ fi
 
 
 if [ $stage -le 4 ]; then
-  steps/nnet2/train_pnorm_simple.sh --stage $train_stage \
+  steps/nnet2/train_pnorm_simple2.sh --stage $train_stage \
     --splice-width 7 \
     --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors \

@@ -1,9 +1,14 @@
 #!/bin/bash
 
-# Copyright 2014  Vimal Manohar. Apache 2.0.
+# Copyright 2014  Vimal Manohar.
+#           2014  Johns Hopkins University (author: Daniel Povey)
+# Apache 2.0.
+#
 # This script, which will generally be called during the neural-net training 
 # relabels existing examples with better labels obtained by realigning the data
-# with the current nnet model
+# with the current nnet model.
+# This script is as relabel_egs.sh, but is adapted to work with the newer
+# egs format that is written by get_egs2.sh
 
 # Begin configuration section
 cmd=run.pl
@@ -36,41 +41,36 @@ model=$alidir/$iter.mdl
 
 # Check some files.
 
-for f in $alidir/ali.1.gz $model $egs_in_dir/egs.1.0.ark $egs_in_dir/combine.egs \
+[ -f $egs_in_dir/iters_per_epoch ] && \
+  echo "$0: this script does not work with the old egs directory format" && exit 1;
+
+for f in $alidir/ali.1.gz $model $egs_in_dir/egs.1.ark $egs_in_dir/combine.egs \
   $egs_in_dir/valid_diagnostic.egs $egs_in_dir/train_diagnostic.egs \
-  $egs_in_dir/num_jobs_nnet $egs_in_dir/iters_per_epoch $egs_in_dir/samples_per_iter; do
+  $egs_in_dir/info/num_archives; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-num_jobs_nnet=`cat $egs_in_dir/num_jobs_nnet`
-iters_per_epoch=`cat $egs_in_dir/iters_per_epoch`
-samples_per_iter_real=`cat $egs_in_dir/samples_per_iter`
-num_jobs_align=`cat $alidir/num_jobs`
+num_archives=$(cat $egs_in_dir/info/num_archives) || exit 1;
+num_jobs_align=$(cat $alidir/num_jobs) || exit 1;
 
 mkdir -p $dir/log
 
-echo $num_jobs_nnet > $dir/num_jobs_nnet
-echo $iters_per_epoch > $dir/iters_per_epoch
-echo $samples_per_iter_real > $dir/samples_per_iter
+cp -rT $egs_in_dir/info  $dir/info
 
 alignments=`eval echo $alidir/ali.{$(seq -s ',' $num_jobs_align)}.gz`
 
 if [ $stage -le 0 ]; then
   egs_in=
   egs_out=
-  for x in `seq 1 $num_jobs_nnet`; do
-    for y in `seq 0 $[$iters_per_epoch-1]`; do
-      utils/create_data_link.pl $dir/egs.$x.$y.ark
-      if [ $x -eq 1 ]; then
-        egs_in="$egs_in ark:$egs_in_dir/egs.JOB.$y.ark "
-        egs_out="$egs_out ark:$dir/egs.JOB.$y.ark "
-      fi
-    done
+  for x in $(seq $num_archives); do
+    # if $dir/storage exists, make the soft links that we'll
+    # use to distribute the data across machines
+    utils/create_data_link.pl $dir/egs.$x.ark
   done
 
   $cmd JOB=1:$num_jobs_nnet $dir/log/relabel_egs.JOB.log \
     nnet-relabel-egs "ark:gunzip -c $alignments | ali-to-pdf $model ark:- ark:- |" \
-    $egs_in $egs_out || exit 1
+     $egs_in/egs.JOB.ark $dir/egs.JOB.ark || exit 1
 fi
 
 if [ $stage -le 1 ]; then

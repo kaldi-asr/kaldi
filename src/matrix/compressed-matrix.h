@@ -64,9 +64,10 @@ class CompressedMatrix {
   /// This will resize *this and copy the contents of mat to *this.
   template<typename Real>
   void CopyFromMat(const MatrixBase<Real> &mat);
+
   
   CompressedMatrix(const CompressedMatrix &mat);
-  
+
   CompressedMatrix &operator = (const CompressedMatrix &mat); // assignment operator.
 
   template<typename Real>

@@ -91,10 +91,12 @@ double NnetUpdater::ComputeObjfAndDeriv(
   std::vector<MatrixElement<BaseFloat> > sv_labels;
   sv_labels.reserve(num_chunks_); // We must have at least this many labels.
   for (int32 m = 0; m < num_chunks_; m++) {
-    for (size_t i = 0; i < data[m].labels.size(); i++) {
-      MatrixElement<BaseFloat> 
-         tmp = {m, data[m].labels[i].first, data[m].labels[i].second};
-      sv_labels.push_back(tmp);
+    KALDI_ASSERT(data[m].labels.size() == 1 &&
+                 "Training code currently does not support multi-frame egs");
+    const std::vector<std::pair<int32,BaseFloat> > &labels = data[m].labels[0];
+    for (size_t i = 0; i < labels.size(); i++) {
+      MatrixElement<BaseFloat> elem = {m, labels[i].first, labels[i].second};
+      sv_labels.push_back(elem);
     }
   }
 
@@ -122,10 +124,13 @@ double NnetUpdater::ComputeTotAccuracy(
   best_pdf.CopyToVec(&best_pdf_cpu);
 
   for (int32 i = 0; i < output.NumRows(); i++) {
-    for (size_t j = 0; j < data[i].labels.size(); j++) {
-      int32 ref_pdf_id = data[i].labels[j].first,
+    KALDI_ASSERT(data[i].labels.size() == 1 &&
+                 "Training code currently does not support multi-frame egs");
+    const std::vector<std::pair<int32,BaseFloat> > &labels = data[i].labels[0];
+    for (size_t j = 0; j < labels.size(); j++) {
+      int32 ref_pdf_id = labels[j].first,
           hyp_pdf_id = best_pdf_cpu[i];
-      BaseFloat weight = data[i].labels[j].second;
+      BaseFloat weight = labels[j].second;
       tot_accuracy += weight * (hyp_pdf_id == ref_pdf_id ? 1.0 : 0.0);
     }
   }
@@ -200,8 +205,9 @@ void NnetUpdater::FormatInput(const std::vector<NnetExample> &data) {
 BaseFloat TotalNnetTrainingWeight(const std::vector<NnetExample> &egs) {
   double ans = 0.0;
   for (size_t i = 0; i < egs.size(); i++)
-    for (size_t j = 0; j < egs[i].labels.size(); j++)
-      ans += egs[i].labels[j].second;
+    for (size_t j = 0; j < egs[i].labels.size(); j++) // for each labeled frame
+      for (size_t k = 0; k < egs[i].labels[j].size(); k++)
+        ans += egs[i].labels[j][k].second;
   return ans;
 }
 

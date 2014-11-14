@@ -15,12 +15,16 @@ if $use_gpu; then
   # with only CMN.
   local/nnet2/run_4b_gpu.sh
 
-  # This one is on top of 40-dim + fMLLR features
+  # This one is on top of 40-dim + fMLLR features.
   local/nnet2/run_4c.sh --use-gpu true
 
   # This one is for training pnorm nnets on top of 40-dim + fMLLR features
   # **THIS IS THE PRIMARY RECIPE**
-  local/nnet2/run_4d.sh --use-gpu true
+  local/nnet2/run_4d3.sh --use-gpu true
+
+  # this is the old version of the run_4d3.sh script, before
+  # switching to more compact version of egs.
+  #local/nnet2/run_4d.sh --use-gpu true
 
   # as above with 'perturbed training'.  A bit better results, a bit slower.
   local/nnet2/run_4d2.sh --use-gpu true

@@ -24,7 +24,7 @@ fi
 parallel_opts="-l gpu=1" 
 num_threads=1
 minibatch_size=512
-dir=exp/nnet2_online/nnet_a_gpu 
+dir=exp/nnet2_online/nnet_a
 mkdir -p exp/nnet2_online
 
 
@@ -34,7 +34,7 @@ local/online/run_nnet2_common.sh --stage $stage
 
 if [ $stage -le 6 ]; then
   if [ $USER == dpovey ]; then # this shows how you can split across multiple file-systems.
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/dpovey/kaldi-online/egs/fisher_english/s5/$dir/egs $dir/egs/storage
+    utils/create_split_dir.pl /export/b0{3,4,5,6}/dpovey/kaldi-online/egs/fisher_english/s5/$dir/egs $dir/egs/storage
   fi
 
   # Because we have a lot of data here and we don't want the training to take
@@ -43,10 +43,10 @@ if [ $stage -le 6 ]; then
   # (5) of jobs dumping the egs to disk; this is OK since we're splitting our
   # data across four filesystems for speed.
 
-  steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
-    --num-epochs 4 --num-epochs-extra 1 \
-    --samples-per-iter 400000 \
-    --splice-width 7 --feat-type raw \
+  steps/nnet2/train_pnorm_simple2.sh --stage $train_stage \
+    --num-epochs 5 \
+    --splice-width 7 \
+    --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors_train \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --num-threads "$num_threads" \
@@ -93,4 +93,3 @@ if [ $stage -le 10 ]; then
 fi
 
 exit 0;
-
