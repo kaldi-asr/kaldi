@@ -211,7 +211,7 @@ gunzip -c $gzipped_ARPA_LM | \
   arpa2fst - | fstprint | \
     utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$lang/words.txt \
       --osymbols=$lang/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-     fstrmepsilon > $lang/G.fst || exit 1;
+     fstrmepsilon | fstarcsort --sort_type=ilabel > $lang/G.fst || exit 1;
   fstisstochastic $lang/G.fst
 
 ##################################################################

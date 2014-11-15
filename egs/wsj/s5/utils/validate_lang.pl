@@ -566,26 +566,61 @@ if (-s "$lang/phones/word_boundary.int") {
 # Check oov -------------------------------
 check_txt_int("$lang/oov", \%wsymtab, 0); print "\n";
 
+# Check if L.fst is olabel sorted.
+if (-e "$lang/L.fst") {
+  $cmd = "fstinfo $lang/L.fst | grep -E 'output label sorted.*y' > /dev/null";
+  $res = system(". ./path.sh; $cmd");
+  if ($res == 0) {
+    print "--> $lang/L.fst is olabel sorted\n";
+  } else {
+    print "--> ERROR: $lang/L.fst is not olabel sorted\n";
+    $exit = 1;
+  }
+}
+
+# Check if L_disambig.fst is olabel sorted.
+if (-e "$lang/L_disambig.fst") {
+  $cmd = "fstinfo $lang/L_disambig.fst | grep -E 'output label sorted.*y' > /dev/null";
+  $res = system(". ./path.sh; $cmd");
+  if ($res == 0) {
+    print "--> $lang/L_disambig.fst is olabel sorted\n";
+  } else {
+    print "--> ERROR: $lang/L_disambig.fst is not olabel sorted\n";
+    $exit = 1;
+  }
+}
+
+# Check if G.fst is ilabel sorted.
+if (-e "$lang/G.fst") {
+  $cmd = "fstinfo $lang/G.fst | grep -E 'input label sorted.*y' > /dev/null";
+  $res = system(". ./path.sh; $cmd");
+  if ($res == 0) {
+    print "--> $lang/G.fst is ilabel sorted\n";
+  } else {
+    print "--> ERROR: $lang/G.fst is not ilabel sorted\n";
+    $exit = 1;
+  }
+}
 
 # Check determinizability of G.fst
 if (-e "$lang/G.fst") {
   $cmd = "fstdeterminize $lang/G.fst /dev/null";
-  $ret = system(". ./path.sh; $cmd");
-  if ($ret == 0) {
-    print "--> command $cmd succeeded\n";
+  $res = system(". ./path.sh; $cmd");
+  if ($res == 0) {
+    print "--> $lang/G.fst is determinizable\n";
   } else {
-    print "--> ERROR: command $cmd failed\n";
+    print "--> ERROR: fail to determinize $lang/G.fst\n";
     $exit = 1;
   }
 }
 
 if (-e "$lang/G.fst" && -e "$lang/L_disambig.fst") {
   $cmd = "fstcompose $lang/L_disambig.fst $lang/G.fst | fstdeterminize > /dev/null";
-  $ret = system(". ./path.sh; $cmd");
-  if ($ret == 0) {
-    print "--> command $cmd succeeded\n";
+  $res = system(". ./path.sh; $cmd");
+  if ($res == 0) {
+    print "--> L_disambig . G is determinizable\n";
   } else {
-    print "--> ERROR: command $cmd failed\n";
+    print "--> ERROR: fail to determinize L_disambig . G\n";
     $exit = 1;
   }
 }

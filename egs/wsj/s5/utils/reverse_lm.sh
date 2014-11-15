@@ -62,7 +62,8 @@ arpa2fst $outdir/reverse.arpa | fstprint | \
 echo "Push weights to make it stochastic (log semi-ring)"
 # delta must be very small otherwise weight pushing won't succeed
 #fstpush --push_weights=true --push_labels=true --delta=1E-7 $outdir/G_log.fst >$outdir/G_log_pushed.fst
-fstpushspecial --delta=1E-5 $outdir/G_org.fst >$outdir/G.fst
+fstpushspecial --delta=1E-5 $outdir/G_org.fst |\
+  fstarcsort --sort_type=ilabel >$outdir/G.fst
 
 fstisstochastic $outdir/G.fst
 # The output is like:

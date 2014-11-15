@@ -103,7 +103,8 @@ penalty=`perl -e '$prob = 1.0/12; print -log($prob); '` # negated log-prob,
  done 
  echo 0 $penalty # format is: state final-cost
 ) | fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt \
-   --keep_isymbols=false --keep_osymbols=false >$lang/G.fst
+   --keep_isymbols=false --keep_osymbols=false |\
+   fstarcsort --sort_type=ilabel > $lang/G.fst
 
 
 exit 0;
