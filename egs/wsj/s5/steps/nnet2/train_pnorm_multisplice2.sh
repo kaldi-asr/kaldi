@@ -1,29 +1,18 @@
 #!/bin/bash
 
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey). 
-#                2013  Xiaohui Zhang
-#                2013  Guoguo Chen
-#                2014  Vimal Manohar
+#           2013  Xiaohui Zhang
+#           2013  Guoguo Chen
+#           2014  Vimal Manohar
+#           2014  Vijayaditya Peddinti
 # Apache 2.0.
 
+# train_pnorm_multisplice2.sh is a modified version of
+# train_pnorm_simple2.sh. This script creates neural net architectures with
+# multiple levels of splicing.  You can also compare it with
+# train_pnorm_multisplice.sh; it differs from that script by using the newer,
+# more compact multi-frame egs format that is dumped by get_egs2.sh.
 
-# train_pnorm_simple2.sh is as train_pnorm_simple.sh but it uses the "new"
-# egs format, created by get_egs2.sh      
-
-# train_pnorm_simple.sh is a modified version of train_pnorm_fast.sh.  Like
-# train_pnorm_fast.sh, it uses the `online' preconditioning, which is faster
-# (especially on GPUs).  The difference is that the learning-rate schedule is
-# simpler, with the learning rate exponentially decreasing during training,
-# and no phase where the learning rate is constant.
-# 
-# Also, the final model-combination is done a bit differently: we combine models
-# over typically a whole epoch, and because that would be too many iterations to
-# easily be able to combine over, we arrange the iterations into groups (20
-# groups by default) and average over each group.
-#
-# [Vimal Manohar - Oct 2014]
-# The script now supports realignment during training, which can be done by 
-# specifying realign_epochs.
 
 # Begin configuration section.
 cmd=run.pl
@@ -34,7 +23,6 @@ final_learning_rate=0.004
 bias_stddev=0.5
 pnorm_input_dim=3000 
 pnorm_output_dim=300
-p=2
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
                    # be a problem with multi-threaded update. 
@@ -48,7 +36,6 @@ prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0
 online_ivector_dir=
-
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
   # to the final 'combine' stage, but these models will themselves be averages of
@@ -67,7 +54,11 @@ add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
 stage=-4
 
-splice_width=4 # meaning +- 4 frames on each side for second LDA
+splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:1:3"
+# Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
+# note: hidden layers which are composed of one or more components,
+# so hidden layer indexing is different from component count
+
 randprune=4.0 # speeds up LDA.
 alpha=4.0 # relates to preconditioning.
 update_period=4 # relates to online preconditioning: says how often we update the subspace.
@@ -136,7 +127,9 @@ if [ $# != 4 ]; then
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
   echo "                                                   # process."
-  echo "  --splice-width <width|4>                         # Number of frames on each side to append for feature input"
+  echo "  --splice-indexes <string|layer0/-4:-3:-2:-1:0:1:2:3:4> "
+  echo "                                                   # Frame indices used for each splice layer."
+  echo "                                                   # Format : layer<hidden_layer_index>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --lda-dim <dim|250>                              # Dimension to reduce spliced features to with LDA"
   echo "  --realign-epochs <list-of-epochs|\"\">           # A list of space-separated epoch indices the beginning of which"
@@ -181,29 +174,42 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
 
+# process the splice_inds string, to get a layer-wise context string
+# to be processed by the nnet-components
+# this would be mainly used by SpliceComponent|SpliceMaxComponent
+python steps/nnet2/make_multisplice_configs.py contexts --splice-indexes "$splice_indexes" $dir || exit -1;
+context_string=$(cat $dir/vars) || exit -1
+echo $context_string
+eval $context_string || exit -1; #
+  # initializes variables used by get_lda.sh and get_egs.sh
+  # get_lda.sh : first_left_context, first_right_context,
+  # get_egs.sh : nnet_left_context & nnet_right_context
+
 extra_opts=()
 [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
 [ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
 [ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
 [ -z "$transform_dir" ] && transform_dir=$alidir
 extra_opts+=(--transform-dir $transform_dir)
-extra_opts+=(--left-context $splice_width --right-context $splice_width)
 
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
-  steps/nnet2/get_lda.sh $lda_opts "${extra_opts[@]}" --cmd "$cmd" $data $lang $alidir $dir || exit 1;
+  steps/nnet2/get_lda.sh $lda_opts "${extra_opts[@]}" --left-context $first_left_context --right-context $first_right_context --cmd "$cmd" $data $lang $alidir $dir || exit 1;
 fi
-
 # these files will have been written by get_lda.sh
 feat_dim=$(cat $dir/feat_dim) || exit 1;
 ivector_dim=$(cat $dir/ivector_dim) || exit 1;
 lda_dim=$(cat $dir/lda_dim) || exit 1;
 
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
-  echo "$0: calling get_egs2.sh"            
+
+  extra_opts+=(--left-context $nnet_left_context )
+  extra_opts+=(--right-context $nnet_right_context )
+  echo "$0: calling get_egs2.sh"
   steps/nnet2/get_egs2.sh $egs_opts "${extra_opts[@]}" \
-    --samples-per-iter $samples_per_iter --stage $get_egs_stage \
-    --cmd "$cmd" $egs_opts $data $alidir $dir/egs || exit 1;
+      --samples-per-iter $samples_per_iter --stage $get_egs_stage \
+      --cmd "$cmd" $egs_opts \
+      $data $alidir $dir/egs || exit 1;
 fi
 
 if [ -z $egs_dir ]; then
@@ -235,28 +241,33 @@ if [ $stage -le -2 ]; then
 
   online_preconditioning_opts="alpha=$alpha num-samples-history=$num_samples_history update-period=$update_period rank-in=$precondition_rank_in rank-out=$precondition_rank_out max-change-per-sample=$max_change_per_sample"
 
-  stddev=`perl -e "print 1.0/sqrt($pnorm_input_dim);"`
-  cat >$dir/nnet.config <<EOF
-SpliceComponent input-dim=$tot_input_dim left-context=$splice_width right-context=$splice_width const-component-dim=$ivector_dim
-FixedAffineComponent matrix=$lda_mat
-AffineComponentPreconditionedOnline input-dim=$lda_dim output-dim=$pnorm_input_dim $online_preconditioning_opts learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
-PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim p=$p
-NormalizeComponent dim=$pnorm_output_dim
-AffineComponentPreconditionedOnline input-dim=$pnorm_output_dim output-dim=$num_leaves $online_preconditioning_opts learning-rate=$initial_learning_rate param-stddev=0 bias-stddev=0
-SoftmaxComponent dim=$num_leaves
-EOF
+  # create the config files for nnet initialization
+  python steps/nnet2/make_multisplice_configs.py  \
+    --splice-indexes "$splice_indexes"  \
+    --total-input-dim $tot_input_dim  \
+    --ivector-dim $ivector_dim  \
+    --lda-mat "$lda_mat"  \
+    --lda-dim $lda_dim  \
+    --pnorm-input-dim $pnorm_input_dim  \
+    --pnorm-output-dim  $pnorm_output_dim \
+    --online-preconditioning-opts "$online_preconditioning_opts"  \
+    --initial-learning-rate $initial_learning_rate  \
+    --bias-stddev  $bias_stddev  \
+    --num-hidden-layers $num_hidden_layers \
+    --num-targets  $num_leaves  \
+    configs  $dir || exit -1;
 
-  # to hidden.config it will write the part of the config corresponding to a
-  # single hidden layer; we need this to add new layers. 
-  cat >$dir/hidden.config <<EOF
-AffineComponentPreconditionedOnline input-dim=$pnorm_output_dim output-dim=$pnorm_input_dim $online_preconditioning_opts learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
-PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim p=$p
-NormalizeComponent dim=$pnorm_output_dim
-EOF
   $cmd $dir/log/nnet_init.log \
     nnet-am-init $alidir/tree $lang/topo "nnet-init $dir/nnet.config -|" \
     $dir/0.mdl || exit 1;
 fi
+
+cur_num_hidden_layer=1  # counts the number of hidden layers in the network
+                        # this is different from the number of components in
+                        # in the network, each hidden layer is composed of 
+                        # affine comp. + pnorm comp. + normalization comp.
+                        # optionally a splice component is also added
+
 
 if [ $stage -le -1 ]; then
   echo "Training transition probabilities and setting priors"
@@ -329,8 +340,6 @@ while [ $x -lt $num_iters ]; do
     if [ ! -z "${realign_this_iter[$x]}" ]; then
       epoch=${realign_this_iter[$x]}
 
-             
-
       echo "Getting average posterior for purposes of adjusting the priors."
       # Note: this just uses CPUs, using a smallish subset of data.
       # always use the first egs archive, which makes the script simpler;
@@ -384,7 +393,8 @@ while [ $x -lt $num_iters ]; do
     if [ $x -gt 0 ] && \
       [ $x -le $[($num_hidden_layers-1)*$add_layers_period] ] && \
       [ $[($x-1) % $add_layers_period] -eq 0 ]; then
-      mdl="nnet-init --srand=$x $dir/hidden.config - | nnet-insert $dir/$x.mdl - - |"
+      mdl="nnet-init --srand=$x $dir/hidden_${cur_num_hidden_layer}.config - | nnet-insert $dir/$x.mdl - - |"
+      cur_num_hidden_layer=$((cur_num_hidden_layer + 1))
     else
       mdl=$dir/$x.mdl
     fi

@@ -1,5 +1,4 @@
 #!/bin/bash
-#/usr/bin/bash -v 
 
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey). 
 #           2013  Xiaohui Zhang
@@ -7,7 +6,6 @@
 #           2014  Vimal Manohar
 #           2014  Vijayaditya Peddinti
 # Apache 2.0.
-
 
 # train_pnorm_multisplice.sh is a modified version of train_pnorm_simple.sh.
 # Like train_pnorm_fast.sh, it uses the `online' preconditioning,
@@ -63,10 +61,11 @@ num_hidden_layers=3
 stage=-4
 
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
-splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4" # meaning +- 4 frames on each side for second LDA
-                                         # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
-                                         # note: hidden layers which are composed of one or more components,
-                                         # so hidden layer indexing is different from component count
+splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:1:3"
+# Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
+# note: hidden layers which are composed of one or more components,
+# so hidden layer indexing is different from component count
+
 randprune=4.0 # speeds up LDA.
 alpha=4.0 # relates to preconditioning.
 update_period=4 # relates to online preconditioning: says how often we update the subspace.
@@ -219,7 +218,7 @@ if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   steps/nnet2/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --samples-per-iter $samples_per_iter \
       --num-jobs-nnet $num_jobs_nnet --stage $get_egs_stage \
-      --cmd "$cmd" $egs_opts --io-opts "$io_opts" \
+      --cmd "$cmd" $egs_opts \
       $data $lang $alidir $dir || exit 1;
 fi
 
