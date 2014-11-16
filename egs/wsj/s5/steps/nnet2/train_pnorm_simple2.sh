@@ -89,6 +89,7 @@ egs_dir=
 lda_opts=
 lda_dim=
 egs_opts=
+io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.
 transform_dir=     # If supplied, overrides alidir
 cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.  
             # only relevant for "raw" features, not lda.
@@ -201,7 +202,7 @@ lda_dim=$(cat $dir/lda_dim) || exit 1;
 
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs2.sh"            
-  steps/nnet2/get_egs2.sh $egs_opts "${extra_opts[@]}" \
+  steps/nnet2/get_egs2.sh $egs_opts "${extra_opts[@]}"  --io-opts "$io_opts" \
     --samples-per-iter $samples_per_iter --stage $get_egs_stage \
     --cmd "$cmd" $egs_opts $data $alidir $dir/egs || exit 1;
 fi

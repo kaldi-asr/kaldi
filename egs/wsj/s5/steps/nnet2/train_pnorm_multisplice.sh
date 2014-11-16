@@ -61,7 +61,7 @@ num_hidden_layers=3
 stage=-4
 
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
-splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:1:3"
+splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:-1:3"
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count

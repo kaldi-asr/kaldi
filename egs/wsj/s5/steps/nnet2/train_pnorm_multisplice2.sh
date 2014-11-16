@@ -54,11 +54,13 @@ add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
 stage=-4
 
-splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:1:3"
+splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:-1:3"
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
 
+
+io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 randprune=4.0 # speeds up LDA.
 alpha=4.0 # relates to preconditioning.
 update_period=4 # relates to online preconditioning: says how often we update the subspace.
@@ -208,6 +210,7 @@ if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs2.sh"
   steps/nnet2/get_egs2.sh $egs_opts "${extra_opts[@]}" \
       --samples-per-iter $samples_per_iter --stage $get_egs_stage \
+      --io-opts "$io_opts" \
       --cmd "$cmd" $egs_opts \
       $data $alidir $dir/egs || exit 1;
 fi
