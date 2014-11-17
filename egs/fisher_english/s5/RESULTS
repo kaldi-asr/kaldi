@@ -12,8 +12,10 @@ for x in exp/*/decode_dev; do grep WER $x/wer_* | utils/best_wer.sh; done
 
 %WER 23.66 [ 9259 / 39141, 1495 ins, 2432 del, 5332 sub ] exp/nnet6c4_gpu/decode_dev/wer_11
 
-%WER 25.12 [ 9832 / 39141, 1423 ins, 2471 del, 5938 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev_utt/wer_11
-%WER 23.79 [ 9311 / 39141, 1499 ins, 2277 del, 5535 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev/wer_11
+
+%WER 22.86 [ 8947 / 39141, 1369 ins, 2302 del, 5276 sub ] exp/nnet2_online/nnet_a_online/decode_dev/wer_12
+%WER 23.77 [ 9305 / 39141, 1312 ins, 2462 del, 5531 sub ] exp/nnet2_online/nnet_a_online/decode_dev_utt/wer_12
+%WER 23.13 [ 9055 / 39141, 1466 ins, 2210 del, 5379 sub ] exp/nnet2_online/nnet_a_online/decode_dev_utt_offline/wer_11
 
 
 # the following is with a multi-splice version of the nnet-online recipe
@@ -21,6 +23,5 @@ for x in exp/*/decode_dev; do grep WER $x/wer_* | utils/best_wer.sh; done
 %WER 22.21 [ 8695 / 39141, 1463 ins, 2121 del, 5111 sub ] exp/nnet2_online/nnet_ms_a_online/decode_dev/wer_11
 %WER 22.94 [ 8980 / 39141, 1261 ins, 2417 del, 5302 sub ] exp/nnet2_online/nnet_ms_a_online/decode_dev_utt/wer_12
 %WER 22.25 [ 8710 / 39141, 1420 ins, 2139 del, 5151 sub ] exp/nnet2_online/nnet_ms_a_online/decode_dev_utt_offline/wer_11
-
 
 

@@ -31,6 +31,7 @@ parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely
 
   if [ ! -f exp/$dir/final.mdl ]; then
     # train_pnorm_simple2.sh dumps the egs in a more compact format to save disk space.
+    # note: 12 epochs is too many, it's taking a very long time.
     steps/nnet2/train_pnorm_simple2.sh --stage $train_stage \
       --num-epochs 12 \
       --io-opts "-tc 10" \
