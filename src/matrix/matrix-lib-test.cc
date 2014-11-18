@@ -3941,7 +3941,7 @@ template<typename Real> static void UnitTestCompressedMatrix() {
 
   MatrixIndexT num_failure = 0, num_tot = 10;
   for (MatrixIndexT n = 0; n < num_tot; n++) {
-    MatrixIndexT num_rows = 10 * (Rand() % 3), num_cols = Rand() % 15;
+    MatrixIndexT num_rows = Rand() % 20, num_cols = Rand() % 15;
     if (num_rows * num_cols == 0) {
       num_rows = 0;
       num_cols = 0;
@@ -4104,12 +4104,14 @@ template<typename Real> static void UnitTestCompressedMatrix() {
 template<typename Real>
 static void UnitTestExtractCompressedMatrix() {
   for (int32 i = 0; i < 30; i++) {
-    MatrixIndexT num_rows = Rand() % 99, num_cols = Rand() % 35;
+    MatrixIndexT num_rows = Rand() % 20, num_cols = Rand() % 30;
     if (num_rows * num_cols == 0) {
-      num_rows = 0;
-      num_cols = 0;
+      // this test wouldn't work for empty matrices.
+      num_rows++;
+      num_cols++;
     }
     Matrix<Real> mat(num_rows, num_cols);
+    mat.SetRandn();
     CompressedMatrix cmat(mat);
 
     MatrixIndexT row_offset = Rand() % num_rows, col_offset = Rand() % num_cols;
@@ -4117,7 +4119,7 @@ static void UnitTestExtractCompressedMatrix() {
       sub_num_cols = Rand() % (num_cols - col_offset) + 1;
     KALDI_VLOG(3) << "Whole matrix size: " << num_rows << "," << num_cols;
     KALDI_VLOG(3) << "Sub-matrix size: " << sub_num_rows << "," << sub_num_cols
-      << " with offsets " << row_offset << "," << col_offset;
+                  << " with offsets " << row_offset << "," << col_offset;
     CompressedMatrix cmat2(cmat, row_offset, sub_num_rows,  //take a subset of
                            col_offset, sub_num_cols);  // the compressed matrix
     Matrix<Real> mat2(sub_num_rows, sub_num_cols);
@@ -4251,6 +4253,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestLinearCgd<Real>();
   // UnitTestSvdBad<Real>(); // test bug in Jama SVD code.
   UnitTestCompressedMatrix<Real>();
+  UnitTestExtractCompressedMatrix<Real>();
   UnitTestResize<Real>();
   UnitTestMatrixExponentialBackprop();
   UnitTestMatrixExponential<Real>();
