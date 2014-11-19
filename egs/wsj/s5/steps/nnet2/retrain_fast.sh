@@ -149,7 +149,7 @@ cp $alidir/tree $dir
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
   steps/nnet2/get_egs.sh --feat-type raw --cmvn-opts "--norm-means=false --norm-vars=false" \
-      --samples-per-iter $samples_per_iter \
+      --samples-per-iter $samples_per_iter --left-context 0 --right-context 0 \
       --num-jobs-nnet $num_jobs_nnet --stage $get_egs_stage \
       --cmd "$cmd" $egs_opts --io-opts "$io_opts" \
       $data $lang $alidir $dir || exit 1;
