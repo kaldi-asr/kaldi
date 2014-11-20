@@ -46,8 +46,7 @@ done
 mkdir -p $dir/scoring/log
 
 # Map reference to 39 phone classes, the silence is optional (.):
-local/timit_norm_trans.pl -i $data/stm -m $phonemap -from 48 -to 39 | \
- sed 's: sil: (sil):g' > $dir/scoring/stm_39phn
+local/timit_norm_trans.pl -i $data/stm -m $phonemap -from 48 -to 39 >$dir/scoring/stm_39phn
 cp $data/glm $dir/scoring/glm_39phn
 
 if [ $stage -le 0 ]; then
