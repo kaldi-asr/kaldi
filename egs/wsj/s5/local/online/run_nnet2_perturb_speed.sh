@@ -94,7 +94,7 @@ if [ $stage -le 4 ]; then
     --cmd "$decode_cmd" \
     --pnorm-input-dim 2400 \
     --pnorm-output-dim 300 \
-    data/train_si284p data/lang exp/tri4b_ali_si284p $dir  || exit 1;
+    date/train_si284p data/lang exp/tri4b_ali_si284p $dir  || exit 1;
 fi
 
 if [ $stage -le 5 ]; then
@@ -120,4 +120,24 @@ fi
 
 
 
+# Here are the results.
+
+# First, this is the baseline. 
+# This is obtained from run_nnet2.sh which runs steps/nnet2/train_pnorm_simple2.sh
+
+# %WER 7.91 [ 651 / 8234, 79 ins, 102 del, 470 sub ] exp/nnet2_online/nnet_a_gpu/decode_bd_tgpr_dev93/wer_11
+# %WER 4.29 [ 242 / 5643, 38 ins, 9 del, 195 sub ] exp/nnet2_online/nnet_a_gpu/decode_bd_tgpr_eval92/wer_9
+# %WER 6.87 [ 237 / 3448, 21 ins, 45 del, 171 sub ] exp/nnet2_online/nnet_a_gpu/decode_bd_tgpr_eval93/wer_10
+# %WER 10.19 [ 839 / 8234, 177 ins, 96 del, 566 sub ] exp/nnet2_online/nnet_a_gpu/decode_tgpr_dev93/wer_12
+# %WER 6.79 [ 383 / 5643, 101 ins, 13 del, 269 sub ] exp/nnet2_online/nnet_a_gpu/decode_tgpr_eval92/wer_10
+# %WER 8.64 [ 298 / 3448, 38 ins, 41 del, 219 sub ] exp/nnet2_online/nnet_a_gpu/decode_tgpr_eval93/wer_11
+
+# Then this is the result obtained from running this script.
+
+# %WER 7.30 [ 601 / 8234, 64 ins, 102 del, 435 sub ] exp/nnet2_online_perturb/nnet_a_gpu/decode_bd_tgpr_dev93/wer_13
+# %WER 4.15 [ 234 / 5643, 39 ins, 11 del, 184 sub ] exp/nnet2_online_perturb/nnet_a_gpu/decode_bd_tgpr_eval92/wer_9
+# %WER 6.41 [ 221 / 3448, 15 ins, 39 del, 167 sub ] exp/nnet2_online_perturb/nnet_a_gpu/decode_bd_tgpr_eval93/wer_11
+# %WER 9.85 [ 811 / 8234, 187 ins, 72 del, 552 sub ] exp/nnet2_online_perturb/nnet_a_gpu/decode_tgpr_dev93/wer_10
+# %WER 6.63 [ 374 / 5643, 88 ins, 16 del, 270 sub ] exp/nnet2_online_perturb/nnet_a_gpu/decode_tgpr_eval92/wer_13
+# %WER 8.06 [ 278 / 3448, 42 ins, 32 del, 204 sub ] exp/nnet2_online_perturb/nnet_a_gpu/decode_tgpr_eval93/wer_10
 
