@@ -94,7 +94,7 @@ fi
 if [ $stage -le 4 ]; then
   # Re-train the DNN by 6 iterations of sMBR 
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 6 --acwt $acwt \
-    --do-smbr true --use-silphones true \
+    --do-smbr true \
     $data_fmllr/train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
   # Decode
   for ITER in 1 6; do
