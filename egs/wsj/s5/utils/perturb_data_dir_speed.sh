@@ -66,7 +66,7 @@ if [ -f $srcdir/segments ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/segments | \
     utils/apply_map.pl -f 2 $destdir/reco_map | \
       awk -v factor=$factor \
-        '{printf("%s %s %.2f %.2f\n", $1, $2, $3*factor, $4*factor);}' >$destdir/segments
+        '{printf("%s %s %.2f %.2f\n", $1, $2, $3/factor, $4/factor);}' >$destdir/segments
 
   if [ -f $srcdir/reco2file_and_channel ]; then
     utils/apply_map.pl -f 1 $destdir/reco_map <$srcdir/reco2file_and_channel >$destdir/reco2file_and_channel
