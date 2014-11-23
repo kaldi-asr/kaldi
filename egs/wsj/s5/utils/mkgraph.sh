@@ -60,7 +60,7 @@ mkdir -p $lang/tmp
 if [[ ! -s $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $lang/G.fst || \
       $lang/tmp/LG.fst -ot $lang/L_disambig.fst ]]; then
   fsttablecompose $lang/L_disambig.fst $lang/G.fst | fstdeterminizestar --use-log=true | \
-    fstminimizeencoded  > $lang/tmp/LG.fst || exit 1;
+    fstminimizeencoded | fstarcsort --sort_type=ilabel > $lang/tmp/LG.fst || exit 1;
   fstisstochastic $lang/tmp/LG.fst || echo "[info]: LG not stochastic."
 fi
 
@@ -71,7 +71,8 @@ if [[ ! -s $clg || $clg -ot $lang/tmp/LG.fst ]]; then
   fstcomposecontext --context-size=$N --central-position=$P \
    --read-disambig-syms=$lang/phones/disambig.int \
    --write-disambig-syms=$lang/tmp/disambig_ilabels_${N}_${P}.int \
-    $lang/tmp/ilabels_${N}_${P} < $lang/tmp/LG.fst >$clg
+    $lang/tmp/ilabels_${N}_${P} < $lang/tmp/LG.fst |\
+    fstarcsort --sort_type=ilabel > $clg
   fstisstochastic $clg  || echo "[info]: CLG not stochastic."
 fi
 
