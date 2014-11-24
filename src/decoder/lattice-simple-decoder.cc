@@ -247,7 +247,7 @@ void LatticeSimpleDecoder::PruneForwardLinks(
   while (changed) {
     changed = false;
     for (Token *tok = active_toks_[frame].toks; tok != NULL; tok = tok->next) {
-      ForwardLink *link, *prev_link=NULL;
+      ForwardLink *link, *prev_link = NULL;
       // will recompute tok_extra_cost.
       BaseFloat tok_extra_cost = std::numeric_limits<BaseFloat>::infinity();
       for (link = tok->links; link != NULL; ) {
@@ -257,7 +257,7 @@ void LatticeSimpleDecoder::PruneForwardLinks(
             ((tok->tot_cost + link->acoustic_cost + link->graph_cost)
              - next_tok->tot_cost);
         KALDI_ASSERT(link_extra_cost == link_extra_cost); // check for NaN
-        if (link_extra_cost > config_.lattice_beam) { // excise link
+        if (link_extra_cost > config_.lattice_beam) {  // excise link
           ForwardLink *next_link = link->next;
           if (prev_link != NULL) prev_link->next = next_link;
           else tok->links = next_link;
@@ -300,7 +300,7 @@ void LatticeSimpleDecoder::ComputeFinalCosts(
   BaseFloat infinity = std::numeric_limits<BaseFloat>::infinity();
   BaseFloat best_cost = infinity,
       best_cost_with_final = infinity;
-
+  
   for (unordered_map<StateId, Token*>::const_iterator iter = cur_toks_.begin();
        iter != cur_toks_.end(); ++iter) {
     StateId state = iter->first;
@@ -339,7 +339,7 @@ void LatticeSimpleDecoder::PruneForwardLinksFinal() {
   KALDI_ASSERT(!active_toks_.empty());  
   int32 frame_plus_one = active_toks_.size() - 1;
 
-  if (active_toks_[frame_plus_one].toks == NULL ) // empty list; should not happen.
+  if (active_toks_[frame_plus_one].toks == NULL) // empty list; should not happen.
     KALDI_WARN << "No tokens alive at end of file\n";
 
   typedef unordered_map<Token*, BaseFloat>::const_iterator IterType;  
@@ -365,9 +365,16 @@ void LatticeSimpleDecoder::PruneForwardLinksFinal() {
       // below we set it to the difference between the (score+final_prob) of this token,
       // and the best such (score+final_prob).
 
-      IterType iter = final_costs_.find(tok);
-      KALDI_ASSERT(iter != final_costs_.end());
-      BaseFloat final_cost = iter->second; // is zero if were no final-probs.
+      BaseFloat final_cost;
+      if (final_costs_.empty()) {
+        final_cost = 0.0;
+      } else {
+        IterType iter = final_costs_.find(tok);
+        if (iter != final_costs_.end())
+          final_cost = iter->second;
+        else
+          final_cost = std::numeric_limits<BaseFloat>::infinity();
+      }
       BaseFloat tok_extra_cost = tok->tot_cost + final_cost - final_best_cost_;
       // tok_extra_cost will be a "min" over either directly being final, or
       // being indirectly final through other links, and the loop below may
