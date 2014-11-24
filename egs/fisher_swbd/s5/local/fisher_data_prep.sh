@@ -35,9 +35,9 @@ for subdir in fe_03_p1_sph1  fe_03_p1_sph3  fe_03_p1_sph5  fe_03_p1_sph7 \
   fe_03_p2_sph6  fe_03_p2_tran; do
   found_subdir=false
   for dir in $*; do
-    if [ -f $dir/$subdir ]; then
+    if [ -d $dir/$subdir ]; then
       found_subdir=true
-      ln -s $dir data/local/data_fisher/links/$subdir
+      ln -s $dir/$subdir data/local/data_fisher/links/$subdir
     else
       new_style_subdir=$(echo $subdir | sed s/fe_03_p2_sph/fisher_eng_tr_sp_d/)
       if [ -d $dir/$new_style_subdir ]; then
@@ -154,7 +154,12 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  cat $tmpdir/sph.flist | perl -ane 'm:/([^/]+)\.sph$: || die "bad line $_; ";  print "$1 $_"; ' > $tmpdir/sph.scp
+  for f in `cat $tmpdir/sph.flist`; do
+    # convert to absolute path
+    readlink -e $f
+  done > $tmpdir/sph_abs.flist
+  
+  cat $tmpdir/sph_abs.flist | perl -ane 'm:/([^/]+)\.sph$: || die "bad line $_; ";  print "$1 $_"; ' > $tmpdir/sph.scp
 
   cat $tmpdir/sph.scp | awk -v sph2pipe=$sph2pipe '{printf("%s-A %s -f wav -p -c 1 %s |\n", $1, sph2pipe, $2); 
     printf("%s-B %s -f wav -p -c 2 %s |\n", $1, sph2pipe, $2);}' | \

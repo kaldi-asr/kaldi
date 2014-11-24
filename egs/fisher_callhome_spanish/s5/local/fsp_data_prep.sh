@@ -146,7 +146,12 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  cat $tmpdir/train_sph.flist | perl -ane 'm:/([^/]+)\.sph$: || die "bad line $_; ";  print "$1 $_"; ' > $tmpdir/sph.scp
+  for f in `cat $tmpdir/train_sph.flist`; do
+    # convert to absolute path
+    readlink -e $f
+  done > $tmpdir/train_sph_abs.flist  
+
+  cat $tmpdir/train_sph_abs.flist | perl -ane 'm:/([^/]+)\.sph$: || die "bad line $_; ";  print "$1 $_"; ' > $tmpdir/sph.scp
   cat $tmpdir/sph.scp | awk -v sph2pipe=$sph2pipe '{printf("%s-A %s -f wav -p -c 1 %s |\n", $1, sph2pipe, $2); printf("%s-B %s -f wav -p -c 2 %s |\n", $1, sph2pipe, $2);}' | \
   sort -k1,1 -u  > $dir/train_all/wav.scp || exit 1;
 fi

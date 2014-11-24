@@ -42,9 +42,11 @@ local/fisher_create_test_lang.sh
 
 # Prepare Eval2000 and RT-03 test sets
 
-local/eval2000_data_prep.sh /scail/group/deeplearning/speech/datasets/LDC2002S09/hub5e_00/ /scail/group/deeplearning/speech/datasets/LDC2002T43 || exit 1
-
-local/rt03_data_prep.sh /scail/group/deeplearning/speech/datasets/rt_03 || exit 1
+#local/eval2000_data_prep.sh /scail/group/deeplearning/speech/datasets/LDC2002S09/hub5e_00/ /scail/group/deeplearning/speech/datasets/LDC2002T43 || exit 1
+local/eval2000_data_prep.sh /export/corpora/LDC/LDC2002S09/hub5e_00 /export/corpora/LDC/LDC2002T43 || exit 1
+ 
+#local/rt03_data_prep.sh /scail/group/deeplearning/speech/datasets/rt_03 || exit 1
+local/rt03_data_prep.sh /export/corpora/LDC/LDC2007S10 || exit 1
 
 utils/fix_data_dir.sh data/train_all
 

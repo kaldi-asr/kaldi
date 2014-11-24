@@ -41,7 +41,7 @@ cd $dir
 # Make directory of links to the WSJ disks such as 11-13.1.  This relies on the command
 # line arguments being absolute pathnames.
 #rm -r links/ 2>/dev/null
-mkdir links/
+mkdir -p links/
 ln -s $* links
 
 # Basic spot checks to see if we got the data that we needed
@@ -157,7 +157,12 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  cat $tmpdir/callhome_train_sph.flist | perl -ane 'm:/([^/]+)\.SPH$: || die "bad line $_; ";  print lc($1)," $_"; ' > $tmpdir/callhome_sph.scp
+  for f in `cat $tmpdir/callhome_train_sph.flist`; do
+    # convert to absolute path
+    readlink -e $f 
+  done > $tmpdir/callhome_train_sph_abs.flist
+
+  cat $tmpdir/callhome_train_sph_abs.flist | perl -ane 'm:/([^/]+)\.SPH$: || die "bad line $_; ";  print lc($1)," $_"; ' > $tmpdir/callhome_sph.scp
   cat $tmpdir/callhome_sph.scp | awk -v sph2pipe=$sph2pipe '{printf("%s-A %s -f wav -p -c 1 %s |\n", $1, sph2pipe, $2); printf("%s-B %s -f wav -p -c 2 %s |\n", $1, sph2pipe, $2);}' | \
   sort -k1,1 -u  > $dir/callhome_train_all/callhome_wav.scp || exit 1;
 fi
