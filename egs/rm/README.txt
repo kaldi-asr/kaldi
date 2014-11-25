@@ -11,8 +11,6 @@ Each subdirectory of this directory contains the
 scripts for a sequence of experiments. 
 s5 is the currently recommmended setup.
 
-  s4: A recipe based on freely available subset of RM data, distributed by CMU
-
   s5: This is the "new-new-style" recipe.  It is now finished.
       All further work will be on top of this style of recipe.  Note: 
       unlike previous recipes, this now uses the same underlying
