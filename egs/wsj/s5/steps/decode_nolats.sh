@@ -120,6 +120,10 @@ if [ $stage -le 0 ]; then
   [ ! -z "$silence_phones_list" ]  && \
     model="gmm-boost-silence --boost=$boost_silence $silence_phones_list $model - |"
 
+  if [ -f "$graphdir/num_pdfs" ]; then
+    [ "`cat $graphdir/num_pdfs`" -eq `am-info --print-args=false $model | grep pdfs | awk '{print $NF}'` ] || \
+      { echo "Mismatch in number of pdfs with $model"; exit 1; }
+  fi
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
     gmm-decode-faster$thread_string --max-active=$max_active --beam=$beam  \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \

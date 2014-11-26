@@ -85,6 +85,10 @@ esac
 ## Generate lattices.
 if [ $stage -le 0 ]; then
   echo "$0: doing main lattice generation phase"
+  if [ -f "$graphdir/num_pdfs" ]; then
+    [ "`cat $graphdir/num_pdfs`" -eq `am-info --print-args=false $srcdir/final.alimdl | grep pdfs | awk '{print $NF}'` ] || \
+      { echo "Mismatch in number of pdfs with $srcdir/final.alimdl"; exit 1; }
+  fi
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
     gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
      --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
@@ -96,6 +100,10 @@ fi
 ## Get the first-pass LVTLN transforms
 if [ $stage -le 1 ]; then
   echo "$0: getting first-pass LVTLN transforms."
+  if [ -f "$graphdir/num_pdfs" ]; then
+    [ "`cat $graphdir/num_pdfs`" -eq `am-info --print-args=false $srcdir/final.mdl | grep pdfs | awk '{print $NF}'` ] || \
+      { echo "Mismatch in number of pdfs with $srcdir/final.mdl"; exit 1; }
+  fi
   $cmd JOB=1:$nj $dir/log/lvtln_pass1.JOB.log \
     gunzip -c $dir/lat_pass1.JOB.gz \| \
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \

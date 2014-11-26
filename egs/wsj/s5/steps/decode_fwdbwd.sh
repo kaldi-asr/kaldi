@@ -108,6 +108,10 @@ if [ -f $first_pass/lat.1.gz ]; then
       $model $graphdir/HCLG.fst "$feats" ark:$dir/lat.JOB.arcs "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
 else
+  if [ -f "$graphdir/num_pdfs" ]; then
+    [ "`cat $graphdir/num_pdfs`" -eq `am-info --print-args=false $model | grep pdfs | awk '{print $NF}'` ] || \
+      { echo "Mismatch in number of pdfs with $model"; exit 1; }
+  fi
   $cmd JOB=1:$nj $dir/log/decode.JOB.log \
    gmm-latgen-faster --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
      --acoustic-scale=$acwt --allow-partial=true \

@@ -124,4 +124,4 @@ cp $lang/phones.txt $dir/ 2> /dev/null # ignore the error if it's not there.
 
 # to make const fst:
 # fstconvert --fst_type=const $dir/HCLG.fst $dir/HCLG_c.fst
-
+am-info --print-args=false $model | grep pdfs | awk '{print $NF}' > $dir/num_pdfs

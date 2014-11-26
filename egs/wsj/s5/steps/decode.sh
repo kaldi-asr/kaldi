@@ -95,6 +95,10 @@ if [ ! -z "$transform_dir" ]; then # add transforms to features...
 fi
 
 if [ $stage -le 0 ]; then
+  if [ -f "$graphdir/num_pdfs" ]; then
+    [ "`cat $graphdir/num_pdfs`" -eq `am-info --print-args=false $model | grep pdfs | awk '{print $NF}'` ] || \
+      { echo "Mismatch in number of pdfs with $model"; exit 1; }
+  fi
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
     gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
