@@ -91,7 +91,7 @@ else
   echo "Making unigram grammar FST in $new_lang"
   cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
    awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n"); }' | \
-    utils/make_unigram_grammar.pl | fstcompile > $new_lang/G.fst \
+    utils/make_unigram_grammar.pl | fstcompile | fstarcsort --sort_type=ilabel > $new_lang/G.fst \
     || exit 1;
   utils/mkgraph.sh $new_lang $srcdir $dir/dengraph || exit 1;
 fi

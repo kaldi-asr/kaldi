@@ -138,7 +138,7 @@ if [ ! -z "$iedir" ]; then
 fi
 
 if $add_pitch; then
-  echo "$0: enabling pitch features (note: this has not been tested)"
+  echo "$0: enabling pitch features"
   echo "--add-pitch=true" >>$conf
   echo "$0: creating $dir/conf/online_pitch.conf"
   if [ ! -f $online_pitch_config ]; then

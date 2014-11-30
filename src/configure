@@ -572,7 +572,7 @@ function linux_configure_dynamic {
       fi
     fi
   done
-  if [ "$ATLASLIBS" == "" ]; then  
+  if [ "$ATLASLIBS" == "" ]; then
     echo Could not find any libraries $ATLASLIBDIR/{liblapack,liblapack_atlas,libclapack} that seem to be an ATLAS CLAPACK library.
     return 1;
   fi
