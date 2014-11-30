@@ -100,7 +100,7 @@ if [ -f $data/utt2uniq ]; then
 fi
 
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid/uttlist | \
-    | utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset/uttlist || exit 1;
+    utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset/uttlist || exit 1;
 
 
 for subdir in valid train_subset; do
