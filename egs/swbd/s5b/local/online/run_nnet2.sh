@@ -3,7 +3,7 @@
 . ./cmd.sh
 
 
-stage=9
+stage=1
 train_stage=-10
 use_gpu=true
 . ./path.sh
@@ -36,7 +36,7 @@ if [ $stage -le 1 ]; then
     date=$(date +'%m_%d_%H_%M')
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$date/s5b/$mfccdir/storage $mfccdir/storage
   fi
-  false && { 
+
   utils/copy_data_dir.sh data/train data/train_hires
   steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/train_hires exp/make_hires/train $mfccdir;
@@ -60,7 +60,7 @@ if [ $stage -le 1 ]; then
   utils/subset_data_dir.sh --first data/train_hires 4000 data/train_hires_dev ;# 5hr 6min
   n=$[`cat data/train/segments | wc -l` - 4000]
   utils/subset_data_dir.sh --last data/train_hires $n data/train_hires_nodev ;
-  }
+
   # Take the first 30k utterances (about 1/8th of the data) this will be used
   # for the diagubm training
   utils/subset_data_dir.sh --first data/train_hires_nodev 30000 data/train_hires_30k
@@ -88,7 +88,7 @@ if [ $stage -le 3 ]; then
   mkdir -p exp/nnet2_online
   # To train a diagonal UBM we don't need very much data, so use the smallest subset.
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 200000 \
-    data/train_hires_30k_nodup 512 exp/tri3b exp/nnet2_online/diag_ubm
+    data/train_hires_30k_nodup 512 exp/nnet2_online/tri3b exp/nnet2_online/diag_ubm
 fi
 
 if [ $stage -le 4 ]; then
@@ -140,7 +140,6 @@ if [ $stage -le 6 ]; then
     --cmd "$decode_cmd" \
     --pnorm-input-dim 3000 \
     --pnorm-output-dim 300 \
-    --stage 58 \
     data/train_hires_nodup data/lang exp/tri4b_ali_nodup $dir  || exit 1;
 fi
 
