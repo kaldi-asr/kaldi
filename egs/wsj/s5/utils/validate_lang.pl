@@ -507,9 +507,10 @@ if (-s "$lang/phones/word_boundary.int") {
     $wordseq = "";
     $sid = 0;
     foreach (1 .. $wlen) {
-      $id = int(rand(scalar(%wint2sym)));
-      while ($wint2sym{$id} =~ m/^#[0-9]*$/ or $id == 0) {
-        $id = int(rand(scalar(%wint2sym)));
+      $id = int(rand(scalar(keys %wint2sym)));
+      while ($wint2sym{$id} =~ m/^#[0-9]*$/ or
+        $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or $id == 0) {
+        $id = int(rand(scalar(keys %wint2sym)));
       }
       $wordseq = $wordseq . "$sid ". ($sid + 1) . " $id $id 0\n";
       $sid ++;
