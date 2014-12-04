@@ -63,7 +63,7 @@ oov=`cat $lang/oov.int` || exit 1;
 
 mkdir -p $dir
 
-cp -r $lang $dir/
+cp -rH $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
 new_lang="$dir/"$(basename "$lang")

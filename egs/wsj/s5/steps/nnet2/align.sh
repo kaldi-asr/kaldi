@@ -3,12 +3,7 @@
 #           2013  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
-# Computes training alignments using MLP model
-
-# If you supply the "--use-graphs true" option, it will use the training
-# graphs from the source directory (where the model is).  In this
-# case the number of jobs must match with the source directory.
-
+# Computes training alignments using DNN
 
 # Begin configuration section.  
 nj=4

@@ -53,7 +53,6 @@ if [ $# != 4 ]; then
   echo "  --splice-width <width;4>                         # Number of frames on each side to append for feature input"
   echo "  --left-context <width;4>                         # Number of frames on left side to append for feature input, overrides splice-width"
   echo "  --right-context <width;4>                        # Number of frames on right side to append for feature input, overrides splice-width"
-  echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --num-frames-diagnostic <#frames;4000>           # Number of frames used in computing (train,valid) diagnostics"
   echo "  --num-valid-frames-combine <#frames;10000>       # Number of frames used in getting combination weights at the"
   echo "                                                   # very end."
@@ -106,7 +105,7 @@ if [ -f $data/utt2uniq ]; then
 fi
 
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-    utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+   utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
 
@@ -210,7 +209,7 @@ if [ $stage -le 2 ]; then
      "ark,s,cs:gunzip -c $dir/ali_special.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/egs/train_subset_all.egs" || touch $dir/.error &
   wait;
-  [ -f $dir/.error ] && exit 1;
+  [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "Getting subsets of validation examples for diagnostics and combination."
   $cmd $dir/log/create_valid_subset_combine.log \
     nnet-subset-egs --n=$num_valid_frames_combine ark:$dir/egs/valid_all.egs \

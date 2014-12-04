@@ -33,10 +33,10 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Get examples of data for discriminative neural network training;\n"
-        "each one corresponds to part of a file, of variable (and configurable\n"
+        "each one corresponds to part of a file, of variable (and configurable)\n"
         "length.\n"
         "\n"
-        "Usage:  nnet-get-egs-discriminative [options] <model|transition-model> "
+        "Usage:  nnet-get-egs-discriminative [options] <model> "
         "<features-rspecifier> <ali-rspecifier> <den-lat-rspecifier> "
         "<training-examples-out>\n"
         "\n"

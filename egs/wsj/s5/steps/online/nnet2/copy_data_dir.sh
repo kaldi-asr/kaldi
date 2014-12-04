@@ -78,4 +78,8 @@ for f in feats.scp segments wav.scp reco2file_and_channel text stm glm ctm; do
 done
 
 echo "$0: copied data from $srcdir to $destdir, with --utts-per-spk-max $utts_per_spk_max"
-utils/validate_data_dir.sh $destdir
+opts=
+[ ! -f $srcdir/feats.scp ] && opts="--no-feats"
+[ ! -f $srcdir/text ] && opts="$opts --no-text"
+
+utils/validate_data_dir.sh $opts $destdir

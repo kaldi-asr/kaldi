@@ -2,34 +2,22 @@
 
 # Copyright 2012-2014 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
-# This script, which will generally be called from other neural-net training
-# scripts, extracts the training examples used to train the neural net (and also
-# the validation examples used for diagnostics), and puts them in separate archives.
+# This is modified from ../../nnet2/get_egs2.sh.  [note: get_egs2.sh is as get_egs.sh,
+# but uses the newer, more compact way of writing egs. where we write multiple
+# frames of labels in order to share the context.]
+# This script combines the
+# nnet-example extraction with the feature extraction directly from wave files;
+# it uses the program online2-wav-dump-feature to do all parts of feature
+# extraction: MFCC/PLP/fbank, possibly plus pitch, plus iVectors.  This script
+# is intended mostly for cross-system training for online decoding, where you
+# initialize the nnet from an existing, larger system.
 #
-# This script differs from get_egs.sh in that it dumps egs with several frames
-# of labels, controlled by the frames_per_eg config variable (default: 8).  This
-# takes many times less disk space because typically we have 4 to 7 frames of
-# context on the left and right, and this ends up getting shared.  This is at
-# the expense of slightly higher disk I/O during training time.
-#
-# We also have a simpler way of dividing the egs up into pieces, with one level
-# of index, so we have $dir/egs.{0,1,2,...}.ark instead of having two levels of
-# indexes.  The extra files we write to $dir that explain the structure are
-# $dir/info/num_archives, which contains the number of files egs.*.ark, and
-# $dir/info/frames_per_eg, which contains the number of frames of labels per eg
-# (e.g. 7), and $dir/samples_per_archive.  These replace the files
-# iters_per_epoch and num_jobs_nnet and egs_per_iter that the previous script
-# wrote to.  This script takes the directory where the "egs" are located as the
-# argument, not the directory one level up.
 
 # Begin configuration section.
 cmd=run.pl
-feat_type=          # e.g. set it to "raw" to use raw MFCC
 frames_per_eg=8   # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
                   # note: the script may reduce this if reduce_frames_per_eg is true.
-left_context=4    # amount of left-context per eg
-right_context=4   # amount of right-context per eg
 
 reduce_frames_per_eg=true  # If true, this script may reduce the frames_per_eg
                            # if there is only one archive and even with the
@@ -45,15 +33,9 @@ samples_per_iter=400000 # each iteration of training, see this many samples
                         # per job.  This is just a guideline; it will pick a number
                         # that divides the number of samples in the entire data.
 
-transform_dir=     # If supplied, overrides alidir as the place to find fMLLR transforms
-
 stage=0
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time. 
 random_copy=false
-online_ivector_dir=  # can be used if we are including speaker information as iVectors.
-cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
-            # it doesn't make sense to use different options than were used as input to the
-            # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -61,9 +43,9 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 
-if [ $# != 3 ]; then
-  echo "Usage: $0 [opts] <data> <ali-dir> <egs-dir>"
-  echo " e.g.: $0 data/train exp/tri3_ali exp/tri4_nnet/egs"
+if [ $# != 4 ]; then
+  echo "Usage: $0 [opts] <data> <ali-dir> <online-nnet-dir> <egs-dir>"
+  echo " e.g.: $0 data/train exp/tri3_ali exp/nnet2_online/nnet_a_gpu_online/ exp/nnet2_online/nnet_b/egs"
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"
@@ -73,8 +55,6 @@ if [ $# != 3 ]; then
   echo "  --feat-type <lda|raw>                            # (by default it tries to guess).  The feature type you want"
   echo "                                                   # to use as input to the neural net."
   echo "  --frames-per-eg <frames;8>                       # number of frames per eg on disk"
-  echo "  --left-context <width;4>                         # Number of frames on left side to append for feature input"
-  echo "  --right-context <width;4>                        # Number of frames on right side to append for feature input"
   echo "  --num-frames-diagnostic <#frames;4000>           # Number of frames used in computing (train,valid) diagnostics"
   echo "  --num-valid-frames-combine <#frames;10000>       # Number of frames used in getting combination weights at the"
   echo "                                                   # very end."
@@ -86,14 +66,14 @@ fi
 
 data=$1
 alidir=$2
-dir=$3
+online_nnet_dir=$3
+dir=$4
+
+mdl=$online_nnet_dir/final.mdl # only needed for left and right context.
+feature_conf=$online_nnet_dir/conf/online_nnet2_decoding.conf
 
 
-# Check some files.
-[ ! -z "$online_ivector_dir" ] && \
-  extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
-
-for f in $data/feats.scp $alidir/ali.1.gz $alidir/final.mdl $alidir/tree $extra_files; do
+for f in $data/wav.scp $alidir/ali.1.gz $alidir/final.mdl $alidir/tree $mdl $feature_conf; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -104,78 +84,71 @@ sdata=$data/split$nj
 utils/split_data.sh $data $nj
 
 mkdir -p $dir/log $dir/info
+! cmp $alidir/tree $online_nnet_dir/tree && \
+   echo "$0: warning, tree from alignment dir does not match tree from online-nnet dir"
 cp $alidir/tree $dir
+grep -v '^--endpoint' $feature_conf >$dir/feature.conf || exit 1;
+mkdir -p $dir/valid $dir/train_subset
 
 # Get list of validation utterances. 
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
-    > $dir/valid_uttlist || exit 1;
+    > $dir/valid/uttlist || exit 1;
 
 if [ -f $data/utt2uniq ]; then
-  echo "File $data/utt2uniq exists, so augmenting valid_uttlist to"
+  echo "File $data/utt2uniq exists, so augmenting valid/uttlist to"
   echo "include all perturbed versions of the same 'real' utterances."
-  mv $dir/valid_uttlist $dir/valid_uttlist.tmp
+  mv $dir/valid/uttlist $dir/valid/uttlist.tmp
   utils/utt2spk_to_spk2utt.pl $data/utt2uniq > $dir/uniq2utt
-  cat $dir/valid_uttlist.tmp | utils/apply_map.pl $data/utt2uniq | \
+  cat $dir/valid/uttlist.tmp | utils/apply_map.pl $data/utt2uniq | \
     sort | uniq | utils/apply_map.pl $dir/uniq2utt | \
-    awk '{for(n=1;n<=NF;n++) print $n;}' | sort  > $dir/valid_uttlist
-  rm $dir/uniq2utt $dir/valid_uttlist.tmp
+    awk '{for(n=1;n<=NF;n++) print $n;}' | sort  > $dir/valid/uttlist
+  rm $dir/uniq2utt $dir/valid/uttlist.tmp
 fi
 
-awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-   utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid/uttlist | \
+  utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset/uttlist || exit 1;
 
-[ -z "$transform_dir" ] && transform_dir=$alidir
 
-## Set up features. 
-if [ -z $feat_type ]; then
-  if [ -f $alidir/final.mat ] && [ ! -f $transform_dir/raw_trans.1 ]; then feat_type=lda; else feat_type=raw; fi
-fi
-echo "$0: feature type is $feat_type"
+for subdir in valid train_subset; do
+  # In order for the iVector extraction to work right, we need to process all
+  # utterances of the speakers which have utterances in valid/uttlist, and the
+  # same for train_subset/uttlist.  We produce $dir/valid/uttlist_extended which
+  # will contain all utterances of all speakers which have utterances in
+  # $dir/valid/uttlist, and the same for $dir/train_subset/.
 
-case $feat_type in
-  raw) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
-    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
-    echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
-   ;;
-  lda) 
-    splice_opts=`cat $alidir/splice_opts 2>/dev/null`
-    # caution: the top-level nnet training script should copy these to its own dir now.
-    cp $alidir/{splice_opts,cmvn_opts,final.mat} $dir || exit 1;
-    [ ! -z "$cmvn_opts" ] && \
-       echo "You cannot supply --cmvn-opts option if feature type is LDA." && exit 1;
-    cmvn_opts=$(cat $dir/cmvn_opts)
-    feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    ;;
-  *) echo "$0: invalid feature type $feat_type" && exit 1;
-esac
+  utils/filter_scp.pl $dir/$subdir/uttlist <$data/utt2spk | awk '{print $2}' > $dir/$subdir/spklist || exit 1;
+  utils/filter_scp.pl -f 2 $dir/$subdir/spklist <$data/utt2spk >$dir/$subdir/utt2spk || exit 1;
+  utils/utt2spk_to_spk2utt.pl <$dir/$subdir/utt2spk >$dir/$subdir/spk2utt || exit 1;
+  awk '{print $1}' <$dir/$subdir/utt2spk >$dir/$subdir/uttlist_extended || exit 1;
+  rm $dir/$subdir/spklist
+done
 
-if [ -f $transform_dir/trans.1 ] && [ $feat_type != "raw" ]; then
-  echo "$0: using transforms from $transform_dir"
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
-  valid_feats="$valid_feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $transform_dir/trans.*|' ark:- ark:- |"
-  train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $transform_dir/trans.*|' ark:- ark:- |"
-fi
-if [ -f $transform_dir/raw_trans.1 ] && [ $feat_type == "raw" ]; then
-  echo "$0: using raw-fMLLR transforms from $transform_dir"
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/raw_trans.JOB ark:- ark:- |"
-  valid_feats="$valid_feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $transform_dir/raw_trans.*|' ark:- ark:- |"
-  train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $transform_dir/raw_trans.*|' ark:- ark:- |"
-fi
-if [ ! -z "$online_ivector_dir" ]; then
-  feats_one="$(echo "$feats" | sed s:JOB:1:g)"
-  ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
-  echo $ivector_dim > $dir/info/ivector_dim
-  ivectors_opt="--const-feat-dim=$ivector_dim"
-  ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
-  feats="$feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
-  valid_feats="$valid_feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
-  train_subset_feats="$train_subset_feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
+
+if [ -f $data/segments ]; then
+  # note: in the feature extraction, because the program online2-wav-dump-features is sensitive to the
+  # previous utterances within a speaker, we do the filtering after extracting the features.
+  echo "$0 [info]: segments file exists: using that."
+  feats="ark,s,cs:extract-segments scp:$sdata/JOB/wav.scp $sdata/JOB/segments ark:- | online2-wav-dump-features --config=$dir/feature.conf ark:$sdata/JOB/spk2utt ark,s,cs:- ark:- | subset-feats --exclude=$dir/valid/uttlist ark:- ark:- |"
+  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid/uttlist_extended $data/segments  | extract-segments scp:$data/wav.scp - ark:- | online2-wav-dump-features --config=$dir/feature.conf ark:$dir/valid/spk2utt ark,s,cs:- ark:- | subset-feats --include=$dir/valid/uttlist ark:- ark:- |"
+  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset/uttlist_extended $data/segments  | extract-segments scp:$data/wav.scp - ark:- | online2-wav-dump-features --config=$dir/feature.conf ark:$dir/train_subset/spk2utt ark,s,cs:- ark:- | subset-feats --include=$dir/train_subset/uttlist ark:- ark:- |"
 else
-  echo 0 >$dir/info/ivector_dim
+  echo "$0 [info]: no segments file exists, using wav.scp."
+  feats="ark,s,cs:online2-wav-dump-features --config=$dir/feature.conf ark:$sdata/JOB/spk2utt scp:$sdata/JOB/wav.scp ark:- | subset-feats --exclude=$dir/valid/uttlist ark:- ark:- |"
+  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid/uttlist_extended $data/wav.scp | online2-wav-dump-features --config=$dir/feature.conf ark:$dir/valid/spk2utt scp:- ark:- | subset-feats --include=$dir/valid/uttlist ark:- ark:- |"
+  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset/uttlist_extended $data/wav.scp | online2-wav-dump-features --config=$dir/feature.conf ark:$dir/train_subset/spk2utt scp:- ark:- | subset-feats --include=$dir/train_subset/uttlist ark:- ark:- |"
 fi
+
+ivector_dim=$(online2-wav-dump-features --config=$dir/feature.conf --print-ivector-dim=true) || exit 1;
+
+! [ $ivector_dim -ge 0 ] && echo "$0: error getting iVector dim" && exit 1;
+
+
+
+set -o pipefail
+left_context=$(nnet-am-info $mdl | grep '^left-context' | awk '{print $2}') || exit 1;
+right_context=$(nnet-am-info $mdl | grep '^right-context' | awk '{print $2}') || exit 1;
+set +o pipefail
+
 
 if [ $stage -le 0 ]; then
   echo "$0: working out number of frames of training data"
@@ -231,7 +204,7 @@ if [ $stage -le 2 ]; then
   set -o pipefail;
   for id in $(seq $nj); do gunzip -c $alidir/ali.$id.gz; done | \
     copy-int-vector ark:- ark,t:- | \
-    utils/filter_scp.pl <(cat $dir/valid_uttlist $dir/train_subset_uttlist) | \
+    utils/filter_scp.pl <(cat $dir/valid/uttlist $dir/train_subset/uttlist) | \
     gzip -c >$dir/ali_special.gz || exit 1;
   set +o pipefail; # unset the pipefail option.
 
@@ -244,7 +217,7 @@ if [ $stage -le 2 ]; then
      "ark,s,cs:gunzip -c $dir/ali_special.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/train_subset_all.egs" || touch $dir/.error &
   wait;
-  [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
+  [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1;
   echo "... Getting subsets of validation examples for diagnostics and combination."
   $cmd $dir/log/create_valid_subset_combine.log \
     nnet-subset-egs --n=$num_valid_frames_combine ark:$dir/valid_all.egs \

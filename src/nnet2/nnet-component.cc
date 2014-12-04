@@ -1021,6 +1021,13 @@ void AffineComponent::Scale(BaseFloat scale) {
   bias_params_.Scale(scale);
 }
 
+// virtual
+void AffineComponent::Resize(int32 input_dim, int32 output_dim) {
+  KALDI_ASSERT(input_dim > 0 && output_dim > 0);
+  bias_params_.Resize(output_dim);
+  linear_params_.Resize(output_dim, input_dim);
+}
+
 void AffineComponent::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
   const AffineComponent *other =
       dynamic_cast<const AffineComponent*>(&other_in);
@@ -1589,6 +1596,22 @@ void AffineComponentPreconditioned::Update(
   linear_params_.AddMatMat(local_lrate, out_deriv_precon, kTrans,
                            in_value_precon_part, kNoTrans, 1.0);
 }
+
+
+// virtual
+void AffineComponentPreconditionedOnline::Resize(
+    int32 input_dim, int32 output_dim) {
+  KALDI_ASSERT(input_dim > 1 && output_dim > 1);
+  if (rank_in_ >= input_dim) rank_in_ = input_dim - 1;
+  if (rank_out_ >= output_dim) rank_out_ = output_dim - 1;
+  bias_params_.Resize(output_dim);
+  linear_params_.Resize(output_dim, input_dim);
+  OnlinePreconditioner temp;
+  preconditioner_in_ = temp;
+  preconditioner_out_ = temp;
+  SetPreconditionerConfigs();
+}
+
 
 void AffineComponentPreconditionedOnline::Read(std::istream &is, bool binary) {
   std::ostringstream ostr_beg, ostr_end;

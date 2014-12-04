@@ -27,26 +27,39 @@ echo "$0 $@"  # Print the command line for logging
 [ -f path.sh ] && . ./path.sh;
 . parse_options.sh || exit 1;
 
-if [ $# -ne 3 ]; then
-   echo "Usage: $0 [options] <orig-nnet-online-dir> <new-nnet-dir> <new-nnet-online-dir>"
-   echo "e.g.: $0 data/lang exp/nnet2_online/extractor exp/nnet2_online/nnet exp/nnet2_online/nnet_online"
-   echo "main options (for others, see top of script file)"
-   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-   echo "  --config <config-file>                           # config containing options"
-   echo "  --stage <stage>                                  # stage to do partial re-run from."
-   exit 1;
+if [ $# -ne 3 ] && [ $# -ne 4 ]; then    
+  echo "Usage: $0 [options] <orig-nnet-online-dir> [<new-lang-dir>] <new-nnet-dir> <new-nnet-online-dir>"
+  echo "e.g.: $0 exp_other/nnet2_online/nnet_a_online data/lang exp/nnet2_online/nnet_a exp/nnet2_online/nnet_a_online"
+  echo "main options (for others, see top of script file)"
+  echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+  echo "  --config <config-file>                           # config containing options"
+  echo "  --stage <stage>                                  # stage to do partial re-run from."
+  exit 1;
 fi
 
-online_src=$1
-nnet_src=$2
-dir=$3
+if [ $# -eq 3 ]; then
+  echo "$0: warning: it's better if you add the new <lang> directory as the 2nd argument."
 
-for f in $online_src/conf/online_nnet2_decoding.conf $nnet_src/final.mdl $nnet_src/tree; do
+  online_src=$1
+  lang=
+  nnet_src=$2
+  dir=$3
+else
+  online_src=$1
+  lang=$2
+  nnet_src=$3
+  dir=$4
+
+  extra_files=$lang/words.txt
+fi
+
+
+for f in $online_src/conf/online_nnet2_decoding.conf $nnet_src/final.mdl $nnet_src/tree $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
 
-origdir=$dir
+dir_as_given=$dir
 dir=$(readlink -f $dir) # Convert $dir to an absolute pathname, so that the
                         # configuration files we write will contain absolute
                         # pathnames.
@@ -89,8 +102,16 @@ $cmd $dir/log/append_nnet.log \
   nnet-insert --randomize-next-component=false --insert-at=0 \
   $nnet_src/final.mdl $dir/first_nnet.raw $dir/final.mdl || exit 1;
 
-cp $nnet_src/tree $dir/ || exit 1;
-
 $cleanup && rm $dir/first_nnet.raw
 
-echo "$0: formatted neural net for online decoding in $origdir"
+if [ ! -z "$lang" ]; then
+  # if the $lang option was provided, modify the silence-phones in the config;
+  # these are only used for the endpointing code, but we should get this right.
+  cp $dir/conf/online_nnet2_decoding.conf{,.tmp}
+  silphones=$(cat $lang/phones/silence.csl) || exit 1;
+  cat $dir/conf/online_nnet2_decoding.conf.tmp | \
+    sed s/silence-phones=.\\+/silence-phones=$silphones/ > $dir/conf/online_nnet2_decoding.conf
+  rm $dir/conf/online_nnet2_decoding.conf.tmp
+fi
+
+echo "$0: formatted neural net for online decoding in $dir_as_given"

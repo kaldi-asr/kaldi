@@ -8,7 +8,7 @@
 # it uses the program online2-wav-dump-feature to do all parts of feature
 # extraction: MFCC/PLP/fbank, possibly plus pitch, plus iVectors.  This script
 # is intended mostly for cross-system training for online decoding, where you
-# initialize the nnet from an existing, larger systme.
+# initialize the nnet from an existing, larger system.
 
 
 # Begin configuration section.
@@ -69,7 +69,7 @@ dir=$4
 mdl=$online_nnet_dir/final.mdl # only needed for left and right context.
 feature_conf=$online_nnet_dir/conf/online_nnet2_decoding.conf
 
-for f in $data/feats.scp $alidir/ali.1.gz $alidir/final.mdl $alidir/tree $feature_conf $mdl; do
+for f in $data/wav.scp $alidir/ali.1.gz $alidir/final.mdl $alidir/tree $feature_conf $mdl; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -100,7 +100,7 @@ if [ -f $data/utt2uniq ]; then
 fi
 
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid/uttlist | \
-    utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset/uttlist || exit 1;
+   utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset/uttlist || exit 1;
 
 
 for subdir in valid train_subset; do

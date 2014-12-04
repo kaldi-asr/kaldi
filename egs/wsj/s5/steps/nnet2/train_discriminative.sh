@@ -2,10 +2,8 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
-# This script does MPE or fMMI state-level minimum bayes risk (sMBR) training.
-# Note: the temporary data is put in <exp-dir>/degs/, so if you want
-# to use a different disk for that, just make that a soft link to some other
-# volume.
+# This script does MPE or MMI or state-level minimum bayes risk (sMBR) training
+# of neural nets. 
 
 # Begin configuration section.
 cmd=run.pl
@@ -45,7 +43,6 @@ transform_dir=
 degs_dir=
 retroactive=false
 online_ivector_dir=
-use_preconditioning=false
 # End configuration section.
 
 
@@ -76,7 +73,7 @@ if [ $# != 6 ]; then
   echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
   echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
   echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
-  echo "  --samples-per-iter <#samples|200000>             # Number of samples of data to process per iteration, per"
+  echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
   echo "                                                   # process."
   echo "  --stage <stage|-8>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
@@ -85,6 +82,8 @@ if [ $# != 6 ]; then
   echo "  --modify-learning-rates <true,false|false>       # If true, modify learning rates to try to equalize relative"
   echo "                                                   # changes across layers."
   echo "  --degs-dir <dir|"">                              # Directory for discriminative examples, e.g. exp/foo/degs"
+  echo "  --drop-frames <true,false|false>                 # Option that affects MMI training: if true, we exclude gradients from frames"
+  echo "                                                   # where the numerator transition-id is not in the denominator lattice."
   echo "  --online-ivector-dir <dir|"">                    # Directory for online-estimated iVectors, used in the"
   echo "                                                   # online-neural-net setup."
   exit 1;
@@ -240,19 +239,17 @@ fi
 
 if [ $stage -le -7 ]; then
   echo "$0: Copying initial model and modifying preconditioning setup"
-  # We want online preconditioning with a larger number of samples of history, since
-  # in this setup the frames are only randomized at the segment level so they are highly
-  # correlated.  It might make sense to tune this a little, later on, although I doubt
-  # it matters once it's large enough.
 
-  if $use_preconditioning; then
-    $cmd $dir/log/convert.log \
-      nnet-am-copy --learning-rate=$learning_rate "$src_model" - \| \
-      nnet-am-switch-preconditioning  --num-samples-history=50000 - $dir/0.mdl || exit 1;
-  else
-    $cmd $dir/log/convert.log \
-      nnet-am-copy --learning-rate=$learning_rate "$src_model" $dir/0.mdl || exit 1;
-  fi
+  # Note, the baseline model probably had preconditioning, and we'll keep it;
+  # but we want online preconditioning with a larger number of samples of
+  # history, since in this setup the frames are only randomized at the segment
+  # level so they are highly correlated.  It might make sense to tune this a
+  # little, later on, although I doubt it matters once the --num-samples-history
+  # is large enough.
+
+  $cmd $dir/log/convert.log \
+    nnet-am-copy --learning-rate=$learning_rate "$src_model" - \| \
+    nnet-am-switch-preconditioning  --num-samples-history=50000 - $dir/0.mdl || exit 1;
 fi
 
 
@@ -344,7 +341,7 @@ fi
 
 x=0   
 while [ $x -lt $num_iters ]; do
-  if [ $x -ge 0 ] && [ $stage -le $x ]; then
+  if [ $stage -le $x ]; then
     
     echo "Training neural net (pass $x)"
 
@@ -356,10 +353,7 @@ while [ $x -lt $num_iters ]; do
         $dir/$[$x+1].JOB.mdl \
       || exit 1;
 
-    nnets_list=
-    for n in `seq 1 $num_jobs_nnet`; do
-      nnets_list="$nnets_list $dir/$[$x+1].$n.mdl"
-    done
+    nnets_list=$(for n in $(seq $num_jobs_nnet); do echo $dir/$[$x+1].$n.mdl; done)
 
     $cmd $dir/log/average.$x.log \
       nnet-am-average $nnets_list $dir/$[$x+1].mdl || exit 1;

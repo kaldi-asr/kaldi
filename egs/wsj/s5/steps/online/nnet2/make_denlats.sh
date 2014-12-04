@@ -2,10 +2,12 @@
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 # Create denominator lattices for MMI/MPE training.  
-# This version uses the neural-net models (version 2, i.e. the nnet2 code).
+# This version uses the online-nnet2 features.
+#
 # Creates its output in $dir/lat.*.gz
 
 # Begin configuration section.
+stage=0
 nj=4
 cmd=run.pl
 sub_split=1
@@ -13,17 +15,12 @@ beam=13.0
 lattice_beam=7.0
 acwt=0.1
 max_active=5000
-transform_dir=
 max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
 num_threads=1
-online_ivector_dir=
 parallel_opts=
-feat_type=  # you can set this in order to run on top of delta features, although we don't
-            # normally want to do this.
 # End configuration section.
-
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -32,7 +29,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 4 ]; then
   echo "Usage: steps/make_denlats.sh [options] <data-dir> <lang-dir> <src-dir> <exp-dir>"
-  echo "  e.g.: steps/make_denlats.sh data/train data/lang exp/nnet4 exp/nnet4_denlats"
+  echo "  e.g.: steps/make_denlats.sh data/train data/lang exp/nnet2_online/nnet_a_online exp/nnet2_online/nnet_a_denlats"
   echo "Works for (delta|lda) features, and (with --transform-dir option) such features"
   echo " plus transforms."
   echo ""
@@ -43,7 +40,6 @@ if [ $# != 4 ]; then
   echo "  --sub-split <n-split>                            # e.g. 40; use this for "
   echo "                           # large databases so your jobs will be smaller and"
   echo "                           # will (individually) finish reasonably soon."
-  echo "  --transform-dir <transform-dir>   # directory to find fMLLR transforms."
   echo "  --num-threads  <n>                # number of threads per decoding job"
   echo "  --parallel-opts <string>          # if >1 thread, add this to 'cmd', e.g. -pe smp 6"
   exit 1;
@@ -54,16 +50,12 @@ lang=$2
 srcdir=$3
 dir=$4
 
-
-extra_files=
-[ ! -z "$online_ivector_dir" ] && \
-  extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
-for f in $data/feats.scp $lang/L.fst $srcdir/final.mdl $extra_files; do
+for f in $data/wav.scp $lang/L.fst $srcdir/final.mdl $srcdir/conf/online_nnet2_decoding.conf; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1;
 done
 
 sdata=$data/split$nj
-splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
+
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
@@ -73,77 +65,44 @@ echo $nj > $dir/num_jobs
 
 oov=`cat $lang/oov.int` || exit 1;
 
-cp -rH $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
 new_lang="$dir/"$(basename "$lang")
 
-# mkgraph.sh expects a whole directory "lang", so put everything in one directory...
-# it gets L_disambig.fst and G.fst (among other things) from $dir/lang, and
-# final.mdl from $srcdir; the output HCLG.fst goes in $dir/graph.
 
-echo "Compiling decoding graph in $dir/dengraph"
-if [ -s $dir/dengraph/HCLG.fst ] && [ $dir/dengraph/HCLG.fst -nt $srcdir/final.mdl ]; then
-  echo "Graph $dir/dengraph/HCLG.fst already exists: skipping graph creation."
-else
-  echo "Making unigram grammar FST in $new_lang"
-  cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
-   awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n"); }' | \
-    utils/make_unigram_grammar.pl | fstcompile | fstarcsort --sort_type=ilabel > $new_lang/G.fst \
-    || exit 1;
-  utils/mkgraph.sh $new_lang $srcdir $dir/dengraph || exit 1;
-fi
-cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
-cp $srcdir/cmvn_opts $dir 2>/dev/null
+grep -v '^--endpoint' $srcdir/conf/online_nnet2_decoding.conf >$dir/feature.conf || exit 1;
 
-if [ -z "$feat_type" ]; then
-  if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=raw; fi
-fi
-echo "$0: feature type is $feat_type"         
+if [ $stage -le 0 ]; then
+  # mkgraph.sh expects a whole directory "lang", so put everything in one directory...
+  # it gets L_disambig.fst and G.fst (among other things) from $dir/lang, and
+  # final.mdl from $srcdir; the output HCLG.fst goes in $dir/graph.
 
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-   ;;
-  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir    
-   ;;
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
+  cp -rH $lang $dir/
 
-if [ ! -z "$transform_dir" ]; then
-  echo "$0: using transforms from $transform_dir"
-  [ ! -s $transform_dir/num_jobs ] && \
-    echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
-  nj_orig=$(cat $transform_dir/num_jobs)
-  
-  if [ $feat_type == "raw" ]; then trans=raw_trans;
-  else trans=trans; fi
-  if [ $feat_type == "lda" ] && ! cmp $transform_dir/final.mat $srcdir/final.mat; then
-    echo "$0: LDA transforms differ between $srcdir and $transform_dir"
-    exit 1;
-  fi
-  if [ ! -f $transform_dir/$trans.1 ]; then
-    echo "$0: expected $transform_dir/$trans.1 to exist (--transform-dir option)"
-    exit 1;
-  fi
-  if [ $nj -ne $nj_orig ]; then
-    # Copy the transforms into an archive with an index.
-    for n in $(seq $nj_orig); do cat $transform_dir/$trans.$n; done | \
-       copy-feats ark:- ark,scp:$dir/$trans.ark,$dir/$trans.scp || exit 1;
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
+  echo "Compiling decoding graph in $dir/dengraph"
+  if [ -s $dir/dengraph/HCLG.fst ] && [ $dir/dengraph/HCLG.fst -nt $srcdir/final.mdl ]; then
+    echo "Graph $dir/dengraph/HCLG.fst already exists: skipping graph creation."
   else
-    # number of jobs matches with alignment dir.
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
+    echo "Making unigram grammar FST in $new_lang"
+    cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
+      awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n"); }' | \
+      utils/make_unigram_grammar.pl | fstcompile | fstarcsort --sort_type=ilabel > $new_lang/G.fst \
+      || exit 1;
+    utils/mkgraph.sh $new_lang $srcdir $dir/dengraph || exit 1;
   fi
 fi
 
 
-if [ ! -z "$online_ivector_dir" ]; then
-  ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
-  # note: subsample-feats, with negative n, will repeat each feature -n times.
-  feats="$feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
+if [ -f $data/segments ]; then
+  # note: in the feature extraction, because the program online2-wav-dump-features is sensitive to the
+  # previous utterances within a speaker, we do the filtering after extracting the features.
+  echo "$0 [info]: segments file exists: using that."
+  feats="ark,s,cs:extract-segments scp:$sdata/JOB/wav.scp $sdata/JOB/segments ark:- | online2-wav-dump-features --config=$dir/feature.conf ark:$sdata/JOB/spk2utt ark,s,cs:- ark:- |"
+else
+  echo "$0 [info]: no segments file exists, using wav.scp."
+  feats="ark,s,cs:online2-wav-dump-features --config=$dir/feature.conf ark:$sdata/JOB/spk2utt scp:$sdata/JOB/wav.scp ark:- |"
 fi
+
 
 
 # if this job is interrupted by the user, we want any background jobs to be

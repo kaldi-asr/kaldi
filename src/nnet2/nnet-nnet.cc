@@ -339,68 +339,34 @@ void Nnet::SetLearningRates(BaseFloat learning_rate) {
   KALDI_LOG << "Set learning rates to " << learning_rate;
 }
 
-
-void Nnet::AdjustLearningRates(
-    const VectorBase<BaseFloat> &old_model_old_gradient,
-    const VectorBase<BaseFloat> &new_model_old_gradient,
-    const VectorBase<BaseFloat> &old_model_new_gradient,
-    const VectorBase<BaseFloat> &new_model_new_gradient,
-    BaseFloat measure_at,  // where to measure gradient,
-                           // on line between old and new model;
-                           // 0.5 < measure_at <= 1.0.
-    BaseFloat ratio,  // e.g. 1.1; ratio by  which we change learning rate.
-    BaseFloat max_learning_rate) {
-  std::vector<BaseFloat> new_lrates;
-  KALDI_ASSERT(old_model_old_gradient.Dim() == NumUpdatableComponents() &&
-               new_model_old_gradient.Dim() == NumUpdatableComponents() &&
-               old_model_new_gradient.Dim() == NumUpdatableComponents() &&
-               new_model_new_gradient.Dim() == NumUpdatableComponents());
-  KALDI_ASSERT(ratio >= 1.0);
-  KALDI_ASSERT(measure_at > 0.5 && measure_at <= 1.0);
-  std::string changes_str;
-  std::string dotprod_str;
-  BaseFloat inv_ratio = 1.0 / ratio;
-  int32 index = 0;
-  for (int32 c = 0; c < NumComponents(); c++) {
-    UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[c]);
-    if (uc == NULL) {  // Non-updatable component.
-      KALDI_ASSERT(old_model_old_gradient(c) == 0.0);
-      continue;
-    } else {
-      BaseFloat grad_dotprod_at_end =
-          new_model_new_gradient(index) - old_model_new_gradient(index),
-          grad_dotprod_at_start =
-          new_model_old_gradient(index) - old_model_old_gradient(index),
-          grad_dotprod_interp =
-          measure_at * grad_dotprod_at_end +
-          (1.0 - measure_at) * grad_dotprod_at_start;
-      // grad_dotprod_interp will be positive if we
-      // want more of the gradient term
-      // -> faster learning rate for this component
-
-      BaseFloat lrate = uc->LearningRate();
-      lrate *= (grad_dotprod_interp > 0 ? ratio : inv_ratio);
-      changes_str = changes_str +
-          (grad_dotprod_interp > 0 ? " increase" : " decrease");
-      dotprod_str = dotprod_str +
-          (new_model_new_gradient(index) > 0 ? " positive" : " negative");
-      if (lrate > max_learning_rate) lrate = max_learning_rate;
-
-      new_lrates.push_back(lrate);
-      uc->SetLearningRate(lrate);
-      index++;
-    }
+void Nnet::ResizeOutputLayer(int32 new_num_pdfs) {
+  KALDI_ASSERT(new_num_pdfs > 0);
+  KALDI_ASSERT(NumComponents() > 2);
+  int32 nc = NumComponents();
+  SoftmaxComponent *sc;
+  if ((sc = dynamic_cast<SoftmaxComponent*>(components_[nc - 1])) == NULL)
+    KALDI_ERR << "Expected last component to be SoftmaxComponent.";
+  SumGroupComponent *sgc = dynamic_cast<SumGroupComponent*>(components_[nc - 2]);
+  if (sgc != NULL) {
+    // Remove it.  We'll resize things later.
+    delete sgc;
+    components_.erase(components_.begin() + nc - 2,
+                      components_.begin() + nc - 1);
+    nc--;
   }
-  KALDI_ASSERT(index == NumUpdatableComponents());
-  KALDI_VLOG(1) << "Changes to learning rates: " << changes_str;
-  KALDI_VLOG(1) << "Dot product of model with validation gradient is "
-                << dotprod_str;
-  std::ostringstream lrate_str;
-  for (size_t i = 0; i < new_lrates.size(); i++)
-    lrate_str << new_lrates[i] << ' ';
-  KALDI_VLOG(1) << "Learning rates are " << lrate_str.str();
-}
 
+  // note: it could be child class of AffineComponent.
+  AffineComponent *ac = dynamic_cast<AffineComponent*>(components_[nc - 2]);
+  if (ac == NULL)
+    KALDI_ERR << "Network doesn't have expected structure (didn't find final "
+              << "AffineComponent).";
+  
+  ac->Resize(ac->InputDim(), new_num_pdfs);
+  // Remove the softmax component, and replace it with a new one
+  delete components_[nc - 1];
+  components_[nc - 1] = new SoftmaxComponent(new_num_pdfs);
+  this->Check();
+}
 
 int32 Nnet::NumUpdatableComponents() const {
   int32 ans = 0;

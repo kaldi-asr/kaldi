@@ -740,6 +740,10 @@ class AffineComponent: public UpdatableComponent {
   void Init(BaseFloat learning_rate,
             std::string matrix_filename);
 
+  // This function resizes the dimensions of the component, setting the
+  // parameters to zero, while leaving any other configuration values the same.
+  virtual void Resize(int32 input_dim, int32 output_dim);
+
   // The following functions are used for collapsing multiple layers
   // together.  They return a pointer to a new Component equivalent to
   // the sequence of two components.  We haven't implemented this for
@@ -895,6 +899,8 @@ class AffineComponentPreconditionedOnline: public AffineComponent {
             BaseFloat alpha, BaseFloat max_change_per_sample,
             std::string matrix_filename);
 
+  virtual void Resize(int32 input_dim, int32 output_dim);
+  
   // This constructor is used when converting neural networks partway through
   // training, from AffineComponent or AffineComponentPreconditioned to
   // AffineComponentPreconditionedOnline.
