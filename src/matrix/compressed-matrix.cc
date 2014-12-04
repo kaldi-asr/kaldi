@@ -246,7 +246,7 @@ inline float CompressedMatrix::Uint16ToFloat(
         uint16 value) {
   // the constant 1.52590218966964e-05 is 1/65535.
   return global_header.min_value
-      + global_header.range * 1.52590218966964e-05 * value;
+      + global_header.range * 1.52590218966964e-05F * value;
 }
 
 template<typename Real>  // static
@@ -281,13 +281,18 @@ void CompressedMatrix::ComputeColHeader(
     // 3*quarter_nr, and sdata.end() - 1, contain the elements that would appear
     // at those positions in sorted order.
     
-    header->percentile_0 = FloatToUint16(global_header, sdata[0]);
-    header->percentile_25 = std::max<uint16>(
-        FloatToUint16(global_header, sdata[quarter_nr]),
-        header->percentile_0 + static_cast<uint16>(1));
-    header->percentile_75 = std::max<uint16>(
-        FloatToUint16(global_header, sdata[3*quarter_nr]),
-        header->percentile_25 + static_cast<uint16>(1));
+    header->percentile_0 =
+        std::min<uint16>(FloatToUint16(global_header, sdata[0]), 65532);
+    header->percentile_25 =
+        std::min<uint16>(
+            std::max<uint16>(
+                FloatToUint16(global_header, sdata[quarter_nr]),
+                header->percentile_0 + static_cast<uint16>(1)), 65533);
+    header->percentile_75 =
+        std::min<uint16>(
+            std::max<uint16>(
+                FloatToUint16(global_header, sdata[3*quarter_nr]),
+                header->percentile_25 + static_cast<uint16>(1)), 65534);
     header->percentile_100 = std::max<uint16>(
         FloatToUint16(global_header, sdata[num_rows-1]),
         header->percentile_75 + static_cast<uint16>(1));
@@ -295,17 +300,21 @@ void CompressedMatrix::ComputeColHeader(
   } else {  // handle this pathological case.
     std::sort(sdata.begin(), sdata.end());
     // Note: we know num_rows is at least 1.
-    header->percentile_0 = FloatToUint16(global_header, sdata[0]);
+    header->percentile_0 =
+        std::min<uint16>(FloatToUint16(global_header, sdata[0]),
+                         65532);
     if (num_rows > 1)
       header->percentile_25 =
-          std::max<uint16>(FloatToUint16(global_header, sdata[1]),
-                           header->percentile_0 + 1);
+          std::min<uint16>(
+              std::max<uint16>(FloatToUint16(global_header, sdata[1]),
+                               header->percentile_0 + 1), 65533);
     else
       header->percentile_25 = header->percentile_0 + 1;
     if (num_rows > 2)
       header->percentile_75 =
-          std::max<uint16>(FloatToUint16(global_header, sdata[2]),
-                           header->percentile_25 + 1);
+          std::min<uint16>(
+              std::max<uint16>(FloatToUint16(global_header, sdata[2]),
+                               header->percentile_25 + 1), 65534);
     else
       header->percentile_75 = header->percentile_25 + 1;
     if (num_rows > 3)
@@ -679,4 +688,3 @@ CompressedMatrix &CompressedMatrix::operator = (const CompressedMatrix &mat) {
 
 
 }  // namespace kaldi
-

@@ -341,11 +341,13 @@ UnitTestEstimateFullGmm() {
   std::vector<SpMatrix<BaseFloat> > invcovars(1);
   invcovars[0].Resize(dim);
 
-  for (int32 d= 0; d < dim; d++) {
+  for (int32 d = 0; d < dim; d++) {
     means(0, d) = kaldi::RandGauss()*5.0F;
   }
   SpMatrix<BaseFloat> covar(dim);
   rand_posdef_spmatrix(dim, &covar, NULL, NULL);
+  covar.AddToDiag(0.1);  // Ensure the condition is reasonable, otherwise
+                         // we can get arbitrarily large inverse.
   invcovars[0].CopyFromSp(covar);
   invcovars[0].InvertDouble();
   weights(0) = 1.0F;
