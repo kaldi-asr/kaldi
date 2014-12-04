@@ -147,7 +147,7 @@ void RandGauss2(double *a, double *b, RandomState *state)
   float a_float, b_float;
   // Just because we're using doubles doesn't mean we need super-high-quality
   // random numbers, so we just use the floating-point version internally.
-  RandGauss2(&a_float, &b_float);
+  RandGauss2(&a_float, &b_float, state);
   *a = a_float; *b = b_float;
 }
 
