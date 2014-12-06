@@ -343,17 +343,18 @@ void Nnet::ResizeOutputLayer(int32 new_num_pdfs) {
   KALDI_ASSERT(new_num_pdfs > 0);
   KALDI_ASSERT(NumComponents() > 2);
   int32 nc = NumComponents();
-  SoftmaxComponent *sc;
-  if ((sc = dynamic_cast<SoftmaxComponent*>(components_[nc - 1])) == NULL)
-    KALDI_ERR << "Expected last component to be SoftmaxComponent.";
-  SumGroupComponent *sgc = dynamic_cast<SumGroupComponent*>(components_[nc - 2]);
+  SumGroupComponent *sgc = dynamic_cast<SumGroupComponent*>(components_[nc - 1]);
   if (sgc != NULL) {
     // Remove it.  We'll resize things later.
     delete sgc;
-    components_.erase(components_.begin() + nc - 2,
-                      components_.begin() + nc - 1);
+    components_.erase(components_.begin() + nc - 1,
+                      components_.begin() + nc);
     nc--;
   }
+  
+  SoftmaxComponent *sc;
+  if ((sc = dynamic_cast<SoftmaxComponent*>(components_[nc - 1])) == NULL)
+    KALDI_ERR << "Expected last component to be SoftmaxComponent.";
 
   // note: it could be child class of AffineComponent.
   AffineComponent *ac = dynamic_cast<AffineComponent*>(components_[nc - 2]);
