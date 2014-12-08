@@ -52,19 +52,30 @@ class NnetUpdater {
   NnetUpdater(const Nnet &nnet,
               Nnet *nnet_to_update);
   
-  // Does the entire forward and backward computation for this minbatch.
-  // Returns total objective function over this minibatch.  If tot_accuracy != NULL,
-  // outputs to that pointer the total accuracy.
+  /// Does the entire forward and backward computation for this minbatch.
+  /// Returns total objective function over this minibatch.  If tot_accuracy != NULL,
+  /// outputs to that pointer the total accuracy.
   double ComputeForMinibatch(const std::vector<NnetExample> &data,
+                             double *tot_accuracy);
+
+  /// This version of ComputeForMinibatch is used when you have already called
+  /// the function FormatNnetInput (defined below) to format your data as a
+  /// single matrix.  This interface is provided because it can be more
+  /// efficient to do this non-trivial CPU-based computation in a separate
+  /// thread.  formatted_data is an input but this function will destroy it,
+  /// which is why it's a pointer.
+  double ComputeForMinibatch(const std::vector<NnetExample> &data,
+                             Matrix<BaseFloat> *formatted_data,
                              double *tot_accuracy);
   
   void GetOutput(CuMatrix<BaseFloat> *output);
  protected:
 
-  /// takes the input and formats as a single matrix, in forward_data_[0].
-  void FormatInput(const std::vector<NnetExample> &data);
-  
   void Propagate();
+
+  /// Formats the input as a single matrix and sets the size of forward_data_,
+  /// and sets up chunk_info_out_.
+  void FormatInput(const std::vector<NnetExample> &data);
 
   /// Computes objective function and derivative at output layer, but does not
   /// do the backprop [for that, see Backprop()].  Returns objf summed over all
@@ -89,7 +100,6 @@ class NnetUpdater {
   // Must be called after Propagate().
   double ComputeTotAccuracy(const std::vector<NnetExample> &data) const;
 
-  
   const Nnet &nnet_;
   Nnet *nnet_to_update_;
   int32 num_chunks_; // same as the minibatch size.
@@ -99,6 +109,19 @@ class NnetUpdater {
   // for the outputs of each of the components.
 
 };
+
+
+/// Takes the input to the nnet for a minibatch of examples, and formats as a
+/// single matrix.  data.size() must be > 0.  Note: you will probably want to
+/// copy this to CuMatrix after you call this function.
+/// The num-rows of the output will, at exit, equal 
+/// (1 + nnet.LeftContext() + nnet.RightContext()) * data.size().
+/// The nnet is only needed so we can call LeftContext(), RightContext()
+/// and InputDim() on it.
+void FormatNnetInput(const Nnet &nnet,
+                     const std::vector<NnetExample> &data,
+                     Matrix<BaseFloat> *mat);
+
 
 /// This function computes the objective function and either updates the model
 /// or adds to parameter gradients.  Returns the cross-entropy objective
@@ -113,6 +136,21 @@ double DoBackprop(const Nnet &nnet,
                   const std::vector<NnetExample> &examples,
                   Nnet *nnet_to_update,
                   double *tot_accuracy = NULL);
+
+/// This version of DoBackprop allows you to separately call
+/// FormatNnetInput and provide the result to DoBackprop; this
+/// can be useful when using GPUs because the call to FormatNnetInput
+/// can be in a separate thread from the one that uses the GPU.
+/// "examples_formatted" is really an input, but it's a pointer
+/// because internally we call Swap() on it, so we destroy
+/// its contents.
+double DoBackprop(const Nnet &nnet,
+                  const std::vector<NnetExample> &examples,
+                  Matrix<BaseFloat> *examples_formatted,
+                  Nnet *nnet_to_update,
+                  double *tot_accuracy = NULL);
+
+
 
 /// Returns the total weight summed over all the examples... just a simple
 /// utility function.

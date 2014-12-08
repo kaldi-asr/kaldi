@@ -95,7 +95,10 @@ class Nnet {
   /// Uses the output of the Context() functions of the network, to compute a
   /// vector of size NumComponents() + 1 indexed by component-index c, of the
   /// chunk-info at the input of each layer c, where the c+1'th element contains
-  /// the chunk-info at the output of that layer.  
+  /// the chunk-info at the output of that layer.
+  /// The "input_chunk_size" is the time extent of the input.  If you want to
+  /// produce exactly 1 output frame per chunk, then this should equal 1 +
+  /// LeftContext() + RightContext().
   void ComputeChunkInfo(int32 input_chunk_size,
                         int32 num_chunks,
                         std::vector<ChunkInfo> *chunk_info_out) const;

@@ -64,15 +64,12 @@ int32 Nnet::RightContext() const {
 }
 
 void Nnet::ComputeChunkInfo(int32 input_chunk_size,
-                      int32 num_chunks,
-                      std::vector<ChunkInfo> *chunk_info_out) const {
-  int32 total_context = RightContext() + LeftContext() + 1;
-  KALDI_ASSERT(total_context <= input_chunk_size);
-
-  // Computing the output-chunk indices for the last component in the network
-  // We add LeftContext() of the network to these values to ensure that the input-chunk indices
-  // for the first component in the network always start from zero
-  int32 output_chunk_size = input_chunk_size - total_context + 1;
+                            int32 num_chunks,
+                            std::vector<ChunkInfo> *chunk_info_out) const {
+  // First compute the output-chunk indices for the last component in the network.
+  // we assume that the numbering of the input starts from zero.
+  int32 output_chunk_size = input_chunk_size - LeftContext() - RightContext();
+  KALDI_ASSERT(output_chunk_size > 0);
   std::vector<int32> current_output_inds;
   for (int32 i = 0; i < output_chunk_size; i++)
     current_output_inds.push_back(i + LeftContext());
