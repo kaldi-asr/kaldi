@@ -97,7 +97,7 @@ void TestMultiSgmmEst(const std::vector<AmSgmm*> &models,
 }
 
 void UnitTestEstimateSgmm() {
-  int32 dim = 1 + kaldi::RandInt(0, 9);  // random dimension of the gmm
+  int32 dim = 2 + kaldi::RandInt(0, 9);  // random dimension of the gmm
   int32 num_comp = 2 + kaldi::RandInt(0, 9);  // random mixture size
   kaldi::FullGmm full_gmm;
   ut::InitRandFullGmm(dim, num_comp, &full_gmm);

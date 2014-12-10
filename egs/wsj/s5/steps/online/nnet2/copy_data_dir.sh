@@ -22,8 +22,8 @@ if [ $# != 2 ]; then
   echo "e.g.:"
   echo " $0 --utts-per-spk-max 2 data/train data/train-max2"
   echo "Options"
-  echo "   --utts-per-spk-max=n  # number of utterances per speaker maximum,"
-  echo "                         # default -1 (meaning no maximum).  E.g. 2."
+  echo "   --utts-per-spk-max <n>  # number of utterances per speaker maximum,"
+  echo "                           # default -1 (meaning no maximum).  E.g. 2."
   exit 1;
 fi
 

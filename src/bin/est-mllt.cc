@@ -29,9 +29,10 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Do MLLT update\n"
+        "Do update for MLLT (also known as STC)\n"
         "Usage:  est-mllt [options] <mllt-mat-out> <stats-in1> <stats-in2> ... \n"
         "e.g.: est-mllt 2.mat 1a.macc 1b.macc ... \n"
+        "where the stats are obtained from gmm-acc-mllt\n"
         "Note: use compose-transforms <mllt-mat-out> <prev-mllt-mat> to combine with previous\n"
         "  MLLT or LDA transform, if any, and\n"
         "  gmm-transform-means to apply <mllt-mat-out> to GMM means.\n";

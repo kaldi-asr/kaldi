@@ -34,21 +34,20 @@ EOF
   fi
   parallel_opts="-l gpu=1" 
   num_threads=1
-  minibatch_size=512
 else
   # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
   # almost the same, but this may be a little bit slow.
   num_threads=16
-  minibatch_size=128
   parallel_opts="-pe smp $num_threads" 
 fi
 
 if [ $stage -le 1 ]; then
-  # use a wide beam because this is RM.  These would be too high for other setups.
+  # the conf/decode.config gives it higher than normal beam/lattice-beam of (20,10), since
+  # otherwise on RM we'd get very thin lattices.
   nj=30
-  num_threads=6
-  steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G -pe smp $num_threads" \
-      --nj $nj --sub-split 40 --num-threads "$num_threads" --beam 20.0 --lattice-beam 10.0 \
+  num_threads_denlats=6
+  steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G -pe smp $num_threads_denlats" \
+      --nj $nj --sub-split 40 --num-threads "$num_threads_denlats" --config conf/decode.config \
      data/train data/lang $srcdir ${srcdir}_denlats || exit 1;
 fi
 
@@ -66,8 +65,9 @@ fi
 if [ $stage -le 3 ]; then
   # I tested the following with  --max-temp-archives 3 
   # to test other branches of the code.
+  # the -tc 5 limits the I/O.
   steps/online/nnet2/get_egs_discriminative2.sh \
-    --cmd "$decode_cmd -pe smp 5" \
+    --cmd "$decode_cmd -tc 5" \
     --criterion $criterion --drop-frames $drop_frames \
      data/train data/lang ${srcdir}{_ali,_denlats,,_degs} || exit 1;
 fi

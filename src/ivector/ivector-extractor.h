@@ -80,6 +80,8 @@ class IvectorExtractorUtteranceStats {
   
   void Scale(double scale); // Used to apply acoustic scale.
 
+  double NumFrames() { return gamma_.Sum(); }
+  
  protected:
   friend class IvectorExtractor;
   friend class IvectorExtractorStats;
@@ -331,7 +333,7 @@ class OnlineIvectorEstimationStats {
 
   double PriorOffset() const { return prior_offset_; }
 
-  /// ObjfChange returns the change in objective function per frame from
+  /// ObjfChange returns the change in objective function *per frame* from
   /// using the default value [ prior_offset_, 0, 0, ... ] to
   /// using the provided value; should be >= 0, if "ivector" is
   /// a value we estimated.  This is for diagnostics.

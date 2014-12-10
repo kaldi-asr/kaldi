@@ -75,7 +75,7 @@ def create_config_files(output_dir, params):
     nnet_config = ["SpliceComponent input-dim={0} context={1} const-component-dim={2}".format(params.total_input_dim, contexts[0], params.ivector_dim),
     "FixedAffineComponent matrix={0}".format(params.lda_mat),
     "AffineComponentPreconditionedOnline input-dim={0} output-dim={1} {2} learning-rate={3} param-stddev={4} bias-stddev={5}".format(params.lda_dim, pnorm_input_dim, params.online_preconditioning_opts, params.initial_learning_rate, stddev, params.bias_stddev),
-    "PnormComponent input-dim={0} output-dim={1} p={2}".format(pnorm_input_dim, pnorm_output_dim, pnorm_p),
+    ("PnormComponent input-dim={0} output-dim={1} p={2}".format(pnorm_input_dim, pnorm_output_dim, pnorm_p) if pnorm_input_dim != pnorm_output_dim else "RectifiedLinearComponent dim={0}".format(pnorm_input_dim)),
     "NormalizeComponent dim={0}".format(pnorm_output_dim),
     "AffineComponentPreconditionedOnline input-dim={0} output-dim={1} {2} learning-rate={3} param-stddev=0 bias-stddev=0".format(pnorm_output_dim, params.num_targets, params.online_preconditioning_opts, params.initial_learning_rate),
     "SoftmaxComponent dim={0}".format(params.num_targets)]

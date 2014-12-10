@@ -166,11 +166,13 @@ while [ $x -lt $num_iters ]; do
 
     nnets_list=$(for n in $(seq $num_jobs_nnet); do echo $dir/$[$x+1].$n.mdl; done)
 
-    $cmd $dir/log/average.$x.log \
+    # below use run.pl instead of a generic $cmd for these very quick stages,
+    # so that we don't run the risk of waiting for a possibly hard-to-get GPU.
+    run.pl $dir/log/average.$x.log \
       nnet-am-average $nnets_list $dir/$[$x+1].mdl || exit 1;
 
     if $modify_learning_rates; then
-      $cmd $dir/log/modify_learning_rates.$x.log \
+      run.pl $dir/log/modify_learning_rates.$x.log \
         nnet-modify-learning-rates --retroactive=$retroactive \
         --last-layer-factor=$last_layer_factor \
         --first-layer-factor=$first_layer_factor \

@@ -14,8 +14,9 @@
 if [ $# != 1 ]; then
   echo "Usage: $0 <egs-dir>"
   echo "e.g.: $0 data/nnet4b/egs/"
-  echo "This script is usually equivalent to 'rm <egs-dir>/egs.*' but it handles following"
-  echo "soft links to <egs-dir>/storage/, and avoids deleting anything in the directory if"
+  echo "e.g.: $0 data/nnet4b_mpe/degs/"
+  echo "This script is usually equivalent to 'rm <egs-dir>/egs.* <egs-dir>/degs.*' but it follows"
+  echo "soft links to <egs-dir>/storage/; and it avoids deleting anything in the directory if"
   echo "someone did 'touch <egs-dir>/.nodelete"
   exit 1;
 fi
@@ -28,22 +29,19 @@ if [ ! -d $egs ]; then
 fi
 
 if [ -f $egs/.nodelete ]; then
-  echo "$0: not delting egs in $egs since $egs/.nodelete exists"
+  echo "$0: not deleting egs in $egs since $egs/.nodelete exists"
   exit 0;
 fi
 
+
 flist=$egs/egs.*.ark
 
-if [ "$flist" == '$egs/egs.*.ark' ]; then  # did not expand..
-  echo "$0: directory $egs does not seem to contain egs"
-  exit 1;
-fi
 
-for f in $flist; do
+for f in $egs/egs.*.ark $egs/degs.*.ark; do
   if [ -L $f ]; then
     rm $(dirname $f)/$(readlink $f)  # this will print a warning if it fails.
   fi
-  rm $f
+  rm $f 2>/dev/null
 done
 
 

@@ -593,13 +593,22 @@ if (-e "$lang/L_disambig.fst") {
 
 # Check if G.fst is ilabel sorted.
 if (-e "$lang/G.fst") {
-  $cmd = "fstinfo $lang/G.fst | grep -E 'input label sorted.*y' > /dev/null";
-  $res = system(". ./path.sh; $cmd");
-  if ($res == 0) {
+  $text = ` ./path.sh; fstinfo $lang/G.fst`;
+
+  if ($text =~ m/input label sorted\s+y/) {
     print "--> $lang/G.fst is ilabel sorted\n";
   } else {
     print "--> ERROR: $lang/G.fst is not ilabel sorted\n";
     $exit = 1;
+  }
+  if ($text =~ m/# of states\s+(\d+)/) {
+    $num_states = $1;
+    if ($num_states == 0) {
+      print "--> ERROR: $lang/G.fst is empty\n";
+      $exit = 1;
+    } else {
+      print "--> $lang/G.fst has $num_states states\n";
+    }
   }
 }
 

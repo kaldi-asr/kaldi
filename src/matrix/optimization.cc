@@ -418,6 +418,9 @@ OptimizeLbfgs<Real>::GetValue(Real *objf_value) const {
   return best_x_;
 }
 
+// to compute the alpha, we are minimizing f(x) =  x^T b - 0.5 x_k^T A x_k  along
+// direction p_k... consider alpha
+// d/dx of f(x) = b - A x_k = r.
 
 // Notation based on Sec. 5.1 of Nocedal and Wright
 // Computation based on Alg. 5.2 of Nocedal and Wright (Pg. 112)
@@ -425,10 +428,10 @@ OptimizeLbfgs<Real>::GetValue(Real *objf_value) const {
 //  To solve Ax=b for x
 //  k : current iteration
 //  x_k : estimate of x (at iteration k)
-//  r_k : residual
+//  r_k : residual ( r_k \eqdef A x_k - b )
 //  \alpha_k : step size
 //  p_k : A-conjugate direction
-//  \beta_k  : coefficient used in A-conjuagate direction computation for next
+//  \beta_k  : coefficient used in A-conjugate direction computation for next
 //  iteration
 //  
 //  Algo.  LinearCG(A,b,x_0)
@@ -466,40 +469,63 @@ int32 LinearCgd(const LinearCgdOptions &opts,
       r_initial_norm_sq = r_cur_norm_sq,
       r_recompute_norm_sq = r_cur_norm_sq;
 
+  KALDI_VLOG(5) << "In linear CG: initial norm-square of residual = "
+                << r_initial_norm_sq;
+  
+  KALDI_ASSERT(opts.recompute_residual_factor <= 1.0);
   Real max_error_sq = std::max<Real>(opts.max_error * opts.max_error,
                                      std::numeric_limits<Real>::min()),
       residual_factor = opts.recompute_residual_factor *
-                        opts.recompute_residual_factor;
+                        opts.recompute_residual_factor,
+      inv_residual_factor = 1.0 / residual_factor;
   
   // Note: although from a mathematical point of view the method should converge
   // after M iterations, in practice (due to roundoff) it does not always
   // converge to good precision after that many iterations so we let the maximum
-  // be 1.5 * M + 5 instead.
+  // be M + 5 instead.
   int32 k = 0;
-  for (; k < M + M / 2 + 5 && k != opts.max_iters; k++) {
+  for (; k < M + 5 && k != opts.max_iters; k++) {
     // Note: we'll break from this loop if we converge sooner due to
     // max_error.
     Ap.AddSpVec(1.0, A, p, 0.0);  // Ap = A p
-    // next line: \alpha_k = (r_k^T r_k) / (p_k^T A p_k)
-    Real alpha = r_cur_norm_sq / VecVec(p, Ap);
+
+    // Below is how the code used to look.
+    // // next line: \alpha_k = (r_k^T r_k) / (p_k^T A p_k)
+    // Real alpha = r_cur_norm_sq / VecVec(p, Ap);
+    // 
+    // We changed r_cur_norm_sq below to -VecVec(p, r).  Although this is
+    // slightly less efficient, it seems to make the algorithm dramatically more
+    // robust.  Note that -p^T r is the mathematically more natural quantity to
+    // use here, that corresponds to minimizing along that direction... r^T r is
+    // recommended in Nocedal and Wright only as a kind of optimization as it is
+    // supposed to be the same as -p^T r and we already have it computed.
+    Real alpha = -VecVec(p, r) / VecVec(p, Ap);
+    
     // next line: x_{k+1} = x_k + \alpha_k p_k;
     x->AddVec(alpha, p);
     // next line: r_{k+1} = r_k + \alpha_k A p_k
     r.AddVec(alpha, Ap);
     Real r_next_norm_sq = VecVec(r, r);
     
-    if (r_next_norm_sq < residual_factor * r_recompute_norm_sq) {
+    if (r_next_norm_sq < residual_factor * r_recompute_norm_sq ||
+        r_next_norm_sq > inv_residual_factor * r_recompute_norm_sq) {
       // Recompute the residual from scratch if the residual norm has decreased
       // a lot; this costs an extra matrix-vector multiply, but helps keep the
       // residual accurate.
+      // Also do the same if the residual norm has increased a lot since
+      // the last time we recomputed... this shouldn't happen often, but
+      // it can indicate bad stuff is happening.
       
       // r_{k+1} = A x_{k+1} - b
       r.AddSpVec(1.0, A, *x, 0.0);
       r.AddVec(-1.0, b);
       r_next_norm_sq = VecVec(r, r);
       r_recompute_norm_sq = r_next_norm_sq;
+
+      KALDI_VLOG(5) << "In linear CG: recomputing residual.";
     }
-    KALDI_VLOG(5) << "In linear CG: r_next_norm_sq = " << r_next_norm_sq;
+    KALDI_VLOG(5) << "In linear CG: k = " << k
+                  << ", r_next_norm_sq = " << r_next_norm_sq;
     // Check if converged.
     if (r_next_norm_sq <= max_error_sq)
       break;

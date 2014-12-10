@@ -52,4 +52,3 @@ if [ $stage -le 3 ]; then
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
     data/train_max2 exp/nnet2_online/extractor exp/nnet2_online/ivectors || exit 1;
 fi
-

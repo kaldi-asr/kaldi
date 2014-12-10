@@ -567,8 +567,12 @@ template<class Arc> class DeterminizerStar {
     // processes final-weights for this subset.
     bool is_final = false;
     StringId final_string = 0;  // = 0 to keep compiler happy.
-    Weight final_weight;
-    typename vector<Element>::const_iterator iter = closed_subset.begin(), end = closed_subset.end();
+    Weight final_weight = Weight::One();  // This value will never be accessed, and
+    // we just set it to avoid spurious compiler warnings.  We avoid setting it
+    // to Zero() because floating-point infinities can sometimes generate
+    // interrupts and slow things down.
+    typename vector<Element>::const_iterator iter = closed_subset.begin(),
+        end = closed_subset.end();
     for (; iter != end; ++iter) {
       const Element &elem = *iter;
       Weight this_final_weight = ifst_->Final(elem.state);
