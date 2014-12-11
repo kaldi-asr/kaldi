@@ -13,7 +13,6 @@ mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 languages=local/general_lr_closed_set_langs.txt
 
-if [ 0 = 1 ]; then
 # Training data sources
 local/make_sre_2008_train.pl /export/corpora5/LDC/LDC2011S05 data
 local/make_callfriend.pl /export/corpora/LDC/LDC96S60 vietnamese data
@@ -58,7 +57,6 @@ src_list="data/sre08_train_10sec_female \
 for d in $src_list; do rm -f $d/spk2gender 2>/dev/null; done
 
 utils/combine_data.sh data/train_unsplit_all $src_list
-fi
 
 utils/apply_map.pl -f 2 --permissive local/lang_map.txt \
   < data/train_unsplit/utt2lang  2>/dev/null > foo
