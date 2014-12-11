@@ -2,8 +2,8 @@
 # Copyright  2014   David Snyder
 # Apache 2.0.
 
-# This will be the run script for a phonotactics example. This is a work in
-# progress.
+# This script is an example of a phonotactic system for language
+# identification on the NIST LRE 2007 closet-set evaluation.
 
 . cmd.sh
 . path.sh
@@ -11,6 +11,9 @@ set -e
 
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
+languages=local/general_lr_closed_set_langs.txt
+
+if [ 0 = 1 ]; then
 # Training data sources
 local/make_sre_2008_train.pl /export/corpora5/LDC/LDC2011S05 data
 local/make_callfriend.pl /export/corpora/LDC/LDC96S60 vietnamese data
@@ -32,8 +35,15 @@ local/make_lre05.pl /export/corpora5/LDC/LDC2008S05 data
 local/make_lre07_train.pl /export/corpora5/LDC/LDC2009S05 data
 local/make_lre09.pl /export/corpora5/NIST/LRE/LRE2009/eval data
 
-# Evaluation data set
-local/make_lre07.pl /export/corpora5/LDC/LDC2009S04 data/lre07
+# Make the evaluation data set. We're concentrating on the General Language
+# Recognition Closet-Set evaluation, so we remove the dialects and filter
+# out the unknown languages used in the open-set evaluation.
+local/make_lre07.pl /export/corpora5/LDC/LDC2009S04 data/lre07_all
+
+cp -r data/lre07_all data/lre07
+utils/filter_scp.pl -f 2 $languages <(lid/remove_dialect.pl data/lre07_all/utt2lang) \
+  > data/lre07/utt2lang
+utils/fix_data_dir.sh data/lre07
 
 src_list="data/sre08_train_10sec_female \
     data/sre08_train_10sec_male data/sre08_train_3conv_female \
@@ -47,16 +57,27 @@ src_list="data/sre08_train_10sec_female \
 # sources have this info, it will cause problems with combine_data.sh
 for d in $src_list; do rm -f $d/spk2gender 2>/dev/null; done
 
-utils/combine_data.sh data/train_unsplit $src_list
+utils/combine_data.sh data/train_unsplit_all $src_list
+fi
 
-# original utt2lang will remain in data/train_unsplit/.backup/utt2lang.
-utils/apply_map.pl -f 2 --permissive local/lang_map.txt < data/train_unsplit/utt2lang  2>/dev/null > foo
-cp foo data/train_unsplit/utt2lang
-echo "**Language count in training:**"
-awk '{print $2}' foo | sort | uniq -c | sort -nr
+utils/apply_map.pl -f 2 --permissive local/lang_map.txt \
+  < data/train_unsplit/utt2lang  2>/dev/null > foo
+
+cp foo data/train_unsplit_all/utt2lang
+cp -r data/train_unsplit_all data/train_unsplit
+
+lid/remove_dialect.pl data/train_unsplit_all/utt2lang > foo
+utils/filter_scp.pl -f 2 $languages foo \
+  > data/train_unsplit/utt2lang
+utils/fix_data_dir.sh data/train_unsplit
 rm foo
 
+echo "**Language count in training:**"
+awk '{print $2}' data/train_unsplit/utt2lang | sort | uniq -c | sort -nr
+
+
 local/split_long_utts.sh --max-utt-len 30 data/train_unsplit data/train
+
 
 # This commented script is an alternative to the above utterance
 # splitting method. Here we split the utterance based on the number of 
@@ -167,4 +188,8 @@ local/decode_basis_fmllr.sh  --nj 50 --acwt 0.075 --num-threads 8 --parallel-opt
 
 local/make_softcount_feats.sh
 
-run_logistic_regression_phonotactics.sh
+local/run_logistic_regression_phonotactics.sh
+
+# General LR 2007 closed-set eval
+local/lre07_eval/lre07_eval.sh exp/ivectors_lre07 \
+  local/general_lr_closed_set_langs.txt

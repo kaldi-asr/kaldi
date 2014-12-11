@@ -16,8 +16,8 @@ train_utt2lang=data/train_lr/utt2lang
 test_utt2lang=data/lre07/utt2lang
 prior_scale=1.0
 apply_log=true # If true, the output of the binary
-                          # logistitic-regression-eval are log-posteriors.
-                          # Probabilities are the output if this is false.
+               # logistitic-regression-eval are log-posteriors.
+               # Probabilities are the output if this is false.
 conf=conf/logistic-regression.conf
 languages=local/general_lr_closed_set_langs.txt
 

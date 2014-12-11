@@ -25,9 +25,8 @@ test10_vectors="$base/test_feats.scp";
 classes="ark:lid/remove_dialect.pl $base/utt2lang_train \
          | utils/sym2int.pl -f 2 $base/languages.txt - |"
 
-#TODO: Make sure the lid/balance... we have is OK!
 lid/balance_priors_to_test.pl \
-    <(lid/remove_dialect.pl <(utils/filter_scp.pl -f 0 \
+    <(lid/remove_dialect.pl <(utils/filter_scp.pl -f 1 \
         $base/train_feats.scp $base/utt2lang_train)) \
     <(lid/remove_dialect.pl $base/utt2lang_test) \
     $base/languages.txt \
@@ -72,32 +71,4 @@ logistic-regression-eval $model_rebalanced $test_vectors ark,t:- | \
 
 compute-wer --text ark:<(lid/remove_dialect.pl $base//utt2lang_test) \
   ark:$base/output_test
-
-logistic-regression-eval $model_rebalanced $test30_vectors ark,t:- | \
-  awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) 
-                          { max=$f; argmax=f; }}  
-                          print $1, (argmax - 3); }' | \
-  utils/int2sym.pl -f 2 $base/languages.txt >$base/output_test_30s
-
-compute-wer --text ark:<(lid/remove_dialect.pl $base/utt2lang_test30s) \
-  ark:$base/output_test_30s
-
-logistic-regression-eval $model_rebalanced scp:<(utils/filter_scp.pl data/lre07/10sec $test10_vectors) ark,t:- | \
-  awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) 
-                          { max=$f; argmax=f; }}  
-                          print $1, (argmax - 3); }' | \
-  utils/int2sym.pl -f 2 $base/languages.txt >$base/output_test_10s
-
-compute-wer --mode=present --text ark:<(lid/remove_dialect.pl $base/utt2lang_test) \
-  ark:$base/output_test_10s
-
-logistic-regression-eval $model_rebalanced scp:<(utils/filter_scp.pl data/lre07/3sec $test3_vectors) ark,t:- | \
-  awk '{max=$3; argmax=3; for(f=3;f<NF;f++) { if ($f>max) 
-                          { max=$f; argmax=f; }}  
-                          print $1, (argmax - 3); }' | \
-  utils/int2sym.pl -f 2 $base/languages.txt >$base/output_test_3s
-
-compute-wer --mode=present --text ark:<(lid/remove_dialect.pl $base/utt2lang_test) \
-  ark:$base/output_test_3s
-
 
