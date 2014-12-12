@@ -24,7 +24,9 @@
 
 using namespace kaldi;
 
-int ComputeLogPosteriors(ParseOptions &po, const LogisticRegressionConfig &config) {
+int ComputeLogPosteriors(ParseOptions &po, 
+  const LogisticRegressionConfig &config,
+  bool apply_log) {
   std::string model = po.GetArg(1),
       vector_rspecifier = po.GetArg(2),
       log_posteriors_wspecifier = po.GetArg(3);
@@ -43,6 +45,8 @@ int ComputeLogPosteriors(ParseOptions &po, const LogisticRegressionConfig &confi
     const Vector<BaseFloat> &vector = vector_reader.Value();
     Vector<BaseFloat> log_posteriors;
     classifier.GetLogPosteriors(vector, &log_posteriors);
+    if (!apply_log)
+      log_posteriors.ApplyExp();
     posterior_writer.Write(utt, log_posteriors);
     num_utt_done++;
   }
@@ -50,7 +54,8 @@ int ComputeLogPosteriors(ParseOptions &po, const LogisticRegressionConfig &confi
   return (num_utt_done == 0 ? 1 : 0);
 }
 
-int32 ComputeScores(ParseOptions &po, const LogisticRegressionConfig &config) {
+int32 ComputeScores(ParseOptions &po, const LogisticRegressionConfig &config,
+                    bool apply_log) {
   std::string model_rspecifier = po.GetArg(1),
       trials_rspecifier = po.GetArg(2),
       vector_rspecifier = po.GetArg(3),
@@ -96,6 +101,9 @@ int32 ComputeScores(ParseOptions &po, const LogisticRegressionConfig &config) {
 
   bool binary = false;
   Output ko(scores_out.c_str(), binary);
+
+  if (!apply_log)
+    log_posteriors.ApplyExp();
   
   for (int i = 0; i < ys.size(); i++) {
     ko.Stream() << utt_list[i] << " " << ys[i] << " " << log_posteriors(i, ys[i]) << std::endl;
@@ -120,10 +128,13 @@ int main(int argc, char *argv[]) {
     
   ParseOptions po(usage);
 
-  bool binary = false;
+  bool apply_log = true;
+  po.Register("apply-log", &apply_log, 
+              "If false, apply Exp to the log posteriors output. This is "
+              "helpful when combining posteriors from multiple logistic "
+              "regression models.");
   LogisticRegressionConfig config;
   config.Register(&po);
-  po.Register("binary", &binary, "Write output in binary mode");
   po.Read(argc, argv);
 
   if (po.NumArgs() != 3 && po.NumArgs() != 4) {
@@ -132,8 +143,15 @@ int main(int argc, char *argv[]) {
   }
   
   return (po.NumArgs() == 4) ?
-      ComputeScores(po, config) :
-      ComputeLogPosteriors(po, config);
+      ComputeScores(po, config, apply_log) :
+      ComputeLogPosteriors(po, config, apply_log);
+
+  if (po.NumArgs() == 4) {
+    return ComputeScores(po, config, apply_log);
+  } else {
+    return ComputeLogPosteriors(po, config, apply_log);
+  }
+
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
