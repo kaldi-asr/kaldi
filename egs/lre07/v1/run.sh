@@ -1,6 +1,6 @@
 #!/bin/bash
 # Copyright  2014   David Snyder
-#            2014   Daniel Povey
+#                   Daniel Povey
 # Apache 2.0.
 #
 # This script runs the NIST 2007 General Language Recognition Closed-Set

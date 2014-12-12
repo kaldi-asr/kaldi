@@ -2,8 +2,9 @@
 # Copyright  2014   David Snyder,  Daniel Povey
 # Apache 2.0.
 #
-# An in progress example script for training and evaluating
-# using logistic regression.
+# This script trains a logistic regression model on top of
+# i-Vectors, and evaluates it on the NIST LRE07 closed-set
+# evaluation.  
 
 . cmd.sh
 . path.sh
