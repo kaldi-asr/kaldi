@@ -1,6 +1,6 @@
 
  This directory (sre08) contains example scripts for speaker identification, not
- speech recognition.  The following LDC corpora are required to for the testing:
+ speech recognition.  The following LDC corpora are required for the testing:
     
    SRE 2008 training set:  LDC2011S05 
    SRE 2008 test set:      LDC2011S08
