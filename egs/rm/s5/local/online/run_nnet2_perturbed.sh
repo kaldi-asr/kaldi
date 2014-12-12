@@ -6,9 +6,14 @@
 stage=1
 train_stage=-10
 use_gpu=true
+dir=exp/nnet2_online/nnet_perturbed
+
+
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
+
 
 if $use_gpu; then
   if ! cuda-compiled; then
@@ -21,14 +26,12 @@ EOF
   parallel_opts="-l gpu=1" 
   num_threads=1
   minibatch_size=512
-  dir=exp/nnet2_online/nnet_gpu_perturbed
 else
   # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
   parallel_opts="-pe smp $num_threads" 
-  dir=exp/nnet2_online/nnet_perturbed
 fi
 
 

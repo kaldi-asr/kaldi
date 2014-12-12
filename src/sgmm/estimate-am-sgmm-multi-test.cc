@@ -89,14 +89,15 @@ void TestMultiSgmmEst(const std::vector<AmSgmm*> &models,
     }
   }
   KALDI_LOG << "LL = " << loglike << "; LL1 = " << loglike1;
-  AssertGeq(loglike1, loglike, 1e-6);
+
+  KALDI_ASSERT(loglike1 >= loglike - (std::abs(loglike1)+std::abs(loglike))*1.0e-06);
 
   DeletePointers(&accs);
   DeletePointers(&new_models);
 }
 
 void UnitTestEstimateSgmm() {
-  int32 dim = 1 + kaldi::RandInt(0, 9);  // random dimension of the gmm
+  int32 dim = 2 + kaldi::RandInt(0, 9);  // random dimension of the gmm
   int32 num_comp = 2 + kaldi::RandInt(0, 9);  // random mixture size
   kaldi::FullGmm full_gmm;
   ut::InitRandFullGmm(dim, num_comp, &full_gmm);

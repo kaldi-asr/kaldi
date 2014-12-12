@@ -557,6 +557,31 @@ void OnlineIvectorEstimationStats::Scale(double scale) {
   quadratic_term_.AddToDiag(1.0 - scale);
 }
 
+void OnlineIvectorEstimationStats::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<OnlineIvectorEstimationStats>");  // magic string.
+  WriteToken(os, binary, "<PriorOffset>");
+  WriteBasicType(os, binary, prior_offset_);
+  WriteToken(os, binary, "<NumFrames>");
+  WriteBasicType(os, binary, num_frames_);
+  WriteToken(os, binary, "<QuadraticTerm>");
+  quadratic_term_.Write(os, binary);
+  WriteToken(os, binary, "<LinearTerm>");
+  linear_term_.Write(os, binary);
+  WriteToken(os, binary, "</OnlineIvectorEstimationStats>");
+}
+
+void OnlineIvectorEstimationStats::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<OnlineIvectorEstimationStats>");  // magic string.
+  ExpectToken(is, binary, "<PriorOffset>");
+  ReadBasicType(is, binary, &prior_offset_);
+  ExpectToken(is, binary, "<NumFrames>");
+  ReadBasicType(is, binary, &num_frames_);
+  ExpectToken(is, binary, "<QuadraticTerm>");
+  quadratic_term_.Read(is, binary);
+  ExpectToken(is, binary, "<LinearTerm>");
+  linear_term_.Read(is, binary);
+  ExpectToken(is, binary, "</OnlineIvectorEstimationStats>");
+}
 
 void OnlineIvectorEstimationStats::GetIvector(
     int32 num_cg_iters,

@@ -117,10 +117,24 @@ void TestIvectorExtraction(const IvectorExtractor &extractor,
 
   extractor.GetIvectorDistribution(utt_stats, &ivector1, NULL);
 
-  online_stats.GetIvector(-1, &ivector2);
+  int32 num_cg_iters = -1;  // for testing purposes, compute it exactly.
+  online_stats.GetIvector(num_cg_iters, &ivector2);
 
   KALDI_LOG << "ivector1 = " << ivector1;
   KALDI_LOG << "ivector2 = " << ivector2;
+
+  // objf change vs. default iVector.  note, here I'm using objf
+  // and auxf pretty much interchangeably :-(
+  double objf_change2 = online_stats.ObjfChange(ivector2) *
+      utt_stats.NumFrames();
+
+  Vector<double> ivector_baseline(ivector_dim);
+  ivector_baseline(0) = extractor.PriorOffset();
+  double objf_change1 = extractor.GetAuxf(utt_stats, ivector1) -
+      extractor.GetAuxf(utt_stats, ivector_baseline);
+  KALDI_LOG << "objf_change1 = " << objf_change1
+            << ", objf_change2 = " << objf_change2;
+  
   KALDI_ASSERT(ivector1.ApproxEqual(ivector2));
 }
 
@@ -198,7 +212,7 @@ void UnitTestIvectorExtractor() {
 
 int main() {
   using namespace kaldi;
-  SetVerboseLevel(4);
+  SetVerboseLevel(5);
   for (int i = 0; i < 10; i++)
     UnitTestIvectorExtractor();
   std::cout << "Test OK.\n";

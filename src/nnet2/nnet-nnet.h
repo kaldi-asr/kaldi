@@ -75,12 +75,12 @@ class Nnet {
   /// and deleting the corresponding one that we own.
   void SetComponent(int32 c, Component *component);
   
-  /// Returns the LeftContext() summed over all the Components... this is the
-  /// entire left-context in frames that the network requires.
+  /// Returns the left-context summed over all the Components... this is the
+  /// entire left-context in frames, that the network requires.
   int32 LeftContext() const;
 
-  /// Returns the LeftContext() summed over all the Components... this is the
-  /// entire left-context in frames that the network requires.
+  /// Returns the right-context summed over all the Components... this is the
+  /// entire right-context in frames, that the network requires.
   int32 RightContext() const;
   
   /// The output dimension of the network -- typically
@@ -92,6 +92,17 @@ class Nnet {
   /// mechanism, where you provide chunks of features over time.
   int32 InputDim() const; 
   
+  /// Uses the output of the Context() functions of the network, to compute a
+  /// vector of size NumComponents() + 1 indexed by component-index c, of the
+  /// chunk-info at the input of each layer c, where the c+1'th element contains
+  /// the chunk-info at the output of that layer.
+  /// The "input_chunk_size" is the time extent of the input.  If you want to
+  /// produce exactly 1 output frame per chunk, then this should equal 1 +
+  /// LeftContext() + RightContext().
+  void ComputeChunkInfo(int32 input_chunk_size,
+                        int32 num_chunks,
+                        std::vector<ChunkInfo> *chunk_info_out) const;
+
   void ZeroStats(); // zeroes the stats on the nonlinear layers.
 
   /// Copies only the statistics in layers of type NonlinearComponewnt, from
@@ -226,21 +237,11 @@ class Nnet {
   // with things of type NonlinearComponent.
 
 
-  /// [This function is only used in the binary nnet-train.cc which is currently not
-  /// being used]. This is used to separately adjust learning rates of each layer,
-  /// after each "phase" of training.  We basically ask (using the validation
-  /// gradient), do we wish we had gone further in this direction?  Yes->
-  /// increase learning rate, no -> decrease it.   The inputs have dimension
-  /// NumUpdatableComponents().
-  void AdjustLearningRates(
-      const VectorBase<BaseFloat> &old_model_old_gradient,
-      const VectorBase<BaseFloat> &new_model_old_gradient,
-      const VectorBase<BaseFloat> &old_model_new_gradient,
-      const VectorBase<BaseFloat> &new_model_new_gradient,
-      BaseFloat measure_at, // where to measure gradient, on line between old
-                            // and new model; 0.5 < measure_at <= 1.0.
-      BaseFloat learning_rate_ratio,
-      BaseFloat max_learning_rate);
+  /// This function is used when doing transfer learning to a new system.  It
+  /// resizes the final affine and softmax components.  If your system has a
+  /// SumGroupComponent before the final softmax, it will be discarded.
+  void ResizeOutputLayer(int32 new_num_pdfs);
+  
 
   /// Scale all the learning rates in the neural net by this factor.
   void ScaleLearningRates(BaseFloat factor);

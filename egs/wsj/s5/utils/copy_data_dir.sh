@@ -96,4 +96,7 @@ done
 rm $destdir/spk_map $destdir/utt_map
 
 echo "$0: copied data from $srcdir to $destdir"
-utils/validate_data_dir.sh $destdir
+validate_opts=
+[ ! -f $srcdir/feats.scp ] && validate_opts="$validate_opts --no-feats"
+
+utils/validate_data_dir.sh $validate_opts $destdir

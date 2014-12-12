@@ -76,6 +76,10 @@ while (<STDIN>) {
   chomp;
   my @col = split(" ", $_);
 
+  if ($current_order == -1 and ! m/^\\data\\$/) {
+    next;
+  }
+
   if (m/^\\data\\$/) {
     print STDERR "$0: Processing \"\\data\\\"\n";
     print "$_\n";
@@ -118,7 +122,7 @@ while (<STDIN>) {
         print "$prob\t$rest_of_line\n";
       } else {
         if ($num_oov_lines < $max_oov_warn) {
-          print STDERR "map_arpa_lm.pl: Warning: OOV line $_\n";
+          print STDERR "$0: Warning: OOV line $_\n";
         }
       }
     }
@@ -126,7 +130,8 @@ while (<STDIN>) {
 }
 
 if ($num_oov_lines > 0) {
-  print STDERR "map_arpa_lm.pl: $num_oov_lines lines of the Arpa file contained OOVs and were not printed.\n";
+  print STDERR "$0: $num_oov_lines lines of the Arpa file contained OOVs and ";
+  print STDERR "were not printed.\n";
 }
 
 close(M);

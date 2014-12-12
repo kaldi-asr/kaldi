@@ -62,6 +62,19 @@ int Rand(struct RandomState* state)
 #endif
 }
 
+RandomState::RandomState() {
+  // we initialize it as Rand() + 27437 instead of just Rand(), because on some
+  // systems, e.g. at the very least Mac OSX Yosemite and later, it seems to be
+  // the case that rand_r when initialized with rand() will give you the exact
+  // same sequence of numbers that rand() will give if you keep calling rand()
+  // after that initial call.  This can cause problems with repeated sequences.
+  // For example if you initialize two RandomState structs one after the other
+  // without calling rand() in between, they would give you the same sequence
+  // offset by one (if we didn't have the "+ 27437" in the code).  27437 is just
+  // a randomly chosen prime number.
+  seed = Rand() + 27437;
+}
+
 bool WithProb(BaseFloat prob, struct RandomState* state) {
   KALDI_ASSERT(prob >= 0 && prob <= 1.1);  // prob should be <= 1.0,
   // but we allow slightly larger values that could arise from roundoff in
@@ -147,7 +160,7 @@ void RandGauss2(double *a, double *b, RandomState *state)
   float a_float, b_float;
   // Just because we're using doubles doesn't mean we need super-high-quality
   // random numbers, so we just use the floating-point version internally.
-  RandGauss2(&a_float, &b_float);
+  RandGauss2(&a_float, &b_float, state);
   *a = a_float; *b = b_float;
 }
 

@@ -34,20 +34,16 @@ namespace kaldi {
 namespace nnet2 {
 
 
-void UnitTestGenericComponentInternal(const Component &component) {
-  int32 input_dim = component.InputDim(),
-      output_dim = component.OutputDim();
-
-  KALDI_LOG << component.Info();
+void UnitTestGenericComponentInternal(const Component &component,
+                                      const ChunkInfo in_info,
+                                      const ChunkInfo out_info)  { 
   
-  CuVector<BaseFloat> objf_vec(output_dim); // objective function is linear function of output.
-  objf_vec.SetRandn(); // set to Gaussian noise.
-  
-  int32 num_egs = 10 + Rand() % 5;
-  CuMatrix<BaseFloat> input(num_egs, input_dim),
-      output(num_egs, output_dim);
+  CuMatrix<BaseFloat> input(in_info.NumRows(), in_info.NumCols()),
+      output(out_info.NumRows(), out_info.NumCols());
   input.SetRandn();
-  
+  CuVector<BaseFloat> objf_vec(out_info.NumCols()); // objective function is linear function of output.
+  objf_vec.SetRandn(); // set to Gaussian noise.
+
   int32 rand_seed = Rand();
 
   RandomComponent *rand_component =
@@ -56,7 +52,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
     srand(rand_seed);
     rand_component->ResetGenerator();
   }
-  component.Propagate(input, 1, &output);
+  component.Propagate(in_info, out_info, input, &output);
   {
     bool binary = (Rand() % 2 == 0);
     Output ko("tmpf", binary);
@@ -71,7 +67,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
   unlink("tmpf");
   
   { // Test backward derivative is correct.
-    CuVector<BaseFloat> output_objfs(num_egs);
+    CuVector<BaseFloat> output_objfs(out_info.NumRows());
     output_objfs.AddMatVec(1.0, output, kNoTrans, objf_vec, 0.0);
     BaseFloat objf = output_objfs.Sum();
 
@@ -88,11 +84,9 @@ void UnitTestGenericComponentInternal(const Component &component) {
         (component_copy->BackpropNeedsInput() ? input : empty_mat),
         &output_ref =
         (component_copy->BackpropNeedsOutput() ? output : empty_mat);
-    int32 num_chunks = 1;
 
-    
-    component_copy->Backprop(input_ref, output_ref,
-                             output_deriv, num_chunks, NULL, &input_deriv);
+    component_copy->Backprop(in_info, out_info, input_ref, output_ref,
+                             output_deriv, NULL, &input_deriv);
 
     int32 num_ok = 0, num_bad = 0, num_tries = 10;
     KALDI_LOG << "Comparing feature gradients " << num_tries << " times.";
@@ -122,8 +116,8 @@ void UnitTestGenericComponentInternal(const Component &component) {
             rand_component->ResetGenerator();
           }
         }        
-        component.Propagate(perturbed_input, 1, &perturbed_output);
-        CuVector<BaseFloat> perturbed_output_objfs(num_egs);
+        component.Propagate(in_info, out_info, perturbed_input, &perturbed_output);
+        CuVector<BaseFloat> perturbed_output_objfs(out_info.NumRows());
         perturbed_output_objfs.AddMatVec(1.0, perturbed_output, kNoTrans,
                                          objf_vec, 0.0);
         BaseFloat perturbed_objf = perturbed_output_objfs.Sum(),
@@ -165,7 +159,7 @@ void UnitTestGenericComponentInternal(const Component &component) {
       BaseFloat perturb_stddev = 5.0e-04;
       perturbed_ucomponent->PerturbParams(perturb_stddev);
       
-      CuVector<BaseFloat> output_objfs(num_egs);
+      CuVector<BaseFloat> output_objfs(out_info.NumRows());
       output_objfs.AddMatVec(1.0, output, kNoTrans, objf_vec, 0.0);
       BaseFloat objf = output_objfs.Sum();
 
@@ -174,10 +168,8 @@ void UnitTestGenericComponentInternal(const Component &component) {
         output_deriv.Row(i).CopyFromVec(objf_vec);
       CuMatrix<BaseFloat> input_deriv; // (input.NumRows(), input.NumCols());
 
-      int32 num_chunks = 1;
-
       // This will compute the parameter gradient.
-      ucomponent->Backprop(input, output, output_deriv, num_chunks,
+      ucomponent->Backprop(in_info, out_info, input, output, output_deriv,
                            gradient_ucomponent, &input_deriv);
 
       // Now compute the perturbed objf.
@@ -192,8 +184,8 @@ void UnitTestGenericComponentInternal(const Component &component) {
             rand_component->ResetGenerator();
           }
         }        
-        perturbed_ucomponent->Propagate(input, 1, &output_perturbed);
-        CuVector<BaseFloat> output_objfs_perturbed(num_egs);
+        perturbed_ucomponent->Propagate(in_info, out_info, input, &output_perturbed);
+        CuVector<BaseFloat> output_objfs_perturbed(out_info.NumRows());
         output_objfs_perturbed.AddMatVec(1.0, output_perturbed,
                                          kNoTrans, objf_vec, 0.0);
         objf_perturbed = output_objfs_perturbed.Sum();
@@ -223,6 +215,22 @@ void UnitTestGenericComponentInternal(const Component &component) {
   }
   delete component_copy; // No longer needed.
 }
+
+void UnitTestGenericComponentInternal(const Component &component) {
+  int32 input_dim = component.InputDim(),
+      output_dim = component.OutputDim();
+
+  KALDI_LOG << component.Info();
+  int32 num_egs = 10 + Rand() % 5;
+  int32 num_chunks = 1,
+        first_offset = 0,
+        last_offset = num_egs-1;
+
+  ChunkInfo in_info(input_dim, num_chunks, first_offset, last_offset);
+  ChunkInfo out_info(output_dim, num_chunks, first_offset, last_offset);
+  UnitTestGenericComponentInternal(component, in_info, out_info);
+}
+
 
 
 void UnitTestSigmoidComponent() {
@@ -678,58 +686,90 @@ void UnitTestParsing() {
 
 }
 
-void BasicDebugTestForSplice(bool output=false) {
-  int32 C=5;
-  int32 K=4, contextLen=1;
-  int32 R=3+2 * contextLen;
- 
-  SpliceComponent *c = new SpliceComponent();
-  c->Init(C, contextLen, contextLen, K);
-  CuMatrix<BaseFloat> in(R, C), in_deriv(R, C);
-  CuMatrix<BaseFloat> out(R, c->OutputDim());
-
-  in.SetRandn();
-  if (output)
-    KALDI_LOG << in;
-
-  c->Propagate(in, 1, &out);
-  
-  if (output) 
-    KALDI_LOG << out;
-
-  out.Set(1);
-  
-  if (K > 0) {
-    CuSubMatrix<BaseFloat> k(out, 0, out.NumRows(), c->OutputDim() - K, K);
-    k.Set(-2);
+void UnitTestSpliceComponent() {
+  int32 feat_dim = RandInt(1, 20),
+      const_dim =  RandInt(0, 10),
+      left_context = RandInt(-5, 0),
+      right_context = RandInt(0, 5),
+      num_chunks = RandInt(0, 20); 
+        // multiple chunks are required as splice component
+        // has separate index computation logic for more than one chunks
+  KALDI_LOG << " Feat_dim :" << feat_dim << " const_dim: " << const_dim  ;
+  std::vector<bool> contiguous(2);
+  contiguous[0] = true;
+  contiguous[1] = false;
+  for (int32 i = 0; i < contiguous.size(); i++) {
+    std::vector<int32> splice_indexes;
+    if (contiguous[i]) {
+      // create contiguous set of splice indexes in the range
+      // (-left_context, right_context)
+      KALDI_LOG << "Testing contiguous splice component";
+      splice_indexes.reserve(right_context - left_context + 1);
+      for (int32 i = left_context; i <= right_context; i++) 
+        splice_indexes.push_back(i);
+    } else  {
+      // generate random splice indexes in range (-left_context, right_context)
+      KALDI_LOG << "Testing non-contiguous splice component";
+      int32 num_left_splice_indexes = RandInt(0, -left_context) + 1;
+      int32 num_right_splice_indexes = RandInt(0, right_context);
+      splice_indexes.reserve(num_left_splice_indexes + num_right_splice_indexes);
+      while (splice_indexes.size() < num_left_splice_indexes)  {
+        int32 new_index = RandInt(left_context, 0);
+        // check if the index already exists in the vector
+        if (std::find(splice_indexes.begin(), splice_indexes.end(), new_index)
+            == splice_indexes.end())  {
+          splice_indexes.push_back(new_index);
+        }
+      }
+      while (splice_indexes.size() < num_left_splice_indexes + num_right_splice_indexes)  {
+        int32 new_index = RandInt(0, right_context);
+        // check if the index already exists in the vector
+        if (std::find(splice_indexes.begin(), splice_indexes.end(), new_index)
+            == splice_indexes.end())  {
+          splice_indexes.push_back(new_index);
+        }
+      }
+      sort(splice_indexes.begin(), splice_indexes.end());
+      if (splice_indexes.back() < 0) // will fail assertion in init of component
+        splice_indexes.push_back(0);
+    }
+    std::vector<int32> input_offsets;
+    for (int32 i = 0; i < splice_indexes.size(); i++) {
+      input_offsets.push_back(splice_indexes[i] - splice_indexes.front());
+      KALDI_LOG << i << " : " << splice_indexes[i] << " : " << input_offsets[i] ;
+    }
+    int32 output_offset = -splice_indexes.front();
+    SpliceComponent *component = new SpliceComponent();
+    component->Init(feat_dim + const_dim, splice_indexes, const_dim);
+    ChunkInfo in_info = ChunkInfo(feat_dim + const_dim, num_chunks,
+                                  input_offsets),
+              out_info = ChunkInfo(feat_dim * splice_indexes.size() + const_dim,
+                                   num_chunks, output_offset, output_offset);
+    UnitTestGenericComponentInternal(*component, in_info, out_info);
+    delete component;
   }
-
-  if (output)
-    KALDI_LOG << out;
-  
-  int32 num_chunks = 1;
-  c->Backprop(in, in, out, num_chunks, c, &in_deriv);
-  
-  if (output)
-    KALDI_LOG << in_deriv;
-  delete c;
 }
 
 void BasicDebugTestForSpliceMax(bool output=false) {
-  int32 C=5;
-  int32 contextLen=2;
-  int32 R= 3 + 2*contextLen;
+  int32 C=5,
+        context_len=2,
+        R= 3 + 2*context_len;
  
   SpliceMaxComponent *c = new SpliceMaxComponent();
-  c->Init(C, contextLen, contextLen);
+  std::vector<int32> context(2 * context_len + 1);
+  for (int32 i = -1 * context_len; i <= context_len; i++)
+    context[i + context_len] = i;
+  c->Init(C, context);
   CuMatrix<BaseFloat> in(R, C), in_deriv(R, C);
   CuMatrix<BaseFloat> out(R, c->OutputDim());
-  
+  ChunkInfo in_info = ChunkInfo(C, 1, 0, R - 1),
+            out_info = ChunkInfo(C, 1, context_len, R - 1 - context_len);
+
   in.SetRandn();
   if (output)
     KALDI_LOG << in;
 
-  c->Propagate(in, 1, &out);
+  c->Propagate(in_info, out_info, in, &out);
   
   if (output) 
     KALDI_LOG << out;
@@ -739,8 +779,7 @@ void BasicDebugTestForSpliceMax(bool output=false) {
   if (output)
     KALDI_LOG << out;
   
-  int32 num_chunks = 1;
-  c->Backprop(in, in, out, num_chunks, c, &in_deriv);
+  c->Backprop(in_info, out_info, in, in, out, c, &in_deriv);
   
   if (output)
     KALDI_LOG << in_deriv;
@@ -768,7 +807,6 @@ int main() {
       CuDevice::Instantiate().SelectGpuId("optional"); // -2 .. automatic selection
 #endif
     
-    BasicDebugTestForSplice(true);
     BasicDebugTestForSpliceMax(true);
     for (int32 i = 0; i < 3; i++) {
       UnitTestGenericComponent<SigmoidComponent>();
@@ -779,6 +817,7 @@ int main() {
       UnitTestGenericComponent<SoftmaxComponent>();
       UnitTestGenericComponent<RectifiedLinearComponent>();
       UnitTestGenericComponent<SoftHingeComponent>();
+      UnitTestSpliceComponent();
       UnitTestMaxoutComponent(); 
       UnitTestPnormComponent(); 
       UnitTestGenericComponent<NormalizeComponent>();

@@ -113,7 +113,7 @@ class NnetPerturbedUpdater {
                                    // regard as the input for purposes of this
                                    // method (normally 2, to include splicing
                                    // layer and preconditioning layer)
-
+  std::vector<ChunkInfo> chunk_info_out_;
   const CuMatrix<BaseFloat> &within_class_covar_;
   
   int32 num_chunks_; // same as the minibatch size.
@@ -237,7 +237,7 @@ void NnetPerturbedUpdater::Propagate(int32 begin_layer, int32 end_layer) {
     CuMatrix<BaseFloat> &output = forward_data_[c+1];
     // Note: the Propagate function will automatically resize the
     // output.
-    component.Propagate(input, num_chunks_, &output);
+    component.Propagate(chunk_info_out_[c], chunk_info_out_[c+1], input, &output);
 
     KALDI_VLOG(4) << "Propagating: sum at output of " << c << " is " << output.Sum();
     
@@ -264,10 +264,12 @@ void NnetPerturbedUpdater::ComputeSupervisionLabels(
   sv_labels->clear();
   sv_labels->reserve(num_chunks_); // We must have at least this many labels.
   for (int32 m = 0; m < num_chunks_; m++) {
-    for (size_t i = 0; i < data[m].labels.size(); i++) {
-      MatrixElement<BaseFloat> 
-          tmp = {m, data[m].labels[i].first, data[m].labels[i].second};
-      sv_labels->push_back(tmp);
+    KALDI_ASSERT(data[m].labels.size() == 1 &&
+                 "Training code does not currently support multi-frame egs");
+    const std::vector<std::pair<int32,BaseFloat> > &labels = data[m].labels[0];
+    for (size_t i = 0; i < labels.size(); i++) {
+      MatrixElement<BaseFloat> elem = {m, labels[i].first, labels[i].second};
+      sv_labels->push_back(elem);
     }
   }  
 }
@@ -297,8 +299,7 @@ void NnetPerturbedUpdater::Backprop(Nnet *nnet_to_update,
         &output = forward_data_[c+1];
     CuMatrix<BaseFloat> input_deriv(input.NumRows(), input.NumCols());
     const CuMatrix<BaseFloat> &output_deriv(*deriv);
-    
-    component.Backprop(input, output, output_deriv, num_chunks_,
+    component.Backprop(chunk_info_out_[c] , chunk_info_out_[c+1], input, output, output_deriv,
                        component_to_update, &input_deriv);
     input_deriv.Swap(deriv);
   }
@@ -346,6 +347,9 @@ void NnetPerturbedUpdater::FormatInput(const std::vector<NnetExample> &data) {
     }
   }
   forward_data_[0].Swap(&temp_forward_data); // Copy to GPU, if being used.
+  // TODO : filter out the unnecessary rows from the input
+  nnet_.ComputeChunkInfo(num_splice, num_chunks_, &chunk_info_out_);
+
 }
 
 

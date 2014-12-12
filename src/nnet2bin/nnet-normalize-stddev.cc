@@ -35,21 +35,25 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "This program first identifies any affine or block affine layers that\n"
         "are followed by pnorm and then renormalize layers. Then it rescales\n"
-        "those layers such that the parameter stddev is 1.0 after scaling.\n"
+        "those layers such that the parameter stddev is 1.0 after scaling\n"
+        "(the target stddev is configurable by the --stddev option).\n"
         "If you supply the option --stddev-from=<model-filename>, it rescales\n"
-        "those layers to match the standard deviation of those in the specified\n"
-        "model.\n"
+        "those layers to match the standard deviations of corresponding layers\n"
+        "in the specified model.\n"
         "\n"
         "Usage: nnet-normalize-stddev [options] <model-in> <model-out>\n"
         " e.g.: nnet-normalize-stddev final.mdl final.mdl\n";
 
     bool binary_write = true;
+    BaseFloat stddev = 1.0;
     std::string reference_model_filename;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("stddev-from", &reference_model_filename, "Reference model");
-
+    po.Register("stddev", &stddev, "Target standard deviation that we normalize "
+                "to (note: is overridden by --stddev-from option, if supplied)");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -91,7 +95,7 @@ int main(int argc, char *argv[]) {
       PnormComponent *pc = dynamic_cast<PnormComponent*>(component);
       if (pc == NULL)
         continue;
-
+      
       // Checks if the layer after the pnorm layer is a NormalizeComponent
       // or a PowerComponent followed by a NormalizeComponent
       component = &(am_nnet.GetNnet().GetComponent(c + 2));
@@ -121,11 +125,11 @@ int main(int argc, char *argv[]) {
       KALDI_ASSERT(am_nnet_ref.GetNnet().NumComponents() == am_nnet.GetNnet().NumComponents());
     }
 
-    BaseFloat ref_stddev =0.0;
-
+    BaseFloat ref_stddev = 0.0;
+    
     // Normalizes the identified layers.
     for (int32 c = 0; c < identified_components.size(); c++) {
-      ref_stddev = 0.0;
+      ref_stddev = stddev;
       if (!reference_model_filename.empty()) {
         kaldi::nnet2::Component *component =
             &(am_nnet_ref.GetNnet().GetComponent(identified_components[c]));
@@ -152,10 +156,7 @@ int main(int argc, char *argv[]) {
       BaseFloat params_stddev = sqrt(VecVec(params, params)
           / static_cast<BaseFloat>(params.Dim()));
       if (params_stddev > 0.0) {
-        if(ref_stddev > 0.0)
-          uc->Scale(ref_stddev / params_stddev);
-        else
-          uc->Scale(1.0 / params_stddev);
+        uc->Scale(ref_stddev / params_stddev);
         KALDI_LOG << "Normalized component " << identified_components[c];
       }
     }

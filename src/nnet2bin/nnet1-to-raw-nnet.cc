@@ -79,7 +79,11 @@ nnet2::Component *ConvertSpliceComponent(
   high = frame_offsets[frame_offsets.size() - 1];
 
   nnet2::SpliceComponent *res = new nnet2::SpliceComponent();
-  res->Init(splice->InputDim(), -low, high);
+  std::vector<int32> context(high - low + 1);
+  for (int32 i = low; i <= high; i++)  {
+    context[i - low] = i;
+  }
+  res->Init(splice->InputDim(), context);
   return res;
 }
 

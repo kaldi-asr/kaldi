@@ -178,5 +178,5 @@ while [ $x -lt $num_iters ]; do
   x=$[$x+1]
 done
 
+rm $dir/final.ie 2>/dev/null
 ln -s $x.ie $dir/final.ie
-

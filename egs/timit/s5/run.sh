@@ -42,18 +42,15 @@ local/timit_data_prep.sh $timit || exit 1
 
 local/timit_prepare_dict.sh
 
-# Caution below: we insert optional-silence with probability 0.5, which is the
-# default, but this is probably not appropriate for this setup, since silence
-# appears also as a word in the dictionary and is scored.  We could stop this
-# by using the option --sil-prob 0.0, but apparently this makes results worse.
-# (-> In sclite scoring the deletions of 'sil' are not scored as errors)
-utils/prepare_lang.sh --position-dependent-phones false --num-sil-states 3 \
+# Caution below: we remove optional silence by setting "--sil-prob 0.0",
+# in TIMIT the silence appears also as a word in the dictionary and is scored.
+utils/prepare_lang.sh --sil-prob 0.0 --position-dependent-phones false --num-sil-states 3 \
  data/local/dict "sil" data/local/lang_tmp data/lang
 
 local/timit_format_data.sh
 
 echo ============================================================================
-echo "         MFCC Feature Extration & CMVN for Training and Test set           "
+echo "         MFCC Feature Extration & CMVN for Training and Test set          "
 echo ============================================================================
 
 # Now make MFCC features.
@@ -144,7 +141,7 @@ echo ===========================================================================
 steps/align_fmllr.sh --nj "$train_nj" --cmd "$train_cmd" \
  data/train data/lang exp/tri3 exp/tri3_ali
 
-#exit 0 # From this point you can run DNN : local/run_dnn.sh
+#exit 0 # From this point you can run Karel's DNN : local/nnet/run_dnn.sh 
 
 steps/train_ubm.sh --cmd "$train_cmd" \
  $numGaussUBM data/train data/lang exp/tri3_ali exp/ubm4
@@ -231,7 +228,8 @@ echo ===========================================================================
 echo "               DNN Hybrid Training & Decoding (Karel's recipe)            "
 echo ============================================================================
 
-local/run_dnn.sh
+local/nnet/run_dnn.sh
+#local/nnet/run_autoencoder.sh : an example, not used to build any system,
 
 echo ============================================================================
 echo "                    Getting Results [see RESULTS file]                    "

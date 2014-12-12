@@ -104,10 +104,11 @@ bool SplitStringToFloats(const std::string &full,
                          std::vector<F> *out);
 
 
-/// Converts a string into an integer via strtoll and
-/// returns false if there was any kind of problem (i.e. the string was not an
-/// integer or contained extra non-whitespace junk, or the integer was too large to fit into the
-/// type it is being converted into.
+/// Converts a string into an integer via strtoll and returns false if there was
+/// any kind of problem (i.e. the string was not an integer or contained extra
+/// non-whitespace junk, or the integer was too large to fit into the type it is
+/// being converted into).  Only sets *out if everything was OK and it returns
+/// true.
 template<class Int>
 bool ConvertStringToInteger(const std::string &str,
                             Int *out) {

@@ -25,19 +25,51 @@
 namespace kaldi {
 namespace nnet2 {
 
+// This function returns true if the example has labels which, for each frame,
+// have a single element with probability one; and if so, it outputs them to the
+// vector in the associated pointer.  This enables us to write the egs more
+// compactly to disk in this common case.
+bool HasSimpleLabels(
+    const NnetExample &eg,
+    std::vector<int32> *simple_labels) {
+  size_t num_frames = eg.labels.size();
+  for (int32 t = 0; t < num_frames; t++)
+    if (eg.labels[t].size() != 1 || eg.labels[t][0].second != 1.0)
+      return false;
+  simple_labels->resize(num_frames);
+  for (int32 t = 0; t < num_frames; t++)
+    (*simple_labels)[t] = eg.labels[t][0].first;
+  return true;
+}
+
+
 void NnetExample::Write(std::ostream &os, bool binary) const {
   // Note: weight, label, input_frames and spk_info are members.  This is a
   // struct.
   WriteToken(os, binary, "<NnetExample>");
-  WriteToken(os, binary, "<Labels>");
-  int32 size = labels.size();
-  WriteBasicType(os, binary, size);
-  for (int32 i = 0; i < size; i++) {
-    WriteBasicType(os, binary, labels[i].first);
-    WriteBasicType(os, binary, labels[i].second);
+
+  // At this point, we write <Lab1> if we have "simple" labels, or
+  // <Lab2> in general.  Previous code (when we had only one frame of
+  // labels) just wrote <Labels>.
+  std::vector<int32> simple_labels;
+  if (HasSimpleLabels(*this, &simple_labels)) {
+    WriteToken(os, binary, "<Lab1>");
+    WriteIntegerVector(os, binary, simple_labels);
+  } else {
+    WriteToken(os, binary, "<Lab2>");
+    int32 num_frames = labels.size();
+    WriteBasicType(os, binary, num_frames);
+    for (int32 t = 0; t < num_frames; t++) {
+      int32 size = labels[t].size();
+      WriteBasicType(os, binary, size);
+      for (int32 i = 0; i < size; i++) {
+        WriteBasicType(os, binary, labels[t][i].first);
+        WriteBasicType(os, binary, labels[t][i].second);
+      }
+    }
   }
   WriteToken(os, binary, "<InputFrames>");
-  input_frames.Write(os, binary); // can be read as regular Matrix.
+  input_frames.Write(os, binary);
   WriteToken(os, binary, "<LeftContext>");
   WriteBasicType(os, binary, left_context);
   WriteToken(os, binary, "<SpkInfo>");
@@ -48,14 +80,45 @@ void NnetExample::Write(std::ostream &os, bool binary) const {
 void NnetExample::Read(std::istream &is, bool binary) {
   // Note: weight, label, input_frames, left_context and spk_info are members.
   // This is a struct.
-  ExpectToken(is, binary, "<NnetExample>");  
-  ExpectToken(is, binary, "<Labels>");
-  int32 size;
-  ReadBasicType(is, binary, &size);
-  labels.resize(size);
-  for (int32 i = 0; i < size; i++) {
-    ReadBasicType(is, binary, &(labels[i].first));
-    ReadBasicType(is, binary, &(labels[i].second));
+  ExpectToken(is, binary, "<NnetExample>");
+
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (!strcmp(token.c_str(), "<Lab1>")) {  // simple label format
+    std::vector<int32> simple_labels;
+    ReadIntegerVector(is, binary, &simple_labels);
+    labels.resize(simple_labels.size());
+    for (size_t i = 0; i < simple_labels.size(); i++) {
+      labels[i].resize(1);
+      labels[i][0].first = simple_labels[i];
+      labels[i][0].second = 1.0;
+    }
+  } else if (!strcmp(token.c_str(), "<Lab2>")) {  // generic label format
+    int32 num_frames;
+    ReadBasicType(is, binary, &num_frames);
+    KALDI_ASSERT(num_frames > 0);
+    labels.resize(num_frames);
+    for (int32 t = 0; t < num_frames; t++) {
+      int32 size;
+      ReadBasicType(is, binary, &size);
+      KALDI_ASSERT(size >= 0);
+      labels[t].resize(size);
+      for (int32 i = 0; i < size; i++) {
+        ReadBasicType(is, binary, &(labels[t][i].first));
+        ReadBasicType(is, binary, &(labels[t][i].second));
+      }
+    }
+  } else if (!strcmp(token.c_str(), "<Labels>")) {  // back-compatibility
+    labels.resize(1);  // old format had 1 frame of labels.
+    int32 size;
+    ReadBasicType(is, binary, &size);
+    labels[0].resize(size);
+    for (int32 i = 0; i < size; i++) {
+      ReadBasicType(is, binary, &(labels[0][i].first));
+      ReadBasicType(is, binary, &(labels[0][i].second));
+    }
+  } else {
+    KALDI_ERR << "Expected token <Lab1>, <Lab2> or <Labels>, got " << token;
   }
   ExpectToken(is, binary, "<InputFrames>");
   input_frames.Read(is, binary);
@@ -68,22 +131,79 @@ void NnetExample::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "</NnetExample>");
 }
 
-void NnetExample::SetLabelSingle(int32 pdf_id, BaseFloat weight) {
-  labels.clear();
-  labels.push_back(std::make_pair(pdf_id, weight));
+void NnetExample::SetLabelSingle(int32 frame, int32 pdf_id, BaseFloat weight) {
+  KALDI_ASSERT(static_cast<size_t>(frame) < labels.size());
+  labels[frame].clear();
+  labels[frame].push_back(std::make_pair(pdf_id, weight));
 }
 
-int32 NnetExample::GetLabelSingle(BaseFloat *weight) {
+int32 NnetExample::GetLabelSingle(int32 frame, BaseFloat *weight) {
   BaseFloat max = -1.0;
   int32 pdf_id = -1;
-  for (int32 i = 0; i < labels.size(); i++) {
-    if (labels[i].second > max) {
-      pdf_id = labels[i].first;
-      max = labels[i].second;
+  KALDI_ASSERT(static_cast<size_t>(frame) < labels.size());
+  for (int32 i = 0; i < labels[frame].size(); i++) {
+    if (labels[frame][i].second > max) {
+      pdf_id = labels[frame][i].first;
+      max = labels[frame][i].second;
     }
   }
   if (weight != NULL) *weight = max;
   return pdf_id;
+}
+
+
+
+static bool nnet_example_warned_left = false, nnet_example_warned_right = false;
+
+// Self-constructor that can reduce the number of frames and/or context.
+NnetExample::NnetExample(const NnetExample &input,
+                         int32 start_frame,
+                         int32 new_num_frames,
+                         int32 new_left_context,
+                         int32 new_right_context): spk_info(input.spk_info) {
+  int32 num_label_frames = input.labels.size();
+  if (start_frame < 0) start_frame = 0;  // start_frame is offset in the labeled
+                                         // frames.
+  KALDI_ASSERT(start_frame < num_label_frames);
+  if (start_frame + new_num_frames > num_label_frames || new_num_frames == -1)
+    new_num_frames = num_label_frames - start_frame;
+  // compute right-context of input.
+  int32 input_right_context =
+      input.input_frames.NumRows() - input.left_context - num_label_frames;
+  if (new_left_context == -1) new_left_context = input.left_context;
+  if (new_right_context == -1) new_right_context = input_right_context;
+  if (new_left_context > input.left_context) {
+    if (!nnet_example_warned_left) {
+      nnet_example_warned_left = true;
+      KALDI_WARN << "Requested left-context " << new_left_context
+                 << " exceeds input left-context " << input.left_context
+                 << ", will not warn again.";
+    }
+    new_left_context = input.left_context;
+  }
+  if (new_right_context > input_right_context) {
+    if (!nnet_example_warned_right) {
+      nnet_example_warned_right = true;
+      KALDI_WARN << "Requested right-context " << new_right_context
+                 << " exceeds input right-context " << input_right_context
+                 << ", will not warn again.";
+    }
+    new_right_context = input_right_context;
+  }
+
+  int32 new_tot_frames = new_left_context + new_num_frames + new_right_context,
+      left_frames_lost = (input.left_context - new_left_context) + start_frame;
+  
+  CompressedMatrix new_input_frames(input.input_frames,
+                                    left_frames_lost,
+                                    new_tot_frames,
+                                    0, input.input_frames.NumCols());
+  new_input_frames.Swap(&input_frames);  // swap with class-member.
+  left_context = new_left_context;  // set class-member.
+  labels.clear();
+  labels.insert(labels.end(),
+                input.labels.begin() + start_frame,
+                input.labels.begin() + start_frame + new_num_frames);
 }
 
 void ExamplesRepository::AcceptExamples(

@@ -26,8 +26,8 @@ echo "$0 $@"  # Print the command line for logging
 [ -f path.sh ] && . ./path.sh;
 . parse_options.sh || exit 1;
 
-if [ $# -ne 5 ]; then
-   echo "Usage: $0 [options] <data-dir> <lang-dir> <input-sat-dir> <input-MMI-model> <output-dir>"
+if [ $# -ne 4 -a $# -ne 5 ]; then
+   echo "Usage: $0 [options] <data-dir> <lang-dir> <sat-model-dir> [<MMI-model-dir>] <output-dir>"
    echo "e.g.: $0 data/train data/lang exp/tri3b exp/tri3b_mmi/final.mdl exp/tri3b_online"
    echo "main options (for others, see top of script file)"
    echo "  --feature-type <mfcc|plp>                        # Type of the base features; "
@@ -50,16 +50,24 @@ if [ $# -ne 5 ]; then
 fi
 
 
-data=$1
-lang=$2
-srcdir=$3
-mmi_model=$4
-dir=$5
+if [ $# -eq 5 ]; then
+  data=$1
+  lang=$2
+  srcdir=$3
+  mmi_model=$4
+  dir=$5
+else
+  data=$1
+  lang=$2
+  srcdir=$3
+  mmi_model=$srcdir/final.mdl
+  dir=$4
+fi
 
 
 for f in $srcdir/final.mdl $srcdir/ali.1.gz $data/feats.scp $lang/phones.txt \
     $mmi_model $online_cmvn_config; do
-  [ ! -f $f ] && echo "train_deltas.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
 nj=`cat $srcdir/num_jobs` || exit 1;

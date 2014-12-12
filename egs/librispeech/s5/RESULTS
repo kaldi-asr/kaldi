@@ -160,3 +160,35 @@
 %WER 17.16 [ 8982 / 52343, 855 ins, 1421 del, 6706 sub ] exp/nnet2_online/nnet_a_online/decode_test_other_tgmed/wer_12
 %WER 18.90 [ 9891 / 52343, 798 ins, 1786 del, 7307 sub ] exp/nnet2_online/nnet_a_online/decode_test_other_tgsmall/wer_13
 
+# RNNLM rescoring of tri6b
+
+%WER 7.50 [ 4080 / 54402, 617 ins, 416 del, 3047 sub ] exp/tri6b/decode_tglarge_dev_clean/wer_14
+%WER 7.09 [ 3859 / 54402, 611 ins, 354 del, 2894 sub ] exp/tri6b/decode_tglarge_dev_clean_rnnlm_h150_me5-1000_L0.25/wer_14
+%WER 7.29 [ 3968 / 54402, 661 ins, 332 del, 2975 sub ] exp/tri6b/decode_tglarge_dev_clean_rnnlm_h150_me5-1000_L0.5/wer_13
+%WER 7.73 [ 4205 / 54402, 709 ins, 349 del, 3147 sub ] exp/tri6b/decode_tglarge_dev_clean_rnnlm_h150_me5-1000_L0.75/wer_12
+
+%WER 21.94 [ 11180 / 50948, 1264 ins, 1506 del, 8410 sub ] exp/tri6b/decode_tglarge_dev_other/wer_16
+%WER 21.36 [ 10881 / 50948, 1309 ins, 1362 del, 8210 sub ] exp/tri6b/decode_tglarge_dev_other_rnnlm_h150_me5-1000_L0.25/wer_16
+%WER 21.29 [ 10848 / 50948, 1330 ins, 1324 del, 8194 sub ] exp/tri6b/decode_tglarge_dev_other_rnnlm_h150_me5-1000_L0.5/wer_16
+%WER 21.75 [ 11082 / 50948, 1351 ins, 1346 del, 8385 sub ] exp/tri6b/decode_tglarge_dev_other_rnnlm_h150_me5-1000_L0.75/wer_17
+
+%WER 9.39 [ 5106 / 54402, 597 ins, 648 del, 3861 sub ] exp/tri6b/decode_tgmed_dev_clean/wer_14
+%WER 8.09 [ 4400 / 54402, 564 ins, 517 del, 3319 sub ] exp/tri6b/decode_tgmed_dev_clean_rnnlm_h150_me5-1000_L0.25/wer_15
+%WER 8.00 [ 4350 / 54402, 609 ins, 472 del, 3269 sub ] exp/tri6b/decode_tgmed_dev_clean_rnnlm_h150_me5-1000_L0.5/wer_15
+%WER 8.21 [ 4467 / 54402, 692 ins, 415 del, 3360 sub ] exp/tri6b/decode_tgmed_dev_clean_rnnlm_h150_me5-1000_L0.75/wer_12
+
+%WER 25.16 [ 12816 / 50948, 1175 ins, 2076 del, 9565 sub ] exp/tri6b/decode_tgmed_dev_other/wer_16
+%WER 23.28 [ 11861 / 50948, 1289 ins, 1546 del, 9026 sub ] exp/tri6b/decode_tgmed_dev_other_rnnlm_h150_me5-1000_L0.25/wer_14
+%WER 23.03 [ 11732 / 50948, 1341 ins, 1467 del, 8924 sub ] exp/tri6b/decode_tgmed_dev_other_rnnlm_h150_me5-1000_L0.5/wer_14
+%WER 23.12 [ 11779 / 50948, 1351 ins, 1476 del, 8952 sub ] exp/tri6b/decode_tgmed_dev_other_rnnlm_h150_me5-1000_L0.75/wer_15
+
+%WER 10.66 [ 5800 / 54402, 558 ins, 854 del, 4388 sub ] exp/tri6b/decode_tgsmall_dev_clean/wer_15
+%WER 8.78 [ 4779 / 54402, 586 ins, 588 del, 3605 sub ] exp/tri6b/decode_tgsmall_dev_clean_rnnlm_h150_me5-1000_L0.25/wer_14
+%WER 8.50 [ 4624 / 54402, 661 ins, 505 del, 3458 sub ] exp/tri6b/decode_tgsmall_dev_clean_rnnlm_h150_me5-1000_L0.5/wer_13
+%WER 8.56 [ 4659 / 54402, 674 ins, 485 del, 3500 sub ] exp/tri6b/decode_tgsmall_dev_clean_rnnlm_h150_me5-1000_L0.75/wer_13
+
+%WER 27.18 [ 13850 / 50948, 1192 ins, 2340 del, 10318 sub ] exp/tri6b/decode_tgsmall_dev_other/wer_15
+%WER 24.72 [ 12596 / 50948, 1291 ins, 1803 del, 9502 sub ] exp/tri6b/decode_tgsmall_dev_other_rnnlm_h150_me5-1000_L0.25/wer_14
+%WER 24.18 [ 12317 / 50948, 1284 ins, 1732 del, 9301 sub ] exp/tri6b/decode_tgsmall_dev_other_rnnlm_h150_me5-1000_L0.5/wer_15
+%WER 24.19 [ 12323 / 50948, 1327 ins, 1686 del, 9310 sub ] exp/tri6b/decode_tgsmall_dev_other_rnnlm_h150_me5-1000_L0.75/wer_15
+

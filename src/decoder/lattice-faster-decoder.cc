@@ -352,9 +352,9 @@ void LatticeFasterDecoder::PruneForwardLinksFinal() {
   KALDI_ASSERT(!active_toks_.empty());
   int32 frame_plus_one = active_toks_.size() - 1;
 
-  if (active_toks_[frame_plus_one].toks == NULL )  // empty list; should not happen.
+  if (active_toks_[frame_plus_one].toks == NULL)  // empty list; should not happen.
     KALDI_WARN << "No tokens alive at end of file";
-
+  
   typedef unordered_map<Token*, BaseFloat>::const_iterator IterType;
   ComputeFinalCosts(&final_costs_, &final_relative_cost_, &final_best_cost_);
   decoding_finalized_ = true;
@@ -430,7 +430,6 @@ void LatticeFasterDecoder::PruneForwardLinksFinal() {
       tok->extra_cost = tok_extra_cost; // will be +infinity or <= lattice_beam_.
     }
   } // while changed
-
 }
 
 BaseFloat LatticeFasterDecoder::FinalRelativeCost() const {

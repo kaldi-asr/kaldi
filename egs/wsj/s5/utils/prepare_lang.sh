@@ -196,7 +196,8 @@ cat $srcdir/nonsilence_phones.txt | utils/apply_map.pl $tmpdir/phone_map.txt | \
 cp $srcdir/optional_silence.txt $dir/phones/optional_silence.txt
 cp $dir/phones/silence.txt $dir/phones/context_indep.txt
 
-cat $srcdir/extra_questions.txt | utils/apply_map.pl $tmpdir/phone_map.txt \
+# if extra_questions.txt is empty, it's OK.
+cat $srcdir/extra_questions.txt 2>/dev/null | utils/apply_map.pl $tmpdir/phone_map.txt \
   >$dir/phones/extra_questions.txt
 
 # Want extra questions about the word-start/word-end stuff. Make it separate for

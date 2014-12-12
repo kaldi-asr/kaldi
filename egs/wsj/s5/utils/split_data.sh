@@ -42,14 +42,14 @@ utt2spks=""
 texts=""
 
 nu=`cat $data/utt2spk | wc -l`
-nf=`cat $data/feats.scp | wc -l`
+nf=`cat $data/feats.scp 2>/dev/null | wc -l`
 nt=`cat $data/text 2>/dev/null | wc -l` # take it as zero if no such file
-if [ $nu -ne $nf ]; then
+if [ -f $data/feats.scp ] && [ $nu -ne $nf ]; then
   echo "split_data.sh: warning, #lines is (utt2spk,feats.scp) is ($nu,$nf); this script "
   echo " may produce incorrectly split data."
   echo "use utils/fix_data_dir.sh to fix this."
 fi
-if [ $nt -ne 0 -a $nu -ne $nt ]; then
+if [ -f $data/text ] && [ $nu -ne $nt ]; then
   echo "split_data.sh: warning, #lines is (utt2spk,text) is ($nu,$nt); this script "
   echo " may produce incorrectly split data."
   echo "use utils/fix_data_dir.sh to fix this."
@@ -89,7 +89,7 @@ fi
 
 utils/split_scp.pl $utt2spk_opt $data/utt2spk $utt2spks || exit 1
 
-utils/split_scp.pl $utt2spk_opt $data/feats.scp $feats || exit 1
+[ -f $data/feats.scp ] && utils/split_scp.pl $utt2spk_opt $data/feats.scp $feats
 
 [ -f $data/text ] && utils/split_scp.pl $utt2spk_opt $data/text $texts
 

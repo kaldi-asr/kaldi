@@ -79,7 +79,7 @@ while true; do
         
     # Check that Boolean-valued arguments are really Boolean.
       if $was_bool && [[ "$2" != "true" && "$2" != "false" ]]; then
-        echo "$0: expected \"true\" or \"false\": --$name $2" 1>&2
+        echo "$0: expected \"true\" or \"false\": $1 $2" 1>&2
         exit 1;
       fi
       shift 2;

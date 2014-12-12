@@ -68,6 +68,10 @@ class AmNnet {
 
   std::string Info() const;
 
+  /// This function is used when doing transfer learning to a new system.
+  /// It will set the priors to be all the same. 
+  void ResizeOutputLayer(int32 new_num_pdfs);
+  
  private:
   const AmNnet &operator = (const AmNnet &other); // Disallow.
   Nnet nnet_;

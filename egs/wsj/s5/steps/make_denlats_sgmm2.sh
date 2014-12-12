@@ -66,14 +66,14 @@ oov=`cat $lang/oov.int` || exit 1;
 
 mkdir -p $dir
 
-cp -r $lang $dir/
+cp -rH $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
 new_lang="$dir/"$(basename "$lang")
 echo "Making unigram grammar FST in $new_lang"
 cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
   awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n"); }' | \
-  utils/make_unigram_grammar.pl | fstcompile > $new_lang/G.fst \
+  utils/make_unigram_grammar.pl | fstcompile | fstarcsort --sort_type=ilabel > $new_lang/G.fst \
    || exit 1;
 
 # mkgraph.sh expects a whole directory "lang", so put everything in one directory...
@@ -88,7 +88,7 @@ else
 fi
 
 if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-echo "align_si.sh: feature type is $feat_type"
+echo "$0: feature type is $feat_type"
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;

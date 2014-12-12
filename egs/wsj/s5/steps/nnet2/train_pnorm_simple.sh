@@ -316,18 +316,18 @@ while [ $x -lt $num_iters ]; do
 
       echo "Getting average posterior for purposes of adjusting the priors."
       # Note: this just uses CPUs, using a smallish subset of data.
-      rm $dir/post.*.vec 2>/dev/null
-      $cmd JOB=1:$num_jobs_nnet $dir/log/get_post.JOB.log \
+      rm $dir/post.$x.*.vec 2>/dev/null
+      $cmd JOB=1:$num_jobs_nnet $dir/log/get_post.$x.JOB.log \
         nnet-subset-egs --n=$prior_subset_size ark:$prev_egs_dir/egs.JOB.0.ark ark:- \| \
         nnet-compute-from-egs "nnet-to-raw-nnet $dir/$x.mdl -|" ark:- ark:- \| \
-        matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.JOB.vec || exit 1;
+        matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;
 
-      sleep 3;  # make sure there is time for $dir/post.*.vec to appear.
+      sleep 3;  # make sure there is time for $dir/post.$x.*.vec to appear.
 
       $cmd $dir/log/vector_sum.log \
-        vector-sum $dir/post.*.vec $dir/post.vec || exit 1;
+        vector-sum $dir/post.$x.*.vec $dir/post.$x.vec || exit 1;
 
-      rm $dir/post.*.vec;
+      rm $dir/post.$x.*.vec;
 
       echo "Re-adjusting priors based on computed posteriors"
       $cmd $dir/log/adjust_priors.$x.log \
@@ -501,22 +501,22 @@ fi
 if [ $stage -le $[$num_iters+1] ]; then
   echo "Getting average posterior for purposes of adjusting the priors."
   # Note: this just uses CPUs, using a smallish subset of data.
-  rm $dir/post.*.vec 2>/dev/null
-  $cmd JOB=1:$num_jobs_nnet $dir/log/get_post.JOB.log \
+  rm $dir/post.$x.*.vec 2>/dev/null
+  $cmd JOB=1:$num_jobs_nnet $dir/log/get_post.$x.JOB.log \
     nnet-subset-egs --n=$prior_subset_size ark:$cur_egs_dir/egs.JOB.0.ark ark:- \| \
     nnet-compute-from-egs "nnet-to-raw-nnet $dir/final.mdl -|" ark:- ark:- \| \
-    matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.JOB.vec || exit 1;
+    matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;
 
-  sleep 3;  # make sure there is time for $dir/post.*.vec to appear.
+  sleep 3;  # make sure there is time for $dir/post.$x.*.vec to appear.
 
   $cmd $dir/log/vector_sum.log \
-   vector-sum $dir/post.*.vec $dir/post.vec || exit 1;
+   vector-sum $dir/post.$x.*.vec $dir/post.$x.vec || exit 1;
 
-  rm $dir/post.*.vec;
+  rm $dir/post.$x.*.vec;
 
   echo "Re-adjusting priors based on computed posteriors"
   $cmd $dir/log/adjust_priors.final.log \
-    nnet-adjust-priors $dir/final.mdl $dir/post.vec $dir/final.mdl || exit 1;
+    nnet-adjust-priors $dir/final.mdl $dir/post.$x.vec $dir/final.mdl || exit 1;
 fi
 
 
@@ -538,7 +538,7 @@ if $cleanup; then
 
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
-    if [ $[$x%100] -ne 0 ] && [ $x -ne $num_iters ]; then
+    if [ $[$x%100] -ne 0 ] && [ $x -ne $num_iters ] && [ -f $dir/$x.mdl ]; then
        # delete all but every 100th model; don't delete the ones which combine to form the final model.
       rm $dir/$x.mdl
     fi

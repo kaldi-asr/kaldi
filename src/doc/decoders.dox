@@ -253,7 +253,7 @@ between a large grammar and the small grammar.  Note that while we use the word
 language model.  Imagine that the small grammar is G (an FST), and the large one
 is G'.  The basic idea is to search, in decoding time, the graph formed by
 the triple composition \f$ HCLG \circ G^- \circ G' \f$, where \f$G^T-\f$
-is like \f$G\f$ but with its scores reversed.
+is like \f$G\f$ but with its scores negated.
 We'll give the high-level idea of how we do this first.
 We construct an on-demand composed FST, call it F, which is \f$F = G^- \circ G' \f$.
 Then while decoding, we construct on-demand the FST \f$HCLG \circ F\f$.  The

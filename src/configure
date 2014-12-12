@@ -572,7 +572,7 @@ function linux_configure_dynamic {
       fi
     fi
   done
-  if [ "$ATLASLIBS" == "" ]; then  
+  if [ "$ATLASLIBS" == "" ]; then
     echo Could not find any libraries $ATLASLIBDIR/{liblapack,liblapack_atlas,libclapack} that seem to be an ATLAS CLAPACK library.
     return 1;
   fi
@@ -838,8 +838,6 @@ if [ "`uname`" == "Linux" ]; then
       failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
     fi
     echo "Your math library seems to be OpenBLAS.  Configuring appropriately."
-    cat makefiles/linux_openblas.mk >> kaldi.mk
-    fix_cxx_flag
     if $static_math; then
       echo "Configuring static OpenBlas since --static-math=yes"
       OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a -lgfortran"
@@ -849,7 +847,8 @@ if [ "`uname`" == "Linux" ]; then
     fi
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
     echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
-    echo "Warning (OPENBLAS): this part of the configure process is not properly tested and will not work."
+    cat makefiles/linux_openblas.mk >> kaldi.mk
+    fix_cxx_flag
     $use_cuda && linux_configure_cuda
     linux_configure_speex
     echo "Successfully configured OpenBLAS from $OPENBLASROOT."

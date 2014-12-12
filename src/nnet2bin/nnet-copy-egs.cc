@@ -66,6 +66,15 @@ int main(int argc, char *argv[]) {
     bool random = false;
     int32 srand_seed = 0;
     BaseFloat keep_proportion = 1.0;
+
+    // The following config variables, if set, can be used to extract a single
+    // frame of labels from a multi-frame example, and/or to reduce the amount
+    // of context.
+    int32 left_context = -1, right_context = -1;
+    // you can set frame to a number to select a single frame with a particular
+    // offset, or to 'random' to select a random single frame.
+    std::string frame_str;
+    
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
                 "archives randomly, not round-robin.");
@@ -75,10 +84,41 @@ int main(int argc, char *argv[]) {
                 "of times equal to floor(keep-proportion) or ceil(keep-proportion).");
     po.Register("srand", &srand_seed, "Seed for random number generator "
                 "(only relevant if --random=true or --keep-proportion != 1.0)");
+    po.Register("frame", &frame_str, "This option can be used to select a single "
+                "frame from each multi-frame example.  Set to a number 0, 1, etc. "
+                "to select a frame with a given index, or 'random' to select a "
+                "random frame.");
+    po.Register("left-context", &left_context, "Can be used to truncate the "
+                "feature left-context that we output.");
+    po.Register("right-context", &right_context, "Can be used to truncate the "
+                "feature right-context that we output.");
+
     
     po.Read(argc, argv);
 
     srand(srand_seed);
+
+    int32 frame = -1;  // -1 means don't do any selection (--frame option unse),
+                       // --2 means random selection.
+    if (frame_str != "") {
+      if (!ConvertStringToInteger(frame_str, &frame)) {
+        if (frame_str == "random") {
+          frame = -2;
+        } else {
+          KALDI_ERR << "Invalid --frame option: '" << frame_str << "'";
+        }
+      } else {
+        KALDI_ASSERT(frame >= 0);
+      }
+    }
+    // the following derived variables will be used if the frame, left_context,
+    // or right_context options were set (the frame option will be more common).
+    bool copy_eg = (frame != -1 || left_context != -1 || right_context != -1);
+    int32 start_frame = -1, num_frames = -1;
+    if (frame != -1) {  // frame >= 0 or frame == -2 meaning random frame
+      num_frames = 1;
+      start_frame = frame;  // value will be ignored if frame == -2.
+    }
     
     if (po.NumArgs() < 2) {
       po.PrintUsage();
@@ -97,12 +137,31 @@ int main(int argc, char *argv[]) {
     
     int64 num_read = 0, num_written = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
-      int32 count = GetCount(keep_proportion);
+      // count is normally 1; could be 0, or possibly >1.
+      int32 count = GetCount(keep_proportion);  
+      std::string key = example_reader.Key();
+      const NnetExample &eg = example_reader.Value();
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
-        example_writers[index]->Write(example_reader.Key(),
-                                      example_reader.Value());
-        num_written++;
+        if (!copy_eg) {
+          example_writers[index]->Write(key, eg);
+          num_written++;
+        } else { // the --frame option or related options were set.
+          if (frame == -2)  // --frame=random was set -> choose random frame
+            start_frame = RandInt(0, eg.labels.size() - 1);
+          if (start_frame == -1 || start_frame < eg.labels.size()) {
+            // note: we'd only reach here with start_frame == -1 if the
+            // --left-context or --right-context options were set (reducing
+            // context).  -1 means use whatever we had in the original eg.
+            NnetExample eg_mod(eg, start_frame, num_frames,
+                               left_context, right_context);
+            example_writers[index]->Write(key, eg_mod);
+            num_written++;            
+          }
+          // else this frame was out of range for this eg; we don't make this an
+          // error, because it can happen for truncated multi-frame egs that
+          // were created at the end of an utterance.
+        }
       }
     }
     

@@ -21,6 +21,8 @@ num_jobs_nnet=16    # Number of neural net jobs to run in parallel
 stage=0
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time. 
 splice_width=4 # meaning +- 4 frames on each side for second LDA
+left_context=
+right_context=
 random_copy=false
 online_ivector_dir=
 ivector_randomize_prob=0.0 # if >0.0, randomizes iVectors during training with
@@ -49,7 +51,8 @@ if [ $# != 4 ]; then
   echo "  --feat-type <lda|raw>                            # (by default it tries to guess).  The feature type you want"
   echo "                                                   # to use as input to the neural net."
   echo "  --splice-width <width;4>                         # Number of frames on each side to append for feature input"
-  echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
+  echo "  --left-context <width;4>                         # Number of frames on left side to append for feature input, overrides splice-width"
+  echo "  --right-context <width;4>                        # Number of frames on right side to append for feature input, overrides splice-width"
   echo "  --num-frames-diagnostic <#frames;4000>           # Number of frames used in computing (train,valid) diagnostics"
   echo "  --num-valid-frames-combine <#frames;10000>       # Number of frames used in getting combination weights at the"
   echo "                                                   # very end."
@@ -64,6 +67,8 @@ lang=$2  # kept for historical reasons, but never used.
 alidir=$3
 dir=$4
 
+[ -z "$left_context" ] && left_context=$splice_width
+[ -z "$right_context" ] && right_context=$splice_width
 
 
 # Check some files.
@@ -100,7 +105,7 @@ if [ -f $data/utt2uniq ]; then
 fi
 
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-     head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+   utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
 
@@ -180,7 +185,7 @@ done
 
 remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
 
-nnet_context_opts="--left-context=$splice_width --right-context=$splice_width"
+nnet_context_opts="--left-context=$left_context --right-context=$right_context"
 mkdir -p $dir/egs
 
 if [ $stage -le 2 ]; then
@@ -204,7 +209,7 @@ if [ $stage -le 2 ]; then
      "ark,s,cs:gunzip -c $dir/ali_special.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/egs/train_subset_all.egs" || touch $dir/.error &
   wait;
-  [ -f $dir/.error ] && exit 1;
+  [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "Getting subsets of validation examples for diagnostics and combination."
   $cmd $dir/log/create_valid_subset_combine.log \
     nnet-subset-egs --n=$num_valid_frames_combine ark:$dir/egs/valid_all.egs \

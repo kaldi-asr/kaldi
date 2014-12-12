@@ -128,6 +128,10 @@ fi
 # Generate state-level lattice which we can rescore.  This is done with the alignment
 # model and no speaker-vectors.
 if [ $stage -le 2 ]; then
+  if [ -f "$graphdir/num_pdfs" ]; then
+    [ "`cat $graphdir/num_pdfs`" -eq `am-info --print-args=false $alignment_model | grep pdfs | awk '{print $NF}'` ] || \
+      { echo "Mismatch in number of pdfs with $alignment_model"; exit 1; }
+  fi
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode_pass1.JOB.log \
     sgmm2-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --determinize-lattice=false --allow-partial=true \

@@ -74,8 +74,8 @@ int main(int argc, char *argv[]) {
         examples_rspecifier = po.GetArg(2),
         nnet_wxfilename = po.GetArg(3);
 
-    int64 num_examples = 0;
-
+    int64 num_examples;
+    
     {
       TransitionModel trans_model;
       AmNnet am_nnet;
@@ -87,17 +87,11 @@ int main(int argc, char *argv[]) {
       }
 
       if (zero_stats) am_nnet.GetNnet().ZeroStats();
-    
-      { // want to make sure this object deinitializes before
-        // we write the model, as it does something in the destructor.
-        NnetSimpleTrainer trainer(train_config,
-                                  &(am_nnet.GetNnet()));
-      
-        SequentialNnetExampleReader example_reader(examples_rspecifier);
 
-        for (; !example_reader.Done(); example_reader.Next(), num_examples++)
-          trainer.TrainOnExample(example_reader.Value());  // It all happens here!
-      }
+      SequentialNnetExampleReader example_reader(examples_rspecifier);
+      
+      num_examples = TrainNnetSimple(train_config, &(am_nnet.GetNnet()),
+                                     &example_reader);
     
       {
         Output ko(nnet_wxfilename, binary_write);

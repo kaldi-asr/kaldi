@@ -226,6 +226,9 @@ struct OnlineCmvnState {
 
   // Copy constructor
   OnlineCmvnState(const OnlineCmvnState &other); 
+
+  void Write(std::ostream &os, bool binary) const;
+  void Read(std::istream &is, bool binary);
   
   // Use the default assignment operator.
 };
@@ -253,7 +256,14 @@ class OnlineCmvn: public OnlineFeatureInterface {
   // Next, functions that are not in the interface.
   //
 
-  /// Initializer that sets the cmvn state.
+  /// Initializer that sets the cmvn state.  If you don't have previous
+  /// utterances from the same speaker you are supposed to initialize the CMVN
+  /// state from some global CMVN stats, which you can get from summing all cmvn
+  /// stats you have in your training data using "sum-matrix".  This just gives
+  /// it a reasonable starting point at the start of the file.
+  /// If you do have previous utterances from the same speaker or at least a
+  /// similar environment, you are supposed to initialize it by calling GetState
+  /// from the previous utterance
   OnlineCmvn(const OnlineCmvnOptions &opts,
              const OnlineCmvnState &cmvn_state,
              OnlineFeatureInterface *src);

@@ -12,6 +12,9 @@
 
 # Begin configuration section.
 stage=-5
+exit_stage=-100 # you can use this to require it to exit at the
+                # beginning of a specific stage.  Not all values are
+                # supported.
 fmllr_update_type=full
 cmd=run.pl
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
@@ -161,6 +164,8 @@ if [ $stage -le -1 ]; then
     convert-ali $phone_map_opt $alidir/final.mdl $dir/1.mdl $dir/tree \
      "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
+
+[ "$exit_stage" -eq 0 ] && echo "$0: Exiting early: --exit-stage $exit_stage" && exit 1;
 
 if [ $stage -le 0 ] && [ "$realign_iters" != "" ]; then
   echo "$0: Compiling graphs of transcripts"

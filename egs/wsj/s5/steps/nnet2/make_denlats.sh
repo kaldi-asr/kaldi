@@ -32,7 +32,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 4 ]; then
   echo "Usage: steps/make_denlats.sh [options] <data-dir> <lang-dir> <src-dir> <exp-dir>"
-  echo "  e.g.: steps/make_denlats.sh data/train data/lang exp/tri1 exp/tri1_denlats"
+  echo "  e.g.: steps/make_denlats.sh data/train data/lang exp/nnet4 exp/nnet4_denlats"
   echo "Works for (delta|lda) features, and (with --transform-dir option) such features"
   echo " plus transforms."
   echo ""
@@ -68,14 +68,12 @@ thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 mkdir -p $dir/log
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
 oov=`cat $lang/oov.int` || exit 1;
 
-mkdir -p $dir
-
-cp -r $lang $dir/
+cp -rH $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
 new_lang="$dir/"$(basename "$lang")
@@ -91,7 +89,7 @@ else
   echo "Making unigram grammar FST in $new_lang"
   cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
    awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n"); }' | \
-    utils/make_unigram_grammar.pl | fstcompile > $new_lang/G.fst \
+    utils/make_unigram_grammar.pl | fstcompile | fstarcsort --sort_type=ilabel > $new_lang/G.fst \
     || exit 1;
   utils/mkgraph.sh $new_lang $srcdir $dir/dengraph || exit 1;
 fi

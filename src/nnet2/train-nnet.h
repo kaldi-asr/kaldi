@@ -45,50 +45,18 @@ struct NnetSimpleTrainerConfig {
 };
 
 
-// Class NnetSimpleTrainer doesn't do much apart from batching up the
-// input into minibatches and giving it to the neural net code 
-// to call Update(), which will typically do stochastic gradient
-// descent.  It also reports training-set objective-function values.
-// It takes in the training examples through the call
-// "TrainOnExample()".
-class NnetSimpleTrainer {
- public:
-  NnetSimpleTrainer(const NnetSimpleTrainerConfig &config,
-                    Nnet *nnet);
-  
-  /// TrainOnExample will take the example and add it to a buffer;
-  /// if we've reached the minibatch size it will do the training.
-  void TrainOnExample(const NnetExample &value);
-
-  ~NnetSimpleTrainer();
- private:
-  KALDI_DISALLOW_COPY_AND_ASSIGN(NnetSimpleTrainer);
-  
-  void TrainOneMinibatch();
-  
-  // The following function is called by TrainOneMinibatch() when we enter a new
-  // phase.  A phase is just a certain number of epochs, and now matters only
-  // for diagnostics (originally it meant something more).
-  void BeginNewPhase(bool first_time);
-  
-  // Things we were given in the initializer:
-  NnetSimpleTrainerConfig config_;
-
-  Nnet *nnet_; // the nnet we're training.
-
-  // State information:
-  int32 num_phases_;
-  int32 minibatches_seen_this_phase_;
-  std::vector<NnetExample> buffer_;
-
-  double logprob_this_phase_; // Needed for accumulating train log-prob on each phase.
-  double weight_this_phase_; // count corresponding to the above.
-  
-  double logprob_total_;
-  double weight_total_;
-};
-
-
+/// Train on all the examples it can read from the reader.  This does training
+/// in a single thread, but it uses a separate thread to read in the examples
+/// and format the input data on the CPU; this saves us time when using GPUs.
+/// Returns the number of examples processed.
+/// Outputs to tot_weight and tot_logprob_per_frame, if non-NULL, the total
+/// weight of the examples (typically equal to the number of examples) and the
+/// total logprob objective function.
+int64 TrainNnetSimple(const NnetSimpleTrainerConfig &config,
+                      Nnet *nnet,
+                      SequentialNnetExampleReader *reader,
+                      double *tot_weight = NULL,
+                      double *tot_logprob = NULL);
 
 } // namespace nnet2
 } // namespace kaldi

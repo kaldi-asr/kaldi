@@ -95,7 +95,8 @@ ali-to-phones $alidir/final.mdl "ark:gunzip -c $alidir/ali.*.gz|" ark,t:- | \
       $cost = -log($c / $hist); # cost on FST arc.      
       print "$src $cost\n"; # final-prob.
     }
-  } ' | fstcompile --acceptor=true > $lang_out/G.fst
+  } ' | fstcompile --acceptor=true | \
+    fstarcsort --sort_type=ilabel > $lang_out/G.fst
 
 # symbols for phones and words are the same.
 # Neither has disambig symbols.

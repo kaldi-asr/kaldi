@@ -205,6 +205,9 @@ struct OnlineIvectorExtractorAdaptationState {
   /// by that factor.]
   void LimitFrames(BaseFloat max_remembered_frames,
                    BaseFloat posterior_scale);
+
+  void Write(std::ostream &os, bool binary) const;
+  void Read(std::istream &is, bool binary);
 };
 
 

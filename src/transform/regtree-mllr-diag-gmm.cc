@@ -351,7 +351,7 @@ void RegtreeMllrDiagGmmAccs::Update(const RegressionTree &regtree,
                   << ((obj_new - obj_old)/regclass_stats[rclass_index]->beta_)
                   << " over " << regclass_stats[rclass_index]->beta_
                   << " frames.";
-        AssertGeq(obj_new, obj_old, 1e-5);
+        KALDI_ASSERT(obj_new >= obj_old - (std::abs(obj_new)+std::abs(obj_old))*1.0e-05);
         tot_t += regclass_stats[rclass_index]->beta_;
         tot_auxf_impr += obj_new - obj_old;
       }
@@ -378,7 +378,7 @@ void RegtreeMllrDiagGmmAccs::Update(const RegressionTree &regtree,
         KALDI_LOG << "MLLR: base-class " << (bclass_index)
                   << ": Auxiliary function impr per frame is "
                   << ((obj_new-obj_old)/baseclass_stats_[bclass_index]->beta_);
-        AssertGeq(obj_new, obj_old, 1e-5);
+        KALDI_ASSERT(obj_new >= obj_old - (std::abs(obj_new)+std::abs(obj_old))*1.0e-05);
         tot_t += baseclass_stats_[bclass_index]->beta_;
         tot_auxf_impr += obj_new - obj_old;
       } else {

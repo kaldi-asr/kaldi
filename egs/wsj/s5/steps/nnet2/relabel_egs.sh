@@ -68,8 +68,8 @@ if [ $stage -le 0 ]; then
     done
   done
 
-  $cmd JOB=1:$num_jobs_nnet $dir/log/relabel_egs.JOB.log nnet-relabel-egs \
-    "ark:gunzip -c $alignments | ali-to-pdf $model ark:- ark:- |" \
+  $cmd JOB=1:$num_jobs_nnet $dir/log/relabel_egs.JOB.log \
+    nnet-relabel-egs "ark:gunzip -c $alignments | ali-to-pdf $model ark:- ark:- |" \
     $egs_in $egs_out || exit 1
 fi
 
@@ -82,9 +82,9 @@ if [ $stage -le 1 ]; then
     egs_out="$egs_out ark:$dir/$x"
   done
 
-  $cmd $dir/log/relabel_egs_extra.log nnet-relabel-egs \
-    "ark:gunzip -c $alignments | ali-to-pdf $model ark:- ark:- |" \
+  $cmd $dir/log/relabel_egs_extra.log \
+    nnet-relabel-egs "ark:gunzip -c $alignments | ali-to-pdf $model ark:- ark:- |" \
     $egs_in $egs_out || exit 1
 fi
 
-echo "$0: Finished preparing training examples"
+echo "$0: Finished relabeling training examples"

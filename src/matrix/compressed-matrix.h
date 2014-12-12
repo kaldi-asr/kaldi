@@ -1,7 +1,7 @@
 // matrix/compressed-matrix.h
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
-//                 Frantisek Skala
+//                 Frantisek Skala, Wei Shi
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -39,6 +39,8 @@ namespace kaldi {
 /// and store them as 16-bit integers; we then encode each value in
 /// the column as a single byte, in 3 separate ranges with different
 /// linear encodings (0-25th, 25-50th, 50th-100th).
+/// If the matrix has 8 rows or fewer, we simply store all values as
+/// uint16.
 
 class CompressedMatrix {
  public:
@@ -49,20 +51,31 @@ class CompressedMatrix {
   template<typename Real>
   CompressedMatrix(const MatrixBase<Real> &mat): data_(NULL) { CopyFromMat(mat); }
 
+  /// Initializer that can be used to select part of an existing
+  /// CompressedMatrix without un-compressing and re-compressing (note: unlike
+  /// similar initializers for class Matrix, it doesn't point to the same memory
+  /// location).
+  CompressedMatrix(const CompressedMatrix &mat,
+                   const MatrixIndexT row_offset,
+                   const MatrixIndexT num_rows,
+                   const MatrixIndexT col_offset,
+                   const MatrixIndexT num_cols);
+
+  void *Data() const { return this->data_; }
 
   /// This will resize *this and copy the contents of mat to *this.
   template<typename Real>
   void CopyFromMat(const MatrixBase<Real> &mat);
-  
+
   CompressedMatrix(const CompressedMatrix &mat);
-  
+
   CompressedMatrix &operator = (const CompressedMatrix &mat); // assignment operator.
 
   template<typename Real>
   CompressedMatrix &operator = (const MatrixBase<Real> &mat); // assignment operator.
   
-  // Note: mat must have the correct size, CopyToMat no longer attempts
-  // to resize the matrix
+  /// Copies contents to matrix.  Note: mat must have the correct size,
+  /// CopyToMat no longer attempts to resize it.
   template<typename Real>
   void CopyToMat(MatrixBase<Real> *mat) const;
 
@@ -89,7 +102,7 @@ class CompressedMatrix {
   void CopyColToVec(MatrixIndexT col, VectorBase<Real> *v) const;
 
   /// Copies submatrix of compressed matrix into matrix dest.
-  /// Submatrix starts at row row_offset and column column_offset and it' size
+  /// Submatrix starts at row row_offset and column column_offset and its size
   /// is defined by size of provided matrix dest
   template<typename Real>
   void CopyToMat(int32 row_offset,
@@ -106,18 +119,18 @@ class CompressedMatrix {
   // sufficient for float.
   static void *AllocateData(int32 num_bytes);
 
+  // the "format" will be 1 for the original format where each column has a
+  // PerColHeader, and 2 for the format now used for matrices with 8 or fewer
+  // rows, where everything is represented as 16-bit integers.
   struct GlobalHeader {
+    int32 format;
     float min_value;
     float range;
     int32 num_rows;
     int32 num_cols;
   };
 
-  static MatrixIndexT DataSize(const GlobalHeader &header) {
-    // Returns size in bytes of the data.
-    return sizeof(GlobalHeader) +
-        header.num_cols * (sizeof(PerColHeader) + header.num_rows);
-  }
+  static MatrixIndexT DataSize(const GlobalHeader &header);
 
   struct PerColHeader {
     uint16 percentile_0;
@@ -140,7 +153,7 @@ class CompressedMatrix {
                                      float value);
 
   static inline float Uint16ToFloat(const GlobalHeader &global_header,
-                                     uint16 value);
+                                    uint16 value);
   static inline unsigned char FloatToChar(float p0, float p25,
                                           float p75, float p100,
                                           float value);

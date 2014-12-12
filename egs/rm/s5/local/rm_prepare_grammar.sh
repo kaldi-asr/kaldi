@@ -12,7 +12,7 @@ tmpdir=data/local/tmp
 . ./path.sh || exit 1; # for KALDI_ROOT
 
 fstcompile --isymbols=data/lang/words.txt --osymbols=data/lang/words.txt --keep_isymbols=false \
-    --keep_osymbols=false $tmpdir/G.txt > data/lang/G.fst || exit 1;
+    --keep_osymbols=false $tmpdir/G.txt | fstarcsort --sort_type=ilabel > data/lang/G.fst || exit 1;
 
 # Checking that G is stochastic [note, it wouldn't be for an Arpa]
 fstisstochastic data/lang/G.fst || echo Error: G is not stochastic

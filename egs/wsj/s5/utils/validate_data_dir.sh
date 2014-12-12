@@ -96,6 +96,13 @@ num_utts=`cat $tmpdir/utts | wc -l`
 if [ -f $data/text ]; then
   check_sorted_and_uniq $data/text
   text_len=`cat $data/text | wc -l`
+  illegal_sym_list="<s> </s> #0"
+  for x in $illegal_sym_list; do
+    if grep -w "$x" $data/text > /dev/null; then
+      echo "$0: Error: in $data, text contains illegal symbol $x"
+      exit 1;
+    fi
+  done
   awk '{print $1}' < $data/text > $tmpdir/utts.txt
   if ! cmp -s $tmpdir/utts{,.txt}; then
     echo "$0: Error: in $data, utterance lists extracted from utt2spk and text"

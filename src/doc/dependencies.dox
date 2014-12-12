@@ -2,7 +2,7 @@
 
 
 // Copyright 2009-2011 Microsoft Corporation
-//                2013 Johns Hopkins University (author: Daniel Povey)
+//           2013-2014 Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,43 +23,71 @@
 
   \page dependencies Software required to install and run Kaldi
 
-    \section dependencies_environment Computing environment
+    \section dependencies_environment Ideal computing environment
 
-    - We expect that you will run Kaldi is a cluster of
-      Linux machines running Sun GridEngine (SGE).  This is open-source software and widely used.
-    - We expect that the cluster will have access to shared directories based on NFS or something
-      similar.
-    - We have started a separate project called <a href=https://sourceforge.net/projects/kluster/> Kluster </a>
-      that shows you how to create such a cluster on Amazon's EC2.  Most of the scripts should be suitable
-      for a locally hosted cluster based on Debian; you can also investigate
-      <a href=http://www.rocksclusters.org/wordpress/>Rocks</a>.
-    - You can run Kaldi on just one machine, without GridEngine or NFS, but of course it will be slower.
-    - You should be able to run Kaldi on most types of Linux machine; it has also been tested
-      on Darwin (Apple's version of BSD) and on Cygwin.
-    - Kaldi's scripts have been written in such a way that if you replace SGE with a similar mechanism 
-      with different syntax (such as Tork), it should be relatively easy to get it to work.
-    - In the past Kaldi has been compiled on Windows; however, the example scripts will not
-      work there, and we are not actively maintaining the Windows compatibility of the code or the
-      Windows build scripts.  Help with this would be appreciated.
+    First we'll explain the ideal type of computing environment, and then we'll
+    say what is the bare minimum you need to run Kaldi.  The ideal computing
+    environment is a cluster of Linux machines (any major distribution) running
+    Sun GridEngine (SGE), with access to shared directories via NFS or some
+    similar network filesystem.  In the ideal case, some computers on the
+    grid will have NVidia GPUs which you can use for neural net training,
+    and you can reserve these on the queue by adding some extra option to qsub.
+
+    We have started a separate project called <a
+    href=https://sourceforge.net/projects/kluster/> Kluster </a> that shows you
+    how to create such a cluster on Amazon's EC2; MIT's <a
+    href="http://star.mit.edu/cluster/">StarCluster </a> is a larger and
+    better-supported project that provides the same functionality.  Most of the
+    scripts should be suitable for a locally hosted cluster based on Debian or
+    Red Hat; you can investigate <a
+    href=http://www.rocksclusters.org/wordpress/>Rocks</a> which aims to help
+    you set up a cluster like that.
+
+   \section dependencies_minimum Bare minimum computing environment
+
+  The bare minimum computing environment to run Kaldi is any Unix-like
+  environment; and it's possible to run it on a single machine, although of
+  course it will be slower, and you may have to reduce the number of jobs used
+  in some of the example scripts to avoid exhausting your machine's memory.
+
+  Kaldi is best tested on Debian and Red Hat Linux, but will run on any
+  Linux distribution, or on Cygwin or Mac OsX.  We are working on FreeBSD
+  installation scripts.
+
+   Kaldi's scripts have been written in such a way that if you replace SGE with
+   a similar mechanism with different syntax (such as Tork), it should be
+   relatively easy to get it to work; we also provide a "dumb" replacement that
+   you can use when there is no queueing system (search for run.pl and ssh.pl in
+   the scripts).
+
+   In the past Kaldi has been compiled on Windows; however, the example scripts
+   will not work there, and we are not very actively maintaining the Windows
+   compatibility of the code or the Windows build scripts (we fix problems when
+   we are told about them though).
    
-    \section dependencies_packages Software packages required
+   \section dependencies_packages Software packages required
 
-   This is a non-exhaustive list of some of the packages you need in order to install Kaldi.
+
+   The following is a non-exhaustive list of some of the packages you need in
+   order to install Kaldi.  The full list is not important since the installation
+   scripts will tell you what you are missing.
 
     - Subversion (svn): this is needed to download Kaldi and other software that it depends on.
     - wget is required for the installation of some non-Kaldi components described below
     - The example scripts require standard UNIX utilities such as bash, 
       perl, awk, grep, and make.
 
-   It can also be helpful if you have an ATLAS linear-algebra package installed on your system.  Most
-   systems already have this (You can also search the packages in linux for installation by simple commands like 
-   "yum search atlas" or "apt-cache search libatlas"); 
-   the best approach is to ignore this requirement for now and see if you have problems when you install Kaldi.
+   It can also be helpful if you have an ATLAS linear-algebra package installed
+   on your system.  Most systems already have this (You can also search the
+   packages in linux for installation by simple commands like "yum search atlas"
+   or "apt-cache search libatlas"); the best approach is to ignore this
+   requirement for now and see if you have problems when you install Kaldi.
 
     \section dependencies_installed Software packages installed by Kaldi
 
-   The following tools and libraries come with installation scripts in
-   the tools/ directory so you won't have to install them yourself (note: this is a non-exhaustive list).
+   The following tools and libraries come with installation scripts in the
+   tools/ directory so you won't have to install them yourself (note: this is a
+   non-exhaustive list).
 
     - OpenFst:  we compile against this and use it heavily.
     - IRSTLM: this a language modeling toolkit.  Some of the example scripts require it but 

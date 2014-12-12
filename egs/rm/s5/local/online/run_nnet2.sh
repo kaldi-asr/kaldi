@@ -30,36 +30,16 @@ else
   num_threads=16
   minibatch_size=128
   parallel_opts="-pe smp $num_threads" 
-  dir=exp/nnet2_online/nnet
 fi
 
 
-if [ $stage -le 1 ]; then
-  mkdir -p exp/nnet2_online
-  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 10 --num-frames 200000 \
-    data/train 256 exp/tri3b exp/nnet2_online/diag_ubm
-fi
+# stages 1 through 3 run in run_nnet2_common.sh.
 
-if [ $stage -le 2 ]; then
-  # use a smaller iVector dim (50) than the default (100) because RM has a very
-  # small amount of data.
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 4 \
-    --ivector-dim 50 \
-   data/train exp/nnet2_online/diag_ubm exp/nnet2_online/extractor || exit 1;
-fi
-
-if [ $stage -le 3 ]; then
-  # having a larger number of speakers is helpful for generalization, and to
-  # handle per-utterance decoding well (iVector starts at zero).
-  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train data/train_max2
-
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
-    data/train_max2 exp/nnet2_online/extractor exp/nnet2_online/ivectors || exit 1;
-fi
+local/online/run_nnet2_common.sh --stage  $stage || exit 1;
 
 
 if [ $stage -le 4 ]; then
-  steps/nnet2/train_pnorm_simple.sh --stage $train_stage \
+  steps/nnet2/train_pnorm_simple2.sh --stage $train_stage \
     --splice-width 7 \
     --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors \
@@ -135,10 +115,9 @@ exit 0;
 
 
 # the experiment (with GPU)
-#for x in exp/nnet2_online/nnet_gpu/decode*; do grep WER $x/wer_* | utils/best_wer.sh; done
-%WER 2.27 [ 285 / 12533, 43 ins, 50 del, 192 sub ] exp/nnet2_online/nnet_gpu/decode/wer_4
-%WER 10.40 [ 1303 / 12533, 133 ins, 200 del, 970 sub ] exp/nnet2_online/nnet_gpu/decode_ug/wer_11
-
+#for x in exp/nnet2_online/nnet_a/decode*; do grep WER $x/wer_* | utils/best_wer.sh; done
+%WER 2.20 [ 276 / 12533, 37 ins, 61 del, 178 sub ] exp/nnet2_online/nnet_a/decode/wer_5
+%WER 10.22 [ 1281 / 12533, 143 ins, 193 del, 945 sub ] exp/nnet2_online/nnet_a/decode_ug/wer_10
 
 # This is the baseline with spliced non-CMVN cepstra and no iVector input. 
 # The difference is pretty small on RM; I expect it to be more clear-cut on larger corpora.
@@ -154,11 +133,13 @@ exit 0;
 # This truly-online per-utterance decoding gives essentially the same WER as the offline decoding, which is
 # as we expect as the features and decoding parameters are the same.
 # for x in exp/nnet2_online/nnet_gpu_online/decode*utt; do grep WER $x/wer_* | utils/best_wer.sh; done
-%WER 2.21 [ 277 / 12533, 45 ins, 48 del, 184 sub ] exp/nnet2_online/nnet_gpu_online/decode_per_utt/wer_4
-%WER 10.27 [ 1287 / 12533, 142 ins, 186 del, 959 sub ] exp/nnet2_online/nnet_gpu_online/decode_ug_per_utt/wer_10
+%WER 2.28 [ 286 / 12533, 66 ins, 39 del, 181 sub ] exp/nnet2_online/nnet_a_online/decode_per_utt/wer_2
+%WER 10.45 [ 1310 / 12533, 106 ins, 241 del, 963 sub ] exp/nnet2_online/nnet_a_online/decode_ug_per_utt/wer_12
 
 # The following are online decoding, as above, but using previous utterances of
 # the same speaker to refine the adaptation state.  It doesn't make much difference.
 # for x in exp/nnet2_online/nnet_gpu_online/decode*; do grep WER $x/wer_* | utils/best_wer.sh; done | grep -v utt
-%WER 2.20 [ 276 / 12533, 25 ins, 69 del, 182 sub ] exp/nnet2_online/nnet_gpu_online/decode/wer_8
-%WER 10.14 [ 1271 / 12533, 127 ins, 198 del, 946 sub ] exp/nnet2_online/nnet_gpu_online/decode_ug/wer_11
+%WER 2.27 [ 285 / 12533, 42 ins, 62 del, 181 sub ] exp/nnet2_online/nnet_a_online/decode/wer_5
+%WER 10.26 [ 1286 / 12533, 140 ins, 188 del, 958 sub ] exp/nnet2_online/nnet_a_online/decode_ug/wer_10
+
+

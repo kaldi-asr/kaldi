@@ -82,8 +82,8 @@ void TestComponentAcc(const FullGmm &gmm, const Matrix<BaseFloat> &feats) {
       "component removal during Update() call (this is normal)";
     return;
   } else {
-    AssertGeq(loglike1, loglike0, 1.0e-6);
-    AssertGeq(loglike2, loglike0, 1.0e-6);
+    KALDI_ASSERT(loglike1 >= loglike0 - (std::abs(loglike1)+std::abs(loglike0))*1.0e-06);
+    KALDI_ASSERT(loglike2 >= loglike0 - (std::abs(loglike2)+std::abs(loglike0))*1.0e-06);
   }
 }
 
@@ -341,11 +341,13 @@ UnitTestEstimateFullGmm() {
   std::vector<SpMatrix<BaseFloat> > invcovars(1);
   invcovars[0].Resize(dim);
 
-  for (int32 d= 0; d < dim; d++) {
+  for (int32 d = 0; d < dim; d++) {
     means(0, d) = kaldi::RandGauss()*5.0F;
   }
   SpMatrix<BaseFloat> covar(dim);
   rand_posdef_spmatrix(dim, &covar, NULL, NULL);
+  covar.AddToDiag(0.1);  // Ensure the condition is reasonable, otherwise
+                         // we can get arbitrarily large inverse.
   invcovars[0].CopyFromSp(covar);
   invcovars[0].InvertDouble();
   weights(0) = 1.0F;
@@ -370,11 +372,11 @@ UnitTestEstimateFullGmm() {
     double prec_m = 1e-3;
     double prec_v = 1e-3;
     for (int32 d = 0; d < dim; d++) {
-      KALDI_ASSERT(ApproxEqual(means.Row(0)(d), ngmm.means_.Row(0)(d), prec_m));
-      KALDI_ASSERT(ApproxEqual(gmm->means_invcovars().Row(0)(d), rgmm.means_invcovars().Row(0)(d), prec_v));
+      KALDI_ASSERT(std::abs(means.Row(0)(d) -  ngmm.means_.Row(0)(d)) < prec_m);
+      KALDI_ASSERT(std::abs(gmm->means_invcovars().Row(0)(d) - rgmm.means_invcovars().Row(0)(d)) < prec_v);
       for (int32 d2 = d; d2 < dim; ++d2) {
-        KALDI_ASSERT(ApproxEqual(covar(d, d2), ngmm.vars_[0](d, d2), prec_v));
-        KALDI_ASSERT(ApproxEqual(gmm->inv_covars()[0](d, d2), rgmm.inv_covars()[0](d, d2), prec_v));
+        KALDI_ASSERT(std::abs(covar(d, d2) - ngmm.vars_[0](d, d2)) < prec_v);
+        KALDI_ASSERT(std::abs(gmm->inv_covars()[0](d, d2) - rgmm.inv_covars()[0](d, d2)) < prec_v);
       }
     }
     KALDI_LOG << "OK";

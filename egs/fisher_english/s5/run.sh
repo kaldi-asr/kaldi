@@ -176,4 +176,6 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 
 # local/run_nnet2.sh
 
-# local/online/run_nnet2.sh
+# # local/online/run_nnet2.sh
+#
+#local/online/run_nnet2_multisplice.sh

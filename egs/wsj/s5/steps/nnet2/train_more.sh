@@ -64,8 +64,6 @@ if [ $# != 3 ]; then
   echo "  --num-epochs <#epochs|15>                        # Number of epochs of training"
   echo "                                                   # while reducing learning rate (determines #iterations, together"
   echo "                                                   # with --samples-per-iter and --num-jobs-nnet)"
-  echo "  --num-epochs-extra <#epochs-extra|5>             # Number of extra epochs of training"
-  echo "                                                   # after learning rate fully reduced"
   echo "  --learning-rate-factor<factor|1.0>               # Factor (e.g. 0.2) by which to change learning rate"
   echo "                                                   # during the course of training"
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job (will affect results"

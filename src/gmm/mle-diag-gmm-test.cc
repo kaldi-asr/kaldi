@@ -79,8 +79,8 @@ void TestComponentAcc(const DiagGmm &gmm, const Matrix<BaseFloat> &feats) {
       "component removal during Update() call (this is normal)";
     return;
   } else {
-    AssertGeq(loglike1, loglike0, 1.0e-6);
-    AssertGeq(loglike2, loglike0, 1.0e-6);
+    KALDI_ASSERT(loglike1 >= loglike0 - (std::abs(loglike1)+std::abs(loglike0))*1.0e-06);
+    KALDI_ASSERT(loglike2 >= loglike0 - (std::abs(loglike2)+std::abs(loglike0))*1.0e-06);
   }
 }
 

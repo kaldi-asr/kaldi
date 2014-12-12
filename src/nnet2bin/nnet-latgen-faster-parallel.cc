@@ -188,8 +188,8 @@ int main(int argc, char *argv[]) {
     
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
-              << "s: real-time factor assuming 100 frames/sec is "
-              << (elapsed*100.0/frame_count);
+              << "s: real-time factor per thread assuming 100 frames/sec is "
+              << (sequencer_config.num_threads * elapsed * 100.0 / frame_count);
     KALDI_LOG << "Done " << num_done << " utterances, failed for "
               << num_err;
     KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count) << " over "

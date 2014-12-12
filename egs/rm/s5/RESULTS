@@ -118,8 +118,8 @@ exit 0
 %WER 1.80 [ 226 / 12533, 29 ins, 44 del, 153 sub ] exp/nnet4c/decode/wer_4
 %WER 8.49 [ 1064 / 12533, 80 ins, 175 del, 809 sub ] exp/nnet4c/decode_ug/wer_11
 
-%WER 1.68 [ 211 / 12533, 29 ins, 39 del, 143 sub ] exp/nnet4d/decode/wer_4
-%WER 8.40 [ 1053 / 12533, 101 ins, 153 del, 799 sub ] exp/nnet4d/decode_ug/wer_10
+%WER 1.70 [ 213 / 12533, 28 ins, 44 del, 141 sub ] exp/nnet4d3/decode/wer_4
+%WER 8.51 [ 1066 / 12533, 97 ins, 176 del, 793 sub ] exp/nnet4d3/decode_ug/wer_9
 
 %WER 1.74 [ 218 / 12533, 25 ins, 48 del, 145 sub ] exp/nnet4d_gpu/decode/wer_6
 %WER 8.39 [ 1051 / 12533, 106 ins, 149 del, 796 sub ] exp/nnet4d_gpu/decode_ug/wer_10
@@ -202,3 +202,14 @@ for x in exp/nnet2_online/nnet*/decode*; do grep WER $x/wer_* | utils/best_wer.s
 %WER 10.70 [ 1341 / 12533, 122 ins, 221 del, 998 sub ] exp/nnet2_online/nnet_baseline/decode_ug/wer_10
 
 
+# normal recipe:
+%WER 2.27 [ 285 / 12533, 42 ins, 62 del, 181 sub ] exp/nnet2_online/nnet_a_online/decode/wer_5
+%WER 2.28 [ 286 / 12533, 66 ins, 39 del, 181 sub ] exp/nnet2_online/nnet_a_online/decode_per_utt/wer_2
+%WER 10.26 [ 1286 / 12533, 140 ins, 188 del, 958 sub ] exp/nnet2_online/nnet_a_online/decode_ug/wer_10
+%WER 10.45 [ 1310 / 12533, 106 ins, 241 del, 963 sub ] exp/nnet2_online/nnet_a_online/decode_ug_per_utt/wer_12
+
+# multi-splice recipe:
+%WER 2.31 [ 290 / 12533, 59 ins, 50 del, 181 sub ] exp/nnet2_online/nnet_ms_a_online/decode/wer_7
+%WER 2.36 [ 296 / 12533, 63 ins, 54 del, 179 sub ] exp/nnet2_online/nnet_ms_a_online/decode_per_utt/wer_6
+%WER 10.19 [ 1277 / 12533, 155 ins, 186 del, 936 sub ] exp/nnet2_online/nnet_ms_a_online/decode_ug/wer_13
+%WER 10.18 [ 1276 / 12533, 150 ins, 183 del, 943 sub ] exp/nnet2_online/nnet_ms_a_online/decode_ug_per_utt/wer_13

@@ -67,10 +67,9 @@
    - \subpage fst_algo 
    - \subpage decoders 
    - \subpage lattices
-   - \subpage feat
    - \subpage model
-   - \subpage transform
    - \subpage feat
+   - \subpage transform
    - \subpage dnn
      - \ref dnn1
      - \ref dnn2

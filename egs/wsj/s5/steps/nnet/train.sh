@@ -52,6 +52,7 @@ frame_weights=     # per-frame weights for gradient weighting
 
 # OTHER
 seed=777    # seed value used for training data shuffling and initialization
+skip_cuda_check=false
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -122,7 +123,9 @@ mkdir -p $dir/{log,nnet}
 [ -e $dir/final.nnet ] && printf "\nSKIPPING TRAINING... ($0)\nnnet already trained : $dir/final.nnet ($(readlink $dir/final.nnet))\n\n" && exit 0
 
 # check if CUDA is compiled in,
-cuda-compiled || { echo 'CUDA was not compiled in, skipping! Check src/kaldi.mk and src/configure' && exit 1; }
+if ! $skip_cuda_check; then
+  cuda-compiled || { echo 'CUDA was not compiled in, skipping! Check src/kaldi.mk and src/configure' && exit 1; }
+fi
 
 ###### PREPARE ALIGNMENTS ######
 echo
@@ -204,6 +207,8 @@ else
 fi
 
 # optionally add deltas
+delta_order_file=$(dirname $feature_transform)/delta_order
+[ -e $delta_order_file ] && delta_order=$(cat $delta_order_file)
 if [ "$delta_order" != "" ]; then
   feats_tr="$feats_tr add-deltas --delta-order=$delta_order ark:- ark:- |"
   feats_cv="$feats_cv add-deltas --delta-order=$delta_order ark:- ark:- |"

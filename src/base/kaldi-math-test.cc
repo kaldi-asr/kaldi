@@ -204,14 +204,10 @@ void UnitTestAssertFunc() {  // Testing Assert** *functions
     float f1 = Rand() % 10000 + 1, f2 = Rand() % 20 + 1;
     float tmp1 = f1 * f2;
     float tmp2 = (1/f1 + 1/f2);
-    float tmp3 = (1/(f1 - 1.0) + 1/(f2 - 1.0));
-    float tmp4 = (1/(f1 + 1.0) + 1/(f2 + 1.0));
     float add = f1 + f2;
-    float addeql = tmp1 * tmp2, addgeq = tmp1 * tmp3, addleq = tmp1 * tmp4;
+    float addeql = tmp1 * tmp2;
     float thresh = 0.00001;
     AssertEqual(add, addeql, thresh);  // test AssertEqual()
-    AssertGeq(addgeq, add, thresh);  // test AsserGeq()
-    AssertLeq(addleq, add, thresh);  // test AsserLeq()
   }
 }
 

@@ -354,6 +354,13 @@ bool TcpServer::Listen(int32 port) {
     return false;
   }
 
+  int32 flag = 1;
+  int32 len = sizeof(int32);
+  if( setsockopt(server_desc_, SOL_SOCKET, SO_REUSEADDR, &flag, len) == -1){
+    KALDI_ERR << "Cannot set socket options!\n";
+    return false;
+  }
+
   if (bind(server_desc_, (struct sockaddr*) &h_addr_, sizeof(h_addr_)) == -1) {
     KALDI_ERR << "Cannot bind to port: " << port << " (is it taken?)";
     return false;

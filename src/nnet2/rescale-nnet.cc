@@ -47,6 +47,7 @@ class NnetRescaler {
   const NnetRescaleConfig &config_;
   const std::vector<NnetExample> &examples_;
   Nnet *nnet_;
+  std::vector <ChunkInfo> chunk_info_out_;
   std::set<int32> relevant_indexes_; // values of c with AffineComponent followed
   // by (at c+1) NonlinearComponent that is not SoftmaxComponent.
 };
@@ -80,6 +81,9 @@ void NnetRescaler::FormatInput(const std::vector<NnetExample> &data,
       spk_dest.CopyRowsFromVec(data[chunk].spk_info);
     }
   }
+  // TODO : filter out the unnecessary rows from the input
+  nnet_->ComputeChunkInfo(num_splice, num_chunks, &chunk_info_out_);
+
 }
 
 void NnetRescaler::ComputeRelevantIndexes() {
@@ -124,10 +128,17 @@ void NnetRescaler::RescaleComponent(
   if (dynamic_cast<SigmoidComponent*>(&(nnet_->GetComponent(c + 1))) == NULL &&
       dynamic_cast<TanhComponent*>(&(nnet_->GetComponent(c + 1))) == NULL)
     KALDI_ERR << "This type of nonlinear component is not handled: index  " << c;
+  KALDI_ASSERT(chunk_info_out_[0].NumChunks() == num_chunks); //TODO verify how this component can be used
+                                                             // rewrite the
+                                                             // chunk_info_out_
+                                                             // computation
   // the nonlinear component:
   NonlinearComponent &nc =
       *(dynamic_cast<NonlinearComponent*>(&(nnet_->GetComponent(c + 1))));
-  
+  ChunkInfo in_info, out_info;
+  in_info = chunk_info_out_[c+1];
+  out_info = chunk_info_out_[c+2];
+
   BaseFloat orig_avg_deriv, target_avg_deriv = GetTargetAvgDeriv(c);
   BaseFloat cur_scaling = 1.0; // current rescaling factor (on input).
   int32 num_iters = 10;
@@ -136,8 +147,8 @@ void NnetRescaler::RescaleComponent(
       ones(rows, cols), in_deriv(rows, cols);
       
   ones.Set(1.0);
-  nc.Propagate(cur_data, num_chunks, next_data);
-  nc.Backprop(cur_data, *next_data, ones, num_chunks, NULL, &in_deriv);
+  nc.Propagate(in_info, out_info, cur_data, next_data);
+  nc.Backprop(in_info, out_info, cur_data, *next_data, ones, NULL, &in_deriv);
   BaseFloat cur_avg_deriv;
   cur_avg_deriv = in_deriv.Sum() / (rows * cols);
   orig_avg_deriv = cur_avg_deriv;
@@ -146,8 +157,8 @@ void NnetRescaler::RescaleComponent(
     // the next avg_deriv, so we can see how it changes with the scale.
     cur_data.CopyFromMat(*cur_data_in);
     cur_data.Scale(cur_scaling + config_.delta);
-    nc.Propagate(cur_data, num_chunks, next_data);
-    nc.Backprop(cur_data, *next_data, ones, num_chunks, NULL, &in_deriv);
+    nc.Propagate(in_info, out_info, cur_data, next_data);
+    nc.Backprop(in_info, out_info, cur_data, *next_data, ones, NULL, &in_deriv);
     BaseFloat next_avg_deriv = in_deriv.Sum() / (rows * cols);
     KALDI_ASSERT(next_avg_deriv < cur_avg_deriv);
     // "gradient" is how avg_deriv changes as we change the scale.
@@ -166,8 +177,8 @@ void NnetRescaler::RescaleComponent(
     
     cur_data.CopyFromMat(*cur_data_in);
     cur_data.Scale(cur_scaling);
-    nc.Propagate(cur_data, num_chunks, next_data);
-    nc.Backprop(cur_data, *next_data, ones, num_chunks, NULL, &in_deriv);
+    nc.Propagate(in_info, out_info, cur_data, next_data);
+    nc.Backprop(in_info, out_info, cur_data, *next_data, ones, NULL, &in_deriv);
     cur_avg_deriv = in_deriv.Sum() / (rows * cols);
     if (fabs(proposed_change) < config_.min_change) break; // Terminate the
     // optimization
@@ -198,7 +209,7 @@ void NnetRescaler::Rescale() {
       // after doing the rescaling
       RescaleComponent(c - 1, num_chunks, &cur_data, &next_data);
     } else {
-      component.Propagate(cur_data, num_chunks, &next_data);
+      component.Propagate(chunk_info_out_[c], chunk_info_out_[c+1], cur_data, &next_data);
     }
     cur_data.Swap(&next_data);
   }

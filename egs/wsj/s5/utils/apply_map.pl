@@ -9,7 +9,7 @@
 
 
 if (@ARGV > 0 && $ARGV[0] eq "-f") {
-  shift @ARGV; 
+  shift @ARGV;
   $field_spec = shift @ARGV; 
   if ($field_spec =~ m/^\d+$/) {
     $field_begin = $field_spec - 1; $field_end = $field_spec - 1;
@@ -36,6 +36,7 @@ if (@ARGV > 0 && $ARGV[0] eq '--permissive') {
 }
 
 if(@ARGV != 1) {
+  print STDERR "Invalid usage: " . join(" ", @ARGV) . "\n";
   print STDERR "Usage: apply_map.pl [options] map <input >output\n" .
     "options: [-f <field-range> ]\n" .
     "Applies the map 'map' to all input text, where each line of the map\n" .

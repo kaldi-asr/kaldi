@@ -1,11 +1,24 @@
-# You have to make sure CLAPACKLIBS is set...
+# You have to make sure FSTROOT,OPENBLASROOT,OPENBLASLIBS are set...
 
-CXXFLAGS = -msse -Wall -I.. \
-	  -pthread \
-      -DKALDI_DOUBLEPRECISION=0 -msse2 -DHAVE_POSIX_MEMALIGN \
-      -Wno-sign-compare -Wno-unused-local-typedefs \
+ifndef FSTROOT
+$(error FSTROOT not defined.)
+endif
+
+ifndef OPENBLASLIBS
+$(error OPENBLASLIBS not defined.)
+endif
+
+ifndef OPENBLASROOT
+$(error OPENBLASROOT not defined.)
+endif
+
+
+CXXFLAGS = -msse -msse2 -Wall -I.. \
+           -pthread \
+      -DKALDI_DOUBLEPRECISION=0 -DHAVE_POSIX_MEMALIGN \
+      -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
-      -DUSE_KALDI_SVD -DHAVE_OPENBLAS -I $(OPENBLASROOT)/include \
+      -DHAVE_OPENBLAS -I $(OPENBLASROOT)/include \
       -I $(FSTROOT)/include \
       $(EXTRA_CXXFLAGS) \
       -g # -O0 -DKALDI_PARANOID 
