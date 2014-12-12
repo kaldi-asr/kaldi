@@ -142,10 +142,6 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   
-  return (po.NumArgs() == 4) ?
-      ComputeScores(po, config, apply_log) :
-      ComputeLogPosteriors(po, config, apply_log);
-
   if (po.NumArgs() == 4) {
     return ComputeScores(po, config, apply_log);
   } else {
