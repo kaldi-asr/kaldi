@@ -165,7 +165,7 @@ if [ $stage -le -1 ]; then
      "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 
-[ "$exit_stage" -eq 0 ] && echo "$0: Exiting early: --exit-stage $exit_stage" && exit 1;
+[ "$exit_stage" -eq 0 ] && echo "$0: Exiting early: --exit-stage $exit_stage" && exit 0;
 
 if [ $stage -le 0 ] && [ "$realign_iters" != "" ]; then
   echo "$0: Compiling graphs of transcripts"

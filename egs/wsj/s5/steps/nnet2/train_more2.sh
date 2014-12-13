@@ -134,7 +134,8 @@ echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
 
 per_iter_learning_rate_factor=$(perl -e "print ($learning_rate_factor ** (1.0 / $num_iters));")
 
-mix_up_iter=$[$num_iters/2]
+mix_up_iter=$[$num_iters/4]  # mix up after only a short way into training, as
+                             # most likely the net is already quite well trained.
 
 if [ $num_threads -eq 1 ]; then
   parallel_suffix="-simple" # this enables us to use GPU code if

@@ -17,6 +17,7 @@ extra_egs=        # Names of additional egs files that need to relabelled
                   # other than egs.*.*.ark, combine.egs, train_diagnostic.egs,
                   # valid_diagnostic.egs
 iter=final
+parallel_opts=
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -60,17 +61,15 @@ cp -rT $egs_in_dir/info  $dir/info
 alignments=`eval echo $alidir/ali.{$(seq -s ',' $num_jobs_align)}.gz`
 
 if [ $stage -le 0 ]; then
-  egs_in=
-  egs_out=
   for x in $(seq $num_archives); do
     # if $dir/storage exists, make the soft links that we'll
     # use to distribute the data across machines
     utils/create_data_link.pl $dir/egs.$x.ark
   done
 
-  $cmd JOB=1:$num_jobs_nnet $dir/log/relabel_egs.JOB.log \
+  $cmd $parallel_opts JOB=1:$num_archives $dir/log/relabel_egs.JOB.log \
     nnet-relabel-egs "ark:gunzip -c $alignments | ali-to-pdf $model ark:- ark:- |" \
-     $egs_in/egs.JOB.ark $dir/egs.JOB.ark || exit 1
+     ark:$egs_in_dir/egs.JOB.ark ark:$dir/egs.JOB.ark || exit 1
 fi
 
 if [ $stage -le 1 ]; then
