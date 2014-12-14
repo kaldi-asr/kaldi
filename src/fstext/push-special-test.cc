@@ -37,7 +37,11 @@ static void TestPushSpecial() {
   VectorFst<Arc> *fst = RandFst<StdArc>();
 
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
   
@@ -55,7 +59,11 @@ static void TestPushSpecial() {
 
 
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(fst_copy, NULL, NULL, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(fst_copy, NULL, NULL, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
   KALDI_LOG << "Min value is " << min.Value() << ", max value is " << max.Value();

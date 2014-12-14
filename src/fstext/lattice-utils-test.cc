@@ -30,7 +30,11 @@ template<class Weight, class Int> void TestConvert(bool invert) {
     VectorFst<Arc> *fst = RandFst<Arc>();
     std::cout << "FST before converting to compact-arc is:\n";
     {
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
+#else
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+#endif
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<CompactArc> ofst;
@@ -38,14 +42,22 @@ template<class Weight, class Int> void TestConvert(bool invert) {
 
     std::cout << "FST after converting is:\n";
     {
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<CompactArc> fstprinter(ofst, NULL, NULL, NULL, false, true, "\t");
+#else
       FstPrinter<CompactArc> fstprinter(ofst, NULL, NULL, NULL, false, true);
+#endif
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> origfst;
     ConvertLattice<Weight, Int>(ofst, &origfst, invert);
     std::cout << "FST after back conversion is:\n";
     {
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<Arc> fstprinter(origfst, NULL, NULL, NULL, false, true, "\t");
+#else
       FstPrinter<Arc> fstprinter(origfst, NULL, NULL, NULL, false, true);
+#endif
       fstprinter.Print(&std::cout, "standard output");
     }
     
@@ -66,7 +78,11 @@ template<class Weight, class Int> void TestShortestPath() {
       std::cout << "Testing shortest path\n";
       std::cout << "FST before converting to compact-arc is:\n";
       {
+#ifdef HAVE_OPENFST_GE_10400
+        FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
+#else
         FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+#endif
         fstprinter.Print(&std::cout, "standard output");
       }
       VectorFst<CompactArc> cfst;
@@ -125,7 +141,7 @@ template<class Int> void TestConvert2() {
       ConvertLattice(*fst1, &fst2);
       ConvertLattice(fst2, &fst3);
 
-      assert(RandEquivalent(*fst1, fst3, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));      
+      assert(RandEquivalent(*fst1, fst3, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
       delete fst1;
     }
 
@@ -136,7 +152,7 @@ template<class Int> void TestConvert2() {
       VectorFst<CArcD> cfst2;
       ConvertLattice(cfst1, &cfst2);
       ConvertLattice(cfst2, &cfst3);
-      assert(RandEquivalent(cfst1, cfst3, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));            
+      assert(RandEquivalent(cfst1, cfst3, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
       delete fst1;
     }
 
@@ -188,7 +204,7 @@ template<class Int> void TestConvert2() {
       ConvertLattice(*fst1, &cfst1);
       VectorFst<ArcD> fst2;
       ConvertLattice(cfst1, &fst2);
-      assert(RandEquivalent(*fst1, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));      
+      assert(RandEquivalent(*fst1, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
       delete fst1;
     }
   }

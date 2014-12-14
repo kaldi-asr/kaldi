@@ -19,7 +19,7 @@ mv g2p sequitur
 
 
 cd sequitur
-patch  < ../sequitur.patch 
+patch  < ../extras/sequitur.patch
 make
 python setup.py install --prefix `pwd`
 

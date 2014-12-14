@@ -41,9 +41,12 @@ typename ContextFstImpl<Arc, LabelT>::StateId
   VectorToStateIter iter = state_map_.find(seq);
   if (iter == state_map_.end()) {  // Not already in map.
     StateId this_state_id = (StateId)state_seqs_.size();
+    //This check is not needed with OpenFst >= 1.4
+#ifndef HAVE_OPENFST_GE_10400
     StateId this_state_id_check = CacheImpl<Arc>::AddState();
     // goes back to VectorFstBaseImpl<Arc>, inherited via CacheFst<Arc>
     assert(this_state_id == this_state_id_check);
+#endif
     state_seqs_.push_back(seq);
     state_map_[seq] = this_state_id;
     return this_state_id;
@@ -321,16 +324,34 @@ void ContextFstImpl<Arc, LabelT>::Expand(StateId s) {  // expands arcs only [not
 
   // We just try adding all possible symbols on the output side.
   Arc arc;
-  if (this->CreateArc(s, subsequential_symbol_, &arc)) this->AddArc(s, arc);
+  if (this->CreateArc(s, subsequential_symbol_, &arc)) {
+#ifdef HAVE_OPENFST_GE_10400
+    this->PushArc(s, arc);
+#else
+    this->AddArc(s, arc);
+#endif
+  }
   for (typename kaldi::ConstIntegerSet<Label>::iterator iter = phone_syms_.begin();
        iter != phone_syms_.end(); ++iter) {
     Label phone = *iter;
-    if (this->CreateArc(s, phone, &arc)) this->AddArc(s, arc);
+    if (this->CreateArc(s, phone, &arc)) {
+#ifdef HAVE_OPENFST_GE_10400
+      this->PushArc(s, arc);
+#else
+      this->AddArc(s, arc);
+#endif
+    }
   }
   for (typename kaldi::ConstIntegerSet<Label>::iterator iter = disambig_syms_.begin();
        iter != disambig_syms_.end(); ++iter) {
     Label disambig_sym = *iter;
-    if (this->CreateArc(s, disambig_sym, &arc)) this->AddArc(s, arc);
+    if (this->CreateArc(s, disambig_sym, &arc)) {
+#ifdef HAVE_OPENFST_GE_10400
+      this->PushArc(s, arc);
+#else
+      this->AddArc(s, arc);
+#endif
+    }
   }
   this->SetArcs(s);  // mark the arcs as "done". [so HasArcs returns true].
 }

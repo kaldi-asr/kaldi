@@ -1,6 +1,6 @@
 # This is the top-level Makefile for Kaldi.
 # Also see kaldi.mk which supplies options and some rules
-# used by the Makefiles in the subdirectories. 
+# used by the Makefiles in the subdirectories.
 
 SHELL := /bin/bash
 
@@ -39,7 +39,7 @@ mklibdir:
 #I don't want to call rm -rf
 rmlibdir:
 ifneq ($(KALDILIBDIR), )
-	-rm $(KALDILIBDIR)/*{.so,.a,.o} 
+	-rm $(KALDILIBDIR)/*{.so,.a,.o}
 	-rmdir $(KALDILIBDIR)
 else
 	@true
@@ -53,7 +53,7 @@ else
 	$(error The kaldi.mk file was generated using a different version of configure script. Run the configure script again.)
 endif
 
-biglib: $(SUBDIRS_LIB) 
+biglib: $(SUBDIRS_LIB)
 ifeq ($(KALDI_FLAVOR), dynamic)
 ifeq ($(shell uname), Darwin)
 	$(CXX) -dynamiclib -o $(KALDILIBDIR)/libkaldi.dylib -install_name @rpath/libkaldi.dylib -framework Accelerate $(LDFLAGS) $(SUBDIRS_LIB:=/*.dylib)
@@ -84,15 +84,16 @@ endif
 kaldi.mk:
 	@[ -f kaldi.mk ] || { echo "kaldi.mk does not exist; you have to run ./configure"; exit 1; }
 
-# Compile optional stuff 
+# Compile optional stuff
 ext: test_dependencies ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
 	-echo Done
 
-# Note: if you have put the OpenFst installation somewhere else, you can just
-# delete or comment out the lines below.
-OPENFST_VER = $(shell grep 'PACKAGE_VERSION' ../tools/openfst/Makefile | sed -e 's:.*= ::')
+# Note: OPENFST_VER is determined by configure and added to kaldi.mk
+OPENFST_VER_NUM := $(shell echo $(OPENFST_VER) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
 test_dependencies:
-	[ "$(OPENFST_VER)" == '1.3.2' ] || [ "$(OPENFST_VER)" == '1.3.3' ] || [ "$(OPENFST_VER)" == '1.3.4' ] || { echo "You now need openfst-1.3.2 or later. cd ../tools; svn update; ./install.sh; cd ../src; make depend; make"; exit 1; };
+ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10302)","1")
+	$(error OpenFst $(OPENFST_VER) is not supported. You now need OpenFst >= 1.3.2.)
+endif
 
 check_portaudio:
 	@[ -d ../tools/portaudio ] || ( cd ../tools;  ./install_portaudio.sh )

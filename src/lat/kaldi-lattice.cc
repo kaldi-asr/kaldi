@@ -62,7 +62,7 @@ Lattice* ConvertToLattice(Lattice *ifst) {
 bool WriteCompactLattice(std::ostream &os, bool binary,
                          const CompactLattice &t) {
   if (binary) {
-    fst::FstWriteOptions opts;    
+    fst::FstWriteOptions opts;
     // Leave all the options default.  Normally these lattices wouldn't have any
     // osymbols/isymbols so no point directing it not to write them (who knows what
     // we'd want to if we had them).
@@ -75,9 +75,15 @@ bool WriteCompactLattice(std::ostream &os, bool binary,
     // on its own line.
     os << '\n';
     bool acceptor = true, write_one = false;
+#ifdef HAVE_OPENFST_GE_10400
+    fst::FstPrinter<CompactLatticeArc> printer(t, t.InputSymbols(),
+                                               t.OutputSymbols(),
+                                               NULL, acceptor, write_one, "\t");
+#else
     fst::FstPrinter<CompactLatticeArc> printer(t, t.InputSymbols(),
                                                t.OutputSymbols(),
                                                NULL, acceptor, write_one);
+#endif
     printer.Print(&os, "<unknown>");
     if (os.fail())
       KALDI_WARN << "Stream failure detected.";
@@ -383,11 +389,11 @@ bool CompactLatticeHolder::Read(std::istream &is) {
   } else {
     return ReadCompactLattice(is, true, &t_);
   }
-}     
+}
 
 bool WriteLattice(std::ostream &os, bool binary, const Lattice &t) {
   if (binary) {
-    fst::FstWriteOptions opts;    
+    fst::FstWriteOptions opts;
     // Leave all the options default.  Normally these lattices wouldn't have any
     // osymbols/isymbols so no point directing it not to write them (who knows what
     // we'd want to if we had them).
@@ -400,9 +406,15 @@ bool WriteLattice(std::ostream &os, bool binary, const Lattice &t) {
     // on its own line.
     os << '\n';
     bool acceptor = false, write_one = false;
+#ifdef HAVE_OPENFST_GE_10400
+    fst::FstPrinter<LatticeArc> printer(t, t.InputSymbols(),
+                                        t.OutputSymbols(),
+                                        NULL, acceptor, write_one, "\t");
+#else
     fst::FstPrinter<LatticeArc> printer(t, t.InputSymbols(),
                                         t.OutputSymbols(),
                                         NULL, acceptor, write_one);
+#endif
     printer.Print(&os, "<unknown>");
     if (os.fail())
       KALDI_WARN << "Stream failure detected.";

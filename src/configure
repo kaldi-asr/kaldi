@@ -1,17 +1,17 @@
 #!/bin/bash
-# 
+#
 # This configure script is hand-generated, not auto-generated.
 # It creates the file kaldi.mk, which is %included by the Makefiles
 # in the subdirectories.
 # The file kaldi.mk is editable by hand-- for example, you may want to
-# remove the options -g -O0 -DKALDI_PARANOID, or edit the 
+# remove the options -g -O0 -DKALDI_PARANOID, or edit the
 # -DKALDI_DOUBLE_PRECISION option (to be 1 not 0),
 
 
 #  Example command lines:
 # ./configure
 # ./configure --shared  ## shared libraries.
-# ./configure --mkl-root=/opt/intel/mkl 
+# ./configure --mkl-root=/opt/intel/mkl
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes
 # ./configure  --openblas-root=../tools/OpenBLAS/install  # before doing
 #        # this, cd to ../tools and type "make openblas".  Note:
@@ -88,16 +88,16 @@ do
   --version) echo $CONFIGURE_VERSION; exit 0 ;;
   --static)
     # FIXME depends on order of options first--static/--shared then --static-math -> it will override it
-  dynamic_kaldi=false; 
+  dynamic_kaldi=false;
   static_math=true;
   static_fst=true;
   shift ;;  
   --shared)
-  dynamic_kaldi=true; 
+  dynamic_kaldi=true;
   static_math=false;
   static_fst=false;
   shift ;;  
-  --atlas-root=*) 
+  --atlas-root=*)
   ATLASROOT=`read_dirname $1`; shift ;;
   --threaded-atlas=yes)
   threaded_atlas=true; shift ;;
@@ -145,7 +145,7 @@ function failure {
   echo "***configure failed: $* ***" >&2
   if [ -f kaldi.mk ]; then rm kaldi.mk; fi
   exit 1;
-} 
+}
 
 function check_exists {
   if [ ! -f $1 ]; then failure "$1 not found."; fi
@@ -171,10 +171,10 @@ function check_for_slow_expf {
   ./exp-test
   if [ $? -eq 1 ]; then
       echo "*** WARNING: expf() seems to be slower than exp() on your machine. This is a known bug in old versions of glibc. Please consider updating glibc. ***"
-      echo "*** Kaldi will be configured to use exp() instead of expf() in base/kaldi-math.h Exp() routine for single-precision floats. ***" 
+      echo "*** Kaldi will be configured to use exp() instead of expf() in base/kaldi-math.h Exp() routine for single-precision floats. ***"
       echo "CXXFLAGS += -DKALDI_NO_EXPF" >> ../kaldi.mk
   fi
-  cd ..    
+  cd ..
 }
 
 function exit_success {
@@ -202,18 +202,18 @@ function linux_configure_mkl_libraries {
   local threaded=$3
 
   #these lines were generated using the Intel Link Line Advisor 2.2
-  local threaded_libs="mkl_intel_lp64 mkl_intel_thread mkl_core"  
-  local sequential_libs="mkl_intel_lp64 mkl_sequential mkl_core"  
+  local threaded_libs="mkl_intel_lp64 mkl_intel_thread mkl_core"
+  local sequential_libs="mkl_intel_lp64 mkl_sequential mkl_core"
 
   if  ! $static && $threaded ; then
     for file in $threaded_libs; do
-      local libfile=$mkllibdir/lib$file.so 
+      local libfile=$mkllibdir/lib$file.so
       check_exists $libfile
     done 
     echo  "-L$mkllibdir -Wl,-rpath=$mkllibdir -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm"
   elif  ! $static && ! $threaded ; then
     for file in $sequential_libs; do
-      local libfile=$mkllibdir/lib$file.so 
+      local libfile=$mkllibdir/lib$file.so
       check_exists $libfile
     done  
     echo "-L$mkllibdir  -Wl,-rpath=$mkllibdir -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -liomp5 -lpthread -lm"
@@ -222,7 +222,7 @@ function linux_configure_mkl_libraries {
     test -f "$mkllibdir/libmkl_solver_lp64.a" && linkline="$linkline $mkllibdir/libmkl_solver_lp64.a"
     linkline="$linkline -Wl,--start-group"
     for file in $threaded_libs; do
-      local libfile=$mkllibdir/lib$file.a 
+      local libfile=$mkllibdir/lib$file.a
       check_exists $libfile
       linkline="$linkline $libfile"
     done  
@@ -234,7 +234,7 @@ function linux_configure_mkl_libraries {
     test -f "$mkllibdir/libmkl_solver_lp64_sequential.a" && linkline="$linkline $mkllibdir/libmkl_solver_lp64_sequential.a"
     linkline="$linkline -Wl,--start-group"
     for file in $sequential_libs; do
-      local libfile=$mkllibdir/lib$file.a 
+      local libfile=$mkllibdir/lib$file.a
       check_exists $libfile
       linkline="$linkline $libfile"
     done  
@@ -271,23 +271,23 @@ function linux_configure_omplibdir {
   local libexts=$3
   
   
-  ##First we try to use the library in the same directory 
+  ##First we try to use the library in the same directory
   ##where the mkl libraries reside
-  ##Afterwards, just try some possibilities for different MKL layouts 
+  ##Afterwards, just try some possibilities for different MKL layouts
   for libext in $libexts; do
     echo "Testing $libext from [$libexts] " >&2
 
     check_library $mkllibdir "libiomp5" $libext \
     && echo `readlink -f $mkllibdir` && return
     
-    local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)` 
+    local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)`
     test -d $testdir && check_library $testdir "libiomp5" $libext && echo `readlink -f $testdir` && return;
-    local testdir=`(cd $mklroot; cd ..; cd lib/em64t;pwd)` 
+    local testdir=`(cd $mklroot; cd ..; cd lib/em64t;pwd)`
     test -d $testdir && check_library $testdir "libiomp5" $libext && echo `readlink -f $testdir` && return;
     
-    local testdir=`(cd $mkllibdir; cd ../../..; cd lib/intel64;pwd)` 
+    local testdir=`(cd $mkllibdir; cd ../../..; cd lib/intel64;pwd)`
     test -d $testdir && check_library $testdir "libiomp5" $libext && echo `readlink -f $testdir` && return;
-    local testdir=`(cd $mklroot; cd ../../..; cd lib/em64t;pwd)` 
+    local testdir=`(cd $mklroot; cd ../../..; cd lib/em64t;pwd)`
     test -d $testdir && check_library $testdir "libiomp5" $libext && echo `readlink -f $testdir` && return;
   done
 
@@ -384,7 +384,7 @@ function fix_cxx_flag {
 function linux_atlas_failure { # function we use when we couldn't find
    # ATLAS libs.
    echo ATLASINC = [somewhere]/include >> kaldi.mk
-   echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk  
+   echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk
    cat makefiles/linux_atlas.mk >> kaldi.mk
    fix_cxx_flag
    echo "** $* ***"
@@ -399,7 +399,7 @@ function linux_atlas_failure { # function we use when we couldn't find
    echo "** or try going to ../tools and running install_atlas.sh, and running"
    echo "   this script (configure) again."
    exit 1;
-} 
+}
 
 function linux_check_static {
   # will exit with success if $dir seems to contain ATLAS libraries with
@@ -494,11 +494,11 @@ function linux_configure_static {
   ATLASLIBS=
   # The Lapack part of ATLAS seems to appear under various different names.. but it
   # should always have symbols like ATL_cgetrf defined, so we test for this,
-  # for all the names we have encountered. 
+  # for all the names we have encountered.
   for libname in liblapack liblapack_atlas  libclapack; do
     if [ -f $ATLASLIBDIR/${libname}.a -a "$ATLASLIBS" == "" ]; then
       if nm  $ATLASLIBDIR/${libname}.a  | grep ATL_cgetrf >/dev/null; then
-         ATLASLIBS=$ATLASLIBDIR/${libname}.a          
+         ATLASLIBS=$ATLASLIBDIR/${libname}.a
          echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
       fi
     fi
@@ -563,7 +563,7 @@ function linux_configure_dynamic {
   ATLASLIBS=
   # The Lapack part of ATLAS seems to appear under various different names.. but it
   # should always have symbols like ATL_cgetrf defined, so we test for this,
-  # for all the names we have encountered. 
+  # for all the names we have encountered.
   for libname in lapack lapack_atlas  clapack; do
     if [ -f $ATLASLIBDIR/lib${libname}.so -a "$ATLASLIBS" == "" ]; then
       if nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
@@ -630,12 +630,24 @@ echo "KALDI_FLAVOR := dynamic" >> kaldi.mk
 echo "KALDILIBDIR := $KALDILIBDIR" >> kaldi.mk
 fi
 echo "CONFIGURE_VERSION := $CONFIGURE_VERSION" >> kaldi.mk
+echo "FSTROOT = $FSTROOT" >> kaldi.mk
+
+# Check installed OpenFst version and add C++11 flags if OpenFst >= 1.4
+OPENFST_VER=`grep 'PACKAGE_VERSION' $FSTROOT/Makefile | sed -e 's:.*= ::'`
+echo "OPENFST_VER = $OPENFST_VER" >> kaldi.mk
+OPENFST_VER_NUM=`echo $OPENFST_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d"`
+if [ $OPENFST_VER_NUM -ge 10400 ]; then
+  echo "OPENFST_GE_10400 = 1" >> kaldi.mk
+  echo "EXTRA_CXXFLAGS += -DHAVE_OPENFST_GE_10400 -std=c++0x" >> kaldi.mk
+else
+  echo "OPENFST_GE_10400 = 0" >> kaldi.mk
+fi
 
 # Most of the OS-specific steps below will append to kaldi.mk
 echo "Doing OS specific configurations ..."
 
 # Check for Darwin at first, because we later call uname -o (for Cygwin)
-# which crashes on Darwin. Also the linear algebra libraries on Macs are 
+# which crashes on Darwin. Also the linear algebra libraries on Macs are
 # used differently (through the Accelerate framework) than on Linux.
 if [ "`uname`" == "Darwin"  ]; then
  $use_cuda && linux_configure_cuda
@@ -646,28 +658,27 @@ if [ "`uname`" == "Darwin"  ]; then
   if [ ! -f $FSTROOT/lib/libfst.a ]; then
     failure "Static OpenFST library not found:  See ../tools/INSTALL"
   fi
-  echo FSTROOT = $FSTROOT >> kaldi.mk
   # posix_memalign and gcc -rdynamic options not present on OS X 10.5.*
   osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | awk '{split($0,a,"\."); print a[1] "." a[2]; }'`
   echo "Configuring for OS X version $osx_ver ..."
   if [ "$osx_ver" == "10.5" ]; then
     check_exists makefiles/darwin_10_5.mk
-    cat makefiles/darwin_10_5.mk >> kaldi.mk 
+    cat makefiles/darwin_10_5.mk >> kaldi.mk
   elif [ "$osx_ver" == "10.6" ]; then
     check_exists makefiles/darwin_10_6.mk
-    cat makefiles/darwin_10_6.mk >> kaldi.mk 
+    cat makefiles/darwin_10_6.mk >> kaldi.mk
   elif [ "$osx_ver" == "10.7" ]; then
     check_exists makefiles/darwin_10_7.mk
-    cat makefiles/darwin_10_7.mk >> kaldi.mk 
+    cat makefiles/darwin_10_7.mk >> kaldi.mk
   elif [ "$osx_ver" == "10.8" ]; then
     check_exists makefiles/darwin_10_8.mk
-    cat makefiles/darwin_10_8.mk >> kaldi.mk 
+    cat makefiles/darwin_10_8.mk >> kaldi.mk
   elif [ "$osx_ver" == "10.9" ]; then
     check_exists makefiles/darwin_10_9.mk
-    cat makefiles/darwin_10_9.mk >> kaldi.mk 
+    cat makefiles/darwin_10_9.mk >> kaldi.mk
   elif [ "$osx_ver" == "10.10" ]; then
     check_exists makefiles/darwin_10_10.mk
-    cat makefiles/darwin_10_10.mk >> kaldi.mk 
+    cat makefiles/darwin_10_10.mk >> kaldi.mk
   else 
     failure "OS X version '$osx_ver' not supported"
   fi
@@ -683,7 +694,6 @@ if [ "`uname -o`" == "Cygwin"  ]; then
     if [ ! -f /usr/lib/lapack/cygblas-0.dll ]; then
        failure "please first install package liblapack0"
     fi
-    echo FSTROOT = $FSTROOT >> kaldi.mk
     cat makefiles/cygwin.mk >> kaldi.mk
     echo "Configuration succeeded for platform cygwin"
     exit_success;
@@ -703,7 +713,6 @@ if [ "`uname`" == "Linux" ]; then
   fi
   echo OPENFSTLIBS = $OPENFSTLIBS >> kaldi.mk
   echo OPENFSTLDFLAGS = $OPENFSTLDFLAGS >> kaldi.mk
-  echo FSTROOT = $FSTROOT >> kaldi.mk
 
   echo "On Linux: Checking for linear algebra header files ..."
   if [ "$MATHLIB" == "ATLAS" ]; then
@@ -712,7 +721,7 @@ if [ "`uname`" == "Linux" ]; then
     fi
     echo "Using ATLAS as the linear algebra library."
     
-    # Finding out where the libraries are located: 
+    # Finding out where the libraries are located:
     # First we look for the static libraries and then look for dynamic ones.
     # We're looking for four libraries, all in the same directory, named
     # libcblas.a, libatlas.a, libf77blas.a, and a library that's variously
@@ -747,7 +756,7 @@ if [ "`uname`" == "Linux" ]; then
 
   elif [ "$MATHLIB" == "MKL" ]; then
     if [ "`uname -m`" != "x86_64" ]; then
-      failure "MKL on Linux only supported for Intel(R) 64 architecture (x86_64). 
+      failure "MKL on Linux only supported for Intel(R) 64 architecture (x86_64).
       See makefiles/linux_64_mkl.mk to manually configure for other platforms."
     fi
     
@@ -778,8 +787,8 @@ if [ "`uname`" == "Linux" ]; then
       || failure "Could not find the iomp5 library, have your tried the --omp-libdir switch?"
     echo "OMP library directory configured as: $OMPLIBDIR"
     OMP_LINK_LINE=''
-    # TODO(arnab): in the following conditional, the $static_math test is needed since 
-    # the OpenMP library is assumed to be dynamic.
+    # TODO(arnab): in the following conditional, the $static_math test is
+    # needed since the OpenMP library is assumed to be dynamic.
     if [ "$OMPLIBDIR" != "$MKLLIBDIR" ] ; then
       OMP_LINK_LINE="-L${OMPLIBDIR}"
       #if the libiomp5 library is dynamic, we add the rpath attribute
@@ -796,7 +805,6 @@ if [ "`uname`" == "Linux" ]; then
     if [ ! -z $MKLLIBDIR ]; then 
       echo MKLLIB = $MKLLIBDIR >> kaldi.mk
     fi
-    echo FSTROOT = $FSTROOT >> kaldi.mk
     check_exists makefiles/linux_x86_64_mkl.mk
     cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
     fix_cxx_flag

@@ -5,7 +5,7 @@ $(error FSTROOT not defined.)
 endif
 
 CXXFLAGS += -msse -msse2 -Wall -I.. \
-	  -pthread \
+      -pthread \
       -DKALDI_DOUBLEPRECISION=0 -DHAVE_POSIX_MEMALIGN \
       -Wno-sign-compare -Winit-self \
       -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H \
@@ -26,16 +26,19 @@ CC = $(CXX)
 RANLIB = ranlib
 AR = ar
 
-# On Mac OS 10.9, g++ is actually clang in disguise which by default uses the
-# new c++ standard library libc++. Since openfst uses stuff from the tr1
-# namespace, we need to tell clang to use libstdc++ instead.
+# Add no-mismatched-tags flag to suppress the annoying clang warnings
+# that are perfectly valid per spec.
 COMPILER = $(shell $(CXX) -v 2>&1 )
 ifeq ($(findstring clang,$(COMPILER)),clang)
-	CXXFLAGS += -stdlib=libstdc++
-	LDFLAGS += -stdlib=libstdc++
+  CXXFLAGS += -Wno-mismatched-tags
+  # Link with libstdc++ if we are building against OpenFst < 1.4
+  ifneq ("$(OPENFST_GE_10400)","1")
+    CXXFLAGS += -stdlib=libstdc++
+    LDFLAGS += -stdlib=libstdc++
+  endif
 endif
 
-# We need to tell recent versions of g++ to allow vector conversions without 
+# We need to tell recent versions of g++ to allow vector conversions without
 # an explicit cast provided the vectors are of the same size.
 ifeq ($(findstring GCC,$(COMPILER)),GCC)
 	CXXFLAGS += -flax-vector-conversions -Wno-unused-local-typedefs

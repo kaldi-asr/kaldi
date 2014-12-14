@@ -25,18 +25,40 @@
 #ifndef KALDI_UTIL_KALDI_PIPEBUF_H_
 #define KALDI_UTIL_KALDI_PIPEBUF_H_
 
+#if defined(_LIBCPP_VERSION)  // libc++
+#include "basic-filebuf.h"
+#else
 #include <fstream>
+#endif
 
 namespace kaldi
 {
-
-#ifndef _MSC_VER
 // This class provides a way to initialize a filebuf with a FILE* pointer
 // directly; it will not close the file pointer when it is deleted.
 // The C++ standard does not allow implementations of C++ to provide
 // this constructor within basic_filebuf, which makes it hard to deal
 // with pipes using completely native C++.  This is a workaround
 
+#ifdef _MSC_VER
+#elif defined(_LIBCPP_VERSION)  // libc++
+template<class CharType, class Traits = std::char_traits<CharType> >
+class basic_pipebuf : public basic_filebuf<CharType, Traits>
+{
+ public:
+  typedef basic_pipebuf<CharType, Traits>   ThisType;
+
+ public:
+  basic_pipebuf(FILE *fptr, std::ios_base::openmode mode)
+      : basic_filebuf<CharType, Traits>() {
+    this->open(fptr, mode);
+    if (!this->is_open()) {
+      KALDI_WARN << "Error initializing pipebuf";  // probably indicates
+      // code error, if the fptr was good.
+      return;
+    }
+  }
+};  // class basic_pipebuf
+#else
 template<class CharType, class Traits = std::char_traits<CharType> >
 class basic_pipebuf : public std::basic_filebuf<CharType, Traits>
 {
@@ -60,8 +82,6 @@ class basic_pipebuf : public std::basic_filebuf<CharType, Traits>
     this->_M_set_buffer(-1);
   }
 };  // class basic_pipebuf
-
-
 #endif // _MSC_VER
 
 };  // namespace kaldi

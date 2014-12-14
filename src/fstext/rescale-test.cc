@@ -32,7 +32,11 @@ template<class Arc> void TestComputeTotalWeight() {
 
   std::cout <<" printing FST at start\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -64,7 +68,11 @@ void TestRescaleToStochastic() {
 
   std::cout <<" printing FST at start\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
 
   }

@@ -1,14 +1,19 @@
-To install the prerequisites for Kaldi, type
+To install the prerequisites for Kaldi:
+
   make
-or if you have multiple CPUs and want to use them, type something like:
+
+If you have multiple CPUs and want to speed things up, you can do a parallel
+build by supplying the "-j" option to make, e.g. to use 4 CPUs:
+
   make -j 4
 
-and note that if you have multiple CPUs, you might want to supply 
-an option like "-j 4" to "make"; this will speed things up.
+By default, Kaldi builds against OpenFst-1.3.4. If you want to build against
+OpenFst-1.4, edit the Makefile in this folder. Note that this change requires
+a relatively new compiler with C++11 support, e.g. gcc >= 4.6, clang >= 3.0.
 
-[note: ./install_atlas.sh is a backup plan in case you don't have ATLAS
- installed on your system; ignore it unless you get errors from
- ../src/configure.]
+Note:
+./install_atlas.sh is a backup plan in case you don't have ATLAS installed
+on your system. Ignore it unless you get errors from ../src/configure.
 
 **** IGNORE THE REST OF THIS FILE!  ****
 

@@ -48,18 +48,22 @@
    efficient to compose with.
 */
 
+#ifdef _MSC_VER
+#include <unordered_map>
+using std::unordered_map;
+#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
+#include <unordered_map>
+using std::unordered_map;
+#else
+#include <tr1/unordered_map>
+using std::tr1::unordered_map;
+#endif
+
 #include <algorithm>
 #include <string>
 #include <vector>
-#ifdef _MSC_VER
-#include <unordered_map>
-#else
-#include <tr1/unordered_map>
-#endif
-using std::tr1::unordered_map;
 #include <fst/fstlib.h>
 #include <fst/fst-decl.h>
-#include <fst/slist.h>
 
 #include "util/const-integer-set.h"
 
@@ -90,7 +94,10 @@ class ContextFstImpl : public CacheImpl<Arc> {
   typedef typename Arc::Weight Weight;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Label Label;
-
+#ifdef HAVE_OPENFST_GE_10400
+  typedef DefaultCacheStore<Arc> Store;
+  typedef typename Store::State State;
+#endif
   typedef unordered_map<vector<LabelT>,
                         StateId, kaldi::VectorHasher<LabelT> > VectorToStateType;
   typedef unordered_map<vector<LabelT>,
@@ -206,16 +213,22 @@ class ContextFst : public Fst<Arc> {
  public:
   friend class ArcIterator< ContextFst<Arc> >;
   friend class StateIterator< ContextFst<Arc> >;
+#ifndef HAVE_OPENFST_GE_10400
   // We have to supply the default template argument below to work around a
   // Visual Studio bug.
   friend class CacheArcIterator< ContextFst<Arc>,
-                                 DefaultCacheStateAllocator<CacheState<Arc> >  >;
+                                 DefaultCacheStateAllocator<CacheState<Arc> > >;
+#endif
 
   typedef typename Arc::Weight Weight;
   typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
+#ifdef HAVE_OPENFST_GE_10400
+  typedef DefaultCacheStore<Arc> Store;
+  typedef typename Store::State State;
+#else
   typedef CacheState<Arc> State;
-
+#endif
 
   /// See \ref graph_context for more details.
   ContextFst(Label subsequential_symbol,  // epsilon not allowed.

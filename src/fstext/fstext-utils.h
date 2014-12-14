@@ -385,8 +385,13 @@ class VectorFstTplHolder {
       // on its own line.
       os << '\n';
       bool acceptor = false, write_one = false;
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<Arc> printer(t, t.InputSymbols(), t.OutputSymbols(),
+                              NULL, acceptor, write_one, "\t");
+#else
       FstPrinter<Arc> printer(t, t.InputSymbols(), t.OutputSymbols(),
                               NULL, acceptor, write_one);
+#endif
       printer.Print(&os, "<unknown>");
       if (os.fail())
         KALDI_WARN << "Stream failure detected.\n";
@@ -473,7 +478,7 @@ class VectorFstTplHolder {
             else t_->SetFinal(s, w);
             break;
           case 3: // 3 columns not ok for Lattice format; it's not an acceptor.
-            ok = false; 
+            ok = false;
             break;
           case 4:
             ok = ConvertStringToInteger(col[1], &arc.nextstate) &&
@@ -501,7 +506,7 @@ class VectorFstTplHolder {
         while (d >= t_->NumStates())
           t_->AddState();
         if (!ok) {
-          KALDI_WARN << "Bad line in FST: " << line;          
+          KALDI_WARN << "Bad line in FST: " << line;
           delete t_;
           t_ = NULL;
           return false;

@@ -30,12 +30,20 @@
 #ifdef _MSC_VER
 #include <unordered_map>
 #include <unordered_set>
+using std::unordered_map;
+using std::unordered_set;
+#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
+#include <unordered_map>
+#include <unordered_set>
+using std::unordered_map;
+using std::unordered_set;
 #else
 #include <tr1/unordered_map>
 #include <tr1/unordered_set>
-#endif
 using std::tr1::unordered_map;
 using std::tr1::unordered_set;
+#endif
+
 
 namespace kaldi {
 

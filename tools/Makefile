@@ -1,18 +1,30 @@
 # SHELL += -x
 
 CXX = g++
+# CXX = clang++  # Uncomment this line to build with Clang.
 
-# On Mac OS 10.9, g++ is actually clang in disguise which by default uses the
-# new c++ standard library libc++. Since openfst uses stuff from the tr1
-# namespace, we need to tell clang to use libstdc++ instead.
-COMPILER = $(shell $(CXX) -v 2>&1 )
-ifeq ($(findstring clang,$(COMPILER)),clang)
-	CXXFLAGS += -stdlib=libstdc++
-	LDFLAGS += -stdlib=libstdc++
+OPENFST_VERSION = 1.3.4
+# OPENFST_VERSION = 1.4.1  # Uncomment this line to build with OpenFst-1.4.1.
+# Note: OpenFst >= 1.4 requires C++11 support, hence you will need to use a
+# relatively recent C++ compiler, e.g. gcc >= 4.6, clang >= 3.0.
+
+# On Mac OS 10.9+, clang defaults to the new c++ standard library libc++.
+# Since OpenFst-1.3 uses stuff from the tr1 namespace, we need to tell clang
+# to use libstdc++ instead.
+ifeq ($(OPENFST_VERSION), 1.3.4)
+  COMPILER = $(shell $(CXX) -v 2>&1 )
+  ifeq ($(findstring clang,$(COMPILER)),clang)
+    CXXFLAGS += -stdlib=libstdc++
+    LDFLAGS += -stdlib=libstdc++
+  endif
+else
+  ifneq ($(OPENFST_VERSION), 1.4.1)
+    $(error OpenFst version $(OPENFST_VERSION) is not supported. \
+            Supported versions: 1.3.4, 1.4.1)
+  endif
 endif
 
 all: check_required_programs sph2pipe atlas irstlm_tgt sclite openfst
-
 
 check_required_programs:
 	extras/check_dependencies.sh
@@ -20,7 +32,7 @@ check_required_programs:
 clean: openfst_cleaned sclite_cleaned  irstlm_cleaned
 
 openfst_cleaned:
-	$(MAKE) -C openfst-1.3.4 clean
+	$(MAKE) -C openfst-$(OPENFST_VERSION) clean
 
 irstlm_cleaned:
 	$(MAKE) -C irstlm clean 
@@ -29,7 +41,7 @@ sclite_cleaned:
 	$(MAKE) -C sctk clean
 
 distclean:
-	rm -rf openfst-1.3.4/
+	rm -rf openfst-$(OPENFST_VERSION)/
 	rm -rf sctk-2.4.9/
 	rm -rf sctk
 	rm -rf ATLAS/
@@ -38,47 +50,46 @@ distclean:
 	rm -rf sph2pipe_v2.5.tar.gz
 	rm -rf atlas3.8.3.tar.gz
 	rm -rf sctk-2.4.9-20141015-1634Z.tar.bz2
-	rm -rf openfst-1.3.4.tar.gz
+	rm -rf openfst-$(OPENFST_VERSION).tar.gz
 	rm -f openfst
 
 
 .PHONY: openfst # so target will be made even though "openfst" exists.
-
-openfst: openfst_compiled openfst-1.3.4/lib
+openfst: openfst_compiled openfst-$(OPENFST_VERSION)/lib
+	-rm openfst
+	-ln -s openfst-$(OPENFST_VERSION) openfst
 
 .PHONY: openfst_compiled
-openfst_compiled: openfst-1.3.4/Makefile
-	cd openfst-1.3.4/ && \
+openfst_compiled: openfst-$(OPENFST_VERSION)/Makefile
+	cd openfst-$(OPENFST_VERSION)/ && \
 	$(MAKE) install
 
-openfst-1.3.4/lib: | openfst-1.3.4/Makefile
-	-cd openfst-1.3.4 && [ -d lib64 ] && [ ! -d lib ] && ln -s lib64 lib
+openfst-$(OPENFST_VERSION)/lib: | openfst-$(OPENFST_VERSION)/Makefile
+	-cd openfst-$(OPENFST_VERSION) && [ -d lib64 ] && [ ! -d lib ] && ln -s lib64 lib
 
-# Disable shared-library creation on cygwin as it leads to compilation error "file too big"
-# with openfst-1.3.4.
-openfst-1.3.4/Makefile: openfst-1.3.4/.patched
+# Disable shared-library creation on cygwin as it leads to compilation error
+# "file too big".
+openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION)/.patched
 ifeq ($(OSTYPE),cygwin)
-	cd openfst-1.3.4/; ./configure --prefix=`pwd` --enable-static --disable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
+	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --disable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 else
-	cd openfst-1.3.4/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
+	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 endif
 
 # patches for openfst. openfst_gcc41up.patch is a patch for openfst to \
 # support multi-threads when compile with g++ (gcc) version above 4.1
-openfst-1.3.4/.patched: | openfst-1.3.4
-	-cd openfst-1.3.4/src/include/fst; \
-	patch -p0 -N < ../../../../openfst.patch;
-	$(CXX) -dumpversion | awk '{if(NR==1 && $$1>"4.1") print "cd openfst-1.3.4/src/include/fst; patch -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
-	touch $@ 	
+openfst-$(OPENFST_VERSION)/.patched: | openfst-$(OPENFST_VERSION)
+	-cd openfst-$(OPENFST_VERSION)/src/include/fst; \
+	patch -p0 -N < ../../../../extras/openfst.patch;
+	$(CXX) -dumpversion | awk '{if(NR==1 && $$1>"4.1") print "cd openfst-$(OPENFST_VERSION)/src/include/fst; patch -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
+	touch $@
 
-openfst-1.3.4: openfst-1.3.4.tar.gz
-	tar xozf openfst-1.3.4.tar.gz
-	-rm openfst
-	-ln -s openfst-1.3.4 openfst 
+openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
+	tar xozf openfst-$(OPENFST_VERSION).tar.gz
 
-openfst-1.3.4.tar.gz: 
-	wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.3.4.tar.gz || \
-	wget -T 10 -t 3 http://www.openslr.org/resources/2/openfst-1.3.4.tar.gz
+openfst-$(OPENFST_VERSION).tar.gz: 
+	wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
+	wget -T 10 -t 3 http://www.openslr.org/resources/2/openfst-$(OPENFST_VERSION).tar.gz
 
 sclite: sclite_compiled
 

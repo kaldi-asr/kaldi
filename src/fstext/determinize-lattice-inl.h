@@ -22,13 +22,7 @@
 #define KALDI_FSTEXT_DETERMINIZE_LATTICE_INL_H_
 // Do not include this file directly.  It is included by determinize-lattice.h
 
-#ifdef _MSC_VER
-#include <unordered_map>
-#else
-#include <tr1/unordered_map>
-#endif
 #include <vector>
-using std::tr1::unordered_map;
 #include <climits>
 
 namespace fst {

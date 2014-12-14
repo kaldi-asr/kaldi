@@ -52,16 +52,19 @@
 // This has the advantage that it always works, for any input (also I just
 // prefer this approach).
 
+#ifdef _MSC_VER
+#include <unordered_map>
+using std::unordered_map;
+#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
+#include <unordered_map>
+using std::unordered_map;
+#else
+#include <tr1/unordered_map>
+using std::tr1::unordered_map;
+#endif
 
 
 #include <algorithm>
-#ifdef _MSC_VER
-#include <unordered_map>
-#else
-#include <tr1/unordered_map>
-#endif
-using std::tr1::unordered_map;
-#include <fst/slist.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -113,6 +116,11 @@ class TrivialFactorWeightFstImpl
   typedef typename A::Weight Weight;
   typedef typename A::StateId StateId;
   typedef F FactorIterator;
+
+#ifdef HAVE_OPENFST_GE_10400
+  typedef DefaultCacheStore<A> Store;
+  typedef typename Store::State State;
+#endif
 
   struct Element {
     Element() {}
@@ -336,7 +344,12 @@ class TrivialFactorWeightFst : public ImplToFst< TrivialFactorWeightFstImpl<A, F
   typedef A Arc;
   typedef typename A::Weight Weight;
   typedef typename A::StateId StateId;
+#ifdef HAVE_OPENFST_GE_10400
+  typedef DefaultCacheStore<Arc> Store;
+  typedef typename Store::State State;
+#else
   typedef CacheState<A> State;
+#endif
   typedef TrivialFactorWeightFstImpl<A, F> Impl;
 
   TrivialFactorWeightFst(const Fst<A> &fst)

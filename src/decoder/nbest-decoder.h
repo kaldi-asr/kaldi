@@ -21,11 +21,6 @@
 #ifndef KALDI_DECODER_NBEST_DECODER_H_
 #define KALDI_DECODER_NBEST_DECODER_H_
 
-#ifdef _MSC_VER
-#include <unordered_map>
-#else
-#include <tr1/unordered_map>
-#endif
 #include "util/stl-utils.h"
 #include "itf/options-itf.h"
 #include "util/hash-list.h"
@@ -686,7 +681,7 @@ class NBestDecoder {
   TokenHash toks_;
   const fst::Fst<fst::StdArc> &fst_;
   NBestDecoderOptions opts_;
-  typedef std::tr1::unordered_set<StateId> StateQueue;
+  typedef unordered_set<StateId> StateQueue;
   StateQueue queue_; // used in PropagateEpsilon,
   // std::vector<StateId> queue_;  // temp variable used in PropagateEpsilon,
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.

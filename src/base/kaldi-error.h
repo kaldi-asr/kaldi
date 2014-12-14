@@ -27,6 +27,14 @@
 #include <sstream>
 #include <cstdio>
 
+#ifdef _MSC_VER
+#define NOEXCEPT(Predicate)
+#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
+#define NOEXCEPT(Predicate) noexcept((Predicate))
+#else
+#define NOEXCEPT(Predicate)
+#endif
+
 #include "base/kaldi-types.h"
 #include "base/kaldi-utils.h"
 
@@ -97,7 +105,7 @@ class KaldiErrorMessage {
  public:
   KaldiErrorMessage(const char *func, const char *file, int32 line);
   inline std::ostream &stream() { return ss; }
-  ~KaldiErrorMessage();  // defined in kaldi-error.cc
+  ~KaldiErrorMessage() NOEXCEPT(false);  // defined in kaldi-error.cc
  private:
   std::ostringstream ss;
 };

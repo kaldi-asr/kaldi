@@ -55,6 +55,11 @@
   }
 #elif defined(HAVE_CLAPACK)
   #ifdef __APPLE__
+    #ifndef __has_extension
+    #define __has_extension(x) 0
+    #endif
+    #define vImage_Utilities_h
+    #define vImage_CVUtilities_h
     #include <Accelerate/Accelerate.h>
     typedef __CLPK_integer          integer;
     typedef __CLPK_logical          logical;

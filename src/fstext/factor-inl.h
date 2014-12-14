@@ -98,7 +98,7 @@ void Factor(const Fst<Arc> &fst, MutableFst<Arc> *ofst,
                  || state_properties[i] == (kStateArcsIn|kStateArcsOut|kStateIlabelsOut));
   vector<StateId> state_mapping(max_state+1, kNoStateId);
 
-  typedef std::tr1::unordered_map<vector<I>, Label, kaldi::VectorHasher<I> > SymbolMapType;
+  typedef unordered_map<vector<I>, Label, kaldi::VectorHasher<I> > SymbolMapType;
   SymbolMapType symbol_mapping;
   Label symbol_counter = 0;
   {

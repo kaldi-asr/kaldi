@@ -32,10 +32,9 @@ bool CompareInterval(const Interval &i1,
 
 }
 
-bool ClusterLattice(CompactLattice *clat, 
+bool ClusterLattice(CompactLattice *clat,
                     const vector<int32> &state_times) {
   using namespace fst;
-  using std::tr1::unordered_map;
   typedef CompactLattice::StateId StateId;
 
   // Hashmap to store the cluster heads.

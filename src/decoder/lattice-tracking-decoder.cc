@@ -914,7 +914,7 @@ bool DecodeUtteranceLatticeTracking(
   }
 
   double likelihood;
-  LatticeWeight weight;
+  LatticeWeight weight = LatticeWeight::Zero();
   int32 num_frames;
   { // First do some stuff with word-level traceback...
     VectorFst<LatticeArc> decoded;

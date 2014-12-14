@@ -23,13 +23,7 @@
 #ifndef KALDI_ONLINE_ONLINE_FASTER_DECODER_H_
 #define KALDI_ONLINE_ONLINE_FASTER_DECODER_H_
 
-#ifdef _MSC_VER
-#include <unordered_set>
-#else
-#include <tr1/unordered_set>
-#endif
-using std::tr1::unordered_set;
-
+#include "util/stl-utils.h"
 #include "decoder/faster-decoder.h"
 #include "hmm/transition-model.h"
 

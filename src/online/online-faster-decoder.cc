@@ -85,7 +85,7 @@ OnlineFasterDecoder::MakeLattice(const Token *start,
 
 
 void OnlineFasterDecoder::UpdateImmortalToken() {
-  std::tr1::unordered_set<Token*> emitting;
+  unordered_set<Token*> emitting;
   for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail) {
     Token* tok = e->val;
     while (tok->arc_.ilabel == 0) //deal with non-emitting ones ...
@@ -101,8 +101,8 @@ void OnlineFasterDecoder::UpdateImmortalToken() {
     }
     if (emitting.size() == 0)
       break;
-    std::tr1::unordered_set<Token*> prev_emitting;
-    std::tr1::unordered_set<Token*>::iterator it;
+    unordered_set<Token*> prev_emitting;
+    unordered_set<Token*>::iterator it;
     for (it = emitting.begin(); it != emitting.end(); ++it) {
       Token* tok = *it;
       Token* prev_token = tok->prev_;

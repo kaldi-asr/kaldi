@@ -36,7 +36,11 @@ template<class Arc> void TestDeterminizeGeneral() {
     VectorFst<Arc> *fst = RandFst<Arc>();
     std::cout << "FST before determinizing is:\n";
     {
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
+#else
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+#endif
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> ofst;
@@ -44,7 +48,11 @@ template<class Arc> void TestDeterminizeGeneral() {
       DeterminizeStar<Arc>(*fst, &ofst, kDelta, NULL, max_states);
       std::cout << "FST after determinizing is:\n";
       {
+#ifdef HAVE_OPENFST_GE_10400
+        FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true, "\t");
+#else
         FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true);
+#endif
         fstprinter.Print(&std::cout, "standard output");
       }
       assert(RandEquivalent(*fst, ofst, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length, max*/));      
@@ -99,7 +107,11 @@ template<class Arc>  void TestDeterminize() {
 
   std::cout <<" printing before trimming\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
   // Trim resulting FST.
@@ -107,7 +119,11 @@ template<class Arc>  void TestDeterminize() {
 
   std::cout <<" printing after trimming\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -120,7 +136,11 @@ template<class Arc>  void TestDeterminize() {
 
   std::cout <<" printing after predeterminization\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -136,7 +156,11 @@ template<class Arc>  void TestDeterminize() {
 
   std::cout <<" printing after epsilon removal\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
   VectorFst<Arc> ofst_orig;
@@ -155,14 +179,22 @@ template<class Arc>  void TestDeterminize() {
 
   {
     std::cout <<" printing after determinization [baseline]\n";
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(ofst_orig, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(ofst_orig, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
     assert(ofst_orig.Properties(kIDeterministic, true) == kIDeterministic);
   }
 
   {
     std::cout <<" printing after determinization [star]\n";
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
     assert(ofst_star.Properties(kIDeterministic, true) == kIDeterministic);
   }
@@ -172,7 +204,11 @@ template<class Arc>  void TestDeterminize() {
   int64 num_removed = DeleteISymbols(&ofst_star, extra_syms);
   std::cout <<" printing after removing "<<num_removed<<" instances of extra symbols\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -240,7 +276,11 @@ template<class Arc>  void TestPush() {
 
   std::cout <<" printing before trimming\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
   // Trim resulting FST.
@@ -248,7 +288,11 @@ template<class Arc>  void TestPush() {
 
   std::cout <<" printing after trimming\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -265,7 +309,11 @@ template<class Arc>  void TestPush() {
 
   std::cout <<" printing after pushing\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(fst_pushed, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(fst_pushed, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -318,7 +366,11 @@ template<class Arc>  void TestMinimize() {
 
   std::cout <<" printing before trimming\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
   // Trim resulting FST.
@@ -326,7 +378,11 @@ template<class Arc>  void TestMinimize() {
 
   std::cout <<" printing after trimming\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -339,7 +395,11 @@ template<class Arc>  void TestMinimize() {
 
   std::cout <<" printing after predeterminization\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -355,7 +415,11 @@ template<class Arc>  void TestMinimize() {
 
   std::cout <<" printing after epsilon removal\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
   VectorFst<Arc> ofst_orig;
@@ -368,7 +432,11 @@ template<class Arc>  void TestMinimize() {
   }
   {
     std::cout <<" printing after determinization [baseline]\n";
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(ofst_orig, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(ofst_orig, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -380,7 +448,11 @@ template<class Arc>  void TestMinimize() {
     DeterminizeStar(*fst, &gallic_fst);
     {
       std::cout <<" printing after determinization by DeterminizeStar [in gallic]\n";
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<GallicArc< Arc> > fstprinter(gallic_fst, sptr, sptr, NULL, false, true, "\t");
+#else
       FstPrinter<GallicArc< Arc> > fstprinter(gallic_fst, sptr, sptr, NULL, false, true);
+#endif
       fstprinter.Print(&std::cout, "standard output");
     }
 
@@ -390,7 +462,11 @@ template<class Arc>  void TestMinimize() {
 
     {
       std::cout <<" printing after pushing weights [in gallic]\n";
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<GallicArc< Arc> > fstprinter(gallic_fst, sptr, sptr, NULL, false, true, "\t");
+#else
       FstPrinter<GallicArc< Arc> > fstprinter(gallic_fst, sptr, sptr, NULL, false, true);
+#endif
       fstprinter.Print(&std::cout, "standard output");
     }
 
@@ -399,24 +475,45 @@ template<class Arc>  void TestMinimize() {
     Minimize(&gallic_fst);
     {
       std::cout <<" printing after  minimization [in gallic]\n";
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<GallicArc< Arc> > fstprinter(gallic_fst, sptr, sptr, NULL, false, true, "\t");
+#else
       FstPrinter<GallicArc< Arc> > fstprinter(gallic_fst, sptr, sptr, NULL, false, true);
+#endif
       fstprinter.Print(&std::cout, "standard output");
     }
 
     printf("Converting gallic back to regular [my approach]\n");
+#ifdef HAVE_OPENFST_GE_10400
+    TrivialFactorWeightFst< GallicArc<Arc, GALLIC_LEFT>, GallicFactor<typename Arc::Label,
+        typename Arc::Weight, GALLIC_LEFT> > fwfst(gallic_fst);
+#else
     TrivialFactorWeightFst< GallicArc<Arc, STRING_LEFT>, GallicFactor<typename Arc::Label,
         typename Arc::Weight, STRING_LEFT> > fwfst(gallic_fst);
+#endif
     {
       std::cout <<" printing factor-weight FST\n";
-      FstPrinter<GallicArc<Arc> >  fstprinter(fwfst, sptr, sptr, NULL, false, true);
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<GallicArc< Arc> > fstprinter(fwfst, sptr, sptr, NULL, false, true, "\t");
+#else
+      FstPrinter<GallicArc< Arc> > fstprinter(fwfst, sptr, sptr, NULL, false, true);
+#endif
       fstprinter.Print(&std::cout, "standard output");
     }
 
+#ifdef HAVE_OPENFST_GE_10400
+    Map(fwfst, &ofst_star, FromGallicMapper<Arc, GALLIC_LEFT>());
+#else
     Map(fwfst, &ofst_star, FromGallicMapper<Arc, STRING_LEFT>());
+#endif
 
     {
       std::cout <<" printing after converting back to regular FST\n";
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true, "\t");
+#else
       FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true);
+#endif
       fstprinter.Print(&std::cout, "standard output");
     }
 
@@ -429,7 +526,11 @@ template<class Arc>  void TestMinimize() {
   int64 num_removed = DeleteISymbols(&ofst_star, extra_syms);
   std::cout <<" printing after removing "<<num_removed<<" instances of extra symbols\n";
   {
-     FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true);
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true, "\t");
+#else
+    FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 

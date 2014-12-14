@@ -150,8 +150,8 @@ int main(int argc, char *argv[]) {
     // to do epsilon removal after composition with the keyword FST. They have
     // to traverse the resulting FST.
     int32 label_count = 1;
-    std::tr1::unordered_map<uint64, uint32> label_encoder;
-    std::tr1::unordered_map<uint32, uint64> label_decoder;
+    unordered_map<uint64, uint32> label_encoder;
+    unordered_map<uint32, uint64> label_decoder;
     for (StateIterator<KwsLexicographicFst> siter(index); !siter.Done(); siter.Next()) {
       StateId state_id = siter.Value();
       for (MutableArcIterator<KwsLexicographicFst> 

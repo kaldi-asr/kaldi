@@ -31,12 +31,6 @@
 #include "lat/kaldi-lattice.h"
 
 #include <algorithm>
-#ifdef _MSC_VER
-#include <unordered_map>
-#else
-#include <tr1/unordered_map>
-#endif
-using std::tr1::unordered_map;
 
 namespace kaldi {
 

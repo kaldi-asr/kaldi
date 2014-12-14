@@ -26,15 +26,16 @@ CC = $(CXX)
 RANLIB = ranlib
 AR = ar
 
-# On Mac OS 10.10, g++ is actually clang in disguise which by default uses the
-# new c++ standard library libc++. Since openfst-1.3 uses stuff from the tr1
-# namespace, we need to tell clang to use libstdc++ instead. We are also adding
-# the no-mismatched-tags flag to suppress the rather pointless warnings,
-# reported by clang by default, that are perfectly valid per spec.
+# Add no-mismatched-tags flag to suppress the annoying clang warnings
+# that are perfectly valid per spec.
 COMPILER = $(shell $(CXX) -v 2>&1 )
 ifeq ($(findstring clang,$(COMPILER)),clang)
-	CXXFLAGS += -stdlib=libstdc++ -Wno-mismatched-tags
-	LDFLAGS += -stdlib=libstdc++
+  CXXFLAGS += -Wno-mismatched-tags
+  # Link with libstdc++ if we are building against OpenFst < 1.4
+  ifneq ("$(OPENFST_GE_10400)","1")
+    CXXFLAGS += -stdlib=libstdc++
+    LDFLAGS += -stdlib=libstdc++
+  endif
 endif
 
 # We need to tell recent versions of g++ to allow vector conversions without

@@ -22,11 +22,6 @@
 #include "fstext/fst-test-utils.h"
 #include "fstext/fstext-utils.h"
 
-#ifdef _MSC_VER
-#include <unordered_map>
-#else
-#include <tr1/unordered_map>
-#endif
 // Just check that it compiles, for now.
 
 namespace fst
@@ -74,7 +69,11 @@ template<class Arc>  void TestPreDeterminize() {
 
   std::cout <<" printing before trimming\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
   // Trim resulting FST.
@@ -82,7 +81,11 @@ template<class Arc>  void TestPreDeterminize() {
 
   std::cout <<" printing after trimming\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -96,7 +99,11 @@ template<class Arc>  void TestPreDeterminize() {
 
   std::cout <<" printing after predeterminization\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -112,7 +119,11 @@ template<class Arc>  void TestPreDeterminize() {
 
   std::cout <<" printing after epsilon removal\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -122,14 +133,22 @@ template<class Arc>  void TestPreDeterminize() {
   Determinize(*fst, &ofst, opts);
   std::cout <<" printing after determinization\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(ofst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(ofst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
   int64 num_removed = DeleteISymbols(&ofst, extra_syms);
   std::cout <<" printing after removing "<<num_removed<<" instances of extra symbols\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(ofst, sptr, sptr, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(ofst, sptr, sptr, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -181,7 +200,11 @@ template<class Arc>  void TestAddSelfLoops() {
   }
   std::cout <<" printing before adding self-loops\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, ilabels, olabels, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, ilabels, olabels, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -200,7 +223,11 @@ template<class Arc>  void TestAddSelfLoops() {
 
   std::cout <<" printing after adding self-loops\n";
   {
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<Arc> fstprinter(*fst, ilabels, olabels, NULL, false, true, "\t");
+#else
     FstPrinter<Arc> fstprinter(*fst, ilabels, olabels, NULL, false, true);
+#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 

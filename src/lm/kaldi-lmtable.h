@@ -29,10 +29,14 @@
 
 #ifdef _MSC_VER
 #include <unordered_map>
+using std::unordered_map;
+#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
+#include <unordered_map>
+using std::unordered_map;
 #else
 #include <tr1/unordered_map>
-#endif
 using std::tr1::unordered_map;
+#endif
 
 #ifndef HAVE_IRSTLM
 #else

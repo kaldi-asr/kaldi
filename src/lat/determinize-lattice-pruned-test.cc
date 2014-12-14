@@ -62,7 +62,11 @@ template<class Arc> void TestDeterminizeLatticePruned() {
     
     std::cout << "FST before lattice-determinizing is:\n";
     {
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
+#else
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+#endif
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> det_fst;
@@ -75,7 +79,11 @@ template<class Arc> void TestDeterminizeLatticePruned() {
 
       std::cout << "FST after lattice-determinizing is:\n";
       {
+#ifdef HAVE_OPENFST_GE_10400
+        FstPrinter<Arc> fstprinter(det_fst, NULL, NULL, NULL, false, true, "\t");
+#else
         FstPrinter<Arc> fstprinter(det_fst, NULL, NULL, NULL, false, true);
+#endif
         fstprinter.Print(&std::cout, "standard output");
       }
       KALDI_ASSERT(det_fst.Properties(kIDeterministic, true) & kIDeterministic);
@@ -92,14 +100,22 @@ template<class Arc> void TestDeterminizeLatticePruned() {
       ConvertLattice<Weight, Int>(pruned_fst, &compact_pruned_fst, false);
       std::cout << "Compact pruned FST is:\n";
       {
+#ifdef HAVE_OPENFST_GE_10400
+        FstPrinter<CompactArc> fstprinter(compact_pruned_fst, NULL, NULL, NULL, false, true, "\t");
+#else
         FstPrinter<CompactArc> fstprinter(compact_pruned_fst, NULL, NULL, NULL, false, true);
+#endif
         fstprinter.Print(&std::cout, "standard output");
       }
       ConvertLattice<Weight, Int>(det_fst, &compact_pruned_det_fst, false);
       
       std::cout << "Compact version of determinized FST is:\n";
       {
+#ifdef HAVE_OPENFST_GE_10400
+        FstPrinter<CompactArc> fstprinter(compact_pruned_det_fst, NULL, NULL, NULL, false, true, "\t");
+#else
         FstPrinter<CompactArc> fstprinter(compact_pruned_det_fst, NULL, NULL, NULL, false, true);
+#endif
         fstprinter.Print(&std::cout, "standard output");
       }
 
@@ -122,14 +138,22 @@ template<class Arc> void TestDeterminizeLatticePruned2() {
     VectorFst<Arc> *fst = RandPairFst<Arc>(opts);
     std::cout << "FST before lattice-determinizing is:\n";
     {
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
+#else
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+#endif
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> ofst;
     DeterminizeLatticePruned<Weight>(*fst, 10.0, &ofst);
     std::cout << "FST after lattice-determinizing is:\n";
     {
+#ifdef HAVE_OPENFST_GE_10400
+      FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true, "\t");
+#else
       FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true);
+#endif
       fstprinter.Print(&std::cout, "standard output");
     }
     delete fst;
