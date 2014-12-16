@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
     using kaldi::int32;
 
     const char *usage =
-        "Copy tables/archives of FSTs, index by utterance-id\n"
+        "Copy tables/archives of FSTs, indexed by a string (e.g. utterance-id)\n"
         "\n"
         "Usage: fstcopy <fst-rspecifier> <fst-wspecifier>\n";
 

@@ -291,7 +291,7 @@ void OnlineCmvn::SmoothOnlineCmvnStats(const MatrixBase<double> &speaker_stats,
       count_from_global = opts.global_frames;
     if (count_from_global > 0.0)
       stats->AddMat(count_from_global / global_count,
-                             global_stats);
+                    global_stats);
   } else {
     KALDI_ERR << "Global CMN stats are required";
   }
