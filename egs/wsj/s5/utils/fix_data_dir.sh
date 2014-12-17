@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script makes sure that only the segments present in 
-# all of "feats.scp", "wav.scp" [if present], segments[if prsent]
+# all of "feats.scp", "wav.scp" [if present], segments [if present]
 # text, and utt2spk are present in any of them.
 # It puts the original contents of data-dir into 
 # data-dir/.backup
@@ -35,7 +35,7 @@ function check_sorted {
   fi
 }
 
-for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp reco2file_and_channel spk2gender utt2lang; do
+for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp vad.scp reco2file_and_channel spk2gender utt2lang; do
   if [ -f $data/$x ]; then
     cp $data/$x $data/.backup/$x
     check_sorted $data/$x
@@ -151,7 +151,7 @@ function filter_utts {
     fi
   fi
 
-  for x in utt2spk feats.scp text segments utt2lang $maybe_wav; do
+  for x in utt2spk feats.scp vad.scp text segments utt2lang $maybe_wav; do
     if [ -f $data/$x ]; then
       cp $data/$x $data/.backup/$x
       if ! cmp -s $data/$x <( utils/filter_scp.pl $tmpdir/utts $data/$x ) ; then
