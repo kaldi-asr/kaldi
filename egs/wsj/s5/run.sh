@@ -69,13 +69,17 @@ local/wsj_format_data.sh || exit 1;
    (
        num_threads_rnnlm=8
        local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
-	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 30  --nwords 10000 --direct 1000 data/local/rnnlm-hs.h30.voc10k  
+         --cmd "$decode_cmd -l mem_free=1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
+         --hidden 30  --nwords 10000 --direct 1000 data/local/rnnlm-hs.h30.voc10k  
        local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
-	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 100 --nwords 20000 --direct 1500 data/local/rnnlm-hs.h100.voc20k 
+         --cmd "$decode_cmd -l mem_free=1G -pe smp $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
+         --hidden 100 --nwords 20000 --direct 1500 data/local/rnnlm-hs.h100.voc20k 
        local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
-	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 300 --nwords 30000 --direct 1500 data/local/rnnlm-hs.h300.voc30k 
+         --cmd "$decode_cmd -l mem_free=1G -pe smp $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
+         --hidden 300 --nwords 30000 --direct 1500 data/local/rnnlm-hs.h300.voc30k 
        local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
-	   --cmd "$decode_cmd -l mem_free=1G" --bptt 4 --bptt-block 10 --hidden 400 --nwords 40000 --direct 2000 data/local/rnnlm-hs.h400.voc40k 
+         --cmd "$decode_cmd -l mem_free=1G -pe smp $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
+         --hidden 400 --nwords 40000 --direct 2000 data/local/rnnlm-hs.h400.voc40k 
    )
   ) &
 
