@@ -137,10 +137,11 @@ sub PrintKwslist {
   foreach my $kwentry (@{$KWS}) {
     if ($prev_kw ne $kwentry->[0]) {
       if ($prev_kw ne "") {$kwslist .= "  </detected_kwlist>\n";}
-      $kwslist .= "  <detected_kwlist search_time=\"1\" kwid=\"$kwentry->[0]\" oov_count=\"0\">\n";
+      $kwslist .= "  <detected_kwlist kwid=\"$kwentry->[0]\" search_time=\"1\" oov_count=\"0\">\n";
       $prev_kw = $kwentry->[0];
     }
-    $kwslist .= "    <kw file=\"$kwentry->[1]\" channel=\"$kwentry->[2]\" tbeg=\"$kwentry->[3]\" dur=\"$kwentry->[4]\" score=\"$kwentry->[5]\" decision=\"$kwentry->[6]\"";
+    my $score = sprintf("%g", $kwentry->[5]);
+    $kwslist .= "    <kw file=\"$kwentry->[1]\" channel=\"$kwentry->[2]\" tbeg=\"$kwentry->[3]\" dur=\"$kwentry->[4]\" score=\"$score\" decision=\"$kwentry->[6]\"";
     if (defined($kwentry->[7])) {$kwslist .= " threshold=\"$kwentry->[7]\"";}
     if (defined($kwentry->[8])) {$kwslist .= " raw_score=\"$kwentry->[8]\"";}
     $kwslist .= "/>\n";

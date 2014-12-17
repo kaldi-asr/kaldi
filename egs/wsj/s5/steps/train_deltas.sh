@@ -19,6 +19,7 @@ cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 norm_vars=false # deprecated.  Prefer --cmvn-opts "--norm-vars=true"
                 # use the option --cmvn-opts "--norm-means=false"
 cmvn_opts=
+delta_opts=
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -63,8 +64,9 @@ split_data.sh $data $nj || exit 1;
   echo "$0: warning: ignoring CMVN options from source directory $alidir"
 $norm_vars && cmvn_opts="--norm-vars=true $cmvn_opts"
 echo $cmvn_opts  > $dir/cmvn_opts # keep track of options to CMVN.
+[ ! -z $delta_opts ] && echo $delta_opts > $dir/delta_opts
 
-feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |"
 
 rm $dir/.error 2>/dev/null
 
