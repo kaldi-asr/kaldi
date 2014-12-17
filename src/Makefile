@@ -88,6 +88,9 @@ kaldi.mk:
 ext: test_dependencies ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
 	-echo Done
 
+ifndef OPENFST_VER
+$(error Please rerun configure: OPENFST_VER is not defined, likely kaldi.mk was produced by older configure script.)
+endif
 # Note: OPENFST_VER is determined by configure and added to kaldi.mk
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VER) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
 test_dependencies:
