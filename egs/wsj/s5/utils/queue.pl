@@ -27,10 +27,9 @@ use Getopt::Long;
 # gpu=* -q g.q -l gpu=$0
 # $0 here in the line is replaced with the argument read from the CLI and the
 # resulting string is passed to qsub.
-# 2) Special arguments to options such as 
-# gpu=0 -q all.q
-# If --gpu 0 is given in the command line, then "-q all.q" is passed to qsub
-# instead of "-q g.q -l gpu=0".
+# 2) Special arguments to options such as
+# gpu=0 
+# If --gpu 0 is given in the command line, then no special "-q" is given.
 # 3) Default argument
 # default gpu=0
 # If --gpu option is not passed in the command line, then the script behaves as
@@ -164,7 +163,7 @@ option num_threads=* -pe smp $0
 option num_threads=1  # Do not add anything to qsub_opts
 option max_jobs_run=* -tc $0
 default gpu=0
-option gpu=0 -q all.q
+option gpu=0
 option gpu=* -l gpu=$0 -q g.q
 EOF
 
