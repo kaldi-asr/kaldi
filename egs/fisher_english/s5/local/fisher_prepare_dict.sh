@@ -42,7 +42,8 @@ cat $dir/silence_phones.txt| awk '{printf("%s ", $1);} END{printf "\n";}' > $dir
 
 grep -v ';;;' $dir/cmudict/cmudict.0.7a |  tr '[A-Z]' '[a-z]' | \
  perl -ane 'if(!m:^;;;:){ s:(\S+)\(\d+\) :$1 :; s:  : :; print; }' | \
-   sed s/[0-9]//g | sort | uniq > $dir/lexicon1_raw_nosil.txt || exit 1;
+ perl -ane '@A = split(" ", $_); for ($n = 1; $n<@A;$n++) { $A[$n] =~ s/[0-9]//g; } print join(" ", @A) . "\n";' | \
+ sort | uniq > $dir/lexicon1_raw_nosil.txt || exit 1;
 
 # Add prons for laughter, noise, oov
 for w in `grep -v sil $dir/silence_phones.txt`; do
@@ -92,6 +93,7 @@ cat $dir/lexicon3_expand.txt  \
 
 
 cp $dir/lexicon4_extra.txt $dir/lexicon.txt
+rm $dir/lexiconp.txt 2>/dev/null; # can confuse later script if this exists.
 
 awk '{print $1}' $dir/lexicon.txt | \
   perl -e '($word_counts)=@ARGV;
