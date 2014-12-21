@@ -6,10 +6,10 @@
 # the number of cpus on your machine.
 
 #a) JHU cluster options
-#export train_cmd="queue.pl -l arch=*64*"
-#export decode_cmd="queue.pl -l arch=*64* -l ram_free=4G,mem_free=4G"
-#export cuda_cmd="..."
-#export mkgraph_cmd="queue.pl -l arch=*64* ram_free=4G,mem_free=4G"
+export train_cmd="queue.pl -l arch=*64*"
+export decode_cmd="queue.pl -l arch=*64* -l ram_free=4G,mem_free=4G"
+export cuda_cmd="..."
+export mkgraph_cmd="queue.pl -l arch=*64* ram_free=4G,mem_free=4G"
 
 #b) BUT cluster options
 #export train_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
@@ -26,7 +26,7 @@
 #export mkgraph_cmd=run.pl
 
 #d) Gorgon cluster
-export train_cmd="gorgon_queue.pl -q gorgon"
-export decode_cmd="gorgon_queue.pl -q gorgon"
-export cuda_cmd="gorgon_queue.pl -q gorgon"
-export mkgraph_cmd="gorgon_queue.pl -q gorgon"
+#export train_cmd="gorgon_queue.pl -q gorgon"
+#export decode_cmd="gorgon_queue.pl -q gorgon"
+#export cuda_cmd="gorgon_queue.pl -q gorgon"
+#export mkgraph_cmd="gorgon_queue.pl -q gorgon"
