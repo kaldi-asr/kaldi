@@ -87,7 +87,7 @@ steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir
 
 # Remove the small number of utterances that couldn't be extracted for some 
 # reason (e.g. too short; no such file).
-utils/fix_data_dir.sh data/train 
+utils/fix_data_dir.sh data/train
 
 # Create MFCCs for the eval set
 steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 data/eval2000 exp/make_mfcc/eval2000 $mfccdir
@@ -331,6 +331,8 @@ for iter in 4 5 6 7 8; do
   done
 done
 
+# this will help find issues with the lexicon.
+# steps/cleanup/debug_lexicon.sh --nj 300 --cmd "$train_cmd" data/train_nodev data/lang exp/tri4b data/local/dict/lexicon.txt exp/debug_lexicon
 
 # local/run_sgmm2.sh
 
