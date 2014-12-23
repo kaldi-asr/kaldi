@@ -40,8 +40,7 @@ dir=$3
 model=$dir/final.mdl # assume model one level up from decoding dir.
 
 
-for f in $lang/words.txt $lang/phones/word_boundary.int \
-     $model $dir/ali.1.gz $lang/oov.int; do
+for f in $lang/words.txt $model $dir/ali.1.gz $lang/oov.int; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
@@ -53,14 +52,29 @@ sdata=$data/split$nj
 mkdir -p $dir/log
 
 if [ $stage -le 0 ]; then
-  $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
-    linear-to-nbest "ark:gunzip -c $dir/ali.JOB.gz|" \
-     "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
-     '' '' ark:- \| \
-    lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-    nbest-to-ctm ark:- - \| \
-    utils/int2sym.pl -f 5 $lang/words.txt \| \
-    gzip -c '>' $dir/ctm.JOB.gz
+  if [ -f $lang/phones/word_boundary.int ]; then
+    $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
+      linear-to-nbest "ark:gunzip -c $dir/ali.JOB.gz|" \
+      "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
+      '' '' ark:- \| \
+      lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
+      nbest-to-ctm ark:- - \| \
+      utils/int2sym.pl -f 5 $lang/words.txt \| \
+      gzip -c '>' $dir/ctm.JOB.gz
+  else
+    if [ ! -f $lang/phones/align_lexicon.int ]; then
+      echo "$0: neither $lang/phones/word_boundary.int nor $lang/phones/align_lexicon.int exists: cannot align."
+      exit 1;
+    fi
+    $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
+      linear-to-nbest "ark:gunzip -c $dir/ali.JOB.gz|" \
+      "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
+      '' '' ark:- \| \
+      lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
+      nbest-to-ctm ark:- - \| \
+      utils/int2sym.pl -f 5 $lang/words.txt \| \
+      gzip -c '>' $dir/ctm.JOB.gz
+  fi
 fi
 
 if [ $stage -le 1 ]; then

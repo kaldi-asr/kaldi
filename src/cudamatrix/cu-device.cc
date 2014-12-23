@@ -681,6 +681,26 @@ void CuAllocator::Free(void *addr) {
     info->freed.push_back(addr);
   } else { // Actually free the address, and decrease "countdown".
     info->countdown--;
+    /*
+      If you get an "unspecified launch error" after the cudaFree call below, it
+      may not be an error with the immediate call, but it could reflect an error
+      that happened earlier.  We encountered the CUBLAS bug described at
+      https://devtalk.nvidia.com/default/topic/758598/cublas-gemm-leads-to-invalid-reads-for-some-matrix-dimensions/
+      which causes sgemm to access invalid memory.  After reproducibly getting
+      "unspecified launch failure" at the location below, we ran the program in
+      cuda-memcheck and got the following:
+      ========= Invalid __global__ read of size 4
+      =========     at 0x00000180 in sgemm_sm_heavy_nt_ldg
+      =========     by thread (223,0,0) in block (0,0,0)
+      =========     Address 0x4a0052607c is out of bounds
+      (and lots more stuff like that).  It appears to only happen for certain
+      matrix sizes, usually encountered for partial minibatches at the end of a
+      training job.  It happened on K20s but not on K10s. We know this happened
+      with CUDA toolkit version 5.5, and the link above says the bug has been
+      resolved in version 6.5 of the toolkit.  Our fix was to just not run the
+      affected training runs on our K20s, since this bug seemed to show up quite
+      rarely.
+     */
     CU_SAFE_CALL(cudaFree(addr)); // This is how we free, even if allocated with
                                   // cudaMallocPitch().
   }

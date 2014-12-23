@@ -105,9 +105,15 @@ cp $lang_out/phones.txt $lang_out/words.txt
 grep -v '<eps>' $lang_out/phones.txt | awk '{printf("0 0 %s %s\n", $2, $2);} END{print("0 0.0");}' | \
    fstcompile  > $lang_out/L.fst
 
+# note: first two fields of align_lexicon.txt are interpreted as the word; the remaining
+# fields are the phones that are in the pron of the word.  These are all the same, for us.
+for p in $(grep -v '<eps>' $lang_out/phones.txt | awk '{print $1}'); do echo $p $p $p; done > $lang_out/phones/align_lexicon.txt
+
+# just use one sym2int.pl command, since phones.txt and words.txt are identical.
+utils/sym2int.pl $lang_out/phones.txt <$lang_out/phones/align_lexicon.txt >$lang_out/phones/align_lexicon.int
+
 # L and L_disambig are the same.
 cp $lang_out/L.fst $lang_out/L_disambig.fst
 
 utils/validate_lang.pl $lang_out || exit 1;
-echo "$0: ignore warnings above from validate_lang.pl (these are expected)"
-
+echo "$0: ignore warnings RE disambiguation symbols from validate_lang.pl (these are expected)"

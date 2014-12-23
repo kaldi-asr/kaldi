@@ -259,7 +259,8 @@ for my $option (keys %cli_options) {
   } elsif (exists $cli_config_options{$option}) {
     $qsub_opts .= "$cli_config_options{$option} ";
   } else {
-    die "CLI option $option not described in $config file\n";
+    if ($opened_config_file == 0) { $config = "default config file"; }
+    die "queue.pl: Command line option $option not described in $config (or value '$value' not allowed)\n";
   }
 }
 
@@ -424,6 +425,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
   my $check_sge_job_ctr=1;
   #
   my $wait = 0.1;
+  my $counter = 0;
   foreach my $f (@syncfiles) {
     # wait for them to finish one by one.
     while (! -f $f) {
@@ -431,15 +433,22 @@ if (! $sync) { # We're not submitting with -sync y, so we
       $wait *= 1.2;
       if ($wait > 3.0) {
         $wait = 3.0; # never wait more than 3 seconds.
-        if (rand() > 0.5) {
-          system("touch $qdir/.kick");
-        } else {
-          system("rm $qdir/.kick 2>/dev/null");
+        # the following (.kick) commands are basically workarounds for NFS bugs.
+        if (rand() < 0.25) { # don't do this every time...
+          if (rand() > 0.5) {
+            system("touch $qdir/.kick");
+          } else {
+            system("rm $qdir/.kick 2>/dev/null");
+          }
         }
-        # This seems to kick NFS in the teeth to cause it to refresh the
-        # directory.  I've seen cases where it would indefinitely fail to get
-        # updated, even though the file exists on the server.
-        system("ls $qdir >/dev/null");
+        if ($counter++ % 10 == 0) {
+          # This seems to kick NFS in the teeth to cause it to refresh the
+          # directory.  I've seen cases where it would indefinitely fail to get
+          # updated, even though the file exists on the server.
+          # Only do this every 10 waits (every 30 seconds) though, or if there
+          # are many jobs waiting they can overwhelm the file server.
+          system("ls $qdir >/dev/null");
+        }
       }
 
       # Check that the job exists in SGE. Job can be killed if duration 

@@ -45,6 +45,7 @@ while(<R>) {
 
 # Now process the ctm file, which is either the standard input or the third
 # command-line argument.
+$num_done = 0;
 while(<>) {
   @A= split(" ", $_);
   ( @A == 5 || @A == 6 ) || die "Unexpected ctm format: $_";
@@ -75,7 +76,10 @@ while(<>) {
     print STDERR "Warning: word appears to be past end of recording; line is $line";
   }
   print $line; # goes to stdout.
+  $num_done++;
 }
+
+if ($num_done == 0) { exit 1; } else { exit 0; }
 
 __END__
 
