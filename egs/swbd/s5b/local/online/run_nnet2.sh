@@ -211,12 +211,6 @@ for x in exp/nnet2_online/nnet_a/decode_eval2000_*; do grep Sum $x/score_*/*sys 
 
 
 
-
-
-
-
-
-
 # for a baseline (although not the very best baseline we could do), here is a GMM-based
 # system trained on all the training data.  This is a speaker-adaptively trained system,
 # so it would be quite tricky to get even this result online.

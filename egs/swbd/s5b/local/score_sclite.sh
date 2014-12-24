@@ -66,12 +66,19 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-# Remove some stuff we don't want to score, from the ctm.
+  # Remove some stuff we don't want to score, from the ctm.
+  # the big expression in parentheses contains all the things that get mapped
+  # by the glm file, into hesitations.
+  # The -$ expression removes partial words.
+  # the aim here is to remove all the things that appear in the reference as optionally
+  # deletable (inside parentheses), as if we delete these there is no loss, while
+  # if we get them correct there is no gain.
   for x in $dir/score_*/$name.ctm; do
     cp $x $dir/tmpf;
     cat $dir/tmpf | grep -i -v -E '\[NOISE|LAUGHTER|VOCALIZED-NOISE\]' | \
-      grep -i -v -E '<UNK>' > $x;
-#      grep -i -v -E '<UNK>|%HESITATION' > $x;  # hesitation is scored
+    grep -i -v -E '<UNK>' | \
+    grep -i -v -E ' (UH|UM|EH|MM|HM|AH|HUH|HA|ER|OOF|HEE|ACH|EEE|EW)$' | \
+    grep -v -- '-$' > $x;
   done
 fi
 
