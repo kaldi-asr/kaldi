@@ -314,6 +314,14 @@ void CuMatrixBase<Real>::CopyFromMat(const MatrixBase<OtherReal> &src,
   this->CopyFromMat(temp, trans);
 }
 
+// instantiate the template above.
+template
+void CuMatrixBase<float>::CopyFromMat(const MatrixBase<double> &src,
+                                      MatrixTransposeType trans);
+template
+void CuMatrixBase<double>::CopyFromMat(const MatrixBase<float> &src,
+                                       MatrixTransposeType trans);
+
 
 template<typename Real>
 void CuMatrixBase<Real>::CopyFromSp(const CuSpMatrix<Real> &M) {
