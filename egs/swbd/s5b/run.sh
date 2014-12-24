@@ -54,22 +54,25 @@ local/swbd1_train_lms.sh $fisher_opt \
   data/local/train/text data/local/dict/lexicon.txt data/local/lm
 # We don't really need all these options for SRILM, since the LM training script
 # does some of the same processings (e.g. -subset -tolower)
-srilm_opts="-subset -prune-lowprobs -unk -tolower -order 3"
-LM=data/local/lm/sw1.o3g.kn.gz
-utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
-  data/lang $LM data/local/dict/lexicon.txt data/lang_sw1_tg
-
-LM=data/local/lm/sw1_fsh.o3g.kn.gz
-utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
-  data/lang $LM data/local/dict/lexicon.txt data/lang_sw1_fsh_tg
-
-# For some funny reason we are still using IRSTLM for doing LM pruning :)
-export PATH=$PATH:../../../tools/irstlm/bin/
-prune-lm --threshold=1e-7 data/local/lm/sw1_fsh.o3g.kn.gz /dev/stdout \
-  | gzip -c > data/local/lm/sw1_fsh.o3g.pr1-7.kn.gz || exit 1
-LM=data/local/lm/sw1_fsh.o3g.pr1-7.kn.gz
-utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
-  data/lang $LM data/local/dict/lexicon.txt data/lang_sw1_fsh_tgpr
+for order in 3 4; do
+  lm_suffix="tg"
+  [ $order -eq 3 ] || lm_suffix="fg"
+  srilm_opts="-subset -prune-lowprobs -unk -tolower -order $order"
+  LM=data/local/lm/sw1.o${order}g.kn.gz
+  utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
+    data/lang $LM data/local/dict/lexicon.txt data/lang_sw1_$lm_suffix
+  
+  LM=data/local/lm/sw1_fsh.o${order}g.kn.gz
+  utils/build_const_arpa_lm.sh $LM data/lang data/lang_sw1_fsh_$lm_suffix
+  
+  # For some funny reason we are still using IRSTLM for doing LM pruning :)
+  export PATH=$PATH:../../../tools/irstlm/bin/
+  prune-lm --threshold=1e-7 data/local/lm/sw1_fsh.o${order}g.kn.gz /dev/stdout \
+    | gzip -c > data/local/lm/sw1_fsh.o${order}g.pr1-7.kn.gz || exit 1
+  LM=data/local/lm/sw1_fsh.o${order}g.pr1-7.kn.gz
+  utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
+    data/lang $LM data/local/dict/lexicon.txt data/lang_sw1_fsh_${lm_suffix}pr
+done
 
 
 # Data preparation and formatting for eval2000 (note: the "text" file
@@ -232,9 +235,13 @@ for lm_suffix in tg fsh_tgpr; do
 done
 wait
 
-steps/lmrescore.sh --mode 3 --cmd "$decode_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 \
-  exp/tri4b/decode_eval2000_sw1_fsh_tgpr exp/tri4b/decode_eval2000_sw1_fsh_tg.3 || exit 1
-
+# steps/lmrescore.sh --mode 3 --cmd "$decode_cmd" \
+#   data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg \
+#   data/eval2000 exp/tri4b/decode_eval2000_sw1_fsh_tgpr \
+#   exp/tri4b/decode_eval2000_sw1_fsh_tg.3 || exit 1
+steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+  data/lang_sw1_fsh_{tgpr,fg} data/eval2000 \
+  exp/tri4b/decode_eval2000_sw1_fsh_{tgpr,fg} || exit 1;
 
 # MMI training starting from the LDA+MLLT+SAT systems on both the 
 # train_100k_nodup (110hr) and train_nodup (286hr) sets
@@ -270,10 +277,11 @@ for iter in 1 2 3 4; do
     (
       graph_dir=exp/tri4a/graph_sw1_${lm_suffix}
       decode_dir=exp/tri4a_mmi_b0.1/decode_eval2000_${iter}.mdl_sw1_${lm_suffix}
-    steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-    --iter $iter --transform-dir exp/tri4a/decode_eval2000_sw1_${lm_suffix} \
-            $graph_dir data/eval2000 $decode_dir
-  ) &
+      steps/decode.sh --nj 30 --cmd "$decode_cmd" \
+        --config conf/decode.config --iter $iter \
+        --transform-dir exp/tri4a/decode_eval2000_sw1_${lm_suffix} \
+        $graph_dir data/eval2000 $decode_dir
+    ) &
   done
 done
 
@@ -282,11 +290,24 @@ for iter in 1 2 3 4; do
     (
       graph_dir=exp/tri4b/graph_sw1_${lm_suffix}
       decode_dir=exp/tri4b_mmi_b0.1/decode_eval2000_${iter}.mdl_sw1_${lm_suffix}
-      steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-    --iter $iter --transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \
-    $graph_dir data/eval2000 $decode_dir   
-  ) &
+      steps/decode.sh --nj 30 --cmd "$decode_cmd" \
+        --config conf/decode.config --iter $iter \
+        --transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \
+        $graph_dir data/eval2000 $decode_dir
+    ) &
   done
+done
+wait
+
+for iter in 1 2 3 4;do
+  (
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+      data/lang_sw1_fsh_{tgpr,fg} data/eval2000 \
+      exp/tri4a_mmi_b0.1/decode_eval2000_${iter}.mdl_sw1_fsh_{tgpr,fg}
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+      data/lang_sw1_fsh_{tgpr,fg} data/eval2000 \
+      exp/tri4b_mmi_b0.1/decode_eval2000_${iter}.mdl_sw1_fsh_{tgpr,fg}
+  ) &
 done
 
 #TODO(arnab): add lmrescore here
@@ -313,8 +334,8 @@ for iter in 4 5 6 7 8; do
       graph_dir=exp/tri4a/graph_sw1_${lm_suffix}
       decode_dir=exp/tri4a_fmmi_b0.1/decode_eval2000_it${iter}_sw1_${lm_suffix}
       steps/decode_fmmi.sh --nj 30 --cmd "$decode_cmd" --iter $iter \
-	--transform-dir exp/tri4a/decode_eval2000_sw1_${lm_suffix} \
-	--config conf/decode.config $graph_dir data/eval2000 $decode_dir
+        --transform-dir exp/tri4a/decode_eval2000_sw1_${lm_suffix} \
+        --config conf/decode.config $graph_dir data/eval2000 $decode_dir
     ) &
   done
 done
@@ -325,14 +346,27 @@ for iter in 4 5 6 7 8; do
       graph_dir=exp/tri4b/graph_sw1_${lm_suffix}
       decode_dir=exp/tri4b_fmmi_b0.1/decode_eval2000_it${iter}_sw1_${lm_suffix}
       steps/decode_fmmi.sh --nj 30 --cmd "$decode_cmd" --iter $iter \
-	--transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \
-	--config conf/decode.config $graph_dir data/eval2000 $decode_dir
+        --transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \
+        --config conf/decode.config $graph_dir data/eval2000 $decode_dir
     ) &
   done
+done
+wait
+
+for iter in 4 5 6 7 8; do
+  (
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+      data/lang_sw1_fsh_{tgpr,fg} data/eval2000 \
+      exp/tri4a_fmmi_b0.1/decode_eval2000_it${iter}_sw1_fsh_{tgpr,fg}
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+      data/lang_sw1_fsh_{tgpr,fg} data/eval2000 \
+      exp/tri4b_fmmi_b0.1/decode_eval2000_it${iter}_sw1_fsh_{tgpr,fg}
+  ) &
 done
 
 # this will help find issues with the lexicon.
 # steps/cleanup/debug_lexicon.sh --nj 300 --cmd "$train_cmd" data/train_nodev data/lang exp/tri4b data/local/dict/lexicon.txt exp/debug_lexicon
+
 
 # local/run_sgmm2.sh
 

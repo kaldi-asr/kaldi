@@ -1,7 +1,8 @@
-#!/bin/bash -v
+#!/bin/bash
 
 # Copyright 2013  Arnab Ghoshal
 #                 Johns Hopkins University (author: Daniel Povey)
+#           2014  Guoguo Chen
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +26,8 @@ weblm=
 # end configuration sections
 
 help_message="Usage: "`basename $0`" [options] <train-txt> <dict> <out-dir>
-Train language models for Switchboard-1, and optionally for Fisher and web-data from University of Washington.\n
+Train language models for Switchboard-1, and optionally for Fisher and \n
+web-data from University of Washington.\n
 options: 
   --help          # print this message and exit
   --fisher DIR    # directory for Fisher transcripts (default: '$srilm_opts')
@@ -77,14 +79,23 @@ cut -d' ' -f2- $text | head -n $heldout_sent > $dir/heldout
 
 cut -d' ' -f1 $lexicon > $dir/wordlist
 
+# Trigram language model
 ngram-count -text $dir/train.gz -order 3 -limit-vocab -vocab $dir/wordlist \
   -unk -map-unk "<unk>" -kndiscount -interpolate -lm $dir/sw1.o3g.kn.gz
-echo "PPL for SWBD1 LM:"
+echo "PPL for SWBD1 trigram LM:"
 ngram -unk -lm $dir/sw1.o3g.kn.gz -ppl $dir/heldout
-ngram -unk -lm $dir/sw1.o3g.kn.gz -ppl $dir/heldout -debug 2 >& $dir/ppl2
+ngram -unk -lm $dir/sw1.o3g.kn.gz -ppl $dir/heldout -debug 2 >& $dir/3gram.ppl2
 # file data/local/lm/heldout: 10000 sentences, 118254 words, 0 OOVs
 # 0 zeroprobs, logprob= -250952 ppl= 90.5071 ppl1= 132.479
 
+# 4gram language model
+ngram-count -text $dir/train.gz -order 4 -limit-vocab -vocab $dir/wordlist \
+  -unk -map-unk "<unk>" -kndiscount -interpolate -lm $dir/sw1.o4g.kn.gz
+echo "PPL for SWBD1 4gram LM:"
+ngram -unk -lm $dir/sw1.o4g.kn.gz -ppl $dir/heldout
+ngram -unk -lm $dir/sw1.o4g.kn.gz -ppl $dir/heldout -debug 2 >& $dir/4gram.ppl2
+# file data/local/lm/heldout: 10000 sentences, 118254 words, 0 OOVs
+# 0 zeroprobs, logprob= -253747 ppl= 95.1632 ppl1= 139.887
 
 if [ ! -z "$fisher" ]; then
   [ ! -d "$fisher/data/trans" ] \
@@ -96,23 +107,31 @@ if [ ! -z "$fisher" ]; then
     | gzip -c > $dir/fisher/text0.gz
   gunzip -c $dir/fisher/text0.gz | local/fisher_map_words.pl \
     | gzip -c > $dir/fisher/text1.gz
-  ngram-count -text $dir/fisher/text1.gz -order 3 -limit-vocab \
-    -vocab $dir/wordlist -unk -map-unk "<unk>" -kndiscount -interpolate \
-    -lm $dir/fisher/fisher.o3g.kn.gz
-  echo "PPL for Fisher LM:"
-  ngram -unk -lm $dir/fisher/fisher.o3g.kn.gz -ppl $dir/heldout
-  ngram -unk -lm $dir/fisher/fisher.o3g.kn.gz -ppl $dir/heldout -debug 2 \
-    >& $dir/fisher/ppl2
-  compute-best-mix $dir/ppl2 $dir/fisher/ppl2 >& $dir/sw1_fsh_mix.log
-  grep 'best lambda' $dir/sw1_fsh_mix.log \
-    | perl -e '$_=<>; s/.*\(//; s/\).*//; @A = split; die "Expecting 2 numbers; found: $_" if(@A!=2); print "$A[0]\n$A[1]\n";' > $dir/sw1_fsh_mix.weights
-  swb1_weight=$(head -1 $dir/sw1_fsh_mix.weights)
-  fisher_weight=$(tail -n 1 $dir/sw1_fsh_mix.weights)
-  ngram -lm $dir/sw1.o3g.kn.gz -lambda $swb1_weight \
-    -mix-lm $dir/fisher/fisher.o3g.kn.gz \
-    -unk -write-lm $dir/sw1_fsh.o3g.kn.gz
-  echo "PPL for SWBD1 + Fisher LM:"
-  ngram -unk -lm $dir/sw1_fsh.o3g.kn.gz -ppl $dir/heldout
+
+  for x in 3 4; do
+    ngram-count -text $dir/fisher/text1.gz -order $x -limit-vocab \
+      -vocab $dir/wordlist -unk -map-unk "<unk>" -kndiscount -interpolate \
+      -lm $dir/fisher/fisher.o${x}g.kn.gz
+    echo "PPL for Fisher ${x}gram LM:"
+    ngram -unk -lm $dir/fisher/fisher.o${x}g.kn.gz -ppl $dir/heldout
+    ngram -unk -lm $dir/fisher/fisher.o${x}g.kn.gz -ppl $dir/heldout -debug 2 \
+      >& $dir/fisher/${x}gram.ppl2
+    compute-best-mix $dir/${x}gram.ppl2 \
+      $dir/fisher/${x}gram.ppl2 >& $dir/sw1_fsh_mix.${x}gram.log
+    grep 'best lambda' $dir/sw1_fsh_mix.${x}gram.log | perl -e '
+      $_=<>;
+      s/.*\(//; s/\).*//;
+      @A = split;
+      die "Expecting 2 numbers; found: $_" if(@A!=2);
+      print "$A[0]\n$A[1]\n";' > $dir/sw1_fsh_mix.${x}gram.weights
+    swb1_weight=$(head -1 $dir/sw1_fsh_mix.${x}gram.weights)
+    fisher_weight=$(tail -n 1 $dir/sw1_fsh_mix.${x}gram.weights)
+    ngram -order $x -lm $dir/sw1.o${x}g.kn.gz -lambda $swb1_weight \
+      -mix-lm $dir/fisher/fisher.o${x}g.kn.gz \
+      -unk -write-lm $dir/sw1_fsh.o${x}g.kn.gz
+    echo "PPL for SWBD1 + Fisher ${x}gram LM:"
+    ngram -unk -lm $dir/sw1_fsh.o${x}g.kn.gz -ppl $dir/heldout
+  done
 fi
 
 if [ ! -z "$weblm" ]; then
