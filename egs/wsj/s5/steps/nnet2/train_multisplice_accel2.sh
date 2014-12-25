@@ -7,19 +7,19 @@
 #           2014  Vijayaditya Peddinti
 # Apache 2.0.
 
-# train_pnorm_multisplice2.sh is a modified version of
-# train_pnorm_simple2.sh. This script creates neural net architectures with
-# multiple levels of splicing.  You can also compare it with
-# train_pnorm_multisplice.sh; it differs from that script by using the newer,
-# more compact multi-frame egs format that is dumped by get_egs2.sh.
+# train_multisplice_accel2.sh is a modified version of
+# train_pnorm_multisplice2.sh (still using pnorm).  The "accel" refers to the
+# fact that we increase the number of jobs during training (from
+# --num-jobs-initial to --num-jobs-final).  We dropped "pnorm" from the name as
+# it was getting too long.
 
 
 # Begin configuration section.
 cmd=run.pl
 num_epochs=15      # Number of epochs of training;
                    # the number of iterations is worked out from this.
-initial_learning_rate=0.04
-final_learning_rate=0.004
+initial_effective_lrate=0.01
+final_effective_lrate=0.001
 bias_stddev=0.5
 pnorm_input_dim=3000 
 pnorm_output_dim=300
@@ -29,8 +29,8 @@ minibatch_size=128 # by default use a smallish minibatch size for neural net
 
 samples_per_iter=400000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh
-num_jobs_nnet=4    # Number of neural net jobs to run in parallel.  This option
-                   # is passed to get_egs.sh.
+num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
+num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
 prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
                         # more than enough.
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
@@ -88,10 +88,14 @@ cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
 feat_type=  # Can be used to force "raw" features.
 align_cmd=              # The cmd that is passed to steps/nnet2/align.sh
 align_use_gpu=          # Passed to use_gpu in steps/nnet2/align.sh [yes/no]
-realign_epochs=         # List of epochs, the beginning of which realignment is done
+realign_times=          # List of times on which we realign.  Each time is 
+                        # floating point number strictly between 0 and 1, which
+                        # will be multiplied by the num-iters to get an iteration
+                        # number.
 num_jobs_align=30       # Number of jobs for realignment
 # End configuration section.
 
+trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -106,18 +110,15 @@ if [ $# != 4 ]; then
   echo "  --config <config-file>                           # config file containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --num-epochs <#epochs|15>                        # Number of epochs of training"
-  echo "  --initial-learning-rate <initial-learning-rate|0.02> # Learning rate at start of training, e.g. 0.02 for small"
-  echo "                                                       # data, 0.01 for large data"
-  echo "  --final-learning-rate  <final-learning-rate|0.004>   # Learning rate at end of training, e.g. 0.004 for small"
-  echo "                                                   # data, 0.001 for large data"
+  echo "  --initial-effective-lrate <lrate|0.02> # effective learning rate at start of training."
+  echo "  --final-effective-lrate <lrate|0.004>   # effective learning rate at end of training."
+  echo "                                                   # data, 0.00025 for large data"
   echo "  --num-hidden-layers <#hidden-layers|2>           # Number of hidden layers, e.g. 2 for 3 hours of data, 4 for 100hrs"
   echo "  --add-layers-period <#iters|2>                   # Number of iterations between adding hidden layers"
   echo "  --mix-up <#pseudo-gaussians|0>                   # Can be used to have multiple targets in final output layer,"
   echo "                                                   # per context-dependent state.  Try a number several times #states."
-  echo "  --num-jobs-nnet <num-jobs|8>                     # Number of parallel jobs to use for main neural net"
-  echo "                                                   # training (will affect results as well as speed; try 8, 16)"
-  echo "                                                   # Note: if you increase this, you may want to also increase"
-  echo "                                                   # the learning rate."
+  echo "  --num-jobs-initial <num-jobs|1>                  # Number of parallel jobs to use for neural net training, at the start."
+  echo "  --num-jobs-final <num-jobs|8>                    # Number of parallel jobs to use for neural net training, at the end"
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job (will affect results"
   echo "                                                   # as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
@@ -151,9 +152,9 @@ lang=$2
 alidir=$3
 dir=$4
 
-if [ ! -z "$realign_epochs" ]; then
-  [ -z "$align_cmd" ] && echo "$0: realign_epochs specified but align_cmd not specified" && exit 1
-  [ -z "$align_use_gpu" ] && echo "$0: realign_epochs specified but align_use_gpu not specified" && exit 1
+if [ ! -z "$realign_times" ]; then
+  [ -z "$align_cmd" ] && echo "$0: realign_times specified but align_cmd not specified" && exit 1
+  [ -z "$align_use_gpu" ] && echo "$0: realign_times specified but align_use_gpu not specified" && exit 1
 fi
 
 # Check some files.
@@ -226,11 +227,11 @@ num_archives=$(cat $egs_dir/info/num_archives) || { echo "error: no such file $e
 # 0..frames_per_eg-1 to be a separate archive.
 num_archives_expanded=$[$num_archives*$frames_per_eg]
 
-if [ $num_jobs_nnet -gt $num_archives_expanded ]; then
-  echo "$0: --num-jobs-nnet cannot exceed num-archives*frames-per-eg which is $num_archives_expanded"
-  echo "$0: setting --num-jobs-nnet to $num_archives_expanded"
-  num_jobs_nnet=$num_archives_expanded
-fi
+[ $num_jobs_initial -gt $num_jobs_final ] && \
+  echo "$0: --initial-num-jobs cannot exceed --final-num-jobs" && exit 1;
+
+[ $num_jobs_final -gt $num_archives_expanded ] && \
+  echo "$0: --final-num-jobs cannot exceed #archives $num_archives_expanded." && exit 1;
 
 if ! [ $num_hidden_layers -ge 1 ]; then
   echo "Invalid num-hidden-layers $num_hidden_layers"
@@ -244,6 +245,8 @@ if [ $stage -le -2 ]; then
 
   online_preconditioning_opts="alpha=$alpha num-samples-history=$num_samples_history update-period=$update_period rank-in=$precondition_rank_in rank-out=$precondition_rank_out max-change-per-sample=$max_change_per_sample"
 
+  initial_lrate=$(perl -e "print ($initial_effective_lrate*$num_jobs_initial);")
+
   # create the config files for nnet initialization
   python steps/nnet2/make_multisplice_configs.py  \
     --splice-indexes "$splice_indexes"  \
@@ -254,7 +257,7 @@ if [ $stage -le -2 ]; then
     --pnorm-input-dim $pnorm_input_dim  \
     --pnorm-output-dim  $pnorm_output_dim \
     --online-preconditioning-opts "$online_preconditioning_opts"  \
-    --initial-learning-rate $initial_learning_rate  \
+    --initial-learning-rate $initial_lrate \
     --bias-stddev  $bias_stddev  \
     --num-hidden-layers $num_hidden_layers \
     --num-targets  $num_leaves  \
@@ -265,7 +268,6 @@ if [ $stage -le -2 ]; then
     $dir/0.mdl || exit 1;
 fi
 
-
 if [ $stage -le -1 ]; then
   echo "Training transition probabilities and setting priors"
   $cmd $dir/log/train_trans.log \
@@ -274,15 +276,37 @@ if [ $stage -le -1 ]; then
 fi
 
 # set num_iters so that as close as possible, we process the data $num_epochs
-# times, i.e. $num_iters*$num_jobs_nnet == $num_epochs*$num_archives_expanded
-num_iters=$[($num_epochs*$num_archives_expanded)/$num_jobs_nnet]
+# times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives_expanded,
+# where avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
 
-echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
+num_archives_to_process=$[$num_epochs*$num_archives_expanded]
+num_archives_processed=0
+num_iters=$[($num_archives_to_process*2)/($num_jobs_initial+$num_jobs_final)]
+
+! [ $num_iters -gt $[$finish_add_layers_iter+2] ] \
+  && echo "$0: Insufficient epochs" && exit 1
 
 finish_add_layers_iter=$[$num_hidden_layers * $add_layers_period]
-# This is when we decide to mix up from: halfway between when we've finished
-# adding the hidden layers and the end of training.
-mix_up_iter=$[($num_iters + $finish_add_layers_iter)/2]
+
+
+# mix up at the iteration where we've processed about half the data; this keeps
+# the overall training procedure fairly invariant to the number of initial and
+# final jobs.
+# j = initial, k = final, n = num-iters, x = half-of-data epoch,
+# p is proportion of data we want to process (e.g. p=0.5 here).
+# solve for x if the amount of data processed by epoch x is p
+# times the amount by iteration n.
+# put this in wolfram alpha:
+# solve { x*j + (k-j)*x*x/(2*n) = p * (j*n + (k-j)*n/2), {x} }
+# got: x = (j n-sqrt(-n^2 (j^2 (p-1)-k^2 p)))/(j-k) and j!=k and n!=0
+# simplified manually to: n * (sqrt(((1-p)j^2 + p k^2)/2) - j)/(j-k)
+mix_up_iter=$(perl -e '($j,$k,$n,$p)=@ARGV; print int(0.5 + ($j==$k ? $n*$p : $n*(sqrt((1-$p)*$j*$j+$p*$k*$k)-$j)/($k-$j))); ' $num_jobs_initial $num_jobs_final $num_iters 0.5)
+! [ $mix_up_iter -gt $finish_add_layers_iter ] && \
+  echo "Mix-up-iter is $mix_up_iter, should be greater than $finish_add_layers_iter -> add more epochs?" \
+  && exit 1;
+
+echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
+[ $mix_up -gt 0 ] && echo "$0: Will mix up on iteration $mix_up_iter"
 
 if [ $num_threads -eq 1 ]; then
   parallel_suffix="-simple" # this enables us to use GPU code if
@@ -299,14 +323,14 @@ else
 fi
 
 
-approx_iters_per_epoch=$[$num_iters/$num_epochs]
+approx_iters_per_epoch_final=$[$num_archives_expanded/$num_jobs_final]
 # First work out how many models we want to combine over in the final
 # nnet-combine-fast invocation.  This equals
-# min(max(max_models_combine, iters_per_epoch),
+# min(max(max_models_combine, approx_iters_per_epoch_final),
 #     2/3 * iters_after_mixup)
 num_models_combine=$max_models_combine
-if [ $num_models_combine -lt $approx_iters_per_epoch ]; then
-  num_models_combine=$approx_iters_per_epoch
+if [ $num_models_combine -lt $approx_iters_per_epoch_final ]; then
+   num_models_combine=$approx_iters_per_epoch_final
 fi
 iters_after_mixup_23=$[(($num_iters-$mix_up_iter-1)*2)/3]
 if [ $num_models_combine -gt $iters_after_mixup_23 ]; then
@@ -316,18 +340,28 @@ first_model_combine=$[$num_iters-$num_models_combine+1]
 
 x=0
 
-for realign_epoch in $realign_epochs; do
-  # compare the equation below with the equation we use to set num_iters above.
-  # note, realign_epochs may be floating-point, which is why we don't use $[] to
-  # do the math.
-  realign_iter=$(perl -e 'print int(($ARGV[0]*$ARGV[1])/$ARGV[2]);' $realign_epoch $num_archives_expanded $num_jobs_nnet)
-  realign_this_iter[$realign_iter]=$realign_epoch
+
+for realign_time in $realign_times; do
+  # Work out the iterations on which we will re-align, if the --realign-times
+  # option was used.  This is slightly approximate.
+  ! perl -e "exit($realign_time > 0.0 && $realign_time < 1.0 ? 0:1);" && \
+    echo "Invalid --realign-times option $realign_times: elements must be strictly between 0 and 1.";
+  # the next formula is based on the one for mix_up_iter above.
+  realign_iter=$(perl -e '($j,$k,$n,$p)=@ARGV; print int(0.5 + ($j==$k ? $n*$p : $n*(sqrt((1-$p)*$j*$j+$p*$k*$k)-$j)/($k-$j))); ' $num_jobs_initial $num_jobs_final $num_iters $realign_time) || exit 1;
+  realign_this_iter[$realign_iter]=$realign_time
 done
 
 cur_egs_dir=$egs_dir
 
 while [ $x -lt $num_iters ]; do
-    
+  this_num_jobs=$(perl -e "print int(0.5+$num_jobs_initial+($num_jobs_final-$num_jobs_initial)*$x/$num_iters);")
+
+  ilr=$initial_effective_lrate; flr=$final_effective_lrate; np=$num_archives_processed; nt=$num_archives_to_process;
+  this_learning_rate=$(perl -e "print (($x + 1 >= $num_iters ? $flr : $ilr*exp($np*log($flr/$ilr)/$nt))*$this_num_jobs);");
+
+  # TODO: remove this line.
+  echo "On iteration $x, learning rate is $this_learning_rate."    
+
   if [ ! -z "${realign_this_iter[$x]}" ]; then
     prev_egs_dir=$cur_egs_dir
     cur_egs_dir=$dir/egs_${realign_this_iter[$x]}
@@ -335,7 +369,7 @@ while [ $x -lt $num_iters ]; do
 
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
     if [ ! -z "${realign_this_iter[$x]}" ]; then
-      epoch=${realign_this_iter[$x]}
+      time=${realign_this_iter[$x]}
 
       echo "Getting average posterior for purposes of adjusting the priors."
       # Note: this just uses CPUs, using a smallish subset of data.
@@ -362,9 +396,9 @@ while [ $x -lt $num_iters ]; do
 
       steps/nnet2/align.sh --nj $num_jobs_align --cmd "$align_cmd" --use-gpu $align_use_gpu \
         --transform-dir "$transform_dir" --online-ivector-dir "$online_ivector_dir" \
-        --iter $x $data $lang $dir $dir/ali_$epoch || exit 1
+        --iter $x $data $lang $dir $dir/ali_$time || exit 1
 
-      steps/nnet2/relabel_egs2.sh --cmd "$cmd" --iter $x $dir/ali_$epoch \
+      steps/nnet2/relabel_egs2.sh --cmd "$cmd" --iter $x $dir/ali_$time \
         $prev_egs_dir $cur_egs_dir || exit 1
 
       if $cleanup && [[ $prev_egs_dir =~ $dir/egs* ]]; then
@@ -390,22 +424,23 @@ while [ $x -lt $num_iters ]; do
     if [ $x -gt 0 ] && \
       [ $x -le $[($num_hidden_layers-1)*$add_layers_period] ] && \
       [ $[$x%$add_layers_period] -eq 0 ]; then
+      do_average=false # if we've just mixed up, don't do averaging take the best.
       cur_num_hidden_layers=$[$x/$add_layers_period];
-      mdl="nnet-init --srand=$x $dir/hidden_${cur_num_hidden_layers}.config - | nnet-insert $dir/$x.mdl - - |"
+      mdl="nnet-init --srand=$x $dir/hidden_${cur_num_hidden_layers}.config - | nnet-insert $dir/$x.mdl - - | nnet-am-copy --learning-rate=$this_learning_rate - -|"
     else
-      mdl=$dir/$x.mdl
+      do_average=true
+      if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
+      mdl="nnet-am-copy --learning-rate=$this_learning_rate $dir/$x.mdl -|"
     fi
-    if [ $x -eq 0 ] || [ "$mdl" != "$dir/$x.mdl" ]; then
+    if $do_average; then
+      this_minibatch_size=$minibatch_size
+    else
       # on iteration zero or when we just added a layer, use a smaller minibatch
       # size and just one job: the model-averaging doesn't seem to be helpful
       # when the model is changing too fast (i.e. it worsens the objective
       # function), and the smaller minibatch size will help to keep
       # the update stable.
       this_minibatch_size=$[$minibatch_size/2];
-      do_average=false
-    else
-      this_minibatch_size=$minibatch_size
-      do_average=true
     fi
 
     rm $dir/.error 2>/dev/null
@@ -418,9 +453,9 @@ while [ $x -lt $num_iters ]; do
       # We can't easily use a single parallel SGE job to do the main training,
       # because the computation of which archive and which --frame option
       # to use for each job is a little complex, so we spawn each one separately.
-      for n in $(seq $num_jobs_nnet); do
-        k=$[$x*$num_jobs_nnet + $n - 1]; # k is a zero-based index that we'll derive
-                                         # the other indexes from.
+      for n in $(seq $this_num_jobs); do
+        k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we'll derive
+                                               # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
         frame=$[(($k/$num_archives)%$frames_per_eg)]; # work out the 0-based frame
         # index; this increases more slowly than the archive index because the
@@ -440,17 +475,14 @@ while [ $x -lt $num_iters ]; do
     [ -f $dir/.error ] && echo "$0: error on iteration $x of training" && exit 1;
 
     nnets_list=
-    for n in `seq 1 $num_jobs_nnet`; do
+    for n in `seq 1 $this_num_jobs`; do
       nnets_list="$nnets_list $dir/$[$x+1].$n.mdl"
     done
-
-    learning_rate=`perl -e '($x,$n,$i,$f)=@ARGV; print ($x >= $n ? $f : $i*exp($x*log($f/$i)/$n));' $[$x+1] $num_iters $initial_learning_rate $final_learning_rate`;
 
     if $do_average; then
       # average the output of the different jobs.
       $cmd $dir/log/average.$x.log \
-        nnet-am-average $nnets_list - \| \
-        nnet-am-copy --learning-rate=$learning_rate - $dir/$[$x+1].mdl || exit 1;
+        nnet-am-average $nnets_list $dir/$[$x+1].mdl || exit 1;
     else
       # choose the best from the different jobs.
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
@@ -459,8 +491,7 @@ while [ $x -lt $num_iters ]; do
           close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob; 
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
-      $cmd $dir/log/select.$x.log \
-        nnet-am-copy --learning-rate=$learning_rate $dir/$[$x+1].$n.mdl $dir/$[$x+1].mdl || exit 1;
+      cp $dir/$[$x+1].$n.mdl $dir/$[$x+1].mdl || exit 1;
     fi
 
     if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
@@ -478,6 +509,7 @@ while [ $x -lt $num_iters ]; do
     fi
   fi
   x=$[$x+1]
+  num_archives_processed=$[$num_archives_processed+$this_num_jobs]
 done
 
 
@@ -594,3 +626,4 @@ if $cleanup; then
     fi
   done
 fi
+

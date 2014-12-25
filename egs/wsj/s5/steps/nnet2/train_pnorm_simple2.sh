@@ -68,6 +68,8 @@ num_hidden_layers=3
 stage=-4
 
 splice_width=4 # meaning +- 4 frames on each side for second LDA
+left_context= # if set, overrides splice-width
+right_context= # if set, overrides splice-width.
 randprune=4.0 # speeds up LDA.
 alpha=4.0 # relates to preconditioning.
 update_period=4 # relates to online preconditioning: says how often we update the subspace.
@@ -188,7 +190,9 @@ extra_opts=()
 [ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
 [ -z "$transform_dir" ] && transform_dir=$alidir
 extra_opts+=(--transform-dir $transform_dir)
-extra_opts+=(--left-context $splice_width --right-context $splice_width)
+[ -z "$left_context" ] && left_context=$splice_width
+[ -z "$right_context" ] && right_context=$splice_width
+extra_opts+=(--left-context $left_context --right-context $right_context)
 
 if [ $stage -le -4 ]; then
   echo "$0: calling get_lda.sh"
@@ -238,7 +242,7 @@ if [ $stage -le -2 ]; then
 
   stddev=`perl -e "print 1.0/sqrt($pnorm_input_dim);"`
   cat >$dir/nnet.config <<EOF
-SpliceComponent input-dim=$tot_input_dim left-context=$splice_width right-context=$splice_width const-component-dim=$ivector_dim
+SpliceComponent input-dim=$tot_input_dim left-context=$left_context right-context=$right_context const-component-dim=$ivector_dim
 FixedAffineComponent matrix=$lda_mat
 AffineComponentPreconditionedOnline input-dim=$lda_dim output-dim=$pnorm_input_dim $online_preconditioning_opts learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
 PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim p=$p
