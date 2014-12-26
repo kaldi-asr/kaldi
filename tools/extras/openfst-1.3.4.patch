@@ -1,0 +1,584 @@
+*** minimize.h
+***************
+*** 134,140 ****
+    typedef typename A::Weight Weight;
+    typedef ReverseArc<A> RevA;
+  
+!   CyclicMinimizer(const ExpandedFst<A>& fst) {
+      Initialize(fst);
+      Compute(fst);
+    }
+--- 134,147 ----
+    typedef typename A::Weight Weight;
+    typedef ReverseArc<A> RevA;
+  
+!   CyclicMinimizer(const ExpandedFst<A>& fst):
+!       // tell the Partition data-member to expect multiple repeated
+!       // calls to SplitOn with the same element if we are non-deterministic.
+!       P_(fst.Properties(kIDeterministic, true) == 0) {
+!     if(fst.Properties(kIDeterministic, true) == 0)
+!       CHECK(Weight::Properties() & kIdempotent); // this minimization
+!     // algorithm for non-deterministic FSTs can only work with idempotent
+!     // semirings.
+      Initialize(fst);
+      Compute(fst);
+    }
+***************
+*** 315,321 ****
+    typedef typename A::StateId ClassId;
+    typedef typename A::Weight Weight;
+  
+!   AcyclicMinimizer(const ExpandedFst<A>& fst) {
+      Initialize(fst);
+      Refine(fst);
+    }
+--- 322,334 ----
+    typedef typename A::StateId ClassId;
+    typedef typename A::Weight Weight;
+  
+!   AcyclicMinimizer(const ExpandedFst<A>& fst):
+!       // tell the Partition data-member to expect multiple repeated
+!       // calls to SplitOn with the same element if we are non-deterministic.
+!       partition_(fst.Properties(kIDeterministic, true) == 0) {
+!     if(fst.Properties(kIDeterministic, true) == 0)
+!       CHECK(Weight::Properties() & kIdempotent); // minimization for
+!     // non-deterministic FSTs can only work with idempotent semirings.
+      Initialize(fst);
+      Refine(fst);
+    }
+***************
+*** 531,543 ****
+  void Minimize(MutableFst<A>* fst,
+                MutableFst<A>* sfst = 0,
+                float delta = kDelta) {
+!   uint64 props = fst->Properties(kAcceptor | kIDeterministic|
+!                                  kWeighted | kUnweighted, true);
+!   if (!(props & kIDeterministic)) {
+!     FSTERROR() << "FST is not deterministic";
+!     fst->SetProperties(kError, kError);
+!     return;
+!   }
+  
+    if (!(props & kAcceptor)) {  // weighted transducer
+      VectorFst< GallicArc<A, STRING_LEFT> > gfst;
+--- 544,550 ----
+  void Minimize(MutableFst<A>* fst,
+                MutableFst<A>* sfst = 0,
+                float delta = kDelta) {
+!   uint64 props = fst->Properties(kAcceptor | kWeighted | kUnweighted, true);
+  
+    if (!(props & kAcceptor)) {  // weighted transducer
+      VectorFst< GallicArc<A, STRING_LEFT> > gfst;
+*** partition.h
+***************
+*** 43,50 ****
+    friend class PartitionIterator<T>;
+  
+    struct Element {
+!    Element() : value(0), next(0), prev(0) {}
+!    Element(T v) : value(v), next(0), prev(0) {}
+  
+     T        value;
+     Element* next;
+--- 43,50 ----
+    friend class PartitionIterator<T>;
+  
+    struct Element {
+!     Element() : value(0), next(0), prev(0) {}
+!     Element(T v) : value(v), next(0), prev(0) {}
+  
+     T        value;
+     Element* next;
+***************
+*** 52,60 ****
+    };
+  
+   public:
+!   Partition() {}
+  
+!   Partition(T num_states) {
+      Initialize(num_states);
+    }
+  
+--- 52,62 ----
+    };
+  
+   public:
+!   Partition(bool allow_repeated_split):
+!       allow_repeated_split_(allow_repeated_split) {}
+  
+!   Partition(bool allow_repeated_split, T num_states):
+!       allow_repeated_split_(allow_repeated_split) {
+      Initialize(num_states);
+    }
+  
+***************
+*** 137,152 ****
+      if (class_size_[class_id] == 1) return;
+  
+      // first time class is split
+!     if (split_size_[class_id] == 0)
+        visited_classes_.push_back(class_id);
+! 
+      // increment size of split (set of element at head of chain)
+      split_size_[class_id]++;
+! 
+      // update split point
+!     if (class_split_[class_id] == 0)
+!       class_split_[class_id] = classes_[class_id];
+!     if (class_split_[class_id] == elements_[element_id])
+        class_split_[class_id] = elements_[element_id]->next;
+  
+      // move to head of chain in same class
+--- 139,154 ----
+      if (class_size_[class_id] == 1) return;
+  
+      // first time class is split
+!     if (split_size_[class_id] == 0) { 
+        visited_classes_.push_back(class_id);
+!       class_split_[class_id] = classes_[class_id];
+!     }
+      // increment size of split (set of element at head of chain)
+      split_size_[class_id]++;
+!     
+      // update split point
+!     if (class_split_[class_id] != 0
+!         && class_split_[class_id] == elements_[element_id])
+        class_split_[class_id] = elements_[element_id]->next;
+  
+      // move to head of chain in same class
+***************
+*** 157,180 ****
+    // class indices of the newly created class. Returns the new_class id
+    // or -1 if no new class was created.
+    T SplitRefine(T class_id) {
+      // only split if necessary
+!     if (class_size_[class_id] == split_size_[class_id]) {
+!       class_split_[class_id] = 0;
+        split_size_[class_id] = 0;
+        return -1;
+      } else {
+- 
+        T new_class = AddClass();
+        size_t remainder = class_size_[class_id] - split_size_[class_id];
+        if (remainder < split_size_[class_id]) {  // add smaller
+-         Element* split_el   = class_split_[class_id];
+          classes_[new_class] = split_el;
+-         class_size_[class_id] = split_size_[class_id];
+-         class_size_[new_class] = remainder;
+          split_el->prev->next = 0;
+          split_el->prev = 0;
+        } else {
+-         Element* split_el   = class_split_[class_id];
+          classes_[new_class] = classes_[class_id];
+          class_size_[class_id] = remainder;
+          class_size_[new_class] = split_size_[class_id];
+--- 159,189 ----
+    // class indices of the newly created class. Returns the new_class id
+    // or -1 if no new class was created.
+    T SplitRefine(T class_id) {
++ 
++     Element* split_el = class_split_[class_id];
+      // only split if necessary
+!     //if (class_size_[class_id] == split_size_[class_id]) {
+!     if(split_el == NULL) { // we split on everything...
+        split_size_[class_id] = 0;
+        return -1;
+      } else {
+        T new_class = AddClass();
++ 
++       if(allow_repeated_split_) { // split_size_ is possibly
++         // inaccurate, so work it out exactly.
++         size_t split_count;  Element *e;
++         for(split_count=0,e=classes_[class_id];
++             e != split_el; split_count++, e=e->next);
++         split_size_[class_id] = split_count;
++       }
+        size_t remainder = class_size_[class_id] - split_size_[class_id];
+        if (remainder < split_size_[class_id]) {  // add smaller
+          classes_[new_class] = split_el;
+          split_el->prev->next = 0;
+          split_el->prev = 0;
++         class_size_[class_id] = split_size_[class_id];
++         class_size_[new_class] = remainder;
+        } else {
+          classes_[new_class] = classes_[class_id];
+          class_size_[class_id] = remainder;
+          class_size_[new_class] = split_size_[class_id];
+***************
+*** 245,254 ****
+--- 254,269 ----
+    vector<T> class_size_;
+  
+    // size of split for each class
++   // in the nondeterministic case, split_size_ is actually an upper
++   // bound on the size of split for each class.
+    vector<T> split_size_;
+  
+    // set of visited classes to be used in split refine
+    vector<T> visited_classes_;
++ 
++   // true if input fst was deterministic: we can make
++   // certain assumptions in this case that speed up the algorithm.
++   bool allow_repeated_split_;
+  };
+  
+  
+*** interval-set.h
+***************
+*** 37,74 ****
+  class IntervalSet {
+   public:
+    struct Interval {
+!     T begin;
+!     T end;
+  
+!     Interval() : begin(-1), end(-1) {}
+  
+!     Interval(T b, T e) : begin(b), end(e) {}
+  
+      bool operator<(const Interval &i) const {
+!       return begin < i.begin || (begin == i.begin && end > i.end);
+      }
+  
+      bool operator==(const Interval &i) const {
+!       return begin == i.begin && end == i.end;
+      }
+  
+      bool operator!=(const Interval &i) const {
+!       return begin != i.begin || end != i.end;
+      }
+  
+      istream &Read(istream &strm) {
+        T n;
+        ReadType(strm, &n);
+!       begin = n;
+        ReadType(strm, &n);
+!       end = n;
+        return strm;
+      }
+  
+      ostream &Write(ostream &strm) const {
+!       T n = begin;
+        WriteType(strm, n);
+!       n = end;
+        WriteType(strm, n);
+        return strm;
+      }
+--- 37,74 ----
+  class IntervalSet {
+   public:
+    struct Interval {
+!     T begin_;
+!     T end_;
+  
+!     Interval() : begin_(-1), end_(-1) {}
+  
+!     Interval(T b, T e) : begin_(b), end_(e) {}
+  
+      bool operator<(const Interval &i) const {
+!       return begin_ < i.begin_ || (begin_ == i.begin_ && end_ > i.end_);
+      }
+  
+      bool operator==(const Interval &i) const {
+!       return begin_ == i.begin_ && end_ == i.end_;
+      }
+  
+      bool operator!=(const Interval &i) const {
+!       return begin_ != i.begin_ || end_ != i.end_;
+      }
+  
+      istream &Read(istream &strm) {
+        T n;
+        ReadType(strm, &n);
+!       begin_ = n;
+        ReadType(strm, &n);
+!       end_ = n;
+        return strm;
+      }
+  
+      ostream &Write(ostream &strm) const {
+!       T n = begin_;
+        WriteType(strm, n);
+!       n = end_;
+        WriteType(strm, n);
+        return strm;
+      }
+***************
+*** 108,114 ****
+          lower_bound(intervals_.begin(), intervals_.end(), interval);
+      if (lb == intervals_.begin())
+        return false;
+!     return (--lb)->end > value;
+    }
+  
+    // Requires intervals be normalized.
+--- 108,114 ----
+          lower_bound(intervals_.begin(), intervals_.end(), interval);
+      if (lb == intervals_.begin())
+        return false;
+!     return (--lb)->end_ > value;
+    }
+  
+    // Requires intervals be normalized.
+***************
+*** 123,129 ****
+  
+    bool Singleton() const {
+      return intervals_.size() == 1 &&
+!         intervals_[0].begin + 1 == intervals_[0].end;
+    }
+  
+  
+--- 123,129 ----
+  
+    bool Singleton() const {
+      return intervals_.size() == 1 &&
+!         intervals_[0].begin_ + 1 == intervals_[0].end_;
+    }
+  
+  
+***************
+*** 178,194 ****
+    T size = 0;
+    for (T i = 0; i < intervals_.size(); ++i) {
+      Interval &inti = intervals_[i];
+!     if (inti.begin == inti.end)
+        continue;
+      for (T j = i + 1; j < intervals_.size(); ++j) {
+        Interval &intj = intervals_[j];
+!       if (intj.begin > inti.end)
+          break;
+!       if (intj.end > inti.end)
+!         inti.end = intj.end;
+        ++i;
+      }
+!     count_ += inti.end - inti.begin;
+      intervals_[size++] = inti;
+    }
+    intervals_.resize(size);
+--- 178,194 ----
+    T size = 0;
+    for (T i = 0; i < intervals_.size(); ++i) {
+      Interval &inti = intervals_[i];
+!     if (inti.begin_ == inti.end_)
+        continue;
+      for (T j = i + 1; j < intervals_.size(); ++j) {
+        Interval &intj = intervals_[j];
+!       if (intj.begin_ > inti.end_)
+          break;
+!       if (intj.end_ > inti.end_)
+!         inti.end_ = intj.end_;
+        ++i;
+      }
+!     count_ += inti.end_ - inti.begin_;
+      intervals_[size++] = inti;
+    }
+    intervals_.resize(size);
+***************
+*** 208,224 ****
+    oset->count_ = 0;
+  
+    while (it1 != intervals_.end() && it2 != iintervals->end()) {
+!     if (it1->end <= it2->begin) {
+        ++it1;
+!     } else if (it2->end <= it1->begin) {
+        ++it2;
+      } else {
+        Interval interval;
+!       interval.begin = max(it1->begin, it2->begin);
+!       interval.end = min(it1->end, it2->end);
+        ointervals->push_back(interval);
+!       oset->count_ += interval.end - interval.begin;
+!       if (it1->end < it2->end)
+          ++it1;
+        else
+          ++it2;
+--- 208,224 ----
+    oset->count_ = 0;
+  
+    while (it1 != intervals_.end() && it2 != iintervals->end()) {
+!     if (it1->end_ <= it2->begin_) {
+        ++it1;
+!     } else if (it2->end_ <= it1->begin_) {
+        ++it2;
+      } else {
+        Interval interval;
+!       interval.begin_ = max(it1->begin_, it2->begin_);
+!       interval.end_ = min(it1->end_, it2->end_);
+        ointervals->push_back(interval);
+!       oset->count_ += interval.end_ - interval.begin_;
+!       if (it1->end_ < it2->end_)
+          ++it1;
+        else
+          ++it2;
+***************
+*** 235,255 ****
+    oset->count_ = 0;
+  
+    Interval interval;
+!   interval.begin = 0;
+    for (typename vector<Interval>::const_iterator it = intervals_.begin();
+         it != intervals_.end();
+         ++it) {
+!     interval.end = min(it->begin, maxval);
+!     if (interval.begin < interval.end) {
+        ointervals->push_back(interval);
+!       oset->count_ += interval.end - interval.begin;
+      }
+!     interval.begin = it->end;
+    }
+!   interval.end = maxval;
+!   if (interval.begin < interval.end) {
+      ointervals->push_back(interval);
+!     oset->count_ += interval.end - interval.begin;
+    }
+  }
+  
+--- 235,255 ----
+    oset->count_ = 0;
+  
+    Interval interval;
+!   interval.begin_ = 0;
+    for (typename vector<Interval>::const_iterator it = intervals_.begin();
+         it != intervals_.end();
+         ++it) {
+!     interval.end_ = min(it->begin_, maxval);
+!     if (interval.begin_ < interval.end_) {
+        ointervals->push_back(interval);
+!       oset->count_ += interval.end_ - interval.begin_;
+      }
+!     interval.begin_ = it->end_;
+    }
+!   interval.end_ = maxval;
+!   if (interval.begin_ < interval.end_) {
+      ointervals->push_back(interval);
+!     oset->count_ += interval.end_ - interval.begin_;
+    }
+  }
+  
+***************
+*** 263,269 ****
+      oset->count_ = 0;
+    } else {
+      IntervalSet<T> cset;
+!     iset.Complement(intervals_.back().end, &cset);
+      Intersect(cset, oset);
+    }
+  }
+--- 263,269 ----
+      oset->count_ = 0;
+    } else {
+      IntervalSet<T> cset;
+!     iset.Complement(intervals_.back().end_, &cset);
+      Intersect(cset, oset);
+    }
+  }
+***************
+*** 277,285 ****
+    typename vector<Interval>::const_iterator it2 = intervals->begin();
+  
+    while (it1 != intervals_.end() && it2 != intervals->end()) {
+!     if (it1->end <= it2->begin) {
+        ++it1;
+!     } else if (it2->end <= it1->begin) {
+        ++it2;
+      } else {
+        return true;
+--- 277,285 ----
+    typename vector<Interval>::const_iterator it2 = intervals->begin();
+  
+    while (it1 != intervals_.end() && it2 != intervals->end()) {
+!     if (it1->end_ <= it2->begin_) {
+        ++it1;
+!     } else if (it2->end_ <= it1->begin_) {
+        ++it2;
+      } else {
+        return true;
+***************
+*** 300,320 ****
+    bool overlap = false; // point in both intervals_ and intervals
+  
+    while (it1 != intervals_.end() && it2 != intervals->end()) {
+!     if (it1->end <= it2->begin) {  // no overlap - it1 first
+        only1 = true;
+        ++it1;
+!     } else if (it2->end <= it1->begin) {  // no overlap - it2 first
+        only2 = true;
+        ++it2;
+!     } else if (it2->begin == it1->begin && it2->end == it1->end) {  // equals
+        overlap = true;
+        ++it1;
+        ++it2;
+!     } else if (it2->begin <= it1->begin && it2->end >= it1->end) {  // 1 c 2
+        only2 = true;
+        overlap = true;
+        ++it1;
+!     } else if (it1->begin <= it2->begin && it1->end >= it2->end) {  // 2 c 1
+        only1 = true;
+        overlap = true;
+        ++it2;
+--- 300,320 ----
+    bool overlap = false; // point in both intervals_ and intervals
+  
+    while (it1 != intervals_.end() && it2 != intervals->end()) {
+!     if (it1->end_ <= it2->begin_) {  // no overlap - it1 first
+        only1 = true;
+        ++it1;
+!     } else if (it2->end_ <= it1->begin_) {  // no overlap - it2 first
+        only2 = true;
+        ++it2;
+!     } else if (it2->begin_ == it1->begin_ && it2->end_ == it1->end_) {  // equals
+        overlap = true;
+        ++it1;
+        ++it2;
+!     } else if (it2->begin_ <= it1->begin_ && it2->end_ >= it1->end_) {  // 1 c 2
+        only2 = true;
+        overlap = true;
+        ++it1;
+!     } else if (it1->begin_ <= it2->begin_ && it1->end_ >= it2->end_) {  // 2 c 1
+        only1 = true;
+        overlap = true;
+        ++it2;
+***************
+*** 346,356 ****
+    typename vector<Interval>::const_iterator it2 = intervals->begin();
+  
+    while (it1 != intervals_.end() && it2 != intervals->end()) {
+!     if (it1->end <= it2->begin) {  // no overlap - it1 first
+        ++it1;
+!     } else if (it2->begin < it1->begin || it2->end > it1->end) {  // no C
+        return false;
+!     } else if (it2->end == it1->end) {
+        ++it1;
+        ++it2;
+      } else {
+--- 346,356 ----
+    typename vector<Interval>::const_iterator it2 = intervals->begin();
+  
+    while (it1 != intervals_.end() && it2 != intervals->end()) {
+!     if (it1->end_ <= it2->begin_) {  // no overlap - it1 first
+        ++it1;
+!     } else if (it2->begin_ < it1->begin_ || it2->end_ > it1->end_) {  // no C
+        return false;
+!     } else if (it2->end_ == it1->end_) {
+        ++it1;
+        ++it2;
+      } else {
+***************
+*** 370,376 ****
+         ++it) {
+      if (it != intervals->begin())
+        strm << ",";
+!     strm << "[" << it->begin << "," << it->end << ")";
+    }
+    strm << "}";
+    return strm;
+--- 370,376 ----
+         ++it) {
+      if (it != intervals->begin())
+        strm << ",";
+!     strm << "[" << it->begin_ << "," << it->end_ << ")";
+    }
+    strm << "}";
+    return strm;
