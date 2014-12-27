@@ -18,6 +18,9 @@ srcdict=$srcdir/swb_ms98_transcriptions/sw-ms98-dict.text
 # assume swbd_p1_data_prep.sh was done already.
 [ ! -f "$srcdict" ] && echo "No such file $srcdict" && exit 1;
 
+cp $srcdict $dir/lexicon0.txt || exit 1;
+patch <local/dict.patch $dir/lexicon0.txt || exit 1;
+
 #(2a) Dictionary preparation:
 # Pre-processing (Upper-case, remove comments)
 awk 'BEGIN{getline}($0 !~ /^#/) {$0=tolower($0); print}' \
@@ -78,6 +81,6 @@ local/swbd1_map_words.pl -f 1 $dir/lexicon2.txt | sort -u \
 pushd $dir >&/dev/null
 ln -sf lexicon3.txt lexicon.txt # This is the final lexicon.
 popd >&/dev/null
-
+rm $dir/lexiconp.txt
 echo Prepared input dictionary and phone-sets for Switchboard phase 1.
 
