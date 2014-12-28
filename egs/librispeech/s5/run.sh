@@ -35,7 +35,9 @@ done
 ## Optional text corpus normalization and LM training
 ## These scripts are here primarily as a documentation of the process that has been
 ## used to build the LM. Most users of this recipe will NOT need/want to run
-## this step
+## this step. The pre-built language models and the pronunciation lexicon, as
+## well as some intermediate data(e.g. the normalized text used for LM training),
+## are available for download at http://www.openslr.org/11/
 #local/lm/train_lm.sh $LM_CORPUS_ROOT \
 #  data/local/lm/norm/tmp data/local/lm/norm/norm_texts data/local/lm || exit 1
 
