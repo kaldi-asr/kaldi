@@ -77,6 +77,10 @@ class SingleUtteranceNnet2Decoder {
   /// advance the decoding as far as we can.
   void AdvanceDecoding();
 
+  /// Finalizes the decoding. Cleanups and prunes remaining tokens, so the final
+  /// result is faster to obtain.
+  void FinalizeDecoding();
+
   int32 NumFramesDecoded() const;
   
   /// Gets the lattice.  The output lattice has any acoustic scaling in it

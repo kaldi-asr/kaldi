@@ -224,6 +224,10 @@ class SingleUtteranceGmmDecoder {
   /// quality of the estimated transforms, although we don't rely on this].
   void AdvanceDecoding();
 
+  /// Finalize the decoding. Cleanups and prunes remaining tokens, so the final result
+  /// is faster to obtain.
+  void FinalizeDecoding();
+
   /// Returns true if we already have an fMLLR transform.  The user will
   /// already know this; the call is for convenience.  
   bool HaveTransform() const;

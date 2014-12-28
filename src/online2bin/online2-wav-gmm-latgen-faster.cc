@@ -195,6 +195,8 @@ int main(int argc, char *argv[]) {
           if (do_endpointing && decoder.EndpointDetected(endpoint_config))
             break;
         }
+        decoder.FinalizeDecoding();
+
         bool end_of_utterance = true;
         decoder.EstimateFmllr(end_of_utterance);
         CompactLattice clat;

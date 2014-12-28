@@ -41,6 +41,10 @@ void SingleUtteranceNnet2Decoder::AdvanceDecoding() {
   decoder_.AdvanceDecoding(&decodable_);
 }
 
+void SingleUtteranceNnet2Decoder::FinalizeDecoding() {
+  decoder_.FinalizeDecoding();
+}
+
 int32 SingleUtteranceNnet2Decoder::NumFramesDecoded() const {
   return decoder_.NumFramesDecoded();
 }

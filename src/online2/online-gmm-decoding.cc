@@ -43,11 +43,10 @@ SingleUtteranceGmmDecoder::SingleUtteranceGmmDecoder(
   feature_pipeline_->SetTransform(adaptation_state_.transform);
   decoder_.InitDecoding();
 }
-    
 
 // Advance the decoding as far as we can, and possibly estimate fMLLR.
 void SingleUtteranceGmmDecoder::AdvanceDecoding() {
-  
+
   const AmDiagGmm &am_gmm = (HaveTransform() ? models_.GetModel() :
                              models_.GetOnlineAlignmentModel());
 
@@ -80,6 +79,10 @@ void SingleUtteranceGmmDecoder::AdvanceDecoding() {
                                                is_first_utterance_of_speaker))
       this->EstimateFmllr(end_of_utterance);
   }
+}
+
+void SingleUtteranceGmmDecoder::FinalizeDecoding() {
+  decoder_.FinalizeDecoding();
 }
 
 // gets Gaussian posteriors for purposes of fMLLR estimation.
