@@ -94,7 +94,7 @@ class Mse {
   std::string Report();
 
  private:
-  int32 frames_;
+  int64 frames_;
   double loss_;
   
   int32 frames_progress_;
