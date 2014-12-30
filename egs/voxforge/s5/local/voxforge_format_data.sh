@@ -29,7 +29,7 @@ echo "--- Preparing the grammar transducer (G.fst) for testing ..."
 
 test=data/lang_test
 mkdir -p $test
-for f in phones.txt words.txt phones.txt L.fst L_disambig.fst phones/; do
+for f in phones.txt words.txt phones.txt L.fst L_disambig.fst phones; do
     cp -r data/lang/$f $test
 done
 cat $lmdir/lm.arpa | \
