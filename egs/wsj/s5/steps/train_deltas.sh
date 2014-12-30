@@ -20,6 +20,7 @@ norm_vars=false # deprecated.  Prefer --cmvn-opts "--norm-vars=true"
                 # use the option --cmvn-opts "--norm-means=false"
 cmvn_opts=
 delta_opts=
+context_opts=   # use"--context-width=5 --central-position=2" for quinphone
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -73,8 +74,9 @@ rm $dir/.error 2>/dev/null
 if [ $stage -le -3 ]; then
   echo "$0: accumulating tree stats"
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
-    acc-tree-stats  --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
-     "ark:gunzip -c $alidir/ali.JOB.gz|" $dir/JOB.treeacc || exit 1;
+    acc-tree-stats $context_opts \
+    --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
+    "ark:gunzip -c $alidir/ali.JOB.gz|" $dir/JOB.treeacc || exit 1;
   sum-tree-stats $dir/treeacc $dir/*.treeacc 2>$dir/log/sum_tree_acc.log || exit 1;
   rm $dir/*.treeacc
 fi
@@ -82,13 +84,15 @@ fi
 if [ $stage -le -2 ]; then
   echo "$0: getting questions for tree-building, via clustering"
   # preparing questions, roots file...
-  cluster-phones $dir/treeacc $lang/phones/sets.int $dir/questions.int 2> $dir/log/questions.log || exit 1;
+  cluster-phones $context_opts $dir/treeacc $lang/phones/sets.int \
+    $dir/questions.int 2> $dir/log/questions.log || exit 1;
   cat $lang/phones/extra_questions.int >> $dir/questions.int
-  compile-questions $lang/topo $dir/questions.int $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
+  compile-questions $context_opts $lang/topo $dir/questions.int \
+    $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
 
   echo "$0: building the tree"
   $cmd $dir/log/build_tree.log \
-    build-tree --verbose=1 --max-leaves=$numleaves \
+    build-tree $context_opts --verbose=1 --max-leaves=$numleaves \
     --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
     $dir/questions.qst $lang/topo $dir/tree || exit 1;
 

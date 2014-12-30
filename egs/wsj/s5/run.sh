@@ -365,6 +365,9 @@ local/run_sgmm2.sh
 # You probably want to run the hybrid recipe as it is complementary:
 local/run_dnn.sh
 
+# The following demonstrate how to re-segment long audios.
+local/run_segmentation.sh
+
 # The next two commands show how to train a bottleneck network based on the nnet2 setup,
 # and build an SGMM system on top of it.
 #local/run_bnf.sh

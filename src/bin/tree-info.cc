@@ -48,6 +48,8 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(tree_in_filename, &ctx_dep);
 
     std::cout << "num-pdfs " << ctx_dep.NumPdfs() << std::endl;
+    std::cout << "context-width " << ctx_dep.ContextWidth() << std::endl;
+    std::cout << "central-position " << ctx_dep.CentralPosition() << std::endl;
     
   } catch(const std::exception &e) {
     std::cerr << e.what();
