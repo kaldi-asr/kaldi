@@ -21,22 +21,20 @@
 # To be run from one directory above this script.
 
 # Begin configuration section.
-fisher=
 weblm=
 # end configuration sections
 
-help_message="Usage: "`basename $0`" [options] <train-txt> <dict> <out-dir>
+help_message="Usage: $0 [options] <train-txt> <dict> <out-dir> [fisher-dirs]
 Train language models for Switchboard-1, and optionally for Fisher and \n
 web-data from University of Washington.\n
 options: 
   --help          # print this message and exit
-  --fisher DIR    # directory for Fisher transcripts (default: '$srilm_opts')
   --weblm DIR     # directory for web-data from University of Washington
 ";
 
 . utils/parse_options.sh
 
-if [ $# -ne 3 ]; then
+if [ $# -lt 3 ]; then
   printf "$help_message\n";
   exit 1;
 fi
@@ -44,6 +42,9 @@ fi
 text=$1     # data/local/train/text
 lexicon=$2  # data/local/dict/lexicon.txt
 dir=$3      # data/local/lm
+
+shift 3
+fisher_dirs=( $@ )
 
 for f in "$text" "$lexicon"; do
   [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
@@ -97,15 +98,17 @@ ngram -unk -lm $dir/sw1.o4g.kn.gz -ppl $dir/heldout -debug 2 >& $dir/4gram.ppl2
 # file data/local/lm/heldout: 10000 sentences, 118254 words, 0 OOVs
 # 0 zeroprobs, logprob= -253747 ppl= 95.1632 ppl1= 139.887
 
-if [ ! -z "$fisher" ]; then
-  [ ! -d "$fisher/data/trans" ] \
-    && echo "Cannot find transcripts in Fisher directory: '$fisher'" \
-    && exit 1;
-  mkdir -p $dir/fisher
+mkdir -p $dir/fisher
+rm -rf $dir/fisher/text0
+for x in ${fisher_dirs[@]}; do
+  [ ! -d $x/data/trans ] \
+    && "$0: Cannot find transcripts in Fisher directory $x" && exit 1;
+  cat $x/data/trans/*/*.txt |\
+    grep -v ^# | grep -v ^$ | cut -d' ' -f4- >> $dir/fisher/text0
+done
 
-  cat $fisher/data/trans/*/*.txt | grep -v ^# | grep -v ^$ | cut -d' ' -f4- \
-    | gzip -c > $dir/fisher/text0.gz
-  gunzip -c $dir/fisher/text0.gz | local/fisher_map_words.pl \
+if [ -f $dir/fisher/text0 ]; then
+  cat $dir/fisher/text0 | local/fisher_map_words.pl \
     | gzip -c > $dir/fisher/text1.gz
 
   for x in 3 4; do

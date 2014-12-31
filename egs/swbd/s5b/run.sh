@@ -42,16 +42,16 @@ utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 # LM trained on the Fisher transcripts (part 2 disk is currently missing; so 
 # only part 1 transcripts ~700hr are used)
 
-# If you have the Fisher data, you can set this "fisher_opt" variable.
-fisher_opt="--fisher /export/corpora3/LDC/LDC2004T19/fe_03_p1_tran/"
-#fisher_opt="--fisher /home/dpovey/data/LDC2004T19/fe_03_p1_tran/"
-#fisher_opt="--fisher /data/corpora0/LDC2004T19/fe_03_p1_tran/"
+# If you have the Fisher data, you can set this "fisher_dir" variable.
+fisher_dirs="/export/corpora3/LDC/LDC2004T19/fe_03_p1_tran/ /export/corpora3/LDC/LDC2005T19/fe_03_p2_tran/"
+#fisher_dirs="/home/dpovey/data/LDC2004T19/fe_03_p1_tran/"
+#fisher_dirs="/data/corpora0/LDC2004T19/fe_03_p1_tran/"
 # edinburgh:
-# fisher_opt="--fisher /exports/work/inf_hcrc_cstr_general/corpora/fisher/transcripts"
+# fisher_dirs="/exports/work/inf_hcrc_cstr_general/corpora/fisher/transcripts"
 # brno:
-# fisher_opt="--fisher /mnt/matylda2/data/FISHER/fe_03_p1_tran" # BUT
-local/swbd1_train_lms.sh $fisher_opt \
-  data/local/train/text data/local/dict/lexicon.txt data/local/lm
+# fisher_dirs="/mnt/matylda2/data/FISHER/fe_03_p1_tran" # BUT
+local/swbd1_train_lms.sh data/local/train/text \
+  data/local/dict/lexicon.txt data/local/lm $fisher_dirs
 # We don't really need all these options for SRILM, since the LM training script
 # does some of the same processings (e.g. -subset -tolower)
 for order in 3 4; do
@@ -73,7 +73,6 @@ for order in 3 4; do
   utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
     data/lang $LM data/local/dict/lexicon.txt data/lang_sw1_fsh_${lm_suffix}pr
 done
-
 
 # Data preparation and formatting for eval2000 (note: the "text" file
 # is not very much preprocessed; for actual WER reporting we'll use

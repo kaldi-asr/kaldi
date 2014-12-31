@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+#           2014  Guoguo Chen
 
 # Create denominator lattices for MMI/MPE training, with SGMM models.  If the
 # features have fMLLR transforms you have to supply the --transform-dir option.
@@ -61,7 +62,7 @@ cp -rH $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
 new_lang="$dir/"$(basename "$lang")
-echo "Making unigram grammar FST in $new_lang"
+echo "$0: Making unigram grammar FST in $new_lang"
 cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
   awk '{for(n=2;n<=NF;n++){ printf("%s ", $n); } printf("\n"); }' | \
   utils/make_unigram_grammar.pl | fstcompile | fstarcsort --sort_type=ilabel > $new_lang/G.fst \
@@ -71,9 +72,9 @@ cat $data/text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
 # it gets L_disambig.fst and G.fst (among other things) from $dir/lang, and
 # final.mdl from $alidir; the output HCLG.fst goes in $dir/graph.
 
-echo "Compiling decoding graph in $dir/dengraph"
+echo "$0: Compiling decoding graph in $dir/dengraph"
 if [ -s $dir/dengraph/HCLG.fst ] && [ $dir/dengraph/HCLG.fst -nt $srcdir/final.mdl ]; then
-   echo "Graph $dir/dengraph/HCLG.fst already exists: skipping graph creation."
+   echo "$0: Graph $dir/dengraph/HCLG.fst already exists: skipping graph creation."
 else
   utils/mkgraph.sh $new_lang $alidir $dir/dengraph || exit 1;
 fi
@@ -86,7 +87,7 @@ case $feat_type in
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
     cp $alidir/final.mat $dir    
    ;;
-  *) echo "Invalid feature type $feat_type" && exit 1;
+  *) echo "$0: Invalid feature type $feat_type" && exit 1;
 esac
 
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
@@ -98,7 +99,7 @@ if [ ! -z "$transform_dir" ]; then # add transforms to features...
      echo "$0: LDA transforms differ between $alidir and $transform_dir"
   feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
 else
-  echo "Assuming you don't have a SAT system, since no --transform-dir option supplied "
+  echo "$0: Assuming you don't have a SAT system, since no --transform-dir option supplied "
 fi
 
 if [ -f $alidir/gselect.1.gz ]; then
@@ -111,23 +112,41 @@ if [ -f $alidir/vecs.1 ]; then
   spkvecs_opt="--spk-vecs=ark:$alidir/vecs.JOB --utt2spk=ark:$sdata/JOB/utt2spk"
 else
   if [ -f $alidir/final.alimdl ]; then
-    echo "You seem to have an SGMM system with speaker vectors,"
+    echo "$0: You seem to have an SGMM system with speaker vectors,"
     echo "yet we can't find speaker vectors.  Perhaps you supplied"
     echo "the model director instead of the alignment directory?"
     exit 1;
   fi
 fi
 
+# if this job is interrupted by the user, we want any background jobs to be
+# killed too.
+cleanup() {
+  local pids=$(jobs -pr)
+  [ -n "$pids" ] && kill $pids
+}
+trap "cleanup" INT QUIT TERM EXIT
+
 if [ $sub_split -eq 1 ]; then 
   $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
-   sgmm-latgen-faster $spkvecs_opt "$gselect_opt" --beam=$beam \
-     --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
-     --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
-     $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
+    sgmm-latgen-faster $spkvecs_opt "$gselect_opt" --beam=$beam \
+    --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
+    --max-mem=$max_mem --max-active=$max_active \
+    --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
+    $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 else
-  for n in `seq $nj`; do
-    if [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $alidir/final.mdl ]; then
-      echo "Not processing subset $n as already done (delete $dir/.done.$n if not)";
+  # each job from 1 to $nj is split into multiple pieces (sub-split), and we aim
+  # to have at most two jobs running at each time.  The idea is that if we have
+  # stragglers from one job, we can be processing another one at the same time.
+  rm $dir/.error 2>/dev/null
+
+  prev_pid=
+  for n in `seq $[nj+1]`; do
+    if [ $n -gt $nj ]; then
+      this_pid=
+    elif [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $alidir/final.mdl ]; then
+      echo "$0: Not processing subset $n as already done (delete $dir/.done.$n if not)";
+      this_pid=
     else 
       sdata2=$data/split$nj/$n/split$sub_split;
       if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata/$n/feats.scp ]; then
@@ -140,19 +159,29 @@ else
       gselect_opt_subset=`echo $gselect_opt | sed "s/JOB/$n/g"`
       $cmd JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         sgmm-latgen-faster $spkvecs_opt_subset "$gselect_opt_subset" \
-          --beam=$beam --lattice-beam=$lattice_beam \
-          --acoustic-scale=$acwt --max-mem=$max_mem --max-active=$max_active \
-          --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
-          $dir/dengraph/HCLG.fst "$feats_subset" "ark:|gzip -c >$dir/lat.$n.JOB.gz" || exit 1;
-      echo Merging archives for data subset $n
-      rm $dir/.error 2>/dev/null;
-      for k in `seq $sub_split`; do
-        gunzip -c $dir/lat.$n.$k.gz || touch $dir/.error;
-      done | gzip -c > $dir/lat.$n.gz || touch $dir/.error;
-      [ -f $dir/.error ] && echo Merging lattices for subset $n failed && exit 1;
-      rm $dir/lat.$n.*.gz
-      touch $dir/.done.$n
+        --beam=$beam --lattice-beam=$lattice_beam \
+        --acoustic-scale=$acwt --max-mem=$max_mem --max-active=$max_active \
+        --word-symbol-table=$lang/words.txt $alidir/final.mdl  \
+        $dir/dengraph/HCLG.fst "$feats_subset" \
+        "ark:|gzip -c >$dir/lat.$n.JOB.gz" || touch $dir/.error &
+      this_pid=$!
     fi
+    if [ ! -z "$prev_pid" ]; then # Wait for the previous job to merge lattices.
+      wait $prev_pid
+      [ -f $dir/.error ] && \
+        echo "$0: error generating denominator lattices" && exit 1;
+      rm $dir/.merge_error 2>/dev/null
+      echo "$0: Merging archives for data subset $prev_n"
+      for k in `seq $sub_split`; do
+        gunzip -c $dir/lat.$prev_n.$k.gz || touch $dir/.merge_error;
+      done | gzip -c > $dir/lat.$prev_n.gz || touch $dir/.merge_error;
+      [ -f $dir/.merge_error ] && \
+        echo "$0: Merging lattices for subset $prev_n failed" && exit 1;
+      rm $dir/lat.$prev_n.*.gz
+      touch $dir/.done.$prev_n
+    fi
+    prev_n=$n
+    prev_pid=$this_pid
   done
 fi
 
