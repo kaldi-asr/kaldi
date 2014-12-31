@@ -30,9 +30,6 @@ open(SPKR,">", "$out_dir/utt2spk")
 open(WAV,">", "$out_dir/wav.scp")
   or die "Could not open the output file $out_dir/wav.scp";
 
-$data_src_suffix = `dirname $db_base`;
-chomp($data_src_suffix);
-
 while($line=<TRIALS>) {
   @attrs = split(" ", $line);
   $basename = $attrs[0];
@@ -41,7 +38,7 @@ while($line=<TRIALS>) {
     print "Skipping unknown or summed channel $side in $basename\n";
     next;
   }
-  $spkr = $attrs[5] . "_$data_src_suffix";
+  $spkr = $attrs[5] . "-sre04-test";
   $gender = lc $attrs[6];
   print GNDR "$spkr $gender\n";
   $wav = $db_base."/data/$basename.sph";

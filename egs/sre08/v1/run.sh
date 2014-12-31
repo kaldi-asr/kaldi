@@ -166,7 +166,7 @@ trials=data/sre08_trials/short2-short3-female.trials
 cat $trials | awk '{print $1, $2}' | \
  ivector-compute-dot-products - \
   scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp \
-  scp:exp/ivectors_sre08_test_short3_female/spk_ivector.scp \
+  scp:exp/ivectors_sre08_test_short3_female/ivector.scp \
    foo 
 local/score_sre08.sh $trials foo
 
@@ -179,7 +179,7 @@ trials=data/sre08_trials/short2-short3-male.trials
 cat $trials | awk '{print $1, $2}' | \
  ivector-compute-dot-products - \
   scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp \
-  scp:exp/ivectors_sre08_test_short3_male/spk_ivector.scp \
+  scp:exp/ivectors_sre08_test_short3_male/ivector.scp \
    foo
 local/score_sre08.sh $trials foo
 
@@ -210,7 +210,7 @@ trials=data/sre08_trials/short2-short3-female.trials
 cat $trials | awk '{print $1, $2}' | \
  ivector-compute-dot-products - \
   'ark:ivector-transform exp/ivectors_train_female/transform.mat scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
-  'ark:ivector-transform exp/ivectors_train_female/transform.mat scp:exp/ivectors_sre08_test_short3_female/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
+  'ark:ivector-transform exp/ivectors_train_female/transform.mat scp:exp/ivectors_sre08_test_short3_female/ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
   foo
 local/score_sre08.sh $trials foo
 
@@ -228,7 +228,7 @@ trials=data/sre08_trials/short2-short3-male.trials
  cat $trials | awk '{print $1, $2}' | \
   ivector-compute-dot-products - \
    'ark:ivector-transform exp/ivectors_train_male/transform.mat scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
-   'ark:ivector-transform exp/ivectors_train_male/transform.mat scp:exp/ivectors_sre08_test_short3_male/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
+   'ark:ivector-transform exp/ivectors_train_male/transform.mat scp:exp/ivectors_sre08_test_short3_male/ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
    foo
 local/score_sre08.sh $trials foo
 
