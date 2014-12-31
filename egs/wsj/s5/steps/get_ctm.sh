@@ -8,6 +8,8 @@
 # begin configuration section.
 cmd=run.pl
 stage=0
+min_lmwt=5
+max_lmwt=20
 use_segments=true # if we have a segments file, use it to convert
                   # the segments to be relative to the original files.
 #end configuration section.
@@ -57,7 +59,7 @@ if [ $stage -le 0 ]; then
   fi
 
   if [ -f $lang/phones/word_boundary.int ]; then
-    $cmd LMWT=5:20 $dir/scoring/log/get_ctm.LMWT.log \
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
       mkdir -p $dir/score_LMWT/ '&&' \
       lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
@@ -70,7 +72,7 @@ if [ $stage -le 0 ]; then
       exit 1;
     fi
 
-    $cmd LMWT=5:20 $dir/scoring/log/get_ctm.LMWT.log \
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
       mkdir -p $dir/score_LMWT/ '&&' \
       lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
