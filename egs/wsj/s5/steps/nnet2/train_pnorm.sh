@@ -159,7 +159,7 @@ done
 
 
 # Set some variables.
-num_leaves=`tree-info $alidir/tree 2>/dev/null | awk '{print $2}'` || exit 1
+num_leaves=`tree-info $alidir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1
 [ -z $num_leaves ] && echo "\$num_leaves is unset" && exit 1
 [ "$num_leaves" -eq "0" ] && echo "\$num_leaves is 0" && exit 1
 
