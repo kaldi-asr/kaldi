@@ -136,7 +136,7 @@ fi
 
 if [ $stage -le 4 ]; then
   (echo '!SIL SIL'; echo '<SPOKEN_NOISE> SPN'; echo '<UNK> SPN'; ) |\
-  cat - $lexicon_raw_nosil >$dst_dir/lexicon.txt
+  cat - $lexicon_raw_nosil | sort | uniq >$dst_dir/lexicon.txt
   echo "Lexicon text file saved as: $dst_dir/lexicon.txt"
 fi
 

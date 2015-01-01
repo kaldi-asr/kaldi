@@ -132,12 +132,18 @@ print "\n";
 sub check_lexicon {
   my ($lexfn, $pron_probs) = @_;
   print "Checking $lexfn\n";
-  if(-z "$lexfn") {set_to_fail(); print "--> ERROR: $lexfn is empty or not exists\n";}
+  my %seen_line = {};
+  if(-z "$lexfn") {set_to_fail(); print "--> ERROR: $lexfn is empty or does not exist\n";}
   if(!open(L, "<$lexfn")) {set_to_fail(); print "--> ERROR: fail to open $lexfn\n";}
   $idx = 1;
   $success = 1;
   print "--> reading $lexfn\n";
   while (<L>) {
+    if (defined $seen_line{$_}) {
+      print "--> ERROR: line '$_' of $lexfn is repeated\n";
+      set_to_fail();
+    }
+    $seen_line{$_} = 1;
     if (! s/\n$//) {
       print "--> ERROR: last line '$_' of $lexfn does not end in newline.\n";
       set_to_fail();
@@ -160,6 +166,7 @@ sub check_lexicon {
     }
     $idx ++;
   }
+  %seen_line = {};
   close(L);
   $success == 0 || print "--> $lexfn is OK\n";
   print "\n";

@@ -26,12 +26,12 @@ utils/validate_dict_dir.pl $srcdir;
 
 if [ -f $srcdir/lexicon.txt ]; then
   src_lex=$srcdir/lexicon.txt
-  cp $srcdir/lexicon.txt $dir || exit 1;
+  perl -ane 'print join(" ", split(" ", $_)) . "\n";' <$src_lex >$dir/lexicon.txt
 elif [ -f $srcdir/lexiconp.txt ]; then
   echo "$0: removing the pron-probs from $srcdir/lexiconp.txt to create $dir/lexicon.txt"
   # the second awk command below normalizes the spaces (avoid double space).
   src_lex=$srcdir/lexiconp.txt
-  awk '{$2 = ""; print $0;}' <$srcdir/lexiconp.txt  | awk '{print $0}' >$dir/lexicon.txt || exit 1;
+  awk '{$2 = ""; print $0;}' <$srcdir/lexiconp.txt | perl -ane 'print join(" ", split(" " ,$_)) . "\n";'  >$dir/lexicon.txt || exit 1;
 fi
 
 
@@ -59,10 +59,11 @@ if [ "$n_old" != "$n_new" ]; then
 fi
 
 # now regenerate lexicon.txt from lexiconp.txt, to make sure the lines are
-# in the same order.  The first awk command removes the pron, the second
-# normalizes the space to avoid a double space.
-cat $dir/lexiconp.txt | awk '{$2 = ""; print;}' | awk '{print $0}' >$dir/lexicon.txt
+# in the same order. 
+cat $dir/lexiconp.txt | awk '{$2 = ""; print;}' | sed 's/  / /g' >$dir/lexicon.txt
 
+
+# add mandatory files.
 for f in silence_phones.txt nonsilence_phones.txt; do
   if [ ! -f $srcdir/$f ]; then
     echo "$0: expected $srcdir/$f to exist."
@@ -71,10 +72,15 @@ for f in silence_phones.txt nonsilence_phones.txt; do
   cp $srcdir/$f $dir/ || exit 1;
 done
 
-rm $dir/optional_silence.txt 2>/dev/null
-if [ -f $srcdir/optional_silence.txt ]; then
-  cp $srcdir/optional_silence.txt $dir || exit 1;
-fi
+
+# add optional files (at least, I think these are optional; would have to check the docs).
+for f in optional_silence.txt extra_questions.txt; do
+  rm $dir/$f 2>/dev/null
+  if [ -f $srcdir/$f ]; then
+    cp $srcdir/$f $dir || exit 1;
+  fi
+done
+
 
 echo "$0: produced dictionary directory with probabilities in $dir/"
 echo "$0: validating $dir .."
