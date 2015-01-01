@@ -25,7 +25,7 @@
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
-#include "decoder/lattice-faster-decoder.h"
+#include "decoder/decoder-wrappers.h"
 #include "nnet2/decodable-am-nnet.h"
 #include "base/timer.h"
 

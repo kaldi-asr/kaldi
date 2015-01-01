@@ -74,7 +74,7 @@ struct PlpOptions {
     po->Register("num-ceps", &num_ceps,
                  "Number of cepstra in PLP computation (including C0)");
     po->Register("use-energy", &use_energy,
-                 "Use energy (not C0) in MFCC computation");
+                 "Use energy (not C0) for zeroth PLP feature");
     po->Register("energy-floor", &energy_floor,
                  "Floor on energy (absolute, not relative) in PLP computation");
     po->Register("raw-energy", &raw_energy,

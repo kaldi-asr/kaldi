@@ -55,7 +55,6 @@ reverse=false
 share_silence_phones=false  # if true, then share pdfs of different silence 
                             # phones together.
 sil_prob=0.5
-make_individual_sil_models=false # enforce individual models for all silence phones
 # end configuration sections
 
 . utils/parse_options.sh 
@@ -75,7 +74,6 @@ if [ $# -ne 4 ]; then
   echo "     --share-silence-phones (true|false)             # default: false; if true, share pdfs of "
   echo "                                                     # all non-silence phones. "
   echo "     --sil-prob <probability of silence>             # default: 0.5 [must have 0 <= silprob < 1]"
-  echo "     --make-individual-sil-models (true|false)       # default: false; make non-{shared,split} states for each silphone"
   exit 1;
 fi
 
@@ -163,24 +161,14 @@ if $share_silence_phones; then
   # in the same tree-root?
   # Sharing across models(phones) is achieved by writing several phones
   # into one line of roots.txt (shared/not-shared doesn't affect this).
-  # 'shared split' means we have 1 tree-root for the 3 states of the HMM 
-  # (but we get to ask about the HMM-position when we split).
   # 'not-shared not-split' means we have separate tree roots for the 3 states,
-  # but we never split the tree so they remain stumps
+  # but we never split the tree so they remain stumps,
   # so all phones in the line correspond to the same model.
 
-  if $make_individual_sil_models; then
-    nsil=`wc $srcdir/silence_phones.txt | awk '{printf $1}'`
-    cat $srcdir/silence_phones.txt | awk '{printf("%s\n", $0); }' | cat - $srcdir/nonsilence_phones.txt | \
-      utils/apply_map.pl $tmpdir/phone_map.txt > $dir/phones/sets.txt
-    cat $dir/phones/sets.txt | \
-      awk -v nsil=$nsil '{if(NR<=nsil) print "not-shared", "not-split", $0; else print "shared", "split", $0;}' > $dir/phones/roots.txt
-  else
-    cat $srcdir/silence_phones.txt | awk '{printf("%s ", $0); } END{printf("\n");}' | cat - $srcdir/nonsilence_phones.txt | \
-      utils/apply_map.pl $tmpdir/phone_map.txt > $dir/phones/sets.txt
-    cat $dir/phones/sets.txt | \
-      awk '{if(NR==1) print "not-shared", "not-split", $0; else print "shared", "split", $0;}' > $dir/phones/roots.txt
-  fi
+  cat $srcdir/silence_phones.txt | awk '{printf("%s ", $0); } END{printf("\n");}' | cat - $srcdir/nonsilence_phones.txt | \
+    utils/apply_map.pl $tmpdir/phone_map.txt > $dir/phones/sets.txt
+  cat $dir/phones/sets.txt | \
+    awk '{if(NR==1) print "not-shared", "not-split", $0; else print "shared", "split", $0;}' > $dir/phones/roots.txt
 else
   # different silence phones will have different GMMs.  [note: here, all "shared split" means
   # is that we may have one GMM for all the states, or we can split on states.  because they're

@@ -209,13 +209,17 @@ inline void AccumDiagGmm::Resize(const DiagGmm &gmm, GmmFlagsType flags) {
 
 /// for computing the maximum-likelihood estimates of the parameters of
 /// a Gaussian mixture model.
-/// Update using the DiagGmm: exponential form
+/// Update using the DiagGmm: exponential form.  Sets, does not increment,
+/// objf_change_out, floored_elements_out and floored_gauss_out.
 void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
                       const AccumDiagGmm &diag_gmm_acc,
                       GmmFlagsType flags,
                       DiagGmm *gmm,
                       BaseFloat *obj_change_out,
-                      BaseFloat *count_out);
+                      BaseFloat *count_out,
+                      int32 *floored_elements_out = NULL,
+                      int32 *floored_gauss_out = NULL,
+                      int32 *removed_gauss_out = NULL);
 
 /// Maximum A Posteriori estimation of the model.
 void MapDiagGmmUpdate(const MapDiagGmmOptions &config,

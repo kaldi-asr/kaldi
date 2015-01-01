@@ -197,7 +197,7 @@ void AddSelfLoops(const TransitionModel &trans_model,
   * Useful if you want to create a graph without transition probs, then possibly
   * train the model (including the transition probs) but keep the graph fixed,
   * and add back in the transition probs.  It assumes the fst has transition-ids
-  * on it.
+  * on it.  It is not an error if the FST has no states (nothing will be done).
   * @param trans_model [in] The transition model
   * @param disambig_syms [in] A list of disambiguation symbols, required if the
   *                       graph has disambiguation symbols on its input but only

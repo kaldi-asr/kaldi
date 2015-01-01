@@ -15,6 +15,7 @@ max_iter_inc=25  # Last iter to increase #Gauss on.
 dim=40
 beam=10
 retry_beam=40
+careful=false
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 power=0.25 # Exponent for number of gaussians according to occurrence counts
 randprune=4.0 # This is approximately the ratio by which we will speed up the
@@ -173,7 +174,7 @@ while [ $x -lt $num_iters ]; do
     echo Aligning data
     mdl="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $dir/$x.mdl - |"
     $cmd JOB=1:$nj $dir/log/align.$x.JOB.log \
-      gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$mdl" \
+      gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam --careful=$careful "$mdl" \
       "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" \
       "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
   fi

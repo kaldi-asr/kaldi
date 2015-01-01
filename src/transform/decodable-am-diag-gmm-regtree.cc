@@ -28,7 +28,7 @@ namespace kaldi {
 
 BaseFloat DecodableAmDiagGmmRegtreeFmllr::LogLikelihoodZeroBased(int32 frame,
                                                           int32 state) {
-  KALDI_ASSERT(frame < NumFrames() && frame >= 0);
+  KALDI_ASSERT(frame < NumFramesReady() && frame >= 0);
   KALDI_ASSERT(state < NumIndices() && state >= 0);
 
   if (!valid_logdets_) {
@@ -190,7 +190,7 @@ const Vector<BaseFloat>& DecodableAmDiagGmmRegtreeMllr::GetXformedGconsts(
 BaseFloat DecodableAmDiagGmmRegtreeMllr::LogLikelihoodZeroBased(int32 frame,
                                                                 int32 state) {
 //  KALDI_ERR << "Function not completely implemented yet.";
-  KALDI_ASSERT(frame < NumFrames() && frame >= 0);
+  KALDI_ASSERT(frame < NumFramesReady() && frame >= 0);
   KALDI_ASSERT(state < NumIndices() && state >= 0);
 
   if (log_like_cache_[state].hit_time == frame) {

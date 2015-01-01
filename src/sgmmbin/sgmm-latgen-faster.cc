@@ -27,7 +27,7 @@ using std::string;
 #include "sgmm/am-sgmm.h"
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
-#include "decoder/lattice-faster-decoder.h"
+#include "decoder/decoder-wrappers.h"
 #include "sgmm/decodable-am-sgmm.h"
 #include "base/timer.h"
 

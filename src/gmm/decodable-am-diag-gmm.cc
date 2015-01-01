@@ -27,7 +27,8 @@ namespace kaldi {
 
 BaseFloat DecodableAmDiagGmmUnmapped::LogLikelihoodZeroBased(
     int32 frame, int32 state) {
-  KALDI_ASSERT(static_cast<size_t>(frame) < static_cast<size_t>(NumFrames()));
+  KALDI_ASSERT(static_cast<size_t>(frame) <
+               static_cast<size_t>(NumFramesReady()));
   KALDI_ASSERT(static_cast<size_t>(state) < static_cast<size_t>(NumIndices()));
 
   if (log_like_cache_[state].hit_time == frame) {

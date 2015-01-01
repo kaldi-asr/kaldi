@@ -202,16 +202,34 @@ void MleAmDiagGmmUpdate (const MleDiagGmmOptions &config,
   KALDI_ASSERT(am_diag_gmm_acc.NumAccs() == am_gmm->NumPdfs());
   if (obj_change_out != NULL) *obj_change_out = 0.0;
   if (count_out != NULL) *count_out = 0.0;
-  BaseFloat tmp_obj_change, tmp_count;
-  BaseFloat *p_obj = (obj_change_out != NULL) ? &tmp_obj_change : NULL,
-            *p_count   = (count_out != NULL) ? &tmp_count : NULL;
 
+  BaseFloat tot_obj_change = 0.0, tot_count = 0.0;
+  int32 tot_elems_floored = 0, tot_gauss_floored = 0,
+      tot_gauss_removed = 0;
   for (int32 i = 0; i < am_diag_gmm_acc.NumAccs(); i++) {
+    BaseFloat obj_change, count;
+    int32 elems_floored, gauss_floored, gauss_removed;
+    
     MleDiagGmmUpdate(config, am_diag_gmm_acc.GetAcc(i), flags,
-                     &(am_gmm->GetPdf(i)), p_obj, p_count);
-
-    if (obj_change_out != NULL) *obj_change_out += tmp_obj_change;
-    if (count_out != NULL) *count_out += tmp_count;
+                     &(am_gmm->GetPdf(i)),
+                     &obj_change, &count, &elems_floored,
+                     &gauss_floored, &gauss_removed);
+    tot_obj_change += obj_change;
+    tot_count += count;
+    tot_elems_floored += elems_floored;
+    tot_gauss_floored += gauss_floored;
+    tot_gauss_removed += gauss_removed;
+  }
+  if (obj_change_out != NULL) *obj_change_out = tot_obj_change;
+  if (count_out != NULL) *count_out = tot_count;
+  KALDI_LOG << tot_elems_floored << " variance elements floored in "
+            << tot_gauss_floored << " Gaussians, out of "
+            <<  am_gmm->NumGauss();
+  if (config.remove_low_count_gaussians) {
+    KALDI_LOG << "Removed " << tot_gauss_removed
+              << " Gaussians due to counts < --min-gaussian-occupancy="
+              <<  config.min_gaussian_occupancy
+              << " and --remove-low-count-gaussians=true";
   }
 }
 

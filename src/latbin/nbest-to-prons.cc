@@ -1,6 +1,6 @@
-// latbin/nbest-to-ctm.cc
+// latbin/nbest-to-prons.cc
 
-// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2014  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -28,66 +28,67 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Takes as input lattices which must be linear (single path),\n"
-        "and must be in CompactLattice form where the transition-ids on the arcs\n"
-        "have been aligned with the word boundaries... typically the input will\n"
-        "be a lattice that has been piped through lattice-1best and then\n"
-        "lattice-align-words.  It outputs ctm format (with integers in place of words),\n"
-        "assuming the frame length is 0.01 seconds by default (change this with the\n"
-        "--frame-length option).  Note: the output is in the form\n"
-        "<utterance-id> 1 <begin-time> <end-time> <word-id>\n"
-        "and you can post-process this to account for segmentation issues and to \n"
-        "convert ints to words; note, the times are relative to start of the utterance.\n"
+        "Reads lattices which must be linear (single path), and must be in\n"
+        "CompactLattice form where the transition-ids on the arcs\n"
+        "have been aligned with the word boundaries (see lattice-align-words*)\n"
+        "and outputs a vaguely ctm-like format where each line is of the form:\n"
+        "<utterance-id> <begin-frame> <num-frames> <word> <phone1> <phone2> ... <phoneN>\n"
+        "where the words and phones will both be written as integers.  For arcs\n"
+        "in the input lattice that don't correspond to words, <word> may be zero; this\n"
+        "will typically be the case for the optional silences.\n"
         "\n"
-        "Usage: nbest-to-ctm [options] <aligned-linear-lattice-rspecifier> <ctm-wxfilename>\n"
+        "Usage: nbest-to-prons [options] <model> <aligned-linear-lattice-rspecifier> <output-wxfilename>\n"
         "e.g.: lattice-1best --acoustic-weight=0.08333 ark:1.lats | \\\n"
         "      lattice-align-words data/lang/phones/word_boundary.int exp/dir/final.mdl ark:- ark:- | \\\n"
-        "      nbest-to-ctm ark:- 1.ctm\n";
+        "      nbest-to-prons exp/dir/final.mdl ark:- 1.prons\n"
+        "Note: the type of the model doesn't matter as only the transition-model is read.\n";
     
     ParseOptions po(usage);
 
-    BaseFloat frame_shift = 0.01;
-    int32 precision = 2;
-    po.Register("frame-shift", &frame_shift, "Time in seconds between frames.\n");
-    po.Register("precision", &precision,
-                "Number of decimal places for start duration times\n");
-
     po.Read(argc, argv);
-
-    if (po.NumArgs() != 2) {
+    
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string lats_rspecifier = po.GetArg(1),
-        ctm_wxfilename = po.GetArg(2);
+    std::string model_rxfilename = po.GetArg(1),
+        lats_rspecifier = po.GetArg(2),
+        wxfilename = po.GetArg(3);
 
+
+    TransitionModel trans_model;
+    ReadKaldiObject(model_rxfilename, &trans_model);
+    
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
     
     int32 n_done = 0, n_err = 0;
 
-    Output ko(ctm_wxfilename, false); // false == non-binary write mode.
-    ko.Stream() << std::fixed;  // Set to "fixed" floating point model, where precision() specifies
-    // the #digits after the decimal point.
-    ko.Stream().precision(precision);
+    Output ko(wxfilename, false); // false == non-binary write mode.
     
     for (; !clat_reader.Done(); clat_reader.Next()) {
-      std::string key = clat_reader.Key();
+      std::string utt = clat_reader.Key();
       CompactLattice clat = clat_reader.Value();
 
       std::vector<int32> words, times, lengths;
+      std::vector<std::vector<int32> > prons;
 
-      if (!CompactLatticeToWordAlignment(clat, &words, &times, &lengths)) {
+      if (!CompactLatticeToWordProns(trans_model, clat, &words, &times, &lengths,
+                                     &prons)) {
         n_err++;
-        KALDI_WARN << "Format conversion failed for key " << key;
+        KALDI_WARN << "Format conversion failed for utterance " << utt;
       } else {
         KALDI_ASSERT(words.size() == times.size() &&
-                     words.size() == lengths.size());
+                     words.size() == lengths.size() &&
+                     words.size() == prons.size());
         for (size_t i = 0; i < words.size(); i++) {
           if (words[i] == 0)  // Don't output anything for <eps> links, which
             continue; // correspond to silence....
-          ko.Stream() << key << " 1 " << (frame_shift * times[i]) << ' '
-                      << (frame_shift * lengths[i]) << ' ' << words[i] <<std::endl;
+          ko.Stream() << utt << ' ' << times[i] << ' ' << lengths[i] << ' '
+                      << words[i];
+          for (size_t j = 0; j < prons[i].size(); j++)
+            ko.Stream() << ' ' << prons[i][j];
+          ko.Stream() << std::endl;
         }
         n_done++;
       }
@@ -97,7 +98,7 @@ int main(int argc, char *argv[]) {
     // We do it this time in order to avoid wrongly printing out a success message
     // if the stream was going to fail to close
             
-    KALDI_LOG << "Converted " << n_done << " linear lattices to ctm format; "
+    KALDI_LOG << "Printed prons for " << n_done << " linear lattices; "
               << n_err  << " had errors.";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {

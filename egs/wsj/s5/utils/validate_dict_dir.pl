@@ -179,7 +179,9 @@ if ( (-f "$dict/lexicon.txt") && (-f "$dict/lexiconp.txt")) {
   if (!open(L, "<$dict/lexicon.txt") || !open(P, "<$dict/lexiconp.txt")) {
     die "Error opening lexicon.txt and/or lexiconp.txt"; # already checked, so would be code error.
   }
+  my $line_num = 0;
   while(<L>) {
+    $line_num++;
     if (! s/\n$//) {
       print "--> ERROR: last line '$_' of $dict/lexicon.txt does not end in newline.\n";
       set_to_fail();
@@ -203,13 +205,13 @@ if ( (-f "$dict/lexicon.txt") && (-f "$dict/lexiconp.txt")) {
     unshift @B, $w;
     # now @A and @B should be the same.
     if ($#A != $#B) {
-      print "--> ERROR: lexicon.txt and lexiconp.txt have mismatched lines '$_' versus '$x'; delete one.\n";
+      print "--> ERROR: lexicon.txt and lexiconp.txt have mismatched lines '$_' versus '$x'; delete one (line $line_num).\n";
       set_to_fail();
       last;
     }
     for ($n = 0; $n < @A; $n++) {
       if ($A[$n] ne $B[$n]) {
-        print "--> ERROR: lexicon.txt and lexiconp.txt have mismatched lines '$_' versus '$x'; delete one.\n";
+        print "--> ERROR: lexicon.txt and lexiconp.txt have mismatched lines '$_' versus '$x'; delete one (line $line_num)\n";
         set_to_fail();
         last;
       }

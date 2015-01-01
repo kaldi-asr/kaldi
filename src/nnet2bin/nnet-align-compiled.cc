@@ -24,7 +24,7 @@
 #include "hmm/transition-model.h"
 #include "hmm/hmm-utils.h"
 #include "fstext/fstext-lib.h"
-#include "decoder/faster-decoder.h"
+#include "decoder/decoder-wrappers.h"
 #include "decoder/training-graph-compiler.h"
 #include "nnet2/decodable-am-nnet.h"
 #include "lat/kaldi-lattice.h"
@@ -48,16 +48,13 @@ int main(int argc, char *argv[]) {
         "   nnet-align-compiled 1.mdl ark:- scp:train.scp t, ark:1.ali\n";
 
     ParseOptions po(usage);
+    AlignConfig align_config;
     std::string use_gpu = "yes";
-    BaseFloat beam = 200.0;
-    BaseFloat retry_beam = 0.0;
     BaseFloat acoustic_scale = 1.0;
     BaseFloat transition_scale = 1.0;
     BaseFloat self_loop_scale = 1.0;
 
-    po.Register("beam", &beam, "Decoding beam");
-    po.Register("retry-beam", &retry_beam,
-                "Decoding beam for second try at alignment");
+    align_config.Register(&po);
     po.Register("transition-scale", &transition_scale,
                 "Transition-probability scale [relative to acoustics]");
     po.Register("acoustic-scale", &acoustic_scale,
@@ -73,12 +70,6 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-    if (retry_beam != 0 && retry_beam <= beam)
-      KALDI_WARN << "Beams do not make sense: beam " << beam
-                 << ", retry-beam " << retry_beam;
-    
-    FasterDecoderOptions decode_opts;
-    decode_opts.beam = beam;  // Don't set the other options.
 
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
@@ -90,9 +81,8 @@ int main(int argc, char *argv[]) {
         alignment_wspecifier = po.GetArg(4),
         scores_wspecifier = po.GetOptArg(5);
 
-
-    int num_success = 0, num_no_feat = 0, num_other_error = 0;
-    BaseFloat tot_like = 0.0;
+    int num_done = 0, num_err = 0, num_retry = 0;
+    double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
 
     {
@@ -111,96 +101,51 @@ int main(int argc, char *argv[]) {
       BaseFloatWriter scores_writer(scores_wspecifier);
 
       for (; !fst_reader.Done(); fst_reader.Next()) {
-        std::string key = fst_reader.Key();
-        if (!feature_reader.HasKey(key)) {
-          num_no_feat++;
-          KALDI_WARN << "No features for utterance " << key;
-        } else {
-          const CuMatrix<BaseFloat> &features = feature_reader.Value(key);
-          VectorFst<StdArc> decode_fst(fst_reader.Value());
-          fst_reader.FreeCurrent();  // this stops copy-on-write of the fst
-          // by deleting the fst inside the reader, since we're about to mutate
-          // the fst by adding transition probs.
-
-          if (features.NumRows() == 0) {
-            KALDI_WARN << "Zero-length utterance: " << key;
-            num_other_error++;
-            continue;
-          }
-          if (decode_fst.Start() == fst::kNoStateId) {
-            KALDI_WARN << "Empty decoding graph for " << key;
-            num_other_error++;
-            continue;
-          }
-
-          {  // Add transition-probs to the FST.
-            std::vector<int32> disambig_syms;  // empty.
-            AddTransitionProbs(trans_model, disambig_syms,
-                               transition_scale, self_loop_scale,
-                               &decode_fst);
-          }
-
-          // SimpleDecoder decoder(decode_fst, beam);
-          FasterDecoder decoder(decode_fst, decode_opts);
-          // makes it a bit faster: 37 sec -> 26 sec on 1000 RM utterances @ beam 200.
-
-          bool pad_input = true;
-          DecodableAmNnet nnet_decodable(trans_model, am_nnet, features,
-                                         pad_input, acoustic_scale);
-          decoder.Decode(&nnet_decodable);
-
-          VectorFst<LatticeArc> decoded;  // linear FST.
-          bool ans = decoder.ReachedFinal() // consider only final states.
-              && decoder.GetBestPath(&decoded);  
-          if (!ans && retry_beam != 0.0) {
-            KALDI_WARN << "Retrying utterance " << key << " with beam " << retry_beam;
-            decode_opts.beam = retry_beam;
-            decoder.SetOptions(decode_opts);
-            decoder.Decode(&nnet_decodable);
-            ans = decoder.ReachedFinal() // consider only final states.
-                && decoder.GetBestPath(&decoded);  
-            decode_opts.beam = beam;
-            decoder.SetOptions(decode_opts);
-          }
-          if (ans) {
-            std::vector<int32> alignment;
-            std::vector<int32> words;
-            LatticeWeight weight;
-            frame_count += features.NumRows();
-
-            GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-            BaseFloat like = -(weight.Value1()+weight.Value2()) / acoustic_scale;
-            tot_like += like;
-            if (scores_writer.IsOpen())
-              scores_writer.Write(key, -(weight.Value1()+weight.Value2()));
-            alignment_writer.Write(key, alignment);
-            num_success ++;
-            KALDI_VLOG(2) << "Log-like per frame for utterance " << key 
-                          << " is " << (like / features.NumRows()) << " over "
-                          << features.NumRows() << " frames.";
-            if (num_success % 50  == 0) {
-              KALDI_LOG << "Processed " << num_success << " utterances, "
-                        << "log-like per frame for " << key << " is "
-                        << (like / features.NumRows()) << " over "
-                        << features.NumRows() << " frames.";
-            }
-          } else {
-            KALDI_WARN << "Did not successfully decode file " << key << ", len = "
-                       << (features.NumRows());
-            num_other_error++;
-          }
+        std::string utt = fst_reader.Key();
+        if (!feature_reader.HasKey(utt)) {
+          KALDI_WARN << "No features for utterance " << utt;
+          num_err++;
+          continue;
         }
+        const CuMatrix<BaseFloat> &features = feature_reader.Value(utt);
+        VectorFst<StdArc> decode_fst(fst_reader.Value());
+        fst_reader.FreeCurrent();  // this stops copy-on-write of the fst
+        // by deleting the fst inside the reader, since we're about to mutate
+        // the fst by adding transition probs.
+
+        if (features.NumRows() == 0) {
+          KALDI_WARN << "Zero-length utterance: " << utt;
+          num_err++;
+          continue;
+        }
+
+        {  // Add transition-probs to the FST.
+          std::vector<int32> disambig_syms;  // empty.
+          AddTransitionProbs(trans_model, disambig_syms,
+                             transition_scale, self_loop_scale,
+                             &decode_fst);
+        }
+
+        bool pad_input = true;
+        DecodableAmNnet nnet_decodable(trans_model, am_nnet, features,
+                                       pad_input, acoustic_scale);
+
+        AlignUtteranceWrapper(align_config, utt,
+                              acoustic_scale, &decode_fst, &nnet_decodable,
+                              &alignment_writer, &scores_writer,
+                              &num_done, &num_err, &num_retry,
+                              &tot_like, &frame_count);
       }
       KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count)
                 << " over " << frame_count<< " frames.";
-      KALDI_LOG << "Done " << num_success << ", could not find features for "
-                << num_no_feat << ", other errors on " << num_other_error;
+      KALDI_LOG << "Retried " << num_retry << " out of "
+                << (num_done + num_err) << " utterances.";
+      KALDI_LOG << "Done " << num_done << ", errors on " << num_err;
     }
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
 #endif
-    if (num_success != 0) return 0;
-    else return 1;
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

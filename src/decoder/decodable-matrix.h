@@ -57,11 +57,11 @@ class DecodableMatrixScaledMapped: public DecodableInterface {
                 << tm.NumPdfs() << " pdf-ids.";
   }  
 
-  virtual int32 NumFrames() const { return likes_->NumRows(); }
+  virtual int32 NumFramesReady() const { return likes_->NumRows(); }
 
   virtual bool IsLastFrame(int32 frame) const {
-    KALDI_ASSERT(frame < NumFrames());
-    return (frame == NumFrames() - 1);
+    KALDI_ASSERT(frame < NumFramesReady());
+    return (frame == NumFramesReady() - 1);
   }
 
   // Note, frames are numbered from zero.
@@ -90,11 +90,11 @@ class DecodableMatrixScaled: public DecodableInterface {
                         BaseFloat scale): likes_(likes),
                                           scale_(scale) { }
   
-  virtual int32 NumFrames() const { return likes_.NumRows(); }
+  virtual int32 NumFramesReady() const { return likes_.NumRows(); }
   
   virtual bool IsLastFrame(int32 frame) const {
-    KALDI_ASSERT(frame < NumFrames());
-    return (frame == NumFrames() - 1);
+    KALDI_ASSERT(frame < NumFramesReady());
+    return (frame == NumFramesReady() - 1);
   }
   
   // Note, frames are numbered from zero.

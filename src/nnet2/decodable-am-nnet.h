@@ -142,7 +142,7 @@ class DecodableAmNnetParallel: public DecodableInterface {
                       trans_model_.TransitionIdToPdf(transition_id));
   }
 
-  int32 NumFrames() const {
+  int32 NumFramesReady() const {
     if (feats_) {
       if (pad_input_) return feats_->NumRows();
       else {
@@ -160,8 +160,8 @@ class DecodableAmNnetParallel: public DecodableInterface {
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
   
   virtual bool IsLastFrame(int32 frame) const {
-    KALDI_ASSERT(frame < NumFrames());
-    return (frame == NumFrames() - 1);
+    KALDI_ASSERT(frame < NumFramesReady());
+    return (frame == NumFramesReady() - 1);
   }
   ~DecodableAmNnetParallel() {
     if (feats_) delete feats_;

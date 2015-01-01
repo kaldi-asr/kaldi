@@ -26,7 +26,7 @@
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
 #include "fstext/fstext-lib.h"
-#include "decoder/lattice-faster-decoder.h"
+#include "decoder/decoder-wrappers.h"
 #include "gmm/decodable-am-diag-gmm.h"
 #include "base/timer.h"
 #include "feat/feature-functions.h"  // feature reversal

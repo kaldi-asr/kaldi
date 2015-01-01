@@ -162,8 +162,8 @@ int main(int argc, char *argv[]) {
     sgmm_accs.CommitStatsForSpk(am_sgmm, spk_vars); // for last speaker
     
     KALDI_LOG << "Overall number of frames is " << tot_t;
-
-    KALDI_LOG << "Done " << num_done << " files, " << num_err;
+    KALDI_LOG << "Done " << num_done << " files, "
+              << num_err << " with errors.";
 
     {
       Output ko(accs_wxfilename, binary);

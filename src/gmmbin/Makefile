@@ -19,7 +19,7 @@ BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-global-acc-stats gmm-global-est gmm-global-sum-accs gmm-gselect \
            gmm-latgen-biglm-faster gmm-ismooth-stats gmm-global-get-frame-likes \
            gmm-global-est-fmllr gmm-global-to-fgmm gmm-global-acc-stats-twofeats \
-           gmm-global-copy gmm-align-compiled-plusphones gmm-get-feat-deriv \
+           gmm-global-copy gmm-get-feat-deriv \
            gmm-fmpe-acc-stats gmm-acc-stats2 gmm-init-model-flat gmm-info \
            gmm-scale-accs gmm-get-stats-deriv gmm-est-rescale gmm-boost-silence \
            gmm-diff-accs gmm-basis-fmllr-accs gmm-basis-fmllr-training gmm-est-basis-fmllr \

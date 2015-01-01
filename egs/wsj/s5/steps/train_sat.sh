@@ -20,6 +20,7 @@ cmd=run.pl
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 beam=10
 retry_beam=40
+careful=false
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 context_opts=  # e.g. set this to "--context-width 5 --central-position 2" for quinphone.
 realign_iters="10 20 30";
@@ -184,7 +185,7 @@ while [ $x -lt $num_iters ]; do
     echo Aligning data
     mdl="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $dir/$x.mdl - |"
     $cmd JOB=1:$nj $dir/log/align.$x.JOB.log \
-      gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$mdl" \
+      gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam --careful=$careful "$mdl" \
       "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" \
       "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
   fi

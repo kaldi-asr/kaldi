@@ -62,14 +62,14 @@ class DecodableAmDiagGmmUnmapped : public DecodableInterface {
   virtual BaseFloat LogLikelihood(int32 frame, int32 state_index) {
     return LogLikelihoodZeroBased(frame, state_index - 1);
   }
-  int32 NumFrames() const { return feature_matrix_.NumRows(); }
+  virtual int32 NumFramesReady() const { return feature_matrix_.NumRows(); }
   
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return acoustic_model_.NumPdfs(); }
 
   virtual bool IsLastFrame(int32 frame) const {
-    KALDI_ASSERT(frame < NumFrames());
-    return (frame == NumFrames() - 1);
+    KALDI_ASSERT(frame < NumFramesReady());
+    return (frame == NumFramesReady() - 1);
   }
 
  protected:
@@ -138,7 +138,6 @@ class DecodableAmDiagGmmScaled: public DecodableAmDiagGmmUnmapped {
       DecodableAmDiagGmmUnmapped(am, *feats, log_sum_exp_prune),
       trans_model_(tm),  scale_(scale), delete_feats_(feats) {}
 
-  
   // Note, frames are numbered from zero but transition-ids from one.
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
     return scale_*LogLikelihoodZeroBased(frame,

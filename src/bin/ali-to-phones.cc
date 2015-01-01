@@ -73,10 +73,8 @@ int main(int argc, char *argv[]) {
       if (!write_lengths) {
         std::vector<int32> phones;
         for (size_t i = 0; i < split.size(); i++) {
-          KALDI_ASSERT(split[i].size() > 0);
-          int32 tid = split[i][0],
-              tstate = trans_model.TransitionIdToTransitionState(tid),
-              phone = trans_model.TransitionStateToPhone(tstate);
+          KALDI_ASSERT(!split[i].empty());
+          int32 phone = trans_model.TransitionIdToPhone(split[i][0]);
           int32 num_repeats = split[i].size();
           KALDI_ASSERT(num_repeats!=0);
           if (per_frame)

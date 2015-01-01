@@ -277,7 +277,10 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
                       GmmFlagsType flags,
                       DiagGmm *gmm,
                       BaseFloat *obj_change_out,
-                      BaseFloat *count_out) {
+                      BaseFloat *count_out,
+                      int32 *floored_elements_out,
+                      int32 *floored_gaussians_out,
+                      int32 *removed_gaussians_out) {
   KALDI_ASSERT(gmm != NULL);
 
   if (flags & ~diag_gmm_acc.Flags())
@@ -289,8 +292,8 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
   int32 num_gauss = gmm->NumGauss();
   double occ_sum = diag_gmm_acc.occupancy().Sum();
 
-  int32 tot_floored = 0, gauss_floored = 0;
-
+  int32 elements_floored = 0, gauss_floored = 0;
+  
   // remember old objective value
   gmm->ComputeGconsts();
   BaseFloat obj_old = MlObjective(*gmm, diag_gmm_acc);
@@ -323,7 +326,7 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
         // transfer to estimate
         ngmm.means_.CopyRowFromVec(mean, i);
       }
-
+      
       if (diag_gmm_acc.Flags() & kGmmVariances) {
         KALDI_ASSERT(diag_gmm_acc.Flags() & kGmmMeans);
         Vector<double> var(diag_gmm_acc.variance_accumulator().Row(i));
@@ -343,7 +346,7 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
           floored = var.ApplyFloor(config.min_variance);
         }
         if (floored != 0) {
-          tot_floored += floored;
+          elements_floored += floored;
           gauss_floored++;
         }
         // transfer to estimate
@@ -378,17 +381,19 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
   
   if (obj_change_out) 
     *obj_change_out = (obj_new - obj_old);
-  
   if (count_out) *count_out = occ_sum;
+  if (floored_elements_out) *floored_elements_out = elements_floored;
+  if (floored_gaussians_out) *floored_gaussians_out = gauss_floored;
   
   if (to_remove.size() > 0) {
     gmm->RemoveComponents(to_remove, true /*renormalize weights*/);
     gmm->ComputeGconsts();
   }
+  if (removed_gaussians_out != NULL) *removed_gaussians_out = to_remove.size();
 
-  if (tot_floored > 0)
-    KALDI_WARN << tot_floored << " variances floored in " << gauss_floored
-               << " Gaussians.";
+  if (gauss_floored > 0)
+    KALDI_VLOG(2) << gauss_floored << " variances floored in " << gauss_floored
+                  << " Gaussians.";
 }
 
 void AccumDiagGmm::Add(double scale, const AccumDiagGmm &acc) {

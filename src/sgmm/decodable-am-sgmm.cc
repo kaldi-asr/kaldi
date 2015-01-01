@@ -25,7 +25,7 @@ using std::vector;
 namespace kaldi {
 
 BaseFloat DecodableAmSgmm::LogLikelihoodZeroBased(int32 frame, int32 pdf_id) {
-  KALDI_ASSERT(frame >= 0 && frame < NumFrames());
+  KALDI_ASSERT(frame >= 0 && frame < NumFramesReady());
   KALDI_ASSERT(pdf_id >= 0 && pdf_id < NumIndices());
 
   if (log_like_cache_[pdf_id].hit_time == frame) {

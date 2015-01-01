@@ -54,7 +54,7 @@ class DecodableAmDiagGmmRegtreeFmllr: public DecodableAmDiagGmmUnmapped {
                                          trans_model_.TransitionIdToPdf(tid));
   }
 
-  virtual int32 NumFrames() { return feature_matrix_.NumRows(); }
+  virtual int32 NumFramesReady() { return feature_matrix_.NumRows(); }
 
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
@@ -97,7 +97,7 @@ class DecodableAmDiagGmmRegtreeMllr: public DecodableAmDiagGmmUnmapped {
                                          trans_model_.TransitionIdToPdf(tid));
   }
 
-  virtual int32 NumFrames() { return feature_matrix_.NumRows(); }
+  virtual int32 NumFramesReady() { return feature_matrix_.NumRows(); }
 
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }

@@ -20,7 +20,7 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-minimize lattice-limit-depth lattice-depth-per-frame \
            lattice-confidence lattice-determinize-phone-pruned \
            lattice-determinize-phone-pruned-parallel lattice-expand-ngram \
-           lattice-lmrescore-const-arpa
+           lattice-lmrescore-const-arpa nbest-to-prons
 
 OBJFILES =
 

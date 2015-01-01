@@ -12,6 +12,7 @@ realign_iters="10 20 30";
 num_iters=35    # Number of iterations of training
 max_iter_inc=25 # Last iter to increase #Gauss on.
 beam=10
+careful=false
 retry_beam=40
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
 power=0.25 # Exponent for number of gaussians according to occurrence counts
@@ -123,7 +124,7 @@ if [ $stage -le 0 ]; then
   echo "$0: compiling graphs of transcripts"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
     compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
-     "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $data/split$nj/JOB/text |" \
+     "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
       "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi
 
@@ -135,7 +136,7 @@ while [ $x -lt $num_iters ]; do
       echo "$0: aligning data"
       mdl="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $dir/$x.mdl - |"
       $cmd JOB=1:$nj $dir/log/align.$x.JOB.log \
-        gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$mdl" \
+        gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam --careful=$careful "$mdl" \
          "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" \
          "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
     fi

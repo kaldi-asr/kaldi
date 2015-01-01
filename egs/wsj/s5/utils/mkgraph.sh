@@ -16,12 +16,17 @@
 
 N=3
 P=1
+tscale=1.0
+loopscale=0.1
+
 reverse=false
 
-for x in `seq 2`; do 
+for x in `seq 5`; do 
   [ "$1" == "--mono" ] && N=1 && P=0 && shift;
   [ "$1" == "--quinphone" ] && N=5 && P=2 && shift;
   [ "$1" == "--reverse" ] && reverse=true && shift;
+  [ "$1" == "--transition-scale" ] && tscale=$2 && shift 2;
+  [ "$1" == "--self-loop-scale" ] && loopscale=$2 && shift 2;
 done
 
 if [ $# != 3 ]; then
@@ -41,9 +46,6 @@ model=$2/final.mdl
 dir=$3
 
 mkdir -p $dir
-
-tscale=1.0
-loopscale=0.1
 
 # If $lang/tmp/LG.fst does not exist or is older than its sources, make it...
 # (note: the [[ ]] brackets make the || type operators work (inside [ ], we
