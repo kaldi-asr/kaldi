@@ -208,6 +208,15 @@ if ( (-f "$dict/lexicon.txt") && (-f "$dict/lexiconp.txt")) {
     }
     @B = split(" ", $x);
     $w = shift @B;
+    if ($w eq "<s>" || $w eq "</s>") {
+      print "--> ERROR: lexicon.txt contains forbidden word $w\n";
+      set_to_fail();
+    }
+    if (@B == 0) {
+      print "--> ERROR: lexicon.txt contains word $w with empty pronunciation.\n";
+      set_to_fail();
+      last;
+    }
     $p = shift @B;
     unshift @B, $w;
     # now @A and @B should be the same.

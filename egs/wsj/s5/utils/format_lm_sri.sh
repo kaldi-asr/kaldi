@@ -20,25 +20,42 @@
 srilm_opts="-subset -prune-lowprobs -unk -tolower"
 # end configuration sections
 
-help_message="Usage: "`basename $0`" [options] lang_dir LM lexicon out_dir
-Convert ARPA-format language models to FSTs. Change the LM vocabulary using SRILM.\n
-options: 
-  --help                 # print this message and exit
-  --srilm-opts STRING    # options to pass to SRILM tools (default: '$srilm_opts')
-";
 
 . utils/parse_options.sh
 
-if [ $# -ne 4 ]; then
-  printf "$help_message\n";
+if [ $# -ne 4 ] && [ $# -ne 3 ]; then
+  echo "Usage: $0 [options] <lang-dir> <arpa-LM> [<lexicon>] <out-dir>"
+  echo "The <lexicon> argument is no longer needed but is supported for back compatibility"
+  echo "E.g.: utils/format_lm_sri.sh data/lang data/local/lm/foo.kn.gz data/local/dict/lexicon.txt data/lang_test"
+  echo "Converts ARPA-format language models to FSTs. Change the LM vocabulary using SRILM."
+  echo "Note: if you want to just convert ARPA LMs to FSTs, there is a simpler way to do this"
+  echo "that doesn't require SRILM: see examples in egs/wsj/s5/local/wsj_format_local_lms.sh"
+  echo "options:"
+  echo " --help                 # print this message and exit"
+  echo " --srilm-opts STRING      # options to pass to SRILM tools (default: '$srilm_opts')"
   exit 1;
 fi
 
-lang_dir=$1
-lm=$2
-lexicon=$3
-out_dir=$4
+
+if [ $# -eq 4 ] ; then
+  lang_dir=$1
+  lm=$2
+  lexicon=$3
+  out_dir=$4
+else
+  lang_dir=$1
+  lm=$2
+  out_dir=$3
+fi
+
 mkdir -p $out_dir
+
+for f in $lm $lang_dir/words.txt; do
+  if [ ! -f $f ]; then
+    echo "$0: expected input file $f to exist."
+    exit 1;
+  fi
+done
 
 [ -f ./path.sh ] && . ./path.sh
 
@@ -64,9 +81,7 @@ echo "Converting '$lm' to FST"
 tmpdir=$(mktemp -d kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT
 
-for f in phones.txt words.txt L.fst L_disambig.fst phones/; do
-  cp -r $lang_dir/$f $out_dir || exit 1;
-done
+cp -rT $lang_dir $out_dir || exit 1;
 
 lm_base=$(basename $lm '.gz')
 gunzip -c $lm | utils/find_arpa_oovs.pl $out_dir/words.txt \
@@ -101,24 +116,4 @@ fstisstochastic $out_dir/G.fst
 # we do expect the first of these 2 numbers to be close to zero (the second is
 # nonzero because the backoff weights make the states sum to >1).
 
-# Everything below is only for diagnostic.
-# Checking that G has no cycles with empty words on them (e.g. <s>, </s>);
-# this might cause determinization failure of CLG.
-# #0 is treated as an empty word.
-mkdir -p $out_dir/tmpdir.g
-awk '{if(NF==1){ printf("0 0 %s %s\n", $1,$1); }} 
-     END{print "0 0 #0 #0"; print "0";}' \
-     < "$lexicon" > $out_dir/tmpdir.g/select_empty.fst.txt || exit 1;
-
-fstcompile --isymbols=$out_dir/words.txt --osymbols=$out_dir/words.txt \
-  $out_dir/tmpdir.g/select_empty.fst.txt \
-  | fstarcsort --sort_type=olabel \
-  | fstcompose - $out_dir/G.fst > $out_dir/tmpdir.g/empty_words.fst || exit 1;
-
-fstinfo $out_dir/tmpdir.g/empty_words.fst | grep cyclic | grep -w 'y' \
-  && echo "Language model has cycles with empty words" && exit 1
-
-rm -r $out_dir/tmpdir.g
-
-
-echo "Succeeded in formatting LM: '$lm'"
+echo "Succeeded in formatting LM '$lm' -> '$out_dir/G.fst'"

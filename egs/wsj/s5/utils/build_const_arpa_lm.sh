@@ -30,20 +30,9 @@ new_lang=$3
 
 mkdir -p $new_lang
 
-for f in L_disambig.fst \
-  L.fst oov.int oov.txt phones.txt topo words.txt phones; do
-  if [[ ! -f $old_lang/$f && ! -d $old_lang/$f ]]; then
-    echo "$0: no such file or directory $old_lang/$f"
-    exit 1;
-  fi
-  cp -rf $old_lang/$f $new_lang
-done
-
-# First, convert the words in the Arpa format language model into integers.
-arpa_lm_int=$new_lang/arpa.int
+cp -rT $old_lang $new_lang
 
 
-# Second, convert $arpa_lm_int to ConstArpaLm format.
 unk=`cat $new_lang/oov.int`
 bos=`grep "<s>" $new_lang/words.txt | awk '{print $2}'`
 eos=`grep "</s>" $new_lang/words.txt | awk '{print $2}'`
@@ -52,7 +41,9 @@ if [[ -z $bos || -z $eos ]]; then
   exit 1
 fi
 
-gunzip -c $arpa_lm | utils/map_arpa_lm.pl $new_lang/words.txt | \
-  arpa-to-const-arpa --bos-symbol=$bos \
-   --eos-symbol=$eos --unk-symbol=$unk - $new_lang/G.carpa || exit 1
 
+arpa-to-const-arpa --bos-symbol=$bos \
+  --eos-symbol=$eos --unk-symbol=$unk \
+  "gunzip -c $arpa_lm | utils/map_arpa_lm.pl $new_lang/words.txt|"  $new_lang/G.carpa  || exit 1;
+
+exit 0;
