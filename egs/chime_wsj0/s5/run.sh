@@ -256,6 +256,3 @@ $cuda_cmd $dir/_train_nnet.log \
 utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri7a_dnn exp/tri7a_dnn/graph_tgpr_5k || exit 1;
 steps/nnet/decode.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
   exp/tri7a_dnn/graph_tgpr_5k data-fbank/test_eval92_5k_noisy $dir/decode_tgpr_5k_eval92_5k_noisy || exit 1;
-
-
-

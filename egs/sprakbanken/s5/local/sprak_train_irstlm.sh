@@ -17,7 +17,6 @@ lm_suffix=$3
 N=$4
 lmdir=$5
 extdict=${srcdict}_$lm_suffix
-tmpdir=data/local/lm_tmp
 lang_tmp=data/local/lang_tmp
 extlang=data/lang_$lm_suffix
 
@@ -137,10 +136,8 @@ tlm -tr=$lmdir/extra4.ngt -n=$N -lm=wb -o=$lmdir/extra${N}$lm_suffix
 test=data/lang_test_${N}${lm_suffix}
 mkdir -p $test
 
-for f in phones.txt words.txt phones.txt L.fst L_disambig.fst \
-   phones/; do
-  cp -r $extlang/$f $test
-done
+
+cp -r $extlang $test
 
 cat $lmdir/extra${N}$lm_suffix | \
 utils/find_arpa_oovs.pl $test/words.txt  > $lmdir/oovs_${lm_suffix}.txt
@@ -159,29 +156,7 @@ cat $lmdir/extra${N}$lm_suffix | \
   utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt \
     --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
    fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
-fstisstochastic $test/G.fst
 
-echo "Succeeded in formatting data."
- # The output is like:
- # 9.14233e-05 -0.259833
- # we do expect the first of these 2 numbers to be close to zero (the second is
- # nonzero because the backoff weights make the states sum to >1).
- # Because of the <s> fiasco for these particular LMs, the first number is not
- # as close to zero as it could be.
+utils/validate_lang.pl $test || exit 1;
 
-  # Everything below is only for diagnostic.
-  # Checking that G has no cycles with empty words on them (e.g. <s>, </s>);
-  # this might cause determinization failure of CLG.
-  # #0 is treated as an empty word.
-echo "Running diagnostics. Investigate if the LM has cycles."
-
-mkdir -p $tmpdir
-awk '{if(NF==1){ printf("0 0 %s %s\n", $1,$1); }} END{print "0 0 #0 #0"; print "0";}' \
-  < "$lmdir/text.filt"  >$tmpdir/select_empty.fst.txt
-fstcompile --isymbols=$test/words.txt --osymbols=$test/words.txt $tmpdir/select_empty.fst.txt | \
- fstarcsort --sort_type=olabel | fstcompose - $test/G.fst > $tmpdir/empty_words.fst
-fstinfo $tmpdir/empty_words.fst | grep cyclic | grep -w 'y' && 
-  echo "Language model has cycles with empty words" && exit 1
-
-
-rm -rf $tmpdir
+exit 0;
