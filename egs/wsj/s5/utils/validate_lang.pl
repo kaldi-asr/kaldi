@@ -651,7 +651,7 @@ if (-s "$lang/phones/word_boundary.int") {
 
   foreach $fst ("L.fst", "L_disambig.fst") {
     $wlen = int(rand(100)) + 1;
-    print "--> generating a $wlen words sequence\n";
+    print "--> generating a $wlen word sequence\n";
     $wordseq = "";
     $sid = 0;
     foreach (1 .. $wlen) {
@@ -739,8 +739,8 @@ if (-e "$lang/L_disambig.fst") {
   }
 }
 
-# Check if G.fst is ilabel sorted.
 if (-e "$lang/G.fst") {
+  # Check that G.fst is ilabel sorted and nonempty.
   $text = `. ./path.sh; fstinfo $lang/G.fst`;
 
   if ($text =~ m/input label sorted\s+y/) {
@@ -759,16 +759,39 @@ if (-e "$lang/G.fst") {
     }
   }
 
-  # Check determinizability of G.fst
-  if (-e "$lang/G.fst") {
-    $cmd = "fstdeterminize $lang/G.fst /dev/null";
-    $res = system(". ./path.sh; $cmd");
-    if ($res == 0) {
-      print "--> $lang/G.fst is determinizable\n";
-    } else {
-      print "--> ERROR: fail to determinize $lang/G.fst\n";
-      $exit = 1;
+  # Check that G.fst is determinizable.
+  if (!$skip_det_check) {
+    # Check determinizability of G.fst
+    # fstdeterminizestar is much faster, and a more relevant test as it's what
+    # we do in the actual graph creation recipe.
+    if (-e "$lang/G.fst") {
+      $cmd = "fstdeterminizestar $lang/G.fst /dev/null";
+      $res = system(". ./path.sh; $cmd");
+      if ($res == 0) {
+        print "--> $lang/G.fst is determinizable\n";
+      } else {
+        print "--> ERROR: fail to determinize $lang/G.fst\n";
+        $exit = 1;
+      }
     }
+  }
+
+  # Check that G.fst does not have cycles with only disambiguation symbols or
+  # epsilons on the input, or the forbidden symbols <s> and </s>.
+  $cmd = ". ./path.sh; fstprint $lang/G.fst | awk -v disambig=$lang/phones/disambig.int -v words=$lang/words.txt 'BEGIN{while((getline<disambig)>0) is_disambig[$1]=1; is_disambig[0] = 1; while((getline<words)>0){ if(\$1==\"<s>\"||\$1==\"</s>\") is_forbidden[\$2]=1;}} {if(NF<3 || is_disambig[\$3]) print; else if(is_forbidden[\$3] || is_forbidden[\$4]) { print \"Error: line \" \$0 \" in G.fst contains forbidden symbol <s> or </s>\" >/dev/stderr; exit(1); }}' | fstcompile | fstinfo ";
+  $output = `$cmd`;
+  if ($output !~ m/# of states\s+[1-9]/) { # fstinfo did not read a nonempty FST (there should be final probs at least)...
+    print "--> ERROR: failure running command to check for disambig-sym loops [possibly G.fst " .
+         "contained the forbidden symbols <s> or </s>, or possibly some other error..  Output was: \n";
+    print $output;
+    $exit = 1;
+  }
+  if ($output !~ m/cyclic\s+n/) { # FST was cyclic after selecting only for disambig symbols.   This is now allowed.
+    print "--> ERROR: G.fst contained cycles with only disambiguation symbols or epsilons on the input.  Would cause determinization failure in graph creation.\n";
+    $exit = 1;
+  } else {
+    print "--> G.fst did not contain cycles with only disambig symbols or epsilon on the input, and did not contain\n" .
+      "the forbidden symbols <s> or </s> (if present in vocab) on the input or output.\n";
   }
 }
 
@@ -776,7 +799,7 @@ if (-e "$lang/G.fst") {
 if (!$skip_det_check) {
   if (-e "$lang/G.fst" && -e "$lang/L_disambig.fst") {
     print "--> Testing determinizability of L_disambig . G\n";
-    $output = `. ./path.sh; fstcompose $lang/L_disambig.fst $lang/G.fst | fstdeterminizestar | fstinfo 2>&1 `;
+    $output = `. ./path.sh; fsttablecompose $lang/L_disambig.fst $lang/G.fst | fstdeterminizestar | fstinfo 2>&1 `;
     if ($output =~ m/# of states\s*[1-9]/) {
       print "--> L_disambig . G is determinizable\n";
     } else {
