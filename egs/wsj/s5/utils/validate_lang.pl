@@ -664,7 +664,7 @@ if (-s "$lang/phones/word_boundary.int") {
       $sid ++;
     }
     $wordseq = $wordseq . "$sid 0";
-    $phoneseq = `echo \"$wordseq" | fstcompile | fstcompose $lang/$fst - | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint | awk '{if (NF > 2) {print \$3}}';`;
+    $phoneseq = `. ./path.sh; echo \"$wordseq" | fstcompile | fstcompose $lang/$fst - | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint | awk '{if (NF > 2) {print \$3}}';`;
     @phoneseq = split(" ", $phoneseq);
     $transition = { }; # empty assoc. array of allowed transitions between phone types.  1 means we count a word,
     # 0 means transition is allowed.  bos and eos are added as extra symbols here.
@@ -741,7 +741,7 @@ if (-e "$lang/L_disambig.fst") {
 
 # Check if G.fst is ilabel sorted.
 if (-e "$lang/G.fst") {
-  $text = ` ./path.sh; fstinfo $lang/G.fst`;
+  $text = `. ./path.sh; fstinfo $lang/G.fst`;
 
   if ($text =~ m/input label sorted\s+y/) {
     print "--> $lang/G.fst is ilabel sorted\n";
@@ -776,7 +776,7 @@ if (-e "$lang/G.fst") {
 if (!$skip_det_check) {
   if (-e "$lang/G.fst" && -e "$lang/L_disambig.fst") {
     print "--> Testing determinizability of L_disambig . G\n";
-    $output = `fstcompose $lang/L_disambig.fst $lang/G.fst | fstdeterminizestar | fstinfo 2>&1 `;
+    $output = `. ./path.sh; fstcompose $lang/L_disambig.fst $lang/G.fst | fstdeterminizestar | fstinfo 2>&1 `;
     if ($output =~ m/# of states\s*[1-9]/) {
       print "--> L_disambig . G is determinizable\n";
     } else {
