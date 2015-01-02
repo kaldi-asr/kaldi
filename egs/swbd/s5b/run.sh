@@ -374,7 +374,7 @@ done
 
 
 # # Karel's DNN recipe on top of fMLLR features
-# local/run_dnn.sh
+# local/nnet/run_dnn.sh
 
 
 # # Dan's nnet recipe

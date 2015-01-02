@@ -4,8 +4,9 @@
 # Switchboard portion of eval2000, excluding CallHome, which is
 # substantially easier.
 
-for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
-for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+for x in exp/{mono,tri,sgmm,nnet,dnn}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+for x in exp/{mono,tri,sgmm,nnet,dnn}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
+exit 0
 
 
 %WER 36.7 | 1831 21395 | 66.3 24.2 9.5 3.0 36.7 68.4 | exp/tri1/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.swbd.filt.sys
