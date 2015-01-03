@@ -82,8 +82,6 @@ int main(int argc, char *argv[]) {
                      words.size() == lengths.size() &&
                      words.size() == prons.size());
         for (size_t i = 0; i < words.size(); i++) {
-          if (words[i] == 0)  // Don't output anything for <eps> links, which
-            continue; // correspond to silence....
           ko.Stream() << utt << ' ' << times[i] << ' ' << lengths[i] << ' '
                       << words[i];
           for (size_t j = 0; j < prons[i].size(); j++)
