@@ -1,14 +1,18 @@
 #!/bin/bash
 
-# This is our online neural net build.
-# After this you can do discriminative training with run_nnet2_discriminative.sh.
+# this is our online-nnet2 build.  it's a "multi-splice" system (i.e. we have
+# splicing at various layers), with p-norm nonlinearities.  We use the "accel2"
+# script which uses between 2 and 14 GPUs depending how far through training it
+# is.  You can safely reduce the --num-jobs-final to however many GPUs you have
+# on your system.
 
 . cmd.sh
 
 
-stage=1
+stage=0
 train_stage=-10
 use_gpu=true
+dir=exp/nnet2_online/nnet_ms_a
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -25,90 +29,39 @@ EOF
   num_threads=1
   minibatch_size=512
   # the _a is in case I want to change the parameters.
-  dir=exp/nnet2_online/nnet_a_gpu 
 else
-  # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
-  # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
   parallel_opts="-pe smp $num_threads" 
-  dir=exp/nnet2_online/nnet_a
 fi
 
+local/online/run_nnet2_common.sh --stage $stage || exit 1;
 
-if [ $stage -le 1 ]; then
-  mkdir -p exp/nnet2_online
-  # To train a diagonal UBM we don't need very much data, so use just the si84 data.
-  # the tri3b is the input dir; the choice of this is not critical as we just use
-  # it for the LDA matrix.  Since the iVectors don't make a great deal of difference,
-  # we'll use 256 Gaussians for speed.
-  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 200000 \
-    data/train_si84 256 exp/tri3b exp/nnet2_online/diag_ubm
-fi
-
-if [ $stage -le 2 ]; then
-  # even though $nj is just 10, each job uses multiple processes and threads.
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
-    data/train_si284 exp/nnet2_online/diag_ubm exp/nnet2_online/extractor || exit 1;
-fi
-
-if [ $stage -le 3 ]; then
-  # We extract iVectors on all the train_si284 data, which will be what we
-  # train the system on.
-
-  # having a larger number of speakers is helpful for generalization, and to
-  # handle per-utterance decoding well (iVector starts at zero).
-  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train_si284 data/train_si284_max2
-
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/train_si284_max2 exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_si284 || exit 1;
-fi
-
-
-if [ $stage -le 4 ]; then
-  # Because we have a lot of data here and we don't want the training to take
-  # too long so we reduce the number of epochs from the defaults (15 + 5) to (8
-  # + 4).
-
-  # Regarding the number of jobs, we decided to let others run their jobs too so
-  # we only use 6 GPUs) (we only have 10 GPUs on our queue at JHU).  The number
-  # of parameters is a bit smaller than the baseline system we had in mind
-  # (../nnet2/run_5d.sh), which had pnorm input/output dim 2000/400 and 4 hidden
-  # layers, versus our 2400/300 and 4 hidden layers, even though we're training
-  # on more data than the baseline system (we're changing the proportions of
-  # input/output dim to be closer to 10:1 which is what we believe works well).
-  # The motivation of having fewer parameters is that we want to demonstrate the
-  # capability of doing real-time decoding, and if the network was too bug we
-  # wouldn't be able to decode in real-time using a CPU.
-  #
-  # I copied the learning rates from ../nnet2/run_5d.sh
-  steps/nnet2/train_pnorm_simple.sh --stage $train_stage \
-    --num-epochs 12 \
-    --splice-width 7 --feat-type raw \
+if [ $stage -le 8 ]; then
+  # last splicing was instead: layer3/-4:2" 
+  egs_opt="--egs-dir exp/nnet2_online/nnet_ms_c3/egs"
+  steps/nnet2/train_multisplice_accel2.sh --stage $train_stage \
+     $egs_opt \
+    --num-epochs 8 --num-jobs-initial 2 --num-jobs-final 14 \
+    --num-hidden-layers 4 \
+    --splice-indexes "layer0/-1:0:1 layer1/-2:1 layer2/-4:2" \
+    --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors_train_si284 \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
     --parallel-opts "$parallel_opts" \
-    --num-jobs-nnet 6 \
-    --num-hidden-layers 4 \
-    --mix-up 4000 \
-    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --io-opts "-tc 12" \
+    --initial-effective-lrate 0.005 --final-effective-lrate 0.0005 \
     --cmd "$decode_cmd" \
-    --pnorm-input-dim 2400 \
-    --pnorm-output-dim 300 \
-    data/train_si284 data/lang exp/tri4b_ali_si284 $dir  || exit 1;
-fi
-
-if [ $stage -le 5 ]; then
-  for data in test_eval92 test_dev93; do
-    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 8 \
-      data/${data} exp/nnet2_online/extractor exp/nnet2_online/ivectors_${data} || exit 1;
-  done
+    --pnorm-input-dim 2000 \
+    --pnorm-output-dim 250 \
+    --mix-up 12000 \
+    data/train_si284_hires data/lang exp/tri4b_ali_si284 $dir  || exit 1;
 fi
 
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 9 ]; then
   # this does offline decoding that should give the same results as the real
   # online decoding.
   for lm_suffix in tgpr bd_tgpr; do
@@ -117,17 +70,17 @@ if [ $stage -le 6 ]; then
     for year in eval92 dev93; do
       steps/nnet2/decode.sh --nj 8 --cmd "$decode_cmd" \
           --online-ivector-dir exp/nnet2_online/ivectors_test_$year \
-         $graph_dir data/test_$year $dir/decode_${lm_suffix}_${year} || exit 1;
+         $graph_dir data/test_${year}_hires $dir/decode_${lm_suffix}_${year} || exit 1;
     done
   done
 fi
 
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 10 ]; then
   # If this setup used PLP features, we'd have to give the option --feature-type plp
   # to the script below.
-  steps/online/nnet2/prepare_online_decoding.sh data/lang exp/nnet2_online/extractor \
-    "$dir" ${dir}_online || exit 1;
+  steps/online/nnet2/prepare_online_decoding.sh  --mfcc-config conf/mfcc_hires.conf \
+    data/lang exp/nnet2_online/extractor "$dir" ${dir}_online || exit 1;
 fi
 
 if [ $stage -le 8 ]; then

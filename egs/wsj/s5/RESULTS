@@ -255,3 +255,28 @@ exp/nnet5c1/decode_bd_tgpr_eval92/wer_14:%WER 4.39 [ 248 / 5643, 32 ins, 17 del,
 
 # for results with VTLN, see for example local/run_vtln2.sh, they are at the end.
 
+
+# Online-nnet2 results:
+
+for x in exp/nnet2_online/nnet_ms_a_online/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 7.02 [ 578 / 8234, 85 ins, 88 del, 405 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93/wer_10
+%WER 6.56 [ 540 / 8234, 86 ins, 79 del, 375 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93_smbr_epoch1/wer_11
+%WER 6.51 [ 536 / 8234, 84 ins, 77 del, 375 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93_smbr_epoch2/wer_12
+%WER 6.42 [ 529 / 8234, 90 ins, 72 del, 367 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93_smbr_epoch3/wer_12
+%WER 6.40 [ 527 / 8234, 91 ins, 71 del, 365 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93_smbr_epoch4/wer_12 **
+%WER 7.23 [ 595 / 8234, 77 ins, 96 del, 422 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93_utt/wer_10
+%WER 6.95 [ 572 / 8234, 70 ins, 90 del, 412 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93_utt_offline/wer_11
+%WER 3.93 [ 222 / 5643, 32 ins, 12 del, 178 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92/wer_10
+%WER 3.76 [ 212 / 5643, 27 ins, 11 del, 174 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_smbr_epoch1/wer_11
+%WER 3.60 [ 203 / 5643, 27 ins, 9 del, 167 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_smbr_epoch2/wer_11  **
+%WER 3.62 [ 204 / 5643, 28 ins, 7 del, 169 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_smbr_epoch3/wer_11
+%WER 3.72 [ 210 / 5643, 32 ins, 7 del, 171 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_smbr_epoch4/wer_11
+%WER 4.02 [ 227 / 5643, 32 ins, 14 del, 181 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_utt/wer_9
+%WER 3.99 [ 225 / 5643, 29 ins, 13 del, 183 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_utt_offline/wer_10
+%WER 9.45 [ 778 / 8234, 180 ins, 73 del, 525 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_dev93/wer_10
+%WER 9.39 [ 773 / 8234, 163 ins, 79 del, 531 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_dev93_utt/wer_11
+%WER 9.25 [ 762 / 8234, 174 ins, 69 del, 519 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_dev93_utt_offline/wer_10
+%WER 6.57 [ 371 / 5643, 95 ins, 12 del, 264 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_eval92/wer_11
+%WER 6.68 [ 377 / 5643, 102 ins, 13 del, 262 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_eval92_utt/wer_10
+%WER 6.56 [ 370 / 5643, 100 ins, 12 del, 258 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_eval92_utt_offline/wer_10
+
