@@ -32,7 +32,8 @@
     similar network filesystem.  In the ideal case, some computers on the
     grid will have NVidia GPUs which you can use for neural net training,
     and you can reserve these on the queue by adding some extra option to qsub.
-
+    See \ref queue for more information.
+  
     We have started a separate project called <a
     href=https://sourceforge.net/projects/kluster/> Kluster </a> that shows you
     how to create such a cluster on Amazon's EC2; MIT's <a

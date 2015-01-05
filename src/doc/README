@@ -23,17 +23,19 @@ doc/make_tools.sh
 doxygen
 cp doc/*.pptx html/;
 
+if [[ $(hostname) == *.clsp.jhu.edu ]]; then
 
-tar -czf html.tar.gz html
-scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/
+   tar -czf html.tar.gz html
+   scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/
 
-#may have to do this:
-ssh danielpovey,kaldi@shell.sourceforge.net create
+   #may have to do this:
+   ssh danielpovey,kaldi@shell.sourceforge.net create
 
-# Running the shell command on sourceforge, from svatava:
-echo 'cd /home/project-web/kaldi/htdocs/; rm -rf html;
-     tar -xzf html.tar.gz; for x in html/*; do mv $x .; done ' \
-   | ssh danielpovey,kaldi@shell.sourceforge.net bash
+   # Running the shell command on sourceforge, from svatava:
+   echo 'cd /home/project-web/kaldi/htdocs/; rm -rf html;
+        tar -xzf html.tar.gz; for x in html/*; do mv $x .; done ' \
+           | ssh danielpovey,kaldi@shell.sourceforge.net bash
+fi
 
 
 # You could uncomment and run the lines below as an example of how to figure out

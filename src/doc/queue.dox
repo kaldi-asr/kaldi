@@ -1,0 +1,843 @@
+// doc/queue.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation
+//                2013 Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+  \page queue Parallelization in Kaldi
+
+ \section parallelization_intro Introduction
+
+ Kaldi is designed to work best with software such as Sun GridEngine or other software
+ that works on a similar principle; and if multiple machines are to work together
+ in a cluster then they need access to a shared file system such as one based on NFS.
+ However, Kaldi can easily be configured to run on a single machine.
+
+ If you look at a top-level example script like <tt>egs/wsj/s5/run.sh</tt>, you'll see commands like
+\verbatim
+ steps/train_sat.sh  --cmd "$train_cmd" \
+   4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4a 
+\endverbatim
+ At the top of the <tt>run.sh</tt> script you'll see it sourcing a file called <tt>cmd.sh</tt>:
+\verbatim
+. ./cmd.sh
+\endverbatim
+and in <tt>cmd.sh</tt> you'll see the following variable being set:
+\verbatim
+export train_cmd="queue.pl -l arch=*64"
+\endverbatim
+You'll change this variable if you don't have GridEngine or if your queue is configured 
+differently from CLSP\@JHU.   To run everything locally on a single machine you can 
+set <tt>export train_cmd=run.pl</tt>.
+
+In <tt>steps/train_sat.sh</tt> the varible <tt>cmd</tt> is set to the argument
+to the <tt>--cmd</tt> option, i.e. to <tt>queue.pl -l arch=*64</tt> in this case,
+and in the script you'll see commands like the following:
+\verbatim
+      $cmd JOB=1:$nj $dir/log/fmllr.$x.JOB.log \
+        ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \
+        weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
+        gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \
+        --spk2utt=ark:$sdata/JOB/spk2utt $dir/$x.mdl \
+        "$feats" ark:- ark:$dir/tmp_trans.JOB || exit 1;
+\endverbatim
+What's going on is that the command <tt>$cmd</tt> (e.g. <tt>queue.pl</tt> or <tt>run.pl</tt>)
+is being executed; it is responsible for spawning the jobs and waiting until they are done,
+and returning with nonzero status if something went wrong.  The basic usage of these
+commands (and there are others called <tt>slurm.pl</tt> and <tt>ssh.pl</tt>) is like this:
+\verbatim
+ queue.pl <options> <log-file> <command>
+\endverbatim
+and the simplest possible example of using one of these scripts is:
+\verbatim
+ run.pl foo.log echo hello world
+\endverbatim
+(we're using <tt>run.pl</tt> for the example because it will run on any system, it doesn't
+require GridEngine).  It's possible to run a one-dimensional array of jobs, and an example
+is:
+\verbatim
+ run.pl JOB=1:10 foo.JOB.log echo hello world number JOB
+\endverbatim
+and these programs will replace any instance of JOB in the command line with a number
+within that range, so make sure that your working directory doesn't contain the string
+JOB, or bad things may happen.  You can even submit jobs with pipes and redirection by
+suitable use of quoting or escaping:
+\verbatim
+ run.pl JOB=1:10 foo.JOB.log echo "hello world number JOB" \| head -n 1 \> output.JOB
+\endverbatim
+In this case, the command that actually gets executed will be something like:
+\verbatim
+echo "hello world number JOB" | head -n 1 > output.JOB
+\endverbatim
+If you want to see what's actually getting executed, you can look in a file like 
+<tt>foo.1.log</tt>, where you'll see the following:
+\verbatim
+# echo "hello world number 1" | head -n 1 > output.1 
+# Started at Sat Jan  3 17:44:20 PST 2015
+#
+# Accounting: time=0 threads=1
+# Ended (code 0) at Sat Jan  3 17:44:20 PST 2015, elapsed time 0 seconds
+\endverbatim
+
+
+\section parallelization_common Common interface of parallelization tools
+
+In this section we discuss the commonalities of the parallelization tools.  They
+are designed to all be interchangeable on the command line, so that a script
+that is tested for one of these parallelization tools will work for any; you can
+switch over to using another by setting the <tt>$cmd</tt> variable to a
+different value.
+
+The basic usage of these tools is, as we said,
+\verbatim
+ queue.pl <options> <log-file> <command>
+\endverbatim
+and what we are about to say also holds for <tt>run.pl</tt>, <tt>ssh.pl</tt> and <tt>slurm.pl</tt>.
+
+<tt><options></tt> may include some or all of the following:
+<ul>
+  <li> A job range specifier (e.g. JOB=1:10).  The name is uppercase by convention only, and may include underscores. 
+       The starting index must be 1 or more; this is a GridEngine limitation.
+  <li> Anything that looks as if it would be accepted by GridEngine as an option to <tt>qsub</tt>.  
+       For example, <tt>-l arch=*64*</tt>, or <tt>-l mem_free=6G,ram_free=6G</tt>, or <tt>-pe smp 6</tt>.
+       For compatibility, scripts other than <tt>queue.pl</tt> will ignore such options.
+  <li> New-style options like <tt>--mem 10G</tt> (see below).
+</ul>
+
+<tt><log-file></tt> is just a filename, which for array jobs must contain the identifier of 
+ the array (e.g. <tt>exp/foo/log/process_data.JOB.log</tt>).
+
+<tt><command></tt> can basically be anything, including symbols that would
+be interpreted by the shell, but of course <tt>queue.pl</tt> can't process
+something if it gets interpreted by <tt>bash</tt> first.   For instance, this is WRONG:
+\verbatim
+ queue.pl test.log  echo foo | awk 's/f/F/';
+\endverbatim
+because <tt>queue.pl</tt> won't even see the arguments after the pipe symbol, but will get its
+standard output piped into the awk command.  Instead you should write
+\verbatim
+ queue.pl test.log  echo foo \| awk 's/f/F/';
+\endverbatim
+You need to escape or quote the pipe symbol, and also things like ";" and ">".
+If one of the arguments in the <tt><command></tt> contains a space, then
+queue.pl will assume you quoted it for a reason, and will quote it for you when
+it gets passed to bash.  It quotes using single quotes by default, but if the
+string itself contains single quotes then it uses double quotes instead.  This
+usually does what we want.  The <tt>PATH</tt> variable from the shell that
+you executed </tt>queue.pl</tt> from will be passed through to the scripts
+that get executed, and just to be certain you get everything you need,
+the file <tt>./path.sh</tt> will also be sourced.  The commands will be executed 
+with bash.
+
+\subsection parallelization_common_new New-style options (unified interface)
+
+When we originally wrote Kaldi, we made the example scripts pass in options like
+<tt>-l ram_free=6G,mem_free=6G</tt> to <tt>queue.pl</tt>, when we needed to
+specify things like memory requirements.  Because the scripts
+like <tt>steps/train_sat.sh</tt> can't make assumptions about how GridEngine is
+configured or whether we are using GridEngine at all, such options had to be
+passed in from the very outer level of the scripts, which is awkward.  We have more recently
+defined a "new-style interface" to the parallelization scripts, such that they
+all accept the following types of options (examples shown):
+\verbatim
+   --config conf/queue_mod.conf
+   --mem 10G
+   --num-threads 6
+   --max-jobs-run 10
+   --gpu 1
+\endverbatim
+The config file specifies how to convert new-style options into a form that
+GridEngine (or your grid software of choice) can interpret.  Currently
+only <tt>queue.pl</tt> actually interprets these options; the other scripts
+ignore them.  Our plan is to gradually modify the scripts in <tt>steps/</tt> to
+make use of the new-style options, where necessary, and to use <tt>queue.pl</tt>
+for other varieties of grid software through use of the config files (where possible).
+
+<tt>queue.pl</tt> will read <tt>conf/queue.conf</tt> if it exists; otherwise it
+will default to a particular config file that we define in the code.  The config
+file specifies how to convert the "new-style" options into options that
+GridEngine or similar software can interpret.  The following example show the
+behavior that the default config file specifies:
+<table>
+ <tr> <th> New-style option </th>  <th>  Converted form (for GridEngine) </th> <th> Comment </th> </tr>  
+ <tr> <td> <tt>--mem 10G</tt></td>  <td> <tt>-l mem_free=10G,ram_free=10G</tt></td> <td></td> </tr>
+ <tr> <td> <tt>--max-jobs-run 10</tt></td> <td> <tt>-tc 10</tt></td> <td> (We use this for jobs that cause too much I/O). </td></tr>
+ <tr> <td> <tt>--num-threads 6</tt></td> <td> <tt>-pe smp 6</tt></td> <td></td>(general case) </tr>
+ <tr> <td> <tt>--num-threads 1</tt></td> <td> <tt>(no extra options)</tt></td> <td>(special case)</td> </tr>
+ <tr> <td> <tt>--gpu 1</tt></td> <td> <tt>-q g.q -l gpu=1 </tt></td> <td>(general case)</td> </tr>
+ <tr> <td> <tt>--gpu 0</tt></td> <td> (no extra options)  </td> <td>(special case for gpu=0)</td> </tr>
+</table>
+It's also possible to add extra options with this general format, i.e. options
+that look like
+<tt>--foo-bar</tt> and take one argument.  The default configuration tabulated above works for the CLSP grid 
+but may not work everywhere, because GridEngine is very configurable.  Thefore you may
+have to create a config file <tt>conf/queue.conf</tt> and edit it to work with your grid.
+The following configuration file is the one that <tt>queue.pl</tt> defaults to if <tt>conf/queue.conf</tt>
+does not exist and the <tt>--config</tt> option is not specified, and may be used as a starting
+point for your own config file:
+\verbatim
+# Default configuration
+command qsub -v PATH -cwd -S /bin/bash -j y -l arch=*64*
+option mem=* -l mem_free=$0,ram_free=$0
+option mem=0          # Do not add anything to qsub_opts
+option num_threads=* -pe smp $0
+option num_threads=1  # Do not add anything to qsub_opts
+option max_jobs_run=* -tc $0
+default gpu=0
+option gpu=0
+option gpu=* -l gpu=$0 -q g.q
+\endverbatim
+The line beginning with
+<tt>command</tt> specifies the unchanging part of the command line, and you can
+modify this to get it to use grid software other than GridEngine, or to specify
+options that you always want.  The lines beginning with
+<tt>option</tt> specify how to transform the input options such as <tt>--mem</tt>. 
+Lines beginning with something like <tt>"option mem=*"</tt> handle the general case
+(the <tt>$0</tt> gets replaced with the actual argument to the option), while
+lines like <tt>"option gpu=0"</tt> allow you to specify special behavior for special 
+cases of the argument, so in this case the option <tt>--gpu 0</tt> is configured
+to produce no extra options to <tt>qsub</tt> at all.  The line <tt>"default gpu=0"</tt> specifies
+that if you don't give the <tt>--gpu</tt> option at all, <tt>queue.pl</tt> should act like
+you specified <tt>--gpu 0</tt>.  In this particular configuration we could
+have omitted the line <tt>default gpu=0</tt>, because in any case the
+effect is to produce no extra command line options. We previously had it
+configured with a line: <tt>"option gpu=0 -q all.q"</tt>, so there was a time when the line
+<tt>"default gpu=0"</tt> used to make a difference.
+
+
+ \subsection parallelization_common_new_example Example of configuring grid software with new-style options
+
+We'd like to give an example of how the config file can be used in a real
+situation.  We had a problem where, due to a bug in an outdated version of the
+CUDA toolkit that we had installed on the grid, some of our neural net training
+runs were crashing on our K20 GPU cards  but not the K10s.  We created a config
+file  <tt>conf/no_k20.conf</tt> which was as the configuration file above (search in
+the text above for <tt># Default configuration</tt>, but with the following
+lines added:
+\verbatim
+default allow_k20=true
+option allow_k20=true
+option allow_k20=false -l 'hostname=!g01*&!g02*&!b06*'
+\endverbatim
+We then set the relevant <tt>$cmd</tt> variable to the value
+<tt>queue.pl -config conf/no_k20.conf --allow-k20 false</tt>.
+Note that a simpler way to have done this would have been
+to simply edit the <tt>command</tt> line in the config file to read
+\verbatim
+command qsub -v PATH -cwd -S /bin/bash -j y -l arch=*64* -l 'hostname=!g01*&!g02*&!b06*'
+\endverbatim
+and if we had done that, it would not have been necessary to add <tt>--allow-k20 false</tt>.
+
+
+\section parallelization_specific Parallelization using specific scripts
+
+In this section we explain the things that are specific to individual
+parallelization scripts.
+
+ \subsection parallelization_specific_queue Parallelization using queue.pl
+
+ <tt>queue.pl</tt> is the normal, recommended way to parallelize.  It was originally
+ designed for use with GridEngine, but now that we have introduced the "new-style options"
+ we believe it can be configured for use with other parallelization engines, such as Tork
+ or slurm.  If you develop config files that work for such engines, please
+ contact the maintainers of Kaldi.  It may also be necessary to make further changes to <tt>queue.pl</tt>
+ to properly support other engines, since some parts of the command line are currently
+ constructed in <tt>queue.pl</tt> in a way that is not configurable from the command line:
+ e.g., adding <tt>-o foo/bar/q/jobname.log</tt> to direct output from <tt>qsub</tt> itself
+ to a separate log-file; and for array jobs, adding options like <tt>-t 1:40</tt> to the command
+ line.  The scripts that we ask <tt>qsub</tt> to run also make use of the variable
+ <tt>$SGE_TASK_ID</tt>, which SGE sets to the job index for array jobs.  Our plan is to extend
+ the config-file mechanism as necessary to accommodate whatever changes are needed to support
+ other grid software, within reason.
+
+ Since we have explained the behavior of <tt>queue.pl</tt> at length above, we aren't going
+ to provide many further details in this section, but please see below the section 
+ \ref parallelization_gridengine.
+
+\subsection parallelization_specific_run Parallelization using run.pl
+
+ <tt>run.pl</tt> is a fall-back option in case the user
+ does not have GridEngine installed.  This script is very simple; it runs all
+ the jobs you request on the local machine, and it does so in parallel if you
+ use a job range specifier like <tt>JOB=1:10</tt>.  in parallel on the local
+ machine.  It doesn't try to keep track of how many CPUs are
+ available or how much memory your machine has.  Therefore if you
+ use <tt>run.pl</tt> to run scripts that were designed to run
+ with <tt>queue.pl</tt> on a larger grid, you may end up exhausting the memory
+ of your machine or overloading it with jobs.  We recommend to study the script
+ you are running, and being particularly careful with decoding scripts that run
+ in the background (with <tt>&</tt>) and with scripts that use a large number of
+ jobs, e.g. <tt>--nj 50</tt>.  Generally speaking you can reduce the value of the <tt>--nj</tt>
+ option without affecting the outcome, but there are some situations where
+ the <tt>--nj</tt> options given to multiple scripts must match, or
+ a later stage will crash.
+
+ <tt>run.pl</tt> will ignore all options given to it except for the job-range specifier.
+
+\subsection parallelization_specific_ssh Parallelization using ssh.pl
+
+ <tt>ssh.pl</tt> is a poor man's <tt>queue.pl</tt>, for use in case
+ you have a small cluster of several machines but don't want the trouble of setting
+ up GridEngine.  Like <tt>run.pl</tt>, it doesn't attempt to keep track of 
+ CPUs or memory; it works like <tt>run.pl</tt> except that it distributes the
+ jobs across multiple machines.  
+ You have to create a file <tt>.queue/machines</tt>
+ (where <tt>.queue</tt> is a subdirectory of the directory you are running the script from),
+ where each line contains the name of a machine.  It needs to be possible to ssh to each 
+ of these machines without a password, i.e. you have to set up your ssh keys.
+
+
+ \subsection parallelization_specific_slurm Parallelization using slurm.pl
+
+ <tt>slurm.pl</tt> was written to accomodate the <tt>slurm</tt> grid management tool,
+ which operates on similar principles to GridEngine.  It has not been tested very
+ recently.  Probably it is now possible to set up <tt>queue.pl</tt> to use <tt>slurm</tt>
+ using a suitable configuration file, which would make <tt>slurm.pl</tt> unnecessary.
+
+
+\section parallelization_gridengine Setting up GridEngine for use with Kaldi
+
+ Sun GridEngine (SGE) is the open-source grid management tool that we (the
+ maintainers of Kaldi) have most experience with.  Oracle now maintains SGE and
+ has started calling it Oracle GridEngine.  The version that is in use at CLSP\@JHU is
+ 6.2u5; SGE is old and fairly stable so the precise version
+ number is not too critical.  There are various open-source alternatives to SGE
+ and various forks of it, but our instructions here relate to the main-line version
+ which is currently maintained by Oracle.
+
+ In this section we explain how to install and configure GridEngine on an
+ arbitrary cluster.  If you have a cluster in Amazon's EC2 cloud and you want
+ something that can take care of spinning up new nodes, you might want to look
+ at MIT's StarCluster project, although we (the maintainers of Kaldi) have also
+ created a project called "kluster" on Sourceforge that provides some scripts
+ and documentation for the same purpose.  StarCluster was not very stable at the
+ time we developed kluster, but we believe it's improved since then.
+
+
+  \subsection parallelization_gridengine_installing Installing GridEngine
+
+  To start with, you probably want to get a basic installation of GridEngine
+  working.  In GridEngine, the queue management software runs on the "master",
+  and a different set of programs runs on all the nodes.  The master can also be
+  a node in the queue.  There's also a concept of a "shadow master" which is
+  like a backup for the master, in case the master dies, but we won't address
+  that here (probably it's just a question of installing the <tt>gridengine-master</tt>
+  package on another node and setting the master to be another node, but we're not sure).
+
+  Last time we checked, installing GridEngine from source was a huge pain.  Your
+  life will be much easier if your distribution of Linux has a GridEngine
+  package in its repositories, and choose your distribution wisely because not
+  all distributions have such a package.  We'll discuss how to do this with
+  Debian, because that's what we're most experienced with.
+
+  To install GridEngine on the master, you'll run (on your chosen master node):
+\verbatim
+  sudo apt-get install gridengine-master gridengine-client
+\endverbatim 
+ Select "yes" for automatic configuration.
+ It will ask you for the "cell name", which you can leave as "default", and it
+ will ask for the name of the "master", which you should set to the hostname of
+ your chosen master.  Typically this should be the fully qualified domain name (FQDN)
+ of the master, but I believe anything that resolves via hostname lookup to the
+ master node should work.  Note that GridEngine is sometimes picky about about
+ hostname lookup and reverse DNS lookup matching up, and GridEngine problems can
+ sometimes be traced to this.  Also be aware that doing "apt-get remove" of these
+ packages and reinstalling them won't give you a blank slate because Debian
+ sometimes remembers your selections; this can be a pain.
+ 
+ It will make your life easier if you add yourself as manager, so do:
+\verbatim
+ sudo qconf -am <your-user-id>
+\endverbatim
+ Here "am" means add manager; "dm" would mean delete manager and "sm" would mean
+ show all managers.  To see the available options, do <tt>qconf -help</tt>.
+
+ To install GridEngine on the normal nodes, you'll run
+\verbatim
+  sudo apt-get install gridengine-client gridengine-exec
+\endverbatim 
+ The "cell name" should be left as "default", and the "master" should be the name of
+ the master node that you previously installed.  
+ You can run this on the master too if the master is to run jobs also.
+
+ Typing <tt>qstat</tt> and <tt>qhost -q</tt> will let you know whether things are working.
+ The following is what it looks like when things are working fine (we tested this
+ in the Google cloud):
+\verbatim
+dpovey_gmail_com@instance-1:~$ qstat
+dpovey_gmail_com@instance-1:~$ qhost -q
+HOSTNAME                ARCH         NCPU  LOAD  MEMTOT  MEMUSE  SWAPTO  SWAPUS
+-------------------------------------------------------------------------------
+global                  -               -     -       -       -       -       -
+instance-1.c.analytical-rig-638.internal lx26-amd64      1  0.07    3.6G  133.9M     0.0     0.0
+\endverbatim
+ We don't have a fully working setup yet, we still need to configure it; we're just checking
+ that the client can reach the master.  At this point, any errors likely relate to
+ DNS lookup, reverse DNS lookup, or your /etc/hostname or /etc/hosts files; GridEngine
+ doesn't like it when these things are inconsistent.  If you need to change the name of
+ the master from what you told the installer, you may be able to do so by editing the file
+\verbatim
+/var/lib/gridengine/default/common/act_qmaster 
+\endverbatim
+ (at least, this is where it's located in Debian Wheezy).
+
+  \subsection parallelization_gridengine_configuring Configuring GridEngine
+
+ First let's make sure that a queue is defined.  GridEngine doesn't define any queues by 
+ default.  We'll set up a queue called <tt>all.q</tt>.  Make sure the shell variable <tt>EDITOR</tt>
+ is set to your favorite shell (e.g. <tt>vim</tt> or <tt>emacs</tt>), and type as follows; and this should
+ work from master or client.
+\verbatim
+ qconf -aq
+\endverbatim
+  This will bring up an editor.  Edit the line
+\verbatim
+qname               template
+\endverbatim
+so it says
+\verbatim
+qname               all.q
+\endverbatim
+Also change the field <tt>shell</tt> from <tt>/bin/csh</tt>
+to <tt>/bin/bash</tt>; this is a better default, although it shouldn't affect
+Kaldi.  Quitting the editor will save the changes,  although if you made syntax
+errors, <tt>qconf</tt> will reject your edits.  Later on we'll make more
+changes to this queue by typing <tt>qconf -mq all.q</tt>.
+
+ GridEngine stores some global configuration values, not connected with any queue,
+ which can be viewed with <tt>qconf -sconf</tt>.  We'll edit them using <tt>qconf -mconf</tt>.
+ There is a line that reads
+\verbatim
+administrator_mail           root
+\endverbatim
+and if you have sending emails working from your machine (i.e. you can
+type <tt>mail foobar\@gmail.com</tt> and the mail gets delivered), then you can
+change <tt>root</tt> to an email address where you want to receive
+notifications if things go wrong.  Be advised that due to anti-spam measures,
+sending emails from the cloud is painful from EC2 and close to impossible
+from Google's cloud offering, so it may be best just to leave this field the
+way it is and make do without email notifications.  You could also edit the file so that it says 
+\verbatim
+                      flush_time=00:00:10 
+\endverbatim (the default is <tt>00:00:15</tt>), which will
+give a slightly faster turnaround time for submitting jobs.
+
+GridEngine has the concept of "resources" which can be requested or specified by
+your jobs, and these can be viewed using <tt>qconf -sc</tt>.  Modify them
+using <tt>qconf -mc</tt>.  Modify the <tt>mem_free</tt> line to change the default
+memory requirement from 0 to 1G, i.e.:
+\verbatim
+#name               shortcut    type        relop requestable consumable default  urgency  
+#------------------------------------------------------------------------------------------
+<snip> 
+mem_free            mf         MEMORY      <=    YES         NO         1G        0
+\endverbatim
+ and also add the following two new lines; it doesn't matter where in the file you add them.
+\verbatim
+#name               shortcut    type        relop requestable consumable default  urgency  
+#------------------------------------------------------------------------------------------
+<snip> 
+gpu                 g           INT         <=    YES         YES        0        10000
+ram_free            ram_free    MEMORY      <=    YES         JOB        1G       0
+\endverbatim
+ You'll only need the "gpu" field if you add GPUs to your grid; the ram_free is a field
+ that we find useful in managing the memory of the machines, as the inbuilt field
+ <tt>mem_free</tt> doesn't seem to work quite right for our purposes.  Later on
+ when we add hosts to the grid, we'll use the command <tt>qconf -me <some-hostname></tt> to 
+ edit the <tt>complex_values</tt> field to read something like:
+\verbatim
+ complex_values        ram_free=112G,gpu=2
+\endverbatim
+ (for a machine with 112G of physical memory and 2 GPUs).  If we want to submit
+ a job that needs 10G of memory, we'll specify <tt>-l mem_free=10G,ram_free=10G</tt> as an
+ option to <tt>qsub</tt>; the <tt>mem_free</tt> requirement makes sure the machine has that much free
+ memory at the time the job starts, and the <tt>ram_free</tt> requirement makes sure we
+ don't submit a lot of jobs requiring a lot of memory, all to the same host.  
+ We tried, as an alternative to adding the <tt>ram_free</tt> resource,
+ using <tt>qconf -mc</tt> to edit the <tt>consumable</tt> field of the inbuilt <tt>mem_free</tt> resource to say
+ <tt>YES</tt>, to make GridEngine keep track of memory requests; but this did not
+ seem to work as desired.  Note that
+ both <tt>ram_free</tt> and <tt>gpu</tt> are names that we chose ourselves; they have no
+ special meaning to GridEngine, while some of the inbuilt resources such as <tt>mem_free</tt>
+ do have special meanings.  The string <tt>JOB</tt> in the <tt>consumable</tt> entry for
+ <tt>ram_free</tt> means that the <tt>ram_free</tt> resource is specified per job rather than
+ per thread; this is more convenient for Kaldi scripts.
+
+ Next you have to have to add the parallel environment called <tt>smp</tt> to GridEngine.
+ This is a kind of tradition in GridEngine setups, but it's not built-in.  It's a
+ simple parallel environment where GridEngine doesn't really do anything, it just reserves you
+ a certain number of slots, so if you do <tt>qsub -pe smp 10 <your-script></tt> you will
+ get 10 CPU slots reserved; this can be useful for multi-threaded or multi-process jobs.
+ Do <tt>qconf -ap smp</tt>, and edit the <tt>slots</tt> field to say 9999, so it reads:
+\verbatim
+pe_name            smp
+slots              9999
+...
+\endverbatim
+ Then do <tt>qconf -mq all.q</tt>, and edit the <tt>pe_list</tt> field by adding <tt>smp</tt>, so
+ it reads:
+\verbatim
+pe_list               make smp
+\endverbatim
+ This enables the <tt>smp</tt> parallelization method in the queue <tt>all.q</tt>.
+
+ \subsection parallelization_gridengine_configuring_advanced Configuring GridEngine (advanced)
+
+ In this section we just want to make a note of some things that might be helpful, but which
+ aren't necessary just to get things running.
+ In the CLSP cluster, we edited the <tt>prolog</tt> field in <tt>qconf -mq all.q</tt>
+ so that it says
+\verbatim
+prolog                /var/lib/gridengine/default/common/prolog.sh
+\endverbatim
+ (the default was <tt>NONE</tt>), 
+ and the script <tt>/var/lib/gridengine/default/common/prolog.sh</tt>,
+ which we copied to that location on each individual node in the cluster,
+ reads as follows.  Its only purpose is to wait a short time if the job script can't be
+ accessed, to give NFS some time to sync in case the scripts were written very
+ recently and haven't yet propagated across the grid:
+\verbatim
+#!/bin/bash
+
+function test_ok {
+  if [ ! -z "$JOB_SCRIPT" ] && [ "$JOB_SCRIPT" != QLOGIN ] && [ "$JOB_SCRIPT" != QRLOGIN ]; then
+    if [ ! -f "$JOB_SCRIPT" ]; then
+       echo "$0: warning: no such file $JOB_SCRIPT, will wait" 1>&2
+       return 1;
+    fi
+  fi
+  if [ ! -z "$SGE_STDERR_PATH" ]; then
+    if [ ! -d "`dirname $SGE_STDERR_PATH`" ]; then
+      echo "$0: warning: no such directory $JOB_SCRIPT, will wait." 1>&2
+      return 1; 
+    fi
+  fi
+  return 0;
+}
+
+if ! test_ok; then
+  sleep 2;
+  if ! test_ok; then
+     sleep 4;
+     if ! test_ok; then
+        sleep 8;
+     fi
+  fi
+fi
+
+exit 0;
+\endverbatim
+This script waits at most 14 seconds, which is enough because we configured <tt>acdirmax=8</tt>
+in our NFS options as the maximum wait before refreshing a cached directory (see \ref parallelization_grid_stable_nfs below).
+
+We also edited the queue with <tt>qconf -mq all.q</tt> to change
+<tt>rerun</tt> from FALSE to TRUE, i.e. to say:
+\verbatim
+rerun                 TRUE
+\endverbatim
+This means that when jobs fail, they get in a status that shows up in the output of
+<tt>qstat</tt> as <tt>Eqw</tt>, with the <tt>E</tt> indicating error, and you can ask the 
+queue to reschedule them by clearing the error status with <tt>qmod -cj <numeric-job-id></tt>
+(or if you don't want to rerun them, you can delete them with <tt>qmod -dj <numeric-job-id></tt>).
+Setting the queue to allow reruns can avoid the hassle of rerunning scripts from the
+start when things break due to NFS problems.
+
+Something else we did in the CLSP queue is to edit the following fields, which by default read:
+\verbatim
+rlogin_daemon                /usr/sbin/sshd -i
+rlogin_command               /usr/bin/ssh
+qlogin_daemon                /usr/sbin/sshd -i
+qlogin_command               /usr/share/gridengine/qlogin-wrapper
+rsh_daemon                   /usr/sbin/sshd -i
+rsh_command                  /usr/bin/ssh
+\endverbatim
+to read instead:
+\verbatim
+qlogin_command               builtin
+qlogin_daemon                builtin
+rlogin_command               builtin
+rlogin_daemon                builtin
+rsh_command                  builtin
+rsh_daemon                   builtin
+\endverbatim
+This was to solve a problem whose nature we can no longer recall, but it's something you might want to try it if 
+commands like <tt>qlogin</tt> and <tt>qrsh</tt> don't work.  
+
+\subsection parallelization_gridengine_configuring_adding Configuring GridEngine (adding nodes)
+
+ In this section we address what you do when you add nodes to the queue.
+ As mentioned above, you can install GridEngine on nodes by doing
+\verbatim
+  sudo apt-get install gridengine-client gridengine-exec
+\endverbatim 
+ and you need to specify <tt>default</tt> as the cluster name, and the name of your master
+ node as the master (probably using the FQDN of the master is safest here, but if you are on
+ a local network, just the last part of the name may also work).
+
+ But that doesn't mean your machine is fully in the queue.  GridEngine has separate notions
+ of hosts being administrative hosts, execution hosts and submit hosts.  All your machines
+ should be all three.  You can view which machines have these three roles using the commands
+ <tt>qconf -sh</tt>, <tt>qconf -sel</tt>, and <tt>qconf -ss</tt> respectively.   You can
+ add your machine as an administrative or submit host with the commands:
+\verbatim
+ qconf -ah <your-fqdn>
+ qconf -as <your-fqdn>
+\endverbatim
+ and you can add your host as an execution host with the command
+\verbatim
+ qconf -ae <your-fqdn>
+\endverbatim
+ which brings up an editor; you can put in the ram_free and possibly GPU fields in here, e.g.
+\verbatim
+complex_values    ram_free=112G,gpu=1
+\endverbatim
+You'll notice is a slight asymmetry between the commands <tt>qconf -sh</tt> 
+and <tt>qconf -ss</tt> on the one hand, and <tt>qconf -sel</tt> on the other.
+The <tt>"l"</tt> in the latter command means show the list.   The difference is that
+administrative and submit host lists are just lists of hosts, whereas
+qconf stores a bunch of information about the execution hosts, so it views it as a different
+type of data structure.
+You can view the information about a particular host with <tt>qconf -se <some-hostname></tt>,
+add a new host with <tt>qconf -ae <some-hostname</tt>, and
+modify with <tt>qconf -me <some-hostname></tt>.  This is a general pattern in GridEngine:
+for things like queues that have a bunch of information in them, you can show the full list
+by typing a command ending in "l" like <tt>qconf -sql</tt>, and the corresponding "add" 
+(<tt>"a"</tt>) and "modify" (<tt>"m"</tt>) commands accept arguments.
+
+It's not enough to tell GridEngine that a node is an execution host; you have to also add it to the queue,
+and tell the queue how many slots to allocate for that node.  First figure out how many CPUs (or virtual CPUs)
+your machine has, by doing:
+\verbatim
+grep proc /proc/cpuinfo | wc -l
+\endverbatim
+Suppose this is 48.  You can choose a number a little smaller than this, say 40, and use that for the
+number of slots.  Edit the queue using <tt>qconf -mq all.q</tt>, add your machine
+to the hostlist, and set the number of slots.  It should look like this:
+\verbatim
+qname                 all.q
+hostlist              gridnode1.research.acme.com,gridnode2.research.acme.com
+<snip>
+slots                 30,[gridnode1.research.acme.com=48],[gridnode1.research.acme.com=48]
+<snip>
+\endverbatim
+In the <tt>slots</tt> field, the <tt>30</tt> at the beginning is a default value; for any
+nodes with that number of slots you can save yourself some time and avoid adding the node's
+name to the <tt>slots</tt> field.
+There is an alternative way to set up the <tt>hostlist</tt> field.  GridEngine has the concept of host groups,
+so you could do <tt>qconf -ahgrp \@allhosts</tt> to add a group of hosts, and edit it using
+<tt>qconf -mhgrp \@allhosts</tt> to add your new nodes.  The configuration of 
+<tt>all.q</tt> could then just read:
+\verbatim
+hostlist            @allhosts
+\endverbatim
+It's your choice.  For simple queues, it's probably fine to just put the host list in the <tt>all.q</tt>
+configuration.
+
+A useful command to list the hosts that GridEngine knows about, and what queues they
+are in, is <tt>qhost -q</tt>.  For example:
+\verbatim
+# qhost -q
+HOSTNAME                ARCH         NCPU  LOAD  MEMTOT  MEMUSE  SWAPTO  SWAPUS
+-------------------------------------------------------------------------------
+global                  -               -     -       -       -       -       -
+a01.clsp.jhu.edu        lx26-amd64     24 12.46  126.2G   11.3G   86.6G  213.7M
+   all.q                BIP   0/6/20        
+a02.clsp.jhu.edu        lx26-amd64     24 16.84  126.2G   12.4G   51.3G  164.5M
+   all.q                BIP   0/18/20       
+<snip>
+\endverbatim
+If you see the letter <tt>"E"</tt> in the place where the example above shows <tt>"BIP"</tt>, 
+it means the node is in the error state.  Other letters you don't want to see in that position are
+<tt>"a"</tt> for alarm (a generic indicator of badness) and <tt>"u"</tt> for unreachable.
+<tt>"d"</tt> means a node has been disabled by an administrator.
+Nodes sometimes get in the error (<tt>"E"</tt>) state when GridEngine had
+trouble running a job, which is often due to NFS or automount problems.
+You can clear the error by doing something like
+\verbatim
+qmod -c all.q@a01
+\endverbatim
+but of course if the node has serious problems, it might be wise to fix them first.
+It's sometimes also useful to enable and disable nodes in the queue by doing
+\verbatim
+qmod -d all.q@a01
+\endverbatim
+to disable a node, and <tt>qmod -e all.q\@a01</tt> to enable it again.
+
+A common symptom of GridEngine problems is jobs waiting when you think nodes
+are free.  The easiest way to debug this is to look for the job-id in the output
+of <tt>qstat</tt>, and then to do <tt>qstat -j <job-id></tt> and look for
+the reasons why the job is not running.
+
+You can view all jobs from all users by running
+\verbatim
+qstat -u '*'
+\endverbatim
+ 
+\section parallelization_grid_stable Keeping your grid stable 
+
+In this section we have some general notes on how to ensure stability in
+a compute cluster of the kind useful for Kaldi.
+
+\subsection parallelization_grid_stable_oom Keeping your grid stable (OOM)
+
+One of the major causes of crashes in compute clusters is memory exhaustion.
+The default OOM-killer in Linux is not very good, so if you exhaust memory, it
+may end up killing an important system process, which tends to cause
+hard-to-diagnose instability.  Even if nothing is killed, <tt>malloc()</tt> may
+start failing when called from processes on the system, and very few programs
+deal with this gracefully.  In the CLSP grid we wrote our own version of an OOM
+killer, which we run as root, and we wrote the corresponding init scripts.  When
+our OOM killer detects memory overload, it kills the largest process of whichver
+non-system user is using the most memory.  This is usually the right thing to
+do.  These scripts have been made public as part of the <tt>kluster</tt>
+project, and you can get them as shown below if you want to add them to your
+system.  The following commands will only work as-is if you have LSB-style init
+scripts, which is the case in Debian
+<tt>wheezy</tt>.  The next Debian elease, <tt>jessie</tt>, won't have init scripts at all and
+will use <tt>systemd</tt> instead (the so-called "systemd controversy").  If someone can figure out how to do the
+following in <tt>systemd</tt>, please let us know.
+Type
+\verbatim
+sudo bash
+\endverbatim
+and then as root, do:
+\verbatim
+apt-get install -y subversion
+svn cat https://svn.code.sf.net/p/kluster/code/trunk/scripts/sbin/mem-killer.pl > /sbin/mem-killer.pl
+chmod +x /sbin/mem-killer.pl
+cd /etc/init.d
+svn cat https://svn.code.sf.net/p/kluster/code/trunk/scripts/etc/init.d/mem-killer >mem-killer
+chmod +x mem-killer
+update-rc.d mem-killer defaults
+service mem-killer start
+\endverbatim
+<tt>mem-killer.pl</tt> is capable of sending email to the administrators and to the person
+whose jobs was killed if something is wrong, but this will only work if your
+system can send mail, and if the user has put their email somewhere in the
+"office" field of their gecos information, using chfn (or ypchfn if using NIS).
+Again, if you're running in the cloud, it's best to forget about anything email-related,
+as it's too hard to get working.
+
+\subsection parallelization_grid_stable_nfs Keeping your grid stable (NFS)
+
+We aren't going to give a complete run-down of how to install NFS here, but we
+want to mention some potential issues, and explain some options that work well.
+Firstly, NFS is not the only option for a shared filesystem; there are some newer
+distributed file systems available too, but we don't have much experience with them.
+
+NFS can perform quite badly if the options are wrong.  Below are the options we use.
+We show it as if we're grepping it from /etc/fstab; this isn't actually how we do it
+(we actually use NIS and automount), but the following way is simpler:
+\verbatim
+# grep a05 /etc/fstab
+a05:/mnt/data /export/a05 nfs rw,vers=3,rsize=8192,wsize=8192,acdirmin=5,acdirmax=8,hard,proto=tcp 0 0
+\endverbatim
+The option "vers=3" means we use NFS version 3, which is stateless.  We tried using version 4, 
+a supposedly more advanced "stateful" protocol, but we got a lot of crashes.
+
+The <tt>acdirmin=5</tt> and <tt>acdirmin=8</tt> options are the minimum and maximum times that NFS
+waits before re-reading cached directory information; the defaults are 30 and 60 seconds respectively.
+This is important for Kaldi scripts, because the files that we execute on GridEngine are written
+only shortly before we run the scripts, so with default NFS options they may not yet be visible
+on the execution host at the time they are needed.  Above we showed our script <tt>/var/lib/gridengine/default/common/prolog.sh</tt>
+which waits up to 14 seconds for the script to appear.  It's significant that 14 > 8, i.e. that the 
+number of seconds the prolog script will wait for is greater than the maximum directory caching period for NFS.
+
+The <tt>hard</tt> option is also important; it means that if the server is busy, the client will wait
+for it to succeed rather than reporting an error (e.g. <tt>fopen</tt> returning error status).  If you
+specify <tt>soft</tt>, Kaldi may crash.  <tt>hard</tt> is the default so could be omitted.
+
+The <tt>proto=tcp</tt> option is also the default on Debian currently; the
+alternative is <tt>proto=udp</tt>.  The TCP protocol is important for stability
+when local networks may get congested; we have found this through experience.
+
+The <tt>rsize=8192,wsize=8192</tt> are packet sizes; they are supposedly
+important in the performance of NFS.  Kaldi reads and writes are generally contiguous and
+don't tend to seek much within files, so large packet size is probably
+suitable.
+
+\subsection parallelization_grid_stable_misc Keeping your grid stable (general issues)
+
+In this section we have some general observations about how to configure
+and manage a compute grid.
+
+In CLSP we use a lot of NFS hosts, not just one or two; in fact, most of our
+nodes also export data via NFS.  (If you do this you should use
+our <tt>mem-killer.pl</tt> or a similar script, or you will get instability due
+to memory exhaustion when users make mistakes).  Having a large number of file
+servers is a particularly good idea for queues that are shared by many people,
+because it's inevitable that people will overload file servers, and if there are
+only one or two file servers, the queue will end up being in a degraded state
+for much of the time.  The network bandwidth of each individual file server at
+CLSP@JHU is quite slow: for cost reasons we still use 1G ethernet, but all
+connected to each other with an expensive Cisco router so that there is no
+global bottleneck.  This means that each file server gets overloaded quite
+easily; but because there are so many individual file servers, this generally
+only inconveniences the person who is overloading it and maybe one or two
+others.
+
+When we do detect that a particular file server is loaded (generally either by
+noticing slowness, or by seeing errors like <tt>nfs: server a15 not
+responding</tt> in the output of <tt>dmesg</tt>), we try to track down why this
+is happening.  Without exception this is due to bad user behavior, i.e. users
+running too many I/O-heavy jobs.  Usually through a combination of the output
+of <tt>iftop</tt> and the output of <tt>qstat</tt>, we can figure out which user
+is causing the problem.  In order to keep the queue stable it's necessary to get
+users to correct their behavior and to limit the number of I/O heavy jobs they
+run, by sending them emails and asking them to modify their setups.  If we
+didn't contact users in this way the queue would be unusable, because users
+would persist in their bad habits.
+
+Many other groups have a lot of file servers, like us, but still have all their
+traffic going to one file server because they buy the file servers one at a time
+and they always allocate space on the most recently bought one.  This is just
+stupid.  In CLSP we avoid the administrator hassle of having to allocate space,
+by having all the NFS servers world-writable at the top level, and by instructing
+people to make directories with their userid on them, on a server of their choice.
+We set up scripts to notify the administrators by email when any of the file
+servers gets 95% full, and to let us know which directories contain a lot of
+data.  We can then ask the users concerned to delete some data, or we delete it
+ourselves if the users are gone and if we feel it's appropriate.  We also set up
+scripts to work out, queue-wide, which users are using the most space, and to
+send them emails informing them where they are consuming the most space.  The
+administrators will also ask the users to clean up, particularly in extreme cases
+(e.g. when a junior student is using a huge amount of space for no obvious
+reason).  Space should never really be a problem, because it's almost always the
+case that the disk is 95% full of junk that no-one cares about or even
+remembers.  It's simply a matter of finding a way to ask those responsible to
+clean up, and making their life easy by telling them where the bulk of their
+data is.
+
+Another useful thing is to locate home directories on a server that is not also
+used for experiments; this ensures that users can always get a prompt, even when
+other users are being stupid.  It also makes the backup policy easier: we back
+up the home directories but not the NFS volumes used for experimental work, and
+we make clear to users that those volumes are not backed up (of course, students
+will still fail to back up their important data, and will sometimes lose it as a
+result).  The ban on running experiments in home directories needs to be
+enforced; we frequently have to tell users to stop parallel jobs with data in
+their home directories.  This is the most frequent cause of grid-wide problems.
+
+
+*/
+
+}
+

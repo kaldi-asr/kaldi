@@ -75,6 +75,7 @@
      - \ref dnn2
    - \subpage online_decoding
    - \subpage kws
+   - \subpage queue
    - \subpage tools
 
 <P>
