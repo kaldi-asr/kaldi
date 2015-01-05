@@ -56,7 +56,7 @@ cat <(awk '{print 1, $0;}' <$dir/lexicon.txt) $pron_counts | \
   awk '{ count = $1; $1 = ""; word_count[$2] += count; pron_count[$0] += count; pron2word[$0] = $2; }
        END{ for (p in pron_count) { word = pron2word[p]; num = pron_count[p]; den = word_count[word]; 
           print num / den, p } } ' | \
-    awk '{ word = $2; $2 = $1; $1 = word; print; }' | sort >$dir/lexiconp.txt
+    awk '{ word = $2; $2 = $1; $1 = word; print; }' | grep -v '^<eps>' | sort >$dir/lexiconp.txt
 
 
 n_old=$(wc -l <$dir/lexicon.txt)
