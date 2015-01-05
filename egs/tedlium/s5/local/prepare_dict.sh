@@ -34,7 +34,7 @@ echo -n >$dir/extra_questions.txt
 (echo '!SIL SIL'; echo '[BREATH] BRH'; echo '[NOISE] NSN'; echo '[COUGH] CGH';
  echo '[SMACK] SMK'; echo '[UM] UM'; echo '[UH] UHH'
  echo '<UNK> NSN' ) | \
- cat - $dir/lexicon_words.txt  > $dir/lexicon.txt
+ cat - $dir/lexicon_words.txt | sort | uniq > $dir/lexicon.txt
 
 # Check that the dict dir is okay!
 utils/validate_dict_dir.pl $dir || exit 1
