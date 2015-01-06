@@ -147,7 +147,7 @@ lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/train \
 #gmm-global-to-fgmm exp/diag_ubm_2048/final.dubm \
 #  exp/full_ubm_2048/final.ubm
 
-lid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \
+lid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=8G,ram_free=8G" \
   --num-iters 5 exp/full_ubm_2048/final.ubm data/train \
   exp/extractor_2048
 

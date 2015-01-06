@@ -110,20 +110,13 @@ sid/train_full_ubm.sh --nj 30 --remove-low-count-gaussians false \
    data/train_female_8k exp/full_ubm_2048 exp/full_ubm_2048_female &
 wait
 
-# note, the mem_free,ram_free is counted per thread... in this setup each
-# job has 4 processes running each with 4 threads; each job takes about 5G
-# of memory so we need about 20G, plus add memory for sum-accs to make it 25G.
-# but we'll submit using -pe smp 16, and this multiplies the memory requirement
-# by 16, so submitting with 2G as the requirement, to make the total 
-# requirement 32, is reasonable.
-
 # Train the iVector extractor for male speakers.
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \
+sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=8G,ram_free=8G" \
   --num-iters 5 exp/full_ubm_2048_male/final.ubm data/train_male \
   exp/extractor_2048_male
 
 # The same for female speakers.
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \
+sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=8G,ram_free=8G" \
   --num-iters 5 exp/full_ubm_2048_female/final.ubm data/train_female \
   exp/extractor_2048_female
 
