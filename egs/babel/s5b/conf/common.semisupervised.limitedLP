@@ -16,12 +16,12 @@ babel_type=limited
 # semi-supervised training is done
 do_supervised_tuning=true   
 dnn_update_cpu_parallel_opts=(--minibatch-size 128 --num-jobs-nnet 8 --num-threads 16 \
-    --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
+    --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2G")
 dnn_update_gpu_parallel_opts=(--minibatch-size 512 --num-jobs-nnet 4 --num-threads 1 \
-    --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
+    --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2G")
 
 # Semi-supervised examples options
-egs_gpu_opts=(--splice-width 4 --samples-per-iter 200000 --num-jobs-nnet 4 --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
-egs_cpu_opts=(--splice-width 4 --samples-per-iter 200000 --num-jobs-nnet 8 --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
+egs_gpu_opts=(--splice-width 4 --samples-per-iter 200000 --num-jobs-nnet 4 --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2G")
+egs_cpu_opts=(--splice-width 4 --samples-per-iter 200000 --num-jobs-nnet 8 --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2G")
 egs_io_opts="-tc 5"
 weight_threshold=0.7

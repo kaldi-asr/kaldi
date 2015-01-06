@@ -63,20 +63,20 @@ if [[ `hostname` == *.tacc.utexas.edu ]] ; then
 
   dnn_update_parallel_opts=( --num-epochs 15 --num-epochs-extra 5 --num-iters-final 20 )
 else
-  decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G")
+  decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=4.0G")
   sgmm_train_extra_opts=( --num-iters 25 )
-  sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=7G,ram_free=2.3G" --cmd "queue.pl -l arch=*64 -l mem_free=2.0G,ram_free=2.0G") 
-  sgmm_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
+  sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=7G,ram_free=7.0G" --cmd "queue.pl -l arch=*64 -l mem_free=2.0G,ram_free=2.0G") 
+  sgmm_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2.0G")
   sgmm_mmi_extra_opts=(--cmd "queue.pl -l arch=*64 -l mem_free=1.5G,ram_free=1.5G")
-  dnn_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
+  dnn_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2.0G")
 
   dnn_cpu_parallel_opts=(--minibatch-size 128 --num-jobs-nnet 8 --num-threads 16 \
-                         --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
+                         --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2G")
   dnn_gpu_parallel_opts=(--minibatch-size 512 --num-jobs-nnet 4 --num-threads 1 \
-                         --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
+                         --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2G")
   dnn_parallel_opts="-l gpu=1"
   dnn_gpu_mpe_parallel_opts=(--num-jobs-nnet 4 --num-threads 1 \
-                             --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
+                             --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2G")
 
   dnn_update_parallel_opts=( --num-epochs 15 --num-epochs-extra 5 --num-iters-final 20 )
 fi

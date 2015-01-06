@@ -41,7 +41,7 @@ if [ ! -f exp_bnf/tri6_bnf/.done ]; then
     --stage $bnf_train_stage --num-jobs-nnet 4 \
     --num-threads $num_threads --mix-up 5000 --max-change 40 \
     --minibatch-size $minibatch_size --parallel-opts "$parallel_opts" \
-    --cmd "$train_cmd -l mem_free=2G,ram_free=1G"\
+    --cmd "$train_cmd -l mem_free=2G,ram_free=2G"\
     --initial-learning-rate 0.005 \
     --final-learning-rate 0.0005 \
     --num-hidden-layers 5 \
