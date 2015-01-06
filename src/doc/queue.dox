@@ -702,16 +702,16 @@ One of the major causes of crashes in compute clusters is memory exhaustion.
 The default OOM-killer in Linux is not very good, so if you exhaust memory, it
 may end up killing an important system process, which tends to cause
 hard-to-diagnose instability.  Even if nothing is killed, <tt>malloc()</tt> may
-start failing when called from processes on the system, and very few programs
+start failing when called from processes on the system; and very few programs
 deal with this gracefully.  In the CLSP grid we wrote our own version of an OOM
 killer, which we run as root, and we wrote the corresponding init scripts.  When
-our OOM killer detects memory overload, it kills the largest process of whichver
+our OOM killer detects memory overload, it kills the largest process of whichever
 non-system user is using the most memory.  This is usually the right thing to
 do.  These scripts have been made public as part of the <tt>kluster</tt>
 project, and you can get them as shown below if you want to add them to your
 system.  The following commands will only work as-is if you have LSB-style init
 scripts, which is the case in Debian
-<tt>wheezy</tt>.  The next Debian elease, <tt>jessie</tt>, won't have init scripts at all and
+<tt>wheezy</tt>.  The next Debian release, <tt>jessie</tt>, won't have init scripts at all and
 will use <tt>systemd</tt> instead (the so-called "systemd controversy").  If someone can figure out how to do the
 following in <tt>systemd</tt>, please let us know.
 Type
@@ -780,9 +780,10 @@ In this section we have some general observations about how to configure
 and manage a compute grid.
 
 In CLSP we use a lot of NFS hosts, not just one or two; in fact, most of our
-nodes also export data via NFS.  (If you do this you should use
+nodes also export data via NFS.  If you do this you should use
 our <tt>mem-killer.pl</tt> or a similar script, or you will get instability due
-to memory exhaustion when users make mistakes).  Having a large number of file
+to memory exhaustion when users make mistakes. 
+Having a large number of file
 servers is a particularly good idea for queues that are shared by many people,
 because it's inevitable that people will overload file servers, and if there are
 only one or two file servers, the queue will end up being in a degraded state

@@ -10,6 +10,7 @@
 cmd=run.pl
 num_epochs=4       # Number of epochs of training
 learning_rate=0.00002
+effective_lrate=    # If supplied, overrides the learning rate, which gets set to effective_lrate * num_jobs_nnet.
 acoustic_scale=0.1  # acoustic scale for MMI/MPFE/SMBR training.
 boost=0.0       # option relevant for MMI
 
@@ -61,8 +62,9 @@ if [ $# != 2 ]; then
   echo "  --config <config-file>                           # config file containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --num-epochs <#epochs|4>                        # Number of epochs of training"
-  echo "  --initial-learning-rate <initial-learning-rate|0.0002> # Learning rate at start of training"
-  echo "  --final-learning-rate  <final-learning-rate|0.0004>   # Learning rate at end of training"
+  echo "  --learning-rate <learning-rate|0.0002>           # Learning rate to use"
+  echo "  --effective-lrate <effective-learning-rate>      # If supplied, learning rate will be set to"
+  echo "                                                   # this value times num-jobs-nnet."
   echo "  --num-jobs-nnet <num-jobs|8>                     # Number of parallel jobs to use for main neural net"
   echo "                                                   # training (will affect results as well as speed; try 8, 16)"
   echo "                                                   # Note: if you increase this, you may want to also increase"
@@ -129,6 +131,11 @@ if [ $stage -le -1 ]; then
   # level so they are highly correlated.  It might make sense to tune this a
   # little, later on, although I doubt it matters once the --num-samples-history
   # is large enough.
+
+  if [ ! -z "$effective_lrate" ]; then
+    learning_rate=$(perl -e "print ($num_jobs_nnet*$effective_lrate);")
+    echo "$0: setting learning rate to $learning_rate = --num-jobs-nnet * --effective-lrate."
+  fi
 
   $cmd $dir/log/convert.log \
     nnet-am-copy --learning-rate=$learning_rate "$src_model" - \| \

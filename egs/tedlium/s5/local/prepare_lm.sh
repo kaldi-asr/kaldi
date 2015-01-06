@@ -32,28 +32,6 @@ gunzip -c "$arpa_lm" | \
 echo  "Checking how stochastic G is (the first of these numbers should be small):"
 fstisstochastic data/lang_test/G.fst
 
-## Check lexicon.
-## just have a look and make sure it seems sane.
-echo "First few lines of lexicon FST:"
-fstprint --isymbols=data/lang/phones.txt --osymbols=data/lang/words.txt data/lang/L.fst  | head
+utils/validate_lang.pl data/lang_test || exit 1;
 
-echo Performing further checks
-
-# Checking that G.fst is determinizable.
-fstdeterminize data/lang_test/G.fst /dev/null || echo Error determinizing G.
-
-# Checking that L_disambig.fst is determinizable.
-fstdeterminize data/lang_test/L_disambig.fst /dev/null || echo Error determinizing L.
-
-# Checking that disambiguated lexicon times G is determinizable
-# Note: we do this with fstdeterminizestar not fstdeterminize, as
-# fstdeterminize was taking forever (presumbaly relates to a bug
-# in this version of OpenFst that makes determinization slow for
-# some case).
-fsttablecompose data/lang_test/L_disambig.fst data/lang_test/G.fst | \
-   fstdeterminizestar >/dev/null || { echo Error determinizing LG; exit 1; }
-
-# Checking that LG is stochastic:
-fsttablecompose data/lang/L_disambig.fst data/lang_test/G.fst | \
-   fstisstochastic || echo LG is not stochastic
-
+exit 0;

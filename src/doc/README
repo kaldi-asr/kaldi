@@ -23,8 +23,7 @@ doc/make_tools.sh
 doxygen
 cp doc/*.pptx html/;
 
-if [[ $(hostname) == *.clsp.jhu.edu ]]; then
-
+if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
    tar -czf html.tar.gz html
    scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/
 

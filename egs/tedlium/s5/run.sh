@@ -36,6 +36,7 @@ if [ $stage -le 0 ]; then
   utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang || exit 1
 
   local/prepare_lm.sh || exit 1
+
 fi
 
 # Feature extraction

@@ -35,7 +35,12 @@ int main(int argc, char *argv[]) {
         "phones.  The output symbols are still words, unless you specify --replace-output-symbols=true\n"
         "Usage: lattice-align-phones [options] <model> <lattice-rspecifier> <lattice-wspecifier>\n"
         " e.g.: lattice-align-phones final.mdl ark:1.lats ark:phone_aligned.lats\n"
-        "See also: lattice-to-phone-lattice, lattice-align-words, lattice-align-words-lexicon\n";
+        "See also: lattice-to-phone-lattice, lattice-align-words, lattice-align-words-lexicon\n"
+        "Note: if you just want the phone alignment from a lattice, the easiest path is\n"
+        " lattice-1best | nbest-to-linear [keeping only alignment] | ali-to-phones\n"
+        "If you want the words and phones jointly (i.e. pronunciations of words, with word\n"
+        "alignment), try\n"
+        " lattice-1best | nbest-to-prons\n";
     
     ParseOptions po(usage);
     bool output_if_error = true;

@@ -5,12 +5,12 @@
 # iterations.)
 
 . cmd.sh
-
 ## SGMM on top of LDA+MLLT+SAT features.
-if [ ! -f exp/ubm4a/final.mdl ]; then
+if [ ! -f exp/ubm4a/final.ubm ] && [ ! data/train/feats.scp -nt exp/ubm4a/final.ubm ]; then
   steps/train_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" 400 data/train data/lang exp/tri3b_ali exp/ubm4a || exit 1;
 fi
-steps/train_sgmm2.sh  --cmd "$train_cmd" 5000 7000 data/train data/lang exp/tri3b_ali exp/ubm4a/final.ubm exp/sgmm2_4a || exit 1;
+          
+steps/train_sgmm2.sh --cmd "$train_cmd" 5000 7000 data/train data/lang exp/tri3b_ali exp/ubm4a/final.ubm exp/sgmm2_4a || exit 1;
 
 utils/mkgraph.sh data/lang exp/sgmm2_4a exp/sgmm2_4a/graph || exit 1;
 

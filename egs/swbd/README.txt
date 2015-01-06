@@ -7,8 +7,8 @@ About the Switchboard corpus
     we download separately from
     http://www.isip.piconepress.com/projects/switchboard/releases/switchboard_word_alignments.tar.gz
 
-    We are using the eval2000 evaluation data.  The acoustics are LDC2002S09 and
-    the text is LDC2002T43.
+    We are using the eval2000 a.k.a. hub5'00 evaluation data.  The acoustics are
+    LDC2002S09 and the text is LDC2002T43.
 
 About the Fisher corpus for language modeling
 

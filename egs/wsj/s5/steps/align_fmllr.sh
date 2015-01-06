@@ -21,6 +21,7 @@ use_graphs=false
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 beam=10
 retry_beam=40
+careful=false
 boost_silence=1.0 # factor by which to boost silence during alignment.
 fmllr_update_type=full
 # End configuration options.
@@ -110,7 +111,7 @@ fi
 if [ $stage -le 1 ]; then
   echo "$0: aligning data in $data using $alimdl and speaker-independent features."
   $cmd JOB=1:$nj $dir/log/align_pass1.JOB.log \
-    gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$alimdl_cmd" \
+    gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam --careful=$careful "$alimdl_cmd" \
     "ark:gunzip -c $graphdir/fsts.JOB.gz|" "$sifeats" "ark:|gzip -c >$dir/pre_ali.JOB.gz" || exit 1;
 fi
 
@@ -139,7 +140,7 @@ feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.
 if [ $stage -le 3 ]; then
   echo "$0: doing final alignment."
   $cmd JOB=1:$nj $dir/log/align_pass2.JOB.log \
-    gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$mdl_cmd" \
+    gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam --careful=$careful "$mdl_cmd" \
     "ark:gunzip -c $graphdir/fsts.JOB.gz|" "$feats" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 

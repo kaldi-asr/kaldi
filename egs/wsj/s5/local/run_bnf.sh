@@ -35,7 +35,7 @@ if [ ! -f data_bnf/train_bnf/.done ]; then
   mkdir -p data_bnf
   # put the archives in param_bnf/.
   steps/nnet2/dump_bottleneck_features.sh --cmd "$train_cmd" \
-    --transform-dir exp/tri4a  data/train_si284 data_bnf/train_bnf exp_bnf/tri6_bnf param_bnf exp_bnf/dump_bnf
+    --transform-dir exp/tri4b_ali_si284  data/train_si284 data_bnf/train_bnf exp_bnf/tri6_bnf param_bnf exp_bnf/dump_bnf
   touch data_bnf/train_bnf/.done
 fi 
 
