@@ -56,7 +56,7 @@ distclean:
 
 .PHONY: openfst # so target will be made even though "openfst" exists.
 openfst: openfst_compiled openfst-$(OPENFST_VERSION)/lib
-	-rm openfst
+	-rm -f openfst
 	-ln -s openfst-$(OPENFST_VERSION) openfst
 
 .PHONY: openfst_compiled
