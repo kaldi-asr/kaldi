@@ -252,6 +252,7 @@ if ($read_command != 1) {
 
 for my $option (keys %cli_options) {
   if ($option eq "config") { next; }
+  if ($option eq "max_jobs_run" && $array_job != 1) { next; }
   my $value = $cli_options{$option};
 
   if (exists $cli_default_options{($option,$value)}) {
