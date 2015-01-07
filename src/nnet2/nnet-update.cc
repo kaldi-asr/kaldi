@@ -140,6 +140,8 @@ double NnetUpdater::ComputeObjfAndDeriv(
                  "Training code currently does not support multi-frame egs");
     const std::vector<std::pair<int32,BaseFloat> > &labels = data[m].labels[0];
     for (size_t i = 0; i < labels.size(); i++) {
+      KALDI_ASSERT(labels[i].first < nnet_.OutputDim() &&
+                        "Possibly egs come from alignments from mismatching model");
       MatrixElement<BaseFloat> elem = {m, labels[i].first, labels[i].second};
       sv_labels.push_back(elem);
     }
