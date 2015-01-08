@@ -45,6 +45,12 @@ int main(int argc, char *argv[]) {
     
     ParseOptions po(usage);
 
+    bool print_lengths_per_phone = false;
+    po.Register("print-lengths-per-phone", &print_lengths_per_phone, 
+                "If true, in place of the length of the word, "
+                "print out a comma-separated list of the lengths of each phone in the word.");
+
+
     po.Read(argc, argv);
     
     if (po.NumArgs() != 3) {
@@ -72,9 +78,10 @@ int main(int argc, char *argv[]) {
 
       std::vector<int32> words, times, lengths;
       std::vector<std::vector<int32> > prons;
+      std::vector<std::vector<int32> > phone_lengths;
 
       if (!CompactLatticeToWordProns(trans_model, clat, &words, &times, &lengths,
-                                     &prons)) {
+                                     &prons, &phone_lengths)) {
         n_err++;
         KALDI_WARN << "Format conversion failed for utterance " << utt;
       } else {
@@ -82,10 +89,23 @@ int main(int argc, char *argv[]) {
                      words.size() == lengths.size() &&
                      words.size() == prons.size());
         for (size_t i = 0; i < words.size(); i++) {
-          ko.Stream() << utt << ' ' << times[i] << ' ' << lengths[i] << ' '
+          int32 sum_of_plengths = 0;
+          for (size_t j = 0; j < phone_lengths[i].size(); j++)
+            sum_of_plengths += phone_lengths[i][j];
+          KALDI_ASSERT(lengths[i] == sum_of_plengths);
+
+          if (!print_lengths_per_phone)
+            ko.Stream() << utt << ' ' << times[i] << ' ' << lengths[i] << ' '
                       << words[i];
-          for (size_t j = 0; j < prons[i].size(); j++)
-            ko.Stream() << ' ' << prons[i][j];
+          else {
+            ko.Stream() << utt << ' ' << times[i] << ' ';
+            for (size_t pl = 0; pl < phone_lengths[i].size()-1; pl++)
+              ko.Stream() << phone_lengths[i][pl] << ',';   
+            ko.Stream() << phone_lengths[i][phone_lengths[i].size()-1]
+                      << ' ' << words[i];
+          }  
+        for (size_t j = 0; j < prons[i].size(); j++)
+          ko.Stream() << ' ' << prons[i][j];
           ko.Stream() << std::endl;
         }
         n_done++;

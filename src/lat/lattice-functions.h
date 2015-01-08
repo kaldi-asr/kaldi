@@ -211,12 +211,14 @@ bool CompactLatticeToWordAlignment(const CompactLattice &clat,
 /// This function will print a warning and return false, if the lattice
 /// did not have the correct format (e.g. if it is empty or it is not
 /// linear).
-bool CompactLatticeToWordProns(const TransitionModel &tmodel,
-                               const CompactLattice &clat,
-                               std::vector<int32> *words,
-                               std::vector<int32> *begin_times,
-                               std::vector<int32> *lengths,
-                               std::vector<std::vector<int32> > *prons);
+bool CompactLatticeToWordProns(
+    const TransitionModel &tmodel,
+    const CompactLattice &clat,
+    std::vector<int32> *words,
+    std::vector<int32> *begin_times,
+    std::vector<int32> *lengths,
+    std::vector<std::vector<int32> > *prons,
+    std::vector<std::vector<int32> > *phone_lengths);
 
 
 /// A form of the shortest-path/best-path algorithm that's specially coded for

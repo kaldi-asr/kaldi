@@ -869,16 +869,19 @@ bool CompactLatticeToWordAlignment(const CompactLattice &clat,
 }
 
 
-bool CompactLatticeToWordProns(const TransitionModel &tmodel,
-                               const CompactLattice &clat,
-                               std::vector<int32> *words,
-                               std::vector<int32> *begin_times,
-                               std::vector<int32> *lengths,
-                               std::vector<std::vector<int32> > *prons) {
+bool CompactLatticeToWordProns(
+    const TransitionModel &tmodel,
+    const CompactLattice &clat,
+    std::vector<int32> *words,
+    std::vector<int32> *begin_times,
+    std::vector<int32> *lengths,
+    std::vector<std::vector<int32> > *prons,
+    std::vector<std::vector<int32> > *phone_lengths) {
   words->clear();
   begin_times->clear();
   lengths->clear();
   prons->clear();
+  phone_lengths->clear();
   typedef CompactLattice::Arc Arc;
   typedef Arc::Label Label;
   typedef CompactLattice::StateId StateId;
@@ -920,11 +923,14 @@ bool CompactLatticeToWordProns(const TransitionModel &tmodel,
       std::vector<std::vector<int32> > split_alignment;
       SplitToPhones(tmodel, arc_alignment, &split_alignment);
       std::vector<int32> phones(split_alignment.size());
+      std::vector<int32> plengths(split_alignment.size());
       for (size_t i = 0; i < split_alignment.size(); i++) {
         KALDI_ASSERT(!split_alignment[i].empty());
         phones[i] = tmodel.TransitionIdToPhone(split_alignment[i][0]);
+        plengths[i] = split_alignment[i].size();
       }
       prons->push_back(phones);
+      phone_lengths->push_back(plengths);
       
       cur_time += length;
       state = arc.nextstate;
