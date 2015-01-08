@@ -93,7 +93,6 @@
     #include <mkl.h>
   }
 #elif defined(HAVE_OPENBLAS)
-extern "C" {
   // getting cblas.h and lapacke.h from <openblas-install-dir>/.
   // putting in "" not <> to search -I before system libraries.
   #include "cblas.h"
@@ -110,7 +109,6 @@ extern "C" {
   #undef bit_test
   #undef bit_clear
   #undef bit_set
-}
 #else
   #error "You need to define (using the preprocessor) either HAVE_CLAPACK or HAVE_ATLAS or HAVE_MKL (but not more than one)"  
 #endif
