@@ -23,6 +23,7 @@ posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
 min_post=0.025 # Minimum posterior to use (posteriors below this are pruned out)
                # caution: you should use the same value in the online-estimation
                # code.
+iter=final
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -41,6 +42,7 @@ if [ $# -ne 4 ] && [ $# -ne 3 ]; then
    echo "                                                   # (default: false)"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
    echo "  --config <config-file>                           # config containing options"
+   echo "  --iter <model-iteration|final>                   # iteration of model to take."
    echo "  --stage <stage>                                  # stage to do partial re-run from."
    exit 1;
 fi
@@ -59,7 +61,7 @@ else
   dir=$3
 fi
 
-for f in $lang/phones.txt $srcdir/final.mdl $srcdir/tree; do
+for f in $lang/phones.txt $srcdir/${iter}.mdl $srcdir/tree; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 if [ ! -z "$iedir" ]; then
@@ -75,7 +77,8 @@ dir=$(readlink -f $dir) # Convert $dir to an absolute pathname, so that the
 mkdir -p $dir/conf
 
 
-cp $srcdir/final.mdl $srcdir/tree $dir/ || exit 1;
+cp $srcdir/${iter}.mdl $dir/final.mdl || exit 1;
+cp $srcdir/tree $dir/ || exit 1;
 if [ ! -z "$iedir" ]; then
   mkdir -p $dir/ivector_extractor/
   cp $iedir/final.{mat,ie,dubm} $iedir/global_cmvn.stats $dir/ivector_extractor/ || exit 1;

@@ -222,8 +222,12 @@ effect is to produce no extra command line options. We previously had it
 configured with a line: <tt>"option gpu=0 -q all.q"</tt>, so there was a time when the line
 <tt>"default gpu=0"</tt> used to make a difference.
 
+The mapping from what the config-file specifies to what appears on the command-line
+of qsub sometimes has to be tweaked slightly in the perl code: for instance, we made it
+so that the <tt>--max-jobs-run</tt> option is ignored for non-array jobs.  
 
- \subsection parallelization_common_new_example Example of configuring grid software with new-style options
+ \subsection parallelization_common_new_example Example of configuring grid
+ software with new-style options
 
 We'd like to give an example of how the config file can be used in a real
 situation.  We had a problem where, due to a bug in an outdated version of the
@@ -266,7 +270,7 @@ parallelization scripts.
  line.  The scripts that we ask <tt>qsub</tt> to run also make use of the variable
  <tt>$SGE_TASK_ID</tt>, which SGE sets to the job index for array jobs.  Our plan is to extend
  the config-file mechanism as necessary to accommodate whatever changes are needed to support
- other grid software, within reason.
+ other grid software, within reason. 
 
  Since we have explained the behavior of <tt>queue.pl</tt> at length above, we aren't going
  to provide many further details in this section, but please see below the section 

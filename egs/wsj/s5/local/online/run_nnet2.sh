@@ -6,6 +6,11 @@
 # is.  You can safely reduce the --num-jobs-final to however many GPUs you have
 # on your system.
 
+# For joint training with RM, this script is run using the following command line,
+# and note that the --stage 8 option is only needed in case you already ran the
+# earlier stages.
+# local/online/run_nnet2.sh --stage 8 --dir exp/nnet2_online/nnet_ms_a_partial --exit-train-stage 15
+
 . cmd.sh
 
 
@@ -13,6 +18,7 @@ stage=0
 train_stage=-10
 use_gpu=true
 dir=exp/nnet2_online/nnet_ms_a
+exit_train_stage=-100
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -39,9 +45,8 @@ local/online/run_nnet2_common.sh --stage $stage || exit 1;
 
 if [ $stage -le 8 ]; then
   # last splicing was instead: layer3/-4:2" 
-  egs_opt="--egs-dir exp/nnet2_online/nnet_ms_c3/egs"
   steps/nnet2/train_multisplice_accel2.sh --stage $train_stage \
-     $egs_opt \
+    --exit-stage $exit_train_stage \
     --num-epochs 8 --num-jobs-initial 2 --num-jobs-final 14 \
     --num-hidden-layers 4 \
     --splice-indexes "layer0/-1:0:1 layer1/-2:1 layer2/-4:2" \
@@ -60,8 +65,22 @@ if [ $stage -le 8 ]; then
     data/train_si284_hires data/lang exp/tri4b_ali_si284 $dir  || exit 1;
 fi
 
-
 if [ $stage -le 9 ]; then
+  # If this setup used PLP features, we'd have to give the option --feature-type plp
+  # to the script below.
+  iter_opt=
+  [ $exit_train_stage -gt 0 ] && iter_opt="--iter $exit_train_stage"
+  steps/online/nnet2/prepare_online_decoding.sh $iter_opt --mfcc-config conf/mfcc_hires.conf \
+    data/lang exp/nnet2_online/extractor "$dir" ${dir}_online || exit 1;
+fi
+
+if [ $exit_train_stage -gt 0 ]; then
+  echo "$0: not testing since you only ran partial training (presumably in preparation"
+  echo " for multilingual training"
+  exit 0;
+fi
+
+if [ $stage -le 10 ]; then
   # this does offline decoding that should give the same results as the real
   # online decoding.
   for lm_suffix in tgpr bd_tgpr; do
@@ -75,15 +94,7 @@ if [ $stage -le 9 ]; then
   done
 fi
 
-
-if [ $stage -le 10 ]; then
-  # If this setup used PLP features, we'd have to give the option --feature-type plp
-  # to the script below.
-  steps/online/nnet2/prepare_online_decoding.sh  --mfcc-config conf/mfcc_hires.conf \
-    data/lang exp/nnet2_online/extractor "$dir" ${dir}_online || exit 1;
-fi
-
-if [ $stage -le 8 ]; then
+if [ $stage -le 11 ]; then
   # do the actual online decoding with iVectors, carrying info forward from 
   # previous utterances of the same speaker.
   for lm_suffix in tgpr bd_tgpr; do
@@ -95,7 +106,7 @@ if [ $stage -le 8 ]; then
   done
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 12 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
   for lm_suffix in tgpr bd_tgpr; do
@@ -108,7 +119,7 @@ if [ $stage -le 9 ]; then
   done
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 13 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.  By setting --online false we
   # let it estimate the iVector from the whole utterance; it's then given to all

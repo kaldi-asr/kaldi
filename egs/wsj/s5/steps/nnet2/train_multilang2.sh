@@ -60,11 +60,11 @@ mix_up="0 0" # Number of components to mix up to (should be > #tree leaves, if
              # specified.)  An array, one per language.
 
 num_threads=16  # default suitable for CPU-based training
-parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G"  # default suitable for CPU-based training.
+parallel_opts="--num-threads 16 --mem 1G"  # default suitable for CPU-based training.
   # by default we use 16 threads; this lets the queue know.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
 combine_num_threads=8
-combine_parallel_opts="-pe smp 8"  # queue options for the "combine" stage.
+combine_parallel_opts="--num-threads 8"  # queue options for the "combine" stage.
 cleanup=false # while testing, leaving cleanup=false.
 # End configuration section.
 
@@ -76,11 +76,11 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 if [ $# -lt 6 -o $[$#%2] -ne 0 ]; then
   # num-args must be at least 6 and must be even.
-  echo "Usage: $0 [opts] <ali1> <egs1> <ali2> <egs2> ... <aliN> <egsN> <input-model> <exp-dir>"
+  echo "Usage: $0 [opts] <ali0> <egs0> <ali1> <egs1> ... <aliN-1> <egsN-1> <input-model> <exp-dir>"
   echo " e.g.: $0 data/train exp/tri6_ali exp/tri6_egs exp_lang2/tri6_ali exp_lang2/tri6_egs exp/dnn6a/10.mdl exp/tri6_multilang"
   echo ""
-  echo "Note: the first egs/ali should correspond to the language that you really want; this"
-  echo "only affects how the num-epochs is computed, and which model we link to final.mdl."
+  echo "Note: <input-model> must correspond to the model/tree for <ali0> and <egs0>, and the"
+  echo "num-epochs is computed for the zeroth language."
   echo ""
   echo "The --num-jobs-nnet should be an array saying how many jobs to allocate to each language,"
   echo "e.g. --num-jobs-nnet '2 4'"
@@ -107,13 +107,6 @@ if [ $# -lt 6 -o $[$#%2] -ne 0 ]; then
   echo "  --parallel-opts <opts|\"-pe smp 16 -l ram_free=1G,mem_free=1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
   echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
-  echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
-  echo "                                                   # should not get too large, e.g. >2k)."
-  echo "  --splice-indexes <string|layer0/-4:-3:-2:-1:0:1:2:3:4> "
-  echo "                                                   # Frame indices used for each splice layer."
-  echo "                                                   # Format : layer<hidden_layer_index>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
-  echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
-  echo "  --lda-dim <dim|''>                               # Dimension to reduce spliced features to with LDA"
   echo "  --stage <stage|-4>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
   exit 1;
@@ -128,6 +121,7 @@ dir=${argv[$num_args-1]}
 input_model=${argv[$num_args-2]}
 
 [ ! -f $input_model ] && echo "$0: Input model $input_model does not exist" && exit 1;
+
 
 mkdir -p $dir/log
 
@@ -156,6 +150,16 @@ for lang in $(seq 0 $[$num_lang-1]); do
 done
 
 
+input_model_pdfs=$(nnet-am-info $input_model | grep '^output-dim' | awk '{print $2}')
+alidir0_pdfs=$(tree-info ${alidir[0]}/tree | grep '^num-pdfs' | awk '{print $2}')
+if ! [ $input_model_pdfs -eq $alidir0_pdfs ]; then
+  echo "$0: expected num-pdfs from the input model $input_model to match"
+  echo " .. the one used for the first alignment directory ${alidir[0]}, $input_model_pdfs != $alidir0_pdfs"
+  exit 1;
+fi
+
+
+
 for x in final.mat cmvn_opts splice_opts; do
   if [ -f $dir/0/$x ]; then
     for lang in $(seq 1 $[$num_lang-1]); do
@@ -181,7 +185,7 @@ fi
 if [ $stage -le -4 ]; then
   echo "$0: initializing models for other languages"
   for lang in $(seq 1 $[$num_lang-1]); do
-  # create the initial models for the other languages.
+    # create the initial models for the other languages.
     $cmd $dir/$lang/log/reinitialize.log \
       nnet-am-reinitialize $input_model ${alidir[$lang]}/final.mdl $dir/$lang/0.mdl || exit 1;
   done
@@ -410,7 +414,7 @@ done
 
 
 if [ $stage -le $num_iters ]; then
-  echo "Doing combination to produce final models"
+  echo "$0: Doing combination to produce final models"
 
 
   rm $dir/.error 2>/dev/null
@@ -427,7 +431,7 @@ if [ $stage -le $num_iters ]; then
         for o in $(seq $cur_offset $[$next_offset-1]); do
           iter=$[$first_model_combine+$o]
           mdl=$dir/$lang/$iter.mdl
-          [ ! -f $mdl ] && echo "Expected $mdl to exist" && exit 1;
+          [ ! -f $mdl ] && echo "$0: Expected $mdl to exist" && exit 1;
           sub_list="$sub_list $mdl"
         done
         nnets_list[$[$n-1]]="nnet-am-average $sub_list - |"
@@ -437,8 +441,8 @@ if [ $stage -le $num_iters ]; then
       nnets_list=
       for n in $(seq 0 $[num_models_combine-1]); do
         iter=$[$first_model_combine+$n]
-        mdl=$dir/$iter.mdl
-        [ ! -f $mdl ] && echo "Expected $mdl to exist" && exit 1;
+        mdl=$dir/$lang/$iter.mdl
+        [ ! -f $mdl ] && echo "$0: Expected $mdl to exist" && exit 1;
         nnets_list[$n]=$mdl
       done
     fi

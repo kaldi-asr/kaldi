@@ -47,7 +47,7 @@ nt=`cat $data/text 2>/dev/null | wc -l` # take it as zero if no such file
 if [ -f $data/feats.scp ] && [ $nu -ne $nf ]; then
   echo "split_data.sh: warning, #lines is (utt2spk,feats.scp) is ($nu,$nf); this script "
   echo " may produce incorrectly split data."
-  echo "use utils/fix_data_dir.sh to fix this."
+  echo "use utils/fix_data_dir.sh $data to fix this."
 fi
 if [ -f $data/text ] && [ $nu -ne $nt ]; then
   echo "split_data.sh: warning, #lines is (utt2spk,text) is ($nu,$nt); this script "

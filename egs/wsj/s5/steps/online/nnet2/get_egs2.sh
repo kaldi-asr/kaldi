@@ -34,7 +34,7 @@ samples_per_iter=400000 # each iteration of training, see this many samples
                         # that divides the number of samples in the entire data.
 
 stage=0
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time. 
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time. 
 random_copy=false
 
 echo "$0 $@"  # Print the command line for logging
@@ -85,7 +85,7 @@ utils/split_data.sh $data $nj
 
 mkdir -p $dir/log $dir/info
 ! cmp $alidir/tree $online_nnet_dir/tree && \
-   echo "$0: warning, tree from alignment dir does not match tree from online-nnet dir"
+   echo "$0: warning, tree from alignment dir does not match tree from online-nnet dir (OK if for multilingual)"
 cp $alidir/tree $dir
 grep -v '^--endpoint' $feature_conf >$dir/feature.conf || exit 1;
 mkdir -p $dir/valid $dir/train_subset

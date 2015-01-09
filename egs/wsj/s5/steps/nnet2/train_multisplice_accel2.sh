@@ -36,6 +36,7 @@ prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0
 online_ivector_dir=
+remove_egs=true  # set to false to disable removing egs.
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
   # to the final 'combine' stage, but these models will themselves be averages of
@@ -53,6 +54,7 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
 add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
 stage=-4
+exit_stage=-100 # you can set this to terminate the training early.  Exits before running this stage
 
 splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:-1:3"
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
@@ -354,12 +356,13 @@ done
 cur_egs_dir=$egs_dir
 
 while [ $x -lt $num_iters ]; do
+  [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;
+
   this_num_jobs=$(perl -e "print int(0.5+$num_jobs_initial+($num_jobs_final-$num_jobs_initial)*$x/$num_iters);")
 
   ilr=$initial_effective_lrate; flr=$final_effective_lrate; np=$num_archives_processed; nt=$num_archives_to_process;
   this_learning_rate=$(perl -e "print (($x + 1 >= $num_iters ? $flr : $ilr*exp($np*log($flr/$ilr)/$nt))*$this_num_jobs);");
 
-  # TODO: remove this line.
   echo "On iteration $x, learning rate is $this_learning_rate."    
 
   if [ ! -z "${realign_this_iter[$x]}" ]; then
@@ -614,7 +617,7 @@ echo Done
 
 if $cleanup; then
   echo Cleaning up data
-  if [[ $cur_egs_dir =~ $dir/egs* ]]; then
+  if $remove_egs && [[ $cur_egs_dir =~ $dir/egs* ]]; then
     steps/nnet2/remove_egs.sh $cur_egs_dir
   fi
 

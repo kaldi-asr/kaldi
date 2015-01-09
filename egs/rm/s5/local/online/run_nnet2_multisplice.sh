@@ -40,8 +40,8 @@ local/online/run_nnet2_common.sh --stage  $stage || exit 1;
 
 
 if [ $stage -le 4 ]; then
-  steps/nnet2/train_pnorm_multisplice2.sh --stage $train_stage \
-    --splice-indexes "layer0/-3:-2:-1:0:1:2:3 layer2/-2:2" \
+  steps/nnet2/train_multisplice_accel2.sh --stage $train_stage \
+    --splice-indexes "layer0/-1:0:1 layer1/-2:1 layer2/-4:2" \
     --num-hidden-layers 3 \
     --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors \
@@ -49,14 +49,14 @@ if [ $stage -le 4 ]; then
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
     --parallel-opts "$parallel_opts" \
-    --num-jobs-nnet 4 \
+    --num-jobs-initial 2 --num-jobs-final 4 \
     --num-epochs 25 \
     --add-layers-period 1 \
     --mix-up 4000 \
-    --initial-learning-rate 0.02 --final-learning-rate 0.004 \
+    --initial-effective-lrate 0.005 --final-effective-lrate 0.0005 \
     --cmd "$decode_cmd" \
     --pnorm-input-dim 800 \
-    --pnorm-output-dim 200 \
+    --pnorm-output-dim 160 \
     data/train data/lang exp/tri3b_ali $dir  || exit 1;
 fi
 

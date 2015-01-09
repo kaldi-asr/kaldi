@@ -213,3 +213,11 @@ for x in exp/nnet2_online/nnet*/decode*; do grep WER $x/wer_* | utils/best_wer.s
 %WER 2.36 [ 296 / 12533, 63 ins, 54 del, 179 sub ] exp/nnet2_online/nnet_ms_a_online/decode_per_utt/wer_6
 %WER 10.19 [ 1277 / 12533, 155 ins, 186 del, 936 sub ] exp/nnet2_online/nnet_ms_a_online/decode_ug/wer_13
 %WER 10.18 [ 1276 / 12533, 150 ins, 183 del, 943 sub ] exp/nnet2_online/nnet_ms_a_online/decode_ug_per_utt/wer_13
+
+# Joint training with WSJ data (call this recipe "multilingual" because it doesn't use
+# a shared phone set).'
+# Note, I didn't tune the settings of this at all, it was just the first try.
+#for x in exp/nnet2_online_wsj/nnet_ms_a_rm_online/decode*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 1.58 [ 198 / 12533, 29 ins, 37 del, 132 sub ] exp/nnet2_online_wsj/nnet_ms_a_rm_online/decode/wer_5
+%WER 7.52 [ 943 / 12533, 89 ins, 169 del, 685 sub ] exp/nnet2_online_wsj/nnet_ms_a_rm_online/decode_ug/wer_12
+
