@@ -177,8 +177,21 @@ steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 # which calls local/online/run_gmm_pitch.sh
 
 #
-# local/run_nnet2.sh
-# local/online/run_nnet2_baseline.sh
+# local/online/run_nnet2_multisplice.sh
+# local/online/run_nnet2_multisplice_disc.sh
+
+# ##some older scripts:
+# # local/run_nnet2.sh
+# # local/online/run_nnet2_baseline.sh
+
+# ## if you have a WSJ setup, you can use the following script to do joint
+# ## RM/WSJ training; this doesn't require that the phone set be the same, it's
+# ## a demonstration of a multilingual script.
+# local/online/run_nnet2_wsj_joint.sh
+
+# ## The following is an older way to do multilingual training, from an
+# ## already-trained system.
+# #local/online/run_nnet2_wsj.sh
 
 
 

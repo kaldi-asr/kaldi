@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# note: see the newer, better script run_nnet2_wsj_joint.sh
+
 # This script assumes you have previously run the WSJ example script including
 # the optional part local/online/run_online_decoding_nnet2.sh.  It builds a
 # neural net for online decoding on top of the network we previously trained on
