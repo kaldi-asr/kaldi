@@ -269,7 +269,7 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utt
 
 # first, female.
 trials=data/sre08_trials/short2-short3-female.trials
-cat exp/ivectors_sre08_train_short2_female/spk_ivector.scp exp/ivectors_sre08_test_short3_female/spk_ivector.scp > female.scp
+cat exp/ivectors_sre08_train_short2_female/spk_ivector.scp exp/ivectors_sre08_test_short3_female/ivector.scp > female.scp
 ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_utts.ark \
    "ivector-adapt-plda $adapt_opts exp/ivectors_train_female/plda scp:female.scp -|" \
    scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp \
@@ -285,7 +285,7 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_u
 
 # next, male.
 trials=data/sre08_trials/short2-short3-male.trials
-cat exp/ivectors_sre08_train_short2_male/spk_ivector.scp exp/ivectors_sre08_test_short3_male/spk_ivector.scp > male.scp
+cat exp/ivectors_sre08_train_short2_male/spk_ivector.scp exp/ivectors_sre08_test_short3_male/ivector.scp > male.scp
 ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utts.ark \
    "ivector-adapt-plda $adapt_opts exp/ivectors_train_male/plda scp:male.scp -|" \
    scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp \
