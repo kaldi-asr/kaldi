@@ -26,7 +26,6 @@ num_threads=1
 minibatch_size=512
 dir=exp/nnet2_online/nnet_ms_a
 mkdir -p exp/nnet2_online
-splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:-1:3"
 
 
 # Stages 1 through 5 are done in run_nnet2_common.sh,
@@ -34,8 +33,8 @@ splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:-1:3"
 local/online/run_nnet2_common.sh --stage $stage
 
 if [ $stage -le 6 ]; then
-  if [ $USER == dpovey ]; then # this shows how you can split across multiple file-systems.
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/dpovey/kaldi-online/egs/fisher_english/s5/$dir/egs $dir/egs/storage
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
+    utils/create_split_dir.pl /export/b0{6,7,8,9}/$(USER)/kaldi-dsata/egs/fisher_english/s5/$dir/egs/storage $dir/egs/storage
   fi
   
   # Because we have a lot of data here and we don't want the training to take
@@ -45,19 +44,19 @@ if [ $stage -le 6 ]; then
   # data across four filesystems for speed.
 
 
-  steps/nnet2/train_pnorm_multisplice.sh --stage $train_stage \
-    --splice-indexes "$splice_indexes" \
+  steps/nnet2/train_multisplice_accel2.sh --stage $train_stage \
     --feat-type raw \
+    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer3/-3:3 layer4/-7:2" \
+    --num-epochs 6 \
+    --num-hidden-layers 6 \
+    --num-jobs-initial 3 --num-jobs-final 18 \
     --online-ivector-dir exp/nnet2_online/ivectors_train \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
     --parallel-opts "$parallel_opts" \
-    --num-jobs-nnet 6 \
-    --num-epochs 5 \
-    --num-hidden-layers 4 \
     --mix-up 12000 \
-    --initial-learning-rate 0.01 --final-learning-rate 0.001 \
+    --initial-effective-lrate 0.0015 --final-effective-lrate 0.00015 \
     --cmd "$decode_cmd" \
     --egs-dir "$common_egs_dir" \
     --pnorm-input-dim 3500 \

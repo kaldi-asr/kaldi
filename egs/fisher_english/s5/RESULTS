@@ -20,8 +20,9 @@ for x in exp/*/decode_dev; do grep WER $x/wer_* | utils/best_wer.sh; done
 
 # the following is with a multi-splice version of the nnet-online recipe
 # This is the best current recipe.
-%WER 22.21 [ 8695 / 39141, 1463 ins, 2121 del, 5111 sub ] exp/nnet2_online/nnet_ms_a_online/decode_dev/wer_11
-%WER 22.94 [ 8980 / 39141, 1261 ins, 2417 del, 5302 sub ] exp/nnet2_online/nnet_ms_a_online/decode_dev_utt/wer_12
-%WER 22.25 [ 8710 / 39141, 1420 ins, 2139 del, 5151 sub ] exp/nnet2_online/nnet_ms_a_online/decode_dev_utt_offline/wer_11
+%WER 21.03 [ 8231 / 39141, 1256 ins, 2262 del, 4713 sub ] exp/nnet2_online/nnet_ms_a_online/decode_dev/wer_12
+%WER 21.45 [ 8396 / 39141, 1296 ins, 2230 del, 4870 sub ] exp/nnet2_online/nnet_ms_a_online/decode_dev_utt/wer_11
+%WER 21.09 [ 8256 / 39141, 1409 ins, 2043 del, 4804 sub ] exp/nnet2_online/nnet_ms_a_online/decode_dev_utt_offline/wer_10
+
 
 
