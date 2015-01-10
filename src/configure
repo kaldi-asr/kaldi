@@ -538,8 +538,8 @@ function linux_check_dynamic {
     echo "Atlas found in $dir";
     return 0;
   else
-      echo "... no libatlas.so in $dir";
-      return 1;
+    echo "... no libatlas.so in $dir";
+    return 1;
   fi
 }
 

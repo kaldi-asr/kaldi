@@ -18,6 +18,7 @@ train_stage=-10
 srcdir=../../wsj/s5/exp/nnet2_online/nnet_ms_a_partial
 src_alidir=../../wsj/s5/exp/tri4b_ali_si284   # it's important that this be the alignments
                                               # we actually trained srcdir on.
+src_lang=../../wsj/s5/data/lang
 dir=exp/nnet2_online_wsj/nnet_ms_a
 use_gpu=true
 set -e
@@ -68,10 +69,19 @@ if [ $stage -le 2 ]; then
   echo "$0: doing the multilingual training."
 
   # 4 jobs for WSJ, 1 for RM; this affects the data weighting.  num-epochs is for
-  # first one (WSJ)
+  # first one (WSJ).
+  # the script said this:
+  # steps/nnet2/train_multilang2.sh: Will train for 7 epochs (of language 0) = 140 iterations
+  # steps/nnet2/train_multilang2.sh: 140 iterations is approximately 35 epochs for language 1
+
+  # note: the arguments to the --mix-up option are (number of mixtures for WSJ,
+  # number of mixtures for RM).  We just use fairly typical numbers for each
+  # (although a bit fewer for WSJ, since we're not so concerned about the
+  # performance of that system).
+
   steps/nnet2/train_multilang2.sh --num-jobs-nnet "4 1" \
     --stage $train_stage \
-    --mix-up "4000 10000" \
+    --mix-up "10000 4000" \
     --cleanup false --num-epochs 7 \
     --initial-learning-rate 0.01 --final-learning-rate 0.001 \
     --cmd "$train_cmd" --parallel-opts "$parallel_opts" --num-threads "$num_threads" \
@@ -80,8 +90,12 @@ fi
 
 
 if [ $stage -le 3 ]; then
-  # we're just preparing the RM setup for decoding, as we're not that interested
-  # in the WSJ model.  Here, language 0 is WSJ and language 1 is RM.
+  # Prepare the RM and WSJ setups for decoding, with config files
+  # (for WSJ, we need the config files for discriminative training).
+
+  steps/online/nnet2/prepare_online_decoding_transfer.sh \
+    ${srcdir}_online $src_lang $dir/0 ${dir}_wsj_online
+
   steps/online/nnet2/prepare_online_decoding_transfer.sh \
     ${srcdir}_online data/lang $dir/1 ${dir}_rm_online
 fi

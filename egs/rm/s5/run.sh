@@ -188,6 +188,8 @@ steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 # ## RM/WSJ training; this doesn't require that the phone set be the same, it's
 # ## a demonstration of a multilingual script.
 # local/online/run_nnet2_wsj_joint.sh
+# ## and the discriminative-training continuation of the above.
+# local/online/run_nnet2_wsj_joint_disc.sh
 
 # ## The following is an older way to do multilingual training, from an
 # ## already-trained system.

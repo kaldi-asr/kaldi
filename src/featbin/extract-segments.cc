@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
       }
       int32 channel = -1;  // means channel info is unspecified.
       // if each line has 5 elements then 5th element must be channel identifier
-      if(split_line.size() == 5) {
+      if (split_line.size() == 5) {
         if (!ConvertStringToInteger(split_line[4], &channel) || channel < 0) {
           KALDI_WARN << "Invalid line in segments file [bad channel]: " << line;
           continue;

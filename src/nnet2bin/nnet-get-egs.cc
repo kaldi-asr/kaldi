@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
               << " feature files, wrote " << num_egs_written << " examples, "
               << " with " << num_frames_written << " egs in total; "
               << num_err << " files had errors.";
-    return (num_egs_written == 0 ? 1 : 0);
+    return (num_egs_written == 0 || num_err > num_done ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;

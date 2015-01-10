@@ -57,6 +57,9 @@ if (@ARGV > 0) {
     if ($jobstart > $jobend) {
       die "run.pl: invalid job range $ARGV[0]";
     }
+    if ($jobstart <= 0) {
+      die "run.pl: invalid job range $ARGV[0], start must be strictly positive (this is required for GridEngine compatibility).";
+    }
   } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)$/) { # e.g. JOB=1.
     $jobname = $1;
     $jobstart = $2;

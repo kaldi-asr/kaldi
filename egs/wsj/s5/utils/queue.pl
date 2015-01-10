@@ -135,6 +135,9 @@ for (my $x = 1; $x <= 3; $x++) { # This for-loop is to
     if ($jobstart > $jobend) {
       die "queue.pl: invalid job range $ARGV[0]";
     }
+    if ($jobstart <= 0) {
+      die "run.pl: invalid job range $ARGV[0], start must be strictly positive (this is a GridEngine limitation).";
+    }
   } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)$/) { # e.g. JOB=1.
     $array_job = 1;
     $jobname = $1;

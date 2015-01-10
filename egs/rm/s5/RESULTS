@@ -218,6 +218,20 @@ for x in exp/nnet2_online/nnet*/decode*; do grep WER $x/wer_* | utils/best_wer.s
 # a shared phone set).'
 # Note, I didn't tune the settings of this at all, it was just the first try.
 #for x in exp/nnet2_online_wsj/nnet_ms_a_rm_online/decode*; do grep WER $x/wer_* | utils/best_wer.sh ; done
-%WER 1.58 [ 198 / 12533, 29 ins, 37 del, 132 sub ] exp/nnet2_online_wsj/nnet_ms_a_rm_online/decode/wer_5
-%WER 7.52 [ 943 / 12533, 89 ins, 169 del, 685 sub ] exp/nnet2_online_wsj/nnet_ms_a_rm_online/decode_ug/wer_12
+%WER 1.56 [ 196 / 12533, 30 ins, 36 del, 130 sub ] exp/nnet2_online_wsj/nnet_ms_a_rm_online/decode/wer_5
+%WER 7.51 [ 941 / 12533, 90 ins, 162 del, 689 sub ] exp/nnet2_online_wsj/nnet_ms_a_rm_online/decode_ug/wer_12
+
+# Discriminative training on top of the previous system (the joint system, with WSJ)... we don't get
+# too much from it on this particular setup.
+for x in exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_*; do grep WER $x/wer* | utils/best_wer.sh ; done
+%WER 1.56 [ 196 / 12533, 30 ins, 36 del, 130 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_epoch0/wer_5
+%WER 1.57 [ 197 / 12533, 29 ins, 35 del, 133 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_epoch1/wer_6
+%WER 1.55 [ 194 / 12533, 29 ins, 35 del, 130 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_epoch2/wer_6
+%WER 1.53 [ 192 / 12533, 32 ins, 30 del, 130 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_epoch3/wer_5
+%WER 1.51 [ 189 / 12533, 33 ins, 28 del, 128 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_epoch4/wer_5
+%WER 7.51 [ 941 / 12533, 90 ins, 162 del, 689 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch0/wer_12
+%WER 7.49 [ 939 / 12533, 89 ins, 150 del, 700 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch1/wer_12
+%WER 7.37 [ 924 / 12533, 80 ins, 156 del, 688 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch2/wer_13
+%WER 7.33 [ 919 / 12533, 80 ins, 153 del, 686 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch3/wer_13
+%WER 7.36 [ 923 / 12533, 85 ins, 148 del, 690 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch4/wer_13
 

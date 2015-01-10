@@ -14,7 +14,7 @@ use File::Basename;
 # have to be a fully qualified name.
 #
 # Later we may extend this so that on each line of .queue/machines you
-# can specifiy various resources that each machine has, such as how
+# can specify various resources that each machine has, such as how
 # many slots and how much memory, and make it wait if machines are 
 # busy.  But for now it simply ssh's to a machine from those in the list.
 
@@ -58,6 +58,9 @@ if (@ARGV > 0) {
     shift;
     if ($jobstart > $jobend) {
       die "run.pl: invalid job range $ARGV[0]";
+    }
+    if ($jobstart <= 0) {
+      die "run.pl: invalid job range $ARGV[0], start must be strictly positive (this is required for GridEngine compatibility)";
     }
   } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)$/) { # e.g. JOB=1.
     $jobname = $1;

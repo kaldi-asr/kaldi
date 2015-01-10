@@ -12,6 +12,13 @@
 # takes multiple egs directories which must be created by get_egs2.sh, and the
 # corresponding alignment directories (only needed for training the transition
 # models).
+
+# for the n languages, we share all the hidden layers but there are separate
+# final layers.  On each iteration of training we average the hidden layers
+# across all jobs of all languages, but average the parameters of the final,
+# output layer only within each language.  The script starts from a partially
+# trained model from the first language (language 0 in the directory-numbering
+# scheme).  See egs/rm/s5/local/online/run_nnet2_wsj_joint.sh for example.
 #
 # This script requires you to supply a neural net partially trained for the 1st
 # language, by one of the regular training scripts, to be used as the initial
