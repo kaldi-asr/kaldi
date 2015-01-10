@@ -260,6 +260,9 @@ steps/train_quick.sh --cmd "$train_cmd" \
   done
 )&
 
+# steps/cleanup/debug_lexicon.sh --remove-stress true  --nj 200 --cmd "$train_cmd" data/train_clean_100 \
+#    data/lang exp/tri6b data/local/dict/lexicon.txt exp/debug_lexicon_100h
+
 # Perform RNNLM rescoring of tri6b
 # Attention: with default settings requires 4 GB of memory per rescoring job, so commenting this out by default
 # local/run_rnnlm.sh $data data/local/lm
@@ -271,4 +274,13 @@ local/nnet2/run_7a_960.sh || exit 1
 ## we've found that this isn't helpful-- see the comments in local/run_data_cleaning.sh
 #local/run_data_cleaning.sh
 
-# local/online/run_nnet2.sh
+
+# # The following is the current online-nnet2 recipe, with "multi-splice".
+# local/online/run_nnet2_ms.sh
+
+# # The following is the discriminative-training continuation of the above.
+# local/online/run_nnet2_ms_disc.sh
+
+# ## The following is an older version of the online-nnet2 recipe, without "multi-splice".  It's faster
+# ## to train but slightly worse.
+# # local/online/run_nnet2.sh
