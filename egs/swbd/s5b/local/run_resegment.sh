@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# This script demonstrates some scripts for resegmenting data.  This was
+# developed for a scenario where the evaluation data doesn't come with
+# segmentation, so we run a phone decoding on the evaluation data to get the
+# segmentation, before we decode.  We were concerned that possibly there would
+# be a mismatch with the way training data was prepared (e.g. the CMVN would
+# have a different amount of silence), so this script demonstrates running the
+# same resegmentation on the training data and automatically converting the text
+# of the transcriptions to match the automatically derived segmentation.  IIRC
+# this probably didn't make much difference.  The main point of this script is
+# to have a top-level place that demonstrates the various scripts related to
+# resegmentation of data.
+
+
 . cmd.sh
 
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
