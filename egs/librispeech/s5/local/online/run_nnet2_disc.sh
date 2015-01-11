@@ -132,7 +132,7 @@ if [ $stage -le 5 ]; then
   ln -sf $(readlink -f ${srcdir}_online/conf) $dir/conf # so it acts like an online-decoding directory
 
   for epoch in $(seq $decode_start_epoch $num_epochs); do
-    for test in dev_clean dev_other; do
+    for test in test_clean test_other dev_clean dev_other; do
       (
         steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 50 \
           --iter epoch$epoch exp/tri6b/graph_tgsmall data/${test} $dir/decode_epoch${epoch}_${test}_tgsmall || exit 1
@@ -141,6 +141,9 @@ if [ $stage -le 5 ]; then
         steps/lmrescore_const_arpa.sh \
           --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
           data/$test $dir/decode_epoch${epoch}_${test}_{tgsmall,tglarge} || exit 1;
+        steps/lmrescore_const_arpa.sh \
+          --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
+          data/$test $dir/decode_epoch${epoch}_${test}_{tgsmall,fglarge} || exit 1;
       ) &
     done
   done

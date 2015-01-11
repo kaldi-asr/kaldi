@@ -56,12 +56,18 @@ if [ ! -f $dir/final.mdl ]; then
 fi
 
 
-for test in dev_clean dev_other; do
+for test in test_clean test_other dev_clean dev_other; do
   steps/nnet2/decode.sh --nj 20 --cmd "$decode_cmd" \
     --transform-dir exp/tri4b/decode_tgsmall_$test \
     exp/tri4b/graph_tgsmall data/$test $dir/decode_tgsmall_$test || exit 1;
   steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
     data/$test $dir/decode_{tgsmall,tgmed}_$test  || exit 1;
+  steps/lmrescore_const_arpa.sh \
+    --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
+    data/$test $dir/decode_{tgsmall,tglarge}_$test || exit 1;
+  steps/lmrescore_const_arpa.sh \
+    --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
+    data/$test $dir/decode_{tgsmall,fglarge}_$test || exit 1;
 done
 
 exit 0;

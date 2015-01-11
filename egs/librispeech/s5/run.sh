@@ -55,9 +55,12 @@ utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/
 
 local/format_lms.sh data/local/lm || exit 1
 
-# Create ConstArpaLm format language model for full trigram language model.
+# Create ConstArpaLm format language model for full trigram and 4gram language
+# model.
 utils/build_const_arpa_lm.sh \
   data/local/lm/lm_tglarge.arpa.gz data/lang data/lang_test_tglarge || exit 1;
+utils/build_const_arpa_lm.sh \
+  data/local/lm/lm_fglarge.arpa.gz data/lang data/lang_test_fglarge || exit 1;
 
 mfccdir=mfcc
 # spread the mfccs over various machines, as this data-set is quite large.
@@ -89,7 +92,7 @@ steps/train_mono.sh --boost-silence 1.25 --nj 20 --cmd "$train_cmd" \
 # decode using the monophone model
 (
   utils/mkgraph.sh --mono data/lang_test_tgsmall exp/mono exp/mono/graph_tgsmall || exit 1
-  for test in dev_clean dev_other; do
+  for test in test_clean test_other dev_clean dev_other; do
     steps/decode.sh --nj 20 --cmd "$decode_cmd" \
       exp/mono/graph_tgsmall data/$test exp/mono/decode_tgsmall_$test
   done
@@ -105,7 +108,7 @@ steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
 # decode using the tri1 model
 (
   utils/mkgraph.sh data/lang_test_tgsmall exp/tri1 exp/tri1/graph_tgsmall || exit 1;
-  for test in dev_clean dev_other; do
+  for test in test_clean test_other dev_clean dev_other; do
     steps/decode.sh --nj 20 --cmd "$decode_cmd" \
       exp/tri1/graph_tgsmall data/$test exp/tri1/decode_tgsmall_$test || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -128,7 +131,7 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
 # decode using the LDA+MLLT model
 (
   utils/mkgraph.sh data/lang_test_tgsmall exp/tri2b exp/tri2b/graph_tgsmall || exit 1;
-  for test in dev_clean dev_other; do
+  for test in test_clean test_other dev_clean dev_other; do
     steps/decode.sh --nj 20 --cmd "$decode_cmd" \
       exp/tri2b/graph_tgsmall data/$test exp/tri2b/decode_tgsmall_$test || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -150,7 +153,7 @@ steps/train_sat.sh --cmd "$train_cmd" \
 # decode using the tri3b model
 (
   utils/mkgraph.sh data/lang_test_tgsmall exp/tri3b exp/tri3b/graph_tgsmall || exit 1;
-  for test in dev_clean dev_other; do
+  for test in test_clean test_other dev_clean dev_other; do
     steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
       exp/tri3b/graph_tgsmall data/$test exp/tri3b/decode_tgsmall_$test || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -172,7 +175,7 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 # decode using the tri4b model
 (
   utils/mkgraph.sh data/lang_test_tgsmall exp/tri4b exp/tri4b/graph_tgsmall || exit 1;
-  for test in dev_clean dev_other; do
+  for test in test_clean test_other dev_clean dev_other; do
     steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
       exp/tri4b/graph_tgsmall data/$test exp/tri4b/decode_tgsmall_$test || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -180,6 +183,9 @@ steps/train_sat.sh  --cmd "$train_cmd" \
     steps/lmrescore_const_arpa.sh \
       --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
       data/$test exp/tri4b/decode_{tgsmall,tglarge}_$test || exit 1;
+    steps/lmrescore_const_arpa.sh \
+      --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
+      data/$test exp/tri4b/decode_{tgsmall,fglarge}_$test || exit 1;
   done
 )&
 
@@ -213,7 +219,7 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 # decode using the tri5b model
 (
   utils/mkgraph.sh data/lang_test_tgsmall exp/tri5b exp/tri5b/graph_tgsmall || exit 1;
-  for test in dev_clean dev_other; do
+  for test in test_clean test_other dev_clean dev_other; do
     steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
       exp/tri5b/graph_tgsmall data/$test exp/tri5b/decode_tgsmall_$test || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -221,6 +227,9 @@ steps/train_sat.sh  --cmd "$train_cmd" \
     steps/lmrescore_const_arpa.sh \
       --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
       data/$test exp/tri5b/decode_{tgsmall,tglarge}_$test || exit 1;
+    steps/lmrescore_const_arpa.sh \
+      --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
+      data/$test exp/tri5b/decode_{tgsmall,fglarge}_$test || exit 1;
   done
 )&
 
@@ -249,7 +258,7 @@ steps/train_quick.sh --cmd "$train_cmd" \
 # decode using the tri6b model
 (
   utils/mkgraph.sh data/lang_test_tgsmall exp/tri6b exp/tri6b/graph_tgsmall || exit 1;
-  for test in dev_clean dev_other; do
+  for test in test_clean test_other dev_clean dev_other; do
     steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
       exp/tri6b/graph_tgsmall data/$test exp/tri6b/decode_tgsmall_$test || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -257,6 +266,9 @@ steps/train_quick.sh --cmd "$train_cmd" \
     steps/lmrescore_const_arpa.sh \
       --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
       data/$test exp/tri6b/decode_{tgsmall,tglarge}_$test || exit 1;
+    steps/lmrescore_const_arpa.sh \
+      --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
+      data/$test exp/tri6b/decode_{tgsmall,fglarge}_$test || exit 1;
   done
 )&
 

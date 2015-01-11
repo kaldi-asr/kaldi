@@ -103,7 +103,7 @@ fi
 if [ $stage -le 11 ]; then
   # do the actual online decoding with iVectors, carrying info forward from 
   # previous utterances of the same speaker.
-  for test in dev_clean dev_other; do
+  for test in test_clean test_other dev_clean dev_other; do
     steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
       exp/tri6b/graph_tgsmall data/$test ${dir}_online/decode_${test}_tgsmall || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -111,6 +111,9 @@ if [ $stage -le 11 ]; then
     steps/lmrescore_const_arpa.sh \
       --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
       data/$test ${dir}_online/decode_${test}_{tgsmall,tglarge} || exit 1;
+    steps/lmrescore_const_arpa.sh \
+      --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
+      data/$test ${dir}_online/decode_${test}_{tgsmall,fglarge} || exit 1;
   done
 fi
 
