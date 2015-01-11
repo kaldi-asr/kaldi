@@ -61,6 +61,7 @@ for order in 3 4; do
   LM=data/local/lm/sw1.o${order}g.kn.gz
   utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
     data/lang $LM data/local/dict/lexicon.txt data/lang_sw1_$lm_suffix
+  
   LM=data/local/lm/sw1_fsh.o${order}g.kn.gz
   utils/build_const_arpa_lm.sh $LM data/lang data/lang_sw1_fsh_$lm_suffix
   
@@ -91,7 +92,7 @@ steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir
 utils/fix_data_dir.sh data/train
 
 # Create MFCCs for the eval set
-steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 data/eval2000 exp/make_mfcc/eval2000 $mfccdir
+steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 data/eval2000 exp/make_mfcc/eval2000 $mfccdir
 steps/compute_cmvn_stats.sh data/eval2000 exp/make_mfcc/eval2000 $mfccdir
 utils/fix_data_dir.sh data/eval2000  # remove segments with problems
 
@@ -114,10 +115,9 @@ utils/subset_data_dir.sh --last data/train $n data/train_nodev
 
 utils/subset_data_dir.sh --shortest data/train_nodev 100000 data/train_100kshort
 local/remove_dup_utts.sh 10 data/train_100kshort data/train_100kshort_nodup
-utils/subset_data_dir.sh data/train_100kshort 30000 data/train_30kshort
+utils/subset_data_dir.sh data/train_100kshort_nodup 10000 data/train_10k_nodup
 
-# Take the first 30k utterances (about 1/8th of the data).. this is
-# subset is used in some recipes in local/.
+# Take the first 30k utterances (about 1/8th of the data)
 utils/subset_data_dir.sh --first data/train_nodev 30000 data/train_30k
 local/remove_dup_utts.sh 200 data/train_30k data/train_30k_nodup  # 33hr
 
@@ -130,14 +130,14 @@ local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 110hr
 local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 286hr
 
 ## Starting basic training on MFCC features
-steps/train_mono.sh --nj 30 --cmd "$train_cmd" \
-  data/train_30kshort data/lang exp/mono 
+steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
+  data/train_10k_nodup data/lang exp/mono 
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
-  data/train_100k_nodup data/lang exp/mono exp/mono_ali 
+  data/train_30k_nodup data/lang exp/mono exp/mono_ali 
 
 steps/train_deltas.sh --cmd "$train_cmd" \
-  3200 30000 data/train_100k_nodup data/lang exp/mono_ali exp/tri1 
+  3200 30000 data/train_30k_nodup data/lang exp/mono_ali exp/tri1 
 
 for lm_suffix in tg fsh_tgpr; do
   (
@@ -150,10 +150,10 @@ for lm_suffix in tg fsh_tgpr; do
 done
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
-  data/train_100k_nodup data/lang exp/tri1 exp/tri1_ali 
+  data/train_30k_nodup data/lang exp/tri1 exp/tri1_ali 
 
-steps/train_lda_mllt.sh  --cmd "$train_cmd" \
-  4000 70000 data/train_100k_nodup data/lang exp/tri1_ali exp/tri2 
+steps/train_deltas.sh --cmd "$train_cmd" \
+  3200 30000 data/train_30k_nodup data/lang exp/tri1_ali exp/tri2 
 
 
 for lm_suffix in tg fsh_tgpr; do
@@ -166,37 +166,32 @@ for lm_suffix in tg fsh_tgpr; do
     $train_cmd $graph_dir/mkgraph.log \
       utils/mkgraph.sh data/lang_sw1_${lm_suffix} exp/tri2 $graph_dir
     steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-      $graph_dir data/eval2000 exp/tri2/decode_eval2000_sw1_${lm_suffix} &
-    steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-      $graph_dir data/train_dev exp/tri2/decode_train_dev_sw1_${lm_suffix}
+      $graph_dir data/eval2000 exp/tri2/decode_eval2000_sw1_${lm_suffix}
   ) &
 done
 
-# From now, we start using all of the data (except some duplicates of common
-# utterances, which don't really contribute much).
+# From now, we start building a bigger system (on train_100k_nodup, which has 
+# 110hrs of data). We start with the LDA+MLLT system
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
-  data/train_nodup data/lang exp/tri2 exp/tri2_ali_nodup 
+  data/train_100k_nodup data/lang exp/tri2 exp/tri2_ali_100k_nodup 
 
-# Do another iteration of LDA+MLLT training, on all the data.
+# Train tri3b, which is LDA+MLLT, on 100k_nodup data.
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
-  6000 140000 data/train_nodup data/lang exp/tri2_ali_nodup exp/tri3 
+  5500 90000 data/train_100k_nodup data/lang exp/tri2_ali_100k_nodup exp/tri3b 
 
 for lm_suffix in tg fsh_tgpr; do
   (
-    graph_dir=exp/tri3/graph_sw1_${lm_suffix}
+    graph_dir=exp/tri3b/graph_sw1_${lm_suffix}
     $train_cmd $graph_dir/mkgraph.log \
-      utils/mkgraph.sh data/lang_sw1_${lm_suffix} exp/tri3 $graph_dir
+      utils/mkgraph.sh data/lang_sw1_${lm_suffix} exp/tri3b $graph_dir
     steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-      $graph_dir data/eval2000 exp/tri3/decode_eval2000_sw1_${lm_suffix}
-    steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-      $graph_dir data/train_dev exp/tri3/decode_train_dev_sw1_${lm_suffix}
-
+      $graph_dir data/eval2000 exp/tri3b/decode_eval2000_sw1_${lm_suffix}
   ) &
 done
 
-# Train tri4a, which is LDA+MLLT+SAT, on all the (nodup) data.
+# Train tri4a, which is LDA+MLLT+SAT, on 100k_nodup data.
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
-  data/train_nodup data/lang exp/tri3b exp/tri3b_ali_nodup 
+  data/train_100k_nodup data/lang exp/tri3b exp/tri3b_ali_100k_nodup 
 
 
 steps/train_sat.sh  --cmd "$train_cmd" \
@@ -371,7 +366,6 @@ done
 # this will help find issues with the lexicon.
 # steps/cleanup/debug_lexicon.sh --nj 300 --cmd "$train_cmd" data/train_nodev data/lang exp/tri4b data/local/dict/lexicon.txt exp/debug_lexicon
 
-# steps/cleanup/find_bad_utts.sh  --nj 150 --cmd "$train_cmd" data/train_nodup data/lang exp/tri4b_vf0.001 exp/tri4b_vf0.001_debug
 
 # local/run_sgmm2.sh
 

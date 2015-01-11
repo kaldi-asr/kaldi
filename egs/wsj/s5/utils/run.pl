@@ -22,9 +22,11 @@
 
 @ARGV < 2 && die "usage: run.pl log-file command-line arguments...";
 
-$jobstart=1;
-$jobend=1;
-$qsub_opts=""; # These will be ignored.
+
+$max_jobs_run = -1;
+$jobstart = 1;
+$jobend = 1;
+$ignored_opts = ""; # These will be ignored.
 
 # First parse an option like JOB=1:4, and any
 # options that would normally be given to
@@ -35,17 +37,22 @@ if (@ARGV > 0) {
     # that would normally go to qsub, but which will be ignored here.
     $switch = shift @ARGV;
     if ($switch eq "-V") {
-      $qsub_opts .= "-V ";
+      $ignored_opts .= "-V ";
+    } elsif ($switch eq "--max-jobs-run") { # we do support this option.
+      $max_jobs_run = shift @ARGV;
+      if ($max_jobs_run <= 0) {
+        die "run.pl: invalid option --max-jobs-run $max_jobs_run";
+      }
     } else {
       $option = shift @ARGV;
       if ($switch eq "-sync" && $option =~ m/^[yY]/) {
-        $qsub_opts .= "-sync "; # Note: in the
+        $ignored_opts .= "-sync "; # Note: in the
         # corresponding code in queue.pl it says instead, just "$sync = 1;".
       }
-      $qsub_opts .= "$switch $option ";
+      $ignored_opts .= "$switch $option ";
       if ($switch eq "-pe") { # e.g. -pe smp 5
         $option2 = shift @ARGV;
-        $qsub_opts .= "$option2 ";
+        $ignored_opts .= "$option2 ";
       }
     }
   }
@@ -70,8 +77,47 @@ if (@ARGV > 0) {
   }
 }
 
-if ($qsub_opts ne "") {
-  print STDERR "Warning: run.pl ignoring options \"$qsub_opts\"\n";
+if ($ignored_opts ne "") {
+  print STDERR "Warning: run.pl ignoring options \"$ignored_opts\"\n";
+}
+
+if ($max_jobs_run == -1) { # If --max-jobs-run option not set,
+                           # then work out the number of processors if possible,
+                           # and set it based on that.
+  $max_jobs_run = 0;
+  if (open(P, "</proc/cpuinfo")) {  # Linux
+    while (<P>) { if (m/^processor/) { $max_jobs_run++; } }
+    if ($max_jobs_run == 0) {
+      print STDERR "run.pl: warning failed to detect any processors from /proc/cpuinfo\n";
+      $max_jobs_run = 10;  # reasonable default.
+    }
+    close(P);
+  } elsif (open(P, "sysctl -a |")) {  # BSD/Darwin
+    while (<P>) {
+      if (m/hw\.ncpu\s*[:=]\s*(\d+)/) { # hw.ncpu = 4, or hw.ncpu: 4
+        $max_jobs_run = $1;
+        last;
+      }
+    }
+    close(P);
+    if ($max_jobs_run == 0) {
+      print STDERR "run.pl: warning failed to detect any processors from sysctl -a\n";
+      $max_jobs_run = 10;  # reasonable default.
+    }
+  } else {
+    # allow at most 32 jobs at once, on non-UNIX systems; change this code
+    # if you need to change this default.
+    $max_jobs_run = 32;
+  }
+  # The just-computed value of $max_jobs_run is just the number of processors
+  # (or our best guess); and if it happens that the number of jobs we need to
+  # run is just slightly above $max_jobs_run, it will make sense to increase
+  # $max_jobs_run to equal the number of jobs, so we don't have a small number
+  # of leftover jobs.
+  $num_jobs = $jobend - $jobstart + 1;
+  if ($num_jobs > $max_jobs_run && $num_jobs < 1.4 * $max_jobs_run) {
+    $max_jobs_run = $num_jobs;
+  }
 }
 
 $logfile = shift @ARGV;
@@ -91,8 +137,16 @@ foreach $x (@ARGV) {
     else { $cmd .= "\"$x\" "; } 
 }
 
+$ret = 0;
+$numfail = 0;
 
 for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
+  $prev_jobid = $jobid - $max_jobs_run;
+  if ($prev_jobid >= $jobstart) {
+    $r = waitpid($pid[$prev_jobid], 0);
+    if ($r == -1) { die "Error waiting for child process"; } # should never happen.
+    if ($? != 0) { $numfail++; $ret = 1; } # The child process failed.
+  }
   $childpid = fork();
   if (!defined $childpid) { die "Error forking in run.pl (writing to $logfile)"; }
   if ($childpid == 0) { # We're in the child... this branch
@@ -115,23 +169,30 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
     close(B);                   # If there was an error, exit status is in $?
     $ret = $?;
 
+    $lowbits = $ret & 127;
+    $highbits = $ret >> 8;
+    if ($lowbits != 0) { $return_str = "code $highbits; signal $lowbits" }
+    else { $return_str = "code $highbits"; }
+
     $endtime = `date +'%s'`;
     open(F, ">>$logfile") || die "Error opening log file $logfile (again)";
     $enddate = `date`;
     chop $enddate;
     print F "# Accounting: time=" . ($endtime - $starttime) . " threads=1\n";
-    print F "# Ended (code $ret) at " . $enddate . ", elapsed time " . ($endtime-$starttime) . " seconds\n";
+    print F "# Ended ($return_str) at " . $enddate . ", elapsed time " . ($endtime-$starttime) . " seconds\n";
     close(F);
     exit($ret == 0 ? 0 : 1);
+  } else {
+    $pid[$jobid] = $childpid;
   }
 }
 
-$ret = 0;
-$numfail = 0;
 for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
-  $r = wait();
-  if ($r == -1) { die "Error waiting for child process"; } # should never happen.
-  if ($? != 0) { $numfail++; $ret = 1; } # The child process failed.
+  if ($jobid > $jobend - $max_jobs_run) {
+    $r = waitpid($pid[$jobid], 0);
+    if ($r == -1) { die "Error waiting for child process"; } # should never happen.
+    if ($? != 0) { $numfail++; $ret = 1; } # The child process failed.
+  }
 }
 
 if ($ret != 0) {
