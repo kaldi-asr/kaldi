@@ -58,7 +58,7 @@ for lm_suffix in bg tgpr tg bg_5k tgpr_5k tg_5k; do
       --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
      fstrmepsilon | fstarcsort --sort_type=ilabel > $test/G.fst
   
-  utils/validate_lang.pl --skip-determinizability-check $test || exit 1;
+  utils/validate_lang.pl --skip-determinization-check $test || exit 1;
 done
 
 echo "Succeeded in formatting data."

@@ -6,13 +6,14 @@
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 
-case 0 in    #goto here
-    1)
+#clean LDC wsj0 corpus available in CLSP server: /export/corpora5/LDC/LDC93S6B
+#aurora4 directory in CLSP server: /export/corpora5/AURORA
 
-
-aurora4=/mnt/spdb/aurora4
+#aurora4=/mnt/spdb/aurora4
+aurora4=/export/corpora5/AURORA
 #we need lm, trans, from WSJ0 CORPUS
-wsj0=/mnt/spdb/wall_street_journal
+#wsj0=/mnt/spdb/wall_street_journal
+wsj0=/export/corpora5/LDC/LDC93S6B
 
 local/aurora4_data_prep.sh $aurora4 $wsj0
 
@@ -57,7 +58,6 @@ steps/train_mono.sh --boost-silence 1.25 --nj 10  \
 
 #steps/align_si.sh --boost-silence 1.25 --nj 10  \
 #   data/train_si84_clean data/lang exp/mono0a exp/mono0a_ali || exit 1;
-
 steps/align_si.sh --boost-silence 1.25 --nj 10  \
    data/train_si84_multi data/lang exp/mono0a_multi exp/mono0a_multi_ali || exit 1;
 
@@ -68,20 +68,11 @@ steps/train_deltas.sh --boost-silence 1.25 \
     2000 10000 data/train_si84_multi data/lang exp/mono0a_multi_ali exp/tri1_multi || exit 1;
 
 
-while [ ! -f data/lang_test_tgpr/tmp/LG.fst ] || \
-   [ -z data/lang_test_tgpr/tmp/LG.fst ]; do
-  sleep 20;
-done
-sleep 30;
-# or the mono mkgraph.sh might be writing 
-# data/lang_test_tgpr/tmp/LG.fst which will cause this to fail.
-
 steps/align_si.sh --nj 10 \
   data/train_si84_multi data/lang exp/tri1_multi exp/tri1_multi_ali_si84 || exit 1;
 
 steps/train_deltas.sh  \
   2500 15000 data/train_si84_multi data/lang exp/tri1_multi_ali_si84 exp/tri2a_multi || exit 1;
-
 
 steps/train_lda_mllt.sh \
    --splice-opts "--left-context=3 --right-context=3" \
@@ -107,7 +98,7 @@ steps/align_si.sh  --nj 10 \
 #RBM pretrain
 dir=exp/tri3a_dnn_pretrain
 $cuda_cmd $dir/_pretrain_dbn.log \
-  steps/nnet/pretrain_dbn.sh --use-gpu-id 0 --nn-depth 7 --rbm-iter 3 data-fbank/train_si84_multi $dir
+  steps/nnet/pretrain_dbn.sh --nn-depth 7 --rbm-iter 3 data-fbank/train_si84_multi $dir
 
 dir=exp/tri3a_dnn
 ali=exp/tri2b_multi_ali_si84
@@ -115,7 +106,7 @@ ali_dev=exp/tri2b_multi_ali_dev_0330
 feature_transform=exp/tri3a_dnn_pretrain/final.feature_transform
 dbn=exp/tri3a_dnn_pretrain/7.dbn
 $cuda_cmd $dir/_train_nnet.log \
-  steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
+  steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
   data-fbank/train_si84_multi data-fbank/dev_0330 data/lang $ali $ali_dev $dir || exit 1;
 
 utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri3a_dnn exp/tri3a_dnn/graph_tgpr_5k || exit 1;
@@ -139,7 +130,7 @@ ali_dev=exp/tri3a_dnn_ali_dev_0330
 feature_transform=exp/tri3a_dnn_pretrain/final.feature_transform
 dbn=exp/tri3a_dnn_pretrain/7.dbn
 $cuda_cmd $dir/_train_nnet.log \
-  steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 --use-gpu-id 0 \
+  steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
   data-fbank/train_si84_multi data-fbank/dev_0330 data/lang $ali $ali_dev $dir || exit 1;
 
 utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri4a_dnn exp/tri4a_dnn/graph_tgpr_5k || exit 1;

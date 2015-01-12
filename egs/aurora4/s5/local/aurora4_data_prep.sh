@@ -4,10 +4,6 @@ set -e
 # Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
 
-# This is modified from the script in standard Kaldi recipe to account
-# for the way the WSJ data is structured on the Edinburgh systems. 
-# - Arnab Ghoshal, 29/05/12
-
 if [ $# -ne 2 ]; then
   printf "\nUSAGE: %s <corpus-directory>\n\n" `basename $0`
   echo "The argument should be a the top-level WSJ corpus directory."
@@ -91,8 +87,9 @@ x=train_si84_multi
 $local/flist2scp_12.pl $x.flist | sort > ${x}_sph_tmp.scp
 cat ${x}_sph_tmp.scp | awk '{print $1}' \
   | $local/find_transcripts.pl dot_files.flist > ${x}_tmp.trans1
-cat ${x}_sph_tmp.scp | awk '{printf("%s1 %s\n", $1, $2);}' > ${x}_sph.scp
-cat ${x}_tmp.trans1 | awk '{printf("%s1 ", $1); for(i=2;i<=NF;i++) printf("%s ", $i); printf("\n");}' > ${x}.trans1
+cat ${x}_sph_tmp.scp | awk '{printf("%s1 %s\n", $1, $2);}' | grep -v '408o0302\.wv2$'> ${x}_sph.scp
+cat ${x}_tmp.trans1 | awk '{printf("%s1 ", $1); for(i=2;i<=NF;i++) printf("%s ", $i); printf("\n");}' \
+  | sort -u > ${x}.trans1
 
 # Trans and sph for Dev Set
 for x in $(seq -f "%02g" 01 14); do
@@ -318,7 +315,6 @@ cat test_0166_??.trans1 | sort -k1 > test_0166.trans1
 cat test_eval92_??.trans1 | sort -k1 > test_eval92.trans1
 
 
-
 # Do some basic normalization steps.  At this point we don't remove OOVs--
 # that will be done inside the training scripts, as we'd like to make the
 # data-preparation stage independent of the specific lexicon used.
@@ -342,17 +338,17 @@ for x in train_si84_clean train_si84_multi test_eval92 test_0166 dev_0330 dev_12
 done
 
 #in case we want to limit lm's on most frequent words, copy lm training word frequency list
-cp $CORPUS/wsj0/doc/lng_modl/vocab/wfl_64.lst $lmdir
+cp $CORPUS/11-13.1/wsj0/doc/lng_modl/vocab/wfl_64.lst $lmdir
 chmod u+w $lmdir/*.lst # had weird permissions on source.
 
 # The 20K vocab, open-vocabulary language model (i.e. the one with UNK), without
 # verbalized pronunciations.   This is the most common test setup, I understand.
 
-cp $CORPUS/wsj0/doc/lng_modl/base_lm/bcb20onp.z $lmdir/lm_bg.arpa.gz || exit 1;
+cp $CORPUS/11-13.1/wsj0/doc/lng_modl/base_lm/bcb20onp.z $lmdir/lm_bg.arpa.gz || exit 1;
 chmod u+w $lmdir/lm_bg.arpa.gz
 
 # trigram would be:
-cat $CORPUS/wsj0/doc/lng_modl/base_lm/tcb20onp.z | \
+cat $CORPUS/11-13.1/wsj0/doc/lng_modl/base_lm/tcb20onp.z | \
   perl -e 'while(<>){ if(m/^\\data\\/){ print; last;  } } while(<>){ print; }' \
   | gzip -c -f > $lmdir/lm_tg.arpa.gz || exit 1;
 
@@ -360,11 +356,11 @@ prune-lm --threshold=1e-7 $lmdir/lm_tg.arpa.gz $lmdir/lm_tgpr.arpa || exit 1;
 gzip -f $lmdir/lm_tgpr.arpa || exit 1;
 
 # repeat for 5k language models
-cp $CORPUS/wsj0/doc/lng_modl/base_lm/bcb05onp.z  $lmdir/lm_bg_5k.arpa.gz || exit 1;
+cp $CORPUS/11-13.1/wsj0/doc/lng_modl/base_lm/bcb05onp.z  $lmdir/lm_bg_5k.arpa.gz || exit 1;
 chmod u+w $lmdir/lm_bg_5k.arpa.gz
 
 # trigram would be: !only closed vocabulary here!
-cp $CORPUS/wsj0/doc/lng_modl/base_lm/tcb05cnp.z $lmdir/lm_tg_5k.arpa.gz || exit 1;
+cp $CORPUS/11-13.1/wsj0/doc/lng_modl/base_lm/tcb05cnp.z $lmdir/lm_tg_5k.arpa.gz || exit 1;
 chmod u+w $lmdir/lm_tg_5k.arpa.gz
 gunzip $lmdir/lm_tg_5k.arpa.gz
 tail -n 4328839 $lmdir/lm_tg_5k.arpa | gzip -c -f > $lmdir/lm_tg_5k.arpa.gz
@@ -392,7 +388,7 @@ fi
 # LDC put it on the web.  Perhaps it was accidentally omitted from the
 # disks.  
 
-cat $CORPUS/wsj0/doc/spkrinfo.txt \
+cat $CORPUS/11-13.1/wsj0/doc/spkrinfo.txt \
     ./wsj0-train-spkrinfo.txt  | \
     perl -ane 'tr/A-Z/a-z/; m/^;/ || print;' | \
     awk '{print $1, $2}' | grep -v -- -- | sort | uniq > spk2gender
