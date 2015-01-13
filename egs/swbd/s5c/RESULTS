@@ -1,0 +1,54 @@
+# Note: these numbers are on eval2000 but don't compare them with the
+# numbers Microsoft quotes in their DNN papers; those are just on the
+# Switchboard portion of eval2000, excluding CallHome, which is
+# substantially easier.
+
+# GMM and SGMM numbers.
+# for x in exp/{mono,tri,sgmm}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+# for x in exp/{mono,tri,sgmm}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
+%WER 36.1 | 1831 21395 | 66.9 23.7 9.3 3.1 36.1 68.3 | exp/tri1/decode_eval2000_nopp_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 32.6 | 1831 21395 | 70.5 21.1 8.4 3.1 32.6 67.0 | exp/tri2/decode_eval2000_nopp_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 26.1 | 1831 21395 | 76.4 16.8 6.8 2.5 26.1 63.8 | exp/tri3/decode_eval2000_nopp_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 26.0 | 1831 21395 | 76.5 16.8 6.6 2.5 26.0 63.9 | exp/tri3/decode_eval2000_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 20.3 | 1831 21395 | 81.8 12.8 5.4 2.1 20.3 57.9 | exp/tri4/decode_eval2000_sw1_fsh_fg/score_14/eval2000.ctm.swbd.filt.sys
+%WER 22.0 | 1831 21395 | 80.2 14.0 5.9 2.2 22.0 59.7 | exp/tri4/decode_eval2000_sw1_tg/score_14/eval2000.ctm.swbd.filt.sys
+%WER 30.1 | 1831 21395 | 73.1 19.6 7.3 3.2 30.1 65.0 | exp/tri4/decode_eval2000_sw1_tg.si/score_14/eval2000.ctm.swbd.filt.sys
+%WER 20.5 | 1831 21395 | 81.5 13.1 5.4 2.0 20.5 57.8 | exp/tri4_mmi_b0.1/decode_eval2000_1.mdl_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 19.6 | 1831 21395 | 82.2 12.3 5.5 1.8 19.6 56.4 | exp/tri4_mmi_b0.1/decode_eval2000_2.mdl_sw1_tg/score_14/eval2000.ctm.swbd.filt.sys
+%WER 19.4 | 1831 21395 | 82.6 12.3 5.1 2.0 19.4 56.6 | exp/tri4_mmi_b0.1/decode_eval2000_3.mdl_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 19.2 | 1831 21395 | 82.8 12.1 5.1 2.0 19.2 55.9 | exp/tri4_mmi_b0.1/decode_eval2000_4.mdl_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 20.7 | 1831 21395 | 81.4 13.1 5.5 2.1 20.7 58.7 | exp/tri4_fmmi_b0.1/decode_eval2000_it4_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 19.6 | 1831 21395 | 82.3 12.3 5.4 1.9 19.6 56.8 | exp/tri4_fmmi_b0.1/decode_eval2000_it5_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 19.1 | 1831 21395 | 82.7 12.0 5.3 1.8 19.1 55.9 | exp/tri4_fmmi_b0.1/decode_eval2000_it6_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 19.1 | 1831 21395 | 83.1 12.1 4.9 2.1 19.1 56.1 | exp/tri4_fmmi_b0.1/decode_eval2000_it7_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
+%WER 19.1 | 1831 21395 | 82.9 12.1 5.1 2.0 19.1 56.8 | exp/tri4_fmmi_b0.1/decode_eval2000_it8_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 19.0 | 1831 21395 | 82.9 12.0 5.0 2.0 19.0 56.1 | exp/tri4_fmmi_b0.1/decode_eval2000_it4_sw1_fsh_fg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 17.7 | 1831 21395 | 83.8 11.2 5.0 1.5 17.7 54.7 | exp/tri4_fmmi_b0.1/decode_eval2000_it5_sw1_fsh_fg/score_14/eval2000.ctm.swbd.filt.sys
+%WER 17.4 | 1831 21395 | 84.0 10.9 5.1 1.5 17.4 54.3 | exp/tri4_fmmi_b0.1/decode_eval2000_it6_sw1_fsh_fg/score_14/eval2000.ctm.swbd.filt.sys
+%WER 17.4 | 1831 21395 | 84.2 10.8 5.0 1.6 17.4 54.4 | exp/tri4_fmmi_b0.1/decode_eval2000_it7_sw1_fsh_fg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 17.3 | 1831 21395 | 84.5 10.9 4.6 1.9 17.3 54.9 | exp/tri4_fmmi_b0.1/decode_eval2000_it8_sw1_fsh_fg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 18.6 | 1831 21395 | 83.1 11.2 5.7 1.7 18.6 57.5 | exp/sgmm2_5/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+
+# Nnet2 numbers.
+# for x in exp/nnet2*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+# for x in exp/nnet2*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
+%WER 13.4 | 1831 21395 | 88.0 8.0 4.0 1.4 13.4 50.4 | exp/nnet2_5_gpu/decode_eval2000_sw1_fsh_fg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 14.7 | 1831 21395 | 86.7 8.8 4.4 1.4 14.7 52.0 | exp/nnet2_5_gpu/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+
+# Nnet2 online numbers.
+# for x in exp/nnet2_online*/nnet_a*/decode_train_dev_sw1_*; do grep WER $x/wer_* | utils/best_wer.sh; done
+# for x in exp/nnet2_online*/nnet_a*/decode_eval2000_*; do grep Sum $x/score_*/*sys  | utils/best_wer.sh; done
+%WER 13.6 | 1831 21395 | 87.7 8.0 4.3 1.3 13.6 51.0 | exp/nnet2_online_ms/nnet_a/decode_eval2000_hires_sw1_fsh_fg/score_13/eval2000_hires.ctm.swbd.filt.sys
+%WER 15.0 | 1831 21395 | 86.5 9.1 4.4 1.5 15.0 52.9 | exp/nnet2_online_ms/nnet_a/decode_eval2000_hires_sw1_tg/score_11/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.5 | 1831 21395 | 87.8 7.9 4.3 1.3 13.5 50.8 | exp/nnet2_online_ms/nnet_a_online/decode_eval2000_hires_sw1_fsh_fg/score_13/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.9 | 1831 21395 | 87.6 8.4 4.0 1.5 13.9 51.2 | exp/nnet2_online_ms/nnet_a_online/decode_eval2000_hires_sw1_fsh_fg_per_utt/score_11/eval2000_hires.ctm.swbd.filt.sys
+%WER 14.9 | 1831 21395 | 86.5 8.8 4.8 1.4 14.9 52.4 | exp/nnet2_online_ms/nnet_a_online/decode_eval2000_hires_sw1_tg/score_14/eval2000_hires.ctm.swbd.filt.sys
+%WER 15.1 | 1831 21395 | 86.3 9.2 4.5 1.4 15.1 53.3 | exp/nnet2_online_ms/nnet_a_online/decode_eval2000_hires_sw1_tg_per_utt/score_12/eval2000_hires.ctm.swbd.filt.sys
+
+# Resegmentation numbers.
+%WER 22.4 | 1831 21395 | 79.9 13.4 6.6 2.4 22.4 61.4 | exp/tri4a_reseg/decode_eval2000_sw1_tg/score_15/eval2000.ctm.swbd.filt.sys
+%WER 30.3 | 1831 21395 | 73.1 19.1 7.9 3.4 30.3 67.5 | exp/tri4a_reseg/decode_eval2000_sw1_tg.si/score_13/eval2000.ctm.swbd.filt.sys
+
+# Raw fmllr numbers. 
+%WER 22.1 | 1831 21395 | 80.1 14.1 5.8 2.2 22.1 59.8 | exp/tri4b/decode_eval2000_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 30.1 | 1831 21395 | 72.7 19.5 7.9 2.8 30.1 65.4 | exp/tri4b/decode_eval2000_sw1_tg.si/score_14/eval2000.ctm.swbd.filt.sys
