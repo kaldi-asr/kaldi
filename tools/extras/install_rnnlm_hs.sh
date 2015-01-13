@@ -11,4 +11,7 @@ fi
 echo "Installing RNNLM-HS 0.1b"
 
 cd rnnlm-hs-0.1b
+if  grep -q '#define MAX_STRING 100' rnnlm.c ; then 
+    patch <../extras/rnnlm.patch
+fi
 make
