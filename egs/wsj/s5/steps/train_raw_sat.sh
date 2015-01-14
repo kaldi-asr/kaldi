@@ -30,7 +30,6 @@ num_iters=35   # Number of iterations of training
 max_iter_inc=25 # Last iter to increase #Gauss on.
 power=0.2 # Exponent for number of gaussians according to occurrence counts
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
-phone_map=
 train_tree=true
 # End configuration section.
 
@@ -72,9 +71,6 @@ cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
 raw_dim=$(feat-to-dim scp:$data/feats.scp -) || exit 1;
 ! [ "$raw_dim" -gt 0 ] && echo "raw feature dim not set" && exit 1;
 
-phone_map_opt=
-[ ! -z "$phone_map" ] && phone_map_opt="--phone-map='$phone_map'"
-
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
 cp $alidir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
@@ -102,8 +98,6 @@ else
     echo "$0: obtaining initial fMLLR transforms since not present in $alidir"
     # The next line is necessary because of $silphonelist otherwise being incorrect; would require
     # old $lang dir which would require another option.  Not needed anyway.
-    [ ! -z "$phone_map" ] && \
-       echo "$0: error: you must provide transforms if you use the --phone-map option." && exit 1;
     full_lda_mat="get-full-lda-mat --print-args=false $alidir/final.mat $alidir/full.mat -|"
     $cmd JOB=1:$nj $dir/log/fmllr.0.JOB.log \
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
@@ -179,7 +173,7 @@ if [ $stage -le -1 ]; then
   # Convert the alignments.
   echo "$0: Converting alignments from $alidir to use current tree"
   $cmd JOB=1:$nj $dir/log/convert.JOB.log \
-    convert-ali $phone_map_opt $alidir/final.mdl $dir/1.mdl $dir/tree \
+    convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree \
      "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 

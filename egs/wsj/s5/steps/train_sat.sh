@@ -123,7 +123,7 @@ if [ $stage -le -4 ] && $train_tree; then
   # Get tree stats.
   echo "$0: Accumulating tree stats"
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
-    acc-tree-stats $context_opts --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
+    acc-tree-stats $context_opts $phone_map_opt --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
     "ark:gunzip -c $alidir/ali.JOB.gz|" $dir/JOB.treeacc || exit 1;
   [ "`ls $dir/*.treeacc | wc -w`" -ne "$nj" ] && echo "$0: Wrong #tree-accs" && exit 1;
   $cmd $dir/log/sum_tree_acc.log \

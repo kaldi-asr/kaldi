@@ -25,7 +25,6 @@ num_iters=35   # Number of iterations of training
 max_iter_inc=25 # Last iter to increase #Gauss on.
 power=0.2 # Exponent for number of gaussians according to occurrence counts
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
-phone_map=
 train_tree=true
 # End configuration section.
 
@@ -64,8 +63,6 @@ ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
 sdata=$data/split$nj;
 splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
-phone_map_opt=
-[ ! -z "$phone_map" ] && phone_map_opt="--phone-map='$phone_map'"
 
 mkdir -p $dir/log
 cp $alidir/splice_opts $dir 2>/dev/null # frame-splicing options.
@@ -98,31 +95,29 @@ else
     echo "$0: obtaining initial basis fMLLR transforms since not present in $alidir"
     # The next line is necessary because of $silphonelist otherwise being incorrect; would require
     # old $lang dir which would require another option.  Not needed anyway.
-    [ ! -z "$phone_map" ] && \
-       echo "$0: error: you must provide transforms if you use the --phone-map option." && exit 1;
-      $cmd JOB=1:$nj $dir/log/fmllr.0.JOB.log \
-          ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
-          weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
+    $cmd JOB=1:$nj $dir/log/fmllr.0.JOB.log \
+      ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
+      weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
 	  gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
 	  gmm-basis-fmllr-accs-gpost $spk2utt_opt \
 	  $alidir/final.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1; 
 
-      # Compute the basis matrices.
-      $cmd $dir/log/basis_training.log \
+    # Compute the basis matrices.
+    $cmd $dir/log/basis_training.log \
 	  gmm-basis-fmllr-training $alidir/final.mdl $alidir/fmllr.basis $dir/basis.acc.* || exit 1;
-      $cmd JOB=1:$nj $dir/log/fmllr.0.JOB.log \
-          ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
-          weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
-          gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
+    $cmd JOB=1:$nj $dir/log/fmllr.0.JOB.log \
+      ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
+      weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
+      gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
 	  gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
-          --size-scale=0.2 --step-size-iters=3 \
-          --write-weights=ark:$dir/pre_wgt.JOB \
-          $alidir/final.mdl $alidir/fmllr.basis "$sifeats"  ark,s,cs:- \
-          ark:$alidir/trans.JOB || exit 1;
+      --size-scale=0.2 --step-size-iters=3 \
+      --write-weights=ark:$dir/pre_wgt.JOB \
+      $alidir/final.mdl $alidir/fmllr.basis "$sifeats"  ark,s,cs:- \
+      ark:$alidir/trans.JOB || exit 1;
 
-      feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
-      cur_trans_dir=$alidir
-    fi
+    feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
+    cur_trans_dir=$alidir
+  fi
 fi
 
 if [ $stage -le -4 ] && $train_tree; then
@@ -170,7 +165,7 @@ if [ $stage -le -1 ]; then
   # Convert the alignments.
   echo "$0: Converting alignments from $alidir to use current tree"
   $cmd JOB=1:$nj $dir/log/convert.JOB.log \
-    convert-ali $phone_map_opt $alidir/final.mdl $dir/1.mdl $dir/tree \
+    convert-ali $alidir/final.mdl $dir/1.mdl $dir/tree \
      "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 
