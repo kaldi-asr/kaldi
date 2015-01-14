@@ -138,7 +138,7 @@ echo ===========================================================================
 steps/align_fmllr.sh --nj "$train_nj" --cmd "$train_cmd" \
  data/train data/lang exp/tri3 exp/tri3_ali
 
-#exit 0 # From this point you can run DNN : local/run_dnn.sh
+#exit 0 # From this point you can run DNN : local/nnet/run_dnn.sh
 
 steps/train_ubm.sh --cmd "$train_cmd" \
  $numGaussUBM data/train data/lang exp/tri3_ali exp/ubm4
@@ -187,7 +187,7 @@ echo ===========================================================================
 echo "               DNN Hybrid Training & Decoding (Karel's recipe)            "
 echo ============================================================================
 
-local/run_dnn.sh
+local/nnet/run_dnn.sh
 
 echo ============================================================================
 echo "Finished successfully on" `date`

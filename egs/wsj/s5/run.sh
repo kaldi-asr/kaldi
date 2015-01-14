@@ -363,7 +363,7 @@ local/run_sgmm2.sh
 # local/run_gender_dep.sh
 
 # You probably want to run the hybrid recipe as it is complementary:
-local/run_dnn.sh
+local/nnet/run_dnn.sh
 
 # The following demonstrate how to re-segment long audios.
 # local/run_segmentation.sh

@@ -133,7 +133,7 @@ if [ $stage -le 6 ]; then
 fi
 
 # Run the DNN recipe on fMLLR feats:
-local/run_dnn.sh || exit 1
+local/nnet/run_dnn.sh || exit 1
 
 echo success...
 exit 0

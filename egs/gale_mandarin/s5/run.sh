@@ -164,7 +164,7 @@ for n in 1 2 3 4; do
     data/dev exp/sgmm_5a/decode exp/sgmm_5a_mmi_onlyRescoreb0.1/decode$n
 done
 
-local/run_dnn.sh
+local/nnet/run_dnn.sh
 
 time=$(date +"%Y-%m-%d-%H-%M-%S")
 #get WER
