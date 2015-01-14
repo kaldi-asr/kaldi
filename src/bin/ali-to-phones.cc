@@ -1,6 +1,7 @@
 // bin/ali-to-phones.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//           2015       IMSL, PKU-HKUST (author: Wei Shi)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -29,21 +30,36 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "Convert model-level alignments to phone-sequences (in integer, not text, form)\n"
-        "Usage:  ali-to-phones  [options] <model> <alignments-rspecifier> <phone-transcript-wspecifier>\n"
+        "Convert model-level alignments to phone-sequences (in integer, "
+        "not text, form)\n"
+        "Usage:  ali-to-phones  [options] <model> <alignments-rspecifier> "
+        "<phone-transcript-wspecifier\ctm-wxfilename>\n"
         "e.g.: \n"
         " ali-to-phones 1.mdl ark:1.ali ark:phones.tra\n"
+        "or:\n"
+        " ali-to-phones --ctm-output 1.mdl ark:1.ali 1.ctm\n"
         "See also: show-alignments lattice-align-phones\n";
     ParseOptions po(usage);
     bool per_frame = false;
     bool write_lengths = false;
-    po.Register("per-frame", &per_frame, "If true, write out the frame-level phone alignment (else phone sequence)");
-    po.Register("write-lengths", &write_lengths, "If true, write the #frames for each phone (different format)");
-    
+    bool ctm_output = false;
+    BaseFloat frame_shift = 0.01;
+    po.Register("ctm-output", &ctm_output,
+                "If true, output the alignments in ctm format "
+                "(the confidences will be set to 1)");
+    po.Register("frame-shift", &frame_shift,
+                "frame shift used to control the times of the ctm output");
+    po.Register("per-frame", &per_frame,
+                "If true, write out the frame-level phone alignment "
+                "(else phone sequence)");
+    po.Register("write-lengths", &write_lengths,
+                "If true, write the #frames for each phone (different format)");
+
+
     po.Read(argc, argv);
 
     KALDI_ASSERT(!(per_frame && write_lengths) && "Incompatible options.");
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
@@ -58,11 +74,14 @@ int main(int argc, char *argv[]) {
 
     SequentialInt32VectorReader reader(alignments_rspecifier);
     std::string empty;
-    Int32VectorWriter phones_writer(write_lengths ? empty : phones_wspecifier);
-    Int32PairVectorWriter pair_writer(write_lengths ? phones_wspecifier : empty);
+    Int32VectorWriter phones_writer(ctm_output ? empty :
+                                    write_lengths ? empty : phones_wspecifier);
+    Int32PairVectorWriter pair_writer(ctm_output ? empty :
+                                    write_lengths ? phones_wspecifier : empty);
+    std::string ctm_wxfilename(ctm_output ? phones_wspecifier : empty);
 
     int32 n_done = 0;
-    
+
     for (; !reader.Done(); reader.Next()) {
       std::string key = reader.Key();
       const std::vector<int32> &alignment = reader.Value();
@@ -70,36 +89,47 @@ int main(int argc, char *argv[]) {
       std::vector<std::vector<int32> > split;
       SplitToPhones(trans_model, alignment, &split);
 
-      if (!write_lengths) {
+      if (ctm_output) {
+        Output ko(ctm_wxfilename, false); // false == non-binary write mode.
+        ko.Stream() << std::fixed;
+        ko.Stream().precision(2);
+        BaseFloat phone_start = 0.0;
+        for (size_t i = 0; i < split.size(); i++) {
+          KALDI_ASSERT(!split[i].empty());
+          int32 phone = trans_model.TransitionIdToPhone(split[i][0]);
+          int32 num_repeats = split[i].size();
+          ko.Stream() << key << " 1 " << phone_start << " "
+                      << (frame_shift * num_repeats) << " " << phone << std::endl;
+          phone_start += frame_shift * num_repeats;
+        }
+      } else if (!write_lengths) {
         std::vector<int32> phones;
         for (size_t i = 0; i < split.size(); i++) {
           KALDI_ASSERT(!split[i].empty());
           int32 phone = trans_model.TransitionIdToPhone(split[i][0]);
           int32 num_repeats = split[i].size();
-          KALDI_ASSERT(num_repeats!=0);
+          //KALDI_ASSERT(num_repeats!=0);
           if (per_frame)
             for(int32 j = 0; j < num_repeats; j++)
               phones.push_back(phone);
           else
             phones.push_back(phone);
         }
-        phones_writer.Write(key, phones);        
+        phones_writer.Write(key, phones);
       } else {
         std::vector<std::pair<int32, int32> > pairs;
         for (size_t i = 0; i < split.size(); i++) {
           KALDI_ASSERT(split[i].size() > 0);
-          int32 tid = split[i][0],
-              tstate = trans_model.TransitionIdToTransitionState(tid),
-              phone = trans_model.TransitionStateToPhone(tstate);
+          int32 phone = trans_model.TransitionIdToPhone(split[i][0]);
           int32 num_repeats = split[i].size();
-          KALDI_ASSERT(num_repeats!=0);
+          //KALDI_ASSERT(num_repeats!=0);
           pairs.push_back(std::make_pair(phone, num_repeats));
         }
         pair_writer.Write(key, pairs);
       }
       n_done++;
     }
-    KALDI_LOG << "Done " << n_done << " utterances."; 
+    KALDI_LOG << "Done " << n_done << " utterances.";
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
