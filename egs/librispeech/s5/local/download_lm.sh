@@ -4,8 +4,8 @@
 # Apache 2.0
 
 if [ $# -ne "2" ]; then
-  echo "Usage: <base-url> <download_dir>"
-  echo "e.g.: http://www.openslr.org/resources/11 data/local/lm"
+  echo "Usage: $0 <base-url> <download_dir>"
+  echo "e.g.: $0 http://www.openslr.org/resources/11 data/local/lm"
   exit 1
 fi
 
@@ -22,10 +22,10 @@ sizes["3-gram.pruned.3e-7.arpa.gz"]="13654242"
 sizes["4-gram.arpa.gz"]="1355172078"
 sizes["4-gram.pruned.1e-7.arpa.gz"]="32174144"
 sizes["4-gram.pruned.3e-7.arpa.gz"]="11970993"
-sizes["g2p-model-5"]="19715845"
+sizes["g2p-model-5"]="20098243"
 sizes["librispeech-lm-corpus.tgz"]="1803499244"
 sizes["librispeech-vocab.txt"]="1737588"
-sizes["librispeech-lexicon.txt"]="5627646"
+sizes["librispeech-lexicon.txt"]="5627653"
 
 function check_and_download () {
   [[ $# -eq 1 ]] || { echo "check_and_download() expects exactly one argument!"; return 1; }
