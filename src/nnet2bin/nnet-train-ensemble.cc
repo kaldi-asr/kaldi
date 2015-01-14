@@ -57,7 +57,8 @@ int main(int argc, char *argv[]) {
     po.Register("srand", &srand_seed, "Seed for random number generator "
                 "(relevant if you have layers of type AffineComponentPreconditioned "
                 "with l2-penalty != 0.0");
-    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu,
+                "yes|no|optional|wait, only has effect if compiled with CUDA");
  
     train_config.Register(&po);
     

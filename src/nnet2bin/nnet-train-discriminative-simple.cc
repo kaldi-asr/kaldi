@@ -46,7 +46,8 @@ int main(int argc, char *argv[]) {
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA");
+    po.Register("use-gpu", &use_gpu,
+                "yes|no|optional|wait, only has effect if compiled with CUDA");
     update_opts.Register(&po);
     
     po.Read(argc, argv);

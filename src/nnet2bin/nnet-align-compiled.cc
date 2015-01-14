@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
                 "Scale of self-loop versus non-self-loop "
                 "log probs [relative to acoustics]");
     po.Register("use-gpu", &use_gpu,
-                "yes|no|optional, only has effect if compiled with CUDA");     
+                "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 4 || po.NumArgs() > 5) {

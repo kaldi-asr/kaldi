@@ -50,7 +50,8 @@ int main(int argc, char *argv[]) {
     
     po.Register("num-segments", &num_segments,
                 "Number of line segments used for computing derivatives");
-    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
+    po.Register("use-gpu", &use_gpu,
+                "yes|no|optional|wait, only has effect if compiled with CUDA");
     
     po.Read(argc, argv);
     
