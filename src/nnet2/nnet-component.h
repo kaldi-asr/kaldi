@@ -202,7 +202,7 @@ class Component {
   void Propagate(const ChunkInfo &in_info,
                  const ChunkInfo &out_info,
                  const CuMatrixBase<BaseFloat> &in,
-                 CuMatrix<BaseFloat> *out) {
+                 CuMatrix<BaseFloat> *out) const {
     if (out->NumRows() != out_info.NumRows() ||
         out->NumCols() != out_info.NumCols()) {
       out->Resize(out_info.NumRows(), out_info.NumCols());

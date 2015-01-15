@@ -39,7 +39,7 @@ void UnitTestGenericComponentInternal(const Component &component,
                                       const ChunkInfo out_info)  { 
   
   CuMatrix<BaseFloat> input(in_info.NumRows(), in_info.NumCols()),
-      output(out_info.NumRows(), out_info.NumCols());
+      output(1, out_info.NumRows() * out_info.NumCols());
   input.SetRandn();
   CuVector<BaseFloat> objf_vec(out_info.NumCols()); // objective function is linear function of output.
   objf_vec.SetRandn(); // set to Gaussian noise.
