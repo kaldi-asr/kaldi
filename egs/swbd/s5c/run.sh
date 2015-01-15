@@ -212,10 +212,10 @@ if [ $has_fisher ]; then
 fi
 
 # MMI training starting from the LDA+MLLT+SAT systems on all the (nodup) data. 
-steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
+steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
   data/train_nodup data/lang exp/tri4 exp/tri4_ali_nodup
 
-steps/make_denlats.sh --nj 100 --cmd "$decode_cmd" \
+steps/make_denlats.sh --nj 50 --cmd "$decode_cmd" \
   --config conf/decode.config --transform-dir exp/tri4_ali_nodup \
   data/train_nodup data/lang exp/tri4 exp/tri4_denlats_nodup 
 
@@ -250,7 +250,7 @@ if [ $has_fisher ]; then
 fi
 
 # Now do fMMI+MMI training
-steps/train_diag_ubm.sh --silence-weight 0.5 --nj 100 --cmd "$train_cmd" \
+steps/train_diag_ubm.sh --silence-weight 0.5 --nj 50 --cmd "$train_cmd" \
   700 data/train_nodup data/lang exp/tri4_ali_nodup exp/tri4_dubm
 
 steps/train_mmi_fmmi.sh --learning-rate 0.005 \

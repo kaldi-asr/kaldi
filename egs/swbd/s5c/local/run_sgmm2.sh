@@ -29,13 +29,13 @@ steps/train_sgmm2.sh --cmd "$train_cmd" \
 ) &
 
 # Now discriminatively train the SGMM system on data/train_nodup data.
-steps/align_sgmm2.sh --nj 100 --cmd "$train_cmd" \
+steps/align_sgmm2.sh --nj 50 --cmd "$train_cmd" \
   --transform-dir exp/tri4_ali_nodup \
   --use-graphs true --use-gselect true \
   data/train_nodup data/lang exp/sgmm2_5 exp/sgmm2_5_ali_nodup
 
 # Took the beam down to 10 to get acceptable decoding speed.
-steps/make_denlats_sgmm2.sh --nj 100 --sub-split 30 --num-threads 6 \
+steps/make_denlats_sgmm2.sh --nj 50 --sub-split 30 --num-threads 6 \
   --beam 9.0 --lattice-beam 6 --cmd "$decode_cmd" \
   --transform-dir exp/tri4_ali_nodup \
   data/train_nodup data/lang exp/sgmm2_5_ali_nodup exp/sgmm2_5_denlats_nodup
