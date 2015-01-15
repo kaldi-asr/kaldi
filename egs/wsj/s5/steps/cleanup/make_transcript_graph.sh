@@ -45,9 +45,9 @@ mkdir -p $graph_dir/sub_graphs
 # Maps OOV words to the oov symbol.
 oov=`cat $lang/oov.int`
 
-N=`tree-info --print-args=false exp/tri2b/tree |\
+N=`tree-info --print-args=false $model_dir/tree |\
   grep "context-width" | awk '{print $NF}'`
-P=`tree-info --print-args=false exp/tri2b/tree |\
+P=`tree-info --print-args=false $model_dir/tree |\
   grep "central-position" | awk '{print $NF}'`
 
 # Loops over all utterances.

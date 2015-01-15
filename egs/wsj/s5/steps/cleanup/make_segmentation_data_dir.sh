@@ -50,7 +50,7 @@ done
 
 mkdir -p $new_data_dir/tmp/
 cp -f $old_data_dir/wav.scp $new_data_dir
-cp -f $old_data_dir/spk2gender $new_data_dir 2>/dev/null
+[ -f old_data_dir/spk2gender ] &&  cp -f $old_data_dir/spk2gender $new_data_dir
 
 # The following block does two things:
 # 1. Inserts <eps> as silence.

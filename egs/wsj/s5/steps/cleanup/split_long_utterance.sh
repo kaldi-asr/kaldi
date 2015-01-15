@@ -83,9 +83,16 @@ cat $output_dir/wav.scp | perl -e '
       chomp;
       @col = split;
       @col >= 2 || "bad line $_\n";
-      $wav_id = shift @col; pop @col;
-      $audio_cmd = join(" ", @col);
-      $duration = `$sox --i -D '\''|$audio_cmd'\''`;
+      if ((@col > 2) &&  ($col[-1] eq "|")) {
+        $wav_id = shift @col; pop @col;
+        $audio_cmd = join(" ", @col);
+        $duration = `$sox --i -D '\''|$audio_cmd'\''`;
+      } else {
+        @col == 2 || die "Error: bad line $_\n in wav.scp";
+        $wav_id = $col[0];
+        $audio_file = $col[1];
+        $duration = `$sox --i -D $audio_file`;
+      }
       chomp($duration);
       $seg2wav{$wav_id} = $wav_id;
       $seg_start{$wav_id} = 0;

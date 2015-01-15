@@ -55,10 +55,13 @@ fi
 
 mkdir -p $graph_dir/split$nj
 mkdir -p $graph_dir/log
-for x in `seq 1 $nj`; do
-  mkdir -p $graph_dir/split$nj/$x
-  split -n r/$x/$nj $data/text.orig > $graph_dir/split$nj/$x/text
+ 
+split_texts=""
+for n in $(seq $nj); do
+  mkdir -p $graph_dir/split$nj/$n
+  split_texts="$split_texts $graph_dir/split$nj/$n/text"
 done
+utils/split_scp.pl $data/text.orig $split_texts
 
 $cmd JOB=1:$nj $graph_dir/log/make_transcript_graph.JOB.log \
   steps/cleanup/make_transcript_graph.sh --cleanup $cleanup \
