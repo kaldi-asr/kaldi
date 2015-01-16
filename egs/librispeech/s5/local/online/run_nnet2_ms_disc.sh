@@ -70,12 +70,12 @@ if [ $stage -le 1 ]; then
   steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G -pe smp $num_threads_denlats" \
       --online-ivector-dir exp/nnet2_online/ivectors_train_960_hires \
       --nj $nj --sub-split $subsplit --num-threads "$num_threads_denlats" --config conf/decode.config \
-     data/train_960_hires data/lang $srcdir ${srcdir}_denlats || exit 1;
+     data/train_960_hires data/lang_pp $srcdir ${srcdir}_denlats || exit 1;
 
   # the command below is a more generic, but slower, way to do it.
   #steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G -pe smp $num_threads_denlats" \
   #    --nj $nj --sub-split $subsplit --num-threads "$num_threads_denlats" --config conf/decode.config \
-  #   data/train_960 data/lang ${srcdir}_online ${srcdir}_denlats || exit 1;
+  #   data/train_960 data/lang_pp ${srcdir}_online ${srcdir}_denlats || exit 1;
 
 fi
 
@@ -89,7 +89,7 @@ if [ $stage -le 2 ]; then
 
   steps/nnet2/align.sh  --cmd "$decode_cmd $gpu_opts" --use-gpu "$use_gpu" \
      --online-ivector-dir exp/nnet2_online/ivectors_train_960_hires \
-     --nj $nj data/train_960_hires data/lang $srcdir ${srcdir}_ali || exit 1;
+     --nj $nj data/train_960_hires data/lang_pp $srcdir ${srcdir}_ali || exit 1;
 
   # the command below is a more generic, but slower, way to do it.
   # steps/online/nnet2/align.sh --cmd "$decode_cmd $gpu_opts" --use-gpu "$use_gpu" \
@@ -109,13 +109,13 @@ if [ $stage -le 3 ]; then
     --cmd "$decode_cmd -tc $max_jobs" \
     --online-ivector-dir exp/nnet2_online/ivectors_train_960_hires \
     --criterion $criterion --drop-frames $drop_frames \
-     data/train_960_hires data/lang ${srcdir}{_ali,_denlats,/final.mdl,_degs} || exit 1;
+     data/train_960_hires data/lang_pp ${srcdir}{_ali,_denlats,/final.mdl,_degs} || exit 1;
 
   # the command below is a more generic, but slower, way to do it.
   #steps/online/nnet2/get_egs_discriminative2.sh \
   #  --cmd "$decode_cmd -tc $max_jobs" \
   #  --criterion $criterion --drop-frames $drop_frames \
-  #   data/train_960 data/lang ${srcdir}{_ali,_denlats,_online,_degs} || exit 1;
+  #   data/train_960 data/lang_pp ${srcdir}{_ali,_denlats,_online,_degs} || exit 1;
 fi
 
 if [ $stage -le 4 ]; then
@@ -136,15 +136,15 @@ if [ $stage -le 5 ]; then
     for test in test_clean test_other dev_clean dev_other; do
       (
         steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 50 \
-          --iter epoch$epoch exp/tri6b/graph_tgsmall data/${test} $dir/decode_epoch${epoch}_${test}_tgsmall || exit 1
-        steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-          data/${test} $dir/decode_epoch${epoch}_${test}_{tgsmall,tgmed}  || exit 1;
+          --iter epoch$epoch exp/tri6b/graph_pp_tgsmall data/${test} $dir/decode_pp_epoch${epoch}_${test}_tgsmall || exit 1
+        steps/lmrescore.sh --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tgmed} \
+          data/${test} $dir/decode_pp_epoch${epoch}_${test}_{tgsmall,tgmed}  || exit 1;
         steps/lmrescore_const_arpa.sh \
-          --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
-          data/$test $dir/decode_epoch${epoch}_${test}_{tgsmall,tglarge} || exit 1;
+          --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tglarge} \
+          data/$test $dir/decode_pp_epoch${epoch}_${test}_{tgsmall,tglarge} || exit 1;
         steps/lmrescore_const_arpa.sh \
-          --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
-          data/$test $dir/decode_epoch${epoch}_${test}_{tgsmall,fglarge} || exit 1;
+          --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,fglarge} \
+          data/$test $dir/decode_pp_epoch${epoch}_${test}_{tgsmall,fglarge} || exit 1;
       ) &
       ) &
     done

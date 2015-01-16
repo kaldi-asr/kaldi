@@ -135,14 +135,14 @@ if [ $stage -le 5 ]; then
     for test in test_clean test_other dev_clean dev_other; do
       (
         steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 50 \
-          --iter epoch$epoch exp/tri6b/graph_tgsmall data/${test} $dir/decode_epoch${epoch}_${test}_tgsmall || exit 1
-        steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-          data/${test} $dir/decode_epoch${epoch}_${test}_{tgsmall,tgmed}  || exit 1;
+          --iter epoch$epoch exp/tri6b/graph_pp_tgsmall data/${test} $dir/decode_pp_epoch${epoch}_${test}_tgsmall || exit 1
+        steps/lmrescore.sh --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tgmed} \
+          data/${test} $dir/decode_pp_epoch${epoch}_${test}_{tgsmall,tgmed}  || exit 1;
         steps/lmrescore_const_arpa.sh \
-          --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
+          --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tglarge} \
           data/$test $dir/decode_epoch${epoch}_${test}_{tgsmall,tglarge} || exit 1;
         steps/lmrescore_const_arpa.sh \
-          --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
+          --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,fglarge} \
           data/$test $dir/decode_epoch${epoch}_${test}_{tgsmall,fglarge} || exit 1;
       ) &
     done

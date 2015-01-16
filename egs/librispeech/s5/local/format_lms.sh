@@ -9,7 +9,6 @@
 . ./path.sh || exit 1;
 
 # begin configuration section
-src_dict=data/local/dict/lexicon.txt # only needed for diagnostics, to identify empty words.
 src_dir=data/lang
 # end configuration section
 

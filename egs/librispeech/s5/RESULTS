@@ -256,3 +256,68 @@
 %WER 14.80 [ 7540 / 50948, 800 ins, 1025 del, 5715 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch4_dev_other_tgmed/wer_18
 %WER 16.10 [ 8201 / 50948, 789 ins, 1240 del, 6172 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch4_dev_other_tgsmall/wer_18
 
+
+## Results with a SAT model, trained on the "train-clean-100" and pronunciation probabilities estimated on the training data
+# for x in exp/tri4b/decode_pp_*; do grep WER $x/wer_* | utils/best_wer.sh | egrep -v '\.si' ; done
+%WER 8.05 [ 4382 / 54402, 583 ins, 520 del, 3279 sub ] exp/tri4b/decode_pp_fglarge_dev_clean/wer_17
+%WER 29.07 [ 14813 / 50948, 1411 ins, 2373 del, 11029 sub ] exp/tri4b/decode_pp_fglarge_dev_other/wer_18
+%WER 9.19 [ 4833 / 52576, 621 ins, 579 del, 3633 sub ] exp/tri4b/decode_pp_fglarge_test_clean/wer_20
+%WER 31.28 [ 16371 / 52343, 1505 ins, 2773 del, 12093 sub ] exp/tri4b/decode_pp_fglarge_test_other/wer_17
+%WER 8.53 [ 4639 / 54402, 635 ins, 516 del, 3488 sub ] exp/tri4b/decode_pp_tglarge_dev_clean/wer_15
+%WER 29.98 [ 15274 / 50948, 1501 ins, 2380 del, 11393 sub ] exp/tri4b/decode_pp_tglarge_dev_other/wer_18
+%WER 9.45 [ 4969 / 52576, 661 ins, 577 del, 3731 sub ] exp/tri4b/decode_pp_tglarge_test_clean/wer_18
+%WER 32.14 [ 16824 / 52343, 1649 ins, 2804 del, 12371 sub ] exp/tri4b/decode_pp_tglarge_test_other/wer_17
+%WER 10.47 [ 5694 / 54402, 615 ins, 793 del, 4286 sub ] exp/tri4b/decode_pp_tgmed_dev_clean/wer_15
+%WER 32.97 [ 16795 / 50943, 1416 ins, 2874 del, 12505 sub ] [PARTIAL] exp/tri4b/decode_pp_tgmed_dev_other/wer_16
+%WER 11.67 [ 6133 / 52576, 685 ins, 831 del, 4617 sub ] exp/tri4b/decode_pp_tgmed_test_clean/wer_16
+%WER 34.97 [ 18303 / 52343, 1409 ins, 3660 del, 13234 sub ] exp/tri4b/decode_pp_tgmed_test_other/wer_17
+%WER 11.93 [ 6490 / 54402, 641 ins, 1017 del, 4832 sub ] exp/tri4b/decode_pp_tgsmall_dev_clean/wer_15
+%WER 34.98 [ 17821 / 50948, 1396 ins, 3344 del, 13081 sub ] exp/tri4b/decode_pp_tgsmall_dev_other/wer_16
+%WER 13.07 [ 6874 / 52576, 698 ins, 986 del, 5190 sub ] exp/tri4b/decode_pp_tgsmall_test_clean/wer_15
+%WER 36.83 [ 19276 / 52343, 1261 ins, 4092 del, 13923 sub ] exp/tri4b/decode_pp_tgsmall_test_other/wer_17
+
+
+## Multi-splice version of the online recipe, using pronunciation probabilities estimated on training data
+# for x in exp/nnet2_online/nnet_ms_a/decode_pp_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 4.43 [ 2411 / 54402, 339 ins, 258 del, 1814 sub ] exp/nnet2_online/nnet_ms_a/decode_pp_dev_clean_fglarge/wer_14
+%WER 4.70 [ 2555 / 54402, 388 ins, 246 del, 1921 sub ] exp/nnet2_online/nnet_ms_a/decode_pp_dev_clean_tglarge/wer_11
+%WER 5.86 [ 3186 / 54402, 338 ins, 449 del, 2399 sub ] exp/nnet2_online/nnet_ms_a/decode_pp_dev_clean_tgmed/wer_14
+%WER 6.59 [ 3587 / 54402, 381 ins, 486 del, 2720 sub ] exp/nnet2_online/nnet_ms_a/decode_pp_dev_clean_tgsmall/wer_12
+%WER 12.50 [ 6371 / 50948, 702 ins, 898 del, 4771 sub ] exp/nnet2_online/nnet_ms_a/decode_pp_dev_other_fglarge/wer_16
+%WER 13.05 [ 6648 / 50948, 755 ins, 916 del, 4977 sub ] exp/nnet2_online/nnet_ms_a/decode_pp_dev_other_tglarge/wer_15
+%WER 15.57 [ 7935 / 50948, 688 ins, 1327 del, 5920 sub ] exp/nnet2_online/nnet_ms_a/decode_pp_dev_other_tgmed/wer_15
+%WER 17.08 [ 8702 / 50948, 694 ins, 1567 del, 6441 sub ] exp/nnet2_online/nnet_ms_a/decode_pp_dev_other_tgsmall/wer_15
+
+# for x in exp/nnet2_online/nnet_ms_a_online/decode_pp_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 4.50 [ 2448 / 54402, 346 ins, 262 del, 1840 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_clean_fglarge/wer_14
+%WER 4.66 [ 2537 / 54402, 374 ins, 243 del, 1920 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_clean_fglarge_utt/wer_12
+%WER 4.52 [ 2461 / 54402, 359 ins, 252 del, 1850 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_clean_fglarge_utt_offline/wer_13
+%WER 4.74 [ 2581 / 54402, 375 ins, 272 del, 1934 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_clean_tglarge/wer_12
+%WER 4.83 [ 2625 / 54402, 358 ins, 279 del, 1988 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_clean_tglarge_utt/wer_13
+%WER 4.72 [ 2567 / 54402, 361 ins, 283 del, 1923 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_clean_tglarge_utt_offline/wer_13
+%WER 5.85 [ 3184 / 54402, 343 ins, 447 del, 2394 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_clean_tgmed/wer_14
+%WER 6.11 [ 3325 / 54402, 385 ins, 392 del, 2548 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_clean_tgmed_utt/wer_12
+%WER 5.90 [ 3212 / 54402, 400 ins, 381 del, 2431 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_clean_tgmed_utt_offline/wer_12
+%WER 6.59 [ 3587 / 54402, 416 ins, 450 del, 2721 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_clean_tgsmall/wer_11
+%WER 6.92 [ 3762 / 54402, 392 ins, 505 del, 2865 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_clean_tgsmall_utt/wer_12
+%WER 6.68 [ 3634 / 54402, 434 ins, 451 del, 2749 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_clean_tgsmall_utt_offline/wer_11
+%WER 12.85 [ 6548 / 50948, 725 ins, 871 del, 4952 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_other_fglarge/wer_15
+%WER 13.70 [ 6981 / 50948, 812 ins, 895 del, 5274 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_other_fglarge_utt/wer_15
+%WER 13.18 [ 6715 / 50948, 787 ins, 841 del, 5087 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_other_fglarge_utt_offline/wer_15
+%WER 13.36 [ 6805 / 50948, 765 ins, 924 del, 5116 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_other_tglarge/wer_15
+%WER 14.29 [ 7282 / 50948, 888 ins, 917 del, 5477 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_other_tglarge_utt/wer_14
+%WER 13.65 [ 6955 / 50948, 806 ins, 903 del, 5246 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_other_tglarge_utt_offline/wer_15
+%WER 15.64 [ 7969 / 50948, 676 ins, 1372 del, 5921 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_other_tgmed/wer_16
+%WER 16.68 [ 8497 / 50948, 771 ins, 1364 del, 6362 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_other_tgmed_utt/wer_15
+%WER 15.93 [ 8118 / 50948, 736 ins, 1286 del, 6096 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_other_tgmed_utt_offline/wer_15
+%WER 17.11 [ 8718 / 50948, 704 ins, 1547 del, 6467 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_other_tgsmall/wer_15
+%WER 18.12 [ 9232 / 50948, 751 ins, 1627 del, 6854 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_other_tgsmall_utt/wer_15
+%WER 17.38 [ 8855 / 50948, 736 ins, 1555 del, 6564 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_dev_other_tgsmall_utt_offline/wer_15
+%WER 5.21 [ 2739 / 52576, 428 ins, 261 del, 2050 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_clean_fglarge_utt_offline/wer_12
+%WER 5.32 [ 2795 / 52576, 402 ins, 298 del, 2095 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_clean_tglarge_utt_offline/wer_13
+%WER 6.49 [ 3413 / 52576, 427 ins, 424 del, 2562 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_clean_tgmed_utt_offline/wer_12
+%WER 7.18 [ 3774 / 52576, 469 ins, 477 del, 2828 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_clean_tgsmall_utt_offline/wer_11
+%WER 13.35 [ 6987 / 52343, 808 ins, 925 del, 5254 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_other_fglarge_utt_offline/wer_14
+%WER 13.79 [ 7219 / 52343, 847 ins, 953 del, 5419 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_other_tglarge_utt_offline/wer_13
+%WER 16.08 [ 8416 / 52343, 746 ins, 1466 del, 6204 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_other_tgmed_utt_offline/wer_15
+%WER 17.64 [ 9231 / 52343, 764 ins, 1662 del, 6805 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_other_tgsmall_utt_offline/wer_14

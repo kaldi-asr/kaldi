@@ -95,12 +95,15 @@ if [ $stage -le 9 ]; then
   for test in dev_clean dev_other; do
     steps/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
       --online-ivector-dir exp/nnet2_online/ivectors_${test} \
-      exp/tri6b/graph_tgsmall data/${test}_hires $dir/decode_${test}_tgsmall || exit 1;
-    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-      data/${test}_hires $dir/decode_${test}_{tgsmall,tgmed}  || exit 1;
+      exp/tri6b/graph_pp_tgsmall data/${test}_hires $dir/decode_pp_${test}_tgsmall || exit 1;
+    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tgmed} \
+      data/${test}_hires $dir/decode_pp_${test}_{tgsmall,tgmed}  || exit 1;
     steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
-      data/$test $dir/decode_${test}_{tgsmall,tglarge} || exit 1;
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tglarge} \
+      data/$test $dir/decode_pp_${test}_{tgsmall,tglarge} || exit 1;
+    steps/lmrescore_const_arpa.sh \
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,fglarge} \
+      data/$test $dir/decode_pp_${test}_{tgsmall,fglarge} || exit 1;
   done
 fi
 
@@ -117,12 +120,15 @@ if [ $stage -le 11 ]; then
   # previous utterances of the same speaker.
   for test in dev_clean dev_other; do
     steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
-      exp/tri6b/graph_tgsmall data/$test ${dir}_online/decode_${test}_tgsmall || exit 1;
-    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-      data/$test ${dir}_online/decode_${test}_{tgsmall,tgmed}  || exit 1;
+      exp/tri6b/graph_pp_tgsmall data/$test ${dir}_online/decode_pp_${test}_tgsmall || exit 1;
+    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tgmed} \
+      data/$test ${dir}_online/decode_pp_${test}_{tgsmall,tgmed}  || exit 1;
     steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
-      data/$test ${dir}_online/decode_${test}_{tgsmall,tglarge} || exit 1;
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tglarge} \
+      data/$test ${dir}_online/decode_pp_${test}_{tgsmall,tglarge} || exit 1;
+    steps/lmrescore_const_arpa.sh \
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,fglarge} \
+      data/$test ${dir}_online/decode_pp_${test}_{tgsmall,fglarge} || exit 1;
   done
 fi
 
@@ -131,12 +137,15 @@ if [ $stage -le 12 ]; then
   # without carrying forward speaker information.
   for test in dev_clean dev_other; do
     steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
-      --per-utt true exp/tri6b/graph_tgsmall data/$test ${dir}_online/decode_${test}_tgsmall_utt || exit 1;
-    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-      data/$test ${dir}_online/decode_${test}_{tgsmall,tgmed}_utt  || exit 1;
+      --per-utt true exp/tri6b/graph_pp_tgsmall data/$test ${dir}_online/decode_pp_${test}_tgsmall_utt || exit 1;
+    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tgmed} \
+      data/$test ${dir}_online/decode_pp_${test}_{tgsmall,tgmed}_utt  || exit 1;
     steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
-      data/$test ${dir}_online/decode_${test}_{tgsmall,tglarge}_utt || exit 1;
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tglarge} \
+      data/$test ${dir}_online/decode_pp_${test}_{tgsmall,tglarge}_utt || exit 1;
+    steps/lmrescore_const_arpa.sh \
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,fglarge} \
+      data/$test ${dir}_online/decode_pp_${test}_{tgsmall,fglarge}_utt || exit 1;
   done
 fi
 
@@ -146,16 +155,16 @@ if [ $stage -le 13 ]; then
   # of the utterance while computing the iVector (--online false)
   for test in test_clean test_other dev_clean dev_other; do
     steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
-      --per-utt true --online false exp/tri6b/graph_tgsmall data/$test \
-        ${dir}_online/decode_${test}_tgsmall_utt_offline || exit 1;
-    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-      data/$test ${dir}_online/decode_${test}_{tgsmall,tgmed}_utt_offline  || exit 1;
+      --per-utt true --online false exp/tri6b/graph_pp_tgsmall data/$test \
+        ${dir}_online/decode_pp_${test}_tgsmall_utt_offline || exit 1;
+    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tgmed} \
+      data/$test ${dir}_online/decode_pp_${test}_{tgsmall,tgmed}_utt_offline  || exit 1;
     steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
-      data/$test ${dir}_online/decode_${test}_{tgsmall,tglarge}_utt_offline || exit 1;
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tglarge} \
+      data/$test ${dir}_online/decode_pp_${test}_{tgsmall,tglarge}_utt_offline || exit 1;
     steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
-      data/$test ${dir}_online/decode_${test}_{tgsmall,fglarge}_utt_offline || exit 1;
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,fglarge} \
+      data/$test ${dir}_online/decode_pp_${test}_{tgsmall,fglarge}_utt_offline || exit 1;
   done
 fi
 

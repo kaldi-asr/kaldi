@@ -55,8 +55,7 @@ utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/
 
 local/format_lms.sh data/local/lm || exit 1
 
-# Create ConstArpaLm format language model for full trigram and 4gram language
-# model.
+# Create ConstArpaLm format language model for full 3-gram and 4-gram LMs
 utils/build_const_arpa_lm.sh \
   data/local/lm/lm_tglarge.arpa.gz data/lang data/lang_test_tglarge || exit 1;
 utils/build_const_arpa_lm.sh \
@@ -66,7 +65,7 @@ mfccdir=mfcc
 # spread the mfccs over various machines, as this data-set is quite large.
 if [[  $(hostname -f) ==  *.clsp.jhu.edu ]]; then 
   mfcc=$(basename mfccdir) # in case was absolute pathname (unlikely), get basename.
-  utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/librispeech/s5/$dir/$mfcc/storage \
+  utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/librispeech/s5/$mfcc/storage \
     $mfccdir/storage
 fi
 
@@ -212,24 +211,63 @@ utils/combine_data.sh data/train_clean_460 data/train_clean_100 data/train_clean
 steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
   data/train_clean_460 data/lang exp/tri4b exp/tri4b_ali_clean_460 || exit 1;
 
+# At this point we estimate the probability of the pronunciation variants for
+# the words in our lexicon (of course some rare words won't be present in the
+# training data, so their probabilities will be left unchanged). These pronunciation
+# probabilities will be used in the subsequent _decoding_ steps.
+
+# count how many times every pronunciation variant was used in the training data
+steps/get_prons.sh --cmd "$train_cmd"  data/train_clean_460 data/lang exp/tri4b_ali_clean_460
+
+# use the counts from the above step, to calculate (smoothed) pronunciation probabilities
+utils/dict_dir_add_pronprobs.sh data/local/dict exp/tri4b_ali_clean_460/pron_counts_nowb.txt data/local/dict_pp
+
+# prepare a new "lang" directories to be used for the pronunciation probability setup
+utils/prepare_lang.sh data/local/dict_pp "<SPOKEN_NOISE>" data/local/lang_tmp_pp data/lang_pp
+local/format_lms.sh --src-dir data/lang_pp data/local/lm
+
+# regenerate the full 3-gram and 4-gram directories
+utils/build_const_arpa_lm.sh \
+  data/local/lm/lm_tglarge.arpa.gz data/lang_pp data/lang_pp_test_tglarge || exit 1;
+utils/build_const_arpa_lm.sh \
+  data/local/lm/lm_fglarge.arpa.gz data/lang_pp data/lang_pp_test_fglarge || exit 1;
+
+# decode again using the tri4b model, but this time with pronunciation probability
+(
+  utils/mkgraph.sh data/lang_pp_test_tgsmall exp/tri4b exp/tri4b/graph_pp_tgsmall || exit 1;
+  for test in test_clean test_other dev_clean dev_other; do
+    steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+      exp/tri4b/graph_pp_tgsmall data/$test exp/tri4b/decode_pp_tgsmall_$test || exit 1;
+    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tgmed} \
+      data/$test exp/tri4b/decode_pp_{tgsmall,tgmed}_$test  || exit 1;
+    steps/lmrescore_const_arpa.sh \
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tglarge} \
+      data/$test exp/tri4b/decode_pp_{tgsmall,tglarge}_$test || exit 1;
+    steps/lmrescore_const_arpa.sh \
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,fglarge} \
+      data/$test exp/tri4b/decode_pp_{tgsmall,fglarge}_$test || exit 1;
+  done
+)&
+
+
 # create a larger SAT model, trained on the 460 hours of data.
 steps/train_sat.sh  --cmd "$train_cmd" \
   5000 100000 data/train_clean_460 data/lang exp/tri4b_ali_clean_460 exp/tri5b || exit 1;
 
 # decode using the tri5b model
 (
-  utils/mkgraph.sh data/lang_test_tgsmall exp/tri5b exp/tri5b/graph_tgsmall || exit 1;
+  utils/mkgraph.sh data/lang_pp_test_tgsmall exp/tri5b exp/tri5b/graph_pp_tgsmall || exit 1;
   for test in test_clean test_other dev_clean dev_other; do
     steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
-      exp/tri5b/graph_tgsmall data/$test exp/tri5b/decode_tgsmall_$test || exit 1;
-    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-      data/$test exp/tri5b/decode_{tgsmall,tgmed}_$test  || exit 1;
+      exp/tri5b/graph_pp_tgsmall data/$test exp/tri5b/decode_pp_tgsmall_$test || exit 1;
+    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tgmed} \
+      data/$test exp/tri5b/decode_pp_{tgsmall,tgmed}_$test  || exit 1;
     steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
-      data/$test exp/tri5b/decode_{tgsmall,tglarge}_$test || exit 1;
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tglarge} \
+      data/$test exp/tri5b/decode_pp_{tgsmall,tglarge}_$test || exit 1;
     steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
-      data/$test exp/tri5b/decode_{tgsmall,fglarge}_$test || exit 1;
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,fglarge} \
+      data/$test exp/tri5b/decode_pp_{tgsmall,fglarge}_$test || exit 1;
   done
 )&
 
@@ -257,35 +295,34 @@ steps/train_quick.sh --cmd "$train_cmd" \
 
 # decode using the tri6b model
 (
-  utils/mkgraph.sh data/lang_test_tgsmall exp/tri6b exp/tri6b/graph_tgsmall || exit 1;
+  utils/mkgraph.sh data/lang_pp_test_tgsmall exp/tri6b exp/tri6b/graph_pp_tgsmall || exit 1;
   for test in test_clean test_other dev_clean dev_other; do
     steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
-      exp/tri6b/graph_tgsmall data/$test exp/tri6b/decode_tgsmall_$test || exit 1;
-    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-      data/$test exp/tri6b/decode_{tgsmall,tgmed}_$test  || exit 1;
+      exp/tri6b/graph_pp_tgsmall data/$test exp/tri6b/decode_pp_tgsmall_$test || exit 1;
+    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tgmed} \
+      data/$test exp/tri6b/decode_pp_{tgsmall,tgmed}_$test  || exit 1;
     steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
-      data/$test exp/tri6b/decode_{tgsmall,tglarge}_$test || exit 1;
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,tglarge} \
+      data/$test exp/tri6b/decode_pp_{tgsmall,tglarge}_$test || exit 1;
     steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
-      data/$test exp/tri6b/decode_{tgsmall,fglarge}_$test || exit 1;
+      --cmd "$decode_cmd" data/lang_pp_test_{tgsmall,fglarge} \
+      data/$test exp/tri6b/decode_pp_{tgsmall,fglarge}_$test || exit 1;
   done
 )&
 
 # steps/cleanup/debug_lexicon.sh --remove-stress true  --nj 200 --cmd "$train_cmd" data/train_clean_100 \
 #    data/lang exp/tri6b data/local/dict/lexicon.txt exp/debug_lexicon_100h
 
-# Perform RNNLM rescoring of tri6b
-# Attention: with default settings requires 4 GB of memory per rescoring job, so commenting this out by default
+# #Perform RNNLM rescoring of tri6b
+# #Attention: with default settings requires 4 GB of memory per rescoring job, so commenting this out by default
 # local/run_rnnlm.sh $data data/local/lm
 
 # train NN models on the entire dataset
 local/nnet2/run_7a_960.sh || exit 1
 
-## train models on cleaned-up data
-## we've found that this isn't helpful-- see the comments in local/run_data_cleaning.sh
-#local/run_data_cleaning.sh
-
+# # train models on cleaned-up data
+# # we've found that this isn't helpful-- see the comments in local/run_data_cleaning.sh
+# local/run_data_cleaning.sh
 
 # # The following is the current online-nnet2 recipe, with "multi-splice".
 # local/online/run_nnet2_ms.sh
