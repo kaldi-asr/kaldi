@@ -2,11 +2,6 @@
 # Copyright  2014  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
-# Computes training alignments using a model with delta or
-# LDA+MLLT features.  This version, rather than just using the
-# text to align, computes mini-language models (unigram) from the text
-# and a few common words in the LM, and allows
-
 # Begin configuration section.  
 cmd=run.pl
 stage=1

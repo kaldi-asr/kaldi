@@ -42,16 +42,13 @@ if [ -f $srcdir/lexicon.txt ]; then
   perl -ane 'print join(" ", split(" ", $_)) . "\n";' <$src_lex >$dir/lexicon.txt
 elif [ -f $srcdir/lexiconp.txt ]; then
   echo "$0: removing the pron-probs from $srcdir/lexiconp.txt to create $dir/lexicon.txt"
-  # the second awk command below normalizes the spaces (avoid double space).
+  # the Perl command below normalizes the spaces (avoid double space).
   src_lex=$srcdir/lexiconp.txt
   awk '{$2 = ""; print $0;}' <$srcdir/lexiconp.txt | perl -ane 'print join(" ", split(" " ,$_)) . "\n";'  >$dir/lexicon.txt || exit 1;
 fi
 
 
-#  the cat and awk commands below are implementing add-one smoothing.
-# the pron2line stuff and the sort command is to make sure the order of the lines
-# is in the same order as lexicon.txt (validate_dict_dir.pl checks this).
-
+# the cat and awk commands below are implementing add-one smoothing.
 cat <(awk '{print 1, $0;}' <$dir/lexicon.txt) $pron_counts | \
   awk '{ count = $1; $1 = ""; word_count[$2] += count; pron_count[$0] += count; pron2word[$0] = $2; }
        END{ for (p in pron_count) { word = pron2word[p]; num = pron_count[p]; den = word_count[word]; 
