@@ -38,8 +38,10 @@ leaves_per_group=5 # Relates to the SCTM (state-clustered tied-mixture) aspect:
 update_m_iter=4
 spk_dep_weights=true # [Symmetric SGMM] set this to false if you don't want "u" (i.e. to turn off
                       # symmetric SGMM.
-group=3 # Number of jobs to group together on a single machine, and add the stats locally.
-parallel_opts="-pe smp 3" # You should make this match "group".
+group=3 # Number of jobs to group together on a single machine, and add the
+        # stats locally.  Don't confuse this with leaves_per_group and so on,
+        # they are totally unrelated.
+parallel_opts=  # this option is now ignored.
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -53,7 +55,6 @@ if [ $# != 7 ]; then
   echo "                      exp/tri3b_ali_si84 exp/ubm4a/final.ubm exp/sgmm4a"
   echo "main options (for others, see top of script file)"
   echo "  --group <n>                                      # number of jobs on one machine, default 3."
-  echo "  --parallel-opts <opts>                           # string to append to queue command, default '-pe smp 3'"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --silence-weight <sil-weight>                    # weight for silence (e.g. 0.5 or 0.0)"
@@ -238,12 +239,12 @@ while [ $x -lt $num_iters ]; do
          echo "Skipping creation of acc $dir/acc.$x.$g.gz as it already exists."
        else 
          start=$[$g*$group + 1]; # start-position in array Args.
-       # see http://www.thegeekstuff.com/2010/06/bash-array-tutorial/, this uses Bash arrays."
-       # The syntax "${Args[@]:$start:$group}" is equivalent to, say,
-       # "${Args[3]}" "${Args[4]}" if start=3 and group=2.  Except it's smart about the end
-       # of the array, it won't give you empty quoted strings if the length "group" takes you off
-       # the end of the array.
-         $cmd $parallel_opts $dir/log/acc.$x.$g.log \
+         # see http://www.thegeekstuff.com/2010/06/bash-array-tutorial/, this uses Bash arrays."  
+         # The syntax "${Args[@]:$start:$group}" is equivalent to, say,
+         # "${Args[3]}" "${Args[4]}" if start=3 and group=2.  Except it's smart about the end
+         # of the array, it won't give you empty quoted strings if the length "group" takes you off
+         # the end of the array.
+         $cmd --num-threads "$group" $dir/log/acc.$x.$g.log \
            sgmm2-sum-accs --parallel=true "|gzip -c >$dir/acc.$x.$g.gz" "${Args[@]:$start:$group}"  || touch $dir/.error &
        fi
        g=$[$g+1];
@@ -320,7 +321,7 @@ if [ $spk_dim -gt 0 ]; then
           echo "Skipping creation of acc $dir/acc.$x.$g.gz as it already exists."
         else 
           start=$[$g*$group + 1]; # start-position in array Args.
-          $cmd $parallel_opts $dir/log/acc.$x.$g.log \
+          $cmd --num-threads "$group" $dir/log/acc.$x.$g.log \
             sgmm2-sum-accs --parallel=true "|gzip -c >$dir/acc.$x.$g.gz" "${Args[@]:$start:$group}"  || touch $dir/.error &
         fi
         g=$[$g+1];
