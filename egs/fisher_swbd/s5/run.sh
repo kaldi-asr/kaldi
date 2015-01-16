@@ -11,6 +11,9 @@ set -e
 local/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
    /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
 
+hours=$(awk '{x += $4 - $3;} END{print x/3600;}' <data/train_fisher/segments)
+! [ $hours == 1915 ] && echo "$0: expected 1915 hours of data, got $hours hours, please check." && exit 1;
+
 # at BUT:
 ####local/fisher_data_prep.sh /mnt/matylda6/jhu09/qpovey/FISHER/LDC2005T19 /mnt/matylda2/data/FISHER/
 

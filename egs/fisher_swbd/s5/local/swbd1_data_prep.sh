@@ -38,7 +38,7 @@ sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 # Trans directory check
 if [ ! -d $SWBD_DIR/transcriptions/swb_ms98_transcriptions ]; then
   # To get the SWBD transcriptions and dict, do:
-  echo " *** Downloading trascriptions and dictionary ***"   
+  echo " *** Downloading transcriptions and dictionary ***"   
   ( 
     cd $dir;
     wget http://www.isip.piconepress.com/projects/switchboard/releases/switchboard_word_alignments.tar.gz

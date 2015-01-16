@@ -209,7 +209,9 @@ for lm_suffix in tg fsh_tgpr; do
 done
 
 
-#local/run_resegment.sh
+# The following script demonstrates a scenario where we run automatic segmentation on
+# both train and test data.
+# local/run_resegment.sh
 
 # Now train a LDA+MLLT+SAT model on the entire training data (train_nodup; 
 # 286 hours)
@@ -366,6 +368,7 @@ done
 # this will help find issues with the lexicon.
 # steps/cleanup/debug_lexicon.sh --nj 300 --cmd "$train_cmd" data/train_nodev data/lang exp/tri4b data/local/dict/lexicon.txt exp/debug_lexicon
 
+# steps/cleanup/find_bad_utts.sh  --nj 150 --cmd "$train_cmd" data/train_nodup data/lang exp/tri4b exp/tri4b_debug
 
 # local/run_sgmm2.sh
 

@@ -17,6 +17,7 @@
 #        # this, cd to ../tools and type "make openblas".  Note:
 #        # this is not working correctly on all platforms, do "make test"
 #        # and look out for segmentation faults.
+# ./configure --atlas-root=../tools/ATLAS/build
 
 #This should be incremented after every significant change of the configure script
 #I.e. after each change that affects the kaldi.mk or the build system as whole
@@ -490,7 +491,7 @@ function linux_configure_static {
     echo "Could not find libatlas.a in '$ATLASLIBDIR'"
     return 1;
   fi
-  echo "Looking for ATLAS libs in $ATLASLIBDIR"
+  echo "Validating presence of ATLAS libs in $ATLASLIBDIR"
   ATLASLIBS=
   # The Lapack part of ATLAS seems to appear under various different names.. but it
   # should always have symbols like ATL_cgetrf defined, so we test for this,
@@ -548,7 +549,7 @@ function linux_configure_dynamic {
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
     for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
-       linux_check_dynamic && ATLASLIBDIR=$dir
+      linux_check_dynamic && ATLASLIBDIR=$dir
     done
     if [ -z $ATLASLIBDIR ]; then
       echo "Could not find libatlas.so in any of the obvious places, will most likely try static:"
@@ -559,7 +560,7 @@ function linux_configure_dynamic {
     return 1;
   fi
 
-  echo "Looking for ATLAS libs in $ATLASLIBDIR"
+  echo "Validating presence of ATLAS libs in $ATLASLIBDIR"
   ATLASLIBS=
   # The Lapack part of ATLAS seems to appear under various different names.. but it
   # should always have symbols like ATL_cgetrf defined, so we test for this,

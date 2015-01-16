@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Fisher + Switchboard combined recipe, adapted from respective Fisher and Switchboard
-# recipes by Peng Qi (pengqi@cs.stanford.edu).
-# (Aug 2014)
-
 # It's best to run the commands in this one by one.
 
 . cmd.sh

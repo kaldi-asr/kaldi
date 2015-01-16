@@ -38,9 +38,10 @@ if (@ARGV > 0) {
     $switch = shift @ARGV;
     if ($switch eq "-V") {
       $ignored_opts .= "-V ";
-    } elsif ($switch eq "--max-jobs-run") { # we do support this option.
+    } elsif ($switch eq "--max-jobs-run" || $switch eq "-tc") {
+      # we do support the option --max-jobs-run n, and its GridEngine form -tc n.
       $max_jobs_run = shift @ARGV;
-      if ($max_jobs_run <= 0) {
+      if (! ($max_jobs_run > 0)) {
         die "run.pl: invalid option --max-jobs-run $max_jobs_run";
       }
     } else {

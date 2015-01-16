@@ -236,7 +236,9 @@ int main(int argc, char *argv[]) {
         "For efficiency put the smallest lattices first (for example reference strings).\n"
         "Usage: lattice-oracle [options] <test-lattice-rspecifier> <reference-rspecifier> "
         "<transcriptions-wspecifier> [<edit-distance-wspecifier>]\n"
-        " e.g.: lattice-oracle ark:lat.1 'ark:sym2int.pl -f 2- data/lang/words.txt <data/test/text' ark,t:-\n";
+        " e.g.: lattice-oracle ark:lat.1 'ark:sym2int.pl -f 2- data/lang/words.txt <data/test/text' ark,t:-\n"
+        "Note: you can use this program to compute the n-best oracle WER by first piping\n"
+        "the input lattices through lattice-to-nbest and then nbest-to-lattice.\n";
         
     ParseOptions po(usage);
     
