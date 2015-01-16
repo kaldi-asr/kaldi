@@ -35,3 +35,15 @@ exit 0
 %WER 19.1 | 1155 27512 | 84.4 12.1 3.5 3.5 19.1 90.0 | -0.025 | exp/dnn4_pretrain-dbn_dnn/decode_test/score_12/ctm.filt.filt.sys
 %WER 17.7 | 1155 27512 | 85.8 11.3 2.9 3.5 17.7 88.7 | -0.049 | exp/dnn4_pretrain-dbn_dnn_smbr/decode_test/score_13/ctm.filt.filt.sys
 %WER 17.2 | 1155 27512 | 86.2 11.0 2.7 3.4 17.2 87.9 | -0.063 | exp/dnn4_pretrain-dbn_dnn_smbr_i1lats/decode_test/score_14/ctm.filt.filt.sys
+
+
+# multi-splice + i-vector
+%WER 17.9 | 1155 27512 | 85.6 11.2 3.1 3.6 17.9 88.1 | -0.105 | exp/nnet2_online/nnet_ms_a/decode_test/score_12/ctm.filt.filt.sys
+%WER 17.9 | 1155 27512 | 85.6 11.2 3.1 3.6 17.9 88.1 | -0.187 | exp/nnet2_online/nnet_ms_a_online/decode_test/score_12/ctm.filt.filt.sys
+%WER 18.0 | 1155 27512 | 85.3 11.3 3.4 3.3 18.0 87.9 | -0.196 | exp/nnet2_online/nnet_ms_a_online/decode_test_utt/score_13/ctm.filt.filt.sys
+%WER 17.7 | 1155 27512 | 85.6 11.1 3.3 3.3 17.7 87.4 | -0.177 | exp/nnet2_online/nnet_ms_a_online/decode_test_utt_offline/score_13/ctm.filt.filt.sys
+%WER 17.9 | 1155 27512 | 85.6 11.2 3.1 3.6 17.9 88.1 | -0.187 | exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch0_test/score_12/ctm.filt.filt.sys
+%WER 17.6 | 1155 27512 | 86.2 11.0 2.7 3.9 17.6 87.7 | -0.191 | exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch1_test/score_12/ctm.filt.filt.sys
+%WER 17.3 | 1155 27512 | 86.4 10.9 2.7 3.7 17.3 87.8 | -0.191 | exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch2_test/score_13/ctm.filt.filt.sys
+%WER 17.2 | 1155 27512 | 86.5 10.9 2.6 3.7 17.2 87.6 | -0.190 | exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch3_test/score_13/ctm.filt.filt.sys
+%WER 17.2 | 1155 27512 | 86.6 10.8 2.6 3.8 17.2 87.6 | -0.193 | exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch4_test/score_13/ctm.filt.filt.sys

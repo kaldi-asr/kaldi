@@ -5,13 +5,15 @@
 # Apache 2.0
 
 pushd db
-
 # TED-LIUM database:
-if [ ! -f TEDLIUM_release1.tar.gz ]; then
+if [[ $(hostname -f) == *.clsp.jhu.edu ]] ; then
+ ln -s /export/corpora5/TEDLIUM_release1
+else
+  if [ ! -f TEDLIUM_release1.tar.gz ]; then
     wget http://www.openslr.org/resources/7/TEDLIUM_release1.tar.gz || exit 1
     tar xf TEDLIUM_release1.tar.gz
+  fi
 fi
-
 # Generic CMU language model:
 if [ ! -f cmusphinx-5.0-en-us.lm.gz ]; then
     wget \

@@ -28,7 +28,7 @@ stage=0
 # Data preparation
 if [ $stage -le 0 ]; then
   local/download_data.sh || exit 1
-
+  
   local/prepare_data.sh || exit 1
 
   local/prepare_dict.sh || exit 1
@@ -134,6 +134,12 @@ fi
 
 # Run the DNN recipe on fMLLR feats:
 local/nnet/run_dnn.sh || exit 1
+
+## Run the nnet2 multisplice recipe
+# local/online/run_nnet2_ms.sh || exit 1;
+## Run discriminative training on the top of multisplice recipe
+# local/online/run_nnet2_ms_disc.sh || exit 1;
+
 
 echo success...
 exit 0
