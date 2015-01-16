@@ -35,8 +35,9 @@ fi
 cd $dir
 
 # This version for SI-84
-cat $CORPUS/wsj0/doc/indices/train/tr_s_wv1.ndx \
-  | $local/cstr_ndx2flist.pl $CORPUS | sort -u > train_si84_clean.flist
+cat $CORPUS/11-13.1/wsj0/doc/indices/train/tr_s_wv1.ndx | \
+  grep -v -i '11_2_1:wsj0/si_tr_s/401' | $local/cstr_ndx2flist.pl $CORPUS | \
+  sort -u > train_si84_clean.flist
 
 # This version for SI-284
 #cat $CORPUS/wsj1/doc/indices/si_tr_s.ndx \
@@ -57,11 +58,11 @@ cat $CORPUS/wsj0/doc/indices/train/tr_s_wv1.ndx \
 # Nov'92 (333 utts)
 # These index files have a slightly different format; 
 # have to add .wv1, which is done in cstr_ndx2flist.pl 
-cat $CORPUS/wsj0/doc/indices/test/nvp/si_et_20.ndx | \
+cat $CORPUS/11-13.1/wsj0/doc/indices/test/nvp/si_et_20.ndx | \
   $local/cstr_ndx2flist.pl $CORPUS | sort > test_eval92_clean.flist
 
 # Nov'92 (330 utts, 5k vocab)
-cat $CORPUS/wsj0/doc/indices/test/nvp/si_et_05.ndx | \
+cat $CORPUS/11-13.1/wsj0/doc/indices/test/nvp/si_et_05.ndx | \
   $local/cstr_ndx2flist.pl $CORPUS | sort > test_eval92_5k_clean.flist
 
 # Nov'93: (213 utts)
@@ -87,8 +88,8 @@ cat $CORPUS/wsj0/doc/indices/test/nvp/si_et_05.ndx | \
 # Note: the ???'s below match WSJ and SI_DT, or wsj and si_dt.  
 # Sometimes this gets copied from the CD's with upcasing, don't know 
 # why (could be older versions of the disks).
-find $CORPUS/wsj0/si_dt_20 -print | grep -i ".wv1" | sort > dev_dt_20_clean.flist
-find $CORPUS/wsj0/si_dt_05 -print | grep -i ".wv1" | sort > dev_dt_05_clean.flist
+find $CORPUS/11-6.1/wsj0/si_dt_20 -print | grep -i ".wv1" | sort > dev_dt_20_clean.flist
+find $CORPUS/11-6.1/wsj0/si_dt_05 -print | grep -i ".wv1" | sort > dev_dt_05_clean.flist
 
 
 # Finding the transcript files:
@@ -131,17 +132,17 @@ for x in train_si84_clean test_eval92_clean test_eval92_5k_clean dev_dt_05_clean
 done
 
 #in case we want to limit lm's on most frequent words, copy lm training word frequency list
-cp $CORPUS/wsj0/doc/lng_modl/vocab/wfl_64.lst $lmdir
+cp $CORPUS/11-13.1/wsj0/doc/lng_modl/vocab/wfl_64.lst $lmdir
 chmod u+w $lmdir/*.lst # had weird permissions on source.
 
 # The 20K vocab, open-vocabulary language model (i.e. the one with UNK), without
 # verbalized pronunciations.   This is the most common test setup, I understand.
 
-cp $CORPUS/wsj0/doc/lng_modl/base_lm/bcb20onp.z $lmdir/lm_bg.arpa.gz || exit 1;
+cp $CORPUS/11-13.1/wsj0/doc/lng_modl/base_lm/bcb20onp.z $lmdir/lm_bg.arpa.gz || exit 1;
 chmod u+w $lmdir/lm_bg.arpa.gz
 
 # trigram would be:
-cat $CORPUS/wsj0/doc/lng_modl/base_lm/tcb20onp.z | \
+cat $CORPUS/11-13.1/wsj0/doc/lng_modl/base_lm/tcb20onp.z | \
   perl -e 'while(<>){ if(m/^\\data\\/){ print; last;  } } while(<>){ print; }' \
   | gzip -c -f > $lmdir/lm_tg.arpa.gz || exit 1;
 
@@ -149,11 +150,11 @@ prune-lm --threshold=1e-7 $lmdir/lm_tg.arpa.gz $lmdir/lm_tgpr.arpa || exit 1;
 gzip -f $lmdir/lm_tgpr.arpa || exit 1;
 
 # repeat for 5k language models
-cp $CORPUS/wsj0/doc/lng_modl/base_lm/bcb05onp.z  $lmdir/lm_bg_5k.arpa.gz || exit 1;
+cp $CORPUS/11-13.1/wsj0/doc/lng_modl/base_lm/bcb05onp.z  $lmdir/lm_bg_5k.arpa.gz || exit 1;
 chmod u+w $lmdir/lm_bg_5k.arpa.gz
 
 # trigram would be: !only closed vocabulary here!
-cp $CORPUS/wsj0/doc/lng_modl/base_lm/tcb05cnp.z $lmdir/lm_tg_5k.arpa.gz || exit 1;
+cp $CORPUS/11-13.1/wsj0/doc/lng_modl/base_lm/tcb05cnp.z $lmdir/lm_tg_5k.arpa.gz || exit 1;
 chmod u+w $lmdir/lm_tg_5k.arpa.gz
 gunzip $lmdir/lm_tg_5k.arpa.gz
 tail -n 4328839 $lmdir/lm_tg_5k.arpa | gzip -c -f > $lmdir/lm_tg_5k.arpa.gz
@@ -181,7 +182,7 @@ fi
 # LDC put it on the web.  Perhaps it was accidentally omitted from the
 # disks.  
 
-cat $CORPUS/wsj0/doc/spkrinfo.txt \
+cat $CORPUS/11-13.1/wsj0/doc/spkrinfo.txt \
     ./wsj0-train-spkrinfo.txt  | \
     perl -ane 'tr/A-Z/a-z/; m/^;/ || print;' | \
     awk '{print $1, $2}' | grep -v -- -- | sort | uniq > spk2gender

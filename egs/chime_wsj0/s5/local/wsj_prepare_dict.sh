@@ -71,7 +71,7 @@ grep -v ';;;' $dir/cmudict/cmudict.0.7a | \
 # Add to cmudict the silences, noises etc.
 
 (echo '!SIL SIL'; echo '<SPOKEN_NOISE> SPN'; echo '<UNK> SPN'; echo '<NOISE> NSN'; ) | \
- cat - $dir/lexicon1_raw_nosil.txt  > $dir/lexicon2_raw.txt || exit 1;
+ cat - $dir/lexicon1_raw_nosil.txt | uniq > $dir/lexicon2_raw.txt || exit 1;
 
 
 # lexicon.txt is without the _B, _E, _S, _I markers.

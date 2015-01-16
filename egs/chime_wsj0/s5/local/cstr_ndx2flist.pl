@@ -41,8 +41,9 @@ $wsj_dir = $ARGV[0];
 while(<STDIN>){
   if(m/^;/){ next; } # Comment.  Ignore it.
   else {
-    m/^([0-9_]+):\s*(\S+)$/  || die "Could not parse line $_";
-    $filename = $2; # as a subdirectory of the distributed disk.
+    m/^([0-9]+)_([0-9]+)_([0-9]+):\s*(\S+)$/  || die "Could not parse line $_";
+    
+    $filename = $1.'-'.$2.'.'.$3.'/'.$4;
     if ($filename !~ m/\.wv1$/) { $filename .= ".wv1"; }
     $filename = "$wsj_dir/$filename";
     if (-e $filename) {
