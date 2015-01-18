@@ -778,6 +778,33 @@ important in the performance of NFS.  Kaldi reads and writes are generally conti
 don't tend to seek much within files, so large packet size is probably
 suitable.
 
+Another thing you might want to tune that's NFS related is the number of threads in the server.
+You can see this as follows:
+\verbatim
+/$ head /etc/default/nfs-kernel-server
+# Number of servers to start up
+RPCNFSDCOUNT=64
+\endverbatim
+To change it you edit that file and then restart the service (<tt>service nfs-kernel-server restart</tt>, on Debian).
+Apparently it is not good for this to be less than the number of clients that might simultaneously access your
+server (although 64 is the upper limit of what I've seen people recommend to set this to).  Apparently one way to
+tell if you have too few threads is too look at the  <tt>retrans</tt> count in your NFS stats:
+\verbatim
+nfsstat -rc
+Client rpc stats:
+calls      retrans    authrefrsh
+434831612   6807461    434979729
+\endverbatim
+The stats above have a largish number of <tt>retrans</tt>, and apparently in the ideal case it should be zero.
+We had the number of NFS threads set to a lower number (24) for most of the time that machine was up, which
+was less than the potential number of clients, so it's not surprising that we had a high amount of <tt>retrans</tt>.
+What seems to happen is that if a large number of clients are actively using the server, especially writing
+large amounts of data simultaneously, they can tie up all the server threads and then when another client tries
+to do something, it fails and in the client logs you'll see something like <tt>nfs: server a02 not responding, still trying</tt>.
+This can sometimes be associated with crashed jobs, and if you use automount on your setup, it can sometimes
+cause jobs that are not even accessing that server to crash or be delayed (automount has a brain-dead, single-threaded
+design, so failure of one mount request can hang up all other automount reqeuests).
+
 \subsection parallelization_grid_stable_misc Keeping your grid stable (general issues)
 
 In this section we have some general observations about how to configure

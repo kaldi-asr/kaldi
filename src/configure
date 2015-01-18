@@ -568,7 +568,7 @@ function linux_configure_dynamic {
   for libname in lapack lapack_atlas  clapack; do
     if [ -f $ATLASLIBDIR/lib${libname}.so -a "$ATLASLIBS" == "" ]; then
       if nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
-         ATLASLIBS="-L$ATLASLIBDIR -l${libname}"
+         ATLASLIBS="$ATLASLIBDIR/lib${libname}.so"
          echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
       fi
     fi
@@ -583,7 +583,7 @@ function linux_configure_dynamic {
       echo "Configuring dynamic ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
       return 1;
     fi
-    ATLASLIBS="$ATLASLIBS -l$x"
+    ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/lib${x}.so"
   done
   if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
 
