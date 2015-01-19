@@ -10,21 +10,21 @@ http://rnnlm.org
 
 The differences from the published Mikolov's RNNLM are hierarchical softmax and hogwild multithreading (both tricks are taken directly from word2vec). This makes possible to train RNNLM-HS (hierarchical softmax) on large corpora, e.g. billions of words. However, on small and average-sized corpora Tomas Mikolov's RNNLM works considerably better both in terms of entropy and WER. RNNLM-HS is also much faster in test time, which is useful for online ASR.
 
-Please send you ideas and proposals regarding this tool to ilia@yandex-team.com (Ilya Edrenkin, Yandex LLC). Bugreports and fixes are also of course welcome.
+Please send your ideas and proposals regarding this tool to ilia@yandex-team.com (Ilya Edrenkin, Yandex LLC). Bugreports and fixes are also of course welcome.
 
 2) USAGE EXAMPLES
 
 A typical example to obtain a reasonable model on a large (~4 billion words) corpus in a couple of days on a 16-core machine:
-./rnnlm -train corpus.shuf.split-train -valid corpus.shuf.split-valid -size 100 -model corpus.shuf.split-train.h100me5-1000.t16 -threads 16 -alpha 0.1 -bptt 4 -bptt-block 10 -maxent-order 5 -maxent-size 1000
+./rnnlm -train corpus.shuf.split-train -valid corpus.shuf.split-valid -hidden 100 -rnnlm corpus.shuf.split-train.h100me5-1000.t16 -threads 16 -alpha 0.1 -bptt 4 -bptt-block 10 -direct 5 -direct-size 1000
 
 Fine-tuning of an existing model on a smaller in-domain corpora:
-./rnnlm -train corpus.indomain.split-train -valid corpus.indomain.split-valid -model corpus.shuf.split-train.h100me5-1000.t16 -threads 1 -bptt 0 -alpha 0.01 -recompute-counts 1
+./rnnlm -train corpus.indomain.split-train -valid corpus.indomain.split-valid -rnnlm corpus.shuf.split-train.h100me5-1000.t16 -threads 1 -bptt 0 -alpha 0.01 -recompute-counts 1
 
 Obtaining individual logprobs for a set of test sentences:
-./rnnlm -model corpus.shuf.split-train.h100me5-1000.t16 -test corpus.test
+./rnnlm -rnnlm corpus.shuf.split-train.h100me5-1000.t16 -test corpus.test
 
 Interactive sampling from an existing model:
-./rnnlm -model corpus.shuf.split-train.h100me5-1000.t16 -gen -10
+./rnnlm -rnnlm corpus.shuf.split-train.h100me5-1000.t16 -gen -10
 
 3) USAGE ADVICE
 
@@ -108,7 +108,7 @@ Inherited from word2vec. Set debug to 0 if you don't want to see speed statistic
 
 	-direct-size <int>
 		Set the size of hash for maxent parameters, in millions (default 0 = maxent off)
-	-direct-order <int>
+	-direct <int>
 		Set the order of n-gram features to be used in maxent (default 3)
 
 Maxent extension. Off by default. Speeds up convergence a lot, also improves entropy; the only drawback is memory demand, e.g. setting -direct-size 1000 will cost you ~4 GB for the nnet file.
