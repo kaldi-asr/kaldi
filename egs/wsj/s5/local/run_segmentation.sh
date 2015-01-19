@@ -34,7 +34,7 @@ steps/cleanup/decode_segmentation.sh \
 steps/get_ctm.sh --cmd "$decode_cmd" data/train_si284_split \
   exp/tri2b/graph_train_si284_split exp/tri2b/decode_train_si284_split
 
-steps/cleanup/make_segmentation_data_dir.sh \
+steps/cleanup/make_segmentation_data_dir.sh --wer-cutoff 0.9 \
   --min-sil-length 0.5 --max-seg-length 15 --min-seg-length 1 \
   exp/tri2b/decode_train_si284_split/score_10/train_si284_split.ctm \
   data/train_si284_split data/train_si284_reseg

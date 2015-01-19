@@ -25,6 +25,8 @@ Allowed options:
   --separator       : Separator for aligned pairs (default = ";")
   --special-symbol  : Special symbol to aligned with inserted or deleted words
                       (default = "<***>")
+  --wer-cutoff      : Ignore segments with WER higher than the specified value.
+                      -1 means no segment will be ignored. (default = -1)
 EOU
 
 my $max_seg_length = 10.0;
@@ -32,7 +34,9 @@ my $min_seg_length = 2.0;
 my $min_sil_length = 0.5;
 my $separator = ";";
 my $special_symbol = "<***>";
+my $wer_cutoff = -1;
 GetOptions(
+  'wer-cutoff=f' => \$wer_cutoff,
   'max-seg-length=f' => \$max_seg_length,
   'min-seg-length=f' => \$min_seg_length,
   'min-sil-length=f' => \$min_sil_length,
@@ -70,6 +74,20 @@ sub PrintSegment {
   }
   if ($seg_start_index > $seg_end_index) {
     return -1;
+  }
+
+  # Filters out segments with high WER.
+  if ($wer_cutoff != -1) {
+    my $num_errors = 0; my $num_words = 0;
+    for (my $i = $seg_start_index; $i <= $seg_end_index; $i += 1) {
+      if ($aligned_ctm->[$i]->[0] ne "<eps>") {
+        $num_words += 1;
+      }
+      $num_errors += $aligned_ctm->[$i]->[3];
+    }
+    if ($num_errors / $num_words > $wer_cutoff) {
+      return -1;
+    }
   }
 
   # Works out the surrounding silence.
@@ -208,7 +226,7 @@ sub ProcessWav {
 
   # First, we have to align the ctm file to the Levenshtein alignment.
   # @aligned_ctm is a list of the following:
-  # [word, start_time, duration, is_correct]
+  # [word, start_time, duration, num_errors]
   my $ctm_index = 0;
   my @aligned_ctm = ();
   foreach my $entry (@{$current_align}) {
@@ -220,13 +238,13 @@ sub ProcessWav {
       if (defined($aligned_ctm[-1])) {
         $start = $aligned_ctm[-1]->[1] + $aligned_ctm[-1]->[2];
       }
-      push(@aligned_ctm, [$ref_word, $start, $dur, "false"]);
+      push(@aligned_ctm, [$ref_word, $start, $dur, 1]);
     } else {
       # Case 2: non-deletion, now $hyp corresponds to a word in ctm file.
       while ($current_ctm->[$ctm_index]->[4] eq "<eps>") {
         # Case 2.1: ctm contains silence at the corresponding place.
         push(@aligned_ctm, ["<eps>", $current_ctm->[$ctm_index]->[2],
-                             $current_ctm->[$ctm_index]->[3], "true"]);
+                             $current_ctm->[$ctm_index]->[3], 0]);
         $ctm_index += 1;
       }
       my $ctm_word = $current_ctm->[$ctm_index]->[4];
@@ -240,17 +258,17 @@ sub ProcessWav {
           #           previous one.
           if (defined($aligned_ctm[-1])) {
             $aligned_ctm[-1]->[2] += $dur;
-            $aligned_ctm[-1]->[3] = "false";
+            $aligned_ctm[-1]->[3] += 1;
           } else {
-            push(@aligned_ctm, ["<eps>", $start, $dur, "false"]);
+            push(@aligned_ctm, ["<eps>", $start, $dur, 1]);
           }
         } else {
           # Case 2.3: substitution.
-          push(@aligned_ctm, [$ref_word, $start, $dur, "false"]);
+          push(@aligned_ctm, [$ref_word, $start, $dur, 1]);
         }
       } else {
         # Case 2.4: correct.
-        push(@aligned_ctm, [$ref_word, $start, $dur, "true"]);
+        push(@aligned_ctm, [$ref_word, $start, $dur, 0]);
       }
       $ctm_index += 1;
     }
@@ -261,9 +279,9 @@ sub ProcessWav {
   my $current_seg_count = 0;
   for (my $x = 0; $x < @aligned_ctm; $x += 1) {
     my $lcorrect = "true"; my $rcorrect = "true";
-    $lcorrect = "false" if ($x > 0 && $aligned_ctm[$x - 1]->[3] eq "false");
+    $lcorrect = "false" if ($x > 0 && $aligned_ctm[$x - 1]->[3] > 0);
     $rcorrect = "false" if ($x < @aligned_ctm - 1 &&
-                            $aligned_ctm[$x + 1]->[3] eq "false");
+                            $aligned_ctm[$x + 1]->[3] > 0);
     my $current_seg_length = GetSegmentLengthNoSil(\@aligned_ctm,
                                                    $current_seg_index, $x);
 

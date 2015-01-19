@@ -10,6 +10,7 @@ min_sil_length=0.5
 time_precision=0.05
 special_symbol="<***>"
 separator=";"
+wer_cutoff=-1
 # End configuration section.
 
 set -e
@@ -26,6 +27,9 @@ if [ $# -ne 3 ]; then
   echo ""
   echo "Usage: $0 [options] <ctm-file> <old-data-dir> <new-data-dir>"
   echo "Options:"
+  echo "    --wer-cutoff            # ignore segments with WER higher than the"
+  echo "                            # specified value. -1 means no segment will"
+  echo "                            # be ignored."
   echo "    --max-seg-length        # maximum length of new segments"
   echo "    --min-seg-length        # minimum length of new segments"
   echo "    --min-sil-length        # minimum length of silence as split point"
@@ -163,6 +167,7 @@ steps/cleanup/create_segments_from_ctm.pl \
   --max-seg-length $max_seg_length --min-seg-length $min_seg_length \
   --min-sil-length $min_sil_length \
   --separator $separator --special-symbol $special_symbol \
+  --wer-cutoff $wer_cutoff \
   $new_data_dir/tmp/ctm $new_data_dir/tmp/aligned.txt \
   $new_data_dir/segments $new_data_dir/text
 
