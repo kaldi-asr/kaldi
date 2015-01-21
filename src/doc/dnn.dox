@@ -43,26 +43,30 @@ namespace kaldi {
   is more ``official'' than the other.  Both are still being developed in parallel.
 
   In the example directories such as egs/wsj/s5/, egs/rm/s5, egs/swbd/s5 and egs/hkust/s5b, neural
-  net example scripts can be found.  Karel's example scripts can be found in local/run_dnn.sh
-  or local/run_nnet.sh, and Dan's example scripts can be found in local/run_nnet2.sh.
+  net example scripts can be found.  Karel's example scripts can be found in 
+  local/nnet/run_dnn.sh, and Dan's example scripts can be found in local/run_nnet2.sh.
   Before running those scripts, the first stages of ``run.sh'' in those directories must
   be run in order to build the systems used for alignment.
 
   Regarding which of the two setups you should use:
-  - Karel's setup (nnet1) generally gives somewhat better results but
-    it only supports training on a single GPU card, or on a single CPU which
-    is very slow.
-  - Dan's setup generally gives slightly worse results but is more flexible in how
+  - Karel's setup (nnet1) supports training on a single GPU card, which allows
+    the implementation to be simpler and relatively easy to modify.
+  - Dan's setup (nnet2) is more flexible in how
     you can train: it supports using multiple GPUs, or multiple CPU's each with 
-    multiple threads.  Multiple GPU's is the recommended setup.  They don't have to
-    all be on the same machine.
+    multiple threads. Multiple GPU's is the recommended setup.  
+    They don't have to all be on the same machine. Both setups give commensurate results.
 
-  The reasons for the performance difference is unclear, as there are many differences
-  in the recipes used.  For example, Karel's setup uses pre-training 
+  Between the two setups there are many differences in the recipes. For example, Karel's setup uses pre-training 
   but Dan's setup does not; Karel's setup uses early stopping using a validation set but
   Dan's setup uses a fixed number of epochs and averages the parameters over the last
   few epochs of training.  Most other details of the training (nonlinearity types, learning
-  rate schedules, etc.) also differ.
+  rate schedules, network topology, input features etc.) also differ.
+
+  The best published descriptions of the DNN setups are:
+  - Karel's setup : <a href="http://www.fit.vutbr.cz/research/groups/speech/publi/2013/vesely_interspeech2013_IS131333.pdf">Sequence-discriminative training of deep neural networks</a>
+  - Dans's setup : <a href="http://arxiv-web3.library.cornell.edu/pdf/1410.7455v4">Parallel training of DNNs with natural gradient and parameter averaging</a>
+
+  The setups use incompatible DNN formats, while there is a converter of Karel's network into Dan's format \ref dnn1_conversion_to_dnn2.
 
   Documentation for Karel's version is available at \subpage dnn1 and 
   documentation for Dan's version is available at \subpage dnn2.
