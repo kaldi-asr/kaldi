@@ -24,6 +24,7 @@
 #include "nnet/nnet-component.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-rand.h"
+#include "util/text-utils.h"
 
 namespace kaldi {
 namespace nnet1 {
@@ -70,14 +71,18 @@ class BlockSoftmax : public Component {
   
   void InitData(std::istream &is) {
     // parse config
-    std::string token; 
+    std::string token,
+      dims_str;
     while (!is.eof()) {
       ReadToken(is, false, &token); 
-      /**/ if (token == "<BlockDims>") ReadIntegerVector(is, false, &block_dims);
+      /**/ if (token == "<BlockDims>") is >> dims_str;
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (BlockDims)";
       is >> std::ws; // eat-up whitespace
     }
+    // parse dims,
+    if (!kaldi::SplitStringToIntegers(dims_str, ":", false, &block_dims))
+      KALDI_ERR << "Invalid block-dims " << dims_str;
     // sanity check
     int32 sum = 0;
     for (int32 i=0; i<block_dims.size(); i++) {

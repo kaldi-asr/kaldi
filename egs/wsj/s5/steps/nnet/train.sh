@@ -151,7 +151,7 @@ else
   cp $alidir/tree $dir/tree || exit 1
 
   # make phone counts for analysis
-  analyze-counts --verbose=1 --symbol-table=$lang/phones.txt "$labels_tr_phn" /dev/null 2>$dir/log/analyze_counts_phones.log || exit 1
+  [ -e $lang/phones.txt ] && analyze-counts --verbose=1 --symbol-table=$lang/phones.txt "$labels_tr_phn" /dev/null 2>$dir/log/analyze_counts_phones.log || exit 1
 fi
 
 ###### PREPARE FEATURES ######

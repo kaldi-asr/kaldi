@@ -1,6 +1,6 @@
 // nnetbin/nnet-copy.cc
 
-// Copyright 2012  Brno University of Technology (author: Karel Vesely)
+// Copyright 2012-2015  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -35,13 +35,15 @@ int main(int argc, char *argv[]) {
 
 
     bool binary_write = true;
-    int32 remove_first_layers = 0;
-    int32 remove_last_layers = 0;
+    int32 remove_first_components = 0;
+    int32 remove_last_components = 0;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("remove-first-layers", &remove_first_layers, "Remove N first layers (Components) from the MLP");
-    po.Register("remove-last-layers", &remove_last_layers, "Remove N last layers (Components) from the MLP");
+    po.Register("remove-first-layers", &remove_first_components, "Deprecated, please use --remove-first-components");
+    po.Register("remove-last-layers", &remove_last_components, "Deprecated, please use --remove-last-components");
+    po.Register("remove-first-components", &remove_first_components, "Remove N first Components from the Nnet");
+    po.Register("remove-last-components", &remove_last_components, "Remove N last layers Components from the Nnet");
 
     po.Read(argc, argv);
 
@@ -62,15 +64,15 @@ int main(int argc, char *argv[]) {
     }
 
     // optionally remove N first layers
-    if(remove_first_layers > 0) {
-      for(int32 i=0; i<remove_first_layers; i++) {
+    if(remove_first_components > 0) {
+      for(int32 i=0; i<remove_first_components; i++) {
         nnet.RemoveComponent(0);
       }
     }
    
     // optionally remove N last layers
-    if(remove_last_layers > 0) {
-      for(int32 i=0; i<remove_last_layers; i++) {
+    if(remove_last_components > 0) {
+      for(int32 i=0; i<remove_last_components; i++) {
         nnet.RemoveLastComponent();
       }
     }

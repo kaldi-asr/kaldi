@@ -68,7 +68,7 @@ fi
 
 # Concat feature transform with trimmed MLP:
 nnet=$bnfeadir/feature_extractor.nnet
-nnet-concat $nndir/final.feature_transform "nnet-copy --remove-last-layers=$remove_last_components $nndir/final.nnet - |" $nnet 2>$logdir/feature_extractor.log || exit 1
+nnet-concat $nndir/final.feature_transform "nnet-copy --remove-last-components=$remove_last_components $nndir/final.nnet - |" $nnet 2>$logdir/feature_extractor.log || exit 1
 
 echo "Creating bn-feats into $data"
 

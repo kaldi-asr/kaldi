@@ -18,12 +18,12 @@
 # Generated Nnet prototype, to be initialized by 'nnet-initialize'.
 
 import math, random, sys
-from optparse import OptionParser
 
 ###
 ### Parse options
 ###
-usage="%prog [options] <feat-dim> >nnet-proto-file"
+from optparse import OptionParser
+usage="%prog [options] <feat-dim> <num-leaves> <num-hid-layers> <num-hid-neurons> >nnet-proto-file"
 parser = OptionParser(usage)
 
 parser.add_option('--no-proto-head', dest='with_proto_head', 
@@ -32,6 +32,9 @@ parser.add_option('--no-proto-head', dest='with_proto_head',
 parser.add_option('--no-softmax', dest='with_softmax', 
                    help='Do not put <SoftMax> in the prototype [default: %default]', 
                    default=True, action='store_false');
+parser.add_option('--block-softmax-dims', dest='block_softmax_dims', 
+                   help='Generate <BlockSoftmax> with dims D1:D2:D3 [default: %default]', 
+                   default="", type='string');
 parser.add_option('--activation-type', dest='activation_type', 
                    help='Select type of activation function : (<Sigmoid>|<Tanh>) [default: %default]', 
                    default='<Sigmoid>', type='string');
@@ -75,6 +78,8 @@ assert(feat_dim > 0)
 assert(num_leaves > 0)
 assert(num_hid_layers >= 0)
 assert(num_hid_neurons > 0)
+if o.block_softmax_dims:
+  assert(sum(map(int, o.block_softmax_dims.split(':'))) == num_leaves)
 
 # Optionaly scale
 def Glorot(dim1, dim2):
@@ -119,7 +124,10 @@ if num_hid_layers == 0 and o.bottleneck_dim != 0:
     (o.param_stddev_factor * Glorot(num_hid_neurons, num_leaves)), 1.0, 0.1)
   # Optionaly append softmax
   if o.with_softmax:
-    print "<Softmax> <InputDim> %d <OutputDim> %d" % (num_leaves, num_leaves)
+    if o.block_softmax_dims == "":
+      print "<Softmax> <InputDim> %d <OutputDim> %d" % (num_leaves, num_leaves)
+    else:
+      print "<BlockSoftmax> <InputDim> %d <OutputDim> %d <BlockDims> %s" % (num_leaves, num_leaves, o.block_softmax_dims)
   print "</NnetProto>"
   # We are done!
   sys.exit(0)
@@ -131,7 +139,10 @@ if num_hid_layers == 0:
   print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f" % \
         (feat_dim, num_leaves, 0.0, 0.0, (o.param_stddev_factor * Glorot(feat_dim, num_leaves)))
   if o.with_softmax:
-    print "<Softmax> <InputDim> %d <OutputDim> %d" % (num_leaves, num_leaves)
+    if o.block_softmax_dims == "":
+      print "<Softmax> <InputDim> %d <OutputDim> %d" % (num_leaves, num_leaves)
+    else:
+      print "<BlockSoftmax> <InputDim> %d <OutputDim> %d <BlockDims> %s" % (num_leaves, num_leaves, o.block_softmax_dims)
   print "</NnetProto>"
   # We are done!
   sys.exit(0)
@@ -191,7 +202,10 @@ print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> 
 
 # Optionaly append softmax
 if o.with_softmax:
-  print "<Softmax> <InputDim> %d <OutputDim> %d" % (num_leaves, num_leaves)
+  if o.block_softmax_dims == "":
+    print "<Softmax> <InputDim> %d <OutputDim> %d" % (num_leaves, num_leaves)
+  else:
+    print "<BlockSoftmax> <InputDim> %d <OutputDim> %d <BlockDims> %s" % (num_leaves, num_leaves, o.block_softmax_dims)
 
 # End the prototype
 print "</NnetProto>"
