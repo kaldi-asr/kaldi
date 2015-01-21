@@ -13,6 +13,7 @@ stage=0
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 beam=10
 retry_beam=40
+nnet_forward_opts="--no-softmax=true --prior-scale=1.0"
 
 align_to_lats=false # optionally produce alignment in lattice format
  lats_decode_opts="--acoustic-scale=0.1 --beam=20 --lattice_beam=10"
@@ -76,8 +77,7 @@ if [ -f $srcdir/delta_order ]; then
   feats="$feats add-deltas --delta-order=$delta_order ark:- ark:- |"
 fi
 # Finally add feature_transform and the MLP
-feats="$feats nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet ark:- ark:- |"
-
+feats="$feats nnet-forward $nnet_forward_opts --feature-transform=$feature_transform --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet ark:- ark:- |"
 
 echo "$0: aligning data '$data' using nnet/model '$srcdir', putting alignments in '$dir'"
 # Map oovs in reference transcription 
