@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey, Yenda Trmal)
+# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey, Yenda Trmal)
 # Apache 2.0
 
 [ -f ./path.sh ] && . ./path.sh
@@ -11,7 +11,7 @@ decode_mbr=false
 reverse=false
 stats=true
 beam=6
-word_ins_penalty=1.5,1.0,0.5,0.0,-0.5,-1.5,-2.0,-2.5,-3.0,-3.5
+word_ins_penalty=0.0,0.5,1.0
 min_lmwt=9
 max_lmwt=20
 #end configuration section.
@@ -43,74 +43,105 @@ for f in $symtab $dir/lat.1.gz $data/text; do
 done
 
 
-filtering_cmd="cat -"
-[ -x local/wer_output_filter ] && filtering_cmd="local/wer_output_filter"
-[ -x local/wer_ref_filter ] && filtering_cmd="local/wer_ref_filter"
+ref_filtering_cmd="cat"
+[ -x local/wer_output_filter ] && ref_filtering_cmd="local/wer_output_filter"
+[ -x local/wer_ref_filter ] && ref_filtering_cmd="local/wer_ref_filter"
+hyp_filtering_cmd="cat"
+[ -x local/wer_output_filter ] && hyp_filtering_cmd="local/wer_output_filter"
+[ -x local/wer_hyp_filter ] && hyp_filtering_cmd="local/wer_hyp_filter"
+
+
 if $decode_mbr ; then
-  echo "$0: scoring with MBR, WIP=$word_ins_penalty"
+  echo "$0: scoring with MBR, word insertion penalty=$word_ins_penalty"
 else
-  echo "$0: scoring with WIP=$word_ins_penalty"
+  echo "$0: scoring with word insertion penalty=$word_ins_penalty"
 fi
 
 
-for wip in `echo $word_ins_penalty | sed 's/,/ /g'` ; do
-  mkdir -p $dir/scoring_$wip/log
-  cat $data/text | $filtering_cmd > $dir/scoring_$wip/test_filt.txt
+mkdir -p $dir/scoring_kaldi
+cat $data/text | $ref_filtering_cmd > $dir/scoring_kaldi/test_filt.txt || exit 1;
 
-  if $decode_mbr ; then
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_$wip/log/best_path.LMWT.log \
-      acwt=\`perl -e \"print 1.0/LMWT\"\`\; \
-      lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-      lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
-      lattice-prune --beam=$beam ark:- ark:- \| \
-      lattice-mbr-decode  --word-symbol-table=$symtab \
-        ark:- ark,t:$dir/scoring_$wip/LMWT.tra || exit 1;
-  else
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_$wip/log/best_path.LMWT.log \
-      lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-      lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
-      lattice-best-path --word-symbol-table=$symtab \
-        ark:- ark,t:$dir/scoring_$wip/LMWT.tra || exit 1;
-  fi
-  if $reverse; then
-    for lmwt in `seq $min_lmwt $max_lmwt`; do
-      mv $dir/scoring_$wip/$lmwt.tra $dir/scoring_$wip/$lmwt.tra.orig
-      awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
-         <$dir/scoring_$wip/$lmwt.tra.orig >$dir/scoring_$wip/$lmwt.tra
-    done
-  fi
+if [ $stage -le 0 ]; then
 
+  for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+    mkdir -p $dir/scoring_kaldi/penalty_$wip/log
 
-  [ -x local/wer_hyp_filter ] && filtering_cmd="local/wer_hyp_filter"
-  for lmwt in `seq $min_lmwt $max_lmwt`; do
-    utils/int2sym.pl -f 2- $symtab <$dir/scoring_$wip/$lmwt.tra | \
-      $filtering_cmd  > $dir/scoring_$wip/$lmwt.txt || exit 1;
-  done
+    if $decode_mbr ; then
+      $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_kaldi/penalty_$wip/log/best_path.LMWT.log \
+        acwt=\`perl -e \"print 1.0/LMWT\"\`\; \
+        lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+        lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
+        lattice-prune --beam=$beam ark:- ark:- \| \
+        lattice-mbr-decode  --word-symbol-table=$symtab \
+        ark:- ark,t:- \| \
+        utils/int2sym.pl -f 2- $symtab \| \
+        $hyp_filtering_cmd '>' $dir/scoring_kaldi/penalty_$wip/LMWT.txt || exit 1;
 
-  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_$wip/log/score.LMWT.log \
-     cat $dir/scoring_$wip/LMWT.txt \| \
+    else
+      $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_kaldi/penalty_$wip/log/best_path.LMWT.log \
+        lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+        lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
+        lattice-best-path --word-symbol-table=$symtab ark:- ark,t:- \| \
+        utils/int2sym.pl -f 2- $symtab \| \
+        $hyp_filtering_cmd '>' $dir/scoring_kaldi/penalty_$wip/LMWT.txt || exit 1;
+    fi
+
+    if $reverse; then # rarely-used option, ignore this.
+      for lmwt in `seq $min_lmwt $max_lmwt`; do
+        mv $dir/scoring_kaldi/penalty_$wip/$lmwt.txt $dir/scoring_kaldi/penalty_$wip/$lmwt.txt.orig
+        awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
+          <$dir/scoring_kaldi/penalty_$wip/$lmwt.txt.orig >$dir/scoring_kaldi/penalty_$wip/$lmwt.txt
+      done
+    fi
+
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_kaldi/penalty_$wip/log/score.LMWT.log \
+      cat $dir/scoring_kaldi/penalty_$wip/LMWT.txt \| \
       compute-wer --text --mode=present \
-       ark:$dir/scoring_$wip/test_filt.txt  ark,p:- ">&" $dir/wer_LMWT_$wip || exit 1;
+      ark:$dir/scoring_kaldi/test_filt.txt  ark,p:- ">&" $dir/wer_LMWT_$wip || exit 1;
+
+  done
+fi
+
+
+if [ $stage -le 1 ]; then
+
+  for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+    for lmwt in $(seq $min_lmwt $max_lmwt); do
+      # adding /dev/null to the command list below forces grep to output the filename
+      grep WER $dir/wer_${lmwt}_${wip} /dev/null
+    done
+  done | utils/best_wer.sh  >& $dir/scoring_kaldi/best_wer || exit 1
+
+  best_wer_file=$(awk '{print $NF}' $dir/scoring_kaldi/best_wer)
+  best_wip=$(echo $best_wer_file | awk -F_ '{print $NF}')
+  best_lmwt=$(echo $best_wer_file | awk -F_ '{N=NF-1; print $N}')
+
+  if [ -z "$best_lmwt" ]; then
+    echo "$0: we could not get the details of the best WER from the file $dir/wer_*.  Probably something went wrong."
+    exit 1;
+  fi
 
   if $stats; then
-    mkdir -p $dir/wer-details_$wip
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_$wip/log/stats.LMWT.log \
-     cat $dir/scoring_$wip/LMWT.txt \| \
-       align-text --special-symbol="'***'" ark:$dir/scoring_$wip/test_filt.txt ark:- ark,t:- \|  \
-       utils/scoring/wer_per_utt_details.pl --special-symbol "'***'" \| tee $dir/wer-details_$wip/per_utt_LMWT \|\
-       utils/scoring/wer_per_spk_details.pl $data/utt2spk \> $dir/wer-details_$wip/per_spk_LMWT || exit 1;
+    mkdir -p $dir/scoring_kaldi/wer_details
+    echo $best_lmwt > $dir/scoring_kaldi/wer_details/lmwt # record best language model weight
+    echo $best_wip > $dir/scoring_kaldi/wer_details/wip # record best word insertion penalty
 
+    $cmd $dir/scoring_kaldi/log/stats1.log \
+      cat $dir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \| \
+      align-text --special-symbol="'***'" ark:$dir/scoring_kaldi/test_filt.txt ark:- ark,t:- \|  \
+      utils/scoring/wer_per_utt_details.pl --special-symbol "'***'" \| tee $dir/scoring_kaldi/wer_details/per_utt \|\
+       utils/scoring/wer_per_spk_details.pl $data/utt2spk \> $dir/scoring_kaldi/wer_details/per_spk || exit 1;
 
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_$wip/log/stats2.LMWT.log \
-       cat $dir/wer-details_$wip/per_utt_LMWT \| utils/scoring_$wip/wer_ops_details.pl --special-symbol "'***'" \| \
-        column -t \| sort \> $dir/wer-details_$wip/ops_LMWT || exit 1;
+    $cmd $dir/scoring_kaldi/log/stats2.log \
+      cat $dir/scoring_kaldi/wer_details/per_utt \| \
+      utils/scoring/wer_ops_details.pl --special-symbol "'***'" \| \
+      column -t \| sort \> $dir/scoring_kaldi/wer_details/ops || exit 1;
   fi
-done
+fi
 
-#If we got here, the scoring was successful.
-#As a  small aid to prevent confusion, we remove all wer_{?,??} files and the scoring/ dir
-#These originate from the previous version of the scoring files 
-rm -f $dir/wer_{?,??}
-rm -rf $dir/scoring
+# If we got here, the scoring was successful.
+# As a  small aid to prevent confusion, we remove all wer_{?,??} files;
+# these originate from the previous version of the scoring files 
+rm $dir/wer_{?,??} 2>/dev/null
 
 exit 0;
