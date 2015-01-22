@@ -326,7 +326,7 @@ if ($array_job == 1) { # It's an array job.
   $queue_array_opt = "-t $jobstart:$jobend"; 
   $logfile =~ s/$jobname/\$SGE_TASK_ID/g; # This variable will get 
   # replaced by qsub, in each job, with the job-id.
-  $cmd =~ s/$jobname/\$SGE_TASK_ID/g; # same for the command...
+  $cmd =~ s/$jobname/\$\{SGE_TASK_ID\}/g; # same for the command...
   $queue_logfile =~ s/\.?$jobname//; # the log file in the q/ subdirectory
   # is for the queue to put its log, and this doesn't need the task array subscript
   # so we remove it.
