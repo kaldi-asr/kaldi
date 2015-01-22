@@ -6,7 +6,7 @@
 
 . cmd.sh
 ## SGMM on top of LDA+MLLT+SAT features.
-if [ ! -f exp/ubm4a/final.ubm ] && [ ! data/train/feats.scp -nt exp/ubm4a/final.ubm ]; then
+if [ ! -f exp/ubm4a/final.ubm ] || [ ! data/train/feats.scp -nt exp/ubm4a/final.ubm ]; then
   steps/train_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" 400 data/train data/lang exp/tri3b_ali exp/ubm4a || exit 1;
 fi
           
