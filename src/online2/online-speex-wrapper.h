@@ -18,8 +18,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_ONLINE2_SPEEX_WRAPPER_H_
-#define KALDI_ONLINE2_SPEEX_WRAPPER_H_
+#ifndef KALDI_ONLINE2_ONLINE_SPEEX_WRAPPER_H_
+#define KALDI_ONLINE2_ONLINE_SPEEX_WRAPPER_H_
 
 #ifdef HAVE_SPEEX
   #include <speex/speex.h>
@@ -137,4 +137,4 @@ class OnlineSpeexDecoder {
 
 }  // namespace kaldi
 
-#endif  // KALDI_ONLINE2_SPEEX_WRAPPER_H_
+#endif  // KALDI_ONLINE2_ONLINE_SPEEX_WRAPPER_H_

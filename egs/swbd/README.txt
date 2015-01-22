@@ -19,8 +19,9 @@ About the Fisher corpus for language modeling
 Each subdirectory of this directory contains the
 scripts for a sequence of experiments.
 
-  s5: This is slightly out of date, please see s5b which
-    has been improved in various ways.
+  s5: This is slightly out of date, please see s5c
 
-  s5b: This is a cleaned-up version of s5, based on Arnab's
-    "edinburgh" recipe, but still somewhat under construction.
+  s5b: This is (somewhat less) out of date, please see s5c
+
+  s5c: This is the current recipe.
+

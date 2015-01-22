@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# This is really just some notes on how I updated .gitignore (at top level)
+# this script updates the .gitignore properties with the names of newly added binaries.
+
+# First, here is some notes on how I updated .gitignore (at top level)
 # using the previously listed things in the svn:ignore properties.
 
 # # we'll first get a list of all directories in svn.

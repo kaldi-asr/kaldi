@@ -865,3 +865,9 @@
 /egs/librispeech/s5/data
 /egs/librispeech/s5/mfcc
 /egs/librispeech/s5/exp
+/src/bin/align-text
+/src/latbin/nbest-to-prons
+/src/matrix/matrix-lib-speed-test
+/src/nnet2bin/nnet-am-reinitialize
+/src/nnet2bin/nnet-train-perturbed
+/src/nnetbin/feat-to-post

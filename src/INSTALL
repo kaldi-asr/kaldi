@@ -12,8 +12,9 @@ make depend
 make
 
 Note that "make" takes a long time; you can speed it up by running make
-in parallel, for instance "make -j 4"
-
+in parallel if you have multiple CPUs, for instance 
+ make depend -j 8
+ make -j 8
 For more information, see documentation at http://kaldi.sf.net/
 and click on "The build process (how Kaldi is compiled)".
 

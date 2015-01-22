@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Warning-- this recipe is deprecated.  See ../s5b/ for the latest recipe.
+# Warning-- this recipe is now out of date.  See ../s5c/ for the latest recipe.
 
 . cmd.sh
 

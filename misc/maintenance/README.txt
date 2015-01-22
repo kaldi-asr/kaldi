@@ -15,4 +15,3 @@
 
 # also ../src/doc/cpplint.py is useful as a style checker.
 
-

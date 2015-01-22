@@ -20,8 +20,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_ONLINE2_ONLINE_FEATURE_H_
-#define KALDI_ONLINE2_ONLINE_FEATURE_H_
+#ifndef KALDI_FEAT_ONLINE_FEATURE_H_
+#define KALDI_FEAT_ONLINE_FEATURE_H_
 
 #include <string>
 #include <vector>
@@ -540,4 +540,4 @@ class OnlineAppendFeature: public OnlineFeatureInterface {
 /// @} End of "addtogroup onlinefeat"
 }  // namespace kaldi
 
-#endif  // KALDI_ONLINE2_ONLINE_FEATURE_H_
+#endif  // KALDI_FEAT_ONLINE_FEATURE_H_

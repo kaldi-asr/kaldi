@@ -20,8 +20,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_ONLINE_ONLINEBIN_UTIL_H_
-#define KALDI_ONLINE_ONLINEBIN_UTIL_H_
+#ifndef KALDI_ONLINE2_ONLINEBIN_UTIL_H_
+#define KALDI_ONLINE2_ONLINEBIN_UTIL_H_
 
 #include "base/kaldi-common.h"
 #include "fstext/fstext-lib.h"
@@ -44,4 +44,4 @@ void PrintPartialResult(const std::vector<int32>& words,
 
 } // namespace kaldi
 
-#endif // KALDI_ONLINE_ONLINEBIN_UTIL_H_
+#endif // KALDI_ONLINE2_ONLINEBIN_UTIL_H_
