@@ -63,7 +63,7 @@ if [ $stage -le 2 ]; then
   cd $s5_dir
   mkdir -p $rnnlmdir
   rnnlm -rnnlm $rnnlmdir/rnnlm -train $data_dir/librispeech-lm-norm.train.txt -valid $data_dir/librispeech-lm-norm.dev.txt \
-      -threads $num_threads -hidden $hidden -direct $maxent_order -direct-size $maxent_size -retry 1 -stop 1.0
+      -threads $num_threads -hidden $hidden -direct-order $maxent_order -direct $maxent_size -retry 1 -stop 1.0
   touch $rnnlmdir/unk.probs
   awk '{print $1}' $rnnlmdir/rnnlm > $rnnlmdir/wordlist.rnn
 fi

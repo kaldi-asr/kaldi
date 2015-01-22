@@ -15,7 +15,7 @@ Please send your ideas and proposals regarding this tool to ilia@yandex-team.com
 2) USAGE EXAMPLES
 
 A typical example to obtain a reasonable model on a large (~4 billion words) corpus in a couple of days on a 16-core machine:
-./rnnlm -train corpus.shuf.split-train -valid corpus.shuf.split-valid -hidden 100 -rnnlm corpus.shuf.split-train.h100me5-1000.t16 -threads 16 -alpha 0.1 -bptt 4 -bptt-block 10 -direct 5 -direct-size 1000
+./rnnlm -train corpus.shuf.split-train -valid corpus.shuf.split-valid -hidden 100 -rnnlm corpus.shuf.split-train.h100me5-1000.t16 -threads 16 -alpha 0.1 -bptt 4 -bptt-block 10 -direct-order 5 -direct 1000
 
 Fine-tuning of an existing model on a smaller in-domain corpora:
 ./rnnlm -train corpus.indomain.split-train -valid corpus.indomain.split-valid -rnnlm corpus.shuf.split-train.h100me5-1000.t16 -threads 1 -bptt 0 -alpha 0.01 -recompute-counts 1
@@ -106,9 +106,9 @@ In addition to that, if the validation set entropy improvement is less than <rej
 
 Inherited from word2vec. Set debug to 0 if you don't want to see speed statistics. 
 
-	-direct-size <int>
-		Set the size of hash for maxent parameters, in millions (default 0 = maxent off)
 	-direct <int>
+		Set the size of hash for maxent parameters, in millions (default 0 = maxent off)
+	-direct-order <int>
 		Set the order of n-gram features to be used in maxent (default 3)
 
 Maxent extension. Off by default. Speeds up convergence a lot, also improves entropy; the only drawback is memory demand, e.g. setting -direct-size 1000 will cost you ~4 GB for the nnet file.
