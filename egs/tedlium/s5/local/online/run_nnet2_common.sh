@@ -41,7 +41,7 @@ if [ $stage -le 2 ]; then
     --realign-iters "" \
     --splice-opts "--left-context=3 --right-context=3" \
     5000 10000 data/train_hires data/lang \
-    exp/nnet2_online/tri3_ali exp/nnet2_online/tri4
+    exp/tri3_ali exp/nnet2_online/tri4
 fi
 
 

@@ -19,7 +19,7 @@
 . cmd.sh
 . path.sh
 
-nj=80
+nj=40
 decode_nj=8
 
 stage=0
