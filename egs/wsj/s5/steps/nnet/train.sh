@@ -25,9 +25,8 @@ init_opts=         # options, passed to the initialization script
 copy_feats=true # resave the train/cv features into /tmp (disabled by default)
  copy_feats_tmproot= # tmproot for copy-feats (optional)
 # feature config (applies always)
-apply_cmvn=false # apply normalization to input features?
- norm_vars=false # use variance normalization?
-delta_order=
+cmvn_opts=
+delta_opts=
 # feature_transform:
 splice=5         # temporal splicing
 splice_step=1    # stepsize of the splicing (1 == no gap between frames)
@@ -178,43 +177,40 @@ head -n 10000 $dir/train.scp > $dir/train.scp.10k
 
 ###### PREPARE FEATURE PIPELINE ######
 
-# read the features
+# optionally import feature setup from pre-training,
+if [ ! -z $feature_transform ]; then
+  D=$(dirname $feature_transform)
+  [ -e $D/norm_vars ] && cmvn_opts="--norm-means=true --norm-vars=$(cat $D/norm_vars)" # Bwd-compatibility,
+  [ -e $D/cmvn_opts ] && cmvn_opts=$(cat $D/cmvn_opts)
+  [ -e $D/delta_order ] && delta_opts="--delta-order=$(cat $D/delta_order)" # Bwd-compatibility,
+  [ -e $D/delta_opts ] && delta_opts=$(cat $D/delta_opts)
+  echo "Imported config : cmvn_opts='$cmvn_opts' delta_opts='$delta_opts'"
+fi
+
+# read the features,
 feats_tr="ark:copy-feats scp:$dir/train.scp ark:- |"
 feats_cv="ark:copy-feats scp:$dir/cv.scp ark:- |"
-
-# CMVN:
-# optionally import CMVN config from pre-training
-if [ ! -z $feature_transform ]; then
-  norm_vars_file=$(dirname $feature_transform)/norm_vars 
-  if [ -e $norm_vars_file ]; then
-    apply_cmvn=true; norm_vars=$(cat $norm_vars_file);
-  fi
-  echo "Imported CMVN config from pre-training: apply_cmvn=$apply_cmvn; norm_vars=$norm_vars"
-  delta_order_file=$(dirname $feature_transform)/delta_order
-  [ -r $delta_order_file ] && delta_order=$(cat $delta_order_file) && echo "Imported delta-order $delta_order"
-fi
-# optionally add per-speaker CMVN
-if [ $apply_cmvn == "true" ]; then
+# optionally add per-speaker CMVN,
+if [ ! -z "$cmvn_opts" ]; then
   echo "Will use CMVN statistics : $data/cmvn.scp, $data_cv/cmvn.scp"
-  [ ! -r $data/cmvn.scp ] && echo "Cannot find cmvn stats $data/cmvn.scp" && exit 1;
-  [ ! -r $data_cv/cmvn.scp ] && echo "Cannot find cmvn stats $data_cv/cmvn.scp" && exit 1;
-  feats_tr="$feats_tr apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp ark:- ark:- |"
-  feats_cv="$feats_cv apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp ark:- ark:- |"
-  # keep track of norm_vars option
-  echo "$norm_vars" >$dir/norm_vars 
+  [ ! -r $data/cmvn.scp ] && echo "Missing $data/cmvn.scp" && exit 1;
+  [ ! -r $data_cv/cmvn.scp ] && echo "Missing $data_cv/cmvn.scp" && exit 1;
+  feats_tr="$feats_tr apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp ark:- ark:- |"
+  feats_cv="$feats_cv apply-cmvn $cmvn_opts --utt2spk=ark:$data_cv/utt2spk scp:$data_cv/cmvn.scp ark:- ark:- |"
 else
-  echo "apply_cmvn is disabled (per speaker norm. on input features)"
+  echo "apply-cmvn is not used"
+fi
+# optionally add deltas,
+if [ ! -z "$delta_opts" ]; then
+  feats_tr="$feats_tr add-deltas $delta_opts ark:- ark:- |"
+  feats_cv="$feats_cv add-deltas $delta_opts ark:- ark:- |"
+  echo "add-deltas with $delta_opts"
 fi
 
-# optionally add deltas
-delta_order_file=$(dirname $feature_transform)/delta_order
-[ -e $delta_order_file ] && delta_order=$(cat $delta_order_file)
-if [ "$delta_order" != "" ]; then
-  feats_tr="$feats_tr add-deltas --delta-order=$delta_order ark:- ark:- |"
-  feats_cv="$feats_cv add-deltas --delta-order=$delta_order ark:- ark:- |"
-  echo "$delta_order" > $dir/delta_order
-  echo "add-deltas (delta_order $delta_order)"
-fi
+# keep track of the config,
+[ ! -z "cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts 
+[ ! -z "delta_opts" ] && echo "$delta_opts" >$dir/delta_opts
+#
 
 # get feature dim
 echo "Getting feature dim : "
@@ -348,8 +344,10 @@ if [[ -z "$mlp_init" && -z "$mlp_proto" ]]; then
         $num_fea $num_tgt $hid_layers $hid_dim >$mlp_proto || exit 1 
       ;;
     cnn1d)
+      delta_order=$([ -z $delta_opts ] && echo "0" || { echo $delta_opts | tr ' ' '\n' | grep "delta[-_]order" | sed 's:^.*=::'; })
+      echo "Debug : $delta_opts, delta_order $delta_order"
       utils/nnet/make_cnn_proto.py $cnn_proto_opts \
-        --splice $splice --delta-order $delta_order --dir $dir \
+        --splice=$splice --delta-order=$delta_order --dir=$dir \
         $num_fea >$mlp_proto || exit 1
       cnn_fea=$(cat $mlp_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')
       utils/nnet/make_nnet_proto.py $proto_opts \

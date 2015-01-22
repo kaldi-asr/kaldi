@@ -20,6 +20,7 @@ lattice_beam=8.0
 min_active=200
 max_active=7000 # limit of active tokens
 max_mem=50000000 # approx. limit to memory consumption during minimization in bytes
+nnet_forward_opts="--no-softmax=true --prior-scale=1.0"
 
 skip_scoring=false
 scoring_opts="--min-lmwt 4 --max-lmwt 15"
@@ -88,24 +89,28 @@ thread_string=
 
 
 # PREPARE FEATURE EXTRACTION PIPELINE
-# Create the feature stream:
+# import config,
+cmvn_opts=
+delta_opts=
+D=$srcdir
+[ -e $D/norm_vars ] && cmvn_opts="--norm-means=true --norm-vars=$(cat $D/norm_vars)" # Bwd-compatibility,
+[ -e $D/cmvn_opts ] && cmvn_opts=$(cat $D/cmvn_opts)
+[ -e $D/delta_order ] && delta_opts="--delta-order=$(cat $D/delta_order)" # Bwd-compatibility,
+[ -e $D/delta_opts ] && delta_opts=$(cat $D/delta_opts)
+#
+# Create the feature stream,
 feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
-# Optionally add cmvn
-if [ -f $srcdir/norm_vars ]; then
-  norm_vars=$(cat $srcdir/norm_vars 2>/dev/null)
-  [ ! -f $sdata/1/cmvn.scp ] && echo "$0: cannot find cmvn stats $sdata/1/cmvn.scp" && exit 1
-  feats="$feats apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
-fi
-# Optionally add deltas
-if [ -f $srcdir/delta_order ]; then
-  delta_order=$(cat $srcdir/delta_order)
-  feats="$feats add-deltas --delta-order=$delta_order ark:- ark:- |"
-fi
+# apply-cmvn (optional),
+[ ! -z "$cmvn_opts" -a ! -f $sdata/1/cmvn.scp ] && echo "$0: Missing $sdata/1/cmvn.scp" && exit 1
+[ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
+# add-deltas (optional),
+[ ! -z "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
+#
 
-# Run the decoding in the queue
+# Run the decoding in the queue,
 if [ $stage -le 0 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
-    nnet-forward --feature-transform=$feature_transform --no-softmax=true --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
+    nnet-forward $nnet_forward_opts --feature-transform=$feature_transform --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
     latgen-faster-mapped$thread_string --min-active=$min_active --max-active=$max_active --max-mem=$max_mem --beam=$beam \
     --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $model $graphdir/HCLG.fst ark:- "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;

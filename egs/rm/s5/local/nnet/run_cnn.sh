@@ -20,12 +20,12 @@ stage=0
 # Make the FBANK features
 if [ $stage -le 0 ]; then
   # Dev set
-  mkdir -p $dev && cp $dev_original/* $dev && rm $dev/{feats,cmvn}.scp
+  utils/copy_data_dir.sh $dev_original $dev || exit 1; rm $dev/{cmvn,feats}.scp
   steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd" \
      $dev $dev/log $dev/data || exit 1;
   steps/compute_cmvn_stats.sh $dev $dev/log $dev/data || exit 1;
   # Training set
-  mkdir -p $train && cp $train_original/* $train && rm $train/{feats,cmvn}.scp
+  utils/copy_data_dir.sh $train_original $train || exit 1; rm $train/{cmvn,feats}.scp
   steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd" \
      $train $train/log $train/data || exit 1;
   steps/compute_cmvn_stats.sh $train $train/log $train/data || exit 1;
@@ -40,9 +40,10 @@ if [ $stage -le 1 ]; then
   # Train
   $cuda_cmd $dir/log/train_nnet.log \
     steps/nnet/train.sh \
-      --apply-cmvn true --norm-vars true --delta-order 2 --splice 5 \
+      --cmvn-opts "--norm-means=true --norm-vars=true" \
+      --delta-opts "--delta-order=2" --splice 5 \
       --prepend-cnn-type cnn1d --cnn-proto-opts "--patch-dim1 8 --pitch-dim 3" \
-      --hid-layers 2 --learn-rate 0.008 --train-opts "--verbose 2" \
+      --hid-layers 2 --learn-rate 0.008 \
       ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
   # Decode
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \

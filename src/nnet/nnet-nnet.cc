@@ -353,19 +353,17 @@ void Nnet::SetDropoutRetention(BaseFloat r)  {
 void Nnet::Init(const std::string &file) {
   Input in(file);
   std::istream &is = in.Stream();
-  ExpectToken(is, false, "<NnetProto>");
-  // do the initialization with config lines
-  std::string conf_line;
-  while (1) {
-    if (is.eof()) KALDI_ERR << "Missing </NnetProto> at the end.";
+  // do the initialization with config lines,
+  std::string conf_line, token;
+  while (!is.eof()) {
     KALDI_ASSERT(is.good());
-    if ('/' == PeekToken(is, false)) { // end the loop
-      ExpectToken(is, false, "</NnetProto>");
-      break;
-    }
-    std::getline(is, conf_line); // get the line in config file
+    std::getline(is, conf_line); // get a line from config file,
+    if (conf_line == "") continue;
     KALDI_VLOG(1) << conf_line; 
+    std::istringstream(conf_line) >> std::ws >> token; // get 1st token,
+    if (token == "<NnetProto>" || token == "</NnetProto>") continue; // ignored tokens,
     AppendComponent(Component::Init(conf_line+"\n"));
+    is >> std::ws;
   }
   // cleanup
   in.Close();

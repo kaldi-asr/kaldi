@@ -9,6 +9,7 @@
 nj=4
 cmd=run.pl
 remove_last_components=4 # remove N last components from the nnet
+use_gpu=no
 htk_save=false
 # End configuration section.
 
@@ -20,9 +21,10 @@ if [ -f path.sh ]; then . ./path.sh; fi
 if [ $# != 5 ]; then
    echo "usage: $0 [options] <tgt-data-dir> <src-data-dir> <nnet-dir> <log-dir> <abs-path-to-bn-feat-dir>";
    echo "options: "
-   echo "  --trim-transforms <N>                            # number of NNet Components to remove from the end"
-   echo "  --nj <nj>                                        # number of parallel jobs"
-   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+   echo "  --cmd 'queue.pl <queue opts>'   # how to run jobs."
+   echo "  --nj <nj>                       # number of parallel jobs"
+   echo "  --remove-last-components <N>    # number of NNet Components to remove from the end"
+   echo "  --use-gpu (no|yes|optional)     # forwarding on GPU"
    exit 1;
 fi
 
@@ -37,24 +39,13 @@ bnfeadir=$5
 ######## CONFIGURATION
 
 # copy the dataset metadata from srcdata.
-mkdir -p $data || exit 1;
-cp $srcdata/* $data 2>/dev/null; rm $data/feats.scp $data/cmvn.scp;
+mkdir -p $data $logdir $bnfeadir || exit 1;
+utils/copy_data_dir.sh $srcdata $data; rm $data/{feats,cmvn}.scp 2>/dev/null
 
 # make $bnfeadir an absolute pathname.
-bnfeadir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $bnfeadir ${PWD}`
+[ '/' != ${bnfeadir:0:1} ] && bnfeadir=$PWD/$bnfeadir
 
-# use "name" as part of name of the archive.
-name=`basename $data`
-
-mkdir -p $bnfeadir || exit 1;
-mkdir -p $data || exit 1;
-mkdir -p $logdir || exit 1;
-
-
-srcscp=$srcdata/feats.scp
-scp=$data/feats.scp
-
-required="$srcscp $nndir/final.nnet $nndir/final.feature_transform"
+required="$srcdata/feats.scp $nndir/final.nnet $nndir/final.feature_transform"
 for f in $required; do
   if [ ! -f $f ]; then
     echo "$0: no such file $f"
@@ -62,55 +53,54 @@ for f in $required; do
   fi
 done
 
-if [ ! -d $srcdata/split$nj -o $srcdata/split$nj -ot $srcdata/feats.scp ]; then
-  utils/split_data.sh $srcdata $nj
-fi
+sdata=$srcdata/split$nj
+[[ -d $sdata && $srcdata/feats.scp -ot $sdata ]] || split_data.sh $srcdata $nj || exit 1;
 
 # Concat feature transform with trimmed MLP:
 nnet=$bnfeadir/feature_extractor.nnet
 nnet-concat $nndir/final.feature_transform "nnet-copy --remove-last-components=$remove_last_components $nndir/final.nnet - |" $nnet 2>$logdir/feature_extractor.log || exit 1
+nnet-info $nnet >$data/feature_extractor.nnet-info
 
 echo "Creating bn-feats into $data"
 
-###
-### Prepare feature pipeline
-feats="ark,s,cs:copy-feats scp:$srcdata/split$nj/JOB/feats.scp ark:- |"
-# Optionally add cmvn
-if [ -f $nndir/norm_vars ]; then
-  norm_vars=$(cat $nndir/norm_vars 2>/dev/null)
-  feats="$feats apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$srcdata/utt2spk scp:$srcdata/cmvn.scp ark:- ark:- |"
-fi
-# Optionally add deltas
-if [ -f $nndir/delta_order ]; then
-  delta_order=$(cat $nndir/delta_order)
-  feats="$feats add-deltas --delta-order=$delta_order ark:- ark:- |"
-fi
-###
-###
+# PREPARE FEATURE EXTRACTION PIPELINE
+# import config,
+cmvn_opts=
+delta_opts=
+D=$nndir
+[ -e $D/norm_vars ] && cmvn_opts="--norm-means=true --norm-vars=$(cat $D/norm_vars)" # Bwd-compatibility,
+[ -e $D/cmvn_opts ] && cmvn_opts=$(cat $D/cmvn_opts)
+[ -e $D/delta_order ] && delta_opts="--delta-order=$(cat $D/delta_order)" # Bwd-compatibility,
+[ -e $D/delta_opts ] && delta_opts=$(cat $D/delta_opts)
+#
+# Create the feature stream,
+feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
+# apply-cmvn (optional),
+[ ! -z "$cmvn_opts" -a ! -f $sdata/1/cmvn.scp ] && echo "$0: Missing $sdata/1/cmvn.scp" && exit 1
+[ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
+# add-deltas (optional),
+[ ! -z "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
+#
 
-# Run the forward pass
+# Run the forward pass,
 $cmd JOB=1:$nj $logdir/make_bnfeats.JOB.log \
-  nnet-forward $nnet "$feats" \
+  nnet-forward --use-gpu=$use_gpu $nnet "$feats" \
   ark,scp:$bnfeadir/raw_bnfea_$name.JOB.ark,$bnfeadir/raw_bnfea_$name.JOB.scp \
   || exit 1;
-
-# check that the sentence counts match
-N0=$(cat $srcdata/feats.scp | wc -l) 
-N1=$(cat $bnfeadir/raw_bnfea_$name.*.scp | wc -l)
-if [[ "$N0" != "$N1" ]]; then
-  echo "Error producing features for $name:"
-  echo "Original sentences : $N0  Bottleneck sentences : $N1"
-  exit 1;
-fi
 
 # concatenate the .scp files
 for ((n=1; n<=nj; n++)); do
   cat $bnfeadir/raw_bnfea_$name.$n.scp >> $data/feats.scp
 done
 
-echo "Succeeded creating MLP-BN features for $name ($data)"
+# check sentence counts,
+N0=$(cat $srcdata/feats.scp | wc -l) 
+N1=$(cat $data/feats.scp | wc -l)
+[[ "$N0" != "$N1" ]] && echo "$0: sentence-count mismatch, $srcdata $N0, $data $N1" && exit 1
 
-# optionally resave in as HTK features:
+echo "Succeeded creating MLP-BN features '$data'"
+
+# optionally resave in as HTK features,
 if [ $htk_save == true ]; then
   echo -n "Resaving as HTK features into $bnfeadir/htk ... "
   mkdir -p $bnfeadir/htk

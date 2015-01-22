@@ -51,14 +51,12 @@ mkdir -p $data $logdir $feadir
 
 # Check files exist,
 for f in $sdata/1/feats.scp $sdata/1/cmvn.scp; do
-  [ ! -f $f ] && echo "$0: Missing file $f" && exit 1;
+  [ ! -f $f ] && echo "$0: Missing $f" && exit 1;
 done
-if [ ! -z "$transform_dir" ]; then
-  [ ! -f $transform_dir/trans.1 ] && "$0: Missing file $transform_dir/trans.1" && exit 1;
-fi
-if [ ! -z "$raw_transform_dir" ]; then
-  [ ! -f $raw_transform_dir/raw_trans.1 ] && "$0: Missing file $raw_transform_dir/raw_trans.1" && exit 1;
-fi
+[ ! -z "$transform_dir" -a ! -f $transform_dir/trans.1 ] && \
+  echo "$0: Missing $transform_dir/trans.1" && exit 1;
+[ ! -z "$raw_transform_dir" -a ! -f $raw_transform_dir/raw_trans.1 ] && \
+  echo "$0: Missing $raw_transform_dir/raw_trans.1" && exit 1;
 
 # Figure-out the feature-type,
 feat_type=delta # Default
@@ -81,9 +79,9 @@ case $feat_type in
 esac
 
 # Prepare the output dir,
-cp $srcdata/* $data 2>/dev/null; rm $data/{feats,cmvn}.scp;
-# Make $bnfeadir an absolute pathname,
-feadir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $feadir ${PWD}`
+utils/copy_data_dir.sh $srcdata $data; rm $data/{feats,cmvn}.scp 2>/dev/null
+# Make $feadir an absolute pathname,
+[ '/' != ${feadir:0:1} ] && feadir=$PWD/$feadir
 
 # Store the output-features,
 name=`basename $data`

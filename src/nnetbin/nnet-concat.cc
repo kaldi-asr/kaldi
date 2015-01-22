@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
         "Concatenate Neural Networks (and possibly change binary/text format)\n"
         "Usage:  nnet-concat [options] <model-in1> <...> <model-inN> <model-out>\n"
         "e.g.:\n"
-        " nnet-copy --binary=false nnet.1 nnet.2 nnet.1.2\n";
+        " nnet-concat --binary=false nnet.1 nnet.2 nnet.1.2\n";
     
     ParseOptions po(usage);
     

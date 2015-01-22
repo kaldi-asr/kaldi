@@ -46,9 +46,8 @@ copy_feats=true    # resave the features randomized consecutively to tmpdir
 # feature config
 feature_transform= # Optionally reuse feature processing front-end (override splice,etc.)
 feature_transform_proto= # Optionally pass prototype of feature transform
-delta_order=       # Optionally use deltas on the input features
-apply_cmvn=false   # Optionally do CMVN of the input features
-norm_vars=false    # When apply_cmvn=true, this enables CVN
+cmvn_opts=        # Optionally do CMVN of the input features with options
+delta_opts=       # Optionally use deltas on the input features
 splice=5           # Temporal splicing
 splice_step=1      # Stepsize of the splicing (1 is consecutive splice, 
                    # value 2 would do [ -10 -8 -6 -4 -2 0 2 4 6 8 10 ] splicing)
@@ -127,10 +126,11 @@ head -n 10000 $dir/train.scp > $dir/train.scp.10k
 
 ###### OPTIONALLY IMPORT FEATURE SETTINGS ######
 if [ ! -z $feature_transform ]; then
-  transf_dir=$(dirname $feature_transform)
+  D=$(dirname $feature_transform)
   echo "Importing feature settings from: $transf_dir"
-  [ -e $transf_dir/norm_vars ] && apply_cmvn=true && norm_vars=$(cat $transf_dir/norm_vars)
-  [ -e $transf_dir/delta_order ] && delta_order=$(cat $transf_dir/delta_order)
+  [ -e $D/cmvn_opts ] && cmvn_opts=$(cat $D/cmvn_opts)
+  [ -e $D/delta_opts ] && delta_opts=$(cat $D/delta_opts)
+  echo "Imported config : cmvn_opts='$cmvn_opts' delta_opts='$delta_opts'"
 fi
 
 ###### PREPARE FEATURE PIPELINE ######
@@ -139,21 +139,21 @@ fi
 feats="ark:copy-feats scp:$dir/train.scp ark:- |"
 
 # optionally add per-speaker CMVN
-if [ $apply_cmvn == "true" ]; then
+if [ ! -z "$cmvn_opts" ]; then
   echo "Will use CMVN statistics : $data/cmvn.scp"
-  [ ! -r $data/cmvn.scp ] && echo "Cannot find cmvn stats $data/cmvn.scp" && exit 1;
+  [ ! -r $data/cmvn.scp ] && echo "Missing $data/cmvn.scp" && exit 1;
   cmvn="scp:$data/cmvn.scp"
-  feats="$feats apply-cmvn --print-args=false --norm-vars=$norm_vars --utt2spk=ark:$data/utt2spk $cmvn ark:- ark:- |"
+  feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk $cmvn ark:- ark:- |"
   # keep track of norm_vars option
-  echo "$norm_vars" >$dir/norm_vars 
+  echo "$cmvn_opts" >$dir/cmvn_opts 
 else
-  echo "apply_cmvn disabled (per speaker norm. on input features)"
+  echo "apply-cmvn not used"
 fi
 
 # optionally add deltas
-if [ "$delta_order" != "" ]; then
-  feats="$feats add-deltas --delta-order=$delta_order ark:- ark:- |"
-  echo "$delta_order" > $dir/delta_order
+if [ ! -z "$delta_opts" ]; then
+  feats="$feats add-deltas $delta_opts ark:- ark:- |"
+  echo "$delta_opts" > $dir/delta_opts
 fi
 
 # get feature dim

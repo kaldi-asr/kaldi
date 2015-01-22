@@ -42,7 +42,6 @@ lang=$2
 srcdir=$3
 dir=$4
 
-oov=`cat $lang/oov.int` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 sdata=$data/split$nj
@@ -63,30 +62,37 @@ done
 
 
 # PREPARE FEATURE EXTRACTION PIPELINE
-# Create the feature stream:
+# import config,
+cmvn_opts=
+delta_opts=
+D=$srcdir
+[ -e $D/norm_vars ] && cmvn_opts="--norm-means=true --norm-vars=$(cat $D/norm_vars)" # Bwd-compatibility,
+[ -e $D/cmvn_opts ] && cmvn_opts=$(cat $D/cmvn_opts)
+[ -e $D/delta_order ] && delta_opts="--delta-order=$(cat $D/delta_order)" # Bwd-compatibility,
+[ -e $D/delta_opts ] && delta_opts=$(cat $D/delta_opts)
+#
+# Create the feature stream,
 feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
-# Optionally add cmvn
-if [ -f $srcdir/norm_vars ]; then
-  norm_vars=$(cat $srcdir/norm_vars 2>/dev/null)
-  [ ! -f $sdata/1/cmvn.scp ] && echo "$0: cannot find cmvn stats $sdata/1/cmvn.scp" && exit 1
-  feats="$feats apply-cmvn --norm-vars=$norm_vars --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
-fi
-# Optionally add deltas
-if [ -f $srcdir/delta_order ]; then
-  delta_order=$(cat $srcdir/delta_order)
-  feats="$feats add-deltas --delta-order=$delta_order ark:- ark:- |"
-fi
-# Finally add feature_transform and the MLP
+# apply-cmvn (optional),
+[ ! -z "$cmvn_opts" -a ! -f $sdata/1/cmvn.scp ] && echo "$0: Missing $sdata/1/cmvn.scp" && exit 1
+[ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
+# add-deltas (optional),
+[ ! -z "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
+# nnet-forward,
 feats="$feats nnet-forward $nnet_forward_opts --feature-transform=$feature_transform --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet ark:- ark:- |"
+#
 
 echo "$0: aligning data '$data' using nnet/model '$srcdir', putting alignments in '$dir'"
-# Map oovs in reference transcription 
+
+# Map oovs in reference transcription, 
+oov=`cat $lang/oov.int` || exit 1;
 tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
 # We could just use align-mapped in the next line, but it's less efficient as it compiles the
 # training graphs one by one.
 if [ $stage -le 0 ]; then
+  train_graphs="ark:compile-train-graphs $dir/tree $dir/final.mdl $lang/L.fst '$tra' ark:- |"
   $cmd JOB=1:$nj $dir/log/align.JOB.log \
-    compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
+    compile-train-graphs $dir/tree $dir/final.mdl $lang/L.fst "$tra" ark:- \| \
     align-compiled-mapped $scale_opts --beam=$beam --retry-beam=$retry_beam $dir/final.mdl ark:- \
       "$feats" "ark,t:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi

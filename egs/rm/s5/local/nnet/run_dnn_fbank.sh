@@ -3,7 +3,7 @@
 # Copyright 2012-2014  Brno University of Technology (Author: Karel Vesely)
 # Apache 2.0
 
-# This example script trains a DNN on top of fMLLR features. 
+# This example script trains a DNN on top of FBANK features. 
 # The training is done in 3 stages,
 #
 # 1) RBM pre-training:
@@ -34,12 +34,12 @@ stage=0
 # Make the FBANK features
 if [ $stage -le 0 ]; then
   # Dev set
-  mkdir -p $dev && cp $dev_original/* $dev
+  utils/copy_data_dir.sh $dev_original $dev || exit 1; rm $dev/{cmvn,feats}.scp
   steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd" \
      $dev $dev/log $dev/data || exit 1;
   steps/compute_cmvn_stats.sh $dev $dev/log $dev/data || exit 1;
   # Training set
-  mkdir -p $train && cp $train_original/* $train
+  utils/copy_data_dir.sh $train_original $train || exit 1; rm $train/{cmvn,feats}.scp
   steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd -tc 10" \
      $train $train/log $train/data || exit 1;
   steps/compute_cmvn_stats.sh $train $train/log $train/data || exit 1;
@@ -49,21 +49,20 @@ fi
 
 if [ $stage -le 1 ]; then
   # Pre-train DBN, i.e. a stack of RBMs (small database, smaller DNN)
-  dir=exp/dnn4c_pretrain-dbn
-  (tail --pid=$$ -F $dir/log/pretrain_dbn.log 2>/dev/null)& # forward log
+  dir=exp/dnn4d-fbank_pretrain-dbn
   $cuda_cmd $dir/log/pretrain_dbn.log \
     steps/nnet/pretrain_dbn.sh \
-      --apply-cmvn true --norm-vars true --delta-order 2 --splice 5 \
+      --cmvn-opts "--norm-means=true --norm-vars=true" \
+      --delta-opts "--delta-order=2" --splice 5 \
       --hid-dim 1024 --rbm-iter 20 $train $dir || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
   # Train the DNN optimizing per-frame cross-entropy.
-  dir=exp/dnn4c_pretrain-dbn_dnn
+  dir=exp/dnn4d-fbank_pretrain-dbn_dnn
   ali=${gmm}_ali
-  feature_transform=exp/dnn4c_pretrain-dbn/final.feature_transform
-  dbn=exp/dnn4c_pretrain-dbn/6.dbn
-  (tail --pid=$$ -F $dir/log/train_nnet.log 2>/dev/null)& # forward log
+  feature_transform=exp/dnn4d-fbank_pretrain-dbn/final.feature_transform
+  dbn=exp/dnn4d-fbank_pretrain-dbn/6.dbn
   # Train
   $cuda_cmd $dir/log/train_nnet.log \
     steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
@@ -78,8 +77,8 @@ fi
 
 # Sequence training using sMBR criterion, we do Stochastic-GD 
 # with per-utterance updates. We use usually good acwt 0.1
-dir=exp/dnn4c_pretrain-dbn_dnn_smbr
-srcdir=exp/dnn4c_pretrain-dbn_dnn
+dir=exp/dnn4d-fbank_pretrain-dbn_dnn_smbr
+srcdir=exp/dnn4d-fbank_pretrain-dbn_dnn
 acwt=0.1
 
 if [ $stage -le 3 ]; then
