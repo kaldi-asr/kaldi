@@ -11,14 +11,14 @@
 
 . ./path.sh ## Source the tools/utils (import the queue.pl)
 
-dev=data-fbank-multilingual/test
-train=data-fbank-multilingual/train
-wsj=data-fbank-multilingual/wsj
-train_tr90_wsj=data-fbank-multilingual/train_tr90_wsj
+dev=data-fbank-multisoftmax/test
+train=data-fbank-multisoftmax/train
+wsj=data-fbank-multisoftmax/wsj
+train_tr90_wsj=data-fbank-multisoftmax/train_tr90_wsj
 
 dev_original=data/test
 train_original=data/train
-wsj_original=../../wsj/s5/data/train_si84
+wsj_original=../../wsj/s5/data/train_si284
 [ ! -e $wsj_original ] && echo "Missing $wsj_original" && exit 1
 
 gmm=exp/tri3b
@@ -67,9 +67,10 @@ ali1_dir=${gmm}_ali
 #
 if [ $stage -le 1 ]; then
   mkdir -p $dir/log
+  copy-int-vector "ark:gzcat ${wsj_ali}/ali.*.gz |" ark,t:- | awk -v prefix=wsj '{ $1=prefix $1; print; }' | gzip -c >$dir/ali_wsj.gz # Mapping utt key,
   featlen="ark:feat-to-len 'scp:cat $train/feats.scp $wsj/feats.scp |' ark,t:- |"
   ali1="ark:ali-to-pdf ${gmm}_ali/final.mdl 'ark:gzcat ${gmm}_ali/ali.*.gz |' ark:- | ali-to-post ark:- ark:- |"
-  ali2="ark:ali-to-pdf ${wsj_ali}/final.mdl 'ark:gzcat ${wsj_ali}/ali.*.gz |' ark:- | ali-to-post ark:- ark:- |"
+  ali2="ark:ali-to-pdf ${wsj_ali}/final.mdl 'ark:gzcat $dir/ali_wsj.gz |' ark:- | ali-to-post ark:- ark:- |" 
   paste-post "$featlen" $ali1_dim:$ali2_dim "$ali1" "$ali2" ark,scp:$dir/pasted_post.ark,$dir/pasted_post.scp 2>$dir/log/paste_post.log || exit 1
 fi
 
@@ -99,6 +100,15 @@ if [ $stage -le 2 ]; then
     --nnet $dir/final.nnet.lang1 \
     $gmm/graph_ug $dev $dir/decode_ug || exit 1;
 fi
+
+# TODO, 
+# make nnet-copy support block selection, 
+# - either by replacing <BlockSoftmax> by <Softmax> and shrinking <AffineTransform>,
+# - or by appending <Copy> transform,
+#
+# Will it be compatible with other scripts/tools which assume <Softmax> at the end?
+# Or is it better to do everything visually in master script as now?... 
+# Hmmm, need to think about it...
 
 # Train baseline system with <Softmax>,
 if [ $stage -le 3 ]; then
