@@ -563,8 +563,6 @@ bool VectorBase<Real>::ApproxEqual(const VectorBase<Real> &other, float tol) con
 
 template<typename Real>
 Real VectorBase<Real>::Max() const {
-  if (dim_ == 0) KALDI_ERR << "Empty vector";
-
   Real ans = - std::numeric_limits<Real>::infinity();
   const Real *data = data_;
   MatrixIndexT i, dim = dim_;
@@ -605,8 +603,6 @@ Real VectorBase<Real>::Max(MatrixIndexT *index_out) const {
 
 template<typename Real>
 Real VectorBase<Real>::Min() const {
-  if (dim_ == 0) KALDI_ERR << "Empty vector";
-
   Real ans = std::numeric_limits<Real>::infinity();
   const Real *data = data_;
   MatrixIndexT i, dim = dim_;

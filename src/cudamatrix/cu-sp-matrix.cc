@@ -89,6 +89,7 @@ void CuSpMatrix<Real>::AddVec2(const Real alpha, const CuVectorBase<Real> &v) {
   KALDI_ASSERT(v.Dim() == this->NumRows());
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
     Timer tim;
     size_t nr = this->num_rows_;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -113,6 +114,7 @@ void CuSpMatrix<Real>::AddMat2(const Real alpha, const CuMatrixBase<Real> &M,
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
     Timer tim;
     MatrixIndexT this_dim = this->NumRows(),
         m_other_dim = (transM == kNoTrans ? M.NumCols() : M.NumRows());
@@ -147,6 +149,7 @@ Real TraceSpSp(const CuSpMatrix<Real> &A, const CuSpMatrix<OtherReal> &B) {
   KALDI_ASSERT(A.NumRows() == B.NumRows());
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return 0.0;
     MatrixIndexT nr = A.NumRows(), size = nr * (nr+1) / 2;
     CuVector<Real> Adiag(nr, kUndefined);
     CuVector<OtherReal> Bdiag(nr, kUndefined);

@@ -283,16 +283,18 @@ class VectorBase {
   /// Extracts the diagonal of a triangular matrix.
   inline void CopyDiagFromTp(const TpMatrix<Real> &M) { CopyDiagFromPacked(M); }
 
-  /// Returns the maximum value of any element.
+  /// Returns the maximum value of any element, or -infinity for the empty vector.
   Real Max() const;
 
   /// Returns the maximum value of any element, and the associated index.
+  /// Error if vector is empty.
   Real Max(MatrixIndexT *index) const;
   
-  /// Returns the minimum value of any element.
+  /// Returns the minimum value of any element, or +infinity for the empty vector.
   Real Min() const;
 
   /// Returns the minimum value of any element, and the associated index.
+  /// Error if vector is empty.
   Real Min(MatrixIndexT *index) const;
   
   /// Returns sum of the elements

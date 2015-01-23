@@ -387,12 +387,13 @@ template<typename OtherReal>
 void CuMatrixBase<Real>::CopyToMat(MatrixBase<OtherReal> *dst,
                                    MatrixTransposeType trans) const {
 #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) {
+  if (CuDevice::Instantiate().Enabled()) {    
     if (trans == kTrans || sizeof(OtherReal) != sizeof(Real)) {
       CuMatrix<OtherReal> this_trans(*this, trans);
       this_trans.CopyToMat(dst, kNoTrans);
     } else {
       KALDI_ASSERT(dst->NumRows() == NumRows() && dst->NumCols() == NumCols());
+      if (num_rows_ == 0) return;
       Timer tim;
    
       MatrixIndexT src_pitch = stride_*sizeof(Real);
@@ -467,7 +468,8 @@ void CuMatrixBase<Real>::SetZero() {
 template<typename Real> 
 void CuMatrixBase<Real>::Set(Real value) {
   #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
     Timer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -489,6 +491,7 @@ template<typename Real>
 void CuMatrixBase<Real>::SetZeroAboveDiag() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
     Timer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -514,7 +517,8 @@ void CuMatrixBase<Real>::SetZeroAboveDiag() {
 template<typename Real> 
 void CuMatrixBase<Real>::Add(Real value) { 
 #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
     Timer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -534,7 +538,8 @@ void CuMatrixBase<Real>::Add(Real value) {
 template<typename Real> 
 void CuMatrixBase<Real>::AddToDiag(Real value) { 
 #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
     Timer tim;
     // We'll create a fake matrix with "num_diag" rows, one
     // columnn, and a stride of "this_stride".  The y-value of
@@ -573,7 +578,8 @@ bool CuMatrixBase<Real>::IsUnit(Real tol) const {
 template<typename Real> 
 void CuMatrixBase<Real>::Scale(Real value) { 
 #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
     Timer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -593,7 +599,8 @@ void CuMatrixBase<Real>::Scale(Real value) {
 template<typename Real> 
 void CuMatrixBase<Real>::ApplyLog() { 
   #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
     Timer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -2029,22 +2036,6 @@ CuMatrix<float>::CuMatrix(const CuMatrixBase<double> & M,
 template
 CuMatrix<double>::CuMatrix(const CuMatrixBase<float> & M,
                            MatrixTransposeType trans);
-
-/*
-template<typename Real>
-CuMatrix<Real>::DeriveLastLayerComponent(int32 i, int32 label,
-                                         Real weight, Real this_prob) {
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    cuda_derive_last_layer_component(i, label, weight, this_prob);
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  }
-#endif
-  {
-
-  }
-}
-*/
 
 
 template<typename Real>

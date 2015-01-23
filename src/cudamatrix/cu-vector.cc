@@ -27,7 +27,7 @@ Real VecVec(const CuVectorBase<Real> &a,
   KALDI_ASSERT(a.Dim() == b.Dim());
   Real result = 0;
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
+  if (CuDevice::Instantiate().Enabled()) {    
     Timer tim;
 
     result = cublas_dot(a.Dim(), a.Data(), 1, b.Data(), 1);
@@ -63,7 +63,6 @@ void CuVectorBase<Real>::CopyColFromMat(const CuMatrixBase<Real> &mat, MatrixInd
   KALDI_ASSERT(dim_ == mat.NumRows());
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    
     Timer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
@@ -123,9 +122,10 @@ void CuVectorBase<float>::CopyColFromMat(const CuMatrixBase<double> &mat, Matrix
 
 template<typename Real>
 void CuVectorBase<Real>::CopyRowsFromMat(const CuMatrixBase<Real> &mat) {
-  KALDI_ASSERT(dim_ == mat.NumCols() * mat.NumRows());
+  KALDI_ASSERT(dim_ == mat.NumCols() * mat.NumRows());  
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
     Timer tim;
     if (mat.Stride() == mat.NumCols() && mat.NumRows() != 0) {
       CU_SAFE_CALL(cudaMemcpy(data_, mat.Data(), sizeof(Real)*dim_,
@@ -154,7 +154,7 @@ Real CuVectorBase<Real>::Norm(Real p) {
     Timer tim;
     Real ans;
     KALDI_ASSERT(p == 1.0 || p == 2.0);
-    if (dim_ == 0.0) return 0.0;
+    if (dim_ == 0) return 0.0;
     if (p == 1.0) {
       ans = cublas_asum(dim_, data_, 1);
     } else {
@@ -177,6 +177,7 @@ void CuVectorBase<Real>::CopyRowsFromMat(const MatrixBase<Real> &mat) {
   KALDI_ASSERT(dim_ == mat.NumCols() * mat.NumRows());
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
     Timer tim;
     if (mat.Stride() == mat.NumCols()) {
       CU_SAFE_CALL(cudaMemcpy(data_, mat.Data(), sizeof(Real)*dim_,
@@ -204,6 +205,7 @@ void MatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &v) {
   KALDI_ASSERT(v.Dim() == NumCols() * NumRows());
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0) return;
     Timer tim;
     if (Stride() == NumCols()) {
       CU_SAFE_CALL(cudaMemcpy(data_, v.Data(),
@@ -258,6 +260,7 @@ Real CuVectorBase<Real>::Sum() const {
       CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
       return tmp.Sum();
     } else {
+      if (dim_ == 0) return 0.0;
       CuVector<Real> tmp(1, kUndefined);
       int dimBlock(CU1DBLOCK);
       int dimGrid = 1; // only 1 block here. we have loops in each thread.
@@ -277,6 +280,7 @@ template<typename Real>
 void CuVectorBase<Real>::ApplySoftMax() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
     Timer tim;
     size_t dimBlock = dim_ > CU1DBLOCK ? CU1DBLOCK : dim_; // for cuda_softmax_reduce function, dimBlock value is fixed min(CU1DBLOCK, dim) , represent CU1DBLOCK threads reduce a row at the same time.
     size_t dimGrid = 1;       // dimGrid value represent the number of rows 
@@ -296,7 +300,7 @@ MatrixIndexT CuVectorBase<Real>::ApplyFloor(Real floor_val) {
   MatrixIndexT num_floored = 0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-
+    if (dim_ == 0) return 0;
     Timer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
@@ -320,7 +324,7 @@ template<typename Real>
 void CuVectorBase<Real>::ApplyPow(Real power) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-
+    if (dim_ == 0) return;
     Timer tim;
     // for this particular kernel, x is #rows, y is #cols.  so
     // fake matrix with 1 row, Dim() cols.
@@ -343,7 +347,7 @@ template<typename Real>
 void CuVectorBase<Real>::ApplyExp() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-
+    if (dim_ == 0) return;
     Timer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
@@ -363,7 +367,7 @@ template<typename Real>
 void CuVectorBase<Real>::ApplyLog() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-
+    if (dim_ == 0) return;
     Timer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
@@ -388,10 +392,12 @@ void CuVectorBase<Real>::AddMatVec(const Real alpha,
                                    MatrixTransposeType trans,
                                    const CuVectorBase<Real> &v,
                                    const Real beta) {
-  KALDI_ASSERT((trans == kNoTrans && M.NumCols() == v.dim_ && M.NumRows() == dim_) || (trans == kTrans && M.NumRows() == v.dim_ && M.NumCols() == dim_));
+  KALDI_ASSERT((trans == kNoTrans && M.NumCols() == v.dim_ && M.NumRows() == dim_) ||
+               (trans == kTrans && M.NumRows() == v.dim_ && M.NumCols() == dim_));
   KALDI_ASSERT(&v != this);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;    
     Timer tim;
 
     // Everything is backwards in CuBlas.  We need to reverse rows, columns,
@@ -417,6 +423,7 @@ void CuVectorBase<Real>::AddSpVec(const Real alpha,
   KALDI_ASSERT(&v != this);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
     Timer tim;
 
     // Note: in our opinion the CuSpMatrix represents a lower-triangular matrix, but
@@ -439,7 +446,7 @@ void CuVectorBase<Real>::AddVecVec(Real alpha, const CuVectorBase<Real> &v,
   KALDI_ASSERT(this != &v && this != &r);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-
+    if (dim_ == 0) return;
     Timer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
@@ -472,6 +479,7 @@ void CuVectorBase<Real>::AddDiagMat2(Real alpha, const CuMatrixBase<Real> &M,
                                      MatrixTransposeType trans, Real beta) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
     MatrixTransposeType other_trans = (trans == kTrans ? kNoTrans : kTrans);
     this->AddDiagMatMat(alpha, M, trans,
                         M, other_trans, beta);
@@ -499,7 +507,7 @@ void CuVectorBase<Real>::AddDiagMatMat(
     if (transM == kTrans) std::swap(M_row_stride, M_col_stride);
     MatrixIndexT N_row_stride = N.Stride(), N_col_stride = 1;
     if (transN == kTrans) std::swap(N_row_stride, N_col_stride);
-    
+    if (dim_ == 0) return;
 
     // This kernel can take a variable grid dimension, it makes use
     // of the extra threads by partitioning each vector-vector dot
@@ -540,6 +548,7 @@ void CuVectorBase<Real>::AddTpVec(const Real alpha, const CuTpMatrix<Real> &M,
   KALDI_ASSERT(dim_ == v.dim_ && dim_ == M.NumRows());
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;    
     Timer tim;
     if (beta == 0.0) {
       if (&v != this) CopyFromVec(v);
@@ -564,6 +573,7 @@ void CuVectorBase<Real>::MulTp(const CuTpMatrix<Real> &M, const MatrixTransposeT
   KALDI_ASSERT(M.NumRows() == dim_);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) return;
     Timer tim;
     cublas_tpmv((trans==kTrans?'N':'T'), M.NumRows(), M.Data(), data_, 1);
     CuDevice::Instantiate().AccuProfile("CuVectorBase::MulTp", tim.Elapsed());    
@@ -579,6 +589,9 @@ Real CuVectorBase<Real>::Min() const {
   Real result = 0.0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) {  // min of an empty set is infinity.
+      return std::numeric_limits<Real>::infinity();
+    }
     Timer tim;
     CuVector<Real> ans(1);
     cuda_vec_min(data_, ans.Data(), dim_);
@@ -598,6 +611,9 @@ Real CuVectorBase<Real>::Max() const {
   Real result = 0.0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (dim_ == 0) {  // max of an empty set is -infinity.
+      return -std::numeric_limits<Real>::infinity();
+    }    
     Timer tim;
     CuVector<Real> ans(1);
     cuda_vec_max(data_, ans.Data(), dim_);
@@ -615,7 +631,8 @@ Real CuVectorBase<Real>::Max() const {
 template<typename Real> 
 void CuVectorBase<Real>::ReplaceValue(Real orig, Real changed) {
 #if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    if (dim == 0) return;
     Timer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_, CU1DBLOCK));
@@ -634,6 +651,7 @@ void CuVectorBase<Real>::MulElements(const CuVectorBase<Real> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    if (dim == 0) return;
     Timer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_, CU1DBLOCK));

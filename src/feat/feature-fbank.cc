@@ -110,8 +110,11 @@ void Fbank::ComputeInternal(const VectorBase<BaseFloat> &wave,
   // Get dimensions of output features
   int32 rows_out = NumFrames(wave.Dim(), opts_.frame_opts);
   int32 cols_out = opts_.mel_opts.num_bins + opts_.use_energy;
-  if (rows_out == 0)
-    KALDI_ERR << "No frames fit in file (#samples is " << wave.Dim() << ")";
+  if (rows_out == 0) {
+    output->Resize(0, 0);
+    *wave_remainder = wave;
+    return;
+  }
   // Prepare the output buffer
   output->Resize(rows_out, cols_out);
 

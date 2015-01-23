@@ -1,5 +1,7 @@
 // bin/show-transitions.cc
-// Copyright 2009-2011 Microsoft Corporation
+//
+// Copyright 2009-2011  Microsoft Corporation
+//                2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -30,8 +32,8 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "Print debugging info from transition model\n"
-        "Usage:  show-transitions phones-symbol-table transition/model-file [occs-file]\n"
+        "Print debugging info from transition model, in human-readable form\n"
+        "Usage:  show-transitions <phones-symbol-table> <transition/model-file> [<occs-file>]\n"
         "e.g.: \n"
         " show-transitions phones.txt 1.mdl 1.occs\n";
 
