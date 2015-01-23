@@ -53,6 +53,15 @@
 %WER 14.9 | 1831 21395 | 86.5 8.8 4.8 1.4 14.9 52.4 | exp/nnet2_online/nnet_ms_a_online/decode_eval2000_hires_sw1_tg/score_14/eval2000_hires.ctm.swbd.filt.sys
 %WER 15.1 | 1831 21395 | 86.3 9.2 4.5 1.4 15.1 53.3 | exp/nnet2_online/nnet_ms_a_online/decode_eval2000_hires_sw1_tg_per_utt/score_12/eval2000_hires.ctm.swbd.filt.sys
 
+# Nnet2 speed-perturbed numbers.
+# for x in exp/nnet2_online/nnet_ms_b*/decode_eval2000_*; do grep Sum $x/score_*/*sys  | utils/best_wer.sh; done
+%WER 13.1 | 1831 21395 | 88.1 7.7 4.2 1.2 13.1 50.1 | exp/nnet2_online/nnet_ms_b/decode_eval2000_hires_sw1_fsh_fg/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 14.5 | 1831 21395 | 86.8 8.6 4.6 1.3 14.5 52.4 | exp/nnet2_online/nnet_ms_b/decode_eval2000_hires_sw1_tg/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.2 | 1831 21395 | 88.0 7.7 4.3 1.2 13.2 50.1 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_fsh_fg/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.6 | 1831 21395 | 87.7 8.1 4.2 1.3 13.6 50.7 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_fsh_fg_per_utt/score_13/eval2000_hires.ctm.swbd.filt.sys
+%WER 14.5 | 1831 21395 | 86.8 8.5 4.6 1.3 14.5 52.4 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 14.8 | 1831 21395 | 86.7 9.0 4.3 1.6 14.8 52.8 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg_per_utt/score_10/eval2000_hires.ctm.swbd.filt.sys
+
 # Resegmentation numbers.
 %WER 22.4 | 1831 21395 | 79.9 13.4 6.6 2.4 22.4 61.4 | exp/tri4a_reseg/decode_eval2000_sw1_tg/score_15/eval2000.ctm.swbd.filt.sys
 %WER 30.3 | 1831 21395 | 73.1 19.1 7.9 3.4 30.3 67.5 | exp/tri4a_reseg/decode_eval2000_sw1_tg.si/score_13/eval2000.ctm.swbd.filt.sys
