@@ -281,3 +281,56 @@ $cuda_cmd $dir/_train_nnet.log \
 utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri7a_dnn exp/tri7a_dnn/graph_tgpr_5k || exit 1;
 steps/nnet/decode.sh --nj 8 --acwt 0.10 --config conf/decode_dnn.config \
   exp/tri7a_dnn/graph_tgpr_5k data-fbank/test_eval92_5k_noisy $dir/decode_tgpr_5k_eval92_5k_noisy || exit 1;
+
+# Sequence training using sMBR criterion, we do Stochastic-GD 
+# with per-utterance updates. We use usually good acwt 0.1
+# Lattices are re-generated after 1st epoch, to get faster convergence.
+dir=exp/tri7a_dnn_smbr
+srcdir=exp/tri7a_dnn
+acwt=0.1
+
+# First we generate lattices and alignments:
+# gawk musb be installed to perform awk -v FS="/" '{ print gensub(".gz","","",$NF)" gunzip -c "$0" |"; }' in 
+# steps/nnet/make_denlats.sh
+steps/nnet/align.sh --nj 10 --cmd "$train_cmd" \
+    data-fbank/train_si84_noisy data/lang $srcdir ${srcdir}_ali || exit 1;
+steps/nnet/make_denlats.sh --nj 10 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
+    data-fbank/train_si84_noisy data/lang $srcdir ${srcdir}_denlats || exit 1;
+
+# Re-train the DNN by 1 iteration of sMBR 
+steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 1 --acwt $acwt --do-smbr true \
+    data-fbank/train_si84_noisy data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
+# Decode (reuse HCLG graph)
+for ITER in 1; do
+    steps/nnet/decode.sh --nj 8 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+    --nnet $dir/${ITER}.nnet --acwt $acwt \
+    exp/tri7a_dnn/graph_tgpr_5k data-fbank/dev_dt_05_noisy $dir/decode_tgpr_5k_dt_05_noisy_it${ITER} || exit 1;
+    steps/nnet/decode.sh --nj 8 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+    --nnet $dir/${ITER}.nnet --acwt $acwt \
+    exp/tri7a_dnn/graph_tgpr_5k data-fbank/test_eval92_5k_noisy $dir/decode_tgpr_5k_eval92_5k_noisy_it${ITER} || exit 1;
+done 
+
+# Re-generate lattices, run 4 more sMBR iterations
+dir=exp/tri7a_dnn_smbr_i1lats
+srcdir=exp/tri7a_dnn_smbr
+acwt=0.1
+
+# Generate lattices and alignments:
+steps/nnet/align.sh --nj 10 --cmd "$train_cmd" \
+    data-fbank/train_si84_noisy data/lang $srcdir ${srcdir}_ali || exit 1;
+steps/nnet/make_denlats.sh --nj 10 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
+    data-fbank/train_si84_noisy data/lang $srcdir ${srcdir}_denlats || exit 1;
+
+# Re-train the DNN by 1 iteration of sMBR 
+steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 4 --acwt $acwt --do-smbr true \
+    data-fbank/train_si84_noisy data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
+
+    # Decode (reuse HCLG graph)
+for ITER in 1 2 3 4; do
+    steps/nnet/decode.sh --nj 8 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+    --nnet $dir/${ITER}.nnet --acwt $acwt \
+    exp/tri7a_dnn/graph_tgpr_5k data-fbank/dev_dt_05_noisy $dir/decode_tgpr_5k_dt_05_noisy_it${ITER} || exit 1;
+    steps/nnet/decode.sh --nj 8 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+    --nnet $dir/${ITER}.nnet --acwt $acwt \
+    exp/tri7a_dnn/graph_tgpr_5k data-fbank/test_eval92_5k_noisy $dir/decode_tgpr_5k_eval92_5k_noisy_it${ITER} || exit 1;
+done 
