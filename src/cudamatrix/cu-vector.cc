@@ -632,7 +632,7 @@ template<typename Real>
 void CuVectorBase<Real>::ReplaceValue(Real orig, Real changed) {
 #if HAVE_CUDA == 1 
   if (CuDevice::Instantiate().Enabled()) {
-    if (dim == 0) return;
+    if (dim_ == 0) return;
     Timer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_, CU1DBLOCK));
@@ -651,7 +651,7 @@ void CuVectorBase<Real>::MulElements(const CuVectorBase<Real> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    if (dim == 0) return;
+    if (dim_ == 0) return;
     Timer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_, CU1DBLOCK));

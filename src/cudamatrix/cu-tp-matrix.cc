@@ -43,7 +43,7 @@ template<typename Real>
 void CuTpMatrix<Real>::Invert() {
 #if HAVE_CUDA==1
   if (CuDevice::Instantiate().Enabled()) {
-    if (num_rows_ == 0) return;
+    if (this->num_rows_ == 0) return;
     Timer tim;
     int dimBlock(CU2DBLOCK);
     int dimGrid(n_blocks(this->NumRows(), CU2DBLOCK));
