@@ -51,8 +51,8 @@
 
 # Nnet2 numbers for swbd subset.
 # for x in exp/nnet2*/decode*; do [ -d $x ] && grep Sum $x/score_*/eval2000.ctm.swbd.filt.sys | utils/best_wer.sh; done 2>/dev/null
-%WER 13.4 | 1831 21395 | 88.0 8.0 4.0 1.4 13.4 50.4 | exp/nnet2_5_gpu/decode_eval2000_sw1_fsh_fg/score_12/eval2000.ctm.swbd.filt.sys
-%WER 14.7 | 1831 21395 | 86.7 8.8 4.4 1.4 14.7 52.0 | exp/nnet2_5_gpu/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 13.3 | 1831 21395 | 88.1 8.0 3.9 1.4 13.3 50.0 | exp/nnet2_5/decode_eval2000_sw1_fsh_fg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 14.5 | 1831 21395 | 87.0 8.6 4.4 1.5 14.5 51.9 | exp/nnet2_5/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
 
 # Nnet2 online numbers for swbd subset.
 # for x in exp/nnet2_online/nnet_ms_*/decode_eval2000_*; do grep Sum $x/score_*/eval2000.ctm.swbd.filt.sys  | utils/best_wer.sh; done

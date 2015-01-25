@@ -10,7 +10,7 @@
 # 4. mapped swbd transcription to fisher style, instead of the other way around 
 
 set -e # exit on error
-
+has_fisher=true
 local/swbd1_data_download.sh /export/corpora3/LDC/LDC97S62
 # prepare SWBD dictionary first since we want to find acronyms according to pronunciations
 # before mapping lexicon and transcripts
@@ -56,7 +56,6 @@ utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
   data/lang_nopp $LM data/local/dict/lexicon.txt data/lang_nopp_sw1_tg
 
 # Compiles const G for swbd+fisher 4gram LM, if it exists.
-has_fisher=true
 LM=data/local/lm/sw1_fsh.o4g.kn.gz
 [ -f $LM ] || has_fisher=false
 if [ $has_fisher ]; then
@@ -289,7 +288,7 @@ fi
 # local/nnet/run_dnn.sh --has-fisher $has_fisher
 
 # Dan's nnet recipe
-# local/nnet2/run_nnet2_gpu.sh --has-fisher $has_fisher
+# local/nnet2/run_nnet2.sh --has-fisher $has_fisher
 
 # Dan's nnet recipe with online decoding.
 # local/online/run_nnet2_ms.sh --has-fisher $has_fisher

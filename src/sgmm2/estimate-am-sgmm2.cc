@@ -52,32 +52,32 @@ void MleAmSgmm2Accs::Write(std::ostream &out_stream, bool binary) const {
     KALDI_ASSERT(gamma_.size() != 0);
     WriteToken(out_stream, binary, "<Y>");
     for (int32 i = 0; i < num_gaussians_; i++) {
-      Y_[i].Write(out_stream, binary);
+      Matrix<BaseFloat>(Y_[i]).Write(out_stream, binary);
     }
   }
   if (Z_.size() != 0) {
     KALDI_ASSERT(R_.size() != 0);
     WriteToken(out_stream, binary, "<Z>");
     for (int32 i = 0; i < num_gaussians_; i++) {
-      Z_[i].Write(out_stream, binary);
+      Matrix<BaseFloat>(Z_[i]).Write(out_stream, binary);
     }
     WriteToken(out_stream, binary, "<R>");
     for (int32 i = 0; i < num_gaussians_; i++) {
-      R_[i].Write(out_stream, binary);
+      SpMatrix<BaseFloat>(R_[i]).Write(out_stream, binary);
     }
   }
   if (S_.size() != 0) {
     KALDI_ASSERT(gamma_.size() != 0);
     WriteToken(out_stream, binary, "<S>");
     for (int32 i = 0; i < num_gaussians_; i++) {
-      S_[i].Write(out_stream, binary);
+      SpMatrix<BaseFloat>(S_[i]).Write(out_stream, binary);
     }
   }
   if (y_.size() != 0) {
     KALDI_ASSERT(gamma_.size() != 0);
     WriteToken(out_stream, binary, "<y>");
     for (int32 j1 = 0; j1 < num_groups_; j1++) {
-      y_[j1].Write(out_stream, binary);
+      Matrix<BaseFloat>(y_[j1]).Write(out_stream, binary);
     }
   }
   if (gamma_.size() != 0) { // These stats are large
@@ -90,24 +90,24 @@ void MleAmSgmm2Accs::Write(std::ostream &out_stream, bool binary) const {
   }
   if (t_.NumRows() != 0) {
     WriteToken(out_stream, binary, "<t>");
-    t_.Write(out_stream, binary);
+    Matrix<BaseFloat>(t_).Write(out_stream, binary);
   }
   if (U_.size() != 0) {
     WriteToken(out_stream, binary, "<U>");
     for (int32 i = 0; i < num_gaussians_; i++) {
-      U_[i].Write(out_stream, binary);
+      SpMatrix<BaseFloat>(U_[i]).Write(out_stream, binary);
     }
   }
   if (gamma_c_.size() != 0) {
     WriteToken(out_stream, binary, "<gamma_c>");
     for (int32 j2 = 0; j2 < num_pdfs_; j2++) {
-      gamma_c_[j2].Write(out_stream, binary);
+      Vector<BaseFloat>(gamma_c_[j2]).Write(out_stream, binary);
     }
   }
   if (a_.size() != 0) {
     WriteToken(out_stream, binary, "<a>");
     for (int32 j1 = 0; j1 < num_groups_; j1++) {
-      a_[j1].Write(out_stream, binary);
+      Matrix<BaseFloat>(a_[j1]).Write(out_stream, binary);
     }
   }
   WriteToken(out_stream, binary, "<total_like>");
