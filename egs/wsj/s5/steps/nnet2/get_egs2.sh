@@ -46,6 +46,7 @@ samples_per_iter=400000 # each iteration of training, see this many samples
                         # that divides the number of samples in the entire data.
 
 transform_dir=     # If supplied, overrides alidir as the place to find fMLLR transforms
+postdir=        # If supplied, we will use posteriors in it as soft training targets.
 
 stage=0
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time. 
@@ -279,14 +280,19 @@ if [ $stage -le 3 ]; then
     egs_list="$egs_list ark:$dir/egs_orig.$n.JOB.ark"
   done
   echo "$0: Generating training examples on disk"
-  
-  # The examples will go round-robin to egs_list.
-  $cmd $io_opts JOB=1:$nj $dir/log/get_egs.JOB.log \
-    nnet-get-egs $ivectors_opt $nnet_context_opts --num-frames=$frames_per_eg "$feats" \
-    "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
-    nnet-copy-egs ark:- $egs_list || exit 1;
+  # The examples will go round-robin to egs_list. 
+  if [ ! -z $postdir ]; then
+    $cmd $io_opts JOB=1:$nj $dir/log/get_egs.JOB.log \
+      nnet-get-egs $ivectors_opt $nnet_context_opts --num-frames=$frames_per_eg "$feats" \
+      scp:$postdir/post.JOB.scp ark:- \| \
+      nnet-copy-egs ark:- $egs_list || exit 1;
+  else 
+    $cmd $io_opts JOB=1:$nj $dir/log/get_egs.JOB.log \
+      nnet-get-egs $ivectors_opt $nnet_context_opts --num-frames=$frames_per_eg "$feats" \
+      "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
+      nnet-copy-egs ark:- $egs_list || exit 1;
+  fi
 fi
-
 if [ $stage -le 4 ]; then
   echo "$0: recombining and shuffling order of archives on disk"
   # combine all the "egs_orig.JOB.*.scp" (over the $nj splits of the data) and

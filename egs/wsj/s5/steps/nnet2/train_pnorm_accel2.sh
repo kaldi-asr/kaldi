@@ -89,6 +89,7 @@ lda_dim=
 egs_opts=
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.
 transform_dir=     # If supplied, overrides alidir
+postdir=
 cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.  
             # only relevant for "raw" features, not lda.
 feat_type=  # Can be used to force "raw" features.
@@ -99,6 +100,7 @@ realign_times=          # List of times on which we realign.  Each time is
                         # will be multiplied by the num-iters to get an iteration
                         # number.
 num_jobs_align=30       # Number of jobs for realignment
+srand=0 # random seed used to initialize the nnet
 # End configuration section.
 
 
@@ -161,9 +163,11 @@ if [ ! -z "$realign_times" ]; then
 fi
 
 # Check some files.
-for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $alidir/tree; do
+for f in $data/feats.scp $lang/L.fst $alidir/final.mdl $alidir/tree; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
+
+[ ! -f $postdir/post.1.scp ] && [ ! -f $alidir/ali.1.gz ] && echo "$0: no (soft) alignments provided" && exit 1;
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
@@ -204,7 +208,7 @@ lda_dim=$(cat $dir/lda_dim) || exit 1;
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs2.sh"            
   steps/nnet2/get_egs2.sh $egs_opts "${extra_opts[@]}"  --io-opts "$io_opts" \
-    --samples-per-iter $samples_per_iter --stage $get_egs_stage \
+    --postdir "$postdir" --samples-per-iter $samples_per_iter --stage $get_egs_stage \
     --cmd "$cmd" $egs_opts $data $alidir $dir/egs || exit 1;
 fi
 
@@ -257,7 +261,7 @@ PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim p=$p
 NormalizeComponent dim=$pnorm_output_dim
 EOF
   $cmd $dir/log/nnet_init.log \
-    nnet-am-init $alidir/tree $lang/topo "nnet-init $dir/nnet.config -|" \
+    nnet-am-init $alidir/tree $lang/topo "nnet-init --srand=$srand $dir/nnet.config -|" \
     $dir/0.mdl || exit 1;
 fi
 
