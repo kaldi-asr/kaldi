@@ -208,8 +208,8 @@ if [ ! -z "$delta_opts" ]; then
 fi
 
 # keep track of the config,
-[ ! -z "cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts 
-[ ! -z "delta_opts" ] && echo "$delta_opts" >$dir/delta_opts
+[ ! -z "$cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts 
+[ ! -z "$delta_opts" ] && echo "$delta_opts" >$dir/delta_opts
 #
 
 # get feature dim

@@ -144,8 +144,6 @@ if [ ! -z "$cmvn_opts" ]; then
   [ ! -r $data/cmvn.scp ] && echo "Missing $data/cmvn.scp" && exit 1;
   cmvn="scp:$data/cmvn.scp"
   feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk $cmvn ark:- ark:- |"
-  # keep track of norm_vars option
-  echo "$cmvn_opts" >$dir/cmvn_opts 
 else
   echo "apply-cmvn not used"
 fi
@@ -153,8 +151,13 @@ fi
 # optionally add deltas
 if [ ! -z "$delta_opts" ]; then
   feats="$feats add-deltas $delta_opts ark:- ark:- |"
-  echo "$delta_opts" > $dir/delta_opts
 fi
+
+# keep track of the config,
+[ ! -z "$cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts 
+[ ! -z "$delta_opts" ] && echo "$delta_opts" >$dir/delta_opts
+#
+
 
 # get feature dim
 echo -n "Getting feature dim : "
