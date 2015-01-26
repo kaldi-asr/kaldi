@@ -24,6 +24,15 @@
 %WER 26.4 | 4459 42989 | 76.4 16.7 6.9 2.8 26.4 63.4 | exp/tri4_mmi_b0.1/decode_eval2000_2.mdl_sw1_tg/score_12/eval2000.ctm.filt.sys
 %WER 25.9 | 4459 42989 | 77.0 16.2 6.8 2.9 25.9 63.0 | exp/tri4_mmi_b0.1/decode_eval2000_3.mdl_sw1_tg/score_12/eval2000.ctm.filt.sys
 %WER 25.8 | 4459 42989 | 77.1 16.1 6.8 2.9 25.8 62.9 | exp/tri4_mmi_b0.1/decode_eval2000_4.mdl_sw1_tg/score_12/eval2000.ctm.filt.sys
+%WER 25.2 | 4459 42989 | 77.4 15.6 7.0 2.6 25.2 62.7 | exp/sgmm2_5/decode_eval2000_sw1_tg/score_11/eval2000.ctm.filt.sys
+%WER 22.1 | 4459 42989 | 80.3 13.9 5.8 2.4 22.1 59.0 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it1/score_10/eval2000.ctm.filt.sys
+%WER 21.6 | 4459 42989 | 80.9 13.5 5.6 2.4 21.6 58.4 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it2/score_10/eval2000.ctm.filt.sys
+%WER 21.4 | 4459 42989 | 81.2 13.4 5.4 2.6 21.4 58.6 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it3/score_10/eval2000.ctm.filt.sys
+%WER 21.4 | 4459 42989 | 81.3 13.5 5.2 2.8 21.4 58.4 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it4/score_10/eval2000.ctm.filt.sys
+%WER 23.8 | 4459 42989 | 78.8 14.9 6.3 2.6 23.8 61.1 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it1/score_10/eval2000.ctm.filt.sys
+%WER 23.2 | 4459 42989 | 79.4 14.6 6.0 2.6 23.2 60.3 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it2/score_10/eval2000.ctm.filt.sys
+%WER 23.0 | 4459 42989 | 79.8 14.5 5.7 2.8 23.0 60.2 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it3/score_10/eval2000.ctm.filt.sys
+%WER 23.0 | 4459 42989 | 79.9 14.5 5.5 3.0 23.0 60.2 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it4/score_10/eval2000.ctm.filt.sys
 
 # GMM and SGMM numbers for swbd subset.
 # for x in exp/{mono,tri,sgmm}*/decode*; do [ -d $x ] && grep Sum $x/score_*/eval2000.ctm.swbd.filt.sys | utils/best_wer.sh; done 2>/dev/null
@@ -48,6 +57,15 @@
 %WER 19.4 | 1831 21395 | 82.5 12.1 5.3 2.0 19.4 56.4 | exp/tri4_mmi_b0.1/decode_eval2000_2.mdl_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
 %WER 19.1 | 1831 21395 | 83.0 11.9 5.1 2.1 19.1 56.3 | exp/tri4_mmi_b0.1/decode_eval2000_3.mdl_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
 %WER 19.1 | 1831 21395 | 83.1 11.8 5.1 2.2 19.1 56.0 | exp/tri4_mmi_b0.1/decode_eval2000_4.mdl_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 18.7 | 1831 21395 | 83.1 11.5 5.4 1.8 18.7 57.3 | exp/sgmm2_5/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
+%WER 15.9 | 1831 21395 | 85.7 9.9 4.4 1.6 15.9 53.2 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it1/score_10/eval2000.ctm.swbd.filt.sys
+%WER 15.6 | 1831 21395 | 86.1 9.7 4.3 1.7 15.6 52.6 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it2/score_10/eval2000.ctm.swbd.filt.sys
+%WER 15.4 | 1831 21395 | 86.3 9.6 4.1 1.8 15.4 52.8 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it3/score_10/eval2000.ctm.swbd.filt.sys
+%WER 15.4 | 1831 21395 | 86.5 9.6 4.0 1.8 15.4 52.5 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it4/score_10/eval2000.ctm.swbd.filt.sys
+%WER 17.5 | 1831 21395 | 84.2 10.6 5.2 1.7 17.5 55.8 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it1/score_11/eval2000.ctm.swbd.filt.sys
+%WER 17.1 | 1831 21395 | 84.8 10.5 4.7 1.9 17.1 54.9 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it2/score_10/eval2000.ctm.swbd.filt.sys
+%WER 16.9 | 1831 21395 | 85.1 10.4 4.6 2.0 16.9 54.7 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it3/score_10/eval2000.ctm.swbd.filt.sys
+%WER 16.7 | 1831 21395 | 85.2 10.3 4.5 1.9 16.7 54.3 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it4/score_11/eval2000.ctm.swbd.filt.sys
 
 # Nnet2 numbers for swbd subset.
 # for x in exp/nnet2*/decode*; do [ -d $x ] && grep Sum $x/score_*/eval2000.ctm.swbd.filt.sys | utils/best_wer.sh; done 2>/dev/null
