@@ -47,7 +47,10 @@ The script <a href="http://sourceforge.net/p/kaldi/code/HEAD/tree/trunk/egs/wsj/
 this simplifies the training scripts, the 40-dimensional features are MFCC-LDA-MLLT-fMLLR with CMN
 
 1. <b>RBM pre-training, steps/nnet/pretrain_dbn.sh,</b>
-implemented according to <a href="http://www.cs.toronto.edu/~hinton/absps/guideTR.pdf">Geoff Hinton's tutorial paper</a>. The training algorithm is Contrastive Divergence with 1-step of Markov Chain Monte Carlo sampling (CD-1). First RBM has Gaussian-Bernoulli units, following RBMs have Bernoulli-Bernoulli units. The recipe was tuned on 100h Switchboard subset, while with small databases the number of epochs should be set to 'N = 100h / set_size'. The training is unsupervised, so only single data-dir is needed.
+implemented according to <a href="http://www.cs.toronto.edu/~hinton/absps/guideTR.pdf">Geoff Hinton's tutorial paper</a>. 
+The training algorithm is Contrastive Divergence with 1-step of Markov Chain Monte Carlo sampling (CD-1). 
+The first RBM has Gaussian-Bernoulli units, and following RBMs have Bernoulli-Bernoulli units. 
+The recipe was tuned on 100h Switchboard subset, while with small databases the number of epochs should be set to 'N = 100h / set_size'. The training is unsupervised, so only single data-dir is needed.
 
 When training the RBM with Gaussian-Bernoulli units the weights are sensitive to explosion,
 especially with larger learning rates and thousands of hidden neurons. To avoid weight-explosion
@@ -61,9 +64,11 @@ The default is to use \ref Sigmoid hidden units, \ref Softmax output units and f
 The learning rate is 0.008, size of minibatch 256; we use no momentum or regularization 
 (note.: the optimal learning-rate differs with type of hidden units, the value for sigmoid is 0.008, for tanh 0.00001)
 
-The input_transform and pre-trained DBN is passed into to the script using options '--input-transform' and '--dbn', only the output layer is initialized randomly.
+The input_transform and pre-trained DBN (i.e. Deep Belief Network, stack of RBMs) is passed into to the script using options '--input-transform' and '--dbn', only the output layer is initialized randomly.
 We use early stopping to prevent over-fitting, for this we measure objective function on cross-validation set (i.e. held-out set), 
 therefore two pairs of feature-alignment dirs are needed to perform the supervised training.
+
+A good summary paper on DNN training is http://research.google.com/pubs/archive/38131.pdf
 
 3.,4.,5.,6. <b>sMBR sequence-discriminative training, steps/nnet/train_mpe.sh,</b>
 this phase trains the neural network to jointly optimize for whole sentences,
@@ -82,10 +87,10 @@ More detailed description is at http://www.danielpovey.com/files/2013_interspeec
 <b>Other interesting top-level scripts:</b>
 
 Besides the DNN recipe, also other example scripts which can be handy:
-- DNN : egs/wsj/s5/local/nnet/run_dnn.sh
-- CNN : egs/rm/s5/local/nnet/run_cnn.sh
+- DNN : egs/wsj/s5/local/nnet/run_dnn.sh , (main top-level script)
+- CNN : egs/rm/s5/local/nnet/run_cnn.sh , (CNN = Convolutional Neural Network, <a href="www.cs.toronto.edu/~asamir/papers/icassp13_cnn.pdf">see paper</a>, we have 1D convolution on frequency axis)
 - Autoencoder training : egs/timit/s5/local/nnet/run_autoencoder.sh
-- Tandem system : egs/swbd/s5c/local/nnet/run_dnn_tandem_uc.sh
+- Tandem system : egs/swbd/s5c/local/nnet/run_dnn_tandem_uc.sh , (uc = Universal context network, <a href="http://www.fit.vutbr.cz/research/groups/speech/publi/2011/vesely_asru2011_00042.pdf">see paper</a>)
 
 
 <hr><!-- #################################################################################################################### -->
@@ -172,7 +177,7 @@ the initial cross-validation run and the main for loop over $iter which runs the
 The neural networks get stored into $dir/nnet, logs are stored in $dir/log:
 
 1. The <b>network names</b> contain record of <b>epoch number (iter), learning-rate, and objective function value on training and cross-validation set</b> (i.e. held-out set)
-- We see that learning-rate halving started at 5th epoch, which is a common case
+- We see that learning-rate halving started at 5th iter (i.e. epoch), which is a common case
 
 \verbatim
 $ ls exp/dnn5b_pretrain-dbn_dnn/nnet
@@ -432,9 +437,11 @@ call steps/nnet/train.sh with option
 the optimal learning rate is smaller than with sigmoid, usually 0.00001 is good
 
 \subsection dnn1_conversion_to_dnn2 Conversion of DNN model, nnet1 -> nnet2
-A typical DNN with usual set of components in nnet1 codebase can be converted to nnet2
+In Kaldi, there are 2 DNN setups Karel's (this page) and Dan's \ref dnn2.
+The setups use incompatible DNN formats, while there is a converter of Karel's DNN into Dan's format.
 - The example script is : egs/rm/s5/local/run_dnn_convert_nnet2.sh, model conversion
 - Model-conversion script is : steps/nnet2/convert_nnet1_to_nnet2.sh, it is calling model-conversion binary : \ref nnet1-to-raw-nnet.cc
+- For list of supported components see \ref ConvertComponent.
 
 <hr><!-- #################################################################################################################### -->
 
@@ -459,9 +466,9 @@ For debugging purposes, the components and buffers are accessible via \ref Nnet:
 
 When creating new \ref Component, you need to use one of the two interfaces:
 
-1. \ref Component : a building block, contains <b>no trainable parameters</b> (i.e. \ref Sigmoid \ref Softmax)
+1. \ref Component : a building block, contains <b>no trainable parameters</b> (see example of implementation \ref nnet-activation.h)
 
-2. \ref UpdatableComponent : child of \ref Component, a building block <b>with trainable parameters</b> (i.e. \ref AffineTransform)
+2. \ref UpdatableComponent : child of \ref Component, a building block <b>with trainable parameters</b> (implemented for example in \ref nnet-affine-transform.h)
 
 The important virtual methods to implement are (not a complete list) :
 - \ref Component::PropagateFnc : forward-pass function
@@ -487,8 +494,9 @@ The nnet1 related binaries are located in src/nnetbin, the important tools are :
     - 2. per-frame shuffling of NN input-target pairs,
     - 3. mini-batch Stochastic Gradient Descent (SGD) training,
   - Supported per-frame objective functions (option --objective-function):
-    - 1. \ref Xent : per-frame cross-entropy \f$ -\sum_D{t_d \log y_d} \f$
-    - 2. \ref Mse : per-frame mean-square-error \f$ 0.5\sum_D{(t_d - y_d)^2} \f$
+    - 1. \ref Xent : per-frame cross-entropy \f$ \mathcal{L}_{Xent}(\mathbf{t},\mathbf{y}) = -\sum_D{t_d \log y_d} \f$
+    - 2. \ref Mse : per-frame mean-square-error \f$ \mathcal{L}_{Mse}(\mathbf{t},\mathbf{y}) = \frac{1}{2}\sum_D{(t_d - y_d)^2} \f$
+    - where \f$ t_d \f$ is element of target vector \f$ \mathbf{t} \f$, \f$ y_d \f$ is element of DNN-output vector \f$ \mathbf{y} \f$, and D is the dimension of DNN-output
 - \ref nnet-forward.cc : forwards data through neural network, using CPU by default 
   - See options: 
     - --apply-log : produce log of NN-outputs (i.e. get log-posteriors)
