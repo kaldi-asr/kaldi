@@ -2544,13 +2544,21 @@ void MatrixBase<Real>::AddVecToRows(const Real alpha, const VectorBase<OtherReal
   const MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
       stride = stride_;
   KALDI_ASSERT(v.Dim() == num_cols);
-  Real *data = data_;
-  const OtherReal *vdata = v.Data();
+  if(num_cols <= 64) {
+    Real *data = data_;
+    const OtherReal *vdata = v.Data();
+    for (MatrixIndexT i = 0; i < num_rows; i++, data += stride) {
+      for (MatrixIndexT j = 0; j < num_cols; j++)
+        data[j] += alpha * vdata[j];
+    }
 
-  for (MatrixIndexT i = 0; i < num_rows; i++, data += stride) {
-    for (MatrixIndexT j = 0; j < num_cols; j++)
-      data[j] += alpha * vdata[j];
-  }
+  } else {
+    Vector<OtherReal> ones(num_rows);
+    ones.Set(1.0);
+    Matrix<Real> add_mat(num_rows, num_cols);
+    add_mat.AddVecVec(alpha, ones, v);
+    this->AddMat(1.0, add_mat);
+   }  
 }
 
 template void MatrixBase<float>::AddVecToRows(const float alpha,
@@ -2569,15 +2577,24 @@ void MatrixBase<Real>::AddVecToCols(const Real alpha, const VectorBase<OtherReal
   const MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
       stride = stride_;
   KALDI_ASSERT(v.Dim() == num_rows);
-  Real *data = data_;
-  const OtherReal *vdata = v.Data();
 
-  for (MatrixIndexT i = 0; i < num_rows; i++, data += stride) {
-    Real to_add = alpha * vdata[i];
-    for (MatrixIndexT j = 0; j < num_cols; j++)
-      data[j] += to_add;
+  if (num_rows <= 64) {
+    Real *data = data_;
+    const OtherReal *vdata = v.Data();
+    for (MatrixIndexT i = 0; i < num_rows; i++, data += stride) {
+      Real to_add = alpha * vdata[i];
+      for (MatrixIndexT j = 0; j < num_cols; j++)
+        data[j] += to_add;
+    }
+
+  } else {
+    Vector<OtherReal> ones(num_cols);
+    ones.Set(1.0);
+    Matrix<Real> add_mat(num_rows, num_cols);
+    add_mat.AddVecVec(alpha, v, ones);
+    this->AddMat(1.0, add_mat);
   }
-}
+}  
 
 template void MatrixBase<float>::AddVecToCols(const float alpha,
                                               const VectorBase<float> &v);

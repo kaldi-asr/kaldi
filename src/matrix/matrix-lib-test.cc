@@ -519,25 +519,32 @@ static void UnitTestSimpleForVec() {  // testing some simple operaters on vector
   }
 
   for (MatrixIndexT i = 0; i < 5; i++) {
-    MatrixIndexT dimM = 10 + Rand() % 10, dimN = 10 + Rand() % 10;
-    Matrix<Real> M(dimM, dimN);
-    InitRand(&M);
-    Vector<Real> Vr(dimN), Vc(dimM);
-    Vr.AddRowSumMat(0.4, M); 
-    Vr.AddRowSumMat(0.3, M, 0.5); // note: 0.3 + 0.4*0.5 = 0.5.
-    Vc.AddColSumMat(0.4, M);
-    Vc.AddColSumMat(0.3, M, 0.5); // note: 0.3 + 0.4*0.5 = 0.5.
-    Vr.Scale(2.0);
-    Vc.Scale(2.0);
+    std::vector<MatrixIndexT> sizes;
+    sizes.push_back(16);
+    sizes.push_back(128);
+    for(int i = 0; i < sizes.size(); i++) {
+      MatrixIndexT dimM = sizes[i] + Rand() % 10, dimN = sizes[i] + Rand() % 10;
+      Matrix<Real> M(dimM, dimN);
+      InitRand(&M);
+      Vector<Real> Vr(dimN), Vc(dimM);
+      Vr.AddRowSumMat(0.4, M); 
+      Vr.AddRowSumMat(0.3, M, 0.5); // note: 0.3 + 0.4*0.5 = 0.5.
+      Vc.AddColSumMat(0.4, M);
+      Vc.AddColSumMat(0.3, M, 0.5); // note: 0.3 + 0.4*0.5 = 0.5.
+      Vr.Scale(2.0);
+      Vc.Scale(2.0);
+      KALDI_LOG << Vr;
+      KALDI_LOG << Vc;
 
-    Vector<Real> V2r(dimN), V2c(dimM);
-    for (MatrixIndexT k = 0; k < dimM; k++) {
-      V2r.CopyRowFromMat(M, k);
-      AssertEqual(V2r.Sum(), Vc(k));
-    }
-    for (MatrixIndexT j = 0; j < dimN; j++) {
-      V2c.CopyColFromMat(M, j);
-      AssertEqual(V2c.Sum(), Vr(j));
+      Vector<Real> V2r(dimN), V2c(dimM);
+      for (MatrixIndexT k = 0; k < dimM; k++) {
+        V2r.CopyRowFromMat(M, k);
+        AssertEqual(V2r.Sum(), Vc(k));
+      }
+      for (MatrixIndexT j = 0; j < dimN; j++) {
+        V2c.CopyColFromMat(M, j);
+        AssertEqual(V2c.Sum(), Vr(j));
+      }
     }
   }
 
@@ -3353,16 +3360,22 @@ template<typename Real> static void UnitTestTranspose() {
 }
 
 template<typename Real> static void UnitTestAddVecToRows() {
-  Matrix<Real> M(Rand() % 5 + 1, Rand() % 10 + 1);
-  InitRand(&M);
-  Vector<float> v(M.NumCols());
-  InitRand(&v);
-  Matrix<Real> N(M);
-  Vector<float> ones(M.NumRows());
-  ones.Set(1.0);
-  M.AddVecToRows(0.5, v);
-  N.AddVecVec(0.5, ones, v);
-  AssertEqual(M, N);
+  std::vector<Real> sizes;
+  sizes.push_back(16);
+  sizes.push_back(128);
+  for (int i = 0; i < 2; i++) {
+    MatrixIndexT dimM = sizes[i] + Rand() % 10, dimN = sizes[i] + Rand() % 10;
+    Matrix<Real> M(dimM, dimN);
+    InitRand(&M);
+    Vector<float> v(M.NumCols());
+    InitRand(&v);
+    Matrix<Real> N(M);
+    Vector<float> ones(M.NumRows());
+    ones.Set(1.0);
+    M.AddVecToRows(0.5, v);
+    N.AddVecVec(0.5, ones, v);
+    AssertEqual(M, N);
+  }
 }
 
 template<typename Real> static void UnitTestAddVec2Sp() {
@@ -3387,16 +3400,22 @@ template<typename Real> static void UnitTestAddVec2Sp() {
 
 
 template<typename Real> static void UnitTestAddVecToCols() {
-  Matrix<Real> M(Rand() % 5 + 1, Rand() % 10 + 1);
-  InitRand(&M);
-  Vector<float> v(M.NumRows());
-  InitRand(&v);
-  Matrix<Real> N(M);
-  Vector<float> ones(M.NumCols());
-  ones.Set(1.0);
-  M.AddVecToCols(0.5, v);
-  N.AddVecVec(0.5, v, ones);
-  AssertEqual(M, N);
+  std::vector<Real> sizes;
+  sizes.push_back(16);
+  sizes.push_back(128);
+  for (int i = 0; i < 2; i++) {
+    MatrixIndexT dimM = sizes[i] + Rand() % 10, dimN = sizes[i] + Rand() % 10;
+    Matrix<Real> M(dimM, dimN);
+    InitRand(&M);
+    Vector<float> v(M.NumRows());
+    InitRand(&v);
+    Matrix<Real> N(M);
+    Vector<float> ones(M.NumCols());
+    ones.Set(1.0);
+    M.AddVecToCols(0.5, v);
+    N.AddVecVec(0.5, v, ones);
+    AssertEqual(M, N);
+  }
 }
 
 template<typename Real> static void UnitTestComplexFft2() {

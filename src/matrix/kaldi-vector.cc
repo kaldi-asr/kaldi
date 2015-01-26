@@ -701,29 +701,42 @@ Real VectorBase<Real>::SumLog() const {
 
 template<typename Real>
 void VectorBase<Real>::AddRowSumMat(Real alpha, const MatrixBase<Real> &M, Real beta) {
-  // note the double accumulator
   KALDI_ASSERT(dim_ == M.NumCols());
   MatrixIndexT num_rows = M.NumRows(), stride = M.Stride(), dim = dim_;
   Real *data = data_;
-  cblas_Xscal(dim, beta, data, 1);
-  const Real *m_data = M.Data();
 
-  for (MatrixIndexT i = 0; i < num_rows; i++, m_data += stride)
-    cblas_Xaxpy(dim, alpha, m_data, 1, data, 1);
+  // implement the function according to a dimension cutoff for computation efficiency  
+  if (num_rows <= 64) {
+    cblas_Xscal(dim, beta, data, 1);
+    const Real *m_data = M.Data();
+    for (MatrixIndexT i = 0; i < num_rows; i++, m_data += stride)
+      cblas_Xaxpy(dim, alpha, m_data, 1, data, 1);
+
+  } else {
+    Vector<Real> ones(M.NumRows());
+    ones.Set(1.0);
+    this->AddMatVec(alpha, M, kTrans, ones, beta);
+  }
 }
 
 template<typename Real>
 void VectorBase<Real>::AddColSumMat(Real alpha, const MatrixBase<Real> &M, Real beta) {
-  // note the double accumulator
-  double sum;
   KALDI_ASSERT(dim_ == M.NumRows());
   MatrixIndexT num_cols = M.NumCols();
-  for (MatrixIndexT i = 0; i < dim_; i++) {
-    sum = 0.0;
-    const Real *src = M.RowData(i);
-    for (MatrixIndexT j = 0; j < num_cols; j++)
-      sum += src[j];
-    data_[i] = alpha * sum + beta * data_[i];;
+
+  // implement the function according to a dimension cutoff for computation efficiency
+  if (num_cols <= 64) {
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      double sum = 0.0;
+      const Real *src = M.RowData(i);
+      for (MatrixIndexT j = 0; j < num_cols; j++)
+        sum += src[j];
+      data_[i] = alpha * sum + beta * data_[i];
+    }
+  } else {
+    Vector<Real> ones(M.NumCols());
+    ones.Set(1.0);
+    this->AddMatVec(alpha, M, kNoTrans, ones, beta);
   }
 }
 

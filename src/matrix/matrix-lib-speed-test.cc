@@ -27,6 +27,11 @@
 
 namespace kaldi {
 
+template<typename Real>
+std::string NameOf() {
+  return (sizeof(Real) == 8 ? "<double>" : "<float>");
+}
+
 template<typename Real> static void UnitTestRealFftSpeed() {
   // First, test RealFftInefficient.
   Timer t;
@@ -129,11 +134,149 @@ static void UnitTestAddMatMatSpeed() {
   KALDI_LOG << __func__ << " finished in " << t.Elapsed() << " seconds.";
 }
 
+template<typename Real>
+static void UnitTestAddRowSumMatSpeed() {
+  Timer t;
+  std::vector<MatrixIndexT> sizes;
+  int32 size = 4, num = 5; 
+  for(int32 i = 0; i < num; i++) {
+    sizes.push_back(size);
+    size *= 4;
+  }
+
+  for(size_t i = 0; i < sizes.size(); i++) {
+    MatrixIndexT size = sizes[i];
+    Matrix<Real> M(size, size);
+    M.SetRandn();
+    Vector<Real> Vr(size);
+
+    int32 iter = 0; 
+    BaseFloat time_in_secs = 0.02;
+    Timer t1;
+    for (;t1.Elapsed() < time_in_secs; iter++) {
+      Vr.AddRowSumMat(0.4, M, 0.5);
+    }
+
+    BaseFloat fdim = size;
+    BaseFloat gflops = (fdim * fdim * iter) / (t1.Elapsed() * 1.0e+09);
+    KALDI_LOG << "For AddRowSumMat" << NameOf<Real>()
+              << " , dim = " << size
+              << " , speed: " << gflops << " gigaflops.";
+  }
+
+  KALDI_LOG << __func__ << " finished in " << t.Elapsed() << " seconds.";   
+}
+
+template<typename Real>
+static void UnitTestAddColSumMatSpeed() {
+  Timer t;
+  std::vector<MatrixIndexT> sizes;
+  int32 size = 4, num = 5;
+  for(int32 i = 0; i < num; i++) {
+    sizes.push_back(size);
+    size *= 4;
+  }
+
+  for(size_t i = 0; i < sizes.size(); i++) {
+    MatrixIndexT size = sizes[i];
+    Matrix<Real> M(size, size);
+    M.SetRandn();
+    Vector<Real> Vc(size);
+    
+    int32 iter = 0;
+    BaseFloat time_in_secs = 0.02;
+    Timer t1;
+    for (;t1.Elapsed() < time_in_secs; iter++) {
+      Vc.AddColSumMat(0.4, M, 0.5);
+    }  
+ 
+    BaseFloat fdim = size;
+    BaseFloat gflops = (fdim * fdim * iter) / (t1.Elapsed() * 1.0e+09);
+    KALDI_LOG << "For AddColSumMat" << NameOf<Real>()
+              << " , dim = " << size
+              << " , speed: " << gflops << " gigaflops.";
+  }
+
+  KALDI_LOG << __func__ << " finished in " << t.Elapsed() << " seconds.";   
+}
+
+template<typename Real>
+static void UnitTestAddVecToRowsSpeed() {
+  Timer t;
+  std::vector<MatrixIndexT> sizes;
+  int32 size = 4, num = 5;
+  for(int32 i = 0; i < num; i++) {
+    sizes.push_back(size);
+    size *= 4;
+  } 
+
+  for(size_t i = 0; i < sizes.size(); i++) {
+    MatrixIndexT size = sizes[i];    
+    Matrix<Real> M(size, size);
+    M.SetRandn();
+    Vector<Real> Vc(size);
+    Vc.SetRandn();
+    
+    int32 iter = 0;
+    BaseFloat time_in_secs = 0.02;
+    Timer t1; 
+    for (;t1.Elapsed() < time_in_secs; iter++) {
+      M.AddVecToRows(0.5, Vc); 
+    }  
+
+    BaseFloat fdim = size;
+    BaseFloat gflops = (fdim * fdim * iter) / (t1.Elapsed() * 1.0e+09);
+    KALDI_LOG << "For AddVecToRows" << NameOf<Real>()
+              << " , dim = " << size
+              << " , speed " << gflops << " gigaflops.";
+  }
+
+  KALDI_LOG << __func__ << " finished in " << t.Elapsed() << " seconds.";   
+}
+
+template<typename Real>
+static void UnitTestAddVecToColsSpeed() {
+  Timer t;
+  std::vector<MatrixIndexT> sizes;
+  int32 size = 4, num = 5;
+  for(int32 i = 0; i < num; i++) {
+    sizes.push_back(size);
+    size *= 4;
+  }
+  
+  for(size_t i = 0; i < sizes.size(); i++) {
+    MatrixIndexT size = sizes[i];
+    Matrix<Real> M(size, size);
+    M.SetRandn();
+    Vector<Real> Vr(size);
+    Vr.SetRandn();
+
+    int32 iter = 0;  
+    BaseFloat time_in_secs = 0.02;
+    Timer t1;
+    for (;t1.Elapsed() < time_in_secs; iter++) {
+      M.AddVecToCols(0.5, Vr);    
+    }
+
+    BaseFloat fdim = size;
+    BaseFloat gflops = (fdim * fdim * iter) / (t1.Elapsed() * 1.0e+09);
+    KALDI_LOG << "For AddVecToCols" << NameOf<Real>() 
+              << ", dim = " << size
+              << ", speed: " << gflops << " gigaflops.";
+  }
+
+  KALDI_LOG << __func__ << " finished in " << t.Elapsed() << " seconds.";   
+}
+
 template<typename Real> static void MatrixUnitSpeedTest() {
   UnitTestRealFftSpeed<Real>();
   UnitTestSplitRadixRealFftSpeed<Real>();
   UnitTestSvdSpeed<Real>();
   UnitTestAddMatMatSpeed<Real>();
+  UnitTestAddRowSumMatSpeed<Real>();
+  UnitTestAddColSumMatSpeed<Real>();
+  UnitTestAddVecToRowsSpeed<Real>();
+  UnitTestAddVecToColsSpeed<Real>();
 }
 
 } // namespace kaldi
