@@ -47,12 +47,10 @@ utils/copy_data_dir.sh $srcdata $data; rm $data/{feats,cmvn}.scp 2>/dev/null
 
 required="$srcdata/feats.scp $nndir/final.nnet $nndir/final.feature_transform"
 for f in $required; do
-  if [ ! -f $f ]; then
-    echo "$0: no such file $f"
-    exit 1;
-  fi
+  [ ! -f $f ] && echo "$0: Missing $f" && exit 1;
 done
 
+name=$(basename $srcdata)
 sdata=$srcdata/split$nj
 [[ -d $sdata && $srcdata/feats.scp -ot $sdata ]] || split_data.sh $srcdata $nj || exit 1;
 
@@ -77,34 +75,40 @@ D=$nndir
 feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 # apply-cmvn (optional),
 [ ! -z "$cmvn_opts" -a ! -f $sdata/1/cmvn.scp ] && echo "$0: Missing $sdata/1/cmvn.scp" && exit 1
-[ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
+[ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$srcdata/utt2spk scp:$srcdata/cmvn.scp ark:- ark:- |"
 # add-deltas (optional),
 [ ! -z "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
 #
 
-# Run the forward pass,
-$cmd JOB=1:$nj $logdir/make_bnfeats.JOB.log \
-  nnet-forward --use-gpu=$use_gpu $nnet "$feats" \
-  ark,scp:$bnfeadir/raw_bnfea_$name.JOB.ark,$bnfeadir/raw_bnfea_$name.JOB.scp \
-  || exit 1;
+if [ $htk_save == false ]; then
+  # Run the forward pass,
+  $cmd JOB=1:$nj $logdir/make_bnfeats.JOB.log \
+    nnet-forward --use-gpu=$use_gpu $nnet "$feats" \
+    ark,scp:$bnfeadir/raw_bnfea_$name.JOB.ark,$bnfeadir/raw_bnfea_$name.JOB.scp \
+    || exit 1;
+  # concatenate the .scp files
+  for ((n=1; n<=nj; n++)); do
+    cat $bnfeadir/raw_bnfea_$name.$n.scp >> $data/feats.scp
+  done
 
-# concatenate the .scp files
-for ((n=1; n<=nj; n++)); do
-  cat $bnfeadir/raw_bnfea_$name.$n.scp >> $data/feats.scp
-done
+  # check sentence counts,
+  N0=$(cat $srcdata/feats.scp | wc -l) 
+  N1=$(cat $data/feats.scp | wc -l)
+  [[ "$N0" != "$N1" ]] && echo "$0: sentence-count mismatch, $srcdata $N0, $data $N1" && exit 1
+  echo "Succeeded creating MLP-BN features '$data'"
 
-# check sentence counts,
-N0=$(cat $srcdata/feats.scp | wc -l) 
-N1=$(cat $data/feats.scp | wc -l)
-[[ "$N0" != "$N1" ]] && echo "$0: sentence-count mismatch, $srcdata $N0, $data $N1" && exit 1
+else # htk_save == true
+  # Run the forward pass saving HTK features,
+  $cmd JOB=1:$nj $logdir/make_bnfeats_htk.JOB.log \
+    mkdir -p $data/htkfeats/JOB \; \
+    nnet-forward --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
+    copy-feats-to-htk --output-dir=$data/htkfeats/JOB ark:- || exit 1
+  # Make list of htk features,
+  find $data/htkfeats -name *.fea >$data/htkfeats.scp
 
-echo "Succeeded creating MLP-BN features '$data'"
-
-# optionally resave in as HTK features,
-if [ $htk_save == true ]; then
-  echo -n "Resaving as HTK features into $bnfeadir/htk ... "
-  mkdir -p $bnfeadir/htk
-  $cmd JOB=1:$nj $logdir/htk_copy_bnfeats.JOB.log \
-    copy-feats-to-htk --output-dir=$bnfeadir/htk --output-ext=fea scp:$data/feats.scp || exit 1
-  echo "DONE!"
+  # Check sentence counts,
+  N0=$(cat $srcdata/feats.scp | wc -l)
+  N1=$(find $data/htkfeats.scp | wc -l)
+  [[ "$N0" != "$N1" ]] && echo "$0: sentence-count mismatch, $srcdata $N0, $data/htk* $N1" && exit 1
+  echo "Succeeded creating MLP-BN features '$data/htkfeats.scp'"
 fi
