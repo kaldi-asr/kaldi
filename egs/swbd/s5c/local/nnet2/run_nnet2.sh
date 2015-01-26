@@ -5,7 +5,7 @@
 # units, on top of fMLLR features, on GPU.
 
 temp_dir=
-dir=nnet2_5
+dir=exp/nnet2_5
 has_fisher=true
 
 . ./cmd.sh
@@ -13,7 +13,7 @@ has_fisher=true
 
 . utils/parse_options.sh
 
-parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll
+parallel_opts="--gpu 1"  # This is suitable for the CLSP network, you'll
                           # likely have to change it.
 
 ( 
