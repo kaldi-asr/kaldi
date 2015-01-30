@@ -1247,55 +1247,6 @@ static void _apply_ceiling(Real* mat, Real ceiling_val, MatrixDim d) {
 }
 
 
-template<typename Real>
-__global__
-static void _add_row_sum_mat(const Real* mat, Real* vec_sum, MatrixDim d) {
-  int i = blockIdx.y * blockDim.y + threadIdx.y; //col
-  int j = blockIdx.x * blockDim.x + threadIdx.x; //row
-
-  if(blockIdx.x > 0) return;
-  if(blockDim.y != 1) return;
-
-  __shared__ Real row_data[CU1DBLOCK];
-
-  //copy the input to row_data
-  row_data[j] = mat[i+j*d.stride];
-  __syncthreads();
-
-  //get the sum
-  Real sum = _sum_reduce(row_data);
-  __syncthreads();
-  
-  //add to previously accumulated sum
-  if(threadIdx.x == 0)
-    vec_sum[i] += sum;
-}
-
-
-template<typename Real>
-__global__
-static void _add_col_sum_mat(const Real* mat, Real* vec_sum, MatrixDim d) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x; //row
-  int j = blockIdx.y * blockDim.y + threadIdx.y; //col
-
-  if(blockIdx.x > 0) return;
-  if(blockDim.y != 1) return;
-
-  __shared__ Real row_data[CU1DBLOCK];
-
-  //copy the input to row_data
-  row_data[i] = mat[i+j*d.stride];
-  __syncthreads();
-
-  //get the sum
-  Real sum = _sum_reduce(row_data);
-  __syncthreads();
-  
-  //add to previously accumulated sum
-  if(threadIdx.x == 0) 
-    vec_sum[j] += sum;
-}
-
 
 template<typename Real>
 __global__
@@ -2131,14 +2082,6 @@ void cudaF_vec_apply_log(int Gr, int Bl, float* v, float* flag, int dim) {
   _vec_apply_log<<<Gr,Bl>>>(v,flag,dim);
 }
 
-void cudaF_add_row_sum_mat(dim3 Gr, dim3 Bl, const float* mat, float* vec_sum, MatrixDim d) {
-  _add_row_sum_mat<<<Gr,Bl>>>(mat,vec_sum,d);
-}
-
-void cudaF_add_col_sum_mat(dim3 Gr, dim3 Bl, const float* mat, float* vec_sum, MatrixDim d) {
-  _add_col_sum_mat<<<Gr,Bl>>>(mat,vec_sum,d);
-}
-
 void cudaF_invert_elements(dim3 Gr, dim3 Bl, float* data, MatrixDim d) {
   _invert_elements<<<Gr,Bl>>>(data, d);
 }
@@ -2538,14 +2481,6 @@ void cudaD_vec_apply_exp(int Gr, int Bl, double* v, int dim) {
 
 void cudaD_vec_apply_log(int Gr, int Bl, double* v, double* flag, int dim) {
   _vec_apply_log<<<Gr,Bl>>>(v,flag,dim);
-}
-
-void cudaD_add_row_sum_mat(dim3 Gr, dim3 Bl, const double* mat, double* vec_sum, MatrixDim d) {
-  _add_row_sum_mat<<<Gr,Bl>>>(mat,vec_sum,d);
-}
-
-void cudaD_add_col_sum_mat(dim3 Gr, dim3 Bl, const double* mat, double* vec_sum, MatrixDim d) {
-  _add_col_sum_mat<<<Gr,Bl>>>(mat,vec_sum,d);
 }
 
 void cudaD_invert_elements(dim3 Gr, dim3 Bl, double* data, MatrixDim d) {

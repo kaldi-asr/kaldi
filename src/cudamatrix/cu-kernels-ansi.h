@@ -113,8 +113,6 @@ void cudaF_vec_apply_floor(int Gr, int Bl, float* v, float floor_val, float* num
 void cudaF_vec_apply_exp(int Gr, int Bl, float* v, int dim);
 void cudaF_vec_apply_log(int Gr, int Bl, float* v, float* flag, int dim);
 void cudaF_trace(int Gr, int Bl, float* mat, float* value, int dim);
-void cudaF_add_row_sum_mat(dim3 Gr, dim3 Bl, const float *mat, float *vec_sum, MatrixDim d);
-void cudaF_add_col_sum_mat(dim3 Gr, dim3 Bl, const float *mat, float *vec_sum, MatrixDim d);
 void cudaF_invert_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim d);
 // Note: B_trans is nonzero if B is transposed.
 void cudaF_add_mat_blockmat(dim3 Gr, dim3 Bl, float *data, MatrixDim d, const float *Adata,
@@ -239,8 +237,6 @@ void cudaD_vec_apply_floor(int Gr, int Bl, double* v, double floor_val, float* n
 void cudaD_vec_apply_exp(int Gr, int Bl, double* v, int dim);
 void cudaD_vec_apply_log(int Gr, int Bl, double* v, double* flag, int dim);
 void cudaD_trace(int Gr, int Bl, double* mat, double* value, int dim);
-void cudaD_add_row_sum_mat(dim3 Gr, dim3 Bl, const double *mat, double *vec_sum, MatrixDim d);
-void cudaD_add_col_sum_mat(dim3 Gr, dim3 Bl, const double *mat, double *vec_sum, MatrixDim d);
 void cudaD_invert_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim d);
 // note: B_trans is nonzero if B is tranposed.
 void cudaD_add_mat_blockmat(dim3 Gr, dim3 Bl, double *data, MatrixDim d, const double *Adata,

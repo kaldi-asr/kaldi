@@ -1070,48 +1070,11 @@ template<typename Real>
 void CuVectorBase<Real>::AddRowSumMat(Real alpha, const CuMatrixBase<Real> &mat,
                                       Real beta) {
   KALDI_ASSERT(mat.NumCols() == Dim());
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
-   
-    CuVector<Real> temp(Dim()); // create a buffer
-    temp.SetZero();
-    
-    MatrixDim d = mat.Dim(); // only stride will be used!
   
-    // process per CU1DBLOCK row blocks 
-    for(int32 block=0; (block+1)*CU1DBLOCK <= mat.NumRows(); block++) {
-      // 1st dim ... rows, 2nd dim ... cols
-      dim3 dimBlock(CU1DBLOCK, 1); 
-      dim3 dimGrid(1, mat.NumCols());
-      int32 offset = block*CU1DBLOCK*d.stride;
+  CuVector<Real> ones(mat.NumRows());
+  ones.Set(1.0);
+  this->AddMatVec(alpha, mat, kTrans, ones, beta);
 
-      cuda_add_row_sum_mat(dimGrid, dimBlock, mat.data_ + offset, temp.data_, d);
-    }
-    
-    // process the remainder
-    int32 div = mat.NumRows() / CU1DBLOCK;
-    int32 mod = mat.NumRows() % CU1DBLOCK;
-    if (mod != 0) {
-      // 1st dim ... rows, 2nd dim ... cols
-      dim3 dimBlock(mod, 1);
-      dim3 dimGrid(1, mat.NumCols());
-      int32 offset = div*CU1DBLOCK*d.stride;
-      
-      cuda_add_row_sum_mat(dimGrid, dimBlock, mat.data_ + offset, temp.data_, d);
-    }
-    // now we have the sum!
-    CU_SAFE_CALL(cudaGetLastError());
-    
-    // add buffer temp to this vector using alpha and beta
-    this->AddVec(alpha, temp, beta);
-    
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-#endif
-  {
-    Vec().AddRowSumMat(alpha, mat.Mat(), beta);
-  }
 }
 
 
@@ -1120,46 +1083,10 @@ void CuVectorBase<Real>::AddColSumMat(Real alpha,
                                       const CuMatrixBase<Real> &mat,
                                       Real beta) {
   KALDI_ASSERT(mat.NumRows() == Dim());
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
-    Timer tim;
 
-    CuVector<Real> temp(Dim()); // create a buffer
-    
-    MatrixDim d = mat.Dim(); // only stride will be used!
-  
-    // process per CU1DBLOCK column blocks 
-    for(int32 block=0; (block+1)*CU1DBLOCK <= mat.NumCols(); block++) {
-      // 1st dim ... cols, 2nd dim ... rows
-      dim3 dimBlock(CU1DBLOCK, 1);
-      dim3 dimGrid(1, mat.NumRows());
-      int32 offset = block*CU1DBLOCK;
-
-      cuda_add_col_sum_mat(dimGrid, dimBlock, mat.data_ + offset, temp.data_, d);
-    }
-    
-    // process the remainder
-    int32 div = mat.NumCols() / CU1DBLOCK;
-    int32 mod = mat.NumCols() % CU1DBLOCK;
-    if (mod != 0) {
-      // 1st dim ... cols, 2nd dim ... rows
-      dim3 dimBlock(mod, 1);
-      dim3 dimGrid(1, mat.NumRows());
-      int32 offset=div*CU1DBLOCK;
-      
-      cuda_add_col_sum_mat(dimGrid, dimBlock, mat.data_ +offset, temp.data_, d);
-    }
-    CU_SAFE_CALL(cudaGetLastError());    
-    
-    // add buffer rmp to this vector using alpha and beta
-    this->AddVec(alpha, temp, beta);
-    
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-  #endif
-  {
-    Vec().AddColSumMat(alpha, mat.Mat(), beta);
-  }
+  CuVector<Real> ones(mat.NumCols());
+  ones.Set(1.0);
+  this->AddMatVec(alpha, mat, kNoTrans, ones, beta);
 }
 
 

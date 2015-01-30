@@ -144,6 +144,49 @@ template<typename Real> void TestCuVectorAddDiagMat2(int32 dim, MatrixTransposeT
 }
 
 
+template<typename Real> void TestCuVectorAddRowSumMat(int32 dim, MatrixTransposeType trans) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> v(dim);
+  v.SetRandn();
+  CuMatrix<Real> N(dim, dim);
+  N.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    v.AddRowSumMat(1.0, N, 0.5);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::AddRowSumMat" << NameOf<Real>()
+            << (trans == kTrans ? "[trans]" : "[no-trans]") << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+template<typename Real> void TestCuVectorAddColSumMat(int32 dim, MatrixTransposeType trans) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> v(dim);
+  v.SetRandn();
+  CuMatrix<Real> N(dim, dim);
+  N.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    v.AddColSumMat(1.0, N, 0.5);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::AddColSumMat" << NameOf<Real>()
+            << (trans == kTrans ? "[trans]" : "[no-trans]") << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
 
 template<typename Real> void CudaVectorSpeedTest() {
   std::vector<int32> sizes;
@@ -169,6 +212,14 @@ template<typename Real> void CudaVectorSpeedTest() {
   for (int32 s = 0; s < ns; s++) { 
     TestCuVectorAddDiagMat2<Real>(sizes[s], kNoTrans);
     TestCuVectorAddDiagMat2<Real>(sizes[s], kTrans);
+  }
+  for (int32 s = 0; s < ns; s++) {
+    TestCuVectorAddRowSumMat<Real>(sizes[s], kNoTrans);
+    TestCuVectorAddRowSumMat<Real>(sizes[s], kTrans);
+  }
+  for (int32 s = 0; s < ns; s++) {
+    TestCuVectorAddColSumMat<Real>(sizes[s], kNoTrans);
+    TestCuVectorAddColSumMat<Real>(sizes[s], kTrans);
   }
   
 }

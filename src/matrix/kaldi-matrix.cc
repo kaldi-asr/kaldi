@@ -2555,9 +2555,7 @@ void MatrixBase<Real>::AddVecToRows(const Real alpha, const VectorBase<OtherReal
   } else {
     Vector<OtherReal> ones(num_rows);
     ones.Set(1.0);
-    Matrix<Real> add_mat(num_rows, num_cols);
-    add_mat.AddVecVec(alpha, ones, v);
-    this->AddMat(1.0, add_mat);
+    this->AddVecVec(alpha, ones, v);
    }  
 }
 
@@ -2590,9 +2588,7 @@ void MatrixBase<Real>::AddVecToCols(const Real alpha, const VectorBase<OtherReal
   } else {
     Vector<OtherReal> ones(num_cols);
     ones.Set(1.0);
-    Matrix<Real> add_mat(num_rows, num_cols);
-    add_mat.AddVecVec(alpha, v, ones);
-    this->AddMat(1.0, add_mat);
+    this->AddVecVec(alpha, v, ones);
   }
 }  
 

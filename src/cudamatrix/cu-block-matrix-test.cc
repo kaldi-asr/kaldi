@@ -115,7 +115,7 @@ static void UnitTestCuBlockMatrixAddMatBlock() {
 template<class Real>
 static void UnitTestCuBlockMatrixAddMatMat() {
   for (int32 i = 0; i < 20; i++) {
-    int32 num_blocks = Rand() % 5;
+    int32 num_blocks = Rand() % 5 + 1;
     std::vector<CuMatrix<Real> > data(num_blocks);
     for (int32 b = 0; b < num_blocks; b++) {
       int32 dimM = 100 + Rand() % 255, dimN = 10 + Rand() % 20;
@@ -152,7 +152,6 @@ static void UnitTestCuBlockMatrixAddMatMat() {
     B.AddMatMat(alpha, C, transC, D, transD, beta);
     
     Bmat.AddMatMat(alpha, C, transC, D, transD, beta);
-
 
     // Now check that the block-structured part of Bmat is the
     // same as B.
