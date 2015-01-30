@@ -137,10 +137,9 @@ if [ $stage -le 5 ]; then
     graph_dir=exp/tri4b/graph_sw1_${lm_suffix}
     for epoch in $(seq $decode_start_epoch $num_epochs); do
       for test in eval2000_hires train_hires_dev; do
-        (
-          steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 50 \
+          steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
+            --per-utt true \
             --iter epoch$epoch "$graph_dir" data/${test} $dir/decode_epoch${epoch}_${test}_sw1_${lm_suffix}_per_utt || exit 1
-        ) &
       done
     done
   done

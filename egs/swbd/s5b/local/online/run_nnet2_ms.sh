@@ -43,7 +43,7 @@ if [ $stage -le 6 ]; then
     --num-epochs 5 --num-jobs-initial 3 --num-jobs-final 18 \
     --num-hidden-layers 6 --splice-indexes "$splice_indexes" \
     --feat-type raw \
-    --online-ivector-dir exp/nnet2_online/ivectors_train_nodup2 \
+    --online-ivector-dir exp/nnet2_online/ivectors_train_hires_nodup2 \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
@@ -94,7 +94,7 @@ if [ $stage -le 10 ]; then
   for lm_suffix in tg fsh_tgpr; do
     graph_dir=exp/tri4b/graph_sw1_${lm_suffix}
     for data in eval2000_hires train_hires_dev; do
-      steps/online/nnet2/decode.sh --config conf/decode.config  
+      steps/online/nnet2/decode.sh --config conf/decode.config \
       --cmd "$decode_cmd" --nj 30 \
       "$graph_dir" data/${data} \
       ${dir}_online/decode_${data}_sw1_${lm_suffix} || exit 1;

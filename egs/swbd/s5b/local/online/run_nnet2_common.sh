@@ -88,7 +88,7 @@ if [ $stage -le 5 ]; then
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train_hires_nodup data/train_hires_nodup_max2
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/train_hires_nodup_max2 exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_nodup2 || exit 1;
+    data/train_hires_nodup_max2 exp/nnet2_online/extractor exp/nnet2_online/ivectors_train_hires_nodup2 || exit 1;
 fi
 
 
