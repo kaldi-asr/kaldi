@@ -225,6 +225,8 @@ done
 
 nnet_context_opts="--left-context=$left_context --right-context=$right_context"
 
+echo $left_context > $dir/info/left_context
+echo $right_context > $dir/info/right_context
 if [ $stage -le 2 ]; then
   echo "$0: Getting validation and training subset examples."
   rm $dir/.error 2>/dev/null
