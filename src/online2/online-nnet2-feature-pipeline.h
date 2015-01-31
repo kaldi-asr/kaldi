@@ -74,7 +74,7 @@ struct OnlineNnet2FeaturePipelineConfig {
   // the following contains the type of options that you could give to
   // compute-and-process-kaldi-pitch-feats.
   std::string online_pitch_config;
-
+  
   // The configuration variables in ivector_extraction_config relate to the
   // iVector extractor and options related to it, see type
   // OnlineIvectorExtractionConfig.
@@ -203,9 +203,7 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   void AcceptWaveform(BaseFloat sampling_rate,
                       const VectorBase<BaseFloat> &waveform);
   
-  BaseFloat FrameShiftInSeconds() const {
-    return info_.FrameShiftInSeconds();
-  }
+  BaseFloat FrameShiftInSeconds() const { return info_.FrameShiftInSeconds(); }
 
   /// If you call InputFinished(), it tells the class you won't be providing any
   /// more waveform.  This will help flush out the last few frames of delta or

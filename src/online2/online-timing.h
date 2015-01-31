@@ -50,8 +50,10 @@ class OnlineTimingStats {
   int32 num_utts_;
   // all times are in seconds.
   double total_audio_; // total time of audio.
-  double total_time_taken_;
-  double total_time_waited_; // total time in wait() state.
+  double total_time_taken_;  // total time spent processing the audio.
+  double total_time_waited_; // total time we pretended to wait (but just
+                             // increased the waited_ counter)... zero if you
+                             // called SleepUntil instead of WaitUntil().
   double max_delay_; // maximum delay at utterance end.
   std::string max_delay_utt_;
 };
@@ -65,7 +67,8 @@ class OnlineTimingStats {
 /// available in a real-time application-- e.g. say we need to process a chunk
 /// that ends half a second into the utterance, we would sleep until half a
 /// second had elapsed since the start of the utterance.  In this code we
-/// don't actually sleep; we simulate the effect of sleeping by just incrementing
+/// have the option to not actually sleep: we can simulate the effect of
+/// sleeping by just incrementing
 /// a variable that says how long we would have slept; and we add this to
 /// wall-clock times obtained from Timer::Elapsed().
 /// The usage of this class will be something like as follows:
@@ -85,11 +88,17 @@ class OnlineTimingStats {
 class OnlineTimer {
  public:
   OnlineTimer(const std::string &utterance_id);
-  
-  /// The call to WaitUntil(t) simulates the effect of waiting
-  /// until t seconds after this object was initialized.
-  void WaitUntil(double cur_utterance_length);
 
+  /// The call to SleepUntil(t) will sleep until cur_utterance_length seconds
+  /// after this object was initialized, or return immediately if we've
+  /// already passed that time.
+  void SleepUntil(double cur_utterance_length);
+
+  /// The call to WaitUntil(t) simulates the effect of sleeping until
+  /// cur_utterance_length seconds after this object was initialized; 
+  /// but instead of actually sleeping, it increases a counter.
+  void WaitUntil(double cur_utterance_length);
+  
   /// This call, which should be made after decoding is done,
   /// writes the stats to the object that accumulates them.
   void OutputStats(OnlineTimingStats *stats);

@@ -197,7 +197,9 @@ void FindQuietestSegment(const Vector<BaseFloat> &wav_in,
     start += seg_shift;
   }
 
-  KALDI_ASSERT(min_energy > 0.0);
+  if (min_energy == 0.0) {
+    KALDI_WARN << "Zero energy silence being used.";
+  }
   *wav_sil = wav_min_energy;
 }
 

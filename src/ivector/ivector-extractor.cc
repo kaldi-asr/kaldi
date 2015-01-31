@@ -604,7 +604,7 @@ void OnlineIvectorEstimationStats::GetIvector(
     ivector->SetZero();
     (*ivector)(0) = prior_offset_;
   }
-  KALDI_VLOG(3) << "Objective function improvement from estimating the "
+  KALDI_VLOG(4) << "Objective function improvement from estimating the "
                 << "iVector (vs. default value) is "
                 << ObjfChange(*ivector);
 }

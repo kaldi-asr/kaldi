@@ -8,12 +8,14 @@ stage=0
 nj=4
 cmd=run.pl
 max_active=7000
+threaded=false
+modify_ivector_config=false #  only relevant to threaded decoder.
 beam=15.0
 lattice_beam=6.0
 acwt=0.1   # note: only really affects adaptation and pruning (scoring is on
            # lattices).
 per_utt=false
-online=true
+online=true  # only relevant to non-threaded decoder.
 do_endpointing=false
 do_speex_compressing=false
 scoring_opts=
@@ -92,9 +94,23 @@ if $do_endpointing; then
   wav_rspecifier="$wav_rspecifier extend-wav-with-silence ark:- ark:- |"  
 fi
 
+
+
+if $threaded; then
+  decoder=online2-wav-nnet2-latgen-threaded
+    # note: the decoder actually uses 4 threads, but the average usage will normally
+    # be more like 2.
+  parallel_opts="--num-threads 2"
+  opts="--modify-ivector-config=$modify_ivector_config --verbose=1"
+else
+  decoder=online2-wav-nnet2-latgen-faster
+  parallel_opts=
+  opts="--online=$online"
+fi
+
 if [ $stage -le 0 ]; then
-  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
-    online2-wav-nnet2-latgen-faster --online=$online --do-endpointing=$do_endpointing \
+  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+    $decoder $opts --do-endpointing=$do_endpointing \
      --config=$srcdir/conf/online_nnet2_decoding.conf \
      --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
      --acoustic-scale=$acwt --word-symbol-table=$graphdir/words.txt \

@@ -19,6 +19,15 @@
 #include <string>
 #include "base/kaldi-common.h"
 
+
+#ifdef _WIN32_WINNT_WIN8
+#include <Synchapi.h>
+#elif defined (_WIN32) || defined(_MSC_VER) || defined(MINGW)
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
+
 namespace kaldi {
 
 std::string CharToString(const char &c) {
@@ -28,6 +37,14 @@ std::string CharToString(const char &c) {
   else
     sprintf(buf, "[character %d]", (int) c);
   return (std::string) buf;
+}
+
+void Sleep(float seconds) {
+#if defined(_MSC_VER) || defined(MINGW)
+  ::Sleep(static_cast<int>(seconds * 1000.0));
+#else
+  usleep(static_cast<int>(seconds * 1000000.0));
+#endif
 }
 
 }  // end namespace kaldi

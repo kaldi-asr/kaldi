@@ -1,6 +1,7 @@
 // base/timer-test.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//                2014  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -19,28 +20,27 @@
 
 #include "base/timer.h"
 #include "base/kaldi-common.h"
-
+#include "base/kaldi-utils.h"
 
 
 namespace kaldi {
 
 void TimerTest() {
-
+  float time_secs = 0.025 * (rand() % 10);
+  std::cout << "target is " << time_secs << "\n";
   Timer timer;
-#if defined(_MSC_VER) || defined(MINGW)
-  Sleep(1000);
-#else
-  sleep(1);
-#endif
+  Sleep(time_secs);
   BaseFloat f = timer.Elapsed();
-  std::cout << "time is " << f;
-  KALDI_ASSERT(fabs(1.0 - f) < 0.1);
+  std::cout << "time is " << f << std::endl;
+  if (fabs(time_secs - f) > 0.05)
+    KALDI_ERR << "Timer fail: waited " << f << " seconds instead of "
+              <<  time_secs << " secs.";
 }
 
 }
 
 
 int main() {
-  kaldi::TimerTest();
+  for (int i = 0; i < 4; i++)
+    kaldi::TimerTest();
 }
-

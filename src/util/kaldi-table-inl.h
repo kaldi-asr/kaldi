@@ -2010,6 +2010,7 @@ template<class Holder>  class RandomAccessTableReaderUnsortedArchiveImpl:
 
         if (!pr.second) {  // Was not inserted-- previous element w/ same key
           delete holder_;  // map was not changed, no ownership transferred.
+          holder_ = NULL;
           KALDI_ERR << "Error in RandomAccessTableReader: duplicate key "
                     << cur_key_ << " in archive " << archive_rxfilename_;
         }

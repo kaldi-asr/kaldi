@@ -1,6 +1,6 @@
-// onlinebin/online2-wav-nnet2-latgen-faster.cc
+// onlinebin/online2-wav-nnet2-latgen-thread.cc
 
-// Copyright 2014  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2014-2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -18,7 +18,7 @@
 // limitations under the License.
 
 #include "feat/wave-reader.h"
-#include "online2/online-nnet2-decoding.h"
+#include "online2/online-nnet2-decoding-threaded.h"
 #include "online2/onlinebin-util.h"
 #include "online2/online-timing.h"
 #include "online2/online-endpoint.h"
@@ -81,15 +81,16 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Reads in wav file(s) and simulates online decoding with neural nets\n"
         "(nnet2 setup), with optional iVector-based speaker adaptation and\n"
-        "optional endpointing.  Note: some configuration values and inputs are\n"
-        "set via config files whose filenames are passed as options\n"
+        "optional endpointing.  This version uses multiple threads for decoding.\n"
+        "Note: some configuration values and inputs are set via config files\n"
+        "whose filenames are passed as options\n"
         "\n"
-        "Usage: online2-wav-nnet2-latgen-faster [options] <nnet2-in> <fst-in> "
+        "Usage: online2-wav-nnet2-latgen-threaded [options] <nnet2-in> <fst-in> "
         "<spk2utt-rspecifier> <wav-rspecifier> <lattice-wspecifier>\n"
         "The spk2utt-rspecifier can just be <utterance-id> <utterance-id> if\n"
         "you want to decode utterance by utterance.\n"
         "See egs/rm/s5/local/run_online_decoding_nnet2.sh for example\n"
-        "See also online2-wav-nnet2-latgen-threaded\n";
+        "See also online2-wav-nnet2-latgen-faster\n";
     
     ParseOptions po(usage);
     
@@ -100,28 +101,26 @@ int main(int argc, char *argv[]) {
     // feature_config includes configuration for the iVector adaptation,
     // as well as the basic features.
     OnlineNnet2FeaturePipelineConfig feature_config;  
-    OnlineNnet2DecodingConfig nnet2_decoding_config;
-
+    OnlineNnet2DecodingThreadedConfig nnet2_decoding_config;
+    
     BaseFloat chunk_length_secs = 0.05;
     bool do_endpointing = false;
-    bool online = true;
+    bool modify_ivector_config = false; 
     
     po.Register("chunk-length", &chunk_length_secs,
-                "Length of chunk size in seconds, that we process.  Set to <= 0 "
-                "to use all input in one chunk.");
+                "Length of chunk size in seconds, that we provide each time to the "
+                "decoder.  The actual chunk sizes it processes for various stages "
+                "of decoding are dynamically determinated, and unrelated to this");
     po.Register("word-symbol-table", &word_syms_rxfilename,
                 "Symbol table for words [for debug output]");
     po.Register("do-endpointing", &do_endpointing,
                 "If true, apply endpoint detection");
-    po.Register("online", &online,
-                "You can set this to false to disable online iVector estimation "
-                "and have all the data for each utterance used, even at "
-                "utterance start.  This is useful where you just want the best "
-                "results and don't care about online operation.  Setting this to "
-                "false has the same effect as setting "
-                "--use-most-recent-ivector=true and --greedy-ivector-extractor=true "
-                "in the file given to --ivector-extraction-config, and "
-                "--chunk-length=-1.");
+    po.Register("modify-ivector-config", &modify_ivector_config,
+                "If true, modifies the iVector configuration from the config files "
+                "by setting --use-most-recent-ivector=true and --greedy-ivector-extractor=true. "
+                "This will give the best possible results, but the results may become dependent "
+                "on the speed of your machine (slower machine -> better results).  Compare "
+                "to the --online option in online2-wav-nnet-latgen-faster");
     
     feature_config.Register(&po);
     nnet2_decoding_config.Register(&po);
@@ -142,19 +141,18 @@ int main(int argc, char *argv[]) {
     
     OnlineNnet2FeaturePipelineInfo feature_info(feature_config);
 
-    if (!online) {
+    if (modify_ivector_config) {
       feature_info.ivector_extractor_info.use_most_recent_ivector = true;
       feature_info.ivector_extractor_info.greedy_ivector_extractor = true;
-      chunk_length_secs = -1.0;
     }
     
     TransitionModel trans_model;
-    nnet2::AmNnet nnet;
+    nnet2::AmNnet am_nnet;
     {
       bool binary;
       Input ki(nnet2_rxfilename, &binary);
       trans_model.Read(ki.Stream(), binary);
-      nnet.Read(ki.Stream(), binary);
+      am_nnet.Read(ki.Stream(), binary);
     }
     
     fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
@@ -192,24 +190,18 @@ int main(int argc, char *argv[]) {
         // take the first channel).
         SubVector<BaseFloat> data(wave_data.Data(), 0);
 
-        OnlineNnet2FeaturePipeline feature_pipeline(feature_info);
-        feature_pipeline.SetAdaptationState(adaptation_state);
         
-        SingleUtteranceNnet2Decoder decoder(nnet2_decoding_config,
-                                            trans_model,
-                                            nnet,
-                                            *decode_fst,
-                                            &feature_pipeline);
+        SingleUtteranceNnet2DecoderThreaded decoder(
+            nnet2_decoding_config, trans_model, am_nnet,
+            *decode_fst, feature_info, adaptation_state);
+        
         OnlineTimer decoding_timer(utt);
         
         BaseFloat samp_freq = wave_data.SampFreq();
         int32 chunk_length;
-        if (chunk_length_secs > 0) {
-          chunk_length = int32(samp_freq * chunk_length_secs);
-          if (chunk_length == 0) chunk_length = 1;
-        } else {
-          chunk_length = std::numeric_limits<int32>::max();
-        }
+        KALDI_ASSERT(chunk_length_secs > 0);
+        chunk_length = int32(samp_freq * chunk_length_secs);
+        if (chunk_length == 0) chunk_length = 1;
         
         int32 samp_offset = 0;
         while (samp_offset < data.Dim()) {
@@ -218,24 +210,30 @@ int main(int argc, char *argv[]) {
                                                          : samp_remaining;
           
           SubVector<BaseFloat> wave_part(data, samp_offset, num_samp);
-          feature_pipeline.AcceptWaveform(samp_freq, wave_part);
+          decoder.AcceptWaveform(samp_freq, wave_part);
           
           samp_offset += num_samp;
-          decoding_timer.WaitUntil(samp_offset / samp_freq);
+          // Note: the next call may actually call sleep(). 
+          decoding_timer.SleepUntil(samp_offset / samp_freq);
           if (samp_offset == data.Dim()) {
             // no more input. flush out last frames
-            feature_pipeline.InputFinished();
+            decoder.InputFinished();
           }
-          decoder.AdvanceDecoding();
           
-          if (do_endpointing && decoder.EndpointDetected(endpoint_config))
+          if (do_endpointing && decoder.EndpointDetected(endpoint_config)) {
+            decoder.TerminateDecoding();
             break;
+          }
         }
+        Timer timer;
+        decoder.Wait();
+        KALDI_VLOG(1) << "Waited " << timer.Elapsed() << " seconds for decoder to "
+                      << "finish after giving it last chunk.";
         decoder.FinalizeDecoding();
 
         CompactLattice clat;
         bool end_of_utterance = true;
-        decoder.GetLattice(end_of_utterance, &clat);
+        decoder.GetLattice(end_of_utterance, &clat, NULL);
         
         GetDiagnosticsAndPrintOutput(utt, word_syms, clat,
                                      &num_frames, &tot_like);
@@ -244,18 +242,25 @@ int main(int argc, char *argv[]) {
         
         // In an application you might avoid updating the adaptation state if
         // you felt the utterance had low confidence.  See lat/confidence.h
-        feature_pipeline.GetAdaptationState(&adaptation_state);
+        decoder.GetAdaptationState(&adaptation_state);
         
         // we want to output the lattice with un-scaled acoustics.
         BaseFloat inv_acoustic_scale =
-            1.0 / nnet2_decoding_config.decodable_opts.acoustic_scale;
+            1.0 / nnet2_decoding_config.acoustic_scale;
         ScaleLattice(AcousticLatticeScale(inv_acoustic_scale), &clat);
 
+        KALDI_VLOG(1) << "Adding the various end-of-utterance tasks took the "
+                      << "total latency to " << timer.Elapsed() << " seconds.";
+        
         clat_writer.Write(utt, clat);
         KALDI_LOG << "Decoded utterance " << utt;
+
+
+        
         num_done++;
       }
     }
+    bool online = true;
     timing_stats.Print(online);
     
     KALDI_LOG << "Decoded " << num_done << " utterances, "

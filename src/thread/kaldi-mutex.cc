@@ -40,13 +40,14 @@ Mutex::~Mutex() {
   if ( (ret = pthread_mutex_destroy(&mutex_)) != 0) {
     if (ret != 16) {
       KALDI_ERR << "Cannot destroy pthread mutex, error is: "
-               << strerror(ret);
+                << strerror(ret);
     } else {
       KALDI_WARN << "Error destroying pthread mutex; ignoring it as it could be "
                  << "a known issue that affects Haswell processors, see "
                  << "https://sourceware.org/bugzilla/show_bug.cgi?id=16657 "
                  << "If your processor is not Haswell and you see this message, "
-                 << "it could be a bug in Kaldi.";
+                 << "it could be a bug in Kaldi.  However it could be that "
+                 << "multi-threaded code terminated messily.";
     }
   }
 }

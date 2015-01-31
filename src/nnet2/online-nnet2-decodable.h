@@ -30,6 +30,10 @@
 namespace kaldi {
 namespace nnet2 {
 
+// Note: see also nnet-compute-online.h, which provides a different
+// (lower-level) interface and more efficient for progressive evaluation of an
+// nnet throughout an utterance, with re-use of already-computed activations.
+
 struct DecodableNnet2OnlineOptions {
   BaseFloat acoustic_scale;
   bool pad_input;
@@ -54,6 +58,12 @@ struct DecodableNnet2OnlineOptions {
   }
 };
 
+
+/**
+   This Decodable object for class nnet2::AmNnet takes feature input from class
+   OnlineFeatureInterface, unlike, say, class DecodableAmNnet which takes
+   feature input from a matrix.
+*/
 
 class DecodableNnet2Online: public DecodableInterface {
  public:

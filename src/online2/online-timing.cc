@@ -36,7 +36,11 @@ void OnlineTimingStats::Print(bool online){
     KALDI_LOG << "Timing stats: real-time factor was " << real_time_factor
               << " (note: this cannot be less than one.)";
     KALDI_LOG << "Average delay was " << average_wait << " seconds.";
-    KALDI_LOG << "Percentage of time spent idling was " << idle_percent;
+    if (idle_percent != 0.0) {
+      // If the user was calling SleepUntil instead of WaitUntil, this will
+      // always be zero; so don't print it in that case.
+      KALDI_LOG << "Percentage of time spent idling was " << idle_percent;
+    }
     KALDI_LOG << "Longest delay was " << max_delay_ << " seconds for utterance "
               << '\'' << max_delay_utt_ << '\'';
   } else {
@@ -74,6 +78,17 @@ void OnlineTimer::WaitUntil(double cur_utterance_length) {
   utterance_length_ = cur_utterance_length;
 }
 
+void OnlineTimer::SleepUntil(double cur_utterance_length) {
+  KALDI_ASSERT(waited_ == 0 && "Do not mix SleepUntil with WaitUntil.");
+  double elapsed = timer_.Elapsed();
+
+  double to_wait = cur_utterance_length - elapsed;
+  if (to_wait > 0.0) {
+    Sleep(to_wait);
+  }
+  utterance_length_ = cur_utterance_length;
+}
+
 double OnlineTimer::Elapsed() {
   return timer_.Elapsed() + waited_;
 }
@@ -88,7 +103,10 @@ void OnlineTimer::OutputStats(OnlineTimingStats *stats) {
     KALDI_WARN << "Negative wait time " << wait_time
                << " does not make sense.";
   }
-
+  KALDI_VLOG(2) << "Latency " << wait_time << " seconds out of "
+                << utterance_length_ << ", for utterance "
+                << utterance_id_;
+  
   stats->num_utts_++;
   stats->total_audio_ += utterance_length_;
   stats->total_time_taken_ += processing_time;

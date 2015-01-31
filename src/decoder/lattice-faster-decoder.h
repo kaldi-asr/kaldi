@@ -19,11 +19,9 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-// Note on svn: this file is "upstream" from lattice-faster-online-decoder.h,
-// and changes in this file should be merged into
-// lattice-faster-online-decoder.h, after committing the changes to this file,
-// using the command
-// svn merge ^/sandbox/online/src/decoder/lattice-faster-decoder.h lattice-faster-online-decoder.h
+// Note: this file is "upstream" from lattice-faster-online-decoder.h,
+// and changes in this file should be made to lattice-faster-online-decoder.h,
+// if applicable.
 
 #ifndef KALDI_DECODER_LATTICE_FASTER_DECODER_H_
 #define KALDI_DECODER_LATTICE_FASTER_DECODER_H_
@@ -165,8 +163,8 @@ class LatticeFasterDecoder {
                   bool use_final_probs = true) const;
 
   /// InitDecoding initializes the decoding, and should only be used if you
-  /// intend to call AdvanceDecoding().  If you call Decode(), you don't need
-  /// to call this.  You can call InitDecoding if you have already decoded an
+  /// intend to call AdvanceDecoding().  If you call Decode(), you don't need to
+  /// call this.  You can also call InitDecoding if you have already decoded an
   /// utterance and want to start with a new utterance.
   void InitDecoding();
 
@@ -175,7 +173,7 @@ class LatticeFasterDecoder {
   /// If max_num_frames is specified, it specifies the maximum number of frames
   /// the function will decode before returning.
   void AdvanceDecoding(DecodableInterface *decodable,
-                         int32 max_num_frames = -1);
+                       int32 max_num_frames = -1);
 
   /// This function may be optionally called after AdvanceDecoding(), when you
   /// do not plan to decode any further.  It does an extra pruning step that
@@ -408,6 +406,7 @@ class LatticeFasterDecoder {
 
   void ClearActiveTokens();
 
+  KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeFasterDecoder);  
 };
 
 

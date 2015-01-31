@@ -19,9 +19,11 @@
 #ifndef KALDI_BASE_TIMER_H_
 #define KALDI_BASE_TIMER_H_
 
-#if defined(_MSC_VER) || defined(MINGW)
-
 #include "base/kaldi-utils.h"
+// Note: Sleep(float secs) is included in base/kaldi-utils.h.
+
+
+#if defined(_MSC_VER) || defined(MINGW)
 
 namespace kaldi
 {

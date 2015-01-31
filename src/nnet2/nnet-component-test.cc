@@ -20,16 +20,6 @@
 #include "nnet2/nnet-component.h"
 #include "util/common-utils.h"
 
-#ifdef _WIN32_WINNT_WIN8
-#include <Synchapi.h>
-#define sleep Sleep
-#elif _WIN32
-#include <Windows.h>
-#define sleep Sleep
-#else
-#include <unistd.h> // for sleep().
-#endif
-
 namespace kaldi {
 namespace nnet2 {
 
@@ -332,7 +322,7 @@ void UnitTestAffineComponent() {
       mat.SetRandn();
       mat.Scale(param_stddev);
       WriteKaldiObject(mat, "tmpf", true);
-      sleep(1);
+      Sleep(0.5);
       component.Init(learning_rate, "tmpf");
       unlink("tmpf");
     }
@@ -433,7 +423,7 @@ void UnitTestAffineComponentPreconditioned() {
       mat.SetRandn();
       mat.Scale(param_stddev);
       WriteKaldiObject(mat, "tmpf", true);
-      sleep(1);
+      Sleep(0.5);
       component.Init(learning_rate, alpha, max_change, "tmpf");
       unlink("tmpf");
     }
@@ -467,7 +457,7 @@ void UnitTestAffineComponentPreconditionedOnline() {
       mat.SetRandn();
       mat.Scale(param_stddev);
       WriteKaldiObject(mat, "tmpf", true);
-      sleep(1);
+      Sleep(0.5);
       component.Init(learning_rate, rank_in, rank_out,
                      update_period, num_samples_history, alpha,
                      max_change_per_sample, "tmpf");

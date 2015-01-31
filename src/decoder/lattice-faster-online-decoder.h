@@ -148,8 +148,8 @@ class LatticeFasterOnlineDecoder {
 
   
   /// InitDecoding initializes the decoding, and should only be used if you
-  /// intend to call AdvanceDecoding().  If you call Decode(), you don't need
-  /// to call this.  You can call InitDecoding if you have already decoded an
+  /// intend to call AdvanceDecoding().  If you call Decode(), you don't need to
+  /// call this.  You can also call InitDecoding if you have already decoded an
   /// utterance and want to start with a new utterance.
   void InitDecoding();
 
@@ -398,6 +398,8 @@ class LatticeFasterOnlineDecoder {
 
   void ClearActiveTokens();
 
+
+  KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeFasterOnlineDecoder);
 };
 
 

@@ -49,13 +49,13 @@ namespace kaldi {
 // here: namely, OnlineNnet2FeaturePipelineConfig and OnlineEndpointConfig.
 struct OnlineNnet2DecodingConfig {
   
-  LatticeFasterDecoderConfig faster_decoder_opts;
+  LatticeFasterDecoderConfig decoder_opts;
   nnet2::DecodableNnet2OnlineOptions decodable_opts;
   
   OnlineNnet2DecodingConfig() {  decodable_opts.acoustic_scale = 0.1; }
   
   void Register(OptionsItf *po) {
-    faster_decoder_opts.Register(po);
+    decoder_opts.Register(po);
     decodable_opts.Register(po);
   }
 };
@@ -77,8 +77,9 @@ class SingleUtteranceNnet2Decoder {
   /// advance the decoding as far as we can.
   void AdvanceDecoding();
 
-  /// Finalizes the decoding. Cleanups and prunes remaining tokens, so the final
-  /// result is faster to obtain.
+  /// Finalizes the decoding. Cleans up and prunes remaining tokens, so the
+  /// GetLattice() call will return faster.  You must not call this before
+  /// calling (TerminateDecoding() or InputIsFinished()) and then Wait().
   void FinalizeDecoding();
 
   int32 NumFramesDecoded() const;
@@ -98,13 +99,6 @@ class SingleUtteranceNnet2Decoder {
   void GetBestPath(bool end_of_utterance,
                    Lattice *best_path) const;
 
-  /// This function outputs to "final_relative_cost", if non-NULL, a number >= 0
-  /// that will be close to zero if the final-probs were close to the best probs
-  /// active on the final frame.  (the output to final_relative_cost is based on
-  /// the first-pass decoding).  If it's close to zero (e.g. < 5, as a guess),
-  /// it means you reached the end of the grammar with good probability, which
-  /// can be taken as a good sign that the input was OK.
-  BaseFloat FinalRelativeCost() { return decoder_.FinalRelativeCost(); }
 
   /// This function calls EndpointDetected from online-endpoint.h,
   /// with the required arguments.

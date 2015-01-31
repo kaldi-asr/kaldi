@@ -69,7 +69,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   // expected in the options.
   virtual void AcceptWaveform(BaseFloat sampling_rate,
                               const VectorBase<BaseFloat> &waveform);
-
+  
 
   // InputFinished() tells the class you won't be providing any
   // more waveform.  This will help flush out the last few frames

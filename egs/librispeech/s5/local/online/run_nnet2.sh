@@ -148,3 +148,26 @@ if [ $stage -le 13 ]; then
 fi
 
 exit 0;
+###### Comment out the "exit 0" above to run the multi-threaded decoding. #####
+
+if [ $stage -le 14 ]; then
+  # Demonstrate the multi-threaded decoding.
+  # put back the pp
+  test=dev_clean
+  steps/online/nnet2/decode.sh --threaded true \
+    --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
+    --per-utt true exp/tri6b/graph_pp_tgsmall data/$test \
+    ${dir}_online/decode_pp_${test}_tgsmall_utt_threaded || exit 1;
+fi
+
+if [ $stage -le 15 ]; then
+  # Demonstrate the multi-threaded decoding with endpointing.
+  # put back the pp
+  test=dev_clean
+  steps/online/nnet2/decode.sh --threaded true --do-endpointing true \
+    --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
+    --per-utt true exp/tri6b/graph_pp_tgsmall data/$test \
+    ${dir}_online/decode_pp_${test}_tgsmall_utt_threaded_ep || exit 1;
+fi
+
+exit 0;

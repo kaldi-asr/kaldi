@@ -184,4 +184,5 @@ BaseFloat OnlineNnet2FeaturePipelineInfo::FrameShiftInSeconds() const {
   }
 }
 
+
 }  // namespace kaldi
