@@ -301,7 +301,7 @@ void SpMatrix<Real>::Invert(Real *logdet, Real *det_sign, bool need_inverse) {
   }
   if (!need_inverse) {
     delete [] p_ipiv;
-    free(p_work);
+    KALDI_MEMALIGN_FREE(p_work);
     return;  // Don't need what is computed next.
   }
   // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
@@ -316,7 +316,7 @@ void SpMatrix<Real>::Invert(Real *logdet, Real *det_sign, bool need_inverse) {
   }
 
   delete [] p_ipiv;
-  free(p_work);
+  KALDI_MEMALIGN_FREE(p_work);
 }
 #else
 // in the ATLAS case, these are not implemented using a library and we back off to something else.

@@ -93,7 +93,7 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
   if (inverse_needed) clapack_Xgetri2(&M, data_, &LDA, pivot, p_work, &l_work,
                               &result);
   delete[] pivot;
-  free(p_work);
+  KALDI_MEMALIGN_FREE(p_work);
 #else
   if (inverse_needed)
     clapack_Xgetri(num_rows_, data_, stride_, pivot, &result);
@@ -520,7 +520,7 @@ void MatrixBase<Real>::LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U_in,
   if (result != 0) {
     KALDI_WARN << "CLAPACK sgesvd_ : some weird convergence not satisfied";
   }
-  free(p_work);
+  KALDI_MEMALIGN_FREE(p_work);
 }
 
 #endif
