@@ -1,6 +1,7 @@
 // online2/extend-wav-with-silence.cc
 
 // 2014  IMSL, PKU-HKUST (author: Wei Shi)
+// 2015  Tom Ko
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -136,20 +137,21 @@ void ExtendWaveWithSilence(const Vector<BaseFloat> &wav_in,
   half_window = window.Range(window_size_half, window_size_half);
   windowed_silence.AddVecVec(1.0, window, quietest_seg, 0.0);
 
-  Vector<BaseFloat> wav_extend(wav_out->Dim());
-  wav_extend.SetZero();
-  wav_extend.Range(0, wav_in.Dim()).CopyFromVec(wav_in);
-  int32 tmp_offset = wav_in.Dim() - window_size_half;
+  wav_out->Range(0, wav_in.Dim()).CopyFromVec(wav_in);
+  SubVector<BaseFloat> wav_ext(*wav_out, wav_in.Dim() - window_size_half,
+                                wav_out->Dim() - wav_in.Dim() + window_size_half);
   for(int32 i = 0; i < window_size_half; i++)    // windowing the first half window
-    wav_extend(i + tmp_offset) *= half_window(i);
-  for(; tmp_offset + window_size < wav_extend.Dim();){
-    wav_extend.Range(tmp_offset, window_size).AddVec(1.0, windowed_silence);
+    wav_ext(i) *= half_window(i);
+  
+  int32 tmp_offset = 0;
+  for(; tmp_offset + window_size < wav_ext.Dim();) {
+    wav_ext.Range(tmp_offset, window_size).AddVec(1.0, windowed_silence);
     tmp_offset += window_size_half;
   }
-  for(int32 i = tmp_offset; i < wav_extend.Dim(); i++)
-    wav_extend(i) += windowed_silence(i-tmp_offset);
 
-  *wav_out = wav_extend;
+  for(int32 i = tmp_offset; i < wav_ext.Dim(); i++)
+    wav_ext(i) += windowed_silence(i-tmp_offset);
+
 }
 
 // Try to find the quietest seq_dur(default 0.1) second segment in the
@@ -171,13 +173,11 @@ void FindQuietestSegment(const Vector<BaseFloat> &wav_in,
   Vector<BaseFloat> wav_min_energy;
   Vector<BaseFloat> seg_tmp(wav_in.Range(0, seg_len));
   wav_min_energy = seg_tmp;
-  seg_tmp.ApplyPow(2.0f);
-  min_energy = seg_tmp.Sum();
+  min_energy = VecVec(seg_tmp, seg_tmp);
   for(start = 0; start + seg_len < search_len; ){
-    Vector<BaseFloat> seg_this(wav_in.Range(start, seg_len));
+    SubVector<BaseFloat> seg_this(wav_in, start, seg_len);
     seg_tmp = seg_this;
-    seg_this.ApplyPow(2.0f);
-    double energy_this = seg_this.Sum();
+    double energy_this = VecVec(seg_this, seg_this);
     if(energy_this < min_energy && energy_this > 0.0){
       min_energy = energy_this;
       wav_min_energy = seg_tmp;
@@ -186,10 +186,9 @@ void FindQuietestSegment(const Vector<BaseFloat> &wav_in,
   }
 
   for(start = wav_in.Dim() - search_len; start + seg_len < wav_in.Dim(); ){
-    Vector<BaseFloat> seg_this(wav_in.Range(start, seg_len));
+    SubVector<BaseFloat> seg_this(wav_in, start, seg_len);
     seg_tmp = seg_this;
-    seg_this.ApplyPow(2.0f);
-    double energy_this = seg_this.Sum();
+    double energy_this = VecVec(seg_this, seg_this);
     if(energy_this < min_energy && energy_this > 0.0){
       min_energy = energy_this;
       wav_min_energy = seg_tmp;
