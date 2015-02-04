@@ -1,6 +1,7 @@
 // featbin/extract-rows.cc
 
-// Copyright 2013 Korbinian Riedhammer
+// Copyright 2013  Korbinian Riedhammer
+//           2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -44,7 +45,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     float frame_shift = 0;
-
+    
     po.Register("frame-shift", &frame_shift,
                 "Frame shift in sec (e.g. 0.01), if segment files contains times "
                 "instead of frames");
@@ -64,25 +65,25 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatMatrixReader reader(feat_rspecifier);
     BaseFloatMatrixWriter writer(feat_wspecifier);
 
-    int32 num_lines = 0, num_missing = 0;
+    int32 num_done = 0, num_err = 0;
 
     string line;
 
     /* read each line from segments file */
     while (std::getline(ki.Stream(), line)) {
-      num_lines++;
-
+      
       vector<string> split_line;
       SplitStringToVector(line, " \t\r", true, &split_line);
       if (split_line.size() != 4) {
         KALDI_WARN << "Invalid line in segments file: " << line;
+        num_err++;
         continue;
       }
 
-      string segment = split_line[0],
-        utt = split_line[1],
-        start_str = split_line[2],
-        end_str = split_line[3];
+      string utt = split_line[0],
+          recording = split_line[1],
+          start_str = split_line[2],
+          end_str = split_line[3];
 
       // if the segments are in time, we need to convert them to frame numbers
       int32 start = 0;
@@ -115,30 +116,53 @@ int main(int argc, char *argv[]) {
 
       if (start < 0 || end - start <= 0) {
         KALDI_WARN << "Invalid line in segments file [less than one frame]: " << line;
+        num_err++;
         continue;
       }
 
-      if (reader.HasKey(utt)) {
-        Matrix<BaseFloat> feats = reader.Value(utt);
-
-        if (feats.NumRows() < end)
-          end = feats.NumRows();
+      if (reader.HasKey(recording)) {
+        const Matrix<BaseFloat> &feats = reader.Value(recording);
+        
+        if (feats.NumRows() < end) {
+          if (feats.NumRows() > start) {
+            KALDI_WARN << "Truncating end time of segment " << utt << " from "
+                       << end << " to " << feats.NumRows();
+            end = feats.NumRows();
+          } else {
+            KALDI_WARN << "Segment " << utt << " is outside of input range: "
+                       << "input num-rows " << feats.NumRows() << " vs. "
+                       << line;
+            num_err++;            
+            continue;
+          }
+        }
 
         Matrix<BaseFloat> to_write(feats.RowRange(start, (end-start)));
-        writer.Write(segment, to_write);
+        writer.Write(utt, to_write);
+        num_done++;
       } else {
-        KALDI_WARN << "Missing requested utterance " << utt;
-        num_missing += 1;
+        KALDI_WARN << "No recording-id " << recording << " present in features.";
+        num_err++;
       }
-
     }
 
-    KALDI_LOG << "processed " << num_lines << " segments, " << (num_lines - num_missing)
-              << " successful, " << num_missing << " had invalid utterances";
+    KALDI_LOG << "Processed " << num_done << " segments successfully; "
+              << "errors on " << num_err;
 
-    return ((num_lines - num_missing) > 0 ? 0 : 1);
+    return (num_done > 0);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }
 }
+
+/*
+testing:
+cat <<EOF | extract-rows 'echo bar foo 0 2 |' ark:- ark,t:-
+foo [ 1; 2; 3; 4 ]
+EOF
+# gives:  
+bar  [
+  1 
+  2 ]
+ */
