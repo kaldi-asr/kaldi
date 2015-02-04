@@ -16,9 +16,9 @@ ifeq ($(KALDI_FLAVOR), dynamic)
 CXXFLAGS += -fPIC
 endif
 
-LDFLAGS = -g -enable-auto-import
+LDFLAGS = -g --enable-auto-import
 LDLIBS = $(EXTRA_LDLIBS) $(FSTROOT)/lib/libfst.a -ldl -L/usr/lib/lapack \
-         -enable-auto-import -lcyglapack-0 -lcygblas-0 -lm -lpthread
+         --enable-auto-import -lcyglapack-0 -lcygblas-0 -lm -lpthread
 CXX = g++
 CC = g++
 RANLIB = ranlib
