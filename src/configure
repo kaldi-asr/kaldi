@@ -384,7 +384,7 @@ function fix_cxx_flag {
 
 function linux_atlas_failure { # function we use when we couldn't find
    # ATLAS libs.
-   echo ATLASINC = [somewhere]/include >> kaldi.mk
+   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
    echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk
    cat makefiles/linux_atlas.mk >> kaldi.mk
    fix_cxx_flag
@@ -497,6 +497,27 @@ function linux_configure_redhat {
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
   echo "Successfully configured for red hat [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
+  $use_cuda && linux_configure_cuda
+  exit_success;
+}
+
+function linux_configure_redhat_fat {
+  # This is for when only two so-called 'fat' ATLAS libs are provided:
+  # libsatlas.so.3 and libtatlas.so.3.
+  # See http://stackoverflow.com/questions/13439296/build-shared-libraries-in-atlas.
+  m=$1  # 64 or empty.
+  ATLASLIBS="/usr/lib$m/atlas/libsatlas.so.3 /usr/lib$m/atlas/libtatlas.so.3"
+  for f in $ATLASLIBS; do 
+    [ ! -f $f ] && return 1;
+  done
+  libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
+  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_redhat_fat" && exit 1;
+  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
+  echo 
+  cat makefiles/linux_atlas.mk >> kaldi.mk
+  fix_cxx_flag
+  echo "Successfully configured for red hat [dynamic libraries, fat] with ATLASLIBS =$ATLASLIBS"
   $use_cuda && linux_configure_cuda
   exit_success;
 }
@@ -770,6 +791,8 @@ if [ "`uname`" == "Linux" ]; then
         linux_configure_debian7 || \
         linux_configure_redhat 64 || \
         linux_configure_redhat || \
+        linux_configure_redhat_fat 64 || \
+        linux_configure_redhat_fat || \
         linux_atlas_failure "Failed to configure ATLAS lbiraries";
     else
       # Prefer dynamic to static math.
@@ -781,6 +804,8 @@ if [ "`uname`" == "Linux" ]; then
         linux_configure_debian7 || \
         linux_configure_redhat 64 || \
         linux_configure_redhat || \
+        linux_configure_redhat_fat 64 || \
+        linux_configure_redhat_fat || \
         linux_atlas_failure "Failed to configure ATLAS lbiraries";
     fi
 
