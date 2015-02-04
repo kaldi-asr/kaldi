@@ -58,7 +58,7 @@ utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
 # Compiles const G for swbd+fisher 4gram LM, if it exists.
 LM=data/local/lm/sw1_fsh.o4g.kn.gz
 [ -f $LM ] || has_fisher=false
-if [ $has_fisher ]; then
+if $has_fisher; then
   utils/build_const_arpa_lm.sh $LM data/lang_nopp data/lang_nopp_sw1_fsh_fg
 fi
 
@@ -174,7 +174,7 @@ srilm_opts="-subset -prune-lowprobs -unk -tolower -order 3"
 utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
   data/lang $LM data/local/dict_pp/lexicon.txt data/lang_sw1_tg
 LM=data/local/lm/sw1_fsh.o4g.kn.gz
-if [ $has_fisher ]; then
+if $has_fisher; then
   utils/build_const_arpa_lm.sh $LM data/lang data/lang_sw1_fsh_fg
 fi
 
@@ -204,7 +204,7 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 ) &
 wait
 
-if [ $has_fisher ]; then
+if $has_fisher; then
   steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
     data/lang_sw1_{tg,fsh_fg} data/eval2000 \
     exp/tri4/decode_eval2000_sw1_{tg,fsh_fg}
@@ -238,7 +238,7 @@ for iter in 1 2 3 4; do
 done
 wait
 
-if [ $has_fisher ]; then
+if $has_fisher; then
   for iter in 1 2 3 4;do
     (
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
@@ -268,7 +268,7 @@ for iter in 4 5 6 7 8; do
 done
 wait
 
-if [ $has_fisher ]; then
+if $has_fisher; then
   for iter in 4 5 6 7 8; do
     (
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \

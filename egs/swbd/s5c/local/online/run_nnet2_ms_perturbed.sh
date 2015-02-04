@@ -136,7 +136,7 @@ if [ $stage -le 12 ]; then
       --config conf/decode.config \
       --online-ivector-dir exp/nnet2_online/ivectors_${data} \
       $graph_dir data/${data} $dir/decode_${data}_sw1_tg || exit 1;
-    if [ $has_fisher ]; then
+    if $has_fisher; then
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
         data/lang_sw1_{tg,fsh_fg} data/${data} \
         $dir/decode_${data}_sw1_{tg,fsh_fg} || exit 1;
@@ -160,7 +160,7 @@ if [ $stage -le 14 ]; then
       --cmd "$decode_cmd" --nj 30 \
       "$graph_dir" data/${data} \
       ${dir}_online/decode_${data}_sw1_tg || exit 1;
-    if [ $has_fisher ]; then
+    if $has_fisher; then
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
         data/lang_sw1_{tg,fsh_fg} data/${data} \
         ${dir}_online/decode_${data}_sw1_{tg,fsh_fg} || exit 1;
@@ -177,7 +177,7 @@ if [ $stage -le 15 ]; then
       --cmd "$decode_cmd" --nj 30 --per-utt true \
       "$graph_dir" data/${data} \
       ${dir}_online/decode_${data}_sw1_tg_per_utt || exit 1;
-    if [ $has_fisher ]; then
+    if $has_fisher; then
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
         data/lang_sw1_{tg,fsh_fg} data/${data} \
         ${dir}_online/decode_${data}_sw1_{tg,fsh_fg}_per_utt || exit 1;

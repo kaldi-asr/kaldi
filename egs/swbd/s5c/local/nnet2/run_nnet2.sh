@@ -41,7 +41,7 @@ parallel_opts="--gpu 1"  # This is suitable for the CLSP network, you'll
     exp/tri4/graph_sw1_tg data/eval2000 \
     exp/$dir/decode_eval2000_sw1_tg || exit 1;
 
-  if [ $has_fisher ]; then
+  if $has_fisher; then
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
       data/lang_sw1_{tg,fsh_fg} data/eval2000 \
       exp/$dir/decode_eval2000_sw1_{tg,fsh_fg} || exit 1;

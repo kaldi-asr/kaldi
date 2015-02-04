@@ -57,7 +57,7 @@ for iter in 1 2 3 4; do
 done
 wait
 
-if [ $has_fisher ]; then
+if $has_fisher; then
   for iter in 1 2 3 4;do
     (
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \

@@ -70,7 +70,7 @@ if [ $stage -le 2 ]; then
     --config conf/decode_dnn.config --acwt 0.08333 \
     $gmmdir/graph_sw1_tg $data_fmllr/eval2000 \
     $dir/decode_eval2000_sw1_tg || exit 1;
-  if [ $has_fisher ]; then
+  if $has_fisher; then
     # Rescore with the 4gram swbd+fisher language model.
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
       data/lang_sw1_{tg,fsh_fg} data/eval2000 \
@@ -106,7 +106,7 @@ if [ $stage -le 4 ]; then
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph_sw1_tg $data_fmllr/eval2000 \
       $dir/decode_eval2000_sw1_tg || exit 1;
-    if [ $has_fisher ]; then
+    if $has_fisher; then
       # Rescore with the 4gram swbd+fisher language model.
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
         data/lang_sw1_{tg,fsh_fg} data/eval2000 \
@@ -140,7 +140,7 @@ if [ $stage -le 6 ]; then
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmmdir/graph_sw1_tg $data_fmllr/eval2000 \
       $dir/decode_eval2000_sw1_tg || exit 1;
-    if [ $has_fisher ]; then
+    if $has_fisher; then
       # Rescore with the 4gram swbd+fisher language model.
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
         data/lang_sw1_{tg,fsh_fg} data/eval2000 \
