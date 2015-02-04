@@ -428,6 +428,29 @@ function linux_configure_debian_ubuntu {
   for f in $ATLASLIBS; do 
     [ ! -f $f ] && return 1;
   done
+  lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
+  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then 
+    exit 1;
+  fi
+  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
+  cat makefiles/linux_atlas.mk >> kaldi.mk
+  fix_cxx_flag
+  echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
+  $use_cuda && linux_configure_cuda
+  linux_configure_speex
+  exit_success;
+}
+
+function linux_configure_debian_ubuntu3 {
+  ATLASLIBS="/usr/lib/libatlas.so.3  /usr/lib/libf77blas.so.3 /usr/lib/libcblas.so.3  /usr/lib/liblapack_atlas.so.3"
+  for f in $ATLASLIBS; do 
+    [ ! -f $f ] && return 1;
+  done
+  lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
+  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then 
+    exit 1;
+  fi
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
@@ -443,6 +466,10 @@ function linux_configure_debian7 {
   for f in $ATLASLIBS; do 
     [ ! -f $f ] && return 1;
   done
+  lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
+  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then 
+    exit 1;
+  fi
   libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
   [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_debian7" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
@@ -568,8 +595,8 @@ function linux_configure_dynamic {
   for libname in lapack lapack_atlas  clapack; do
     if [ -f $ATLASLIBDIR/lib${libname}.so -a "$ATLASLIBS" == "" ]; then
       if nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
-        ATLASLIBS=$(readlink -f $ATLASLIBDIR/lib${libname}.so)
-        echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
+         ATLASLIBS="$ATLASLIBDIR/lib${libname}.so"
+         echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
       fi
     fi
   done
@@ -583,7 +610,7 @@ function linux_configure_dynamic {
       echo "Configuring dynamic ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
       return 1;
     fi
-    ATLASLIBS="$ATLASLIBS $(readlink -f $ATLASLIBDIR/lib${x}.so)"
+    ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/lib${x}.so"
   done
   if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
 
@@ -736,6 +763,7 @@ if [ "`uname`" == "Linux" ]; then
     if $static_math; then
       # Prefer static to dynamic math.
       linux_configure_static || \
+        linux_configure_debian_ubuntu3 || \
         linux_configure_dynamic || \
         linux_configure_debian_ubuntu 64 || \
         linux_configure_debian_ubuntu || \
@@ -745,7 +773,8 @@ if [ "`uname`" == "Linux" ]; then
         linux_atlas_failure "Failed to configure ATLAS lbiraries";
     else
       # Prefer dynamic to static math.
-      linux_configure_dynamic || \
+      linux_configure_debian_ubuntu3 || \
+        linux_configure_dynamic || \
         linux_configure_static || \
         linux_configure_debian_ubuntu 64 || \
         linux_configure_debian_ubuntu || \
