@@ -1,7 +1,8 @@
 // doc/cudamatrix.dox
 
 
-// Copyright 2012 Karel Vesely
+// Copyright 2012  Karel Vesely
+//           2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -22,52 +23,90 @@ namespace kaldi {
 /**
   \page cudamatrix The CUDA Matrix library
 
-   The CUDA matrix library seamless wrapper of CUDA computation.
-   Its purpose is to separate the low level CUDA-dependent routines 
-   from the high level C++ code.
+ The CUDA matrix library provides access to GPU-based matrix operations with
+ an interface similar to \ref matrix.  
+ The general principle is that if you want to be able to run a particular part
+ of the computation the GPU, you would declare the relevant quantities as
+ type CuMatrix or CuVector instead of Matrix or Vector.  Then, if you have
+ configured Kaldi to use the GPU and if the Kaldi program you are running
+ has initialized access to the GPU, those operations will run on the GPU.
+ Otherwise, they will run on the CPU.  CuMatrix and CuVector quantities
+ store their contents in GPU memory space, if you have configured for GPU
+ and your program has initialized the GPU device.
 
-   The library can be both compiled with or without CUDA libraries,
-   depending on the HAVE_CUDA==1 macro. Without CUDA, the library
-   backs-off to computation on host processor. The host processor
-   is also used when the toolkit is compiled with CUDA and no suitable
-   GPU is detected. This is particularly useful in heterogenous ``grid-like'' environments.
+ You can't mix CuMatrix and CuVector with Matrix and Vector in matrix operations,
+ because they live in different memory spaces, but you can copy from one to
+ the other.  Kaldi does not try to automatically decide which operations are
+ best done on GPU: it is all under the control of the programmer.
 
-   Computationally, the library is based on CUBLAS linear algebra operations,
-   and manually implemened grid-like kernels for the non-linear operations, 
-   which are conforming with the ``Map'' pattern.
-   While most of the ``Reduce'' kernels do use the tree-like computational 
-   pattern in conjunction with extensive use of the shared memory.
 
-   \section Important classes
+  \subsection cudamatrix_configuration Configuring the CUDA matrix library
 
-   The most important classes are: \ref CuDevice \ref CuMatrix \ref CuVector \ref CuStlVector.
+ If the <tt>configure</tt> script sees that the NVidia compilation tool <tt>nvcc</tt> is on
+ the path when it is run, it assumes you want to compile for GPU, and will define
+ <tt>HAVE_CUDA=1</tt> and set other Makefile variables to enable GPU compilation.
+ You can disable this if you don't want it by calling <tt>configure</tt> with
+ <tt>--use-cuda=no</tt>.  If the script doesn't find the location where you installed
+ the CUDA toolkit but you want to use it, you can use an option like 
+ <tt>--cudatk-dir=/opt/cuda-4.2</tt>.
+ If you want to tell whether Kaldi has been configured to use CUDA, you can
+ grep for <tt>nvcc</tt> in <tt>kaldi.mk</tt>; if the string appears, then it has
+ been configured to use CUDA.  In scripts, you can check the return status of
+ the program <tt>cuda-compiled</tt>: it returns success (0) if you compiled for CUDA.
 
-   \ref CuDevice : is an abstraction of the GPU board, it is a singleton
-   object which initializes CUBLAS library upon the application startup,
-   and releases it at the end. It is also used to collect the profiling statistics.
+ You can also tell from the logs whether a program is using the GPU.  If it is using
+ the GPU, you'll see lines like this near the top of the program's output:
+\verbatim
+LOG (nnet-train-simple:IsComputeExclusive():cu-device.cc:229) CUDA setup operating under Compute Exclusive Mode.
+LOG (nnet-train-simple:FinalizeActiveGpu():cu-device.cc:194) The active GPU is [1]: Tesla K10.G2.8GB  \
+    free:3519M, used:64M, total:3583M, free/total:0.982121 version 3.0
+\endverbatim
+ In addition to configuring at the Makefile to use CUDA, if any individual
+ program wants to use GPU operations it needs to have code like the following:
+\verbatim
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
+#endif
+\endverbatim
+where <tt>use_gpu</tt> is a string, typically a command-line option, that can take
+the following values:
 
-   \ref CuMatrix : is a GPU analogy of the Matrix class. It holds a buffer in the GPU global memory,
-   as well as a backup CPU buffer. It implements a subset of the Matrix interface.
-   The host-GPU transfers are done by \ref CopyFromMat \ref CopyToMat methods, 
-   which may internally reallocate the buffers.
+  - <tt>"yes"</tt>: use the GPU (or crash if one is not available).
+  - <tt>"no"</tt> don't use the GPU.
+  - <tt>"optional"</tt> use the GPU if the machine it's running on has GPUs attached.
+  - <tt>"wait"</tt>: like <tt>"yes"</tt> but if the GPUs are running other processes,
+       the program will wait indefinitely until one becomes free.
 
-   \ref CuVector : is a GPU analogy of the Vector class. It holds a buffer in the GPU global memory,
-   as well as a backup CPU buffer. It implements a subset of the Vector interface.
-   The host-GPU transfers are done by \ref CopyFromVec \ref CopyToVec methods, 
-   which may internally reallocate the buffers.
+If a program doesn't take the <tt>--use-gpu</tt> command line option, that generally
+means that it hasn't been programmed to support the use of GPU operations, even if the code
+it runs contains the CuVector and CuMatrix types.  Usually we only run specific tasks
+on the GPU- mainly neural net training.
 
-   \ref CuStlVector : is particularly useful to create vectors of indices (int32)
-   
+\subsection cudamatrix_modes GPU compute modes
 
-   \section Standalone mathematical operations
-   In cu-math.h are math functions which cannot be associated solely to a vector or a matrix.
-   There are concentrated in the namespace cu::, in order to separate them from global namespace. 
-   
-   \section The kernels
-   The CUDA kernels are concentrated in the cu-kernels.cu file. Since the CUDA code is compiled by NVCC,
-   and the rest of the code is compiled by different compiler, the only possible way of interatation 
-   was to employ ANSI C interface \ref cu-kernels.h, which represents a low-level interface to CUDA.
-   The high level interface is via CuMatrix, CuVector and functions in the cu:: namespace.
+ NVidia GPUs (which is the only kind Kaldi supports) have various "compute modes":
+ "default", "process exclusive", "thread exclusive".  This controls whether or not the
+ GPU is configured to run multiple processes at the same time.  Kaldi is intended
+ to be run in "exclusive mode"; whether it's process exclusive or thread exclusive doesn't
+ matter.  You can find out what mode your GPU is running in as follows:
+\verbatim
+# nvidia-smi  --query | grep 'Compute Mode'
+    Compute Mode                    : Exclusive_Thread
+\endverbatim
+ You can set the correct mode by typing <tt>nvidia-smi -c 1</tt>.  You might want to
+ do this in a startup script so it happens each time you reboot.
+
+ Rather than calling the malloc and free functions that NVidia provides, Kaldi
+ does caching of previously released memory so that we don't have to incur the
+ overhead of NVidia's malloc.  This was done because at one point we were running
+ in Amazon's cloud and found that NVidia's malloc was very slow.  This was probably
+ caused by the virtualization, and we're not sure whether that problem still exists.
+ Anyway, the memory caching can cause a problem if for some reason you run using
+ the default (non-exclusive) compute mode, because it can cause allocation
+ failures.  You can disable it at the code level by calling
+ <tt>CuDevice::Instantiate().DisableCaching()</tt>, if needed. 
+
+
 
 */
 
