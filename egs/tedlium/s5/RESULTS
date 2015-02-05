@@ -47,3 +47,9 @@ exit 0
 %WER 17.3 | 1155 27512 | 86.4 10.9 2.7 3.7 17.3 87.8 | -0.191 | exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch2_test/score_13/ctm.filt.filt.sys
 %WER 17.2 | 1155 27512 | 86.5 10.9 2.6 3.7 17.2 87.6 | -0.190 | exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch3_test/score_13/ctm.filt.filt.sys
 %WER 17.2 | 1155 27512 | 86.6 10.8 2.6 3.8 17.2 87.6 | -0.193 | exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch4_test/score_13/ctm.filt.filt.sys
+
+# multi-splice + i-vector + perturbed
+%WER 17.2 | 1155 27512 | 86.3 10.8 2.9 3.5 17.2 87.1 | -0.126 | exp/nnet2_online/nnet_ms_sp/decode_test/score_12/ctm.filt.filt.sys
+%WER 17.2 | 1155 27512 | 86.3 10.8 3.0 3.5 17.2 87.0 | -0.229 | exp/nnet2_online/nnet_ms_sp_online/decode_test/score_12/ctm.filt.filt.sys
+%WER 17.6 | 1155 27512 | 85.9 11.1 3.0 3.5 17.6 87.8 | -0.210 | exp/nnet2_online/nnet_ms_sp_online/decode_test_utt/score_12/ctm.filt.filt.sys
+%WER 17.2 | 1155 27512 | 86.5 10.8 2.7 3.7 17.2 87.4 | -0.236 | exp/nnet2_online/nnet_ms_sp_online/decode_test_utt_offline/score_11/ctm.filt.filt.sys
