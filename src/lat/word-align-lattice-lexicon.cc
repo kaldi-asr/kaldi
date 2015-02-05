@@ -256,7 +256,7 @@ class LatticeLexiconWordAligner {
     if (ProcessFinal()) return;
     error_ = true;
     KALDI_WARN << "Word-aligning lattice: lattice was forced out, will have partial words at end.";
-
+    
     ProcessFinalForceOut();
       
     if (ProcessFinal()) return;
@@ -564,8 +564,10 @@ void LatticeLexiconWordAligner::ProcessFinalForceOut() {
                                             &arc);
       // Note: the following call may add to queue_, but we'll clear it,
       // we don't want to process these states.
-      StateId new_state = GetStateForTuple(tuple);
-      new_final_queue_.push_back(std::make_pair(tuple, new_state));
+      StateId new_state = GetStateForTuple(next_tuple);
+      arc.nextstate = new_state;
+      lat_out_->AddArc(output_state, arc);
+      new_final_queue_.push_back(std::make_pair(next_tuple, new_state));
     }
   }
   queue_.clear();
