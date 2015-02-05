@@ -1,6 +1,6 @@
 // nnet/nnet-loss.h
 
-// Copyright 2011  Brno University of Technology (author: Karel Vesely)
+// Copyright 2011-2015  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -32,78 +32,83 @@ namespace nnet1 {
 
 class Xent {
  public:
-  Xent() : frames_(0), correct_(0), loss_(0.0), entropy_(0.0), 
-           frames_progress_(0), loss_progress_(0.0), entropy_progress_(0.0) { }
+  Xent() : frames_(0.0), correct_(0.0), loss_(0.0), entropy_(0.0), 
+           frames_progress_(0.0), loss_progress_(0.0), entropy_progress_(0.0) { }
   ~Xent() { }
 
-  /// Evaluate cross entropy from hard labels
-  void Eval(const CuMatrixBase<BaseFloat> &net_out, const CuMatrixBase<BaseFloat> &target,
+  /// Evaluate cross entropy using target-matrix (supports soft labels),
+  void Eval(const VectorBase<BaseFloat> &frame_weights, 
+            const CuMatrixBase<BaseFloat> &net_out, 
+            const CuMatrixBase<BaseFloat> &target,
             CuMatrix<BaseFloat> *diff);
-  /// Evaluate cross entropy from posteriors
-  void Eval(const CuMatrixBase<BaseFloat> &net_out, const Posterior &target,
-            CuMatrix<BaseFloat> *diff);
-  /// Evaluate cross entropy from soft labels
-  void EvalVec(const CuMatrixBase<BaseFloat> &net_out, const std::vector<int32> &target,
+
+  /// Evaluate cross entropy using target-posteriors (supports soft labels),
+  void Eval(const VectorBase<BaseFloat> &frame_weights, 
+            const CuMatrixBase<BaseFloat> &net_out, 
+            const Posterior &target,
             CuMatrix<BaseFloat> *diff);
   
-  /// Generate string with error report
+  /// Generate string with error report,
   std::string Report();
 
- private:
-  int32 frames_;
-  int32 correct_;
+ private: 
+  double frames_;
+  double correct_;
   double loss_;
   double entropy_;
 
   // partial results during training
-  int32 frames_progress_;
+  double frames_progress_;
   double loss_progress_;
   double entropy_progress_;
   std::vector<float> loss_vec_;
 
+  // weigting buffer,
+  CuVector<BaseFloat> frame_weights_;
+
   // loss computation buffers
-  CuArray<int32>  target_device_;
-
-  CuVector<BaseFloat> log_post_tgt_;
-  Vector<BaseFloat>   log_post_tgt_host_;
-  CuMatrix<BaseFloat> tgt_mat_device_;
+  CuMatrix<BaseFloat> tgt_mat_;
   CuMatrix<BaseFloat> xentropy_aux_;
+  CuMatrix<BaseFloat> entropy_aux_;
 
-  // frame classification buffers 
+  // frame classification buffers, 
   CuArray<int32> max_id_out_;
-  std::vector<int32> max_id_out_host_;
   CuArray<int32> max_id_tgt_;
-  std::vector<int32> max_id_tgt_host_;
-
 };
 
 
 class Mse {
  public:
-  Mse() : frames_(0), loss_(0.0), 
-          frames_progress_(0), loss_progress_(0) { }
+  Mse() : frames_(0.0), loss_(0.0), 
+          frames_progress_(0.0), loss_progress_(0.0) { }
   ~Mse() { }
 
-  /// Evaluate mean square error from target values
-  void Eval(const CuMatrixBase<BaseFloat>& net_out, const CuMatrixBase<BaseFloat>& target,
+  /// Evaluate mean square error using target-matrix,
+  void Eval(const VectorBase<BaseFloat> &frame_weights, 
+            const CuMatrixBase<BaseFloat>& net_out, 
+            const CuMatrixBase<BaseFloat>& target,
             CuMatrix<BaseFloat>* diff);
-  void Eval(const CuMatrixBase<BaseFloat>& net_out, const Posterior& target,
+
+  /// Evaluate mean square error using target-posteior,
+  void Eval(const VectorBase<BaseFloat> &frame_weights, 
+            const CuMatrixBase<BaseFloat>& net_out, 
+            const Posterior& target,
             CuMatrix<BaseFloat>* diff);
   
   /// Generate string with error report
   std::string Report();
 
  private:
-  int64 frames_;
+  double frames_;
   double loss_;
   
-  int32 frames_progress_;
+  double frames_progress_;
   double loss_progress_;
   std::vector<float> loss_vec_;
 
+  CuVector<BaseFloat> frame_weights_;
+  CuMatrix<BaseFloat> tgt_mat_;
   CuMatrix<BaseFloat> diff_pow_2_;
-  CuVector<BaseFloat> sum_diff_pow_2_;
-  Vector<BaseFloat>   sum_diff_pow_2_host_;
 };
 
 

@@ -33,6 +33,7 @@
 #include "nnet/nnet-activation.h"
 #include "nnet/nnet-nnet.h"
 #include "nnet/nnet-pdf-prior.h"
+#include "nnet/nnet-utils.h"
 #include "base/timer.h"
 #include "cudamatrix/cu-device.h"
 

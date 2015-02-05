@@ -187,17 +187,17 @@ int main(int argc, char *argv[]) {
 
       // evaluate objective function we've chosen
       if (objective_function == "xent") {
-        xent.Eval(nnet_out, targets, &obj_diff);
+        // gradients re-scaled by weights in Eval,
+        xent.Eval(weights, nnet_out, targets, &obj_diff);
       } else if (objective_function == "mse") {
-        mse.Eval(nnet_out, targets, &obj_diff);
+        // gradients re-scaled by weights in Eval,
+        mse.Eval(weights, nnet_out, targets, &obj_diff);
       } else {
         KALDI_ERR << "Unknown objective function code : " << objective_function;
       }
 
       // backward pass
       if (!crossvalidate) {
-        // re-scale the gradients
-        obj_diff.MulRowsVec(CuVector<BaseFloat>(weights));
         // backpropagate
         nnet.Backpropagate(obj_diff, NULL);
       }
