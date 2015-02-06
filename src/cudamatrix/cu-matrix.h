@@ -317,7 +317,20 @@ class CuMatrixBase {
   void AddDiagVecMat(const Real alpha, CuVectorBase<Real> &v,
                      const CuMatrixBase<Real> &M, MatrixTransposeType transM, 
                      Real beta = 1.0);  
-  
+
+  // *this = beta * *this + alpha * M  * diag(v) [or M^T].
+  // The same as adding M but scaling each column M_j by v(j).
+  void AddMatDiagVec(const Real alpha,
+                     const CuMatrixBase<Real> &M, MatrixTransposeType transM,
+                     CuVectorBase<Real> &v,
+                     Real beta = 1.0);  
+
+  /// *this = beta * *this + alpha * A .* B (.* element by element multiplication)
+  void AddMatMatElements(const Real alpha,
+                    const CuMatrixBase<Real>& A,
+                    const CuMatrixBase<Real>& B,
+                    const Real beta);
+
   /// this <-- beta*this + alpha*A*B
   void AddMatSp(const Real alpha,
                 const CuMatrixBase<Real> &A, MatrixTransposeType transA,

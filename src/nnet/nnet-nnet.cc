@@ -23,6 +23,7 @@
 #include "nnet/nnet-activation.h"
 #include "nnet/nnet-affine-transform.h"
 #include "nnet/nnet-various.h"
+#include "nnet/nnet-lstm-projected-streams.h"
 
 
 namespace kaldi {
@@ -345,6 +346,16 @@ void Nnet::SetDropoutRetention(BaseFloat r)  {
       comp.SetDropoutRetention(r);
       KALDI_LOG << "Setting dropout-retention in component " << c 
                 << " from " << r_old << " to " << r;
+    }
+  }
+}
+
+
+void Nnet::ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
+  for (int32 c=0; c < NumComponents(); c++) {
+    if (GetComponent(c).GetType() == Component::kLstmProjectedStreams) {
+      LstmProjectedStreams& comp = dynamic_cast<LstmProjectedStreams&>(GetComponent(c));
+      comp.ResetLstmStreams(stream_reset_flag);
     }
   }
 }

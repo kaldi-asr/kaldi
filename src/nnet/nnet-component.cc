@@ -36,6 +36,8 @@
 #include "nnet/nnet-average-pooling-2d-component.h"
 #include "nnet/nnet-max-pooling-2d-component.h"
 
+#include "nnet/nnet-lstm-projected-streams.h"
+
 #include "nnet/nnet-sentence-averaging-component.h"
 #include "nnet/nnet-frame-pooling-component.h"
 #include "nnet/nnet-parallel-component.h"
@@ -50,6 +52,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kLinearTransform,"<LinearTransform>" },
   { Component::kConvolutionalComponent,"<ConvolutionalComponent>"},
   { Component::kConvolutional2DComponent,"<Convolutional2DComponent>"},
+  { Component::kLstmProjectedStreams,"<LstmProjectedStreams>"},
   { Component::kSoftmax,"<Softmax>" },
   { Component::kBlockSoftmax,"<BlockSoftmax>" },
   { Component::kSigmoid,"<Sigmoid>" },
@@ -110,6 +113,9 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kConvolutional2DComponent :
       ans = new Convolutional2DComponent(input_dim, output_dim);
+      break;
+    case Component::kLstmProjectedStreams :
+      ans = new LstmProjectedStreams(input_dim, output_dim);
       break;
     case Component::kSoftmax :
       ans = new Softmax(input_dim, output_dim);

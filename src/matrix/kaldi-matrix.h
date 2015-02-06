@@ -500,6 +500,19 @@ class MatrixBase {
   void AddDiagVecMat(const Real alpha, VectorBase<Real> &v,
                      const MatrixBase<Real> &M, MatrixTransposeType transM, 
                      Real beta = 1.0);
+ 
+  /// *this = beta * *this + alpha * M [or M^T] * diag(v) 
+  /// The same as adding M but scaling each column M_j by v(j).
+  void AddMatDiagVec(const Real alpha, 
+                     const MatrixBase<Real> &M, MatrixTransposeType transM, 
+                     VectorBase<Real> &v,
+                     Real beta = 1.0);
+
+  /// *this = beta * *this + alpha * A .* B (.* element by element multiplication)
+  void AddMatMatElements(const Real alpha,
+                         const MatrixBase<Real>& A,
+                         const MatrixBase<Real>& B,
+                         const Real beta);
   
   /// *this += alpha * S
   template<typename OtherReal>

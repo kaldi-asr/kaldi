@@ -443,6 +443,62 @@ void MatrixBase<Real>::AddDiagVecMat(
     cblas_Xaxpy(num_cols, alpha * *vdata, Mdata, M_col_stride, data, 1);
 }
 
+template<typename Real>
+void MatrixBase<Real>::AddMatDiagVec(
+    const Real alpha, 
+    const MatrixBase<Real> &M, MatrixTransposeType transM, 
+    VectorBase<Real> &v, 
+    Real beta) {
+  
+  if (beta != 1.0) this->Scale(beta);
+  
+  if (transM == kNoTrans) {
+    KALDI_ASSERT(SameDim(*this, M));
+  } else {
+    KALDI_ASSERT(M.NumRows() == NumCols() && M.NumCols() == NumRows());
+  }
+  KALDI_ASSERT(v.Dim() == this->NumCols());
+
+  MatrixIndexT M_row_stride = M.Stride(), 
+               M_col_stride = 1, 
+               stride = stride_,
+               num_rows = num_rows_, 
+               num_cols = num_cols_;
+
+  if (transM == kTrans) 
+    std::swap(M_row_stride, M_col_stride);
+
+  Real *data = data_;
+  const Real *Mdata = M.Data(), *vdata = v.Data();
+  if (num_rows_ == 0) return;
+  for (MatrixIndexT i = 0; i < num_rows; i++){
+      for(MatrixIndexT j = 0; j < num_cols; j ++ ){
+          data[i*stride + j] += alpha * vdata[j] * Mdata[i*M_row_stride+j];
+      }
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::AddMatMatElements(const Real alpha,
+                                         const MatrixBase<Real>& A,
+                                         const MatrixBase<Real>& B,
+                                         const Real beta) {
+    KALDI_ASSERT(A.NumRows() == B.NumRows() && A.NumCols() == B.NumCols());
+    KALDI_ASSERT(A.NumRows() == NumRows() && A.NumCols() == NumCols());
+    Real *data = data_;
+    const Real *dataA = A.Data();
+    const Real *dataB = B.Data();
+
+    for (MatrixIndexT i = 0; i < num_rows_; i++) {
+        for (MatrixIndexT j = 0; j < num_cols_; j++) {
+            data[j] = beta*data[j] + alpha*dataA[j]*dataB[j];
+        }
+        data += Stride();
+        dataA += A.Stride();
+        dataB += B.Stride();
+    }
+}
+
 #if !defined(HAVE_ATLAS) && !defined(USE_KALDI_SVD)
 // ****************************************************************************
 // ****************************************************************************

@@ -121,10 +121,10 @@ inline void cuda_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const flo
 inline void cuda_add_vec_to_cols(dim3 Gr, dim3 Bl, float alpha, const float *col, float beta, float *dst, MatrixDim d) { cudaF_add_vec_to_cols(Gr,Bl,alpha,col,beta,dst,d); }
 inline void cuda_add_vec_to_rows(dim3 Gr, dim3 Bl, float alpha, const float *row, float beta, float *dst, MatrixDim d) { cudaF_add_vec_to_rows(Gr,Bl,alpha,row,beta,dst,d); }
 inline void cuda_transpose_matrix(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) { cudaF_transpose_matrix(Gr, Bl, mat, d); }
-inline void cuda_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const float* T, MatrixDim tdim,
-                            float *S, MatrixDim sdim) {
-  cudaF_sy_add_tr2(Gr, Bl, alpha, beta, T, tdim, S, sdim);
-}
+inline void cuda_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const float* T, MatrixDim tdim, float *S, MatrixDim sdim) { cudaF_sy_add_tr2(Gr, Bl, alpha, beta, T, tdim, S, sdim); }
+inline void cuda_add_mat_diag_vec(dim3 Gr, dim3 Bl, float alpha, float *mat, MatrixDim mat_dim, const float *mat2, int mat2_row_stride, int mat2_col_stride, const float *vec,  float beta) { cudaF_add_mat_diag_vec(Gr, Bl, alpha, mat, mat_dim, mat2, mat2_row_stride, mat2_col_stride, vec, beta); }
+inline void cuda_add_mat_mat_elements(dim3 Gr, dim3 Bl, float *data, const float *srcA_data, const float *srcB_data, MatrixDim dim, int srcA_stride, int srcB_stride, float alpha, float beta) { cudaF_add_mat_mat_elements(Gr, Bl, data, srcA_data, srcB_data, dim, srcA_stride, srcB_stride, alpha, beta); } 
+
 
  
 /*
@@ -285,11 +285,9 @@ inline void cuda_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A, const do
 inline void cuda_add_vec_to_cols(dim3 Gr, dim3 Bl, double alpha, const double *col, double beta, double *dst, MatrixDim d) { cudaD_add_vec_to_cols(Gr,Bl,alpha,col,beta,dst,d); }
 inline void cuda_add_vec_to_rows(dim3 Gr, dim3 Bl, double alpha, const double *row, double beta, double *dst, MatrixDim d) { cudaD_add_vec_to_rows(Gr,Bl,alpha,row,beta,dst,d); }
 inline void cuda_transpose_matrix(dim3 Gr, dim3 Bl, double *mat, MatrixDim d) { cudaD_transpose_matrix(Gr, Bl, mat, d); }
-inline void cuda_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta, const double* T, MatrixDim tdim,
-                            double *S, MatrixDim sdim) {
-  cudaD_sy_add_tr2(Gr, Bl, alpha, beta, T, tdim, S, sdim);
-}
-
+inline void cuda_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta, const double* T, MatrixDim tdim, double *S, MatrixDim sdim) { cudaD_sy_add_tr2(Gr, Bl, alpha, beta, T, tdim, S, sdim); }
+inline void cuda_add_mat_diag_vec(dim3 Gr, dim3 Bl, double alpha, double *mat, MatrixDim mat_dim, const double *mat2, int mat2_row_stride, int mat2_col_stride, const double *vec,  double beta) { cudaD_add_mat_diag_vec(Gr, Bl, alpha, mat, mat_dim, mat2, mat2_row_stride, mat2_col_stride, vec, beta); }
+inline void cuda_add_mat_mat_elements(dim3 Gr, dim3 Bl, double *data, const double *srcA_data, const double *srcB_data, MatrixDim dim, int srcA_stride, int srcB_stride, double alpha, double beta) { cudaD_add_mat_mat_elements(Gr, Bl, data, srcA_data, srcB_data, dim, srcA_stride, srcB_stride, alpha, beta); }
 
 /*
  * CuVector

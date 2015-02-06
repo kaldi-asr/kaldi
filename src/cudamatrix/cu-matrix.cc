@@ -1023,6 +1023,59 @@ void CuMatrixBase<Real>::AddDiagVecMat(
 
 
 template<typename Real>
+void CuMatrixBase<Real>::AddMatDiagVec(
+    const Real alpha, 
+    const CuMatrixBase<Real> &M, MatrixTransposeType transM,
+    CuVectorBase<Real> &v,
+    Real beta) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (transM == kNoTrans) {
+      KALDI_ASSERT(SameDim(*this, M));
+    } else {
+      KALDI_ASSERT(M.NumRows() == NumCols() && M.NumCols() == NumRows());
+    }
+    KALDI_ASSERT(v.Dim() == this->NumCols());
+
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    // Caution, this dimGrid is not the same way around as much of the other
+    // code: going forward, I want to use the (rows, cols) order.
+    dim3 dimGrid(n_blocks(num_rows_, CU2DBLOCK), n_blocks(num_cols_, CU2DBLOCK));
+
+    MatrixIndexT M_row_stride = M.Stride(), M_col_stride = 1;
+    if (transM == kTrans) std::swap(M_row_stride, M_col_stride);
+
+    cuda_add_mat_diag_vec(dimGrid, dimBlock, alpha, data_, Dim(),
+                          M.Data(), M_row_stride, M_col_stride, v.Data(),  beta);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().AddMatDiagVec(alpha, M.Mat(), transM, v.Vec(), beta);
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::AddMatMatElements(Real alpha, 
+    const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, Real beta) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+    cuda_add_mat_mat_elements(dimGrid, dimBlock, this->data_, A.Data(), B.Data(), Dim(), A.Stride(), B.Stride(), alpha, beta);
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().AddMatMatElements(alpha, A.Mat(), B.Mat(), beta);
+  }
+}
+
+
+template<typename Real>
 void CuMatrixBase<Real>::Sigmoid(const CuMatrixBase<Real> &src) {
   KALDI_ASSERT(SameDim(*this, src));
 #if HAVE_CUDA == 1 
