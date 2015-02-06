@@ -51,7 +51,10 @@ while (<STDIN>) {
   my @entries = split(" ", $_);
   next if  @entries < 2;
   next if  ($entries[1] ne "hyp") and ($entries[1] ne "ref") ; 
-  die "Incompatible entry $_ parsed as " . $#entries . "\n" if scalar $#entries <= 2;
+  if (scalar @entries <= 2 ) {
+    print STDERR "Warning: skipping entry \"$_\", either an  empty phrase or incompatible format\n" ;
+    next;
+  }
 
   die "The input stream contains duplicate entry $entries[0] $entries[1]\n" 
     if exists $UTT{$entries[0]}->{$entries[1]};
