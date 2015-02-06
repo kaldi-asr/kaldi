@@ -80,8 +80,6 @@ public:
             ReadToken(is, false, &token); 
             if (token == "<CellDim>") 
                 ReadBasicType(is, false, &ncell_);
-            else if (token == "<NumStream>") 
-                ReadBasicType(is, false, &nstream_);
             //else if (token == "<DropoutRate>") 
             //    ReadBasicType(is, false, &dropout_rate_);
             else if (token == "<ParamScale>") 
@@ -91,8 +89,6 @@ public:
                            //<< " (CellDim|NumStream|DropoutRate|ParamScale)";
             is >> std::ws;
         }
-
-        prev_nnet_state_.Resize(nstream_, 7*ncell_ + 1*nrecur_, kSetZero);
 
         // init weight and bias (Uniform)
         w_gifo_x_.Resize(4*ncell_, input_dim_, kUndefined);  
@@ -129,8 +125,6 @@ public:
     void ReadData(std::istream &is, bool binary) {
         ExpectToken(is, binary, "<CellDim>");
         ReadBasicType(is, binary, &ncell_);
-        ExpectToken(is, binary, "<NumStream>");
-        ReadBasicType(is, binary, &nstream_);
         //ExpectToken(is, binary, "<DropoutRate>");
         //ReadBasicType(is, binary, &dropout_rate_);
 
@@ -143,8 +137,6 @@ public:
         peephole_o_c_.Read(is, binary);
 
         w_r_m_.Read(is, binary);
-
-        prev_nnet_state_.Resize(nstream_, 7*ncell_ + 1*nrecur_, kSetZero);
 
         // init delta buffers
         w_gifo_x_corr_.Resize(4*ncell_, input_dim_, kSetZero); 
@@ -161,8 +153,6 @@ public:
     void WriteData(std::ostream &os, bool binary) const {
         WriteToken(os, binary, "<CellDim>");
         WriteBasicType(os, binary, ncell_);
-        WriteToken(os, binary, "<NumStream>");
-        WriteBasicType(os, binary, nstream_);
         //WriteToken(os, binary, "<DropoutRate>");
         //WriteBasicType(os, binary, dropout_rate_);
 
@@ -239,6 +229,12 @@ public:
     }
 
     void ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
+        // allocate prev_nnet_state_ if not done yet,
+        if (nstream_ == 0) {
+          // Karel: we just got number of streams! (before the 1st batch comes)
+          nstream_ = stream_reset_flag.size(); 
+          prev_nnet_state_.Resize(nstream_, 7*ncell_ + 1*nrecur_, kSetZero);
+        }
         // reset flag: 1 - reset stream network state
         KALDI_ASSERT(prev_nnet_state_.NumRows() == stream_reset_flag.size());
         for (int s = 0; s < stream_reset_flag.size(); s++) {
@@ -250,6 +246,12 @@ public:
 
     void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
         int DEBUG = 0;
+
+        if (nstream_ == 0) {
+          nstream_ = 1; // Karel: we are in nnet-forward, so 1 stream,
+          prev_nnet_state_.Resize(nstream_, 7*ncell_ + 1*nrecur_, kSetZero);
+        }
+        KALDI_ASSERT(nstream_ > 0);
 
         KALDI_ASSERT(in.NumRows() % nstream_ == 0);
         int32 T = in.NumRows() / nstream_;

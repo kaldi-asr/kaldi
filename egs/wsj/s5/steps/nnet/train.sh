@@ -11,7 +11,7 @@ mlp_init=          # select initialized MLP (override initialization)
 mlp_proto=         # select network prototype (initialize it)
 proto_opts=        # non-default options for 'make_nnet_proto.py'
 feature_transform= # provide feature transform (=splice,rescaling,...) (don't build new one)
-prepend_cnn_type=none   # (none,cnn1d,cnn2d) create nnet with convolutional layers
+network_type=dnn   # (dnn,cnn1d,cnn2d,lstm) select type of neural network
 cnn_proto_opts=     # extra options for 'make_cnn_proto.py'
 #
 hid_layers=4       # nr. of hidden layers (prior to sotfmax or bottleneck)
@@ -337,8 +337,8 @@ if [[ -z "$mlp_init" && -z "$mlp_proto" ]]; then
   # make network prototype
   mlp_proto=$dir/nnet.proto
   echo "Genrating network prototype $mlp_proto"
-  case "$prepend_cnn_type" in
-    none)
+  case "$network_type" in
+    dnn)
       utils/nnet/make_nnet_proto.py $proto_opts \
         ${bn_dim:+ --bottleneck-dim=$bn_dim} \
         $num_fea $num_tgt $hid_layers $hid_dim >$mlp_proto || exit 1 
@@ -358,7 +358,11 @@ if [[ -z "$mlp_init" && -z "$mlp_proto" ]]; then
     cnn2d) 
       #TODO, to be filled by Vijay...
       ;;
-    *) echo "Unknown 'prepend-cnn' value $prepend_cnn" && exit 1;
+    lstm)
+      utils/nnet/make_lstm_proto.py $proto_opts \
+        $num_fea $num_tgt >$mlp_proto || exit 1 
+      ;;
+    *) echo "Unknown : --network_type $network_type" && exit 1;
   esac
 
   # initialize
@@ -366,7 +370,7 @@ if [[ -z "$mlp_init" && -z "$mlp_proto" ]]; then
   echo "Initializing $mlp_proto -> $mlp_init"
   nnet-initialize $mlp_proto $mlp_init 2>$log || { cat $log; exit 1; }
 
-  #optionally prepend dbn to the initialization
+  # optionally prepend dbn to the initialization
   if [ ! -z $dbn ]; then
     mlp_init_old=$mlp_init; mlp_init=$dir/nnet_$(basename $dbn)_dnn.init
     nnet-concat $dbn $mlp_init_old $mlp_init || exit 1 

@@ -473,7 +473,7 @@ void MatrixBase<Real>::AddMatDiagVec(
   if (num_rows_ == 0) return;
   for (MatrixIndexT i = 0; i < num_rows; i++){
       for(MatrixIndexT j = 0; j < num_cols; j ++ ){
-          data[i*stride + j] += alpha * vdata[j] * Mdata[i*M_row_stride+j];
+          data[i*stride + j] += alpha * vdata[j] * Mdata[i*M_row_stride + j*M_col_stride];
       }
   }
 }

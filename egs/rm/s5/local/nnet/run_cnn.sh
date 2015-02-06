@@ -42,7 +42,7 @@ if [ $stage -le 1 ]; then
     steps/nnet/train.sh \
       --cmvn-opts "--norm-means=true --norm-vars=true" \
       --delta-opts "--delta-order=2" --splice 5 \
-      --prepend-cnn-type cnn1d --cnn-proto-opts "--patch-dim1 8 --pitch-dim 3" \
+      --network-type cnn1d --cnn-proto-opts "--patch-dim1 8 --pitch-dim 3" \
       --hid-layers 2 --learn-rate 0.008 \
       ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
   # Decode

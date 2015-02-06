@@ -1,6 +1,7 @@
 // nnetbin/nnet-train-lstm-streams.cc
 
-// Copyright 2014  Jiayu DU (Jerry), Wei Li
+// Copyright 2015  Brno University of Technology (Author: Karel Vesely)
+//           2014  Jiayu DU (Jerry), Wei Li
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -58,11 +59,13 @@ int main(int argc, char *argv[]) {
     std::string objective_function = "xent";
     po.Register("objective-function", &objective_function, "Objective function : xent|mse");
 
+    /*
     int32 length_tolerance = 5;
     po.Register("length-tolerance", &length_tolerance, "Allowed length difference of features/targets (frames)");
     
     std::string frame_weights;
     po.Register("frame-weights", &frame_weights, "Per-frame weights to scale gradients (frame selection/weighting).");
+    */
 
     std::string use_gpu="yes";
     po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
@@ -86,6 +89,7 @@ int main(int argc, char *argv[]) {
     rnd_opts.Register(&po);
     bool randomize = false;
     po.Register("randomize", &randomize, "Dummy option, for compatibility...");
+    //
     
     po.Read(argc, argv);
 
@@ -126,10 +130,13 @@ int main(int argc, char *argv[]) {
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessPosteriorReader target_reader(targets_rspecifier);
+    
+    /*
     RandomAccessBaseFloatVectorReader weights_reader;
     if (frame_weights != "") {
       weights_reader.Open(frame_weights);
     }
+    */
 
     RandomizerMask randomizer_mask(rnd_opts);
     MatrixRandomizer feature_randomizer(rnd_opts);
@@ -173,12 +180,12 @@ int main(int argc, char *argv[]) {
                 keys[s]  = feature_reader.Key();
                 const Matrix<BaseFloat> &mat = feature_reader.Value();
                 { // apply optional feature transform,
-                  // Karel: feature transform may contain <Splice> which copies frames
-                  // on sentence boundaries. It is better to apply feature transform 
-                  // to whole sentences.
+                  // Karel: feature transform may contain <Splice> which does clone
+                  // frames on sentence boundaries. It is better to apply feature 
+                  // transform to whole sentences.
                   nnet_transf.Feedforward(CuMatrix<BaseFloat>(mat), &feat_transf);
-                  feats[s].Resize(feat_transf.NumRows(), feat_transf.NumCols())
-                  feat_transf.CopyToMat(feats[s]); 
+                  feats[s].Resize(feat_transf.NumRows(), feat_transf.NumCols());
+                  feat_transf.CopyToMat(&feats[s]); 
                 }
                 if (!target_reader.HasKey(keys[s])) {
                     KALDI_WARN << keys[s] << ", missing targets";
