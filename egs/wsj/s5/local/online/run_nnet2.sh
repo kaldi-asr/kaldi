@@ -138,10 +138,13 @@ if [ $stage -le 14 ]; then
   # this does offline decoding, as stage 10, except we estimate the iVectors per
   # speaker, excluding silence (based on alignments from a GMM decoding), with a
   # different script.  This is just to demonstrate that script.
-
+  # the --sub-speaker-frames is optional; if provided, it will divide each speaker
+  # up into "sub-speakers" of at least that many frames... can be useful if
+  # acoustic conditions drift over time within the speaker's data.
   rm exp/nnet2_online/.error 2>/dev/null
   for year in eval92 dev93; do
     steps/online/nnet2/extract_ivectors.sh --cmd "$train_cmd" --nj 8 \
+      --sub-speaker-frames 1500 \
       data/test_${year}_hires data/lang exp/nnet2_online/extractor \
       exp/tri4b/decode_tgpr_$year exp/nnet2_online/ivectors_spk_test_${year} || touch exp/nnet2_online/.error &
   done

@@ -7,6 +7,8 @@
 # This script computes iVectors in the same format as extract_ivectors_online.sh,
 # except that they are actually not really computed online, they are first computed
 # per speaker and just duplicated many times.
+# This is mainly intended for use in decoding, where you want the best possible
+# quality of iVectors.
 #
 # This setup also makes it possible to use a previous decoding or alignment, to
 # down-weight silence in the stats (default is --silence-weight 0.0).
@@ -35,6 +37,13 @@ max_count=100       # Interpret this as a number of frames times posterior scale
                     # 1000 frames, or 10 seconds, by default), we start to scale
                     # down the stats, accentuating the prior term.   This seems quite
                     # important for some reason.
+sub_speaker_frames=0  # If >0, during iVector estimation we split each speaker
+                      # into possibly many 'sub-speakers', each with at least
+                      # this many frames of speech (evaluated after applying
+                      # silence_weight, so will typically exclude silence.
+                      # e.g. set this to 1000, and it will require at least 10 seconds
+                      # of speech per sub-speaker.
+
 compress=true       # If true, compress the iVectors stored on disk (it's lossy
                     # compression, as used for feature matrices).
 silence_weight=0.0
@@ -62,10 +71,9 @@ if [ $# != 4 ] && [ $# != 5 ]; then
   echo "                                                   # diagonal model."
   echo "  --min-post <float;default=0.025>                 # Pruning threshold for posteriors"
   echo "  --ivector-period <int;default=10>                # How often to extract an iVector (frames)"
-  echo "  --utts-per-spk-max <int;default=-1>   # Controls splitting into 'fake speakers'."
-  echo "                                        # Set to 1 if compatibility with utterance-by-utterance"
-  echo "                                        # decoding is the only factor, and to larger if you care "
-  echo "                                        # also about adaptation over several utterances."
+  echo "  --posterior-scale <float;default=0.1>            # Scale on posteriors in iVector extraction; "
+  echo "                                                   # affects strength of prior term."
+  
   exit 1;
 fi
 
@@ -138,10 +146,7 @@ if [ ! -z "$ali_or_decode_dir" ]; then
     echo "$0: expected ali.1.gz or lat.1.gz to exist in $ali_or_decode_dir";
     exit 1;
   fi
-
 fi
-
-# Now work out the per-speaker iVectors.
 
 sdata=$data/split$nj;
 utils/split_data.sh $data $nj || exit 1;
@@ -149,32 +154,91 @@ utils/split_data.sh $data $nj || exit 1;
 echo $ivector_period > $dir/ivector_period || exit 1;
 splice_opts=$(cat $srcdir/splice_opts)
 
-
 gmm_feats="ark,s,cs:apply-cmvn-online --spk2utt=ark:$sdata/JOB/spk2utt --config=$srcdir/online_cmvn.conf $srcdir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 feats="ark,s,cs:splice-feats $splice_opts scp:$sdata/JOB/feats.scp ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
 
-if [ $stage -le 1 ]; then
+if [ $sub_speaker_frames -gt 0 ]; then
+
+  if [ $stage -le 1 ]; then
+  # We work out 'fake' spk2utt files that possibly split each speaker into multiple pieces.
+    if [ ! -z "$ali_or_decode_dir" ]; then
+      gunzip -c $dir/weights.gz | copy-vector ark:- ark,t:- | \
+        awk '{ sum=0; for (n=3;n<NF;n++) sum += $n; print $1, sum; }' > $dir/utt_counts || exit 1;
+    else
+      feat-to-len scp:$data/feats.scp ark,t:- > $dir/utt_counts || exit 1;
+    fi
+    if ! [ $(wc -l <$dir/utt_counts) -eq $(wc -l <$data/feats.scp) ]; then
+      echo "$0: error getting per-utterance counts."
+      exit 0;
+    fi
+    cat $data/spk2utt | perl -e ' ($utt_counts, $sub_speaker_frames) = @ARGV;
+    open(F, "<$utt_counts") || die "opening utt-counts file $utt_counts";
+    $sub_speaker_frames > 0 || die "bad --sub-speaker-frames $sub_speaker_frames";
+    while(<F>) {
+      @A = split(" ", $_);
+      @A == 2 || die "bad line in utt-counts file: $_";
+      $count{$A[0]} = $A[1];
+    }
+    while (<STDIN>) {
+      @A = split(" ", $_);
+      @A>1 || die "bad line in spk2utt file: $_";
+      $spk = shift @A;  # rest of line is utts.
+      $tot_count = 0;
+      $numeric_id = 0;
+      @cur_utts = ();
+      for ($n=0; $n<@A; $n++) {
+        $utt = $A[$n];
+        push @cur_utts, $utt;
+        $this_count = $count{$utt};
+        !defined $this_count && die "Undefined count for utterance $utt";
+        $tot_count += $this_count;
+        if ($tot_count >= $sub_speaker_frames || $n+1 == @A) {
+          printf("%s-%06x ", $spk, $numeric_id++);
+          print join(" ", @cur_utts) . "\n";
+          @cur_utts = ();
+          $tot_count = 0.0;
+        }
+      }
+    } ' $dir/utt_counts $sub_speaker_frames > $dir/spk2utt || exit 1;
+    mkdir -p $dir/split$nj
+    # create split versions of our spk2utt file.
+    for j in $(seq $nj); do
+      mkdir -p $dir/split$nj/$j
+      utils/filter_scp.pl -f 2 $sdata/$j/utt2spk <$dir/spk2utt >$dir/split$nj/$j/spk2utt || exit 1;
+      utils/spk2utt_to_utt2spk.pl <$dir/split$nj/$j/spk2utt >$dir/split$nj/$j/utt2spk || exit 1;
+    done
+  fi
+  this_sdata=$dir/split$nj
+else
+  this_sdata=$sdata
+fi
+
+
+
+if [ $stage -le 2 ]; then
   if [ ! -z "$ali_or_decode_dir" ]; then
     $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
       gmm-global-get-post --n=$num_gselect --min-post=$min_post $srcdir/final.dubm "$gmm_feats" ark:- \| \
       weight-post ark:- "ark,s,cs:gunzip -c $dir/weights.gz|" ark:- \| \
       ivector-extract --acoustic-weight=$posterior_scale --compute-objf-change=true \
-        --max-count=$max_count --spk2utt=ark:$sdata/JOB/spk2utt \
+        --max-count=$max_count --spk2utt=ark:$this_sdata/JOB/spk2utt \
       $srcdir/final.ie "$feats" ark,s,cs:- ark,t:$dir/ivectors_spk.JOB.ark || exit 1;
   else
     $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
       gmm-global-get-post --n=$num_gselect --min-post=$min_post $srcdir/final.dubm "$gmm_feats" ark:- \| \
       ivector-extract --acoustic-weight=$posterior_scale --compute-objf-change=true \
-        --max-count=$max_count --spk2utt=ark:$sdata/JOB/spk2utt \
+        --max-count=$max_count --spk2utt=ark:$this_sdata/JOB/spk2utt \
       $srcdir/final.ie "$feats" ark,s,cs:- ark,t:$dir/ivectors_spk.JOB.ark || exit 1;
   fi
 fi
 
 # get an utterance-level set of iVectors (just duplicate the speaker-level ones).  
-if [ $stage -le 2 ]; then
+# note: if $this_sdata is set $dir/split$nj, then these won't be real speakers, they'll
+# be "sub-speakers" (speakers split up into multiple utterances).
+if [ $stage -le 3 ]; then
   for j in $(seq $nj); do 
-    utils/apply_map.pl -f 2 $dir/ivectors_spk.$j.ark <$sdata/$j/utt2spk >$dir/ivectors_utt.$j.ark || exit 1;
+    utils/apply_map.pl -f 2 $dir/ivectors_spk.$j.ark <$this_sdata/$j/utt2spk >$dir/ivectors_utt.$j.ark || exit 1;
   done
 fi
 
@@ -187,7 +251,7 @@ start_dim=$base_feat_dim
 end_dim=$[$base_feat_dim+$ivector_dim-1]
 
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   # here, we are just using the original features in $sdata/JOB/feats.scp for
   # their number of rows; we use the select-feats command to remove those
   # features and retain only the iVector features.
@@ -199,7 +263,7 @@ if [ $stage -le 3 ]; then
     ark,scp:$dir/ivector_online.JOB.ark,$dir/ivector_online.JOB.scp || exit 1;
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   echo "$0: combining iVectors across jobs"
   for j in $(seq $nj); do cat $dir/ivector_online.$j.scp; done >$dir/ivector_online.scp || exit 1;
 fi
