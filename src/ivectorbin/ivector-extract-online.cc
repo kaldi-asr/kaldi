@@ -49,6 +49,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     int32 num_cg_iters = 15;
     int32 ivector_period = 10;
+    BaseFloat max_count = 0.0;
     g_num_threads = 8;
 
     po.Register("num-cg-iters", &num_cg_iters,
@@ -60,6 +61,12 @@ int main(int argc, char *argv[]) {
     po.Register("num-threads", &g_num_threads,
                 "Number of threads to use for computing derived variables "
                 "of iVector extractor, at process start-up.");
+    po.Register("max-count", &max_count,
+                "If >0, when the count of posteriors exceeds max-count we will "
+                "start using a stronger prior term.  Can make iVectors from "
+                "longer than normal utterances look more 'typical'.  Interpret "
+                "this value as a number of frames multiplied by your "
+                "posterior scale (so typically 0.1 times a number of frames).");
     po.Read(argc, argv);
     
     if (po.NumArgs() != 4) {
@@ -107,7 +114,7 @@ int main(int argc, char *argv[]) {
       double objf_impr_per_frame;
       objf_impr_per_frame = EstimateIvectorsOnline(feats, posterior, extractor,
                                                    ivector_period, num_cg_iters,
-                                                   &ivectors);
+                                                   max_count, &ivectors);
       
       BaseFloat offset = extractor.PriorOffset();
       for (int32 i = 0 ; i < ivectors.NumRows(); i++)

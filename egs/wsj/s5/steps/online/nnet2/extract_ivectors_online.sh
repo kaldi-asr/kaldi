@@ -32,9 +32,6 @@ posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
                     # used when training the iVector extractor, but more important
                     # that this match the value used when you do real online decoding
                     # with the neural nets trained with these iVectors.
-#utts_per_spk_max=-1 # This option is no longer supported, you should use
-                    # steps/online/nnet2/copy_data_dir.sh with the --utts-per-spk-max
-                    # option to make a copy of the data dir.
 compress=true       # If true, compress the iVectors stored on disk (it's lossy
                     # compression, as used for feature matrices).
 
@@ -58,10 +55,6 @@ if [ $# != 3 ]; then
   echo "                                                   # diagonal model."
   echo "  --min-post <float;default=0.025>                 # Pruning threshold for posteriors"
   echo "  --ivector-period <int;default=10>                # How often to extract an iVector (frames)"
-  echo "  --utts-per-spk-max <int;default=-1>   # Controls splitting into 'fake speakers'."
-  echo "                                        # Set to 1 if compatibility with utterance-by-utterance"
-  echo "                                        # decoding is the only factor, and to larger if you care "
-  echo "                                        # also about adaptation over several utterances."
   exit 1;
 fi
 
@@ -71,7 +64,7 @@ dir=$3
 
 for f in $data/feats.scp $srcdir/final.ie $srcdir/final.dubm $srcdir/global_cmvn.stats $srcdir/splice_opts \
      $srcdir/online_cmvn.conf $srcdir/final.mat; do
-  [ ! -f $f ] && echo "No such file $f" && exit 1;
+  [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
 
 # Set various variables.
@@ -86,7 +79,7 @@ splice_opts=$(cat $srcdir/splice_opts)
 # the program ivector-extract-online2 does a bunch of stuff in memory and is
 # config-driven...  this was easier in this case because the same code is
 # involved in online decoding.  We need to create a config file for iVector
-# extration.
+# extraction.
 
 ieconf=$dir/conf/ivector_extractor.conf
 echo -n >$ieconf
@@ -102,15 +95,6 @@ echo "--num-gselect=$num_gselect"  >>$ieconf
 echo "--min-post=$min_post" >>$ieconf
 echo "--posterior-scale=$posterior_scale" >>$ieconf
 echo "--max-remembered-frames=1000" >>$ieconf # the default
-
-
-ns=$(wc -l <$data/spk2utt)
-if [ "$ns" == 1 -a "$utts_per_spk_max" != 1 -a "$utts_per_spk_max" != -1 ]; then
-  echo "$0: you seem to have just one speaker in your database.  This is probably not a good idea."
-  echo "  see http://kaldi.sourceforge.net/data_prep.html (search for 'bold') for why"
-  echo "  Setting --utts-per-spk-max to 1."
-  utts_per_spk_max=1
-fi
 
 
 

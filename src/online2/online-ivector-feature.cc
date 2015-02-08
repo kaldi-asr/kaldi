@@ -32,6 +32,7 @@ void OnlineIvectorExtractionInfo::Init(
   num_gselect = config.num_gselect;
   min_post = config.min_post;
   posterior_scale = config.posterior_scale;
+  max_count = config.max_count;
   use_most_recent_ivector = config.use_most_recent_ivector;
   greedy_ivector_extractor = config.greedy_ivector_extractor;
   if (greedy_ivector_extractor && !use_most_recent_ivector) {
@@ -161,7 +162,7 @@ void OnlineIvectorFeature::UpdateStatsUntilFrame(int32 frame) {
   
   Vector<BaseFloat> feat(feat_dim),  // features given to iVector extractor
       log_likes(info_.diag_ubm.NumGauss());
-
+  
   for (; num_frames_stats_ <= frame; num_frames_stats_++) {
     int32 t = num_frames_stats_;  // Frame whose stats we want to get.
     lda_normalized_->GetFrame(t, &feat);
@@ -262,8 +263,10 @@ OnlineIvectorFeature::OnlineIvectorFeature(
     const OnlineIvectorExtractionInfo &info,
     OnlineFeatureInterface *base_feature):
     info_(info), base_(base_feature),
-    ivector_stats_(info_.extractor.IvectorDim(), info_.extractor.PriorOffset()),
-    num_frames_stats_(0) {
+    ivector_stats_(info_.extractor.IvectorDim(),
+                   info_.extractor.PriorOffset(),
+                   info_.max_count),
+    num_frames_stats_(0), tot_ubm_loglike_(0.0) {
   info.Check();
   KALDI_ASSERT(base_feature != NULL);
   splice_ = new OnlineSpliceFrames(info_.splice_opts, base_);

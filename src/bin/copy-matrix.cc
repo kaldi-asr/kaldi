@@ -38,10 +38,14 @@ int main(int argc, char *argv[]) {
         "See also: copy-feats\n";
     
     bool binary = true;
+    BaseFloat scale = 1.0;
     ParseOptions po(usage);
 
-    po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
-
+    po.Register("binary", &binary,
+                "Write in binary mode (only relevant if output is a wxfilename)");
+    po.Register("scale", &scale,
+                "This option can be used to scale the matrices being copied.");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -68,6 +72,7 @@ int main(int argc, char *argv[]) {
     if (!in_is_rspecifier) {
       Matrix<BaseFloat> mat;
       ReadKaldiObject(matrix_in_fn, &mat);
+      if (scale != 1.0) mat.Scale(scale);
       Output ko(matrix_out_fn, binary);
       mat.Write(ko.Stream(), binary);
       KALDI_LOG << "Copied matrix to " << matrix_out_fn;
@@ -76,8 +81,15 @@ int main(int argc, char *argv[]) {
       int num_done = 0;
       BaseFloatMatrixWriter writer(matrix_out_fn);
       SequentialBaseFloatMatrixReader reader(matrix_in_fn);
-      for (; !reader.Done(); reader.Next(), num_done++)
-        writer.Write(reader.Key(), reader.Value());
+      for (; !reader.Done(); reader.Next(), num_done++) {
+        if (scale != 1.0) {
+          Matrix<BaseFloat> mat(reader.Value());
+          mat.Scale(scale);
+          writer.Write(reader.Key(), mat);
+        } else {
+          writer.Write(reader.Key(), reader.Value());
+        }
+      }
       KALDI_LOG << "Copied " << num_done << " matrices.";
       return (num_done != 0 ? 0 : 1);
     }

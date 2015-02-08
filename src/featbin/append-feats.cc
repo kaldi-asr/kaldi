@@ -50,9 +50,9 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string rspecifier1 = po.GetArg(1);
-    std::string rspecifier2 = po.GetArg(2);
-    std::string wspecifier = po.GetArg(3);
+    std::string rspecifier1 = po.GetArg(1),
+        rspecifier2 = po.GetArg(2),
+        wspecifier = po.GetArg(3);
 
     BaseFloatMatrixWriter feats_writer(wspecifier);
     SequentialBaseFloatMatrixReader feats_reader1(rspecifier1);

@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Convert alignments to posteriors\n"
-        "Usage:  ali-to-post [options] alignments-rspecifier posteriors-wspecifier\n"
+        "Usage:  ali-to-post [options] <alignments-rspecifier> <posteriors-wspecifier>\n"
         "e.g.:\n"
         " ali-to-post ark:1.ali ark:1.post\n";
 

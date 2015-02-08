@@ -107,8 +107,9 @@ void TestIvectorExtraction(const IvectorExtractor &extractor,
   utt_stats.AccStats(feats, post);
 
   OnlineIvectorEstimationStats online_stats(extractor.IvectorDim(),
-                                            extractor.PriorOffset());
-
+                                            extractor.PriorOffset(),
+                                            0.0);
+  
   for (int32 t = 0; t < num_frames; t++) {
     online_stats.AccStats(extractor, feats.Row(t), post[t]);
   }

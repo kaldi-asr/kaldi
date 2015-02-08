@@ -70,6 +70,12 @@ struct OnlineIvectorExtractionConfig {
   BaseFloat posterior_scale;  // Scale on posteriors used for iVector
                               // extraction; can be interpreted as the inverse
                               // of a scale on the log-prior.
+  BaseFloat max_count;  // Maximum stats count we allow before we start scaling
+                        // down stats (if nonzero).. this prevents us getting
+                        // atypical-looking iVectors for very long utterances.
+                        // Interpret this as a number of frames times
+                        // posterior_scale, typically 1/10 of a frame count.
+  
 
   // If use_most_recent_ivector is true, we always return the most recent
   // available iVector rather than the one for the current frame.  This means
@@ -91,6 +97,7 @@ struct OnlineIvectorExtractionConfig {
 
   OnlineIvectorExtractionConfig(): ivector_period(10), num_gselect(5),
                                    min_post(0.025), posterior_scale(0.1),
+                                   max_count(0.0),
                                    use_most_recent_ivector(true),
                                    greedy_ivector_extractor(false),
                                    max_remembered_frames(1000) { }
@@ -122,6 +129,11 @@ struct OnlineIvectorExtractionConfig {
                  "iVector extraction");
     po->Register("posterior-scale", &posterior_scale, "Scale for posteriors in "
                  "iVector extraction (may be viewed as inverse of prior scale)");
+    po->Register("max-count", &max_count, "Maximum data count we allow before "
+                 "we start scaling the stats down (if nonzero)... helps to make "
+                 "iVectors from long utterances look more typical.  Interpret "
+                 "as a frame-count times --posterior-scale, typically 1/10 of "
+                 "a number of frames.  Suggest 100.");
     po->Register("use-most-recent-ivector", &use_most_recent_ivector, "If true, "
                  "always use most recent available iVector, rather than the "
                  "one for the designated frame.");
@@ -156,6 +168,7 @@ struct OnlineIvectorExtractionInfo {
   int32 num_gselect;
   BaseFloat min_post;
   BaseFloat posterior_scale;
+  BaseFloat max_count;
   bool use_most_recent_ivector;
   bool greedy_ivector_extractor;
   BaseFloat max_remembered_frames;
@@ -191,7 +204,8 @@ struct OnlineIvectorExtractorAdaptationState {
   OnlineIvectorExtractorAdaptationState(const OnlineIvectorExtractionInfo &info):
       cmvn_state(info.global_cmvn_stats),
       ivector_stats(info.extractor.IvectorDim(),
-                    info.extractor.PriorOffset()) { }
+                    info.extractor.PriorOffset(),
+                    info.max_count) { }
   
   /// Copy constructor
   OnlineIvectorExtractorAdaptationState(

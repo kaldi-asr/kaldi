@@ -45,13 +45,23 @@ namespace kaldi {
 // "acoustic_weight" is not read by any class declared in this header; it has to
 // be applied by calling IvectorExtractorUtteranceStats::Scale() before
 // obtaining the iVector.
+// The same is true of max_count: it has to be applied by programs themselves
+// e.g. see ../ivectorbin/ivector-extract.cc.
 struct IvectorEstimationOptions {
   double acoustic_weight;
-  IvectorEstimationOptions(): acoustic_weight(1.0) {}
+  double max_count;
+  IvectorEstimationOptions(): acoustic_weight(1.0), max_count(0.0) {}
   void Register(OptionsItf *po) {
     po->Register("acoustic-weight", &acoustic_weight,
                  "Weight on part of auxf that involves the data (e.g. 0.2); "
                  "if this weight is small, the prior will have more effect.");
+    po->Register("max-count", &max_count,
+                 "Maximum frame count (affects prior scaling): if >0, the prior "
+                 "term will be scaled up after the frame count exceeds this "
+                 "value.  Note that this count is considered after posterior "
+                 "scaling (e.g. --acoustic-weight option, or scale argument to "
+                 "scale-post), so you would normally use a cutoff 10 times "
+                 "smaller than the corresponding number of frames.");
   }
 };
 
@@ -301,8 +311,12 @@ class IvectorExtractor {
  */
 class OnlineIvectorEstimationStats {
  public:
+  // Search above for max_count to see an explanation; if nonzero, it will
+  // put a higher weight on the prior (vs. the stats) once the count passes
+  // that value.
   OnlineIvectorEstimationStats(int32 ivector_dim,
-                               BaseFloat prior_offset);
+                               BaseFloat prior_offset,
+                               BaseFloat max_count);
 
   OnlineIvectorEstimationStats(const OnlineIvectorEstimationStats &other);
 
@@ -360,6 +374,7 @@ class OnlineIvectorEstimationStats {
   
   friend class IvectorExtractor;
   double prior_offset_;
+  double max_count_;
   double num_frames_;  // num frames (weighted, if applicable).
   SpMatrix<double> quadratic_term_;
   Vector<double> linear_term_;
@@ -368,8 +383,10 @@ class OnlineIvectorEstimationStats {
 
 // This code obtains periodically (for each "ivector_period" frames, e.g. 10
 // frames), an estimate of the iVector including all frames up to that point.
-// This emulates what you could do in an online/streaming algorithm; its use
-// is for neural network training in a way that's matched to online decoding.
+// This emulates what you could do in an online/streaming algorithm; its use is
+// for neural network training in a way that's matched to online decoding.
+// [note: I don't believe we are currently using the program,
+// ivector-extract-online.cc, that calls this function, in any of the scripts.].
 // Caution: this program outputs the raw iVectors, where the first component
 // will generally be very positive.  You probably want to subtract PriorOffset()
 // from the first element of each row of the output before writing it out.
@@ -384,6 +401,7 @@ double EstimateIvectorsOnline(
     const IvectorExtractor &extractor,
     int32 ivector_period,
     int32 num_cg_iters,
+    BaseFloat max_count,
     Matrix<BaseFloat> *ivectors);
 
 

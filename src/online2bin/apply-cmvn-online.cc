@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
         "Apply online cepstral mean (and possibly variance) computation online,\n"
         "using the same code as used for online decoding in the 'new' setup in\n"
         "online2/ and online2bin/.  If the --spk2utt option is used, it uses\n"
-        "prior utterances from the same speaker to back off two at the utterance\n"
+        "prior utterances from the same speaker to back off to at the utterance\n"
         "beginning.  See also apply-cmvn-sliding.\n"
         "\n"
         "Usage: apply-cmvn-online [options] <global-cmvn-stats> <feature-rspecifier> "

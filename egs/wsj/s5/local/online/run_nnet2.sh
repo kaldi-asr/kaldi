@@ -134,6 +134,34 @@ if [ $stage -le 13 ]; then
   done
 fi
 
+if [ $stage -le 14 ]; then
+  # this does offline decoding, as stage 10, except we estimate the iVectors per
+  # speaker, excluding silence (based on alignments from a GMM decoding), with a
+  # different script.  This is just to demonstrate that script.
+
+  rm exp/nnet2_online/.error 2>/dev/null
+  for year in eval92 dev93; do
+    steps/online/nnet2/extract_ivectors.sh --cmd "$train_cmd" --nj 8 \
+      data/test_${year}_hires data/lang exp/nnet2_online/extractor \
+      exp/tri4b/decode_tgpr_$year exp/nnet2_online/ivectors_spk_test_${year} || touch exp/nnet2_online/.error &
+  done
+  wait
+  [ -f exp/nnet2_online/.error ] && echo "$0: Error getting iVectors" && exit 1;
+
+  for lm_suffix in bd_tgpr; do # just use the bd decoding, to avoid wasting time.
+    graph_dir=exp/tri4b/graph_${lm_suffix}
+    # use already-built graphs.
+    for year in eval92 dev93; do
+      steps/nnet2/decode.sh --nj 8 --cmd "$decode_cmd" \
+          --online-ivector-dir exp/nnet2_online/ivectors_spk_test_$year \
+         $graph_dir data/test_${year}_hires $dir/decode_${lm_suffix}_${year}_spk || touch exp/nnet2_online/.error &
+    done
+  done
+  wait
+  [ -f exp/nnet2_online/.error ] && echo "$0: Error decoding" && exit 1;
+fi
+
+
 
 
 exit 0;

@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
     BaseFloatMatrixWriter ivector_writer(ivectors_wspecifier);
     
-
+    
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
@@ -98,12 +98,12 @@ int main(int argc, char *argv[]) {
           continue;
         }
         const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
-
+        
         OnlineMatrixFeature matrix_feature(feats);
 
         OnlineIvectorFeature ivector_feature(ivector_info,
                                              &matrix_feature);
-
+        
         ivector_feature.SetAdaptationState(adaptation_state);
 
         int32 T = feats.NumRows(),
@@ -130,9 +130,9 @@ int main(int argc, char *argv[]) {
                       << ", UBM loglike/frame was "
                       << ivector_feature.UbmLogLikePerFrame()
                       << ", iVector length (at utterance end) was "
-                      << ivectors.Row(n-1).Norm(2.0)
-                      << ", objf improvement from iVector estimation was "
-                      << tot_objf_impr;
+                      << ivectors.Row(num_ivectors-1).Norm(2.0)
+                      << ", objf improvement/frame from iVector estimation was "
+                      << ivector_feature.ObjfImprPerFrame();
 
         ivector_feature.GetAdaptationState(&adaptation_state);
         ivector_writer.Write(utt, ivectors);

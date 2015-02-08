@@ -1010,7 +1010,7 @@ void VectorBase<Real>::AddVec(const Real alpha, const VectorBase<OtherReal> &v) 
   MatrixIndexT dim = dim_;
   if (alpha != 1.0)
     for (MatrixIndexT i = 0; i < dim; i++)
-      data[i] += alpha*other_data[i];
+      data[i] += alpha * other_data[i];
   else
     for (MatrixIndexT i = 0; i < dim; i++)
       data[i] += other_data[i];

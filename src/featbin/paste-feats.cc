@@ -78,8 +78,8 @@ int main(int argc, char *argv[]) {
         "Usage: paste-feats <in-rspecifier1> <in-rspecifier2> [<in-rspecifier3> ...] <out-wspecifier>\n"
         " or: paste-feats <in-rxfilename1> <in-rxfilename2> [<in-rxfilename3> ...] <out-wxfilename>\n"
         " e.g. paste-feats ark:feats1.ark \"ark:select-feats 0-3 ark:feats2.ark ark:- |\" ark:feats-out.ark\n"
-        "  or: paste-feats foo.mat bar.mat baz.mat\n";
-    
+        "  or: paste-feats foo.mat bar.mat baz.mat\n"
+        "See also: copy-feats, copy-matrix, append-vector-to-feats, concat-feats\n";
     
     ParseOptions po(usage);
 

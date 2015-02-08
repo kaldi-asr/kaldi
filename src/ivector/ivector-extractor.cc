@@ -259,13 +259,13 @@ void IvectorExtractor::GetIvectorDistMean(
   for (int32 i = 0; i < I; i++) {
     double gamma = utt_stats.gamma_(i);
     if (gamma != 0.0) {
-      Vector<double> x(utt_stats.X_.Row(i)); // == \gamma(i) \m_i
+      SubVector<double> x(utt_stats.X_, i); // == \gamma(i) \m_i
       // next line: a += \gamma_i \M_i^T \Sigma_i^{-1} \m_i
       linear->AddMatVec(1.0, Sigma_inv_M_[i], kTrans, x, 1.0); 
     }
   }
   SubVector<double> q_vec(quadratic->Data(), IvectorDim()*(IvectorDim()+1)/2);
-  q_vec.AddMatVec(1.0, U_, kTrans, Vector<double>(utt_stats.gamma_), 1.0);
+  q_vec.AddMatVec(1.0, U_, kTrans, utt_stats.gamma_, 1.0);
 }
 
 void IvectorExtractor::GetIvectorDistPrior(
@@ -543,24 +543,55 @@ void OnlineIvectorEstimationStats::AccStats(
     quadratic_term_vec.AddVec(weight, U_g);
     tot_weight += weight;
   }
+  if (max_count_ != 0.0) {
+    // see comments in header RE max_count for explanation.
+    double old_num_frames = num_frames_,
+        new_num_frames = num_frames_ + tot_weight;
+    double old_prior_scale = std::max(old_num_frames, max_count_) / max_count_,
+        new_prior_scale = std::max(new_num_frames, max_count_) / max_count_;
+    // The prior_scales are the inverses of the scales we would put on the stats
+    // if we were implementing this by scaling the stats.  Instead we
+    // scale the prior term.
+    double prior_scale_change = new_prior_scale - old_prior_scale;
+    if (prior_scale_change != 0.0) {
+      linear_term_(0) += prior_offset_ * prior_scale_change;
+      quadratic_term_.AddToDiag(prior_scale_change);
+    }
+  }
+  
   num_frames_ += tot_weight;
 }
 
 void OnlineIvectorEstimationStats::Scale(double scale) {
   KALDI_ASSERT(scale >= 0.0 && scale <= 1.0);
+  double old_num_frames = num_frames_;
   num_frames_ *= scale;
   quadratic_term_.Scale(scale);
   linear_term_.Scale(scale);
 
   // Scale back up the prior term, by adding in whatever we scaled down.
-  linear_term_(0) += prior_offset_ * (1.0 - scale);
-  quadratic_term_.AddToDiag(1.0 - scale);
+  if (max_count_ == 0.0) {
+    linear_term_(0) += prior_offset_ * (1.0 - scale);
+    quadratic_term_.AddToDiag(1.0 - scale);
+  } else {
+    double new_num_frames = num_frames_;
+    double old_prior_scale =
+        scale * std::max(old_num_frames, max_count_) / max_count_,
+        new_prior_scale = std::max(new_num_frames, max_count_) / max_count_;
+    // old_prior_scale is the scale the prior term currently has in the stats,
+    // i.e. the previous scale times "scale" as we just scaled the stats.
+    // new_prior_scale is the scale we want the prior term to have.
+    linear_term_(0) += prior_offset_ * (new_prior_scale - old_prior_scale);
+    quadratic_term_.AddToDiag(new_prior_scale - old_prior_scale);
+  }
 }
 
 void OnlineIvectorEstimationStats::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<OnlineIvectorEstimationStats>");  // magic string.
+  WriteToken(os, binary, "<OnlineIvectorEstimationStats>");
   WriteToken(os, binary, "<PriorOffset>");
   WriteBasicType(os, binary, prior_offset_);
+  WriteToken(os, binary, "<MaxCount>");
+  WriteBasicType(os, binary, max_count_);
   WriteToken(os, binary, "<NumFrames>");
   WriteBasicType(os, binary, num_frames_);
   WriteToken(os, binary, "<QuadraticTerm>");
@@ -571,11 +602,20 @@ void OnlineIvectorEstimationStats::Write(std::ostream &os, bool binary) const {
 }
 
 void OnlineIvectorEstimationStats::Read(std::istream &is, bool binary) {
-  ExpectToken(is, binary, "<OnlineIvectorEstimationStats>");  // magic string.
+  ExpectToken(is, binary, "<OnlineIvectorEstimationStats>");
   ExpectToken(is, binary, "<PriorOffset>");
   ReadBasicType(is, binary, &prior_offset_);
-  ExpectToken(is, binary, "<NumFrames>");
-  ReadBasicType(is, binary, &num_frames_);
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<MaxCount>") {
+    ReadBasicType(is, binary, &max_count_);
+    ExpectToken(is, binary, "<NumFrames>");
+    ReadBasicType(is, binary, &num_frames_);
+  } else {
+    KALDI_ASSERT(tok == "<NumFrames>");
+    max_count_ = 0.0;
+    ReadBasicType(is, binary, &num_frames_);
+  }
   ExpectToken(is, binary, "<QuadraticTerm>");
   quadratic_term_.Read(is, binary);
   ExpectToken(is, binary, "<LinearTerm>");
@@ -638,8 +678,9 @@ double OnlineIvectorEstimationStats::DefaultObjf() const {
 }
 
 OnlineIvectorEstimationStats::OnlineIvectorEstimationStats(int32 ivector_dim,
-                                                           BaseFloat prior_offset):
-    prior_offset_(prior_offset), num_frames_(0.0),
+                                                           BaseFloat prior_offset,
+                                                           BaseFloat max_count):
+    prior_offset_(prior_offset), max_count_(max_count), num_frames_(0.0),
     quadratic_term_(ivector_dim), linear_term_(ivector_dim) {
   if (ivector_dim != 0) {
     linear_term_(0) += prior_offset;
@@ -650,6 +691,7 @@ OnlineIvectorEstimationStats::OnlineIvectorEstimationStats(int32 ivector_dim,
 OnlineIvectorEstimationStats::OnlineIvectorEstimationStats(
     const OnlineIvectorEstimationStats &other):
     prior_offset_(other.prior_offset_),
+    max_count_(other.max_count_),
     num_frames_(other.num_frames_),
     quadratic_term_(other.quadratic_term_),
     linear_term_(other.linear_term_) { }
@@ -733,6 +775,12 @@ void IvectorExtractorUtteranceStats::AccStats(
   }
 }
 
+void IvectorExtractorUtteranceStats::Scale(double scale) {
+  gamma_.Scale(scale);
+  X_.Scale(scale);
+  for (size_t i = 0; i < S_.size(); i++)
+    S_[i].Scale(scale);
+}
 
 IvectorExtractorStats::IvectorExtractorStats(
     const IvectorExtractor &extractor,
@@ -1534,6 +1582,7 @@ double EstimateIvectorsOnline(
     const IvectorExtractor &extractor,
     int32 ivector_period,
     int32 num_cg_iters,
+    BaseFloat max_count,
     Matrix<BaseFloat> *ivectors) {
   
   KALDI_ASSERT(ivector_period > 0);
@@ -1544,7 +1593,8 @@ double EstimateIvectorsOnline(
   ivectors->Resize(num_ivectors, extractor.IvectorDim());
 
   OnlineIvectorEstimationStats online_stats(extractor.IvectorDim(),
-                                            extractor.PriorOffset());
+                                            extractor.PriorOffset(),
+                                            max_count);
 
   double ans = 0.0;
   
