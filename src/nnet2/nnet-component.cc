@@ -2408,7 +2408,13 @@ void SumGroupComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<SumGroupComponent>", "<Sizes>");
   std::vector<int32> sizes;
   ReadIntegerVector(is, binary, &sizes);
-  ExpectToken(is, binary, "<SumGroupComponent>");
+
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (!(token == "<SumGroupComponent>" ||
+        token == "</SumGroupComponent>")) {
+    KALDI_ERR << "Expected </SumGroupComponent>, got " << token;
+  }
   this->Init(sizes);
 }
 
@@ -2431,7 +2437,7 @@ void SumGroupComponent::Write(std::ostream &os, bool binary) const {
   std::vector<int32> sizes;
   this->GetSizes(&sizes);
   WriteIntegerVector(os, binary, sizes);
-  WriteToken(os, binary, "<SumGroupComponent>");
+  WriteToken(os, binary, "</SumGroupComponent>");
 }
 
 void SumGroupComponent::Propagate(const ChunkInfo &in_info,

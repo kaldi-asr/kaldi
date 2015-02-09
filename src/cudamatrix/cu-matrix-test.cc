@@ -723,6 +723,51 @@ template<typename Real> static void UnitTestCuMatrixAddDiagVecMat() {
   }
 }
 
+template<typename Real> static void UnitTestCuMatrixAddMatDiagVec() {
+  // M <- alpha * N[^T] * diag(v) + beta * M
+  for (int p = 0; p < 2; p++) {
+    MatrixIndexT dimM = 100 + Rand() % 255, dimN = 100 + Rand() % 255;
+    Real alpha = 0.43243, beta = 1.423;
+
+    CuMatrix<Real> M(dimM, dimN), N(dimM, dimN), buf(dimM, dimN);
+    M.SetRandn(); 
+    N.SetRandn(); 
+    buf.CopyFromMat(N);
+    MatrixTransposeType trans = (p % 2 == 0 ? kNoTrans : kTrans);
+    if (trans == kTrans)
+      N.Transpose();
+
+    CuVector<Real> V(dimN);
+    V.SetRandn();
+
+    CuMatrix<Real> Mcheck(M); 
+    Mcheck.Scale(beta);
+    buf.MulColsVec(V);  
+    Mcheck.AddMat(alpha, buf, kNoTrans);
+
+    M.AddMatDiagVec(alpha, N, trans, V, beta);
+    AssertEqual(M, Mcheck);
+    KALDI_ASSERT(M.Sum() != 0.0);
+  }
+}
+
+template<typename Real> static void UnitTestCuMatrixAddMatMatElements() {
+  // M <- alpha *(A .* B) + beta * M
+  MatrixIndexT dimM = 100 + Rand() % 255, dimN = 100 + Rand() % 255;
+  Real alpha = 0.43243, beta = 1.423;
+  CuMatrix<Real> M(dimM, dimN), A(dimM, dimN), B(dimM, dimN), buf(dimM, dimN);
+  M.SetRandn();
+  A.SetRandn();
+  B.SetRandn();
+
+  CuMatrix<Real> Mcheck(M);
+  buf.CopyFromMat(A); buf.MulElements(B);
+  Mcheck.Scale(beta); Mcheck.AddMat(alpha, buf, kNoTrans);
+
+  M.AddMatMatElements(alpha, A, B, beta);
+  AssertEqual(M, Mcheck);
+  KALDI_ASSERT(M.Sum() != 0.0);
+}
 
 template<typename Real> 
 static void UnitTestCuMatrixDivRowsVec() {
@@ -2006,6 +2051,8 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestSwapCu2Cu<Real>();
   UnitTestSwapCu2M<Real>();
   UnitTestCuMatrixAddDiagVecMat<Real>();
+  UnitTestCuMatrixAddMatDiagVec<Real>();
+  UnitTestCuMatrixAddMatMatElements<Real>();
   UnitTestCuTanh<Real>();
   UnitTestCuCholesky<Real>();
   UnitTestCuDiffTanh<Real>();

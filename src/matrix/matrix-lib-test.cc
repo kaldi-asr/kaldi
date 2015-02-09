@@ -232,6 +232,51 @@ template<typename Real> static void UnitTestAddDiagVecMat() {
   }
 }
 
+template<typename Real> static void UnitTestAddMatDiagVec() {
+  // M <- alpha * N[^T] * diag(v) + beta * M
+  for (int p = 0; p < 2; p++) {
+    MatrixIndexT dimM = 100 + Rand() % 255, dimN = 100 + Rand() % 255;
+    Real alpha = 0.43243, beta = 1.423;
+
+    Matrix<Real> M(dimM, dimN), N(dimM, dimN), buf(dimM, dimN);
+    M.SetRandn(); 
+    N.SetRandn(); 
+    buf.CopyFromMat(N);
+    MatrixTransposeType trans = (p % 2 == 0 ? kNoTrans : kTrans);
+    if (trans == kTrans)
+      N.Transpose();
+
+    Vector<Real> V(dimN);
+    V.SetRandn();
+
+    Matrix<Real> Mcheck(M); 
+    Mcheck.Scale(beta);
+    buf.MulColsVec(V);  
+    Mcheck.AddMat(alpha, buf, kNoTrans);
+
+    M.AddMatDiagVec(alpha, N, trans, V, beta);
+    AssertEqual(M, Mcheck);
+    KALDI_ASSERT(M.Sum() != 0.0);
+  }
+}
+
+template<typename Real> static void UnitTestAddMatMatElements() {
+  // M <- alpha *(A .* B) + beta * M
+  MatrixIndexT dimM = 100 + Rand() % 255, dimN = 100 + Rand() % 255;
+  Real alpha = 0.43243, beta = 1.423;
+  Matrix<Real> M(dimM, dimN), A(dimM, dimN), B(dimM, dimN), buf(dimM, dimN);
+  M.SetRandn();
+  A.SetRandn();
+  B.SetRandn();
+
+  Matrix<Real> Mcheck(M);
+  buf.CopyFromMat(A); buf.MulElements(B);
+  Mcheck.Scale(beta); Mcheck.AddMat(alpha, buf, kNoTrans);
+
+  M.AddMatMatElements(alpha, A, B, beta);
+  AssertEqual(M, Mcheck);
+  KALDI_ASSERT(M.Sum() != 0.0);
+}
 
 template<typename Real> static void UnitTestAddSp() {
   for (MatrixIndexT i = 0;i< 10;i++) {
@@ -4398,6 +4443,8 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestTridiag<Real>();
   //  SlowMatMul<Real>();
   UnitTestAddDiagVecMat<Real>();
+  UnitTestAddMatDiagVec<Real>();
+  UnitTestAddMatMatElements<Real>();
   UnitTestAddToDiagMatrix<Real>();
   UnitTestAddToDiag<Real>();
   UnitTestMaxAbsEig<Real>();
