@@ -34,6 +34,13 @@ posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
                     # with the neural nets trained with these iVectors.
 compress=true       # If true, compress the iVectors stored on disk (it's lossy
                     # compression, as used for feature matrices).
+max_count=0         # The use of this option (e.g. --max-count 100) can make
+                    # iVectors more consistent for different lengths of
+                    # utterance, by scaling up the prior term when the
+                    # data-count exceeds this value.  The data-count is after
+                    # posterior-scaling, so assuming the posterior-scale is 0.1,
+                    # --max-count 100 starts having effect after 1000 frames, or
+                    # 10 seconds of data.
 
 # End configuration section.
 
@@ -95,6 +102,7 @@ echo "--num-gselect=$num_gselect"  >>$ieconf
 echo "--min-post=$min_post" >>$ieconf
 echo "--posterior-scale=$posterior_scale" >>$ieconf
 echo "--max-remembered-frames=1000" >>$ieconf # the default
+echo "--max-count=$max_count" >>$ieconf
 
 
 

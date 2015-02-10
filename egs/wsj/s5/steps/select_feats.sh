@@ -49,6 +49,12 @@ rm $data/feats.scp 2>/dev/null
 # use "name" as part of name of the archive.
 name=`basename $data`
 
+for j in $(seq $nj); do 
+  # the next command does nothing unless $mfccdir/storage/ exists, see
+  # utils/create_data_link.pl for more info.
+  utils/create_data_link.pl $ark_dir/pasted_$name.$j.ark
+done
+
 $cmd JOB=1:$nj $logdir/append.JOB.log \
    select-feats "$selector" scp:$data_in/split$nj/JOB/feats.scp ark:- \| \
    copy-feats --compress=$compress ark:- \

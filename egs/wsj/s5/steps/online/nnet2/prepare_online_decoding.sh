@@ -23,6 +23,12 @@ posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
 min_post=0.025 # Minimum posterior to use (posteriors below this are pruned out)
                # caution: you should use the same value in the online-estimation
                # code.
+max_count=100   # This max-count of 100 can make iVectors more consistent for
+                # different lengths of utterance, by scaling up the prior term
+                # when the data-count exceeds this value.  The data-count is
+                # after posterior-scaling, so assuming the posterior-scale is
+                # 0.1, --max-count 100 starts having effect after 1000 frames,
+                # or 10 seconds of data.
 iter=final
 # End configuration.
 
@@ -138,6 +144,7 @@ if [ ! -z "$iedir" ]; then
   echo "--min-post=$min_post" >>$ieconf
   echo "--posterior-scale=$posterior_scale" >>$ieconf # this is currently the default in the scripts.
   echo "--max-remembered-frames=1000" >>$ieconf # the default
+  echo "--max-count=$max_count" >>$ieconf
 fi
 
 if $add_pitch; then
