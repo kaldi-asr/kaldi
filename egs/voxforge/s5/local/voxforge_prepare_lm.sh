@@ -3,6 +3,8 @@
 # Copyright 2012 Vassil Panayotov
 # Apache 2.0
 
+. path.sh || exit 1
+
 echo "=== Building a language model ..."
 
 locdata=data/local
@@ -26,26 +28,26 @@ cut -f2- -d' ' < $locdata/train_trans.txt |\
    sed -e 's:[ ]\+: :g' |\
    sort -u > $loctmp/corpus.txt
 
-if [ ! -f "tools/mitlm-svn/bin/estimate-ngram" ]; then
-  echo "--- Downloading and compiling MITLM toolkit ..."
-  mkdir -p tools
-  command -v svn >/dev/null 2>&1 ||\
-    { echo "SVN client is needed but not found" ; exit 1; }
-  svn checkout -r103 http://mitlm.googlecode.com/svn/trunk/ tools/mitlm-svn
-  cd tools/mitlm-svn/
-  F77=gfortran ./autogen.sh
-  ./configure --prefix=`pwd`
-  make
-  make install
-  cd ../..
+
+loc=`which ngram-count`;
+if [ -z $loc ]; then
+  if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
+    sdir=$KALDI_ROOT/tools/srilm/bin/i686-m64 
+  else
+    sdir=$KALDI_ROOT/tools/srilm/bin/i686
+  fi
+  if [ -f $sdir/ngram-count ]; then
+    echo Using SRILM tools from $sdir
+    export PATH=$PATH:$sdir
+  else
+    echo You appear to not have SRILM tools installed, either on your path,
+    echo or installed in $sdir.  See tools/install_srilm.sh for installation
+    echo instructions.
+    exit 1
+  fi
 fi
 
-echo "--- Estimating the LM ..."
-if [ ! -f "tools/mitlm-svn/bin/estimate-ngram" ]; then
-  echo "estimate-ngram not found! MITLM compilation failed?";
-  exit 1;
-fi
-tools/mitlm-svn/bin/estimate-ngram -t $loctmp/corpus.txt -o $order \
- -write-vocab $locdata/vocab-full.txt -wl $locdata/lm.arpa
+ngram-count -order $order -write-vocab $locdata/vocab-full.txt -wbdiscount \
+  -text $loctmp/corpus.txt -lm $locdata/lm.arpa
 
 echo "*** Finished building the LM model!"

@@ -56,7 +56,7 @@ local/voxforge_map_anonymous.sh ${selected} || exit 1
 # Initial normalization of the data
 local/voxforge_data_prep.sh --nspk_test ${nspk_test} ${selected} || exit 1
 
-# Download MITLM and prepare an ARPA LM
+# Prepare ARPA LM and vocabulary using SRILM
 local/voxforge_prepare_lm.sh --order ${lm_order} || exit 1
 
 # Prepare the lexicon and various phone lists

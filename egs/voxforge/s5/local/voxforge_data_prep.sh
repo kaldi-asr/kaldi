@@ -47,7 +47,7 @@ fi
 
 utils/shuffle_list.pl <$loctmp/speakers_all.txt | head -n $nspk_test | sort -u >$loctmp/speakers_test.txt
 
-gawk 'NR==FNR{spk[$0]; next} !($0 in spk)' \
+awk 'NR==FNR{spk[$0]; next} !($0 in spk)' \
     $loctmp/speakers_test.txt $loctmp/speakers_all.txt |\
   sort -u > $loctmp/speakers_train.txt
 
@@ -55,14 +55,14 @@ wc -l $loctmp/speakers_all.txt
 wc -l $loctmp/speakers_{train,test}.txt
 
 # expand speaker names to their respective directories
-ls -d ${DATA}/*/ |\
+find ${DATA}/ -mindepth 1 -maxdepth 1 -type d |\
  while read d; do  basename $d; done |\
- gawk 'BEGIN {FS="-"} NR==FNR{arr[$1]; next;} ($1 in arr)' \
+ awk 'BEGIN {FS="-"} NR==FNR{arr[$1]; next;} ($1 in arr)' \
   $loctmp/speakers_test.txt - | sort > $loctmp/dir_test.txt
 
-ls -d ${DATA}/*/ |\
+find ${DATA}/ -mindepth 1 -maxdepth 1 -type d |\
  while read d; do  basename $d; done |\
- gawk 'BEGIN {FS="-"} NR==FNR{arr[$1]; next;} ($1 in arr)' \
+ awk 'BEGIN {FS="-"} NR==FNR{arr[$1]; next;} ($1 in arr)' \
   $loctmp/speakers_train.txt - | sort > $loctmp/dir_train.txt
 
 logdir=exp/data_prep
@@ -129,11 +129,11 @@ for s in test train; do
  done < $loctmp/dir_${s}.txt
 
  # filter out the audio for which there is no proper transcript
- gawk 'NR==FNR{trans[$1]; next} ($1 in trans)' FS=" " \
+ awk 'NR==FNR{trans[$1]; next} ($1 in trans)' FS=" " \
    ${loctmp}/${s}_trans.txt.unsorted ${loctmp}/${s}_wav.scp.unsorted |\
    sort -k1 > ${locdata}/${s}_wav.scp
  
- gawk 'NR==FNR{trans[$1]; next} ($1 in trans)' FS=" " \
+ awk 'NR==FNR{trans[$1]; next} ($1 in trans)' FS=" " \
    ${loctmp}/${s}_trans.txt.unsorted $loctmp/${s}.utt2spk.unsorted |\
    sort -k1 > ${locdata}/${s}.utt2spk
  
@@ -142,7 +142,7 @@ for s in test train; do
  echo "--- Preparing ${s}.spk2utt ..."
  cat $locdata/${s}_trans.txt |\
   cut -f1 -d' ' |\
-  gawk 'BEGIN {FS="-"}
+  awk 'BEGIN {FS="-"}
         {names[$1]=names[$1] " " $0;}
         END {for (k in names) {print k, names[k];}}' | sort -k1 > $locdata/${s}.spk2utt
 done;
@@ -153,7 +153,7 @@ if [ "${trans_err}" -ge 1 ]; then
   echo " Check ${logdir}/make_trans.log for details!" 
 fi
 
-gawk '{spk[$1]=$2;} END{for (s in spk) print s " " spk[s]}' \
+awk '{spk[$1]=$2;} END{for (s in spk) print s " " spk[s]}' \
   $locdata/spk2gender.tmp | sort -k1 > $locdata/spk2gender
 
 echo "*** Initial VoxForge data preparation finished!"
