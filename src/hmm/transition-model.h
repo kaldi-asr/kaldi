@@ -232,6 +232,7 @@ class TransitionModel {
   void InitStats(Vector<double> *stats) const { stats->Resize(NumTransitionIds()+1); }
 
   void Accumulate(BaseFloat prob, int32 trans_id, Vector<double> *stats) const {
+    KALDI_ASSERT(trans_id <= NumTransitionIds());
     (*stats)(trans_id) += prob;
     // This is trivial and doesn't require class members, but leaves us more open
     // to design changes than doing it manually.
