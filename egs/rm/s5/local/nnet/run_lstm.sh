@@ -43,9 +43,9 @@ if [ $stage -le 1 ]; then
 
   # Train
   $cuda_cmd $dir/log/train_nnet.log \
-    steps/nnet/train.sh --network-type lstm --learn-rate 0.00001 \
+    steps/nnet/train.sh --network-type lstm --learn-rate 0.0001 \
       --cmvn-opts "--norm-means=true --norm-vars=true" --feat-type plain --splice 0 \
-      --train-opts "--momentum 0.9 --halving-factor 0.8" \
+      --train-opts "--momentum 0.7 --halving-factor 0.8" \
       --train-tool "nnet-train-lstm-streams --num-stream=4 --targets-delay=5" \
     ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
 
