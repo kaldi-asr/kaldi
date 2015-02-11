@@ -78,7 +78,8 @@ if [ $stage -le 3 ]; then # create testing fbank data.
   featdir=`pwd`/mfcc
   fbank_conf=conf/fbank_40.conf
   for x in test_eval92 test_eval93 test_dev93; do 
-    cp -rT data/$x data/${x}_fbank
+    rm -r data/${x}_fbank
+    cp -r data/$x data/${x}_fbank
     rm -r ${x}_fbank/split* || true
     steps/make_fbank.sh --fbank-config "$fbank_conf" --nj 8 \
       --cmd "$train_cmd" data/${x}_fbank exp/make_fbank/$x $featdir  || exit 1;

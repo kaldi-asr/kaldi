@@ -53,7 +53,7 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
     if (invoc[w]) { printf("%s ",w); } else {
       printf("<RNN_UNK> ");
       if (unkprob[w] != 0) { logprob += log(unkprob[w]); }
-      else { print "Warning: unknown word ", w >"/dev/stderr"; logprob += log(1.0e-07); }}}
+      else { print "Warning: unknown word ", w | "cat 1>&2"; logprob += log(1.0e-07); }}}
     printf("\n"); print logprob > logprobs } ' > $tempdir/text.nounk
 
 # OK, now we compute the scores on the text with OOVs replaced

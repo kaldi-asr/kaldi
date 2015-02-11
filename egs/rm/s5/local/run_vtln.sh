@@ -11,7 +11,8 @@ set -e
 # train linear vtln
 steps/train_lvtln.sh --cmd "$train_cmd" 1800 9000 \
   data/train data/lang exp/tri2a exp/tri3d
-cp -rT data/train data/train_vtln
+mkdir -p data/train_vtln
+cp data/train/* data/train_vtln || true
 cp exp/tri3d/final.warp data/train_vtln/spk2warp
 steps/make_mfcc.sh --nj 8 --cmd "run.pl" data/train_vtln exp/make_mfcc/train_vtln $featdir  
 steps/compute_cmvn_stats.sh data/train_vtln exp/make_mfcc/train_vtln $featdir  
@@ -19,7 +20,8 @@ steps/compute_cmvn_stats.sh data/train_vtln exp/make_mfcc/train_vtln $featdir
 steps/decode_lvtln.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   exp/tri3d/graph data/test exp/tri3d/decode
 
-cp -rT data/test data/test_vtln
+mkdir -p data/test_vtln
+cp data/test/* data/test_vtln || true
 cp exp/tri3d/decode/final.warp data/test_vtln/spk2warp
 steps/make_mfcc.sh --nj 8 --cmd "run.pl" data/test_vtln exp/make_mfcc/test_vtln $featdir  
 steps/compute_cmvn_stats.sh data/test_vtln exp/make_mfcc/test_vtln $featdir  

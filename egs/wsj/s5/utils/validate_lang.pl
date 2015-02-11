@@ -778,7 +778,7 @@ if (-e "$lang/G.fst") {
 
   # Check that G.fst does not have cycles with only disambiguation symbols or
   # epsilons on the input, or the forbidden symbols <s> and </s>.
-  $cmd = ". ./path.sh; fstprint $lang/G.fst | awk -v disambig=$lang/phones/disambig.int -v words=$lang/words.txt 'BEGIN{while((getline<disambig)>0) is_disambig[$1]=1; is_disambig[0] = 1; while((getline<words)>0){ if(\$1==\"<s>\"||\$1==\"</s>\") is_forbidden[\$2]=1;}} {if(NF<3 || is_disambig[\$3]) print; else if(is_forbidden[\$3] || is_forbidden[\$4]) { print \"Error: line \" \$0 \" in G.fst contains forbidden symbol <s> or </s>\" >/dev/stderr; exit(1); }}' | fstcompile | fstinfo ";
+  $cmd = ". ./path.sh; fstprint $lang/G.fst | awk -v disambig=$lang/phones/disambig.int -v words=$lang/words.txt 'BEGIN{while((getline<disambig)>0) is_disambig[$1]=1; is_disambig[0] = 1; while((getline<words)>0){ if(\$1==\"<s>\"||\$1==\"</s>\") is_forbidden[\$2]=1;}} {if(NF<3 || is_disambig[\$3]) print; else if(is_forbidden[\$3] || is_forbidden[\$4]) { print \"Error: line \" \$0 \" in G.fst contains forbidden symbol <s> or </s>\" | \"cat 1>&2\"; exit(1); }}' | fstcompile | fstinfo ";
   $output = `$cmd`;
   if ($output !~ m/# of states\s+[1-9]/) { # fstinfo did not read a nonempty FST (there should be final probs at least)...
     print "--> ERROR: failure running command to check for disambig-sym loops [possibly G.fst " .

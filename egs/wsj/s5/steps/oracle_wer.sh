@@ -85,7 +85,7 @@ if [ $stage -le 1 ]; then
   # look for lines like: LOG (blah:blah.cc:95) Overall density is 153.3 over 164361 frames
   grep -w Overall $prunedir/log/lattice_depth.*.log | \
     awk -v nj=$nj '{num+=$6*$8; den+=$8; nl++} END{ 
-      if (nl != nj) { print "Error: expected " nj " lines, got " nl >"/dev/stderr"; }
+      if (nl != nj) { print "Error: expected " nj " lines, got " nl | "cat 1>&2"; }
       printf("%.2f ( %d / %d )\n", num/den, num, den); }' > $prunedir/depth || exit 1;
   echo -n "Depth is: "
   cat $prunedir/depth
@@ -103,7 +103,7 @@ if [ $stage -le 2 ]; then
   # look for lines like: LOG (blah:blah.cc:95) Overall %WER 25.6 [ 1243 / 6331, ... ]  
   grep -w Overall $prunedir/log/lattice_oracle.*.log | \
     awk -v nj=$nj '{num+=$7; den+=$9; ins+=$10; del+=$12; sb+=$14; nl++} END{ 
-      if (nl != nj) { print "Error: expected " nj " lines, got " nl >"/dev/stderr"; }
+      if (nl != nj) { print "Error: expected " nj " lines, got " nl | "cat 1>&2"; }
       printf("%.2f%% [ %d / %d, %d insertions, %d deletions, %d substitutions ]\n", (100.0 * num/den), num, den, ins, del, sb); }' > \
       $prunedir/oracle_wer || exit 1;
   echo -n "Oracle WER is: "

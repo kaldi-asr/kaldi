@@ -8,7 +8,8 @@ mkdir -p data/lang_test_fsh
 arpa_lm=data/local/lm/3gram-mincount/lm_unpruned.gz
 [ ! -f $arpa_lm ] && echo No such file $arpa_lm && exit 1;
 
-cp -rT data/lang data/lang_test_fsh
+mkdir -p data/lang_test_fsh
+cp -r data/lang/* data/lang_test_fsh
 
 # grep -v '<s> <s>' etc. is only for future-proofing this script.  Our
 # LM doesn't have these "invalid combinations".  These can cause 

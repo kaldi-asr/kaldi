@@ -116,7 +116,8 @@ fi
 
 if [ $stage -le 3 ]; then
   echo "$0: combining activations across jobs"
-  cp -rT $data $dir/data
+  mkdir -p $dir/data
+  cp -r $data/* $dir/data
   for j in $(seq $nj); do cat $dir/feats/feats.$j.scp; done >$dir/data/feats.scp || exit 1;
 fi
 

@@ -12,7 +12,8 @@ logdet_scale=0.0
 steps/train_lvtln.sh --cmd "$train_cmd" \
   --logdet-scale $logdet_scale $num_leaves $num_gauss \
   data/train_30k_nodup data/lang exp/tri2 exp/tri2c || exit 1
-cp -rT data/train_30k_nodup data/train_30k_nodup_vtln || exit 1
+mkdir -p data/train_30k_nodup_vtln
+cp data/train_30k_nodup/* data/train_30k_nodup_vtln
 cp exp/tri2c/final.warp data/train_30k_nodup_vtln/spk2warp || exit 1
 steps/make_mfcc.sh --compress true --nj 20 --cmd "$train_cmd" data/train_30k_nodup_vtln exp/make_mfcc/train_30k_nodup_vtln ${featdir} || exit 1
 steps/compute_cmvn_stats.sh data/train_30k_nodup_vtln exp/make_mfcc/train_30k_nodup_vtln ${featdir} || exit 1
@@ -22,7 +23,8 @@ utils/mkgraph.sh data/lang_sw1_tg exp/tri2c exp/tri2c/graph_sw1_tg || exit 1
 steps/decode_lvtln.sh --config conf/decode.config --nj 30 --cmd "$decode_cmd" --logdet-scale $logdet_scale \
   exp/tri2c/graph_sw1_tg data/eval2000 exp/tri2c/decode_eval2000_sw1_tg || exit 1
 
-cp -rT data/eval2000 data/eval2000_vtln || exit 1
+mkdir -p data/eval2000_vtln
+cp data/eval2000/* data/eval2000_vtln
 cp exp/tri2c/decode_eval2000_sw1_tg/final.warp data/eval2000_vtln/spk2warp || exit 1
 steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 data/eval2000_vtln exp/make_mfcc/eval2000_vtln ${featdir} || exit 1
 steps/compute_cmvn_stats.sh data/eval2000_vtln exp/make_mfcc/eval2000_vtln ${featdir} || exit 1
@@ -30,7 +32,8 @@ utils/fix_data_dir.sh data/eval2000_vtln  || exit 1 # remove segments with probl
 
 steps/align_lvtln.sh --nj 30 --cmd "$train_cmd" --logdet-scale $logdet_scale \
   data/train_100k_nodup data/lang exp/tri2c exp/tri2c_ali_100k_nodup || exit 1
-cp -rT data/train_100k_nodup data/train_100k_nodup_vtln || exit 1
+mkdir data/train_100k_nodup_vtln
+cp data/train_100k_nodup/* data/train_100k_nodup_vtln
 cp exp/tri2c_ali_100k_nodup/final.warp data/train_100k_nodup_vtln/spk2warp || exit 1
 
 steps/train_lda_mllt.sh --cmd "$train_cmd" \

@@ -71,7 +71,8 @@ cp $nnet_src/tree $dir/ || exit 1;
 
 # There are a bunch of files that we will need to copy from $online_src, because
 # we're aiming to have one self-contained directory that has everything in it.
-cp -rT $online_src/ivector_extractor/ $dir/ivector_extractor
+mkdir -p $dir/ivector_extractor
+cp -r $online_src/ivector_extractor/* $dir/ivector_extractor
 
 [ ! -d $online_src/conf ] && \
   echo "Expected directory $online_src/conf to exist" && exit 1;

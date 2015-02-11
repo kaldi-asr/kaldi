@@ -39,7 +39,8 @@ echo Preparing language models for test
 for lm_suffix in bg tgpr tg bg_5k tgpr_5k tg_5k; do
   test=data/lang_test_${lm_suffix}
 
-  cp -rT data/lang $test || exit 1;
+  mkdir -p $test
+  cp -r data/lang/* $test || exit 1;
 
   gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
    utils/find_arpa_oovs.pl $test/words.txt  > $tmpdir/oovs_${lm_suffix}.txt

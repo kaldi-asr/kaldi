@@ -242,11 +242,11 @@ cat $tmpdir/lexiconp.txt | awk '{print $1}' | sort | uniq  | awk '
   } 
   {
     if ($1 == "<s>") {
-      print "<s> is in the vocabulary!" > "/dev/stderr"
+      print "<s> is in the vocabulary!" | "cat 1>&2"
       exit 1;
     }
     if ($1 == "</s>") {
-      print "</s> is in the vocabulary!" > "/dev/stderr"
+      print "</s> is in the vocabulary!" | "cat 1>&2"
       exit 1;
     }
     printf("%s %d\n", $1, NR);

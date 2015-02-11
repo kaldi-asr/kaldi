@@ -6,24 +6,24 @@ num_leaves=2500
 num_gauss=15000
 
 
-if false; then #TEMP
 # train linear vtln
 steps/train_lvtln.sh --cmd "$train_cmd" $num_leaves $num_gauss \
   data/train_si84 data/lang exp/tri2a exp/tri2c || exit 1
-cp -rT data/train_si84 data/train_si84_vtln || exit 1
+mkdir -p data/train_si84_vtln
+cp -r data/train_si84/* data/train_si84_vtln || exit 1
 cp exp/tri2c/final.warp data/train_si84_vtln/spk2warp || exit 1
 
 utils/mkgraph.sh data/lang_test_bg_5k exp/tri2c exp/tri2c/graph_bg_5k || exit 1;
 utils/mkgraph.sh data/lang_test_tgpr exp/tri2c exp/tri2c/graph_tgpr || exit 1;
 
-fi #TEMP
 
 for t in eval93 dev93 eval92; do 
   nj=10
   [ $t == eval92 ] && nj=8
   steps/decode_lvtln.sh --nj $nj --cmd "$decode_cmd" \
     exp/tri2c/graph_bg_5k data/test_$t exp/tri2c/decode_${t}_bg_5k || exit 1
-  cp -rT data/test_$t data/test_${t}_vtln || exit 1
+  mkdir -p data/test_${t}_vtln
+  cp -r data/test_$t/* data/test_${t}_vtln || exit 1
   cp exp/tri2c/decode_${t}_bg_5k/final.warp data/test_${t}_vtln/spk2warp || exit 1
 done
 

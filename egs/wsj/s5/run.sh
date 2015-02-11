@@ -318,7 +318,8 @@ steps/train_quick.sh --cmd "$train_cmd" \
 
 ( # run decoding with larger dictionary and pron-probs.  Need to get dict with
   # pron-probs first.  [This seems to help by about 0.1% absolute in general.]
-  cp -rT data/local/dict_larger data/local/dict_larger_pp
+  mkdir -p data/local/dict_larger_pp
+  cp -r data/local/dict_larger/* data/local/dict_larger_pp
   rm -r data/local/dict_larger_pp/{b,f,*.gz,lexicon.txt}
   steps/get_lexicon_probs.sh data/train_si284 data/lang exp/tri4b data/local/dict_larger/lexicon.txt \
     exp/tri4b_lexprobs data/local/dict_larger_pp/lexiconp.txt || exit 1;
@@ -326,7 +327,8 @@ steps/train_quick.sh --cmd "$train_cmd" \
     data/local/dict_larger_pp "<SPOKEN_NOISE>" data/dict_larger/tmp data/lang_bd_pp
   cmp data/lang_bd/words.txt data/lang_bd_pp/words.txt || exit 1;
   for suffix in tg tgpr fg; do
-    cp -rT data/lang_bd_pp data/lang_test_bd_pp_${suffix}
+    mkdir -p data/lang_test_bd_pp_${suffix}
+    cp -r data/lang_bd_pp/* data/lang_test_bd_pp_${suffix}
     cp data/lang_test_bd_${suffix}/G.fst data/lang_test_bd_pp_${suffix}/G.fst || exit 1;
   done
   utils/mkgraph.sh data/lang_test_bd_pp_tgpr exp/tri4b exp/tri4b/graph_bd_pp_tgpr || exit 1;

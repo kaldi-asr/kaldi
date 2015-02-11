@@ -12,12 +12,22 @@
 #export cuda_cmd=run.pl
 
 
-#b) BUT cluster options
-queue="all.q@@blade,all.q@@speech,all.q@dellgpu*,all.q@supergpu*"
-export train_cmd="queue.pl -q $queue -l ram_free=2500M,mem_free=2500M,matylda5=0.5"
-export decode_cmd="queue.pl -q $queue -l ram_free=3000M,mem_free=3000M,matylda5=0.1"
-export mkgraph_cmd="queue.pl -q $queue -l ram_free=4G,mem_free=4G,matylda5=3"
-export cuda_cmd="queue.pl -q long.q@pcspeech-gpu,long.q@dellgpu1,long.q@pcgpu*,long.q@supergpu1 -l gpu=1" 
+if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
+  export train_cmd="queue.pl -l arch=*64*"
+  export decode_cmd="queue.pl -l arch=*64*,ram_free=3G,mem_free=3G"
+  export mkgraph_cmd="queue.pl -l arch=*64*,ram_free=4G,mem_free=4G"
+  export cuda_cmd="queue.pl -l gpu=1"
+elif [[ $(hostname -f) == *.fit.vutbr.cz ]]; then
+  #b) BUT cluster options
+  queue="all.q@@blade,all.q@@speech,all.q@dellgpu*,all.q@supergpu*"
+  export train_cmd="queue.pl -q $queue -l ram_free=2500M,mem_free=2500M,matylda5=0.5"
+  export decode_cmd="queue.pl -q $queue -l ram_free=3000M,mem_free=3000M,matylda5=0.1"
+  export mkgraph_cmd="queue.pl -q $queue -l ram_free=4G,mem_free=4G,matylda5=3"
+  export cuda_cmd="queue.pl -q long.q@pcspeech-gpu,long.q@dellgpu1,long.q@pcgpu*,long.q@supergpu1 -l gpu=1" 
+else
+  echo "$0: you need to define options for your cluster."
+  exit 1;
+fi
 
 #c) run locally...
 #export train_cmd=run.pl

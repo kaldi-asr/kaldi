@@ -10,8 +10,8 @@ tmpdir=data/local/tmp
 
 . ./path.sh || exit 1; # for KALDI_ROOT
 
-
-cp -rT data/lang data/lang_ug
+mkdir -p data/lang_ug
+cp -r data/lang/* data/lang_ug
 rm -rf data/lang_ug/tmp
 
 cat data/train/text  | \

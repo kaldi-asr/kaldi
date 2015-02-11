@@ -30,7 +30,8 @@ steps/make_phone_graph.sh data/lang exp/tri3b_ali_all exp/tri4b_seg || exit 1;
 mkdir -p data_reseg
 
 for data in train eval2000; do
-  cp -rT data/${data} data_reseg/${data}_orig; rm -r data_reseg/${data}_orig/split*
+  mkdir -p data_reseg/${data}_orig
+  cp data/${data}/* data_reseg/${data}_orig || true
   for f in text utt2spk spk2utt feats.scp cmvn.scp segments; do rm data_reseg/${data}_orig/$f; done
   cat data_reseg/${data}_orig/wav.scp  | awk '{print $1, $1;}' | \
     tee data_reseg/${data}_orig/spk2utt > data_reseg/${data}_orig/utt2spk

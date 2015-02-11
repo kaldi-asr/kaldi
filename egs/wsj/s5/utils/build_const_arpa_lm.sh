@@ -30,7 +30,8 @@ new_lang=$3
 
 mkdir -p $new_lang
 
-cp -rT $old_lang $new_lang
+mkdir -p $new_lang
+cp -r $old_lang/* $new_lang
 
 
 unk=`cat $new_lang/oov.int`

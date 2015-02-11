@@ -54,8 +54,8 @@ if [ $stage -le 3 ]; then
   fbank_conf=conf/fbank_40.conf
   echo "--num-mel-bins=40" > $fbank_conf
   for x in test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92 train; do
-    cp -rT data/$x data/${x}_fbank
-    rm -r ${x}_fbank/split* || true
+    mkdir -p data/${x}_fbank
+    cp data/$x/* data/${x}_fbank || true
     steps/make_fbank.sh --fbank-config "$fbank_conf" --nj 8 \
       --cmd "run.pl" data/${x}_fbank exp/make_fbank/$x $featdir  || exit 1;
     steps/compute_cmvn_stats.sh data/${x}_fbank exp/make_fbank/$x $featdir  || exit 1;

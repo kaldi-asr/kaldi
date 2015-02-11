@@ -11,7 +11,8 @@ steps/train_raw_sat.sh --cmd "$train_cmd" \
 mfccdir=mfcc
 for x in test_eval92 test_eval93 test_dev93 ; do
   y=${x}_utt
-  cp -rT data/$x data/$y
+  mkdir -p data/$y
+  cp -r data/$x/* data/$y
   cat data/$x/utt2spk | awk '{print $1, $1;}' > data/$y/utt2spk;
   cp data/$y/utt2spk data/$y/spk2utt;
   steps/compute_cmvn_stats.sh data/$y exp/make_mfcc/$y $mfccdir || exit 1; 

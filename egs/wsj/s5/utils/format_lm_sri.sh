@@ -81,7 +81,8 @@ echo "Converting '$lm' to FST"
 tmpdir=$(mktemp -d kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT
 
-cp -rT $lang_dir $out_dir || exit 1;
+mkdir -p $out_dir
+cp -r $lang_dir/* $out_dir || exit 1;
 
 lm_base=$(basename $lm '.gz')
 gunzip -c $lm | utils/find_arpa_oovs.pl $out_dir/words.txt \

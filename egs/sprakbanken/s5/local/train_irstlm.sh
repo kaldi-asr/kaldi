@@ -49,9 +49,9 @@ wait
 
 
 test=data/lang_test_${lm_suffix}
-mkdir -p $test
 
-cp -rT $srcdir $test
+mkdir -p $test
+cp -r $srcdir/* $test
 
 cat $lmdir/train${ngram}.arpa | \
   utils/find_arpa_oovs.pl $test/words.txt  > $lmdir/oovs_${lm_suffix}.txt

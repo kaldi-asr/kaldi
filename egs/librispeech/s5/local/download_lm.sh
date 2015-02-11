@@ -33,7 +33,10 @@ function check_and_download () {
   echo "Downloading file '$fname' into '$dst_dir'..."
   expect_size="${sizes["$fname"]}"
   if [[ -s $dst_dir/$fname ]]; then
-    fsize=$(du -b $dst_dir/$fname | awk '{print $1}')
+    # In the following statement, the first version works on linux, and the part
+    # after '||' works on Linux.
+    f=$dst_dir/$fname
+    fsize=$(set -o pipefail; du -b $f 2>/dev/null | awk '{print $1}' || stat '-f %z' $f)
     if [[ "$fsize" -eq "$expect_size" ]]; then
       echo "'$fname' already exists and appears to be complete"
       return 0
@@ -45,7 +48,10 @@ function check_and_download () {
     echo "Error while trying to download $fname!"
     return 1
   }
-  fsize=$(du -b $dst_dir/$fname | awk '{print $1}')
+  f=$dst_dir/$fname
+  # In the following statement, the first version works on linux, and the part after '||'
+  # works on Linux.
+  fsize=$(set -o pipefail; du -b $f 2>/dev/null | awk '{print $1}' || stat '-f %z' $f)
   [[ "$fsize" -eq "$expect_size" ]] || { echo "$fname: file size mismatch!"; return 1; }
   return 0
 }

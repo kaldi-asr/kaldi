@@ -56,7 +56,8 @@ num_jobs_align=$(cat $alidir/num_jobs) || exit 1;
 
 mkdir -p $dir/log
 
-cp -rT $egs_in_dir/info  $dir/info
+mkdir -p $dir/info
+cp -r $egs_in_dir/info/*  $dir/info
 
 alignments=`eval echo $alidir/ali.{$(seq -s ',' $num_jobs_align)}.gz`
 

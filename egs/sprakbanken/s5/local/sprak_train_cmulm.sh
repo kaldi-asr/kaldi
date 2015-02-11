@@ -49,8 +49,7 @@ idngram2lm -linear -idngram $lmdir/sprak.idngram -vocab \
 
 test=data/lang_test_${lm_suffix}
 mkdir -p $test
-
-cp -rT  data/lang $test
+cp -r data/lang/* $test
 
 cat $lmdir/sprak.arpa | \
 utils/find_arpa_oovs.pl $test/words.txt  > $lmdir/oovs_${lm_suffix}.txt

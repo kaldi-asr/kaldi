@@ -47,7 +47,8 @@ for lm_suffix in tgsmall tgmed; do
   # tglarge is prepared by a separate command, called from run.sh; we don't
   # want to compile G.fst for tglarge, as it takes a while.
   test=${src_dir}_test_${lm_suffix}
-  cp -rT ${src_dir} $test
+  mkdir -p $test
+  cp -r ${src_dir}/* $test
   gunzip -c $lm_dir/lm_${lm_suffix}.arpa.gz |\
    utils/find_arpa_oovs.pl $test/words.txt  > $tmpdir/oovs_${lm_suffix}.txt || exit 1
 

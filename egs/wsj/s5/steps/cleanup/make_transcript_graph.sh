@@ -106,7 +106,8 @@ while read line; do
 done < $text
 
 # Copies files from lang directory.
-cp -rT $lang $graph_dir
+mkdir -p $graph_dir
+cp -r $lang/* $graph_dir
 
 am-info --print-args=false $model_dir/final.mdl |\
  grep pdfs | awk '{print $NF}' > $graph_dir/num_pdfs
