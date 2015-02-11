@@ -234,6 +234,7 @@ public:
           // Karel: we just got number of streams! (before the 1st batch comes)
           nstream_ = stream_reset_flag.size(); 
           prev_nnet_state_.Resize(nstream_, 7*ncell_ + 1*nrecur_, kSetZero);
+          KALDI_LOG << "Running training with " << nstream_ << " streams.";
         }
         // reset flag: 1 - reset stream network state
         KALDI_ASSERT(prev_nnet_state_.NumRows() == stream_reset_flag.size());
@@ -247,10 +248,14 @@ public:
     void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
         int DEBUG = 0;
 
+        static bool do_stream_reset = false;
         if (nstream_ == 0) {
+          do_stream_reset = true;
           nstream_ = 1; // Karel: we are in nnet-forward, so 1 stream,
           prev_nnet_state_.Resize(nstream_, 7*ncell_ + 1*nrecur_, kSetZero);
+          KALDI_LOG << "Running nnet-forward with per-utterance LSTM-state reset";
         }
+        if (do_stream_reset) prev_nnet_state_.SetZero();
         KALDI_ASSERT(nstream_ > 0);
 
         KALDI_ASSERT(in.NumRows() % nstream_ == 0);

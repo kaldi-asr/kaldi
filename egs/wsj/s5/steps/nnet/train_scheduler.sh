@@ -19,7 +19,7 @@ randomizer_seed=777
 feature_transform=
 # learn rate scheduling
 max_iters=20
-min_iters= # keep training, disable weight rejection, start learn-rate halving as usual,
+min_iters=0 # keep training, disable weight rejection, start learn-rate halving as usual,
 keep_lr_iters=0 # fix learning rate for N initial epochs,
 #start_halving_inc=0.5
 #end_halving_inc=0.1
@@ -147,11 +147,9 @@ for iter in $(seq -w $max_iters); do
   # stopping criterion
   rel_impr=$(bc <<< "scale=10; ($loss_prev-$loss)/$loss_prev")
   if [ 1 == $halving -a 1 == $(bc <<< "$rel_impr < $end_halving_impr") ]; then
-    if [[ "$min_iters" != "" ]]; then
-      if [ $min_iters -gt $iter ]; then
-        echo we were supposed to finish, but we continue as min_iters : $min_iters
-        continue
-      fi
+    if [ $iter -le $min_iters ]; then
+      echo we were supposed to finish, but we continue as min_iters : $min_iters
+      continue
     fi
     echo finished, too small rel. improvement $rel_impr
     break
