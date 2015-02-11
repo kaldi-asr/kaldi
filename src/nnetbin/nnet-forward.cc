@@ -54,6 +54,9 @@ int main(int argc, char *argv[]) {
     std::string use_gpu="no";
     po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
 
+    int32 time_shift = 0;
+    po.Register("time-shift", &time_shift, "LSTM : repeat last input frame N-times, discrad N initial output frames."); 
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -123,7 +126,7 @@ int main(int argc, char *argv[]) {
     // iterate over all feature files
     for (; !feature_reader.Done(); feature_reader.Next()) {
       // read
-      const Matrix<BaseFloat> &mat = feature_reader.Value();
+      Matrix<BaseFloat> mat = feature_reader.Value();
       KALDI_VLOG(2) << "Processing utterance " << num_done+1 
                     << ", " << feature_reader.Key() 
                     << ", " << mat.NumRows() << "frm";
@@ -132,6 +135,15 @@ int main(int argc, char *argv[]) {
       BaseFloat sum = mat.Sum();
       if (!KALDI_ISFINITE(sum)) {
         KALDI_ERR << "NaN or inf found in features of " << feature_reader.Key();
+      }
+
+      // time-shift, copy the last frame of LSTM input N-times,
+      if (time_shift > 0) {
+        int32 last_row = mat.NumRows() - 1; // last row,
+        mat.Resize(mat.NumRows() + time_shift, mat.NumCols(), kCopyData);
+        for (int32 r = last_row+1; r<mat.NumRows(); r++) {
+          mat.CopyRowFromVec(mat.Row(last_row), r); // copy last row,
+        }
       }
       
       // push it to gpu
@@ -150,11 +162,17 @@ int main(int argc, char *argv[]) {
         pdf_prior.SubtractOnLogpost(&nnet_out);
       }
      
-      //download from GPU
+      // download from GPU
       nnet_out_host.Resize(nnet_out.NumRows(), nnet_out.NumCols());
       nnet_out.CopyToMat(&nnet_out_host);
 
-      //check for NaN/inf
+      // time-shift, remove N first frames of LSTM output,
+      if (time_shift > 0) {
+        Matrix<BaseFloat> tmp(nnet_out_host);
+        nnet_out_host = tmp.RowRange(time_shift, tmp.NumRows() - time_shift);
+      }
+
+      // check for NaN/inf
       for (int32 r = 0; r < nnet_out_host.NumRows(); r++) {
         for (int32 c = 0; c < nnet_out_host.NumCols(); c++) {
           BaseFloat val = nnet_out_host(r,c);

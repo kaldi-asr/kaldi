@@ -19,8 +19,8 @@ randomizer_seed=777
 feature_transform=
 # learn rate scheduling
 max_iters=20
-min_iters=
-keep_lr_iters=0
+min_iters= # keep training, disable weight rejection, start learn-rate halving as usual,
+keep_lr_iters=0 # fix learning rate for N initial epochs,
 #start_halving_inc=0.5
 #end_halving_inc=0.1
 start_halving_impr=0.01
@@ -124,9 +124,10 @@ for iter in $(seq -w $max_iters); do
 
   # accept or reject new parameters (based on objective function)
   loss_prev=$loss
-  if [ 1 == $(bc <<< "$loss_new < $loss") -o $iter -le $keep_lr_iters ]; then
+  if [ 1 == $(bc <<< "$loss_new < $loss") -o $iter -le $keep_lr_iters -o $iter -le $min_iters ]; then
     loss=$loss_new
     mlp_best=$dir/nnet/${mlp_base}_iter${iter}_learnrate${learn_rate}_tr$(printf "%.4f" $tr_loss)_cv$(printf "%.4f" $loss_new)
+    [ $iter -le $min_iters ] && mlp_best=${mlp_best}_min-iters-$min_iters
     [ $iter -le $keep_lr_iters ] && mlp_best=${mlp_best}_keep-lr-iters-$keep_lr_iters
     mv $mlp_next $mlp_best
     echo "nnet accepted ($(basename $mlp_best))"

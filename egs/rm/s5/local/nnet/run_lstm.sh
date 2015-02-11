@@ -53,7 +53,8 @@ if [ $stage -le 1 ]; then
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph $dev $dir/decode || exit 1;
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
-    $gmm/graph_ug $dev $dir/decode_ug || exit 1;
+    --nnet-forward-opts "--no-softmax=true --prior-scale=1.0 --time-shift=5" \
+    $gmm/graph $dev $dir/decode_time-shift5 || exit 1;
 fi
 
 # TODO : sequence training,
