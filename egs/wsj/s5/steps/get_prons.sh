@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright  2014  Johns Hopkins University (Author: Daniel Povey)
+#            2014  Guoguo Chen
 # Apache 2.0
 
 # Begin configuration section.  
@@ -110,7 +111,65 @@ if [ $stage -le 4 ]; then
   fi
 fi
 
-echo "$0: done writing prons to $dir/prons.*.gz, counts in $dir/pron_counts.{int,txt}"
+if [ $stage -le 5 ]; then
+  # Here we figure the count of silence before and after words (actually prons)
+  # 1. Create a text like file, but instead of putting words, we write
+  #    "word pron" pairs. We change the format of prons.*.gz from pron-per-line
+  #    to utterance-per-line (with "word pron" pairs tab-separated), and add
+  #    <s> and </s> at the begin and end of each sentence. The _B, _I, _S, _E
+  #    markers are removed from phones.
+  gunzip -c $dir/prons.*.gz | utils/int2sym.pl -f 4 $lang/words.txt | \
+    utils/int2sym.pl -f 5- $lang/phones.txt | cut -d ' ' -f 1,4- | awk '
+    BEGIN { utter_id = ""; }
+    {
+      if (utter_id == "") { utter_id = $1; printf("%s\t<s>", utter_id); }
+      else if (utter_id != $1) {
+        printf "\t</s>\n"; utter_id = $1; printf("%s\t<s>", utter_id);
+      }
+      printf("\t%s", $2);
+      for (n = 3; n <= NF; n++) { sub("_[BISE]$", "", $n); printf(" %s", $n); }
+    }
+    END { printf "\t</s>\n"; }' > $dir/pron_perutt_nowb.txt
+
+  # 2. Collect bigram counts for silence and words. the count file has 4 fields
+  #    for counts, followed by the "word pron" pair. All fields are separated by
+  #    spaces:
+  #    <sil-before-count> <nonsil-before-count> <sil-after-count> <nonsil-after-count> <word> <phone1> <phone2 >...
+  cat $dir/pron_perutt_nowb.txt | cut -f 2- | perl -e '
+    %sil_wpron = (); %nonsil_wpron = (); %wpron_sil = (); %wpron_nonsil = ();
+    %words = ();
+    while (<STDIN>) {
+      chomp;
+      @col = split(/[\t]+/, $_); @col >= 2 || die "'$0': bad line \"$_\"\n";
+      for ($n = 0; $n < @col - 1; $n++) {
+        # First word is not silence, collect the wpron_sil and wpron_nonsil
+        # stats.
+        if ($col[$n] !~ m/^<eps> /) {
+          if ($col[$n + 1] =~ m/^<eps> /) { $wpron_sil{$col[$n]} += 1; }
+          else { $wpron_nonsil{$col[$n]} += 1; }
+          $words{$col[$n]} = 1;
+        }
+        # Second word is not silence, collect the sil_wpron and nonsil_wpron
+        # stats.
+        if ($col[$n + 1] !~ m/^<eps> /) {
+          if ($col[$n] =~ m/^<eps> /) { $sil_wpron{$col[$n + 1]} += 1; }
+          else { $nonsil_wpron{$col[$n + 1]} += 1; }
+          $words{$col[$n + 1]} = 1;
+        }
+      }
+    }
+    foreach $wpron (sort keys %words) {
+      $sil_wpron{$wpron} += 0; $nonsil_wpron{$wpron} += 0;
+      $wpron_sil{$wpron} += 0; $wpron_nonsil{$wpron} += 0;;
+      print "$sil_wpron{$wpron} $nonsil_wpron{$wpron} ";
+      print "$wpron_sil{$wpron} $wpron_nonsil{$wpron} $wpron\n";
+    }
+  '> $dir/sil_counts_nowb.txt
+fi
+
+echo "$0: done writing prons to $dir/prons.*.gz, silence counts in "
+echo "$0: $dir/sil_counts_nowb.txt and pronunciation counts in "
+echo "$0: $dir/pron_counts.{int,txt}"
 if [ -f $lang/phones/word_boundary.int ]; then
   echo "$0: ... and also in $dir/pron_counts_nowb.txt"
 fi

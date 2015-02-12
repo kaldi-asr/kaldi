@@ -411,6 +411,7 @@ while [ $x -lt $num_iters ]; do
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet-compute-prob $dir/$x.mdl ark:$cur_egs_dir/train_diagnostic.egs &
     if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
+      [ ! -f $x.mdl ] && sleep 10; 
       $cmd $dir/log/progress.$x.log \
         nnet-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl \
         ark:$cur_egs_dir/train_diagnostic.egs '&&' \

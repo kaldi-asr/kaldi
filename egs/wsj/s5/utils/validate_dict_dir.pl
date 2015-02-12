@@ -87,13 +87,13 @@ while(<NS>) {
     print "--> ERROR: last line '$_' of $dict/nonsilence_phones.txt does not end in newline.\n";
     set_to_fail();
   }
-  my @row = split(" ", $_);
-  if (@row == 0) {
+  my @col = split(" ", $_);
+  if (@col == 0) {
     set_to_fail(); 
     print "--> ERROR: empty line in $dict/nonsilence_phones.txt (line $idx)\n"; 
   }
-  foreach(0 .. @row-1) {
-    my $p = $row[$_];
+  foreach(0 .. @col-1) {
+    my $p = $col[$_];
     if($nonsilence{$p}) {set_to_fail(); print "--> ERROR: phone \"$p\" duplicates in $dict/nonsilence_phones.txt (line $idx)\n"; }
     else {$nonsilence{$p} = 1;}
     if ($p =~ m/_$/ || $p =~ m/#/ || $p =~ m/_[BESI]$/){
@@ -130,114 +130,136 @@ print "\n";
 
 
 sub check_lexicon {
-  my ($lexfn, $pron_probs) = @_;
-  print "Checking $lexfn\n";
+  my ($lex, $num_prob_cols) = @_;
+  print "Checking $lex\n";
+  !open(L, "<$lex") && print "--> ERROR: fail to open $lex\n" && set_to_fail();
   my %seen_line = {};
-  if(-z "$lexfn") {set_to_fail(); print "--> ERROR: $lexfn is empty or does not exist\n";}
-  if(!open(L, "<$lexfn")) {set_to_fail(); print "--> ERROR: fail to open $lexfn\n";}
-  $idx = 1;
-  $success = 1;
-  print "--> reading $lexfn\n";
+  $idx = 1; $success = 1;
+  print "--> reading $lex\n";
   while (<L>) {
     if (defined $seen_line{$_}) {
-      print "--> ERROR: line '$_' of $lexfn is repeated\n";
+      print "--> ERROR: line '$_' of $lex is repeated\n";
       set_to_fail();
     }
     $seen_line{$_} = 1;
     if (! s/\n$//) {
-      print "--> ERROR: last line '$_' of $lexfn does not end in newline.\n";
+      print "--> ERROR: last line '$_' of $lex does not end in newline.\n";
       set_to_fail();
     }
-    my @row = split(" ", $_);
-    $word = shift @row;
+    my @col = split(" ", $_);
+    $word = shift @col;
     if (!defined $word) {
-      set_to_fail(); print "--> ERROR: empty lexicon line in $lexfn\n"; 
+      print "--> ERROR: empty lexicon line in $lex\n"; set_to_fail();
     }
-    if ($pron_probs) {
-      $prob = shift @row;
+    if ($word eq "<s>" || $word eq "</s>") {
+      print "--> ERROR: lexicon.txt contains forbidden word $word\n";
+      set_to_fail();
+    }
+    for ($n = 0; $n < $num_prob_cols; $n++) {
+      $prob = shift @col;
       if (!($prob > 0.0 && $prob <= 1.0)) { 
-        set_to_fail(); print "--> ERROR: bad pron-prob in lexicon-line '$_', in $lexfn\n";
+        print "--> ERROR: bad pron-prob in lexicon-line '$_', in $lex\n";
+        set_to_fail();
       }
     }
-    foreach (0 .. @row-1) {
-      if (!$silence{@row[$_]} and !$nonsilence{@row[$_]}) {
-        set_to_fail(); print "--> ERROR: phone \"@row[$_]\" is not in {, non}silence.txt (line $idx)\n"; 
+    if (@col == 0) {
+      print "--> ERROR: lexicon.txt contains word $word with empty ";
+      print "pronunciation.\n";
+      set_to_fail();
+    }
+    foreach (0 .. @col-1) {
+      if (!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
+        print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt ";
+        print "(line $idx)\n"; 
+        set_to_fail();
       }
     }
     $idx ++;
   }
-  %seen_line = {};
   close(L);
-  $success == 0 || print "--> $lexfn is OK\n";
+  $success == 0 || print "--> $lex is OK\n";
   print "\n";
 }
 
 if (-f "$dict/lexicon.txt") { check_lexicon("$dict/lexicon.txt", 0); }
 if (-f "$dict/lexiconp.txt") { check_lexicon("$dict/lexiconp.txt", 1); }
+if (-f "$dict/lexiconp_silprob.txt") {
+  # If $dict/lexiconp_silprob.txt exists, we expect $dict/silprob.txt to also
+  # exist.
+  check_lexicon("$dict/lexiconp_silprob.txt", 3);
+  if (-f "$dict/silprob.txt") {
+    !open(SP, "<$dict/silprob.txt") &&
+      print "--> ERROR: fail to open $dict/silprob.txt\n" && set_to_fail();
+    while (<SP>) {
+      chomp; my @col = split;
+      @col != 2 && die "--> ERROR: bad line \"$_\"\n" && set_to_fail();
+      if ($col[0] eq "<s>" || $col[0] eq "</s>" || $col[0] eq "overall") {
+        if (!($col[1] > 0.0 && $col[1] <= 1.0)) { 
+          set_to_fail();
+          print "--> ERROR: bad probability in $dir/silprob.txt \"$_\"\n";
+        }
+      } else {
+        print "--> ERROR: unexpected line in $dir/silprob.txt \"$_\"\n";
+        set_to_fail();
+      }
+    }
+    close(SP);
+  } else {
+    set_to_fail();
+    print "--> ERROR: expecting $dict/silprob.txt to exist\n";
+  }
+}
+
 if (!(-f "$dict/lexicon.txt" || -f "$dict/lexiconp.txt")) {
   print "--> ERROR: neither lexicon.txt or lexiconp.txt exist in directory $dir\n";
   set_to_fail();
 }
-# If both lexicon.txt and lexiconp.txt exist, we check that they correspond to
-# each other.  If not, it could be that the user overwrote one and we need to
-# regenerate the other, but we don't know which is which.
-if ( (-f "$dict/lexicon.txt") && (-f "$dict/lexiconp.txt")) {
-  print "Checking that lexicon.txt and lexiconp.txt match\n";
-  if (!open(L, "<$dict/lexicon.txt") || !open(P, "<$dict/lexiconp.txt")) {
-    die "Error opening lexicon.txt and/or lexiconp.txt"; # already checked, so would be code error.
-  }
+
+sub check_lexicon_pair {
+  my ($lex1, $num_prob_cols1, $lex2, $num_prob_cols2) = @_;
+  # We have checked individual lexicons already.
+  open(L1, "<$lex1"); open(L2, "<$lex2");
+  print "Checking lexicon pair $lex1 and $lex2\n";
   my $line_num = 0;
-  while(<L>) {
+  while(<L1>) {
     $line_num++;
-    if (! s/\n$//) {
-      print "--> ERROR: last line '$_' of $dict/lexicon.txt does not end in newline.\n";
-      set_to_fail();
-      last;
-    }
     @A = split;
-    $x = <P>;
-    if ($x !~ s/\n$//) {
-      print "--> ERROR: last line '$x' of $dict/lexiconp.txt does not end in newline.\n";
-      set_to_fail();
-      last;
+    $line_B = <L2>;
+    if (!defined $line_B) {
+      print "--> ERROR: $lex1 and $lex2 have different number of lines.\n";
+      set_to_fail(); last;
     }
-    if (!defined $x) {
-      print "--> ERROR: lexicon.txt and lexiconp.txt have different numbers of lines (mismatch); delete one.\n";
-      set_to_fail();
-      last;
+    @B = split(" ", $line_B);
+    # Check if the word matches.
+    if ($A[0] ne $B[0]) {
+      print "--> ERROR: $lex1 and $lex2 mismatch at line $line_num. sorting?\n";
+      set_to_fail(); last;
     }
-    @B = split(" ", $x);
-    $w = shift @B;
-    if ($w eq "<s>" || $w eq "</s>") {
-      print "--> ERROR: lexicon.txt contains forbidden word $w\n";
-      set_to_fail();
-    }
-    if (@B == 0) {
-      print "--> ERROR: lexicon.txt contains word $w with empty pronunciation.\n";
-      set_to_fail();
-      last;
-    }
-    $p = shift @B;
-    unshift @B, $w;
-    # now @A and @B should be the same.
-    if ($#A != $#B) {
-      print "--> ERROR: lexicon.txt and lexiconp.txt have mismatched lines '$_' versus '$x'; delete one (line $line_num).\n";
-      set_to_fail();
-      last;
-    }
-    for ($n = 0; $n < @A; $n++) {
-      if ($A[$n] ne $B[$n]) {
-        print "--> ERROR: lexicon.txt and lexiconp.txt have mismatched lines '$_' versus '$x'; delete one (line $line_num)\n";
-        set_to_fail();
-        last;
-      }
+    shift @A; shift @B;
+    for ($n = 0; $n < $num_prob_cols1; $n ++) { shift @A; }
+    for ($n = 0; $n < $num_prob_cols2; $n ++) { shift @B; }
+    # Check if the pronunciation matches
+    if (join(" ", @A) ne join(" ", @B)) {
+      print "--> ERROR: $lex1 and $lex2 mismatch at line $line_num. sorting?\n";
+      set_to_fail(); last;
     }
   }
-  $x = <P>;
-  if (defined $x && $exit == 0) {
-    print "--> ERROR: lexicon.txt and lexiconp.txt have different numbers of lines (mismatch); delete one.\n";
+  $line_B = <L2>;
+  if (defined $line_B && $exit == 0) {
+    print "--> ERROR: $lex1 and $lex2 have different number of lines.\n";
     set_to_fail();
   }
+  $success == 0 || print "--> lexicon pair $lex1 and $lex2 match\n\n";
+}
+
+# If more than one lexicon exist, we have to check if they correspond to each
+# other. It could be that the user overwrote one and we need to regenerate the
+# other, but we do not know which is which.
+if ( -f "$dict/lexicon.txt" && -f "$dict/lexiconp.txt") {
+  check_lexicon_pair("$dict/lexicon.txt", 0, "$dict/lexiconp.txt", 1);
+}
+if ( -f "$dict/lexiconp.txt" && -f "$dict/lexiconp_silprob.txt") {
+  check_lexicon_pair("$dict/lexiconp.txt", 1, "$dict/lexiconp_silprob.txt", 3);
 }
 
 # Checking extra_questions.txt -------------------------------
@@ -266,22 +288,22 @@ if (-s "$dict/extra_questions.txt") {
       print "--> ERROR: last line '$_' of $dict/extra_questions.txt does not end in newline.\n";
       set_to_fail();
     }
-    my @row = split(" ", $_);
-    if (@row == 0) {
+    my @col = split(" ", $_);
+    if (@col == 0) {
       set_to_fail();  print "--> ERROR: empty line in $dict/extra_questions.txt\n";
     }
-    foreach (0 .. @row-1) {
-      if(!$silence{@row[$_]} and !$nonsilence{@row[$_]}) {
-        set_to_fail();  print "--> ERROR: phone \"@row[$_]\" is not in {, non}silence.txt (line $idx, block ", $_+1, ")\n"; 
+    foreach (0 .. @col-1) {
+      if(!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
+        set_to_fail();  print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx, block ", $_+1, ")\n"; 
       }
       $idx ++;
     }
-    %row_hash = ();
-    foreach $p (@row) { $row_hash{$p} = 1; }
-    foreach $p1 (@row) {
+    %col_hash = ();
+    foreach $p (@col) { $col_hash{$p} = 1; }
+    foreach $p1 (@col) {
       # Update %distinguished hash.
       foreach $p2 (keys %nonsilence) {
-        if (!defined $row_hash{$p2}) { # for each p1 in this question and p2 not
+        if (!defined $col_hash{$p2}) { # for each p1 in this question and p2 not
                                        # in this question (and in nonsilence
                                        # phones)... mark p1,p2 as being split apart
           $distinguished{$p1,$p2} = 1;
@@ -305,9 +327,9 @@ if(!open(NS, "<$dict/nonsilence_phones.txt")) {
 $num_warn_nosplit = 0;
 $num_warn_nosplit_limit = 10;
 while(<NS>) {
-  my @row = split(" ", $_);
-  foreach $p1 (@row) { 
-    foreach $p2 (@row) {
+  my @col = split(" ", $_);
+  foreach $p1 (@col) { 
+    foreach $p2 (@col) {
       if ($p1 ne $p2 && ! $distinguished{$p1,$p2}) {
         set_to_fail();
         if ($num_warn_nosplit <= $num_warn_nosplit_limit) {
@@ -327,7 +349,12 @@ while(<NS>) {
 }
 
 
-if ($exit == 1) { print "--> ERROR validating dictionary directory $dict (see detailed error messages above)\n"; exit 1;}
-else { print "--> SUCCESS [validating dictionary directory $dict]\n"; }
+if ($exit == 1) {
+  print "--> ERROR validating dictionary directory $dict (see detailed error ";
+  print "messages above)\n\n";
+  exit 1;
+} else {
+  print "--> SUCCESS [validating dictionary directory $dict]\n\n";
+}
 
 exit 0;

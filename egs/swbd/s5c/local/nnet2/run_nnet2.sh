@@ -29,7 +29,7 @@ parallel_opts="--gpu 1"  # This is suitable for the CLSP network, you'll
       --num-threads 1 --minibatch-size 512 \
       --mix-up 20000 --samples-per-iter 300000 \
       --num-epochs 15 \
-      --initial-effective-lrate 0.005 --final-learning-rate 0.0002 \
+      --initial-effective-lrate 0.005 --final-effective-lrate 0.0002 \
       --num-jobs-initial 3 --num-jobs-final 10 --num-hidden-layers 5 \
       --pnorm-input-dim 5000  --pnorm-output-dim 500 data/train_nodup \
       data/lang exp/tri4_ali_nodup exp/$dir || exit 1;

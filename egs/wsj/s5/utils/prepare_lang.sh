@@ -2,6 +2,7 @@
 # Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey);
 #                      Arnab Ghoshal
 #                2014  Guoguo Chen
+#                2015  Hainan Xu
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -83,6 +84,9 @@ tmpdir=$3
 dir=$4
 mkdir -p $dir $tmpdir $dir/phones
 
+silprob=false
+[ -f $srcdir/lexiconp_silprob.txt ] && silprob=true
+
 [ -f path.sh ] && . ./path.sh
 
 ! utils/validate_dict_dir.pl $srcdir && \
@@ -109,12 +113,31 @@ if $position_dependent_phones; then
   # adding the markers _B, _E, _S, _I depending on word position.
   # In this recipe, these markers apply to silence also.
   # Do this starting from lexiconp.txt only.
-  
-
-  perl -ane '@A=split(" ",$_); $w = shift @A; $p = shift @A; @A>0||die;
+  if "$silprob"; then 
+    perl -ane '@A=split(" ",$_); $w = shift @A; $p = shift @A; $silword_p = shift @A;
+              $wordsil_p = shift @A; @A>0||die;
+         if(@A==1) { print "$w $p $silword_p $wordsil_p $A[0]_S\n"; } 
+         else { print "$w $p $silword_p $wordsil_p $A[0]_B ";
+         for($n=1;$n<@A-1;$n++) { print "$A[$n]_I "; } print "$A[$n]_E\n"; } ' \
+                < $srcdir/lexiconp_silprob.txt > $tmpdir/lexiconp_silprob.txt
+    if $reverse; then
+      echo "We do not support reverse option and silprob at the same time"
+      exit 1
+    fi
+  else
+    perl -ane '@A=split(" ",$_); $w = shift @A; $p = shift @A; @A>0||die;
          if(@A==1) { print "$w $p $A[0]_S\n"; } else { print "$w $p $A[0]_B ";
          for($n=1;$n<@A-1;$n++) { print "$A[$n]_I "; } print "$A[$n]_E\n"; } ' \
-           < $srcdir/lexiconp.txt > $tmpdir/lexiconp.original || exit 1;
+           < $srcdir/lexiconp.txt > $tmpdir/lexiconp.pre_reverse || exit 1;
+    if $reverse; then
+      echo "reversing lexicon."
+      cat $tmpdir/lexiconp.pre_reverse \
+        | awk '{printf "%s %s ",$1, $2;for(i=NF;i>2;i--){printf "%s ",$i;}printf "\n"}' \
+        > $tmpdir/lexiconp.txt
+    else
+      mv $tmpdir/lexiconp.pre_reverse $tmpdir/lexiconp.txt
+    fi
+  fi
   
   # create $tmpdir/phone_map.txt
   # this has the format (on each line)
@@ -135,19 +158,28 @@ if $position_dependent_phones; then
     <(for x in `cat $srcdir/nonsilence_phones.txt`; do for y in "" "_B" "_E" "_I" "_S"; do echo -n "$x$y "; done; echo; done) \
     > $tmpdir/phone_map.txt
 else
-  cp $srcdir/lexiconp.txt $tmpdir/lexiconp.original
+  if "$silprob"; then 
+    cp $srcdir/lexiconp_silprob.txt $tmpdir/lexiconp_silprob.txt
+    if $reverse; then
+      echo "We do not support reverse option and silprob at the same time"
+      exit 1
+    fi
+  else
+    cp $srcdir/lexiconp.txt $tmpdir/lexiconp.pre_reverse
+  fi
+
+  if $reverse; then
+    echo "reversing lexicon."
+    cat $tmpdir/lexiconp.pre_reverse \
+      | awk '{printf "%s %s ",$1, $2;for(i=NF;i>2;i--){printf "%s ",$i;}printf "\n"}' \
+      > $tmpdir/lexiconp.txt
+  else
+    mv $tmpdir/lexiconp.pre_reverse $tmpdir/lexiconp.txt
+  fi
+
   cat $srcdir/silence_phones.txt $srcdir/nonsilence_phones.txt | \
     sed 's/ /\n/g' | awk '(NF>0){print}' > $tmpdir/phones
   paste -d' ' $tmpdir/phones $tmpdir/phones > $tmpdir/phone_map.txt
-fi
-
-if $reverse; then
-  echo "reversing lexicon."
-  cat $tmpdir/lexiconp.original \
-    | awk '{printf "%s %s ",$1, $2;for(i=NF;i>2;i--){printf "%s ",$i;}printf "\n"}' \
-    > $tmpdir/lexiconp.txt
-else
-  mv $tmpdir/lexiconp.original $tmpdir/lexiconp.txt
 fi
 
 mkdir -p $dir/phones  # various sets of phones...
@@ -201,9 +233,13 @@ if $position_dependent_phones; then
 fi
 
 # add disambig symbols to the lexicon in $tmpdir/lexiconp.txt
-# and produce $tmpdir/lexicon_disambig.txt
+# and produce $tmpdir/lexicon_*disambig.txt
 
-ndisambig=`utils/add_lex_disambig.pl --pron-probs $tmpdir/lexiconp.txt $tmpdir/lexiconp_disambig.txt`
+if "$silprob"; then
+  ndisambig=`utils/add_lex_disambig.pl --pron-probs --sil-probs $tmpdir/lexiconp_silprob.txt $tmpdir/lexiconp_silprob_disambig.txt`
+else
+  ndisambig=`utils/add_lex_disambig.pl --pron-probs $tmpdir/lexiconp.txt $tmpdir/lexiconp_disambig.txt`
+fi
 ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
 echo $ndisambig > $tmpdir/lex_ndisambig
 
@@ -236,6 +272,12 @@ fi
 # <s> and </s> are only needed due to the need to rescore lattices with
 # ConstArpaLm format language model. They do not normally appear in G.fst or
 # L.fst.
+
+if "$silprob"; then
+  # remove the silprob
+  cat $tmpdir/lexiconp_silprob.txt | awk '{for(i=1;i<=NF;i++) {if(i!=3 && i!=4) printf("%s\t",$i); if(i==NF)print""}}' > $tmpdir/lexiconp.txt
+fi
+
 cat $tmpdir/lexiconp.txt | awk '{print $1}' | sort | uniq  | awk '
   BEGIN {
     print "<eps> 0";
@@ -289,10 +331,21 @@ cat $dir/phones/align_lexicon.txt | utils/sym2int.pl -f 3- $dir/phones.txt | \
 
 # Create the basic L.fst without disambiguation symbols, for use
 # in training. 
-utils/make_lexicon_fst.pl --pron-probs $tmpdir/lexiconp.txt $sil_prob $silphone | \
-  fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
-  --keep_isymbols=false --keep_osymbols=false | \
-   fstarcsort --sort_type=olabel > $dir/L.fst || exit 1;
+
+if $silprob; then
+  # Usually it's the same as having a fixed-prob L.fst
+  # it matters a little bit in discriminative trainings
+  utils/make_lexicon_fst_silprob.pl $tmpdir/lexiconp_silprob_disambig.txt $srcdir/silprob.txt $silphone '#'$ndisambig | \
+     sed 's=\#[0-9][0-9]*=<eps>=g' | \
+     fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
+     --keep_isymbols=false --keep_osymbols=false |   \
+     fstarcsort --sort_type=olabel > $dir/L.fst || exit 1;
+else
+  utils/make_lexicon_fst.pl --pron-probs $tmpdir/lexiconp.txt $sil_prob $silphone | \
+    fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
+    --keep_isymbols=false --keep_osymbols=false | \
+     fstarcsort --sort_type=olabel > $dir/L.fst || exit 1;
+fi
 
 # The file oov.txt contains a word that we will map any OOVs to during
 # training.
@@ -333,11 +386,19 @@ utils/gen_topo.pl $num_nonsil_states $num_sil_states $nonsilphonelist $silphonel
 phone_disambig_symbol=`grep \#0 $dir/phones.txt | awk '{print $2}'`
 word_disambig_symbol=`grep \#0 $dir/words.txt | awk '{print $2}'`
 
-utils/make_lexicon_fst.pl --pron-probs $tmpdir/lexiconp_disambig.txt $sil_prob $silphone '#'$ndisambig | \
-   fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
-   --keep_isymbols=false --keep_osymbols=false |   \
-   fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
-   fstarcsort --sort_type=olabel > $dir/L_disambig.fst || exit 1;
+if $silprob; then
+  utils/make_lexicon_fst_silprob.pl $tmpdir/lexiconp_silprob_disambig.txt $srcdir/silprob.txt $silphone '#'$ndisambig | \
+     fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
+     --keep_isymbols=false --keep_osymbols=false |   \
+     fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
+     fstarcsort --sort_type=olabel > $dir/L_disambig.fst || exit 1;
+else
+  utils/make_lexicon_fst.pl --pron-probs $tmpdir/lexiconp_disambig.txt $sil_prob $silphone '#'$ndisambig | \
+     fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
+     --keep_isymbols=false --keep_osymbols=false |   \
+     fstaddselfloops  "echo $phone_disambig_symbol |" "echo $word_disambig_symbol |" | \
+     fstarcsort --sort_type=olabel > $dir/L_disambig.fst || exit 1;
+fi
 
 
 echo "$(basename $0): validating output directory"
