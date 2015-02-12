@@ -18,6 +18,7 @@
 // limitations under the License.
 
 #include "util/common-utils.h"
+#include "util/kaldi-table.h"
 #include "lat/sausages.h"
 #include <numeric>
 
@@ -71,6 +72,15 @@ int main(int argc, char *argv[]) {
     std::string lats_rspecifier = po.GetArg(1),
         ctm_wxfilename = po.GetArg(2);
     
+    // Ensure the output ctm file is not a wspecifier
+    WspecifierType ctm_wx_type; 
+    ctm_wx_type  = ClassifyWspecifier(ctm_wxfilename, NULL, NULL, NULL);
+    if(ctm_wx_type != kNoWspecifier){
+        KALDI_ERR << "The output ctm file should not be a wspecifier. "
+          << "Please use things like 1.ctm istead of ark:-";
+        exit(1);
+    }
+
     // Read as compact lattice.
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
 
