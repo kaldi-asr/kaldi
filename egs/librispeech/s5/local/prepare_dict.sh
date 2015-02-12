@@ -61,7 +61,7 @@ if [ $stage -le 1 ]; then
     else
       echo "Sequitur G2P not found- running $KALDI_ROOT/tools/extra/install_sequitur.sh"
       pushd $KALDI_ROOT/tools
-      extra/install_sequitur.sh || exit 1
+      extras/install_sequitur.sh || exit 1
       popd
     fi
   fi
