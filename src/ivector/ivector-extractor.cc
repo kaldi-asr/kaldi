@@ -1506,9 +1506,9 @@ double IvectorExtractorStats::UpdatePrior(
   }
   Vector<double> sum_proj(ivector_dim);
   sum_proj.AddMatVec(1.0, T, kNoTrans, sum, 0.0);
-
+  
   KALDI_ASSERT(sum_proj.Norm(2.0) != 0.0);
-
+  
   // We need a projection that (like T) makes "covar" unit,
   // but also that sends "sum" to a multiple of the vector e0 = [ 1 0 0 0 .. ].
   // We'll do this by a transform that follows T, of the form

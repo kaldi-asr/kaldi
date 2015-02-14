@@ -60,7 +60,10 @@ int main(int argc, char *argv[]) {
         "Compute cepstral mean and variance normalization statistics\n"
         "If wspecifier provided: per-utterance by default, or per-speaker if\n"
         "spk2utt option provided; if wxfilename: global\n"
-        "Usage: compute-cmvn-stats  [options] feats-rspecifier (stats-wspecifier|stats-wxfilename)\n";
+        "Usage: compute-cmvn-stats  [options] <feats-rspecifier> (<stats-wspecifier>|<stats-wxfilename>)\n"
+        "e.g.: compute-cmvn-stats --spk2utt=ark:data/train/spk2utt"
+        " scp:data/train/feats.scp ark,scp:/foo/bar/cmvn.ark,data/train/cmvn.scp\n"
+        "See also: apply-cmvn, modify-cmvn-stats\n";
     
     ParseOptions po(usage);
     std::string spk2utt_rspecifier, weights_rspecifier;

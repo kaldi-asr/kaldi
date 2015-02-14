@@ -33,7 +33,8 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: copy-vector [options] (<vector-in-rspecifier>|<vector-in-rxfilename>) (<vector-out-wspecifier>|<vector-out-wxfilename>)\n"
         " e.g.: copy-vector --binary=false 1.mat -\n"
-        "   copy-vector ark:2.trans ark,t:-\n";
+        "   copy-vector ark:2.trans ark,t:-\n"
+        "see also: dot-weights, append-vector-to-feats\n";
     
     bool binary = true;
     int32 change_dim = -1;

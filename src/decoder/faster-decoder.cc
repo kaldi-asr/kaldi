@@ -185,6 +185,11 @@ double FasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
                        tmp_array_.end());
       max_active_cutoff = tmp_array_[config_.max_active];
     }
+    if (max_active_cutoff < beam_cutoff) { // max_active is tighter than beam.
+      if (adaptive_beam)
+        *adaptive_beam = max_active_cutoff - best_cost + config_.beam_delta;
+      return max_active_cutoff;
+    }    
     if (tmp_array_.size() > static_cast<size_t>(config_.min_active)) {
       if (config_.min_active == 0) min_active_cutoff = best_cost;
       else {
@@ -196,12 +201,7 @@ double FasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
         min_active_cutoff = tmp_array_[config_.min_active];
       }
     }
-
-    if (max_active_cutoff < beam_cutoff) { // max_active is tighter than beam.
-      if (adaptive_beam)
-        *adaptive_beam = max_active_cutoff - best_cost + config_.beam_delta;
-      return max_active_cutoff;
-    } else if (min_active_cutoff > beam_cutoff) { // min_active is looser than beam.
+    if (min_active_cutoff > beam_cutoff) { // min_active is looser than beam.
       if (adaptive_beam)
         *adaptive_beam = min_active_cutoff - best_cost + config_.beam_delta;
       return min_active_cutoff;

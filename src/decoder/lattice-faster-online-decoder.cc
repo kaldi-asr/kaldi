@@ -68,7 +68,7 @@ void LatticeFasterOnlineDecoder::InitDecoding() {
   active_toks_[0].toks = start_tok;
   toks_.Insert(start_state, start_tok);
   num_toks_++;
-  ProcessNonemitting();
+  ProcessNonemitting(config_.beam);
 }
 
 // Returns true if any kind of traceback is available (not necessarily from
@@ -84,10 +84,8 @@ bool LatticeFasterOnlineDecoder::Decode(DecodableInterface *decodable) {
   while (!decodable->IsLastFrame(NumFramesDecoded() - 1)) {
     if (NumFramesDecoded() % config_.prune_interval == 0)
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
-    ProcessEmitting(decodable);  // Note: the value returned by
-    // NumFramesDecoded() is incremented by
-    // ProcessEmitting().
-    ProcessNonemitting();
+    BaseFloat cost_cutoff = ProcessEmitting(decodable);  // Note: the value returned by
+    ProcessNonemitting(cost_cutoff);
   }
   FinalizeDecoding();
 
@@ -765,8 +763,8 @@ void LatticeFasterOnlineDecoder::AdvanceDecoding(DecodableInterface *decodable,
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
     }
     // note: ProcessEmitting() increments NumFramesDecoded().
-    ProcessEmitting(decodable);
-    ProcessNonemitting();
+    BaseFloat cost_cutoff = ProcessEmitting(decodable);
+    ProcessNonemitting(cost_cutoff);
   }
 }
 
@@ -820,10 +818,13 @@ BaseFloat LatticeFasterOnlineDecoder::GetCutoff(Elem *list_head, size_t *tok_cou
       }
     }
     if (tok_count != NULL) *tok_count = count;
-
+    
     BaseFloat beam_cutoff = best_weight + config_.beam,
         min_active_cutoff = std::numeric_limits<BaseFloat>::infinity(),
         max_active_cutoff = std::numeric_limits<BaseFloat>::infinity();
+
+    KALDI_VLOG(6) << "Number of tokens active on frame " << NumFramesDecoded()
+                  << " is " << tmp_array_.size();
 
     if (tmp_array_.size() > static_cast<size_t>(config_.max_active)) {
       std::nth_element(tmp_array_.begin(),
@@ -831,6 +832,11 @@ BaseFloat LatticeFasterOnlineDecoder::GetCutoff(Elem *list_head, size_t *tok_cou
                        tmp_array_.end());
       max_active_cutoff = tmp_array_[config_.max_active];
     }
+    if (max_active_cutoff < beam_cutoff) { // max_active is tighter than beam.
+      if (adaptive_beam)
+        *adaptive_beam = max_active_cutoff - best_weight + config_.beam_delta;
+      return max_active_cutoff;
+    }    
     if (tmp_array_.size() > static_cast<size_t>(config_.min_active)) {
       if (config_.min_active == 0) min_active_cutoff = best_weight;
       else {
@@ -843,11 +849,7 @@ BaseFloat LatticeFasterOnlineDecoder::GetCutoff(Elem *list_head, size_t *tok_cou
       }
     }
 
-    if (max_active_cutoff < beam_cutoff) { // max_active is tighter than beam.
-      if (adaptive_beam)
-        *adaptive_beam = max_active_cutoff - best_weight + config_.beam_delta;
-      return max_active_cutoff;
-    } else if (min_active_cutoff > beam_cutoff) { // min_active is looser than beam.
+    if (min_active_cutoff > beam_cutoff) { // min_active is looser than beam.
       if (adaptive_beam)
         *adaptive_beam = min_active_cutoff - best_weight + config_.beam_delta;
       return min_active_cutoff;
@@ -858,7 +860,9 @@ BaseFloat LatticeFasterOnlineDecoder::GetCutoff(Elem *list_head, size_t *tok_cou
   }
 }
 
-void LatticeFasterOnlineDecoder::ProcessEmitting(DecodableInterface *decodable) {
+
+BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting(
+    DecodableInterface *decodable) {
   KALDI_ASSERT(active_toks_.size() > 0);
   int32 frame = active_toks_.size() - 1; // frame is the frame-index
   // (zero-based) used to get likelihoods
@@ -927,8 +931,8 @@ void LatticeFasterOnlineDecoder::ProcessEmitting(DecodableInterface *decodable) 
               cur_cost = tok->tot_cost,
               tot_cost = cur_cost + ac_cost + graph_cost;
           if (tot_cost > next_cutoff) continue;
-          else if (tot_cost + config_.beam < next_cutoff)
-            next_cutoff = tot_cost + config_.beam; // prune by best current token
+          else if (tot_cost + adaptive_beam < next_cutoff)
+            next_cutoff = tot_cost + adaptive_beam; // prune by best current token
           // Note: the frame indexes into active_toks_ are one-based,
           // hence the + 1.
           Token *next_tok = FindOrAddToken(arc.nextstate,
@@ -944,11 +948,10 @@ void LatticeFasterOnlineDecoder::ProcessEmitting(DecodableInterface *decodable) 
     e_tail = e->tail;
     toks_.Delete(e); // delete Elem
   }
+  return next_cutoff;
 }
 
-// TODO: could possibly add adaptive_beam back as an argument here (was
-// returned from ProcessEmitting, in faster-decoder.h).
-void LatticeFasterOnlineDecoder::ProcessNonemitting() {
+void LatticeFasterOnlineDecoder::ProcessNonemitting(BaseFloat cutoff) {
   KALDI_ASSERT(!active_toks_.empty());
   int32 frame = static_cast<int32>(active_toks_.size()) - 2;
   // Note: "frame" is the time-index we just processed, or -1 if
@@ -962,19 +965,14 @@ void LatticeFasterOnlineDecoder::ProcessNonemitting() {
   // problem did not improve overall speed.
 
   KALDI_ASSERT(queue_.empty());
-  BaseFloat best_cost = std::numeric_limits<BaseFloat>::infinity();
-  for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
+  for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
     queue_.push_back(e->key);
-    // for pruning with current best token
-    best_cost = std::min(best_cost, static_cast<BaseFloat>(e->val->tot_cost));
-  }
   if (queue_.empty()) {
     if (!warned_) {
       KALDI_WARN << "Error, no surviving tokens: frame is " << frame;
       warned_ = true;
     }
   }
-  BaseFloat cutoff = best_cost + config_.beam;
 
   while (!queue_.empty()) {
     StateId state = queue_.back();

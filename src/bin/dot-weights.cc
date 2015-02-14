@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
         "Takes two archives of vectors (typically representing per-frame weights)\n"
         "and for each utterance, outputs the dot product.\n"
         "Useful for evaluating the accuracy of silence classifiers.\n"
-        "Usage: dot-weights weights-rspecifier1 weights-rspecifier2 float-wspecifier\n";
+        "Usage: dot-weights <weights-rspecifier1> <weights-rspecifier2> <float-wspecifier>\n";
     
     ParseOptions po(usage);
     po.Read(argc, argv);

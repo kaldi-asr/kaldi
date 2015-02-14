@@ -52,6 +52,16 @@ void ApplyCmvn(const MatrixBase<double> &stats,
                bool norm_vars,
                MatrixBase<BaseFloat> *feats);
 
+/// This is as ApplyCmvn, but does so in the reverse sense, i.e. applies a transform
+/// that would take zero-mean, unit-variance input and turn it into output with the
+/// stats of "stats".  This can be useful if you trained without CMVN but later want
+/// to correct a mismatch, so you would first apply CMVN and then do the "reverse"
+/// CMVN with the summed stats of your training data.
+void ApplyCmvnReverse(const MatrixBase<double> &stats,
+                      bool norm_vars,
+                      MatrixBase<BaseFloat> *feats);
+
+
 /// Modify the stats so that for some dimensions (specified in "dims"), we
 /// replace them with "fake" stats that have zero mean and unit variance; this
 /// is done to disable CMVN for those dimensions.

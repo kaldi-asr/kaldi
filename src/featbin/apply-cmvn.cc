@@ -31,12 +31,15 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Apply cepstral mean and (optionally) variance normalization\n"
         "Per-utterance by default, or per-speaker if utt2spk option provided\n"
-        "Usage: apply-cmvn [options] (cmvn-stats-rspecifier|cmvn-stats-rxfilename) feats-rspecifier feats-wspecifier\n";
-
+        "Usage: apply-cmvn [options] (<cmvn-stats-rspecifier>|<cmvn-stats-rxfilename>) <feats-rspecifier> <feats-wspecifier>\n"
+        "e.g.: apply-cmvn --utt2spk=ark:data/train/utt2spk scp:data/train/cmvn.scp scp:data/train/feats.scp ark:-\n"
+        "See also: modify-cmvn-stats, matrix-sum, compute-cmvn-stats\n";
+    
     ParseOptions po(usage);
     std::string utt2spk_rspecifier;
     bool norm_vars = false;
     bool norm_means = true;
+    bool reverse = false;
     std::string skip_dims_str;
     
     po.Register("utt2spk", &utt2spk_rspecifier,
@@ -47,6 +50,9 @@ int main(int argc, char *argv[]) {
                 "see the --fake option to compute_cmvn_stats.sh");
     po.Register("skip-dims", &skip_dims_str, "Dimensions for which to skip "
                 "normalization: colon-separated list of integers, e.g. 13:14:15)");
+    po.Register("reverse", &reverse, "If true, apply CMVN in a reverse sense, "
+                "so as to transform zero-mean, unit-variance input into data "
+                "with the given mean and variance.");
     
     po.Read(argc, argv);
 
@@ -96,8 +102,11 @@ int main(int argc, char *argv[]) {
           if (!skip_dims.empty())
             FakeStatsForSomeDims(skip_dims, &cmvn_stats);
           
-          ApplyCmvn(cmvn_stats, norm_vars, &feat);
-        
+          if (reverse) {
+            ApplyCmvnReverse(cmvn_stats, norm_vars, &feat);
+          } else {
+            ApplyCmvn(cmvn_stats, norm_vars, &feat);
+          }
           feat_writer.Write(utt, feat);
         } else {
           feat_writer.Write(utt, feat);
@@ -119,8 +128,13 @@ int main(int argc, char *argv[]) {
       for (;!feat_reader.Done(); feat_reader.Next()) {
         std::string utt = feat_reader.Key();
         Matrix<BaseFloat> feat(feat_reader.Value());
-        if (norm_means)
-          ApplyCmvn(cmvn_stats, norm_vars, &feat);
+        if (norm_means) {
+          if (reverse) {
+            ApplyCmvnReverse(cmvn_stats, norm_vars, &feat);
+          } else {
+            ApplyCmvn(cmvn_stats, norm_vars, &feat);
+          }
+        }
         feat_writer.Write(utt, feat);
         num_done++;
       }
@@ -137,5 +151,4 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
 

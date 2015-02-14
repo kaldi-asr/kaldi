@@ -199,6 +199,9 @@ class LatticeFasterDecoder {
   /// reasonable likelihood.
   BaseFloat FinalRelativeCost() const;
 
+
+  // Returns the number of frames decoded so far.  The value returned changes
+  // whenever we call ProcessEmitting().
   inline int32 NumFramesDecoded() const { return active_toks_.size() - 1; }
 
  private:
@@ -336,13 +339,13 @@ class LatticeFasterDecoder {
                       BaseFloat *adaptive_beam, Elem **best_elem);
 
   /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
-  void ProcessEmitting(DecodableInterface *decodable);
+  /// Returns the cost cutoff for subsequent ProcessNonemitting() to use.
+  BaseFloat ProcessEmitting(DecodableInterface *decodable);
 
-  /// Processes nonemitting (epsilon) arcs for one frame.
-  /// Called after ProcessEmitting on each frame.
-  /// TODO: could possibly add adaptive_beam back as an argument here (was
-  /// returned from ProcessEmitting, in faster-decoder.h).
-  void ProcessNonemitting();
+  /// Processes nonemitting (epsilon) arcs for one frame.  Called after
+  /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
+  /// preceding ProcessEmitting().
+  void ProcessNonemitting(BaseFloat cost_cutoff);
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of

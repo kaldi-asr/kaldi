@@ -190,7 +190,8 @@ int main(int argc, char *argv[]) {
         "Type three usage (sums single-file inputs to produce a single output):\n"
         " vector-sum [options] <vector-in-rxfilename1> <vector-in-rxfilename2> ..."
         " <vector-out-wxfilename>\n"
-        " e.g.: vector-sum --binary=false 1.vec 2.vec 3.vec sum.vec\n";
+        " e.g.: vector-sum --binary=false 1.vec 2.vec 3.vec sum.vec\n"
+        "See also: copy-vector, dot-weights\n";
         
     bool binary;
     
