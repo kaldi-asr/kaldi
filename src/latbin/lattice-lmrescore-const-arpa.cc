@@ -1,4 +1,4 @@
-// latbin/lattice-lmrescore.cc
+// latbin/lattice-lmrescore-const-arpa.cc
 
 // Copyright 2014  Guoguo Chen
 
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: lattice-lmrescore-const-arpa [options] lattice-rspecifier \\\n"
         "                                   const-arpa-in lattice-wspecifier\n"
-        " e.g.: lattice-lmrescore --lm-scale=-1.0 ark:in.lats \\\n"
+        " e.g.: lattice-lmrescore-const-arpa --lm-scale=-1.0 ark:in.lats \\\n"
         "                                   const_arpa ark:out.lats\n";
       
     ParseOptions po(usage);
