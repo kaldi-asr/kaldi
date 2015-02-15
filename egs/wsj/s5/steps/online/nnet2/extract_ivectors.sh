@@ -59,7 +59,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 
 if [ $# != 4 ] && [ $# != 5 ]; then
-  echo "Usage: $0 [options] <data> <lang> <extractor-dir> [<alignment-dir>|<decode-dir>] <ivector-dir>"
+  echo "Usage: $0 [options] <data> <lang> <extractor-dir> [<alignment-dir>|<decode-dir>|<weights-archive>] <ivector-dir>"
   echo " e.g.: $0 data/test exp/nnet2_online/extractor exp/tri3/decode_test exp/nnet2_online/ivectors_test"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
@@ -100,13 +100,13 @@ silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
 
 if [ ! -z "$ali_or_decode_dir" ]; then
 
-  nj_orig=$(cat $ali_or_decode_dir/num_jobs) || exit 1;
   
   if [ -f $ali_or_decode_dir/ali.1.gz ]; then
     if [ ! -f $ali_or_decode_dir/${mdl}.mdl ]; then
       echo "$0: expected $ali_or_decode_dir/${mdl}.mdl to exist."
       exit 1;
     fi
+    nj_orig=$(cat $ali_or_decode_dir/num_jobs) || exit 1;
 
     if [ $stage -le 0 ]; then
       rm $dir/weights.*.gz 2>/dev/null
@@ -123,6 +123,7 @@ if [ ! -z "$ali_or_decode_dir" ]; then
     fi
 
   elif [ -f $ali_or_decode_dir/lat.1.gz ]; then
+    nj_orig=$(cat $ali_or_decode_dir/num_jobs) || exit 1;
     if [ ! -f $ali_or_decode_dir/../${mdl}.mdl ]; then
       echo "$0: expected $ali_or_decode_dir/../${mdl}.mdl to exist."
       exit 1;
@@ -142,6 +143,8 @@ if [ ! -z "$ali_or_decode_dir" ]; then
       for j in $(seq $nj_orig); do gunzip -c $dir/weights.$j.gz; done | gzip -c >$dir/weights.gz || exit 1;
       rm $dir/weights.*.gz || exit 1;
     fi
+  elif [ -f $ali_or_decode_dir ] && gunzip -c $ali_or_decode_dir >/dev/null; then
+    cp $ali_or_decode_dir $dir/weights.gz || exit 1;
   else
     echo "$0: expected ali.1.gz or lat.1.gz to exist in $ali_or_decode_dir";
     exit 1;
@@ -172,35 +175,43 @@ if [ $sub_speaker_frames -gt 0 ]; then
       echo "$0: error getting per-utterance counts."
       exit 0;
     fi
-    cat $data/spk2utt | perl -e ' ($utt_counts, $sub_speaker_frames) = @ARGV;
-    open(F, "<$utt_counts") || die "opening utt-counts file $utt_counts";
-    $sub_speaker_frames > 0 || die "bad --sub-speaker-frames $sub_speaker_frames";
-    while(<F>) {
-      @A = split(" ", $_);
-      @A == 2 || die "bad line in utt-counts file: $_";
-      $count{$A[0]} = $A[1];
-    }
-    while (<STDIN>) {
-      @A = split(" ", $_);
-      @A>1 || die "bad line in spk2utt file: $_";
-      $spk = shift @A;  # rest of line is utts.
-      $tot_count = 0;
-      $numeric_id = 0;
-      @cur_utts = ();
-      for ($n=0; $n<@A; $n++) {
-        $utt = $A[$n];
-        push @cur_utts, $utt;
-        $this_count = $count{$utt};
-        !defined $this_count && die "Undefined count for utterance $utt";
-        $tot_count += $this_count;
-        if ($tot_count >= $sub_speaker_frames || $n+1 == @A) {
-          printf("%s-%06x ", $spk, $numeric_id++);
-          print join(" ", @cur_utts) . "\n";
-          @cur_utts = ();
-          $tot_count = 0.0;
-        }
-      }
-    } ' $dir/utt_counts $sub_speaker_frames > $dir/spk2utt || exit 1;
+    cat $data/spk2utt | python -c "
+import sys
+utt_counts = {}
+trash = map(lambda x: utt_counts.update({x.split()[0]:int(x.split()[1])}), open('$dir/utt_counts').readlines())
+sub_speaker_frames = $sub_speaker_frames
+lines = sys.stdin.readlines()
+total_counts = {}
+for line in lines:
+  parts = line.split()
+  spk = parts[0]
+  total_counts[spk] = 0
+  for utt in parts[1:]:
+    total_counts[spk] += utt_counts[utt]
+
+for line_index in range(len(lines)):
+  line = lines[line_index]
+  parts = line.split()
+  spk = parts[0]
+
+  numeric_id=0
+  current_count = 0
+  covered_count = 0
+  current_utts = []
+  for utt in parts[1:]:
+    try:
+      current_count += utt_counts[utt]
+      covered_count += utt_counts[utt]
+    except KeyError:
+      raise Exception('No count found for the utterance {0}.'.format(utt))
+    current_utts.append(utt)
+    if ((current_count >= $sub_speaker_frames) and ((total_counts[spk] - covered_count) >= $sub_speaker_frames)) or (utt == parts[-1]):
+      spk_partial = '{0}-{1:06x}'.format(spk, numeric_id)
+      numeric_id += 1
+      print '{0} {1}'.format(spk_partial, ' '.join(current_utts))
+      current_utts = []
+      current_count = 0 
+"> $dir/spk2utt || exit 1;
     mkdir -p $dir/split$nj
     # create split versions of our spk2utt file.
     for j in $(seq $nj); do
@@ -213,8 +224,6 @@ if [ $sub_speaker_frames -gt 0 ]; then
 else
   this_sdata=$sdata
 fi
-
-
 
 if [ $stage -le 2 ]; then
   if [ ! -z "$ali_or_decode_dir" ]; then
