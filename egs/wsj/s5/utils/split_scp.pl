@@ -20,15 +20,14 @@
 # If there is no utt2spk option it will work on any text  file and
 # will split it up with an approximately equal number of lines in
 # each but.
-# With the --utt2spk option it will work on anything that has the 
+# With the --utt2spk option it will work on anything that has the
 # utterance-id as the first entry on each line; the utt2spk file is
 # of the form "utterance speaker" (on each line).
-# It splits it into equal size chunks as far as it can.  If you use
-# the utt2spk option it will make sure these chunks coincide with
-# speaker boundaries.  In this case, if there are more chunks
-# than speakers (and in some other circumstances), some of the 
-# resulting  chunks will be empty and it
-# will print a warning.
+# It splits it into equal size chunks as far as it can.  If you use the utt2spk
+# option it will make sure these chunks coincide with speaker boundaries.  In
+# this case, if there are more chunks than speakers (and in some other
+# circumstances), some of the resulting chunks will be empty and it will print
+# an error message and exit with nonzero status.
 # You will normally call this like:
 # split_scp.pl scp scp.1 scp.2 scp.3 ...
 # or
@@ -66,7 +65,7 @@ if(($num_jobs == 0 && @ARGV < 2) || ($num_jobs > 0 && (@ARGV < 1 || @ARGV > 2)))
         " ... where 0 <= job-id < num-jobs.";
 }
 
-$error = 0;   
+$error = 0;
 $inscp = shift @ARGV;
 if ($num_jobs == 0) { # without -j option
     @OUTPUTS = @ARGV;
@@ -79,7 +78,7 @@ if ($num_jobs == 0) { # without -j option
             push @OUTPUTS, "/dev/null";
         }
     }
-} 
+}
 
 if ($utt2spk_file ne "") {  # We have the --utt2spk option...
     open(U, "<$utt2spk_file") || die "Failed to open utt2spk file $utt2spk_file";
@@ -97,7 +96,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
         $u = $A[0];
         $s = $utt2spk{$u};
         if(!defined $s) { die "No such utterance $u in utt2spk file $utt2spk_file"; }
-        if(!defined $spk_count{$s}) { 
+        if(!defined $spk_count{$s}) {
             push @spkrs, $s; 
             $spk_count{$s} = 0;
             $spk_data{$s} = "";
@@ -189,7 +188,7 @@ if ($utt2spk_file ne "") {  # We have the --utt2spk option...
         }
         close(F);
     }
-} else { 
+} else {
    # This block is the "normal" case where there is no --utt2spk 
    # option and we just break into equal size chunks.
 

@@ -21,6 +21,7 @@ spk_prefix=
 utt_prefix=
 spk_suffix=
 utt_suffix=
+validate_opts=   # should rarely be needed.
 # end configuration section
 
 . utils/parse_options.sh
@@ -96,7 +97,7 @@ done
 rm $destdir/spk_map $destdir/utt_map
 
 echo "$0: copied data from $srcdir to $destdir"
-validate_opts=
+
 [ ! -f $srcdir/feats.scp ] && validate_opts="$validate_opts --no-feats"
 [ ! -f $srcdir/text ] && validate_opts="$validate_opts --no-text"
 
