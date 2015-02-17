@@ -14,6 +14,7 @@ acoustic_scale=0.1  # acoustic scale for MMI/MPFE/SMBR training.
 criterion=smbr
 boost=0.0       # option relevant for MMI
 drop_frames=false #  option relevant for MMI
+one_silence_class=false # Option relevant for MPE/SMBR
 num_jobs_nnet=4    # Number of neural net jobs to run in parallel.  Note: this
                    # will interact with the learning rates (if you decrease
                    # this, you'll have to decrease the learning rate, and vice
@@ -86,6 +87,7 @@ if [ $# != 6 ]; then
   echo "  --degs-dir <dir|"">                              # Directory for discriminative examples, e.g. exp/foo/degs"
   echo "  --drop-frames <true,false|false>                 # Option that affects MMI training: if true, we exclude gradients from frames"
   echo "                                                   # where the numerator transition-id is not in the denominator lattice."
+  echo "  --one-silence-class <true,false|false>           # Option that affects MPE/SMBR training (will tend to reduce insertions)"
   echo "  --online-ivector-dir <dir|"">                    # Directory for online-estimated iVectors, used in the"
   echo "                                                   # online-neural-net setup."
   exit 1;
@@ -274,7 +276,7 @@ if [ $stage -le -6 ] && [ -z "$degs_dir" ]; then
 
   $cmd $io_opts JOB=1:$nj $dir/log/get_egs.JOB.log \
     nnet-get-egs-discriminative --criterion=$criterion --drop-frames=$drop_frames \
-     $dir/0.mdl "$feats" \
+      $dir/0.mdl "$feats" \
     "ark,s,cs:gunzip -c $alidir/ali.JOB.gz |" \
     "ark,s,cs:gunzip -c $denlatdir/lat.JOB.gz|" ark:- \| \
     nnet-copy-egs-discriminative $const_dim_opt ark:- $egs_list || exit 1;
@@ -356,8 +358,9 @@ while [ $x -lt $num_iters ]; do
     $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
       nnet-train-discriminative$train_suffix --silence-phones=$silphonelist \
        --criterion=$criterion --drop-frames=$drop_frames \
-       --boost=$boost --acoustic-scale=$acoustic_scale \
-       $dir/$x.mdl "ark:nnet-combine-egs-discriminative ark:$degs_dir/degs.JOB.$[$x%$iters_per_epoch].ark ark:- |" \
+       --one-silence-class=$one_silence_class --boost=$boost \
+       --acoustic-scale=$acoustic_scale $dir/$x.mdl \
+       "ark:nnet-combine-egs-discriminative ark:$degs_dir/degs.JOB.$[$x%$iters_per_epoch].ark ark:- |" \
         $dir/$[$x+1].JOB.mdl \
       || exit 1;
 

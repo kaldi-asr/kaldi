@@ -788,6 +788,7 @@ void UpdateHash(
     const DiscriminativeNnetExample &eg,
     std::string criterion,
     bool drop_frames,
+    bool one_silence_class,
     Matrix<double> *hash,
     double *num_weight,
     double *den_weight,
@@ -812,7 +813,7 @@ void UpdateHash(
                                      // because it's not necessary for testing
                                      // purposes -> leave it empty
   ExampleToPdfPost(tmodel, silence_phones, criterion, drop_frames,
-                   eg, &post);
+                   one_silence_class, eg, &post);
 
   Vector<BaseFloat> avg_feat(feat_dim);
   
@@ -839,6 +840,7 @@ void ExampleToPdfPost(
     const std::vector<int32> &silence_phones,    
     std::string criterion,
     bool drop_frames,
+    bool one_silence_class,
     const DiscriminativeNnetExample &eg,
     Posterior *post) {
   KALDI_ASSERT(criterion == "mpfe" || criterion == "smbr" || criterion == "mmi");
@@ -849,7 +851,7 @@ void ExampleToPdfPost(
   if (criterion == "mpfe" || criterion == "smbr") {
     Posterior tid_post;
     LatticeForwardBackwardMpeVariants(tmodel, silence_phones, lat, eg.num_ali,
-                                      criterion, &tid_post);
+                                      criterion, one_silence_class, &tid_post);
     
     ConvertPosteriorToPdfs(tmodel, tid_post, post);
   } else {

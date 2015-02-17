@@ -147,11 +147,14 @@ bool LatticeBoost(const TransitionModel &trans,
 
 
 /**
-   This function implements either the MPFE (minimum phone frame error)
-   or SMBR (state-level minimum bayes risk) forward-backward, depending
-   on whether "criterion" is "mpfe" or "smbr".  It returns the MPFE criterion
-   of SMBR criterion for this file, and outputs the posteriors (which may be
-   positive or negative) into "arc_post".
+   This function implements either the MPFE (minimum phone frame error) or SMBR
+   (state-level minimum bayes risk) forward-backward, depending on whether
+   "criterion" is "mpfe" or "smbr".  It returns the MPFE
+   criterion of SMBR criterion for this file, and outputs the posteriors (which
+   may be positive or negative) into "arc_post".
+   Note: setting one_silence_class to false gives the old traditional behavior,
+   true gives a possibly improved behavior which will tend to reduce insertions
+   in the trained model.
 */
 BaseFloat LatticeForwardBackwardMpeVariants(
     const TransitionModel &trans,
@@ -159,6 +162,7 @@ BaseFloat LatticeForwardBackwardMpeVariants(
     const Lattice &lat,
     const std::vector<int32> &num_ali,
     std::string criterion,
+    bool one_silence_class,
     Posterior *post);
 
 /**

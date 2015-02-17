@@ -387,7 +387,8 @@ void LatticePhoneAligner::ComputationState::OutputArcForce(
     }
     if (num_final != 1 && ! *error) {
       KALDI_WARN << "Problem phone-aligning lattice: saw " << num_final
-                 << " final-states in last phone in lattice (forced out?)";
+                 << " final-states in last phone in lattice (forced out?) "
+                 << "Producing patial lattice.";
       *error = true;
     }
   }

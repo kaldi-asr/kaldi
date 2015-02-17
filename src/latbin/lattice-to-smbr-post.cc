@@ -46,14 +46,17 @@ int main(int argc, char *argv[]) {
         " ark:1.lats ark:1.post\n";
 
     kaldi::BaseFloat acoustic_scale = 1.0, lm_scale = 1.0;
+    bool one_silence_class = false;
     std::string silence_phones_str;
     kaldi::ParseOptions po(usage);
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
     po.Register("lm-scale", &lm_scale,
                 "Scaling factor for \"graph costs\" (including LM costs)");
-    po.Register("silence-phones", &silence_phones_str,
-                "Colon-separated list of integer id's of silence phones, e.g. 46:47");
+    po.Register("one-silence-class", &one_silence_class, "If true, newer "
+                 "behavior which will tend to reduce insertions.");
+    po.Register("silence-phones", &silence_phones_str, "Colon-separated "
+                "list of integer id's of silence phones, e.g. 46:47");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -117,7 +120,7 @@ int main(int argc, char *argv[]) {
         Posterior post;
         lat_frame_acc = LatticeForwardBackwardMpeVariants(
             trans_model, silence_phones, lat, alignment,
-            "smbr", &post);
+            "smbr", one_silence_class, &post);
         total_lat_frame_acc += lat_frame_acc;
         lat_time = post.size();
         total_time += lat_time;

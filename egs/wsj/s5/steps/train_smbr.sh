@@ -17,6 +17,7 @@ weight_tau=10
 acwt=0.1
 stage=0
 smooth_to_mode=true
+one_silence_class=false
 # End configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -33,7 +34,8 @@ if [ $# -ne 5 ]; then
   echo "  --config <config-file>                           # config containing options"
   echo "  --stage <stage>                                  # stage to do partial re-run from."
   echo "  --tau                                            # tau for i-smooth to last iter (default 200)"
-  
+  echo "  --one-silence-class <true|false>                 # If true, newer approach which will tend"
+  echo "                                                   # to reduce insertions (default: false)"
   exit 1;
 fi
 
@@ -91,7 +93,9 @@ while [ $x -lt $num_iters ]; do
   if [ $stage -le $x ]; then
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
       gmm-rescore-lattice $cur_mdl "$lats" "$feats" ark:- \| \
-      lattice-to-smbr-post --acoustic-scale=$acwt $cur_mdl \
+      lattice-to-smbr-post --acoustic-scale=$acwt \
+        --one-silence-class=$one_silence_class \
+        --silence-phones=$silphonelist  $cur_mdl \
         "ark,s,cs:gunzip -c $alidir/ali.JOB.gz |" ark:- ark:- \| \
       gmm-acc-stats2 $cur_mdl "$feats" ark,s,cs:- \
         $dir/num_acc.$x.JOB.acc $dir/den_acc.$x.JOB.acc || exit 1;

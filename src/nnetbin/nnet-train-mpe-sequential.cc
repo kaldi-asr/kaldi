@@ -114,6 +114,7 @@ int main(int argc, char *argv[]) {
     PdfPriorOptions prior_opts;
     prior_opts.Register(&po);
 
+    bool one_silence_class = false;
     BaseFloat acoustic_scale = 1.0,
         lm_scale = 1.0,
         old_acoustic_scale = 0.0;
@@ -124,6 +125,8 @@ int main(int argc, char *argv[]) {
     po.Register("old-acoustic-scale", &old_acoustic_scale,
                 "Add in the scores in the input lattices with this scale, rather "
                 "than discarding them.");
+    po.Register("one-silence-class", &one_silence_class, "If true, newer "
+                "behavior which will tend to reduce insertions.");
     kaldi::int32 max_frames = 6000; // Allow segments maximum of one minute by default
     po.Register("max-frames",&max_frames, "Maximum number of frames a segment can have to be processed");
     bool do_smbr = false;
@@ -296,10 +299,12 @@ int main(int argc, char *argv[]) {
 
       if (do_smbr) {  // use state-level accuracies, i.e. sMBR estimation
         utt_frame_acc = LatticeForwardBackwardMpeVariants(
-            trans_model, silence_phones, den_lat, ref_ali, "smbr", &post);
+            trans_model, silence_phones, den_lat, ref_ali, "smbr",
+            one_silence_class, &post);
       } else {  // use phone-level accuracies, i.e. MPFE (minimum phone frame error)
         utt_frame_acc = LatticeForwardBackwardMpeVariants(
-            trans_model, silence_phones, den_lat, ref_ali, "mpfe", &post);
+            trans_model, silence_phones, den_lat, ref_ali, "mpfe",
+            one_silence_class, &post);
       }
 
       // 6) convert the Posterior to a matrix,

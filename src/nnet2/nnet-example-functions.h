@@ -236,6 +236,9 @@ void SolvePackingProblem(BaseFloat max_cost,
    is "mmi", "drop_frames" means we don't include derivatives for frames
    where the numerator pdf is not in the denominator lattice.
 
+   if "one_silence_class" is true you can get a newer behavior for MPE/SMBR
+   which will tend to reduce insertions.
+
    "silence_phones" is a list of silence phones (this is only relevant for mpfe
    or smbr, if we want to treat silence specially).
  */
@@ -244,6 +247,7 @@ void ExampleToPdfPost(
     const std::vector<int32> &silence_phones,
     std::string criterion,
     bool drop_frames,
+    bool one_silence_class,
     const DiscriminativeNnetExample &eg,
     Posterior *post);
 
@@ -269,6 +273,10 @@ void ExampleToPdfPost(
    == true.  Then it will not compute the hash for frames where the numerator
    pdf-id is not in the denominator lattice.
 
+   You can set one_silence_class to true for a newer optional behavior that will
+   reduce insertions in the trained model (or false for the traditional
+   behavior).
+
    The function will also accumulate the total numerator and denominator weights
    used as num_weight and den_weight, for an additional diagnostic, and the total
    number of frames, as tot_t.
@@ -278,6 +286,7 @@ void UpdateHash(
     const DiscriminativeNnetExample &eg,
     std::string criterion,
     bool drop_frames,
+    bool one_silence_class,
     Matrix<double> *hash,
     double *num_weight,
     double *den_weight,

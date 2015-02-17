@@ -327,6 +327,7 @@ double NnetDiscriminativeUpdater::GetDiscriminativePosteriors(Posterior *post) {
     double ans;
     ans = LatticeForwardBackwardMpeVariants(tmodel_, silence_phones_, lat_,
                                             eg_.num_ali, opts_.criterion,
+                                            opts_.one_silence_class,
                                             &tid_post) * eg_.weight;
     ConvertPosteriorToPdfs(tmodel_, tid_post, post);
     return ans; // returns the objective function.

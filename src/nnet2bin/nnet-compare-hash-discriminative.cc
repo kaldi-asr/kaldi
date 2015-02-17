@@ -44,6 +44,7 @@ int main(int argc, char *argv[]) {
     
     std::string criterion = "smbr";
     bool drop_frames = false;
+    bool one_silence_class = false;
     BaseFloat threshold = 0.002;
     BaseFloat acoustic_scale = 1.0, lm_scale = 1.0;
     ParseOptions po(usage);
@@ -55,6 +56,8 @@ int main(int argc, char *argv[]) {
     po.Register("criterion", &criterion, "Training criterion, 'mmi'|'mpfe'|'smbr'");
     po.Register("drop-frames", &drop_frames, "If true, for MMI training, drop "
                 "frames where num and den do not intersect.");
+    po.Register("one-silence-class", &one_silence_class, "If true, newer "
+                 "behavior which will tend to reduce insertions.");
     po.Register("threshold", &threshold, "Threshold for equality testing "
                 "(relative)");
     
@@ -91,7 +94,8 @@ int main(int argc, char *argv[]) {
       DiscriminativeNnetExample eg = example_reader1.Value();
       fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale),
                         &(eg.den_lat));
-      UpdateHash(tmodel, eg, criterion, drop_frames, &hash1,
+      UpdateHash(tmodel, eg, criterion, drop_frames,
+                 one_silence_class, &hash1,
                  &num_weight1, &den_weight1, &tot_t1);
     }
     KALDI_LOG << "Processed " << num_done1 << " examples.";
@@ -101,7 +105,8 @@ int main(int argc, char *argv[]) {
       DiscriminativeNnetExample eg = example_reader2.Value();
       fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale),
                         &(eg.den_lat));
-      UpdateHash(tmodel, eg, criterion, drop_frames, &hash2,
+      UpdateHash(tmodel, eg, criterion, drop_frames,
+                 one_silence_class, &hash2,
                  &num_weight2, &den_weight2, &tot_t2);
     }
     KALDI_LOG << "Processed " << num_done2 << " examples.";

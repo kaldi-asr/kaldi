@@ -16,6 +16,7 @@ boost=0.0       # option relevant for MMI
 
 criterion=smbr
 drop_frames=false #  option relevant for MMI
+one_silence_class=false  # option relevant for MPE/SMBR
 num_jobs_nnet=4    # Number of neural net jobs to run in parallel.  Note: this
                    # will interact with the learning rates (if you decrease
                    # this, you'll have to decrease the learning rate, and vice
@@ -54,7 +55,7 @@ if [ $# != 2 ]; then
   echo " e.g.: $0 exp/tri4_mpe_degs exp/tri4_mpe"
   echo ""
   echo "You have to first call get_egs_discriminative2.sh to dump the egs."
-  echo "Caution: the options 'drop_frames' and 'criterion' are taken here"
+  echo "Caution: the options 'drop-frames' and 'criterion' are taken here"
   echo "even though they were required also by get_egs_discriminative2.sh,"
   echo "and they should normally match."
   echo ""
@@ -82,6 +83,7 @@ if [ $# != 2 ]; then
   echo "  --boost <boost|0.0>                              # Boosting factor for MMI (e.g., 0.1)"
   echo "  --drop-frames <true,false|false>                 # Option that affects MMI training: if true, we exclude gradients from frames"
   echo "                                                   # where the numerator transition-id is not in the denominator lattice."
+  echo "  --one-silence-class <true,false|false>           # Option that affects MPE/SMBR training (will tend to reduce insertions)"
   echo "  --modify-learning-rates <true,false|false>       # If true, modify learning rates to try to equalize relative"
   echo "                                                   # changes across layers."
   exit 1;
@@ -168,6 +170,7 @@ while [ $x -lt $num_iters ]; do
         "ark:$degs_dir/degs.\$[((JOB-1+($x*$num_jobs_nnet))%$num_archives)+1].ark" ark:- \| \
       nnet-train-discriminative$train_suffix --silence-phones=$silphonelist \
        --criterion=$criterion --drop-frames=$drop_frames \
+       --one-silence-class=$one_silence_class \
        --boost=$boost --acoustic-scale=$acoustic_scale \
        $dir/$x.mdl ark:- $dir/$[$x+1].JOB.mdl || exit 1;
 

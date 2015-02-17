@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
       /* check whether a segment start time and end time exists in recording 
        * if fails , skips the segment.
        */ 
-      if (!reader.HasKey(recording)) {
+     if (!reader.HasKey(recording)) {
         KALDI_WARN << "Could not find recording " << recording
                    << ", skipping segment " << segment;
         continue;

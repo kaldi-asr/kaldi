@@ -37,13 +37,16 @@ struct NnetDiscriminativeUpdateOptions {
   BaseFloat acoustic_scale; // e.g. 0.1
   bool drop_frames; // for MMI, true if we ignore frames where alignment
                     // pdf-id is not in the lattice.
+  bool one_silence_class;  // Affects MPE/SMBR>
   BaseFloat boost; // for MMI, boosting factor (would be Boosted MMI)... e.g. 0.1.
 
   std::string silence_phones_str; // colon-separated list of integer ids of silence phones,
                                   // for MPE/SMBR only.
 
   NnetDiscriminativeUpdateOptions(): criterion("smbr"), acoustic_scale(0.1),
-                                     drop_frames(false), boost(0.0) { }
+                                     drop_frames(false),
+                                     one_silence_class(false),
+                                     boost(0.0) { }
   
   void Register(OptionsItf *po) {
     po->Register("criterion", &criterion, "Criterion, 'mmi'|'mpfe'|'smbr', "
@@ -54,6 +57,8 @@ struct NnetDiscriminativeUpdateOptions {
     po->Register("drop-frames", &drop_frames, "For MMI, if true we drop frames "
                  "with no overlap of num and den frames");
     po->Register("boost", &boost, "Boosting factor for boosted MMI (e.g. 0.1)");
+    po->Register("one-silence-class", &one_silence_class, "If true, newer "
+                 "behavior which will tend to reduce insertions.");
     po->Register("silence-phones", &silence_phones_str,
                  "For MPFE or SMBR, colon-separated list of integer ids of "
                  "silence phones, e.g. 1:2:3");
