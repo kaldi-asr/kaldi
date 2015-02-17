@@ -341,6 +341,7 @@ namespace nnet1 {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet1;
+  using kaldi::int32;
 
   for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1

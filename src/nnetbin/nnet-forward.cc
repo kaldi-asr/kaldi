@@ -54,6 +54,10 @@ int main(int argc, char *argv[]) {
     std::string use_gpu="no";
     po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
 
+    using namespace kaldi;
+    using namespace kaldi::nnet1;
+    typedef kaldi::int32 int32;
+
     int32 time_shift = 0;
     po.Register("time-shift", &time_shift, "LSTM : repeat last input frame N-times, discrad N initial output frames."); 
 
@@ -68,10 +72,6 @@ int main(int argc, char *argv[]) {
         feature_rspecifier = po.GetArg(2),
         feature_wspecifier = po.GetArg(3);
         
-    using namespace kaldi;
-    using namespace kaldi::nnet1;
-    typedef kaldi::int32 int32;
-
     //Select the GPU
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
