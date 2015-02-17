@@ -96,14 +96,11 @@ if [ $stage -le 4 ]; then
   dir=exp/dnn8b_bn-gmm_${exp}
   # Train,
   # gmm on bn features, no cmvn, no lda-mllt,
-  if false
-  then
   steps/train_deltas.sh --power 0.5 --boost-silence 1.5 --cmd "$train_cmd" \
     --delta-opts "--delta-order=0" \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --beam 20 --retry-beam 80 \
     6000 26000 $train_bn $lang $ali_src $dir || exit 1
-  fi
   # Decode,
   utils/mkgraph.sh $lang_test $dir $dir/graph || exit 1
   steps/decode.sh --nj $njdec --scoring-opts "$scoring" --cmd "$decode_cmd" \
