@@ -1303,7 +1303,7 @@ class RandomAccessTableReaderScriptImpl:
           "not-open object.";
 
     if (!((state_ == kHaveObject || state_ == kGaveObject)
-         && key == current_key_)) {  // Not already stored...
+          && key == current_key_)) {  // Not already stored...
       bool has_key = HasKeyInternal(key, true);  // preload.
       if (!has_key)
         KALDI_ERR << "RandomAccessTableReader::Value(), could not get item for key "
@@ -1329,15 +1329,20 @@ class RandomAccessTableReaderScriptImpl:
   }
 
  private:
-  // HasKeyInternal when called with preload == false just tells us whether
-  // the key is in the scp.  With preload == true, it will also check that
-  // we can preload the object from disk (loading from the rxfilename in
-  // the scp), and only return true if we can.  This function is called
-  // both from HasKey and from Value().
+  // HasKeyInternal when called with preload == false just tells us whether the
+  // key is in the scp.  With preload == true, which happens when the ,p
+  // (permissive) option is given in the rspecifier, it will also check that we
+  // can preload the object from disk (loading from the rxfilename in the scp),
+  // and only return true if we can.  This function is called both from HasKey
+  // and from Value().
   virtual bool HasKeyInternal(const std::string &key, bool preload) {
     switch (state_) {
       case kUninitialized: case kNotReadScript:
         KALDI_ERR << "HasKey called on RandomAccessTableReader object that is not open.";
+      case kHaveObject: case kGaveObject:
+        if (key == current_key_)
+          return true;
+        break;
       default: break;
     }
     KALDI_ASSERT(IsToken(key));
