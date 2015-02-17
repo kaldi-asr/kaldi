@@ -432,7 +432,7 @@ sub writeProjectFiles {
     <Import Project=\"..\\openfstwin_debug_win32.props\" />
   </ImportGroup>
   <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|x64'\" Label=\"PropertySheets\">
-    <Import Project=\"\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props\" Condition=\"exists('\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />^M
+    <Import Project=\"\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props\" Condition=\"exists('\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />
     <Import Project=\"..\\kaldiwin.props\" />
     <Import Project=\"..\\openfstwin_debug.props\" />
   </ImportGroup>
