@@ -48,7 +48,8 @@ if(@ARGV < 1 || @ARGV > 2) {
       "only the lines that were *not* in id_list.\n" .
       "Caution: previously, the -f option was interpreted as a zero-based field index.\n" .
       "If your older scripts (written before Oct 2014) stopped working and you used the\n" .
-      "-f option, add 1 to the argument.\n";
+      "-f option, add 1 to the argument.\n" .
+      "See also: utils/filter_scp.pl .\n";
 }
 
 
