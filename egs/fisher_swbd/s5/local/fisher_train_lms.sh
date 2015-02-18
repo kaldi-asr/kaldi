@@ -70,14 +70,14 @@ cat $cleantext | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1]
    || exit 1;
 
 train_lm.sh --arpa --lmtype 3gram-mincount $dir || exit 1;
-
 # Perplexity over 88307.000000 words (excluding 691.000000 OOVs) is 71.241332
+train_lm.sh --arpa --lmtype 4gram-mincount $dir || exit 1;
 
 # note: output is
 # data/local/lm/3gram-mincount/lm_unpruned.gz 
 
 
-#exit 0
+exit 0
 
 
 # From here is some commands to do a baseline with SRILM (assuming
