@@ -35,11 +35,11 @@ namespace nnet1 {
 struct PdfPriorOptions {
   std::string class_frame_counts;
   BaseFloat prior_scale;
-  BaseFloat prior_cutoff;
+  BaseFloat prior_floor;
 
   PdfPriorOptions() : class_frame_counts(""),
                       prior_scale(1.0),
-                      prior_cutoff(1e-10) {}
+                      prior_floor(1e-10) {}
 
   void Register(OptionsItf *po) {
     po->Register("class-frame-counts", &class_frame_counts,
@@ -48,8 +48,8 @@ struct PdfPriorOptions {
                  " or pre-softmax activations)");
     po->Register("prior-scale", &prior_scale,
                  "Scaling factor to be applied on pdf-log-priors");
-    po->Register("prior-cutoff", &prior_cutoff,
-                 "Classes with priors lower than cutoff will have 0 likelihood");
+    po->Register("prior-floor", &prior_floor,
+                 "Flooring constatnt for prior probability (i.e. label rel. frequency)");
   }
 };
 

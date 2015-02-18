@@ -85,29 +85,26 @@ int main(int argc, char *argv[]) {
 
     Nnet nnet;
     nnet.Read(model_filename);
-    //optionally remove softmax
-    if (no_softmax && nnet.GetComponent(nnet.NumComponents()-1).GetType() ==
-        kaldi::nnet1::Component::kSoftmax) {
-      KALDI_LOG << "Removing softmax from the nnet " << model_filename;
-      nnet.RemoveComponent(nnet.NumComponents()-1);
-    }
-    //check for some non-sense option combinations
-    if (apply_log && no_softmax) {
-      KALDI_ERR << "Nonsense option combination : --apply-log=true and --no-softmax=true";
-    }
-    if (apply_log && nnet.GetComponent(nnet.NumComponents()-1).GetType() !=
-        kaldi::nnet1::Component::kSoftmax) {
-      KALDI_ERR << "Used --apply-log=true, but nnet " << model_filename 
-                << " does not have <softmax> as last component!";
-    }
-    
-    PdfPrior pdf_prior(prior_opts);
-    if (prior_opts.class_frame_counts != "" && (!no_softmax && !apply_log)) {
-      KALDI_ERR << "Option --class-frame-counts has to be used together with "
-                << "--no-softmax or --apply-log";
+    // optionally remove softmax,
+    Component::ComponentType last_type = nnet.GetComponent(nnet.NumComponents()-1).GetType();
+    if (no_softmax) {
+      if (last_type == Component::kSoftmax || last_type == Component::kBlockSoftmax) {
+        KALDI_LOG << "Removing " << Component::TypeToMarker(last_type) << " from the nnet " << model_filename;
+        nnet.RemoveComponent(nnet.NumComponents()-1);
+      } else {
+        KALDI_WARN << "Cannot remove softmax using --no-softmax=true, as the last component is " << Component::TypeToMarker(last_type);
+      }
     }
 
-    // disable dropout
+    // avoid some bad option combinations,
+    if (apply_log && no_softmax) {
+      KALDI_ERR << "Cannot use both --apply-log=true --no-softmax=true, use only one of the two!";
+    }
+
+    // we will subtract log-priors later,
+    PdfPrior pdf_prior(prior_opts); 
+
+    // disable dropout,
     nnet_transf.SetDropoutRetention(1.0);
     nnet.SetDropoutRetention(1.0);
 
@@ -127,14 +124,14 @@ int main(int argc, char *argv[]) {
     for (; !feature_reader.Done(); feature_reader.Next()) {
       // read
       Matrix<BaseFloat> mat = feature_reader.Value();
+      std::string utt = feature_reader.Key();
       KALDI_VLOG(2) << "Processing utterance " << num_done+1 
-                    << ", " << feature_reader.Key() 
+                    << ", " << utt
                     << ", " << mat.NumRows() << "frm";
 
-      //check for NaN/inf
-      BaseFloat sum = mat.Sum();
-      if (!KALDI_ISFINITE(sum)) {
-        KALDI_ERR << "NaN or inf found in features of " << feature_reader.Key();
+      
+      if (!KALDI_ISFINITE(mat.Sum())) { // check there's no nan/inf,
+        KALDI_ERR << "NaN or inf found in features for " << utt;
       }
 
       // time-shift, copy the last frame of LSTM input N-times,
@@ -146,23 +143,43 @@ int main(int argc, char *argv[]) {
         }
       }
       
-      // push it to gpu
+      // push it to gpu,
       feats = mat;
-      // fwd-pass
+
+      // fwd-pass, feature transform,
       nnet_transf.Feedforward(feats, &feats_transf);
+      if (!KALDI_ISFINITE(feats_transf.Sum())) { // check there's no nan/inf,
+        KALDI_ERR << "NaN or inf found in transformed-features for " << utt;
+      }
+
+      // fwd-pass, nnet,
       nnet.Feedforward(feats_transf, &nnet_out);
+      if (!KALDI_ISFINITE(nnet_out.Sum())) { // check there's no nan/inf,
+        KALDI_ERR << "NaN or inf found in nn-output for " << utt;
+      }
       
-      // convert posteriors to log-posteriors
+      // convert posteriors to log-posteriors,
       if (apply_log) {
+        if (!(nnet_out.Min() >= 0.0 && nnet_out.Max() <= 1.0)) {
+          KALDI_WARN << utt << " "
+                     << "Applying 'log' to data which don't seem to be probabilities "
+                     << "(is there a softmax somwhere?)";
+        }
+        nnet_out.Add(1e-20); // avoid log(0),
         nnet_out.ApplyLog();
       }
      
-      // subtract log-priors from log-posteriors to get quasi-likelihoods
-      if (prior_opts.class_frame_counts != "" && (no_softmax || apply_log)) {
+      // subtract log-priors from log-posteriors or pre-softmax,
+      if (prior_opts.class_frame_counts != "") {
+        if (nnet_out.Min() >= 0.0 && nnet_out.Max() <= 1.0) {
+          KALDI_WARN << utt << " " 
+                     << "Subtracting log-prior on 'probability-like' data in range [0..1] " 
+                     << "(Did you forget --no-softmax=true or --apply-log=true ?)";
+        }
         pdf_prior.SubtractOnLogpost(&nnet_out);
       }
-     
-      // download from GPU
+
+      // download from GPU,
       nnet_out_host.Resize(nnet_out.NumRows(), nnet_out.NumCols());
       nnet_out.CopyToMat(&nnet_out_host);
 
@@ -172,17 +189,10 @@ int main(int argc, char *argv[]) {
         nnet_out_host = tmp.RowRange(time_shift, tmp.NumRows() - time_shift);
       }
 
-      // check for NaN/inf
-      for (int32 r = 0; r < nnet_out_host.NumRows(); r++) {
-        for (int32 c = 0; c < nnet_out_host.NumCols(); c++) {
-          BaseFloat val = nnet_out_host(r,c);
-          if (val != val) KALDI_ERR << "NaN in NNet output of : " << feature_reader.Key();
-          if (val == std::numeric_limits<BaseFloat>::infinity())
-            KALDI_ERR << "inf in NNet coutput of : " << feature_reader.Key();
-        }
+      // write,
+      if (!KALDI_ISFINITE(nnet_out_host.Sum())) { // check there's no nan/inf,
+        KALDI_ERR << "NaN or inf found in final output nn-output for " << utt;
       }
-
-      // write
       feature_writer.Write(feature_reader.Key(), nnet_out_host);
 
       // progress log

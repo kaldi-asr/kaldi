@@ -26,56 +26,47 @@ namespace nnet1 {
 PdfPrior::PdfPrior(const PdfPriorOptions &opts)
     : prior_scale_(opts.prior_scale) {
   if (opts.class_frame_counts == "") {
-    //Empty file with counts is not an error, 
-    //there are cases when PdfPrior is not active 
-    //(example: nnet-forward over feature transform, bn-feature extractor)
+    // class_frame_counts is empty, the PdfPrior is deactivated...
+    // (for example when 'nnet-forward' generates bottleneck features)
     return;
-
-    //KALDI_ERR << "--class-frame-counts is empty: Cannot initialize priors "
-    //          << "without the counts.";
   }
 
-  Vector<double> tmp_priors;
   KALDI_LOG << "Computing pdf-priors from : " << opts.class_frame_counts;
-
+  
+  Vector<double> frame_counts, rel_freq, log_priors;
   {
     Input in;
     in.OpenTextMode(opts.class_frame_counts);
-    tmp_priors.Read(in.Stream(), false);
+    frame_counts.Read(in.Stream(), false);
     in.Close();
   }
 
-  int32 prior_dim = tmp_priors.Dim();
-  Vector<BaseFloat> tmp_mask(prior_dim, kSetZero);
-  int32 num_cutoff = 0;
-  for (int32 i = 0; i < prior_dim; i++) {
-    if (tmp_priors(i) < opts.prior_cutoff) {
-      tmp_priors(i) = opts.prior_cutoff;
-      tmp_mask(i) = FLT_MAX/2;  // not using -kLogZeroFloat to prevent NANs
-      num_cutoff++;
-    }
-  }
-  if (num_cutoff > 0) {
-    KALDI_WARN << num_cutoff << " out of " << prior_dim << " classes have counts"
-               << " lower than " << opts.prior_cutoff;
-  }
-
-  double sum = tmp_priors.Sum();
-  tmp_priors.Scale(1.0 / sum);
-  tmp_priors.ApplyLog();
-  for (int32 i = 0; i < prior_dim; i++) {
-    KALDI_ASSERT(tmp_priors(i) != kLogZeroDouble);
-  }
+  // get relative frequencies,
+  rel_freq = frame_counts;
+  rel_freq.Scale(1.0/frame_counts.Sum());
+  
+  // get the log-prior,
+  log_priors = rel_freq;
+  log_priors.Add(1e-20);
+  log_priors.ApplyLog();
 
   // Make the priors for classes with low counts +inf (i.e. -log(0)) such that
   // the classes have 0 likelihood (i.e. -inf log-likelihood). We use FLT_MAX/2
   // instead of -kLogZeroFloat to prevent NANs from appearing in computation.
-  Vector<BaseFloat> tmp_priors_f(tmp_priors);
-  tmp_priors_f.AddVec(1.0, tmp_mask);
+  int32 num_floored = 0;
+  for (int32 i=0; i<log_priors.Dim(); i++) {
+    if (rel_freq(i) < opts.prior_floor) {
+      log_priors(i) = FLT_MAX/2;
+      num_floored++;
+    }
+  }
+  KALDI_LOG << "Floored " << num_floored << " pdf-priors";
 
-  // push priors to GPU
-  log_priors_.Resize(prior_dim);
-  log_priors_.CopyFromVec(tmp_priors_f);
+  // sanity check,
+  KALDI_ASSERT(KALDI_ISFINITE(log_priors.Sum()));
+
+  // push to GPU,
+  log_priors_ = Vector<BaseFloat>(log_priors);
 }
 
 

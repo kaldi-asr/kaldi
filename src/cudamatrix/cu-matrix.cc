@@ -2008,6 +2008,39 @@ Real CuMatrixBase<Real>::Sum() const {
   return row_sum.Sum();
 }
 
+
+template<typename Real>
+Real CuMatrixBase<Real>::Max() const {
+  Timer tim;
+  // TODO rewrite in CUDA,
+  Matrix<Real> tmp(NumRows(), NumCols(), kUndefined);
+  CopyToMat(&tmp);
+  Real ans = tmp.Max();
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  }
+#endif
+  return ans;
+}
+
+
+template<typename Real>
+Real CuMatrixBase<Real>::Min() const {
+  Timer tim;
+  // TODO rewrite in CUDA,
+  Matrix<Real> tmp(NumRows(), NumCols(), kUndefined);
+  CopyToMat(&tmp);
+  Real ans = tmp.Min();
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  }
+#endif
+  return ans;
+}
+
+
 template<typename Real>
 Real CuMatrixBase<Real>::Trace(bool check_square) const {
 #if HAVE_CUDA == 1

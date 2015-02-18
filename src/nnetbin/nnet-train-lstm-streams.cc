@@ -80,8 +80,8 @@ int main(int argc, char *argv[]) {
     int32 num_stream=4;
     po.Register("num-stream", &num_stream, "---LSTM--- BPTT multi-stream training"); 
 
-    int32 dump_interval=50000;
-    po.Register("dump-interval", &dump_interval, "---LSTM--- num utts between model dumping"); 
+    int32 dump_interval=0;
+    po.Register("dump-interval", &dump_interval, "---LSTM--- num utts between model dumping [ 0 == disabled ]"); 
     //</jiayu>
 
     // Add dummy randomizer options, to make the tool compatible with standard scripts
@@ -303,12 +303,14 @@ int main(int argc, char *argv[]) {
 #endif
         }
 
-        if ((num_done-num_done_progress)/dump_interval != (num_done/dump_interval)) {
-            char nnet_name[512];
-            if (!crossvalidate) {
-                sprintf(nnet_name, "%s_utt%d", target_model_filename.c_str(), num_done);
-                nnet.Write(nnet_name, binary);
-            }
+        if (dump_interval > 0) { // disabled by 'dump_interval == 0',
+          if ((num_done-num_done_progress)/dump_interval != (num_done/dump_interval)) {
+              char nnet_name[512];
+              if (!crossvalidate) {
+                  sprintf(nnet_name, "%s_utt%d", target_model_filename.c_str(), num_done);
+                  nnet.Write(nnet_name, binary);
+              }
+          }
         }
     }
       

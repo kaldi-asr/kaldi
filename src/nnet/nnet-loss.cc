@@ -65,8 +65,13 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
   KALDI_ASSERT(net_out.NumRows() == frame_weights.Dim());
-  diff->Resize(net_out.NumRows(), net_out.NumCols());
+
+  KALDI_ASSERT(KALDI_ISFINITE(frame_weights.Sum()));
+  KALDI_ASSERT(KALDI_ISFINITE(net_out.Sum()));
+  KALDI_ASSERT(KALDI_ISFINITE(target.Sum()));
+
   double num_frames = frame_weights.Sum();
+  KALDI_ASSERT(num_frames >= 0.0)
 
   // get frame_weights to GPU,
   frame_weights_ = frame_weights;
@@ -84,6 +89,7 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
 
   // calculate cross_entropy (in GPU),
   xentropy_aux_ = net_out; // y
+  xentropy_aux_.Add(1e-20); // avoid log(0)
   xentropy_aux_.ApplyLog(); // log(y)
   xentropy_aux_.MulElements(target); // t*log(y)
   xentropy_aux_.MulRowsVec(frame_weights_); // w*t*log(y) 
@@ -97,6 +103,9 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   entropy_aux_.MulRowsVec(frame_weights_); // w*t*log(t) 
   double entropy = -entropy_aux_.Sum();
 
+  KALDI_ASSERT(KALDI_ISFINITE(cross_entropy));
+  KALDI_ASSERT(KALDI_ISFINITE(entropy));
+
   loss_ += cross_entropy;
   entropy_ += entropy;
   correct_ += correct;
@@ -109,7 +118,9 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
     loss_progress_ += cross_entropy;
     entropy_progress_ += entropy;
     if (frames_progress_ > progress_step) {
-      KALDI_VLOG(1) << "ProgressLoss[" << frames_progress_/100/3600 << "h/" << frames_/100/3600 << "h]: " 
+      KALDI_VLOG(1) << "ProgressLoss[last " 
+                    << static_cast<int>(frames_progress_/100/3600) << "h of " 
+                    << static_cast<int>(frames_/100/3600) << "h]: " 
                     << (loss_progress_-entropy_progress_)/frames_progress_ << " (Xent)";
       // store
       loss_vec_.push_back((loss_progress_-entropy_progress_)/frames_progress_);
@@ -161,9 +172,17 @@ void Mse::Eval(const VectorBase<BaseFloat> &frame_weights,
                const CuMatrixBase<BaseFloat>& net_out, 
                const CuMatrixBase<BaseFloat>& target, 
                CuMatrix<BaseFloat>* diff) {
+  // check inputs,
   KALDI_ASSERT(net_out.NumCols() == target.NumCols());
   KALDI_ASSERT(net_out.NumRows() == target.NumRows());
+  KALDI_ASSERT(net_out.NumRows() == frame_weights.Dim());
+
+  KALDI_ASSERT(KALDI_ISFINITE(frame_weights.Sum()));
+  KALDI_ASSERT(KALDI_ISFINITE(net_out.Sum()));
+  KALDI_ASSERT(KALDI_ISFINITE(target.Sum()));
+
   int32 num_frames = frame_weights.Sum();
+  KALDI_ASSERT(num_frames >= 0.0)
 
   // get frame_weights to GPU,
   frame_weights_ = frame_weights;
@@ -179,17 +198,21 @@ void Mse::Eval(const VectorBase<BaseFloat> &frame_weights,
   diff_pow_2_.MulRowsVec(frame_weights_); // w*(y - t)^2
   double mean_square_error = 0.5 * diff_pow_2_.Sum(); // sum the matrix,
 
+  KALDI_ASSERT(KALDI_ISFINITE(mean_square_error));
+
   // accumulate
   loss_ += mean_square_error;
   frames_ += num_frames;
 
   // progressive loss reporting
   {
-    static const int32 progress_step = 1e6; // 2.77h
+    static const int32 progress_step = 3600*100; // 1h
     frames_progress_ += num_frames;
     loss_progress_ += mean_square_error;
     if (frames_progress_ > progress_step) {
-      KALDI_VLOG(1) << "ProgressLoss[" << frames_progress_/100/3600 << "h/" << frames_/100/3600 << "h]: " 
+      KALDI_VLOG(1) << "ProgressLoss[last " 
+                    << static_cast<int>(frames_progress_/100/3600) << "h of " 
+                    << static_cast<int>(frames_/100/3600) << "h]: " 
                     << loss_progress_/frames_progress_ << " (Mse)";
       // store
       loss_vec_.push_back(loss_progress_/frames_progress_);

@@ -417,6 +417,8 @@ class CuMatrixBase {
   }
 
   Real Sum() const;
+  Real Max() const; ///< proxy to MatrixBase::Max(), cuda not used
+  Real Min() const; ///< proxy to MatrixBase::Min(), cuda not used
 
   /// Return the trace. If check_square = true, will crash if matrix is not square.
   Real Trace(bool check_square = true) const;

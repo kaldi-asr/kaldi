@@ -34,6 +34,8 @@ parser.add_option('--lstm-stddev-factor', dest='lstm_stddev_factor', type='float
                    help='Standard deviation of initialization [default: %default]');
 parser.add_option('--param-stddev-factor', dest='param_stddev_factor', type='float', default=0.04, 
                    help='Standard deviation in output layer [default: %default]');
+parser.add_option('--clip-gradient', dest='clip_gradient', type='float', default=5.0, 
+                   help='Clipping constant applied to gradients [default: %default]');
 #
 (o,args) = parser.parse_args()
 if len(args) != 2 : 
@@ -51,8 +53,8 @@ if len(args) != 2 :
 #</NnetProto>
 
 print "<NnetProto>"
-print "<LstmProjectedStreams> <InputDim> %d <OutputDim> %d <CellDim> %s <ParamScale> %f" % \
-    (feat_dim, o.num_recurrent, o.num_cells, o.lstm_stddev_factor)
+print "<LstmProjectedStreams> <InputDim> %d <OutputDim> %d <CellDim> %s <ParamScale> %f <ClipGradient> %f" % \
+    (feat_dim, o.num_recurrent, o.num_cells, o.lstm_stddev_factor, o.clip_gradient)
 print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> 0.0 <BiasRange> 0.0 <ParamStddev> %f" % \
     (o.num_recurrent, num_leaves, o.param_stddev_factor)
 print "<Softmax> <InputDim> %d <OutputDim> %d" % \

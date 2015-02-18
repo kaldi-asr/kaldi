@@ -47,8 +47,9 @@ public:
         UpdatableComponent(input_dim, output_dim),
         ncell_(0),
         nrecur_(output_dim),
-        //dropout_rate_(0.0),
-        nstream_(0)
+        nstream_(0),
+        clip_gradient_(0.0)
+        //, dropout_rate_(0.0)
     { }
 
     ~LstmProjectedStreams()
@@ -80,6 +81,8 @@ public:
             ReadToken(is, false, &token); 
             if (token == "<CellDim>") 
                 ReadBasicType(is, false, &ncell_);
+            else if (token == "<ClipGradient>") 
+                ReadBasicType(is, false, &clip_gradient_);
             //else if (token == "<DropoutRate>") 
             //    ReadBasicType(is, false, &dropout_rate_);
             else if (token == "<ParamScale>") 
@@ -120,11 +123,14 @@ public:
 
         w_r_m_corr_.Resize(nrecur_, ncell_, kSetZero); 
 
+        KALDI_ASSERT(clip_gradient_ >= 0.0);
     }
 
     void ReadData(std::istream &is, bool binary) {
         ExpectToken(is, binary, "<CellDim>");
         ReadBasicType(is, binary, &ncell_);
+        ExpectToken(is, binary, "<ClipGradient>");
+        ReadBasicType(is, binary, &clip_gradient_);
         //ExpectToken(is, binary, "<DropoutRate>");
         //ReadBasicType(is, binary, &dropout_rate_);
 
@@ -153,6 +159,8 @@ public:
     void WriteData(std::ostream &os, bool binary) const {
         WriteToken(os, binary, "<CellDim>");
         WriteBasicType(os, binary, ncell_);
+        WriteToken(os, binary, "<ClipGradient>");
+        WriteBasicType(os, binary, clip_gradient_);
         //WriteToken(os, binary, "<DropoutRate>");
         //WriteBasicType(os, binary, dropout_rate_);
 
@@ -218,14 +226,53 @@ public:
     }
   
     std::string InfoGradient() const {
+        // disassemble forward-propagation buffer into different neurons,
+        const CuSubMatrix<BaseFloat> YG(propagate_buf_.ColRange(0*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> YI(propagate_buf_.ColRange(1*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> YF(propagate_buf_.ColRange(2*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> YO(propagate_buf_.ColRange(3*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> YC(propagate_buf_.ColRange(4*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> YH(propagate_buf_.ColRange(5*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> YM(propagate_buf_.ColRange(6*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> YR(propagate_buf_.ColRange(7*ncell_, nrecur_));
+
+        // disassemble backpropagate buffer into different neurons,
+        const CuSubMatrix<BaseFloat> DG(backpropagate_buf_.ColRange(0*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> DI(backpropagate_buf_.ColRange(1*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> DF(backpropagate_buf_.ColRange(2*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> DO(backpropagate_buf_.ColRange(3*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> DC(backpropagate_buf_.ColRange(4*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> DH(backpropagate_buf_.ColRange(5*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> DM(backpropagate_buf_.ColRange(6*ncell_, ncell_));
+        const CuSubMatrix<BaseFloat> DR(backpropagate_buf_.ColRange(7*ncell_, nrecur_));
+
         return std::string("    ") + 
-            "\n  w_gifo_x_corr_  "     + MomentStatistics(w_gifo_x_corr_) + 
-            "\n  w_gifo_r_corr_  "     + MomentStatistics(w_gifo_r_corr_) +
-            "\n  bias_corr_  "         + MomentStatistics(bias_corr_) +
-            "\n  peephole_i_c_corr_  " + MomentStatistics(peephole_i_c_corr_) +
-            "\n  peephole_f_c_corr_  " + MomentStatistics(peephole_f_c_corr_) +
-            "\n  peephole_o_c_corr_  " + MomentStatistics(peephole_o_c_corr_) +
-            "\n  w_r_m_corr_  "        + MomentStatistics(w_r_m_corr_);
+            "\n  Gradients:" +
+            "\n    w_gifo_x_corr_  "     + MomentStatistics(w_gifo_x_corr_) + 
+            "\n    w_gifo_r_corr_  "     + MomentStatistics(w_gifo_r_corr_) +
+            "\n    bias_corr_  "         + MomentStatistics(bias_corr_) +
+            "\n    peephole_i_c_corr_  " + MomentStatistics(peephole_i_c_corr_) +
+            "\n    peephole_f_c_corr_  " + MomentStatistics(peephole_f_c_corr_) +
+            "\n    peephole_o_c_corr_  " + MomentStatistics(peephole_o_c_corr_) +
+            "\n    w_r_m_corr_  "        + MomentStatistics(w_r_m_corr_) +
+            "\n  Forward-pass:" +
+            "\n    YG  " + MomentStatistics(YG) +
+            "\n    YI  " + MomentStatistics(YI) +
+            "\n    YF  " + MomentStatistics(YF) +
+            "\n    YC  " + MomentStatistics(YC) +
+            "\n    YH  " + MomentStatistics(YH) +
+            "\n    YO  " + MomentStatistics(YO) +
+            "\n    YM  " + MomentStatistics(YM) +
+            "\n    YR  " + MomentStatistics(YR) +
+            "\n  Backward-pass:" +
+            "\n    DG  " + MomentStatistics(DG) +
+            "\n    DI  " + MomentStatistics(DI) +
+            "\n    DF  " + MomentStatistics(DF) +
+            "\n    DC  " + MomentStatistics(DC) +
+            "\n    DH  " + MomentStatistics(DH) +
+            "\n    DO  " + MomentStatistics(DO) +
+            "\n    DM  " + MomentStatistics(DM) +
+            "\n    DR  " + MomentStatistics(DR);
     }
 
     void ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
@@ -522,7 +569,24 @@ public:
 
         w_r_m_corr_.AddMatMat(1.0, DR.RowRange(1*S,T*S), kTrans, 
                                    YM.RowRange(1*S,T*S), kNoTrans, mmt);
-    
+
+        if (clip_gradient_ > 0.0) {
+          w_gifo_x_corr_.ApplyFloor(-clip_gradient_);
+          w_gifo_x_corr_.ApplyCeiling(clip_gradient_);
+          w_gifo_r_corr_.ApplyFloor(-clip_gradient_);
+          w_gifo_r_corr_.ApplyCeiling(clip_gradient_);
+          bias_corr_.ApplyFloor(-clip_gradient_);
+          bias_corr_.ApplyCeiling(clip_gradient_);
+          w_r_m_corr_.ApplyFloor(-clip_gradient_);
+          w_r_m_corr_.ApplyCeiling(clip_gradient_);
+          peephole_i_c_corr_.ApplyFloor(-clip_gradient_);
+          peephole_i_c_corr_.ApplyCeiling(clip_gradient_);
+          peephole_f_c_corr_.ApplyFloor(-clip_gradient_);
+          peephole_f_c_corr_.ApplyCeiling(clip_gradient_);
+          peephole_o_c_corr_.ApplyFloor(-clip_gradient_);
+          peephole_o_c_corr_.ApplyCeiling(clip_gradient_);
+        }
+
         if (DEBUG) {
             std::cerr << "gradients(with optional momentum): \n";
             std::cerr << "w_gifo_x_corr_ " << w_gifo_x_corr_;
@@ -618,6 +682,9 @@ private:
     int32 nstream_;
 
     CuMatrix<BaseFloat> prev_nnet_state_;
+
+    // gradient-clipping value,
+    BaseFloat clip_gradient_;
 
     // non-recurrent dropout 
     //BaseFloat dropout_rate_;
