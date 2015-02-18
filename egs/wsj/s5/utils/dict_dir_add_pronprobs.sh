@@ -86,7 +86,7 @@ fi
 if $max_normalize; then
   echo "$0: normalizing pronprobs so maximum is 1 for each word."
   cat $dir/lexiconp.txt | awk '{if ($2 > max[$1]) { max[$1] = $2; }} END{for (w in max) { print w, max[w]; }}' > $dir/maxp.txt
-
+  
   awk -v maxf=$dir/maxp.txt  'BEGIN{ while (getline <maxf) { max[$1] = $2; }} { $2 = $2 / max[$1]; print }' <$dir/lexiconp.txt > $dir/lexicon_tmp.txt || exit 1;
   if ! [ $(wc -l  <$dir/lexicon_tmp.txt)  -eq $(wc -l  <$dir/lexiconp.txt) ]; then
     echo "$0: error max-normalizing pron-probs"
@@ -95,6 +95,7 @@ if $max_normalize; then
   mv $dir/lexicon_tmp.txt $dir/lexiconp.txt
   rm $dir/maxp.txt
 fi
+
 
 # Create $dir/lexiconp_silprob.txt and $dir/silprob.txt if silence counts file
 # exists. The format of $dir/lexiconp_silprob.txt is:
@@ -174,10 +175,10 @@ if [ -n "$sil_counts" ]; then
     }' $dir/lexiconp.txt $dir/lexiconp_silprob.txt $dir/silprob.txt
 fi
 
+
 # now regenerate lexicon.txt from lexiconp.txt, to make sure the lines are
 # in the same order. 
 cat $dir/lexiconp.txt | awk '{$2 = ""; print;}' | sed 's/  / /g' >$dir/lexicon.txt
-
 
 # add mandatory files.
 for f in silence_phones.txt nonsilence_phones.txt; do
@@ -191,7 +192,9 @@ done
 
 # add optional files (at least, I think these are optional; would have to check the docs).
 for f in optional_silence.txt extra_questions.txt; do
-  rm $dir/$f 2>/dev/null
+  if [ -f $dir/$f ]; then
+    rm $dir/$f
+  fi
   if [ -f $srcdir/$f ]; then
     cp $srcdir/$f $dir || exit 1;
   fi
