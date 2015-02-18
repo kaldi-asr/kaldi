@@ -150,4 +150,3 @@ class Nnet {
 
 #endif  // KALDI_NNET_NNET_NNET_H_
 
-
