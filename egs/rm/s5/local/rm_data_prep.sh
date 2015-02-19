@@ -50,6 +50,8 @@ mkdir -p $dir
 # make_trans.pl also creates the utterance id's and the kaldi-format scp file.
 local/make_trans.pl trn $tmpdir/train_sph.flist $RMROOT/rm1_audio1/rm1/doc/al_sents.snr >(sort -k1 >$dir/text) \
   >(sort -k1 >$dir/sph.scp)
+sleep 0.25 # At one point I had the next line failing because $dir/sph.scp appeared not
+           # to exist.  Adding this sleep statement appeared to fix the problem.
 
 
 sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
