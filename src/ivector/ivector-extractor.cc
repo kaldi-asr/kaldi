@@ -1222,6 +1222,47 @@ double IvectorExtractorStats::UpdateProjection(
   return impr;
 }
 
+void IvectorExtractorStats::GetOrthogonalIvectorTransform(
+                              const SubMatrix<double> &T,
+                              IvectorExtractor *extractor, 
+                              Matrix<double> *A) const {
+  extractor->ComputeDerivedVars(); // Update the extractor->U_ matrix.
+  int32 ivector_dim = extractor->IvectorDim(),
+        num_gauss = extractor->NumGauss();
+  int32 quad_dim = ivector_dim*(ivector_dim + 1)/2;
+
+  // Each row of extractor->U_ is an SpMatrix. We can compute the weighted
+  // avg of these rows in a SubVector that updates the data of the SpMatrix
+  // Uavg.
+  SpMatrix<double> Uavg(ivector_dim), Vavg(ivector_dim - 1);
+  SubVector<double> uavg_vec(Uavg.Data(), quad_dim);
+  if (extractor->IvectorDependentWeights()) {
+    Vector<double> w_uniform(num_gauss);
+    for (int32 i = 0; i < num_gauss; i++) w_uniform(i) = 1.0;
+    uavg_vec.AddMatVec(1.0/num_gauss, extractor->U_, kTrans, w_uniform, 0.0);
+  } else {
+    uavg_vec.AddMatVec(1.0, extractor->U_, kTrans, extractor->w_vec_, 0.0);
+  }
+
+  Matrix<double> Tinv(T);
+  Tinv.Invert();
+  Matrix<double> Vavg_temp(Vavg), Uavg_temp(Uavg);
+    
+  Vavg_temp.AddMatMatMat(1.0, Tinv, kTrans, SubMatrix<double>(Uavg_temp,
+                           1, ivector_dim-1, 1, ivector_dim-1),
+                         kNoTrans, Tinv, kNoTrans, 0.0);
+  Vavg.CopyFromMat(Vavg_temp);
+
+  Vector<double> s(ivector_dim-1);
+  Matrix<double> P(ivector_dim-1, ivector_dim-1);
+  Vavg.Eig(&s, &P);
+  SortSvd(&s, &P);
+  A->Resize(P.NumCols(), P.NumRows());
+  A->SetZero();
+  A->AddMat(1.0, P, kTrans);
+  KALDI_LOG << "Eigenvalues of Vavg: " << s;
+}
+
 class IvectorExtractorUpdateProjectionClass {
  public:
   IvectorExtractorUpdateProjectionClass(const IvectorExtractorStats &stats,
@@ -1468,7 +1509,6 @@ double IvectorExtractorStats::PriorDiagnostics(double old_prior_offset) const {
 }
 
 
-
 double IvectorExtractorStats::UpdatePrior(
     const IvectorExtractorEstimationOptions &opts,
     IvectorExtractor *extractor) const {
@@ -1504,6 +1544,7 @@ double IvectorExtractorStats::UpdatePrior(
       KALDI_ASSERT(Tproj.IsUnit(1.0e-06));
     }
   }
+
   Vector<double> sum_proj(ivector_dim);
   sum_proj.AddMatVec(1.0, T, kNoTrans, sum, 0.0);
   
@@ -1543,6 +1584,24 @@ double IvectorExtractorStats::UpdatePrior(
   
   Matrix<double> V(ivector_dim, ivector_dim);
   V.AddMatMat(1.0, U, kNoTrans, T, kNoTrans, 0.0);
+
+  // Optionally replace transform V with V' such that V' makes the
+  // covariance unit and additionally diagonalizes the quadratic
+  // term.
+  if (opts.diagonalize) {
+
+    SubMatrix<double> Vsub(V, 1, V.NumRows()-1, 0, V.NumCols());
+    Matrix<double> Vtemp(SubMatrix<double>(V, 1, V.NumRows()-1, 
+                         0, V.NumCols())), 
+                   A;
+    GetOrthogonalIvectorTransform(SubMatrix<double>(Vtemp, 0, 
+                                  Vtemp.NumRows(), 1, Vtemp.NumCols()-1),
+                                  extractor, &A);
+
+    // It is necessary to exclude the first row of V in this transformation
+    // so that the sum_vproj has the form [ x 0 0 0 .. ], where x > 0. 
+    Vsub.AddMatMat(1.0, A, kNoTrans, Vtemp, kNoTrans, 0.0);
+  }
 
   if (num_floored == 0) { // a check..
     SpMatrix<double> Vproj(ivector_dim);

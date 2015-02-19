@@ -437,8 +437,10 @@ struct IvectorExtractorEstimationOptions {
   double variance_floor_factor;
   double gaussian_min_count;
   int32 num_threads;
+  bool diagonalize;
   IvectorExtractorEstimationOptions(): variance_floor_factor(0.1),
-                                       gaussian_min_count(100.0) { }
+                                       gaussian_min_count(100.0),
+                                       diagonalize(true) { }
   void Register(OptionsItf *po) {
     po->Register("variance-floor-factor", &variance_floor_factor,
                  "Factor that determines variance flooring (we floor each covar "
@@ -446,6 +448,10 @@ struct IvectorExtractorEstimationOptions {
     po->Register("gaussian-min-count", &gaussian_min_count,
                  "Minimum total count per Gaussian, below which we refuse to "
                  "update any associated parameters.");
+    po->Register("diagonalize", &diagonalize, 
+                 "If true, diagonalize the quadratic term in the "
+                 "objective function. This reorders the ivector dimensions"
+                 "from most to least important.");
   }
 };
 
@@ -648,6 +654,16 @@ class IvectorExtractorStats {
   SpMatrix<double> ivector_scatter_;
 
  private:
+  /// Computes an orthogonal matrix A from the iVector transform
+  /// T such that T' = A*T is an alternative transform which diagonalizes the 
+  /// quadratic_term_ in the iVector estimation objective function. This
+  /// reorders the dimensions of the iVector from most to least important,
+  /// which may be more convenient to view. The transform should not
+  /// affect the performance of systems which use iVectors. 
+  void GetOrthogonalIvectorTransform(const SubMatrix<double> &T, 
+                                     IvectorExtractor *extractor,
+                                     Matrix<double> *A) const;
+
   IvectorExtractorStats &operator = (const IvectorExtractorStats &other);  // Disallow.
 };
 
