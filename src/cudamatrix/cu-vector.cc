@@ -536,7 +536,7 @@ void CuVectorBase<Real>::AddDiagMatMat(
     int threads_per_element = 1;
     // dimGridLimit may be any power of two between 1 and 256 inclusive; it was
     // determined empirically based on speed tests.
-    int dimGridLimit = (transM == kNoTrans && transN == kTrans ? 64 :
+    int dimGridLimit = (transM == kNoTrans && transN == kTrans ? 2048 :
                         (transM == kTrans && transN == kNoTrans ? 16 : 32));
 
     
