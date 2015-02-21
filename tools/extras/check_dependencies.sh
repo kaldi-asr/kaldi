@@ -86,7 +86,21 @@ if [ ! -z "$debian_packages" ]; then
 fi
 
 
+if [ $(pwd | wc -w) -gt 1 ]; then 
+  echo "*** $0: Warning: Kaldi scripts will fail if the directory name contains a space."
+  echo "***  (it's OK if you just want to compile a few tools -> disable this check)."
+  status=1;
+fi
+
+if which grep >&/dev/null && pwd | grep -E 'JOB|LMWT' >/dev/null; then
+  echo "*** $0: Kaldi scripts will fail if the directory name contains"
+  echo "***  either of the strings 'JOB' or 'LMWT'."
+  status=1;
+fi
+
 if ! $printed && [ $status -eq 0 ]; then
   echo "$0: all OK."
 fi
+
+
 exit $status

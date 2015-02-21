@@ -501,7 +501,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
           } else {
             chop $last_line;
             print STDERR "queue.pl: Error, unfinished job no " .
-              "longer exists, log is in $logfile, last line is '$last_line'" .
+              "longer exists, log is in $logfile, last line is '$last_line', " .
               "syncfile is $f, return status of qstat was $ret\n" .
               "Possible reasons: a) Exceeded time limit? -> Use more jobs!" .
               " b) Shutdown/Frozen machine? -> Run again!\n";

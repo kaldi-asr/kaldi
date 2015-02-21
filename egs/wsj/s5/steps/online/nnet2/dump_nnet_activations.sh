@@ -111,7 +111,7 @@ if [ $stage -le 2 ]; then
       ark:$dir/spk2utt_fake/spk2utt.JOB "$wav_rspecifier" ark:- \| \
     nnet-compute $dir/nnet.raw ark:- ark:- \| \
     copy-feats --compress=true ark:- \
-      ark,scp,t:$dir/feats/feats.JOB.ark,$dir/feats/feats.JOB.scp || exit 1;
+      ark,scp:$dir/feats/feats.JOB.ark,$dir/feats/feats.JOB.scp || exit 1;
 fi
 
 if [ $stage -le 3 ]; then

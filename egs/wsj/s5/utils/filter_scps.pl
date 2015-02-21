@@ -98,7 +98,7 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
   }
   close(F);
   open(FW, ">$outfile_n") || die "Could not open output file $outfile_n";
-  foreach(@inlines) {
+  foreach (@inlines) {
     if ($field == 1) { # Treat this as special case, since it is common.
       $_ =~ m/\s*(\S+)\s*/ || die "Bad line $_, could not get first field.";
       # $1 is what we filter on.
