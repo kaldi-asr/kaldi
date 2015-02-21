@@ -264,7 +264,7 @@ void NnetDiscriminativeUpdater::LatticeComputations() {
   if (opts_.criterion == "mmi") {
     double tot_num_like = 0.0;
     for (; index < eg_.num_ali.size(); index++)
-      tot_num_like += log(answers[index]);
+      tot_num_like += answers[index];
     stats_->tot_num_objf += eg_.weight * tot_num_like;
   }
 
@@ -328,7 +328,7 @@ double NnetDiscriminativeUpdater::GetDiscriminativePosteriors(Posterior *post) {
     ans = LatticeForwardBackwardMpeVariants(tmodel_, silence_phones_, lat_,
                                             eg_.num_ali, opts_.criterion,
                                             opts_.one_silence_class,
-                                            &tid_post) * eg_.weight;
+                                            &tid_post);
     ConvertPosteriorToPdfs(tmodel_, tid_post, post);
     return ans; // returns the objective function.
   } else {
