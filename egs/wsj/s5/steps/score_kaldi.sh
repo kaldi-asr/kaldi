@@ -103,6 +103,7 @@ if [ $stage -le 0 ]; then
 fi
 
 
+
 if [ $stage -le 1 ]; then
 
   for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
@@ -135,7 +136,7 @@ if [ $stage -le 1 ]; then
     $cmd $dir/scoring_kaldi/log/stats2.log \
       cat $dir/scoring_kaldi/wer_details/per_utt \| \
       utils/scoring/wer_ops_details.pl --special-symbol "'***'" \| \
-      column -t \| sort -k 1,1 -k 4,4rn -k 2,2 -k 3,3 \> $dir/scoring_kaldi/wer_details/ops || exit 1;
+      sort -b -i -k 1,1 -k 4,4rn -k 2,2 -k 3,3 \> $dir/scoring_kaldi/wer_details/ops || exit 1;
   fi
 fi
 

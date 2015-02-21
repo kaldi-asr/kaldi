@@ -26,6 +26,7 @@ use strict;
 use warnings;
 use utf8;
 #use List::Util qw[max];
+use Data::Dumper;
 use Getopt::Long;
 use Pod::Usage;
 
@@ -36,6 +37,23 @@ binmode STDOUT, ":utf8";
 my $help;
 my $special_symbol= "<eps>";
 my $separator=";";
+my $extra_size=4;
+my $max_size=16;
+
+
+sub print_line {
+  my $op = $_[0];
+  my $rewf = $_[1];
+  my $hypw = $_[2];
+  my $nofop = $_[3];
+
+}
+
+sub max {
+  $_[ 0 ] < $_[ -1 ] ? shift : pop while @_ > 1;
+  return @_;
+}
+
 
 GetOptions("special-symbol=s" => \$special_symbol,
            "separator=s" => \$separator,
@@ -81,16 +99,40 @@ for my $utterance( sort (keys %UTT) ) {
   }
 }
 
+my $word_len = 0;
+my $ops_len =0;
+foreach my $refw ( sort (keys %EDIT_OPS) ) {
+  foreach my $hypw ( sort (keys %{$EDIT_OPS{$refw}} ) ) {
+    my $q = length($refw) > length($hypw) ? length($refw):  length($hypw) ;
+    if ( $q > $max_size ) {
+      #print STDERR Dumper( [$refw, $hypw, $q, length($refw), length($hypw) ]);
+      ;
+    }
+    $word_len = $q > $word_len ? $q : $word_len ;
+    
+    my $d = length(sprintf("%d", $EDIT_OPS{$refw}->{$hypw}));
+    $ops_len =  $d > $ops_len ? $d: $ops_len ;
+  }
+}
+
+print STDERR "Determined max length of string: $word_len\n";
+print STDERR "Determined max length of number: $ops_len\n";
+if ($word_len > $max_size) {
+  print STDERR "Warning: we are limiting the width to $max_size\n";
+  $word_len = $max_size
+};
+
+
 foreach my $refw ( sort (keys %EDIT_OPS) ) {
   foreach my $hypw ( sort (keys %{$EDIT_OPS{$refw}} ) ) {
     if ( $refw eq $hypw ) {
-      print "correct $refw $hypw " . $EDIT_OPS{$refw}->{$hypw} . "\n";
-    } elsif ( $refw eq $special_symbol ) {
-      print "insertion $refw $hypw " . $EDIT_OPS{$refw}->{$hypw} . "\n";
+      printf "correct       %${word_len}s    %${word_len}s    %${ops_len}d\n", ($refw,  $hypw,  $EDIT_OPS{$refw}->{$hypw});
+    } elsif ( $refw eq   $special_symbol ) {
+      printf "insertion     %${word_len}s    %${word_len}s    %${ops_len}d\n", ($refw,  $hypw,  $EDIT_OPS{$refw}->{$hypw});
     } elsif ( $hypw eq $special_symbol ) {
-      print "deletion $refw $hypw " . $EDIT_OPS{$refw}->{$hypw} . "\n";
+      printf "deletion      %${word_len}s    %${word_len}s    %${ops_len}d\n", ($refw,  $hypw,  $EDIT_OPS{$refw}->{$hypw});
     } else {
-      print "substitution $refw $hypw " . $EDIT_OPS{$refw}->{$hypw} . "\n";
+      printf "substitution  %${word_len}s    %${word_len}s    %${ops_len}d\n", ($refw,  $hypw,  $EDIT_OPS{$refw}->{$hypw});
     }
   }
 }

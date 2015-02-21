@@ -166,4 +166,28 @@ if [ $stage -le 2 ]; then
   if $cleanup; then
     rm $dir/edits.*.txt $dir/aligned_ref.*.txt
   fi
+
 fi
+
+if [ $stage -le 3 ]; then
+  ###
+  # These stats migh help people figure out what is wrong with the data
+  # a)human-friendly and machine-parsable alignment in the file per_utt_details.txt
+  # b)evaluation of per-speaker performance to possibly find speakers with 
+  #   distinctive accents/speech disorders and similar
+  # c)Global analysis on (Ins/Del/Sub) operation, which might be used to figure
+  #   out if there is systematic issue with lexicon, pronunciation or phonetic confusability
+
+  mkdir -p $dir/analysis
+  align-text --special-symbol="***"  ark:$dir/text ark:$dir/aligned_ref.txt  ark,t:- | \
+    utils/scoring/wer_per_utt_details.pl --special-symbol "***" > $dir/analysis/per_utt_details.txt
+
+  cat $dir/analysis/per_utt_details.txt | \
+    utils/scoring/wer_per_spk_details.pl $data/utt2spk > $dir/analysis/per_spk_details.txt
+
+  cat $dir/analysis/per_utt_details.txt | \
+    utils/scoring/wer_ops_details.pl --special-symbol "***" | \
+    sort -i -b -k1,1 -k4,4nr -k2,2 -k3,3 > $dir/analysis/ops_details.txt
+
+fi
+

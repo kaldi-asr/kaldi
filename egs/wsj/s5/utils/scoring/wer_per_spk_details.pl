@@ -137,10 +137,10 @@ for my $SPK (sort (keys %PERSPK_STATS)) {
   my $s=$PERSPK_STATS{$SPK}->{"S"}; 
   my $i=$PERSPK_STATS{$SPK}->{"I"}; 
   my $d=$PERSPK_STATS{$SPK}->{"D"}; 
-  my $sent=$PERSPK_STATS{$SPK}->{"SENT"};
+  my $sent=$PERSPK_STATS{$SPK}->{"SENT"} ;
   my $word=$c+$s+$d;
   my $err =$s+$d+$i;
-  my $serr = $PERSPK_STATS{$SPK}->{"SERR"};
+  my $serr = $PERSPK_STATS{$SPK}->{"SERR"} // 0;
 
   my $spk = "$SPK";
   $C += $c; $S += $s; $I += $i; $D += $d; 
