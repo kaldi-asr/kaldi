@@ -5,6 +5,8 @@
 
 # From a training or alignment directory, and an original lexicon.txt and lang/
 # directory, obtain a new lexicon with pronunciation probabilities.
+# Note: this script is currently deprecated, the recipes are using a different
+# script in utils/dict_dir_add_pronprobs.sh.
 
 
 # Begin configuration section.  

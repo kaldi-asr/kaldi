@@ -10,7 +10,8 @@ LDLIBS += $(CUDA_LDLIBS)
 
 TESTFILES = nnet-component-test nnet-precondition-test \
 	nnet-precondition-online-test nnet-example-functions-test \
-    nnet-nnet-test am-nnet-test online-nnet2-decodable-test
+    nnet-nnet-test am-nnet-test online-nnet2-decodable-test \
+    nnet-compute-test
 
 OBJFILES = nnet-component.o nnet-nnet.o train-nnet.o train-nnet-ensemble.o nnet-update.o \
      nnet-compute.o am-nnet.o nnet-functions.o  \

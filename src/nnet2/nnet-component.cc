@@ -1,4 +1,3 @@
-
 // Copyright 2011-2012  Karel Vesely
 //           2013-2014  Johns Hopkins University (author: Daniel Povey)
 //                2013  Xiaohui Zhang
@@ -25,6 +24,7 @@
 #include "nnet2/nnet-component.h"
 #include "nnet2/nnet-precondition.h"
 #include "nnet2/nnet-precondition-online.h"
+#include "util/stl-utils.h"
 #include "util/text-utils.h"
 #include "util/kaldi-io.h"
 
@@ -2475,13 +2475,14 @@ std::string SpliceComponent::Info() const {
   return stream.str();
 }
 
-void SpliceComponent::Init(int32 input_dim, std::vector< int32 > context,
+void SpliceComponent::Init(int32 input_dim, std::vector<int32> context,
                            int32 const_component_dim) {
   input_dim_ = input_dim;
   const_component_dim_ = const_component_dim;
   context_ = context;
   KALDI_ASSERT(context_.size() > 0);
   KALDI_ASSERT(input_dim_ > 0 && context_.front() <= 0 && context_.back() >= 0);
+  KALDI_ASSERT(IsSortedAndUniq(context));
   KALDI_ASSERT(const_component_dim_ >= 0 && const_component_dim_ < input_dim_);
 }
 

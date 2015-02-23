@@ -20,7 +20,7 @@ cuda_cmd="queue.pl -l arch=*64 -l gpu=1"
 
 
 # BUT cluster:
-host=$(hostname)
+host=$(hostname -f)
 if [ ${host#*.} == "fit.vutbr.cz" ]; then
   queue="all.q@@blade,all.q@@speech"
   gpu_queue="long.q@supergpu*,long.q@dellgpu*,long.q@pcspeech-gpu,long.q@pcgpu*"

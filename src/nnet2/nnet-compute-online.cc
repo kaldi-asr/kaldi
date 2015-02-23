@@ -28,8 +28,6 @@ NnetOnlineComputer::NnetOnlineComputer(const Nnet &nnet, bool pad_input)
     is_first_chunk_(true), finished_(false) {
   data_.resize(nnet_.NumComponents() + 1);
   unused_input_.Resize(0, 0);
-  // WARNING: we always pad in this dirty implementation.
-  pad_input_ = true;
 }
 
 void NnetOnlineComputer::Compute(const CuMatrixBase<BaseFloat> &input,
@@ -53,7 +51,8 @@ void NnetOnlineComputer::Compute(const CuMatrixBase<BaseFloat> &input,
   // Pad at the start of the file if necessary.
   if (pad_input_ && is_first_chunk_) {
     KALDI_ASSERT(unused_input_.NumRows() == 0);
-    unused_input_.Resize(nnet_.LeftContext(), dim);
+    if (nnet_.LeftContext() > 0)
+      unused_input_.Resize(nnet_.LeftContext(), dim);
     for (int32 i = 0; i < nnet_.LeftContext(); i++)
       unused_input_.Row(i).CopyFromVec(input.Row(0));
     is_first_chunk_ = false;
@@ -64,10 +63,12 @@ void NnetOnlineComputer::Compute(const CuMatrixBase<BaseFloat> &input,
   // Splice unused_input_ and input.
   CuMatrix<BaseFloat> &input_data(data_[0]);
   input_data.Resize(num_rows, dim);
-  input_data.Range(0, unused_input_.NumRows(),
-                   0, dim).CopyFromMat(unused_input_);
-  input_data.Range(unused_input_.NumRows(), input.NumRows(),
-                   0, dim).CopyFromMat(input);
+  if (unused_input_.NumRows() > 0) {
+    input_data.Range(0, unused_input_.NumRows(),
+                     0, dim).CopyFromMat(unused_input_);
+    input_data.Range(unused_input_.NumRows(), input.NumRows(),
+                     0, dim).CopyFromMat(input);
+  }
 
   if (num_rows > nnet_.LeftContext() + nnet_.RightContext()) {
     nnet_.ComputeChunkInfo(num_rows, 1, &chunk_info_);
@@ -81,44 +82,47 @@ void NnetOnlineComputer::Compute(const CuMatrixBase<BaseFloat> &input,
   // Compute().
   int32 unused_num_rows = nnet_.LeftContext() + nnet_.RightContext();
   if (unused_num_rows > num_rows) { unused_num_rows = num_rows; }
-  unused_input_.Resize(unused_num_rows, dim);
-  unused_input_.CopyFromMat(input_data.Range(num_rows - unused_num_rows,
-                                             unused_num_rows, 0, dim));
+  if (unused_num_rows > 0) {
+    unused_input_.Resize(unused_num_rows, dim);
+    unused_input_.CopyFromMat(input_data.Range(num_rows - unused_num_rows,
+                                               unused_num_rows, 0, dim));
+  } // else unused_input_ would already be empty, so no need to resize.
 }
 
 void NnetOnlineComputer::Flush(CuMatrix<BaseFloat> *output) {
   KALDI_ASSERT(!finished_);
 
-  int32 right_context = (pad_input_ ? nnet_.RightContext() : 0);
-  int32 num_rows = unused_input_.NumRows() + right_context;
-
-  // If no frame needs to be computed, set output to empty and return.
-  if (num_rows == 0 || unused_input_.NumRows() == 0) {
+  int32 num_frames_padding = (pad_input_ ? nnet_.RightContext() : 0);
+  int32 num_input_rows = unused_input_.NumRows() + num_frames_padding;
+  
+  // If the amount of output would be empty, return at this point.
+  if (num_input_rows <= nnet_.LeftContext() + nnet_.RightContext()) {
     output->Resize(0, 0);
     finished_ = true;
     return;
   }
 
-  int32 dim = unused_input_.NumCols();
+  int32 dim = nnet_.InputDim();
   CuMatrix<BaseFloat> &input_data(data_[0]);
-  input_data.Resize(num_rows, dim);
+  input_data.Resize(num_input_rows, dim);
   input_data.Range(0, unused_input_.NumRows(),
                    0, dim).CopyFromMat(unused_input_);
-  if (right_context > 0) {
+  if (num_frames_padding > 0) {
     int32 last_row = unused_input_.NumRows() - 1;
-    for (int32 i = 0; i < right_context; i++)
-      input_data.Row(num_rows - i - 1).CopyFromVec(unused_input_.Row(last_row)); 
+    for (int32 i = 0; i < num_frames_padding; i++)
+      input_data.Row(num_input_rows - i - 1).CopyFromVec(
+          unused_input_.Row(last_row)); 
   }
-
-  nnet_.ComputeChunkInfo(num_rows, 1, &chunk_info_);
+  
+  nnet_.ComputeChunkInfo(num_input_rows, 1,
+                         &chunk_info_);
   Propagate();
   *output = data_.back();
-  
   finished_ = true;
 }
 
 void NnetOnlineComputer::Propagate() {
-  for (int32 c = 0; c < nnet_.NumComponents(); ++c) {
+  for (int32 c = 0; c < nnet_.NumComponents(); c++) {
     const Component &component = nnet_.GetComponent(c);
     CuMatrix<BaseFloat> &input_data = data_[c], &output_data = data_[c + 1];
     component.Propagate(chunk_info_[c], chunk_info_[c + 1],

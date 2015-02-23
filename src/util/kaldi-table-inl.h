@@ -64,9 +64,10 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
   virtual bool Open(const std::string &rspecifier) {
     if (state_ != kUninitialized)
       if (! Close()) // call Close() yourself to suppress this exception.
-        KALDI_ERR << "TableReader::Open, error closing previous input "
-                  << PrintableRxfilename(script_rxfilename_);
+        KALDI_ERR << "TableReader::Open, error closing previous input: "
+                  << "rspecifier was " << rspecifier_;
     bool binary;
+    rspecifier_ = rspecifier;
     RspecifierType rs = ClassifyRspecifier(rspecifier, &script_rxfilename_,
                                            &opts_);
     KALDI_ASSERT(rs == kScriptRspecifier);
@@ -244,7 +245,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
       case kHaveScpLine: case kLoadFailed: case kFileStart: break;
       default:
         // No other states are valid to call Next() from.
-        KALDI_ERR << "SequentialTableReader, reading script file: Next called wrongly.";
+        KALDI_ERR << "Reading script file: Next called wrongly.";
     }
     std::string line;
     if (getline(script_input_.Stream(), line)) {
@@ -273,6 +274,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
   Holder holder_;  // Holds the object.
   bool binary_;  // Binary-mode archive.
   std::string key_;
+  std::string rspecifier_;
   std::string script_rxfilename_;  // of the script file.
   RspecifierOptions opts_;  // options.
   std::string data_rxfilename_;  // of the file we're reading.
@@ -322,7 +324,9 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
           KALDI_ERR << "TableReader::Open, error closing previous input.";
       }
     }
-    RspecifierType rs = ClassifyRspecifier(rspecifier, &archive_rxfilename_,
+    rspecifier_ = rspecifier;
+    RspecifierType rs = ClassifyRspecifier(rspecifier,
+                                           &archive_rxfilename_,
                                            &opts_);
     KALDI_ASSERT(rs == kArchiveRspecifier);
 
@@ -341,7 +345,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
     state_ = kFileStart;
     Next();
     if (state_ == kError) {
-      KALDI_WARN << "TableReader: error beginning to read table (wrong filename?): "
+      KALDI_WARN << "Error beginning to read archive file (wrong filename?): "
                  << PrintableRxfilename(archive_rxfilename_);
       input_.Close();
       state_ = kUninitialized;
@@ -476,7 +480,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
                    << PrintableRxfilename(archive_rxfilename_) << " but ignoring "
                    << "it as permissive mode specified.";
       else
-        KALDI_ERR << "TableReader: reading archive failed: "
+        KALDI_ERR << "TableReader: error detected closing archive "
                   << PrintableRxfilename(archive_rxfilename_);
     }
     // If you don't want this exception to be thrown you can
@@ -488,6 +492,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
   Input input_;  // Input object for the archive
   Holder holder_;     // Holds the object.
   std::string key_;
+  std::string rspecifier_;
   std::string archive_rxfilename_;
   RspecifierOptions opts_;
   enum {  //  [The state of the reading process]               [does holder_ [is input_
@@ -512,7 +517,7 @@ template<class Holder>
 bool SequentialTableReader<Holder>::Open(const std::string &rspecifier) {
   if (IsOpen())
     if (!Close())
-      KALDI_ERR << "SequentialTableReader<Holder>::Open(), could not close previously open object.";
+      KALDI_ERR << "Could not close previously open object.";
   // now impl_ will be NULL.
 
   RspecifierType wt = ClassifyRspecifier(rspecifier, NULL, NULL);
@@ -645,6 +650,7 @@ class TableWriterArchiveImpl: public TableWriterImplBase<Holder> {
           // detected by the user.
           KALDI_ERR << "TableWriter: opening stream, error closing previously open stream.";
     }
+    wspecifier_ = wspecifier;
     WspecifierType ws = ClassifyWspecifier(wspecifier,
                                            &archive_wxfilename_,
                                            NULL,
@@ -721,14 +727,14 @@ class TableWriterArchiveImpl: public TableWriterImplBase<Holder> {
       KALDI_ERR << "TableWriter: Close called on a stream that was not open." << this->IsOpen() << ", " << output_.IsOpen();
     bool close_success = output_.Close();
     if (!close_success) {
-      KALDI_WARN << "TableWriter: error closing stream: "
-                 << PrintableWxfilename(archive_wxfilename_);
+      KALDI_WARN << "TableWriter: error closing stream: wspecifier is "
+                 << wspecifier_;
       state_ = kUninitialized;
       return false;
     }
     if (state_ == kWriteError) {
-      KALDI_WARN << "TableWriter: closing writer in error state: "
-                 << PrintableWxfilename(archive_wxfilename_);
+      KALDI_WARN << "TableWriter: closing writer in error state: wspecifier is "
+                 << wspecifier_;
       state_ = kUninitialized;
       return false;
     }
@@ -742,13 +748,14 @@ class TableWriterArchiveImpl: public TableWriterImplBase<Holder> {
   virtual ~TableWriterArchiveImpl() {
     if (!IsOpen()) return;
     else if (!Close())
-      KALDI_ERR << "At TableWriter destructor: Write failed or stream close failed: "
-                << PrintableWxfilename(archive_wxfilename_);
+      KALDI_ERR << "At TableWriter destructor: Write failed or stream close "
+                << "failed: wspecifier is "<<  wspecifier_;
   }
 
  private:
   Output output_;
   WspecifierOptions opts_;
+  std::string wspecifier_;
   std::string archive_wxfilename_;
   enum {               // is stream open?
     kUninitialized,    // no
@@ -781,6 +788,7 @@ class TableWriterScriptImpl: public TableWriterImplBase<Holder> {
       case kUninitialized: case kNotReadScript:
         break;
     }
+    wspecifier_ = wspecifier;
     WspecifierType ws = ClassifyWspecifier(wspecifier,
                                            NULL,
                                            &script_rxfilename_,
@@ -893,6 +901,7 @@ class TableWriterScriptImpl: public TableWriterImplBase<Holder> {
 
 
   WspecifierOptions opts_;
+  std::string wspecifier_;
   std::string script_rxfilename_;
 
   // the script_ variable contains pairs of (key, filename), sorted using
@@ -1231,6 +1240,7 @@ class RandomAccessTableReaderScriptImpl:
       case kUninitialized: case kNotReadScript:
         break;
     }
+    rspecifier_ = rspecifier;
     RspecifierType rs = ClassifyRspecifier(rspecifier,
                                            &script_rxfilename_,
                                            &opts_);
@@ -1299,16 +1309,15 @@ class RandomAccessTableReaderScriptImpl:
   virtual const T&  Value(const std::string &key) {
 
     if (!IsOpen())
-      KALDI_ERR << "RandomAccessTableReaderWriter: Value() called on "
-          "not-open object.";
+      KALDI_ERR << "Value() called on non-open object.";
 
     if (!((state_ == kHaveObject || state_ == kGaveObject)
           && key == current_key_)) {  // Not already stored...
       bool has_key = HasKeyInternal(key, true);  // preload.
       if (!has_key)
-        KALDI_ERR << "RandomAccessTableReader::Value(), could not get item for key "
-                  << key << ", rspecifier is " << rspecifier_ << "[to ignore this "
-                  << ", add the p, (permissive) option to the rspecifier.";
+        KALDI_ERR << "Could not get item for key " << key
+                  << ", rspecifier is " << rspecifier_ << "[to ignore this, "
+                  << "add the p, (permissive) option to the rspecifier.";
       KALDI_ASSERT(state_ == kHaveObject && key == current_key_);
     }
 
@@ -1318,7 +1327,8 @@ class RandomAccessTableReaderScriptImpl:
       return holder_.Value();
     } else {  // state_ == kGaveObject
       if (opts_.once)
-        KALDI_ERR << "Value called twice for the same key\n";
+        KALDI_ERR << "Value called twice for the same key and ,o (once) option "
+                  << "is used: rspecifier is " << rspecifier_;
       return holder_.Value();
     }
   }
@@ -1361,7 +1371,8 @@ class RandomAccessTableReaderScriptImpl:
         return true;  // we have the key.
       else {  // preload specified, so we have to pre-load the object before returning true.
         if (!input_.Open(script_[key_pos].second)) {
-          KALDI_WARN << "RandomAccessTableReader: error opening stream " << PrintableRxfilename(script_[key_pos].second);
+          KALDI_WARN << "Error opening stream "
+                     << PrintableRxfilename(script_[key_pos].second);
           return false;
         } else {
           // Make sure holder empty.
@@ -1372,7 +1383,7 @@ class RandomAccessTableReaderScriptImpl:
             current_key_ = key;
             return true;
           } else {
-            KALDI_WARN << "RandomAccessTableReader: error reading object from "
+            KALDI_WARN << "Error reading object from "
                 "stream " << PrintableRxfilename(script_[key_pos].second);
             state_ = kNotHaveObject;
             return false;
@@ -1474,6 +1485,7 @@ template<class Holder>  class RandomAccessTableReaderArchiveImplBase:
       if (! this->Close()) // call Close() yourself to suppress this exception.
         KALDI_ERR << "TableReader::Open, error closing previous input.";
     }
+    rspecifier_ = rspecifier;
     RspecifierType rs = ClassifyRspecifier(rspecifier, &archive_rxfilename_,
                                            &opts_);
     KALDI_ASSERT(rs == kArchiveRspecifier);
@@ -1513,8 +1525,7 @@ template<class Holder>  class RandomAccessTableReaderArchiveImplBase:
       return;
     }
     if (is.fail()) {  // This shouldn't really happen, barring file-system errors.
-      KALDI_WARN << "Error reading archive "
-                 << PrintableRxfilename(archive_rxfilename_);
+      KALDI_WARN << "Error reading archive: rspecifier is " << rspecifier_;
       state_ = kError;
       return;
     }
@@ -1524,7 +1535,7 @@ template<class Holder>  class RandomAccessTableReaderArchiveImplBase:
       // not be fully aware of how this format works.
       KALDI_WARN << "Invalid archive file format: expected space after key " <<cur_key_
                  <<", got character "
-                 << CharToString(static_cast<char>(is.peek())) << ", reading "
+                 << CharToString(static_cast<char>(is.peek())) << ", reading archive "
                  << PrintableRxfilename(archive_rxfilename_);
       state_ = kError;
       return;
@@ -1568,7 +1579,7 @@ template<class Holder>  class RandomAccessTableReaderArchiveImplBase:
     bool ans = (state_ != kError);
     state_ = kUninitialized;
     if (!ans && opts_.permissive) {
-      KALDI_WARN << "RandomAccessTableReader, error state detected closing reader.  "
+      KALDI_WARN << "Error state detected closing reader.  "
                  << "Ignoring it because you specified permissive mode.";
       return true;
     }
@@ -1587,6 +1598,7 @@ template<class Holder>  class RandomAccessTableReaderArchiveImplBase:
   std::string cur_key_;   // current key (if state == kHaveObject).
   Holder *holder_;     // Holds the object we just read (if state == kHaveObject)
 
+  std::string rspecifier_;
   std::string archive_rxfilename_;
   RspecifierOptions opts_;
 
@@ -1621,6 +1633,7 @@ template<class Holder>  class RandomAccessTableReaderDSortedArchiveImpl:
   using RandomAccessTableReaderArchiveImplBase<Holder>::opts_;
   using RandomAccessTableReaderArchiveImplBase<Holder>::cur_key_;
   using RandomAccessTableReaderArchiveImplBase<Holder>::holder_;
+  using RandomAccessTableReaderArchiveImplBase<Holder>::rspecifier_;
   using RandomAccessTableReaderArchiveImplBase<Holder>::archive_rxfilename_;
   using RandomAccessTableReaderArchiveImplBase<Holder>::ReadNextObject;
  public:
@@ -1643,7 +1656,7 @@ template<class Holder>  class RandomAccessTableReaderDSortedArchiveImpl:
                    && holder_ != NULL);
       return this->holder_->Value();
     } else {
-      KALDI_ERR << "RandomAccessTableReader: Value() called but no such key " << key
+      KALDI_ERR << "Value() called but no such key " << key
                 << " in archive " << PrintableRxfilename(archive_rxfilename_);
       return *(const T*)NULL;  // keep compiler happy.
     }
@@ -1654,7 +1667,8 @@ template<class Holder>  class RandomAccessTableReaderDSortedArchiveImpl:
       if (!Close()) // more specific warning will already have been printed.
         // we are in some kind of error state & user did not find out by
         // calling Close().
-        KALDI_ERR << "Error closing RandomAccesseTableReader\n";
+        KALDI_ERR << "Error closing RandomAccessTableReader: rspecifier is "
+                  << rspecifier_;
   }
  private:
   // FindKeyInternal tries to find the key by calling "ReadNextObject()"
@@ -1665,9 +1679,10 @@ template<class Holder>  class RandomAccessTableReaderDSortedArchiveImpl:
     // in sorted order.  If not, error.
     if (!last_requested_key_.empty()) {
       if (key.compare(last_requested_key_) < 0) {  // key < last_requested_key_
-        KALDI_ERR << "RandomAccessTableReader: you provided the \"cs\" option "
+        KALDI_ERR << "You provided the \"cs\" option "
                   << "but are not calling with keys in sorted order: "
-                  << key << " < " << last_requested_key_;
+                  << key << " < " << last_requested_key_ << ": rspecifier is "
+                  << rspecifier_;
       }
     }
     // last_requested_key_ is just for debugging of order of calling.
@@ -1706,9 +1721,10 @@ template<class Holder>  class RandomAccessTableReaderDSortedArchiveImpl:
         if (state_ != kHaveObject)
           return false;  // eof or read error.
         if (cur_key_.compare(last_key_) <= 0) {
-          KALDI_ERR << "RandomAccessTableReader: you provided the \"s\" option "
+          KALDI_ERR << "You provided the \"s\" option "
                     << " (sorted order), but keys are out of order or duplicated: "
-                    << last_key_ << " is followed by " << cur_key_;
+                    << last_key_ << " is followed by " << cur_key_
+                    << ": rspecifier is " << rspecifier_;
         }
       }
     }
@@ -1734,6 +1750,7 @@ template<class Holder>  class RandomAccessTableReaderSortedArchiveImpl:
   using RandomAccessTableReaderArchiveImplBase<Holder>::opts_;
   using RandomAccessTableReaderArchiveImplBase<Holder>::cur_key_;
   using RandomAccessTableReaderArchiveImplBase<Holder>::holder_;
+  using RandomAccessTableReaderArchiveImplBase<Holder>::rspecifier_;
   using RandomAccessTableReaderArchiveImplBase<Holder>::archive_rxfilename_;
   using RandomAccessTableReaderArchiveImplBase<Holder>::ReadNextObject;
 
@@ -1763,8 +1780,8 @@ template<class Holder>  class RandomAccessTableReaderSortedArchiveImpl:
       // Just do a check RE the once option. "&&opts_.once" is for
       // efficiency since this can only happen in that case.
       KALDI_ERR << "Error: HasKey called after Value() already called for "
-                << " that key, and once (o) option specified: "
-                << PrintableRxfilename(archive_rxfilename_);
+                << " that key, and once (o) option specified: rspecifier is "
+                << rspecifier_;
     }
     return ans;
   }
@@ -1774,14 +1791,14 @@ template<class Holder>  class RandomAccessTableReaderSortedArchiveImpl:
     if (FindKeyInternal(key, &index)) {
       if (seen_pairs_[index].second == NULL) {  // can happen if opts.once_
         KALDI_ERR << "Error: Value() called more than once for key "
-                  << key << " and once (o) option specified: "
-                  << PrintableRxfilename(archive_rxfilename_);
+                  << key << " and once (o) option specified: rspecifier is "
+                  << rspecifier_;
       }
       if (opts_.once)
         pending_delete_ = index;  // mark this index to be deleted on next call.
       return seen_pairs_[index].second->Value();
     } else {
-      KALDI_ERR << "RandomAccessTableReader: Value() called but no such key " << key
+      KALDI_ERR << "Value() called but no such key " << key
                 << " in archive " << PrintableRxfilename(archive_rxfilename_);
       return *(const T*)NULL;  // keep compiler happy.
     }
@@ -1791,7 +1808,8 @@ template<class Holder>  class RandomAccessTableReaderSortedArchiveImpl:
       if (!Close()) // more specific warning will already have been printed.
         // we are in some kind of error state & user did not find out by
         // calling Close().
-        KALDI_ERR << "Error closing RandomAccesseTableReader\n";
+        KALDI_ERR << "Error closing RandomAccessTableReader: rspecifier is "
+                  << rspecifier_;
   }
  private:
   void HandlePendingDelete() {
@@ -1847,8 +1865,7 @@ template<class Holder>  class RandomAccessTableReaderSortedArchiveImpl:
           // read the expression above as: !( cur_key_ > previous_key).
           // it means we are not in sorted order [the user specified that we
           // are, or we would not be using this implementation].
-          KALDI_ERR << "RandomAccessTableReader: you provide the sorted (s) "
-                    << "option but keys in archive "
+          KALDI_ERR << "You provided the sorted (s) option but keys in archive "
                     << PrintableRxfilename(archive_rxfilename_) << " are not "
                     << "in sorted order: " << seen_pairs_.back().first
                     << " is followed by " << cur_key_;
@@ -1920,6 +1937,7 @@ template<class Holder>  class RandomAccessTableReaderUnsortedArchiveImpl:
   using RandomAccessTableReaderArchiveImplBase<Holder>::opts_;
   using RandomAccessTableReaderArchiveImplBase<Holder>::cur_key_;
   using RandomAccessTableReaderArchiveImplBase<Holder>::holder_;
+  using RandomAccessTableReaderArchiveImplBase<Holder>::rspecifier_;
   using RandomAccessTableReaderArchiveImplBase<Holder>::archive_rxfilename_;
   using RandomAccessTableReaderArchiveImplBase<Holder>::ReadNextObject;
 
@@ -1956,7 +1974,7 @@ template<class Holder>  class RandomAccessTableReaderUnsortedArchiveImpl:
     if (FindKeyInternal(key, &ans_ptr))
       return *ans_ptr;
     else
-      KALDI_ERR << "RandomAccessTableReader: Value() called but no such key " << key
+      KALDI_ERR << "Value() called but no such key " << key
                 << " in archive " << PrintableRxfilename(archive_rxfilename_);
     return *(const T*)NULL;  // keep compiler happy.
   }
@@ -1965,7 +1983,8 @@ template<class Holder>  class RandomAccessTableReaderUnsortedArchiveImpl:
       if (!Close()) // more specific warning will already have been printed.
         // we are in some kind of error state & user did not find out by
         // calling Close().
-        KALDI_ERR << "Error closing RandomAccesseTableReader\n";
+        KALDI_ERR << "Error closing RandomAccessTableReader: rspecifier is "
+                  << rspecifier_;
   }
  private:
   void HandlePendingDelete() {
@@ -2037,9 +2056,9 @@ template<class Holder>  class RandomAccessTableReaderUnsortedArchiveImpl:
       }
     }
     if (opts_.once && key == first_deleted_string_) {
-      KALDI_ERR << "RandomAccessTableReader: you specified the once (o) option but "
-          "you are calling using key " << key << " more than once: archive is "
-                << PrintableRxfilename(archive_rxfilename_);
+      KALDI_ERR << "You specified the once (o) option but "
+                << "you are calling using key " << key
+                << " more than once: rspecifier is " << rspecifier_;
     }
     return false;  // We read the entire archive (or got to error state) and didn't
     // find it.
@@ -2072,7 +2091,7 @@ RandomAccessTableReader<Holder>::RandomAccessTableReader(const std::string &rspe
 template<class Holder>
 bool RandomAccessTableReader<Holder>::Open(const std::string &rspecifier) {
   if (IsOpen())
-    KALDI_ERR << "RandomAccessTableReader::Open(): already open.";
+    KALDI_ERR << "Already open.";
   RspecifierOptions opts;
   RspecifierType rs = ClassifyRspecifier(rspecifier, NULL, &opts);
   switch (rs) {
@@ -2088,7 +2107,7 @@ bool RandomAccessTableReader<Holder>::Open(const std::string &rspecifier) {
       } else impl_ = new RandomAccessTableReaderUnsortedArchiveImpl<Holder>();
       break;
     case kNoRspecifier: default:
-      KALDI_WARN << "RandomAccessTableReader::Open(), invalid rspecifier: "
+      KALDI_WARN << "Invalid rspecifier: "
                  << rspecifier;
       return false;
   }
@@ -2106,7 +2125,7 @@ template<class Holder>
 bool RandomAccessTableReader<Holder>::HasKey(const std::string &key) {
   CheckImpl();
   if (!IsToken(key))
-    KALDI_ERR << "RandomAccessTableReader::HasKey, invalid key \"" << key << '"';
+    KALDI_ERR << "Invalid key \"" << key << '"';
   return impl_->HasKey(key);
 }
 
@@ -2130,7 +2149,7 @@ bool RandomAccessTableReader<Holder>::Close() {
 template<class Holder>
 RandomAccessTableReader<Holder>::~RandomAccessTableReader() {
   if (IsOpen() && !Close()) // call Close() yourself to stop this being thrown.
-    KALDI_ERR << "RandomAccessTableReader destructor: failure detected.";
+    KALDI_ERR << "failure detected in destructor.";
 }
 
 template<class Holder>

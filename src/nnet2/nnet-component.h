@@ -1003,6 +1003,9 @@ class RandomComponent: public Component {
 class SpliceComponent: public Component {
  public:
   SpliceComponent() { }  // called only prior to Read() or Init().
+  // Note: it is required that the elements of "context" be in
+  // strictly increasing order, that the lowest element of component
+  // be nonpositive, and the highest element be nonnegative.
   void Init(int32 input_dim,
             std::vector<int32> context,
             int32 const_component_dim=0);

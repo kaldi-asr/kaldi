@@ -743,14 +743,21 @@ Nnet *GenRandomNnet(int32 input_dim,
     } else if (rand() % 2 == 0) {
       components.push_back(new SigmoidComponent(cur_dim));
     } else if (rand() % 2 == 0 && cur_dim < 200) {
-      int32 left_context = rand() % 3, right_context = rand() % 3;
       SpliceComponent *component = new SpliceComponent();
-      std::vector<int32> context(right_context + left_context + 1);
-      for (int32 i = -1 * left_context ; i < right_context; i++ )
-        context[i + left_context] = i;
+      std::vector<int32> context;
+      while (true) {
+        context.clear();
+        for (int32 i = -3; i <= 3; i++) {
+          if (rand() % 3 == 0)
+            context.push_back(i);
+        }
+        if (!context.empty() && context.front() <= 0 &&
+            context.back() >= 0)
+          break;
+      }
       component->Init(cur_dim, context);
       components.push_back(component);
-      cur_dim = cur_dim * (1 + left_context + right_context);
+      cur_dim = cur_dim * context.size();
     } else {
       break;
     }
