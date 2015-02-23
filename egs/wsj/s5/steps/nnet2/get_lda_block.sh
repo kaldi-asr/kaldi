@@ -78,6 +78,7 @@ feat_dim=`feat-to-dim "$train_subset_feats" -` || exit 1;
 if [ $stage -le 0 ]; then
   echo "$0: Accumulating LDA statistics."
   $cmd JOB=1:$nj $dir/log/lda_acc.JOB.log \
+    set -o pipefail '&&' \
     ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- \| \
       acc-lda --rand-prune=$rand_prune $alidir/final.mdl "$feats splice-feats --left-context=$splice_width --right-context=$splice_width ark:- ark:- |" ark,s,cs:- \
