@@ -21,6 +21,7 @@ halving_factor=1.0 #ie. disable halving
 do_smbr=true
 exclude_silphones=false # exclude silphones from approximate accuracy computation
 unkphonelist= # exclude unkphones from approximate accuracy computation (overrides exclude_silphones)
+one_silence_class=false # true : reduce insertions in sMBR/MPE FW/BW, more stable training,
 verbose=1
 
 seed=777    # seed value used for training data shuffling
@@ -158,6 +159,7 @@ while [ $x -le $num_iters ]; do
        --learn-rate=$learn_rate \
        --do-smbr=$do_smbr \
        --verbose=$verbose \
+       --one-silence-class=$one_silence_class \
        $mpe_silphones_arg \
        $cur_mdl $alidir/final.mdl "$feats" "$lats" "$ali" $dir/$x.nnet || exit 1
   fi
