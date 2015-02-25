@@ -46,10 +46,10 @@ fi
 
 cd $dir
 
-find $audio_dir -name '*.wav' | grep 'tr05_bus_simu\|tr05_caf_simu\|tr05_ped_simu\|tr05_str_simu' | sort -u > tr05_simu_$enhan.flist
-find $audio_dir -name '*.wav' | grep 'dt05_bus_simu\|dt05_caf_simu\|dt05_ped_simu\|dt05_str_simu' | sort -u > dt05_simu_$enhan.flist
+find $audio_dir/ -name '*.wav' | grep 'tr05_bus_simu\|tr05_caf_simu\|tr05_ped_simu\|tr05_str_simu' | sort -u > tr05_simu_$enhan.flist
+find $audio_dir/ -name '*.wav' | grep 'dt05_bus_simu\|dt05_caf_simu\|dt05_ped_simu\|dt05_str_simu' | sort -u > dt05_simu_$enhan.flist
 if $eval_flag; then
-find $audio_dir -name '*.wav' | grep 'et05_bus_simu\|et05_caf_simu\|et05_ped_simu\|et05_str_simu' | sort -u > et05_simu_$enhan.flist
+find $audio_dir/ -name '*.wav' | grep 'et05_bus_simu\|et05_caf_simu\|et05_ped_simu\|et05_str_simu' | sort -u > et05_simu_$enhan.flist
 fi
 
 # make a scp file from file list

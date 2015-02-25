@@ -39,7 +39,7 @@ for lm_suffix in tgpr_5k; do
   test=data/lang_test_${lm_suffix}
   mkdir -p $test
   for f in phones.txt words.txt phones.txt L.fst L_disambig.fst \
-     phones/; do
+     phones; do
     cp -r data/lang/$f $test
   done
   gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \

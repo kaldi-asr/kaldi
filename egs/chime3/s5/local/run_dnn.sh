@@ -30,13 +30,13 @@ enhan_data=$2
 
 # check whether run_init is executed
 if [ ! -d data/lang ]; then
-  echo "error, execute run_init.sh, first"
+  echo "error, execute local/run_init.sh, first"
   exit 1;
 fi
 
 # check whether run_init is executed
 if [ ! -d exp/tri3b_tr05_sr_$enhan ]; then
-  echo "error, execute run_gmm.sh, first"
+  echo "error, execute local/run_gmm.sh, first"
   exit 1;
 fi
 

@@ -24,15 +24,15 @@ graph_dir=$3
 echo "compute WER for each location"
 echo ""
 # collect scores
-for x in `ls $dir | grep decode_tgpr_5k_dt05_real_${enhan} | awk -F'[/]' '{print $NF}' | sort`; do
-    for y in `find $dir/$x/ | grep "\/wer_" | awk -F'[/]' '{print $NF}' | sort`; do
+for x in `ls $dir | grep "decode_tgpr_5k_dt05" | sed -e "s/^.*_${enhan}_it\([0-9]*\)/\1/" | sort | uniq`; do
+    for y in `find $dir/*/ | grep "\/wer_" | awk -F'[/]' '{print $NF}' | sort | uniq`; do
 	echo -n "${x}_$y "
-	cat $dir/$x/$y | grep WER | awk '{err+=$4} {wrd+=$6} END{printf("%.2f\n",err/wrd*100)}'
+	cat $dir/decode_tgpr_5k_dt05_{real,simu}_${enhan}_it$x/$y | grep WER | awk '{err+=$4} {wrd+=$6} END{printf("%.2f\n",err/wrd*100)}'
     done
 done | sort -k 2 | head -n 1 > $dir/log/best_wer_$enhan
 
 lmw=`cut -f 1 -d" " $dir/log/best_wer_$enhan | awk -F'[_]' '{print $NF}'`
-it=`cut -f 1 -d" " $dir/log/best_wer_$enhan | sed -e 's/^.*it\(.*\)_wer_.*/\1/'`
+it=`cut -f 1 -d" " $dir/log/best_wer_$enhan | awk -F'[_]' '{print $1}'`
 echo "-------------------"
 printf "best overall WER %s" `cut -f 2 -d" " $dir/log/best_wer_$enhan`
 echo -n "%"

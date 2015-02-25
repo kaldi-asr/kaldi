@@ -1,6 +1,13 @@
 This is a kaldi setup for 3rd CHiME challenge.
 See http://spandh.dcs.shef.ac.uk/chime_challenge/ for more detailed information.
 
+If you use these data in a publication, please cite:
+
+Jon Barker, Ricard Marxer, Emmanuel Vincent, and Shinji Watanabe, The
+third 'CHiME' Speech Separation and Recognition Challenge: Dataset,
+task and baselines, submitted to IEEE 2015 Automatic Speech Recognition
+and Understanding Workshop (ASRU), 2015. 
+
 Quick instruction:
 1) Download kaldi (version 4710)
 

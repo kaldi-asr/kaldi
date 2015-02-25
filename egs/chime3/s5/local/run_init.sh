@@ -84,7 +84,7 @@ utils/combine_data.sh data/dt05_sr_noisy data/dt05_simu_noisy data/dt05_real_noi
 
 # training models for clean and noisy data
 for train in tr05_sr_noisy tr05_real_noisy tr05_simu_noisy tr05_orig_clean; do
-  nspk=`wc -l data/$train/spk2utt | cut -f 1 -d" "`
+  nspk=`wc -l data/$train/spk2utt | awk '{print $1}'`
   if [ $nj -gt $nspk ]; then
     nj2=$nspk
   else

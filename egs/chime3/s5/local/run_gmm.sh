@@ -30,7 +30,7 @@ enhan_data=$2
 
 # check whether run_init is executed
 if [ ! -d data/lang ]; then
-  echo "error, execute run_init.sh, first"
+  echo "error, execute local/run_init.sh, first"
   exit 1;
 fi
 
