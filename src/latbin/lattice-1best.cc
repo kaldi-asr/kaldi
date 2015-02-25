@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         "append -1 to the utterance-ids.  Differs from lattice-best-path\n"
         "because output is FST.\n"
         "\n"
-        "Usage: lattice-1best [options] lattice-rspecifier lattice-wspecifier\n"
+        "Usage: lattice-1best [options] <lattice-rspecifier> <lattice-wspecifier>\n"
         " e.g.: lattice-1best --acoustic-scale=0.1 ark:1.lats ark:1best.lats\n";
       
     ParseOptions po(usage);
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     BaseFloat lm_scale = 1.0;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
-    po.Register("lm-scale", &lm_scale, "Scaling factor for language mdoel scores.");
+    po.Register("lm-scale", &lm_scale, "Scaling factor for language model scores.");
     
     po.Read(argc, argv);
 

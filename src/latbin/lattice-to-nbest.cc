@@ -38,16 +38,17 @@ int main(int argc, char *argv[]) {
         "input lattices had distinct word-sequences (this will not be true if\n"
         "you produced lattices with --determinize-lattice=false, i.e. state-level\n"
         "lattices).\n"
-        "Usage: lattice-to-nbest [options] lattice-rspecifier lattice-wspecifier\n"
+        "Usage: lattice-to-nbest [options] <lattice-rspecifier> <lattice-wspecifier>\n"
         " e.g.: lattice-to-nbest --acoustic-scale=0.1 --n=10 ark:1.lats ark:nbest.lats\n";
       
     ParseOptions po(usage);
-    BaseFloat acoustic_scale = 1.0;
+    BaseFloat acoustic_scale = 1.0, lm_scale = 1.0;
     bool random = false;
     int32 srand_seed = 0;
     int32 n = 1;
     
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
+    po.Register("lm-scale", &lm_scale, "Scaling factor for language model scores.");
     po.Register("n", &n, "Number of distinct paths");
     po.Register("random", &random,
                 "If true, generate n random paths instead of n-best paths");
@@ -78,13 +79,13 @@ int main(int argc, char *argv[]) {
     int32 n_done = 0;
     int64 n_paths_out = 0;
 
-    if (acoustic_scale == 0.0)
-      KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
+    if (acoustic_scale == 0.0 || lm_scale == 0.0)
+      KALDI_ERR << "Do not use a zero acoustic or LM scale (cannot be inverted)";
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
-      fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
+      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &lat);
 
       std::vector<Lattice> nbest_lats;
       {
@@ -109,7 +110,7 @@ int main(int argc, char *argv[]) {
           s << key << "-" << (k+1); // so if key is "utt_id", the keys
           // of the n-best are utt_id-1, utt_id-2, utt_id-3, etc.
           std::string nbest_key = s.str();
-          fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale),
+          fst::ScaleLattice(fst::LatticeScale(1.0/lm_scale, 1.0/acoustic_scale),
                             &(nbest_lats[k]));
           CompactLattice nbest_clat;
           ConvertLattice(nbest_lats[k], &nbest_clat); // write in compact form.
