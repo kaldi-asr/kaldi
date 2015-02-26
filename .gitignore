@@ -871,3 +871,8 @@
 /src/nnet2bin/nnet-am-reinitialize
 /src/nnet2bin/nnet-train-perturbed
 /src/nnetbin/feat-to-post
+/src/nnet2bin/nnet2-boost-silence
+/src/nnetbin/nnet-train-lstm-streams
+/src/nnetbin/paste-post
+/src/nnetbin/train-transitions
+/src/online2bin/online2-wav-nnet2-latgen-threaded
