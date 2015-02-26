@@ -44,7 +44,6 @@ void UnitTestNnetCompute() {
   CuMatrix<BaseFloat> output2(output1.NumRows(), output1.NumCols());
   int32 cur_input_pos = 0, cur_output_pos = 0;
 
-
   NnetOnlineComputer computer(*nnet, pad_input);
   while (cur_input_pos <= num_feats) {
     int32 feats_left = num_feats - cur_input_pos;
@@ -67,6 +66,7 @@ void UnitTestNnetCompute() {
   }
 
   AssertEqual(output1, output2);
+  KALDI_LOG << "OK";
   
   delete nnet;
 }

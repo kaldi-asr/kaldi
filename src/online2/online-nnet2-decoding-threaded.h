@@ -313,6 +313,10 @@ class SingleUtteranceNnet2DecoderThreaded {
   static void* RunNnetEvaluation(void *ptr_in);
   // member-function version of RunNnetEvaluation, called by RunNnetEvaluation.
   bool RunNnetEvaluationInternal();
+  // the following function is called inside RunNnetEvaluationInternal(); it
+  // takes the log and subtracts the prior.
+  void ProcessLoglikes(const CuVector<BaseFloat> &log_inv_prior,
+                       CuMatrixBase<BaseFloat> *loglikes);
 
 
   // this function runs the thread that does the neural-net evaluation ptr_in is

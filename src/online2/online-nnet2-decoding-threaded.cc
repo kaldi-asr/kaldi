@@ -476,6 +476,19 @@ bool SingleUtteranceNnet2DecoderThreaded::RunFeatureExtractionInternal() {
   }
 }
 
+void SingleUtteranceNnet2DecoderThreaded::ProcessLoglikes(
+    const CuVector<BaseFloat> &log_inv_prior,
+    CuMatrixBase<BaseFloat> *cu_loglikes) {
+  if (cu_loglikes->NumRows() != 0) {
+    cu_loglikes->ApplyFloor(1.0e-20);
+    cu_loglikes->ApplyLog();
+    // take the log-posteriors and turn them into pseudo-log-likelihoods by
+    // dividing by the pdf priors; then scale by the acoustic scale.
+    cu_loglikes->AddVecToRows(1.0, log_inv_prior);
+    cu_loglikes->Scale(config_.acoustic_scale);
+  }
+}
+
 bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
   // if any of the Lock/Unlock functions return false, it's because AbortAllThreads()
   // was called.
@@ -487,10 +500,10 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
 
   // we declare the following as CuVector just to enable GPU support, but
   // we expect this code to be run on CPU in the normal case.
-  CuVector<BaseFloat> log_inv_priors(am_nnet_.Priors());
-  log_inv_priors.ApplyFloor(1.0e-20);  // should have no effect.
-  log_inv_priors.ApplyLog();
-  log_inv_priors.Scale(-1.0);
+  CuVector<BaseFloat> log_inv_prior(am_nnet_.Priors());
+  log_inv_prior.ApplyFloor(1.0e-20);  // should have no effect.
+  log_inv_prior.ApplyLog();
+  log_inv_prior.Scale(-1.0);
   
   int32 num_frames_output = 0;
   
@@ -511,6 +524,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
         if (!feature_synchronizer_.UnlockSuccess(ThreadSynchronizer::kConsumer))
           return false;
         computer.Flush(&cu_loglikes);
+        ProcessLoglikes(log_inv_prior, &cu_loglikes);
       } else {
         // there is nothing to do because there is no input.  Next call to Lock
         // should block till the feature-processing thread does something.
@@ -538,17 +552,8 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
                               // this would be a lightweight operation, swapping
                               // pointers.
 
-      KALDI_VLOG(4) << "Computing chunk of " << cu_feats.NumRows() << " frames "
-                    << "of nnet.";
       computer.Compute(cu_feats, &cu_loglikes);
-      cu_loglikes.ApplyFloor(1.0e-20);
-      cu_loglikes.ApplyLog();
-      // take the log-posteriors and turn them into pseudo-log-likelihoods by
-      // dividing by the pdf priors; then scale by the acoustic scale.
-      if (cu_loglikes.NumRows() != 0) {
-        cu_loglikes.AddVecToRows(1.0, log_inv_priors);
-        cu_loglikes.Scale(config_.acoustic_scale);
-      }
+      ProcessLoglikes(log_inv_prior, &cu_loglikes);
     }
 
     Matrix<BaseFloat> loglikes;
