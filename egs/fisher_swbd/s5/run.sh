@@ -298,13 +298,13 @@ hours=$(awk '{x += $4 - $3;} END{print x/3600;}' <data/train_fisher/segments)
 # at BUT:
 ####local/fisher_data_prep.sh /mnt/matylda6/jhu09/qpovey/FISHER/LDC2005T19 /mnt/matylda2/data/FISHER/
 
-#   steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-#     data/train_nodup data/lang exp/tri5a exp/tri5a_ali || exit 1;
-#   
-#   
-#   steps/train_sat.sh  --cmd "$train_cmd" \
-#     11500 3200000 data/train_nodup data/lang exp/tri5a_ali  exp/tri6a || exit 1;
-#   
+steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
+  data/train_nodup data/lang exp/tri5a exp/tri5a_ali || exit 1;
+
+
+steps/train_sat.sh  --cmd "$train_cmd" \
+  11500 3200000 data/train_nodup data/lang exp/tri5a_ali  exp/tri6a || exit 1;
+
 ( 
   graph_dir=exp/tri6a/graph_fsh_sw1_tg
   utils/mkgraph.sh data/lang_fsh_sw1_tg exp/tri6a $graph_dir
