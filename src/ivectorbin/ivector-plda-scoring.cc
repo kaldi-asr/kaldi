@@ -100,21 +100,9 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Duplicate training iVector found for speaker " << spk;
       }
       const Vector<BaseFloat> &ivector = train_ivector_reader.Value();
-      int32 num_examples;
-      if (!num_utts_rspecifier.empty()) {
-        if (!num_utts_reader.HasKey(spk)) {
-          KALDI_WARN << "Number of utterances not given for speaker " << spk;
-          num_train_errs++;
-          continue;
-        }
-        num_examples = num_utts_reader.Value(spk);
-      } else {
-        num_examples = 1;
-      }
       Vector<BaseFloat> *transformed_ivector = new Vector<BaseFloat>(dim);
 
       tot_train_renorm_scale += plda.TransformIvector(plda_config, ivector,
-                                                      num_examples,
                                                       transformed_ivector);
       train_ivectors[spk] = transformed_ivector;
       num_train_ivectors++;
@@ -133,13 +121,9 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Duplicate test iVector found for utterance " << utt;
       }
       const Vector<BaseFloat> &ivector = test_ivector_reader.Value();
-      int32 num_examples = 1; // this value is always used for test (affects the
-                              // length normalization in the TransformIvector
-                              // function).
       Vector<BaseFloat> *transformed_ivector = new Vector<BaseFloat>(dim);
 
       tot_test_renorm_scale += plda.TransformIvector(plda_config, ivector,
-                                                     num_examples,
                                                      transformed_ivector);
       test_ivectors[utt] = transformed_ivector;
       num_test_ivectors++;

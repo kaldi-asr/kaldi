@@ -166,7 +166,7 @@ local/score_sre08.sh $trials foo
 # Results for Female:
 # Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:  12.64  19.72   4.78  18.56  15.32  16.71  10.42   7.22   8.42
+#        EER:  12.89  19.64   7.76  18.77  16.22  15.62  10.53   6.72   7.89
 
 trials=data/sre08_trials/short2-short3-male.trials
 cat $trials | awk '{print $1, $2}' | \
@@ -179,7 +179,7 @@ local/score_sre08.sh $trials foo
 # Results for Male:
 # Scoring against data/sre08_trials/short2-short3-male.trials
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:  11.05  18.55   3.23  17.84  14.58  14.22   8.58   6.61   4.82
+#        EER:  11.10  18.55   5.24  18.03  14.35  13.44   8.47   5.92   4.82
 
 # The following shows a more direct way to get the scores.
 # condition=6
@@ -210,7 +210,7 @@ local/score_sre08.sh $trials foo
 # Results for Female:
 # Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:   7.47   9.40   1.49   8.61   8.86  10.10   8.59   5.83   6.84
+#        EER:   7.83   9.52   1.49   9.01  10.36  11.18   8.31   5.96   6.84
 
 ivector-compute-lda --dim=150 --total-covariance-factor=0.1 \
  'ark:ivector-normalize-length scp:exp/ivectors_train_male/ivector.scp ark:- |' \
@@ -228,7 +228,7 @@ local/score_sre08.sh $trials foo
 # Results for Male:
 # Scoring against data/sre08_trials/short2-short3-male.trials
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:   6.29   8.32   1.61   8.23   9.11   7.66   7.32   5.01   3.07
+#        EER:   6.37   8.73   1.21   8.53   8.20   7.97   7.32   5.47   3.51
 
 ### Demonstrate PLDA scoring:
 
@@ -249,7 +249,7 @@ local/score_sre08.sh $trials foo
 # Result for Female is below:
 # Scoring against data/sre08_trials/short2-short3-female.trials
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:   7.58  11.01   1.19  11.23  10.21  10.22   7.48   4.82   4.47
+#        EER:   6.48   9.58   1.79   9.63   8.26   6.97   6.93   4.18   4.47
 
 trials=data/sre08_trials/short2-short3-male.trials
 ivector-compute-plda ark:data/train_male/spk2utt \
@@ -264,7 +264,7 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utt
 # Result for Male is below:
 # Scoring against data/sre08_trials/short2-short3-male.trials
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:   5.48   8.77   1.21   9.03   7.29   6.41   5.95   3.42   1.75
+#        EER:   4.89   7.53   1.21   7.67   6.15   5.31   5.61   3.42   2.19
 
 
 # first, female.
@@ -277,10 +277,10 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_u
    "cat '$trials' | awk '{print \$1, \$2}' |" foo; local/score_sre08.sh $trials foo
 # Results:
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:   6.34   7.00   1.19   7.19   9.76   9.38   6.76   4.69   4.74
+#        EER:   5.30   6.49   1.19   6.52   6.61   6.13   6.38   4.31   4.74
 # Baseline (repeated from above):
 #  Condition:      0      1      2      3      4      5      6      7      8
-#        EER:   7.58  11.01   1.19  11.23  10.21  10.22   7.48   4.82   4.47
+#        EER:   6.48   9.58   1.79   9.63   8.26   6.97   6.93   4.18   4.47
 
 
 # next, male.
@@ -294,7 +294,7 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utt
 
 # Results:
 #  Condition:        0      1      2      3      4      5      6      7      8
-#          EER:   5.12   5.92   1.21   6.06   7.74   6.41   6.41   4.56   2.63
+#          EER:   4.22   4.90   0.81   4.92   5.24   5.78   5.61   3.87   2.63
 # Baseline is as follows, repeated from above.  Focus on condition 0 (= all).
 #  Condition:       0      1      2      3      4      5      6      7      8
-#         EER:   5.48   8.77   1.21   9.03   7.29   6.41   5.95   3.42   1.75
+#         EER:   4.89   7.53   1.21   7.67   6.15   5.31   5.61   3.42   2.19

@@ -1,6 +1,7 @@
 // ivector/plda.h
 
 // Copyright 2013    Daniel Povey
+//           2015    David Snyder
 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,12 +53,9 @@ struct PldaConfig {
   PldaConfig(): normalize_length(true) { }
   void Register(OptionsItf *po) {
     po->Register("normalize-length", &normalize_length,
-                 "If true, do length normalization as part of PLDA (see code for "
-                 "details).  This does not set the length unit; instead, it "
-                 "ensures that the inner product with the PLDA model's inverse "
-                 "variance (which is a function of how many utterances the "
-                 "iVector was averaged over) has the expected value, equal to "
-                 "the iVector dimension.");
+                 "If true, do length normalization as part of PLDA.  This "
+                 "normalizes the length of the iVectors to be equal to the "
+                 "square root of the iVector dimension.");
   }
 };
 
@@ -75,22 +73,18 @@ class Plda {
   /// used multiple times in LogLikelihoodRatio and we don't want
   /// do repeat the matrix multiplication
   /// 
-  /// If config.normalize_length == true, it will also normalize the iVector's
-  /// length by multiplying by a scalar that ensures that ivector^T inv_var
-  /// ivector = dim.  In this case, "num_examples" comes into play because it
-  /// affects the expected covariance matrix of the iVector.  The normalization
+  /// If config.normalize_length == true, it will also normalize the length of
+  /// the iVector so that it is equal to the sqrt(dim).  The normalization
   /// factor is returned, even if config.normalize_length == false, in which
   /// case the normalization factor is computed but not applied.
   double TransformIvector(const PldaConfig &config,
                           const VectorBase<double> &ivector,
-                          int32 num_examples,
                           VectorBase<double> *transformed_ivector) const;
 
   /// float version of the above (not BaseFloat because we'd be implementing it
   /// twice for the same type if BaseFloat == double).
   float TransformIvector(const PldaConfig &config,
                          const VectorBase<float> &ivector,
-                         int32 num_examples,
                          VectorBase<float> *transformed_ivector) const;
   
   /// Returns the log-likelihood ratio
@@ -132,16 +126,6 @@ class Plda {
 
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(Plda);
-
-  /// This returns a normalization factor, which is a quantity we
-  /// must multiply "transformed_ivector" by so that it has the length
-  /// that it "should" have.  We assume "transformed_ivector" is an
-  /// iVector in the transformed space (i.e., mean-subtracted, and
-  /// multiplied by transform_).  The covariance it "should" have
-  /// in this space is \Psi + I/num_examples.
-  double GetNormalizationFactor(const VectorBase<double> &transformed_ivector,
-                                int32 num_examples) const;
-  
 };
 
 

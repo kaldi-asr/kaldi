@@ -1,6 +1,7 @@
 // ivector/plda.cc
 
 // Copyright 2013     Daniel Povey
+//           2015     David Snyder
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -80,51 +81,28 @@ void Plda::ComputeDerivedVars() {
 
  */
 
-
-double Plda::GetNormalizationFactor(
-    const VectorBase<double> &transformed_ivector,
-    int32 num_examples) const {
-  KALDI_ASSERT(num_examples > 0);
-  // Work out the normalization factor.  The covariance for an average over
-  // "num_examples" training iVectors equals \Psi + I/num_examples.
-  Vector<double> transformed_ivector_sq(transformed_ivector);
-  transformed_ivector_sq.ApplyPow(2.0);
-  // inv_covar will equal 1.0 / (\Psi + I/num_examples).
-  Vector<double> inv_covar(psi_);
-  inv_covar.Add(1.0 / num_examples);
-  inv_covar.InvertElements();
-  // "transformed_ivector" should have covariance (\Psi + I/num_examples), i.e.
-  // within-class/num_examples plus between-class covariance.  So
-  // transformed_ivector_sq . (I/num_examples + \Psi)^{-1} should be equal to the dimension.
-  double dot_prod = VecVec(inv_covar, transformed_ivector_sq);
-  return sqrt(Dim() / dot_prod);
-}
-
 double Plda::TransformIvector(const PldaConfig &config,
                               const VectorBase<double> &ivector,
-                              int32 num_examples,
                               VectorBase<double> *transformed_ivector) const {
   KALDI_ASSERT(ivector.Dim() == Dim() && transformed_ivector->Dim() == Dim());
   transformed_ivector->CopyFromVec(offset_);
   transformed_ivector->AddMatVec(1.0, transform_, kNoTrans, ivector, 1.0);
-  double normalization_factor = GetNormalizationFactor(*transformed_ivector,
-                                                       num_examples);
+  double normalization_factor = sqrt(transformed_ivector->Dim()) 
+                                / transformed_ivector->Norm(2.0);
   if (config.normalize_length)
-    transformed_ivector->Scale(normalization_factor);
+      transformed_ivector->Scale(normalization_factor);
   return normalization_factor;
 }
 
 // "float" version of TransformIvector.
 float Plda::TransformIvector(const PldaConfig &config,
                              const VectorBase<float> &ivector,
-                             int32 num_examples,
                              VectorBase<float> *transformed_ivector) const {
   Vector<double> tmp(ivector), tmp_out(ivector.Dim());
-  float ans = TransformIvector(config, tmp, num_examples, &tmp_out);
+  float ans = TransformIvector(config, tmp, &tmp_out);
   transformed_ivector->CopyFromVec(tmp_out);
   return ans;
 }
-
 
 
 // There is an extended comment within this file, referencing a paper by Ioffe, that
