@@ -54,7 +54,7 @@
   may require root priveleges.  We provide scripts and detailed instructions for
   all installation steps.  When scripts fail, read the output carefully because
   it tries to provide guidance as to how to fix problems.  Please inform us if there
-  are problems at any point, however minor; see \ref contact.
+  are problems at any point, however minor; see \ref other.
 
   We try to provide some idea how long it should take to execute each step of the tutorial.
   If there is a limited amount of time available to complete the tutorial, we recommend

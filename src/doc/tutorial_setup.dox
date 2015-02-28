@@ -50,7 +50,7 @@
  install_atlas.sh in tools/, or run some steps in tools/INSTALL manually, 
  or provide options to the configure script in src/).  If there are problems,
  there may be some information in \ref build_setup that will help you; otherwise,
- feel free to contact the maintainers (\ref contact) and we will be happy to help.  
+ feel free to contact the maintainers (\ref other) and we will be happy to help.  
 
     \ref tutorial "Up: Kaldi tutorial" <BR>
     \ref tutorial_prereqs "Previous: Prerequisites" <BR>

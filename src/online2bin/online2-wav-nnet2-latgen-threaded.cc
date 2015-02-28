@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
                 "by setting --use-most-recent-ivector=true and --greedy-ivector-extractor=true. "
                 "This will give the best possible results, but the results may become dependent "
                 "on the speed of your machine (slower machine -> better results).  Compare "
-                "to the --online option in online2-wav-nnet-latgen-faster");
+                "to the --online option in online2-wav-nnet2-latgen-faster");
     
     feature_config.Register(&po);
     nnet2_decoding_config.Register(&po);

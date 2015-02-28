@@ -244,7 +244,7 @@ pointer the type EventMap.  This is a type that stores a function from a set of
 and values are both integers, but the keys represent phonetic-context positions
 (typically 0, 1 or 2) and the values represent phones.  There is also a special
 key, -1, that roughly represents the position in the HMM.  Go to the experimental
-directory (../egs/rm/s1), and we are going to look at how the tree is built.
+directory (../egs/rm/s5), and we are going to look at how the tree is built.
 The main input to the BuildTree function is of type BuildTreeStatsType,
 which is a typedef as follows:
 \verbatim
