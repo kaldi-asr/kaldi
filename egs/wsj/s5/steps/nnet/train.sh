@@ -7,8 +7,8 @@
 config=            # config, which is also sent to all other scripts
 
 # NETWORK INITIALIZATION
-mlp_init=          # select initialized MLP (override initialization)
-mlp_proto=         # select network prototype (initialize it)
+nnet_init=          # select initialized MLP (override initialization)
+nnet_proto=         # select network prototype (initialize it)
 proto_opts=        # non-default options for 'make_nnet_proto.py'
 feature_transform= # provide feature transform (=splice,rescaling,...) (don't build new one)
 network_type=dnn   # (dnn,cnn1d,cnn2d,lstm) select type of neural network
@@ -315,13 +315,13 @@ fi
 ###### INITIALIZE THE NNET ######
 echo 
 echo "# NN-INITIALIZATION"
-[ ! -z "$mlp_init" ] && echo "Using pre-initialized network '$mlp_init'";
-if [ ! -z "$mlp_proto" ]; then 
-  echo "Initializing using network prototype '$mlp_proto'";
-  mlp_init=$dir/nnet.init; log=$dir/log/nnet_initialize.log
-  nnet-initialize $mlp_proto $mlp_init 2>$log || { cat $log; exit 1; } 
+[ ! -z "$nnet_init" ] && echo "Using pre-initialized network '$nnet_init'";
+if [ ! -z "$nnet_proto" ]; then 
+  echo "Initializing using network prototype '$nnet_proto'";
+  nnet_init=$dir/nnet.init; log=$dir/log/nnet_initialize.log
+  nnet-initialize $nnet_proto $nnet_init 2>$log || { cat $log; exit 1; } 
 fi
-if [[ -z "$mlp_init" && -z "$mlp_proto" ]]; then
+if [[ -z "$nnet_init" && -z "$nnet_proto" ]]; then
   echo "Getting input/output dims :"
   #initializing the MLP, get the i/o dims...
   #input-dim
@@ -335,45 +335,45 @@ if [[ -z "$mlp_init" && -z "$mlp_proto" ]]; then
   [ -z $num_tgt ] && num_tgt=$(hmm-info --print-args=false $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
 
   # make network prototype
-  mlp_proto=$dir/nnet.proto
-  echo "Genrating network prototype $mlp_proto"
+  nnet_proto=$dir/nnet.proto
+  echo "Genrating network prototype $nnet_proto"
   case "$network_type" in
     dnn)
       utils/nnet/make_nnet_proto.py $proto_opts \
         ${bn_dim:+ --bottleneck-dim=$bn_dim} \
-        $num_fea $num_tgt $hid_layers $hid_dim >$mlp_proto || exit 1 
+        $num_fea $num_tgt $hid_layers $hid_dim >$nnet_proto || exit 1 
       ;;
     cnn1d)
       delta_order=$([ -z $delta_opts ] && echo "0" || { echo $delta_opts | tr ' ' '\n' | grep "delta[-_]order" | sed 's:^.*=::'; })
       echo "Debug : $delta_opts, delta_order $delta_order"
       utils/nnet/make_cnn_proto.py $cnn_proto_opts \
         --splice=$splice --delta-order=$delta_order --dir=$dir \
-        $num_fea >$mlp_proto || exit 1
-      cnn_fea=$(cat $mlp_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')
+        $num_fea >$nnet_proto || exit 1
+      cnn_fea=$(cat $nnet_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')
       utils/nnet/make_nnet_proto.py $proto_opts \
         --no-proto-head --no-smaller-input-weights \
         ${bn_dim:+ --bottleneck-dim=$bn_dim} \
-        "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$mlp_proto || exit 1 
+        "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$nnet_proto || exit 1 
       ;;
     cnn2d) 
       #TODO, to be filled by Vijay...
       ;;
     lstm)
       utils/nnet/make_lstm_proto.py $proto_opts \
-        $num_fea $num_tgt >$mlp_proto || exit 1 
+        $num_fea $num_tgt >$nnet_proto || exit 1 
       ;;
     *) echo "Unknown : --network_type $network_type" && exit 1;
   esac
 
   # initialize
-  mlp_init=$dir/nnet.init; log=$dir/log/nnet_initialize.log
-  echo "Initializing $mlp_proto -> $mlp_init"
-  nnet-initialize $mlp_proto $mlp_init 2>$log || { cat $log; exit 1; }
+  nnet_init=$dir/nnet.init; log=$dir/log/nnet_initialize.log
+  echo "Initializing $nnet_proto -> $nnet_init"
+  nnet-initialize $nnet_proto $nnet_init 2>$log || { cat $log; exit 1; }
 
   # optionally prepend dbn to the initialization
   if [ ! -z $dbn ]; then
-    mlp_init_old=$mlp_init; mlp_init=$dir/nnet_$(basename $dbn)_dnn.init
-    nnet-concat $dbn $mlp_init_old $mlp_init || exit 1 
+    nnet_init_old=$nnet_init; nnet_init=$dir/nnet_$(basename $dbn)_dnn.init
+    nnet-concat $dbn $nnet_init_old $nnet_init || exit 1 
   fi
 fi
 
@@ -389,7 +389,7 @@ steps/nnet/train_scheduler.sh \
   ${train_tool:+ --train-tool "$train_tool"} \
   ${frame_weights:+ --frame-weights "$frame_weights"} \
   ${config:+ --config $config} \
-  $mlp_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir || exit 1
+  $nnet_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir || exit 1
 
 if $prepend_cnn; then
   echo "Preparing feature transform with CNN layers for RBM pre-training."

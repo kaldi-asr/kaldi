@@ -112,7 +112,7 @@ D=$srcdir
 [ -e $D/delta_opts ] && delta_opts=$(cat $D/delta_opts)
 #
 # Create the feature stream,
-feats="ark,s,cs:copy-feats scp:$data/feats.scp ark:- |"
+feats="ark,o:copy-feats scp:$dir/train.scp ark:- |"
 # apply-cmvn (optional),
 [ ! -z "$cmvn_opts" -a ! -f $data/cmvn.scp ] && echo "$0: Missing $data/cmvn.scp" && exit 1
 [ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp ark:- ark:- |"
