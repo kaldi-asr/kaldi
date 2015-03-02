@@ -266,7 +266,7 @@ that contains sufficient statistics for estimating a diagonal Gaussian p.d.f..
 
 Do 
 \verbatim
-less exp/tri1/acc_tree.log
+less exp/tri1/log/acc_tree.log
 \endverbatim
 There won't be much information in this file, but you can see the command 
 line.  This program accumulates the single-Gaussian statistics for each HMM-state
@@ -279,7 +279,7 @@ discussed above, although in order to read it we have to know what concrete type
 
 Do
 \verbatim
-less exp/tri1/train_tree.log
+less exp/tri1/log/train_tree.log
 \endverbatim
 This program does the decision-tree clustering; it reads in the statistics
 that were output by.  It is basically a wrapper for the BuildTree function discussed above.
