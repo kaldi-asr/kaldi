@@ -2,6 +2,7 @@
 
 // Copyright 2014   Johns Hopkins University (author: Daniel Povey)
 //                  Guoguo Chen
+//                  Vijayaditya Peddinti
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -19,19 +20,23 @@
 // limitations under the License.
 
 #include "nnet2/nnet-compute-online.h"
+#include <vector>
 
 namespace kaldi {
 namespace nnet2 {
 
 NnetOnlineComputer::NnetOnlineComputer(const Nnet &nnet, bool pad_input)
-  : nnet_(nnet), pad_input_(pad_input),
-    is_first_chunk_(true), finished_(false) {
+    : nnet_(nnet), pad_input_(pad_input),
+      is_first_chunk_(true), finished_(false) {
   data_.resize(nnet_.NumComponents() + 1);
-  unused_input_.Resize(0, 0);
+  unprocessed_buffer_.Resize(0, 0);
+  reusable_component_inputs_.resize(nnet_.NumComponents()+1);
+  for (int32 i; i < reusable_component_inputs_.size(); i++)
+    reusable_component_inputs_[i].Resize(0, 0);
 }
 
 void NnetOnlineComputer::Compute(const CuMatrixBase<BaseFloat> &input,
-                                 CuMatrix<BaseFloat> *output) {
+                                   CuMatrix<BaseFloat> *output) {
   KALDI_ASSERT(output != NULL);
   KALDI_ASSERT(!finished_);
   int32 dim = input.NumCols();
@@ -42,61 +47,77 @@ void NnetOnlineComputer::Compute(const CuMatrixBase<BaseFloat> &input,
     return;
   }
 
-  // Check if feature dimension matches that required by the neural network.
+  // Checking if feature dimension matches that required by the neural network.
   if (dim != nnet_.InputDim()) {
     KALDI_ERR << "Feature dimension is " << dim << ", but network expects "
         << nnet_.InputDim();
   }
-
-  // Pad at the start of the file if necessary.
-  if (pad_input_ && is_first_chunk_) {
-    KALDI_ASSERT(unused_input_.NumRows() == 0);
-    if (nnet_.LeftContext() > 0)
-      unused_input_.Resize(nnet_.LeftContext(), dim);
-    for (int32 i = 0; i < nnet_.LeftContext(); i++)
-      unused_input_.Row(i).CopyFromVec(input.Row(0));
-    is_first_chunk_ = false;
-  }
-
-  int32 num_rows = unused_input_.NumRows() + input.NumRows();
-
-  // Splice unused_input_ and input.
+  int32 num_input_rows = 0;
+  // Initialize the first element of data_, with input
   CuMatrix<BaseFloat> &input_data(data_[0]);
-  input_data.Resize(num_rows, dim);
-  if (unused_input_.NumRows() > 0) {
-    input_data.Range(0, unused_input_.NumRows(),
-                     0, dim).CopyFromMat(unused_input_);
-    input_data.Range(unused_input_.NumRows(), input.NumRows(),
-                     0, dim).CopyFromMat(input);
+  if (is_first_chunk_)  {
+    is_first_chunk_ = false;
+    // assert that all the component-wise input buffers are empty
+    for (int32 i = 0; i < reusable_component_inputs_.size(); i++)
+      KALDI_ASSERT(reusable_component_inputs_[0].NumRows() == 0);
+    // Pad at the start of the file if necessary.
+    if ((pad_input_) && (nnet_.LeftContext() > 0))  {
+        input_data.Resize(nnet_.LeftContext() + input.NumRows(), dim);
+        input_data.Range(0, nnet_.LeftContext(), 0,
+                    dim).CopyRowsFromVec(input.Row(0));
+        input_data.Range(nnet_.LeftContext(), input.NumRows(),
+                    0, dim).CopyFromMat(input);
+    } else {
+      input_data.Resize(input.NumRows(), input.NumCols());
+      input_data.CopyFromMat(input);
+    }
+    num_input_rows = input_data.NumRows();
+  } else {
+    int32 extra_input_rows = 0;
+    // checking if we did forward pass for any chunks before.
+    // if we did a forward pass, component input buffers would be non-empty
+    // these buffers store information equivalent to having an nnet_input
+    // buffer of (nnet_.LeftContext() + nnet_.RightContext())
+    for (int32 i = 0; i < reusable_component_inputs_.size(); i++)  {
+      if (reusable_component_inputs_[i].NumRows() > 0) {
+        extra_input_rows = nnet_.LeftContext() + nnet_.RightContext();
+        break;
+      }
+    }
+    // add unprocessed input from the previous calls 
+    input_data.Resize(input.NumRows() + unprocessed_buffer_.NumRows(), dim);
+    if (unprocessed_buffer_.NumRows() > 0)
+      input_data.Range(0, unprocessed_buffer_.NumRows(),
+                        0, dim).CopyFromMat(unprocessed_buffer_);
+    input_data.Range(unprocessed_buffer_.NumRows(), input.NumRows(),
+                        0, dim).CopyFromMat(input);
+    unprocessed_buffer_.Resize(0, 0); // clearing the unprocessed buffer
+    num_input_rows = input_data.NumRows() + extra_input_rows;
   }
-
-  if (num_rows > nnet_.LeftContext() + nnet_.RightContext()) {
-    nnet_.ComputeChunkInfo(num_rows, 1, &chunk_info_);
+  if (num_input_rows >= nnet_.LeftContext() + nnet_.RightContext() + 1) {
+    // we have sufficient frames to compute at least one nnet output
+    nnet_.ComputeChunkInfo(num_input_rows, 1, &chunk_info_);
+    // store the last frame as it might be needed for padding
+    last_seen_input_frame_.Resize(input_data.NumCols());
+    last_seen_input_frame_.CopyFromVec(input_data.Row(input_data.NumRows() - 1));
     Propagate();
     *output = data_.back();
   } else {
+    // store the input in the unprocessed_buffer_
+    unprocessed_buffer_.Resize(input_data.NumRows(), input_data.NumCols());
+    unprocessed_buffer_.CopyFromMat(input_data);
+    // not enough input context so just return an empty array
     output->Resize(0, 0);
   }
-
-  // Now store the part of input that will be needed in the next call of
-  // Compute().
-  int32 unused_num_rows = nnet_.LeftContext() + nnet_.RightContext();
-  if (unused_num_rows > num_rows) { unused_num_rows = num_rows; }
-  if (unused_num_rows > 0) {
-    unused_input_.Resize(unused_num_rows, dim);
-    unused_input_.CopyFromMat(input_data.Range(num_rows - unused_num_rows,
-                                               unused_num_rows, 0, dim));
-  } // else unused_input_ would already be empty, so no need to resize.
 }
 
 void NnetOnlineComputer::Flush(CuMatrix<BaseFloat> *output) {
-  KALDI_ASSERT(!finished_);
-
+  KALDI_ASSERT(!finished_ && !is_first_chunk_);
   int32 num_frames_padding = (pad_input_ ? nnet_.RightContext() : 0);
-  int32 num_input_rows = unused_input_.NumRows() + num_frames_padding;
-  
-  // If the amount of output would be empty, return at this point.
-  if (num_input_rows <= nnet_.LeftContext() + nnet_.RightContext()) {
+  int32 num_stored_frames = nnet_.LeftContext() + nnet_.RightContext();
+  int32 num_input_rows =  num_stored_frames + num_frames_padding;
+  // If the amount of output would be empty return at this point.
+  if (num_input_rows < nnet_.LeftContext() + nnet_.RightContext() + 1) {
     output->Resize(0, 0);
     finished_ = true;
     return;
@@ -104,16 +125,10 @@ void NnetOnlineComputer::Flush(CuMatrix<BaseFloat> *output) {
 
   int32 dim = nnet_.InputDim();
   CuMatrix<BaseFloat> &input_data(data_[0]);
-  input_data.Resize(num_input_rows, dim);
-  input_data.Range(0, unused_input_.NumRows(),
-                   0, dim).CopyFromMat(unused_input_);
   if (num_frames_padding > 0) {
-    int32 last_row = unused_input_.NumRows() - 1;
-    for (int32 i = 0; i < num_frames_padding; i++)
-      input_data.Row(num_input_rows - i - 1).CopyFromVec(
-          unused_input_.Row(last_row)); 
+    input_data.Resize(num_frames_padding, dim);
+    input_data.CopyRowsFromVec(last_seen_input_frame_);
   }
-  
   nnet_.ComputeChunkInfo(num_input_rows, 1,
                          &chunk_info_);
   Propagate();
@@ -122,14 +137,70 @@ void NnetOnlineComputer::Flush(CuMatrix<BaseFloat> *output) {
 }
 
 void NnetOnlineComputer::Propagate() {
+  // This method is like the normal nnet propagate, but we reuse the frames
+  // computed from the previous chunk, at each component.
+
   for (int32 c = 0; c < nnet_.NumComponents(); c++) {
+    // we assume that the chunks are always contiguous
+    chunk_info_[c].MakeOffsetsContiguous();
+    chunk_info_[c + 1].MakeOffsetsContiguous();
+
     const Component &component = nnet_.GetComponent(c);
     CuMatrix<BaseFloat> &input_data = data_[c], &output_data = data_[c + 1];
-    component.Propagate(chunk_info_[c], chunk_info_[c + 1],
+    CuMatrix<BaseFloat> input_data_temp;
+
+    if (component.Context().size() > 1)  {
+      int32 dim = component.InputDim();
+      if (reusable_component_inputs_[c].NumRows() > 0) {
+        // concatenate any frames computed by previous component
+        // in the last call, to the input of the current component
+        input_data_temp.Resize(reusable_component_inputs_[c].NumRows()
+                               + input_data.NumRows(), dim);
+        input_data_temp.Range(0, reusable_component_inputs_[c].NumRows(),
+                       0, dim).CopyFromMat(reusable_component_inputs_[c]);
+        input_data_temp.Range(reusable_component_inputs_[c].NumRows(),
+                              input_data.NumRows(), 0, dim).CopyFromMat(
+                                  input_data);
+        input_data = input_data_temp;
+      }
+      // store any frames which can be reused in the next call
+      reusable_component_inputs_[c].Resize(component.Context().back() -
+                                component.Context().front(), dim);
+      reusable_component_inputs_[c].CopyFromMat(
+          input_data.RowRange(input_data.NumRows() -
+                              reusable_component_inputs_[c].NumRows(),
+                              reusable_component_inputs_[c].NumRows()));
+    }
+
+    // chunk_info objects provided assume that we added all the reusable
+    // context at the input of the nnet. However we are reusing hidden
+    // activations computed in the previous call.
+    // Hence we manipulate the chunk_info objects to reflect the state of the
+    // actual chunk, each component is computing, in the current Propagate.
+    // As before we always assume the chunks are contiguous.
+    
+    // modifying the input chunk_info
+    int32 chunk_size_assumed = chunk_info_[c].ChunkSize();
+    int32 last_offset = chunk_info_[c].GetOffset(chunk_size_assumed - 1);
+    int32 first_offset = last_offset - input_data.NumRows() + 1;
+    ChunkInfo input_chunk_info(chunk_info_[c].NumCols(),
+                               chunk_info_[c].NumChunks(),
+                               first_offset,
+                               last_offset);
+    // modifying the output chunk_info
+    chunk_size_assumed = chunk_info_[c + 1].ChunkSize();
+    last_offset = chunk_info_[c + 1].GetOffset(chunk_size_assumed - 1);
+    first_offset = last_offset - (input_data.NumRows() - 
+                                  (component.Context().back() -
+                                   component.Context().front())) + 1;
+    ChunkInfo output_chunk_info(chunk_info_[c + 1].NumCols(),
+                                chunk_info_[c + 1].NumChunks(),
+                                first_offset,
+                                last_offset);
+    component.Propagate(input_chunk_info, output_chunk_info,
                         input_data, &output_data);
   }
 }
 
-
-} // namespace nnet2
-} // namespace kaldi
+}  // namespace nnet2
+}  // namespace kaldi

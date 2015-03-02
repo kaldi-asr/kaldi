@@ -28,7 +28,6 @@ namespace nnet2 {
 void UnitTestNnetCompute() {
   int32 input_dim = 10 + rand() % 40, output_dim = 100 + rand() % 500;
   Nnet *nnet = GenRandomNnet(input_dim, output_dim);
-
   int32 num_feats = 5 + rand() % 1000;
   CuMatrix<BaseFloat> input(num_feats, input_dim);
   input.SetRandn();
@@ -63,16 +62,14 @@ void UnitTestNnetCompute() {
                     0, output_dim).CopyFromMat(output_part);
       cur_output_pos += output_part.NumRows();
     }
-  }
-
+  }  
   AssertEqual(output1, output2);
   KALDI_LOG << "OK";
-  
   delete nnet;
 }
 
-} // namespace nnet2
-} // namespace kaldi
+}  // namespace nnet2
+}  // namespace kaldi
 
 #include "matrix/matrix-functions.h"
 
@@ -81,7 +78,7 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet2;
 
-  for (int32 i = 0; i < 10; i++)
+  for (int32 i = 0; i < 10; i++) 
     UnitTestNnetCompute();
   return 0;
 }

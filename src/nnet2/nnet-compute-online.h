@@ -2,6 +2,7 @@
 
 // Copyright 2014  Johns Hopkins University (author: Daniel Povey)
 //                 Guoguo Chen
+//                 Vijayaditya Peddinti
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -22,6 +23,7 @@
 #define KALDI_NNET2_NNET_COMPUTE_ONLINE_H_
 
 #include "nnet2/nnet-nnet.h"
+#include <vector>
 
 namespace kaldi {
 namespace nnet2 {
@@ -76,24 +78,33 @@ class NnetOnlineComputer {
   // data_ contains the intermediate stages and the output of the most recent
   // computation.
   std::vector<CuMatrix<BaseFloat> > data_;
+  
+  std::vector<ChunkInfo> chunk_info_;  // contains chunk_info(s) for the
+  // components
 
-  std::vector<ChunkInfo> chunk_info_;
+  std::vector<CuMatrix<BaseFloat> > reusable_component_inputs_;  
+        // reusable data from previous chunk, this is a buffer to
+        // store the hidden activations before splice type components
 
-  CuMatrix<BaseFloat> unused_input_;
+  CuMatrix<BaseFloat> unprocessed_buffer_;  // buffer to store unprocessed input
+  // from previous chunks (as we can have several chunks with insufficient
+  // context)
+  
+  CuVector<BaseFloat> last_seen_input_frame_;  // stores the last seen frame
+  // for the sake of right padding the input. This is useful to deal with the
+  // scenario where the initial component is not a splice component.
 
-  bool pad_input_;
+  bool pad_input_;  // pad input at the beginning of the decode
 
   bool is_first_chunk_;
 
-  bool finished_;
-  // we might need more variables here to keep track of how many frames we
-  // already output from data_.
+  bool finished_;  // forward-pass is complete
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(NnetOnlineComputer);
 };
 
 
-} // namespace nnet2
-} // namespace kaldi
+}  // namespace nnet2
+}  // namespace kaldi
 
-#endif // KALDI_NNET2_NNET_COMPUTE_ONLINE_H_
+#endif  // KALDI_NNET2_NNET_COMPUTE_ONLINE_H_
