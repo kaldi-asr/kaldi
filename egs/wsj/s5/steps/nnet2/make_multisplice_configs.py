@@ -96,7 +96,10 @@ def create_config_files(output_dir, params):
     # Add the hidden layer, which is a composition of an affine component, pnorm component and normalization component
     lines.append("AffineComponentPreconditionedOnline input-dim=%d output-dim=%d %s learning-rate=%f param-stddev=%f bias-stddev=%f" 
         % ( pnorm_output_dim*context_len, pnorm_input_dim, params.online_preconditioning_opts, params.initial_learning_rate, stddev, params.bias_stddev))
-    lines.append("PnormComponent input-dim=%d output-dim=%d p=%d" % (pnorm_input_dim, pnorm_output_dim, pnorm_p))
+    if pnorm_input_dim != pnorm_output_dim:
+      lines.append("PnormComponent input-dim=%d output-dim=%d p=%d" % (pnorm_input_dim, pnorm_output_dim, pnorm_p))
+    else:
+      lines.append("RectifiedLinearComponent dim=%d" % (pnorm_input_dim))  
     lines.append("NormalizeComponent dim={0}".format(pnorm_output_dim))
     out_file = open("{0}/hidden_{1}.config".format(output_dir, i), 'w')
     out_file.write("\n".join(lines))
