@@ -31,6 +31,7 @@ wsj0_data=$chime3_data/data/WSJ0 # directory of WSJ0 in CHiME3. You can also spe
 eval_flag=false # make it true when the evaluation data are released
 
 # process for clean speech and making LMs etc. from original WSJ0
+# note that training on clean data means original WSJ0 data only (no booth data)
 local/clean_wsj0_data_prep.sh $wsj0_data || exit 1;
 
 local/wsj_prepare_dict.sh || exit 1;
@@ -71,19 +72,22 @@ else
   list=$list" tr05_simu_noisy dt05_simu_noisy"
 fi
 mfccdir=mfcc
-for x in $list; do 
+for x in $list; do
   steps/make_mfcc.sh --nj $nj \
     data/$x exp/make_mfcc/$x $mfccdir || exit 1;
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
 done
 
 # make mixed training set from real and simulation training data
-# sr = simu + real
-utils/combine_data.sh data/tr05_sr_noisy data/tr05_simu_noisy data/tr05_real_noisy
-utils/combine_data.sh data/dt05_sr_noisy data/dt05_simu_noisy data/dt05_real_noisy
+# multi = simu + real
+utils/combine_data.sh data/tr05_multi_noisy data/tr05_simu_noisy data/tr05_real_noisy
+utils/combine_data.sh data/dt05_multi_noisy data/dt05_simu_noisy data/dt05_real_noisy
 
 # training models for clean and noisy data
-for train in tr05_sr_noisy tr05_real_noisy tr05_simu_noisy tr05_orig_clean; do
+# if you want to check the performance of the ASR only using real/simu data
+# please try to add "tr05_real_noisy" "tr05_simu_noisy"
+#for train in tr05_multi_noisy tr05_real_noisy tr05_simu_noisy tr05_orig_clean; do
+for train in tr05_multi_noisy tr05_orig_clean; do
   nspk=`wc -l data/$train/spk2utt | awk '{print $1}'`
   if [ $nj -gt $nspk ]; then
     nj2=$nspk
@@ -114,9 +118,10 @@ for train in tr05_sr_noisy tr05_real_noisy tr05_simu_noisy tr05_orig_clean; do
 
   utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri3b_$train exp/tri3b_$train/graph_tgpr_5k || exit 1;
 
+  # if you want to know the result of the close talk microphone, plese try the following
   # decode close speech
-  steps/decode_fmllr.sh --nj 4 \
-    exp/tri3b_$train/graph_tgpr_5k data/dt05_real_close exp/tri3b_$train/decode_tgpr_5k_dt05_real_close &
+  #steps/decode_fmllr.sh --nj 4 \
+  #   exp/tri3b_$train/graph_tgpr_5k data/dt05_real_close exp/tri3b_$train/decode_tgpr_5k_dt05_real_close &
   # decode noisy speech
   steps/decode_fmllr.sh --nj 4 \
     exp/tri3b_$train/graph_tgpr_5k data/dt05_real_noisy exp/tri3b_$train/decode_tgpr_5k_dt05_real_noisy &
@@ -127,7 +132,8 @@ done
 wait
 
 # get the best scores
-for train in tr05_sr_noisy tr05_real_noisy tr05_simu_noisy tr05_orig_clean; do
+#for train in tr05_multi_noisy tr05_real_noisy tr05_simu_noisy tr05_orig_clean; do
+for train in tr05_multi_noisy tr05_orig_clean; do
   local/chime3_calc_wers.sh exp/tri3b_$train noisy \
       | tee exp/tri3b_$train/best_wer_noisy.result
 done

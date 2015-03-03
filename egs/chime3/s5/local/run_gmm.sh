@@ -49,9 +49,9 @@ for x in dt05_real_$enhan tr05_real_$enhan dt05_simu_$enhan tr05_simu_$enhan; do
 done
 
 # make mixed training set from real and simulation enhancement training data
-# sr = simu + real
-utils/combine_data.sh data/tr05_sr_$enhan data/tr05_simu_$enhan data/tr05_real_$enhan
-utils/combine_data.sh data/dt05_sr_$enhan data/dt05_simu_$enhan data/dt05_real_$enhan
+# multi = simu + real
+utils/combine_data.sh data/tr05_multi_$enhan data/tr05_simu_$enhan data/tr05_real_$enhan
+utils/combine_data.sh data/dt05_multi_$enhan data/dt05_simu_$enhan data/dt05_real_$enhan
 
 # decode enhan speech using clean AMs
 steps/decode_fmllr.sh --nj 4 \
@@ -61,39 +61,39 @@ steps/decode_fmllr.sh --nj 4 \
 
 # training models using enhan data
 steps/train_mono.sh --boost-silence 1.25 --nj $nj \
-  data/tr05_sr_$enhan data/lang exp/mono0a_tr05_sr_$enhan || exit 1;
+  data/tr05_multi_$enhan data/lang exp/mono0a_tr05_multi_$enhan || exit 1;
 
 steps/align_si.sh --boost-silence 1.25 --nj $nj \
-  data/tr05_sr_$enhan data/lang exp/mono0a_tr05_sr_$enhan exp/mono0a_ali_tr05_sr_$enhan || exit 1;
+  data/tr05_multi_$enhan data/lang exp/mono0a_tr05_multi_$enhan exp/mono0a_ali_tr05_multi_$enhan || exit 1;
 
 steps/train_deltas.sh --boost-silence 1.25 \
-  2000 10000 data/tr05_sr_$enhan data/lang exp/mono0a_ali_tr05_sr_$enhan exp/tri1_tr05_sr_$enhan || exit 1;
+  2000 10000 data/tr05_multi_$enhan data/lang exp/mono0a_ali_tr05_multi_$enhan exp/tri1_tr05_multi_$enhan || exit 1;
 
 steps/align_si.sh --nj $nj \
-  data/tr05_sr_$enhan data/lang exp/tri1_tr05_sr_$enhan exp/tri1_ali_tr05_sr_$enhan || exit 1;
+  data/tr05_multi_$enhan data/lang exp/tri1_tr05_multi_$enhan exp/tri1_ali_tr05_multi_$enhan || exit 1;
 
 steps/train_lda_mllt.sh \
   --splice-opts "--left-context=3 --right-context=3" \
-  2500 15000 data/tr05_sr_$enhan data/lang exp/tri1_ali_tr05_sr_$enhan exp/tri2b_tr05_sr_$enhan || exit 1;
+  2500 15000 data/tr05_multi_$enhan data/lang exp/tri1_ali_tr05_multi_$enhan exp/tri2b_tr05_multi_$enhan || exit 1;
 
 steps/align_si.sh  --nj $nj \
-  --use-graphs true data/tr05_sr_$enhan data/lang exp/tri2b_tr05_sr_$enhan exp/tri2b_ali_tr05_sr_$enhan  || exit 1;
+  --use-graphs true data/tr05_multi_$enhan data/lang exp/tri2b_tr05_multi_$enhan exp/tri2b_ali_tr05_multi_$enhan  || exit 1;
 
 steps/train_sat.sh \
-  2500 15000 data/tr05_sr_$enhan data/lang exp/tri2b_ali_tr05_sr_$enhan exp/tri3b_tr05_sr_$enhan || exit 1;
+  2500 15000 data/tr05_multi_$enhan data/lang exp/tri2b_ali_tr05_multi_$enhan exp/tri3b_tr05_multi_$enhan || exit 1;
 
-utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri3b_tr05_sr_$enhan exp/tri3b_tr05_sr_$enhan/graph_tgpr_5k || exit 1;
+utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri3b_tr05_multi_$enhan exp/tri3b_tr05_multi_$enhan/graph_tgpr_5k || exit 1;
 
 # decode enhan speech using enhan AMs
 steps/decode_fmllr.sh --nj 4 \
-  exp/tri3b_tr05_sr_$enhan/graph_tgpr_5k data/dt05_real_$enhan exp/tri3b_tr05_sr_$enhan/decode_tgpr_5k_dt05_real_$enhan &
+  exp/tri3b_tr05_multi_$enhan/graph_tgpr_5k data/dt05_real_$enhan exp/tri3b_tr05_multi_$enhan/decode_tgpr_5k_dt05_real_$enhan &
 steps/decode_fmllr.sh --nj 4 \
-  exp/tri3b_tr05_sr_$enhan/graph_tgpr_5k data/dt05_simu_$enhan exp/tri3b_tr05_sr_$enhan/decode_tgpr_5k_dt05_simu_$enhan &
+  exp/tri3b_tr05_multi_$enhan/graph_tgpr_5k data/dt05_simu_$enhan exp/tri3b_tr05_multi_$enhan/decode_tgpr_5k_dt05_simu_$enhan &
 
 wait;
 # decoded results of enhan speech using clean AMs
 local/chime3_calc_wers.sh exp/tri3b_tr05_orig_clean $enhan \
     | tee exp/tri3b_tr05_orig_clean/best_wer_$enhan.result
 # decoded results of enhan speech using enhan AMs
-local/chime3_calc_wers.sh exp/tri3b_tr05_sr_$enhan $enhan \
-    | tee exp/tri3b_tr05_sr_$enhan/best_wer_$enhan.result
+local/chime3_calc_wers.sh exp/tri3b_tr05_multi_$enhan $enhan \
+    | tee exp/tri3b_tr05_multi_$enhan/best_wer_$enhan.result
