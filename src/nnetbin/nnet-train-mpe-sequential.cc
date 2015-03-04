@@ -309,6 +309,7 @@ int main(int argc, char *argv[]) {
 
       // 6) convert the Posterior to a matrix,
       PosteriorToMatrixMapped(post, trans_model, &nnet_diff);
+      nnet_diff.Scale(-1.0); // need to flip the sign of derivative,
 
       KALDI_VLOG(1) << "Lattice #" << num_done + 1 << " processed"
                     << " (" << utt << "): found " << den_lat.NumStates()
