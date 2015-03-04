@@ -46,7 +46,7 @@ namespace kaldi {
 
   \section kws_system Typical Kaldi KWS system
   An example of a Kaldi KWS system can be found in this paper <a href=
-  http://www.clsp.jhu.edu/~guoguo/papers/chen2013quantifying.pdf> "Quantifying
+  http://www.clsp.jhu.edu/~guoguo/papers/icassp2013_lexicon_value.pdf> "Quantifying
   the Value of Pronunciation Lexicons for Keyword Search in Low Resource
   Languages", G. Chen, S. Khudanpur, D. Povey, J. Trmal, D. Yarowsky and
   O. Yilmaz</a>. Generally, a KWS system consists of two parts: a LVCSR module
@@ -94,7 +94,7 @@ namespace kaldi {
   
   \section kws_proxy Proxy keywords
   Our proxy keyword generation process has been described in this paper <a href=
-  http://old-site.clsp.jhu.edu/~guoguo/papers/chen2013using.pdf> "Using Proxies
+  http://www.clsp.jhu.edu/~guoguo/papers/asru2013_proxy_keyword.pdf> "Using Proxies
   for OOV Keywords in the Keyword Search Task", G. Chen, O. Yilmaz, J. Trmal,
   D. Povey, S. Khudanpur</a>. We originally proposed this method to solve the
   OOV problem of the word lattices -- if a keyword is not in the vocabulary of
