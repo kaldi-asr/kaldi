@@ -17,13 +17,27 @@
 # The PROJECT_NAME tag is a single word (or a sequence of words surrounded 
 # by quotes) that should identify the project.
 
-PROJECT_NAME           = 'KALDI'
+PROJECT_NAME           = Kaldi
 
 # The PROJECT_NUMBER tag can be used to enter a project or revision number. 
 # This could be handy for archiving the generated documentation or 
 # if some version control system is used.
 
 PROJECT_NUMBER         = 
+
+
+# Using the PROJECT_BRIEF tag one can provide an optional one line description
+# for a project that appears at the top of each page and should give viewer
+# a quick idea about the purpose of the project. Keep the description short.
+
+# PROJECT_BRIEF          =  "Open source speech recognition"
+
+# With the PROJECT_LOGO tag one can specify an logo or icon that is
+# included in the documentation. The maximum height of the logo should not
+# exceed 55 pixels and the maximum width should not exceed 200 pixels.
+# Doxygen will copy the logo to the output directory.
+ 
+PROJECT_LOGO           =  ../misc/logo/KaldiTextAndLogoSmall.png
 
 # The OUTPUT_DIRECTORY tag is used to specify the (relative or absolute) 
 # base path where the generated documentation will be put. 
@@ -639,7 +653,40 @@ HTML_FILE_EXTENSION    = .html
 # each generated HTML page. If it is left blank doxygen will generate a 
 # standard header.
 
-HTML_HEADER            = 
+## Note: doc/header.html is a modified version of the standard header which was generated
+## using "doxygen -w html header.html footer.html stylesheet.css Doxyfile" (note, this may
+## have to be updated if the doxygen version changes), and then the following line was added:
+## <link rel="icon" type="image/png" href="http://kaldi.sf.net/favicon.ico">
+
+HTML_HEADER            = doc/header.html
+
+
+# The HTML_COLORSTYLE_HUE tag controls the color of the HTML output.
+# Doxygen will adjust the colors in the style sheet and background images
+# according to this color. Hue is specified as an angle on a colorwheel,
+# see http://en.wikipedia.org/wiki/Hue for more information.
+# For instance the value 0 represents red, 60 is yellow, 120 is green,
+# 180 is cyan, 240 is blue, 300 purple, and 360 is red again.
+# The allowed range is 0 to 359.
+
+HTML_COLORSTYLE_HUE    = 26
+
+# The HTML_COLORSTYLE_SAT tag controls the purity (or saturation) of
+# the colors in the HTML output. For a value of 0 the output will use
+# grayscales only. A value of 255 will produce the most vivid colors.
+
+HTML_COLORSTYLE_SAT    = 80
+
+# The HTML_COLORSTYLE_GAMMA tag controls the gamma correction applied to
+# the luminance component of the colors in the HTML output. Values below
+# 100 gradually make the output lighter, whereas values above 100 make
+# the output darker. The value divided by 100 is the actual gamma applied,
+# so 80 represents a gamma of 0.8, The value 220 represents a gamma of 2.2,
+# and 100 does not change the gamma.
+
+HTML_COLORSTYLE_GAMMA  = 90
+
+
 
 # The HTML_FOOTER tag can be used to specify a personal HTML footer for 
 # each generated HTML page. If it is left blank doxygen will generate a 
@@ -654,8 +701,7 @@ HTML_FOOTER            =
 # the style sheet file to the HTML output directory, so don't put your own 
 # stylesheet in the HTML output directory as well, or it will be erased!
 
-HTML_STYLESHEET        = 
-
+HTML_STYLESHEET        =
 
 # If the GENERATE_HTMLHELP tag is set to YES, additional index files 
 # will be generated that can be used as input for tools like the 

@@ -30,10 +30,7 @@
 /**
   \mainpage Kaldi
     
-   Please see the \ref install_warning "instructions" on upgrading your repository to the
-   new location, following our upgrade to the "new" Sourceforge.
-
-   (see also Kaldi's <a href=http://sourceforge.net/projects/kaldi/> project page on Sourceforge </a>,
+   See also Kaldi's <a href=http://sourceforge.net/projects/kaldi/>project page on Sourceforge</a>,
     and <a href=http://kaldi-asr.org>kaldi-asr.org</a>  where you can download pre-built models.
 
   <p>
@@ -42,7 +39,6 @@
    - \subpage install 
    - \subpage dependencies
    - \subpage legal
-   - \subpage roadmap
    - \subpage tutorial
    - \subpage data_prep
    - \subpage build_setup 

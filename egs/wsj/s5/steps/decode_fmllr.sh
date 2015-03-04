@@ -45,7 +45,9 @@ num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 parallel_opts=  # If you supply num-threads, you should supply this too.
 skip_scoring=false
 scoring_opts=
-# End configuration section
+max_fmllr_jobs=25  # I've seen the fMLLR jobs overload NFS badly if the decoding
+                   # was started with a lot of many jobs, so we limit the number of
+                   # parallel jobs to 25 by default.  End configuration section
 echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -147,7 +149,7 @@ esac
 ## Now get the first-pass fMLLR transforms.
 if [ $stage -le 1 ]; then
   echo "$0: getting first-pass fMLLR transforms."
-  $cmd JOB=1:$nj $dir/log/fmllr_pass1.JOB.log \
+  $cmd --max-jobs-run $max_fmllr_jobs JOB=1:$nj $dir/log/fmllr_pass1.JOB.log \
     gunzip -c $si_dir/lat.JOB.gz \| \
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \
     weight-silence-post $silence_weight $silphonelist $alignment_model ark:- ark:- \| \
@@ -183,7 +185,7 @@ fi
 ## $dir/trans.1, etc.
 if [ $stage -le 3 ]; then
   echo "$0: estimating fMLLR transforms a second time."
-  $cmd JOB=1:$nj $dir/log/fmllr_pass2.JOB.log \
+  $cmd --max-jobs-run $max_fmllr_jobs JOB=1:$nj $dir/log/fmllr_pass2.JOB.log \
     lattice-determinize-pruned$thread_string --acoustic-scale=$acwt --beam=4.0 \
     "ark:gunzip -c $dir/lat.tmp.JOB.gz|" ark:- \| \
     lattice-to-post --acoustic-scale=$acwt ark:- ark:- \| \

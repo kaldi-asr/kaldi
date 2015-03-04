@@ -24,6 +24,7 @@ doxygen
 cp doc/*.pptx html/;
 
 if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
+   cp ../misc/logo/KaldiIco.png html/favicon.ico
    tar -czf html.tar.gz html
    scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/
 
@@ -49,3 +50,10 @@ fi
 # I added figures that I manually excerpted from https://sourceforge.net/p/kaldi/mailman/kaldi-users/?viewmonth=201203
 # and https://sourceforge.net/p/kaldi/mailman/kaldi-developers/?viewmonth=201203
 # this is june 13, 2014, 6:11pm, check my email.
+
+# Note (RE adding favicon): I generated the default header files like this (from
+# src/) doxygen -w html header.html footer.html stylesheet.css Doxyfile then
+# moved the header.html to doc/ and edited it to include the following snippet,
+# and added it to the repo.
+#<link rel="icon" type="image/png" href="http://kaldi.sf.net/favicon.ico">
+
