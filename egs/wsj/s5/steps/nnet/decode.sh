@@ -73,10 +73,12 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
 # Select default locations to model files (if not already set externally)
-if [ -z "$nnet" ]; then nnet=$srcdir/final.nnet; fi
-if [ -z "$model" ]; then model=$srcdir/final.mdl; fi
-if [ -z "$feature_transform" ]; then feature_transform=$srcdir/final.feature_transform; fi
-if [ -z "$class_frame_counts" ]; then class_frame_counts=$srcdir/ali_train_pdf.counts; fi
+[ -z "$nnet" ] && nnet=$srcdir/final.nnet
+[ -z "$model" ] && model=$srcdir/final.mdl
+[ -z "$feature_transform" ] && feature_transform=$srcdir/final.feature_transform
+#
+[ -z "$class_frame_counts" -a -f $srcdir/prior_counts ] && class_frame_counts=$srcdir/prior_counts # priority,
+[ -z "$class_frame_counts" ] && class_frame_counts=$srcdir/ali_train_pdf.counts
 
 # Check that files exist
 for f in $sdata/1/feats.scp $nnet $model $feature_transform $class_frame_counts $graphdir/HCLG.fst; do

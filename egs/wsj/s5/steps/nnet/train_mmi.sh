@@ -191,6 +191,9 @@ done
 
 echo "MMI/BMMI training finished"
 
-
+echo "Re-estimating priors by forwarding the training set."
+. cmd.sh
+nj=$(cat $alidir/num_jobs)
+steps/nnet/make_priors.sh --cmd "$train_cmd" --nj $nj $data $dir || exit 1
 
 exit 0

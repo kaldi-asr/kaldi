@@ -19,9 +19,9 @@ lmwt=1.0
 learn_rate=0.00001
 halving_factor=1.0 #ie. disable halving
 do_smbr=true
-exclude_silphones=false # exclude silphones from approximate accuracy computation
+exclude_silphones=true # exclude silphones from approximate accuracy computation
 unkphonelist= # exclude unkphones from approximate accuracy computation (overrides exclude_silphones)
-one_silence_class=false # true : reduce insertions in sMBR/MPE FW/BW, more stable training,
+one_silence_class=true # true : reduce insertions in sMBR/MPE FW/BW, more stable training,
 verbose=1
 
 seed=777    # seed value used for training data shuffling
@@ -175,8 +175,12 @@ done
 
 (cd $dir; [ -e final.nnet ] && unlink final.nnet; ln -s $((x-1)).nnet final.nnet)
 
+
 echo "MPE/sMBR training finished"
 
-
+echo "Re-estimating priors by forwarding the training set."
+. cmd.sh
+nj=$(cat $alidir/num_jobs)
+steps/nnet/make_priors.sh --cmd "$train_cmd" --nj $nj $data $dir || exit 1
 
 exit 0
