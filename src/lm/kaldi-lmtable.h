@@ -50,13 +50,6 @@ using std::tr1::unordered_map;
 #include "base/kaldi-common.h"
 #include "util/stl-utils.h"
 
-#ifdef _MSC_VER
-#  define STRTOF(cur_cstr, end_cstr) static_cast<float>(strtod(cur_cstr, end_cstr));
-#else
-#  define STRTOF(cur_cstr, end_cstr) strtof(cur_cstr, end_cstr);
-#endif
-
-
 namespace kaldi {
 /// @addtogroup LanguageModel
 /// @{

@@ -246,7 +246,11 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
         continue;
       char *next_cstr;
       // found, parse probability from first field
-      prob = STRTOF(cur_cstr, &next_cstr);
+      prob = KALDI_STRTOF(cur_cstr, &next_cstr);
+      if (prob != prob || prob - prob != 0) {
+        KALDI_ERR << "nan or inf detected in LM file [parsing " << (ilev)
+            << "-grams]: " << inpline;
+      }
       if (next_cstr == cur_cstr)
         KALDI_ERR << "Bad line in LM file [parsing "<<(ilev)<<"-grams]: "<<inpline;
       cur_cstr = next_cstr;
@@ -281,7 +285,11 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
         // try converting anything left in the line to a backoff weight
         if (*cur_cstr != '\0') {
           char *end_cstr;
-          bow = STRTOF(cur_cstr, &end_cstr);
+          bow = KALDI_STRTOF(cur_cstr, &end_cstr);
+          if (bow != bow || bow - bow != 0) {
+            KALDI_ERR << "nan or inf detected in LM file [parsing " << (ilev)
+                << "-grams]: " << inpline;
+          }
           if (end_cstr != cur_cstr) {  // got something.
             while (*end_cstr != '\0' && isspace(*end_cstr))
               end_cstr++;

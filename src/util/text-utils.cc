@@ -178,12 +178,12 @@ bool ConvertStringToReal(const std::string &str,
   const char *this_str = str.c_str();
   char *end = NULL;
   errno = 0;
-  double d = KALDI_STRTOD(this_str, &end);
+  float f = KALDI_STRTOF(this_str, &end);
   if (end != this_str)
     while (isspace(*end)) end++;
   if (end == this_str || *end != '\0' || errno != 0)
     return false;
-  *out = static_cast<float>(d);
+  *out = f;
   return true;
 }
 
