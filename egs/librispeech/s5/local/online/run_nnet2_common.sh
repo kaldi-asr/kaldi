@@ -86,8 +86,13 @@ if [ $stage -le 6 ]; then
   # system on.  With --utts-per-spk-max 2, the script.  pairs the utterances
   # into twos, and treats each of these pairs as one speaker.  Note that these
   # are extracted 'online'.
+
+  # having a larger number of speakers is helpful for generalization, and to
+  # handle per-utterance decoding well (iVector starts at zero).
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train_960_hires data/train_960_hires_max2
+  
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 60 \
-    --utts-per-spk-max 2 data/train_960_hires exp/nnet2_online/extractor $ivectordir || exit 1;
+    data/train_960_hires_max2 exp/nnet2_online/extractor $ivectordir || exit 1;
 fi
 
 
