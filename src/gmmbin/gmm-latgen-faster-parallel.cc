@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
                 trans_model, word_syms, utt, acoustic_scale, determinize,
                 allow_partial, &alignment_writer, &words_writer,
                 &compact_lattice_writer, &lattice_writer,
-                &tot_like, &frame_count, &num_err, &num_done, NULL);
+                &tot_like, &frame_count, &num_done, &num_err, NULL);
         sequencer.Run(task); // takes ownership of "task",
         // and will delete it when done.
       }
