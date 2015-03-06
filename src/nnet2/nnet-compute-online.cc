@@ -29,10 +29,7 @@ NnetOnlineComputer::NnetOnlineComputer(const Nnet &nnet, bool pad_input)
     : nnet_(nnet), pad_input_(pad_input),
       is_first_chunk_(true), finished_(false) {
   data_.resize(nnet_.NumComponents() + 1);
-  unprocessed_buffer_.Resize(0, 0);
   reusable_component_inputs_.resize(nnet_.NumComponents()+1);
-  for (int32 i; i < reusable_component_inputs_.size(); i++)
-    reusable_component_inputs_[i].Resize(0, 0);
 }
 
 void NnetOnlineComputer::Compute(const CuMatrixBase<BaseFloat> &input,
