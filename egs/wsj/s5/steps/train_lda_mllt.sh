@@ -85,6 +85,7 @@ feats="$splicedfeats transform-feats $dir/0.mat ark:- ark:- |"
 if [ $stage -le -5 ]; then
   if [ -z "$use_lda_mat" ]; then
     echo "Accumulating LDA statistics."
+    rm $dir/lda.*.acc
     $cmd JOB=1:$nj $dir/log/lda_acc.JOB.log \
     ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- \| \
