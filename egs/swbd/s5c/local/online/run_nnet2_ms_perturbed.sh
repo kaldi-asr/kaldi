@@ -8,7 +8,7 @@
 
 . ./cmd.sh
 set -e 
-stage=1
+stage=6
 train_stage=-10
 use_gpu=true
 # splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:-3:3"
@@ -42,7 +42,7 @@ fi
 
 
 # Run the common stages of training, including training the iVector extractor
-local/online/run_nnet2_common.sh --stage $stage || exit 1;
+ local/online/run_nnet2_common.sh --stage $stage || exit 1;
 
 if [ $stage -le 6 ]; then
   #Although the nnet will be trained by high resolution data, we still have to perturbe the normal data to get the alignment
@@ -50,7 +50,7 @@ if [ $stage -le 6 ]; then
   utils/perturb_data_dir_speed.sh 0.9 data/train_nodup data/temp1
   utils/perturb_data_dir_speed.sh 1.0 data/train_nodup data/temp2
   utils/perturb_data_dir_speed.sh 1.1 data/train_nodup data/temp3
-  utils/combine_data.sh data/train_nodup_sp data/temp1 data/temp2 data/temp3
+  utils/combine_data.sh --extra-files utt2uniq data/train_nodup_sp data/temp1 data/temp2 data/temp3
   rm -r data/temp1 data/temp2 data/temp3
 
   mfccdir=mfcc_perturbed
@@ -70,11 +70,24 @@ fi
 
 if [ $stage -le 8 ]; then
   #Now perturb the high resolution daa
-  utils/perturb_data_dir_speed.sh 0.9 data/train_hires_nodup data/temp1
-  utils/perturb_data_dir_speed.sh 1.0 data/train_hires_nodup data/temp2
-  utils/perturb_data_dir_speed.sh 1.1 data/train_hires_nodup data/temp3
-  utils/combine_data.sh data/train_hires_nodup_sp data/temp1 data/temp2 data/temp3
+  utils/perturb_data_dir_speed.sh 0.9 data/train_nodup data/temp1
+  utils/perturb_data_dir_speed.sh 1.0 data/train_nodup data/temp2
+  utils/perturb_data_dir_speed.sh 1.1 data/train_nodup data/temp3
+  utils/combine_data.sh --extra-files utt2uniq data/train_hires_nodup_sp data/temp1 data/temp2 data/temp3
   rm -r data/temp1 data/temp2 data/temp3
+
+  # do volume perturbation of the data
+  data_dir=data/train_hires_nodup_sp
+  cat $data_dir/wav.scp | python -c "
+import sys, os, subprocess, re, random
+scale_low = 1.0/8
+scale_high = 2.0
+for line in sys.stdin.readlines():
+  if len(line.strip()) == 0:
+    continue
+  print '{0} sox --vol {1} -t wav - -t wav - |'.format(line.strip(), random.uniform(scale_low, scale_high))
+"| sort -k1,1 -u  > $data_dir/wav.scp_scaled || exit 1;
+  mv $data_dir/wav.scp_scaled $data_dir/wav.scp
 
   mfccdir=mfcc_perturbed
   for x in train_hires_nodup_sp; do
