@@ -28,8 +28,8 @@
      - extract-segments [options ..]  <scriptfile > <segments-file> <wav-written-specifier>
      - "scriptfile" must contain full path of the wav file.
      - "segments-file" should have the information of the segments that needs to be extracted from wav file
-     - the format of the segments file : speaker_name wavfilename start_time(in secs) end_time(in secs) channel(1 or 2)
-     - The channel information in the segfile is optional . default value is mono(1).
+     - the format of the segments file : speaker_name wavfilename start_time(in secs) end_time(in secs) channel-id(0 or 1)
+     - The channel-id is 0 for the left channel and 1 for the right channel.  This is not required for mono recordings.
      - "wav-written-specifier" is the output segment format
 */
 int main(int argc, char *argv[]) {
@@ -42,6 +42,7 @@ int main(int argc, char *argv[]) {
         "e.g. extract-segments scp:wav.scp segments ark:- | <some other program>\n"
         " segments-file format: segment_id wav_file_name start_time end_time [channel]\n"
         " e.g.: spkabc_seg1 spkabc_recording1 1.10 2.36 1\n"
+        " channel, if supplied, would normally be 0 (left) or 1 (right).\n"
         " If channel is not provided as last element, expects mono.\n"
         " end_time of -1 means the segment runs till the end of the WAV file.\n"
         "See also: extract-rows, which does the same thing but to feature files,\n"
