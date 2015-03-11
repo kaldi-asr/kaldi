@@ -51,16 +51,17 @@ PdfPrior::PdfPrior(const PdfPriorOptions &opts)
   log_priors.ApplyLog();
 
   // Make the priors for classes with low counts +inf (i.e. -log(0)) such that
-  // the classes have 0 likelihood (i.e. -inf log-likelihood). We use FLT_MAX/2
+  // the classes have 0 likelihood (i.e. -inf log-likelihood). We use sqrt(FLT_MAX)
   // instead of -kLogZeroFloat to prevent NANs from appearing in computation.
   int32 num_floored = 0;
   for (int32 i=0; i<log_priors.Dim(); i++) {
     if (rel_freq(i) < opts.prior_floor) {
-      log_priors(i) = FLT_MAX/2;
+      log_priors(i) = sqrt(FLT_MAX);
       num_floored++;
     }
   }
-  KALDI_LOG << "Floored " << num_floored << " pdf-priors";
+  KALDI_LOG << "Floored " << num_floored << " pdf-priors " 
+            << "(hard-set to " << sqrt(FLT_MAX) << ", which disables DNN output when decoding)";
 
   // sanity check,
   KALDI_ASSERT(KALDI_ISFINITE(log_priors.Sum()));

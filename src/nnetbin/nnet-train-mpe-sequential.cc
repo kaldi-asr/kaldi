@@ -317,7 +317,8 @@ int main(int argc, char *argv[]) {
 
       KALDI_VLOG(1) << "Utterance " << utt << ": Average frame accuracy = "
                     << (utt_frame_acc/num_frames) << " over " << num_frames
-                    << " frames.";
+                    << " frames,"
+                    << " diff-range(" << nnet_diff.Min() << "," << nnet_diff.Max() << ")";
 
       // 7) backpropagate through the nnet,
       nnet.Backpropagate(nnet_diff, NULL);
