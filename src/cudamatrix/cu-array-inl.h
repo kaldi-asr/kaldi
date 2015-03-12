@@ -95,8 +95,9 @@ void CuArray<T>::Destroy() {
 template<typename T>
 void CuArray<T>::CopyFromVec(const std::vector<T> &src) {
   Resize(src.size(), kUndefined);
+  if (src.empty()) return;
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     CU_SAFE_CALL(cudaMemcpy(data_, &src.front(), src.size()*sizeof(T), cudaMemcpyHostToDevice));
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -114,6 +115,7 @@ void CuArray<T>::CopyToVec(std::vector<T> *dst) const {
   if (static_cast<MatrixIndexT>(dst->size()) != dim_) {
     dst->resize(dim_);
   }
+  if (dim_ == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;

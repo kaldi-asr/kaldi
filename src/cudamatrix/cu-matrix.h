@@ -615,7 +615,7 @@ class CuSubMatrix: public CuMatrixBase<Real> {
   /// This type of constructor is needed for Range() to work [in CuMatrix base
   /// class]. Cannot make it explicit or that breaks.
   inline CuSubMatrix<Real> (const CuSubMatrix &other):
-  CuMatrixBase<Real> (other.data_, other.num_cols_, other.num_rows_,
+  CuMatrixBase<Real> (other.data_, other.num_rows_, other.num_cols_,
                       other.stride_) {}
  private:
   /// Disallow assignment.
