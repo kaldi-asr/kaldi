@@ -48,17 +48,43 @@ struct ArpaLine {
 // block in memory.
 class LmState {
  public:
-  LmState(const bool is_unigram,
+  union ChildType {
+    // If child is not the final order, we keep the pointer to its LmState.
+    LmState* state;
+
+    // If child is the final order, we only keep the log probability for it.
+    float prob;
+  };
+
+  struct ChildrenVectorLessThan {
+    bool operator()(
+        const std::pair<int32, union ChildType>& lhs,
+        const std::pair<int32, union ChildType>& rhs ) const {
+      return lhs.first < rhs.first;
+    }
+  };
+
+  LmState(const bool is_unigram, const bool is_child_final_order,
           const float logprob, const float backoff_logprob) :
-      is_unigram_(is_unigram),
+      is_unigram_(is_unigram), is_child_final_order_(is_child_final_order),
       logprob_(logprob), backoff_logprob_(backoff_logprob) {}
 
   void SetMyAddress(const int64 address) {
     my_address_ = address;
   }
 
-  void AddChild(const std::pair<int32, LmState*>& child) {
-    children_.push_back(child);
+  void AddChild(const int32 word, LmState* child_state) {
+    KALDI_ASSERT(!is_child_final_order_);
+    ChildType child;
+    child.state = child_state;
+    children_.push_back(std::make_pair(word, child));
+  }
+
+  void AddChild(const int32 word, const float child_prob) {
+    KALDI_ASSERT(is_child_final_order_);
+    ChildType child;
+    child.prob = child_prob;
+    children_.push_back(std::make_pair(word, child));
   }
 
   int64 MyAddress() const {
@@ -67,6 +93,10 @@ class LmState {
 
   bool IsUnigram() const {
     return is_unigram_;
+  }
+
+  bool IsChildFinalOrder() const {
+    return is_child_final_order_;
   }
 
   float Logprob() const {
@@ -81,14 +111,14 @@ class LmState {
     return children_.size();
   }
 
-  std::pair<int32, LmState*> GetChild(const int32 index) {
+  std::pair<int32, union ChildType> GetChild(const int32 index) {
     KALDI_ASSERT(index < children_.size());
     KALDI_ASSERT(index >= 0);
     return children_[index];
   }
 
   void SortChildren() {
-    std::sort(children_.begin(), children_.end());
+    std::sort(children_.begin(), children_.end(), ChildrenVectorLessThan());
   }
 
   // Checks if the current LmState is a leaf.
@@ -115,6 +145,10 @@ class LmState {
   // need to note when this is a unigram or not.
   bool is_unigram_;
 
+  // If the current LmState has an order of (final_order - 1), then its child
+  // must be the final order. We only keep the log probability for its child.
+  bool is_child_final_order_;
+
   // When we compute the addresses of the LmStates as offsets into <lm_states_>
   // pointer, and put the offsets here. Note that this is just offset, not
   // actual pointer.
@@ -129,7 +163,7 @@ class LmState {
   float backoff_logprob_;
 
   // List of children. 
-  std::vector<std::pair<int32, LmState*> > children_;
+  std::vector<std::pair<int32, union ChildType> > children_;
 };
 
 // Class to build ConstArpaLm from Arpa format language model. It relies on the
@@ -179,6 +213,15 @@ class ConstArpaLmBuilder {
         << "not be changed unless you are in testing mode.";
     max_address_offset_ = max_address_offset;
   }
+
+ private:
+  struct WordsAndLmStatePairLessThan {
+    bool operator()(
+        const std::pair<std::vector<int32>*, LmState*>& lhs,
+        const std::pair<std::vector<int32>*, LmState*>& rhs ) const {
+      return *(lhs.first) < *(rhs.first);
+    }
+  };
 
  private:
   // If true, use natural base e for log-prob, otherwise use base 10. The
@@ -289,14 +332,14 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
 
   // Processes "\N-grams:" section.
   int32 max_word_id = 0;
-  for (int32 order = 1; order < num_ngrams.size(); ++order) {
+  for (int32 cur_order = 1; cur_order < num_ngrams.size(); ++cur_order) {
     // Skips n-grams with zero count.
-    if (num_ngrams[order] == 0) continue;
+    if (num_ngrams[cur_order] == 0) continue;
 
     keyword_found = false;
     int32 ngram_count = 0;
     std::ostringstream keyword;
-    keyword << "\\" << order << "-grams:";
+    keyword << "\\" << cur_order << "-grams:";
     // We use "do ... while" loop since one line has already been read.
     do {
       // The section keywords starts with backslash. We terminate the while loop
@@ -319,37 +362,55 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
 
       // Enters "\N-grams:" section if the keyword has been located.
       if (keyword_found && col.size() > 0) {
-        KALDI_ASSERT(col.size() >= 1 + order);
-        KALDI_ASSERT(col.size() <= 2 + order);  // backoff_logprob could be 0.
+        KALDI_ASSERT(col.size() >= 1 + cur_order);
+        KALDI_ASSERT(col.size() <= 2 + cur_order);// backoff_logprob could be 0.
+        if (cur_order == ngram_order_ && col.size() == 2 + cur_order) {
+          KALDI_ERR << "Backoff probability detected for final-order entry \""
+              << line << "\".";
+        }
         ngram_count++;
 
         // If backoff_logprob is 0, it will not appear in Arpa format language
         // model. We put it back so the processing afterwards will be easier.
-        if (col.size() == 1 + order) {
+        if (col.size() == 1 + cur_order) {
           col.push_back("0");
         }
 
         // Creates LmState for the current word sequence.
-        bool is_unigram = (order == 1) ? true : false;
+        bool is_unigram = (cur_order == 1) ? true : false;
         float logprob;
         float backoff_logprob;
         KALDI_ASSERT(ConvertStringToReal(col[0], &logprob));
-        KALDI_ASSERT(ConvertStringToReal(col[1 + order], &backoff_logprob));
+        KALDI_ASSERT(ConvertStringToReal(col[1 + cur_order], &backoff_logprob));
         if (natural_base_) {
           logprob *= log(10);
           backoff_logprob *= log(10);
         }
-        LmState *lm_state = new LmState(is_unigram, logprob, backoff_logprob);
+       
+        // If <ngram_order_> is larger than 1, then we do not create LmState for
+        // the final order entry. We only keep the log probability for it.
+        LmState *lm_state = NULL;
+        if (cur_order != ngram_order_ || ngram_order_ == 1) {
+          lm_state = new LmState(is_unigram,
+                                 (cur_order == ngram_order_ - 1),
+                                 logprob, backoff_logprob);
+        }
 
-        // Inserts the current LmState to <seq_to_state_>.
-        std::vector<int32> seq(order, 0);
-        for (int32 index = 0; index < order; ++index) {
+        // Figures out the sequence of words.
+        std::vector<int32> seq(cur_order, 0);
+        for (int32 index = 0; index < cur_order; ++index) {
           int32 word;
           KALDI_ASSERT(ConvertStringToInteger(col[1 + index], &word));
           seq[index] = word;
         }
-        KALDI_ASSERT(seq_to_state_.find(seq) == seq_to_state_.end());
-        seq_to_state_[seq] = lm_state;
+
+        // If <ngram_order_> is larger than 1, then we do not insert LmState to
+        // <seq_to_state_>.
+        if (cur_order != ngram_order_ || ngram_order_ == 1) {
+          KALDI_ASSERT(lm_state != NULL);
+          KALDI_ASSERT(seq_to_state_.find(seq) == seq_to_state_.end());
+          seq_to_state_[seq] = lm_state;
+        }
 
         // If n-gram order is larger than 1, we have to add possible child to
         // existing LmStates. We have the following two assumptions:
@@ -358,11 +419,22 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
         // 2. If a n-gram exists in the Arpa format language model, then the
         //    "history" n-gram also exists. For example, if "A B C" is a valid
         //    n-gram, then "A B" is also a valid n-gram.
-        if (order > 1) {
-          std::vector<int32> hist(seq.begin(), seq.begin() + order - 1);
+        if (cur_order > 1) {
+          std::vector<int32> hist(seq.begin(), seq.begin() + cur_order - 1);
           int32 word = seq[seq.size() - 1];
-          KALDI_ASSERT(seq_to_state_.find(hist) != seq_to_state_.end());
-          seq_to_state_[hist]->AddChild(std::make_pair(word, lm_state));
+          unordered_map<std::vector<int32>,
+                        LmState*, VectorHasher<int32> >::iterator hist_iter;
+          hist_iter = seq_to_state_.find(hist);
+          KALDI_ASSERT(hist_iter != seq_to_state_.end());
+          if (cur_order != ngram_order_ || ngram_order_ == 1) {
+            KALDI_ASSERT(lm_state != NULL);
+            KALDI_ASSERT(!hist_iter->second->IsChildFinalOrder());
+            hist_iter->second->AddChild(word, lm_state);
+          } else {
+            KALDI_ASSERT(lm_state == NULL);
+            KALDI_ASSERT(hist_iter->second->IsChildFinalOrder());
+            hist_iter->second->AddChild(word, logprob);
+          }
         } else {
           // Figures out <max_word_id>.
           KALDI_ASSERT(seq.size() == 1);
@@ -372,10 +444,10 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
         }
       }
     } while (getline(is, line) && !is.eof());
-    if (ngram_count > num_ngrams[order] ||
-        (ngram_count == 0 && num_ngrams[order] != 0)) {
-      KALDI_ERR << "Header said there would be " << num_ngrams[order]
-                << " n-grams of order " << order << ", but we saw "
+    if (ngram_count > num_ngrams[cur_order] ||
+        (ngram_count == 0 && num_ngrams[cur_order] != 0)) {
+      KALDI_ERR << "Header said there would be " << num_ngrams[cur_order]
+                << " n-grams of order " << cur_order << ", but we saw "
                 << ngram_count;
     }
   }
@@ -413,23 +485,19 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
 void ConstArpaLmBuilder::Build() {
   // STEP 1: sorting LmStates lexicographically.
   // Vector for holding the sorted LmStates.
-  std::vector<std::pair<std::vector<int32>, LmState*> > sorted_vec;
+  std::vector<std::pair<std::vector<int32>*, LmState*> > sorted_vec;
   unordered_map<std::vector<int32>,
                 LmState*, VectorHasher<int32> >::iterator iter;
   for (iter = seq_to_state_.begin(); iter != seq_to_state_.end(); ++iter) {
     if (iter->second->MemSize() > 0) {
-      sorted_vec.push_back(std::make_pair(iter->first, iter->second));
+      sorted_vec.push_back(
+          std::make_pair(const_cast<std::vector<int32>*>(&(iter->first)),
+                         iter->second));
     }
   }
 
-  // Using the default "<" operation will sort LmState lexicographically,
-  // because of the following two facts:
-  // 1. "<" operation is defined for std::pair, and it compares std::pair
-  //    lexicographically, i.e., it first compares the first elements, and only
-  //    compares the second when the first elements are equivalent.
-  // 2. "<" operation is defined for std::vector, and it also compares
-  //    std::vector lexicographically by default.
-  std::sort(sorted_vec.begin(), sorted_vec.end());
+  std::sort(sorted_vec.begin(), sorted_vec.end(),
+            WordsAndLmStatePairLessThan());
 
   // STEP 2: updating <my_address> in LmState.
   for (int32 i = 0; i < sorted_vec.size(); ++i) {
@@ -480,17 +548,24 @@ void ConstArpaLmBuilder::Build() {
     sorted_vec[i].second->SortChildren();
     for (int32 j = 0; j < sorted_vec[i].second->NumChildren(); ++j) {
       int32 child_info;
-      if (sorted_vec[i].second->GetChild(j).second->MemSize() == 0) {
+      if (sorted_vec[i].second->IsChildFinalOrder() ||
+          sorted_vec[i].second->GetChild(j).second.state->MemSize() == 0) {
         // Child is a leaf and not unigram. In this case we will not create an
         // entry in <lm_states_>; instead, we put the logprob in the place where
         // we normally store the poitner.
-        float child_logprob =
-            sorted_vec[i].second->GetChild(j).second->Logprob();
+        float child_logprob;
+        if (sorted_vec[i].second->IsChildFinalOrder()) {
+          child_logprob = sorted_vec[i].second->GetChild(j).second.prob;
+        } else {
+          child_logprob =
+              sorted_vec[i].second->GetChild(j).second.state->Logprob();
+        }
         child_info = *reinterpret_cast<int32*>(&child_logprob);
         child_info &= ~1;   // Sets the last bit to 0 so <child_info> is even.
       } else {
         // Child is not a leaf or is unigram.
-        int64 offset = sorted_vec[i].second->GetChild(j).second->MyAddress()
+        int64 offset =
+            sorted_vec[i].second->GetChild(j).second.state->MyAddress()
             - sorted_vec[i].second->MyAddress();
         KALDI_ASSERT(offset > 0);
         if (offset <= max_address_offset_) {
@@ -518,8 +593,8 @@ void ConstArpaLmBuilder::Build() {
     // loop up table to improve efficiency, since those will be looked up pretty
     // frequently.
     if (sorted_vec[i].second->IsUnigram()) {
-      KALDI_ASSERT(sorted_vec[i].first.size() == 1);
-      unigram_states_[sorted_vec[i].first[0]] = parent_address;
+      KALDI_ASSERT(sorted_vec[i].first->size() == 1);
+      unigram_states_[(*sorted_vec[i].first)[0]] = parent_address;
     }
   }
   KALDI_ASSERT(lm_states_size_ == lm_states_index);
