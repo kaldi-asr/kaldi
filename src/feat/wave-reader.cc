@@ -137,14 +137,40 @@ void WaveData::Read(std::istream &is) {
       byte_rate = ReadUint32(is, swap),
       block_align = ReadUint16(is, swap),
       bits_per_sample = ReadUint16(is, swap);
+  uint32 fmt_chunk_read = 16;
 
-  if (audio_format != 1)
-    KALDI_ERR << "WaveData: can read only PCM data, audio_format is not 1: "
+  if (audio_format == 1) {
+    if (subchunk1_size < 16) {
+      KALDI_ERR << "WaveData: expect PCM format data to have fmt chunk of at least size 16.";
+    }
+  } else if (audio_format == 0xFFFE) {  // WAVE_FORMAT_EXTENSIBLE
+    uint16 extra_size = ReadUint16(is, swap);
+    if (subchunk1_size < 40 || extra_size < 22) {
+      KALDI_ERR << "WaveData: malformed WAVE_FORMAT_EXTENSIBLE format data.";
+    }
+    ReadUint16(is, swap);  // Unused for PCM.
+    ReadUint32(is, swap);  // Channel map: we do not care.
+    uint32 guid1 = ReadUint32(is, swap),
+           guid2 = ReadUint32(is, swap),
+           guid3 = ReadUint32(is, swap),
+           guid4 = ReadUint32(is, swap);
+    fmt_chunk_read = 40;
+
+    // Support only KSDATAFORMAT_SUBTYPE_PCM for now. Interesting formats:
+    //("00000001-0000-0010-8000-00aa00389b71", KSDATAFORMAT_SUBTYPE_PCM)
+    //("00000003-0000-0010-8000-00aa00389b71", KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+    //("00000006-0000-0010-8000-00aa00389b71", KSDATAFORMAT_SUBTYPE_ALAW)
+    //("00000007-0000-0010-8000-00aa00389b71", KSDATAFORMAT_SUBTYPE_MULAW)
+    if (guid1 != 0x00000001 || guid2 != 0x00100000 ||
+        guid3 != 0xAA000080 || guid4 != 0x719B3800) {
+      KALDI_ERR << "WaveData: unknown/unsupported WAVE_FORMAT_EXTENSIBLE format.";
+    }
+  } else {
+    KALDI_ERR << "WaveData: can read only PCM data, format id in file is: "
               << audio_format;
-  if (subchunk1_size < 16)
-    KALDI_ERR << "WaveData: expect PCM format data to have fmt chunk of at least size 16.";
-  else
-    for (uint32 i = 16; i < subchunk1_size; i++) is.get();  // use up extra data.
+  }
+
+  for (uint32 i = fmt_chunk_read; i < subchunk1_size; i++) is.get();  // use up extra data.
 
   if (num_channels <= 0)
     KALDI_ERR << "WaveData: no channels present";
