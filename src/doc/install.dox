@@ -111,7 +111,11 @@ svn switch --relocate https://svn.code.sf.net/p/kaldi/code svn+ssh://USERNAME@sv
 \verbatim
   git remote add origin svn+ssh://USERNAME@svn.code.sf.net/p/kaldi/code
 \endverbatim
-  USERNAME here is that of your Sourceforge account.
+  or in case you cloned your git kaldi repository from another git repository
+\verbatim
+  git remote set-url origin svn+ssh://USERNAME@svn.code.sf.net/p/kaldi/code
+\endverbatim
+  in both cases USERNAME here is that of your Sourceforge account.
   Changes can be committed directly to SVN using "git svn dcommit". You would
   still need to follow the instructions in \ref install_switch. 
   
