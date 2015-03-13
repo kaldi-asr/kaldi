@@ -15,6 +15,7 @@ boost=0.0       # option relevant for MMI
 
 criterion=smbr
 drop_frames=false #  option relevant for MMI
+one_silence_class=true # option relevant for MPE/SMBR
 num_jobs_nnet="4 4"    # Number of neural net jobs to run in parallel, one per
                        # language..  Note: this will interact with the learning
                        # rates (if you decrease this, you'll have to decrease
@@ -217,6 +218,7 @@ while [ $x -lt $num_iters ]; do
           "ark:$this_degs_dir/degs.\$[((JOB-1+($x*$this_num_jobs_nnet))%$this_num_archives)+1].ark" ark:- \| \
           nnet-train-discriminative$train_suffix --silence-phones=$this_silphonelist \
            --criterion=$criterion --drop-frames=$drop_frames \
+           --one-silence-class=$one_silence_class \
            --boost=$boost --acoustic-scale=$acoustic_scale \
            $dir/$lang/$x.mdl ark:- $dir/$lang/$[$x+1].JOB.mdl || exit 1;
 

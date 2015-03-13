@@ -16,7 +16,7 @@ boost=0.0       # option relevant for MMI
 
 criterion=smbr
 drop_frames=false #  option relevant for MMI
-one_silence_class=false  # option relevant for MPE/SMBR
+one_silence_class=true # option relevant for MPE/SMBR
 num_jobs_nnet=4    # Number of neural net jobs to run in parallel.  Note: this
                    # will interact with the learning rates (if you decrease
                    # this, you'll have to decrease the learning rate, and vice
