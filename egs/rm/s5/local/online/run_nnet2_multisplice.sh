@@ -41,7 +41,7 @@ local/online/run_nnet2_common.sh --stage  $stage || exit 1;
 
 if [ $stage -le 4 ]; then
   steps/nnet2/train_multisplice_accel2.sh --stage $train_stage \
-    --splice-indexes "layer0/-1:0:1 layer1/-2:1 layer2/-4:2" \
+    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-3:1 layer2/-5:3" \
     --num-hidden-layers 3 \
     --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors \

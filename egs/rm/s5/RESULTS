@@ -209,10 +209,21 @@ for x in exp/nnet2_online/nnet*/decode*; do grep WER $x/wer_* | utils/best_wer.s
 %WER 10.45 [ 1310 / 12533, 106 ins, 241 del, 963 sub ] exp/nnet2_online/nnet_a_online/decode_ug_per_utt/wer_12
 
 # multi-splice recipe:
-%WER 2.31 [ 290 / 12533, 59 ins, 50 del, 181 sub ] exp/nnet2_online/nnet_ms_a_online/decode/wer_7
-%WER 2.36 [ 296 / 12533, 63 ins, 54 del, 179 sub ] exp/nnet2_online/nnet_ms_a_online/decode_per_utt/wer_6
-%WER 10.19 [ 1277 / 12533, 155 ins, 186 del, 936 sub ] exp/nnet2_online/nnet_ms_a_online/decode_ug/wer_13
-%WER 10.18 [ 1276 / 12533, 150 ins, 183 del, 943 sub ] exp/nnet2_online/nnet_ms_a_online/decode_ug_per_utt/wer_13
+%WER 2.29 [ 287 / 12533, 32 ins, 70 del, 185 sub ] exp/nnet2_online/nnet_ms_a/decode/wer_9_0.0
+%WER 9.30 [ 1166 / 12533, 94 ins, 219 del, 853 sub ] exp/nnet2_online/nnet_ms_a/decode_ug/wer_15_0.0
+%WER 2.30 [ 288 / 12533, 32 ins, 68 del, 188 sub ] exp/nnet2_online/nnet_ms_a_online/decode/wer_9_0.0
+%WER 2.34 [ 293 / 12533, 33 ins, 72 del, 188 sub ] exp/nnet2_online/nnet_ms_a_online/decode_per_utt/wer_9_0.0
+%WER 9.17 [ 1149 / 12533, 87 ins, 224 del, 838 sub ] exp/nnet2_online/nnet_ms_a_online/decode_ug/wer_14_0.5
+%WER 9.37 [ 1174 / 12533, 121 ins, 192 del, 861 sub ] exp/nnet2_online/nnet_ms_a_online/decode_ug_per_utt/wer_13_0.0
+# baseline with multi-splice script
+# provided for reference, modify splice-indexes in local/online/run_nnet2_multisplice.sh
+# to "layer0/-7:-6:-5:-4:-3:-2:-1:0:1:2:3:4:5:6:7" to reproduce these results
+%WER 2.31 [ 290 / 12533, 26 ins, 91 del, 173 sub ] exp/nnet2_online/nnet_a/decode/wer_9_0.0
+%WER 9.90 [ 1241 / 12533, 103 ins, 208 del, 930 sub ] exp/nnet2_online/nnet_a/decode_ug/wer_11_0.5
+%WER 2.27 [ 284 / 12533, 25 ins, 88 del, 171 sub ] exp/nnet2_online/nnet_a_online/decode/wer_9_0.0
+%WER 2.30 [ 288 / 12533, 20 ins, 85 del, 183 sub ] exp/nnet2_online/nnet_a_online/decode_per_utt/wer_9_0.0
+%WER 9.97 [ 1250 / 12533, 104 ins, 208 del, 938 sub ] exp/nnet2_online/nnet_a_online/decode_ug/wer_10_1.0
+%WER 10.18 [ 1276 / 12533, 129 ins, 193 del, 954 sub ] exp/nnet2_online/nnet_a_online/decode_ug_per_utt/wer_11_0.0
 
 # Joint training with WSJ data (call this recipe "multilingual" because it doesn't use
 # a shared phone set).'
