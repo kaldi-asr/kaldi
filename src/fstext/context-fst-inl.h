@@ -454,14 +454,13 @@ template<class I>
 SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<I> > &info,
                                          const SymbolTable &phones_symtab,
                                          std::string separator,
-                                         std::string disambig_prefix) {  // e.g. separator = "/", disambig_prefix = "#"
+                                         std::string initial_disambig) {  // e.g. separator = "/", initial-disambig="#-1"
   assert(std::numeric_limits<I>::is_signed);  // make sure is signed type.
   assert(!info.empty());
   assert(info[0].empty());
   SymbolTable *ans = new SymbolTable("ilabel-info-symtab");
   int64 s = ans->AddSymbol(phones_symtab.Find(static_cast<int64>(0)));
   assert(s == 0);
-  int num_disambig_seen = 0;  // not counting #-1
   for (size_t i = 1; i < info.size(); i++) {
     if (info[i].size() == 0) {
       std::cerr << "CreateILabelInfoSymbolTable: invalid ilabel-info";
@@ -470,20 +469,23 @@ SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<I> > &info,
     if (info[i].size() == 1 &&
        info[i][0] <= 0) {
       if (info[i][0] == 0) {  // special symbol at start that we want to call #-1.
-        std::string sym = disambig_prefix + "-1";
-        s = ans->AddSymbol(disambig_prefix + "-1");
+        s = ans->AddSymbol(initial_disambig);
         if (s != i) {
-          std::cerr << "Disambig symbol "<< sym << " already in vocab\n";  // should never happen.
+          std::cerr << "Disambig symbol " << initial_disambig
+                    << " already in vocab\n";
           exit(1);
         }
       } else {
-        char buf[100];
-        snprintf(buf, 100, "%d", num_disambig_seen);
-        num_disambig_seen++;
-        std::string sym = disambig_prefix + buf;
-        s = ans->AddSymbol(sym);
+        std::string disambig_sym = phones_symtab.Find(-info[i][0]);
+        if (disambig_sym == "") {
+          std::cerr << "CreateILabelInfoSymbolTable: disambig symbol "
+                    << -info[i][0] << " not in phone symbol-table.";
+          exit(1);
+        }
+        s = ans->AddSymbol(disambig_sym);
         if (s != i) {
-          std::cerr << "Disambig symbol "<< sym <<" already in vocab\n";  // should never happen.
+          std::cerr << "Disambig symbol " << disambig_sym
+                    << " already in vocab\n";
           exit(1);
         }
       }

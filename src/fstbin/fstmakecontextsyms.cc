@@ -28,19 +28,22 @@
     Test for this and makecontextfst:
     mkdir -p ~/tmpdir
     pushd ~/tmpdir
-    (echo "<eps> 0"; echo "a 1"; echo "b 2" ) > phones.txt
+    (echo "<eps> 0"; echo "a 1"; echo "b 2"; echo "#0 3"; echo "#1 4"; echo "#$ 5" ) > phones.txt
     ( echo 3; echo 4 ) > disambig.list
-    fstmakecontextfst --disambig-syms=disambig.list phones.txt 5 ilabels.sym > C.fst
-    fstmakecontextsyms --disambig-syms=disambig.list phones.txt ilabels.sym > context_syms.txt
-    cp phones.txt phones_disambig.txt;
-     ( echo "#0 3"; echo "#1 4"; echo "$ 5" ) >> phones_disambig.txt
-    fstrandgen C.fst | fstprint --isymbols=context_syms.txt --osymbols=phones_disambig.txt
+    fstmakecontextfst --read-disambig-syms=disambig.list <(grep -v '#' phones.txt)  5 ilabels.int > C.fst
+    fstmakecontextsyms phones.txt ilabels.int > context_syms.txt
+    fstrandgen C.fst | fstprint --isymbols=context_syms.txt --osymbols=phones.txt
 
     Example output:
-    0   1   <eps>   a
-    1   2   <eps>/a/<eps>   $
-    2   3   #0  #0
-    3
+0	1	#0	#0
+1	2	#-1	a
+2	3	<eps>/a/a	a
+3	4	a/a/a	a
+4	5	#0	#0
+5	6	a/a/b	b
+6	7	a/b/<eps>	#$
+7	8	#1	#1
+8
 */
 
 
@@ -57,13 +60,14 @@ int main(int argc, char *argv[]) {
 
     std::string disambig_list_file = "",
         phone_separator = "/",
-        disambig_prefix = "#";
+        initial_disambig = "#-1";
 
     po.Register("phone-separator", &phone_separator,
                 "Separator for phones in phone-in-context symbols.");
-    po.Register("disambig-prefix", &disambig_prefix,
-                "Prefix for disambiguation symbols (if used).");
-
+    po.Register("initial-disambig", &initial_disambig,
+                "Name for special disambiguation symbol that occurs at start "
+                "of context-dependent phone sequences");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() < 2 || po.NumArgs() > 3) {
@@ -94,7 +98,7 @@ int main(int argc, char *argv[]) {
         CreateILabelInfoSymbolTable(ilabel_info,
                                     *phones_symtab,
                                     phone_separator,
-                                    disambig_prefix);
+                                    initial_disambig);
 
     if (clg_symtab_filename == "") {
       if (!clg_symtab->WriteText(std::cout))

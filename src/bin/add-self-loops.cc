@@ -1,5 +1,7 @@
 // bin/add-self-loops.cc
-// Copyright 2009-2011 Microsoft Corporation
+
+// Copyright 2009-2011  Microsoft Corporation
+//                2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -36,19 +38,28 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "Add self-loops and transition probabilities to transducer, expanding to transition-ids\n"
+        "Add self-loops and transition probabilities to transducer.  Input transducer\n"
+        "has transition-ids on the input side, but only the forward transitions, not the\n"
+        "self-loops.  Output transducer has transition-ids on the input side, but with\n"
+        "self-loops added.  The --reorder option controls whether the loop is added before\n"
+        "the forward transition (if false), or afterward (if true).  The default (true)\n"
+        "is recommended as the decoding will in that case be faster.\n"
         "Usage:   add-self-loops [options] transition-gmm/acoustic-model [fst-in] [fst-out]\n"
         "e.g.: \n"
-        " add-self-loops --self-loop-scale=0.1 1.mdl < HCLG_noloops.fst > HCLG_full.fst\n";
-
+        " add-self-loops --self-loop-scale=0.1 1.mdl HCLGa.fst HCLG.fst\n" 
+        "or:  add-self-loops --self-loop-scale=0.1 1.mdl <HCLGa.fst >HCLG.fst\n";
+    
     BaseFloat self_loop_scale = 1.0;
     bool reorder = true;
     std::string disambig_in_filename;
 
     ParseOptions po(usage);
-    po.Register("self-loop-scale", &self_loop_scale, "Scale for self-loop probabilities relative to LM.");
-    po.Register("disambig-syms", &disambig_in_filename, "List of disambiguation symbols on input of fst-in [input file]");
-    po.Register("reorder", &reorder, "If true, reorder symbols for more decoding efficiency");
+    po.Register("self-loop-scale", &self_loop_scale,
+                "Scale for self-loop probabilities relative to LM.");
+    po.Register("disambig-syms", &disambig_in_filename,
+                "List of disambiguation symbols on input of fst-in [input file]");
+    po.Register("reorder", &reorder,
+                "If true, reorder symbols for more decoding efficiency");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 1 || po.NumArgs() > 3) {
