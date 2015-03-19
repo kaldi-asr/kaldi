@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Copyright 2012 Vassil Panayotov
+# Copyright 2012  Vassil Panayotov
+#           2014  Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0
 
 # Makes train/test splits
@@ -37,7 +38,7 @@ mkdir -p $loctmp
 # not matched by the expression
 find $DATA/ -mindepth 1 -maxdepth 1 |\
  perl -ane ' s:.*/((.+)\-[0-9]{8,10}[a-z]*([_\-].*)?):$2: && print; ' | \
- sort -u > $loctmp/speakers_all.txt
+  sort -u > $loctmp/speakers_all.txt
 
 nspk_all=$(wc -l <$loctmp/speakers_all.txt)
 if [ "$nspk_test" -ge "$nspk_all" ]; then
@@ -48,99 +49,117 @@ fi
 utils/shuffle_list.pl <$loctmp/speakers_all.txt | head -n $nspk_test | sort -u >$loctmp/speakers_test.txt
 
 awk 'NR==FNR{spk[$0]; next} !($0 in spk)' \
-    $loctmp/speakers_test.txt $loctmp/speakers_all.txt |\
+  $loctmp/speakers_test.txt $loctmp/speakers_all.txt |\
   sort -u > $loctmp/speakers_train.txt
 
 wc -l $loctmp/speakers_all.txt
 wc -l $loctmp/speakers_{train,test}.txt
 
 # expand speaker names to their respective directories
-find ${DATA}/ -mindepth 1 -maxdepth 1 -type d |\
- while read d; do  basename $d; done |\
- awk 'BEGIN {FS="-"} NR==FNR{arr[$1]; next;} ($1 in arr)' \
+for d in $(find ${DATA}/ -mindepth 1 -maxdepth 1 -type l -or -type d); do
+  basename $d
+done | awk 'BEGIN {FS="-"} NR==FNR{arr[$1]; next;} ($1 in arr)' \
   $loctmp/speakers_test.txt - | sort > $loctmp/dir_test.txt
+if [ ! -s $loctmp/dir_test.txt ]; then
+  echo "$0: file $loctmp/dir_test.txt is empty"
+  exit 1;
+fi
 
-find ${DATA}/ -mindepth 1 -maxdepth 1 -type d |\
- while read d; do  basename $d; done |\
- awk 'BEGIN {FS="-"} NR==FNR{arr[$1]; next;} ($1 in arr)' \
+for d in $(find ${DATA}/ -mindepth 1 -maxdepth 1 -type l -or -type d); do
+  basename $d; 
+done | awk 'BEGIN {FS="-"} NR==FNR{arr[$1]; next;} ($1 in arr)' \
   $loctmp/speakers_train.txt - | sort > $loctmp/dir_train.txt
+if [ ! -s $loctmp/dir_test.txt ]; then
+  echo "$0: file $loctmp/dir_train.txt is empty"
+  exit 1;
+fi
+
 
 logdir=exp/data_prep
 mkdir -p $logdir
-> $logdir/make_trans.log
+echo -n > $logdir/make_trans.log
 rm ${locdata}/spk2gender 2>/dev/null
 for s in test train; do
- echo "--- Preparing ${s}_wav.scp, ${s}_trans.txt and ${s}.utt2spk ..." 
- while read d; do
-  spkname=`echo $d | cut -f1 -d'-'`;
-  spksfx=`echo $d | cut -f2- -d'-'`; # | sed -e 's:_:\-:g'`;
-  idpfx="${spkname}-${spksfx}";
-  dir=${DATA}/$d
+  echo "--- Preparing ${s}_wav.scp, ${s}_trans.txt and ${s}.utt2spk ..." 
 
-  rdm=`find $dir/etc/ -iname 'readme'`
-  if [ -z $rdm ]; then
-    echo "No README file for $d - skipping this directory ..."
-    continue
-  fi
-  spkgender=$(perl -ane ' s/.*gender\:\W*(.).*/lc($1)/ei && print; ' <$rdm)
-  if [ "$spkgender" != "f" -a "$spkgender" != "m" ]; then
-    echo "Illegal or empty gender ($spkgender) for \"$d\" - assuming m(ale) ..."
-    spkgender="m"
-  fi
-  echo "$spkname $spkgender" >> $locdata/spk2gender.tmp
-  
-  if [ ! -f ${dir}/etc/PROMPTS ]; then
-   echo "No etc/PROMPTS file exists in $dir - skipping the dir ..." \
-     >> $logdir/make_trans.log
-   continue
-  fi
-  
-  if [ -d ${dir}/wav ]; then
-   wavtype=wav
-  else
-   if [ -d ${dir}/flac ]; then
-    wavtype=flac
-   else
-    echo "No 'wav' or 'flac' dir in $dir - skipping ..."
-    continue
-   fi
-  fi
+  for d in $(cat $loctmp/dir_${s}.txt); do
+    spkname=`echo $d | cut -f1 -d'-'`;
+    spksfx=`echo $d | cut -f2- -d'-'`; # | sed -e 's:_:\-:g'`;
+    idpfx="${spkname}-${spksfx}";
+    dir=${DATA}/$d
 
-  all_wavs=""
-  while read w; do
-    bw=`basename $w`
-    wavname=${bw%.$wavtype}
-    all_wavs="$all_wavs $wavname"
-    id="${idpfx}-${wavname}"
-    if [ ! -s $w ]; then
-     echo "$w is zero-size - skipping ..."
-     continue
+    rdm=`find $dir/etc/ -iname 'readme'`
+    if [ -z $rdm ]; then
+      echo "No README file for $d - skipping this directory ..."
+      continue
     fi
-    if [ $wavtype == "wav" ]; then
-     echo "$id $w" >> ${loctmp}/${s}_wav.scp.unsorted
+    spkgender=$(perl -ane ' s/.*gender\:\W*(.).*/lc($1)/ei && print; ' <$rdm)
+    if [ "$spkgender" != "f" -a "$spkgender" != "m" ]; then
+      echo "Illegal or empty gender ($spkgender) for \"$d\" - assuming m(ale) ..."
+      spkgender="m"
+    fi
+    echo "$spkname $spkgender" >> $locdata/spk2gender.tmp
+    
+    if [ ! -f ${dir}/etc/PROMPTS ]; then
+      echo "No etc/PROMPTS file exists in $dir - skipping the dir ..." \
+        >> $logdir/make_trans.log
+      continue
+    fi
+    
+    if [ -d ${dir}/wav ]; then
+      wavtype=wav
+    elif [ -d ${dir}/flac ]; then
+      wavtype=flac
     else
-     echo "$id flac -c -d --silent $w |" >> ${loctmp}/${s}_wav.scp.unsorted
+      echo "No 'wav' or 'flac' dir in $dir - skipping ..."
+      continue
     fi
-    echo "$id $spkname" >> $loctmp/${s}.utt2spk.unsorted
-  done < <( ls ${dir}/${wavtype}/*${wavtype} )
-  
-  local/make_trans.py $dir/etc/PROMPTS ${idpfx} "${all_wavs}" \
-   2>>${logdir}/make_trans.log >> ${loctmp}/${s}_trans.txt.unsorted
- done < $loctmp/dir_${s}.txt
+    
+
+    all_wavs=()
+    all_utt2spk_entries=()
+    for w in ${dir}/${wavtype}/*${wavtype}; do
+      bw=`basename $w`
+      wavname=${bw%.$wavtype}
+      all_wavs+=("$wavname")
+      id="${idpfx}-${wavname}"
+      if [ ! -s $w ]; then
+        echo "$w is zero-size - skipping ..." 1>&2
+        continue
+      fi
+      if [ $wavtype == "wav" ]; then
+        echo "$id $w"
+      else
+        echo "$id flac -c -d --silent $w |"
+      fi
+      all_utt2spk_entries+=("$id $spkname")
+    done >> ${loctmp}/${s}_wav.scp.unsorted
+
+    for a in "${all_utt2spk_entries[@]}"; do echo $a; done >> $loctmp/${s}.utt2spk.unsorted
+
+
+    if [ ! -f ${loctmp}/${s}_wav.scp.unsorted ]; then
+      echo "$0: processed no data: error: pattern ${dir}/${wavtype}/*${wavtype} might match nothing"
+      exit 1;
+    fi   
+    
+    local/make_trans.py $dir/etc/PROMPTS ${idpfx} "${all_wavs[@]}" \
+      2>>${logdir}/make_trans.log >> ${loctmp}/${s}_trans.txt.unsorted
+  done
 
  # filter out the audio for which there is no proper transcript
- awk 'NR==FNR{trans[$1]; next} ($1 in trans)' FS=" " \
-   ${loctmp}/${s}_trans.txt.unsorted ${loctmp}/${s}_wav.scp.unsorted |\
+  awk 'NR==FNR{trans[$1]; next} ($1 in trans)' FS=" " \
+    ${loctmp}/${s}_trans.txt.unsorted ${loctmp}/${s}_wav.scp.unsorted |\
    sort -k1 > ${locdata}/${s}_wav.scp
- 
- awk 'NR==FNR{trans[$1]; next} ($1 in trans)' FS=" " \
-   ${loctmp}/${s}_trans.txt.unsorted $loctmp/${s}.utt2spk.unsorted |\
+  
+  awk 'NR==FNR{trans[$1]; next} ($1 in trans)' FS=" " \
+    ${loctmp}/${s}_trans.txt.unsorted $loctmp/${s}.utt2spk.unsorted |\
    sort -k1 > ${locdata}/${s}.utt2spk
- 
- sort -k1 < ${loctmp}/${s}_trans.txt.unsorted > ${locdata}/${s}_trans.txt
+  
+  sort -k1 < ${loctmp}/${s}_trans.txt.unsorted > ${locdata}/${s}_trans.txt
 
- echo "--- Preparing ${s}.spk2utt ..."
- cat $locdata/${s}_trans.txt |\
+  echo "--- Preparing ${s}.spk2utt ..."
+  cat $locdata/${s}_trans.txt |\
   cut -f1 -d' ' |\
   awk 'BEGIN {FS="-"}
         {names[$1]=names[$1] " " $0;}

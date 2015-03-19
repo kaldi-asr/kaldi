@@ -18,13 +18,13 @@ import sys
 def err(msg):
     print >> sys.stderr, msg
 
-if len(sys.argv) != 4:
-    err("Usage: %s <prompts-file> <id-prefix> <utt-ids>" % sys.argv[0])
+if len(sys.argv) < 3:
+    err("Usage: %s <prompts-file> <id-prefix> <utt-id1> <utt-id2> ... " % sys.argv[0])
     sys.exit(1)
 
 #err(str(sys.argv))
 id_prefix = sys.argv[2]
-utt_ids = sys.argv[3].strip().split()
+utt_ids = sys.argv[3:]
 utt2trans = dict()
 unnorm_utt = set() 
 for l in file(sys.argv[1]):
