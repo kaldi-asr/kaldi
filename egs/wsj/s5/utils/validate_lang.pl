@@ -654,12 +654,14 @@ if (-s "$lang/phones/word_boundary.int") {
     print "--> generating a $wlen word sequence\n";
     $wordseq = "";
     $sid = 0;
+    $wordseq_syms = "";
     foreach (1 .. $wlen) {
       $id = int(rand(scalar(keys %wint2sym)));
       while ($wint2sym{$id} =~ m/^#[0-9]*$/ or
              $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or $id == 0) {
         $id = int(rand(scalar(keys %wint2sym)));
       }
+      $wordseq_syms = $wordseq_syms . $wint2sym{$id} . " ";
       $wordseq = $wordseq . "$sid ". ($sid + 1) . " $id $id 0\n";
       $sid ++;
     }
@@ -702,7 +704,9 @@ if (-s "$lang/phones/word_boundary.int") {
     }
     if (!$exit) {
       if ($num_words != $wlen) {
-        $exit = 1; print "--> ERROR: number of reconstructed words $num_words does not match real number of words $wlen; indicates problem in $fst or word_boundary.int.  phoneseq = $phoneseq\n";
+        $phoneseq_syms = "";
+        foreach my $id (split(" ", $phoneseq)) { $phoneseq_syms = $phoneseq_syms . " " . $pint2sym{$id}; }
+        $exit = 1; print "--> ERROR: number of reconstructed words $num_words does not match real number of words $wlen; indicates problem in $fst or word_boundary.int.  phoneseq = $phoneseq_syms, wordseq = $wordseq_syms\n";
       } else {
         print "--> resulting phone sequence from $fst corresponds to the word sequence\n";
         print "--> $fst is OK\n";
