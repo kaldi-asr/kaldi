@@ -78,7 +78,13 @@ int main(int argc, char *argv[]) {
                                     write_lengths ? empty : phones_wspecifier);
     Int32PairVectorWriter pair_writer(ctm_output ? empty :
                                     write_lengths ? phones_wspecifier : empty);
+    
     std::string ctm_wxfilename(ctm_output ? phones_wspecifier : empty);
+    Output ctm_writer(phones_wspecifier, false);
+    if (ctm_output) {
+        ctm_writer.Stream() << std::fixed;
+        ctm_writer.Stream().precision(2);
+    }
 
     int32 n_done = 0;
 
@@ -90,15 +96,12 @@ int main(int argc, char *argv[]) {
       SplitToPhones(trans_model, alignment, &split);
 
       if (ctm_output) {
-        Output ko(ctm_wxfilename, false); // false == non-binary write mode.
-        ko.Stream() << std::fixed;
-        ko.Stream().precision(2);
         BaseFloat phone_start = 0.0;
         for (size_t i = 0; i < split.size(); i++) {
           KALDI_ASSERT(!split[i].empty());
           int32 phone = trans_model.TransitionIdToPhone(split[i][0]);
           int32 num_repeats = split[i].size();
-          ko.Stream() << key << " 1 " << phone_start << " "
+          ctm_writer.Stream() << key << " 1 " << phone_start << " "
                       << (frame_shift * num_repeats) << " " << phone << std::endl;
           phone_start += frame_shift * num_repeats;
         }
