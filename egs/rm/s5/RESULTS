@@ -248,7 +248,6 @@ for x in exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_*; do grep WER $x/
 
 # LSTM result
 for x in exp/lstm4f/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
-%WER 3.05 [ 382 / 12533, 23 ins, 86 del, 273 sub ] exp/lstm4f_0.0001_0.7/decode/wer_5_0.5
-%WER 12.02 [ 1506 / 12533, 130 ins, 251 del, 1125 sub ] exp/lstm4f_0.0001_0.7/decode_ug/wer_8_0.0
+%WER 2.04 [ 256 / 12533, 18 ins, 60 del, 178 sub ] exp/lstm4f_c512_r200_c512_r200_lr0.0001_mmt0.9_clip50/decode/wer_4_0.5
 
 

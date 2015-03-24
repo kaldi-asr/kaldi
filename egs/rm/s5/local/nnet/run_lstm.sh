@@ -45,16 +45,16 @@ if [ $stage -le 1 ]; then
   $cuda_cmd $dir/log/train_nnet.log \
     steps/nnet/train.sh --network-type lstm --learn-rate 0.0001 \
       --cmvn-opts "--norm-means=true --norm-vars=true" --feat-type plain --splice 0 \
-      --train-opts "--momentum 0.7 --halving-factor 0.8" \
+      --train-opts "--momentum 0.9 --halving-factor 0.5" \
       --train-tool "nnet-train-lstm-streams --num-stream=4 --targets-delay=5" \
+      --proto-opts "--num-cells 512 --num-recurrent 200 --num-layers 2 --clip-gradient 50.0" \
     ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
 
   # Decode (reuse HCLG graph)
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph $dev $dir/decode || exit 1;
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
-    --nnet-forward-opts "--no-softmax=true --prior-scale=1.0 --time-shift=5" \
-    $gmm/graph $dev $dir/decode_time-shift5 || exit 1;
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
+    $gmm/graph_ug $dev $dir/decode_ug || exit 1;
 fi
 
 # TODO : sequence training,
