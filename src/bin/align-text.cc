@@ -20,6 +20,11 @@
 #include "util/common-utils.h"
 #include "util/parse-options.h"
 #include "util/edit-distance.h"
+#include <algorithm>
+
+bool IsNotToken(const std::string &token) {
+  return ! kaldi::IsToken(token);
+}
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -93,6 +98,17 @@ int main(int argc, char *argv[]) {
                              text1.end(), separator) == text1.end());
       KALDI_ASSERT(std::find(text2.begin(),
                              text2.end(), separator) == text2.end());
+    
+      if (std::find_if(text1.begin(), text1.end(), IsNotToken) != text1.end()) {
+        KALDI_ERR << "In text1, the utterance " << key << " contains unprintable characters." \
+          << "That means there is a problem with the text (such as incorrect encoding)." << std::endl;
+        return  -1;
+      }
+      if (std::find_if(text2.begin(), text2.end(), IsNotToken) != text2.end()) {
+        KALDI_ERR << "In text2, the utterance " << key << " contains unprintable characters." \
+          << "That means there is a problem with the text (such as incorrect encoding)." << std::endl;
+        return  -1;
+      }
       
       std::vector<std::pair<std::string, std::string> > aligned;
       LevenshteinAlignment(text1, text2, special_symbol, &aligned);
