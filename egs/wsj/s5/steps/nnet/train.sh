@@ -188,7 +188,7 @@ if [ ! -z $feature_transform ]; then
 fi
 
 # read the features,
-feats_tr="ark:shuf $dir/train.scp | copy-feats scp:- ark:- |"
+feats_tr="ark:copy-feats scp:$dir/train.scp ark:- |"
 feats_cv="ark:copy-feats scp:$dir/cv.scp ark:- |"
 # optionally add per-speaker CMVN,
 if [ ! -z "$cmvn_opts" ]; then
