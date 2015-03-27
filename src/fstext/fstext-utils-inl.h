@@ -29,6 +29,10 @@
 #include "fstext/pre-determinize.h"
 #include "fstext/determinize-star.h"
 
+#include <sstream>
+#include <algorithm>
+#include <string>
+
 namespace fst {
 
 
@@ -878,7 +882,8 @@ template<class Arc>
 bool EqualAlign(const Fst<Arc> &ifst,
                 typename Arc::StateId length,
                 int rand_seed,
-                MutableFst<Arc> *ofst) {
+                MutableFst<Arc> *ofst, 
+                int num_retries=10) {
   srand(rand_seed);
   KALDI_ASSERT(ofst->NumStates() == 0);  // make sure ofst empty.
   // make sure all states can reach final-state (or this algorithm may enter
@@ -896,37 +901,59 @@ bool EqualAlign(const Fst<Arc> &ifst,
   // First select path through ifst.
   vector<StateId> path;
   vector<size_t> arc_offsets;  // arc taken out of each state.
+  vector<int> nof_ilabels;
 
-  path.push_back(ifst.Start());
   StateId num_ilabels = 0;
-  while (1) {
-    // Select either an arc or final-prob.
-    StateId s = path.back();
-    size_t num_arcs = ifst.NumArcs(s);
-    size_t num_arcs_tot = num_arcs;
-    if (ifst.Final(s) != Weight::Zero()) num_arcs_tot++;
-    // kaldi::RandInt is a bit like Rand(), but gets around situations
-    // where RAND_MAX is very small.
-    // Change this to Rand() % num_arcs_tot if compile issues arise
-    size_t arc_offset = static_cast<size_t>(kaldi::RandInt(0, num_arcs_tot-1));
+  int retry_no = 0;
 
-    if (arc_offset < num_arcs) {  // an actual arc.
-      ArcIterator<Fst<Arc> > aiter(ifst, s);
-      aiter.Seek(arc_offset);
-      const Arc &arc = aiter.Value();
-      if (arc.nextstate == s) {
-        continue;  // don't take this self-loop arc
+  // Under normal circumstances, this will be one-pass-only process
+  // Multiple tries might be needed in special cases, typically when 
+  // the number of frames is close to number of transitions from 
+  // the start node to the final node. It usually happens for really 
+  // short utterances
+  do {
+    num_ilabels = 0;
+    arc_offsets.clear();
+    path.clear();
+    path.push_back(ifst.Start());
+
+    while (1) {
+      // Select either an arc or final-prob.
+      StateId s = path.back();
+      size_t num_arcs = ifst.NumArcs(s);
+      size_t num_arcs_tot = num_arcs;
+      if (ifst.Final(s) != Weight::Zero()) num_arcs_tot++;
+      // kaldi::RandInt is a bit like Rand(), but gets around situations
+      // where RAND_MAX is very small.
+      // Change this to Rand() % num_arcs_tot if compile issues arise
+      size_t arc_offset = static_cast<size_t>(kaldi::RandInt(0, num_arcs_tot-1));
+
+      if (arc_offset < num_arcs) {  // an actual arc.
+        ArcIterator<Fst<Arc> > aiter(ifst, s);
+        aiter.Seek(arc_offset);
+        const Arc &arc = aiter.Value();
+        if (arc.nextstate == s) {
+          continue;  // don't take this self-loop arc
+        } else {
+          arc_offsets.push_back(arc_offset);
+          path.push_back(arc.nextstate);
+          if (arc.ilabel != 0) num_ilabels++;
+        }
       } else {
-        arc_offsets.push_back(arc_offset);
-        path.push_back(arc.nextstate);
-        if (arc.ilabel != 0) num_ilabels++;
+        break;  // Chose final-prob.
       }
-    } else {
-      break;  // Chose final-prob.
     }
-  }
+
+    nof_ilabels.push_back(num_ilabels);
+  } while (( ++retry_no < num_retries) && (num_ilabels > length));
 
   if (num_ilabels > length) {
+    std::stringstream ilabel_vec;
+    std::copy(nof_ilabels.begin(), nof_ilabels.end(), 
+          std::ostream_iterator<int>(ilabel_vec, ","));
+    std::string s = ilabel_vec.str();
+    s.erase(s.end() - 1);
+    KALDI_WARN << "EqualAlign: the randomly constructed paths lengths: " << s;
     KALDI_WARN << "EqualAlign: utterance has too few frames " << length
                << " to align.";
     return false;  // can't make it shorter by adding self-loops!.

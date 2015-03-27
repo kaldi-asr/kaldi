@@ -351,10 +351,9 @@ void ApplyProbabilityScale(float scale, MutableFst<Arc> *fst);
 /// equal probabilities in the first stage of selection (since the output will anyway
 /// not be a truly random sample from the FST).
 /// The input fst "ifst" must be connected or this may enter an infinite loop.
-
 template<class Arc>
 bool EqualAlign(const Fst<Arc> &ifst, typename Arc::StateId length,
-                int rand_seed, MutableFst<Arc> *ofst);
+                int rand_seed, MutableFst<Arc> *ofst, int num_retries = 10);
 
 
 // This is a Holder class with T = VectorFst<Arc>, that meets the requirements
