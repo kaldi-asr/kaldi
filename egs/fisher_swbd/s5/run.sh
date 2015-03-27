@@ -7,6 +7,7 @@
 mfccdir=mfcc
 set -e
 rescore=true
+
 # prepare fisher data and put it under data/train_fisher
 local/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
    /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
@@ -327,3 +328,10 @@ fi
 
 #steps/align_fmllr.sh --nj 200 --cmd "$train_cmd" \
 #  data/train_nodup data/lang exp/tri6a exp/tri6a_ali || exit 1;
+
+
+# # The following is the current online-nnet2 recipe, with "multi-splice".
+# local/online/run_nnet2_ms.sh
+local/online/run_nnet2_ms.sh
+
+
