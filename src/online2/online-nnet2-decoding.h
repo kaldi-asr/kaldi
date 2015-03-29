@@ -104,6 +104,8 @@ class SingleUtteranceNnet2Decoder {
   /// with the required arguments.
   bool EndpointDetected(const OnlineEndpointConfig &config);
 
+  const LatticeFasterOnlineDecoder &Decoder() const { return decoder_; }
+  
   ~SingleUtteranceNnet2Decoder() { }
  private:
 

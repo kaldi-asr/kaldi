@@ -895,6 +895,9 @@ class AffineComponentPreconditioned: public AffineComponent {
 };
 
 
+/// Keywords: natural gradient descent, NG-SGD, naturalgradient.  For
+/// the top-level of the natural gradient code look here, and also in
+/// nnet-precondition-online.h.
 /// AffineComponentPreconditionedOnline is, like AffineComponentPreconditioned,
 /// a version of AffineComponent that has a non-(multiple of unit) learning-rate
 /// matrix.  See nnet-precondition-online.h for a description of the technique.

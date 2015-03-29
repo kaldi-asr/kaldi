@@ -116,12 +116,13 @@ SingleUtteranceNnet2DecoderThreaded::SingleUtteranceNnet2DecoderThreaded(
     const fst::Fst<fst::StdArc> &fst,
     const OnlineNnet2FeaturePipelineInfo &feature_info,
     const OnlineIvectorExtractorAdaptationState &adaptation_state):
-    config_(config), am_nnet_(am_nnet), tmodel_(tmodel), sampling_rate_(0.0),
-    num_samples_received_(0), input_finished_(false),
-    feature_pipeline_(feature_info), feature_buffer_start_frame_(0),
-    feature_buffer_finished_(false), decodable_(tmodel),
-    num_frames_decoded_(0), decoder_(fst, config_.decoder_opts),
-    abort_(false), error_(false) {
+  config_(config), am_nnet_(am_nnet), tmodel_(tmodel), sampling_rate_(0.0),
+  num_samples_received_(0), input_finished_(false),
+  feature_pipeline_(feature_info),
+  silence_weighting_(tmodel, feature_info.silence_weighting_config),
+  decodable_(tmodel),
+  num_frames_decoded_(0), decoder_(fst, config_.decoder_opts),
+  abort_(false), error_(false) {
   // if the user supplies an adaptation state that was not freshly initialized,
   // it means that we take the adaptation state from the previous
   // utterance(s)... this only makes sense if theose previous utterance(s) are
@@ -137,28 +138,13 @@ SingleUtteranceNnet2DecoderThreaded::SingleUtteranceNnet2DecoderThreaded(
   // will not be called.  So we don't have to be careful about setting the
   // thread pointers to NULL after we've joined them.
   if ((ret=pthread_create(&(threads_[0]),
-                          &pthread_attr, RunFeatureExtraction,
+                          &pthread_attr, RunNnetEvaluation,
                           (void*)this)) != 0) {
     const char *c = strerror(ret);
     if (c == NULL) { c = "[NULL]"; }
     KALDI_ERR << "Error creating thread, errno was: " << c;
   }
   if ((ret=pthread_create(&(threads_[1]),
-                          &pthread_attr, RunNnetEvaluation,
-                          (void*)this)) != 0) {
-    const char *c = strerror(ret);
-    if (c == NULL) { c = "[NULL]"; }
-    bool error = true;
-    AbortAllThreads(error);
-    KALDI_WARN << "Error creating thread, errno was: " << c
-               << " (will rejoin already-created threads).";
-    if (pthread_join(threads_[0], NULL)) {
-      KALDI_ERR << "Error rejoining thread.";
-    } else {
-      KALDI_ERR << "Error creating thread, errno was: " << c;
-    }
-  }
-  if ((ret=pthread_create(&(threads_[2]),
                           &pthread_attr, RunDecoderSearch,
                           (void*)this)) != 0) {
     const char *c = strerror(ret);
@@ -167,7 +153,7 @@ SingleUtteranceNnet2DecoderThreaded::SingleUtteranceNnet2DecoderThreaded(
     AbortAllThreads(error);
     KALDI_WARN << "Error creating thread, errno was: " << c
                << " (will rejoin already-created threads).";
-    if (pthread_join(threads_[0], NULL) || pthread_join(threads_[1], NULL)) {
+    if (pthread_join(threads_[0], NULL)) {
       KALDI_ERR << "Error rejoining thread.";
     } else {
       KALDI_ERR << "Error creating thread, errno was: " << c;
@@ -185,8 +171,10 @@ SingleUtteranceNnet2DecoderThreaded::~SingleUtteranceNnet2DecoderThreaded() {
   // join all the threads (this avoids leaving zombie threads around, or threads
   // that might be accessing deconstructed object).
   WaitForAllThreads();
-  DeletePointers(&input_waveform_);
-  DeletePointers(&feature_buffer_);
+  while (!input_waveform_.empty()) {
+    delete input_waveform_.front();
+    input_waveform_.pop_front();
+  }
 }
 
 void SingleUtteranceNnet2DecoderThreaded::AcceptWaveform(
@@ -313,7 +301,6 @@ void SingleUtteranceNnet2DecoderThreaded::AbortAllThreads(bool error) {
   if (error)
     error_ = true;
   waveform_synchronizer_.SetAbort();
-  feature_synchronizer_.SetAbort();
   decodable_synchronizer_.SetAbort();
 }
 
@@ -322,22 +309,6 @@ int32 SingleUtteranceNnet2DecoderThreaded::NumFramesDecoded() const {
   int32 ans =  decoder_.NumFramesDecoded();
   const_cast<Mutex&>(decoder_mutex_).Unlock();
   return ans;
-}
-
-void* SingleUtteranceNnet2DecoderThreaded::RunFeatureExtraction(void *ptr_in) {
-  SingleUtteranceNnet2DecoderThreaded *me =
-      reinterpret_cast<SingleUtteranceNnet2DecoderThreaded*>(ptr_in);
-  try {
-    if (!me->RunFeatureExtractionInternal() && !me->abort_)
-      KALDI_ERR << "Returned abnormally and abort was not called";
-  } catch(const std::exception &e) {
-    KALDI_WARN << "Caught exception: " << e.what();
-    // if an error happened in one thread, we need to make sure the other
-    // threads can exit too.
-    bool error = true;
-    me->AbortAllThreads(error);
-  }
-  return NULL;
 }
 
 void* SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluation(void *ptr_in) {
@@ -373,7 +344,7 @@ void* SingleUtteranceNnet2DecoderThreaded::RunDecoderSearch(void *ptr_in) {
 
 
 void SingleUtteranceNnet2DecoderThreaded::WaitForAllThreads() {
-  for (int32 i = 0; i < 3; i++) {  // there are 3 spawned threads.
+  for (int32 i = 0; i < 2; i++) {  // there are 2 spawned threads.
     pthread_t &thread = threads_[i];
     if (KALDI_PTHREAD_PTR(thread) != 0) {
       if (pthread_join(thread, NULL)) {
@@ -387,94 +358,6 @@ void SingleUtteranceNnet2DecoderThreaded::WaitForAllThreads() {
   }
 }
 
-bool SingleUtteranceNnet2DecoderThreaded::RunFeatureExtractionInternal() {
-  // Note: if any of the functions Lock, UnlockSuccess, UnlockFailure return
-  // false, it is because AbortAllThreads() called, and we return false
-  // immediately.
-
-  // num_frames_output is a local variable that keeps track of how many
-  // frames we have output to the feature buffer, for this utterance.
-  int32 num_frames_output = 0;
-  
-  while (true) {
-    // First deal with accepting input.
-    if (!waveform_synchronizer_.Lock(ThreadSynchronizer::kConsumer))
-      return false;
-    if (input_waveform_.empty()) {
-      if (input_finished_ &&
-          !feature_pipeline_.IsLastFrame(feature_pipeline_.NumFramesReady()-1)) {
-        // the main thread called InputFinished() and set input_finished_, and
-        // we haven't yet registered that fact.  This is progress so
-        // UnlockSuccess().
-        feature_pipeline_.InputFinished();
-        if (!waveform_synchronizer_.UnlockSuccess(ThreadSynchronizer::kConsumer))
-          return false;
-      } else {
-        // there was no input to process.  However, we only call UnlockFailure() if we
-        // are blocked on the fact that there is no input to process; otherwise we
-        // call UnlockSuccess().
-        if (num_frames_output == feature_pipeline_.NumFramesReady()) {
-          // we need to wait until there is more input.
-          if (!waveform_synchronizer_.UnlockFailure(ThreadSynchronizer::kConsumer))
-            return false;
-        } else { // we can keep looping.
-          if (!waveform_synchronizer_.UnlockSuccess(ThreadSynchronizer::kConsumer))
-            return false;
-        }
-      }
-    } else {  // there is more wav data.
-      { // braces clarify scope of locking.
-        feature_pipeline_mutex_.Lock();
-        for (size_t i = 0; i < input_waveform_.size(); i++)
-          if (input_waveform_[i]->Dim() != 0)
-            feature_pipeline_.AcceptWaveform(sampling_rate_, *input_waveform_[i]);
-        feature_pipeline_mutex_.Unlock();
-      }
-      DeletePointers(&input_waveform_);      
-      input_waveform_.clear();
-      if (!waveform_synchronizer_.UnlockSuccess(ThreadSynchronizer::kConsumer))
-        return false;
-    }
-
-    if (!feature_synchronizer_.Lock(ThreadSynchronizer::kProducer)) return false;
-    
-    if (feature_buffer_.size() >= config_.max_buffered_features) {
-      // we need to block on the output buffer.
-      if (!feature_synchronizer_.UnlockFailure(ThreadSynchronizer::kProducer))
-        return false;
-    } else {
-
-      { // braces clarify scope of locking.      
-        feature_pipeline_mutex_.Lock();
-        // There is buffer space available; deal with producing output.
-        int32 cur_size = feature_buffer_.size(),
-            batch_size = config_.feature_batch_size,
-            feat_dim = feature_pipeline_.Dim();
-        
-        for (int32 t = feature_buffer_start_frame_ +
-                 static_cast<int32>(feature_buffer_.size());
-                t < feature_buffer_start_frame_ + config_.max_buffered_features &&
-                 t < feature_buffer_start_frame_ + cur_size + batch_size &&
-                 t < feature_pipeline_.NumFramesReady(); t++) {
-          Vector<BaseFloat> *feats = new Vector<BaseFloat>(feat_dim, kUndefined);
-          // Note: most of the actual computation occurs.
-          feature_pipeline_.GetFrame(t, feats);
-          feature_buffer_.push_back(feats);
-        }
-        num_frames_output = feature_buffer_start_frame_ + feature_buffer_.size();
-        if (feature_pipeline_.IsLastFrame(num_frames_output - 1)) {
-          // e.g. user called InputFinished() and we already saw the last frame.
-          feature_buffer_finished_ = true;
-        }
-        feature_pipeline_mutex_.Unlock();
-      }      
-      if (!feature_synchronizer_.UnlockSuccess(ThreadSynchronizer::kProducer))
-        return false;
-        
-      if (feature_buffer_finished_) return true;
-    }
-  }
-}
 
 void SingleUtteranceNnet2DecoderThreaded::ProcessLoglikes(
     const CuVector<BaseFloat> &log_inv_prior,
@@ -489,6 +372,56 @@ void SingleUtteranceNnet2DecoderThreaded::ProcessLoglikes(
   }
 }
 
+// called from RunNnetEvaluationInternal().  Returns true in the normal case,
+// false on error; if it returns false, then we expect that the calling thread
+// will terminate.  This assumes the calling thread has already
+// locked feature_pipeline_mutex_.
+bool SingleUtteranceNnet2DecoderThreaded::FeatureComputation(
+    int32 num_frames_output) {
+  
+  int32 num_frames_ready = feature_pipeline_.NumFramesReady(),
+      num_frames_usable = num_frames_ready - num_frames_output;
+  bool features_done = feature_pipeline_.IsLastFrame(num_frames_ready - 1);
+  KALDI_ASSERT(num_frames_usable >= 0);
+  if (features_done) {
+    return true;  // nothing to do. (but not an error).
+  } else {
+    if (num_frames_usable >= config_.nnet_batch_size)
+      return true;  // We don't need more data yet.
+    
+    // Now try to get more data, if we can.
+    if (!waveform_synchronizer_.Lock(ThreadSynchronizer::kConsumer)) {
+      return false;
+    }
+    // we've got the lock.
+    if (input_waveform_.empty()) {  // we got no data
+      if (input_finished_ &&
+          !feature_pipeline_.IsLastFrame(feature_pipeline_.NumFramesReady()-1)) {
+        // the main thread called InputFinished() and set input_finished_, and
+        // we haven't yet registered that fact.  This is progress so
+        // unlock with UnlockSuccess().
+        feature_pipeline_.InputFinished();
+        return waveform_synchronizer_.UnlockSuccess(ThreadSynchronizer::kConsumer);
+      } else {
+        // there is no progress.  Unlock with UnlockFailure() so the next call to
+        // waveform_synchronizer_.Lock() will lock.
+        return waveform_synchronizer_.UnlockFailure(ThreadSynchronizer::kConsumer);
+      }
+    } else {  // we got some data.  Only take enough of the waveform to
+              // give us a maximum nnet batch size of frames to decode.
+      while (num_frames_usable < config_.nnet_batch_size &&
+             !input_waveform_.empty()) {
+        feature_pipeline_.AcceptWaveform(sampling_rate_, *input_waveform_.front());
+        delete input_waveform_.front();
+        input_waveform_.pop_front();
+        num_frames_ready = feature_pipeline_.NumFramesReady();
+        num_frames_usable = num_frames_ready - num_frames_output;
+      }
+      return waveform_synchronizer_.UnlockSuccess(ThreadSynchronizer::kConsumer);
+    }
+  }
+}
+
 bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
   // if any of the Lock/Unlock functions return false, it's because AbortAllThreads()
   // was called.
@@ -497,7 +430,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
   // re-computing things we've already computed.
   bool pad_input = true;
   nnet2::NnetOnlineComputer computer(am_nnet_.GetNnet(), pad_input);
-
+  
   // we declare the following as CuVector just to enable GPU support, but
   // we expect this code to be run on CPU in the normal case.
   CuVector<BaseFloat> log_inv_prior(am_nnet_.Priors());
@@ -506,46 +439,58 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
   log_inv_prior.Scale(-1.0);
   
   int32 num_frames_output = 0;
-  
+
   while (true) {
     bool last_time = false;
-  
-    if (!feature_synchronizer_.Lock(ThreadSynchronizer::kConsumer))
+
+    /****** Begin locking of feature pipeline mutex. ******/
+    feature_pipeline_mutex_.Lock();
+    if (!FeatureComputation(num_frames_output)) {  // error
+      feature_pipeline_mutex_.Unlock();
       return false;
+    }
+    // take care of silence weighting.
+    if (silence_weighting_.Active()) {
+      silence_weighting_mutex_.Lock();
+      std::vector<std::pair<int32, BaseFloat> > delta_weights;
+      silence_weighting_.GetDeltaWeights(feature_pipeline_.NumFramesReady(),
+                                         &delta_weights);
+      silence_weighting_mutex_.Unlock();
+      feature_pipeline_.UpdateFrameWeights(delta_weights);
+    }
+    
+    int32 num_frames_ready = feature_pipeline_.NumFramesReady(),
+        num_frames_usable = num_frames_ready - num_frames_output;
+    bool features_done = feature_pipeline_.IsLastFrame(num_frames_ready - 1);
+      
+    int32 num_frames_evaluate = std::min<int32>(num_frames_usable,
+                                                config_.nnet_batch_size);
+
+    Matrix<BaseFloat> feats;
+    if (num_frames_evaluate > 0) {
+      // we have something to do...
+      feats.Resize(num_frames_evaluate, feature_pipeline_.Dim());
+      for (int32 i = 0; i < num_frames_evaluate; i++) {
+        int32 t = num_frames_output + i;
+        SubVector<BaseFloat> feat(feats, i);
+        feature_pipeline_.GetFrame(t, &feat);
+      }
+    }
+    /****** End locking of feature pipeline mutex. ******/
+    feature_pipeline_mutex_.Unlock();  
 
     CuMatrix<BaseFloat> cu_loglikes;
     
-    if (feature_buffer_.empty()) {
-      if (feature_buffer_finished_) {
+    if (feats.NumRows() == 0) {
+      if (features_done) {
         // flush out the last few frames.  Note: this is the only place from
         // which we check feature_buffer_finished_, and we'll exit the loop, so
         // if we reach here it must be the first time it was true.
         last_time = true;
-        if (!feature_synchronizer_.UnlockSuccess(ThreadSynchronizer::kConsumer))
-          return false;
         computer.Flush(&cu_loglikes);
         ProcessLoglikes(log_inv_prior, &cu_loglikes);
-      } else {
-        // there is nothing to do because there is no input.  Next call to Lock
-        // should block till the feature-processing thread does something.
-        if (!feature_synchronizer_.UnlockFailure(ThreadSynchronizer::kConsumer))
-          return false;
       }
     } else {
-      int32 num_frames_evaluate = std::min<int32>(feature_buffer_.size(),
-                                                  config_.nnet_batch_size),
-          feat_dim = feature_buffer_[0]->Dim();
-      Matrix<BaseFloat> feats(num_frames_evaluate, feat_dim);
-      for (int32 i = 0; i < num_frames_evaluate; i++) {
-        feats.Row(i).CopyFromVec(*(feature_buffer_[i]));
-        delete feature_buffer_[i];
-      }
-      feature_buffer_.erase(feature_buffer_.begin(),
-                            feature_buffer_.begin() + num_frames_evaluate);
-      feature_buffer_start_frame_ += num_frames_evaluate;
-      if (!feature_synchronizer_.UnlockSuccess(ThreadSynchronizer::kConsumer))
-        return false;
-
       CuMatrix<BaseFloat> cu_feats;
       cu_feats.Swap(&feats);  // If we don't have a GPU (and not having a GPU is
                               // the normal expected use-case for this code),
@@ -555,7 +500,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
       computer.Compute(cu_feats, &cu_loglikes);
       ProcessLoglikes(log_inv_prior, &cu_loglikes);
     }
-
+    
     Matrix<BaseFloat> loglikes;
     loglikes.Swap(&cu_loglikes);  // If we don't have a GPU (and not having a
                                   // GPU is the normal expected use-case for
@@ -633,6 +578,12 @@ bool SingleUtteranceNnet2DecoderThreaded::RunDecoderSearchInternal() {
       decoder_mutex_.Lock();
       decoder_.AdvanceDecoding(&decodable_, config_.decode_batch_size);
       num_frames_decoded = decoder_.NumFramesDecoded();
+      if (silence_weighting_.Active()) {
+        silence_weighting_mutex_.Lock();
+        // the next function does not trace back all the way; it's very fast.
+        silence_weighting_.ComputeCurrentTraceback(decoder_);
+        silence_weighting_mutex_.Unlock();
+      }
       decoder_mutex_.Unlock();
       num_frames_decoded_ = num_frames_decoded;
       if (!decodable_synchronizer_.UnlockSuccess(ThreadSynchronizer::kConsumer))

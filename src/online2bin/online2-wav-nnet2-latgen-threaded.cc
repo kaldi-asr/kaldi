@@ -105,7 +105,8 @@ int main(int argc, char *argv[]) {
     
     BaseFloat chunk_length_secs = 0.05;
     bool do_endpointing = false;
-    bool modify_ivector_config = false; 
+    bool modify_ivector_config = false;
+    bool simulate_realtime_decoding = true;
     
     po.Register("chunk-length", &chunk_length_secs,
                 "Length of chunk size in seconds, that we provide each time to the "
@@ -121,6 +122,10 @@ int main(int argc, char *argv[]) {
                 "This will give the best possible results, but the results may become dependent "
                 "on the speed of your machine (slower machine -> better results).  Compare "
                 "to the --online option in online2-wav-nnet2-latgen-faster");
+    po.Register("simulate-realtime-decoding", &simulate_realtime_decoding,
+                "If true, simulate real-time decoding scenario by providing the "
+                "data incrementally, calling sleep() until each piece is ready. "
+                "If false, don't sleep (so it will be faster).");
     
     feature_config.Register(&po);
     nnet2_decoding_config.Register(&po);
@@ -166,6 +171,7 @@ int main(int argc, char *argv[]) {
     int32 num_done = 0, num_err = 0;
     double tot_like = 0.0;
     int64 num_frames = 0;
+    Timer global_timer;
     
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessTableReader<WaveHolder> wav_reader(wav_rspecifier);
@@ -213,8 +219,11 @@ int main(int argc, char *argv[]) {
           decoder.AcceptWaveform(samp_freq, wave_part);
           
           samp_offset += num_samp;
-          // Note: the next call may actually call sleep(). 
-          decoding_timer.SleepUntil(samp_offset / samp_freq);
+
+          if (simulate_realtime_decoding) {
+            // Note: the next call may actually call sleep().
+            decoding_timer.SleepUntil(samp_offset / samp_freq);
+          }
           if (samp_offset == data.Dim()) {
             // no more input. flush out last frames
             decoder.InputFinished();
@@ -227,8 +236,10 @@ int main(int argc, char *argv[]) {
         }
         Timer timer;
         decoder.Wait();
-        KALDI_VLOG(1) << "Waited " << timer.Elapsed() << " seconds for decoder to "
-                      << "finish after giving it last chunk.";
+        if (simulate_realtime_decoding) {
+          KALDI_VLOG(1) << "Waited " << timer.Elapsed() << " seconds for decoder to "
+                        << "finish after giving it last chunk.";
+        }
         decoder.FinalizeDecoding();
 
         CompactLattice clat;
@@ -249,9 +260,10 @@ int main(int argc, char *argv[]) {
             1.0 / nnet2_decoding_config.acoustic_scale;
         ScaleLattice(AcousticLatticeScale(inv_acoustic_scale), &clat);
 
-        KALDI_VLOG(1) << "Adding the various end-of-utterance tasks took the "
-                      << "total latency to " << timer.Elapsed() << " seconds.";
-        
+        if (simulate_realtime_decoding) {        
+          KALDI_VLOG(1) << "Adding the various end-of-utterance tasks took the "
+                        << "total latency to " << timer.Elapsed() << " seconds.";
+        }
         clat_writer.Write(utt, clat);
         KALDI_LOG << "Decoded utterance " << utt;
 
@@ -261,7 +273,17 @@ int main(int argc, char *argv[]) {
       }
     }
     bool online = true;
-    timing_stats.Print(online);
+            
+    if (simulate_realtime_decoding) {
+      timing_stats.Print(online);
+    } else {
+      BaseFloat frame_shift = 0.01;
+      BaseFloat real_time_factor =
+          global_timer.Elapsed() / (frame_shift * num_frames);
+      if (num_frames > 0)
+        KALDI_LOG << "Real-time factor was " << real_time_factor
+                  << " assuming frame shift of " << frame_shift;
+    }
     
     KALDI_LOG << "Decoded " << num_done << " utterances, "
               << num_err << " with errors.";

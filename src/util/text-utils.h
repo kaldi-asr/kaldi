@@ -133,6 +133,7 @@ bool ConvertStringToInteger(const std::string &str,
 /// ConvertStringToReal converts a string into either float or double via strtod,
 /// and returns false if there was any kind of problem (i.e. the string was not a
 /// floating point number or contained extra non-whitespace junk.
+/// Be careful- this function will successfully read inf's or nan's.
 bool ConvertStringToReal(const std::string &str,
                          double *out);
 bool ConvertStringToReal(const std::string &str,

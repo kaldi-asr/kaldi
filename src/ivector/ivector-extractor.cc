@@ -534,7 +534,9 @@ void OnlineIvectorEstimationStats::AccStats(
   for (size_t idx = 0; idx < gauss_post.size(); idx++) {
     int32 g = gauss_post[idx].first;
     double weight = gauss_post[idx].second;
-    KALDI_ASSERT(weight >= 0.0);
+    // allow negative weights; it's needed in the online iVector extraction
+    // with speech-silence detection based on decoder traceback (we subtract
+    // stuff we previously added if the traceback changes).
     if (weight == 0.0)
       continue;
     linear_term_.AddMatVec(weight, extractor.Sigma_inv_M_[g], kTrans,
@@ -543,8 +545,9 @@ void OnlineIvectorEstimationStats::AccStats(
     quadratic_term_vec.AddVec(weight, U_g);
     tot_weight += weight;
   }
-  if (max_count_ != 0.0) {
-    // see comments in header RE max_count for explanation.
+  if (max_count_ > 0.0) {
+    // see comments in header RE max_count for explanation.  It relates to
+    // prior scaling when the count exceeds max_count_
     double old_num_frames = num_frames_,
         new_num_frames = num_frames_ + tot_weight;
     double old_prior_scale = std::max(old_num_frames, max_count_) / max_count_,

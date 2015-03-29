@@ -168,7 +168,7 @@ if [ $stage -le 13 ]; then
   done
 fi
 
-#exit 0;
+exit 0;
 ###### Comment out the "exit 0" above to run the multi-threaded decoding. #####
 
 if [ $stage -le 14 ]; then
@@ -187,6 +187,16 @@ if [ $stage -le 15 ]; then
     --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
     --per-utt true exp/tri6b/graph_pp_tgsmall data/$test \
     ${dir}_online/decode_pp_${test}_tgsmall_utt_threaded_ep || exit 1;
+fi
+
+if [ $stage -le 16 ]; then
+  # Demonstrate the multi-threaded decoding with silence excluded
+  # from iVector estimation.
+  test=dev_clean
+  steps/online/nnet2/decode.sh --threaded true  --silence-weight 0.0 \
+    --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
+    --per-utt true exp/tri6b/graph_pp_tgsmall data/$test \
+    ${dir}_online/decode_pp_${test}_tgsmall_utt_threaded_sil0.0 || exit 1;
 fi
 
 exit 0;

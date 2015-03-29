@@ -538,7 +538,13 @@ int32 LinearCgd(const LinearCgdOptions &opts,
     p.AddVec(-1.0, r);
     r_cur_norm_sq = r_next_norm_sq;
   }
-  if (r_cur_norm_sq > r_initial_norm_sq) {
+
+  // note: the first element of the && is only there to save compute.
+  // the residual r is A x - b, and r_cur_norm_sq and r_initial_norm_sq are
+  // of the form r * r, so it's clear that b * b has the right dimension to
+  // compare with the residual.
+  if (r_cur_norm_sq > r_initial_norm_sq &&
+      r_cur_norm_sq > r_initial_norm_sq + 1.0e-10 * VecVec(b, b)) {
     KALDI_WARN << "Doing linear CGD in dimension " << A.NumRows() << ", after " << k
               << " iterations the squared residual has got worse, "
                << r_cur_norm_sq << " > " << r_initial_norm_sq

@@ -49,9 +49,9 @@ namespace kaldi {
   be run in order to build the systems used for alignment.
 
   Regarding which of the two setups you should use:
-  - Karel's setup (nnet1) supports training on a single GPU card, which allows
+  - Karel's setup (\ref dnn1 "nnet1") supports training on a single GPU card, which allows
     the implementation to be simpler and relatively easy to modify.
-  - Dan's setup (nnet2) is more flexible in how
+  - Dan's setup (\ref dnn2 "nnet2") is more flexible in how
     you can train: it supports using multiple GPUs, or multiple CPU's each with 
     multiple threads. Multiple GPU's is the recommended setup.  
     They don't have to all be on the same machine. Both setups give commensurate results.

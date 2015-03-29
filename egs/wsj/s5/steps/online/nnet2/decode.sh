@@ -20,6 +20,10 @@ do_endpointing=false
 do_speex_compressing=false
 scoring_opts=
 skip_scoring=false
+silence_weight=1.0  # set this to a value less than 1 (e.g. 0) to enable silence weighting.
+max_state_duration=40 # This only has an effect if you are doing silence
+  # weighting.  This default is probably reasonable.  transition-ids repeated
+  # more than this many times in an alignment are treated as silence.
 iter=final
 # End configuration section.
 
@@ -94,6 +98,12 @@ if $do_endpointing; then
   wav_rspecifier="$wav_rspecifier extend-wav-with-silence ark:- ark:- |"  
 fi
 
+if [ "$silence_weight" != "1.0" ]; then
+  silphones=$(cat $graphdir/phones/silence.csl) || exit 1
+  silence_weighting_opts="--ivector-silence-weighting.max-state-duration=$max_state_duration --ivector-silence-weighting.silence_phones=$silphones --ivector-silence-weighting.silence-weight=$silence_weight"
+else
+  silence_weighting_opts=
+fi
 
 
 if $threaded; then
@@ -110,7 +120,7 @@ fi
 
 if [ $stage -le 0 ]; then
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
-    $decoder $opts --do-endpointing=$do_endpointing \
+    $decoder $opts $silence_weighting_opts --do-endpointing=$do_endpointing \
      --config=$srcdir/conf/online_nnet2_decoding.conf \
      --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
      --acoustic-scale=$acwt --word-symbol-table=$graphdir/words.txt \

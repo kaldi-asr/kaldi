@@ -170,6 +170,11 @@ void TestConvertStringToReal() {
   KALDI_ASSERT(!ConvertStringToReal("-1f", &d));
   KALDI_ASSERT(ConvertStringToReal("12345.2", &d) && fabs(d-12345.2) < 1.0);
   KALDI_ASSERT(ConvertStringToReal("1.0e+08", &d) && fabs(d-1.0e+08) < 100.0);
+
+  // it also works for inf or nan.
+  KALDI_ASSERT(ConvertStringToReal("inf", &d) && d > 0 && d - d != 0);
+  KALDI_ASSERT(ConvertStringToReal("nan", &d) && d != d);
+  
 }
 
 

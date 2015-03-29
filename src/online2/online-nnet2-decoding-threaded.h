@@ -298,18 +298,12 @@ class SingleUtteranceNnet2DecoderThreaded {
   // from Wait().  If called twice it is not an error.
   void WaitForAllThreads();
   
-
-  // this function runs the thread that does the feature extraction; ptr_in is
-  // to class SingleUtteranceNnet2DecoderThreaded.  Always returns NULL, but in
-  // case of failure, calls ptr_in->AbortAllThreads(true).
-  static void* RunFeatureExtraction(void *ptr_in);
-  // member-function version of RunFeatureExtraction, called by RunFeatureExgtraction.
-  bool RunFeatureExtractionInternal();
   
 
-  // this function runs the thread that does the neural-net evaluation ptr_in is
-  // to class SingleUtteranceNnet2DecoderThreaded.  Always returns NULL, but in
-  // case of failure, calls ptr_in->AbortAllThreads(true).
+  // this function runs the thread that does the feature extraction and
+  // neural-net evaluation.  ptr_in is to class
+  // SingleUtteranceNnet2DecoderThreaded.  Always returns NULL, but in case of
+  // failure, calls ptr_in->AbortAllThreads(true).
   static void* RunNnetEvaluation(void *ptr_in);
   // member-function version of RunNnetEvaluation, called by RunNnetEvaluation.
   bool RunNnetEvaluationInternal();
@@ -317,6 +311,11 @@ class SingleUtteranceNnet2DecoderThreaded {
   // takes the log and subtracts the prior.
   void ProcessLoglikes(const CuVector<BaseFloat> &log_inv_prior,
                        CuMatrixBase<BaseFloat> *loglikes);
+  // called from RunNnetEvaluationInternal().  Returns true in the normal case,
+  // false on error; if it returns false, then we expect that the calling thread
+  // will terminate.  This assumes the caller has already
+  // locked feature_pipeline_mutex_.
+  bool FeatureComputation(int32 num_frames_output);
 
 
   // this function runs the thread that does the neural-net evaluation ptr_in is
@@ -349,28 +348,21 @@ class SingleUtteranceNnet2DecoderThreaded {
   // called from the main thread, the main thread sets input_finished_ = true.
   // sampling_rate_ is only needed for checking that it matches the config.
   bool input_finished_;
-  std::vector< Vector<BaseFloat>* > input_waveform_;
+  std::deque< Vector<BaseFloat>* > input_waveform_;
   ThreadSynchronizer waveform_synchronizer_;
   
-  // feature_pipeline_ is only accessed by the feature-processing thread, and by
-  // the main thread if GetAdaptionState() is called.  It is guarded by feature_pipeline_mutex_.
+  // feature_pipeline_ is accessed by the nnet-evaluation thread, by the main
+  // thread if GetAdaptionState() is called, and by the decoding thread via
+  // ComputeCurrentTraceback() if online silence weighting is being used.  It is
+  // guarded by feature_pipeline_mutex_.
   OnlineNnet2FeaturePipeline feature_pipeline_;
   Mutex feature_pipeline_mutex_;
-  
-  // The following three variables are guarded by feature_synchronizer_; they are
-  // a buffer of features that is passed between the feature-processing thread
-  // and the neural-net evaluation thread.  feature_buffer_start_frame_ is the
-  // frame index of the first feature vector in the buffer.  After the
-  // neural-net evaluation thread reads the features, it removes them from the
-  // vector "feature_buffer_" and advances "feature_buffer_start_frame_"
-  // appropriately.  The feature-processing thread does not advance
-  // feature_buffer_start_frame_, but appends to feature_buffer_.  After
-  // all features are done (because user called InputFinished()), the
-  // feature-processing thread sets feature_buffer_finished_.
-  int32 feature_buffer_start_frame_;
-  bool feature_buffer_finished_;
-  std::vector<Vector<BaseFloat>* > feature_buffer_;
-  ThreadSynchronizer feature_synchronizer_;
+
+  // This object is used to control the (optional) downweighting of silence in iVector estimation,
+  // which is based on the decoder traceback.
+  OnlineSilenceWeighting silence_weighting_;
+  Mutex silence_weighting_mutex_;
+
   
   // this Decodable object just stores a matrix of scaled log-likelihoods
   // obtained by the nnet-evaluation thread.  It is produced by the
@@ -393,10 +385,10 @@ class SingleUtteranceNnet2DecoderThreaded {
   // GetLattice() and GetBestPath().
   Mutex decoder_mutex_;
   
-  // This contains the thread pointers for the feature-extraction,
-  // nnet-evaluation, and decoder-search threads respectively (or NULL if they
-  // have been joined in Wait()).
-  pthread_t threads_[3];
+  // This contains the thread pointers for the nnet-evaluation and
+  // decoder-search threads respectively (or NULL if they have been joined in
+  // Wait()).
+  pthread_t threads_[2];
 
   // This is set to true if AbortAllThreads was called for any reason, including
   // if someone called TerminateDecoding().

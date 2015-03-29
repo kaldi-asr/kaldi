@@ -56,4 +56,6 @@ fi
 # moved the header.html to doc/ and edited it to include the following snippet,
 # and added it to the repo.
 #<link rel="icon" type="image/png" href="http://kaldi.sf.net/favicon.ico">
+# Also did similar with stylesheet.
+
 

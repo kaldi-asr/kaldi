@@ -66,7 +66,7 @@ for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
 done
 
 sdata=$data/split$nj;
-cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
+cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
 

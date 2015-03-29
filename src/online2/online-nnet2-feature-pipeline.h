@@ -80,6 +80,11 @@ struct OnlineNnet2FeaturePipelineConfig {
   // OnlineIvectorExtractionConfig.
   std::string ivector_extraction_config;
 
+  // Config that relates to how we weight silence for (ivector) adaptation
+  // this is registered directly to the command line as you might want to
+  // play with it in test time.
+  OnlineSilenceWeightingConfig silence_weighting_config;
+
   OnlineNnet2FeaturePipelineConfig():
       feature_type("mfcc"), add_pitch(false) { }
       
@@ -101,6 +106,7 @@ struct OnlineNnet2FeaturePipelineConfig {
     po->Register("ivector-extraction-config", &ivector_extraction_config,
                  "Configuration file for online iVector extraction, "
                  "see class OnlineIvectorExtractionConfig in the code");
+    silence_weighting_config.RegisterWithPrefix("ivector-silence-weighting", po);
   }
 };
 
@@ -141,6 +147,13 @@ struct OnlineNnet2FeaturePipelineInfo {
   bool use_ivectors;
   OnlineIvectorExtractionInfo ivector_extractor_info;
 
+  // Config for weighting silence in iVector adaptation.
+  // We declare this outside of ivector_extractor_info... it was
+  // just easier to set up the code that way; and also we think
+  // it's the kind of thing you might want to play with directly
+  // on the command line instead of inside sub-config-files.
+  OnlineSilenceWeightingConfig silence_weighting_config;
+  
   int32 IvectorDim() { return ivector_extractor_info.extractor.IvectorDim(); }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineNnet2FeaturePipelineInfo);
@@ -202,7 +215,13 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
   /// to assert it equals what's in the config.
   void AcceptWaveform(BaseFloat sampling_rate,
                       const VectorBase<BaseFloat> &waveform);
-  
+
+  /// This is used in case you are downweighting silence in the iVector
+  /// estimation using the decoder traceback.
+  void UpdateFrameWeights(
+      const std::vector<std::pair<int32, BaseFloat> > &delta_weights);
+
+
   BaseFloat FrameShiftInSeconds() const { return info_.FrameShiftInSeconds(); }
 
   /// If you call InputFinished(), it tells the class you won't be providing any
