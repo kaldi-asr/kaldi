@@ -8,16 +8,12 @@
 dir=data/local/dict
 mkdir -p $dir
 
-srcdict=db/TEDLIUM_release1/TEDLIUM.150K.dic
+srcdict=db/cantab-TEDLIUM/cantab-TEDLIUM.dct
 
 [ ! -r $srcdict ] && echo "Missing $srcdict" && exit 1
-[ ! -r db/extra.dic ] && echo "Missing db/extra.dic" && exit 1
 
 # Join dicts and fix some troubles
-cat $srcdict db/extra.dic | LANG= LC_ALL= sort | sed 's:([0-9])::g' |
-  grep -vw "ei" |
-  grep -vw "erj" |
-  grep -v "text2pho.sh" > $dir/lexicon_words.txt 
+cat $srcdict | grep -v "<s>" | grep -v "</s>" | LANG= LC_ALL= sort | sed 's:([0-9])::g' > $dir/lexicon_words.txt 
 
 cat $dir/lexicon_words.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' | \
   grep -v SIL | sort > $dir/nonsilence_phones.txt  

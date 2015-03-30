@@ -14,8 +14,29 @@ exit 0
 # %WER 30.10 [ 8281 / 27512, 1257 ins, 1368 del, 5656 sub ] exp/tri3/decode.si/wer_16
 # %WER 21.31 [ 5863 / 27512, 1121 ins, 875 del, 3867 sub ] exp/tri3_mmi_b0.1/decode_it4/wer_12
 
+# GMMs (Cantab LM)
 # DEV SPEAKERS:
-# GMMs
+%WER 30.9 | 507 17792 | 73.6 20.1 6.3 4.4 30.9 96.8 | 0.012 | exp/tri1/decode_dev/score_11/ctm.filt.filt.sys
+%WER 26.8 | 507 17792 | 77.5 17.1 5.4 4.3 26.8 96.1 | -0.057 | exp/tri2/decode_dev/score_13/ctm.filt.filt.sys
+%WER 22.3 | 507 17792 | 81.6 14.0 4.4 3.9 22.3 94.1 | -0.102 | exp/tri3/decode_dev/score_14/ctm.filt.filt.sys
+%WER 19.1 | 507 17792 | 84.1 12.4 3.6 3.2 19.1 92.3 | 0.005 | exp/tri3_mmi_b0.1/decode_dev_it4/score_12/ctm.filt.filt.sys
+
+# TEST SPEAKERS:
+%WER 25.7 | 1155 27512 | 77.7 17.5 4.8 3.4 25.7 91.6 | -0.007 | exp/tri2/decode_test/score_13/ctm.filt.filt.sys
+%WER 20.6 | 1155 27512 | 82.5 13.8 3.7 3.1 20.6 89.4 | -0.038 | exp/tri3/decode_test/score_13/ctm.filt.filt.sys
+%WER 30.9 | 1155 27512 | 73.0 21.4 5.5 4.0 30.9 93.8 | 0.025 | exp/tri1/decode_test/score_11/ctm.filt.filt.sys
+%WER 17.6 | 1155 27512 | 85.1 11.8 3.2 2.7 17.6 87.6 | 0.038 | exp/tri3_mmi_b0.1/decode_test_it4/score_11/ctm.filt.filt.sys
+
+# multi-splice + i-vector + perturbed
+%WER 14.0 | 507 17792 | 88.5 8.4 3.0 2.5 14.0 88.0 | -0.074 | exp/nnet2_online/nnet_ms_sp/decode_dev/score_12/ctm.filt.filt.sys
+%WER 13.3 | 1155 27512 | 88.7 8.7 2.6 2.0 13.3 81.5 | -0.097 | exp/nnet2_online/nnet_ms_sp/decode_test/score_10/ctm.filt.filt.sys
+%WER 13.9 | 507 17792 | 88.8 8.4 2.8 2.7 13.9 87.8 | -0.155 | exp/nnet2_online/nnet_ms_sp_online/decode_dev/score_11/ctm.filt.filt.sys
+%WER 14.4 | 507 17792 | 88.4 8.7 2.9 2.7 14.4 89.0 | -0.141 | exp/nnet2_online/nnet_ms_sp_online/decode_dev_utt/score_11/ctm.filt.filt.sys
+%WER 13.2 | 1155 27512 | 88.6 8.5 2.8 1.9 13.2 81.6 | -0.102 | exp/nnet2_online/nnet_ms_sp_online/decode_test/score_11/ctm.filt.filt.sys
+%WER 13.6 | 1155 27512 | 88.5 8.9 2.6 2.1 13.6 82.7 | -0.095 | exp/nnet2_online/nnet_ms_sp_online/decode_test_utt/score_10/ctm.filt.filt.sys
+
+#---------------------------------(Old LM) Provided for reference-----------------------------------------------
+# DEV SPEAKERS:
 %WER 36.0 | 507 17792 | 69.7 23.3 7.0 5.7 36.0 98.2 | 0.009 | exp/tri1/decode_dev/score_12/ctm.filt.filt.sys
 %WER 32.1 | 507 17792 | 73.8 20.1 6.1 6.0 32.1 97.2 | -0.092 | exp/tri2/decode_dev/score_15/ctm.filt.filt.sys
 %WER 27.4 | 507 17792 | 78.3 16.7 5.0 5.7 27.4 96.4 | -0.232 | exp/tri3/decode_dev/score_16/ctm.filt.filt.sys
@@ -36,7 +57,6 @@ exit 0
 %WER 17.7 | 1155 27512 | 85.8 11.3 2.9 3.5 17.7 88.7 | -0.049 | exp/dnn4_pretrain-dbn_dnn_smbr/decode_test/score_13/ctm.filt.filt.sys
 %WER 17.2 | 1155 27512 | 86.2 11.0 2.7 3.4 17.2 87.9 | -0.063 | exp/dnn4_pretrain-dbn_dnn_smbr_i1lats/decode_test/score_14/ctm.filt.filt.sys
 
-
 # multi-splice + i-vector
 %WER 17.9 | 1155 27512 | 85.6 11.2 3.1 3.6 17.9 88.1 | -0.105 | exp/nnet2_online/nnet_ms_a/decode_test/score_12/ctm.filt.filt.sys
 %WER 17.9 | 1155 27512 | 85.6 11.2 3.1 3.6 17.9 88.1 | -0.187 | exp/nnet2_online/nnet_ms_a_online/decode_test/score_12/ctm.filt.filt.sys
@@ -53,3 +73,8 @@ exit 0
 %WER 17.2 | 1155 27512 | 86.3 10.8 3.0 3.5 17.2 87.0 | -0.229 | exp/nnet2_online/nnet_ms_sp_online/decode_test/score_12/ctm.filt.filt.sys
 %WER 17.6 | 1155 27512 | 85.9 11.1 3.0 3.5 17.6 87.8 | -0.210 | exp/nnet2_online/nnet_ms_sp_online/decode_test_utt/score_12/ctm.filt.filt.sys
 %WER 17.2 | 1155 27512 | 86.5 10.8 2.7 3.7 17.2 87.4 | -0.236 | exp/nnet2_online/nnet_ms_sp_online/decode_test_utt_offline/score_11/ctm.filt.filt.sys
+
+%WER 13.3 | 1155 27512 | 88.7 8.7 2.6 2.0 13.3 81.5 | -0.097 | exp/nnet2_online/nnet_ms_sp/decode_test/score_10/ctm.filt.filt.sys
+%WER 13.2 | 1155 27512 | 88.6 8.5 2.8 1.9 13.2 81.6 | -0.102 | exp/nnet2_online/nnet_ms_sp_online/decode_test/score_11/ctm.filt.filt.sys
+%WER 13.6 | 1155 27512 | 88.5 8.9 2.6 2.1 13.6 82.7 | -0.095 | exp/nnet2_online/nnet_ms_sp_online/decode_test_utt/score_10/ctm.filt.filt.sys
+

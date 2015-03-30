@@ -14,11 +14,12 @@ else
     tar xf TEDLIUM_release1.tar.gz
   fi
 fi
-# Generic CMU language model:
-if [ ! -f cmusphinx-5.0-en-us.lm.gz ]; then
-    wget \
-        http://sourceforge.net/projects/cmusphinx/files/Acoustic%20and%20Language%20Models/US%20English%20Generic%20Language%20Model/cmusphinx-5.0-en-us.lm.gz/download \
-        -O cmusphinx-5.0-en-us.lm.gz || exit 1
+# Language models (Cantab Research):
+if [ ! -d cantab-TEDLIUM ]; then
+    echo "Downloading \"http://cantabresearch.com/cantab-TEDLIUM.tar.bz2\". "
+    wget --no-verbose --output-document=- http://cantabresearch.com/cantab-TEDLIUM.tar.bz2 | bzcat | tar --extract --file=- || exit 1
+    gzip cantab-TEDLIUM/cantab-TEDLIUM-pruned.lm3
+    gzip cantab-TEDLIUM/cantab-TEDLIUM-unpruned.lm4
 fi
 
 popd
