@@ -35,6 +35,14 @@ exit 0
 %WER 13.2 | 1155 27512 | 88.6 8.5 2.8 1.9 13.2 81.6 | -0.102 | exp/nnet2_online/nnet_ms_sp_online/decode_test/score_11/ctm.filt.filt.sys
 %WER 13.6 | 1155 27512 | 88.5 8.9 2.6 2.1 13.6 82.7 | -0.095 | exp/nnet2_online/nnet_ms_sp_online/decode_test_utt/score_10/ctm.filt.filt.sys
 
+# multi-splice + i-vector + perturbed + sMBR
+%WER 13.2 | 1155 27512 | 88.6 8.5 2.8 1.9 13.2 81.6 | -0.102 | exp/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch0_test/score_11/ctm.filt.filt.sys
+%WER 12.8 | 1155 27512 | 89.1 8.4 2.5 2.0 12.8 81.1 | -0.108 | exp/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch1_test/score_10/ctm.filt.filt.sys
+%WER 12.6 | 1155 27512 | 89.3 8.2 2.6 1.9 12.6 81.1 | -0.062 | exp/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch2_test/score_11/ctm.filt.filt.sys
+%WER 12.5 | 1155 27512 | 89.4 8.1 2.4 1.9 12.5 81.3 | -0.064 | exp/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch3_test/score_11/ctm.filt.filt.sys
+%WER 12.5 | 1155 27512 | 89.6 8.1 2.2 2.1 12.5 80.8 | -0.107 | exp/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_test/score_10/ctm.filt.filt.sys
+
+
 #---------------------------------(Old LM) Provided for reference-----------------------------------------------
 # DEV SPEAKERS:
 %WER 36.0 | 507 17792 | 69.7 23.3 7.0 5.7 36.0 98.2 | 0.009 | exp/tri1/decode_dev/score_12/ctm.filt.filt.sys
