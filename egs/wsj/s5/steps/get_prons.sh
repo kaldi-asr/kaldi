@@ -131,7 +131,21 @@ if [ $stage -le 5 ]; then
     }
     END { printf "\t</s>\n"; }' > $dir/pron_perutt_nowb.txt
 
-  # 2. Collect bigram counts for silence and words. the count file has 4 fields
+  # 2. Collect bigram counts for words. To be more specific, we are actually
+  #    collecting counts for "v ? w", where "?" represents silence or
+  #    non-silence.
+  cat $dir/pron_perutt_nowb.txt | sed 's/<eps>[^\t]*\t//g' | perl -e '
+    while (<>) {
+      chomp; @col = split("\t");
+      for($i = 1; $i < scalar(@col) - 1; $i += 1) {
+        $bigram{$col[$i] . "\t" . $col[$i + 1]} += 1;
+      }
+    }
+    foreach $key (keys %bigram) {
+      print "$bigram{$key}\t$key\n";
+    }' > $dir/pron_bigram_counts_nowb.txt
+
+  # 3. Collect bigram counts for silence and words. the count file has 4 fields
   #    for counts, followed by the "word pron" pair. All fields are separated by
   #    spaces:
   #    <sil-before-count> <nonsil-before-count> <sil-after-count> <nonsil-after-count> <word> <phone1> <phone2 >...

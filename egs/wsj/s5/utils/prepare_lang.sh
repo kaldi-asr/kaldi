@@ -115,9 +115,9 @@ if $position_dependent_phones; then
   # Do this starting from lexiconp.txt only.
   if "$silprob"; then 
     perl -ane '@A=split(" ",$_); $w = shift @A; $p = shift @A; $silword_p = shift @A;
-              $wordsil_p = shift @A; @A>0||die;
-         if(@A==1) { print "$w $p $silword_p $wordsil_p $A[0]_S\n"; } 
-         else { print "$w $p $silword_p $wordsil_p $A[0]_B ";
+              $wordsil_f = shift @A; $wordnonsil_f = shift @A; @A>0||die;
+         if(@A==1) { print "$w $p $silword_p $wordsil_f $wordnonsil_f $A[0]_S\n"; } 
+         else { print "$w $p $silword_p $wordsil_f $wordnonsil_f $A[0]_B ";
          for($n=1;$n<@A-1;$n++) { print "$A[$n]_I "; } print "$A[$n]_E\n"; } ' \
                 < $srcdir/lexiconp_silprob.txt > $tmpdir/lexiconp_silprob.txt
     if $reverse; then
@@ -275,7 +275,12 @@ fi
 
 if "$silprob"; then
   # remove the silprob
-  cat $tmpdir/lexiconp_silprob.txt | awk '{for(i=1;i<=NF;i++) {if(i!=3 && i!=4) printf("%s\t",$i); if(i==NF)print""}}' > $tmpdir/lexiconp.txt
+  cat $tmpdir/lexiconp_silprob.txt |\
+    awk '{
+      for(i=1; i<=NF; i++) {
+        if(i!=3 && i!=4 && i!=5) printf("%s\t", $i); if(i==NF) print "";
+      }
+    }' > $tmpdir/lexiconp.txt
 fi
 
 cat $tmpdir/lexiconp.txt | awk '{print $1}' | sort | uniq  | awk '

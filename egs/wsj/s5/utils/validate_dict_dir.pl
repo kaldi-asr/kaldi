@@ -130,7 +130,7 @@ print "\n";
 
 
 sub check_lexicon {
-  my ($lex, $num_prob_cols) = @_;
+  my ($lex, $num_prob_cols, $num_skipped_cols) = @_;
   print "Checking $lex\n";
   !open(L, "<$lex") && print "--> ERROR: fail to open $lex\n" && set_to_fail();
   my %seen_line = {};
@@ -162,6 +162,7 @@ sub check_lexicon {
         set_to_fail();
       }
     }
+    for ($n = 0; $n < $num_skipped_cols; $n++) { shift @col; }
     if (@col == 0) {
       print "--> ERROR: lexicon.txt contains word $word with empty ";
       print "pronunciation.\n";
@@ -181,22 +182,27 @@ sub check_lexicon {
   print "\n";
 }
 
-if (-f "$dict/lexicon.txt") { check_lexicon("$dict/lexicon.txt", 0); }
-if (-f "$dict/lexiconp.txt") { check_lexicon("$dict/lexiconp.txt", 1); }
+if (-f "$dict/lexicon.txt") { check_lexicon("$dict/lexicon.txt", 0, 0); }
+if (-f "$dict/lexiconp.txt") { check_lexicon("$dict/lexiconp.txt", 1, 0); }
 if (-f "$dict/lexiconp_silprob.txt") {
   # If $dict/lexiconp_silprob.txt exists, we expect $dict/silprob.txt to also
   # exist.
-  check_lexicon("$dict/lexiconp_silprob.txt", 3);
+  check_lexicon("$dict/lexiconp_silprob.txt", 2, 2);
   if (-f "$dict/silprob.txt") {
     !open(SP, "<$dict/silprob.txt") &&
       print "--> ERROR: fail to open $dict/silprob.txt\n" && set_to_fail();
     while (<SP>) {
       chomp; my @col = split;
       @col != 2 && die "--> ERROR: bad line \"$_\"\n" && set_to_fail();
-      if ($col[0] eq "<s>" || $col[0] eq "</s>" || $col[0] eq "overall") {
+      if ($col[0] eq "<s>" || $col[0] eq "overall") {
         if (!($col[1] > 0.0 && $col[1] <= 1.0)) { 
           set_to_fail();
           print "--> ERROR: bad probability in $dir/silprob.txt \"$_\"\n";
+        }
+      } elsif ($col[0] eq "</s>_s" || $col[0] eq "</s>_n") {
+        if ($col[1] <= 0.0) { 
+          set_to_fail();
+          print "--> ERROR: bad correction term in $dir/silprob.txt \"$_\"\n";
         }
       } else {
         print "--> ERROR: unexpected line in $dir/silprob.txt \"$_\"\n";
@@ -216,7 +222,8 @@ if (!(-f "$dict/lexicon.txt" || -f "$dict/lexiconp.txt")) {
 }
 
 sub check_lexicon_pair {
-  my ($lex1, $num_prob_cols1, $lex2, $num_prob_cols2) = @_;
+  my ($lex1, $num_prob_cols1, $num_skipped_cols1,
+      $lex2, $num_prob_cols2, $num_skipped_cols2) = @_;
   # We have checked individual lexicons already.
   open(L1, "<$lex1"); open(L2, "<$lex2");
   print "Checking lexicon pair $lex1 and $lex2\n";
@@ -236,8 +243,8 @@ sub check_lexicon_pair {
       set_to_fail(); last;
     }
     shift @A; shift @B;
-    for ($n = 0; $n < $num_prob_cols1; $n ++) { shift @A; }
-    for ($n = 0; $n < $num_prob_cols2; $n ++) { shift @B; }
+    for ($n = 0; $n < $num_prob_cols1 + $num_skipped_cols1; $n ++) { shift @A; }
+    for ($n = 0; $n < $num_prob_cols2 + $num_skipped_cols2; $n ++) { shift @B; }
     # Check if the pronunciation matches
     if (join(" ", @A) ne join(" ", @B)) {
       print "--> ERROR: $lex1 and $lex2 mismatch at line $line_num. sorting?\n";
@@ -256,10 +263,11 @@ sub check_lexicon_pair {
 # other. It could be that the user overwrote one and we need to regenerate the
 # other, but we do not know which is which.
 if ( -f "$dict/lexicon.txt" && -f "$dict/lexiconp.txt") {
-  check_lexicon_pair("$dict/lexicon.txt", 0, "$dict/lexiconp.txt", 1);
+  check_lexicon_pair("$dict/lexicon.txt", 0, 0, "$dict/lexiconp.txt", 1, 0);
 }
 if ( -f "$dict/lexiconp.txt" && -f "$dict/lexiconp_silprob.txt") {
-  check_lexicon_pair("$dict/lexiconp.txt", 1, "$dict/lexiconp_silprob.txt", 3);
+  check_lexicon_pair("$dict/lexiconp.txt", 1, 0,
+                     "$dict/lexiconp_silprob.txt", 2, 2);
 }
 
 # Checking extra_questions.txt -------------------------------

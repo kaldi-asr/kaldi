@@ -2,6 +2,7 @@
 # Copyright 2010-2011  Microsoft Corporation
 #                2013  Johns Hopkins University (author: Daniel Povey)
 #                2015  Hainan Xu
+#                2015  Guoguo Chen
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -68,8 +69,10 @@ foreach $l (@L) {
     if ($sil_probs) {
       $silp = shift @A;
       if (!($silp > 0.0 && $silp <= 1.0)) { die "Bad lexicon line $l for silprobs"; }
-      $silp = shift @A;
-      if (!($silp > 0.0 && $silp <= 1.0)) { die "Bad lexicon line $l for silprobs"; }
+      $correction = shift @A;
+      if ($correction <= 0.0) { die "Bad lexicon line $l for silprobs"; }
+      $correction = shift @A;
+      if ($correction <= 0.0) { die "Bad lexicon line $l for silprobs"; }
     }
     if (!(@A)) {
       die "Bad lexicon line $1, no phone in phone list";
@@ -108,7 +111,11 @@ foreach $l (@L) {
     @A = split(" ", $l);
     $word = shift @A;
     if ($pron_probs) { $pron_prob = shift @A; }
-    if ($sil_probs) { $sil_word_prob = shift @A; $word_sil_prob = shift @A; }
+    if ($sil_probs) {
+      $sil_word_prob = shift @A;
+      $word_sil_correction = shift @A;
+      $prev_nonsil_correction = shift @A
+    }
     $phnseq = join(" ",@A);
     if(!defined $issubseq{$phnseq}
        && $count{$phnseq} == 1) {
@@ -133,7 +140,7 @@ foreach $l (@L) {
     }
     if ($pron_probs) {  
       if ($sil_probs) {
-        print O "$word\t$pron_prob\t$sil_word_prob\t$word_sil_prob\t$phnseq\n"; 
+        print O "$word\t$pron_prob\t$sil_word_prob\t$word_sil_correction\t$prev_nonsil_correction\t$phnseq\n"; 
       }
       else {
         print O "$word\t$pron_prob\t$phnseq\n"; 
