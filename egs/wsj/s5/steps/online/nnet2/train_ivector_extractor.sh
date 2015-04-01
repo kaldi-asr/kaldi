@@ -51,6 +51,7 @@ min_post=0.025 # Minimum posterior to use (posteriors below this are pruned out)
 subsample=2  # This speeds up the training: training on every 2nd feature
              # (configurable) Since the features are highly correlated across
              # frames, we don't expect to lose too much from this.
+parallel_opts=  #Task running engine configuration
 cleanup=true
 # End configuration section.
 
@@ -75,6 +76,8 @@ if [ $# != 3 ]; then
   echo "  --stage <stage|-4>                               # To control partial reruns"
   echo "  --num-gselect <n|5>                              # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
+  echo "  --parallel-opts <opts>                           # e.g. '-pe smp 16 ', the number should be equivalent"
+  echo "                                                   # to --num-processes * --num-threads" 
   exit 1;
 fi
 
@@ -103,8 +106,12 @@ splice_opts=$(cat $srcdir/splice_opts)
 gmm_feats="ark,s,cs:apply-cmvn-online --config=$dir/online_cmvn.conf $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 feats="ark,s,cs:splice-feats $splice_opts scp:$sdata/JOB/feats.scp ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 
-parallel_opts="-pe smp $[$num_threads*$num_processes]"
 
+#We will specify our own parallel-opts only in cases user does not supply anything.
+#If user does specify parallel-opts, then we will assume user knows what's right
+if [ -z "$parallel_opts" ] ; then 
+  parallel_opts="-pe smp $[$num_threads*$num_processes]"
+fi
 
 # Initialize the i-vector extractor using the input GMM, which is converted to
 # full because that's what the i-vector extractor expects.  Note: we have to do
@@ -167,7 +174,11 @@ while [ $x -lt $num_iters ]; do
     nt=$[$num_threads*$num_processes] # use the same number of threads that
                                       # each accumulation process uses, since we
                                       # can be sure the queue will support this many.
-	$cmd -pe smp $nt $dir/log/update.$x.log \
+                                      #
+                                      # The parallel-opts was either specified by 
+                                      # the user or we computed it correctly in
+                                      # tge previous stages
+	$cmd $parallel_opts $dir/log/update.$x.log \
 	  ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
 	rm $dir/acc.$x.*
     if $cleanup; then
