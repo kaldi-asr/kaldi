@@ -113,4 +113,12 @@
 ./local/nist_eval/make_release.sh --dryrun false --dir exp_bnf_semisup/sgmm7_mmi_b0.1 --extrasys SEMISUPX --data data/shadow.seg --master dev10h.seg lang.conf ./release
 
 #Combine results (what we call 4way-combo)
+#This is ugly, but effective
+systems=""; for sys in `ls -1 release/*dev*.ctm | grep -v RESCORED` ; do 
+  q=`readlink -f $sys`; 
+  decode=${q%%/dev10h.seg*}; 
+  w=`dirname ${q##*score_}`; 
+  echo $w; systems+=" ${decode}:$(($w - 10))";  
+done ; echo $systems; 
+local/score_combine.sh --max-lmwt 16 --skip-scoring true --parallel-opts "-pe smp 4" --cmd "$decode_cmd" data/shadow.seg data/lang $systems exp/4way_combo/shadow.seg
 

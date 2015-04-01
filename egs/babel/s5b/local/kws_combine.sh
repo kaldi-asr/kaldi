@@ -31,9 +31,14 @@ min_lmw=8
 max_lmw=12
 skip_scoring=false
 optimize_weights=false
+extraid=""
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
+
+if [ ! -z $extraid ] ; then
+  extraid="${extraid}_"
+fi
 
 datadir=$1
 lang=$2
@@ -44,11 +49,11 @@ unset decode_dirs[${#decode_dirs[@]}-1]  # 'pop' the last argument which is odir
 num_sys=${#decode_dirs[@]}  # number of systems to combine
 
 
-for f in $datadir/kws/ecf.xml $datadir/kws/kwlist.xml ; do
+for f in $datadir/${extraid}kws/ecf.xml $datadir/${extraid}kws/kwlist.xml ; do
   [ ! -f $f ] && echo "$0: file $f does not exist" && exit 1;
 done
-ecf=$datadir/kws/ecf.xml
-kwlist=$datadir/kws/kwlist.xml
+ecf=$datadir/${extraid}kws/ecf.xml
+kwlist=$datadir/${extraid}kws/kwlist.xml
 
 # Duration
 duration=`head -1 $ecf |\
@@ -85,20 +90,20 @@ done
 echo $systems
 
 # Combination of the weighted sum and power rule
-$cmd PWR=1:9 $odir/log/combine_kws.PWR.log \
-  mkdir -p $odir/kws_PWR/ '&&' \
+$cmd PWR=1:9 $odir/log/combine_${extraid}kws.PWR.log \
+  mkdir -p $odir/${extraid}kws_PWR/ '&&' \
   local/naive_comb.pl --method=2 --power=0.PWR \
-    $systems $odir/kws_PWR/kwslist.unnormalized.xml || exit 1
+    $systems $odir/${extraid}kws_PWR/kwslist.unnormalized.xml || exit 1
 
-$cmd PWR=1:9 $odir/log/postprocess_kws.PWR.log \
+$cmd PWR=1:9 $odir/log/postprocess_${extraid}kws.PWR.log \
   utils/kwslist_post_process.pl --duration=${duration} --digits=3 \
     --normalize=true --Ntrue-scale=${Ntrue_scale} \
-    $odir/kws_PWR/kwslist.unnormalized.xml \
-    $odir/kws_PWR/kwslist.xml || exit 1
+    $odir/${extraid}kws_PWR/kwslist.unnormalized.xml \
+    $odir/${extraid}kws_PWR/kwslist.xml || exit 1
 
 if ! $skip_scoring ; then
-$cmd PWR=1:9 $odir/log/score_kws.PWR.log \
-  local/kws_score.sh $datadir $odir/kws_PWR || exit 1
+$cmd PWR=1:9 $odir/log/score_${extraid}kws.PWR.log \
+  local/kws_score.sh $datadir $odir/${extraid}kws_PWR || exit 1
 fi
 
 
