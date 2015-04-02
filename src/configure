@@ -579,61 +579,71 @@ function linux_configure_static {
 function linux_check_dynamic {
   # will exit with success if $dir seems to contain ATLAS libraries with
   # right architecture (compatible with default "nm")
-  if [ -f $dir/libatlas.so ]; then # candidate...
-    if nm --dynamic $dir/libatlas.so 2>&1 | grep "File format not recognized" >/dev/null; then
-      echo "Directory $dir may contain dynamic ATLAS libraries but seems to be wrong architecture";
-      return 1;
-    fi
-    echo "Atlas found in $dir";
-    return 0;
-  else
-    echo "... no libatlas.so in $dir";
-    return 1;
-  fi
+  if $threaded_atlas; then pt=t; else pt=s; fi
+  for atlas_libname in libatlas.so lib${pt}atlas.so; do
+    if [ -f $dir/$atlas_libname ]; then # candidate...
+      if nm --dynamic $dir/$atlas_libname 2>&1 | grep "File format not recognized" >/dev/null; then
+        echo "Directory $dir may contain dynamic ATLAS libraries but seems to be wrong architecture";
+        return 1;
+      fi
+        echo "Atlas found in $dir";
+        return 0;
+      fi
+  done
+  echo "... no {libatlas,lib${pt}atlas}.so in $dir";
+  return 1;
 }
 
 function linux_configure_dynamic {
-  if $threaded_atlas; then pt=pt; else pt=""; fi
+  if $threaded_atlas; then pt=t; else pt=s; fi # relevant to "fat" libraries, will change later for separate ones
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
     for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
-      linux_check_dynamic && ATLASLIBDIR=$dir
+      linux_check_dynamic && ATLASLIBDIR=$dir && ATLASLIBNAME=$atlas_libname
     done
-    if [ -z $ATLASLIBDIR ]; then
-      echo "Could not find libatlas.so in any of the obvious places, will most likely try static:"
+    if [ -z $ATLASLIBDIR -o -z $ATLASLIBNAME ]; then
+      echo "Could not find {libatlas,lib${pt}atlas}.so in any of the obvious places, will most likely try static:"
       return 1;
     fi
-  elif [ ! -f $ATLASLIBDIR/libatlas.so ]; then
-    echo "Could not find libatlas.so in '$ATLASLIBDIR'"
-    return 1;
   fi
 
-  echo "Validating presence of ATLAS libs in $ATLASLIBDIR"
-  ATLASLIBS=
-  # The Lapack part of ATLAS seems to appear under various different names.. but it
-  # should always have symbols like ATL_cgetrf defined, so we test for this,
-  # for all the names we have encountered.
-  for libname in lapack lapack_atlas  clapack; do
-    if [ -f $ATLASLIBDIR/lib${libname}.so -a "$ATLASLIBS" == "" ]; then
-      if nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
-         ATLASLIBS="$ATLASLIBDIR/lib${libname}.so"
-         echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
-      fi
-    fi
-  done
-  if [ "$ATLASLIBS" == "" ]; then
-    echo Could not find any libraries $ATLASLIBDIR/{liblapack,liblapack_atlas,libclapack} that seem to be an ATLAS CLAPACK library.
-    return 1;
-  fi
-   
-  for x in ${pt}cblas atlas ${pt}f77blas; do
-    if [ ! -f $ATLASLIBDIR/lib$x.so ]; then
-      echo "Configuring dynamic ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
+  # If using "fat" libraries we only need one file to link against
+  if [ $ATLASLIBNAME != libatlas.so ]; then
+    if [ -f $ATLASLIBDIR/$ATLASLIBNAME ]; then
+      ATLASLIBS="$ATLASLIBDIR/$ATLASLIBNAME"
+    else
+      echo "Configuring dynamic ATLAS library failed: library $ATLASLIBNAME not found in $ATLASLIBDIR"
       return 1;
     fi
-    ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/lib${x}.so"
-  done
-  if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
+  else  # with "thin" libraries, we have several object to link against, and different single/multi-thread names
+    if $threaded_atlas; then pt=pt; else pt=""; fi
+    echo "Validating presence of ATLAS libs in $ATLASLIBDIR"
+    ATLASLIBS=
+    # The Lapack part of ATLAS seems to appear under various different names.. but it
+    # should always have symbols like ATL_cgetrf defined, so we test for this,
+    # for all the names we have encountered.
+    for libname in lapack lapack_atlas  clapack; do
+      if [ -f $ATLASLIBDIR/lib${libname}.so -a "$ATLASLIBS" == "" ]; then
+        if nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
+           ATLASLIBS="$ATLASLIBDIR/lib${libname}.so"
+           echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
+        fi
+      fi
+    done
+    if [ "$ATLASLIBS" == "" ]; then
+      echo Could not find any libraries $ATLASLIBDIR/{liblapack,liblapack_atlas,libclapack} that seem to be an ATLAS CLAPACK library.
+      return 1;
+    fi
+  
+    for x in ${pt}cblas atlas ${pt}f77blas; do
+      if [ ! -f $ATLASLIBDIR/lib$x.so ]; then
+        echo "Configuring dynamic ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
+        return 1;
+      fi
+      ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/lib${x}.so"
+    done
+    if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
+  fi
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
