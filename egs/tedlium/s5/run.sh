@@ -33,7 +33,8 @@ if [ $stage -le 0 ]; then
 
   local/prepare_dict.sh || exit 1
 
-  utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang || exit 1
+  utils/prepare_lang.sh data/local/dict_nosp \
+    "<UNK>" data/local/lang_nosp data/lang_nosp || exit 1
 
   local/prepare_lm.sh || exit 1
 
@@ -59,30 +60,53 @@ fi
 # Train
 if [ $stage -le 3 ]; then
   steps/train_mono.sh --nj 20 --cmd "$train_cmd" \
-    data/train_10kshort_nodup data/lang exp/mono0a || exit 1
+    data/train_10kshort_nodup data/lang_nosp exp/mono0a || exit 1
 
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-    data/train data/lang exp/mono0a exp/mono0a_ali || exit 1
+    data/train data/lang_nosp exp/mono0a exp/mono0a_ali || exit 1
 
   steps/train_deltas.sh --cmd "$train_cmd" \
-    2500 30000 data/train data/lang exp/mono0a_ali exp/tri1 || exit 1
+    2500 30000 data/train data/lang_nosp exp/mono0a_ali exp/tri1 || exit 1
 
-  utils/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph || exit 1
+  utils/mkgraph.sh data/lang_nosp_test exp/tri1 exp/tri1/graph_nosp || exit 1
 
   steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
     --num-threads 4 --parallel-opts "-pe smp 4" \
-    exp/tri1/graph data/dev exp/tri1/decode_dev || exit 1
+    exp/tri1/graph_nosp data/dev exp/tri1/decode_nosp_dev || exit 1
   steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
     --num-threads 4 --parallel-opts "-pe smp 4" \
-    exp/tri1/graph data/test exp/tri1/decode_test || exit 1
+    exp/tri1/graph_nosp data/test exp/tri1/decode_nosp_test || exit 1
 fi
 
 if [ $stage -le 4 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-    data/train data/lang exp/tri1 exp/tri1_ali || exit 1
+    data/train data/lang_nosp exp/tri1 exp/tri1_ali || exit 1
 
   steps/train_lda_mllt.sh --cmd "$train_cmd" \
-    4000 50000 data/train data/lang exp/tri1_ali exp/tri2 || exit 1
+    4000 50000 data/train data/lang_nosp exp/tri1_ali exp/tri2 || exit 1
+
+  utils/mkgraph.sh data/lang_nosp_test exp/tri2 exp/tri2/graph_nosp || exit 1
+
+  steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
+    --num-threads 4 --parallel-opts "-pe smp 4" \
+    exp/tri2/graph_nosp data/dev exp/tri2/decode_nosp_dev || exit 1
+  steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
+    --num-threads 4 --parallel-opts "-pe smp 4" \
+    exp/tri2/graph_nosp data/test exp/tri2/decode_nosp_test || exit 1
+fi
+
+if [ $stage -le 5 ]; then
+  steps/get_prons.sh --cmd "$train_cmd" data/train data/lang_nosp exp/tri2
+  utils/dict_dir_add_pronprobs.sh --max-normalize true \
+    data/local/dict_nosp exp/tri2/pron_counts_nowb.txt \
+    exp/tri2/sil_counts_nowb.txt \
+    exp/tri2/pron_bigram_counts_nowb.txt data/local/dict
+  
+  utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
+  cp -rT data/lang data/lang_test
+  cp -rT data/lang data/lang_rescore
+  cp data/lang_nosp_test/G.fst data/lang_test
+  cp data/lang_nosp_rescore/G.carpa data/lang_rescore
 
   utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph || exit 1
 
@@ -94,7 +118,7 @@ if [ $stage -le 4 ]; then
     exp/tri2/graph data/test exp/tri2/decode_test || exit 1
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 6 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
     data/train data/lang exp/tri2 exp/tri2_ali || exit 1
 
@@ -111,7 +135,7 @@ if [ $stage -le 5 ]; then
     exp/tri3/graph data/test exp/tri3/decode_test || exit 1
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 7 ]; then
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
     data/train data/lang exp/tri3 exp/tri3_ali || exit 1
 

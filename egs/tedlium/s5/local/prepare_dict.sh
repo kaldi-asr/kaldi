@@ -5,7 +5,7 @@
 # Apache 2.0
 #
 
-dir=data/local/dict
+dir=data/local/dict_nosp
 mkdir -p $dir
 
 srcdict=db/cantab-TEDLIUM/cantab-TEDLIUM.dct

@@ -10,7 +10,7 @@ cmd=run.pl
 stage=0
 decode_mbr=true
 beam=7  # speed-up, but may affect MBR confidences.
-word_ins_penalty=0
+word_ins_penalty=0.0,0.5,1.0
 min_lmwt=10
 max_lmwt=20
 #end configuration section.
@@ -43,44 +43,42 @@ for f in $data/stm $data/glm $lang/words.txt $lang/phones/word_boundary.int \
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
-#name=`basename $data`; # e.g. eval2000
+# name=`basename $data`; # e.g. eval2000
 nj=$(cat $dir/num_jobs)
 
 mkdir -p $dir/scoring/log
 
 if [ $stage -le 0 ]; then
-  for LMWT in $(seq $min_lmwt $max_lmwt); do
-    # Decode lattices to CTMs
-    $cmd JOB=1:$nj $dir/score_$LMWT/log/get_ctm.JOB.log \
-      lattice-scale --inv-acoustic-scale=$LMWT "ark:gunzip -c $dir/lat.JOB.gz|" ark:- \| \
-      lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
+  for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.${wip}.log \
+      mkdir -p $dir/score_LMWT_${wip}/ '&&' \
+      lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+      lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
       lattice-prune --beam=$beam ark:- ark:- \| \
       lattice-align-words-lexicon --output-error-lats=true --max-expand=10.0 --test=false \
        $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- $dir/score_$LMWT/JOB.ctm || exit 1
-    # Merge CTMs, sort
-    cat $dir/score_$LMWT/*.ctm | \
-      utils/int2sym.pl -f 5 $lang/words.txt | \
-      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel | \
-      sort -k1,1 -k2,2 -k3,3nb > $dir/score_$LMWT/ctm
-    rm $dir/score_$LMWT/*.ctm
+      lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
+      utils/int2sym.pl -f 5 $lang/words.txt \| \
+      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \| \
+      sort -k1,1 -k2,2 -k3,3nb '>' $dir/score_LMWT_${wip}/ctm || exit 1;
   done
 fi
 
 if [ $stage -le 1 ]; then
   # Remove some stuff we don't want to score, from the ctm.
-  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/filter_ctm.LMWT.log \
-    cat $dir/score_LMWT/ctm \| \
-    grep -v -E '"\[BREATH|NOISE|COUGH|SMACK|UM|UH\]"' \| \
-    grep -v -E '"!SIL|\<UNK\>"' \
-    '>' $dir/score_LMWT/ctm.filt || exit 1
+  for x in $dir/score_*/ctm; do
+    cat $x | grep -v -E '"\[BREATH|NOISE|COUGH|SMACK|UM|UH\]"' | \
+      grep -v -E '"!SIL|\<UNK\>"' > ${x}.filt || exit 1;
+  done
 fi
 
 # Score the set...
-if [ $stage -le 2 ]; then  
-  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
-    cp $data/stm $dir/score_LMWT/ '&&' \
-    $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm $dir/score_LMWT/ctm.filt || exit 1;
+if [ $stage -le 2 ]; then
+  for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.${wip}.log \
+      cp $data/stm $dir/score_LMWT_${wip}/ '&&' \
+      $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT_${wip}/stm $dir/score_LMWT_${wip}/ctm.filt || exit 1;
+  done
 fi
 
 exit 0
