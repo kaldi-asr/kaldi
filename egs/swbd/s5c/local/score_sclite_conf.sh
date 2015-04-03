@@ -7,6 +7,7 @@ stage=0
 decode_mbr=true
 min_lmwt=9
 max_lmwt=20
+word_ins_penalty=0.0,0.5,1.0
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -44,14 +45,18 @@ mkdir -p $dir/scoring/log
 
 if [ $stage -le 0 ]; then
   # the escaping gets a bit crazy here, sorry...
-  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
-    mkdir -p $dir/score_LMWT/ '&&' \
-    ACWT=\`perl -e \"print 1.0/LMWT\;\"\` '&&' \
-    lattice-align-words $lang/phones/word_boundary.int $model "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-    lattice-to-ctm-conf --decode-mbr=$decode_mbr --acoustic-scale=\$ACWT  ark:- - \| \
-    utils/int2sym.pl -f 5 $lang/words.txt  \| \
-    utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-    '>' $dir/score_LMWT/$name.ctm || exit 1;
+  for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.${wip}.log \
+      mkdir -p $dir/score_LMWT_${wip}/ '&&' \
+      ACWT=\`perl -e \"print 1.0/LMWT\;\"\` '&&' \
+      lattice-scale --acoustic-scale=\$ACWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+      lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
+      lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
+      lattice-to-ctm-conf --decode-mbr=$decode_mbr --acoustic-scale=\$ACWT  ark:- - \| \
+      utils/int2sym.pl -f 5 $lang/words.txt  \| \
+      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+      '>' $dir/score_LMWT_${wip}/$name.ctm || exit 1;
+  done
 fi
 
 if [ $stage -le 1 ]; then
@@ -65,9 +70,11 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then  
-  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
-    cp $data/stm $dir/score_LMWT/ '&&' \
-    $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm $dir/score_LMWT/${name}.ctm || exit 1;
+  for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.${wip}.log \
+      cp $data/stm $dir/score_LMWT_${wip}/ '&&' \
+      $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT_${wip}/stm $dir/score_LMWT_${wip}/${name}.ctm || exit 1;
+  done
 fi
 
 exit 0

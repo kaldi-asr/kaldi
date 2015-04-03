@@ -31,8 +31,8 @@ local/swbd1_data_prep.sh /export/corpora3/LDC/LDC97S62
 # local/swbd1_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2
 # local/swbd1_data_prep.sh /exports/work/inf_hcrc_cstr_general/corpora/switchboard/switchboard1
 
-utils/prepare_lang.sh data/local/dict \
-  "<unk>"  data/local/lang_nopp data/lang_nopp
+utils/prepare_lang.sh data/local/dict_nosp \
+  "<unk>"  data/local/lang_nosp data/lang_nosp
 
 # Now train the language models. We are using SRILM and interpolating with an
 # LM trained on the Fisher transcripts (part 2 disk is currently missing; so 
@@ -47,19 +47,19 @@ fisher_dirs="/export/corpora3/LDC/LDC2004T19/fe_03_p1_tran/ /export/corpora3/LDC
 # brno:
 # fisher_dirs="/mnt/matylda2/data/FISHER/fe_03_p1_tran" # BUT
 local/swbd1_train_lms.sh data/local/train/text \
-  data/local/dict/lexicon.txt data/local/lm $fisher_dirs
+  data/local/dict_nosp/lexicon.txt data/local/lm $fisher_dirs
 
 # Compiles G for swbd trigram LM
 LM=data/local/lm/sw1.o3g.kn.gz
 srilm_opts="-subset -prune-lowprobs -unk -tolower -order 3"
 utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
-  data/lang_nopp $LM data/local/dict/lexicon.txt data/lang_nopp_sw1_tg
+  data/lang_nosp $LM data/local/dict_nosp/lexicon.txt data/lang_nosp_sw1_tg
 
 # Compiles const G for swbd+fisher 4gram LM, if it exists.
 LM=data/local/lm/sw1_fsh.o4g.kn.gz
 [ -f $LM ] || has_fisher=false
 if $has_fisher; then
-  utils/build_const_arpa_lm.sh $LM data/lang_nopp data/lang_nopp_sw1_fsh_fg
+  utils/build_const_arpa_lm.sh $LM data/lang_nosp data/lang_nosp_sw1_fsh_fg
 fi
 
 # Data preparation and formatting for eval2000 (note: the "text" file
@@ -108,71 +108,73 @@ local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 110hr
 local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 286hr
 ## Starting basic training on MFCC features
 steps/train_mono.sh --nj 30 --cmd "$train_cmd" \
-  data/train_30kshort data/lang_nopp exp/mono 
+  data/train_30kshort data/lang_nosp exp/mono 
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
-  data/train_100k_nodup data/lang_nopp exp/mono exp/mono_ali 
+  data/train_100k_nodup data/lang_nosp exp/mono exp/mono_ali 
 
 steps/train_deltas.sh --cmd "$train_cmd" \
-  3200 30000 data/train_100k_nodup data/lang_nopp exp/mono_ali exp/tri1 
+  3200 30000 data/train_100k_nodup data/lang_nosp exp/mono_ali exp/tri1 
 
 (
-  graph_dir=exp/tri1/graph_nopp_sw1_tg
+  graph_dir=exp/tri1/graph_nosp_sw1_tg
   $train_cmd $graph_dir/mkgraph.log \
-    utils/mkgraph.sh data/lang_nopp_sw1_tg exp/tri1 $graph_dir
+    utils/mkgraph.sh data/lang_nosp_sw1_tg exp/tri1 $graph_dir
   steps/decode_si.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-    $graph_dir data/eval2000 exp/tri1/decode_eval2000_nopp_sw1_tg
+    $graph_dir data/eval2000 exp/tri1/decode_eval2000_nosp_sw1_tg
 ) &
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
-  data/train_100k_nodup data/lang_nopp exp/tri1 exp/tri1_ali 
+  data/train_100k_nodup data/lang_nosp exp/tri1 exp/tri1_ali 
 
 steps/train_deltas.sh --cmd "$train_cmd" \
-  4000 70000 data/train_100k_nodup data/lang_nopp exp/tri1_ali exp/tri2
+  4000 70000 data/train_100k_nodup data/lang_nosp exp/tri1_ali exp/tri2
 
 (
   # The previous mkgraph might be writing to this file.  If the previous mkgraph
   # is not running, you can remove this loop and this mkgraph will create it.
-  while [ ! -s data/lang_nopp_sw1_tg/tmp/CLG_3_1.fst ]; do sleep 60; done
+  while [ ! -s data/lang_nosp_sw1_tg/tmp/CLG_3_1.fst ]; do sleep 60; done
   sleep 20; # in case still writing.
-  graph_dir=exp/tri2/graph_nopp_sw1_tg
+  graph_dir=exp/tri2/graph_nosp_sw1_tg
   $train_cmd $graph_dir/mkgraph.log \
-    utils/mkgraph.sh data/lang_nopp_sw1_tg exp/tri2 $graph_dir
+    utils/mkgraph.sh data/lang_nosp_sw1_tg exp/tri2 $graph_dir
   steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-    $graph_dir data/eval2000 exp/tri2/decode_eval2000_nopp_sw1_tg
+    $graph_dir data/eval2000 exp/tri2/decode_eval2000_nosp_sw1_tg
 ) &
 
 # The 100k_nodup data is used in neural net training.
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
-  data/train_100k_nodup data/lang_nopp exp/tri2 exp/tri2_ali_100k_nodup
+  data/train_100k_nodup data/lang_nosp exp/tri2 exp/tri2_ali_100k_nodup
 
 # From now, we start using all of the data (except some duplicates of common
 # utterances, which don't really contribute much).
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
-  data/train_nodup data/lang_nopp exp/tri2 exp/tri2_ali_nodup 
+  data/train_nodup data/lang_nosp exp/tri2 exp/tri2_ali_nodup 
 
 # Do another iteration of LDA+MLLT training, on all the data.
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
-  6000 140000 data/train_nodup data/lang_nopp exp/tri2_ali_nodup exp/tri3 
+  6000 140000 data/train_nodup data/lang_nosp exp/tri2_ali_nodup exp/tri3 
 
 (
-  graph_dir=exp/tri3/graph_nopp_sw1_tg
+  graph_dir=exp/tri3/graph_nosp_sw1_tg
   $train_cmd $graph_dir/mkgraph.log \
-    utils/mkgraph.sh data/lang_nopp_sw1_tg exp/tri3 $graph_dir
+    utils/mkgraph.sh data/lang_nosp_sw1_tg exp/tri3 $graph_dir
   steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-    $graph_dir data/eval2000 exp/tri3/decode_eval2000_nopp_sw1_tg
+    $graph_dir data/eval2000 exp/tri3/decode_eval2000_nosp_sw1_tg
 ) &
-# Now we compute the pronunciation probabilities from training data, and
-# re-create the lang directory.
-steps/get_prons.sh --cmd "$train_cmd" data/train_nodup data/lang_nopp exp/tri3
-utils/dict_dir_add_pronprobs.sh --max-normalize true \
-  data/local/dict exp/tri3/pron_counts_nowb.txt data/local/dict_pp
 
-utils/prepare_lang.sh data/local/dict_pp "<unk>" data/local/lang data/lang
+# Now we compute the pronunciation and silence probabilities from training data,
+# and re-create the lang directory.
+steps/get_prons.sh --cmd "$train_cmd" data/train_nodup data/lang_nosp exp/tri3
+utils/dict_dir_add_pronprobs.sh --max-normalize true \
+  data/local/dict_nosp exp/tri3/pron_counts_nowb.txt exp/tri3/sil_counts_nowb.txt \
+  exp/tri3/pron_bigram_counts_nowb.txt data/local/dict
+
+utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 LM=data/local/lm/sw1.o3g.kn.gz
 srilm_opts="-subset -prune-lowprobs -unk -tolower -order 3"
 utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
-  data/lang $LM data/local/dict_pp/lexicon.txt data/lang_sw1_tg
+  data/lang $LM data/local/dict/lexicon.txt data/lang_sw1_tg
 LM=data/local/lm/sw1_fsh.o4g.kn.gz
 if $has_fisher; then
   utils/build_const_arpa_lm.sh $LM data/lang data/lang_sw1_fsh_fg

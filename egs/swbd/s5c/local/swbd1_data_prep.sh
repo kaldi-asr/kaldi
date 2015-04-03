@@ -109,7 +109,7 @@ local/swbd1_map_words.pl -f 2- $dir/transcripts2.txt  > $dir/text
 
 # format acronyms in text
 python local/map_acronyms_transcripts.py -i $dir/text -o $dir/text_map \
-  -M data/local/dict/acronyms.map 
+  -M data/local/dict_nosp/acronyms.map 
 mv $dir/text_map $dir/text
 
 # (1c) Make segment files from transcript

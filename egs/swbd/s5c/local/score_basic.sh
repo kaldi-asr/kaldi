@@ -6,6 +6,7 @@ cmd=run.pl
 min_lmwt=5
 max_lmwt=20
 reverse=false
+word_ins_penalty=0.0,0.5,1.0
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -47,24 +48,30 @@ function filter_text {
    '[NOISE]' '[LAUGHTER]' '[VOCALIZED-NOISE]' '<UNK>' '%HESITATION'
 }
 
-$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
-  lattice-best-path --lm-scale=LMWT --word-symbol-table=$lang/words.txt \
-    "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/scoring/LMWT.tra || exit 1;
+for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.${wip}.log \
+    lattice-best-path --lm-scale=LMWT --word-symbol-table=$lang/words.txt \
+    "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/scoring/LMWT.${wip}.tra || exit 1;
+done
 
-for lmwt in `seq $min_lmwt $max_lmwt`; do
-  utils/int2sym.pl -f 2- $lang/words.txt <$dir/scoring/$lmwt.tra | \
-   filter_text > $dir/scoring/$lmwt.txt || exit 1;
-  if $reverse; then
-    mv $dir/scoring/$lmwt.txt $dir/scoring/$lmwt.txt.orig
-    awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
-       <$dir/scoring/$lmwt.txt.orig >$dir/scoring/$lmwt.txt
-  fi
+for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+  for lmwt in `seq $min_lmwt $max_lmwt`; do
+    utils/int2sym.pl -f 2- $lang/words.txt <$dir/scoring/$lmwt.${wip}.tra | \
+      filter_text > $dir/scoring/$lmwt.${wip}.txt || exit 1;
+    if $reverse; then
+      mv $dir/scoring/$lmwt.${wip}.txt $dir/scoring/$lmwt.${wip}.txt.orig
+      awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
+        <$dir/scoring/$lmwt.${wip}.txt.orig >$dir/scoring/$lmwt.${wip}.txt
+    fi
+  done
 done
 
 filter_text <$data/text >$dir/scoring/text.filt
 
-$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
-  compute-wer --text --mode=present \
-   ark:$dir/scoring/text.filt ark:$dir/scoring/LMWT.txt ">&" $dir/wer_LMWT || exit 1;
+for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.${wip}.log \
+    compute-wer --text --mode=present \
+    ark:$dir/scoring/text.filt ark:$dir/scoring/LMWT.${wip}.txt ">&" $dir/wer_LMWT_${wip} || exit 1;
+done
 
 exit 0

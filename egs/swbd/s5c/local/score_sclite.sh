@@ -7,6 +7,7 @@ stage=0
 min_lmwt=5
 max_lmwt=20
 reverse=false
+word_ins_penalty=0.0,0.5,1.0
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -43,26 +44,32 @@ name=`basename $data`; # e.g. eval2000
 mkdir -p $dir/scoring/log
 
 if [ $stage -le 0 ]; then
-  if $reverse; then
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
-      mkdir -p $dir/score_LMWT/ '&&' \
-      lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-      lattice-reverse ark:- ark:- \| \
-      lattice-align-words --reorder=false $lang/phones/word_boundary.int $model ark:- ark:- \| \
-      nbest-to-ctm ark:- - \| \
-      utils/int2sym.pl -f 5 $lang/words.txt  \| \
-      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-      '>' $dir/score_LMWT/$name.ctm || exit 1;
-  else
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
-      mkdir -p $dir/score_LMWT/ '&&' \
-      lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-      lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-      nbest-to-ctm ark:- - \| \
-      utils/int2sym.pl -f 5 $lang/words.txt  \| \
-      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-      '>' $dir/score_LMWT/$name.ctm || exit 1;
-  fi
+  for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+    if $reverse; then
+      $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.${wip}.log \
+        mkdir -p $dir/score_LMWT_${wip}/ '&&' \
+        lattice-scale --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+        lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
+        lattice-1best ark:- ark:- \| \
+        lattice-reverse ark:- ark:- \| \
+        lattice-align-words --reorder=false $lang/phones/word_boundary.int $model ark:- ark:- \| \
+        nbest-to-ctm ark:- - \| \
+        utils/int2sym.pl -f 5 $lang/words.txt  \| \
+        utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+        '>' $dir/score_LMWT_${wip}/$name.ctm || exit 1;
+    else
+      $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.${wip}.log \
+        mkdir -p $dir/score_LMWT_${wip}/ '&&' \
+        lattice-scale --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+        lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
+        lattice-1best ark:- ark:- \| \
+        lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
+        nbest-to-ctm ark:- - \| \
+        utils/int2sym.pl -f 5 $lang/words.txt  \| \
+        utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+        '>' $dir/score_LMWT_${wip}/$name.ctm || exit 1;
+    fi
+  done
 fi
 
 if [ $stage -le 1 ]; then
@@ -87,26 +94,32 @@ fi
 
 # Score the set...
 if [ $stage -le 2 ]; then  
-  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
-    cp $data/stm $dir/score_LMWT/ '&&' \
-    $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm $dir/score_LMWT/${name}.ctm || exit 1;
+  for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.${wip}.log \
+      cp $data/stm $dir/score_LMWT_${wip}/ '&&' \
+      $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT_${wip}/stm $dir/score_LMWT_${wip}/${name}.ctm || exit 1;
+  done
 fi
 
 # For eval2000 score the subsets
 case "$name" in eval2000* )
   # Score only the, swbd part...
   if [ $stage -le 3 ]; then  
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.swbd.LMWT.log \
-      grep -v '^en_' $data/stm '>' $dir/score_LMWT/stm.swbd '&&' \
-      grep -v '^en_' $dir/score_LMWT/${name}.ctm '>' $dir/score_LMWT/${name}.ctm.swbd '&&' \
-      $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm.swbd $dir/score_LMWT/${name}.ctm.swbd || exit 1;
+    for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+      $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.swbd.LMWT.${wip}.log \
+        grep -v '^en_' $data/stm '>' $dir/score_LMWT_${wip}/stm.swbd '&&' \
+        grep -v '^en_' $dir/score_LMWT_${wip}/${name}.ctm '>' $dir/score_LMWT_${wip}/${name}.ctm.swbd '&&' \
+        $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT_${wip}/stm.swbd $dir/score_LMWT_${wip}/${name}.ctm.swbd || exit 1;
+    done
   fi
   # Score only the, callhome part...
   if [ $stage -le 3 ]; then  
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.callhm.LMWT.log \
-      grep -v '^sw_' $data/stm '>' $dir/score_LMWT/stm.callhm '&&' \
-      grep -v '^sw_' $dir/score_LMWT/${name}.ctm '>' $dir/score_LMWT/${name}.ctm.callhm '&&' \
-      $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm.callhm $dir/score_LMWT/${name}.ctm.callhm || exit 1;
+    for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+      $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.callhm.LMWT.${wip}.log \
+        grep -v '^sw_' $data/stm '>' $dir/score_LMWT_${wip}/stm.callhm '&&' \
+        grep -v '^sw_' $dir/score_LMWT_${wip}/${name}.ctm '>' $dir/score_LMWT_${wip}/${name}.ctm.callhm '&&' \
+        $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT_${wip}/stm.callhm $dir/score_LMWT_${wip}/${name}.ctm.callhm || exit 1;
+    done
   fi
  ;;
 esac
