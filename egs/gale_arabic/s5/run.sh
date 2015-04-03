@@ -31,7 +31,7 @@ text=(
 )
 
 #This is CLSP configuration. We add the 2014 GALE data. We got around 2 % 
-#improvement just by including it. The gain might be large if someone would tweak
+#improvement just by including it. The gain might be larger if someone would tweak
 # the number of leaves and states and so on.
 if false; then
 audio=(
