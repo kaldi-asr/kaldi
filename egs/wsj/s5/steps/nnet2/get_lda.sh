@@ -155,7 +155,6 @@ if [ $stage -le 0 ]; then
   echo "$0: Accumulating LDA statistics."
   rm $dir/lda.*.acc 2>/dev/null # in case any left over from before.
   $cmd JOB=1:$nj $dir/log/lda_acc.JOB.log \
-    set -o pipefail '&&' \
     ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- \| \
       acc-lda --rand-prune=$rand_prune $alidir/final.mdl "$spliced_feats" ark,s,cs:- \

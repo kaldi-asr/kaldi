@@ -1,0 +1,26 @@
+for x in exp/*/decode_dev; do grep WER $x/wer_* | utils/best_wer.sh; done
+
+# This is the test result after resovling a lexicon issue, but it's only test until tri2 stage 
+%WER 47.92 [ 18756 / 39141, 1908 ins, 4295 del, 12553 sub ] exp/tri1/decode_dev/wer_12
+%WER 47.70 [ 18672 / 39141, 2072 ins, 4133 del, 12467 sub ] exp/tri2/decode_dev/wer_12
+
+# Out of date results
+%WER 41.86 [ 16384 / 39141, 1735 ins, 4152 del, 10497 sub ] exp/tri3a/decode_dev/wer_13
+%WER 34.73 [ 13593 / 39141, 1719 ins, 3365 del, 8509 sub ] exp/tri4a/decode_dev/wer_14
+%WER 31.07 [ 12163 / 39141, 1869 ins, 2705 del, 7589 sub ] exp/tri5a/decode_dev/wer_13
+%WER 31.13 [ 12184 / 39141, 1939 ins, 2584 del, 7661 sub ] exp/tri5a_0.1/decode_dev/wer_12
+
+%WER 23.66 [ 9259 / 39141, 1495 ins, 2432 del, 5332 sub ] exp/nnet6c4_gpu/decode_dev/wer_11
+
+
+%WER 22.86 [ 8947 / 39141, 1369 ins, 2302 del, 5276 sub ] exp/nnet2_online/nnet_a_online/decode_dev/wer_12
+%WER 23.77 [ 9305 / 39141, 1312 ins, 2462 del, 5531 sub ] exp/nnet2_online/nnet_a_online/decode_dev_utt/wer_12
+%WER 23.13 [ 9055 / 39141, 1466 ins, 2210 del, 5379 sub ] exp/nnet2_online/nnet_a_online/decode_dev_utt_offline/wer_11
+
+
+# the following is with a multi-splice version of the nnet-online recipe
+# This is the best current recipe.
+%WER 18.25 [ 7072 / 38753, 1000 ins, 1744 del, 4328 sub ] exp/nnet2_multicondition/nnet_ms_c/decode_dev/wer_11
+%WER 18.23 [ 7195 / 39477, 980 ins, 1844 del, 4371 sub ] exp/nnet2_multicondition/nnet_ms_c/decode_test/wer_11
+%WER 24.83 [ 9621 / 38753, 1149 ins, 2344 del, 6128 sub ] exp/nnet2_multicondition/nnet_ms_c/decode_dev_rvb/wer_10
+%WER 24.70 [ 9752 / 39477, 1067 ins, 2477 del, 6208 sub ] exp/nnet2_multicondition/nnet_ms_c/decode_test_rvb/wer_11
