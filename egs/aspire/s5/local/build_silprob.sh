@@ -5,7 +5,7 @@ set -e
 . ./cmd.sh
 . ./path.sh
 
-#steps/get_prons.sh --cmd "$train_cmd" data/train data/lang exp/tri5a
+steps/get_prons.sh --cmd "$train_cmd" data/train data/lang exp/tri5a
 
 utils/dict_dir_add_pronprobs.sh --max-normalize true \
   data/local/dict exp/tri5a/pron_counts_nowb.txt \

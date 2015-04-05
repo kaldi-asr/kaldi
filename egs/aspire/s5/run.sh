@@ -1,4 +1,3 @@
-#!/bin/bash
 
 #  ASpIRE submission, based on Fisher-english GMM-HMM system
 # 
@@ -10,7 +9,6 @@
 . path.sh
 mfccdir=`pwd`/mfcc
 set -e
-
 # the next command produces the data in local/train_all
 local/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
    /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
@@ -159,7 +157,6 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 # build silprob lang directory
 local/build_silprob.sh
 
-
 # train the neural network model
 local/multi_condition/run_nnet2_ms.sh
 
@@ -172,7 +169,6 @@ local/multi_condition/run_nnet2_ms.sh
    --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
    --ivector-scale 0.75 --affix v6 --tune-hyper true test_aspire data/lang exp/nnet2_multicondition/nnet_ms_a
 # 72.3 on leaderboard
-
 
 # discriminative training. Helped on dev, but not on dev_test
 local/multi_condition/run_nnet2_ms_disc.sh
