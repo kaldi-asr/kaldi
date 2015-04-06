@@ -136,8 +136,10 @@ if [ $stage -le 5 ]; then
     for decode_set in dev test; do
       (
         num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+        decode_dir=$dir/decode_epoch${epoch}_${decode_set}
         steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj $num_jobs \
-          --iter epoch$epoch exp/tri3/graph data/${decode_set}_hires $dir/decode_epoch${epoch}_${decode_set} || exit 1
+          --iter epoch$epoch exp/tri3/graph data/${decode_set}_hires $decode_dir || exit 1
+        steps/lmrescore_const_arpa.sh data/lang_test data/lang_rescore data/${decode_set}_hires $decode_dir $decode_dir.rescore || exit 1
       ) &
     done
   done

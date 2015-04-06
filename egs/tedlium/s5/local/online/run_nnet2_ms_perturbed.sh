@@ -132,9 +132,11 @@ if [ $stage -le 12 ]; then
   # real online decoding (the one with --per-utt true)
   for decode_set in dev test; do
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      decode_dir=$dir/decode_${decode_set}
       steps/nnet2/decode.sh --nj $num_jobs --cmd "$decode_cmd" --config conf/decode.config \
         --online-ivector-dir exp/nnet2_online/ivectors_${decode_set}_hires \
-        exp/tri3/graph data/${decode_set}_hires $dir/decode_${decode_set} || exit 1;
+        exp/tri3/graph data/${decode_set}_hires $decode_dir || exit 1;
+      steps/lmrescore_const_arpa.sh data/lang_test data/lang_rescore data/${decode_set}_hires $decode_dir $decode_dir.rescore || exit 1
   done
 fi
 
@@ -152,8 +154,10 @@ if [ $stage -le 14 ]; then
   # previous utterances of the same speaker.
   for decode_set in dev test; do
     num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+    decode_dir=${dir}_online/decode_${decode_set}
     steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj $num_jobs \
-      exp/tri3/graph data/${decode_set}_hires ${dir}_online/decode_${decode_set} || exit 1;
+      exp/tri3/graph data/${decode_set}_hires $decode_dir || exit 1;
+    steps/lmrescore_const_arpa.sh data/lang_test data/lang_rescore data/${decode_set}_hires $decode_dir $decode_dir.rescore || exit 1
   done
 fi
 
@@ -162,8 +166,10 @@ if [ $stage -le 15 ]; then
   # without carrying forward speaker information.
   for decode_set in dev test; do
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      decode_dir=${dir}_online/decode_${decode_set}_utt
       steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj $num_jobs \
-        --per-utt true exp/tri3/graph data/${decode_set}_hires ${dir}_online/decode_${decode_set}_utt || exit 1;
+        --per-utt true exp/tri3/graph data/${decode_set}_hires $decode_dir || exit 1;
+      steps/lmrescore_const_arpa.sh data/lang_test data/lang_rescore data/${decode_set}_hires $decode_dir $decode_dir.rescore || exit 1
   done
 fi
 
@@ -173,9 +179,11 @@ if [ $stage -le 16 ]; then
   # of the utterance while computing the iVector (--online false)
   for decode_set in dev test; do
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      decode_dir=${dir}_online/decode_${decode_set}_utt_offline
       steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj $num_jobs \
         --per-utt true --online false exp/tri3/graph data/${decode_set}_hires \
-          ${dir}_online/decode_${decode_set}_utt_offline || exit 1;
+          $decode_dir || exit 1;
+      steps/lmrescore_const_arpa.sh data/lang_test data/lang_rescore data/${decode_set}_hires $decode_dir $decode_dir.rescore || exit 1
   done
 fi
 wait;

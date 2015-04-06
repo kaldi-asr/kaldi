@@ -116,7 +116,7 @@ fi
 
 # Train SAT-adapted GMM on bottleneck features,
 if [ $stage -le 4 ]; then
-  dir=exp/dnn8c_${exp}_fmllr-gm
+  dir=exp/dnn8c_${exp}_fmllr-gmm
   ali=exp/dnn8b_${exp}_bn-gmm_ali
   # Train,
   # fmllr-gmm system on bottleneck features, 

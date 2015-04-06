@@ -39,7 +39,6 @@ if [ $stage -le 0 ]; then
   local/prepare_lm.sh || exit 1
 
 fi
-
 # Feature extraction
 feat_dir=$pwd/data/mfcc_features
 if [ $stage -le 1 ]; then
@@ -155,9 +154,16 @@ if [ $stage -le 7 ]; then
     exp/tri3/graph data/test exp/tri3_mmi_b0.1/decode_test_it$iter || exit 1
   done
 fi
-
 # Run the DNN recipe on fMLLR feats:
 local/nnet/run_dnn.sh || exit 1
+for decode_dir in "exp/dnn4_pretrain-dbn_dnn/decode_test" "exp/dnn4_pretrain-dbn_dnn_smbr_i1lats/decode_test_it4"; do
+  steps/lmrescore_const_arpa.sh data/lang_test data/lang_rescore data/test $decode_dir $decode_dir.rescore
+done
+# DNN recipe with bottle-neck features
+#local/nnet/run_dnn_bn.sh
+# Rescore with 4-gram LM:
+#decode_dir=exp/dnn8f_BN_pretrain-dbn_dnn_smbr/decode_test_it4
+#steps/lmrescore_const_arpa.sh data/lang_test data/lang_rescore data/test $decode_dir $decode_dir.rescore || exit 1
 
 ## Run the nnet2 multisplice recipe
 # local/online/run_nnet2_ms.sh || exit 1;
