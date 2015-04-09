@@ -796,6 +796,7 @@
 /src/featbin/compute-and-process-kaldi-pitch-feats
 /src/featbin/modify-cmvn-stats
 /src/featbin/wav-copy
+/src/featbin/detect-sinusoids
 /src/fstext/push-special-test
 /src/gmmbin/gmm-acc-mllt-global
 /src/gmmbin/gmm-est-fmllr-global
@@ -850,6 +851,7 @@
 /src/transform/fmllr-raw-test
 /src/util/simple-options-test
 /src/feat/resample-test
+/src/feat/sinusoid-detection-test
 /src/feat/online-feature-test
 /src/probe/exp-test
 /src/fstext/prune-special-test
