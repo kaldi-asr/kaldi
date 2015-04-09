@@ -39,8 +39,8 @@ LinearResample::LinearResample(int32 samp_rate_in_hz,
   KALDI_ASSERT(samp_rate_in_hz > 0.0 &&
                samp_rate_out_hz > 0.0 &&
                filter_cutoff_hz > 0.0 &&
-               filter_cutoff_hz*2 < samp_rate_in_hz &&
-               filter_cutoff_hz*2 < samp_rate_out_hz &&
+               filter_cutoff_hz*2 <= samp_rate_in_hz &&
+               filter_cutoff_hz*2 <= samp_rate_out_hz &&
                num_zeros > 0);
 
   // base_freq is the frequency of the repeating unit, which is the gcd
@@ -153,7 +153,7 @@ void LinearResample::Resample(const VectorBase<BaseFloat> &input,
   int32 input_dim = input.Dim();
   int64 tot_input_samp = input_sample_offset_ + input_dim,
       tot_output_samp = GetNumOutputSamples(tot_input_samp, flush);
-
+  
   KALDI_ASSERT(tot_output_samp >= output_sample_offset_);
 
   output->Resize(tot_output_samp - output_sample_offset_);

@@ -1411,7 +1411,7 @@ class FixedAffineComponent: public Component {
 
 /// FixedScaleComponent applies a fixed per-element scale; it's similar
 /// to the Rescale component in the nnet1 setup (and only needed for nnet1
-/// model conversion.
+/// model conversion).
 class FixedScaleComponent: public Component {
  public:
   FixedScaleComponent() { } 

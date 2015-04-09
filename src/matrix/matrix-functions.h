@@ -233,4 +233,3 @@ inline void AssertSameDim(const MatrixBase<Real1> &mat1, const MatrixBase<Real2>
 
 
 #endif
-

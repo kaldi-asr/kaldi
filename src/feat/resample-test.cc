@@ -224,12 +224,61 @@ void UnitTestLinearResample() {
   }
 }
 
+void UnitTestLinearResample2() {
+  int32 num_samp = 100 + rand() % 100;
+  BaseFloat samp_freq = 1000, resamp_freq = 4000;
 
+  int32 num_zeros = 10; // fairly accurate.
+  Vector<BaseFloat> signal_orig(num_samp);
+  signal_orig.SetRandn();
+
+  Vector<BaseFloat> signal(num_samp);  
+  { // make sure signal is sufficiently low pass, i.e. that we have enough
+    // headroom before the Nyquist.
+    LinearResample linear_resampler_filter(samp_freq, samp_freq,
+                                           0.8 * samp_freq / 2.0, num_zeros);
+    linear_resampler_filter.Resample(signal_orig, true, &signal);
+  }
+  
+
+  Vector<BaseFloat> signal_upsampled;
+
+  LinearResample linear_resampler(samp_freq, resamp_freq,
+                                  samp_freq / 2.0, num_zeros);
+
+  linear_resampler.Resample(signal, true, &signal_upsampled);
+
+  // resample back to the original frequency.
+  LinearResample linear_resampler2(resamp_freq, samp_freq,
+                                   samp_freq / 2.0, num_zeros);
+  
+  
+  Vector<BaseFloat> signal_downsampled;  
+  linear_resampler2.Resample(signal_upsampled, true, &signal_downsampled);
+
+
+  int32 samp_discard = 20;  // Discard 20 samples for edge effects.
+  SubVector<BaseFloat> signal_middle(signal, samp_discard,
+                                     signal.Dim() - (2 * samp_discard));
+
+  SubVector<BaseFloat> signal2_middle(signal_downsampled, samp_discard,
+                                      signal.Dim() - (2 * samp_discard));
+
+  BaseFloat self1 = VecVec(signal_middle, signal_middle),
+      self2 = VecVec(signal2_middle, signal2_middle),
+      cross = VecVec(signal_middle, signal2_middle);
+  KALDI_LOG << "Self1 = " << self1 << ", self2 = " << self2
+            << ", cross = " << cross;
+  AssertEqual(self1, self2, 0.001);
+  AssertEqual(self1, cross, 0.001);
+}
 
 int main() {
   try {
     for (int32 x = 0; x < 50; x++)
       UnitTestLinearResample();
+    for (int32 x = 0; x < 50; x++)
+      UnitTestLinearResample2();    
     for (int32 x = 0; x < 50; x++)
       UnitTestArbitraryResample();
 

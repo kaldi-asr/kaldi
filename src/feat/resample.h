@@ -171,6 +171,7 @@ class LinearResample {
   /// the input signal it can process it correctly.
   /// If your most recent call to the object was with flush == false, it will
   /// have internal state; you can remove this by calling Reset().
+  /// Empty input is acceptable.
   void Resample(const VectorBase<BaseFloat> &input,
                 bool flush,
                 Vector<BaseFloat> *output);
