@@ -758,7 +758,7 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
         int32 hmm_state = old_trans_model.TransitionIdToHmmState(old_tid);
         int32 trans_idx = old_trans_model.TransitionIdToTransitionIndex(old_tid);
         if (static_cast<size_t>(pdf_class) >= state_seq.size())
-          KALDI_ERR << "ConvertAlignment: error converting alingment, possibly different topologies?";
+          KALDI_ERR << "ConvertAlignment: error converting alignment, possibly different topologies?";
         int32 new_pdf = state_seq[pdf_class];
         int32 new_trans_state =
             new_trans_model.TripleToTransitionState(phone, hmm_state, new_pdf);

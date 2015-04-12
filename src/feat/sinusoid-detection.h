@@ -287,7 +287,7 @@ struct MultiSinusoidDetectorConfig {
                  "must have relative to total energy of frame");
     po->Register("min-freq", &min_freq, "Minimum frequency of sinusoid that "
                  "will be detected");
-    po->Register("max-freq", &min_freq, "Maximum frequency of sinusoid that "
+    po->Register("max-freq", &max_freq, "Maximum frequency of sinusoid that "
                  "will be detected");
     po->Register("subsample-freq", &subsample_freq, "Frequency at which "
                  "we subsample the signal");

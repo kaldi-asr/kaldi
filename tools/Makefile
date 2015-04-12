@@ -162,15 +162,14 @@ openblas: openblas_compiled
 fortran_opt = $(shell gcc -v 2>&1 | perl -e '$$x = join(" ", <STDIN>); if($$x =~ m/target=\S+64\S+/) { print "BINARY=64"; }')
 
 
-# note: you can remove the USE_THREAD=0 option below if you want OpenBLAS to use multiple threads.
-# then you could set, for example, OPENBLAS_NUM_THREADS=2 in your path.sh so that the runtime knows
-# how many threads to use.
-# the option FCOMMON_OPT=-frecursive is required if you are using gcc so that
-# the Lapack components of OpenBlas do not crash in multi-threaded code
-# (otherwise it will not be thread safe).
+# note: you can change the USE_THREAD=0 option below to USE_THREAD=1
+# if you want Open Blas to use multiple threads.  then you could set,
+# for example, OPENBLAS_NUM_THREADS=2 in your path.sh so that the
+# runtime knows how many threads to use.
 openblas_compiled:
 	-git clone git://github.com/xianyi/OpenBLAS
-	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) FCOMMON_OPT:=-frecursive DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
+	cd OpenBLAS; sed 's:# FCOMMON_OPT = -frecursive:FCOMMON_OPT = -frecursive:' < Makefile.rule >tmp && mv tmp Makefile.rule
+	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=1 -C OpenBLAS all install
 
 beamformit: beamformit-3.51
 
