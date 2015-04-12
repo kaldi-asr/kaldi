@@ -24,6 +24,7 @@
 #include "online2/online-endpoint.h"
 #include "fstext/fstext-lib.h"
 #include "lat/lattice-functions.h"
+#include "thread/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -126,6 +127,9 @@ int main(int argc, char *argv[]) {
                 "If true, simulate real-time decoding scenario by providing the "
                 "data incrementally, calling sleep() until each piece is ready. "
                 "If false, don't sleep (so it will be faster).");
+    po.Register("num-threads-startup", &g_num_threads,
+                "Number of threads used when initializing iVector extractor.  "
+                "Set this to 1 if using multi-threaded OpenBLAS to avoid crash.");
     
     feature_config.Register(&po);
     nnet2_decoding_config.Register(&po);

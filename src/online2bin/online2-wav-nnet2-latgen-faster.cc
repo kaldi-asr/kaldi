@@ -24,6 +24,7 @@
 #include "online2/online-endpoint.h"
 #include "fstext/fstext-lib.h"
 #include "lat/lattice-functions.h"
+#include "thread/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -122,6 +123,10 @@ int main(int argc, char *argv[]) {
                 "--use-most-recent-ivector=true and --greedy-ivector-extractor=true "
                 "in the file given to --ivector-extraction-config, and "
                 "--chunk-length=-1.");
+    po.Register("num-threads-startup", &g_num_threads,
+                "Number of threads used when initializing iVector extractor.  "
+                "Set this to 1 if using multi-threaded OpenBLAS to avoid crash.");
+                
     
     feature_config.Register(&po);
     nnet2_decoding_config.Register(&po);
