@@ -170,7 +170,7 @@ fortran_opt = $(shell gcc -v 2>&1 | perl -e '$$x = join(" ", <STDIN>); if($$x =~
 # (otherwise it will not be thread safe).
 openblas_compiled:
 	-git clone git://github.com/xianyi/OpenBLAS
-	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) FCOMMON_OPT=-frecursive DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
+	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) FCOMMON_OPT:=-frecursive DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
 
 beamformit: beamformit-3.51
 
