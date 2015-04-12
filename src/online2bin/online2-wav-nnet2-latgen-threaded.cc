@@ -128,8 +128,7 @@ int main(int argc, char *argv[]) {
                 "data incrementally, calling sleep() until each piece is ready. "
                 "If false, don't sleep (so it will be faster).");
     po.Register("num-threads-startup", &g_num_threads,
-                "Number of threads used when initializing iVector extractor.  "
-                "Set this to 1 if using multi-threaded OpenBLAS to avoid crash.");
+                "Number of threads used when initializing iVector extractor.  ");
     
     feature_config.Register(&po);
     nnet2_decoding_config.Register(&po);

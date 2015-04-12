@@ -124,9 +124,7 @@ int main(int argc, char *argv[]) {
                 "in the file given to --ivector-extraction-config, and "
                 "--chunk-length=-1.");
     po.Register("num-threads-startup", &g_num_threads,
-                "Number of threads used when initializing iVector extractor.  "
-                "Set this to 1 if using multi-threaded OpenBLAS to avoid crash.");
-                
+                "Number of threads used when initializing iVector extractor.");
     
     feature_config.Register(&po);
     nnet2_decoding_config.Register(&po);
