@@ -43,13 +43,4 @@ if [ ! -d data/lang_nosp_rescore ]; then
 
 fi
 
-if [ ! -d data/lang_rescore ]; then
-
-  big_arpa_lm=db/cantab-TEDLIUM/cantab-TEDLIUM-unpruned.lm4.gz
-  [ ! -f $big_arpa_lm ] && echo No such file $big_arpa_lm && exit 1;
-
-  utils/build_const_arpa_lm.sh $big_arpa_lm data/lang_test data/lang_rescore || exit 1;
-
-fi
-
 exit 0;
