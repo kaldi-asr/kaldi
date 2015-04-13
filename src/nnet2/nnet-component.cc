@@ -3355,8 +3355,8 @@ std::string FixedScaleComponent::Info() const {
   std::stringstream stream;
   BaseFloat scales_size = static_cast<BaseFloat>(scales_.Dim()),
       scales_mean = scales_.Sum() / scales_size,
-      scales_stddev = std::sqrt(VecVec(scales_, scales_) / scales_size)
-       - (scales_mean * scales_mean);
+      scales_stddev = std::sqrt(VecVec(scales_, scales_) / scales_size
+       - (scales_mean * scales_mean));
   stream << Component::Info() << ", scales-mean=" << scales_mean
          << ", scales-stddev=" << scales_stddev;
   return stream.str();
