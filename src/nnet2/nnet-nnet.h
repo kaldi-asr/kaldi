@@ -246,6 +246,10 @@ class Nnet {
   /// Scale all the learning rates in the neural net by this factor.
   void ScaleLearningRates(BaseFloat factor);
 
+  /// Scale all the learning rates in the neural net by the factors indexed
+  /// by the type of component.
+  void ScaleLearningRates(std::map<std::string, BaseFloat> scale_factors);
+
   /// Set all the learning rates in the neural net to this value.
   void SetLearningRates(BaseFloat learning_rates);
 

@@ -326,6 +326,25 @@ void Nnet::ScaleLearningRates(BaseFloat factor) {
             << ostr.str();
 }
 
+void Nnet::ScaleLearningRates(std::map<std::string, BaseFloat> scale_factors) {
+  std::ostringstream ostr;
+  for (int32 c = 0; c < NumComponents(); c++) {
+    UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[c]);
+    if (uc != NULL) {  // Updatable component...
+      // check if scaling factor was specified for a component of this type
+      std::map<std::string, BaseFloat>::const_iterator lr_iterator =
+        scale_factors.find(uc->Type());
+      if (lr_iterator != scale_factors.end())  {
+        uc->SetLearningRate(uc->LearningRate() * lr_iterator->second);
+        ostr << uc->LearningRate() << " ";
+      }
+    }
+  }
+  KALDI_LOG << "Scaled learning rates by component-type specific factor, "
+            << "new learning rates are "
+            << ostr.str();
+}
+
 void Nnet::SetLearningRates(BaseFloat learning_rate) {
   for (int32 c = 0; c < NumComponents(); c++) {
     UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(components_[c]);

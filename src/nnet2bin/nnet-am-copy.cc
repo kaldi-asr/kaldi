@@ -17,11 +17,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <typeinfo>
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
 #include "nnet2/am-nnet.h"
-#include "hmm/transition-model.h"
 #include "tree/context-dep.h"
 
 int main(int argc, char *argv[]) {
@@ -49,6 +49,7 @@ int main(int argc, char *argv[]) {
     bool collapse = false;
     bool match_updatableness = true;
     BaseFloat learning_rate_factor = 1.0, learning_rate = -1;
+    std::string learning_rate_scales_str = " ";
     std::string learning_rates = "";
     std::string scales = "";
     std::string stats_from;
@@ -67,6 +68,11 @@ int main(int argc, char *argv[]) {
     po.Register("scales", &scales,
                 "A colon-separated list of scaling factors, one for each updatable "
                 "layer: a mechanism to scale the parameters.");
+    po.Register("learning-rate-scales", &learning_rate_scales_str,
+                "Colon-separated list of scaling factors for learning rates, "
+                "applied after the --learning-rate and --learning-rates options."
+                "Used to scale learning rates for particular layer types.  E.g."
+                "--learning-rate-scales=AffineComponent=0.5");
     po.Register("truncate", &truncate, "If set, will truncate the neural net "
                 "to this many components by removing the last components.");
     po.Register("remove-dropout", &remove_dropout, "Set this to true to remove "
@@ -124,6 +130,32 @@ int main(int argc, char *argv[]) {
       am_nnet.GetNnet().SetLearningRates(learning_rates_vector);
     }
 
+    if (learning_rate_scales_str != " ")  {
+      // parse the learning_rate_scales provided as an option
+      std::map<std::string, BaseFloat> learning_rate_scales;
+      std::vector<std::string> learning_rate_scale_vec;
+      SplitStringToVector(learning_rate_scales_str, ":", true,
+                          &learning_rate_scale_vec);
+      for (int32 index = 0; index < learning_rate_scale_vec.size();
+          index++) {
+        std::vector<std::string> parts;
+        BaseFloat scale_factor;
+        SplitStringToVector(learning_rate_scale_vec[index],
+                            "=", false,  &parts);
+        if (!ConvertStringToReal(parts[1], &scale_factor)) {
+          KALDI_ERR << "Unknown format for --learning-rate-scales option. "
+              << "Expected format is "
+              << "--learning-rate-scales=AffineComponent=0.1:AffineComponentPreconditioned=0.5 "
+              << "instead got "
+              << learning_rate_scales_str;
+        }
+        learning_rate_scales.insert(std::make_pair<std::string, BaseFloat>(
+                parts[0], scale_factor));
+      }
+      // use the learning_rate_scales to scale the component learning rates
+      am_nnet.GetNnet().ScaleLearningRates(learning_rate_scales);
+    }
+
     if (scales != "") {
       std::vector<BaseFloat> scales_vec;
       if (!SplitStringToFloats(scales, ":", false, &scales_vec)
@@ -143,7 +175,7 @@ int main(int argc, char *argv[]) {
       am_nnet.GetNnet().Resize(truncate);
       if (am_nnet.GetNnet().OutputDim() != am_nnet.Priors().Dim()) {
         Vector<BaseFloat> empty_priors;
-        am_nnet.SetPriors(empty_priors); // so dims don't disagree.
+        am_nnet.SetPriors(empty_priors);  // so dims don't disagree.
       }
     }
 
