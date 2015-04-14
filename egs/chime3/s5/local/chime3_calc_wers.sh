@@ -25,7 +25,7 @@ echo ""
 for a in `find $dir/decode_tgpr_5k_dt05_real_$enhan/ | grep "\/wer_" | awk -F'[/]' '{print $NF}' | sort`; do
     echo -n "$a "
     cat $dir/decode_tgpr_5k_dt05_{real,simu}_$enhan/$a | grep WER | awk '{err+=$4} {wrd+=$6} END{printf("%.2f\n",err/wrd*100)}'
-done | sort -k 2 | head -n 1 > $dir/log/best_wer_$enhan
+done | sort -n -k 2 | head -n 1 > $dir/log/best_wer_$enhan
 
 lmw=`cut -f 1 -d" " $dir/log/best_wer_$enhan | cut -f 2 -d"_"`
 echo "-------------------"
