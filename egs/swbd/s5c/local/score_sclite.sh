@@ -86,7 +86,7 @@ if [ $stage -le 1 ]; then
     grep -i -v -E '<UNK>' | \
     grep -i -v -E ' (UH|UM|EH|MM|HM|AH|HUH|HA|ER|OOF|HEE|ACH|EEE|EW)$' | \
     grep -v -- '-$' > $x;
-    python local/map_acronyms_ctm.py -i $x -o $x.mapped -M data/local/dict/acronyms.map
+    python local/map_acronyms_ctm.py -i $x -o $x.mapped -M data/local/dict_nosp/acronyms.map
     cp $x $x.bk
     mv $x.mapped $x
   done
