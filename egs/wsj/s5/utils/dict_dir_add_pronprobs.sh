@@ -191,8 +191,8 @@ if [ -n "$sil_counts" ]; then
     $P_BOS_sr = sprintf("%.2f", $BOS_sil_count / ($BOS_sil_count + $BOS_nonsil_count));
     $F_sl_EOS = ($sil_wpron{"</s>"} + $lambda3) / ($bar_C_s_w{"</s>"} + $lambda3);
     $F_nl_EOS = ($nonsil_wpron{"</s>"} + $lambda3) / ($bar_C_n_w{"</s>"} + $lambda3);
-    if ($P_BOS_sr == "1.00") { $BOS_sil_prob = "0.99"; }
-    if ($P_BOS_sr == "0.00") { $BOS_sil_prob = "0.01"; }
+    if ($P_BOS_sr == "1.00") { $P_BOS_sr = "0.99"; }
+    if ($P_BOS_sr == "0.00") { $P_BOS_sr = "0.01"; }
     if ($F_sl_EOS == "0.00") { $F_sl_EOS = "0.01"; }
     if ($F_nl_EOS == "0.00") { $F_nl_EOS = "0.01"; }
     print SP "<s> $P_BOS_sr\n</s>_s $F_sl_EOS\n</s>_n $F_nl_EOS\noverall $sil_prob\n";
