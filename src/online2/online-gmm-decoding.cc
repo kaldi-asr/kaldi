@@ -23,6 +23,27 @@
 
 namespace kaldi {
 
+void OnlineGmmAdaptationState::Read(std::istream &in_stream, bool binary) {
+  ExpectToken(in_stream, binary, "<ONLINEGMMADAPTATIONSTATE>");
+  ExpectToken(in_stream, binary, "<TRANSFORM>");
+  transform.Read(in_stream, binary);
+  ExpectToken(in_stream, binary, "<CMVNSTATS>");
+  cmvn_state.Read(in_stream, binary);
+  ExpectToken(in_stream, binary, "<SPKSTATS>");
+  spk_stats.Read(in_stream, binary, false);
+  ExpectToken(in_stream, binary, "</ONLINEGMMADAPTATIONSTATE>");
+}
+
+void OnlineGmmAdaptationState::Write(std::ostream &out_stream, bool binary) const {
+  WriteToken(out_stream, binary, "<ONLINEGMMADAPTATIONSTATE>");
+  WriteToken(out_stream, binary, "<TRANSFORM>");
+  transform.Write(out_stream, binary);
+  WriteToken(out_stream, binary, "<CMVNSTATS>");
+  cmvn_state.Write(out_stream, binary);
+  WriteToken(out_stream, binary, "<SPKSTATS>");
+  spk_stats.Write(out_stream, binary);
+  WriteToken(out_stream, binary, "</ONLINEGMMADAPTATIONSTATE>");
+}
 
 SingleUtteranceGmmDecoder::SingleUtteranceGmmDecoder(
     const OnlineGmmDecodingConfig &config,

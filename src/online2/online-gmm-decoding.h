@@ -200,6 +200,12 @@ struct OnlineGmmAdaptationState {
   OnlineCmvnState cmvn_state;
   FmllrDiagGmmAccs spk_stats;
   Matrix<BaseFloat> transform;
+
+  // Writing and reading of the state of the object
+  void Write(std::ostream &out_stream, bool binary) const;
+  void Read(std::istream &in_stream, bool binary);
+
+
 };
 
 /**

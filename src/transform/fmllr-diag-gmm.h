@@ -116,6 +116,11 @@ class FmllrDiagGmmAccs: public AffineXformStats {
 
   // Note: we allow copy and assignment for this class.
 
+  // Note: you can use the inherited AffineXformStats::Read 
+  //       and AffineXformStats::Write methods for writing/reading
+  //       of the object. It is not necessary to store the other 
+  //       private variables of this class
+       
  private:
   // The things below, added in 2013, relate to an optimization that lets us
   // speed up accumulation if there are multiple active pdfs per frame
