@@ -387,6 +387,7 @@ int32 TcpServer::Accept() {
 
   socklen_t len;
 
+  len = sizeof(struct sockaddr);
   int32 client_desc = accept(server_desc_, (struct sockaddr*) &h_addr_, &len);
 
   struct sockaddr_storage addr;
