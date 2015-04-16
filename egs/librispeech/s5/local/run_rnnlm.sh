@@ -72,13 +72,13 @@ if [ $stage -le 3 ]; then
   echo "$0: Performing RNNLM rescoring on tri6b decoding results"
   for lm in tgsmall tgmed; do
     for devset in dev_clean dev_other; do
-      sourcedir=exp/tri6b/decode_pp_${lm}_${devset}
+      sourcedir=exp/tri6b/decode_${lm}_${devset}
       resultsdir=${sourcedir}_rnnlm_h${hidden}_me${maxent_order}-${maxent_size}
-      steps/rnnlmrescore.sh --rnnlm_ver $rnnlm_ver --N 100 0.5 data/lang_pp_test_$lm $rnnlmdir data/$devset $sourcedir ${resultsdir}_L0.5
+      steps/rnnlmrescore.sh --rnnlm_ver $rnnlm_ver --N 100 0.5 data/lang_test_$lm $rnnlmdir data/$devset $sourcedir ${resultsdir}_L0.5
       cp -r ${resultsdir}_L0.5 ${resultsdir}_L0.25
       cp -r ${resultsdir}_L0.5 ${resultsdir}_L0.75
-      steps/rnnlmrescore.sh --rnnlm_ver $rnnlm_ver --N 100 --stage 7 0.25 data/lang_pp_test_$lm $rnnlmdir data/$devset $sourcedir ${resultsdir}_L0.25
-      steps/rnnlmrescore.sh --rnnlm_ver $rnnlm_ver --N 100 --stage 7 0.75 data/lang_pp_test_$lm $rnnlmdir data/$devset $sourcedir ${resultsdir}_L0.75
+      steps/rnnlmrescore.sh --rnnlm_ver $rnnlm_ver --N 100 --stage 7 0.25 data/lang_test_$lm $rnnlmdir data/$devset $sourcedir ${resultsdir}_L0.25
+      steps/rnnlmrescore.sh --rnnlm_ver $rnnlm_ver --N 100 --stage 7 0.75 data/lang_test_$lm $rnnlmdir data/$devset $sourcedir ${resultsdir}_L0.75
     done
   done
 fi

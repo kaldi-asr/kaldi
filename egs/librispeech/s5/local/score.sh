@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+#           2014  Guoguo Chen
 # Apache 2.0
 
 [ -f ./path.sh ] && . ./path.sh
@@ -9,7 +10,7 @@ cmd=run.pl
 stage=0
 decode_mbr=true
 reverse=false
-word_ins_penalty=0.0
+word_ins_penalty=0.0,0.5,1.0
 min_lmwt=9
 max_lmwt=20
 #end configuration section.
@@ -43,25 +44,31 @@ mkdir -p $dir/scoring/log
 
 cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' > $dir/scoring/test_filt.txt
 
-$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
-  lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-  lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
-  lattice-best-path --word-symbol-table=$symtab \
-    ark:- ark,t:$dir/scoring/LMWT.tra || exit 1;
+for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.$wip.log \
+    lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+    lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
+    lattice-best-path --word-symbol-table=$symtab \
+      ark:- ark,t:$dir/scoring/LMWT.$wip.tra || exit 1;
+done
 
 if $reverse; then
-  for lmwt in `seq $min_lmwt $max_lmwt`; do
-    mv $dir/scoring/$lmwt.tra $dir/scoring/$lmwt.tra.orig
-    awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
-       <$dir/scoring/$lmwt.tra.orig >$dir/scoring/$lmwt.tra
+  for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+    for lmwt in `seq $min_lmwt $max_lmwt`; do
+      mv $dir/scoring/$lmwt.$wip.tra $dir/scoring/$lmwt.$wip.tra.orig
+      awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
+        <$dir/scoring/$lmwt.$wip.tra.orig >$dir/scoring/$lmwt.$wip.tra
+    done
   done
 fi
 
 # Note: the double level of quoting for the sed command
-$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
-   cat $dir/scoring/LMWT.tra \| \
+for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.$wip.log \
+    cat $dir/scoring/LMWT.$wip.tra \| \
     utils/int2sym.pl -f 2- $symtab \| sed 's:\<UNK\>::g' \| \
     compute-wer --text --mode=present \
-     ark:$dir/scoring/test_filt.txt  ark,p:- ">&" $dir/wer_LMWT || exit 1;
+    ark:$dir/scoring/test_filt.txt  ark,p:- ">&" $dir/wer_LMWT_$wip || exit 1;
+done
 
 exit 0;
