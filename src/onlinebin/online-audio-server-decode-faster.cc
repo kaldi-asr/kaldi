@@ -38,6 +38,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <ctime>
+#include <signal.h>
 
 namespace kaldi {
 /*
@@ -72,6 +73,7 @@ int32 main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
     typedef OnlineFeInput<Mfcc> FeInput;
     TcpServer tcp_server;
+    signal(SIGPIPE, SIG_IGN);
 
     // up to delta-delta derivative features are calculated (unless LDA is used)
     const int32 kDeltaOrder = 2;
