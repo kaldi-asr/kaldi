@@ -47,7 +47,7 @@ void InitGmmFromRandomFrames(const Matrix<BaseFloat> &feats, DiagGmm *gmm) {
   std::set<int32> used_frames;
   for (int32 g = 0; g < num_gauss; g++) {
     int32 random_frame = RandInt(0, num_frames - 1);
-    while (used_frames.count(random_frame != 0))
+    while (used_frames.count(random_frame) != 0)
       random_frame = RandInt(0, num_frames - 1);
     used_frames.insert(random_frame);
     gmm_normal.weights_(g) = 1.0 / num_gauss;
