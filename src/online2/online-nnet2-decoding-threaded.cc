@@ -144,6 +144,7 @@ SingleUtteranceNnet2DecoderThreaded::SingleUtteranceNnet2DecoderThreaded(
     if (c == NULL) { c = "[NULL]"; }
     KALDI_ERR << "Error creating thread, errno was: " << c;
   }
+  decoder_.InitDecoding();
   if ((ret=pthread_create(&(threads_[1]),
                           &pthread_attr, RunDecoderSearch,
                           (void*)this)) != 0) {
@@ -556,7 +557,6 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
 
 bool SingleUtteranceNnet2DecoderThreaded::RunDecoderSearchInternal() {
   int32 num_frames_decoded = 0;  // this is just a copy of decoder_->NumFramesDecoded();
-  decoder_.InitDecoding();
   while (true) {  // decode at most one frame each loop.
     if (!decodable_synchronizer_.Lock(ThreadSynchronizer::kConsumer))
       return false; // AbortAllThreads() called.
