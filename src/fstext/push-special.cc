@@ -23,89 +23,65 @@
 
 namespace fst {
 
+
 /*
-  In pushing algorithm:
-    Each state gets a potential, say p(s).  Initial state must have potential zero.
-    The states have transition probabilities to each other, call these w(s, t), and
-    final-probabilities f(s).  One special state is the initial state.
-    These are real probabilities, think of them like HMM transition probabilities; we'll
-    represent them as double.  Each state has a potential, p(s).
-    After taking into account the potentials, the weights transform
-       w(s, t) -->  w(s, t) / p(s) * p(t)
-    and the final-probs transform
-       f(s)  -->  f(s) / p(s).
-    The initial state's potential is fixed at 1.0.
-    Let us define a kind of normalizer for each state s as:
-       n(s) = f(s) + \sum_t w(s, t),
-    or taking into account the potentials, and treating the self-loop as special,
-       
-       n(s) =  f(s)/p(s) + \sum_t w(s, t) p(t) / p(s)
-            =  w(s, s) + (1/p(s)) f(s) + \sum_{t != s} w(s, t) p(t).         (Eq. 1)
-     
-    This should be one if the FST is stochastic (in the log semiring).
-    In fact not all FSTs can be made stochastic while preserving equivalence, so
-    in "PushSpecial" we settle for a different condition: that all the n(s) be the
-    same.  This means that the non-sum-to-one-ness of the FST is somehow smeared
-    out throughout the FST.  We want an algorithm that makes all the n(s) the same,
-    and we formulate it in terms of iteratively improving objective function.  The
-    objective function will be the sum-of-squared deviation of each of the n(s) from
-    their overall mean, i.e.
-       \sum_s  (n(s) - n_{avg})^2
-    where n_avg is the average of the n(s).  When we choose an s to optimize its p(s),
-    we'll minimize this function, but while minimizing it we'll treat n_{avg} as
-    a fixed quantitiy.  We can show that even though this is not 100% accurate, we
-    still end up minimizing the objective function (i.e. we still decrease the
-    sum-of-squared difference).
-    
-    Suppose we choose some s for which to tweak p(s). [naturally s cannot be the start
-    state].  Firstly, we assume n_{avg} is a known and fixed quantity.  When we
-    change p(s) we alter n(s) and also n(t) for all states t != s that have a transition
-    into s (i.e. w(s, t) != 0).  Let's write p(s) for the current value of p(s),
-    and p'(s) for the value we'll replace it with, and use similar notation for
-    the n(s).  We'll write out the part of the objective function that involves p(s),
-    and this is:
 
-     F =  (n(s) - n_{avg})^2  +  \sum_{t != s}  (n(t) - n_{avg})^2.
+  This algorithm was briefly described in "COMBINING FORWARD AND BACKWARD SEARCH
+  IN DECODING" by Hannemann and Povey, ICASSP 2013,
+  http://www.danielpovey.com/files/2013_icassp_pingpong.pdf
 
-    Here, n_{avg} is treated as fixed.  We can write n(s) as:
-       n(s) = w(s, s) + k(s) / p(s)
-    where k(s) = f(s) + \sum_{t != s) w(s, t) p(t),
-    but note that if we have n(s) already, k(s) can be computed by:
-         k(s) = (n(s) - w(s, s)) * p(s)
+  Below is the most relevant excerpt of the LaTeX source.
 
-    We can write n(t) [for t != s] as:
-       n(t) = j(t) + w(t, s)/p(t) p(s)
-    and
-       j(t) = w(t, t) + (1/p(t)) \sum_{u != s, u != t} w(t, u) p(u)
-    but in practice if we have the normalizers n(t) up to date,
-    we can compute it more efficiently as
-       j(t) = n(t) - w(t, s)/p(t) p(s)                      (Eq. 2)
-       
+Real backoff language models represented as WFSTs (\cite{Mohri:08}) will not
+exactly sum to one because the backoff structure leads to duplicate paths for
+some word sequences.  In fact, such language models cannot be pushed at all in
+the general case, because the total weight of the entire WFST may not be finite.
+For our language model reversal we need a suitable pushing operation that will
+always succeed.
 
-    Now let's imagine we did the substitutions for n(s) and n(t), and we'll
-    write out the terms in F that are functions of p(s).  We have:
+Our solution is to require a modified pushing operation such that each state
+``sums to'' the same quantity.
+We were able to find an iterative algorithm that does this very efficiently in practice;
+it is based on the power method for finding the top eigenvalue of a matrix.
+Both for the math and the implementation, we find it more convenient to
+use the probability semiring, i.e. we represent the transition-probabilities
+as actual probabilities, not negative logs.
+Let the transitions be written as a sparse matrix $\mathbf{P}$,
+where $p_{ij}$ is the sum of all the probabilities of transitions between state $i$ and state $j$.
+As a special case, if $j$ is the initial state,
+then $p_{ij}$ is the final-probability of state $i$.
+In our method we find the dominant eigenvector $\mathbf{v}$ of the matrix $\mathbf{P}$,
+by starting from a random positive vector and iterating with the power method:
+each time we let $\mathbf{v} \leftarrow \mathbf{P} \mathbf{v}$
+and then renormalize the length of $\mathbf{v}$.
+It is convenient to renormalize $\mathbf{v}$ so that $v_I$ is 1,
+where $I$ is the initial state of the WFST\footnote{Note: in order to correctly
+deal with the case of linear WFSTs, which have different eigenvalues
+with the same magnitude but different complex phase,
+we modify the iteration to $\mathbf{v} \leftarrow \mathbf{P} \mathbf{v} + 0.1 \mathbf{v}$.}.
+This generally converges within several tens of iterations.
+At the end we have a vector $\mathbf{v}$ with $v_I = 1$, and a scalar $\lambda > 0$, such that
+\begin{equation}
+  \lambda \mathbf{v} = \mathbf{P} \mathbf{v} .  \label{eqn:lambdav}
+\end{equation}
+Suppose we compute a modified transition matrix $\mathbf{P}'$, by letting
+\begin{equation}
+  p'_{ij} = p_{ij} v_j / v_i .
+\end{equation}
+Then it is easy to show each row of $\mathbf{P}'$ sums to $\lambda$:
+writing one element of Eq.~\ref{eqn:lambdav} as
+\begin{equation}
+ \lambda v_i = \sum_j p_{ij} v_j,
+\end{equation}
+it easily follows that $\lambda = \sum_j p'_{ij}$.
+We need to perform a similar transformation on the transition-probabilities and
+final-probabilities of the WFST; the details are quite obvious, and the
+equivalence with the original WFST is easy to show.  Our algorithm is in
+practice an order of magnitude faster than the more generic algorithm for
+conventional weight-pushing of \cite{Mohri:02}, when applied to cyclic WFSTs.
+  
+ */
 
-       F =                         k(s)^2  p(s)^{-2}
-             + 2 k(s) (w(s, s) -  n_{avg}) p(s)^{-1}
-             + [constant term that doesn't matter]
-+ (\sum_t 2(j(t) - n_{avg})(w(t, s)/p(t))  p(s)
-             + (\sum_t  (w(t, s)/p(t))^2 ) p(s)^2                 (Eq. 3)
-
-    Note that the {-2} and {+2} power terms are both positive, and this means
-    that F will get large as p(s) either gets too large or too small.  This is
-    comforting because we want to minimize F.  Let us write the four coefficients
-    above as c_{-2}, c_{-1}, c_1 and c_2.   The minimum of F can be found where
-    the derivative of F w.r.t. p(s) is zero.  Here, let's just call it p for short.
-    This will be where:
-     d/dp  c_{-2} p^{-2} + c_{-1} p^{-1} + c_1 p + c_2 p^2  = 0
-            -2 c_{-2} p^{-3} - c_{-1} p^{-2} + c_1 + c_2 p  = 0 .
-    Technically we can solve this type of formula by means of the quartic equations,
-    but these take up pages and pages.  Instead we'll use a one-dimensional form
-    of Newton's method, computing the derivative and second derivative by differentiating the
-    formula.
-
-*/
-            
 class PushSpecialClass {
   typedef StdArc Arc;
   typedef Arc::Weight Weight;

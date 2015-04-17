@@ -1,6 +1,6 @@
 // fstext/push-special.h
 
-// Copyright 2012  Johns Hopkins Universithy (author: Daniel Povey)
+// Copyright 2012-2015  Johns Hopkins Universithy (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -32,7 +32,7 @@ namespace fst {
   gets distributed evenly along the FST, and doesn't end up either
   at the start or at the end.  Basically it pushes the weights such
   that the total weight of each state (i.e. the sum of the arc
-  probabilities plus the final-prob) is the same for all states.
+  probabilities plus the final-prob) is the same for all states.  
 */
 
 void PushSpecial(VectorFst<StdArc> *fst,
