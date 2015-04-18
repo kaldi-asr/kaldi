@@ -16,6 +16,7 @@ num_iters=20
 impr_thres=0.002
 stage=-10
 cleanup=true
+select_top_frames=true
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -100,12 +101,21 @@ while IFS=$'\n' read line; do
   feats="ark:echo \$line | copy-feats scp:- ark:- |"
   utt_id=\$(echo \$line | awk '{print \$1}')
 
-  gmm-global-init-from-feats --num-gauss=$speech_num_gauss --num-iters=10 \
-    "\$feats select-voiced-frames ark:- scp:$data/vad.scp ark:- |" \
-    $dir/\$utt_id.speech.0.mdl || exit 1
-  gmm-global-init-from-feats --num-gauss=$sil_num_gauss --num-iters=6 \
-    "\$feats select-voiced-frames --select-unvoiced-frames=true ark:- scp:$data/vad.scp ark:- |" \
-    $dir/\$utt_id.silence.0.mdl || exit 1
+  if ! $select_top_frames; then
+    gmm-global-init-from-feats --num-gauss=$speech_num_gauss --num-iters=10 \
+      "\$feats select-voiced-frames ark:- scp:$data/vad.scp ark:- |" \
+      $dir/\$utt_id.speech.0.mdl || exit 1
+    gmm-global-init-from-feats --num-gauss=$sil_num_gauss --num-iters=6 \
+      "\$feats select-voiced-frames --select-unvoiced-frames=true ark:- scp:$data/vad.scp ark:- |" \
+      $dir/\$utt_id.silence.0.mdl || exit 1
+  else
+    gmm-global-init-from-feats --num-gauss=$speech_num_gauss --num-iters=12 \
+      "\$feats select-top-frames --top-frames-proportion=0.16 ark:- ark:- |" \
+      $dir/\$utt_id.speech.0.mdl || exit 1
+    gmm-global-init-from-feats --num-gauss=$sil_num_gauss --num-iters=8 \
+      "\$feats select-top-frames --bottom-frames-proportion=0.04 --top-frames-proportion=0.0 ark:- ark:- |" \
+      $dir/\$utt_id.silence.0.mdl || exit 1
+  fi
 
   {
     cat $dir/trans.mdl
@@ -136,13 +146,13 @@ while IFS=$'\n' read line; do
     x=\$[x+1]
   done
 
-  gmm-decode-simple \
-    --allow-partial=true --word-symbol-table=$dir/graph/words.txt \
-    $dir/\$utt_id.\$x.mdl $dir/graph/HCLG.fst \
-    "\$feats" ark:/dev/null ark:$dir/\$utt_id.\$x.ali || exit 1
-
   rm -f $dir/\$utt_id.final.mdl 2>/dev/null || true
   cp $dir/\$utt_id.\$x.mdl $dir/\$utt_id.final.mdl 
+  
+  gmm-decode-simple \
+    --allow-partial=true --word-symbol-table=$dir/graph/words.txt \
+    $dir/\$utt_id.final.mdl $dir/graph/HCLG.fst \
+    "\$feats" ark:/dev/null ark:$dir/\$utt_id.final.ali || exit 1
 done < $data/split$nj/$n/feats.scp
 EOF
 done
