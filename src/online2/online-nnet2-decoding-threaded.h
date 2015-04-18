@@ -201,10 +201,17 @@ class SingleUtteranceNnet2DecoderThreaded {
       const OnlineNnet2FeaturePipelineInfo &feature_info,
       const OnlineIvectorExtractorAdaptationState &adaptation_state);
 
+
+  
   /// You call this to provide this class with more waveform to decode.  This
   /// call is, for all practical purposes, non-blocking.
   void AcceptWaveform(BaseFloat samp_freq,
                       const VectorBase<BaseFloat> &wave_part);
+
+  /// Returns the number of pieces of waveform that are still waiting to be
+  /// processed.  This may be useful for calling code to judge whether to supply
+  /// more waveform or to wait.
+  int32 NumWaveformPiecesPending();
 
   /// You call this to inform the class that no more waveform will be provided;
   /// this allows it to flush out the last few frames of features, and is
@@ -285,6 +292,12 @@ class SingleUtteranceNnet2DecoderThreaded {
   /// You may only call this function after either calling TerminateDecoding() or
   /// InputFinished, and then Wait().  Otherwise it is an error.
   void GetAdaptationState(OnlineIvectorExtractorAdaptationState *adaptation_state);
+
+  /// Gets the remaining, un-decoded part of the waveform and returns the sample
+  /// rate.  May only be called after Wait(), and it only makes sense to call
+  /// this if you called TerminateDecoding() before Wait().  The idea is that
+  /// you can then provide this un-decoded piece of waveform to another decoder.
+  BaseFloat GetRemainingWaveform(Vector<BaseFloat> *waveform_out) const;
   
   ~SingleUtteranceNnet2DecoderThreaded();
  private:
@@ -349,6 +362,8 @@ class SingleUtteranceNnet2DecoderThreaded {
   // sampling_rate_ is only needed for checking that it matches the config.
   bool input_finished_;
   std::deque< Vector<BaseFloat>* > input_waveform_;
+
+  
   ThreadSynchronizer waveform_synchronizer_;
   
   // feature_pipeline_ is accessed by the nnet-evaluation thread, by the main
@@ -357,6 +372,15 @@ class SingleUtteranceNnet2DecoderThreaded {
   // guarded by feature_pipeline_mutex_.
   OnlineNnet2FeaturePipeline feature_pipeline_;
   Mutex feature_pipeline_mutex_;
+
+  // The next two variables are required only for implementation of the function
+  // GetRemainingWaveform().  After we take waveform from the input_waveform_
+  // queue to be processed into features, we put them onto this deque.  Then we
+  // discard from this queue any that we can discard because we have already
+  // decoded those frames (see num_frames_decoded_), and we increment
+  // num_samples_discarded_ by the corresponding number of samples.
+  std::deque< Vector<BaseFloat>* > processed_waveform_;
+  int64 num_samples_discarded_;
 
   // This object is used to control the (optional) downweighting of silence in iVector estimation,
   // which is based on the decoder traceback.

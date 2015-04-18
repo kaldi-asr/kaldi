@@ -166,6 +166,11 @@ fortran_opt = $(shell gcc -v 2>&1 | perl -e '$$x = join(" ", <STDIN>); if($$x =~
 # if you want Open Blas to use multiple threads.  then you could set,
 # for example, OPENBLAS_NUM_THREADS=2 in your path.sh so that the
 # runtime knows how many threads to use.
+# Note: if you ever get the error "Program is Terminated. Because you tried to
+# allocate too many memory regions.", this is because OpenBLAS has a fixed
+# buffer size for the number of threads and you might have gone beyond that.  It
+# may possibly help to add e.g. NUM_THREADS=64 to the command line below (after
+# $(MAKE)).
 openblas_compiled:
 	-git clone git://github.com/xianyi/OpenBLAS
 	cd OpenBLAS; sed 's:# FCOMMON_OPT = -frecursive:FCOMMON_OPT = -frecursive:' < Makefile.rule >tmp && mv tmp Makefile.rule

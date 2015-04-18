@@ -219,6 +219,15 @@ int main(int argc, char *argv[]) {
                                                          : samp_remaining;
           
           SubVector<BaseFloat> wave_part(data, samp_offset, num_samp);
+
+          // The endpointing code won't work if we let the waveform be given to
+          // the decoder all at once, because we'll exit this while loop, and
+          // the endpointing happens inside this while loop.  The next statement
+          // is intended to prevent this from happening.
+          while (do_endpointing &&
+                 decoder.NumWaveformPiecesPending() * chunk_length_secs > 2.0)
+            Sleep(0.5);
+          
           decoder.AcceptWaveform(samp_freq, wave_part);
           
           samp_offset += num_samp;

@@ -119,6 +119,7 @@ SingleUtteranceNnet2DecoderThreaded::SingleUtteranceNnet2DecoderThreaded(
   config_(config), am_nnet_(am_nnet), tmodel_(tmodel), sampling_rate_(0.0),
   num_samples_received_(0), input_finished_(false),
   feature_pipeline_(feature_info),
+  num_samples_discarded_(0),
   silence_weighting_(tmodel, feature_info.silence_weighting_config),
   decodable_(tmodel),
   num_frames_decoded_(0), decoder_(fst, config_.decoder_opts),
@@ -176,6 +177,10 @@ SingleUtteranceNnet2DecoderThreaded::~SingleUtteranceNnet2DecoderThreaded() {
     delete input_waveform_.front();
     input_waveform_.pop_front();
   }
+  while (!processed_waveform_.empty()) {
+    delete processed_waveform_.front();
+    processed_waveform_.pop_front();
+  }
 }
 
 void SingleUtteranceNnet2DecoderThreaded::AcceptWaveform(
@@ -199,6 +204,22 @@ void SingleUtteranceNnet2DecoderThreaded::AcceptWaveform(
   // for the waveform so no reason why we might wait.
   waveform_synchronizer_.UnlockSuccess(ThreadSynchronizer::kProducer);
 }
+
+int32 SingleUtteranceNnet2DecoderThreaded::NumWaveformPiecesPending() {
+  // Note RE locking: what we really want here is just to lock the mutex.  As a
+  // side effect, because of the way the synchronizer code works, it will also
+  // increment the semaphore and might wake up the consumer thread.  This will
+  // possibly make it do a little useless work (go around a loop once), but
+  // won't really do any harm.  Perhaps we should have implemented a version of
+  // the Lock function that takes no arguments.
+  if (!waveform_synchronizer_.Lock(ThreadSynchronizer::kProducer)) {
+    KALDI_ERR << "Failure locking mutex: decoding aborted.";
+  }
+  int32 ans = input_waveform_.size();
+  waveform_synchronizer_.UnlockSuccess(ThreadSynchronizer::kProducer);
+  return ans;
+}
+
 
 int32 SingleUtteranceNnet2DecoderThreaded::NumFramesReceivedApprox() const {
   return num_samples_received_ /
@@ -237,6 +258,55 @@ void SingleUtteranceNnet2DecoderThreaded::FinalizeDecoding() {
   decoder_.FinalizeDecoding();
 }
 
+BaseFloat SingleUtteranceNnet2DecoderThreaded::GetRemainingWaveform(
+    Vector<BaseFloat> *waveform) const {
+  if (KALDI_PTHREAD_PTR(threads_[0]) != 0) {
+    KALDI_ERR << "It is an error to call GetRemainingWaveform before Wait().";
+  }
+  int64 num_samples_stored = 0;  // number of samples we still have.
+  std::vector< Vector<BaseFloat>* > all_pieces;
+  std::deque< Vector<BaseFloat>* >::const_iterator iter;
+  for (iter = input_waveform_.begin(); iter != input_waveform_.end(); ++iter) {
+    num_samples_stored += (*iter)->Dim();
+    all_pieces.push_back(*iter);
+  }
+  for (iter = processed_waveform_.begin(); iter != processed_waveform_.end();
+       ++iter) {
+    num_samples_stored += (*iter)->Dim();
+    all_pieces.push_back(*iter);
+  }
+  // put the pieces in chronological order.
+  std::reverse(all_pieces.begin(), all_pieces.end());
+  int64 samples_shift_per_frame =
+      sampling_rate_ * feature_pipeline_.FrameShiftInSeconds();
+  int64 num_samples_to_discard = samples_shift_per_frame * num_frames_decoded_;
+  KALDI_ASSERT(num_samples_to_discard >= num_samples_discarded_);
+
+  // num_samp_discard is how many samples we must discard from our stored
+  // samples.
+  int64 num_samp_discard = num_samples_to_discard - num_samples_discarded_,
+      num_samp_keep = num_samples_stored - num_samp_discard;
+  KALDI_ASSERT(num_samp_discard <= num_samples_stored && num_samp_keep >= 0);
+  waveform->Resize(num_samp_keep, kUndefined);
+  int32 offset = 0; // offset in output waveform.  assume output waveform is no
+                    // larger than int32.
+  for (size_t i = 0; i < all_pieces.size(); i++) {
+    Vector<BaseFloat> *this_piece = all_pieces[i];
+    int32 this_dim = this_piece->Dim();
+    if (num_samp_discard >= this_dim) {
+      num_samp_discard -= this_dim;
+    } else {
+      // normal case is num_samp_discard = 0.
+      int32 this_dim_keep = this_dim - num_samp_discard;
+      waveform->Range(offset, this_dim_keep).CopyFromVec(
+          this_piece->Range(num_samp_discard, this_dim_keep));
+      offset += this_dim_keep;
+      num_samp_discard = 0;
+    }
+  }
+  KALDI_ASSERT(offset == num_samp_keep && num_samp_discard == 0);
+  return sampling_rate_;
+}
 
 void SingleUtteranceNnet2DecoderThreaded::GetAdaptationState(
     OnlineIvectorExtractorAdaptationState *adaptation_state) {
@@ -413,10 +483,22 @@ bool SingleUtteranceNnet2DecoderThreaded::FeatureComputation(
       while (num_frames_usable < config_.nnet_batch_size &&
              !input_waveform_.empty()) {
         feature_pipeline_.AcceptWaveform(sampling_rate_, *input_waveform_.front());
-        delete input_waveform_.front();
+        processed_waveform_.push_back(input_waveform_.front());
         input_waveform_.pop_front();
         num_frames_ready = feature_pipeline_.NumFramesReady();
         num_frames_usable = num_frames_ready - num_frames_output;
+      }
+      // Delete already-processed pieces of waveform if we have already decoded
+      // those frames.  (If not already decoded, we keep them around for the
+      // sake of GetRemainingWaveform()).
+      int32 samples_shift_per_frame =
+          sampling_rate_ * feature_pipeline_.FrameShiftInSeconds();
+      while (!processed_waveform_.empty() &&
+             num_samples_discarded_ + processed_waveform_.front()->Dim() <
+             samples_shift_per_frame * num_frames_decoded_) {
+        num_samples_discarded_ += processed_waveform_.front()->Dim();
+        delete processed_waveform_.front();
+        processed_waveform_.pop_front();
       }
       return waveform_synchronizer_.UnlockSuccess(ThreadSynchronizer::kConsumer);
     }
@@ -605,4 +687,3 @@ bool SingleUtteranceNnet2DecoderThreaded::EndpointDetected(
 
 
 }  // namespace kaldi
-
