@@ -64,8 +64,9 @@ void FixNnet(const NnetFixConfig &config, Nnet *nnet) {
       KALDI_ASSERT(deriv_ratio >= 0.0 && deriv_ratio < 1.01); // Or there is an
                                                               // error in the
       // math.
-      if (deriv_ratio < config.min_average_deriv) { // derivative is too small, meaning
-        // we've gone off into the "flat part" of the sigmoid.
+      if (deriv_ratio < config.min_average_deriv) {
+        // derivative is too small, meaning we've gone off into the "flat part"
+        // of the sigmoid (or for ReLU, we're always-off).
         if (is_relu) {
           bias_params(d) += config.relu_bias_change;
         } else {
@@ -77,19 +78,25 @@ void FixNnet(const NnetFixConfig &config, Nnet *nnet) {
           linear_params.Row(d).Scale(1.0 / parameter_factor);
         }
         num_reduced++;
-      } else if (deriv_ratio > config.max_average_deriv && !is_relu) { // derivative is too large,
-        // meaning we're only in the linear part of the sigmoid, in the middle.
-        BaseFloat parameter_factor = std::min(deriv_ratio / config.max_average_deriv,
-                                              config.parameter_factor);
-        // we need to increase the factors, so multiply by parameter_factor.
-        bias_params(d) *= parameter_factor;
-        linear_params.Row(d).Scale(parameter_factor);
+      } else if (deriv_ratio > config.max_average_deriv && !is_relu) {
+        // derivative is too large, meaning we're only in the linear part of the
+        // sigmoid, in the middle.  (or for ReLU, we're always-on.
+        if (is_relu) {
+          bias_params(d) -= config.relu_bias_change;
+        } else {
+          BaseFloat parameter_factor = std::min(deriv_ratio / config.max_average_deriv,
+                                                config.parameter_factor);
+          // we need to increase the factors, so multiply by parameter_factor.
+          bias_params(d) *= parameter_factor;
+          linear_params.Row(d).Scale(parameter_factor);
+        }
         num_increased++;
       }
     }
     if (is_relu) {
-      KALDI_LOG << "For layer " << c << " (ReLU units), changed bias for "
-                << num_reduced << " indexes, out of a total of " << dim;
+      KALDI_LOG << "For layer " << c << " (ReLU units), increased bias for "
+                << num_reduced << " indexes and increased it for "
+                << num_increased << ", out of a total of " << dim;
     } else {
       KALDI_LOG << "For layer " << c << ", decreased parameters for "
                 << num_reduced << " indexes, and increased them for "
