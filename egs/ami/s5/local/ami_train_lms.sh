@@ -103,7 +103,7 @@ if [ ! -z "$fisher" ]; then
     && exit 1;
   mkdir -p $dir/fisher
 
-  find $fisher -path '*/trans/*fe*.txt' -exec cat {} \; | grep -v ^# | grep -v ^$ \
+  find $fisher -follow -path '*/trans/*fe*.txt' -exec cat {} \; | grep -v ^# | grep -v ^$ \
     | cut -d' ' -f4- | gzip -c > $dir/fisher/text0.gz
   gunzip -c $dir/fisher/text0.gz | fisher_map_words.pl \
     | gzip -c > $dir/fisher/text1.gz

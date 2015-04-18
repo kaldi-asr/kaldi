@@ -34,9 +34,16 @@ fi
 
 data=$1
 
-if [ -f $data/stm ]; then # use sclite scoring.
-  eval local/score_asclite.sh --asclite $asclite $orig_args
+if [ `echo $data | awk -F '/' '{print $2}'` = ihm ]; then
+    echo "use standard scoring took for ihm (close talk)"
+    eval steps/score_kaldi.sh $orig_args
+elif [[ `echo $data | awk -F '/' '{print $2}'` =~ sdm* ]]; then
+    echo "use asclite for overlapped speech sdm condition"
+    eval local/score_asclite.sh --asclite $asclite $orig_args
+elif [ `echo $data | awk -F '/' '{print $2}'` = mdm ]; then
+    echo "use asclite for overlapped speech mdm condition"
+    eval local/score_asclite.sh --asclite $asclite $orig_args
 else
-  echo "$data/stm does not exist: using local/score_basic.sh"
-  eval local/score_basic.sh $orig_args
+  echo "local/score.sh: no ihm/sdm/mdm directories found. AMI recipe assumes data/{ihm,sdm,md}/... "
+  exit 1;
 fi

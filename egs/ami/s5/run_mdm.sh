@@ -118,7 +118,7 @@ done
 
 
 # skip SAT, and build MMI models
-steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.config \
+steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
     data/$mic/train data/lang exp/$mic/tri3a exp/$mic/tri3a_denlats  || exit 1;
 
 
@@ -151,6 +151,8 @@ for lm_suffix in $LM; do
   )
 done
 
-# here goes hybrid stuf
-# in the ASRU paper we used different python nnet code, so someone needs to copy&adjust nnet or nnet2 switchboard commands
+# DNN training. This script is based on egs/swbd/s5b/local/run_dnn.sh
+# Some of them would be out of date.
+local/run_dnn.sh $mic
+
 

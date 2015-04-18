@@ -29,7 +29,7 @@ LM=$final_lm.pr1-7
 DEV_SPK=$((`cut -d" " -f2 data/$mic/dev/utt2spk | sort | uniq -c | wc -l`))
 EVAL_SPK=$((`cut -d" " -f2 data/$mic/eval/utt2spk | sort | uniq -c | wc -l`))
 echo $DEV_SPK $EVAL_SPK
-nj=16
+nj=30
 
 #GENERATE FEATS
 mfccdir=mfcc_$mic
@@ -51,7 +51,7 @@ for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
 
 # TRAIN THE MODELS
  mkdir -p exp/$mic/mono
- steps/train_mono.sh --nj $nj --cmd "$train_cmd" --feat-dim 39 \
+ steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
    data/$mic/train data/lang exp/$mic/mono >& exp/$mic/mono/train_mono.log || exit 1;
 
  mkdir -p exp/$mic/mono_ali
@@ -83,7 +83,7 @@ for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
    
     steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.conf \
       $graph_dir data/$mic/eval exp/$mic/tri2a/decode_eval_${lm_suffix} 
-  ) 
+  ) &
  done
 
 #THE TARGET LDA+MLLT+SAT+BMMI PART GOES HERE:
@@ -109,11 +109,11 @@ for lm_suffix in $LM; do
 
     steps/decode.sh --nj $EVAL_SPK --cmd "$decode_cmd" --config conf/decode.conf \
       $graph_dir data/$mic/eval exp/$mic/tri3a/decode_eval_${lm_suffix} 
-  ) 
+  ) &
 done
 
 # skip SAT, and build MMI models
-steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.config \
+steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
     data/$mic/train data/lang exp/$mic/tri3a exp/$mic/tri3a_denlats  || exit 1;
 
 
@@ -209,6 +209,8 @@ for lm_suffix in $LM; do
   )&
 done
 
-# here goes hybrid stuf
-# in the ASRU paper we used different python nnet code, so someone needs to copy&adjust nnet or nnet2 switchboard commands
+# DNN training. This script is based on egs/swbd/s5b/local/run_dnn.sh
+# Some of them would be out of date.
+local/run_dnn.sh $mic
+
 

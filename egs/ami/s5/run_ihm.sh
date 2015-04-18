@@ -26,7 +26,6 @@ norm_vars=false
 local/ami_download.sh ihm $AMI_DIR || exit 1;
 
 #2) Data preparation
-
 local/ami_text_prep.sh $AMI_DIR
 
 local/ami_ihm_data_prep.sh $AMI_DIR || exit 1;
@@ -43,7 +42,7 @@ local/ami_train_lms.sh --fisher $FISHER_TRANS data/ihm/train/text data/ihm/dev/t
 
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
-nj=16
+nj=30
 
 prune-lm --threshold=1e-7 data/local/lm/$final_lm.gz /dev/stdout | \
    gzip -c > data/local/lm/$LM.gz
@@ -75,10 +74,10 @@ wait;
 for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
 
 # 4) Train systems
- nj=16
+ nj=30
 
  mkdir -p exp/$mic/mono
- steps/train_mono.sh --nj $nj --cmd "$train_cmd" --feat-dim 39 --norm-vars $norm_vars \
+ steps/train_mono.sh --nj $nj --cmd "$train_cmd" --norm-vars $norm_vars \
    data/$mic/train data/lang exp/$mic/mono >& exp/$mic/mono/train_mono.log || exit 1;
 
  mkdir -p exp/$mic/mono_ali
@@ -100,7 +99,7 @@ for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
   >& exp/$mic/tri2a/train.log || exit 1;
 
  for lm_suffix in $LM; do
-#  (
+  (
     graph_dir=exp/$mic/tri2a/graph_${lm_suffix}
     $highmem_cmd $graph_dir/mkgraph.log \
       utils/mkgraph.sh data/lang_${lm_suffix} exp/$mic/tri2a $graph_dir
@@ -111,7 +110,7 @@ for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
     steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
       $graph_dir data/$mic/eval exp/$mic/tri2a/decode_eval_${lm_suffix} 
 
-#  ) &
+  ) &
  done
 
 mkdir -p exp/$mic/tri2a_ali
@@ -136,7 +135,7 @@ for lm_suffix in $LM; do
 
     steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
       $graph_dir data/$mic/eval exp/$mic/tri3a/decode_eval_${lm_suffix} 
-  ) 
+  ) &
 done
 
 # Train tri4a, which is LDA+MLLT+SAT
@@ -159,9 +158,9 @@ for lm_suffix in $LM; do
 
     steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
       $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${lm_suffix} 
-  ) 
+  ) &
 done
-exit;
+
 # MMI training starting from the LDA+MLLT+SAT systems
 steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
   data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_ali || exit 1
@@ -183,22 +182,18 @@ for lm_suffix in $LM; do
     graph_dir=exp/$mic/tri4a/graph_${lm_suffix}
     
     for i in `seq 1 4`; do
-         decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_dev_${i}.mdl_${lm_suffix}
+      decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_dev_${i}.mdl_${lm_suffix}
       steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
         --transform-dir exp/$mic/tri4a/decode_dev_${lm_suffix} --iter $i \
         $graph_dir data/$mic/dev $decode_dir 
+      decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_eval_${i}.mdl_${lm_suffix}
+      steps/decode.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
+        --transform-dir exp/$mic/tri4a/decode_eval_${lm_suffix} --iter $i \
+        $graph_dir data/$mic/eval $decode_dir 
     done
-    
-    i=3 #simply assummed
-    decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_eval_${i}.mdl_${lm_suffix}
-    steps/decode.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
-      --transform-dir exp/$mic/tri4a/decode_eval_${lm_suffix} --iter $i \
-      $graph_dir data/$mic/eval $decode_dir 
-  )
+  ) &
 done
 
-# here goes hybrid stuf
-# in the ASRU paper we used different python nnet code, so someone needs to copy&adjust nnet or nnet2 switchboard commands
-
-
-
+# DNN training. This script is based on egs/swbd/s5b/local/run_dnn.sh
+# Some of them would be out of date.
+local/run_dnn.sh $mic
