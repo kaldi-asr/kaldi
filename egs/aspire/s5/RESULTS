@@ -24,3 +24,6 @@ for x in exp/*/decode_dev; do grep WER $x/wer_* | utils/best_wer.sh; done
 %WER 18.23 [ 7195 / 39477, 980 ins, 1844 del, 4371 sub ] exp/nnet2_multicondition/nnet_ms_c/decode_test/wer_11
 %WER 24.83 [ 9621 / 38753, 1149 ins, 2344 del, 6128 sub ] exp/nnet2_multicondition/nnet_ms_c/decode_dev_rvb/wer_10
 %WER 24.70 [ 9752 / 39477, 1067 ins, 2477 del, 6208 sub ] exp/nnet2_multicondition/nnet_ms_c/decode_test_rvb/wer_11
+
+%WER 30.8 | 2120 27213 | 75.3 16.2 8.4 6.2 30.8 78.8 | -0.724 | exp/nnet2_multicondition/nnet_ms_a/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_iterfinal_pp_fg/score_13/penalty_0.0/ctm.filt.filt.sys
+72.30 score dev_test for leaderboard

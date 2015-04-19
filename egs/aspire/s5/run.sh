@@ -1,6 +1,6 @@
+#!/bin/bash
 
 #  ASpIRE submission, based on Fisher-english GMM-HMM system
-# 
 # (March 2015)
 
 # It's best to run the commands in this one by one.

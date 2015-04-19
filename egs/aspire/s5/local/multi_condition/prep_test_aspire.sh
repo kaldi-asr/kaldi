@@ -297,6 +297,7 @@ if  $tune_hyper ; then
         echo \$wip \&\& \
         $decode_cmd LMWT=$min_lmwt:$max_lmwt $decode_dir/scoring/log/score.LMWT.\$wip.log \
           local/multi_condition/get_ctm.sh --filter-ctm-command "$filter_ctm_command" \
+            --window $window --overlap $overlap \
             --beam $ctm_beam --decode-mbr $decode_mbr \
             --glm data/${act_data_dir}/glm --stm data/${act_data_dir}/stm \
           LMWT \$wip $lang data/${segmented_data_dir}_hires $model $decode_dir || exit 1; 

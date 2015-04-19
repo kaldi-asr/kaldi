@@ -67,9 +67,9 @@ echo $job_id > $dest/num_jobs
 num_jobs=$job_id
 if [ ! -z "$ref_data_dir" ]; then
   # redistribute the alignments into gz files so that each ali.*.gz file has 
-  # same utterances as corresponding feats.scp in ref_data_dir
+  # same utterances as corresponding utt2spk in ref_data_dir
   temp_dir=$dest/temp1
-  echo "Resplitting the ali.*.gz files to correspond to $ref_data_dir/split*/*/feats.scp files"
+  echo "Resplitting the ali.*.gz files to correspond to $ref_data_dir/split*/*/utt2spk files"
   mkdir -p $temp_dir
   cat <<EOF >$temp_dir/create_ali_utt_index.sh
    JOB=\$1
@@ -85,7 +85,7 @@ EOF
 import sys, subprocess, glob, os
 
 def ali_utt_index_filename(pattern):
-  ali_utt_files = glob.glob('exp/tri5a_rvb_ali/temp1/ali_utt_index.*')
+  ali_utt_files = glob.glob('$dest/temp1/ali_utt_index.*')
   if not len(ali_utt_files) > 0:
     raise Exception("ali_utt_index files are missing")
   ali_utt_files = " ".join(ali_utt_files)
@@ -144,7 +144,7 @@ if __name__ == "__main__":
   print proc.communicate()
 EOF
 
-  # split the ref_data_dir to get reference feats.scp for individual ali.JOB.gz files
+  # split the ref_data_dir to get reference utt2spk for individual ali.JOB.gz files
   utils/split_data.sh $ref_data_dir $num_jobs
   
   $decode_cmd -v PATH JOB=1:$num_jobs $temp_dir/create_new_ali.JOB.run.log \
@@ -154,10 +154,10 @@ EOF
 
 # check the alignment files generated have at least 98% of the utterances
   for i in `seq 1 $num_jobs`; do
-    gunzip -c $temp_dir/ali.$i.gz| awk '{print $1}' > ali_list
-    awk '{print $1}' $ref_data_dir/split$num_jobs/$i/utt2spk > feat_list
-    num_diff_lines=`diff ali_list feat_list | wc -l`
-    num_lines=`cat feat_list|wc -l`
+    gunzip -c $temp_dir/ali.$i.gz| awk '{print $1}' > $temp_dir/ali_list
+    awk '{print $1}' $ref_data_dir/split$num_jobs/$i/utt2spk >$temp_dir/feat_list
+    num_diff_lines=`diff $temp_dir/ali_list $temp_dir/feat_list | wc -l`
+    num_lines=`cat $temp_dir/feat_list|wc -l`
     python -c "import sys;
 percent = float($num_diff_lines)/$num_lines*100
 if percent > 2 :

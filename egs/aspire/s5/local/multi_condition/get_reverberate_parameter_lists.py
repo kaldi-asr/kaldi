@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 # Copyright 2014  Johns Hopkins University (Authors: Vijayaditya Peddinti).  Apache 2.0.
 
+=======
+>>>>>>> origin/aspire_release_version
 # script to generate multicondition training data / dev data / test data
 import argparse, glob, math, os, random, scipy.io.wavfile, sys
 
@@ -42,6 +45,11 @@ if __name__ == "__main__":
   parser.add_argument('impulses_noises_dir', type=str, help='directory with impulses and noises and info directory (created by local/prep_rirs.sh)')
   parser.add_argument('output_command_file', type=str, help='file to output the corruption commands')
   params = parser.parse_args() 
+  
+  add_noise = True
+  snr_string_parts = params.snrs.split(':')
+  if (len(snr_string_parts) == 1) and snr_string_parts[0] == "inf":
+    add_noise = False
   snrs = list_cyclic_iterator(params.snrs.split(':'))
   if params.check_output_exists.lower == 'True':
     params.check_output_exists = True
@@ -91,18 +99,19 @@ if __name__ == "__main__":
       noise_file = ''
       snr = ''
       found_impulse = False
-      for i in xrange(len(impulse_noise_index)):
-        if impulse_file in impulse_noise_index[i][0]:
-          noise_file = impulse_noise_index[i][1].next()
-          snr = snrs.next()
-          assert(len(wav_file.strip()) > 0)
-          assert(len(impulse_file.strip()) > 0)
-          assert(len(noise_file.strip()) > 0)
-          assert(len(snr.strip()) > 0)
-          assert(len(output_wav_file.strip()) > 0)
-          command_list.append("{0} --rir-file {1} --noise-file {2} --snr-db {3} - {4} \n".format(wav_file, impulse_file, noise_file, snr, output_wav_file))
-          found_impulse = True
-          break
+      if add_noise:
+        for i in xrange(len(impulse_noise_index)):
+          if impulse_file in impulse_noise_index[i][0]:
+            noise_file = impulse_noise_index[i][1].next()
+            snr = snrs.next()
+            assert(len(wav_file.strip()) > 0)
+            assert(len(impulse_file.strip()) > 0)
+            assert(len(noise_file.strip()) > 0)
+            assert(len(snr.strip()) > 0)
+            assert(len(output_wav_file.strip()) > 0)
+            command_list.append("{0} --rir-file {1} --noise-file {2} --snr-db {3} - {4} \n".format(wav_file, impulse_file, noise_file, snr, output_wav_file))
+            found_impulse = True
+            break
       if not found_impulse:
         assert(len(wav_file.strip()) > 0)
         assert(len(impulse_file.strip()) > 0)
