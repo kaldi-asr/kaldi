@@ -37,7 +37,7 @@ echo "$0 $@"  # Print the command line for logging
 
 
 if [ $# != 6 ]; then
-  echo "Usage: steps/train_mmi_fmmi.sh <data> <lang> <diag-ubm-dir> <ali-dir> <denlat-dir> <exp-dir>"
+  echo "Usage: steps/train_mmi_fmmi.sh <data> <lang> <ali-dir> <diag-ubm-dir> <denlat-dir> <exp-dir>"
   echo " e.g.: steps/train_mmi_fmmi.sh data/train_si84 data/lang exp/tri2b_ali_si84 exp/ubm2d exp/tri2b_denlats_si84 exp/tri2b_fmmi"
   echo "Main options (for others, see top of script file)"
   echo "  --boost <boost-weight>                           # (e.g. 0.1) ... boosted MMI."

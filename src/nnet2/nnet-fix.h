@@ -62,7 +62,7 @@ struct NnetFixConfig {
     po->Register("parameter-factor", &parameter_factor, "Maximum factor by which we change "
                  "the set of parameters associated with a neuron.");
     po->Register("relu-bias-change", &relu_bias_change, "For ReLUs, change in bias when "
-                 "we identify one that's too frequently zero.");
+                 "we identify a component that's too frequently on or off.");
   }
 };
 
