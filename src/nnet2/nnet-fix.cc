@@ -78,7 +78,7 @@ void FixNnet(const NnetFixConfig &config, Nnet *nnet) {
           linear_params.Row(d).Scale(1.0 / parameter_factor);
         }
         num_reduced++;
-      } else if (deriv_ratio > config.max_average_deriv && !is_relu) {
+      } else if (deriv_ratio > config.max_average_deriv) {
         // derivative is too large, meaning we're only in the linear part of the
         // sigmoid, in the middle.  (or for ReLU, we're always-on.
         if (is_relu) {

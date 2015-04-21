@@ -74,13 +74,13 @@ class ChunkInfo {
   ChunkInfo()  // default constructor we assume this object will not be used
       : feat_dim_(0), num_chunks_(0),
         first_offset_(0), last_offset_(0), 
-        offsets_() { };
+        offsets_() { }
  
   ChunkInfo(int32 feat_dim, int32 num_chunks,
             int32 first_offset, int32 last_offset ) 
       : feat_dim_(feat_dim), num_chunks_(num_chunks),
         first_offset_(first_offset), last_offset_(last_offset),
-        offsets_() { Check(); };
+        offsets_() { Check(); }
   
   ChunkInfo(int32 feat_dim, int32 num_chunks,
             const std::vector<int32> offsets)
@@ -88,7 +88,7 @@ class ChunkInfo {
         first_offset_(offsets.front()), last_offset_(offsets.back()),
         offsets_(offsets) { if (last_offset_ - first_offset_ + 1 == offsets_.size())
                               offsets_.clear();
-          Check(); };
+          Check(); }
 
   // index : actual row index in the current chunk
   // offset : the time offset of feature frame at current row in the chunk
