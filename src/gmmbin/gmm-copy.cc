@@ -36,12 +36,14 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true,
         copy_am = true,
-        copy_tm = true;
+        copy_tm = true,
+        write_tm = true;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("copy-am", &copy_am, "Copy the acoustic model (AmDiagGmm object)");
     po.Register("copy-tm", &copy_tm, "Copy the transition model");
+    po.Register("write-tm", &write_tm, "Write the transition model");
 
     po.Read(argc, argv);
 
@@ -66,7 +68,7 @@ int main(int argc, char *argv[]) {
 
     {
       Output ko(model_out_filename, binary_write);
-      if (copy_tm)
+      if (copy_tm && write_tm)
         trans_model.Write(ko.Stream(), binary_write);
       if (copy_am)
         am_gmm.Write(ko.Stream(), binary_write);

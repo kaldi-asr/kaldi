@@ -19,6 +19,7 @@ cleanup=true
 select_top_frames=true
 top_frames_threshold=0.16
 bottom_frames_threshold=0.04
+init_vad_model=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -91,85 +92,106 @@ if [ $stage -le -1 ]; then
   diarization/make_vad_graph.sh --iter trans $dir/lang $dir $dir/graph || exit 1
   diarization/make_vad_graph.sh --iter trans_test $dir/lang_test $dir $dir/graph_test || exit 1
 fi
-
-utils/split_data.sh $data $nj || exit 1
-feats="ark:copy-feats scp:$data/feats.scp ark:- |"
  
 if [ $stage -le 0 ]; then
+mkdir -p $dir/q
+utils/split_data.sh $data $nj || exit 1
 
-  if ! $select_top_frames; then
-    $cmd $dir/log/init_gmm_speech.log \
+for n in `seq $nj`; do
+  cat <<EOF > $dir/q/do_vad.$n.sh
+set -e 
+set -o pipefail
+set -u
+
+if [ -f path.sh ]; then . ./path.sh; fi
+. parse_options.sh || exit 1;
+
+while IFS=$'\n' read line; do
+  feats="ark:echo \$line | copy-feats scp:- ark:- |"
+  utt_id=\$(echo \$line | awk '{print \$1}')
+
+  if [ -z "$init_vad_model" ]; then
+    if ! $select_top_frames; then
       gmm-global-init-from-feats --num-gauss=$speech_num_gauss --num-iters=10 \
-      "$feats select-voiced-frames ark:- scp:$data/vad.scp ark:- |" \
-      $dir/speech.0.mdl || exit 1
-    $cmd $dir/log/init_gmm_silence.log \
+        "\$feats select-voiced-frames ark:- scp:$data/vad.scp ark:- |" \
+        $dir/\$utt_id.speech.0.mdl || exit 1
       gmm-global-init-from-feats --num-gauss=$sil_num_gauss --num-iters=6 \
-      "$feats select-voiced-frames --select-unvoiced-frames=true ark:- scp:$data/vad.scp ark:- |" \
-      $dir/silence.0.mdl || exit 1
-  else
-    $cmd $dir/log/init_gmm_speech.log \
+        "\$feats select-voiced-frames --select-unvoiced-frames=true ark:- scp:$data/vad.scp ark:- |" \
+        $dir/\$utt_id.silence.0.mdl || exit 1
+    else
       gmm-global-init-from-feats --num-gauss=$speech_num_gauss --num-iters=12 \
-      "$feats select-top-frames --top-frames-proportion=$top_frames_threshold ark:- ark:- |" \
-      $dir/speech.0.mdl || exit 1
-    $cmd $dir/log/init_gmm_silence.log \
+        "\$feats select-top-frames --top-frames-proportion=$top_frames_threshold ark:- ark:- |" \
+        $dir/\$utt_id.speech.0.mdl || exit 1
       gmm-global-init-from-feats --num-gauss=$sil_num_gauss --num-iters=8 \
-      "$feats select-top-frames --bottom-frames-proportion=$bottom_frames_threshold --top-frames-proportion=0.0 ark:- ark:- |" \
-      $dir/silence.0.mdl || exit 1
+        "\$feats select-top-frames --bottom-frames-proportion=$bottom_frames_threshold --top-frames-proportion=0.0 ark:- ark:- |" \
+        $dir/\$utt_id.silence.0.mdl || exit 1
+    fi
+
+    {
+      cat $dir/trans.mdl
+      echo "<DIMENSION> $feat_dim <NUMPDFS> 2"
+      gmm-global-copy --binary=false $dir/\$utt_id.silence.0.mdl -
+      gmm-global-copy --binary=false $dir/\$utt_id.speech.0.mdl -
+    } | gmm-copy - $dir/\$utt_id.0.mdl || exit 1
+  else
+    cp $init_vad_model $dir/\$utt_id.0.mdl
   fi
 
-  {
-    cat $dir/trans.mdl
-    echo "<DIMENSION> $feat_dim <NUMPDFS> 2"
-    gmm-global-copy --binary=false $dir/silence.0.mdl -
-    gmm-global-copy --binary=false $dir/speech.0.mdl -
-  } > $dir/0.mdl || exit 1
-
   x=0
-  while [ $x -lt $num_iters ]; do
-    $cmd $dir/log/decode.$x.log \
-      gmm-decode-simple \
+  while [ \$x -lt $num_iters ]; do
+    gmm-decode-simple \
       --allow-partial=true --word-symbol-table=$dir/graph/words.txt \
-      $dir/$x.mdl $dir/graph/HCLG.fst \
-      "$feats" ark:/dev/null ark:$dir/$x.ali || exit 1
+      $dir/\$utt_id.\$x.mdl $dir/graph/HCLG.fst \
+      "\$feats" ark:/dev/null ark:$dir/\$utt_id.\$x.ali || exit 1
 
-    $cmd $dir/log/update.$x.log \
-      gmm-acc-stats-ali \
-      $dir/$x.mdl "$feats" \
-      ark:$dir/$x.ali - \| \
-      gmm-est $dir/$x.mdl - $dir/$[x+1].mdl || exit 1
+    gmm-acc-stats-ali \
+      $dir/\$utt_id.\$x.mdl "\$feats" \
+      ark:$dir/\$utt_id.\$x.ali - | \
+      gmm-est $dir/\$utt_id.\$x.mdl - $dir/\$utt_id.\$[x+1].mdl \
+      2>&1 | tee $dir/log/update.\$utt_id.\$x.log || exit 1
 
-    objf_impr=$(cat $dir/log/update.$x.log | grep "GMM update: Overall .* objective function" | perl -pe 's/.*GMM update: Overall (\S+) objective function .*/\$1/')
-
-    if [ "$(perl -e "if ($objf_impr < $impr_thres) { print true; }")" == true ]; then
+    objf_impr=\$(cat $dir/log/update.\$utt_id.\$x.log | grep "GMM update: Overall .* objective function" | perl -pe 's/.*GMM update: Overall (\S+) objective function .*/\$1/')
+    
+    if [ "\$(perl -e "if (\$objf_impr < $impr_thres) { print true; }")" == true ]; then
       break;
     fi
 
-    x=$[x+1]
+    x=\$[x+1]
   done
 
-  rm -f $dir/final.mdl 2>/dev/null || true
-  cp $dir/$x.mdl $dir/final.mdl 
+  rm -f $dir/\$utt_id.final.mdl 2>/dev/null || true
+  cp $dir/\$utt_id.\$x.mdl $dir/\$utt_id.final.mdl 
 
   (
   copy-transition-model --binary=false $dir/trans_test.mdl -
-  gmm-copy --write-tm=false --binary=false $dir/$x.mdl -
-  ) | gmm-copy - $dir/final.mdl
-
-  $cmd $dir/log/decode.final.log \
-    gmm-decode-simple \
+  gmm-copy --write-tm=false --binary=false $dir/\$utt_id.\$x.mdl -
+  ) | gmm-copy - $dir/\$utt_id.final.mdl
+  
+  #gmm-decode-simple \
+  #  --allow-partial=true --word-symbol-table=$dir/graph/words.txt \
+  #  $dir/\$utt_id.final.mdl $dir/graph/HCLG.fst \
+  #  "\$feats" ark:/dev/null ark:$dir/\$utt_id.final.ali || exit 1
+  
+  gmm-decode-simple \
     --allow-partial=true --word-symbol-table=$dir/graph/words.txt \
-    $dir/final.mdl $dir/graph_test/HCLG.fst \
-    "$feats" ark:/dev/null ark:$dir/final.ali || exit 1
+    $dir/\$utt_id.final.mdl $dir/graph_test/HCLG.fst \
+    "\$feats" ark:/dev/null ark:$dir/\$utt_id.final.ali || exit 1
+done < $data/split$nj/$n/feats.scp
+EOF
+done
+fi
+
+if [ $stage -le 1 ]; then
+  $cmd JOB=1:$nj $dir/log/do_vad_job.JOB.log bash -x $dir/q/do_vad.JOB.sh || exit 1
 fi
 
 if $cleanup; then
   for x in `seq $[num_iters - 1]`; do
     if [ $[x % 10] -ne 0 ]; then
-      rm $dir/$x.mdl
+      rm $dir/*.$x.mdl
     fi
   done
 fi
 
 # Summarize warning messages...
 utils/summarize_warnings.pl  $dir/log
-
