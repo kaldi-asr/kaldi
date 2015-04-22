@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
                                     write_lengths ? phones_wspecifier : empty);
     
     std::string ctm_wxfilename(ctm_output ? phones_wspecifier : empty);
-    Output ctm_writer(phones_wspecifier, false);
+    Output ctm_writer(ctm_wxfilename, false);
     if (ctm_output) {
         ctm_writer.Stream() << std::fixed;
         ctm_writer.Stream().precision(2);
