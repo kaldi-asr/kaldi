@@ -66,24 +66,23 @@ int main(int argc, char *argv[]) {
     }
 
     std::string model_filename = po.GetArg(1),
-        alignments_rspecifier = po.GetArg(2),
-        phones_wspecifier = po.GetArg(3);
-
+        alignments_rspecifier = po.GetArg(2);
+    
     TransitionModel trans_model;
     ReadKaldiObject(model_filename, &trans_model);
 
     SequentialInt32VectorReader reader(alignments_rspecifier);
     std::string empty;
     Int32VectorWriter phones_writer(ctm_output ? empty :
-                                    write_lengths ? empty : phones_wspecifier);
+                                    (write_lengths ? empty : po.GetArg(3)));
     Int32PairVectorWriter pair_writer(ctm_output ? empty :
-                                    write_lengths ? phones_wspecifier : empty);
+                                      (write_lengths ? po.GetArg(3) : empty));
     
-    std::string ctm_wxfilename(ctm_output ? phones_wspecifier : empty);
+    std::string ctm_wxfilename(ctm_output ? po.GetArg(3) : empty);
     Output ctm_writer(ctm_wxfilename, false);
     if (ctm_output) {
-        ctm_writer.Stream() << std::fixed;
-        ctm_writer.Stream().precision(2);
+      ctm_writer.Stream() << std::fixed;
+      ctm_writer.Stream().precision(2);
     }
 
     int32 n_done = 0;

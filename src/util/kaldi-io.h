@@ -83,10 +83,6 @@ class InputImplBase;  // Forward decl; defined in a .cc file
 // }
 
 
-// Output interpretes three kinds of filenames:
-//  (1) Normal filenames
-//  (2) The empty string or "-", interpreted as standard output
-//  (3) Pipes, e.g. "gunzip -c some_file.gz |"
 
 enum OutputType {
   kNoOutput,
@@ -95,13 +91,13 @@ enum OutputType {
   kPipeOutput
 };
 
+/// ClassifyWxfilename interprets filenames as follows:
+///  - kNoOutput: invalid filenames (leading or trailing space, things that look
+///     like wspecifiers and rspecifiers or like pipes to read from with leading |.
+///  - kFileOutput: Normal filenames
+///  - kStandardOutput: The empty string or "-", interpreted as standard output
+///  - kPipeOutput: pipes, e.g. "gunzip -c some_file.gz |"  
 OutputType ClassifyWxfilename(const std::string &wxfilename);
-
-// Input interpretes three kinds of filenames:
-//  (1) Normal filenames
-//  (2) The empty string or "-", interpreted as standard input
-//  (3) Pipes, e.g. "| gzip -c > blah.gz"
-//  (4) Offsets into files, e.g.  /some/filename:12970
 
 enum InputType {
   kNoInput,
@@ -111,6 +107,14 @@ enum InputType {
   kPipeInput
 };
 
+/// ClassifyRxfilenames interprets filenames for reading as follows:
+///  - kNoInput: invalid filenames (leading or trailing space, things that
+///       look like wspecifiers and rspecifiers or pipes to write to
+///       with trailing |.
+///  - kFileInput: normal filenames
+///  - kStandardInput: the empty string or "-"
+///  - kPipeInput: e.g. "| gzip -c > blah.gz"
+///  - kOffsetFileInput: offsets into files, e.g.  /some/filename:12970
 InputType ClassifyRxfilename(const std::string &rxfilename);
 
 

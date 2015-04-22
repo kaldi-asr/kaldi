@@ -584,14 +584,15 @@ class OffsetFileInputImpl: public InputImplBase {
 };
 
 
-Output::Output(const std::string &rxfilename, bool binary, bool write_header): impl_(NULL) {
-  if (!Open(rxfilename, binary, write_header))  {
+Output::Output(const std::string &wxfilename, bool binary, bool write_header):
+    impl_(NULL) {
+  if (!Open(wxfilename, binary, write_header)) {
     if (impl_) {
       delete impl_;
       impl_ = NULL;
     }
     KALDI_ERR << "Error opening output stream " <<
-        PrintableWxfilename(rxfilename);
+        PrintableWxfilename(wxfilename);
   }
 }
 
@@ -622,9 +623,6 @@ std::ostream &Output::Stream() {  // will throw if not open; else returns stream
 }
 
 bool Output::Open(const std::string &wxfn, bool binary, bool header) {
-  // Consolidate all the types of Open calls here, since they're basically doing the
-  // same thing.
-
   if (IsOpen()) {
     if (!Close()) {  // Throw here rather than return status, as it's an error about
       // something else: if the user wanted to avoid the exception he/she could have

@@ -56,7 +56,7 @@ void FixNnet(const NnetFixConfig &config, Nnet *nnet) {
     }
     Vector<BaseFloat> bias_params(ac->BiasParams());
     Matrix<BaseFloat> linear_params(ac->LinearParams());
-    int32 dim = nc->InputDim(), num_reduced = 0, num_increased = 0;
+    int32 dim = nc->InputDim(), num_small_deriv = 0, num_large_deriv = 0;
     for (int32 d = 0; d < dim; d++) {
       // deriv ratio is the ratio of the computed average derivative to the
       // maximum derivative of that nonlinear function.
@@ -77,7 +77,7 @@ void FixNnet(const NnetFixConfig &config, Nnet *nnet) {
           bias_params(d) *= 1.0 / parameter_factor;
           linear_params.Row(d).Scale(1.0 / parameter_factor);
         }
-        num_reduced++;
+        num_small_deriv++;
       } else if (deriv_ratio > config.max_average_deriv) {
         // derivative is too large, meaning we're only in the linear part of the
         // sigmoid, in the middle.  (or for ReLU, we're always-on.
@@ -90,17 +90,17 @@ void FixNnet(const NnetFixConfig &config, Nnet *nnet) {
           bias_params(d) *= parameter_factor;
           linear_params.Row(d).Scale(parameter_factor);
         }
-        num_increased++;
+        num_large_deriv++;
       }
     }
     if (is_relu) {
       KALDI_LOG << "For layer " << c << " (ReLU units), increased bias for "
-                << num_reduced << " indexes and increased it for "
-                << num_increased << ", out of a total of " << dim;
+                << num_small_deriv << " indexes and decreased it for "
+                << num_large_deriv << ", out of a total of " << dim;
     } else {
       KALDI_LOG << "For layer " << c << ", decreased parameters for "
-                << num_reduced << " indexes, and increased them for "
-                << num_increased << " out of a total of " << dim;
+                << num_small_deriv << " indexes, and increased them for "
+                << num_large_deriv << " out of a total of " << dim;
     }
     ac->SetParams(bias_params, linear_params);
   }
