@@ -96,7 +96,7 @@ The Local Directory :
 Assuming that you are in the data directory, execute the following commands : 
 
 \verbatim
-ls local/dict
+cd local/dict
 head lexicon.txt
 head nonsilence_phones.txt
 head silence_phones.txt
@@ -432,7 +432,7 @@ a second argument and it will show you some more information.
 
 To view the alignments in a more human-friendly form, try the following:
 \verbatim
- show-alignments data/lang/phones.txt exp/mono/0.mdl ark:exp/mono/cur.ali | less
+ show-alignments data/lang/phones.txt exp/mono/0.mdl "ark:gunzip -c exp/mono/ali.1.gz |" | less
 \endverbatim
 For more details on things like HMM topologies, transition-ids,
 transition modeling and so on, see \ref hmm.
