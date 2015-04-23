@@ -31,7 +31,7 @@ DecodableDiagGmmScaledOnline::DecodableDiagGmmScaledOnline(
       feat_dim_(input_feats->Dim()), cur_feats_(feat_dim_),
       cur_frame_(-1) {
   int32 num_pdfs = trans_model_.NumPdfs();
-  cache_.resize(num_pdfs, std::make_pair<int32,BaseFloat>(-1, 0.0));
+  cache_.resize(num_pdfs, std::pair<int32,BaseFloat>(-1, 0.0));
 }
 
 void DecodableDiagGmmScaledOnline::CacheFrame(int32 frame) {

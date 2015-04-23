@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
               << "instead got "
               << learning_rate_scales_str;
         }
-        learning_rate_scales.insert(std::make_pair<std::string, BaseFloat>(
+        learning_rate_scales.insert(std::pair<std::string, BaseFloat>(
                 parts[0], scale_factor));
       }
       // use the learning_rate_scales to scale the component learning rates
