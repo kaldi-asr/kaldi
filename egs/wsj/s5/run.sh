@@ -428,8 +428,6 @@ local/run_mmi_tri4b.sh
 # You probably want to run the sgmm2 recipe as it's generally a bit better:
 local/run_sgmm2.sh
 
-exit 0
-
 # We demonstrate MAP adaptation of GMMs to gender-dependent systems here.  This also serves
 # as a generic way to demonstrate MAP adaptation to different domains.
 # local/run_gender_dep.sh
