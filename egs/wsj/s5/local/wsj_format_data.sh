@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
+#           2015  Guoguo Chen
 # Apache 2.0
 
 # This script takes data prepared in a corpus-dependent way
@@ -12,13 +13,18 @@
 # in data/local/) because it's just the first 7138 utterances in train_si284.
 # We'll create train_si84 after doing the feature extraction.
 
+lang_suffix=
+
+echo "$0 $@"  # Print the command line for logging
+. utils/parse_options.sh || exit 1;
+
 . ./path.sh || exit 1;
 
 echo "Preparing train and test data"
 srcdir=data/local/data
 lmdir=data/local/nist_lm
 tmpdir=data/local/lm_tmp
-lexicon=data/local/lang_tmp/lexiconp.txt
+lexicon=data/local/lang${lang_suffix}_tmp/lexiconp.txt
 mkdir -p $tmpdir
 
 for x in train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do 
@@ -37,10 +43,10 @@ done
 echo Preparing language models for test
 
 for lm_suffix in bg tgpr tg bg_5k tgpr_5k tg_5k; do
-  test=data/lang_test_${lm_suffix}
+  test=data/lang${lang_suffix}_test_${lm_suffix}
 
   mkdir -p $test
-  cp -r data/lang/* $test || exit 1;
+  cp -r data/lang${lang_suffix}/* $test || exit 1;
 
   gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
    utils/find_arpa_oovs.pl $test/words.txt  > $tmpdir/oovs_${lm_suffix}.txt

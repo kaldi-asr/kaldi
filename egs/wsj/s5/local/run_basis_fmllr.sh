@@ -1,5 +1,10 @@
 #!/bin/bash
 
+lang_suffix=
+
+echo "$0 $@"  # Print the command line for logging
+. utils/parse_options.sh || exit 1;
+
 . cmd.sh
 
 mfccdir=mfcc
@@ -20,23 +25,30 @@ done
  # basis fMLLR experiments.
  # First a baseline: decode per-utterance with normal fMLLR.
 steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri3b/graph_tgpr data/test_dev93_utt exp/tri3b/decode_tgpr_dev93_utt || exit 1;
+  exp/tri3b/graph${lang_suffix}_tgpr data/test_dev93_utt \
+  exp/tri3b/decode${lang_suffix}_tgpr_dev93_utt || exit 1;
 steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri3b/graph_tgpr data/test_eval92_utt exp/tri3b/decode_tgpr_eval92_utt || exit 1;
+  exp/tri3b/graph${lang_suffix}_tgpr data/test_eval92_utt \
+  exp/tri3b/decode${lang_suffix}_tgpr_eval92_utt || exit 1;
 
  # get the fMLLR basis.
-steps/get_fmllr_basis.sh --cmd "$train_cmd" data/train_si84 data/lang exp/tri3b
+steps/get_fmllr_basis.sh --cmd "$train_cmd" \
+  data/train_si84 data/lang${lang_suffix} exp/tri3b
 
  # decoding tri3b with basis fMLLR
 steps/decode_basis_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93_basis || exit 1;
+  exp/tri3b/graph${lang_suffix}_tgpr data/test_dev93 \
+  exp/tri3b/decode${lang_suffix}_tgpr_dev93_basis || exit 1;
 steps/decode_basis_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri3b/graph_tgpr data/test_eval92 exp/tri3b/decode_tgpr_eval92_basis || exit 1;
+  exp/tri3b/graph${lang_suffix}_tgpr data/test_eval92 \
+  exp/tri3b/decode${lang_suffix}_tgpr_eval92_basis || exit 1;
 
   # The same, per-utterance.
 steps/decode_basis_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri3b/graph_tgpr data/test_dev93_utt exp/tri3b/decode_tgpr_dev93_basis_utt || exit 1;
+  exp/tri3b/graph${lang_suffix}_tgpr data/test_dev93_utt \
+  exp/tri3b/decode${lang_suffix}_tgpr_dev93_basis_utt || exit 1;
 steps/decode_basis_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri3b/graph_tgpr data/test_eval92_utt exp/tri3b/decode_tgpr_eval92_basis_utt || exit 1;
+  exp/tri3b/graph${lang_suffix}_tgpr data/test_eval92_utt \
+  exp/tri3b/decode${lang_suffix}_tgpr_eval92_basis_utt || exit 1;
 
 

@@ -6,10 +6,13 @@
 # plus any OOVs and possible acronyms that we could easily 
 # derive pronunciations for.
 
-# This script takes no command-line arguments
+dict_suffix=
+
+echo "$0 $@"  # Print the command line for logging
+. utils/parse_options.sh || exit 1;
 
 dir=data/local/local_lm
-srcdir=data/local/dict_larger
+srcdir=data/local/dict${dict_suffix}_larger
 mkdir -p $dir
 . ./path.sh || exit 1; # for KALDI_ROOT
 export PATH=$KALDI_ROOT/tools/kaldi_lm:$PATH

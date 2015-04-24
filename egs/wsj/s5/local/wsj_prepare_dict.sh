@@ -2,6 +2,7 @@
 
 # Copyright 2010-2012 Microsoft Corporation  
 #           2012-2014 Johns Hopkins University (Author: Daniel Povey)
+#                2015 Guoguo Chen
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +29,12 @@
 # silence_phones.txt
 
 # run this from ../
-dir=data/local/dict
+dict_suffix=
+
+echo "$0 $@"  # Print the command line for logging
+. utils/parse_options.sh || exit 1;
+
+dir=data/local/dict${dict_suffix}
 mkdir -p $dir
 
 

@@ -28,12 +28,15 @@ local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?  || exit 1;
 # local/cstr_wsj_data_prep.sh $corpus
 # rm data/local/dict/lexiconp.txt
 # $corpus must contain a 'wsj0' and a 'wsj1' subdirectory for this to work.
+#
+# "nosp" refers to the dictionary before silence probabilities and pronunciation
+# probabilities are added.
+local/wsj_prepare_dict.sh --dict-suffix "_nosp" || exit 1;
 
-local/wsj_prepare_dict.sh || exit 1;
+utils/prepare_lang.sh data/local/dict_nosp \
+  "<SPOKEN_NOISE>" data/local/lang_tmp_nosp data/lang_nosp || exit 1;
 
-utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/lang || exit 1;
-
-local/wsj_format_data.sh || exit 1;
+local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
 
  # We suggest to run the next three commands in the background,
  # as they are not a precondition for the system building and
@@ -51,33 +54,45 @@ local/wsj_format_data.sh || exit 1;
  # Be careful: appending things like "-l mem_free=10G" to $decode_cmd
  # won't always work, it depends what $decode_cmd is.
   (
-   local/wsj_extend_dict.sh $wsj1/13-32.1  && \
-   utils/prepare_lang.sh data/local/dict_larger "<SPOKEN_NOISE>" data/local/lang_larger data/lang_bd && \
-   local/wsj_train_lms.sh &&
-   local/wsj_format_local_lms.sh # &&
+   local/wsj_extend_dict.sh --dict-suffix "_nosp" $wsj1/13-32.1  && \
+   utils/prepare_lang.sh data/local/dict_nosp_larger \
+     "<SPOKEN_NOISE>" data/local/lang_tmp_nosp_larger data/lang_nosp_bd && \
+   local/wsj_train_lms.sh --dict-suffix "_nosp" &&
+   local/wsj_format_local_lms.sh --lang-suffix "_nosp" # &&
  #
- #   (  local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=10G" data/local/rnnlm.h30.voc10k &
- #       sleep 20; # wait till tools compiled.
- #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=12G" \
- #      --hidden 100 --nwords 20000 --class 350 --direct 1500 data/local/rnnlm.h100.voc20k &
- #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=14G" \
- #      --hidden 200 --nwords 30000 --class 350 --direct 1500 data/local/rnnlm.h200.voc30k &
- #     local/wsj_train_rnnlms.sh --cmd "$decode_cmd -l mem_free=16G" \
- #      --hidden 300 --nwords 40000 --class 400 --direct 2000 data/local/rnnlm.h300.voc40k &
+ #   ( local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
+ #       --cmd "$decode_cmd -l mem_free=10G" data/local/rnnlm.h30.voc10k &
+ #     sleep 20; # wait till tools compiled.
+ #     local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
+ #       --cmd "$decode_cmd -l mem_free=12G" \
+ #       --hidden 100 --nwords 20000 --class 350 \
+ #       --direct 1500 data/local/rnnlm.h100.voc20k &
+ #     local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
+ #       --cmd "$decode_cmd -l mem_free=14G" \
+ #       --hidden 200 --nwords 30000 --class 350 \
+ #       --direct 1500 data/local/rnnlm.h200.voc30k &
+ #     local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
+ #       --cmd "$decode_cmd -l mem_free=16G" \
+ #       --hidden 300 --nwords 40000 --class 400 \
+ #       --direct 2000 data/local/rnnlm.h300.voc40k &
  #   )
    false && \ # Comment this out to train RNNLM-HS
    (
        num_threads_rnnlm=8
-       local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
+       local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
+         --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
          --cmd "$decode_cmd -l mem_free=1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
          --hidden 30  --nwords 10000 --direct 1000 data/local/rnnlm-hs.h30.voc10k  
-       local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
+       local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
+         --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
          --cmd "$decode_cmd -l mem_free=1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
          --hidden 100 --nwords 20000 --direct 1500 data/local/rnnlm-hs.h100.voc20k 
-       local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
+       local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
+         --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
          --cmd "$decode_cmd -l mem_free=1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
          --hidden 300 --nwords 30000 --direct 1500 data/local/rnnlm-hs.h300.voc30k 
-       local/wsj_train_rnnlms.sh --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
+       local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
+         --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
          --cmd "$decode_cmd -l mem_free=1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
          --hidden 400 --nwords 40000 --direct 2000 data/local/rnnlm-hs.h400.voc40k 
    )
@@ -107,86 +122,89 @@ utils/subset_data_dir.sh data/train_si84 3500 data/train_si84_half || exit 1;
 # for normal setups.  It doesn't always help. [it's to discourage non-silence
 # models from modeling silence.]
 steps/train_mono.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
-  data/train_si84_2kshort data/lang exp/mono0a || exit 1;
-
+  data/train_si84_2kshort data/lang_nosp exp/mono0a || exit 1;
 
 (
- utils/mkgraph.sh --mono data/lang_test_tgpr exp/mono0a exp/mono0a/graph_tgpr && \
- steps/decode.sh --nj 10 --cmd "$decode_cmd" \
-      exp/mono0a/graph_tgpr data/test_dev93 exp/mono0a/decode_tgpr_dev93 && \
- steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-   exp/mono0a/graph_tgpr data/test_eval92 exp/mono0a/decode_tgpr_eval92 
+ utils/mkgraph.sh --mono data/lang_nosp_test_tgpr \
+   exp/mono0a exp/mono0a/graph_nosp_tgpr && \
+ steps/decode.sh --nj 10 --cmd "$decode_cmd" exp/mono0a/graph_nosp_tgpr \
+   data/test_dev93 exp/mono0a/decode_nosp_tgpr_dev93 && \
+ steps/decode.sh --nj 8 --cmd "$decode_cmd" exp/mono0a/graph_nosp_tgpr \
+   data/test_eval92 exp/mono0a/decode_nosp_tgpr_eval92 
 ) &
 
 steps/align_si.sh --boost-silence 1.25 --nj 10 --cmd "$train_cmd" \
-   data/train_si84_half data/lang exp/mono0a exp/mono0a_ali || exit 1;
+  data/train_si84_half data/lang_nosp exp/mono0a exp/mono0a_ali || exit 1;
 
-steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
-    2000 10000 data/train_si84_half data/lang exp/mono0a_ali exp/tri1 || exit 1;
+steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" 2000 10000 \
+  data/train_si84_half data/lang_nosp exp/mono0a_ali exp/tri1 || exit 1;
 
-while [ ! -f data/lang_test_tgpr/tmp/LG.fst ] || \
-   [ -z data/lang_test_tgpr/tmp/LG.fst ]; do
+while [ ! -f data/lang_nosp_test_tgpr/tmp/LG.fst ] || \
+   [ -z data/lang_nosp_test_tgpr/tmp/LG.fst ]; do
   sleep 20;
 done
 sleep 30;
 # or the mono mkgraph.sh might be writing 
 # data/lang_test_tgpr/tmp/LG.fst which will cause this to fail.
 
-utils/mkgraph.sh data/lang_test_tgpr exp/tri1 exp/tri1/graph_tgpr || exit 1;
+utils/mkgraph.sh data/lang_nosp_test_tgpr \
+  exp/tri1 exp/tri1/graph_nosp_tgpr || exit 1;
 
-
-steps/decode.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri1/graph_tgpr data/test_dev93 exp/tri1/decode_tgpr_dev93 || exit 1;
-steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri1/graph_tgpr data/test_eval92 exp/tri1/decode_tgpr_eval92 || exit 1;
-
+steps/decode.sh --nj 10 --cmd "$decode_cmd" exp/tri1/graph_nosp_tgpr \
+  data/test_dev93 exp/tri1/decode_nosp_tgpr_dev93 || exit 1;
+steps/decode.sh --nj 8 --cmd "$decode_cmd" exp/tri1/graph_nosp_tgpr \
+  data/test_eval92 exp/tri1/decode_nosp_tgpr_eval92 || exit 1;
 
 # test various modes of LM rescoring (4 is the default one).
 # This is just confirming they're equivalent.
 for mode in 1 2 3 4; do
- steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" data/lang_test_{tgpr,tg} \
-   data/test_dev93 exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_tg$mode  || exit 1;
+  steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" \
+    data/lang_nosp_test_{tgpr,tg} data/test_dev93 \
+    exp/tri1/decode_nosp_tgpr_dev93 \
+    exp/tri1/decode_nosp_tgpr_dev93_tg$mode  || exit 1;
 done
 
 # demonstrate how to get lattices that are "word-aligned" (arcs coincide with
 # words, with boundaries in the right place).
-sil_label=`grep '!SIL' data/lang_test_tgpr/words.txt | awk '{print $2}'`
+sil_label=`grep '!SIL' data/lang_nosp_test_tgpr/words.txt | awk '{print $2}'`
 steps/word_align_lattices.sh --cmd "$train_cmd" --silence-label $sil_label \
-  data/lang_test_tgpr exp/tri1/decode_tgpr_dev93 exp/tri1/decode_tgpr_dev93_aligned || exit 1;
+  data/lang_nosp_test_tgpr exp/tri1/decode_nosp_tgpr_dev93 \
+  exp/tri1/decode_nosp_tgpr_dev93_aligned || exit 1;
 
 steps/align_si.sh --nj 10 --cmd "$train_cmd" \
-  data/train_si84 data/lang exp/tri1 exp/tri1_ali_si84 || exit 1;
+  data/train_si84 data/lang_nosp exp/tri1 exp/tri1_ali_si84 || exit 1;
 
 # Train tri2a, which is deltas + delta-deltas, on si84 data.
-steps/train_deltas.sh --cmd "$train_cmd" \
-  2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2a || exit 1;
+steps/train_deltas.sh --cmd "$train_cmd" 2500 15000 \
+  data/train_si84 data/lang_nosp exp/tri1_ali_si84 exp/tri2a || exit 1;
 
-utils/mkgraph.sh data/lang_test_tgpr exp/tri2a exp/tri2a/graph_tgpr || exit 1;
+utils/mkgraph.sh data/lang_nosp_test_tgpr \
+  exp/tri2a exp/tri2a/graph_nosp_tgpr || exit 1;
 
-steps/decode.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri2a/graph_tgpr data/test_dev93 exp/tri2a/decode_tgpr_dev93 || exit 1;
-steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri2a/graph_tgpr data/test_eval92 exp/tri2a/decode_tgpr_eval92 || exit 1;
+steps/decode.sh --nj 10 --cmd "$decode_cmd" exp/tri2a/graph_nosp_tgpr \
+  data/test_dev93 exp/tri2a/decode_nosp_tgpr_dev93 || exit 1;
+steps/decode.sh --nj 8 --cmd "$decode_cmd" exp/tri2a/graph_nosp_tgpr \
+  data/test_eval92 exp/tri2a/decode_nosp_tgpr_eval92 || exit 1;
 
-utils/mkgraph.sh data/lang_test_bg_5k exp/tri2a exp/tri2a/graph_bg5k
-steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri2a/graph_bg5k data/test_eval92 exp/tri2a/decode_eval92_bg5k || exit 1;
-
+utils/mkgraph.sh data/lang_nosp_test_bg_5k exp/tri2a exp/tri2a/graph_nosp_bg5k
+steps/decode.sh --nj 8 --cmd "$decode_cmd" exp/tri2a/graph_nosp_bg5k \
+  data/test_eval92 exp/tri2a/decode_nosp_eval92_bg5k || exit 1;
 
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
-   --splice-opts "--left-context=3 --right-context=3" \
-   2500 15000 data/train_si84 data/lang exp/tri1_ali_si84 exp/tri2b || exit 1;
+  --splice-opts "--left-context=3 --right-context=3" 2500 15000 \
+  data/train_si84 data/lang_nosp exp/tri1_ali_si84 exp/tri2b || exit 1;
 
-utils/mkgraph.sh data/lang_test_tgpr exp/tri2b exp/tri2b/graph_tgpr || exit 1;
-steps/decode.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri2b/graph_tgpr data/test_dev93 exp/tri2b/decode_tgpr_dev93 || exit 1;
-steps/decode.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri2b/graph_tgpr data/test_eval92 exp/tri2b/decode_tgpr_eval92 || exit 1;
+utils/mkgraph.sh data/lang_nosp_test_tgpr \
+  exp/tri2b exp/tri2b/graph_nosp_tgpr || exit 1;
+steps/decode.sh --nj 10 --cmd "$decode_cmd" exp/tri2b/graph_nosp_tgpr \
+  data/test_dev93 exp/tri2b/decode_nosp_tgpr_dev93 || exit 1;
+steps/decode.sh --nj 8 --cmd "$decode_cmd" exp/tri2b/graph_nosp_tgpr \
+  data/test_eval92 exp/tri2b/decode_nosp_tgpr_eval92 || exit 1;
 
 # At this point, you could run the example scripts that show how VTLN works.
 # We haven't included this in the default recipes yet.
-# local/run_vtln.sh
-# local/run_vtln2.sh
+# local/run_vtln.sh --lang-suffix "_nosp"
+# local/run_vtln2.sh --lang-suffix "_nosp"
 
 # Now, with dev93, compare lattice rescoring with biglm decoding,
 # going from tgpr to tg.  Note: results are not the same, even though they should
@@ -195,111 +213,181 @@ steps/decode.sh --nj 8 --cmd "$decode_cmd" \
 # improvement from loosening beams from their current values).
 
 steps/decode_biglm.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri2b/graph_tgpr data/lang_test_{tgpr,tg}/G.fst \
-  data/test_dev93 exp/tri2b/decode_tgpr_dev93_tg_biglm
+  exp/tri2b/graph_nosp_tgpr data/lang_test_{tgpr,tg}/G.fst \
+  data/test_dev93 exp/tri2b/decode_nosp_tgpr_dev93_tg_biglm
 
 # baseline via LM rescoring of lattices.
-steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr/ data/lang_test_tg/ \
-  data/test_dev93 exp/tri2b/decode_tgpr_dev93 exp/tri2b/decode_tgpr_dev93_tg || exit 1;
+steps/lmrescore.sh --cmd "$decode_cmd" \
+  data/lang_nosp_test_tgpr/ data/lang_nosp_test_tg/ \
+  data/test_dev93 exp/tri2b/decode_nosp_tgpr_dev93 \
+  exp/tri2b/decode_nosp_tgpr_dev93_tg || exit 1;
 
 # Trying Minimum Bayes Risk decoding (like Confusion Network decoding):
-mkdir exp/tri2b/decode_tgpr_dev93_tg_mbr 
-cp exp/tri2b/decode_tgpr_dev93_tg/lat.*.gz exp/tri2b/decode_tgpr_dev93_tg_mbr 
+mkdir exp/tri2b/decode_nosp_tgpr_dev93_tg_mbr 
+cp exp/tri2b/decode_nosp_tgpr_dev93_tg/lat.*.gz \
+  exp/tri2b/decode_nosp_tgpr_dev93_tg_mbr 
 local/score_mbr.sh --cmd "$decode_cmd" \
- data/test_dev93/ data/lang_test_tgpr/ exp/tri2b/decode_tgpr_dev93_tg_mbr
+ data/test_dev93/ data/lang_nosp_test_tgpr/ \
+ exp/tri2b/decode_nosp_tgpr_dev93_tg_mbr
 
 steps/decode_fromlats.sh --cmd "$decode_cmd" \
-  data/test_dev93 data/lang_test_tgpr exp/tri2b/decode_tgpr_dev93 \
-  exp/tri2a/decode_tgpr_dev93_fromlats || exit 1
-
+  data/test_dev93 data/lang_nosp_test_tgpr exp/tri2b/decode_nosp_tgpr_dev93 \
+  exp/tri2a/decode_nosp_tgpr_dev93_fromlats || exit 1
 
 # Align tri2b system with si84 data.
 steps/align_si.sh  --nj 10 --cmd "$train_cmd" \
-  --use-graphs true data/train_si84 data/lang exp/tri2b exp/tri2b_ali_si84  || exit 1;
+  --use-graphs true data/train_si84 \
+  data/lang_nosp exp/tri2b exp/tri2b_ali_si84  || exit 1;
 
-
-local/run_mmi_tri2b.sh
-
+local/run_mmi_tri2b.sh --lang-suffix "_nosp"
 
 # From 2b system, train 3b which is LDA + MLLT + SAT.
-steps/train_sat.sh --cmd "$train_cmd" \
-  2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b || exit 1;
-utils/mkgraph.sh data/lang_test_tgpr exp/tri3b exp/tri3b/graph_tgpr || exit 1;
+steps/train_sat.sh --cmd "$train_cmd" 2500 15000 \
+  data/train_si84 data/lang_nosp exp/tri2b_ali_si84 exp/tri3b || exit 1;
+utils/mkgraph.sh data/lang_nosp_test_tgpr \
+  exp/tri3b exp/tri3b/graph_nosp_tgpr || exit 1;
 steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-  exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b/decode_tgpr_dev93 || exit 1;
+  exp/tri3b/graph_nosp_tgpr data/test_dev93 \
+  exp/tri3b/decode_nosp_tgpr_dev93 || exit 1;
 steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri3b/graph_tgpr data/test_eval92 exp/tri3b/decode_tgpr_eval92 || exit 1;
+  exp/tri3b/graph_nosp_tgpr data/test_eval92 \
+  exp/tri3b/decode_nosp_tgpr_eval92 || exit 1;
 
 # At this point you could run the command below; this gets
 # results that demonstrate the basis-fMLLR adaptation (adaptation
 # on small amounts of adaptation data).
-local/run_basis_fmllr.sh
+local/run_basis_fmllr.sh --lang-suffix "_nosp"
 
-steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
-  data/test_dev93 exp/tri3b/decode_tgpr_dev93 exp/tri3b/decode_tgpr_dev93_tg || exit 1;
-steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_tgpr data/lang_test_tg \
-  data/test_eval92 exp/tri3b/decode_tgpr_eval92 exp/tri3b/decode_tgpr_eval92_tg || exit 1;
-
+steps/lmrescore.sh --cmd "$decode_cmd" \
+  data/lang_nosp_test_tgpr data/lang_nosp_test_tg \
+  data/test_dev93 exp/tri3b/decode_nosp_tgpr_dev93 \
+  exp/tri3b/decode_nosp_tgpr_dev93_tg || exit 1;
+steps/lmrescore.sh --cmd "$decode_cmd" \
+  data/lang_nosp_test_tgpr data/lang_nosp_test_tg \
+  data/test_eval92 exp/tri3b/decode_nosp_tgpr_eval92 \
+  exp/tri3b/decode_nosp_tgpr_eval92_tg || exit 1;
 
 # Trying the larger dictionary ("big-dict"/bd) + locally produced LM.
-utils/mkgraph.sh data/lang_test_bd_tgpr exp/tri3b exp/tri3b/graph_bd_tgpr || exit 1;
+utils/mkgraph.sh data/lang_nosp_test_bd_tgpr \
+  exp/tri3b exp/tri3b/graph_nosp_bd_tgpr || exit 1;
 
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 8 \
-  exp/tri3b/graph_bd_tgpr data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 || exit 1;
+  exp/tri3b/graph_nosp_bd_tgpr data/test_eval92 \
+  exp/tri3b/decode_nosp_bd_tgpr_eval92 || exit 1;
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 \
-  exp/tri3b/graph_bd_tgpr data/test_dev93 exp/tri3b/decode_bd_tgpr_dev93 || exit 1;
+  exp/tri3b/graph_nosp_bd_tgpr data/test_dev93 \
+  exp/tri3b/decode_nosp_bd_tgpr_dev93 || exit 1;
 
 # Example of rescoring with ConstArpaLm.
 steps/lmrescore_const_arpa.sh \
-  --cmd "$decode_cmd" data/lang_test_bd_{tgpr,fgconst} \
-  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92{,_fgconst} || exit 1;
+  --cmd "$decode_cmd" data/lang_nosp_test_bd_{tgpr,fgconst} \
+  data/test_eval92 exp/tri3b/decode_nosp_bd_tgpr_eval92{,_fgconst} || exit 1;
 
-steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_fg \
-  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_fg \
-   || exit 1;
-steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_bd_tgpr data/lang_test_bd_tg \
-  data/test_eval92 exp/tri3b/decode_bd_tgpr_eval92 exp/tri3b/decode_bd_tgpr_eval92_tg \
-  || exit 1;
+steps/lmrescore.sh --cmd "$decode_cmd" \
+  data/lang_nosp_test_bd_tgpr data/lang_nosp_test_bd_fg \
+  data/test_eval92 exp/tri3b/decode_nosp_bd_tgpr_eval92 \
+  exp/tri3b/decode_nosp_bd_tgpr_eval92_fg || exit 1;
+steps/lmrescore.sh --cmd "$decode_cmd" \
+  data/lang_nosp_test_bd_tgpr data/lang_nosp_test_bd_tg \
+  data/test_eval92 exp/tri3b/decode_nosp_bd_tgpr_eval92 \
+  exp/tri3b/decode_nosp_bd_tgpr_eval92_tg || exit 1;
 
 # The command below is commented out as we commented out the steps above
 # that build the RNNLMs, so it would fail.
-# local/run_rnnlms_tri3b.sh
+# local/run_rnnlms_tri3b.sh --lang-suffix "_nosp"
 
 # The command below is commented out as we commented out the steps above
 # that build the RNNLMs (HS version), so it would fail.
-# wait; local/run_rnnlm-hs_tri3b.sh
+# wait; local/run_rnnlm-hs_tri3b.sh --lang-suffix "_nosp"
 
 # The following two steps, which are a kind of side-branch, try mixing up
 ( # from the 3b system.  This is to demonstrate that script.
  steps/mixup.sh --cmd "$train_cmd" \
-   20000 data/train_si84 data/lang exp/tri3b exp/tri3b_20k || exit 1;
+   20000 data/train_si84 data/lang_nosp exp/tri3b exp/tri3b_20k || exit 1;
  steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 \
-   exp/tri3b/graph_tgpr data/test_dev93 exp/tri3b_20k/decode_tgpr_dev93  || exit 1;
+   exp/tri3b/graph_nosp_tgpr data/test_dev93 \
+   exp/tri3b_20k/decode_nosp_tgpr_dev93  || exit 1;
 )
-
 
 # From 3b system, align all si284 data.
 steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri3b exp/tri3b_ali_si284 || exit 1;
+  data/train_si284 data/lang_nosp exp/tri3b exp/tri3b_ali_si284 || exit 1;
 
 
 # From 3b system, train another SAT system (tri4a) with all the si284 data.
 
-steps/train_sat.sh  --cmd "$train_cmd" \
-  4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4a || exit 1;
+steps/train_sat.sh  --cmd "$train_cmd" 4200 40000 \
+  data/train_si284 data/lang_nosp exp/tri3b_ali_si284 exp/tri4a || exit 1;
 (
- utils/mkgraph.sh data/lang_test_tgpr exp/tri4a exp/tri4a/graph_tgpr || exit 1;
+ utils/mkgraph.sh data/lang_nosp_test_tgpr \
+   exp/tri4a exp/tri4a/graph_nosp_tgpr || exit 1;
  steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-   exp/tri4a/graph_tgpr data/test_dev93 exp/tri4a/decode_tgpr_dev93 || exit 1;
+   exp/tri4a/graph_nosp_tgpr data/test_dev93 \
+   exp/tri4a/decode_nosp_tgpr_dev93 || exit 1;
  steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-   exp/tri4a/graph_tgpr data/test_eval92 exp/tri4a/decode_tgpr_eval92 || exit 1;
+   exp/tri4a/graph_nosp_tgpr data/test_eval92 \
+   exp/tri4a/decode_nosp_tgpr_eval92 || exit 1;
 ) & 
 
 
 # This step is just to demonstrate the train_quick.sh script, in which we
 # initialize the GMMs from the old system's GMMs.
-steps/train_quick.sh --cmd "$train_cmd" \
-   4200 40000 data/train_si284 data/lang exp/tri3b_ali_si284 exp/tri4b || exit 1;
+steps/train_quick.sh --cmd "$train_cmd" 4200 40000 \
+  data/train_si284 data/lang_nosp exp/tri3b_ali_si284 exp/tri4b || exit 1;
+
+(
+ utils/mkgraph.sh data/lang_nosp_test_tgpr \
+   exp/tri4b exp/tri4b/graph_nosp_tgpr || exit 1;
+ steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
+   exp/tri4b/graph_nosp_tgpr data/test_dev93 \
+   exp/tri4b/decode_nosp_tgpr_dev93 || exit 1;
+ steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
+  exp/tri4b/graph_nosp_tgpr data/test_eval92 \
+  exp/tri4b/decode_nosp_tgpr_eval92 || exit 1;
+
+ utils/mkgraph.sh data/lang_nosp_test_bd_tgpr \
+   exp/tri4b exp/tri4b/graph_nosp_bd_tgpr || exit 1;
+ steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
+   exp/tri4b/graph_nosp_bd_tgpr data/test_dev93 \
+   exp/tri4b/decode_nosp_bd_tgpr_dev93 || exit 1;
+ steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
+  exp/tri4b/graph_nosp_bd_tgpr data/test_eval92 \
+  exp/tri4b/decode_nosp_bd_tgpr_eval92 || exit 1;
+) &
+
+# Silprob for normal lexicon.
+steps/get_prons.sh --cmd "$train_cmd" \
+  data/train_si284 data/lang_nosp exp/tri4b || exit 1;
+utils/dict_dir_add_pronprobs.sh --max-normalize true \
+  data/local/dict_nosp \
+  exp/tri4b/pron_counts_nowb.txt exp/tri4b/sil_counts_nowb.txt \
+  exp/tri4b/pron_bigram_counts_nowb.txt data/local/dict || exit 1
+
+utils/prepare_lang.sh data/local/dict \
+  "<SPOKEN_NOISE>" data/local/lang_tmp data/lang || exit 1;
+
+for lm_suffix in bg bg_5k tg tg_5k tgpr tgpr_5k; do
+  mkdir -p data/lang_test_${lm_suffix}
+  cp -r data/lang/* data/lang_test_${lm_suffix}/ || exit 1;
+  rm -rf data/lang_test_${lm_suffix}/tmp
+  cp data/lang_nosp_test_${lm_suffix}/G.* data/lang_test_${lm_suffix}/
+done
+
+# Silprob for larger lexicon.
+utils/dict_dir_add_pronprobs.sh --max-normalize true \
+  data/local/dict_nosp_larger \
+  exp/tri4b/pron_counts_nowb.txt exp/tri4b/sil_counts_nowb.txt \
+  exp/tri4b/pron_bigram_counts_nowb.txt data/local/dict_larger || exit 1
+
+utils/prepare_lang.sh data/local/dict_larger \
+  "<SPOKEN_NOISE>" data/local/lang_tmp_larger data/lang_bd || exit 1;
+
+for lm_suffix in tgpr tgconst tg fgpr fgconst fg; do
+  mkdir -p data/lang_test_bd_${lm_suffix}
+  cp -r data/lang_bd/* data/lang_test_bd_${lm_suffix}/ || exit 1;
+  rm -rf data/lang_test_bd_${lm_suffix}/tmp
+  cp data/lang_nosp_test_bd_${lm_suffix}/G.* data/lang_test_bd_${lm_suffix}/
+done
 
 (
  utils/mkgraph.sh data/lang_test_tgpr exp/tri4b exp/tri4b/graph_tgpr || exit 1;
@@ -308,35 +396,15 @@ steps/train_quick.sh --cmd "$train_cmd" \
  steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
   exp/tri4b/graph_tgpr data/test_eval92 exp/tri4b/decode_tgpr_eval92 || exit 1;
 
- utils/mkgraph.sh data/lang_test_bd_tgpr exp/tri4b exp/tri4b/graph_bd_tgpr || exit 1;
+ utils/mkgraph.sh data/lang_test_bd_tgpr \
+   exp/tri4b exp/tri4b/graph_bd_tgpr || exit 1;
  steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-   exp/tri4b/graph_bd_tgpr data/test_dev93 exp/tri4b/decode_bd_tgpr_dev93 || exit 1;
+   exp/tri4b/graph_bd_tgpr data/test_dev93 \
+   exp/tri4b/decode_bd_tgpr_dev93 || exit 1;
  steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-  exp/tri4b/graph_bd_tgpr data/test_eval92 exp/tri4b/decode_bd_tgpr_eval92 || exit 1;
+  exp/tri4b/graph_bd_tgpr data/test_eval92 \
+  exp/tri4b/decode_bd_tgpr_eval92 || exit 1;
 ) &
-
-
-( # run decoding with larger dictionary and pron-probs.  Need to get dict with
-  # pron-probs first.  [This seems to help by about 0.1% absolute in general.]
-  mkdir -p data/local/dict_larger_pp
-  cp -r data/local/dict_larger/* data/local/dict_larger_pp
-  rm -r data/local/dict_larger_pp/{b,f,*.gz,lexicon.txt}
-  steps/get_lexicon_probs.sh data/train_si284 data/lang exp/tri4b data/local/dict_larger/lexicon.txt \
-    exp/tri4b_lexprobs data/local/dict_larger_pp/lexiconp.txt || exit 1;
-  utils/prepare_lang.sh --share-silence-phones true \
-    data/local/dict_larger_pp "<SPOKEN_NOISE>" data/dict_larger/tmp data/lang_bd_pp
-  cmp data/lang_bd/words.txt data/lang_bd_pp/words.txt || exit 1;
-  for suffix in tg tgpr fg; do
-    mkdir -p data/lang_test_bd_pp_${suffix}
-    cp -r data/lang_bd_pp/* data/lang_test_bd_pp_${suffix}
-    cp data/lang_test_bd_${suffix}/G.fst data/lang_test_bd_pp_${suffix}/G.fst || exit 1;
-  done
-  utils/mkgraph.sh data/lang_test_bd_pp_tgpr exp/tri4b exp/tri4b/graph_bd_pp_tgpr || exit 1;
-  steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
-    exp/tri4b/graph_bd_pp_tgpr data/test_dev93 exp/tri4b/decode_bd_pp_tgpr_dev93 
-  steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
-    exp/tri4b/graph_bd_pp_tgpr data/test_eval92 exp/tri4b/decode_bd_pp_tgpr_eval92
-)
 
 
 # Train and test MMI, and boosted MMI, on tri4b (LDA+MLLT+SAT on
@@ -359,6 +427,8 @@ local/run_mmi_tri4b.sh
 
 # You probably want to run the sgmm2 recipe as it's generally a bit better:
 local/run_sgmm2.sh
+
+exit 0
 
 # We demonstrate MAP adaptation of GMMs to gender-dependent systems here.  This also serves
 # as a generic way to demonstrate MAP adaptation to different domains.

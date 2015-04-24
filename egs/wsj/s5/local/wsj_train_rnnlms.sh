@@ -1,6 +1,7 @@
 #!/bin/bash 
 
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
+#           2015  Guoguo Chen
 
 # This script trains LMs on the WSJ LM-training data.
 # It requires that you have already run wsj_extend_dict.sh,
@@ -21,6 +22,7 @@ rnnlm_ver=rnnlm-0.3e # version of RNNLM to use
 threads=1 # for RNNLM-HS
 bptt=2 # length of BPTT unfolding in RNNLM
 bptt_block=20 # length of BPTT unfolding in RNNLM
+dict_suffix=
 # End configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -33,7 +35,7 @@ if [ $# != 1 ]; then
 fi
 
 dir=$1
-srcdir=data/local/dict_larger
+srcdir=data/local/dict${dict_suffix}_larger
 mkdir -p $dir
 
 export PATH=$KALDI_ROOT/tools/$rnnlm_ver:$PATH

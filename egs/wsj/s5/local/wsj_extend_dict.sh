@@ -12,6 +12,11 @@
 # way.
 # It makes use of scripts in local/dict/
 
+dict_suffix=
+
+echo "$0 $@"  # Print the command line for logging
+. utils/parse_options.sh || exit 1;
+
 if [ $# -ne 1 ]; then
   echo "Usage: local/wsj_train_lms.sh /foo/bar/WSJ/13-32.1/"
   exit 1
@@ -25,20 +30,23 @@ fi
 #srcdir=/mnt/matylda2/data/WSJ1/13-32.1
 export PATH=$PATH:`pwd`/local/dict/
 srcdir=$1
-mkdir -p data/local/dict_larger
-dir=data/local/dict_larger
-cp data/local/dict/* data/local/dict_larger # Various files describing phones etc.
-  # are there; we just want to copy them as the phoneset is the same.
-rm data/local/dict_larger/lexicon.txt # we don't want this.
-rm data/local/dict_larger/lexiconp.txt # we don't want this either.
+mkdir -p data/local/dict${dict_suffix}_larger
+dir=data/local/dict${dict_suffix}_larger
+cp -r data/local/dict${dict_suffix}/* \
+  data/local/dict${dict_suffix}_larger # Various files describing phones etc.
+                                       # are there; we just want to copy them
+                                       # as the phoneset is the same.
+rm data/local/dict${dict_suffix}_larger/lexicon.txt  # we don't want this.
+rm data/local/dict${dict_suffix}_larger/lexiconp.txt # we don't want this either.
 mincount=2 # Minimum count of an OOV we will try to generate a pron for.
 
-[ ! -f data/local/dict/cmudict/cmudict.0.7a ] && echo "CMU dict not in expected place" && exit 1;
+[ ! -f data/local/dict${dict_suffix}/cmudict/cmudict.0.7a ] && \
+  echo "CMU dict not in expected place" && exit 1;
 
 # Remove comments from cmudict; print first field; remove
 # words like FOO(1) which are alternate prons: our dict format won't
 # include these markers.
-grep -v ';;;' data/local/dict/cmudict/cmudict.0.7a | 
+grep -v ';;;' data/local/dict${dict_suffix}/cmudict/cmudict.0.7a | 
  perl -ane 's/^(\S+)\(\d+\)/$1/; print; ' | sort | uniq > $dir/dict.cmu
 
 cat $dir/dict.cmu | awk '{print $1}' | sort | uniq > $dir/wordlist.cmu
