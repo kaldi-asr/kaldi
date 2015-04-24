@@ -262,8 +262,6 @@ class Nnet {
   /// must have dim equal to NumUpdatableComponents()).
   void GetLearningRates(VectorBase<BaseFloat> *learning_rates) const;
   
-
-  
   // This sets *dot_prod to the dot prod of *this . validation_gradient,
   // separately for each updatable component.  The vector must have size equal
   // to this->NumUpdatableComponents().  Warning: previously it had to have size

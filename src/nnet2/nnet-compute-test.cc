@@ -27,12 +27,16 @@ namespace nnet2 {
 
 void UnitTestNnetCompute() {
   int32 input_dim = 10 + rand() % 40, output_dim = 100 + rand() % 500;
+  bool pad_input = (rand() % 2 == 0);
+  
   Nnet *nnet = GenRandomNnet(input_dim, output_dim);
+  KALDI_LOG << "Left context = " << nnet->LeftContext() << ", right context = "
+            << nnet->RightContext() << ", pad-input = " << pad_input;
+  KALDI_LOG << "NNet info is " << nnet->Info();
   int32 num_feats = 5 + rand() % 1000;
   CuMatrix<BaseFloat> input(num_feats, input_dim);
   input.SetRandn();
 
-  bool pad_input = (rand() % 2 == 0);
   int32 num_output_rows = num_feats -
       (pad_input ? 0 : nnet->LeftContext() + nnet->RightContext());
   if (num_output_rows <= 0)
@@ -48,7 +52,7 @@ void UnitTestNnetCompute() {
     int32 feats_left = num_feats - cur_input_pos;
     CuMatrix<BaseFloat> output_part;
     if (feats_left > 0) {
-      int32 chunk_size = std::min<int32>(1 + rand() % 20, feats_left);
+      int32 chunk_size = std::min<int32>(1 + rand() % 10, feats_left);
       CuSubMatrix<BaseFloat> input_part(input, cur_input_pos, chunk_size,
                                         0, input_dim);
       computer.Compute(input_part, &output_part);
@@ -64,6 +68,14 @@ void UnitTestNnetCompute() {
     }
   }  
   AssertEqual(output1, output2);
+  for (int32 i = 0; i < output1.NumRows(); i++) {
+    // just double-check that the frames near the end are right, in case
+    // the test above somehow passed despite that.
+    if (i < 10 || output1.NumRows() - i < 10) {
+      CuSubVector<BaseFloat> vec1(output1, i), vec2(output2, i);
+      AssertEqual(vec1, vec2);
+    }
+  }
   KALDI_LOG << "OK";
   delete nnet;
 }

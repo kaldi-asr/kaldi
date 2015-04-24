@@ -747,8 +747,8 @@ Nnet *GenRandomNnet(int32 input_dim,
                     int32 output_dim) {
   std::vector<Component*> components;
   int32 cur_dim = input_dim;
-  // have up to 4 layers before the final one.
-  for (size_t i = 0; i < 4; i++) {
+  // have up to 10 layers before the final one.
+  for (size_t i = 0; i < 10; i++) {
     if (rand() % 2 == 0) {
       // add an affine component.
       int32 next_dim = 50 + rand() % 100;

@@ -179,11 +179,12 @@ class Component {
   virtual int32 OutputDim() const = 0;
 
   /// Return a vector describing the temporal context this component requires
-  /// for each frame of output, as a sorted list. 
-  /// The default implementation returns a vector ( 0 ), but a splicing layer
-  /// might return e.g. (-2, -1, 0, 1, 2), but it doesn't have to be contiguous.
-  /// Note : The context needed by the entire network is a function of the
-  /// contexts needed by all the components
+  /// for each frame of output, as a sorted list.  The default implementation
+  /// returns a vector ( 0 ), but a splicing layer might return e.g. (-2, -1, 0,
+  /// 1, 2), but it doesn't have to be contiguous.  Note : The context needed by
+  /// the entire network is a function of the contexts needed by all the
+  /// components.  It is required that Context().front() <= 0 and
+  /// Context().back() >= 0.
   virtual std::vector<int32> Context() const { return std::vector<int32>(1, 0); }
 
   /// Perform forward pass propagation Input->Output.  Each row is

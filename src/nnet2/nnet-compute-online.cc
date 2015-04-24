@@ -33,7 +33,7 @@ NnetOnlineComputer::NnetOnlineComputer(const Nnet &nnet, bool pad_input)
 }
 
 void NnetOnlineComputer::Compute(const CuMatrixBase<BaseFloat> &input,
-                                   CuMatrix<BaseFloat> *output) {
+                                 CuMatrix<BaseFloat> *output) {
   KALDI_ASSERT(output != NULL);
   KALDI_ASSERT(!finished_);
   int32 dim = input.NumCols();
@@ -49,7 +49,12 @@ void NnetOnlineComputer::Compute(const CuMatrixBase<BaseFloat> &input,
     KALDI_ERR << "Feature dimension is " << dim << ", but network expects "
         << nnet_.InputDim();
   }
-  int32 num_input_rows = 0;
+  // num_effective_input_rows is the effective number of input rows we have, for
+  // purposes of computing how much output we will get.  It is the number of
+  // actual input rows plus the amount of context stored at intermediate layers
+  // of the network (which if we have previously done the computation, will
+  // equal nnet_.LeftContext() + nnet_.RightContext()).
+  int32 num_effective_input_rows = 0;
   // Initialize the first element of data_, with input
   CuMatrix<BaseFloat> &input_data(data_[0]);
   if (is_first_chunk_)  {
@@ -68,7 +73,7 @@ void NnetOnlineComputer::Compute(const CuMatrixBase<BaseFloat> &input,
       input_data.Resize(input.NumRows(), input.NumCols());
       input_data.CopyFromMat(input);
     }
-    num_input_rows = input_data.NumRows();
+    num_effective_input_rows = input_data.NumRows();
   } else {
     int32 extra_input_rows = 0;
     // checking if we did forward pass for any chunks before.
@@ -81,28 +86,27 @@ void NnetOnlineComputer::Compute(const CuMatrixBase<BaseFloat> &input,
         break;
       }
     }
-    // add unprocessed input from the previous calls 
+    // add unprocessed input from the previous calls
     input_data.Resize(input.NumRows() + unprocessed_buffer_.NumRows(), dim);
     if (unprocessed_buffer_.NumRows() > 0)
       input_data.Range(0, unprocessed_buffer_.NumRows(),
-                        0, dim).CopyFromMat(unprocessed_buffer_);
+                       0, dim).CopyFromMat(unprocessed_buffer_);
     input_data.Range(unprocessed_buffer_.NumRows(), input.NumRows(),
-                        0, dim).CopyFromMat(input);
+                     0, dim).CopyFromMat(input);
     unprocessed_buffer_.Resize(0, 0); // clearing the unprocessed buffer
-    num_input_rows = input_data.NumRows() + extra_input_rows;
+    num_effective_input_rows = input_data.NumRows() + extra_input_rows;
   }
-  if (num_input_rows >= nnet_.LeftContext() + nnet_.RightContext() + 1) {
+  if (num_effective_input_rows >=
+      nnet_.LeftContext() + nnet_.RightContext() + 1) {
     // we have sufficient frames to compute at least one nnet output
-    nnet_.ComputeChunkInfo(num_input_rows, 1, &chunk_info_);
+    nnet_.ComputeChunkInfo(num_effective_input_rows, 1, &chunk_info_);
     // store the last frame as it might be needed for padding
-    last_seen_input_frame_.Resize(input_data.NumCols());
-    last_seen_input_frame_.CopyFromVec(input_data.Row(input_data.NumRows() - 1));
+    last_seen_input_frame_ = input_data.Row(input_data.NumRows() - 1);
     Propagate();
     *output = data_.back();
   } else {
     // store the input in the unprocessed_buffer_
-    unprocessed_buffer_.Resize(input_data.NumRows(), input_data.NumCols());
-    unprocessed_buffer_.CopyFromMat(input_data);
+    unprocessed_buffer_ = input_data;
     // not enough input context so just return an empty array
     output->Resize(0, 0);
   }
@@ -112,9 +116,9 @@ void NnetOnlineComputer::Flush(CuMatrix<BaseFloat> *output) {
   KALDI_ASSERT(!finished_ && !is_first_chunk_);
   int32 num_frames_padding = (pad_input_ ? nnet_.RightContext() : 0);
   int32 num_stored_frames = nnet_.LeftContext() + nnet_.RightContext();
-  int32 num_input_rows =  num_stored_frames + num_frames_padding;
+  int32 num_effective_input_rows =  num_stored_frames + num_frames_padding;
   // If the amount of output would be empty return at this point.
-  if (num_input_rows < nnet_.LeftContext() + nnet_.RightContext() + 1) {
+  if (num_effective_input_rows < nnet_.LeftContext() + nnet_.RightContext() + 1) {
     output->Resize(0, 0);
     finished_ = true;
     return;
@@ -122,11 +126,14 @@ void NnetOnlineComputer::Flush(CuMatrix<BaseFloat> *output) {
 
   int32 dim = nnet_.InputDim();
   CuMatrix<BaseFloat> &input_data(data_[0]);
-  if (num_frames_padding > 0) {
-    input_data.Resize(num_frames_padding, dim);
-    input_data.CopyRowsFromVec(last_seen_input_frame_);
-  }
-  nnet_.ComputeChunkInfo(num_input_rows, 1,
+  KALDI_ASSERT(num_frames_padding > 0);  // else we would have returned above.
+  input_data.Resize(num_frames_padding, dim);
+  input_data.CopyRowsFromVec(last_seen_input_frame_);
+
+  // Note, we later modify this chunk-info, it isn't quite correct right now
+  // because we add extra data at intermediate layers, and the actual number of
+  // input rows doesn't equal num_effective_input_rows.
+  nnet_.ComputeChunkInfo(num_effective_input_rows, 1,
                          &chunk_info_);
   Propagate();
   *output = data_.back();
