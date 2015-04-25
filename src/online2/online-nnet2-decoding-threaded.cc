@@ -266,17 +266,15 @@ BaseFloat SingleUtteranceNnet2DecoderThreaded::GetRemainingWaveform(
   int64 num_samples_stored = 0;  // number of samples we still have.
   std::vector< Vector<BaseFloat>* > all_pieces;
   std::deque< Vector<BaseFloat>* >::const_iterator iter;
-  for (iter = input_waveform_.begin(); iter != input_waveform_.end(); ++iter) {
-    num_samples_stored += (*iter)->Dim();
-    all_pieces.push_back(*iter);
-  }
   for (iter = processed_waveform_.begin(); iter != processed_waveform_.end();
        ++iter) {
     num_samples_stored += (*iter)->Dim();
     all_pieces.push_back(*iter);
   }
-  // put the pieces in chronological order.
-  std::reverse(all_pieces.begin(), all_pieces.end());
+  for (iter = input_waveform_.begin(); iter != input_waveform_.end(); ++iter) {
+    num_samples_stored += (*iter)->Dim();
+    all_pieces.push_back(*iter);
+  }
   int64 samples_shift_per_frame =
       sampling_rate_ * feature_pipeline_.FrameShiftInSeconds();
   int64 num_samples_to_discard = samples_shift_per_frame * num_frames_decoded_;
