@@ -34,9 +34,13 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
 
 stage=-3
 
-
+adjust_priors=false
 num_threads=16  # this is the default but you may want to change it, e.g. to 1 if
                 # using GPUs.
+parallel_opts="--num-threads 16 --mem 1G"
+  # by default we use 16 threads; this lets the queue know.
+  # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
+
 cleanup=true
 retroactive=false
 remove_egs=false
@@ -74,7 +78,7 @@ if [ $# != 2 ]; then
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job (will affect results"
   echo "                                                   # as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size.  With GPU, must be 1."
-  echo "  --parallel-opts <opts|\"-pe smp 16 -l ram_free=1G,mem_free=1G\">      # extra options to pass to e.g. queue.pl for processes that"
+  echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
   echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
   echo "  --stage <stage|-3>                               # Used to run a partially-completed training process from somewhere in"
@@ -123,6 +127,10 @@ num_iters=$[($num_epochs*$num_archives)/$num_jobs_nnet]
 
 echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
 
+for e in $(seq 1 $num_epochs); do
+  x=$[($e*$num_archives)/$num_jobs_nnet] # gives the iteration number.
+  iter_to_epoch[$x]=$e
+done
 
 if [ $stage -le -1 ]; then
   echo "$0: Copying initial model and modifying preconditioning setup"
@@ -153,7 +161,7 @@ else
   train_suffix="-parallel --num-threads=$num_threads"
 fi
 
-
+rm $dir/.error
 x=0   
 while [ $x -lt $num_iters ]; do
   if [ $stage -le $x ]; then
@@ -165,7 +173,7 @@ while [ $x -lt $num_iters ]; do
     # choosing the archive indexes to use for each job on each iteration... we cycle through
     # all archives.
 
-    $cmd JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
+    $cmd $parallel_opts JOB=1:$num_jobs_nnet $dir/log/train.$x.JOB.log \
       nnet-combine-egs-discriminative \
         "ark:$degs_dir/degs.\$[((JOB-1+($x*$num_jobs_nnet))%$num_archives)+1].ark" ark:- \| \
       nnet-train-discriminative$train_suffix --silence-phones=$silphonelist \
@@ -190,13 +198,46 @@ while [ $x -lt $num_iters ]; do
     fi
     rm $nnets_list
   fi
+  if $adjust_priors && [ ! -z "${iter_to_epoch[$x]}" ]; then
+    if [ ! -f $degs_dir/priors_egs.1.ark ]; then
+      echo "$0: Expecting $degs_dir/priors_egs.1.ark to exist since --adjust-priors was true."
+      echo "$0: Run this script with --adjust-priors false to not adjust priors"
+      exit 1
+    fi
+    (
+    e=${iter_to_epoch[$x]}
+    rm $dir/.error
+    num_archives_priors=`cat $degs_dir/info/num_archives_priors` || { touch $dir/.error; echo "Could not find $degs_dir/info/num_archives_priors. Set --adjust-priors false to not adjust priors"; exit 1; }
+
+    $cmd JOB=1:$num_archives_priors $dir/log/get_post.epoch$e.JOB.log \
+      nnet-compute-from-egs "nnet-to-raw-nnet $dir/$x.mdl -|" \
+      ark:$degs_dir/priors_egs.JOB.ark ark:- \| \
+      matrix-sum-rows ark:- ark:- \| \
+      vector-sum ark:- $dir/post.epoch$e.JOB.vec || \
+      { touch $dir/.error; echo "Error in getting posteriors for adjusting priors. See $dir/log/get_post.epoch$e.*.log"; exit 1; }
+
+    sleep 3;
+
+    $cmd $dir/log/sum_post.epoch$e.log \
+      vector-sum $dir/post.epoch$e.*.vec $dir/post.epoch$e.vec || \
+      { touch $dir/.error; echo "Error in summing posteriors. See $dir/log/sum_post.epoch$e.log"; exit 1; }
+
+    rm $dir/post.epoch$e.*.vec
+
+    echo "Re-adjusting priors based on computed posteriors for iter $x"
+    $cmd $dir/log/adjust_priors.epoch$e.log \
+      nnet-adjust-priors $dir/$x.mdl $dir/post.epoch$e.vec $dir/$x.mdl \
+      || { touch $dir/.error; echo "Error in adjusting priors. See $dir/log/adjust_priors.epoch$e.log"; exit 1; }
+    ) &
+  fi
+
+  [ -f $dir/.error ] && exit 1
 
   x=$[$x+1]
 done
 
 rm $dir/final.mdl 2>/dev/null
 ln -s $x.mdl $dir/final.mdl
-
 
 echo Done
 
@@ -215,6 +256,7 @@ if $cleanup && $remove_egs; then  # note: this is false by default.
   echo Removing training examples
   for n in $(seq $num_archives); do
     remove $degs_dir/degs.*
+    remove $degs_dir/priors_egs.*
   done
 fi
 

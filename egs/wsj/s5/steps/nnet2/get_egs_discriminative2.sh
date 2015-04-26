@@ -24,6 +24,10 @@ stage=0
 cleanup=true
 transform_dir= # If this is a SAT system, directory for transforms
 online_ivector_dir=
+
+num_utts_subset=3000
+num_archives_priors=10
+
 # End configuration section.
 
 
@@ -118,6 +122,10 @@ else
   echo 0 > $dir/info/ivector_dim
 fi
 
+# Get list of validation utterances. 
+awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
+    > $dir/priors_uttlist || exit 1;
+
 ## We don't support deltas here, only LDA or raw (mainly because deltas are less
 ## frequently used).
 if [ -z $feat_type ]; then
@@ -127,11 +135,13 @@ echo "$0: feature type is $feat_type"
 
 case $feat_type in
   raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
+    priors_feats="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
    ;;
   lda) 
     splice_opts=`cat $alidir/splice_opts 2>/dev/null`
     cp $alidir/final.mat $dir    
     feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+    priors_feats="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
@@ -163,14 +173,17 @@ if [ ! -z "$transform_dir" ]; then
     for n in $(seq $nj_orig); do cat $transform_dir/$trans.$n; done | \
        copy-feats ark:- ark,scp:$dir/$trans.ark,$dir/$trans.scp || exit 1;
     feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
+    priors_feats="$priors_feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
   else
     # number of jobs matches with alignment dir.
     feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
+    priors_feats="$priors_feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
   fi
 fi
 if [ ! -z $online_ivector_dir ]; then
   # add iVectors to the features.
   feats="$feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
+  priors_feats="$priors_feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
 fi
 
 
@@ -230,6 +243,54 @@ if [ -d $dir/storage ]; then
   fi
 fi
 
+rm $dir/.error 2>/dev/null
+left_context=$(nnet-am-info $dir/final.mdl | grep '^left-context' | awk '{print $2}') || exit 1
+right_context=$(nnet-am-info $dir/final.mdl | grep '^right-context' | awk '{print $2}') || exit 1
+
+(
+
+if [ $stage -le 10 ]; then
+
+priors_egs_list=
+for y in `seq $num_archives_priors`; do
+  utils/create_data_link.pl $dir/priors_egs.$y.ark
+  for x in `seq $nj`; do
+    utils/create_data_link.pl $dir/priors_egs_orig.$x.$y.ark
+  done
+  priors_egs_list="$priors_egs_list ark:$dir/priors_egs_orig.JOB.$y.ark"
+done
+ 
+nnet_context_opts="--left-context=$left_context --right-context=$right_context"
+
+echo "$0: dumping egs for prior adjustment in the background."
+
+$cmd JOB=1:$nj $dir/log/create_priors_subset.JOB.log \
+  nnet-get-egs $ivectors_opt $nnet_context_opts "$priors_feats" \
+  "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | copy-int-vector ark:- ark,t:- | utils/filter_scp.pl $dir/priors_uttlist | ali-to-pdf $alidir/final.mdl ark,t:- ark:- | ali-to-post ark:- ark:- |" \
+  ark:- \| nnet-copy-egs ark:- $priors_egs_list || \
+  { touch $dir/.error; echo "Error in creating priors subset. See $dir/log/create_priors_subset.*.log"; exit 1; }
+
+sleep 3;
+
+echo "$0: recombining archives on disk"
+# combine all the "priors_egs_orig.JOB.*.scp" (over the $nj splits of the data) and
+# writing to the priors_egs.JOB.ark
+
+priors_egs_list=
+for n in $(seq $nj); do 
+  priors_egs_list="$priors_egs_list $dir/priors_egs_orig.$n.JOB.ark"
+done
+
+echo $num_archives_priors >$dir/info/num_archives_priors 
+
+$cmd JOB=1:$num_archives_priors $dir/log/copy_priors_egs.JOB.log \
+  nnet-copy-egs "ark:cat $priors_egs_list|"  ark:$dir/priors_egs.JOB.ark || \
+  { touch $dir/.error; echo "Error in creating priors_egs. See $dir/log/copy_priors_egs.*.log"; exit 1; }
+
+fi
+
+) &
+
 if [ $stage -le 3 ]; then
   echo "$0: getting initial training examples by splitting lattices"
 
@@ -281,11 +342,18 @@ if [ $stage -le 5 ] && [ $num_archives -ne $num_archives_temp ]; then
       ark:$dir/degs.JOB.ark || exit 1
 fi
 
+wait;
+[ -f $dir/.error ] && echo "Error detected while creating priors adjustment egs" && exit 1
+
 if $cleanup; then
   echo "$0: removing temporary archives."
   for x in $(seq $nj); do
     for y in $(seq $num_archives_temp); do
       file=$dir/degs_orig.$x.$y.ark
+      [ -L $file ] && rm $(readlink -f $file); rm $file
+    done
+    for y in $(seq $num_archives_priors); do
+      file=$dir/priors_egs_orig.$x.$y.ark
       [ -L $file ] && rm $(readlink -f $file); rm $file
     done
   done
