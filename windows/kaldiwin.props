@@ -8,11 +8,11 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalOptions>/D "HAVE_MKL" %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalIncludeDirectories>..\..\..\src;C:\Program Files (x86)\Intel\Composer XE\mkl\include;$(OPENFST)\include;$(PTHREAD)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\src;%(MKLDIR)\include;$(OPENFST)\include;%(PTHREADW)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>USE_ONLY_PRERECORDED;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\Composer XE\mkl\lib\intel64;$(OPENFST)\lib;$(PTHREAD)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>%(MKLDIR)\lib\intel64;$(OPENFST)\lib;%(PTHREADW)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>mkl_rt.lib;mkl_intel_thread.lib;mkl_core.lib;mkl_intel_lp64.lib;pthreadVC2.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
