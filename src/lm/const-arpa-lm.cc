@@ -318,8 +318,14 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
       SplitStringToVector(col[1], "=", true, &sub_col);
       if (sub_col.size() == 2) {
         int32 order, ngram_count;
-        KALDI_ASSERT(ConvertStringToInteger(sub_col[0], &order));
-        KALDI_ASSERT(ConvertStringToInteger(sub_col[1], &ngram_count));
+        if (!ConvertStringToInteger(sub_col[0], &order)) {
+          KALDI_ERR << "Error parsing the ARPA LM; Fail to convert "
+              << sub_col[0] << " to integer.";
+        }
+        if (!ConvertStringToInteger(sub_col[1], &ngram_count)) {
+          KALDI_ERR << "Error parsing the ARPA LM; Fail to convert "
+              << sub_col[1] << " to integer.";
+        }
         if (num_ngrams.size() <= order) {
           num_ngrams.resize(order + 1);
         }
@@ -400,7 +406,10 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
         std::vector<int32> seq(cur_order, 0);
         for (int32 index = 0; index < cur_order; ++index) {
           int32 word;
-          KALDI_ASSERT(ConvertStringToInteger(col[1 + index], &word));
+          if (!ConvertStringToInteger(col[1 + index], &word)) {
+            KALDI_ERR << "Error parsing the ARPA LM; Fail to convert "
+                << col[1 + index] << " to integer.";
+          }
           seq[index] = word;
         }
 
