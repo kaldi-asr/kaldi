@@ -883,7 +883,7 @@ bool EqualAlign(const Fst<Arc> &ifst,
                 typename Arc::StateId length,
                 int rand_seed,
                 MutableFst<Arc> *ofst, 
-                int num_retries=10) {
+                int num_retries) {
   srand(rand_seed);
   KALDI_ASSERT(ofst->NumStates() == 0);  // make sure ofst empty.
   // make sure all states can reach final-state (or this algorithm may enter

@@ -25,7 +25,6 @@
 
 using kaldi::AmSgmm;
 using kaldi::MleAmSgmmAccs;
-using kaldi::int32;
 using kaldi::BaseFloat;
 namespace ut = kaldi::unittest;
 
@@ -34,6 +33,8 @@ namespace ut = kaldi::unittest;
 void TestUpdateAndAccsIO(const AmSgmm &sgmm,
                          const kaldi::Matrix<BaseFloat> &feats) {
   using namespace kaldi;
+  typedef kaldi::int32 int32;
+
   kaldi::SgmmUpdateFlagsType flags = kaldi::kSgmmAll;
   kaldi::SgmmPerFrameDerivedVars frame_vars;
   kaldi::SgmmPerSpkDerivedVars empty;

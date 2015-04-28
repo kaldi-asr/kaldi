@@ -310,6 +310,12 @@ template<class Weight, class Int> void TestScalePair(bool invert) {
 
 int main() {
   using namespace fst;
+
+  typedef ::int64 int64;
+  typedef ::uint64 uint64;
+  typedef ::int32 int32;
+  typedef ::uint32 uint32;
+
   {
     typedef LatticeWeightTpl<float> LatticeWeight;
     for(int i = 0; i < 2; i++) {

@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) {
           // is intended to prevent this from happening.
           while (do_endpointing &&
                  decoder.NumWaveformPiecesPending() * chunk_length_secs > 2.0)
-            Sleep(0.5);
+            Sleep(0.5f);
           
           decoder.AcceptWaveform(samp_freq, wave_part);
           

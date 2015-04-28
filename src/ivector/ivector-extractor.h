@@ -363,7 +363,16 @@ class OnlineIvectorEstimationStats {
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
 
-  // Use the default assignment operator
+  // Override the default assignment operator
+  inline OnlineIvectorEstimationStats &operator=(const OnlineIvectorEstimationStats &other) {
+	  this->prior_offset_ = other.prior_offset_;
+	  this->max_count_ = other.max_count_;
+	  this->num_frames_ = other.num_frames_;
+	  this->quadratic_term_=other.quadratic_term_;
+	  this->linear_term_=other.linear_term_;
+	  return *this;
+  }
+
  protected:
   /// Returns objective function per frame, at this iVector value.
   double Objf(const VectorBase<double> &ivector) const;
