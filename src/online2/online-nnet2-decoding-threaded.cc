@@ -446,10 +446,10 @@ void SingleUtteranceNnet2DecoderThreaded::ProcessLoglikes(
 // will terminate.  This assumes the calling thread has already
 // locked feature_pipeline_mutex_.
 bool SingleUtteranceNnet2DecoderThreaded::FeatureComputation(
-    int32 num_frames_output) {
+    int32 num_frames_consumed) {
   
   int32 num_frames_ready = feature_pipeline_.NumFramesReady(),
-      num_frames_usable = num_frames_ready - num_frames_output;
+      num_frames_usable = num_frames_ready - num_frames_consumed;
   bool features_done = feature_pipeline_.IsLastFrame(num_frames_ready - 1);
   KALDI_ASSERT(num_frames_usable >= 0);
   if (features_done) {
@@ -484,7 +484,7 @@ bool SingleUtteranceNnet2DecoderThreaded::FeatureComputation(
         processed_waveform_.push_back(input_waveform_.front());
         input_waveform_.pop_front();
         num_frames_ready = feature_pipeline_.NumFramesReady();
-        num_frames_usable = num_frames_ready - num_frames_output;
+        num_frames_usable = num_frames_ready - num_frames_consumed;
       }
       // Delete already-processed pieces of waveform if we have already decoded
       // those frames.  (If not already decoded, we keep them around for the
@@ -518,15 +518,20 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
   log_inv_prior.ApplyFloor(1.0e-20);  // should have no effect.
   log_inv_prior.ApplyLog();
   log_inv_prior.Scale(-1.0);
-  
-  int32 num_frames_output = 0;
 
+  // we'll have num_frames_consumed >= num_frames_output; num_frames_consumed is
+  // the number of feature frames consumed by the nnet computation,
+  // num_frames_output is the number of frames of loglikes the nnet computation
+  // has produced, which may be less than num_frames_consumed due to the
+  // right-context of the network.
+  int32 num_frames_consumed = 0, num_frames_output = 0;
+  
   while (true) {
     bool last_time = false;
 
     /****** Begin locking of feature pipeline mutex. ******/
     feature_pipeline_mutex_.Lock();
-    if (!FeatureComputation(num_frames_output)) {  // error
+    if (!FeatureComputation(num_frames_consumed)) {  // error
       feature_pipeline_mutex_.Unlock();
       return false;
     }
@@ -541,7 +546,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
     }
     
     int32 num_frames_ready = feature_pipeline_.NumFramesReady(),
-        num_frames_usable = num_frames_ready - num_frames_output;
+        num_frames_usable = num_frames_ready - num_frames_consumed;
     bool features_done = feature_pipeline_.IsLastFrame(num_frames_ready - 1);
       
     int32 num_frames_evaluate = std::min<int32>(num_frames_usable,
@@ -552,7 +557,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
       // we have something to do...
       feats.Resize(num_frames_evaluate, feature_pipeline_.Dim());
       for (int32 i = 0; i < num_frames_evaluate; i++) {
-        int32 t = num_frames_output + i;
+        int32 t = num_frames_consumed + i;
         SubVector<BaseFloat> feat(feats, i);
         feature_pipeline_.GetFrame(t, &feat);
       }
@@ -579,6 +584,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
                               // pointers.
 
       computer.Compute(cu_feats, &cu_loglikes);
+      num_frames_consumed += cu_feats.NumRows();
       ProcessLoglikes(log_inv_prior, &cu_loglikes);
     }
     
@@ -594,7 +600,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
     
     int32 num_loglike_frames = loglikes.NumRows();
 
-    if (loglikes.NumRows() != 0) {  // if we need to output some loglikes...
+    if (num_loglike_frames != 0) {  // if we need to output some loglikes...
       while (true) {
         // we may have to grab and release the decodable mutex
         // a few times before it's ready to accept the loglikes.
@@ -603,9 +609,10 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
         int32 num_frames_decoded = num_frames_decoded_;
         // we can't have output fewer frames than were decoded.
         KALDI_ASSERT(num_frames_output >= num_frames_decoded);
-        if (num_frames_output - num_frames_decoded < config_.max_loglikes_copy) {
+        if (num_frames_output - num_frames_decoded <= config_.max_loglikes_copy) {
           // If we would have to copy fewer than config_.max_loglikes_copy
-          // previously evaluated log-likelihoods inside the decodable object..
+          // previously output log-likelihoods inside the decodable object, then
+          // we go ahead and copy them to that object.
           int32 frames_to_discard = num_frames_decoded_ -
               decodable_.FirstAvailableFrame();
           KALDI_ASSERT(frames_to_discard >= 0);
@@ -615,6 +622,9 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
             return false;
           break;  // break from the innermost while loop.
         } else {
+          // There are too many frames already available to the decoder, that it
+          // hasn't processed yet, and we don't want them to have to be copied
+          // inside AcceptLoglikes(), so we wait for a bit.
           // we want the next call to Lock to block until the decoder has
           //  processed more frames.
           if (!decodable_synchronizer_.UnlockFailure(ThreadSynchronizer::kProducer))
@@ -629,6 +639,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
       decodable_.InputIsFinished();
       if (!decodable_synchronizer_.UnlockSuccess(ThreadSynchronizer::kProducer))
         return false;
+      KALDI_ASSERT(num_frames_consumed == num_frames_output);
       return true;
     }
   }
