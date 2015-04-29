@@ -1,4 +1,4 @@
-// ivectorbin/select-top-frames.cc
+// ivectorbin/select-top-chunks.cc
 
 // Copyright 2015   Vimal Manohar (Johns Hopkins University)
 
@@ -26,19 +26,19 @@ namespace kaldi {
   template <typename T> 
   class OtherVectorComparator {
     public:
-      OtherVectorComparator(const Vector<T> &vec, bool descending = true) 
+      OtherVectorComparator(const std::vector<T> &vec, bool descending = true) 
                       : vec_(vec), descending_(descending) { }
 
       bool operator() (int32 a, int32 b) {
-        if (descending_) return vec_(a) > vec_(b);
-        else return vec_(a) < vec_(b);
+        if (descending_) return vec_[a] > vec_[b];
+        else return vec_[a] < vec_[b];
       }
 
       inline void SetDescending() { descending_ = true; }
       inline void SetAscending() { descending_ = false; }
 
     private:
-      const Vector<T> &vec_;
+      const std::vector<T> &vec_;
       bool descending_;
   }; 
 
@@ -51,24 +51,32 @@ int main(int argc, char *argv[]) {
     using kaldi::int32;
 
     const char *usage =
-        "Select a subset of frames of the input files, based on the log-energy\n"
+        "Select a subset of chunks of frames of the input files, based on the log-energy\n"
         "of the frames\n"
-        "Usage: select-top-frames [options] <feats-rspecifier> "
+        "Usage: select-top-chunks [options] <feats-rspecifier> "
         "<feats-wspecifier>\n"
-        "e.g. : select-top-frames --top-frames-proportion=0.1 --window-size=1000 "
+        "e.g. : select-top-chunks --frames-proportion=0.1 --window-size=100"
         "scp:feats.scp ark:-\n";
 
-    BaseFloat top_frames_proportion = 1.0;
-    BaseFloat bottom_frames_proportion = 0.0;
-    int32 window_size = 1000;
+    BaseFloat frames_proportion = 1.0, select_frames = 0;
+    bool select_bottom_frames = false;
+    int32 window_size = 100;    // 100 frames = 1 second assuming a shift of 10ms
+    std::string energies_rspecifier = "";
     
     ParseOptions po(usage);
-    po.Register("top-frames-proportion", &top_frames_proportion,
-                "Select only the top frames by the feature value");
-    po.Register("bottom-frames-proportion", &bottom_frames_proportion,
-                "Select only the bottom frames by the feature value");
+    po.Register("frames-proportion", &frames_proportion,
+                "Select only the top / bottom proportion frames by the feature value");
+    po.Register("select-bottom-frames", &select_bottom_frames,
+                "If true, select only the bottom frames.");
+    po.Register("select-frames", &select_frames,
+                "Select these many frames, instead of looking at a proportion. "
+                "Overrides frame-proportion if provided");
     po.Register("window-size", &window_size, 
                 "Size of window to consider at once");
+    po.Register("energies", &energies_rspecifier,
+                "Read log-energies from a separate archive instead of treating "
+                "the first dimension as log-energy");
+
 
     po.Read(argc, argv);
 
@@ -82,6 +90,7 @@ int main(int argc, char *argv[]) {
 
     SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
     BaseFloatMatrixWriter feat_writer(feat_wspecifier);
+    RandomAccessBaseFloatMatrixReader energies_reader(energies_rspecifier);
 
     int32 num_done = 0, num_err = 0; 
     long long num_select = 0, num_frames = 0;
@@ -95,14 +104,19 @@ int main(int argc, char *argv[]) {
         continue;
       }
       num_frames += feats.NumRows();
-      
+
+      int32 num_chunks = ( feats.NumRows() + 0.5 * window_size ) / window_size;
+      int32 chunk_size = feats.NumRows() / num_chunks;
+
       int32 this_select = 0;
-      if (bottom_frames_proportion == 0.0)
-        this_select = top_frames_proportion * feats.NumRows() + 0.5;
-      else if (top_frames_proportion == 0.0)
-        this_select = bottom_frames_proportion * feats.NumRows() + 0.5;
+      if (select_frames == 0) {
+        this_select = frames_proportion * num_chunks + 0.5;
+      } else {
+        this_select = (static_cast<BaseFloat>(select_frames) + 0.5) / chunk_size ;
+      }
+      if (this_select == 0) this_select = 1;
       
-      if (this_select >= feats.NumRows()) {
+      if (this_select >= num_chunks) {
         feat_writer.Write(feat_reader.Key(), feats);
         num_done++;
         num_select += feats.NumRows();
@@ -110,21 +124,44 @@ int main(int argc, char *argv[]) {
       }
 
       Vector<BaseFloat> log_energy(feats.NumRows());
-      log_energy.CopyColFromMat(feats, 0);
+
+      if (energies_rspecifier != "") {
+        if (!energies_reader.HasKey(utt)) {
+          KALDI_WARN << "log-energy not found for utterance " << utt;
+          num_err++;
+          continue;
+        }
+        log_energy.CopyColFromMat(energies_reader.Value(utt), 0);
+      } else
+        log_energy.CopyColFromMat(feats, 0);
+
+      std::vector<BaseFloat> chunk_energies(num_chunks, 0.0);
+      for (int32 i = 0; i < num_chunks; i++) {
+        SubVector<BaseFloat> chunk_energy(log_energy, i*chunk_size, chunk_size);
+        chunk_energies[i] = chunk_energy.Sum() / chunk_energy.Dim();
+      }
   
-      std::vector<int32> idx(feats.NumRows());
-      for (int32 i = 0; i < feats.NumRows(); i++)
+      std::vector<int32> idx(num_chunks);
+      for (int32 i = 0; i < num_chunks; i++) {
         idx[i] = i;
-      
-      OtherVectorComparator<BaseFloat> comparator(log_energy);
-      if (top_frames_proportion == 0.0) comparator.SetAscending();
+      }
+
+      OtherVectorComparator<BaseFloat> comparator(chunk_energies);
+      if (select_bottom_frames) comparator.SetAscending();
 
       sort(idx.begin(), idx.end(), comparator);
-      
       idx.resize(this_select);
 
-      Matrix<BaseFloat> selected_feats(this_select, feats.NumCols());
-      selected_feats.CopyRows(feats, idx);
+      Matrix<BaseFloat> selected_feats(this_select * chunk_size,
+                                          feats.NumCols());
+
+      int32 n = 0;
+      for (std::vector<int32>::const_iterator it = idx.begin();
+            it != idx.end(); ++it, n++) {
+        SubMatrix<BaseFloat> src_feats(feats, *it * chunk_size, chunk_size, 0, feats.NumCols());
+        SubMatrix<BaseFloat> dst_feats(selected_feats, n*chunk_size, chunk_size, 0, feats.NumCols());
+        dst_feats.CopyFromMat(src_feats);
+      }
 
       feat_writer.Write(feat_reader.Key(), selected_feats);
       num_done++;
@@ -142,7 +179,4 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-      
-      
-
 
