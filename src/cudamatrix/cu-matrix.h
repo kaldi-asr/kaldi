@@ -100,13 +100,52 @@ class CuMatrixBase {
 
   
   /// Copies row r from row indices[r] of src.
-  /// As a special case, if indexes[i] <== -1, sets row i to zero  
-  /// "reorder".size() must equal this->NumRows(), 
-  /// all elements of "reorder" must be in [0, src.NumRows()-1],
-  /// and src.NumCols() must equal this.NumCols()
+  /// As a special case, if indexes[i] < 0, sets row i to zero  
+  /// "reorder".size() must equal this->NumRows(), and
+  /// src.NumCols() must equal this.NumCols()
   void CopyRows(const CuMatrixBase<Real> &src,
                 const std::vector<MatrixIndexT> &indices);
 
+  /// Copies row r of this matrix from an array of floats at the location given
+  /// by src[r], where src[r] is assumed to be obtained from the RowData()
+  /// function of another CuMatrix, or from CuVector::Data() (the point is: the
+  /// data it points to should be on the GPU if we're using a GPU, and on a CPU
+  /// otherwise).  src.size() must equal this.NumRows(), and if any src[r] is
+  /// NULL then this.Row(r) will be set to zero.
+  void CopyRows(const std::vector<const Real*> &src);
+
+  /// For each row r of this matrix, copies it to the array of floats at
+  /// the location given by src[r], where src[r] is assumed to be obtained from the RowData()
+  /// function of another CuMatrix, or from CuVector::Data() (i.e. it should point
+  /// to memory on the GPU if we're using a GPU, or on the CPU otherwise).
+  /// If src[r] is NULL, does not copy anywhere.
+  void CopyToRows(const std::vector<Real*> &src) const;
+
+
+  /// Does for each row r, this.Row(r) += alpha * src.row(indices[r]).
+  /// If indices[r] < 0, does not add anything.
+  /// "reorder".size() must equal this->NumRows(), 
+  /// all elements of "reorder" must be in [0, src.NumRows()-1],
+  /// and src.NumCols() must equal this.NumCols()
+  void AddRows(Real alpha,
+               const CuMatrixBase<Real> &src,
+               const std::vector<MatrixIndexT> &indices);
+
+  /// Does for each row r, this.Row(r) += alpha * src[r],
+  /// treating src[r] as the beginning of a region of memory representing
+  /// a vector of floats, of the same length as this.NumCols().
+  void AddRows(Real alpha,
+               const std::vector<const Real*> &src);
+
+
+  /// For each row r of this matrix, adds it (times alpha) to the array of
+  /// floats at the location given by src[r], where src[r] is assumed to be
+  /// obtained from the RowData() function of another CuMatrix, or from
+  /// CuVector::Data() (i.e. it should point to memory on the GPU if we're using
+  /// a GPU, or on the CPU otherwise).  If src[r] is NULL, does not do anything
+  /// for that row.
+  void AddToRows(Real alpha, const std::vector<Real*> &src) const;
+  
 
   /// For each row r of this and for each column c, sets (*this)(r, c) to the
   /// sum \sum_j src(r, j), where j ranges from indices[c].first through
