@@ -17,8 +17,8 @@ local/fisher_prepare_dict.sh
 
 utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
-local/fisher_train_lms.sh 
-local/fisher_create_test_lang.sh
+local/fisher_train_lms.sh  || exit 1;
+local/fisher_create_test_lang.sh || exit 1;
 
 # Use the first 4k sentences as dev set.  Note: when we trained the LM, we used
 # the 1st 10k sentences as dev set, so the 1st 4k won't have been used in the

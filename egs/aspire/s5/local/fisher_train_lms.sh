@@ -111,6 +111,4 @@ ngram -lm $dir/3gram-mincount/lm_unpruned.gz  -ppl $sdir/heldout
 # file data/local/lm/srilm/heldout: 10000 sentences, 78998 words, 0 OOVs
 # 0 zeroprobs, logprob= -164990 ppl= 71.4278 ppl1= 122.614
 
-utils/build_const_arpa_lm.sh \
-    data/local/lm/4gram-mincount/lm_unpruned.gz data/lang data/lang_test_fg
 
