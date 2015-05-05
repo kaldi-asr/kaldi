@@ -53,7 +53,15 @@ enum ComponentProperties {
                               // Note: if doing backprop, you'd also need to check
                               // that the kBackpropNeedsInput property is not true.
   kBackpropInPlace = 0x080   // true if we can do the backprop operation in-place
-                             // (input and output matrices may be the same).  
+                             // (input and output matrices may be the same).
+  kPropagateAdds = 0x100,  // true if the Propagate function adds to, rather
+                           // than setting, its output.  The Component chooses
+                           // whether to add or set, and the calling code has to
+                           // accommodate it.
+  kBackpropAdds = 0x200,   // true if the Backprop function adds to, rather than
+                           // setting, its output.  The Component chooses
+                           // whether to add or set, and the calling code has to
+                           // accommodate it.
 };
 
 
@@ -78,6 +86,9 @@ class Component {
   /// Propagate function.  For simple components, "indexes" will be NULL.  If
   /// Properties()&kPropagateInPlace, then "in" and "out" are allowed to be the
   /// same matrix.
+  /// Computes the output of the operation given the input.  If the "out" matrix
+  /// is nonzero initially, the behavior depends on the Component, chosen
+  /// according to the convenience of the Component itself
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const = 0;

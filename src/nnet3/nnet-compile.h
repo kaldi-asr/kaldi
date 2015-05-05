@@ -29,17 +29,10 @@
 namespace kaldi {
 namespace nnet3 {
 
-// Options class for the process of turning a ComputationSpecification into a
-// NnetComputation.
-struct NnetCompileConfig {
-
-  void Register(OptionsItf *po) {
-  }
-};
-
 // The first step in compilation is to turn the ComputationSpecification
 // into a ConcreteComputationGraph, where for each Cindex we have a list of
-// other Cindexes that it depends on.
+// other Cindexes that it depends on, and compute the shortest distance to
+// the input.
 struct ConcreteComputationGraph {
 
   // Maps each Cindex to an integer (call this cindex_id) that uniquely
@@ -56,10 +49,143 @@ struct ConcreteComputationGraph {
   // calling GetInputIndexes on the relevant Component (with the relevant
   // Index), and then calling MapToInput on its InputDescriptor.
   std::vector<std::vector<int32> > dependencies;
-  
 
+  // a vector of node type indexed by node-index (as used in the Nnet);
+  // this is just worked out from the Nnet.  This information is needed
+  // in some computations relating to ConcreteComputationGraph.
+  std::vector<NetworkNode::NodeType> node_type;
+
+  
 };
 
+
+void ComputeComputationGraph(const ComputationRequest &computation_request,
+                             const Nnet &nnet,
+                             ConcreteComputationGraph *computation_graph);
+
+
+
+
+// This class creates an initial version of the NnetComputation, without any
+// optimization or sharing of matrices.
+void ComputationCreator {
+ public:
+  ComputationCreator(const ComputationRequest &request,
+                     const Nnet &nnet,
+                     const ConcreteComputationGraph &computation_graph);
+  
+  void CreateComputation(NnetComputation *computation);
+
+ private:
+  const ComputationRequest &request_;
+  const ConcreteComputationGraph &computation_graph_;
+  /// shortest_distance_ is shortest distance from inputs (distance 0) to each
+  /// cindex_id in the computation graph.
+  std::vector<int32> shortest_distance_;
+  /// steps_[i] lists the cindex_ids at the output of the i'th component computation.
+  std::vector<std::vector<int32> > steps_;
+
+  // This maps each cindex_id to the location
+  std::vector<std::pair<int32, int32> > cindex_id_to_location_;
+
+  // Some generic information about each step of the computation... a step
+  // is an instance of a NetworkNode, but a NetworkNode may in unrolled computations
+  // have multiple steps.
+  struct StepInfo {
+    int32 node_id;  // network-node id.
+    Network::NodeType node_type;  // the type of the node: {kComponent,kInput,kOutput}.
+    int32 input_matrix;  // matrix index of input matrix.
+    int32 output;  // matrix index of output matrix.
+    int32 output_deriv;  // matrix index of output derivative
+    int32 input_deriv;  // matrix index of input derivative.
+    std::vector<Index> input_indexes;
+    LocationInfo(): input(-1), output(-1), output_deriv(-1), input_deriv(-1) { }
+  };
+
+  // This
+  std::vector<StepInfo> step_info_;
+
+  /// Indexed by the same index as steps_, gives us the input matrix index for
+  /// this step.
+  std::vector<int32> input_matrices_;
+  /// Indexed by the same index as steps_, gives us the list of indexes at the
+  /// input location for each step.
+  std::vector<std::vector<Index> > input_indexes_;
+
+
+  // Computes, for each cindex_id, the shortest distance to the input (0 for input
+  // components).  It is an error if some cindex_ids are not reachable from the
+  // input.
+  static void ComputeShortestDistances(
+      const ConcreteComputationGraph &computation_graph,
+      std::vector<int32> *shortest_distance);
+
+
+  // This works out the steps of the computation and their order.  Once you have
+  // the shortest-distances from the input to the Cindexes, this function orders
+  // the Cindexes from closest to furthest the input, and then within each
+  // category that has the same distance to the input, orders the Cindexes by the
+  // component index.  This gives us categories with the same component index and
+  // the same distance to the input, and those categories are the steps of the
+  // computation.  As special cases, all the accessed input nodes are listed first
+  // and all the output nodes are listed last, with each input/output node
+  // as a single step; and it makes sure that the order of the Cindexes at
+  // the input and output steps is the same as the order specified in the
+  // ComputationRequest.
+  static void ComputeComputationOrder(
+      const ComputationRequest &request,
+      const ConcreteComputationGraph &computation_graph,
+      const std::vector<int32> &shortest_distance,
+      std::vector<std::vector<int32> > *steps);
+
+  // This function computes a vector that maps each cindex_id to the
+  // corresponding two indices into "steps"; this also gives us
+  // the location as (matrix-index, row-index) of each Cindex.
+  static void ComputeLocationInfo(
+      const std::vector<std::vector<int32> > &steps,
+      std::vector<std::pair<int32, int32> > *cindex_id_to_location);
+
+
+  // Assign some basic information about the steps of the computation, chiefly
+  // the locations of the input and output matrices and the corresponding
+  // derivatives; and index information about the input of each
+  // step (only for real Components[?]).
+  // Note, matrix-index zero is at this stage reserved for the empty matrix.
+  // In the "computation" object, we store the sizes of these matrices.
+  static void GetStepInfo(const ComputationRequest &request,
+                          const Nnet &nnet,
+                          std::vector<StepInfo> *step_info,
+                          NnetComputation *computation);
+
+  // [to be called after step_info_ is set up].  Adds to the computation the
+  // commands that initialize all the matrices.  Also defines sub-matrices
+  // corresponding to each matrix, with the same index.
+  void SetUpForwardMatrices(NnetComputation *computation);
+
+  // Adds to "computation" the commands to set up the input matrix for a step
+  // ("step" must correspond to a Component or an output node).  This
+  // involves processing the InputDescriptor.
+  void SetUpInputForward(int32 step, NnetComputation *computation);
+
+  // Adds to "computation" the command for the forward computation for this step
+  // (which must correspond to a real component).
+  void DoForwardComputation(int32 step, NnetComputation *computation);
+
+  // Adds to "computation" the commands to do backprop from the input
+  // matrix for a step ("step" must correspond to a Component or an output
+  // node).  This involves processing the InputDescriptor.
+  void BackpropFromInputBackward(int32 step, NnetComputation *computation);
+  
+  // Adds to "computation" the command for the backward computation for this step
+  // (which must correspond to a real component).
+  void DoBackwardComputation(int32 step, NnetComputation *computation);
+                             
+  // [to be called after step_info_ is set up and all the forward and backprop
+  // commands have been added].  Adds to the computation the commands that
+  // deinitialize all the matrices.
+  void DestroyMatrices(NnetComputation *computation);
+
+};
 
 
 
@@ -69,57 +195,3 @@ struct ConcreteComputationGraph {
 
 #endif
 
-/*
-  Compilation model...
-
-  list of objects to learn and have stats for (e.g. SoftmaxComponent, AffineComponent, FixedAffineComponent)
-
-  Then a compilation method to go from either a training or test setup, to an
-    NnetComputation.
-  An NnetComputation is:
-
-  A number of declarations of matrices, with sizes, each being the input or output of a
-    particular layer (may be both the input of one layer and the output of
-    another).  Also declarations of sub-matrices.
-  A number of commands, such as:
-    Initialize matrix; zero matrix; deinitialize matrix; do Propagate or Backprop;
-    do forward or backward of AddMatrix or CopyMatrix.
-  
-  Get rid of all this complexity and just accept redundant copy??   I.e. do it all in C++?
-     -- Linear list of components, each with list of inputs, if needed?  Sharing of parameters
-        between components?  [ComponentInstance vs. Component]
-  [?
-
-  Given required output indexes, and maybe some background info,
-  
-    
-
-  need e.g. out[1]
-
-  out_obj=SoftmaxObject
-
-  out(t,n,x) = SoftmaxComponent(dim=1000), input=layer10(t,n,x)
-  layer10(t,n,x) = AffineComponent(input-dim=1000, output-dim=1000), input=layer9(t,n,x)
-  layer9(t,n,x) = RectifiedLinearComponent(dim=1000), input=Append(layer8(t-4,n,x), layer8(t+4,n,x))
-  layer8(.....) =
-    ... below, input is a matrix! ...
-  layer5(0,n,x) = AggregateComponent(dim=1000, sub-dim=5000), input=layer4(*, n, x)  <--- The * could be, say, [100,200,300]
-              <--- layer4 would have to have indexes declared.
-    ... this is many-to-one, so input would have to have a set of
-
-  layer1[t-5],layer1[t+5]
-
----
-  At some point we generate a program.
-  Training program example:
-
-  Declare matrices and sub-matrices (m), and "real components" (c),
-    and backprop quantities n.
-  
-  Assume input provided as m[0], output will be given as various
-    parts of the matrices, including the output itself].  (e.g. DeclareOutput(...), meaning
-    we can't delete it.)
-  
-  
-  
- */

@@ -65,6 +65,8 @@ namespace nnet3 {
 // this class and things like copying and assignment will work correctly without
 // having to worry about memory allocation: we can't make a std::vector of an
 // abstract base-class.
+// note: nodes of type kOutput (i.e. output nodes of the network) cannot appear
+// as inputs in any descriptor.  This is to simplify compilation.
 class ForwardingDescriptor {
  public:
   // Given an Index that's requested at the input of this Component (or at

@@ -101,6 +101,7 @@ struct ComputationRequest {
 // struct NnetComputation defines the specific steps of a neural-net
 // computation.  View this as a compiled program; given the Nnet and the
 // ComputationRequest, we compile to struct NnetComputation.
+
 struct NnetComputation {
   struct MatrixInfo {
     int32 num_rows;
@@ -130,7 +131,7 @@ struct NnetComputation {
       kResizeMatrixEmpty, kPropagate, kBackprop, kMatrixCopy, kMatrixAdd,
       kCopyRows, kCopyToRows, kAddRows, kAddToRows,
       kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti,
-      kAddToRowsMulti } computation_type;
+      kAddToRowsMulti, kNoOperation, kNoOperationMarker } computation_type;
     // kResizeMatrixZeroed, kResizeMatrixUndefined: arg1 = index of matrix; arg2,arg3 are rows,cols.
     // kResizeMatrixEmpty: arg1 = index of matrix.
     // kPropagate: arg1 = index of component in nnet; arg2 is index of ComponentPrecomputedIndexes
@@ -148,6 +149,10 @@ struct NnetComputation {
     //    "indexes_multi", of which each pair is (sub-matrix index, row index)
     //    [note: any negative sub-matrix index will be converted to a NULL
     //    pointer argument].
+    // kNoOperation: no operation (sometimes useful during compilation but not
+    //  present in final "code").
+    // kNoOperationMarker: no operation (sometimes useful during compilation but not
+    //  present in final "code").  Used during compilation only.
     int32 arg1;
     int32 arg2;
     int32 arg3;
@@ -195,15 +200,23 @@ struct NnetComputation {
   // don't include the info for those).
   std::unordered_map<int32, NodeInfo> node_info;
 
-  // The steps of the forward computation
-  std::vector<ComputationStep> forward_computation;
+  // The steps of the forward computation, and of the backward computation if
+  // we're doing it.
+  std::vector<ComputationStep> computation;
 
-  // The steps of the backward computation (or the empty vector of we're
-  // not doing any backward computation).
-  std::vector<ComputationStep> backward_computation;  
+  // the number of steps in the forward computation, so steps with index >= forward_computation_end
+  // are part of the backward computation.
+  int32 forward_computation_end;
+
 };
 
 
+// This operator is to print out the NnetComputation in a human-readable way, for
+// debugging purposes.
+// We don't give Read and Write functions to struct NnetComputation, because we
+// don't anticipate needing to write it to disk.
+std::ostream &operator << (std::ostream &os,
+                           NnetComputation &computation);
 
 
 
