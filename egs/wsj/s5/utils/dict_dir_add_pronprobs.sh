@@ -57,12 +57,15 @@ utils/validate_dict_dir.pl $srcdir;
 
 if [ -f $srcdir/lexicon.txt ]; then
   src_lex=$srcdir/lexicon.txt
-  perl -ane 'print join(" ", split(" ", $_)) . "\n";' <$src_lex >$dir/lexicon.txt
+  perl -ane 'print join(" ", split(" ", $_)) . "\n";' < $src_lex |\
+    sort > $dir/lexicon.txt
 elif [ -f $srcdir/lexiconp.txt ]; then
   echo "$0: removing the pron-probs from $srcdir/lexiconp.txt to create $dir/lexicon.txt"
   # the Perl command below normalizes the spaces (avoid double space).
   src_lex=$srcdir/lexiconp.txt
-  awk '{$2 = ""; print $0;}' <$srcdir/lexiconp.txt | perl -ane 'print join(" ", split(" " ,$_)) . "\n";'  >$dir/lexicon.txt || exit 1;
+  awk '{$2 = ""; print $0;}' <$srcdir/lexiconp.txt |\
+    perl -ane 'print join(" ", split(" " ,$_)) . "\n";' |\
+    sort > $dir/lexicon.txt || exit 1;
 fi
 
 
@@ -71,7 +74,8 @@ cat <(awk '{print 1, $0;}' <$dir/lexicon.txt) $pron_counts | \
   awk '{ count = $1; $1 = ""; word_count[$2] += count; pron_count[$0] += count; pron2word[$0] = $2; }
        END{ for (p in pron_count) { word = pron2word[p]; num = pron_count[p]; den = word_count[word]; 
           print num / den, p } } ' | \
-    awk '{ word = $2; $2 = $1; $1 = word; print; }' | grep -v '^<eps>' | sort >$dir/lexiconp.txt
+    awk '{ word = $2; $2 = $1; $1 = word; print; }' | grep -v '^<eps>' |\
+    sort -k1,1 -k3 > $dir/lexiconp.txt
 
 
 n_old=$(wc -l <$dir/lexicon.txt)
@@ -197,7 +201,7 @@ if [ -n "$sil_counts" ]; then
     if ($F_nl_EOS == "0.00") { $F_nl_EOS = "0.01"; }
     print SP "<s> $P_BOS_sr\n</s>_s $F_sl_EOS\n</s>_n $F_nl_EOS\noverall $sil_prob\n";
     ' $dir/lexiconp.txt $bigram_counts $dir/lexiconp_silprob_unsorted.txt $dir/silprob.txt
-    sort -k1,2 -k6 $dir/lexiconp_silprob_unsorted.txt > $dir/lexiconp_silprob.txt
+    sort -k1,1 -k6 $dir/lexiconp_silprob_unsorted.txt > $dir/lexiconp_silprob.txt
 fi
 
 # now regenerate lexicon.txt from lexiconp.txt, to make sure the lines are
