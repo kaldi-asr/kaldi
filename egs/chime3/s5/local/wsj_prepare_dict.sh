@@ -56,7 +56,7 @@ cat $dir/cmudict/cmudict.0.7a.symbols | perl -ane 's:\r::; print;' | \
   chop; m:^([^\d]+)(\d*)$: || die "Bad phone $_"; 
   $phones_of{$1} .= "$_ "; }
   foreach $list (values %phones_of) {print $list . "\n"; } ' \
-  > $dir/nonsilence_phones.txt || exit 1;
+  | sort > $dir/nonsilence_phones.txt || exit 1;
 
 # A few extra questions that will be added to those obtained by automatically clustering
 # the "real" phones.  These ask about stress; there's also one for silence.

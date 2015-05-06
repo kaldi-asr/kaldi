@@ -69,3 +69,13 @@ for task in simu real; do
 done
 cut -f 2 -d" " $dir/log/best_wer_$enhan
 echo $lmw
+
+echo "-------------------"
+echo "1-best transcription"
+echo "-------------------"
+for task in simu real; do
+    rdir=$dir/decode_tgpr_5k_dt05_${task}_${enhan}_it$it
+    cat $rdir/scoring/$lmw.tra \
+	| utils/int2sym.pl -f 2- $graph_dir/words.txt \
+	| sed s:\<UNK\>::g
+done
