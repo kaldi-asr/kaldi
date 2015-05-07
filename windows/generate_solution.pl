@@ -19,6 +19,7 @@ use File::Copy;
 use FindBin qw($Bin);
 use lib "$Bin";
 use Data::Dumper;
+use Getopt::Long;
 
 my $root = "$Bin/..";
 my $solutionDir = "$root/kaldiwin_vs12_auto";
@@ -27,13 +28,24 @@ my $solutionFileName = "kaldiwin_vs12.sln";
 my $srcDir = "$root/src";
 my $vsver="vs2013";
 
+GetOptions ("vsver=s" => \$vsver);
+
 my %TOOLS=( default=>  "4.0",
-	        vs2013 => "12.0");
+            vs2013 => "12.0",
+            vs2015 => "14.0");
 
 my %FORMAT=( default=> "11.00",
-             vs2013=>  "12.00");
-my %TOOLSET=( default=>undef,
-              vs2013=>"v120"); 			 
+             vs2013 =>  "12.00",
+             vs2015 =>  "14.00");
+
+my %TOOLSET=( default=> "v100",
+              vs2013 => "v120",
+              vs2015 => "v140"); 			 
+
+
+unless ((defined $TOOLS{$vsver}) && (defined $FORMAT{$vsver}) && (defined $TOOLSET{$vsver})) {
+	die "Unknown vsver value: $vsver";
+}
 			 
 # The following files are in the same dir (windows/) as the 
 # Perl script.

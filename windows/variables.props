@@ -3,9 +3,9 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
     <MKLDIR>C:\Program Files (x86)\Intel\Composer XE\mkl</MKLDIR>
-    <PTHREADW>C:\Users\Yenda\Downloads\kaldi-svn\windows\pthread-win32\Pre-built.2</PTHREADW>
-    <OPENFST>C:\Users\Yenda\Downloads\kaldi-svn\windows\openfstwin-1.3.4</OPENFST>
-    <OPENFSTLIB>C:\Users\Yenda\Downloads\kaldi-svn\windows\openfstwin-1.3.4\MSVC12\x64\</OPENFSTLIB>
+    <PTHREADW>C:\Users\Yenda\Downloads\kaldi\tools\pthreads\Pre-built.2</PTHREADW>
+    <OPENFST>C:\Users\Yenda\Downloads\kaldi\tools\openfst</OPENFST>
+    <OPENFSTLIB>C:\Users\Yenda\Downloads\kaldi\tools\openfst\MSVC12\x64\</OPENFSTLIB>
   </PropertyGroup>
   <PropertyGroup />
   <ItemDefinitionGroup />
