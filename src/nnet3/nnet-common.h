@@ -22,6 +22,7 @@
 #define KALDI_NNET3_NNET_COMMON_H_
 
 #include "base/kaldi-common.h"
+#include "util/common-utils.h"
 #include "itf/options-itf.h"
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix-lib.h"
@@ -76,5 +77,8 @@ struct CindexHasher {
 class Component;
 class Nnet;
 struct MiscComputationInfo;
+
+} // namespace nnet3
+} // namespace kaldi
 
 #endif

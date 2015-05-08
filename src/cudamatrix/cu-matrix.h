@@ -482,10 +482,23 @@ class CuMatrixBase {
   // Output stored to 'mask', values : 1.0 = equal, 0.0 = not-equal.
   void EqualElementMask(const CuMatrixBase<Real> &mat, CuMatrix<Real> *mask) const;
 
+
+  /// Get raw row pointer (const).  Warning: may return a pointer to GPU memory.  Use at
+  /// your own risk.
+  inline const Real* RowData(MatrixIndexT r) const { return data_ + r * stride_; }
+  /// Get raw row pointer.  Warning: may return a pointer to GPU memory.  Use at
+  /// your own risk.
+  inline Real* RowData(MatrixIndexT r) { return data_ + r * stride_; }
+  /// Return data pointer (const).  Warning: may return a pointer to GPU memory.
+  /// Use at your own risk.
+  inline const Real *Data() const { return data_; }
+  /// Return data pointer.  Warning: may return a pointer to GPU memory.  Use at
+  /// your own risk.
+  inline Real *Data() { return data_; }
  protected:
-  // The following two functions should only be called if we did not compile with CUDA
-  // or could not get a CUDA card; in that case the contents are interpreted the
-  // same as a regular matrix.
+  // The following two functions should only be called if we did not compile
+  // with CUDA or could not get a CUDA card; in that case the contents are
+  // interpreted the same as a regular matrix.
   inline const MatrixBase<Real> &Mat() const {
     return *(reinterpret_cast<const MatrixBase<Real>* >(this));
   }
@@ -493,11 +506,6 @@ class CuMatrixBase {
     return *(reinterpret_cast<MatrixBase<Real>* >(this));
   }
   
-  /// Get raw row pointer
-  inline const Real* RowData(MatrixIndexT r) const { return data_ + r * stride_; }
-  inline Real* RowData(MatrixIndexT r) { return data_ + r * stride_; }
-  inline const Real *Data() const { return data_; }
-  inline Real *Data() { return data_; }
 
 
   

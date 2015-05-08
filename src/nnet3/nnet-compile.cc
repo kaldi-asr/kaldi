@@ -17,13 +17,13 @@
 
 #include <iterator>
 #include <sstream>
-#include "nnet2/nnet-compile.h"
+#include "nnet3/nnet-compile.h"
 
 namespace kaldi {
-namespace nnet2 {
+namespace nnet3 {
 
 
 
 
-} // namespace nnet2
+} // namespace nnet3
 } // namespace kaldi

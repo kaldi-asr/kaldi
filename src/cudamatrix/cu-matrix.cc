@@ -196,6 +196,15 @@ template<class Real>
 template<class OtherReal>
 void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<OtherReal> &M,
                                      MatrixTransposeType Trans) {
+  if (sizeof(Real) == sizeof(OtherReal) &&
+      static_cast<const void*>(M.Data()) ==
+      static_cast<const void*>(this->Data())) {
+
+    // CopyFromMat called on same data.  Nothing to do (except sanity checks)
+    KALDI_ASSERT(Trans == kNoTrans && M.NumRows() == NumRows() &&
+                 M.NumCols() == NumCols() && M.Stride() == Stride());
+    return;
+  }
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     if (Trans == kNoTrans) {

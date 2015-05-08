@@ -26,188 +26,440 @@
 
 #include "nnet3/nnet-common.h"
 #include "nnet3/nnet-component-itf.h"
-
+#include "nnet3/natural-gradient-online.h"
 #include <iostream>
 
 namespace kaldi {
 namespace nnet3 {
 
-// This is where we will put the actual Components, that inherit from the
-// based-class Component defined in nnet-component-itf.h.  [Note: we may put the
-// definitions of some more generic child classes of Component, such as
-// UpdatableComponent, in nnet-component-itf.h.
+
+// This "nnet3" version of the p-norm component only supports the 2-norm.
+class PnormComponent: public Component {
+ public:
+  void Init(int32 input_dim, int32 output_dim);
+  explicit PnormComponent(int32 input_dim, int32 output_dim) {
+    Init(input_dim, output_dim);
+  }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kLinearInInput|kBackpropNeedsInput|kBackpropNeedsOutput;
+  }
+  PnormComponent(): input_dim_(0), output_dim_(0) { }
+  virtual std::string Type() const { return "PnormComponent"; }
+  virtual void InitFromString(std::string args); 
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const { return output_dim_; }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,                        
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual Component* Copy() const { return new PnormComponent(input_dim_,
+                                                              output_dim_); }
+  
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+  
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual std::string Info() const;
+ protected:
+  int32 input_dim_;
+  int32 output_dim_;
+};
+
+class NormalizeComponent: public NonlinearComponent {
+  // note: although we inherit from NonlinearComponent, we don't actually bohter
+  // accumulating the stats that NonlinearComponent is capable of accumulating.
+ public:
+  explicit NormalizeComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit NormalizeComponent(const NormalizeComponent &other): NonlinearComponent(other) { }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|kBackpropInPlace;
+  }
+  NormalizeComponent() { }
+  virtual std::string Type() const { return "NormalizeComponent"; }
+  virtual Component* Copy() const { return new NormalizeComponent(*this); }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+ private:
+  NormalizeComponent &operator = (const NormalizeComponent &other); // Disallow.
+  static const BaseFloat kNormFloor;
+  // about 0.7e-20.  We need a value that's exactly representable in
+  // float and whose inverse square root is also exactly representable
+  // in float (hence, an even power of two).
+};
+
+
+class SigmoidComponent: public NonlinearComponent {
+ public:
+  explicit SigmoidComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit SigmoidComponent(const SigmoidComponent &other): NonlinearComponent(other) { }    
+  SigmoidComponent() { }
+  virtual std::string Type() const { return "SigmoidComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace;
+  }
+  virtual Component* Copy() const { return new SigmoidComponent(*this); }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, //in_value
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+ private:
+  SigmoidComponent &operator = (const SigmoidComponent &other); // Disallow.
+};
+
+class TanhComponent: public NonlinearComponent {
+ public:
+  explicit TanhComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit TanhComponent(const TanhComponent &other): NonlinearComponent(other) { }
+  TanhComponent() { }
+  virtual std::string Type() const { return "TanhComponent"; }
+  virtual Component* Copy() const { return new TanhComponent(*this); }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, //in_value
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+ private:
+  TanhComponent &operator = (const TanhComponent &other); // Disallow.
+};
+
+
+class RectifiedLinearComponent: public NonlinearComponent {
+ public:
+  explicit RectifiedLinearComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit RectifiedLinearComponent(const RectifiedLinearComponent &other): NonlinearComponent(other) { }
+  RectifiedLinearComponent() { }
+  virtual std::string Type() const { return "RectifiedLinearComponent"; }
+  virtual Component* Copy() const { return new RectifiedLinearComponent(*this); }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kLinearInInput|kBackpropNeedsOutput|kPropagateInPlace;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, //in_value
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+ private:
+  RectifiedLinearComponent &operator = (const RectifiedLinearComponent &other); // Disallow.
+};
+
+class FixedAffineComponent;
+
+
+// Affine means a linear function plus an offset.
+// Note: although this class can be instantiated, it also
+// functions as a base-class for more specialized versions of
+// AffineComponent.
+class AffineComponent: public UpdatableComponent {
+  friend class SoftmaxComponent; // Friend declaration relates to mixing up.
+ public:
+  
+  virtual int32 InputDim() const { return linear_params_.NumCols(); }
+  virtual int32 OutputDim() const { return linear_params_.NumRows(); }
+
+  virtual std::string Info() const;
+  virtual void InitFromString(std::string args);
+  
+  AffineComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "AffineComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+        kBackpropNeedsInput|kBackpropAdds;
+  }
+
+  
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;  
+  virtual int32 GetParameterDim() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  // Some functions that are specific to this class.
+  
+  // This new function is used when mixing up:
+  virtual void SetParams(const VectorBase<BaseFloat> &bias,
+                         const MatrixBase<BaseFloat> &linear);
+  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
+  explicit AffineComponent(const AffineComponent &other);
+  // The next constructor is used in converting from nnet1.
+  AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
+                  const CuVectorBase<BaseFloat> &bias_params,
+                  BaseFloat learning_rate);
+  void Init(BaseFloat learning_rate,
+            int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev);
+  void Init(BaseFloat learning_rate,
+            std::string matrix_filename);
+
+  // This function resizes the dimensions of the component, setting the
+  // parameters to zero, while leaving any other configuration values the same.
+  virtual void Resize(int32 input_dim, int32 output_dim);
+
+  // The following functions are used for collapsing multiple layers
+  // together.  They return a pointer to a new Component equivalent to
+  // the sequence of two components.  We haven't implemented this for
+  // FixedLinearComponent yet.
+  Component *CollapseWithNext(const AffineComponent &next) const ;
+  Component *CollapseWithNext(const FixedAffineComponent &next) const;
+  Component *CollapseWithPrevious(const FixedAffineComponent &prev) const;
+
+ protected:
+  friend class NaturalGradientAffineComponent;
+  // This function Update() is for extensibility; child classes may override
+  // this, e.g. for natural gradient update.
+  virtual void Update(
+      const std::string &debug_info,
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv) {
+    UpdateSimple(in_value, out_deriv);
+  }
+  // UpdateSimple is used when *this is a gradient.  Child classes may override
+  // this if needed, but typically won't need to.
+  virtual void UpdateSimple(
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);  
+
+  const AffineComponent &operator = (const AffineComponent &other); // Disallow.
+  CuMatrix<BaseFloat> linear_params_;
+  CuVector<BaseFloat> bias_params_;
+
+};
+
+
+/// Keywords: natural gradient descent, NG-SGD, naturalgradient.  For
+/// the top-level of the natural gradient code look here, and also in
+/// nnet-precondition-online.h.
+/// NaturalGradientAffineComponent is
+/// a version of AffineComponent that has a non-(multiple of unit) learning-rate
+/// matrix.  See nnet-precondition-online.h for a description of the technique.
+/// It is described, under the name Online NG-SGD, in the paper "Parallel
+/// training of DNNs with Natural Gradient and Parameter Averaging" (ICLR
+/// workshop, 2015) by Daniel Povey, Xiaohui Zhang and Sanjeev Khudanpur.
+class NaturalGradientAffineComponent: public AffineComponent {
+ public:
+  virtual std::string Type() const { return "NaturalGradientAffineComponent"; }
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  void Init(BaseFloat learning_rate,
+            int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev,
+            int32 rank_in, int32 rank_out, int32 update_period,
+            BaseFloat num_samples_history, BaseFloat alpha,
+            BaseFloat max_change_per_sample);
+  void Init(BaseFloat learning_rate, int32 rank_in,
+            int32 rank_out, int32 update_period,
+            BaseFloat num_samples_history,
+            BaseFloat alpha, BaseFloat max_change_per_sample,
+            std::string matrix_filename);
+
+  virtual void Resize(int32 input_dim, int32 output_dim);
+  
+  virtual void InitFromString(std::string args);
+  virtual std::string Info() const;
+  virtual Component* Copy() const;
+  NaturalGradientAffineComponent(): max_change_per_sample_(0.0) { }
+
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(NaturalGradientAffineComponent);
+
+  // Configs for preconditioner.  The input side tends to be better conditioned ->
+  // smaller rank needed, so make them separately configurable.
+  int32 rank_in_;
+  int32 rank_out_;
+  int32 update_period_;
+  BaseFloat num_samples_history_;
+  BaseFloat alpha_;
+  
+  OnlineNaturalGradient preconditioner_in_;
+
+  OnlineNaturalGradient preconditioner_out_;
+
+  BaseFloat max_change_per_sample_;
+  // If > 0, max_change_per_sample_ this is the maximum amount of parameter
+  // change (in L2 norm) that we allow per sample, averaged over the minibatch.
+  // This was introduced in order to control instability.
+  // Instead of the exact L2 parameter change, for
+  // efficiency purposes we limit a bound on the exact
+  // change.  The limit is applied via a constant <= 1.0
+  // for each minibatch, A suitable value might be, for
+  // example, 10 or so; larger if there are more
+  // parameters.
+
+  /// The following function is only called if max_change_per_sample_ > 0, it returns a
+  /// scaling factor alpha <= 1.0 (1.0 in the normal case) that enforces the
+  /// "max-change" constraint.  "in_products" is the inner product with itself
+  /// of each row of the matrix of preconditioned input features; "out_products"
+  /// is the same for the output derivatives.  gamma_prod is a product of two
+  /// scalars that are output by the preconditioning code (for the input and
+  /// output), which we will need to multiply into the learning rate.
+  /// out_products is a pointer because we modify it in-place.
+  BaseFloat GetScalingFactor(const CuVectorBase<BaseFloat> &in_products,
+                             const std::string &debug_info,
+                             BaseFloat gamma_prod,
+                             CuVectorBase<BaseFloat> *out_products);
+
+  // Sets the configs rank, alpha and eta in the preconditioner objects,
+  // from the class variables.
+  void SetNaturalGradientConfigs();
+
+  virtual void Update(
+      const std::string &debug_info,
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+};
+
+
+/// FixedAffineComponent is an affine transform that is supplied
+/// at network initialization time and is not trainable.
+class FixedAffineComponent: public Component {
+ public:
+  FixedAffineComponent() { } 
+  virtual std::string Type() const { return "FixedAffineComponent"; }
+  virtual std::string Info() const;
+
+  /// matrix should be of size input-dim+1 to output-dim, last col is offset
+  void Init(const CuMatrixBase<BaseFloat> &matrix); 
+
+  // InitFromString takes only the option matrix=<string>,
+  // where the string is the filename of a Kaldi-format matrix to read.
+  virtual void InitFromString(std::string args);
+
+  virtual int32 Properties() const { return kSimpleComponent|kBackpropAdds; }
+  virtual int32 InputDim() const { return linear_params_.NumCols(); }
+  virtual int32 OutputDim() const { return linear_params_.NumRows(); }
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+
+  virtual Component* Copy() const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  // Function to provide access to linear_params_.
+  const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
+ protected:
+  friend class AffineComponent;
+  CuMatrix<BaseFloat> linear_params_;
+  CuVector<BaseFloat> bias_params_;
+  
+  KALDI_DISALLOW_COPY_AND_ASSIGN(FixedAffineComponent);
+};
+
+// SumGroupComponent is used to sum up groups of posteriors.
+// It's used to introduce a kind of Gaussian-mixture-model-like
+// idea into neural nets.  This is basically a degenerate case of
+// MixtureProbComponent; we had to implement it separately to
+// be efficient for CUDA (we can use this one regardless whether
+// we have CUDA or not; it's the normal case we want anyway). 
+class SumGroupComponent: public Component {
+public:
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const { return output_dim_; }
+  void Init(const std::vector<int32> &sizes); // the vector is of the input dim
+                                              // (>= 1) for each output dim.
+  void GetSizes(std::vector<int32> *sizes) const; // Get a vector saying, for
+                                                  // each output-dim, how many
+                                                  // inputs were summed over.
+  virtual void InitFromString(std::string args);
+  SumGroupComponent() { }
+  virtual std::string Type() const { return "SumGroupComponent"; }
+  virtual int32 Properties() const { return kSimpleComponent|kLinearInInput; }
+  using Component::Propagate; // to avoid name hiding
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  // Note: in_value and out_value are both dummy variables.
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual Component* Copy() const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(SumGroupComponent);
+  // Note: Int32Pair is just struct{ int32 first; int32 second }; it's defined
+  // in cu-matrixdim.h as extern "C" which is needed for the CUDA interface.
+  CuArray<Int32Pair> indexes_; // for each output index, the (start, end) input
+                               // index.
+  CuArray<int32> reverse_indexes_; // for each input index, the output index.
+  int32 input_dim_;
+  int32 output_dim_;  
+};
 
 
 
-// The rest of the comments here may be a bit outdated by now, and superseded by
-// changes in the actual code.
 
-// network =
-//  (1) list of (real) components, with names.  These may be shared.  Info on
-//      initialization (dimensions, etc.)  Just a list with no order.  May be
-//      either SimpleComponent or GeneralComponent (GeneralComponent has a
-//      more general interface).
-//
-//  (2) Abstract network structure (i.e. before seeing actual data).
-//
-//     List of input features with names and feature-dimensions (i.e. the number of
-//       columns for each feature, but not the number of rows yet)
-//     List of names of outputs, each with an InputDescriptor, for which see below (these may just be
-//       the names of rel-component instances).
-//
-//     List of real-component instances.  [Note: a real component is something
-//         that has a Component object; it might be of type SimpleComponent
-//         (that has no interaction with indices like frame indices), or of type
-//         GeneralComponent that may deal with frame indices.
-//
-//     For each real-component instance, a description of their input.
-//     Call this InputDescriptor.
-//
-//     InputDescriptor is a list of SumDescriptor (interpreted as
-//     appending them so the dimension gets larger). An SumDescriptor is a list
-//     of inputs to be added together, all of the same dimension: it is a list of
-//     ForwardingDescriptor.   A ForwardingDescriptor is
-//     an object that translates indices, possibly from multiple input sources
-//     (which in that case must all must be of the same dimension).
-//     A ForwardingDescriptor may in general contain other ForwardingDescriptors,
-//     so in general it represents a parse-tree type of expression (although
-//     most of the common operators are unary).  The base-case of ForwardingDescriptor
-//     is just the name of another network node.
-//
-//     There are several kinds of ForwardingDescriptor.
-//     First it bifurcates into OneInputForwardingDescriptor and MultiInputForwardingDescriptor.
-//     From OneInputForwardingDescriptor:
-//       NodeForwardingDescriptor takes the input Index and turns it into a Cindex by
-//         combining with the index of the node.
-//       OffsetForwardingDescriptor applies a time-offset to a member ForwardingDescriptor.
-//       We can have others later, e.g. one that sets all the t values to zero.
-//     From MultiInputForwardingDescriptor:
-//       SelectModuloForwardingDescriptor selects from different inputs; it takes a list of
-//         input ForwardingDescriptors.
-//
-//
-//   (3) concrete network structure.  We assume sufficient information
-//   (SideInfo?) is passed in from outside that's sufficient to determine which
-//   frames are required in things like LSTMs and aggregate-layers that have
-//   arbitrary context.  In test-time we'll handle this with an AdaptationState
-//   structure for each Component (attach one, non-const, to each Component, or at
-//   least make it available during Propagate?)
-//
-//   Creating concrete network structure:
-//    We declare the required output indices (for various output names, e.g.
-//    just "posterior").
-//    We declare the available input indices (assume these are just provided
-//     regardless of need).
-//
-//    Define a Cindex as a pair (component-index, Index).
-//    Keep going backward through the network computing required c-indices, until
-//    either we fail due to something not available at input, or we have
-//    everything we need.  Maintain a dependency graph where for each Cindex we
-//    store the list of Cindexes it directly depends on.
-//
-//    OK, now we have a set of required c-indices.  
-//    What order do we compute them in?  It will be based on what can be computed
-//    first.  Each
-//    Repeatedly do as follows:
-//       What (component-index, Index) elements can be computed directly given
-//    what we already have?  Select the component-index for which we can compute
-//    the largest number of elements.  From this, create a CindexGroup, which
-//    is a set of Cindex's all with the same component-index.  This corresponds
-//    to the output of a real component.  Each CindexGroup will correspond to
-//    one "real" Component's computation: call this one ConcreteComponentInstance.
-//    It may depend on multiple previous
-//    CindexGroups, we'll work this out later.  (note: the inputs of
-//    the network will also get a CindexGroup index).
-//
-//    Now, for each each of the real components (and the input) the CindexGroup defines
-//    the output and its order.  Now we create for each real component and the output,
-//    a ConcreteInputDescriptor.
-//   
-//    A ConcreteInputDescriptor is a list of ConcreteSumDescriptor; the
-//    ConcreteSumDescriptors are treated as different features to concatenate
-//    together.  Each ConcreteSumDescriptor is a list of
-//    ConcreteForwardingDescriptors, all of the same dimension, which will be
-//    added together.  A ConcreteForwardingDescriptor, whether its underlying type is
-//    OneInputForwardingDescriptor MultiInputForwardingDescriptor, is a list of
-//    Cindex-- possibly from different components or from different CindexGroups.
-//
-//    The process of obtaining the ConcreteInputDescriptor is as follows.
-//    We have at the output of the real component, a CindexGroup, i.e. a list
-//    of Cindexes (incidentally these are unique and ordered).  We first map these
-//    to a list of FrameIndexes at the input.  A SimpleComponent will just map them
-//    one-to-one from the output Cindexes, but a GeneralComponent may do something
-//    different.  Once we have the FrameIndexes on the input we do any mapping
-//    necessary to get the ConcreteForwardingDescriptors.
-//
-//    OK, at this point of the computation we are going to work out where all the
-//    data 'lives'.  Our goal is to get to a point where each output of a real
-//    component, plus each input (i.e. each CindexGroup); and each ConcreteSum
-//    Descriptor (i.e. each part of an input matrix to a component) gets a
-//    SubMatrixIndex (identifying a sub-matrix), and these in turn each map to
-//    offsets within a MatrixIndex (identifying an actual matrix).
-//
-//    For terminology: define an InputLocation as either the input of one of the
-//    real components, or one of the designated outputs of the network; and
-//    define an OutputLocation as either the output of one of the components,
-//    or an input of the network,
-//
-//    We take it as given that each InputLocation has its own dedicated
-//    location, i.e. a single matrix.  This simplifies our life w.r.t. the
-//    backprop functions: they can just set the input value, rather than add to
-//    them.  The only question becomes: for each output location, will it
-//    have its own separate dedicated location, or will it be shared with
-//    one of the ConcreteSumDescriptors? (i.e. a sub-matrix of one of the
-//    inputs of another layer?).  For simplicity, at the moment we will
-//    make the same sharing apply to the derivatives as to the parameters
-//    themselves.
-//
-//    We can get arbitrarily sophisticated about how to do this, but I believe
-//    the following rule (that says we are allowed to share) will cover most of
-//    the common cases, and it's obviously correct: if the CindexGroup is the
-//    same in both cases, and if none of the cindexes are used anywhere else,
-//    and if the ConcreteForwardingDescriptor appears as the first member of its
-//    ConcreteSumDescriptor [this is to avoid overwriting when we should be
-//    adding], and if either (the component does not require its output in order
-//    to backprop, or we're not doing backprop, or the ConcreteForwardingDescriptor
-//    is the only member of its enclosing ConcreteSumDescriptor), then we can
-//    share the location.
-//
-//    The next stage is to compile the actions of the computation.  We assume
-//    when we start that the input already exists.
-//
-//    First compile the computation while ignoring any matrix resizing.  This
-//    goes as follows:
-//      For each ConcreteComponentInstance and for the outputs:
-//         Do any steps needed to create the InputLocation [more details here.]
-//         if it's a ConcreteComponentInstance: propagate.
-//    
-//    At this point, we let the user, from external code, call SetOutputDerivatives.
-//    Then when they call Backprop(), a reverse sequence happens.
-//
-//    In general, it goes: for the outputs and for each ConcreteComponentInstance,
-//      - if it's a ConcreteComponentInstance, do the backprop operation.fe  
-//      - Propagate the derivative back (by adding) to each place where we added an
-//        input from.
-//
-//    Later on we'll create a mechanism for selectively backpropagating the derivatives,
-//    to avoid wasted computation.  For now, we'll just always do the backprop.
-//    
-//    The un-optimized computation will first create all of the forward matrices, then do the
-//    forward computation, then create all of the backprop matrices, then do the
-//    backward computation, then delete all the forward quantities, then delete all
-//    the backprop quantities (except the derivatives at the input, if requested).
-//
-//    Note: we'll always give the empty matrix if a matrix is not needed: have a special
-//    one for that.. we can make this an optimization step too.
-//    
-//    Then we optimize the matrix resizing times by creating matrices as late as possible
-//    and destroying them as early as possible.
-
-
-
-
-
-} // namespace nnet2
+} // namespace nnet3
 } // namespace kaldi
 
 

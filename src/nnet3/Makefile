@@ -8,20 +8,10 @@ LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
 
-TESTFILES = nnet-component-test nnet-precondition-test \
-	nnet-precondition-online-test nnet-example-functions-test \
-    nnet-nnet-test am-nnet-test online-nnet2-decodable-test \
-    nnet-compute-test
+TESTFILES = natural-gradient-online-test 
 
-OBJFILES = nnet-component.o nnet-nnet.o train-nnet.o train-nnet-ensemble.o nnet-update.o \
-     nnet-compute.o am-nnet.o nnet-functions.o  \
-     nnet-precondition.o shrink-nnet.o combine-nnet.o combine-nnet-a.o \
-     mixup-nnet.o nnet-update-parallel.o combine-nnet-fast.o \
-     nnet-fix.o nnet-stats.o rescale-nnet.o nnet-limit-rank.o nnet-example.o \
-     get-feature-transform.o widen-nnet.o nnet-precondition-online.o \
-     nnet-example-functions.o nnet-compute-discriminative.o \
-     nnet-compute-discriminative-parallel.o online-nnet2-decodable.o \
-     train-nnet-perturbed.o nnet-compute-online.o
+OBJFILES = nnet-compile.o nnet-component.o nnet-parse.o natural-gradient-online.o \
+  nnet-component-itf.o nnet-optimize.o 
 
 LIBNAME = kaldi-nnet3
 

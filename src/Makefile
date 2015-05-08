@@ -8,13 +8,13 @@ SHELL := /bin/bash
 SUBDIRS = base matrix util feat tree thread gmm transform sgmm \
           fstext hmm lm decoder lat cudamatrix nnet \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
-          nnetbin latbin sgmm2 sgmm2bin nnet2 nnet2bin kwsbin \
+          nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 nnet2bin kwsbin \
           ivector ivectorbin online2 online2bin lmbin
 
 MEMTESTDIRS = base matrix util feat tree thread gmm transform sgmm \
           fstext hmm lm decoder lat nnet \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
-          nnetbin latbin sgmm2 nnet2 nnet2bin sgmm2bin kwsbin \
+          nnetbin latbin sgmm2 nnet2 nnet3 nnet2bin sgmm2bin kwsbin \
           ivector ivectorbin online2 online2bin lmbin
 
 CUDAMEMTESTDIR = cudamatrix
@@ -169,6 +169,7 @@ lat: base util hmm tree matrix
 cudamatrix: base util matrix	
 nnet: base util matrix cudamatrix
 nnet2: base util matrix thread lat gmm hmm tree transform cudamatrix
+nnet3: base util matrix thread lat gmm hmm tree transform cudamatrix
 ivector: base util matrix thread transform tree gmm 
 #3)Dependencies for optional parts of Kaldi
 onlinebin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online thread

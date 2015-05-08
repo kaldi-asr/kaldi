@@ -38,7 +38,7 @@ struct ConcreteComputationGraph {
   // Maps each Cindex to an integer (call this cindex_id) that uniquely
   // identifies it (obviously these cindex_id values are specific to the
   // computation graph).
-  std::unordered_map<Cindex, int32, CindexHasher> cindex_to_index;
+  unordered_map<Cindex, int32, CindexHasher> cindex_to_index;
 
   // This is the reverse mapping of cindex_to_index: it maps from cindex_id to
   // Cindex.
@@ -68,7 +68,7 @@ void ComputeComputationGraph(const ComputationRequest &computation_request,
 
 // This class creates an initial version of the NnetComputation, without any
 // optimization or sharing of matrices.
-void ComputationCreator {
+class ComputationCreator {
  public:
   ComputationCreator(const ComputationRequest &request,
                      const Nnet &nnet,
@@ -93,13 +93,16 @@ void ComputationCreator {
   // have multiple steps.
   struct StepInfo {
     int32 node_id;  // network-node id.
-    Network::NodeType node_type;  // the type of the node: {kComponent,kInput,kOutput}.
+    NetworkNode::NodeType node_type;  // enum {kComponent,kInput,kOutput}.
     int32 input_matrix;  // matrix index of input matrix.
     int32 output;  // matrix index of output matrix.
     int32 output_deriv;  // matrix index of output derivative
     int32 input_deriv;  // matrix index of input derivative.
     std::vector<Index> input_indexes;
-    LocationInfo(): input(-1), output(-1), output_deriv(-1), input_deriv(-1) { }
+    // default constructor some elements to -1, but leaves others
+    // undefined.
+    StepInfo():
+        input_matrix(-1), output(-1), output_deriv(-1), input_deriv(-1) { }
   };
 
   // This
@@ -189,7 +192,7 @@ void ComputationCreator {
 
 
 
-} // namespace nnet2
+} // namespace nnet3
 } // namespace kaldi
 
 

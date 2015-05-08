@@ -704,10 +704,16 @@ void Matrix<Real>::Resize(const MatrixIndexT rows,
 
 template<typename Real>
 template<typename OtherReal>
-void MatrixBase<Real>::CopyFromMat(const MatrixBase<OtherReal> & M,
+void MatrixBase<Real>::CopyFromMat(const MatrixBase<OtherReal> &M,
                                    MatrixTransposeType Trans) {
-  if (sizeof(Real) == sizeof(OtherReal) && (void*)(&M) == (void*)this)
-    return; // CopyFromMat called from ourself.  Nothing to do.
+  if (sizeof(Real) == sizeof(OtherReal) &&
+      static_cast<const void*>(M.Data()) ==
+      static_cast<const void*>(this->Data())) {
+    // CopyFromMat called on same data.  Nothing to do (except sanity checks).
+    KALDI_ASSERT(Trans == kNoTrans && M.NumRows() == NumRows() &&
+                 M.NumCols() == NumCols() && M.Stride() == Stride());
+    return;
+  }
   if (Trans == kNoTrans) {
     KALDI_ASSERT(num_rows_ == M.NumRows() && num_cols_ == M.NumCols());
     for (MatrixIndexT i = 0; i < num_rows_; i++)

@@ -47,6 +47,7 @@ class NnetOptimize {
 
  private:
 
+  // this is all provisional.
   struct MatrixOptInfo {
     // list of all sub-matrix indexes that point to this matrix.
     std::vector<int32> sub_matrices;
@@ -54,6 +55,7 @@ class NnetOptimize {
     int32 whole_sub_matrix;
   };
 
+  // this is all provisional.
   struct SubmatrixOptInfo {
     // true if this sub-matrix is the whole of a matrix.
     bool is_whole_matrix;
@@ -133,8 +135,15 @@ class NnetOptimize {
       is added to another matrix, and that is the only time it is used,
       then we could just set the output location to that other matrix.
 
+   (5) optimizations w.r.t. avoiding Backprop functions that are not needed.
+      Basically, we need to keep track of what the outputs of each Backprop
+      function are and whether they are used.  If we are are doing model
+      update and this component is updatable then the Backprop function is
+      considered to output to the model.  Also, it may output to the
+      input-derivative of that component.  We have to keep track of which of
+      these input-derivatives are actually used.
 
-  (5) optimizations w.r.t. zeroing matrices.
+   (6) optimizations w.r.t. zeroing matrices.
       This optimization is to avoid unnecessarily zeroing matrices
       when we initialize them.  If the first time a matrix (or all the sub-parts
       thereof) is set, it is set in a copy operation, or in a Propagate or
@@ -142,17 +151,17 @@ class NnetOptimize {
       we can initialize it with kUndefined rather than kZero.
 
 
-  (6) optimizations for memory consumption.
+  (7) optimizations for memory consumption.
       The idea here is to move the command to initialize a matrix to just
       before its first use, and to move the command to deinitialize a matrix
       to just after its last use.
 
-  (7) renumbering optimizations.
+  (8) renumbering optimizations.
        - renumber Matrices to get rid of zero-sized, un-needed ones, and a similar thing for Sub-matrices.
        - renumber Computations to get rid of no-ops introduced by earlier optimizations
          [also, modify forward_computation_end].
 
-  (8) optimizations to replace row-by-row copy and add commands with whole-matrix
+  (9) optimizations to replace row-by-row copy and add commands with whole-matrix
       commands on smaller sub-matrices (if the row-by-row copy commands have certain
       regularities).  this is a minor issue, we can handle it later.  We have to be
       careful if this causes sub-matrices to overlap.
@@ -163,7 +172,7 @@ class NnetOptimize {
 
 
 
-} // namespace nnet2
+} // namespace nnet3
 } // namespace kaldi
 
 

@@ -79,7 +79,7 @@ class Nnet {
 
 
 
-} // namespace nnet2
+} // namespace nnet3
 } // namespace kaldi
 
 #endif

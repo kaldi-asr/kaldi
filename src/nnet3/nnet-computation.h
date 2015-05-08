@@ -198,7 +198,7 @@ struct NnetComputation {
   // included for the input and output nodes.  (The other nodes may, in recurrent
   // setups, have multiple locations corresponding to different indexes, so we
   // don't include the info for those).
-  std::unordered_map<int32, NodeInfo> node_info;
+  unordered_map<int32, NodeInfo> node_info;
 
   // The steps of the forward computation, and of the backward computation if
   // we're doing it.
@@ -220,7 +220,7 @@ std::ostream &operator << (std::ostream &os,
 
 
 
-} // namespace nnet2
+} // namespace nnet3
 } // namespace kaldi
 
 #endif

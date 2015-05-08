@@ -55,6 +55,8 @@ namespace nnet3 {
  */
 
 
+// forward declaration
+class ForwardingDescriptorImpl;
 
 // A ForwardingDescriptor describes how we copy data from another NetworkNode,
 // or from multiple other NetworkNodes.  In the simplest case this can just be
@@ -114,12 +116,12 @@ class ForwardingDescriptorImpl {
   static void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
   virtual ~ForwardingDescriptorImpl();
+  ForwardingDescriptorImpl() { }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(ForwardingDescriptorImpl);
 };
 
 // SimpleForwardingDescriptor is the base-case of ForwardingDescriptor,
-// 
 class SimpleForwardingDescriptorImpl: public ForwardingDescriptorImpl {
  public:
   virtual Cindex MapToInput(const Index &ind) { return Cindex(src_node_, ind); }
@@ -142,16 +144,18 @@ class SimpleForwardingDescriptorImpl: public ForwardingDescriptorImpl {
 class OffsetForwardingDescriptorImpl: public ForwardingDescriptorImpl {
  public:
   virtual Cindex MapToInput(const Index &ind) {
-    return src_->MapToInput(ind) + offset_;
+    Cindex answer = src_->MapToInput(ind);
+    answer.second = answer.second + offset_;
+    return answer;
   }
-  virtual int32 Dim(const Nnet &nnet) const { return src_->Dim() }
+  virtual int32 Dim(const Nnet &nnet) const { return src_->Dim(nnet); }
   virtual ForwardingDescriptorImpl *Copy() const;
 
   static void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
 
   // takes ownership of src.
-  OffsetForwardingDescriptorImpl(ForwardingDescriptorImple *src,
+  OffsetForwardingDescriptorImpl(ForwardingDescriptorImpl *src,
                                  Index offset): src_(src), offset_(offset) { }
   
   virtual ~OffsetForwardingDescriptorImpl();
@@ -171,13 +175,13 @@ class ModuloForwardingDescriptorImpl: public ForwardingDescriptorImpl {
     if (mod < 0) mod += size;
     return src_[mod]->MapToInput(ind);
   }
-  virtual int32 Dim(const Nnet &nnet) const { return src_[0]->Dim() }
+  virtual int32 Dim(const Nnet &nnet) const { return src_[0]->Dim(nnet); }
   virtual ForwardingDescriptorImpl *Copy() const;
   static void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
 
   // takes ownership of items in src.
-  OffsetForwardingDescriptorImpl(std::vector<ForwardingDescriptorImpl*> &src):
+  ModuloForwardingDescriptorImpl(std::vector<ForwardingDescriptorImpl*> &src):
       src_(src) { }
   virtual ~ModuloForwardingDescriptorImpl();
  private:
@@ -225,7 +229,7 @@ struct InputDescriptor {
 
 
 
-} // namespace nnet2
+} // namespace nnet3
 } // namespace kaldi
 
 #endif
