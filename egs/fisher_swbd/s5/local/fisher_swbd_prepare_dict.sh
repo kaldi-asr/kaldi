@@ -24,7 +24,7 @@
 #check existing directories
 [ $# != 0 ] && echo "Usage: local/fisher_prepare_dict.sh" && exit 1;
 
-dir=data/local/dict
+dir=data/local/dict_nosp
 mkdir -p $dir
 echo "Getting CMU dictionary"
 svn co  https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict  $dir/cmudict
@@ -105,7 +105,7 @@ head -n 20 $dir/oov_counts.txt
 
 # Preparing SWBD acronymns from its dictionary
 srcdir=data/local/train_swbd # This is where we downloaded some stuff..
-dir=data/local/dict
+dir=data/local/dict_nosp
 mkdir -p $dir
 srcdict=$srcdir/swb_ms98_transcriptions/sw-ms98-dict.text
 
