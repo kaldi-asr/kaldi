@@ -954,7 +954,7 @@ void SumGroupComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
 
 void SumGroupComponent::Backprop(const std::string &debug_info,
                                  const ComponentPrecomputedIndexes *indexes,
-                                 const CuMatrixBase<BaseFloat> &in_value,
+                                 const CuMatrixBase<BaseFloat> &, // in_value,
                                  const CuMatrixBase<BaseFloat> &, // out_value
                                  const CuMatrixBase<BaseFloat> &out_deriv,
                                  Component *to_update_in,
@@ -962,6 +962,196 @@ void SumGroupComponent::Backprop(const std::string &debug_info,
   in_deriv->CopyCols(out_deriv, reverse_indexes_);
 }
 
+void SoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                 const CuMatrixBase<BaseFloat> &in,
+                                 CuMatrixBase<BaseFloat> *out) const {
+  // Apply softmax function to each row of the output...
+  // for that row, we do
+  // x_i = exp(x_i) / sum_j exp(x_j).
+  out->ApplySoftMaxPerRow(in);
+
+  // This floor on the output helps us deal with
+  // almost-zeros in a way that doesn't lead to overflow.
+  out->ApplyFloor(1.0e-20);
+}
+
+void SoftmaxComponent::Backprop(const std::string &debug_info,
+                                const ComponentPrecomputedIndexes *indexes,
+                                const CuMatrixBase<BaseFloat> &, // in_value,
+                                const CuMatrixBase<BaseFloat> &out_value,
+                                const CuMatrixBase<BaseFloat> &out_deriv,
+                                Component *to_update_in,
+                                CuMatrixBase<BaseFloat> *in_deriv) const {
+  /*
+    Note on the derivative of the softmax function: let it be
+    p_i = exp(x_i) / sum_i exp_i
+    The [matrix-valued] Jacobian of this function is
+    diag(p) - p p^T
+    Let the derivative vector at the output be e, and at the input be
+    d.  We have
+    d = diag(p) e - p (p^T e).
+    d_i = p_i e_i - p_i (p^T e).
+  */
+  const CuMatrixBase<BaseFloat> &P(out_value), &E(out_deriv);
+  CuMatrixBase<BaseFloat> &D (*in_deriv);
+
+  D.CopyFromMat(P);
+  D.MulElements(E);
+  // At this point, D = P .* E (in matlab notation)
+  CuVector<BaseFloat> pe_vec(D.NumRows()); // For each row i, the dot product (p_t . e_t).
+  pe_vec.AddDiagMatMat(1.0, P, kNoTrans, E, kTrans, 0.0);
+
+  D.AddDiagVecMat(-1.0, pe_vec, P, kNoTrans, 1.0); // does D -= diag(pe_vec) * P.
+  
+  // The SoftmaxComponent does not have any real trainable parameters, but
+  // during the backprop we store some statistics on the average counts;
+  // these used to be used in mixing-up, and may be of interest for some
+  // debugging and diagnostics.
+  if (to_update_in != NULL) {
+    NonlinearComponent *to_update =
+        dynamic_cast<NonlinearComponent*>(to_update_in);
+    to_update->UpdateStats(out_value);
+  }
+}
+
+void FixedScaleComponent::Init(const CuVectorBase<BaseFloat> &scales) {
+  KALDI_ASSERT(scales.Dim() != 0);
+  scales_ = scales;
+}
+
+void FixedScaleComponent::InitFromString(std::string args) {
+  std::string orig_args = args;
+  std::string filename;
+  bool ok = ParseFromString("scales", &args, &filename);
+
+  if (!ok || !args.empty())
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+
+  CuVector<BaseFloat> vec;
+  ReadKaldiObject(filename, &vec);
+  Init(vec);
+}
+
+
+std::string FixedScaleComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat scales_size = static_cast<BaseFloat>(scales_.Dim()),
+      scales_mean = scales_.Sum() / scales_size,
+      scales_stddev = std::sqrt(VecVec(scales_, scales_) / scales_size
+       - (scales_mean * scales_mean));
+  stream << Component::Info() << ", scales-mean=" << scales_mean
+         << ", scales-stddev=" << scales_stddev;
+  return stream.str();
+}
+
+void FixedScaleComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                    const CuMatrixBase<BaseFloat> &in,
+                                    CuMatrixBase<BaseFloat> *out) const {
+  out->CopyFromMat(in);  // does nothing if same matrix.
+  out->MulColsVec(scales_);
+}
+
+void FixedScaleComponent::Backprop(const std::string &debug_info,
+                                   const ComponentPrecomputedIndexes *indexes,
+                                   const CuMatrixBase<BaseFloat> &, // in_value
+                                   const CuMatrixBase<BaseFloat> &, // out_value
+                                   const CuMatrixBase<BaseFloat> &out_deriv,
+                                   Component *, // to_update
+                                   CuMatrixBase<BaseFloat> *in_deriv) const {
+  in_deriv->CopyFromMat(out_deriv);  // does nothing if same memory.
+  in_deriv->MulColsVec(scales_);
+}
+
+Component* FixedScaleComponent::Copy() const {
+  FixedScaleComponent *ans = new FixedScaleComponent();
+  ans->scales_ = scales_;
+  return ans;
+}
+
+
+void FixedScaleComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<FixedScaleComponent>");
+  WriteToken(os, binary, "<Scales>");
+  scales_.Write(os, binary);
+  WriteToken(os, binary, "</FixedScaleComponent>");
+}
+
+void FixedScaleComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<FixedScaleComponent>", "<Scales>");
+  scales_.Read(is, binary);
+  ExpectToken(is, binary, "</FixedScaleComponent>");
+}
+
+void FixedBiasComponent::Init(const CuVectorBase<BaseFloat> &bias) {
+  KALDI_ASSERT(bias.Dim() != 0);
+  bias_ = bias;
+}
+
+void FixedBiasComponent::InitFromString(std::string args) {
+  std::string orig_args = args;
+  std::string filename;
+  bool ok = ParseFromString("bias", &args, &filename);
+
+  if (!ok || !args.empty())
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+
+  CuVector<BaseFloat> vec;
+  ReadKaldiObject(filename, &vec);
+  Init(vec);
+}
+
+
+std::string FixedBiasComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat bias_size = static_cast<BaseFloat>(bias_.Dim()),
+      bias_mean = bias_.Sum() / bias_size,
+      bias_stddev = std::sqrt(VecVec(bias_, bias_) / bias_size)
+       - (bias_mean * bias_mean);
+  stream << Component::Info() << ", bias-mean=" << bias_mean
+         << ", bias-stddev=" << bias_stddev;
+  return stream.str();
+}
+
+void FixedBiasComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                   const CuMatrixBase<BaseFloat> &in,
+                                   CuMatrixBase<BaseFloat> *out) const {
+  out->CopyFromMat(in);  // will do nothing if in and out have same memory.
+  out->AddVecToRows(1.0, bias_, 1.0);
+}
+
+void FixedBiasComponent::Backprop(const std::string &debug_info,
+                                  const ComponentPrecomputedIndexes *indexes,
+                                  const CuMatrixBase<BaseFloat> &, // in_value
+                                  const CuMatrixBase<BaseFloat> &, // out_value
+                                  const CuMatrixBase<BaseFloat> &out_deriv,
+                                  Component *, // to_update
+                                  CuMatrixBase<BaseFloat> *in_deriv) const {
+  // the following statement will do nothing if in_deriv and out_deriv have same
+  // memory.
+  in_deriv->CopyFromMat(out_deriv);
+}
+
+Component* FixedBiasComponent::Copy() const {
+  FixedBiasComponent *ans = new FixedBiasComponent();
+  ans->bias_ = bias_;
+  return ans;
+}
+
+
+void FixedBiasComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<FixedBiasComponent>");
+  WriteToken(os, binary, "<Bias>");
+  bias_.Write(os, binary);
+  WriteToken(os, binary, "</FixedBiasComponent>");
+}
+
+void FixedBiasComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<FixedBiasComponent>", "<Bias>");
+  bias_.Read(is, binary);
+  ExpectToken(is, binary, "</FixedBiasComponent>");
+}
 
 
 

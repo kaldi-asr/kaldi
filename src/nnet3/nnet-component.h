@@ -281,6 +281,32 @@ class AffineComponent: public UpdatableComponent {
 
 };
 
+class SoftmaxComponent: public NonlinearComponent {
+ public:
+  explicit SoftmaxComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit SoftmaxComponent(const SoftmaxComponent &other):
+      NonlinearComponent(other) { } 
+  SoftmaxComponent() { }
+  virtual std::string Type() const { return "SoftmaxComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kBackpropNeedsOutput;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,                        
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  
+  virtual Component* Copy() const { return new SoftmaxComponent(*this); }
+ private:
+  SoftmaxComponent &operator = (const SoftmaxComponent &other); // Disallow.
+};
+
 
 /// Keywords: natural gradient descent, NG-SGD, naturalgradient.  For
 /// the top-level of the natural gradient code look here, and also in
@@ -429,11 +455,9 @@ public:
   SumGroupComponent() { }
   virtual std::string Type() const { return "SumGroupComponent"; }
   virtual int32 Properties() const { return kSimpleComponent|kLinearInInput; }
-  using Component::Propagate; // to avoid name hiding
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
-  // Note: in_value and out_value are both dummy variables.
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &in_value,
@@ -457,6 +481,87 @@ private:
 };
 
 
+/// FixedScaleComponent applies a fixed per-element scale; it's similar
+/// to the Rescale component in the nnet1 setup (and only needed for nnet1
+/// model conversion).
+class FixedScaleComponent: public Component {
+ public:
+  FixedScaleComponent() { } 
+  virtual std::string Type() const { return "FixedScaleComponent"; }
+  virtual std::string Info() const;
+  virtual int32 Properties() const {
+    return kSimpleComponent|kLinearInInput|kPropagateInPlace|kBackpropInPlace;
+  }
+  
+  void Init(const CuVectorBase<BaseFloat> &scales);
+
+  // InitFromString takes only the option scales=<string>,
+  // where the string is the filename of a Kaldi-format matrix to read.
+  virtual void InitFromString(std::string args);
+  
+  virtual int32 InputDim() const { return scales_.Dim(); }
+  virtual int32 OutputDim() const { return scales_.Dim(); }
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *, // to_update
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual Component* Copy() const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+ protected:
+  CuVector<BaseFloat> scales_;  
+  KALDI_DISALLOW_COPY_AND_ASSIGN(FixedScaleComponent);
+};
+
+
+/// FixedBiasComponent applies a fixed per-element bias; it's similar
+/// to the AddShift component in the nnet1 setup (and only needed for nnet1
+/// model conversion.
+class FixedBiasComponent: public Component {
+ public:
+  FixedBiasComponent() { } 
+  virtual std::string Type() const { return "FixedBiasComponent"; }
+  virtual std::string Info() const;
+
+  virtual int32 Properties() const {
+    return kSimpleComponent|kPropagateInPlace|kBackpropInPlace;
+  }
+  
+  void Init(const CuVectorBase<BaseFloat> &scales); 
+  
+  // InitFromString takes only the option bias=<string>,
+  // where the string is the filename of a Kaldi-format matrix to read.
+  virtual void InitFromString(std::string args);
+  
+  virtual int32 InputDim() const { return bias_.Dim(); }
+  virtual int32 OutputDim() const { return bias_.Dim(); }
+  using Component::Propagate; // to avoid name hiding
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *, // to_update
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual Component* Copy() const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+ protected:
+  CuVector<BaseFloat> bias_;  
+  KALDI_DISALLOW_COPY_AND_ASSIGN(FixedBiasComponent);
+};
 
 
 } // namespace nnet3

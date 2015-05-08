@@ -18,7 +18,8 @@
 #include <iterator>
 #include <sstream>
 #include "nnet3/nnet-component-itf.h"
-#include "nnet3/nnet-component.h"  // needed for NewComponentOfType().
+#include "nnet3/nnet-component.h"
+#include "nnet3/nnet-parse.h"
 
 // \file This file contains some more-generic component code: things in base classes.
 //       See nnet-component.cc for the code of the actual Components.
@@ -61,8 +62,6 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new NaturalGradientAffineComponent();
   } else if (component_type == "SumGroupComponent") {
     ans = new SumGroupComponent();
-  } else if (component_type == "FixedLinearComponent") {
-    ans = new FixedLinearComponent();
   } else if (component_type == "FixedAffineComponent") {
     ans = new FixedAffineComponent();
   } else if (component_type == "FixedScaleComponent") {
