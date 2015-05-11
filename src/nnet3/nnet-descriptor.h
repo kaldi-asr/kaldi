@@ -207,11 +207,11 @@ struct SumDescriptor {
   std::vector<ForwardingDescriptor> terms;
 };
 
-// An InputDescriptor concatenates over its parts, so its feature-dimension will
-// be the sum of the feature-dimensions of its parts.  In a valid InputDescriptor,
+// A Descriptor concatenates over its parts, so its feature-dimension will
+// be the sum of the feature-dimensions of its parts.  In a valid Descriptor,
 // "parts" will be nonempty.  Each part may be (in general) a summation, but
 // usually a summation with just one term.
-struct InputDescriptor {
+struct Descriptor {
   int32 Dim(const Nnet &nnet) const;
 
   // The Parse method is used for reading a config-file-style represenation.
@@ -222,6 +222,14 @@ struct InputDescriptor {
   // Write in config-file format.
   static void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
+
+
+  // This function gets all Cindexes that are required to compute this index.
+  // Used for computing dependencies when constructing ComputationGraph.
+  // This list is *not guaranteed unique*, i.e. it may contain repeats.
+  // The caller has to deal with this.
+  void GetInputCindexes(const Index &indexes,
+                        std::vector<Cindex> *required_indexes) const;
   
   std::vector<SumDescriptor> parts;
 };

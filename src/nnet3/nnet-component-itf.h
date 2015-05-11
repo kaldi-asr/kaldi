@@ -137,14 +137,24 @@ class Component {
   ///       add members to misc_info as needed.
   /// \param [in] output_index  The Index at the output of the component, for
   ///       which we are requesting the list of indexes at the component's input.
-  /// \param [out] input_indexes  A list of indexes required at the input.
+  /// \param [out] input_indexes  A list of indexes that are definitely
+  ///        required at the input of this component.
+  /// \param [out] is_optional  Says, for each element of input_indexes, whether
+  ///        it can be considered optional (rather than required).  This is
+  ///        useful in things like RNNs and LSTMs to handle end effects at the
+  ///        start of the file.  If this function leaves the vector empty, the
+  ///        caller should assume all are required.  Note: the misc_info is
+  ///        supplied to give the code hints about, e.g., the min and max time
+  ///        indexes, so that the code doesn't have to nominate a ridiculously
+  ///        large number of optional indexes.
   ///
   /// The default implementation of this function is suitable for any
   /// SimpleComponent; it just copies the output_index to a single identical
-  /// input_index).
+  /// element in input_indexes, leaving is_optional empty.
   virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
                                const Index &output_index,
-                               std::vector<Index> *input_indexes) const;
+                               std::vector<Index> *input_indexes,
+                               std::vector<bool> *is_optional) const;
 
   /// \brief (For non-simple Components) Returns some precomputed
   ///     component-specific and computation-specific indexes to be in used
@@ -154,11 +164,11 @@ class Component {
   ///       indexes are needed for AggregateComponent, which time-indexes are
   ///       available at the input of a recurrent network, and so on.  We will
   ///       add members to misc_info as needed.
-  /// \param [in] input_indexes  A vector of indexes corresponding that explains
+  /// \param [in] input_indexes  A vector of indexes that explains
   ///       what time-indexes (and other indexes) each row of the
   ///       in/in_value/in_deriv matrices given to Propagate and Backprop will
   ///       mean.
-  /// \param [in] output_indexes  A vector of indexes corresponding that explains
+  /// \param [in] output_indexes  A vector of indexes that explains
   ///       what time-indexes (and other indexes) each row of the
   ///       out/out_value/out_deriv matrices given to Propagate and Backprop will
   ///       mean.

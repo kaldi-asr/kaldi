@@ -75,8 +75,8 @@ struct IoSpecification {
 // the input, the indexes requested at various output nodes, and whether or
 // not we want to do backprop.
 struct ComputationRequest {
-  std::vector<IoSpecification> input;
-  std::vector<IoSpecification> output;
+  std::vector<IoSpecification> inputs;
+  std::vector<IoSpecification> outputs;
 
   // if model_to_update is non-NULL, then we'll be doing either model training
   // or derivative computation.  model_to_update must have the same structure as

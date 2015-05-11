@@ -37,39 +37,76 @@ namespace kaldi {
 namespace nnet3 {
 
 // NetworkNode is used to represent, in a neural net, either an input of the
-// network, an output of the network, or an instance of a Component (note: if
-// you want an output of the network is an output of a component, there is a way
-// to represent that in the InputDescriptor).
+// network, an output of the network, an input to a Component, or an instance of
+// a Component.
+// Note: for each instance of a component in the network, there are always
+// two nodes one of type kComponentInput and one of type kComponent, and the
+// kComponent comes directly after the corresponding kComponentInput.  So the
+// input to a component always comes from the network-node directly before it.
 struct NetworkNode {
-  enum NodeType { kInput, kOutput, kComponent } node_type;
+  enum NodeType { kInput, kOutput, kComponent, kComponentInput } node_type;
 
-  // This is relevant only for kOutput and kComponent.  It describes
-  // where it gets its input from; see type InputDescriptor for details.
-  InputDescriptor input;
+  // This is relevant only for kOutput and kComponentInput.  It describes which
+  // other network nodes it gets its input from, and how those inputs are
+  // combined together; see type Descriptor in nnet-descriptor.h for
+  // details.
+  Descriptor descriptor;
 
-  // For kComponent, the index of the component in the network's components_
-  // vector; otherwise -1.
-  int32 component_index;
+  union {
+    // For kComponent, the index of the component in the network's components_
+    // vector.
+    int32 component_index;
+
+    // for kInput, the dimension of the input feature.
+    int32 dim;
+  } u;
   
-  int32 OutputDim(const Nnet &nnet);  // Dimension that this node outputs.
+  int32 Dim(const Nnet &nnet);  // Dimension that this node outputs.
 };
 
 
 
-
 class Nnet {
+ public:
+  int32 NumComponents() { return components_.size(); }
 
+  int32 NumNodes() { return nodes_.size(); }
+
+  /// return component indexed c.  not a copy; not owned by caller.
+  Component *GetComponent(int32 c);
+
+  /// return component indexed c (const version).  not a copy; not owned by
+  /// caller.
+  const Component *GetComponent(int32 c) const;
+
+  /// returns const reference to a particular numbered network node.
+  const NetworkNode &GetNode(int32 node) const;
+
+  /// returns vector of node names (needed by some parsing code, for instance).
+  const std::vector<std::string> &GetNodeNames() { return node_names_; }
+
+  // returns index associated with this node name, or -1 if no such index.
+  int32 IndexOfNode(const std::string &node_name) const;
+  
+  void Read(std::istream &istream, bool binary);
+
+  void Write(std::ostream &ostream, bool binary) const;
  private:
-  // names of components, used only in reading and writing code.  Internally we
-  // always use integers.
-  std::vector<std::string> component_names_;
+  // the names of the components of the network.  Note, these may be distinct
+  // from the network node names below (and live in a different namespace); the
+  // same component may be used in multiple network nodes, to define parameter
+  // sharing.
+  std::vector<std::string> names_;
+  
   // the components of the nnet, in arbitrary order.  The network topology is
   // defined separately, below; a given Component may appear more than once in
   // the network if necessary for parameter tying.
   std::vector<Component*> components_;  
 
-  // the names of the network-nodes, used only in reading and writing
-  // code.  Internally we always use integers.
+  // names of network nodes, i.e. inputs, components and outputs, used only in
+  // reading and writing code.  Indexed by network-node index.  Note,
+  // components' names are always listed twice, once as foo-input and once as
+  // foo, because the input to a component always gets its own NetworkNode index.
   std::vector<std::string> node_names_;
 
   // the network nodes.

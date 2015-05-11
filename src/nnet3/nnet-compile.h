@@ -23,62 +23,28 @@
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-nnet.h"
 #include "nnet3/nnet-computation.h"
+#include "nnet3/nnet-computation-graph.h"
 
 #include <iostream>
 
 namespace kaldi {
 namespace nnet3 {
 
-// The first step in compilation is to turn the ComputationSpecification
-// into a ConcreteComputationGraph, where for each Cindex we have a list of
-// other Cindexes that it depends on, and compute the shortest distance to
-// the input.
-struct ConcreteComputationGraph {
-
-  // Maps each Cindex to an integer (call this cindex_id) that uniquely
-  // identifies it (obviously these cindex_id values are specific to the
-  // computation graph).
-  unordered_map<Cindex, int32, CindexHasher> cindex_to_index;
-
-  // This is the reverse mapping of cindex_to_index: it maps from cindex_id to
-  // Cindex.
-  std::vector<Cindex> cindexes;
-
-  // dependencies[cindex_id] gives you the list of other cindex_ids that this
-  // particular Cindex directly depends on.  (In general we work this out by
-  // calling GetInputIndexes on the relevant Component (with the relevant
-  // Index), and then calling MapToInput on its InputDescriptor.
-  std::vector<std::vector<int32> > dependencies;
-
-  // a vector of node type indexed by node-index (as used in the Nnet);
-  // this is just worked out from the Nnet.  This information is needed
-  // in some computations relating to ConcreteComputationGraph.
-  std::vector<NetworkNode::NodeType> node_type;
-
-  
-};
-
-
-void ComputeComputationGraph(const ComputationRequest &computation_request,
-                             const Nnet &nnet,
-                             ConcreteComputationGraph *computation_graph);
-
-
-
 
 // This class creates an initial version of the NnetComputation, without any
-// optimization or sharing of matrices.
+// optimization or sharing of matrices.  It takes the ComputationGraph as input,
+// along with some background info.
 class ComputationCreator {
  public:
   ComputationCreator(const ComputationRequest &request,
                      const Nnet &nnet,
-                     const ConcreteComputationGraph &computation_graph);
+                     const ComputationGraph &computation_graph);
   
   void CreateComputation(NnetComputation *computation);
 
  private:
   const ComputationRequest &request_;
-  const ConcreteComputationGraph &computation_graph_;
+  const ComputationGraph &computation_graph_;
   /// shortest_distance_ is shortest distance from inputs (distance 0) to each
   /// cindex_id in the computation graph.
   std::vector<int32> shortest_distance_;
@@ -120,7 +86,7 @@ class ComputationCreator {
   // components).  It is an error if some cindex_ids are not reachable from the
   // input.
   static void ComputeShortestDistances(
-      const ConcreteComputationGraph &computation_graph,
+      const ComputationGraph &computation_graph,
       std::vector<int32> *shortest_distance);
 
 
@@ -137,7 +103,7 @@ class ComputationCreator {
   // ComputationRequest.
   static void ComputeComputationOrder(
       const ComputationRequest &request,
-      const ConcreteComputationGraph &computation_graph,
+      const ComputationGraph &computation_graph,
       const std::vector<int32> &shortest_distance,
       std::vector<std::vector<int32> > *steps);
 
