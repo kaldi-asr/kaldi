@@ -42,4 +42,5 @@ for f in $conf_files; do
   build_files="$build_files $f"
 done
 
-tar -czvf $tgzfile $lang $build_files $other_files  >/dev/null
+tar -czvf $tgzfile $lang $build_files $other_files \
+  $modeldir/final.mdl $modeldir/tree >/dev/null
