@@ -345,6 +345,12 @@ void SlidingWindowCmn(const SlidingWindowCmnOptions &opts,
                       MatrixBase<BaseFloat> *output);
 
 
+void ComputeZeroCrossings(const VectorBase<BaseFloat> &wave,
+                          FrameExtractionOptions frame_opts, 
+                          BaseFloat threshold, 
+                          Vector<BaseFloat> *output,
+                          Vector<BaseFloat> *wave_remainder);
+
 /// @} End of "addtogroup feat"
 }  // namespace kaldi
 
