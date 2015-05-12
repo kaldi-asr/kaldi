@@ -81,31 +81,40 @@ struct ComputationGraph {
   
 };
 
-
+/// Computes an initial version of the computation-graph, with dependencies
+/// listed.  Does not check whether all inputs we depend on are contained in the
+/// input of the computation_request; that is done in PruneComputatationGraph.
 void ComputeComputationGraph(const Nnet &nnet,
                              const ComputationRequest &computation_request,
                              ComputationGraph *computation_graph);
 
-// compute the order in which we can compute each cindex in the computation.
-// this is 0 for input cindexes, and in general order n for any cindex that
-// can be computed immediately from cindexes less than n.  for cindexes that
-// can never be computed, the order is -1.
-// If the "order" parameter is non-NULL, it will output a vector giving the
-// order for each cindex_id.
-// If the "by_order" parameter is non-NULL, it will output for each order
-// 0, 1 and so on, a vector of sorted cindex_ids that have that order.
-void ComputeComputationOrder(
-    const Nnet &nnet,
-      const ComputationRequest &request,
-      const ComputationGraph &computation_graph,
-      const std::vector<int32> &shortest_distance,
-      std::vector<int32> *order,
-      std::vector<std::vector<int32> > *by_order);
-
-
+/// Prunes a computatation graph by removing any Cindex that is not computable
+/// from the supplied input.  This will only ever successfully remove some
+/// Cindexes if we have Components optional dependencies (i.e. we are using some
+/// non-simple Components that list some dependencies as optional).  It is an
+/// error if the output cannot be computed from the input.
 void PruneComputationGraph(const Nnet &nnet,
                            const ComputationRequest &computation_request,
                            ComputationGraph *computation_graph);
+
+
+/// Compute the order in which we can compute each cindex in the computation.
+/// This is 0 for input cindexes, and in general order n for any cindex that can
+/// be computed immediately from cindexes less than n.  It is an error if some
+/// cindexes cannot be computed (we assume that you have called
+/// PruneComputationGraph before this function).  If the "order" parameter is
+/// non-NULL, it will output a vector giving the order for each cindex_id.  If
+/// the "by_order" parameter is non-NULL, it will output for each order 0, 1 and
+/// so on, a vector of sorted cindex_ids that have that order.
+void ComputeComputationOrder(
+    const Nnet &nnet,
+    const ComputationRequest &request,
+    const ComputationGraph &computation_graph,
+    const std::vector<int32> &shortest_distance,
+    std::vector<int32> *order,
+    std::vector<std::vector<int32> > *by_order);
+
+
 
 
 } // namespace nnet3

@@ -82,31 +82,6 @@ class ComputationCreator {
   std::vector<std::vector<Index> > input_indexes_;
 
 
-  // Computes, for each cindex_id, the shortest distance to the input (0 for input
-  // components).  It is an error if some cindex_ids are not reachable from the
-  // input.
-  static void ComputeShortestDistances(
-      const ComputationGraph &computation_graph,
-      std::vector<int32> *shortest_distance);
-
-
-  // This works out the steps of the computation and their order.  Once you have
-  // the shortest-distances from the input to the Cindexes, this function orders
-  // the Cindexes from closest to furthest the input, and then within each
-  // category that has the same distance to the input, orders the Cindexes by the
-  // component index.  This gives us categories with the same component index and
-  // the same distance to the input, and those categories are the steps of the
-  // computation.  As special cases, all the accessed input nodes are listed first
-  // and all the output nodes are listed last, with each input/output node
-  // as a single step; and it makes sure that the order of the Cindexes at
-  // the input and output steps is the same as the order specified in the
-  // ComputationRequest.
-  static void ComputeComputationOrder(
-      const ComputationRequest &request,
-      const ComputationGraph &computation_graph,
-      const std::vector<int32> &shortest_distance,
-      std::vector<std::vector<int32> > *steps);
-
   // This function computes a vector that maps each cindex_id to the
   // corresponding two indices into "steps"; this also gives us
   // the location as (matrix-index, row-index) of each Cindex.
